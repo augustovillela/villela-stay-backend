@@ -93,8 +93,20 @@ app.get('/api/anuncios', async (req, res) => {
 
 // Webhook da Stays (configurar na Stays apontando para https://SEU-DOMINIO/webhooks/stays)
 app.post('/webhooks/stays', (req, res) => {
+  console.log('[webhook stays]', JSON.stringify(req.body).slice(0, 500));
   appendJsonl('eventos.jsonl', { origem: 'stays', evento: req.body });
   res.sendStatus(200);
+});
+
+// Consulta dos últimos eventos recebidos (protegido por chave de admin)
+app.get('/api/eventos', (req, res) => {
+  if (!process.env.ADMIN_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_KEY) {
+    return res.sendStatus(401);
+  }
+  const file = path.join(DATA_DIR, 'eventos.jsonl');
+  if (!fs.existsSync(file)) return res.json([]);
+  const linhas = fs.readFileSync(file, 'utf8').trim().split('\n').slice(-50);
+  res.json(linhas.map(l => { try { return JSON.parse(l); } catch { return { bruto: l }; } }));
 });
 
 // Captura de leads do site (formulário de orçamento / chat)
