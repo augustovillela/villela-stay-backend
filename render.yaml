@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: villela-stay-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: STAYS_CLIENT_ID
+        sync: false
+      - key: STAYS_SECRET
+        sync: false

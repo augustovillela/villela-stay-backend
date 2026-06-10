@@ -1,0 +1,16 @@
+{
+  "name": "villela-stay-backend",
+  "version": "0.1.0",
+  "description": "Backend da Villela Stay: proxy seguro da API Stays.net, webhooks e base do CRM",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.19.0"
+  }
+}
