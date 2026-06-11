@@ -15,6 +15,14 @@ fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(path.join(DIST, 'hospedagem'), { recursive: true });
 fs.copyFileSync(path.join(__dirname, 'src', 'style.css'), path.join(DIST, 'style.css'));
 
+// Logo: se src/logo.png existir, usa a imagem; senão, marca em texto
+const TEM_LOGO = fs.existsSync(path.join(__dirname, 'src', 'logo.png'));
+if (TEM_LOGO) fs.copyFileSync(path.join(__dirname, 'src', 'logo.png'), path.join(DIST, 'logo.png'));
+const MARCA = TEM_LOGO
+  ? `<a class="marca" href="/"><img class="logo" src="/logo.png" alt="Villela Stay — Hospedagens Inteligentes"></a>`
+  : `<a class="marca" href="/">Villela <span>Stay</span></a>`;
+const TAGLINE = `<span class="tagline">Hospedagens Inteligentes para Experiências Inesquecíveis.</span>`;
+
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // Seções da home na ordem definida pelo Augusto (11/06/2026)
@@ -41,7 +49,7 @@ ${extraHead}
 </head>
 <body>
 <header class="topo">
-  <a class="marca" href="/">Villela <span>Stay</span></a>
+  <div class="marca-bloco">${MARCA}${TAGLINE}</div>
   <nav>
     <a href="/#hospedagens">Hospedagens</a>
     <a href="/eventos.html">Eventos &amp; Grupos</a>

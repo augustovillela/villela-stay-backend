@@ -20,16 +20,23 @@ img { max-width: 100%; display: block; }
 a { color: var(--lago); text-decoration: none; }
 
 /* ---------- topo ---------- */
+:root { --petroleo: #0c3644; --creme: #f2ecd8; }
 .topo {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 16px 5vw; position: sticky; top: 0; background: rgba(255,255,255,.95);
-  backdrop-filter: blur(8px); border-bottom: 1px solid #eee; z-index: 10;
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 10px 5vw; position: sticky; top: 0; background: var(--petroleo);
+  border-bottom: 3px solid var(--cerrado); z-index: 10;
 }
-.marca { font-size: 1.4rem; font-weight: 800; letter-spacing: -.5px; color: var(--concreto); }
-.marca span { color: var(--lago); font-weight: 300; }
-.topo nav { display: flex; gap: 24px; align-items: center; }
-.topo nav a { color: var(--concreto); font-weight: 500; }
+.marca-bloco { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.marca { font-size: 1.4rem; font-weight: 800; letter-spacing: -.5px; color: var(--creme); flex-shrink: 0; }
+.marca span { color: #4fb3c5; font-weight: 300; }
+.logo { height: 64px; width: 64px; object-fit: cover; border-radius: 12px; display: block; }
+.tagline {
+  color: var(--creme); font-size: .98rem; font-style: italic; opacity: .92; line-height: 1.3;
+}
+.topo nav { display: flex; gap: 24px; align-items: center; flex-shrink: 0; }
+.topo nav a { color: var(--creme); font-weight: 500; }
 .btn-wa-nav { background: var(--wa); color: #fff !important; padding: 8px 18px; border-radius: 24px; }
+@media (max-width: 900px) { .tagline { display: none; } }
 
 /* ---------- hero ---------- */
 .hero {
