@@ -17,9 +17,14 @@ fs.copyFileSync(path.join(__dirname, 'src', 'style.css'), path.join(DIST, 'style
 
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// Casas inteiras primeiro (maior ticket), depois flats, depois suítes
-const peso = l => l.tipo === 'entire_home' ? 0 : (String(l.titulo).match(/Flat/i) ? 1 : 2);
-const ordenados = [...listings].sort((a, b) => peso(a) - peso(b) || b.hospedes - a.hospedes);
+// Seções da home na ordem definida pelo Augusto (11/06/2026)
+const SECOES = [
+  { titulo: 'Reserve o espaço inteiro', ids: ['GI01I', 'GD01H', 'GG04I', 'PL02I', 'GD03H', 'YV01I'] },
+  { titulo: 'Reserve nosso flat privativo com área externa compartilhada', ids: ['VH01H', 'VH02H', 'UD03H', 'UF08H', 'UF01H', 'UF07H'] },
+  { titulo: 'Reserve uma suíte privativa na Casa Modernista com área externa compartilhada', ids: ['UH01H', 'UH06H', 'UH04H', 'UH05H', 'UH03H'] },
+  { titulo: 'Reserve uma suíte privativa na Gran Villela Home Stay com área externa compartilhada', ids: ['UF06H', 'UF05H', 'UD09H'] }
+];
+const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 
 const waLink = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
 
@@ -57,14 +62,19 @@ ${corpo}
 }
 
 // ---------------------------------------------------------------- home
-const cards = ordenados.map(l => `
+const card = l => `
 <a class="card" href="/hospedagem/${l.id}.html">
   <img loading="lazy" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}">
   <div class="card-info">
     <h3>${esc(l.titulo)}</h3>
     <p>${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''}</p>
   </div>
-</a>`).join('\n');
+</a>`;
+
+const cards = SECOES.map(sec => {
+  const itens = sec.ids.map(id => porId[id]).filter(Boolean);
+  return `<h2 class="secao-titulo">${esc(sec.titulo)}</h2>\n<div class="grade">${itens.map(card).join('\n')}</div>`;
+}).join('\n');
 
 const home = layout(
   'Villela Stay — Casas, flats e suítes no Lago Sul, Brasília',
@@ -82,8 +92,7 @@ const home = layout(
   <div>🏆 Anfitrião premiado</div><div>📍 15 min do aeroporto e da Esplanada</div><div>🏊 Piscinas aquecidas</div><div>👨‍👩‍👧‍👦 Grupos de até 32 pessoas</div>
 </section>
 <section id="hospedagens" class="grade-wrap">
-  <h2>Hospedagens</h2>
-  <div class="grade">${cards}</div>
+${cards}
 </section>`,
   `<script type="application/ld+json">${JSON.stringify({
     '@context': 'https://schema.org', '@type': 'LodgingBusiness',
