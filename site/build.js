@@ -68,6 +68,7 @@ ${extraHead}
     <a href="/eventos.html">Eventos</a>
     <a href="/pacotes.html">Pacotes Especiais</a>
     <a href="/regras.html">Regras da Casa</a>
+    <a href="/guia.html">Guia do Hóspede</a>
     <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
   </nav>
 </header>
@@ -75,7 +76,8 @@ ${corpo}
 <footer class="rodape">
   <div>
     <strong>Villela Stay</strong> — Hospedagem por temporada no Lago Sul, Brasília-DF<br>
-    SMDB Conjunto 29, Lago Sul, Brasília-DF
+    SMDB Conjunto 29, Lago Sul, Brasília-DF<br>
+    <a href="/pre-checkin.html">Pré-check-in online</a> · <a href="/guia.html">Guia do Hóspede</a>
     <p class="rodape-distancias">
       Casa Modernista: 10 minutos do Aeroporto<br>
       Gran Villela Home Stay: 15 minutos da Esplanada
@@ -571,9 +573,133 @@ const regras = layout(
 );
 fs.writeFileSync(path.join(DIST, 'regras.html'), regras);
 
+// ------------------------- guia do hóspede -------------------------
+const guia = layout(
+  'Guia do Hóspede | Villela Stay',
+  'Tudo para a sua estadia na Villela Stay: chegada, funcionamento da casa, dicas de Brasília, emergências e canal direto com o anfitrião.',
+  `
+<section class="hero hero-menor">
+  <h1>Guia do Hóspede</h1>
+  <p>Bem-vindo(a) à Villela Stay! Aqui está tudo que você precisa para aproveitar a estadia — da chegada ao check-out.</p>
+</section>
+<div class="regras-wrap">
+
+  <section class="regra"><h2>🔑 Sua chegada</h2>
+    <p><strong>Check-in a partir das 14h.</strong> As instruções de acesso (endereço exato, portão e chaves/senha) são enviadas pelo WhatsApp antes da sua chegada.</p>
+    <p>Preencha o <a href="/pre-checkin.html"><strong>pré-check-in online</strong></a> para agilizar tudo — leva 2 minutos.</p>
+  </section>
+
+  <section class="regra"><h2>🏡 Como a casa funciona</h2>
+    <ul>
+      <li><strong>Cozinha:</strong> equipada com utensílios, gás e detergente para começar.</li>
+      <li><strong>Churrasqueira:</strong> a gás e a carvão (traga seu carvão; uso mediante taxa — consulte as <a href="/regras.html">Regras</a>).</li>
+      <li><strong>Lava e seca:</strong> disponível na cozinha para uso dos hóspedes.</li>
+      <li><strong>Piscina:</strong> aproveite! Crianças sempre com supervisão de um adulto.</li>
+      <li><strong>Jacuzzi/spa:</strong> uso mediante solicitação prévia e taxa (1x ao dia, até 3h).</li>
+      <li><strong>Lixo:</strong> ensacar e deixar no ponto de coleta indicado.</li>
+      <li><strong>Silêncio:</strong> som moderado sempre; após as 22h, volume reduzido (regra do condomínio).</li>
+    </ul>
+  </section>
+
+  <section class="regra"><h2>🗺️ O melhor de Brasília pertinho de você</h2>
+    <ul>
+      <li><strong>Pontão do Lago Sul</strong> — restaurantes e pôr do sol à beira do lago (5-10 min)</li>
+      <li><strong>Ermida Dom Bosco</strong> — o pôr do sol mais bonito da cidade</li>
+      <li><strong>Esplanada dos Ministérios, Congresso e Catedral</strong> — o cartão-postal (15 min)</li>
+      <li><strong>Torre de TV e Feira da Torre</strong> — artesanato e gastronomia local</li>
+      <li><strong>Parque da Cidade</strong> — para correr, pedalar e piquenique</li>
+      <li><strong>Memorial JK</strong> — a história do fundador de Brasília</li>
+    </ul>
+    <p>Quer reservas em restaurantes, passeios ou transfer? Fale com o anfitrião — temos as melhores indicações.</p>
+  </section>
+
+  <section class="regra"><h2>🆘 Emergências</h2>
+    <p>SAMU: <strong>192</strong> · Bombeiros: <strong>193</strong> · Polícia: <strong>190</strong></p>
+    <p>Anfitrião (WhatsApp 24h): <a href="${waLink('Olá! Sou hóspede e preciso de ajuda.')}"><strong>+55 61 9193-5013</strong></a></p>
+  </section>
+
+  <section class="regra"><h2>👋 Check-out</h2>
+    <p><strong>Até as 10h.</strong> Antes de sair: louça lavada, perecíveis descartados, lixo ensacado e chaves no local combinado. A equipe inicia a limpeza externa às 8h.</p>
+  </section>
+
+  <section class="regra"><h2>🔧 Algo não está funcionando?</h2>
+    <p>Conte para a gente que resolvemos o quanto antes:</p>
+    <form id="form-chamado" class="form-evento" style="margin-top:10px">
+      <label>Seu nome* <input name="nome" required></label>
+      <label>Casa/unidade em que está hospedado <input name="hospedagem"></label>
+      <label>O que aconteceu?* <textarea name="descricao" rows="3" required></textarea></label>
+      <button class="btn" type="submit">Enviar chamado</button>
+      <p class="form-status" hidden></p>
+    </form>
+  </section>
+</div>
+<script>
+document.getElementById('form-chamado').addEventListener('submit', function(e){
+  e.preventDefault();
+  var f = e.target, st = f.querySelector('.form-status');
+  st.hidden = false; st.textContent = 'Enviando...';
+  fetch('${BACKEND}/api/chamados', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome: f.nome.value, hospedagem: f.hospedagem.value, descricao: f.descricao.value })
+  }).then(function(r){
+    st.textContent = r.ok ? '✅ Chamado recebido! Vamos resolver o quanto antes.' : 'Erro ao enviar — chame no WhatsApp.';
+    if (r.ok) f.reset();
+  }).catch(function(){ st.textContent = 'Erro ao enviar — chame no WhatsApp.'; });
+});
+</script>`,
+  { caminho: '/guia.html' }
+);
+fs.writeFileSync(path.join(DIST, 'guia.html'), guia);
+
+// ------------------------- pré-check-in -------------------------
+const precheckin = layout(
+  'Pré-check-in | Villela Stay',
+  'Adiante seu check-in na Villela Stay: preencha seus dados e chegue com tudo pronto.',
+  `
+<section class="hero hero-menor">
+  <h1>Pré-check-in</h1>
+  <p>Preencha antes de chegar e ganhe tempo: com seus dados em mãos, deixamos tudo pronto para receber você.</p>
+</section>
+<div class="form-wrap">
+  <form id="form-precheckin" class="form-evento">
+    <label>Nome completo* <input name="nome" required></label>
+    <label>WhatsApp* <input name="contato" required></label>
+    <label>E-mail <input name="email" type="email"></label>
+    <label>Código da reserva (se souber) <input name="reserva" placeholder="ex.: LR03J"></label>
+    <label>Casa/unidade reservada <input name="hospedagem" placeholder="ex.: Casa Modernista"></label>
+    <label>Data de chegada* <input name="chegada" type="date" required></label>
+    <label>Horário previsto de chegada <input name="horario" placeholder="ex.: 15h"></label>
+    <label>Nº de adultos <input name="adultos" type="number" min="1"></label>
+    <label>Nº de crianças <input name="criancas" type="number" min="0"></label>
+    <label>Vai trazer pet? Qual? <input name="pets" placeholder="ex.: 1 cachorro pequeno"></label>
+    <label>Observações (berço, restrições, ocasião especial...) <textarea name="observacoes" rows="3"></textarea></label>
+    <button class="btn" type="submit">Enviar pré-check-in</button>
+    <p class="form-status" hidden></p>
+  </form>
+</div>
+<script>
+document.getElementById('form-precheckin').addEventListener('submit', function(e){
+  e.preventDefault();
+  var f = e.target, st = f.querySelector('.form-status');
+  st.hidden = false; st.textContent = 'Enviando...';
+  var dados = {};
+  ['nome','contato','email','reserva','hospedagem','chegada','horario','adultos','criancas','pets','observacoes'].forEach(function(k){ dados[k] = f[k].value; });
+  fetch('${BACKEND}/api/precheckin', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados)
+  }).then(function(r){
+    st.textContent = r.ok ? '✅ Pré-check-in recebido! Até breve. 🏡' : 'Erro ao enviar — fale conosco pelo WhatsApp.';
+    if (r.ok) f.reset();
+  }).catch(function(){ st.textContent = 'Erro ao enviar — fale conosco pelo WhatsApp.'; });
+});
+</script>`,
+  { caminho: '/pre-checkin.html' }
+);
+fs.writeFileSync(path.join(DIST, 'pre-checkin.html'), precheckin);
+
 // ------------------------- sitemap.xml e robots.txt -------------------------
 const hoje = new Date().toISOString().slice(0, 10);
-const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', ...listings.map(l => `/hospedagem/${l.id}.html`)];
+const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', '/guia.html', '/pre-checkin.html', ...listings.map(l => `/hospedagem/${l.id}.html`)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${rotas.map(r => `  <url><loc>${SITE_URL}${r}</loc><lastmod>${hoje}</lastmod></url>`).join('\n')}
@@ -581,4 +707,4 @@ ${rotas.map(r => `  <url><loc>${SITE_URL}${r}</loc><lastmod>${hoje}</lastmod></u
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 
-console.log(`Site gerado em dist/: ${1 + listings.length + 3} páginas + sitemap.xml + robots.txt`);
+console.log(`Site gerado em dist/: ${rotas.length} páginas + sitemap.xml + robots.txt`);

@@ -142,5 +142,40 @@ app.post('/api/leads', (req, res) => {
   res.json({ ok: true });
 });
 
+// Pré-check-in do hóspede (formulário do site)
+app.post('/api/precheckin', (req, res) => {
+  const d = req.body || {};
+  if (!d.nome || !d.contato) return res.status(400).json({ erro: 'nome e contato são obrigatórios' });
+  appendJsonl('precheckins.jsonl', {
+    nome: d.nome, contato: d.contato, email: d.email || '', reserva: d.reserva || '',
+    hospedagem: d.hospedagem || '', chegada: d.chegada || '', horario: d.horario || '',
+    adultos: d.adultos || '', criancas: d.criancas || '', pets: d.pets || '', observacoes: d.observacoes || ''
+  });
+  res.json({ ok: true });
+});
+
+// Chamado do hóspede durante a estadia (problema/manutenção)
+app.post('/api/chamados', (req, res) => {
+  const d = req.body || {};
+  if (!d.nome || !d.descricao) return res.status(400).json({ erro: 'nome e descricao são obrigatórios' });
+  console.log('[chamado]', d.nome, '-', String(d.descricao).slice(0, 100));
+  appendJsonl('chamados.jsonl', { nome: d.nome, contato: d.contato || '', hospedagem: d.hospedagem || '', descricao: d.descricao });
+  res.json({ ok: true });
+});
+
+// Leitura protegida dos registros (para os agentes)
+function leitorJsonl(arquivo) {
+  return (req, res) => {
+    if (!process.env.ADMIN_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_KEY) return res.sendStatus(401);
+    const file = path.join(DATA_DIR, arquivo);
+    if (!fs.existsSync(file)) return res.json([]);
+    const linhas = fs.readFileSync(file, 'utf8').trim().split('\n').slice(-100);
+    res.json(linhas.map(l => { try { return JSON.parse(l); } catch { return { bruto: l }; } }));
+  };
+}
+app.get('/api/precheckins', leitorJsonl('precheckins.jsonl'));
+app.get('/api/chamados', leitorJsonl('chamados.jsonl'));
+app.get('/api/leads-recebidos', leitorJsonl('leads.jsonl'));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Backend Villela Stay rodando na porta ${PORT}`));
