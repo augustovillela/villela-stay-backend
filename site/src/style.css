@@ -158,6 +158,9 @@ a { color: var(--lago); text-decoration: none; }
 }
 .rodape-distancias { margin-top: 14px; }
 .rodape .creditos { flex-basis: 100%; font-size: .72rem; opacity: .65; margin-top: 8px; }
+.rodape-contatos { margin-top: 14px; line-height: 1.9; }
+.rodape-contatos a { color: var(--creme); }
+.rodape-contatos a:hover { color: #fff; text-decoration: underline; }
 
 /* ---------- pacotes ---------- */
 .pacotes-wrap { max-width: 880px; margin: 0 auto; padding: 24px 5vw 80px; }
