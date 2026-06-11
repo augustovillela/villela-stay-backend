@@ -68,6 +68,7 @@ ${corpo}
     </p>
   </div>
   <div>WhatsApp: +55 61 9193-5013 · villelastay.com.br</div>
+  <div class="creditos">Fotos dos pontos turísticos: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida e Rose Ramalho, via Wikimedia Commons (licenças CC BY / CC BY-SA).</div>
 </footer>
 <a class="wa-flutuante" href="${waLink('Olá! Vim pelo site da Villela Stay.')}" aria-label="Falar no WhatsApp">💬</a>
 </body>
@@ -89,8 +90,17 @@ const cards = SECOES.map(sec => {
   return `<h2 class="secao-titulo">${esc(sec.titulo)}</h2>\n<div class="grade">${itens.map(card).join('\n')}</div>`;
 }).join('\n');
 
-// Fotos do slideshow do hero: capas das casas inteiras (as melhores)
-const heroFotos = SECOES[0].ids.map(id => porId[id]).filter(Boolean).map(l => l.fotoPrincipal);
+// Fotos do slideshow do hero: capas das casas inteiras intercaladas com pontos turísticos
+const TURISMO = ['ponte-jk', 'congresso', 'torre-tv', 'torre-digital', 'aeroporto', 'lago-paranoa', 'pontao'];
+fs.mkdirSync(path.join(DIST, 'turismo'), { recursive: true });
+for (const t of TURISMO) fs.copyFileSync(path.join(__dirname, 'src', 'turismo', `${t}.jpg`), path.join(DIST, 'turismo', `${t}.jpg`));
+
+const casasFotos = SECOES[0].ids.map(id => porId[id]).filter(Boolean).map(l => l.fotoPrincipal);
+const heroFotos = [];
+for (let i = 0; i < Math.max(casasFotos.length, TURISMO.length); i++) {
+  if (casasFotos[i]) heroFotos.push(casasFotos[i]);
+  if (TURISMO[i]) heroFotos.push(`/turismo/${TURISMO[i]}.jpg`);
+}
 
 // Depoimentos 5 estrelas (colhidos do site atual; edite data/depoimentos.json para incluir novos)
 const depoimentos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'depoimentos.json'), 'utf8').replace(/^﻿/, ''));

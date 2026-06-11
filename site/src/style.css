@@ -149,6 +149,7 @@ a { color: var(--lago); text-decoration: none; }
   padding: 40px 5vw; background: var(--petroleo); color: var(--creme); font-size: .92rem;
 }
 .rodape-distancias { margin-top: 14px; }
+.rodape .creditos { flex-basis: 100%; font-size: .72rem; opacity: .65; margin-top: 8px; }
 
 /* ---------- pacotes ---------- */
 .pacotes-wrap { max-width: 880px; margin: 0 auto; padding: 24px 5vw 80px; }
