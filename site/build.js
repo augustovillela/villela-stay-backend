@@ -268,7 +268,7 @@ const DATAS_PACOTE = [
   { emoji: '🇧🇷', nome: 'Caravana da Posse do Novo Presidente', periodo: '1º/01/2027' },
   { emoji: '🎭', nome: 'Carnaval 2027', periodo: '6 a 9/02/2027' },
   { emoji: '🏛️', nome: 'Marcha dos Municípios 2027', periodo: 'datas sob consulta' },
-  { emoji: '🏛️', nome: 'Marcha dos Prefeitos 2027', periodo: 'maio de 2027' }
+  { emoji: '🏛️', nome: 'Marcha dos Prefeitos 2027', periodo: '16 a 20/5/2027 (a confirmar)' }
 ];
 
 const CASAS_PACOTE = [
