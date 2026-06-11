@@ -135,7 +135,7 @@ const home = layout(
 })();
 </script>
 <section class="faixa-confianca">
-  <div>🏆 Superhost: anfitrião premiado</div><div>🏅 Favorito dos Hóspedes: propriedades premiadas</div><div>📍 10 min do Aeroporto JK e da Esplanada</div><div>🏊 Piscinas aquecidas</div><div>👨‍👩‍👧‍👦 Hospedagens de grupos de até 60 pessoas</div><div>🎉 Eventos para até 150 pessoas</div>
+  <div>🏆 Superhost: anfitrião premiado</div><div>🏅 Favorito dos Hóspedes: propriedades premiadas</div><div>📍 10 min do Aeroporto JK e da Esplanada</div><div>👨‍👩‍👧‍👦 Hospedagens de grupos de até 60 pessoas</div><div>🎉 Eventos para até 150 pessoas</div>
 </section>
 <section class="depoimentos-wrap">
   <h2 class="secao-titulo">O Que Dizem Nossos Hóspedes</h2>
