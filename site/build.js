@@ -21,7 +21,7 @@ if (TEM_LOGO) fs.copyFileSync(path.join(__dirname, 'src', 'logo.png'), path.join
 const MARCA = TEM_LOGO
   ? `<a class="marca" href="/"><img class="logo" src="/logo.png" alt="Villela Stay — Hospedagens Inteligentes"></a>`
   : `<a class="marca" href="/">Villela <span>Stay</span></a>`;
-const TAGLINE = `<span class="tagline">Hospedagens Inteligentes para Experiências Inesquecíveis.</span>`;
+const TAGLINE = `<span class="tagline">Hospedagens Inteligentes<br>para Experiências Inesquecíveis.</span>`;
 
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -96,7 +96,7 @@ const home = layout(
     ${heroFotos.map((u, i) => `<img src="${u}" alt="" ${i === 0 ? 'class="ativa"' : 'loading="lazy"'}>`).join('\n    ')}
   </div>
   <div class="hero-conteudo">
-    <h1>Seu lugar no Lago Sul de Brasília</h1>
+    <h1>Seu Porto Seguro no Lago Sul em Brasília</h1>
     <p>Casas com piscina aquecida, flats e suítes — do casal em viagem ao grupo de 32 pessoas.<br>Reserva direta com o anfitrião, sem taxas de plataforma.</p>
     <div class="hero-cta">
       <a class="btn" href="#hospedagens">Ver hospedagens</a>

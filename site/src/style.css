@@ -31,7 +31,7 @@ a { color: var(--lago); text-decoration: none; }
 .marca span { color: #4fb3c5; font-weight: 300; }
 .logo { height: 64px; width: 64px; object-fit: cover; border-radius: 12px; display: block; }
 .tagline {
-  color: var(--creme); font-size: .98rem; font-style: italic; opacity: .92; line-height: 1.3;
+  color: var(--creme); font-size: .98rem; font-weight: 700; opacity: .95; line-height: 1.35;
 }
 .topo nav { display: flex; gap: 24px; align-items: center; flex-shrink: 0; }
 .topo nav a { color: var(--creme); font-weight: 500; }
@@ -85,7 +85,7 @@ a { color: var(--lago); text-decoration: none; }
 .grade-wrap { padding: 64px 5vw; max-width: 1280px; margin: 0 auto; }
 .grade-wrap h2 { font-size: 2rem; margin-bottom: 28px; letter-spacing: -.5px; }
 .secao-titulo {
-  text-transform: uppercase; font-size: 1.35rem !important; color: var(--lago);
+  text-transform: capitalize; font-size: 1.35rem !important; color: var(--lago);
   border-left: 5px solid var(--cerrado); padding-left: 14px; margin: 48px 0 22px !important;
 }
 .secao-titulo:first-child { margin-top: 0 !important; }
