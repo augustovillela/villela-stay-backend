@@ -67,9 +67,9 @@ ${corpo}
       Gran Villela Home Stay: 15 minutos da Esplanada
     </p>
   </div>
-  <div>WhatsApp: +55 61 9193-5013 · villelastay.com.br
+  <div>
     <p class="rodape-contatos">
-      <a href="mailto:villelastay@gmail.com">✉️ villelastay@gmail.com</a><br>
+      <a href="https://mail.google.com/mail/?view=cm&amp;to=villelastay@gmail.com" target="_blank" rel="noopener">✉️ villelastay@gmail.com</a><br>
       <a href="tel:+5561991935013">📞 (61) 99193-5013</a><br>
       <a href="https://instagram.com/villelastay" target="_blank" rel="noopener">📷 @villelastay</a><br>
       <a href="https://instagram.com/augustovillela" target="_blank" rel="noopener">📷 @augustovillela</a><br>
