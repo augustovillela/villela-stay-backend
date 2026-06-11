@@ -85,7 +85,7 @@ a { color: var(--lago); text-decoration: none; }
 .grade-wrap { padding: 64px 5vw; max-width: 1280px; margin: 0 auto; }
 .grade-wrap h2 { font-size: 2rem; margin-bottom: 28px; letter-spacing: -.5px; }
 .secao-titulo {
-  text-transform: capitalize; font-size: 1.35rem !important; color: var(--lago);
+  font-size: 1.35rem !important; color: var(--lago);
   border-left: 5px solid var(--cerrado); padding-left: 14px; margin: 48px 0 22px !important;
 }
 .secao-titulo:first-child { margin-top: 0 !important; }
@@ -134,8 +134,18 @@ a { color: var(--lago); text-decoration: none; }
 /* ---------- rodapé e WhatsApp ---------- */
 .rodape {
   display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  padding: 40px 5vw; background: var(--concreto); color: #d5d8db; font-size: .92rem;
+  padding: 40px 5vw; background: var(--petroleo); color: var(--creme); font-size: .92rem;
 }
+.rodape-distancias { margin-top: 14px; }
+
+/* ---------- pacotes ---------- */
+.pacotes-wrap { max-width: 880px; margin: 0 auto; padding: 24px 5vw 80px; }
+.pacote { margin-top: 40px; }
+.pacote h2 { color: var(--lago); letter-spacing: -.3px; }
+.pacote-periodo { color: var(--concreto-claro); margin: 4px 0 14px; }
+.pacote-tabela { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+.pacote-tabela th, .pacote-tabela td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e7e3da; }
+.pacote-tabela th { background: var(--areia); font-size: .9rem; }
 .wa-flutuante {
   position: fixed; right: 22px; bottom: 22px; width: 58px; height: 58px;
   background: var(--wa); border-radius: 50%; display: flex; align-items: center; justify-content: center;

@@ -27,10 +27,10 @@ const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').re
 
 // Seções da home na ordem definida pelo Augusto (11/06/2026)
 const SECOES = [
-  { titulo: 'Reserve o espaço inteiro', ids: ['GI01I', 'GD01H', 'GG04I', 'PL02I', 'GD03H', 'YV01I'] },
-  { titulo: 'Reserve nosso flat privativo com área externa compartilhada', ids: ['VH01H', 'VH02H', 'UD03H', 'UF08H', 'UF01H', 'UF07H'] },
-  { titulo: 'Reserve uma suíte privativa na Casa Modernista com área externa compartilhada', ids: ['UH01H', 'UH06H', 'UH04H', 'UH05H', 'UH03H'] },
-  { titulo: 'Reserve uma suíte privativa na Gran Villela Home Stay com área externa compartilhada', ids: ['UF06H', 'UF05H', 'UD09H'] }
+  { titulo: 'Reserve O Espaço Inteiro de Uma Casa Bem Equipada', ids: ['GI01I', 'GD01H', 'GG04I', 'PL02I', 'GD03H', 'YV01I'] },
+  { titulo: 'Reserve um Flat para até 6 pessoas com cozinha completa e área externa compartilhadas', ids: ['VH01H', 'VH02H', 'UD03H', 'UF08H', 'UF01H', 'UF07H'] },
+  { titulo: 'Reserve Uma Suíte Privativa na Casa Modernista com sala e cozinha compartilhadas', ids: ['UH01H', 'UH06H', 'UH04H', 'UH05H', 'UH03H'] },
+  { titulo: 'Reserve Uma Suíte Privativa na Gran Villela Home Stay com sala e cozinha compartilhadas', ids: ['UF06H', 'UF05H', 'UD09H'] }
 ];
 const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 
@@ -52,6 +52,7 @@ ${extraHead}
   <div class="marca-bloco">${MARCA}${TAGLINE}</div>
   <nav>
     <a href="/#hospedagens">Hospedagens</a>
+    <a href="/pacotes.html">Pacotes Especiais</a>
     <a href="/eventos.html">Eventos &amp; Grupos</a>
     <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
   </nav>
@@ -60,7 +61,11 @@ ${corpo}
 <footer class="rodape">
   <div>
     <strong>Villela Stay</strong> — Hospedagem por temporada no Lago Sul, Brasília-DF<br>
-    SHIS QI 7, Lago Sul · 15 min do Aeroporto JK e da Esplanada
+    SMDB Conjunto 29, Lago Sul, Brasília-DF
+    <p class="rodape-distancias">
+      Casa Modernista: 10 minutos do Aeroporto<br>
+      Gran Villela Home Stay: 15 minutos da Esplanada
+    </p>
   </div>
   <div>WhatsApp: +55 61 9193-5013 · villelastay.com.br</div>
 </footer>
@@ -223,4 +228,59 @@ document.getElementById('form-evento').addEventListener('submit', function(e){
 );
 fs.writeFileSync(path.join(DIST, 'eventos.html'), eventos);
 
-console.log(`Site gerado em dist/: ${1 + listings.length + 1} páginas (home + ${listings.length} unidades + eventos)`);
+// ---------------------------------------------------------- pacotes
+const PACOTES = [
+  {
+    nome: 'Carnaval 2026', periodo: '14 a 18 de fevereiro · mínimo 4 noites',
+    casas: [['Casa Modernista (até 22 pessoas)', 'R$ 9.800,00', 'R$ 600,00/pessoa']]
+  },
+  {
+    nome: 'Marcha dos Prefeitos 2026', periodo: '18 a 21 de maio · mínimo 3 noites',
+    casas: [
+      ['Casa Villela', 'R$ 5.300,00', 'R$ 530,00/pessoa'],
+      ['Casa Modernista', 'R$ 9.800,00', 'R$ 530,00/pessoa'],
+      ['Villa Kubitschek', 'R$ 9.800,00', 'R$ 490,00/pessoa'],
+      ['Villa Catetinho', 'R$ 8.900,00', 'R$ 495,00/pessoa'],
+      ['Gran Villela Home Stay', 'R$ 14.300,00', 'R$ 477,00/pessoa']
+    ]
+  },
+  {
+    nome: 'Natal 2026', periodo: '23 a 27 de dezembro · mínimo 4 noites',
+    casas: [
+      ['Casa Villela', 'a partir de R$ 7.800,00', 'R$ 517,00 a R$ 650,00/pessoa'],
+      ['Demais casas até a Gran Villela', 'até R$ 18.800,00', 'consulte por casa']
+    ]
+  },
+  {
+    nome: 'Réveillon 2026/2027', periodo: '30 de dezembro a 3 de janeiro · mínimo 4 noites',
+    casas: [
+      ['Casa Villela', 'a partir de R$ 6.600,00', 'R$ 530,00 a R$ 650,00/pessoa'],
+      ['Demais casas até a Gran Villela', 'até R$ 18.800,00', 'consulte por casa']
+    ]
+  }
+];
+
+const blocosPacotes = PACOTES.map(p => `
+<section class="pacote">
+  <h2>${esc(p.nome)}</h2>
+  <p class="pacote-periodo">${esc(p.periodo)}</p>
+  <table class="pacote-tabela">
+    <tr><th>Hospedagem</th><th>Pacote</th><th>Por pessoa</th></tr>
+    ${p.casas.map(c => `<tr><td>${esc(c[0])}</td><td>${esc(c[1])}</td><td>${esc(c[2])}</td></tr>`).join('\n    ')}
+  </table>
+  <a class="btn btn-wa" href="${waLink(`Olá! Tenho interesse no pacote ${p.nome}.`)}">Reservar este pacote</a>
+</section>`).join('\n');
+
+const pacotes = layout(
+  'Pacotes Especiais — Carnaval, Natal e Réveillon | Villela Stay',
+  'Pacotes especiais da Villela Stay no Lago Sul: Carnaval, Marcha dos Prefeitos, Natal e Réveillon em casas completas para grupos.',
+  `
+<section class="hero hero-menor">
+  <h1>Pacotes Especiais</h1>
+  <p>Datas mais procuradas do ano em casas completas no Lago Sul — valores fechados por grupo.<br>Taxas para convidados extras e day use sob consulta.</p>
+</section>
+<div class="pacotes-wrap">${blocosPacotes}</div>`
+);
+fs.writeFileSync(path.join(DIST, 'pacotes.html'), pacotes);
+
+console.log(`Site gerado em dist/: ${1 + listings.length + 2} páginas (home + ${listings.length} unidades + eventos + pacotes)`);
