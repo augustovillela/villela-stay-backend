@@ -143,6 +143,11 @@ a { color: var(--lago); text-decoration: none; }
 .disp-resultado { margin-top: 16px; font-size: 1.05rem; }
 .disp-reservar { margin-top: 16px; }
 
+/* ---------- ofertas de última hora ---------- */
+.ofertas-wrap { padding-bottom: 8px; }
+.card.oferta { border-left: 5px solid var(--cerrado); }
+.oferta-cta { color: var(--lago); font-weight: 600; margin-top: 8px !important; }
+
 /* ---------- formulário de cotação (páginas de propriedade) ---------- */
 .lead-box {
   background: var(--petroleo); border-radius: 16px; padding: 22px 24px; margin-top: 16px; color: var(--creme);

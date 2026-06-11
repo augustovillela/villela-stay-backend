@@ -77,7 +77,8 @@ ${corpo}
   <div>
     <strong>Villela Stay</strong> — Hospedagem por temporada no Lago Sul, Brasília-DF<br>
     SMDB Conjunto 29, Lago Sul, Brasília-DF<br>
-    <a href="/pre-checkin.html">Pré-check-in online</a> · <a href="/guia.html">Guia do Hóspede</a>
+    <a href="/pre-checkin.html">Pré-check-in online</a> · <a href="/guia.html">Guia do Hóspede</a><br>
+    <a href="/formaturas.html">Formaturas</a> · <a href="/casamentos.html">Casamentos</a> · <a href="/festas-infantis.html">Festas Infantis</a> · <a href="/empresas.html">Empresas &amp; Embaixadas</a>
     <p class="rodape-distancias">
       Casa Modernista: 10 minutos do Aeroporto<br>
       Gran Villela Home Stay: 15 minutos da Esplanada
@@ -174,9 +175,34 @@ const home = layout(
     </div>
   </div>
 </section>
+<section class="grade-wrap ofertas-wrap" hidden>
+  <h2 class="secao-titulo">Datas Livres Nos Próximos 15 Dias — Aproveite</h2>
+  <div class="grade ofertas-grade"></div>
+</section>
 <section id="hospedagens" class="grade-wrap">
 ${cards}
-</section>`,
+</section>
+<script>
+fetch('${BACKEND}/api/ultima-hora')
+  .then(function(r){ return r.json(); })
+  .then(function(ofertas){
+    if (!Array.isArray(ofertas) || !ofertas.length) return;
+    var wrap = document.querySelector('.ofertas-wrap');
+    var grade = wrap.querySelector('.ofertas-grade');
+    var meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    grade.innerHTML = ofertas.slice(0, 6).map(function(o){
+      var d = new Date(o.de + 'T12:00:00');
+      var quando = d.getDate() + ' de ' + meses[d.getMonth()];
+      return '<a class="card oferta" href="/hospedagem/' + o.id + '.html">' +
+        '<div class="card-info"><h3>' + o.titulo + '</h3>' +
+        '<p>Livre a partir de <strong>' + quando + '</strong> (' + o.noites + '+ noites)' +
+        (o.precoBRL ? ' · diária R$ ' + o.precoBRL.toLocaleString('pt-BR') : '') + '</p>' +
+        '<p class="oferta-cta">Fale conosco e ganhe condição de última hora →</p></div></a>';
+    }).join('');
+    wrap.hidden = false;
+  })
+  .catch(function(){});
+</script>`,
   {
     caminho: '/',
     extraHead: `<script type="application/ld+json">${JSON.stringify({
@@ -697,9 +723,124 @@ document.getElementById('form-precheckin').addEventListener('submit', function(e
 );
 fs.writeFileSync(path.join(DIST, 'pre-checkin.html'), precheckin);
 
+// ------------------------- landing pages por público -------------------------
+const LANDINGS = [
+  {
+    arquivo: 'formaturas.html', origem: 'site-formaturas',
+    titulo: 'Formatura em Brasília — casa com piscina no Lago Sul | Villela Stay',
+    descricao: 'Espaço para festa de formatura em Brasília: casas no Lago Sul para até 150 convidados, com piscina e churrasqueira, e hospedagem para a turma.',
+    h1: 'A formatura que a sua turma merece',
+    sub: 'Comissões de formatura da UnB, UDF, IESB, UniCEUB e UCB: festa em casa com piscina no Lago Sul — e hospedagem para a turma que vem de fora.',
+    beneficios: [
+      ['🎓 Festa do seu jeito', 'Espaço exclusivo das 10h às 22h, com churrasqueira, piscina e cozinha — sem o engessado dos buffets.'],
+      ['💰 Preço por convidado', 'R$ 100 por pessoa + R$ 1.000 de limpeza. A comissão fecha o orçamento sem surpresas.'],
+      ['🛌 Turma hospedada', 'Combine com hospedagem em grupo: casas para até 24 pessoas com diárias rateadas.']
+    ],
+    casas: ['GG04I', 'GD01H'],
+    cta: 'Olá! Somos uma comissão de formatura. Data: ___ | Nº de convidados: ___ | Queremos orçamento de festa (e hospedagem, se possível).'
+  },
+  {
+    arquivo: 'casamentos.html', origem: 'site-casamentos',
+    titulo: 'Casamento no Lago Sul — mini wedding em Brasília | Villela Stay',
+    descricao: 'Mini wedding e recepção de casamento em casa no Lago Sul, Brasília: até 150 convidados, piscina, jardim e hospedagem para noivos e família.',
+    h1: 'Diga "sim" no Lago Sul',
+    sub: 'Mini weddings, recepções e pré-weddings em casas com jardim e piscina — e os noivos e a família já hospedados no local da festa.',
+    beneficios: [
+      ['💍 Cenário pronto', 'Jardim, piscina e arquitetura modernista — fotos lindas sem cenografia cara.'],
+      ['👨‍👩‍👧 Família por perto', 'Hospede padrinhos e familiares na própria casa nos dias do evento.'],
+      ['📋 Orçamento transparente', 'R$ 100 por convidado + taxa de limpeza. O resto é com seus fornecedores de confiança.']
+    ],
+    casas: ['GG04I', 'GD01H', 'GI01I'],
+    cta: 'Olá! Estamos planejando um casamento. Data: ___ | Nº de convidados: ___ | Queremos conhecer as casas.'
+  },
+  {
+    arquivo: 'festas-infantis.html', origem: 'site-festas-infantis',
+    titulo: 'Festa infantil com piscina em Brasília — Lago Sul | Villela Stay',
+    descricao: 'Festa infantil em casa com piscina e parquinho no Lago Sul, Brasília: espaço seguro e exclusivo das 10h às 22h, R$ 100 por convidado.',
+    h1: 'A festa infantil dos sonhos — com piscina e parquinho',
+    sub: 'Para os grupos de mães e pais que querem festa ao ar livre, segura e sem dor de cabeça: casa exclusiva no Lago Sul o dia todo.',
+    beneficios: [
+      ['🎈 Espaço exclusivo', 'Só a sua festa na casa, das 10h às 22h — sem dividir com estranhos.'],
+      ['🛝 Diversão de verdade', 'Piscina, parquinho infantil e gramado para brinquedos infláveis.'],
+      ['👩‍🍳 Cozinha completa', 'Prepare ou receba buffet com estrutura de casa de verdade — geladeira, fogão, churrasqueira.']
+    ],
+    casas: ['GD01H', 'GI01I'],
+    cta: 'Olá! Quero fazer uma festa infantil. Data: ___ | Nº de convidados (adultos + crianças): ___'
+  },
+  {
+    arquivo: 'empresas.html', origem: 'site-b2b',
+    titulo: 'Hospedagem e eventos para empresas e embaixadas — Brasília | Villela Stay',
+    descricao: 'Hospedagem executiva e eventos corporativos no Lago Sul, Brasília: casas completas para equipes, off-sites e recepções, com faturamento para empresas e embaixadas.',
+    h1: 'Para empresas e embaixadas',
+    sub: 'Hospedagem de equipes, off-sites, treinamentos e recepções diplomáticas — no bairro mais seguro e bem localizado de Brasília, a 10 min do Aeroporto JK e da Esplanada.',
+    beneficios: [
+      ['🏢 Conta corporativa', 'Atendimento direto com o proprietário, nota e contrato para sua empresa ou missão diplomática.'],
+      ['🔒 Privacidade e segurança', 'Casas em condomínio no Lago Sul — discrição para delegações e executivos.'],
+      ['📆 Média e longa estadia', 'Condições especiais para semanas ou meses — equipe inteira numa só casa, com cozinha e lavanderia.']
+    ],
+    casas: ['GD03H', 'GG04I', 'PL02I'],
+    cta: 'Olá! Represento uma empresa/embaixada. Precisamos de: hospedagem ( ) evento ( ) | Período: ___ | Nº de pessoas: ___'
+  }
+];
+
+for (const lp of LANDINGS) {
+  const cards = lp.casas.map(id => porId[id]).filter(Boolean).map(l => `
+  <a class="card" href="/hospedagem/${l.id}.html">
+    <img loading="lazy" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}">
+    <div class="card-info"><h3>${esc(l.titulo)}</h3><p>${l.hospedes} hóspedes · ${l.quartos} quartos${l.m2 ? ` · ${l.m2} m²` : ''}</p></div>
+  </a>`).join('\n');
+
+  const html = layout(lp.titulo, lp.descricao, `
+<section class="hero hero-menor">
+  <h1>${esc(lp.h1)}</h1>
+  <p><strong>${esc(lp.sub)}</strong></p>
+</section>
+<div class="pacotes-wrap">
+  <section class="venda-bloco como-funciona">
+    <div class="passos">
+      ${lp.beneficios.map(b => `<div class="passo"><strong>${b[0]}</strong><br>${esc(b[1])}</div>`).join('\n')}
+    </div>
+  </section>
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">Os Espaços Recomendados</h2>
+    <div class="grade">${cards}</div>
+  </section>
+  <section class="venda-bloco cta-final">
+    <h2>Vamos conversar?</h2>
+    <p>Conte a data e o tamanho do grupo — respondemos com a proposta completa.</p>
+    <a class="btn btn-wa btn-grande" href="${waLink(lp.cta)}">Chamar no WhatsApp</a>
+    <p style="margin-top:24px">Ou deixe seu contato:</p>
+    <form class="form-evento form-evento-claro form-landing">
+      <label>Seu nome* <input name="nome" required></label>
+      <label>WhatsApp ou e-mail* <input name="contato" required></label>
+      <label>Conte rapidamente o que precisa <textarea name="mensagem" rows="3"></textarea></label>
+      <button class="btn" type="submit">Pedir proposta</button>
+      <p class="form-status" hidden></p>
+    </form>
+  </section>
+</div>
+<script>
+document.querySelector('.form-landing').addEventListener('submit', function(e){
+  e.preventDefault();
+  var f = e.target, st = f.querySelector('.form-status');
+  st.hidden = false; st.textContent = 'Enviando...';
+  fetch('${BACKEND}/api/leads', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome: f.nome.value, contato: f.contato.value, mensagem: f.mensagem.value, origem: '${lp.origem}' })
+  }).then(function(r){
+    st.textContent = r.ok ? '✅ Recebido! Retornaremos em breve.' : 'Erro — chame no WhatsApp.';
+    if (r.ok) f.reset();
+  }).catch(function(){ st.textContent = 'Erro — chame no WhatsApp.'; });
+});
+</script>`,
+    { caminho: `/${lp.arquivo}` }
+  );
+  fs.writeFileSync(path.join(DIST, lp.arquivo), html);
+}
+
 // ------------------------- sitemap.xml e robots.txt -------------------------
 const hoje = new Date().toISOString().slice(0, 10);
-const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', '/guia.html', '/pre-checkin.html', ...listings.map(l => `/hospedagem/${l.id}.html`)];
+const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', '/guia.html', '/pre-checkin.html', ...LANDINGS.map(lp => `/${lp.arquivo}`), ...listings.map(l => `/hospedagem/${l.id}.html`)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${rotas.map(r => `  <url><loc>${SITE_URL}${r}</loc><lastmod>${hoje}</lastmod></url>`).join('\n')}

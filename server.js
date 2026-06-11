@@ -142,6 +142,50 @@ app.post('/api/leads', (req, res) => {
   res.json({ ok: true });
 });
 
+// Ofertas de última hora: janelas livres nos próximos 15 dias (cache de 6h)
+let cacheUltimaHora = { quando: 0, dados: [] };
+app.get('/api/ultima-hora', async (req, res) => {
+  try {
+    if (Date.now() - cacheUltimaHora.quando < 6 * 3600 * 1000) return res.json(cacheUltimaHora.dados);
+    const listings = await stays('/content/listings', { limit: 20 });
+    const de = new Date(), ate = new Date(Date.now() + 15 * 86400000);
+    const fmt = d => d.toISOString().slice(0, 10);
+    const ofertas = [];
+    for (const l of listings) {
+      if (l.status !== 'active') continue;
+      try {
+        const cal = await stays(`/calendar/listing/${l._id}`, { from: fmt(de), to: fmt(ate) });
+        // primeira janela livre de pelo menos 2 noites consecutivas
+        let inicio = null, noites = 0;
+        for (const dia of cal) {
+          if (dia.avail > 0) {
+            if (!inicio) { inicio = dia.date; noites = 0; }
+            noites++;
+          } else if (inicio) {
+            if (noites >= 2) break;
+            inicio = null; noites = 0;
+          }
+        }
+        if (inicio && noites >= 2) {
+          const preco = cal.find(d => d.date === inicio);
+          ofertas.push({
+            id: l.id,
+            titulo: l._mstitle && l._mstitle.pt_BR,
+            de: inicio, noites: Math.min(noites, 7),
+            precoBRL: preco && preco.prices && preco.prices[0] ? preco.prices[0]._mcval.BRL : null
+          });
+        }
+      } catch (e) { /* segue para o próximo anúncio */ }
+    }
+    ofertas.sort((a, b) => a.de.localeCompare(b.de));
+    cacheUltimaHora = { quando: Date.now(), dados: ofertas.slice(0, 8) };
+    res.json(cacheUltimaHora.dados);
+  } catch (e) {
+    console.error(e);
+    res.status(502).json({ erro: 'Falha ao montar ofertas' });
+  }
+});
+
 // Pré-check-in do hóspede (formulário do site)
 app.post('/api/precheckin', (req, res) => {
   const d = req.body || {};
