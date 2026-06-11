@@ -135,7 +135,7 @@ const home = layout(
 })();
 </script>
 <section class="faixa-confianca">
-  <div>🏆 Anfitrião premiado</div><div>📍 15 min do aeroporto e da Esplanada</div><div>🏊 Piscinas aquecidas</div><div>👨‍👩‍👧‍👦 Grupos de até 60 pessoas</div>
+  <div>🏆 Anfitrião premiado</div><div>📍 10 min do Aeroporto JK e da Esplanada</div><div>🏊 Piscinas aquecidas</div><div>👨‍👩‍👧‍👦 Grupos de até 60 pessoas</div>
 </section>
 <section class="depoimentos-wrap">
   <h2 class="secao-titulo">O Que Dizem Nossos Hóspedes</h2>
