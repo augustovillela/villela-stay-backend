@@ -261,58 +261,123 @@ document.getElementById('form-evento').addEventListener('submit', function(e){
 );
 fs.writeFileSync(path.join(DIST, 'eventos.html'), eventos);
 
-// ---------------------------------------------------------- pacotes
-const PACOTES = [
+// ------------------------- pacotes (página de vendas) -------------------------
+const DATAS_PACOTE = [
+  { emoji: '🎄', nome: 'Natal 2026', periodo: '23 a 27/12/2026' },
+  { emoji: '🎆', nome: 'Réveillon 2026/2027', periodo: '30/12/2026 a 03/01/2027' },
+  { emoji: '🇧🇷', nome: 'Caravana da Posse do Novo Presidente', periodo: '1º/01/2027' },
+  { emoji: '🎭', nome: 'Carnaval 2027', periodo: 'datas sob consulta' },
+  { emoji: '🏛️', nome: 'Marcha dos Municípios 2027', periodo: 'datas sob consulta' },
+  { emoji: '🏛️', nome: 'Marcha dos Prefeitos 2027', periodo: 'maio de 2027' }
+];
+
+const CASAS_PACOTE = [
   {
-    nome: 'Carnaval 2026', periodo: '14 a 18 de fevereiro · mínimo 4 noites',
-    casas: [['Casa Modernista (até 22 pessoas)', 'R$ 9.800,00', 'R$ 600,00/pessoa']]
-  },
-  {
-    nome: 'Marcha dos Prefeitos 2026', periodo: '18 a 21 de maio · mínimo 3 noites',
-    casas: [
-      ['Casa Villela', 'R$ 5.300,00', 'R$ 530,00/pessoa'],
-      ['Casa Modernista', 'R$ 9.800,00', 'R$ 530,00/pessoa'],
-      ['Villa Kubitschek', 'R$ 9.800,00', 'R$ 490,00/pessoa'],
-      ['Villa Catetinho', 'R$ 8.900,00', 'R$ 495,00/pessoa'],
-      ['Gran Villela Home Stay', 'R$ 14.300,00', 'R$ 477,00/pessoa']
+    id: 'GD01H', nome: 'Casa Modernista', hospedes: 24, convidados: 80,
+    local: 'SHIS QI 7, Conjunto 3, Lago Sul', pacote: 15400, limpeza: 1000,
+    quartos: [
+      ['Suíte Master (4 pessoas)', '1 cama king · 1 cama box de solteiro · 1 sofá-cama de casal'],
+      ['Suíte da Sofia (5 pessoas)', '1 cama king · 1 cama box de solteiro · 1 beliche de solteiro'],
+      ['Suíte do Pedro (5 pessoas)', '1 quadriliche com 4 camas tipo solteirão · 1 cama box de solteiro'],
+      ['Suíte do Felipe (4 pessoas)', '1 cama de casal · 1 beliche de solteiro'],
+      ['Suíte da Família (6 pessoas)', '1 cama de casal · 1 cama box de solteiro · 1 beliche de solteiro · 1 sofá-cama de casal']
     ]
   },
   {
-    nome: 'Natal 2026', periodo: '23 a 27 de dezembro · mínimo 4 noites',
-    casas: [
-      ['Casa Villela', 'a partir de R$ 7.800,00', 'R$ 517,00 a R$ 650,00/pessoa'],
-      ['Demais casas até a Gran Villela', 'até R$ 18.800,00', 'consulte por casa']
+    id: 'GI01I', nome: 'Casa Villela', hospedes: 15, convidados: 50,
+    local: 'SMDB Conjunto 29, Lago Sul', pacote: 9800, limpeza: 800,
+    quartos: [
+      ['Flat do Lúcio Costa (6 pessoas)', '1 cama king · 1 triliche (1 casal + 2 solteiros) · 1 sofá-cama de solteiro'],
+      ['Flat do Athos Bulcão (6 pessoas)', '1 cama king · 1 triliche (1 casal + 2 solteiros) · 1 sofá-cama de casal'],
+      ['Sala (3 pessoas)', '3 sofás-cama de casal']
     ]
   },
   {
-    nome: 'Réveillon 2026/2027', periodo: '30 de dezembro a 3 de janeiro · mínimo 4 noites',
-    casas: [
-      ['Casa Villela', 'a partir de R$ 6.600,00', 'R$ 530,00 a R$ 650,00/pessoa'],
-      ['Demais casas até a Gran Villela', 'até R$ 18.800,00', 'consulte por casa']
+    id: 'GG04I', nome: 'Villa Kubitschek', hospedes: 21, convidados: 150,
+    local: 'SMDB Conjunto 29, Lago Sul', pacote: 13600, limpeza: 1000,
+    quartos: [
+      ['Suíte do Amor (4 pessoas)', '1 cama de casal · 1 cama box de solteiro · 1 sofá-cama'],
+      ['Flat dos Solteiros (7 pessoas)', '2 beliches de solteiro · 2 camas auxiliares · 1 sofá-cama de casal'],
+      ['Suíte do Chef (5 pessoas)', '1 beliche de casal · 1 cama auxiliar · 1 sofá-cama de casal'],
+      ['Suíte do Renato Russo (5 pessoas)', '1 beliche de casal · 1 cama auxiliar · 1 sofá-cama de casal']
+    ]
+  },
+  {
+    id: 'PL02I', nome: 'Villa Catetinho', hospedes: 21, convidados: 150,
+    local: 'SMDB Conjunto 29, Lago Sul', pacote: 13600, limpeza: 1000,
+    quartos: [
+      ['Flat do Oscar (7 pessoas)', '1 cama de casal · 1 beliche de solteiro · 1 cama de solteiro auxiliar · 1 sofá-cama de casal · 1 cama box de solteiro'],
+      ['Flat do Burle Marx (7 pessoas)', '1 cama de casal · 1 beliche de solteiro · 1 cama de solteiro auxiliar · 1 sofá-cama de casal'],
+      ['Flat da Cassia Eller (7 pessoas)', '1 beliche de casal · 1 cama auxiliar de solteiro · 1 sofá-cama de casal']
     ]
   }
 ];
 
-const blocosPacotes = PACOTES.map(p => `
-<section class="pacote">
-  <h2>${esc(p.nome)}</h2>
-  <p class="pacote-periodo">${esc(p.periodo)}</p>
-  <table class="pacote-tabela">
-    <tr><th>Hospedagem</th><th>Pacote</th><th>Por pessoa</th></tr>
-    ${p.casas.map(c => `<tr><td>${esc(c[0])}</td><td>${esc(c[1])}</td><td>${esc(c[2])}</td></tr>`).join('\n    ')}
-  </table>
-  <a class="btn btn-wa" href="${waLink(`Olá! Tenho interesse no pacote ${p.nome}.`)}">Reservar este pacote</a>
-</section>`).join('\n');
+const real = n => 'R$ ' + n.toLocaleString('pt-BR');
+const chipsDatas = DATAS_PACOTE.map(d =>
+  `<a class="chip-data" href="${waLink(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`)}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
+
+const cardsCasas = CASAS_PACOTE.map(c => {
+  const l = porId[c.id];
+  const porPessoa = Math.ceil(c.pacote / c.hospedes);
+  const porDia = Math.ceil(porPessoa / 4);
+  return `
+<article class="casa-pacote">
+  <img loading="lazy" src="${l ? l.fotoPrincipal : ''}" alt="${esc(c.nome)}">
+  <div class="casa-pacote-corpo">
+    <h3>${esc(c.nome)}</h3>
+    <p class="casa-meta">🛌 até ${c.hospedes} hóspedes · 🕺 eventos para até ${c.convidados} convidados · 📍 ${esc(c.local)}</p>
+    <div class="preco-bloco">
+      <div class="preco-principal">${real(c.pacote)} <span>· pacote de 4 diárias com a casa completa</span></div>
+      <div class="preco-detalhe">Sai por ~<strong>${real(porPessoa)}</strong> por pessoa no total — cerca de <strong>${real(porDia)}/dia</strong>. Menos que uma diária de hotel simples nessas datas, com casa, piscina e cozinha inteiras para o seu grupo.</div>
+      <div class="preco-composicao">Composição: R$ 150/dia por pessoa × 4 dias × ${c.hospedes} hóspedes + ${real(c.limpeza)} de taxa de limpeza</div>
+    </div>
+    <details class="quartos">
+      <summary>Ver a distribuição das camas (${c.quartos.length} acomodações)</summary>
+      <ul>${c.quartos.map(q => `<li><strong>${esc(q[0])}</strong><br>${esc(q[1])}</li>`).join('\n')}</ul>
+    </details>
+    <a class="btn btn-wa" href="${waLink(`Olá! Quero reservar a ${c.nome} completa em uma das datas especiais. Somos um grupo de ___ pessoas para a data: ___.`)}">Reservar a ${esc(c.nome)} →</a>
+  </div>
+</article>`;
+}).join('\n');
 
 const pacotes = layout(
-  'Pacotes Especiais — Carnaval, Natal e Réveillon | Villela Stay',
-  'Pacotes especiais da Villela Stay no Lago Sul: Carnaval, Marcha dos Prefeitos, Natal e Réveillon em casas completas para grupos.',
+  'Pacotes para Natal, Réveillon, Posse, Carnaval e Marchas | Villela Stay',
+  'Casas completas no Lago Sul para as datas mais disputadas de Brasília: Natal, Réveillon, Posse Presidencial, Carnaval e Marcha dos Prefeitos. A partir de R$ 150/dia por pessoa.',
   `
 <section class="hero hero-menor">
-  <h1>Pacotes Especiais</h1>
-  <p>Datas mais procuradas do ano em casas completas no Lago Sul — valores fechados por grupo.<br>Taxas para convidados extras e day use sob consulta.</p>
+  <h1>As datas mais disputadas de Brasília.<br>As melhores casas do Lago Sul.</h1>
+  <p><strong>Natal, Réveillon, Posse Presidencial, Carnaval e as Marchas dos Prefeitos e dos Municípios:</strong> quando Brasília lota e os hotéis dobram de preço, grupos inteligentes reservam uma casa completa — e cada pessoa paga menos que uma diária de hotel.</p>
 </section>
-<div class="pacotes-wrap">${blocosPacotes}</div>`
+<div class="pacotes-wrap">
+
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">Escolha a sua data</h2>
+    <div class="chips-datas">${chipsDatas}</div>
+  </section>
+
+  <section class="venda-bloco como-funciona">
+    <h2 class="secao-titulo">Como funciona — simples e transparente</h2>
+    <div class="passos">
+      <div class="passo"><strong>1. Junte o seu grupo</strong><br>Nessas datas trabalhamos com casas completas, de 15 a 24 hóspedes — família, amigos, caravana ou comitiva.</div>
+      <div class="passo"><strong>2. Cada um paga R$ 150 por dia</strong><br>Diária por pessoa com a casa lotada + rateio da taxa de limpeza. Piscina aquecida, cozinha completa e área de lazer inclusas.</div>
+      <div class="passo"><strong>3. Reserve direto com o anfitrião</strong><br>Sem taxas de plataforma, com atendimento personalizado de um Superhost premiado, do primeiro contato ao check-out.</div>
+    </div>
+    <p class="aviso-escassez">⚠️ São <strong>apenas 4 casas</strong> por data — e os pacotes de Réveillon e Posse costumam fechar primeiro. Convidado extra para evento ou day use nessas datas: R$ 120/dia.</p>
+  </section>
+
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">As 4 casas — pacotes de 4 diárias</h2>
+    <p class="pacote-cond">Check-in às 14h do primeiro dia · check-out às 10h do último · período mínimo de 4 diárias nessas datas</p>
+    ${cardsCasas}
+  </section>
+
+  <section class="venda-bloco cta-final">
+    <h2>Garanta a sua data antes que feche</h2>
+    <p>Conte para a gente a data, o tamanho do grupo e a ocasião — respondemos com a proposta completa no WhatsApp.</p>
+    <a class="btn btn-wa btn-grande" href="${waLink('Olá! Quero garantir um pacote de data especial. Data: ___ | Nº de pessoas: ___ | Ocasião: ___')}">Falar com o anfitrião agora</a>
+  </section>
+</div>`
 );
 fs.writeFileSync(path.join(DIST, 'pacotes.html'), pacotes);
 
