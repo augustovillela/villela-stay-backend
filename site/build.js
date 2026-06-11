@@ -84,18 +84,38 @@ const cards = SECOES.map(sec => {
   return `<h2 class="secao-titulo">${esc(sec.titulo)}</h2>\n<div class="grade">${itens.map(card).join('\n')}</div>`;
 }).join('\n');
 
+// Fotos do slideshow do hero: capas das casas inteiras (as melhores)
+const heroFotos = SECOES[0].ids.map(id => porId[id]).filter(Boolean).map(l => l.fotoPrincipal);
+
 const home = layout(
   'Villela Stay — Casas, flats e suítes no Lago Sul, Brasília',
   'Hospedagem por temporada no Lago Sul: casas com piscina aquecida para até 32 pessoas, flats e suítes. Reserva direta com o anfitrião.',
   `
-<section class="hero">
-  <h1>Seu lugar no Lago Sul de Brasília</h1>
-  <p>Casas com piscina aquecida, flats e suítes — do casal em viagem ao grupo de 32 pessoas.<br>Reserva direta com o anfitrião, sem taxas de plataforma.</p>
-  <div class="hero-cta">
-    <a class="btn" href="#hospedagens">Ver hospedagens</a>
-    <a class="btn btn-claro" href="/eventos.html">Eventos &amp; grupos</a>
+<section class="hero hero-slideshow">
+  <div class="hero-bg" aria-hidden="true">
+    ${heroFotos.map((u, i) => `<img src="${u}" alt="" ${i === 0 ? 'class="ativa"' : 'loading="lazy"'}>`).join('\n    ')}
+  </div>
+  <div class="hero-conteudo">
+    <h1>Seu lugar no Lago Sul de Brasília</h1>
+    <p>Casas com piscina aquecida, flats e suítes — do casal em viagem ao grupo de 32 pessoas.<br>Reserva direta com o anfitrião, sem taxas de plataforma.</p>
+    <div class="hero-cta">
+      <a class="btn" href="#hospedagens">Ver hospedagens</a>
+      <a class="btn btn-claro" href="/eventos.html">Eventos &amp; grupos</a>
+    </div>
   </div>
 </section>
+<script>
+(function(){
+  var imgs = document.querySelectorAll('.hero-bg img');
+  if (imgs.length < 2) return;
+  var i = 0;
+  setInterval(function(){
+    imgs[i].classList.remove('ativa');
+    i = (i + 1) % imgs.length;
+    imgs[i].classList.add('ativa');
+  }, 5000);
+})();
+</script>
 <section class="faixa-confianca">
   <div>🏆 Anfitrião premiado</div><div>📍 15 min do aeroporto e da Esplanada</div><div>🏊 Piscinas aquecidas</div><div>👨‍👩‍👧‍👦 Grupos de até 32 pessoas</div>
 </section>

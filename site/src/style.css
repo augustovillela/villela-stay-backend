@@ -48,6 +48,24 @@ a { color: var(--lago); text-decoration: none; }
 .hero-cta { margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 .hero-menor { padding: 64px 5vw 40px; }
 
+/* hero com slideshow de fundo (efeito Ken Burns) */
+.hero-slideshow { position: relative; overflow: hidden; padding: 120px 5vw 96px; }
+.hero-bg { position: absolute; inset: 0; }
+.hero-bg img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transform: scale(1);
+  transition: opacity 1.6s ease-in-out, transform 7s linear;
+}
+.hero-bg img.ativa { opacity: 1; transform: scale(1.09); }
+.hero-slideshow::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(12,54,68,.72) 0%, rgba(12,54,68,.45) 55%, rgba(12,54,68,.78) 100%);
+}
+.hero-conteudo { position: relative; z-index: 1; }
+.hero-slideshow h1 { color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.35); }
+.hero-slideshow p { color: #eef3f5; text-shadow: 0 1px 8px rgba(0,0,0,.35); }
+.hero-slideshow .btn-claro { background: rgba(255,255,255,.92); }
+
 .btn {
   display: inline-block; background: var(--lago); color: #fff; font-weight: 600;
   padding: 14px 32px; border-radius: 28px; border: none; cursor: pointer; font-size: 1rem;
