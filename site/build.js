@@ -270,23 +270,22 @@ const eventos = layout(
   'Alugue o espaço externo das casas da Villela Stay no Lago Sul para seu evento: piscina, churrasqueira e cozinha completa. R$ 100 por convidado, das 10h às 22h.',
   `
 <section class="hero hero-menor">
-  <h1>Seu evento à beira do Lago Sul</h1>
-  <p><strong>Casamentos, formaturas, aniversários, confraternizações corporativas e festas em família:</strong> alugue por um dia o espaço externo completo de uma casa no Lago Sul — com piscina, churrasqueira e cozinha profissionalmente limpa antes e depois. Você só traz os convidados.</p>
+  <h1>Seu evento no Lago Sul em Brasília</h1>
+  <p><strong>Casamentos, formaturas, aniversários, festas infantis, confraternizações, eventos corporativos e reuniões familiares:</strong> alugue por um dia o espaço externo completo de uma de nossas casas no Lago Sul — com piscina, churrasqueira e cozinha. Entregamos a casa limpa e arrumamos tudo depois. Você só traz os seus convidados.</p>
 </section>
 <div class="pacotes-wrap">
 
   <section class="venda-bloco como-funciona">
     <h2 class="secao-titulo">Como funciona</h2>
     <div class="passos">
-      <div class="passo"><strong>1. Escolha a casa pelo tamanho da festa</strong><br>De 60 a 150 convidados, sempre com área externa exclusiva das 10h às 22h.</div>
-      <div class="passo"><strong>2. Preço simples e transparente</strong><br>R$ 100 por convidado + R$ 1.000 de taxa de limpeza profissional (duas diaristas, material, sacos de lixo — entregamos limpa e limpamos tudo depois).</div>
-      <div class="passo"><strong>3. Estrutura pronta</strong><br>Cozinha completa com gás, detergente e utensílios; churrasqueiras a gás e a carvão; piscina e área de lazer; banheiros com sabonete líquido, papel toalha e papel higiênico.</div>
+      <div class="passo"><strong>1. Escolha a casa pelo tamanho da festa</strong><br>Eventos de 30 a 150 convidados com espaço exclusivo das 10h às 22h.</div>
+      <div class="passo"><strong>2. Preço simples e transparente</strong><br>Por apenas R$ 100 por convidado e R$ 1000 de taxa de limpeza — necessários para pagar duas diaristas, material de limpeza, sacos de lixo, etc.</div>
+      <div class="passo"><strong>3. Estrutura pronta</strong><br>Cozinha com gás, utensílios, detergente; churrasqueira a gás e a carvão; banheiros com sabonete líquido, papel toalha e papel higiênico.</div>
     </div>
   </section>
 
   <section class="venda-bloco">
     <h2 class="secao-titulo">As casas para o seu evento</h2>
-    <p class="pacote-cond">Locação por dia (preferencialmente das 10h às 22h) · área externa, cozinha e banheiros sociais — sem acesso aos quartos</p>
     ${cardsEventos}
   </section>
 
@@ -297,7 +296,7 @@ const eventos = layout(
       <div class="passo"><strong>🪪 Controle de entrada</strong><br>Em eventos com muitos convidados, o contratante providencia uma pessoa para controlar a entrada e saída, evitando transtornos aos vizinhos.</div>
       <div class="passo"><strong>🅿️ Eventos grandes</strong><br>Pode ser necessária a contratação de seguranças — que também orientam o estacionamento dos veículos dos convidados.</div>
     </div>
-    <p class="aviso-escassez">💡 Quer <strong>hospedar o grupo e fazer o evento</strong>? Nas datas especiais funcionamos com pacotes de casa completa — veja os <a href="/pacotes.html">Pacotes Especiais</a>.</p>
+    <p class="aviso-escassez">💡 Nas datas especiais funcionamos apenas com <strong>pacotes de hospedagem combinados com eventos</strong> — veja os <a href="/pacotes.html">Pacotes Especiais</a>.</p>
   </section>
 
   <section class="venda-bloco cta-final">
