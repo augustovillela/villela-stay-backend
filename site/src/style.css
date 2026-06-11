@@ -143,6 +143,17 @@ a { color: var(--lago); text-decoration: none; }
 .disp-resultado { margin-top: 16px; font-size: 1.05rem; }
 .disp-reservar { margin-top: 16px; }
 
+/* ---------- formulário de cotação (páginas de propriedade) ---------- */
+.lead-box {
+  background: var(--petroleo); border-radius: 16px; padding: 22px 24px; margin-top: 16px; color: var(--creme);
+}
+.lead-box h2 { font-size: 1.1rem; margin-bottom: 12px; }
+.form-lead { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.form-lead input {
+  flex: 1 1 200px; padding: 12px 14px; border: none; border-radius: 10px; font-size: 1rem; font-family: inherit;
+}
+.form-lead .form-status { flex-basis: 100%; margin: 0; }
+
 /* ---------- formulário de eventos ---------- */
 .form-wrap { max-width: 640px; margin: 0 auto; padding: 24px 5vw 80px; }
 .form-evento { display: flex; flex-direction: column; gap: 18px; }

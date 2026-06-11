@@ -8,6 +8,8 @@ const path = require('path');
 
 const BACKEND = 'https://villela-stay-backend.onrender.com';
 const WHATSAPP = '556191935013';
+// Trocar para https://villelastay.com.br na virada do domínio (afeta canonical, og:url e sitemap)
+const SITE_URL = 'https://villela-stay-site.onrender.com';
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 
 const DIST = path.join(__dirname, 'dist');
@@ -37,7 +39,8 @@ const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 
 const waLink = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
 
-function layout(titulo, descricao, corpo, extraHead = '') {
+function layout(titulo, descricao, corpo, opts = {}) {
+  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/logo.png` } = opts;
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -45,6 +48,15 @@ function layout(titulo, descricao, corpo, extraHead = '') {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(titulo)}</title>
 <meta name="description" content="${esc(descricao)}">
+<link rel="canonical" href="${SITE_URL}${caminho}">
+${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Villela Stay">
+<meta property="og:title" content="${esc(titulo)}">
+<meta property="og:description" content="${esc(descricao)}">
+<meta property="og:url" content="${SITE_URL}${caminho}">
+<meta property="og:image" content="${esc(ogImage)}">
+<meta property="og:locale" content="pt_BR">
 ${extraHead}
 <link rel="stylesheet" href="/style.css">
 </head>
@@ -81,6 +93,7 @@ ${corpo}
   <div class="creditos">Fotos dos pontos turísticos: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida e Rose Ramalho, via Wikimedia Commons (licenças CC BY / CC BY-SA).</div>
 </footer>
 <a class="wa-flutuante" href="${waLink('Olá! Vim pelo site da Villela Stay.')}" aria-label="Falar no WhatsApp">💬</a>
+<script>try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer), { keepalive: true }); } catch (e) {}</script>
 </body>
 </html>`;
 }
@@ -162,12 +175,15 @@ const home = layout(
 <section id="hospedagens" class="grade-wrap">
 ${cards}
 </section>`,
-  `<script type="application/ld+json">${JSON.stringify({
-    '@context': 'https://schema.org', '@type': 'LodgingBusiness',
-    name: 'Villela Stay', url: 'https://villelastay.com.br',
-    address: { '@type': 'PostalAddress', streetAddress: 'SHIS QI 7, Lago Sul', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
-    telephone: '+556191935013'
-  })}</script>`
+  {
+    caminho: '/',
+    extraHead: `<script type="application/ld+json">${JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'LodgingBusiness',
+      name: 'Villela Stay', url: SITE_URL,
+      address: { '@type': 'PostalAddress', streetAddress: 'SMDB Conjunto 29, Lago Sul', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
+      telephone: '+5561991935013'
+    })}</script>`
+  }
 );
 fs.writeFileSync(path.join(DIST, 'index.html'), home);
 
@@ -196,6 +212,15 @@ for (const l of listings) {
     <div class="disp-resultado" hidden></div>
     <a class="btn btn-wa disp-reservar" href="${waLink(`Olá! Quero reservar a ${l.titulo}.`)}">Reservar pelo WhatsApp</a>
   </section>
+  <section class="lead-box">
+    <h2>Prefere receber a cotação? Deixe seu contato 👇</h2>
+    <form class="form-lead">
+      <input name="nome" placeholder="Seu nome*" required>
+      <input name="contato" placeholder="Seu WhatsApp ou e-mail*" required>
+      <button class="btn" type="submit">Quero uma cotação</button>
+      <p class="form-status" hidden></p>
+    </form>
+  </section>
   <section class="descricao">${l.descricao || ''}</section>
   <section class="galeria"><h2>Fotos</h2><div class="galeria-grid">${galeria}</div></section>
 </article>
@@ -213,17 +238,50 @@ for (const l of listings) {
         var noites = dias.slice(0, -1);
         var livres = noites.filter(function(d){ return d.disponivel; });
         var total = noites.reduce(function(s, d){ return s + (d.precoBRL || 0); }, 0);
+        var wa = sec.querySelector('.disp-reservar');
         if (noites.length && livres.length === noites.length) {
           out.innerHTML = '✅ Disponível! ' + noites.length + ' noite(s) — total estimado <strong>R$ ' +
             total.toLocaleString('pt-BR') + '</strong>. Garanta pelo WhatsApp 👇';
+          wa.href = 'https://wa.me/${WHATSAPP}?text=' + encodeURIComponent('Olá! Quero reservar a ${l.titulo} de ' + de + ' a ' + ate + ' — total estimado R$ ' + total.toLocaleString('pt-BR') + '. Pode confirmar?');
         } else {
           out.innerHTML = '😕 Sem disponibilidade completa nessas datas. Fale conosco no WhatsApp — encontramos a casa ideal para você.';
+          wa.href = 'https://wa.me/${WHATSAPP}?text=' + encodeURIComponent('Olá! Consultei a ${l.titulo} de ' + de + ' a ' + ate + ' e não havia disponibilidade completa. Pode me ajudar com datas ou casas alternativas?');
         }
       })
       .catch(function(){ out.textContent = 'Não foi possível consultar agora. Fale conosco pelo WhatsApp.'; });
   });
+
+  var fl = document.querySelector('.form-lead');
+  fl.addEventListener('submit', function(e){
+    e.preventDefault();
+    var st = fl.querySelector('.form-status');
+    st.hidden = false; st.textContent = 'Enviando...';
+    var de = sec.querySelector('.disp-in').value, ate = sec.querySelector('.disp-out').value;
+    fetch('${BACKEND}/api/leads', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: fl.nome.value, contato: fl.contato.value,
+        mensagem: 'Cotação ${l.id} - ${l.titulo}' + (de && ate ? (' | datas: ' + de + ' a ' + ate) : ''),
+        origem: 'site-${l.id}'
+      })
+    }).then(function(r){
+      st.textContent = r.ok ? '✅ Recebido! Em breve enviaremos sua cotação.' : 'Erro ao enviar — fale conosco pelo WhatsApp.';
+      if (r.ok) fl.reset();
+    }).catch(function(){ st.textContent = 'Erro ao enviar — fale conosco pelo WhatsApp.'; });
+  });
 })();
-</script>`
+</script>`,
+    {
+      caminho: `/hospedagem/${l.id}.html`,
+      ogImage: l.fotoPrincipal,
+      extraHead: `<script type="application/ld+json">${JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'Accommodation',
+        name: l.titulo, image: l.fotoPrincipal, url: `${SITE_URL}/hospedagem/${l.id}.html`,
+        address: { '@type': 'PostalAddress', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
+        occupancy: { '@type': 'QuantitativeValue', maxValue: l.hospedes },
+        numberOfBedrooms: l.quartos
+      })}</script>`
+    }
   );
   fs.writeFileSync(path.join(DIST, 'hospedagem', `${l.id}.html`), pagina);
 }
@@ -269,7 +327,7 @@ const cardsEventos = CASAS_EVENTO.map(c => {
 const eventos = layout(
   'Eventos no Lago Sul — casamentos, formaturas e festas | Villela Stay',
   'Alugue o espaço externo das casas da Villela Stay no Lago Sul para seu evento: piscina, churrasqueira e cozinha completa. R$ 100 por convidado, das 10h às 22h.',
-  `
+  /* corpo */ `
 <section class="hero hero-menor">
   <h1>Seu evento no Lago Sul em Brasília</h1>
   <p><strong>Casamentos, formaturas, aniversários, festas infantis, confraternizações, eventos corporativos e reuniões familiares:</strong> alugue por um dia o espaço externo completo de uma de nossas casas no Lago Sul — com piscina, churrasqueira e cozinha. Entregamos a casa limpa e arrumamos tudo depois. Você só traz os seus convidados.</p>
@@ -327,7 +385,8 @@ document.getElementById('form-evento').addEventListener('submit', function(e){
     if (r.ok) f.reset();
   }).catch(function(){ st.textContent = 'Erro ao enviar — fale conosco pelo WhatsApp.'; });
 });
-</script>`
+</script>`,
+  { caminho: '/eventos.html' }
 );
 fs.writeFileSync(path.join(DIST, 'eventos.html'), eventos);
 
@@ -446,7 +505,8 @@ const pacotes = layout(
     <p>Conte para a gente a data, o tamanho do grupo e a ocasião — respondemos com a proposta completa no WhatsApp.</p>
     <a class="btn btn-wa btn-grande" href="${waLink('Olá! Quero garantir um pacote de data especial. Data: ___ | Nº de pessoas: ___ | Ocasião: ___')}">Falar com o anfitrião agora</a>
   </section>
-</div>`
+</div>`,
+  { caminho: '/pacotes.html' }
 );
 fs.writeFileSync(path.join(DIST, 'pacotes.html'), pacotes);
 
@@ -506,8 +566,19 @@ const regras = layout(
 <div class="regras-wrap">
   ${REGRAS.map(r => `<section class="regra"><h2>${r[0]}</h2>${r[1]}</section>`).join('\n')}
   <p class="regras-aceite">✅ Ao reservar, você confirma estar de acordo com estas regras, que existem para proteger sua experiência e garantir o bem-estar de todos.</p>
-</div>`
+</div>`,
+  { caminho: '/regras.html' }
 );
 fs.writeFileSync(path.join(DIST, 'regras.html'), regras);
 
-console.log(`Site gerado em dist/: ${1 + listings.length + 3} páginas (home + ${listings.length} unidades + eventos + pacotes + regras)`);
+// ------------------------- sitemap.xml e robots.txt -------------------------
+const hoje = new Date().toISOString().slice(0, 10);
+const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', ...listings.map(l => `/hospedagem/${l.id}.html`)];
+const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${rotas.map(r => `  <url><loc>${SITE_URL}${r}</loc><lastmod>${hoje}</lastmod></url>`).join('\n')}
+</urlset>`;
+fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
+fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+
+console.log(`Site gerado em dist/: ${1 + listings.length + 3} páginas + sitemap.xml + robots.txt`);

@@ -109,6 +109,31 @@ app.get('/api/eventos', (req, res) => {
   res.json(linhas.map(l => { try { return JSON.parse(l); } catch { return { bruto: l }; } }));
 });
 
+// Analytics próprio: registra page views (GET sem preflight de CORS; sem cookies — LGPD ok)
+app.get('/api/hit', (req, res) => {
+  const { p, r } = req.query;
+  if (p) appendJsonl('hits.jsonl', { pagina: String(p).slice(0, 200), origemRef: String(r || '').slice(0, 300), ua: String(req.headers['user-agent'] || '').slice(0, 200) });
+  res.sendStatus(204);
+});
+
+// Resumo de visitas (protegido): páginas mais vistas e visitas por dia
+app.get('/api/estatisticas', (req, res) => {
+  if (!process.env.ADMIN_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_KEY) return res.sendStatus(401);
+  const file = path.join(DATA_DIR, 'hits.jsonl');
+  if (!fs.existsSync(file)) return res.json({ totalVisitas: 0, porPagina: {}, porDia: {} });
+  const linhas = fs.readFileSync(file, 'utf8').trim().split('\n');
+  const porPagina = {}, porDia = {};
+  for (const l of linhas) {
+    try {
+      const h = JSON.parse(l);
+      porPagina[h.pagina] = (porPagina[h.pagina] || 0) + 1;
+      const dia = (h._recebido || '').slice(0, 10);
+      porDia[dia] = (porDia[dia] || 0) + 1;
+    } catch {}
+  }
+  res.json({ totalVisitas: linhas.length, porPagina, porDia });
+});
+
 // Captura de leads do site (formulário de orçamento / chat)
 app.post('/api/leads', (req, res) => {
   const { nome, contato, mensagem, origem } = req.body || {};
