@@ -368,7 +368,7 @@ const pacotes = layout(
 
   <section class="venda-bloco">
     <h2 class="secao-titulo">As 4 casas — pacotes de 4 diárias</h2>
-    <p class="pacote-cond">Check-in às 14h do primeiro dia · check-out às 10h do último · período mínimo de 4 diárias nessas datas</p>
+    <p class="pacote-cond">Check-in às 14h do primeiro dia · check-out às 10h do último · período mínimo de 4 diárias nessas datas · convidado extra para evento ou day use: R$ 120/dia</p>
     ${cardsCasas}
   </section>
 
