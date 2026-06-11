@@ -139,12 +139,14 @@ const home = layout(
 </section>
 <section class="depoimentos-wrap">
   <h2 class="secao-titulo">O Que Dizem Nossos Hóspedes</h2>
-  <div class="depoimentos">${depoimentos.map(d => `
-    <figure class="depoimento">
-      <div class="estrelas" aria-label="5 estrelas">★★★★★</div>
-      <blockquote>“${esc(d.texto)}”</blockquote>
-      <figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)}<br><span class="origem">avaliação no ${esc(d.origem)}</span></figcaption>
-    </figure>`).join('\n')}
+  <div class="marquee">
+    <div class="marquee-track">${[...depoimentos, ...depoimentos].map(d => `
+      <figure class="depoimento">
+        <div class="estrelas" aria-label="5 estrelas">★★★★★</div>
+        <blockquote>“${esc(d.texto)}”</blockquote>
+        <figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">avaliação no ${esc(d.origem)}</span></figcaption>
+      </figure>`).join('\n')}
+    </div>
   </div>
 </section>
 <section id="hospedagens" class="grade-wrap">
