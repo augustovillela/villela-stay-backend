@@ -363,7 +363,7 @@ const pacotes = layout(
       <div class="passo"><strong>2. Cada um paga R$ 150 por dia</strong><br>Diária por pessoa com a casa lotada + rateio da taxa de limpeza. Piscina aquecida, cozinha completa e área de lazer inclusas.</div>
       <div class="passo"><strong>3. Reserve direto com o anfitrião</strong><br>Sem taxas de plataforma, com atendimento personalizado de um Superhost premiado, do primeiro contato ao check-out.</div>
     </div>
-    <p class="aviso-escassez">⚠️ São <strong>apenas 4 casas</strong> por data — e os pacotes de Réveillon e Posse costumam fechar primeiro. Convidado extra para evento ou day use nessas datas: R$ 120/dia.</p>
+    <p class="aviso-escassez">⚠️ Temos <strong>apenas 4 casas disponíveis</strong> para cada período. Os pacotes de <strong>Natal e Réveillon</strong>, principalmente, costumam se esgotar rapidamente. Além disso, Brasília ficará pequena para os visitantes na virada do ano porque no dia <strong>1º de janeiro de 2027</strong> será a <strong>posse do novo Presidente do Brasil</strong>.</p>
   </section>
 
   <section class="venda-bloco">
