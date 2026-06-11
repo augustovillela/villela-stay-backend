@@ -697,6 +697,7 @@ const precheckin = layout(
     <label>Horário previsto de chegada <input name="horario" placeholder="ex.: 15h"></label>
     <label>Nº de adultos <input name="adultos" type="number" min="1"></label>
     <label>Nº de crianças <input name="criancas" type="number" min="0"></label>
+    <label>Nº de Convidados para Evento ou Day Use <input name="convidados" type="number" min="0"></label>
     <label>Vai trazer pet? Qual? <input name="pets" placeholder="ex.: 1 cachorro pequeno"></label>
     <label>Observações (berço, restrições, ocasião especial...) <textarea name="observacoes" rows="3"></textarea></label>
     <button class="btn" type="submit">Enviar pré-check-in</button>
@@ -709,7 +710,7 @@ document.getElementById('form-precheckin').addEventListener('submit', function(e
   var f = e.target, st = f.querySelector('.form-status');
   st.hidden = false; st.textContent = 'Enviando...';
   var dados = {};
-  ['nome','contato','email','reserva','hospedagem','chegada','horario','adultos','criancas','pets','observacoes'].forEach(function(k){ dados[k] = f[k].value; });
+  ['nome','contato','email','reserva','hospedagem','chegada','horario','adultos','criancas','convidados','pets','observacoes'].forEach(function(k){ dados[k] = f[k].value; });
   fetch('${BACKEND}/api/precheckin', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados)
