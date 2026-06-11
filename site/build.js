@@ -695,8 +695,8 @@ const precheckin = layout(
     <label>Casa/unidade reservada <input name="hospedagem" placeholder="ex.: Casa Modernista"></label>
     <label>Data de chegada* <input name="chegada" type="date" required></label>
     <label>Horário previsto de chegada <input name="horario" placeholder="ex.: 15h"></label>
-    <label>Nº de adultos <input name="adultos" type="number" min="1"></label>
-    <label>Nº de crianças <input name="criancas" type="number" min="0"></label>
+    <label>Nº de adultos que vão se hospedar <input name="adultos" type="number" min="1"></label>
+    <label>Nº de crianças que vão se hospedar <input name="criancas" type="number" min="0"></label>
     <label>Nº de Convidados para Evento ou Day Use <input name="convidados" type="number" min="0"></label>
     <label>Vai trazer pet? Qual? <input name="pets" placeholder="ex.: 1 cachorro pequeno"></label>
     <label>Observações (berço, restrições, ocasião especial...) <textarea name="observacoes" rows="3"></textarea></label>
