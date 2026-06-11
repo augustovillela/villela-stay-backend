@@ -31,7 +31,7 @@ app.use(express.json());
 
 // CORS restrito ao site público
 app.use((req, res, next) => {
-  const allowed = ['https://villelastay.com.br', 'https://www.villelastay.com.br', 'http://localhost:3000'];
+  const allowed = ['https://villelastay.com.br', 'https://www.villelastay.com.br', 'https://villela-stay-site.onrender.com', 'http://localhost:3000'];
   const origin = req.headers.origin;
   if (allowed.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
