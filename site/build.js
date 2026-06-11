@@ -265,7 +265,7 @@ fs.writeFileSync(path.join(DIST, 'eventos.html'), eventos);
 const DATAS_PACOTE = [
   { emoji: '🎄', nome: 'Natal 2026', periodo: '23 a 27/12/2026' },
   { emoji: '🎆', nome: 'Réveillon 2026/2027', periodo: '30/12/2026 a 03/01/2027' },
-  { emoji: '🇧🇷', nome: 'Caravana da Posse do Novo Presidente', periodo: '1º/01/2027' },
+  { emoji: '🇧🇷', nome: 'Caravana da Posse do Novo Presidente', periodo: '30/12/2026 a 3/1/2027' },
   { emoji: '🎭', nome: 'Carnaval 2027', periodo: '6 a 9/02/2027' },
   { emoji: '🏛️', nome: 'Marcha dos Municípios 2027', periodo: 'datas sob consulta' },
   { emoji: '🏛️', nome: 'Marcha dos Prefeitos 2027', periodo: '16 a 20/5/2027 (a confirmar)' }
