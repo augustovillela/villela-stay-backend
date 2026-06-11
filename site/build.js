@@ -115,7 +115,7 @@ const home = layout(
   </div>
   <div class="hero-conteudo">
     <h1>Seu Porto Seguro no Lago Sul em Brasília</h1>
-    <p>Casas com piscina aquecida, flats e suítes — do casal em viagem ao grupo de 32 pessoas.<br>Reserva direta com o anfitrião, sem taxas de plataforma.</p>
+    <p>Casas muito bem localizadas, confortáveis, bem equipadas, com cozinha completa, piscina aquecida.<br>Excelentes para casais e para grupos de até 60 pessoas.<br>Reserve diretamente com o anfitrião para um atendimento personalizado.</p>
     <div class="hero-cta">
       <a class="btn" href="#hospedagens">Ver hospedagens</a>
       <a class="btn btn-claro" href="/eventos.html">Eventos &amp; grupos</a>
