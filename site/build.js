@@ -92,6 +92,9 @@ const cards = SECOES.map(sec => {
 // Fotos do slideshow do hero: capas das casas inteiras (as melhores)
 const heroFotos = SECOES[0].ids.map(id => porId[id]).filter(Boolean).map(l => l.fotoPrincipal);
 
+// Depoimentos 5 estrelas (colhidos do site atual; edite data/depoimentos.json para incluir novos)
+const depoimentos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'depoimentos.json'), 'utf8').replace(/^﻿/, ''));
+
 const home = layout(
   'Villela Stay — Casas, flats e suítes no Lago Sul, Brasília',
   'Hospedagem por temporada no Lago Sul: casas com piscina aquecida para até 32 pessoas, flats e suítes. Reserva direta com o anfitrião.',
@@ -123,6 +126,16 @@ const home = layout(
 </script>
 <section class="faixa-confianca">
   <div>🏆 Anfitrião premiado</div><div>📍 15 min do aeroporto e da Esplanada</div><div>🏊 Piscinas aquecidas</div><div>👨‍👩‍👧‍👦 Grupos de até 32 pessoas</div>
+</section>
+<section class="depoimentos-wrap">
+  <h2 class="secao-titulo">O Que Dizem Nossos Hóspedes</h2>
+  <div class="depoimentos">${depoimentos.map(d => `
+    <figure class="depoimento">
+      <div class="estrelas" aria-label="5 estrelas">★★★★★</div>
+      <blockquote>“${esc(d.texto)}”</blockquote>
+      <figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)}<br><span class="origem">avaliação no ${esc(d.origem)}</span></figcaption>
+    </figure>`).join('\n')}
+  </div>
 </section>
 <section id="hospedagens" class="grade-wrap">
 ${cards}

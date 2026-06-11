@@ -1,0 +1,44 @@
+[
+  {
+    "nome": "Pedro",
+    "origem": "Airbnb",
+    "hospedagem": "Suíte da Família · Casa Modernista",
+    "texto": "Um dos melhores Airbnb's que já fiquei na vida, local impecável, a estadia com meus amigos foi maravilhosa e não deixou nada a desejar. Recomendo muito!"
+  },
+  {
+    "nome": "Luciana",
+    "origem": "Airbnb",
+    "hospedagem": "Casa Modernista",
+    "texto": "Estadia foi perfeita. Tudo conforme previsto. Proprietário solícito e atencioso. Localização excelente. Imóvel com espaço suficiente para acomodar toda a família. Adoramos."
+  },
+  {
+    "nome": "Álvara Luís",
+    "origem": "Airbnb",
+    "hospedagem": "Suíte do Amor · Villela Home Stay",
+    "texto": "Ótimo local e anfitrião, quarto impecável, o anfitrião se disponibilizou 24 horas para atendimento a qualquer necessidade ou dúvida sobre o local, me senti em casa."
+  },
+  {
+    "nome": "Priscila",
+    "origem": "Airbnb",
+    "hospedagem": "Suíte da Família · Casa Modernista",
+    "texto": "Casa muito agradável, ambiente perfeito para bons momentos de lazer em família, atendimento super atencioso e prestativo. Recomendo muito!!"
+  },
+  {
+    "nome": "Luiz Henrique",
+    "origem": "Airbnb",
+    "hospedagem": "Flat dos Solteiros",
+    "texto": "Foi muito bom estar nas acomodações do Augusto, ficamos com a família muito satisfeitos por tudo e principalmente da simpatia e disposição do Augusto. Vale a pena se hospedar e queremos voltar, já divulgamos para amigos."
+  },
+  {
+    "nome": "Camila",
+    "origem": "Airbnb",
+    "hospedagem": "Villela Home Stay",
+    "texto": "A casa é muito linda (mais do que nas fotos), o anfitrião respondia rápido e foi muito claro nas informações."
+  },
+  {
+    "nome": "Iago",
+    "origem": "Airbnb",
+    "hospedagem": "Casa Modernista",
+    "texto": "Primeiramente gostaria de agradecer o Augusto por toda a prestabilidade durante a nossa estadia. A casa é magnífica."
+  }
+]

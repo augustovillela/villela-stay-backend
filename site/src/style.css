@@ -81,6 +81,18 @@ a { color: var(--lago); text-decoration: none; }
   padding: 20px 5vw; background: var(--concreto); color: #fff; font-size: .95rem;
 }
 
+/* ---------- depoimentos ---------- */
+.depoimentos-wrap { padding: 56px 5vw 8px; max-width: 1280px; margin: 0 auto; }
+.depoimentos { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
+.depoimento {
+  background: var(--areia); border-radius: 14px; padding: 22px 24px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.estrelas { color: var(--cerrado); font-size: 1.1rem; letter-spacing: 3px; }
+.depoimento blockquote { font-size: .98rem; line-height: 1.55; color: var(--concreto); }
+.depoimento figcaption { font-size: .88rem; color: var(--concreto-claro); margin-top: auto; }
+.depoimento .origem { font-size: .8rem; }
+
 /* ---------- grade de cards ---------- */
 .grade-wrap { padding: 64px 5vw; max-width: 1280px; margin: 0 auto; }
 .grade-wrap h2 { font-size: 2rem; margin-bottom: 28px; letter-spacing: -.5px; }
