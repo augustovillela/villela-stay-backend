@@ -1,0 +1,9 @@
+{
+  "name": "villela-stay-site",
+  "version": "0.1.0",
+  "description": "Site público da Villela Stay — gerado estaticamente a partir do conteúdo da Stays",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "engines": { "node": ">=20" }
+}

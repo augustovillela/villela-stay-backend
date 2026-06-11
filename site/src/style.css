@@ -1,0 +1,117 @@
+/* Villela Stay — identidade modernista de Brasília
+   Paleta: branco arquitetural, cinza concreto, azul do lago, dourado do cerrado */
+:root {
+  --concreto: #2b2d2f;
+  --concreto-claro: #6b7075;
+  --lago: #1c6e8c;
+  --lago-escuro: #145066;
+  --cerrado: #d9a441;
+  --areia: #f7f4ee;
+  --branco: #ffffff;
+  --wa: #25d366;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color: var(--concreto); background: var(--branco); line-height: 1.6;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--lago); text-decoration: none; }
+
+/* ---------- topo ---------- */
+.topo {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 5vw; position: sticky; top: 0; background: rgba(255,255,255,.95);
+  backdrop-filter: blur(8px); border-bottom: 1px solid #eee; z-index: 10;
+}
+.marca { font-size: 1.4rem; font-weight: 800; letter-spacing: -.5px; color: var(--concreto); }
+.marca span { color: var(--lago); font-weight: 300; }
+.topo nav { display: flex; gap: 24px; align-items: center; }
+.topo nav a { color: var(--concreto); font-weight: 500; }
+.btn-wa-nav { background: var(--wa); color: #fff !important; padding: 8px 18px; border-radius: 24px; }
+
+/* ---------- hero ---------- */
+.hero {
+  text-align: center; padding: 96px 5vw 72px;
+  background: linear-gradient(160deg, var(--areia) 60%, #eaf3f7 100%);
+}
+.hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800; letter-spacing: -1px; }
+.hero p { margin: 20px auto 0; max-width: 640px; color: var(--concreto-claro); font-size: 1.1rem; }
+.hero-cta { margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.hero-menor { padding: 64px 5vw 40px; }
+
+.btn {
+  display: inline-block; background: var(--lago); color: #fff; font-weight: 600;
+  padding: 14px 32px; border-radius: 28px; border: none; cursor: pointer; font-size: 1rem;
+}
+.btn:hover { background: var(--lago-escuro); }
+.btn-claro { background: #fff; color: var(--lago); border: 2px solid var(--lago); }
+.btn-wa { background: var(--wa); }
+.btn-wa:hover { background: #1faa52; }
+
+/* ---------- faixa de confiança ---------- */
+.faixa-confianca {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 40px;
+  padding: 20px 5vw; background: var(--concreto); color: #fff; font-size: .95rem;
+}
+
+/* ---------- grade de cards ---------- */
+.grade-wrap { padding: 64px 5vw; max-width: 1280px; margin: 0 auto; }
+.grade-wrap h2 { font-size: 2rem; margin-bottom: 28px; letter-spacing: -.5px; }
+.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 28px; }
+.card {
+  border-radius: 16px; overflow: hidden; background: #fff; color: var(--concreto);
+  box-shadow: 0 2px 12px rgba(0,0,0,.08); transition: transform .2s, box-shadow .2s;
+}
+.card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.card img { height: 210px; width: 100%; object-fit: cover; }
+.card-info { padding: 16px 18px 20px; }
+.card-info h3 { font-size: 1.05rem; line-height: 1.35; }
+.card-info p { color: var(--concreto-claro); font-size: .9rem; margin-top: 6px; }
+
+/* ---------- página da unidade ---------- */
+.unidade { max-width: 980px; margin: 0 auto; padding: 0 5vw 64px; }
+.unidade .capa { width: 100%; height: 420px; object-fit: cover; border-radius: 0 0 20px 20px; }
+.unidade-cab { padding: 28px 0 8px; }
+.unidade-cab h1 { font-size: clamp(1.5rem, 3.5vw, 2.2rem); letter-spacing: -.5px; }
+.ficha { color: var(--concreto-claro); margin-top: 8px; }
+.descricao { padding: 24px 0; border-top: 1px solid #eee; margin-top: 24px; white-space: pre-line; }
+.galeria h2 { margin: 16px 0; }
+.galeria-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.galeria-grid img { height: 170px; width: 100%; object-fit: cover; border-radius: 10px; }
+
+/* ---------- disponibilidade ---------- */
+.disponibilidade {
+  background: var(--areia); border-radius: 16px; padding: 24px; margin-top: 24px;
+}
+.disponibilidade h2 { font-size: 1.2rem; margin-bottom: 14px; }
+.disp-form { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+.disp-form label { display: flex; flex-direction: column; font-size: .85rem; color: var(--concreto-claro); gap: 4px; }
+.disp-form input { padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
+.disp-resultado { margin-top: 16px; font-size: 1.05rem; }
+.disp-reservar { margin-top: 16px; }
+
+/* ---------- formulário de eventos ---------- */
+.form-wrap { max-width: 640px; margin: 0 auto; padding: 24px 5vw 80px; }
+.form-evento { display: flex; flex-direction: column; gap: 18px; }
+.form-evento label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: .95rem; }
+.form-evento input, .form-evento textarea {
+  padding: 12px 14px; border: 1px solid #ccc; border-radius: 10px; font-size: 1rem; font-family: inherit;
+}
+.form-status { font-size: 1.05rem; }
+
+/* ---------- rodapé e WhatsApp ---------- */
+.rodape {
+  display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 40px 5vw; background: var(--concreto); color: #d5d8db; font-size: .92rem;
+}
+.wa-flutuante {
+  position: fixed; right: 22px; bottom: 22px; width: 58px; height: 58px;
+  background: var(--wa); border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 1.7rem; box-shadow: 0 4px 16px rgba(0,0,0,.25); z-index: 20;
+}
+@media (max-width: 640px) {
+  .topo nav { gap: 14px; font-size: .9rem; }
+  .unidade .capa { height: 260px; }
+}
