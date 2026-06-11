@@ -24,6 +24,7 @@ const MARCA = TEM_LOGO
 const TAGLINE = `<span class="tagline">Hospedagens Inteligentes<br>para Experiências Inesquecíveis.</span>`;
 
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const real = n => 'R$ ' + n.toLocaleString('pt-BR');
 
 // Seções da home na ordem definida pelo Augusto (11/06/2026)
 const SECOES = [
@@ -226,24 +227,93 @@ for (const l of listings) {
   fs.writeFileSync(path.join(DIST, 'hospedagem', `${l.id}.html`), pagina);
 }
 
-// ---------------------------------------------------------- eventos
+// ------------------------- eventos (página de vendas) -------------------------
+const CASAS_EVENTO = [
+  {
+    id: 'GG04I', nome: 'Villa Kubitschek', convidados: 150,
+    local: 'SMDB Conjunto 29, Lago Sul',
+    destaque: 'O maior espaço — casamentos, formaturas e grandes confraternizações'
+  },
+  {
+    id: 'GD01H', nome: 'Casa Modernista', convidados: 80,
+    local: 'SHIS QI 7, Conjunto 3, Lago Sul',
+    destaque: 'Arquitetura icônica para festas e eventos corporativos'
+  },
+  {
+    id: 'GI01I', nome: 'Casa Villela', convidados: 60,
+    local: 'SMDB Conjunto 29, Lago Sul',
+    destaque: 'Aconchegante para aniversários, batizados e festas em família'
+  }
+];
+
+const cardsEventos = CASAS_EVENTO.map(c => {
+  const l = porId[c.id];
+  const exemplo = c.convidados * 100 + 1000;
+  return `
+<article class="casa-pacote">
+  <img loading="lazy" src="${l ? l.fotoPrincipal : ''}" alt="${esc(c.nome)}">
+  <div class="casa-pacote-corpo">
+    <h3>${esc(c.nome)}</h3>
+    <p class="casa-meta">🕺 até ${c.convidados} convidados · 🕙 das 10h às 22h · 📍 ${esc(c.local)}</p>
+    <p>${esc(c.destaque)}.</p>
+    <div class="preco-bloco">
+      <div class="preco-principal">R$ 100 <span>por convidado</span> + R$ 1.000 <span>de limpeza profissional</span></div>
+      <div class="preco-detalhe">Exemplo com lotação máxima (${c.convidados} convidados): <strong>${real(exemplo)}</strong> pelo dia inteiro de evento — piscina, churrasqueira e cozinha completa inclusas.</div>
+    </div>
+    <a class="btn btn-wa" href="${waLink(`Olá! Quero fazer um evento na ${c.nome}. Data: ___ | Nº de convidados: ___ | Tipo de evento: ___`)}">Orçar evento na ${esc(c.nome)} →</a>
+  </div>
+</article>`;
+}).join('\n');
+
 const eventos = layout(
-  'Eventos, formaturas e grupos | Villela Stay',
-  'Casas no Lago Sul para eventos corporativos, formaturas, casamentos e celebrações — espaços para até 32 pessoas hospedadas.',
+  'Eventos no Lago Sul — casamentos, formaturas e festas | Villela Stay',
+  'Alugue o espaço externo das casas da Villela Stay no Lago Sul para seu evento: piscina, churrasqueira e cozinha completa. R$ 100 por convidado, das 10h às 22h.',
   `
 <section class="hero hero-menor">
-  <h1>Eventos, formaturas e grupos</h1>
-  <p>A Grand Villela recebe até 32 hóspedes; nossas villas têm piscina, área gourmet e espaço para celebrações.<br>Conte o que você está planejando e montamos a proposta.</p>
+  <h1>Seu evento à beira do Lago Sul</h1>
+  <p><strong>Casamentos, formaturas, aniversários, confraternizações corporativas e festas em família:</strong> alugue por um dia o espaço externo completo de uma casa no Lago Sul — com piscina, churrasqueira e cozinha profissionalmente limpa antes e depois. Você só traz os convidados.</p>
 </section>
-<section class="form-wrap">
-  <form id="form-evento" class="form-evento">
-    <label>Seu nome* <input name="nome" required></label>
-    <label>WhatsApp ou e-mail* <input name="contato" required></label>
-    <label>Conte sobre o evento (tipo, data, nº de pessoas) <textarea name="mensagem" rows="4"></textarea></label>
-    <button class="btn" type="submit">Pedir orçamento</button>
-    <p class="form-status" hidden></p>
-  </form>
-</section>
+<div class="pacotes-wrap">
+
+  <section class="venda-bloco como-funciona">
+    <h2 class="secao-titulo">Como funciona</h2>
+    <div class="passos">
+      <div class="passo"><strong>1. Escolha a casa pelo tamanho da festa</strong><br>De 60 a 150 convidados, sempre com área externa exclusiva das 10h às 22h.</div>
+      <div class="passo"><strong>2. Preço simples e transparente</strong><br>R$ 100 por convidado + R$ 1.000 de taxa de limpeza profissional (duas diaristas, material, sacos de lixo — entregamos limpa e limpamos tudo depois).</div>
+      <div class="passo"><strong>3. Estrutura pronta</strong><br>Cozinha completa com gás, detergente e utensílios; churrasqueiras a gás e a carvão; piscina e área de lazer; banheiros com sabonete líquido, papel toalha e papel higiênico.</div>
+    </div>
+  </section>
+
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">As casas para o seu evento</h2>
+    <p class="pacote-cond">Locação por dia (preferencialmente das 10h às 22h) · área externa, cozinha e banheiros sociais — sem acesso aos quartos</p>
+    ${cardsEventos}
+  </section>
+
+  <section class="venda-bloco">
+    <h2 class="secao-titulo">Combinados importantes</h2>
+    <div class="passos">
+      <div class="passo"><strong>🔇 Som moderado</strong><br>Pela lei do silêncio do condomínio, não permitimos banda ao vivo nem DJ com volume alto. Som ambiente é bem-vindo.</div>
+      <div class="passo"><strong>🪪 Controle de entrada</strong><br>Em eventos com muitos convidados, o contratante providencia uma pessoa para controlar a entrada e saída, evitando transtornos aos vizinhos.</div>
+      <div class="passo"><strong>🅿️ Eventos grandes</strong><br>Pode ser necessária a contratação de seguranças — que também orientam o estacionamento dos veículos dos convidados.</div>
+    </div>
+    <p class="aviso-escassez">💡 Quer <strong>hospedar o grupo e fazer o evento</strong>? Nas datas especiais funcionamos com pacotes de casa completa — veja os <a href="/pacotes.html">Pacotes Especiais</a>.</p>
+  </section>
+
+  <section class="venda-bloco cta-final">
+    <h2>Peça seu orçamento</h2>
+    <p>Responda três perguntas — data, número de convidados e tipo de evento — e devolvemos a proposta completa.</p>
+    <a class="btn btn-wa btn-grande" href="${waLink('Olá! Quero orçar um evento. Data: ___ | Nº de convidados: ___ | Tipo de evento: ___')}">Orçar pelo WhatsApp</a>
+    <p style="margin-top:24px">Ou deixe seu contato que retornamos:</p>
+    <form id="form-evento" class="form-evento form-evento-claro">
+      <label>Seu nome* <input name="nome" required></label>
+      <label>WhatsApp ou e-mail* <input name="contato" required></label>
+      <label>Conte sobre o evento (tipo, data, nº de convidados) <textarea name="mensagem" rows="3"></textarea></label>
+      <button class="btn" type="submit">Pedir orçamento</button>
+      <p class="form-status" hidden></p>
+    </form>
+  </section>
+</div>
 <script>
 document.getElementById('form-evento').addEventListener('submit', function(e){
   e.preventDefault();
@@ -313,7 +383,6 @@ const CASAS_PACOTE = [
   }
 ];
 
-const real = n => 'R$ ' + n.toLocaleString('pt-BR');
 const chipsDatas = DATAS_PACOTE.map(d =>
   `<a class="chip-data" href="${waLink(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`)}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
 

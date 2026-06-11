@@ -202,6 +202,9 @@ a { color: var(--lago); text-decoration: none; }
 .pacote-cond { color: var(--concreto-claro); font-size: .92rem; margin-bottom: 4px; }
 
 .cta-final { text-align: center; background: var(--petroleo); color: var(--creme); border-radius: 16px; padding: 40px 24px; }
+.form-evento-claro { max-width: 520px; margin: 0 auto; text-align: left; }
+.form-evento-claro label { color: var(--creme); }
+.aviso-escassez a { font-weight: 700; }
 .cta-final h2 { color: var(--creme); }
 .cta-final p { margin: 10px 0 20px; }
 .btn-grande { font-size: 1.15rem; padding: 16px 40px; }
