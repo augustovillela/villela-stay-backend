@@ -47,6 +47,7 @@ a { color: var(--lago); text-decoration: none; }
 .hero p { margin: 20px auto 0; max-width: 640px; color: var(--concreto-claro); font-size: 1.1rem; }
 .hero-cta { margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 .hero-menor { padding: 64px 5vw 40px; }
+.hero-menor p { max-width: 940px; }
 
 /* hero com slideshow de fundo (efeito Ken Burns) */
 .hero-slideshow { position: relative; overflow: hidden; padding: 120px 5vw 96px; }
