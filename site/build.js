@@ -55,6 +55,7 @@ ${extraHead}
     <a href="/#hospedagens">Hospedagens</a>
     <a href="/eventos.html">Eventos</a>
     <a href="/pacotes.html">Pacotes Especiais</a>
+    <a href="/regras.html">Regras da Casa</a>
     <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
   </nav>
 </header>
@@ -449,4 +450,64 @@ const pacotes = layout(
 );
 fs.writeFileSync(path.join(DIST, 'pacotes.html'), pacotes);
 
-console.log(`Site gerado em dist/: ${1 + listings.length + 2} páginas (home + ${listings.length} unidades + eventos + pacotes)`);
+// ------------------------- regras da casa -------------------------
+const REGRAS = [
+  ['1. Idade Mínima', `<p>A locação é permitida apenas para maiores de 18 anos.</p><p>Menores devem estar acompanhados pelos pais ou responsáveis legais.</p>`],
+  ['2. Check-in e Check-out', `<p><strong>Check-in:</strong> a partir das 14h · <strong>Check-out:</strong> até as 10h</p>
+<p>⏳ Caso autorizado, o check-in antecipado ou check-out tardio dá acesso apenas ao quarto reservado, não às áreas comuns (piscina, churrasqueira, cozinha etc.), pois nossa equipe precisa de tempo para preparar a casa com todo o cuidado que você merece.</p>
+<p>⚒ Durante sua estadia, poderão ocorrer serviços pontuais de manutenção para garantir a qualidade da hospedagem.</p>
+<p>🧹 No dia do check-out, a equipe iniciará a limpeza das áreas externas a partir das 8h.</p>`],
+  ['3. Itens de Consumo', `<p>Cada hóspede deve trazer seus itens de uso pessoal: alimentos, bebidas, carvão, fósforo, gás, papel higiênico extra, produtos de higiene, repelente e materiais de limpeza.</p>
+<p>Os itens oferecidos (na cozinha, churrasqueira e banheiros) são cortesia inicial; se acabarem, a reposição será de responsabilidade do hóspede.</p>`],
+  ['4. Fumar 🚭', `<p>Proibido fumar em áreas internas (quartos e banheiros).</p><p>Nas áreas externas é permitido, desde que se use cinzeiro.</p>`],
+  ['5. Animais de Estimação 🐾', `<p>Pets são bem-vindos! Mas:</p><ul><li>Não devem subir em camas, sofás ou móveis.</li><li>Qualquer dano causado será de responsabilidade do hóspede.</li></ul>`],
+  ['6. Eventos e Convidados 🎉', `<p>Não são permitidos eventos comerciais, festas abertas, sublocação ou cobrança de ingresso.</p>
+<p>Eventos familiares só com autorização prévia e mediante taxa.</p>
+<ul><li>Convidado day-use/evento: R$ 80,00</li><li>Hóspede extra pernoite: R$ 120,00/dia</li></ul>
+<p>⚠️ <strong>Importante:</strong> a casa é destinada principalmente a hospedagens. Eventos autorizados não incluem garantias quanto a clima, fornecimento de energia ou funcionamento de equipamentos alugados.</p>`],
+  ['7. Som e Lei do Silêncio 🔊', `<p>Proibido: som alto, DJs, bandas ao vivo ou caixas potentes.</p>
+<p>Limite de ruído:</p><ul><li>até 55 dB (7h às 22h)</li><li>até 45 dB (22h às 7h)</li></ul>
+<p>Qualquer solicitação de redução deve ser atendida imediatamente.</p>`],
+  ['8. Normas do Condomínio', `<p>Todos os hóspedes devem cumprir as regras do condomínio.</p><p>O hóspede principal receberá o controle do portão e deve mantê-lo sempre fechado.</p>`],
+  ['9. Jacuzzi, Spa ou Hidro 🛁', `<p>Uso mediante solicitação prévia e taxa: 1 vez ao dia, até 3h.</p>`],
+  ['10. Lavanderia', `<p>Área de lavanderia do anfitrião não está disponível.</p><p>Uma lava e seca será disponibilizada na cozinha para uso dos hóspedes.</p>`],
+  ['11. Louça e Lixo 🍽️', `<p>A louça deve ser lavada antes do check-out.</p><p>Perecíveis devem ser descartados e o lixo colocado em sacos para recolhimento.</p>`],
+  ['12. Multas por Descumprimento ⚠️', `<p>Quebra de regra: multa de 1 diária por ocorrência.</p>
+<p>Check-in/out fora do horário:</p><ul><li>até 8h de atraso → ½ diária</li><li>acima de 8h → 1 diária</li></ul>
+<p>Se outro hóspede for prejudicado, o responsável deverá arcar com o ressarcimento integral da hospedagem afetada.</p>`],
+  ['13. Taxas Adicionais 💰', `<ul>
+<li>Hóspede extra: R$ 120,00/noite</li>
+<li>Convidado day-use/evento: R$ 80,00</li>
+<li>Jacuzzi: R$ 200,00 (uso 1x ao dia por até 3h)</li>
+<li>Churrasqueira: R$ 200,00</li>
+<li>Copo/prato quebrado: R$ 20,00/unidade</li>
+<li>Gás extra: R$ 140,00</li>
+<li>Limpeza extra piscina: R$ 150,00</li>
+<li>Papel higiênico adicional: R$ 10,00/pessoa</li>
+<li>Ar-condicionado ligado sem necessidade: R$ 50,00</li>
+<li>Uso excessivo de energia: R$ 100,00</li>
+<li>Material de limpeza extra: R$ 100,00</li>
+</ul>`],
+  ['14. Falhas Externas', `<p>Não nos responsabilizamos por interrupções de água, energia ou fenômenos naturais.</p>`],
+  ['15. Danos e Objetos Perdidos', `<p>Danos por mau uso → custo de reposição será cobrado.</p><p>Objetos esquecidos não são de nossa responsabilidade.</p>`],
+  ['16. Responsabilidade', `<p>O hóspede principal é responsável por todos os ocupantes e convidados durante a estadia.</p>`],
+  ['17. Manutenção', `<p>A casa recebe manutenção constante.</p><p>Reparos imediatos fora do horário comercial podem não ser possíveis.</p>`],
+  ['18. Indisponibilidade Pontual', `<p>A casa oferece muitas comodidades, mas falhas isoladas (como ar-condicionado, jacuzzi ou eletrodomésticos) não geram reembolso ou cancelamento.</p>`]
+];
+
+const regras = layout(
+  'Regras da Casa | Villela Stay',
+  'Regras da casa da Villela Stay: check-in e check-out, pets, som, convidados, taxas adicionais e responsabilidades — tudo para uma estadia tranquila.',
+  `
+<section class="hero hero-menor">
+  <h1>🌿 Regras da Casa – Villela Stay</h1>
+  <p>Bem-vindo(a)! Para garantir que sua estadia seja confortável, segura e agradável, pedimos a gentileza de observar as seguintes regras:</p>
+</section>
+<div class="regras-wrap">
+  ${REGRAS.map(r => `<section class="regra"><h2>${r[0]}</h2>${r[1]}</section>`).join('\n')}
+  <p class="regras-aceite">✅ Ao reservar, você confirma estar de acordo com estas regras, que existem para proteger sua experiência e garantir o bem-estar de todos.</p>
+</div>`
+);
+fs.writeFileSync(path.join(DIST, 'regras.html'), regras);
+
+console.log(`Site gerado em dist/: ${1 + listings.length + 3} páginas (home + ${listings.length} unidades + eventos + pacotes + regras)`);

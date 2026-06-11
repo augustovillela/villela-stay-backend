@@ -203,6 +203,14 @@ a { color: var(--lago); text-decoration: none; }
 
 .cta-final { text-align: center; background: var(--petroleo); color: var(--creme); border-radius: 16px; padding: 40px 24px; }
 .form-evento-claro { max-width: 520px; margin: 0 auto; text-align: left; }
+
+/* ---------- regras da casa ---------- */
+.regras-wrap { max-width: 800px; margin: 0 auto; padding: 16px 5vw 72px; }
+.regra { margin-top: 28px; background: var(--areia); border-radius: 12px; padding: 18px 24px; }
+.regra h2 { font-size: 1.1rem; color: var(--petroleo); margin-bottom: 8px; }
+.regra p { margin: 6px 0; font-size: .95rem; }
+.regra ul { margin: 6px 0 6px 20px; font-size: .95rem; display: grid; gap: 4px; }
+.regras-aceite { margin-top: 32px; font-weight: 600; text-align: center; font-size: 1.05rem; }
 .form-evento-claro label { color: var(--creme); }
 .aviso-escassez a { font-weight: 700; }
 .cta-final h2 { color: var(--creme); }
