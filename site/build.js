@@ -76,13 +76,20 @@ ${corpo}
 <footer class="rodape">
   <div>
     <strong>Villela Stay</strong> — Hospedagem por temporada no Lago Sul, Brasília-DF<br>
-    SMDB Conjunto 29, Lago Sul, Brasília-DF<br>
-    <a href="/pre-checkin.html">Pré-check-in online</a> · <a href="/guia.html">Guia do Hóspede</a><br>
-    <a href="/formaturas.html">Formaturas</a> · <a href="/casamentos.html">Casamentos</a> · <a href="/festas-infantis.html">Festas Infantis</a> · <a href="/empresas.html">Empresas &amp; Embaixadas</a>
+    SMDB Conjunto 29, Lago Sul, Brasília-DF
     <p class="rodape-distancias">
       Casa Modernista: 10 minutos do Aeroporto<br>
       Gran Villela Home Stay: 15 minutos da Esplanada
     </p>
+  </div>
+  <div class="rodape-links">
+    <strong>Navegue</strong>
+    <a href="/pre-checkin.html">Pré-check-in online</a>
+    <a href="/guia.html">Guia do Hóspede</a>
+    <a href="/formaturas.html">Formaturas</a>
+    <a href="/casamentos.html">Casamentos</a>
+    <a href="/festas-infantis.html">Festas Infantis</a>
+    <a href="/empresas.html">Empresas &amp; Embaixadas</a>
   </div>
   <div>
     <p class="rodape-contatos">
