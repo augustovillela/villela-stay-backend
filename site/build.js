@@ -53,8 +53,8 @@ ${extraHead}
   <div class="marca-bloco">${MARCA}${TAGLINE}</div>
   <nav>
     <a href="/#hospedagens">Hospedagens</a>
-    <a href="/pacotes.html">Pacotes Especiais</a>
     <a href="/eventos.html">Eventos</a>
+    <a href="/pacotes.html">Pacotes Especiais</a>
     <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
   </nav>
 </header>
