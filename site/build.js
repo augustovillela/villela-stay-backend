@@ -652,7 +652,7 @@ const guia = layout(
   </section>
 
   <section class="regra"><h2>👋 Check-out</h2>
-    <p><strong>Até as 10h.</strong> Antes de sair: louça lavada, perecíveis descartados, lixo ensacado e chaves no local combinado. A equipe inicia a limpeza externa às 8h.</p>
+    <p><strong>Até as 10h.</strong> Antes de sair: favor desligar os aparelhos de ar-condicionado, lavar a louça, descartar os perecíveis, ensacar o lixo e deixar as chaves na fechadura dos quartos e o controle na sinuca ou na casa do caseiro. A equipe inicia a limpeza externa às 8h.</p>
   </section>
 
   <section class="regra"><h2>🔧 Algo não está funcionando?</h2>
