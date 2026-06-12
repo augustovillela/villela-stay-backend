@@ -83,6 +83,14 @@ a { color: var(--lago); text-decoration: none; }
 .btn-wa { background: var(--wa); }
 .btn-wa:hover { background: #1faa52; }
 
+/* ---------- banner posse ---------- */
+.banner-posse {
+  display: block; text-align: center; background: var(--cerrado); color: var(--petroleo);
+  padding: 12px 5vw; font-size: .98rem; font-weight: 500;
+}
+.banner-posse span { font-weight: 800; text-decoration: underline; margin-left: 6px; }
+.banner-posse:hover { filter: brightness(1.05); }
+
 /* ---------- faixa de confiança ---------- */
 .faixa-confianca {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 40px;

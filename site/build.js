@@ -80,6 +80,7 @@ ${extraHead}
     <a href="/pacotes.html">Pacotes Especiais</a>
     <a href="/regras.html">Regras da Casa</a>
     <a href="/guia.html">Guia do Hóspede</a>
+    <a href="/nossa-historia.html">Nossa História</a>
     <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
   </nav>
 </header>
@@ -189,6 +190,7 @@ const home = layout(
   }, 5000);
 })();
 </script>
+<a class="banner-posse" href="/posse-2027.html">🇧🇷 <strong>Posse Presidencial 2027 + Réveillon:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem <span>Saiba mais →</span></a>
 <section class="faixa-confianca">
   <div>🏆 Superhost: anfitrião premiado</div><div>🏅 Favorito dos Hóspedes: propriedades premiadas</div><div>📍 10 min do Aeroporto JK e da Esplanada</div><div>👨‍👩‍👧‍👦 Hospedagens de grupos de até 60 pessoas</div><div>🎉 Eventos para até 150 pessoas</div>
 </section>
@@ -544,7 +546,7 @@ const CASAS_PACOTE = [
 ];
 
 const chipsDatas = DATAS_PACOTE.map(d =>
-  `<a class="chip-data" href="${waLink(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`)}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
+  `<a class="chip-data" href="${d.nome.includes('Posse') ? '/posse-2027.html' : waLink(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`)}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
 
 const cardsCasas = CASAS_PACOTE.map(c => {
   const l = porId[c.id];
