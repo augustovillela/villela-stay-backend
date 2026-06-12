@@ -784,7 +784,7 @@ const LANDINGS = [
     beneficios: [
       ['🏢 Conta corporativa', 'Atendimento direto com o proprietário, nota e contrato para sua empresa ou missão diplomática.'],
       ['🔒 Privacidade e segurança', 'Casas em condomínio no Lago Sul — discrição para delegações e executivos.'],
-      ['📆 Média e longa estadia', 'Condições especiais para semanas ou meses — equipe inteira numa só casa, com cozinha e lavanderia.']
+      ['📆 Estadias Curtas e Eventos', 'Estadias temporárias para colaboradores e estrangeiros em propriedades flexíveis que acomodam de 1 hóspede ou grupos de até 50 hóspedes.']
     ],
     casas: ['GD03H', 'GG04I', 'PL02I'],
     cta: 'Olá! Represento uma empresa/embaixada. Precisamos de: hospedagem ( ) evento ( ) | Período: ___ | Nº de pessoas: ___'
