@@ -29,7 +29,8 @@ a { color: var(--lago); text-decoration: none; }
 .marca-bloco { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .marca { font-size: 1.4rem; font-weight: 800; letter-spacing: -.5px; color: var(--creme); flex-shrink: 0; }
 .marca span { color: #4fb3c5; font-weight: 300; }
-.logo { height: 64px; width: 64px; object-fit: cover; border-radius: 12px; display: block; }
+.logo { height: 128px; width: 128px; object-fit: cover; border-radius: 16px; display: block; }
+@media (max-width: 640px) { .logo { height: 88px; width: 88px; } }
 .tagline {
   color: var(--creme); font-size: .98rem; font-weight: 700; opacity: .95; line-height: 1.35;
 }
