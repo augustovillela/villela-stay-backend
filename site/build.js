@@ -20,6 +20,8 @@ fs.copyFileSync(path.join(__dirname, 'src', 'style.css'), path.join(DIST, 'style
 // Logo: se src/logo.png existir, usa a imagem; senão, marca em texto
 const TEM_LOGO = fs.existsSync(path.join(__dirname, 'src', 'logo.png'));
 if (TEM_LOGO) fs.copyFileSync(path.join(__dirname, 'src', 'logo.png'), path.join(DIST, 'logo.png'));
+// Imagem social da home (1200x630 para WhatsApp/redes)
+if (fs.existsSync(path.join(__dirname, 'src', 'og-home.jpg'))) fs.copyFileSync(path.join(__dirname, 'src', 'og-home.jpg'), path.join(DIST, 'og-home.jpg'));
 const MARCA = TEM_LOGO
   ? `<a class="marca" href="/"><img class="logo" src="/logo.png" alt="Villela Stay — Hospedagens Inteligentes"></a>`
   : `<a class="marca" href="/">Villela <span>Stay</span></a>`;
@@ -46,6 +48,7 @@ function layout(titulo, descricao, corpo, opts = {}) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://ville.stays.com.br">
 <title>${esc(titulo)}</title>
 <meta name="description" content="${esc(descricao)}">
 <link rel="canonical" href="${SITE_URL}${caminho}">
@@ -144,7 +147,7 @@ const home = layout(
   `
 <section class="hero hero-slideshow">
   <div class="hero-bg" aria-hidden="true">
-    ${heroFotos.map((u, i) => `<img src="${u}" alt="" ${i === 0 ? 'class="ativa"' : 'loading="lazy"'}>`).join('\n    ')}
+    ${heroFotos.map((u, i) => `<img src="${u}" alt="" ${i === 0 ? 'class="ativa" fetchpriority="high"' : 'loading="lazy" decoding="async"'}>`).join('\n    ')}
   </div>
   <div class="hero-conteudo">
     <h1>Seu Porto Seguro no Lago Sul em Brasília</h1>
@@ -212,11 +215,21 @@ fetch('${BACKEND}/api/ultima-hora')
 </script>`,
   {
     caminho: '/',
+    ogImage: `${SITE_URL}/og-home.jpg`,
     extraHead: `<script type="application/ld+json">${JSON.stringify({
       '@context': 'https://schema.org', '@type': 'LodgingBusiness',
-      name: 'Villela Stay', url: SITE_URL,
+      name: 'Villela Stay', url: SITE_URL, image: `${SITE_URL}/og-home.jpg`,
       address: { '@type': 'PostalAddress', streetAddress: 'SMDB Conjunto 29, Lago Sul', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
-      telephone: '+5561991935013'
+      telephone: '+5561991935013',
+      priceRange: 'R$ 200 - R$ 2.000',
+      sameAs: ['https://instagram.com/villelastay', 'https://instagram.com/augustovillela', 'https://facebook.com/augusto.villela'],
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: '5', bestRating: '5', reviewCount: depoimentos.length },
+      review: depoimentos.map(d => ({
+        '@type': 'Review',
+        author: { '@type': 'Person', name: d.nome },
+        reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+        reviewBody: d.texto
+      }))
     })}</script>`
   }
 );
@@ -242,8 +255,9 @@ for (const l of listings) {
     String(l.resumo || l.titulo).replace(/<[^>]+>/g, '').slice(0, 155),
     `
 <article class="unidade">
-  <img class="capa" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}">
+  <img class="capa" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}" fetchpriority="high">
   <div class="unidade-cab">
+    <nav class="breadcrumb"><a href="/">Início</a> › <a href="/#hospedagens">Hospedagens</a> › <span>${esc(l.titulo)}</span></nav>
     <h1>${esc(l.titulo)}</h1>
     <p class="ficha">${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.camas} cama${l.camas > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''} · ${esc(l.bairro)}</p>
   </div>
@@ -279,6 +293,10 @@ for (const l of listings) {
     <p class="planta-dica">Clique na planta para ampliar.</p>
   </section>` : ''}
   <section class="galeria"><h2>Fotos</h2><div class="galeria-grid">${galeria}</div></section>
+  <section class="relacionados">
+    <h2>Veja também</h2>
+    <p><a href="/pacotes.html">Pacotes Especiais</a> · <a href="/eventos.html">Eventos no Lago Sul</a> · <a href="/guia.html">Guia do Hóspede</a> · <a href="/regras.html">Regras da Casa</a></p>
+  </section>
 </article>
 <script>
 (function(){
@@ -336,6 +354,14 @@ for (const l of listings) {
         address: { '@type': 'PostalAddress', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
         occupancy: { '@type': 'QuantitativeValue', maxValue: l.hospedes },
         numberOfBedrooms: l.quartos
+      })}</script>
+<script type="application/ld+json">${JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL + '/' },
+          { '@type': 'ListItem', position: 2, name: 'Hospedagens', item: SITE_URL + '/#hospedagens' },
+          { '@type': 'ListItem', position: 3, name: l.titulo, item: `${SITE_URL}/hospedagem/${l.id}.html` }
+        ]
       })}</script>`
     }
   );
@@ -562,7 +588,22 @@ const pacotes = layout(
     <a class="btn btn-wa btn-grande" href="${waLink('Olá! Quero garantir um pacote de data especial. Data: ___ | Nº de pessoas: ___ | Ocasião: ___')}">Falar com o anfitrião agora</a>
   </section>
 </div>`,
-  { caminho: '/pacotes.html' }
+  {
+    caminho: '/pacotes.html',
+    extraHead: `<script type="application/ld+json">${JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      itemListElement: CASAS_PACOTE.map((c, i) => ({
+        '@type': 'ListItem', position: i + 1,
+        item: {
+          '@type': 'Product',
+          name: `Pacote de 4 diárias — ${c.nome}`,
+          description: `Casa completa para até ${c.hospedes} hóspedes no Lago Sul, Brasília — Natal, Réveillon, Posse, Carnaval e Marchas.`,
+          image: porId[c.id] ? porId[c.id].fotoPrincipal : undefined,
+          offers: { '@type': 'Offer', price: c.pacote, priceCurrency: 'BRL', availability: 'https://schema.org/InStock', url: `${SITE_URL}/pacotes.html` }
+        }
+      }))
+    })}</script>`
+  }
 );
 fs.writeFileSync(path.join(DIST, 'pacotes.html'), pacotes);
 
@@ -624,7 +665,17 @@ const regras = layout(
   ${REGRAS.map(r => `<section class="regra"><h2>${r[0]}</h2>${r[1]}</section>`).join('\n')}
   <p class="regras-aceite">✅ Ao reservar, você confirma estar de acordo com estas regras, que existem para proteger sua experiência e garantir o bem-estar de todos.</p>
 </div>`,
-  { caminho: '/regras.html' }
+  {
+    caminho: '/regras.html',
+    extraHead: `<script type="application/ld+json">${JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'FAQPage',
+      mainEntity: REGRAS.map(r => ({
+        '@type': 'Question',
+        name: r[0].replace(/^\d+\.\s*/, ''),
+        acceptedAnswer: { '@type': 'Answer', text: r[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() }
+      }))
+    })}</script>`
+  }
 );
 fs.writeFileSync(path.join(DIST, 'regras.html'), regras);
 
