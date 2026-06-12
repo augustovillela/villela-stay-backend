@@ -742,7 +742,7 @@ const LANDINGS = [
     beneficios: [
       ['🎓 Festa do seu jeito', 'Espaço exclusivo das 10h às 22h, com churrasqueira, piscina e cozinha e hospedagem para amigos e familiares.'],
       ['💰 Preço justo', 'R$ 150 por hóspede por dia, R$ 100,00 por convidado para evento ou day use. Escolhas flexíveis para a comissão fechar o orçamento sem surpresas.'],
-      ['🛌 Turma hospedada', 'Combine com hospedagem em grupo: casas para até 24 pessoas com diárias rateadas.']
+      ['🛌 Turma hospedada', 'Combine evento com hospedagem em grupo: casas para até 50 pessoas com diárias competitivas.']
     ],
     casas: ['GD03H', 'GG04I', 'GD01H', 'GI01I'],
     cta: 'Olá! Somos uma comissão de formatura. Data: ___ | Nº de convidados: ___ | Queremos orçamento de festa (e hospedagem, se possível).'
