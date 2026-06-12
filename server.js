@@ -97,7 +97,8 @@ async function confirmarReservaWhatsApp(evento) {
   try {
     if (process.env.CONFIRMACAO_AUTO !== 'on' || !process.env.MAKE_WA_WEBHOOK) return;
     const acao = String(evento.action || '');
-    if (!/^reservation\.created$/i.test(acao)) return;
+    // tolerante a variações de nome do evento (reservation.created, booking.created etc.)
+    if (!/(reservation|booking)[._-]?(created|new)/i.test(acao)) return;
     const p = evento.payload || {};
     if (p.type && !['booked', 'reserved', 'contract'].includes(p.type)) return;
     const cli = await stays(`/booking/clients/${p._idclient}`);
