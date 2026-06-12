@@ -564,7 +564,8 @@ const REGRAS = [
 <p>Limite de ruído:</p><ul><li>até 55 dB (7h às 22h)</li><li>até 45 dB (22h às 7h)</li></ul>
 <p>Qualquer solicitação de redução deve ser atendida imediatamente.</p>`],
   ['8. Normas do Condomínio', `<p>Todos os hóspedes devem cumprir as regras do condomínio.</p><p>O hóspede principal receberá o controle do portão e deve mantê-lo sempre fechado.</p>`],
-  ['9. Jacuzzi, Spa ou Hidro 🛁', `<p>Uso mediante solicitação prévia e taxa: 1 vez ao dia, até 3h.</p>`],
+  ['9. Jacuzzi, Spa ou Hidro 🛁', `<p><strong>No aluguel do espaço inteiro</strong>, o uso da jacuzzi está incluído, sem taxa: 1 vez ao dia, por até 4 horas.</p>
+<p><strong>Nas hospedagens de quartos, suítes e flats</strong>, o uso é mediante solicitação prévia e taxa de R$ 200,00 (1 vez ao dia, por até 4 horas).</p>`],
   ['10. Lavanderia', `<p>Área de lavanderia do anfitrião não está disponível.</p><p>Uma lava e seca será disponibilizada na cozinha para uso dos hóspedes.</p>`],
   ['11. Louça e Lixo 🍽️', `<p>A louça deve ser lavada antes do check-out.</p><p>Perecíveis devem ser descartados e o lixo colocado em sacos para recolhimento.</p>`],
   ['12. Multas por Descumprimento ⚠️', `<p>Quebra de regra: multa de 1 diária por ocorrência.</p>
@@ -573,7 +574,7 @@ const REGRAS = [
   ['13. Taxas Adicionais 💰', `<ul>
 <li>Hóspede extra: R$ 120,00/noite</li>
 <li>Convidado day-use/evento: R$ 80,00</li>
-<li>Jacuzzi: R$ 200,00 (uso 1x ao dia por até 3h)</li>
+<li>Jacuzzi: R$ 200,00 — apenas nas hospedagens de quarto, suíte ou flat (1x ao dia, até 4h); incluída sem custo no aluguel do espaço inteiro</li>
 <li>Churrasqueira: R$ 200,00</li>
 <li>Copo/prato quebrado: R$ 20,00/unidade</li>
 <li>Gás extra: R$ 140,00</li>
