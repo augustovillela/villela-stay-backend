@@ -50,6 +50,13 @@ function layout(titulo, descricao, corpo, opts = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://ville.stays.com.br">
 <meta name="google-site-verification" content="_Gjh1tlFyUsmEnwd14JOLmSDNQ7u3UKAivi4bkIzz0I">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-5L2YQ2BPQW');
+</script>
 <title>${esc(titulo)}</title>
 <meta name="description" content="${esc(descricao)}">
 <link rel="canonical" href="${SITE_URL}${caminho}">
@@ -108,6 +115,15 @@ ${corpo}
 </footer>
 <a class="wa-flutuante" href="${waLink('Olá! Vim pelo site da Villela Stay.')}" aria-label="Falar no WhatsApp">💬</a>
 <script>try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer), { keepalive: true }); } catch (e) {}</script>
+<script>
+document.addEventListener('click', function(e){
+  var a = e.target.closest && e.target.closest('a[href*="wa.me"]');
+  if (a && typeof gtag === 'function') gtag('event', 'clique_whatsapp', { pagina: location.pathname });
+});
+document.addEventListener('submit', function(e){
+  if (typeof gtag === 'function') gtag('event', 'envio_formulario', { formulario: e.target.id || e.target.className || 'form', pagina: location.pathname });
+}, true);
+</script>
 </body>
 </html>`;
 }
