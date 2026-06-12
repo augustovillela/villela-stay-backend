@@ -754,9 +754,9 @@ const LANDINGS = [
     h1: 'Diga "sim" no Lago Sul',
     sub: 'Mini weddings, recepções e pré-weddings em casas com jardim e piscina — e os noivos e a família já hospedados no local da festa.',
     beneficios: [
-      ['💍 Cenário pronto', 'Jardim, piscina e arquitetura modernista — fotos lindas sem cenografia cara.'],
-      ['👨‍👩‍👧 Família por perto', 'Hospede padrinhos e familiares na própria casa nos dias do evento.'],
-      ['📋 Orçamento transparente', 'R$ 100 por convidado + taxa de limpeza. O resto é com seus fornecedores de confiança.']
+      ['💍 Cenário pronto', 'Jardim, piscina e arquitetura estilo garden, que integram os ambientes interno e externos com o paisagismo único — fotos lindas sem cenografia cara.'],
+      ['👨‍👩‍👧 Família por perto', 'Hospede padrinhos e familiares na própria casa na semana do casamento.'],
+      ['📋 Orçamento transparente', 'R$ 150 por dia para os hóspedes e R$ 100 por convidado para evento ou day use + taxa de limpeza. O resto é com seus fornecedores de confiança.']
     ],
     casas: ['GG04I', 'GD01H', 'GI01I'],
     cta: 'Olá! Estamos planejando um casamento. Data: ___ | Nº de convidados: ___ | Queremos conhecer as casas.'
