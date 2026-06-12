@@ -97,6 +97,7 @@ ${corpo}
     <strong>Navegue</strong>
     <a href="/pre-checkin.html">Pré-check-in online</a>
     <a href="/guia.html">Guia do Hóspede</a>
+    <a href="/posse-2027.html">Posse Presidencial 2027</a>
     <a href="/formaturas.html">Formaturas</a>
     <a href="/casamentos.html">Casamentos</a>
     <a href="/festas-infantis.html">Festas Infantis</a>
@@ -494,7 +495,7 @@ const DATAS_PACOTE = [
   { emoji: '🎄', nome: 'Natal 2026', periodo: '23 a 27/12/2026' },
   { emoji: '🎆', nome: 'Réveillon 2026/2027', periodo: '30/12/2026 a 03/01/2027' },
   { emoji: '🇧🇷', nome: 'Caravana da Posse do Novo Presidente', periodo: '30/12/2026 a 3/1/2027' },
-  { emoji: '🎭', nome: 'Carnaval 2027', periodo: '6 a 9/02/2027' },
+  { emoji: '🎭', nome: 'Carnaval 2027', periodo: '6 a 10/02/2027' },
   { emoji: '🏛️', nome: 'Marcha dos Municípios 2027', periodo: 'datas sob consulta' },
   { emoji: '🏛️', nome: 'Marcha dos Prefeitos 2027', periodo: '16 a 20/5/2027 (a confirmar)' }
 ];
@@ -936,9 +937,50 @@ document.querySelector('.form-landing').addEventListener('submit', function(e){
   fs.writeFileSync(path.join(DIST, lp.arquivo), html);
 }
 
+// ------------------------- artigo: posse 2027 -------------------------
+const cardsPosse = ['GD03H', 'GG04I', 'PL02I', 'GD01H', 'GI01I'].map(id => porId[id]).filter(Boolean).map(l => `
+  <a class="card" href="/hospedagem/${l.id}.html">
+    <img loading="lazy" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}">
+    <div class="card-info"><h3>${esc(l.titulo)}</h3><p>${l.hospedes} hóspedes · ${l.quartos} quartos</p></div>
+  </a>`).join('\n');
+
+const posse = layout(
+  'Onde ficar em Brasília para a Posse Presidencial 2027 | Villela Stay',
+  'Hospedagem para a posse do novo Presidente em 1º/01/2027: casas completas no Lago Sul para caravanas e comitivas, a 10 min da Esplanada. Reserve antes de esgotar.',
+  `
+<section class="hero hero-menor">
+  <h1>Onde ficar em Brasília para a Posse Presidencial 2027</h1>
+  <p><strong>Em 1º de janeiro de 2027, o Brasil inteiro estará em Brasília.</strong> E quem deixar para depois vai pagar caro — ou ficar longe. Aqui está o guia de quem conhece a cidade.</p>
+</section>
+<div class="regras-wrap">
+  <section class="regra"><h2>Por que reservar agora</h2>
+    <p>A posse presidencial é o evento que mais lota Brasília — caravanas de todos os estados, comitivas políticas, delegações estrangeiras e famílias inteiras vêm assistir à cerimônia na Esplanada dos Ministérios. Nas posses anteriores, os hotéis da região central <strong>dobraram ou triplicaram as diárias</strong> e esgotaram com meses de antecedência.</p>
+    <p>E há um detalhe que torna 2027 ainda mais especial: a posse cai <strong>emendada com o Réveillon</strong>. Quem vem, vem para os dois — e fica de 4 a 5 dias.</p>
+  </section>
+  <section class="regra"><h2>A alternativa inteligente: casa completa no Lago Sul</h2>
+    <p>Para grupos e caravanas, hotel é a conta que não fecha: dezenas de diárias individuais, sem cozinha, sem espaço de convivência. A solução que cresce a cada posse é alugar uma <strong>casa completa</strong> — e o Lago Sul é o melhor bairro para isso: seguro, silencioso, a <strong>10 minutos do Aeroporto JK e da Esplanada</strong>.</p>
+    <p>Nas casas da Villela Stay, o grupo inteiro fica junto, com piscina aquecida, churrasqueira e cozinha completa — e o custo se divide: <strong>R$ 150 por pessoa por dia</strong> no pacote de 4 diárias com a casa lotada. Menos que uma diária de hotel simples em semana de posse.</p>
+  </section>
+  <section class="regra"><h2>O pacote Réveillon + Posse (30/12/2026 a 03/01/2027)</h2>
+    <p>Nossas 4 casas recebem de 15 a 24 hóspedes cada. O pacote de 4 diárias vai de <strong>R$ 9.800 (Casa Villela, 15 pessoas)</strong> a <strong>R$ 15.400 (Casa Modernista, 24 pessoas)</strong> — valores fechados, sem surpresa. Veja os detalhes e a composição das camas em <a href="/pacotes.html"><strong>Pacotes Especiais</strong></a>.</p>
+    <p>⚠️ São apenas 4 casas por data, e Réveillon + Posse é a janela mais disputada do calendário. As reservas são confirmadas por ordem de chegada.</p>
+  </section>
+  <section class="regra"><h2>As casas</h2>
+    <div class="grade" style="margin-top:8px">${cardsPosse}</div>
+  </section>
+  <section class="venda-bloco cta-final" style="margin-top:28px">
+    <h2>Garanta a sua casa para a Posse 2027</h2>
+    <p>Diga o tamanho do grupo e devolvemos a proposta completa no WhatsApp.</p>
+    <a class="btn btn-wa btn-grande" href="${waLink('Olá! Quero reservar uma casa para a Posse Presidencial 2027 (30/12 a 03/01). Somos um grupo de ___ pessoas.')}">Reservar pelo WhatsApp</a>
+  </section>
+</div>`,
+  { caminho: '/posse-2027.html' }
+);
+fs.writeFileSync(path.join(DIST, 'posse-2027.html'), posse);
+
 // ------------------------- sitemap.xml e robots.txt -------------------------
 const hoje = new Date().toISOString().slice(0, 10);
-const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', '/guia.html', '/pre-checkin.html', ...LANDINGS.map(lp => `/${lp.arquivo}`), ...listings.map(l => `/hospedagem/${l.id}.html`)];
+const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', '/guia.html', '/pre-checkin.html', '/posse-2027.html', ...LANDINGS.map(lp => `/${lp.arquivo}`), ...listings.map(l => `/hospedagem/${l.id}.html`)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${rotas.map(r => `  <url><loc>${SITE_URL}${r}</loc><lastmod>${hoje}</lastmod></url>`).join('\n')}

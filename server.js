@@ -91,10 +91,37 @@ app.get('/api/anuncios', async (req, res) => {
   }
 });
 
+// Confirmação automática de reserva por WhatsApp.
+// LIGA/DESLIGA pela env CONFIRMACAO_AUTO=on (manter "off" até o template confirmacao_reserva ser aprovado pela Meta).
+async function confirmarReservaWhatsApp(evento) {
+  try {
+    if (process.env.CONFIRMACAO_AUTO !== 'on' || !process.env.MAKE_WA_WEBHOOK) return;
+    const acao = String(evento.action || '');
+    if (!/^reservation\.created$/i.test(acao)) return;
+    const p = evento.payload || {};
+    if (p.type && !['booked', 'reserved', 'contract'].includes(p.type)) return;
+    const cli = await stays(`/booking/clients/${p._idclient}`);
+    const foneBruto = cli && cli.phones && cli.phones[0] && (cli.phones[0].iso || cli.phones[0].number);
+    if (!foneBruto) return console.log('[confirmacao] reserva sem telefone:', p.id);
+    const listing = await stays(`/content/listings/${p._idlisting}`);
+    const titulo = (listing && listing._mstitle && listing._mstitle.pt_BR) || 'sua hospedagem na Villela Stay';
+    const fmt = d => { const [a, m, dia] = String(d).split('-'); return `${dia}/${m}/${a}`; };
+    const corpo = {
+      to: String(foneBruto).replace(/\D/g, ''),
+      template: 'confirmacao_reserva::pt_BR',
+      p1: cli.fName || cli.name || 'hóspede', p2: titulo,
+      p3: fmt(p.checkInDate), p4: fmt(p.checkOutDate)
+    };
+    await fetch(process.env.MAKE_WA_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    console.log('[confirmacao] template enviado para', corpo.to, '— reserva', p.id);
+  } catch (e) { console.error('[confirmacao] erro:', e.message); }
+}
+
 // Webhook da Stays (configurar na Stays apontando para https://SEU-DOMINIO/webhooks/stays)
 app.post('/webhooks/stays', (req, res) => {
   console.log('[webhook stays]', JSON.stringify(req.body).slice(0, 500));
   appendJsonl('eventos.jsonl', { origem: 'stays', evento: req.body });
+  confirmarReservaWhatsApp(req.body); // assíncrono, não bloqueia a resposta
   res.sendStatus(200);
 });
 
