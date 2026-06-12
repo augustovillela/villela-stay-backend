@@ -86,6 +86,11 @@ ${extraHead}
 </header>
 ${corpo}
 <footer class="rodape">
+  <div class="rodape-links">
+    <strong>Conheça</strong>
+    <a href="/nossa-historia.html">Nossa História</a>
+    <a href="/posse-2027.html">Posse Presidencial 2027</a>
+  </div>
   <div>
     <strong>Villela Stay</strong> — Hospedagem por temporada no Lago Sul, Brasília-DF<br>
     SMDB Conjunto 29, Lago Sul, Brasília-DF
@@ -98,8 +103,6 @@ ${corpo}
     <strong>Navegue</strong>
     <a href="/pre-checkin.html">Pré-check-in online</a>
     <a href="/guia.html">Guia do Hóspede</a>
-    <a href="/nossa-historia.html">Nossa História</a>
-    <a href="/posse-2027.html">Posse Presidencial 2027</a>
     <a href="/formaturas.html">Formaturas</a>
     <a href="/casamentos.html">Casamentos</a>
     <a href="/festas-infantis.html">Festas Infantis</a>
