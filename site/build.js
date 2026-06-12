@@ -740,7 +740,7 @@ const LANDINGS = [
     h1: 'A formatura que a sua turma merece',
     sub: 'Festas particulares do formando, Comemorações das Comissões de formatura das faculdades e universidades da cidade (UnB, UDF, IESB, UniCEUB e UCB): festa em casa com piscina, área de lazer, estrutura para buffet, no Lago Sul — e hospedagem para a turma que vem de fora.',
     beneficios: [
-      ['🎓 Festa do seu jeito', 'Espaço exclusivo das 10h às 22h, com churrasqueira, piscina e cozinha — sem o engessado dos buffets.'],
+      ['🎓 Festa do seu jeito', 'Espaço exclusivo das 10h às 22h, com churrasqueira, piscina e cozinha e hospedagem para amigos e familiares.'],
       ['💰 Preço por convidado', 'R$ 100 por pessoa + R$ 1.000 de limpeza. A comissão fecha o orçamento sem surpresas.'],
       ['🛌 Turma hospedada', 'Combine com hospedagem em grupo: casas para até 24 pessoas com diárias rateadas.']
     ],
