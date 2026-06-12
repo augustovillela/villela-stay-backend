@@ -744,7 +744,7 @@ const LANDINGS = [
       ['💰 Preço por convidado', 'R$ 100 por pessoa + R$ 1.000 de limpeza. A comissão fecha o orçamento sem surpresas.'],
       ['🛌 Turma hospedada', 'Combine com hospedagem em grupo: casas para até 24 pessoas com diárias rateadas.']
     ],
-    casas: ['GG04I', 'GD01H'],
+    casas: ['GD03H', 'GG04I', 'GD01H', 'GI01I'],
     cta: 'Olá! Somos uma comissão de formatura. Data: ___ | Nº de convidados: ___ | Queremos orçamento de festa (e hospedagem, se possível).'
   },
   {
