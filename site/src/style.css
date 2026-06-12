@@ -144,6 +144,10 @@ a { color: var(--lago); text-decoration: none; }
 .breadcrumb { font-size: .82rem; color: var(--concreto-claro); margin-bottom: 10px; }
 .breadcrumb a { color: var(--concreto-claro); }
 .breadcrumb a:hover { color: var(--lago); }
+.ebook-box {
+  background: var(--areia); border-left: 5px solid var(--cerrado); border-radius: 10px;
+  padding: 16px 20px; margin-top: 24px; font-size: .98rem;
+}
 .relacionados { border-top: 1px solid #eee; margin-top: 28px; padding-top: 18px; }
 .relacionados h2 { font-size: 1.05rem; margin-bottom: 8px; }
 .relacionados a { font-weight: 600; }

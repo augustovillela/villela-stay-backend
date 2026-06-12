@@ -270,6 +270,15 @@ const VIDEOS = { GD01H: 'casa-modernista.mp4', GI01I: 'casa-villela.mp4', GD03H:
 fs.mkdirSync(path.join(DIST, 'videos'), { recursive: true });
 for (const v of Object.values(VIDEOS)) fs.copyFileSync(path.join(__dirname, 'src', 'videos', v), path.join(DIST, 'videos', v));
 
+// Manuais do hóspede (e-books) — Villela Stay para as 4 casas do complexo; Modernista próprio
+const EBOOKS = {
+  GD03H: 'manual-villela-stay.pdf', GG04I: 'manual-villela-stay.pdf',
+  PL02I: 'manual-villela-stay.pdf', GI01I: 'manual-villela-stay.pdf',
+  GD01H: 'manual-casa-modernista.pdf'
+};
+fs.mkdirSync(path.join(DIST, 'ebooks'), { recursive: true });
+for (const e of [...new Set(Object.values(EBOOKS))]) fs.copyFileSync(path.join(__dirname, 'src', 'ebooks', e), path.join(DIST, 'ebooks', e));
+
 for (const l of listings) {
   const galeria = (l.fotos || []).slice(1, 9).map(f =>
     `<img loading="lazy" src="${f.url}" alt="${esc(f.nome || l.titulo)}" title="${esc(f.nome || '')}">`).join('\n');
@@ -317,6 +326,9 @@ for (const l of listings) {
     <p class="planta-dica">Clique na planta para ampliar.</p>
   </section>` : ''}
   <section class="galeria"><h2>Fotos</h2><div class="galeria-grid">${galeria}</div></section>
+  ${EBOOKS[l.id] ? `<section class="ebook-box">
+    📖 <a href="/ebooks/${EBOOKS[l.id]}" target="_blank" rel="noopener"><strong>Baixe o Manual do Hóspede (e-book em PDF)</strong></a> — o funcionamento da casa, as regras e o guia de turismo e gastronomia de Brasília do anfitrião.
+  </section>` : ''}
   <section class="relacionados">
     <h2>Veja também</h2>
     <p><a href="/pacotes.html">Pacotes Especiais</a> · <a href="/eventos.html">Eventos no Lago Sul</a> · <a href="/guia.html">Guia do Hóspede</a> · <a href="/regras.html">Regras da Casa</a></p>
