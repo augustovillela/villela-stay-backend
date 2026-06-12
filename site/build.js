@@ -151,7 +151,7 @@ const home = layout(
     <p><strong>Casas muito bem localizadas, confortáveis, bem equipadas, com cozinha completa e piscina aquecida.<br>Excelentes tanto para casais quanto para grupos de 60 pessoas.<br>Reserve diretamente com o anfitrião para um atendimento personalizado.</strong></p>
     <div class="hero-cta">
       <a class="btn" href="#hospedagens">Ver hospedagens</a>
-      <a class="btn btn-claro" href="/eventos.html">Eventos &amp; grupos</a>
+      <a class="btn btn-claro" href="/eventos.html">Eventos</a>
     </div>
   </div>
 </section>
