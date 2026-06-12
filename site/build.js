@@ -628,7 +628,7 @@ const guia = layout(
       <li><strong>Churrasqueira:</strong> a gás e a carvão (traga seu carvão; uso mediante taxa — consulte as <a href="/regras.html">Regras</a>).</li>
       <li><strong>Lava e seca:</strong> disponível na cozinha para uso dos hóspedes.</li>
       <li><strong>Piscina:</strong> aproveite! Crianças sempre com supervisão de um adulto.</li>
-      <li><strong>Jacuzzi/spa:</strong> uso mediante solicitação prévia e taxa (1x ao dia, até 3h).</li>
+      <li><strong>Jacuzzi/spa:</strong> no aluguel do espaço inteiro, o uso da jacuzzi é permitido uma vez por dia durante 4 horas independentemente do pagamento de taxa.</li>
       <li><strong>Lixo:</strong> ensacar e deixar no ponto de coleta indicado.</li>
       <li><strong>Silêncio:</strong> som moderado sempre; após as 22h, volume reduzido (regra do condomínio).</li>
     </ul>
