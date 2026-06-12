@@ -85,9 +85,10 @@ a { color: var(--lago); text-decoration: none; }
 
 /* ---------- banner posse ---------- */
 .banner-posse {
-  display: block; text-align: center; background: var(--cerrado); color: var(--petroleo);
+  display: block; text-align: center; background: #009739; color: #FEDD00;
   padding: 12px 5vw; font-size: .98rem; font-weight: 500;
 }
+.banner-posse strong { color: #FEDD00; }
 .banner-posse span { font-weight: 800; text-decoration: underline; margin-left: 6px; }
 .banner-posse:hover { filter: brightness(1.05); }
 
