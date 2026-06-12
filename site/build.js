@@ -97,6 +97,7 @@ ${corpo}
     <strong>Navegue</strong>
     <a href="/pre-checkin.html">Pré-check-in online</a>
     <a href="/guia.html">Guia do Hóspede</a>
+    <a href="/nossa-historia.html">Nossa História</a>
     <a href="/posse-2027.html">Posse Presidencial 2027</a>
     <a href="/formaturas.html">Formaturas</a>
     <a href="/casamentos.html">Casamentos</a>
@@ -978,9 +979,39 @@ const posse = layout(
 );
 fs.writeFileSync(path.join(DIST, 'posse-2027.html'), posse);
 
+// ------------------------- nossa história -------------------------
+const historia = layout(
+  'Nossa História — a Brasília de JK, Niemeyer e Burle Marx | Villela Stay',
+  'Cada casa da Villela Stay homenageia quem fez Brasília: Kubitschek, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo e Cassia Eller. Conheça a história.',
+  `
+<section class="hero hero-menor">
+  <h1>Toda casa da Villela Stay homenageia quem fez Brasília</h1>
+</section>
+<div class="regras-wrap">
+  <section class="regra">
+    <p>Brasília nasceu de um sonho — o de <strong>Juscelino Kubitschek</strong>, que ergueu uma capital no meio do cerrado em mil dias. O traço veio de <strong>Lúcio Costa</strong>, as curvas de <strong>Oscar Niemeyer</strong>, os jardins de <strong>Burle Marx</strong>, os azulejos de <strong>Athos Bulcão</strong>. E a alma veio depois, nas vozes de <strong>Renato Russo</strong> e <strong>Cassia Eller</strong>, que fizeram da cidade a Capital do Rock.</p>
+    <p><strong>Na Villela Stay, cada hospedagem carrega um desses nomes.</strong> A Villa Kubitschek e a Villa Catetinho lembram o presidente fundador — o Catetinho foi sua primeira residência na cidade, erguida em dez dias. O Flat do Oscar, o Flat do Burle Marx, o Flat do Lúcio Costa e o Flat do Athos Bulcão celebram os construtores. As suítes do Renato Russo e da Cassia Eller guardam a trilha sonora. E a Casa Modernista é a síntese de tudo: a arquitetura de Brasília, de portas abertas para você morar por alguns dias.</p>
+  </section>
+  <section class="regra"><h2>O anfitrião</h2>
+    <p>Augusto Villela nasceu em Brasília em 1970 — dez anos depois da cidade. Advogado de profissão e anfitrião por vocação, viu na hospitalidade um jeito de compartilhar o que a capital tem de melhor: o Lago Sul, o céu do cerrado, a mesa farta e a história viva em cada esquina. Hoje, como Superhost premiado, recebe famílias, grupos e delegações do mundo inteiro nas casas da Villela Stay.</p>
+  </section>
+  <section class="regra"><h2>O que a gente acredita</h2>
+    <p>Que hospedar é mais do que abrigar. É entregar a casa limpa e a piscina aquecida, mas também indicar o restaurante certo, o pôr do sol da Ermida Dom Bosco e o caminho mais bonito para a Esplanada. É o que chamamos de <strong>Hospedagens Inteligentes para Experiências Inesquecíveis</strong>.</p>
+  </section>
+  <section class="venda-bloco cta-final" style="margin-top:28px">
+    <h2>Venha viver essa história</h2>
+    <p>Escolha a sua casa no Lago Sul — e seja recebido por quem ama Brasília.</p>
+    <a class="btn btn-wa btn-grande" href="${waLink('Olá! Conheci a história da Villela Stay e quero me hospedar.')}">Falar com o anfitrião</a>
+    <p style="margin-top:14px"><a href="/#hospedagens" style="color:var(--creme);text-decoration:underline">Ver as hospedagens →</a></p>
+  </section>
+</div>`,
+  { caminho: '/nossa-historia.html' }
+);
+fs.writeFileSync(path.join(DIST, 'nossa-historia.html'), historia);
+
 // ------------------------- sitemap.xml e robots.txt -------------------------
 const hoje = new Date().toISOString().slice(0, 10);
-const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', '/guia.html', '/pre-checkin.html', '/posse-2027.html', ...LANDINGS.map(lp => `/${lp.arquivo}`), ...listings.map(l => `/hospedagem/${l.id}.html`)];
+const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', '/guia.html', '/pre-checkin.html', '/posse-2027.html', '/nossa-historia.html', ...LANDINGS.map(lp => `/${lp.arquivo}`), ...listings.map(l => `/hospedagem/${l.id}.html`)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${rotas.map(r => `  <url><loc>${SITE_URL}${r}</loc><lastmod>${hoje}</lastmod></url>`).join('\n')}
