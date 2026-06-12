@@ -223,6 +223,11 @@ fetch('${BACKEND}/api/ultima-hora')
 fs.writeFileSync(path.join(DIST, 'index.html'), home);
 
 // ------------------------------------------------- página por unidade
+// Plantas humanizadas (feitas pelo Augusto) — id do anúncio -> arquivo
+const PLANTAS = { GI01I: 'casa-villela.jpg', GD03H: 'gran-villela.jpg', GG04I: 'villa-kubitschek.jpg' };
+fs.mkdirSync(path.join(DIST, 'plantas'), { recursive: true });
+for (const p of Object.values(PLANTAS)) fs.copyFileSync(path.join(__dirname, 'src', 'plantas', p), path.join(DIST, 'plantas', p));
+
 for (const l of listings) {
   const galeria = (l.fotos || []).slice(1, 9).map(f =>
     `<img loading="lazy" src="${f.url}" alt="${esc(f.nome || l.titulo)}" title="${esc(f.nome || '')}">`).join('\n');
@@ -257,6 +262,11 @@ for (const l of listings) {
     </form>
   </section>
   <section class="descricao">${l.descricao || ''}</section>
+  ${PLANTAS[l.id] ? `<section class="planta">
+    <h2>Planta do espaço</h2>
+    <a href="/plantas/${PLANTAS[l.id]}" target="_blank" rel="noopener"><img loading="lazy" src="/plantas/${PLANTAS[l.id]}" alt="Planta do espaço — ${esc(l.titulo)}"></a>
+    <p class="planta-dica">Clique na planta para ampliar.</p>
+  </section>` : ''}
   <section class="galeria"><h2>Fotos</h2><div class="galeria-grid">${galeria}</div></section>
 </article>
 <script>
