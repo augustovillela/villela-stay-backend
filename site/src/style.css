@@ -34,10 +34,16 @@ a { color: var(--lago); text-decoration: none; }
 .tagline {
   color: var(--creme); font-size: .98rem; font-weight: 700; opacity: .95; line-height: 1.35;
 }
-.topo nav { display: flex; gap: 24px; align-items: center; flex-shrink: 0; }
+.topo nav { display: flex; gap: 24px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
 .topo nav a { color: var(--creme); font-weight: 500; }
 .btn-wa-nav { background: var(--wa); color: #fff !important; padding: 8px 18px; border-radius: 24px; }
-@media (max-width: 900px) { .tagline { display: none; } }
+@media (max-width: 1100px) { .tagline { display: none; } }
+@media (max-width: 860px) {
+  .topo { flex-wrap: wrap; justify-content: center; row-gap: 10px; padding: 10px 3vw; }
+  .marca-bloco { width: 100%; justify-content: center; }
+  .topo nav { width: 100%; justify-content: center; gap: 10px 16px; font-size: .9rem; }
+  .btn-wa-nav { padding: 6px 14px; }
+}
 
 /* ---------- hero ---------- */
 .hero {
@@ -252,6 +258,5 @@ a { color: var(--lago); text-decoration: none; }
   font-size: 1.7rem; box-shadow: 0 4px 16px rgba(0,0,0,.25); z-index: 20;
 }
 @media (max-width: 640px) {
-  .topo nav { gap: 14px; font-size: .9rem; }
   .unidade .capa { height: 260px; }
 }
