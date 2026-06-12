@@ -758,7 +758,7 @@ const LANDINGS = [
       ['👨‍👩‍👧 Família por perto', 'Hospede padrinhos e familiares na própria casa na semana do casamento.'],
       ['📋 Orçamento transparente', 'R$ 150 por dia para os hóspedes e R$ 100 por convidado para evento ou day use + taxa de limpeza. O resto é com seus fornecedores de confiança.']
     ],
-    casas: ['GG04I', 'GD01H', 'GI01I'],
+    casas: ['GD03H', 'GG04I', 'GD01H', 'GI01I'],
     cta: 'Olá! Estamos planejando um casamento. Data: ___ | Nº de convidados: ___ | Queremos conhecer as casas.'
   },
   {
