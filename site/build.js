@@ -228,6 +228,11 @@ const PLANTAS = { GI01I: 'casa-villela.jpg', GD03H: 'gran-villela.jpg', GG04I: '
 fs.mkdirSync(path.join(DIST, 'plantas'), { recursive: true });
 for (const p of Object.values(PLANTAS)) fs.copyFileSync(path.join(__dirname, 'src', 'plantas', p), path.join(DIST, 'plantas', p));
 
+// Vídeos publicitários — id do anúncio -> arquivo
+const VIDEOS = { GD01H: 'casa-modernista.mp4', GI01I: 'casa-villela.mp4', GD03H: 'gran-villela.mp4', PL02I: 'villa-catetinho.mp4', GG04I: 'villa-kubitschek.mp4' };
+fs.mkdirSync(path.join(DIST, 'videos'), { recursive: true });
+for (const v of Object.values(VIDEOS)) fs.copyFileSync(path.join(__dirname, 'src', 'videos', v), path.join(DIST, 'videos', v));
+
 for (const l of listings) {
   const galeria = (l.fotos || []).slice(1, 9).map(f =>
     `<img loading="lazy" src="${f.url}" alt="${esc(f.nome || l.titulo)}" title="${esc(f.nome || '')}">`).join('\n');
@@ -252,6 +257,12 @@ for (const l of listings) {
     <div class="disp-resultado" hidden></div>
     <a class="btn btn-wa disp-reservar" href="${waLink(`Olá! Quero reservar a ${l.titulo}.`)}">Reservar pelo WhatsApp</a>
   </section>
+  ${VIDEOS[l.id] ? `<section class="video-wrap">
+    <h2>Conheça por dentro</h2>
+    <video controls preload="metadata" playsinline poster="${l.fotoPrincipal}">
+      <source src="/videos/${VIDEOS[l.id]}" type="video/mp4">
+    </video>
+  </section>` : ''}
   <section class="lead-box">
     <h2>Prefere receber a cotação? Deixe seu contato 👇</h2>
     <form class="form-lead">

@@ -130,6 +130,9 @@ a { color: var(--lago); text-decoration: none; }
 .ficha { color: var(--concreto-claro); margin-top: 8px; }
 .descricao { padding: 24px 0; border-top: 1px solid #eee; margin-top: 24px; white-space: pre-line; }
 .galeria h2 { margin: 16px 0; }
+.video-wrap { margin-top: 20px; }
+.video-wrap h2 { margin-bottom: 12px; }
+.video-wrap video { width: 100%; border-radius: 14px; background: #000; display: block; }
 .planta { margin: 24px 0; }
 .planta h2 { margin-bottom: 12px; }
 .planta img { width: 100%; border-radius: 12px; border: 1px solid #e5e1d8; background: #fff; }
