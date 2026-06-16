@@ -145,6 +145,12 @@ tr:last-child td { border-bottom: none; }
 .tl-item { border-left: 2px solid var(--lago); padding: 2px 0 2px 12px; font-size: .86rem; }
 .tl-tipo { display: inline-block; background: var(--areia); border: 1px solid var(--borda); border-radius: 10px; padding: 0 7px; font-size: .7rem; color: var(--concreto-claro); margin-right: 5px; }
 .tl-data { font-size: .72rem; color: var(--concreto-claro); margin-top: 2px; }
+.stays-totais { display: flex; gap: 16px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--borda); font-size: .9rem; }
+.stays-res { padding: 8px 0; border-bottom: 1px dashed var(--borda); }
+.stays-res:last-child { border-bottom: none; }
+.stays-res-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .9rem; }
+.stays-res-top .chip { font-size: .7rem; padding: 1px 8px; }
+.stays-res-meta { font-size: .8rem; color: var(--concreto-claro); margin-top: 2px; }
 
 @media (max-width: 760px) {
   .corpo { flex-direction: column; }
