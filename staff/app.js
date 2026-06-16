@@ -490,6 +490,7 @@ async function crmAbrirContato(id) {
             <button class="btn peq secund" id="f-add-nota">Adicionar à timeline</button>
             <hr>
             <button class="btn peq perigo" id="f-perder">Marcar como perdido</button>
+            ${ESTADO.me.papel === 'admin' ? `<button class="btn peq perigo" id="f-excluir" style="margin-left:8px">Excluir contato</button>` : ''}
           </div>
         </div>
         <div class="ficha-col">
@@ -512,6 +513,11 @@ async function crmAbrirContato(id) {
       const motivo = prompt('Motivo da perda (opcional):');
       if (motivo === null) return; // cancelou
       try { await api('POST', '/crm/contatos/' + id + '/perder', { motivo }); crmAbrirContato(id); }
+      catch (e) { alert(e.message); }
+    };
+    if ($('#f-excluir')) $('#f-excluir').onclick = async () => {
+      if (!confirm('Excluir este contato permanentemente? Esta ação não pode ser desfeita.')) return;
+      try { await api('DELETE', '/crm/contatos/' + id); navegar('crm'); }
       catch (e) { alert(e.message); }
     };
   } catch (e) { alert(e.message); }

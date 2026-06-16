@@ -799,6 +799,22 @@ app.post('/staff/api/crm/contatos/:id/perder', requirePublishOrSession, podeCRM,
   res.json({ ok: true, contato: c });
 });
 
+// Excluir contato (somente admin ou PUBLISH_KEY) — remove o contato e suas atividades.
+app.delete('/staff/api/crm/contatos/:id', requirePublishOrSession, (req, res) => {
+  if (!req.viaChave && (!req.user || req.user.papel !== 'admin')) return res.status(403).json({ erro: 'Apenas admin pode excluir contato.' });
+  const contatos = lerContatos();
+  if (!contatos.find(x => x.id === req.params.id)) return res.status(404).json({ erro: 'Contato não encontrado.' });
+  salvarContatos(contatos.filter(x => x.id !== req.params.id));
+  try { // remove as atividades órfãs do contato
+    const f = path.join(DATA_DIR, 'atividades.jsonl');
+    if (fs.existsSync(f)) {
+      const linhas = fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).filter(l => { try { return JSON.parse(l).contatoId !== req.params.id; } catch { return true; } });
+      fs.writeFileSync(f, linhas.length ? linhas.join('\n') + '\n' : '');
+    }
+  } catch (e) { console.error('[crm delete] limpeza atividades:', e.message); }
+  res.json({ ok: true });
+});
+
 // Migração única: leads.jsonl (formato antigo) -> contatos (dedupe). Admin ou PUBLISH_KEY.
 app.post('/staff/api/crm/migrar-leads', requirePublishOrSession, (req, res) => {
   if (!req.viaChave && (!req.user || req.user.papel !== 'admin')) return res.status(403).json({ erro: 'Apenas admin.' });
