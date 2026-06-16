@@ -511,21 +511,20 @@ app.post('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
   res.json({ ok: true, relatorio: { ...rel, texto: undefined } });
 });
 
-// Listar (filtra pelas áreas do usuário)
-app.get('/staff/api/relatorios', requireAuth, (req, res) => {
-  const minhas = areasDoUsuario(req.user);
-  const lista = lerRelatorios()
-    .filter(r => minhas.includes(r.area))
+// Listar (sessão filtra pelas áreas do usuário; a PUBLISH_KEY vê tudo — ferramenta de manutenção)
+app.get('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
+  const todas = lerRelatorios();
+  const lista = (req.viaChave ? todas : todas.filter(r => areasDoUsuario(req.user).includes(r.area)))
     .filter(r => !req.query.area || r.area === req.query.area)
     .map(({ texto, ...meta }) => meta); // não manda o corpo na listagem
   res.json({ relatorios: lista });
 });
 
 // Detalhe (texto/url) — para arquivo use /arquivo
-app.get('/staff/api/relatorios/:id', requireAuth, (req, res) => {
+app.get('/staff/api/relatorios/:id', requirePublishOrSession, (req, res) => {
   const rel = lerRelatorios().find(r => r.id === req.params.id);
   if (!rel) return res.status(404).json({ erro: 'Não encontrado.' });
-  if (!podeArea(req.user, rel.area)) return res.status(403).json({ erro: 'Sem acesso.' });
+  if (!req.viaChave && !podeArea(req.user, rel.area)) return res.status(403).json({ erro: 'Sem acesso.' });
   res.json({ relatorio: rel });
 });
 
@@ -540,11 +539,11 @@ app.get('/staff/api/relatorios/:id/arquivo', requireAuth, (req, res) => {
   res.sendFile(f);
 });
 
-app.delete('/staff/api/relatorios/:id', requireAuth, (req, res) => {
+app.delete('/staff/api/relatorios/:id', requirePublishOrSession, (req, res) => {
   const relatorios = lerRelatorios();
   const rel = relatorios.find(r => r.id === req.params.id);
   if (!rel) return res.status(404).json({ erro: 'Não encontrado.' });
-  if (req.user.papel !== 'admin' && !podeArea(req.user, rel.area)) return res.status(403).json({ erro: 'Sem acesso.' });
+  if (!req.viaChave && req.user.papel !== 'admin' && !podeArea(req.user, rel.area)) return res.status(403).json({ erro: 'Sem acesso.' });
   if (rel.formato === 'arquivo') { try { fs.unlinkSync(path.join(ARQ_DIR, rel.arquivo)); } catch {} }
   salvarRelatorios(relatorios.filter(r => r.id !== rel.id));
   res.json({ ok: true });
