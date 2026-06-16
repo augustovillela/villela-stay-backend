@@ -14,6 +14,15 @@ async function api(metodo, caminho, corpo) {
   return dados;
 }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// Remove marcação markdown para exibir resumos curtos como texto limpo (sem **, >, `, links).
+const limparMd = (s) => String(s == null ? '' : s)
+  .replace(/^\s*>\s?/, '')
+  .replace(/\*\*([^*]+?)\*\*/g, '$1')
+  .replace(/\*([^*]+?)\*/g, '$1')
+  .replace(/`([^`]+?)`/g, '$1')
+  .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+  .replace(/^#+\s*/, '')
+  .trim();
 const nomeArea = (id) => { const a = ESTADO.catalogo.find(x => x.id === id); return a ? a.nome : id; };
 const dataBr = (iso) => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
 
@@ -163,7 +172,7 @@ function itemRelatorioHtml(r) {
       ${r.periodo ? `<span class="chip">${esc(r.periodo)}</span>` : ''}
       <span>por ${esc(r.autor || '—')} · ${dataBr(r.publicadoEm)}</span>
     </div>
-    ${r.resumo ? `<p style="margin:8px 0 0;font-size:.92rem">${esc(r.resumo)}</p>` : ''}
+    ${r.resumo ? `<p style="margin:8px 0 0;font-size:.92rem">${esc(limparMd(r.resumo))}</p>` : ''}
     <div class="acoes">
       <button class="btn peq" data-abrir="${r.id}" data-fmt="${esc(r.formato)}">Abrir</button>
       <button class="btn peq perigo" data-excluir="${r.id}">Excluir</button>
