@@ -173,7 +173,9 @@ app.get('/api/estatisticas', (req, res) => {
 app.post('/api/leads', (req, res) => {
   const { nome, contato, mensagem, origem } = req.body || {};
   if (!nome || !contato) return res.status(400).json({ erro: 'nome e contato são obrigatórios' });
-  appendJsonl('leads.jsonl', { nome, contato, mensagem, origem: origem || 'site' });
+  appendJsonl('leads.jsonl', { nome, contato, mensagem, origem: origem || 'site' }); // mantém log antigo
+  try { upsertContato({ nome, contato, mensagem, origem: origem || 'site' }); } // CRM: vira contato (dedupe)
+  catch (e) { console.error('[crm] falha ao criar contato do lead:', e.message); }
   res.json({ ok: true });
 });
 
@@ -310,6 +312,78 @@ function novoId() { return crypto.randomBytes(9).toString('base64url'); }
 function semSenha(u) { const { senhaHash, ...resto } = u; return resto; }
 function podeArea(user, area) { return user.papel === 'admin' || (user.areas || []).includes('*') || (user.areas || []).includes(area); }
 function areasDoUsuario(user) { return user.papel === 'admin' || (user.areas || []).includes('*') ? AREAS.map(a => a.id) : (user.areas || []); }
+
+// ============================================================
+// CRM (Fase 0) — contatos + atividades. Stays = sistema de reservas;
+// aqui mora o FUNIL e o relacionamento. Dedupe por telefone (E.164).
+// ============================================================
+const ESTAGIOS = ['novo', 'contato', 'orcamento', 'negociacao', 'reserva', 'hospedado', 'posvenda', 'perdido'];
+const lerContatos = () => lerJSON('contatos.json', []);
+const salvarContatos = (c) => salvarJSON('contatos.json', c);
+const hojeISO = () => new Date().toISOString().slice(0, 10);
+
+// Normaliza telefone para dígitos com DDI (chave de dedupe). Best-effort p/ Brasil.
+function normFone(s) {
+  let d = String(s || '').replace(/\D/g, '').replace(/^0+/, '');
+  if (!d) return '';
+  if (d.startsWith('55') && d.length >= 12 && d.length <= 13) return d; // já tem DDI
+  if (d.length === 10 || d.length === 11) return '55' + d;              // DDD + número, sem DDI
+  return d;                                                             // internacional/atípico: mantém
+}
+
+function lerAtividades(contatoId) {
+  const f = path.join(DATA_DIR, 'atividades.jsonl');
+  if (!fs.existsSync(f)) return [];
+  return fs.readFileSync(f, 'utf8').trim().split('\n').filter(Boolean)
+    .map(l => { try { return JSON.parse(l); } catch { return null; } })
+    .filter(a => a && a.contatoId === contatoId)
+    .sort((a, b) => String(b.data).localeCompare(String(a.data))); // mais recente primeiro
+}
+function addAtividade(contatoId, tipo, texto, canal, autor) {
+  appendJsonl('atividades.jsonl', {
+    id: novoId(), contatoId, tipo, texto: String(texto || ''),
+    canal: canal || '', autor: autor || 'sistema', data: new Date().toISOString(),
+  });
+}
+
+// Cria ou enriquece um contato (dedupe por telefone, depois e-mail). Retorna { contato, novo }.
+function upsertContato(dados) {
+  const contatos = lerContatos();
+  const tel = normFone(dados.telefone || dados.contato || '');
+  const email = String(dados.email || '').trim().toLowerCase();
+  const agora = new Date().toISOString();
+  let c = null;
+  if (tel) c = contatos.find(x => x.telefone && x.telefone === tel);
+  if (!c && email) c = contatos.find(x => x.email && x.email.toLowerCase() === email);
+
+  if (c) { // enriquece campos vazios; não sobrescreve o que já existe
+    if (!c.nome && dados.nome) c.nome = dados.nome;
+    if (!c.telefone && tel) c.telefone = tel;
+    if (!c.email && email) c.email = email;
+    if (!c.imovelInteresse && dados.imovelInteresse) c.imovelInteresse = dados.imovelInteresse;
+    c.atualizadoEm = agora;
+    salvarContatos(contatos);
+    if (dados.mensagem) addAtividade(c.id, 'mensagem-recebida', dados.mensagem, dados.origem || '', 'sistema');
+    return { contato: c, novo: false };
+  }
+
+  c = {
+    id: novoId(), nome: dados.nome || '', telefone: tel, email,
+    origem: dados.origem || 'manual', estagio: 'novo', dono: 'Augusto',
+    proximaAcao: { descricao: 'Responder primeiro contato', data: hojeISO() },
+    valorEstimado: dados.valorEstimado != null ? Number(dados.valorEstimado) : null,
+    imovelInteresse: dados.imovelInteresse || '',
+    periodo: dados.periodo || { checkin: '', checkout: '', hospedes: '' },
+    preferencias: '', staysClientId: '', staysReservationId: '', motivoPerda: '',
+    consentimento: { optIn: !!dados.mensagem, base: dados.mensagem ? 'mensagem-do-cliente' : '', em: agora },
+    criadoEm: dados.criadoEm || agora, atualizadoEm: agora,
+  };
+  contatos.unshift(c);
+  salvarContatos(contatos);
+  addAtividade(c.id, 'nota', 'Contato criado (origem: ' + c.origem + ')', c.origem, 'sistema');
+  if (dados.mensagem) addAtividade(c.id, 'mensagem-recebida', dados.mensagem, c.origem, 'sistema');
+  return { contato: c, novo: true };
+}
 
 // ---- seed do admin no boot ----
 (function seedAdmin() {
@@ -551,6 +625,127 @@ app.delete('/staff/api/relatorios/:id', requirePublishOrSession, (req, res) => {
   if (rel.formato === 'arquivo') { try { fs.unlinkSync(path.join(ARQ_DIR, rel.arquivo)); } catch {} }
   salvarRelatorios(relatorios.filter(r => r.id !== rel.id));
   res.json({ ok: true });
+});
+
+// ===================== CRM — contatos / funil (área "vendas") =====================
+// Acesso: PUBLISH_KEY (scripts internos) OU sessão com acesso à área vendas/admin.
+function podeCRM(req, res, next) {
+  if (req.viaChave) return next();
+  if (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'vendas'))) return next();
+  return res.status(403).json({ erro: 'Sem acesso ao CRM (área vendas).' });
+}
+
+// Listar contatos (filtros: estagio, origem, busca por nome/telefone/email)
+app.get('/staff/api/crm/contatos', requirePublishOrSession, podeCRM, (req, res) => {
+  const { estagio, origem, busca } = req.query;
+  let lista = lerContatos();
+  if (estagio) lista = lista.filter(c => c.estagio === estagio);
+  if (origem) lista = lista.filter(c => c.origem === origem);
+  if (busca) {
+    const q = String(busca).toLowerCase();
+    lista = lista.filter(c => [c.nome, c.telefone, c.email].some(v => String(v || '').toLowerCase().includes(q)));
+  }
+  res.json({ contatos: lista });
+});
+
+// Métricas do funil (contagem e valor por estágio)
+app.get('/staff/api/crm/funil', requirePublishOrSession, podeCRM, (req, res) => {
+  const contatos = lerContatos();
+  const porEstagio = {};
+  for (const e of ESTAGIOS) porEstagio[e] = { n: 0, valor: 0 };
+  let total = { n: 0, valor: 0 };
+  for (const c of contatos) {
+    const e = ESTAGIOS.includes(c.estagio) ? c.estagio : 'novo';
+    porEstagio[e].n++; porEstagio[e].valor += Number(c.valorEstimado) || 0;
+    if (e !== 'perdido') { total.n++; total.valor += Number(c.valorEstimado) || 0; }
+  }
+  res.json({ porEstagio, total }); // total exclui "perdido"
+});
+
+// Caixa de follow-ups: próximas ações vencidas ou para hoje
+app.get('/staff/api/crm/followups', requirePublishOrSession, podeCRM, (req, res) => {
+  const hoje = hojeISO();
+  const lista = lerContatos()
+    .filter(c => c.estagio !== 'perdido' && c.proximaAcao && c.proximaAcao.data && c.proximaAcao.data <= hoje)
+    .sort((a, b) => String(a.proximaAcao.data).localeCompare(String(b.proximaAcao.data)));
+  res.json({ followups: lista });
+});
+
+// Criar contato (dedupe por telefone/e-mail)
+app.post('/staff/api/crm/contatos', requirePublishOrSession, podeCRM, (req, res) => {
+  const d = req.body || {};
+  if (!d.nome && !d.telefone && !d.contato && !d.email) return res.status(400).json({ erro: 'Informe ao menos nome e telefone/e-mail.' });
+  const { contato, novo } = upsertContato(d);
+  res.json({ ok: true, novo, contato });
+});
+
+// Detalhe do contato + linha do tempo
+app.get('/staff/api/crm/contatos/:id', requirePublishOrSession, podeCRM, (req, res) => {
+  const c = lerContatos().find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ erro: 'Contato não encontrado.' });
+  res.json({ contato: c, atividades: lerAtividades(c.id) });
+});
+
+// Atualizar contato (estágio, próxima ação, valor, imóvel, período, preferências, nome, e-mail)
+app.patch('/staff/api/crm/contatos/:id', requirePublishOrSession, podeCRM, (req, res) => {
+  const contatos = lerContatos();
+  const c = contatos.find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ erro: 'Contato não encontrado.' });
+  const d = req.body || {};
+  if (d.estagio !== undefined) {
+    if (!ESTAGIOS.includes(d.estagio)) return res.status(400).json({ erro: 'Estágio inválido.' });
+    if (d.estagio !== c.estagio) { addAtividade(c.id, 'mudanca-estagio', `${c.estagio} → ${d.estagio}`, '', req.viaChave ? 'sistema' : req.user.nome); c.estagio = d.estagio; }
+  }
+  if (d.proximaAcao !== undefined) c.proximaAcao = { descricao: String(d.proximaAcao.descricao || ''), data: String(d.proximaAcao.data || '') };
+  if (d.valorEstimado !== undefined) c.valorEstimado = d.valorEstimado === null ? null : Number(d.valorEstimado);
+  if (d.imovelInteresse !== undefined) c.imovelInteresse = String(d.imovelInteresse);
+  if (d.periodo !== undefined) c.periodo = { checkin: d.periodo.checkin || '', checkout: d.periodo.checkout || '', hospedes: d.periodo.hospedes || '' };
+  if (d.preferencias !== undefined) c.preferencias = String(d.preferencias);
+  if (d.nome !== undefined) c.nome = String(d.nome);
+  if (d.email !== undefined) c.email = String(d.email).trim().toLowerCase();
+  c.atualizadoEm = new Date().toISOString();
+  salvarContatos(contatos);
+  res.json({ ok: true, contato: c });
+});
+
+// Registrar atividade manual (nota/mensagem)
+app.post('/staff/api/crm/contatos/:id/atividade', requirePublishOrSession, podeCRM, (req, res) => {
+  const c = lerContatos().find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ erro: 'Contato não encontrado.' });
+  const d = req.body || {};
+  if (!d.texto) return res.status(400).json({ erro: 'texto é obrigatório.' });
+  const tipo = ['mensagem-recebida', 'mensagem-enviada', 'nota', 'tarefa', 'cotacao', 'contrato', 'pos-venda'].includes(d.tipo) ? d.tipo : 'nota';
+  addAtividade(c.id, tipo, d.texto, d.canal || '', req.viaChave ? 'sistema' : req.user.nome);
+  res.json({ ok: true });
+});
+
+// Marcar como perdido (com motivo)
+app.post('/staff/api/crm/contatos/:id/perder', requirePublishOrSession, podeCRM, (req, res) => {
+  const contatos = lerContatos();
+  const c = contatos.find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ erro: 'Contato não encontrado.' });
+  c.estagio = 'perdido'; c.motivoPerda = String((req.body && req.body.motivo) || ''); c.atualizadoEm = new Date().toISOString();
+  salvarContatos(contatos);
+  addAtividade(c.id, 'mudanca-estagio', 'Perdido' + (c.motivoPerda ? ` (${c.motivoPerda})` : ''), '', req.viaChave ? 'sistema' : req.user.nome);
+  res.json({ ok: true, contato: c });
+});
+
+// Migração única: leads.jsonl (formato antigo) -> contatos (dedupe). Admin ou PUBLISH_KEY.
+app.post('/staff/api/crm/migrar-leads', requirePublishOrSession, (req, res) => {
+  if (!req.viaChave && (!req.user || req.user.papel !== 'admin')) return res.status(403).json({ erro: 'Apenas admin.' });
+  const f = path.join(DATA_DIR, 'leads.jsonl');
+  if (!fs.existsSync(f)) return res.json({ ok: true, importados: 0, total: 0 });
+  const linhas = fs.readFileSync(f, 'utf8').trim().split('\n').filter(Boolean);
+  let importados = 0;
+  for (const l of linhas) {
+    let o; try { o = JSON.parse(l); } catch { continue; }
+    const { novo } = upsertContato({
+      nome: o.nome, contato: o.contato, mensagem: o.mensagem,
+      origem: o.origem || 'site', criadoEm: o._recebido,
+    });
+    if (novo) importados++;
+  }
+  res.json({ ok: true, importados, total: linhas.length });
 });
 
 // ===================== dados operacionais (por área, via sessão) =====================
