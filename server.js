@@ -368,6 +368,10 @@ function requirePublishOrSession(req, res, next) {
   return requireAuth(req, res, next);
 }
 
+// Nunca cachear respostas da API do portal — o navegador pode guardar GETs sem
+// Cache-Control e mostrar conteúdo antigo (ex.: texto desatualizado de um relatório).
+app.use('/staff/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+
 // =========================== sessão ===========================
 app.post('/staff/api/login', (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip';
