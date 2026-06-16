@@ -531,8 +531,9 @@ app.post('/staff/api/login', (req, res) => {
   const u = usuarios.find(x => x.id === user.id);
   u.ultimoLogin = new Date().toISOString();
   salvarUsuarios(usuarios);
-  const token = jwt.sign({ uid: user.id }, JWT_SECRET, { expiresIn: '8h' });
-  res.cookie('staff_token', token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 8 * 3600 * 1000, path: '/staff' });
+  // Sessao longa (30 dias) para nao precisar redigitar a cada uso; cookie persistente no dispositivo.
+  const token = jwt.sign({ uid: user.id }, JWT_SECRET, { expiresIn: '30d' });
+  res.cookie('staff_token', token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/staff' });
   res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
 });
 
@@ -753,6 +754,39 @@ app.get('/staff/api/crm/contatos/:id', requirePublishOrSession, podeCRM, (req, r
   const c = lerContatos().find(x => x.id === req.params.id);
   if (!c) return res.status(404).json({ erro: 'Contato não encontrado.' });
   res.json({ contato: c, atividades: lerAtividades(c.id) });
+});
+
+// Histórico do cliente na Stays (Fase 4): reservas e gasto, para contatos vinculados (staysClientId).
+// O objeto do cliente da Stays já traz `reservations` completas — sem chamadas extras por reserva.
+let _crmListingMap = { quando: 0, mapa: {} };
+async function getListingMap() {
+  if (Date.now() - _crmListingMap.quando < 6 * 3600 * 1000 && Object.keys(_crmListingMap.mapa).length) return _crmListingMap.mapa;
+  try {
+    const listings = await stays('/content/listings', { limit: 20 });
+    const mapa = {};
+    for (const l of listings) mapa[l._id] = { codigo: l.id, titulo: (l._mstitle && l._mstitle.pt_BR) || l.id };
+    _crmListingMap = { quando: Date.now(), mapa };
+  } catch (e) { console.error('[crm stays] listingMap:', e.message); }
+  return _crmListingMap.mapa;
+}
+app.get('/staff/api/crm/contatos/:id/stays', requirePublishOrSession, podeCRM, async (req, res) => {
+  const c = lerContatos().find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ erro: 'Contato não encontrado.' });
+  if (!c.staysClientId) return res.json({ vinculado: false });
+  try {
+    const cli = await stays(`/booking/clients/${c.staysClientId}`);
+    const mapa = await getListingMap();
+    const reservas = (Array.isArray(cli.reservations) ? cli.reservations : []).map(r => ({
+      id: r.id, type: r.type, checkin: r.checkInDate, checkout: r.checkOutDate,
+      imovel: (mapa[r._idlisting] && mapa[r._idlisting].codigo) || '',
+      imovelTitulo: (mapa[r._idlisting] && mapa[r._idlisting].titulo) || '',
+      valor: (r.price && r.price._f_total) || 0,
+      hospedes: r.guests || (r.guestsDetails && r.guestsDetails.adults) || null,
+    })).sort((a, b) => String(b.checkin).localeCompare(String(a.checkin)));
+    const efetivas = reservas.filter(r => ['booked', 'reserved', 'contract'].includes(r.type));
+    const totalGasto = efetivas.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+    res.json({ vinculado: true, totalReservas: efetivas.length, totalGasto, reservas });
+  } catch (e) { console.error('[crm stays]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
 });
 
 // Atualizar contato (estágio, próxima ação, valor, imóvel, período, preferências, nome, e-mail)

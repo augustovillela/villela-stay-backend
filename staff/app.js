@@ -601,8 +601,15 @@ function crmFormContato() {
 $('#form-login').onsubmit = async (ev) => {
   ev.preventDefault();
   const erro = $('#login-erro'); erro.textContent = '';
-  try { const r = await api('POST', '/login', { email: $('#login-email').value, senha: $('#login-senha').value }); aposLogin(r); }
-  catch (e) { erro.textContent = e.message; }
+  const email = $('#login-email').value, senha = $('#login-senha').value;
+  try {
+    const r = await api('POST', '/login', { email, senha });
+    // pede ao navegador para salvar a senha (Chrome/Edge); Safari/iOS oferecem pelo proprio formulario
+    if (window.PasswordCredential) {
+      try { await navigator.credentials.store(new PasswordCredential({ id: email, password: senha, name: email })); } catch (_) {}
+    }
+    aposLogin(r);
+  } catch (e) { erro.textContent = e.message; }
 };
 $('#form-trocar').onsubmit = async (ev) => {
   ev.preventDefault();
