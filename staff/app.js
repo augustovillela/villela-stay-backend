@@ -17,31 +17,49 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&
 const nomeArea = (id) => { const a = ESTADO.catalogo.find(x => x.id === id); return a ? a.nome : id; };
 const dataBr = (iso) => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
 
-// markdown simples → html (títulos, negrito, itálico, código, listas, tabelas, links)
+// markdown simples → html (títulos, negrito, itálico, código, listas, tabelas, citações, links).
+// Junta linhas "quebradas" do mesmo parágrafo antes de aplicar negrito/itálico — assim **negrito
+// que atravessa quebra de linha** funciona (era o que deixava ** literais aparecendo).
 function mdParaHtml(md) {
   const linhas = String(md).replace(/\r/g, '').split('\n');
   const inline = (s) => esc(s)
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
+    .replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+?)\*/g, '$1<em>$2</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>');
+  const branco = (l) => /^\s*$/.test(l);
+  const head = (l) => /^#{1,6}\s/.test(l);
+  const tab = (l) => /^\s*\|.*\|\s*$/.test(l);
+  const lista = (l) => /^\s*[-*]\s+/.test(l);
+  const quote = (l) => /^\s*>\s?/.test(l);
+  const novoBloco = (l) => branco(l) || head(l) || tab(l) || lista(l) || quote(l);
   let out = '', i = 0;
-  const ehTabela = (l) => /^\s*\|.*\|\s*$/.test(l);
   while (i < linhas.length) {
     const l = linhas[i];
-    if (/^\s*$/.test(l)) { i++; continue; }
+    if (branco(l)) { i++; continue; }
     let m;
     if ((m = l.match(/^(#{1,6})\s+(.*)$/))) { const n = Math.min(m[1].length, 3); out += `<h${n}>${inline(m[2])}</h${n}>`; i++; continue; }
-    if (ehTabela(l) && i + 1 < linhas.length && /^\s*\|[-:\s|]+\|\s*$/.test(linhas[i + 1])) {
+    if (tab(l) && i + 1 < linhas.length && /^\s*\|[-:\s|]+\|\s*$/.test(linhas[i + 1])) {
       const cels = (linha) => linha.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
       const cab = cels(l); i += 2; let corpo = '';
-      while (i < linhas.length && ehTabela(linhas[i])) { corpo += '<tr>' + cels(linhas[i]).map(c => `<td>${inline(c)}</td>`).join('') + '</tr>'; i++; }
+      while (i < linhas.length && tab(linhas[i])) { corpo += '<tr>' + cels(linhas[i]).map(c => `<td>${inline(c)}</td>`).join('') + '</tr>'; i++; }
       out += `<table><thead><tr>${cab.map(c => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${corpo}</tbody></table>`;
       continue;
     }
-    if (/^\s*[-*]\s+/.test(l)) { let li = ''; while (i < linhas.length && /^\s*[-*]\s+/.test(linhas[i])) { li += `<li>${inline(linhas[i].replace(/^\s*[-*]\s+/, ''))}</li>`; i++; } out += `<ul>${li}</ul>`; continue; }
-    let p = ''; while (i < linhas.length && !/^\s*$/.test(linhas[i]) && !/^(#{1,6})\s/.test(linhas[i]) && !ehTabela(linhas[i]) && !/^\s*[-*]\s+/.test(linhas[i])) { p += (p ? '<br>' : '') + inline(linhas[i]); i++; }
-    if (p) out += `<p>${p}</p>`;
+    if (quote(l)) { const buf = []; while (i < linhas.length && quote(linhas[i])) { buf.push(linhas[i].replace(/^\s*>\s?/, '')); i++; } out += `<blockquote>${inline(buf.join(' '))}</blockquote>`; continue; }
+    if (lista(l)) {
+      const it = [];
+      while (i < linhas.length && !branco(linhas[i]) && !head(linhas[i]) && !tab(linhas[i]) && !quote(linhas[i])) {
+        if (lista(linhas[i])) it.push(linhas[i].replace(/^\s*[-*]\s+/, ''));
+        else if (it.length) it[it.length - 1] += ' ' + linhas[i].trim();
+        else it.push(linhas[i].trim());
+        i++;
+      }
+      out += `<ul>${it.map(t => `<li>${inline(t)}</li>`).join('')}</ul>`;
+      continue;
+    }
+    const buf = []; while (i < linhas.length && !novoBloco(linhas[i])) { buf.push(linhas[i]); i++; }
+    out += `<p>${inline(buf.join(' '))}</p>`;
   }
   return out;
 }
