@@ -2,12 +2,29 @@ services:
   - type: web
     name: villela-stay-backend
     runtime: node
-    plan: free
+    plan: starter   # plano pago: necessario para disco persistente
     buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /health
+    # Disco persistente: guarda usuarios do Portal Staff, relatorios publicados,
+    # leads, eventos e analytics — sobrevive a cada deploy.
+    disk:
+      name: villela-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: STAYS_CLIENT_ID
         sync: false
       - key: STAYS_SECRET
+        sync: false
+      # Portal Staff (definir valores no painel do Render — repositorio publico, nada de segredo aqui):
+      - key: DATA_DIR
+        value: /var/data
+      - key: JWT_SECRET           # segredo de assinatura das sessoes
+        sync: false
+      - key: ADMIN_EMAIL          # admin inicial (augusto.villela@gmail.com)
+        sync: false
+      - key: ADMIN_INITIAL_PASSWORD  # senha inicial do admin (trocar no 1o acesso)
+        sync: false
+      - key: PUBLISH_KEY          # chave usada pelos agentes para publicar entregas
         sync: false

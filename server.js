@@ -11,6 +11,10 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 
 // Credenciais via variáveis de ambiente — NUNCA no código.
 const STAYS_BASE = process.env.STAYS_BASE || 'https://ville.stays.com.br/external/v1';
@@ -23,11 +27,14 @@ if (!STAYS_ID || !STAYS_SECRET) {
 }
 
 const AUTH = 'Basic ' + Buffer.from(`${STAYS_ID}:${STAYS_SECRET}`).toString('base64');
-const DATA_DIR = path.join(__dirname, 'data');
+// DATA_DIR aponta para o disco persistente do Render (/var/data) quando definido;
+// localmente cai em ./data. Isso mantém usuários e relatórios mesmo após cada deploy.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '15mb' })); // 15mb p/ aceitar PDFs em base64 no upload de relatórios
+app.use(cookieParser());
 
 // CORS restrito ao site público
 app.use((req, res, next) => {
@@ -248,6 +255,346 @@ function leitorJsonl(arquivo) {
 app.get('/api/precheckins', leitorJsonl('precheckins.jsonl'));
 app.get('/api/chamados', leitorJsonl('chamados.jsonl'));
 app.get('/api/leads-recebidos', leitorJsonl('leads.jsonl'));
+
+// =====================================================================
+// PORTAL STAFF — área administrativa logada (/staff)
+// Acesso só com login. Augusto = admin; cria os demais usuários e define,
+// por usuário, quais ÁREAS (agentes) ele enxerga. Tudo servido pelo backend
+// (site estático é sempre público — não dá para proteger conteúdo lá).
+// Segredos: só por variável de ambiente (este repositório é público).
+// =====================================================================
+
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+if (!process.env.JWT_SECRET) {
+  console.warn('[staff] JWT_SECRET não definido — usando segredo temporário (sessões caem a cada reinício). Defina JWT_SECRET no Render.');
+}
+const COOKIE_SECURE = process.env.NODE_ENV !== 'development'; // Secure em produção (https)
+
+// Catálogo de áreas = um por agente da operação. O admin enxerga tudo ('*').
+const AREAS = [
+  { id: 'ceo', nome: 'CEO / Executivo' },
+  { id: 'financeiro', nome: 'Financeiro' },
+  { id: 'revenue', nome: 'Revenue Management' },
+  { id: 'vendas', nome: 'Vendas' },
+  { id: 'marketing', nome: 'Marketing' },
+  { id: 'concierge', nome: 'Concierge / Hóspedes' },
+  { id: 'operacoes', nome: 'Operações / Limpeza' },
+  { id: 'manutencao', nome: 'Manutenção' },
+  { id: 'compras', nome: 'Compras' },
+  { id: 'obras', nome: 'Obras & Decoração' },
+  { id: 'juridico', nome: 'Jurídico' },
+  { id: 'contador', nome: 'Contábil / Fiscal' },
+  { id: 'ti', nome: 'TI / Site' },
+];
+const AREA_IDS = new Set(AREAS.map(a => a.id));
+
+// ---- armazenamento simples em arquivo JSON (no disco persistente) ----
+function lerJSON(arquivo, padrao) {
+  try {
+    const f = path.join(DATA_DIR, arquivo);
+    if (!fs.existsSync(f)) return padrao;
+    return JSON.parse(fs.readFileSync(f, 'utf8'));
+  } catch (e) { console.error('[staff] erro lendo', arquivo, e.message); return padrao; }
+}
+function salvarJSON(arquivo, obj) {
+  fs.writeFileSync(path.join(DATA_DIR, arquivo), JSON.stringify(obj, null, 2));
+}
+const lerUsuarios = () => lerJSON('usuarios.json', []);
+const salvarUsuarios = (u) => salvarJSON('usuarios.json', u);
+const lerRelatorios = () => lerJSON('relatorios.json', []);
+const salvarRelatorios = (r) => salvarJSON('relatorios.json', r);
+const ARQ_DIR = path.join(DATA_DIR, 'relatorios-arquivos');
+fs.mkdirSync(ARQ_DIR, { recursive: true });
+
+function novoId() { return crypto.randomBytes(9).toString('base64url'); }
+function semSenha(u) { const { senhaHash, ...resto } = u; return resto; }
+function podeArea(user, area) { return user.papel === 'admin' || (user.areas || []).includes('*') || (user.areas || []).includes(area); }
+function areasDoUsuario(user) { return user.papel === 'admin' || (user.areas || []).includes('*') ? AREAS.map(a => a.id) : (user.areas || []); }
+
+// ---- seed do admin no boot ----
+(function seedAdmin() {
+  const usuarios = lerUsuarios();
+  if (usuarios.length > 0) return;
+  const email = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const senha = process.env.ADMIN_INITIAL_PASSWORD || '';
+  if (!email || !senha) {
+    console.warn('[staff] sem usuários e sem ADMIN_EMAIL/ADMIN_INITIAL_PASSWORD — defina-os no Render para criar o admin inicial.');
+    return;
+  }
+  usuarios.push({
+    id: novoId(), nome: 'Augusto Villela', email,
+    senhaHash: bcrypt.hashSync(senha, 10),
+    papel: 'admin', areas: ['*'], ativo: true,
+    precisaTrocarSenha: true, criadoEm: new Date().toISOString(), ultimoLogin: null,
+  });
+  salvarUsuarios(usuarios);
+  console.log('[staff] admin inicial criado:', email);
+})();
+
+// ---- throttle simples de login (anti força-bruta), em memória ----
+const tentativas = new Map(); // ip -> { n, ate }
+function loginBloqueado(ip) {
+  const t = tentativas.get(ip);
+  return t && t.ate > Date.now();
+}
+function registraFalha(ip) {
+  const t = tentativas.get(ip) || { n: 0, ate: 0 };
+  t.n++;
+  if (t.n >= 5) { t.ate = Date.now() + 15 * 60 * 1000; t.n = 0; } // 15 min após 5 erros
+  tentativas.set(ip, t);
+}
+function limpaFalhas(ip) { tentativas.delete(ip); }
+
+// ---- middlewares de autenticação ----
+function requireAuth(req, res, next) {
+  try {
+    const tok = req.cookies && req.cookies.staff_token;
+    if (!tok) return res.status(401).json({ erro: 'não autenticado' });
+    const { uid } = jwt.verify(tok, JWT_SECRET);
+    const user = lerUsuarios().find(u => u.id === uid);
+    if (!user || !user.ativo) return res.status(401).json({ erro: 'sessão inválida' });
+    req.user = user;
+    next();
+  } catch (e) { return res.status(401).json({ erro: 'sessão inválida' }); }
+}
+function requireAdmin(req, res, next) {
+  if (req.user && req.user.papel === 'admin') return next();
+  return res.status(403).json({ erro: 'apenas administrador' });
+}
+// Publicação por agentes: aceita a PUBLISH_KEY (scripts locais) OU uma sessão válida.
+function requirePublishOrSession(req, res, next) {
+  const key = req.headers['x-publish-key'];
+  if (process.env.PUBLISH_KEY && key && key === process.env.PUBLISH_KEY) { req.viaChave = true; return next(); }
+  return requireAuth(req, res, next);
+}
+
+// =========================== sessão ===========================
+app.post('/staff/api/login', (req, res) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip';
+  if (loginBloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+  const senha = String((req.body && req.body.senha) || '');
+  const user = lerUsuarios().find(u => u.email === email && u.ativo);
+  if (!user || !bcrypt.compareSync(senha, user.senhaHash)) {
+    registraFalha(ip);
+    return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
+  }
+  limpaFalhas(ip);
+  const usuarios = lerUsuarios();
+  const u = usuarios.find(x => x.id === user.id);
+  u.ultimoLogin = new Date().toISOString();
+  salvarUsuarios(usuarios);
+  const token = jwt.sign({ uid: user.id }, JWT_SECRET, { expiresIn: '8h' });
+  res.cookie('staff_token', token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 8 * 3600 * 1000, path: '/staff' });
+  res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
+});
+
+app.post('/staff/api/logout', (req, res) => {
+  res.clearCookie('staff_token', { path: '/staff' });
+  res.json({ ok: true });
+});
+
+app.get('/staff/api/me', requireAuth, (req, res) => {
+  res.json({ usuario: semSenha(req.user), areas: areasDoUsuario(req.user), catalogoAreas: AREAS });
+});
+
+app.post('/staff/api/conta/senha', requireAuth, (req, res) => {
+  const atual = String((req.body && req.body.atual) || '');
+  const nova = String((req.body && req.body.nova) || '');
+  if (nova.length < 8) return res.status(400).json({ erro: 'A nova senha deve ter ao menos 8 caracteres.' });
+  if (!bcrypt.compareSync(atual, req.user.senhaHash)) return res.status(400).json({ erro: 'Senha atual incorreta.' });
+  const usuarios = lerUsuarios();
+  const u = usuarios.find(x => x.id === req.user.id);
+  u.senhaHash = bcrypt.hashSync(nova, 10);
+  u.precisaTrocarSenha = false;
+  salvarUsuarios(usuarios);
+  res.json({ ok: true });
+});
+
+// ===================== usuários (admin) =====================
+app.get('/staff/api/usuarios', requireAuth, requireAdmin, (req, res) => {
+  res.json({ usuarios: lerUsuarios().map(semSenha), catalogoAreas: AREAS });
+});
+
+app.post('/staff/api/usuarios', requireAuth, requireAdmin, (req, res) => {
+  const d = req.body || {};
+  const email = String(d.email || '').trim().toLowerCase();
+  const senha = String(d.senha || '');
+  const nome = String(d.nome || '').trim();
+  if (!nome || !email || !/.+@.+\..+/.test(email)) return res.status(400).json({ erro: 'Nome e e-mail válidos são obrigatórios.' });
+  if (senha.length < 8) return res.status(400).json({ erro: 'Senha inicial com ao menos 8 caracteres.' });
+  const usuarios = lerUsuarios();
+  if (usuarios.some(u => u.email === email)) return res.status(409).json({ erro: 'Já existe usuário com esse e-mail.' });
+  const papel = d.papel === 'admin' ? 'admin' : 'staff';
+  const areas = papel === 'admin' ? ['*'] : (Array.isArray(d.areas) ? d.areas.filter(a => AREA_IDS.has(a)) : []);
+  const novo = {
+    id: novoId(), nome, email, senhaHash: bcrypt.hashSync(senha, 10),
+    papel, areas, ativo: true, precisaTrocarSenha: true,
+    criadoEm: new Date().toISOString(), ultimoLogin: null,
+  };
+  usuarios.push(novo);
+  salvarUsuarios(usuarios);
+  res.json({ ok: true, usuario: semSenha(novo) });
+});
+
+app.patch('/staff/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => {
+  const usuarios = lerUsuarios();
+  const u = usuarios.find(x => x.id === req.params.id);
+  if (!u) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+  const d = req.body || {};
+  if (typeof d.nome === 'string' && d.nome.trim()) u.nome = d.nome.trim();
+  if (d.papel === 'admin' || d.papel === 'staff') { u.papel = d.papel; if (d.papel === 'admin') u.areas = ['*']; }
+  if (Array.isArray(d.areas) && u.papel !== 'admin') u.areas = d.areas.filter(a => AREA_IDS.has(a));
+  if (typeof d.ativo === 'boolean') {
+    // não permitir desativar o último admin ativo
+    if (!d.ativo && u.papel === 'admin' && usuarios.filter(x => x.papel === 'admin' && x.ativo).length <= 1)
+      return res.status(400).json({ erro: 'Não é possível desativar o único administrador.' });
+    u.ativo = d.ativo;
+  }
+  if (typeof d.novaSenha === 'string' && d.novaSenha) {
+    if (d.novaSenha.length < 8) return res.status(400).json({ erro: 'Senha com ao menos 8 caracteres.' });
+    u.senhaHash = bcrypt.hashSync(d.novaSenha, 10);
+    u.precisaTrocarSenha = true;
+  }
+  salvarUsuarios(usuarios);
+  res.json({ ok: true, usuario: semSenha(u) });
+});
+
+app.delete('/staff/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => {
+  const usuarios = lerUsuarios();
+  const u = usuarios.find(x => x.id === req.params.id);
+  if (!u) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+  if (u.id === req.user.id) return res.status(400).json({ erro: 'Você não pode remover a si mesmo.' });
+  if (u.papel === 'admin' && usuarios.filter(x => x.papel === 'admin' && x.ativo).length <= 1)
+    return res.status(400).json({ erro: 'Não é possível remover o único administrador.' });
+  salvarUsuarios(usuarios.filter(x => x.id !== u.id));
+  res.json({ ok: true });
+});
+
+// ===================== relatórios / entregas =====================
+// Publicar (sessão com a área, ou script local com x-publish-key)
+app.post('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const area = String(d.area || '').trim();
+  if (!AREA_IDS.has(area)) return res.status(400).json({ erro: 'Área inválida.' });
+  if (!req.viaChave && !podeArea(req.user, area)) return res.status(403).json({ erro: 'Sem acesso a essa área.' });
+  const titulo = String(d.titulo || '').trim();
+  if (!titulo) return res.status(400).json({ erro: 'Título é obrigatório.' });
+  const tipo = ['relatorio', 'produto', 'servico'].includes(d.tipo) ? d.tipo : 'relatorio';
+
+  const rel = {
+    id: novoId(), area, tipo, titulo,
+    resumo: String(d.resumo || '').slice(0, 1000),
+    periodo: String(d.periodo || '').slice(0, 50),
+    autor: req.viaChave ? (String(d.autor || 'agente').slice(0, 60)) : req.user.nome,
+    publicadoEm: new Date().toISOString(),
+    formato: 'texto',
+  };
+
+  if (d.url) {
+    rel.formato = 'url'; rel.url = String(d.url).slice(0, 1000);
+  } else if (d.arquivoBase64 && d.nomeArquivo) {
+    const ext = path.extname(String(d.nomeArquivo)).slice(0, 10).replace(/[^.\w]/g, '') || '.bin';
+    const nome = rel.id + ext;
+    try {
+      fs.writeFileSync(path.join(ARQ_DIR, nome), Buffer.from(d.arquivoBase64, 'base64'));
+    } catch (e) { return res.status(400).json({ erro: 'Arquivo inválido.' }); }
+    rel.formato = 'arquivo'; rel.arquivo = nome; rel.nomeArquivo = String(d.nomeArquivo).slice(0, 200);
+  } else {
+    rel.formato = 'texto'; rel.texto = String(d.texto || '');
+    if (!rel.texto.trim()) return res.status(400).json({ erro: 'Informe texto, url ou arquivo.' });
+  }
+
+  const relatorios = lerRelatorios();
+  relatorios.unshift(rel);
+  salvarRelatorios(relatorios);
+  res.json({ ok: true, relatorio: { ...rel, texto: undefined } });
+});
+
+// Listar (filtra pelas áreas do usuário)
+app.get('/staff/api/relatorios', requireAuth, (req, res) => {
+  const minhas = areasDoUsuario(req.user);
+  const lista = lerRelatorios()
+    .filter(r => minhas.includes(r.area))
+    .filter(r => !req.query.area || r.area === req.query.area)
+    .map(({ texto, ...meta }) => meta); // não manda o corpo na listagem
+  res.json({ relatorios: lista });
+});
+
+// Detalhe (texto/url) — para arquivo use /arquivo
+app.get('/staff/api/relatorios/:id', requireAuth, (req, res) => {
+  const rel = lerRelatorios().find(r => r.id === req.params.id);
+  if (!rel) return res.status(404).json({ erro: 'Não encontrado.' });
+  if (!podeArea(req.user, rel.area)) return res.status(403).json({ erro: 'Sem acesso.' });
+  res.json({ relatorio: rel });
+});
+
+// Baixar/abrir o arquivo de um relatório
+app.get('/staff/api/relatorios/:id/arquivo', requireAuth, (req, res) => {
+  const rel = lerRelatorios().find(r => r.id === req.params.id);
+  if (!rel || rel.formato !== 'arquivo') return res.sendStatus(404);
+  if (!podeArea(req.user, rel.area)) return res.sendStatus(403);
+  const f = path.join(ARQ_DIR, rel.arquivo);
+  if (!fs.existsSync(f)) return res.sendStatus(404);
+  res.setHeader('Content-Disposition', `inline; filename="${(rel.nomeArquivo || rel.arquivo).replace(/[^ -~]/g, '_')}"`);
+  res.sendFile(f);
+});
+
+app.delete('/staff/api/relatorios/:id', requireAuth, (req, res) => {
+  const relatorios = lerRelatorios();
+  const rel = relatorios.find(r => r.id === req.params.id);
+  if (!rel) return res.status(404).json({ erro: 'Não encontrado.' });
+  if (req.user.papel !== 'admin' && !podeArea(req.user, rel.area)) return res.status(403).json({ erro: 'Sem acesso.' });
+  if (rel.formato === 'arquivo') { try { fs.unlinkSync(path.join(ARQ_DIR, rel.arquivo)); } catch {} }
+  salvarRelatorios(relatorios.filter(r => r.id !== rel.id));
+  res.json({ ok: true });
+});
+
+// ===================== dados operacionais (por área, via sessão) =====================
+const PAINEIS = {
+  leads:       { arquivo: 'leads.jsonl',       areas: ['vendas', 'marketing'] },
+  precheckins: { arquivo: 'precheckins.jsonl', areas: ['concierge', 'operacoes'] },
+  chamados:    { arquivo: 'chamados.jsonl',    areas: ['concierge', 'manutencao', 'operacoes'] },
+  eventos:     { arquivo: 'eventos.jsonl',     areas: ['ti', 'ceo'] },
+};
+function leUltimasLinhas(arquivo, n) {
+  const f = path.join(DATA_DIR, arquivo);
+  if (!fs.existsSync(f)) return [];
+  return fs.readFileSync(f, 'utf8').trim().split('\n').filter(Boolean).slice(-n)
+    .map(l => { try { return JSON.parse(l); } catch { return { bruto: l }; } }).reverse();
+}
+app.get('/staff/api/dados/:painel', requireAuth, (req, res) => {
+  const cfg = PAINEIS[req.params.painel];
+  if (!cfg) return res.status(404).json({ erro: 'Painel inexistente.' });
+  if (!cfg.areas.some(a => podeArea(req.user, a))) return res.status(403).json({ erro: 'Sem acesso a este painel.' });
+  res.json({ itens: leUltimasLinhas(cfg.arquivo, 100) });
+});
+// Estatísticas de visita (marketing/ti/ceo)
+app.get('/staff/api/estatisticas-portal', requireAuth, (req, res) => {
+  if (!['marketing', 'ti', 'ceo'].some(a => podeArea(req.user, a))) return res.status(403).json({ erro: 'Sem acesso.' });
+  const f = path.join(DATA_DIR, 'hits.jsonl');
+  if (!fs.existsSync(f)) return res.json({ totalVisitas: 0, porPagina: {}, porDia: {} });
+  const linhas = fs.readFileSync(f, 'utf8').trim().split('\n').filter(Boolean);
+  const porPagina = {}, porDia = {};
+  for (const l of linhas) { try { const h = JSON.parse(l); porPagina[h.pagina] = (porPagina[h.pagina] || 0) + 1; const dia = (h._recebido || '').slice(0, 10); porDia[dia] = (porDia[dia] || 0) + 1; } catch {} }
+  res.json({ totalVisitas: linhas.length, porPagina, porDia });
+});
+// Resumo para a tela inicial
+app.get('/staff/api/visao-geral', requireAuth, (req, res) => {
+  const minhas = areasDoUsuario(req.user);
+  const relatorios = lerRelatorios().filter(r => minhas.includes(r.area));
+  const porArea = {};
+  for (const r of relatorios) porArea[r.area] = (porArea[r.area] || 0) + 1;
+  const ultimos = relatorios.slice(0, 6).map(({ texto, ...m }) => m);
+  res.json({
+    totalRelatorios: relatorios.length, porArea, ultimos,
+    areas: minhas, catalogoAreas: AREAS,
+    painelDisponivel: Object.fromEntries(Object.entries(PAINEIS).map(([k, v]) => [k, v.areas.some(a => podeArea(req.user, a))])),
+  });
+});
+
+// Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
+app.use('/staff', express.static(path.join(__dirname, 'staff')));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Backend Villela Stay rodando na porta ${PORT}`));

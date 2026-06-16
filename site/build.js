@@ -82,6 +82,7 @@ ${extraHead}
     <a href="/guia.html">Guia do Hóspede</a>
     <a href="/nossa-historia.html">Nossa História</a>
     <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
+    <a href="${BACKEND}/staff" class="link-staff" title="Área restrita da equipe">🔒 Staff</a>
   </nav>
 </header>
 ${corpo}

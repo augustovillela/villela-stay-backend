@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Portal Staff — Villela Stay</title>
+  <link rel="stylesheet" href="/staff/styles.css">
+</head>
+<body>
+
+  <!-- ===================== LOGIN ===================== -->
+  <main id="tela-login" class="login hidden">
+    <form id="form-login" class="login-card" autocomplete="on">
+      <div class="marca">Villela Stay</div>
+      <p class="login-sub">Portal Staff — acesso restrito</p>
+      <label>E-mail
+        <input type="email" id="login-email" required autocomplete="username">
+      </label>
+      <label>Senha
+        <input type="password" id="login-senha" required autocomplete="current-password">
+      </label>
+      <button type="submit" class="btn">Entrar</button>
+      <p id="login-erro" class="erro"></p>
+    </form>
+  </main>
+
+  <!-- ===================== TROCAR SENHA (1º acesso) ===================== -->
+  <main id="tela-trocar" class="login hidden">
+    <form id="form-trocar" class="login-card">
+      <div class="marca">Villela Stay</div>
+      <p class="login-sub">Defina uma nova senha para continuar</p>
+      <label>Senha atual
+        <input type="password" id="tr-atual" required autocomplete="current-password">
+      </label>
+      <label>Nova senha (mín. 8 caracteres)
+        <input type="password" id="tr-nova" required minlength="8" autocomplete="new-password">
+      </label>
+      <label>Confirme a nova senha
+        <input type="password" id="tr-conf" required minlength="8" autocomplete="new-password">
+      </label>
+      <button type="submit" class="btn">Salvar nova senha</button>
+      <p id="tr-erro" class="erro"></p>
+    </form>
+  </main>
+
+  <!-- ===================== APP ===================== -->
+  <div id="app" class="hidden">
+    <header class="topo">
+      <div class="marca">Villela Stay <span class="tag">Staff</span></div>
+      <div class="topo-dir">
+        <span id="quem"></span>
+        <button id="btn-sair" class="link-sair">Sair</button>
+      </div>
+    </header>
+    <div class="corpo">
+      <nav id="menu" class="menu"></nav>
+      <main id="conteudo" class="conteudo"></main>
+    </div>
+  </div>
+
+  <script src="/staff/app.js"></script>
+</body>
+</html>
