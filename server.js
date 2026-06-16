@@ -34,6 +34,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const app = express();
 app.use(express.json({ limit: '15mb' })); // 15mb p/ aceitar PDFs em base64 no upload de relatórios
+app.use(express.urlencoded({ extended: true, limit: '1mb' })); // form-urlencoded (ex.: ingestão do Make → CRM)
 app.use(cookieParser());
 
 // CORS restrito ao site público
