@@ -16,7 +16,7 @@ const SITE_URL = 'https://villela-stay-site.onrender.com';
 const PWA = {
   themeColor: '#5a3e2b',       // marrom da marca (barra do app)
   backgroundColor: '#fbf6ee',  // creme claro (splash screen)
-  cacheVersion: 'vstay-v1'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v2'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 
