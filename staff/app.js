@@ -87,6 +87,20 @@ function mostrarLogin() {
   $('#app').classList.add('hidden');
   $('#tela-trocar').classList.add('hidden');
   $('#tela-login').classList.remove('hidden');
+  // Login por formulario nativo: falha volta com ?login_erro na URL. Mostra o aviso e limpa a URL.
+  try {
+    const p = new URLSearchParams(location.search);
+    const cod = p.get('login_erro');
+    if (cod) {
+      const erro = $('#login-erro');
+      if (erro) erro.textContent = cod === '2'
+        ? 'Muitas tentativas. Tente de novo em 15 minutos.'
+        : 'E-mail ou senha incorretos.';
+      p.delete('login_erro');
+      const qs = p.toString();
+      history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+    }
+  } catch (_) {}
 }
 
 function aposLogin(r) {
@@ -642,19 +656,10 @@ function crmFormContato() {
 }
 
 // --------- eventos globais ---------
-$('#form-login').onsubmit = async (ev) => {
-  ev.preventDefault();
-  const erro = $('#login-erro'); erro.textContent = '';
-  const email = $('#login-email').value, senha = $('#login-senha').value;
-  try {
-    const r = await api('POST', '/login', { email, senha });
-    // pede ao navegador para salvar a senha (Chrome/Edge); Safari/iOS oferecem pelo proprio formulario
-    if (window.PasswordCredential) {
-      try { await navigator.credentials.store(new PasswordCredential({ id: email, password: senha, name: email })); } catch (_) {}
-    }
-    aposLogin(r);
-  } catch (e) { erro.textContent = e.message; }
-};
+// O #form-login NAO usa fetch/preventDefault: faz POST NATIVO para /staff/api/login
+// (method/action no HTML). Isso faz o gerenciador de senhas do navegador (Edge/Chrome)
+// oferecer salvar e autopreencher. Em sucesso o servidor responde 303 -> /staff/, e o
+// boot abaixo (init -> /me) abre o app. Em falha volta para /staff/?login_erro=1.
 $('#form-trocar').onsubmit = async (ev) => {
   ev.preventDefault();
   const erro = $('#tr-erro'); erro.textContent = '';

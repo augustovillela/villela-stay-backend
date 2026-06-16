@@ -517,14 +517,24 @@ app.use('/staff/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-s
 
 // =========================== sessão ===========================
 app.post('/staff/api/login', (req, res) => {
+  // Submissao por FORMULARIO NATIVO (POST + redirect) faz o gerenciador de senhas do
+  // navegador (Edge/Chrome) oferecer salvar e autopreencher — o fetch/AJAX nao dispara
+  // o prompt de forma confiavel. Detecta o modo pela negociacao de conteudo: pedido JSON
+  // (fetch antigo) -> mantem a resposta JSON; pedido de pagina (form nativo) -> redirect 303.
+  const querJson = req.is('application/json') || req.accepts(['html', 'json']) === 'json';
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip';
-  if (loginBloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+  if (loginBloqueado(ip)) {
+    if (querJson) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+    return res.redirect(303, '/staff/?login_erro=2');
+  }
   const email = String((req.body && req.body.email) || '').trim().toLowerCase();
-  const senha = String((req.body && req.body.senha) || '');
+  // Form nativo envia "password" (name do input); fetch antigo envia "senha". Aceita os dois.
+  const senha = String((req.body && (req.body.senha != null ? req.body.senha : req.body.password)) || '');
   const user = lerUsuarios().find(u => u.email === email && u.ativo);
   if (!user || !bcrypt.compareSync(senha, user.senhaHash)) {
     registraFalha(ip);
-    return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
+    if (querJson) return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
+    return res.redirect(303, '/staff/?login_erro=1');
   }
   limpaFalhas(ip);
   const usuarios = lerUsuarios();
@@ -534,7 +544,9 @@ app.post('/staff/api/login', (req, res) => {
   // Sessao longa (30 dias) para nao precisar redigitar a cada uso; cookie persistente no dispositivo.
   const token = jwt.sign({ uid: user.id }, JWT_SECRET, { expiresIn: '30d' });
   res.cookie('staff_token', token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/staff' });
-  res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
+  if (querJson) return res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
+  // Form nativo: redireciona para o portal; o boot chama /staff/api/me e abre o app.
+  return res.redirect(303, '/staff/');
 });
 
 app.post('/staff/api/logout', (req, res) => {
