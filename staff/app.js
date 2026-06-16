@@ -24,6 +24,8 @@ const limparMd = (s) => String(s == null ? '' : s)
   .replace(/^#+\s*/, '')
   .trim();
 const nomeArea = (id) => { const a = ESTADO.catalogo.find(x => x.id === id); return a ? a.nome : id; };
+// minúsculas + sem acento, para busca tolerante (ex.: "metricas" acha "Métricas")
+const normaliza = (s) => String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const dataBr = (iso) => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
 
 // markdown simples → html (títulos, negrito, itálico, código, listas, tabelas, citações, links).
@@ -181,17 +183,39 @@ function itemRelatorioHtml(r) {
   </div>`;
 }
 async function renderRelatorios() {
-  conteudo().innerHTML = cabecalho('Relatórios & Entregas', 'Tudo o que os agentes produziram, por área.');
+  conteudo().innerHTML = cabecalho('Relatórios & Entregas', 'Tudo o que os agentes produziram, por área. Use a busca para encontrar rápido.');
   const opcoes = ESTADO.areas.map(a => `<option value="${a}">${esc(nomeArea(a))}</option>`).join('');
-  conteudo().innerHTML += `<div class="barra"><label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Área
-    <select id="filtro-area"><option value="">Todas</option>${opcoes}</select></label></div><div id="lista-rel"></div>`;
+  conteudo().innerHTML += `<div class="barra">
+    <input id="busca" type="search" placeholder="🔎 Buscar por título, resumo, autor, período…" style="flex:1;min-width:220px" autofocus>
+    <label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Área
+      <select id="filtro-area"><option value="">Todas</option>${opcoes}</select></label>
+    <select id="filtro-tipo"><option value="">Todos os tipos</option><option value="relatorio">Relatórios</option><option value="produto">Produtos</option><option value="servico">Serviços</option></select>
+  </div><div id="lista-rel"></div>`;
+  let cache = [];
+  const aplicar = () => {
+    const q = normaliza($('#busca').value).trim();
+    const tipo = $('#filtro-tipo').value;
+    const termos = q ? q.split(/\s+/) : [];
+    const filtrados = cache.filter(r => {
+      if (tipo && r.tipo !== tipo) return false;
+      if (!termos.length) return true;
+      const alvo = normaliza([r.titulo, r.resumo, r.autor, nomeArea(r.area), r.periodo].join(' '));
+      return termos.every(t => alvo.includes(t));
+    });
+    $('#lista-rel').innerHTML = filtrados.length
+      ? `<p class="sub" style="margin:0 0 10px">${filtrados.length} resultado(s)${q ? ' para “' + esc($('#busca').value) + '”' : ''}</p><div class="lista">${filtrados.map(itemRelatorioHtml).join('')}</div>`
+      : `<div class="vazio">Nada encontrado${q ? ' para “' + esc($('#busca').value) + '”' : ''}. Tente outra palavra ou troque a área.</div>`;
+    ligarAcoesRelatorio();
+  };
   const carregar = async () => {
     const area = $('#filtro-area').value;
     const r = await api('GET', '/relatorios' + (area ? '?area=' + encodeURIComponent(area) : ''));
-    $('#lista-rel').innerHTML = r.relatorios.length ? `<div class="lista">${r.relatorios.map(itemRelatorioHtml).join('')}</div>` : `<div class="vazio">Nenhuma entrega nesta área ainda.</div>`;
-    ligarAcoesRelatorio();
+    cache = r.relatorios;
+    aplicar();
   };
   $('#filtro-area').onchange = carregar;
+  $('#filtro-tipo').onchange = aplicar;
+  $('#busca').oninput = aplicar;
   carregar();
 }
 function ligarAcoesRelatorio() {
@@ -494,6 +518,7 @@ async function crmAbrirContato(id) {
           </div>
         </div>
         <div class="ficha-col">
+          <div class="ficha-bloco"><h3>Histórico Stays</h3><div id="stays-hist" class="vazio">Carregando…</div></div>
           <div class="ficha-bloco"><h3>Linha do tempo</h3><div class="timeline">${tl}</div></div>
         </div>
       </div>`;
@@ -520,7 +545,26 @@ async function crmAbrirContato(id) {
       try { await api('DELETE', '/crm/contatos/' + id); navegar('crm'); }
       catch (e) { alert(e.message); }
     };
+    crmCarregarStays(id); // Histórico Stays (assíncrono)
   } catch (e) { alert(e.message); }
+}
+
+// Carrega o histórico do cliente na Stays (reservas + gasto) para a ficha.
+async function crmCarregarStays(id) {
+  const box = document.querySelector('#stays-hist'); if (!box) return;
+  try {
+    const d = await api('GET', '/crm/contatos/' + id + '/stays');
+    if (!d.vinculado) { box.innerHTML = 'Contato ainda não vinculado a um cliente da Stays.'; return; }
+    if (!d.reservas || !d.reservas.length) { box.innerHTML = 'Cliente da Stays sem reservas registradas.'; return; }
+    const rotuloTipo = { booked: 'Confirmada', reserved: 'Reservada', contract: 'Contrato', canceled: 'Cancelada', blocked: 'Bloqueio' };
+    const totais = `<div class="stays-totais"><span><b>${d.totalReservas}</b> reserva(s) efetiva(s)</span><span>Total: <b>${esc(moedaBr(d.totalGasto) || 'R$ 0')}</b></span></div>`;
+    const linhas = d.reservas.map(r => `<div class="stays-res">
+        <div class="stays-res-top"><b>${esc(r.imovel || r.imovelTitulo || '—')}</b><span class="chip">${esc(rotuloTipo[r.type] || r.type)}</span></div>
+        <div class="stays-res-meta">${esc(r.checkin || '?')} → ${esc(r.checkout || '?')}${r.hospedes ? ' · ' + esc(r.hospedes) + ' hósp.' : ''} · ${esc(moedaBr(r.valor) || '—')}</div>
+      </div>`).join('');
+    box.classList.remove('vazio');
+    box.innerHTML = totais + linhas;
+  } catch (e) { box.innerHTML = 'Não foi possível carregar o histórico da Stays agora.'; }
 }
 
 function crmFormContato() {
