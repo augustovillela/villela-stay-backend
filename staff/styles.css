@@ -106,10 +106,51 @@ tr:last-child td { border-bottom: none; }
 .areas-grid input { width: auto; }
 .aviso { background: #fff7e6; border: 1px solid #f0dca6; border-radius: 10px; padding: 12px 14px; font-size: .88rem; margin-bottom: 18px; }
 
+/* ---------- CRM / Funil ---------- */
+.kanban { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 14px; align-items: flex-start; }
+.kanban .col { background: var(--areia); border: 1px solid var(--borda); border-radius: 12px; width: 216px; flex-shrink: 0; display: flex; flex-direction: column; }
+.col-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; font-weight: 700; color: var(--petroleo); font-size: .9rem; }
+.col-n { background: var(--lago); color: #fff; border-radius: 12px; padding: 0 8px; font-size: .74rem; }
+.col-valor { padding: 0 12px 6px; font-size: .78rem; color: var(--concreto-claro); }
+.col-cards { padding: 6px; display: flex; flex-direction: column; gap: 8px; min-height: 44px; flex: 1; }
+.col-cards.sobre { background: #e2eef2; border-radius: 8px; outline: 2px dashed var(--lago); }
+.col-vazio { text-align: center; color: var(--concreto-claro); font-size: .8rem; padding: 8px; }
+.kard { background: #fff; border: 1px solid var(--borda); border-left: 3px solid var(--lago); border-radius: 8px; padding: 9px 11px; cursor: grab; }
+.kard:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.kard.arrastando { opacity: .45; }
+.kard-nome { font-weight: 700; font-size: .9rem; }
+.kard-meta { display: flex; gap: 5px; flex-wrap: wrap; margin: 5px 0; }
+.kard-meta .chip { font-size: .72rem; padding: 1px 8px; }
+.kard-acao { font-size: .76rem; border-radius: 6px; padding: 2px 7px; display: inline-block; margin-top: 3px; background: var(--areia); }
+.kard-acao.atrasado { background: #fde7e6; color: var(--alerta); font-weight: 600; }
+.kard-acao.hoje { background: #fff4e0; color: #9a6b00; font-weight: 600; }
+.kard-acao.futuro { background: #eef6ee; color: var(--ok); }
+.kard-origem { font-size: .67rem; color: var(--concreto-claro); margin-top: 4px; text-transform: uppercase; letter-spacing: .3px; }
+
+.followups { background: #fff; border: 1px solid var(--borda); border-left: 4px solid var(--cerrado); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.fu-chip { background: var(--areia); border: 1px solid var(--borda); border-radius: 16px; padding: 3px 11px; font-size: .78rem; cursor: pointer; color: var(--concreto); }
+.fu-chip.atrasado { background: #fde7e6; border-color: #f3c9c6; color: var(--alerta); }
+.fu-chip.hoje { background: #fff4e0; border-color: #f0dca6; }
+
+.ficha { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.ficha-col { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px; }
+.ficha-bloco { background: #fff; border: 1px solid var(--borda); border-radius: 12px; padding: 16px 18px; }
+.ficha-bloco h3 { margin: 0 0 12px; color: var(--petroleo); font-size: 1rem; }
+.ficha-bloco label { display: flex; flex-direction: column; gap: 5px; font-size: .82rem; font-weight: 600; margin-bottom: 10px; }
+.ficha-bloco hr { border: none; border-top: 1px solid var(--borda); margin: 14px 0; }
+.kv { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--borda); font-size: .86rem; }
+.kv:last-child { border-bottom: none; }
+.kv span { color: var(--concreto-claro); }
+.timeline { display: flex; flex-direction: column; gap: 10px; }
+.tl-item { border-left: 2px solid var(--lago); padding: 2px 0 2px 12px; font-size: .86rem; }
+.tl-tipo { display: inline-block; background: var(--areia); border: 1px solid var(--borda); border-radius: 10px; padding: 0 7px; font-size: .7rem; color: var(--concreto-claro); margin-right: 5px; }
+.tl-data { font-size: .72rem; color: var(--concreto-claro); margin-top: 2px; }
+
 @media (max-width: 760px) {
   .corpo { flex-direction: column; }
   .menu { width: 100%; display: flex; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--borda); padding: 8px; }
   .menu button { width: auto; border-left: none; border-radius: 18px; padding: 7px 14px; }
   .menu button.ativo { border-left: none; }
   .menu .grupo { display: none; }
+  .ficha { flex-direction: column; }
 }

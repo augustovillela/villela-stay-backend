@@ -116,6 +116,7 @@ function montarMenu() {
     { id: 'publicar', rot: '+ Publicar entrega' },
   ];
   const op = [];
+  if (ESTADO.areas.includes('vendas')) op.push({ id: 'crm', rot: 'CRM / Funil' });
   if (ESTADO.painelDisp.leads) op.push({ id: 'leads', rot: 'Leads' });
   if (ESTADO.painelDisp.precheckins) op.push({ id: 'precheckins', rot: 'Pré-check-ins' });
   if (ESTADO.painelDisp.chamados) op.push({ id: 'chamados', rot: 'Chamados' });
@@ -137,7 +138,7 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, crm: renderCRM, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -356,6 +357,193 @@ function renderConta() {
     if ($('#c-nova').value !== $('#c-conf').value) { msg.textContent = 'As senhas não conferem.'; return; }
     try { await api('POST', '/conta/senha', { atual: $('#c-atual').value, nova: $('#c-nova').value }); msg.className = 'ok-msg'; msg.textContent = 'Senha alterada.'; $('#form-conta').reset(); }
     catch (e) { msg.textContent = e.message; }
+  };
+}
+
+// --------- CRM / Funil (Fase 1) ---------
+const CRM = {
+  estagios: [
+    { id: 'novo', rot: 'Novo' }, { id: 'contato', rot: 'Contato' }, { id: 'orcamento', rot: 'Orçamento' },
+    { id: 'negociacao', rot: 'Negociação' }, { id: 'reserva', rot: 'Reserva' }, { id: 'hospedado', rot: 'Hospedado' },
+    { id: 'posvenda', rot: 'Pós-venda' }, { id: 'perdido', rot: 'Perdido' },
+  ],
+  origens: ['site', 'whatsapp-business', 'whatsapp-pessoal', 'airbnb', 'booking', 'decolar', 'instagram', 'indicacao', 'manual'],
+  cache: [],
+};
+const moedaBr = (v) => (v == null || v === '') ? '' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const crmDataCurta = (iso) => { if (!iso) return ''; const [a, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}`; };
+function crmPrazoClasse(data) {
+  if (!data) return '';
+  const hoje = new Date().toISOString().slice(0, 10);
+  return data < hoje ? 'atrasado' : (data === hoje ? 'hoje' : 'futuro');
+}
+
+async function renderCRM() {
+  conteudo().innerHTML = cabecalho('CRM / Funil', 'Do primeiro contato ao pós-venda. Arraste os cartões para mudar de etapa.')
+    + `<div class="barra">
+        <button class="btn" id="crm-novo">+ Novo contato</button>
+        <input id="crm-busca" placeholder="Buscar nome, telefone ou e-mail…" style="flex:1;min-width:200px">
+       </div>
+       <div id="crm-followups"></div>
+       <div id="crm-board" class="kanban"><div class="vazio">Carregando…</div></div>`;
+  $('#crm-novo').onclick = () => crmFormContato();
+  let t; $('#crm-busca').oninput = () => { clearTimeout(t); t = setTimeout(crmCarregar, 250); };
+  crmCarregar();
+}
+
+async function crmCarregar() {
+  try {
+    const busca = ($('#crm-busca') && $('#crm-busca').value.trim()) || '';
+    const [c1, c2] = await Promise.all([
+      api('GET', '/crm/contatos' + (busca ? '?busca=' + encodeURIComponent(busca) : '')),
+      api('GET', '/crm/followups'),
+    ]);
+    CRM.cache = c1.contatos;
+    crmRenderFollowups(c2.followups);
+    crmRenderBoard(c1.contatos);
+  } catch (e) { if ($('#crm-board')) $('#crm-board').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+function crmRenderFollowups(fu) {
+  const box = $('#crm-followups'); if (!box) return;
+  if (!fu || !fu.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="followups"><strong>⏰ Follow-ups (${fu.length})</strong>${fu.map(c =>
+    `<button class="fu-chip ${crmPrazoClasse(c.proximaAcao && c.proximaAcao.data)}" data-id="${esc(c.id)}">${esc(c.nome || c.telefone || 'sem nome')}: ${esc((c.proximaAcao && c.proximaAcao.descricao) || 'ação')} (${esc(crmDataCurta(c.proximaAcao && c.proximaAcao.data))})</button>`
+  ).join('')}</div>`;
+  box.querySelectorAll('.fu-chip').forEach(b => b.onclick = () => crmAbrirContato(b.dataset.id));
+}
+
+function crmCardHtml(c) {
+  const pa = c.proximaAcao || {};
+  return `<div class="kard" draggable="true" data-id="${esc(c.id)}">
+    <div class="kard-nome">${esc(c.nome || c.telefone || 'sem nome')}</div>
+    <div class="kard-meta">
+      ${c.imovelInteresse ? `<span class="chip">${esc(c.imovelInteresse)}</span>` : ''}
+      ${c.valorEstimado ? `<span class="chip">${esc(moedaBr(c.valorEstimado))}</span>` : ''}
+    </div>
+    ${pa.data ? `<div class="kard-acao ${crmPrazoClasse(pa.data)}">⏱ ${esc(pa.descricao || 'ação')} · ${esc(crmDataCurta(pa.data))}</div>` : ''}
+    ${c.origem ? `<div class="kard-origem">${esc(c.origem)}</div>` : ''}
+  </div>`;
+}
+
+function crmRenderBoard(contatos) {
+  const board = $('#crm-board'); if (!board) return;
+  const porEst = {}; CRM.estagios.forEach(e => porEst[e.id] = []);
+  contatos.forEach(c => { (porEst[c.estagio] || porEst['novo']).push(c); });
+  board.innerHTML = CRM.estagios.map(e => {
+    const lista = porEst[e.id];
+    const valor = lista.reduce((s, c) => s + (Number(c.valorEstimado) || 0), 0);
+    return `<div class="col">
+      <div class="col-head"><span>${esc(e.rot)}</span><span class="col-n">${lista.length}</span></div>
+      ${valor ? `<div class="col-valor">${esc(moedaBr(valor))}</div>` : ''}
+      <div class="col-cards" data-drop="${e.id}">${lista.map(crmCardHtml).join('') || '<div class="col-vazio">—</div>'}</div>
+    </div>`;
+  }).join('');
+  board.querySelectorAll('.kard').forEach(k => {
+    k.onclick = () => crmAbrirContato(k.dataset.id);
+    k.ondragstart = (ev) => { ev.dataTransfer.setData('text/plain', k.dataset.id); k.classList.add('arrastando'); };
+    k.ondragend = () => k.classList.remove('arrastando');
+  });
+  board.querySelectorAll('.col-cards').forEach(col => {
+    col.ondragover = (ev) => { ev.preventDefault(); col.classList.add('sobre'); };
+    col.ondragleave = () => col.classList.remove('sobre');
+    col.ondrop = async (ev) => {
+      ev.preventDefault(); col.classList.remove('sobre');
+      const id = ev.dataTransfer.getData('text/plain'), estagio = col.dataset.drop;
+      const c = CRM.cache.find(x => x.id === id);
+      if (!c || c.estagio === estagio) return;
+      try { await api('PATCH', '/crm/contatos/' + id, { estagio }); crmCarregar(); }
+      catch (e) { alert(e.message); }
+    };
+  });
+}
+
+async function crmAbrirContato(id) {
+  try {
+    const { contato: c, atividades } = await api('GET', '/crm/contatos/' + id);
+    const estOpts = CRM.estagios.map(e => `<option value="${e.id}" ${e.id === c.estagio ? 'selected' : ''}>${esc(e.rot)}</option>`).join('');
+    const per = c.periodo || {};
+    const periodoTxt = (per.checkin || per.checkout) ? `${esc(per.checkin || '?')} → ${esc(per.checkout || '?')} (${esc(per.hospedes || '?')} hósp.)` : '—';
+    const tl = (atividades && atividades.length)
+      ? atividades.map(a => `<div class="tl-item"><span class="tl-tipo">${esc(a.tipo)}</span>${esc(a.texto)}<div class="tl-data">${dataBr(a.data)} · ${esc(a.autor || '')}</div></div>`).join('')
+      : '<div class="vazio">Sem atividades ainda.</div>';
+    conteudo().innerHTML = `<button class="btn secund peq" id="crm-voltar">← Voltar ao funil</button>
+      ${cabecalho(c.nome || c.telefone || 'Contato', (c.origem || '') + ' · criado em ' + dataBr(c.criadoEm))}
+      <div class="ficha">
+        <div class="ficha-col">
+          <div class="ficha-bloco"><h3>Dados</h3>
+            <div class="kv"><span>Telefone</span><b>${esc(c.telefone || '—')}</b></div>
+            <div class="kv"><span>E-mail</span><b>${esc(c.email || '—')}</b></div>
+            <div class="kv"><span>Imóvel</span><b>${esc(c.imovelInteresse || '—')}</b></div>
+            <div class="kv"><span>Valor estimado</span><b>${esc(moedaBr(c.valorEstimado) || '—')}</b></div>
+            <div class="kv"><span>Período</span><b>${periodoTxt}</b></div>
+            <div class="kv"><span>Preferências</span><b>${esc(c.preferencias || '—')}</b></div>
+            ${c.estagio === 'perdido' && c.motivoPerda ? `<div class="kv"><span>Motivo da perda</span><b>${esc(c.motivoPerda)}</b></div>` : ''}
+          </div>
+          <div class="ficha-bloco"><h3>Ações</h3>
+            <label>Etapa <select id="f-estagio">${estOpts}</select></label>
+            <label>Próxima ação <input id="f-acao-desc" value="${esc((c.proximaAcao && c.proximaAcao.descricao) || '')}" placeholder="o que fazer"></label>
+            <label>Prazo <input id="f-acao-data" type="date" value="${esc((c.proximaAcao && c.proximaAcao.data) || '')}"></label>
+            <button class="btn peq" id="f-salvar">Salvar alterações</button>
+            <hr>
+            <label>Registrar nota / mensagem <textarea id="f-nota" rows="2" placeholder="ex.: liguei, cliente vai pensar"></textarea></label>
+            <button class="btn peq secund" id="f-add-nota">Adicionar à timeline</button>
+            <hr>
+            <button class="btn peq perigo" id="f-perder">Marcar como perdido</button>
+          </div>
+        </div>
+        <div class="ficha-col">
+          <div class="ficha-bloco"><h3>Linha do tempo</h3><div class="timeline">${tl}</div></div>
+        </div>
+      </div>`;
+    $('#crm-voltar').onclick = () => navegar('crm');
+    $('#f-salvar').onclick = async () => {
+      try {
+        await api('PATCH', '/crm/contatos/' + id, { estagio: $('#f-estagio').value, proximaAcao: { descricao: $('#f-acao-desc').value.trim(), data: $('#f-acao-data').value } });
+        crmAbrirContato(id);
+      } catch (e) { alert(e.message); }
+    };
+    $('#f-add-nota').onclick = async () => {
+      const texto = $('#f-nota').value.trim(); if (!texto) return;
+      try { await api('POST', '/crm/contatos/' + id + '/atividade', { tipo: 'nota', texto }); crmAbrirContato(id); }
+      catch (e) { alert(e.message); }
+    };
+    $('#f-perder').onclick = async () => {
+      const motivo = prompt('Motivo da perda (opcional):');
+      if (motivo === null) return; // cancelou
+      try { await api('POST', '/crm/contatos/' + id + '/perder', { motivo }); crmAbrirContato(id); }
+      catch (e) { alert(e.message); }
+    };
+  } catch (e) { alert(e.message); }
+}
+
+function crmFormContato() {
+  const ori = CRM.origens.map(o => `<option value="${o}">${o}</option>`).join('');
+  conteudo().innerHTML = `<button class="btn secund peq" id="crm-voltar">← Voltar ao funil</button>
+    ${cabecalho('Novo contato', '')}
+    <form class="form" id="crm-form">
+      <label>Nome <input id="n-nome" required></label>
+      <label>Telefone (WhatsApp) <input id="n-tel" placeholder="61 9xxxx-xxxx"></label>
+      <label>E-mail <input id="n-email" type="email"></label>
+      <label>Origem <select id="n-origem">${ori}</select></label>
+      <label>Imóvel de interesse <input id="n-imovel" placeholder="ex.: GD01H / Casa Modernista"></label>
+      <label>Valor estimado (R$) <input id="n-valor" type="number" min="0" step="50"></label>
+      <button class="btn" type="submit">Criar contato</button>
+      <p id="n-msg" class="erro"></p>
+    </form>`;
+  $('#crm-voltar').onclick = () => navegar('crm');
+  $('#crm-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const msg = $('#n-msg'); msg.textContent = '';
+    try {
+      if (!$('#n-nome').value.trim() && !$('#n-tel').value.trim()) throw new Error('Informe ao menos nome e telefone.');
+      const { contato } = await api('POST', '/crm/contatos', {
+        nome: $('#n-nome').value.trim(), telefone: $('#n-tel').value.trim(), email: $('#n-email').value.trim(),
+        origem: $('#n-origem').value, imovelInteresse: $('#n-imovel').value.trim(),
+        valorEstimado: $('#n-valor').value ? Number($('#n-valor').value) : null,
+      });
+      crmAbrirContato(contato.id);
+    } catch (e) { msg.textContent = e.message; }
   };
 }
 
