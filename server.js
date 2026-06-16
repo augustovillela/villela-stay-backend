@@ -130,6 +130,7 @@ app.post('/webhooks/stays', (req, res) => {
   console.log('[webhook stays]', JSON.stringify(req.body).slice(0, 500));
   appendJsonl('eventos.jsonl', { origem: 'stays', evento: req.body });
   confirmarReservaWhatsApp(req.body); // assíncrono, não bloqueia a resposta
+  ingestStaysEvent(req.body);         // CRM: cliente/reserva vira contato (Fase 2)
   res.sendStatus(200);
 });
 
@@ -353,13 +354,15 @@ function upsertContato(dados) {
   const email = String(dados.email || '').trim().toLowerCase();
   const agora = new Date().toISOString();
   let c = null;
-  if (tel) c = contatos.find(x => x.telefone && x.telefone === tel);
+  if (dados.staysClientId) c = contatos.find(x => x.staysClientId && x.staysClientId === dados.staysClientId);
+  if (!c && tel) c = contatos.find(x => x.telefone && x.telefone === tel);
   if (!c && email) c = contatos.find(x => x.email && x.email.toLowerCase() === email);
 
   if (c) { // enriquece campos vazios; não sobrescreve o que já existe
     if (!c.nome && dados.nome) c.nome = dados.nome;
     if (!c.telefone && tel) c.telefone = tel;
     if (!c.email && email) c.email = email;
+    if (!c.staysClientId && dados.staysClientId) c.staysClientId = dados.staysClientId;
     if (!c.imovelInteresse && dados.imovelInteresse) c.imovelInteresse = dados.imovelInteresse;
     c.atualizadoEm = agora;
     salvarContatos(contatos);
@@ -374,7 +377,7 @@ function upsertContato(dados) {
     valorEstimado: dados.valorEstimado != null ? Number(dados.valorEstimado) : null,
     imovelInteresse: dados.imovelInteresse || '',
     periodo: dados.periodo || { checkin: '', checkout: '', hospedes: '' },
-    preferencias: '', staysClientId: '', staysReservationId: '', motivoPerda: '',
+    preferencias: '', staysClientId: dados.staysClientId || '', staysReservationId: '', motivoPerda: '',
     consentimento: { optIn: !!dados.mensagem, base: dados.mensagem ? 'mensagem-do-cliente' : '', em: agora },
     criadoEm: dados.criadoEm || agora, atualizadoEm: agora,
   };
@@ -383,6 +386,71 @@ function upsertContato(dados) {
   addAtividade(c.id, 'nota', 'Contato criado (origem: ' + c.origem + ')', c.origem, 'sistema');
   if (dados.mensagem) addAtividade(c.id, 'mensagem-recebida', dados.mensagem, c.origem, 'sistema');
   return { contato: c, novo: true };
+}
+
+// Aplica campos a um contato existente (read-modify-write). Devolve o contato ou null.
+function patchContatoInterno(id, campos) {
+  const contatos = lerContatos();
+  const c = contatos.find(x => x.id === id);
+  if (!c) return null;
+  Object.assign(c, campos);
+  c.atualizadoEm = new Date().toISOString();
+  salvarContatos(contatos);
+  return c;
+}
+// Só avança no funil (nunca regride por evento automático); 'perdido' sempre vale.
+function avancaEstagio(atual, alvo) {
+  if (alvo === 'perdido') return 'perdido';
+  const i = ESTAGIOS.indexOf(atual), j = ESTAGIOS.indexOf(alvo);
+  return (j >= 0 && j > i) ? alvo : atual;
+}
+
+// INGESTÃO Fase 2 — evento da Stays (cliente/reserva) vira/atualiza um contato no CRM.
+// Não bloqueia a resposta do webhook. Dedupe por staysClientId/telefone/e-mail.
+async function ingestStaysEvent(evento) {
+  try {
+    const acao = String((evento && (evento.action || evento.type)) || '');
+    const p = (evento && (evento.payload || evento.data)) || {};
+    const ehCliente = /client|cliente/i.test(acao);
+    const ehReserva = /(reservation|booking|reserva)/i.test(acao) && !ehCliente;
+    if (!ehCliente && !ehReserva) return;
+
+    const clientId = p._idclient || (ehCliente ? (p._id || p.id) : null);
+    if (!clientId) return;
+    const cli = await stays(`/booking/clients/${clientId}`).catch(() => null);
+    if (!cli) return;
+    const fone = (cli.phones && cli.phones[0] && (cli.phones[0].iso || cli.phones[0].number)) || '';
+    const email = (cli.emails && cli.emails[0] && (cli.emails[0].address || cli.emails[0])) || cli.email || '';
+    const nome = (cli.fName ? (cli.fName + ' ' + (cli.lName || '')).trim() : (cli.name || '')) || '';
+    if (!fone && !email && !nome) return; // nada para identificar
+
+    const { contato } = upsertContato({ nome, telefone: fone, email, origem: 'stays', staysClientId: clientId });
+    const campos = { staysClientId: clientId };
+    let atividade = null; // só registra atividade quando o estágio muda (evita ruído dos "modified")
+
+    if (ehReserva) {
+      const tipo = String(p.type || '');
+      const canal = String(p.partner || p.partnerName || p.channel || '').toLowerCase();
+      if (/airbnb/.test(canal)) campos.origem = 'airbnb';
+      else if (/booking/.test(canal)) campos.origem = 'booking';
+      else if (/decolar|despegar/.test(canal)) campos.origem = 'decolar';
+      if (p.checkInDate || p.checkOutDate) campos.periodo = { checkin: p.checkInDate || '', checkout: p.checkOutDate || '', hospedes: p.guests || p._i_adults || '' };
+      if (p.price && p.price._f_total != null) campos.valorEstimado = Number(p.price._f_total);
+      if (p.id || p._id) campos.staysReservationId = p.id || p._id;
+      if (p._idlisting) { const lst = await stays(`/content/listings/${p._idlisting}`).catch(() => null); if (lst) campos.imovelInteresse = lst.id || (lst._mstitle && lst._mstitle.pt_BR) || ''; }
+      const alvo = (tipo === 'canceled') ? 'perdido' : 'reserva';
+      const novoEstagio = avancaEstagio(contato.estagio, alvo);
+      campos.estagio = novoEstagio;
+      if (tipo === 'canceled') campos.motivoPerda = 'Reserva cancelada na Stays';
+      if (novoEstagio !== contato.estagio) {
+        atividade = { tipo: 'reserva', texto: (tipo === 'canceled' ? 'Reserva cancelada na Stays' : 'Reserva confirmada na Stays') + (campos.imovelInteresse ? ' (' + campos.imovelInteresse + ')' : '') };
+      }
+    }
+
+    const atual = patchContatoInterno(contato.id, campos);
+    if (atual && atividade) addAtividade(atual.id, atividade.tipo, atividade.texto, 'stays', 'sistema');
+    console.log('[crm ingest] contato', contato.id, ehReserva ? '(reserva)' : '(cliente)', '->', campos.estagio || contato.estagio);
+  } catch (e) { console.error('[crm ingest stays]', e.message); }
 }
 
 // ---- seed do admin no boot ----
