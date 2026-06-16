@@ -39,6 +39,9 @@ a { color: var(--lago); text-decoration: none; }
 .btn-wa-nav { background: var(--wa); color: #fff !important; padding: 8px 18px; border-radius: 24px; }
 .link-staff { font-size: .82rem; opacity: .7; border: 1px solid rgba(242,236,216,.4); padding: 5px 12px; border-radius: 20px; }
 .link-staff:hover { opacity: 1; }
+.btn-instalar { font: inherit; font-size: .82rem; cursor: pointer; color: var(--creme); background: transparent; border: 1px solid rgba(242,236,216,.55); padding: 6px 14px; border-radius: 20px; line-height: 1; }
+.btn-instalar:hover { background: rgba(242,236,216,.12); }
+.btn-instalar[hidden] { display: none; }
 @media (max-width: 1100px) { .tagline { display: none; } }
 @media (max-width: 860px) {
   .topo { flex-wrap: wrap; justify-content: center; row-gap: 10px; padding: 10px 3vw; }

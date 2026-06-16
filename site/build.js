@@ -10,6 +10,14 @@ const BACKEND = 'https://villela-stay-backend.onrender.com';
 const WHATSAPP = '556191935013';
 // Trocar para https://villelastay.com.br na virada do domínio (afeta canonical, og:url e sitemap)
 const SITE_URL = 'https://villela-stay-site.onrender.com';
+
+// ----------------------------------------------------------------- PWA
+// Cores da marca usadas no manifest, theme-color e ícones (coerentes com os cartões).
+const PWA = {
+  themeColor: '#5a3e2b',       // marrom da marca (barra do app)
+  backgroundColor: '#fbf6ee',  // creme claro (splash screen)
+  cacheVersion: 'vstay-v1'     // bump para invalidar o cache do Service Worker
+};
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 
 const DIST = path.join(__dirname, 'dist');
@@ -30,6 +38,33 @@ const TAGLINE = `<span class="tagline">Hospedagens Inteligentes<br>para Experiê
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const real = n => 'R$ ' + n.toLocaleString('pt-BR');
 
+// ----------------------------------------------------------------- SEO
+// Dados reais da marca (NAP — Nome/Endereço/Telefone consistentes com o Google Business).
+// Coordenadas aproximadas do bairro Lago Sul (não há lat/lng por unidade em listings.json).
+const NAP = {
+  nome: 'Villela Stay',
+  legal: 'Augusto Villela Ltda',
+  telefone: '+5561991935013',
+  telefoneExibicao: '(61) 99193-5013',
+  email: 'villelastay@gmail.com',
+  rua: 'SMDB Conjunto 29, Lago Sul',
+  cidade: 'Brasília',
+  uf: 'DF',
+  pais: 'BR',
+  geo: { lat: -15.8528, lng: -47.8657 }, // Lago Sul, Brasília-DF (aproximado, nível bairro)
+  sameAs: ['https://instagram.com/villelastay', 'https://instagram.com/augustovillela', 'https://facebook.com/augusto.villela']
+};
+
+// Organization da marca — repetida em todas as páginas como âncora de identidade (@id).
+const ORG_ID = `${SITE_URL}/#organizacao`;
+const orgSchema = {
+  '@context': 'https://schema.org', '@type': 'Organization', '@id': ORG_ID,
+  name: NAP.nome, legalName: NAP.legal, url: SITE_URL, logo: `${SITE_URL}/logo.png`,
+  image: `${SITE_URL}/og-home.jpg`, telephone: NAP.telefone, email: NAP.email,
+  address: { '@type': 'PostalAddress', streetAddress: NAP.rua, addressLocality: NAP.cidade, addressRegion: NAP.uf, addressCountry: NAP.pais },
+  areaServed: 'Brasília-DF', sameAs: NAP.sameAs
+};
+
 // Seções da home na ordem definida pelo Augusto (11/06/2026)
 const SECOES = [
   { titulo: 'Reserve O Espaço Inteiro de Uma Casa Bem Equipada', ids: ['GI01I', 'GD01H', 'GG04I', 'PL02I', 'GD03H', 'YV01I'] },
@@ -42,12 +77,15 @@ const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 const waLink = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
 
 function layout(titulo, descricao, corpo, opts = {}) {
-  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/logo.png` } = opts;
+  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/logo.png`, ogType = 'website' } = opts;
+  // Organization injetada em toda página (âncora de identidade @id reutilizada nos schemas locais)
+  const orgLd = `<script type="application/ld+json">${JSON.stringify(orgSchema)}</script>`;
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="preconnect" href="https://ville.stays.com.br">
 <meta name="google-site-verification" content="_Gjh1tlFyUsmEnwd14JOLmSDNQ7u3UKAivi4bkIzz0I">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script>
@@ -61,13 +99,28 @@ gtag('config', 'G-5L2YQ2BPQW');
 <meta name="description" content="${esc(descricao)}">
 <link rel="canonical" href="${SITE_URL}${caminho}">
 ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
-<meta property="og:type" content="website">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="${PWA.themeColor}">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Villela Stay">
+<meta name="application-name" content="Villela Stay">
+<meta property="og:type" content="${ogType}">
 <meta property="og:site_name" content="Villela Stay">
 <meta property="og:title" content="${esc(titulo)}">
 <meta property="og:description" content="${esc(descricao)}">
 <meta property="og:url" content="${SITE_URL}${caminho}">
 <meta property="og:image" content="${esc(ogImage)}">
+<meta property="og:image:alt" content="${esc(titulo)}">
 <meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(titulo)}">
+<meta name="twitter:description" content="${esc(descricao)}">
+<meta name="twitter:image" content="${esc(ogImage)}">
+${orgLd}
 ${extraHead}
 <link rel="stylesheet" href="/style.css">
 </head>
@@ -83,6 +136,7 @@ ${extraHead}
     <a href="/nossa-historia.html">Nossa História</a>
     <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
     <a href="${BACKEND}/staff" class="link-staff" title="Área restrita da equipe">🔒 Staff</a>
+    <button type="button" id="btn-instalar-pwa" class="btn-instalar" hidden aria-label="Instalar o app da Villela Stay">📲 Instalar app</button>
   </nav>
 </header>
 ${corpo}
@@ -130,6 +184,37 @@ document.addEventListener('click', function(e){
 document.addEventListener('submit', function(e){
   if (typeof gtag === 'function') gtag('event', 'envio_formulario', { formulario: e.target.id || e.target.className || 'form', pagina: location.pathname });
 }, true);
+</script>
+<script>
+// ---- PWA: registro do Service Worker + prompt de instalação ----
+(function(){
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
+    });
+  }
+  var deferido = null;
+  var botao = document.getElementById('btn-instalar-pwa');
+  var instalado = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();          // esconde o mini-infobar nativo
+    deferido = e;
+    if (botao && !instalado) botao.hidden = false;
+  });
+  if (botao) botao.addEventListener('click', function(){
+    if (!deferido) return;
+    deferido.prompt();
+    deferido.userChoice.then(function(escolha){
+      if (typeof gtag === 'function') gtag('event', 'instalar_pwa', { resultado: escolha && escolha.outcome });
+      deferido = null;
+      botao.hidden = true;
+    });
+  });
+  window.addEventListener('appinstalled', function(){
+    if (botao) botao.hidden = true;
+    if (typeof gtag === 'function') gtag('event', 'pwa_instalado', {});
+  });
+})();
 </script>
 </body>
 </html>`;
@@ -243,11 +328,16 @@ fetch('${BACKEND}/api/ultima-hora')
     ogImage: `${SITE_URL}/og-home.jpg`,
     extraHead: `<script type="application/ld+json">${JSON.stringify({
       '@context': 'https://schema.org', '@type': 'LodgingBusiness',
-      name: 'Villela Stay', url: SITE_URL, image: `${SITE_URL}/og-home.jpg`,
-      address: { '@type': 'PostalAddress', streetAddress: 'SMDB Conjunto 29, Lago Sul', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
-      telephone: '+5561991935013',
+      '@id': `${SITE_URL}/#hospedagem`,
+      name: NAP.nome, url: SITE_URL, image: `${SITE_URL}/og-home.jpg`,
+      description: 'Hospedagem por temporada no Lago Sul, Brasília-DF: casas com piscina aquecida para grupos, flats e suítes, com reserva direta com o anfitrião.',
+      address: { '@type': 'PostalAddress', streetAddress: NAP.rua, addressLocality: NAP.cidade, addressRegion: NAP.uf, addressCountry: NAP.pais },
+      geo: { '@type': 'GeoCoordinates', latitude: NAP.geo.lat, longitude: NAP.geo.lng },
+      telephone: NAP.telefone, email: NAP.email,
       priceRange: 'R$ 200 - R$ 2.000',
-      sameAs: ['https://instagram.com/villelastay', 'https://instagram.com/augustovillela', 'https://facebook.com/augusto.villela'],
+      parentOrganization: { '@id': ORG_ID },
+      sameAs: NAP.sameAs,
+      // aggregateRating/review usam avaliações REAIS coletadas (data/depoimentos.json) — não inventar
       aggregateRating: { '@type': 'AggregateRating', ratingValue: '5', bestRating: '5', reviewCount: depoimentos.length },
       review: depoimentos.map(d => ({
         '@type': 'Review',
@@ -279,6 +369,43 @@ const EBOOKS = {
 };
 fs.mkdirSync(path.join(DIST, 'ebooks'), { recursive: true });
 for (const e of [...new Set(Object.values(EBOOKS))]) fs.copyFileSync(path.join(__dirname, 'src', 'ebooks', e), path.join(DIST, 'ebooks', e));
+
+// Schema.org por unidade. Casa/flat inteiros -> VacationRental (tipo que o Google usa para
+// imóveis de temporada). Quarto/suíte privativos -> LodgingBusiness. Só dados REAIS de
+// listings.json (capacidade, quartos, camas, banheiros, m2, localização). SEM rating por
+// unidade (não existe avaliação por unidade — não inventar nota nem preço).
+function unidadeSchema(l) {
+  const inteiro = l.tipo === 'entire_home';
+  const desc = String(l.resumo || l.descricao || l.titulo).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 280);
+  const s = {
+    '@context': 'https://schema.org',
+    '@type': inteiro ? 'VacationRental' : 'LodgingBusiness',
+    name: l.titulo,
+    image: [l.fotoPrincipal, ...(l.fotos || []).slice(1, 6).map(f => f.url)].filter(Boolean),
+    url: `${SITE_URL}/hospedagem/${l.id}.html`,
+    description: desc,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: l.rua ? `${l.rua} — Lago Sul` : 'Lago Sul',
+      addressLocality: NAP.cidade, addressRegion: NAP.uf, addressCountry: NAP.pais
+    },
+    geo: { '@type': 'GeoCoordinates', latitude: NAP.geo.lat, longitude: NAP.geo.lng },
+    containedInPlace: { '@type': 'Place', name: 'Lago Sul, Brasília-DF' },
+    numberOfRooms: l.quartos,
+    petsAllowed: true,
+    brand: { '@id': ORG_ID },
+    isPartOf: { '@id': ORG_ID }
+  };
+  // Ocupação e cômodos (campos numéricos reais)
+  s.occupancy = { '@type': 'QuantitativeValue', maxValue: l.hospedes, unitCode: 'C62' };
+  if (inteiro) {
+    s.numberOfBedrooms = l.quartos;
+    if (l.banheiros) s.numberOfBathroomsTotal = l.banheiros;
+    if (l.camas) s.numberOfBeds = l.camas;
+  }
+  if (l.m2) s.floorSize = { '@type': 'QuantitativeValue', value: l.m2, unitCode: 'MTK' };
+  return s;
+}
 
 for (const l of listings) {
   const galeria = (l.fotos || []).slice(1, 9).map(f =>
@@ -385,13 +512,8 @@ for (const l of listings) {
     {
       caminho: `/hospedagem/${l.id}.html`,
       ogImage: l.fotoPrincipal,
-      extraHead: `<script type="application/ld+json">${JSON.stringify({
-        '@context': 'https://schema.org', '@type': 'Accommodation',
-        name: l.titulo, image: l.fotoPrincipal, url: `${SITE_URL}/hospedagem/${l.id}.html`,
-        address: { '@type': 'PostalAddress', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
-        occupancy: { '@type': 'QuantitativeValue', maxValue: l.hospedes },
-        numberOfBedrooms: l.quartos
-      })}</script>
+      ogType: 'product',
+      extraHead: `<script type="application/ld+json">${JSON.stringify(unidadeSchema(l))}</script>
 <script type="application/ld+json">${JSON.stringify({
         '@context': 'https://schema.org', '@type': 'BreadcrumbList',
         itemListElement: [
@@ -1027,14 +1149,166 @@ const historia = layout(
 );
 fs.writeFileSync(path.join(DIST, 'nossa-historia.html'), historia);
 
+// ------------------------- PWA: manifest, ícones, service worker, offline -------------------------
+// Copia os ícones do app (gerados em assets/icons/) para dist/assets/icons/
+const ICON_SRC = path.join(__dirname, 'assets', 'icons');
+const ICON_DST = path.join(DIST, 'assets', 'icons');
+fs.mkdirSync(ICON_DST, { recursive: true });
+const ICON_FILES = ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon-180.png'];
+for (const f of ICON_FILES) fs.copyFileSync(path.join(ICON_SRC, f), path.join(ICON_DST, f));
+
+// manifest.webmanifest
+const manifest = {
+  name: 'Villela Stay',
+  short_name: 'Villela',
+  description: 'Hospedagem por temporada no Lago Sul, Brasília: casas com piscina aquecida, flats e suítes. Reserva direta com o anfitrião.',
+  lang: 'pt-BR',
+  dir: 'ltr',
+  start_url: '/?source=pwa',
+  scope: '/',
+  display: 'standalone',
+  orientation: 'portrait',
+  theme_color: PWA.themeColor,
+  background_color: PWA.backgroundColor,
+  categories: ['travel', 'lifestyle', 'business'],
+  icons: [
+    { src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/assets/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/assets/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+  ],
+  // Shortcuts precisam estar DENTRO do scope (mesma origem) — links externos (wa.me) são
+  // ignorados por alguns navegadores. O CTA para o WhatsApp fica nas próprias páginas.
+  shortcuts: [
+    {
+      name: 'Ver as casas', short_name: 'Reservar',
+      description: 'Ver e reservar as hospedagens',
+      url: '/?source=pwa#hospedagens',
+      icons: [{ src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+    },
+    {
+      name: 'Eventos', short_name: 'Eventos',
+      description: 'Casamentos, formaturas e festas no Lago Sul',
+      url: '/eventos.html',
+      icons: [{ src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+    },
+    {
+      name: 'Pacotes especiais', short_name: 'Pacotes',
+      description: 'Natal, Réveillon, Posse 2027 e Carnaval',
+      url: '/pacotes.html',
+      icons: [{ src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+    }
+  ]
+};
+fs.writeFileSync(path.join(DIST, 'manifest.webmanifest'), JSON.stringify(manifest, null, 2));
+
+// Página offline (branded, simples) — servida pelo SW quando uma navegação falha sem cache.
+const offline = layout(
+  'Você está offline | Villela Stay',
+  'Sem conexão no momento. Reconecte para ver as hospedagens da Villela Stay.',
+  `
+<section class="hero hero-menor">
+  <h1>Você está offline</h1>
+  <p><strong>Não conseguimos carregar esta página agora.</strong> Verifique sua conexão e tente novamente — assim que voltar a rede, é só recarregar.</p>
+  <div class="hero-cta">
+    <a class="btn" href="/">Tentar a página inicial</a>
+    <a class="btn btn-claro" href="${waLink('Olá! Vim pelo app da Villela Stay.')}">Falar no WhatsApp</a>
+  </div>
+</section>`,
+  { caminho: '/offline.html' }
+);
+fs.writeFileSync(path.join(DIST, 'offline.html'), offline);
+
+// Service Worker. Precache do app-shell (home, CSS, logo, offline, ícones e páginas das unidades).
+// Estratégia: network-first para navegação/HTML (nunca servir página velha); stale-while-revalidate
+// para estáticos (CSS/imagens/ícones). NUNCA cacheia chamadas ao backend/API (sempre rede).
+const PRECACHE_URLS = [
+  '/', '/index.html', '/style.css', '/offline.html', '/manifest.webmanifest',
+  ...(TEM_LOGO ? ['/logo.png'] : []),
+  ...ICON_FILES.map(f => `/assets/icons/${f}`),
+  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html',
+  ...listings.map(l => `/hospedagem/${l.id}.html`)
+];
+const sw = `// Service Worker da Villela Stay (PWA) — gerado por build.js. NÃO editar à mão.
+const CACHE = '${PWA.cacheVersion}';
+const PRECACHE = ${JSON.stringify(PRECACHE_URLS)};
+const BACKEND = '${BACKEND}';
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE)
+      // addAll é atômico; cacheia o que der (alguns recursos podem faltar em dev)
+      .then((c) => Promise.allSettled(PRECACHE.map((u) => c.add(u))))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;                 // só GET
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;  // ignora cross-origin (backend/API, GA, fontes)
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/webhooks/')) return; // nunca cachear API
+
+  // Navegação / documentos HTML: network-first (não servir página velha), cai no cache, depois offline.html
+  const aceitaHtml = req.headers.get('accept') && req.headers.get('accept').indexOf('text/html') !== -1;
+  if (req.mode === 'navigate' || aceitaHtml) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copia = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copia)).catch(() => {});
+          return res;
+        })
+        .catch(() => caches.match(req).then((hit) => hit || caches.match('/offline.html')))
+    );
+    return;
+  }
+
+  // Estáticos (CSS, imagens, ícones): stale-while-revalidate
+  event.respondWith(
+    caches.match(req).then((hit) => {
+      const rede = fetch(req).then((res) => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          const copia = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copia)).catch(() => {});
+        }
+        return res;
+      }).catch(() => hit);
+      return hit || rede;
+    })
+  );
+});
+`;
+fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
+
 // ------------------------- sitemap.xml e robots.txt -------------------------
 const hoje = new Date().toISOString().slice(0, 10);
-const rotas = ['/', '/eventos.html', '/pacotes.html', '/regras.html', '/guia.html', '/pre-checkin.html', '/posse-2027.html', '/nossa-historia.html', ...LANDINGS.map(lp => `/${lp.arquivo}`), ...listings.map(l => `/hospedagem/${l.id}.html`)];
+// Rotas com prioridade/frequência por tipo de página (ajuda o crawler a priorizar)
+const rotas = [
+  { loc: '/', changefreq: 'daily', priority: '1.0' },
+  { loc: '/eventos.html', changefreq: 'weekly', priority: '0.9' },
+  { loc: '/pacotes.html', changefreq: 'weekly', priority: '0.9' },
+  ...LANDINGS.map(lp => ({ loc: `/${lp.arquivo}`, changefreq: 'weekly', priority: '0.8' })),
+  { loc: '/posse-2027.html', changefreq: 'weekly', priority: '0.7' },
+  { loc: '/nossa-historia.html', changefreq: 'monthly', priority: '0.5' },
+  { loc: '/guia.html', changefreq: 'monthly', priority: '0.4' },
+  { loc: '/regras.html', changefreq: 'monthly', priority: '0.4' },
+  { loc: '/pre-checkin.html', changefreq: 'monthly', priority: '0.3' },
+  ...listings.map(l => ({ loc: `/hospedagem/${l.id}.html`, changefreq: 'weekly', priority: '0.8' }))
+];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${rotas.map(r => `  <url><loc>${SITE_URL}${r}</loc><lastmod>${hoje}</lastmod></url>`).join('\n')}
+${rotas.map(r => `  <url><loc>${SITE_URL}${r.loc}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority></url>`).join('\n')}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
-fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 
 console.log(`Site gerado em dist/: ${rotas.length} páginas + sitemap.xml + robots.txt`);
