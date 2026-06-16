@@ -16,7 +16,8 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   color: var(--concreto); background: var(--branco); line-height: 1.6;
 }
-img { max-width: 100%; display: block; }
+img { max-width: 100%; display: block; height: auto; }
+main { display: block; }
 a { color: var(--lago); text-decoration: none; }
 
 /* ---------- topo ---------- */
@@ -34,8 +35,9 @@ a { color: var(--lago); text-decoration: none; }
 .tagline {
   color: var(--creme); font-size: .98rem; font-weight: 700; opacity: .95; line-height: 1.35;
 }
-.topo nav { display: flex; gap: 24px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
-.topo nav a { color: var(--creme); font-weight: 500; }
+.topo nav { display: flex; gap: 16px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+/* Alvos de toque >= ~44px de altura (acessibilidade mobile) */
+.topo nav a { color: var(--creme); font-weight: 500; display: inline-flex; align-items: center; min-height: 44px; padding: 4px 6px; }
 .btn-wa-nav { background: var(--wa); color: #fff !important; padding: 8px 18px; border-radius: 24px; }
 .link-staff { font-size: .82rem; opacity: .7; border: 1px solid rgba(242,236,216,.4); padding: 5px 12px; border-radius: 20px; }
 .link-staff:hover { opacity: 1; }
@@ -90,8 +92,9 @@ a { color: var(--lago); text-decoration: none; }
 
 /* ---------- banner posse ---------- */
 .banner-posse {
-  display: block; text-align: center; background: #009739; color: #FEDD00;
-  padding: 12px 5vw; font-size: .98rem; font-weight: 500;
+  /* Verde da bandeira escurecido (#006128) p/ passar contraste AA com o amarelo (5.68:1). */
+  display: block; text-align: center; background: #006128; color: #FEDD00;
+  padding: 14px 5vw; font-size: .98rem; font-weight: 600;
 }
 .banner-posse strong { color: #FEDD00; }
 .banner-posse span { font-weight: 800; text-decoration: underline; margin-left: 6px; }
@@ -212,13 +215,14 @@ a { color: var(--lago); text-decoration: none; }
   padding: 40px 5vw; background: var(--petroleo); color: var(--creme); font-size: .92rem;
 }
 .rodape-distancias { margin-top: 14px; }
-.rodape-links { display: flex; flex-direction: column; gap: 1px; line-height: 1.45; }
+.rodape-links { display: flex; flex-direction: column; gap: 2px; line-height: 1.45; }
 .rodape-links strong { color: var(--cerrado); text-transform: uppercase; font-size: .8rem; letter-spacing: 1px; margin-bottom: 3px; }
-.rodape-links a { color: var(--creme); font-weight: 600; }
+/* Mais área de toque entre links empilhados do rodapé */
+.rodape-links a { color: var(--creme); font-weight: 600; display: inline-block; padding: 7px 0; line-height: 1.2; }
 .rodape-links a:hover { color: var(--cerrado); text-decoration: underline; }
 .rodape .creditos { flex-basis: 100%; font-size: .72rem; opacity: .65; margin-top: 8px; }
-.rodape-contatos { margin-top: 14px; line-height: 1.9; }
-.rodape-contatos a { color: var(--creme); }
+.rodape-contatos { margin-top: 14px; }
+.rodape-contatos a { color: var(--creme); display: inline-block; padding: 7px 0; line-height: 1.2; }
 .rodape-contatos a:hover { color: #fff; text-decoration: underline; }
 
 /* ---------- pacotes (página de vendas) ---------- */

@@ -31,12 +31,79 @@ if (TEM_LOGO) fs.copyFileSync(path.join(__dirname, 'src', 'logo.png'), path.join
 // Imagem social da home (1200x630 para WhatsApp/redes)
 if (fs.existsSync(path.join(__dirname, 'src', 'og-home.jpg'))) fs.copyFileSync(path.join(__dirname, 'src', 'og-home.jpg'), path.join(DIST, 'og-home.jpg'));
 const MARCA = TEM_LOGO
-  ? `<a class="marca" href="/"><img class="logo" src="/logo.png" alt="Villela Stay — Hospedagens Inteligentes"></a>`
+  ? `<a class="marca" href="/"><img class="logo" src="/logo.png" width="128" height="128" alt="Villela Stay — Hospedagens Inteligentes" fetchpriority="high"></a>`
   : `<a class="marca" href="/">Villela <span>Stay</span></a>`;
 const TAGLINE = `<span class="tagline">Hospedagens Inteligentes<br>para Experiências Inesquecíveis.</span>`;
 
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const real = n => 'R$ ' + n.toLocaleString('pt-BR');
+
+// ----------------------------------------------------------------- imagens responsivas
+// O host das imagens (ville.stays.com.br/image/<id>) aceita redimensionamento e webp no
+// servidor: `?width=N` e `?format=webp` (testado 16/06/2026 — width=400&format=webp gera ~22 KB
+// contra ~140 KB do original). Por isso NÃO baixamos/convertimos imagem em build-time (sem sharp,
+// sem dist/assets/img): geramos srcset apontando para o CDN, que entrega webp já redimensionado.
+// Vantagens: build idempotente e trivial, fotos sempre atualizadas com o anúncio, zero manutenção.
+const IMG_HOST = 'ville.stays.com.br';
+// Larguras geradas no srcset (px). Cobrem thumbnails de card e capas full-width em mobile/desktop/retina.
+const IMG_LARGURAS = [400, 600, 800, 1200, 1600];
+
+// Acrescenta width+format=webp à URL do CDN da Stays. URLs de origem própria (turismo, plantas)
+// não são tocadas. Idempotente e à prova de URL inesperada (try/catch → devolve a original).
+function cdnUrl(url, largura) {
+  try {
+    const u = new URL(url);
+    if (u.hostname !== IMG_HOST) return url; // só o CDN da Stays aceita esses parâmetros
+    u.searchParams.set('width', String(largura));
+    u.searchParams.set('format', 'webp');
+    return u.toString();
+  } catch (e) { return url; }
+}
+
+// Lê as dimensões intrínsecas de um JPEG/PNG local (sem dependências) para emitir width/height
+// corretos em imagens locais de razão variável (ex.: plantas) e manter o CLS baixo. Devolve null
+// se não conseguir (o chamador então omite os atributos — fallback seguro).
+function dimensoesArquivo(file) {
+  try {
+    const b = fs.readFileSync(file);
+    if (b[0] === 0x89 && b[1] === 0x50) { // PNG
+      return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+    }
+    if (b[0] === 0xFF && b[1] === 0xD8) { // JPEG
+      let i = 2;
+      while (i < b.length) {
+        if (b[i] !== 0xFF) { i++; continue; }
+        const m = b[i + 1];
+        if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) {
+          return { h: b.readUInt16BE(i + 5), w: b.readUInt16BE(i + 7) };
+        }
+        i += 2 + b.readUInt16BE(i + 2);
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Monta uma <img> responsiva. Para imagens do CDN da Stays gera srcset (webp redimensionado) + sizes.
+// Para imagens locais (turismo/plantas) gera <img> simples com width/height. SEMPRE inclui
+// width/height (reserva de espaço → CLS baixo) e decoding="async".
+//   opts: { width, height, sizes, alt, classe, lazy=true, prioridade=false, title }
+function img(url, opts = {}) {
+  const { width, height, sizes = '100vw', alt = '', classe = '', lazy = true, prioridade = false, title } = opts;
+  let host = '';
+  try { host = new URL(url).hostname; } catch (e) {}
+  const cdn = host === IMG_HOST;
+  const src = cdn ? cdnUrl(url, 1200) : url;
+  const srcset = cdn
+    ? ` srcset="${IMG_LARGURAS.map(w => `${cdnUrl(url, w)} ${w}w`).join(', ')}" sizes="${sizes}"`
+    : '';
+  const dim = (width ? ` width="${width}"` : '') + (height ? ` height="${height}"` : '');
+  // Imagem do LCP: fetchpriority high, eager, decode async. Demais: lazy + decode async.
+  const carga = prioridade ? ' fetchpriority="high" decoding="async"' : (lazy ? ' loading="lazy" decoding="async"' : ' decoding="async"');
+  const cls = classe ? ` class="${classe}"` : '';
+  const ttl = title ? ` title="${esc(title)}"` : '';
+  return `<img${cls} src="${src}"${srcset}${dim} alt="${esc(alt)}"${ttl}${carga}>`;
+}
 
 // ----------------------------------------------------------------- SEO
 // Dados reais da marca (NAP — Nome/Endereço/Telefone consistentes com o Google Business).
@@ -86,7 +153,10 @@ function layout(titulo, descricao, corpo, opts = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="index,follow,max-image-preview:large">
-<link rel="preconnect" href="https://ville.stays.com.br">
+<link rel="preconnect" href="https://ville.stays.com.br" crossorigin>
+<link rel="dns-prefetch" href="https://ville.stays.com.br">
+<link rel="preconnect" href="https://villela-stay-backend.onrender.com">
+<link rel="dns-prefetch" href="https://villela-stay-backend.onrender.com">
 <meta name="google-site-verification" content="_Gjh1tlFyUsmEnwd14JOLmSDNQ7u3UKAivi4bkIzz0I">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script>
 <script>
@@ -139,7 +209,9 @@ ${extraHead}
     <button type="button" id="btn-instalar-pwa" class="btn-instalar" hidden aria-label="Instalar o app da Villela Stay">📲 Instalar app</button>
   </nav>
 </header>
+<main id="conteudo">
 ${corpo}
+</main>
 <footer class="rodape">
   <div class="rodape-links">
     <strong>Conheça</strong>
@@ -175,7 +247,7 @@ ${corpo}
   <div class="creditos">Fotos dos pontos turísticos: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida e Rose Ramalho, via Wikimedia Commons (licenças CC BY / CC BY-SA).</div>
 </footer>
 <a class="wa-flutuante" href="${waLink('Olá! Vim pelo site da Villela Stay.')}" aria-label="Falar no WhatsApp">💬</a>
-<script>try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer), { keepalive: true }); } catch (e) {}</script>
+<script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer), { keepalive: true }); } catch (e) {} });</script>
 <script>
 document.addEventListener('click', function(e){
   var a = e.target.closest && e.target.closest('a[href*="wa.me"]');
@@ -223,7 +295,7 @@ document.addEventListener('submit', function(e){
 // ---------------------------------------------------------------- home
 const card = l => `
 <a class="card" href="/hospedagem/${l.id}.html">
-  <img loading="lazy" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}">
+  ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
   <div class="card-info">
     <h3>${esc(l.titulo)}</h3>
     <p>${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''}</p>
@@ -256,7 +328,12 @@ const home = layout(
   `
 <section class="hero hero-slideshow">
   <div class="hero-bg" aria-hidden="true">
-    ${heroFotos.map((u, i) => `<img src="${u}" alt="" ${i === 0 ? 'class="ativa" fetchpriority="high"' : 'loading="lazy" decoding="async"'}>`).join('\n    ')}
+    ${heroFotos.map((u, i) => img(u, {
+      alt: '', sizes: '100vw', width: 1600, height: 900,
+      classe: i === 0 ? 'ativa' : '',
+      prioridade: i === 0,   // 1ª imagem = LCP: fetchpriority high, sem lazy
+      lazy: i !== 0
+    })).join('\n    ')}
   </div>
   <div class="hero-conteudo">
     <h1>Seu Porto Seguro no Lago Sul em Brasília</h1>
@@ -268,7 +345,11 @@ const home = layout(
   </div>
 </section>
 <script>
-(function(){
+// Slideshow do hero: só inicia após o load (não disputa o thread no carregamento → TBT menor).
+// Respeita prefers-reduced-motion. A 1ª imagem já está visível via CSS (.ativa), então sem JS o
+// hero ainda funciona (só não roda a troca).
+window.addEventListener('load', function(){
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   var imgs = document.querySelectorAll('.hero-bg img');
   if (imgs.length < 2) return;
   var i = 0;
@@ -277,7 +358,7 @@ const home = layout(
     i = (i + 1) % imgs.length;
     imgs[i].classList.add('ativa');
   }, 5000);
-})();
+});
 </script>
 <a class="banner-posse" href="/posse-2027.html">🇧🇷 <strong>Posse Presidencial 2027 + Réveillon:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem <span>Saiba mais →</span></a>
 <section class="faixa-confianca">
@@ -303,6 +384,7 @@ const home = layout(
 ${cards}
 </section>
 <script>
+window.addEventListener('load', function(){
 fetch('${BACKEND}/api/ultima-hora')
   .then(function(r){ return r.json(); })
   .then(function(ofertas){
@@ -322,11 +404,15 @@ fetch('${BACKEND}/api/ultima-hora')
     wrap.hidden = false;
   })
   .catch(function(){});
+});
 </script>`,
   {
     caminho: '/',
     ogImage: `${SITE_URL}/og-home.jpg`,
-    extraHead: `<script type="application/ld+json">${JSON.stringify({
+    // Preload da imagem do LCP (1ª foto do slideshow), com srcset/sizes para o browser baixar a
+    // largura certa o quanto antes — derruba o LCP. Só funciona porque o CDN gera webp responsivo.
+    extraHead: `<link rel="preload" as="image" fetchpriority="high" href="${cdnUrl(heroFotos[0], 1200)}" imagesrcset="${IMG_LARGURAS.map(w => `${cdnUrl(heroFotos[0], w)} ${w}w`).join(', ')}" imagesizes="100vw">
+<script type="application/ld+json">${JSON.stringify({
       '@context': 'https://schema.org', '@type': 'LodgingBusiness',
       '@id': `${SITE_URL}/#hospedagem`,
       name: NAP.nome, url: SITE_URL, image: `${SITE_URL}/og-home.jpg`,
@@ -409,14 +495,14 @@ function unidadeSchema(l) {
 
 for (const l of listings) {
   const galeria = (l.fotos || []).slice(1, 9).map(f =>
-    `<img loading="lazy" src="${f.url}" alt="${esc(f.nome || l.titulo)}" title="${esc(f.nome || '')}">`).join('\n');
+    img(f.url, { alt: f.nome || l.titulo, title: f.nome || '', width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })).join('\n');
 
   const pagina = layout(
     `${l.titulo} | Villela Stay`,
     String(l.resumo || l.titulo).replace(/<[^>]+>/g, '').slice(0, 155),
     `
 <article class="unidade">
-  <img class="capa" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}" fetchpriority="high">
+  ${img(l.fotoPrincipal, { alt: l.titulo, classe: 'capa', width: 980, height: 420, sizes: '(max-width: 980px) 100vw, 980px', lazy: false, prioridade: true })}
   <div class="unidade-cab">
     <nav class="breadcrumb"><a href="/">Início</a> › <a href="/#hospedagens">Hospedagens</a> › <span>${esc(l.titulo)}</span></nav>
     <h1>${esc(l.titulo)}</h1>
@@ -434,7 +520,7 @@ for (const l of listings) {
   </section>
   ${VIDEOS[l.id] ? `<section class="video-wrap">
     <h2>Conheça por dentro</h2>
-    <video controls preload="metadata" playsinline poster="${l.fotoPrincipal}">
+    <video controls preload="none" playsinline poster="${cdnUrl(l.fotoPrincipal, 800)}">
       <source src="/videos/${VIDEOS[l.id]}" type="video/mp4">
     </video>
   </section>` : ''}
@@ -450,7 +536,10 @@ for (const l of listings) {
   <section class="descricao">${l.descricao || ''}</section>
   ${PLANTAS[l.id] ? `<section class="planta">
     <h2>Planta do espaço</h2>
-    <a href="/plantas/${PLANTAS[l.id]}" target="_blank" rel="noopener"><img loading="lazy" src="/plantas/${PLANTAS[l.id]}" alt="Planta do espaço — ${esc(l.titulo)}"></a>
+    <a href="/plantas/${PLANTAS[l.id]}" target="_blank" rel="noopener">${(() => {
+      const d = dimensoesArquivo(path.join(__dirname, 'src', 'plantas', PLANTAS[l.id]));
+      return img(`/plantas/${PLANTAS[l.id]}`, { alt: `Planta do espaço — ${l.titulo}`, sizes: '(max-width: 980px) 100vw, 980px', width: d ? d.w : undefined, height: d ? d.h : undefined });
+    })()}</a>
     <p class="planta-dica">Clique na planta para ampliar.</p>
   </section>` : ''}
   <section class="galeria"><h2>Fotos</h2><div class="galeria-grid">${galeria}</div></section>
@@ -513,7 +602,8 @@ for (const l of listings) {
       caminho: `/hospedagem/${l.id}.html`,
       ogImage: l.fotoPrincipal,
       ogType: 'product',
-      extraHead: `<script type="application/ld+json">${JSON.stringify(unidadeSchema(l))}</script>
+      extraHead: `<link rel="preload" as="image" fetchpriority="high" href="${cdnUrl(l.fotoPrincipal, 1200)}" imagesrcset="${IMG_LARGURAS.map(w => `${cdnUrl(l.fotoPrincipal, w)} ${w}w`).join(', ')}" imagesizes="(max-width: 980px) 100vw, 980px">
+<script type="application/ld+json">${JSON.stringify(unidadeSchema(l))}</script>
 <script type="application/ld+json">${JSON.stringify({
         '@context': 'https://schema.org', '@type': 'BreadcrumbList',
         itemListElement: [
@@ -551,7 +641,7 @@ const cardsEventos = CASAS_EVENTO.map(c => {
   const exemplo = c.convidados * 100 + 1000;
   return `
 <article class="casa-pacote">
-  <img loading="lazy" src="${l ? l.fotoPrincipal : ''}" alt="${esc(c.nome)}">
+  ${l ? img(l.fotoPrincipal, { alt: c.nome, width: 340, height: 280, sizes: '(max-width: 760px) 100vw, 340px' }) : '<img alt="" width="340" height="280">'}
   <div class="casa-pacote-corpo">
     <h3>${esc(c.nome)}</h3>
     <p class="casa-meta">🕺 até ${c.convidados} convidados · 🕙 das 10h às 22h · 📍 ${esc(c.local)}</p>
@@ -692,7 +782,7 @@ const cardsCasas = CASAS_PACOTE.map(c => {
   const porDia = Math.ceil(porPessoa / 4);
   return `
 <article class="casa-pacote">
-  <img loading="lazy" src="${l ? l.fotoPrincipal : ''}" alt="${esc(c.nome)}">
+  ${l ? img(l.fotoPrincipal, { alt: c.nome, width: 340, height: 280, sizes: '(max-width: 760px) 100vw, 340px' }) : '<img alt="" width="340" height="280">'}
   <div class="casa-pacote-corpo">
     <h3>${esc(c.nome)}</h3>
     <p class="casa-meta">🛌 até ${c.hospedes} hóspedes · 🕺 eventos para até ${c.convidados} convidados · 📍 ${esc(c.local)}</p>
@@ -1026,7 +1116,7 @@ const LANDINGS = [
 for (const lp of LANDINGS) {
   const cards = lp.casas.map(id => porId[id]).filter(Boolean).map(l => `
   <a class="card" href="/hospedagem/${l.id}.html">
-    <img loading="lazy" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}">
+    ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
     <div class="card-info"><h3>${esc(l.titulo)}</h3><p>${l.hospedes} hóspedes · ${l.quartos} quartos${l.m2 ? ` · ${l.m2} m²` : ''}</p></div>
   </a>`).join('\n');
 
@@ -1081,7 +1171,7 @@ document.querySelector('.form-landing').addEventListener('submit', function(e){
 // ------------------------- artigo: posse 2027 -------------------------
 const cardsPosse = ['GD03H', 'GG04I', 'PL02I', 'GD01H', 'GI01I'].map(id => porId[id]).filter(Boolean).map(l => `
   <a class="card" href="/hospedagem/${l.id}.html">
-    <img loading="lazy" src="${l.fotoPrincipal}" alt="${esc(l.titulo)}">
+    ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
     <div class="card-info"><h3>${esc(l.titulo)}</h3><p>${l.hospedes} hóspedes · ${l.quartos} quartos</p></div>
   </a>`).join('\n');
 
