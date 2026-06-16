@@ -150,6 +150,12 @@ function cabecalho(titulo, sub) { return `<h1 class="titulo">${esc(titulo)}</h1>
 // --------- Visão geral ---------
 async function renderVisao() {
   conteudo().innerHTML = cabecalho('Visão geral', 'Resumo do que os agentes vêm produzindo.');
+  // Busca rápida: leva para Relatórios & Entregas já filtrado pelo termo digitado.
+  conteudo().innerHTML += `<form id="busca-home" class="barra">
+    <input id="busca-home-input" type="search" placeholder="🔎 Buscar em todos os relatórios e entregas…" style="flex:1;min-width:220px">
+    <button class="btn" type="submit">Buscar</button>
+  </form>`;
+  $('#busca-home').onsubmit = (ev) => { ev.preventDefault(); ESTADO.buscaPrefill = $('#busca-home-input').value; navegar('relatorios'); };
   try {
     const vg = await api('GET', '/visao-geral');
     const cards = `<div class="cards">
@@ -191,6 +197,8 @@ async function renderRelatorios() {
       <select id="filtro-area"><option value="">Todas</option>${opcoes}</select></label>
     <select id="filtro-tipo"><option value="">Todos os tipos</option><option value="relatorio">Relatórios</option><option value="produto">Produtos</option><option value="servico">Serviços</option></select>
   </div><div id="lista-rel"></div>`;
+  // termo vindo da busca da Visão geral
+  if (ESTADO.buscaPrefill) { $('#busca').value = ESTADO.buscaPrefill; ESTADO.buscaPrefill = ''; }
   let cache = [];
   const aplicar = () => {
     const q = normaliza($('#busca').value).trim();
