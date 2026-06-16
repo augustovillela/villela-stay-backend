@@ -732,6 +732,34 @@ app.get('/staff/api/crm/funil', requirePublishOrSession, podeCRM, (req, res) => 
   res.json({ porEstagio, total }); // total exclui "perdido"
 });
 
+// Métricas do funil (Fase 5): conversão, valor no pipeline, por origem, motivos de perda, imóveis.
+app.get('/staff/api/crm/metricas', requirePublishOrSession, podeCRM, (req, res) => {
+  const contatos = lerContatos();
+  const porEstagio = {}; ESTAGIOS.forEach(e => porEstagio[e] = { n: 0, valor: 0 });
+  const porOrigem = {}, motivosPerda = {}, porImovel = {};
+  for (const c of contatos) {
+    const e = ESTAGIOS.includes(c.estagio) ? c.estagio : 'novo';
+    porEstagio[e].n++; porEstagio[e].valor += Number(c.valorEstimado) || 0;
+    const o = c.origem || 'manual'; porOrigem[o] = (porOrigem[o] || 0) + 1;
+    if (e === 'perdido') { const m = (c.motivoPerda || '').trim() || 'Sem motivo'; motivosPerda[m] = (motivosPerda[m] || 0) + 1; }
+    if (c.imovelInteresse) porImovel[c.imovelInteresse] = (porImovel[c.imovelInteresse] || 0) + 1;
+  }
+  const ganhosEst = ['reserva', 'hospedado', 'posvenda'];
+  const ganhos = ganhosEst.reduce((s, e) => s + porEstagio[e].n, 0);
+  const perdidos = porEstagio['perdido'].n;
+  const total = contatos.length;
+  const pct = (a, b) => b ? Math.round((a / b) * 1000) / 10 : 0;
+  res.json({
+    total, ganhos, perdidos, emNegociacao: total - ganhos - perdidos,
+    taxaConversao: pct(ganhos, total),
+    taxaFechamento: pct(ganhos, ganhos + perdidos),
+    pipelineValor: ['novo', 'contato', 'orcamento', 'negociacao'].reduce((s, e) => s + porEstagio[e].valor, 0),
+    ganhosValor: ganhosEst.reduce((s, e) => s + porEstagio[e].valor, 0),
+    porEstagio, porOrigem, motivosPerda,
+    topImoveis: Object.entries(porImovel).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => ({ imovel: k, n: v })),
+  });
+});
+
 // Caixa de follow-ups: próximas ações vencidas ou para hoje
 app.get('/staff/api/crm/followups', requirePublishOrSession, podeCRM, (req, res) => {
   const hoje = hojeISO();

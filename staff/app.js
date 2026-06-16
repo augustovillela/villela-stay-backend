@@ -414,13 +414,49 @@ async function renderCRM() {
   conteudo().innerHTML = cabecalho('CRM / Funil', 'Do primeiro contato ao pós-venda. Arraste os cartões para mudar de etapa.')
     + `<div class="barra">
         <button class="btn" id="crm-novo">+ Novo contato</button>
+        <button class="btn secund" id="crm-metricas">📊 Métricas</button>
         <input id="crm-busca" placeholder="Buscar nome, telefone ou e-mail…" style="flex:1;min-width:200px">
        </div>
        <div id="crm-followups"></div>
        <div id="crm-board" class="kanban"><div class="vazio">Carregando…</div></div>`;
   $('#crm-novo').onclick = () => crmFormContato();
+  $('#crm-metricas').onclick = () => renderCRMMetricas();
   let t; $('#crm-busca').oninput = () => { clearTimeout(t); t = setTimeout(crmCarregar, 250); };
   crmCarregar();
+}
+
+async function renderCRMMetricas() {
+  conteudo().innerHTML = `<button class="btn secund peq" id="m-voltar">← Voltar ao funil</button>`
+    + cabecalho('CRM — Métricas', 'Visão do funil de vendas.')
+    + `<div id="m-corpo"><div class="vazio">Carregando…</div></div>`;
+  $('#m-voltar').onclick = () => navegar('crm');
+  try {
+    const m = await api('GET', '/crm/metricas');
+    const card = (n, rot) => `<div class="card"><div class="n">${n}</div><div class="rot">${esc(rot)}</div></div>`;
+    const cards = `<div class="cards">
+      ${card(m.total, 'Contatos no total')}
+      ${card(m.emNegociacao, 'Em negociação')}
+      ${card(m.ganhos, 'Ganhos (reserva+)')}
+      ${card(m.perdidos, 'Perdidos')}
+      ${card(m.taxaConversao + '%', 'Conversão (ganhos / total)')}
+      ${card(m.taxaFechamento + '%', 'Fechamento (ganhos / decididos)')}
+      ${card(esc(moedaBr(m.pipelineValor) || 'R$ 0'), 'Valor no pipeline')}
+      ${card(esc(moedaBr(m.ganhosValor) || 'R$ 0'), 'Valor ganho')}
+    </div>`;
+    const estagiosTab = `<h2 class="titulo" style="font-size:1.1rem">Por estágio</h2>
+      <table><thead><tr><th>Estágio</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>${CRM.estagios.map(e =>
+        `<tr><td>${esc(e.rot)}</td><td>${m.porEstagio[e.id].n}</td><td>${esc(moedaBr(m.porEstagio[e.id].valor) || '—')}</td></tr>`).join('')}</tbody></table>`;
+    const tabela = (titulo, obj) => {
+      const ent = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]);
+      if (!ent.length) return '';
+      return `<h2 class="titulo" style="font-size:1.1rem">${esc(titulo)}</h2><table><tbody>${ent.map(([k, v]) =>
+        `<tr><td>${esc(k)}</td><td style="text-align:right;width:70px">${v}</td></tr>`).join('')}</tbody></table>`;
+    };
+    $('#m-corpo').innerHTML = cards + estagiosTab
+      + tabela('Por origem', m.porOrigem)
+      + tabela('Imóveis mais procurados', Object.fromEntries((m.topImoveis || []).map(x => [x.imovel, x.n])))
+      + tabela('Motivos de perda', m.motivosPerda);
+  } catch (e) { $('#m-corpo').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 async function crmCarregar() {
