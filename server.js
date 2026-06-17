@@ -634,19 +634,59 @@ app.delete('/staff/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => {
 });
 
 // ===================== relatórios / entregas =====================
+// Reacentuação automática de título/resumo: muitos scripts/agentes publicam
+// em ASCII (para evitar corrupção de acento no Agendador do Windows). Aqui, no
+// servidor (Node, UTF-8 seguro), restauramos os acentos. SÓ age se a string
+// estiver 100% sem acento (assim nunca estraga textos já acentuados) e troca
+// apenas palavras inteiras conhecidas (o resto fica como está).
+const ACENTOS = {
+  acustica:'acústica', alem:'além', animacao:'animação', aniversario:'aniversário', anuncio:'anúncio',
+  aprovacao:'aprovação', area:'área', atencao:'atenção', ate:'até', automacoes:'automações',
+  avaliacoes:'avaliações', brasilia:'brasília', cafe:'café', calendario:'calendário', cartao:'cartão',
+  comodos:'cômodos', concorrencia:'concorrência', conteudo:'conteúdo', cotacao:'cotação',
+  decisoes:'decisões', decoracao:'decoração', dedetizacao:'dedetização', descricao:'descrição',
+  descricoes:'descrições', diaria:'diária', diario:'diário', duvidas:'dúvidas', endereco:'endereço',
+  estagios:'estágios', estrategia:'estratégia', evolucao:'evolução', excecoes:'exceções',
+  ferias:'férias', governanca:'governança', grafica:'gráfica', graficos:'gráficos', historica:'histórica',
+  historico:'histórico', horario:'horário', hospede:'hóspede', hospedes:'hóspedes', impressao:'impressão',
+  indice:'índice', informacoes:'informações', inicio:'início', inventario:'inventário', juridico:'jurídico',
+  legislacao:'legislação', liquido:'líquido', manutencao:'manutenção', manutencoes:'manutenções',
+  medio:'médio', mes:'mês', metodo:'método', movel:'móvel', nao:'não', ocupacao:'ocupação',
+  opcoes:'opções', operacao:'operação', operacoes:'operações', otimizacao:'otimização', padrao:'padrão',
+  pagina:'página', parametros:'parâmetros', periodo:'período', porem:'porém', pos:'pós',
+  possivel:'possível', pre:'pré', preco:'preço', precos:'preços', proxima:'próxima', proximas:'próximas',
+  proximo:'próximo', publicacao:'publicação', publicacoes:'publicações', reclassificacao:'reclassificação',
+  recorrencias:'recorrências', regiao:'região', regua:'régua', relatorio:'relatório', reuniao:'reunião',
+  responsavel:'responsável', romantico:'romântico', sao:'são', saida:'saída', servico:'serviço',
+  servicos:'serviços', sinalizacao:'sinalização', situacao:'situação', solicitacoes:'solicitações',
+  tambem:'também', tecnicas:'técnicas', tecnico:'técnico', tendencias:'tendências', titulo:'título',
+  titulos:'títulos', tributario:'tributário', ultimos:'últimos', versoes:'versões', videos:'vídeos',
+  voce:'você',
+};
+function reacentua(s) {
+  if (!s) return s;
+  if (/[áàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ]/.test(s)) return s; // já tem acento: respeita
+  return s.replace(/[A-Za-z]+/g, (w) => {
+    const acc = ACENTOS[w.toLowerCase()];
+    if (!acc) return w;
+    if (w[0] === w[0].toUpperCase()) return acc.charAt(0).toUpperCase() + acc.slice(1);
+    return acc;
+  });
+}
+
 // Publicar (sessão com a área, ou script local com x-publish-key)
 app.post('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
   const d = req.body || {};
   const area = String(d.area || '').trim();
   if (!AREA_IDS.has(area)) return res.status(400).json({ erro: 'Área inválida.' });
   if (!req.viaChave && !podeArea(req.user, area)) return res.status(403).json({ erro: 'Sem acesso a essa área.' });
-  const titulo = String(d.titulo || '').trim();
+  const titulo = reacentua(String(d.titulo || '').trim());
   if (!titulo) return res.status(400).json({ erro: 'Título é obrigatório.' });
   const tipo = ['relatorio', 'produto', 'servico'].includes(d.tipo) ? d.tipo : 'relatorio';
 
   const rel = {
     id: novoId(), area, tipo, titulo,
-    resumo: String(d.resumo || '').slice(0, 1000),
+    resumo: reacentua(String(d.resumo || '').slice(0, 1000)),
     periodo: String(d.periodo || '').slice(0, 50),
     autor: req.viaChave ? (String(d.autor || 'agente').slice(0, 60)) : req.user.nome,
     publicadoEm: new Date().toISOString(),
@@ -671,6 +711,19 @@ app.post('/staff/api/relatorios', requirePublishOrSession, (req, res) => {
   relatorios.unshift(rel);
   salvarRelatorios(relatorios);
   res.json({ ok: true, relatorio: { ...rel, texto: undefined } });
+});
+
+// Migração única: reacentua título/resumo das entregas já publicadas (em ASCII).
+app.post('/staff/api/relatorios/reacentuar', requirePublishOrSession, (req, res) => {
+  const rs = lerRelatorios();
+  let n = 0;
+  for (const r of rs) {
+    const t = reacentua(r.titulo || '');
+    const rsm = reacentua(r.resumo || '');
+    if (t !== r.titulo || rsm !== r.resumo) { r.titulo = t; r.resumo = rsm; n++; }
+  }
+  salvarRelatorios(rs);
+  res.json({ ok: true, alterados: n, total: rs.length });
 });
 
 // Listar (sessão filtra pelas áreas do usuário; a PUBLISH_KEY vê tudo — ferramenta de manutenção)
