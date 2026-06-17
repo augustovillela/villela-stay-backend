@@ -57,6 +57,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
   padding: 11px 22px; font-size: .92rem; color: var(--concreto); border-left: 3px solid transparent; }
 .menu button:hover { background: var(--areia); }
 .menu button.ativo { border-left-color: var(--cerrado); background: var(--areia); font-weight: 700; color: var(--petroleo); }
+.menu a.link-externo { display: block; padding: 11px 22px; font-size: .92rem; color: var(--concreto); text-decoration: none; border-left: 3px solid transparent; }
+.menu a.link-externo:hover { background: var(--areia); color: var(--petroleo); }
 .menu .grupo { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--concreto-claro); padding: 14px 22px 4px; font-weight: 700; }
 .conteudo { flex: 1; padding: 28px 4vw; max-width: 1100px; }
 h1.titulo { font-size: 1.5rem; margin: 0 0 4px; color: var(--petroleo); }
@@ -155,7 +157,7 @@ tr:last-child td { border-bottom: none; }
 @media (max-width: 760px) {
   .corpo { flex-direction: column; }
   .menu { width: 100%; display: flex; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--borda); padding: 8px; }
-  .menu button { width: auto; border-left: none; border-radius: 18px; padding: 7px 14px; }
+  .menu button, .menu a.link-externo { width: auto; border-left: none; border-radius: 18px; padding: 7px 14px; }
   .menu button.ativo { border-left: none; }
   .menu .grupo { display: none; }
   .ficha { flex-direction: column; }

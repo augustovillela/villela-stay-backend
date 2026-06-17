@@ -139,12 +139,20 @@ function montarMenu() {
   if (ESTADO.painelDisp.eventos) op.push({ id: 'eventos', rot: 'Eventos (Stays)' });
   if (ESTADO.podeEstat) op.push({ id: 'estatisticas', rot: 'Visitas do site' });
   if (op.length) { itens.push({ grupo: 'Operação' }); itens.push(...op); }
+  itens.push({ grupo: 'Stays' });
+  itens.push({ rot: 'Site público ↗', url: 'https://ville.stays.com.br/' });
+  itens.push({ rot: 'Painel administrativo ↗', url: 'https://ville.stays.com.br/i/home' });
   itens.push({ grupo: 'Conta' });
   if (ESTADO.me.papel === 'admin') itens.push({ id: 'usuarios', rot: 'Usuários' });
   itens.push({ id: 'conta', rot: 'Minha conta' });
 
   for (const it of itens) {
     if (it.grupo) { const g = document.createElement('div'); g.className = 'grupo'; g.textContent = it.grupo; m.appendChild(g); continue; }
+    if (it.url) {
+      const a = document.createElement('a'); a.textContent = it.rot; a.href = it.url;
+      a.target = '_blank'; a.rel = 'noopener noreferrer'; a.className = 'link-externo';
+      m.appendChild(a); continue;
+    }
     const b = document.createElement('button'); b.textContent = it.rot; b.dataset.id = it.id;
     b.onclick = () => navegar(it.id);
     m.appendChild(b);
