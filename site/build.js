@@ -201,6 +201,7 @@ ${extraHead}
     <a href="/#hospedagens">Hospedagens</a>
     <a href="/eventos.html">Eventos</a>
     <a href="/pacotes.html">Pacotes Especiais</a>
+    <a href="/blog.html">Blog</a>
     <a href="/regras.html">Regras da Casa</a>
     <a href="/guia.html">Guia do Hóspede</a>
     <a href="/nossa-historia.html">Nossa História</a>
@@ -215,6 +216,7 @@ ${corpo}
 <footer class="rodape">
   <div class="rodape-links">
     <strong>Conheça</strong>
+    <a href="/blog.html">Blog · Diário de Brasília</a>
     <a href="/nossa-historia.html">Nossa História</a>
     <a href="/posse-2027.html">Posse Presidencial 2027</a>
   </div>
@@ -226,7 +228,7 @@ ${corpo}
       Gran Villela Home Stay: 15 minutos da Esplanada
     </p>
   </div>
-  <div class="rodape-links">
+  <div class="rodape-links rodape-compacto">
     <strong>Navegue</strong>
     <a href="/pre-checkin.html">Pré-check-in online</a>
     <a href="/guia.html">Guia do Hóspede</a>
@@ -1262,6 +1264,252 @@ const historia = layout(
 );
 fs.writeFileSync(path.join(DIST, 'nossa-historia.html'), historia);
 
+// ============================ BLOG / Diário de Brasília ============================
+// Motor data-driven: cada artigo é um arquivo em content/blog/ (registrado em index.js).
+// Para publicar um novo: crie o arquivo, registre no index e rode `node build.js`.
+const BLOG = require('./content/blog');
+
+// Créditos das imagens curadas (Wikimedia Commons) — opcional/tolerante a ausência.
+let blogCreditos = {};
+try {
+  blogCreditos = JSON.parse(fs.readFileSync(path.join(__dirname, 'src', 'blog', 'creditos.json'), 'utf8').replace(/^﻿/, ''));
+} catch (e) { console.warn('[blog] sem creditos.json — artigos usarão só a arte de marca'); }
+
+// Copia as imagens do blog (src/blog/*.jpg|png) para dist/blog-img/
+const BLOG_IMG_SRC = path.join(__dirname, 'src', 'blog');
+const BLOG_IMG_DST = path.join(DIST, 'blog-img');
+if (fs.existsSync(BLOG_IMG_SRC)) {
+  fs.mkdirSync(BLOG_IMG_DST, { recursive: true });
+  for (const f of fs.readdirSync(BLOG_IMG_SRC)) {
+    if (/\.(jpe?g|png)$/i.test(f)) fs.copyFileSync(path.join(BLOG_IMG_SRC, f), path.join(BLOG_IMG_DST, f));
+  }
+}
+fs.mkdirSync(path.join(DIST, 'blog'), { recursive: true });
+
+const fmtDataBR = s => { const p = String(s).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; };
+
+// Motivo decorativo modernista (curvas tipo Niemeyer) — tingido por CSS via currentColor.
+const BLOG_HERO_SVG = `<svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2"><path d="M-40,400 C160,150 480,150 680,400"/><path d="M-40,400 C160,95 480,95 680,400"/><path d="M-40,400 C160,40 480,40 680,400"/><circle cx="520" cy="120" r="46"/></g></svg>`;
+
+// <figure> de uma imagem curada do artigo (1-based). '' se não existir — degrada com elegância.
+function blogFig(slug, n, opts = {}) {
+  const item = (blogCreditos[slug] || [])[n - 1];
+  if (!item) return '';
+  const abs = path.join(BLOG_IMG_SRC, item.file);
+  if (!fs.existsSync(abs)) return '';
+  const dim = dimensoesArquivo(abs) || { w: 1600, h: 1067 };
+  const legenda = opts.legenda || item.alt || '';
+  const credito = `Foto: ${esc(item.credito)} (${esc(item.licenca)}) · <a href="${esc(item.fonte)}" target="_blank" rel="noopener nofollow">Wikimedia Commons</a>`;
+  return `<figure class="artigo-fig${opts.classe ? ' ' + opts.classe : ''}">
+${img('/blog-img/' + item.file, { alt: legenda || item.alt, width: dim.w, height: dim.h, sizes: '(max-width: 820px) 100vw, 760px' })}
+  <figcaption>${legenda ? `<span class="fig-legenda">${esc(legenda)}</span>` : ''}<span class="fig-credito">${credito}</span></figcaption>
+</figure>`;
+}
+
+// Imagem de capa de um card do hub (1ª foto do tema) ou arte de marca de fallback.
+function blogCardImg(a) {
+  const item = (blogCreditos[a.slug] || [])[0];
+  if (item) {
+    const abs = path.join(BLOG_IMG_SRC, item.file);
+    if (fs.existsSync(abs)) {
+      const d = dimensoesArquivo(abs) || { w: 1600, h: 1067 };
+      return img('/blog-img/' + item.file, { alt: a.h1, width: d.w, height: d.h, sizes: '(max-width: 640px) 100vw, 400px' });
+    }
+  }
+  return `<div class="blog-card-arte tema-${a.slug}" aria-hidden="true">${BLOG_HERO_SVG}</div>`;
+}
+
+const BLOG_POR_SLUG = Object.fromEntries(BLOG.map(a => [a.slug, a]));
+
+// Script único que liga todos os formulários do blog ao /api/leads (CRM), marcando a origem.
+const formScriptBlog = `<script>
+document.querySelectorAll('.form-blog').forEach(function(f){
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var st = f.querySelector('.form-status'); st.hidden=false; st.textContent='Enviando...';
+    var g=function(n){var el=f.querySelector('[name="'+n+'"]'); return el?String(el.value).trim():'';};
+    var extra=[]; ['datas','pessoas','interesse','mensagem'].forEach(function(n){var v=g(n); if(v) extra.push(n+': '+v);});
+    var msg=(f.getAttribute('data-contexto')||'')+(extra.length?' — '+extra.join(' | '):'');
+    fetch('${BACKEND}/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({nome:g('nome'),contato:g('contato'),mensagem:msg,origem:f.getAttribute('data-origem')})})
+    .then(function(r){ st.textContent=r.ok?'✅ Recebido! Em breve entramos em contato.':'Não consegui enviar — chame no WhatsApp.'; if(r.ok) f.reset(); })
+    .catch(function(){ st.textContent='Não consegui enviar — chame no WhatsApp.'; });
+  });
+});
+</script>`;
+
+function renderArtigo(a) {
+  const h = {
+    fig: (n, opts) => blogFig(a.slug, n, opts),
+    wa: waLink,
+    esc,
+    casaLink: (code, label) => porId[code] ? `<a href="/hospedagem/${code}.html">${esc(label || porId[code].titulo)}</a>` : (label ? esc(label) : ''),
+  };
+  const caminho = `/blog/${a.slug}.html`;
+  const url = `${SITE_URL}${caminho}`;
+  const heroAbs = (blogCreditos[a.slug] && blogCreditos[a.slug][0]) ? `${SITE_URL}/blog-img/${blogCreditos[a.slug][0].file}` : `${SITE_URL}/og-home.jpg`;
+
+  // ---- dados estruturados ----
+  const artigoLd = {
+    '@context': 'https://schema.org', '@type': 'Article',
+    headline: a.h1, description: a.descricao, image: heroAbs,
+    datePublished: a.atualizado, dateModified: a.atualizado, inLanguage: 'pt-BR',
+    about: a.tema, author: { '@id': ORG_ID }, publisher: { '@id': ORG_ID },
+    mainEntityOfPage: url, isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`, name: 'Diário de Brasília — Villela Stay' }
+  };
+  const faqLd = a.faq && a.faq.length ? {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: a.faq.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } }))
+  } : null;
+  const crumbLd = {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL + '/' },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+      { '@type': 'ListItem', position: 3, name: a.tema, item: url }
+    ]
+  };
+  const extraHead = [artigoLd, faqLd, crumbLd].filter(Boolean)
+    .map(o => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('\n');
+
+  // ---- blocos de conversão ----
+  const casasCards = (a.casas || []).map(id => porId[id]).filter(Boolean).map(card).join('\n');
+  const iscaBox = a.isca ? `
+  <aside class="isca-box">
+    <div class="isca-conteudo">
+      <span class="isca-tag">🎁 Material gratuito</span>
+      <h2>${esc(a.isca.titulo)}</h2>
+      <p>${esc(a.isca.texto)}</p>
+    </div>
+    <form class="form-blog form-isca" data-origem="blog:${a.slug}:isca" data-contexto="Isca '${esc(a.isca.titulo)}' (artigo: ${esc(a.h1)})">
+      <input name="nome" placeholder="Seu nome" required aria-label="Seu nome">
+      <input name="contato" placeholder="WhatsApp ou e-mail" required aria-label="WhatsApp ou e-mail">
+      <button class="btn" type="submit">${esc(a.isca.botao || 'Quero receber')}</button>
+      <p class="form-status" hidden></p>
+    </form>
+  </aside>` : '';
+
+  const faqBloco = (a.faq && a.faq.length) ? `
+  <section class="artigo-faq">
+    <h2>Perguntas frequentes</h2>
+    ${a.faq.map(f => `<details class="faq-item"><summary>${esc(f.q)}</summary><div class="faq-resp">${esc(f.a)}</div></details>`).join('\n    ')}
+  </section>` : '';
+
+  const relacionados = (a.relacionados || []).map(s => BLOG_POR_SLUG[s]).filter(Boolean);
+  const relacionadosBloco = relacionados.length ? `
+  <section class="blog-relacionados">
+    <h2 class="secao-titulo">Continue lendo</h2>
+    <div class="blog-grade">
+      ${relacionados.map(r => `<a class="blog-card blog-card-min" href="/blog/${r.slug}.html">
+        <div class="blog-card-img">${blogCardImg(r)}</div>
+        <div class="blog-card-info"><span class="tema-tag tema-${r.slug}">${r.emoji} ${esc(r.tema)}</span><h3>${esc(r.h1)}</h3></div>
+      </a>`).join('\n      ')}
+    </div>
+  </section>` : '';
+
+  const waMsg = `Olá! Li o artigo "${a.h1}" no site da Villela Stay e quero saber sobre hospedagem no Lago Sul.`;
+
+  const corpoHtml = `
+<article class="artigo">
+  <header class="artigo-hero tema-${a.slug}">
+    <div class="artigo-hero-motivo" aria-hidden="true">${BLOG_HERO_SVG}</div>
+    <div class="artigo-hero-conteudo">
+      <nav class="breadcrumb"><a href="/">Início</a> › <a href="/blog.html">Blog</a> › <span>${esc(a.tema)}</span></nav>
+      <span class="tema-tag">${a.emoji} ${esc(a.tema)}</span>
+      <h1>${esc(a.h1)}</h1>
+      <p class="artigo-dek">${esc(a.dek)}</p>
+      <div class="artigo-meta"><span>⏱ ${a.leituraMin || 7} min de leitura</span><span>Atualizado em ${fmtDataBR(a.atualizado)}</span></div>
+    </div>
+  </header>
+  <div class="artigo-corpo">
+    ${a.corpo(h)}
+    ${iscaBox}
+    ${faqBloco}
+  </div>
+</article>
+
+<section class="grade-wrap blog-casas">
+  <h2 class="secao-titulo">${esc(a.casasTitulo || 'Onde se hospedar')}</h2>
+  ${a.casasTexto ? `<p class="blog-casas-texto">${esc(a.casasTexto)}</p>` : ''}
+  <div class="grade">${casasCards}</div>
+</section>
+
+<section class="venda-bloco cta-final blog-cta">
+  <h2>Quer ajuda para planejar sua estadia?</h2>
+  <p>Conte a data e o tamanho do grupo — devolvemos a proposta completa, com as casas certas e os melhores preços.</p>
+  <a class="btn btn-wa btn-grande" href="${waLink(waMsg)}">Falar no WhatsApp</a>
+  <p style="margin-top:22px">Ou deixe seu contato que retornamos:</p>
+  <form class="form-blog form-evento form-evento-claro" data-origem="blog:${a.slug}" data-contexto="Cotação a partir do artigo: ${esc(a.h1)}">
+    <label>Seu nome* <input name="nome" required></label>
+    <label>WhatsApp ou e-mail* <input name="contato" required></label>
+    <label>Datas pretendidas <input name="datas" placeholder="Ex.: 10 a 14/07 (ou flexível)"></label>
+    <label>Nº de pessoas <input name="pessoas" placeholder="Ex.: 8"></label>
+    <label>Interesse
+      <select name="interesse">
+        <option value="">Selecione…</option>
+        <option>Hospedagem</option>
+        <option>Evento</option>
+        <option>Hospedagem + evento</option>
+      </select>
+    </label>
+    <label>Mensagem (opcional) <textarea name="mensagem" rows="2"></textarea></label>
+    <button class="btn" type="submit">Pedir proposta</button>
+    <p class="form-status" hidden></p>
+  </form>
+</section>
+
+${relacionadosBloco}
+${formScriptBlog}`;
+
+  const html = layout(a.titulo, a.descricao, corpoHtml, { caminho, ogType: 'article', ogImage: heroAbs, extraHead });
+  fs.writeFileSync(path.join(DIST, 'blog', `${a.slug}.html`), html);
+}
+
+BLOG.forEach(renderArtigo);
+
+// ---- hub /blog.html ----
+const blogCardsHub = BLOG.map(a => `
+  <a class="blog-card" href="/blog/${a.slug}.html">
+    <div class="blog-card-img">${blogCardImg(a)}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-${a.slug}">${a.emoji} ${esc(a.tema)}</span>
+      <h3>${esc(a.h1)}</h3>
+      <p>${esc(a.dek)}</p>
+      <span class="blog-card-leia">Ler artigo · ${a.leituraMin || 7} min →</span>
+    </div>
+  </a>`).join('\n');
+
+const blogLd = {
+  '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`,
+  name: 'Diário de Brasília — Villela Stay', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+  blogPost: BLOG.map(a => ({ '@type': 'BlogPosting', headline: a.h1, url: `${SITE_URL}/blog/${a.slug}.html`, datePublished: a.atualizado, about: a.tema }))
+};
+
+const blogHub = layout(
+  'Blog — Diário de Brasília | Villela Stay',
+  'Arquitetura, gastronomia, roteiros, paisagismo e história de Brasília — o diário do anfitrião para quem ama (ou vai conhecer) a capital. Conteúdo da Villela Stay.',
+  `
+<section class="hero hero-menor blog-hero-hub">
+  <span class="tema-tag">📖 Diário de Brasília</span>
+  <h1>Brasília por quem vive aqui</h1>
+  <p><strong>Arquitetura, gastronomia, roteiros, paisagismo e as histórias da capital — o diário do anfitrião para você conhecer Brasília antes mesmo de chegar.</strong></p>
+</section>
+<section class="grade-wrap">
+  <div class="blog-grade">${blogCardsHub}</div>
+</section>
+<section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
+  <h2>Pronto para conhecer Brasília de perto?</h2>
+  <p>Escolha sua casa no Lago Sul e seja recebido por quem ama a cidade.</p>
+  <a class="btn btn-wa btn-grande" href="${waLink('Olá! Vim pelo blog da Villela Stay e quero saber sobre as hospedagens.')}">Falar no WhatsApp</a>
+  <p style="margin-top:14px"><a href="/#hospedagens" style="color:var(--creme);text-decoration:underline">Ver as hospedagens →</a></p>
+</section>`,
+  { caminho: '/blog.html', extraHead: `<script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
+);
+fs.writeFileSync(path.join(DIST, 'blog.html'), blogHub);
+
+const BLOG_PATHS = ['/blog.html', ...BLOG.map(a => `/blog/${a.slug}.html`)];
+console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
+
 // ------------------------- PWA: manifest, ícones, service worker, offline -------------------------
 // Copia os ícones do app (gerados em assets/icons/) para dist/assets/icons/
 const ICON_SRC = path.join(__dirname, 'assets', 'icons');
@@ -1338,7 +1586,7 @@ const PRECACHE_URLS = [
   '/', '/index.html', '/style.css', '/offline.html', '/manifest.webmanifest',
   ...(TEM_LOGO ? ['/logo.png'] : []),
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
-  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html',
+  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/blog.html',
   ...listings.map(l => `/hospedagem/${l.id}.html`)
 ];
 const sw = `// Service Worker da Villela Stay (PWA) — gerado por build.js. NÃO editar à mão.
@@ -1411,6 +1659,8 @@ const rotas = [
   { loc: '/pacotes.html', changefreq: 'weekly', priority: '0.9' },
   ...LANDINGS.map(lp => ({ loc: `/${lp.arquivo}`, changefreq: 'weekly', priority: '0.8' })),
   { loc: '/posse-2027.html', changefreq: 'weekly', priority: '0.7' },
+  { loc: '/blog.html', changefreq: 'weekly', priority: '0.7' },
+  ...BLOG.map(a => ({ loc: `/blog/${a.slug}.html`, changefreq: 'monthly', priority: '0.6' })),
   { loc: '/nossa-historia.html', changefreq: 'monthly', priority: '0.5' },
   { loc: '/guia.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/regras.html', changefreq: 'monthly', priority: '0.4' },

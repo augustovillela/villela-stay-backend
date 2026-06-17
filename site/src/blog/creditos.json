@@ -1,0 +1,161 @@
+{
+  "arquitetura": [
+    {
+      "file": "arquitetura-1.jpg",
+      "alt": "Catedral Metropolitana Brasília",
+      "credito": "Donatas Dabravolskas",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Catedral_Metropolitana_de_Bras%C3%ADlia_-_Bras%C3%ADlia_-_20150603150521.jpg"
+    },
+    {
+      "file": "arquitetura-2.jpg",
+      "alt": "Congresso Nacional Brasil",
+      "credito": "Eurico Zimbres",
+      "licenca": "CC BY-SA 2.5",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Brazilian_National_Congress.jpg"
+    },
+    {
+      "file": "arquitetura-3.jpg",
+      "alt": "Palácio do Itamaraty Brasília",
+      "credito": "Fwsbsb",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Pal%C3%A1cio_do_Itamaraty_6.jpg"
+    },
+    {
+      "file": "arquitetura-4.jpg",
+      "alt": "Ermida Dom Bosco",
+      "credito": "Mercado Viagens from Brasil",
+      "licenca": "CC BY 2.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Ermida_Dom_Bosco_(14544731885).jpg"
+    },
+    {
+      "file": "arquitetura-5.jpg",
+      "alt": "Palácio da Alvorada Brasília",
+      "credito": "Cayambe",
+      "licenca": "CC BY-SA 3.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Bras%C3%ADlia_Palacio_da_Alvorada_from_Parano%C3%A1_Lake.jpg"
+    }
+  ],
+  "roteiros": [
+    {
+      "file": "roteiros-1.jpg",
+      "alt": "Praça dos Três Poderes",
+      "credito": "Dasfour2022",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:PalaciodoplanaltoFR.jpg"
+    },
+    {
+      "file": "roteiros-2.jpg",
+      "alt": "Esplanada dos Ministérios Brasília",
+      "credito": "Fwsbsb",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Museu_da_Rep%C3%BAblica_1_edit.jpg"
+    },
+    {
+      "file": "roteiros-3.jpg",
+      "alt": "Pontão do Lago Sul",
+      "credito": "Marinelson Almeida - Traveling through Brazil from Niteroi, Brasil",
+      "licenca": "CC BY 2.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Cal%C3%A7ad%C3%A3o_do_Pont%C3%A3o_do_Lago_Sul_-_Brasilia._(15352457568).jpg"
+    },
+    {
+      "file": "roteiros-4.jpg",
+      "alt": "Catetinho Brasília",
+      "credito": "Laís Pereira da Silva",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Museu_do_Catetinho_Bras%C3%ADlia-Brasil.jpg"
+    },
+    {
+      "file": "roteiros-5.jpg",
+      "alt": "Eixo Monumental Brasília",
+      "credito": "Cayambe",
+      "licenca": "CC BY-SA 3.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Memorial_J_Kubitschek_Brasilia_2009.jpg"
+    }
+  ],
+  "gastronomia": [
+    {
+      "file": "gastronomia-1.jpg",
+      "alt": "Pequi cooked",
+      "credito": "Melsj",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Cooked_pequi.jpg"
+    },
+    {
+      "file": "gastronomia-2.jpg",
+      "alt": "Baru Dipteryx alata",
+      "credito": "Denis A. C. Conrado",
+      "licenca": "Attribution",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Cumaru.JPG"
+    },
+    {
+      "file": "gastronomia-3.jpg",
+      "alt": "Feijoada Brazilian",
+      "credito": "Ridiculopathy",
+      "licenca": "CC0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Feijoada_(Brazilian_dish),_S%C3%A3o_Lu%C3%ADs,_Maranh%C3%A3o.jpg"
+    }
+  ],
+  "paisagismo": [
+    {
+      "file": "paisagismo-1.jpg",
+      "alt": "Burle Marx garden Brasília",
+      "credito": "Sintegrity",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Bras%C3%ADlia_-_Jardins_de_Burle_Marx_-_Unidade_de_Vizinhan%C3%A7a_(4).jpg"
+    },
+    {
+      "file": "paisagismo-2.jpg",
+      "alt": "Jardim Botânico de Brasília",
+      "credito": "Daderot",
+      "licenca": "CC0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Pond_-_Jardim_Bot%C3%A2nico_de_Bras%C3%ADlia_-_DSC09728.JPG"
+    },
+    {
+      "file": "paisagismo-3.jpg",
+      "alt": "Cerrado vegetação Brasil",
+      "credito": "Renato Menezes Caffer",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Vegeta%C3%A7%C3%A3o_cerrado.jpg"
+    }
+  ],
+  "personalidades": [
+    {
+      "file": "personalidades-1.jpg",
+      "alt": "Juscelino Kubitschek",
+      "credito": "Governo do Brasil",
+      "licenca": "Public domain",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Juscelino_Kubitschek_in_1956.jpg"
+    },
+    {
+      "file": "personalidades-2.jpg",
+      "alt": "Oscar Niemeyer",
+      "credito": "Roger Pic derivative work: MrPanyGoff",
+      "licenca": "CC0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Oscar_Niemeyer,_Pic,_9_-_edit.jpg"
+    },
+    {
+      "file": "personalidades-3.jpg",
+      "alt": "Athos Bulcão azulejo",
+      "credito": "Lou Fernando",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Azulejos_de_Athos_Bulc%C3%A3o_-_acervo_da_Funda%C3%A7%C3%A3o_Athos_Bulc%C3%A3o_(1).jpg"
+    }
+  ],
+  "containers": [
+    {
+      "file": "containers-1.jpg",
+      "alt": "Container house architecture",
+      "credito": "Paul Keller",
+      "licenca": "CC BY 2.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Container_Wall-House,_Cuba.jpg"
+    },
+    {
+      "file": "containers-2.jpg",
+      "alt": "Container City London",
+      "credito": "Robert Lamb",
+      "licenca": "CC BY-SA 2.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Container_city%5E_-_geograph.org.uk_-_2403544.jpg"
+    }
+  ]
+}
