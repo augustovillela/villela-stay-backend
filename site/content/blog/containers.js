@@ -14,9 +14,10 @@ module.exports = {
   casasTitulo: 'A mesma obsessão por bons espaços',
   casasTexto: 'O que nos atrai na construção modular é o que nos move nas hospedagens: espaços bem pensados, eficientes e cheios de personalidade. Conheça as casas da Villela Stay — e fale com a gente se quer trocar ideia sobre projetos.',
   isca: {
-    titulo: 'Receba novidades de projetos e arquitetura',
-    texto: 'Acompanhe os bastidores dos nossos projetos, ideias de arquitetura modular e novidades das casas. Deixe seu contato e entre na lista.',
-    botao: 'Quero acompanhar os projetos',
+    titulo: 'Checklist: pensando em uma casa container (PDF)',
+    texto: 'O passo a passo, os cuidados que ninguém conta (isolamento, serralheria, prazos) e o que avaliar antes de começar um projeto modular. Baixe agora.',
+    botao: 'Quero o checklist',
+    arquivo: '/iscas/checklist-casa-container.pdf',
   },
   faq: [
     { q: 'Quanto tempo leva uma construção com containers?', a: 'Muito menos que a obra convencional. Como boa parte do trabalho (estrutura, cortes, instalações, revestimentos) é feita em paralelo e em ambiente controlado, um projeto residencial em containers pode ficar pronto em semanas a poucos meses, contra muitos meses ou anos de uma obra tradicional. O prazo final depende do tamanho e do acabamento.' },

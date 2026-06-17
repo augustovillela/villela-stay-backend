@@ -170,6 +170,79 @@ const MATERIAIS = [
     </ul>
     <div class="fecho"><p><b>Peça sua proposta:</b> conte a data e o número de pessoas — devolvemos uma proposta sob medida, sem compromisso. Espaço inteiro · até 34 hóspedes · eventos para até 150 · Lago Sul, a 10 minutos da Esplanada.</p></div>`,
   },
+  {
+    id: 'mini-guia-jardim-cerrado', tema: 'Mini-guia · Paisagismo', c1: '#1f5132', c2: '#4e9a5f',
+    titulo: 'Um jardim que resiste ao clima de Brasília',
+    sub: 'As plantas, as árvores e os truques de paisagismo que sobrevivem ao Planalto quente e seco — e deixam qualquer quintal bonito o ano inteiro.',
+    corpo: `
+    <div class="nota">Brasília tem um dos climas mais desafiadores para jardins do Brasil: meses inteiros sem chuva, sol forte e ar seco. Jardim que vinga aqui é jardim <b>inteligente</b> — e a lição vem de Burle Marx: trabalhar <i>com</i> o cerrado, não contra ele.</div>
+    <h2>1. Comece pelas plantas certas</h2>
+    <h3>Árvores que dão sombra (e aguentam a seca)</h3>
+    <ul>
+      <li><b>Ipê</b> — floresce amarelo, rosa ou roxo no auge da estiagem; símbolo do cerrado.</li>
+      <li><b>Oiti e Sibipiruna</b> — copa densa, sombra generosa, raízes comportadas.</li>
+      <li><b>Flamboyant</b> — explosão de cor no verão, para quem tem espaço.</li>
+    </ul>
+    <h3>Cor o ano todo</h3>
+    <ul>
+      <li><b>Buganvília (primavera-de-brasília)</b> — adora sol e seca; cor garantida.</li>
+      <li><b>Alamanda e Tumbérgia</b> — trepadeiras resistentes para muros e pergolados.</li>
+    </ul>
+    <h3>Baixa manutenção</h3>
+    <ul>
+      <li><b>Agaves, formios e suculentas</b> — quase não pedem água.</li>
+      <li><b>Capim-do-texas e outras gramíneas ornamentais</b> — movimento e leveza, pouca rega.</li>
+      <li><b>Espécies nativas do cerrado</b> — pertencem à terra e resistem por natureza.</li>
+    </ul>
+    <h2>2. Os 5 truques que salvam o jardim na seca</h2>
+    <ul>
+      <li><b>Agrupe por sede.</b> Plante junto o que bebe muito; separe o que bebe pouco — você rega menos e desperdiça menos.</li>
+      <li><b>Cubra o solo (mulch).</b> Uma camada de casca/folhas segura a umidade e derruba a evaporação.</li>
+      <li><b>Regue cedo ou tarde.</b> Nunca no sol a pino — a água evapora antes de chegar à raiz.</li>
+      <li><b>Pense a sombra.</b> Árvores e pergolados criam microclima e protegem as plantas mais sensíveis.</li>
+      <li><b>Invista em irrigação por gotejamento.</b> Leva a água direto à raiz, com fração do consumo.</li>
+    </ul>
+    <h2>3. O segredo de Burle Marx</h2>
+    <p>O maior paisagista do Brasil não copiou jardins europeus: compôs <b>massas de plantas tropicais nativas</b> como quem pinta um quadro. Em vez de lutar contra o clima, ele o transformou em beleza. É a mesma filosofia que guia as áreas verdes das nossas casas — o jardim como parte da experiência, não como enfeite.</p>
+    <div class="fecho"><p>Quer ver essa ideia levada ao limite? O <b>Jardim dos Sentidos</b> é a nossa casa onde o paisagismo é protagonista — acordar entre as plantas, tomar o café no verde, mergulhar cercado de jardim. Fale com a gente e conheça as datas.</p></div>`,
+  },
+  {
+    id: 'checklist-casa-container', tema: 'Checklist · Arquitetura modular', c1: '#33383d', c2: '#6b7278',
+    titulo: 'Pensando em uma casa container? Comece por aqui',
+    sub: 'O passo a passo, os cuidados que ninguém conta e o que avaliar antes de iniciar um projeto modular — o checklist do anfitrião curioso por bons espaços.',
+    corpo: `
+    <div class="nota">A construção modular com containers encanta por três motivos: <b>velocidade, sustentabilidade e previsibilidade</b>. Mas o resultado — confortável e bonito, ou quente e improvisado — se decide nos detalhes. Use este checklist antes de começar.</div>
+    <h2>Antes de começar</h2>
+    <ul>
+      <li><b>Defina o uso e o tamanho.</b> Os containers de 20 e 40 pés são os mais usados; combine módulos para ganhar área.</li>
+      <li><b>Avalie o terreno e o acesso.</b> O módulo chega de caminhão e desce de guindaste — confirme se cabe a manobra.</li>
+      <li><b>Tenha projeto de arquitetura.</b> Onde abrir portas, janelas e vãos muda tudo — e estrutura cortada precisa de reforço.</li>
+      <li><b>Cheque a procedência do container.</b> Prefira os "one-trip" (pouca viagem) ou bem avaliados — evite ferrugem e cargas que deixaram resíduo.</li>
+    </ul>
+    <h2>As etapas (e quem faz cada uma)</h2>
+    <ul>
+      <li><b>Fundação e nivelamento</b> — a base que recebe o módulo.</li>
+      <li><b>Serralheria</b> — cortes de portas/janelas e reforço estrutural; é o coração técnico da obra.</li>
+      <li><b>Vidraçaria</b> — as grandes aberturas que trazem luz e transformam o ambiente.</li>
+      <li><b>Instalações</b> — elétrica e hidráulica embutidas no projeto.</li>
+      <li><b>Isolamento e revestimento</b> — lã de rocha/PET, drywall e telhado ventilado.</li>
+      <li><b>Acabamento</b> — pisos, pintura e, se quiser, um rooftop com vista.</li>
+    </ul>
+    <h2>Os cuidados que ninguém conta</h2>
+    <ul>
+      <li><b>Isolamento térmico é prioridade nº 1.</b> O aço esquenta muito; sem isolamento, vira forno — especialmente no clima de Brasília. É o que separa um lar de um contêiner quente.</li>
+      <li><b>Isolamento acústico.</b> Chuva no teto de aço é barulhenta; resolva junto com o térmico.</li>
+      <li><b>Impermeabilização e ferrugem.</b> Trate cortes e soldas; previna pontos de corrosão antes de revestir.</li>
+      <li><b>Documentação e legalização.</b> Confirme as regras locais e a aprovação do projeto — construção modular também precisa de papel em ordem.</li>
+    </ul>
+    <h2>3 perguntas para fazer ao construtor</h2>
+    <ul>
+      <li>Como você resolve o isolamento térmico e acústico? (Peça o sistema, não só "tem isolamento".)</li>
+      <li>Qual o prazo realista — e o que pode atrasar?</li>
+      <li>Posso visitar uma obra entregue? (Ver e tocar vale mais que catálogo.)</li>
+    </ul>
+    <div class="fecho"><p>O que nos atrai na construção modular — eficiência, sustentabilidade e espaços com personalidade — é o que perseguimos em cada hospedagem. Se você curte o tema (para morar, investir ou empreender), <b>fale com a gente</b>: adoramos uma boa conversa sobre espaços.</p></div>`,
+  },
 ];
 
 for (const m of MATERIAIS) {

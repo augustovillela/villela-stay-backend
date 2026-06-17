@@ -14,9 +14,10 @@ module.exports = {
   casasTitulo: 'Acorde cercado de verde',
   casasTexto: 'Nossas casas integram jardim, piscina e arquitetura — a mesma ideia que Burle Marx levou para Brasília. O Jardim dos Sentidos é a expressão máxima disso: hospedagem onde o paisagismo é parte da experiência, não cenário.',
   isca: {
-    titulo: 'Conheça o Jardim dos Sentidos',
-    texto: 'Quer ver de perto uma casa onde o jardim é protagonista? Conte suas datas e o número de pessoas — mostramos disponibilidade e condições do Jardim dos Sentidos e das casas com área verde.',
-    botao: 'Quero conhecer o Jardim dos Sentidos',
+    titulo: 'Mini-guia: um jardim que resiste ao clima de Brasília (PDF)',
+    texto: 'As plantas, as árvores e os truques de paisagismo que sobrevivem ao Planalto quente e seco — e deixam qualquer quintal bonito o ano todo. Baixe agora.',
+    botao: 'Quero o mini-guia',
+    arquivo: '/iscas/mini-guia-jardim-cerrado.pdf',
   },
   faq: [
     { q: 'Quem foi Roberto Burle Marx?', a: 'Roberto Burle Marx (1909–1994) foi paisagista, pintor, botânico e artista plástico brasileiro, reconhecido internacionalmente por transformar o paisagismo em arte. Foi pioneiro no uso de plantas tropicais nativas e desenhou jardins emblemáticos em Brasília, no Rio e pelo mundo. Em Brasília, assina os jardins do Itamaraty, entre outros.' },
