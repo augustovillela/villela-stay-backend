@@ -51,6 +51,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .topo-dir { display: flex; align-items: center; gap: 14px; color: var(--creme); font-size: .9rem; }
 .link-sair { background: none; border: 1px solid var(--creme); color: var(--creme); border-radius: 18px; padding: 5px 14px; cursor: pointer; font-size: .85rem; }
 .link-sair:hover { background: rgba(255,255,255,.12); }
+.link-site { color: var(--creme); border: 1px solid rgba(242,236,216,.5); border-radius: 18px; padding: 5px 14px; font-size: .85rem; white-space: nowrap; }
+.link-site:hover { background: rgba(255,255,255,.12); border-color: var(--cerrado); }
+.login-voltar { display: block; text-align: center; margin-top: 14px; color: var(--lago); font-size: .88rem; }
+.login-voltar:hover { text-decoration: underline; }
 .corpo { display: flex; min-height: calc(100vh - 56px); }
 .menu { width: 230px; background: #fff; border-right: 1px solid var(--borda); padding: 16px 0; flex-shrink: 0; }
 .menu button { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
