@@ -204,8 +204,9 @@ a { color: var(--lago); text-decoration: none; }
 .form-wrap { max-width: 640px; margin: 0 auto; padding: 24px 5vw 80px; }
 .form-evento { display: flex; flex-direction: column; gap: 18px; }
 .form-evento label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: .95rem; }
-.form-evento input, .form-evento textarea {
+.form-evento input, .form-evento textarea, .form-evento select {
   padding: 12px 14px; border: 1px solid #ccc; border-radius: 10px; font-size: 1rem; font-family: inherit;
+  width: 100%; box-sizing: border-box; background: #fff; color: inherit; line-height: 1.2;
 }
 .form-status { font-size: 1.05rem; }
 
