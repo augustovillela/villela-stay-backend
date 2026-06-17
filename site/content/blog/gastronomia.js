@@ -15,8 +15,9 @@ module.exports = {
   casasTexto: 'Nossas casas têm cozinha completa e espaço para reunir gente à mesa. Receba um chef em casa, faça um jantar para o grupo ou simplesmente cozinhe com calma depois de um dia de feira. Hospitalidade também é sobre a mesa.',
   isca: {
     titulo: 'Guia de restaurantes do anfitrião (PDF)',
-    texto: 'As mesas que indicamos para nossos hóspedes — do boteco lendário ao restaurante de ocasião, por bairro e por tipo de noite. Direto no seu e-mail.',
+    texto: 'As mesas que indicamos para nossos hóspedes — por região e por ocasião, do happy hour candango à noite especial. Baixe agora.',
     botao: 'Quero o guia de restaurantes',
+    arquivo: '/iscas/guia-restaurantes-anfitriao.pdf',
   },
   faq: [
     { q: 'Qual é a comida típica de Brasília?', a: 'Brasília não tem uma "comida típica" única — foi formada por migrantes de todo o Brasil, então reúne a culinária goiana (galinhada, pamonha, pequi), a mineira, a nordestina e a do próprio Cerrado. O pequi, o baru e o buriti são os ingredientes-assinatura da região.' },

@@ -1286,6 +1286,16 @@ if (fs.existsSync(BLOG_IMG_SRC)) {
 }
 fs.mkdirSync(path.join(DIST, 'blog'), { recursive: true });
 
+// Copia os PDFs das iscas (lead magnets) para dist/iscas/
+const ISCAS_SRC = path.join(__dirname, 'src', 'iscas');
+if (fs.existsSync(ISCAS_SRC)) {
+  const ISCAS_DST = path.join(DIST, 'iscas');
+  fs.mkdirSync(ISCAS_DST, { recursive: true });
+  for (const f of fs.readdirSync(ISCAS_SRC)) {
+    if (/\.pdf$/i.test(f)) fs.copyFileSync(path.join(ISCAS_SRC, f), path.join(ISCAS_DST, f));
+  }
+}
+
 const fmtDataBR = s => { const p = String(s).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; };
 
 // Motivo decorativo modernista (curvas tipo Niemeyer) — tingido por CSS via currentColor.
@@ -1332,7 +1342,13 @@ document.querySelectorAll('.form-blog').forEach(function(f){
     var msg=(f.getAttribute('data-contexto')||'')+(extra.length?' — '+extra.join(' | '):'');
     fetch('${BACKEND}/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({nome:g('nome'),contato:g('contato'),mensagem:msg,origem:f.getAttribute('data-origem')})})
-    .then(function(r){ st.textContent=r.ok?'✅ Recebido! Em breve entramos em contato.':'Não consegui enviar — chame no WhatsApp.'; if(r.ok) f.reset(); })
+    .then(function(r){
+      if(r.ok){ var arq=f.getAttribute('data-arquivo');
+        if(arq){ st.innerHTML='✅ Pronto! Seu material: <a href="'+arq+'" target="_blank" rel="noopener" download><b>baixar agora →</b></a>'; try{window.open(arq,'_blank');}catch(e){} }
+        else { st.textContent='✅ Recebido! Em breve entramos em contato.'; }
+        f.reset();
+      } else { st.textContent='Não consegui enviar — chame no WhatsApp.'; }
+    })
     .catch(function(){ st.textContent='Não consegui enviar — chame no WhatsApp.'; });
   });
 });
@@ -1381,7 +1397,7 @@ function renderArtigo(a) {
       <h2>${esc(a.isca.titulo)}</h2>
       <p>${esc(a.isca.texto)}</p>
     </div>
-    <form class="form-blog form-isca" data-origem="blog:${a.slug}:isca" data-contexto="Isca '${esc(a.isca.titulo)}' (artigo: ${esc(a.h1)})">
+    <form class="form-blog form-isca" data-origem="blog:${a.slug}:isca" data-arquivo="${a.isca.arquivo || ''}" data-contexto="Isca '${esc(a.isca.titulo)}' (artigo: ${esc(a.h1)})">
       <input name="nome" placeholder="Seu nome" required aria-label="Seu nome">
       <input name="contato" placeholder="WhatsApp ou e-mail" required aria-label="WhatsApp ou e-mail">
       <button class="btn" type="submit">${esc(a.isca.botao || 'Quero receber')}</button>

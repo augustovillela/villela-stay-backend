@@ -15,8 +15,9 @@ module.exports = {
   casasTexto: 'A 10 minutos do Aeroporto JK e da Esplanada, o Lago Sul é a base ideal para o seu roteiro: você volta para casa entre um passeio e outro, descansa de verdade e pega a Ermida Dom Bosco na hora do pôr do sol.',
   isca: {
     titulo: 'Roteiro de 3 dias em Brasília (PDF do anfitrião)',
-    texto: 'O passo a passo que montamos para nossos hóspedes: o que ver de manhã, de tarde e à noite, com dicas de horário e trânsito. Receba no seu e-mail.',
+    texto: 'O passo a passo que montamos para nossos hóspedes: o que ver de manhã, de tarde e à noite, com dicas de horário e trânsito. Baixe agora.',
     botao: 'Quero o roteiro de 3 dias',
+    arquivo: '/iscas/roteiro-3-dias-brasilia.pdf',
   },
   faq: [
     { q: 'Quantos dias são ideais para conhecer Brasília?', a: 'Três dias dão conta do essencial com tranquilidade: um dia para o roteiro cívico (Esplanada, Três Poderes, Catedral), um para a cultura e a gastronomia (museus, Pontão, restaurantes) e um para o ar livre (Jardim Botânico, Lago Paranoá, Ermida Dom Bosco). Cinco dias permitem incluir o entorno — Cidade Ocidental, Chapada Imperial e cachoeiras.' },

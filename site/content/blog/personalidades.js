@@ -15,8 +15,9 @@ module.exports = {
   casasTexto: 'Cada casa e suíte da Villela Stay carrega o nome de quem fez Brasília. Reunir o grupo na Gran Villela, na Villa Kubitschek ou na Villa Catetinho é dormir dentro da história da cidade — com todo o conforto de hoje.',
   isca: {
     titulo: 'Proposta para grupos e eventos temáticos',
-    texto: 'Vai reunir um grupo, fazer uma confraternização ou um evento em Brasília? Conte a data e o número de pessoas e devolvemos uma proposta sob medida, com as casas que homenageiam a cidade.',
-    botao: 'Quero uma proposta para meu grupo',
+    texto: 'Vai reunir um grupo ou fazer um evento em Brasília? Baixe a apresentação das casas para grupos e eventos — e fale com a gente para uma proposta sob medida.',
+    botao: 'Baixar a proposta para grupos',
+    arquivo: '/iscas/proposta-grupos-eventos.pdf',
   },
   faq: [
     { q: 'Quem foi o responsável por construir Brasília?', a: 'O presidente Juscelino Kubitschek (JK) tomou a decisão política e tocou a obra entre 1956 e 1960. O plano urbanístico é de Lúcio Costa, a arquitetura dos monumentos é de Oscar Niemeyer, o paisagismo de Roberto Burle Marx e a arte integrada de Athos Bulcão. Foi um esforço coletivo erguido em pouco mais de mil dias.' },

@@ -16,8 +16,9 @@ module.exports = {
   casasTexto: 'Nossas casas no Lago Sul são da mesma família estética que você vê na Esplanada: linhas limpas, integração com o jardim, luz e concreto. Não é hotel — é morar, por alguns dias, na Brasília que o mundo veio conhecer.',
   isca: {
     titulo: 'Roteiro Modernista de 1 dia (PDF do anfitrião)',
-    texto: 'A ordem certa para ver as obras de Niemeyer sem perder tempo no trânsito — com os melhores horários de luz para fotografar cada uma. Direto no seu e-mail.',
+    texto: 'A ordem certa para ver as obras de Niemeyer sem perder tempo no trânsito — com os melhores horários de luz para fotografar cada uma. Baixe agora.',
     botao: 'Quero o roteiro',
+    arquivo: '/iscas/roteiro-modernista-1-dia.pdf',
   },
   faq: [
     { q: 'Por que Brasília é Patrimônio Cultural da Humanidade?', a: 'A UNESCO inscreveu Brasília na lista em 1987 — foi a primeira cidade do século XX a receber o título. O reconhecimento é pelo conjunto urbanístico do Plano Piloto de Lúcio Costa e pela arquitetura de Oscar Niemeyer, um exemplo único e íntegro dos princípios do urbanismo moderno aplicados a uma capital inteira, do zero.' },
