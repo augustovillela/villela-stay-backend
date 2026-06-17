@@ -232,7 +232,9 @@ app.post('/api/precheckin', (req, res) => {
   appendJsonl('precheckins.jsonl', {
     nome: d.nome, contato: d.contato, email: d.email || '', reserva: d.reserva || '',
     hospedagem: d.hospedagem || '', chegada: d.chegada || '', horario: d.horario || '',
-    adultos: d.adultos || '', criancas: d.criancas || '', convidados: d.convidados || '', pets: d.pets || '', observacoes: d.observacoes || ''
+    adultos: d.adultos || '', criancas: d.criancas || '', convidados: d.convidados || '', pets: d.pets || '',
+    motivo: d.motivo || '', evento: d.evento || '', origem: d.origem || '', destino: d.destino || '',
+    observacoes: d.observacoes || ''
   });
   res.json({ ok: true });
 });

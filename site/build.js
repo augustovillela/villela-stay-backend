@@ -1028,18 +1028,38 @@ const precheckin = layout(
     <label>Nº de crianças que vão se hospedar <input name="criancas" type="number" min="0"></label>
     <label>Nº de Convidados para Evento ou Day Use <input name="convidados" type="number" min="0"></label>
     <label>Vai trazer pet? Qual? <input name="pets" placeholder="ex.: 1 cachorro pequeno"></label>
+    <label>Motivo da viagem <select name="motivo" id="pc-motivo">
+      <option value="">Selecione (opcional)</option>
+      <option value="Passeio">Passeio</option>
+      <option value="Trabalho">Trabalho</option>
+      <option value="Evento">Evento</option>
+    </select></label>
+    <label id="pc-evento-wrap" hidden>Descreva o evento <input name="evento" placeholder="ex.: casamento, formatura, aniversário..."></label>
+    <div style="display:flex;gap:12px">
+      <label style="flex:1">Origem <input name="origem" placeholder="de onde você vem"></label>
+      <label style="flex:1">Destino <input name="destino" placeholder="para onde vai depois"></label>
+    </div>
     <label>Observações (berço, restrições, ocasião especial...) <textarea name="observacoes" rows="3"></textarea></label>
     <button class="btn" type="submit">Enviar pré-check-in</button>
     <p class="form-status" hidden></p>
   </form>
 </div>
 <script>
+// Mostra o campo "Descreva o evento" só quando o motivo for Evento.
+(function(){
+  var m = document.getElementById('pc-motivo'), w = document.getElementById('pc-evento-wrap');
+  if (m && w) m.addEventListener('change', function(){
+    var ev = m.value === 'Evento';
+    w.hidden = !ev;
+    if (!ev) w.querySelector('input').value = '';
+  });
+})();
 document.getElementById('form-precheckin').addEventListener('submit', function(e){
   e.preventDefault();
   var f = e.target, st = f.querySelector('.form-status');
   st.hidden = false; st.textContent = 'Enviando...';
   var dados = {};
-  ['nome','contato','email','reserva','hospedagem','chegada','horario','adultos','criancas','convidados','pets','observacoes'].forEach(function(k){ dados[k] = f[k].value; });
+  ['nome','contato','email','reserva','hospedagem','chegada','horario','adultos','criancas','convidados','pets','motivo','evento','origem','destino','observacoes'].forEach(function(k){ dados[k] = f[k] ? f[k].value : ''; });
   fetch('${BACKEND}/api/precheckin', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados)
