@@ -21,7 +21,7 @@ const SITE = 'villelastay.com.br';
 
 function pagina(m) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><style>
-  @page { size: A4; margin: 0; }
+  @page { size: A4; margin: 0 0 18mm 0; }  /* reserva 18mm no rodape de TODA pagina */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #2b2d2f; line-height: 1.6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .capa { background: linear-gradient(135deg, ${m.c1}, ${m.c2}); color: #fff; padding: 40px 46px 34px; position: relative; overflow: hidden; }
@@ -33,7 +33,7 @@ function pagina(m) {
   .tema-tag { display: inline-block; font-size: .68rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: rgba(255,255,255,.2); padding: 4px 12px; border-radius: 16px; margin-bottom: 14px; }
   .capa h1 { font-size: 1.95rem; line-height: 1.12; letter-spacing: -.5px; max-width: 16em; }
   .capa .sub { margin-top: 12px; font-size: 1rem; opacity: .95; max-width: 34em; }
-  .corpo { padding: 30px 46px 90px; font-size: .92rem; }
+  .corpo { padding: 30px 46px 16px; font-size: .92rem; }
   .corpo h2 { font-size: 1.15rem; color: ${m.c2}; margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 2px solid #efe9da; }
   .corpo h3 { font-size: 1rem; color: #2b2d2f; margin: 16px 0 4px; }
   .corpo p { margin: 0 0 9px; }
@@ -50,7 +50,8 @@ function pagina(m) {
   td:first-child { font-weight: 700; color: ${m.c1}; white-space: nowrap; width: 30%; }
   .fecho { background: #f7f4ee; border-radius: 10px; padding: 16px 20px; margin: 18px 0 8px; font-size: .92rem; }
   .fecho b { color: ${m.c1}; }
-  .rodape { position: fixed; bottom: 0; left: 0; right: 0; background: #0c3644; color: #f2ecd8; font-size: .8rem; padding: 11px 46px; display: flex; justify-content: space-between; align-items: center; }
+  /* rodape fixo DENTRO da margem inferior reservada (18mm) — repete em toda pagina sem sobrepor o texto */
+  .rodape { position: fixed; bottom: 0; left: 0; right: 0; height: 13mm; background: #0c3644; color: #f2ecd8; font-size: .8rem; padding: 0 46px; display: flex; justify-content: space-between; align-items: center; }
   .rodape b { color: #fff; }
   .rodape .cerrado { color: #d9a441; }
   </style></head><body>
