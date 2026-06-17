@@ -1022,17 +1022,20 @@ const precheckin = layout(
     <label>E-mail <input name="email" type="email"></label>
     <label>Código da reserva (se souber) <input name="reserva" placeholder="ex.: LR03J"></label>
     <label>Casa/unidade reservada <input name="hospedagem" placeholder="ex.: Casa Modernista"></label>
-    <label>Data de chegada* <input name="chegada" type="date" required></label>
+    <div style="display:flex;gap:12px">
+      <label style="flex:1">Data de chegada* <input name="chegada" type="date" required></label>
+      <label style="flex:1">Data de saída <input name="saida" type="date"></label>
+    </div>
     <label>Horário previsto de chegada <input name="horario" placeholder="ex.: 15h"></label>
     <label>Nº de adultos que vão se hospedar <input name="adultos" type="number" min="1"></label>
     <label>Nº de crianças que vão se hospedar <input name="criancas" type="number" min="0"></label>
     <label>Nº de Convidados para Evento ou Day Use <input name="convidados" type="number" min="0"></label>
     <label>Vai trazer pet? Qual? <input name="pets" placeholder="ex.: 1 cachorro pequeno"></label>
-    <label>Motivo da viagem <select name="motivo" id="pc-motivo">
+    <label>Motivo da viagem <select name="motivo" id="pc-motivo" style="width:100%">
       <option value="">Selecione (opcional)</option>
       <option value="Passeio">Passeio</option>
       <option value="Trabalho">Trabalho</option>
-      <option value="Evento">Evento</option>
+      <option value="Evento na cidade">Evento na cidade</option>
     </select></label>
     <label id="pc-evento-wrap" hidden>Descreva o evento <input name="evento" placeholder="ex.: casamento, formatura, aniversário..."></label>
     <div style="display:flex;gap:12px">
@@ -1049,7 +1052,7 @@ const precheckin = layout(
 (function(){
   var m = document.getElementById('pc-motivo'), w = document.getElementById('pc-evento-wrap');
   if (m && w) m.addEventListener('change', function(){
-    var ev = m.value === 'Evento';
+    var ev = m.value === 'Evento na cidade';
     w.hidden = !ev;
     if (!ev) w.querySelector('input').value = '';
   });
@@ -1059,7 +1062,7 @@ document.getElementById('form-precheckin').addEventListener('submit', function(e
   var f = e.target, st = f.querySelector('.form-status');
   st.hidden = false; st.textContent = 'Enviando...';
   var dados = {};
-  ['nome','contato','email','reserva','hospedagem','chegada','horario','adultos','criancas','convidados','pets','motivo','evento','origem','destino','observacoes'].forEach(function(k){ dados[k] = f[k] ? f[k].value : ''; });
+  ['nome','contato','email','reserva','hospedagem','chegada','saida','horario','adultos','criancas','convidados','pets','motivo','evento','origem','destino','observacoes'].forEach(function(k){ dados[k] = f[k] ? f[k].value : ''; });
   fetch('${BACKEND}/api/precheckin', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados)

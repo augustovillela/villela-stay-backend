@@ -231,7 +231,7 @@ app.post('/api/precheckin', (req, res) => {
   if (!d.nome || !d.contato) return res.status(400).json({ erro: 'nome e contato são obrigatórios' });
   appendJsonl('precheckins.jsonl', {
     nome: d.nome, contato: d.contato, email: d.email || '', reserva: d.reserva || '',
-    hospedagem: d.hospedagem || '', chegada: d.chegada || '', horario: d.horario || '',
+    hospedagem: d.hospedagem || '', chegada: d.chegada || '', saida: d.saida || '', horario: d.horario || '',
     adultos: d.adultos || '', criancas: d.criancas || '', convidados: d.convidados || '', pets: d.pets || '',
     motivo: d.motivo || '', evento: d.evento || '', origem: d.origem || '', destino: d.destino || '',
     observacoes: d.observacoes || ''
