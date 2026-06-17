@@ -1,7 +1,11 @@
 // =====================================================================
-// Gera os HTML de marca das ISCAS (lead magnets) do blog para virar PDF
-// (Chrome headless --print-to-pdf). Conteúdo: agente de marketing.
-// Rodar: node tools/build-iscas.js  -> escreve em tools/_iscas_html/
+// Gera os PDFs de marca das ISCAS (lead magnets) do blog.
+// Usa puppeteer-core + o Chrome instalado, com footerTemplate (rodape REAL
+// no pe de TODA pagina, na margem inferior — nao sobrepoe nem flutua).
+// Conteudo: agente de marketing.
+// Pre-requisito (1x): cd tools && npm i puppeteer-core   (node_modules fora do git)
+// Rodar: node tools/build-iscas.js
+//   -> escreve em dados/marketing/iscas/ e copia para site/src/iscas/ (servido em /iscas/)
 // =====================================================================
 const fs = require('fs');
 const path = require('path');
