@@ -213,19 +213,19 @@ a { color: var(--lago); text-decoration: none; }
 /* ---------- rodapé e WhatsApp ---------- */
 .rodape {
   display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  padding: 40px 5vw; background: var(--petroleo); color: var(--creme); font-size: .92rem;
+  padding: 40px 5vw; background: var(--petroleo); color: var(--creme); font-size: .92rem; line-height: 1.25;
 }
-.rodape-distancias { margin-top: 14px; }
+.rodape-distancias { margin-top: 8px; }
 .rodape-links { display: flex; flex-direction: column; gap: 2px; line-height: 1.45; }
 .rodape-links strong { color: var(--cerrado); text-transform: uppercase; font-size: .8rem; letter-spacing: 1px; margin-bottom: 3px; }
 /* Links empilhados do rodapé — linhas próximas (padding pequeno) */
-.rodape-links a { color: var(--creme); font-weight: 600; display: inline-block; padding: 3px 0; line-height: 1.2; }
+.rodape-links a { color: var(--creme); font-weight: 600; display: inline-block; padding: 2px 0; line-height: 1.2; }
 .rodape-links a:hover { color: var(--cerrado); text-decoration: underline; }
 /* Colunas da direita (Navegue e Contatos) com linhas mais juntas */
 .rodape-compacto { gap: 0; }
 .rodape-compacto a { padding: 2px 0; }
 .rodape .creditos { flex-basis: 100%; font-size: .72rem; opacity: .65; margin-top: 8px; }
-.rodape-contatos { margin-top: 14px; }
+.rodape-contatos { margin-top: 8px; }
 .rodape-contatos a { color: var(--creme); display: inline-block; padding: 2px 0; line-height: 1.2; }
 .rodape-contatos a:hover { color: #fff; text-decoration: underline; }
 
