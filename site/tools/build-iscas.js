@@ -21,9 +21,12 @@ const SITE = 'villelastay.com.br';
 
 function pagina(m) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><style>
-  @page { size: A4; margin: 0 0 18mm 0; }  /* reserva 18mm no rodape de TODA pagina */
+  @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #2b2d2f; line-height: 1.6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* body em coluna flex com min-height de 1 pagina: o rodape (margin-top:auto) fica fixado
+     no rodape da ultima pagina, em fluxo normal — nunca sobrepoe o texto (sem position:fixed). */
+  html, body { height: auto; }
+  body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #2b2d2f; line-height: 1.6; -webkit-print-color-adjust: exact; print-color-adjust: exact; min-height: 100vh; display: flex; flex-direction: column; }
   .capa { background: linear-gradient(135deg, ${m.c1}, ${m.c2}); color: #fff; padding: 40px 46px 34px; position: relative; overflow: hidden; }
   .capa-motivo { position: absolute; right: -40px; top: -30px; width: 320px; opacity: .14; color: #fff; }
   .marca { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
@@ -33,7 +36,7 @@ function pagina(m) {
   .tema-tag { display: inline-block; font-size: .68rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: rgba(255,255,255,.2); padding: 4px 12px; border-radius: 16px; margin-bottom: 14px; }
   .capa h1 { font-size: 1.95rem; line-height: 1.12; letter-spacing: -.5px; max-width: 16em; }
   .capa .sub { margin-top: 12px; font-size: 1rem; opacity: .95; max-width: 34em; }
-  .corpo { padding: 30px 46px 16px; font-size: .92rem; }
+  .corpo { padding: 30px 46px 28px; font-size: .92rem; flex: 1 0 auto; }
   .corpo h2 { font-size: 1.15rem; color: ${m.c2}; margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 2px solid #efe9da; }
   .corpo h3 { font-size: 1rem; color: #2b2d2f; margin: 16px 0 4px; }
   .corpo p { margin: 0 0 9px; }
@@ -50,8 +53,8 @@ function pagina(m) {
   td:first-child { font-weight: 700; color: ${m.c1}; white-space: nowrap; width: 30%; }
   .fecho { background: #f7f4ee; border-radius: 10px; padding: 16px 20px; margin: 18px 0 8px; font-size: .92rem; }
   .fecho b { color: ${m.c1}; }
-  /* rodape fixo DENTRO da margem inferior reservada (18mm) — repete em toda pagina sem sobrepor o texto */
-  .rodape { position: fixed; bottom: 0; left: 0; right: 0; height: 13mm; background: #0c3644; color: #f2ecd8; font-size: .8rem; padding: 0 46px; display: flex; justify-content: space-between; align-items: center; }
+  /* rodape em fluxo normal, empurrado para o pe da ultima pagina (margin-top:auto) — sem sobreposicao */
+  .rodape { margin-top: auto; background: #0c3644; color: #f2ecd8; font-size: .8rem; padding: 13px 46px; display: flex; justify-content: space-between; align-items: center; }
   .rodape b { color: #fff; }
   .rodape .cerrado { color: #d9a441; }
   </style></head><body>
