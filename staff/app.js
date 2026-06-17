@@ -139,6 +139,11 @@ function montarMenu() {
   if (ESTADO.painelDisp.eventos) op.push({ id: 'eventos', rot: 'Eventos (Stays)' });
   if (ESTADO.podeEstat) op.push({ id: 'estatisticas', rot: 'Visitas do site' });
   if (op.length) { itens.push({ grupo: 'Operação' }); itens.push(...op); }
+  // Listas e agenda: disponíveis para TODOS os usuários logados
+  itens.push({ grupo: 'Listas & Agenda' });
+  itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
+  itens.push({ id: 'manutencao', rot: '🔧 Lista de manutenção' });
+  itens.push({ id: 'agenda', rot: '📅 Agenda (eventos)' });
   itens.push({ grupo: 'Stays' });
   itens.push({ rot: 'Site público ↗', url: 'https://ville.stays.com.br/' });
   itens.push({ rot: 'Painel administrativo ↗', url: 'https://ville.stays.com.br/i/home' });
@@ -162,12 +167,105 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, crm: renderCRM, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
 const conteudo = () => $('#conteudo');
 function cabecalho(titulo, sub) { return `<h1 class="titulo">${esc(titulo)}</h1>${sub ? `<p class="sub">${esc(sub)}</p>` : ''}`; }
+
+// --------- Listas (Compras / Manutenção) ---------
+async function renderLista(tipo, titulo) {
+  const c = conteudo();
+  c.innerHTML = cabecalho(titulo, 'Qualquer pessoa da equipe pode incluir e dar baixa. Itens entram aqui e também pelo WhatsApp.');
+  c.innerHTML += `
+    <form id="form-item" class="barra" style="flex-wrap:wrap">
+      <input id="it-qtd" placeholder="Qtd (ex.: 2)" style="width:120px" aria-label="Quantidade">
+      <input id="it-nome" placeholder="Produto ou serviço *" style="flex:2;min-width:220px" required aria-label="Nome">
+      <input id="it-obs" placeholder="Observação (opcional)" style="flex:1;min-width:160px" aria-label="Observação">
+      <button class="btn" type="submit">+ Adicionar</button>
+    </form>
+    <div id="lista-itens" class="lista-itens"><p class="vazio">Carregando…</p></div>`;
+  const f = $('#form-item');
+  f.onsubmit = async (ev) => {
+    ev.preventDefault();
+    const nome = $('#it-nome').value.trim(); if (!nome) return;
+    try {
+      await api('POST', '/listas/' + tipo, { quantidade: $('#it-qtd').value, nome, obs: $('#it-obs').value });
+      f.reset(); $('#it-nome').focus(); carregarItens(tipo);
+    } catch (e) { alert(e.message); }
+  };
+  carregarItens(tipo);
+}
+async function carregarItens(tipo) {
+  const alvo = $('#lista-itens'); if (!alvo) return;
+  try {
+    const { itens } = await api('GET', '/listas/' + tipo);
+    if (!itens.length) { alvo.innerHTML = `<p class="vazio">Lista vazia. Adicione o primeiro item acima.</p>`; return; }
+    alvo.innerHTML = `<div class="lista-cab"><span>${itens.length} ${itens.length === 1 ? 'item' : 'itens'}</span><button class="btn peq perigo" id="limpar-lista">Limpar tudo</button></div>` +
+      itens.map(i => `
+      <div class="linha-item">
+        <span class="qtd">${esc(i.quantidade || '—')}</span>
+        <span class="nome">${esc(i.nome)}${i.obs ? ` <span class="obs">— ${esc(i.obs)}</span>` : ''}</span>
+        <span class="quem">${i.origem === 'whatsapp' ? '📱' : '💻'} ${esc(i.quem || '')} · ${dataBr(i.criadoEm)}</span>
+        <button class="btn peq" data-baixa="${i.id}" title="Dar baixa / remover">✓</button>
+      </div>`).join('');
+    alvo.querySelectorAll('[data-baixa]').forEach(b => b.onclick = async () => {
+      try { await api('DELETE', '/listas/' + tipo + '/' + b.dataset.baixa); carregarItens(tipo); } catch (e) { alert(e.message); }
+    });
+    const lb = $('#limpar-lista');
+    if (lb) lb.onclick = async () => { if (confirm('Limpar a lista inteira?')) { try { await api('POST', '/listas/' + tipo + '/limpar'); carregarItens(tipo); } catch (e) { alert(e.message); } } };
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Agenda (pedidos de evento → Claude executa) ---------
+async function renderAgenda() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Agenda — eventos', 'Crie ou peça exclusão de eventos no Google Calendar. A rotina do Claude efetiva no próximo ciclo e marca como feito.');
+  c.innerHTML += `
+    <form id="form-ev" class="form" style="max-width:580px">
+      <label>Ação
+        <select id="ev-acao"><option value="criar">➕ Criar evento</option><option value="excluir">🗑️ Excluir evento</option></select>
+      </label>
+      <label>Título do evento *<input id="ev-titulo" required></label>
+      <div class="barra" style="gap:10px;flex-wrap:wrap">
+        <label style="flex:1;min-width:150px">Data<input id="ev-data" type="date"></label>
+        <label style="width:120px">Hora<input id="ev-hora" type="time"></label>
+        <label style="width:130px">Duração (min)<input id="ev-dur" type="number" value="60" min="15" step="15"></label>
+      </div>
+      <label>Local (opcional)<input id="ev-local"></label>
+      <label>Descrição (opcional)<textarea id="ev-desc" rows="2"></textarea></label>
+      <button class="btn" type="submit">Enviar pedido</button>
+    </form>
+    <h2 class="titulo" style="font-size:1.1rem;margin-top:22px">Pedidos recentes</h2>
+    <div id="ev-lista" class="lista-itens"><p class="vazio">Carregando…</p></div>`;
+  $('#form-ev').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const titulo = $('#ev-titulo').value.trim(); if (!titulo) return;
+    try {
+      await api('POST', '/agenda/pedidos', { acao: $('#ev-acao').value, titulo, data: $('#ev-data').value, hora: $('#ev-hora').value, duracaoMin: $('#ev-dur').value, local: $('#ev-local').value, descricao: $('#ev-desc').value });
+      $('#form-ev').reset(); $('#ev-dur').value = 60; carregarPedidos();
+    } catch (e) { alert(e.message); }
+  };
+  carregarPedidos();
+}
+async function carregarPedidos() {
+  const alvo = $('#ev-lista'); if (!alvo) return;
+  try {
+    const { pedidos } = await api('GET', '/agenda/pedidos');
+    if (!pedidos.length) { alvo.innerHTML = `<p class="vazio">Nenhum pedido ainda.</p>`; return; }
+    alvo.innerHTML = pedidos.slice().reverse().map(p => `
+      <div class="linha-item">
+        <span class="qtd">${p.acao === 'excluir' ? '🗑️' : '➕'}</span>
+        <span class="nome">${esc(p.titulo)}${p.data ? ` <span class="obs">— ${esc(p.data)}${p.hora ? ' ' + esc(p.hora) : ''}</span>` : ''}</span>
+        <span class="quem"><span class="badge st-${esc(p.status)}">${esc(p.status)}</span> ${esc(p.quem || '')} · ${dataBr(p.criadoEm)}${p.resultado ? ' · ' + esc(p.resultado) : ''}</span>
+        ${p.status === 'pendente' ? `<button class="btn peq" data-cancelar="${p.id}" title="Cancelar pedido">✕</button>` : '<span></span>'}
+      </div>`).join('');
+    alvo.querySelectorAll('[data-cancelar]').forEach(b => b.onclick = async () => {
+      try { await api('DELETE', '/agenda/pedidos/' + b.dataset.cancelar); carregarPedidos(); } catch (e) { alert(e.message); }
+    });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
 
 // --------- Visão geral ---------
 async function renderVisao() {

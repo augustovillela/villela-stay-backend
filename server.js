@@ -1005,6 +1005,109 @@ app.get('/staff/api/visao-geral', requireAuth, (req, res) => {
   });
 });
 
+// ============================ Listas: Compras e Manutenção ============================
+// Fonte ÚNICA das listas. Itens entram pelo portal (qualquer usuário logado) OU pela captura do
+// WhatsApp (script local, via PUBLISH_KEY, com refId p/ dedupe). Excluíveis por qualquer logado.
+const LISTA_ARQ = { compras: 'lista-compras.json', manutencao: 'lista-manutencao.json' };
+
+app.get('/staff/api/listas/:tipo', requirePublishOrSession, (req, res) => {
+  const arq = LISTA_ARQ[req.params.tipo];
+  if (!arq) return res.status(400).json({ erro: 'Tipo inválido (compras ou manutencao).' });
+  res.json({ itens: lerJSON(arq, []) });
+});
+
+app.post('/staff/api/listas/:tipo', requirePublishOrSession, (req, res) => {
+  const arq = LISTA_ARQ[req.params.tipo];
+  if (!arq) return res.status(400).json({ erro: 'Tipo inválido.' });
+  const d = req.body || {};
+  const nome = String(d.nome || '').trim();
+  if (!nome) return res.status(400).json({ erro: 'Informe o nome do produto/serviço.' });
+  const itens = lerJSON(arq, []);
+  const refId = d.refId ? String(d.refId) : '';
+  if (refId && itens.some(i => i.refId === refId)) return res.json({ ok: true, duplicado: true });
+  const item = {
+    id: novoId(),
+    quantidade: String(d.quantidade || '').trim(),
+    nome,
+    obs: String(d.obs || '').trim(),
+    origem: req.viaChave ? 'whatsapp' : 'portal',
+    quem: req.viaChave ? (String(d.quem || '').trim() || 'WhatsApp') : (req.user.nome || req.user.email || 'staff'),
+    refId,
+    criadoEm: new Date().toISOString(),
+  };
+  itens.push(item);
+  salvarJSON(arq, itens);
+  res.json({ ok: true, item });
+});
+
+app.delete('/staff/api/listas/:tipo/:id', requirePublishOrSession, (req, res) => {
+  const arq = LISTA_ARQ[req.params.tipo];
+  if (!arq) return res.status(400).json({ erro: 'Tipo inválido.' });
+  const itens = lerJSON(arq, []);
+  // remove por id do item OU por refId (id da mensagem do WhatsApp) — facilita a baixa pelo script
+  const restantes = itens.filter(i => i.id !== req.params.id && i.refId !== req.params.id);
+  salvarJSON(arq, restantes);
+  res.json({ ok: true, removidos: itens.length - restantes.length });
+});
+
+app.post('/staff/api/listas/:tipo/limpar', requirePublishOrSession, (req, res) => {
+  const arq = LISTA_ARQ[req.params.tipo];
+  if (!arq) return res.status(400).json({ erro: 'Tipo inválido.' });
+  salvarJSON(arq, []);
+  res.json({ ok: true });
+});
+
+// ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
+// O portal registra pedidos de CRIAR/EXCLUIR evento; uma rotina do Claude (com acesso ao Google
+// Calendar) lê os pendentes, efetiva e marca como feito (PATCH).
+app.get('/staff/api/agenda/pedidos', requirePublishOrSession, (req, res) => {
+  let lista = lerJSON('agenda-pedidos.json', []);
+  if (req.query.status) lista = lista.filter(p => p.status === req.query.status);
+  res.json({ pedidos: lista });
+});
+
+app.post('/staff/api/agenda/pedidos', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const acao = d.acao === 'excluir' ? 'excluir' : 'criar';
+  const titulo = String(d.titulo || '').trim();
+  if (!titulo) return res.status(400).json({ erro: 'Informe o título do evento.' });
+  const pedidos = lerJSON('agenda-pedidos.json', []);
+  const pedido = {
+    id: novoId(), acao, titulo,
+    data: String(d.data || '').trim(),            // yyyy-MM-dd
+    hora: String(d.hora || '').trim(),             // HH:mm (vazio = dia inteiro)
+    duracaoMin: Number(d.duracaoMin) || 60,
+    descricao: String(d.descricao || '').trim(),
+    local: String(d.local || '').trim(),
+    status: 'pendente',
+    quem: req.viaChave ? (String(d.quem || '').trim() || 'portal') : (req.user.nome || req.user.email || 'staff'),
+    criadoEm: new Date().toISOString(), processadoEm: null, resultado: '',
+  };
+  pedidos.push(pedido);
+  salvarJSON('agenda-pedidos.json', pedidos);
+  res.json({ ok: true, pedido });
+});
+
+app.delete('/staff/api/agenda/pedidos/:id', requirePublishOrSession, (req, res) => {
+  const pedidos = lerJSON('agenda-pedidos.json', []);
+  const rest = pedidos.filter(p => p.id !== req.params.id);
+  salvarJSON('agenda-pedidos.json', rest);
+  res.json({ ok: true, removidos: pedidos.length - rest.length });
+});
+
+app.patch('/staff/api/agenda/pedidos/:id', requirePublishOrSession, (req, res) => {
+  const pedidos = lerJSON('agenda-pedidos.json', []);
+  const p = pedidos.find(x => x.id === req.params.id);
+  if (!p) return res.status(404).json({ erro: 'Pedido não encontrado.' });
+  const d = req.body || {};
+  if (['feito', 'erro', 'pendente'].includes(d.status)) p.status = d.status;
+  if (d.resultado != null) p.resultado = String(d.resultado);
+  if (d.eventoId != null) p.eventoId = String(d.eventoId);
+  p.processadoEm = new Date().toISOString();
+  salvarJSON('agenda-pedidos.json', pedidos);
+  res.json({ ok: true, pedido: p });
+});
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 
