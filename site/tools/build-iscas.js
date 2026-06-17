@@ -6,10 +6,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const OUT = path.join(__dirname, '_iscas_html');
-fs.rmSync(OUT, { recursive: true, force: true });
+const puppeteer = require('puppeteer-core');
+const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const OUT = path.join(__dirname, '..', '..', '..', 'dados', 'marketing', 'iscas'); // copia local
+const SRC = path.join(__dirname, '..', 'src', 'iscas');                            // servido pelo site
 fs.mkdirSync(OUT, { recursive: true });
-// logo embutida (base64) para o Chrome headless não depender de caminho
+fs.mkdirSync(SRC, { recursive: true });
+// logo embutida (base64) para o Chrome não depender de caminho
 let logoTag = '';
 try {
   const b64 = fs.readFileSync(path.join(__dirname, '..', 'src', 'logo.png')).toString('base64');
@@ -21,12 +24,9 @@ const SITE = 'villelastay.com.br';
 
 function pagina(m) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><style>
-  @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  /* body em coluna flex com min-height de 1 pagina: o rodape (margin-top:auto) fica fixado
-     no rodape da ultima pagina, em fluxo normal — nunca sobrepoe o texto (sem position:fixed). */
-  html, body { height: auto; }
-  body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #2b2d2f; line-height: 1.6; -webkit-print-color-adjust: exact; print-color-adjust: exact; min-height: 100vh; display: flex; flex-direction: column; }
+  /* margens e rodape sao controlados pelo puppeteer (footerTemplate): rodape REAL no pe de toda pagina, sem sobrepor o texto */
+  body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #2b2d2f; line-height: 1.6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .capa { background: linear-gradient(135deg, ${m.c1}, ${m.c2}); color: #fff; padding: 40px 46px 34px; position: relative; overflow: hidden; }
   .capa-motivo { position: absolute; right: -40px; top: -30px; width: 320px; opacity: .14; color: #fff; }
   .marca { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
@@ -36,7 +36,7 @@ function pagina(m) {
   .tema-tag { display: inline-block; font-size: .68rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: rgba(255,255,255,.2); padding: 4px 12px; border-radius: 16px; margin-bottom: 14px; }
   .capa h1 { font-size: 1.95rem; line-height: 1.12; letter-spacing: -.5px; max-width: 16em; }
   .capa .sub { margin-top: 12px; font-size: 1rem; opacity: .95; max-width: 34em; }
-  .corpo { padding: 30px 46px 28px; font-size: .92rem; flex: 1 0 auto; }
+  .corpo { padding: 30px 46px 24px; font-size: .92rem; }
   .corpo h2 { font-size: 1.15rem; color: ${m.c2}; margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 2px solid #efe9da; }
   .corpo h3 { font-size: 1rem; color: #2b2d2f; margin: 16px 0 4px; }
   .corpo p { margin: 0 0 9px; }
@@ -53,10 +53,6 @@ function pagina(m) {
   td:first-child { font-weight: 700; color: ${m.c1}; white-space: nowrap; width: 30%; }
   .fecho { background: #f7f4ee; border-radius: 10px; padding: 16px 20px; margin: 18px 0 8px; font-size: .92rem; }
   .fecho b { color: ${m.c1}; }
-  /* rodape em fluxo normal, empurrado para o pe da ultima pagina (margin-top:auto) — sem sobreposicao */
-  .rodape { margin-top: auto; background: #0c3644; color: #f2ecd8; font-size: .8rem; padding: 13px 46px; display: flex; justify-content: space-between; align-items: center; }
-  .rodape b { color: #fff; }
-  .rodape .cerrado { color: #d9a441; }
   </style></head><body>
   <div class="capa">
     <div class="capa-motivo"><svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="3"><path d="M-20,240 C80,80 240,80 340,240"/><path d="M-20,240 C80,40 240,40 340,240"/><circle cx="250" cy="70" r="34"/></g></svg></div>
@@ -66,7 +62,6 @@ function pagina(m) {
     <p class="sub">${m.sub}</p>
   </div>
   <div class="corpo">${m.corpo}</div>
-  <div class="rodape"><span>Reserve direto com o anfitrião · <b>${WA}</b></span><span class="cerrado">${SITE}</span></div>
   </body></html>`;
 }
 
@@ -249,8 +244,30 @@ const MATERIAIS = [
   },
 ];
 
-for (const m of MATERIAIS) {
-  fs.writeFileSync(path.join(OUT, m.id + '.html'), pagina(m));
-  console.log('HTML:', m.id + '.html');
-}
-console.log('\nOK:', MATERIAIS.length, 'materiais em', OUT);
+// Rodape REAL de pagina (footerTemplate do Chrome): barra de marca no pe de TODA pagina,
+// dentro da margem inferior reservada (14mm) — nunca sobrepoe o texto, nunca flutua no meio.
+const footerTemplate = `<div style="width:100%;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+  <div style="background:#0c3644;color:#f2ecd8;font-size:8px;padding:7px 46px;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;width:100%;">
+    <span>Reserve direto com o anfitri&atilde;o &middot; <b style="color:#ffffff">${WA}</b></span>
+    <span style="color:#d9a441">${SITE}</span>
+  </div>
+</div>`;
+
+(async () => {
+  const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox'] });
+  for (const m of MATERIAIS) {
+    const page = await browser.newPage();
+    await page.setContent(pagina(m), { waitUntil: 'networkidle0' });
+    const pdf = path.join(OUT, m.id + '.pdf');
+    await page.pdf({
+      path: pdf, format: 'A4', printBackground: true, displayHeaderFooter: true,
+      headerTemplate: '<div></div>', footerTemplate,
+      margin: { top: '0', left: '0', right: '0', bottom: '14mm' }
+    });
+    await page.close();
+    fs.copyFileSync(pdf, path.join(SRC, m.id + '.pdf'));
+    console.log('PDF:', m.id + '.pdf');
+  }
+  await browser.close();
+  console.log('\nOK:', MATERIAIS.length, 'PDFs em dados/marketing/iscas + copiados para src/iscas');
+})();
