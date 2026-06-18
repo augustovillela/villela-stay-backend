@@ -237,7 +237,8 @@ async function renderAgenda() {
       <label>Descrição (opcional)<textarea id="ev-desc" rows="2"></textarea></label>
       <button class="btn" type="submit">Enviar pedido</button>
     </form>
-    <h2 class="titulo" style="font-size:1.1rem;margin-top:22px">Pedidos recentes</h2>
+    <h2 class="titulo" style="font-size:1.1rem;margin-top:22px">Pedidos e eventos</h2>
+    <p class="sub" style="margin-top:-6px">Para <b>excluir um evento já criado</b>, use o botão <b>🗑️ Excluir</b> na linha dele. Para <b>cancelar um pedido</b> que ainda não rodou, use <b>✕ Cancelar</b>.</p>
     <div id="ev-lista" class="lista-itens"><p class="vazio">Carregando…</p></div>`;
   $('#form-ev').onsubmit = async (ev) => {
     ev.preventDefault();
@@ -254,15 +255,33 @@ async function carregarPedidos() {
   try {
     const { pedidos } = await api('GET', '/agenda/pedidos');
     if (!pedidos.length) { alvo.innerHTML = `<p class="vazio">Nenhum pedido ainda.</p>`; return; }
-    alvo.innerHTML = pedidos.slice().reverse().map(p => `
-      <div class="linha-item">
+    // eventos que já têm uma exclusão pedida (não oferecer o botão de excluir de novo)
+    const jaExcluir = new Set(pedidos.filter(p => p.acao === 'excluir' && p.eventoId).map(p => p.eventoId));
+    alvo.innerHTML = pedidos.slice().reverse().map(p => {
+      let acao = '<span></span>';
+      if (p.status === 'pendente') {
+        acao = `<button class="btn peq" data-cancelar="${p.id}" title="Cancelar este pedido (ainda não executado)">✕ Cancelar</button>`;
+      } else if (p.acao === 'criar' && p.status === 'feito' && p.eventoId && !jaExcluir.has(p.eventoId)) {
+        const dados = esc(JSON.stringify({ id: p.id, eventoId: p.eventoId, titulo: p.titulo, data: p.data, hora: p.hora }));
+        acao = `<button class="btn peq perigo" data-excluir-ev="${dados}" title="Excluir este evento do Google Calendar">🗑️ Excluir</button>`;
+      }
+      return `<div class="linha-item">
         <span class="qtd">${p.acao === 'excluir' ? '🗑️' : '➕'}</span>
         <span class="nome">${esc(p.titulo)}${p.data ? ` <span class="obs">— ${esc(p.data)}${p.hora ? ' ' + esc(p.hora) : ''}</span>` : ''}</span>
         <span class="quem"><span class="badge st-${esc(p.status)}">${esc(p.status)}</span> ${esc(p.quem || '')} · ${dataBr(p.criadoEm)}${p.resultado ? ' · ' + esc(p.resultado) : ''}</span>
-        ${p.status === 'pendente' ? `<button class="btn peq" data-cancelar="${p.id}" title="Cancelar pedido">✕</button>` : '<span></span>'}
-      </div>`).join('');
+        ${acao}
+      </div>`;
+    }).join('');
     alvo.querySelectorAll('[data-cancelar]').forEach(b => b.onclick = async () => {
       try { await api('DELETE', '/agenda/pedidos/' + b.dataset.cancelar); carregarPedidos(); } catch (e) { alert(e.message); }
+    });
+    alvo.querySelectorAll('[data-excluir-ev]').forEach(b => b.onclick = async () => {
+      const ev = JSON.parse(b.dataset.excluirEv);
+      if (!confirm('Pedir a exclusão do evento "' + ev.titulo + '" do Google Calendar?')) return;
+      try {
+        await api('POST', '/agenda/pedidos', { acao: 'excluir', titulo: ev.titulo, data: ev.data, hora: ev.hora, eventoId: ev.eventoId, refPedidoId: ev.id });
+        carregarPedidos();
+      } catch (e) { alert(e.message); }
     });
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }

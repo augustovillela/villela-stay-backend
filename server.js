@@ -1079,6 +1079,8 @@ app.post('/staff/api/agenda/pedidos', requirePublishOrSession, (req, res) => {
     duracaoMin: Number(d.duracaoMin) || 60,
     descricao: String(d.descricao || '').trim(),
     local: String(d.local || '').trim(),
+    eventoId: String(d.eventoId || '').trim(),       // p/ excluir direto pelo id do evento (Google)
+    refPedidoId: String(d.refPedidoId || '').trim(), // pedido de criação que originou esta exclusão
     status: 'pendente',
     quem: req.viaChave ? (String(d.quem || '').trim() || 'portal') : (req.user.nome || req.user.email || 'staff'),
     criadoEm: new Date().toISOString(), processadoEm: null, resultado: '',

@@ -170,8 +170,9 @@ tr:last-child td { border-bottom: none; }
 /* ---- listas (compras / manutenção) e agenda ---- */
 .lista-itens { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .lista-cab { display: flex; justify-content: space-between; align-items: center; font-size: .85rem; color: var(--concreto-claro); margin: 4px 0; }
-.linha-item { display: grid; grid-template-columns: 66px 1fr auto 36px; align-items: center; gap: 10px;
+.linha-item { display: grid; grid-template-columns: 66px 1fr auto auto; align-items: center; gap: 10px;
   background: var(--branco); border: 1px solid var(--borda); border-radius: 10px; padding: 9px 12px; }
+.linha-item .btn.peq { white-space: nowrap; }
 .linha-item .qtd { font-weight: 800; color: var(--lago-escuro); text-align: center; background: var(--areia); border-radius: 6px; padding: 3px 6px; font-size: .9rem; }
 .linha-item .nome { font-weight: 600; color: var(--concreto); }
 .linha-item .nome .obs { font-weight: 400; color: var(--concreto-claro); font-size: .9rem; }
