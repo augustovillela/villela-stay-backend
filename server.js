@@ -1005,14 +1005,14 @@ app.get('/staff/api/visao-geral', requireAuth, (req, res) => {
   });
 });
 
-// ============================ Listas: Compras e Manutenção ============================
+// ============================ Listas: Compras, Manutenção e Pendências ============================
 // Fonte ÚNICA das listas. Itens entram pelo portal (qualquer usuário logado) OU pela captura do
 // WhatsApp (script local, via PUBLISH_KEY, com refId p/ dedupe). Excluíveis por qualquer logado.
-const LISTA_ARQ = { compras: 'lista-compras.json', manutencao: 'lista-manutencao.json' };
+const LISTA_ARQ = { compras: 'lista-compras.json', manutencao: 'lista-manutencao.json', pendencias: 'lista-pendencias.json' };
 
 app.get('/staff/api/listas/:tipo', requirePublishOrSession, (req, res) => {
   const arq = LISTA_ARQ[req.params.tipo];
-  if (!arq) return res.status(400).json({ erro: 'Tipo inválido (compras ou manutencao).' });
+  if (!arq) return res.status(400).json({ erro: 'Tipo inválido (compras, manutencao ou pendencias).' });
   res.json({ itens: lerJSON(arq, []) });
 });
 
@@ -1030,7 +1030,9 @@ app.post('/staff/api/listas/:tipo', requirePublishOrSession, (req, res) => {
     quantidade: String(d.quantidade || '').trim(),
     nome,
     obs: String(d.obs || '').trim(),
-    origem: req.viaChave ? 'whatsapp' : 'portal',
+    // Via PUBLISH_KEY o padrão é 'whatsapp' (captura da equipe); um seeder pode informar
+    // origem explícita no corpo (ex.: 'portal' p/ pendências do CEO). Sessão = sempre 'portal'.
+    origem: req.viaChave ? (['portal', 'whatsapp'].includes(String(d.origem || '').trim()) ? String(d.origem).trim() : 'whatsapp') : 'portal',
     quem: req.viaChave ? (String(d.quem || '').trim() || 'WhatsApp') : (req.user.nome || req.user.email || 'staff'),
     refId,
     criadoEm: new Date().toISOString(),

@@ -167,7 +167,7 @@ tr:last-child td { border-bottom: none; }
   .ficha { flex-direction: column; }
 }
 
-/* ---- listas (compras / manutenção) e agenda ---- */
+/* ---- listas (compras / manutenção / pendências) e agenda ---- */
 .lista-itens { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .lista-cab { display: flex; justify-content: space-between; align-items: center; font-size: .85rem; color: var(--concreto-claro); margin: 4px 0; }
 /* coluna única: cada item é um bloco vertical (qtd, nome, quem empilhados);

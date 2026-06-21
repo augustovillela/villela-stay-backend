@@ -143,6 +143,7 @@ function montarMenu() {
   itens.push({ grupo: 'Listas & Agenda' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
   itens.push({ id: 'manutencao', rot: '🔧 Lista de manutenção' });
+  itens.push({ id: 'pendencias', rot: '✅ Pendências' });
   itens.push({ id: 'agenda', rot: '📅 Agenda (eventos)' });
   itens.push({ grupo: 'Stays' });
   itens.push({ rot: 'Site público ↗', url: 'https://ville.stays.com.br/' });
@@ -167,21 +168,25 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
 const conteudo = () => $('#conteudo');
 function cabecalho(titulo, sub) { return `<h1 class="titulo">${esc(titulo)}</h1>${sub ? `<p class="sub">${esc(sub)}</p>` : ''}`; }
 
-// --------- Listas (Compras / Manutenção) ---------
-async function renderLista(tipo, titulo) {
+// --------- Listas (Compras / Manutenção / Pendências) ---------
+async function renderLista(tipo, titulo, opcoes) {
+  const o = opcoes || {};
+  const semQtd = !!o.semQtd;
+  const rotuloNome = o.rotuloNome || 'Produto ou serviço *';
+  const sub = o.sub || 'Qualquer pessoa da equipe pode incluir e dar baixa. Itens entram aqui e também pelo WhatsApp.';
   const c = conteudo();
-  c.innerHTML = cabecalho(titulo, 'Qualquer pessoa da equipe pode incluir e dar baixa. Itens entram aqui e também pelo WhatsApp.');
+  c.innerHTML = cabecalho(titulo, sub);
   c.innerHTML += `
     <form id="form-item" class="barra" style="flex-wrap:wrap">
-      <input id="it-qtd" placeholder="Qtd (ex.: 2)" style="width:120px" aria-label="Quantidade">
-      <input id="it-nome" placeholder="Produto ou serviço *" style="flex:2;min-width:220px" required aria-label="Nome">
+      ${semQtd ? '' : '<input id="it-qtd" placeholder="Qtd (ex.: 2)" style="width:120px" aria-label="Quantidade">'}
+      <input id="it-nome" placeholder="${esc(rotuloNome)}" style="flex:2;min-width:220px" required aria-label="Nome">
       <input id="it-obs" placeholder="Observação (opcional)" style="flex:1;min-width:160px" aria-label="Observação">
       <button class="btn" type="submit">+ Adicionar</button>
     </form>
@@ -191,13 +196,15 @@ async function renderLista(tipo, titulo) {
     ev.preventDefault();
     const nome = $('#it-nome').value.trim(); if (!nome) return;
     try {
-      await api('POST', '/listas/' + tipo, { quantidade: $('#it-qtd').value, nome, obs: $('#it-obs').value });
-      f.reset(); $('#it-nome').focus(); carregarItens(tipo);
+      const qtd = semQtd ? '' : ($('#it-qtd') ? $('#it-qtd').value : '');
+      await api('POST', '/listas/' + tipo, { quantidade: qtd, nome, obs: $('#it-obs').value });
+      f.reset(); $('#it-nome').focus(); carregarItens(tipo, { semQtd });
     } catch (e) { alert(e.message); }
   };
-  carregarItens(tipo);
+  carregarItens(tipo, { semQtd });
 }
-async function carregarItens(tipo) {
+async function carregarItens(tipo, opcoes) {
+  const semQtd = !!(opcoes && opcoes.semQtd);
   const alvo = $('#lista-itens'); if (!alvo) return;
   try {
     const { itens } = await api('GET', '/listas/' + tipo);
@@ -205,16 +212,16 @@ async function carregarItens(tipo) {
     alvo.innerHTML = `<div class="lista-cab"><span>${itens.length} ${itens.length === 1 ? 'item' : 'itens'}</span><button class="btn peq perigo" id="limpar-lista">Limpar tudo</button></div>` +
       itens.map(i => `
       <div class="linha-item">
-        <span class="qtd">${esc(i.quantidade || '—')}</span>
+        ${semQtd ? '' : `<span class="qtd">${esc(i.quantidade || '—')}</span>`}
         <span class="nome">${esc(i.nome)}${i.obs ? ` <span class="obs">— ${esc(i.obs)}</span>` : ''}</span>
         <span class="quem">${i.origem === 'whatsapp' ? '📱' : '💻'} ${esc(i.quem || '')} · ${dataBr(i.criadoEm)}</span>
-        <button class="btn peq" data-baixa="${i.id}" title="Dar baixa / remover">✓</button>
+        <button class="btn peq" data-baixa="${i.id}" title="Marcar como concluída / remover">✓</button>
       </div>`).join('');
     alvo.querySelectorAll('[data-baixa]').forEach(b => b.onclick = async () => {
-      try { await api('DELETE', '/listas/' + tipo + '/' + b.dataset.baixa); carregarItens(tipo); } catch (e) { alert(e.message); }
+      try { await api('DELETE', '/listas/' + tipo + '/' + b.dataset.baixa); carregarItens(tipo, { semQtd }); } catch (e) { alert(e.message); }
     });
     const lb = $('#limpar-lista');
-    if (lb) lb.onclick = async () => { if (confirm('Limpar a lista inteira?')) { try { await api('POST', '/listas/' + tipo + '/limpar'); carregarItens(tipo); } catch (e) { alert(e.message); } } };
+    if (lb) lb.onclick = async () => { if (confirm('Limpar a lista inteira?')) { try { await api('POST', '/listas/' + tipo + '/limpar'); carregarItens(tipo, { semQtd }); } catch (e) { alert(e.message); } } };
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
