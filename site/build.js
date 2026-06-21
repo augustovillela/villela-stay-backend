@@ -1542,7 +1542,8 @@ const LINKTREE = [
   { emoji: '📷', titulo: 'Instagram · @augustovillela', sub: 'Siga o anfitrião', href: 'https://instagram.com/augustovillela', social: true },
   { emoji: '📘', titulo: 'Facebook · augusto.villela', sub: 'Curta e acompanhe as novidades', href: 'https://facebook.com/augusto.villela', social: true },
   { emoji: '✉️', titulo: 'E-mail · villelastay@gmail.com', sub: 'Fale com a gente por e-mail', href: 'mailto:villelastay@gmail.com', social: true },
-  { emoji: '📖', titulo: 'Blog · Diário de Brasília', sub: 'Arquitetura, gastronomia e roteiros', href: '/blog.html?origem=linktree' }
+  { emoji: '📖', titulo: 'Blog · Diário de Brasília', sub: 'Arquitetura, gastronomia e roteiros', href: '/blog.html?origem=linktree' },
+  { emoji: '📍', titulo: 'Google Maps · Avaliações', sub: 'Veja onde ficamos e o que dizem os hóspedes', href: 'https://maps.app.goo.gl/3G91MUDdDt3NW3U18', social: true }
 ];
 // Atalhos diretos para as casas (espaços inteiros). Só entram os que existem em listings.json.
 const LINKTREE_CASAS = [
@@ -1556,7 +1557,13 @@ const LINKTREE_CASAS = [
 // Os botões de Instagram/Facebook/e-mail foram PROMOVIDOS para botões principais (LINKTREE) para
 // ganhar destaque. Aqui no rodapé fica só o telefone, que não vira botão principal.
 const LINKTREE_REDES = [
-  { rede: 'Telefone', label: '(61) 99193-5013', href: 'tel:+5561991935013', emoji: '📞' }
+  { rede: 'Telefone', label: '(61) 99193-5013', href: 'tel:+5561991935013', emoji: '📞' },
+  { rede: 'YouTube', label: 'YouTube', href: 'https://www.youtube.com/@augustovilllela', emoji: '▶️' },
+  { rede: 'TikTok', label: 'TikTok', href: 'https://www.tiktok.com/@augustovillela0', emoji: '🎵' },
+  { rede: 'Telegram', label: 'Telegram', href: 'https://t.me/augustovilleladf', emoji: '✈️' },
+  { rede: 'X', label: 'X / Twitter', href: 'https://twitter.com/augustovillela', emoji: '𝕏' },
+  { rede: 'LinkedIn', label: 'LinkedIn', href: 'https://www.linkedin.com/in/augustovillela', emoji: '💼' },
+  { rede: 'Spotify', label: 'Spotify', href: 'https://open.spotify.com/user/12175913829', emoji: '🎧' }
 ];
 
 const linktreeBtn = b => `<a class="lt-btn${b.destaque ? ' lt-destaque' : ''}${b.wa ? ' lt-wa' : ''}" href="${b.href}"${/^https?:|^tel:/.test(b.href) ? ' target="_blank" rel="noopener"' : ''}>
@@ -1616,6 +1623,11 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
     background:rgba(255,255,255,.06); border:1px solid rgba(242,236,216,.22); border-radius:999px;
     padding:8px 14px; font-size:.86rem; transition:background .12s, border-color .12s; }
   .lt-rede:hover{ background:rgba(255,255,255,.13); border-color:var(--lt-ouro); }
+  .lt-voltar{ display:inline-flex; align-items:center; gap:7px; text-decoration:none;
+    color:var(--lt-creme); opacity:.78; background:rgba(255,255,255,.05);
+    border:1px solid rgba(242,236,216,.22); border-radius:999px; padding:7px 16px;
+    font-size:.85rem; margin:0 auto 22px; transition:opacity .12s, border-color .12s, background .12s; }
+  .lt-voltar:hover{ opacity:1; border-color:var(--lt-ouro); background:rgba(255,255,255,.1); }
   .lt-rodape{ margin-top:30px; font-size:.78rem; opacity:.6; line-height:1.6; }
   .lt-rodape a{ color:var(--lt-creme); }
 </style>
@@ -1626,6 +1638,8 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
   <div class="lt-marca">Villela <span>Stay</span></div>
   <p class="lt-tag">Hospedagens Inteligentes · para Experiências Inesquecíveis</p>
 
+  <a class="lt-voltar" href="/"><span aria-hidden="true">🌐</span> Ir para o site</a>
+
   ${LINKTREE.map(linktreeBtn).join('\n  ')}
 
   <div class="lt-sep">Nossas casas</div>
@@ -1634,7 +1648,7 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
     href: `/hospedagem/${c.id}.html?origem=linktree`
   })).join('\n  ')}
 
-  <div class="lt-sep">Telefone</div>
+  <div class="lt-sep">Telefone &amp; redes</div>
   <div class="lt-redes">
     ${LINKTREE_REDES.map(r => `<a class="lt-rede" href="${r.href}"${/^https?:/.test(r.href) ? ' target="_blank" rel="noopener"' : ''}><span aria-hidden="true">${r.emoji}</span>${esc(r.label)}</a>`).join('\n    ')}
   </div>
