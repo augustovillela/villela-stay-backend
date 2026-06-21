@@ -205,7 +205,7 @@ ${extraHead}
     <a href="/regras.html">Regras da Casa</a>
     <a href="/guia.html">Guia do Hóspede</a>
     <a href="/nossa-historia.html">Nossa História</a>
-    <a href="/links.html">Links</a>
+    <a href="/links.html">Linktree</a>
     <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
     <a href="${BACKEND}/staff" class="link-staff" title="Área restrita da equipe">🔒 Staff</a>
     <button type="button" id="btn-instalar-pwa" class="btn-instalar" hidden aria-label="Instalar o app da Villela Stay">📲 Instalar app</button>
@@ -231,7 +231,7 @@ ${corpo}
   </div>
   <div class="rodape-links rodape-compacto">
     <strong>Navegue</strong>
-    <a href="/links.html">Todos os links</a>
+    <a href="/links.html">Linktree</a>
     <a href="/pre-checkin.html">Pré-check-in online</a>
     <a href="/guia.html">Guia do Hóspede</a>
     <a href="/formaturas.html">Formaturas</a>
