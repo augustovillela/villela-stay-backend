@@ -143,7 +143,9 @@ function montarMenu() {
   itens.push({ grupo: 'Listas & Agenda' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
   itens.push({ id: 'manutencao', rot: '🔧 Lista de manutenção' });
-  itens.push({ id: 'pendencias', rot: '✅ Pendências' });
+  // Pendências é restrita à área CEO (admin vê tudo); demais não veem o item.
+  if (ESTADO.me.papel === 'admin' || ESTADO.areas.includes('*') || ESTADO.areas.includes('ceo'))
+    itens.push({ id: 'pendencias', rot: '✅ Pendências' });
   itens.push({ id: 'agenda', rot: '📅 Agenda (eventos)' });
   itens.push({ grupo: 'Stays' });
   itens.push({ rot: 'Site público ↗', url: 'https://ville.stays.com.br/' });

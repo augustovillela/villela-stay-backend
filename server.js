@@ -1010,15 +1010,29 @@ app.get('/staff/api/visao-geral', requireAuth, (req, res) => {
 // WhatsApp (script local, via PUBLISH_KEY, com refId p/ dedupe). Excluíveis por qualquer logado.
 const LISTA_ARQ = { compras: 'lista-compras.json', manutencao: 'lista-manutencao.json', pendencias: 'lista-pendencias.json' };
 
+// 'pendencias' é restrita: só admin ou usuário com a área 'ceo' (acesso por sessão).
+// O bypass por PUBLISH_KEY (req.viaChave) continua liberado (seed/automação).
+// 'compras' e 'manutencao' seguem abertas a qualquer logado.
+function podeLista(req, res) {
+  if (req.viaChave) return true;
+  if (req.params.tipo === 'pendencias' && !podeArea(req.user, 'ceo')) {
+    res.status(403).json({ erro: 'Acesso negado: lista restrita à área CEO.' });
+    return false;
+  }
+  return true;
+}
+
 app.get('/staff/api/listas/:tipo', requirePublishOrSession, (req, res) => {
   const arq = LISTA_ARQ[req.params.tipo];
   if (!arq) return res.status(400).json({ erro: 'Tipo inválido (compras, manutencao ou pendencias).' });
+  if (!podeLista(req, res)) return;
   res.json({ itens: lerJSON(arq, []) });
 });
 
 app.post('/staff/api/listas/:tipo', requirePublishOrSession, (req, res) => {
   const arq = LISTA_ARQ[req.params.tipo];
   if (!arq) return res.status(400).json({ erro: 'Tipo inválido.' });
+  if (!podeLista(req, res)) return;
   const d = req.body || {};
   const nome = String(d.nome || '').trim();
   if (!nome) return res.status(400).json({ erro: 'Informe o nome do produto/serviço.' });
@@ -1045,6 +1059,7 @@ app.post('/staff/api/listas/:tipo', requirePublishOrSession, (req, res) => {
 app.delete('/staff/api/listas/:tipo/:id', requirePublishOrSession, (req, res) => {
   const arq = LISTA_ARQ[req.params.tipo];
   if (!arq) return res.status(400).json({ erro: 'Tipo inválido.' });
+  if (!podeLista(req, res)) return;
   const itens = lerJSON(arq, []);
   // remove por id do item OU por refId (id da mensagem do WhatsApp) — facilita a baixa pelo script
   const restantes = itens.filter(i => i.id !== req.params.id && i.refId !== req.params.id);
@@ -1055,6 +1070,7 @@ app.delete('/staff/api/listas/:tipo/:id', requirePublishOrSession, (req, res) =>
 app.post('/staff/api/listas/:tipo/limpar', requirePublishOrSession, (req, res) => {
   const arq = LISTA_ARQ[req.params.tipo];
   if (!arq) return res.status(400).json({ erro: 'Tipo inválido.' });
+  if (!podeLista(req, res)) return;
   salvarJSON(arq, []);
   res.json({ ok: true });
 });
