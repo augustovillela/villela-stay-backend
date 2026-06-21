@@ -230,6 +230,7 @@ ${corpo}
   </div>
   <div class="rodape-links rodape-compacto">
     <strong>Navegue</strong>
+    <a href="/links.html">Todos os links</a>
     <a href="/pre-checkin.html">Pré-check-in online</a>
     <a href="/guia.html">Guia do Hóspede</a>
     <a href="/formaturas.html">Formaturas</a>
@@ -1526,6 +1527,131 @@ fs.writeFileSync(path.join(DIST, 'blog.html'), blogHub);
 const BLOG_PATHS = ['/blog.html', ...BLOG.map(a => `/blog/${a.slug}.html`)];
 console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
 
+// ------------------------- links.html (hub de links / "linktree") -------------------------
+// Página standalone, mobile-first, para abrir pelo QR Code / bio das redes. Usa a identidade
+// da marca (paleta petróleo/creme/cerrado, logo no topo) mas SEM o header/nav do site — foco
+// total nos botões, como um linktree. Cada link de reserva marca ?origem=linktree para o CRM.
+const linkWa = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
+const LINKTREE = [
+  { emoji: '🏡', titulo: 'Reservar / Ver as casas', sub: 'Casas, flats e suítes no Lago Sul', href: '/?origem=linktree#hospedagens', destaque: true },
+  { emoji: '💬', titulo: 'Fale conosco no WhatsApp', sub: 'Atendimento direto com o anfitrião', href: linkWa('Olá! Vim pelo link da Villela Stay e gostaria de informações.'), wa: true },
+  { emoji: '🎉', titulo: 'Eventos', sub: 'Casamentos, formaturas e festas — peça seu orçamento', href: '/eventos.html?origem=linktree' },
+  { emoji: '🎄', titulo: 'Pacotes especiais', sub: 'Natal, Réveillon, Posse 2027 e Carnaval', href: '/pacotes.html?origem=linktree' },
+  { emoji: '📖', titulo: 'Blog · Diário de Brasília', sub: 'Arquitetura, gastronomia e roteiros', href: '/blog.html?origem=linktree' }
+];
+// Atalhos diretos para as casas (espaços inteiros). Só entram os que existem em listings.json.
+const LINKTREE_CASAS = [
+  { id: 'GG04I', nome: 'Villa Kubitschek' },
+  { id: 'PL02I', nome: 'Villa Catetinho' },
+  { id: 'GI01I', nome: 'Casa Villela' },
+  { id: 'GD03H', nome: 'Gran Villela (espaço inteiro)' },
+  { id: 'GD01H', nome: 'Casa Modernista' }
+].filter(c => porId[c.id]);
+// Redes sociais REAIS confirmadas no site (não inventar perfis).
+const LINKTREE_REDES = [
+  { rede: 'Instagram', label: '@villelastay', href: 'https://instagram.com/villelastay', emoji: '📷' },
+  { rede: 'Instagram', label: '@augustovillela', href: 'https://instagram.com/augustovillela', emoji: '📷' },
+  { rede: 'Facebook', label: 'augusto.villela', href: 'https://facebook.com/augusto.villela', emoji: '📘' },
+  { rede: 'E-mail', label: 'villelastay@gmail.com', href: 'https://mail.google.com/mail/?view=cm&to=villelastay@gmail.com', emoji: '✉️' },
+  { rede: 'Telefone', label: '(61) 99193-5013', href: 'tel:+5561991935013', emoji: '📞' }
+];
+
+const linktreeBtn = b => `<a class="lt-btn${b.destaque ? ' lt-destaque' : ''}${b.wa ? ' lt-wa' : ''}" href="${b.href}"${/^https?:|^tel:/.test(b.href) ? ' target="_blank" rel="noopener"' : ''}>
+  <span class="lt-emoji" aria-hidden="true">${b.emoji}</span>
+  <span class="lt-txt"><strong>${esc(b.titulo)}</strong>${b.sub ? `<small>${esc(b.sub)}</small>` : ''}</span>
+</a>`;
+
+const linktreeHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Links da Villela Stay — Hospedagens no Lago Sul, Brasília</title>
+<meta name="description" content="Todos os links da Villela Stay: reservar, WhatsApp, eventos, pacotes, blog e redes sociais. Hospedagens inteligentes no Lago Sul, Brasília.">
+<link rel="canonical" href="${SITE_URL}/links.html">
+${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Villela Stay">
+<meta property="og:title" content="Links da Villela Stay">
+<meta property="og:description" content="Reservar, WhatsApp, eventos, pacotes, blog e redes sociais da Villela Stay — Lago Sul, Brasília.">
+<meta property="og:url" content="${SITE_URL}/links.html">
+<meta property="og:image" content="${SITE_URL}/og-home.jpg">
+<meta property="og:locale" content="pt_BR">
+<meta name="theme-color" content="${PWA.themeColor}">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>
+<style>
+  :root{ --lt-fundo:#0c3644; --lt-fundo2:#145066; --lt-creme:#f2ecd8; --lt-ouro:#d9a441; --lt-branco:#fff; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(120% 80% at 50% 0%, var(--lt-fundo2) 0%, var(--lt-fundo) 60%) fixed;
+    color:var(--lt-creme); min-height:100vh; padding:32px 18px 48px; -webkit-font-smoothing:antialiased; }
+  .lt-wrap{ max-width:480px; margin:0 auto; text-align:center; }
+  .lt-logo{ width:104px; height:104px; border-radius:50%; object-fit:cover; background:var(--lt-branco);
+    padding:8px; box-shadow:0 6px 22px rgba(0,0,0,.28); margin:0 auto 16px; display:block; }
+  .lt-marca{ font-size:1.7rem; font-weight:800; letter-spacing:.5px; color:var(--lt-branco); }
+  .lt-marca span{ color:var(--lt-ouro); }
+  .lt-tag{ font-size:.95rem; color:var(--lt-creme); opacity:.92; margin:6px 0 26px; line-height:1.5; }
+  .lt-btn{ display:flex; align-items:center; gap:14px; text-align:left; text-decoration:none;
+    background:rgba(255,255,255,.07); border:1.5px solid rgba(242,236,216,.28); color:var(--lt-creme);
+    border-radius:16px; padding:15px 18px; margin:0 0 13px; transition:transform .12s ease, background .12s ease, border-color .12s ease; }
+  .lt-btn:hover{ transform:translateY(-2px); background:rgba(255,255,255,.13); border-color:var(--lt-ouro); }
+  .lt-btn:active{ transform:translateY(0); }
+  .lt-emoji{ font-size:1.5rem; width:30px; text-align:center; flex:0 0 auto; }
+  .lt-txt{ display:flex; flex-direction:column; line-height:1.25; }
+  .lt-txt strong{ font-size:1.04rem; }
+  .lt-txt small{ font-size:.82rem; opacity:.82; margin-top:2px; }
+  .lt-destaque{ background:var(--lt-ouro); border-color:var(--lt-ouro); color:#3a2410; }
+  .lt-destaque:hover{ background:#e6b24f; color:#3a2410; }
+  .lt-wa{ background:rgba(37,211,102,.16); border-color:rgba(37,211,102,.55); }
+  .lt-wa:hover{ background:rgba(37,211,102,.26); border-color:#25d366; }
+  .lt-sep{ font-size:.78rem; letter-spacing:1.5px; text-transform:uppercase; opacity:.65;
+    margin:24px 0 14px; display:flex; align-items:center; gap:12px; }
+  .lt-sep::before,.lt-sep::after{ content:''; flex:1; height:1px; background:rgba(242,236,216,.25); }
+  .lt-redes{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:6px; }
+  .lt-rede{ display:inline-flex; align-items:center; gap:7px; text-decoration:none; color:var(--lt-creme);
+    background:rgba(255,255,255,.06); border:1px solid rgba(242,236,216,.22); border-radius:999px;
+    padding:8px 14px; font-size:.86rem; transition:background .12s, border-color .12s; }
+  .lt-rede:hover{ background:rgba(255,255,255,.13); border-color:var(--lt-ouro); }
+  .lt-rodape{ margin-top:30px; font-size:.78rem; opacity:.6; line-height:1.6; }
+  .lt-rodape a{ color:var(--lt-creme); }
+</style>
+</head>
+<body>
+<main class="lt-wrap">
+  ${TEM_LOGO ? '<img class="lt-logo" src="/logo.png" alt="Villela Stay" width="104" height="104">' : ''}
+  <div class="lt-marca">Villela <span>Stay</span></div>
+  <p class="lt-tag">Hospedagens Inteligentes · para Experiências Inesquecíveis</p>
+
+  ${LINKTREE.map(linktreeBtn).join('\n  ')}
+
+  <div class="lt-sep">Nossas casas</div>
+  ${LINKTREE_CASAS.map(c => linktreeBtn({
+    emoji: '🔑', titulo: c.nome, sub: porId[c.id].titulo ? `${porId[c.id].hospedes} hóspedes` : '',
+    href: `/hospedagem/${c.id}.html?origem=linktree`
+  })).join('\n  ')}
+
+  <div class="lt-sep">Siga e fale com a gente</div>
+  <div class="lt-redes">
+    ${LINKTREE_REDES.map(r => `<a class="lt-rede" href="${r.href}"${/^https?:/.test(r.href) ? ' target="_blank" rel="noopener"' : ''}><span aria-hidden="true">${r.emoji}</span>${esc(r.label)}</a>`).join('\n    ')}
+  </div>
+
+  <p class="lt-rodape">
+    Lago Sul, Brasília-DF · 10 min do Aeroporto JK e da Esplanada<br>
+    <a href="/">villelastay.com.br</a>
+  </p>
+</main>
+<script>
+document.addEventListener('click', function(e){
+  var a = e.target.closest && e.target.closest('a');
+  if (a && typeof gtag === 'function') gtag('event', 'clique_linktree', { destino: a.getAttribute('href') });
+});
+</script>
+</body>
+</html>`;
+fs.writeFileSync(path.join(DIST, 'links.html'), linktreeHtml);
+console.log('Linktree gerado: /links.html');
+
 // ------------------------- PWA: manifest, ícones, service worker, offline -------------------------
 // Copia os ícones do app (gerados em assets/icons/) para dist/assets/icons/
 const ICON_SRC = path.join(__dirname, 'assets', 'icons');
@@ -1602,7 +1728,7 @@ const PRECACHE_URLS = [
   '/', '/index.html', '/style.css', '/offline.html', '/manifest.webmanifest',
   ...(TEM_LOGO ? ['/logo.png'] : []),
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
-  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/blog.html',
+  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/blog.html', '/links.html',
   ...listings.map(l => `/hospedagem/${l.id}.html`)
 ];
 const sw = `// Service Worker da Villela Stay (PWA) — gerado por build.js. NÃO editar à mão.
@@ -1681,6 +1807,7 @@ const rotas = [
   { loc: '/guia.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/regras.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/pre-checkin.html', changefreq: 'monthly', priority: '0.3' },
+  { loc: '/links.html', changefreq: 'monthly', priority: '0.4' },
   ...listings.map(l => ({ loc: `/hospedagem/${l.id}.html`, changefreq: 'weekly', priority: '0.8' }))
 ];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
