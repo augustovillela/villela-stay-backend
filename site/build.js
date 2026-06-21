@@ -1537,6 +1537,10 @@ const LINKTREE = [
   { emoji: '💬', titulo: 'Fale conosco no WhatsApp', sub: 'Atendimento direto com o anfitrião', href: linkWa('Olá! Vim pelo link da Villela Stay e gostaria de informações.'), wa: true },
   { emoji: '🎉', titulo: 'Eventos', sub: 'Casamentos, formaturas e festas — peça seu orçamento', href: '/eventos.html?origem=linktree' },
   { emoji: '🎄', titulo: 'Pacotes especiais', sub: 'Natal, Réveillon, Posse 2027 e Carnaval', href: '/pacotes.html?origem=linktree' },
+  { emoji: '📷', titulo: 'Instagram · @villelastay', sub: 'Siga nossas casas e bastidores', href: 'https://instagram.com/villelastay', social: true },
+  { emoji: '📷', titulo: 'Instagram · @augustovillela', sub: 'Siga o anfitrião', href: 'https://instagram.com/augustovillela', social: true },
+  { emoji: '📘', titulo: 'Facebook · augusto.villela', sub: 'Curta e acompanhe as novidades', href: 'https://facebook.com/augusto.villela', social: true },
+  { emoji: '✉️', titulo: 'E-mail · villelastay@gmail.com', sub: 'Fale com a gente por e-mail', href: 'mailto:villelastay@gmail.com', social: true },
   { emoji: '📖', titulo: 'Blog · Diário de Brasília', sub: 'Arquitetura, gastronomia e roteiros', href: '/blog.html?origem=linktree' }
 ];
 // Atalhos diretos para as casas (espaços inteiros). Só entram os que existem em listings.json.
@@ -1548,11 +1552,9 @@ const LINKTREE_CASAS = [
   { id: 'GD01H', nome: 'Casa Modernista' }
 ].filter(c => porId[c.id]);
 // Redes sociais REAIS confirmadas no site (não inventar perfis).
+// Os botões de Instagram/Facebook/e-mail foram PROMOVIDOS para botões principais (LINKTREE) para
+// ganhar destaque. Aqui no rodapé fica só o telefone, que não vira botão principal.
 const LINKTREE_REDES = [
-  { rede: 'Instagram', label: '@villelastay', href: 'https://instagram.com/villelastay', emoji: '📷' },
-  { rede: 'Instagram', label: '@augustovillela', href: 'https://instagram.com/augustovillela', emoji: '📷' },
-  { rede: 'Facebook', label: 'augusto.villela', href: 'https://facebook.com/augusto.villela', emoji: '📘' },
-  { rede: 'E-mail', label: 'villelastay@gmail.com', href: 'https://mail.google.com/mail/?view=cm&to=villelastay@gmail.com', emoji: '✉️' },
   { rede: 'Telefone', label: '(61) 99193-5013', href: 'tel:+5561991935013', emoji: '📞' }
 ];
 
@@ -1631,7 +1633,7 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
     href: `/hospedagem/${c.id}.html?origem=linktree`
   })).join('\n  ')}
 
-  <div class="lt-sep">Siga e fale com a gente</div>
+  <div class="lt-sep">Telefone</div>
   <div class="lt-redes">
     ${LINKTREE_REDES.map(r => `<a class="lt-rede" href="${r.href}"${/^https?:/.test(r.href) ? ' target="_blank" rel="noopener"' : ''}><span aria-hidden="true">${r.emoji}</span>${esc(r.label)}</a>`).join('\n    ')}
   </div>
