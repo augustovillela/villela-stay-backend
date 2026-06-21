@@ -1534,6 +1534,7 @@ console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
 // total nos botões, como um linktree. Cada link de reserva marca ?origem=linktree para o CRM.
 const linkWa = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
 const LINKTREE = [
+  { emoji: '📍', titulo: 'Google Maps · Avaliações', sub: 'Veja onde ficamos e o que dizem os hóspedes', href: 'https://maps.app.goo.gl/3G91MUDdDt3NW3U18', social: true },
   { emoji: '🏡', titulo: 'Reservar / Ver as casas', sub: 'Casas, flats e suítes no Lago Sul', href: '/?origem=linktree#hospedagens', destaque: true },
   { emoji: '💬', titulo: 'Fale conosco no WhatsApp', sub: 'Atendimento direto com o anfitrião', href: linkWa('Olá! Vim pelo link da Villela Stay e gostaria de informações.'), wa: true },
   { emoji: '🎉', titulo: 'Eventos', sub: 'Casamentos, formaturas e festas — peça seu orçamento', href: '/eventos.html?origem=linktree' },
@@ -1542,8 +1543,7 @@ const LINKTREE = [
   { emoji: '📷', titulo: 'Instagram · @augustovillela', sub: 'Siga o anfitrião', href: 'https://instagram.com/augustovillela', social: true },
   { emoji: '📘', titulo: 'Facebook · augusto.villela', sub: 'Curta e acompanhe as novidades', href: 'https://facebook.com/augusto.villela', social: true },
   { emoji: '✉️', titulo: 'E-mail · villelastay@gmail.com', sub: 'Fale com a gente por e-mail', href: 'mailto:villelastay@gmail.com', social: true },
-  { emoji: '📖', titulo: 'Blog · Diário de Brasília', sub: 'Arquitetura, gastronomia e roteiros', href: '/blog.html?origem=linktree' },
-  { emoji: '📍', titulo: 'Google Maps · Avaliações', sub: 'Veja onde ficamos e o que dizem os hóspedes', href: 'https://maps.app.goo.gl/3G91MUDdDt3NW3U18', social: true }
+  { emoji: '📖', titulo: 'Blog · Diário de Brasília', sub: 'Arquitetura, gastronomia e roteiros', href: '/blog.html?origem=linktree' }
 ];
 // Atalhos diretos para as casas (espaços inteiros). Só entram os que existem em listings.json.
 const LINKTREE_CASAS = [
