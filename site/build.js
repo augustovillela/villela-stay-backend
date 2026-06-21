@@ -232,7 +232,7 @@ ${corpo}
   <div class="rodape-links rodape-compacto">
     <strong>Navegue</strong>
     <a href="/links.html">Linktree</a>
-    <a href="/pre-checkin.html">Pré-check-in online</a>
+    <a href="/pre-checkin.html">Check-in on-line</a>
     <a href="/guia.html">Guia do Hóspede</a>
     <a href="/formaturas.html">Formaturas</a>
     <a href="/casamentos.html">Casamentos</a>
@@ -945,7 +945,7 @@ const guia = layout(
 
   <section class="regra"><h2>🔑 Sua chegada</h2>
     <p><strong>Check-in a partir das 14h.</strong> As instruções de acesso (endereço exato, portão e chaves/senha) são enviadas pelo WhatsApp antes da sua chegada.</p>
-    <p>Preencha o <a href="/pre-checkin.html"><strong>pré-check-in online</strong></a> para agilizar tudo — leva 2 minutos.</p>
+    <p>Preencha o <a href="/pre-checkin.html"><strong>check-in on-line</strong></a> para agilizar tudo — leva 2 minutos.</p>
   </section>
 
   <section class="regra"><h2>🏡 Como a casa funciona</h2>
@@ -1012,11 +1012,11 @@ fs.writeFileSync(path.join(DIST, 'guia.html'), guia);
 
 // ------------------------- pré-check-in -------------------------
 const precheckin = layout(
-  'Pré-check-in | Villela Stay',
+  'Check-in on-line | Villela Stay',
   'Adiante seu check-in na Villela Stay: preencha seus dados e chegue com tudo pronto.',
   `
 <section class="hero hero-menor">
-  <h1>Pré-check-in</h1>
+  <h1>Check-in on-line</h1>
   <p>Preencha antes de chegar e ganhe tempo: com seus dados em mãos, deixamos tudo pronto para receber você.</p>
 </section>
 <div class="form-wrap">
@@ -1035,6 +1035,8 @@ const precheckin = layout(
     <label>Nº de crianças que vão se hospedar <input name="criancas" type="number" min="0"></label>
     <label>Nº de Convidados para Evento ou Day Use <input name="convidados" type="number" min="0"></label>
     <label>Vai trazer pet? Qual? <input name="pets" placeholder="ex.: 1 cachorro pequeno"></label>
+    <label>Vai usar o estacionamento? <select name="estacionamento" style="width:100%"><option value="">Selecione</option><option>Sim</option><option>Não</option></select></label>
+    <label>Modelo e placa do veículo <input name="veiculo" placeholder="ex.: Honda Civic preto - ABC1D23"></label>
     <label>Motivo da viagem <select name="motivo" id="pc-motivo" style="width:100%">
       <option value="">Selecione (opcional)</option>
       <option value="Passeio">Passeio</option>
@@ -1047,7 +1049,7 @@ const precheckin = layout(
       <label style="flex:1">Destino <input name="destino" placeholder="para onde vai depois"></label>
     </div>
     <label>Observações (berço, restrições, ocasião especial...) <textarea name="observacoes" rows="3"></textarea></label>
-    <button class="btn" type="submit">Enviar pré-check-in</button>
+    <button class="btn" type="submit">Enviar check-in on-line</button>
     <p class="form-status" hidden></p>
   </form>
 </div>
@@ -1066,12 +1068,12 @@ document.getElementById('form-precheckin').addEventListener('submit', function(e
   var f = e.target, st = f.querySelector('.form-status');
   st.hidden = false; st.textContent = 'Enviando...';
   var dados = {};
-  ['nome','contato','email','reserva','hospedagem','chegada','saida','horario','adultos','criancas','convidados','pets','motivo','evento','origem','destino','observacoes'].forEach(function(k){ dados[k] = f[k] ? f[k].value : ''; });
+  ['nome','contato','email','reserva','hospedagem','chegada','saida','horario','adultos','criancas','convidados','pets','estacionamento','veiculo','motivo','evento','origem','destino','observacoes'].forEach(function(k){ dados[k] = f[k] ? f[k].value : ''; });
   fetch('${BACKEND}/api/precheckin', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados)
   }).then(function(r){
-    st.textContent = r.ok ? '✅ Pré-check-in recebido! Até breve. 🏡' : 'Erro ao enviar — fale conosco pelo WhatsApp.';
+    st.textContent = r.ok ? '✅ Check-in on-line recebido! Até breve. 🏡' : 'Erro ao enviar — fale conosco pelo WhatsApp.';
     if (r.ok) f.reset();
   }).catch(function(){ st.textContent = 'Erro ao enviar — fale conosco pelo WhatsApp.'; });
 });

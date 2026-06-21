@@ -234,6 +234,7 @@ app.post('/api/precheckin', (req, res) => {
     hospedagem: d.hospedagem || '', chegada: d.chegada || '', saida: d.saida || '', horario: d.horario || '',
     adultos: d.adultos || '', criancas: d.criancas || '', convidados: d.convidados || '', pets: d.pets || '',
     motivo: d.motivo || '', evento: d.evento || '', origem: d.origem || '', destino: d.destino || '',
+    estacionamento: d.estacionamento || '', veiculo: d.veiculo || '',
     observacoes: d.observacoes || ''
   });
   res.json({ ok: true });
