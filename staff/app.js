@@ -304,6 +304,8 @@ const calParse = s => { const [a, m, d] = String(s).split('-').map(Number); retu
 const calDiffDias = (a, b) => Math.round((b - a) / 86400000);
 const calMesNome = m => ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][m];
 const calMoeda = (v, moeda) => (v == null ? '' : (moeda === 'BRL' ? 'R$ ' : (moeda || '') + ' ') + Number(v).toLocaleString('pt-BR'));
+// normaliza para busca: minúsculas e SEM acento (ex.: "otavio" casa "Otávio")
+const calNorm = s => String(s || '').normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '').toLowerCase().trim();
 
 function calEstado() {
   if (!ESTADO.cal) {
@@ -394,13 +396,13 @@ async function carregarCalendario() {
 
 function calReservasFiltradas() {
   const cal = calEstado(); const d = cal.dados; if (!d) return [];
-  const termo = cal.busca.trim().toLowerCase();
+  const termo = calNorm(cal.busca);
   return d.reservas.filter(r => {
     if (cal.ocultas.has(r.idlisting)) return false;
     if (cal.status === 'reservas' && r.bloqueio) return false;
     if (cal.status === 'bloqueios' && !r.bloqueio) return false;
     if (cal.plat && r.plataforma !== cal.plat) return false;
-    if (termo && !String(r.hospede).toLowerCase().includes(termo)) return false;
+    if (termo && !calNorm(r.hospede).includes(termo)) return false;
     return true;
   });
 }
