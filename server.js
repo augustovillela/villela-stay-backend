@@ -61,6 +61,9 @@ function appendJsonl(file, obj) {
   fs.appendFileSync(path.join(DATA_DIR, file), JSON.stringify({ ...obj, _recebido: new Date().toISOString() }) + '\n');
 }
 
+// Normaliza para busca tolerante: minúsculas e SEM acento (ex.: "otavio" acha "Otávio").
+function semAcento(s) { return String(s == null ? '' : s).normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '').toLowerCase(); }
+
 app.get('/health', (req, res) => res.json({ ok: true, servico: 'villela-stay-backend' }));
 
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
@@ -780,8 +783,8 @@ app.get('/staff/api/crm/contatos', requirePublishOrSession, podeCRM, (req, res) 
   if (estagio) lista = lista.filter(c => c.estagio === estagio);
   if (origem) lista = lista.filter(c => c.origem === origem);
   if (busca) {
-    const q = String(busca).toLowerCase();
-    lista = lista.filter(c => [c.nome, c.telefone, c.email].some(v => String(v || '').toLowerCase().includes(q)));
+    const q = semAcento(busca).trim();
+    lista = lista.filter(c => [c.nome, c.telefone, c.email].some(v => semAcento(v).includes(q)));
   }
   res.json({ contatos: lista });
 });
