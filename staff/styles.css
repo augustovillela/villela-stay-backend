@@ -212,7 +212,9 @@ tr:last-child td { border-bottom: none; }
 .plat-site { background: var(--lago); } .plat-direto { background: var(--cerrado); } .plat-outro { background: #6b7075; }
 
 .cal-scroll { overflow-x: auto; border: 1px solid var(--borda); border-radius: 12px; background: #fff; }
-.cal-grade { --cw: 34px; --cw-label: 172px; display: inline-block; min-width: 100%; }
+/* --cw é a largura MÍNIMA por dia; com minmax(--cw,1fr) as colunas esticam para preencher a
+   largura (um mês inteiro cabe sem rolagem). display:block + width:100% dá largura definida ao 1fr. */
+.cal-grade { --cw: 22px; --cw-label: 172px; display: block; width: 100%; }
 .cal-faixa-mes, .cal-row { display: grid; align-items: stretch; }
 .cal-mes { font-size: .76rem; font-weight: 800; color: var(--petroleo); text-transform: capitalize; padding: 5px 8px; border-left: 1px solid var(--borda); background: var(--areia); position: sticky; }
 .cal-faixa-mes { border-bottom: 1px solid var(--borda); }

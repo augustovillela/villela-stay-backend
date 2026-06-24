@@ -426,7 +426,9 @@ function calDesenharTimeline(area) {
   if (nDias < 1 || nDias > 400) { area.innerHTML = `<p class="erro">Intervalo grande demais para a linha do tempo. Reduza o período.</p>`; return; }
   const hojeStr = calYmd(new Date());
   const dias = []; for (let i = 0; i < nDias; i++) { const dt = new Date(from); dt.setDate(dt.getDate() + i); dias.push(dt); }
-  const gtc = `var(--cw-label) repeat(${nDias}, var(--cw))`;
+  // Colunas FLEXÍVEIS (minmax(min, 1fr)): o intervalo se estica para preencher a largura — um mês
+  // inteiro cabe na tela sem rolagem; só rola quando há dias demais para a largura mínima.
+  const gtc = `var(--cw-label) repeat(${nDias}, minmax(var(--cw), 1fr))`;
   const semana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
   // faixa de meses
