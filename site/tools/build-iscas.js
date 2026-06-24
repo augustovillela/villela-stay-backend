@@ -246,6 +246,77 @@ const MATERIAIS = [
     </ul>
     <div class="fecho"><p>O que nos atrai na construção modular — eficiência, sustentabilidade e espaços com personalidade — é o que perseguimos em cada hospedagem. Se você curte o tema (para morar, investir ou empreender), <b>fale com a gente</b>: adoramos uma boa conversa sobre espaços.</p></div>`,
   },
+  {
+    id: 'guia-domo-geodesico', tema: 'Guia · Domo geodésico', c1: '#23306b', c2: '#5566c4',
+    titulo: 'Domo geodésico: do cálculo à montagem',
+    sub: 'A geometria sem mistério, as peças que importam e os cuidados que decidem o conforto — o guia do anfitrião para quem sonha com um domo, seja para morar, hospedar ou receber.',
+    corpo: `
+    <div class="nota">O domo geodésico encanta por três motivos: <b>cobre grandes vãos sem coluna, gasta pouco material e sobe rápido</b>. Mas a diferença entre um domo confortável e um "iglu quente" está nos detalhes. Use este guia antes de começar.</div>
+    <h2>1. Entenda a ideia</h2>
+    <p>Uma cúpula formada por uma malha de triângulos que se apoiam uns nos outros. Os triângulos distribuem o peso por toda a estrutura — por isso o domo é tão resistente com tão pouco material, e dispensa colunas internas. É geometria da esfera virando arquitetura.</p>
+    <h2>2. Defina diâmetro e frequência</h2>
+    <ul>
+      <li><b>Diâmetro</b> — o tamanho do vão que você quer cobrir (uma suíte? um salão para 200?).</li>
+      <li><b>Frequência (1V, 2V, 3V…)</b> — o nível de subdivisão dos triângulos. Mais frequência = mais triângulos, mais perto de uma esfera e vão maior — ao custo de mais peças e conectores.</li>
+    </ul>
+    <h2>3. As peças (e o que faz cada uma)</h2>
+    <ul>
+      <li><b>Hastes (barras)</b> — as arestas dos triângulos; em madeira, aço ou tubo.</li>
+      <li><b>Conectores (hubs)</b> — os nós que unem as hastes nos ângulos exatos; o coração da precisão.</li>
+      <li><b>Cobertura</b> — a "pele": lona técnica, policarbonato ou painéis, do glamping translúcido ao salão vedado.</li>
+      <li><b>Lanternim</b> — abertura no topo para ventilar e iluminar.</li>
+      <li><b>Pórtico e janelas</b> — a entrada e as aberturas que dão conforto e vista.</li>
+    </ul>
+    <h2>4. As etapas da obra</h2>
+    <ul>
+      <li><b>Projeto e cálculo</b> — comprimentos das hastes e ângulos dos conectores. Peça errada, domo torto.</li>
+      <li><b>Fundação</b> — a base nivelada que recebe a cúpula.</li>
+      <li><b>Montagem da estrutura</b> — encaixe das hastes e conectores; sobe em dias.</li>
+      <li><b>Cobertura e vedação</b> — fechamento da pele e impermeabilização das junções.</li>
+      <li><b>Instalações e acabamento</b> — piso, elétrica, isolamento e o toque final.</li>
+    </ul>
+    <h2>Os cuidados que ninguém conta</h2>
+    <ul>
+      <li><b>Isolamento e ventilação.</b> Cúpula fechada ao sol esquenta; o lanternim e um bom isolamento fazem a diferença entre aconchego e estufa — ainda mais no clima de Brasília.</li>
+      <li><b>Impermeabilização das junções.</b> Muitos triângulos = muitas emendas. É onde a água testa o projeto; trate cada nó.</li>
+      <li><b>Cobertura certa para o uso.</b> Translúcida para a experiência "dormir sob as estrelas"; opaca/isolada para conforto térmico e privacidade.</li>
+      <li><b>Documentação.</b> Confirme as regras locais e a aprovação do projeto — estrutura inusitada também precisa de papel em ordem.</li>
+    </ul>
+    <div class="fecho"><p>Do glamping ao grande evento, o domo é, ao mesmo tempo, o abrigo e a atração. Se você sonha em <b>realizar um evento sob um domo</b>, hospedar-se em um, ou tirar um <b>projeto do papel</b> — fale com a gente. Adoramos uma boa conversa sobre espaços que encantam.</p></div>`,
+  },
+  {
+    id: 'guia-do-proprietario', tema: 'Guia · Para proprietários', c1: '#5b1f33', c2: '#9c4a63',
+    titulo: 'Quanto o seu imóvel pode render?',
+    sub: 'O que avaliar antes de alugar por temporada, como estimar a rentabilidade e tudo o que uma gestão profissional faz por você — o guia do anfitrião para proprietários.',
+    corpo: `
+    <div class="nota">Um bom imóvel parado é dinheiro parado. Mas viver de aluguel por temporada vira um segundo emprego — fotos, anúncios, preço, mensagens a qualquer hora, limpeza, manutenção. Este guia mostra o que decide a sua rentabilidade, e o que muda quando a operação é profissional.</div>
+    <h2>1. O que avaliar antes de começar</h2>
+    <ul>
+      <li><b>Localização e perfil</b> — quem é o hóspede ideal do seu imóvel (família, casal, grupo, corporativo)?</li>
+      <li><b>Estado e equipamento</b> — o que falta para ele "lotar": enxoval, cozinha, conforto, segurança.</li>
+      <li><b>Concorrência</b> — quanto cobram imóveis parecidos, e em quais datas a demanda aperta.</li>
+      <li><b>Regras do condomínio/cidade</b> — o que é permitido para locação por temporada.</li>
+    </ul>
+    <h2>2. Como estimar a rentabilidade</h2>
+    <p>A conta honesta vai além da diária: <b>diária média × taxa de ocupação × dias do mês</b>, menos comissões de plataforma, limpeza, manutenção e reposições. O segredo não é cobrar caro — é manter <b>ocupação alta com a melhor diária possível</b>, ajustando o preço à demanda (mais barato nas datas fracas, valorizado nas fortes).</p>
+    <h2>3. O que separa um anúncio que lota de um que encalha</h2>
+    <ul>
+      <li><b>Fotografia profissional</b> — a primeira impressão é a foto. É o que faz o hóspede clicar.</li>
+      <li><b>Anúncio bem escrito e completo</b> — título, descrição e comodidades que respondem o que o hóspede pergunta.</li>
+      <li><b>Preço dinâmico</b> — acompanhar a demanda, feriados e eventos da cidade.</li>
+      <li><b>Avaliações 5 estrelas</b> — atendimento impecável gera avaliação boa, que atrai mais reservas. É um ciclo.</li>
+      <li><b>Presença em várias plataformas</b> — com calendário unificado para não correr risco de overbooking.</li>
+    </ul>
+    <h2>4. O que uma gestão profissional faz por você</h2>
+    <ul>
+      <li><b>Prepara o imóvel</b> — vistoria, decoração, paisagismo e fotografia.</li>
+      <li><b>Cuida da venda</b> — anúncios, precificação e exposição nas plataformas.</li>
+      <li><b>Atende o hóspede</b> — do primeiro contato ao check-out, com agilidade.</li>
+      <li><b>Mantém o padrão</b> — limpeza, troca de enxoval, manutenção e reposições.</li>
+      <li><b>Dá transparência</b> — você acompanha reservas e financeiro em tempo real, e bloqueia as datas que quiser usar.</li>
+    </ul>
+    <div class="fecho"><p>A <b>Villela Stay</b> é a operação de hospedagem e governança do advogado Augusto Villela e de Renata Freitas — anfitriões premiados (Superhost) no Lago Sul. Tratamos cada imóvel sob nossa gestão como se fosse nosso. <b>Fale com a gente</b> e descubra, sem compromisso, quanto a sua propriedade pode render.</p></div>`,
+  },
 ];
 
 // Rodape REAL de pagina (footerTemplate do Chrome): barra de marca no pe de TODA pagina,

@@ -157,5 +157,37 @@
       "licenca": "CC BY-SA 2.0",
       "fonte": "https://commons.wikimedia.org/wiki/File:Container_city%5E_-_geograph.org.uk_-_2403544.jpg"
     }
+  ],
+  "domo-geodesico": [
+    {
+      "file": "domo-geodesico-1.jpg",
+      "alt": "Geodesic dome",
+      "credito": "Jürgen Matern",
+      "licenca": "CC BY-SA 2.5",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Eden_Project_geodesic_domes_panorama.jpg"
+    },
+    {
+      "file": "domo-geodesico-3.jpg",
+      "alt": "Montreal Biosphere dome",
+      "credito": "Maela Ohana",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Montreal_Biosphere,_Le_Moyne_Channel,_St_Lawrence_River.jpg"
+    }
+  ],
+  "hospedagem-profissional": [
+    {
+      "file": "hospedagem-profissional-1.jpg",
+      "alt": "Lago Paranoá Brasília",
+      "credito": "Arley Cruzper",
+      "licenca": "CC BY-SA 4.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Lago_Parano%C3%A1_Bras%C3%ADlia.jpg"
+    },
+    {
+      "file": "hospedagem-profissional-2.jpg",
+      "alt": "Pontão do Lago Sul Brasília",
+      "credito": "Marinelson Almeida - Traveling through Brazil from Niteroi, Brasil",
+      "licenca": "CC BY 2.0",
+      "fonte": "https://commons.wikimedia.org/wiki/File:Cal%C3%A7ad%C3%A3o_do_Pont%C3%A3o_do_Lago_Sul_-_Brasilia._(15352457568).jpg"
+    }
   ]
 }

@@ -8,4 +8,6 @@ module.exports = [
   require('./paisagismo'),
   require('./personalidades'),
   require('./containers'),
+  require('./domo-geodesico'),
+  require('./hospedagem-profissional'),
 ];

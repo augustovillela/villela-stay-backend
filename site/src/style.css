@@ -301,6 +301,8 @@ a { color: var(--lago); text-decoration: none; }
 .tema-paisagismo    { --t1:#1f5132; --t2:#4e9a5f; }
 .tema-personalidades{ --t1:#43285a; --t2:#7d5499; }
 .tema-containers    { --t1:#33383d; --t2:#6b7278; }
+.tema-domo-geodesico{ --t1:#23306b; --t2:#5566c4; }
+.tema-hospedagem-profissional { --t1:#5b1f33; --t2:#9c4a63; }
 
 /* ---------- hero do artigo ---------- */
 .artigo-hero {
@@ -326,7 +328,8 @@ a { color: var(--lago); text-decoration: none; }
   padding: 5px 13px; border-radius: 20px; background: rgba(255,255,255,.18); color: #fff;
 }
 .blog-card .tema-tag, .tema-tag.tema-arquitetura, .tema-tag.tema-roteiros, .tema-tag.tema-gastronomia,
-.tema-tag.tema-paisagismo, .tema-tag.tema-personalidades, .tema-tag.tema-containers {
+.tema-tag.tema-paisagismo, .tema-tag.tema-personalidades, .tema-tag.tema-containers,
+.tema-tag.tema-domo-geodesico, .tema-tag.tema-hospedagem-profissional {
   background: linear-gradient(135deg, var(--t1), var(--t2)); color: #fff;
 }
 
