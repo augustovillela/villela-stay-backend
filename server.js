@@ -1129,6 +1129,105 @@ app.patch('/staff/api/agenda/pedidos/:id', requirePublishOrSession, (req, res) =
   res.json({ ok: true, pedido: p });
 });
 
+// ============================ CALENDÁRIO (réplica do calendário da Stays) ============================
+// Lê propriedades + reservas AO VIVO da API Stays (mesma fonte do painel oficial) e devolve em
+// formato pronto para a linha do tempo do Portal Staff. SOMENTE LEITURA. Auth: qualquer logado (equipe).
+
+// Paginação genérica (a API Stays devolve no máximo 20 por página via limit/skip).
+async function staysPaginado(pathname, params) {
+  const limit = 20; let skip = 0; const out = [];
+  for (let i = 0; i < 500; i++) {
+    const page = await stays(pathname, { ...(params || {}), limit, skip });
+    const arr = Array.isArray(page) ? page : (page && Array.isArray(page.results) ? page.results : []);
+    out.push(...arr);
+    if (arr.length < limit) break;
+    skip += limit;
+  }
+  return out;
+}
+
+// Cache persistente de nome de cliente (id -> nome): a reserva só traz _idclient, não o nome.
+let _cacheClientes = null;
+function clientesCache() { if (!_cacheClientes) _cacheClientes = lerJSON('clientes-cache.json', {}); return _cacheClientes; }
+async function resolverClientes(ids) {
+  const cache = clientesCache();
+  const faltam = [...new Set(ids.filter(id => id && !cache[id]))];
+  const CONC = 6;
+  for (let i = 0; i < faltam.length; i += CONC) {
+    await Promise.all(faltam.slice(i, i + CONC).map(async id => {
+      try {
+        const cli = await stays(`/booking/clients/${id}`);
+        cache[id] = (cli && (cli.name || [cli.fName, cli.lName].filter(Boolean).join(' '))) || '—';
+      } catch (e) { cache[id] = '—'; }
+    }));
+  }
+  if (faltam.length) salvarJSON('clientes-cache.json', cache);
+  return cache;
+}
+
+function normalizarPlataforma(partner) {
+  const raw = (partner && partner.name ? String(partner.name) : '').toLowerCase();
+  if (!raw) return { chave: 'direto', rotulo: 'Direta' };
+  if (raw.includes('airbnb')) return { chave: 'airbnb', rotulo: 'Airbnb' };
+  if (raw.includes('booking')) return { chave: 'booking', rotulo: 'Booking' };
+  if (raw.includes('decolar') || raw.includes('despegar')) return { chave: 'decolar', rotulo: 'Decolar' };
+  if (raw.includes('expedia')) return { chave: 'expedia', rotulo: 'Expedia' };
+  if (raw.includes('vrbo') || raw.includes('homeaway')) return { chave: 'vrbo', rotulo: 'Vrbo' };
+  if (raw.includes('google')) return { chave: 'google', rotulo: 'Google' };
+  if (raw.includes('website') || raw.includes('site') || raw.includes('direct')) return { chave: 'site', rotulo: 'Site' };
+  return { chave: 'outro', rotulo: partner.name };
+}
+const CAL_STATUS = { booked: 'Reservado', reserved: 'Pré-reserva', contract: 'Contrato', blocked: 'Bloqueio', maintenance: 'Manutenção', canceled: 'Cancelada' };
+
+app.get('/staff/api/calendario', requireAuth, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to || ''))
+      return res.status(400).json({ erro: 'Parâmetros from e to (yyyy-MM-dd) são obrigatórios.' });
+
+    // Propriedades (linhas) — só anúncios ativos; inteiros primeiro, depois quartos, por nome.
+    const listings = await staysPaginado('/content/listings', {});
+    const ordemSub = { entire_home: 0, private_room: 1 };
+    const propriedades = listings.filter(l => l.status === 'active').map(l => ({
+      idlisting: l._id, codigo: l.id,
+      titulo: (l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id),
+      subtype: l.subtype || ''
+    })).sort((a, b) => (ordemSub[a.subtype] ?? 9) - (ordemSub[b.subtype] ?? 9) || a.titulo.localeCompare(b.titulo, 'pt-BR'));
+
+    // Reservas (barras) — interseção com a janela; ignora canceladas.
+    const brutas = await staysPaginado('/booking/reservations', { from, to, dateType: 'included' });
+    const validas = brutas.filter(r => r.type !== 'canceled');
+    const cache = await resolverClientes(validas.map(r => r._idclient));
+
+    const reservas = validas.map(r => {
+      const ehBloqueio = r.type === 'blocked' || r.type === 'maintenance';
+      const plat = normalizarPlataforma(r.partner);
+      const gd = r.guestsDetails || {};
+      const noites = (r.checkInDate && r.checkOutDate)
+        ? Math.max(0, Math.round((Date.parse(r.checkOutDate) - Date.parse(r.checkInDate)) / 86400000)) : null;
+      return {
+        id: r.id || r._id, idlisting: r._idlisting,
+        hospede: ehBloqueio ? (CAL_STATUS[r.type] || 'Bloqueio') : ((r._idclient && cache[r._idclient]) || '—'),
+        bloqueio: ehBloqueio,
+        plataforma: ehBloqueio ? '' : plat.chave, plataformaRotulo: ehBloqueio ? '' : plat.rotulo,
+        status: r.type, statusRotulo: CAL_STATUS[r.type] || r.type,
+        checkIn: r.checkInDate, checkOut: r.checkOutDate, noites,
+        hospedes: r.guests || ((gd.adults || 0) + (gd.children || 0)) || null,
+        adultos: gd.adults ?? null, criancas: gd.children ?? null, bebes: gd.infants ?? null,
+        valorTotal: (r.price && r.price._f_total != null) ? r.price._f_total : null,
+        moeda: (r.price && r.price.currency) || 'BRL',
+        reservationUrl: r.reservationUrl || ''
+      };
+    });
+
+    res.set('Cache-Control', 'no-store');
+    res.json({ from, to, geradoEm: new Date().toISOString(), propriedades, reservas });
+  } catch (e) {
+    console.error('[calendario]', e.message);
+    res.status(502).json({ erro: 'Falha ao consultar a Stays.' });
+  }
+});
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 

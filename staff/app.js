@@ -130,6 +130,8 @@ function montarMenu() {
     { id: 'visao', rot: 'Visão geral' },
     { id: 'relatorios', rot: 'Relatórios & Entregas' },
     { id: 'publicar', rot: '+ Publicar entrega' },
+    { grupo: 'Reservas' },
+    { id: 'calendario', rot: '📆 Calendário (Stays)' },
   ];
   const op = [];
   if (ESTADO.areas.includes('vendas')) op.push({ id: 'crm', rot: 'CRM / Funil' });
@@ -170,7 +172,7 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -293,6 +295,230 @@ async function carregarPedidos() {
       } catch (e) { alert(e.message); }
     });
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Calendário (réplica do calendário da Stays) ---------
+const CAL_PLATAFORMAS = { airbnb: 'Airbnb', booking: 'Booking', decolar: 'Decolar', expedia: 'Expedia', vrbo: 'Vrbo', google: 'Google', site: 'Site', direto: 'Direta', outro: 'Outra' };
+const calYmd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const calParse = s => { const [a, m, d] = String(s).split('-').map(Number); return new Date(a, m - 1, d); };
+const calDiffDias = (a, b) => Math.round((b - a) / 86400000);
+const calMesNome = m => ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][m];
+const calMoeda = (v, moeda) => (v == null ? '' : (moeda === 'BRL' ? 'R$ ' : (moeda || '') + ' ') + Number(v).toLocaleString('pt-BR'));
+
+function calEstado() {
+  if (!ESTADO.cal) {
+    const hoje = new Date();
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    ESTADO.cal = { from: calYmd(ini), to: calYmd(fim), vista: 'timeline', plat: '', status: '', busca: '', ocultas: new Set(), dados: null };
+  }
+  return ESTADO.cal;
+}
+
+async function renderCalendario() {
+  const cal = calEstado();
+  const c = conteudo();
+  c.innerHTML = cabecalho('Calendário (Stays)', 'Réplica do calendário da Stays — ao vivo da mesma API. Somente leitura: para editar, use o painel da Stays.');
+  c.innerHTML += `
+    <div class="cal-controls">
+      <div class="cal-grp">
+        <button class="btn peq" id="cal-prev" title="Período anterior">◀</button>
+        <button class="btn peq" id="cal-hoje" title="Voltar ao mês atual">Hoje</button>
+        <button class="btn peq" id="cal-next" title="Próximo período">▶</button>
+      </div>
+      <div class="cal-grp">
+        <label class="cal-lab">De <input type="date" id="cal-de" value="${cal.from}"></label>
+        <label class="cal-lab">Até <input type="date" id="cal-ate" value="${cal.to}"></label>
+        <button class="btn peq" id="cal-aplicar">Aplicar</button>
+      </div>
+      <div class="cal-grp">
+        <button class="btn peq ${cal.vista === 'timeline' ? 'ativo' : ''}" id="cal-v-timeline">Linha do tempo</button>
+        <button class="btn peq ${cal.vista === 'mes' ? 'ativo' : ''}" id="cal-v-mes">Mês</button>
+      </div>
+      <div class="cal-grp">
+        <input type="search" id="cal-busca" placeholder="🔎 Buscar hóspede" value="${esc(cal.busca)}" style="min-width:150px">
+        <select id="cal-plat"><option value="">Todas as plataformas</option></select>
+        <select id="cal-status">
+          <option value="">Reservas + bloqueios</option>
+          <option value="reservas">Só reservas</option>
+          <option value="bloqueios">Só bloqueios</option>
+        </select>
+        <details class="cal-props"><summary id="cal-props-sum">Propriedades</summary><div id="cal-props-lista" class="cal-props-lista"></div></details>
+        <button class="btn peq" id="cal-refresh" title="Atualizar da Stays">↻</button>
+      </div>
+    </div>
+    <div class="cal-legenda" id="cal-legenda"></div>
+    <div id="cal-area"><p class="vazio">Carregando…</p></div>`;
+
+  const setRange = (de, ate) => { cal.from = de; cal.to = ate; $('#cal-de').value = de; $('#cal-ate').value = ate; carregarCalendario(); };
+  const passo = () => { // navega pelo mesmo tamanho de janela (ancorado em meses quando for mês cheio)
+    const de = calParse(cal.from), ate = calParse(cal.to);
+    return { de, ate, dias: calDiffDias(de, ate) + 1 };
+  };
+  $('#cal-prev').onclick = () => { const { de, dias } = passo(); const nf = new Date(de); nf.setDate(nf.getDate() - dias); const nt = new Date(de); nt.setDate(nt.getDate() - 1); setRange(calYmd(nf), calYmd(nt)); };
+  $('#cal-next').onclick = () => { const { ate, dias } = passo(); const nf = new Date(ate); nf.setDate(nf.getDate() + 1); const nt = new Date(ate); nt.setDate(nt.getDate() + dias); setRange(calYmd(nf), calYmd(nt)); };
+  $('#cal-hoje').onclick = () => { const h = new Date(); setRange(calYmd(new Date(h.getFullYear(), h.getMonth(), 1)), calYmd(new Date(h.getFullYear(), h.getMonth() + 1, 0))); };
+  $('#cal-aplicar').onclick = () => { const de = $('#cal-de').value, ate = $('#cal-ate').value; if (de && ate && de <= ate) setRange(de, ate); else alert('Escolha um intervalo válido (De ≤ Até).'); };
+  $('#cal-refresh').onclick = () => carregarCalendario();
+  $('#cal-v-timeline').onclick = () => { cal.vista = 'timeline'; $('#cal-v-timeline').classList.add('ativo'); $('#cal-v-mes').classList.remove('ativo'); calDesenhar(); };
+  $('#cal-v-mes').onclick = () => { cal.vista = 'mes'; $('#cal-v-mes').classList.add('ativo'); $('#cal-v-timeline').classList.remove('ativo'); calDesenhar(); };
+  $('#cal-busca').oninput = () => { cal.busca = $('#cal-busca').value; calDesenhar(); };
+  $('#cal-plat').onchange = () => { cal.plat = $('#cal-plat').value; calDesenhar(); };
+  $('#cal-status').onchange = () => { cal.status = $('#cal-status').value; calDesenhar(); };
+  carregarCalendario();
+}
+
+async function carregarCalendario() {
+  const cal = calEstado();
+  const area = $('#cal-area'); if (area) area.innerHTML = `<p class="vazio">Carregando da Stays…</p>`;
+  try {
+    const dados = await api('GET', `/calendario?from=${cal.from}&to=${cal.to}`);
+    cal.dados = dados;
+    // plataformas presentes -> opções do filtro
+    const plats = [...new Set(dados.reservas.filter(r => !r.bloqueio && r.plataforma).map(r => r.plataforma))];
+    const sel = $('#cal-plat'); if (sel) { const atual = cal.plat; sel.innerHTML = `<option value="">Todas as plataformas</option>` + plats.map(p => `<option value="${p}">${esc(CAL_PLATAFORMAS[p] || p)}</option>`).join(''); sel.value = atual; }
+    // painel de propriedades (mostrar/ocultar)
+    const pl = $('#cal-props-lista');
+    if (pl) {
+      pl.innerHTML = `<div class="cal-props-acoes"><button class="btn peq" id="cal-props-todas">Todas</button><button class="btn peq" id="cal-props-nenhuma">Nenhuma</button></div>` +
+        dados.propriedades.map(p => `<label class="cal-prop-it"><input type="checkbox" value="${esc(p.idlisting)}" ${cal.ocultas.has(p.idlisting) ? '' : 'checked'}> <b>${esc(p.codigo)}</b> ${esc(p.titulo)}</label>`).join('');
+      pl.querySelectorAll('input[type=checkbox]').forEach(ch => ch.onchange = () => { if (ch.checked) cal.ocultas.delete(ch.value); else cal.ocultas.add(ch.value); calDesenhar(); });
+      $('#cal-props-todas').onclick = () => { cal.ocultas.clear(); pl.querySelectorAll('input').forEach(c => c.checked = true); calDesenhar(); };
+      $('#cal-props-nenhuma').onclick = () => { dados.propriedades.forEach(p => cal.ocultas.add(p.idlisting)); pl.querySelectorAll('input').forEach(c => c.checked = false); calDesenhar(); };
+    }
+    calDesenhar();
+  } catch (e) {
+    if (area) area.innerHTML = `<p class="erro">${esc(e.message)}</p>`;
+  }
+}
+
+function calReservasFiltradas() {
+  const cal = calEstado(); const d = cal.dados; if (!d) return [];
+  const termo = cal.busca.trim().toLowerCase();
+  return d.reservas.filter(r => {
+    if (cal.ocultas.has(r.idlisting)) return false;
+    if (cal.status === 'reservas' && r.bloqueio) return false;
+    if (cal.status === 'bloqueios' && !r.bloqueio) return false;
+    if (cal.plat && r.plataforma !== cal.plat) return false;
+    if (termo && !String(r.hospede).toLowerCase().includes(termo)) return false;
+    return true;
+  });
+}
+
+function calLegenda() {
+  const usados = [...new Set((calEstado().dados?.reservas || []).filter(r => !r.bloqueio && r.plataforma).map(r => r.plataforma))];
+  const itens = usados.map(p => `<span class="cal-leg-it"><span class="cal-dot plat-${p}"></span>${esc(CAL_PLATAFORMAS[p] || p)}</span>`).join('');
+  return itens + `<span class="cal-leg-it"><span class="cal-dot cal-dot-bloq"></span>Bloqueio</span>`;
+}
+
+function calDesenhar() {
+  const cal = calEstado(); const d = cal.dados; const area = $('#cal-area'); if (!area || !d) return;
+  const leg = $('#cal-legenda'); if (leg) leg.innerHTML = calLegenda();
+  const ps = $('#cal-props-sum'); if (ps) { const vis = d.propriedades.length - cal.ocultas.size; ps.textContent = `Propriedades (${vis}/${d.propriedades.length})`; }
+  if (cal.vista === 'mes') return calDesenharMes(area);
+  calDesenharTimeline(area);
+}
+
+function calDesenharTimeline(area) {
+  const cal = calEstado(); const d = cal.dados;
+  const from = calParse(cal.from), to = calParse(cal.to);
+  const nDias = calDiffDias(from, to) + 1;
+  if (nDias < 1 || nDias > 400) { area.innerHTML = `<p class="erro">Intervalo grande demais para a linha do tempo. Reduza o período.</p>`; return; }
+  const hojeStr = calYmd(new Date());
+  const dias = []; for (let i = 0; i < nDias; i++) { const dt = new Date(from); dt.setDate(dt.getDate() + i); dias.push(dt); }
+  const gtc = `var(--cw-label) repeat(${nDias}, var(--cw))`;
+  const semana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+  // faixa de meses
+  let faixaMes = ''; let i = 0;
+  while (i < nDias) { const m = dias[i].getMonth(), y = dias[i].getFullYear(); let len = 0; while (i + len < nDias && dias[i + len].getMonth() === m && dias[i + len].getFullYear() === y) len++; faixaMes += `<div class="cal-mes" style="grid-column:${i + 2} / span ${len}">${calMesNome(m)} ${y}</div>`; i += len; }
+
+  // cabeçalho de dias
+  let cab = `<div class="cal-rot cal-rot-cab">Propriedade</div>`;
+  dias.forEach((dt, idx) => { const fds = dt.getDay() === 0 || dt.getDay() === 6; const hoje = calYmd(dt) === hojeStr; cab += `<div class="cal-cab-dia${fds ? ' fds' : ''}${hoje ? ' hoje' : ''}" style="grid-column:${idx + 2}"><span class="cal-sem">${semana[dt.getDay()]}</span><span class="cal-num">${dt.getDate()}</span></div>`; });
+
+  const reservas = calReservasFiltradas();
+  const porListing = {}; reservas.forEach(r => { (porListing[r.idlisting] = porListing[r.idlisting] || []).push(r); });
+  const props = d.propriedades.filter(p => !cal.ocultas.has(p.idlisting));
+  if (!props.length) { area.innerHTML = `<p class="vazio">Nenhuma propriedade selecionada. Use o filtro “Propriedades”.</p>`; return; }
+
+  const linhas = props.map(p => {
+    let celulas = `<div class="cal-rot" title="${esc(p.codigo)} · ${esc(p.titulo)}"><b>${esc(p.codigo)}</b><span>${esc(p.titulo)}</span></div>`;
+    dias.forEach((dt, idx) => { const fds = dt.getDay() === 0 || dt.getDay() === 6; const hoje = calYmd(dt) === hojeStr; celulas += `<div class="cal-cell${fds ? ' fds' : ''}${hoje ? ' hoje' : ''}" style="grid-column:${idx + 2};grid-row:1"></div>`; });
+    const barras = (porListing[p.idlisting] || []).map(r => {
+      const s = calDiffDias(from, calParse(r.checkIn)), e = calDiffDias(from, calParse(r.checkOut));
+      const bs = Math.max(0, Math.min(s, nDias)); const be = Math.max(0, Math.min(e, nDias)); const span = be - bs;
+      if (span < 1) return '';
+      const aberto = (s < 0 ? ' aberta-esq' : '') + (e > nDias ? ' aberta-dir' : '');
+      const cls = r.bloqueio ? 'cal-bar-bloq' : 'plat-' + (r.plataforma || 'outro');
+      const det = esc(JSON.stringify(r));
+      const rotulo = `${esc(r.hospede)}${r.noites ? ` · ${r.noites}n` : ''}`;
+      return `<div class="cal-bar ${cls}${aberto}" style="grid-column:${bs + 2} / span ${span};grid-row:1" data-res='${det}' title="${esc(r.hospede)} — ${esc(r.checkIn)} a ${esc(r.checkOut)}">${rotulo}</div>`;
+    }).join('');
+    return `<div class="cal-row" style="grid-template-columns:${gtc}">${celulas}${barras}</div>`;
+  }).join('');
+
+  area.innerHTML = `<div class="cal-scroll"><div class="cal-grade">
+    <div class="cal-faixa-mes" style="grid-template-columns:${gtc}"><div class="cal-rot cal-rot-cab"></div>${faixaMes}</div>
+    <div class="cal-row cal-cab-row" style="grid-template-columns:${gtc}">${cab}</div>
+    ${linhas}
+  </div></div>
+  <p class="cal-rodape">${reservas.length} reserva(s)/bloqueio(s) no período · atualizado às ${new Date(d.geradoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · fonte: API Stays</p>`;
+
+  area.querySelectorAll('.cal-bar').forEach(b => b.onclick = () => calAbrirDetalhe(JSON.parse(b.dataset.res)));
+}
+
+function calDesenharMes(area) {
+  const cal = calEstado(); const d = cal.dados;
+  const base = calParse(cal.from); const ano = base.getFullYear(), mes = base.getMonth();
+  const primeiro = new Date(ano, mes, 1), ultimo = new Date(ano, mes + 1, 0);
+  const reservas = calReservasFiltradas();
+  const hojeStr = calYmd(new Date());
+  const semana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const propPorId = {}; d.propriedades.forEach(p => propPorId[p.idlisting] = p);
+  // células: começa no domingo anterior
+  const inicio = new Date(primeiro); inicio.setDate(inicio.getDate() - primeiro.getDay());
+  const fim = new Date(ultimo); fim.setDate(fim.getDate() + (6 - ultimo.getDay()));
+  let cels = '';
+  for (let dt = new Date(inicio); dt <= fim; dt.setDate(dt.getDate() + 1)) {
+    const ds = calYmd(dt); const foraMes = dt.getMonth() !== mes; const hoje = ds === hojeStr;
+    const ins = reservas.filter(r => r.checkIn === ds);
+    const outs = reservas.filter(r => r.checkOut === ds);
+    const ocup = reservas.filter(r => r.checkIn <= ds && r.checkOut > ds).length;
+    const chip = (r, ico) => `<div class="cal-mes-chip ${r.bloqueio ? 'cal-bar-bloq' : 'plat-' + (r.plataforma || 'outro')}" data-res='${esc(JSON.stringify(r))}' title="${esc(r.hospede)} (${esc((propPorId[r.idlisting] || {}).codigo || '')})">${ico} ${esc((propPorId[r.idlisting] || {}).codigo || '')} ${esc(r.hospede)}</div>`;
+    cels += `<div class="cal-mes-cel${foraMes ? ' fora' : ''}${hoje ? ' hoje' : ''}">
+      <div class="cal-mes-num">${dt.getDate()}${ocup ? `<span class="cal-mes-ocup" title="${ocup} ocupada(s) nesta noite">${ocup}</span>` : ''}</div>
+      ${ins.map(r => chip(r, '▶')).join('')}
+      ${outs.map(r => chip(r, '◀')).join('')}
+    </div>`;
+  }
+  area.innerHTML = `<div class="cal-mes-tit">${calMesNome(mes)} ${ano}</div>
+    <div class="cal-mes-grade">
+      ${semana.map(s => `<div class="cal-mes-dow">${s}</div>`).join('')}
+      ${cels}
+    </div>
+    <p class="cal-rodape">▶ check-in · ◀ check-out · número = noites ocupadas · atualizado às ${new Date(d.geradoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · fonte: API Stays</p>`;
+  area.querySelectorAll('.cal-mes-chip').forEach(b => b.onclick = () => calAbrirDetalhe(JSON.parse(b.dataset.res)));
+}
+
+function calAbrirDetalhe(r) {
+  const linhas = [
+    ['Hóspede', r.hospede],
+    ['Status', r.statusRotulo],
+    !r.bloqueio && ['Plataforma', r.plataformaRotulo],
+    ['Check-in', r.checkIn], ['Check-out', r.checkOut],
+    r.noites && ['Noites', r.noites],
+    r.hospedes && ['Hóspedes', `${r.hospedes}${r.adultos != null ? ` (${r.adultos} ad.${r.criancas ? ' / ' + r.criancas + ' cri.' : ''}${r.bebes ? ' / ' + r.bebes + ' bebê' : ''})` : ''}`],
+    !r.bloqueio && r.valorTotal != null && ['Valor total', calMoeda(r.valorTotal, r.moeda)],
+    ['Reserva', r.id],
+  ].filter(Boolean);
+  const corpo = linhas.map(([k, v]) => `<div class="cal-det-l"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('');
+  const link = r.reservationUrl ? `<a class="btn peq" href="${esc(r.reservationUrl)}" target="_blank" rel="noopener">Abrir na Stays ↗</a>` : '';
+  let ov = $('#cal-modal'); if (ov) ov.remove();
+  ov = document.createElement('div'); ov.id = 'cal-modal'; ov.className = 'cal-modal';
+  ov.innerHTML = `<div class="cal-modal-cx"><button class="cal-modal-x" aria-label="Fechar">✕</button><h3>${esc(r.bloqueio ? 'Bloqueio' : r.hospede)}</h3>${corpo}<div class="cal-det-acoes">${link}</div></div>`;
+  ov.onclick = (e) => { if (e.target === ov || e.target.classList.contains('cal-modal-x')) ov.remove(); };
+  document.body.appendChild(ov);
 }
 
 // --------- Visão geral ---------
