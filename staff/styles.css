@@ -261,3 +261,13 @@ tr:last-child td { border-bottom: none; }
 .cal-det-acoes { margin-top: 14px; }
 
 @media (max-width: 760px) { .cal-grade { --cw: 30px; --cw-label: 120px; } .cal-props-lista { width: 84vw; } }
+
+/* ---- Reservas (Stays): criar reserva/bloqueio ---- */
+.cr-box { background: #fff; border: 1px solid var(--borda); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; }
+.cr-sum { cursor: pointer; font-weight: 700; color: var(--petroleo); list-style: none; }
+.cr-sum::-webkit-details-marker { display: none; }
+.cr-box .form { border: none; padding: 0; background: none; }
+.cr-resumo { border: 1px solid var(--borda); border-left: 4px solid var(--lago); border-radius: 10px; padding: 12px 14px; margin-top: 10px; display: grid; gap: 5px; font-size: .9rem; }
+.cr-resumo.ok { border-left-color: var(--ok); background: #f3faf4; }
+.cr-resumo.bloq { border-left-color: var(--alerta); background: #fdf4f3; }
+.sh-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); border-color: var(--lago); }

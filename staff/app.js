@@ -132,6 +132,8 @@ function montarMenu() {
     { id: 'publicar', rot: '+ Publicar entrega' },
     { grupo: 'Reservas' },
     { id: 'calendario', rot: '📆 Calendário (Stays)' },
+    { id: 'stays-hospedes', rot: '👥 Hóspedes (Stays)' },
+    { id: 'stays-reservas', rot: '🗂️ Reservas (Stays)' },
   ];
   const op = [];
   if (ESTADO.areas.includes('vendas')) op.push({ id: 'crm', rot: 'CRM / Funil' });
@@ -172,7 +174,7 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -523,6 +525,228 @@ function calAbrirDetalhe(r) {
   ov.innerHTML = `<div class="cal-modal-cx"><button class="cal-modal-x" aria-label="Fechar">✕</button><h3>${esc(r.bloqueio ? 'Bloqueio' : r.hospede)}</h3>${corpo}<div class="cal-det-acoes">${link}</div></div>`;
   ov.onclick = (e) => { if (e.target === ov || e.target.classList.contains('cal-modal-x')) ov.remove(); };
   document.body.appendChild(ov);
+}
+
+// --------- Hóspedes (Stays) ---------
+async function renderStaysHospedes() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Hóspedes (Stays)', 'Central de hóspedes — dados ao vivo da Stays. Somente leitura.');
+  c.innerHTML += `<form id="sh-form" class="barra">
+    <input id="sh-q" type="search" placeholder="🔎 Buscar hóspede pelo nome (sem acento funciona)" style="flex:1;min-width:220px">
+    <button class="btn" type="submit">Buscar</button>
+  </form>
+  <div id="sh-det"></div>
+  <div id="sh-lista"><p class="vazio">Carregando…</p></div>`;
+  let skip = 0;
+  const carregar = async () => {
+    const q = $('#sh-q').value.trim();
+    const alvo = $('#sh-lista'); alvo.innerHTML = `<p class="vazio">Carregando…</p>`;
+    try {
+      const r = await api('GET', `/stays/clientes?busca=${encodeURIComponent(q)}&skip=${skip}&limit=30`);
+      if (!r.clientes.length) { alvo.innerHTML = `<p class="vazio">Nenhum hóspede${q ? ' para “' + esc(q) + '”' : ''}.</p>`; return; }
+      const fim = Math.min(r.skip + r.limit, r.total);
+      alvo.innerHTML = `<p class="sub" style="margin:0 0 8px">${r.total} hóspede(s)${q ? ' para “' + esc(q) + '”' : ''} · mostrando ${r.skip + 1}–${fim}</p>
+        <div class="lista">${r.clientes.map(h => `<div class="item sh-item" data-id="${esc(h.id)}" style="cursor:pointer">
+          <h3>${esc(h.nome)}</h3><div class="meta"><span>origem: ${esc(h.origem || '—')}</span>${h.criadoEm ? `<span>desde ${dataBr(h.criadoEm)}</span>` : ''}</div></div>`).join('')}</div>
+        <div class="barra" style="justify-content:space-between;margin-top:12px">
+          <button class="btn peq" id="sh-prev" ${r.skip <= 0 ? 'disabled' : ''}>← Anteriores</button>
+          <button class="btn peq" id="sh-next" ${fim >= r.total ? 'disabled' : ''}>Próximos →</button></div>`;
+      alvo.querySelectorAll('.sh-item').forEach(el => el.onclick = () => abrirHospede(el.dataset.id));
+      const p = $('#sh-prev'), n = $('#sh-next');
+      if (p) p.onclick = () => { skip = Math.max(0, skip - 30); carregar(); };
+      if (n) n.onclick = () => { skip += 30; carregar(); };
+    } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+  };
+  $('#sh-form').onsubmit = (ev) => { ev.preventDefault(); skip = 0; carregar(); };
+  carregar();
+}
+
+async function abrirHospede(id) {
+  const det = $('#sh-det'); if (!det) return;
+  det.innerHTML = `<div class="ficha-bloco"><p class="vazio">Carregando ficha…</p></div>`;
+  det.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try {
+    const h = await api('GET', `/stays/cliente/${id}`);
+    const contatos = [...(h.telefones || []).map(t => '📞 ' + esc(t)), ...(h.emails || []).map(e => '✉️ ' + esc(e))].join(' · ') || '—';
+    const resv = h.reservas.length ? `<table><thead><tr><th>Imóvel</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Valor</th></tr></thead><tbody>${h.reservas.map(r => `<tr><td><b>${esc(r.imovel || '—')}</b> ${esc(r.imovelTitulo || '')}</td><td>${esc(r.checkIn || '')}</td><td>${esc(r.checkOut || '')}</td><td>${esc(r.statusRotulo)}</td><td>${r.valorTotal != null ? esc(calMoeda(r.valorTotal, r.moeda)) : '—'}</td></tr>`).join('')}</tbody></table>` : `<p class="vazio">Sem reservas registradas.</p>`;
+    det.innerHTML = `<div class="ficha-bloco">
+      <button class="btn peq" id="sh-fechar" style="float:right">✕ Fechar</button>
+      <h3>${esc(h.nome)}</h3>
+      <div class="stays-totais"><span><b>${h.totalReservas}</b> reserva(s)</span><span>Gasto total: <b>${esc(calMoeda(h.totalGasto, 'BRL'))}</b></span><span>${contatos}</span></div>
+      ${resv}</div>`;
+    $('#sh-fechar').onclick = () => { det.innerHTML = ''; };
+  } catch (e) { det.innerHTML = `<div class="ficha-bloco"><p class="erro">${esc(e.message)}</p></div>`; }
+}
+
+// --------- Reservas (Stays): criar + pesquisar ---------
+async function renderStaysReservas() {
+  const ehAdmin = ESTADO.me.papel === 'admin';
+  const c = conteudo();
+  c.innerHTML = cabecalho('Reservas (Stays)', 'Pesquise reservas por hóspede e período — e (admin) crie reservas diretas ou bloqueios. Ao vivo da Stays.');
+
+  if (ehAdmin) {
+    c.innerHTML += `<details class="cr-box" open><summary class="cr-sum">➕ Criar reserva ou bloqueio</summary>
+      <div class="form" style="max-width:680px;margin-top:12px">
+        <div class="barra" style="gap:10px">
+          <label style="flex:1;min-width:160px">Tipo
+            <select id="cr-tipo"><option value="reserva">Reserva direta (com hóspede)</option><option value="bloqueio">Bloqueio de datas</option></select></label>
+          <label style="flex:2;min-width:200px">Imóvel <select id="cr-imovel"><option value="">Carregando…</option></select></label>
+        </div>
+        <div class="barra" style="gap:10px">
+          <label style="flex:1;min-width:140px">Check-in <input type="date" id="cr-in"></label>
+          <label style="flex:1;min-width:140px">Check-out <input type="date" id="cr-out"></label>
+          <label id="cr-guests-l" style="width:130px">Hóspedes <input type="number" id="cr-guests" min="1" value="2"></label>
+        </div>
+        <div id="cr-hosp">
+          <div class="barra" style="gap:14px">
+            <label style="flex-direction:row;align-items:center;gap:6px"><input type="radio" name="cr-modo" value="existente" checked style="width:auto"> Hóspede existente</label>
+            <label style="flex-direction:row;align-items:center;gap:6px"><input type="radio" name="cr-modo" value="novo" style="width:auto"> Cadastrar novo</label>
+          </div>
+          <div id="cr-existente">
+            <div class="barra"><input id="cr-busca-h" placeholder="Buscar hóspede pelo nome" style="flex:1;min-width:200px"><button type="button" class="btn peq" id="cr-busca-b">Buscar</button></div>
+            <div id="cr-h-result"></div>
+            <p id="cr-h-sel" class="ok-msg"></p>
+          </div>
+          <div id="cr-novo" class="hidden">
+            <div class="barra" style="gap:10px"><input id="cr-novo-nome" placeholder="Nome completo do hóspede" style="flex:2;min-width:200px"><input id="cr-novo-contato" placeholder="WhatsApp ou e-mail" style="flex:1;min-width:160px"></div>
+          </div>
+        </div>
+        <div class="barra"><button type="button" class="btn secund" id="cr-conferir">Conferir disponibilidade</button></div>
+        <div id="cr-resumo"></div>
+        <p id="cr-status" class="erro"></p>
+      </div></details>`;
+  } else {
+    c.innerHTML += `<div class="aviso">Apenas administradores criam reservas/bloqueios. Você pode pesquisar as reservas abaixo.</div>`;
+  }
+
+  const hoje = new Date();
+  const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+  c.innerHTML += `<h2 class="titulo" style="font-size:1.1rem;margin-top:24px">Pesquisar reservas</h2>
+    <form id="sr-form" class="barra" style="gap:10px">
+      <label class="cal-lab">De <input type="date" id="sr-de" value="${calYmd(ini)}"></label>
+      <label class="cal-lab">Até <input type="date" id="sr-ate" value="${calYmd(fim)}"></label>
+      <input id="sr-q" type="search" placeholder="🔎 Hóspede, imóvel ou nº da reserva" style="flex:1;min-width:200px">
+      <button class="btn" type="submit">Buscar</button>
+    </form>
+    <div id="sr-lista"><p class="vazio">Escolha o período e busque.</p></div>`;
+
+  if (ehAdmin) ligarCriarReserva();
+  $('#sr-form').onsubmit = (ev) => { ev.preventDefault(); buscarReservas(); };
+  buscarReservas();
+}
+
+async function buscarReservas() {
+  const de = $('#sr-de').value, ate = $('#sr-ate').value, q = $('#sr-q').value.trim();
+  const alvo = $('#sr-lista'); if (!alvo) return;
+  if (!de || !ate || de > ate) { alvo.innerHTML = `<p class="erro">Escolha um período válido (De ≤ Até).</p>`; return; }
+  alvo.innerHTML = `<p class="vazio">Buscando…</p>`;
+  try {
+    const r = await api('GET', `/stays/reservas?from=${de}&to=${ate}&busca=${encodeURIComponent(q)}`);
+    if (!r.reservas.length) { alvo.innerHTML = `<p class="vazio">Nenhuma reserva no período${q ? ' para “' + esc(q) + '”' : ''}.</p>`; return; }
+    alvo.innerHTML = `<p class="sub" style="margin:0 0 8px">${r.reservas.length} resultado(s)</p>
+      <table><thead><tr><th>Imóvel</th><th>Hóspede</th><th>Check-in</th><th>Check-out</th><th>Noites</th><th>Plataforma</th><th>Status</th><th>Valor</th><th></th></tr></thead>
+      <tbody>${r.reservas.map(x => `<tr>
+        <td><b>${esc(x.imovel || '—')}</b></td>
+        <td>${esc(x.hospede)}</td>
+        <td>${esc(x.checkIn || '')}</td><td>${esc(x.checkOut || '')}</td><td>${x.noites ?? '—'}</td>
+        <td>${esc(x.plataformaRotulo || (x.bloqueio ? '—' : ''))}</td>
+        <td>${esc(x.statusRotulo)}</td>
+        <td>${x.valorTotal != null ? esc(calMoeda(x.valorTotal, x.moeda)) : '—'}</td>
+        <td>${x.reservationUrl ? `<a href="${esc(x.reservationUrl)}" target="_blank" rel="noopener">↗</a>` : ''}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+function ligarCriarReserva() {
+  let clienteId = '', conferido = false;
+  api('GET', '/stays/imoveis').then(r => {
+    const sel = $('#cr-imovel'); if (sel) sel.innerHTML = `<option value="">Escolha o imóvel…</option>` + r.imoveis.map(i => `<option value="${esc(i.idlisting)}">${esc(i.codigo)} · ${esc(i.titulo)}</option>`).join('');
+  }).catch(() => { const sel = $('#cr-imovel'); if (sel) sel.innerHTML = `<option value="">(falha ao carregar imóveis)</option>`; });
+
+  const resumo = $('#cr-resumo'), statusP = $('#cr-status');
+  const resetConfere = () => { conferido = false; resumo.innerHTML = ''; statusP.textContent = ''; };
+  ['cr-tipo', 'cr-imovel', 'cr-in', 'cr-out', 'cr-guests'].forEach(id => { const el = $('#' + id); if (el) el.onchange = resetConfere; });
+
+  const toggleTipo = () => {
+    const bloqueio = $('#cr-tipo').value === 'bloqueio';
+    $('#cr-hosp').style.display = bloqueio ? 'none' : '';
+    $('#cr-guests-l').style.display = bloqueio ? 'none' : '';
+    resetConfere();
+  };
+  $('#cr-tipo').onchange = () => { toggleTipo(); };
+  toggleTipo();
+
+  document.querySelectorAll('input[name=cr-modo]').forEach(r => r.onchange = () => {
+    const novo = document.querySelector('input[name=cr-modo]:checked').value === 'novo';
+    $('#cr-existente').classList.toggle('hidden', novo);
+    $('#cr-novo').classList.toggle('hidden', !novo);
+    clienteId = ''; $('#cr-h-sel').textContent = '';
+  });
+
+  $('#cr-busca-b').onclick = async () => {
+    const q = $('#cr-busca-h').value.trim(); const out = $('#cr-h-result');
+    if (!q) return; out.innerHTML = `<p class="vazio">Buscando…</p>`;
+    try {
+      const r = await api('GET', `/stays/clientes?busca=${encodeURIComponent(q)}&limit=8`);
+      if (!r.clientes.length) { out.innerHTML = `<p class="vazio">Nenhum hóspede. Use “Cadastrar novo”.</p>`; return; }
+      out.innerHTML = r.clientes.map(h => `<button type="button" class="btn peq secund cr-pick" data-id="${esc(h.id)}" data-nome="${esc(h.nome)}" style="margin:3px 4px 0 0">${esc(h.nome)}</button>`).join('');
+      out.querySelectorAll('.cr-pick').forEach(b => b.onclick = () => { clienteId = b.dataset.id; $('#cr-h-sel').textContent = '✓ Hóspede selecionado: ' + b.dataset.nome; out.innerHTML = ''; });
+    } catch (e) { out.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+  };
+
+  $('#cr-conferir').onclick = async () => {
+    statusP.className = 'erro'; statusP.textContent = '';
+    const listingId = $('#cr-imovel').value, ci = $('#cr-in').value, co = $('#cr-out').value;
+    if (!listingId || !ci || !co || co <= ci) { statusP.textContent = 'Escolha imóvel e datas válidas (check-out depois do check-in).'; return; }
+    resumo.innerHTML = `<p class="vazio">Conferindo disponibilidade…</p>`;
+    try {
+      const r = await api('GET', `/stays/disponibilidade?listingId=${encodeURIComponent(listingId)}&from=${ci}&to=${co}`);
+      const tipo = $('#cr-tipo').value;
+      const imovelTxt = $('#cr-imovel').selectedOptions[0].textContent;
+      const n = r.noites.length;
+      conferido = r.todasLivres;
+      resumo.innerHTML = `<div class="cr-resumo ${r.todasLivres ? 'ok' : 'bloq'}">
+        <div><b>${tipo === 'bloqueio' ? 'Bloqueio' : 'Reserva direta'}</b> · ${esc(imovelTxt)}</div>
+        <div>${esc(ci)} → ${esc(co)} · ${n} noite(s)</div>
+        <div>${r.todasLivres ? '✅ Todas as noites livres' : '⛔ Há noite(s) ocupada(s)/fechada(s) no período'}</div>
+        ${tipo !== 'bloqueio' && r.totalSugerido ? `<div>Valor sugerido (tarifa): <b>${esc(calMoeda(r.totalSugerido, 'BRL'))}</b> <span class="sub" style="font-size:.8rem">— a Stays calcula o valor final</span></div>` : ''}
+        ${r.todasLivres ? `<button type="button" class="btn" id="cr-confirmar" style="margin-top:8px">Confirmar e criar na Stays</button>` : ''}
+      </div>`;
+      if (r.todasLivres) $('#cr-confirmar').onclick = criar;
+    } catch (e) { resumo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+  };
+
+  const criar = async () => {
+    if (!conferido) return;
+    const tipo = $('#cr-tipo').value;
+    const body = { tipo, listingId: $('#cr-imovel').value, checkInDate: $('#cr-in').value, checkOutDate: $('#cr-out').value };
+    if (tipo === 'reserva') {
+      body.guests = $('#cr-guests').value;
+      const novo = document.querySelector('input[name=cr-modo]:checked').value === 'novo';
+      if (novo) {
+        const nome = $('#cr-novo-nome').value.trim(); if (!nome) { statusP.textContent = 'Informe o nome do novo hóspede.'; return; }
+        body.novoCliente = { nome, contato: $('#cr-novo-contato').value.trim() };
+      } else {
+        if (!clienteId) { statusP.textContent = 'Selecione um hóspede existente (ou cadastre um novo).'; return; }
+        body.clienteId = clienteId;
+      }
+    }
+    const btn = $('#cr-confirmar'); if (btn) { btn.disabled = true; btn.textContent = 'Criando…'; }
+    statusP.className = 'erro'; statusP.textContent = '';
+    try {
+      const r = await api('POST', '/stays/reserva', body);
+      const rv = r.reserva || {};
+      statusP.className = 'ok-msg';
+      statusP.textContent = `✅ ${tipo === 'bloqueio' ? 'Bloqueio' : 'Reserva'} criada na Stays (nº ${rv.id || '—'}) — ${esc(rv.checkIn || '')} a ${esc(rv.checkOut || '')}${rv.valorTotal ? ' · ' + calMoeda(rv.valorTotal, rv.moeda) : ''}. O calendário e os canais são atualizados pela Stays.`;
+      resumo.innerHTML = ''; conferido = false; clienteId = '';
+      $('#cr-in').value = ''; $('#cr-out').value = ''; $('#cr-busca-h').value = ''; $('#cr-novo-nome').value = ''; $('#cr-novo-contato').value = ''; $('#cr-h-sel').textContent = '';
+      buscarReservas();
+    } catch (e) {
+      statusP.className = 'erro'; statusP.textContent = e.message;
+      if (btn) { btn.disabled = false; btn.textContent = 'Confirmar e criar na Stays'; }
+    }
+  };
 }
 
 // --------- Visão geral ---------
