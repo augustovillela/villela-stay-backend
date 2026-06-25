@@ -516,19 +516,18 @@ function categoriaDe(l) {
 }
 // Itens presentes em TODAS as propriedades (fixos)
 const COMODIDADES_FIXAS = [
+  { icon: '📶', label: 'Wi-Fi' },
+  { icon: '❄️', label: 'Ar-condicionado' },
   { icon: '📺', label: 'Smart TV' },
   { icon: '🅿️', label: 'Garagem' },
   { icon: '🛏️', label: 'Lençóis' },
   { icon: '🧣', label: 'Cobertores' },
-  { icon: '🧖', label: 'Toalhas' }
+  { icon: '🧖', label: 'Toalhas' },
+  { icon: '🛝', label: 'Parquinho infantil' }
 ];
 // Itens detectados no texto e SEMPRE incluídos quando presentes (não viram opcionais)
 const COMODIDADES_DETECTADAS = [
-  { re: /lareira/, icon: '🪵', label: 'Lareira' },
-  { re: /wi-?fi|wifi|internet/, icon: '📶', label: 'Wi-Fi' },
-  { re: /ar-?condicionado|ar condicionado|ar em todos|climatiz/, icon: '❄️', label: 'Ar-condicionado' },
   { re: /escritorio|home office/, icon: '💻', label: 'Espaço de trabalho' },
-  { re: /parquinho|playground/, icon: '🛝', label: 'Parquinho infantil' },
   { re: /rooftop|terraco/, icon: '🌇', label: 'Rooftop / Terraço' },
   { re: /sinuca|bilhar|pebolim/, icon: '🎱', label: 'Jogos (sinuca/bilhar)' },
   { re: /bosque|area verde/, icon: '🌳', label: 'Bosque / Área verde' },
