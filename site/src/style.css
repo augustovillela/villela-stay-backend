@@ -329,6 +329,12 @@ a { color: var(--lago); text-decoration: none; }
 }
 .comodidades-grid li { display: flex; align-items: center; gap: 10px; font-size: .96rem; padding: 9px 0; border-bottom: 1px solid #f0ece3; }
 .comodidades-grid span { font-size: 1.3rem; line-height: 1; }
+.comodidades-sub { font-size: 1.02rem; color: var(--concreto); margin: 20px 0 6px; font-weight: 700; }
+.comodidades-sub span { color: var(--cerrado); font-weight: 600; font-size: .9rem; }
+.comodidades-opcionais li { color: var(--concreto-claro); }
+.opc-tag { margin-left: auto; font-style: normal; font-size: .72rem; font-weight: 700;
+  background: var(--cerrado); color: var(--petroleo); border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
+.comodidades-nota { font-size: .82rem; color: var(--concreto-claro); margin-top: 10px; }
 .uni-depoimentos { margin-top: 8px; }
 .uni-dep-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .uni-dep-grid .depoimento { width: auto; }

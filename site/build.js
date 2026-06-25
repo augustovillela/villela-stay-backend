@@ -506,40 +506,66 @@ function unidadeSchema(l) {
   return s;
 }
 
-// ---- comodidades inferidas do texto do anúncio (não há campo estruturado na Stays) ----
+// ---- comodidades por categoria (não há campo estruturado na Stays) ----
 function semAcento(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
-const AMENIDADES = [
-  { re: /piscina aquecida/, icon: '🏊', label: 'Piscina aquecida', grupo: 'piscina' },
-  { re: /piscina/, icon: '🏊', label: 'Piscina', grupo: 'piscina' },
-  { re: /jacuzzi|hidromassagem|\bspa\b/, icon: '🛀', label: 'Jacuzzi / Spa' },
-  { re: /churrasqueira|churrasco/, icon: '🔥', label: 'Churrasqueira' },
+function categoriaDe(l) {
+  const t = semAcento(l.titulo);
+  if (/suite/.test(t)) return 'suite';
+  if (/flat/.test(t)) return 'flat';
+  return 'casa';
+}
+// Itens presentes em TODAS as propriedades (fixos)
+const COMODIDADES_FIXAS = [
+  { icon: '📺', label: 'Smart TV' },
+  { icon: '🅿️', label: 'Garagem' },
+  { icon: '🛏️', label: 'Lençóis' },
+  { icon: '🧣', label: 'Cobertores' },
+  { icon: '🧖', label: 'Toalhas' }
+];
+// Itens detectados no texto e SEMPRE incluídos quando presentes (não viram opcionais)
+const COMODIDADES_DETECTADAS = [
   { re: /lareira/, icon: '🪵', label: 'Lareira' },
   { re: /wi-?fi|wifi|internet/, icon: '📶', label: 'Wi-Fi' },
   { re: /ar-?condicionado|ar condicionado|ar em todos|climatiz/, icon: '❄️', label: 'Ar-condicionado' },
-  { re: /smart\s?tv|smarttv|netflix/, icon: '📺', label: 'Smart TV' },
-  { re: /cozinha/, icon: '🍳', label: 'Cozinha equipada' },
-  { re: /espaco gourmet|area gourmet/, icon: '🍽️', label: 'Espaço gourmet' },
+  { re: /escritorio|home office/, icon: '💻', label: 'Espaço de trabalho' },
   { re: /parquinho|playground/, icon: '🛝', label: 'Parquinho infantil' },
-  { re: /estacionamento|garagem/, icon: '🅿️', label: 'Estacionamento' },
   { re: /rooftop|terraco/, icon: '🌇', label: 'Rooftop / Terraço' },
   { re: /sinuca|bilhar|pebolim/, icon: '🎱', label: 'Jogos (sinuca/bilhar)' },
-  { re: /lavanderia|maquina de lavar|lava e seca/, icon: '🧺', label: 'Lavanderia' },
-  { re: /escritorio|home office/, icon: '💻', label: 'Espaço de trabalho' },
-  { re: /academia/, icon: '🏋️', label: 'Academia' },
   { re: /bosque|area verde/, icon: '🌳', label: 'Bosque / Área verde' },
   { re: /portaria|seguranca 24|condominio fechado|cameras|monitorad/, icon: '🔒', label: 'Segurança / portaria' },
   { re: /\bpet\b|pets|cachorro|aceita animais/, icon: '🐾', label: 'Aceita pets' }
 ];
+// Itens "flexíveis": incluídos nas CASAS (quando citados no texto); OPCIONAIS com taxa em flats/suítes
+const FLEX = {
+  piscina: { icon: '🏊', label: 'Piscina' },
+  jacuzzi: { icon: '🛀', label: 'Jacuzzi / Spa' },
+  churrasqueira: { icon: '🔥', label: 'Churrasqueira' },
+  cozinha: { icon: '🍳', label: 'Cozinha equipada' },
+  lavanderia: { icon: '🧺', label: 'Lavanderia' },
+  gourmet: { icon: '🍽️', label: 'Espaço gourmet' }
+};
 function comodidadesDe(l) {
+  const cat = categoriaDe(l);
   const hay = semAcento([l.descricao, l.resumo, l.titulo].join(' '));
-  const out = [], grupos = new Set();
-  for (const a of AMENIDADES) {
-    if (!a.re.test(hay)) continue;
-    if (a.grupo) { if (grupos.has(a.grupo)) continue; grupos.add(a.grupo); }
-    if (out.some(o => o.label === a.label)) continue;
-    out.push(a);
+  const incluidos = [...COMODIDADES_FIXAS];
+  for (const a of COMODIDADES_DETECTADAS) if (a.re.test(hay)) incluidos.push({ icon: a.icon, label: a.label });
+  const opcionais = [];
+  if (cat === 'casa') {
+    if (/piscina aquecida/.test(hay)) incluidos.push({ icon: '🏊', label: 'Piscina aquecida' });
+    else if (/piscina/.test(hay)) incluidos.push(FLEX.piscina);
+    if (/jacuzzi|hidromassagem|\bspa\b/.test(hay)) incluidos.push(FLEX.jacuzzi);
+    if (/churrasqueira|churrasco/.test(hay)) incluidos.push(FLEX.churrasqueira);
+    if (/cozinha/.test(hay)) incluidos.push(FLEX.cozinha);
+    if (/lavanderia|maquina de lavar|lava e seca/.test(hay)) incluidos.push(FLEX.lavanderia);
+    if (/espaco gourmet|area gourmet/.test(hay)) incluidos.push(FLEX.gourmet);
+  } else {
+    // flat e suíte: itens flexíveis viram OPCIONAIS com cobrança de taxa
+    opcionais.push(FLEX.piscina, FLEX.jacuzzi, FLEX.churrasqueira, FLEX.cozinha, FLEX.lavanderia);
+    if (cat === 'suite') opcionais.push(FLEX.gourmet);
   }
-  return out;
+  const seen = new Set();
+  const incluidosU = incluidos.filter(x => (seen.has(x.label) ? false : seen.add(x.label)));
+  return { incluidos: incluidosU, opcionais };
 }
 // ---- 3 depoimentos por unidade: tenta casar pela hospedagem; senão, rotaciona ----
 const DEP_STOP = new Set(['villela', 'home', 'stay', 'lago', 'sul', 'brasilia', 'flat', 'suite', 'casa', 'dos', 'das', 'espaco', 'inteiro', 'home', 'da', 'do', 'na', 'no']);
@@ -572,9 +598,12 @@ for (const l of listings) {
       <div class="beneficio"><span>🤝</span><div><strong>Anfitrião Superhost</strong>Atendimento direto e premiado, antes e durante a estadia.</div></div>
     </div>
   </section>`;
-  const blocoComodidades = comods.length ? `<section class="comodidades">
+  const blocoComodidades = (comods.incluidos.length || comods.opcionais.length) ? `<section class="comodidades">
     <h2 class="secao-titulo">O que esta hospedagem oferece</h2>
-    <ul class="comodidades-grid">${comods.map(c => `<li><span>${c.icon}</span> ${esc(c.label)}</li>`).join('')}</ul>
+    <ul class="comodidades-grid">${comods.incluidos.map(c => `<li><span>${c.icon}</span> ${esc(c.label)}</li>`).join('')}</ul>
+    ${comods.opcionais.length ? `<h3 class="comodidades-sub">Comodidades opcionais <span>· mediante taxa</span></h3>
+    <ul class="comodidades-grid comodidades-opcionais">${comods.opcionais.map(c => `<li><span>${c.icon}</span> ${esc(c.label)} <em class="opc-tag">opcional</em></li>`).join('')}</ul>
+    <p class="comodidades-nota">Itens opcionais ficam disponíveis mediante agendamento e cobrança de taxa adicional — consulte os valores na reserva ou pelo WhatsApp.</p>` : ''}
   </section>` : '';
   const deps = depoimentosUnidade(l, idx);
   const blocoDepoimentos = deps.length ? `<section class="uni-depoimentos">
