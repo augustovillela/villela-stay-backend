@@ -301,13 +301,16 @@ document.addEventListener('submit', function(e){
 
 // ---------------------------------------------------------------- home
 const card = l => `
-<a class="card" href="/hospedagem/${l.id}.html">
-  ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
-  <div class="card-info">
-    <h3>${esc(l.titulo)}</h3>
-    <p>${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''}</p>
-  </div>
-</a>`;
+<div class="card">
+  <a class="card-link" href="/hospedagem/${l.id}.html">
+    ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
+    <div class="card-info">
+      <h3>${esc(l.titulo)}</h3>
+      <p>${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''}</p>
+    </div>
+  </a>
+  <a class="btn btn-reservar btn-card" href="${STAYS_SITE}/pt/apartment/${l.id}" target="_blank" rel="noopener" aria-label="Reservar e pagar ${esc(l.titulo)} na Stays">Reservar e pagar →</a>
+</div>`;
 
 const cards = SECOES.map(sec => {
   const itens = sec.ids.map(id => porId[id]).filter(Boolean);

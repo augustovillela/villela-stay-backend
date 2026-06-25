@@ -138,10 +138,13 @@ a { color: var(--lago); text-decoration: none; }
 .card {
   border-radius: 16px; overflow: hidden; background: #fff; color: var(--concreto);
   box-shadow: 0 2px 12px rgba(0,0,0,.08); transition: transform .2s, box-shadow .2s;
+  display: flex; flex-direction: column;
 }
 .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.card-link { display: block; color: inherit; text-decoration: none; flex: 1 1 auto; }
 .card img { height: 210px; width: 100%; object-fit: cover; }
-.card-info { padding: 16px 18px 20px; }
+.card-info { padding: 16px 18px 14px; }
+.btn-card { display: block; margin: 0 16px 16px; text-align: center; }
 .card-info h3 { font-size: 1.05rem; line-height: 1.35; }
 .card-info p { color: var(--concreto-claro); font-size: .9rem; margin-top: 6px; }
 
