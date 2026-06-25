@@ -506,9 +506,89 @@ function unidadeSchema(l) {
   return s;
 }
 
+// ---- comodidades inferidas do texto do anúncio (não há campo estruturado na Stays) ----
+function semAcento(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+const AMENIDADES = [
+  { re: /piscina aquecida/, icon: '🏊', label: 'Piscina aquecida', grupo: 'piscina' },
+  { re: /piscina/, icon: '🏊', label: 'Piscina', grupo: 'piscina' },
+  { re: /jacuzzi|hidromassagem|\bspa\b/, icon: '🛀', label: 'Jacuzzi / Spa' },
+  { re: /churrasqueira|churrasco/, icon: '🔥', label: 'Churrasqueira' },
+  { re: /lareira/, icon: '🪵', label: 'Lareira' },
+  { re: /wi-?fi|wifi|internet/, icon: '📶', label: 'Wi-Fi' },
+  { re: /ar-?condicionado|ar condicionado|ar em todos|climatiz/, icon: '❄️', label: 'Ar-condicionado' },
+  { re: /smart\s?tv|smarttv|netflix/, icon: '📺', label: 'Smart TV' },
+  { re: /cozinha/, icon: '🍳', label: 'Cozinha equipada' },
+  { re: /espaco gourmet|area gourmet/, icon: '🍽️', label: 'Espaço gourmet' },
+  { re: /parquinho|playground/, icon: '🛝', label: 'Parquinho infantil' },
+  { re: /estacionamento|garagem/, icon: '🅿️', label: 'Estacionamento' },
+  { re: /rooftop|terraco/, icon: '🌇', label: 'Rooftop / Terraço' },
+  { re: /sinuca|bilhar|pebolim/, icon: '🎱', label: 'Jogos (sinuca/bilhar)' },
+  { re: /lavanderia|maquina de lavar|lava e seca/, icon: '🧺', label: 'Lavanderia' },
+  { re: /escritorio|home office/, icon: '💻', label: 'Espaço de trabalho' },
+  { re: /academia/, icon: '🏋️', label: 'Academia' },
+  { re: /bosque|area verde/, icon: '🌳', label: 'Bosque / Área verde' },
+  { re: /portaria|seguranca 24|condominio fechado|cameras|monitorad/, icon: '🔒', label: 'Segurança / portaria' },
+  { re: /\bpet\b|pets|cachorro|aceita animais/, icon: '🐾', label: 'Aceita pets' }
+];
+function comodidadesDe(l) {
+  const hay = semAcento([l.descricao, l.resumo, l.titulo].join(' '));
+  const out = [], grupos = new Set();
+  for (const a of AMENIDADES) {
+    if (!a.re.test(hay)) continue;
+    if (a.grupo) { if (grupos.has(a.grupo)) continue; grupos.add(a.grupo); }
+    if (out.some(o => o.label === a.label)) continue;
+    out.push(a);
+  }
+  return out;
+}
+// ---- 3 depoimentos por unidade: tenta casar pela hospedagem; senão, rotaciona ----
+const DEP_STOP = new Set(['villela', 'home', 'stay', 'lago', 'sul', 'brasilia', 'flat', 'suite', 'casa', 'dos', 'das', 'espaco', 'inteiro', 'home', 'da', 'do', 'na', 'no']);
+function depoimentosUnidade(l, idx) {
+  const toks = [...new Set(semAcento(l.titulo).split(/[^a-z0-9]+/).filter(w => w.length >= 4 && !DEP_STOP.has(w)))];
+  let m = depoimentos.filter(d => { const h = semAcento(d.hospedagem); return toks.some(t => h.includes(t)); });
+  if (m.length < 2) {
+    const n = depoimentos.length, start = (idx * 3) % n;
+    m = [depoimentos[start], depoimentos[(start + 1) % n], depoimentos[(start + 2) % n]];
+  }
+  return m.slice(0, 3);
+}
+
 for (const l of listings) {
   const galeria = (l.fotos || []).slice(1, 9).map(f =>
     img(f.url, { alt: f.nome || l.titulo, title: f.nome || '', width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })).join('\n');
+
+  const idx = listings.indexOf(l);
+  const comods = comodidadesDe(l);
+  const stripConfianca = `<section class="uni-confianca">
+    <div>🏆 Superhost premiado</div><div>🏅 Favorito dos Hóspedes</div><div>📍 Lago Sul · 10 min da Esplanada</div><div>💰 Reserva direta, sem taxa de plataforma</div>
+  </section>`;
+  const blocoBeneficios = `<section class="uni-beneficios">
+    <p class="uni-lead">Hospedagem no coração do Lago Sul para até <strong>${l.hospedes} hóspedes</strong>${l.quartos > 1 ? `, ${l.quartos} quartos` : ''}${l.m2 ? ` e ${l.m2} m²` : ''} — conforto premium, localização nobre e a segurança de reservar direto com quem cuida da casa.</p>
+    <h2 class="secao-titulo">Por que reservar direto neste site</h2>
+    <div class="beneficios-grid">
+      <div class="beneficio"><span>💰</span><div><strong>Melhor preço</strong>Reserva direta com o anfitrião, sem taxas extras de plataforma.</div></div>
+      <div class="beneficio"><span>⚡</span><div><strong>Confirmação na hora</strong>Disponibilidade em tempo real e reserva imediata.</div></div>
+      <div class="beneficio"><span>🔒</span><div><strong>Pagamento 100% seguro</strong>Pague on-line no sistema oficial de reservas.</div></div>
+      <div class="beneficio"><span>🤝</span><div><strong>Anfitrião Superhost</strong>Atendimento direto e premiado, antes e durante a estadia.</div></div>
+    </div>
+  </section>`;
+  const blocoComodidades = comods.length ? `<section class="comodidades">
+    <h2 class="secao-titulo">O que esta hospedagem oferece</h2>
+    <ul class="comodidades-grid">${comods.map(c => `<li><span>${c.icon}</span> ${esc(c.label)}</li>`).join('')}</ul>
+  </section>` : '';
+  const deps = depoimentosUnidade(l, idx);
+  const blocoDepoimentos = deps.length ? `<section class="uni-depoimentos">
+    <h2 class="secao-titulo">O que dizem nossos hóspedes</h2>
+    <div class="uni-dep-grid">${deps.map(d => `<figure class="depoimento"><div class="estrelas" aria-label="5 estrelas">★★★★★</div><blockquote>“${esc(d.texto)}”</blockquote><figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">avaliação no ${esc(d.origem)}</span></figcaption></figure>`).join('')}</div>
+  </section>` : '';
+  const ctaFinal = `<section class="uni-cta-final">
+    <h2>Garanta sua data antes que esgote</h2>
+    <p>O calendário do Lago Sul enche rápido em feriados, alta temporada e grandes eventos de Brasília. Reserve agora e assegure a sua estadia.</p>
+    <div class="uni-cta-acoes">
+      <a class="btn btn-reservar" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/${l.id}">Reservar e pagar →</a>
+      <a class="btn btn-claro" href="#reservar">Ver datas e valores</a>
+    </div>
+  </section>`;
 
   const pagina = layout(
     `${l.titulo} | Villela Stay`,
@@ -521,8 +601,9 @@ for (const l of listings) {
     <h1>${esc(l.titulo)}</h1>
     <p class="ficha">${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.camas} cama${l.camas > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''} · ${esc(l.bairro)}</p>
   </div>
-  <section class="disponibilidade" data-listing="${l.mongoId}">
-    <h2>Reserve com disponibilidade e pagamento on-line</h2>
+  ${stripConfianca}
+  <section id="reservar" class="disponibilidade" data-listing="${l.mongoId}">
+    <h2>📅 Veja disponibilidade e reserve com pagamento on-line</h2>
     <div class="disp-form">
       <label>Entrada <input type="date" class="disp-in"></label>
       <label>Saída <input type="date" class="disp-out"></label>
@@ -536,6 +617,8 @@ for (const l of listings) {
     </div>
     <p class="disp-nota">🔒 Disponibilidade, reserva e pagamento processados com segurança no nosso sistema de reservas — exclusivo desta hospedagem.</p>
   </section>
+  ${blocoBeneficios}
+  ${blocoComodidades}
   ${VIDEOS[l.id] ? `<section class="video-wrap">
     <h2>Conheça por dentro</h2>
     <video controls preload="none" playsinline poster="${cdnUrl(l.fotoPrincipal, 800)}">
@@ -551,7 +634,8 @@ for (const l of listings) {
       <p class="form-status" hidden></p>
     </form>
   </section>
-  <section class="descricao">${l.descricao || ''}</section>
+  <section class="descricao"><h2 class="secao-titulo">Sobre a hospedagem</h2>${l.descricao || ''}</section>
+  ${blocoDepoimentos}
   ${PLANTAS[l.id] ? `<section class="planta">
     <h2>Planta do espaço</h2>
     <a href="/plantas/${PLANTAS[l.id]}" target="_blank" rel="noopener">${(() => {
@@ -564,6 +648,7 @@ for (const l of listings) {
   ${EBOOKS[l.id] ? `<section class="ebook-box">
     📖 <a href="/ebooks/${EBOOKS[l.id]}" target="_blank" rel="noopener"><strong>Baixe o Manual do Hóspede (e-book em PDF)</strong></a> — o funcionamento da casa, as regras e o guia de turismo e gastronomia de Brasília do anfitrião.
   </section>` : ''}
+  ${ctaFinal}
   <section class="relacionados">
     <h2>Veja também</h2>
     <p><a href="/pacotes.html">Pacotes Especiais</a> · <a href="/eventos.html">Eventos no Lago Sul</a> · <a href="/guia.html">Guia do Hóspede</a> · <a href="/regras.html">Regras da Casa</a></p>
