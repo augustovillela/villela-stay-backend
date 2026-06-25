@@ -544,9 +544,16 @@ const FLEX = {
   lavanderia: { icon: '🧺', label: 'Lavanderia' },
   gourmet: { icon: '🍽️', label: 'Espaço gourmet' }
 };
+// Comodidades de USO COMPARTILHADO por anúncio (imóveis interligados do compound)
+const COMODIDADES_COMPARTILHADAS = {
+  PL02I: [ // Villa Catetinho — área de lazer compartilhada do compound
+    FLEX.piscina, FLEX.churrasqueira, FLEX.cozinha, FLEX.lavanderia, { icon: '🌇', label: 'Rooftop' }
+  ]
+};
 function comodidadesDe(l) {
   const cat = categoriaDe(l);
   const hay = semAcento([l.descricao, l.resumo, l.titulo].join(' '));
+  const compartilhados = COMODIDADES_COMPARTILHADAS[l.id] ? COMODIDADES_COMPARTILHADAS[l.id].slice() : [];
   const incluidos = [...COMODIDADES_FIXAS];
   for (const a of COMODIDADES_DETECTADAS) if (a.re.test(hay)) incluidos.push({ icon: a.icon, label: a.label });
   const opcionais = [];
@@ -563,9 +570,10 @@ function comodidadesDe(l) {
     opcionais.push(FLEX.piscina, FLEX.jacuzzi, FLEX.churrasqueira, FLEX.cozinha, FLEX.lavanderia);
     if (cat === 'suite') opcionais.push(FLEX.gourmet);
   }
-  const seen = new Set();
+  // itens compartilhados não se repetem nos incluídos
+  const seen = new Set(compartilhados.map(x => x.label));
   const incluidosU = incluidos.filter(x => (seen.has(x.label) ? false : seen.add(x.label)));
-  return { incluidos: incluidosU, opcionais };
+  return { incluidos: incluidosU, opcionais, compartilhados };
 }
 // ---- 3 depoimentos por unidade: tenta casar pela hospedagem; senão, rotaciona ----
 const DEP_STOP = new Set(['villela', 'home', 'stay', 'lago', 'sul', 'brasilia', 'flat', 'suite', 'casa', 'dos', 'das', 'espaco', 'inteiro', 'home', 'da', 'do', 'na', 'no']);
@@ -598,9 +606,11 @@ for (const l of listings) {
       <div class="beneficio"><span>🤝</span><div><strong>Anfitrião Superhost</strong>Atendimento direto e premiado, antes e durante a estadia.</div></div>
     </div>
   </section>`;
-  const blocoComodidades = (comods.incluidos.length || comods.opcionais.length) ? `<section class="comodidades">
+  const blocoComodidades = (comods.incluidos.length || comods.opcionais.length || comods.compartilhados.length) ? `<section class="comodidades">
     <h2 class="secao-titulo">O que esta hospedagem oferece</h2>
     <ul class="comodidades-grid">${comods.incluidos.map(c => `<li><span>${c.icon}</span> ${esc(c.label)}</li>`).join('')}</ul>
+    ${comods.compartilhados.length ? `<h3 class="comodidades-sub">Comodidades compartilhadas <span>· uso comum do compound</span></h3>
+    <ul class="comodidades-grid comodidades-compartilhadas">${comods.compartilhados.map(c => `<li><span>${c.icon}</span> ${esc(c.label)} <em class="comp-tag">uso comum</em></li>`).join('')}</ul>` : ''}
     ${comods.opcionais.length ? `<h3 class="comodidades-sub">Comodidades opcionais <span>· mediante taxa</span></h3>
     <ul class="comodidades-grid comodidades-opcionais">${comods.opcionais.map(c => `<li><span>${c.icon}</span> ${esc(c.label)} <em class="opc-tag">opcional</em></li>`).join('')}</ul>
     <p class="comodidades-nota">Itens opcionais ficam disponíveis mediante agendamento e cobrança de taxa adicional — consulte os valores na reserva ou pelo WhatsApp.</p>` : ''}

@@ -334,6 +334,8 @@ a { color: var(--lago); text-decoration: none; }
 .comodidades-opcionais li { color: var(--concreto-claro); }
 .opc-tag { margin-left: auto; font-style: normal; font-size: .72rem; font-weight: 700;
   background: var(--cerrado); color: var(--petroleo); border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
+.comp-tag { margin-left: auto; font-style: normal; font-size: .72rem; font-weight: 700;
+  background: var(--lago); color: #fff; border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
 .comodidades-nota { font-size: .82rem; color: var(--concreto-claro); margin-top: 10px; }
 .uni-depoimentos { margin-top: 8px; }
 .uni-dep-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
