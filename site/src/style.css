@@ -183,6 +183,13 @@ a { color: var(--lago); text-decoration: none; }
 .disp-form input { padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
 .disp-resultado { margin-top: 16px; font-size: 1.05rem; }
 .disp-reservar { margin-top: 16px; }
+.disp-guests input, .disp-form input[type="number"] { width: 96px; }
+.disp-acoes { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
+.disp-acoes .btn { margin-top: 0; }
+/* "Reservar e pagar" — CTA principal (motor da Stays, só desta propriedade) */
+.btn-reservar { background: var(--cerrado); color: var(--petroleo); font-weight: 700; box-shadow: 0 2px 10px rgba(217,164,65,.35); }
+.btn-reservar:hover { background: #c79433; }
+.disp-nota { margin-top: 12px; font-size: .85rem; color: var(--concreto-claro); }
 
 /* ---------- ofertas de última hora ---------- */
 .ofertas-wrap { padding-bottom: 8px; }

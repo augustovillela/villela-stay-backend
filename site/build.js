@@ -8,6 +8,9 @@ const path = require('path');
 
 const BACKEND = 'https://villela-stay-backend.onrender.com';
 const WHATSAPP = '556191935013';
+// Motor de reservas da Stays. Cada página de propriedade reserva/paga SÓ a própria propriedade
+// via /pt/apartment/<CÓDIGO> (testado: o código sozinho já resolve; aceita ?from=&to=&persons=).
+const STAYS_SITE = 'https://ville.stays.com.br';
 // Trocar para https://villelastay.com.br na virada do domínio (afeta canonical, og:url e sitemap)
 const SITE_URL = 'https://villela-stay-site.onrender.com';
 
@@ -513,14 +516,19 @@ for (const l of listings) {
     <p class="ficha">${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.camas} cama${l.camas > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''} · ${esc(l.bairro)}</p>
   </div>
   <section class="disponibilidade" data-listing="${l.mongoId}">
-    <h2>Consultar disponibilidade e preço</h2>
+    <h2>Reserve com disponibilidade e pagamento on-line</h2>
     <div class="disp-form">
       <label>Entrada <input type="date" class="disp-in"></label>
       <label>Saída <input type="date" class="disp-out"></label>
+      <label>Hóspedes <input type="number" class="disp-guests" min="1" max="${l.hospedes}" value="2"></label>
       <button class="btn disp-btn">Consultar</button>
     </div>
     <div class="disp-resultado" hidden></div>
-    <a class="btn btn-wa disp-reservar" href="${waLink(`Olá! Quero reservar a ${l.titulo}.`)}">Reservar pelo WhatsApp</a>
+    <div class="disp-acoes">
+      <a class="btn btn-reservar" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/${l.id}">Reservar e pagar →</a>
+      <a class="btn btn-wa disp-reservar" href="${waLink(`Olá! Quero reservar a ${l.titulo}.`)}">Reservar pelo WhatsApp</a>
+    </div>
+    <p class="disp-nota">🔒 Disponibilidade, reserva e pagamento processados com segurança no nosso sistema de reservas — exclusivo desta hospedagem.</p>
   </section>
   ${VIDEOS[l.id] ? `<section class="video-wrap">
     <h2>Conheça por dentro</h2>
@@ -559,10 +567,24 @@ for (const l of listings) {
 (function(){
   var sec = document.querySelector('.disponibilidade');
   var btn = sec.querySelector('.disp-btn'), out = sec.querySelector('.disp-resultado');
+  var inEl = sec.querySelector('.disp-in'), outEl = sec.querySelector('.disp-out'), gEl = sec.querySelector('.disp-guests');
+  var btnStays = sec.querySelector('.btn-reservar');
+  var STAYS_AP = '${STAYS_SITE}/pt/apartment/${l.id}';
+  // Mantém o botão "Reservar e pagar" apontando para ESTA propriedade na Stays, com datas/hóspedes.
+  function atualizarStays(){
+    var qs = [];
+    if (inEl.value) qs.push('from=' + inEl.value);
+    if (outEl.value) qs.push('to=' + outEl.value);
+    if (gEl && gEl.value) qs.push('persons=' + gEl.value);
+    btnStays.href = STAYS_AP + (qs.length ? ('?' + qs.join('&')) : '');
+  }
+  [inEl, outEl, gEl].forEach(function(el){ if (el) el.addEventListener('change', atualizarStays); });
+  atualizarStays();
   btn.addEventListener('click', function(){
-    var de = sec.querySelector('.disp-in').value, ate = sec.querySelector('.disp-out').value;
+    var de = inEl.value, ate = outEl.value;
     if (!de || !ate) { out.hidden = false; out.textContent = 'Escolha as duas datas.'; return; }
     out.hidden = false; out.textContent = 'Consultando...';
+    atualizarStays();
     fetch('${BACKEND}/api/disponibilidade/${l.mongoId}?from=' + de + '&to=' + ate)
       .then(function(r){ return r.json(); })
       .then(function(dias){
@@ -572,14 +594,14 @@ for (const l of listings) {
         var wa = sec.querySelector('.disp-reservar');
         if (noites.length && livres.length === noites.length) {
           out.innerHTML = '✅ Disponível! ' + noites.length + ' noite(s) — total estimado <strong>R$ ' +
-            total.toLocaleString('pt-BR') + '</strong>. Garanta pelo WhatsApp 👇';
+            total.toLocaleString('pt-BR') + '</strong>. Clique em <strong>“Reservar e pagar”</strong> para concluir com segurança.';
           wa.href = 'https://wa.me/${WHATSAPP}?text=' + encodeURIComponent('Olá! Quero reservar a ${l.titulo} de ' + de + ' a ' + ate + ' — total estimado R$ ' + total.toLocaleString('pt-BR') + '. Pode confirmar?');
         } else {
-          out.innerHTML = '😕 Sem disponibilidade completa nessas datas. Fale conosco no WhatsApp — encontramos a casa ideal para você.';
+          out.innerHTML = '😕 Sem disponibilidade completa nessas datas. Tente outras datas ou fale conosco no WhatsApp.';
           wa.href = 'https://wa.me/${WHATSAPP}?text=' + encodeURIComponent('Olá! Consultei a ${l.titulo} de ' + de + ' a ' + ate + ' e não havia disponibilidade completa. Pode me ajudar com datas ou casas alternativas?');
         }
       })
-      .catch(function(){ out.textContent = 'Não foi possível consultar agora. Fale conosco pelo WhatsApp.'; });
+      .catch(function(){ out.textContent = 'Não foi possível consultar agora. Tente novamente ou fale conosco pelo WhatsApp.'; });
   });
 
   var fl = document.querySelector('.form-lead');
