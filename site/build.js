@@ -405,11 +405,14 @@ fetch('${BACKEND}/api/ultima-hora')
     grade.innerHTML = ofertas.slice(0, 6).map(function(o){
       var d = new Date(o.de + 'T12:00:00');
       var quando = d.getDate() + ' de ' + meses[d.getMonth()];
-      return '<a class="card oferta" href="/hospedagem/' + o.id + '.html">' +
+      return '<div class="card oferta">' +
+        '<a class="card-link" href="/hospedagem/' + o.id + '.html">' +
         '<div class="card-info"><h3>' + o.titulo + '</h3>' +
         '<p>Livre a partir de <strong>' + quando + '</strong> (' + o.noites + '+ noites)' +
         (o.precoBRL ? ' · diária R$ ' + o.precoBRL.toLocaleString('pt-BR') : '') + '</p>' +
-        '<p class="oferta-cta">Fale conosco e ganhe condição de última hora →</p></div></a>';
+        '<p class="oferta-cta">Condição de última hora — reserve agora 👇</p></div></a>' +
+        '<a class="btn btn-reservar btn-card" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/' + o.id + '?from=' + o.de + '">Reservar e pagar →</a>' +
+        '</div>';
     }).join('');
     wrap.hidden = false;
   })
