@@ -663,7 +663,7 @@ for (const l of listings) {
       <p class="form-status" hidden></p>
     </form>
   </section>
-  <section class="descricao"><h2 class="secao-titulo">Sobre a hospedagem</h2>${l.descricao || ''}</section>
+  <section class="descricao"><h2 class="secao-titulo">Sobre a hospedagem</h2>${(l.descricao || '').replace(/,\s*academias\b/gi, '')}</section>
   ${blocoDepoimentos}
   ${PLANTAS[l.id] ? `<section class="planta">
     <h2>Planta do espaço</h2>
