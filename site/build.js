@@ -1556,67 +1556,67 @@ fs.writeFileSync(path.join(od, 'pre-checkin.html'), precheckin);
 LANDINGS = [
   {
     arquivo: 'formaturas.html', origem: 'site-formaturas',
-    titulo: 'Formatura em Brasília — casa com piscina no Lago Sul | Villela Stay',
-    descricao: 'Espaço para festa de formatura em Brasília: casas no Lago Sul para até 150 convidados, com piscina e churrasqueira, e hospedagem para a turma.',
-    h1: 'A formatura que a sua turma merece',
-    sub: 'Festas particulares do formando, Comemorações das Comissões de formatura das faculdades e universidades da cidade (UnB, UDF, IESB, UniCEUB e UCB): festa em casa com piscina, área de lazer, estrutura para buffet, no Lago Sul — e hospedagem para a turma que vem de fora.',
+    titulo: t('Formatura em Brasília — casa com piscina no Lago Sul | Villela Stay', 'Graduation party in Brasília — house with pool in Lago Sul | Villela Stay', 'Fiesta de graduación en Brasília — casa con piscina en Lago Sul | Villela Stay'),
+    descricao: t('Espaço para festa de formatura em Brasília: casas no Lago Sul para até 150 convidados, com piscina e churrasqueira, e hospedagem para a turma.', 'A space for a graduation party in Brasília: houses in Lago Sul for up to 150 guests, with pool and barbecue, plus accommodation for the class.', 'Un espacio para fiesta de graduación en Brasília: casas en Lago Sul para hasta 150 invitados, con piscina y parrilla, y alojamiento para la promoción.'),
+    h1: t('A formatura que a sua turma merece', 'The graduation your class deserves', 'La graduación que tu promoción merece'),
+    sub: t('Festas particulares do formando, Comemorações das Comissões de formatura das faculdades e universidades da cidade (UnB, UDF, IESB, UniCEUB e UCB): festa em casa com piscina, área de lazer, estrutura para buffet, no Lago Sul — e hospedagem para a turma que vem de fora.', "Private parties for the graduate and celebrations for the graduation committees of the city's colleges and universities (UnB, UDF, IESB, UniCEUB and UCB): a party at a house with pool, leisure area and catering space in Lago Sul — plus accommodation for the class coming from out of town.", 'Fiestas particulares del graduando y celebraciones de las comisiones de graduación de las facultades y universidades de la ciudad (UnB, UDF, IESB, UniCEUB y UCB): fiesta en casa con piscina, zona de ocio y estructura para buffet en Lago Sul — y alojamiento para la promoción que viene de fuera.'),
     beneficios: [
-      ['🎓 Festa do seu jeito', 'Espaço exclusivo das 10h às 22h, com churrasqueira, piscina e cozinha e hospedagem para amigos e familiares.'],
-      ['💰 Preço justo', 'R$ 150 por hóspede por dia, R$ 100,00 por convidado para evento ou day use. Escolhas flexíveis para a comissão fechar o orçamento sem surpresas.'],
-      ['🛌 Turma hospedada', 'Combine evento com hospedagem em grupo: casas para até 50 pessoas com diárias competitivas.']
+      [t('🎓 Festa do seu jeito', '🎓 A party your way', '🎓 Una fiesta a tu manera'), t('Espaço exclusivo das 10h às 22h, com churrasqueira, piscina e cozinha e hospedagem para amigos e familiares.', 'Exclusive space from 10 AM to 10 PM, with barbecue, pool and kitchen, plus accommodation for friends and family.', 'Espacio exclusivo de 10h a 22h, con parrilla, piscina y cocina, además de alojamiento para amigos y familiares.')],
+      [t('💰 Preço justo', '💰 Fair price', '💰 Precio justo'), t('R$ 150 por hóspede por dia, R$ 100,00 por convidado para evento ou day use. Escolhas flexíveis para a comissão fechar o orçamento sem surpresas.', 'R$ 150 per guest per day, R$ 100.00 per guest for an event or day use. Flexible options so the committee can set the budget without surprises.', 'R$ 150 por huésped por día, R$ 100,00 por invitado para evento o day use. Opciones flexibles para que la comisión cierre el presupuesto sin sorpresas.')],
+      [t('🛌 Turma hospedada', '🛌 The class stays over', '🛌 La promoción alojada'), t('Combine evento com hospedagem em grupo: casas para até 50 pessoas com diárias competitivas.', 'Combine the event with group accommodation: houses for up to 50 people at competitive rates.', 'Combina el evento con alojamiento en grupo: casas para hasta 50 personas con tarifas competitivas.')]
     ],
     casas: ['GD03H', 'GG04I', 'GD01H', 'GI01I'],
-    cta: 'Olá! Somos uma comissão de formatura. Data: ___ | Nº de convidados: ___ | Queremos orçamento de festa (e hospedagem, se possível).'
+    cta: t('Olá! Somos uma comissão de formatura. Data: ___ | Nº de convidados: ___ | Queremos orçamento de festa (e hospedagem, se possível).', "Hi! We're a graduation committee. Date: ___ | Number of guests: ___ | We'd like a quote for a party (and accommodation, if possible).", '¡Hola! Somos una comisión de graduación. Fecha: ___ | Nº de invitados: ___ | Queremos presupuesto de fiesta (y alojamiento, si es posible).')
   },
   {
     arquivo: 'casamentos.html', origem: 'site-casamentos',
-    titulo: 'Casamento no Lago Sul — mini wedding em Brasília | Villela Stay',
-    descricao: 'Mini wedding e recepção de casamento em casa no Lago Sul, Brasília: até 150 convidados, piscina, jardim e hospedagem para noivos e família.',
-    h1: 'Diga "sim" no Lago Sul',
-    sub: 'Mini weddings, recepções e pré-weddings em casas com jardim e piscina — e os noivos e a família já hospedados no local da festa.',
+    titulo: t('Casamento no Lago Sul — mini wedding em Brasília | Villela Stay', 'Wedding in Lago Sul — mini wedding in Brasília | Villela Stay', 'Boda en Lago Sul — mini wedding en Brasília | Villela Stay'),
+    descricao: t('Mini wedding e recepção de casamento em casa no Lago Sul, Brasília: até 150 convidados, piscina, jardim e hospedagem para noivos e família.', 'Mini wedding and wedding reception at a house in Lago Sul, Brasília: up to 150 guests, pool, garden and accommodation for the couple and family.', 'Mini wedding y recepción de boda en una casa en Lago Sul, Brasília: hasta 150 invitados, piscina, jardín y alojamiento para los novios y la familia.'),
+    h1: t('Diga "sim" no Lago Sul', 'Say "I do" in Lago Sul', 'Di "sí" en Lago Sul'),
+    sub: t('Mini weddings, recepções e pré-weddings em casas com jardim e piscina — e os noivos e a família já hospedados no local da festa.', 'Mini weddings, receptions and pre-weddings at houses with garden and pool — with the couple and family already staying at the party venue.', 'Mini weddings, recepciones y pre-weddings en casas con jardín y piscina — con los novios y la familia ya alojados en el lugar de la fiesta.'),
     beneficios: [
-      ['💍 Cenário pronto', 'Jardim, piscina e arquitetura estilo garden, que integram os ambientes interno e externos com o paisagismo único — fotos lindas sem cenografia cara.'],
-      ['👨‍👩‍👧 Família por perto', 'Hospede padrinhos e familiares na própria casa na semana do casamento.'],
-      ['📋 Orçamento transparente', 'R$ 150 por dia para os hóspedes e R$ 100 por convidado para evento ou day use + taxa de limpeza. O resto é com seus fornecedores de confiança.']
+      [t('💍 Cenário pronto', '💍 A ready-made setting', '💍 Un escenario listo'), t('Jardim, piscina e arquitetura estilo garden, que integram os ambientes interno e externos com o paisagismo único — fotos lindas sem cenografia cara.', 'Garden, pool and garden-style architecture that blend the indoor and outdoor spaces with unique landscaping — beautiful photos without expensive staging.', 'Jardín, piscina y arquitectura estilo garden que integran los ambientes interior y exterior con un paisajismo único — fotos preciosas sin escenografía cara.')],
+      [t('👨‍👩‍👧 Família por perto', '👨‍👩‍👧 Family nearby', '👨‍👩‍👧 Familia cerca'), t('Hospede padrinhos e familiares na própria casa na semana do casamento.', 'Host the wedding party and relatives at the house during the wedding week.', 'Aloja a padrinos y familiares en la propia casa la semana de la boda.')],
+      [t('📋 Orçamento transparente', '📋 Transparent budget', '📋 Presupuesto transparente'), t('R$ 150 por dia para os hóspedes e R$ 100 por convidado para evento ou day use + taxa de limpeza. O resto é com seus fornecedores de confiança.', 'R$ 150 per day for guests and R$ 100 per guest for an event or day use + cleaning fee. The rest is up to your trusted suppliers.', 'R$ 150 por día para los huéspedes y R$ 100 por invitado para evento o day use + tarifa de limpieza. El resto es con tus proveedores de confianza.')]
     ],
     casas: ['GD03H', 'GG04I', 'GD01H', 'GI01I'],
-    cta: 'Olá! Estamos planejando um casamento. Data: ___ | Nº de convidados: ___ | Queremos conhecer as casas.'
+    cta: t('Olá! Estamos planejando um casamento. Data: ___ | Nº de convidados: ___ | Queremos conhecer as casas.', "Hi! We're planning a wedding. Date: ___ | Number of guests: ___ | We'd like to see the houses.", '¡Hola! Estamos planeando una boda. Fecha: ___ | Nº de invitados: ___ | Queremos conocer las casas.')
   },
   {
     arquivo: 'festas-infantis.html', origem: 'site-festas-infantis',
-    titulo: 'Festa infantil com piscina em Brasília — Lago Sul | Villela Stay',
-    descricao: 'Festa infantil em casa com piscina e parquinho no Lago Sul, Brasília: espaço seguro e exclusivo das 10h às 22h, R$ 100 por convidado.',
-    h1: 'A festa infantil dos sonhos — com piscina e parquinho',
-    sub: 'Para os grupos de mães e pais que querem festa ao ar livre, segura e sem dor de cabeça: casa exclusiva no Lago Sul o dia todo.',
+    titulo: t('Festa infantil com piscina em Brasília — Lago Sul | Villela Stay', "Kids' party with pool in Brasília — Lago Sul | Villela Stay", 'Fiesta infantil con piscina en Brasília — Lago Sul | Villela Stay'),
+    descricao: t('Festa infantil em casa com piscina e parquinho no Lago Sul, Brasília: espaço seguro e exclusivo das 10h às 22h, R$ 100 por convidado.', "Kids' party at a house with pool and playground in Lago Sul, Brasília: a safe, exclusive space from 10 AM to 10 PM, R$ 100 per guest.", 'Fiesta infantil en una casa con piscina y parque en Lago Sul, Brasília: espacio seguro y exclusivo de 10h a 22h, R$ 100 por invitado.'),
+    h1: t('A festa infantil dos sonhos — com piscina e parquinho', "The dream kids' party — with pool and playground", 'La fiesta infantil de tus sueños — con piscina y parque'),
+    sub: t('Para os grupos de mães e pais que querem festa ao ar livre, segura e sem dor de cabeça: casa exclusiva no Lago Sul o dia todo.', 'For groups of mums and dads who want an outdoor party that\'s safe and hassle-free: an exclusive house in Lago Sul all day.', 'Para los grupos de madres y padres que quieren una fiesta al aire libre, segura y sin dolores de cabeza: casa exclusiva en Lago Sul todo el día.'),
     beneficios: [
-      ['🎈 Espaço exclusivo', 'Só a sua festa na casa, das 10h às 22h — sem dividir com estranhos.'],
-      ['🛝 Diversão de verdade', 'Piscina, parquinho infantil e gramado para brinquedos infláveis.'],
-      ['👩‍🍳 Cozinha completa', 'Prepare ou receba buffet com estrutura de casa de verdade — geladeira, fogão, churrasqueira.']
+      [t('🎈 Espaço exclusivo', '🎈 Exclusive space', '🎈 Espacio exclusivo'), t('Só a sua festa na casa, das 10h às 22h — sem dividir com estranhos.', 'Only your party at the house, from 10 AM to 10 PM — no sharing with strangers.', 'Solo tu fiesta en la casa, de 10h a 22h — sin compartir con extraños.')],
+      [t('🛝 Diversão de verdade', '🛝 Real fun', '🛝 Diversión de verdad'), t('Piscina, parquinho infantil e gramado para brinquedos infláveis.', "Pool, kids' playground and lawn for inflatable toys.", 'Piscina, parque infantil y césped para juegos inflables.')],
+      [t('👩‍🍳 Cozinha completa', '👩‍🍳 Full kitchen', '👩‍🍳 Cocina completa'), t('Prepare ou receba buffet com estrutura de casa de verdade — geladeira, fogão, churrasqueira.', 'Cook or host catering with a real home setup — fridge, stove, barbecue.', 'Prepara o recibe buffet con estructura de casa de verdad — nevera, cocina, parrilla.')]
     ],
     casas: ['GD01H', 'GI01I'],
-    cta: 'Olá! Quero fazer uma festa infantil. Data: ___ | Nº de convidados (adultos + crianças): ___'
+    cta: t('Olá! Quero fazer uma festa infantil. Data: ___ | Nº de convidados (adultos + crianças): ___', "Hi! I'd like to host a kids' party. Date: ___ | Number of guests (adults + children): ___", '¡Hola! Quiero hacer una fiesta infantil. Fecha: ___ | Nº de invitados (adultos + niños): ___')
   },
   {
     arquivo: 'empresas.html', origem: 'site-b2b',
-    titulo: 'Hospedagem e eventos para empresas e embaixadas — Brasília | Villela Stay',
-    descricao: 'Hospedagem executiva e eventos corporativos no Lago Sul, Brasília: casas completas para equipes, off-sites e recepções, com faturamento para empresas e embaixadas.',
-    h1: 'Para empresas e embaixadas',
-    sub: 'Hospedagem de equipes, off-sites, treinamentos e recepções diplomáticas — no bairro mais seguro e bem localizado de Brasília, a 10 min do Aeroporto JK e da Esplanada.',
+    titulo: t('Hospedagem e eventos para empresas e embaixadas — Brasília | Villela Stay', 'Accommodation and events for companies and embassies — Brasília | Villela Stay', 'Alojamiento y eventos para empresas y embajadas — Brasília | Villela Stay'),
+    descricao: t('Hospedagem executiva e eventos corporativos no Lago Sul, Brasília: casas completas para equipes, off-sites e recepções, com faturamento para empresas e embaixadas.', 'Executive accommodation and corporate events in Lago Sul, Brasília: whole houses for teams, off-sites and receptions, with invoicing for companies and embassies.', 'Alojamiento ejecutivo y eventos corporativos en Lago Sul, Brasília: casas enteras para equipos, off-sites y recepciones, con facturación para empresas y embajadas.'),
+    h1: t('Para empresas e embaixadas', 'For companies and embassies', 'Para empresas y embajadas'),
+    sub: t('Hospedagem de equipes, off-sites, treinamentos e recepções diplomáticas — no bairro mais seguro e bem localizado de Brasília, a 10 min do Aeroporto JK e da Esplanada.', 'Team accommodation, off-sites, training sessions and diplomatic receptions — in the safest, best-located neighbourhood in Brasília, 10 min from JK Airport and the Esplanada.', 'Alojamiento de equipos, off-sites, capacitaciones y recepciones diplomáticas — en el barrio más seguro y mejor ubicado de Brasília, a 10 min del Aeropuerto JK y de la Explanada.'),
     beneficios: [
-      ['🏢 Conta corporativa', 'Atendimento direto com o proprietário, nota e contrato para sua empresa ou missão diplomática.'],
-      ['🔒 Privacidade e segurança', 'Casas em condomínio no Lago Sul — discrição para delegações e executivos.'],
-      ['📆 Estadias Curtas e Eventos', 'Estadias temporárias para colaboradores e estrangeiros em propriedades flexíveis que acomodam de 1 hóspede até grupos de 50 pessoas.']
+      [t('🏢 Conta corporativa', '🏢 Corporate account', '🏢 Cuenta corporativa'), t('Atendimento direto com o proprietário, nota e contrato para sua empresa ou missão diplomática.', 'Direct service with the owner, invoice and contract for your company or diplomatic mission.', 'Atención directa con el propietario, factura y contrato para tu empresa o misión diplomática.')],
+      [t('🔒 Privacidade e segurança', '🔒 Privacy and security', '🔒 Privacidad y seguridad'), t('Casas em condomínio no Lago Sul — discrição para delegações e executivos.', 'Houses in a gated area in Lago Sul — discretion for delegations and executives.', 'Casas en condominio en Lago Sul — discreción para delegaciones y ejecutivos.')],
+      [t('📆 Estadias Curtas e Eventos', '📆 Short stays and events', '📆 Estancias cortas y eventos'), t('Estadias temporárias para colaboradores e estrangeiros em propriedades flexíveis que acomodam de 1 hóspede até grupos de 50 pessoas.', 'Temporary stays for staff and international guests in flexible properties that host from 1 guest up to groups of 50.', 'Estancias temporales para colaboradores y extranjeros en propiedades flexibles que acomodan desde 1 huésped hasta grupos de 50 personas.')]
     ],
     casas: ['GD03H', 'GG04I', 'PL02I', 'GI01I'],
-    cta: 'Olá! Represento uma empresa/embaixada. Precisamos de: hospedagem ( ) evento ( ) | Período: ___ | Nº de pessoas: ___'
+    cta: t('Olá! Represento uma empresa/embaixada. Precisamos de: hospedagem ( ) evento ( ) | Período: ___ | Nº de pessoas: ___', 'Hi! I represent a company/embassy. We need: accommodation ( ) event ( ) | Period: ___ | Number of people: ___', '¡Hola! Represento a una empresa/embajada. Necesitamos: alojamiento ( ) evento ( ) | Período: ___ | Nº de personas: ___')
   }
 ];
 
 for (const lp of LANDINGS) {
   const cards = lp.casas.map(id => porId[id]).filter(Boolean).map(l => `
-  <a class="card" href="/hospedagem/${l.id}.html">
+  <a class="card" href="${L(`/hospedagem/${l.id}.html`)}">
     ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
-    <div class="card-info"><h3>${esc(l.titulo)}</h3><p>${l.hospedes} hóspedes · ${l.quartos} quartos${l.m2 ? ` · ${l.m2} m²` : ''}</p></div>
+    <div class="card-info"><h3>${esc(tituloImovel(l))}</h3><p>${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · ${l.quartos} ${t('quartos', 'rooms', 'habitaciones')}${l.m2 ? ` · ${l.m2} m²` : ''}</p></div>
   </a>`).join('\n');
 
   const html = layout(lp.titulo, lp.descricao, `
@@ -1631,19 +1631,19 @@ for (const lp of LANDINGS) {
     </div>
   </section>
   <section class="venda-bloco">
-    <h2 class="secao-titulo">Os Espaços Recomendados</h2>
+    <h2 class="secao-titulo">${t('Os Espaços Recomendados', 'Recommended Spaces', 'Los Espacios Recomendados')}</h2>
     <div class="grade">${cards}</div>
   </section>
   <section class="venda-bloco cta-final">
-    <h2>Vamos conversar?</h2>
-    <p>Conte a data e o tamanho do grupo — respondemos com a proposta completa.</p>
-    <a class="btn btn-wa btn-grande" href="${waLink(lp.cta)}">Chamar no WhatsApp</a>
-    <p style="margin-top:24px">Ou deixe seu contato:</p>
+    <h2>${t('Vamos conversar?', 'Shall we talk?', '¿Hablamos?')}</h2>
+    <p>${t('Conte a data e o tamanho do grupo — respondemos com a proposta completa.', 'Tell us the date and the size of your group — we\'ll reply with a full proposal.', 'Cuéntanos la fecha y el tamaño del grupo — respondemos con la propuesta completa.')}</p>
+    <a class="btn btn-wa btn-grande" href="${waLink(lp.cta)}">${t('Chamar no WhatsApp', 'Message on WhatsApp', 'Escribir por WhatsApp')}</a>
+    <p style="margin-top:24px">${t('Ou deixe seu contato:', 'Or leave your contact:', 'O deja tu contacto:')}</p>
     <form class="form-evento form-evento-claro form-landing">
-      <label>Seu nome* <input name="nome" required></label>
-      <label>WhatsApp ou e-mail* <input name="contato" required></label>
-      <label>Conte rapidamente o que precisa <textarea name="mensagem" rows="3"></textarea></label>
-      <button class="btn" type="submit">Pedir proposta</button>
+      <label>${t('Seu nome*', 'Your name*', 'Tu nombre*')} <input name="nome" required></label>
+      <label>${t('WhatsApp ou e-mail*', 'WhatsApp or email*', 'WhatsApp o correo*')} <input name="contato" required></label>
+      <label>${t('Conte rapidamente o que precisa', 'Briefly tell us what you need', 'Cuéntanos brevemente qué necesitas')} <textarea name="mensagem" rows="3"></textarea></label>
+      <button class="btn" type="submit">${t('Pedir proposta', 'Request a proposal', 'Pedir propuesta')}</button>
       <p class="form-status" hidden></p>
     </form>
   </section>
@@ -1652,14 +1652,14 @@ for (const lp of LANDINGS) {
 document.querySelector('.form-landing').addEventListener('submit', function(e){
   e.preventDefault();
   var f = e.target, st = f.querySelector('.form-status');
-  st.hidden = false; st.textContent = 'Enviando...';
+  st.hidden = false; st.textContent = ${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
   fetch('${BACKEND}/api/leads', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nome: f.nome.value, contato: f.contato.value, mensagem: f.mensagem.value, origem: '${lp.origem}' })
   }).then(function(r){
-    st.textContent = r.ok ? '✅ Recebido! Retornaremos em breve.' : 'Erro — chame no WhatsApp.';
+    st.textContent = r.ok ? ${JSON.stringify(t('✅ Recebido! Retornaremos em breve.', '✅ Received! We\'ll get back to you shortly.', '✅ ¡Recibido! Te responderemos pronto.'))} : ${JSON.stringify(t('Erro — chame no WhatsApp.', 'Error — message us on WhatsApp.', 'Error — escríbenos por WhatsApp.'))};
     if (r.ok) f.reset();
-  }).catch(function(){ st.textContent = 'Erro — chame no WhatsApp.'; });
+  }).catch(function(){ st.textContent = ${JSON.stringify(t('Erro — chame no WhatsApp.', 'Error — message us on WhatsApp.', 'Error — escríbenos por WhatsApp.'))}; });
 });
 </script>`,
     { caminho: `/${lp.arquivo}` }
