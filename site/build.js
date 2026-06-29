@@ -182,6 +182,11 @@ const TITULO_MAP = {
   es: [[/Suíte/g, 'Suite'], [/com piscina no Lago Sul/g, 'con piscina en Lago Sul'], [/Espaço Inteiro/g, 'Espacio Entero'], [/(\d+) pessoas/g, '$1 personas'], [/no Lago Sul/g, 'en Lago Sul'], [/na Villela Home Stay/g, 'en Villela Home Stay']]
 };
 function tituloImovel(l) { if (LANG === 'pt') return l.titulo; let s = l.titulo; for (const [re, rep] of TITULO_MAP[LANG]) s = s.replace(re, rep); return s; }
+// Resumo e descrição traduzidos por id (Fase 3 parte B). Fallback para o PT do listings.json.
+const RESUMO_IMOVEL = require('./content/imoveis-i18n').resumos;
+const DESC_IMOVEL = require('./content/imoveis-i18n').descricoes;
+function resumoImovel(l) { const m = RESUMO_IMOVEL[l.id]; return (LANG !== 'pt' && m && m[LANG]) ? m[LANG] : l.resumo; }
+function descricaoImovel(l) { const m = DESC_IMOVEL[l.id]; return (LANG !== 'pt' && m && m[LANG]) ? m[LANG] : l.descricao; }
 
 function layout(titulo, descricao, corpo, opts = {}) {
   const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/logo.png`, ogType = 'website', lang = HTML_LANG[LANG] } = opts;
@@ -528,13 +533,13 @@ for (const e of [...new Set(Object.values(EBOOKS))]) fs.copyFileSync(path.join(_
 // unidade (não existe avaliação por unidade — não inventar nota nem preço).
 function unidadeSchema(l) {
   const inteiro = l.tipo === 'entire_home';
-  const desc = String(l.resumo || l.descricao || l.titulo).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 280);
+  const desc = String(resumoImovel(l) || descricaoImovel(l) || tituloImovel(l)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 280);
   const s = {
     '@context': 'https://schema.org',
     '@type': inteiro ? 'VacationRental' : 'LodgingBusiness',
-    name: l.titulo,
+    name: tituloImovel(l),
     image: [l.fotoPrincipal, ...(l.fotos || []).slice(1, 6).map(f => f.url)].filter(Boolean),
-    url: `${SITE_URL}/hospedagem/${l.id}.html`,
+    url: `${SITE_URL}${L(`/hospedagem/${l.id}.html`)}`,
     description: desc,
     address: {
       '@type': 'PostalAddress',
@@ -570,31 +575,31 @@ function categoriaDe(l) {
 // Itens presentes em TODAS as propriedades (fixos)
 const COMODIDADES_FIXAS = [
   { icon: '📶', label: 'Wi-Fi' },
-  { icon: '❄️', label: 'Ar-condicionado' },
+  { icon: '❄️', label: t('Ar-condicionado', 'Air conditioning', 'Aire acondicionado') },
   { icon: '📺', label: 'Smart TV' },
-  { icon: '🅿️', label: 'Garagem' },
-  { icon: '🛏️', label: 'Lençóis' },
-  { icon: '🧣', label: 'Cobertores' },
-  { icon: '🧖', label: 'Toalhas' },
-  { icon: '🛝', label: 'Parquinho infantil' }
+  { icon: '🅿️', label: t('Garagem', 'Parking', 'Estacionamiento') },
+  { icon: '🛏️', label: t('Lençóis', 'Bed linen', 'Sábanas') },
+  { icon: '🧣', label: t('Cobertores', 'Blankets', 'Mantas') },
+  { icon: '🧖', label: t('Toalhas', 'Towels', 'Toallas') },
+  { icon: '🛝', label: t('Parquinho infantil', "Kids' playground", 'Parque infantil') }
 ];
 // Itens detectados no texto e SEMPRE incluídos quando presentes (não viram opcionais)
 const COMODIDADES_DETECTADAS = [
-  { re: /escritorio|home office/, icon: '💻', label: 'Espaço de trabalho' },
-  { re: /rooftop|terraco/, icon: '🌇', label: 'Rooftop / Terraço' },
-  { re: /sinuca|bilhar|pebolim/, icon: '🎱', label: 'Jogos (sinuca/bilhar)' },
-  { re: /bosque|area verde/, icon: '🌳', label: 'Bosque / Área verde' },
-  { re: /portaria|seguranca 24|condominio fechado|cameras|monitorad/, icon: '🔒', label: 'Segurança / portaria' },
-  { re: /\bpet\b|pets|cachorro|aceita animais/, icon: '🐾', label: 'Aceita pets' }
+  { re: /escritorio|home office/, icon: '💻', label: t('Espaço de trabalho', 'Workspace', 'Espacio de trabajo') },
+  { re: /rooftop|terraco/, icon: '🌇', label: t('Rooftop / Terraço', 'Rooftop / Terrace', 'Azotea / Terraza') },
+  { re: /sinuca|bilhar|pebolim/, icon: '🎱', label: t('Jogos (sinuca/bilhar)', 'Games (pool/billiards)', 'Juegos (billar)') },
+  { re: /bosque|area verde/, icon: '🌳', label: t('Bosque / Área verde', 'Woods / Green area', 'Bosque / Zona verde') },
+  { re: /portaria|seguranca 24|condominio fechado|cameras|monitorad/, icon: '🔒', label: t('Segurança / portaria', 'Security / gatehouse', 'Seguridad / portería') },
+  { re: /\bpet\b|pets|cachorro|aceita animais/, icon: '🐾', label: t('Aceita pets', 'Pets allowed', 'Se admiten mascotas') }
 ];
 // Itens "flexíveis": incluídos nas CASAS (quando citados no texto); OPCIONAIS com taxa em flats/suítes
 const FLEX = {
-  piscina: { icon: '🏊', label: 'Piscina' },
+  piscina: { icon: '🏊', label: t('Piscina', 'Pool', 'Piscina') },
   jacuzzi: { icon: '🛀', label: 'Jacuzzi / Spa' },
-  churrasqueira: { icon: '🔥', label: 'Churrasqueira' },
-  cozinha: { icon: '🍳', label: 'Cozinha equipada' },
-  lavanderia: { icon: '🧺', label: 'Lavanderia' },
-  gourmet: { icon: '🍽️', label: 'Espaço gourmet' }
+  churrasqueira: { icon: '🔥', label: t('Churrasqueira', 'Barbecue', 'Parrilla') },
+  cozinha: { icon: '🍳', label: t('Cozinha equipada', 'Equipped kitchen', 'Cocina equipada') },
+  lavanderia: { icon: '🧺', label: t('Lavanderia', 'Laundry', 'Lavandería') },
+  gourmet: { icon: '🍽️', label: t('Espaço gourmet', 'Gourmet space', 'Espacio gourmet') }
 };
 // Comodidades de USO COMPARTILHADO por anúncio (imóveis interligados do compound)
 const COMODIDADES_COMPARTILHADAS = {
@@ -610,7 +615,7 @@ function comodidadesDe(l) {
   for (const a of COMODIDADES_DETECTADAS) if (a.re.test(hay)) incluidos.push({ icon: a.icon, label: a.label });
   const opcionais = [];
   if (cat === 'casa') {
-    if (/piscina aquecida/.test(hay)) incluidos.push({ icon: '🏊', label: 'Piscina aquecida' });
+    if (/piscina aquecida/.test(hay)) incluidos.push({ icon: '🏊', label: t('Piscina aquecida', 'Heated pool', 'Piscina climatizada') });
     else if (/piscina/.test(hay)) incluidos.push(FLEX.piscina);
     if (/jacuzzi|hidromassagem|\bspa\b/.test(hay)) incluidos.push(FLEX.jacuzzi);
     if (/churrasqueira|churrasco/.test(hay)) incluidos.push(FLEX.churrasqueira);
@@ -646,103 +651,103 @@ for (const l of listings) {
   const idx = listings.indexOf(l);
   const comods = comodidadesDe(l);
   const stripConfianca = `<section class="uni-confianca">
-    <div>🏆 Superhost premiado</div><div>🏅 Favorito dos Hóspedes</div><div>📍 Lago Sul · 10 min da Esplanada</div><div>💰 Reserva direta, sem taxa de plataforma</div>
+    <div>🏆 ${t('Superhost premiado', 'Award-winning Superhost', 'Superhost premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes', 'Guest Favourite', 'Favorito de los Huéspedes')}</div><div>📍 ${t('Lago Sul · 10 min da Esplanada', 'Lago Sul · 10 min from the Esplanada', 'Lago Sul · 10 min de la Explanada')}</div><div>💰 ${t('Reserva direta, sem taxa de plataforma', 'Direct booking, no platform fee', 'Reserva directa, sin tarifa de plataforma')}</div>
   </section>`;
   const blocoBeneficios = `<section class="uni-beneficios">
-    <p class="uni-lead">Hospedagem no coração do Lago Sul para até <strong>${l.hospedes} hóspedes</strong>${l.quartos > 1 ? `, ${l.quartos} quartos` : ''}${l.m2 ? ` e ${l.m2} m²` : ''} — conforto premium, localização nobre e a segurança de reservar direto com quem cuida da casa.</p>
-    <h2 class="secao-titulo">Por que reservar direto neste site</h2>
+    <p class="uni-lead">${t(`Hospedagem no coração do Lago Sul para até <strong>${l.hospedes} hóspedes</strong>${l.quartos > 1 ? `, ${l.quartos} quartos` : ''}${l.m2 ? ` e ${l.m2} m²` : ''} — conforto premium, localização nobre e a segurança de reservar direto com quem cuida da casa.`, `A stay in the heart of Lago Sul for up to <strong>${l.hospedes} guests</strong>${l.quartos > 1 ? `, ${l.quartos} rooms` : ''}${l.m2 ? ` and ${l.m2} m²` : ''} — premium comfort, a prime location and the peace of mind of booking directly with the people who care for the house.`, `Un alojamiento en el corazón de Lago Sul para hasta <strong>${l.hospedes} huéspedes</strong>${l.quartos > 1 ? `, ${l.quartos} habitaciones` : ''}${l.m2 ? ` y ${l.m2} m²` : ''} — confort premium, ubicación exclusiva y la tranquilidad de reservar directo con quienes cuidan la casa.`)}</p>
+    <h2 class="secao-titulo">${t('Por que reservar direto neste site', 'Why book directly on this site', 'Por qué reservar directo en este sitio')}</h2>
     <div class="beneficios-grid">
-      <div class="beneficio"><span>💰</span><div><strong>Melhor preço</strong>Reserva direta com o anfitrião, sem taxas extras de plataforma.</div></div>
-      <div class="beneficio"><span>⚡</span><div><strong>Confirmação na hora</strong>Disponibilidade em tempo real e reserva imediata.</div></div>
-      <div class="beneficio"><span>🔒</span><div><strong>Pagamento 100% seguro</strong>Pague on-line no sistema oficial de reservas.</div></div>
-      <div class="beneficio"><span>🤝</span><div><strong>Anfitrião Superhost</strong>Atendimento direto e premiado, antes e durante a estadia.</div></div>
+      <div class="beneficio"><span>💰</span><div><strong>${t('Melhor preço', 'Best price', 'Mejor precio')}</strong>${t('Reserva direta com o anfitrião, sem taxas extras de plataforma.', 'Book directly with the host, with no extra platform fees.', 'Reserva directa con el anfitrión, sin tarifas extra de plataforma.')}</div></div>
+      <div class="beneficio"><span>⚡</span><div><strong>${t('Confirmação na hora', 'Instant confirmation', 'Confirmación al instante')}</strong>${t('Disponibilidade em tempo real e reserva imediata.', 'Real-time availability and instant booking.', 'Disponibilidad en tiempo real y reserva inmediata.')}</div></div>
+      <div class="beneficio"><span>🔒</span><div><strong>${t('Pagamento 100% seguro', '100% secure payment', 'Pago 100% seguro')}</strong>${t('Pague on-line no sistema oficial de reservas.', 'Pay online through the official booking system.', 'Paga en línea en el sistema oficial de reservas.')}</div></div>
+      <div class="beneficio"><span>🤝</span><div><strong>${t('Anfitrião Superhost', 'Superhost host', 'Anfitrión Superhost')}</strong>${t('Atendimento direto e premiado, antes e durante a estadia.', 'Direct, award-winning service before and during your stay.', 'Atención directa y premiada, antes y durante la estancia.')}</div></div>
     </div>
   </section>`;
   const blocoComodidades = (comods.incluidos.length || comods.opcionais.length || comods.compartilhados.length) ? `<section class="comodidades">
-    <h2 class="secao-titulo">O que esta hospedagem oferece</h2>
+    <h2 class="secao-titulo">${t('O que esta hospedagem oferece', 'What this stay offers', 'Lo que ofrece este alojamiento')}</h2>
     <ul class="comodidades-grid">${comods.incluidos.map(c => `<li><span>${c.icon}</span> ${esc(c.label)}</li>`).join('')}</ul>
-    ${comods.compartilhados.length ? `<h3 class="comodidades-sub">Comodidades compartilhadas <span>· uso comum do compound</span></h3>
-    <ul class="comodidades-grid comodidades-compartilhadas">${comods.compartilhados.map(c => `<li><span>${c.icon}</span> ${esc(c.label)} <em class="comp-tag">uso comum</em></li>`).join('')}</ul>` : ''}
-    ${comods.opcionais.length ? `<h3 class="comodidades-sub">Comodidades opcionais <span>· mediante taxa</span></h3>
-    <ul class="comodidades-grid comodidades-opcionais">${comods.opcionais.map(c => `<li><span>${c.icon}</span> ${esc(c.label)} <em class="opc-tag">opcional</em></li>`).join('')}</ul>
-    <p class="comodidades-nota">Itens opcionais ficam disponíveis mediante agendamento e cobrança de taxa adicional — consulte os valores na reserva ou pelo WhatsApp.</p>` : ''}
+    ${comods.compartilhados.length ? `<h3 class="comodidades-sub">${t('Comodidades compartilhadas', 'Shared amenities', 'Comodidades compartidas')} <span>· ${t('uso comum do compound', 'shared use within the compound', 'uso común del compound')}</span></h3>
+    <ul class="comodidades-grid comodidades-compartilhadas">${comods.compartilhados.map(c => `<li><span>${c.icon}</span> ${esc(c.label)} <em class="comp-tag">${t('uso comum', 'shared', 'uso común')}</em></li>`).join('')}</ul>` : ''}
+    ${comods.opcionais.length ? `<h3 class="comodidades-sub">${t('Comodidades opcionais', 'Optional amenities', 'Comodidades opcionales')} <span>· ${t('mediante taxa', 'for a fee', 'mediante tarifa')}</span></h3>
+    <ul class="comodidades-grid comodidades-opcionais">${comods.opcionais.map(c => `<li><span>${c.icon}</span> ${esc(c.label)} <em class="opc-tag">${t('opcional', 'optional', 'opcional')}</em></li>`).join('')}</ul>
+    <p class="comodidades-nota">${t('Itens opcionais ficam disponíveis mediante agendamento e cobrança de taxa adicional — consulte os valores na reserva ou pelo WhatsApp.', 'Optional items are available by arrangement and for an additional fee — check the prices when booking or on WhatsApp.', 'Los artículos opcionales están disponibles mediante reserva previa y una tarifa adicional — consulta los precios al reservar o por WhatsApp.')}</p>` : ''}
   </section>` : '';
   const deps = depoimentosUnidade(l, idx);
   const blocoDepoimentos = deps.length ? `<section class="uni-depoimentos">
-    <h2 class="secao-titulo">O que dizem nossos hóspedes</h2>
-    <div class="uni-dep-grid">${deps.map(d => `<figure class="depoimento"><div class="estrelas" aria-label="5 estrelas">★★★★★</div><blockquote>“${esc(d.texto)}”</blockquote><figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">avaliação no ${esc(d.origem)}</span></figcaption></figure>`).join('')}</div>
+    <h2 class="secao-titulo">${t('O que dizem nossos hóspedes', 'What our guests say', 'Lo que dicen nuestros huéspedes')}</h2>
+    <div class="uni-dep-grid">${deps.map(d => `<figure class="depoimento"><div class="estrelas" aria-label="${t('5 estrelas', '5 stars', '5 estrellas')}">★★★★★</div><blockquote>“${esc(d.texto)}”</blockquote><figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">${t('avaliação no', 'review on', 'reseña en')} ${esc(d.origem)}</span></figcaption></figure>`).join('')}</div>
   </section>` : '';
   const ctaFinal = `<section class="uni-cta-final">
-    <h2>Garanta sua data antes que esgote</h2>
-    <p>O calendário do Lago Sul enche rápido em feriados, alta temporada e grandes eventos de Brasília. Reserve agora e assegure a sua estadia.</p>
+    <h2>${t('Garanta sua data antes que esgote', 'Secure your dates before they\'re gone', 'Asegura tu fecha antes de que se agote')}</h2>
+    <p>${t('O calendário do Lago Sul enche rápido em feriados, alta temporada e grandes eventos de Brasília. Reserve agora e assegure a sua estadia.', 'The Lago Sul calendar fills up fast on holidays, high season and major Brasília events. Book now and secure your stay.', 'El calendario de Lago Sul se llena rápido en feriados, temporada alta y grandes eventos de Brasília. Reserva ahora y asegura tu estancia.')}</p>
     <div class="uni-cta-acoes">
-      <a class="btn btn-reservar" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/${l.id}">Reservar e pagar →</a>
-      <a class="btn btn-claro" href="#reservar">Ver datas e valores</a>
+      <a class="btn btn-reservar" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/${l.id}">${t('Reservar e pagar →', 'Book and pay →', 'Reservar y pagar →')}</a>
+      <a class="btn btn-claro" href="#reservar">${t('Ver datas e valores', 'See dates and prices', 'Ver fechas y precios')}</a>
     </div>
   </section>`;
 
   const pagina = layout(
-    `${l.titulo} | Villela Stay`,
-    String(l.resumo || l.titulo).replace(/<[^>]+>/g, '').slice(0, 155),
+    `${tituloImovel(l)} | Villela Stay`,
+    String(resumoImovel(l) || tituloImovel(l)).replace(/<[^>]+>/g, '').slice(0, 155),
     `
 <article class="unidade">
   ${img(l.fotoPrincipal, { alt: l.titulo, classe: 'capa', width: 980, height: 420, sizes: '(max-width: 980px) 100vw, 980px', lazy: false, prioridade: true })}
   <div class="unidade-cab">
-    <nav class="breadcrumb"><a href="/">Início</a> › <a href="/#hospedagens">Hospedagens</a> › <span>${esc(l.titulo)}</span></nav>
-    <h1>${esc(l.titulo)}</h1>
-    <p class="ficha">${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.camas} cama${l.camas > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''} · ${esc(l.bairro)}</p>
+    <nav class="breadcrumb"><a href="${L('/')}">${t('Início', 'Home', 'Inicio')}</a> › <a href="${L('/')}#hospedagens">${t('Hospedagens', 'Stays', 'Alojamientos')}</a> › <span>${esc(tituloImovel(l))}</span></nav>
+    <h1>${esc(tituloImovel(l))}</h1>
+    <p class="ficha">${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · ${t(`${l.quartos} quarto${l.quartos > 1 ? 's' : ''}`, `${l.quartos} room${l.quartos > 1 ? 's' : ''}`, `${l.quartos} ${l.quartos > 1 ? 'habitaciones' : 'habitación'}`)} · ${t(`${l.camas} cama${l.camas > 1 ? 's' : ''}`, `${l.camas} bed${l.camas > 1 ? 's' : ''}`, `${l.camas} cama${l.camas > 1 ? 's' : ''}`)} · ${t(`${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}`, `${l.banheiros} bathroom${l.banheiros > 1 ? 's' : ''}`, `${l.banheiros} baño${l.banheiros > 1 ? 's' : ''}`)}${l.m2 ? ` · ${l.m2} m²` : ''} · ${esc(l.bairro)}</p>
   </div>
   ${stripConfianca}
   <section id="reservar" class="disponibilidade" data-listing="${l.mongoId}">
-    <h2>📅 Veja disponibilidade e reserve com pagamento on-line</h2>
+    <h2>📅 ${t('Veja disponibilidade e reserve com pagamento on-line', 'Check availability and book with online payment', 'Consulta disponibilidad y reserva con pago en línea')}</h2>
     <div class="disp-form">
-      <label>Entrada <input type="date" class="disp-in"></label>
-      <label>Saída <input type="date" class="disp-out"></label>
-      <label>Hóspedes <input type="number" class="disp-guests" min="1" max="${l.hospedes}" value="2"></label>
-      <button class="btn disp-btn">Consultar</button>
+      <label>${t('Entrada', 'Check-in', 'Entrada')} <input type="date" class="disp-in"></label>
+      <label>${t('Saída', 'Check-out', 'Salida')} <input type="date" class="disp-out"></label>
+      <label>${t('Hóspedes', 'Guests', 'Huéspedes')} <input type="number" class="disp-guests" min="1" max="${l.hospedes}" value="2"></label>
+      <button class="btn disp-btn">${t('Consultar', 'Check', 'Consultar')}</button>
     </div>
     <div class="disp-resultado" hidden></div>
     <div class="disp-acoes">
-      <a class="btn btn-reservar" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/${l.id}">Reservar e pagar →</a>
-      <a class="btn btn-wa disp-reservar" href="${waLink(`Olá! Quero reservar a ${l.titulo}.`)}">Reservar pelo WhatsApp</a>
+      <a class="btn btn-reservar" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/${l.id}">${t('Reservar e pagar →', 'Book and pay →', 'Reservar y pagar →')}</a>
+      <a class="btn btn-wa disp-reservar" href="${waLink(t(`Olá! Quero reservar a ${l.titulo}.`, `Hi! I'd like to book ${l.titulo}.`, `¡Hola! Quiero reservar la ${l.titulo}.`))}">${t('Reservar pelo WhatsApp', 'Book on WhatsApp', 'Reservar por WhatsApp')}</a>
     </div>
-    <p class="disp-nota">🔒 Disponibilidade, reserva e pagamento processados com segurança no nosso sistema de reservas — exclusivo desta hospedagem.</p>
+    <p class="disp-nota">🔒 ${t('Disponibilidade, reserva e pagamento processados com segurança no nosso sistema de reservas — exclusivo desta hospedagem.', 'Availability, booking and payment are processed securely in our booking system — exclusive to this property.', 'Disponibilidad, reserva y pago procesados de forma segura en nuestro sistema de reservas — exclusivo de este alojamiento.')}</p>
   </section>
   ${blocoBeneficios}
   ${blocoComodidades}
   ${VIDEOS[l.id] ? `<section class="video-wrap">
-    <h2>Conheça por dentro</h2>
+    <h2>${t('Conheça por dentro', 'Take a look inside', 'Conoce por dentro')}</h2>
     <video controls preload="none" playsinline poster="${cdnUrl(l.fotoPrincipal, 800)}">
       <source src="/videos/${VIDEOS[l.id]}" type="video/mp4">
     </video>
   </section>` : ''}
   <section class="lead-box">
-    <h2>Prefere receber a cotação? Deixe seu contato 👇</h2>
+    <h2>${t('Prefere receber a cotação? Deixe seu contato 👇', 'Prefer to get a quote? Leave your contact 👇', '¿Prefieres recibir la cotización? Deja tu contacto 👇')}</h2>
     <form class="form-lead">
-      <input name="nome" placeholder="Seu nome*" required>
-      <input name="contato" placeholder="Seu WhatsApp ou e-mail*" required>
-      <button class="btn" type="submit">Quero uma cotação</button>
+      <input name="nome" placeholder="${t('Seu nome*', 'Your name*', 'Tu nombre*')}" required>
+      <input name="contato" placeholder="${t('Seu WhatsApp ou e-mail*', 'Your WhatsApp or email*', 'Tu WhatsApp o correo*')}" required>
+      <button class="btn" type="submit">${t('Quero uma cotação', 'I want a quote', 'Quiero una cotización')}</button>
       <p class="form-status" hidden></p>
     </form>
   </section>
-  <section class="descricao"><h2 class="secao-titulo">Sobre a hospedagem</h2>${(l.descricao || '').replace(/,\s*academias\b/gi, '')}</section>
+  <section class="descricao"><h2 class="secao-titulo">${t('Sobre a hospedagem', 'About this stay', 'Sobre el alojamiento')}</h2>${(descricaoImovel(l) || '').replace(/,\s*academias\b/gi, '')}</section>
   ${blocoDepoimentos}
   ${PLANTAS[l.id] ? `<section class="planta">
-    <h2>Planta do espaço</h2>
+    <h2>${t('Planta do espaço', 'Floor plan', 'Plano del espacio')}</h2>
     <a href="/plantas/${PLANTAS[l.id]}" target="_blank" rel="noopener">${(() => {
       const d = dimensoesArquivo(path.join(__dirname, 'src', 'plantas', PLANTAS[l.id]));
-      return img(`/plantas/${PLANTAS[l.id]}`, { alt: `Planta do espaço — ${l.titulo}`, sizes: '(max-width: 980px) 100vw, 980px', width: d ? d.w : undefined, height: d ? d.h : undefined });
+      return img(`/plantas/${PLANTAS[l.id]}`, { alt: `${t('Planta do espaço', 'Floor plan', 'Plano del espacio')} — ${l.titulo}`, sizes: '(max-width: 980px) 100vw, 980px', width: d ? d.w : undefined, height: d ? d.h : undefined });
     })()}</a>
-    <p class="planta-dica">Clique na planta para ampliar.</p>
+    <p class="planta-dica">${t('Clique na planta para ampliar.', 'Click the plan to enlarge.', 'Haz clic en el plano para ampliar.')}</p>
   </section>` : ''}
-  <section class="galeria"><h2>Fotos</h2><div class="galeria-grid">${galeria}</div></section>
+  <section class="galeria"><h2>${t('Fotos', 'Photos', 'Fotos')}</h2><div class="galeria-grid">${galeria}</div></section>
   ${EBOOKS[l.id] ? `<section class="ebook-box">
-    📖 <a href="/ebooks/${EBOOKS[l.id]}" target="_blank" rel="noopener"><strong>Baixe o Manual do Hóspede (e-book em PDF)</strong></a> — o funcionamento da casa, as regras e o guia de turismo e gastronomia de Brasília do anfitrião.
+    📖 <a href="/ebooks/${EBOOKS[l.id]}" target="_blank" rel="noopener"><strong>${t('Baixe o Manual do Hóspede (e-book em PDF)', 'Download the Guest Manual (PDF e-book)', 'Descarga el Manual del Huésped (e-book en PDF)')}</strong></a> — ${t('o funcionamento da casa, as regras e o guia de turismo e gastronomia de Brasília do anfitrião.', "how the house works, the rules and the host's Brasília tourism and food guide.", 'cómo funciona la casa, las normas y la guía de turismo y gastronomía de Brasília del anfitrión.')}
   </section>` : ''}
   ${ctaFinal}
   <section class="relacionados">
-    <h2>Veja também</h2>
-    <p><a href="/pacotes.html">Pacotes Especiais</a> · <a href="/eventos.html">Eventos no Lago Sul</a> · <a href="/guia.html">Guia do Hóspede</a> · <a href="/regras.html">Regras da Casa</a></p>
+    <h2>${t('Veja também', 'See also', 'Ver también')}</h2>
+    <p><a href="${L('/pacotes.html')}">${t('Pacotes Especiais', 'Special Packages', 'Paquetes Especiales')}</a> · <a href="${L('/eventos.html')}">${t('Eventos no Lago Sul', 'Events in Lago Sul', 'Eventos en Lago Sul')}</a> · <a href="${L('/guia.html')}">${t('Guia do Hóspede', 'Guest Guide', 'Guía del Huésped')}</a> · <a href="${L('/regras.html')}">${t('Regras da Casa', 'House Rules', 'Normas de la Casa')}</a></p>
   </section>
 </article>
 <script>
@@ -764,8 +769,8 @@ for (const l of listings) {
   atualizarStays();
   btn.addEventListener('click', function(){
     var de = inEl.value, ate = outEl.value;
-    if (!de || !ate) { out.hidden = false; out.textContent = 'Escolha as duas datas.'; return; }
-    out.hidden = false; out.textContent = 'Consultando...';
+    if (!de || !ate) { out.hidden = false; out.textContent = ${JSON.stringify(t('Escolha as duas datas.', 'Choose both dates.', 'Elige ambas fechas.'))}; return; }
+    out.hidden = false; out.textContent = ${JSON.stringify(t('Consultando...', 'Checking...', 'Consultando...'))};
     atualizarStays();
     fetch('${BACKEND}/api/disponibilidade/${l.mongoId}?from=' + de + '&to=' + ate)
       .then(function(r){ return r.json(); })
@@ -775,22 +780,22 @@ for (const l of listings) {
         var total = noites.reduce(function(s, d){ return s + (d.precoBRL || 0); }, 0);
         var wa = sec.querySelector('.disp-reservar');
         if (noites.length && livres.length === noites.length) {
-          out.innerHTML = '✅ Disponível! ' + noites.length + ' noite(s) — total estimado <strong>R$ ' +
-            total.toLocaleString('pt-BR') + '</strong>. Clique em <strong>“Reservar e pagar”</strong> para concluir com segurança.';
-          wa.href = 'https://wa.me/${WHATSAPP}?text=' + encodeURIComponent('Olá! Quero reservar a ${l.titulo} de ' + de + ' a ' + ate + ' — total estimado R$ ' + total.toLocaleString('pt-BR') + '. Pode confirmar?');
+          out.innerHTML = ${JSON.stringify(t('✅ Disponível! ', '✅ Available! ', '✅ ¡Disponible! '))} + noites.length + ${JSON.stringify(t(' noite(s) — total estimado <strong>R$ ', ' night(s) — estimated total <strong>R$ ', ' noche(s) — total estimado <strong>R$ '))} +
+            total.toLocaleString('pt-BR') + ${JSON.stringify(t('</strong>. Clique em <strong>“Reservar e pagar”</strong> para concluir com segurança.', '</strong>. Click <strong>“Book and pay”</strong> to complete securely.', '</strong>. Haz clic en <strong>“Reservar y pagar”</strong> para completar con seguridad.'))};
+          wa.href = 'https://wa.me/${WHATSAPP}?text=' + encodeURIComponent(${JSON.stringify(t(`Olá! Quero reservar a ${l.titulo} de `, `Hi! I'd like to book ${l.titulo} from `, `¡Hola! Quiero reservar la ${l.titulo} del `))} + de + ${JSON.stringify(t(' a ', ' to ', ' al '))} + ate + ${JSON.stringify(t(' — total estimado R$ ', ' — estimated total R$ ', ' — total estimado R$ '))} + total.toLocaleString('pt-BR') + ${JSON.stringify(t('. Pode confirmar?', '. Can you confirm?', '. ¿Puedes confirmar?'))});
         } else {
-          out.innerHTML = '😕 Sem disponibilidade completa nessas datas. Tente outras datas ou fale conosco no WhatsApp.';
-          wa.href = 'https://wa.me/${WHATSAPP}?text=' + encodeURIComponent('Olá! Consultei a ${l.titulo} de ' + de + ' a ' + ate + ' e não havia disponibilidade completa. Pode me ajudar com datas ou casas alternativas?');
+          out.innerHTML = ${JSON.stringify(t('😕 Sem disponibilidade completa nessas datas. Tente outras datas ou fale conosco no WhatsApp.', '😕 Not fully available on those dates. Try other dates or contact us on WhatsApp.', '😕 Sin disponibilidad completa en esas fechas. Prueba otras fechas o contáctanos por WhatsApp.'))};
+          wa.href = 'https://wa.me/${WHATSAPP}?text=' + encodeURIComponent(${JSON.stringify(t(`Olá! Consultei a ${l.titulo} de `, `Hi! I checked ${l.titulo} from `, `¡Hola! Consulté la ${l.titulo} del `))} + de + ${JSON.stringify(t(' a ', ' to ', ' al '))} + ate + ${JSON.stringify(t(' e não havia disponibilidade completa. Pode me ajudar com datas ou casas alternativas?', ' and it was not fully available. Could you help me with dates or alternative houses?', ' y no había disponibilidad completa. ¿Puedes ayudarme con fechas o casas alternativas?'))});
         }
       })
-      .catch(function(){ out.textContent = 'Não foi possível consultar agora. Tente novamente ou fale conosco pelo WhatsApp.'; });
+      .catch(function(){ out.textContent = ${JSON.stringify(t('Não foi possível consultar agora. Tente novamente ou fale conosco pelo WhatsApp.', "Couldn't check right now. Please try again or contact us on WhatsApp.", 'No fue posible consultar ahora. Inténtalo de nuevo o contáctanos por WhatsApp.'))}; });
   });
 
   var fl = document.querySelector('.form-lead');
   fl.addEventListener('submit', function(e){
     e.preventDefault();
     var st = fl.querySelector('.form-status');
-    st.hidden = false; st.textContent = 'Enviando...';
+    st.hidden = false; st.textContent = ${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
     var de = sec.querySelector('.disp-in').value, ate = sec.querySelector('.disp-out').value;
     fetch('${BACKEND}/api/leads', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -800,9 +805,9 @@ for (const l of listings) {
         origem: 'site-${l.id}'
       })
     }).then(function(r){
-      st.textContent = r.ok ? '✅ Recebido! Em breve enviaremos sua cotação.' : 'Erro ao enviar — fale conosco pelo WhatsApp.';
+      st.textContent = r.ok ? ${JSON.stringify(t('✅ Recebido! Em breve enviaremos sua cotação.', "✅ Received! We'll send your quote soon.", '✅ ¡Recibido! Pronto te enviaremos tu cotización.'))} : ${JSON.stringify(t('Erro ao enviar — fale conosco pelo WhatsApp.', 'Error sending — contact us on WhatsApp.', 'Error al enviar — contáctanos por WhatsApp.'))};
       if (r.ok) fl.reset();
-    }).catch(function(){ st.textContent = 'Erro ao enviar — fale conosco pelo WhatsApp.'; });
+    }).catch(function(){ st.textContent = ${JSON.stringify(t('Erro ao enviar — fale conosco pelo WhatsApp.', 'Error sending — contact us on WhatsApp.', 'Error al enviar — contáctanos por WhatsApp.'))}; });
   });
 })();
 </script>`,
@@ -815,9 +820,9 @@ for (const l of listings) {
 <script type="application/ld+json">${JSON.stringify({
         '@context': 'https://schema.org', '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL + '/' },
-          { '@type': 'ListItem', position: 2, name: 'Hospedagens', item: SITE_URL + '/#hospedagens' },
-          { '@type': 'ListItem', position: 3, name: l.titulo, item: `${SITE_URL}/hospedagem/${l.id}.html` }
+          { '@type': 'ListItem', position: 1, name: t('Início', 'Home', 'Inicio'), item: SITE_URL + L('/') },
+          { '@type': 'ListItem', position: 2, name: t('Hospedagens', 'Stays', 'Alojamientos'), item: SITE_URL + L('/') + '#hospedagens' },
+          { '@type': 'ListItem', position: 3, name: tituloImovel(l), item: `${SITE_URL}${L(`/hospedagem/${l.id}.html`)}` }
         ]
       })}</script>`
     }
