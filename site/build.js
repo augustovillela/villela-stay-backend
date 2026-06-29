@@ -923,13 +923,20 @@ fs.writeFileSync(path.join(od, 'eventos.html'), eventos);
 
 // ------------------------- pacotes (página de vendas) -------------------------
 const DATAS_PACOTE = [
-  { emoji: '🎄', nome: 'Natal 2026', periodo: '23 a 27/12/2026' },
-  { emoji: '🎆', nome: 'Réveillon 2026/2027', periodo: '30/12/2026 a 03/01/2027' },
-  { emoji: '🇧🇷', nome: 'Caravana da Posse do Novo Presidente', periodo: '30/12/2026 a 3/1/2027' },
-  { emoji: '🎭', nome: 'Carnaval 2027', periodo: '6 a 10/02/2027' },
-  { emoji: '🏛️', nome: 'Marcha dos Municípios 2027', periodo: 'datas sob consulta' },
-  { emoji: '🏛️', nome: 'Marcha dos Prefeitos 2027', periodo: '16 a 20/5/2027 (a confirmar)' }
+  { emoji: '🎄', nome: t('Natal 2026', 'Christmas 2026', 'Navidad 2026'), periodo: '23 a 27/12/2026' },
+  { emoji: '🎆', nome: t('Réveillon 2026/2027', "New Year's Eve 2026/2027", 'Fin de Año 2026/2027'), periodo: '30/12/2026 a 03/01/2027' },
+  { emoji: '🇧🇷', nome: t('Caravana da Posse do Novo Presidente', "New President's Inauguration Caravan", 'Caravana de la Toma de Posesión del Nuevo Presidente'), periodo: '30/12/2026 a 3/1/2027' },
+  { emoji: '🎭', nome: t('Carnaval 2027', 'Carnival 2027', 'Carnaval 2027'), periodo: '6 a 10/02/2027' },
+  { emoji: '🏛️', nome: t('Marcha dos Municípios 2027', 'March of Municipalities 2027', 'Marcha de los Municipios 2027'), periodo: t('datas sob consulta', 'dates on request', 'fechas a consultar') },
+  { emoji: '🏛️', nome: t('Marcha dos Prefeitos 2027', "Mayors' March 2027", 'Marcha de los Alcaldes 2027'), periodo: t('16 a 20/5/2027 (a confirmar)', '16–20 May 2027 (to be confirmed)', '16 a 20/5/2027 (a confirmar)') }
 ];
+// Tradutor de termos de cama (acordeão de quartos dos pacotes) e de "N pessoas".
+const CAMAS_MAP = {
+  en: [[/quadriliche com 4 camas tipo solteirão/g, 'quadruple bunk with 4 large single beds'], [/triliche \(1 casal \+ 2 solteiros\)/g, 'triple bunk (1 double + 2 singles)'], [/beliche de solteiro/g, 'single bunk bed'], [/beliche de casal/g, 'double bunk bed'], [/sofá-cama de casal/g, 'double sofa bed'], [/sofá-cama de solteiro/g, 'single sofa bed'], [/sofá-cama/g, 'sofa bed'], [/cama king/g, 'king bed'], [/cama box de solteiro/g, 'single bed'], [/cama de solteiro auxiliar/g, 'extra single bed'], [/cama auxiliar de solteiro/g, 'extra single bed'], [/cama de casal/g, 'double bed'], [/cama auxiliar/g, 'extra bed'], [/cama de solteiro/g, 'single bed']],
+  es: [[/quadriliche com 4 camas tipo solteirão/g, 'litera cuádruple con 4 camas individuales grandes'], [/triliche \(1 casal \+ 2 solteiros\)/g, 'litera triple (1 doble + 2 individuales)'], [/beliche de solteiro/g, 'litera individual'], [/beliche de casal/g, 'litera doble'], [/sofá-cama de casal/g, 'sofá cama doble'], [/sofá-cama de solteiro/g, 'sofá cama individual'], [/sofá-cama/g, 'sofá cama'], [/cama king/g, 'cama king'], [/cama box de solteiro/g, 'cama individual'], [/cama de solteiro auxiliar/g, 'cama individual extra'], [/cama auxiliar de solteiro/g, 'cama individual extra'], [/cama de casal/g, 'cama doble'], [/cama auxiliar/g, 'cama extra'], [/cama de solteiro/g, 'cama individual']]
+};
+const tCamas = s => { if (LANG === 'pt') return s; let o = s; for (const [re, rep] of CAMAS_MAP[LANG]) o = o.replace(re, rep); return o; };
+const nPessoas = s => LANG === 'pt' ? s : s.replace(/(\d+) pessoas/g, (m, n) => `${n} ${LANG === 'en' ? 'people' : 'personas'}`);
 
 const CASAS_PACOTE = [
   {
@@ -974,7 +981,7 @@ const CASAS_PACOTE = [
 ];
 
 const chipsDatas = DATAS_PACOTE.map(d =>
-  `<a class="chip-data" href="${d.nome.includes('Posse') ? '/posse-2027.html' : waLink(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`)}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
+  `<a class="chip-data" href="${d.emoji === '🇧🇷' ? L('/posse-2027.html') : waLink(t(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`, `Hi! I'd like to book a whole house for ${d.nome} (${d.periodo}). We're a group of ___ people.`, `¡Hola! Quiero reservar una casa entera para ${d.nome} (${d.periodo}). Somos un grupo de ___ personas.`))}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
 
 const cardsCasas = CASAS_PACOTE.map(c => {
   const l = porId[c.id];
@@ -985,56 +992,56 @@ const cardsCasas = CASAS_PACOTE.map(c => {
   ${l ? img(l.fotoPrincipal, { alt: c.nome, width: 340, height: 280, sizes: '(max-width: 760px) 100vw, 340px' }) : '<img alt="" width="340" height="280">'}
   <div class="casa-pacote-corpo">
     <h3>${esc(c.nome)}</h3>
-    <p class="casa-meta">🛌 até ${c.hospedes} hóspedes · 🕺 eventos para até ${c.convidados} convidados · 📍 ${esc(c.local)}</p>
+    <p class="casa-meta">🛌 ${t('até', 'up to', 'hasta')} ${c.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · 🕺 ${t('eventos para até', 'events for up to', 'eventos para hasta')} ${c.convidados} ${t('convidados', 'guests', 'invitados')} · 📍 ${esc(c.local)}</p>
     <div class="preco-bloco">
-      <div class="preco-principal">${real(c.pacote)} <span>· pacote de 4 diárias com a casa completa</span></div>
-      <div class="preco-detalhe">Sai por ~<strong>${real(porPessoa)}</strong> por pessoa no total — cerca de <strong>${real(porDia)}/dia</strong>. Menos que uma diária de hotel simples nessas datas, com casa, piscina e cozinha inteiras para o seu grupo.</div>
-      <div class="preco-composicao">Composição: R$ 150/dia por pessoa × 4 dias × ${c.hospedes} hóspedes + ${real(c.limpeza)} de taxa de limpeza</div>
+      <div class="preco-principal">${real(c.pacote)} <span>· ${t('pacote de 4 diárias com a casa completa', '4-night package with the whole house', 'paquete de 4 noches con la casa entera')}</span></div>
+      <div class="preco-detalhe">${t(`Sai por ~<strong>${real(porPessoa)}</strong> por pessoa no total — cerca de <strong>${real(porDia)}/dia</strong>. Menos que uma diária de hotel simples nessas datas, com casa, piscina e cozinha inteiras para o seu grupo.`, `Comes to ~<strong>${real(porPessoa)}</strong> per person in total — about <strong>${real(porDia)}/day</strong>. Less than a basic hotel night on these dates, with a whole house, pool and kitchen for your group.`, `Sale por ~<strong>${real(porPessoa)}</strong> por persona en total — cerca de <strong>${real(porDia)}/día</strong>. Menos que una noche de hotel sencillo en estas fechas, con casa, piscina y cocina enteras para tu grupo.`)}</div>
+      <div class="preco-composicao">${t(`Composição: R$ 150/dia por pessoa × 4 dias × ${c.hospedes} hóspedes + ${real(c.limpeza)} de taxa de limpeza`, `Breakdown: R$ 150/day per person × 4 days × ${c.hospedes} guests + ${real(c.limpeza)} cleaning fee`, `Composición: R$ 150/día por persona × 4 días × ${c.hospedes} huéspedes + ${real(c.limpeza)} de tarifa de limpieza`)}</div>
     </div>
     <details class="quartos">
-      <summary>Ver a distribuição das camas (${c.quartos.length} acomodações)</summary>
-      <ul>${c.quartos.map(q => `<li><strong>${esc(q[0])}</strong><br>${esc(q[1])}</li>`).join('\n')}</ul>
+      <summary>${t(`Ver a distribuição das camas (${c.quartos.length} acomodações)`, `See the bed layout (${c.quartos.length} rooms)`, `Ver la distribución de las camas (${c.quartos.length} habitaciones)`)}</summary>
+      <ul>${c.quartos.map(q => `<li><strong>${esc(nPessoas(q[0]))}</strong><br>${esc(tCamas(q[1]))}</li>`).join('\n')}</ul>
     </details>
-    <a class="btn btn-wa" href="${waLink(`Olá! Quero reservar a ${c.nome} completa em uma das datas especiais. Somos um grupo de ___ pessoas para a data: ___.`)}">Reservar a ${esc(c.nome)} →</a>
+    <a class="btn btn-wa" href="${waLink(t(`Olá! Quero reservar a ${c.nome} completa em uma das datas especiais. Somos um grupo de ___ pessoas para a data: ___.`, `Hi! I'd like to book the whole ${c.nome} on one of the special dates. We're a group of ___ people for the date: ___.`, `¡Hola! Quiero reservar la ${c.nome} entera en una de las fechas especiales. Somos un grupo de ___ personas para la fecha: ___.`))}">${t('Reservar a', 'Book', 'Reservar la')} ${esc(c.nome)} →</a>
   </div>
 </article>`;
 }).join('\n');
 
 const pacotes = layout(
-  'Pacotes para Natal, Réveillon, Posse, Carnaval e Marchas | Villela Stay',
-  'Casas completas no Lago Sul para as datas mais disputadas de Brasília: Natal, Réveillon, Posse Presidencial, Carnaval e Marcha dos Prefeitos. A partir de R$ 150/dia por pessoa.',
+  t('Pacotes para Natal, Réveillon, Posse, Carnaval e Marchas | Villela Stay', 'Packages for Christmas, New Year, Inauguration, Carnival & Marches | Villela Stay', 'Paquetes para Navidad, Fin de Año, Toma de Posesión, Carnaval y Marchas | Villela Stay'),
+  t('Casas completas no Lago Sul para as datas mais disputadas de Brasília: Natal, Réveillon, Posse Presidencial, Carnaval e Marcha dos Prefeitos. A partir de R$ 150/dia por pessoa.', 'Whole houses in Lago Sul for Brasília\'s most sought-after dates: Christmas, New Year, Presidential Inauguration, Carnival and the Mayors\' March. From R$ 150/day per person.', 'Casas enteras en Lago Sul para las fechas más solicitadas de Brasília: Navidad, Fin de Año, Toma de Posesión Presidencial, Carnaval y Marcha de los Alcaldes. Desde R$ 150/día por persona.'),
   `
 <section class="hero hero-menor">
-  <h1>As datas mais disputadas de Brasília.<br>As melhores casas do Lago Sul.</h1>
-  <p><strong>Natal, Réveillon, Posse Presidencial, Carnaval e as Marchas dos Prefeitos e dos Municípios:</strong> quando Brasília lota e os hotéis dobram de preço, grupos inteligentes reservam uma casa completa — e cada pessoa paga menos que uma diária de hotel.</p>
+  <h1>${t('As datas mais disputadas de Brasília.<br>As melhores casas do Lago Sul.', "Brasília's most sought-after dates.<br>The best houses in Lago Sul.", 'Las fechas más solicitadas de Brasília.<br>Las mejores casas de Lago Sul.')}</h1>
+  <p>${t('<strong>Natal, Réveillon, Posse Presidencial, Carnaval e as Marchas dos Prefeitos e dos Municípios:</strong> quando Brasília lota e os hotéis dobram de preço, grupos inteligentes reservam uma casa completa — e cada pessoa paga menos que uma diária de hotel.', '<strong>Christmas, New Year, the Presidential Inauguration, Carnival and the Mayors\' and Municipalities\' Marches:</strong> when Brasília fills up and hotels double their prices, smart groups book a whole house — and each person pays less than a hotel night.', '<strong>Navidad, Fin de Año, la Toma de Posesión Presidencial, el Carnaval y las Marchas de Alcaldes y Municipios:</strong> cuando Brasília se llena y los hoteles duplican sus precios, los grupos inteligentes reservan una casa entera — y cada persona paga menos que una noche de hotel.')}</p>
 </section>
 <div class="pacotes-wrap">
 
   <section class="venda-bloco">
-    <h2 class="secao-titulo">Escolha a sua data</h2>
+    <h2 class="secao-titulo">${t('Escolha a sua data', 'Choose your date', 'Elige tu fecha')}</h2>
     <div class="chips-datas">${chipsDatas}</div>
   </section>
 
   <section class="venda-bloco como-funciona">
-    <h2 class="secao-titulo">Como funciona — simples e transparente</h2>
+    <h2 class="secao-titulo">${t('Como funciona — simples e transparente', 'How it works — simple and transparent', 'Cómo funciona — simple y transparente')}</h2>
     <div class="passos">
-      <div class="passo"><strong>1. Junte o seu grupo</strong><br>Nessas datas trabalhamos com casas completas, de 15 a 24 hóspedes — família, amigos, caravana ou comitiva.</div>
-      <div class="passo"><strong>2. Cada um paga R$ 150 por dia</strong><br>Diária por pessoa com a casa lotada + rateio da taxa de limpeza. Piscina aquecida, cozinha completa e área de lazer inclusas.</div>
-      <div class="passo"><strong>3. Reserve direto com o anfitrião</strong><br>Sem taxas de plataforma, com atendimento personalizado de um Superhost premiado, do primeiro contato ao check-out.</div>
+      <div class="passo"><strong>${t('1. Junte o seu grupo', '1. Gather your group', '1. Reúne a tu grupo')}</strong><br>${t('Nessas datas trabalhamos com casas completas, de 15 a 24 hóspedes — família, amigos, caravana ou comitiva.', 'On these dates we work with whole houses, from 15 to 24 guests — family, friends, a caravan or a delegation.', 'En estas fechas trabajamos con casas enteras, de 15 a 24 huéspedes — familia, amigos, caravana o comitiva.')}</div>
+      <div class="passo"><strong>${t('2. Cada um paga R$ 150 por dia', '2. Each person pays R$ 150 per day', '2. Cada uno paga R$ 150 por día')}</strong><br>${t('Diária por pessoa com a casa lotada + rateio da taxa de limpeza. Piscina aquecida, cozinha completa e área de lazer inclusas.', 'Per-person rate with the house at full capacity + a share of the cleaning fee. Heated pool, full kitchen and leisure area included.', 'Tarifa por persona con la casa llena + prorrateo de la tarifa de limpieza. Piscina climatizada, cocina completa y zona de ocio incluidas.')}</div>
+      <div class="passo"><strong>${t('3. Reserve direto com o anfitrião', '3. Book directly with the host', '3. Reserva directo con el anfitrión')}</strong><br>${t('Sem taxas de plataforma, com atendimento personalizado de um Superhost premiado, do primeiro contato ao check-out.', 'No platform fees, with personalised service from an award-winning Superhost, from first contact to check-out.', 'Sin tarifas de plataforma, con atención personalizada de un Superhost premiado, desde el primer contacto hasta el check-out.')}</div>
     </div>
-    <p class="aviso-escassez">⚠️ Temos <strong>apenas 4 casas disponíveis</strong> para cada período. Os pacotes de <strong>Natal e Réveillon</strong>, principalmente, costumam se esgotar rapidamente. Além disso, Brasília ficará pequena para os visitantes na virada do ano porque no dia <strong>1º de janeiro de 2027</strong> será a <strong>posse do novo Presidente do Brasil</strong>.</p>
+    <p class="aviso-escassez">⚠️ ${t('Temos <strong>apenas 4 casas disponíveis</strong> para cada período. Os pacotes de <strong>Natal e Réveillon</strong>, principalmente, costumam se esgotar rapidamente. Além disso, Brasília ficará pequena para os visitantes na virada do ano porque no dia <strong>1º de janeiro de 2027</strong> será a <strong>posse do novo Presidente do Brasil</strong>.', 'We have <strong>only 4 houses available</strong> for each period. The <strong>Christmas and New Year</strong> packages in particular tend to sell out quickly. On top of that, Brasília will be packed at the turn of the year because <strong>1 January 2027</strong> is the <strong>inauguration of Brazil\'s new President</strong>.', 'Tenemos <strong>solo 4 casas disponibles</strong> para cada período. Los paquetes de <strong>Navidad y Fin de Año</strong>, sobre todo, suelen agotarse rápido. Además, Brasília quedará pequeña para los visitantes en el cambio de año porque el <strong>1 de enero de 2027</strong> será la <strong>toma de posesión del nuevo Presidente de Brasil</strong>.')}</p>
   </section>
 
   <section class="venda-bloco">
-    <h2 class="secao-titulo">As 4 casas — pacotes de 4 diárias</h2>
-    <p class="pacote-cond">Check-in às 14h do primeiro dia · check-out às 10h do último · período mínimo de 4 diárias nessas datas · convidado extra para evento ou day use: R$ 120/dia</p>
+    <h2 class="secao-titulo">${t('As 4 casas — pacotes de 4 diárias', 'The 4 houses — 4-night packages', 'Las 4 casas — paquetes de 4 noches')}</h2>
+    <p class="pacote-cond">${t('Check-in às 14h do primeiro dia · check-out às 10h do último · período mínimo de 4 diárias nessas datas · convidado extra para evento ou day use: R$ 120/dia', 'Check-in at 2 PM on the first day · check-out at 10 AM on the last · minimum 4 nights on these dates · extra event or day-use guest: R$ 120/day', 'Check-in a las 14h del primer día · check-out a las 10h del último · mínimo de 4 noches en estas fechas · invitado extra para evento o day use: R$ 120/día')}</p>
     ${cardsCasas}
   </section>
 
   <section class="venda-bloco cta-final">
-    <h2>Garanta a sua data antes que feche</h2>
-    <p>Conte para a gente a data, o tamanho do grupo e a ocasião — respondemos com a proposta completa no WhatsApp.</p>
-    <a class="btn btn-wa btn-grande" href="${waLink('Olá! Quero garantir um pacote de data especial. Data: ___ | Nº de pessoas: ___ | Ocasião: ___')}">Falar com o anfitrião agora</a>
+    <h2>${t('Garanta a sua data antes que feche', 'Secure your date before it\'s gone', 'Asegura tu fecha antes de que se agote')}</h2>
+    <p>${t('Conte para a gente a data, o tamanho do grupo e a ocasião — respondemos com a proposta completa no WhatsApp.', 'Tell us the date, the size of your group and the occasion — we\'ll reply with a full proposal on WhatsApp.', 'Cuéntanos la fecha, el tamaño del grupo y la ocasión — respondemos con la propuesta completa por WhatsApp.')}</p>
+    <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Quero garantir um pacote de data especial. Data: ___ | Nº de pessoas: ___ | Ocasião: ___', 'Hi! I\'d like to secure a special-date package. Date: ___ | Number of people: ___ | Occasion: ___', '¡Hola! Quiero asegurar un paquete de fecha especial. Fecha: ___ | Nº de personas: ___ | Ocasión: ___'))}">${t('Falar com o anfitrião agora', 'Talk to the host now', 'Hablar con el anfitrión ahora')}</a>
   </section>
 </div>`,
   {
@@ -1045,10 +1052,10 @@ const pacotes = layout(
         '@type': 'ListItem', position: i + 1,
         item: {
           '@type': 'Product',
-          name: `Pacote de 4 diárias — ${c.nome}`,
-          description: `Casa completa para até ${c.hospedes} hóspedes no Lago Sul, Brasília — Natal, Réveillon, Posse, Carnaval e Marchas.`,
+          name: t(`Pacote de 4 diárias — ${c.nome}`, `4-night package — ${c.nome}`, `Paquete de 4 noches — ${c.nome}`),
+          description: t(`Casa completa para até ${c.hospedes} hóspedes no Lago Sul, Brasília — Natal, Réveillon, Posse, Carnaval e Marchas.`, `Whole house for up to ${c.hospedes} guests in Lago Sul, Brasília — Christmas, New Year, Inauguration, Carnival and Marches.`, `Casa entera para hasta ${c.hospedes} huéspedes en Lago Sul, Brasília — Navidad, Fin de Año, Toma de Posesión, Carnaval y Marchas.`),
           image: porId[c.id] ? porId[c.id].fotoPrincipal : undefined,
-          offers: { '@type': 'Offer', price: c.pacote, priceCurrency: 'BRL', availability: 'https://schema.org/InStock', url: `${SITE_URL}/pacotes.html` }
+          offers: { '@type': 'Offer', price: c.pacote, priceCurrency: 'BRL', availability: 'https://schema.org/InStock', url: `${SITE_URL}${L('/pacotes.html')}` }
         }
       }))
     })}</script>`
