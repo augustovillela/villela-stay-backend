@@ -111,4 +111,106 @@ ${h.fig(3, { legenda: 'El Congreso Nacional: la cúpula, la cuenca y las torres 
 `,
     },
   },
+  roteiros: {
+    en: {
+      titulo: 'Brasília itineraries: what to do in 1, 3 or 5 days in the capital | Villela Stay',
+      descricao: 'Ready-made itineraries for Brasília — civic, cultural, gastronomic and outdoor. What to see, in what order and where to stay to enjoy the city without wasting time in traffic.',
+      h1: 'Brasília in 1, 3 or 5 days — without missing the best',
+      dek: 'The capital is large, planned and spread out. With the right itinerary (and staying in the right place), you see the essentials at a calm pace — with time left over for the sunset over the lake.',
+      casasTitulo: 'Stay in Lago Sul — close to everything, far from the rush',
+      casasTexto: '10 minutes from JK Airport and the Esplanada, Lago Sul is the ideal base for your itinerary: you come home between outings, get real rest and catch the Ermida Dom Bosco at sunset.',
+      isca: { titulo: "3-Day Brasília Itinerary (host's PDF)", texto: 'The step-by-step plan we put together for our guests: what to see in the morning, afternoon and evening, with timing and traffic tips. Download now.', botao: 'I want the 3-day itinerary' },
+      faq: [
+        { q: 'How many days are ideal to get to know Brasília?', a: 'Three days cover the essentials comfortably: one day for the civic route (Esplanada, Três Poderes, Cathedral), one for culture and food (museums, Pontão, restaurants) and one for the outdoors (Botanical Garden, Lake Paranoá, Ermida Dom Bosco). Five days let you add the surroundings — Cidade Ocidental, Chapada Imperial and waterfalls.' },
+        { q: 'Do you need a car to get around Brasília?', a: "It helps a lot. The city was designed for the car and the sights are far apart. Rideshare apps work well, but a car gives you freedom — and, staying in Lago Sul, you're minutes from the main attractions." },
+        { q: 'When is the best time to visit?', a: 'The dry season (May to September) has the bluest sky and sunny days — great for photos and outdoor outings. The rainy season (October to April) leaves the city greener and the gardens lush. Just avoid the peak holidays (New Year, Carnival) if you want fewer crowds.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Brasília doesn't fit into an afternoon stroll. It was designed on a monumental scale — wide distances, long axes, open horizons. Those who arrive without an itinerary lose time in traffic and energy in the sun. Those who arrive with a plan (and stay in the right neighbourhood) discover one of the most surprising cities in Brazil. Here are the itineraries we put together for our guests.</p>
+
+${h.fig(1, { legenda: 'The Praça dos Três Poderes and the Planalto Palace — the civic heart of the capital.' })}
+
+<h2>1 day: the civic essentials</h2>
+<p>If you only have one day, devote it to the axis that made Brasília a World Heritage Site:</p>
+<ul class="artigo-lista">
+  <li><strong>Morning:</strong> Praça dos Três Poderes — the Planalto Palace, the Supreme Court and the National Congress. Start early, before the heat.</li>
+  <li><strong>Midday:</strong> the Metropolitan Cathedral and the Esplanada dos Ministérios, with its Niemeyer museums (the National Museum and the Library).</li>
+  <li><strong>Afternoon:</strong> Memorial JK and the TV Tower (360° panoramic view).</li>
+  <li><strong>Late afternoon:</strong> Ermida Dom Bosco, for the sunset over Lake Paranoá.</li>
+</ul>
+<p>Want to understand what you're seeing? The <a href="${h.L('/blog/arquitetura.html')}">architecture guide</a> explains each work and who designed it.</p>
+
+${h.fig(2, { legenda: "The dome of the National Museum, by Niemeyer, on the Esplanada dos Ministérios." })}
+
+<h2>3 days: city, culture and nature</h2>
+<p>With three days, you breathe the city in instead of just photographing it.</p>
+<h3>Day 1 — Civic</h3>
+<p>The route above, unhurried, with lunch in Asa Sul.</p>
+<h3>Day 2 — Culture and leisure</h3>
+<p>Morning at the Dom Bosco Sanctuary (the blue stained glass is breathtaking), afternoon at the <strong>Pontão do Lago Sul</strong> — the waterfront hotspot with restaurants, a promenade and boats — and an evening of fine food. The best tables are in the <a href="${h.L('/blog/gastronomia.html')}">food guide</a>.</p>
+<h3>Day 3 — Outdoors</h3>
+<p>The Brasília Botanical Garden or Parque da Cidade in the morning, and in the afternoon the <strong>Catetinho</strong> — Juscelino's first home in the city, built in ten days, today a charming museum on the way to Lago Sul.</p>
+
+${h.fig(3, { legenda: 'The Pontão do Lago Sul promenade, by the Paranoá — sunset and dining.' })}
+
+<h2>5 days: Brasília + surroundings</h2>
+<p>Five days make room for what few tourists see: the <strong>Chapada Imperial</strong> and its waterfalls an hour from the city, the <strong>Vale do Amanhecer</strong> in Planaltina, the Lago Norte lookouts and a whole day just on the lake — paddleboarding, boating, sunset. That's when Brasília stops being "the city of government buildings" and becomes a real destination.</p>
+
+${h.fig(4, { legenda: "The Catetinho, JK's first home in Brasília — built in ten days." })}
+
+<h2>The secret to a good itinerary: where you sleep</h2>
+<p>The biggest mistake tourists make in Brasília is staying far away and spending the day in traffic. Staying in <strong>Lago Sul</strong> changes the trip: you're minutes from the Esplanada, the Pontão and the Ermida, in a leafy, safe neighbourhood, and you return to a real house — with a pool, a kitchen and space — between outings. It's the itinerary working for you, not against you.</p>
+`,
+    },
+    es: {
+      titulo: 'Itinerarios de Brasília: qué hacer en 1, 3 y 5 días en la capital | Villela Stay',
+      descricao: 'Itinerarios listos para Brasília — cívico, cultural, gastronómico y al aire libre. Qué ver, en qué orden y dónde alojarse para disfrutar la ciudad sin perder tiempo en el tráfico.',
+      h1: 'Brasília en 1, 3 o 5 días — sin perderte lo mejor',
+      dek: 'La capital es grande, planificada y extensa. Con el itinerario correcto (y alojándote en el lugar correcto), ves lo esencial con calma — y aún sobra tiempo para el atardecer sobre el lago.',
+      casasTitulo: 'Alójate en Lago Sul — cerca de todo, lejos del ajetreo',
+      casasTexto: 'A 10 minutos del Aeropuerto JK y de la Esplanada, el Lago Sul es la base ideal para tu itinerario: vuelves a casa entre paseo y paseo, descansas de verdad y atrapas la Ermida Dom Bosco a la hora del atardecer.',
+      isca: { titulo: 'Itinerario de 3 días en Brasília (PDF del anfitrión)', texto: 'El paso a paso que armamos para nuestros huéspedes: qué ver por la mañana, por la tarde y por la noche, con consejos de horario y tráfico. Descárgalo ahora.', botao: 'Quiero el itinerario de 3 días' },
+      faq: [
+        { q: '¿Cuántos días son ideales para conocer Brasília?', a: 'Tres días cubren lo esencial con tranquilidad: un día para la ruta cívica (Esplanada, Três Poderes, Catedral), uno para la cultura y la gastronomía (museos, Pontão, restaurantes) y uno para el aire libre (Jardín Botánico, Lago Paranoá, Ermida Dom Bosco). Cinco días permiten incluir los alrededores — Cidade Ocidental, Chapada Imperial y cascadas.' },
+        { q: '¿Hace falta coche para moverse por Brasília?', a: 'Ayuda mucho. La ciudad fue diseñada para el coche y los puntos turísticos están lejos entre sí. Las apps de transporte funcionan bien, pero un coche da libertad — y, alojándote en el Lago Sul, estás a pocos minutos de las principales atracciones.' },
+        { q: '¿Cuál es la mejor época para visitar?', a: 'La estación seca (mayo a septiembre) tiene el cielo más azul y días soleados — ideal para fotos y paseos al aire libre. La estación de lluvias (octubre a abril) deja la ciudad más verde y los jardines exuberantes. Solo evita los feriados pico (Fin de Año, Carnaval) si quieres menos gente.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Brasília no cabe en un paseo de tarde. Fue diseñada a escala monumental — distancias amplias, ejes largos, horizontes abiertos. Quien llega sin itinerario pierde tiempo en el tráfico y energía bajo el sol. Quien llega con un plan (y se aloja en el barrio correcto) descubre una de las ciudades más sorprendentes de Brasil. Aquí están los itinerarios que armamos para nuestros huéspedes.</p>
+
+${h.fig(1, { legenda: 'La Praça dos Três Poderes y el Palacio del Planalto — el corazón cívico de la capital.' })}
+
+<h2>1 día: lo esencial cívico</h2>
+<p>Si solo tienes un día, dedícalo al eje que convirtió a Brasília en Patrimonio de la Humanidad:</p>
+<ul class="artigo-lista">
+  <li><strong>Mañana:</strong> Praça dos Três Poderes — el Palacio del Planalto, el Supremo Tribunal y el Congreso Nacional. Empieza temprano, antes del calor.</li>
+  <li><strong>Mediodía:</strong> la Catedral Metropolitana y la Esplanada dos Ministérios, con sus museos de Niemeyer (el Museo Nacional y la Biblioteca).</li>
+  <li><strong>Tarde:</strong> Memorial JK y la Torre de TV (vista panorámica de 360°).</li>
+  <li><strong>Final de la tarde:</strong> Ermida Dom Bosco, para la puesta de sol sobre el Lago Paranoá.</li>
+</ul>
+<p>¿Quieres entender lo que estás viendo? La <a href="${h.L('/blog/arquitetura.html')}">guía de arquitectura</a> explica cada obra y quién la proyectó.</p>
+
+${h.fig(2, { legenda: 'La cúpula del Museo Nacional, de Niemeyer, en la Esplanada dos Ministérios.' })}
+
+<h2>3 días: ciudad, cultura y naturaleza</h2>
+<p>Con tres días, respiras la ciudad en vez de solo fotografiarla.</p>
+<h3>Día 1 — Cívico</h3>
+<p>La ruta de arriba, sin prisa, con almuerzo en Asa Sul.</p>
+<h3>Día 2 — Cultura y ocio</h3>
+<p>Mañana en el Santuario Dom Bosco (los vitrales azules quitan el aliento), tarde en el <strong>Pontão do Lago Sul</strong> — el punto a la orilla del agua con restaurantes, paseo y barcos — y noche de buena gastronomía. Las mejores mesas están en la <a href="${h.L('/blog/gastronomia.html')}">guía de gastronomía</a>.</p>
+<h3>Día 3 — Aire libre</h3>
+<p>El Jardín Botánico de Brasília o el Parque da Cidade por la mañana, y por la tarde el <strong>Catetinho</strong> — la primera residencia de Juscelino en la ciudad, levantada en diez días, hoy un museo encantador de camino al Lago Sul.</p>
+
+${h.fig(3, { legenda: 'El paseo del Pontão do Lago Sul, a la orilla del Paranoá — atardecer y gastronomía.' })}
+
+<h2>5 días: Brasília + alrededores</h2>
+<p>Cinco días abren espacio para lo que pocos turistas ven: la <strong>Chapada Imperial</strong> y sus cascadas a una hora de la ciudad, el <strong>Vale do Amanhecer</strong> en Planaltina, los miradores del Lago Norte y un día entero solo de lago — paddle surf, lancha, atardecer. Es cuando Brasília deja de ser "la ciudad de los edificios del gobierno" y se vuelve un destino de verdad.</p>
+
+${h.fig(4, { legenda: 'El Catetinho, primera morada de JK en Brasília — levantado en diez días.' })}
+
+<h2>El secreto de un buen itinerario: dónde duermes</h2>
+<p>El mayor error del turista en Brasília es alojarse lejos y gastar el día en el tráfico. Quedarse en el <strong>Lago Sul</strong> cambia el viaje: estás a minutos de la Esplanada, del Pontão y de la Ermida, en un barrio arbolado y seguro, y vuelves a una casa de verdad — con piscina, cocina y espacio — entre paseo y paseo. Es el itinerario trabajando a tu favor, no en tu contra.</p>
+`,
+    },
+  },
 };
