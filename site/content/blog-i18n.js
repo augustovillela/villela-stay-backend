@@ -569,4 +569,106 @@ ${h.fig(2, { legenda: 'Arquitectura modular: módulos combinados crean espacios 
 `,
     },
   },
+  'domo-geodesico': {
+    en: {
+      titulo: 'Geodesic dome: the cupola that becomes a retreat, a home and an events hall | Villela Stay',
+      descricao: "What a geodesic dome is, why it captivates architects and hoteliers, how it's built (frequency, connectors, cover) and why it became the dream stay — and an events space for hundreds.",
+      h1: 'The geodesic dome: lots of space, little structure, no column in the middle',
+      dek: "Light, fast to assemble and hypnotically beautiful, the geodesic dome is one of architecture's most brilliant ideas — and one of the most sought-after stay experiences in the world. Understand how it works, and why it fascinates us.",
+      casasTitulo: 'The same passion for spaces that enchant',
+      casasTexto: 'What draws us to the dome is what moves every Villela Stay stay: spaces that surprise, embrace and stay in the memory. Discover our houses in Lago Sul — and, if you want to host an event under a dome or bring a project to life, talk to us.',
+      isca: { titulo: 'Geodesic dome guide: from calculation to assembly (PDF)', texto: "The geometry without mystery, the frequencies, the connectors and the cover, the step-by-step of the build and the details that decide comfort. The host's guide for anyone who dreams of a dome — to live in, to host or to entertain.", botao: 'I want the guide' },
+      faq: [
+        { q: 'What is a geodesic dome?', a: 'It\'s a cupola formed by a mesh of triangles that lean on one another, derived from the geometry of the sphere — the same science (geodesy) that measures the surface of the Earth. The triangles distribute the weight across the whole structure, which allows large spans to be covered with no column in the middle, using very little material. It was popularised by the American architect and inventor Buckminster Fuller in the mid-20th century.' },
+        { q: 'Can you live — or stay — in a geodesic dome?', a: "Yes, and that's exactly what made it a craze in tourism. With insulation, flooring, installations and a good cover, the dome becomes a surprisingly comfortable and spacious environment. Around the world, transparent domes amid nature are among the most desired stays — sleeping under the stars, with the comfort of a hotel room." },
+        { q: 'Why is the dome so strong and economical?', a: 'Because of the geometry. The spherical shape and the mesh of triangles make the structure work together: it supports a lot of weight and strong winds with a fraction of the material of a conventional build. Less material, fast assembly and a very high strength-to-weight ratio — that\'s why the dome appears from greenhouses to emergency shelters and event pavilions.' },
+        { q: 'What is the "frequency" of a dome?', a: "It's the level of subdivision of the triangles. The higher the frequency (1V, 2V, 3V…), the more triangles, the closer the cupola gets to a perfect sphere and the larger the span can be — at the cost of more pieces and connectors. The right frequency depends on the size you want to cover and the precision you need." },
+        { q: 'Is a dome good for events?', a: 'Very much so. With no internal columns, the dome opens up a free, scenic hall — great for weddings, graduations, launches and gatherings. Depending on the diameter, it holds from a few people to a few hundred guests, with an atmosphere no ordinary tent delivers.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Imagine covering a large space — a room, a winter garden, a hall for hundreds of guests — with no single column in the middle, using a fraction of the material of an ordinary build, and with a shape that catches the eye from any angle. That's the geodesic dome: a mesh of triangles that hold each other up in the form of a cupola. Pure geometry becoming architecture. No wonder it has been captivating everyone from Buckminster Fuller in the 1950s to the most sought-after boutique hotels on Instagram.</p>
+
+${h.fig(1, { legenda: 'The geodesic cupola: triangles leaning on one another, covering large spans with no column in the middle.' })}
+
+<h2>Why the dome captivates</h2>
+<ul class="artigo-lista">
+  <li><strong>Brilliant structure:</strong> the triangles distribute the weight across the whole mesh. The result is one of the best strength-to-weight ratios in architecture — lots of space, very little material.</li>
+  <li><strong>Free span, no columns:</strong> the interior is a single, spacious, scenic environment. Perfect for entertaining, exhibiting, celebrating — or simply breathing.</li>
+  <li><strong>Fast to assemble:</strong> standardised pieces (struts and connectors) that fit together — the structure goes up in days, not months.</li>
+  <li><strong>Efficient and strong:</strong> the aerodynamic shape handles wind well, and air circulates naturally inside the cupola. Light to transport, firm once assembled.</li>
+  <li><strong>Beauty that sells:</strong> the dome is photogenic by nature. As a stay or an events space, it is both the shelter and the attraction.</li>
+</ul>
+
+<h2>How a dome takes shape</h2>
+<p>Behind the futuristic look there is a clear method — and each stage has its craft:</p>
+<ul class="artigo-lista">
+  <li><strong>Design and frequency:</strong> you set the diameter and the <em>frequency</em> (1V, 2V, 3V…), that is, how much the mesh is subdivided. More frequency, more triangles, closer to the sphere — and the larger the possible span.</li>
+  <li><strong>Calculating the pieces:</strong> the geometry determines the lengths of the struts and the angles of the connectors. This is where precision matters: wrong piece, crooked dome.</li>
+  <li><strong>Connectors and struts:</strong> the hubs and bars form the skeleton. Wood, steel or tube — each material calls for a type of joint.</li>
+  <li><strong>Foundation and porch:</strong> the base that receives the cupola and the entrance that integrates it with the land.</li>
+  <li><strong>Cover:</strong> technical canvas, polycarbonate or panels — the "skin" that closes the dome, from translucent glamping to a fully sealed hall.</li>
+  <li><strong>Skylight and openings:</strong> the opening at the top to ventilate and light, plus windows and doors that bring comfort and a view.</li>
+  <li><strong>Finishing:</strong> floor, insulation and the final touch that turns the structure into a welcoming space.</li>
+</ul>
+
+${h.fig(2, { legenda: "From shelter to urban landmark: the cupola spans great distances with lightness — here, Buckminster Fuller's iconic Montreal Biosphere." })}
+
+<h2>From glamping to the grand event</h2>
+<p>The dome has a dual calling. On a small scale, it becomes the <strong>dream stay</strong>: a translucent suite amid the green, to sleep under the stars with the comfort of a good room — one of the most sought-after experiences in nature tourism. On a large scale, it becomes an <strong>events hall</strong>: with no internal columns, it opens space for weddings, graduations and gatherings with an atmosphere no ordinary tent offers, holding from dozens to hundreds of guests depending on the diameter.</p>
+
+<h2>What this has to do with Villela Stay</h2>
+<p>Brasília was born from a bold bet on architecture — cupolas, curves and geometry that became the symbol of an entire city. It makes perfect sense that, around here, we remain in love with structures that combine ingenuity and beauty. The geodesic dome is exactly that: form and function in the same gesture. If you dream of <strong>hosting an event under a dome</strong>, staying in one, or bringing a <strong>project to life</strong> — to live in, to invest or to build — <a href="${h.wa('Hi! I came from the geodesic dome article on the Villela Stay website and would like to talk about a dome project/event.')}">talk to us</a>. We love a good conversation about spaces that enchant.</p>
+`,
+    },
+    es: {
+      titulo: 'Domo geodésico: la cúpula que se vuelve refugio, casa y salón de eventos | Villela Stay',
+      descricao: 'Qué es un domo geodésico, por qué encanta a arquitectos y hoteleros, cómo se construye (frecuencia, conectores, cubierta) y por qué se volvió el alojamiento de los sueños — y un espacio de eventos para cientos.',
+      h1: 'El domo geodésico: mucho espacio, poca estructura, ninguna columna en el medio',
+      dek: 'Ligero, rápido de montar y de una belleza hipnótica, el domo geodésico es una de las ideas más geniales de la arquitectura — y una de las experiencias de alojamiento más buscadas del mundo. Entiende cómo funciona, y por qué nos fascina.',
+      casasTitulo: 'La misma pasión por espacios que encantan',
+      casasTexto: 'Lo que nos atrae del domo es lo que mueve cada alojamiento de Villela Stay: espacios que sorprenden, abrazan y quedan en la memoria. Conoce nuestras casas en el Lago Sul — y, si quieres realizar un evento bajo un domo o sacar un proyecto del papel, habla con nosotros.',
+      isca: { titulo: 'Guía del domo geodésico: del cálculo al montaje (PDF)', texto: 'La geometría sin misterio, las frecuencias, los conectores y la cubierta, el paso a paso de la obra y los cuidados que deciden el confort. La guía del anfitrión para quien sueña con un domo — para vivir, alojar o recibir.', botao: 'Quiero la guía' },
+      faq: [
+        { q: '¿Qué es un domo geodésico?', a: 'Es una cúpula formada por una malla de triángulos que se apoyan unos en otros, derivada de la geometría de la esfera — la misma ciencia (geodesia) que mide la superficie de la Tierra. Los triángulos distribuyen el peso por toda la estructura, lo que permite cubrir grandes vanos sin ninguna columna en el medio, con muy poco material. Fue popularizado por el arquitecto e inventor estadounidense Buckminster Fuller a mediados del siglo XX.' },
+        { q: '¿Se puede vivir — o alojarse — en un domo geodésico?', a: 'Sí, y es justamente lo que lo volvió furor en el turismo. Con aislamiento, piso, instalaciones y una buena cubierta, el domo se vuelve un ambiente sorprendentemente confortable y amplio. En todo el mundo, los domos transparentes en medio de la naturaleza están entre los alojamientos más deseados — dormir viendo las estrellas, con el confort de una habitación de hotel.' },
+        { q: '¿Por qué el domo es tan resistente y económico?', a: 'Por la geometría. La forma esférica y la malla de triángulos hacen que la estructura trabaje en conjunto: soporta mucho peso y vientos fuertes con una fracción del material de una construcción convencional. Menos material, montaje rápido y altísima relación resistencia/peso — por eso el domo aparece desde invernaderos hasta refugios de emergencia y pabellones de eventos.' },
+        { q: '¿Qué es la "frecuencia" de un domo?', a: 'Es el nivel de subdivisión de los triángulos. Cuanto mayor la frecuencia (1V, 2V, 3V…), más triángulos, más se acerca la cúpula a una esfera perfecta y mayor puede ser el vano — a costa de más piezas y conectores. La frecuencia correcta depende del tamaño que quieras cubrir y de la precisión deseada.' },
+        { q: '¿El domo sirve para eventos?', a: 'Sirve muy bien. Sin columnas internas, el domo abre un salón libre y escénico — ideal para bodas, graduaciones, lanzamientos y celebraciones. Según el diámetro, acomoda desde pocas personas hasta algunos cientos de invitados, con una atmósfera que ninguna carpa común entrega.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Imagina cubrir un gran espacio — una sala, un jardín de invierno, un salón para cientos de invitados — sin una sola columna en el medio, gastando una fracción del material de una obra común, y con una forma que atrapa la mirada desde cualquier ángulo. Eso es el domo geodésico: una malla de triángulos que se sostienen mutuamente en forma de cúpula. Pura geometría volviéndose arquitectura. No por casualidad, viene encantando desde Buckminster Fuller, en los años 1950, hasta los hoteles boutique más disputados de Instagram.</p>
+
+${h.fig(1, { legenda: 'La cúpula geodésica: triángulos que se apoyan unos en otros y cubren grandes vanos sin columna en el medio.' })}
+
+<h2>Por qué encanta el domo</h2>
+<ul class="artigo-lista">
+  <li><strong>Estructura genial:</strong> los triángulos distribuyen el peso por toda la malla. El resultado es una de las mejores relaciones resistencia/peso de la arquitectura — mucho espacio, poquísimo material.</li>
+  <li><strong>Vano libre, sin columnas:</strong> el interior es un único ambiente amplio y escénico. Perfecto para recibir, exponer, celebrar — o simplemente respirar.</li>
+  <li><strong>Rápido de montar:</strong> piezas estandarizadas (barras y conectores) que encajan — la estructura se levanta en días, no en meses.</li>
+  <li><strong>Eficiente y resistente:</strong> la forma aerodinámica enfrenta bien el viento, y el aire circula con naturalidad dentro de la cúpula. Ligero para transportar, firme una vez montado.</li>
+  <li><strong>Belleza que vende:</strong> el domo es fotogénico por naturaleza. Como alojamiento o espacio de eventos, es a la vez el refugio y la atracción.</li>
+</ul>
+
+<h2>Cómo cobra forma un domo</h2>
+<p>Detrás de la apariencia futurista hay un método claro — y cada etapa tiene su oficio:</p>
+<ul class="artigo-lista">
+  <li><strong>Proyecto y frecuencia:</strong> se define el diámetro y la <em>frecuencia</em> (1V, 2V, 3V…), es decir, cuánto se subdivide la malla. Más frecuencia, más triángulos, más cerca de la esfera — y mayor el vano posible.</li>
+  <li><strong>Cálculo de las piezas:</strong> la geometría determina las longitudes de las barras y los ángulos de los conectores. Aquí importa la precisión: pieza errada, domo torcido.</li>
+  <li><strong>Conectores y barras:</strong> los nudos (hubs) y las barras forman el esqueleto. Madera, acero o tubo — cada material pide un tipo de encaje.</li>
+  <li><strong>Cimentación y pórtico:</strong> la base que recibe la cúpula y la entrada que la integra al terreno.</li>
+  <li><strong>Cubierta:</strong> lona técnica, policarbonato o paneles — la "piel" que cierra el domo, del glamping translúcido al salón totalmente sellado.</li>
+  <li><strong>Linternilla y aberturas:</strong> la abertura en el tope para ventilar e iluminar, más ventanas y puertas que dan confort y vista.</li>
+  <li><strong>Acabado:</strong> piso, aislamiento y el toque final que transforma la estructura en un ambiente acogedor.</li>
+</ul>
+
+${h.fig(2, { legenda: 'Del refugio al hito urbano: la cúpula vence grandes vanos con ligereza — aquí, la icónica Biosfera de Montreal, de Buckminster Fuller.' })}
+
+<h2>Del glamping al gran evento</h2>
+<p>El domo tiene doble vocación. En pequeño tamaño, se vuelve el <strong>alojamiento de los sueños</strong>: una suite translúcida en medio del verde, para dormir bajo las estrellas con el confort de una buena habitación — una de las experiencias más buscadas en el turismo de naturaleza. En gran tamaño, se vuelve <strong>salón de eventos</strong>: sin columnas internas, abre espacio para bodas, graduaciones y celebraciones con una atmósfera que ninguna carpa común ofrece, acomodando de decenas a cientos de invitados según el diámetro.</p>
+
+<h2>Qué tiene que ver esto con Villela Stay</h2>
+<p>Brasília nació de una apuesta audaz por la arquitectura — cúpulas, curvas y geometría que se volvieron símbolo de una ciudad entera. Tiene todo el sentido que, por aquí, sigamos enamorados de estructuras que unen ingenio y belleza. El domo geodésico es exactamente eso: forma y función en el mismo gesto. Si sueñas con <strong>realizar un evento bajo un domo</strong>, alojarte en uno, o sacar un <strong>proyecto del papel</strong> — para vivir, invertir o emprender — <a href="${h.wa('¡Hola! Vengo del artículo sobre el domo geodésico en el sitio de Villela Stay y quiero hablar sobre un proyecto/evento con domo.')}">habla con nosotros</a>. Nos encanta una buena conversación sobre espacios que encantan.</p>
+`,
+    },
+  },
 };
