@@ -391,6 +391,9 @@ for (let i = 0; i < Math.max(casasFotos.length, TURISMO.length); i++) {
 
 // Depoimentos 5 estrelas (colhidos do site atual; edite data/depoimentos.json para incluir novos)
 const depoimentos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'depoimentos.json'), 'utf8').replace(/^﻿/, ''));
+// Depoimento traduzido por idioma (fallback PT) + selo discreto de tradução em EN/ES.
+const depTexto = d => (LANG === 'en' && d.texto_en) ? d.texto_en : ((LANG === 'es' && d.texto_es) ? d.texto_es : d.texto);
+const depSelo = () => LANG === 'pt' ? '' : ` · <span class="dep-traduzido">${t('', 'translated from Portuguese', 'traducido del portugués')}</span>`;
 
 const home = layout(
   t('Villela Stay — Casas, flats e suítes no Lago Sul, Brasília', 'Villela Stay — Houses, flats and suites in Lago Sul, Brasília', 'Villela Stay — Casas, flats y suites en Lago Sul, Brasília'),
@@ -440,8 +443,8 @@ window.addEventListener('load', function(){
     <div class="marquee-track">${[...depoimentos, ...depoimentos].map(d => `
       <figure class="depoimento">
         <div class="estrelas" aria-label="${t('5 estrelas', '5 stars', '5 estrellas')}">★★★★★</div>
-        <blockquote>“${esc(d.texto)}”</blockquote>
-        <figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">${t('avaliação no', 'review on', 'reseña en')} ${esc(d.origem)}</span></figcaption>
+        <blockquote>“${esc(depTexto(d))}”</blockquote>
+        <figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">${t('avaliação no', 'review on', 'reseña en')} ${esc(d.origem)}</span>${depSelo()}</figcaption>
       </figure>`).join('\n')}
     </div>
   </div>
@@ -502,7 +505,7 @@ fetch('${BACKEND}/api/ultima-hora')
         '@type': 'Review',
         author: { '@type': 'Person', name: d.nome },
         reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
-        reviewBody: d.texto
+        reviewBody: depTexto(d)
       }))
     })}</script>`
   }
@@ -677,7 +680,7 @@ for (const l of listings) {
   const deps = depoimentosUnidade(l, idx);
   const blocoDepoimentos = deps.length ? `<section class="uni-depoimentos">
     <h2 class="secao-titulo">${t('O que dizem nossos hóspedes', 'What our guests say', 'Lo que dicen nuestros huéspedes')}</h2>
-    <div class="uni-dep-grid">${deps.map(d => `<figure class="depoimento"><div class="estrelas" aria-label="${t('5 estrelas', '5 stars', '5 estrellas')}">★★★★★</div><blockquote>“${esc(d.texto)}”</blockquote><figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">${t('avaliação no', 'review on', 'reseña en')} ${esc(d.origem)}</span></figcaption></figure>`).join('')}</div>
+    <div class="uni-dep-grid">${deps.map(d => `<figure class="depoimento"><div class="estrelas" aria-label="${t('5 estrelas', '5 stars', '5 estrellas')}">★★★★★</div><blockquote>“${esc(depTexto(d))}”</blockquote><figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">${t('avaliação no', 'review on', 'reseña en')} ${esc(d.origem)}</span>${depSelo()}</figcaption></figure>`).join('')}</div>
   </section>` : '';
   const ctaFinal = `<section class="uni-cta-final">
     <h2>${t('Garanta sua data antes que esgote', 'Secure your dates before they\'re gone', 'Asegura tu fecha antes de que se agote')}</h2>

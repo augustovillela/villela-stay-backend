@@ -3,42 +3,56 @@
     "nome": "Pedro",
     "origem": "Airbnb",
     "hospedagem": "Suíte da Família · Casa Modernista",
-    "texto": "Um dos melhores Airbnb's que já fiquei na vida, local impecável, a estadia com meus amigos foi maravilhosa e não deixou nada a desejar. Recomendo muito!"
+    "texto": "Um dos melhores Airbnb's que já fiquei na vida, local impecável, a estadia com meus amigos foi maravilhosa e não deixou nada a desejar. Recomendo muito!",
+    "texto_en": "One of the best Airbnbs I've ever stayed at — impeccable place, and the stay with my friends was wonderful, leaving nothing to be desired. Highly recommend!",
+    "texto_es": "Uno de los mejores Airbnb en los que me he hospedado — lugar impecable, y la estancia con mis amigos fue maravillosa, no faltó nada. ¡Muy recomendable!"
   },
   {
     "nome": "Luciana",
     "origem": "Airbnb",
     "hospedagem": "Casa Modernista",
-    "texto": "Estadia foi perfeita. Tudo conforme previsto. Proprietário solícito e atencioso. Localização excelente. Imóvel com espaço suficiente para acomodar toda a família. Adoramos."
+    "texto": "Estadia foi perfeita. Tudo conforme previsto. Proprietário solícito e atencioso. Localização excelente. Imóvel com espaço suficiente para acomodar toda a família. Adoramos.",
+    "texto_en": "The stay was perfect. Everything as expected. Helpful and attentive owner. Excellent location. The property had plenty of space for the whole family. We loved it.",
+    "texto_es": "La estancia fue perfecta. Todo según lo previsto. Propietario atento y servicial. Ubicación excelente. La propiedad tenía espacio de sobra para toda la familia. Nos encantó."
   },
   {
     "nome": "Álvara Luís",
     "origem": "Airbnb",
     "hospedagem": "Suíte do Amor · Villela Home Stay",
-    "texto": "Ótimo local e anfitrião, quarto impecável, o anfitrião se disponibilizou 24 horas para atendimento a qualquer necessidade ou dúvida sobre o local, me senti em casa."
+    "texto": "Ótimo local e anfitrião, quarto impecável, o anfitrião se disponibilizou 24 horas para atendimento a qualquer necessidade ou dúvida sobre o local, me senti em casa.",
+    "texto_en": "Great place and host — impeccable room, and the host was available 24/7 for any need or question about the place. I felt right at home.",
+    "texto_es": "Excelente lugar y anfitrión — habitación impecable, y el anfitrión estuvo disponible las 24 horas para cualquier necesidad o duda sobre el lugar. Me sentí como en casa."
   },
   {
     "nome": "Priscila",
     "origem": "Airbnb",
     "hospedagem": "Suíte da Família · Casa Modernista",
-    "texto": "Casa muito agradável, ambiente perfeito para bons momentos de lazer em família, atendimento super atencioso e prestativo. Recomendo muito!!"
+    "texto": "Casa muito agradável, ambiente perfeito para bons momentos de lazer em família, atendimento super atencioso e prestativo. Recomendo muito!!",
+    "texto_en": "A very pleasant house, the perfect setting for great family leisure time. Super attentive and helpful service. Highly recommend!!",
+    "texto_es": "Casa muy agradable, el ambiente perfecto para buenos momentos de ocio en familia. Atención súper atenta y servicial. ¡¡Muy recomendable!!"
   },
   {
     "nome": "Luiz Henrique",
     "origem": "Airbnb",
     "hospedagem": "Flat dos Solteiros",
-    "texto": "Foi muito bom estar nas acomodações do Augusto, ficamos com a família muito satisfeitos por tudo e principalmente da simpatia e disposição do Augusto. Vale a pena se hospedar e queremos voltar, já divulgamos para amigos."
+    "texto": "Foi muito bom estar nas acomodações do Augusto, ficamos com a família muito satisfeitos por tudo e principalmente da simpatia e disposição do Augusto. Vale a pena se hospedar e queremos voltar, já divulgamos para amigos.",
+    "texto_en": "It was wonderful to stay at Augusto's place — our whole family was very satisfied with everything, especially Augusto's warmth and willingness to help. Well worth staying, and we want to come back; we've already recommended it to friends.",
+    "texto_es": "Fue muy bueno hospedarnos en el alojamiento de Augusto — toda la familia quedó muy satisfecha con todo, sobre todo con la simpatía y la disposición de Augusto. Vale la pena hospedarse y queremos volver; ya lo recomendamos a amigos."
   },
   {
     "nome": "Camila",
     "origem": "Airbnb",
     "hospedagem": "Villela Home Stay",
-    "texto": "A casa é muito linda (mais do que nas fotos), o anfitrião respondia rápido e foi muito claro nas informações."
+    "texto": "A casa é muito linda (mais do que nas fotos), o anfitrião respondia rápido e foi muito claro nas informações.",
+    "texto_en": "The house is beautiful (even more than in the photos); the host replied quickly and was very clear with the information.",
+    "texto_es": "La casa es preciosa (más aún que en las fotos); el anfitrión respondía rápido y fue muy claro con la información."
   },
   {
     "nome": "Iago",
     "origem": "Airbnb",
     "hospedagem": "Casa Modernista",
-    "texto": "Primeiramente gostaria de agradecer o Augusto por toda a prestabilidade durante a nossa estadia. A casa é magnífica."
+    "texto": "Primeiramente gostaria de agradecer o Augusto por toda a prestabilidade durante a nossa estadia. A casa é magnífica.",
+    "texto_en": "First of all, I'd like to thank Augusto for all his helpfulness throughout our stay. The house is magnificent.",
+    "texto_es": "Ante todo, me gustaría agradecer a Augusto por toda su ayuda durante nuestra estancia. La casa es magnífica."
   }
 ]
