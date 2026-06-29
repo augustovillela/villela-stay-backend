@@ -2006,24 +2006,24 @@ console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
 // total nos botões, como um linktree. Cada link de reserva marca ?origem=linktree para o CRM.
 const linkWa = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
 const LINKTREE = [
-  { emoji: '📍', titulo: 'Google Maps · Avaliações', sub: 'Veja onde ficamos e o que dizem os hóspedes', href: 'https://maps.app.goo.gl/3G91MUDdDt3NW3U18', social: true },
-  { emoji: '🏡', titulo: 'Reservar / Ver as casas', sub: 'Casas, flats e suítes no Lago Sul', href: '/?origem=linktree#hospedagens', destaque: true },
-  { emoji: '💬', titulo: 'Fale conosco no WhatsApp', sub: 'Atendimento direto com o anfitrião', href: linkWa('Olá! Vim pelo link da Villela Stay e gostaria de informações.'), wa: true },
-  { emoji: '🎉', titulo: 'Eventos', sub: 'Casamentos, formaturas e festas — peça seu orçamento', href: '/eventos.html?origem=linktree' },
-  { emoji: '❓', titulo: 'Perguntas Frequentes (FAQ)', sub: 'Reserva, check-in, comodidades, eventos e mais', href: '/faq.html?origem=linktree' },
-  { emoji: '🎄', titulo: 'Pacotes especiais', sub: 'Natal, Réveillon, Posse 2027 e Carnaval', href: '/pacotes.html?origem=linktree' },
-  { emoji: '📷', titulo: 'Instagram · @villelastay', sub: 'Siga nossas casas e bastidores', href: 'https://instagram.com/villelastay', social: true },
-  { emoji: '📷', titulo: 'Instagram · @augustovillela', sub: 'Siga o anfitrião', href: 'https://instagram.com/augustovillela', social: true },
-  { emoji: '📘', titulo: 'Facebook · augusto.villela', sub: 'Curta e acompanhe as novidades', href: 'https://facebook.com/augusto.villela', social: true },
-  { emoji: '✉️', titulo: 'E-mail · villelastay@gmail.com', sub: 'Fale com a gente por e-mail', href: 'mailto:villelastay@gmail.com', social: true },
-  { emoji: '📖', titulo: 'Blog · Diário de Brasília', sub: 'Arquitetura, gastronomia e roteiros', href: '/blog.html?origem=linktree' }
+  { emoji: '📍', titulo: t('Google Maps · Avaliações', 'Google Maps · Reviews', 'Google Maps · Reseñas'), sub: t('Veja onde ficamos e o que dizem os hóspedes', 'See where we are and what guests say', 'Mira dónde estamos y lo que dicen los huéspedes'), href: 'https://maps.app.goo.gl/3G91MUDdDt3NW3U18', social: true },
+  { emoji: '🏡', titulo: t('Reservar / Ver as casas', 'Book / See the houses', 'Reservar / Ver las casas'), sub: t('Casas, flats e suítes no Lago Sul', 'Houses, flats and suites in Lago Sul', 'Casas, flats y suites en Lago Sul'), href: L('/') + '?origem=linktree#hospedagens', destaque: true },
+  { emoji: '💬', titulo: t('Fale conosco no WhatsApp', 'Chat with us on WhatsApp', 'Escríbenos por WhatsApp'), sub: t('Atendimento direto com o anfitrião', 'Direct service with the host', 'Atención directa con el anfitrión'), href: linkWa(t('Olá! Vim pelo link da Villela Stay e gostaria de informações.', "Hi! I came from the Villela Stay link and I'd like some information.", '¡Hola! Vengo del enlace de Villela Stay y quiero información.')), wa: true },
+  { emoji: '🎉', titulo: t('Eventos', 'Events', 'Eventos'), sub: t('Casamentos, formaturas e festas — peça seu orçamento', 'Weddings, graduations and parties — request a quote', 'Bodas, graduaciones y fiestas — pide tu presupuesto'), href: L('/eventos.html') + '?origem=linktree' },
+  { emoji: '❓', titulo: t('Perguntas Frequentes (FAQ)', 'FAQ — Frequently Asked Questions', 'Preguntas Frecuentes (FAQ)'), sub: t('Reserva, check-in, comodidades, eventos e mais', 'Booking, check-in, amenities, events and more', 'Reserva, check-in, comodidades, eventos y más'), href: L('/faq.html') + '?origem=linktree' },
+  { emoji: '🎄', titulo: t('Pacotes especiais', 'Special packages', 'Paquetes especiales'), sub: t('Natal, Réveillon, Posse 2027 e Carnaval', 'Christmas, New Year, 2027 Inauguration and Carnival', 'Navidad, Fin de Año, Toma de Posesión 2027 y Carnaval'), href: L('/pacotes.html') + '?origem=linktree' },
+  { emoji: '📷', titulo: 'Instagram · @villelastay', sub: t('Siga nossas casas e bastidores', 'Follow our houses and behind the scenes', 'Sigue nuestras casas y el detrás de escena'), href: 'https://instagram.com/villelastay', social: true },
+  { emoji: '📷', titulo: 'Instagram · @augustovillela', sub: t('Siga o anfitrião', 'Follow the host', 'Sigue al anfitrión'), href: 'https://instagram.com/augustovillela', social: true },
+  { emoji: '📘', titulo: 'Facebook · augusto.villela', sub: t('Curta e acompanhe as novidades', 'Like and follow the news', 'Dale me gusta y sigue las novedades'), href: 'https://facebook.com/augusto.villela', social: true },
+  { emoji: '✉️', titulo: t('E-mail · villelastay@gmail.com', 'Email · villelastay@gmail.com', 'Correo · villelastay@gmail.com'), sub: t('Fale com a gente por e-mail', 'Reach us by email', 'Escríbenos por correo'), href: 'mailto:villelastay@gmail.com', social: true },
+  { emoji: '📖', titulo: t('Blog · Diário de Brasília', 'Blog · Brasília Diary', 'Blog · Diario de Brasília'), sub: t('Arquitetura, gastronomia e roteiros', 'Architecture, food and itineraries', 'Arquitectura, gastronomía e itinerarios'), href: L('/blog.html') + '?origem=linktree' }
 ];
 // Atalhos diretos para as casas (espaços inteiros). Só entram os que existem em listings.json.
 const LINKTREE_CASAS = [
   { id: 'GG04I', nome: 'Villa Kubitschek' },
   { id: 'PL02I', nome: 'Villa Catetinho' },
   { id: 'GI01I', nome: 'Casa Villela' },
-  { id: 'GD03H', nome: 'Gran Villela (espaço inteiro)' },
+  { id: 'GD03H', nome: t('Gran Villela (espaço inteiro)', 'Gran Villela (whole house)', 'Gran Villela (casa entera)') },
   { id: 'GD01H', nome: 'Casa Modernista' }
 ].filter(c => porId[c.id]);
 // Redes sociais REAIS confirmadas no site (não inventar perfis).
@@ -2045,21 +2045,22 @@ const linktreeBtn = b => `<a class="lt-btn${b.destaque ? ' lt-destaque' : ''}${b
 </a>`;
 
 const linktreeHtml = `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${HTML_LANG[LANG]}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Links da Villela Stay — Hospedagens no Lago Sul, Brasília</title>
-<meta name="description" content="Todos os links da Villela Stay: reservar, WhatsApp, eventos, pacotes, blog e redes sociais. Hospedagens inteligentes no Lago Sul, Brasília.">
-<link rel="canonical" href="${SITE_URL}/links.html">
+<title>${esc(t('Links da Villela Stay — Hospedagens no Lago Sul, Brasília', 'Villela Stay Links — Stays in Lago Sul, Brasília', 'Enlaces de Villela Stay — Alojamientos en Lago Sul, Brasília'))}</title>
+<meta name="description" content="${esc(t('Todos os links da Villela Stay: reservar, WhatsApp, eventos, pacotes, blog e redes sociais. Hospedagens inteligentes no Lago Sul, Brasília.', 'All Villela Stay links: book, WhatsApp, events, packages, blog and social media. Smart stays in Lago Sul, Brasília.', 'Todos los enlaces de Villela Stay: reservar, WhatsApp, eventos, paquetes, blog y redes sociales. Alojamientos inteligentes en Lago Sul, Brasília.'))}">
+<link rel="canonical" href="${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}/links.html">
+${hreflangTags('/links.html')}
 ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Villela Stay">
-<meta property="og:title" content="Links da Villela Stay">
-<meta property="og:description" content="Reservar, WhatsApp, eventos, pacotes, blog e redes sociais da Villela Stay — Lago Sul, Brasília.">
-<meta property="og:url" content="${SITE_URL}/links.html">
+<meta property="og:title" content="${esc(t('Links da Villela Stay', 'Villela Stay Links', 'Enlaces de Villela Stay'))}">
+<meta property="og:description" content="${esc(t('Reservar, WhatsApp, eventos, pacotes, blog e redes sociais da Villela Stay — Lago Sul, Brasília.', 'Book, WhatsApp, events, packages, blog and social media of Villela Stay — Lago Sul, Brasília.', 'Reservar, WhatsApp, eventos, paquetes, blog y redes sociales de Villela Stay — Lago Sul, Brasília.'))}">
+<meta property="og:url" content="${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}/links.html">
 <meta property="og:image" content="${SITE_URL}/og-home.jpg">
-<meta property="og:locale" content="pt_BR">
+<meta property="og:locale" content="${LANG === 'en' ? 'en_US' : (LANG === 'es' ? 'es_ES' : 'pt_BR')}">
 <meta name="theme-color" content="${PWA.themeColor}">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>
@@ -2109,26 +2110,26 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
 <main class="lt-wrap">
   ${TEM_LOGO ? '<img class="lt-logo" src="/logo.png" alt="Villela Stay" width="104" height="104">' : ''}
   <div class="lt-marca">Villela <span>Stay</span></div>
-  <p class="lt-tag">Hospedagens Inteligentes · para Experiências Inesquecíveis</p>
+  <p class="lt-tag">${t('Hospedagens Inteligentes · para Experiências Inesquecíveis', 'Smart Stays · for Unforgettable Experiences', 'Alojamientos Inteligentes · para Experiencias Inolvidables')}</p>
 
-  <a class="lt-voltar" href="/"><span aria-hidden="true">🌐</span> Ir para o site</a>
+  <a class="lt-voltar" href="${L('/')}"><span aria-hidden="true">🌐</span> ${t('Ir para o site', 'Go to the website', 'Ir al sitio')}</a>
 
   ${LINKTREE.map(linktreeBtn).join('\n  ')}
 
-  <div class="lt-sep">Nossas casas</div>
+  <div class="lt-sep">${t('Nossas casas', 'Our houses', 'Nuestras casas')}</div>
   ${LINKTREE_CASAS.map(c => linktreeBtn({
-    emoji: '🔑', titulo: c.nome, sub: porId[c.id].titulo ? `${porId[c.id].hospedes} hóspedes` : '',
-    href: `/hospedagem/${c.id}.html?origem=linktree`
+    emoji: '🔑', titulo: c.nome, sub: porId[c.id].titulo ? `${porId[c.id].hospedes} ${t('hóspedes', 'guests', 'huéspedes')}` : '',
+    href: `${L(`/hospedagem/${c.id}.html`)}?origem=linktree`
   })).join('\n  ')}
 
-  <div class="lt-sep">Telefone &amp; redes</div>
+  <div class="lt-sep">${t('Telefone &amp; redes', 'Phone &amp; social', 'Teléfono y redes')}</div>
   <div class="lt-redes">
     ${LINKTREE_REDES.map(r => `<a class="lt-rede" href="${r.href}"${/^https?:/.test(r.href) ? ' target="_blank" rel="noopener"' : ''}><span aria-hidden="true">${r.emoji}</span>${esc(r.label)}</a>`).join('\n    ')}
   </div>
 
   <p class="lt-rodape">
-    Lago Sul, Brasília-DF · 10 min do Aeroporto JK e da Esplanada<br>
-    <a href="/">villelastay.com.br</a>
+    ${t('Lago Sul, Brasília-DF · 10 min do Aeroporto JK e da Esplanada', 'Lago Sul, Brasília · 10 min from JK Airport and the Esplanada', 'Lago Sul, Brasília-DF · 10 min del Aeropuerto JK y de la Explanada')}<br>
+    <a href="${L('/')}">villelastay.com.br</a>
   </p>
 </main>
 <script>
