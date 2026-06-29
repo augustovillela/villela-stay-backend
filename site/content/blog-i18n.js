@@ -479,4 +479,94 @@ ${h.fig(3, { legenda: 'Azulejos de Athos Bulcão: el artista que vistió la ciud
 `,
     },
   },
+  containers: {
+    en: {
+      titulo: 'Modular construction with containers: how it works and why it captivates | Villela Stay',
+      descricao: 'Houses and spaces made from shipping containers: advantages, build stages, thermal and acoustic insulation, and why modular construction became an architecture trend.',
+      h1: 'The house that arrives ready on a truck',
+      dek: 'Fast, sustainable and surprisingly sophisticated: modular construction with shipping containers left the niche and became desirable architecture. Understand how it works — and why it interests us so much.',
+      casasTitulo: 'The same obsession with good spaces',
+      casasTexto: 'What draws us to modular construction is what moves us in our stays: well-thought-out, efficient spaces full of personality. Discover the Villela Stay houses — and talk to us if you want to swap ideas about projects.',
+      isca: { titulo: 'Checklist: thinking about a container house (PDF)', texto: 'The step-by-step, the things nobody tells you (insulation, metalwork, timelines) and what to assess before starting a modular project. Download now.', botao: 'I want the checklist' },
+      faq: [
+        { q: 'How long does a container build take?', a: 'Much less than conventional construction. Since much of the work (structure, cuts, installations, finishes) happens in parallel and in a controlled environment, a residential container project can be ready in weeks to a few months, versus many months or years of a traditional build. The final timeline depends on size and finish.' },
+        { q: 'Is a container house hot?', a: "Without treatment, yes — steel conducts a lot of heat. That's why thermal insulation is the most important stage: rock or PET wool, a ventilated roof, drywall and good solar orientation turn the container into a comfortable space, even in a hot climate like Brasília's. Done well, it's as pleasant as any brick house." },
+        { q: 'Is modular construction cheaper?', a: 'It tends to be more economical and, above all, more predictable: less waste, less build time and fewer budget surprises. The final cost varies with finish, installations and insulation — a sophisticated project can approach high-end masonry, but with timeline and sustainability in its favour.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Imagine a house that is born in a workshop, travels by truck and is assembled on site in a matter of days. It's not futurism — it's modular construction with shipping containers, one of the most elegant ideas in contemporary architecture. What began as improvised shelter became an object of desire: houses, offices, cafés and inns that combine speed, sustainability and chic industrial aesthetics.</p>
+
+${h.fig(1, { legenda: 'Shipping containers turned into construction — a ready structure, assembled on site.' })}
+
+<h2>Why containers captivate</h2>
+<ul class="artigo-lista">
+  <li><strong>Speed:</strong> the structure already exists. Much of the work happens in parallel, in a controlled environment — the timeline plummets.</li>
+  <li><strong>Sustainability:</strong> reusing a container gives new life to the steel, with far less rubble and waste than conventional construction.</li>
+  <li><strong>Predictability:</strong> fewer budget and schedule surprises, because the module is standardised.</li>
+  <li><strong>Aesthetics:</strong> the industrial lines, the large glass openings and the flexibility to stack and combine modules create spaces with personality.</li>
+</ul>
+
+<h2>How a container house comes to life</h2>
+<p>The charm is in the details — and each stage has its craft:</p>
+<ul class="artigo-lista">
+  <li><strong>Acquisition and transport:</strong> choosing the right container (20- or 40-foot are the most used) and taking it to the site.</li>
+  <li><strong>Foundation and levelling:</strong> preparing the base that receives the module.</li>
+  <li><strong>Cuts and metalwork:</strong> the metalworker opens doors, windows and openings, reinforcing the structure — the technical heart of the build.</li>
+  <li><strong>Glazing:</strong> the large openings that bring in light and transform the space.</li>
+  <li><strong>Installations:</strong> electrical and plumbing built into the design.</li>
+  <li><strong>Insulation and cladding:</strong> the decisive stage — rock/PET wool, drywall and a ventilated roof ensure thermal and acoustic comfort.</li>
+  <li><strong>Finishing:</strong> floors, paint and, why not, a rooftop with a view.</li>
+</ul>
+
+${h.fig(2, { legenda: 'Modular architecture: combined modules create spaces with personality.' })}
+
+<h2>What this has to do with Villela Stay</h2>
+<p>Everything that attracts us to modular construction — efficiency, sustainability, well-thought-out spaces full of character — is what we pursue in every stay. Brasília was born from a bold bet on architecture; it makes sense that, around here, we stay curious about what comes next. If you're interested in projects like this too — to live in, to invest or to build — talk to us. We love a good conversation about spaces.</p>
+`,
+    },
+    es: {
+      titulo: 'Construcción modular con contenedores: cómo funciona y por qué encanta | Villela Stay',
+      descricao: 'Casas y espacios hechos de contenedores marítimos: ventajas, etapas de la obra, aislamiento térmico y acústico, y por qué la construcción modular se volvió tendencia.',
+      h1: 'La casa que llega lista en camión',
+      dek: 'Rápida, sostenible y sorprendentemente sofisticada: la construcción modular con contenedores marítimos salió del nicho y se volvió arquitectura de deseo. Entiende cómo funciona — y por qué nos interesa tanto.',
+      casasTitulo: 'La misma obsesión por los buenos espacios',
+      casasTexto: 'Lo que nos atrae de la construcción modular es lo que nos mueve en los alojamientos: espacios bien pensados, eficientes y llenos de personalidad. Conoce las casas de Villela Stay — y habla con nosotros si quieres intercambiar ideas sobre proyectos.',
+      isca: { titulo: 'Checklist: pensando en una casa contenedor (PDF)', texto: 'El paso a paso, los cuidados que nadie cuenta (aislamiento, herrería, plazos) y qué evaluar antes de empezar un proyecto modular. Descárgalo ahora.', botao: 'Quiero el checklist' },
+      faq: [
+        { q: '¿Cuánto tarda una construcción con contenedores?', a: 'Mucho menos que la obra convencional. Como buena parte del trabajo (estructura, cortes, instalaciones, revestimientos) se hace en paralelo y en un ambiente controlado, un proyecto residencial en contenedores puede estar listo en semanas a pocos meses, frente a muchos meses o años de una obra tradicional. El plazo final depende del tamaño y del acabado.' },
+        { q: '¿Una casa de contenedor es calurosa?', a: 'Sin tratamiento, sí — el acero conduce mucho calor. Por eso el aislamiento térmico es la etapa más importante: lana de roca o de PET, techo ventilado, drywall y buena orientación solar convierten el contenedor en un ambiente confortable, incluso en un clima caluroso como el de Brasília. Bien hecho, queda tan agradable como cualquier casa de mampostería.' },
+        { q: '¿La construcción modular es más barata?', a: 'Suele ser más económica y, sobre todo, más previsible: menos desperdicio, menos tiempo de obra y menos sorpresas de presupuesto. El costo final varía según acabado, instalaciones y aislamiento — un proyecto sofisticado puede acercarse a la mampostería de alto nivel, pero con plazo y sostenibilidad a favor.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Imagina una casa que nace en un galpón, viaja en camión y se monta en el terreno en cuestión de días. No es futurismo — es la construcción modular con contenedores marítimos, una de las ideas más elegantes de la arquitectura contemporánea. Lo que empezó como refugio improvisado se volvió objeto de deseo: casas, oficinas, cafés y posadas que unen rapidez, sostenibilidad y estética industrial chic.</p>
+
+${h.fig(1, { legenda: 'Contenedores marítimos transformados en construcción — estructura lista, montada en el lugar.' })}
+
+<h2>Por qué encantan los contenedores</h2>
+<ul class="artigo-lista">
+  <li><strong>Velocidad:</strong> la estructura ya existe. Buena parte de la obra ocurre en paralelo, en un ambiente controlado — el plazo se desploma.</li>
+  <li><strong>Sostenibilidad:</strong> reutilizar un contenedor es dar nueva vida al acero, con mucho menos escombro y desperdicio que la obra convencional.</li>
+  <li><strong>Previsibilidad:</strong> menos sorpresas de presupuesto y cronograma, porque el módulo es estandarizado.</li>
+  <li><strong>Estética:</strong> las líneas industriales, las grandes aberturas de vidrio y la flexibilidad de apilar y combinar módulos crean espacios con personalidad.</li>
+</ul>
+
+<h2>Cómo cobra vida una casa contenedor</h2>
+<p>El encanto está en los detalles — y cada etapa tiene su oficio:</p>
+<ul class="artigo-lista">
+  <li><strong>Adquisición y transporte:</strong> elegir el contenedor correcto (los de 20 o 40 pies son los más usados) y llevarlo al terreno.</li>
+  <li><strong>Cimentación y nivelación:</strong> preparar la base que recibe el módulo.</li>
+  <li><strong>Cortes y herrería:</strong> el herrero abre puertas, ventanas y vanos, reforzando la estructura — es el corazón técnico de la obra.</li>
+  <li><strong>Vidriería:</strong> las grandes aberturas que traen luz y transforman el ambiente.</li>
+  <li><strong>Instalaciones:</strong> eléctrica e hidráulica integradas en el proyecto.</li>
+  <li><strong>Aislamiento y revestimiento:</strong> la etapa decisiva — lana de roca/PET, drywall y techo ventilado garantizan confort térmico y acústico.</li>
+  <li><strong>Acabado:</strong> pisos, pintura y, por qué no, una azotea con vista.</li>
+</ul>
+
+${h.fig(2, { legenda: 'Arquitectura modular: módulos combinados crean espacios con personalidad.' })}
+
+<h2>Qué tiene que ver esto con Villela Stay</h2>
+<p>Todo lo que nos atrae de la construcción modular — eficiencia, sostenibilidad, espacios bien pensados y llenos de carácter — es lo que perseguimos en cada alojamiento. Brasília nació de una apuesta audaz por la arquitectura; tiene sentido que, por aquí, sigamos curiosos sobre lo que viene. Si a ti también te interesan proyectos así — para vivir, invertir o emprender — habla con nosotros. Nos encanta una buena conversación sobre espacios.</p>
+`,
+    },
+  },
 };
