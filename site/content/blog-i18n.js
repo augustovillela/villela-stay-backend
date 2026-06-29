@@ -671,4 +671,108 @@ ${h.fig(2, { legenda: 'Del refugio al hito urbano: la cúpula vence grandes vano
 `,
     },
   },
+  'hospedagem-profissional': {
+    en: {
+      titulo: 'Professional hosting: your property earning more, without the hassle | Villela Stay',
+      descricao: 'Full vacation-rental management in Lago Sul and Brasília: inspection, styling, photography, listings, smart pricing, cleaning, maintenance and guest service. You earn more, we handle everything.',
+      h1: 'Your property can earn much more — and be far less work',
+      dek: 'Let Villela Stay handle everything: from professional photography to smart pricing, from cleaning to guest service. You follow the results in real time and get paid — we do the rest.',
+      casasTitulo: 'The standard we deliver',
+      casasTexto: 'These are some of the houses we manage in Lago Sul — the same care with styling, photography, maintenance and service that we would give your property. It is this level of hospitality that turns a property into an award-winning source of income.',
+      isca: { titulo: "How much can your property earn? Owner's guide (PDF)", texto: "What to assess before putting your property up for vacation rental, how to estimate profitability, what separates a listing that fills up from one that sits empty — and everything professional management does for you. The host's guide for owners.", botao: "I want the owner's guide" },
+      faq: [
+        { q: 'How does the management work — what do you do for me?', a: 'Everything that stands between you and the work and the guest. We inspect and prepare the property, do styling and landscaping, professional photography, create and optimise the listings on the platforms, smart pricing, guest service from first contact to check-out, cleaning and linen changes, maintenance and restocking. You just follow the results and get paid.' },
+        { q: 'Can I use my own property whenever I want?', a: "Yes, always. You block the dates you want to use — for you, for the family or for whoever you choose — with full flexibility. The property remains yours; we only take care of it when it's available for guests." },
+        { q: 'Will I be able to track what happens with my property?', a: 'Yes. You have full transparency: you follow bookings, occupancy and finances in real time, at any moment. No black box — you see exactly what comes in, what goes out and how your property is performing.' },
+        { q: 'What about cleaning and maintenance between stays?', a: 'Our team does a full clean and linen change after each departure, to hotel standard, and checks the property at each stay to fix any issue before the next guest. We also track and restock the consumables (amenities, utensils, whatever is missing).' },
+        { q: 'How do you avoid overbooking across platforms?', a: "We work with a unified calendar integrated with the main platforms (Airbnb, Booking, Decolar, Vrbo, Google and direct bookings). Everything syncs in one place — it maximises the property's exposure and eliminates the risk of booking the same date twice." },
+        { q: 'Is Villela Stay a real estate agency?', a: "No. We are a hosting and vacation-rental management operation — the trading name of the governance of lawyer Augusto Villela and his wife, Renata Freitas. We don't sell or rent out properties like an agency: we help owners turn their properties into a professional source of income, with award-winning hospitality." },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">You have a property — a house, a flat, a suite — and the feeling that it could earn more. Really earn. The thing is, living off vacation rentals feels like a second job: photos, listings, messages at all hours, pricing, cleaning, check-in, maintenance, reviews. That's exactly the work Villela Stay takes on for you. You keep the income and the peace of mind; we keep the operation.</p>
+
+${h.fig(1, { legenda: "Lago Sul, Brasília: the capital's most prestigious address — and where we turn properties into award-winning stays." })}
+
+<h2>Why hand the management to Villela Stay</h2>
+<ul class="artigo-lista">
+  <li><strong>Maximum profitability:</strong> smart pricing and optimised occupancy so your property earns the most possible, all year round.</li>
+  <li><strong>Minimum work for you:</strong> we take care of everything, from preparation to check-out. You relax while the earnings come in.</li>
+  <li><strong>Delighted guests:</strong> hotel-level service generates 5-star reviews — and good reviews attract more bookings, in a self-reinforcing cycle.</li>
+  <li><strong>Full transparency:</strong> bookings, occupancy and finances in real time, at any moment. You always know what's happening.</li>
+  <li><strong>Real flexibility:</strong> block the dates you want to use your property. It stays yours — always.</li>
+</ul>
+
+<h2>What we do for you</h2>
+<ul class="artigo-lista">
+  <li><strong>Inspection and preparation:</strong> we assess the property and get it ready to welcome guests — to the standard guests reward.</li>
+  <li><strong>Styling and landscaping:</strong> we create a welcoming, photogenic setting, designed for the right audience.</li>
+  <li><strong>Professional photography:</strong> the first impression is the photo. We capture the best of your property so it stands out on the platforms.</li>
+  <li><strong>Listings and pricing:</strong> we create and optimise the listings, with dynamic pricing that follows demand — competitive on slow dates, premium on strong ones.</li>
+  <li><strong>Cleaning and maintenance:</strong> a full clean and linen change for every stay, plus the preventive maintenance that keeps the property impeccable.</li>
+  <li><strong>Guest service:</strong> we reply fast, from first contact to post-stay, ensuring a memorable experience — and the review that comes with it.</li>
+</ul>
+
+${h.fig(2, { legenda: 'Pontão do Lago Sul: life by the Paranoá, minutes from the properties we manage.' })}
+
+<h2>Technology and people, to the right standard</h2>
+<p>Behind the hospitality there is method. A unified calendar integrates the main platforms — Airbnb, Booking, Decolar, Vrbo, Google and direct bookings — to maximise your property's exposure and eliminate the risk of overbooking. Add a team specialised in welcoming people well, and the result is what matters: more bookings, better guests and reviews that turn into even more bookings.</p>
+
+<h2>Who looks after your property</h2>
+<p>Villela Stay is the hosting and governance operation of lawyer <strong>Augusto Villela</strong> and his wife, <strong>Renata Freitas</strong> — award-winning hosts (Superhosts), with houses, flats and suites in Lago Sul, Brasília's most prestigious address. We are not a real estate agency or a distant app: we are the ones who serve, decide and respond. We treat every property under our management as if it were our own — because our reputation is in every stay.</p>
+
+<p>It's time your property earned what it deserves, without it becoming a problem for you. <a href="${h.wa('Hi! I came from the Professional Hosting article on the Villela Stay website and would like to know how you can manage my property.')}">Talk to us</a> and find out how much your property can earn.</p>
+`,
+    },
+    es: {
+      titulo: 'Hospedaje profesional: tu inmueble rindiendo más, sin dolores de cabeza | Villela Stay',
+      descricao: 'Gestión completa de alquiler por temporada en el Lago Sul y en Brasília: inspección, decoración, fotografía, anuncios, precios inteligentes, limpieza, mantenimiento y atención al huésped. Tú ganas más, nosotros nos encargamos de todo.',
+      h1: 'Tu inmueble puede rendir mucho más — y darte mucho menos trabajo',
+      dek: 'Deja que Villela Stay se encargue de todo: de la fotografía profesional a los precios inteligentes, de la limpieza a la atención al huésped. Tú sigues los resultados en tiempo real y cobras — nosotros hacemos el resto.',
+      casasTitulo: 'El estándar que entregamos',
+      casasTexto: 'Estas son algunas de las casas que administramos en el Lago Sul — el mismo cuidado con la decoración, la fotografía, el mantenimiento y la atención que dedicaríamos a tu inmueble. Es este nivel de hospitalidad lo que transforma una propiedad en una fuente de ingresos premiada.',
+      isca: { titulo: '¿Cuánto puede rendir tu inmueble? Guía del propietario (PDF)', texto: 'Qué evaluar antes de poner tu inmueble en alquiler por temporada, cómo estimar la rentabilidad, qué separa un anuncio que se llena de uno que no — y todo lo que una gestión profesional hace por ti. La guía del anfitrión para propietarios.', botao: 'Quiero la guía del propietario' },
+      faq: [
+        { q: '¿Cómo funciona la gestión — qué hacen por mí?', a: 'Todo lo que te separa del trabajo y del huésped. Hacemos la inspección y la preparación del inmueble, decoración y paisajismo, fotografía profesional, creación y optimización de los anuncios en las plataformas, precios inteligentes, atención al huésped del primer contacto al check-out, limpieza y cambio de ropa de cama, mantenimiento y reposición. Tú solo sigues los resultados y cobras.' },
+        { q: '¿Puedo usar mi propio inmueble cuando quiera?', a: 'Sí, siempre. Bloqueas las fechas que quieras usar — para ti, para la familia o para quien indiques — con total flexibilidad. El inmueble sigue siendo tuyo; nosotros solo lo cuidamos cuando está disponible para huéspedes.' },
+        { q: '¿Podré seguir lo que pasa con mi inmueble?', a: 'Sí. Tienes transparencia total: sigues reservas, ocupación y finanzas en tiempo real, en cualquier momento. Nada de caja negra — ves exactamente lo que entra, lo que sale y cómo está rindiendo tu inmueble.' },
+        { q: '¿Cómo es la limpieza y el mantenimiento entre estancias?', a: 'Nuestro equipo hace la limpieza completa y el cambio de ropa de cama tras cada salida, con estándar de hotel, y verifica el inmueble en cada estancia para corregir cualquier problema antes del próximo huésped. También controlamos y reponemos los consumibles (amenities, utensilios, lo que falte).' },
+        { q: '¿Cómo evitan el overbooking entre plataformas?', a: 'Trabajamos con un calendario unificado integrado a las principales plataformas (Airbnb, Booking, Decolar, Vrbo, Google y reservas directas). Todo se sincroniza en un solo lugar — maximiza la exposición del inmueble y elimina el riesgo de reservar la misma fecha dos veces.' },
+        { q: '¿Villela Stay es una inmobiliaria?', a: 'No. Somos una operación de hospedaje y gestión de alquiler por temporada — nombre comercial de la gobernanza del abogado Augusto Villela y su esposa, Renata Freitas. No vendemos ni alquilamos inmuebles como una inmobiliaria: ayudamos a los propietarios a transformar sus inmuebles en una fuente de ingresos profesional, con hospitalidad premiada.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Tienes un inmueble — una casa, un flat, una suite — y la sensación de que podría rendir más. Rendir de verdad. Solo que vivir del alquiler por temporada parece un segundo empleo: fotos, anuncios, mensajes a cualquier hora, precio, limpieza, check-in, mantenimiento, reseñas. Es exactamente ese trabajo el que Villela Stay asume por ti. Tú te quedas con la renta y la tranquilidad; la operación se queda con nosotros.</p>
+
+${h.fig(1, { legenda: 'Lago Sul, Brasília: la dirección más exclusiva de la capital — y donde transformamos inmuebles en alojamientos premiados.' })}
+
+<h2>Por qué entregar la gestión a Villela Stay</h2>
+<ul class="artigo-lista">
+  <li><strong>Rentabilidad máxima:</strong> precios inteligentes y ocupación optimizada para que tu inmueble rinda lo mejor posible, todo el año.</li>
+  <li><strong>Trabajo mínimo para ti:</strong> nos encargamos de todo, de la preparación al check-out. Tú te relajas mientras entran las ganancias.</li>
+  <li><strong>Huéspedes encantados:</strong> la atención de nivel hotel genera reseñas de 5 estrellas — y una buena reseña atrae más reservas, en un ciclo que se retroalimenta.</li>
+  <li><strong>Transparencia total:</strong> reservas, ocupación y finanzas en tiempo real, en cualquier momento. Siempre sabes lo que está pasando.</li>
+  <li><strong>Flexibilidad real:</strong> bloquea las fechas en que quieras usar tu inmueble. Sigue siendo tuyo — siempre.</li>
+</ul>
+
+<h2>Lo que hacemos por ti</h2>
+<ul class="artigo-lista">
+  <li><strong>Inspección y preparación:</strong> evaluamos el inmueble y lo dejamos listo para recibir — con el estándar que los huéspedes premian.</li>
+  <li><strong>Decoración y paisajismo:</strong> creamos un ambiente acogedor y fotogénico, pensado para el público correcto.</li>
+  <li><strong>Fotografía profesional:</strong> la primera impresión es la foto. Capturamos lo mejor de tu inmueble para que destaque en las plataformas.</li>
+  <li><strong>Anuncios y precios:</strong> creamos y optimizamos los anuncios, con precio dinámico que acompaña la demanda — competitivo en fechas flojas, valorizado en las fuertes.</li>
+  <li><strong>Limpieza y mantenimiento:</strong> limpieza completa y cambio de ropa de cama en cada estancia, además del mantenimiento preventivo que mantiene el inmueble impecable.</li>
+  <li><strong>Atención al huésped:</strong> respondemos rápido, del primer contacto al post-estancia, garantizando una experiencia memorable — y la reseña que viene de ella.</li>
+</ul>
+
+${h.fig(2, { legenda: 'Pontão do Lago Sul: la vida a la orilla del Paranoá, a pocos minutos de los inmuebles que administramos.' })}
+
+<h2>Tecnología y gente, con el estándar correcto</h2>
+<p>Detrás de la hospitalidad hay método. Un calendario unificado integra las principales plataformas — Airbnb, Booking, Decolar, Vrbo, Google y reservas directas — para maximizar la exposición de tu inmueble y eliminar el riesgo de overbooking. Suma a eso un equipo especializado en recibir bien, y el resultado es lo que importa: más reservas, mejores huéspedes y reseñas que se convierten en aún más reservas.</p>
+
+<h2>Quién cuida de tu inmueble</h2>
+<p>Villela Stay es la operación de hospedaje y gobernanza del abogado <strong>Augusto Villela</strong> y su esposa, <strong>Renata Freitas</strong> — anfitriones premiados (Superhosts), con casas, flats y suites en el Lago Sul, la dirección más exclusiva de Brasília. No somos una inmobiliaria ni una app distante: somos quienes atienden, deciden y responden. Tratamos cada inmueble bajo nuestra gestión como si fuera nuestro — porque nuestra reputación está en cada estancia.</p>
+
+<p>Llegó la hora de que tu inmueble facture lo que merece, sin que eso se vuelva un problema tuyo. <a href="${h.wa('¡Hola! Vengo del artículo de Hospedaje Profesional en el sitio de Villela Stay y quiero saber cómo pueden administrar mi inmueble.')}">Habla con nosotros</a> y descubre cuánto puede rendir tu propiedad.</p>
+`,
+    },
+  },
 };
