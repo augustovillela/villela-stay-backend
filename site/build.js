@@ -1845,7 +1845,8 @@ function renderArtigo(a0) {
   const h = {
     fig: (n, opts) => blogFig(a.slug, n, opts),
     wa: waLink,
-    esc,
+    esc, L,
+    t,
     casaLink: (code, label) => porId[code] ? `<a href="${L(`/hospedagem/${code}.html`)}">${esc(label || tituloImovel(porId[code]))}</a>` : (label ? esc(label) : ''),
   };
   const caminho = `/blog/${a.slug}.html`;
