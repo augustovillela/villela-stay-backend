@@ -3,6 +3,17 @@
 // Estrutura: resumos[ID] = { en, es };  descricoes[ID] = { en, es } (HTML na descrição).
 // Fonte das 5 casas: dados/marketing/descricoes-casas-en-es.md (acentos do ES restaurados).
 
+// Boilerplate compartilhado dos flats/suítes (traduzido uma vez e composto por unidade).
+// Grupo A = Villela Home Stay / SMDB Conjunto 29. Grupo B = Casa Modernista, QI 7.
+const BOILER_A_EN = `<p>The unit sits within Villela Home Stay, a country house in SMDB Conjunto 29, Lago Sul, set in a peaceful 9,000 m² estate where you can enjoy the nature of the Cerrado just minutes from the city. Your room and bathroom are private, while the pool, full kitchen and leisure area are shared with the guests of the other units. Barbecue, hydromassage spa and laundry are available by arrangement for an additional fee.</p>
+<p>You are close to the JK Bridge (about 2 km) and three commercial centres — Atacadão Dia a Dia, Big Box and Carrefour — plus pharmacies, a bakery, a laundry and a 24-hour bank. The city centre and the National Congress are about 11–12 km away. We're always reachable by messaging app for anything you need.</p>`;
+const BOILER_A_ES = `<p>La unidad está en Villela Home Stay, una casa de campo en la SMDB Conjunto 29, Lago Sul, dentro de una tranquila finca de 9.000 m² donde se disfruta la naturaleza del Cerrado a pocos minutos de la ciudad. Tu habitación y tu baño son privativos, mientras que la piscina, la cocina completa y el área de ocio se comparten con los huéspedes de las demás unidades. La parrilla, el spa con hidromasaje y la lavandería están disponibles mediante reserva y una tarifa adicional.</p>
+<p>Está cerca del Puente JK (unos 2 km) y de tres centros comerciales — Atacadão Dia a Dia, Big Box y Carrefour — además de farmacias, panadería, lavandería y banco 24 horas. El centro de la ciudad y el Congreso Nacional están a unos 11–12 km. Estamos siempre disponibles por aplicación de mensajes para lo que necesites.</p>`;
+const BOILER_B_EN = `<p>This is a private room within Casa Modernista, a 400 m² house with five suites in Lago Sul. Your suite and bathroom are private, while you share a generous leisure area with the guests of the other suites: a heated pool, a gourmet space, a full kitchen, a covered lounge with hammocks, a children's playground and a trampoline. Use of the jacuzzi and the barbecue is available for the respective fees.</p>
+<p>Casa Modernista is in Lago Sul, the city's finest neighbourhood, next to the Gilberto Salomão shopping centre (500 m), near the Ponte das Garças (1 km), the Pontão do Lago Sul (6 km) and Brasília's JK Airport (8 km). We're always reachable by messaging app for anything you need.</p>`;
+const BOILER_B_ES = `<p>Es una habitación privada dentro de la Casa Modernista, una casa de 400 m² con cinco suites en el Lago Sul. Tu suite y tu baño son privativos, mientras que compartes una amplia área de ocio con los huéspedes de las demás suites: piscina climatizada, espacio gourmet, cocina completa, lounge cubierto con hamacas, parque infantil y cama elástica. El uso del jacuzzi y de la parrilla está disponible mediante las respectivas tarifas.</p>
+<p>La Casa Modernista está en el Lago Sul, el mejor barrio de la ciudad, junto al centro comercial Gilberto Salomão (500 m), cerca del Puente das Garças (1 km), del Pontão do Lago Sul (6 km) y del Aeropuerto JK de Brasília (8 km). Estamos siempre disponibles por aplicación de mensajes para lo que necesites.</p>`;
+
 const resumos = {
   GD01H: {
     en: "A 400 m² modernist villa with five en-suite bedrooms, a heated pool and a hydromassage spa, in Brasília's most exclusive neighbourhood. Sleeps up to 22 — ideal for families and groups who want comfort and privacy.",
@@ -23,7 +34,22 @@ const resumos = {
   GI01I: {
     en: "A welcoming 120 m² Lago Sul house with a private pool, barbecue and a leisure area seating 30, near the JK Bridge. Sleeps up to 15 and adapts beautifully to gatherings and events.",
     es: "Una acogedora casa de 120 m² en el Lago Sul con piscina privada, parrilla y un área de ocio para 30 personas, cerca del Puente JK. Aloja hasta 15 y se adapta de maravilla a encuentros y eventos."
-  }
+  },
+  UD03H: { en: "The Flat dos Solteiros sleeps up to 8 in a private suite, bathroom and living room, with a shared pool, barbecue, spa and full kitchen in Lago Sul, near the JK Bridge.", es: "El Flat dos Solteiros aloja hasta 8 en una suite, baño y sala privativos, con piscina, parrilla, spa y cocina compartidos en el Lago Sul, cerca del Puente JK." },
+  UD09H: { en: "The Suíte do Renato Russo is a private suite with its own bathroom and a bunk with two double beds, with a shared pool and full kitchen at Villela Home Stay in Lago Sul, near the JK Bridge.", es: "La Suíte do Renato Russo es privativa, con baño propio y litera con dos camas dobles, piscina y cocina compartidas en Villela Home Stay, Lago Sul, cerca del Puente JK." },
+  UF01H: { en: "The Flat do Burle Marx is 33 m² and sleeps up to 7, with a private bathroom and a shared pool, barbecue, spa and full kitchen in Lago Sul, near the JK Bridge.", es: "El Flat do Burle Marx tiene 33 m² y aloja hasta 7, con baño privativo y piscina, parrilla, spa y cocina compartidos en el Lago Sul, cerca del Puente JK." },
+  UF05H: { en: "The Suíte do Chef is a private suite with a bunk holding two double beds, a smart TV and a heater, with a shared pool and full kitchen in Lago Sul, near the JK Bridge.", es: "La Suíte do Chef es privativa, con litera de dos camas dobles, smart TV y calefactor, piscina y cocina compartidas en el Lago Sul, cerca del Puente JK." },
+  UF06H: { en: "The Suíte do Amor is private and sleeps up to 4, with a king bed, a sofa bed and a spacious bathroom with a hydromassage tub and double shower — shared pool and kitchen in Lago Sul.", es: "La Suíte do Amor es privativa y aloja hasta 4, con cama king, sofá cama y un amplio baño con hidromasaje y ducha doble — piscina y cocina compartidas en el Lago Sul." },
+  UF07H: { en: "The Flat do Oscar is 30 m² and sleeps up to 6, with a private external bathroom and a shared pool, barbecue, spa and full kitchen in Lago Sul, near the JK Bridge.", es: "El Flat do Oscar tiene 30 m² y aloja hasta 6, con baño externo privativo y piscina, parrilla, spa y cocina compartidos en el Lago Sul, cerca del Puente JK." },
+  UF08H: { en: "The Flat da Cassia Eller is 30 m² and sleeps up to 7, with a private bathroom and a shared pool, barbecue, spa and full kitchen in Lago Sul, near the JK Bridge.", es: "El Flat da Cassia Eller tiene 30 m² y aloja hasta 7, con baño privativo y piscina, parrilla, spa y cocina compartidos en el Lago Sul, cerca del Puente JK." },
+  UH01H: { en: "The Suíte do Felipe is a private room in Casa Modernista for up to 4, with air conditioning, a smart TV and Wi-Fi, and a shared heated pool and gourmet area in Lago Sul.", es: "La Suíte do Felipe es una habitación privada en la Casa Modernista para hasta 4, con aire acondicionado, smart TV y Wi-Fi, y piscina climatizada y zona gourmet compartidas en el Lago Sul." },
+  UH03H: { en: "The Suíte da Família is a private room in Casa Modernista for up to 6, with air conditioning, a smart TV and Wi-Fi, and a shared heated pool and gourmet area in Lago Sul.", es: "La Suíte da Família es una habitación privada en la Casa Modernista para hasta 6, con aire acondicionado, smart TV y Wi-Fi, y piscina climatizada y zona gourmet compartidas en el Lago Sul." },
+  UH04H: { en: "The Suíte da Sofia is a private room in Casa Modernista for up to 4, with air conditioning, a smart TV and Wi-Fi, and a shared heated pool and gourmet area in Lago Sul.", es: "La Suíte da Sofia es una habitación privada en la Casa Modernista para hasta 4, con aire acondicionado, smart TV y Wi-Fi, y piscina climatizada y zona gourmet compartidas en el Lago Sul." },
+  UH05H: { en: "The Master Suite is a private room in Casa Modernista for up to 4, with air conditioning, a smart TV and Wi-Fi, and a shared heated pool and gourmet area in Lago Sul.", es: "La Suite Master es una habitación privada en la Casa Modernista para hasta 4, con aire acondicionado, smart TV y Wi-Fi, y piscina climatizada y zona gourmet compartidas en el Lago Sul." },
+  UH06H: { en: "The Suíte do Pedro is a private room in Casa Modernista for up to 4, with a quadruple bunk, air conditioning, a smart TV and Wi-Fi — shared heated pool and gourmet area in Lago Sul.", es: "La Suíte do Pedro es una habitación privada en la Casa Modernista para hasta 4, con litera cuádruple, aire acondicionado, smart TV y Wi-Fi — piscina climatizada y zona gourmet compartidas en el Lago Sul." },
+  VH01H: { en: "The Flat da Família is a private apartment with two suites, two bathrooms and a living room for up to 12, with a shared pool, barbecue, spa and full kitchen in Lago Sul.", es: "El Flat da Família es un apartamento privativo con dos suites, dos baños y una sala para hasta 12, con piscina, parrilla, spa y cocina compartidos en el Lago Sul." },
+  VH02H: { en: "The Flat dos Amigos is a private apartment with two suites, two bathrooms and a living room for up to 14, with a shared pool, barbecue, spa and full kitchen in Lago Sul.", es: "El Flat dos Amigos es un apartamento privativo con dos suites, dos baños y una sala para hasta 14, con piscina, parrilla, spa y cocina compartidos en el Lago Sul." },
+  YV01I: { en: "Jardim dos Sentidos — a romantic retreat for two in Lago Sul: an entire private space, intense and unforgettable, perfect for a weekend together, with an exclusive chef's dinner on request.", es: "Jardim dos Sentidos — un refugio romántico para dos en el Lago Sul: un espacio entero y privado, intenso e inolvidable, perfecto para un fin de semana en pareja, con cena exclusiva del chef a consultar." }
 };
 
 const descricoes = {
@@ -76,6 +102,68 @@ const descricoes = {
 <p>La casa ofrece cocina completa, una sala con tres sofás cama de matrimonio, smart TV y aire acondicionado, y dos amplias suites equipadas cada una con cama king, litera y sofá cama, una configuración flexible para familias de todos los tamaños. El área de ocio privada es la gran protagonista: piscina, parrillas a carbón y a gas, una segunda cocina completa, sofás, hamacas y asientos para hasta 30 personas, hecha para tardes largas al aire libre del Cerrado.</p>
 <p>Ubicada en la SMDB Conjunto 29 del Lago Sul, tiene acceso rápido a la Esplanada de los Ministerios y tanto al Asa Sul como al Asa Norte del Plano Piloto. Está a unos 2,9 km del Puente JK, a 10 km del Aeropuerto Internacional de Brasília (JK) y a 12 km de la Esplanada, con supermercados, farmacias, panaderías y restaurantes muy cerca. Pedimos a los huéspedes respetar el horario de silencio de esta zona residencial, sobre todo después de las 22:00.</p>
 <p>Ideal para familias, grupos de amigos, fiestas infantiles y eventos pequeños que buscan un entorno privado y verde cerca de la capital. Estamos siempre disponibles por aplicación de mensajes.</p>`
+  },
+  UD03H: {
+    en: `<p>The Flat dos Solteiros sleeps up to 8 and comprises a private suite, a private bathroom and a private living room. The suite holds 6 in two triple bunks (bunk beds with trundles), with a smart TV, a heater and a clothes rail; the adjoining private living room sleeps 2 on a double sofa bed and has a desk, a kitchen sink, a bar and chilled filtered water.</p>\n` + BOILER_A_EN,
+    es: `<p>El Flat dos Solteiros aloja hasta 8 y consta de una suite privativa, un baño privativo y una sala privativa. La suite acomoda a 6 en dos literas triples (literas con camas auxiliares), con smart TV, calefactor y un perchero; la sala anexa privativa aloja a 2 en un sofá cama doble y tiene escritorio, fregadero, bar y agua filtrada fría.</p>\n` + BOILER_A_ES
+  },
+  UD09H: {
+    en: `<p>The Suíte do Renato Russo is private, with its own internal bathroom and a bunk bed with two double mattresses, a smart TV, a heater and a clothes rail. There is also a shared living room with a desk, a bookshelf, a smart TV, air conditioning, a kitchen sink and a water filter.</p>\n` + BOILER_A_EN,
+    es: `<p>La Suíte do Renato Russo es privativa, con baño interno propio y una litera con dos camas dobles, smart TV, calefactor y perchero. Hay además una sala compartida con escritorio, estantería, smart TV, aire acondicionado, fregadero y filtro de agua.</p>\n` + BOILER_A_ES
+  },
+  UF01H: {
+    en: `<p>The Flat do Burle Marx is 33 m² and sleeps up to 7. It has a private internal bathroom, air conditioning, a double bed, a sofa bed, a bunk with a trundle, a smart TV, a mini-bar, a bookshelf and a desk, plus full linens and towels.</p>\n` + BOILER_A_EN,
+    es: `<p>El Flat do Burle Marx tiene 33 m² y aloja hasta 7. Cuenta con baño interno privativo, aire acondicionado, una cama doble, un sofá cama, una litera con cama auxiliar, smart TV, frigobar, estantería y escritorio, además de ropa de cama y toallas para todos.</p>\n` + BOILER_A_ES
+  },
+  UF05H: {
+    en: `<p>The Suíte do Chef has its own bathroom and a bunk bed with two double mattresses, a smart TV, a heater and a desk. There is also a shared living room with a desk, a bookshelf, a smart TV, air conditioning, a kitchen sink and a water filter.</p>\n` + BOILER_A_EN,
+    es: `<p>La Suíte do Chef tiene baño propio y una litera con dos camas dobles, smart TV, calefactor y escritorio. Hay además una sala compartida con escritorio, estantería, smart TV, aire acondicionado, fregadero y filtro de agua.</p>\n` + BOILER_A_ES
+  },
+  UF06H: {
+    en: `<p>The Suíte do Amor is private and sleeps up to 4, with a king-size bed, a double sofa bed, a smart TV, a heater and a spacious bathroom with a hydromassage tub and a double shower. There is also a shared living room with air conditioning, a kitchen sink and a water filter.</p>\n` + BOILER_A_EN,
+    es: `<p>La Suíte do Amor es privativa y aloja hasta 4, con cama king-size, sofá cama doble, smart TV, calefactor y un amplio baño con hidromasaje y ducha doble. Hay además una sala compartida con aire acondicionado, fregadero y filtro de agua.</p>\n` + BOILER_A_ES
+  },
+  UF07H: {
+    en: `<p>The Flat do Oscar is 30 m² and sleeps up to 6. It has a private external bathroom, air conditioning, a smart TV, a double bed, a sofa bed, a mini-bar, a bookshelf and a desk, plus wardrobes, linens and towels for everyone.</p>\n` + BOILER_A_EN,
+    es: `<p>El Flat do Oscar tiene 30 m² y aloja hasta 6. Cuenta con baño externo privativo, aire acondicionado, smart TV, una cama doble, un sofá cama, frigobar, estantería y escritorio, además de armarios, ropa de cama y toallas para todos.</p>\n` + BOILER_A_ES
+  },
+  UF08H: {
+    en: `<p>The Flat da Cassia Eller is 30 m² and sleeps up to 7. It has a private internal bathroom, air conditioning, a double bed, a sofa bed, a bunk with a trundle, a smart TV, a mini-bar, a bookshelf and a desk.</p>\n` + BOILER_A_EN,
+    es: `<p>El Flat da Cassia Eller tiene 30 m² y aloja hasta 7. Cuenta con baño interno privativo, aire acondicionado, una cama doble, un sofá cama, una litera con cama auxiliar, smart TV, frigobar, estantería y escritorio.</p>\n` + BOILER_A_ES
+  },
+  VH01H: {
+    en: `<p>The Flat da Família is a private apartment with two suites, two bathrooms and a living room — a king bed, six single beds and two sofa beds for up to 12 guests. Each room has air conditioning, heaters, a smart TV, a water filter, wardrobes and full linens and towels.</p>\n` + BOILER_A_EN,
+    es: `<p>El Flat da Família es un apartamento privativo con dos suites, dos baños y una sala — una cama king, seis camas individuales y dos sofás cama para hasta 12 huéspedes. Cada ambiente cuenta con aire acondicionado, calefactores, smart TV, filtro de agua, armarios y ropa de cama y toallas para todos.</p>\n` + BOILER_A_ES
+  },
+  VH02H: {
+    en: `<p>The Flat dos Amigos is a private apartment with two suites, two bathrooms and a living room — four double beds and six sofa beds for up to 14 guests. Each room has air conditioning, heaters, a smart TV, a water filter, wardrobes and full linens and towels.</p>\n` + BOILER_A_EN,
+    es: `<p>El Flat dos Amigos es un apartamento privativo con dos suites, dos baños y una sala — cuatro camas dobles y seis sofás cama para hasta 14 huéspedes. Cada ambiente cuenta con aire acondicionado, calefactores, smart TV, filtro de agua, armarios y ropa de cama y toallas para todos.</p>\n` + BOILER_A_ES
+  },
+  UH01H: {
+    en: `<p>The Suíte do Felipe is a comfortable private room in Casa Modernista, sleeping up to 4, with air conditioning, a smart TV and Wi-Fi.</p>\n` + BOILER_B_EN,
+    es: `<p>La Suíte do Felipe es una cómoda habitación privada en la Casa Modernista, para hasta 4, con aire acondicionado, smart TV y Wi-Fi.</p>\n` + BOILER_B_ES
+  },
+  UH03H: {
+    en: `<p>The Suíte da Família is a comfortable private room in Casa Modernista, sleeping up to 6, with air conditioning, a smart TV and Wi-Fi.</p>\n` + BOILER_B_EN,
+    es: `<p>La Suíte da Família es una cómoda habitación privada en la Casa Modernista, para hasta 6, con aire acondicionado, smart TV y Wi-Fi.</p>\n` + BOILER_B_ES
+  },
+  UH04H: {
+    en: `<p>The Suíte da Sofia is a comfortable private room in Casa Modernista, sleeping up to 4, with air conditioning, a smart TV and Wi-Fi.</p>\n` + BOILER_B_EN,
+    es: `<p>La Suíte da Sofia es una cómoda habitación privada en la Casa Modernista, para hasta 4, con aire acondicionado, smart TV y Wi-Fi.</p>\n` + BOILER_B_ES
+  },
+  UH05H: {
+    en: `<p>The Master Suite is a comfortable private room in Casa Modernista, sleeping up to 4, with air conditioning, a smart TV and Wi-Fi.</p>\n` + BOILER_B_EN,
+    es: `<p>La Suite Master es una cómoda habitación privada en la Casa Modernista, para hasta 4, con aire acondicionado, smart TV y Wi-Fi.</p>\n` + BOILER_B_ES
+  },
+  UH06H: {
+    en: `<p>The Suíte do Pedro is a comfortable private room in Casa Modernista, sleeping up to 4, with a quadruple bunk (four large single beds), air conditioning, a smart TV, Wi-Fi and full linens and towels.</p>\n` + BOILER_B_EN,
+    es: `<p>La Suíte do Pedro es una cómoda habitación privada en la Casa Modernista, para hasta 4, con litera cuádruple (cuatro camas individuales grandes), aire acondicionado, smart TV, Wi-Fi y ropa de cama y toallas para todos.</p>\n` + BOILER_B_ES
+  },
+  YV01I: {
+    en: `<p>Jardim dos Sentidos — Where Love Blooms. In the bucolic, elegant landscape of Lago Sul, Jardim dos Sentidos is a romantic retreat where every detail invites passion. For couples who want more than a simple stay — a complete experience: intense, sensory and unforgettable.</p>
+<p>It's perfect for a weekend for two or a single perfect night of celebration. Treat yourselves to an exclusive paired dinner prepared by our chef, where every flavour brings a new sensation. The entire space is private and reserved just for the two of you.</p>`,
+    es: `<p>Jardim dos Sentidos — Donde el Amor Florece. En medio del paisaje bucólico y elegante del Lago Sul nace Jardim dos Sentidos, un refugio romántico donde cada detalle invita a la pasión. Para parejas que desean vivir más que una simple estancia — una experiencia completa: intensa, sensorial e inolvidable.</p>
+<p>Es perfecto para un fin de semana en pareja o una única noche perfecta de celebración. Déjate sorprender con una cena exclusiva maridada preparada por nuestro chef, donde cada sabor trae una nueva sensación. Todo el espacio es privado y reservado solo para los dos.</p>`
   }
 };
 
