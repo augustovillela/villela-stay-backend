@@ -139,10 +139,10 @@ const orgSchema = {
 
 // Seções da home na ordem definida pelo Augusto (11/06/2026)
 const SECOES = [
-  { titulo: 'Reserve O Espaço Inteiro de Uma Casa Bem Equipada', ids: ['GI01I', 'GD01H', 'GG04I', 'PL02I', 'GD03H', 'YV01I'] },
-  { titulo: 'Reserve um Flat para até 6 pessoas com cozinha completa e área externa compartilhadas', ids: ['VH01H', 'VH02H', 'UD03H', 'UF08H', 'UF01H', 'UF07H'] },
-  { titulo: 'Reserve Uma Suíte Privativa na Casa Modernista com sala e cozinha compartilhadas', ids: ['UH01H', 'UH06H', 'UH04H', 'UH05H', 'UH03H'] },
-  { titulo: 'Reserve Uma Suíte Privativa na Gran Villela Home Stay com sala e cozinha compartilhadas', ids: ['UF06H', 'UF05H', 'UD09H'] }
+  { titulo: 'Reserve O Espaço Inteiro de Uma Casa Bem Equipada', tituloEn: 'Book the Entire Space of a Well-Equipped House', tituloEs: 'Reserva el Espacio Entero de una Casa Bien Equipada', ids: ['GI01I', 'GD01H', 'GG04I', 'PL02I', 'GD03H', 'YV01I'] },
+  { titulo: 'Reserve um Flat para até 6 pessoas com cozinha completa e área externa compartilhadas', tituloEn: 'Book a Flat for up to 6 people with a shared full kitchen and outdoor area', tituloEs: 'Reserva un Flat para hasta 6 personas con cocina completa y zona exterior compartidas', ids: ['VH01H', 'VH02H', 'UD03H', 'UF08H', 'UF01H', 'UF07H'] },
+  { titulo: 'Reserve Uma Suíte Privativa na Casa Modernista com sala e cozinha compartilhadas', tituloEn: 'Book a Private Suite at Casa Modernista with shared living room and kitchen', tituloEs: 'Reserva una Suite Privada en Casa Modernista con sala y cocina compartidas', ids: ['UH01H', 'UH06H', 'UH04H', 'UH05H', 'UH03H'] },
+  { titulo: 'Reserve Uma Suíte Privativa na Gran Villela Home Stay com sala e cozinha compartilhadas', tituloEn: 'Book a Private Suite at Gran Villela Home Stay with shared living room and kitchen', tituloEs: 'Reserva una Suite Privada en Gran Villela Home Stay con sala y cocina compartidas', ids: ['UF06H', 'UF05H', 'UD09H'] }
 ];
 const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 
@@ -175,6 +175,13 @@ function seletorIdioma(caminhoPt) {
   }).join('');
   return `<div class="lang-switch"><button type="button" class="lang-btn" aria-haspopup="true" aria-expanded="false">🌐 <span>${NOME_IDIOMA[LANG]}</span> ▾</button><div class="lang-menu" role="menu">${itens}</div></div>`;
 }
+
+// Título de imóvel: mantém os nomes temáticos (Niemeyer, Cassia Eller…) e traduz só os termos genéricos.
+const TITULO_MAP = {
+  en: [[/Suíte/g, 'Suite'], [/com piscina no Lago Sul/g, 'with pool in Lago Sul'], [/Espaço Inteiro/g, 'Whole Space'], [/(\d+) pessoas/g, '$1 people'], [/no Lago Sul/g, 'in Lago Sul'], [/na Villela Home Stay/g, 'at Villela Home Stay']],
+  es: [[/Suíte/g, 'Suite'], [/com piscina no Lago Sul/g, 'con piscina en Lago Sul'], [/Espaço Inteiro/g, 'Espacio Entero'], [/(\d+) pessoas/g, '$1 personas'], [/no Lago Sul/g, 'en Lago Sul'], [/na Villela Home Stay/g, 'en Villela Home Stay']]
+};
+function tituloImovel(l) { if (LANG === 'pt') return l.titulo; let s = l.titulo; for (const [re, rep] of TITULO_MAP[LANG]) s = s.replace(re, rep); return s; }
 
 function layout(titulo, descricao, corpo, opts = {}) {
   const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/logo.png`, ogType = 'website', lang = HTML_LANG[LANG] } = opts;
@@ -347,19 +354,20 @@ for (const __L of IDIOMAS) {
 // ---------------------------------------------------------------- home
 const card = l => `
 <div class="card">
-  <a class="card-link" href="/hospedagem/${l.id}.html">
+  <a class="card-link" href="${L(`/hospedagem/${l.id}.html`)}">
     ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
     <div class="card-info">
-      <h3>${esc(l.titulo)}</h3>
-      <p>${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''}</p>
+      <h3>${esc(tituloImovel(l))}</h3>
+      <p>${t(`${l.hospedes} hóspedes · ${l.quartos} quarto${l.quartos > 1 ? 's' : ''} · ${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''}`, `${l.hospedes} guests · ${l.quartos} room${l.quartos > 1 ? 's' : ''} · ${l.banheiros} bathroom${l.banheiros > 1 ? 's' : ''}${l.m2 ? ` · ${l.m2} m²` : ''}`, `${l.hospedes} huéspedes · ${l.quartos} ${l.quartos > 1 ? 'habitaciones' : 'habitación'} · ${l.banheiros} ${l.banheiros > 1 ? 'baños' : 'baño'}${l.m2 ? ` · ${l.m2} m²` : ''}`)}</p>
     </div>
   </a>
-  <a class="btn btn-reservar btn-card" href="${STAYS_SITE}/pt/apartment/${l.id}" target="_blank" rel="noopener" aria-label="Reservar e pagar ${esc(l.titulo)} na Stays">Reservar e pagar →</a>
+  <a class="btn btn-reservar btn-card" href="${STAYS_SITE}/pt/apartment/${l.id}" target="_blank" rel="noopener" aria-label="${t('Reservar e pagar', 'Book and pay', 'Reservar y pagar')} ${esc(tituloImovel(l))}">${t('Reservar e pagar', 'Book and pay', 'Reservar y pagar')} →</a>
 </div>`;
 
 const cards = SECOES.map(sec => {
   const itens = sec.ids.map(id => porId[id]).filter(Boolean);
-  return `<h2 class="secao-titulo">${esc(sec.titulo)}</h2>\n<div class="grade">${itens.map(card).join('\n')}</div>`;
+  const tit = LANG === 'en' ? sec.tituloEn : (LANG === 'es' ? sec.tituloEs : sec.titulo);
+  return `<h2 class="secao-titulo">${esc(tit)}</h2>\n<div class="grade">${itens.map(card).join('\n')}</div>`;
 }).join('\n');
 
 // Fotos do slideshow do hero: capas das casas inteiras intercaladas com pontos turísticos
@@ -378,8 +386,8 @@ for (let i = 0; i < Math.max(casasFotos.length, TURISMO.length); i++) {
 const depoimentos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'depoimentos.json'), 'utf8').replace(/^﻿/, ''));
 
 const home = layout(
-  'Villela Stay — Casas, flats e suítes no Lago Sul, Brasília',
-  'Hospedagem por temporada no Lago Sul: casas com piscina aquecida para até 32 pessoas, flats e suítes. Reserva direta com o anfitrião.',
+  t('Villela Stay — Casas, flats e suítes no Lago Sul, Brasília', 'Villela Stay — Houses, flats and suites in Lago Sul, Brasília', 'Villela Stay — Casas, flats y suites en Lago Sul, Brasília'),
+  t('Hospedagem por temporada no Lago Sul: casas com piscina aquecida para até 32 pessoas, flats e suítes. Reserva direta com o anfitrião.', 'Vacation rentals in Lago Sul: houses with heated pools for up to 32 people, flats and suites. Book directly with the host.', 'Alquiler por temporada en Lago Sul: casas con piscina climatizada para hasta 32 personas, flats y suites. Reserva directa con el anfitrión.'),
   `
 <section class="hero hero-slideshow">
   <div class="hero-bg" aria-hidden="true">
@@ -391,11 +399,11 @@ const home = layout(
     })).join('\n    ')}
   </div>
   <div class="hero-conteudo">
-    <h1>Seu Porto Seguro no Lago Sul em Brasília</h1>
-    <p><strong>Casas muito bem localizadas, confortáveis, bem equipadas, com cozinha completa e piscina aquecida.<br>Excelentes tanto para casais quanto para grupos de 60 pessoas.<br>Reserve diretamente com o anfitrião para um atendimento personalizado.</strong></p>
+    <h1>${t('Seu Porto Seguro no Lago Sul em Brasília', 'Your Safe Haven in Lago Sul, Brasília', 'Tu Refugio Seguro en Lago Sul, Brasília')}</h1>
+    <p><strong>${t('Casas muito bem localizadas, confortáveis, bem equipadas, com cozinha completa e piscina aquecida.<br>Excelentes tanto para casais quanto para grupos de 60 pessoas.<br>Reserve diretamente com o anfitrião para um atendimento personalizado.', 'Beautifully located, comfortable, well-equipped houses with a full kitchen and a heated pool.<br>Great for couples and for groups of up to 60.<br>Book directly with the host for personalised service.', 'Casas muy bien ubicadas, cómodas y equipadas, con cocina completa y piscina climatizada.<br>Ideales tanto para parejas como para grupos de hasta 60 personas.<br>Reserva directamente con el anfitrión para una atención personalizada.')}</strong></p>
     <div class="hero-cta">
-      <a class="btn" href="#hospedagens">Ver hospedagens</a>
-      <a class="btn btn-claro" href="/eventos.html">Eventos</a>
+      <a class="btn" href="#hospedagens">${t('Ver hospedagens', 'See stays', 'Ver alojamientos')}</a>
+      <a class="btn btn-claro" href="${L('/eventos.html')}">${t('Eventos', 'Events', 'Eventos')}</a>
     </div>
   </div>
 </section>
@@ -415,24 +423,24 @@ window.addEventListener('load', function(){
   }, 5000);
 });
 </script>
-<a class="banner-posse" href="/posse-2027.html">🇧🇷 <strong>Posse Presidencial 2027 + Réveillon:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem <span>Saiba mais →</span></a>
+<a class="banner-posse" href="${L('/posse-2027.html')}">🇧🇷 ${t('<strong>Posse Presidencial 2027 + Réveillon:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem', '<strong>Presidential Inauguration 2027 + New Year:</strong> whole houses in Lago Sul, 10 min from the Esplanada — book before they sell out', '<strong>Toma de Posesión 2027 + Fin de Año:</strong> casas enteras en Lago Sul a 10 min de la Explanada — reserva antes de que se agoten')} <span>${t('Saiba mais', 'Learn more', 'Saber más')} →</span></a>
 <section class="faixa-confianca">
-  <div>🏆 Superhost: anfitrião premiado</div><div>🏅 Favorito dos Hóspedes: propriedades premiadas</div><div>📍 10 min do Aeroporto JK e da Esplanada</div><div>👨‍👩‍👧‍👦 Hospedagens de grupos de até 60 pessoas</div><div>🎉 Eventos para até 150 pessoas</div>
+  <div>🏆 ${t('Superhost: anfitrião premiado', 'Superhost: award-winning host', 'Superhost: anfitrión premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes: propriedades premiadas', 'Guest Favourite: award-winning properties', 'Favorito de los Huéspedes: propiedades premiadas')}</div><div>📍 ${t('10 min do Aeroporto JK e da Esplanada', '10 min from JK Airport and the Esplanada', '10 min del Aeropuerto JK y de la Explanada')}</div><div>👨‍👩‍👧‍👦 ${t('Hospedagens de grupos de até 60 pessoas', 'Stays for groups of up to 60', 'Alojamientos para grupos de hasta 60 personas')}</div><div>🎉 ${t('Eventos para até 150 pessoas', 'Events for up to 150 people', 'Eventos para hasta 150 personas')}</div>
 </section>
 <section class="depoimentos-wrap">
-  <h2 class="secao-titulo">O Que Dizem Nossos Hóspedes</h2>
+  <h2 class="secao-titulo">${t('O Que Dizem Nossos Hóspedes', 'What Our Guests Say', 'Lo Que Dicen Nuestros Huéspedes')}</h2>
   <div class="marquee">
     <div class="marquee-track">${[...depoimentos, ...depoimentos].map(d => `
       <figure class="depoimento">
-        <div class="estrelas" aria-label="5 estrelas">★★★★★</div>
+        <div class="estrelas" aria-label="${t('5 estrelas', '5 stars', '5 estrellas')}">★★★★★</div>
         <blockquote>“${esc(d.texto)}”</blockquote>
-        <figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">avaliação no ${esc(d.origem)}</span></figcaption>
+        <figcaption><strong>${esc(d.nome)}</strong> · ${esc(d.hospedagem)} · <span class="origem">${t('avaliação no', 'review on', 'reseña en')} ${esc(d.origem)}</span></figcaption>
       </figure>`).join('\n')}
     </div>
   </div>
 </section>
 <section class="grade-wrap ofertas-wrap" hidden>
-  <h2 class="secao-titulo">Datas Livres Nos Próximos 15 Dias — Aproveite</h2>
+  <h2 class="secao-titulo">${t('Datas Livres Nos Próximos 15 Dias — Aproveite', 'Free Dates in the Next 15 Days — Grab Them', 'Fechas Libres en los Próximos 15 Días — Aprovecha')}</h2>
   <div class="grade ofertas-grade"></div>
 </section>
 <section id="hospedagens" class="grade-wrap">
@@ -446,17 +454,17 @@ fetch('${BACKEND}/api/ultima-hora')
     if (!Array.isArray(ofertas) || !ofertas.length) return;
     var wrap = document.querySelector('.ofertas-wrap');
     var grade = wrap.querySelector('.ofertas-grade');
-    var meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    var meses = ${JSON.stringify(LANG === 'en' ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] : (LANG === 'es' ? ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'] : ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']))};
     grade.innerHTML = ofertas.slice(0, 6).map(function(o){
       var d = new Date(o.de + 'T12:00:00');
-      var quando = d.getDate() + ' de ' + meses[d.getMonth()];
+      var quando = ${LANG === 'en' ? "meses[d.getMonth()] + ' ' + d.getDate()" : "d.getDate() + ' de ' + meses[d.getMonth()]"};
       return '<div class="card oferta">' +
-        '<a class="card-link" href="/hospedagem/' + o.id + '.html">' +
+        '<a class="card-link" href="${L('/hospedagem/')}' + o.id + '.html">' +
         '<div class="card-info"><h3>' + o.titulo + '</h3>' +
-        '<p>Livre a partir de <strong>' + quando + '</strong> (' + o.noites + '+ noites)' +
-        (o.precoBRL ? ' · diária R$ ' + o.precoBRL.toLocaleString('pt-BR') : '') + '</p>' +
-        '<p class="oferta-cta">Condição de última hora — reserve agora 👇</p></div></a>' +
-        '<a class="btn btn-reservar btn-card" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/' + o.id + '?from=' + o.de + '">Reservar e pagar →</a>' +
+        '<p>' + ${JSON.stringify(t('Livre a partir de', 'Free from', 'Libre desde'))} + ' <strong>' + quando + '</strong> (' + o.noites + ${JSON.stringify(t('+ noites)', '+ nights)', '+ noches)'))} +
+        (o.precoBRL ? ${JSON.stringify(t(' · diária R$ ', ' · per night R$ ', ' · por noche R$ '))} + o.precoBRL.toLocaleString('pt-BR') : '') + '</p>' +
+        '<p class="oferta-cta">' + ${JSON.stringify(t('Condição de última hora — reserve agora 👇', 'Last-minute deal — book now 👇', 'Oferta de última hora — reserva ahora 👇'))} + '</p></div></a>' +
+        '<a class="btn btn-reservar btn-card" target="_blank" rel="noopener" href="${STAYS_SITE}/pt/apartment/' + o.id + '?from=' + o.de + '">' + ${JSON.stringify(t('Reservar e pagar →', 'Book and pay →', 'Reservar y pagar →'))} + '</a>' +
         '</div>';
     }).join('');
     wrap.hidden = false;
@@ -474,7 +482,7 @@ fetch('${BACKEND}/api/ultima-hora')
       '@context': 'https://schema.org', '@type': 'LodgingBusiness',
       '@id': `${SITE_URL}/#hospedagem`,
       name: NAP.nome, url: SITE_URL, image: `${SITE_URL}/og-home.jpg`,
-      description: 'Hospedagem por temporada no Lago Sul, Brasília-DF: casas com piscina aquecida para grupos, flats e suítes, com reserva direta com o anfitrião.',
+      description: t('Hospedagem por temporada no Lago Sul, Brasília-DF: casas com piscina aquecida para grupos, flats e suítes, com reserva direta com o anfitrião.', 'Vacation rentals in Lago Sul, Brasília, Brazil: houses with heated pools for groups, flats and suites, booked directly with the host.', 'Alquiler por temporada en Lago Sul, Brasília-DF: casas con piscina climatizada para grupos, flats y suites, con reserva directa con el anfitrión.'),
       address: { '@type': 'PostalAddress', streetAddress: NAP.rua, addressLocality: NAP.cidade, addressRegion: NAP.uf, addressCountry: NAP.pais },
       geo: { '@type': 'GeoCoordinates', latitude: NAP.geo.lat, longitude: NAP.geo.lng },
       telephone: NAP.telefone, email: NAP.email,
