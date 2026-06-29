@@ -822,17 +822,17 @@ const CASAS_EVENTO = [
   {
     id: 'GG04I', nome: 'Villa Kubitschek', convidados: 150,
     local: 'SMDB Conjunto 29, Lago Sul',
-    destaque: 'O maior espaço — casamentos, formaturas e grandes confraternizações'
+    destaque: t('O maior espaço — casamentos, formaturas e grandes confraternizações', 'The largest space — weddings, graduations and big get-togethers', 'El mayor espacio — bodas, graduaciones y grandes encuentros')
   },
   {
     id: 'GD01H', nome: 'Casa Modernista', convidados: 80,
     local: 'SHIS QI 7, Conjunto 3, Lago Sul',
-    destaque: 'Arquitetura icônica para festas e eventos corporativos'
+    destaque: t('Arquitetura icônica para festas e eventos corporativos', 'Iconic architecture for parties and corporate events', 'Arquitectura icónica para fiestas y eventos corporativos')
   },
   {
     id: 'GI01I', nome: 'Casa Villela', convidados: 60,
     local: 'SMDB Conjunto 29, Lago Sul',
-    destaque: 'Aconchegante para aniversários, batizados e festas em família'
+    destaque: t('Aconchegante para aniversários, batizados e festas em família', 'Cosy for birthdays, christenings and family parties', 'Acogedora para cumpleaños, bautizos y fiestas en familia')
   }
 ];
 
@@ -844,61 +844,61 @@ const cardsEventos = CASAS_EVENTO.map(c => {
   ${l ? img(l.fotoPrincipal, { alt: c.nome, width: 340, height: 280, sizes: '(max-width: 760px) 100vw, 340px' }) : '<img alt="" width="340" height="280">'}
   <div class="casa-pacote-corpo">
     <h3>${esc(c.nome)}</h3>
-    <p class="casa-meta">🕺 até ${c.convidados} convidados · 🕙 das 10h às 22h · 📍 ${esc(c.local)}</p>
+    <p class="casa-meta">🕺 ${t('até', 'up to', 'hasta')} ${c.convidados} ${t('convidados', 'guests', 'invitados')} · 🕙 ${t('das 10h às 22h', '10 AM–10 PM', 'de 10h a 22h')} · 📍 ${esc(c.local)}</p>
     <p>${esc(c.destaque)}.</p>
     <div class="preco-bloco">
-      <div class="preco-principal">R$ 100 <span>por convidado</span> + R$ 1.000 <span>de limpeza profissional</span></div>
-      <div class="preco-detalhe">Exemplo com lotação máxima (${c.convidados} convidados): <strong>${real(exemplo)}</strong> pelo dia inteiro de evento — piscina, churrasqueira e cozinha completa inclusas.</div>
+      <div class="preco-principal">R$ 100 <span>${t('por convidado', 'per guest', 'por invitado')}</span> + R$ 1.000 <span>${t('de limpeza profissional', 'professional cleaning', 'de limpieza profesional')}</span></div>
+      <div class="preco-detalhe">${t(`Exemplo com lotação máxima (${c.convidados} convidados): <strong>${real(exemplo)}</strong> pelo dia inteiro de evento — piscina, churrasqueira e cozinha completa inclusas.`, `Example at full capacity (${c.convidados} guests): <strong>${real(exemplo)}</strong> for the full event day — pool, barbecue and full kitchen included.`, `Ejemplo con aforo máximo (${c.convidados} invitados): <strong>${real(exemplo)}</strong> por el día entero de evento — piscina, parrilla y cocina completa incluidas.`)}</div>
     </div>
-    <a class="btn btn-wa" href="${waLink(`Olá! Quero fazer um evento na ${c.nome}. Data: ___ | Nº de convidados: ___ | Tipo de evento: ___`)}">Orçar evento na ${esc(c.nome)} →</a>
+    <a class="btn btn-wa" href="${waLink(t(`Olá! Quero fazer um evento na ${c.nome}. Data: ___ | Nº de convidados: ___ | Tipo de evento: ___`, `Hi! I'd like to host an event at ${c.nome}. Date: ___ | Number of guests: ___ | Type of event: ___`, `¡Hola! Quiero hacer un evento en ${c.nome}. Fecha: ___ | Nº de invitados: ___ | Tipo de evento: ___`))}">${t('Orçar evento na', 'Get a quote for', 'Cotizar evento en')} ${esc(c.nome)} →</a>
   </div>
 </article>`;
 }).join('\n');
 
 const eventos = layout(
-  'Eventos no Lago Sul — casamentos, formaturas e festas | Villela Stay',
-  'Alugue o espaço externo das casas da Villela Stay no Lago Sul para seu evento: piscina, churrasqueira e cozinha completa. R$ 100 por convidado, das 10h às 22h.',
+  t('Eventos no Lago Sul — casamentos, formaturas e festas | Villela Stay', 'Events in Lago Sul — weddings, graduations and parties | Villela Stay', 'Eventos en Lago Sul — bodas, graduaciones y fiestas | Villela Stay'),
+  t('Alugue o espaço externo das casas da Villela Stay no Lago Sul para seu evento: piscina, churrasqueira e cozinha completa. R$ 100 por convidado, das 10h às 22h.', 'Rent the outdoor space of Villela Stay\'s houses in Lago Sul for your event: pool, barbecue and full kitchen. R$ 100 per guest, 10 AM–10 PM.', 'Alquila el espacio exterior de las casas de Villela Stay en Lago Sul para tu evento: piscina, parrilla y cocina completa. R$ 100 por invitado, de 10h a 22h.'),
   /* corpo */ `
 <section class="hero hero-menor">
-  <h1>Seu evento no Lago Sul em Brasília</h1>
-  <p><strong>Casamentos, formaturas, aniversários, festas infantis, confraternizações, eventos corporativos e reuniões familiares:</strong> alugue por um dia o espaço externo completo de uma de nossas casas no Lago Sul — com piscina, churrasqueira e cozinha. Entregamos a casa limpa e arrumamos tudo depois. Você só traz os seus convidados.</p>
+  <h1>${t('Seu evento no Lago Sul em Brasília', 'Your event in Lago Sul, Brasília', 'Tu evento en Lago Sul, Brasília')}</h1>
+  <p>${t('<strong>Casamentos, formaturas, aniversários, festas infantis, confraternizações, eventos corporativos e reuniões familiares:</strong> alugue por um dia o espaço externo completo de uma de nossas casas no Lago Sul — com piscina, churrasqueira e cozinha. Entregamos a casa limpa e arrumamos tudo depois. Você só traz os seus convidados.', '<strong>Weddings, graduations, birthdays, kids\' parties, get-togethers, corporate events and family gatherings:</strong> rent the full outdoor space of one of our houses in Lago Sul for a day — with pool, barbecue and kitchen. We hand the house over clean and tidy up afterwards. You just bring your guests.', '<strong>Bodas, graduaciones, cumpleaños, fiestas infantiles, encuentros, eventos corporativos y reuniones familiares:</strong> alquila por un día el espacio exterior completo de una de nuestras casas en Lago Sul — con piscina, parrilla y cocina. Entregamos la casa limpia y ordenamos todo después. Tú solo traes a tus invitados.')}</p>
 </section>
 <div class="pacotes-wrap">
 
   <section class="venda-bloco como-funciona">
-    <h2 class="secao-titulo">Como funciona</h2>
+    <h2 class="secao-titulo">${t('Como funciona', 'How it works', 'Cómo funciona')}</h2>
     <div class="passos">
-      <div class="passo"><strong>1. Escolha a casa pelo tamanho da festa</strong><br>Eventos de 30 a 150 convidados com espaço exclusivo das 10h às 22h.</div>
-      <div class="passo"><strong>2. Preço simples e transparente</strong><br>Por apenas R$ 100 por convidado e R$ 1000 de taxa de limpeza — necessários para pagar duas diaristas, material de limpeza, sacos de lixo, etc.</div>
-      <div class="passo"><strong>3. Estrutura pronta</strong><br>Cozinha com gás, utensílios, detergente; churrasqueira a gás e a carvão; banheiros com sabonete líquido, papel toalha e papel higiênico.</div>
+      <div class="passo"><strong>${t('1. Escolha a casa pelo tamanho da festa', '1. Choose the house by the size of your party', '1. Elige la casa según el tamaño de la fiesta')}</strong><br>${t('Eventos de 30 a 150 convidados com espaço exclusivo das 10h às 22h.', 'Events from 30 to 150 guests with exclusive use from 10 AM to 10 PM.', 'Eventos de 30 a 150 invitados con espacio exclusivo de 10h a 22h.')}</div>
+      <div class="passo"><strong>${t('2. Preço simples e transparente', '2. Simple, transparent pricing', '2. Precio simple y transparente')}</strong><br>${t('Por apenas R$ 100 por convidado e R$ 1000 de taxa de limpeza — necessários para pagar duas diaristas, material de limpeza, sacos de lixo, etc.', 'Just R$ 100 per guest and a R$ 1,000 cleaning fee — needed to pay two cleaners, cleaning supplies, rubbish bags, etc.', 'Solo R$ 100 por invitado y R$ 1.000 de tarifa de limpieza — necesarios para pagar a dos personas de limpieza, materiales, bolsas de basura, etc.')}</div>
+      <div class="passo"><strong>${t('3. Estrutura pronta', '3. Everything ready', '3. Estructura lista')}</strong><br>${t('Cozinha com gás, utensílios, detergente; churrasqueira a gás e a carvão; banheiros com sabonete líquido, papel toalha e papel higiênico.', 'Kitchen with gas, utensils and detergent; gas and charcoal barbecue; bathrooms with liquid soap, paper towels and toilet paper.', 'Cocina con gas, utensilios y detergente; parrilla a gas y a carbón; baños con jabón líquido, papel toalla y papel higiénico.')}</div>
     </div>
   </section>
 
   <section class="venda-bloco">
-    <h2 class="secao-titulo">As casas para o seu evento</h2>
+    <h2 class="secao-titulo">${t('As casas para o seu evento', 'The houses for your event', 'Las casas para tu evento')}</h2>
     ${cardsEventos}
   </section>
 
   <section class="venda-bloco">
-    <h2 class="secao-titulo">Combinados importantes</h2>
+    <h2 class="secao-titulo">${t('Combinados importantes', 'Important agreements', 'Acuerdos importantes')}</h2>
     <div class="passos">
-      <div class="passo"><strong>🔇 Som moderado</strong><br>Pela lei do silêncio do condomínio, não permitimos banda ao vivo nem DJ com volume alto. Som ambiente é bem-vindo.</div>
-      <div class="passo"><strong>🪪 Controle de entrada</strong><br>Em eventos com muitos convidados, o contratante providencia uma pessoa para controlar a entrada e saída, evitando transtornos aos vizinhos.</div>
-      <div class="passo"><strong>🅿️ Eventos grandes</strong><br>Pode ser necessária a contratação de seguranças — que também orientam o estacionamento dos veículos dos convidados.</div>
+      <div class="passo"><strong>🔇 ${t('Som moderado', 'Moderate sound', 'Sonido moderado')}</strong><br>${t('Pela lei do silêncio do condomínio, não permitimos banda ao vivo nem DJ com volume alto. Som ambiente é bem-vindo.', 'Under the condominium\'s quiet-hours rule, we don\'t allow live bands or loud DJs. Background music is welcome.', 'Por la ley del silencio del condominio, no permitimos banda en vivo ni DJ con volumen alto. La música ambiente es bienvenida.')}</div>
+      <div class="passo"><strong>🪪 ${t('Controle de entrada', 'Entry control', 'Control de entrada')}</strong><br>${t('Em eventos com muitos convidados, o contratante providencia uma pessoa para controlar a entrada e saída, evitando transtornos aos vizinhos.', 'For events with many guests, the client provides someone to manage entry and exit, avoiding disturbances to neighbours.', 'En eventos con muchos invitados, el contratante provee a una persona para controlar la entrada y salida, evitando molestias a los vecinos.')}</div>
+      <div class="passo"><strong>🅿️ ${t('Eventos grandes', 'Large events', 'Eventos grandes')}</strong><br>${t('Pode ser necessária a contratação de seguranças — que também orientam o estacionamento dos veículos dos convidados.', 'Hiring security may be necessary — they also direct guests\' vehicle parking.', 'Puede ser necesaria la contratación de seguridad — que también orienta el estacionamiento de los vehículos de los invitados.')}</div>
     </div>
-    <p class="aviso-escassez">💡 Nas datas especiais funcionamos apenas com <strong>pacotes de hospedagem combinados com eventos</strong> — veja os <a href="/pacotes.html">Pacotes Especiais</a>.</p>
+    <p class="aviso-escassez">💡 ${t(`Nas datas especiais funcionamos apenas com <strong>pacotes de hospedagem combinados com eventos</strong> — veja os <a href="${L('/pacotes.html')}">Pacotes Especiais</a>.`, `On special dates we work only with <strong>stay packages combined with events</strong> — see the <a href="${L('/pacotes.html')}">Special Packages</a>.`, `En las fechas especiales trabajamos solo con <strong>paquetes de alojamiento combinados con eventos</strong> — mira los <a href="${L('/pacotes.html')}">Paquetes Especiales</a>.`)}</p>
   </section>
 
   <section class="venda-bloco cta-final">
-    <h2>Peça seu orçamento</h2>
-    <p>Responda três perguntas — data, número de convidados e tipo de evento — e devolvemos a proposta completa.</p>
-    <a class="btn btn-wa btn-grande" href="${waLink('Olá! Quero orçar um evento. Data: ___ | Nº de convidados: ___ | Tipo de evento: ___')}">Orçar pelo WhatsApp</a>
-    <p style="margin-top:24px">Ou deixe seu contato que retornamos:</p>
+    <h2>${t('Peça seu orçamento', 'Request your quote', 'Pide tu presupuesto')}</h2>
+    <p>${t('Responda três perguntas — data, número de convidados e tipo de evento — e devolvemos a proposta completa.', 'Answer three questions — date, number of guests and type of event — and we\'ll send back a full proposal.', 'Responde tres preguntas — fecha, número de invitados y tipo de evento — y te enviamos la propuesta completa.')}</p>
+    <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Quero orçar um evento. Data: ___ | Nº de convidados: ___ | Tipo de evento: ___', 'Hi! I\'d like a quote for an event. Date: ___ | Number of guests: ___ | Type of event: ___', '¡Hola! Quiero cotizar un evento. Fecha: ___ | Nº de invitados: ___ | Tipo de evento: ___'))}">${t('Orçar pelo WhatsApp', 'Get a quote on WhatsApp', 'Cotizar por WhatsApp')}</a>
+    <p style="margin-top:24px">${t('Ou deixe seu contato que retornamos:', 'Or leave your contact and we\'ll get back to you:', 'O deja tu contacto y te respondemos:')}</p>
     <form id="form-evento" class="form-evento form-evento-claro">
-      <label>Seu nome* <input name="nome" required></label>
-      <label>WhatsApp ou e-mail* <input name="contato" required></label>
-      <label>Conte sobre o evento (tipo, data, nº de convidados) <textarea name="mensagem" rows="3"></textarea></label>
-      <button class="btn" type="submit">Pedir orçamento</button>
+      <label>${t('Seu nome*', 'Your name*', 'Tu nombre*')} <input name="nome" required></label>
+      <label>${t('WhatsApp ou e-mail*', 'WhatsApp or email*', 'WhatsApp o correo*')} <input name="contato" required></label>
+      <label>${t('Conte sobre o evento (tipo, data, nº de convidados)', 'Tell us about the event (type, date, number of guests)', 'Cuéntanos sobre el evento (tipo, fecha, nº de invitados)')} <textarea name="mensagem" rows="3"></textarea></label>
+      <button class="btn" type="submit">${t('Pedir orçamento', 'Request a quote', 'Pedir presupuesto')}</button>
       <p class="form-status" hidden></p>
     </form>
   </section>
@@ -907,14 +907,14 @@ const eventos = layout(
 document.getElementById('form-evento').addEventListener('submit', function(e){
   e.preventDefault();
   var f = e.target, st = f.querySelector('.form-status');
-  st.hidden = false; st.textContent = 'Enviando...';
+  st.hidden = false; st.textContent = ${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
   fetch('${BACKEND}/api/leads', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nome: f.nome.value, contato: f.contato.value, mensagem: f.mensagem.value, origem: 'site-eventos' })
   }).then(function(r){
-    st.textContent = r.ok ? '✅ Recebido! Retornaremos em breve.' : 'Erro ao enviar — fale conosco pelo WhatsApp.';
+    st.textContent = r.ok ? ${JSON.stringify(t('✅ Recebido! Retornaremos em breve.', '✅ Received! We\'ll get back to you shortly.', '✅ ¡Recibido! Te responderemos pronto.'))} : ${JSON.stringify(t('Erro ao enviar — fale conosco pelo WhatsApp.', 'Error sending — contact us on WhatsApp.', 'Error al enviar — contáctanos por WhatsApp.'))};
     if (r.ok) f.reset();
-  }).catch(function(){ st.textContent = 'Erro ao enviar — fale conosco pelo WhatsApp.'; });
+  }).catch(function(){ st.textContent = ${JSON.stringify(t('Erro ao enviar — fale conosco pelo WhatsApp.', 'Error sending — contact us on WhatsApp.', 'Error al enviar — contáctanos por WhatsApp.'))}; });
 });
 </script>`,
   { caminho: '/eventos.html' }
