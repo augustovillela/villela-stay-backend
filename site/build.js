@@ -19,7 +19,7 @@ const SITE_URL = 'https://villela-stay-site.onrender.com';
 const PWA = {
   themeColor: '#5a3e2b',       // marrom da marca (barra do app)
   backgroundColor: '#fbf6ee',  // creme claro (splash screen)
-  cacheVersion: 'vstay-v2'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v3'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 
@@ -206,6 +206,7 @@ ${extraHead}
     <a href="/pacotes.html">Pacotes Especiais</a>
     <a href="/blog.html">Blog</a>
     <a href="/regras.html">Regras da Casa</a>
+    <a href="/faq.html">FAQ</a>
     <a href="/guia.html">Guia do Hóspede</a>
     <a href="/nossa-historia.html">Nossa História</a>
     <a href="/links.html">Linktree</a>
@@ -234,6 +235,7 @@ ${corpo}
   </div>
   <div class="rodape-links rodape-compacto">
     <strong>Navegue</strong>
+    <a href="/faq.html">Perguntas Frequentes (FAQ)</a>
     <a href="/links.html">Linktree</a>
     <a href="/pre-checkin.html">Check-in on-line</a>
     <a href="/guia.html">Guia do Hóspede</a>
@@ -1024,7 +1026,7 @@ const REGRAS = [
   ['5. Animais de Estimação 🐾', `<p>Pets são bem-vindos! Mas:</p><ul><li>Não devem subir em camas, sofás ou móveis.</li><li>Qualquer dano causado será de responsabilidade do hóspede.</li></ul>`],
   ['6. Eventos e Convidados 🎉', `<p>Não são permitidos eventos comerciais, festas abertas, sublocação ou cobrança de ingresso.</p>
 <p>Eventos familiares só com autorização prévia e mediante taxa.</p>
-<ul><li>Convidado day-use/evento: R$ 80,00</li><li>Hóspede extra pernoite: R$ 120,00/dia</li></ul>
+<ul><li>Convidado day-use/evento: R$ 100,00</li><li>Hóspede extra pernoite: R$ 120,00/dia</li></ul>
 <p>⚠️ <strong>Importante:</strong> a casa é destinada principalmente a hospedagens. Eventos autorizados não incluem garantias quanto a clima, fornecimento de energia ou funcionamento de equipamentos alugados.</p>`],
   ['7. Som e Lei do Silêncio 🔊', `<p>Proibido: som alto, DJs, bandas ao vivo ou caixas potentes.</p>
 <p>Limite de ruído:</p><ul><li>até 55 dB (7h às 22h)</li><li>até 45 dB (22h às 7h)</li></ul>
@@ -1039,7 +1041,7 @@ const REGRAS = [
 <p>Se outro hóspede for prejudicado, o responsável deverá arcar com o ressarcimento integral da hospedagem afetada.</p>`],
   ['13. Taxas Adicionais 💰', `<ul>
 <li>Hóspede extra: R$ 120,00/noite</li>
-<li>Convidado day-use/evento: R$ 80,00</li>
+<li>Convidado day-use/evento: R$ 100,00</li>
 <li>Jacuzzi: R$ 200,00 — apenas nas hospedagens de quarto, suíte ou flat (1x ao dia, até 4h); incluída sem custo no aluguel do espaço inteiro</li>
 <li>Churrasqueira: R$ 200,00</li>
 <li>Copo/prato quebrado: R$ 20,00/unidade</li>
@@ -1082,6 +1084,93 @@ const regras = layout(
   }
 );
 fs.writeFileSync(path.join(DIST, 'regras.html'), regras);
+
+// ------------------------- FAQ (perguntas frequentes) -------------------------
+const FAQ_SECOES = [
+  ['Reserva e pagamento', [
+    ['Como faço para reservar?', `Fale com a gente pelo WhatsApp ou pelo site. Confirmamos a disponibilidade, enviamos a cotação e reservamos a sua data. Para grupos e eventos, montamos uma proposta sob medida.`],
+    ['Posso conhecer/visitar a casa antes de reservar?', `Pode, sim — é só <strong>agendar uma visita</strong> com a gente. Combinamos um horário e mostramos o espaço para você confirmar se atende ao seu grupo ou evento.`],
+    ['Quais as formas de pagamento?', `Aceitamos <strong>PIX</strong> e <strong>cartão de crédito</strong> — à vista ou parcelado. Os encargos do cartão de crédito, tanto à vista quanto parcelado, ficam por conta do locatário. O PIX costuma ser o caminho mais rápido para garantir a data.`],
+    ['Preciso pagar um sinal para segurar a data?', `Sim. Pedimos um <strong>sinal de 50%</strong> para confirmar a reserva; os outros <strong>50%</strong> são pagos <strong>uma semana antes do check-in</strong>.`],
+    ['Posso reservar direto com vocês, fora do Airbnb/Booking?', `Pode, sim. Trabalhamos com reserva direta e contrato próprio para hospedagem por temporada e para eventos — vários hóspedes preferem assim.`],
+    ['Tem contrato?', `Tem. Para temporada e para eventos emitimos um contrato com os dados do hóspede, o período e as condições combinadas, enviado para você conferir e assinar antes da estadia.`],
+    ['Qual é a política de cancelamento?', `O <strong>sinal não é reembolsável</strong>. Em caso de desistência com <strong>mais de 60 dias</strong> de antecedência do check-in, devolvemos os demais pagamentos já feitos (tudo, menos o sinal). <strong>Dentro dos 60 dias</strong>, as diárias pagas e não usufruídas podem ser utilizadas em até <strong>6 meses</strong> após a data originalmente prevista para o check-in — desde que a nova data esteja disponível e não seja data especial (Natal, Ano Novo, Carnaval, Marcha dos Prefeitos) nem período com pacote especial.`]
+  ]],
+  ['Check-in e check-out', [
+    ['Qual o horário de check-in e check-out?', `Check-in a partir das <strong>14h</strong> e check-out até as <strong>10h</strong>.`],
+    ['Posso fazer early check-in ou late check-out?', `Sempre que a agenda da casa permitir. O <strong>early check-in é cobrado como diária cheia</strong> e o <strong>late check-out também é cobrado como diária cheia</strong> (a casa fica indisponível para o próximo hóspede naquele dia). Combine com antecedência.`],
+    ['Como funciona o acesso à casa? Tem chave, senha?', `No dia, enviamos as instruções de acesso (chave, fechadura ou senha, conforme a unidade) e como abrir o portão. Acompanhamos a sua chegada — qualquer dúvida, é só chamar.`],
+    ['Qual é o endereço?', `O endereço completo, com ponto de referência, vai junto com as instruções de check-in, após a confirmação da reserva. Temos dois endereços: a <strong>Casa Modernista</strong> (SHIS QI 7, Conjunto 3) e as <strong>demais casas</strong> (compound SMDB Conjunto 29, Lote 2), ambos no Lago Sul, Brasília-DF.`]
+  ]],
+  ['A casa: comodidades e capacidade', [
+    ['Como vejo fotos e detalhes de cada casa?', `Cada unidade tem página própria no site, com fotos, comodidades, capacidade e consulta de disponibilidade. Se preferir, enviamos fotos e o link pelo WhatsApp — é só dizer a casa e a data.`],
+    ['Quantas pessoas cabem em cada acomodação?', `Temos de suíte privativa a casa inteira para grupos grandes:<table class="faq-tabela"><thead><tr><th>Unidade</th><th>Capacidade</th></tr></thead><tbody><tr><td>Grand Villela (espaço inteiro)</td><td>até 32 pessoas</td></tr><tr><td>Casa Modernista</td><td>até 22</td></tr><tr><td>Villa Catetinho</td><td>até 21</td></tr><tr><td>Villa Kubitschek</td><td>até 16</td></tr><tr><td>Casa Villela</td><td>até 15</td></tr><tr><td>Flat da Família / Flat dos Amigos</td><td>até 10 cada</td></tr><tr><td>Flat do Oscar</td><td>até 6</td></tr><tr><td>Suítes e quartos individuais</td><td>3 a 7 conforme a unidade</td></tr><tr><td>Jardim dos Sentidos (casal)</td><td>até 2</td></tr></tbody></table>Conte quantas pessoas vão e a ocasião que indicamos a unidade ideal.`],
+    ['E se for mais gente do que o combinado? Tem taxa de hóspede extra?', `Sim. Cada <strong>hóspede extra</strong> (ou acompanhante eventual) que pernoita, além do número contratado, tem taxa de <strong>R$ 120 por dia</strong>. Sempre nos diga o número real de pessoas. Para participantes de evento/day use que não pernoitam, vale a regra de <strong>convidado</strong>: R$ 100 por convidado.`],
+    ['Tem Wi-Fi?', `Sim, todas as unidades têm Wi-Fi. A rede e a senha são enviadas junto com as instruções de check-in.`],
+    ['A piscina é aquecida?', `Sim, <strong>todas as casas têm piscina aquecida</strong>. O aquecimento e a temperatura podem ser regulados — no check-in mostramos como ajustar.`],
+    ['A piscina é segura para crianças? Tem parte rasa?', `As piscinas <strong>não têm parte rasa</strong> (profundidade única), por isso pedimos <strong>atenção redobrada e supervisão constante de um adulto</strong> com as crianças na área da piscina.`],
+    ['Tem spa / jacuzzi?', `Sim, <strong>todas as casas têm SPA</strong>. No aluguel do <strong>espaço inteiro</strong>, o uso está incluído. No aluguel de <strong>quartos e flats</strong>, fica disponível mediante taxa.`],
+    ['Tem churrasqueira?', `Sim, <strong>todas as casas têm churrasqueira</strong>. No aluguel de quartos e flats, pode ser utilizada mediante taxa.`],
+    ['Tem ar-condicionado?', `Sim, <strong>todas as acomodações têm ar-condicionado</strong>.`],
+    ['Aluguei um quarto ou um flat — posso usar a piscina, a churrasqueira e a cozinha?', `No aluguel de quarto ou flat, o que está incluído é a sua unidade privativa. As áreas comuns (piscina, churrasqueira e cozinha) ficam disponíveis mediante as respectivas taxas. No aluguel do espaço inteiro, você tem tudo isso incluso.`],
+    ['A cozinha é equipada?', `Sim, cozinha completa — fogão, geladeira, micro-ondas e utensílios. O uso pontual da cozinha (café da manhã, lanches) é permitido. Já no caso de preparações de almoço e jantar — em que a cozinha precisa ser limpa por uma diarista — é cobrada uma taxa equivalente à diária da profissional, pois essa despesa não é coberta pelas nossas tarifas reduzidas.`],
+    ['Roupa de cama e banho estão inclusas?', `Sim, fornecemos roupa de cama e toalhas, padrão de hotel.`],
+    ['Tem estacionamento / garagem?', `Sim. Todas as casas têm estacionamento amplo dentro da propriedade. A exceção é a Casa Modernista, que tem 3 vagas internas e mais vagas externas na rua.`],
+    ['Aceitam pets?', `Sim, sob consulta e com taxa adicional (higienização). Antes de reservar, nos conte o porte e a quantidade de animais.`],
+    ['Pode levar crianças?', `Sim, recebemos famílias com crianças — várias casas são ótimas para isso.`],
+    ['Pode fumar dentro da casa?', `Não. É proibido fumar em ambientes internos. Quem fuma pode usar as áreas externas/abertas.`]
+  ]],
+  ['Localização', [
+    ['Onde fica a Villela Stay?', `No Lago Sul, um dos endereços mais nobres de Brasília, à beira do Lago Paranoá — bairro tranquilo, verde e seguro.`],
+    ['Quais as distâncias?', `Temos dois endereços: a Casa Modernista (SHIS QI 7) e as demais casas (compound SMDB Conjunto 29).<table class="faq-tabela"><thead><tr><th>Destino</th><th>Casa Modernista</th><th>Demais casas</th></tr></thead><tbody><tr><td>Aeroporto JK</td><td>7 km · ~10 min</td><td>25 km · ~25 min</td></tr><tr><td>Esplanada dos Ministérios</td><td>8 km · ~10 min</td><td>10 km · ~10 min</td></tr><tr><td>Pontão do Lago Sul</td><td>5 km · ~10 min</td><td>8 km · ~10 min</td></tr><tr><td>Shoppings da região</td><td>10 km · ~15 min</td><td>10 km · ~15 min</td></tr></tbody></table>`],
+    ['Como é o clima? Esquenta ou esfria muito?', `Brasília tem clima seco. As casas têm ar-condicionado, piscina aquecida e SPA para o seu conforto o ano todo. No inverno, as noites costumam ser mais frias — vale levar um agasalho leve.`]
+  ]],
+  ['Eventos e celebrações', [
+    ['Vocês recebem eventos?', `Sim! Aniversários, festas infantis, casamentos, confraternizações, eventos corporativos e comemorações.`],
+    ['Quantos convidados o espaço comporta?', `Depende da casa escolhida. Diga a data e o número de convidados que indicamos o espaço certo.`],
+    ['Como é a cobrança de um evento?', `O modelo é: diária do espaço/hospedagem + taxa por convidado + taxa de limpeza do evento. A <strong>diária do espaço para eventos é proporcional ao número de convidados</strong>. A referência é <strong>R$ 100 por convidado</strong>, podendo ser mais ou menos dependendo das circunstâncias do ajuste. Além disso, cobramos taxa de limpeza a partir de <strong>R$ 800</strong> (varia conforme o porte).`],
+    ['O que conta como "convidado"?', `Convidado é toda pessoa que não está na lista de hóspedes da reserva de hospedagem — vale para evento e day use. Se você contratar apenas o aluguel do espaço para o evento (sem hospedagem), todos os participantes contam como convidados.`],
+    ['Posso fazer só o evento durante o dia (day use)?', `Sim. A cobrança segue o mesmo modelo (R$ 100 por convidado + taxa de limpeza) e o período é combinado. No day use, como não há hospedagem, todos os participantes contam como convidados.`],
+    ['Pode ter som / música ao vivo / DJ?', `Pode, com respeito à vizinhança. Seguimos a Lei Distrital de Silêncio (Lei nº 4.092/2008): o som precisa ser controlado/reduzido a partir das <strong>22h e não deve ultrapassar 00h00</strong>. O horário de encerramento do evento é definido no contrato.`],
+    ['Tem segurança / portaria?', `Não. O caseiro pode auxiliar com o portão para a entrada dos convidados mediante o pagamento de uma diária. Para os grandes eventos, sugerimos a contratação de segurança profissional, para a segurança de todos e a preservação do local.`],
+    ['Posso levar meu buffet, decoração e fornecedores?', `Sim, você pode trazer seus fornecedores próprios (buffet, decoração, som) — é só alinhar os horários de montagem e desmontagem. <strong>Prestamos serviços de buffet também</strong> — consulte-nos para conferir a disponibilidade.`]
+  ]],
+  ['Operação, limpeza e suporte', [
+    ['A limpeza está inclusa?', `A casa é entregue limpa e arrumada, padrão de hotel. A taxa de limpeza <strong>não inclui a limpeza durante a hospedagem</strong> — apenas a limpeza anterior e posterior à estadia. Se precisar de limpeza ou de cozinheira durante a estadia, podemos indicar uma pessoa.`],
+    ['Tem café da manhã?', `O café da manhã é opcional — pode ser contratado à parte. As casas têm cozinha equipada para você preparar suas refeições.`],
+    ['Tem serviços extras?', `Sim, sob consulta: transfer/translado, chef/cozinheiro(a), camareira/passadeira durante a estadia e decoração/estrutura para eventos.`],
+    ['Quem eu chamo se precisar de algo durante a estadia?', `Você fala pelo WhatsApp, direto com o anfitrião. Para questões na casa, o caseiro dá apoio local. Estamos à disposição do check-in ao check-out.`],
+    ['Tem alguém no local durante a estadia? Vocês moram lá?', `Moramos na propriedade e contamos com o caseiro para apoio no condomínio durante a sua hospedagem — você tem privacidade total na sua unidade e, ao mesmo tempo, suporte por perto e por WhatsApp a qualquer hora.`]
+  ]]
+];
+const faqItensFlat = FAQ_SECOES.flatMap(s => s[1]);
+const faq = layout(
+  'Perguntas Frequentes (FAQ) | Villela Stay',
+  'Dúvidas frequentes sobre hospedagem e eventos na Villela Stay, no Lago Sul de Brasília: reserva, pagamento, check-in, comodidades, piscina, pets, eventos e mais.',
+  `
+<section class="hero hero-menor">
+  <h1>Perguntas Frequentes</h1>
+  <p>Tudo o que você precisa para reservar, se hospedar ou fazer um evento na Villela Stay, no Lago Sul de Brasília. Não encontrou sua dúvida? <a href="${waLink('Olá! Tenho uma dúvida que não encontrei no FAQ do site.')}">Fale com a gente no WhatsApp</a>.</p>
+</section>
+<div class="regras-wrap faq-wrap">
+  ${FAQ_SECOES.map(s => `<section class="regra"><h2>${esc(s[0])}</h2>${s[1].map(it => `<h3 class="faq-q">${esc(it[0])}</h3><div class="faq-a">${it[1]}</div>`).join('\n')}</section>`).join('\n')}
+  <p class="regras-aceite">Estas são as informações oficiais da Villela Stay. Para uma proposta personalizada, <a href="${waLink('Olá! Vim pelo FAQ do site e quero uma cotação.')}">fale com o anfitrião no WhatsApp</a>.</p>
+</div>`,
+  {
+    caminho: '/faq.html',
+    extraHead: `<style>.faq-q{margin:18px 0 4px;font-size:1.06rem;color:var(--petroleo,#0c3644)}.faq-a{margin:0 0 6px;line-height:1.6}.faq-a p{margin:0 0 8px}.faq-tabela{width:100%;border-collapse:collapse;margin:10px 0;font-size:.92rem}.faq-tabela th,.faq-tabela td{border:1px solid rgba(0,0,0,.12);padding:6px 9px;text-align:left}.faq-tabela th{background:rgba(12,54,68,.06)}</style>
+<script type="application/ld+json">${JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'FAQPage',
+      mainEntity: faqItensFlat.map(it => ({
+        '@type': 'Question',
+        name: it[0],
+        acceptedAnswer: { '@type': 'Answer', text: it[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() }
+      }))
+    })}</script>`
+  }
+);
+fs.writeFileSync(path.join(DIST, 'faq.html'), faq);
+console.log('FAQ gerado: /faq.html');
 
 // ------------------------- guia do hóspede -------------------------
 const guia = layout(
@@ -1691,6 +1780,7 @@ const LINKTREE = [
   { emoji: '🏡', titulo: 'Reservar / Ver as casas', sub: 'Casas, flats e suítes no Lago Sul', href: '/?origem=linktree#hospedagens', destaque: true },
   { emoji: '💬', titulo: 'Fale conosco no WhatsApp', sub: 'Atendimento direto com o anfitrião', href: linkWa('Olá! Vim pelo link da Villela Stay e gostaria de informações.'), wa: true },
   { emoji: '🎉', titulo: 'Eventos', sub: 'Casamentos, formaturas e festas — peça seu orçamento', href: '/eventos.html?origem=linktree' },
+  { emoji: '❓', titulo: 'Perguntas Frequentes (FAQ)', sub: 'Reserva, check-in, comodidades, eventos e mais', href: '/faq.html?origem=linktree' },
   { emoji: '🎄', titulo: 'Pacotes especiais', sub: 'Natal, Réveillon, Posse 2027 e Carnaval', href: '/pacotes.html?origem=linktree' },
   { emoji: '📷', titulo: 'Instagram · @villelastay', sub: 'Siga nossas casas e bastidores', href: 'https://instagram.com/villelastay', social: true },
   { emoji: '📷', titulo: 'Instagram · @augustovillela', sub: 'Siga o anfitrião', href: 'https://instagram.com/augustovillela', social: true },
@@ -1898,7 +1988,7 @@ const PRECACHE_URLS = [
   '/', '/index.html', '/style.css', '/offline.html', '/manifest.webmanifest',
   ...(TEM_LOGO ? ['/logo.png'] : []),
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
-  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/blog.html', '/links.html',
+  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/faq.html', '/blog.html', '/links.html',
   ...listings.map(l => `/hospedagem/${l.id}.html`)
 ];
 const sw = `// Service Worker da Villela Stay (PWA) — gerado por build.js. NÃO editar à mão.
@@ -1976,6 +2066,7 @@ const rotas = [
   { loc: '/nossa-historia.html', changefreq: 'monthly', priority: '0.5' },
   { loc: '/guia.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/regras.html', changefreq: 'monthly', priority: '0.4' },
+  { loc: '/faq.html', changefreq: 'monthly', priority: '0.6' },
   { loc: '/pre-checkin.html', changefreq: 'monthly', priority: '0.3' },
   { loc: '/links.html', changefreq: 'monthly', priority: '0.4' },
   ...listings.map(l => ({ loc: `/hospedagem/${l.id}.html`, changefreq: 'weekly', priority: '0.8' }))
