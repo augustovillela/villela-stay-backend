@@ -213,4 +213,92 @@ ${h.fig(4, { legenda: 'El Catetinho, primera morada de JK en Brasília — levan
 `,
     },
   },
+  gastronomia: {
+    en: {
+      titulo: 'Brasília food: where to eat and the flavours of the Cerrado | Villela Stay',
+      descricao: "From the fine dining of Asa Sul to the flavours of the Cerrado — pequi, baru, buriti. The host's guide to eating well in Brasília, with restaurant tips and the local kitchen.",
+      h1: 'In Brasília, you eat all of Brazil on one plate',
+      dek: "A city made of migrants from every state created a plural food scene — and put down roots in the Cerrado, the country's most flavourful and least known biome.",
+      casasTitulo: 'A gourmet kitchen to entertain — or just relax',
+      casasTexto: 'Our houses have a full kitchen and room to gather people around the table. Host a chef at home, put on a dinner for the group or simply cook at your own pace after a day at the market. Hospitality is also about the table.',
+      isca: { titulo: "Host's restaurant guide (PDF)", texto: 'The tables we recommend to our guests — by area and by occasion, from the local happy hour to a special night. Download now.', botao: 'I want the restaurant guide' },
+      faq: [
+        { q: 'What is the typical food of Brasília?', a: 'Brasília doesn\'t have a single "typical food" — it was formed by migrants from all over Brazil, so it brings together the cuisine of Goiás (galinhada, pamonha, pequi), Minas Gerais, the Northeast and the Cerrado itself. Pequi, baru and buriti are the region\'s signature ingredients.' },
+        { q: 'What is pequi and how do you eat it?', a: 'Pequi is a Cerrado fruit with an intense aroma and a unique flavour, much used in rice with pequi and in galinhada. A famous warning: never bite it — the pit has very fine spines. You eat it by gently scraping the flesh with your teeth. It\'s an experience every visitor should try at least once.' },
+        { q: 'Where to eat well in Brasília?', a: "Asa Sul (especially the 400 and 200 blocks) concentrates fine dining; the Pontão do Lago Sul has waterfront restaurants; and Asa Norte holds bars and signature houses. We keep a guide updated by season — request the host's PDF on this page." },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Brasília is the only Brazilian capital without a "native" cuisine — and that's exactly what makes it delicious. Built by people who came from Minas, Goiás, the Northeast, the South and the world, the city put everything on the same table. Here you have an Amazonian fish for dinner, a Goiás-style galinhada for lunch and end the night at a French-inspired bistro — sometimes on the same block.</p>
+
+${h.fig(1, { legenda: 'Rice with pequi — the signature flavour of the Cerrado, intense and unmistakable.' })}
+
+<h2>The flavours of the Cerrado</h2>
+<p>The biome that surrounds Brasília is a little-explored pantry — and the city's chefs have rediscovered it. Worth tasting:</p>
+<ul class="artigo-lista">
+  <li><strong>Pequi:</strong> strong aroma, striking flavour, the star of rice with pequi and of galinhada. (Never bite the pit!)</li>
+  <li><strong>Baru:</strong> the Cerrado nut, crunchy and nutritious, which became a darling of fine dining and pastry.</li>
+  <li><strong>Buriti:</strong> the orange fruit that becomes a sweet, an ice cream and a liqueur — the "gold" of the wetlands.</li>
+  <li><strong>Cagaita, mangaba and cajuzinho-do-cerrado:</strong> native fruits that appear in signature desserts and juices.</li>
+</ul>
+
+${h.fig(2, { legenda: 'The baru, a Cerrado native nut, now coveted by fine dining.' })}
+
+<h2>Where to eat, by occasion</h2>
+<h3>For a special night</h3>
+<p><strong>Asa Sul</strong> brings together the city's fine dining — signature cuisine, a wine list, polished service. It's the area for celebrations.</p>
+<h3>With a water view</h3>
+<p>The <strong>Pontão do Lago Sul</strong> lines up restaurants by the Paranoá: perfect for late afternoon, 10 minutes from our houses. It pairs perfectly with the <a href="${h.L('/blog/roteiros.html')}">3-day itinerary</a>.</p>
+<h3>Roots cooking</h3>
+<p>To feel the local soul, seek out the Goiás and Minas eateries and the bars of Asa Norte — galinhada, pamonha, empadão goiano and the traditional Brasília happy hour.</p>
+
+${h.fig(3, { legenda: 'Feijoada: the migrant Brazil that built the Brasília table.' })}
+
+<h2>The best table can be your own</h2>
+<p>There is something no restaurant offers: cooking (or being served) in the privacy of a house, with your people, with no closing time. That's why our stays have a <strong>full gourmet kitchen and room to entertain</strong> — you can call a private chef, set up a paired dinner for the group or simply make breakfast with fruit from the market. In Brasília, hospitality also happens at the table — and yours can be the best one of the trip.</p>
+`,
+    },
+    es: {
+      titulo: 'Gastronomía de Brasília: dónde comer y los sabores del Cerrado | Villela Stay',
+      descricao: 'De la alta gastronomía de Asa Sul a los sabores del Cerrado — pequi, baru, buriti. La guía del anfitrión para comer bien en Brasília, con recomendaciones de restaurantes y la cocina local.',
+      h1: 'Brasília se come con todo Brasil en el plato',
+      dek: 'Una ciudad hecha de migrantes de todos los estados creó una escena gastronómica plural — y echó raíces en el Cerrado, el bioma más sabroso y menos conocido del país.',
+      casasTitulo: 'Cocina gourmet para recibir — o solo relajarte',
+      casasTexto: 'Nuestras casas tienen cocina completa y espacio para reunir gente a la mesa. Recibe a un chef en casa, organiza una cena para el grupo o simplemente cocina con calma tras un día de mercado. La hospitalidad también es sobre la mesa.',
+      isca: { titulo: 'Guía de restaurantes del anfitrión (PDF)', texto: 'Las mesas que recomendamos a nuestros huéspedes — por zona y por ocasión, del happy hour local a la noche especial. Descárgala ahora.', botao: 'Quiero la guía de restaurantes' },
+      faq: [
+        { q: '¿Cuál es la comida típica de Brasília?', a: 'Brasília no tiene una única "comida típica" — se formó con migrantes de todo Brasil, así que reúne la cocina goiana (galinhada, pamonha, pequi), la minera, la nordestina y la del propio Cerrado. El pequi, el baru y el buriti son los ingredientes-firma de la región.' },
+        { q: '¿Qué es el pequi y cómo se come?', a: 'El pequi es un fruto del Cerrado de aroma intenso y sabor único, muy usado en el arroz con pequi y en la galinhada. Advertencia famosa: nunca lo muerdas — el hueso tiene espinas finísimas. Se come raspando la pulpa con los dientes, con suavidad. Es una experiencia que todo visitante debería probar al menos una vez.' },
+        { q: '¿Dónde comer bien en Brasília?', a: 'Asa Sul (sobre todo las cuadras 400 y 200) concentra la alta gastronomía; el Pontão do Lago Sul tiene restaurantes a la orilla del agua; y Asa Norte guarda bares y casas de autor. Mantenemos una guía actualizada por temporada — solicita el PDF del anfitrión en esta página.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Brasília es la única capital brasileña sin una cocina "nativa" — y es justamente eso lo que la hace deliciosa. Construida por gente que vino de Minas, de Goiás, del Nordeste, del Sur y del mundo, la ciudad puso todo en la misma mesa. Aquí cenas un pescado amazónico, almuerzas una galinhada goiana y cierras la noche en un bistró de inspiración francesa — a veces en la misma cuadra.</p>
+
+${h.fig(1, { legenda: 'Arroz con pequi — el sabor-firma del Cerrado, intenso e inconfundible.' })}
+
+<h2>Los sabores del Cerrado</h2>
+<p>El bioma que rodea Brasília es una despensa poco explorada — y los chefs de la ciudad lo redescubrieron. Vale la pena probar:</p>
+<ul class="artigo-lista">
+  <li><strong>Pequi:</strong> aroma fuerte, sabor marcado, estrella del arroz con pequi y de la galinhada. (¡Nunca muerdas el hueso!)</li>
+  <li><strong>Baru:</strong> la castaña del Cerrado, crocante y nutritiva, que se volvió la consentida de la alta gastronomía y la repostería.</li>
+  <li><strong>Buriti:</strong> el fruto anaranjado que se vuelve dulce, helado y licor — el "oro" de los humedales.</li>
+  <li><strong>Cagaita, mangaba y cajuzinho-do-cerrado:</strong> frutas nativas que aparecen en postres de autor y jugos.</li>
+</ul>
+
+${h.fig(2, { legenda: 'El baru, castaña nativa del Cerrado, hoy codiciada por la alta gastronomía.' })}
+
+<h2>Dónde comer, por ocasión</h2>
+<h3>Para una noche especial</h3>
+<p>La <strong>Asa Sul</strong> reúne la alta gastronomía de la ciudad — cocina de autor, carta de vinos, servicio afinado. Es la zona de las celebraciones.</p>
+<h3>Con vista al agua</h3>
+<p>El <strong>Pontão do Lago Sul</strong> alinea restaurantes a la orilla del Paranoá: ideal para el final de la tarde, a 10 minutos de nuestras casas. Combina perfectamente con el <a href="${h.L('/blog/roteiros.html')}">itinerario de 3 días</a>.</p>
+<h3>Comida de raíz</h3>
+<p>Para sentir el alma local, busca las casas de comida goiana y minera y los bares de Asa Norte — galinhada, pamonha, empadão goiano y el tradicional happy hour brasiliense.</p>
+
+${h.fig(3, { legenda: 'Feijoada: el Brasil migrante que formó la mesa de Brasília.' })}
+
+<h2>La mejor mesa puede ser la tuya</h2>
+<p>Hay algo que ningún restaurante ofrece: cocinar (o ser servido) en la privacidad de una casa, con los tuyos, sin hora para terminar. Por eso nuestros alojamientos tienen <strong>cocina gourmet completa y espacio para recibir</strong> — puedes llamar a un chef privado, montar una cena maridada para el grupo o simplemente preparar un desayuno con las frutas del mercado. En Brasília, la hospitalidad también se hace a la mesa — y la tuya puede ser la mejor del viaje.</p>
+`,
+    },
+  },
 };
