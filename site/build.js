@@ -19,9 +19,11 @@ const SITE_URL = 'https://villela-stay-site.onrender.com';
 const PWA = {
   themeColor: '#5a3e2b',       // marrom da marca (barra do app)
   backgroundColor: '#fbf6ee',  // creme claro (splash screen)
-  cacheVersion: 'vstay-v4'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v5'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
+const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
+let LANDINGS;                            // preenchido no corpo; escopo de módulo p/ o sitemap usar após o loop
 
 const DIST = path.join(__dirname, 'dist');
 fs.rmSync(DIST, { recursive: true, force: true });
@@ -146,9 +148,38 @@ const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 
 const waLink = txt => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
 
+// ----------------------------------------------------------------- i18n (PT/EN/ES)
+// O site é gerado 3x (um loop por idioma). LANG controla as escolhas de texto/links/saída.
+// Conteúdo ainda não traduzido cai em PT (fallback), então nada quebra durante a tradução incremental.
+const IDIOMAS = ['pt', 'en', 'es'];
+let LANG = 'pt';
+const HTML_LANG = { pt: 'pt-BR', en: 'en', es: 'es' };
+const NOME_IDIOMA = { pt: 'Português BR', en: 'English', es: 'Español' };
+// t(pt, en, es): string do idioma corrente (fallback para pt quando faltar tradução).
+const t = (pt, en, es) => LANG === 'en' ? (en == null ? pt : en) : (LANG === 'es' ? (es == null ? pt : es) : pt);
+// L(path): prefixa caminho absoluto do site com o idioma corrente (/en, /es). PT sem prefixo.
+const L = p => (LANG === 'pt' || typeof p !== 'string' || !p.startsWith('/')) ? p : (p === '/' ? `/${LANG}/` : `/${LANG}${p}`);
+// Diretório de saída do idioma corrente.
+const outDir = () => LANG === 'pt' ? DIST : path.join(DIST, LANG);
+// hreflang para a versão de cada idioma de um caminho (informado SEMPRE como o caminho PT).
+function hreflangTags(caminhoPt) {
+  const abs = (lang, p) => `${SITE_URL}${lang === 'pt' ? '' : '/' + lang}${p}`;
+  return IDIOMAS.map(l => `<link rel="alternate" hreflang="${HTML_LANG[l]}" href="${abs(l, caminhoPt)}">`).join('') +
+    `<link rel="alternate" hreflang="x-default" href="${abs('pt', caminhoPt)}">`;
+}
+// Seletor 🌐 do cabeçalho: aponta para o MESMO caminho em cada idioma (PT sem prefixo, EN /en, ES /es).
+function seletorIdioma(caminhoPt) {
+  const itens = IDIOMAS.map(l => {
+    const href = (l === 'pt' ? '' : '/' + l) + caminhoPt;
+    return `<a role="menuitem" hreflang="${HTML_LANG[l]}" href="${href}"${l === LANG ? ' aria-current="true"' : ''}>${NOME_IDIOMA[l]}</a>`;
+  }).join('');
+  return `<div class="lang-switch"><button type="button" class="lang-btn" aria-haspopup="true" aria-expanded="false">🌐 <span>${NOME_IDIOMA[LANG]}</span> ▾</button><div class="lang-menu" role="menu">${itens}</div></div>`;
+}
+
 function layout(titulo, descricao, corpo, opts = {}) {
-  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/logo.png`, ogType = 'website', lang = 'pt-BR' } = opts;
+  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/logo.png`, ogType = 'website', lang = HTML_LANG[LANG] } = opts;
   const ogLocale = lang === 'en' ? 'en_US' : (lang === 'es' ? 'es_ES' : 'pt_BR');
+  const urlAtual = `${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}${caminho}`;
   // Organization injetada em toda página (âncora de identidade @id reutilizada nos schemas locais)
   const orgLd = `<script type="application/ld+json">${JSON.stringify(orgSchema)}</script>`;
   return `<!DOCTYPE html>
@@ -171,7 +202,8 @@ gtag('config', 'G-5L2YQ2BPQW');
 </script>
 <title>${esc(titulo)}</title>
 <meta name="description" content="${esc(descricao)}">
-<link rel="canonical" href="${SITE_URL}${caminho}">
+<link rel="canonical" href="${urlAtual}">
+${hreflangTags(caminho)}
 ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="${PWA.themeColor}">
@@ -186,7 +218,7 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
 <meta property="og:site_name" content="Villela Stay">
 <meta property="og:title" content="${esc(titulo)}">
 <meta property="og:description" content="${esc(descricao)}">
-<meta property="og:url" content="${SITE_URL}${caminho}">
+<meta property="og:url" content="${urlAtual}">
 <meta property="og:image" content="${esc(ogImage)}">
 <meta property="og:image:alt" content="${esc(titulo)}">
 <meta property="og:locale" content="${ogLocale}">
@@ -200,20 +232,21 @@ ${extraHead}
 </head>
 <body>
 <header class="topo">
-  <div class="marca-bloco">${MARCA}${TAGLINE}</div>
+  <div class="marca-bloco">${MARCA.replace('href="/"', `href="${L('/')}"`)}${TAGLINE}</div>
   <nav>
-    <a href="/#hospedagens">Hospedagens</a>
-    <a href="/eventos.html">Eventos</a>
-    <a href="/pacotes.html">Pacotes Especiais</a>
-    <a href="/blog.html">Blog</a>
-    <a href="/regras.html">Regras da Casa</a>
-    <a href="/faq.html">FAQ</a>
-    <a href="/guia.html">Guia do Hóspede</a>
-    <a href="/nossa-historia.html">Nossa História</a>
-    <a href="/links.html">Linktree</a>
-    <a href="${waLink('Olá! Vim pelo site da Villela Stay.')}" class="btn-wa-nav">WhatsApp</a>
-    <a href="${BACKEND}/staff" class="link-staff" title="Área restrita da equipe">🔒 Staff</a>
-    <button type="button" id="btn-instalar-pwa" class="btn-instalar" hidden aria-label="Instalar o app da Villela Stay">📲 Instalar app</button>
+    <a href="${L('/')}#hospedagens">${t('Hospedagens', 'Stays', 'Alojamientos')}</a>
+    <a href="${L('/eventos.html')}">${t('Eventos', 'Events', 'Eventos')}</a>
+    <a href="${L('/pacotes.html')}">${t('Pacotes Especiais', 'Special Packages', 'Paquetes Especiales')}</a>
+    <a href="${L('/blog.html')}">Blog</a>
+    <a href="${L('/regras.html')}">${t('Regras da Casa', 'House Rules', 'Normas de la Casa')}</a>
+    <a href="${L('/faq.html')}">FAQ</a>
+    <a href="${L('/guia.html')}">${t('Guia do Hóspede', 'Guest Guide', 'Guía del Huésped')}</a>
+    <a href="${L('/nossa-historia.html')}">${t('Nossa História', 'Our Story', 'Nuestra Historia')}</a>
+    <a href="${L('/links.html')}">Linktree</a>
+    ${seletorIdioma(caminho)}
+    <a href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" class="btn-wa-nav">WhatsApp</a>
+    <a href="${BACKEND}/staff" class="link-staff" title="${t('Área restrita da equipe', 'Staff area', 'Área del equipo')}">🔒 Staff</a>
+    <button type="button" id="btn-instalar-pwa" class="btn-instalar" hidden aria-label="${t('Instalar o app da Villela Stay', 'Install the Villela Stay app', 'Instalar la app de Villela Stay')}">${t('📲 Instalar app', '📲 Install app', '📲 Instalar app')}</button>
   </nav>
 </header>
 <main id="conteudo">
@@ -221,29 +254,29 @@ ${corpo}
 </main>
 <footer class="rodape">
   <div class="rodape-links">
-    <strong>Conheça</strong>
-    <a href="/blog.html">Blog · Diário de Brasília</a>
-    <a href="/nossa-historia.html">Nossa História</a>
-    <a href="/posse-2027.html">Posse Presidencial 2027</a>
+    <strong>${t('Conheça', 'Discover', 'Conoce')}</strong>
+    <a href="${L('/blog.html')}">${t('Blog · Diário de Brasília', 'Blog · Brasília Diary', 'Blog · Diario de Brasília')}</a>
+    <a href="${L('/nossa-historia.html')}">${t('Nossa História', 'Our Story', 'Nuestra Historia')}</a>
+    <a href="${L('/posse-2027.html')}">${t('Posse Presidencial 2027', 'Presidential Inauguration 2027', 'Toma de Posesión Presidencial 2027')}</a>
   </div>
   <div>
-    <strong>Villela Stay</strong> — Hospedagem por temporada no Lago Sul, Brasília-DF<br>
+    <strong>Villela Stay</strong> — ${t('Hospedagem por temporada no Lago Sul, Brasília-DF', 'Vacation rentals in Lago Sul, Brasília, Brazil', 'Alquiler por temporada en Lago Sul, Brasília-DF')}<br>
     SMDB Conjunto 29, Lago Sul, Brasília-DF
     <p class="rodape-distancias">
-      Casa Modernista: 10 minutos do Aeroporto<br>
-      Gran Villela Home Stay: 15 minutos da Esplanada
+      ${t('Casa Modernista: 10 minutos do Aeroporto', 'Casa Modernista: 10 minutes from the Airport', 'Casa Modernista: 10 minutos del Aeropuerto')}<br>
+      ${t('Gran Villela Home Stay: 15 minutos da Esplanada', 'Gran Villela Home Stay: 15 minutes from the Esplanada', 'Gran Villela Home Stay: 15 minutos de la Explanada')}
     </p>
   </div>
   <div class="rodape-links rodape-compacto">
-    <strong>Navegue</strong>
-    <a href="/faq.html">Perguntas Frequentes (FAQ)</a>
-    <a href="/links.html">Linktree</a>
-    <a href="/pre-checkin.html">Check-in on-line</a>
-    <a href="/guia.html">Guia do Hóspede</a>
-    <a href="/formaturas.html">Formaturas</a>
-    <a href="/casamentos.html">Casamentos</a>
-    <a href="/festas-infantis.html">Festas Infantis</a>
-    <a href="/empresas.html">Empresas &amp; Embaixadas</a>
+    <strong>${t('Navegue', 'Browse', 'Navega')}</strong>
+    <a href="${L('/faq.html')}">${t('Perguntas Frequentes (FAQ)', 'FAQ — Frequently Asked Questions', 'Preguntas Frecuentes (FAQ)')}</a>
+    <a href="${L('/links.html')}">Linktree</a>
+    <a href="${L('/pre-checkin.html')}">${t('Check-in on-line', 'Online check-in', 'Check-in en línea')}</a>
+    <a href="${L('/guia.html')}">${t('Guia do Hóspede', 'Guest Guide', 'Guía del Huésped')}</a>
+    <a href="${L('/formaturas.html')}">${t('Formaturas', 'Graduations', 'Graduaciones')}</a>
+    <a href="${L('/casamentos.html')}">${t('Casamentos', 'Weddings', 'Bodas')}</a>
+    <a href="${L('/festas-infantis.html')}">${t('Festas Infantis', "Kids' Parties", 'Fiestas Infantiles')}</a>
+    <a href="${L('/empresas.html')}">${t('Empresas &amp; Embaixadas', 'Companies &amp; Embassies', 'Empresas y Embajadas')}</a>
   </div>
   <div>
     <p class="rodape-contatos">
@@ -254,9 +287,9 @@ ${corpo}
       <a href="https://facebook.com/augusto.villela" target="_blank" rel="noopener">📘 augusto.villela</a>
     </p>
   </div>
-  <div class="creditos">Fotos dos pontos turísticos: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida e Rose Ramalho, via Wikimedia Commons (licenças CC BY / CC BY-SA).</div>
+  <div class="creditos">${t('Fotos dos pontos turísticos', 'Landmark photos', 'Fotos de los puntos turísticos')}: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida ${t('e', 'and', 'y')} Rose Ramalho, via Wikimedia Commons (${t('licenças', 'licenses', 'licencias')} CC BY / CC BY-SA).</div>
 </footer>
-<a class="wa-flutuante" href="${waLink('Olá! Vim pelo site da Villela Stay.')}" aria-label="Falar no WhatsApp">💬</a>
+<a class="wa-flutuante" href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" aria-label="${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}">💬</a>
 <script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer), { keepalive: true }); } catch (e) {} });</script>
 <script>
 document.addEventListener('click', function(e){
@@ -301,6 +334,15 @@ document.addEventListener('submit', function(e){
 </body>
 </html>`;
 }
+
+// ===================== GERAÇÃO POR IDIOMA (PT / EN / ES) =====================
+// Tudo daqui até o fim do links.html é gerado 1x por idioma. PT vai para dist/,
+// EN para dist/en/, ES para dist/es/. Conteúdo sem tradução cai em PT (fallback).
+for (const __L of IDIOMAS) {
+  LANG = __L;
+  const od = outDir();
+  fs.mkdirSync(path.join(od, 'hospedagem'), { recursive: true });
+  fs.mkdirSync(path.join(od, 'blog'), { recursive: true });
 
 // ---------------------------------------------------------------- home
 const card = l => `
@@ -450,7 +492,7 @@ fetch('${BACKEND}/api/ultima-hora')
     })}</script>`
   }
 );
-fs.writeFileSync(path.join(DIST, 'index.html'), home);
+fs.writeFileSync(path.join(od, 'index.html'), home);
 
 // ------------------------------------------------- página por unidade
 // Plantas humanizadas (feitas pelo Augusto) — id do anúncio -> arquivo
@@ -772,7 +814,7 @@ for (const l of listings) {
       })}</script>`
     }
   );
-  fs.writeFileSync(path.join(DIST, 'hospedagem', `${l.id}.html`), pagina);
+  fs.writeFileSync(path.join(od, 'hospedagem', `${l.id}.html`), pagina);
 }
 
 // ------------------------- eventos (página de vendas) -------------------------
@@ -877,7 +919,7 @@ document.getElementById('form-evento').addEventListener('submit', function(e){
 </script>`,
   { caminho: '/eventos.html' }
 );
-fs.writeFileSync(path.join(DIST, 'eventos.html'), eventos);
+fs.writeFileSync(path.join(od, 'eventos.html'), eventos);
 
 // ------------------------- pacotes (página de vendas) -------------------------
 const DATAS_PACOTE = [
@@ -1012,7 +1054,7 @@ const pacotes = layout(
     })}</script>`
   }
 );
-fs.writeFileSync(path.join(DIST, 'pacotes.html'), pacotes);
+fs.writeFileSync(path.join(od, 'pacotes.html'), pacotes);
 
 // ------------------------- regras da casa -------------------------
 const REGRAS = [
@@ -1084,7 +1126,7 @@ const regras = layout(
     })}</script>`
   }
 );
-fs.writeFileSync(path.join(DIST, 'regras.html'), regras);
+fs.writeFileSync(path.join(od, 'regras.html'), regras);
 
 // ------------------------- FAQ (perguntas frequentes) -------------------------
 const FAQ_SECOES = [
@@ -1156,21 +1198,17 @@ function faqSchema(secoes) {
     }))
   })}</script>`;
 }
-function faqLangs(atual) {
-  const L = [['pt', 'Português', '/faq.html'], ['en', 'English', '/faq-en.html'], ['es', 'Español', '/faq-es.html']];
-  return '🌐 ' + L.map(x => x[0] === atual ? `<strong>${x[1]}</strong>` : `<a href="${x[2]}">${x[1]}</a>`).join(' · ');
-}
 function renderFaqPage(o) {
+  // A troca de idioma e o hreflang vêm do cabeçalho/layout (seletor global).
   return layout(o.titulo, o.descricao, `
 <section class="hero hero-menor">
   <h1>${esc(o.h1)}</h1>
   <p>${o.intro}</p>
-  <p class="faq-langs">${faqLangs(o.atual)}</p>
 </section>
 <div class="regras-wrap faq-wrap">
   ${o.secoes.map(s => `<section class="regra"><h2>${esc(s[0])}</h2>${s[1].map(it => `<h3 class="faq-q">${esc(it[0])}</h3><div class="faq-a">${it[1]}</div>`).join('\n')}</section>`).join('\n')}
   <p class="regras-aceite">${o.rodape}</p>
-</div>`, { caminho: o.caminho, lang: o.lang, extraHead: FAQ_STYLE + FAQ_HREFLANG + faqSchema(o.secoes) });
+</div>`, { caminho: o.caminho, extraHead: FAQ_STYLE + faqSchema(o.secoes) });
 }
 
 const FAQ_SECOES_EN = [
@@ -1289,36 +1327,17 @@ const FAQ_SECOES_ES = [
   ]]
 ];
 
-fs.writeFileSync(path.join(DIST, 'faq.html'), renderFaqPage({
-  lang: 'pt-BR', atual: 'pt', caminho: '/faq.html',
-  titulo: 'Perguntas Frequentes (FAQ) | Villela Stay',
-  descricao: 'Dúvidas frequentes sobre hospedagem e eventos na Villela Stay, no Lago Sul de Brasília: reserva, pagamento, check-in, comodidades, piscina, pets, eventos e mais.',
-  h1: 'Perguntas Frequentes',
-  intro: `Tudo o que você precisa para reservar, se hospedar ou fazer um evento na Villela Stay, no Lago Sul de Brasília. Não encontrou sua dúvida? <a href="${waLink('Olá! Tenho uma dúvida que não encontrei no FAQ do site.')}">Fale com a gente no WhatsApp</a>.`,
-  rodape: `Estas são as informações oficiais da Villela Stay. Para uma proposta personalizada, <a href="${waLink('Olá! Vim pelo FAQ do site e quero uma cotação.')}">fale com o anfitrião no WhatsApp</a>.`,
-  secoes: FAQ_SECOES
+const faqSec = LANG === 'en' ? FAQ_SECOES_EN : (LANG === 'es' ? FAQ_SECOES_ES : FAQ_SECOES);
+fs.writeFileSync(path.join(od, 'faq.html'), renderFaqPage({
+  caminho: '/faq.html',
+  titulo: t('Perguntas Frequentes (FAQ) | Villela Stay', 'Frequently Asked Questions (FAQ) | Villela Stay', 'Preguntas Frecuentes (FAQ) | Villela Stay'),
+  descricao: t('Dúvidas frequentes sobre hospedagem e eventos na Villela Stay, no Lago Sul de Brasília: reserva, pagamento, check-in, comodidades, piscina, pets, eventos e mais.', 'Frequently asked questions about stays and events at Villela Stay, in Lago Sul, Brasília: booking, payment, check-in, amenities, pool, pets, events and more.', 'Preguntas frecuentes sobre estancias y eventos en Villela Stay, en Lago Sul, Brasília: reserva, pago, check-in, comodidades, piscina, mascotas, eventos y más.'),
+  h1: t('Perguntas Frequentes', 'Frequently Asked Questions', 'Preguntas Frecuentes'),
+  intro: t(`Tudo o que você precisa para reservar, se hospedar ou fazer um evento na Villela Stay, no Lago Sul de Brasília. Não encontrou sua dúvida? <a href="${waLink('Olá! Tenho uma dúvida que não encontrei no FAQ do site.')}">Fale com a gente no WhatsApp</a>.`, `Everything you need to book, stay or host an event at Villela Stay, in Lago Sul, Brasília. Didn't find your question? <a href="${waLink('Hi! I have a question I could not find in the website FAQ.')}">Message us on WhatsApp</a>.`, `Todo lo que necesitas para reservar, hospedarte o hacer un evento en Villela Stay, en Lago Sul, Brasília. ¿No encontraste tu duda? <a href="${waLink('¡Hola! Tengo una duda que no encontré en las preguntas frecuentes del sitio.')}">Escríbenos por WhatsApp</a>.`),
+  rodape: t(`Estas são as informações oficiais da Villela Stay. Para uma proposta personalizada, <a href="${waLink('Olá! Vim pelo FAQ do site e quero uma cotação.')}">fale com o anfitrião no WhatsApp</a>.`, `These are Villela Stay's official answers. For a tailored proposal, <a href="${waLink('Hi! I came from the website FAQ and would like a quote.')}">talk to the host on WhatsApp</a>.`, `Estas son las respuestas oficiales de Villela Stay. Para una propuesta personalizada, <a href="${waLink('¡Hola! Vengo de las preguntas frecuentes del sitio y quiero una cotización.')}">habla con el anfitrión por WhatsApp</a>.`),
+  secoes: faqSec
 }));
-console.log('FAQ gerado: /faq.html');
-fs.writeFileSync(path.join(DIST, 'faq-en.html'), renderFaqPage({
-  lang: 'en', atual: 'en', caminho: '/faq-en.html',
-  titulo: 'Frequently Asked Questions (FAQ) | Villela Stay',
-  descricao: 'Frequently asked questions about stays and events at Villela Stay, in Lago Sul, Brasília: booking, payment, check-in, amenities, pool, pets, events and more.',
-  h1: 'Frequently Asked Questions',
-  intro: `Everything you need to book, stay or host an event at Villela Stay, in Lago Sul, Brasília. Didn't find your question? <a href="${waLink('Hi! I have a question I could not find in the website FAQ.')}">Message us on WhatsApp</a>.`,
-  rodape: `These are Villela Stay's official answers. For a tailored proposal, <a href="${waLink('Hi! I came from the website FAQ and would like a quote.')}">talk to the host on WhatsApp</a>.`,
-  secoes: FAQ_SECOES_EN
-}));
-console.log('FAQ gerado: /faq-en.html');
-fs.writeFileSync(path.join(DIST, 'faq-es.html'), renderFaqPage({
-  lang: 'es', atual: 'es', caminho: '/faq-es.html',
-  titulo: 'Preguntas Frecuentes (FAQ) | Villela Stay',
-  descricao: 'Preguntas frecuentes sobre estancias y eventos en Villela Stay, en Lago Sul, Brasília: reserva, pago, check-in, comodidades, piscina, mascotas, eventos y más.',
-  h1: 'Preguntas Frecuentes',
-  intro: `Todo lo que necesitas para reservar, hospedarte o hacer un evento en Villela Stay, en Lago Sul, Brasília. ¿No encontraste tu duda? <a href="${waLink('¡Hola! Tengo una duda que no encontré en las preguntas frecuentes del sitio.')}">Escríbenos por WhatsApp</a>.`,
-  rodape: `Estas son las respuestas oficiales de Villela Stay. Para una propuesta personalizada, <a href="${waLink('¡Hola! Vengo de las preguntas frecuentes del sitio y quiero una cotización.')}">habla con el anfitrión por WhatsApp</a>.`,
-  secoes: FAQ_SECOES_ES
-}));
-console.log('FAQ gerado: /faq-es.html');
+console.log(`FAQ gerado (${LANG})`);
 
 // ------------------------- guia do hóspede -------------------------
 const guia = layout(
@@ -1396,7 +1415,7 @@ document.getElementById('form-chamado').addEventListener('submit', function(e){
 </script>`,
   { caminho: '/guia.html' }
 );
-fs.writeFileSync(path.join(DIST, 'guia.html'), guia);
+fs.writeFileSync(path.join(od, 'guia.html'), guia);
 
 // ------------------------- pré-check-in -------------------------
 const precheckin = layout(
@@ -1468,10 +1487,10 @@ document.getElementById('form-precheckin').addEventListener('submit', function(e
 </script>`,
   { caminho: '/pre-checkin.html' }
 );
-fs.writeFileSync(path.join(DIST, 'pre-checkin.html'), precheckin);
+fs.writeFileSync(path.join(od, 'pre-checkin.html'), precheckin);
 
 // ------------------------- landing pages por público -------------------------
-const LANDINGS = [
+LANDINGS = [
   {
     arquivo: 'formaturas.html', origem: 'site-formaturas',
     titulo: 'Formatura em Brasília — casa com piscina no Lago Sul | Villela Stay',
@@ -1582,7 +1601,7 @@ document.querySelector('.form-landing').addEventListener('submit', function(e){
 </script>`,
     { caminho: `/${lp.arquivo}` }
   );
-  fs.writeFileSync(path.join(DIST, lp.arquivo), html);
+  fs.writeFileSync(path.join(od, lp.arquivo), html);
 }
 
 // ------------------------- artigo: posse 2027 -------------------------
@@ -1624,7 +1643,7 @@ const posse = layout(
 </div>`,
   { caminho: '/posse-2027.html' }
 );
-fs.writeFileSync(path.join(DIST, 'posse-2027.html'), posse);
+fs.writeFileSync(path.join(od, 'posse-2027.html'), posse);
 
 // ------------------------- nossa história -------------------------
 const historia = layout(
@@ -1654,12 +1673,12 @@ const historia = layout(
 </div>`,
   { caminho: '/nossa-historia.html' }
 );
-fs.writeFileSync(path.join(DIST, 'nossa-historia.html'), historia);
+fs.writeFileSync(path.join(od, 'nossa-historia.html'), historia);
 
 // ============================ BLOG / Diário de Brasília ============================
 // Motor data-driven: cada artigo é um arquivo em content/blog/ (registrado em index.js).
 // Para publicar um novo: crie o arquivo, registre no index e rode `node build.js`.
-const BLOG = require('./content/blog');
+// BLOG: definido no escopo de módulo (topo do arquivo).
 
 // Créditos das imagens curadas (Wikimedia Commons) — opcional/tolerante a ausência.
 let blogCreditos = {};
@@ -1870,7 +1889,7 @@ ${relacionadosBloco}
 ${formScriptBlog}`;
 
   const html = layout(a.titulo, a.descricao, corpoHtml, { caminho, ogType: 'article', ogImage: heroAbs, extraHead });
-  fs.writeFileSync(path.join(DIST, 'blog', `${a.slug}.html`), html);
+  fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
 }
 
 BLOG.forEach(renderArtigo);
@@ -1913,7 +1932,7 @@ const blogHub = layout(
 </section>`,
   { caminho: '/blog.html', extraHead: `<script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
 );
-fs.writeFileSync(path.join(DIST, 'blog.html'), blogHub);
+fs.writeFileSync(path.join(od, 'blog.html'), blogHub);
 
 const BLOG_PATHS = ['/blog.html', ...BLOG.map(a => `/blog/${a.slug}.html`)];
 console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
@@ -2057,8 +2076,10 @@ document.addEventListener('click', function(e){
 </script>
 </body>
 </html>`;
-fs.writeFileSync(path.join(DIST, 'links.html'), linktreeHtml);
-console.log('Linktree gerado: /links.html');
+fs.writeFileSync(path.join(od, 'links.html'), linktreeHtml);
+console.log(`Gerado (${LANG}): páginas em ${LANG === 'pt' ? 'dist/' : 'dist/' + LANG + '/'}`);
+
+} // ===================== fim do loop de idiomas =====================
 
 // ------------------------- PWA: manifest, ícones, service worker, offline -------------------------
 // Copia os ícones do app (gerados em assets/icons/) para dist/assets/icons/
@@ -2136,7 +2157,7 @@ const PRECACHE_URLS = [
   '/', '/index.html', '/style.css', '/offline.html', '/manifest.webmanifest',
   ...(TEM_LOGO ? ['/logo.png'] : []),
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
-  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/faq.html', '/faq-en.html', '/faq-es.html', '/blog.html', '/links.html',
+  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/faq.html', '/blog.html', '/links.html',
   ...listings.map(l => `/hospedagem/${l.id}.html`)
 ];
 const sw = `// Service Worker da Villela Stay (PWA) — gerado por build.js. NÃO editar à mão.
@@ -2215,17 +2236,16 @@ const rotas = [
   { loc: '/guia.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/regras.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/faq.html', changefreq: 'monthly', priority: '0.6' },
-  { loc: '/faq-en.html', changefreq: 'monthly', priority: '0.5' },
-  { loc: '/faq-es.html', changefreq: 'monthly', priority: '0.5' },
   { loc: '/pre-checkin.html', changefreq: 'monthly', priority: '0.3' },
   { loc: '/links.html', changefreq: 'monthly', priority: '0.4' },
   ...listings.map(l => ({ loc: `/hospedagem/${l.id}.html`, changefreq: 'weekly', priority: '0.8' }))
 ];
+const absLoc = (lang, loc) => `${SITE_URL}${lang === 'pt' ? '' : '/' + lang}${loc}`;
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${rotas.map(r => `  <url><loc>${SITE_URL}${r.loc}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority></url>`).join('\n')}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 
-console.log(`Site gerado em dist/: ${rotas.length} páginas + sitemap.xml + robots.txt`);
+console.log(`Site gerado: ${rotas.length} rotas × ${IDIOMAS.length} idiomas + sitemap.xml + robots.txt`);

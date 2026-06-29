@@ -472,3 +472,26 @@ a { color: var(--lago); text-decoration: none; }
   .artigo-corpo { font-size: 1.06rem; }
   .artigo-lead { font-size: 1.18rem; }
 }
+
+/* ----------------------------------------------------------------- Seletor de idioma (🌐 PT/EN/ES) */
+.lang-switch { position: relative; display: inline-block; }
+.lang-switch .lang-btn {
+  font: inherit; cursor: pointer; color: inherit; background: transparent;
+  border: 1px solid rgba(0,0,0,.18); border-radius: 999px; padding: 5px 12px;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.lang-switch .lang-btn:hover { border-color: var(--ouro, #d9a441); }
+.lang-switch .lang-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+  background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.16); padding: 6px; min-width: 168px;
+  display: none; flex-direction: column;
+}
+.lang-switch:hover .lang-menu,
+.lang-switch:focus-within .lang-menu { display: flex; }
+.lang-switch .lang-menu a {
+  display: block; padding: 9px 12px; border-radius: 8px; text-decoration: none;
+  color: #1d2a30; font-size: .95rem; white-space: nowrap;
+}
+.lang-switch .lang-menu a:hover { background: rgba(12,54,68,.08); }
+.lang-switch .lang-menu a[aria-current="true"] { font-weight: 700; color: var(--petroleo, #0c3644); }
