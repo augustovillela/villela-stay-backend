@@ -23,7 +23,7 @@ module.exports = {
     { q: 'Como funciona a gestão — o que vocês fazem por mim?', a: 'Tudo o que separa você do trabalho e do hóspede. Fazemos a vistoria e a preparação do imóvel, decoração e paisagismo, fotografia profissional, criação e otimização dos anúncios nas plataformas, precificação inteligente, atendimento ao hóspede do primeiro contato ao check-out, limpeza e troca de enxoval, manutenção e reposição de itens. Você só acompanha os resultados e recebe.' },
     { q: 'Posso usar meu próprio imóvel quando quiser?', a: 'Sim, sempre. Você bloqueia as datas que quiser usar — para você, para a família ou para quem você indicar — com total flexibilidade. O imóvel continua sendo seu; nós só cuidamos dele quando está disponível para hóspedes.' },
     { q: 'Vou conseguir acompanhar o que acontece com meu imóvel?', a: 'Sim. Você tem transparência total: acompanha reservas, ocupação e o financeiro em tempo real, a qualquer hora. Nada de caixa-preta — você vê exatamente o que entra, o que sai e como seu imóvel está performando.' },
-    { q: 'Como é a limpeza e a manutenção entre estadias?', a: 'Nossa equipe faz a limpeza completa e a troca de enxoval após cada saída, no padrão hotel boutique, e verifica o imóvel a cada estadia para corrigir qualquer problema antes do próximo hóspede. Também controlamos e repomos os itens de consumo (amenities, utensílios, o que faltar).' },
+    { q: 'Como é a limpeza e a manutenção entre estadias?', a: 'Nossa equipe faz a limpeza completa e a troca de enxoval após cada saída, no padrão de hotel, e verifica o imóvel a cada estadia para corrigir qualquer problema antes do próximo hóspede. Também controlamos e repomos os itens de consumo (amenities, utensílios, o que faltar).' },
     { q: 'Como vocês evitam overbooking entre as plataformas?', a: 'Trabalhamos com um calendário unificado integrado às principais plataformas (Airbnb, Booking, Decolar, Vrbo, Google e reservas diretas). Tudo sincroniza em um só lugar — maximiza a exposição do imóvel e elimina o risco de reservar a mesma data duas vezes.' },
     { q: 'A Villela Stay é uma imobiliária?', a: 'Não. Somos uma operação de hospedagem e gestão de aluguel por temporada — nome fantasia da governança do advogado Augusto Villela e de sua mulher, Renata Freitas. Não vendemos nem alugamos imóveis como imobiliária: ajudamos proprietários a transformar seus imóveis em uma fonte de renda profissional, com hospitalidade premiada.' },
   ],
@@ -37,7 +37,7 @@ ${h.fig(1, { legenda: 'Lago Sul, Brasília: o endereço mais nobre da capital �
 <ul class="artigo-lista">
   <li><strong>Rentabilidade máxima:</strong> precificação inteligente e ocupação otimizada para o seu imóvel render o melhor possível, o ano inteiro.</li>
   <li><strong>Trabalho mínimo para você:</strong> cuidamos de tudo, da preparação ao check-out. Você relaxa enquanto os ganhos entram.</li>
-  <li><strong>Hóspedes encantados:</strong> atendimento de hotel boutique gera avaliações 5 estrelas — e avaliação boa atrai mais reservas, num ciclo que se retroalimenta.</li>
+  <li><strong>Hóspedes encantados:</strong> atendimento de hotel gera avaliações 5 estrelas — e avaliação boa atrai mais reservas, num ciclo que se retroalimenta.</li>
   <li><strong>Transparência total:</strong> reservas, ocupação e financeiro em tempo real, a qualquer hora. Você sempre sabe o que está acontecendo.</li>
   <li><strong>Flexibilidade real:</strong> bloqueie as datas que quiser usar seu imóvel. Ele continua seu — sempre.</li>
 </ul>
