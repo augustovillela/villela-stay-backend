@@ -1482,44 +1482,44 @@ fs.writeFileSync(path.join(od, 'guia.html'), guia);
 
 // ------------------------- pré-check-in -------------------------
 const precheckin = layout(
-  'Check-in on-line | Villela Stay',
-  'Adiante seu check-in na Villela Stay: preencha seus dados e chegue com tudo pronto.',
+  t('Check-in on-line | Villela Stay', 'Online check-in | Villela Stay', 'Check-in en línea | Villela Stay'),
+  t('Adiante seu check-in na Villela Stay: preencha seus dados e chegue com tudo pronto.', 'Get a head start on your Villela Stay check-in: fill in your details and arrive with everything ready.', 'Adelanta tu check-in en Villela Stay: completa tus datos y llega con todo listo.'),
   `
 <section class="hero hero-menor">
-  <h1>Check-in on-line</h1>
-  <p>Preencha antes de chegar e ganhe tempo: com seus dados em mãos, deixamos tudo pronto para receber você.</p>
+  <h1>${t('Check-in on-line', 'Online check-in', 'Check-in en línea')}</h1>
+  <p>${t('Preencha antes de chegar e ganhe tempo: com seus dados em mãos, deixamos tudo pronto para receber você.', 'Fill it in before you arrive and save time: with your details on hand, we get everything ready to welcome you.', 'Complétalo antes de llegar y gana tiempo: con tus datos a mano, dejamos todo listo para recibirte.')}</p>
 </section>
 <div class="form-wrap">
   <form id="form-precheckin" class="form-evento">
-    <label>Nome completo* <input name="nome" required></label>
+    <label>${t('Nome completo*', 'Full name*', 'Nombre completo*')} <input name="nome" required></label>
     <label>WhatsApp* <input name="contato" required></label>
-    <label>E-mail <input name="email" type="email"></label>
-    <label>Código da reserva (se souber) <input name="reserva" placeholder="ex.: LR03J"></label>
-    <label>Casa/unidade reservada <input name="hospedagem" placeholder="ex.: Casa Modernista"></label>
+    <label>${t('E-mail', 'Email', 'Correo')} <input name="email" type="email"></label>
+    <label>${t('Código da reserva (se souber)', 'Booking code (if you know it)', 'Código de reserva (si lo sabes)')} <input name="reserva" placeholder="${t('ex.: LR03J', 'e.g. LR03J', 'ej.: LR03J')}"></label>
+    <label>${t('Casa/unidade reservada', 'House/unit booked', 'Casa/unidad reservada')} <input name="hospedagem" placeholder="${t('ex.: Casa Modernista', 'e.g. Casa Modernista', 'ej.: Casa Modernista')}"></label>
     <div style="display:flex;gap:12px">
-      <label style="flex:1">Data de chegada* <input name="chegada" type="date" required></label>
-      <label style="flex:1">Data de saída <input name="saida" type="date"></label>
+      <label style="flex:1">${t('Data de chegada*', 'Arrival date*', 'Fecha de llegada*')} <input name="chegada" type="date" required></label>
+      <label style="flex:1">${t('Data de saída', 'Departure date', 'Fecha de salida')} <input name="saida" type="date"></label>
     </div>
-    <label>Horário previsto de chegada <input name="horario" placeholder="ex.: 15h"></label>
-    <label>Nº de adultos que vão se hospedar <input name="adultos" type="number" min="1"></label>
-    <label>Nº de crianças que vão se hospedar <input name="criancas" type="number" min="0"></label>
-    <label>Nº de Convidados para Evento ou Day Use <input name="convidados" type="number" min="0"></label>
-    <label>Vai trazer pet? Qual? <input name="pets" placeholder="ex.: 1 cachorro pequeno"></label>
-    <label>Vai usar o estacionamento? <select name="estacionamento" style="width:100%"><option value="">Selecione</option><option>Sim</option><option>Não</option></select></label>
-    <label>Modelo e placa do veículo <input name="veiculo" placeholder="ex.: Honda Civic preto - ABC1D23"></label>
-    <label>Motivo da viagem <select name="motivo" id="pc-motivo" style="width:100%">
-      <option value="">Selecione (opcional)</option>
-      <option value="Passeio">Passeio</option>
-      <option value="Trabalho">Trabalho</option>
-      <option value="Evento na cidade">Evento na cidade</option>
+    <label>${t('Horário previsto de chegada', 'Estimated arrival time', 'Hora estimada de llegada')} <input name="horario" placeholder="${t('ex.: 15h', 'e.g. 3 PM', 'ej.: 15h')}"></label>
+    <label>${t('Nº de adultos que vão se hospedar', 'Number of adults staying', 'Nº de adultos que se alojarán')} <input name="adultos" type="number" min="1"></label>
+    <label>${t('Nº de crianças que vão se hospedar', 'Number of children staying', 'Nº de niños que se alojarán')} <input name="criancas" type="number" min="0"></label>
+    <label>${t('Nº de Convidados para Evento ou Day Use', 'Number of guests for event or day use', 'Nº de invitados para evento o day use')} <input name="convidados" type="number" min="0"></label>
+    <label>${t('Vai trazer pet? Qual?', 'Bringing a pet? Which?', '¿Traerás mascota? ¿Cuál?')} <input name="pets" placeholder="${t('ex.: 1 cachorro pequeno', 'e.g. 1 small dog', 'ej.: 1 perro pequeño')}"></label>
+    <label>${t('Vai usar o estacionamento?', 'Will you use the parking?', '¿Usarás el estacionamiento?')} <select name="estacionamento" style="width:100%"><option value="">${t('Selecione', 'Select', 'Selecciona')}</option><option value="Sim">${t('Sim', 'Yes', 'Sí')}</option><option value="Não">${t('Não', 'No', 'No')}</option></select></label>
+    <label>${t('Modelo e placa do veículo', 'Vehicle model and licence plate', 'Modelo y matrícula del vehículo')} <input name="veiculo" placeholder="${t('ex.: Honda Civic preto - ABC1D23', 'e.g. black Honda Civic - ABC1D23', 'ej.: Honda Civic negro - ABC1D23')}"></label>
+    <label>${t('Motivo da viagem', 'Reason for the trip', 'Motivo del viaje')} <select name="motivo" id="pc-motivo" style="width:100%">
+      <option value="">${t('Selecione (opcional)', 'Select (optional)', 'Selecciona (opcional)')}</option>
+      <option value="Passeio">${t('Passeio', 'Leisure', 'Turismo')}</option>
+      <option value="Trabalho">${t('Trabalho', 'Work', 'Trabajo')}</option>
+      <option value="Evento na cidade">${t('Evento na cidade', 'Event in the city', 'Evento en la ciudad')}</option>
     </select></label>
-    <label id="pc-evento-wrap" hidden>Descreva o evento <input name="evento" placeholder="ex.: casamento, formatura, aniversário..."></label>
+    <label id="pc-evento-wrap" hidden>${t('Descreva o evento', 'Describe the event', 'Describe el evento')} <input name="evento" placeholder="${t('ex.: casamento, formatura, aniversário...', 'e.g. wedding, graduation, birthday...', 'ej.: boda, graduación, cumpleaños...')}"></label>
     <div style="display:flex;gap:12px">
-      <label style="flex:1">Origem <input name="origem" placeholder="de onde você vem"></label>
-      <label style="flex:1">Destino <input name="destino" placeholder="para onde vai depois"></label>
+      <label style="flex:1">${t('Origem', 'Coming from', 'Origen')} <input name="origem" placeholder="${t('de onde você vem', "where you're coming from", 'de dónde vienes')}"></label>
+      <label style="flex:1">${t('Destino', 'Going to', 'Destino')} <input name="destino" placeholder="${t('para onde vai depois', "where you're going next", 'a dónde vas después')}"></label>
     </div>
-    <label>Observações (berço, restrições, ocasião especial...) <textarea name="observacoes" rows="3"></textarea></label>
-    <button class="btn" type="submit">Enviar check-in on-line</button>
+    <label>${t('Observações (berço, restrições, ocasião especial...)', 'Notes (cot, restrictions, special occasion...)', 'Observaciones (cuna, restricciones, ocasión especial...)')} <textarea name="observacoes" rows="3"></textarea></label>
+    <button class="btn" type="submit">${t('Enviar check-in on-line', 'Submit online check-in', 'Enviar check-in en línea')}</button>
     <p class="form-status" hidden></p>
   </form>
 </div>
@@ -1536,16 +1536,16 @@ const precheckin = layout(
 document.getElementById('form-precheckin').addEventListener('submit', function(e){
   e.preventDefault();
   var f = e.target, st = f.querySelector('.form-status');
-  st.hidden = false; st.textContent = 'Enviando...';
+  st.hidden = false; st.textContent = ${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
   var dados = {};
   ['nome','contato','email','reserva','hospedagem','chegada','saida','horario','adultos','criancas','convidados','pets','estacionamento','veiculo','motivo','evento','origem','destino','observacoes'].forEach(function(k){ dados[k] = f[k] ? f[k].value : ''; });
   fetch('${BACKEND}/api/precheckin', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados)
   }).then(function(r){
-    st.textContent = r.ok ? '✅ Check-in on-line recebido! Até breve. 🏡' : 'Erro ao enviar — fale conosco pelo WhatsApp.';
+    st.textContent = r.ok ? ${JSON.stringify(t('✅ Check-in on-line recebido! Até breve. 🏡', '✅ Online check-in received! See you soon. 🏡', '✅ ¡Check-in en línea recibido! Hasta pronto. 🏡'))} : ${JSON.stringify(t('Erro ao enviar — fale conosco pelo WhatsApp.', 'Error sending — contact us on WhatsApp.', 'Error al enviar — contáctanos por WhatsApp.'))};
     if (r.ok) f.reset();
-  }).catch(function(){ st.textContent = 'Erro ao enviar — fale conosco pelo WhatsApp.'; });
+  }).catch(function(){ st.textContent = ${JSON.stringify(t('Erro ao enviar — fale conosco pelo WhatsApp.', 'Error sending — contact us on WhatsApp.', 'Error al enviar — contáctanos por WhatsApp.'))}; });
 });
 </script>`,
   { caminho: '/pre-checkin.html' }
@@ -1669,39 +1669,39 @@ document.querySelector('.form-landing').addEventListener('submit', function(e){
 
 // ------------------------- artigo: posse 2027 -------------------------
 const cardsPosse = ['GD03H', 'GG04I', 'PL02I', 'GD01H', 'GI01I'].map(id => porId[id]).filter(Boolean).map(l => `
-  <a class="card" href="/hospedagem/${l.id}.html">
+  <a class="card" href="${L(`/hospedagem/${l.id}.html`)}">
     ${img(l.fotoPrincipal, { alt: l.titulo, width: 400, height: 210, sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px' })}
-    <div class="card-info"><h3>${esc(l.titulo)}</h3><p>${l.hospedes} hóspedes · ${l.quartos} quartos</p></div>
+    <div class="card-info"><h3>${esc(tituloImovel(l))}</h3><p>${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · ${l.quartos} ${t('quartos', 'rooms', 'habitaciones')}</p></div>
   </a>`).join('\n');
 
 const posse = layout(
-  'Onde ficar em Brasília para a Posse Presidencial 2027 | Villela Stay',
-  'Hospedagem para a posse do novo Presidente em 1º/01/2027: casas completas no Lago Sul para caravanas e comitivas, a 10 min da Esplanada. Reserve antes de esgotar.',
+  t('Onde ficar em Brasília para a Posse Presidencial 2027 | Villela Stay', 'Where to stay in Brasília for the 2027 Presidential Inauguration | Villela Stay', 'Dónde alojarse en Brasília para la Toma de Posesión Presidencial 2027 | Villela Stay'),
+  t('Hospedagem para a posse do novo Presidente em 1º/01/2027: casas completas no Lago Sul para caravanas e comitivas, a 10 min da Esplanada. Reserve antes de esgotar.', "Accommodation for the new President's inauguration on 1 Jan 2027: whole houses in Lago Sul for groups and delegations, 10 min from the Esplanada. Book before they sell out.", 'Alojamiento para la toma de posesión del nuevo Presidente el 1/01/2027: casas enteras en Lago Sul para caravanas y comitivas, a 10 min de la Explanada. Reserva antes de que se agoten.'),
   `
 <section class="hero hero-menor">
-  <h1>Onde ficar em Brasília para a Posse Presidencial 2027</h1>
-  <p><strong>Em 1º de janeiro de 2027, o Brasil inteiro estará em Brasília.</strong> E quem deixar para depois vai pagar caro — ou ficar longe. Aqui está o guia de quem conhece a cidade.</p>
+  <h1>${t('Onde ficar em Brasília para a Posse Presidencial 2027', 'Where to stay in Brasília for the 2027 Presidential Inauguration', 'Dónde alojarse en Brasília para la Toma de Posesión Presidencial 2027')}</h1>
+  <p>${t('<strong>Em 1º de janeiro de 2027, o Brasil inteiro estará em Brasília.</strong> E quem deixar para depois vai pagar caro — ou ficar longe. Aqui está o guia de quem conhece a cidade.', '<strong>On 1 January 2027, all of Brazil will be in Brasília.</strong> Those who wait will pay dearly — or stay far away. Here\'s the guide from people who know the city.', '<strong>El 1 de enero de 2027, todo Brasil estará en Brasília.</strong> Quien lo deje para después pagará caro — o se quedará lejos. Aquí está la guía de quien conoce la ciudad.')}</p>
 </section>
 <div class="regras-wrap">
-  <section class="regra"><h2>Por que reservar agora</h2>
-    <p>A posse presidencial é o evento que mais lota Brasília — caravanas de todos os estados, comitivas políticas, delegações estrangeiras e famílias inteiras vêm assistir à cerimônia na Esplanada dos Ministérios. Nas posses anteriores, os hotéis da região central <strong>dobraram ou triplicaram as diárias</strong> e esgotaram com meses de antecedência.</p>
-    <p>E há um detalhe que torna 2027 ainda mais especial: a posse cai <strong>emendada com o Réveillon</strong>. Quem vem, vem para os dois — e fica de 4 a 5 dias.</p>
+  <section class="regra"><h2>${t('Por que reservar agora', 'Why book now', 'Por qué reservar ahora')}</h2>
+    <p>${t('A posse presidencial é o evento que mais lota Brasília — caravanas de todos os estados, comitivas políticas, delegações estrangeiras e famílias inteiras vêm assistir à cerimônia na Esplanada dos Ministérios. Nas posses anteriores, os hotéis da região central <strong>dobraram ou triplicaram as diárias</strong> e esgotaram com meses de antecedência.', 'The presidential inauguration is the event that fills Brasília the most — caravans from every state, political delegations, foreign missions and whole families come to watch the ceremony at the Esplanada dos Ministérios. At previous inaugurations, hotels in the central area <strong>doubled or tripled their rates</strong> and sold out months in advance.', 'La toma de posesión presidencial es el evento que más llena Brasília — caravanas de todos los estados, comitivas políticas, delegaciones extranjeras y familias enteras vienen a ver la ceremonia en la Esplanada dos Ministérios. En las tomas anteriores, los hoteles de la zona central <strong>duplicaron o triplicaron las tarifas</strong> y se agotaron con meses de antelación.')}</p>
+    <p>${t('E há um detalhe que torna 2027 ainda mais especial: a posse cai <strong>emendada com o Réveillon</strong>. Quem vem, vem para os dois — e fica de 4 a 5 dias.', 'And one detail makes 2027 even more special: the inauguration falls <strong>right after New Year\'s Eve</strong>. Those who come, come for both — and stay 4 to 5 days.', 'Y hay un detalle que hace 2027 aún más especial: la toma de posesión cae <strong>pegada al Fin de Año</strong>. Quien viene, viene para los dos — y se queda de 4 a 5 días.')}</p>
   </section>
-  <section class="regra"><h2>A alternativa inteligente: casa completa no Lago Sul</h2>
-    <p>Para grupos e caravanas, hotel é a conta que não fecha: dezenas de diárias individuais, sem cozinha, sem espaço de convivência. A solução que cresce a cada posse é alugar uma <strong>casa completa</strong> — e o Lago Sul é o melhor bairro para isso: seguro, silencioso, a <strong>10 minutos do Aeroporto JK e da Esplanada</strong>.</p>
-    <p>Nas casas da Villela Stay, o grupo inteiro fica junto, com piscina aquecida, churrasqueira e cozinha completa — e o custo se divide: <strong>R$ 150 por pessoa por dia</strong> no pacote de 4 diárias com a casa lotada. Menos que uma diária de hotel simples em semana de posse.</p>
+  <section class="regra"><h2>${t('A alternativa inteligente: casa completa no Lago Sul', 'The smart alternative: a whole house in Lago Sul', 'La alternativa inteligente: casa entera en Lago Sul')}</h2>
+    <p>${t('Para grupos e caravanas, hotel é a conta que não fecha: dezenas de diárias individuais, sem cozinha, sem espaço de convivência. A solução que cresce a cada posse é alugar uma <strong>casa completa</strong> — e o Lago Sul é o melhor bairro para isso: seguro, silencioso, a <strong>10 minutos do Aeroporto JK e da Esplanada</strong>.', 'For groups and caravans, a hotel just doesn\'t add up: dozens of individual rates, no kitchen, no shared living space. The solution that grows with every inauguration is renting a <strong>whole house</strong> — and Lago Sul is the best neighbourhood for it: safe, quiet, <strong>10 minutes from JK Airport and the Esplanada</strong>.', 'Para grupos y caravanas, el hotel es la cuenta que no cuadra: decenas de tarifas individuales, sin cocina, sin espacio de convivencia. La solución que crece con cada toma de posesión es alquilar una <strong>casa entera</strong> — y Lago Sul es el mejor barrio para eso: seguro, silencioso, a <strong>10 minutos del Aeropuerto JK y de la Explanada</strong>.')}</p>
+    <p>${t('Nas casas da Villela Stay, o grupo inteiro fica junto, com piscina aquecida, churrasqueira e cozinha completa — e o custo se divide: <strong>R$ 150 por pessoa por dia</strong> no pacote de 4 diárias com a casa lotada. Menos que uma diária de hotel simples em semana de posse.', 'In Villela Stay\'s houses, the whole group stays together, with a heated pool, barbecue and full kitchen — and the cost is split: <strong>R$ 150 per person per day</strong> in the 4-night package with the house at full capacity. Less than a basic hotel night during inauguration week.', 'En las casas de Villela Stay, todo el grupo se queda junto, con piscina climatizada, parrilla y cocina completa — y el costo se reparte: <strong>R$ 150 por persona por día</strong> en el paquete de 4 noches con la casa llena. Menos que una noche de hotel sencillo en semana de toma de posesión.')}</p>
   </section>
-  <section class="regra"><h2>O pacote Réveillon + Posse (30/12/2026 a 03/01/2027)</h2>
-    <p>Nossas 4 casas recebem de 15 a 24 hóspedes cada. O pacote de 4 diárias vai de <strong>R$ 9.800 (Casa Villela, 15 pessoas)</strong> a <strong>R$ 15.400 (Casa Modernista, 24 pessoas)</strong> — valores fechados, sem surpresa. Veja os detalhes e a composição das camas em <a href="/pacotes.html"><strong>Pacotes Especiais</strong></a>.</p>
-    <p>⚠️ São apenas 4 casas por data, e Réveillon + Posse é a janela mais disputada do calendário. As reservas são confirmadas por ordem de chegada.</p>
+  <section class="regra"><h2>${t('O pacote Réveillon + Posse (30/12/2026 a 03/01/2027)', 'The New Year + Inauguration package (30 Dec 2026 to 3 Jan 2027)', 'El paquete Fin de Año + Toma de Posesión (30/12/2026 a 03/01/2027)')}</h2>
+    <p>${t(`Nossas 4 casas recebem de 15 a 24 hóspedes cada. O pacote de 4 diárias vai de <strong>R$ 9.800 (Casa Villela, 15 pessoas)</strong> a <strong>R$ 15.400 (Casa Modernista, 24 pessoas)</strong> — valores fechados, sem surpresa. Veja os detalhes e a composição das camas em <a href="${L('/pacotes.html')}"><strong>Pacotes Especiais</strong></a>.`, `Our 4 houses host 15 to 24 guests each. The 4-night package ranges from <strong>R$ 9,800 (Casa Villela, 15 people)</strong> to <strong>R$ 15,400 (Casa Modernista, 24 people)</strong> — fixed prices, no surprises. See the details and bed layouts in <a href="${L('/pacotes.html')}"><strong>Special Packages</strong></a>.`, `Nuestras 4 casas reciben de 15 a 24 huéspedes cada una. El paquete de 4 noches va de <strong>R$ 9.800 (Casa Villela, 15 personas)</strong> a <strong>R$ 15.400 (Casa Modernista, 24 personas)</strong> — precios cerrados, sin sorpresas. Mira los detalles y la distribución de camas en <a href="${L('/pacotes.html')}"><strong>Paquetes Especiales</strong></a>.`)}</p>
+    <p>⚠️ ${t('São apenas 4 casas por data, e Réveillon + Posse é a janela mais disputada do calendário. As reservas são confirmadas por ordem de chegada.', 'There are only 4 houses per date, and New Year + Inauguration is the most sought-after window on the calendar. Bookings are confirmed on a first-come, first-served basis.', 'Son solo 4 casas por fecha, y Fin de Año + Toma de Posesión es la ventana más disputada del calendario. Las reservas se confirman por orden de llegada.')}</p>
   </section>
-  <section class="regra"><h2>As casas</h2>
+  <section class="regra"><h2>${t('As casas', 'The houses', 'Las casas')}</h2>
     <div class="grade" style="margin-top:8px">${cardsPosse}</div>
   </section>
   <section class="venda-bloco cta-final" style="margin-top:28px">
-    <h2>Garanta a sua casa para a Posse 2027</h2>
-    <p>Diga o tamanho do grupo e devolvemos a proposta completa no WhatsApp.</p>
-    <a class="btn btn-wa btn-grande" href="${waLink('Olá! Quero reservar uma casa para a Posse Presidencial 2027 (30/12 a 03/01). Somos um grupo de ___ pessoas.')}">Reservar pelo WhatsApp</a>
+    <h2>${t('Garanta a sua casa para a Posse 2027', 'Secure your house for the 2027 Inauguration', 'Asegura tu casa para la Toma de Posesión 2027')}</h2>
+    <p>${t('Diga o tamanho do grupo e devolvemos a proposta completa no WhatsApp.', 'Tell us the size of your group and we\'ll send the full proposal on WhatsApp.', 'Dinos el tamaño del grupo y te enviamos la propuesta completa por WhatsApp.')}</p>
+    <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Quero reservar uma casa para a Posse Presidencial 2027 (30/12 a 03/01). Somos um grupo de ___ pessoas.', "Hi! I'd like to book a house for the 2027 Presidential Inauguration (30 Dec to 3 Jan). We're a group of ___ people.", '¡Hola! Quiero reservar una casa para la Toma de Posesión Presidencial 2027 (30/12 a 03/01). Somos un grupo de ___ personas.'))}">${t('Reservar pelo WhatsApp', 'Book on WhatsApp', 'Reservar por WhatsApp')}</a>
   </section>
 </div>`,
   { caminho: '/posse-2027.html' }
@@ -1710,28 +1710,28 @@ fs.writeFileSync(path.join(od, 'posse-2027.html'), posse);
 
 // ------------------------- nossa história -------------------------
 const historia = layout(
-  'Nossa História — a Brasília de JK, Niemeyer e Burle Marx | Villela Stay',
-  'Cada casa da Villela Stay homenageia quem fez Brasília: Kubitschek, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo e Cassia Eller. Conheça a história.',
+  t('Nossa História — a Brasília de JK, Niemeyer e Burle Marx | Villela Stay', "Our Story — the Brasília of JK, Niemeyer and Burle Marx | Villela Stay", 'Nuestra Historia — la Brasília de JK, Niemeyer y Burle Marx | Villela Stay'),
+  t('Cada casa da Villela Stay homenageia quem fez Brasília: Kubitschek, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo e Cassia Eller. Conheça a história.', 'Every Villela Stay house honours those who built Brasília: Kubitschek, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo and Cassia Eller. Discover the story.', 'Cada casa de Villela Stay homenajea a quienes hicieron Brasília: Kubitschek, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo y Cassia Eller. Conoce la historia.'),
   `
 <section class="hero hero-menor">
-  <h1>Toda casa da Villela Stay homenageia quem fez Brasília</h1>
+  <h1>${t('Toda casa da Villela Stay homenageia quem fez Brasília', 'Every Villela Stay house honours those who built Brasília', 'Cada casa de Villela Stay homenajea a quienes hicieron Brasília')}</h1>
 </section>
 <div class="regras-wrap">
   <section class="regra">
-    <p>Brasília nasceu de um sonho — o de <strong>Juscelino Kubitschek</strong>, que ergueu uma capital no meio do cerrado em mil dias. O traço veio de <strong>Lúcio Costa</strong>, as curvas de <strong>Oscar Niemeyer</strong>, os jardins de <strong>Burle Marx</strong>, os azulejos de <strong>Athos Bulcão</strong>. E a alma veio depois, nas vozes de <strong>Renato Russo</strong> e <strong>Cassia Eller</strong>, que fizeram da cidade a Capital do Rock.</p>
-    <p><strong>Na Villela Stay, cada hospedagem carrega um desses nomes.</strong> A Villa Kubitschek e a Villa Catetinho lembram o presidente fundador — o Catetinho foi sua primeira residência na cidade, erguida em dez dias. O Flat do Oscar, o Flat do Burle Marx, o Flat do Lúcio Costa e o Flat do Athos Bulcão celebram os construtores. As suítes do Renato Russo e da Cassia Eller guardam a trilha sonora. E a Casa Modernista é a síntese de tudo: a arquitetura de Brasília, de portas abertas para você morar por alguns dias.</p>
+    <p>${t('Brasília nasceu de um sonho — o de <strong>Juscelino Kubitschek</strong>, que ergueu uma capital no meio do cerrado em mil dias. O traço veio de <strong>Lúcio Costa</strong>, as curvas de <strong>Oscar Niemeyer</strong>, os jardins de <strong>Burle Marx</strong>, os azulejos de <strong>Athos Bulcão</strong>. E a alma veio depois, nas vozes de <strong>Renato Russo</strong> e <strong>Cassia Eller</strong>, que fizeram da cidade a Capital do Rock.', 'Brasília was born from a dream — that of <strong>Juscelino Kubitschek</strong>, who built a capital in the middle of the cerrado in a thousand days. The plan came from <strong>Lúcio Costa</strong>, the curves from <strong>Oscar Niemeyer</strong>, the gardens from <strong>Burle Marx</strong>, the tiles from <strong>Athos Bulcão</strong>. And the soul came later, in the voices of <strong>Renato Russo</strong> and <strong>Cassia Eller</strong>, who made the city the Capital of Rock.', 'Brasília nació de un sueño — el de <strong>Juscelino Kubitschek</strong>, que levantó una capital en medio del cerrado en mil días. El trazo vino de <strong>Lúcio Costa</strong>, las curvas de <strong>Oscar Niemeyer</strong>, los jardines de <strong>Burle Marx</strong>, los azulejos de <strong>Athos Bulcão</strong>. Y el alma vino después, en las voces de <strong>Renato Russo</strong> y <strong>Cassia Eller</strong>, que hicieron de la ciudad la Capital del Rock.')}</p>
+    <p>${t('<strong>Na Villela Stay, cada hospedagem carrega um desses nomes.</strong> A Villa Kubitschek e a Villa Catetinho lembram o presidente fundador — o Catetinho foi sua primeira residência na cidade, erguida em dez dias. O Flat do Oscar, o Flat do Burle Marx, o Flat do Lúcio Costa e o Flat do Athos Bulcão celebram os construtores. As suítes do Renato Russo e da Cassia Eller guardam a trilha sonora. E a Casa Modernista é a síntese de tudo: a arquitetura de Brasília, de portas abertas para você morar por alguns dias.', '<strong>At Villela Stay, every unit carries one of these names.</strong> Villa Kubitschek and Villa Catetinho recall the founding president — the Catetinho was his first home in the city, built in ten days. The Flat do Oscar, Flat do Burle Marx, Flat do Lúcio Costa and Flat do Athos Bulcão celebrate the builders. The Renato Russo and Cassia Eller suites hold the soundtrack. And Casa Modernista is the synthesis of it all: the architecture of Brasília, with open doors for you to live in for a few days.', '<strong>En Villela Stay, cada alojamiento lleva uno de estos nombres.</strong> La Villa Kubitschek y la Villa Catetinho recuerdan al presidente fundador — el Catetinho fue su primera residencia en la ciudad, levantada en diez días. El Flat do Oscar, el Flat do Burle Marx, el Flat do Lúcio Costa y el Flat do Athos Bulcão celebran a los constructores. Las suites de Renato Russo y de Cassia Eller guardan la banda sonora. Y la Casa Modernista es la síntesis de todo: la arquitectura de Brasília, con las puertas abiertas para que vivas en ella unos días.')}</p>
   </section>
-  <section class="regra"><h2>O anfitrião</h2>
-    <p>Augusto Villela nasceu em Brasília em 1970 — dez anos depois da cidade. Advogado de profissão e anfitrião por vocação, viu na hospitalidade um jeito de compartilhar o que a capital tem de melhor: o Lago Sul, o céu do cerrado, a mesa farta e a história viva em cada esquina. Hoje, como Superhost premiado, recebe famílias, grupos e delegações do mundo inteiro nas casas da Villela Stay.</p>
+  <section class="regra"><h2>${t('O anfitrião', 'The host', 'El anfitrión')}</h2>
+    <p>${t('Augusto Villela nasceu em Brasília em 1970 — dez anos depois da cidade. Advogado de profissão e anfitrião por vocação, viu na hospitalidade um jeito de compartilhar o que a capital tem de melhor: o Lago Sul, o céu do cerrado, a mesa farta e a história viva em cada esquina. Hoje, como Superhost premiado, recebe famílias, grupos e delegações do mundo inteiro nas casas da Villela Stay.', 'Augusto Villela was born in Brasília in 1970 — ten years after the city itself. A lawyer by profession and a host by vocation, he found in hospitality a way to share the best of the capital: Lago Sul, the cerrado sky, a generous table and living history on every corner. Today, as an award-winning Superhost, he welcomes families, groups and delegations from all over the world to the Villela Stay houses.', 'Augusto Villela nació en Brasília en 1970 — diez años después de la ciudad. Abogado de profesión y anfitrión por vocación, vio en la hospitalidad una forma de compartir lo mejor de la capital: Lago Sul, el cielo del cerrado, la mesa abundante y la historia viva en cada esquina. Hoy, como Superhost premiado, recibe a familias, grupos y delegaciones de todo el mundo en las casas de Villela Stay.')}</p>
   </section>
-  <section class="regra"><h2>O que a gente acredita</h2>
-    <p>Que hospedar é mais do que abrigar. É entregar a casa limpa e a piscina aquecida, mas também indicar o restaurante certo, o pôr do sol da Ermida Dom Bosco e o caminho mais bonito para a Esplanada. É o que chamamos de <strong>Hospedagens Inteligentes para Experiências Inesquecíveis</strong>.</p>
+  <section class="regra"><h2>${t('O que a gente acredita', 'What we believe', 'En qué creemos')}</h2>
+    <p>${t('Que hospedar é mais do que abrigar. É entregar a casa limpa e a piscina aquecida, mas também indicar o restaurante certo, o pôr do sol da Ermida Dom Bosco e o caminho mais bonito para a Esplanada. É o que chamamos de <strong>Hospedagens Inteligentes para Experiências Inesquecíveis</strong>.', 'That hosting is more than providing shelter. It\'s handing over a clean house and a heated pool, but also recommending the right restaurant, the sunset at Ermida Dom Bosco and the most beautiful route to the Esplanada. It\'s what we call <strong>Smart Stays for Unforgettable Experiences</strong>.', 'Que hospedar es más que dar techo. Es entregar la casa limpia y la piscina climatizada, pero también recomendar el restaurante adecuado, el atardecer de la Ermida Dom Bosco y el camino más bonito hacia la Explanada. Es lo que llamamos <strong>Alojamientos Inteligentes para Experiencias Inolvidables</strong>.')}</p>
   </section>
   <section class="venda-bloco cta-final" style="margin-top:28px">
-    <h2>Venha viver essa história</h2>
-    <p>Escolha a sua casa no Lago Sul — e seja recebido por quem ama Brasília.</p>
-    <a class="btn btn-wa btn-grande" href="${waLink('Olá! Conheci a história da Villela Stay e quero me hospedar.')}">Falar com o anfitrião</a>
-    <p style="margin-top:14px"><a href="/#hospedagens" style="color:var(--creme);text-decoration:underline">Ver as hospedagens →</a></p>
+    <h2>${t('Venha viver essa história', 'Come and live this story', 'Ven a vivir esta historia')}</h2>
+    <p>${t('Escolha a sua casa no Lago Sul — e seja recebido por quem ama Brasília.', 'Choose your house in Lago Sul — and be welcomed by people who love Brasília.', 'Elige tu casa en Lago Sul — y serás recibido por quien ama Brasília.')}</p>
+    <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Conheci a história da Villela Stay e quero me hospedar.', "Hi! I read the Villela Stay story and I'd like to stay.", '¡Hola! Conocí la historia de Villela Stay y quiero hospedarme.'))}">${t('Falar com o anfitrião', 'Talk to the host', 'Hablar con el anfitrión')}</a>
+    <p style="margin-top:14px"><a href="${L('/')}#hospedagens" style="color:var(--creme);text-decoration:underline">${t('Ver as hospedagens', 'See the stays', 'Ver los alojamientos')} →</a></p>
   </section>
 </div>`,
   { caminho: '/nossa-historia.html' }
