@@ -2058,6 +2058,13 @@ const linktreeBtn = b => `<a class="lt-btn${b.destaque ? ' lt-destaque' : ''}${b
   <span class="lt-txt"><strong>${esc(b.titulo)}</strong>${b.sub ? `<small>${esc(b.sub)}</small>` : ''}</span>
 </a>`;
 
+// Seletor de idioma da linktree (PT · EN · ES) — aponta para a MESMA página /links.html de cada idioma.
+const ltLangs = IDIOMAS.map(l => {
+  const href = (l === 'pt' ? '' : '/' + l) + '/links.html';
+  const ativo = l === LANG;
+  return `<a class="lt-lang${ativo ? ' lt-lang-ativo' : ''}" hreflang="${HTML_LANG[l]}" href="${href}"${ativo ? ' aria-current="true"' : ''}>${NOME_IDIOMA[l]}</a>`;
+}).join('');
+
 const linktreeHtml = `<!DOCTYPE html>
 <html lang="${HTML_LANG[LANG]}">
 <head>
@@ -2116,6 +2123,12 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
     border:1px solid rgba(242,236,216,.22); border-radius:999px; padding:7px 16px;
     font-size:.85rem; margin:0 auto 22px; transition:opacity .12s, border-color .12s, background .12s; }
   .lt-voltar:hover{ opacity:1; border-color:var(--lt-ouro); background:rgba(255,255,255,.1); }
+  .lt-langs{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:0 0 22px; }
+  .lt-lang{ text-decoration:none; color:var(--lt-creme); background:rgba(255,255,255,.06);
+    border:1px solid rgba(242,236,216,.22); border-radius:999px; padding:6px 14px; font-size:.84rem;
+    transition:background .12s, border-color .12s; }
+  .lt-lang:hover{ background:rgba(255,255,255,.13); border-color:var(--lt-ouro); }
+  .lt-lang-ativo{ background:var(--lt-ouro); border-color:var(--lt-ouro); color:#3a2410; font-weight:700; }
   .lt-rodape{ margin-top:30px; font-size:.78rem; opacity:.6; line-height:1.6; }
   .lt-rodape a{ color:var(--lt-creme); }
 </style>
@@ -2127,6 +2140,8 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
   <p class="lt-tag">${t('Hospedagens Inteligentes · para Experiências Inesquecíveis', 'Smart Stays · for Unforgettable Experiences', 'Alojamientos Inteligentes · para Experiencias Inolvidables')}</p>
 
   <a class="lt-voltar" href="${L('/')}"><span aria-hidden="true">🌐</span> ${t('Ir para o site', 'Go to the website', 'Ir al sitio')}</a>
+
+  <nav class="lt-langs" aria-label="${esc(t('Idioma', 'Language', 'Idioma'))}">${ltLangs}</nav>
 
   ${LINKTREE.map(linktreeBtn).join('\n  ')}
 

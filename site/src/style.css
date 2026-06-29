@@ -23,11 +23,12 @@ a { color: var(--lago); text-decoration: none; }
 /* ---------- topo ---------- */
 :root { --petroleo: #0c3644; --creme: #f2ecd8; }
 .topo {
-  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 16px;
   padding: 10px 5vw; position: sticky; top: 0; background: var(--petroleo);
   border-bottom: 3px solid var(--cerrado); z-index: 10;
 }
-.marca-bloco { display: flex; align-items: center; gap: 16px; min-width: 0; }
+/* A marca (logo + slogan) ocupa o espaço que precisa e nunca encolhe a ponto de cortar. */
+.marca-bloco { display: flex; align-items: center; gap: 16px; min-width: 0; flex-shrink: 0; }
 .marca { font-size: 1.4rem; font-weight: 800; letter-spacing: -.5px; color: var(--creme); flex-shrink: 0; }
 .marca span { color: #4fb3c5; font-weight: 300; }
 .logo { height: 128px; width: 128px; object-fit: cover; border-radius: 16px; display: block; }
@@ -35,7 +36,10 @@ a { color: var(--lago); text-decoration: none; }
 .tagline {
   color: var(--creme); font-size: .98rem; font-weight: 700; opacity: .95; line-height: 1.35;
 }
-.topo nav { display: flex; gap: 16px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+/* O nav pode encolher (min-width:0) e quebrar em varias linhas (flex-wrap), assim TODOS os
+   itens ficam sempre visiveis em qualquer largura, sem transbordar nem sobrepor o logo/slogan.
+   Se nao couber ao lado da marca, o flex-wrap do .topo joga o nav para a propria linha. */
+.topo nav { display: flex; gap: 8px 14px; align-items: center; flex: 1 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
 /* Alvos de toque >= ~44px de altura (acessibilidade mobile) */
 .topo nav a { color: var(--creme); font-weight: 500; display: inline-flex; align-items: center; min-height: 44px; padding: 4px 6px; }
 .btn-wa-nav { background: var(--wa); color: #fff !important; padding: 8px 18px; border-radius: 24px; }
@@ -45,10 +49,11 @@ a { color: var(--lago); text-decoration: none; }
 .btn-instalar:hover { background: rgba(242,236,216,.12); }
 .btn-instalar[hidden] { display: none; }
 @media (max-width: 1100px) { .tagline { display: none; } }
+/* Em telas estreitas: marca centralizada em cima, nav centralizado embaixo (tudo visivel). */
 @media (max-width: 860px) {
-  .topo { flex-wrap: wrap; justify-content: center; row-gap: 10px; padding: 10px 3vw; }
+  .topo { justify-content: center; row-gap: 10px; padding: 10px 3vw; }
   .marca-bloco { width: 100%; justify-content: center; }
-  .topo nav { width: 100%; justify-content: center; gap: 10px 16px; font-size: .9rem; }
+  .topo nav { width: 100%; justify-content: center; gap: 8px 14px; font-size: .9rem; }
   .btn-wa-nav { padding: 6px 14px; }
 }
 
