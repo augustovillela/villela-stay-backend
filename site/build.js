@@ -23,6 +23,7 @@ const PWA = {
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
+const BLOG_I18N = require('./content/blog-i18n'); // traduções EN/ES por slug (fallback por campo p/ PT)
 let LANDINGS;                            // preenchido no corpo; escopo de módulo p/ o sitemap usar após o loop
 
 const DIST = path.join(__dirname, 'dist');
@@ -1815,7 +1816,7 @@ const formScriptBlog = `<script>
 document.querySelectorAll('.form-blog').forEach(function(f){
   f.addEventListener('submit', function(e){
     e.preventDefault();
-    var st = f.querySelector('.form-status'); st.hidden=false; st.textContent='Enviando...';
+    var st = f.querySelector('.form-status'); st.hidden=false; st.textContent=${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
     var g=function(n){var el=f.querySelector('[name="'+n+'"]'); return el?String(el.value).trim():'';};
     var extra=[]; ['datas','pessoas','interesse','mensagem'].forEach(function(n){var v=g(n); if(v) extra.push(n+': '+v);});
     var msg=(f.getAttribute('data-contexto')||'')+(extra.length?' — '+extra.join(' | '):'');
@@ -1823,32 +1824,39 @@ document.querySelectorAll('.form-blog').forEach(function(f){
       body:JSON.stringify({nome:g('nome'),contato:g('contato'),mensagem:msg,origem:f.getAttribute('data-origem')})})
     .then(function(r){
       if(r.ok){ var arq=f.getAttribute('data-arquivo');
-        if(arq){ st.innerHTML='✅ Pronto! Seu material: <a href="'+arq+'" target="_blank" rel="noopener" download><b>baixar agora →</b></a>'; try{window.open(arq,'_blank');}catch(e){} }
-        else { st.textContent='✅ Recebido! Em breve entramos em contato.'; }
+        if(arq){ st.innerHTML=${JSON.stringify(t('✅ Pronto! Seu material: ', '✅ Done! Your resource: ', '✅ ¡Listo! Tu material: '))}+'<a href="'+arq+'" target="_blank" rel="noopener" download><b>'+${JSON.stringify(t('baixar agora →', 'download now →', 'descargar ahora →'))}+'</b></a>'; try{window.open(arq,'_blank');}catch(e){} }
+        else { st.textContent=${JSON.stringify(t('✅ Recebido! Em breve entramos em contato.', "✅ Received! We'll be in touch soon.", '✅ ¡Recibido! Pronto te contactamos.'))}; }
         f.reset();
-      } else { st.textContent='Não consegui enviar — chame no WhatsApp.'; }
+      } else { st.textContent=${JSON.stringify(t('Não consegui enviar — chame no WhatsApp.', "Couldn't send — message us on WhatsApp.", 'No pude enviar — escríbenos por WhatsApp.'))}; }
     })
-    .catch(function(){ st.textContent='Não consegui enviar — chame no WhatsApp.'; });
+    .catch(function(){ st.textContent=${JSON.stringify(t('Não consegui enviar — chame no WhatsApp.', "Couldn't send — message us on WhatsApp.", 'No pude enviar — escríbenos por WhatsApp.'))}; });
   });
 });
 </script>`;
 
-function renderArtigo(a) {
+// Mescla o artigo PT com a tradução do idioma corrente (campo a campo; faltou = cai no PT).
+function tradArtigo(a) {
+  if (LANG === 'pt') return a;
+  const tr = (BLOG_I18N[a.slug] || {})[LANG];
+  return tr ? { ...a, ...tr } : a;
+}
+function renderArtigo(a0) {
+  const a = tradArtigo(a0);
   const h = {
     fig: (n, opts) => blogFig(a.slug, n, opts),
     wa: waLink,
     esc,
-    casaLink: (code, label) => porId[code] ? `<a href="/hospedagem/${code}.html">${esc(label || porId[code].titulo)}</a>` : (label ? esc(label) : ''),
+    casaLink: (code, label) => porId[code] ? `<a href="${L(`/hospedagem/${code}.html`)}">${esc(label || tituloImovel(porId[code]))}</a>` : (label ? esc(label) : ''),
   };
   const caminho = `/blog/${a.slug}.html`;
-  const url = `${SITE_URL}${caminho}`;
+  const url = `${SITE_URL}${L(caminho)}`;
   const heroAbs = (blogCreditos[a.slug] && blogCreditos[a.slug][0]) ? `${SITE_URL}/blog-img/${blogCreditos[a.slug][0].file}` : `${SITE_URL}/og-home.jpg`;
 
   // ---- dados estruturados ----
   const artigoLd = {
     '@context': 'https://schema.org', '@type': 'Article',
     headline: a.h1, description: a.descricao, image: heroAbs,
-    datePublished: a.atualizado, dateModified: a.atualizado, inLanguage: 'pt-BR',
+    datePublished: a.atualizado, dateModified: a.atualizado, inLanguage: HTML_LANG[LANG],
     about: a.tema, author: { '@id': ORG_ID }, publisher: { '@id': ORG_ID },
     mainEntityOfPage: url, isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`, name: 'Diário de Brasília — Villela Stay' }
   };
@@ -1859,8 +1867,8 @@ function renderArtigo(a) {
   const crumbLd = {
     '@context': 'https://schema.org', '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL + '/' },
-      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+      { '@type': 'ListItem', position: 1, name: t('Início', 'Home', 'Inicio'), item: SITE_URL + L('/') },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}${L('/blog.html')}` },
       { '@type': 'ListItem', position: 3, name: a.tema, item: url }
     ]
   };
@@ -1872,48 +1880,48 @@ function renderArtigo(a) {
   const iscaBox = a.isca ? `
   <aside class="isca-box">
     <div class="isca-conteudo">
-      <span class="isca-tag">🎁 Material gratuito</span>
+      <span class="isca-tag">🎁 ${t('Material gratuito', 'Free resource', 'Material gratuito')}</span>
       <h2>${esc(a.isca.titulo)}</h2>
       <p>${esc(a.isca.texto)}</p>
     </div>
     <form class="form-blog form-isca" data-origem="blog:${a.slug}:isca" data-arquivo="${a.isca.arquivo || ''}" data-contexto="Isca '${esc(a.isca.titulo)}' (artigo: ${esc(a.h1)})">
-      <input name="nome" placeholder="Seu nome" required aria-label="Seu nome">
-      <input name="contato" placeholder="WhatsApp ou e-mail" required aria-label="WhatsApp ou e-mail">
-      <button class="btn" type="submit">${esc(a.isca.botao || 'Quero receber')}</button>
+      <input name="nome" placeholder="${t('Seu nome', 'Your name', 'Tu nombre')}" required aria-label="${t('Seu nome', 'Your name', 'Tu nombre')}">
+      <input name="contato" placeholder="${t('WhatsApp ou e-mail', 'WhatsApp or email', 'WhatsApp o correo')}" required aria-label="${t('WhatsApp ou e-mail', 'WhatsApp or email', 'WhatsApp o correo')}">
+      <button class="btn" type="submit">${esc(a.isca.botao || t('Quero receber', 'Send it to me', 'Quiero recibirlo'))}</button>
       <p class="form-status" hidden></p>
     </form>
   </aside>` : '';
 
   const faqBloco = (a.faq && a.faq.length) ? `
   <section class="artigo-faq">
-    <h2>Perguntas frequentes</h2>
+    <h2>${t('Perguntas frequentes', 'Frequently asked questions', 'Preguntas frecuentes')}</h2>
     ${a.faq.map(f => `<details class="faq-item"><summary>${esc(f.q)}</summary><div class="faq-resp">${esc(f.a)}</div></details>`).join('\n    ')}
   </section>` : '';
 
   const relacionados = (a.relacionados || []).map(s => BLOG_POR_SLUG[s]).filter(Boolean);
   const relacionadosBloco = relacionados.length ? `
   <section class="blog-relacionados">
-    <h2 class="secao-titulo">Continue lendo</h2>
+    <h2 class="secao-titulo">${t('Continue lendo', 'Keep reading', 'Sigue leyendo')}</h2>
     <div class="blog-grade">
-      ${relacionados.map(r => `<a class="blog-card blog-card-min" href="/blog/${r.slug}.html">
-        <div class="blog-card-img">${blogCardImg(r)}</div>
+      ${relacionados.map(r0 => { const r = tradArtigo(r0); return `<a class="blog-card blog-card-min" href="${L(`/blog/${r.slug}.html`)}">
+        <div class="blog-card-img">${blogCardImg(r0)}</div>
         <div class="blog-card-info"><span class="tema-tag tema-${r.slug}">${r.emoji} ${esc(r.tema)}</span><h3>${esc(r.h1)}</h3></div>
-      </a>`).join('\n      ')}
+      </a>`; }).join('\n      ')}
     </div>
   </section>` : '';
 
-  const waMsg = `Olá! Li o artigo "${a.h1}" no site da Villela Stay e quero saber sobre hospedagem no Lago Sul.`;
+  const waMsg = t(`Olá! Li o artigo "${a.h1}" no site da Villela Stay e quero saber sobre hospedagem no Lago Sul.`, `Hi! I read the article "${a.h1}" on the Villela Stay website and I'd like to know about staying in Lago Sul.`, `¡Hola! Leí el artículo "${a.h1}" en el sitio de Villela Stay y quiero saber sobre alojamiento en el Lago Sul.`);
 
   const corpoHtml = `
 <article class="artigo">
   <header class="artigo-hero tema-${a.slug}">
     <div class="artigo-hero-motivo" aria-hidden="true">${BLOG_HERO_SVG}</div>
     <div class="artigo-hero-conteudo">
-      <nav class="breadcrumb"><a href="/">Início</a> › <a href="/blog.html">Blog</a> › <span>${esc(a.tema)}</span></nav>
+      <nav class="breadcrumb"><a href="${L('/')}">${t('Início', 'Home', 'Inicio')}</a> › <a href="${L('/blog.html')}">Blog</a> › <span>${esc(a.tema)}</span></nav>
       <span class="tema-tag">${a.emoji} ${esc(a.tema)}</span>
       <h1>${esc(a.h1)}</h1>
       <p class="artigo-dek">${esc(a.dek)}</p>
-      <div class="artigo-meta"><span>⏱ ${a.leituraMin || 7} min de leitura</span><span>Atualizado em ${fmtDataBR(a.atualizado)}</span></div>
+      <div class="artigo-meta"><span>⏱ ${a.leituraMin || 7} ${t('min de leitura', 'min read', 'min de lectura')}</span><span>${t('Atualizado em', 'Updated on', 'Actualizado el')} ${fmtDataBR(a.atualizado)}</span></div>
     </div>
   </header>
   <div class="artigo-corpo">
@@ -1924,31 +1932,31 @@ function renderArtigo(a) {
 </article>
 
 <section class="grade-wrap blog-casas">
-  <h2 class="secao-titulo">${esc(a.casasTitulo || 'Onde se hospedar')}</h2>
+  <h2 class="secao-titulo">${esc(a.casasTitulo || t('Onde se hospedar', 'Where to stay', 'Dónde alojarse'))}</h2>
   ${a.casasTexto ? `<p class="blog-casas-texto">${esc(a.casasTexto)}</p>` : ''}
   <div class="grade">${casasCards}</div>
 </section>
 
 <section class="venda-bloco cta-final blog-cta">
-  <h2>Quer ajuda para planejar sua estadia?</h2>
-  <p>Conte a data e o tamanho do grupo — devolvemos a proposta completa, com as casas certas e os melhores preços.</p>
-  <a class="btn btn-wa btn-grande" href="${waLink(waMsg)}">Falar no WhatsApp</a>
-  <p style="margin-top:22px">Ou deixe seu contato que retornamos:</p>
+  <h2>${t('Quer ajuda para planejar sua estadia?', 'Want help planning your stay?', '¿Quieres ayuda para planear tu estancia?')}</h2>
+  <p>${t('Conte a data e o tamanho do grupo — devolvemos a proposta completa, com as casas certas e os melhores preços.', "Tell us the date and the size of your group — we'll send a full proposal, with the right houses and the best prices.", 'Cuéntanos la fecha y el tamaño del grupo — te enviamos la propuesta completa, con las casas adecuadas y los mejores precios.')}</p>
+  <a class="btn btn-wa btn-grande" href="${waLink(waMsg)}">${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}</a>
+  <p style="margin-top:22px">${t('Ou deixe seu contato que retornamos:', "Or leave your contact and we'll get back to you:", 'O deja tu contacto y te respondemos:')}</p>
   <form class="form-blog form-evento form-evento-claro" data-origem="blog:${a.slug}" data-contexto="Cotação a partir do artigo: ${esc(a.h1)}">
-    <label>Seu nome* <input name="nome" required></label>
-    <label>WhatsApp ou e-mail* <input name="contato" required></label>
-    <label>Datas pretendidas <input name="datas" placeholder="Ex.: 10 a 14/07 (ou flexível)"></label>
-    <label>Nº de pessoas <input name="pessoas" placeholder="Ex.: 8"></label>
-    <label>Interesse
+    <label>${t('Seu nome*', 'Your name*', 'Tu nombre*')} <input name="nome" required></label>
+    <label>${t('WhatsApp ou e-mail*', 'WhatsApp or email*', 'WhatsApp o correo*')} <input name="contato" required></label>
+    <label>${t('Datas pretendidas', 'Preferred dates', 'Fechas deseadas')} <input name="datas" placeholder="${t('Ex.: 10 a 14/07 (ou flexível)', 'E.g. 10–14 Jul (or flexible)', 'Ej.: 10 a 14/07 (o flexible)')}"></label>
+    <label>${t('Nº de pessoas', 'Number of people', 'Nº de personas')} <input name="pessoas" placeholder="${t('Ex.: 8', 'E.g. 8', 'Ej.: 8')}"></label>
+    <label>${t('Interesse', 'Interest', 'Interés')}
       <select name="interesse">
-        <option value="">Selecione…</option>
-        <option>Hospedagem</option>
-        <option>Evento</option>
-        <option>Hospedagem + evento</option>
+        <option value="">${t('Selecione…', 'Select…', 'Selecciona…')}</option>
+        <option value="Hospedagem">${t('Hospedagem', 'Stay', 'Alojamiento')}</option>
+        <option value="Evento">${t('Evento', 'Event', 'Evento')}</option>
+        <option value="Hospedagem + evento">${t('Hospedagem + evento', 'Stay + event', 'Alojamiento + evento')}</option>
       </select>
     </label>
-    <label>Mensagem (opcional) <textarea name="mensagem" rows="2"></textarea></label>
-    <button class="btn" type="submit">Pedir proposta</button>
+    <label>${t('Mensagem (opcional)', 'Message (optional)', 'Mensaje (opcional)')} <textarea name="mensagem" rows="2"></textarea></label>
+    <button class="btn" type="submit">${t('Pedir proposta', 'Request a proposal', 'Pedir propuesta')}</button>
     <p class="form-status" hidden></p>
   </form>
 </section>
@@ -1963,40 +1971,40 @@ ${formScriptBlog}`;
 BLOG.forEach(renderArtigo);
 
 // ---- hub /blog.html ----
-const blogCardsHub = BLOG.map(a => `
-  <a class="blog-card" href="/blog/${a.slug}.html">
-    <div class="blog-card-img">${blogCardImg(a)}</div>
+const blogCardsHub = BLOG.map(a0 => { const a = tradArtigo(a0); return `
+  <a class="blog-card" href="${L(`/blog/${a.slug}.html`)}">
+    <div class="blog-card-img">${blogCardImg(a0)}</div>
     <div class="blog-card-info">
       <span class="tema-tag tema-${a.slug}">${a.emoji} ${esc(a.tema)}</span>
       <h3>${esc(a.h1)}</h3>
       <p>${esc(a.dek)}</p>
-      <span class="blog-card-leia">Ler artigo · ${a.leituraMin || 7} min →</span>
+      <span class="blog-card-leia">${t('Ler artigo', 'Read article', 'Leer artículo')} · ${a.leituraMin || 7} min →</span>
     </div>
-  </a>`).join('\n');
+  </a>`; }).join('\n');
 
 const blogLd = {
   '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`,
-  name: 'Diário de Brasília — Villela Stay', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
-  blogPost: BLOG.map(a => ({ '@type': 'BlogPosting', headline: a.h1, url: `${SITE_URL}/blog/${a.slug}.html`, datePublished: a.atualizado, about: a.tema }))
+  name: 'Diário de Brasília — Villela Stay', inLanguage: HTML_LANG[LANG], publisher: { '@id': ORG_ID },
+  blogPost: BLOG.map(a0 => { const a = tradArtigo(a0); return { '@type': 'BlogPosting', headline: a.h1, url: `${SITE_URL}${L(`/blog/${a.slug}.html`)}`, datePublished: a.atualizado, about: a.tema }; })
 };
 
 const blogHub = layout(
-  'Blog — Diário de Brasília | Villela Stay',
-  'Arquitetura, gastronomia, roteiros, paisagismo e história de Brasília — o diário do anfitrião para quem ama (ou vai conhecer) a capital. Conteúdo da Villela Stay.',
+  t('Blog — Diário de Brasília | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
+  t('Arquitetura, gastronomia, roteiros, paisagismo e história de Brasília — o diário do anfitrião para quem ama (ou vai conhecer) a capital. Conteúdo da Villela Stay.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
   `
 <section class="hero hero-menor blog-hero-hub">
-  <span class="tema-tag">📖 Diário de Brasília</span>
-  <h1>Brasília por quem vive aqui</h1>
-  <p><strong>Arquitetura, gastronomia, roteiros, paisagismo e as histórias da capital — o diário do anfitrião para você conhecer Brasília antes mesmo de chegar.</strong></p>
+  <span class="tema-tag">📖 ${t('Diário de Brasília', 'Brasília Diary', 'Diario de Brasília')}</span>
+  <h1>${t('Brasília por quem vive aqui', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
+  <p><strong>${t('Arquitetura, gastronomia, roteiros, paisagismo e as histórias da capital — o diário do anfitrião para você conhecer Brasília antes mesmo de chegar.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
 </section>
 <section class="grade-wrap">
   <div class="blog-grade">${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
-  <h2>Pronto para conhecer Brasília de perto?</h2>
-  <p>Escolha sua casa no Lago Sul e seja recebido por quem ama a cidade.</p>
-  <a class="btn btn-wa btn-grande" href="${waLink('Olá! Vim pelo blog da Villela Stay e quero saber sobre as hospedagens.')}">Falar no WhatsApp</a>
-  <p style="margin-top:14px"><a href="/#hospedagens" style="color:var(--creme);text-decoration:underline">Ver as hospedagens →</a></p>
+  <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
+  <p>${t('Escolha sua casa no Lago Sul e seja recebido por quem ama a cidade.', 'Choose your house in Lago Sul and be welcomed by people who love the city.', 'Elige tu casa en Lago Sul y serás recibido por quien ama la ciudad.')}</p>
+  <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Vim pelo blog da Villela Stay e quero saber sobre as hospedagens.', 'Hi! I came from the Villela Stay blog and would like to know about the stays.', '¡Hola! Vengo del blog de Villela Stay y quiero saber sobre los alojamientos.'))}">${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}</a>
+  <p style="margin-top:14px"><a href="${L('/')}#hospedagens" style="color:var(--creme);text-decoration:underline">${t('Ver as hospedagens', 'See the stays', 'Ver los alojamientos')} →</a></p>
 </section>`,
   { caminho: '/blog.html', extraHead: `<script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
 );
