@@ -385,4 +385,98 @@ ${h.fig(3, { legenda: 'La vegetación del Cerrado: apariencia rústica, biodiver
 `,
     },
   },
+  personalidades: {
+    en: {
+      titulo: 'People of Brasília: who dreamed, built and sang the capital | Villela Stay',
+      descricao: 'JK, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo and Cassia Eller: the people who made Brasília — and who give the Villela Stay houses their names.',
+      h1: 'Brasília has a first and last name',
+      dek: 'Behind the most planned city in the world there are people of flesh, bone and courage. Meet those who dreamed, drew, built and sang the capital — and why each of our houses carries one of these names.',
+      casasTitulo: 'Stay in a living tribute',
+      casasTexto: "Each Villela Stay house and suite carries the name of someone who made Brasília. Gathering your group at Gran Villela, Villa Kubitschek or Villa Catetinho is sleeping inside the city's history — with all of today's comfort.",
+      isca: { titulo: 'Proposal for groups and themed events', texto: 'Gathering a group or hosting an event in Brasília? Download the presentation of the houses for groups and events — and talk to us for a tailor-made proposal.', botao: 'Download the group proposal' },
+      faq: [
+        { q: 'Who was responsible for building Brasília?', a: 'President Juscelino Kubitschek (JK) made the political decision and ran the project between 1956 and 1960. The urban plan is by Lúcio Costa, the architecture of the monuments by Oscar Niemeyer, the landscaping by Roberto Burle Marx and the integrated art by Athos Bulcão. It was a collective effort raised in little more than a thousand days.' },
+        { q: 'Why is Brasília called the "Capital of Rock"?', a: "In the 1980s, the city revealed bands that marked Brazilian rock — Legião Urbana (Renato Russo's), Capital Inicial, Plebe Rude and Raimundos. Cassia Eller also started there. The bored, critical middle-class youth of the planned city became one of the most fertile music scenes in the country." },
+        { q: 'Was Renato Russo from Brasília?', a: "Renato Russo was born in Rio de Janeiro, but it was in Brasília that he came of age as an artist and founded Legião Urbana, in the early 1980s. The city is an essential part of his story — and that's why one of our suites carries his name." },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Every city has its heroes. Brasília has hers carved in concrete, in garden, in tile and in song. They are people who bet on an idea that seemed impossible — to raise a capital in the middle of nowhere — and who then gave it a soul. To know them is to know the city from the inside.</p>
+
+${h.fig(1, { legenda: 'Juscelino Kubitschek in 1956: the president who raised a capital in a thousand days.' })}
+
+<h2>The founders</h2>
+<h3>Juscelino Kubitschek — the courage</h3>
+<p>Born in Diamantina, Minas Gerais, JK turned a campaign promise — "fifty years in five" — into the greatest work in Brazil's history. He faced scepticism, debt and the wilderness to deliver Brasília on 21 April 1960. Without his visionary stubbornness, the city wouldn't exist. Two of our houses honour him: <strong>Villa Kubitschek</strong> and <strong>Villa Catetinho</strong> — the latter recalls the Catetinho, his first home in the city.</p>
+
+<h3>Lúcio Costa — the line</h3>
+<p>The urban planner who designed the Pilot Plan with a gesture of two crossing axes. He invented the logic of living in Brasília: the superblocks, the human scale, the separation between the monumental and the everyday. <a href="${h.L('/blog/arquitetura.html')}">The city's architecture begins with him →</a></p>
+
+<h3>Oscar Niemeyer — the curve</h3>
+<p>The architect of free curves, who gave the capital its eternal symbols: the Cathedral, the Congress, the Alvorada, the Itamaraty. He worked until the age of 104 and is, probably, the best-known Brazilian in the history of world architecture.</p>
+
+${h.fig(2, { legenda: 'Oscar Niemeyer, the architect of the curves that became the symbol of modern Brazil.' })}
+
+<h2>The artists who gave it soul</h2>
+<h3>Roberto Burle Marx — the garden</h3>
+<p>He painted with plants. He turned Brazilian landscaping into art and taught the world to see tropical flora as heritage. The Itamaraty gardens and so many of the city's beds are his. <a href="${h.L('/blog/paisagismo.html')}">The landscaping guide is dedicated to him →</a></p>
+
+<h3>Athos Bulcão — the colour</h3>
+<p>He dressed Brasília in tile and relief. His modular panels — repetition that never repeats the same — are in the little church, the airport and dozens of buildings. They are proof that Brazilian modernism had an artist's hand and human warmth.</p>
+
+${h.fig(3, { legenda: 'Athos Bulcão tiles: the artist who dressed the city in colour and rhythm.' })}
+
+<h2>The soundtrack: the Capital of Rock</h2>
+<p>After the founders came the voices. In the 1980s, the planned and silent city exploded in sound: <strong>Renato Russo</strong> and Legião Urbana, Capital Inicial, Plebe Rude, Raimundos and the young <strong>Cassia Eller</strong>. The restlessness of a generation raised among superblocks became some of the greatest anthems of Brazilian rock. That's why, at Villela Stay, the <strong>Suíte do Renato Russo</strong> and the <strong>Suíte da Cassia Eller</strong> keep that memory.</p>
+
+<h2>Sleep inside history</h2>
+<p>It's no coincidence that each of our stays carries one of these names. It's a form of tribute — and of invitation. Gathering your group in a house called Kubitschek, Catetinho or Gran Villela is taking part, for a few days, in this story that is still being written.</p>
+`,
+    },
+    es: {
+      titulo: 'Personalidades de Brasília: quién soñó, construyó y cantó la capital | Villela Stay',
+      descricao: 'JK, Niemeyer, Lúcio Costa, Burle Marx, Athos Bulcão, Renato Russo y Cassia Eller: las personalidades que hicieron Brasília — y que dan nombre a las casas de Villela Stay.',
+      h1: 'Brasília tiene nombre y apellido',
+      dek: 'Detrás de la ciudad más planificada del mundo hay personas de carne, hueso y coraje. Conoce a quienes soñaron, dibujaron, construyeron y cantaron la capital — y por qué cada casa nuestra lleva uno de estos nombres.',
+      casasTitulo: 'Alójate en un homenaje vivo',
+      casasTexto: 'Cada casa y suite de Villela Stay lleva el nombre de quien hizo Brasília. Reunir a tu grupo en la Gran Villela, la Villa Kubitschek o la Villa Catetinho es dormir dentro de la historia de la ciudad — con todo el confort de hoy.',
+      isca: { titulo: 'Propuesta para grupos y eventos temáticos', texto: '¿Vas a reunir un grupo o hacer un evento en Brasília? Descarga la presentación de las casas para grupos y eventos — y habla con nosotros para una propuesta a medida.', botao: 'Descargar la propuesta para grupos' },
+      faq: [
+        { q: '¿Quién fue el responsable de construir Brasília?', a: 'El presidente Juscelino Kubitschek (JK) tomó la decisión política y dirigió la obra entre 1956 y 1960. El plan urbanístico es de Lúcio Costa, la arquitectura de los monumentos de Oscar Niemeyer, el paisajismo de Roberto Burle Marx y el arte integrado de Athos Bulcão. Fue un esfuerzo colectivo levantado en poco más de mil días.' },
+        { q: '¿Por qué a Brasília se la llama "Capital del Rock"?', a: 'En los años 1980, la ciudad reveló bandas que marcaron el rock nacional — Legião Urbana (de Renato Russo), Capital Inicial, Plebe Rude y Raimundos. Cassia Eller también empezó allí. La juventud de clase media, aburrida y crítica de la ciudad planificada, se volvió una de las escenas musicales más fértiles del país.' },
+        { q: '¿Renato Russo era de Brasília?', a: 'Renato Russo nació en Río de Janeiro, pero fue en Brasília donde se formó como artista y fundó Legião Urbana, a principios de los años 1980. La ciudad es parte esencial de su historia — y por eso una de nuestras suites lleva su nombre.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Toda ciudad tiene héroes. Brasília tiene los suyos grabados en hormigón, en jardín, en azulejo y en canción. Son personas que apostaron por una idea que parecía imposible — levantar una capital en medio de la nada — y que, después, le dieron alma. Conocerlas es conocer la ciudad por dentro.</p>
+
+${h.fig(1, { legenda: 'Juscelino Kubitschek en 1956: el presidente que levantó una capital en mil días.' })}
+
+<h2>Los fundadores</h2>
+<h3>Juscelino Kubitschek — el coraje</h3>
+<p>Minero de Diamantina, JK transformó una promesa de campaña — "cincuenta años en cinco" — en la mayor obra de la historia de Brasil. Enfrentó el escepticismo, la deuda y el desierto para entregar Brasília el 21 de abril de 1960. Sin su terquedad visionaria, la ciudad no existiría. Dos de nuestras casas lo homenajean: la <strong>Villa Kubitschek</strong> y la <strong>Villa Catetinho</strong> — esta última recuerda al Catetinho, su primera morada en la ciudad.</p>
+
+<h3>Lúcio Costa — el trazo</h3>
+<p>El urbanista que diseñó el Plan Piloto con un gesto de dos ejes cruzados. Él inventó la lógica de vivir en Brasília: las supercuadras, la escala humana, la separación entre lo monumental y lo cotidiano. <a href="${h.L('/blog/arquitetura.html')}">La arquitectura de la ciudad empieza en él →</a></p>
+
+<h3>Oscar Niemeyer — la curva</h3>
+<p>El arquitecto de las curvas libres, que dio a la capital sus símbolos eternos: la Catedral, el Congreso, el Alvorada, el Itamaraty. Trabajó hasta los 104 años y es, probablemente, el brasileño más conocido en la historia de la arquitectura mundial.</p>
+
+${h.fig(2, { legenda: 'Oscar Niemeyer, el arquitecto de las curvas que se volvieron el símbolo del Brasil moderno.' })}
+
+<h2>Los artistas que dieron alma</h2>
+<h3>Roberto Burle Marx — el jardín</h3>
+<p>Pintó con plantas. Transformó el paisajismo brasileño en arte y enseñó al mundo a ver la flora tropical como patrimonio. Los jardines de Itamaraty y tantos canteros de la ciudad son suyos. <a href="${h.L('/blog/paisagismo.html')}">La guía de paisajismo está dedicada a él →</a></p>
+
+<h3>Athos Bulcão — el color</h3>
+<p>Vistió Brasília de azulejo y relieve. Sus paneles modulares — repetición que nunca se repite igual — están en la iglesita, en el aeropuerto y en decenas de edificios. Son la prueba de que el modernismo brasileño tenía mano de artista y calor humano.</p>
+
+${h.fig(3, { legenda: 'Azulejos de Athos Bulcão: el artista que vistió la ciudad de color y ritmo.' })}
+
+<h2>La banda sonora: la Capital del Rock</h2>
+<p>Después de los fundadores, vinieron las voces. En los años 1980, la ciudad planificada y silenciosa explotó en sonido: <strong>Renato Russo</strong> y Legião Urbana, Capital Inicial, Plebe Rude, Raimundos y la joven <strong>Cassia Eller</strong>. La inquietud de una generación criada entre supercuadras se volvió algunos de los mayores himnos del rock brasileño. Por eso, en Villela Stay, la <strong>Suíte do Renato Russo</strong> y la <strong>Suíte da Cassia Eller</strong> guardan esa memoria.</p>
+
+<h2>Duerme dentro de la historia</h2>
+<p>No es casualidad que cada alojamiento nuestro lleve uno de estos nombres. Es una forma de homenaje — y de invitación. Reunir a tu grupo en una casa que se llama Kubitschek, Catetinho o Gran Villela es formar parte, por unos días, de esa historia que todavía se está escribiendo.</p>
+`,
+    },
+  },
 };
