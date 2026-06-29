@@ -1058,31 +1058,55 @@ fs.writeFileSync(path.join(od, 'pacotes.html'), pacotes);
 
 // ------------------------- regras da casa -------------------------
 const REGRAS = [
-  ['1. Idade Mínima', `<p>A locação é permitida apenas para maiores de 18 anos.</p><p>Menores devem estar acompanhados pelos pais ou responsáveis legais.</p>`],
-  ['2. Check-in e Check-out', `<p><strong>Check-in:</strong> a partir das 14h · <strong>Check-out:</strong> até as 10h</p>
+  [t('1. Idade Mínima', '1. Minimum Age', '1. Edad Mínima'), t(`<p>A locação é permitida apenas para maiores de 18 anos.</p><p>Menores devem estar acompanhados pelos pais ou responsáveis legais.</p>`, `<p>Rental is only allowed for guests over 18.</p><p>Minors must be accompanied by their parents or legal guardians.</p>`, `<p>El alquiler solo se permite para mayores de 18 años.</p><p>Los menores deben estar acompañados por sus padres o tutores legales.</p>`)],
+  [t('2. Check-in e Check-out', '2. Check-in & Check-out', '2. Check-in y Check-out'), t(`<p><strong>Check-in:</strong> a partir das 14h · <strong>Check-out:</strong> até as 10h</p>
 <p>⏳ Caso autorizado, o check-in antecipado ou check-out tardio dá acesso apenas ao quarto reservado, não às áreas comuns (piscina, churrasqueira, cozinha etc.), pois nossa equipe precisa de tempo para preparar a casa com todo o cuidado que você merece.</p>
 <p>⚒ Durante sua estadia, poderão ocorrer serviços pontuais de manutenção para garantir a qualidade da hospedagem.</p>
-<p>🧹 No dia do check-out, a equipe iniciará a limpeza das áreas externas a partir das 8h.</p>`],
-  ['3. Itens de Consumo', `<p>Cada hóspede deve trazer seus itens de uso pessoal: alimentos, bebidas, carvão, fósforo, gás, papel higiênico extra, produtos de higiene, repelente e materiais de limpeza.</p>
-<p>Os itens oferecidos (na cozinha, churrasqueira e banheiros) são cortesia inicial; se acabarem, a reposição será de responsabilidade do hóspede.</p>`],
-  ['4. Fumar 🚭', `<p>Proibido fumar em áreas internas (quartos e banheiros).</p><p>Nas áreas externas é permitido, desde que se use cinzeiro.</p>`],
-  ['5. Animais de Estimação 🐾', `<p>Pets são bem-vindos! Mas:</p><ul><li>Não devem subir em camas, sofás ou móveis.</li><li>Qualquer dano causado será de responsabilidade do hóspede.</li></ul>`],
-  ['6. Eventos e Convidados 🎉', `<p>Não são permitidos eventos comerciais, festas abertas, sublocação ou cobrança de ingresso.</p>
+<p>🧹 No dia do check-out, a equipe iniciará a limpeza das áreas externas a partir das 8h.</p>`, `<p><strong>Check-in:</strong> from 2 PM · <strong>Check-out:</strong> by 10 AM</p>
+<p>⏳ If authorised, early check-in or late check-out gives access only to the booked room, not to the shared areas (pool, barbecue, kitchen, etc.), as our team needs time to prepare the house with all the care you deserve.</p>
+<p>⚒ During your stay, occasional maintenance services may take place to ensure the quality of the stay.</p>
+<p>🧹 On check-out day, the team will start cleaning the outdoor areas from 8 AM.</p>`, `<p><strong>Check-in:</strong> a partir de las 14h · <strong>Check-out:</strong> hasta las 10h</p>
+<p>⏳ Si se autoriza, el early check-in o el late check-out da acceso solo a la habitación reservada, no a las zonas comunes (piscina, parrilla, cocina, etc.), porque nuestro equipo necesita tiempo para preparar la casa con todo el cuidado que mereces.</p>
+<p>⚒ Durante tu estancia, pueden realizarse servicios puntuales de mantenimiento para garantizar la calidad del alojamiento.</p>
+<p>🧹 El día del check-out, el equipo comenzará la limpieza de las zonas exteriores a partir de las 8h.</p>`)],
+  [t('3. Itens de Consumo', '3. Consumables', '3. Artículos de Consumo'), t(`<p>Cada hóspede deve trazer seus itens de uso pessoal: alimentos, bebidas, carvão, fósforo, gás, papel higiênico extra, produtos de higiene, repelente e materiais de limpeza.</p>
+<p>Os itens oferecidos (na cozinha, churrasqueira e banheiros) são cortesia inicial; se acabarem, a reposição será de responsabilidade do hóspede.</p>`, `<p>Each guest should bring their personal items: food, drinks, charcoal, matches, gas, extra toilet paper, toiletries, insect repellent and cleaning supplies.</p>
+<p>The items provided (in the kitchen, barbecue and bathrooms) are a starter courtesy; if they run out, restocking is the guest's responsibility.</p>`, `<p>Cada huésped debe traer sus artículos de uso personal: alimentos, bebidas, carbón, fósforos, gas, papel higiénico extra, productos de higiene, repelente y artículos de limpieza.</p>
+<p>Los artículos ofrecidos (en la cocina, parrilla y baños) son una cortesía inicial; si se acaban, la reposición es responsabilidad del huésped.</p>`)],
+  [t('4. Fumar 🚭', '4. Smoking 🚭', '4. Fumar 🚭'), t(`<p>Proibido fumar em áreas internas (quartos e banheiros).</p><p>Nas áreas externas é permitido, desde que se use cinzeiro.</p>`, `<p>Smoking is not allowed in indoor areas (bedrooms and bathrooms).</p><p>It is allowed in outdoor areas, provided an ashtray is used.</p>`, `<p>Está prohibido fumar en áreas internas (habitaciones y baños).</p><p>En las áreas exteriores está permitido, siempre que se use un cenicero.</p>`)],
+  [t('5. Animais de Estimação 🐾', '5. Pets 🐾', '5. Mascotas 🐾'), t(`<p>Pets são bem-vindos! Mas:</p><ul><li>Não devem subir em camas, sofás ou móveis.</li><li>Qualquer dano causado será de responsabilidade do hóspede.</li></ul>`, `<p>Pets are welcome! But:</p><ul><li>They must not climb on beds, sofas or furniture.</li><li>Any damage caused is the guest's responsibility.</li></ul>`, `<p>¡Las mascotas son bienvenidas! Pero:</p><ul><li>No deben subir a camas, sofás o muebles.</li><li>Cualquier daño causado es responsabilidad del huésped.</li></ul>`)],
+  [t('6. Eventos e Convidados 🎉', '6. Events & Guests 🎉', '6. Eventos e Invitados 🎉'), t(`<p>Não são permitidos eventos comerciais, festas abertas, sublocação ou cobrança de ingresso.</p>
 <p>Eventos familiares só com autorização prévia e mediante taxa.</p>
 <ul><li>Convidado day-use/evento: R$ 100,00</li><li>Hóspede extra pernoite: R$ 120,00/dia</li></ul>
-<p>⚠️ <strong>Importante:</strong> a casa é destinada principalmente a hospedagens. Eventos autorizados não incluem garantias quanto a clima, fornecimento de energia ou funcionamento de equipamentos alugados.</p>`],
-  ['7. Som e Lei do Silêncio 🔊', `<p>Proibido: som alto, DJs, bandas ao vivo ou caixas potentes.</p>
+<p>⚠️ <strong>Importante:</strong> a casa é destinada principalmente a hospedagens. Eventos autorizados não incluem garantias quanto a clima, fornecimento de energia ou funcionamento de equipamentos alugados.</p>`, `<p>Commercial events, open parties, subletting or charging admission are not allowed.</p>
+<p>Family events only with prior authorisation and a fee.</p>
+<ul><li>Day-use/event guest: R$ 100.00</li><li>Extra overnight guest: R$ 120.00/day</li></ul>
+<p>⚠️ <strong>Important:</strong> the house is intended mainly for stays. Authorised events do not include guarantees regarding weather, power supply or the operation of rented equipment.</p>`, `<p>No se permiten eventos comerciales, fiestas abiertas, subarriendo ni cobro de entrada.</p>
+<p>Los eventos familiares solo con autorización previa y mediante tarifa.</p>
+<ul><li>Invitado day-use/evento: R$ 100,00</li><li>Huésped extra por noche: R$ 120,00/día</li></ul>
+<p>⚠️ <strong>Importante:</strong> la casa está destinada principalmente al alojamiento. Los eventos autorizados no incluyen garantías sobre el clima, el suministro de energía o el funcionamiento de equipos alquilados.</p>`)],
+  [t('7. Som e Lei do Silêncio 🔊', '7. Noise & Quiet Hours 🔊', '7. Sonido y Ley del Silencio 🔊'), t(`<p>Proibido: som alto, DJs, bandas ao vivo ou caixas potentes.</p>
 <p>Limite de ruído:</p><ul><li>até 55 dB (7h às 22h)</li><li>até 45 dB (22h às 7h)</li></ul>
-<p>Qualquer solicitação de redução deve ser atendida imediatamente.</p>`],
-  ['8. Normas do Condomínio', `<p>Todos os hóspedes devem cumprir as regras do condomínio.</p><p>O hóspede principal receberá o controle do portão e deve mantê-lo sempre fechado.</p>`],
-  ['9. Jacuzzi, Spa ou Hidro 🛁', `<p><strong>No aluguel do espaço inteiro</strong>, o uso da jacuzzi está incluído, sem taxa: 1 vez ao dia, por até 4 horas.</p>
-<p><strong>Nas hospedagens de quartos, suítes e flats</strong>, o uso é mediante solicitação prévia e taxa de R$ 200,00 (1 vez ao dia, por até 4 horas).</p>`],
-  ['10. Lavanderia', `<p>Área de lavanderia do anfitrião não está disponível.</p><p>Uma lava e seca será disponibilizada na cozinha para uso dos hóspedes.</p>`],
-  ['11. Louça e Lixo 🍽️', `<p>A louça deve ser lavada antes do check-out.</p><p>Perecíveis devem ser descartados e o lixo colocado em sacos para recolhimento.</p>`],
-  ['12. Multas por Descumprimento ⚠️', `<p>Quebra de regra: multa de 1 diária por ocorrência.</p>
+<p>Qualquer solicitação de redução deve ser atendida imediatamente.</p>`, `<p>Not allowed: loud sound, DJs, live bands or powerful speakers.</p>
+<p>Noise limit:</p><ul><li>up to 55 dB (7 AM–10 PM)</li><li>up to 45 dB (10 PM–7 AM)</li></ul>
+<p>Any request to lower the noise must be met immediately.</p>`, `<p>Prohibido: sonido alto, DJ, bandas en vivo o altavoces potentes.</p>
+<p>Límite de ruido:</p><ul><li>hasta 55 dB (7h a 22h)</li><li>hasta 45 dB (22h a 7h)</li></ul>
+<p>Cualquier solicitud de reducción debe atenderse de inmediato.</p>`)],
+  [t('8. Normas do Condomínio', '8. Condominium Rules', '8. Normas del Condominio'), t(`<p>Todos os hóspedes devem cumprir as regras do condomínio.</p><p>O hóspede principal receberá o controle do portão e deve mantê-lo sempre fechado.</p>`, `<p>All guests must comply with the condominium rules.</p><p>The main guest will receive the gate remote and must keep it closed at all times.</p>`, `<p>Todos los huéspedes deben cumplir las normas del condominio.</p><p>El huésped principal recibirá el control del portón y debe mantenerlo siempre cerrado.</p>`)],
+  [t('9. Jacuzzi, Spa ou Hidro 🛁', '9. Jacuzzi, Spa or Hot Tub 🛁', '9. Jacuzzi, Spa o Hidromasaje 🛁'), t(`<p><strong>No aluguel do espaço inteiro</strong>, o uso da jacuzzi está incluído, sem taxa: 1 vez ao dia, por até 4 horas.</p>
+<p><strong>Nas hospedagens de quartos, suítes e flats</strong>, o uso é mediante solicitação prévia e taxa de R$ 200,00 (1 vez ao dia, por até 4 horas).</p>`, `<p><strong>With the whole-house rental</strong>, use of the jacuzzi is included, free of charge: once a day, for up to 4 hours.</p>
+<p><strong>For room, suite and flat stays</strong>, use is upon prior request and a fee of R$ 200.00 (once a day, for up to 4 hours).</p>`, `<p><strong>Con el alquiler de la casa entera</strong>, el uso del jacuzzi está incluido, sin tarifa: 1 vez al día, por hasta 4 horas.</p>
+<p><strong>En las estancias de habitaciones, suites y flats</strong>, el uso es mediante solicitud previa y una tarifa de R$ 200,00 (1 vez al día, por hasta 4 horas).</p>`)],
+  [t('10. Lavanderia', '10. Laundry', '10. Lavandería'), t(`<p>Área de lavanderia do anfitrião não está disponível.</p><p>Uma lava e seca será disponibilizada na cozinha para uso dos hóspedes.</p>`, `<p>The host's laundry area is not available.</p><p>A washer-dryer is provided in the kitchen for guests' use.</p>`, `<p>El área de lavandería del anfitrión no está disponible.</p><p>Se proporciona una lavadora-secadora en la cocina para uso de los huéspedes.</p>`)],
+  [t('11. Louça e Lixo 🍽️', '11. Dishes & Rubbish 🍽️', '11. Vajilla y Basura 🍽️'), t(`<p>A louça deve ser lavada antes do check-out.</p><p>Perecíveis devem ser descartados e o lixo colocado em sacos para recolhimento.</p>`, `<p>Dishes must be washed before check-out.</p><p>Perishables must be discarded and rubbish bagged for collection.</p>`, `<p>La vajilla debe lavarse antes del check-out.</p><p>Los perecederos deben desecharse y la basura colocarse en bolsas para su recogida.</p>`)],
+  [t('12. Multas por Descumprimento ⚠️', '12. Penalties for Non-Compliance ⚠️', '12. Multas por Incumplimiento ⚠️'), t(`<p>Quebra de regra: multa de 1 diária por ocorrência.</p>
 <p>Check-in/out fora do horário:</p><ul><li>até 8h de atraso → ½ diária</li><li>acima de 8h → 1 diária</li></ul>
-<p>Se outro hóspede for prejudicado, o responsável deverá arcar com o ressarcimento integral da hospedagem afetada.</p>`],
-  ['13. Taxas Adicionais 💰', `<ul>
+<p>Se outro hóspede for prejudicado, o responsável deverá arcar com o ressarcimento integral da hospedagem afetada.</p>`, `<p>Breaking a rule: a penalty of 1 night's rate per occurrence.</p>
+<p>Check-in/out outside the agreed time:</p><ul><li>up to 8 hours late → ½ night</li><li>over 8 hours → 1 night</li></ul>
+<p>If another guest is affected, the responsible party must fully reimburse the affected stay.</p>`, `<p>Romper una norma: multa de 1 noche por incidencia.</p>
+<p>Check-in/out fuera del horario:</p><ul><li>hasta 8h de retraso → ½ noche</li><li>más de 8h → 1 noche</li></ul>
+<p>Si otro huésped resulta perjudicado, el responsable deberá cubrir el reembolso íntegro de la estancia afectada.</p>`)],
+  [t('13. Taxas Adicionais 💰', '13. Additional Fees 💰', '13. Tarifas Adicionales 💰'), t(`<ul>
 <li>Hóspede extra: R$ 120,00/noite</li>
 <li>Convidado day-use/evento: R$ 100,00</li>
 <li>Jacuzzi: R$ 200,00 — apenas nas hospedagens de quarto, suíte ou flat (1x ao dia, até 4h); incluída sem custo no aluguel do espaço inteiro</li>
@@ -1094,25 +1118,49 @@ const REGRAS = [
 <li>Ar-condicionado ligado sem necessidade: R$ 50,00</li>
 <li>Uso excessivo de energia: R$ 100,00</li>
 <li>Material de limpeza extra: R$ 100,00</li>
-</ul>`],
-  ['14. Falhas Externas', `<p>Não nos responsabilizamos por interrupções de água, energia ou fenômenos naturais.</p>`],
-  ['15. Danos e Objetos Perdidos', `<p>Danos por mau uso → custo de reposição será cobrado.</p><p>Objetos esquecidos não são de nossa responsabilidade.</p>`],
-  ['16. Responsabilidade', `<p>O hóspede principal é responsável por todos os ocupantes e convidados durante a estadia.</p>`],
-  ['17. Manutenção', `<p>A casa recebe manutenção constante.</p><p>Reparos imediatos fora do horário comercial podem não ser possíveis.</p>`],
-  ['18. Indisponibilidade Pontual', `<p>A casa oferece muitas comodidades, mas falhas isoladas (como ar-condicionado, jacuzzi ou eletrodomésticos) não geram reembolso ou cancelamento.</p>`]
+</ul>`, `<ul>
+<li>Extra guest: R$ 120.00/night</li>
+<li>Day-use/event guest: R$ 100.00</li>
+<li>Jacuzzi: R$ 200.00 — only for room, suite or flat stays (once a day, up to 4h); included free with the whole-house rental</li>
+<li>Barbecue: R$ 200.00</li>
+<li>Broken glass/plate: R$ 20.00/unit</li>
+<li>Extra gas: R$ 140.00</li>
+<li>Extra pool cleaning: R$ 150.00</li>
+<li>Additional toilet paper: R$ 10.00/person</li>
+<li>Air conditioning left on unnecessarily: R$ 50.00</li>
+<li>Excessive energy use: R$ 100.00</li>
+<li>Extra cleaning supplies: R$ 100.00</li>
+</ul>`, `<ul>
+<li>Huésped extra: R$ 120,00/noche</li>
+<li>Invitado day-use/evento: R$ 100,00</li>
+<li>Jacuzzi: R$ 200,00 — solo en estancias de habitación, suite o flat (1x al día, hasta 4h); incluido sin costo en el alquiler de la casa entera</li>
+<li>Parrilla: R$ 200,00</li>
+<li>Vaso/plato roto: R$ 20,00/unidad</li>
+<li>Gas extra: R$ 140,00</li>
+<li>Limpieza extra de piscina: R$ 150,00</li>
+<li>Papel higiénico adicional: R$ 10,00/persona</li>
+<li>Aire acondicionado encendido sin necesidad: R$ 50,00</li>
+<li>Uso excesivo de energía: R$ 100,00</li>
+<li>Material de limpieza extra: R$ 100,00</li>
+</ul>`)],
+  [t('14. Falhas Externas', '14. External Failures', '14. Fallos Externos'), t(`<p>Não nos responsabilizamos por interrupções de água, energia ou fenômenos naturais.</p>`, `<p>We are not responsible for interruptions to water, power or natural phenomena.</p>`, `<p>No nos responsabilizamos por interrupciones de agua, energía o fenómenos naturales.</p>`)],
+  [t('15. Danos e Objetos Perdidos', '15. Damage & Lost Property', '15. Daños y Objetos Perdidos'), t(`<p>Danos por mau uso → custo de reposição será cobrado.</p><p>Objetos esquecidos não são de nossa responsabilidade.</p>`, `<p>Damage from misuse → the replacement cost will be charged.</p><p>Forgotten items are not our responsibility.</p>`, `<p>Daños por mal uso → se cobrará el costo de reposición.</p><p>Los objetos olvidados no son de nuestra responsabilidad.</p>`)],
+  [t('16. Responsabilidade', '16. Responsibility', '16. Responsabilidad'), t(`<p>O hóspede principal é responsável por todos os ocupantes e convidados durante a estadia.</p>`, `<p>The main guest is responsible for all occupants and guests during the stay.</p>`, `<p>El huésped principal es responsable de todos los ocupantes e invitados durante la estancia.</p>`)],
+  [t('17. Manutenção', '17. Maintenance', '17. Mantenimiento'), t(`<p>A casa recebe manutenção constante.</p><p>Reparos imediatos fora do horário comercial podem não ser possíveis.</p>`, `<p>The house receives constant maintenance.</p><p>Immediate repairs outside business hours may not be possible.</p>`, `<p>La casa recibe mantenimiento constante.</p><p>Las reparaciones inmediatas fuera del horario comercial pueden no ser posibles.</p>`)],
+  [t('18. Indisponibilidade Pontual', '18. Occasional Unavailability', '18. Indisponibilidad Puntual'), t(`<p>A casa oferece muitas comodidades, mas falhas isoladas (como ar-condicionado, jacuzzi ou eletrodomésticos) não geram reembolso ou cancelamento.</p>`, `<p>The house offers many amenities, but isolated failures (such as air conditioning, jacuzzi or appliances) do not entitle you to a refund or cancellation.</p>`, `<p>La casa ofrece muchas comodidades, pero los fallos aislados (como aire acondicionado, jacuzzi o electrodomésticos) no dan derecho a reembolso o cancelación.</p>`)]
 ];
 
 const regras = layout(
-  'Regras da Casa | Villela Stay',
-  'Regras da casa da Villela Stay: check-in e check-out, pets, som, convidados, taxas adicionais e responsabilidades — tudo para uma estadia tranquila.',
+  t('Regras da Casa | Villela Stay', 'House Rules | Villela Stay', 'Normas de la Casa | Villela Stay'),
+  t('Regras da casa da Villela Stay: check-in e check-out, pets, som, convidados, taxas adicionais e responsabilidades — tudo para uma estadia tranquila.', 'Villela Stay house rules: check-in and check-out, pets, noise, guests, additional fees and responsibilities — everything for a smooth stay.', 'Normas de la casa de Villela Stay: check-in y check-out, mascotas, ruido, invitados, tarifas adicionales y responsabilidades — todo para una estancia tranquila.'),
   `
 <section class="hero hero-menor">
-  <h1>🌿 Regras da Casa – Villela Stay</h1>
-  <p>Bem-vindo(a)! Para garantir que sua estadia seja confortável, segura e agradável, pedimos a gentileza de observar as seguintes regras:</p>
+  <h1>🌿 ${t('Regras da Casa', 'House Rules', 'Normas de la Casa')} – Villela Stay</h1>
+  <p>${t('Bem-vindo(a)! Para garantir que sua estadia seja confortável, segura e agradável, pedimos a gentileza de observar as seguintes regras:', 'Welcome! To make your stay comfortable, safe and pleasant, we kindly ask you to observe the following rules:', '¡Bienvenido(a)! Para que tu estancia sea cómoda, segura y agradable, te pedimos amablemente que observes las siguientes normas:')}</p>
 </section>
 <div class="regras-wrap">
   ${REGRAS.map(r => `<section class="regra"><h2>${r[0]}</h2>${r[1]}</section>`).join('\n')}
-  <p class="regras-aceite">✅ Ao reservar, você confirma estar de acordo com estas regras, que existem para proteger sua experiência e garantir o bem-estar de todos.</p>
+  <p class="regras-aceite">✅ ${t('Ao reservar, você confirma estar de acordo com estas regras, que existem para proteger sua experiência e garantir o bem-estar de todos.', 'By booking, you confirm that you agree to these rules, which exist to protect your experience and ensure everyone\'s well-being.', 'Al reservar, confirmas que estás de acuerdo con estas normas, que existen para proteger tu experiencia y garantizar el bienestar de todos.')}</p>
 </div>`,
   {
     caminho: '/regras.html',
@@ -1341,60 +1389,60 @@ console.log(`FAQ gerado (${LANG})`);
 
 // ------------------------- guia do hóspede -------------------------
 const guia = layout(
-  'Guia do Hóspede | Villela Stay',
-  'Tudo para a sua estadia na Villela Stay: chegada, funcionamento da casa, dicas de Brasília, emergências e canal direto com o anfitrião.',
+  t('Guia do Hóspede | Villela Stay', 'Guest Guide | Villela Stay', 'Guía del Huésped | Villela Stay'),
+  t('Tudo para a sua estadia na Villela Stay: chegada, funcionamento da casa, dicas de Brasília, emergências e canal direto com o anfitrião.', 'Everything for your stay at Villela Stay: arrival, how the house works, Brasília tips, emergencies and a direct line to the host.', 'Todo para tu estancia en Villela Stay: llegada, cómo funciona la casa, consejos de Brasília, emergencias y línea directa con el anfitrión.'),
   `
 <section class="hero hero-menor">
-  <h1>Guia do Hóspede</h1>
-  <p>Bem-vindo(a) à Villela Stay! Aqui está tudo que você precisa para aproveitar a estadia — da chegada ao check-out.</p>
+  <h1>${t('Guia do Hóspede', 'Guest Guide', 'Guía del Huésped')}</h1>
+  <p>${t('Bem-vindo(a) à Villela Stay! Aqui está tudo que você precisa para aproveitar a estadia — da chegada ao check-out.', "Welcome to Villela Stay! Here's everything you need to enjoy your stay — from arrival to check-out.", '¡Bienvenido(a) a Villela Stay! Aquí tienes todo lo que necesitas para disfrutar tu estancia — desde la llegada hasta el check-out.')}</p>
 </section>
 <div class="regras-wrap">
 
-  <section class="regra"><h2>🔑 Sua chegada</h2>
-    <p><strong>Check-in a partir das 14h.</strong> As instruções de acesso (endereço exato, portão e chaves/senha) são enviadas pelo WhatsApp antes da sua chegada.</p>
-    <p>Preencha o <a href="/pre-checkin.html"><strong>check-in on-line</strong></a> para agilizar tudo — leva 2 minutos.</p>
+  <section class="regra"><h2>🔑 ${t('Sua chegada', 'Your arrival', 'Tu llegada')}</h2>
+    <p><strong>${t('Check-in a partir das 14h.', 'Check-in from 2 PM.', 'Check-in a partir de las 14h.')}</strong> ${t('As instruções de acesso (endereço exato, portão e chaves/senha) são enviadas pelo WhatsApp antes da sua chegada.', 'The access instructions (exact address, gate and keys/code) are sent by WhatsApp before your arrival.', 'Las instrucciones de acceso (dirección exacta, portón y llaves/clave) se envían por WhatsApp antes de tu llegada.')}</p>
+    <p>${t(`Preencha o <a href="${L('/pre-checkin.html')}"><strong>check-in on-line</strong></a> para agilizar tudo — leva 2 minutos.`, `Fill in the <a href="${L('/pre-checkin.html')}"><strong>online check-in</strong></a> to speed everything up — it takes 2 minutes.`, `Completa el <a href="${L('/pre-checkin.html')}"><strong>check-in en línea</strong></a> para agilizar todo — toma 2 minutos.`)}</p>
   </section>
 
-  <section class="regra"><h2>🏡 Como a casa funciona</h2>
+  <section class="regra"><h2>🏡 ${t('Como a casa funciona', 'How the house works', 'Cómo funciona la casa')}</h2>
     <ul>
-      <li><strong>Cozinha:</strong> equipada com utensílios, gás e detergente para começar.</li>
-      <li><strong>Churrasqueira:</strong> a gás e a carvão (traga seu carvão; uso mediante taxa — consulte as <a href="/regras.html">Regras</a>).</li>
-      <li><strong>Lava e seca:</strong> disponível na cozinha para uso dos hóspedes.</li>
-      <li><strong>Piscina:</strong> aproveite! Crianças sempre com supervisão de um adulto.</li>
-      <li><strong>Jacuzzi/spa:</strong> no aluguel do espaço inteiro, o uso da jacuzzi é permitido uma vez por dia durante 4 horas independentemente do pagamento de taxa.</li>
-      <li><strong>Lixo:</strong> ensacar e deixar no ponto de coleta indicado.</li>
-      <li><strong>Silêncio:</strong> som moderado sempre; após as 22h, volume reduzido (regra do condomínio).</li>
+      <li><strong>${t('Cozinha:', 'Kitchen:', 'Cocina:')}</strong> ${t('equipada com utensílios, gás e detergente para começar.', 'equipped with utensils, gas and detergent to get started.', 'equipada con utensilios, gas y detergente para empezar.')}</li>
+      <li><strong>${t('Churrasqueira:', 'Barbecue:', 'Parrilla:')}</strong> ${t(`a gás e a carvão (traga seu carvão; uso mediante taxa — consulte as <a href="${L('/regras.html')}">Regras</a>).`, `gas and charcoal (bring your charcoal; use for a fee — see the <a href="${L('/regras.html')}">Rules</a>).`, `a gas y a carbón (trae tu carbón; uso mediante tarifa — consulta las <a href="${L('/regras.html')}">Normas</a>).`)}</li>
+      <li><strong>${t('Lava e seca:', 'Washer-dryer:', 'Lavadora-secadora:')}</strong> ${t('disponível na cozinha para uso dos hóspedes.', 'available in the kitchen for guests\' use.', 'disponible en la cocina para uso de los huéspedes.')}</li>
+      <li><strong>${t('Piscina:', 'Pool:', 'Piscina:')}</strong> ${t('aproveite! Crianças sempre com supervisão de um adulto.', 'enjoy! Children always with adult supervision.', '¡disfruta! Niños siempre con supervisión de un adulto.')}</li>
+      <li><strong>${t('Jacuzzi/spa:', 'Jacuzzi/spa:', 'Jacuzzi/spa:')}</strong> ${t('no aluguel do espaço inteiro, o uso da jacuzzi é permitido uma vez por dia durante 4 horas independentemente do pagamento de taxa.', 'with the whole-house rental, the jacuzzi may be used once a day for 4 hours at no extra charge.', 'con el alquiler de la casa entera, el jacuzzi puede usarse una vez al día durante 4 horas sin costo adicional.')}</li>
+      <li><strong>${t('Lixo:', 'Rubbish:', 'Basura:')}</strong> ${t('ensacar e deixar no ponto de coleta indicado.', 'bag it and leave it at the indicated collection point.', 'embolsarla y dejarla en el punto de recogida indicado.')}</li>
+      <li><strong>${t('Silêncio:', 'Noise:', 'Ruido:')}</strong> ${t('som moderado sempre; após as 22h, volume reduzido (regra do condomínio).', 'moderate sound at all times; after 10 PM, reduced volume (condominium rule).', 'sonido moderado siempre; después de las 22h, volumen reducido (norma del condominio).')}</li>
     </ul>
   </section>
 
-  <section class="regra"><h2>🗺️ O melhor de Brasília pertinho de você</h2>
+  <section class="regra"><h2>🗺️ ${t('O melhor de Brasília pertinho de você', 'The best of Brasília right next to you', 'Lo mejor de Brasília muy cerca de ti')}</h2>
     <ul>
-      <li><strong>Pontão do Lago Sul</strong> — restaurantes e pôr do sol à beira do lago (5-10 min)</li>
-      <li><strong>Ermida Dom Bosco</strong> — o pôr do sol mais bonito da cidade</li>
-      <li><strong>Esplanada dos Ministérios, Congresso e Catedral</strong> — o cartão-postal (15 min)</li>
-      <li><strong>Torre de TV e Feira da Torre</strong> — artesanato e gastronomia local</li>
-      <li><strong>Parque da Cidade</strong> — para correr, pedalar e piquenique</li>
-      <li><strong>Memorial JK</strong> — a história do fundador de Brasília</li>
+      <li><strong>Pontão do Lago Sul</strong> — ${t('restaurantes e pôr do sol à beira do lago (5-10 min)', 'restaurants and sunsets by the lake (5–10 min)', 'restaurantes y atardeceres a orillas del lago (5-10 min)')}</li>
+      <li><strong>Ermida Dom Bosco</strong> — ${t('o pôr do sol mais bonito da cidade', 'the most beautiful sunset in the city', 'el atardecer más bonito de la ciudad')}</li>
+      <li><strong>${t('Esplanada dos Ministérios, Congresso e Catedral', 'Esplanada dos Ministérios, Congress and Cathedral', 'Esplanada dos Ministérios, Congreso y Catedral')}</strong> — ${t('o cartão-postal (15 min)', 'the postcard view (15 min)', 'la postal (15 min)')}</li>
+      <li><strong>${t('Torre de TV e Feira da Torre', 'TV Tower and Tower Fair', 'Torre de TV y Feria de la Torre')}</strong> — ${t('artesanato e gastronomia local', 'local crafts and food', 'artesanía y gastronomía local')}</li>
+      <li><strong>Parque da Cidade</strong> — ${t('para correr, pedalar e piquenique', 'for running, cycling and picnics', 'para correr, pedalear y picnic')}</li>
+      <li><strong>Memorial JK</strong> — ${t('a história do fundador de Brasília', 'the story of the founder of Brasília', 'la historia del fundador de Brasília')}</li>
     </ul>
-    <p>Quer reservas em restaurantes, passeios ou transfer? Fale com o anfitrião — temos as melhores indicações.</p>
+    <p>${t('Quer reservas em restaurantes, passeios ou transfer? Fale com o anfitrião — temos as melhores indicações.', 'Want restaurant reservations, tours or a transfer? Talk to the host — we have the best recommendations.', '¿Quieres reservas en restaurantes, paseos o transfer? Habla con el anfitrión — tenemos las mejores recomendaciones.')}</p>
   </section>
 
-  <section class="regra"><h2>🆘 Emergências</h2>
-    <p>SAMU: <strong>192</strong> · Bombeiros: <strong>193</strong> · Polícia: <strong>190</strong></p>
-    <p>Anfitrião (WhatsApp 24h): <a href="${waLink('Olá! Sou hóspede e preciso de ajuda.')}"><strong>+55 61 9193-5013</strong></a></p>
+  <section class="regra"><h2>🆘 ${t('Emergências', 'Emergencies', 'Emergencias')}</h2>
+    <p>${t('SAMU', 'Ambulance (SAMU)', 'Ambulancia (SAMU)')}: <strong>192</strong> · ${t('Bombeiros', 'Fire', 'Bomberos')}: <strong>193</strong> · ${t('Polícia', 'Police', 'Policía')}: <strong>190</strong></p>
+    <p>${t('Anfitrião (WhatsApp 24h):', 'Host (WhatsApp 24/7):', 'Anfitrión (WhatsApp 24h):')} <a href="${waLink(t('Olá! Sou hóspede e preciso de ajuda.', "Hi! I'm a guest and I need help.", '¡Hola! Soy huésped y necesito ayuda.'))}"><strong>+55 61 9193-5013</strong></a></p>
   </section>
 
   <section class="regra"><h2>👋 Check-out</h2>
-    <p><strong>Até as 10h.</strong> Antes de sair: favor desligar os aparelhos de ar-condicionado, lavar a louça, descartar os perecíveis, ensacar o lixo e deixar as chaves na fechadura dos quartos e o controle na sinuca ou na casa do caseiro. A equipe inicia a limpeza externa às 8h.</p>
+    <p><strong>${t('Até as 10h.', 'By 10 AM.', 'Hasta las 10h.')}</strong> ${t('Antes de sair: favor desligar os aparelhos de ar-condicionado, lavar a louça, descartar os perecíveis, ensacar o lixo e deixar as chaves na fechadura dos quartos e o controle na sinuca ou na casa do caseiro. A equipe inicia a limpeza externa às 8h.', 'Before you leave: please turn off the air conditioning units, wash the dishes, discard perishables, bag the rubbish and leave the keys in the bedroom locks and the gate remote on the pool table or at the caretaker\'s house. The team starts the outdoor cleaning at 8 AM.', 'Antes de salir: por favor apaga los aparatos de aire acondicionado, lava la vajilla, desecha los perecederos, embolsa la basura y deja las llaves en la cerradura de las habitaciones y el control en la mesa de billar o en la casa del casero. El equipo comienza la limpieza exterior a las 8h.')}</p>
   </section>
 
-  <section class="regra"><h2>🔧 Algo não está funcionando?</h2>
-    <p>Conte para a gente que resolvemos o quanto antes:</p>
+  <section class="regra"><h2>🔧 ${t('Algo não está funcionando?', 'Something not working?', '¿Algo no funciona?')}</h2>
+    <p>${t('Conte para a gente que resolvemos o quanto antes:', "Let us know and we'll fix it as soon as possible:", 'Cuéntanos y lo resolvemos lo antes posible:')}</p>
     <form id="form-chamado" class="form-evento" style="margin-top:10px">
-      <label>Seu nome* <input name="nome" required></label>
-      <label>Casa/unidade em que está hospedado <input name="hospedagem"></label>
-      <label>O que aconteceu?* <textarea name="descricao" rows="3" required></textarea></label>
-      <button class="btn" type="submit">Enviar chamado</button>
+      <label>${t('Seu nome*', 'Your name*', 'Tu nombre*')} <input name="nome" required></label>
+      <label>${t('Casa/unidade em que está hospedado', "House/unit where you're staying", 'Casa/unidad donde te alojas')} <input name="hospedagem"></label>
+      <label>${t('O que aconteceu?*', 'What happened?*', '¿Qué pasó?*')} <textarea name="descricao" rows="3" required></textarea></label>
+      <button class="btn" type="submit">${t('Enviar chamado', 'Send request', 'Enviar solicitud')}</button>
       <p class="form-status" hidden></p>
     </form>
   </section>
@@ -1403,14 +1451,14 @@ const guia = layout(
 document.getElementById('form-chamado').addEventListener('submit', function(e){
   e.preventDefault();
   var f = e.target, st = f.querySelector('.form-status');
-  st.hidden = false; st.textContent = 'Enviando...';
+  st.hidden = false; st.textContent = ${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
   fetch('${BACKEND}/api/chamados', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nome: f.nome.value, hospedagem: f.hospedagem.value, descricao: f.descricao.value })
   }).then(function(r){
-    st.textContent = r.ok ? '✅ Chamado recebido! Vamos resolver o quanto antes.' : 'Erro ao enviar — chame no WhatsApp.';
+    st.textContent = r.ok ? ${JSON.stringify(t('✅ Chamado recebido! Vamos resolver o quanto antes.', "✅ Request received! We'll resolve it as soon as possible.", '✅ ¡Solicitud recibida! Lo resolveremos lo antes posible.'))} : ${JSON.stringify(t('Erro ao enviar — chame no WhatsApp.', 'Error sending — message us on WhatsApp.', 'Error al enviar — escríbenos por WhatsApp.'))};
     if (r.ok) f.reset();
-  }).catch(function(){ st.textContent = 'Erro ao enviar — chame no WhatsApp.'; });
+  }).catch(function(){ st.textContent = ${JSON.stringify(t('Erro ao enviar — chame no WhatsApp.', 'Error sending — message us on WhatsApp.', 'Error al enviar — escríbenos por WhatsApp.'))}; });
 });
 </script>`,
   { caminho: '/guia.html' }
