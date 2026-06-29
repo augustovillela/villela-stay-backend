@@ -11,8 +11,8 @@ const WHATSAPP = '556191935013';
 // Motor de reservas da Stays. Cada página de propriedade reserva/paga SÓ a própria propriedade
 // via /pt/apartment/<CÓDIGO> (testado: o código sozinho já resolve; aceita ?from=&to=&persons=).
 const STAYS_SITE = 'https://ville.stays.com.br';
-// Trocar para https://villelastay.com.br na virada do domínio (afeta canonical, og:url e sitemap)
-const SITE_URL = 'https://villela-stay-site.onrender.com';
+// Domínio oficial (DNS virado em 29/06/2026). Afeta canonical, hreflang, og:url e sitemap.
+const SITE_URL = 'https://villelastay.com.br';
 
 // ----------------------------------------------------------------- PWA
 // Cores da marca usadas no manifest, theme-color e ícones (coerentes com os cartões).
