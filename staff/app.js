@@ -119,6 +119,21 @@ async function abrirApp() {
   try { const vg = await api('GET', '/visao-geral'); ESTADO.painelDisp = vg.painelDisponivel || {}; } catch {}
   ESTADO.podeEstat = ['marketing', 'ti', 'ceo'].some(a => ESTADO.areas.includes(a));
   montarMenu();
+  // Deep-link: ?rel=<id>[&fmt=arquivo] abre um relatório específico (links diretos do Boletim Executivo
+  // e de outros painéis). Para arquivos o link aponta direto a /arquivo, mas aceitamos fmt aqui também.
+  try {
+    const p = new URLSearchParams(location.search);
+    const rel = p.get('rel');
+    if (rel) {
+      const fmt = p.get('fmt') || '';
+      p.delete('rel'); p.delete('fmt');
+      const qs = p.toString();
+      history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+      ESTADO.secao = 'relatorios';
+      abrirRelatorio(rel, fmt);
+      return;
+    }
+  } catch (_) {}
   navegar('visao');
 }
 
