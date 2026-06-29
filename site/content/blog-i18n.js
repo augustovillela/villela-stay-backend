@@ -301,4 +301,88 @@ ${h.fig(3, { legenda: 'Feijoada: el Brasil migrante que formó la mesa de Brasí
 `,
     },
   },
+  paisagismo: {
+    en: {
+      titulo: 'Landscaping in Brasília: Burle Marx, the Cerrado and the garden as art | Villela Stay',
+      descricao: "Burle Marx's gardens, the Botanical Garden and the flora of the Cerrado. How modernist landscaping shaped Brasília — and ideas for a garden that withstands the hot, dry climate.",
+      h1: 'In Brasília, the garden was designed too',
+      dek: 'Before the world spoke of nature and architecture together, Burle Marx was already painting with plants on the Central Plateau. Discover the landscaping that makes the capital as green as it is monumental.',
+      casasTitulo: 'Wake up surrounded by green',
+      casasTexto: 'Our houses integrate garden, pool and architecture — the same idea Burle Marx brought to Brasília. The Jardim dos Sentidos is its fullest expression: a stay where landscaping is part of the experience, not a backdrop.',
+      isca: { titulo: 'Mini-guide: a garden that withstands the Brasília climate (PDF)', texto: 'The plants, the trees and the landscaping tricks that survive the hot, dry Plateau — and keep any yard beautiful all year. Download now.', botao: 'I want the mini-guide' },
+      faq: [
+        { q: 'Who was Roberto Burle Marx?', a: 'Roberto Burle Marx (1909–1994) was a Brazilian landscape architect, painter, botanist and visual artist, internationally recognised for turning landscaping into art. He pioneered the use of native tropical plants and designed iconic gardens in Brasília, Rio and around the world. In Brasília, he is behind the Itamaraty gardens, among others.' },
+        { q: "What to plant in a hot, dry garden like Brasília's?", a: 'Species adapted to drought and strong sun work best: Cerrado plants, succulents, ipês, bougainvillea, agaves and ornamental grasses. The secret is to work with native vegetation — which withstands the dry spell — and to plan shade and efficient irrigation for the dry months.' },
+        { q: 'Is the Brasília Botanical Garden worth visiting?', a: 'Yes. The Brasília Botanical Garden preserves the Cerrado flora across trails, lakes and themed gardens, great for walks and contact with native nature. It pairs very well with the third day of a city itinerary.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">When you think of Brasília, the concrete comes to mind — the Cathedral, the Congress, the palaces. But there is a second Brasília, equally designed: the green one. Before "sustainable architecture" became a buzzword, Roberto Burle Marx already treated the garden as part of the work, not as an ornament. This is the city seen through landscaping.</p>
+
+${h.fig(1, { legenda: 'Burle Marx gardens in Brasília: masses of tropical plants composed like a painting.' })}
+
+<h2>Burle Marx: the man who painted with plants</h2>
+<p>Burle Marx discovered Brazilian flora in a greenhouse in Berlin, Germany — there he saw the plants that grew ignored in his own backyard and realised they were a treasure. He returned to Brazil and revolutionised landscaping: instead of copying European geometric gardens, he composed <strong>organic masses of tropical species</strong>, like brushstrokes on a canvas. In Brasília, his designs converse with Niemeyer's curves — nature and architecture speaking the same modern language. <a href="${h.L('/blog/personalidades.html')}">He is one of the names that gave the city its soul →</a></p>
+
+${h.fig(2, { legenda: 'The Brasília Botanical Garden preserves the Cerrado across trails and reflecting pools.' })}
+
+<h2>The Cerrado: beauty that looks dry but is alive</h2>
+<p>The biome surrounding Brasília is Brazil's second largest — and one of the most misunderstood. At first glance, twisted trees and grass. Up close, one of the richest floras on the planet: the ipê that blooms yellow, pink and purple at the height of the dry season, the native fruits, the buriti wetlands. The Cerrado teaches a landscaping lesson the world is now rediscovering: to work <em>with</em> the climate, not against it.</p>
+
+${h.fig(3, { legenda: 'Cerrado vegetation: a rustic look, very rich biodiversity.' })}
+
+<h2>A garden that withstands the Plateau</h2>
+<p>Anyone who lives in or stays in Brasília learns quickly: the climate is hot and dry for much of the year, with months without rain. A garden that thrives here is a smart garden — native, adapted species, planned shade, efficient irrigation. Some choices that work:</p>
+<ul class="artigo-lista">
+  <li><strong>Trees:</strong> ipês, oitis and the generous shade of the flamboyant.</li>
+  <li><strong>Colour all year:</strong> bougainvillea (spring), which loves sun and drought.</li>
+  <li><strong>Low maintenance:</strong> agaves, succulents and ornamental grasses.</li>
+  <li><strong>Local identity:</strong> Cerrado species that belong to the land.</li>
+</ul>
+
+<h2>When the garden is part of the stay</h2>
+<p>It was this philosophy — integrating green, water and architecture — that guided our houses. The <strong>Jardim dos Sentidos</strong> takes the idea to its limit: landscaping designed to be lived in, not just admired. Waking to birdsong, having coffee among the plants, diving into a pool surrounded by green. In Brasília, the garden was never an accessory. At Villela Stay, neither is it.</p>
+`,
+    },
+    es: {
+      titulo: 'Paisajismo en Brasília: Burle Marx, el Cerrado y el jardín como arte | Villela Stay',
+      descricao: 'Los jardines de Burle Marx, el Jardín Botánico y la flora del Cerrado. Cómo el paisajismo modernista moldeó Brasília — e ideas para un jardín que resiste el clima caluroso y seco.',
+      h1: 'En Brasília, el jardín también fue proyectado',
+      dek: 'Antes de que el mundo hablara de naturaleza y arquitectura juntas, Burle Marx ya pintaba con plantas en el Planalto Central. Conoce el paisajismo que hace de la capital una ciudad tan verde como monumental.',
+      casasTitulo: 'Despierta rodeado de verde',
+      casasTexto: 'Nuestras casas integran jardín, piscina y arquitectura — la misma idea que Burle Marx llevó a Brasília. El Jardim dos Sentidos es su máxima expresión: un alojamiento donde el paisajismo es parte de la experiencia, no escenario.',
+      isca: { titulo: 'Mini-guía: un jardín que resiste el clima de Brasília (PDF)', texto: 'Las plantas, los árboles y los trucos de paisajismo que sobreviven al Planalto caluroso y seco — y dejan cualquier patio bonito todo el año. Descárgala ahora.', botao: 'Quiero la mini-guía' },
+      faq: [
+        { q: '¿Quién fue Roberto Burle Marx?', a: 'Roberto Burle Marx (1909–1994) fue paisajista, pintor, botánico y artista plástico brasileño, reconocido internacionalmente por convertir el paisajismo en arte. Fue pionero en el uso de plantas tropicales nativas y diseñó jardines emblemáticos en Brasília, Río y por el mundo. En Brasília, firma los jardines de Itamaraty, entre otros.' },
+        { q: '¿Qué plantar en un jardín de clima caluroso y seco como el de Brasília?', a: 'Las especies adaptadas a la sequía y al sol fuerte funcionan mejor: plantas del propio Cerrado, suculentas, ipês, buganvilla, agaves y gramíneas ornamentales. El secreto es trabajar con la vegetación nativa — que resiste la sequía — y prever sombra e irrigación eficiente para los meses secos.' },
+        { q: '¿Vale la pena visitar el Jardín Botánico de Brasília?', a: 'Sí. El Jardín Botánico de Brasília preserva la flora del Cerrado en senderos, lagos y jardines temáticos, ideal para caminatas y contacto con la naturaleza nativa. Combina muy bien con el tercer día de un itinerario por la ciudad.' },
+      ],
+      corpo: (h) => `
+<p class="artigo-lead">Cuando se piensa en Brasília, viene el hormigón — la Catedral, el Congreso, los palacios. Pero hay una segunda Brasília, igualmente proyectada: la verde. Antes de que "arquitectura sostenible" se volviera una expresión de moda, Roberto Burle Marx ya trataba el jardín como parte de la obra, y no como adorno. Esta es la ciudad vista por el paisajismo.</p>
+
+${h.fig(1, { legenda: 'Jardines de Burle Marx en Brasília: masas de plantas tropicales compuestas como pintura.' })}
+
+<h2>Burle Marx: el hombre que pintaba con plantas</h2>
+<p>Burle Marx descubrió la flora brasileña en un invernadero de Berlín, en Alemania — vio allí las plantas que crecían ignoradas en el patio de su casa y comprendió que eran un tesoro. Volvió a Brasil y revolucionó el paisajismo: en vez de copiar los jardines geométricos europeos, compuso <strong>masas orgánicas de especies tropicales</strong>, como pinceladas en un lienzo. En Brasília, sus trazados dialogan con las curvas de Niemeyer — naturaleza y arquitectura hablando el mismo lenguaje moderno. <a href="${h.L('/blog/personalidades.html')}">Es uno de los nombres que dieron alma a la ciudad →</a></p>
+
+${h.fig(2, { legenda: 'El Jardín Botánico de Brasília preserva el Cerrado en senderos y espejos de agua.' })}
+
+<h2>El Cerrado: la belleza que parece seca, pero está viva</h2>
+<p>El bioma que rodea Brasília es el segundo más grande de Brasil — y uno de los más incomprendidos. A primera vista, árboles torcidos y pasto. Mirando de cerca, una de las floras más ricas del planeta: el ipê que florece amarillo, rosa y morado en pleno apogeo de la seca, las frutas nativas, los humedales de buriti. El Cerrado enseña una lección de paisajismo que el mundo ahora redescubre: trabajar <em>con</em> el clima, no contra él.</p>
+
+${h.fig(3, { legenda: 'La vegetación del Cerrado: apariencia rústica, biodiversidad riquísima.' })}
+
+<h2>Un jardín que resiste el Planalto</h2>
+<p>Quien vive o se aloja en Brasília aprende rápido: el clima es caluroso y seco buena parte del año, con meses sin lluvia. Un jardín que prospera aquí es un jardín inteligente — especies nativas y adaptadas, sombra pensada, irrigación eficiente. Algunas opciones que funcionan:</p>
+<ul class="artigo-lista">
+  <li><strong>Árboles:</strong> ipês, oitis y la sombra generosa del flamboyán.</li>
+  <li><strong>Color todo el año:</strong> buganvilla (primavera), que adora el sol y la sequía.</li>
+  <li><strong>Bajo mantenimiento:</strong> agaves, suculentas y gramíneas ornamentales.</li>
+  <li><strong>Identidad local:</strong> especies del propio Cerrado, que pertenecen a la tierra.</li>
+</ul>
+
+<h2>Cuando el jardín es parte del alojamiento</h2>
+<p>Fue esa filosofía — integrar verde, agua y arquitectura — la que guió nuestras casas. El <strong>Jardim dos Sentidos</strong> lleva la idea al límite: paisajismo pensado para ser vivido, no solo admirado. Despertar con el canto de los pájaros, tomar el café entre las plantas, sumergirse en la piscina rodeada de verde. En Brasília, el jardín nunca fue un accesorio. En Villela Stay, tampoco.</p>
+`,
+    },
+  },
 };
