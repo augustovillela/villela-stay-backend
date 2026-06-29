@@ -39,7 +39,8 @@ if (fs.existsSync(path.join(__dirname, 'src', 'og-home.jpg'))) fs.copyFileSync(p
 const MARCA = TEM_LOGO
   ? `<a class="marca" href="/"><img class="logo" src="/logo.png" width="128" height="128" alt="Villela Stay — Hospedagens Inteligentes" fetchpriority="high"></a>`
   : `<a class="marca" href="/">Villela <span>Stay</span></a>`;
-const TAGLINE = `<span class="tagline">Hospedagens Inteligentes<br>para Experiências Inesquecíveis.</span>`;
+// Função (não const string) para traduzir por idioma — é avaliada dentro do loop, quando t() já existe.
+const TAGLINE = () => `<span class="tagline">${t('Hospedagens Inteligentes<br>para Experiências Inesquecíveis.', 'Smart Stays<br>for Unforgettable Experiences.', 'Alojamientos Inteligentes<br>para Experiencias Inolvidables.')}</span>`;
 
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const real = n => 'R$ ' + n.toLocaleString('pt-BR');
@@ -179,8 +180,8 @@ function seletorIdioma(caminhoPt) {
 
 // Título de imóvel: mantém os nomes temáticos (Niemeyer, Cassia Eller…) e traduz só os termos genéricos.
 const TITULO_MAP = {
-  en: [[/Suíte/g, 'Suite'], [/com piscina no Lago Sul/g, 'with pool in Lago Sul'], [/Espaço Inteiro/g, 'Whole Space'], [/(\d+) pessoas/g, '$1 people'], [/no Lago Sul/g, 'in Lago Sul'], [/na Villela Home Stay/g, 'at Villela Home Stay']],
-  es: [[/Suíte/g, 'Suite'], [/com piscina no Lago Sul/g, 'con piscina en Lago Sul'], [/Espaço Inteiro/g, 'Espacio Entero'], [/(\d+) pessoas/g, '$1 personas'], [/no Lago Sul/g, 'en Lago Sul'], [/na Villela Home Stay/g, 'en Villela Home Stay']]
+  en: [[/Suíte/g, 'Suite'], [/com piscina no Lago Sul/g, 'with pool in Lago Sul'], [/Espaço Inteiro/g, 'Whole Space'], [/Casa Inteira/g, 'Entire Home'], [/(\d+) pessoas/g, '$1 people'], [/no Lago Sul/g, 'in Lago Sul'], [/na Villela Home Stay/g, 'at Villela Home Stay'], [/na Villela Stay/g, 'at Villela Stay']],
+  es: [[/Suíte/g, 'Suite'], [/com piscina no Lago Sul/g, 'con piscina en Lago Sul'], [/Espaço Inteiro/g, 'Espacio Entero'], [/Casa Inteira/g, 'Casa Entera'], [/(\d+) pessoas/g, '$1 personas'], [/no Lago Sul/g, 'en Lago Sul'], [/na Villela Home Stay/g, 'en Villela Home Stay'], [/na Villela Stay/g, 'en Villela Stay']]
 };
 function tituloImovel(l) { if (LANG === 'pt') return l.titulo; let s = l.titulo; for (const [re, rep] of TITULO_MAP[LANG]) s = s.replace(re, rep); return s; }
 // Resumo e descrição traduzidos por id (Fase 3 parte B). Fallback para o PT do listings.json.
@@ -245,7 +246,7 @@ ${extraHead}
 </head>
 <body>
 <header class="topo">
-  <div class="marca-bloco">${MARCA.replace('href="/"', `href="${L('/')}"`)}${TAGLINE}</div>
+  <div class="marca-bloco">${MARCA.replace('href="/"', `href="${L('/')}"`)}${TAGLINE()}</div>
   <nav>
     <a href="${L('/')}#hospedagens">${t('Hospedagens', 'Stays', 'Alojamientos')}</a>
     <a href="${L('/eventos.html')}">${t('Eventos', 'Events', 'Eventos')}</a>
@@ -1789,7 +1790,7 @@ function blogFig(slug, n, opts = {}) {
   if (!fs.existsSync(abs)) return '';
   const dim = dimensoesArquivo(abs) || { w: 1600, h: 1067 };
   const legenda = opts.legenda || item.alt || '';
-  const credito = `Foto: ${esc(item.credito)} (${esc(item.licenca)}) · <a href="${esc(item.fonte)}" target="_blank" rel="noopener nofollow">Wikimedia Commons</a>`;
+  const credito = `${t('Foto:', 'Photo:', 'Foto:')} ${esc(item.credito)} (${esc(item.licenca)}) · <a href="${esc(item.fonte)}" target="_blank" rel="noopener nofollow">Wikimedia Commons</a>`;
   return `<figure class="artigo-fig${opts.classe ? ' ' + opts.classe : ''}">
 ${img('/blog-img/' + item.file, { alt: legenda || item.alt, width: dim.w, height: dim.h, sizes: '(max-width: 820px) 100vw, 760px' })}
   <figcaption>${legenda ? `<span class="fig-legenda">${esc(legenda)}</span>` : ''}<span class="fig-credito">${credito}</span></figcaption>
@@ -1834,11 +1835,25 @@ document.querySelectorAll('.form-blog').forEach(function(f){
 });
 </script>`;
 
+// Tradução do "tema"/categoria do artigo (rótulo curto usado em cards, breadcrumb e tag).
+const BLOG_TEMA_I18N = {
+  'Arquitetura': { en: 'Architecture', es: 'Arquitectura' },
+  'Arquitetura modular': { en: 'Modular architecture', es: 'Arquitectura modular' },
+  'Domo geodésico': { en: 'Geodesic dome', es: 'Domo geodésico' },
+  'Gastronomia': { en: 'Food & dining', es: 'Gastronomía' },
+  'Hospedagem profissional': { en: 'Professional hosting', es: 'Hospedaje profesional' },
+  'Paisagismo': { en: 'Landscaping', es: 'Paisajismo' },
+  'Personalidades': { en: 'Notable figures', es: 'Personalidades' },
+  'Roteiros': { en: 'Itineraries', es: 'Itinerarios' }
+};
 // Mescla o artigo PT com a tradução do idioma corrente (campo a campo; faltou = cai no PT).
 function tradArtigo(a) {
   if (LANG === 'pt') return a;
   const tr = (BLOG_I18N[a.slug] || {})[LANG];
-  return tr ? { ...a, ...tr } : a;
+  const merged = tr ? { ...a, ...tr } : { ...a };
+  const tm = BLOG_TEMA_I18N[a.tema];
+  if (tm && tm[LANG]) merged.tema = tm[LANG];
+  return merged;
 }
 function renderArtigo(a0) {
   const a = tradArtigo(a0);
