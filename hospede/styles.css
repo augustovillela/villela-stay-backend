@@ -122,6 +122,21 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 #modal-pedido label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; margin-bottom: 8px; }
 @media (max-width: 480px) { .mp-grid { grid-template-columns: 1fr; } }
 
+/* ---------- fidelidade (Fase 4) ---------- */
+.ja-avaliada { font-size: .82rem; color: var(--cerrado); font-weight: 700; margin-top: 2px; }
+.fidelidade { display: flex; flex-direction: column; gap: 10px; }
+.fid-resumo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fid-num { font-size: 1.05rem; }
+.fid-num strong { color: var(--lago-escuro); font-size: 1.3rem; }
+.fid-badge { background: #fff2d6; color: #8a6d18; font-weight: 800; font-size: .8rem; padding: 4px 12px; border-radius: 14px; }
+.fid-acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---------- avaliação: estrelas ---------- */
+.estrelas { display: flex; gap: 6px; margin: 4px 0 6px; }
+.estrela { background: none; border: none; font-size: 2rem; line-height: 1; color: var(--borda); cursor: pointer; padding: 0; width: auto; }
+.estrela.ativa { color: var(--cerrado); }
+.estrela:hover { color: var(--cerrado); }
+
 /* ---------- modal ---------- */
 .modal { position: fixed; inset: 0; background: rgba(12,54,68,.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
 .modal-card { background: #fff; width: 100%; max-width: 380px; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }

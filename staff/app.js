@@ -154,6 +154,7 @@ function montarMenu() {
   if (ESTADO.areas.includes('vendas')) op.push({ id: 'crm', rot: 'CRM / Funil' });
   if (ESTADO.me.papel === 'admin') op.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
   if (ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-pedidos', rot: '📨 Pedidos de hóspedes' });
+  if (ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-fidelidade', rot: '⭐ Avaliações & indicações' });
   if (ESTADO.me.papel === 'admin') op.push({ id: 'usuarios', rot: 'Usuários' });
   op.push({ id: 'conta', rot: 'Minha conta' });
   if (ESTADO.painelDisp.leads) op.push({ id: 'leads', rot: 'Leads' });
@@ -191,7 +192,7 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -1108,6 +1109,23 @@ async function renderHospedePedidos() {
     try { await api('PATCH', '/hospede/pedidos/' + id, corpo); msg.textContent = 'Salvo!'; }
     catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
   });
+}
+
+// --------- Fidelidade: avaliações & indicações (leitura) ---------
+async function renderHospedeFidelidade() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Avaliações & indicações', 'Avaliações pós-estadia e indicações de amigos enviadas pelos hóspedes na Área do Hóspede.') + `<div id="hf"><p class="aviso">Carregando…</p></div>`;
+  try {
+    const { avaliacoes, indicacoes } = await api('GET', '/hospede/fidelidade');
+    const estrelas = (n) => '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
+    const av = (avaliacoes || []).length
+      ? `<table><thead><tr><th>Hóspede</th><th>Imóvel</th><th>Nota</th><th>Comentário</th><th>Data</th></tr></thead><tbody>${avaliacoes.map(a => `<tr><td>${esc(a.hospedeNome || '—')}</td><td>${esc(a.imovel || '')}</td><td title="${esc(a.nota)}/5" style="color:#d9a441;letter-spacing:2px">${estrelas(a.nota)}</td><td>${esc(a.comentario || '')}</td><td>${esc(String(a.criadoEm).slice(0, 10))}</td></tr>`).join('')}</tbody></table>`
+      : '<p class="aviso">Nenhuma avaliação ainda.</p>';
+    const ind = (indicacoes || []).length
+      ? `<table><thead><tr><th>Quem indicou</th><th>Indicado</th><th>Contato</th><th>Mensagem</th><th>Data</th></tr></thead><tbody>${indicacoes.map(i => `<tr><td>${esc(i.hospedeNome || '—')}</td><td>${esc(i.indicadoNome)}</td><td>${esc(i.indicadoContato)}</td><td>${esc(i.mensagem || '')}</td><td>${esc(String(i.criadoEm).slice(0, 10))}</td></tr>`).join('')}</tbody></table>`
+      : '<p class="aviso">Nenhuma indicação ainda.</p>';
+    $('#hf').innerHTML = `<h2 style="color:#0c3644;font-size:1.1rem;margin:10px 0">⭐ Avaliações pós-estadia</h2>${av}<h2 style="color:#0c3644;font-size:1.1rem;margin:22px 0 10px">🎁 Indicações</h2>${ind}`;
+  } catch (e) { $('#hf').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Minha conta ---------

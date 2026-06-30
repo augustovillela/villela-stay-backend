@@ -108,6 +108,11 @@
           com o orçamento aqui mesmo, e o pagamento é combinado por Pix/WhatsApp.</p>
         <div id="servicos" class="servicos"><p class="vazio">Carregando…</p></div>
       </section>
+
+      <section class="bloco">
+        <h2>Programa de fidelidade</h2>
+        <div id="fidelidade" class="fidelidade"><p class="vazio">Carregando…</p></div>
+      </section>
     </main>
   </div>
 
@@ -123,6 +128,44 @@
         <button type="submit" class="btn">Enviar pedido</button>
       </div>
       <p id="mp-msgfeedback" class="erro"></p>
+    </form>
+  </div>
+
+  <!-- ===================== MODAL AVALIAÇÃO ===================== -->
+  <div id="modal-avaliacao" class="modal hidden">
+    <form id="form-avaliacao" class="modal-card">
+      <h3>⭐ Avaliar a estadia</h3>
+      <p id="av-sub" class="dica"></p>
+      <div id="av-estrelas" class="estrelas" role="radiogroup" aria-label="Nota de 1 a 5">
+        <button type="button" class="estrela" data-n="1" aria-label="1 estrela">★</button>
+        <button type="button" class="estrela" data-n="2" aria-label="2 estrelas">★</button>
+        <button type="button" class="estrela" data-n="3" aria-label="3 estrelas">★</button>
+        <button type="button" class="estrela" data-n="4" aria-label="4 estrelas">★</button>
+        <button type="button" class="estrela" data-n="5" aria-label="5 estrelas">★</button>
+      </div>
+      <label>Comentário (opcional) <textarea id="av-coment" rows="3" placeholder="Como foi a sua experiência?"></textarea></label>
+      <div class="modal-acoes">
+        <button type="button" id="av-cancelar" class="btn secund">Cancelar</button>
+        <button type="submit" class="btn">Enviar avaliação</button>
+      </div>
+      <p id="av-erro" class="erro"></p>
+    </form>
+  </div>
+
+  <!-- ===================== MODAL INDICAÇÃO ===================== -->
+  <div id="modal-indicacao" class="modal hidden">
+    <form id="form-indicacao" class="modal-card">
+      <h3>🎁 Indicar um amigo</h3>
+      <p class="dica">Indique alguém que vai amar se hospedar com a gente. Ao se hospedar, você ganha um crédito —
+        combinamos com você pelo WhatsApp.</p>
+      <label>Nome do seu amigo(a) <input type="text" id="in-nome" required></label>
+      <label>Contato (WhatsApp ou e-mail) <input type="text" id="in-contato" required></label>
+      <label>Mensagem (opcional) <textarea id="in-msg" rows="2" placeholder="Quer deixar um recado?"></textarea></label>
+      <div class="modal-acoes">
+        <button type="button" id="in-cancelar" class="btn secund">Cancelar</button>
+        <button type="submit" class="btn">Enviar indicação</button>
+      </div>
+      <p id="in-msgfeedback" class="erro"></p>
     </form>
   </div>
 

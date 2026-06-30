@@ -1556,6 +1556,55 @@ async function alertaAugusto(resumo) {
   } catch (e) { console.error('[alerta augusto]', e.message); return false; }
 }
 
+// ---- Fase 4: recibos, avaliações e indicações ----
+const lerAvaliacoes = () => lerJSON('avaliacoes.json', []);
+const salvarAvaliacoes = (a) => salvarJSON('avaliacoes.json', a);
+const lerIndicacoes = () => lerJSON('indicacoes.json', []);
+const salvarIndicacoes = (i) => salvarJSON('indicacoes.json', i);
+function fmtDataBR(iso) { if (!iso) return '—'; const [a, m, d] = String(iso).split('-'); return (d && m && a) ? `${d}/${m}/${a}` : String(iso); }
+function reciboHtml(h, r) {
+  const noites = (r.checkin && r.checkout) ? Math.max(0, Math.round((Date.parse(r.checkout) - Date.parse(r.checkin)) / 86400000)) : '';
+  const valor = r.valor != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: r.moeda || 'BRL' }).format(r.valor) : '—';
+  const linha = (k, v) => `<tr><td class="k">${escHtml(k)}</td><td>${escHtml(v)}</td></tr>`;
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comprovante de Reserva — Villela Stay</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#2b2d2f;background:#f7f4ee;margin:0;padding:24px}
+  .doc{max-width:620px;margin:auto;background:#fff;border:1px solid #e3ddd0;border-radius:12px;overflow:hidden}
+  .cab{background:#0c3644;color:#f2ecd8;padding:22px 26px}
+  .cab .marca{font-size:20px;font-weight:800}.cab .sub{color:#d9a441;font-size:13px}
+  .corpo{padding:24px 26px}
+  h1{font-size:18px;color:#0c3644;margin:0 0 14px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:8px 6px;border-bottom:1px solid #eee;vertical-align:top}
+  td.k{color:#6b7075;width:42%}
+  .rod{font-size:12px;color:#6b7075;margin-top:16px}
+  .acao{margin:18px 26px;text-align:center}
+  .btn{background:#1c6e8c;color:#fff;border:none;padding:11px 20px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px}
+  @media print{.acao{display:none}body{background:#fff;padding:0}.doc{border:none}}
+</style></head><body>
+<div class="doc">
+  <div class="cab"><div class="marca">Villela Stay</div><div class="sub">Comprovante de Reserva</div></div>
+  <div class="corpo">
+    <h1>Comprovante de Reserva</h1>
+    <table>
+      ${linha('Hóspede', h.nome || '—')}
+      ${linha('Propriedade', r.imovelTitulo || r.imovel || '—')}
+      ${linha('Localizador', r.id || '—')}
+      ${linha('Check-in', fmtDataBR(r.checkin))}
+      ${linha('Check-out', fmtDataBR(r.checkout))}
+      ${noites !== '' ? linha('Noites', noites) : ''}
+      ${r.hospedes ? linha('Hóspedes', r.hospedes) : ''}
+      ${r.plataforma ? linha('Canal', r.plataforma) : ''}
+      ${linha('Status', r.statusRotulo || r.status || '—')}
+      ${linha('Valor total', valor)}
+    </table>
+    <p class="rod">Documento gerado pela Área do Hóspede da Villela Stay em ${fmtDataBR(hojeISO())}. Comprovante de reserva — não é documento fiscal.</p>
+  </div>
+  <div class="acao"><button class="btn" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
+</div></body></html>`;
+}
+
 // ---- seed da estrutura de propriedades-info (uma vez), p/ o Augusto preencher WiFi/acesso ----
 (function seedPropInfo() {
   const f = path.join(DATA_DIR, 'propriedades-info.json');
@@ -1724,6 +1773,55 @@ app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
   } catch (e) { console.error('[hospede pedido]', e.message); res.status(502).json({ erro: 'Falha ao registrar o pedido. Tente novamente.' }); }
 });
 
+// Recibo/comprovante da reserva (HTML imprimível → salvar em PDF) — só do próprio hóspede.
+app.get('/hospede/api/recibo/:reservaId', requireHospede, async (req, res) => {
+  try {
+    const reservas = await reservasDoHospede(req.hospede);
+    const r = reservas.find(x => x.id === req.params.reservaId);
+    if (!r) return res.status(404).send('Reserva não encontrada.');
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(reciboHtml(req.hospede, r));
+  } catch (e) { console.error('[hospede recibo]', e.message); res.status(502).send('Falha ao gerar o recibo.'); }
+});
+
+// Avaliação pós-estadia (só reservas já encerradas; 1 por reserva).
+app.get('/hospede/api/minhas-avaliacoes', requireHospede, (req, res) => {
+  res.json({ avaliacoes: lerAvaliacoes().filter(a => a.hospedeId === req.hospede.id) });
+});
+app.post('/hospede/api/avaliacao', requireHospede, async (req, res) => {
+  const d = req.body || {};
+  const reservaId = String(d.reservaId || '').trim();
+  const nota = Math.max(0, Math.min(5, parseInt(d.nota) || 0));
+  if (!reservaId || !nota) return res.status(400).json({ erro: 'Informe a reserva e uma nota de 1 a 5.' });
+  try {
+    const reservas = await reservasDoHospede(req.hospede);
+    const r = reservas.find(x => x.id === reservaId && x.status !== 'canceled' && x.status !== 'blocked');
+    if (!r) return res.status(404).json({ erro: 'Reserva não encontrada na sua conta.' });
+    if (!(r.checkout && r.checkout <= hojeISO())) return res.status(400).json({ erro: 'A avaliação fica disponível após o check-out.' });
+    const avaliacoes = lerAvaliacoes();
+    if (avaliacoes.some(a => a.hospedeId === req.hospede.id && a.reservaId === reservaId)) return res.status(409).json({ erro: 'Você já avaliou esta estadia.' });
+    const av = { id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', staysClientId: req.hospede.staysClientId || '', reservaId, imovel: r.imovel, imovelTitulo: r.imovelTitulo, nota, comentario: String(d.comentario || '').slice(0, 1500), criadoEm: new Date().toISOString() };
+    avaliacoes.unshift(av);
+    salvarAvaliacoes(avaliacoes);
+    alertaAugusto(`Nova AVALIACAO de ${av.hospedeNome || 'hospede'}: ${nota}/5${r.imovel ? ' (' + r.imovel + ')' : ''}${av.comentario ? ' - "' + av.comentario.slice(0, 120) + '"' : ''}.`).catch(() => { });
+    res.json({ ok: true, avaliacao: av });
+  } catch (e) { console.error('[hospede avaliacao]', e.message); res.status(502).json({ erro: 'Falha ao registrar a avaliação.' }); }
+});
+
+// Indicação de amigo (programa de indicação) → registra e avisa o Augusto p/ combinar o crédito.
+app.post('/hospede/api/indicacao', requireHospede, (req, res) => {
+  const d = req.body || {};
+  const nome = String(d.nome || '').trim();
+  const contato = String(d.contato || '').trim();
+  if (!nome || !contato) return res.status(400).json({ erro: 'Informe o nome e o contato (WhatsApp/e-mail) de quem você quer indicar.' });
+  const indicacoes = lerIndicacoes();
+  const ind = { id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', indicadoNome: nome, indicadoContato: contato.slice(0, 200), mensagem: String(d.mensagem || '').slice(0, 1000), criadoEm: new Date().toISOString() };
+  indicacoes.unshift(ind);
+  salvarIndicacoes(indicacoes);
+  alertaAugusto(`Nova INDICACAO de ${ind.hospedeNome || 'hospede'}: ${nome} (${ind.indicadoContato}). Combinar o credito de indicacao.`).catch(() => { });
+  res.json({ ok: true });
+});
+
 // Info reservada da propriedade — só se o hóspede tem reserva nela. WiFi/acesso só na janela da estadia.
 app.get('/hospede/api/propriedade/:codigo', requireHospede, async (req, res) => {
   const codigo = String(req.params.codigo || '').toUpperCase();
@@ -1797,6 +1895,14 @@ app.patch('/staff/api/hospede/pedidos/:id', requireAuth, (req, res) => {
   p.atualizadoEm = new Date().toISOString();
   salvarPedidosHosp(pedidos);
   res.json({ ok: true, pedido: p });
+});
+
+// Fidelidade: avaliações pós-estadia e indicações (leitura — equipe).
+app.get('/staff/api/hospede/fidelidade', requireAuth, (req, res) => {
+  res.json({
+    avaliacoes: lerAvaliacoes().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))),
+    indicacoes: lerIndicacoes().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))),
+  });
 });
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.

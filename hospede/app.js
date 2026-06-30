@@ -92,13 +92,17 @@ $('#btn-sair').addEventListener('click', async () => {
 });
 
 let RESERVAS = [];
+let AVALIADAS = new Set();
 async function carregarReservas() {
   const cont = $('#reservas');
   cont.innerHTML = '<p class="vazio">Carregando…</p>';
   try {
-    const { reservas } = await api('/minhas-reservas');
-    RESERVAS = (reservas || []).filter(r => r.status !== 'blocked');
+    const [resR, avR] = await Promise.all([api('/minhas-reservas'), api('/minhas-avaliacoes').catch(() => ({ avaliacoes: [] }))]);
+    AVALIADAS = new Set((avR.avaliacoes || []).map(a => a.reservaId));
+    RESERVAS = (resR.reservas || []).filter(r => r.status !== 'blocked');
+    renderFidelidade();
     if (!RESERVAS.length) { cont.innerHTML = '<p class="vazio">Nenhuma reserva encontrada na sua conta.</p>'; return; }
+    const hojeStr = new Date().toISOString().slice(0, 10);
     cont.innerHTML = '';
     RESERVAS.forEach((r, i) => {
       const cancel = r.status === 'canceled';
@@ -109,6 +113,9 @@ async function carregarReservas() {
       if (r.imovel && !cancel) acoes.push(`<button type="button" class="btn secund btn-acao btn-info" data-cod="${esc(r.imovel)}">Informações da casa</button>`);
       if (!cancel && r.podeAlterar) acoes.push(`<button type="button" class="btn secund btn-acao btn-pedido" data-tipo="alteracao" data-reserva="${esc(r.id)}" data-titulo="${tituloR}">Solicitar alteração</button>`);
       if (!cancel) acoes.push(`<button type="button" class="btn secund btn-acao btn-pedido" data-tipo="evento" data-reserva="${esc(r.id)}" data-titulo="${tituloR}">Solicitar evento</button>`);
+      if (!cancel) acoes.push(`<button type="button" class="btn secund btn-acao btn-recibo" data-reserva="${esc(r.id)}">Recibo</button>`);
+      if (!cancel && r.checkout && r.checkout <= hojeStr && !AVALIADAS.has(r.id)) acoes.push(`<button type="button" class="btn secund btn-acao btn-avaliar" data-reserva="${esc(r.id)}" data-titulo="${tituloR}">Avaliar estadia</button>`);
+      const avaliada = (!cancel && AVALIADAS.has(r.id)) ? '<span class="ja-avaliada">⭐ Estadia avaliada</span>' : '';
       card.innerHTML = `
         <div class="cr-topo">
           <strong>${tituloR}</strong>
@@ -118,18 +125,78 @@ async function carregarReservas() {
         <div class="cr-linha">👥 ${r.hospedes || '—'} hóspede(s) · 🏷️ ${esc(r.id || '')}${r.plataforma ? ' · ' + esc(r.plataforma) : ''}</div>
         <div class="cr-valor">${fmtMoeda(r.valor, r.moeda)}</div>
         ${acoes.length ? `<div class="cr-acoes">${acoes.join('')}</div>` : ''}
+        ${avaliada}
         ${r.reservationUrl ? `<a class="cr-link" href="${esc(r.reservationUrl)}" target="_blank" rel="noopener">Ver detalhes na Stays ↗</a>` : ''}`;
       cont.appendChild(card);
     });
     cont.querySelectorAll('.btn-info').forEach(b => b.addEventListener('click', () => carregarPropriedade(b.dataset.cod)));
     cont.querySelectorAll('.btn-pedido').forEach(b => b.addEventListener('click', () => abrirPedido(b.dataset.tipo, b.dataset.reserva, b.dataset.titulo)));
-    // abre automaticamente a 1ª propriedade ativa
+    cont.querySelectorAll('.btn-recibo').forEach(b => b.addEventListener('click', () => window.open('/hospede/api/recibo/' + encodeURIComponent(b.dataset.reserva), '_blank', 'noopener')));
+    cont.querySelectorAll('.btn-avaliar').forEach(b => b.addEventListener('click', () => abrirAvaliacao(b.dataset.reserva, b.dataset.titulo)));
     const primeira = RESERVAS.find(r => r.imovel && r.status !== 'canceled');
     if (primeira) carregarPropriedade(primeira.imovel);
   } catch (e) {
     cont.innerHTML = '<p class="erro">' + esc(e.message) + '</p>';
   }
 }
+
+// ---------------- fidelidade + avaliação + indicação (Fase 4) ----------------
+function renderFidelidade() {
+  const box = $('#fidelidade');
+  if (!box) return;
+  const efetivas = (RESERVAS || []).filter(r => r.status !== 'canceled' && r.status !== 'blocked');
+  const n = efetivas.length;
+  const total = efetivas.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+  const recorrente = n >= 2;
+  box.innerHTML = `
+    <div class="fid-resumo">
+      <span class="fid-num"><strong>${n}</strong> estadia(s)${total ? ' · ' + fmtMoeda(total, 'BRL') + ' no total' : ''}</span>
+      ${recorrente ? '<span class="fid-badge">⭐ Hóspede recorrente</span>' : ''}
+    </div>
+    <p class="dica">${recorrente ? 'Como hóspede recorrente da Villela Stay, você tem condições especiais para voltar. Fale com a gente!' : 'Volte a se hospedar com a gente e aproveite condições especiais de cliente.'}</p>
+    <div class="fid-acoes">
+      <a class="btn" target="_blank" rel="noopener" href="https://wa.me/556191935013?text=${encodeURIComponent('Olá! Sou hóspede da Villela Stay e quero reservar novamente.')}">Reservar novamente</a>
+      <button type="button" class="btn secund" id="btn-indicar">🎁 Indicar um amigo</button>
+    </div>`;
+  const b = $('#btn-indicar'); if (b) b.addEventListener('click', abrirIndicacao);
+}
+
+let AV_NOTA = 0;
+function pintarEstrelas() { document.querySelectorAll('#av-estrelas .estrela').forEach(e => e.classList.toggle('ativa', Number(e.dataset.n) <= AV_NOTA)); }
+document.querySelectorAll('#av-estrelas .estrela').forEach(e => e.addEventListener('click', () => { AV_NOTA = Number(e.dataset.n); pintarEstrelas(); }));
+function abrirAvaliacao(reservaId, titulo) {
+  AV_NOTA = 0; pintarEstrelas();
+  $('#av-sub').textContent = (titulo ? titulo + ' · ' : '') + 'Reserva ' + reservaId;
+  $('#av-coment').value = ''; $('#av-erro').textContent = '';
+  const m = $('#modal-avaliacao'); m.dataset.reserva = reservaId; m.classList.remove('hidden');
+}
+$('#av-cancelar').addEventListener('click', () => $('#modal-avaliacao').classList.add('hidden'));
+$('#form-avaliacao').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const m = $('#modal-avaliacao'); const fb = $('#av-erro'); fb.textContent = '';
+  if (!AV_NOTA) { fb.textContent = 'Escolha uma nota de 1 a 5.'; return; }
+  try {
+    await api('/avaliacao', { method: 'POST', body: JSON.stringify({ reservaId: m.dataset.reserva, nota: AV_NOTA, comentario: $('#av-coment').value }) });
+    m.classList.add('hidden');
+    carregarReservas();
+  } catch (e) { fb.textContent = e.message; }
+});
+
+function abrirIndicacao() {
+  $('#in-nome').value = ''; $('#in-contato').value = ''; $('#in-msg').value = '';
+  $('#in-msgfeedback').className = 'erro'; $('#in-msgfeedback').textContent = '';
+  $('#modal-indicacao').classList.remove('hidden');
+}
+$('#in-cancelar').addEventListener('click', () => $('#modal-indicacao').classList.add('hidden'));
+$('#form-indicacao').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const fb = $('#in-msgfeedback'); fb.className = 'erro'; fb.textContent = '';
+  try {
+    await api('/indicacao', { method: 'POST', body: JSON.stringify({ nome: $('#in-nome').value, contato: $('#in-contato').value, mensagem: $('#in-msg').value }) });
+    fb.className = 'ok-msg'; fb.textContent = 'Obrigado! Vamos cuidar da sua indicação.';
+    setTimeout(() => $('#modal-indicacao').classList.add('hidden'), 1500);
+  } catch (e) { fb.textContent = e.message; }
+});
 
 async function carregarPropriedade(codigo) {
   const box = $('#prop');
