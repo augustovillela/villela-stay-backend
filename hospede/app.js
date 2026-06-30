@@ -78,15 +78,17 @@ $('#form-trocar').addEventListener('submit', async (ev) => {
   } catch (e) { $('#tr-erro').textContent = e.message; }
 });
 
-// ---------------- app ----------------
+// ---------------- app (home lançador + roteador) ----------------
+let USUARIO = null;
 function abrirApp(usuario) {
+  USUARIO = usuario;
   mostrar('app');
-  $('#ola').textContent = usuario.nome ? ('Olá, ' + usuario.nome.split(' ')[0]) : 'Olá';
-  carregarReservas();
-  carregarPedidos();
-  carregarServicos();
-  carregarConta();
+  $('#ola').textContent = usuario.nome ? ('Olá, ' + usuario.nome.split(' ')[0] + ' 👋') : 'Olá 👋';
+  montarGrade();
+  carregarReservas(); // dado central (reservas + avaliações + fidelidade + indicação); demais views carregam sob demanda
+  irPara(rotaDoHash());
 }
+window.addEventListener('hashchange', () => irPara(rotaDoHash()));
 
 $('#btn-sair').addEventListener('click', async () => {
   try { await api('/logout', { method: 'POST' }); } catch (e) { /* ignora */ }
@@ -135,7 +137,7 @@ async function carregarReservas() {
         ${r.reservationUrl ? `<a class="cr-link" href="${esc(r.reservationUrl)}" target="_blank" rel="noopener">Ver detalhes na Stays ↗</a>` : ''}`;
       cont.appendChild(card);
     });
-    cont.querySelectorAll('.btn-info').forEach(b => b.addEventListener('click', () => carregarPropriedade(b.dataset.cod)));
+    cont.querySelectorAll('.btn-info').forEach(b => b.addEventListener('click', () => { navegar('casa'); carregarPropriedade(b.dataset.cod); }));
     cont.querySelectorAll('.btn-pedido').forEach(b => b.addEventListener('click', () => abrirPedido(b.dataset.tipo, b.dataset.reserva, b.dataset.titulo)));
     cont.querySelectorAll('.btn-recibo').forEach(b => b.addEventListener('click', () => window.open('/hospede/api/recibo/' + encodeURIComponent(b.dataset.reserva), '_blank', 'noopener')));
     cont.querySelectorAll('.btn-avaliar').forEach(b => b.addEventListener('click', () => abrirAvaliacao(b.dataset.reserva, b.dataset.titulo)));
@@ -447,7 +449,7 @@ async function carregarPedidos() {
 }
 
 // ---------------- modal trocar senha (logado) ----------------
-$('#btn-senha').addEventListener('click', () => { $('#ms-msg').textContent = ''; $('#ms-atual').value = ''; $('#ms-nova').value = ''; $('#modal-senha').classList.remove('hidden'); });
+function abrirModalSenha() { $('#ms-msg').textContent = ''; $('#ms-atual').value = ''; $('#ms-nova').value = ''; $('#modal-senha').classList.remove('hidden'); }
 $('#ms-cancelar').addEventListener('click', () => $('#modal-senha').classList.add('hidden'));
 $('#form-senha-modal').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -458,5 +460,224 @@ $('#form-senha-modal').addEventListener('submit', async (ev) => {
     setTimeout(() => $('#modal-senha').classList.add('hidden'), 1200);
   } catch (e) { $('#ms-msg').className = 'erro'; $('#ms-msg').textContent = e.message; }
 });
+
+// ====================================================================
+// HOME (lançador), ROTEADOR e VIEWS novas — Fase A do app PWA
+// ====================================================================
+function openLink(u) { if (u) window.open(u, '_blank', 'noopener'); }
+
+const GRUPOS = [
+  { titulo: 'Minha estadia', itens: [
+    { rotulo: 'Reservas', icone: 'ti-calendar-event', rota: 'reservas' },
+    { rotulo: 'Check-in', icone: 'ti-door-enter', breve: { t: 'Check-in online', icone: 'ti-door-enter', x: 'Em breve você fará o check-in pelo app, agilizando a sua chegada. Por ora, combinamos tudo pelo WhatsApp.', wa: 'Ola! Quero combinar o meu check-in.' } },
+    { rotulo: 'Wi-Fi', icone: 'ti-wifi', rota: 'casa' },
+    { rotulo: 'Manual', icone: 'ti-book-2', rota: 'casa' },
+    { rotulo: 'Guia', icone: 'ti-map-2', rota: 'casa' },
+    { rotulo: 'Recibos', icone: 'ti-receipt', rota: 'recibos' },
+    { rotulo: 'Consultar', icone: 'ti-search', link: 'https://villelastay.com.br' },
+    { rotulo: 'Pedidos', icone: 'ti-inbox', rota: 'pedidos' },
+  ] },
+  { titulo: 'Conta e vantagens', itens: [
+    { rotulo: 'Extrato', icone: 'ti-wallet', rota: 'conta' },
+    { rotulo: 'Cash back', icone: 'ti-cash', rota: 'cashback', destaque: true },
+    { rotulo: 'Fidelidade', icone: 'ti-star', rota: 'fidelidade' },
+    { rotulo: 'Indicações', icone: 'ti-gift', rota: 'fidelidade' },
+    { rotulo: 'Avaliações', icone: 'ti-message-star', rota: 'avaliacoes' },
+  ] },
+  { titulo: 'Serviços e experiências', itens: [
+    { rotulo: 'Serviços', icone: 'ti-bell-ringing', rota: 'servicos' },
+    { rotulo: 'Gastronomia', icone: 'ti-tools-kitchen-2', breve: { t: 'Gastronomia', icone: 'ti-tools-kitchen-2', x: 'Em breve: nossas recomendações de gastronomia e a reserva de café da manhã, chef e buffet direto por aqui.', wa: 'Ola! Quero saber das opcoes de gastronomia.' } },
+    { rotulo: 'Turismo', icone: 'ti-building-monument', breve: { t: 'Turismo em Brasília', icone: 'ti-building-monument', x: 'Em breve: roteiros e passeios selecionados pela Villela Stay para a sua estadia em Brasília.', wa: 'Ola! Quero dicas de turismo em Brasilia.' } },
+    { rotulo: 'Eventos', icone: 'ti-confetti', rota: 'eventos' },
+    { rotulo: 'Pacotes', icone: 'ti-package', breve: { t: 'Pacotes e ofertas', icone: 'ti-package', x: 'Em breve: pacotes especiais e ofertas exclusivas para hóspedes Villela Stay.', wa: 'Ola! Quero conhecer os pacotes da Villela Stay.' } },
+    { rotulo: 'Manutenção', icone: 'ti-tool', breve: { t: 'Reportar manutenção', icone: 'ti-tool', x: 'Em breve você poderá reportar qualquer problema na casa por aqui. Enquanto isso, fale com a gente pelo WhatsApp que resolvemos rápido.', wa: 'Ola! Preciso reportar uma manutencao na casa.' } },
+  ] },
+  { titulo: 'Acesso e ajuda', itens: [
+    { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
+    { rotulo: 'Ajuda IA', icone: 'ti-robot', breve: { t: 'Ajuda IA', icone: 'ti-robot', x: 'Em breve: um assistente inteligente da Villela Stay para tirar suas dúvidas a qualquer hora, com base nas informações da sua reserva e da casa.', wa: 'Ola! Tenho uma duvida.' } },
+    { rotulo: 'FAQ', icone: 'ti-help-circle', link: 'https://villelastay.com.br/faq.html' },
+    { rotulo: 'Redes', icone: 'ti-brand-instagram', link: 'https://villelastay.com.br/links.html' },
+    { rotulo: 'Links', icone: 'ti-link', link: 'https://villelastay.com.br/links.html' },
+  ] },
+];
+
+function montarGrade() {
+  const g = $('#grade');
+  if (!g) return;
+  g.innerHTML = GRUPOS.map((gr, gi) => `
+    <div class="grade-grupo">
+      <div class="grade-titulo">${esc(gr.titulo)}</div>
+      <div class="grade-itens">
+        ${gr.itens.map((it, ii) => `
+          <button type="button" class="tile${it.destaque ? ' tile-destaque' : ''}" data-gi="${gi}" data-ii="${ii}">
+            <span class="tile-ico"><i class="ti ${esc(it.icone)}" aria-hidden="true"></i></span>
+            <span class="tile-rotulo">${esc(it.rotulo)}</span>
+          </button>`).join('')}
+      </div>
+    </div>`).join('');
+  g.querySelectorAll('.tile').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const it = GRUPOS[+btn.dataset.gi].itens[+btn.dataset.ii];
+      if (!it) return;
+      if (it.link) return openLink(it.link);
+      if (it.acao === 'senha') return abrirModalSenha();
+      if (it.breve) { BREVE = it.breve; return navegar('breve'); }
+      if (it.rota) navegar(it.rota);
+    });
+  });
+}
+
+// ---- roteador (hash) ----
+function rotaDoHash() { const h = (location.hash || '').replace(/^#\/?/, ''); return h || 'home'; }
+function navegar(rota) { if (rotaDoHash() === rota) irPara(rota); else location.hash = '#/' + rota; }
+
+const VIEWS = {
+  reservas:   { view: 'view-reservas' },
+  casa:       { view: 'view-casa', enter: garantirCasa },
+  pedidos:    { view: 'view-pedidos', enter: () => carregarPedidos() },
+  conta:      { view: 'view-conta', enter: () => carregarConta() },
+  cashback:   { view: 'view-cashback', enter: () => carregarCashback() },
+  servicos:   { view: 'view-servicos', enter: () => carregarServicos() },
+  fidelidade: { view: 'view-fidelidade', enter: () => renderFidelidade() },
+  avaliacoes: { view: 'view-avaliacoes', enter: () => renderAvaliacoesView() },
+  recibos:    { view: 'view-recibos', enter: () => renderRecibosView() },
+  eventos:    { view: 'view-eventos', enter: () => renderEventosView() },
+  breve:      { view: 'view-breve', enter: () => renderBreve() },
+};
+
+function irPara(rota) {
+  rota = rota || 'home';
+  const cfg = VIEWS[rota];
+  if (rota === 'home' || !cfg) {
+    $('#views').classList.add('hidden');
+    $('#home').classList.remove('hidden');
+    $('#app').classList.add('em-home');
+    $('#btn-voltar').classList.add('hidden');
+    window.scrollTo(0, 0);
+    return;
+  }
+  $('#home').classList.add('hidden');
+  $('#views').classList.remove('hidden');
+  $('#app').classList.remove('em-home');
+  $('#btn-voltar').classList.remove('hidden');
+  document.querySelectorAll('#views .view').forEach((v) => v.classList.add('hidden'));
+  const el = document.getElementById(cfg.view);
+  if (el) el.classList.remove('hidden');
+  $('#view-titulo').textContent = (el && el.dataset.titulo) || '';
+  if (cfg.enter) { try { cfg.enter(); } catch (e) { /* ignora */ } }
+  window.scrollTo(0, 0);
+}
+
+// ---- botões do topo ----
+$('#btn-voltar').addEventListener('click', () => navegar('home'));
+$('#btn-notif').addEventListener('click', () => { BREVE = { t: 'Notificações', icone: 'ti-bell', x: 'Em breve o app vai te avisar por aqui sobre novidades, crédito de cash back e lembrete de check-in. Quando aparecer o pedido, é só permitir as notificações.' }; navegar('breve'); });
+
+// ---- view: casa (Wi-Fi / Manual / Guia) ----
+function garantirCasa() {
+  const prop = $('#prop');
+  if (prop && prop.innerHTML.trim() && !prop.classList.contains('hidden')) return;
+  const ativa = (RESERVAS || []).find((r) => r.imovel && r.status !== 'canceled' && r.status !== 'blocked');
+  if (ativa) carregarPropriedade(ativa.imovel);
+  else { const d = $('#prop-dica'); if (d) { d.classList.remove('hidden'); d.textContent = 'Quando você tiver uma reserva ativa, as informações da casa (Wi-Fi, acesso, manual e guia) aparecem aqui.'; } }
+}
+
+// ---- view: cash back (recorte do extrato) ----
+async function carregarCashback() {
+  const box = $('#cashback');
+  box.innerHTML = '<p class="vazio">Carregando…</p>';
+  try {
+    const c = await api('/conta');
+    const fmt = (v) => fmtMoeda(Math.abs(Number(v) || 0), 'BRL');
+    const tipos = { cashback: 1, recorrencia: 1, bonus: 1 };
+    const linhas = (c.lancamentos || []).filter((l) => tipos[l.tipo]);
+    const totalCred = linhas.filter((l) => l.valor > 0).reduce((s, l) => s + Number(l.valor), 0);
+    let html = `<div class="conta-resumo conta-pos">
+      <div class="conta-saldo">${fmt(totalCred)} em cash back e bônus</div>
+      <div class="conta-mini">Crédito gerado pelas suas estadias e indicações. O saldo disponível para usar aparece no Extrato.</div>
+    </div>`;
+    if (!linhas.length) {
+      html += '<p class="vazio">Você ainda não tem cash back. A cada estadia direta você ganha 5% de volta — e mais 5% se já se hospedou antes.</p>';
+    } else {
+      html += `<table class="extrato"><thead><tr><th>Data</th><th>Descrição</th><th class="num">Valor</th></tr></thead><tbody>${
+        linhas.map((l) => `<tr>
+          <td>${fmtData(String(l.criadoEm).slice(0, 10))}</td>
+          <td><span class="lanc-tag lanc-${esc(l.tipo)}">${esc(l.rotulo)}</span>${l.descricao ? ' ' + esc(l.descricao) : ''}${l.validade ? ` <span class="lanc-val">val. ${fmtData(l.validade)}</span>` : ''}</td>
+          <td class="num ${l.valor >= 0 ? 'cred' : 'deb'}">${l.valor >= 0 ? '+' : '−'} ${fmt(l.valor)}</td>
+        </tr>`).join('')
+      }</tbody></table>
+      <button type="button" class="btn secund" id="cb-extrato" style="margin-top:12px">Ver extrato completo</button>`;
+    }
+    box.innerHTML = html;
+    const e = $('#cb-extrato'); if (e) e.addEventListener('click', () => navegar('conta'));
+  } catch (e) { box.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }
+}
+
+// ---- view: avaliações ----
+function renderAvaliacoesView() {
+  const box = $('#avaliacoes');
+  if (!RESERVAS.length) { box.innerHTML = '<p class="vazio">Você ainda não tem estadias para avaliar.</p>'; return; }
+  const hoje = new Date().toISOString().slice(0, 10);
+  const efet = RESERVAS.filter((r) => r.status !== 'canceled' && r.status !== 'blocked');
+  const aptos = efet.filter((r) => r.checkout && r.checkout <= hoje && !AVALIADAS.has(r.id));
+  const feitas = efet.filter((r) => AVALIADAS.has(r.id));
+  let html = '<p class="dica">Sua opinião nos ajuda a melhorar. Você pode avaliar cada estadia após o check-out.</p>';
+  html += aptos.length
+    ? '<div class="cards">' + aptos.map((r) => `
+        <div class="card-reserva">
+          <div class="cr-topo"><strong>${esc(r.imovelTitulo || r.imovel || 'Hospedagem')}</strong></div>
+          <div class="cr-datas">📅 ${fmtData(r.checkin)} → ${fmtData(r.checkout)}</div>
+          <button type="button" class="btn btn-acao btn-av" data-r="${esc(r.id)}" data-t="${esc(r.imovelTitulo || r.imovel || '')}">Avaliar estadia</button>
+        </div>`).join('') + '</div>'
+    : '<p class="vazio">No momento não há estadias pendentes de avaliação.</p>';
+  if (feitas.length) {
+    html += '<h3 class="sub-sec">Já avaliadas</h3><div class="cards">' + feitas.map((r) => `
+      <div class="card-reserva"><div class="cr-topo"><strong>${esc(r.imovelTitulo || r.imovel || 'Hospedagem')}</strong><span class="ja-avaliada">⭐ avaliada</span></div>
+      <div class="cr-datas">📅 ${fmtData(r.checkin)} → ${fmtData(r.checkout)}</div></div>`).join('') + '</div>';
+  }
+  box.innerHTML = html;
+  box.querySelectorAll('.btn-av').forEach((b) => b.addEventListener('click', () => abrirAvaliacao(b.dataset.r, b.dataset.t)));
+}
+
+// ---- view: recibos ----
+function renderRecibosView() {
+  const box = $('#recibos');
+  const efet = (RESERVAS || []).filter((r) => r.status !== 'canceled' && r.status !== 'blocked');
+  if (!efet.length) { box.innerHTML = '<p class="vazio">Você ainda não tem reservas com recibo disponível.</p>'; return; }
+  box.innerHTML = '<p class="dica">Abra o comprovante da sua reserva. Na tela do recibo, use “imprimir” para salvar em PDF.</p><div class="cards">' +
+    efet.map((r) => `<div class="card-reserva">
+      <div class="cr-topo"><strong>${esc(r.imovelTitulo || r.imovel || 'Hospedagem')}</strong></div>
+      <div class="cr-datas">📅 ${fmtData(r.checkin)} → ${fmtData(r.checkout)}</div>
+      <div class="cr-valor">${fmtMoeda(r.valor, r.moeda)}</div>
+      <button type="button" class="btn secund btn-acao btn-rec" data-r="${esc(r.id)}">Abrir recibo</button>
+    </div>`).join('') + '</div>';
+  box.querySelectorAll('.btn-rec').forEach((b) => b.addEventListener('click', () => window.open('/hospede/api/recibo/' + encodeURIComponent(b.dataset.r), '_blank', 'noopener')));
+}
+
+// ---- view: eventos (escolher reserva → modal de pedido de evento) ----
+function renderEventosView() {
+  const box = $('#eventos');
+  const efet = (RESERVAS || []).filter((r) => r.status !== 'canceled' && r.status !== 'blocked');
+  if (!efet.length) { box.innerHTML = '<p class="vazio">Para solicitar um evento, você precisa ter uma reserva ativa.</p>'; return; }
+  box.innerHTML = '<p class="dica">Quer realizar um evento na casa? Escolha a reserva e nos conte os detalhes — retornamos com a autorização e, se houver, o orçamento.</p><div class="cards">' +
+    efet.map((r) => `<div class="card-reserva">
+      <div class="cr-topo"><strong>${esc(r.imovelTitulo || r.imovel || 'Hospedagem')}</strong></div>
+      <div class="cr-datas">📅 ${fmtData(r.checkin)} → ${fmtData(r.checkout)}</div>
+      <button type="button" class="btn btn-acao btn-ev" data-r="${esc(r.id)}" data-t="${esc(r.imovelTitulo || r.imovel || '')}">Solicitar evento</button>
+    </div>`).join('') + '</div>';
+  box.querySelectorAll('.btn-ev').forEach((b) => b.addEventListener('click', () => abrirPedido('evento', b.dataset.r, b.dataset.t)));
+}
+
+// ---- view: "em breve" (genérica para itens das próximas fases) ----
+let BREVE = null;
+function renderBreve() {
+  const b = BREVE || { t: 'Em breve', x: 'Estamos preparando esta novidade para você.' };
+  $('#view-titulo').textContent = b.t || 'Em breve';
+  $('#breve').innerHTML = `<div class="breve-card">
+    <div class="breve-ico"><i class="ti ${esc(b.icone || 'ti-sparkles')}" aria-hidden="true"></i></div>
+    <h3>${esc(b.t || 'Em breve')}</h3>
+    <p>${esc(b.x || '')}</p>
+    ${b.wa ? `<a class="btn" target="_blank" rel="noopener" href="https://wa.me/556191935013?text=${encodeURIComponent(b.wa)}">Falar no WhatsApp</a>` : ''}
+  </div>`;
+}
 
 boot();

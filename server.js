@@ -1805,7 +1805,8 @@ function reciboHtml(h, r) {
 // ---- middleware de autenticação do hóspede (isolado do staff) ----
 function requireHospede(req, res, next) {
   try {
-    const tok = req.cookies && req.cookies[HOSP_COOKIE];
+    const auth = String(req.headers.authorization || '');
+    const tok = (req.cookies && req.cookies[HOSP_COOKIE]) || (auth.startsWith('Bearer ') ? auth.slice(7).trim() : null);
     if (!tok) return res.status(401).json({ erro: 'não autenticado' });
     const dec = jwt.verify(tok, JWT_SECRET);
     if (!dec || dec.tipo !== 'hospede') return res.status(401).json({ erro: 'sessão inválida' });
@@ -1818,6 +1819,7 @@ function requireHospede(req, res, next) {
 function setCookieHospede(res, h) {
   const token = jwt.sign({ hid: h.id, tipo: 'hospede' }, JWT_SECRET, { expiresIn: '30d' });
   res.cookie(HOSP_COOKIE, token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/hospede' });
+  return token; // também devolvido no corpo do login/registro p/ clientes Bearer (app nativo futuro)
 }
 
 // Nunca cachear respostas da API do hóspede.
@@ -1837,8 +1839,8 @@ app.post('/hospede/api/login', (req, res) => {
   limpaFalhas(ip);
   const hospedes = lerHospedes(); const u = hospedes.find(x => x.id === h.id);
   u.ultimoLogin = new Date().toISOString(); salvarHospedes(hospedes);
-  setCookieHospede(res, u);
-  res.json({ ok: true, usuario: semSenhaHosp(u) });
+  const token = setCookieHospede(res, u);
+  res.json({ ok: true, usuario: semSenhaHosp(u), token });
 });
 
 app.post('/hospede/api/logout', (req, res) => { res.clearCookie(HOSP_COOKIE, { path: '/hospede' }); res.json({ ok: true }); });
@@ -1882,8 +1884,8 @@ app.post('/hospede/api/registrar', async (req, res) => {
     const codInd = String((req.body && req.body.codigoIndicacao) || '').trim().toUpperCase();
     if (codInd && !h.indicadoPor) { const ind = hospedes.find(x => x.codigoIndicacao === codInd); if (ind && ind.id !== h.id) h.indicadoPor = codInd; }
     salvarHospedes(hospedes);
-    setCookieHospede(res, h);
-    res.json({ ok: true, usuario: semSenhaHosp(h) });
+    const token = setCookieHospede(res, h);
+    res.json({ ok: true, usuario: semSenhaHosp(h), token });
   } catch (e) { console.error('[hospede registrar]', e.message); res.status(502).json({ erro: 'Falha ao validar a reserva. Tente novamente em instantes.' }); }
 });
 

@@ -7,6 +7,13 @@
   <title>Área do Hóspede — Villela Stay</title>
   <link rel="icon" type="image/png" href="/staff/logo.png">
   <link rel="apple-touch-icon" href="/staff/logo.png">
+  <link rel="manifest" href="/hospede/manifest.json">
+  <meta name="theme-color" content="#0c3644">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Villela Stay">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
   <link rel="stylesheet" href="/hospede/styles.css">
 </head>
 <body>
@@ -73,55 +80,79 @@
   </main>
 
   <!-- ===================== APP ===================== -->
-  <div id="app" class="hidden">
+  <div id="app" class="hidden em-home">
     <header class="topo">
+      <button type="button" id="btn-voltar" class="ico-topo hidden" aria-label="Voltar ao início"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
       <div class="marca-bloco">
         <span class="marca">Villela Stay</span>
         <span class="tag">Hóspede</span>
       </div>
       <div class="topo-dir">
-        <span id="ola"></span>
-        <button type="button" id="btn-senha" class="link-site">Trocar senha</button>
+        <button type="button" id="btn-notif" class="ico-topo" aria-label="Notificações"><i class="ti ti-bell" aria-hidden="true"></i></button>
         <button type="button" id="btn-sair" class="link-sair">Sair</button>
       </div>
     </header>
 
-    <main id="conteudo" class="conteudo">
-      <section class="bloco">
-        <h2>Minhas reservas</h2>
+    <!-- HOME — lançador de ícones -->
+    <main id="home" class="home">
+      <div class="home-saudacao"><strong id="ola">Olá</strong><span>o que você precisa hoje?</span></div>
+      <div id="grade" class="grade"></div>
+      <p class="home-rodape">Villela Stay · Lago Sul, Brasília</p>
+    </main>
+
+    <!-- VIEWS — uma por vez (roteador interno) -->
+    <main id="views" class="conteudo hidden">
+      <h2 id="view-titulo" class="view-titulo"></h2>
+
+      <section class="view" id="view-reservas" data-titulo="Minhas reservas">
         <div id="reservas" class="cards"><p class="vazio">Carregando…</p></div>
       </section>
 
-      <section class="bloco">
-        <h2>Informações da propriedade</h2>
-        <p class="dica" id="prop-dica">Selecione uma reserva acima para ver as informações da casa.</p>
+      <section class="view hidden" id="view-casa" data-titulo="Informações da casa">
+        <p class="dica" id="prop-dica">Selecione uma reserva para ver as informações da casa.</p>
         <div id="prop" class="prop hidden"></div>
       </section>
 
-      <section class="bloco">
-        <h2>Meus pedidos</h2>
-        <p class="dica">Pedidos de alteração de reserva e de autorização de evento que você enviou. Toda
-          solicitação passa pela nossa análise e aprovação — você acompanha o status e o orçamento aqui.</p>
+      <section class="view hidden" id="view-pedidos" data-titulo="Meus pedidos">
+        <p class="dica">Pedidos de alteração, evento e serviços que você enviou. Toda solicitação passa pela
+          nossa análise e aprovação — acompanhe o status e o orçamento aqui.</p>
         <div id="pedidos" class="pedidos"><p class="vazio">Carregando…</p></div>
       </section>
 
-      <section class="bloco">
-        <h2>Minha conta</h2>
-        <p class="dica">Seu extrato com a Villela Stay: cash back, bônus de indicação, cobranças e pagamentos.
-          O saldo já abate os seus créditos do que estiver pendente.</p>
+      <section class="view hidden" id="view-conta" data-titulo="Extrato da conta">
+        <p class="dica">Seu extrato com a Villela Stay: cash back, bônus, cobranças e pagamentos. O saldo já
+          abate os seus créditos do que estiver pendente.</p>
         <div id="conta" class="conta"><p class="vazio">Carregando…</p></div>
       </section>
 
-      <section class="bloco">
-        <h2>Serviços extras</h2>
-        <p class="dica">Contrate serviços da Villela Stay para a sua estadia. Você envia o pedido, nós retornamos
+      <section class="view hidden" id="view-cashback" data-titulo="Cash back">
+        <div id="cashback" class="conta"><p class="vazio">Carregando…</p></div>
+      </section>
+
+      <section class="view hidden" id="view-servicos" data-titulo="Serviços extras">
+        <p class="dica">Contrate serviços da Villela Stay para a sua estadia. Você envia o pedido, retornamos
           com o orçamento aqui mesmo, e o pagamento é combinado por Pix/WhatsApp.</p>
         <div id="servicos" class="servicos"><p class="vazio">Carregando…</p></div>
       </section>
 
-      <section class="bloco">
-        <h2>Programa de fidelidade</h2>
+      <section class="view hidden" id="view-fidelidade" data-titulo="Fidelidade e indicações">
         <div id="fidelidade" class="fidelidade"><p class="vazio">Carregando…</p></div>
+      </section>
+
+      <section class="view hidden" id="view-avaliacoes" data-titulo="Avaliações">
+        <div id="avaliacoes"><p class="vazio">Carregando…</p></div>
+      </section>
+
+      <section class="view hidden" id="view-recibos" data-titulo="Recibos">
+        <div id="recibos"><p class="vazio">Carregando…</p></div>
+      </section>
+
+      <section class="view hidden" id="view-eventos" data-titulo="Solicitar evento">
+        <div id="eventos"><p class="vazio">Carregando…</p></div>
+      </section>
+
+      <section class="view hidden" id="view-breve" data-titulo="Em breve">
+        <div id="breve"></div>
       </section>
     </main>
   </div>
@@ -194,5 +225,6 @@
   </div>
 
   <script src="/hospede/app.js"></script>
+  <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/hospede/sw.js').catch(function () {}); }); }</script>
 </body>
 </html>
