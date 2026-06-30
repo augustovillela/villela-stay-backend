@@ -523,6 +523,13 @@ function requirePublishOrSession(req, res, next) {
   if (process.env.PUBLISH_KEY && key && key === process.env.PUBLISH_KEY) { req.viaChave = true; return next(); }
   return requireAuth(req, res, next);
 }
+// Como requirePublishOrSession, mas a sessão precisa ser admin (a PUBLISH_KEY sempre passa).
+// Usado na config da Área do Hóspede (imóveis, serviços, fidelidade) p/ permitir manutenção via chave.
+function requirePublishOrAdmin(req, res, next) {
+  const key = req.headers['x-publish-key'];
+  if (process.env.PUBLISH_KEY && key && key === process.env.PUBLISH_KEY) { req.viaChave = true; return next(); }
+  return requireAuth(req, res, () => requireAdmin(req, res, next));
+}
 
 // Nunca cachear respostas da API do portal — o navegador pode guardar GETs sem
 // Cache-Control e mostrar conteúdo antigo (ex.: texto desatualizado de um relatório).
@@ -1859,10 +1866,10 @@ app.get('/hospede/api/propriedade/:codigo', requireHospede, async (req, res) => 
 app.get('/staff/api/hospede/contas', requireAuth, requireAdmin, (req, res) => {
   res.json({ contas: lerHospedes().map(semSenhaHosp) });
 });
-app.get('/staff/api/hospede/propriedades-info', requireAuth, requireAdmin, (req, res) => {
+app.get('/staff/api/hospede/propriedades-info', requirePublishOrAdmin, (req, res) => {
   res.json({ info: lerPropInfo() });
 });
-app.put('/staff/api/hospede/propriedade/:codigo', requireAuth, requireAdmin, (req, res) => {
+app.put('/staff/api/hospede/propriedade/:codigo', requirePublishOrAdmin, (req, res) => {
   const codigo = String(req.params.codigo || '').toUpperCase();
   const all = lerPropInfo(); const d = req.body || {};
   all[codigo] = {
@@ -1917,9 +1924,9 @@ app.get('/staff/api/hospede/fidelidade', requireAuth, (req, res) => {
   });
 });
 
-// Catálogo de serviços extras — editar (admin): preços, textos, ativar/desativar.
-app.get('/staff/api/hospede/servicos', requireAuth, requireAdmin, (req, res) => res.json({ servicos: lerServicos() }));
-app.put('/staff/api/hospede/servicos', requireAuth, requireAdmin, (req, res) => {
+// Catálogo de serviços extras — editar (admin OU PUBLISH_KEY): preços, textos, ativar/desativar.
+app.get('/staff/api/hospede/servicos', requirePublishOrAdmin, (req, res) => res.json({ servicos: lerServicos() }));
+app.put('/staff/api/hospede/servicos', requirePublishOrAdmin, (req, res) => {
   const arr = Array.isArray(req.body && req.body.servicos) ? req.body.servicos : null;
   if (!arr) return res.status(400).json({ erro: 'Envie a lista de serviços.' });
   const slug = (s) => semAcento(s).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || ('serv-' + crypto.randomBytes(3).toString('hex'));
@@ -1935,9 +1942,9 @@ app.put('/staff/api/hospede/servicos', requireAuth, requireAdmin, (req, res) => 
   res.json({ ok: true, servicos: limpos });
 });
 
-// Config do programa de fidelidade — editar (admin).
-app.get('/staff/api/hospede/fidelidade-config', requireAuth, requireAdmin, (req, res) => res.json(lerFidConfig()));
-app.put('/staff/api/hospede/fidelidade-config', requireAuth, requireAdmin, (req, res) => {
+// Config do programa de fidelidade — editar (admin OU PUBLISH_KEY).
+app.get('/staff/api/hospede/fidelidade-config', requirePublishOrAdmin, (req, res) => res.json(lerFidConfig()));
+app.put('/staff/api/hospede/fidelidade-config', requirePublishOrAdmin, (req, res) => {
   const d = req.body || {};
   const cfg = {
     recorrenteTexto: String(d.recorrenteTexto || FID_PADRAO.recorrenteTexto).slice(0, 500),
