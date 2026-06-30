@@ -1017,9 +1017,9 @@ async function renderHospedeInfo() {
   const padrao = info._padrao || {};
   const desenhar = (cod) => {
     const d = info[cod] || {}, w = d.wifi || {}, a = d.acesso || {};
-    $('#hi-form').innerHTML = `<form class="form" id="form-hi">
+    $('#hi-form').innerHTML = `<form class="form form-larga" id="form-hi">
       <h3 style="margin:6px 0">${esc(cod)}${tituloDe[cod] ? ' — ' + esc(tituloDe[cod]) : ''}</h3>
-      <div class="areas-grid">
+      <div class="hi-grid">
         <label>Wi-Fi — rede <input id="hi-wrede" value="${esc(w.rede || '')}"></label>
         <label>Wi-Fi — senha <input id="hi-wsenha" value="${esc(w.senha || '')}"></label>
         <label>Portão <input id="hi-portao" value="${esc(a.portao || '')}"></label>
