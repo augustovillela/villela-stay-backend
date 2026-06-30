@@ -87,6 +87,30 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .prop-obs { font-size: .9rem; color: var(--concreto-claro); }
 .prop-contatos { font-size: .9rem; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--borda); }
 
+/* ---------- ações do cartão de reserva ---------- */
+.cr-acoes { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.btn-acao { padding: 8px 12px; font-size: .85rem; }
+
+/* ---------- meus pedidos ---------- */
+.pedidos { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.ped-card { border: 1px solid var(--borda); border-radius: 12px; padding: 14px 15px; display: flex; flex-direction: column; gap: 6px; border-left: 4px solid var(--cerrado); background: #fff; }
+.ped-det { font-size: .88rem; }
+.ped-msg { font-size: .88rem; font-style: italic; color: var(--concreto-claro); }
+.ped-orc { font-size: .9rem; font-weight: 700; color: var(--lago-escuro); background: #f0f6f8; border-radius: 8px; padding: 7px 10px; }
+.ped-resp { font-size: .88rem; background: var(--areia); border-radius: 8px; padding: 7px 10px; }
+.badge-st-novo { background: #e7eef1; color: var(--lago-escuro); }
+.badge-st-em_analise { background: #fff2d6; color: #8a6d18; }
+.badge-st-aprovado { background: #e2f0e4; color: var(--ok); }
+.badge-st-recusado { background: #f6e3e2; color: var(--alerta); }
+.badge-st-respondido { background: #e8e3f3; color: #5b3f8c; }
+
+/* ---------- modal: grade de campos de alteração ---------- */
+.modal-card-lg { max-width: 460px; }
+.mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#modal-pedido label, #modal-pedido textarea { font-size: .85rem; }
+#modal-pedido label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; margin-bottom: 8px; }
+@media (max-width: 480px) { .mp-grid { grid-template-columns: 1fr; } }
+
 /* ---------- modal ---------- */
 .modal { position: fixed; inset: 0; background: rgba(12,54,68,.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
 .modal-card { background: #fff; width: 100%; max-width: 380px; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }

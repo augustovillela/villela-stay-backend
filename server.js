@@ -1499,19 +1499,53 @@ function infoPropriedade(codigo) {
 }
 
 // Reservas do hóspede (do objeto do cliente na Stays, que já traz reservations).
-async function reservasDoHospede(h) {
+// Com `enriquecer`, busca o partner de cada reserva ativa (o objeto do cliente NÃO traz partner;
+// só o GET individual traz) para classificar direta vs OTA → `podeAlterar` (só direta/WhatsApp).
+const RE_OTA = /airbnb|booking|decolar|despegar|expedia|vrbo|homeaway|google/i;
+async function reservasDoHospede(h, enriquecer) {
   if (!h.staysClientId) return [];
   const cli = await stays(`/booking/clients/${h.staysClientId}`);
   const mapa = await getListingMap();
-  return (Array.isArray(cli.reservations) ? cli.reservations : []).map(r => ({
+  const lista = (Array.isArray(cli.reservations) ? cli.reservations : []).map(r => ({
     id: r.id || r._id, status: r.type, statusRotulo: CAL_STATUS[r.type] || r.type,
     checkin: r.checkInDate, checkout: r.checkOutDate,
     imovel: (mapa[r._idlisting] && mapa[r._idlisting].codigo) || '',
     imovelTitulo: (mapa[r._idlisting] && mapa[r._idlisting].titulo) || '',
     valor: (r.price && r.price._f_total) || 0, moeda: (r.price && r.price.currency) || 'BRL',
     hospedes: r.guests || (r.guestsDetails && r.guestsDetails.adults) || null,
-    reservationUrl: r.reservationUrl || '',
+    reservationUrl: r.reservationUrl || '', plataforma: '', podeAlterar: false,
   })).sort((a, b) => String(b.checkin).localeCompare(String(a.checkin)));
+  if (enriquecer) {
+    const ativas = lista.filter(r => r.status !== 'canceled' && r.status !== 'blocked');
+    await Promise.all(ativas.map(async r => {
+      try {
+        const full = await stays(`/booking/reservations/${r.id}`);
+        const nome = (full.partner && full.partner.name) || '';
+        r.plataforma = nome ? normalizarPlataforma(full.partner).rotulo : 'Direta';
+        r.podeAlterar = !RE_OTA.test(nome); // sem partner ou partner direto = pode pedir alteração
+      } catch (e) { r.plataforma = ''; r.podeAlterar = false; } // na dúvida, não habilita
+    }));
+  }
+  return lista;
+}
+
+// ---- pedidos do hóspede (Fase 2): alteração de reserva e autorização de evento ----
+const lerPedidosHosp = () => lerJSON('pedidos-hospede.json', []);
+const salvarPedidosHosp = (p) => salvarJSON('pedidos-hospede.json', p);
+const STATUS_PEDIDO = ['novo', 'em_analise', 'aprovado', 'recusado', 'respondido'];
+const AUGUSTO_WA = process.env.AUGUSTO_WA || '556192113000';
+// Sanitiza parâmetro de template da Meta (sem quebra de linha/tab/4+ espaços — evita erro 132018).
+function sanitizaParam(s) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s{4,}/g, '   ').trim().slice(0, 600); }
+// Alerta interno ao Augusto (template alerta_crm, notifica a qualquer hora). Best-effort.
+async function alertaAugusto(resumo) {
+  if (!process.env.MAKE_WA_WEBHOOK) return false;
+  try {
+    await fetch(process.env.MAKE_WA_WEBHOOK, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: AUGUSTO_WA, template: 'alerta_crm::pt_BR', p1: 'Augusto', p2: sanitizaParam(resumo) }),
+    });
+    return true;
+  } catch (e) { console.error('[alerta augusto]', e.message); return false; }
 }
 
 // ---- seed da estrutura de propriedades-info (uma vez), p/ o Augusto preencher WiFi/acesso ----
@@ -1617,8 +1651,56 @@ app.post('/hospede/api/registrar', async (req, res) => {
 
 // Minhas reservas (só as do próprio staysClientId).
 app.get('/hospede/api/minhas-reservas', requireHospede, async (req, res) => {
-  try { res.json({ reservas: await reservasDoHospede(req.hospede) }); }
+  try { res.json({ reservas: await reservasDoHospede(req.hospede, true) }); }
   catch (e) { console.error('[hospede reservas]', e.message); res.status(502).json({ erro: 'Falha ao consultar suas reservas.' }); }
+});
+
+// Meus pedidos (alteração/evento) do próprio hóspede.
+app.get('/hospede/api/meus-pedidos', requireHospede, (req, res) => {
+  const pedidos = lerPedidosHosp().filter(p => p.hospedeId === req.hospede.id)
+    .sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
+  res.json({ pedidos });
+});
+
+// Criar pedido de ALTERAÇÃO de reserva (só direta/WhatsApp) ou de EVENTO. Vai p/ aprovação do Augusto.
+app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
+  const d = req.body || {};
+  const tipo = d.tipo === 'evento' ? 'evento' : 'alteracao';
+  const reservaId = String(d.reservaId || '').trim();
+  if (!reservaId) return res.status(400).json({ erro: 'Informe a reserva.' });
+  try {
+    const reservas = await reservasDoHospede(req.hospede, true);
+    const r = reservas.find(x => x.id === reservaId && x.status !== 'canceled' && x.status !== 'blocked');
+    if (!r) return res.status(404).json({ erro: 'Reserva não encontrada na sua conta.' });
+    if (tipo === 'alteracao' && !r.podeAlterar)
+      return res.status(400).json({ erro: 'Alterações desta reserva devem ser solicitadas na plataforma onde você reservou (ex.: Airbnb/Booking).' });
+
+    const alteracao = tipo === 'alteracao' ? {
+      novoCheckin: String(d.novoCheckin || ''), novoCheckout: String(d.novoCheckout || ''),
+      novoImovel: String(d.novoImovel || ''), novoHospedes: d.novoHospedes != null && d.novoHospedes !== '' ? Number(d.novoHospedes) : null,
+    } : null;
+    const evento = tipo === 'evento' ? {
+      data: String(d.dataEvento || ''), convidados: d.convidados != null && d.convidados !== '' ? Number(d.convidados) : null,
+      descricao: String(d.descricaoEvento || '').slice(0, 1000),
+    } : null;
+    if (tipo === 'alteracao' && alteracao && !alteracao.novoCheckin && !alteracao.novoCheckout && !alteracao.novoImovel && alteracao.novoHospedes == null && !String(d.mensagem || '').trim())
+      return res.status(400).json({ erro: 'Diga o que deseja alterar (datas, imóvel, nº de hóspedes ou uma mensagem).' });
+    if (tipo === 'evento' && !evento.data && evento.convidados == null && !evento.descricao)
+      return res.status(400).json({ erro: 'Informe a data do evento, o número de convidados ou uma descrição.' });
+
+    const pedidos = lerPedidosHosp();
+    const pedido = {
+      id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', staysClientId: req.hospede.staysClientId || '',
+      tipo, reservaId, imovel: r.imovel, imovelTitulo: r.imovelTitulo, checkinAtual: r.checkin, checkoutAtual: r.checkout,
+      alteracao, evento, mensagem: String(d.mensagem || '').slice(0, 1000),
+      status: 'novo', orcamento: null, respostaAdmin: '',
+      criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
+    };
+    pedidos.unshift(pedido);
+    salvarPedidosHosp(pedidos);
+    alertaAugusto(`Novo pedido de ${tipo === 'evento' ? 'EVENTO' : 'alteracao de reserva'} de ${pedido.hospedeNome || 'hospede'} - reserva ${reservaId}${r.imovel ? ' (' + r.imovel + ')' : ''}. Veja no Portal Staff > Pedidos de hospedes.`).catch(() => { });
+    res.json({ ok: true, pedido });
+  } catch (e) { console.error('[hospede pedido]', e.message); res.status(502).json({ erro: 'Falha ao registrar o pedido. Tente novamente.' }); }
 });
 
 // Info reservada da propriedade — só se o hóspede tem reserva nela. WiFi/acesso só na janela da estadia.
@@ -1672,6 +1754,28 @@ app.post('/staff/api/hospede/criar', requireAuth, requireAdmin, async (req, res)
     const conta = lerHospedes().find(h => h.staysClientId === clientId);
     res.json({ ok: true, conta: conta ? semSenhaHosp(conta) : null });
   } catch (e) { console.error('[hospede criar]', e.message); res.status(502).json({ erro: 'Falha ao criar a conta.' }); }
+});
+
+// Pedidos de hóspedes (alteração/evento) — equipe vê; admin/concierge/vendas respondem e orçam.
+app.get('/staff/api/hospede/pedidos', requireAuth, (req, res) => {
+  res.json({ pedidos: lerPedidosHosp().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))) });
+});
+app.patch('/staff/api/hospede/pedidos/:id', requireAuth, (req, res) => {
+  const podeResponder = req.user.papel === 'admin' || podeArea(req.user, 'concierge') || podeArea(req.user, 'vendas');
+  if (!podeResponder) return res.status(403).json({ erro: 'Sem permissão para responder pedidos (áreas Concierge/Vendas ou admin).' });
+  const pedidos = lerPedidosHosp();
+  const p = pedidos.find(x => x.id === req.params.id);
+  if (!p) return res.status(404).json({ erro: 'Pedido não encontrado.' });
+  const d = req.body || {};
+  if (d.status && STATUS_PEDIDO.includes(d.status)) p.status = d.status;
+  if (d.respostaAdmin != null) p.respostaAdmin = String(d.respostaAdmin).slice(0, 2000);
+  if (d.orcamento !== undefined) {
+    p.orcamento = d.orcamento == null ? null
+      : { valor: (d.orcamento.valor != null && d.orcamento.valor !== '') ? Number(d.orcamento.valor) : null, detalhes: String(d.orcamento.detalhes || '').slice(0, 1000) };
+  }
+  p.atualizadoEm = new Date().toISOString();
+  salvarPedidosHosp(pedidos);
+  res.json({ ok: true, pedido: p });
 });
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.

@@ -95,14 +95,36 @@
         <div id="prop" class="prop hidden"></div>
       </section>
 
+      <section class="bloco">
+        <h2>Meus pedidos</h2>
+        <p class="dica">Pedidos de alteração de reserva e de autorização de evento que você enviou. Toda
+          solicitação passa pela nossa análise e aprovação — você acompanha o status e o orçamento aqui.</p>
+        <div id="pedidos" class="pedidos"><p class="vazio">Carregando…</p></div>
+      </section>
+
       <section class="bloco bloco-futuro">
         <h2>Em breve</h2>
-        <p>Estamos preparando, para você, dentro desta área: <strong>pedidos de alteração da reserva</strong>
-        (data, casa, nº de hóspedes), <strong>autorização de eventos</strong> com orçamento e
-        <strong>serviços extras</strong> — café da manhã, jantar com personal chef, buffet, traslado de
-        aeroporto e delivery de compras/bebidas. Qualquer necessidade agora, fale com a gente pelo WhatsApp.</p>
+        <p>Estamos preparando, para você, dentro desta área, os <strong>serviços extras</strong> da Villela Stay
+        — café da manhã, jantar romântico com personal chef, buffet para eventos, traslado de aeroporto e
+        delivery de compras/bebidas, com orçamento e contratação pelo site. Qualquer necessidade agora, fale
+        com a gente pelo WhatsApp.</p>
       </section>
     </main>
+  </div>
+
+  <!-- ===================== MODAL PEDIDO (alteração / evento) ===================== -->
+  <div id="modal-pedido" class="modal hidden">
+    <form id="form-pedido" class="modal-card modal-card-lg">
+      <h3 id="mp-titulo">Solicitar</h3>
+      <p id="mp-sub" class="dica"></p>
+      <div id="mp-campos"></div>
+      <label>Mensagem (opcional) <textarea id="mp-msg" rows="2" placeholder="Algum detalhe que queira nos contar?"></textarea></label>
+      <div class="modal-acoes">
+        <button type="button" id="mp-cancelar" class="btn secund">Cancelar</button>
+        <button type="submit" class="btn">Enviar pedido</button>
+      </div>
+      <p id="mp-msgfeedback" class="erro"></p>
+    </form>
   </div>
 
   <!-- ===================== MODAL TROCAR SENHA (logado) ===================== -->

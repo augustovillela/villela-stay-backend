@@ -152,6 +152,7 @@ function montarMenu() {
   ];
   const op = [];
   if (ESTADO.areas.includes('vendas')) op.push({ id: 'crm', rot: 'CRM / Funil' });
+  if (ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-pedidos', rot: '📨 Pedidos de hóspedes' });
   if (ESTADO.painelDisp.leads) op.push({ id: 'leads', rot: 'Leads' });
   if (ESTADO.painelDisp.precheckins) op.push({ id: 'precheckins', rot: 'Pré-check-ins' });
   if (ESTADO.painelDisp.chamados) op.push({ id: 'chamados', rot: 'Chamados' });
@@ -190,7 +191,7 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -1050,6 +1051,57 @@ async function renderHospedeInfo() {
   };
   sel.onchange = () => desenhar(sel.value);
   if (codigos.length) desenhar(codigos[0]); else $('#hi-form').innerHTML = '<p class="aviso">Estrutura de propriedades ainda não inicializada. Faça um deploy e recarregue.</p>';
+}
+
+// --------- Pedidos de hóspedes (alteração / evento) ---------
+const HP_STATUS = { novo: 'Recebido', em_analise: 'Em análise', aprovado: 'Aprovado', recusado: 'Recusado', respondido: 'Respondido' };
+async function renderHospedePedidos() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Pedidos de hóspedes', 'Solicitações de alteração de reserva e de eventos enviadas pelos hóspedes na Área do Hóspede. Defina o status, envie o orçamento e a resposta — o hóspede acompanha pela área dele. Nada é aplicado na Stays automaticamente.') + `<div id="hp-lista"><p class="aviso">Carregando…</p></div>`;
+  let pedidos = [];
+  try { const r = await api('GET', '/hospede/pedidos'); pedidos = r.pedidos || []; }
+  catch (e) { $('#hp-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  if (!pedidos.length) { $('#hp-lista').innerHTML = '<p class="aviso">Nenhum pedido por enquanto.</p>'; return; }
+  const det = (p) => {
+    const d = [];
+    if (p.tipo === 'evento' && p.evento) {
+      if (p.evento.data) d.push('Data: ' + esc(p.evento.data));
+      if (p.evento.convidados != null) d.push(esc(p.evento.convidados) + ' convidados');
+      if (p.evento.descricao) d.push(esc(p.evento.descricao));
+    } else if (p.alteracao) {
+      if (p.alteracao.novoCheckin) d.push('Check-in → ' + esc(p.alteracao.novoCheckin));
+      if (p.alteracao.novoCheckout) d.push('Check-out → ' + esc(p.alteracao.novoCheckout));
+      if (p.alteracao.novoImovel) d.push('Imóvel → ' + esc(p.alteracao.novoImovel));
+      if (p.alteracao.novoHospedes != null) d.push(esc(p.alteracao.novoHospedes) + ' hóspedes');
+    }
+    return d.join(' · ');
+  };
+  $('#hp-lista').innerHTML = pedidos.map(p => `
+    <div class="form form-larga" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+        <strong>${p.tipo === 'evento' ? '🎉 Evento' : '✏️ Alteração'} — ${esc(p.hospedeNome || '—')}</strong>
+        <span class="tag">${esc(HP_STATUS[p.status] || p.status)}</span>
+      </div>
+      <div class="sub">Reserva ${esc(p.reservaId)}${p.imovel ? ' · ' + esc(p.imovel) : ''} · estadia ${esc(p.checkinAtual || '?')} → ${esc(p.checkoutAtual || '?')} · enviado ${esc(String(p.criadoEm).slice(0, 10))}</div>
+      ${det(p) ? `<div><strong>Pedido:</strong> ${det(p)}</div>` : ''}
+      ${p.mensagem ? `<div><em>“${esc(p.mensagem)}”</em></div>` : ''}
+      <div class="hi-grid" style="margin-top:8px">
+        <label>Status <select data-f="status" data-id="${p.id}">${Object.keys(HP_STATUS).map(s => `<option value="${s}" ${p.status === s ? 'selected' : ''}>${HP_STATUS[s]}</option>`).join('')}</select></label>
+        <label>Orçamento (R$) <input type="number" data-f="valor" data-id="${p.id}" value="${p.orcamento && p.orcamento.valor != null ? p.orcamento.valor : ''}" placeholder="opcional"></label>
+      </div>
+      <label>Detalhes do orçamento <input type="text" data-f="detalhes" data-id="${p.id}" value="${p.orcamento ? esc(p.orcamento.detalhes || '') : ''}" placeholder="o que está incluído"></label>
+      <label>Resposta ao hóspede <textarea data-f="resposta" data-id="${p.id}" rows="2" placeholder="mensagem que o hóspede verá na área dele">${p.respostaAdmin ? esc(p.respostaAdmin) : ''}</textarea></label>
+      <div class="acoes"><button class="btn" data-salvar="${p.id}">Salvar e responder</button> <span id="hp-msg-${p.id}" class="ok-msg"></span></div>
+    </div>`).join('');
+  $('#hp-lista').querySelectorAll('[data-salvar]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.salvar;
+    const get = (f) => { const el = document.querySelector(`[data-f="${f}"][data-id="${id}"]`); return el ? el.value : ''; };
+    const valor = get('valor'), detalhes = get('detalhes');
+    const corpo = { status: get('status'), respostaAdmin: get('resposta'), orcamento: (valor !== '' || detalhes !== '') ? { valor, detalhes } : null };
+    const msg = $(`#hp-msg-${id}`); msg.className = 'ok-msg'; msg.textContent = '';
+    try { await api('PATCH', '/hospede/pedidos/' + id, corpo); msg.textContent = 'Salvo!'; }
+    catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+  });
 }
 
 // --------- Minha conta ---------

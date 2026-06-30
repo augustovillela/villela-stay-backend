@@ -82,6 +82,7 @@ function abrirApp(usuario) {
   mostrar('app');
   $('#ola').textContent = usuario.nome ? ('Olá, ' + usuario.nome.split(' ')[0]) : 'Olá';
   carregarReservas();
+  carregarPedidos();
 }
 
 $('#btn-sair').addEventListener('click', async () => {
@@ -102,19 +103,25 @@ async function carregarReservas() {
       const cancel = r.status === 'canceled';
       const card = document.createElement('div');
       card.className = 'card-reserva' + (cancel ? ' cancelada' : '');
+      const tituloR = esc(r.imovelTitulo || r.imovel || 'Hospedagem');
+      const acoes = [];
+      if (r.imovel && !cancel) acoes.push(`<button type="button" class="btn secund btn-acao btn-info" data-cod="${esc(r.imovel)}">Informações da casa</button>`);
+      if (!cancel && r.podeAlterar) acoes.push(`<button type="button" class="btn secund btn-acao btn-pedido" data-tipo="alteracao" data-reserva="${esc(r.id)}" data-titulo="${tituloR}">Solicitar alteração</button>`);
+      if (!cancel) acoes.push(`<button type="button" class="btn secund btn-acao btn-pedido" data-tipo="evento" data-reserva="${esc(r.id)}" data-titulo="${tituloR}">Solicitar evento</button>`);
       card.innerHTML = `
         <div class="cr-topo">
-          <strong>${esc(r.imovelTitulo || r.imovel || 'Hospedagem')}</strong>
+          <strong>${tituloR}</strong>
           <span class="badge badge-${esc(r.status)}">${esc(r.statusRotulo || r.status)}</span>
         </div>
         <div class="cr-datas">📅 ${fmtData(r.checkin)} → ${fmtData(r.checkout)}</div>
-        <div class="cr-linha">👥 ${r.hospedes || '—'} hóspede(s) · 🏷️ ${esc(r.id || '')}</div>
+        <div class="cr-linha">👥 ${r.hospedes || '—'} hóspede(s) · 🏷️ ${esc(r.id || '')}${r.plataforma ? ' · ' + esc(r.plataforma) : ''}</div>
         <div class="cr-valor">${fmtMoeda(r.valor, r.moeda)}</div>
-        ${r.imovel && !cancel ? `<button type="button" class="btn secund btn-info" data-cod="${esc(r.imovel)}">Informações da casa</button>` : ''}
+        ${acoes.length ? `<div class="cr-acoes">${acoes.join('')}</div>` : ''}
         ${r.reservationUrl ? `<a class="cr-link" href="${esc(r.reservationUrl)}" target="_blank" rel="noopener">Ver detalhes na Stays ↗</a>` : ''}`;
       cont.appendChild(card);
     });
     cont.querySelectorAll('.btn-info').forEach(b => b.addEventListener('click', () => carregarPropriedade(b.dataset.cod)));
+    cont.querySelectorAll('.btn-pedido').forEach(b => b.addEventListener('click', () => abrirPedido(b.dataset.tipo, b.dataset.reserva, b.dataset.titulo)));
     // abre automaticamente a 1ª propriedade ativa
     const primeira = RESERVAS.find(r => r.imovel && r.status !== 'canceled');
     if (primeira) carregarPropriedade(primeira.imovel);
@@ -158,6 +165,84 @@ async function carregarPropriedade(codigo) {
   } catch (e) {
     box.innerHTML = '<p class="erro">' + esc(e.message) + '</p>';
   }
+}
+
+// ---------------- pedidos: modal (alteração / evento) ----------------
+function abrirPedido(tipo, reservaId, titulo) {
+  const ev = tipo === 'evento';
+  $('#mp-titulo').textContent = ev ? '🎉 Solicitar autorização de evento' : '✏️ Solicitar alteração da reserva';
+  $('#mp-sub').textContent = (titulo ? titulo + ' · ' : '') + 'Reserva ' + reservaId;
+  $('#mp-msgfeedback').className = 'erro'; $('#mp-msgfeedback').textContent = '';
+  $('#mp-msg').value = '';
+  $('#mp-campos').innerHTML = ev ? `
+    <label>Data do evento <input type="date" id="mp-data"></label>
+    <label>Número de convidados <input type="number" min="1" id="mp-conv"></label>
+    <label>Descrição do evento <textarea id="mp-desc" rows="2" placeholder="Tipo de evento, horário previsto, necessidades…"></textarea></label>
+    <p class="dica">Vamos analisar e, se houver valores adicionais, te enviamos o orçamento por aqui.</p>`
+  : `
+    <div class="mp-grid">
+      <label>Novo check-in <input type="date" id="mp-cin"></label>
+      <label>Novo check-out <input type="date" id="mp-cout"></label>
+      <label>Imóvel desejado <input type="text" id="mp-imovel" placeholder="Se quiser trocar de casa"></label>
+      <label>Nº de hóspedes <input type="number" min="1" id="mp-hosp"></label>
+    </div>
+    <p class="dica">Preencha só o que deseja mudar. A alteração depende de disponibilidade e da nossa confirmação.</p>`;
+  const m = $('#modal-pedido');
+  m.dataset.tipo = tipo; m.dataset.reserva = reservaId;
+  m.classList.remove('hidden');
+}
+$('#mp-cancelar').addEventListener('click', () => $('#modal-pedido').classList.add('hidden'));
+$('#form-pedido').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const m = $('#modal-pedido');
+  const tipo = m.dataset.tipo, reservaId = m.dataset.reserva;
+  const fb = $('#mp-msgfeedback'); fb.className = 'erro'; fb.textContent = '';
+  const val = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const corpo = { tipo, reservaId, mensagem: $('#mp-msg').value };
+  if (tipo === 'evento') {
+    corpo.dataEvento = val('mp-data'); corpo.convidados = val('mp-conv'); corpo.descricaoEvento = val('mp-desc');
+  } else {
+    corpo.novoCheckin = val('mp-cin'); corpo.novoCheckout = val('mp-cout'); corpo.novoImovel = val('mp-imovel'); corpo.novoHospedes = val('mp-hosp');
+  }
+  try {
+    await api('/pedido', { method: 'POST', body: JSON.stringify(corpo) });
+    m.classList.add('hidden');
+    carregarPedidos();
+  } catch (e) { fb.textContent = e.message; }
+});
+
+// ---------------- pedidos: lista "Meus pedidos" ----------------
+const STATUS_PED = { novo: 'Recebido', em_analise: 'Em análise', aprovado: 'Aprovado', recusado: 'Recusado', respondido: 'Respondido' };
+async function carregarPedidos() {
+  const cont = $('#pedidos');
+  cont.innerHTML = '<p class="vazio">Carregando…</p>';
+  try {
+    const { pedidos } = await api('/meus-pedidos');
+    if (!pedidos.length) { cont.innerHTML = '<p class="vazio">Você ainda não tem pedidos. Use os botões nas suas reservas acima para solicitar uma alteração ou um evento.</p>'; return; }
+    cont.innerHTML = pedidos.map(p => {
+      const det = [];
+      if (p.tipo === 'evento' && p.evento) {
+        if (p.evento.data) det.push('Data: ' + fmtData(p.evento.data));
+        if (p.evento.convidados != null) det.push(p.evento.convidados + ' convidado(s)');
+        if (p.evento.descricao) det.push(esc(p.evento.descricao));
+      } else if (p.alteracao) {
+        if (p.alteracao.novoCheckin) det.push('Novo check-in: ' + fmtData(p.alteracao.novoCheckin));
+        if (p.alteracao.novoCheckout) det.push('Novo check-out: ' + fmtData(p.alteracao.novoCheckout));
+        if (p.alteracao.novoImovel) det.push('Imóvel: ' + esc(p.alteracao.novoImovel));
+        if (p.alteracao.novoHospedes != null) det.push(p.alteracao.novoHospedes + ' hóspede(s)');
+      }
+      const orc = p.orcamento ? `<div class="ped-orc">💰 Orçamento: ${p.orcamento.valor != null ? fmtMoeda(p.orcamento.valor, 'BRL') : 'a combinar'}${p.orcamento.detalhes ? ' — ' + esc(p.orcamento.detalhes) : ''}</div>` : '';
+      const resp = p.respostaAdmin ? `<div class="ped-resp">💬 ${esc(p.respostaAdmin)}</div>` : '';
+      return `<div class="ped-card">
+        <div class="cr-topo"><strong>${p.tipo === 'evento' ? '🎉 Evento' : '✏️ Alteração'}${p.imovelTitulo || p.imovel ? ' · ' + esc(p.imovelTitulo || p.imovel) : ''}</strong>
+          <span class="badge badge-st-${esc(p.status)}">${esc(STATUS_PED[p.status] || p.status)}</span></div>
+        <div class="cr-linha">Reserva ${esc(p.reservaId)} · ${fmtData(String(p.criadoEm).slice(0, 10))}</div>
+        ${det.length ? `<div class="ped-det">${det.join(' · ')}</div>` : ''}
+        ${p.mensagem ? `<div class="ped-msg">“${esc(p.mensagem)}”</div>` : ''}
+        ${orc}${resp}
+      </div>`;
+    }).join('');
+  } catch (e) { cont.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }
 }
 
 // ---------------- modal trocar senha (logado) ----------------
