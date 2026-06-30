@@ -60,6 +60,7 @@ $('#form-registrar').addEventListener('submit', async (ev) => {
         sobrenome: $('#rg-sobrenome').value.trim(),
         checkin: $('#rg-checkin').value,
         senha: $('#rg-senha').value,
+        codigoIndicacao: $('#rg-codigo').value.trim(),
       }),
     });
     abrirApp(usuario);
@@ -95,13 +96,15 @@ $('#btn-sair').addEventListener('click', async () => {
 let RESERVAS = [];
 let AVALIADAS = new Set();
 let FID_CFG = {};
+let INDIC = {};
 async function carregarReservas() {
   const cont = $('#reservas');
   cont.innerHTML = '<p class="vazio">Carregando…</p>';
   try {
-    const [resR, avR, fidR] = await Promise.all([api('/minhas-reservas'), api('/minhas-avaliacoes').catch(() => ({ avaliacoes: [] })), api('/fidelidade-config').catch(() => ({}))]);
+    const [resR, avR, fidR, indR] = await Promise.all([api('/minhas-reservas'), api('/minhas-avaliacoes').catch(() => ({ avaliacoes: [] })), api('/fidelidade-config').catch(() => ({})), api('/indicacao').catch(() => ({}))]);
     AVALIADAS = new Set((avR.avaliacoes || []).map(a => a.reservaId));
     FID_CFG = fidR || {};
+    INDIC = indR || {};
     RESERVAS = (resR.reservas || []).filter(r => r.status !== 'blocked');
     renderFidelidade();
     if (!RESERVAS.length) { cont.innerHTML = '<p class="vazio">Nenhuma reserva encontrada na sua conta.</p>'; return; }
@@ -160,8 +163,32 @@ function renderFidelidade() {
     <div class="fid-acoes">
       <a class="btn" target="_blank" rel="noopener" href="https://wa.me/556191935013?text=${encodeURIComponent('Olá! Sou hóspede da Villela Stay e quero reservar novamente.')}">Reservar novamente</a>
       <button type="button" class="btn secund" id="btn-indicar">🎁 Indicar um amigo</button>
-    </div>`;
+    </div>
+    ${blocoIndicacao()}`;
   const b = $('#btn-indicar'); if (b) b.addEventListener('click', abrirIndicacao);
+  const fu = $('#form-usar-cod');
+  if (fu) fu.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const msg = $('#usar-msg'); msg.className = 'dica'; msg.textContent = '';
+    try {
+      await api('/indicacao/usar', { method: 'POST', body: JSON.stringify({ codigo: $('#in-codigo').value.trim() }) });
+      INDIC.indicadoPor = $('#in-codigo').value.trim().toUpperCase();
+      renderFidelidade();
+    } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+  });
+}
+function blocoIndicacao() {
+  const cod = INDIC.codigo || '';
+  if (!cod) return '';
+  const msg = encodeURIComponent(`Conheça a Villela Stay! 🏡 Use o meu código de indicação ${cod} — quando você se hospedar, nós dois ganhamos. Reserve em villelastay.com.br`);
+  const aplicar = INDIC.indicadoPor
+    ? '<p class="dica">✓ Você usou um código de indicação — o bônus entra na sua 1ª estadia.</p>'
+    : `<form id="form-usar-cod" class="usar-cod"><label>Foi indicado por alguém? Informe o código <input id="in-codigo" placeholder="Ex.: ABC234" maxlength="12" autocapitalize="characters"></label><button class="btn secund" type="submit">Aplicar</button> <span id="usar-msg" class="dica"></span></form>`;
+  return `<div class="fid-cod">
+    <div>🎁 Seu código de indicação: <strong class="cod-val">${esc(cod)}</strong></div>
+    <a class="btn secund" target="_blank" rel="noopener" href="https://wa.me/?text=${msg}">Compartilhar convite no WhatsApp</a>
+    ${aplicar}
+  </div>`;
 }
 
 let AV_NOTA = 0;

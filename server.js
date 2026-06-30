@@ -1564,7 +1564,7 @@ const salvarFidConfig = (c) => salvarJSON('fidelidade-config.json', c);
 const lerLancamentos = () => lerJSON('lancamentos.json', []);
 const salvarLancamentos = (l) => salvarJSON('lancamentos.json', l);
 const TIPOS_LANC = ['cashback', 'recorrencia', 'bonus', 'cobranca', 'pagamento', 'ajuste'];
-const ROTULO_LANC = { cashback: 'Cash back', recorrencia: 'Recorrência', bonus: 'Bônus de indicação', cobranca: 'Cobrança', pagamento: 'Pagamento', ajuste: 'Ajuste' };
+const ROTULO_LANC = { cashback: 'Cash back', recorrencia: 'Recorrência', bonus: 'Bônus de indicação', cobranca: 'Cobrança', pagamento: 'Pagamento', ajuste: 'Ajuste', expiracao: 'Expiração de crédito' };
 // Extrato com saldo corrente. valor é SINALIZADO (créditos +, débitos −). saldo<0 = a pagar; saldo>0 = crédito a favor.
 function resumoConta(hospedeId) {
   const ls = lerLancamentos().filter(l => l.hospedeId === hospedeId).sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)));
@@ -1589,7 +1589,21 @@ async function mpFetch(pathname, opts) {
 // ---- Motor de fidelidade: cash back (5%) + recorrência (5%) — gated FIDELIDADE_AUTO ----
 // Regras: 5% sobre o líquido (total − taxa de limpeza), só estadias DIRETAS/WhatsApp, 5 dias após o check-out,
 // validade 3 meses. Recorrência: +5% se o hóspede já teve estadia anterior. Idempotente (fidelidade-creditado.json).
-const FID = { cashbackPct: 0.05, recorrenciaPct: 0.05, diasAposCheckout: 5, validadeMeses: 3, cleaningFeeId: '57a31968b9b1fb291f3bcc1b' };
+const FID = { cashbackPct: 0.05, recorrenciaPct: 0.05, diasAposCheckout: 5, validadeMeses: 3, bonusIndicacao: 100, welcomePct: 0.05, bonusValidadeMeses: 6, cleaningFeeId: '57a31968b9b1fb291f3bcc1b' };
+// Código de indicação por hóspede (gerado sob demanda, único, sem caracteres ambíguos).
+function gerarCodigoUnico(hospedes) {
+  const usados = new Set(hospedes.map(h => h.codigoIndicacao).filter(Boolean));
+  const alf = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for (let t = 0; t < 80; t++) { let c = ''; const b = crypto.randomBytes(6); for (let i = 0; i < 6; i++) c += alf[b[i] % alf.length]; if (!usados.has(c)) return c; }
+  return 'VS' + crypto.randomBytes(3).toString('hex').toUpperCase();
+}
+function codigoDoHospede(hospedeId) {
+  const hospedes = lerHospedes();
+  const h = hospedes.find(x => x.id === hospedeId);
+  if (!h) return null;
+  if (!h.codigoIndicacao) { h.codigoIndicacao = gerarCodigoUnico(hospedes); salvarHospedes(hospedes); }
+  return h.codigoIndicacao;
+}
 function addMeses(iso, n) { const d = new Date(String(iso) + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); }
 function taxaLimpeza(price) {
   const fees = (price && price.hostingDetails && price.hostingDetails.fees) || [];
@@ -1629,21 +1643,78 @@ async function motorFidelidade(force) {
       const validade = addMeses(hoje, FID.validadeMeses);
       const cb = Math.round(net * FID.cashbackPct * 100) / 100;
       ls.push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'cashback', descricao: `Cash back 5% — estadia ${r.id}`, valor: cb, reservaId: r.id, validade, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
-      let rec = 0;
-      if (await temEstadiaAnterior(h.staysClientId, r.checkInDate)) {
+      const ehRetorno = await temEstadiaAnterior(h.staysClientId, r.checkInDate);
+      let rec = 0, bonusInd = 0;
+      if (ehRetorno) {
         rec = Math.round(net * FID.recorrenciaPct * 100) / 100;
         ls.push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'recorrencia', descricao: `Recorrência 5% — estadia ${r.id}`, valor: rec, reservaId: r.id, validade, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+      } else if (h.indicadoPor && !h.indicacaoRecompensada) {
+        // 1ª estadia de um hóspede indicado: bônus ao indicador + boas-vindas ao indicado
+        const hospedes2 = lerHospedes();
+        const indicador = hospedes2.find(x => x.codigoIndicacao === h.indicadoPor);
+        if (indicador && indicador.id !== h.id) {
+          const valBonus = addMeses(hoje, FID.bonusValidadeMeses);
+          ls.push({ id: novoId(), hospedeId: indicador.id, staysClientId: indicador.staysClientId || '', tipo: 'bonus', descricao: `Bônus de indicação — ${h.nome || 'hóspede indicado'}`, valor: FID.bonusIndicacao, reservaId: r.id, validade: valBonus, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+          const welcome = Math.round(net * FID.welcomePct * 100) / 100;
+          ls.push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'bonus', descricao: `Desconto de boas-vindas (indicação) — estadia ${r.id}`, valor: welcome, reservaId: r.id, validade: valBonus, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+          bonusInd = FID.bonusIndicacao;
+          const hh = hospedes2.find(x => x.id === h.id); if (hh) { hh.indicacaoRecompensada = true; salvarHospedes(hospedes2); }
+        }
       }
-      creditado[r.id] = { hospedeId: h.id, cashback: cb, recorrencia: rec, net, em: hoje };
+      creditado[r.id] = { hospedeId: h.id, cashback: cb, recorrencia: rec, bonusIndicacao: bonusInd, net, em: hoje };
       n++;
     }
     salvarLancamentos(ls);
     salvarJSON('fidelidade-creditado.json', creditado);
-    if (n) console.log('[motor fidelidade] creditou', n, 'estadia(s)');
-    return { rodou: true, creditadas: n };
+    const exp = expirarCreditos();
+    if (n || exp.expirados) console.log('[motor fidelidade] creditou', n, 'estadia(s); expirou', exp.expirados, 'crédito(s)');
+    return { rodou: true, creditadas: n, expirados: exp.expirados };
   } catch (e) { console.error('[motor fidelidade]', e.message); return { rodou: false, erro: e.message }; }
   finally { _motorRodando = false; }
 }
+// Etapa B — expiração FIFO: créditos promocionais (cashback/recorrencia/bonus) vencidos e NÃO consumidos por
+// cobranças são baixados. Simula o extrato em ordem cronológica: créditos viram lotes, cobranças consomem os
+// mais antigos primeiro, e no vencimento de cada lote o restante não usado expira.
+const TIPOS_PROMO = new Set(['cashback', 'recorrencia', 'bonus']);
+function calcularExpiracoes(lancamentos, hoje) {
+  const evs = [];
+  for (const l of lancamentos) {
+    const d = String(l.criadoEm).slice(0, 10);
+    if (TIPOS_PROMO.has(l.tipo) && Number(l.valor) > 0) {
+      evs.push({ data: d, ord: 0, tipo: 'credito', id: l.id, valor: Number(l.valor) });
+      if (l.validade) evs.push({ data: l.validade, ord: 2, tipo: 'expiry', id: l.id });
+    } else if (l.tipo === 'cobranca' || (l.tipo === 'ajuste' && Number(l.valor) < 0)) {
+      evs.push({ data: d, ord: 1, tipo: 'debito', valor: -Number(l.valor) }); // cobranças consomem promo (FIFO)
+    } // pagamento, expiracao e ajuste(+) não consomem promo nem expiram
+  }
+  evs.sort((a, b) => a.data.localeCompare(b.data) || a.ord - b.ord);
+  const lots = []; const expirados = [];
+  for (const e of evs) {
+    if (e.data > hoje) break; // só processa vencimentos até hoje
+    if (e.tipo === 'credito') lots.push({ id: e.id, rem: e.valor });
+    else if (e.tipo === 'debito') { let need = e.valor; for (const lot of lots) { if (need <= 0.005) break; const t = Math.min(lot.rem, need); lot.rem -= t; need -= t; } }
+    else if (e.tipo === 'expiry') { const lot = lots.find(x => x.id === e.id); if (lot && lot.rem > 0.005) { expirados.push({ id: e.id, valor: Math.round(lot.rem * 100) / 100 }); lot.rem = 0; } }
+  }
+  return expirados;
+}
+function expirarCreditos() {
+  const hoje = hojeISO();
+  const ls = lerLancamentos();
+  const porH = {};
+  for (const l of ls) { (porH[l.hospedeId] = porH[l.hospedeId] || []).push(l); }
+  const jaExpirado = new Set(ls.filter(l => l.expiraDe).map(l => l.expiraDe));
+  let novos = 0;
+  for (const hid in porH) {
+    for (const e of calcularExpiracoes(porH[hid], hoje)) {
+      if (jaExpirado.has(e.id)) continue; // idempotente (1 expiração por crédito)
+      ls.push({ id: novoId(), hospedeId: hid, staysClientId: (porH[hid][0] && porH[hid][0].staysClientId) || '', tipo: 'expiracao', descricao: 'Expiração de crédito (validade)', valor: -e.valor, expiraDe: e.id, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+      jaExpirado.add(e.id); novos++;
+    }
+  }
+  if (novos) salvarLancamentos(ls);
+  return { expirados: novos };
+}
+
 setInterval(() => { motorFidelidade().catch(() => { }); }, 6 * 3600 * 1000);   // periódico (idempotente)
 setTimeout(() => { motorFidelidade().catch(() => { }); }, 60 * 1000);           // pouco após o boot
 // Sanitiza parâmetro de template da Meta (sem quebra de linha/tab/4+ espaços — evita erro 132018).
@@ -1804,6 +1875,8 @@ app.post('/hospede/api/registrar', async (req, res) => {
     const nome = (cli.fName ? (cli.fName + ' ' + (cli.lName || '')).trim() : (cli.name || '')) || '';
     if (h) { h.senhaHash = bcrypt.hashSync(senha, 10); h.precisaTrocarSenha = false; h.ativo = true; h.ultimoLogin = new Date().toISOString(); }
     else { h = { id: novoId(), nome, email, telefone: normFone(fone), senhaHash: bcrypt.hashSync(senha, 10), staysClientId: r._idclient, precisaTrocarSenha: false, ativo: true, criadoEm: new Date().toISOString(), ultimoLogin: new Date().toISOString() }; hospedes.push(h); }
+    const codInd = String((req.body && req.body.codigoIndicacao) || '').trim().toUpperCase();
+    if (codInd && !h.indicadoPor) { const ind = hospedes.find(x => x.codigoIndicacao === codInd); if (ind && ind.id !== h.id) h.indicadoPor = codInd; }
     salvarHospedes(hospedes);
     setCookieHospede(res, h);
     res.json({ ok: true, usuario: semSenhaHosp(h) });
@@ -1912,6 +1985,26 @@ app.post('/hospede/api/avaliacao', requireHospede, async (req, res) => {
     alertaAugusto(`Nova AVALIACAO de ${av.hospedeNome || 'hospede'}: ${nota}/5${r.imovel ? ' (' + r.imovel + ')' : ''}${av.comentario ? ' - "' + av.comentario.slice(0, 120) + '"' : ''}.`).catch(() => { });
     res.json({ ok: true, avaliacao: av });
   } catch (e) { console.error('[hospede avaliacao]', e.message); res.status(502).json({ erro: 'Falha ao registrar a avaliação.' }); }
+});
+
+// Meu código de indicação (para compartilhar) + se já usei um.
+app.get('/hospede/api/indicacao', requireHospede, (req, res) => {
+  res.json({ codigo: codigoDoHospede(req.hospede.id), indicadoPor: req.hospede.indicadoPor || '', recompensada: !!req.hospede.indicacaoRecompensada });
+});
+// Usar o código de quem me indicou (vincula automaticamente; o bônus sai na minha 1ª estadia).
+app.post('/hospede/api/indicacao/usar', requireHospede, (req, res) => {
+  const codigo = String((req.body && req.body.codigo) || '').trim().toUpperCase();
+  if (!codigo) return res.status(400).json({ erro: 'Informe o código de indicação.' });
+  const hospedes = lerHospedes();
+  const eu = hospedes.find(x => x.id === req.hospede.id);
+  if (!eu) return res.status(404).json({ erro: 'Conta não encontrada.' });
+  if (eu.indicadoPor) return res.status(409).json({ erro: 'Você já registrou um código de indicação.' });
+  if (eu.codigoIndicacao && eu.codigoIndicacao === codigo) return res.status(400).json({ erro: 'Você não pode usar o seu próprio código.' });
+  const indicador = hospedes.find(x => x.codigoIndicacao === codigo);
+  if (!indicador || indicador.id === eu.id) return res.status(404).json({ erro: 'Código de indicação não encontrado.' });
+  eu.indicadoPor = codigo;
+  salvarHospedes(hospedes);
+  res.json({ ok: true });
 });
 
 // Indicação de amigo (programa de indicação) → registra e avisa o Augusto p/ combinar o crédito.
