@@ -149,7 +149,7 @@ async function carregarPropriedade(codigo) {
 
     const links = [];
     if (p.manualUrl) links.push(`<a class="btn secund" href="${esc(p.manualUrl)}" target="_blank" rel="noopener">📖 Manual da casa</a>`);
-    if (p.guiaUrl) links.push(`<a class="btn secund" href="${esc(p.guiaUrl)}" target="_blank" rel="noopener">🗺️ Guia local</a>`);
+    if (p.guiaUrl) links.push(`<a class="btn secund" href="${esc(p.guiaUrl)}" target="_blank" rel="noopener">🗺️ Guia do hóspede</a>`);
     if (links.length) html += `<div class="prop-links">${links.join('')}</div>`;
 
     if (p.observacoes) html += `<p class="prop-obs">${esc(p.observacoes)}</p>`;
