@@ -1615,8 +1615,9 @@ async function temEstadiaAnterior(clientId, checkin) {
   return (cli.reservations || []).some(x => ['booked', 'reserved', 'contract'].includes(x.type) && x.checkOutDate && x.checkOutDate < checkin);
 }
 let _motorRodando = false;
-async function motorFidelidade(force) {
-  if (!force && process.env.FIDELIDADE_AUTO !== 'on') return { rodou: false, motivo: 'desligado (FIDELIDADE_AUTO != on)' };
+async function motorFidelidade(opts) {
+  opts = opts || {}; const force = opts.force, simular = opts.simular;
+  if (!simular && !force && process.env.FIDELIDADE_AUTO !== 'on') return { rodou: false, motivo: 'desligado (FIDELIDADE_AUTO != on)' };
   if (_motorRodando) return { rodou: false, motivo: 'já em execução' };
   _motorRodando = true;
   try {
@@ -1624,9 +1625,12 @@ async function motorFidelidade(force) {
     const ate = addDias(hoje, -FID.diasAposCheckout); // check-out <= hoje-5
     const de = addDias(hoje, -45);                     // janela de captura (idempotente cobre re-execuções)
     const reservas = await staysPaginado('/booking/reservations', { from: de, to: ate, dateType: 'departure' });
-    const porCliente = {}; lerHospedes().forEach(h => { if (h.staysClientId) porCliente[h.staysClientId] = h; });
+    const hospedesTodos = lerHospedes();
+    const porCliente = {}; const nomeP = {}; hospedesTodos.forEach(h => { if (h.staysClientId) porCliente[h.staysClientId] = h; nomeP[h.id] = h.nome || h.email || h.telefone || h.id; });
     const creditado = lerJSON('fidelidade-creditado.json', {});
     const ls = lerLancamentos();
+    const preview = [];
+    const push = (l) => { if (simular) preview.push({ hospedeNome: nomeP[l.hospedeId] || l.hospedeId, tipo: l.tipo, rotulo: ROTULO_LANC[l.tipo] || l.tipo, valor: l.valor, descricao: l.descricao, validade: l.validade }); else ls.push(l); };
     let n = 0;
     for (const r of reservas) {
       if (!['booked', 'reserved', 'contract'].includes(r.type)) continue;
@@ -1642,28 +1646,28 @@ async function motorFidelidade(force) {
       if (net <= 0) { creditado[r.id] = { skip: 'net0', em: hoje }; continue; }
       const validade = addMeses(hoje, FID.validadeMeses);
       const cb = Math.round(net * FID.cashbackPct * 100) / 100;
-      ls.push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'cashback', descricao: `Cash back 5% — estadia ${r.id}`, valor: cb, reservaId: r.id, validade, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+      push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'cashback', descricao: `Cash back 5% — estadia ${r.id}`, valor: cb, reservaId: r.id, validade, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
       const ehRetorno = await temEstadiaAnterior(h.staysClientId, r.checkInDate);
       let rec = 0, bonusInd = 0;
       if (ehRetorno) {
         rec = Math.round(net * FID.recorrenciaPct * 100) / 100;
-        ls.push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'recorrencia', descricao: `Recorrência 5% — estadia ${r.id}`, valor: rec, reservaId: r.id, validade, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+        push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'recorrencia', descricao: `Recorrência 5% — estadia ${r.id}`, valor: rec, reservaId: r.id, validade, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
       } else if (h.indicadoPor && !h.indicacaoRecompensada) {
         // 1ª estadia de um hóspede indicado: bônus ao indicador + boas-vindas ao indicado
-        const hospedes2 = lerHospedes();
-        const indicador = hospedes2.find(x => x.codigoIndicacao === h.indicadoPor);
+        const indicador = hospedesTodos.find(x => x.codigoIndicacao === h.indicadoPor);
         if (indicador && indicador.id !== h.id) {
           const valBonus = addMeses(hoje, FID.bonusValidadeMeses);
-          ls.push({ id: novoId(), hospedeId: indicador.id, staysClientId: indicador.staysClientId || '', tipo: 'bonus', descricao: `Bônus de indicação — ${h.nome || 'hóspede indicado'}`, valor: FID.bonusIndicacao, reservaId: r.id, validade: valBonus, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+          push({ id: novoId(), hospedeId: indicador.id, staysClientId: indicador.staysClientId || '', tipo: 'bonus', descricao: `Bônus de indicação — ${h.nome || 'hóspede indicado'}`, valor: FID.bonusIndicacao, reservaId: r.id, validade: valBonus, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
           const welcome = Math.round(net * FID.welcomePct * 100) / 100;
-          ls.push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'bonus', descricao: `Desconto de boas-vindas (indicação) — estadia ${r.id}`, valor: welcome, reservaId: r.id, validade: valBonus, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+          push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'bonus', descricao: `Desconto de boas-vindas (indicação) — estadia ${r.id}`, valor: welcome, reservaId: r.id, validade: valBonus, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
           bonusInd = FID.bonusIndicacao;
-          const hh = hospedes2.find(x => x.id === h.id); if (hh) { hh.indicacaoRecompensada = true; salvarHospedes(hospedes2); }
+          if (!simular) { const hospedes2 = lerHospedes(); const hh = hospedes2.find(x => x.id === h.id); if (hh) { hh.indicacaoRecompensada = true; salvarHospedes(hospedes2); } }
         }
       }
       creditado[r.id] = { hospedeId: h.id, cashback: cb, recorrencia: rec, bonusIndicacao: bonusInd, net, em: hoje };
       n++;
     }
+    if (simular) { return { simulado: true, estadias: n, lancamentos: preview, totalCredito: Math.round(preview.reduce((s, l) => s + l.valor, 0) * 100) / 100 }; }
     salvarLancamentos(ls);
     salvarJSON('fidelidade-creditado.json', creditado);
     const exp = expirarCreditos();
@@ -2200,8 +2204,8 @@ app.delete('/staff/api/hospede/conta/:hospedeId/lancamento/:id', requirePublishO
 
 // Roda o motor de fidelidade sob demanda (force=true ignora o gate FIDELIDADE_AUTO). Admin/PUBLISH_KEY.
 app.post('/staff/api/hospede/fidelidade/rodar', requirePublishOrAdmin, async (req, res) => {
-  const force = !!(req.body && req.body.force);
-  res.json(await motorFidelidade(force));
+  const d = req.body || {};
+  res.json(await motorFidelidade({ force: !!d.force, simular: !!d.simular }));
 });
 
 // Webhook do Mercado Pago — pagamento aprovado vira lançamento "pagamento" na conta corrente (idempotente).
