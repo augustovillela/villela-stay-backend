@@ -83,6 +83,7 @@ function abrirApp(usuario) {
   $('#ola').textContent = usuario.nome ? ('Olá, ' + usuario.nome.split(' ')[0]) : 'Olá';
   carregarReservas();
   carregarPedidos();
+  carregarServicos();
 }
 
 $('#btn-sair').addEventListener('click', async () => {
@@ -167,6 +168,47 @@ async function carregarPropriedade(codigo) {
   }
 }
 
+// ---------------- serviços extras (catálogo) ----------------
+let SERVICOS_CAT = [];
+async function carregarServicos() {
+  const cont = $('#servicos');
+  try {
+    const { servicos } = await api('/servicos');
+    SERVICOS_CAT = servicos || [];
+    cont.innerHTML = SERVICOS_CAT.map(s => `
+      <div class="serv-card">
+        <div class="serv-emoji">${s.emoji || '✨'}</div>
+        <strong>${esc(s.nome)}</strong>
+        <p class="serv-desc">${esc(s.desc || '')}</p>
+        <div class="serv-preco">${esc(s.preco || 'Sob consulta')}</div>
+        <button type="button" class="btn secund btn-serv" data-serv="${esc(s.id)}">Solicitar</button>
+      </div>`).join('');
+    cont.querySelectorAll('.btn-serv').forEach(b => b.addEventListener('click', () => abrirServico(b.dataset.serv)));
+  } catch (e) { cont.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }
+}
+function abrirServico(servicoId) {
+  const s = SERVICOS_CAT.find(x => x.id === servicoId) || { nome: 'Serviço', emoji: '✨', desc: '' };
+  $('#mp-titulo').textContent = (s.emoji || '✨') + ' Solicitar: ' + s.nome;
+  $('#mp-sub').textContent = s.desc || '';
+  $('#mp-msgfeedback').className = 'erro'; $('#mp-msgfeedback').textContent = '';
+  $('#mp-msg').value = '';
+  const ativas = (RESERVAS || []).filter(r => r.status !== 'canceled' && r.status !== 'blocked');
+  const opts = ['<option value="">— não vincular a uma reserva —</option>']
+    .concat(ativas.map(r => `<option value="${esc(r.id)}">${esc(r.imovelTitulo || r.imovel || 'Reserva')} · ${fmtData(r.checkin)}</option>`)).join('');
+  $('#mp-campos').innerHTML = `
+    <label>Para qual reserva? <select id="mp-reserva">${opts}</select></label>
+    <div class="mp-grid">
+      <label>Data <input type="date" id="mp-data"></label>
+      <label>Horário <input type="time" id="mp-hora"></label>
+      <label>Nº de pessoas <input type="number" min="1" id="mp-pessoas"></label>
+    </div>
+    <label>Detalhes / preferências <textarea id="mp-obs" rows="2" placeholder="Ex.: restrições alimentares, endereço do aeroporto, lista de compras…"></textarea></label>
+    <p class="dica">Vamos analisar e te enviar o orçamento por aqui. O pagamento é combinado por Pix/WhatsApp.</p>`;
+  const m = $('#modal-pedido');
+  m.dataset.tipo = 'servico'; m.dataset.servico = servicoId; m.dataset.reserva = '';
+  m.classList.remove('hidden');
+}
+
 // ---------------- pedidos: modal (alteração / evento) ----------------
 function abrirPedido(tipo, reservaId, titulo) {
   const ev = tipo === 'evento';
@@ -198,10 +240,15 @@ $('#form-pedido').addEventListener('submit', async (ev) => {
   const tipo = m.dataset.tipo, reservaId = m.dataset.reserva;
   const fb = $('#mp-msgfeedback'); fb.className = 'erro'; fb.textContent = '';
   const val = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
-  const corpo = { tipo, reservaId, mensagem: $('#mp-msg').value };
-  if (tipo === 'evento') {
+  const corpo = { tipo, mensagem: $('#mp-msg').value };
+  if (tipo === 'servico') {
+    corpo.servicoId = m.dataset.servico; corpo.reservaId = val('mp-reserva');
+    corpo.data = val('mp-data'); corpo.horario = val('mp-hora'); corpo.pessoas = val('mp-pessoas'); corpo.observacoes = val('mp-obs');
+  } else if (tipo === 'evento') {
+    corpo.reservaId = reservaId;
     corpo.dataEvento = val('mp-data'); corpo.convidados = val('mp-conv'); corpo.descricaoEvento = val('mp-desc');
   } else {
+    corpo.reservaId = reservaId;
     corpo.novoCheckin = val('mp-cin'); corpo.novoCheckout = val('mp-cout'); corpo.novoImovel = val('mp-imovel'); corpo.novoHospedes = val('mp-hosp');
   }
   try {
@@ -225,21 +272,31 @@ async function carregarPedidos() {
         if (p.evento.data) det.push('Data: ' + fmtData(p.evento.data));
         if (p.evento.convidados != null) det.push(p.evento.convidados + ' convidado(s)');
         if (p.evento.descricao) det.push(esc(p.evento.descricao));
+      } else if (p.tipo === 'servico' && p.servico) {
+        if (p.servico.data) det.push('Data: ' + fmtData(p.servico.data));
+        if (p.servico.horario) det.push(esc(p.servico.horario));
+        if (p.servico.pessoas != null) det.push(p.servico.pessoas + ' pessoa(s)');
+        if (p.servico.observacoes) det.push(esc(p.servico.observacoes));
       } else if (p.alteracao) {
         if (p.alteracao.novoCheckin) det.push('Novo check-in: ' + fmtData(p.alteracao.novoCheckin));
         if (p.alteracao.novoCheckout) det.push('Novo check-out: ' + fmtData(p.alteracao.novoCheckout));
         if (p.alteracao.novoImovel) det.push('Imóvel: ' + esc(p.alteracao.novoImovel));
         if (p.alteracao.novoHospedes != null) det.push(p.alteracao.novoHospedes + ' hóspede(s)');
       }
+      const titulo = p.tipo === 'evento' ? '🎉 Evento' : p.tipo === 'servico' ? '🛎️ ' + esc((p.servico && p.servico.nome) || 'Serviço') : '✏️ Alteração';
+      const ctx = (p.tipo !== 'servico' && (p.imovelTitulo || p.imovel)) ? ' · ' + esc(p.imovelTitulo || p.imovel) : '';
       const orc = p.orcamento ? `<div class="ped-orc">💰 Orçamento: ${p.orcamento.valor != null ? fmtMoeda(p.orcamento.valor, 'BRL') : 'a combinar'}${p.orcamento.detalhes ? ' — ' + esc(p.orcamento.detalhes) : ''}</div>` : '';
       const resp = p.respostaAdmin ? `<div class="ped-resp">💬 ${esc(p.respostaAdmin)}</div>` : '';
+      const podePagar = p.orcamento || p.status === 'aprovado';
+      const waTxt = 'Ola! Quero confirmar e combinar o pagamento do meu pedido' + (p.tipo === 'servico' && p.servico ? ' de ' + p.servico.nome : p.tipo === 'evento' ? ' de evento' : '') + (p.reservaId ? ' (reserva ' + p.reservaId + ')' : '') + '.';
+      const wa = podePagar ? `<a class="btn btn-wa-pag" target="_blank" rel="noopener" href="https://wa.me/556191935013?text=${encodeURIComponent(waTxt)}">💬 Confirmar e pagar pelo WhatsApp</a>` : '';
       return `<div class="ped-card">
-        <div class="cr-topo"><strong>${p.tipo === 'evento' ? '🎉 Evento' : '✏️ Alteração'}${p.imovelTitulo || p.imovel ? ' · ' + esc(p.imovelTitulo || p.imovel) : ''}</strong>
+        <div class="cr-topo"><strong>${titulo}${ctx}</strong>
           <span class="badge badge-st-${esc(p.status)}">${esc(STATUS_PED[p.status] || p.status)}</span></div>
-        <div class="cr-linha">Reserva ${esc(p.reservaId)} · ${fmtData(String(p.criadoEm).slice(0, 10))}</div>
+        <div class="cr-linha">${p.reservaId ? 'Reserva ' + esc(p.reservaId) + ' · ' : ''}${fmtData(String(p.criadoEm).slice(0, 10))}</div>
         ${det.length ? `<div class="ped-det">${det.join(' · ')}</div>` : ''}
         ${p.mensagem ? `<div class="ped-msg">“${esc(p.mensagem)}”</div>` : ''}
-        ${orc}${resp}
+        ${orc}${resp}${wa}
       </div>`;
     }).join('');
   } catch (e) { cont.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }

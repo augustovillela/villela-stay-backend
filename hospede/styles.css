@@ -104,6 +104,17 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .badge-st-recusado { background: #f6e3e2; color: var(--alerta); }
 .badge-st-respondido { background: #e8e3f3; color: #5b3f8c; }
 
+/* ---------- serviços extras ---------- */
+.servicos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.serv-card { border: 1px solid var(--borda); border-radius: 12px; padding: 16px 15px; display: flex; flex-direction: column; gap: 7px; background: #fff; text-align: center; align-items: center; }
+.serv-emoji { font-size: 2rem; line-height: 1; }
+.serv-card strong { color: var(--petroleo); font-size: 1rem; }
+.serv-desc { font-size: .85rem; color: var(--concreto-claro); margin: 0; flex: 1; }
+.serv-preco { font-size: .85rem; font-weight: 700; color: var(--lago-escuro); }
+.btn-serv { width: 100%; padding: 8px 12px; font-size: .88rem; margin-top: 4px; }
+.btn-wa-pag { background: #25d366; color: #fff; padding: 9px 14px; font-size: .88rem; text-align: center; margin-top: 2px; }
+.btn-wa-pag:hover { background: #1ebe5a; text-decoration: none; }
+
 /* ---------- modal: grade de campos de alteração ---------- */
 .modal-card-lg { max-width: 460px; }
 .mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

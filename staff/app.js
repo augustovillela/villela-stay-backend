@@ -1068,6 +1068,11 @@ async function renderHospedePedidos() {
       if (p.evento.data) d.push('Data: ' + esc(p.evento.data));
       if (p.evento.convidados != null) d.push(esc(p.evento.convidados) + ' convidados');
       if (p.evento.descricao) d.push(esc(p.evento.descricao));
+    } else if (p.tipo === 'servico' && p.servico) {
+      if (p.servico.data) d.push('Data: ' + esc(p.servico.data));
+      if (p.servico.horario) d.push(esc(p.servico.horario));
+      if (p.servico.pessoas != null) d.push(esc(p.servico.pessoas) + ' pessoas');
+      if (p.servico.observacoes) d.push(esc(p.servico.observacoes));
     } else if (p.alteracao) {
       if (p.alteracao.novoCheckin) d.push('Check-in → ' + esc(p.alteracao.novoCheckin));
       if (p.alteracao.novoCheckout) d.push('Check-out → ' + esc(p.alteracao.novoCheckout));
@@ -1076,13 +1081,14 @@ async function renderHospedePedidos() {
     }
     return d.join(' · ');
   };
+  const tituloPed = (p) => p.tipo === 'evento' ? '🎉 Evento' : p.tipo === 'servico' ? '🛎️ Serviço: ' + esc((p.servico && p.servico.nome) || '') : '✏️ Alteração';
   $('#hp-lista').innerHTML = pedidos.map(p => `
     <div class="form form-larga" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-        <strong>${p.tipo === 'evento' ? '🎉 Evento' : '✏️ Alteração'} — ${esc(p.hospedeNome || '—')}</strong>
+        <strong>${tituloPed(p)} — ${esc(p.hospedeNome || '—')}</strong>
         <span class="tag">${esc(HP_STATUS[p.status] || p.status)}</span>
       </div>
-      <div class="sub">Reserva ${esc(p.reservaId)}${p.imovel ? ' · ' + esc(p.imovel) : ''} · estadia ${esc(p.checkinAtual || '?')} → ${esc(p.checkoutAtual || '?')} · enviado ${esc(String(p.criadoEm).slice(0, 10))}</div>
+      <div class="sub">${p.reservaId ? 'Reserva ' + esc(p.reservaId) + (p.imovel ? ' · ' + esc(p.imovel) : '') + ' · estadia ' + esc(p.checkinAtual || '?') + ' → ' + esc(p.checkoutAtual || '?') + ' · ' : ''}enviado ${esc(String(p.criadoEm).slice(0, 10))}</div>
       ${det(p) ? `<div><strong>Pedido:</strong> ${det(p)}</div>` : ''}
       ${p.mensagem ? `<div><em>“${esc(p.mensagem)}”</em></div>` : ''}
       <div class="hi-grid" style="margin-top:8px">

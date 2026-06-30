@@ -1534,6 +1534,14 @@ const lerPedidosHosp = () => lerJSON('pedidos-hospede.json', []);
 const salvarPedidosHosp = (p) => salvarJSON('pedidos-hospede.json', p);
 const STATUS_PEDIDO = ['novo', 'em_analise', 'aprovado', 'recusado', 'respondido'];
 const AUGUSTO_WA = process.env.AUGUSTO_WA || '556192113000';
+// Catálogo de serviços extras (Fase 3). Preço "sob consulta" — o Augusto orça cada pedido.
+const SERVICOS = [
+  { id: 'cafe', emoji: '☕', nome: 'Café da manhã', desc: 'Café da manhã completo servido na sua hospedagem.', preco: 'Sob consulta' },
+  { id: 'chef', emoji: '🍷', nome: 'Jantar com personal chef', desc: 'Menu personalizado preparado por um chef na sua casa — ótimo para um jantar romântico.', preco: 'Sob consulta' },
+  { id: 'buffet', emoji: '🎉', nome: 'Buffet para evento', desc: 'Buffet completo para a sua comemoração na hospedagem.', preco: 'Sob orçamento' },
+  { id: 'traslado', emoji: '🚐', nome: 'Traslado de aeroporto', desc: 'Transporte entre o aeroporto e a hospedagem, na ida e/ou na volta.', preco: 'Sob consulta' },
+  { id: 'delivery', emoji: '🛒', nome: 'Delivery de compras e bebidas', desc: 'Fazemos as compras de mercado e bebidas e entregamos na casa antes/durante a estadia.', preco: 'Compras + taxa de serviço' },
+];
 // Sanitiza parâmetro de template da Meta (sem quebra de linha/tab/4+ espaços — evita erro 132018).
 function sanitizaParam(s) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s{4,}/g, '   ').trim().slice(0, 600); }
 // Alerta interno ao Augusto (template alerta_crm, notifica a qualquer hora). Best-effort.
@@ -1662,18 +1670,24 @@ app.get('/hospede/api/meus-pedidos', requireHospede, (req, res) => {
   res.json({ pedidos });
 });
 
-// Criar pedido de ALTERAÇÃO de reserva (só direta/WhatsApp) ou de EVENTO. Vai p/ aprovação do Augusto.
+// Catálogo de serviços extras (Fase 3).
+app.get('/hospede/api/servicos', requireHospede, (req, res) => res.json({ servicos: SERVICOS }));
+
+// Criar pedido: ALTERAÇÃO de reserva (só direta/WhatsApp), EVENTO ou SERVIÇO extra. Vai p/ aprovação do Augusto.
 app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
   const d = req.body || {};
-  const tipo = d.tipo === 'evento' ? 'evento' : 'alteracao';
+  const tipo = ['evento', 'servico'].includes(d.tipo) ? d.tipo : 'alteracao';
   const reservaId = String(d.reservaId || '').trim();
-  if (!reservaId) return res.status(400).json({ erro: 'Informe a reserva.' });
+  if (tipo !== 'servico' && !reservaId) return res.status(400).json({ erro: 'Informe a reserva.' });
   try {
-    const reservas = await reservasDoHospede(req.hospede, true);
-    const r = reservas.find(x => x.id === reservaId && x.status !== 'canceled' && x.status !== 'blocked');
-    if (!r) return res.status(404).json({ erro: 'Reserva não encontrada na sua conta.' });
-    if (tipo === 'alteracao' && !r.podeAlterar)
-      return res.status(400).json({ erro: 'Alterações desta reserva devem ser solicitadas na plataforma onde você reservou (ex.: Airbnb/Booking).' });
+    let r = null;
+    if (reservaId) {
+      const reservas = await reservasDoHospede(req.hospede, tipo === 'alteracao');
+      r = reservas.find(x => x.id === reservaId && x.status !== 'canceled' && x.status !== 'blocked');
+      if (!r) return res.status(404).json({ erro: 'Reserva não encontrada na sua conta.' });
+      if (tipo === 'alteracao' && !r.podeAlterar)
+        return res.status(400).json({ erro: 'Alterações desta reserva devem ser solicitadas na plataforma onde você reservou (ex.: Airbnb/Booking).' });
+    }
 
     const alteracao = tipo === 'alteracao' ? {
       novoCheckin: String(d.novoCheckin || ''), novoCheckout: String(d.novoCheckout || ''),
@@ -1683,6 +1697,12 @@ app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
       data: String(d.dataEvento || ''), convidados: d.convidados != null && d.convidados !== '' ? Number(d.convidados) : null,
       descricao: String(d.descricaoEvento || '').slice(0, 1000),
     } : null;
+    let servico = null;
+    if (tipo === 'servico') {
+      const cat = SERVICOS.find(s => s.id === String(d.servicoId || ''));
+      if (!cat) return res.status(400).json({ erro: 'Serviço inválido.' });
+      servico = { servicoId: cat.id, nome: cat.nome, data: String(d.data || ''), horario: String(d.horario || ''), pessoas: d.pessoas != null && d.pessoas !== '' ? Number(d.pessoas) : null, observacoes: String(d.observacoes || '').slice(0, 1000) };
+    }
     if (tipo === 'alteracao' && alteracao && !alteracao.novoCheckin && !alteracao.novoCheckout && !alteracao.novoImovel && alteracao.novoHospedes == null && !String(d.mensagem || '').trim())
       return res.status(400).json({ erro: 'Diga o que deseja alterar (datas, imóvel, nº de hóspedes ou uma mensagem).' });
     if (tipo === 'evento' && !evento.data && evento.convidados == null && !evento.descricao)
@@ -1691,14 +1711,15 @@ app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
     const pedidos = lerPedidosHosp();
     const pedido = {
       id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', staysClientId: req.hospede.staysClientId || '',
-      tipo, reservaId, imovel: r.imovel, imovelTitulo: r.imovelTitulo, checkinAtual: r.checkin, checkoutAtual: r.checkout,
-      alteracao, evento, mensagem: String(d.mensagem || '').slice(0, 1000),
+      tipo, reservaId, imovel: r ? r.imovel : '', imovelTitulo: r ? r.imovelTitulo : '', checkinAtual: r ? r.checkin : '', checkoutAtual: r ? r.checkout : '',
+      alteracao, evento, servico, mensagem: String(d.mensagem || '').slice(0, 1000),
       status: 'novo', orcamento: null, respostaAdmin: '',
       criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
     };
     pedidos.unshift(pedido);
     salvarPedidosHosp(pedidos);
-    alertaAugusto(`Novo pedido de ${tipo === 'evento' ? 'EVENTO' : 'alteracao de reserva'} de ${pedido.hospedeNome || 'hospede'} - reserva ${reservaId}${r.imovel ? ' (' + r.imovel + ')' : ''}. Veja no Portal Staff > Pedidos de hospedes.`).catch(() => { });
+    const rotuloTipo = tipo === 'evento' ? 'EVENTO' : tipo === 'servico' ? 'SERVICO (' + servico.nome + ')' : 'alteracao de reserva';
+    alertaAugusto(`Novo pedido de ${rotuloTipo} de ${pedido.hospedeNome || 'hospede'}${reservaId ? ' - reserva ' + reservaId : ''}${r && r.imovel ? ' (' + r.imovel + ')' : ''}. Veja no Portal Staff > Pedidos de hospedes.`).catch(() => { });
     res.json({ ok: true, pedido });
   } catch (e) { console.error('[hospede pedido]', e.message); res.status(502).json({ erro: 'Falha ao registrar o pedido. Tente novamente.' }); }
 });
