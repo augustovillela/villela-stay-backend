@@ -1,7 +1,7 @@
 /* Service worker da Área do Hóspede (PWA). Fase A: instalável + shell em cache (network-first).
    NUNCA cacheia /hospede/api (dados sempre frescos). Offline da info da casa = Fase E. */
 'use strict';
-const CACHE = 'villela-hospede-v2';
+const CACHE = 'villela-hospede-v3';
 const SHELL = ['/hospede/', '/hospede/index.html', '/hospede/app.js', '/hospede/styles.css', '/hospede/manifest.json'];
 
 self.addEventListener('install', (e) => {
@@ -19,17 +19,22 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET') return;
+  if (req.method !== 'GET') return;                       // POST/PATCH/DELETE: só rede
   const url = new URL(req.url);
-  if (url.origin !== location.origin) return;            // CDN/externos: rede direta
-  if (url.pathname.startsWith('/hospede/api')) return;   // API: nunca cachear
+  if (url.origin !== location.origin) return;             // CDN/externos: rede direta
+  const ehApi = url.pathname.startsWith('/hospede/api');
+  // Network-first: online sempre fresco; offline serve a última leitura em cache.
   e.respondWith(
     fetch(req)
       .then((resp) => {
         if (resp && resp.ok) { const copy = resp.clone(); caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {}); }
         return resp;
       })
-      .catch(() => caches.match(req).then((r) => r || caches.match('/hospede/index.html')))
+      .catch(() => caches.match(req).then((r) => {
+        if (r) return r;
+        if (ehApi) return new Response(JSON.stringify({ erro: 'Você está offline. Esta informação aparece depois de abrir o app online ao menos uma vez.' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+        return caches.match('/hospede/index.html');
+      }))
   );
 });
 

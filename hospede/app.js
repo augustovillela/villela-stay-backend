@@ -97,6 +97,7 @@ $('#btn-sair').addEventListener('click', async () => {
 });
 
 let RESERVAS = [];
+let RESERVAS_CARREGADAS = false;
 let AVALIADAS = new Set();
 let FID_CFG = {};
 let INDIC = {};
@@ -109,6 +110,7 @@ async function carregarReservas() {
     FID_CFG = fidR || {};
     INDIC = indR || {};
     RESERVAS = (resR.reservas || []).filter(r => r.status !== 'blocked');
+    RESERVAS_CARREGADAS = true;
     renderFidelidade();
     if (!RESERVAS.length) { cont.innerHTML = '<p class="vazio">Nenhuma reserva encontrada na sua conta.</p>'; return; }
     const hojeStr = new Date().toISOString().slice(0, 10);
@@ -145,6 +147,7 @@ async function carregarReservas() {
     const primeira = RESERVAS.find(r => r.imovel && r.status !== 'canceled');
     if (primeira) carregarPropriedade(primeira.imovel);
   } catch (e) {
+    RESERVAS_CARREGADAS = true;
     cont.innerHTML = '<p class="erro">' + esc(e.message) + '</p>';
   }
 }
@@ -484,6 +487,7 @@ function openLink(u) { if (u) window.open(u, '_blank', 'noopener'); }
 const GRUPOS = [
   { titulo: 'Minha estadia', itens: [
     { rotulo: 'Reservas', icone: 'ti-calendar-event', rota: 'reservas' },
+    { rotulo: 'Carteira', icone: 'ti-qrcode', rota: 'carteira' },
     { rotulo: 'Check-in', icone: 'ti-door-enter', acao: 'checkin' },
     { rotulo: 'Wi-Fi', icone: 'ti-wifi', rota: 'casa' },
     { rotulo: 'Manual', icone: 'ti-book-2', rota: 'casa' },
@@ -548,6 +552,7 @@ function navegar(rota) { if (rotaDoHash() === rota) irPara(rota); else location.
 
 const VIEWS = {
   reservas:   { view: 'view-reservas' },
+  carteira:   { view: 'view-carteira', enter: () => renderCarteira() },
   casa:       { view: 'view-casa', enter: garantirCasa },
   pedidos:    { view: 'view-pedidos', enter: () => carregarPedidos() },
   conta:      { view: 'view-conta', enter: () => carregarConta() },
@@ -813,6 +818,40 @@ async function renderConteudo(secao, labelBtn) {
         ${i.link ? `<a class="btn secund btn-serv" href="${esc(i.link)}" target="_blank" rel="noopener">${esc(labelBtn || 'Abrir')}</a>` : ''}
       </div>`).join('');
   } catch (e) { box.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }
+}
+
+// ---- Carteira / passe de hospedagem (QR de chegada) ----
+async function renderCarteira() {
+  const box = $('#carteira');
+  if (!RESERVAS_CARREGADAS) { box.innerHTML = '<p class="vazio">Carregando…</p>'; setTimeout(renderCarteira, 600); return; }
+  const efet = (RESERVAS || []).filter((r) => r.status !== 'canceled' && r.status !== 'blocked');
+  if (!efet.length) {
+    box.innerHTML = '<p class="vazio">Você ainda não tem uma estadia ativa para a carteira.</p>';
+    return;
+  }
+  box.innerHTML = '<p class="dica">Seu passe de hospedagem. Mostre o QR na chegada ou toque em “Avisar que cheguei”.</p>' +
+    efet.map((r) => `<div class="passe" id="passe-${esc(r.id)}"><p class="vazio">Gerando passe…</p></div>`).join('');
+  for (const r of efet) {
+    try {
+      const c = await api('/carteira/' + encodeURIComponent(r.id));
+      const el = document.getElementById('passe-' + r.id); if (!el) continue;
+      el.innerHTML = `
+        <div class="passe-top"><span class="passe-marca">Villela Stay</span><span class="passe-tag">Passe de hospedagem</span></div>
+        <div class="passe-casa">${esc(c.reserva.imovelTitulo || c.reserva.imovel || 'Hospedagem')}</div>
+        <div class="passe-qr">${c.qrSvg || ''}</div>
+        <div class="passe-info">
+          <div><span>Hóspede</span><strong>${esc((c.nome || '—'))}</strong></div>
+          <div><span>Hóspedes</span><strong>${esc(c.reserva.hospedes || '—')}</strong></div>
+          <div><span>Check-in</span><strong>${fmtData(c.reserva.checkin)}</strong></div>
+          <div><span>Check-out</span><strong>${fmtData(c.reserva.checkout)}</strong></div>
+          <div><span>Localizador</span><strong>${esc(c.reserva.id)}</strong></div>
+        </div>
+        ${c.waLink ? `<a class="btn passe-wa" target="_blank" rel="noopener" href="${esc(c.waLink)}">💬 Avisar que cheguei</a>` : ''}`;
+    } catch (e) {
+      const el = document.getElementById('passe-' + r.id);
+      if (el) el.innerHTML = '<p class="erro">' + esc(e.message) + '</p>';
+    }
+  }
 }
 
 // ---- Ajuda IA (chat com a base da Villela) ----

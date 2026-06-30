@@ -223,6 +223,24 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .breve-card p { margin: 0; color: var(--concreto-claro); font-size: .95rem; }
 .breve-card .btn { margin-top: 6px; }
 
+/* ---------- Carteira / passe de hospedagem ---------- */
+#carteira { max-width: 420px; margin: 0 auto; }
+.passe { background: var(--petroleo); color: var(--creme); border-radius: 16px; padding: 18px 20px 20px; margin-bottom: 18px;
+  border-top: 4px solid var(--cerrado); }
+.passe .vazio { color: #cfe0e4; }
+.passe-top { display: flex; align-items: center; justify-content: space-between; }
+.passe-marca { font-weight: 800; letter-spacing: -.3px; }
+.passe-tag { font-size: .68rem; background: var(--cerrado); color: var(--petroleo); padding: 2px 8px; border-radius: 10px; font-weight: 800; }
+.passe-casa { font-size: 1.05rem; font-weight: 700; margin: 10px 0 12px; color: #fff; }
+.passe-qr { background: #fff; border-radius: 12px; padding: 12px; display: flex; justify-content: center; }
+.passe-qr svg { width: 200px; height: 200px; display: block; }
+.passe-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 14px 0 6px; }
+.passe-info > div { display: flex; flex-direction: column; }
+.passe-info span { font-size: .7rem; color: #9fb9c0; }
+.passe-info strong { font-size: .95rem; color: #fff; }
+.passe-wa { background: #25d366; color: #fff; margin-top: 10px; width: 100%; }
+.passe-wa:hover { background: #1ebe5a; text-decoration: none; }
+
 /* ---------- Ajuda IA (chat) ---------- */
 .chat { display: flex; flex-direction: column; max-width: 620px; margin: 0 auto; }
 .chat-msgs { display: flex; flex-direction: column; gap: 10px; min-height: 320px; max-height: 60vh; overflow-y: auto;
