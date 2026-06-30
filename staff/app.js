@@ -999,8 +999,12 @@ async function renderHospedeInfo() {
   const c = conteudo();
   c.innerHTML = cabecalho('Área do Hóspede', 'Preencha as informações reservadas de cada casa (Wi-Fi, acesso, manual, guia). O hóspede só vê a casa que reservou; Wi-Fi e códigos de acesso são liberados de 2 dias antes do check-in até o check-out. Campos vazios usam o padrão.') +
     `<div id="hi-contas" class="aviso">Carregando contas…</div>
-     <div class="barra"><label>Imóvel <select id="hi-cod"></select></label></div>
-     <div id="hi-form"></div>`;
+     <details class="hi-bloco" open><summary><strong>🏠 Informações por imóvel</strong> (Wi-Fi, acesso, manual, guia)</summary>
+       <div class="barra"><label>Imóvel <select id="hi-cod"></select></label></div>
+       <div id="hi-form"></div>
+     </details>
+     <details class="hi-bloco"><summary><strong>🛎️ Serviços extras</strong> (catálogo e preços)</summary><div id="hi-servicos"><p class="aviso">Carregando…</p></div></details>
+     <details class="hi-bloco"><summary><strong>⭐ Programa de fidelidade</strong> (textos exibidos ao hóspede)</summary><div id="hi-fid"><p class="aviso">Carregando…</p></div></details>`;
   let info = {}, imoveis = [];
   try { const r1 = await api('GET', '/hospede/propriedades-info'); info = r1.info || {}; }
   catch (e) { $('#hi-form').innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
@@ -1052,6 +1056,60 @@ async function renderHospedeInfo() {
   };
   sel.onchange = () => desenhar(sel.value);
   if (codigos.length) desenhar(codigos[0]); else $('#hi-form').innerHTML = '<p class="aviso">Estrutura de propriedades ainda não inicializada. Faça um deploy e recarregue.</p>';
+  renderHiServicos();
+  renderHiFid();
+}
+
+// Editor do catálogo de serviços extras (admin).
+async function renderHiServicos() {
+  const box = $('#hi-servicos'); if (!box) return;
+  let servicos = [];
+  try { const r = await api('GET', '/hospede/servicos'); servicos = r.servicos || []; }
+  catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  const linha = (s) => `<div class="serv-edit" data-id="${esc(s.id || '')}">
+    <input data-f="emoji" value="${esc(s.emoji || '')}" maxlength="6" title="Emoji" style="width:52px;text-align:center">
+    <input data-f="nome" value="${esc(s.nome || '')}" placeholder="Nome do serviço">
+    <input data-f="preco" value="${esc(s.preco || '')}" placeholder="Preço (ex.: a partir de R$ 120)">
+    <input data-f="desc" value="${esc(s.desc || '')}" placeholder="Descrição">
+    <label class="serv-ativo"><input type="checkbox" data-f="ativo" ${s.ativo !== false ? 'checked' : ''}> ativo</label>
+    <button type="button" class="btn peq perigo serv-del" title="Remover">×</button>
+  </div>`;
+  box.innerHTML = `<p class="aviso" style="margin:0 0 10px">Edite nome, preço e descrição. Desmarque "ativo" para ocultar do hóspede. O preço aparece no card do serviço.</p>
+    <div id="serv-lista">${servicos.map(linha).join('')}</div>
+    <div class="acoes"><button type="button" class="btn secund" id="serv-add">+ Adicionar serviço</button><button type="button" class="btn" id="serv-salvar">Salvar serviços</button> <span id="serv-msg" class="ok-msg"></span></div>`;
+  const wireDel = () => box.querySelectorAll('.serv-del').forEach(b => b.onclick = () => b.closest('.serv-edit').remove());
+  wireDel();
+  $('#serv-add').onclick = () => { const d = document.createElement('div'); d.innerHTML = linha({ emoji: '✨', nome: '', preco: 'Sob consulta', desc: '', ativo: true }); $('#serv-lista').appendChild(d.firstElementChild); wireDel(); };
+  $('#serv-salvar').onclick = async () => {
+    const lista = [...box.querySelectorAll('.serv-edit')].map(row => ({
+      id: row.dataset.id || '',
+      emoji: row.querySelector('[data-f="emoji"]').value, nome: row.querySelector('[data-f="nome"]').value,
+      preco: row.querySelector('[data-f="preco"]').value, desc: row.querySelector('[data-f="desc"]').value,
+      ativo: row.querySelector('[data-f="ativo"]').checked,
+    })).filter(s => s.nome.trim());
+    const msg = $('#serv-msg'); msg.className = 'ok-msg'; msg.textContent = '';
+    try { await api('PUT', '/hospede/servicos', { servicos: lista }); msg.textContent = 'Salvo!'; renderHiServicos(); }
+    catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+  };
+}
+
+// Editor da config de fidelidade (admin).
+async function renderHiFid() {
+  const box = $('#hi-fid'); if (!box) return;
+  let cfg = {};
+  try { cfg = await api('GET', '/hospede/fidelidade-config'); } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  box.innerHTML = `<form class="form" id="form-fid" style="box-shadow:none;padding:0;border:none;max-width:680px">
+    <label>Texto para hóspede recorrente (≥ 2 estadias) <textarea id="fid-rec" rows="2">${esc(cfg.recorrenteTexto || '')}</textarea></label>
+    <label>Texto para hóspede novo <textarea id="fid-novo" rows="2">${esc(cfg.novoTexto || '')}</textarea></label>
+    <label>Texto da indicação (mostrado no "Indicar um amigo") <textarea id="fid-ind" rows="2">${esc(cfg.indicacaoTexto || '')}</textarea></label>
+    <div class="acoes"><button class="btn" type="submit">Salvar fidelidade</button> <span id="fid-msg" class="ok-msg"></span></div>
+  </form>`;
+  $('#form-fid').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const msg = $('#fid-msg'); msg.className = 'ok-msg'; msg.textContent = '';
+    try { await api('PUT', '/hospede/fidelidade-config', { recorrenteTexto: $('#fid-rec').value, novoTexto: $('#fid-novo').value, indicacaoTexto: $('#fid-ind').value }); msg.textContent = 'Salvo!'; }
+    catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+  };
 }
 
 // --------- Pedidos de hóspedes (alteração / evento) ---------

@@ -1534,14 +1534,24 @@ const lerPedidosHosp = () => lerJSON('pedidos-hospede.json', []);
 const salvarPedidosHosp = (p) => salvarJSON('pedidos-hospede.json', p);
 const STATUS_PEDIDO = ['novo', 'em_analise', 'aprovado', 'recusado', 'respondido'];
 const AUGUSTO_WA = process.env.AUGUSTO_WA || '556192113000';
-// Catálogo de serviços extras (Fase 3). Preço "sob consulta" — o Augusto orça cada pedido.
-const SERVICOS = [
-  { id: 'cafe', emoji: '☕', nome: 'Café da manhã', desc: 'Café da manhã completo servido na sua hospedagem.', preco: 'Sob consulta' },
-  { id: 'chef', emoji: '🍷', nome: 'Jantar com personal chef', desc: 'Menu personalizado preparado por um chef na sua casa — ótimo para um jantar romântico.', preco: 'Sob consulta' },
-  { id: 'buffet', emoji: '🎉', nome: 'Buffet para evento', desc: 'Buffet completo para a sua comemoração na hospedagem.', preco: 'Sob orçamento' },
-  { id: 'traslado', emoji: '🚐', nome: 'Traslado de aeroporto', desc: 'Transporte entre o aeroporto e a hospedagem, na ida e/ou na volta.', preco: 'Sob consulta' },
-  { id: 'delivery', emoji: '🛒', nome: 'Delivery de compras e bebidas', desc: 'Fazemos as compras de mercado e bebidas e entregamos na casa antes/durante a estadia.', preco: 'Compras + taxa de serviço' },
+// Catálogo de serviços extras (Fase 3) — editável pelo admin (servicos.json); estes são os PADRÕES.
+const SERVICOS_PADRAO = [
+  { id: 'cafe', emoji: '☕', nome: 'Café da manhã', desc: 'Café da manhã completo servido na sua hospedagem.', preco: 'Sob consulta', ativo: true },
+  { id: 'chef', emoji: '🍷', nome: 'Jantar com personal chef', desc: 'Menu personalizado preparado por um chef na sua casa — ótimo para um jantar romântico.', preco: 'Sob consulta', ativo: true },
+  { id: 'buffet', emoji: '🎉', nome: 'Buffet para evento', desc: 'Buffet completo para a sua comemoração na hospedagem.', preco: 'Sob orçamento', ativo: true },
+  { id: 'traslado', emoji: '🚐', nome: 'Traslado de aeroporto', desc: 'Transporte entre o aeroporto e a hospedagem, na ida e/ou na volta.', preco: 'Sob consulta', ativo: true },
+  { id: 'delivery', emoji: '🛒', nome: 'Delivery de compras e bebidas', desc: 'Fazemos as compras de mercado e bebidas e entregamos na casa antes/durante a estadia.', preco: 'Compras + taxa de serviço', ativo: true },
 ];
+const lerServicos = () => lerJSON('servicos.json', SERVICOS_PADRAO);
+const salvarServicos = (s) => salvarJSON('servicos.json', s);
+// Config do programa de fidelidade — editável pelo admin (fidelidade-config.json).
+const FID_PADRAO = {
+  recorrenteTexto: 'Como hóspede recorrente da Villela Stay, você tem condições especiais para voltar. Fale com a gente!',
+  novoTexto: 'Volte a se hospedar com a gente e aproveite condições especiais de cliente.',
+  indicacaoTexto: 'Indique alguém que vai amar se hospedar com a gente. Ao se hospedar, você ganha um crédito — combinamos com você pelo WhatsApp.',
+};
+const lerFidConfig = () => Object.assign({}, FID_PADRAO, lerJSON('fidelidade-config.json', {}));
+const salvarFidConfig = (c) => salvarJSON('fidelidade-config.json', c);
 // Sanitiza parâmetro de template da Meta (sem quebra de linha/tab/4+ espaços — evita erro 132018).
 function sanitizaParam(s) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s{4,}/g, '   ').trim().slice(0, 600); }
 // Alerta interno ao Augusto (template alerta_crm, notifica a qualquer hora). Best-effort.
@@ -1719,8 +1729,10 @@ app.get('/hospede/api/meus-pedidos', requireHospede, (req, res) => {
   res.json({ pedidos });
 });
 
-// Catálogo de serviços extras (Fase 3).
-app.get('/hospede/api/servicos', requireHospede, (req, res) => res.json({ servicos: SERVICOS }));
+// Catálogo de serviços extras (Fase 3) — só os ativos.
+app.get('/hospede/api/servicos', requireHospede, (req, res) => res.json({ servicos: lerServicos().filter(s => s.ativo !== false) }));
+// Config do programa de fidelidade (textos exibidos ao hóspede).
+app.get('/hospede/api/fidelidade-config', requireHospede, (req, res) => res.json(lerFidConfig()));
 
 // Criar pedido: ALTERAÇÃO de reserva (só direta/WhatsApp), EVENTO ou SERVIÇO extra. Vai p/ aprovação do Augusto.
 app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
@@ -1748,7 +1760,7 @@ app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
     } : null;
     let servico = null;
     if (tipo === 'servico') {
-      const cat = SERVICOS.find(s => s.id === String(d.servicoId || ''));
+      const cat = lerServicos().find(s => s.id === String(d.servicoId || '') && s.ativo !== false);
       if (!cat) return res.status(400).json({ erro: 'Serviço inválido.' });
       servico = { servicoId: cat.id, nome: cat.nome, data: String(d.data || ''), horario: String(d.horario || ''), pessoas: d.pessoas != null && d.pessoas !== '' ? Number(d.pessoas) : null, observacoes: String(d.observacoes || '').slice(0, 1000) };
     }
@@ -1903,6 +1915,37 @@ app.get('/staff/api/hospede/fidelidade', requireAuth, (req, res) => {
     avaliacoes: lerAvaliacoes().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))),
     indicacoes: lerIndicacoes().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))),
   });
+});
+
+// Catálogo de serviços extras — editar (admin): preços, textos, ativar/desativar.
+app.get('/staff/api/hospede/servicos', requireAuth, requireAdmin, (req, res) => res.json({ servicos: lerServicos() }));
+app.put('/staff/api/hospede/servicos', requireAuth, requireAdmin, (req, res) => {
+  const arr = Array.isArray(req.body && req.body.servicos) ? req.body.servicos : null;
+  if (!arr) return res.status(400).json({ erro: 'Envie a lista de serviços.' });
+  const slug = (s) => semAcento(s).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || ('serv-' + crypto.randomBytes(3).toString('hex'));
+  const limpos = arr.filter(s => s && String(s.nome || '').trim()).map(s => ({
+    id: String(s.id || '').trim() || slug(String(s.nome)),
+    emoji: String(s.emoji || '✨').slice(0, 6), nome: String(s.nome).trim().slice(0, 80),
+    desc: String(s.desc || '').slice(0, 300), preco: String(s.preco || 'Sob consulta').slice(0, 60),
+    ativo: s.ativo !== false,
+  }));
+  const vistos = new Set();
+  for (const s of limpos) { let id = s.id, n = 1; while (vistos.has(id)) id = s.id + '-' + (++n); s.id = id; vistos.add(id); }
+  salvarServicos(limpos);
+  res.json({ ok: true, servicos: limpos });
+});
+
+// Config do programa de fidelidade — editar (admin).
+app.get('/staff/api/hospede/fidelidade-config', requireAuth, requireAdmin, (req, res) => res.json(lerFidConfig()));
+app.put('/staff/api/hospede/fidelidade-config', requireAuth, requireAdmin, (req, res) => {
+  const d = req.body || {};
+  const cfg = {
+    recorrenteTexto: String(d.recorrenteTexto || FID_PADRAO.recorrenteTexto).slice(0, 500),
+    novoTexto: String(d.novoTexto || FID_PADRAO.novoTexto).slice(0, 500),
+    indicacaoTexto: String(d.indicacaoTexto || FID_PADRAO.indicacaoTexto).slice(0, 500),
+  };
+  salvarFidConfig(cfg);
+  res.json({ ok: true, config: cfg });
 });
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.

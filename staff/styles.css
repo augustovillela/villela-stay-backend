@@ -110,6 +110,17 @@ tr:last-child td { border-bottom: none; }
 .areas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 6px; }
 .areas-grid label { flex-direction: row; align-items: center; gap: 7px; font-weight: 500; }
 .areas-grid input { width: auto; }
+/* editores da Área do Hóspede (serviços e fidelidade) */
+.hi-bloco { border: 1px solid var(--borda); border-radius: 12px; background: #fff; padding: 12px 16px; margin-bottom: 14px; }
+.hi-bloco > summary { cursor: pointer; font-size: .98rem; padding: 4px 0; }
+.hi-bloco[open] > summary { margin-bottom: 12px; border-bottom: 1px solid var(--borda); padding-bottom: 10px; }
+.serv-edit { display: grid; grid-template-columns: 56px 1.2fr 1fr 1.6fr auto auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.serv-edit input[type="text"], .serv-edit input:not([type]) { padding: 7px 9px; }
+.serv-ativo { display: flex; align-items: center; gap: 5px; font-size: .82rem; white-space: nowrap; }
+.serv-ativo input { width: auto; }
+.btn.peq.perigo { padding: 4px 10px; line-height: 1; }
+@media (max-width: 760px) { .serv-edit { grid-template-columns: 1fr 1fr; } }
+
 /* grade de campos (rótulo em cima, input ocupando a coluna toda) — p/ a tela Área do Hóspede */
 .form-larga { max-width: 720px; }
 .hi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }

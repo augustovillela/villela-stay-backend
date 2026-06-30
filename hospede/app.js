@@ -93,12 +93,14 @@ $('#btn-sair').addEventListener('click', async () => {
 
 let RESERVAS = [];
 let AVALIADAS = new Set();
+let FID_CFG = {};
 async function carregarReservas() {
   const cont = $('#reservas');
   cont.innerHTML = '<p class="vazio">Carregando…</p>';
   try {
-    const [resR, avR] = await Promise.all([api('/minhas-reservas'), api('/minhas-avaliacoes').catch(() => ({ avaliacoes: [] }))]);
+    const [resR, avR, fidR] = await Promise.all([api('/minhas-reservas'), api('/minhas-avaliacoes').catch(() => ({ avaliacoes: [] })), api('/fidelidade-config').catch(() => ({}))]);
     AVALIADAS = new Set((avR.avaliacoes || []).map(a => a.reservaId));
+    FID_CFG = fidR || {};
     RESERVAS = (resR.reservas || []).filter(r => r.status !== 'blocked');
     renderFidelidade();
     if (!RESERVAS.length) { cont.innerHTML = '<p class="vazio">Nenhuma reserva encontrada na sua conta.</p>'; return; }
@@ -153,7 +155,7 @@ function renderFidelidade() {
       <span class="fid-num"><strong>${n}</strong> estadia(s)${total ? ' · ' + fmtMoeda(total, 'BRL') + ' no total' : ''}</span>
       ${recorrente ? '<span class="fid-badge">⭐ Hóspede recorrente</span>' : ''}
     </div>
-    <p class="dica">${recorrente ? 'Como hóspede recorrente da Villela Stay, você tem condições especiais para voltar. Fale com a gente!' : 'Volte a se hospedar com a gente e aproveite condições especiais de cliente.'}</p>
+    <p class="dica">${esc(recorrente ? (FID_CFG.recorrenteTexto || 'Como hóspede recorrente da Villela Stay, você tem condições especiais para voltar. Fale com a gente!') : (FID_CFG.novoTexto || 'Volte a se hospedar com a gente e aproveite condições especiais de cliente.'))}</p>
     <div class="fid-acoes">
       <a class="btn" target="_blank" rel="noopener" href="https://wa.me/556191935013?text=${encodeURIComponent('Olá! Sou hóspede da Villela Stay e quero reservar novamente.')}">Reservar novamente</a>
       <button type="button" class="btn secund" id="btn-indicar">🎁 Indicar um amigo</button>
@@ -185,6 +187,7 @@ $('#form-avaliacao').addEventListener('submit', async (ev) => {
 function abrirIndicacao() {
   $('#in-nome').value = ''; $('#in-contato').value = ''; $('#in-msg').value = '';
   $('#in-msgfeedback').className = 'erro'; $('#in-msgfeedback').textContent = '';
+  if (FID_CFG.indicacaoTexto) { const d = document.querySelector('#modal-indicacao .dica'); if (d) d.textContent = FID_CFG.indicacaoTexto; }
   $('#modal-indicacao').classList.remove('hidden');
 }
 $('#in-cancelar').addEventListener('click', () => $('#modal-indicacao').classList.add('hidden'));
