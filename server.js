@@ -1563,8 +1563,8 @@ const salvarFidConfig = (c) => salvarJSON('fidelidade-config.json', c);
 // ---- Conta corrente do hóspede (extrato de lançamentos + saldo) + pagamento (Mercado Pago) ----
 const lerLancamentos = () => lerJSON('lancamentos.json', []);
 const salvarLancamentos = (l) => salvarJSON('lancamentos.json', l);
-const TIPOS_LANC = ['cashback', 'bonus', 'cobranca', 'pagamento', 'ajuste'];
-const ROTULO_LANC = { cashback: 'Cash back', bonus: 'Bônus de indicação', cobranca: 'Cobrança', pagamento: 'Pagamento', ajuste: 'Ajuste' };
+const TIPOS_LANC = ['cashback', 'recorrencia', 'bonus', 'cobranca', 'pagamento', 'ajuste'];
+const ROTULO_LANC = { cashback: 'Cash back', recorrencia: 'Recorrência', bonus: 'Bônus de indicação', cobranca: 'Cobrança', pagamento: 'Pagamento', ajuste: 'Ajuste' };
 // Extrato com saldo corrente. valor é SINALIZADO (créditos +, débitos −). saldo<0 = a pagar; saldo>0 = crédito a favor.
 function resumoConta(hospedeId) {
   const ls = lerLancamentos().filter(l => l.hospedeId === hospedeId).sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)));
@@ -1585,6 +1585,67 @@ async function mpFetch(pathname, opts) {
   if (!r.ok) throw new Error('Mercado Pago ' + r.status + ': ' + (await r.text()).slice(0, 200));
   return r.json();
 }
+
+// ---- Motor de fidelidade: cash back (5%) + recorrência (5%) — gated FIDELIDADE_AUTO ----
+// Regras: 5% sobre o líquido (total − taxa de limpeza), só estadias DIRETAS/WhatsApp, 5 dias após o check-out,
+// validade 3 meses. Recorrência: +5% se o hóspede já teve estadia anterior. Idempotente (fidelidade-creditado.json).
+const FID = { cashbackPct: 0.05, recorrenciaPct: 0.05, diasAposCheckout: 5, validadeMeses: 3, cleaningFeeId: '57a31968b9b1fb291f3bcc1b' };
+function addMeses(iso, n) { const d = new Date(String(iso) + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); }
+function taxaLimpeza(price) {
+  const fees = (price && price.hostingDetails && price.hostingDetails.fees) || [];
+  return fees.filter(f => f._idfee === FID.cleaningFeeId || /limpeza|cleaning/i.test(f.name || '')).reduce((s, f) => s + (Number(f._f_val) || 0), 0);
+}
+async function temEstadiaAnterior(clientId, checkin) {
+  const cli = await stays(`/booking/clients/${clientId}`).catch(() => null);
+  if (!cli || !checkin) return false;
+  return (cli.reservations || []).some(x => ['booked', 'reserved', 'contract'].includes(x.type) && x.checkOutDate && x.checkOutDate < checkin);
+}
+let _motorRodando = false;
+async function motorFidelidade(force) {
+  if (!force && process.env.FIDELIDADE_AUTO !== 'on') return { rodou: false, motivo: 'desligado (FIDELIDADE_AUTO != on)' };
+  if (_motorRodando) return { rodou: false, motivo: 'já em execução' };
+  _motorRodando = true;
+  try {
+    const hoje = hojeISO();
+    const ate = addDias(hoje, -FID.diasAposCheckout); // check-out <= hoje-5
+    const de = addDias(hoje, -45);                     // janela de captura (idempotente cobre re-execuções)
+    const reservas = await staysPaginado('/booking/reservations', { from: de, to: ate, dateType: 'departure' });
+    const porCliente = {}; lerHospedes().forEach(h => { if (h.staysClientId) porCliente[h.staysClientId] = h; });
+    const creditado = lerJSON('fidelidade-creditado.json', {});
+    const ls = lerLancamentos();
+    let n = 0;
+    for (const r of reservas) {
+      if (!['booked', 'reserved', 'contract'].includes(r.type)) continue;
+      if (!r.checkOutDate || r.checkOutDate > ate) continue;   // ainda não venceu os 5 dias
+      if (creditado[r.id]) continue;                            // idempotente
+      if (RE_OTA.test((r.partner && r.partner.name) || '')) { creditado[r.id] = { skip: 'ota', em: hoje }; continue; }
+      const h = porCliente[r._idclient];
+      if (!h) continue;                                         // hóspede sem conta — reprocessa no próximo ciclo
+      // a LISTA traz price placeholder (_f_total=1); o preço real só vem no GET individual da reserva.
+      const full = await stays(`/booking/reservations/${r.id}`).catch(() => null);
+      const price = (full && full.price) || r.price;
+      const net = Math.max(0, (Number(price && price._f_total) || 0) - taxaLimpeza(price));
+      if (net <= 0) { creditado[r.id] = { skip: 'net0', em: hoje }; continue; }
+      const validade = addMeses(hoje, FID.validadeMeses);
+      const cb = Math.round(net * FID.cashbackPct * 100) / 100;
+      ls.push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'cashback', descricao: `Cash back 5% — estadia ${r.id}`, valor: cb, reservaId: r.id, validade, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+      let rec = 0;
+      if (await temEstadiaAnterior(h.staysClientId, r.checkInDate)) {
+        rec = Math.round(net * FID.recorrenciaPct * 100) / 100;
+        ls.push({ id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId, tipo: 'recorrencia', descricao: `Recorrência 5% — estadia ${r.id}`, valor: rec, reservaId: r.id, validade, criadoEm: new Date().toISOString(), criadoPor: 'motor-fidelidade' });
+      }
+      creditado[r.id] = { hospedeId: h.id, cashback: cb, recorrencia: rec, net, em: hoje };
+      n++;
+    }
+    salvarLancamentos(ls);
+    salvarJSON('fidelidade-creditado.json', creditado);
+    if (n) console.log('[motor fidelidade] creditou', n, 'estadia(s)');
+    return { rodou: true, creditadas: n };
+  } catch (e) { console.error('[motor fidelidade]', e.message); return { rodou: false, erro: e.message }; }
+  finally { _motorRodando = false; }
+}
+setInterval(() => { motorFidelidade().catch(() => { }); }, 6 * 3600 * 1000);   // periódico (idempotente)
+setTimeout(() => { motorFidelidade().catch(() => { }); }, 60 * 1000);           // pouco após o boot
 // Sanitiza parâmetro de template da Meta (sem quebra de linha/tab/4+ espaços — evita erro 132018).
 function sanitizaParam(s) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s{4,}/g, '   ').trim().slice(0, 600); }
 // Alerta interno ao Augusto (template alerta_crm, notifica a qualquer hora). Best-effort.
@@ -2042,6 +2103,12 @@ app.delete('/staff/api/hospede/conta/:hospedeId/lancamento/:id', requirePublishO
   if (rest.length === ls.length) return res.status(404).json({ erro: 'Lançamento não encontrado.' });
   salvarLancamentos(rest);
   res.json({ ok: true, conta: resumoConta(req.params.hospedeId) });
+});
+
+// Roda o motor de fidelidade sob demanda (force=true ignora o gate FIDELIDADE_AUTO). Admin/PUBLISH_KEY.
+app.post('/staff/api/hospede/fidelidade/rodar', requirePublishOrAdmin, async (req, res) => {
+  const force = !!(req.body && req.body.force);
+  res.json(await motorFidelidade(force));
 });
 
 // Webhook do Mercado Pago — pagamento aprovado vira lançamento "pagamento" na conta corrente (idempotente).
