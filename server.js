@@ -1416,7 +1416,7 @@ const AREA_HOSPEDE_URL = process.env.AREA_HOSPEDE_URL || 'https://villela-stay-b
 const lerHospedes = () => lerJSON('hospedes.json', []);
 const salvarHospedes = (h) => salvarJSON('hospedes.json', h);
 const lerPropInfo = () => lerJSON('propriedades-info.json', {});
-function semSenhaHosp(h) { const { senhaHash, ...resto } = h; return resto; }
+function semSenhaHosp(h) { const { senhaHash, pushSubs, ...resto } = h; return resto; }
 function escHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function addDias(iso, n) { const d = new Date(String(iso) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 function gerarSenhaTemp() { return (crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g, '') + 'Aa1').slice(0, 10); }
@@ -1802,6 +1802,35 @@ function reciboHtml(h, r) {
   catch (e) { console.error('[hospede] seed propriedades-info:', e.message); }
 })();
 
+// ---- Web Push (notificações do app PWA) — VAPID por env, opcional ----
+let _webpush = null; // null = não resolvido; false = indisponível (sem VAPID)
+function webpushPronto() {
+  if (_webpush !== null) return _webpush;
+  const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) { return (_webpush = false); }
+  try {
+    const wp = require('web-push');
+    wp.setVapidDetails('mailto:augusto.villela@gmail.com', pub, priv);
+    _webpush = wp;
+  } catch (e) { console.warn('[push] web-push indisponível:', e.message); _webpush = false; }
+  return _webpush;
+}
+async function enviarPush(hospedeId, payload) {
+  const wp = webpushPronto();
+  if (!wp) return false;
+  const hospedes = lerHospedes();
+  const h = hospedes.find(x => x.id === hospedeId);
+  if (!h || !Array.isArray(h.pushSubs) || !h.pushSubs.length) return false;
+  const corpo = JSON.stringify(payload || {});
+  let mudou = false;
+  await Promise.all(h.pushSubs.map(async (sub) => {
+    try { await wp.sendNotification(sub, corpo); }
+    catch (e) { if (e && (e.statusCode === 404 || e.statusCode === 410)) { h.pushSubs = h.pushSubs.filter(s => s.endpoint !== sub.endpoint); mudou = true; } }
+  }));
+  if (mudou) salvarHospedes(hospedes);
+  return true;
+}
+
 // ---- middleware de autenticação do hóspede (isolado do staff) ----
 function requireHospede(req, res, next) {
   try {
@@ -1854,6 +1883,24 @@ app.post('/hospede/api/senha', requireHospede, (req, res) => {
   if (!bcrypt.compareSync(atual, req.hospede.senhaHash)) return res.status(400).json({ erro: 'Senha atual incorreta.' });
   const hospedes = lerHospedes(); const u = hospedes.find(x => x.id === req.hospede.id);
   u.senhaHash = bcrypt.hashSync(nova, 10); u.precisaTrocarSenha = false; salvarHospedes(hospedes);
+  res.json({ ok: true });
+});
+
+// ---- notificações push (Web Push) ----
+app.get('/hospede/api/push/chave', requireHospede, (req, res) => res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || '' }));
+app.post('/hospede/api/push/subscribe', requireHospede, (req, res) => {
+  const sub = req.body && req.body.subscription;
+  if (!sub || !sub.endpoint) return res.status(400).json({ erro: 'Assinatura inválida.' });
+  const hospedes = lerHospedes(); const h = hospedes.find(x => x.id === req.hospede.id);
+  if (!h) return res.status(404).json({ erro: 'Conta não encontrada.' });
+  h.pushSubs = (h.pushSubs || []).filter(s => s.endpoint !== sub.endpoint);
+  h.pushSubs.push(sub); salvarHospedes(hospedes);
+  res.json({ ok: true });
+});
+app.post('/hospede/api/push/unsubscribe', requireHospede, (req, res) => {
+  const endpoint = req.body && req.body.endpoint;
+  const hospedes = lerHospedes(); const h = hospedes.find(x => x.id === req.hospede.id);
+  if (h && Array.isArray(h.pushSubs)) { h.pushSubs = h.pushSubs.filter(s => s.endpoint !== endpoint); salvarHospedes(hospedes); }
   res.json({ ok: true });
 });
 
@@ -2134,6 +2181,13 @@ app.patch('/staff/api/hospede/pedidos/:id', requireAuth, (req, res) => {
   }
   p.atualizadoEm = new Date().toISOString();
   salvarPedidosHosp(pedidos);
+  const rotuloP = p.tipo === 'evento' ? 'evento' : p.tipo === 'servico' ? (p.servico && p.servico.nome ? p.servico.nome : 'serviço') : p.tipo === 'manutencao' ? 'manutenção' : p.tipo === 'checkin' ? 'check-in' : 'alteração';
+  const rotuloStatus = { novo: 'Recebido', em_analise: 'Em análise', aprovado: 'Aprovado', recusado: 'Recusado', respondido: 'Respondido' }[p.status] || p.status;
+  enviarPush(p.hospedeId, {
+    title: 'Villela Stay — atualização no seu pedido',
+    body: `Seu pedido de ${rotuloP} agora está: ${rotuloStatus}.` + (p.orcamento ? ' Há um orçamento para você ver.' : ''),
+    url: '/hospede/#/pedidos',
+  }).catch(() => {});
   res.json({ ok: true, pedido: p });
 });
 

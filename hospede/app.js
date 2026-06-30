@@ -86,6 +86,7 @@ function abrirApp(usuario) {
   $('#ola').textContent = usuario.nome ? ('Olá, ' + usuario.nome.split(' ')[0] + ' 👋') : 'Olá 👋';
   montarGrade();
   carregarReservas(); // dado central (reservas + avaliações + fidelidade + indicação); demais views carregam sob demanda
+  reassinarPushSilencioso(); // mantém a assinatura de push se já houver permissão
   irPara(rotaDoHash());
 }
 window.addEventListener('hashchange', () => irPara(rotaDoHash()));
@@ -556,6 +557,7 @@ const VIEWS = {
   avaliacoes: { view: 'view-avaliacoes', enter: () => renderAvaliacoesView() },
   recibos:    { view: 'view-recibos', enter: () => renderRecibosView() },
   eventos:    { view: 'view-eventos', enter: () => renderEventosView() },
+  notificacoes: { view: 'view-notificacoes', enter: () => renderNotificacoes() },
   breve:      { view: 'view-breve', enter: () => renderBreve() },
 };
 
@@ -584,7 +586,7 @@ function irPara(rota) {
 
 // ---- botões do topo ----
 $('#btn-voltar').addEventListener('click', () => navegar('home'));
-$('#btn-notif').addEventListener('click', () => { BREVE = { t: 'Notificações', icone: 'ti-bell', x: 'Em breve o app vai te avisar por aqui sobre novidades, crédito de cash back e lembrete de check-in. Quando aparecer o pedido, é só permitir as notificações.' }; navegar('breve'); });
+$('#btn-notif').addEventListener('click', () => navegar('notificacoes'));
 
 // ---- view: casa (Wi-Fi / Manual / Guia) ----
 function garantirCasa() {
@@ -786,6 +788,70 @@ async function abrirConsultar() {
     sel.innerHTML = '<option value="">(não foi possível carregar)</option>';
     $('#cs-erro').innerHTML = 'Não conseguimos carregar as casas agora. <a href="https://villelastay.com.br" target="_blank" rel="noopener">Ver no site ↗</a>';
   }
+}
+
+// ---- Notificações push (Web Push) ----
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+function pushSuportado() { return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window); }
+
+async function ativarPush() {
+  if (!pushSuportado()) throw new Error('Seu navegador não suporta notificações.');
+  const { publicKey } = await api('/push/chave');
+  if (!publicKey) throw new Error('As notificações ainda não estão disponíveis. Tente mais tarde.');
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error('Permissão negada. Você pode liberar as notificações nas configurações do navegador.');
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+  await api('/push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: sub }) });
+  return true;
+}
+async function desativarPush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) { await api('/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {}); await sub.unsubscribe(); }
+  } catch (e) { /* ignora */ }
+}
+async function reassinarPushSilencioso() {
+  try {
+    if (!pushSuportado() || Notification.permission !== 'granted') return;
+    const { publicKey } = await api('/push/chave'); if (!publicKey) return;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+    await api('/push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: sub }) });
+  } catch (e) { /* silencioso */ }
+}
+async function renderNotificacoes() {
+  const box = $('#notificacoes');
+  if (!pushSuportado()) {
+    box.innerHTML = '<div class="breve-card"><div class="breve-ico"><i class="ti ti-bell-off" aria-hidden="true"></i></div><h3>Notificações</h3><p>Seu navegador não suporta notificações push. Dica: instale o app na tela inicial para receber avisos.</p></div>';
+    return;
+  }
+  const estado = Notification.permission;
+  let assinado = false;
+  try { const reg = await navigator.serviceWorker.ready; assinado = !!(await reg.pushManager.getSubscription()); } catch (e) {}
+  let corpo;
+  if (estado === 'granted' && assinado) {
+    corpo = '<p>✅ Notificações ativadas. Você recebe avisos sobre cash back, lembrete de check-in e respostas aos seus pedidos.</p><button type="button" class="btn secund" id="np-off">Desativar notificações</button>';
+  } else if (estado === 'denied') {
+    corpo = '<p>As notificações estão bloqueadas no seu navegador. Para ativar, libere as notificações para este site nas configurações do navegador.</p>';
+  } else {
+    corpo = '<p>Ative e receba avisos sobre cash back, lembrete de check-in e respostas aos seus pedidos — direto no seu celular.</p><button type="button" class="btn" id="np-on">Ativar notificações</button>';
+  }
+  box.innerHTML = `<div class="breve-card"><div class="breve-ico"><i class="ti ti-bell" aria-hidden="true"></i></div><h3>Notificações</h3>${corpo}<p id="np-msg" class="dica"></p></div>`;
+  const on = $('#np-on');
+  if (on) on.addEventListener('click', async () => { const m = $('#np-msg'); m.className = 'dica'; m.textContent = 'Ativando…'; try { await ativarPush(); renderNotificacoes(); } catch (e) { m.className = 'erro'; m.textContent = e.message; } });
+  const off = $('#np-off');
+  if (off) off.addEventListener('click', async () => { await desativarPush(); renderNotificacoes(); });
 }
 
 boot();

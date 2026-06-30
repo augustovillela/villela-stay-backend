@@ -1,7 +1,7 @@
 /* Service worker da Área do Hóspede (PWA). Fase A: instalável + shell em cache (network-first).
    NUNCA cacheia /hospede/api (dados sempre frescos). Offline da info da casa = Fase E. */
 'use strict';
-const CACHE = 'villela-hospede-v1';
+const CACHE = 'villela-hospede-v2';
 const SHELL = ['/hospede/', '/hospede/index.html', '/hospede/app.js', '/hospede/styles.css', '/hospede/manifest.json'];
 
 self.addEventListener('install', (e) => {
@@ -33,4 +33,28 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
-/* Web Push entra na Fase B (VAPID): listeners 'push' e 'notificationclick' serão adicionados aqui. */
+/* Web Push (Fase B): recebe a notificação e abre o app no clique. */
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data && e.data.text ? e.data.text() : '' }; }
+  const titulo = d.title || 'Villela Stay';
+  const opts = {
+    body: d.body || '',
+    icon: '/staff/logo.png',
+    badge: '/staff/logo.png',
+    data: { url: d.url || '/hospede/' },
+    tag: d.tag || 'villela',
+  };
+  e.waitUntil(self.registration.showNotification(titulo, opts));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const alvo = (e.notification.data && e.notification.data.url) || '/hospede/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cls) => {
+      for (const c of cls) { if (c.url.includes('/hospede') && 'focus' in c) { c.navigate(alvo); return c.focus(); } }
+      if (self.clients.openWindow) return self.clients.openWindow(alvo);
+    })
+  );
+});
