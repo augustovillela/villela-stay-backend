@@ -501,15 +501,15 @@ const GRUPOS = [
   ] },
   { titulo: 'Serviços e experiências', itens: [
     { rotulo: 'Serviços', icone: 'ti-bell-ringing', rota: 'servicos' },
-    { rotulo: 'Gastronomia', icone: 'ti-tools-kitchen-2', breve: { t: 'Gastronomia', icone: 'ti-tools-kitchen-2', x: 'Em breve: nossas recomendações de gastronomia e a reserva de café da manhã, chef e buffet direto por aqui.', wa: 'Ola! Quero saber das opcoes de gastronomia.' } },
-    { rotulo: 'Turismo', icone: 'ti-building-monument', breve: { t: 'Turismo em Brasília', icone: 'ti-building-monument', x: 'Em breve: roteiros e passeios selecionados pela Villela Stay para a sua estadia em Brasília.', wa: 'Ola! Quero dicas de turismo em Brasilia.' } },
+    { rotulo: 'Gastronomia', icone: 'ti-tools-kitchen-2', rota: 'gastronomia' },
+    { rotulo: 'Turismo', icone: 'ti-building-monument', rota: 'turismo' },
     { rotulo: 'Eventos', icone: 'ti-confetti', rota: 'eventos' },
-    { rotulo: 'Pacotes', icone: 'ti-package', breve: { t: 'Pacotes e ofertas', icone: 'ti-package', x: 'Em breve: pacotes especiais e ofertas exclusivas para hóspedes Villela Stay.', wa: 'Ola! Quero conhecer os pacotes da Villela Stay.' } },
+    { rotulo: 'Pacotes', icone: 'ti-package', rota: 'pacotes' },
     { rotulo: 'Manutenção', icone: 'ti-tool', acao: 'manutencao' },
   ] },
   { titulo: 'Acesso e ajuda', itens: [
     { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
-    { rotulo: 'Ajuda IA', icone: 'ti-robot', breve: { t: 'Ajuda IA', icone: 'ti-robot', x: 'Em breve: um assistente inteligente da Villela Stay para tirar suas dúvidas a qualquer hora, com base nas informações da sua reserva e da casa.', wa: 'Ola! Tenho uma duvida.' } },
+    { rotulo: 'Ajuda IA', icone: 'ti-robot', rota: 'ajudaia' },
     { rotulo: 'FAQ', icone: 'ti-help-circle', link: 'https://villelastay.com.br/faq.html' },
     { rotulo: 'Redes', icone: 'ti-brand-instagram', link: 'https://villelastay.com.br/links.html' },
     { rotulo: 'Links', icone: 'ti-link', link: 'https://villelastay.com.br/links.html' },
@@ -557,6 +557,10 @@ const VIEWS = {
   avaliacoes: { view: 'view-avaliacoes', enter: () => renderAvaliacoesView() },
   recibos:    { view: 'view-recibos', enter: () => renderRecibosView() },
   eventos:    { view: 'view-eventos', enter: () => renderEventosView() },
+  gastronomia: { view: 'view-gastronomia', enter: () => renderConteudo('gastronomia', 'Ver no mapa') },
+  turismo:    { view: 'view-turismo', enter: () => renderConteudo('turismo', 'Ver no mapa') },
+  pacotes:    { view: 'view-pacotes', enter: () => renderConteudo('pacotes', 'Tenho interesse') },
+  ajudaia:    { view: 'view-ajudaia', enter: () => renderAjudaIA() },
   notificacoes: { view: 'view-notificacoes', enter: () => renderNotificacoes() },
   breve:      { view: 'view-breve', enter: () => renderBreve() },
 };
@@ -788,6 +792,66 @@ async function abrirConsultar() {
     sel.innerHTML = '<option value="">(não foi possível carregar)</option>';
     $('#cs-erro').innerHTML = 'Não conseguimos carregar as casas agora. <a href="https://villelastay.com.br" target="_blank" rel="noopener">Ver no site ↗</a>';
   }
+}
+
+// ---- Vitrines de conteúdo (Gastronomia / Turismo / Pacotes) ----
+const CONTEUDO_CACHE = {};
+async function renderConteudo(secao, labelBtn) {
+  const box = $('#' + secao); const introEl = $('#' + secao + '-intro');
+  box.innerHTML = '<p class="vazio">Carregando…</p>';
+  try {
+    if (!CONTEUDO_CACHE[secao]) CONTEUDO_CACHE[secao] = await api('/conteudo/' + secao);
+    const data = CONTEUDO_CACHE[secao];
+    if (introEl) introEl.textContent = data.intro || '';
+    const itens = data.itens || [];
+    if (!itens.length) { box.innerHTML = '<p class="vazio">Em breve, novidades por aqui.</p>'; return; }
+    box.innerHTML = itens.map((i) => `
+      <div class="serv-card">
+        <div class="serv-emoji">${i.emoji || '✨'}</div>
+        <strong>${esc(i.titulo)}</strong>
+        <p class="serv-desc">${esc(i.desc || '')}</p>
+        ${i.link ? `<a class="btn secund btn-serv" href="${esc(i.link)}" target="_blank" rel="noopener">${esc(labelBtn || 'Abrir')}</a>` : ''}
+      </div>`).join('');
+  } catch (e) { box.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }
+}
+
+// ---- Ajuda IA (chat com a base da Villela) ----
+let CHAT_HIST = [];
+let CHAT_INIT = false;
+function chatAdd(role, texto, temp) {
+  const msgs = $('#chat-msgs');
+  const div = document.createElement('div');
+  div.className = 'chat-bolha chat-' + role + (temp ? ' chat-temp' : '');
+  div.textContent = texto;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+function renderAjudaIA() {
+  if (CHAT_INIT) return;
+  CHAT_INIT = true;
+  chatAdd('assistant', 'Olá! Sou o assistente da Villela Stay. 😊 Posso ajudar com dúvidas sobre a sua reserva, check-in, serviços e a região. Como posso ajudar?');
+  $('#chat-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const inp = $('#chat-input'); const texto = inp.value.trim();
+    if (!texto) return;
+    inp.value = '';
+    chatAdd('user', texto);
+    const prior = CHAT_HIST.slice();
+    CHAT_HIST.push({ role: 'user', content: texto });
+    const pensando = chatAdd('assistant', '…', true);
+    const btn = $('#chat-send'); btn.disabled = true;
+    try {
+      const r = await api('/chat', { method: 'POST', body: JSON.stringify({ mensagem: texto, historico: prior }) });
+      pensando.remove();
+      chatAdd('assistant', r.resposta);
+      CHAT_HIST.push({ role: 'assistant', content: r.resposta });
+      if (CHAT_HIST.length > 16) CHAT_HIST = CHAT_HIST.slice(-16);
+    } catch (e) {
+      pensando.remove();
+      chatAdd('assistant', e.message);
+    } finally { btn.disabled = false; inp.focus(); }
+  });
 }
 
 // ---- Notificações push (Web Push) ----

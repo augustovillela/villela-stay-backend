@@ -1560,6 +1560,52 @@ const FID_PADRAO = {
 const lerFidConfig = () => Object.assign({}, FID_PADRAO, lerJSON('fidelidade-config.json', {}));
 const salvarFidConfig = (c) => salvarJSON('fidelidade-config.json', c);
 
+// ---- Vitrines de conteúdo da Área do Hóspede (Gastronomia, Turismo, Pacotes) ----
+// Editável pelo admin OU PUBLISH_KEY (conteudo-hospede.json). Itens: { id, titulo, desc, emoji, link, ativo }.
+const mapa = (q) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q + ', Brasília');
+const wapp = (t) => 'https://wa.me/556191935013?text=' + encodeURIComponent(t);
+const SECOES_CONTEUDO = ['gastronomia', 'turismo', 'pacotes'];
+const CONTEUDO_PADRAO = {
+  gastronomia: {
+    intro: 'Nossas sugestões para comer bem em Brasília. Quer reserva ou recomendação sob medida? Fale com o concierge.',
+    itens: [
+      { id: 'pontao', emoji: '🌅', titulo: 'Pontão do Lago Sul', desc: 'Polo gastronômico à beira do Lago Paranoá, com bares e restaurantes — ótimo para o pôr do sol.', link: mapa('Pontão do Lago Sul'), ativo: true },
+      { id: 'universal', emoji: '🍽️', titulo: 'Universal Diner', desc: 'Cozinha autoral premiada, uma das referências da cidade.', link: mapa('Universal Diner'), ativo: true },
+      { id: 'mangai', emoji: '🌵', titulo: 'Mangai', desc: 'Comida nordestina farta, em buffet — clássico para conhecer a culinária regional.', link: mapa('Mangai Brasília'), ativo: true },
+      { id: 'fogodechao', emoji: '🥩', titulo: 'Fogo de Chão', desc: 'Churrascaria de rodízio premium, tradição brasiliense.', link: mapa('Fogo de Chão Brasília'), ativo: true },
+      { id: 'domfrancisco', emoji: '🍷', titulo: 'Dom Francisco', desc: 'Restaurante tradicional, ideal para um jantar especial.', link: mapa('Dom Francisco Brasília'), ativo: true },
+    ],
+  },
+  turismo: {
+    intro: 'Roteiros e pontos imperdíveis de Brasília — patrimônio da humanidade pela UNESCO. Toque para abrir no mapa.',
+    itens: [
+      { id: 'congresso', emoji: '🏛️', titulo: 'Congresso Nacional', desc: 'Ícone de Niemeyer, com visitas guiadas gratuitas.', link: mapa('Congresso Nacional'), ativo: true },
+      { id: 'catedral', emoji: '⛪', titulo: 'Catedral Metropolitana', desc: 'Obra-prima de Niemeyer, com vitrais de Marianne Peretti.', link: mapa('Catedral Metropolitana de Brasília'), ativo: true },
+      { id: 'pracatrespoderes', emoji: '🗽', titulo: 'Praça dos Três Poderes', desc: 'Coração cívico da capital, com museus e esculturas.', link: mapa('Praça dos Três Poderes'), ativo: true },
+      { id: 'pontejk', emoji: '🌉', titulo: 'Ponte JK', desc: 'Arquitetura premiada sobre o lago — lindíssima ao entardecer.', link: mapa('Ponte JK Brasília'), ativo: true },
+      { id: 'dombosco', emoji: '🔷', titulo: 'Santuário Dom Bosco', desc: 'Interior tomado por vitrais azuis — uma das vistas mais bonitas da cidade.', link: mapa('Santuário Dom Bosco'), ativo: true },
+      { id: 'parquecidade', emoji: '🌳', titulo: 'Parque da Cidade', desc: 'Maior parque urbano da América Latina, perfeito para caminhar e pedalar.', link: mapa('Parque da Cidade Sarah Kubitschek'), ativo: true },
+    ],
+  },
+  pacotes: {
+    intro: 'Experiências e pacotes da Villela Stay. Cada um é montado sob medida — fale com a gente para um orçamento.',
+    itens: [
+      { id: 'romantico', emoji: '💞', titulo: 'Pacote Romântico', desc: 'Estadia + jantar com personal chef e um toque especial de decoração.', link: wapp('Olá! Tenho interesse no Pacote Romântico da Villela Stay.'), ativo: true },
+      { id: 'evento', emoji: '🎉', titulo: 'Pacote Eventos', desc: 'Casa completa + buffet e estrutura para a sua comemoração.', link: wapp('Olá! Quero um orçamento do Pacote Eventos.'), ativo: true },
+      { id: 'longa', emoji: '🗓️', titulo: 'Estadia Longa', desc: 'Condições especiais para quem fica mais tempo conosco.', link: wapp('Olá! Quero saber das condições para estadia longa.'), ativo: true },
+      { id: 'dayuse', emoji: '☀️', titulo: 'Day Use', desc: 'Aproveite a casa e a piscina por um dia, sem pernoite (sujeito à disponibilidade).', link: wapp('Olá! Quero saber sobre o Day Use.'), ativo: true },
+    ],
+  },
+};
+function lerConteudo() {
+  const salvo = lerJSON('conteudo-hospede.json', null);
+  if (!salvo || typeof salvo !== 'object') return JSON.parse(JSON.stringify(CONTEUDO_PADRAO));
+  const out = {};
+  for (const s of SECOES_CONTEUDO) out[s] = salvo[s] && Array.isArray(salvo[s].itens) ? salvo[s] : CONTEUDO_PADRAO[s];
+  return out;
+}
+const salvarConteudo = (c) => salvarJSON('conteudo-hospede.json', c);
+
 // ---- Conta corrente do hóspede (extrato de lançamentos + saldo) + pagamento (Mercado Pago) ----
 const lerLancamentos = () => lerJSON('lancamentos.json', []);
 const salvarLancamentos = (l) => salvarJSON('lancamentos.json', l);
@@ -1953,6 +1999,81 @@ app.get('/hospede/api/meus-pedidos', requireHospede, (req, res) => {
 app.get('/hospede/api/servicos', requireHospede, (req, res) => res.json({ servicos: lerServicos().filter(s => s.ativo !== false) }));
 // Config do programa de fidelidade (textos exibidos ao hóspede).
 app.get('/hospede/api/fidelidade-config', requireHospede, (req, res) => res.json(lerFidConfig()));
+app.get('/hospede/api/conteudo/:secao', requireHospede, (req, res) => {
+  const s = String(req.params.secao || '');
+  if (!SECOES_CONTEUDO.includes(s)) return res.status(404).json({ erro: 'Seção não encontrada.' });
+  const sec = lerConteudo()[s] || { intro: '', itens: [] };
+  res.json({ intro: sec.intro || '', itens: (sec.itens || []).filter(i => i && i.ativo !== false) });
+});
+
+// ---- Ajuda IA: chat do hóspede com a base da Villela (FAQ + reserva), via API da Claude ----
+let _faqTexto = null;
+function faqTexto() {
+  if (_faqTexto !== null) return _faqTexto;
+  try { _faqTexto = fs.readFileSync(path.join(__dirname, 'hospede-faq.md'), 'utf8'); }
+  catch (e) { console.warn('[chat] hospede-faq.md não encontrado'); _faqTexto = ''; }
+  return _faqTexto;
+}
+const _chatHits = new Map();
+function chatThrottle(id) {
+  const agora = Date.now(), janela = 60000, max = 12;
+  const arr = (_chatHits.get(id) || []).filter(t => agora - t < janela);
+  if (arr.length >= max) return false;
+  arr.push(agora); _chatHits.set(id, arr); return true;
+}
+app.post('/hospede/api/chat', requireHospede, async (req, res) => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return res.status(503).json({ erro: 'O assistente está em ativação. Por enquanto, fale com a gente pelo WhatsApp que ajudamos na hora: wa.me/556191935013' });
+  if (!chatThrottle(req.hospede.id)) return res.status(429).json({ erro: 'Você enviou muitas mensagens seguidas. Aguarde um minutinho e tente de novo.' });
+  const msg = String((req.body && req.body.mensagem) || '').trim().slice(0, 1500);
+  if (!msg) return res.status(400).json({ erro: 'Escreva a sua dúvida.' });
+  const histIn = Array.isArray(req.body && req.body.historico) ? req.body.historico : [];
+  const historico = histIn
+    .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .slice(-8).map(m => ({ role: m.role, content: String(m.content).slice(0, 2000) }));
+  try {
+    let contexto = '';
+    try {
+      const reservas = await reservasDoHospede(req.hospede, false);
+      const ativas = (reservas || []).filter(r => r.status !== 'canceled' && r.status !== 'blocked');
+      if (ativas.length) {
+        contexto = '\n\nReservas deste hóspede (' + (req.hospede.nome || 'hóspede') + '):\n' + ativas.map(r =>
+          `- ${r.imovelTitulo || r.imovel || 'Hospedagem'} (${r.imovel || ''}): ${r.checkin} a ${r.checkout}, ${r.hospedes || '?'} hóspede(s), status ${r.statusRotulo || r.status}.`).join('\n');
+        const info = lerPropInfo();
+        for (const c of [...new Set(ativas.map(r => r.imovel).filter(Boolean))]) {
+          const p = info[c]; if (!p) continue;
+          contexto += `\nCasa ${c}: check-in ${p.checkinHora || '15h'}, check-out ${p.checkoutHora || '11h'}.` + (p.observacoes ? ' Observações: ' + p.observacoes : '');
+        }
+      }
+    } catch (e) { /* sem contexto de reserva */ }
+    const system = `Você é o assistente virtual da Villela Stay, hospedagem premium por temporada no Lago Sul, Brasília-DF. Atenda como um anfitrião premiado: acolhedor, cordial, direto e prestativo. Responda SEMPRE no mesmo idioma da pergunta do hóspede (português, inglês ou espanhol).
+
+Use como fonte de verdade o FAQ oficial abaixo e os dados da reserva do hóspede. Regras:
+- Para preço, contrato, cancelamento, taxas e datas especiais, siga EXATAMENTE o FAQ. Nunca invente valores nem políticas.
+- Se a dúvida fugir do FAQ, for exceção comercial, ou você não tiver certeza, oriente o hóspede a falar pelo WhatsApp (wa.me/556191935013). Não invente.
+- Wi-Fi e códigos de acesso (portão/fechadura) NÃO ficam aqui: oriente o hóspede a abrir o ícone "Wi-Fi" no app — esses dados são liberados a partir de 2 dias antes do check-in.
+- Seja conciso (no máximo uns 6 parágrafos curtos) e responda só o que foi perguntado.
+
+=== FAQ OFICIAL DA VILLELA STAY ===
+${faqTexto()}
+=== FIM DO FAQ ===${contexto}`;
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: process.env.CHAT_MODEL || 'claude-haiku-4-5',
+        max_tokens: 800,
+        system,
+        messages: [...historico, { role: 'user', content: msg }],
+      }),
+    });
+    if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[chat] anthropic', r.status, t.slice(0, 300)); return res.status(502).json({ erro: 'Não consegui responder agora. Tente de novo em instantes ou fale pelo WhatsApp: wa.me/556191935013' }); }
+    const d = await r.json();
+    const resposta = (d.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
+      || 'Desculpe, não consegui formular uma resposta. Pode reformular, ou falar com a gente pelo WhatsApp?';
+    res.json({ resposta });
+  } catch (e) { console.error('[chat]', e.message); res.status(502).json({ erro: 'Falha ao falar com o assistente. Tente novamente em instantes.' }); }
+});
 
 // Criar pedido: ALTERAÇÃO de reserva (só direta/WhatsApp), EVENTO ou SERVIÇO extra. Vai p/ aprovação do Augusto.
 app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
@@ -2197,6 +2318,28 @@ app.get('/staff/api/hospede/fidelidade', requireAuth, (req, res) => {
     avaliacoes: lerAvaliacoes().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))),
     indicacoes: lerIndicacoes().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))),
   });
+});
+
+// Vitrines de conteúdo (Gastronomia/Turismo/Pacotes) — editar (admin OU PUBLISH_KEY).
+app.get('/staff/api/hospede/conteudo', requirePublishOrAdmin, (req, res) => res.json({ conteudo: lerConteudo(), secoes: SECOES_CONTEUDO }));
+app.put('/staff/api/hospede/conteudo', requirePublishOrAdmin, (req, res) => {
+  const body = req.body && req.body.conteudo;
+  if (!body || typeof body !== 'object') return res.status(400).json({ erro: 'Envie o conteúdo.' });
+  const slug = (s) => semAcento(s).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || ('it-' + crypto.randomBytes(3).toString('hex'));
+  const atual = lerConteudo();
+  const out = {};
+  for (const s of SECOES_CONTEUDO) {
+    const sec = body[s] || atual[s] || { intro: '', itens: [] };
+    const vistos = new Set();
+    const itens = (Array.isArray(sec.itens) ? sec.itens : []).filter(i => i && String(i.titulo || '').trim()).map(i => {
+      let id = String(i.id || '').trim() || slug(String(i.titulo));
+      while (vistos.has(id)) id += '-2'; vistos.add(id);
+      return { id, emoji: String(i.emoji || '✨').slice(0, 6), titulo: String(i.titulo).trim().slice(0, 80), desc: String(i.desc || '').slice(0, 400), link: String(i.link || '').slice(0, 500), ativo: i.ativo !== false };
+    });
+    out[s] = { intro: String(sec.intro || '').slice(0, 400), itens };
+  }
+  salvarConteudo(out);
+  res.json({ ok: true, conteudo: out });
 });
 
 // Catálogo de serviços extras — editar (admin OU PUBLISH_KEY): preços, textos, ativar/desativar.
