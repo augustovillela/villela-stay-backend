@@ -1910,9 +1910,9 @@ app.get('/hospede/api/fidelidade-config', requireHospede, (req, res) => res.json
 // Criar pedido: ALTERAÇÃO de reserva (só direta/WhatsApp), EVENTO ou SERVIÇO extra. Vai p/ aprovação do Augusto.
 app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
   const d = req.body || {};
-  const tipo = ['evento', 'servico'].includes(d.tipo) ? d.tipo : 'alteracao';
+  const tipo = ['evento', 'servico', 'manutencao', 'checkin'].includes(d.tipo) ? d.tipo : 'alteracao';
   const reservaId = String(d.reservaId || '').trim();
-  if (tipo !== 'servico' && !reservaId) return res.status(400).json({ erro: 'Informe a reserva.' });
+  if (!['servico', 'manutencao', 'checkin'].includes(tipo) && !reservaId) return res.status(400).json({ erro: 'Informe a reserva.' });
   try {
     let r = null;
     if (reservaId) {
@@ -1937,22 +1937,34 @@ app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
       if (!cat) return res.status(400).json({ erro: 'Serviço inválido.' });
       servico = { servicoId: cat.id, nome: cat.nome, data: String(d.data || ''), horario: String(d.horario || ''), pessoas: d.pessoas != null && d.pessoas !== '' ? Number(d.pessoas) : null, observacoes: String(d.observacoes || '').slice(0, 1000) };
     }
+    const manutencao = tipo === 'manutencao' ? {
+      local: String(d.local || '').slice(0, 200), urgencia: String(d.urgencia || '').slice(0, 40),
+      descricao: String(d.descricaoManutencao || d.descricao || '').slice(0, 1000),
+    } : null;
+    const checkin = tipo === 'checkin' ? {
+      horarioChegada: String(d.horarioChegada || '').slice(0, 20), pessoas: d.pessoas != null && d.pessoas !== '' ? Number(d.pessoas) : null,
+      observacoes: String(d.observacoes || '').slice(0, 1000),
+    } : null;
     if (tipo === 'alteracao' && alteracao && !alteracao.novoCheckin && !alteracao.novoCheckout && !alteracao.novoImovel && alteracao.novoHospedes == null && !String(d.mensagem || '').trim())
       return res.status(400).json({ erro: 'Diga o que deseja alterar (datas, imóvel, nº de hóspedes ou uma mensagem).' });
     if (tipo === 'evento' && !evento.data && evento.convidados == null && !evento.descricao)
       return res.status(400).json({ erro: 'Informe a data do evento, o número de convidados ou uma descrição.' });
+    if (tipo === 'manutencao' && !manutencao.descricao && !String(d.mensagem || '').trim())
+      return res.status(400).json({ erro: 'Descreva o problema de manutenção.' });
+    if (tipo === 'checkin' && !checkin.horarioChegada && !checkin.observacoes && !String(d.mensagem || '').trim())
+      return res.status(400).json({ erro: 'Informe o horário previsto de chegada ou uma observação.' });
 
     const pedidos = lerPedidosHosp();
     const pedido = {
       id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', staysClientId: req.hospede.staysClientId || '',
       tipo, reservaId, imovel: r ? r.imovel : '', imovelTitulo: r ? r.imovelTitulo : '', checkinAtual: r ? r.checkin : '', checkoutAtual: r ? r.checkout : '',
-      alteracao, evento, servico, mensagem: String(d.mensagem || '').slice(0, 1000),
+      alteracao, evento, servico, manutencao, checkin, mensagem: String(d.mensagem || '').slice(0, 1000),
       status: 'novo', orcamento: null, respostaAdmin: '',
       criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
     };
     pedidos.unshift(pedido);
     salvarPedidosHosp(pedidos);
-    const rotuloTipo = tipo === 'evento' ? 'EVENTO' : tipo === 'servico' ? 'SERVICO (' + servico.nome + ')' : 'alteracao de reserva';
+    const rotuloTipo = tipo === 'evento' ? 'EVENTO' : tipo === 'servico' ? 'SERVICO (' + servico.nome + ')' : tipo === 'manutencao' ? 'MANUTENCAO' : tipo === 'checkin' ? 'CHECK-IN' : 'alteracao de reserva';
     alertaAugusto(`Novo pedido de ${rotuloTipo} de ${pedido.hospedeNome || 'hospede'}${reservaId ? ' - reserva ' + reservaId : ''}${r && r.imovel ? ' (' + r.imovel + ')' : ''}. Veja no Portal Staff > Pedidos de hospedes.`).catch(() => { });
     res.json({ ok: true, pedido });
   } catch (e) { console.error('[hospede pedido]', e.message); res.status(502).json({ erro: 'Falha ao registrar o pedido. Tente novamente.' }); }

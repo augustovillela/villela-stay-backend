@@ -393,6 +393,12 @@ $('#form-pedido').addEventListener('submit', async (ev) => {
   } else if (tipo === 'evento') {
     corpo.reservaId = reservaId;
     corpo.dataEvento = val('mp-data'); corpo.convidados = val('mp-conv'); corpo.descricaoEvento = val('mp-desc');
+  } else if (tipo === 'manutencao') {
+    corpo.reservaId = val('mp-mn-reserva');
+    corpo.local = val('mp-mn-local'); corpo.urgencia = val('mp-mn-urg'); corpo.descricaoManutencao = val('mp-mn-desc');
+  } else if (tipo === 'checkin') {
+    corpo.reservaId = val('mp-ci-reserva');
+    corpo.horarioChegada = val('mp-ci-hora'); corpo.pessoas = val('mp-ci-pessoas'); corpo.observacoes = val('mp-ci-obs');
   } else {
     corpo.reservaId = reservaId;
     corpo.novoCheckin = val('mp-cin'); corpo.novoCheckout = val('mp-cout'); corpo.novoImovel = val('mp-imovel'); corpo.novoHospedes = val('mp-hosp');
@@ -423,13 +429,21 @@ async function carregarPedidos() {
         if (p.servico.horario) det.push(esc(p.servico.horario));
         if (p.servico.pessoas != null) det.push(p.servico.pessoas + ' pessoa(s)');
         if (p.servico.observacoes) det.push(esc(p.servico.observacoes));
+      } else if (p.tipo === 'manutencao' && p.manutencao) {
+        if (p.manutencao.local) det.push('Local: ' + esc(p.manutencao.local));
+        if (p.manutencao.urgencia) det.push(esc(p.manutencao.urgencia));
+        if (p.manutencao.descricao) det.push(esc(p.manutencao.descricao));
+      } else if (p.tipo === 'checkin' && p.checkin) {
+        if (p.checkin.horarioChegada) det.push('Chegada: ' + esc(p.checkin.horarioChegada));
+        if (p.checkin.pessoas != null) det.push(p.checkin.pessoas + ' hóspede(s)');
+        if (p.checkin.observacoes) det.push(esc(p.checkin.observacoes));
       } else if (p.alteracao) {
         if (p.alteracao.novoCheckin) det.push('Novo check-in: ' + fmtData(p.alteracao.novoCheckin));
         if (p.alteracao.novoCheckout) det.push('Novo check-out: ' + fmtData(p.alteracao.novoCheckout));
         if (p.alteracao.novoImovel) det.push('Imóvel: ' + esc(p.alteracao.novoImovel));
         if (p.alteracao.novoHospedes != null) det.push(p.alteracao.novoHospedes + ' hóspede(s)');
       }
-      const titulo = p.tipo === 'evento' ? '🎉 Evento' : p.tipo === 'servico' ? '🛎️ ' + esc((p.servico && p.servico.nome) || 'Serviço') : '✏️ Alteração';
+      const titulo = p.tipo === 'evento' ? '🎉 Evento' : p.tipo === 'servico' ? '🛎️ ' + esc((p.servico && p.servico.nome) || 'Serviço') : p.tipo === 'manutencao' ? '🔧 Manutenção' : p.tipo === 'checkin' ? '🚪 Check-in' : '✏️ Alteração';
       const ctx = (p.tipo !== 'servico' && (p.imovelTitulo || p.imovel)) ? ' · ' + esc(p.imovelTitulo || p.imovel) : '';
       const orc = p.orcamento ? `<div class="ped-orc">💰 Orçamento: ${p.orcamento.valor != null ? fmtMoeda(p.orcamento.valor, 'BRL') : 'a combinar'}${p.orcamento.detalhes ? ' — ' + esc(p.orcamento.detalhes) : ''}</div>` : '';
       const resp = p.respostaAdmin ? `<div class="ped-resp">💬 ${esc(p.respostaAdmin)}</div>` : '';
@@ -469,12 +483,12 @@ function openLink(u) { if (u) window.open(u, '_blank', 'noopener'); }
 const GRUPOS = [
   { titulo: 'Minha estadia', itens: [
     { rotulo: 'Reservas', icone: 'ti-calendar-event', rota: 'reservas' },
-    { rotulo: 'Check-in', icone: 'ti-door-enter', breve: { t: 'Check-in online', icone: 'ti-door-enter', x: 'Em breve você fará o check-in pelo app, agilizando a sua chegada. Por ora, combinamos tudo pelo WhatsApp.', wa: 'Ola! Quero combinar o meu check-in.' } },
+    { rotulo: 'Check-in', icone: 'ti-door-enter', acao: 'checkin' },
     { rotulo: 'Wi-Fi', icone: 'ti-wifi', rota: 'casa' },
     { rotulo: 'Manual', icone: 'ti-book-2', rota: 'casa' },
     { rotulo: 'Guia', icone: 'ti-map-2', rota: 'casa' },
     { rotulo: 'Recibos', icone: 'ti-receipt', rota: 'recibos' },
-    { rotulo: 'Consultar', icone: 'ti-search', link: 'https://villelastay.com.br' },
+    { rotulo: 'Consultar', icone: 'ti-search', acao: 'consultar' },
     { rotulo: 'Pedidos', icone: 'ti-inbox', rota: 'pedidos' },
   ] },
   { titulo: 'Conta e vantagens', itens: [
@@ -490,7 +504,7 @@ const GRUPOS = [
     { rotulo: 'Turismo', icone: 'ti-building-monument', breve: { t: 'Turismo em Brasília', icone: 'ti-building-monument', x: 'Em breve: roteiros e passeios selecionados pela Villela Stay para a sua estadia em Brasília.', wa: 'Ola! Quero dicas de turismo em Brasilia.' } },
     { rotulo: 'Eventos', icone: 'ti-confetti', rota: 'eventos' },
     { rotulo: 'Pacotes', icone: 'ti-package', breve: { t: 'Pacotes e ofertas', icone: 'ti-package', x: 'Em breve: pacotes especiais e ofertas exclusivas para hóspedes Villela Stay.', wa: 'Ola! Quero conhecer os pacotes da Villela Stay.' } },
-    { rotulo: 'Manutenção', icone: 'ti-tool', breve: { t: 'Reportar manutenção', icone: 'ti-tool', x: 'Em breve você poderá reportar qualquer problema na casa por aqui. Enquanto isso, fale com a gente pelo WhatsApp que resolvemos rápido.', wa: 'Ola! Preciso reportar uma manutencao na casa.' } },
+    { rotulo: 'Manutenção', icone: 'ti-tool', acao: 'manutencao' },
   ] },
   { titulo: 'Acesso e ajuda', itens: [
     { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
@@ -520,7 +534,7 @@ function montarGrade() {
       const it = GRUPOS[+btn.dataset.gi].itens[+btn.dataset.ii];
       if (!it) return;
       if (it.link) return openLink(it.link);
-      if (it.acao === 'senha') return abrirModalSenha();
+      if (it.acao && ACOES[it.acao]) return ACOES[it.acao]();
       if (it.breve) { BREVE = it.breve; return navegar('breve'); }
       if (it.rota) navegar(it.rota);
     });
@@ -678,6 +692,100 @@ function renderBreve() {
     <p>${esc(b.x || '')}</p>
     ${b.wa ? `<a class="btn" target="_blank" rel="noopener" href="https://wa.me/556191935013?text=${encodeURIComponent(b.wa)}">Falar no WhatsApp</a>` : ''}
   </div>`;
+}
+
+// ====================================================================
+// Fase B — Manutenção, Check-in online e Consultar (disponibilidade)
+// ====================================================================
+const ACOES = { senha: abrirModalSenha, manutencao: abrirManutencao, checkin: abrirCheckin, consultar: abrirConsultar };
+const STAYS_MOTOR = 'https://ville.stays.com.br/pt/apartment/';
+
+function reservasAtivas() { return (RESERVAS || []).filter((r) => r.status !== 'canceled' && r.status !== 'blocked'); }
+
+// ---- Manutenção (vira pedido tipo=manutencao) ----
+function abrirManutencao() {
+  $('#mp-titulo').textContent = '🔧 Reportar manutenção';
+  $('#mp-sub').textContent = 'Conte o que está acontecendo na casa — resolvemos o quanto antes.';
+  $('#mp-msgfeedback').className = 'erro'; $('#mp-msgfeedback').textContent = '';
+  $('#mp-msg').value = '';
+  const opts = ['<option value="">— qual casa? —</option>']
+    .concat(reservasAtivas().map((r) => `<option value="${esc(r.id)}">${esc(r.imovelTitulo || r.imovel || 'Reserva')}</option>`)).join('');
+  $('#mp-campos').innerHTML = `
+    <label>Casa <select id="mp-mn-reserva">${opts}</select></label>
+    <label>Onde / qual item <input type="text" id="mp-mn-local" placeholder="Ex.: chuveiro da suíte, ar-condicionado da sala"></label>
+    <label>Urgência <select id="mp-mn-urg"><option value="">Normal</option><option>Urgente</option><option>Pode esperar</option></select></label>
+    <label>Descrição do problema <textarea id="mp-mn-desc" rows="3" placeholder="O que está acontecendo?"></textarea></label>`;
+  const m = $('#modal-pedido'); m.dataset.tipo = 'manutencao'; m.dataset.reserva = ''; m.classList.remove('hidden');
+}
+
+// ---- Check-in online (vira pedido tipo=checkin) ----
+function abrirCheckin() {
+  $('#mp-titulo').textContent = '🚪 Check-in online';
+  $('#mp-sub').textContent = 'Adiante o seu check-in: informe a previsão de chegada e o que precisar.';
+  $('#mp-msgfeedback').className = 'erro'; $('#mp-msgfeedback').textContent = '';
+  $('#mp-msg').value = '';
+  const opts = ['<option value="">— para qual reserva? —</option>']
+    .concat(reservasAtivas().map((r) => `<option value="${esc(r.id)}">${esc(r.imovelTitulo || r.imovel || 'Reserva')} · ${fmtData(r.checkin)}</option>`)).join('');
+  $('#mp-campos').innerHTML = `
+    <label>Reserva <select id="mp-ci-reserva">${opts}</select></label>
+    <div class="mp-grid">
+      <label>Previsão de chegada <input type="time" id="mp-ci-hora"></label>
+      <label>Nº de hóspedes <input type="number" min="1" id="mp-ci-pessoas"></label>
+    </div>
+    <label>Observações <textarea id="mp-ci-obs" rows="2" placeholder="Ex.: chego de carro, vou precisar de berço, etc."></textarea></label>
+    <p class="dica">Confirmamos os detalhes e te enviamos as instruções de chegada por aqui.</p>`;
+  const m = $('#modal-pedido'); m.dataset.tipo = 'checkin'; m.dataset.reserva = ''; m.classList.remove('hidden');
+}
+
+// ---- Consultar disponibilidade / reservar de novo (deep-link motor Stays) ----
+let ANUNCIOS = null;
+async function abrirConsultar() {
+  let modal = $('#modal-consultar');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-consultar'; modal.className = 'modal hidden';
+    modal.innerHTML = `<form id="form-consultar" class="modal-card">
+      <h3>🔎 Consultar e reservar</h3>
+      <p class="dica">Veja a disponibilidade e reserve em qualquer uma das nossas casas. Abrimos o motor de reservas já com as suas datas.</p>
+      <label>Casa <select id="cs-imovel"><option value="">Carregando casas…</option></select></label>
+      <div class="mp-grid">
+        <label>Check-in <input type="date" id="cs-in"></label>
+        <label>Check-out <input type="date" id="cs-out"></label>
+      </div>
+      <label>Nº de hóspedes <input type="number" min="1" id="cs-pessoas" value="2"></label>
+      <div class="modal-acoes">
+        <button type="button" class="btn secund" id="cs-cancelar">Cancelar</button>
+        <button type="submit" class="btn">Ver disponibilidade</button>
+      </div>
+      <p id="cs-erro" class="erro"></p>
+    </form>`;
+    document.body.appendChild(modal);
+    $('#cs-cancelar').addEventListener('click', () => modal.classList.add('hidden'));
+    $('#form-consultar').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const cod = $('#cs-imovel').value;
+      if (!cod) { $('#cs-erro').textContent = 'Escolha uma casa.'; return; }
+      const q = [];
+      if ($('#cs-in').value) q.push('from=' + $('#cs-in').value);
+      if ($('#cs-out').value) q.push('to=' + $('#cs-out').value);
+      if ($('#cs-pessoas').value) q.push('persons=' + $('#cs-pessoas').value);
+      openLink(STAYS_MOTOR + encodeURIComponent(cod) + (q.length ? '?' + q.join('&') : ''));
+      modal.classList.add('hidden');
+    });
+  }
+  $('#cs-erro').textContent = '';
+  modal.classList.remove('hidden');
+  const sel = $('#cs-imovel');
+  try {
+    if (!ANUNCIOS) { const r = await fetch('/api/anuncios'); const data = await r.json(); if (!Array.isArray(data)) throw new Error('indisponível'); ANUNCIOS = data; }
+    const ativos = ANUNCIOS.filter((a) => a && a.id && a.status !== 'inactive');
+    if (!ativos.length) throw new Error('sem anúncios');
+    sel.innerHTML = '<option value="">— escolha uma casa —</option>' +
+      ativos.map((a) => `<option value="${esc(a.id)}">${esc(a.titulo || a.id)}</option>`).join('');
+  } catch (e) {
+    sel.innerHTML = '<option value="">(não foi possível carregar)</option>';
+    $('#cs-erro').innerHTML = 'Não conseguimos carregar as casas agora. <a href="https://villelastay.com.br" target="_blank" rel="noopener">Ver no site ↗</a>';
+  }
 }
 
 boot();

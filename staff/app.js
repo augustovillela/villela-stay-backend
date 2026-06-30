@@ -1133,6 +1133,14 @@ async function renderHospedePedidos() {
       if (p.servico.horario) d.push(esc(p.servico.horario));
       if (p.servico.pessoas != null) d.push(esc(p.servico.pessoas) + ' pessoas');
       if (p.servico.observacoes) d.push(esc(p.servico.observacoes));
+    } else if (p.tipo === 'manutencao' && p.manutencao) {
+      if (p.manutencao.local) d.push('Local: ' + esc(p.manutencao.local));
+      if (p.manutencao.urgencia) d.push('Urgência: ' + esc(p.manutencao.urgencia));
+      if (p.manutencao.descricao) d.push(esc(p.manutencao.descricao));
+    } else if (p.tipo === 'checkin' && p.checkin) {
+      if (p.checkin.horarioChegada) d.push('Chegada prevista: ' + esc(p.checkin.horarioChegada));
+      if (p.checkin.pessoas != null) d.push(esc(p.checkin.pessoas) + ' hóspedes');
+      if (p.checkin.observacoes) d.push(esc(p.checkin.observacoes));
     } else if (p.alteracao) {
       if (p.alteracao.novoCheckin) d.push('Check-in → ' + esc(p.alteracao.novoCheckin));
       if (p.alteracao.novoCheckout) d.push('Check-out → ' + esc(p.alteracao.novoCheckout));
@@ -1141,7 +1149,7 @@ async function renderHospedePedidos() {
     }
     return d.join(' · ');
   };
-  const tituloPed = (p) => p.tipo === 'evento' ? '🎉 Evento' : p.tipo === 'servico' ? '🛎️ Serviço: ' + esc((p.servico && p.servico.nome) || '') : '✏️ Alteração';
+  const tituloPed = (p) => p.tipo === 'evento' ? '🎉 Evento' : p.tipo === 'servico' ? '🛎️ Serviço: ' + esc((p.servico && p.servico.nome) || '') : p.tipo === 'manutencao' ? '🔧 Manutenção' : p.tipo === 'checkin' ? '🚪 Check-in' : '✏️ Alteração';
   $('#hp-lista').innerHTML = pedidos.map(p => `
     <div class="form form-larga" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
