@@ -1559,6 +1559,32 @@ const FID_PADRAO = {
 };
 const lerFidConfig = () => Object.assign({}, FID_PADRAO, lerJSON('fidelidade-config.json', {}));
 const salvarFidConfig = (c) => salvarJSON('fidelidade-config.json', c);
+
+// ---- Conta corrente do hóspede (extrato de lançamentos + saldo) + pagamento (Mercado Pago) ----
+const lerLancamentos = () => lerJSON('lancamentos.json', []);
+const salvarLancamentos = (l) => salvarJSON('lancamentos.json', l);
+const TIPOS_LANC = ['cashback', 'bonus', 'cobranca', 'pagamento', 'ajuste'];
+const ROTULO_LANC = { cashback: 'Cash back', bonus: 'Bônus de indicação', cobranca: 'Cobrança', pagamento: 'Pagamento', ajuste: 'Ajuste' };
+// Extrato com saldo corrente. valor é SINALIZADO (créditos +, débitos −). saldo<0 = a pagar; saldo>0 = crédito a favor.
+function resumoConta(hospedeId) {
+  const ls = lerLancamentos().filter(l => l.hospedeId === hospedeId).sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)));
+  let creditos = 0, debitos = 0, saldo = 0;
+  const lancamentos = ls.map(l => {
+    const v = Number(l.valor) || 0; saldo += v;
+    if (v >= 0) creditos += v; else debitos += -v;
+    return { id: l.id, tipo: l.tipo, rotulo: ROTULO_LANC[l.tipo] || l.tipo, descricao: l.descricao || '', valor: v, reservaId: l.reservaId || '', validade: l.validade || '', criadoEm: l.criadoEm, saldoApos: saldo };
+  }).reverse(); // mais recente primeiro
+  return { saldo, creditos, debitos, aPagar: saldo < 0 ? -saldo : 0, credito: saldo > 0 ? saldo : 0, lancamentos };
+}
+// Mercado Pago (gateway) — usa MP_ACCESS_TOKEN (env). Checkout Pro hospedado (Pix + cartão); sem dado de cartão no nosso lado.
+const MP_BASE = 'https://api.mercadopago.com';
+async function mpFetch(pathname, opts) {
+  const tok = process.env.MP_ACCESS_TOKEN;
+  if (!tok) throw new Error('MP_ACCESS_TOKEN não configurado');
+  const r = await fetch(MP_BASE + pathname, Object.assign({ headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' } }, opts || {}));
+  if (!r.ok) throw new Error('Mercado Pago ' + r.status + ': ' + (await r.text()).slice(0, 200));
+  return r.json();
+}
 // Sanitiza parâmetro de template da Meta (sem quebra de linha/tab/4+ espaços — evita erro 132018).
 function sanitizaParam(s) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s{4,}/g, '   ').trim().slice(0, 600); }
 // Alerta interno ao Augusto (template alerta_crm, notifica a qualquer hora). Best-effort.
@@ -1841,6 +1867,29 @@ app.post('/hospede/api/indicacao', requireHospede, (req, res) => {
   res.json({ ok: true });
 });
 
+// Conta corrente do hóspede: extrato + saldo (cash back, bônus, cobranças, pagamentos).
+app.get('/hospede/api/conta', requireHospede, (req, res) => res.json(resumoConta(req.hospede.id)));
+// Iniciar pagamento do valor pendente (líquido, já abatidos os créditos) via Mercado Pago.
+app.post('/hospede/api/conta/pagar', requireHospede, async (req, res) => {
+  const r = resumoConta(req.hospede.id);
+  if (r.aPagar <= 0) return res.status(400).json({ erro: 'Você não tem valor pendente para pagar.' });
+  if (!process.env.MP_ACCESS_TOKEN) return res.status(503).json({ erro: 'O pagamento online ainda está sendo configurado. Combine o pagamento pelo WhatsApp por enquanto.' });
+  try {
+    const base = AREA_HOSPEDE_URL.replace(/\/hospede\/?$/, '');
+    const pref = await mpFetch('/checkout/preferences', {
+      method: 'POST', body: JSON.stringify({
+        items: [{ title: 'Conta Villela Stay', quantity: 1, currency_id: 'BRL', unit_price: Number(r.aPagar.toFixed(2)) }],
+        external_reference: 'conta:' + req.hospede.id,
+        payer: { name: req.hospede.nome || undefined, email: req.hospede.email || undefined },
+        back_urls: { success: AREA_HOSPEDE_URL, pending: AREA_HOSPEDE_URL, failure: AREA_HOSPEDE_URL },
+        notification_url: base + '/webhooks/mercadopago',
+        statement_descriptor: 'VILLELASTAY',
+      }),
+    });
+    res.json({ ok: true, url: pref.init_point || pref.sandbox_init_point, valor: r.aPagar });
+  } catch (e) { console.error('[conta pagar]', e.message); res.status(502).json({ erro: 'Falha ao iniciar o pagamento. Tente novamente.' }); }
+});
+
 // Info reservada da propriedade — só se o hóspede tem reserva nela. WiFi/acesso só na janela da estadia.
 app.get('/hospede/api/propriedade/:codigo', requireHospede, async (req, res) => {
   const codigo = String(req.params.codigo || '').toUpperCase();
@@ -1953,6 +2002,70 @@ app.put('/staff/api/hospede/fidelidade-config', requirePublishOrAdmin, (req, res
   };
   salvarFidConfig(cfg);
   res.json({ ok: true, config: cfg });
+});
+
+// Conta corrente — admin (ou PUBLISH_KEY): lista de contas, extrato e lançamentos.
+app.get('/staff/api/hospede/contas-corrente', requirePublishOrAdmin, (req, res) => {
+  const hospedes = lerHospedes(); const ls = lerLancamentos();
+  const saldo = {}, cnt = {};
+  for (const l of ls) { saldo[l.hospedeId] = (saldo[l.hospedeId] || 0) + (Number(l.valor) || 0); cnt[l.hospedeId] = (cnt[l.hospedeId] || 0) + 1; }
+  const contas = hospedes.map(h => ({ id: h.id, nome: h.nome || '', login: h.email || h.telefone || '', staysClientId: h.staysClientId || '', saldo: saldo[h.id] || 0, lancamentos: cnt[h.id] || 0 }))
+    .sort((a, b) => a.saldo - b.saldo); // devedores (saldo negativo) primeiro
+  res.json({ contas });
+});
+app.get('/staff/api/hospede/conta/:hospedeId', requirePublishOrAdmin, (req, res) => {
+  const h = lerHospedes().find(x => x.id === req.params.hospedeId);
+  if (!h) return res.status(404).json({ erro: 'Hóspede não encontrado.' });
+  res.json({ hospede: semSenhaHosp(h), conta: resumoConta(h.id) });
+});
+app.post('/staff/api/hospede/conta/:hospedeId/lancamento', requirePublishOrAdmin, (req, res) => {
+  const h = lerHospedes().find(x => x.id === req.params.hospedeId);
+  if (!h) return res.status(404).json({ erro: 'Hóspede não encontrado.' });
+  const d = req.body || {};
+  if (!TIPOS_LANC.includes(d.tipo)) return res.status(400).json({ erro: 'Tipo inválido.' });
+  let valor = Number(d.valor);
+  if (!isFinite(valor) || valor === 0) return res.status(400).json({ erro: 'Informe um valor diferente de zero.' });
+  if (d.tipo === 'cobranca') valor = -Math.abs(valor);
+  else if (d.tipo !== 'ajuste') valor = Math.abs(valor); // cashback/bonus/pagamento = crédito (+)
+  const lanc = {
+    id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId || '', tipo: d.tipo,
+    descricao: String(d.descricao || '').slice(0, 300), valor,
+    reservaId: String(d.reservaId || ''), validade: String(d.validade || ''),
+    criadoEm: new Date().toISOString(), criadoPor: req.viaChave ? 'sistema' : ((req.user && req.user.nome) || 'admin'),
+  };
+  const ls = lerLancamentos(); ls.push(lanc); salvarLancamentos(ls);
+  res.json({ ok: true, conta: resumoConta(h.id) });
+});
+app.delete('/staff/api/hospede/conta/:hospedeId/lancamento/:id', requirePublishOrAdmin, (req, res) => {
+  const ls = lerLancamentos();
+  const rest = ls.filter(l => !(l.hospedeId === req.params.hospedeId && l.id === req.params.id));
+  if (rest.length === ls.length) return res.status(404).json({ erro: 'Lançamento não encontrado.' });
+  salvarLancamentos(rest);
+  res.json({ ok: true, conta: resumoConta(req.params.hospedeId) });
+});
+
+// Webhook do Mercado Pago — pagamento aprovado vira lançamento "pagamento" na conta corrente (idempotente).
+app.post('/webhooks/mercadopago', async (req, res) => {
+  res.sendStatus(200); // responde rápido; processa em seguida
+  try {
+    const q = req.query || {}, b = req.body || {};
+    const tipo = b.type || q.type || q.topic || '';
+    const payId = (b.data && b.data.id) || q['data.id'] || (tipo === 'payment' ? q.id : null);
+    if (!payId || (tipo && !/payment/i.test(String(tipo)))) return;
+    const pay = await mpFetch('/v1/payments/' + payId).catch(() => null);
+    if (!pay || pay.status !== 'approved') return;
+    const ref = String(pay.external_reference || '');
+    if (!ref.startsWith('conta:')) return;
+    const hospedeId = ref.slice('conta:'.length);
+    const ls = lerLancamentos();
+    if (ls.some(l => l.pagamentoRef === String(payId))) return; // idempotente
+    const h = lerHospedes().find(x => x.id === hospedeId);
+    if (!h) return;
+    ls.push({ id: novoId(), hospedeId, staysClientId: h.staysClientId || '', tipo: 'pagamento', descricao: 'Pagamento online (Mercado Pago)', valor: Math.abs(Number(pay.transaction_amount) || 0), reservaId: '', validade: '', criadoEm: new Date().toISOString(), criadoPor: 'mercadopago', pagamentoRef: String(payId) });
+    salvarLancamentos(ls);
+    console.log('[mp webhook] pagamento baixado p/ hospede', hospedeId, 'R$', pay.transaction_amount);
+    alertaAugusto(`Pagamento recebido (Mercado Pago) de ${h.nome || 'hospede'}: R$ ${Number(pay.transaction_amount || 0).toFixed(2)}.`).catch(() => { });
+  } catch (e) { console.error('[mp webhook]', e.message); }
 });
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.

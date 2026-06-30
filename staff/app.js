@@ -155,6 +155,7 @@ function montarMenu() {
   if (ESTADO.me.papel === 'admin') op.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
   if (ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-pedidos', rot: '📨 Pedidos de hóspedes' });
   if (ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-fidelidade', rot: '⭐ Avaliações & indicações' });
+  if (ESTADO.areas.includes('financeiro') || ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-conta', rot: '💳 Conta corrente' });
   if (ESTADO.me.papel === 'admin') op.push({ id: 'usuarios', rot: 'Usuários' });
   op.push({ id: 'conta', rot: 'Minha conta' });
   if (ESTADO.painelDisp.leads) op.push({ id: 'leads', rot: 'Leads' });
@@ -192,7 +193,7 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -1184,6 +1185,84 @@ async function renderHospedeFidelidade() {
       : '<p class="aviso">Nenhuma indicação ainda.</p>';
     $('#hf').innerHTML = `<h2 style="color:#0c3644;font-size:1.1rem;margin:10px 0">⭐ Avaliações pós-estadia</h2>${av}<h2 style="color:#0c3644;font-size:1.1rem;margin:22px 0 10px">🎁 Indicações</h2>${ind}`;
   } catch (e) { $('#hf').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Conta corrente dos hóspedes ---------
+const ccMoney = (v) => (v < 0 ? '−' : '') + 'R$ ' + Math.abs(Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ccCor = (v) => v < 0 ? 'var(--alerta)' : v > 0 ? 'var(--ok)' : 'inherit';
+async function renderHospedeConta() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Conta corrente dos hóspedes', 'Extrato de cada hóspede: cash back, bônus de indicação, cobranças e pagamentos. Saldo negativo = a pagar; positivo = crédito a favor.') +
+    `<div class="barra"><input id="cc-busca" placeholder="Buscar hóspede..." style="min-width:220px"></div><div id="cc-lista"><p class="aviso">Carregando…</p></div>`;
+  let contas = [];
+  try { const r = await api('GET', '/hospede/contas-corrente'); contas = r.contas || []; }
+  catch (e) { $('#cc-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  const desenhar = (filtro) => {
+    const f = normaliza(filtro || '');
+    const lista = contas.filter(x => !f || normaliza((x.nome || '') + ' ' + (x.login || '')).includes(f));
+    $('#cc-lista').innerHTML = !lista.length ? '<p class="aviso">Nenhuma conta.</p>' : `<table><thead><tr><th>Hóspede</th><th>Login</th><th class="num">Lanç.</th><th class="num">Saldo</th><th></th></tr></thead><tbody>${
+      lista.map(x => `<tr><td>${esc(x.nome || '—')}</td><td>${esc(x.login || '—')}</td><td class="num">${x.lancamentos}</td>
+        <td class="num" style="color:${ccCor(x.saldo)};font-weight:700">${ccMoney(x.saldo)}</td>
+        <td><button class="btn peq secund" data-conta="${x.id}">Abrir</button></td></tr>`).join('')}</tbody></table>`;
+    $('#cc-lista').querySelectorAll('[data-conta]').forEach(b => b.onclick = () => abrirContaHospede(b.dataset.conta));
+  };
+  desenhar('');
+  $('#cc-busca').oninput = (e) => desenhar(e.target.value);
+}
+async function abrirContaHospede(hospedeId) {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Conta corrente', '') + '<p class="aviso">Carregando…</p>';
+  let data;
+  try { data = await api('GET', '/hospede/conta/' + hospedeId); }
+  catch (e) { c.innerHTML = cabecalho('Conta corrente', '') + `<p class="erro">${esc(e.message)}</p>`; return; }
+  const h = data.hospede;
+  c.innerHTML = cabecalho('Conta corrente — ' + (h.nome || '—'), h.email || h.telefone || '') + `
+    <div class="barra"><button class="btn secund" id="cc-voltar">← Voltar</button>
+      <span>Saldo: <strong id="cc-saldo" style="color:${ccCor(data.conta.saldo)}">${ccMoney(data.conta.saldo)}</strong></span>
+      <span class="sub" id="cc-cd">Créditos ${ccMoney(data.conta.creditos)} · Débitos ${ccMoney(data.conta.debitos)}</span></div>
+    <form class="form form-larga" id="cc-form">
+      <div class="hi-grid">
+        <label>Tipo <select id="cc-tipo">
+          <option value="cashback">Cash back (crédito)</option>
+          <option value="bonus">Bônus de indicação (crédito)</option>
+          <option value="cobranca">Cobrança (débito)</option>
+          <option value="pagamento">Pagamento (crédito)</option>
+          <option value="ajuste">Ajuste (use valor negativo p/ débito)</option>
+        </select></label>
+        <label>Valor (R$) <input type="number" step="0.01" id="cc-valor" placeholder="ex.: 50.00"></label>
+        <label>Validade (opcional) <input type="date" id="cc-validade"></label>
+        <label>Reserva (opcional) <input type="text" id="cc-reserva" placeholder="localizador"></label>
+      </div>
+      <label>Descrição <input type="text" id="cc-desc" placeholder="ex.: Cash back da estadia de junho"></label>
+      <div class="acoes"><button class="btn" type="submit">Lançar</button> <span id="cc-msg" class="ok-msg"></span></div>
+    </form>
+    <div id="cc-extrato"></div>`;
+  $('#cc-voltar').onclick = () => navegar('hospede-conta');
+  const atualizaTopo = (conta) => {
+    const s = $('#cc-saldo'); if (s) { s.textContent = ccMoney(conta.saldo); s.style.color = ccCor(conta.saldo); }
+    const cd = $('#cc-cd'); if (cd) cd.textContent = `Créditos ${ccMoney(conta.creditos)} · Débitos ${ccMoney(conta.debitos)}`;
+  };
+  const renderExtrato = (conta) => {
+    $('#cc-extrato').innerHTML = !conta.lancamentos.length ? '<p class="aviso">Sem lançamentos.</p>' :
+      `<table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th class="num">Valor</th><th class="num">Saldo</th><th></th></tr></thead><tbody>${
+        conta.lancamentos.map(l => `<tr><td>${esc(String(l.criadoEm).slice(0, 10))}</td><td>${esc(l.rotulo)}</td>
+          <td>${esc(l.descricao || '')}${l.validade ? ` <span class="sub">(val. ${esc(l.validade)})</span>` : ''}</td>
+          <td class="num" style="color:${ccCor(l.valor)};font-weight:700">${l.valor >= 0 ? '+' : '−'} ${ccMoney(Math.abs(l.valor))}</td>
+          <td class="num">${ccMoney(l.saldoApos)}</td>
+          <td><button class="btn peq perigo" data-del="${l.id}" title="Remover">×</button></td></tr>`).join('')}</tbody></table>`;
+    $('#cc-extrato').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      if (!confirm('Remover este lançamento?')) return;
+      try { const r = await api('DELETE', '/hospede/conta/' + hospedeId + '/lancamento/' + b.dataset.del); renderExtrato(r.conta); atualizaTopo(r.conta); } catch (e) { alert(e.message); }
+    });
+  };
+  renderExtrato(data.conta);
+  $('#cc-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const msg = $('#cc-msg'); msg.className = 'ok-msg'; msg.textContent = '';
+    const corpo = { tipo: $('#cc-tipo').value, valor: $('#cc-valor').value, descricao: $('#cc-desc').value, validade: $('#cc-validade').value, reservaId: $('#cc-reserva').value };
+    try { const r = await api('POST', '/hospede/conta/' + hospedeId + '/lancamento', corpo); msg.textContent = 'Lançado!'; $('#cc-valor').value = ''; $('#cc-desc').value = ''; renderExtrato(r.conta); atualizaTopo(r.conta); }
+    catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+  };
 }
 
 // --------- Minha conta ---------

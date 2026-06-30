@@ -84,6 +84,7 @@ function abrirApp(usuario) {
   carregarReservas();
   carregarPedidos();
   carregarServicos();
+  carregarConta();
 }
 
 $('#btn-sair').addEventListener('click', async () => {
@@ -235,6 +236,52 @@ async function carregarPropriedade(codigo) {
     box.innerHTML = html;
   } catch (e) {
     box.innerHTML = '<p class="erro">' + esc(e.message) + '</p>';
+  }
+}
+
+// ---------------- minha conta (conta corrente / extrato) ----------------
+async function carregarConta() {
+  const box = $('#conta');
+  box.innerHTML = '<p class="vazio">Carregando…</p>';
+  try {
+    const c = await api('/conta');
+    const fmt = (v) => fmtMoeda(Math.abs(Number(v) || 0), 'BRL');
+    let saldoTxt, cls;
+    if (c.saldo > 0) { saldoTxt = 'Crédito a favor: ' + fmt(c.saldo); cls = 'pos'; }
+    else if (c.saldo < 0) { saldoTxt = 'Pendente: ' + fmt(c.saldo); cls = 'neg'; }
+    else { saldoTxt = 'Conta em dia'; cls = 'zero'; }
+    let html = `<div class="conta-resumo conta-${cls}">
+      <div class="conta-saldo">${saldoTxt}</div>
+      <div class="conta-mini">Créditos: ${fmt(c.creditos)} · Débitos: ${fmt(c.debitos)}</div>
+    </div>`;
+    if (c.aPagar > 0) html += `<button type="button" class="btn btn-pagar" id="btn-pagar">💳 Pagar ${fmt(c.aPagar)}</button>`;
+    if (!c.lancamentos.length) {
+      html += '<p class="vazio">Você ainda não tem lançamentos. Aqui aparecerão seu cash back, bônus de indicação, cobranças e pagamentos.</p>';
+    } else {
+      html += `<table class="extrato"><thead><tr><th>Data</th><th>Descrição</th><th class="num">Valor</th><th class="num">Saldo</th></tr></thead><tbody>${
+        c.lancamentos.map(l => `<tr>
+          <td>${fmtData(String(l.criadoEm).slice(0, 10))}</td>
+          <td><span class="lanc-tag lanc-${esc(l.tipo)}">${esc(l.rotulo)}</span>${l.descricao ? ' ' + esc(l.descricao) : ''}${l.validade ? ` <span class="lanc-val">val. ${fmtData(l.validade)}</span>` : ''}</td>
+          <td class="num ${l.valor >= 0 ? 'cred' : 'deb'}">${l.valor >= 0 ? '+' : '−'} ${fmt(l.valor)}</td>
+          <td class="num">${fmtMoeda(l.saldoApos, 'BRL')}</td>
+        </tr>`).join('')
+      }</tbody></table>`;
+    }
+    box.innerHTML = html;
+    const bp = $('#btn-pagar');
+    if (bp) bp.addEventListener('click', pagarConta);
+  } catch (e) { box.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; }
+}
+async function pagarConta() {
+  const bp = $('#btn-pagar'); const orig = bp ? bp.textContent : '';
+  if (bp) { bp.disabled = true; bp.textContent = 'Abrindo pagamento…'; }
+  try {
+    const r = await api('/conta/pagar', { method: 'POST' });
+    if (r.url) window.open(r.url, '_blank', 'noopener');
+    if (bp) { bp.disabled = false; bp.textContent = orig; }
+  } catch (e) {
+    if (bp) { bp.disabled = false; bp.textContent = orig; }
+    alert(e.message);
   }
 }
 

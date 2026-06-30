@@ -122,6 +122,29 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 #modal-pedido label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; margin-bottom: 8px; }
 @media (max-width: 480px) { .mp-grid { grid-template-columns: 1fr; } }
 
+/* ---------- minha conta (conta corrente) ---------- */
+.conta-resumo { border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; border: 1px solid var(--borda); }
+.conta-pos { background: #eef6ef; border-color: #cfe6d2; }
+.conta-neg { background: #fbeeec; border-color: #f0d2cd; }
+.conta-zero { background: var(--areia); }
+.conta-saldo { font-size: 1.2rem; font-weight: 800; color: var(--petroleo); }
+.conta-pos .conta-saldo { color: var(--ok); }
+.conta-neg .conta-saldo { color: var(--alerta); }
+.conta-mini { font-size: .85rem; color: var(--concreto-claro); margin-top: 3px; }
+.btn-pagar { background: #25d366; color: #fff; margin-bottom: 12px; }
+.btn-pagar:hover { background: #1ebe5a; }
+.extrato { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.extrato th, .extrato td { padding: 8px 8px; border-bottom: 1px solid var(--borda); text-align: left; vertical-align: top; }
+.extrato th { font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; color: var(--concreto-claro); }
+.extrato .num { text-align: right; white-space: nowrap; }
+.extrato td.cred { color: var(--ok); font-weight: 700; }
+.extrato td.deb { color: var(--alerta); font-weight: 700; }
+.lanc-tag { display: inline-block; font-size: .72rem; font-weight: 800; padding: 1px 7px; border-radius: 9px; background: #e7eef1; color: var(--lago-escuro); }
+.lanc-cashback, .lanc-bonus { background: #e2f0e4; color: var(--ok); }
+.lanc-cobranca { background: #f6e3e2; color: var(--alerta); }
+.lanc-pagamento { background: #e8e3f3; color: #5b3f8c; }
+.lanc-val { font-size: .72rem; color: var(--concreto-claro); }
+
 /* ---------- fidelidade (Fase 4) ---------- */
 .ja-avaliada { font-size: .82rem; color: var(--cerrado); font-weight: 700; margin-top: 2px; }
 .fidelidade { display: flex; flex-direction: column; gap: 10px; }
