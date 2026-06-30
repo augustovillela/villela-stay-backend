@@ -152,7 +152,10 @@ function montarMenu() {
   ];
   const op = [];
   if (ESTADO.areas.includes('vendas')) op.push({ id: 'crm', rot: 'CRM / Funil' });
+  if (ESTADO.me.papel === 'admin') op.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
   if (ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-pedidos', rot: '📨 Pedidos de hóspedes' });
+  if (ESTADO.me.papel === 'admin') op.push({ id: 'usuarios', rot: 'Usuários' });
+  op.push({ id: 'conta', rot: 'Minha conta' });
   if (ESTADO.painelDisp.leads) op.push({ id: 'leads', rot: 'Leads' });
   if (ESTADO.painelDisp.precheckins) op.push({ id: 'precheckins', rot: 'Pré-check-ins' });
   if (ESTADO.painelDisp.chamados) op.push({ id: 'chamados', rot: 'Chamados' });
@@ -170,10 +173,7 @@ function montarMenu() {
   itens.push({ grupo: 'Stays' });
   itens.push({ rot: 'Site público ↗', url: 'https://ville.stays.com.br/' });
   itens.push({ rot: 'Painel administrativo ↗', url: 'https://ville.stays.com.br/i/home' });
-  itens.push({ grupo: 'Conta' });
-  if (ESTADO.me.papel === 'admin') itens.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
-  if (ESTADO.me.papel === 'admin') itens.push({ id: 'usuarios', rot: 'Usuários' });
-  itens.push({ id: 'conta', rot: 'Minha conta' });
+  // Área do Hóspede, Usuários e Minha conta agora vivem no grupo "Operação" (logo abaixo de Pedidos de hóspedes).
 
   for (const it of itens) {
     if (it.grupo) { const g = document.createElement('div'); g.className = 'grupo'; g.textContent = it.grupo; m.appendChild(g); continue; }
