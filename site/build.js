@@ -259,6 +259,7 @@ ${extraHead}
     <a href="${L('/links.html')}">Linktree</a>
     ${seletorIdioma(caminho)}
     <a href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" class="btn-wa-nav">WhatsApp</a>
+    <a href="${BACKEND}/hospede" class="link-hospede" title="${t('Área exclusiva para hóspedes', 'Exclusive guest area', 'Área exclusiva para huéspedes')}">🔑 ${t('Área do Hóspede', 'Guest Area', 'Área del Huésped')}</a>
     <a href="${BACKEND}/staff" class="link-staff" title="${t('Área restrita da equipe', 'Staff area', 'Área del equipo')}">🔒 Staff</a>
     <button type="button" id="btn-instalar-pwa" class="btn-instalar" hidden aria-label="${t('Instalar o app da Villela Stay', 'Install the Villela Stay app', 'Instalar la app de Villela Stay')}">${t('📲 Instalar app', '📲 Install app', '📲 Instalar app')}</button>
   </nav>

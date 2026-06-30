@@ -170,6 +170,7 @@ function montarMenu() {
   itens.push({ rot: 'Site público ↗', url: 'https://ville.stays.com.br/' });
   itens.push({ rot: 'Painel administrativo ↗', url: 'https://ville.stays.com.br/i/home' });
   itens.push({ grupo: 'Conta' });
+  if (ESTADO.me.papel === 'admin') itens.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
   if (ESTADO.me.papel === 'admin') itens.push({ id: 'usuarios', rot: 'Usuários' });
   itens.push({ id: 'conta', rot: 'Minha conta' });
 
@@ -189,7 +190,7 @@ function montarMenu() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -989,6 +990,66 @@ function formUsuario(u) {
       navegar('usuarios');
     } catch (e) { msg.textContent = e.message; }
   };
+}
+
+// --------- Área do Hóspede: conteúdo reservado por imóvel + contas (admin) ---------
+async function renderHospedeInfo() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Área do Hóspede', 'Preencha as informações reservadas de cada casa (Wi-Fi, acesso, manual, guia). O hóspede só vê a casa que reservou; Wi-Fi e códigos de acesso são liberados de 2 dias antes do check-in até o check-out. Campos vazios usam o padrão.') +
+    `<div id="hi-contas" class="aviso">Carregando contas…</div>
+     <div class="barra"><label>Imóvel <select id="hi-cod"></select></label></div>
+     <div id="hi-form"></div>`;
+  let info = {}, imoveis = [];
+  try { const r1 = await api('GET', '/hospede/propriedades-info'); info = r1.info || {}; }
+  catch (e) { $('#hi-form').innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  try { const r2 = await api('GET', '/stays/imoveis'); imoveis = r2.imoveis || []; } catch (e) { /* títulos são opcionais */ }
+  try {
+    const { contas } = await api('GET', '/hospede/contas');
+    const tot = contas.length, pend = contas.filter(x => x.precisaTrocarSenha).length;
+    $('#hi-contas').innerHTML = `<strong>${tot}</strong> conta(s) de hóspede${pend ? ` · ${pend} ainda não trocou a senha` : ''}.` +
+      (tot ? `<details style="margin-top:8px"><summary style="cursor:pointer">Ver contas</summary><table style="margin-top:8px"><thead><tr><th>Nome</th><th>Login</th><th>Stays</th><th>Criada</th></tr></thead><tbody>${contas.map(x => `<tr><td>${esc(x.nome || '—')}</td><td>${esc(x.email || x.telefone || '—')}</td><td>${esc(x.staysClientId || '—')}</td><td>${esc((x.criadoEm || '').slice(0, 10))}</td></tr>`).join('')}</tbody></table></details>` : '');
+  } catch (e) { $('#hi-contas').innerHTML = `<span class="erro">${esc(e.message)}</span>`; }
+
+  const tituloDe = {}; imoveis.forEach(i => tituloDe[i.codigo] = i.titulo);
+  const codigos = Object.keys(info).filter(k => k !== '_padrao').sort();
+  const sel = $('#hi-cod');
+  sel.innerHTML = codigos.map(cod => `<option value="${cod}">${esc(cod)}${tituloDe[cod] ? ' — ' + esc(tituloDe[cod]) : ''}</option>`).join('');
+  const padrao = info._padrao || {};
+  const desenhar = (cod) => {
+    const d = info[cod] || {}, w = d.wifi || {}, a = d.acesso || {};
+    $('#hi-form').innerHTML = `<form class="form" id="form-hi">
+      <h3 style="margin:6px 0">${esc(cod)}${tituloDe[cod] ? ' — ' + esc(tituloDe[cod]) : ''}</h3>
+      <div class="areas-grid">
+        <label>Wi-Fi — rede <input id="hi-wrede" value="${esc(w.rede || '')}"></label>
+        <label>Wi-Fi — senha <input id="hi-wsenha" value="${esc(w.senha || '')}"></label>
+        <label>Portão <input id="hi-portao" value="${esc(a.portao || '')}"></label>
+        <label>Fechadura <input id="hi-fechadura" value="${esc(a.fechadura || '')}"></label>
+        <label>Check-in <input id="hi-cin" value="${esc(d.checkinHora || '')}" placeholder="${esc(padrao.checkinHora || '')}"></label>
+        <label>Check-out <input id="hi-cout" value="${esc(d.checkoutHora || '')}" placeholder="${esc(padrao.checkoutHora || '')}"></label>
+        <label>Manual (URL) <input id="hi-manual" value="${esc(d.manualUrl || '')}" placeholder="https://…"></label>
+        <label>Guia (URL) <input id="hi-guia" value="${esc(d.guiaUrl || '')}" placeholder="${esc(padrao.guiaUrl || '')}"></label>
+      </div>
+      <label>Instruções de acesso <textarea id="hi-instr" rows="2">${esc(a.instrucoes || '')}</textarea></label>
+      <label>Contatos <input id="hi-contatos" value="${esc(d.contatos || '')}" placeholder="${esc(padrao.contatos || '')}"></label>
+      <label>Observações <textarea id="hi-obs" rows="2">${esc(d.observacoes || '')}</textarea></label>
+      <div class="acoes"><button class="btn" type="submit">Salvar ${esc(cod)}</button></div>
+      <p id="hi-msg" class="erro"></p>
+    </form>`;
+    $('#form-hi').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = $('#hi-msg'); msg.className = 'erro'; msg.textContent = '';
+      const corpo = {
+        wifi: { rede: $('#hi-wrede').value, senha: $('#hi-wsenha').value },
+        acesso: { portao: $('#hi-portao').value, fechadura: $('#hi-fechadura').value, instrucoes: $('#hi-instr').value },
+        manualUrl: $('#hi-manual').value, guiaUrl: $('#hi-guia').value, contatos: $('#hi-contatos').value,
+        checkinHora: $('#hi-cin').value, checkoutHora: $('#hi-cout').value, observacoes: $('#hi-obs').value,
+      };
+      try { const r = await api('PUT', '/hospede/propriedade/' + cod, corpo); info[cod] = r.info; msg.className = 'ok-msg'; msg.textContent = 'Salvo!'; }
+      catch (e) { msg.textContent = e.message; }
+    };
+  };
+  sel.onchange = () => desenhar(sel.value);
+  if (codigos.length) desenhar(codigos[0]); else $('#hi-form').innerHTML = '<p class="aviso">Estrutura de propriedades ainda não inicializada. Faça um deploy e recarregue.</p>';
 }
 
 // --------- Minha conta ---------

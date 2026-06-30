@@ -452,6 +452,13 @@ async function ingestStaysEvent(evento) {
       if (novoEstagio !== contato.estagio) {
         atividade = { tipo: 'reserva', texto: (tipo === 'canceled' ? 'Reserva cancelada na Stays' : 'Reserva confirmada na Stays') + (campos.imovelInteresse ? ' (' + campos.imovelInteresse + ')' : '') };
       }
+      // Área do Hóspede: cria conta automática só para reserva DIRETA/WhatsApp (não-OTA) e não-cancelada.
+      // Gate HOSPEDE_AUTO=on (default OFF): enquanto desligado, o deploy NÃO envia credenciais a hóspedes
+      // reais — o login, o auto-cadastro por código (OTA) e o onboarding manual pelo admin seguem ativos.
+      const ehOTA = /airbnb|booking|decolar|despegar|expedia|vrbo|homeaway|google/.test(canal);
+      if (process.env.HOSPEDE_AUTO === 'on' && tipo !== 'canceled' && !ehOTA) {
+        criarContaHospede(cli, clientId).catch(e => console.error('[hospede auto]', e.message));
+      }
     }
 
     const atual = patchContatoInterno(contato.id, campos);
@@ -1389,8 +1396,288 @@ app.post('/staff/api/stays/reserva', requireAuth, requireAdmin, async (req, res)
   }
 });
 
+// =====================================================================
+// ÁREA DO HÓSPEDE — área logada e exclusiva para hóspedes/ex-hóspedes (/hospede)
+// Irmã do /staff, porém ISOLADA: cookie próprio (hospede_token), claim tipo:'hospede',
+// NUNCA cruza com as permissões do staff. Fase 1 (MVP): cadastro automático na reserva
+// direta/WhatsApp + login/troca de senha + ver minha reserva + info reservada da propriedade.
+// Segredos só por env (repositório público). bcrypt+JWT reaproveitados do staff.
+// =====================================================================
+const HOSP_COOKIE = 'hospede_token';
+const AREA_HOSPEDE_URL = process.env.AREA_HOSPEDE_URL || 'https://villela-stay-backend.onrender.com/hospede';
+
+const lerHospedes = () => lerJSON('hospedes.json', []);
+const salvarHospedes = (h) => salvarJSON('hospedes.json', h);
+const lerPropInfo = () => lerJSON('propriedades-info.json', {});
+function semSenhaHosp(h) { const { senhaHash, ...resto } = h; return resto; }
+function escHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function addDias(iso, n) { const d = new Date(String(iso) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function gerarSenhaTemp() { return (crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g, '') + 'Aa1').slice(0, 10); }
+
+// ---- envio de credenciais (e-mail por SMTP do Gmail + WhatsApp pelo webhook do Make) ----
+let _transporteEmail = null; // null = ainda não resolvido; false = indisponível
+function transporteEmail() {
+  if (_transporteEmail !== null) return _transporteEmail;
+  const user = process.env.GMAIL_USER, pass = process.env.GMAIL_APP_PASS;
+  if (!user || !pass) { console.warn('[email] defina GMAIL_USER/GMAIL_APP_PASS no Render para enviar e-mails.'); return (_transporteEmail = false); }
+  try {
+    const nodemailer = require('nodemailer');
+    _transporteEmail = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 587, secure: false, auth: { user, pass } });
+  } catch (e) { console.warn('[email] nodemailer indisponível:', e.message); _transporteEmail = false; }
+  return _transporteEmail;
+}
+async function enviarEmail(to, assunto, html) {
+  const t = transporteEmail();
+  if (!t || !to) return false;
+  try { await t.sendMail({ from: `"Villela Stay" <${process.env.GMAIL_USER}>`, to, subject: assunto, html }); return true; }
+  catch (e) { console.error('[email]', e.message); return false; }
+}
+async function enviarWhatsApp(to, text) {
+  if (!process.env.MAKE_WA_WEBHOOK) return false;
+  const num = String(to || '').replace(/\D/g, '');
+  if (!num) return false;
+  try { await fetch(process.env.MAKE_WA_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: num, text }) }); return true; }
+  catch (e) { console.error('[wa]', e.message); return false; }
+}
+async function enviarCredenciais(conta, senha) {
+  const login = conta.email || conta.telefone;
+  const nome = (conta.nome || 'hóspede').split(' ')[0];
+  const txt = `Ola, ${nome}! 👋\n\nSua Area do Hospede da Villela Stay ja esta pronta. Nela voce consulta a sua reserva e recebe as informacoes da casa (Wi-Fi, acesso, guia local).\n\n🔗 Acesse: ${AREA_HOSPEDE_URL}\n👤 Login: ${login}\n🔑 Senha temporaria: ${senha}\n\nNo primeiro acesso voce define uma nova senha. Qualquer duvida, e so chamar por aqui!`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#2b2d2f">
+    <div style="background:#0c3644;color:#f2ecd8;padding:18px 22px;border-radius:10px 10px 0 0"><strong style="font-size:18px">Villela Stay</strong><br><span style="font-size:13px;color:#d9a441">Área do Hóspede</span></div>
+    <div style="border:1px solid #e3ddd0;border-top:none;padding:22px;border-radius:0 0 10px 10px">
+      <p>Olá, <strong>${escHtml(nome)}</strong>! 👋</p>
+      <p>Sua <strong>Área do Hóspede</strong> já está pronta. Nela você consulta a sua reserva e recebe as informações da casa (Wi-Fi, acesso, guia local).</p>
+      <p style="margin:18px 0"><a href="${AREA_HOSPEDE_URL}" style="background:#1c6e8c;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Entrar na Área do Hóspede</a></p>
+      <table style="font-size:14px;border-collapse:collapse"><tr><td style="padding:3px 12px 3px 0">👤 Login:</td><td><strong>${escHtml(login)}</strong></td></tr>
+      <tr><td style="padding:3px 12px 3px 0">🔑 Senha temporária:</td><td><strong>${escHtml(senha)}</strong></td></tr></table>
+      <p style="font-size:13px;color:#6b7075;margin-top:16px">No primeiro acesso você define uma nova senha. Se você não reconhece esta mensagem, basta ignorá-la.</p>
+    </div></div>`;
+  const r = { email: false, whatsapp: false };
+  if (conta.email) r.email = await enviarEmail(conta.email, 'Sua Área do Hóspede — Villela Stay', html);
+  if (conta.telefone) r.whatsapp = await enviarWhatsApp(conta.telefone, txt);
+  console.log('[hospede cred]', login, '— email:', r.email, 'whatsapp:', r.whatsapp);
+  return r;
+}
+
+// Cria a conta do hóspede a partir do cliente da Stays e dispara as credenciais. Idempotente.
+async function criarContaHospede(cli, clientId) {
+  if (!cli || !clientId) return;
+  const hospedes = lerHospedes();
+  if (hospedes.some(h => h.staysClientId === clientId)) return; // já existe
+  const email = ((cli.emails && cli.emails[0] && (cli.emails[0].address || cli.emails[0])) || cli.email || '').trim().toLowerCase();
+  const fone = (cli.phones && cli.phones[0] && (cli.phones[0].iso || cli.phones[0].number)) || '';
+  const nome = (cli.fName ? (cli.fName + ' ' + (cli.lName || '')).trim() : (cli.name || '')) || '';
+  if (!email && !fone) { console.log('[hospede auto] cliente sem e-mail/telefone — conta não criada:', clientId); return; }
+  if (email && hospedes.some(h => h.email === email)) return; // não duplica por e-mail
+  const senha = gerarSenhaTemp();
+  const conta = {
+    id: novoId(), nome, email, telefone: normFone(fone),
+    senhaHash: bcrypt.hashSync(senha, 10), staysClientId: clientId,
+    precisaTrocarSenha: true, ativo: true, criadoEm: new Date().toISOString(), ultimoLogin: null,
+  };
+  hospedes.push(conta);
+  salvarHospedes(hospedes);
+  await enviarCredenciais(conta, senha).catch(e => console.error('[hospede cred]', e.message));
+  console.log('[hospede auto] conta criada', conta.id, email || fone);
+}
+
+// Info reservada da propriedade: mescla _padrao com o registro específico do código.
+function infoPropriedade(codigo) {
+  const all = lerPropInfo();
+  const padrao = all._padrao || {};
+  const esp = all[codigo] || {};
+  return {
+    ...padrao, ...esp,
+    wifi: esp.wifi || padrao.wifi || null,
+    acesso: esp.acesso || padrao.acesso || null,
+    contatos: esp.contatos || padrao.contatos || '',
+    checkinHora: esp.checkinHora || padrao.checkinHora || '',
+    checkoutHora: esp.checkoutHora || padrao.checkoutHora || '',
+    guiaUrl: esp.guiaUrl || padrao.guiaUrl || '',
+  };
+}
+
+// Reservas do hóspede (do objeto do cliente na Stays, que já traz reservations).
+async function reservasDoHospede(h) {
+  if (!h.staysClientId) return [];
+  const cli = await stays(`/booking/clients/${h.staysClientId}`);
+  const mapa = await getListingMap();
+  return (Array.isArray(cli.reservations) ? cli.reservations : []).map(r => ({
+    id: r.id || r._id, status: r.type, statusRotulo: CAL_STATUS[r.type] || r.type,
+    checkin: r.checkInDate, checkout: r.checkOutDate,
+    imovel: (mapa[r._idlisting] && mapa[r._idlisting].codigo) || '',
+    imovelTitulo: (mapa[r._idlisting] && mapa[r._idlisting].titulo) || '',
+    valor: (r.price && r.price._f_total) || 0, moeda: (r.price && r.price.currency) || 'BRL',
+    hospedes: r.guests || (r.guestsDetails && r.guestsDetails.adults) || null,
+    reservationUrl: r.reservationUrl || '',
+  })).sort((a, b) => String(b.checkin).localeCompare(String(a.checkin)));
+}
+
+// ---- seed da estrutura de propriedades-info (uma vez), p/ o Augusto preencher WiFi/acesso ----
+(function seedPropInfo() {
+  const f = path.join(DATA_DIR, 'propriedades-info.json');
+  if (fs.existsSync(f)) return;
+  const codigos = ['GD01H', 'GD03H', 'GG04I', 'PL02I', 'YV01I', 'GI01I', 'VH01H', 'VH02H', 'UF07H', 'UD03H', 'UF01H', 'UF08H', 'UD09H', 'UF05H', 'UF06H', 'UH01H', 'UH03H', 'UH04H', 'UH05H', 'UH06H'];
+  const base = {
+    _padrao: {
+      checkinHora: 'A partir das 15h', checkoutHora: 'Até as 11h',
+      contatos: 'Anfitrião (WhatsApp): +55 61 9193-5013 · E-mail: contato@villelastay.com.br',
+      guiaUrl: 'https://villelastay.com.br/guia.html', manualUrl: '', observacoes: '',
+      wifi: null, acesso: null,
+    },
+  };
+  for (const c of codigos) base[c] = { wifi: { rede: '', senha: '' }, acesso: { portao: '', fechadura: '', instrucoes: '' }, manualUrl: '', guiaUrl: '', contatos: '', checkinHora: '', checkoutHora: '', observacoes: '' };
+  try { fs.writeFileSync(f, JSON.stringify(base, null, 2)); console.log('[hospede] propriedades-info.json semeado (preencher WiFi/acesso por imóvel).'); }
+  catch (e) { console.error('[hospede] seed propriedades-info:', e.message); }
+})();
+
+// ---- middleware de autenticação do hóspede (isolado do staff) ----
+function requireHospede(req, res, next) {
+  try {
+    const tok = req.cookies && req.cookies[HOSP_COOKIE];
+    if (!tok) return res.status(401).json({ erro: 'não autenticado' });
+    const dec = jwt.verify(tok, JWT_SECRET);
+    if (!dec || dec.tipo !== 'hospede') return res.status(401).json({ erro: 'sessão inválida' });
+    const h = lerHospedes().find(x => x.id === dec.hid);
+    if (!h || !h.ativo) return res.status(401).json({ erro: 'sessão inválida' });
+    req.hospede = h;
+    next();
+  } catch (e) { return res.status(401).json({ erro: 'sessão inválida' }); }
+}
+function setCookieHospede(res, h) {
+  const token = jwt.sign({ hid: h.id, tipo: 'hospede' }, JWT_SECRET, { expiresIn: '30d' });
+  res.cookie(HOSP_COOKIE, token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/hospede' });
+}
+
+// Nunca cachear respostas da API do hóspede.
+app.use('/hospede/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+
+// =========================== sessão do hóspede ===========================
+app.post('/hospede/api/login', (req, res) => {
+  const ip = 'h:' + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip');
+  if (loginBloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+  const idRaw = String((req.body && (req.body.email != null ? req.body.email : req.body.identificador)) || '').trim();
+  const senha = String((req.body && (req.body.senha != null ? req.body.senha : req.body.password)) || '');
+  const ehEmail = idRaw.includes('@');
+  const id = idRaw.toLowerCase();
+  const fone = ehEmail ? '' : normFone(idRaw);
+  const h = lerHospedes().find(x => x.ativo && (ehEmail ? x.email === id : (x.telefone && x.telefone === fone)));
+  if (!h || !bcrypt.compareSync(senha, h.senhaHash)) { registraFalha(ip); return res.status(401).json({ erro: 'Login ou senha incorretos.' }); }
+  limpaFalhas(ip);
+  const hospedes = lerHospedes(); const u = hospedes.find(x => x.id === h.id);
+  u.ultimoLogin = new Date().toISOString(); salvarHospedes(hospedes);
+  setCookieHospede(res, u);
+  res.json({ ok: true, usuario: semSenhaHosp(u) });
+});
+
+app.post('/hospede/api/logout', (req, res) => { res.clearCookie(HOSP_COOKIE, { path: '/hospede' }); res.json({ ok: true }); });
+
+app.get('/hospede/api/me', requireHospede, (req, res) => res.json({ usuario: semSenhaHosp(req.hospede) }));
+
+app.post('/hospede/api/senha', requireHospede, (req, res) => {
+  const atual = String((req.body && req.body.atual) || '');
+  const nova = String((req.body && req.body.nova) || '');
+  if (nova.length < 8) return res.status(400).json({ erro: 'A nova senha deve ter ao menos 8 caracteres.' });
+  if (!bcrypt.compareSync(atual, req.hospede.senhaHash)) return res.status(400).json({ erro: 'Senha atual incorreta.' });
+  const hospedes = lerHospedes(); const u = hospedes.find(x => x.id === req.hospede.id);
+  u.senhaHash = bcrypt.hashSync(nova, 10); u.precisaTrocarSenha = false; salvarHospedes(hospedes);
+  res.json({ ok: true });
+});
+
+// Auto-cadastro de hóspede de OTA pelo localizador da reserva + sobrenome (+ check-in).
+// Valida contra a Stays; mensagens genéricas para evitar enumeração.
+app.post('/hospede/api/registrar', async (req, res) => {
+  const localizador = String((req.body && req.body.localizador) || '').trim();
+  const sobrenome = semAcento((req.body && req.body.sobrenome) || '').trim();
+  const checkin = String((req.body && req.body.checkin) || '').trim();
+  const senha = String((req.body && req.body.senha) || '');
+  if (!localizador || !sobrenome || senha.length < 8) return res.status(400).json({ erro: 'Informe o localizador, o sobrenome e uma senha de ao menos 8 caracteres.' });
+  const generico = 'Não encontramos uma reserva com esses dados. Confira o localizador, o sobrenome e a data de check-in.';
+  try {
+    const r = await stays(`/booking/reservations/${encodeURIComponent(localizador)}`).catch(() => null);
+    if (!r || !r._idclient) return res.status(404).json({ erro: generico });
+    if (checkin && r.checkInDate && r.checkInDate !== checkin) return res.status(404).json({ erro: generico });
+    const cli = await stays(`/booking/clients/${r._idclient}`).catch(() => null);
+    if (!cli) return res.status(404).json({ erro: generico });
+    const ln = semAcento(cli.lName || cli.name || '');
+    if (!ln || (!ln.includes(sobrenome) && !sobrenome.includes(ln))) return res.status(404).json({ erro: generico });
+    const hospedes = lerHospedes();
+    let h = hospedes.find(x => x.staysClientId === r._idclient);
+    const email = ((cli.emails && cli.emails[0] && (cli.emails[0].address || cli.emails[0])) || cli.email || '').trim().toLowerCase();
+    const fone = (cli.phones && cli.phones[0] && (cli.phones[0].iso || cli.phones[0].number)) || '';
+    const nome = (cli.fName ? (cli.fName + ' ' + (cli.lName || '')).trim() : (cli.name || '')) || '';
+    if (h) { h.senhaHash = bcrypt.hashSync(senha, 10); h.precisaTrocarSenha = false; h.ativo = true; h.ultimoLogin = new Date().toISOString(); }
+    else { h = { id: novoId(), nome, email, telefone: normFone(fone), senhaHash: bcrypt.hashSync(senha, 10), staysClientId: r._idclient, precisaTrocarSenha: false, ativo: true, criadoEm: new Date().toISOString(), ultimoLogin: new Date().toISOString() }; hospedes.push(h); }
+    salvarHospedes(hospedes);
+    setCookieHospede(res, h);
+    res.json({ ok: true, usuario: semSenhaHosp(h) });
+  } catch (e) { console.error('[hospede registrar]', e.message); res.status(502).json({ erro: 'Falha ao validar a reserva. Tente novamente em instantes.' }); }
+});
+
+// Minhas reservas (só as do próprio staysClientId).
+app.get('/hospede/api/minhas-reservas', requireHospede, async (req, res) => {
+  try { res.json({ reservas: await reservasDoHospede(req.hospede) }); }
+  catch (e) { console.error('[hospede reservas]', e.message); res.status(502).json({ erro: 'Falha ao consultar suas reservas.' }); }
+});
+
+// Info reservada da propriedade — só se o hóspede tem reserva nela. WiFi/acesso só na janela da estadia.
+app.get('/hospede/api/propriedade/:codigo', requireHospede, async (req, res) => {
+  const codigo = String(req.params.codigo || '').toUpperCase();
+  try {
+    const reservas = await reservasDoHospede(req.hospede);
+    const ativas = reservas.filter(r => r.imovel === codigo && r.status !== 'canceled' && r.status !== 'blocked');
+    if (!ativas.length) return res.status(403).json({ erro: 'Você não tem reserva nesta propriedade.' });
+    const info = infoPropriedade(codigo);
+    const hoje = hojeISO();
+    const naJanela = ativas.some(r => r.checkin && r.checkout && addDias(r.checkin, -2) <= hoje && hoje <= r.checkout);
+    const out = {
+      codigo, titulo: ativas[0].imovelTitulo || codigo,
+      manualUrl: info.manualUrl || '', guiaUrl: info.guiaUrl || '', contatos: info.contatos || '',
+      checkinHora: info.checkinHora || '', checkoutHora: info.checkoutHora || '', observacoes: info.observacoes || '',
+      naJanela,
+    };
+    if (naJanela) { out.wifi = info.wifi || null; out.acesso = info.acesso || null; }
+    res.json(out);
+  } catch (e) { console.error('[hospede prop]', e.message); res.status(502).json({ erro: 'Falha ao carregar a propriedade.' }); }
+});
+
+// =========================== admin (staff) — gestão da Área do Hóspede ===========================
+app.get('/staff/api/hospede/contas', requireAuth, requireAdmin, (req, res) => {
+  res.json({ contas: lerHospedes().map(semSenhaHosp) });
+});
+app.get('/staff/api/hospede/propriedades-info', requireAuth, requireAdmin, (req, res) => {
+  res.json({ info: lerPropInfo() });
+});
+app.put('/staff/api/hospede/propriedade/:codigo', requireAuth, requireAdmin, (req, res) => {
+  const codigo = String(req.params.codigo || '').toUpperCase();
+  const all = lerPropInfo(); const d = req.body || {};
+  all[codigo] = {
+    wifi: { rede: String((d.wifi && d.wifi.rede) || ''), senha: String((d.wifi && d.wifi.senha) || '') },
+    acesso: { portao: String((d.acesso && d.acesso.portao) || ''), fechadura: String((d.acesso && d.acesso.fechadura) || ''), instrucoes: String((d.acesso && d.acesso.instrucoes) || '') },
+    manualUrl: String(d.manualUrl || ''), guiaUrl: String(d.guiaUrl || ''), contatos: String(d.contatos || ''),
+    checkinHora: String(d.checkinHora || ''), checkoutHora: String(d.checkoutHora || ''), observacoes: String(d.observacoes || ''),
+  };
+  salvarJSON('propriedades-info.json', all);
+  res.json({ ok: true, info: all[codigo] });
+});
+// Criar conta + (re)enviar credenciais manualmente por staysClientId (testes / onboarding de OTA).
+app.post('/staff/api/hospede/criar', requireAuth, requireAdmin, async (req, res) => {
+  const clientId = String((req.body && req.body.staysClientId) || '').trim();
+  if (!clientId) return res.status(400).json({ erro: 'Informe o staysClientId.' });
+  try {
+    const cli = await stays(`/booking/clients/${clientId}`).catch(() => null);
+    if (!cli) return res.status(404).json({ erro: 'Cliente não encontrado na Stays.' });
+    await criarContaHospede(cli, clientId);
+    const conta = lerHospedes().find(h => h.staysClientId === clientId);
+    res.json({ ok: true, conta: conta ? semSenhaHosp(conta) : null });
+  } catch (e) { console.error('[hospede criar]', e.message); res.status(502).json({ erro: 'Falha ao criar a conta.' }); }
+});
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
+// Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
+app.use('/hospede', express.static(path.join(__dirname, 'hospede')));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Backend Villela Stay rodando na porta ${PORT}`));

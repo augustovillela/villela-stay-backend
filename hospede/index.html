@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Área do Hóspede — Villela Stay</title>
+  <link rel="icon" type="image/png" href="/staff/logo.png">
+  <link rel="apple-touch-icon" href="/staff/logo.png">
+  <link rel="stylesheet" href="/hospede/styles.css">
+</head>
+<body>
+
+  <!-- ===================== LOGIN ===================== -->
+  <main id="tela-login" class="login hidden">
+    <form id="form-login" class="login-card" autocomplete="on">
+      <div class="marca">Villela Stay</div>
+      <p class="login-sub">Área do Hóspede — acesso exclusivo</p>
+      <label>E-mail ou telefone
+        <input type="text" id="login-email" name="username" required autocomplete="username" autocapitalize="off" spellcheck="false">
+      </label>
+      <label>Senha
+        <input type="password" id="login-senha" name="password" required autocomplete="current-password">
+      </label>
+      <button type="submit" class="btn">Entrar</button>
+      <p id="login-erro" class="erro"></p>
+      <p class="login-alt">Reservou pelo Airbnb, Booking ou outro site?
+        <a href="#" id="ir-registrar">Crie seu acesso com o código da reserva</a>.</p>
+      <a class="login-voltar" href="https://villelastay.com.br">← Voltar ao site</a>
+    </form>
+  </main>
+
+  <!-- ===================== CADASTRO POR CÓDIGO (OTA) ===================== -->
+  <main id="tela-registrar" class="login hidden">
+    <form id="form-registrar" class="login-card">
+      <div class="marca">Villela Stay</div>
+      <p class="login-sub">Criar acesso com o código da reserva</p>
+      <label>Localizador / código da reserva
+        <input type="text" id="rg-localizador" required autocapitalize="characters" spellcheck="false" placeholder="Ex.: LR03J">
+      </label>
+      <label>Seu sobrenome
+        <input type="text" id="rg-sobrenome" required autocapitalize="words" spellcheck="false">
+      </label>
+      <label>Data do check-in
+        <input type="date" id="rg-checkin" required>
+      </label>
+      <label>Crie uma senha (mín. 8 caracteres)
+        <input type="password" id="rg-senha" required minlength="8" autocomplete="new-password">
+      </label>
+      <button type="submit" class="btn">Criar meu acesso</button>
+      <p id="rg-erro" class="erro"></p>
+      <a href="#" id="voltar-login" class="login-voltar">← Já tenho acesso</a>
+    </form>
+  </main>
+
+  <!-- ===================== TROCAR SENHA (1º acesso) ===================== -->
+  <main id="tela-trocar" class="login hidden">
+    <form id="form-trocar" class="login-card">
+      <div class="marca">Villela Stay</div>
+      <p class="login-sub">Defina uma nova senha para continuar</p>
+      <label>Senha atual (a que você recebeu)
+        <input type="password" id="tr-atual" required autocomplete="current-password">
+      </label>
+      <label>Nova senha (mín. 8 caracteres)
+        <input type="password" id="tr-nova" required minlength="8" autocomplete="new-password">
+      </label>
+      <button type="submit" class="btn">Salvar e entrar</button>
+      <p id="tr-erro" class="erro"></p>
+    </form>
+  </main>
+
+  <!-- ===================== APP ===================== -->
+  <div id="app" class="hidden">
+    <header class="topo">
+      <div class="marca-bloco">
+        <span class="marca">Villela Stay</span>
+        <span class="tag">Hóspede</span>
+      </div>
+      <div class="topo-dir">
+        <span id="ola"></span>
+        <button type="button" id="btn-senha" class="link-site">Trocar senha</button>
+        <button type="button" id="btn-sair" class="link-sair">Sair</button>
+      </div>
+    </header>
+
+    <main id="conteudo" class="conteudo">
+      <section class="bloco">
+        <h2>Minhas reservas</h2>
+        <div id="reservas" class="cards"><p class="vazio">Carregando…</p></div>
+      </section>
+
+      <section class="bloco">
+        <h2>Informações da propriedade</h2>
+        <p class="dica" id="prop-dica">Selecione uma reserva acima para ver as informações da casa.</p>
+        <div id="prop" class="prop hidden"></div>
+      </section>
+
+      <section class="bloco bloco-futuro">
+        <h2>Em breve</h2>
+        <p>Estamos preparando, para você, dentro desta área: <strong>pedidos de alteração da reserva</strong>
+        (data, casa, nº de hóspedes), <strong>autorização de eventos</strong> com orçamento e
+        <strong>serviços extras</strong> — café da manhã, jantar com personal chef, buffet, traslado de
+        aeroporto e delivery de compras/bebidas. Qualquer necessidade agora, fale com a gente pelo WhatsApp.</p>
+      </section>
+    </main>
+  </div>
+
+  <!-- ===================== MODAL TROCAR SENHA (logado) ===================== -->
+  <div id="modal-senha" class="modal hidden">
+    <form id="form-senha-modal" class="modal-card">
+      <h3>Trocar senha</h3>
+      <label>Senha atual <input type="password" id="ms-atual" required></label>
+      <label>Nova senha (mín. 8) <input type="password" id="ms-nova" required minlength="8"></label>
+      <div class="modal-acoes">
+        <button type="button" id="ms-cancelar" class="btn secund">Cancelar</button>
+        <button type="submit" class="btn">Salvar</button>
+      </div>
+      <p id="ms-msg" class="erro"></p>
+    </form>
+  </div>
+
+  <script src="/hospede/app.js"></script>
+</body>
+</html>
