@@ -50,7 +50,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .topo { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px;
   background: var(--petroleo); border-bottom: 3px solid var(--cerrado); position: sticky; top: 0; z-index: 10; }
 .marca-bloco { display: flex; align-items: center; }
-.marca-logo { height: 30px; width: auto; margin-right: 9px; border-radius: 6px; background: #fff; padding: 2px; box-sizing: border-box; }
+.marca-logo { height: 36px; width: auto; margin-right: 9px; border-radius: 7px; background: #fff; padding: 2px; box-sizing: border-box; }
 .topo .marca { white-space: nowrap; }
 #app:not(.em-home) .topo .tag { display: none; } /* libera espaço nas sub-telas (com botão voltar) */
 .topo-dir { display: flex; align-items: center; gap: 12px; color: var(--creme); font-size: .9rem; }
