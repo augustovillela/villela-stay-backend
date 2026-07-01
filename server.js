@@ -1609,8 +1609,8 @@ const salvarConteudo = (c) => salvarJSON('conteudo-hospede.json', c);
 // ---- Conta corrente do hóspede (extrato de lançamentos + saldo) + pagamento (Mercado Pago) ----
 const lerLancamentos = () => lerJSON('lancamentos.json', []);
 const salvarLancamentos = (l) => salvarJSON('lancamentos.json', l);
-const TIPOS_LANC = ['cashback', 'recorrencia', 'bonus', 'cobranca', 'pagamento', 'ajuste'];
-const ROTULO_LANC = { cashback: 'Cash back', recorrencia: 'Recorrência', bonus: 'Bônus de indicação', cobranca: 'Cobrança', pagamento: 'Pagamento', ajuste: 'Ajuste', expiracao: 'Expiração de crédito' };
+const TIPOS_LANC = ['cashback', 'recorrencia', 'bonus', 'venda', 'cobranca', 'pagamento', 'ajuste'];
+const ROTULO_LANC = { cashback: 'Cash back', recorrencia: 'Recorrência', bonus: 'Bônus de indicação', venda: 'Venda', cobranca: 'Cobrança', pagamento: 'Pagamento', ajuste: 'Ajuste', expiracao: 'Expiração de crédito' };
 // Extrato com saldo corrente. valor é SINALIZADO (créditos +, débitos −). saldo<0 = a pagar; saldo>0 = crédito a favor.
 function resumoConta(hospedeId) {
   const ls = lerLancamentos().filter(l => l.hospedeId === hospedeId).sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)));
@@ -1618,7 +1618,7 @@ function resumoConta(hospedeId) {
   const lancamentos = ls.map(l => {
     const v = Number(l.valor) || 0; saldo += v;
     if (v >= 0) creditos += v; else debitos += -v;
-    return { id: l.id, tipo: l.tipo, rotulo: ROTULO_LANC[l.tipo] || l.tipo, descricao: l.descricao || '', valor: v, reservaId: l.reservaId || '', validade: l.validade || '', criadoEm: l.criadoEm, saldoApos: saldo };
+    return { id: l.id, tipo: l.tipo, rotulo: ROTULO_LANC[l.tipo] || l.tipo, descricao: l.descricao || '', item: l.item || '', quantidade: l.quantidade || null, valorUnitario: l.valorUnitario != null ? l.valorUnitario : null, valor: v, reservaId: l.reservaId || '', validade: l.validade || '', criadoEm: l.criadoEm, saldoApos: saldo };
   }).reverse(); // mais recente primeiro
   return { saldo, creditos, debitos, aPagar: saldo < 0 ? -saldo : 0, credito: saldo > 0 ? saldo : 0, lancamentos };
 }
@@ -1787,10 +1787,42 @@ const salvarAvaliacoes = (a) => salvarJSON('avaliacoes.json', a);
 const lerIndicacoes = () => lerJSON('indicacoes.json', []);
 const salvarIndicacoes = (i) => salvarJSON('indicacoes.json', i);
 function fmtDataBR(iso) { if (!iso) return '—'; const [a, m, d] = String(iso).split('-'); return (d && m && a) ? `${d}/${m}/${a}` : String(iso); }
-function reciboHtml(h, r) {
+function reciboHtml(h, r, conta) {
   const noites = (r.checkin && r.checkout) ? Math.max(0, Math.round((Date.parse(r.checkout) - Date.parse(r.checkin)) / 86400000)) : '';
+  const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
   const valor = r.valor != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: r.moeda || 'BRL' }).format(r.valor) : '—';
   const linha = (k, v) => `<tr><td class="k">${escHtml(k)}</td><td>${escHtml(v)}</td></tr>`;
+  // Extrato da conta corrente (produtos/serviços vendidos, cash back, cobranças, pagamentos) + saldo.
+  conta = conta || { lancamentos: [], saldo: 0, aPagar: 0, credito: 0 };
+  const lancs = conta.lancamentos || [];
+  const extratoRows = lancs.map(l => {
+    const desc = escHtml(l.descricao || l.item || l.rotulo) + (l.reservaId ? ` <span class="tag">${escHtml(l.reservaId)}</span>` : '');
+    const sinal = l.valor >= 0 ? '+' : '−';
+    return `<tr><td>${escHtml(String(l.criadoEm).slice(0, 10))}</td><td>${escHtml(l.rotulo)}</td><td>${desc}</td>
+      <td class="num ${l.valor >= 0 ? 'cred' : 'deb'}">${sinal} ${brl(Math.abs(l.valor))}</td><td class="num">${brl(l.saldoApos)}</td></tr>`;
+  }).join('');
+  const saldoTxt = conta.saldo > 0 ? `Crédito a favor: ${brl(conta.saldo)}` : conta.saldo < 0 ? `Saldo a pagar: ${brl(-conta.saldo)}` : 'Conta em dia';
+  const extratoBloco = lancs.length ? `
+    <h1 style="margin-top:24px">Extrato da conta</h1>
+    <table class="extrato">
+      <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th class="num">Valor</th><th class="num">Saldo</th></tr></thead>
+      <tbody>${extratoRows}</tbody>
+    </table>
+    <p class="saldo ${conta.saldo < 0 ? 'neg' : conta.saldo > 0 ? 'pos' : ''}">${escHtml(saldoTxt)}</p>` : '';
+  const pagarBloco = conta.aPagar > 0 ? `
+    <div class="acao">
+      <button class="btn" id="btn-pagar">💳 Pagar ${brl(conta.aPagar)} (Pix / cartão)</button>
+      <div id="pagar-msg" class="rod" style="margin-top:8px"></div>
+    </div>
+    <script>
+      document.getElementById('btn-pagar').addEventListener('click', function(){
+        var b=this, m=document.getElementById('pagar-msg'); b.disabled=true; b.textContent='Abrindo pagamento…';
+        fetch('/hospede/api/conta/pagar',{method:'POST',credentials:'same-origin'})
+          .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
+          .then(function(x){ if(x.ok&&x.j.url){ window.location.href=x.j.url; } else { b.disabled=false; b.textContent='💳 Tentar pagar novamente'; m.textContent=(x.j&&x.j.erro)||'Falha ao iniciar o pagamento.'; } })
+          .catch(function(){ b.disabled=false; b.textContent='💳 Tentar pagar novamente'; m.textContent='Falha de conexão. Tente novamente.'; });
+      });
+    <\/script>` : '';
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Comprovante de Reserva — Villela Stay</title>
 <style>
@@ -1803,9 +1835,17 @@ function reciboHtml(h, r) {
   table{width:100%;border-collapse:collapse;font-size:14px}
   td{padding:8px 6px;border-bottom:1px solid #eee;vertical-align:top}
   td.k{color:#6b7075;width:42%}
+  .num{text-align:right;white-space:nowrap}
+  .cred{color:#1c7a4b;font-weight:700}.deb{color:#b23b3b;font-weight:700}
+  .extrato th{color:#6b7075;font-size:12px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid #e3ddd0;padding:8px 6px;text-align:left}
+  .extrato th.num{text-align:right}
+  .tag{display:inline-block;background:#f0ece0;color:#6b7075;border-radius:4px;padding:0 5px;font-size:11px}
+  .saldo{font-size:15px;font-weight:800;margin:10px 0 0}
+  .saldo.neg{color:#b23b3b}.saldo.pos{color:#1c7a4b}
   .rod{font-size:12px;color:#6b7075;margin-top:16px}
   .acao{margin:18px 26px;text-align:center}
   .btn{background:#1c6e8c;color:#fff;border:none;padding:11px 20px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px}
+  .btn:disabled{opacity:.6;cursor:default}
   @media print{.acao{display:none}body{background:#fff;padding:0}.doc{border:none}}
 </style></head><body>
 <div class="doc">
@@ -1824,8 +1864,10 @@ function reciboHtml(h, r) {
       ${linha('Status', r.statusRotulo || r.status || '—')}
       ${linha('Valor total', valor)}
     </table>
+    ${extratoBloco}
     <p class="rod">Documento gerado pela Área do Hóspede da Villela Stay em ${fmtDataBR(hojeISO())}. Comprovante de reserva — não é documento fiscal.</p>
   </div>
+  ${pagarBloco}
   <div class="acao"><button class="btn" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
 </div></body></html>`;
 }
@@ -2197,7 +2239,7 @@ app.get('/hospede/api/recibo/:reservaId', requireHospede, async (req, res) => {
     const r = reservas.find(x => x.id === req.params.reservaId);
     if (!r) return res.status(404).send('Reserva não encontrada.');
     res.set('Content-Type', 'text/html; charset=utf-8');
-    res.send(reciboHtml(req.hospede, r));
+    res.send(reciboHtml(req.hospede, r, resumoConta(req.hospede.id)));
   } catch (e) { console.error('[hospede recibo]', e.message); res.status(502).send('Falha ao gerar o recibo.'); }
 });
 
@@ -2450,13 +2492,27 @@ app.post('/staff/api/hospede/conta/:hospedeId/lancamento', requirePublishOrAdmin
   if (!h) return res.status(404).json({ erro: 'Hóspede não encontrado.' });
   const d = req.body || {};
   if (!TIPOS_LANC.includes(d.tipo)) return res.status(400).json({ erro: 'Tipo inválido.' });
-  let valor = Number(d.valor);
-  if (!isFinite(valor) || valor === 0) return res.status(400).json({ erro: 'Informe um valor diferente de zero.' });
-  if (d.tipo === 'cobranca') valor = -Math.abs(valor);
-  else if (d.tipo !== 'ajuste') valor = Math.abs(valor); // cashback/bonus/pagamento = crédito (+)
+  // Venda de produto/serviço: item + quantidade × valor unitário → débito (a pagar).
+  let item = '', quantidade = null, valorUnitario = null, descricao = String(d.descricao || '').slice(0, 300);
+  let valor;
+  if (d.tipo === 'venda') {
+    item = String(d.item || '').slice(0, 200).trim();
+    quantidade = Math.max(1, Math.round(Number(d.quantidade) || 1));
+    valorUnitario = Number(d.valorUnitario);
+    if (!item) return res.status(400).json({ erro: 'Informe o produto/serviço vendido.' });
+    if (!isFinite(valorUnitario) || valorUnitario <= 0) return res.status(400).json({ erro: 'Informe o valor unitário (maior que zero).' });
+    valorUnitario = Math.round(valorUnitario * 100) / 100;
+    valor = -Math.round(quantidade * valorUnitario * 100) / 100; // débito
+    if (!descricao) descricao = quantidade > 1 ? `${item} (${quantidade}× ${valorUnitario.toFixed(2)})` : item;
+  } else {
+    valor = Number(d.valor);
+    if (!isFinite(valor) || valor === 0) return res.status(400).json({ erro: 'Informe um valor diferente de zero.' });
+    if (d.tipo === 'cobranca') valor = -Math.abs(valor);
+    else if (d.tipo !== 'ajuste') valor = Math.abs(valor); // cashback/bonus/pagamento = crédito (+)
+  }
   const lanc = {
     id: novoId(), hospedeId: h.id, staysClientId: h.staysClientId || '', tipo: d.tipo,
-    descricao: String(d.descricao || '').slice(0, 300), valor,
+    descricao, item, quantidade, valorUnitario, valor,
     reservaId: String(d.reservaId || ''), validade: String(d.validade || ''),
     criadoEm: new Date().toISOString(), criadoPor: req.viaChave ? 'sistema' : ((req.user && req.user.nome) || 'admin'),
   };

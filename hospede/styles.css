@@ -145,6 +145,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .lanc-tag { display: inline-block; font-size: .72rem; font-weight: 800; padding: 1px 7px; border-radius: 9px; background: #e7eef1; color: var(--lago-escuro); }
 .lanc-cashback, .lanc-bonus { background: #e2f0e4; color: var(--ok); }
 .lanc-cobranca { background: #f6e3e2; color: var(--alerta); }
+.lanc-venda { background: #fdeede; color: #a4630f; }
 .lanc-pagamento { background: #e8e3f3; color: #5b3f8c; }
 .lanc-val { font-size: .72rem; color: var(--concreto-claro); }
 

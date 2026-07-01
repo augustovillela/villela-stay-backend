@@ -1231,21 +1231,31 @@ async function abrirContaHospede(hospedeId) {
     <form class="form form-larga" id="cc-form">
       <div class="hi-grid">
         <label>Tipo <select id="cc-tipo">
+          <option value="venda">Venda de produto/serviço (débito)</option>
           <option value="cashback">Cash back (crédito)</option>
           <option value="bonus">Bônus de indicação (crédito)</option>
           <option value="cobranca">Cobrança (débito)</option>
           <option value="pagamento">Pagamento (crédito)</option>
           <option value="ajuste">Ajuste (use valor negativo p/ débito)</option>
         </select></label>
-        <label>Valor (R$) <input type="number" step="0.01" id="cc-valor" placeholder="ex.: 50.00"></label>
+        <label class="cc-so-venda">Produto/serviço <input type="text" id="cc-item" placeholder="ex.: Café da manhã"></label>
+        <label class="cc-so-venda">Qtd <input type="number" step="1" min="1" id="cc-qtd" value="1"></label>
+        <label class="cc-so-venda">Valor unitário (R$) <input type="number" step="0.01" id="cc-unit" placeholder="ex.: 30.00"></label>
+        <label class="cc-so-outro">Valor (R$) <input type="number" step="0.01" id="cc-valor" placeholder="ex.: 50.00"></label>
         <label>Validade (opcional) <input type="date" id="cc-validade"></label>
         <label>Reserva (opcional) <input type="text" id="cc-reserva" placeholder="localizador"></label>
       </div>
-      <label>Descrição <input type="text" id="cc-desc" placeholder="ex.: Cash back da estadia de junho"></label>
+      <label>Descrição (opcional) <input type="text" id="cc-desc" placeholder="ex.: Café da manhã — 2 diárias"></label>
       <div class="acoes"><button class="btn" type="submit">Lançar</button> <span id="cc-msg" class="ok-msg"></span></div>
     </form>
     <div id="cc-extrato"></div>`;
   $('#cc-voltar').onclick = () => navegar('hospede-conta');
+  const toggleTipoCC = () => {
+    const venda = $('#cc-tipo').value === 'venda';
+    c.querySelectorAll('.cc-so-venda').forEach(el => el.style.display = venda ? '' : 'none');
+    c.querySelectorAll('.cc-so-outro').forEach(el => el.style.display = venda ? 'none' : '');
+  };
+  $('#cc-tipo').onchange = toggleTipoCC; toggleTipoCC();
   const atualizaTopo = (conta) => {
     const s = $('#cc-saldo'); if (s) { s.textContent = ccMoney(conta.saldo); s.style.color = ccCor(conta.saldo); }
     const cd = $('#cc-cd'); if (cd) cd.textContent = `Créditos ${ccMoney(conta.creditos)} · Débitos ${ccMoney(conta.debitos)}`;
@@ -1267,8 +1277,11 @@ async function abrirContaHospede(hospedeId) {
   $('#cc-form').onsubmit = async (ev) => {
     ev.preventDefault();
     const msg = $('#cc-msg'); msg.className = 'ok-msg'; msg.textContent = '';
-    const corpo = { tipo: $('#cc-tipo').value, valor: $('#cc-valor').value, descricao: $('#cc-desc').value, validade: $('#cc-validade').value, reservaId: $('#cc-reserva').value };
-    try { const r = await api('POST', '/hospede/conta/' + hospedeId + '/lancamento', corpo); msg.textContent = 'Lançado!'; $('#cc-valor').value = ''; $('#cc-desc').value = ''; renderExtrato(r.conta); atualizaTopo(r.conta); }
+    const tipo = $('#cc-tipo').value;
+    const corpo = { tipo, descricao: $('#cc-desc').value, validade: $('#cc-validade').value, reservaId: $('#cc-reserva').value };
+    if (tipo === 'venda') { corpo.item = $('#cc-item').value; corpo.quantidade = $('#cc-qtd').value; corpo.valorUnitario = $('#cc-unit').value; }
+    else { corpo.valor = $('#cc-valor').value; }
+    try { const r = await api('POST', '/hospede/conta/' + hospedeId + '/lancamento', corpo); msg.textContent = 'Lançado!'; $('#cc-valor').value = ''; $('#cc-item').value = ''; $('#cc-unit').value = ''; $('#cc-qtd').value = '1'; $('#cc-desc').value = ''; renderExtrato(r.conta); atualizaTopo(r.conta); }
     catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
   };
 }
