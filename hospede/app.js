@@ -575,6 +575,7 @@ const VIEWS = {
   pacotes:    { view: 'view-pacotes', enter: () => renderConteudo('pacotes', 'Tenho interesse') },
   ajudaia:    { view: 'view-ajudaia', enter: () => renderAjudaIA() },
   notificacoes: { view: 'view-notificacoes', enter: () => renderNotificacoes() },
+  instalar:   { view: 'view-instalar', enter: () => renderInstalar() },
   breve:      { view: 'view-breve', enter: () => renderBreve() },
 };
 
@@ -604,6 +605,42 @@ function irPara(rota) {
 // ---- botões do topo ----
 $('#btn-voltar').addEventListener('click', () => navegar('home'));
 $('#btn-notif').addEventListener('click', () => navegar('notificacoes'));
+
+// ---- botão/dica de instalação (adicionar à tela inicial) ----
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
+$('#btn-instalar').addEventListener('click', () => navegar('instalar'));
+function ehStandalone() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+function ehIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function renderInstalar() {
+  const box = $('#instalar');
+  if (ehStandalone()) {
+    box.innerHTML = '<div class="breve-card"><div class="breve-ico"><i class="ti ti-circle-check" aria-hidden="true"></i></div><h3>App já instalado 🎉</h3><p>Você já está usando o app na tela inicial. Aproveite — abre com um toque, recebe notificações e funciona até offline.</p></div>';
+    return;
+  }
+  let html = '<p class="dica">Instale a Villela Stay na tela do seu celular: abre com um toque, recebe notificações e funciona até offline.</p>';
+  if (deferredPrompt) html += '<button type="button" class="btn" id="in-nativo" style="margin-bottom:12px">📲 Instalar agora</button>';
+  const passos = (t, itens) => `<div class="instalar-passos"><h4>${t}</h4><ol>${itens.map(i => '<li>' + i + '</li>').join('')}</ol></div>`;
+  html += passos('📱 No iPhone/iPad (Safari)', [
+    'Toque em <strong>Compartilhar</strong> (o quadrado com a seta para cima ⬆️), na barra do Safari.',
+    'Escolha <strong>“Adicionar à Tela de Início”</strong>.',
+    'Toque em <strong>Adicionar</strong> e abra o app pelo ícone que apareceu.',
+  ]);
+  html += passos('🤖 No Android (Chrome)', [
+    'Toque no menu <strong>⋮</strong> (três pontinhos), no canto do Chrome.',
+    'Escolha <strong>“Instalar app”</strong> ou <strong>“Adicionar à tela inicial”</strong>.',
+    'Confirme e abra o app pelo ícone criado.',
+  ]);
+  html += '<p class="dica">💻 No computador (Chrome/Edge): clique no ícone de instalar na barra de endereço.</p>';
+  box.innerHTML = html;
+  const bn = $('#in-nativo');
+  if (bn) bn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    try { await deferredPrompt.userChoice; } catch (e) {}
+    deferredPrompt = null; bn.disabled = true; bn.textContent = 'Instalação iniciada — siga o aviso do navegador';
+  });
+}
 
 // ---- view: casa (Wi-Fi / Manual / Guia) ----
 function garantirCasa() {

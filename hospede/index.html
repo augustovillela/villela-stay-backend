@@ -96,7 +96,13 @@
 
     <!-- HOME — lançador de ícones -->
     <main id="home" class="home">
-      <div class="home-saudacao"><strong id="ola">Olá</strong><span>o que você precisa hoje?</span></div>
+      <div class="home-saudacao">
+        <div class="home-ola-linha">
+          <strong id="ola">Olá</strong>
+          <button type="button" id="btn-instalar" class="btn-instalar"><i class="ti ti-download" aria-hidden="true"></i> Instalação</button>
+        </div>
+        <span>o que você precisa hoje?</span>
+      </div>
       <div id="grade" class="grade"></div>
       <p class="home-rodape">Villela Stay · Lago Sul, Brasília</p>
     </main>
@@ -180,6 +186,10 @@
           </form>
           <p class="chat-aviso">Assistente com IA — pode errar. Em dúvidas importantes, confirme pelo WhatsApp.</p>
         </div>
+      </section>
+
+      <section class="view hidden" id="view-instalar" data-titulo="Instalar o app">
+        <div id="instalar"></div>
       </section>
 
       <section class="view hidden" id="view-notificacoes" data-titulo="Notificações">

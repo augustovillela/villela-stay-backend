@@ -51,6 +51,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
   background: var(--petroleo); border-bottom: 3px solid var(--cerrado); position: sticky; top: 0; z-index: 10; }
 .marca-bloco { display: flex; align-items: center; }
 .marca-logo { height: 30px; width: auto; margin-right: 9px; border-radius: 6px; background: #fff; padding: 2px; box-sizing: border-box; }
+.topo .marca { white-space: nowrap; }
+#app:not(.em-home) .topo .tag { display: none; } /* libera espaço nas sub-telas (com botão voltar) */
 .topo-dir { display: flex; align-items: center; gap: 12px; color: var(--creme); font-size: .9rem; }
 .link-sair { background: none; border: 1px solid var(--creme); color: var(--creme); border-radius: 18px; padding: 5px 14px; cursor: pointer; font-size: .85rem; }
 .link-sair:hover { background: rgba(255,255,255,.12); }
@@ -193,6 +195,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .home-saudacao { display: flex; flex-direction: column; gap: 2px; margin: 6px 2px 20px; }
 .home-saudacao strong { font-size: 1.25rem; color: var(--creme); font-weight: 700; }
 .home-saudacao span { font-size: .92rem; color: #cfe0e4; }
+.home-ola-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.btn-instalar { background: var(--cerrado); color: var(--petroleo); border: none; border-radius: 16px; padding: 6px 13px;
+  font-size: .78rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; flex-shrink: 0; }
+.btn-instalar:hover { filter: brightness(1.06); }
+.btn-instalar:active { transform: scale(.97); }
+#instalar { max-width: 520px; margin: 0 auto; }
+.instalar-passos { background: #fff; border: 1px solid var(--borda); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+.instalar-passos h4 { margin: 0 0 8px; color: var(--petroleo); font-size: .98rem; }
+.instalar-passos ol { margin: 0; padding-left: 20px; }
+.instalar-passos li { margin-bottom: 7px; font-size: .92rem; line-height: 1.5; }
 .grade { display: flex; flex-direction: column; gap: 20px; }
 .grade-grupo { display: flex; flex-direction: column; gap: 10px; }
 .grade-titulo { font-size: .8rem; color: #9fb9c0; padding-left: 2px; letter-spacing: .02em; }
