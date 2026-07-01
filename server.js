@@ -1520,7 +1520,7 @@ async function reservasDoHospede(h, enriquecer) {
     imovelTitulo: (mapa[r._idlisting] && mapa[r._idlisting].titulo) || '',
     valor: (r.price && r.price._f_total) || 0, moeda: (r.price && r.price.currency) || 'BRL',
     hospedes: r.guests || (r.guestsDetails && r.guestsDetails.adults) || null,
-    reservationUrl: r.reservationUrl || '', plataforma: '', podeAlterar: false,
+    plataforma: '', podeAlterar: false, // NÃO expor reservationUrl ao hóspede (aponta p/ o painel admin da Stays)
   })).sort((a, b) => String(b.checkin).localeCompare(String(a.checkin)));
   if (enriquecer) {
     const ativas = lista.filter(r => r.status !== 'canceled' && r.status !== 'blocked');

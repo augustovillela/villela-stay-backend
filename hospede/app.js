@@ -493,8 +493,7 @@ async function carregarReservas() {
         <div class="cr-linha">👥 ${r.hospedes || '—'} ${t('hóspede(s)')} · 🏷️ ${esc(r.id || '')}${r.plataforma ? ' · ' + esc(r.plataforma) : ''}</div>
         <div class="cr-valor">${fmtMoeda(r.valor, r.moeda)}</div>
         ${acoes.length ? `<div class="cr-acoes">${acoes.join('')}</div>` : ''}
-        ${avaliada}
-        ${r.reservationUrl ? `<a class="cr-link" href="${esc(r.reservationUrl)}" target="_blank" rel="noopener">${t('Ver detalhes na Stays ↗')}</a>` : ''}`;
+        ${avaliada}`;
       cont.appendChild(card);
     });
     cont.querySelectorAll('.btn-info').forEach(b => b.addEventListener('click', () => { navegar('casa'); carregarPropriedade(b.dataset.cod); }));
