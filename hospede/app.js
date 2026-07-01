@@ -625,11 +625,13 @@ function renderInstalar() {
     'Toque em <strong>Compartilhar</strong> (o quadrado com a seta para cima ⬆️), na barra do Safari.',
     'Escolha <strong>“Adicionar à Tela de Início”</strong>.',
     'Toque em <strong>Adicionar</strong> e abra o app pelo ícone que apareceu.',
+    'Já no app instalado, toque no <strong>sininho 🔔</strong> no topo para <strong>ativar as notificações</strong>.',
   ]);
   html += passos('🤖 No Android (Chrome)', [
     'Toque no menu <strong>⋮</strong> (três pontinhos), no canto do Chrome.',
     'Escolha <strong>“Instalar app”</strong> ou <strong>“Adicionar à tela inicial”</strong>.',
     'Confirme e abra o app pelo ícone criado.',
+    'Já no app instalado, toque no <strong>sininho 🔔</strong> no topo para <strong>ativar as notificações</strong>.',
   ]);
   html += '<p class="dica">💻 No computador (Chrome/Edge): clique no ícone de instalar na barra de endereço.</p>';
   box.innerHTML = html;
