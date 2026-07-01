@@ -333,8 +333,8 @@ function injetarSeletores() {
   document.querySelectorAll('.login-card').forEach(card => {
     if (!card.querySelector('.lang-switch')) { const d = document.createElement('div'); d.innerHTML = seletorIdiomaHTML(); card.insertBefore(d.firstElementChild, card.firstChild); }
   });
-  const topo = document.querySelector('#app .topo-dir');
-  if (topo && !topo.querySelector('.lang-switch')) { const d = document.createElement('div'); d.innerHTML = seletorIdiomaHTML(); topo.insertBefore(d.firstElementChild, topo.firstChild); }
+  const homeLang = document.getElementById('home-lang');
+  if (homeLang && !homeLang.querySelector('.lang-switch')) { const d = document.createElement('div'); d.innerHTML = seletorIdiomaHTML(); homeLang.appendChild(d.firstElementChild); }
   document.querySelectorAll('.lang-opt').forEach(b => b.onclick = () => setLang(b.dataset.l));
 }
 
