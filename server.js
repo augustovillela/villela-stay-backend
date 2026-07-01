@@ -1939,8 +1939,120 @@ function setCookieHospede(res, h) {
   return token; // também devolvido no corpo do login/registro p/ clientes Bearer (app nativo futuro)
 }
 
-// Nunca cachear respostas da API do hóspede.
-app.use('/hospede/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+// Dicionário de mensagens (erro/sucesso) das rotas do hóspede — EN/ES (chave = texto PT).
+// O front envia o idioma no header `x-lang`; o interceptor abaixo traduz o campo erro/mensagem.
+const MSG_HOSPEDE = {
+  en: {
+    'não autenticado': 'not authenticated', 'sessão inválida': 'invalid session',
+    'Muitas tentativas. Tente de novo em 15 minutos.': 'Too many attempts. Try again in 15 minutes.',
+    'Login ou senha incorretos.': 'Incorrect login or password.',
+    'A nova senha deve ter ao menos 8 caracteres.': 'The new password must be at least 8 characters.',
+    'Senha atual incorreta.': 'Current password is incorrect.', 'Assinatura inválida.': 'Invalid subscription.',
+    'Conta não encontrada.': 'Account not found.',
+    'Informe o localizador, o sobrenome e uma senha de ao menos 8 caracteres.': 'Enter the locator, the last name and a password of at least 8 characters.',
+    'Não encontramos uma reserva com esses dados. Confira o localizador, o sobrenome e a data de check-in.': 'We could not find a booking with those details. Check the locator, the last name and the check-in date.',
+    'Falha ao validar a reserva. Tente novamente em instantes.': 'Failed to validate the booking. Please try again shortly.',
+    'Informe um e-mail válido.': 'Enter a valid email.',
+    'Se houver uma reserva com esse e-mail, enviamos um link para você criar a sua senha e entrar. Confira a sua caixa de entrada (e o spam).': 'If there is a booking with that email, we have sent you a link to create your password and sign in. Check your inbox (and spam).',
+    'A senha deve ter ao menos 8 caracteres.': 'The password must be at least 8 characters.',
+    'Link inválido ou expirado. Solicite um novo pela tela de acesso.': 'Invalid or expired link. Request a new one from the access screen.',
+    'Link inválido. Solicite um novo pela tela de acesso.': 'Invalid link. Request a new one from the access screen.',
+    'Falha ao concluir o cadastro. Tente novamente.': 'Failed to complete registration. Please try again.',
+    'Falha ao consultar suas reservas.': 'Failed to load your bookings.',
+    'Reserva não encontrada na sua conta.': 'Booking not found in your account.',
+    'Falha ao gerar a carteira.': 'Failed to generate the wallet.', 'Seção não encontrada.': 'Section not found.',
+    'O assistente está em ativação. Por enquanto, fale com a gente pelo WhatsApp que ajudamos na hora: wa.me/556191935013': 'The assistant is being activated. For now, message us on WhatsApp and we will help right away: wa.me/556191935013',
+    'Você enviou muitas mensagens seguidas. Aguarde um minutinho e tente de novo.': 'You have sent too many messages in a row. Please wait a moment and try again.',
+    'Escreva a sua dúvida.': 'Type your question.',
+    'Não consegui responder agora. Tente de novo em instantes ou fale pelo WhatsApp: wa.me/556191935013': 'I could not answer right now. Try again shortly or message us on WhatsApp: wa.me/556191935013',
+    'Falha ao falar com o assistente. Tente novamente em instantes.': 'Failed to reach the assistant. Please try again shortly.',
+    'Informe a reserva.': 'Select the booking.',
+    'Alterações desta reserva devem ser solicitadas na plataforma onde você reservou (ex.: Airbnb/Booking).': 'Changes to this booking must be requested on the platform where you booked (e.g., Airbnb/Booking).',
+    'Serviço inválido.': 'Invalid service.',
+    'Diga o que deseja alterar (datas, imóvel, nº de hóspedes ou uma mensagem).': 'Tell us what you want to change (dates, property, number of guests or a message).',
+    'Informe a data do evento, o número de convidados ou uma descrição.': 'Provide the event date, the number of guests or a description.',
+    'Descreva o problema de manutenção.': 'Describe the maintenance issue.',
+    'Informe o horário previsto de chegada ou uma observação.': 'Provide your estimated arrival time or a note.',
+    'Falha ao registrar o pedido. Tente novamente.': 'Failed to submit the request. Please try again.',
+    'Informe a reserva e uma nota de 1 a 5.': 'Provide the booking and a rating from 1 to 5.',
+    'A avaliação fica disponível após o check-out.': 'The review becomes available after check-out.',
+    'Você já avaliou esta estadia.': 'You have already reviewed this stay.',
+    'Falha ao registrar a avaliação.': 'Failed to submit the review.',
+    'Informe o código de indicação.': 'Enter the referral code.',
+    'Você já registrou um código de indicação.': 'You have already registered a referral code.',
+    'Você não pode usar o seu próprio código.': 'You cannot use your own code.',
+    'Código de indicação não encontrado.': 'Referral code not found.',
+    'Informe o nome e o contato (WhatsApp/e-mail) de quem você quer indicar.': 'Provide the name and contact (WhatsApp/email) of the person you want to refer.',
+    'Você não tem valor pendente para pagar.': 'You have no outstanding amount to pay.',
+    'O pagamento online ainda está sendo configurado. Combine o pagamento pelo WhatsApp por enquanto.': 'Online payment is still being set up. For now, arrange payment via WhatsApp.',
+    'Falha ao iniciar o pagamento. Tente novamente.': 'Failed to start the payment. Please try again.',
+    'Você não tem reserva nesta propriedade.': 'You have no booking at this property.',
+  },
+  es: {
+    'não autenticado': 'no autenticado', 'sessão inválida': 'sesión inválida',
+    'Muitas tentativas. Tente de novo em 15 minutos.': 'Demasiados intentos. Inténtelo de nuevo en 15 minutos.',
+    'Login ou senha incorretos.': 'Usuario o contraseña incorrectos.',
+    'A nova senha deve ter ao menos 8 caracteres.': 'La nueva contraseña debe tener al menos 8 caracteres.',
+    'Senha atual incorreta.': 'La contraseña actual es incorrecta.', 'Assinatura inválida.': 'Suscripción inválida.',
+    'Conta não encontrada.': 'Cuenta no encontrada.',
+    'Informe o localizador, o sobrenome e uma senha de ao menos 8 caracteres.': 'Ingrese el localizador, el apellido y una contraseña de al menos 8 caracteres.',
+    'Não encontramos uma reserva com esses dados. Confira o localizador, o sobrenome e a data de check-in.': 'No encontramos una reserva con esos datos. Verifique el localizador, el apellido y la fecha de check-in.',
+    'Falha ao validar a reserva. Tente novamente em instantes.': 'No se pudo validar la reserva. Inténtelo de nuevo en unos instantes.',
+    'Informe um e-mail válido.': 'Ingrese un correo válido.',
+    'Se houver uma reserva com esse e-mail, enviamos um link para você criar a sua senha e entrar. Confira a sua caixa de entrada (e o spam).': 'Si hay una reserva con ese correo, le enviamos un enlace para crear su contraseña e ingresar. Revise su bandeja de entrada (y el spam).',
+    'A senha deve ter ao menos 8 caracteres.': 'La contraseña debe tener al menos 8 caracteres.',
+    'Link inválido ou expirado. Solicite um novo pela tela de acesso.': 'Enlace inválido o vencido. Solicite uno nuevo en la pantalla de acceso.',
+    'Link inválido. Solicite um novo pela tela de acesso.': 'Enlace inválido. Solicite uno nuevo en la pantalla de acceso.',
+    'Falha ao concluir o cadastro. Tente novamente.': 'No se pudo completar el registro. Inténtelo de nuevo.',
+    'Falha ao consultar suas reservas.': 'No se pudieron consultar sus reservas.',
+    'Reserva não encontrada na sua conta.': 'Reserva no encontrada en su cuenta.',
+    'Falha ao gerar a carteira.': 'No se pudo generar la cartera.', 'Seção não encontrada.': 'Sección no encontrada.',
+    'O assistente está em ativação. Por enquanto, fale com a gente pelo WhatsApp que ajudamos na hora: wa.me/556191935013': 'El asistente se está activando. Por ahora, escríbanos por WhatsApp y le ayudamos enseguida: wa.me/556191935013',
+    'Você enviou muitas mensagens seguidas. Aguarde um minutinho e tente de novo.': 'Envió demasiados mensajes seguidos. Espere un momento e inténtelo de nuevo.',
+    'Escreva a sua dúvida.': 'Escriba su duda.',
+    'Não consegui responder agora. Tente de novo em instantes ou fale pelo WhatsApp: wa.me/556191935013': 'No pude responder ahora. Inténtelo de nuevo en unos instantes o escríbanos por WhatsApp: wa.me/556191935013',
+    'Falha ao falar com o assistente. Tente novamente em instantes.': 'No se pudo hablar con el asistente. Inténtelo de nuevo en unos instantes.',
+    'Informe a reserva.': 'Indique la reserva.',
+    'Alterações desta reserva devem ser solicitadas na plataforma onde você reservou (ex.: Airbnb/Booking).': 'Los cambios de esta reserva deben solicitarse en la plataforma donde reservó (ej.: Airbnb/Booking).',
+    'Serviço inválido.': 'Servicio inválido.',
+    'Diga o que deseja alterar (datas, imóvel, nº de hóspedes ou uma mensagem).': 'Diga qué desea cambiar (fechas, propiedad, n.º de huéspedes o un mensaje).',
+    'Informe a data do evento, o número de convidados ou uma descrição.': 'Indique la fecha del evento, el número de invitados o una descripción.',
+    'Descreva o problema de manutenção.': 'Describa el problema de mantenimiento.',
+    'Informe o horário previsto de chegada ou uma observação.': 'Indique la hora estimada de llegada o una observación.',
+    'Falha ao registrar o pedido. Tente novamente.': 'No se pudo registrar la solicitud. Inténtelo de nuevo.',
+    'Informe a reserva e uma nota de 1 a 5.': 'Indique la reserva y una nota de 1 a 5.',
+    'A avaliação fica disponível após o check-out.': 'La reseña estará disponible después del check-out.',
+    'Você já avaliou esta estadia.': 'Ya reseñó esta estadía.',
+    'Falha ao registrar a avaliação.': 'No se pudo registrar la reseña.',
+    'Informe o código de indicação.': 'Ingrese el código de referido.',
+    'Você já registrou um código de indicação.': 'Ya registró un código de referido.',
+    'Você não pode usar o seu próprio código.': 'No puede usar su propio código.',
+    'Código de indicação não encontrado.': 'Código de referido no encontrado.',
+    'Informe o nome e o contato (WhatsApp/e-mail) de quem você quer indicar.': 'Indique el nombre y el contacto (WhatsApp/correo) de quien desea recomendar.',
+    'Você não tem valor pendente para pagar.': 'No tiene un importe pendiente de pago.',
+    'O pagamento online ainda está sendo configurado. Combine o pagamento pelo WhatsApp por enquanto.': 'El pago en línea aún se está configurando. Por ahora, acuerde el pago por WhatsApp.',
+    'Falha ao iniciar o pagamento. Tente novamente.': 'No se pudo iniciar el pago. Inténtelo de nuevo.',
+    'Você não tem reserva nesta propriedade.': 'No tiene reserva en esta propiedad.',
+  },
+};
+// Nunca cachear respostas da API do hóspede + traduzir erro/mensagem conforme o idioma do app (header x-lang).
+app.use('/hospede/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const l = String(req.headers['x-lang'] || '').slice(0, 2).toLowerCase();
+  req.lang = ['pt', 'en', 'es'].includes(l) ? l : 'pt';
+  if (req.lang !== 'pt') {
+    const dict = MSG_HOSPEDE[req.lang] || {};
+    const orig = res.json.bind(res);
+    res.json = (body) => {
+      if (body && typeof body === 'object') {
+        if (typeof body.erro === 'string' && dict[body.erro]) body.erro = dict[body.erro];
+        if (typeof body.mensagem === 'string' && dict[body.mensagem]) body.mensagem = dict[body.mensagem];
+      }
+      return orig(body);
+    };
+  }
+  next();
+});
 
 // =========================== sessão do hóspede ===========================
 app.post('/hospede/api/login', (req, res) => {

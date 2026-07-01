@@ -5,7 +5,7 @@ const $ = (s) => document.querySelector(s);
 
 async function api(caminho, opcoes) {
   const r = await fetch(API + caminho, Object.assign({
-    headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'x-lang': (typeof LANG !== 'undefined' ? LANG : 'pt') }, credentials: 'same-origin',
   }, opcoes || {}));
   let dados = {};
   try { dados = await r.json(); } catch (e) { /* corpo vazio */ }
