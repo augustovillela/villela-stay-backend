@@ -494,6 +494,12 @@ $('#form-senha-modal').addEventListener('submit', async (ev) => {
 function openLink(u) { if (u) window.open(u, '_blank', 'noopener'); }
 
 const GRUPOS = [
+  { titulo: 'Acesso e ajuda', itens: [
+    { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
+    { rotulo: 'Eva', icone: 'ti-robot', rota: 'ajudaia' },
+    { rotulo: 'FAQ', icone: 'ti-help-circle', link: 'https://villelastay.com.br/faq.html' },
+    { rotulo: 'Links', icone: 'ti-link', link: 'https://villelastay.com.br/links.html' },
+  ] },
   { titulo: 'Minha estadia', itens: [
     { rotulo: 'Reservas', icone: 'ti-calendar-event', rota: 'reservas' },
     { rotulo: 'Carteira', icone: 'ti-qrcode', rota: 'carteira' },
@@ -519,12 +525,6 @@ const GRUPOS = [
     { rotulo: 'Gastronomia', icone: 'ti-tools-kitchen-2', rota: 'gastronomia' },
     { rotulo: 'Turismo', icone: 'ti-building-monument', rota: 'turismo' },
     { rotulo: 'Pacotes', icone: 'ti-package', rota: 'pacotes' },
-  ] },
-  { titulo: 'Acesso e ajuda', itens: [
-    { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
-    { rotulo: 'Eva', icone: 'ti-robot', rota: 'ajudaia' },
-    { rotulo: 'FAQ', icone: 'ti-help-circle', link: 'https://villelastay.com.br/faq.html' },
-    { rotulo: 'Links', icone: 'ti-link', link: 'https://villelastay.com.br/links.html' },
   ] },
 ];
 
