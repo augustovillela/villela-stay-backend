@@ -247,12 +247,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 @media (max-width: 559px) {
   .home-saudacao strong { font-size: 1.1rem; }
   .home-saudacao { margin-bottom: 14px; }
-  .home-ola-linha { gap: 8px; }
-  /* Botão Instalação vira só o ícone no celular (a palavra "Instalação" ocupa muito espaço
-     e não caberia junto com a saudação + os idiomas na mesma linha). */
-  .btn-instalar { padding: 7px 9px; font-size: 1rem; }
-  .btn-instalar span { display: none; }
-  .btn-instalar .ti { font-size: 1.1rem; }
+  .home-ola-linha { gap: 8px; align-items: flex-end; }
+  /* No celular o botão Instalação vira "ícone + legenda" (como os demais ícones),
+     com o rótulo "Instalação" no tamanho padrão — ocupa pouca largura e cabe na linha. */
+  .btn-instalar { flex-direction: column; gap: 4px; background: none; padding: 0; color: #e7eef0; }
+  .btn-instalar .ti { background: var(--cerrado); color: var(--petroleo); width: 42px; height: 42px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; }
+  .btn-instalar span { display: inline; font-size: .72rem; color: #e7eef0; font-weight: 600; line-height: 1.2; }
   .home-lang .lang-opt { padding: 2px 7px; }
 }
 /* Sempre no máximo 4 ícones por linha (igual ao celular) — não abrir 5 colunas no desktop. */
