@@ -857,11 +857,22 @@ async function renderCarteira() {
 // ---- Ajuda IA (chat com a base da Villela) ----
 let CHAT_HIST = [];
 let CHAT_INIT = false;
+// Renderiza um subconjunto SEGURO de Markdown (negrito/itálico/listas/links) — escapa HTML antes.
+function mdChat(txt) {
+  let h = esc(txt); // escapa &<>" (LLM não injeta HTML)
+  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>'); // [texto](url)
+  h = h.replace(/^[ \t]{0,3}#{1,6}[ \t]+(.*)$/gm, '<strong>$1</strong>'); // títulos -> negrito
+  h = h.replace(/^[ \t]*[-*][ \t]+/gm, '• ');                             // itens de lista -> bolinha
+  h = h.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');           // **negrito**
+  h = h.replace(/(^|[^*])\*([^*\n]+?)\*/g, '$1<em>$2</em>');           // *itálico*
+  return h;
+}
 function chatAdd(role, texto, temp) {
   const msgs = $('#chat-msgs');
   const div = document.createElement('div');
   div.className = 'chat-bolha chat-' + role + (temp ? ' chat-temp' : '');
-  div.textContent = texto;
+  if (role === 'assistant' && !temp) div.innerHTML = mdChat(texto); // resposta da IA: renderiza markdown
+  else div.textContent = texto;                                     // usuário/"pensando": texto puro
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
   return div;
