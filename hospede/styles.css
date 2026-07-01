@@ -151,17 +151,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 /* seletor de idioma (i18n) */
 .lang-switch { display: flex; gap: 4px; }
 .login-card .lang-switch { justify-content: center; margin: 0 0 14px; }
-.home-lang { display: flex; justify-content: center; align-items: center; flex: 1; }
+.home-lang { display: flex; justify-content: center; align-items: center; }
+.home-saudacao strong, .btn-instalar { flex-shrink: 0; }
 .lang-opt { border: 1px solid var(--lago-escuro, #0c3644); background: transparent; color: var(--lago-escuro, #0c3644); border-radius: 999px; padding: 2px 9px; font-size: .72rem; font-weight: 800; cursor: pointer; opacity: .55; line-height: 1.4; }
 .lang-opt.ativo { background: var(--lago-escuro, #0c3644); color: #fff; opacity: 1; }
 .topo .lang-opt, .home-lang .lang-opt { color: #f2ecd8; border-color: rgba(242, 236, 216, .5); }
 .topo .lang-opt.ativo, .home-lang .lang-opt.ativo { background: #f2ecd8; color: #0c3644; border-color: #f2ecd8; }
-/* No celular, os 3 itens não cabem em 1 linha: saudação + Instalação na 1ª linha e
-   os botões de idioma centralizados na linha de baixo (sem apertar). */
-@media (max-width: 559px) {
-  .home-ola-linha { flex-wrap: wrap; }
-  .home-lang { order: 3; flex: 1 1 100%; margin-top: 10px; }
-}
 .lanc-pagamento { background: #e8e3f3; color: #5b3f8c; }
 .lanc-val { font-size: .72rem; color: var(--concreto-claro); }
 
@@ -246,6 +241,20 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .home-rodape { text-align: center; color: #6f8b93; font-size: .75rem; margin-top: 28px; }
 .home-rodape strong { display: block; color: var(--creme); font-weight: 700; }
 .rodape-slogan { display: block; margin-top: 4px; font-style: normal; font-weight: 700; color: #cfe0e4; }
+/* No celular: encolher levemente a saudação e o botão Instalação para os três
+   (saudação · idiomas · Instalação) caberem na MESMA linha, economizando altura vertical.
+   (Precisa vir DEPOIS das regras-base de .home-saudacao/.btn-instalar para vencer no cascata.) */
+@media (max-width: 559px) {
+  .home-saudacao strong { font-size: 1.1rem; }
+  .home-saudacao { margin-bottom: 14px; }
+  .home-ola-linha { gap: 8px; }
+  /* Botão Instalação vira só o ícone no celular (a palavra "Instalação" ocupa muito espaço
+     e não caberia junto com a saudação + os idiomas na mesma linha). */
+  .btn-instalar { padding: 7px 9px; font-size: 1rem; }
+  .btn-instalar span { display: none; }
+  .btn-instalar .ti { font-size: 1.1rem; }
+  .home-lang .lang-opt { padding: 2px 7px; }
+}
 /* Sempre no máximo 4 ícones por linha (igual ao celular) — não abrir 5 colunas no desktop. */
 
 /* ---------- views (roteador) ---------- */
