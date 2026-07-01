@@ -2053,43 +2053,75 @@ app.post('/hospede/api/chat', requireHospede, async (req, res) => {
     .slice(-8).map(m => ({ role: m.role, content: String(m.content).slice(0, 2000) }));
   try {
     let contexto = '';
+    // (a) Reservas + info NAO-sensivel da casa do proprio hospede (Wi-Fi/acesso ficam de fora)
     try {
       const reservas = await reservasDoHospede(req.hospede, false);
       const ativas = (reservas || []).filter(r => r.status !== 'canceled' && r.status !== 'blocked');
       if (ativas.length) {
-        contexto = '\n\nReservas deste hóspede (' + (req.hospede.nome || 'hóspede') + '):\n' + ativas.map(r =>
-          `- ${r.imovelTitulo || r.imovel || 'Hospedagem'} (${r.imovel || ''}): ${r.checkin} a ${r.checkout}, ${r.hospedes || '?'} hóspede(s), status ${r.statusRotulo || r.status}.`).join('\n');
+        contexto += '\n\n=== RESERVAS DESTE HOSPEDE (' + (req.hospede.nome || 'hospede') + ') ===\n' + ativas.map(r =>
+          `- ${r.imovelTitulo || r.imovel || 'Hospedagem'} (${r.imovel || ''}): ${r.checkin} a ${r.checkout}, ${r.hospedes || '?'} hospede(s), status ${r.statusRotulo || r.status}.`).join('\n');
         const info = lerPropInfo();
         for (const c of [...new Set(ativas.map(r => r.imovel).filter(Boolean))]) {
           const p = info[c]; if (!p) continue;
-          contexto += `\nCasa ${c}: check-in ${p.checkinHora || '15h'}, check-out ${p.checkoutHora || '11h'}.` + (p.observacoes ? ' Observações: ' + p.observacoes : '');
+          const partes = [`check-in ${p.checkinHora || '15h'}, check-out ${p.checkoutHora || '11h'}`];
+          if (p.contatos) partes.push('contatos: ' + p.contatos);
+          if (p.manualUrl) partes.push('manual: ' + p.manualUrl);
+          if (p.guiaUrl) partes.push('guia: ' + p.guiaUrl);
+          if (p.observacoes) partes.push('observacoes: ' + p.observacoes);
+          contexto += `\nCasa ${c}: ${partes.join(' | ')}.`;
         }
       }
     } catch (e) { /* sem contexto de reserva */ }
+    // (b) Conta corrente / cash back / fidelidade
+    try {
+      const cc = resumoConta(req.hospede.id);
+      const cbTot = (cc.lancamentos || []).filter(l => ['cashback', 'recorrencia', 'bonus'].includes(l.tipo) && Number(l.valor) > 0).reduce((s, l) => s + Number(l.valor), 0);
+      contexto += `\n\n=== CONTA DO HOSPEDE ===\nSaldo: R$ ${Number(cc.saldo || 0).toFixed(2)} (positivo = credito a favor; negativo = a pagar). A pagar agora: R$ ${Number(cc.aPagar || 0).toFixed(2)}. Cash back/bonus ja creditado: R$ ${cbTot.toFixed(2)}. Codigo de indicacao do hospede: ${req.hospede.codigoIndicacao || '-'}.`;
+    } catch (e) { /* sem conta */ }
+    // (c) Recomendacoes curadas (vitrines Gastronomia/Turismo/Pacotes)
+    try {
+      const cont = lerConteudo();
+      let bloco = '';
+      for (const [k, rot] of [['gastronomia', 'GASTRONOMIA'], ['turismo', 'TURISMO EM BRASILIA'], ['pacotes', 'PACOTES E EXPERIENCIAS']]) {
+        const s = cont[k]; if (!s || !Array.isArray(s.itens)) continue;
+        const itens = s.itens.filter(i => i && i.ativo !== false);
+        if (itens.length) bloco += `\n${rot}:` + itens.map(i => `\n- ${i.titulo}: ${i.desc}`).join('');
+      }
+      if (bloco) contexto += '\n\n=== RECOMENDACOES CURADAS DA VILLELA STAY (use quando o hospede pedir dicas de comer/passear/pacotes) ===' + bloco;
+    } catch (e) { /* sem conteudo */ }
+
     const system = `Você é o assistente virtual da Villela Stay, hospedagem premium por temporada no Lago Sul, Brasília-DF. Atenda como um anfitrião premiado: acolhedor, cordial, direto e prestativo. Responda SEMPRE no mesmo idioma da pergunta do hóspede (português, inglês ou espanhol).
 
-Use como fonte de verdade o FAQ oficial abaixo e os dados da reserva do hóspede. Regras:
-- Para preço, contrato, cancelamento, taxas e datas especiais, siga EXATAMENTE o FAQ. Nunca invente valores nem políticas.
-- Se a dúvida fugir do FAQ, for exceção comercial, ou você não tiver certeza, oriente o hóspede a falar pelo WhatsApp (wa.me/556191935013). Não invente.
-- Wi-Fi e códigos de acesso (portão/fechadura) NÃO ficam aqui: oriente o hóspede a abrir o ícone "Wi-Fi" no app — esses dados são liberados a partir de 2 dias antes do check-in.
-- Seja conciso (no máximo uns 6 parágrafos curtos) e responda só o que foi perguntado.
+Use como FONTE DE VERDADE o FAQ oficial e os dados abaixo (reserva, conta e recomendações da casa). Regras:
+- Preço, contrato, cancelamento, taxas e datas especiais: siga EXATAMENTE o FAQ. Nunca invente e NUNCA use a busca na web para políticas/preços/regras da Villela.
+- Dicas de gastronomia, turismo e pacotes: priorize as RECOMENDAÇÕES CURADAS abaixo (é a seleção da casa). Pode complementar com a web para informação atual (horário de funcionamento, eventos, clima), deixando claro quando a info vier da internet.
+- Busca na web: use SÓ para informação externa/atual que o FAQ e os dados não cobrem. Não pesquise assuntos internos da Villela na web.
+- Wi-Fi e códigos de acesso (portão/fechadura) NÃO ficam aqui: oriente o hóspede a abrir o ícone "Wi-Fi" no app — liberados a partir de 2 dias antes do check-in.
+- Se não tiver certeza, ou for exceção comercial, oriente a falar pelo WhatsApp (wa.me/556191935013). Não invente.
+- Seja conciso e responda só o que foi perguntado.
 
 === FAQ OFICIAL DA VILLELA STAY ===
 ${faqTexto()}
 === FIM DO FAQ ===${contexto}`;
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.CHAT_MODEL || 'claude-haiku-4-5',
-        max_tokens: 800,
-        system,
-        messages: [...historico, { role: 'user', content: msg }],
-      }),
-    });
-    if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[chat] anthropic', r.status, t.slice(0, 300)); return res.status(502).json({ erro: 'Não consegui responder agora. Tente de novo em instantes ou fale pelo WhatsApp: wa.me/556191935013' }); }
-    const d = await r.json();
-    const resposta = (d.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
+
+    // Chamada à API da Claude com BUSCA NA WEB (server tool) + tratamento de pause_turn (loop do server tool)
+    const modelo = process.env.CHAT_MODEL || 'claude-haiku-4-5';
+    const wsType = /sonnet-4-6|opus-4-(6|7|8)|fable-5/.test(modelo) ? 'web_search_20260209' : 'web_search_20250305';
+    const tools = [{ type: wsType, name: 'web_search', max_uses: 3 }];
+    const messages = [...historico, { role: 'user', content: msg }];
+    let d = null;
+    for (let i = 0; i < 4; i++) {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: modelo, max_tokens: 1000, system, tools, messages }),
+      });
+      if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[chat] anthropic', r.status, t.slice(0, 300)); return res.status(502).json({ erro: 'Não consegui responder agora. Tente de novo em instantes ou fale pelo WhatsApp: wa.me/556191935013' }); }
+      d = await r.json();
+      if (d.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: d.content }); continue; }
+      break;
+    }
+    const resposta = ((d && d.content) ? d.content : []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
       || 'Desculpe, não consegui formular uma resposta. Pode reformular, ou falar com a gente pelo WhatsApp?';
     res.json({ resposta });
   } catch (e) { console.error('[chat]', e.message); res.status(502).json({ erro: 'Falha ao falar com o assistente. Tente novamente em instantes.' }); }
