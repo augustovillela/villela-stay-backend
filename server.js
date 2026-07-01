@@ -2681,6 +2681,8 @@ app.post('/webhooks/mercadopago', async (req, res) => {
   } catch (e) { console.error('[mp webhook]', e.message); }
 });
 
+// Raiz → Área do Hóspede (o domínio minha.villelastay.com.br é dedicado ao app do hóspede).
+app.get('/', (req, res) => res.redirect(302, '/hospede'));
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
