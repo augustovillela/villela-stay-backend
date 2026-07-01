@@ -496,7 +496,7 @@ function openLink(u) { if (u) window.open(u, '_blank', 'noopener'); }
 const GRUPOS = [
   { titulo: 'Acesso e ajuda', itens: [
     { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
-    { rotulo: 'Eva', icone: 'ti-robot', rota: 'ajudaia' },
+    { rotulo: 'Eva', icone: 'ti-robot', rota: 'ajudaia', animado: true },
     { rotulo: 'FAQ', icone: 'ti-help-circle', link: 'https://villelastay.com.br/faq.html' },
     { rotulo: 'Links', icone: 'ti-link', link: 'https://villelastay.com.br/links.html' },
   ] },
@@ -536,7 +536,7 @@ function montarGrade() {
       <div class="grade-titulo">${esc(gr.titulo)}</div>
       <div class="grade-itens">
         ${gr.itens.map((it, ii) => `
-          <button type="button" class="tile${it.destaque ? ' tile-destaque' : ''}" data-gi="${gi}" data-ii="${ii}">
+          <button type="button" class="tile${it.destaque ? ' tile-destaque' : ''}${it.animado ? ' tile-animado' : ''}" data-gi="${gi}" data-ii="${ii}">
             <span class="tile-ico"><i class="ti ${esc(it.icone)}" aria-hidden="true"></i></span>
             <span class="tile-rotulo">${esc(it.rotulo)}</span>
           </button>`).join('')}
