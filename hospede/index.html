@@ -22,20 +22,20 @@
   <main id="tela-login" class="login hidden">
     <form id="form-login" class="login-card" autocomplete="on">
       <div class="marca">Villela Stay</div>
-      <p class="login-sub">Área do Hóspede — acesso exclusivo</p>
-      <label>E-mail ou telefone
+      <p class="login-sub" data-i18n="login_sub">Área do Hóspede — acesso exclusivo</p>
+      <label><span data-i18n="login_id">E-mail ou telefone</span>
         <input type="text" id="login-email" name="username" required autocomplete="username" autocapitalize="off" spellcheck="false">
       </label>
-      <label>Senha
+      <label><span data-i18n="senha">Senha</span>
         <input type="password" id="login-senha" name="password" required autocomplete="current-password">
       </label>
-      <button type="submit" class="btn">Entrar</button>
+      <button type="submit" class="btn" data-i18n="entrar">Entrar</button>
       <p id="login-erro" class="erro"></p>
-      <p class="login-alt"><strong>Primeiro acesso ou esqueceu a senha?</strong>
-        <a href="#" id="ir-email">Entre com o seu e-mail</a> e enviamos um link.</p>
-      <p class="login-alt">Reservou pelo Airbnb, Booking ou outro site?
-        <a href="#" id="ir-registrar">Crie seu acesso com o código da reserva</a>.</p>
-      <a class="login-voltar" href="https://villelastay.com.br">← Voltar ao site</a>
+      <p class="login-alt"><strong data-i18n="primeiro_acesso_q">Primeiro acesso ou esqueceu a senha?</strong>
+        <a href="#" id="ir-email" data-i18n="entre_email_link">Entre com o seu e-mail</a><span data-i18n="e_enviamos_link"> e enviamos um link.</span></p>
+      <p class="login-alt"><span data-i18n="reservou_ota">Reservou pelo Airbnb, Booking ou outro site?</span>
+        <a href="#" id="ir-registrar" data-i18n="crie_acesso_codigo">Crie seu acesso com o código da reserva</a>.</p>
+      <a class="login-voltar" href="https://villelastay.com.br" data-i18n="voltar_site">← Voltar ao site</a>
     </form>
   </main>
 
@@ -43,17 +43,17 @@
   <main id="tela-email" class="login hidden">
     <form id="form-email" class="login-card">
       <div class="marca">Villela Stay</div>
-      <p class="login-sub">Acesso por e-mail</p>
-      <p class="login-alt">Digite o e-mail que você usou na sua reserva. Se encontrarmos uma reserva sua,
-        enviaremos um link para você <strong>criar a sua senha</strong> e entrar — as suas reservas anteriores
+      <p class="login-sub" data-i18n="email_titulo">Acesso por e-mail</p>
+      <p class="login-alt" data-i18n="email_ajuda">Digite o e-mail que você usou na sua reserva. Se encontrarmos uma reserva sua,
+        enviaremos um link para você criar a sua senha e entrar — as suas reservas anteriores
         já aparecem automaticamente.</p>
-      <label>Seu e-mail
+      <label><span data-i18n="seu_email">Seu e-mail</span>
         <input type="email" id="em-email" required autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="voce@email.com">
       </label>
-      <button type="submit" class="btn">Enviar link de acesso</button>
+      <button type="submit" class="btn" data-i18n="enviar_link_acesso">Enviar link de acesso</button>
       <p id="em-msg" class="ok-msg"></p>
       <p id="em-erro" class="erro"></p>
-      <a href="#" id="email-voltar-login" class="login-voltar">← Já tenho acesso</a>
+      <a href="#" id="email-voltar-login" class="login-voltar" data-i18n="ja_tenho_acesso">← Já tenho acesso</a>
     </form>
   </main>
 
@@ -61,14 +61,14 @@
   <main id="tela-definir" class="login hidden">
     <form id="form-definir" class="login-card">
       <div class="marca">Villela Stay</div>
-      <p class="login-sub">Crie a sua senha de acesso</p>
-      <label>Nova senha (mín. 8 caracteres)
+      <p class="login-sub" data-i18n="crie_senha_acesso">Crie a sua senha de acesso</p>
+      <label><span data-i18n="nova_senha_min">Nova senha (mín. 8 caracteres)</span>
         <input type="password" id="df-senha" required minlength="8" autocomplete="new-password">
       </label>
-      <label>Confirme a senha
+      <label><span data-i18n="confirme_senha">Confirme a senha</span>
         <input type="password" id="df-senha2" required minlength="8" autocomplete="new-password">
       </label>
-      <button type="submit" class="btn">Salvar e entrar</button>
+      <button type="submit" class="btn" data-i18n="salvar_entrar">Salvar e entrar</button>
       <p id="df-erro" class="erro"></p>
     </form>
   </main>
@@ -77,25 +77,25 @@
   <main id="tela-registrar" class="login hidden">
     <form id="form-registrar" class="login-card">
       <div class="marca">Villela Stay</div>
-      <p class="login-sub">Criar acesso com o código da reserva</p>
-      <label>Localizador / código da reserva
+      <p class="login-sub" data-i18n="criar_acesso_codigo_sub">Criar acesso com o código da reserva</p>
+      <label><span data-i18n="localizador_label">Localizador / código da reserva</span>
         <input type="text" id="rg-localizador" required autocapitalize="characters" spellcheck="false" placeholder="Ex.: LR03J">
       </label>
-      <label>Seu sobrenome
+      <label><span data-i18n="seu_sobrenome">Seu sobrenome</span>
         <input type="text" id="rg-sobrenome" required autocapitalize="words" spellcheck="false">
       </label>
-      <label>Data do check-in
+      <label><span data-i18n="data_checkin">Data do check-in</span>
         <input type="date" id="rg-checkin" required>
       </label>
-      <label>Crie uma senha (mín. 8 caracteres)
+      <label><span data-i18n="crie_senha_min">Crie uma senha (mín. 8 caracteres)</span>
         <input type="password" id="rg-senha" required minlength="8" autocomplete="new-password">
       </label>
-      <label>Código de indicação (opcional)
-        <input type="text" id="rg-codigo" autocapitalize="characters" spellcheck="false" placeholder="Se alguém te indicou">
+      <label><span data-i18n="cod_indicacao_opc">Código de indicação (opcional)</span>
+        <input type="text" id="rg-codigo" autocapitalize="characters" spellcheck="false" placeholder="Se alguém te indicou" data-i18n-ph="cod_indicacao_ph">
       </label>
-      <button type="submit" class="btn">Criar meu acesso</button>
+      <button type="submit" class="btn" data-i18n="criar_meu_acesso">Criar meu acesso</button>
       <p id="rg-erro" class="erro"></p>
-      <a href="#" id="voltar-login" class="login-voltar">← Já tenho acesso</a>
+      <a href="#" id="voltar-login" class="login-voltar" data-i18n="ja_tenho_acesso">← Já tenho acesso</a>
     </form>
   </main>
 
@@ -103,14 +103,14 @@
   <main id="tela-trocar" class="login hidden">
     <form id="form-trocar" class="login-card">
       <div class="marca">Villela Stay</div>
-      <p class="login-sub">Defina uma nova senha para continuar</p>
-      <label>Senha atual (a que você recebeu)
+      <p class="login-sub" data-i18n="defina_nova_senha">Defina uma nova senha para continuar</p>
+      <label><span data-i18n="senha_atual_recebeu">Senha atual (a que você recebeu)</span>
         <input type="password" id="tr-atual" required autocomplete="current-password">
       </label>
-      <label>Nova senha (mín. 8 caracteres)
+      <label><span data-i18n="nova_senha_min">Nova senha (mín. 8 caracteres)</span>
         <input type="password" id="tr-nova" required minlength="8" autocomplete="new-password">
       </label>
-      <button type="submit" class="btn">Salvar e entrar</button>
+      <button type="submit" class="btn" data-i18n="salvar_entrar">Salvar e entrar</button>
       <p id="tr-erro" class="erro"></p>
     </form>
   </main>
@@ -126,7 +126,7 @@
       </div>
       <div class="topo-dir">
         <button type="button" id="btn-notif" class="ico-topo" aria-label="Notificações"><i class="ti ti-bell" aria-hidden="true"></i></button>
-        <button type="button" id="btn-sair" class="link-sair">Sair</button>
+        <button type="button" id="btn-sair" class="link-sair" data-i18n="sair">Sair</button>
       </div>
     </header>
 
@@ -135,12 +135,12 @@
       <div class="home-saudacao">
         <div class="home-ola-linha">
           <strong id="ola">Olá</strong>
-          <button type="button" id="btn-instalar" class="btn-instalar"><i class="ti ti-download" aria-hidden="true"></i> Instalação</button>
+          <button type="button" id="btn-instalar" class="btn-instalar"><i class="ti ti-download" aria-hidden="true"></i> <span data-i18n="instalacao">Instalação</span></button>
         </div>
-        <span>o que você precisa hoje?</span>
+        <span data-i18n="o_que_precisa">o que você precisa hoje?</span>
       </div>
       <div id="grade" class="grade"></div>
-      <p class="home-rodape"><strong>Villela Stay · Lago Sul, Brasília</strong><span class="rodape-slogan">Hospedagens Inteligentes para Experiências Inesquecíveis</span></p>
+      <p class="home-rodape"><strong>Villela Stay · Lago Sul, Brasília</strong><span class="rodape-slogan" data-i18n="rodape_slogan">Hospedagens Inteligentes para Experiências Inesquecíveis</span></p>
     </main>
 
     <!-- VIEWS — uma por vez (roteador interno) -->

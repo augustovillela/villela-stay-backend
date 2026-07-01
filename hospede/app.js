@@ -24,9 +24,89 @@ const fmtData = (iso) => { if (!iso) return '—'; const [a, m, d] = String(iso)
 const fmtMoeda = (v, moeda) => (v == null ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moeda || 'BRL' }).format(v));
 function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
+// ---------------- i18n (PT/EN/ES) ----------------
+// Estratégia faseada: chaves curtas p/ o HTML estático (data-i18n) e "texto-PT-como-chave" p/ o menu,
+// títulos de view e validações. O que não estiver traduzido cai em PT (fallback). Onboarding + shell traduzidos.
+const I18N = {
+  pt: {
+    login_sub: 'Área do Hóspede — acesso exclusivo', login_id: 'E-mail ou telefone', senha: 'Senha', entrar: 'Entrar',
+    primeiro_acesso_q: 'Primeiro acesso ou esqueceu a senha?', entre_email_link: 'Entre com o seu e-mail', e_enviamos_link: ' e enviamos um link.',
+    reservou_ota: 'Reservou pelo Airbnb, Booking ou outro site?', crie_acesso_codigo: 'Crie seu acesso com o código da reserva', voltar_site: '← Voltar ao site',
+    email_titulo: 'Acesso por e-mail', email_ajuda: 'Digite o e-mail que você usou na sua reserva. Se encontrarmos uma reserva sua, enviaremos um link para você criar a sua senha e entrar — as suas reservas anteriores já aparecem automaticamente.',
+    seu_email: 'Seu e-mail', enviar_link_acesso: 'Enviar link de acesso', ja_tenho_acesso: '← Já tenho acesso',
+    crie_senha_acesso: 'Crie a sua senha de acesso', nova_senha_min: 'Nova senha (mín. 8 caracteres)', confirme_senha: 'Confirme a senha', salvar_entrar: 'Salvar e entrar',
+    criar_acesso_codigo_sub: 'Criar acesso com o código da reserva', localizador_label: 'Localizador / código da reserva', seu_sobrenome: 'Seu sobrenome', data_checkin: 'Data do check-in',
+    crie_senha_min: 'Crie uma senha (mín. 8 caracteres)', cod_indicacao_opc: 'Código de indicação (opcional)', cod_indicacao_ph: 'Se alguém te indicou', criar_meu_acesso: 'Criar meu acesso',
+    defina_nova_senha: 'Defina uma nova senha para continuar', senha_atual_recebeu: 'Senha atual (a que você recebeu)',
+    o_que_precisa: 'o que você precisa hoje?', instalacao: 'Instalação', rodape_slogan: 'Hospedagens Inteligentes para Experiências Inesquecíveis', sair: 'Sair',
+    ola: 'Olá 👋', ola_nome: 'Olá, {nome} 👋',
+  },
+  en: {
+    login_sub: 'Guest Area — exclusive access', login_id: 'Email or phone', senha: 'Password', entrar: 'Sign in',
+    primeiro_acesso_q: 'First time or forgot your password?', entre_email_link: 'Sign in with your email', e_enviamos_link: ' and we’ll send you a link.',
+    reservou_ota: 'Booked via Airbnb, Booking or another site?', crie_acesso_codigo: 'Create your access with the reservation code', voltar_site: '← Back to the website',
+    email_titulo: 'Email access', email_ajuda: 'Enter the email you used for your reservation. If we find a booking, we’ll send you a link to create your password and sign in — your previous stays appear automatically.',
+    seu_email: 'Your email', enviar_link_acesso: 'Send access link', ja_tenho_acesso: '← I already have access',
+    crie_senha_acesso: 'Create your access password', nova_senha_min: 'New password (min. 8 characters)', confirme_senha: 'Confirm the password', salvar_entrar: 'Save and enter',
+    criar_acesso_codigo_sub: 'Create access with the reservation code', localizador_label: 'Locator / reservation code', seu_sobrenome: 'Your last name', data_checkin: 'Check-in date',
+    crie_senha_min: 'Create a password (min. 8 characters)', cod_indicacao_opc: 'Referral code (optional)', cod_indicacao_ph: 'If someone referred you', criar_meu_acesso: 'Create my access',
+    defina_nova_senha: 'Set a new password to continue', senha_atual_recebeu: 'Current password (the one you received)',
+    o_que_precisa: 'what do you need today?', instalacao: 'Install', rodape_slogan: 'Smart Stays for Unforgettable Experiences', sair: 'Sign out',
+    ola: 'Hi 👋', ola_nome: 'Hi, {nome} 👋',
+    'Acesso e ajuda': 'Access & help', 'Minha estadia': 'My stay', 'Conta e vantagens': 'Account & perks', 'Serviços e experiências': 'Services & experiences',
+    'Links': 'Links', 'Consultar': 'Look up', 'Reservas': 'Bookings', 'Eventos': 'Events', 'Guia': 'Guide', 'Recibos': 'Receipts', 'Avaliações': 'Reviews', 'Carteira': 'Wallet', 'Pedidos': 'Requests', 'Manutenção': 'Maintenance', 'Extrato': 'Statement', 'Fidelidade': 'Loyalty', 'Indicações': 'Referrals', 'Serviços': 'Services', 'Gastronomia': 'Dining', 'Turismo': 'Tourism', 'Pacotes': 'Packages',
+    'Minhas reservas': 'My bookings', 'Informações da casa': 'House information', 'Meus pedidos': 'My requests', 'Extrato da conta': 'Account statement', 'Serviços extras': 'Extra services', 'Fidelidade e indicações': 'Loyalty & referrals', 'Solicitar evento': 'Request an event', 'Eva — sua concierge': 'Eva — your concierge', 'Instalar o app': 'Install the app', 'Notificações': 'Notifications', 'Em breve': 'Coming soon',
+    'A senha deve ter ao menos 8 caracteres.': 'The password must be at least 8 characters.', 'As senhas não conferem.': 'The passwords do not match.',
+  },
+  es: {
+    login_sub: 'Área del Huésped — acceso exclusivo', login_id: 'Correo o teléfono', senha: 'Contraseña', entrar: 'Entrar',
+    primeiro_acesso_q: '¿Primer acceso u olvidó la contraseña?', entre_email_link: 'Ingrese con su correo', e_enviamos_link: ' y le enviamos un enlace.',
+    reservou_ota: '¿Reservó por Airbnb, Booking u otro sitio?', crie_acesso_codigo: 'Cree su acceso con el código de la reserva', voltar_site: '← Volver al sitio',
+    email_titulo: 'Acceso por correo', email_ajuda: 'Ingrese el correo que usó en su reserva. Si encontramos una reserva, le enviaremos un enlace para crear su contraseña e ingresar — sus estadías anteriores aparecen automáticamente.',
+    seu_email: 'Su correo', enviar_link_acesso: 'Enviar enlace de acceso', ja_tenho_acesso: '← Ya tengo acceso',
+    crie_senha_acesso: 'Cree su contraseña de acceso', nova_senha_min: 'Nueva contraseña (mín. 8 caracteres)', confirme_senha: 'Confirme la contraseña', salvar_entrar: 'Guardar y entrar',
+    criar_acesso_codigo_sub: 'Crear acceso con el código de la reserva', localizador_label: 'Localizador / código de la reserva', seu_sobrenome: 'Su apellido', data_checkin: 'Fecha de check-in',
+    crie_senha_min: 'Cree una contraseña (mín. 8 caracteres)', cod_indicacao_opc: 'Código de referido (opcional)', cod_indicacao_ph: 'Si alguien lo recomendó', criar_meu_acesso: 'Crear mi acceso',
+    defina_nova_senha: 'Defina una nueva contraseña para continuar', senha_atual_recebeu: 'Contraseña actual (la que recibió)',
+    o_que_precisa: '¿qué necesita hoy?', instalacao: 'Instalar', rodape_slogan: 'Alojamientos Inteligentes para Experiencias Inolvidables', sair: 'Salir',
+    ola: '¡Hola! 👋', ola_nome: '¡Hola, {nome}! 👋',
+    'Acesso e ajuda': 'Acceso y ayuda', 'Minha estadia': 'Mi estadía', 'Conta e vantagens': 'Cuenta y ventajas', 'Serviços e experiências': 'Servicios y experiencias',
+    'Links': 'Enlaces', 'Consultar': 'Consultar', 'Reservas': 'Reservas', 'Eventos': 'Eventos', 'Guia': 'Guía', 'Recibos': 'Recibos', 'Avaliações': 'Reseñas', 'Carteira': 'Cartera', 'Pedidos': 'Solicitudes', 'Manutenção': 'Mantenimiento', 'Extrato': 'Extracto', 'Fidelidade': 'Fidelidad', 'Indicações': 'Referidos', 'Serviços': 'Servicios', 'Gastronomia': 'Gastronomía', 'Turismo': 'Turismo', 'Pacotes': 'Paquetes',
+    'Minhas reservas': 'Mis reservas', 'Informações da casa': 'Información de la casa', 'Meus pedidos': 'Mis solicitudes', 'Extrato da conta': 'Extracto de la cuenta', 'Serviços extras': 'Servicios extra', 'Fidelidade e indicações': 'Fidelidad y referidos', 'Solicitar evento': 'Solicitar evento', 'Eva — sua concierge': 'Eva — su concierge', 'Instalar o app': 'Instalar la app', 'Notificações': 'Notificaciones', 'Em breve': 'Próximamente',
+    'A senha deve ter ao menos 8 caracteres.': 'La contraseña debe tener al menos 8 caracteres.', 'As senhas não conferem.': 'Las contraseñas no coinciden.',
+  },
+};
+let LANG = localStorage.getItem('vs_lang') || (navigator.language || 'pt').slice(0, 2).toLowerCase();
+if (!['pt', 'en', 'es'].includes(LANG)) LANG = 'pt';
+function t(k, vars) {
+  let s = (I18N[LANG] && I18N[LANG][k] != null) ? I18N[LANG][k] : (I18N.pt[k] != null ? I18N.pt[k] : k);
+  if (vars) for (const p in vars) s = s.split('{' + p + '}').join(vars[p]);
+  return s;
+}
+function setLang(l) { if (!['pt', 'en', 'es'].includes(l)) return; localStorage.setItem('vs_lang', l); location.reload(); }
+function aplicarI18n(root) {
+  const r = root || document;
+  r.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+  r.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+  document.documentElement.lang = LANG;
+}
+function seletorIdiomaHTML() {
+  return '<div class="lang-switch">' + [['pt', 'PT'], ['en', 'EN'], ['es', 'ES']].map(a => `<button type="button" class="lang-opt${a[0] === LANG ? ' ativo' : ''}" data-l="${a[0]}">${a[1]}</button>`).join('') + '</div>';
+}
+function injetarSeletores() {
+  document.querySelectorAll('.login-card').forEach(card => {
+    if (!card.querySelector('.lang-switch')) { const d = document.createElement('div'); d.innerHTML = seletorIdiomaHTML(); card.insertBefore(d.firstElementChild, card.firstChild); }
+  });
+  const topo = document.querySelector('#app .topo-dir');
+  if (topo && !topo.querySelector('.lang-switch')) { const d = document.createElement('div'); d.innerHTML = seletorIdiomaHTML(); topo.insertBefore(d.firstElementChild, topo.firstChild); }
+  document.querySelectorAll('.lang-opt').forEach(b => b.onclick = () => setLang(b.dataset.l));
+}
+
 // ---------------- boot ----------------
 let TOKEN_DEFINIR = '';
 async function boot() {
+  aplicarI18n(document);
+  injetarSeletores();
   // Link de definição de senha vindo do e-mail: /hospede?definir=<token>
   const params = new URLSearchParams(location.search);
   const tk = params.get('definir');
@@ -80,8 +160,8 @@ $('#form-definir').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   $('#df-erro').textContent = '';
   const s1 = $('#df-senha').value, s2 = $('#df-senha2').value;
-  if (s1.length < 8) { $('#df-erro').textContent = 'A senha deve ter ao menos 8 caracteres.'; return; }
-  if (s1 !== s2) { $('#df-erro').textContent = 'As senhas não conferem.'; return; }
+  if (s1.length < 8) { $('#df-erro').textContent = t('A senha deve ter ao menos 8 caracteres.'); return; }
+  if (s1 !== s2) { $('#df-erro').textContent = t('As senhas não conferem.'); return; }
   try {
     const { usuario } = await api('/definir-senha', { method: 'POST', body: JSON.stringify({ token: TOKEN_DEFINIR, senha: s1 }) });
     TOKEN_DEFINIR = '';
@@ -123,7 +203,7 @@ let USUARIO = null;
 function abrirApp(usuario) {
   USUARIO = usuario;
   mostrar('app');
-  $('#ola').textContent = usuario.nome ? ('Olá, ' + usuario.nome.split(' ')[0] + ' 👋') : 'Olá 👋';
+  $('#ola').textContent = usuario.nome ? t('ola_nome', { nome: usuario.nome.split(' ')[0] }) : t('ola');
   montarGrade();
   carregarReservas(); // dado central (reservas + avaliações + fidelidade + indicação); demais views carregam sob demanda
   reassinarPushSilencioso(); // mantém a assinatura de push se já houver permissão
@@ -573,12 +653,12 @@ function montarGrade() {
   if (!g) return;
   g.innerHTML = GRUPOS.map((gr, gi) => `
     <div class="grade-grupo">
-      <div class="grade-titulo">${esc(gr.titulo)}</div>
+      <div class="grade-titulo">${esc(t(gr.titulo))}</div>
       <div class="grade-itens">
         ${gr.itens.map((it, ii) => `
           <button type="button" class="tile${it.destaque ? ' tile-destaque' : ''}${it.animado ? ' tile-animado' : ''}" data-gi="${gi}" data-ii="${ii}">
             <span class="tile-ico"><i class="ti ${esc(it.icone)}" aria-hidden="true"></i></span>
-            <span class="tile-rotulo">${esc(it.rotulo)}</span>
+            <span class="tile-rotulo">${esc(t(it.rotulo))}</span>
           </button>`).join('')}
       </div>
     </div>`).join('');
@@ -637,7 +717,7 @@ function irPara(rota) {
   document.querySelectorAll('#views .view').forEach((v) => v.classList.add('hidden'));
   const el = document.getElementById(cfg.view);
   if (el) el.classList.remove('hidden');
-  $('#view-titulo').textContent = (el && el.dataset.titulo) || '';
+  $('#view-titulo').textContent = t((el && el.dataset.titulo) || '');
   if (cfg.enter) { try { cfg.enter(); } catch (e) { /* ignora */ } }
   window.scrollTo(0, 0);
 }
