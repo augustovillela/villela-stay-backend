@@ -495,10 +495,10 @@ function openLink(u) { if (u) window.open(u, '_blank', 'noopener'); }
 
 const GRUPOS = [
   { titulo: 'Acesso e ajuda', itens: [
-    { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
     { rotulo: 'Eva', icone: 'ti-robot', rota: 'ajudaia', animado: true },
-    { rotulo: 'FAQ', icone: 'ti-help-circle', link: 'https://villelastay.com.br/faq.html' },
     { rotulo: 'Links', icone: 'ti-link', link: 'https://villelastay.com.br/links.html' },
+    { rotulo: 'FAQ', icone: 'ti-help-circle', link: 'https://villelastay.com.br/faq.html' },
+    { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
   ] },
   { titulo: 'Minha estadia', itens: [
     { rotulo: 'Reservas', icone: 'ti-calendar-event', rota: 'reservas' },
