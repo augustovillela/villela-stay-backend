@@ -312,7 +312,8 @@ const I18N = {
     'Recebido': 'Recibido', 'Em análise': 'En análisis', 'Aprovado': 'Aprobado', 'Recusado': 'Rechazado', 'Respondido': 'Respondido',
   },
 };
-let LANG = localStorage.getItem('vs_lang') || (navigator.language || 'pt').slice(0, 2).toLowerCase();
+// Padrão SEMPRE português; só muda para EN/ES quando o usuário escolhe (fica salvo no localStorage).
+let LANG = (localStorage.getItem('vs_lang') || 'pt').toLowerCase();
 if (!['pt', 'en', 'es'].includes(LANG)) LANG = 'pt';
 function t(k, vars) {
   let s = (I18N[LANG] && I18N[LANG][k] != null) ? I18N[LANG][k] : (I18N.pt[k] != null ? I18N.pt[k] : k);
