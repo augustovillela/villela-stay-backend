@@ -1004,6 +1004,7 @@ async function renderHospedeInfo() {
        <div class="barra"><label>Imóvel <select id="hi-cod"></select></label></div>
        <div id="hi-form"></div>
      </details>
+     <details class="hi-bloco"><summary><strong>📧 Cadastrar e-mail de hóspede</strong> (acesso ao app p/ hóspedes antigos de OTA)</summary><div id="hi-email"><p class="aviso">Carregando…</p></div></details>
      <details class="hi-bloco"><summary><strong>🛎️ Serviços extras</strong> (catálogo e preços)</summary><div id="hi-servicos"><p class="aviso">Carregando…</p></div></details>
      <details class="hi-bloco"><summary><strong>⭐ Programa de fidelidade</strong> (textos exibidos ao hóspede)</summary><div id="hi-fid"><p class="aviso">Carregando…</p></div></details>`;
   let info = {}, imoveis = [];
@@ -1057,8 +1058,52 @@ async function renderHospedeInfo() {
   };
   sel.onchange = () => desenhar(sel.value);
   if (codigos.length) desenhar(codigos[0]); else $('#hi-form').innerHTML = '<p class="aviso">Estrutura de propriedades ainda não inicializada. Faça um deploy e recarregue.</p>';
+  renderHiEmail();
   renderHiServicos();
   renderHiFid();
+}
+
+// Cadastro de e-mail de acesso para hóspede antigo de OTA (busca na Stays + vincula e-mail).
+async function renderHiEmail() {
+  const box = $('#hi-email'); if (!box) return;
+  box.innerHTML = `<p class="aviso" style="margin:0 0 10px">Para hóspedes antigos (ex.: Airbnb/Booking) cujo e-mail na Stays é mascarado. Busque o hóspede, informe o <strong>e-mail real</strong> dele e salve — depois ele entra sozinho na Área do Hóspede digitando esse e-mail. Marque "enviar link agora" para já mandar o convite.</p>
+    <div class="barra"><input id="he-busca" placeholder="Buscar hóspede na Stays (nome)"><button type="button" class="btn secund" id="he-buscar">Buscar</button></div>
+    <div id="he-result"></div>
+    <div id="he-form" class="hidden" style="margin-top:12px"></div>`;
+  const selecionar = (id, nome) => {
+    const f = $('#he-form'); f.classList.remove('hidden');
+    f.innerHTML = `<form class="form" id="form-he" style="box-shadow:none;padding:0;border:none;max-width:640px">
+      <p>Hóspede: <strong>${esc(nome)}</strong> <span class="sub">(${esc(id)})</span></p>
+      <label>E-mail de acesso <input type="email" id="he-email" placeholder="email-real@dohospede.com" autocapitalize="off" spellcheck="false"></label>
+      <label class="serv-ativo"><input type="checkbox" id="he-enviar" checked> Enviar o link de acesso por e-mail agora</label>
+      <div class="acoes"><button class="btn" type="submit">Vincular e-mail</button> <span id="he-msg" class="ok-msg"></span></div>
+    </form>`;
+    $('#form-he').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = $('#he-msg'); msg.className = 'ok-msg'; msg.textContent = '';
+      const email = $('#he-email').value.trim();
+      if (!email.includes('@')) { msg.className = 'erro'; msg.textContent = 'Informe um e-mail válido.'; return; }
+      try {
+        const enviar = $('#he-enviar').checked;
+        const r = await api('POST', '/hospede/vincular-email', { staysClientId: id, email, enviarLink: enviar });
+        msg.textContent = (r.criada ? 'E-mail vinculado (conta criada).' : 'E-mail vinculado.') + (enviar ? (r.linkEnviado ? ' Link enviado por e-mail.' : ' ⚠️ Não consegui enviar o e-mail — confira o endereço.') : '');
+      } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+    };
+  };
+  const buscar = async () => {
+    const q = $('#he-busca').value.trim();
+    if (q.length < 2) { $('#he-result').innerHTML = '<p class="aviso">Digite ao menos 2 letras.</p>'; return; }
+    $('#he-result').innerHTML = '<p class="aviso">Buscando…</p>';
+    try {
+      const r = await api('GET', '/stays/clientes?busca=' + encodeURIComponent(q) + '&limit=15');
+      const cs = r.clientes || [];
+      if (!cs.length) { $('#he-result').innerHTML = '<p class="aviso">Nenhum hóspede encontrado.</p>'; return; }
+      $('#he-result').innerHTML = `<table><tbody>${cs.map(x => `<tr><td>${esc(x.nome)}</td><td class="sub">${esc(x.origem || '')}</td><td><button type="button" class="btn peq he-sel" data-id="${esc(x.id)}" data-nome="${esc(x.nome)}">Selecionar</button></td></tr>`).join('')}</tbody></table>`;
+      box.querySelectorAll('.he-sel').forEach(b => b.onclick = () => selecionar(b.dataset.id, b.dataset.nome));
+    } catch (e) { $('#he-result').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+  };
+  $('#he-buscar').onclick = buscar;
+  $('#he-busca').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); buscar(); } });
 }
 
 // Editor do catálogo de serviços extras (admin).

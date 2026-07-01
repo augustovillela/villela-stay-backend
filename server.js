@@ -2470,6 +2470,43 @@ app.post('/staff/api/hospede/criar', requireAuth, requireAdmin, async (req, res)
   } catch (e) { console.error('[hospede criar]', e.message); res.status(502).json({ erro: 'Falha ao criar a conta.' }); }
 });
 
+// Vincular e-mail de acesso a um hóspede da Stays (p/ antigos de OTA com e-mail mascarado). Admin.
+// Cria/atualiza a conta local (inativa até o hóspede definir a senha pelo link) e, opcional, envia o link agora.
+app.post('/staff/api/hospede/vincular-email', requireAuth, requireAdmin, async (req, res) => {
+  const d = req.body || {};
+  const clientId = String(d.staysClientId || '').trim();
+  const email = String(d.email || '').trim().toLowerCase();
+  const enviarLink = !!d.enviarLink;
+  if (!clientId) return res.status(400).json({ erro: 'Informe o hóspede da Stays.' });
+  if (!email.includes('@') || email.length > 200) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+  try {
+    const cli = await stays(`/booking/clients/${clientId}`).catch(() => null);
+    if (!cli) return res.status(404).json({ erro: 'Hóspede não encontrado na Stays.' });
+    const hospedes = lerHospedes();
+    const outro = hospedes.find(h => h.email === email && h.staysClientId !== clientId);
+    if (outro) return res.status(409).json({ erro: 'Esse e-mail já está vinculado a outro hóspede.' });
+    const nome = cli.fName ? (cli.fName + ' ' + (cli.lName || '')).trim() : (cli.name || '');
+    const fone = (cli.phones && cli.phones[0] && (cli.phones[0].iso || cli.phones[0].number)) || '';
+    let h = hospedes.find(x => x.staysClientId === clientId);
+    let criada = false;
+    if (h) {
+      h.email = email; if (!h.nome && nome) h.nome = nome; if (!h.telefone && fone) h.telefone = normFone(fone);
+    } else {
+      h = { id: novoId(), nome, email, telefone: normFone(fone), senhaHash: '', staysClientId: clientId, precisaTrocarSenha: false, ativo: false, criadoEm: new Date().toISOString(), ultimoLogin: null, emailVinculadoPor: (req.user && req.user.nome) || 'admin' };
+      hospedes.push(h); criada = true;
+    }
+    salvarHospedes(hospedes);
+    let linkEnviado = false;
+    if (enviarLink) {
+      const token = jwt.sign({ tipo: 'hospede-setup', email, cid: clientId }, JWT_SECRET, { expiresIn: '45m' });
+      const link = AREA_HOSPEDE_URL + '?definir=' + encodeURIComponent(token);
+      linkEnviado = await enviarEmailAcesso(email, nome, link, false).catch(() => false);
+    }
+    console.log('[hospede vincular-email]', email, '->', clientId, '(criada:', criada, 'link:', linkEnviado, ')');
+    res.json({ ok: true, criada, ativo: !!h.ativo, linkEnviado, hospede: semSenhaHosp(h) });
+  } catch (e) { console.error('[hospede vincular-email]', e.message); res.status(502).json({ erro: 'Falha ao vincular o e-mail.' }); }
+});
+
 // Pedidos de hóspedes (alteração/evento) — equipe vê; admin/concierge/vendas respondem e orçam.
 app.get('/staff/api/hospede/pedidos', requireAuth, (req, res) => {
   res.json({ pedidos: lerPedidosHosp().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))) });
