@@ -47,7 +47,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .btn.secund:hover { background: #f0f6f8; }
 
 /* ---------- topo do app ---------- */
-.topo { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px;
+.topo { display: flex; align-items: center; justify-content: space-between;
+  padding: 12px max(20px, calc((100% - 720px) / 2 + 16px));
   background: var(--petroleo); border-bottom: 3px solid var(--cerrado); position: sticky; top: 0; z-index: 10; }
 .marca-bloco { display: flex; align-items: center; }
 .marca-logo { height: 36px; width: auto; margin-right: 9px; border-radius: 7px; background: #fff; padding: 2px; box-sizing: border-box; }
@@ -60,7 +61,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .link-site:hover { background: rgba(255,255,255,.12); border-color: var(--cerrado); }
 
 /* ---------- conteúdo ---------- */
-.conteudo { max-width: 880px; margin: 0 auto; padding: 22px 18px 60px; }
+.conteudo { max-width: 720px; margin: 0 auto; padding: 22px 16px 60px; }
 .bloco { background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
 .bloco h2 { margin: 0 0 14px; font-size: 1.15rem; color: var(--petroleo); }
 .bloco-futuro { background: linear-gradient(160deg, #fff 0%, var(--areia) 100%); }
@@ -239,10 +240,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .home-rodape { text-align: center; color: #6f8b93; font-size: .75rem; margin-top: 28px; }
 .home-rodape strong { display: block; color: #cfe0e4; font-weight: 700; }
 .rodape-slogan { display: block; margin-top: 4px; font-style: italic; }
-@media (min-width: 560px) { .grade-itens { grid-template-columns: repeat(5, 1fr); } }
+/* Sempre no máximo 4 ícones por linha (igual ao celular) — não abrir 5 colunas no desktop. */
 
 /* ---------- views (roteador) ---------- */
-#views { max-width: 880px; }
+#views { max-width: 720px; }
 .view-titulo { color: var(--petroleo); font-size: 1.3rem; margin: 4px 0 16px; }
 .view { background: none; }
 .sub-sec { color: var(--petroleo); margin: 18px 0 8px; font-size: 1.05rem; }
