@@ -50,6 +50,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .topo { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px;
   background: var(--petroleo); border-bottom: 3px solid var(--cerrado); position: sticky; top: 0; z-index: 10; }
 .marca-bloco { display: flex; align-items: center; }
+.marca-logo { height: 30px; width: auto; margin-right: 9px; border-radius: 6px; background: #fff; padding: 2px; box-sizing: border-box; }
 .topo-dir { display: flex; align-items: center; gap: 12px; color: var(--creme); font-size: .9rem; }
 .link-sair { background: none; border: 1px solid var(--creme); color: var(--creme); border-radius: 18px; padding: 5px 14px; cursor: pointer; font-size: .85rem; }
 .link-sair:hover { background: rgba(255,255,255,.12); }

@@ -2090,7 +2090,7 @@ app.post('/hospede/api/chat', requireHospede, async (req, res) => {
       if (bloco) contexto += '\n\n=== RECOMENDACOES CURADAS DA VILLELA STAY (use quando o hospede pedir dicas de comer/passear/pacotes) ===' + bloco;
     } catch (e) { /* sem conteudo */ }
 
-    const system = `Você é o assistente virtual da Villela Stay, hospedagem premium por temporada no Lago Sul, Brasília-DF. Atenda como um anfitrião premiado: acolhedor, cordial, direto e prestativo. Responda SEMPRE no mesmo idioma da pergunta do hóspede (português, inglês ou espanhol).
+    const system = `Você é a Eva, a concierge virtual da Villela Stay, hospedagem premium por temporada no Lago Sul, Brasília-DF. Atenda como uma anfitriã premiada: acolhedora, cordial, direta e prestativa. Se apresente como Eva quando fizer sentido. Responda SEMPRE no mesmo idioma da pergunta do hóspede (português, inglês ou espanhol).
 
 Use como FONTE DE VERDADE o FAQ oficial e os dados abaixo (reserva, conta e recomendações da casa). Regras:
 - Preço, contrato, cancelamento, taxas e datas especiais: siga EXATAMENTE o FAQ. Nunca invente e NUNCA use a busca na web para políticas/preços/regras da Villela.
@@ -2290,15 +2290,18 @@ app.get('/hospede/api/propriedade/:codigo', requireHospede, async (req, res) => 
     const ativas = reservas.filter(r => r.imovel === codigo && r.status !== 'canceled' && r.status !== 'blocked');
     if (!ativas.length) return res.status(403).json({ erro: 'Você não tem reserva nesta propriedade.' });
     const info = infoPropriedade(codigo);
-    const hoje = hojeISO();
-    const naJanela = ativas.some(r => r.checkin && r.checkout && addDias(r.checkin, -2) <= hoje && hoje <= r.checkout);
+    // Hóspede com reserva nesta casa vê o Wi-Fi/acesso (a pedido do Augusto, removida a trava de "2 dias antes").
+    const naJanela = ativas.length > 0;
     const out = {
       codigo, titulo: ativas[0].imovelTitulo || codigo,
-      manualUrl: info.manualUrl || '', guiaUrl: info.guiaUrl || '', contatos: info.contatos || '',
+      manualUrl: info.manualUrl || '', guiaUrl: info.guiaUrl || '',
+      manuais: Array.isArray(info.manuais) ? info.manuais : [],
+      guias: Array.isArray(info.guias) ? info.guias : [],
+      contatos: info.contatos || '',
       checkinHora: info.checkinHora || '', checkoutHora: info.checkoutHora || '', observacoes: info.observacoes || '',
       naJanela,
     };
-    if (naJanela) { out.wifi = info.wifi || null; out.acesso = info.acesso || null; }
+    if (naJanela) { out.wifi = info.wifi || null; out.wifis = Array.isArray(info.wifis) ? info.wifis : []; out.acesso = info.acesso || null; }
     res.json(out);
   } catch (e) { console.error('[hospede prop]', e.message); res.status(502).json({ erro: 'Falha ao carregar a propriedade.' }); }
 });
@@ -2313,10 +2316,13 @@ app.get('/staff/api/hospede/propriedades-info', requirePublishOrAdmin, (req, res
 app.put('/staff/api/hospede/propriedade/:codigo', requirePublishOrAdmin, (req, res) => {
   const codigo = String(req.params.codigo || '').toUpperCase();
   const all = lerPropInfo(); const d = req.body || {};
+  const wifis = Array.isArray(d.wifis) ? d.wifis.filter(w => w && (w.rede || w.senha || w.nome)).map(w => ({ nome: String(w.nome || ''), rede: String(w.rede || ''), senha: String(w.senha || '') })) : [];
+  const manuais = Array.isArray(d.manuais) ? d.manuais.filter(m => m && (m.url || m.nome)).map(m => ({ nome: String(m.nome || ''), url: String(m.url || '') })) : [];
+  const guias = Array.isArray(d.guias) ? d.guias.filter(g => g && (g.url || g.nome)).map(g => ({ nome: String(g.nome || ''), url: String(g.url || '') })) : [];
   all[codigo] = {
-    wifi: { rede: String((d.wifi && d.wifi.rede) || ''), senha: String((d.wifi && d.wifi.senha) || '') },
+    wifi: { rede: String((d.wifi && d.wifi.rede) || ''), senha: String((d.wifi && d.wifi.senha) || '') }, wifis,
     acesso: { portao: String((d.acesso && d.acesso.portao) || ''), fechadura: String((d.acesso && d.acesso.fechadura) || ''), instrucoes: String((d.acesso && d.acesso.instrucoes) || '') },
-    manualUrl: String(d.manualUrl || ''), guiaUrl: String(d.guiaUrl || ''), contatos: String(d.contatos || ''),
+    manualUrl: String(d.manualUrl || ''), guiaUrl: String(d.guiaUrl || ''), manuais, guias, contatos: String(d.contatos || ''),
     checkinHora: String(d.checkinHora || ''), checkoutHora: String(d.checkoutHora || ''), observacoes: String(d.observacoes || ''),
   };
   salvarJSON('propriedades-info.json', all);

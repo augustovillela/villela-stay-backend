@@ -248,20 +248,29 @@ async function carregarPropriedade(codigo) {
     if (p.checkoutHora) linhas.push(`<li>🕙 <strong>Check-out:</strong> ${esc(p.checkoutHora)}</li>`);
     if (linhas.length) html += `<ul class="prop-lista">${linhas.join('')}</ul>`;
 
-    if (p.naJanela && (p.wifi || p.acesso)) {
-      html += '<div class="prop-sensivel"><h4>🔐 Acesso (liberado para a sua estadia)</h4><ul class="prop-lista">';
-      if (p.wifi && (p.wifi.rede || p.wifi.senha)) html += `<li>📶 <strong>Wi-Fi:</strong> ${esc(p.wifi.rede || '—')}${p.wifi.senha ? ' · senha <code>' + esc(p.wifi.senha) + '</code>' : ''}</li>`;
+    // Wi-Fi (uma ou várias redes) + acesso
+    const wifis = (Array.isArray(p.wifis) && p.wifis.length) ? p.wifis
+      : (p.wifi && (p.wifi.rede || p.wifi.senha)) ? [{ nome: '', rede: p.wifi.rede, senha: p.wifi.senha }] : [];
+    const temAcesso = p.acesso && (p.acesso.portao || p.acesso.fechadura || p.acesso.instrucoes);
+    if (p.naJanela && (wifis.length || temAcesso)) {
+      html += '<div class="prop-sensivel"><h4>🔐 Acesso à casa</h4><ul class="prop-lista">';
+      wifis.forEach(w => {
+        html += `<li>📶 <strong>${w.nome ? esc(w.nome) : 'Wi-Fi'}:</strong> ${esc(w.rede || '—')}${w.senha ? ' · senha <code>' + esc(w.senha) + '</code>' : ''}</li>`;
+      });
       if (p.acesso && p.acesso.portao) html += `<li>🚪 <strong>Portão:</strong> ${esc(p.acesso.portao)}</li>`;
       if (p.acesso && p.acesso.fechadura) html += `<li>🔑 <strong>Fechadura:</strong> ${esc(p.acesso.fechadura)}</li>`;
       if (p.acesso && p.acesso.instrucoes) html += `<li>ℹ️ ${esc(p.acesso.instrucoes)}</li>`;
       html += '</ul></div>';
-    } else {
-      html += '<p class="dica">📌 Os dados de Wi-Fi e acesso (portão/fechadura) ficam disponíveis aqui a partir de 2 dias antes do seu check-in.</p>';
+    } else if (!wifis.length && !temAcesso) {
+      html += '<p class="dica">📌 As informações de Wi-Fi e acesso ainda não foram cadastradas para esta casa.</p>';
     }
 
+    // Manuais e guias (um ou vários por casa)
+    const manuais = (Array.isArray(p.manuais) && p.manuais.length) ? p.manuais : (p.manualUrl ? [{ nome: 'Manual da casa', url: p.manualUrl }] : []);
+    const guias = (Array.isArray(p.guias) && p.guias.length) ? p.guias : (p.guiaUrl ? [{ nome: 'Guia do hóspede', url: p.guiaUrl }] : []);
     const links = [];
-    if (p.manualUrl) links.push(`<a class="btn secund" href="${esc(p.manualUrl)}" target="_blank" rel="noopener">📖 Manual da casa</a>`);
-    if (p.guiaUrl) links.push(`<a class="btn secund" href="${esc(p.guiaUrl)}" target="_blank" rel="noopener">🗺️ Guia do hóspede</a>`);
+    manuais.forEach(m => { if (m.url) links.push(`<a class="btn secund" href="${esc(m.url)}" target="_blank" rel="noopener">📖 ${esc(m.nome || 'Manual')}</a>`); });
+    guias.forEach(g => { if (g.url) links.push(`<a class="btn secund" href="${esc(g.url)}" target="_blank" rel="noopener">🗺️ ${esc(g.nome || 'Guia')}</a>`); });
     if (links.length) html += `<div class="prop-links">${links.join('')}</div>`;
 
     if (p.observacoes) html += `<p class="prop-obs">${esc(p.observacoes)}</p>`;
@@ -513,9 +522,8 @@ const GRUPOS = [
   ] },
   { titulo: 'Acesso e ajuda', itens: [
     { rotulo: 'Senha', icone: 'ti-lock', acao: 'senha' },
-    { rotulo: 'Ajuda IA', icone: 'ti-robot', rota: 'ajudaia' },
+    { rotulo: 'Eva', icone: 'ti-robot', rota: 'ajudaia' },
     { rotulo: 'FAQ', icone: 'ti-help-circle', link: 'https://villelastay.com.br/faq.html' },
-    { rotulo: 'Redes', icone: 'ti-brand-instagram', link: 'https://villelastay.com.br/links.html' },
     { rotulo: 'Links', icone: 'ti-link', link: 'https://villelastay.com.br/links.html' },
   ] },
 ];
@@ -880,7 +888,7 @@ function chatAdd(role, texto, temp) {
 function renderAjudaIA() {
   if (CHAT_INIT) return;
   CHAT_INIT = true;
-  chatAdd('assistant', 'Olá! Sou o assistente da Villela Stay. 😊 Posso ajudar com dúvidas sobre a sua reserva, check-in, serviços e a região. Como posso ajudar?');
+  chatAdd('assistant', 'Olá! Sou a Eva, sua concierge virtual da Villela Stay. 😊 Posso ajudar com dúvidas sobre a sua reserva, check-in, serviços e a região. Como posso ajudar?');
   $('#chat-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const inp = $('#chat-input'); const texto = inp.value.trim();
