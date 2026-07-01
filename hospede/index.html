@@ -31,9 +31,45 @@
       </label>
       <button type="submit" class="btn">Entrar</button>
       <p id="login-erro" class="erro"></p>
+      <p class="login-alt"><strong>Primeiro acesso ou esqueceu a senha?</strong>
+        <a href="#" id="ir-email">Entre com o seu e-mail</a> e enviamos um link.</p>
       <p class="login-alt">Reservou pelo Airbnb, Booking ou outro site?
         <a href="#" id="ir-registrar">Crie seu acesso com o código da reserva</a>.</p>
       <a class="login-voltar" href="https://villelastay.com.br">← Voltar ao site</a>
+    </form>
+  </main>
+
+  <!-- ===================== ACESSO POR E-MAIL (link de verificação) ===================== -->
+  <main id="tela-email" class="login hidden">
+    <form id="form-email" class="login-card">
+      <div class="marca">Villela Stay</div>
+      <p class="login-sub">Acesso por e-mail</p>
+      <p class="login-alt">Digite o e-mail que você usou na sua reserva. Se encontrarmos uma reserva sua,
+        enviaremos um link para você <strong>criar a sua senha</strong> e entrar — as suas reservas anteriores
+        já aparecem automaticamente.</p>
+      <label>Seu e-mail
+        <input type="email" id="em-email" required autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="voce@email.com">
+      </label>
+      <button type="submit" class="btn">Enviar link de acesso</button>
+      <p id="em-msg" class="ok-msg"></p>
+      <p id="em-erro" class="erro"></p>
+      <a href="#" id="email-voltar-login" class="login-voltar">← Já tenho acesso</a>
+    </form>
+  </main>
+
+  <!-- ===================== DEFINIR SENHA (via link do e-mail) ===================== -->
+  <main id="tela-definir" class="login hidden">
+    <form id="form-definir" class="login-card">
+      <div class="marca">Villela Stay</div>
+      <p class="login-sub">Crie a sua senha de acesso</p>
+      <label>Nova senha (mín. 8 caracteres)
+        <input type="password" id="df-senha" required minlength="8" autocomplete="new-password">
+      </label>
+      <label>Confirme a senha
+        <input type="password" id="df-senha2" required minlength="8" autocomplete="new-password">
+      </label>
+      <button type="submit" class="btn">Salvar e entrar</button>
+      <p id="df-erro" class="erro"></p>
     </form>
   </main>
 

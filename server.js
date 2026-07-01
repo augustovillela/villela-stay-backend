@@ -2024,6 +2024,93 @@ app.post('/hospede/api/registrar', async (req, res) => {
   } catch (e) { console.error('[hospede registrar]', e.message); res.status(502).json({ erro: 'Falha ao validar a reserva. Tente novamente em instantes.' }); }
 });
 
+// ---- Auto-cadastro / redefinição por E-MAIL (verificado por link) ----
+// Acha o cliente da Stays pelo e-mail (lista cacheada; casa email OU contactEmails, sem acento/caixa).
+async function acharClienteStaysPorEmail(email) {
+  const alvo = String(email || '').trim().toLowerCase();
+  if (!alvo || !alvo.includes('@')) return null;
+  const lista = await getStaysClientes();
+  return lista.find(c => {
+    const e1 = String(c.email || '').trim().toLowerCase();
+    const ces = Array.isArray(c.contactEmails) ? c.contactEmails.map(x => String(x || '').trim().toLowerCase()) : [];
+    return (e1 && e1 === alvo) || ces.includes(alvo);
+  }) || null;
+}
+// E-mail com o link de acesso (criar/redefinir senha). O token é um JWT curto (45 min).
+async function enviarEmailAcesso(to, nome, link, jaTinha) {
+  const primeiro = (nome || 'hóspede').split(' ')[0];
+  const acao = jaTinha ? 'redefinir a sua senha' : 'criar a sua senha e ativar o seu acesso';
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#2b2d2f">
+    <div style="background:#0c3644;color:#f2ecd8;padding:18px 22px;border-radius:10px 10px 0 0"><strong style="font-size:18px">Villela Stay</strong><br><span style="font-size:13px;color:#d9a441">Área do Hóspede</span></div>
+    <div style="border:1px solid #e3ddd0;border-top:none;padding:22px;border-radius:0 0 10px 10px">
+      <p>Olá, <strong>${escHtml(primeiro)}</strong>! 👋</p>
+      <p>Recebemos um pedido para ${acao} na <strong>Área do Hóspede</strong> da Villela Stay. É lá que você vê as suas reservas, recebe as informações da casa (Wi-Fi, acesso, guia) e ativa as notificações.</p>
+      <p style="margin:18px 0"><a href="${link}" style="background:#1c6e8c;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Criar minha senha e entrar</a></p>
+      <p style="font-size:13px;color:#6b7075">Este link vale por <strong>45 minutos</strong>. Se você não fez este pedido, é só ignorar este e-mail — nada muda na sua conta.</p>
+    </div></div>`;
+  return enviarEmail(to, 'Seu acesso à Área do Hóspede — Villela Stay', html);
+}
+// Throttle simples por IP (5 pedidos / 15 min) para o disparo de link.
+const _linkHits = new Map();
+function linkThrottle(ip) {
+  const agora = Date.now(), janela = 15 * 60 * 1000, max = 5;
+  const arr = (_linkHits.get(ip) || []).filter(t => agora - t < janela);
+  if (arr.length >= max) return false;
+  arr.push(agora); _linkHits.set(ip, arr); return true;
+}
+// Passo 1: hóspede informa o e-mail → se houver reserva/conta, enviamos um link. Resposta SEMPRE genérica (anti-enumeração).
+app.post('/hospede/api/registrar-email', async (req, res) => {
+  const ip = 'he:' + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip');
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+  if (!email.includes('@') || email.length > 200) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+  const generico = { ok: true, mensagem: 'Se houver uma reserva com esse e-mail, enviamos um link para você criar a sua senha e entrar. Confira a sua caixa de entrada (e o spam).' };
+  if (!linkThrottle(ip)) return res.json(generico); // não revela nada; só corta abuso
+  try {
+    const hospedes = lerHospedes();
+    const existente = hospedes.find(h => h.email === email);
+    let clientId = existente ? existente.staysClientId : null;
+    let nome = existente ? existente.nome : '';
+    if (!clientId) {
+      const cli = await acharClienteStaysPorEmail(email);
+      if (cli) { clientId = cli._id; nome = cli.name || [cli.fName, cli.lName].filter(Boolean).join(' '); }
+    }
+    if (!clientId) return res.json(generico); // sem match: mesma resposta
+    const token = jwt.sign({ tipo: 'hospede-setup', email, cid: clientId }, JWT_SECRET, { expiresIn: '45m' });
+    const link = AREA_HOSPEDE_URL + '?definir=' + encodeURIComponent(token);
+    await enviarEmailAcesso(email, nome, link, !!existente).catch(e => console.error('[hospede link email]', e.message));
+    console.log('[hospede registrar-email] link enviado p/', email, '(conta existente:', !!existente, ')');
+    return res.json(generico);
+  } catch (e) { console.error('[hospede registrar-email]', e.message); return res.json(generico); }
+});
+// Passo 2: hóspede define a senha usando o token do link → cria/ativa a conta e já entra.
+app.post('/hospede/api/definir-senha', async (req, res) => {
+  const token = String((req.body && req.body.token) || '');
+  const senha = String((req.body && req.body.senha) || '');
+  if (senha.length < 8) return res.status(400).json({ erro: 'A senha deve ter ao menos 8 caracteres.' });
+  let dec;
+  try { dec = jwt.verify(token, JWT_SECRET); } catch (e) { return res.status(400).json({ erro: 'Link inválido ou expirado. Solicite um novo pela tela de acesso.' }); }
+  if (!dec || dec.tipo !== 'hospede-setup' || !dec.cid) return res.status(400).json({ erro: 'Link inválido. Solicite um novo pela tela de acesso.' });
+  try {
+    const cli = await stays(`/booking/clients/${dec.cid}`).catch(() => null);
+    const hospedes = lerHospedes();
+    let h = hospedes.find(x => x.staysClientId === dec.cid) || hospedes.find(x => x.email === dec.email);
+    const fone = cli ? ((cli.phones && cli.phones[0] && (cli.phones[0].iso || cli.phones[0].number)) || '') : '';
+    const nome = cli ? (cli.fName ? (cli.fName + ' ' + (cli.lName || '')).trim() : (cli.name || '')) : ((h && h.nome) || '');
+    if (h) {
+      h.senhaHash = bcrypt.hashSync(senha, 10); h.precisaTrocarSenha = false; h.ativo = true;
+      if (!h.email) h.email = dec.email; if (!h.staysClientId) h.staysClientId = dec.cid;
+      if (!h.nome && nome) h.nome = nome; if (!h.telefone && fone) h.telefone = normFone(fone);
+      h.ultimoLogin = new Date().toISOString();
+    } else {
+      h = { id: novoId(), nome, email: dec.email, telefone: normFone(fone), senhaHash: bcrypt.hashSync(senha, 10), staysClientId: dec.cid, precisaTrocarSenha: false, ativo: true, criadoEm: new Date().toISOString(), ultimoLogin: new Date().toISOString() };
+      hospedes.push(h);
+    }
+    salvarHospedes(hospedes);
+    const token2 = setCookieHospede(res, h);
+    res.json({ ok: true, usuario: semSenhaHosp(h), token: token2 });
+  } catch (e) { console.error('[hospede definir-senha]', e.message); res.status(502).json({ erro: 'Falha ao concluir o cadastro. Tente novamente.' }); }
+});
+
 // Minhas reservas (só as do próprio staysClientId).
 app.get('/hospede/api/minhas-reservas', requireHospede, async (req, res) => {
   try { res.json({ reservas: await reservasDoHospede(req.hospede, true) }); }

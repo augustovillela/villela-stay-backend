@@ -14,7 +14,7 @@ async function api(caminho, opcoes) {
 }
 
 function mostrar(idTela) {
-  ['tela-login', 'tela-registrar', 'tela-trocar', 'app'].forEach(id => {
+  ['tela-login', 'tela-registrar', 'tela-email', 'tela-definir', 'tela-trocar', 'app'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('hidden', id !== idTela);
   });
@@ -25,7 +25,17 @@ const fmtMoeda = (v, moeda) => (v == null ? '—' : new Intl.NumberFormat('pt-BR
 function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
 // ---------------- boot ----------------
+let TOKEN_DEFINIR = '';
 async function boot() {
+  // Link de definição de senha vindo do e-mail: /hospede?definir=<token>
+  const params = new URLSearchParams(location.search);
+  const tk = params.get('definir');
+  if (tk) {
+    TOKEN_DEFINIR = tk;
+    history.replaceState(null, '', location.pathname); // limpa o token da barra de endereço
+    mostrar('tela-definir');
+    return;
+  }
   try {
     const { usuario } = await api('/me');
     if (usuario.precisaTrocarSenha) { mostrar('tela-trocar'); return; }
@@ -48,6 +58,36 @@ $('#form-login').addEventListener('submit', async (ev) => {
 
 $('#ir-registrar').addEventListener('click', (ev) => { ev.preventDefault(); $('#rg-erro').textContent = ''; mostrar('tela-registrar'); });
 $('#voltar-login').addEventListener('click', (ev) => { ev.preventDefault(); $('#login-erro').textContent = ''; mostrar('tela-login'); });
+
+// ---------------- acesso por e-mail (link de verificação) ----------------
+$('#ir-email').addEventListener('click', (ev) => { ev.preventDefault(); $('#em-erro').textContent = ''; $('#em-msg').textContent = ''; mostrar('tela-email'); });
+$('#email-voltar-login').addEventListener('click', (ev) => { ev.preventDefault(); mostrar('tela-login'); });
+$('#form-email').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('#em-erro').textContent = ''; $('#em-msg').textContent = '';
+  const btn = ev.submitter || $('#form-email button[type=submit]');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api('/registrar-email', { method: 'POST', body: JSON.stringify({ email: $('#em-email').value.trim() }) });
+    $('#em-msg').textContent = r.mensagem || 'Se houver uma reserva com esse e-mail, enviamos um link.';
+    $('#em-email').value = '';
+  } catch (e) { $('#em-erro').textContent = e.message; }
+  finally { if (btn) btn.disabled = false; }
+});
+
+// ---------------- definir senha (via link do e-mail) ----------------
+$('#form-definir').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('#df-erro').textContent = '';
+  const s1 = $('#df-senha').value, s2 = $('#df-senha2').value;
+  if (s1.length < 8) { $('#df-erro').textContent = 'A senha deve ter ao menos 8 caracteres.'; return; }
+  if (s1 !== s2) { $('#df-erro').textContent = 'As senhas não conferem.'; return; }
+  try {
+    const { usuario } = await api('/definir-senha', { method: 'POST', body: JSON.stringify({ token: TOKEN_DEFINIR, senha: s1 }) });
+    TOKEN_DEFINIR = '';
+    abrirApp(usuario);
+  } catch (e) { $('#df-erro').textContent = e.message; }
+});
 
 // ---------------- cadastro por código (OTA) ----------------
 $('#form-registrar').addEventListener('submit', async (ev) => {
