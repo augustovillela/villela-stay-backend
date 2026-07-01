@@ -244,8 +244,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 }
 @media (prefers-reduced-motion: reduce) { .tile-animado .tile-ico { animation: none; } }
 .home-rodape { text-align: center; color: #6f8b93; font-size: .75rem; margin-top: 28px; }
-.home-rodape strong { display: block; color: #cfe0e4; font-weight: 700; }
-.rodape-slogan { display: block; margin-top: 4px; font-style: italic; }
+.home-rodape strong { display: block; color: var(--creme); font-weight: 700; }
+.rodape-slogan { display: block; margin-top: 4px; font-style: normal; font-weight: 700; color: #cfe0e4; }
 /* Sempre no máximo 4 ícones por linha (igual ao celular) — não abrir 5 colunas no desktop. */
 
 /* ---------- views (roteador) ---------- */
