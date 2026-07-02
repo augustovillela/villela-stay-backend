@@ -138,44 +138,51 @@ async function abrirApp() {
 }
 
 // --------- menu ---------
+// Menu em grupos por FUNÇÃO (jornada de trabalho): Início → Reservas → Comercial → Hóspedes →
+// Operação → Relatórios & Gestão → Administração → Links. Itens aparecem conforme a área do usuário.
 function montarMenu() {
   const m = $('#menu'); m.innerHTML = '';
+  const ehAdmin = ESTADO.me.papel === 'admin';
+  const tem = (a) => ehAdmin || ESTADO.areas.includes('*') || ESTADO.areas.includes(a);
   const itens = [
-    { grupo: 'Principal' },
-    { id: 'visao', rot: 'Visão geral' },
-    { id: 'relatorios', rot: 'Relatórios & Entregas' },
-    { id: 'publicar', rot: '+ Publicar entrega' },
-    { grupo: 'Reservas' },
+    { grupo: 'Início' },
+    { id: 'visao', rot: '🏠 Visão geral' },
+    { id: 'mural', rot: '💬 Mural da equipe', badge: 'mural' },
+    { grupo: 'Reservas & Calendário' },
     { id: 'calendario', rot: '📆 Calendário (Stays)' },
-    { id: 'stays-hospedes', rot: '👥 Hóspedes (Stays)' },
     { id: 'stays-reservas', rot: '🗂️ Reservas (Stays)' },
+    { id: 'stays-hospedes', rot: '👥 Hóspedes (Stays)' },
   ];
-  const op = [];
-  if (ESTADO.areas.includes('vendas')) op.push({ id: 'crm', rot: 'CRM / Funil' });
-  if (ESTADO.me.papel === 'admin') op.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
-  if (ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-pedidos', rot: '📨 Pedidos de hóspedes' });
-  if (ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-fidelidade', rot: '⭐ Avaliações & indicações' });
-  if (ESTADO.areas.includes('financeiro') || ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas')) op.push({ id: 'hospede-conta', rot: '💳 Conta corrente' });
-  if (ESTADO.me.papel === 'admin') op.push({ id: 'usuarios', rot: 'Usuários' });
-  op.push({ id: 'conta', rot: 'Minha conta' });
-  if (ESTADO.painelDisp.leads) op.push({ id: 'leads', rot: 'Leads' });
-  if (ESTADO.painelDisp.precheckins) op.push({ id: 'precheckins', rot: 'Pré-check-ins' });
-  if (ESTADO.painelDisp.chamados) op.push({ id: 'chamados', rot: 'Chamados' });
-  if (ESTADO.painelDisp.eventos) op.push({ id: 'eventos', rot: 'Eventos (Stays)' });
-  if (ESTADO.podeEstat) op.push({ id: 'estatisticas', rot: 'Visitas do site' });
-  if (op.length) { itens.push({ grupo: 'Operação' }); itens.push(...op); }
-  // Listas e agenda: disponíveis para TODOS os usuários logados
-  itens.push({ grupo: 'Listas & Agenda' });
+  const com = [];
+  if (tem('vendas')) com.push({ id: 'crm', rot: '📈 CRM / Funil' });
+  if (ESTADO.painelDisp.leads) com.push({ id: 'leads', rot: '🎯 Leads' });
+  if (tem('concierge') || tem('vendas')) com.push({ id: 'hospede-fidelidade', rot: '⭐ Avaliações & indicações' });
+  if (com.length) itens.push({ grupo: 'Comercial' }, ...com);
+  const hosp = [];
+  if (tem('concierge') || tem('vendas')) hosp.push({ id: 'hospede-pedidos', rot: '📨 Pedidos de hóspedes' });
+  if (ESTADO.painelDisp.precheckins) hosp.push({ id: 'precheckins', rot: '🛬 Pré-check-ins' });
+  if (tem('financeiro') || tem('concierge') || tem('vendas')) hosp.push({ id: 'hospede-conta', rot: '💳 Conta corrente' });
+  if (ehAdmin) hosp.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
+  if (hosp.length) itens.push({ grupo: 'Hóspedes' }, ...hosp);
+  itens.push({ grupo: 'Operação' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
   itens.push({ id: 'manutencao', rot: '🔧 Lista de manutenção' });
   // Pendências é restrita à área CEO (admin vê tudo); demais não veem o item.
-  if (ESTADO.me.papel === 'admin' || ESTADO.areas.includes('*') || ESTADO.areas.includes('ceo'))
-    itens.push({ id: 'pendencias', rot: '✅ Pendências' });
+  if (tem('ceo')) itens.push({ id: 'pendencias', rot: '✅ Pendências' });
   itens.push({ id: 'agenda', rot: '📅 Agenda (eventos)' });
-  itens.push({ grupo: 'Stays' });
-  itens.push({ rot: 'Site público ↗', url: 'https://ville.stays.com.br/' });
-  itens.push({ rot: 'Painel administrativo ↗', url: 'https://ville.stays.com.br/i/home' });
-  // Área do Hóspede, Usuários e Minha conta agora vivem no grupo "Operação" (logo abaixo de Pedidos de hóspedes).
+  if (ESTADO.painelDisp.chamados) itens.push({ id: 'chamados', rot: '🛎️ Chamados' });
+  itens.push({ grupo: 'Relatórios & Gestão' });
+  itens.push({ id: 'relatorios', rot: '📄 Relatórios & Entregas' });
+  itens.push({ id: 'publicar', rot: '➕ Publicar entrega' });
+  if (ESTADO.podeEstat) itens.push({ id: 'estatisticas', rot: '📊 Visitas do site' });
+  if (ESTADO.painelDisp.eventos) itens.push({ id: 'eventos', rot: '⚡ Eventos (Stays)' });
+  itens.push({ grupo: 'Administração' });
+  if (ehAdmin) itens.push({ id: 'usuarios', rot: '👤 Usuários' });
+  itens.push({ id: 'conta', rot: '⚙️ Minha conta' });
+  itens.push({ grupo: 'Links' });
+  itens.push({ rot: '🏨 Painel da Stays ↗', url: 'https://ville.stays.com.br/i/home' });
+  itens.push({ rot: '🌐 Site público ↗', url: 'https://villelastay.com.br' });
+  itens.push({ rot: '🔑 Área do Hóspede ↗', url: 'https://minha.villelastay.com.br/hospede' });
 
   for (const it of itens) {
     if (it.grupo) { const g = document.createElement('div'); g.className = 'grupo'; g.textContent = it.grupo; m.appendChild(g); continue; }
@@ -185,15 +192,30 @@ function montarMenu() {
       m.appendChild(a); continue;
     }
     const b = document.createElement('button'); b.textContent = it.rot; b.dataset.id = it.id;
+    if (it.badge) { const s = document.createElement('span'); s.className = 'badge-menu hidden'; s.dataset.badge = it.badge; b.appendChild(s); }
     b.onclick = () => navegar(it.id);
     m.appendChild(b);
   }
+  atualizarBadgeMural();
+}
+
+// Badge de mensagens novas no mural (desde a última visita deste navegador)
+async function atualizarBadgeMural() {
+  try {
+    const { mensagens } = await api('GET', '/mural');
+    const visto = localStorage.getItem('vs_mural_visto') || '';
+    const novas = mensagens.filter(x => !visto || x.criadoEm > visto).length;
+    const s = document.querySelector('[data-badge="mural"]');
+    if (!s) return;
+    if (novas > 0 && ESTADO.secao !== 'mural') { s.textContent = novas > 99 ? '99+' : novas; s.classList.remove('hidden'); }
+    else s.classList.add('hidden');
+  } catch (_) {}
 }
 
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -789,6 +811,101 @@ async function renderVisao() {
     conteudo().innerHTML += cards + `<h2 class="titulo" style="font-size:1.15rem">Últimas entregas</h2>` + ult;
     ligarAcoesRelatorio();
   } catch (e) { conteudo().innerHTML += `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Mural da equipe (comunicação interna) ---------
+async function renderMural() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Mural da equipe', 'Avisos, recados e coordenação entre a equipe e os agentes. Todos os logados leem e postam; mensagens fixadas ficam no topo.');
+  const opcoesArea = '<option value="">Geral (toda a equipe)</option>' + ESTADO.catalogo.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('');
+  const ehAdmin = ESTADO.me.papel === 'admin';
+  c.innerHTML += `
+    <form id="form-mural" class="mural-form">
+      <textarea id="mu-texto" rows="3" placeholder="Escreva um aviso ou recado para a equipe…" required maxlength="4000"></textarea>
+      <div class="mural-form-linha">
+        <label>Para <select id="mu-area">${opcoesArea}</select></label>
+        ${ehAdmin ? '<label class="mural-fixar"><input type="checkbox" id="mu-fixado"> 📌 Fixar no topo</label>' : ''}
+        <button class="btn" type="submit">Publicar no mural</button>
+      </div>
+    </form>
+    <div id="mural-lista"><p class="vazio">Carregando…</p></div>`;
+  $('#form-mural').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const texto = $('#mu-texto').value.trim(); if (!texto) return;
+    try {
+      await api('POST', '/mural', { texto, area: $('#mu-area').value, fixado: ehAdmin && $('#mu-fixado') ? $('#mu-fixado').checked : false });
+      $('#form-mural').reset();
+      carregarMural();
+    } catch (e) { alert(e.message); }
+  };
+  carregarMural();
+}
+
+function muralMsgHtml(x) {
+  const ehAdmin = ESTADO.me.papel === 'admin';
+  const minha = x.autorEmail && ESTADO.me.email && x.autorEmail === ESTADO.me.email;
+  const chips = [
+    x.fixado ? '<span class="chip mural-chip-fix">📌 Fixado</span>' : '',
+    x.agente ? '<span class="chip mural-chip-agente">🤖 Agente</span>' : '',
+    x.area ? `<span class="chip">${esc(nomeArea(x.area))}</span>` : '',
+  ].filter(Boolean).join(' ');
+  const respostas = (x.respostas || []).map(r => `
+    <div class="mural-resp">
+      <div class="mural-resp-meta"><b>${esc(r.quem)}</b> · ${dataBr(r.criadoEm)}
+        ${(ehAdmin || (r.autorEmail && r.autorEmail === ESTADO.me.email)) ? `<button class="mural-x" data-delresp="${x.id}|${r.id}" title="Excluir resposta">✕</button>` : ''}
+      </div>
+      <div class="mural-texto">${esc(r.texto).replace(/\n/g, '<br>')}</div>
+    </div>`).join('');
+  return `<div class="mural-msg${x.fixado ? ' fixada' : ''}" data-msg="${x.id}">
+    <div class="mural-cab">
+      <b>${esc(x.quem)}</b> ${chips}
+      <span class="mural-data">${dataBr(x.criadoEm)}</span>
+    </div>
+    <div class="mural-texto">${esc(x.texto).replace(/\n/g, '<br>')}</div>
+    ${respostas ? `<div class="mural-resps">${respostas}</div>` : ''}
+    <div class="mural-acoes">
+      <button class="btn peq secund" data-resp="${x.id}">↩ Responder</button>
+      ${ehAdmin ? `<button class="btn peq secund" data-fixar="${x.id}" data-val="${x.fixado ? 0 : 1}">${x.fixado ? 'Desafixar' : '📌 Fixar'}</button>` : ''}
+      ${(ehAdmin || minha) ? `<button class="btn peq perigo" data-delmsg="${x.id}">Excluir</button>` : ''}
+    </div>
+    <form class="mural-form-resp hidden" data-formresp="${x.id}">
+      <input placeholder="Escreva a resposta…" required maxlength="2000">
+      <button class="btn peq" type="submit">Enviar</button>
+    </form>
+  </div>`;
+}
+
+async function carregarMural() {
+  const alvo = $('#mural-lista'); if (!alvo) return;
+  try {
+    const { mensagens } = await api('GET', '/mural');
+    alvo.innerHTML = mensagens.length
+      ? mensagens.map(muralMsgHtml).join('')
+      : '<div class="vazio">Nenhuma mensagem ainda. Publique o primeiro aviso para a equipe!</div>';
+    // marcar como visto (badge zera)
+    localStorage.setItem('vs_mural_visto', new Date().toISOString());
+    atualizarBadgeMural();
+    document.querySelectorAll('[data-resp]').forEach(b => b.onclick = () => {
+      const f = document.querySelector(`[data-formresp="${b.dataset.resp}"]`);
+      f.classList.toggle('hidden'); if (!f.classList.contains('hidden')) f.querySelector('input').focus();
+    });
+    document.querySelectorAll('[data-formresp]').forEach(f => f.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const texto = f.querySelector('input').value.trim(); if (!texto) return;
+      try { await api('POST', '/mural/' + f.dataset.formresp + '/resposta', { texto }); carregarMural(); } catch (e) { alert(e.message); }
+    });
+    document.querySelectorAll('[data-fixar]').forEach(b => b.onclick = async () => {
+      try { await api('PATCH', '/mural/' + b.dataset.fixar, { fixado: b.dataset.val === '1' }); carregarMural(); } catch (e) { alert(e.message); }
+    });
+    document.querySelectorAll('[data-delmsg]').forEach(b => b.onclick = async () => {
+      if (!confirm('Excluir esta mensagem?')) return;
+      try { await api('DELETE', '/mural/' + b.dataset.delmsg); carregarMural(); } catch (e) { alert(e.message); }
+    });
+    document.querySelectorAll('[data-delresp]').forEach(b => b.onclick = async () => {
+      const [msgId, respId] = b.dataset.delresp.split('|');
+      try { await api('DELETE', '/mural/' + msgId + '?resposta=' + encodeURIComponent(respId)); carregarMural(); } catch (e) { alert(e.message); }
+    });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Relatórios ---------

@@ -1141,6 +1141,97 @@ app.post('/staff/api/listas/:tipo/limpar', requirePublishOrSession, (req, res) =
   res.json({ ok: true });
 });
 
+// ============================ Mural da equipe (comunicação interna) ============================
+// Canal de comunicação entre membros da equipe e agentes: avisos, recados e coordenação.
+// Qualquer usuário logado lê e posta; agentes (Claude) postam via PUBLISH_KEY. Mensagens podem
+// ser marcadas para uma área (chip) e FIXADAS (só admin/agente) para avisos importantes.
+// Dados em mural.json (DATA_DIR); mantém as últimas 500 mensagens.
+const MURAL_MAX = 500;
+
+app.get('/staff/api/mural', requirePublishOrSession, (req, res) => {
+  const msgs = lerJSON('mural.json', []);
+  // fixadas primeiro, depois mais recentes
+  const orden = [...msgs].sort((a, b) => (b.fixado - a.fixado) || String(b.criadoEm).localeCompare(String(a.criadoEm)));
+  res.json({ mensagens: orden });
+});
+
+app.post('/staff/api/mural', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const texto = String(d.texto || '').trim();
+  if (!texto) return res.status(400).json({ erro: 'Escreva a mensagem.' });
+  if (texto.length > 4000) return res.status(400).json({ erro: 'Mensagem acima de 4000 caracteres.' });
+  const area = String(d.area || '').trim();
+  if (area && !AREAS.some(a => a.id === area)) return res.status(400).json({ erro: 'Área inválida.' });
+  const ehAdmin = req.viaChave || (req.user && req.user.papel === 'admin');
+  const msgs = lerJSON('mural.json', []);
+  const msg = {
+    id: novoId(),
+    texto,
+    area,                                        // '' = geral
+    fixado: ehAdmin ? !!d.fixado : false,        // fixar: só admin ou agente (via chave)
+    quem: req.viaChave ? (String(d.quem || '').trim() || 'Agente Claude') : (req.user.nome || req.user.email || 'staff'),
+    autorEmail: req.viaChave ? '' : (req.user.email || ''),
+    agente: !!req.viaChave,
+    criadoEm: new Date().toISOString(),
+    respostas: [],
+  };
+  msgs.push(msg);
+  while (msgs.length > MURAL_MAX) msgs.shift();
+  salvarJSON('mural.json', msgs);
+  res.json({ ok: true, mensagem: msg });
+});
+
+app.post('/staff/api/mural/:id/resposta', requirePublishOrSession, (req, res) => {
+  const texto = String((req.body || {}).texto || '').trim();
+  if (!texto) return res.status(400).json({ erro: 'Escreva a resposta.' });
+  if (texto.length > 2000) return res.status(400).json({ erro: 'Resposta acima de 2000 caracteres.' });
+  const msgs = lerJSON('mural.json', []);
+  const m = msgs.find(x => x.id === req.params.id);
+  if (!m) return res.status(404).json({ erro: 'Mensagem não encontrada.' });
+  m.respostas = m.respostas || [];
+  m.respostas.push({
+    id: novoId(), texto,
+    quem: req.viaChave ? (String((req.body || {}).quem || '').trim() || 'Agente Claude') : (req.user.nome || req.user.email || 'staff'),
+    autorEmail: req.viaChave ? '' : (req.user.email || ''),
+    criadoEm: new Date().toISOString(),
+  });
+  salvarJSON('mural.json', msgs);
+  res.json({ ok: true, mensagem: m });
+});
+
+app.patch('/staff/api/mural/:id', requirePublishOrSession, (req, res) => {
+  const ehAdmin = req.viaChave || (req.user && req.user.papel === 'admin');
+  if (!ehAdmin) return res.status(403).json({ erro: 'Só admin pode fixar/desafixar.' });
+  const msgs = lerJSON('mural.json', []);
+  const m = msgs.find(x => x.id === req.params.id);
+  if (!m) return res.status(404).json({ erro: 'Mensagem não encontrada.' });
+  if ((req.body || {}).fixado != null) m.fixado = !!req.body.fixado;
+  salvarJSON('mural.json', msgs);
+  res.json({ ok: true, mensagem: m });
+});
+
+app.delete('/staff/api/mural/:id', requirePublishOrSession, (req, res) => {
+  const msgs = lerJSON('mural.json', []);
+  const ehAdmin = req.viaChave || (req.user && req.user.papel === 'admin');
+  const dono = (x) => ehAdmin || (req.user && x.autorEmail && x.autorEmail === req.user.email);
+  const respostaId = String(req.query.resposta || '');
+  if (respostaId) {
+    const m = msgs.find(x => x.id === req.params.id);
+    if (!m) return res.status(404).json({ erro: 'Mensagem não encontrada.' });
+    const r = (m.respostas || []).find(x => x.id === respostaId);
+    if (!r) return res.status(404).json({ erro: 'Resposta não encontrada.' });
+    if (!dono(r)) return res.status(403).json({ erro: 'Só o autor ou admin pode excluir.' });
+    m.respostas = m.respostas.filter(x => x.id !== respostaId);
+    salvarJSON('mural.json', msgs);
+    return res.json({ ok: true });
+  }
+  const m = msgs.find(x => x.id === req.params.id);
+  if (!m) return res.status(404).json({ erro: 'Mensagem não encontrada.' });
+  if (!dono(m)) return res.status(403).json({ erro: 'Só o autor ou admin pode excluir.' });
+  salvarJSON('mural.json', msgs.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
 // O portal registra pedidos de CRIAR/EXCLUIR evento; uma rotina do Claude (com acesso ao Google
 // Calendar) lê os pendentes, efetiva e marca como feito (PATCH).

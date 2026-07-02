@@ -6,7 +6,9 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Portal Staff — Villela Stay</title>
   <link rel="icon" type="image/png" href="/staff/logo.png">
-  <link rel="apple-touch-icon" href="/staff/logo.png">
+  <link rel="apple-touch-icon" href="/staff/logo-192.png">
+  <link rel="manifest" href="/staff/manifest.webmanifest">
+  <meta name="theme-color" content="#0c3644">
   <link rel="stylesheet" href="/staff/styles.css">
 </head>
 <body>
@@ -64,5 +66,9 @@
   </div>
 
   <script src="/staff/app.js"></script>
+  <script>
+    // PWA: registra o service worker (sem cache — só para o portal ser instalável como app)
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/staff/sw.js').catch(() => {});
+  </script>
 </body>
 </html>

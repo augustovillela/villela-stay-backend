@@ -1,0 +1,15 @@
+{
+  "name": "Villela Stay — Portal Staff",
+  "short_name": "Villela Staff",
+  "description": "Portal da equipe Villela Stay: mural, calendário, CRM, listas, relatórios e operação do dia.",
+  "start_url": "/staff/",
+  "scope": "/staff/",
+  "display": "standalone",
+  "background_color": "#0c3644",
+  "theme_color": "#0c3644",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/staff/logo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/staff/logo-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
