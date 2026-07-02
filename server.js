@@ -1289,6 +1289,9 @@ app.get('/staff/api/stays/clientes', requireAuth, async (req, res) => {
     let lista = await getStaysClientes();
     const q = semAcento(req.query.busca || '').trim();
     if (q) lista = lista.filter(c => semAcento(nomeCliente(c)).includes(q));
+    // ordem alfabética por nome (sem acento/caixa); nomes vazios/"—" vão para o fim
+    const chaveOrd = (c) => { const n = semAcento(nomeCliente(c)).trim(); return (!n || !/[a-z0-9]/.test(n[0])) ? '￿' + n : n; };
+    lista = lista.slice().sort((a, b) => chaveOrd(a).localeCompare(chaveOrd(b), 'pt-BR'));
     const total = lista.length;
     const skip = Math.max(0, parseInt(req.query.skip) || 0);
     const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 30), 100);
