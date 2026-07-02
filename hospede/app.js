@@ -173,6 +173,17 @@ const I18N = {
     'Nome do seu amigo(a)': 'Your friend’s name', 'Contato (WhatsApp ou e-mail)': 'Contact (WhatsApp or email)',
     'Quer deixar um recado?': 'Want to leave a note?', 'Enviar indicação': 'Send referral',
     'Trocar senha': 'Change password', 'Senha atual': 'Current password', 'Nova senha (mín. 8)': 'New password (min. 8)', 'Salvar': 'Save',
+    // check-in on-line (fase unificada com o pré-check-in do site)
+    'Nº de adultos que vão se hospedar': 'No. of adults staying', 'Nº de crianças que vão se hospedar': 'No. of children staying',
+    'Nº de Convidados para Evento ou Day Use': 'No. of guests for event or day use',
+    'Vai trazer pet? Qual?': 'Bringing a pet? Which one?', 'Ex.: 1 cachorro pequeno': 'e.g. 1 small dog',
+    'Vai usar o estacionamento?': 'Will you use the parking?', 'Selecione': 'Select', 'Sim': 'Yes', 'Não': 'No',
+    'Modelo e placa do veículo': 'Vehicle model and licence plate', 'Ex.: Honda Civic preto - ABC1D23': 'e.g. black Honda Civic - ABC1D23',
+    'Motivo da viagem': 'Reason for the trip', 'Selecione (opcional)': 'Select (optional)', 'Passeio': 'Leisure', 'Trabalho': 'Work',
+    'Evento na cidade': 'Event in the city', 'Descreva o evento': 'Describe the event',
+    'Ex.: casamento, formatura, aniversário...': 'e.g. wedding, graduation, birthday...',
+    'Origem': 'Coming from', 'De onde você vem': "Where you're coming from", 'Destino': 'Going to', 'Para onde vai depois': "Where you're going next",
+    'Check-in recebido! Vamos preparar tudo para a sua chegada. ✅': 'Check-in received! We will get everything ready for your arrival. ✅',
     // status dos pedidos (STATUS_PED)
     'Recebido': 'Received', 'Em análise': 'Under review', 'Aprovado': 'Approved', 'Recusado': 'Declined', 'Respondido': 'Answered',
   },
@@ -308,6 +319,17 @@ const I18N = {
     'Nome do seu amigo(a)': 'Nombre de su amigo(a)', 'Contato (WhatsApp ou e-mail)': 'Contacto (WhatsApp o correo)',
     'Quer deixar um recado?': '¿Quiere dejar un mensaje?', 'Enviar indicação': 'Enviar recomendación',
     'Trocar senha': 'Cambiar contraseña', 'Senha atual': 'Contraseña actual', 'Nova senha (mín. 8)': 'Nueva contraseña (mín. 8)', 'Salvar': 'Guardar',
+    // check-in en línea (unificado con el pre-check-in del sitio)
+    'Nº de adultos que vão se hospedar': 'N.º de adultos que se alojarán', 'Nº de crianças que vão se hospedar': 'N.º de niños que se alojarán',
+    'Nº de Convidados para Evento ou Day Use': 'N.º de invitados para evento o day use',
+    'Vai trazer pet? Qual?': '¿Traerás mascota? ¿Cuál?', 'Ex.: 1 cachorro pequeno': 'Ej.: 1 perro pequeño',
+    'Vai usar o estacionamento?': '¿Usarás el estacionamiento?', 'Selecione': 'Seleccione', 'Sim': 'Sí', 'Não': 'No',
+    'Modelo e placa do veículo': 'Modelo y matrícula del vehículo', 'Ex.: Honda Civic preto - ABC1D23': 'Ej.: Honda Civic negro - ABC1D23',
+    'Motivo da viagem': 'Motivo del viaje', 'Selecione (opcional)': 'Seleccione (opcional)', 'Passeio': 'Turismo', 'Trabalho': 'Trabajo',
+    'Evento na cidade': 'Evento en la ciudad', 'Descreva o evento': 'Describe el evento',
+    'Ex.: casamento, formatura, aniversário...': 'Ej.: boda, graduación, cumpleaños...',
+    'Origem': 'Origen', 'De onde você vem': 'De dónde vienes', 'Destino': 'Destino', 'Para onde vai depois': 'A dónde vas después',
+    'Check-in recebido! Vamos preparar tudo para a sua chegada. ✅': '¡Check-in recibido! Prepararemos todo para tu llegada. ✅',
     // estado de las solicitudes (STATUS_PED)
     'Recebido': 'Recibido', 'Em análise': 'En análisis', 'Aprovado': 'Aprobado', 'Recusado': 'Rechazado', 'Respondido': 'Respondido',
   },
@@ -767,16 +789,25 @@ $('#form-pedido').addEventListener('submit', async (ev) => {
     corpo.reservaId = val('mp-mn-reserva');
     corpo.local = val('mp-mn-local'); corpo.urgencia = val('mp-mn-urg'); corpo.descricaoManutencao = val('mp-mn-desc');
   } else if (tipo === 'checkin') {
-    corpo.reservaId = val('mp-ci-reserva');
-    corpo.horarioChegada = val('mp-ci-hora'); corpo.pessoas = val('mp-ci-pessoas'); corpo.observacoes = val('mp-ci-obs');
+    corpo.reservaId = val('mp-ci-reserva'); corpo.horario = val('mp-ci-hora');
+    corpo.adultos = val('mp-ci-adultos'); corpo.criancas = val('mp-ci-criancas'); corpo.convidados = val('mp-ci-convidados');
+    corpo.pets = val('mp-ci-pets'); corpo.estacionamento = val('mp-ci-estac'); corpo.veiculo = val('mp-ci-veiculo');
+    corpo.motivo = val('mp-ci-motivo'); corpo.evento = val('mp-ci-evento');
+    corpo.origem = val('mp-ci-origem'); corpo.destino = val('mp-ci-destino'); corpo.observacoes = val('mp-ci-obs');
   } else {
     corpo.reservaId = reservaId;
     corpo.novoCheckin = val('mp-cin'); corpo.novoCheckout = val('mp-cout'); corpo.novoImovel = val('mp-imovel'); corpo.novoHospedes = val('mp-hosp');
   }
   try {
-    await api('/pedido', { method: 'POST', body: JSON.stringify(corpo) });
-    m.classList.add('hidden');
-    carregarPedidos();
+    const rota = tipo === 'checkin' ? '/precheckin' : '/pedido';
+    await api(rota, { method: 'POST', body: JSON.stringify(corpo) });
+    if (tipo === 'checkin') {
+      fb.className = 'ok-msg'; fb.textContent = t('Check-in recebido! Vamos preparar tudo para a sua chegada. ✅');
+      setTimeout(() => { m.classList.add('hidden'); carregarPedidos(); }, 1600);
+    } else {
+      m.classList.add('hidden');
+      carregarPedidos();
+    }
   } catch (e) { fb.textContent = e.message; }
 });
 
@@ -1134,6 +1165,8 @@ function abrirManutencao() {
 }
 
 // ---- Check-in online (vira pedido tipo=checkin) ----
+// Check-in on-line — mesmo formulário completo do site (dados que geram cobrança extra: convidados,
+// pet, evento). Reserva/hóspedagem/datas vêm confirmadas da conta (dropdown), sem redigitar.
 function abrirCheckin() {
   $('#mp-titulo').textContent = '🚪 ' + t('Check-in online');
   $('#mp-sub').textContent = t('Adiante o seu check-in: informe a previsão de chegada e o que precisar.');
@@ -1145,10 +1178,34 @@ function abrirCheckin() {
     <label>${t('Reserva')} <select id="mp-ci-reserva">${opts}</select></label>
     <div class="mp-grid">
       <label>${t('Previsão de chegada')} <input type="time" id="mp-ci-hora"></label>
-      <label>${t('Nº de hóspedes')} <input type="number" min="1" id="mp-ci-pessoas"></label>
+      <label>${t('Nº de adultos que vão se hospedar')} <input type="number" min="1" id="mp-ci-adultos"></label>
+    </div>
+    <div class="mp-grid">
+      <label>${t('Nº de crianças que vão se hospedar')} <input type="number" min="0" id="mp-ci-criancas"></label>
+      <label>${t('Nº de Convidados para Evento ou Day Use')} <input type="number" min="0" id="mp-ci-convidados"></label>
+    </div>
+    <div class="mp-grid">
+      <label>${t('Vai trazer pet? Qual?')} <input id="mp-ci-pets" placeholder="${t('Ex.: 1 cachorro pequeno')}"></label>
+      <label>${t('Vai usar o estacionamento?')} <select id="mp-ci-estac"><option value="">${t('Selecione')}</option><option value="Sim">${t('Sim')}</option><option value="Não">${t('Não')}</option></select></label>
+    </div>
+    <label id="mp-ci-veic-wrap" hidden>${t('Modelo e placa do veículo')} <input id="mp-ci-veiculo" placeholder="${t('Ex.: Honda Civic preto - ABC1D23')}"></label>
+    <label>${t('Motivo da viagem')} <select id="mp-ci-motivo">
+      <option value="">${t('Selecione (opcional)')}</option>
+      <option value="Passeio">${t('Passeio')}</option>
+      <option value="Trabalho">${t('Trabalho')}</option>
+      <option value="Evento na cidade">${t('Evento na cidade')}</option>
+    </select></label>
+    <label id="mp-ci-evento-wrap" hidden>${t('Descreva o evento')} <input id="mp-ci-evento" placeholder="${t('Ex.: casamento, formatura, aniversário...')}"></label>
+    <div class="mp-grid">
+      <label>${t('Origem')} <input id="mp-ci-origem" placeholder="${t('De onde você vem')}"></label>
+      <label>${t('Destino')} <input id="mp-ci-destino" placeholder="${t('Para onde vai depois')}"></label>
     </div>
     <label>${t('Observações')} <textarea id="mp-ci-obs" rows="2" placeholder="${t('Ex.: chego de carro, vou precisar de berço, etc.')}"></textarea></label>
     <p class="dica">${t('Confirmamos os detalhes e te enviamos as instruções de chegada por aqui.')}</p>`;
+  const est = $('#mp-ci-estac'), veicWrap = $('#mp-ci-veic-wrap');
+  est.addEventListener('change', () => { const show = est.value === 'Sim'; veicWrap.hidden = !show; if (!show) $('#mp-ci-veiculo').value = ''; });
+  const mot = $('#mp-ci-motivo'), evWrap = $('#mp-ci-evento-wrap');
+  mot.addEventListener('change', () => { const show = mot.value === 'Evento na cidade'; evWrap.hidden = !show; if (!show) $('#mp-ci-evento').value = ''; });
   const m = $('#modal-pedido'); m.dataset.tipo = 'checkin'; m.dataset.reserva = ''; m.classList.remove('hidden');
 }
 

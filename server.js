@@ -228,8 +228,22 @@ app.get('/api/ultima-hora', async (req, res) => {
   }
 });
 
-// Pré-check-in do hóspede (formulário do site)
-app.post('/api/precheckin', (req, res) => {
+// Itens do check-in que costumam gerar cobrança extra (hóspede/convidado extra, pet, evento na casa).
+// Usado tanto pelo pré-check-in público (site) quanto pelo check-in do app do hóspede (logado).
+function itensBillaveis(d) {
+  const convidados = d.convidados != null && d.convidados !== '' ? Number(d.convidados) : 0;
+  const petsTxt = String(d.pets || '').trim();
+  const temPet = !!petsTxt && !/^(n[aã]o|nenhum|sem|n\/?a)$/i.test(petsTxt);
+  const evento = String(d.motivo || '') === 'Evento na cidade';
+  const partes = [];
+  if (convidados > 0) partes.push(`${convidados} convidado(s) extra p/ evento/day use`);
+  if (temPet) partes.push('Pet: ' + petsTxt);
+  if (evento && d.evento) partes.push('Evento: ' + String(d.evento).slice(0, 300));
+  return { convidados, temPet, petsTxt, evento, resumo: partes.join(' · ') };
+}
+
+// Pré-check-in do hóspede (formulário público do site — mesmo destino do check-in do app: precheckins.jsonl).
+app.post('/api/precheckin', async (req, res) => {
   const d = req.body || {};
   if (!d.nome || !d.contato) return res.status(400).json({ erro: 'nome e contato são obrigatórios' });
   appendJsonl('precheckins.jsonl', {
@@ -238,8 +252,42 @@ app.post('/api/precheckin', (req, res) => {
     adultos: d.adultos || '', criancas: d.criancas || '', convidados: d.convidados || '', pets: d.pets || '',
     motivo: d.motivo || '', evento: d.evento || '', origem: d.origem || '', destino: d.destino || '',
     estacionamento: d.estacionamento || '', veiculo: d.veiculo || '',
-    observacoes: d.observacoes || ''
+    observacoes: d.observacoes || '', origemCanal: 'site',
   });
+  // Itens com custo: tenta vincular a uma conta de hóspede (pelo telefone) + reserva real p/ abrir um
+  // pedido com orçamento; sem vínculo confiável, só alerta o Augusto (o dado já está no Pré-check-ins).
+  try {
+    const itens = itensBillaveis(d);
+    if (itens.resumo) {
+      const fone = normFone(d.contato);
+      const hospedes = lerHospedes();
+      const h = fone && hospedes.find(x => x.ativo && x.telefone === fone);
+      let r = null;
+      if (h) {
+        const reservas = await reservasDoHospede(h, false).catch(() => []);
+        const ativas = reservas.filter(x => x.status !== 'canceled' && x.status !== 'blocked');
+        const codigo = semAcento(d.reserva || '').trim();
+        r = (codigo && ativas.find(x => semAcento(x.id).includes(codigo))) || ativas.find(x => x.checkin === d.chegada) || null;
+      }
+      if (h && r) {
+        const pedidos = lerPedidosHosp();
+        const pedido = {
+          id: novoId(), hospedeId: h.id, hospedeNome: h.nome || d.nome, staysClientId: h.staysClientId || '',
+          tipo: itens.evento ? 'evento' : 'checkin', reservaId: r.id, imovel: r.imovel, imovelTitulo: r.imovelTitulo,
+          checkinAtual: r.checkin, checkoutAtual: r.checkout, alteracao: null,
+          evento: itens.evento ? { data: d.chegada || '', convidados: itens.convidados || null, descricao: itens.resumo } : null,
+          servico: null, manutencao: null,
+          checkin: !itens.evento ? { horarioChegada: d.horario || '', pessoas: itens.convidados || null, observacoes: itens.resumo } : null,
+          mensagem: '', status: 'novo', orcamento: null, respostaAdmin: '',
+          criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
+        };
+        pedidos.unshift(pedido); salvarPedidosHosp(pedidos);
+        alertaAugusto(`Check-in on-line (site) de ${pedido.hospedeNome} tem itens com custo (${itens.resumo}) - reserva ${r.id}${r.imovel ? ' (' + r.imovel + ')' : ''}. Veja em Pedidos de hospedes.`).catch(() => { });
+      } else {
+        alertaAugusto(`Check-in on-line (site) de ${d.nome} tem itens com custo (${itens.resumo}) mas nao foi possivel vincular a conta/reserva automaticamente - confira em Pre-check-ins.`).catch(() => { });
+      }
+    }
+  } catch (e) { console.error('[precheckin billable]', e.message); }
   res.json({ ok: true });
 });
 
@@ -2374,9 +2422,9 @@ ${faqTexto()}
 // Criar pedido: ALTERAÇÃO de reserva (só direta/WhatsApp), EVENTO ou SERVIÇO extra. Vai p/ aprovação do Augusto.
 app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
   const d = req.body || {};
-  const tipo = ['evento', 'servico', 'manutencao', 'checkin'].includes(d.tipo) ? d.tipo : 'alteracao';
+  const tipo = ['evento', 'servico', 'manutencao'].includes(d.tipo) ? d.tipo : 'alteracao';
   const reservaId = String(d.reservaId || '').trim();
-  if (!['servico', 'manutencao', 'checkin'].includes(tipo) && !reservaId) return res.status(400).json({ erro: 'Informe a reserva.' });
+  if (!['servico', 'manutencao'].includes(tipo) && !reservaId) return res.status(400).json({ erro: 'Informe a reserva.' });
   try {
     let r = null;
     if (reservaId) {
@@ -2405,33 +2453,71 @@ app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
       local: String(d.local || '').slice(0, 200), urgencia: String(d.urgencia || '').slice(0, 40),
       descricao: String(d.descricaoManutencao || d.descricao || '').slice(0, 1000),
     } : null;
-    const checkin = tipo === 'checkin' ? {
-      horarioChegada: String(d.horarioChegada || '').slice(0, 20), pessoas: d.pessoas != null && d.pessoas !== '' ? Number(d.pessoas) : null,
-      observacoes: String(d.observacoes || '').slice(0, 1000),
-    } : null;
     if (tipo === 'alteracao' && alteracao && !alteracao.novoCheckin && !alteracao.novoCheckout && !alteracao.novoImovel && alteracao.novoHospedes == null && !String(d.mensagem || '').trim())
       return res.status(400).json({ erro: 'Diga o que deseja alterar (datas, imóvel, nº de hóspedes ou uma mensagem).' });
     if (tipo === 'evento' && !evento.data && evento.convidados == null && !evento.descricao)
       return res.status(400).json({ erro: 'Informe a data do evento, o número de convidados ou uma descrição.' });
     if (tipo === 'manutencao' && !manutencao.descricao && !String(d.mensagem || '').trim())
       return res.status(400).json({ erro: 'Descreva o problema de manutenção.' });
-    if (tipo === 'checkin' && !checkin.horarioChegada && !checkin.observacoes && !String(d.mensagem || '').trim())
-      return res.status(400).json({ erro: 'Informe o horário previsto de chegada ou uma observação.' });
 
     const pedidos = lerPedidosHosp();
     const pedido = {
       id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', staysClientId: req.hospede.staysClientId || '',
       tipo, reservaId, imovel: r ? r.imovel : '', imovelTitulo: r ? r.imovelTitulo : '', checkinAtual: r ? r.checkin : '', checkoutAtual: r ? r.checkout : '',
-      alteracao, evento, servico, manutencao, checkin, mensagem: String(d.mensagem || '').slice(0, 1000),
+      alteracao, evento, servico, manutencao, checkin: null, mensagem: String(d.mensagem || '').slice(0, 1000),
       status: 'novo', orcamento: null, respostaAdmin: '',
       criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
     };
     pedidos.unshift(pedido);
     salvarPedidosHosp(pedidos);
-    const rotuloTipo = tipo === 'evento' ? 'EVENTO' : tipo === 'servico' ? 'SERVICO (' + servico.nome + ')' : tipo === 'manutencao' ? 'MANUTENCAO' : tipo === 'checkin' ? 'CHECK-IN' : 'alteracao de reserva';
+    const rotuloTipo = tipo === 'evento' ? 'EVENTO' : tipo === 'servico' ? 'SERVICO (' + servico.nome + ')' : tipo === 'manutencao' ? 'MANUTENCAO' : 'alteracao de reserva';
     alertaAugusto(`Novo pedido de ${rotuloTipo} de ${pedido.hospedeNome || 'hospede'}${reservaId ? ' - reserva ' + reservaId : ''}${r && r.imovel ? ' (' + r.imovel + ')' : ''}. Veja no Portal Staff > Pedidos de hospedes.`).catch(() => { });
     res.json({ ok: true, pedido });
   } catch (e) { console.error('[hospede pedido]', e.message); res.status(502).json({ erro: 'Falha ao registrar o pedido. Tente novamente.' }); }
+});
+
+// Check-in on-line do hóspede LOGADO (mesmo formulário completo do site) — grava em precheckins.jsonl
+// (mesmo destino/painel do formulário público) com dados JÁ CONFIRMADOS da conta/reserva (nome, e-mail,
+// telefone, imóvel, datas). Se houver item com custo (convidados extra, pet, evento na casa), cria também
+// um pedido (evento/checkin) para entrar no fluxo de orçamento de "Pedidos de hóspedes".
+app.post('/hospede/api/precheckin', requireHospede, async (req, res) => {
+  const d = req.body || {};
+  const reservaId = String(d.reservaId || '').trim();
+  if (!reservaId) return res.status(400).json({ erro: 'Informe a reserva.' });
+  try {
+    const reservas = await reservasDoHospede(req.hospede, false);
+    const r = reservas.find(x => x.id === reservaId && x.status !== 'canceled' && x.status !== 'blocked');
+    if (!r) return res.status(404).json({ erro: 'Reserva não encontrada na sua conta.' });
+    const horario = String(d.horario || '').slice(0, 20);
+    appendJsonl('precheckins.jsonl', {
+      nome: req.hospede.nome || '', contato: req.hospede.telefone || '', email: req.hospede.email || '',
+      reserva: r.id, hospedagem: r.imovelTitulo || r.imovel || '', chegada: r.checkin || '', saida: r.checkout || '',
+      horario,
+      adultos: d.adultos != null ? String(d.adultos) : '', criancas: d.criancas != null ? String(d.criancas) : '',
+      convidados: d.convidados != null ? String(d.convidados) : '', pets: String(d.pets || '').slice(0, 200),
+      motivo: String(d.motivo || '').slice(0, 60), evento: String(d.evento || '').slice(0, 300),
+      origem: String(d.origem || '').slice(0, 120), destino: String(d.destino || '').slice(0, 120),
+      estacionamento: String(d.estacionamento || '').slice(0, 10), veiculo: String(d.veiculo || '').slice(0, 120),
+      observacoes: String(d.observacoes || '').slice(0, 1000), origemCanal: 'app',
+    });
+    const itens = itensBillaveis(d);
+    if (itens.resumo) {
+      const pedidos = lerPedidosHosp();
+      const pedido = {
+        id: novoId(), hospedeId: req.hospede.id, hospedeNome: req.hospede.nome || '', staysClientId: req.hospede.staysClientId || '',
+        tipo: itens.evento ? 'evento' : 'checkin', reservaId: r.id, imovel: r.imovel, imovelTitulo: r.imovelTitulo,
+        checkinAtual: r.checkin, checkoutAtual: r.checkout, alteracao: null,
+        evento: itens.evento ? { data: r.checkin || '', convidados: itens.convidados || null, descricao: itens.resumo } : null,
+        servico: null, manutencao: null,
+        checkin: !itens.evento ? { horarioChegada: horario, pessoas: itens.convidados || null, observacoes: itens.resumo } : null,
+        mensagem: '', status: 'novo', orcamento: null, respostaAdmin: '',
+        criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
+      };
+      pedidos.unshift(pedido); salvarPedidosHosp(pedidos);
+      alertaAugusto(`Check-in online de ${pedido.hospedeNome} tem itens com custo (${itens.resumo}) - reserva ${r.id}${r.imovel ? ' (' + r.imovel + ')' : ''}. Veja em Pedidos de hospedes.`).catch(() => { });
+    }
+    res.json({ ok: true, temItemCobravel: !!itens.resumo });
+  } catch (e) { console.error('[hospede precheckin]', e.message); res.status(502).json({ erro: 'Falha ao registrar o check-in. Tente novamente.' }); }
 });
 
 // Recibo/comprovante da reserva (HTML imprimível → salvar em PDF) — só do próprio hóspede.
