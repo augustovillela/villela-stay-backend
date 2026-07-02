@@ -1232,6 +1232,212 @@ app.delete('/staff/api/mural/:id', requirePublishOrSession, (req, res) => {
   res.json({ ok: true });
 });
 
+// ============================ ONDA 2: Cockpit, Limpezas de hoje, Chamados e Backup ============================
+
+// Data de HOJE no fuso de Brasília (hojeISO() é UTC e viraria o dia às 21h locais).
+function hojeBrasil() { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
+
+// ---- Cockpit (home): KPIs vivos do dia, agregados no servidor (1 chamada do front) ----
+// Ocupação é APROXIMADA por anúncio ativo (imóveis interligados têm 2 anúncios).
+let _cacheCockpit = { quando: 0, dia: '', stays: null };
+async function cockpitStays() {
+  const dia = hojeBrasil();
+  if (_cacheCockpit.stays && _cacheCockpit.dia === dia && Date.now() - _cacheCockpit.quando < 5 * 60 * 1000)
+    return _cacheCockpit.stays;
+  const listings = await staysPaginado('/content/listings', {});
+  const ativos = listings.filter(l => l.status === 'active');
+  const mapa = {}; ativos.forEach(l => { mapa[l._id] = { codigo: l.id, titulo: l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id }; });
+  const doDia = (await staysPaginado('/booking/reservations', { from: dia, to: dia, dateType: 'included' }))
+    .filter(r => r.type !== 'canceled');
+  const estadias = doDia.filter(r => r.type !== 'blocked' && r.type !== 'maintenance');
+  const chegadas = estadias.filter(r => r.checkInDate === dia);
+  const saidas = estadias.filter(r => r.checkOutDate === dia);
+  const ocupadas = new Set(estadias.filter(r => r.checkInDate <= dia && r.checkOutDate > dia).map(r => r._idlisting));
+  const cache = await resolverClientes([...chegadas, ...saidas].map(r => r._idclient));
+  const resumo = (r) => ({
+    imovel: (mapa[r._idlisting] || {}).codigo || '—',
+    imovelTitulo: (mapa[r._idlisting] || {}).titulo || '—',
+    hospede: (r._idclient && cache[r._idclient]) || '—',
+    hospedes: r.guests || null, checkIn: r.checkInDate, checkOut: r.checkOutDate,
+  });
+  // Receita do mês corrente (competência por check-in, mesma convenção do briefing do CEO)
+  const [ano, mes] = dia.split('-').map(Number);
+  const ini = `${dia.slice(0, 7)}-01`;
+  const fim = `${dia.slice(0, 7)}-${String(new Date(ano, mes, 0).getDate()).padStart(2, '0')}`;
+  const doMes = (await staysPaginado('/booking/reservations', { from: ini, to: fim, dateType: 'arrival' }))
+    .filter(r => r.type !== 'canceled' && r.type !== 'blocked' && r.type !== 'maintenance');
+  let receita = 0, comissao = 0;
+  for (const r of doMes) {
+    receita += (r.price && r.price._f_total) || 0;
+    comissao += (r.partner && r.partner.commission && r.partner.commission._mcval && r.partner.commission._mcval.BRL) || 0;
+  }
+  const stays = {
+    dia, totalUnidades: ativos.length,
+    chegadas: chegadas.map(resumo), saidas: saidas.map(resumo),
+    ocupadas: ocupadas.size,
+    ocupacaoPct: ativos.length ? Math.round(100 * ocupadas.size / ativos.length) : 0,
+    mes: { receita: Math.round(receita), receitaLiquida: Math.round(receita - comissao), reservas: doMes.length },
+  };
+  _cacheCockpit = { quando: Date.now(), dia, stays };
+  return stays;
+}
+
+app.get('/staff/api/cockpit', requireAuth, async (req, res) => {
+  const dia = hojeBrasil();
+  const out = { dia, geradoEm: new Date().toISOString() };
+  try {
+    const s = await cockpitStays();
+    out.hoje = { chegadas: s.chegadas, saidas: s.saidas, ocupadas: s.ocupadas, totalUnidades: s.totalUnidades, ocupacaoPct: s.ocupacaoPct };
+    // Receita: só para quem enxerga finanças (ceo/financeiro/revenue; admin vê tudo)
+    if (['ceo', 'financeiro', 'revenue'].some(a => podeArea(req.user, a))) out.mes = s.mes;
+  } catch (e) { console.error('[cockpit stays]', e.message); out.staysIndisponivel = true; }
+  try {
+    out.listas = {
+      compras: lerJSON('lista-compras.json', []).length,
+      manutencao: lerJSON('lista-manutencao.json', []).length,
+    };
+    if (podeArea(req.user, 'ceo')) out.listas.pendencias = lerJSON('lista-pendencias.json', []).length;
+    out.chamadosAbertos = lerJSON('manutencao-chamados.json', []).filter(c => c.status !== 'concluido').length;
+    if (podeArea(req.user, 'vendas'))
+      out.followupsVencidos = lerContatos().filter(c =>
+        c.estagio !== 'perdido' && c.proximaAcao && c.proximaAcao.data && c.proximaAcao.data <= dia).length;
+    const conf = (lerJSON('limpezas-confirmadas.json', {})[dia]) || {};
+    out.limpezasConfirmadas = Object.keys(conf).length;
+    out.muralFixadas = lerJSON('mural.json', []).filter(m => m.fixado).slice(-3).reverse()
+      .map(m => ({ id: m.id, texto: m.texto.slice(0, 200), quem: m.quem, criadoEm: m.criadoEm }));
+    const pedidos = lerJSON('pedidos-hospede.json', []);
+    out.pedidosHospedeAbertos = pedidos.filter(p => !['concluido', 'recusado', 'cancelado'].includes(p.status)).length;
+  } catch (e) { console.error('[cockpit locais]', e.message); }
+  res.json(out);
+});
+
+// ---- Limpezas de hoje: espelho do painel de limpeza com confirmação pelo portal ----
+// Tarefas do dia = saídas (faxina pós-checkout) + chegadas (preparação pré-checkin), da Stays.
+// Confirmações em limpezas-confirmadas.json: { 'yyyy-mm-dd': { 'CODIGO|tipo': {quem, quando} } }.
+app.get('/staff/api/limpezas', requirePublishOrSession, async (req, res) => {
+  try {
+    const dia = /^\d{4}-\d{2}-\d{2}$/.test(req.query.dia || '') ? req.query.dia : hojeBrasil();
+    const listings = await staysPaginado('/content/listings', {});
+    const mapa = {}; listings.forEach(l => { mapa[l._id] = { codigo: l.id, titulo: l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id }; });
+    const doDia = (await staysPaginado('/booking/reservations', { from: dia, to: dia, dateType: 'included' }))
+      .filter(r => !['canceled', 'blocked', 'maintenance'].includes(r.type));
+    const cache = await resolverClientes(doDia.filter(r => r.checkInDate === dia || r.checkOutDate === dia).map(r => r._idclient));
+    const conf = (lerJSON('limpezas-confirmadas.json', {})[dia]) || {};
+    const tarefas = [];
+    for (const r of doDia) {
+      const im = mapa[r._idlisting] || { codigo: '—', titulo: '—' };
+      const hospede = (r._idclient && cache[r._idclient]) || '—';
+      if (r.checkOutDate === dia) tarefas.push({ tipo: 'faxina', rotulo: 'Faxina pós-checkout', codigo: im.codigo, titulo: im.titulo, hospede, hospedes: r.guests || null });
+      if (r.checkInDate === dia) tarefas.push({ tipo: 'preparacao', rotulo: 'Preparação pré-checkin', codigo: im.codigo, titulo: im.titulo, hospede, hospedes: r.guests || null });
+    }
+    // faxinas primeiro (a saída libera a preparação), depois por código
+    tarefas.sort((a, b) => (a.tipo === b.tipo ? a.codigo.localeCompare(b.codigo) : (a.tipo === 'faxina' ? -1 : 1)));
+    for (const t of tarefas) { const c = conf[`${t.codigo}|${t.tipo}`]; t.concluida = !!c; t.quem = c ? c.quem : ''; t.quando = c ? c.quando : ''; }
+    res.set('Cache-Control', 'no-store');
+    res.json({ dia, tarefas, concluidas: tarefas.filter(t => t.concluida).length });
+  } catch (e) { console.error('[limpezas]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
+});
+
+app.post('/staff/api/limpezas/confirmar', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const dia = /^\d{4}-\d{2}-\d{2}$/.test(d.dia || '') ? d.dia : hojeBrasil();
+  const codigo = String(d.codigo || '').trim();
+  const tipo = d.tipo === 'preparacao' ? 'preparacao' : 'faxina';
+  if (!codigo) return res.status(400).json({ erro: 'Informe o código do imóvel.' });
+  const tudo = lerJSON('limpezas-confirmadas.json', {});
+  const doDia = tudo[dia] || {};
+  const chave = `${codigo}|${tipo}`;
+  if (d.desfazer) delete doDia[chave];
+  else doDia[chave] = { quem: req.viaChave ? (String(d.quem || '').trim() || 'WhatsApp') : (req.user.nome || req.user.email || 'staff'), quando: new Date().toISOString() };
+  tudo[dia] = doDia;
+  // poda registros com mais de 60 dias
+  const limite = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+  for (const k of Object.keys(tudo)) if (k < limite) delete tudo[k];
+  salvarJSON('limpezas-confirmadas.json', tudo);
+  res.json({ ok: true, dia, confirmadas: Object.keys(doDia).length });
+});
+
+// ---- Chamados de manutenção: quadro com status, técnico e custo ----
+// Fluxo: aberto → agendado → em_execucao → concluido. Qualquer logado gerencia; agentes via chave.
+const CHAMADO_STATUS = ['aberto', 'agendado', 'em_execucao', 'concluido'];
+
+app.get('/staff/api/manutencao/chamados', requirePublishOrSession, (req, res) => {
+  res.json({ chamados: lerJSON('manutencao-chamados.json', []) });
+});
+
+app.post('/staff/api/manutencao/chamados', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const titulo = String(d.titulo || '').trim();
+  if (!titulo) return res.status(400).json({ erro: 'Informe o título do chamado.' });
+  const chamados = lerJSON('manutencao-chamados.json', []);
+  const ch = {
+    id: novoId(), titulo,
+    casa: String(d.casa || '').trim(),
+    descricao: String(d.descricao || '').trim(),
+    status: CHAMADO_STATUS.includes(d.status) ? d.status : 'aberto',
+    tecnico: String(d.tecnico || '').trim(),
+    custo: d.custo != null && d.custo !== '' ? Number(d.custo) || 0 : null,
+    origem: req.viaChave ? (String(d.origem || '').trim() || 'agente') : 'portal',
+    quem: req.viaChave ? (String(d.quem || '').trim() || 'Agente Claude') : (req.user.nome || req.user.email || 'staff'),
+    criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(), concluidoEm: null,
+  };
+  chamados.push(ch);
+  salvarJSON('manutencao-chamados.json', chamados);
+  res.json({ ok: true, chamado: ch });
+});
+
+app.patch('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, res) => {
+  const chamados = lerJSON('manutencao-chamados.json', []);
+  const ch = chamados.find(x => x.id === req.params.id);
+  if (!ch) return res.status(404).json({ erro: 'Chamado não encontrado.' });
+  const d = req.body || {};
+  if (d.status && CHAMADO_STATUS.includes(d.status)) { ch.status = d.status; ch.concluidoEm = d.status === 'concluido' ? new Date().toISOString() : null; }
+  for (const campo of ['titulo', 'casa', 'descricao', 'tecnico']) if (d[campo] != null) ch[campo] = String(d[campo]).trim();
+  if (d.custo !== undefined) ch.custo = d.custo === '' || d.custo == null ? null : Number(d.custo) || 0;
+  ch.atualizadoEm = new Date().toISOString();
+  salvarJSON('manutencao-chamados.json', chamados);
+  res.json({ ok: true, chamado: ch });
+});
+
+app.delete('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, res) => {
+  const chamados = lerJSON('manutencao-chamados.json', []);
+  const rest = chamados.filter(x => x.id !== req.params.id);
+  salvarJSON('manutencao-chamados.json', rest);
+  res.json({ ok: true, removidos: chamados.length - rest.length });
+});
+
+// ---- Backup do DATA_DIR (espelho para máquina local) ----
+// O disco do Render é o único lugar com usuários/CRM/listas/conta corrente; estes endpoints
+// permitem que um script local (stays\backup-portal.ps1, tarefa diária) espelhe tudo.
+// Auth: ADMIN_KEY (header x-admin-key) OU sessão de admin.
+function requireAdminOuChave(req, res, next) {
+  if (process.env.ADMIN_KEY && req.headers['x-admin-key'] === process.env.ADMIN_KEY) return next();
+  return requireAuth(req, res, () => requireAdmin(req, res, next));
+}
+
+function backupWalk(dir, base, out) {
+  for (const nome of fs.readdirSync(dir)) {
+    const cheio = path.join(dir, nome);
+    const st = fs.statSync(cheio);
+    if (st.isDirectory()) backupWalk(cheio, base, out);
+    else out.push({ caminho: path.relative(base, cheio).split(path.sep).join('/'), tamanho: st.size, mtime: st.mtime.toISOString() });
+  }
+  return out;
+}
+
+app.get('/staff/api/backup/lista', requireAdminOuChave, (req, res) => {
+  try { res.json({ dataDir: true, arquivos: backupWalk(DATA_DIR, DATA_DIR, []) }); }
+  catch (e) { res.status(500).json({ erro: 'Falha ao listar: ' + e.message }); }
+});
+
+app.get('/staff/api/backup/arquivo', requireAdminOuChave, (req, res) => {
+  const rel = String(req.query.caminho || '');
+  const alvo = path.resolve(DATA_DIR, rel);
+  if (!alvo.startsWith(path.resolve(DATA_DIR) + path.sep)) return res.status(400).json({ erro: 'Caminho inválido.' });
+  if (!fs.existsSync(alvo) || !fs.statSync(alvo).isFile()) return res.status(404).json({ erro: 'Arquivo não encontrado.' });
+  res.sendFile(alvo);
+});
+
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
 // O portal registra pedidos de CRIAR/EXCLUIR evento; uma rotina do Claude (com acesso ao Google
 // Calendar) lê os pendentes, efetiva e marca como feito (PATCH).

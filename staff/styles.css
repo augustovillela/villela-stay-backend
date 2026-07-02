@@ -151,6 +151,9 @@ tr:last-child td { border-bottom: none; }
 .kard:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
 .kard.arrastando { opacity: .45; }
 .kard-nome { font-weight: 700; font-size: .9rem; }
+.kard-wa { float: right; text-decoration: none; font-size: .95rem; }
+.kard-wa:hover { text-decoration: none; transform: scale(1.15); display: inline-block; }
+.card-nav { cursor: pointer; }
 .kard-meta { display: flex; gap: 5px; flex-wrap: wrap; margin: 5px 0; }
 .kard-meta .chip { font-size: .72rem; padding: 1px 8px; }
 .kard-acao { font-size: .76rem; border-radius: 6px; padding: 2px 7px; display: inline-block; margin-top: 3px; background: var(--areia); }

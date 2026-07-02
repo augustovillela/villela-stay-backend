@@ -165,12 +165,14 @@ function montarMenu() {
   if (ehAdmin) hosp.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
   if (hosp.length) itens.push({ grupo: 'Hóspedes' }, ...hosp);
   itens.push({ grupo: 'Operação' });
+  itens.push({ id: 'limpezas', rot: '🧹 Limpezas de hoje' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
   itens.push({ id: 'manutencao', rot: '🔧 Lista de manutenção' });
+  itens.push({ id: 'manutencao-chamados', rot: '🛠️ Chamados de manutenção' });
   // Pendências é restrita à área CEO (admin vê tudo); demais não veem o item.
   if (tem('ceo')) itens.push({ id: 'pendencias', rot: '✅ Pendências' });
   itens.push({ id: 'agenda', rot: '📅 Agenda (eventos)' });
-  if (ESTADO.painelDisp.chamados) itens.push({ id: 'chamados', rot: '🛎️ Chamados' });
+  if (ESTADO.painelDisp.chamados) itens.push({ id: 'chamados', rot: '🛎️ Chamados do site' });
   itens.push({ grupo: 'Relatórios & Gestão' });
   itens.push({ id: 'relatorios', rot: '📄 Relatórios & Entregas' });
   itens.push({ id: 'publicar', rot: '➕ Publicar entrega' });
@@ -215,7 +217,7 @@ async function atualizarBadgeMural() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, mural: renderMural, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -791,26 +793,189 @@ function ligarCriarReserva() {
 }
 
 // --------- Visão geral ---------
+// Visão geral = COCKPIT do dia: KPIs vivos (Stays + CRM + listas) com cartões clicáveis.
 async function renderVisao() {
-  conteudo().innerHTML = cabecalho('Visão geral', 'Resumo do que os agentes vêm produzindo.');
-  // Busca rápida: leva para Relatórios & Entregas já filtrado pelo termo digitado.
-  conteudo().innerHTML += `<form id="busca-home" class="barra">
+  const c = conteudo();
+  const h = new Date().getHours();
+  const sauda = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const nome = String(ESTADO.me.nome || '').split(' ')[0];
+  c.innerHTML = cabecalho(`${sauda}, ${nome}!`, 'Cockpit do dia — números ao vivo da operação.');
+  c.innerHTML += `<form id="busca-home" class="barra">
     <input id="busca-home-input" type="search" placeholder="🔎 Buscar em todos os relatórios e entregas…" style="flex:1;min-width:220px">
     <button class="btn" type="submit">Buscar</button>
-  </form>`;
+  </form>
+  <div id="ck-cards" class="cards"><div class="card"><div class="n">…</div><div class="rot">Carregando o dia</div></div></div>
+  <div id="ck-detalhe"></div>
+  <div id="ck-mural"></div>
+  <h2 class="titulo" style="font-size:1.15rem">Últimas entregas</h2><div id="ck-entregas" class="vazio">Carregando…</div>`;
   $('#busca-home').onsubmit = (ev) => { ev.preventDefault(); ESTADO.buscaPrefill = $('#busca-home-input').value; navegar('relatorios'); };
-  try {
-    const vg = await api('GET', '/visao-geral');
-    const cards = `<div class="cards">
-      <div class="card"><div class="n">${vg.totalRelatorios}</div><div class="rot">Relatórios e entregas</div></div>
-      ${Object.entries(vg.porArea).map(([a, n]) => `<div class="card"><div class="n">${n}</div><div class="rot">${esc(nomeArea(a))}</div></div>`).join('')}
-    </div>`;
-    const ult = vg.ultimos.length
-      ? `<div class="lista">${vg.ultimos.map(itemRelatorioHtml).join('')}</div>`
-      : `<div class="vazio">Ainda não há entregas publicadas. Use “+ Publicar entrega” ou os agentes publicam pela ferramenta local.</div>`;
-    conteudo().innerHTML += cards + `<h2 class="titulo" style="font-size:1.15rem">Últimas entregas</h2>` + ult;
+
+  // Entregas (rápido) e cockpit (Stays, pode demorar) carregam em paralelo.
+  api('GET', '/visao-geral').then(vg => {
+    const alvo = $('#ck-entregas'); if (!alvo) return;
+    if (!vg.ultimos.length) { alvo.innerHTML = 'Ainda não há entregas publicadas.'; return; }
+    alvo.className = 'lista';
+    alvo.innerHTML = vg.ultimos.map(itemRelatorioHtml).join('');
     ligarAcoesRelatorio();
-  } catch (e) { conteudo().innerHTML += `<p class="erro">${esc(e.message)}</p>`; }
+  }).catch(() => {});
+
+  try {
+    const ck = await api('GET', '/cockpit');
+    const cards = [];
+    const card = (n, rot, nav, cor) => cards.push(`<div class="card card-nav" data-nav="${nav}"><div class="n"${cor ? ` style="color:${cor}"` : ''}>${n}</div><div class="rot">${rot}</div></div>`);
+    if (ck.hoje) {
+      card(ck.hoje.chegadas.length, '🛬 Chegadas hoje', 'calendario');
+      card(ck.hoje.saidas.length, '🧳 Saídas hoje', 'calendario');
+      card(ck.hoje.ocupacaoPct + '%', `🛏️ Ocupação (${ck.hoje.ocupadas}/${ck.hoje.totalUnidades})`, 'calendario');
+      const nLimp = ck.hoje.chegadas.length + ck.hoje.saidas.length;
+      card(`${ck.limpezasConfirmadas || 0}/${nLimp}`, '🧹 Limpezas de hoje', 'limpezas', (ck.limpezasConfirmadas || 0) >= nLimp && nLimp > 0 ? 'var(--ok)' : undefined);
+    }
+    if (ck.mes) card('R$ ' + Number(ck.mes.receitaLiquida).toLocaleString('pt-BR'), `💰 Líquido do mês (${ck.mes.reservas} reservas, por check-in)`, 'relatorios');
+    if (ck.followupsVencidos != null) card(ck.followupsVencidos, '⏰ Follow-ups vencidos (CRM)', 'crm', ck.followupsVencidos > 0 ? 'var(--alerta)' : 'var(--ok)');
+    if (ck.pedidosHospedeAbertos != null && (ESTADO.me.papel === 'admin' || ESTADO.areas.includes('concierge') || ESTADO.areas.includes('vendas') || ESTADO.areas.includes('*')))
+      card(ck.pedidosHospedeAbertos, '📨 Pedidos de hóspedes abertos', 'hospede-pedidos', ck.pedidosHospedeAbertos > 0 ? 'var(--cerrado)' : undefined);
+    if (ck.listas) {
+      card(ck.listas.compras, '🛒 Itens na lista de compras', 'compras');
+      card(ck.listas.manutencao, '🔧 Itens de manutenção', 'manutencao');
+      if (ck.listas.pendencias != null) card(ck.listas.pendencias, '✅ Pendências (CEO)', 'pendencias');
+    }
+    if (ck.chamadosAbertos != null) card(ck.chamadosAbertos, '🛠️ Chamados de manutenção abertos', 'manutencao-chamados', ck.chamadosAbertos > 0 ? 'var(--cerrado)' : 'var(--ok)');
+    $('#ck-cards').innerHTML = cards.join('') || '<div class="vazio">Sem dados no momento.</div>';
+    document.querySelectorAll('.card-nav').forEach(el => el.onclick = () => navegar(el.dataset.nav));
+
+    // Detalhe de chegadas e saídas do dia
+    if (ck.hoje && (ck.hoje.chegadas.length || ck.hoje.saidas.length)) {
+      const li = (r) => `<div class="kv"><span>${esc(r.imovel)} · ${esc(r.imovelTitulo)}</span><b>${esc(r.hospede)}${r.hospedes ? ' · ' + r.hospedes + ' hósp.' : ''}</b></div>`;
+      $('#ck-detalhe').innerHTML = `<div class="ficha" style="margin-bottom:20px">
+        <div class="ficha-col"><div class="ficha-bloco"><h3>🛬 Chegadas de hoje (${ck.hoje.chegadas.length})</h3>${ck.hoje.chegadas.map(li).join('') || '<p class="sub" style="margin:0">Nenhuma chegada hoje.</p>'}</div></div>
+        <div class="ficha-col"><div class="ficha-bloco"><h3>🧳 Saídas de hoje (${ck.hoje.saidas.length})</h3>${ck.hoje.saidas.map(li).join('') || '<p class="sub" style="margin:0">Nenhuma saída hoje.</p>'}</div></div>
+      </div>`;
+    }
+    // Avisos fixados do mural
+    if (ck.muralFixadas && ck.muralFixadas.length) {
+      $('#ck-mural').innerHTML = ck.muralFixadas.map(m => `<div class="mural-msg fixada" style="cursor:pointer" data-nav="mural">
+        <div class="mural-cab"><b>${esc(m.quem)}</b> <span class="chip mural-chip-fix">📌 Aviso</span> <span class="mural-data">${dataBr(m.criadoEm)}</span></div>
+        <div class="mural-texto">${esc(m.texto)}</div></div>`).join('');
+      $('#ck-mural').querySelectorAll('[data-nav]').forEach(el => el.onclick = () => navegar('mural'));
+    }
+    if (ck.staysIndisponivel) $('#ck-cards').innerHTML += '<div class="vazio">⚠️ Stays indisponível agora — os números do dia voltam sozinhos.</div>';
+  } catch (e) { $('#ck-cards').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Limpezas de hoje (espelho do painel de limpeza, com confirmação) ---------
+async function renderLimpezas() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Limpezas de hoje', 'Faxinas pós-checkout e preparações pré-checkin do dia (ao vivo da Stays). Toque em Concluído ao terminar cada unidade.') + `
+    <div class="barra">
+      <label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Dia
+        <input type="date" id="lp-dia" value="${hojeInput()}"></label>
+      <button class="btn secund peq" id="lp-atualizar">Atualizar</button>
+    </div>
+    <div id="lp-lista"><p class="vazio">Carregando…</p></div>`;
+  $('#lp-dia').onchange = carregarLimpezas;
+  $('#lp-atualizar').onclick = carregarLimpezas;
+  carregarLimpezas();
+}
+function hojeInput() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+async function carregarLimpezas() {
+  const alvo = $('#lp-lista'); if (!alvo) return;
+  const dia = $('#lp-dia').value || hojeInput();
+  try {
+    const { tarefas, concluidas } = await api('GET', '/limpezas?dia=' + dia);
+    if (!tarefas.length) { alvo.innerHTML = '<div class="vazio">Sem limpezas neste dia — nenhuma chegada ou saída. 🎉</div>'; return; }
+    alvo.innerHTML = `<p class="sub" style="margin:0 0 10px">${concluidas}/${tarefas.length} concluída(s)</p>` + tarefas.map(t => `
+      <div class="linha-item" style="${t.concluida ? 'opacity:.65' : ''}">
+        <span class="qtd">${t.tipo === 'faxina' ? '🧹 Faxina' : '🛏️ Preparação'}</span>
+        <span class="nome">${esc(t.codigo)} · ${esc(t.titulo)} <span class="obs">${t.tipo === 'faxina' ? 'saída' : 'chegada'} de ${esc(t.hospede)}${t.hospedes ? ' (' + t.hospedes + ' hósp.)' : ''}</span></span>
+        <span class="quem">${t.concluida ? '✅ ' + esc(t.quem) + ' · ' + dataBr(t.quando) : 'pendente'}</span>
+        <button class="btn peq ${t.concluida ? 'secund' : ''}" data-cod="${esc(t.codigo)}" data-tipo="${t.tipo}" data-desfazer="${t.concluida ? 1 : 0}">
+          ${t.concluida ? 'Desfazer' : 'Concluído ✓'}</button>
+      </div>`).join('');
+    alvo.querySelectorAll('button[data-cod]').forEach(b => b.onclick = async () => {
+      try {
+        await api('POST', '/limpezas/confirmar', { dia, codigo: b.dataset.cod, tipo: b.dataset.tipo, desfazer: b.dataset.desfazer === '1' });
+        carregarLimpezas();
+      } catch (e) { alert(e.message); }
+    });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Chamados de manutenção (quadro por status, com técnico e custo) ---------
+const CH_COLS = [
+  { id: 'aberto', rot: '🔴 Aberto' }, { id: 'agendado', rot: '📅 Agendado' },
+  { id: 'em_execucao', rot: '🛠️ Em execução' }, { id: 'concluido', rot: '✅ Concluído' },
+];
+async function renderChamadosManutencao() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Chamados de manutenção', 'Do problema ao conserto: aberto → agendado → em execução → concluído, com técnico e custo.') + `
+    <details class="cr-box" id="ch-box"><summary class="cr-sum">➕ Novo chamado</summary>
+      <form class="form" id="ch-form" style="max-width:640px;margin-top:12px">
+        <input type="hidden" id="ch-id">
+        <label>Título * <input id="ch-titulo" required maxlength="160" placeholder="ex.: Chuveiro da Suíte Master pingando"></label>
+        <label>Casa / unidade <input id="ch-casa" maxlength="80" placeholder="ex.: Casa Modernista, Villa Kubitschek…"></label>
+        <label>Descrição <textarea id="ch-desc" rows="2" maxlength="1000"></textarea></label>
+        <label>Técnico / responsável <input id="ch-tecnico" maxlength="80" placeholder="ex.: Rosivaldo, Julio, Antônio…"></label>
+        <label>Custo (R$) <input id="ch-custo" type="number" min="0" step="0.01" placeholder="deixe vazio se ainda não sabe"></label>
+        <button class="btn" type="submit" id="ch-salvar">Abrir chamado</button>
+      </form>
+    </details>
+    <div id="ch-board" class="kanban"><p class="vazio">Carregando…</p></div>`;
+  $('#ch-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const corpo = { titulo: $('#ch-titulo').value.trim(), casa: $('#ch-casa').value.trim(), descricao: $('#ch-desc').value.trim(), tecnico: $('#ch-tecnico').value.trim(), custo: $('#ch-custo').value };
+    try {
+      const id = $('#ch-id').value;
+      if (id) await api('PATCH', '/manutencao/chamados/' + id, corpo);
+      else await api('POST', '/manutencao/chamados', corpo);
+      $('#ch-form').reset(); $('#ch-id').value = ''; $('#ch-salvar').textContent = 'Abrir chamado'; $('#ch-box').open = false;
+      carregarChamados();
+    } catch (e) { alert(e.message); }
+  };
+  carregarChamados();
+}
+async function carregarChamados() {
+  const board = $('#ch-board'); if (!board) return;
+  try {
+    const { chamados } = await api('GET', '/manutencao/chamados');
+    const porCol = {}; CH_COLS.forEach(col => porCol[col.id] = []);
+    chamados.forEach(ch => (porCol[ch.status] || porCol.aberto).push(ch));
+    const opcoesStatus = (atual) => CH_COLS.map(col => `<option value="${col.id}" ${col.id === atual ? 'selected' : ''}>${col.rot}</option>`).join('');
+    board.innerHTML = CH_COLS.map(col => {
+      const lista = porCol[col.id];
+      const custo = lista.reduce((s, ch) => s + (Number(ch.custo) || 0), 0);
+      return `<div class="col">
+        <div class="col-head"><span>${col.rot}</span><span class="col-n">${lista.length}</span></div>
+        ${custo ? `<div class="col-valor">R$ ${custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>` : ''}
+        <div class="col-cards">${lista.map(ch => `
+          <div class="kard" style="cursor:default">
+            <div class="kard-nome">${esc(ch.titulo)}</div>
+            <div class="kard-meta">${ch.casa ? `<span class="chip">${esc(ch.casa)}</span>` : ''}${ch.custo != null ? `<span class="chip">R$ ${Number(ch.custo).toLocaleString('pt-BR')}</span>` : ''}</div>
+            ${ch.tecnico ? `<div class="kard-acao">👷 ${esc(ch.tecnico)}</div>` : ''}
+            <div class="kard-origem">${esc(ch.quem)} · ${dataBr(ch.criadoEm)}</div>
+            <div class="acoes" style="margin-top:8px">
+              <select data-mover="${ch.id}" style="font-size:.78rem;padding:4px 6px">${opcoesStatus(ch.status)}</select>
+              <button class="btn peq secund" data-editar="${ch.id}">Editar</button>
+              <button class="btn peq perigo" data-remover="${ch.id}">✕</button>
+            </div>
+          </div>`).join('') || '<div class="col-vazio">—</div>'}</div>
+      </div>`;
+    }).join('');
+    board.querySelectorAll('[data-mover]').forEach(s => s.onchange = async () => {
+      try { await api('PATCH', '/manutencao/chamados/' + s.dataset.mover, { status: s.value }); carregarChamados(); } catch (e) { alert(e.message); }
+    });
+    board.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => {
+      const ch = chamados.find(x => x.id === b.dataset.editar); if (!ch) return;
+      $('#ch-id').value = ch.id; $('#ch-titulo').value = ch.titulo; $('#ch-casa').value = ch.casa || '';
+      $('#ch-desc').value = ch.descricao || ''; $('#ch-tecnico').value = ch.tecnico || ''; $('#ch-custo').value = ch.custo != null ? ch.custo : '';
+      $('#ch-salvar').textContent = 'Salvar alterações'; $('#ch-box').open = true; window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    board.querySelectorAll('[data-remover]').forEach(b => b.onclick = async () => {
+      if (!confirm('Excluir este chamado?')) return;
+      try { await api('DELETE', '/manutencao/chamados/' + b.dataset.remover); carregarChamados(); } catch (e) { alert(e.message); }
+    });
+  } catch (e) { board.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Mural da equipe (comunicação interna) ---------
@@ -1555,10 +1720,12 @@ function crmRenderFollowups(fu) {
   box.querySelectorAll('.fu-chip').forEach(b => b.onclick = () => crmAbrirContato(b.dataset.id));
 }
 
+// Link wa.me a partir do telefone salvo (só dígitos); stopPropagation p/ não abrir a ficha junto.
+const waLink = (tel) => 'https://wa.me/' + String(tel).replace(/\D/g, '');
 function crmCardHtml(c) {
   const pa = c.proximaAcao || {};
   return `<div class="kard" draggable="true" data-id="${esc(c.id)}">
-    <div class="kard-nome">${esc(c.nome || c.telefone || 'sem nome')}</div>
+    <div class="kard-nome">${esc(c.nome || c.telefone || 'sem nome')}${c.telefone ? ` <a class="kard-wa" href="${waLink(c.telefone)}" target="_blank" rel="noopener" title="Chamar no WhatsApp" onclick="event.stopPropagation()">💬</a>` : ''}</div>
     <div class="kard-meta">
       ${c.imovelInteresse ? `<span class="chip">${esc(c.imovelInteresse)}</span>` : ''}
       ${c.valorEstimado ? `<span class="chip">${esc(moedaBr(c.valorEstimado))}</span>` : ''}
@@ -1621,6 +1788,7 @@ async function crmAbrirContato(id) {
             <div class="kv"><span>Período</span><b>${periodoTxt}</b></div>
             <div class="kv"><span>Preferências</span><b>${esc(c.preferencias || '—')}</b></div>
             ${c.estagio === 'perdido' && c.motivoPerda ? `<div class="kv"><span>Motivo da perda</span><b>${esc(c.motivoPerda)}</b></div>` : ''}
+            ${c.telefone ? `<a class="btn peq" style="margin-top:10px" href="${waLink(c.telefone)}" target="_blank" rel="noopener">💬 Chamar no WhatsApp</a>` : ''}
           </div>
           <div class="ficha-bloco"><h3>Ações</h3>
             <label>Etapa <select id="f-estagio">${estOpts}</select></label>
