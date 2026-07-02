@@ -159,11 +159,16 @@ function montarMenu() {
   if (tem('concierge') || tem('vendas')) com.push({ id: 'hospede-fidelidade', rot: '⭐ Avaliações & indicações' });
   if (com.length) itens.push({ grupo: 'Comercial' }, ...com);
   const hosp = [];
+  if (tem('concierge') || tem('vendas')) hosp.push({ id: 'concierge', rot: '🛎️ Central do concierge' });
   if (tem('concierge') || tem('vendas')) hosp.push({ id: 'hospede-pedidos', rot: '📨 Pedidos de hóspedes' });
   if (ESTADO.painelDisp.precheckins) hosp.push({ id: 'precheckins', rot: '🛬 Pré-check-ins' });
   if (tem('financeiro') || tem('concierge') || tem('vendas')) hosp.push({ id: 'hospede-conta', rot: '💳 Conta corrente' });
   if (ehAdmin) hosp.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
   if (hosp.length) itens.push({ grupo: 'Hóspedes' }, ...hosp);
+  const gestao = [];
+  if (tem('financeiro') || tem('ceo')) gestao.push({ id: 'contas-pagar', rot: '💰 Contas a pagar' });
+  if (tem('juridico') || tem('ceo')) gestao.push({ id: 'prazos-juridicos', rot: '⚖️ Prazos jurídicos' });
+  if (gestao.length) itens.push({ grupo: 'Gestão' }, ...gestao);
   itens.push({ grupo: 'Operação' });
   itens.push({ id: 'limpezas', rot: '🧹 Limpezas de hoje' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
@@ -214,10 +219,46 @@ async function atualizarBadgeMural() {
   } catch (_) {}
 }
 
+// --------- Notificações push da equipe (PWA) ---------
+function urlB64ToUint8(base64) {
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64); const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+async function ligarPush() {
+  const area = $('#push-area'); if (!area) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) { area.innerHTML = '<p class="sub" style="margin:0">Este dispositivo/navegador não suporta notificações.</p>'; return; }
+  let chave = '';
+  try { chave = (await api('GET', '/push/chave')).publicKey; } catch (_) {}
+  if (!chave) { area.innerHTML = '<p class="sub" style="margin:0">Notificações ainda não configuradas no servidor (falta a chave VAPID).</p>'; return; }
+  const reg = await navigator.serviceWorker.ready.catch(() => null);
+  const sub = reg ? await reg.pushManager.getSubscription() : null;
+  const btn = $('#push-btn');
+  if (sub) { btn.textContent = '🔕 Desativar notificações'; btn.className = 'btn perigo peq'; }
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      if (sub || (reg && await reg.pushManager.getSubscription())) {
+        const s = await reg.pushManager.getSubscription();
+        if (s) { await api('POST', '/push/unsubscribe', { endpoint: s.endpoint }); await s.unsubscribe(); }
+        area.innerHTML = '<button class="btn secund peq" id="push-btn">Ativar notificações</button>'; ligarPush();
+      } else {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') { alert('Permissão de notificação negada.'); btn.disabled = false; return; }
+        const nova = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(chave) });
+        await api('POST', '/push/subscribe', { subscription: nova });
+        btn.textContent = '🔕 Desativar notificações'; btn.className = 'btn perigo peq'; btn.disabled = false;
+      }
+    } catch (e) { alert('Falha: ' + e.message); btn.disabled = false; }
+  };
+}
+
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, mural: renderMural, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -1073,6 +1114,200 @@ async function carregarMural() {
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
+// --------- Central do concierge (fila única + dossiê de chegadas) ---------
+async function renderConcierge() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Central do concierge', 'O que precisa de atenção com os hóspedes, num só lugar: chegadas do período e a fila de pedidos, pré-check-ins e avaliações.') + `
+    <div class="barra">
+      <label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Chegadas nos próximos
+        <select id="cg-dias"><option value="1">1 dia</option><option value="3" selected>3 dias</option><option value="7">7 dias</option><option value="14">14 dias</option></select></label>
+      <button class="btn secund peq" id="cg-atualizar">Atualizar</button>
+    </div>
+    <h2 class="titulo" style="font-size:1.15rem">🛬 Chegadas</h2>
+    <div id="cg-chegadas"><p class="vazio">Carregando…</p></div>
+    <h2 class="titulo" style="font-size:1.15rem;margin-top:24px">📋 Fila de atendimento</h2>
+    <div id="cg-fila"><p class="vazio">Carregando…</p></div>`;
+  $('#cg-dias').onchange = carregarChegadas;
+  $('#cg-atualizar').onclick = () => { carregarChegadas(); carregarFilaConcierge(); };
+  carregarChegadas();
+  carregarFilaConcierge();
+}
+async function carregarChegadas() {
+  const alvo = $('#cg-chegadas'); if (!alvo) return;
+  try {
+    const { chegadas } = await api('GET', '/concierge/chegadas?dias=' + ($('#cg-dias').value || 3));
+    if (!chegadas.length) { alvo.innerHTML = '<div class="vazio">Nenhuma chegada no período. 🌴</div>'; return; }
+    alvo.innerHTML = chegadas.map(a => {
+      const sinais = [
+        a.preCheckin ? '<span class="chip" style="background:#e6f4ea;border-color:#bfe3c8">✅ pré-check-in</span>' : '<span class="chip" style="background:#fdf3e3;border-color:#f0dca6">⏳ sem pré-check-in</span>',
+        a.pedidosAbertos ? `<span class="chip" style="background:#fff4e0;border-color:#f0dca6">📨 ${a.pedidosAbertos} pedido(s)</span>` : '',
+        a.aPagar ? `<span class="chip" style="background:#fdecea;border-color:#f3c9c6">💳 a pagar R$ ${Number(a.aPagar).toLocaleString('pt-BR')}</span>` : '',
+        a.credito ? `<span class="chip" style="background:#e6f4ea;border-color:#bfe3c8">🎁 crédito R$ ${Number(a.credito).toLocaleString('pt-BR')}</span>` : '',
+        a.temConta ? '' : '<span class="chip">sem conta no app</span>',
+      ].filter(Boolean).join(' ');
+      return `<div class="item">
+        <h3>${esc(a.imovel)} · ${esc(a.hospede)}</h3>
+        <div class="meta"><span class="chip">${esc(a.imovelTitulo)}</span><span class="chip">${esc(a.plataforma)}</span>
+          <span>check-in ${esc(a.checkIn)} → ${esc(a.checkOut)}${a.hospedes ? ' · ' + a.hospedes + ' hósp.' : ''}</span></div>
+        <div class="kard-meta" style="margin-top:8px">${sinais}</div>
+      </div>`;
+    }).join('');
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+async function carregarFilaConcierge() {
+  const alvo = $('#cg-fila'); if (!alvo) return;
+  try {
+    const { itens, abertos } = await api('GET', '/concierge/fila');
+    if (!itens.length) { alvo.innerHTML = '<div class="vazio">Nada na fila agora.</div>'; return; }
+    const icone = { pedido: '📨', precheckin: '🛬', avaliacao: '⭐', indicacao: '🤝' };
+    alvo.innerHTML = `<p class="sub" style="margin:0 0 10px">${abertos} item(ns) aberto(s) de ${itens.length}</p>` + itens.slice(0, 60).map(x => `
+      <div class="linha-item" style="${x.aberto ? 'border-left:3px solid var(--cerrado)' : ''}">
+        <span class="qtd">${icone[x.fila] || '•'}</span>
+        <span class="nome">${esc(x.titulo)} ${x.sub ? `<span class="obs">${esc(x.sub)}</span>` : ''}</span>
+        <span class="quem">${esc(x.status)} · ${x.quando ? dataBr(x.quando) : ''}</span>
+        ${x.fila === 'pedido' ? '<button class="btn peq secund" data-verpedidos="1">Ver pedidos</button>' : ''}
+      </div>`).join('');
+    alvo.querySelectorAll('[data-verpedidos]').forEach(b => b.onclick = () => navegar('hospede-pedidos'));
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Contas a pagar (área financeiro/ceo) ---------
+async function renderContasPagar() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Contas a pagar', 'Vencimentos, status e alertas de atraso. Marque como pago ao quitar.') + `
+    <details class="cr-box" id="cp-box"><summary class="cr-sum">➕ Nova conta</summary>
+      <form class="form" id="cp-form" style="max-width:640px;margin-top:12px">
+        <input type="hidden" id="cp-id">
+        <label>Fornecedor * <input id="cp-fornecedor" required maxlength="120"></label>
+        <div class="hi-grid">
+          <label>Vencimento <input id="cp-venc" type="date"></label>
+          <label>Valor (R$) <input id="cp-valor" type="number" min="0" step="0.01"></label>
+          <label>Categoria <input id="cp-cat" maxlength="60" placeholder="ex.: utilidades, marketing…"></label>
+          <label>Periodicidade <input id="cp-per" maxlength="30" placeholder="mensal / avulso"></label>
+        </div>
+        <label>Observação <input id="cp-obs" maxlength="200"></label>
+        <button class="btn" type="submit" id="cp-salvar">Adicionar conta</button>
+      </form>
+    </details>
+    <div id="cp-cards" class="cards"></div>
+    <div id="cp-lista"><p class="vazio">Carregando…</p></div>`;
+  $('#cp-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const corpo = { fornecedor: $('#cp-fornecedor').value.trim(), vencimento: $('#cp-venc').value, valor: $('#cp-valor').value, categoria: $('#cp-cat').value.trim(), periodicidade: $('#cp-per').value.trim(), obs: $('#cp-obs').value.trim() };
+    try {
+      const id = $('#cp-id').value;
+      if (id) await api('PATCH', '/financeiro/contas/' + id, corpo); else await api('POST', '/financeiro/contas', corpo);
+      $('#cp-form').reset(); $('#cp-id').value = ''; $('#cp-salvar').textContent = 'Adicionar conta'; $('#cp-box').open = false;
+      carregarContasPagar();
+    } catch (e) { alert(e.message); }
+  };
+  carregarContasPagar();
+}
+async function carregarContasPagar() {
+  const alvo = $('#cp-lista'); if (!alvo) return;
+  try {
+    const { contas, hoje } = await api('GET', '/financeiro/contas');
+    const abertas = contas.filter(c => c.status !== 'pago');
+    const em7 = new Date(Date.parse(hoje) + 7 * 86400000).toISOString().slice(0, 10);
+    const atrasadas = abertas.filter(c => c.statusEfetivo === 'atrasado');
+    const vencendo = abertas.filter(c => c.statusEfetivo !== 'atrasado' && c.vencimento && c.vencimento <= em7);
+    const totalAberto = abertas.reduce((s, c) => s + (Number(c.valor) || 0), 0);
+    $('#cp-cards').innerHTML = `
+      <div class="card"><div class="n" style="color:var(--alerta)">${atrasadas.length}</div><div class="rot">Atrasadas</div></div>
+      <div class="card"><div class="n" style="color:var(--cerrado)">${vencendo.length}</div><div class="rot">Vencendo em 7 dias</div></div>
+      <div class="card"><div class="n">R$ ${totalAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div><div class="rot">Total em aberto</div></div>`;
+    if (!contas.length) { alvo.innerHTML = '<div class="vazio">Nenhuma conta cadastrada. Adicione acima ou o agente financeiro sincroniza a lista.</div>'; return; }
+    const cor = { atrasado: 'var(--alerta)', previsto: 'var(--concreto)', pago: 'var(--ok)' };
+    const badge = { atrasado: 'st-erro', previsto: 'st-pendente', pago: 'st-feito' };
+    const rot = { atrasado: 'ATRASADO', previsto: 'PREVISTO', pago: 'PAGO' };
+    alvo.innerHTML = contas.map(c => `
+      <div class="linha-item" style="border-left:3px solid ${cor[c.statusEfetivo] || 'var(--borda)'}">
+        <span class="qtd">${c.vencimento ? esc(c.vencimento.slice(8, 10) + '/' + c.vencimento.slice(5, 7)) : '—'}</span>
+        <span class="nome"><span class="badge ${badge[c.statusEfetivo]}">${rot[c.statusEfetivo]}</span> ${esc(c.fornecedor)}
+          <span class="obs">${c.categoria ? esc(c.categoria) : ''}${c.periodicidade ? ' · ' + esc(c.periodicidade) : ''}${c.obs ? ' · ' + esc(c.obs) : ''}</span></span>
+        <span class="quem">R$ ${Number(c.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        <div class="acoes" style="grid-column:2;grid-row:1/span 3">
+          ${c.status !== 'pago' ? `<button class="btn peq" data-pago="${c.id}">Pago ✓</button>` : `<button class="btn peq secund" data-reabrir="${c.id}">Reabrir</button>`}
+          <button class="btn peq secund" data-editar-cp="${c.id}">✎</button>
+          <button class="btn peq perigo" data-del-cp="${c.id}">✕</button>
+        </div>
+      </div>`).join('');
+    alvo.querySelectorAll('[data-pago]').forEach(b => b.onclick = async () => { try { await api('PATCH', '/financeiro/contas/' + b.dataset.pago, { status: 'pago' }); carregarContasPagar(); } catch (e) { alert(e.message); } });
+    alvo.querySelectorAll('[data-reabrir]').forEach(b => b.onclick = async () => { try { await api('PATCH', '/financeiro/contas/' + b.dataset.reabrir, { status: 'previsto' }); carregarContasPagar(); } catch (e) { alert(e.message); } });
+    alvo.querySelectorAll('[data-del-cp]').forEach(b => b.onclick = async () => { if (!confirm('Excluir esta conta?')) return; try { await api('DELETE', '/financeiro/contas/' + b.dataset.delCp); carregarContasPagar(); } catch (e) { alert(e.message); } });
+    alvo.querySelectorAll('[data-editar-cp]').forEach(b => b.onclick = () => {
+      const c = contas.find(x => x.id === b.dataset.editarCp); if (!c) return;
+      $('#cp-id').value = c.id; $('#cp-fornecedor').value = c.fornecedor; $('#cp-venc').value = c.vencimento || ''; $('#cp-valor').value = c.valor || '';
+      $('#cp-cat').value = c.categoria || ''; $('#cp-per').value = c.periodicidade || ''; $('#cp-obs').value = c.obs || '';
+      $('#cp-salvar').textContent = 'Salvar alterações'; $('#cp-box').open = true; window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Prazos jurídicos (área jurídico/ceo) ---------
+async function renderPrazosJuridicos() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Prazos jurídicos', 'Controle preliminar de prazos e atos processuais.') + `
+    <div class="aviso">⚠️ <strong>Preliminar</strong> — sempre confira cada prazo no sistema oficial do tribunal (e-SAJ/PJe/eproc). Este quadro é apoio, não substitui o advogado responsável.</div>
+    <details class="cr-box" id="pj-box"><summary class="cr-sum">➕ Novo prazo</summary>
+      <form class="form" id="pj-form" style="max-width:660px;margin-top:12px">
+        <input type="hidden" id="pj-id">
+        <label>Descrição do ato/prazo * <input id="pj-desc" required maxlength="200" placeholder="ex.: Contestação, Réplica, Recurso…"></label>
+        <div class="hi-grid">
+          <label>Data limite <input id="pj-data" type="date"></label>
+          <label>Prioridade <select id="pj-prio"><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select></label>
+          <label>Processo <input id="pj-proc" maxlength="60" placeholder="nº CNJ"></label>
+          <label>Tribunal <input id="pj-trib" maxlength="30"></label>
+        </div>
+        <label>Link de consulta <input id="pj-link" maxlength="300" placeholder="https://…"></label>
+        <label>Observação <input id="pj-obs" maxlength="300"></label>
+        <button class="btn" type="submit" id="pj-salvar">Adicionar prazo</button>
+      </form>
+    </details>
+    <div id="pj-lista"><p class="vazio">Carregando…</p></div>`;
+  $('#pj-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const corpo = { descricao: $('#pj-desc').value.trim(), dataLimite: $('#pj-data').value, prioridade: $('#pj-prio').value, processo: $('#pj-proc').value.trim(), tribunal: $('#pj-trib').value.trim(), link: $('#pj-link').value.trim(), obs: $('#pj-obs').value.trim() };
+    try {
+      const id = $('#pj-id').value;
+      if (id) await api('PATCH', '/juridico/prazos/' + id, corpo); else await api('POST', '/juridico/prazos', corpo);
+      $('#pj-form').reset(); $('#pj-id').value = ''; $('#pj-salvar').textContent = 'Adicionar prazo'; $('#pj-box').open = false;
+      carregarPrazos();
+    } catch (e) { alert(e.message); }
+  };
+  carregarPrazos();
+}
+async function carregarPrazos() {
+  const alvo = $('#pj-lista'); if (!alvo) return;
+  try {
+    const { prazos, hoje } = await api('GET', '/juridico/prazos');
+    const abertos = prazos.filter(p => p.status === 'aberto');
+    if (!prazos.length) { alvo.innerHTML = '<div class="vazio">Nenhum prazo cadastrado. Adicione acima ou os agentes jurídicos publicam automaticamente.</div>'; return; }
+    const diasAte = (d) => d ? Math.round((Date.parse(d) - Date.parse(hoje)) / 86400000) : null;
+    const semaforo = (n) => n == null ? { cor: 'var(--concreto-claro)', txt: 'sem data' } : n < 0 ? { cor: 'var(--alerta)', txt: 'venceu há ' + (-n) + 'd' } : n === 0 ? { cor: 'var(--alerta)', txt: 'vence HOJE' } : n <= 3 ? { cor: 'var(--alerta)', txt: 'em ' + n + 'd' } : n <= 7 ? { cor: 'var(--cerrado)', txt: 'em ' + n + 'd' } : { cor: 'var(--ok)', txt: 'em ' + n + 'd' };
+    const prioBadge = { alta: 'st-erro', media: 'st-pendente', baixa: 'st-feito' };
+    const ordenados = [...abertos].sort((a, b) => String(a.dataLimite || '9999').localeCompare(String(b.dataLimite || '9999')));
+    const cumpridos = prazos.filter(p => p.status !== 'aberto');
+    const linha = (p) => {
+      const n = diasAte(p.dataLimite); const s = semaforo(n);
+      return `<div class="linha-item" style="border-left:4px solid ${s.cor};${p.status !== 'aberto' ? 'opacity:.6' : ''}">
+        <span class="qtd" style="color:${s.cor};background:none">${p.dataLimite ? esc(p.dataLimite.slice(8, 10) + '/' + p.dataLimite.slice(5, 7)) : '—'}</span>
+        <span class="nome"><span class="badge ${prioBadge[p.prioridade]}">${(p.prioridade || '').toUpperCase()}</span> ${esc(p.descricao)}
+          <span class="obs">${p.processo ? esc(p.processo) : ''}${p.tribunal ? ' · ' + esc(p.tribunal) : ''}${p.link ? ` · <a href="${esc(p.link)}" target="_blank" rel="noopener">consultar ↗</a>` : ''}${p.obs ? ' · ' + esc(p.obs) : ''}
+          <br><b style="color:${s.cor}">${s.txt}</b> · por ${esc(p.quem || '—')}</span></span>
+        <div class="acoes" style="grid-column:2;grid-row:1/span 3">
+          ${p.status === 'aberto' ? `<button class="btn peq" data-cumprir="${p.id}">Cumprido ✓</button>` : `<button class="btn peq secund" data-reabrir-pj="${p.id}">Reabrir</button>`}
+          <button class="btn peq perigo" data-del-pj="${p.id}">✕</button>
+        </div></div>`;
+    };
+    alvo.innerHTML = `<p class="sub" style="margin:0 0 10px">${abertos.length} prazo(s) em aberto</p>` + ordenados.map(linha).join('') +
+      (cumpridos.length ? `<h3 style="margin:20px 0 8px;color:var(--concreto-claro)">Concluídos/cancelados (${cumpridos.length})</h3>` + cumpridos.map(linha).join('') : '');
+    alvo.querySelectorAll('[data-cumprir]').forEach(b => b.onclick = async () => { try { await api('PATCH', '/juridico/prazos/' + b.dataset.cumprir, { status: 'cumprido' }); carregarPrazos(); } catch (e) { alert(e.message); } });
+    alvo.querySelectorAll('[data-reabrir-pj]').forEach(b => b.onclick = async () => { try { await api('PATCH', '/juridico/prazos/' + b.dataset.reabrirPj, { status: 'aberto' }); carregarPrazos(); } catch (e) { alert(e.message); } });
+    alvo.querySelectorAll('[data-del-pj]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este prazo?')) return; try { await api('DELETE', '/juridico/prazos/' + b.dataset.delPj); carregarPrazos(); } catch (e) { alert(e.message); } });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
 // --------- Relatórios ---------
 function itemRelatorioHtml(r) {
   const tipo = r.tipo === 'produto' ? 'Produto' : r.tipo === 'servico' ? 'Serviço' : 'Relatório';
@@ -1616,6 +1851,11 @@ async function abrirContaHospede(hospedeId) {
 // --------- Minha conta ---------
 function renderConta() {
   conteudo().innerHTML = cabecalho('Minha conta', ESTADO.me.nome + ' · ' + ESTADO.me.email) + `
+  <div class="ficha-bloco" style="max-width:520px;margin-bottom:16px">
+    <h3>🔔 Notificações no celular</h3>
+    <p class="sub" style="margin:0 0 10px">Receba avisos fixados do mural e alertas da equipe direto no aparelho (instale o portal como app antes).</p>
+    <div id="push-area"><button class="btn secund peq" id="push-btn">Ativar notificações</button></div>
+  </div>
   <form class="form" id="form-conta">
     <label>Senha atual <input id="c-atual" type="password" required autocomplete="current-password"></label>
     <label>Nova senha (mín. 8) <input id="c-nova" type="password" required minlength="8" autocomplete="new-password"></label>
@@ -1623,6 +1863,7 @@ function renderConta() {
     <button class="btn" type="submit">Trocar senha</button>
     <p id="c-msg" class="erro"></p>
   </form>`;
+  ligarPush();
   $('#form-conta').onsubmit = async (ev) => {
     ev.preventDefault(); const msg = $('#c-msg'); msg.textContent = ''; msg.className = 'erro';
     if ($('#c-nova').value !== $('#c-conf').value) { msg.textContent = 'As senhas não conferem.'; return; }
@@ -1804,11 +2045,22 @@ async function crmAbrirContato(id) {
           </div>
         </div>
         <div class="ficha-col">
+          <div class="ficha-bloco"><h3>💬 Cotação rápida</h3>
+            <label>Imóvel <select id="cot-imovel"><option value="">Carregando…</option></select></label>
+            <div class="hi-grid">
+              <label>Check-in <input id="cot-in" type="date" value="${esc((per.checkin || ''))}"></label>
+              <label>Check-out <input id="cot-out" type="date" value="${esc((per.checkout || ''))}"></label>
+            </div>
+            <label>Nº de hóspedes <input id="cot-hosp" type="number" min="1" value="${esc(per.hospedes || '')}"></label>
+            <button class="btn peq" id="cot-consultar">Consultar preço e gerar cotação</button>
+            <div id="cot-saida"></div>
+          </div>
           <div class="ficha-bloco"><h3>Histórico Stays</h3><div id="stays-hist" class="vazio">Carregando…</div></div>
           <div class="ficha-bloco"><h3>Linha do tempo</h3><div class="timeline">${tl}</div></div>
         </div>
       </div>`;
     $('#crm-voltar').onclick = () => navegar('crm');
+    crmCotacaoInit(c);
     $('#f-salvar').onclick = async () => {
       try {
         await api('PATCH', '/crm/contatos/' + id, { estagio: $('#f-estagio').value, proximaAcao: { descricao: $('#f-acao-desc').value.trim(), data: $('#f-acao-data').value } });
@@ -1851,6 +2103,59 @@ async function crmCarregarStays(id) {
     box.classList.remove('vazio');
     box.innerHTML = totais + linhas;
   } catch (e) { box.innerHTML = 'Não foi possível carregar o histórico da Stays agora.'; }
+}
+
+// Cotação rápida na ficha do CRM: escolhe imóvel + datas, consulta disponibilidade/tarifa (Stays)
+// e gera um texto de cotação pronto para colar no WhatsApp (padrão FAQ: sinal 50% + 50%).
+let _cotImoveis = null;
+async function crmCotacaoInit(contato) {
+  const sel = $('#cot-imovel'); if (!sel) return;
+  try {
+    if (!_cotImoveis) _cotImoveis = (await api('GET', '/stays/imoveis')).imoveis;
+    const alvo = normaliza(contato.imovelInteresse || '');
+    sel.innerHTML = '<option value="">— escolha o imóvel —</option>' + _cotImoveis.map(im =>
+      `<option value="${im.idlisting}" data-cod="${esc(im.codigo)}" data-tit="${esc(im.titulo)}" ${alvo && (normaliza(im.codigo) === alvo || normaliza(im.titulo).includes(alvo) || alvo.includes(normaliza(im.codigo))) ? 'selected' : ''}>${esc(im.codigo)} · ${esc(im.titulo)}</option>`).join('');
+  } catch (e) { sel.innerHTML = '<option value="">falha ao carregar imóveis</option>'; }
+  $('#cot-consultar').onclick = () => crmCotacaoConsultar(contato);
+}
+async function crmCotacaoConsultar(contato) {
+  const sel = $('#cot-imovel'), saida = $('#cot-saida');
+  const idlisting = sel.value, from = $('#cot-in').value, to = $('#cot-out').value;
+  const hosp = $('#cot-hosp').value;
+  if (!idlisting || !from || !to || to <= from) { saida.innerHTML = '<p class="erro">Escolha o imóvel e datas válidas (check-out após o check-in).</p>'; return; }
+  saida.innerHTML = '<p class="sub">Consultando a Stays…</p>';
+  try {
+    const d = await api('GET', `/stays/disponibilidade?listingId=${encodeURIComponent(idlisting)}&from=${from}&to=${to}`);
+    const opt = sel.options[sel.selectedIndex];
+    const cod = opt.dataset.cod, tit = opt.dataset.tit;
+    const noites = d.noites.length;
+    const total = d.totalSugerido || 0;
+    const brl = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const fmtData = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
+    const disp = d.todasLivres ? '<span style="color:var(--ok);font-weight:700">✅ Disponível</span>' : '<span style="color:var(--alerta);font-weight:700">⚠️ Há noites ocupadas no período</span>';
+    const sinal = total / 2;
+    const texto = `Olá${contato.nome ? ', ' + contato.nome.split(' ')[0] : ''}! Segue a cotação da ${tit}:\n\n`
+      + `📅 ${fmtData(from)} a ${fmtData(to)} (${noites} ${noites === 1 ? 'noite' : 'noites'})\n`
+      + `👥 ${hosp || '—'} hóspede(s)\n`
+      + `💰 Total: ${brl(total)}\n\n`
+      + `Para reservar: sinal de 50% (${brl(sinal)}) e os outros 50% (${brl(sinal)}) até 1 semana antes do check-in.\n\n`
+      + `Posso segurar essas datas para você? 😊`;
+    saida.innerHTML = `<div class="cr-resumo ${d.todasLivres ? 'ok' : 'bloq'}" style="margin-top:12px">
+      <div>${cod} · ${esc(tit)} — ${disp}</div>
+      <div>${noites} noite(s) · Total sugerido <b>${brl(total)}</b> · Sinal 50% <b>${brl(sinal)}</b></div>
+    </div>
+    <textarea id="cot-texto" rows="9" style="margin-top:10px;width:100%">${esc(texto)}</textarea>
+    <div class="acoes">
+      <button class="btn peq" id="cot-copiar">📋 Copiar texto</button>
+      ${contato.telefone ? `<a class="btn peq secund" target="_blank" rel="noopener" href="https://wa.me/${String(contato.telefone).replace(/\D/g, '')}?text=${encodeURIComponent(texto)}">💬 Abrir no WhatsApp</a>` : ''}
+      <button class="btn peq secund" id="cot-registrar">Registrar na timeline</button>
+    </div>`;
+    $('#cot-copiar').onclick = () => { navigator.clipboard.writeText($('#cot-texto').value).then(() => { $('#cot-copiar').textContent = '✓ Copiado'; }); };
+    $('#cot-registrar').onclick = async () => {
+      try { await api('POST', '/crm/contatos/' + contato.id + '/atividade', { tipo: 'cotacao', texto: `Cotação ${cod} ${fmtData(from)}–${fmtData(to)}: ${brl(total)}` }); alert('Registrado na timeline.'); }
+      catch (e) { alert(e.message); }
+    };
+  } catch (e) { saida.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 function crmFormContato() {

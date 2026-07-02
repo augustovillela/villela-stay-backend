@@ -1178,6 +1178,8 @@ app.post('/staff/api/mural', requirePublishOrSession, (req, res) => {
   msgs.push(msg);
   while (msgs.length > MURAL_MAX) msgs.shift();
   salvarJSON('mural.json', msgs);
+  // Aviso FIXADO notifica a equipe por push (best-effort; só se o VAPID estiver configurado).
+  if (msg.fixado) enviarPushStaff({ title: 'Villela Stay — aviso da equipe', body: (msg.quem + ': ' + msg.texto).slice(0, 160), url: '/staff/' }, msg.area || null).catch(() => {});
   res.json({ ok: true, mensagem: msg });
 });
 
@@ -1436,6 +1438,230 @@ app.get('/staff/api/backup/arquivo', requireAdminOuChave, (req, res) => {
   if (!alvo.startsWith(path.resolve(DATA_DIR) + path.sep)) return res.status(400).json({ erro: 'Caminho inválido.' });
   if (!fs.existsSync(alvo) || !fs.statSync(alvo).isFile()) return res.status(404).json({ erro: 'Arquivo não encontrado.' });
   res.sendFile(alvo);
+});
+
+// ============================ ONDA 3: Concierge, Contas a pagar, Prazos jurídicos, Push equipe ============================
+
+// ---- Push para a EQUIPE (staff) — reaproveita o VAPID da Área do Hóspede ----
+// Assinaturas guardadas por usuário (usuarios.json → pushSubs[]). enviarPushStaff filtra por área.
+app.get('/staff/api/push/chave', requireAuth, (req, res) => res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || '' }));
+
+app.post('/staff/api/push/subscribe', requireAuth, (req, res) => {
+  const sub = req.body && req.body.subscription;
+  if (!sub || !sub.endpoint) return res.status(400).json({ erro: 'Assinatura inválida.' });
+  const usuarios = lerUsuarios();
+  const u = usuarios.find(x => x.id === req.user.id);
+  if (!u) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+  u.pushSubs = (u.pushSubs || []).filter(s => s.endpoint !== sub.endpoint);
+  u.pushSubs.push(sub);
+  salvarUsuarios(usuarios);
+  res.json({ ok: true });
+});
+
+app.post('/staff/api/push/unsubscribe', requireAuth, (req, res) => {
+  const endpoint = req.body && req.body.endpoint;
+  const usuarios = lerUsuarios();
+  const u = usuarios.find(x => x.id === req.user.id);
+  if (u && endpoint) { u.pushSubs = (u.pushSubs || []).filter(s => s.endpoint !== endpoint); salvarUsuarios(usuarios); }
+  res.json({ ok: true });
+});
+
+// Envia push a todos os usuários com assinatura; se `area` for dada, só quem tem acesso à área.
+async function enviarPushStaff(payload, area) {
+  const wp = webpushPronto();
+  if (!wp) return 0;
+  const usuarios = lerUsuarios();
+  const corpo = JSON.stringify(payload || {});
+  let enviados = 0, mudou = false;
+  for (const u of usuarios) {
+    if (!u.ativo || !Array.isArray(u.pushSubs) || !u.pushSubs.length) continue;
+    if (area && !podeArea(u, area)) continue;
+    await Promise.all(u.pushSubs.map(async (sub) => {
+      try { await wp.sendNotification(sub, corpo); enviados++; }
+      catch (e) { if (e && (e.statusCode === 404 || e.statusCode === 410)) { u.pushSubs = u.pushSubs.filter(s => s.endpoint !== sub.endpoint); mudou = true; } }
+    }));
+  }
+  if (mudou) salvarUsuarios(usuarios);
+  return enviados;
+}
+
+// ---- Concierge: fila única (pedidos + pré-check-ins + avaliações/indicações) ----
+app.get('/staff/api/concierge/fila', requireAuth, (req, res) => {
+  if (!['concierge', 'vendas'].some(a => podeArea(req.user, a)) && req.user.papel !== 'admin')
+    return res.status(403).json({ erro: 'Acesso restrito ao Concierge/Vendas.' });
+  const itens = [];
+  const abertoPedido = (s) => !['aprovado', 'recusado', 'respondido', 'concluido'].includes(s);
+  for (const p of lerPedidosHosp()) {
+    const rot = p.tipo === 'evento' ? 'Evento' : p.tipo === 'servico' ? (p.servico && p.servico.nome || 'Serviço') : p.tipo === 'manutencao' ? 'Manutenção' : p.tipo === 'checkin' ? 'Check-in' : 'Alteração de reserva';
+    itens.push({ fila: 'pedido', id: p.id, titulo: rot + ' — ' + (p.hospedeNome || '—'), sub: (p.imovel || '') + (p.mensagem ? ' · ' + p.mensagem.slice(0, 80) : ''), status: p.status, aberto: abertoPedido(p.status), quando: p.criadoEm });
+  }
+  for (const pc of leUltimasLinhas('precheckins.jsonl', 40)) {
+    itens.push({ fila: 'precheckin', id: pc.reserva || pc.criadoEm || '', titulo: 'Pré-check-in — ' + (pc.nome || '—'), sub: (pc.hospedagem || '') + (pc.chegada ? ' · chega ' + pc.chegada : '') + (pc.horario ? ' às ' + pc.horario : ''), status: 'recebido', aberto: false, quando: pc.recebidoEm || pc.criadoEm || '' });
+  }
+  for (const a of lerAvaliacoes()) {
+    itens.push({ fila: 'avaliacao', id: a.id, titulo: '★'.repeat(Number(a.nota) || 0) + ' Avaliação — ' + (a.hospedeNome || '—'), sub: (a.comentario || '').slice(0, 120), status: (Number(a.nota) || 0) >= 4 ? 'positiva' : 'atencao', aberto: (Number(a.nota) || 0) <= 3, quando: a.criadoEm });
+  }
+  for (const i of lerIndicacoes()) {
+    itens.push({ fila: 'indicacao', id: i.id, titulo: 'Indicação — ' + (i.hospedeNome || i.indicadoNome || '—'), sub: i.indicadoNome ? 'indicou ' + i.indicadoNome : '', status: 'nova', aberto: false, quando: i.criadoEm });
+  }
+  itens.sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
+  res.json({ itens, abertos: itens.filter(x => x.aberto).length });
+});
+
+// ---- Concierge: dossiê de chegadas (próximos N dias) ----
+app.get('/staff/api/concierge/chegadas', requireAuth, async (req, res) => {
+  if (!['concierge', 'vendas', 'operacoes'].some(a => podeArea(req.user, a)) && req.user.papel !== 'admin')
+    return res.status(403).json({ erro: 'Acesso restrito.' });
+  try {
+    const dias = Math.min(Math.max(parseInt(req.query.dias) || 3, 1), 14);
+    const de = hojeBrasil();
+    const ate = new Date(Date.parse(de) + dias * 86400000).toISOString().slice(0, 10);
+    const listings = await staysPaginado('/content/listings', {});
+    const mapa = {}; listings.forEach(l => { mapa[l._id] = { codigo: l.id, titulo: l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id }; });
+    const brutas = (await staysPaginado('/booking/reservations', { from: de, to: ate, dateType: 'arrival' }))
+      .filter(r => !['canceled', 'blocked', 'maintenance'].includes(r.type) && r.checkInDate >= de && r.checkInDate <= ate);
+    const cache = await resolverClientes(brutas.map(r => r._idclient));
+    const hospedes = lerHospedes();
+    const porStays = {}; hospedes.forEach(h => { if (h.staysClientId) porStays[h.staysClientId] = h; });
+    const precheckins = leUltimasLinhas('precheckins.jsonl', 200);
+    const pedidos = lerPedidosHosp();
+    const chegadas = brutas.map(r => {
+      const im = mapa[r._idlisting] || { codigo: '—', titulo: '—' };
+      const conta = porStays[r._idclient];
+      const preOk = precheckins.some(pc => pc.reserva && (pc.reserva === r.id || pc.reserva === r._id));
+      const resumoC = conta ? resumoConta(conta.id) : null;
+      const pedAbertos = conta ? pedidos.filter(p => p.hospedeId === conta.id && !['aprovado', 'recusado', 'respondido', 'concluido'].includes(p.status)).length : 0;
+      return {
+        reserva: r.id, imovel: im.codigo, imovelTitulo: im.titulo,
+        hospede: (r._idclient && cache[r._idclient]) || '—', hospedes: r.guests || null,
+        checkIn: r.checkInDate, checkOut: r.checkOutDate,
+        plataforma: normalizarPlataforma(r.partner).rotulo,
+        preCheckin: preOk, temConta: !!conta,
+        aPagar: resumoC ? resumoC.aPagar : 0, credito: resumoC ? resumoC.credito : 0,
+        pedidosAbertos: pedAbertos,
+      };
+    }).sort((a, b) => (a.checkIn || '').localeCompare(b.checkIn || ''));
+    res.set('Cache-Control', 'no-store');
+    res.json({ de, ate, dias, chegadas });
+  } catch (e) { console.error('[concierge chegadas]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
+});
+
+// ---- Financeiro: contas a pagar (storage próprio no portal) ----
+// Áreas financeiro/ceo (admin vê tudo). Agentes lançam via PUBLISH_KEY (seed do CSV). Storage: contas-pagar.json.
+const STATUS_CONTA = ['previsto', 'pago', 'atrasado'];
+function podeFinanceiro(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'financeiro') || podeArea(req.user, 'ceo'))); }
+
+app.get('/staff/api/financeiro/contas', requirePublishOrSession, (req, res) => {
+  if (!podeFinanceiro(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/CEO).' });
+  const hoje = hojeBrasil();
+  const contas = lerJSON('contas-pagar.json', []).map(c => {
+    const atrasado = c.status === 'previsto' && c.vencimento && c.vencimento < hoje;
+    return { ...c, statusEfetivo: atrasado ? 'atrasado' : c.status };
+  }).sort((a, b) => String(a.vencimento).localeCompare(String(b.vencimento)));
+  res.json({ contas, hoje });
+});
+
+app.post('/staff/api/financeiro/contas', requirePublishOrSession, (req, res) => {
+  if (!podeFinanceiro(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/CEO).' });
+  const d = req.body || {};
+  const fornecedor = String(d.fornecedor || '').trim();
+  if (!fornecedor) return res.status(400).json({ erro: 'Informe o fornecedor.' });
+  const contas = lerJSON('contas-pagar.json', []);
+  const refId = d.refId ? String(d.refId) : '';
+  if (refId && contas.some(c => c.refId === refId)) return res.json({ ok: true, duplicado: true });
+  const conta = {
+    id: novoId(), fornecedor,
+    categoria: String(d.categoria || '').trim(),
+    valor: d.valor != null && d.valor !== '' ? Number(String(d.valor).replace(',', '.')) || 0 : 0,
+    vencimento: String(d.vencimento || '').trim(),
+    status: STATUS_CONTA.includes(d.status) ? d.status : 'previsto',
+    periodicidade: String(d.periodicidade || '').trim(),
+    obs: String(d.obs || '').trim(),
+    refId, pagoEm: null,
+    quem: req.viaChave ? (String(d.quem || '').trim() || 'agente') : (req.user.nome || req.user.email || 'staff'),
+    criadoEm: new Date().toISOString(),
+  };
+  contas.push(conta);
+  salvarJSON('contas-pagar.json', contas);
+  res.json({ ok: true, conta });
+});
+
+app.patch('/staff/api/financeiro/contas/:id', requirePublishOrSession, (req, res) => {
+  if (!podeFinanceiro(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/CEO).' });
+  const contas = lerJSON('contas-pagar.json', []);
+  const c = contas.find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ erro: 'Conta não encontrada.' });
+  const d = req.body || {};
+  if (d.status && STATUS_CONTA.includes(d.status)) { c.status = d.status; c.pagoEm = d.status === 'pago' ? new Date().toISOString() : null; }
+  for (const campo of ['fornecedor', 'categoria', 'periodicidade', 'obs', 'vencimento']) if (d[campo] != null) c[campo] = String(d[campo]).trim();
+  if (d.valor !== undefined) c.valor = d.valor === '' || d.valor == null ? 0 : Number(String(d.valor).replace(',', '.')) || 0;
+  salvarJSON('contas-pagar.json', contas);
+  res.json({ ok: true, conta: c });
+});
+
+app.delete('/staff/api/financeiro/contas/:id', requirePublishOrSession, (req, res) => {
+  if (!podeFinanceiro(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/CEO).' });
+  const contas = lerJSON('contas-pagar.json', []);
+  const rest = contas.filter(x => x.id !== req.params.id && x.refId !== req.params.id);
+  salvarJSON('contas-pagar.json', rest);
+  res.json({ ok: true, removidos: contas.length - rest.length });
+});
+
+// ---- Jurídico: quadro de prazos (preliminares — validar no sistema oficial) ----
+// Áreas juridico/ceo (admin). Agentes jurídicos publicam via PUBLISH_KEY. Storage: prazos-juridicos.json.
+const STATUS_PRAZO = ['aberto', 'cumprido', 'cancelado'];
+function podeJuridico(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'juridico') || podeArea(req.user, 'ceo'))); }
+
+app.get('/staff/api/juridico/prazos', requirePublishOrSession, (req, res) => {
+  if (!podeJuridico(req)) return res.status(403).json({ erro: 'Acesso restrito (Jurídico/CEO).' });
+  const prazos = lerJSON('prazos-juridicos.json', []).sort((a, b) => String(a.dataLimite).localeCompare(String(b.dataLimite)));
+  res.json({ prazos, hoje: hojeBrasil() });
+});
+
+app.post('/staff/api/juridico/prazos', requirePublishOrSession, (req, res) => {
+  if (!podeJuridico(req)) return res.status(403).json({ erro: 'Acesso restrito (Jurídico/CEO).' });
+  const d = req.body || {};
+  const descricao = String(d.descricao || '').trim();
+  if (!descricao) return res.status(400).json({ erro: 'Descreva o prazo/ato.' });
+  const prazos = lerJSON('prazos-juridicos.json', []);
+  const refId = d.refId ? String(d.refId) : '';
+  if (refId && prazos.some(p => p.refId === refId)) return res.json({ ok: true, duplicado: true });
+  const prazo = {
+    id: novoId(), descricao,
+    processo: String(d.processo || '').trim(),
+    tribunal: String(d.tribunal || '').trim(),
+    dataLimite: String(d.dataLimite || '').trim(),
+    prioridade: ['alta', 'media', 'baixa'].includes(d.prioridade) ? d.prioridade : 'media',
+    status: STATUS_PRAZO.includes(d.status) ? d.status : 'aberto',
+    fonte: String(d.fonte || '').trim(), link: String(d.link || '').trim(),
+    obs: String(d.obs || '').trim(), refId,
+    quem: req.viaChave ? (String(d.quem || '').trim() || 'agente jurídico') : (req.user.nome || req.user.email || 'staff'),
+    criadoEm: new Date().toISOString(),
+  };
+  prazos.push(prazo);
+  salvarJSON('prazos-juridicos.json', prazos);
+  res.json({ ok: true, prazo });
+});
+
+app.patch('/staff/api/juridico/prazos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeJuridico(req)) return res.status(403).json({ erro: 'Acesso restrito (Jurídico/CEO).' });
+  const prazos = lerJSON('prazos-juridicos.json', []);
+  const p = prazos.find(x => x.id === req.params.id);
+  if (!p) return res.status(404).json({ erro: 'Prazo não encontrado.' });
+  const d = req.body || {};
+  if (d.status && STATUS_PRAZO.includes(d.status)) p.status = d.status;
+  if (d.prioridade && ['alta', 'media', 'baixa'].includes(d.prioridade)) p.prioridade = d.prioridade;
+  for (const campo of ['descricao', 'processo', 'tribunal', 'dataLimite', 'fonte', 'link', 'obs']) if (d[campo] != null) p[campo] = String(d[campo]).trim();
+  salvarJSON('prazos-juridicos.json', prazos);
+  res.json({ ok: true, prazo: p });
+});
+
+app.delete('/staff/api/juridico/prazos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeJuridico(req)) return res.status(403).json({ erro: 'Acesso restrito (Jurídico/CEO).' });
+  const prazos = lerJSON('prazos-juridicos.json', []);
+  const rest = prazos.filter(x => x.id !== req.params.id && x.refId !== req.params.id);
+  salvarJSON('prazos-juridicos.json', rest);
+  res.json({ ok: true, removidos: prazos.length - rest.length });
 });
 
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
