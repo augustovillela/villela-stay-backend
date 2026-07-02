@@ -2405,6 +2405,219 @@ app.delete('/staff/api/marketing/redes/:id', requirePublishOrSession, (req, res)
   res.json({ ok: true });
 });
 
+// ============================ ONDA 8: Contratos, Fiscal, Consentimentos LGPD, Histórico de compras ============================
+
+// ---- Arquivo de contratos (admin/jurídico) — com busca e alerta de reserva direta sem contrato ----
+// LGPD: contratos podem conter CPF/RG → acesso só admin ou área jurídico; nunca exposto fora daqui.
+const CONTRATOS_DIR = path.join(DATA_DIR, 'contratos');
+fs.mkdirSync(CONTRATOS_DIR, { recursive: true });
+const EXT_DOC = { '.pdf': 1, '.doc': 1, '.docx': 1, '.jpg': 1, '.jpeg': 1, '.png': 1 };
+app.get('/staff/api/juridico/contratos', requireAuth, (req, res) => {
+  if (!podeJuridico(req)) return res.status(403).json({ erro: 'Acesso restrito (Jurídico/admin).' });
+  let cts = lerJSON('contratos.json', []);
+  const q = semAcento(req.query.busca || '').trim();
+  if (q) cts = cts.filter(c => semAcento([c.hospede, c.imovel, c.reservaId, c.tags, c.tipo].join(' ')).includes(q));
+  res.json({ contratos: cts.map(({ arquivo, ...m }) => m).sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))) });
+});
+app.post('/staff/api/juridico/contratos', requireAuth, (req, res) => {
+  if (!podeJuridico(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const d = req.body || {};
+  const hospede = String(d.hospede || '').trim();
+  if (!hospede) return res.status(400).json({ erro: 'Informe o hóspede.' });
+  const cts = lerJSON('contratos.json', []);
+  const ct = {
+    id: novoId(), hospede,
+    imovel: String(d.imovel || '').trim(), reservaId: String(d.reservaId || '').trim(),
+    tipo: ['hospedagem', 'evento', 'ambos'].includes(d.tipo) ? d.tipo : 'hospedagem',
+    dataInicio: String(d.dataInicio || '').trim(), dataFim: String(d.dataFim || '').trim(),
+    valor: d.valor != null && d.valor !== '' ? Number(String(d.valor).replace(',', '.')) || 0 : 0,
+    assinado: !!d.assinado, tags: String(d.tags || '').slice(0, 200), obs: String(d.obs || '').trim(),
+    quem: req.user.nome || req.user.email || 'staff', criadoEm: new Date().toISOString(),
+  };
+  if (d.base64 && d.nomeArquivo) {
+    const ext = path.extname(String(d.nomeArquivo)).toLowerCase().slice(0, 8);
+    if (!EXT_DOC[ext]) return res.status(400).json({ erro: 'Formato inválido (PDF, DOCX, imagem).' });
+    const buf = Buffer.from(String(d.base64), 'base64');
+    if (buf.length > 20 * 1024 * 1024) return res.status(400).json({ erro: 'Arquivo acima de 20 MB.' });
+    const arquivo = ct.id + ext;
+    try { fs.writeFileSync(path.join(CONTRATOS_DIR, arquivo), buf); } catch (e) { return res.status(400).json({ erro: 'Arquivo inválido.' }); }
+    ct.arquivo = arquivo; ct.nomeArquivo = String(d.nomeArquivo).slice(0, 200);
+  }
+  cts.push(ct);
+  salvarJSON('contratos.json', cts);
+  registrarAuditoria(req, 'contrato.arquivar', `${hospede}${ct.imovel ? ' · ' + ct.imovel : ''}`);
+  res.json({ ok: true, contrato: { ...ct, arquivo: undefined } });
+});
+app.get('/staff/api/juridico/contratos/:id/arquivo', requireAuth, (req, res) => {
+  if (!podeJuridico(req)) return res.sendStatus(403);
+  const c = lerJSON('contratos.json', []).find(x => x.id === req.params.id);
+  if (!c || !c.arquivo) return res.sendStatus(404);
+  const alvo = path.join(CONTRATOS_DIR, c.arquivo);
+  if (!fs.existsSync(alvo)) return res.sendStatus(404);
+  res.sendFile(alvo);
+});
+app.delete('/staff/api/juridico/contratos/:id', requireAuth, (req, res) => {
+  if (!podeJuridico(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const cts = lerJSON('contratos.json', []);
+  const c = cts.find(x => x.id === req.params.id);
+  if (c && c.arquivo) { try { fs.unlinkSync(path.join(CONTRATOS_DIR, c.arquivo)); } catch {} }
+  salvarJSON('contratos.json', cts.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+// Reservas DIRETAS recentes sem contrato arquivado (cruza Stays por criação × contratos.json).
+app.get('/staff/api/juridico/contratos/pendentes', requireAuth, async (req, res) => {
+  if (!podeJuridico(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  try {
+    const dias = Math.min(Math.max(parseInt(req.query.dias) || 30, 1), 90);
+    const hoje = hojeBrasil();
+    const de = new Date(Date.parse(hoje) - dias * 86400000).toISOString().slice(0, 10);
+    const listings = await staysPaginado('/content/listings', {});
+    const mapa = {}; listings.forEach(l => { mapa[l._id] = l.id; });
+    const criadas = (await staysPaginado('/booking/reservations', { from: de, to: hoje, dateType: 'creation' }))
+      .filter(r => !['canceled', 'blocked', 'maintenance'].includes(r.type) && normalizarPlataforma(r.partner).chave === 'direto');
+    const cache = await resolverClientes(criadas.map(r => r._idclient));
+    const cts = lerJSON('contratos.json', []);
+    const temContrato = (r) => cts.some(c => (c.reservaId && c.reservaId === r.id) || (c.hospede && r._idclient && cache[r._idclient] && semAcento(c.hospede) === semAcento(cache[r._idclient])));
+    const pendentes = criadas.filter(r => !temContrato(r)).map(r => ({
+      reserva: r.id, hospede: (r._idclient && cache[r._idclient]) || '—', imovel: mapa[r._idlisting] || '—',
+      checkIn: r.checkInDate, checkOut: r.checkOutDate, criadoEm: (r.creationDate || r.createdAt || '').slice(0, 10),
+    })).sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
+    res.json({ dias, pendentes });
+  } catch (e) { console.error('[contratos pendentes]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
+});
+
+// ---- Calendário fiscal (tributos e obrigações) ----
+const STATUS_FISCAL = ['previsto', 'pago', 'dispensado'];
+function podeFiscal(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'contador') || podeArea(req.user, 'financeiro') || podeArea(req.user, 'ceo'))); }
+app.get('/staff/api/fiscal', requirePublishOrSession, (req, res) => {
+  if (!podeFiscal(req)) return res.status(403).json({ erro: 'Acesso restrito (Contador/Financeiro).' });
+  const hoje = hojeBrasil();
+  const itens = lerJSON('fiscal.json', []).map(f => ({ ...f, atrasado: f.status === 'previsto' && f.vencimento && f.vencimento < hoje }))
+    .sort((a, b) => String(a.vencimento).localeCompare(String(b.vencimento)));
+  res.json({ itens, hoje });
+});
+app.post('/staff/api/fiscal', requirePublishOrSession, (req, res) => {
+  if (!podeFiscal(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const d = req.body || {};
+  const tributo = String(d.tributo || '').trim();
+  if (!tributo) return res.status(400).json({ erro: 'Informe o tributo/obrigação.' });
+  const itens = lerJSON('fiscal.json', []);
+  const refId = d.refId ? String(d.refId) : '';
+  if (refId && itens.some(x => x.refId === refId)) return res.json({ ok: true, duplicado: true });
+  const it = {
+    id: novoId(), tributo, competencia: String(d.competencia || '').trim(),
+    vencimento: String(d.vencimento || '').trim(),
+    valor: d.valor != null && d.valor !== '' ? Number(String(d.valor).replace(',', '.')) || 0 : 0,
+    status: STATUS_FISCAL.includes(d.status) ? d.status : 'previsto',
+    periodicidade: String(d.periodicidade || '').trim(), obs: String(d.obs || '').trim(), refId,
+    quem: req.viaChave ? 'agente' : (req.user.nome || 'staff'), criadoEm: new Date().toISOString(),
+  };
+  itens.push(it);
+  salvarJSON('fiscal.json', itens);
+  res.json({ ok: true, item: it });
+});
+app.patch('/staff/api/fiscal/:id', requirePublishOrSession, (req, res) => {
+  if (!podeFiscal(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('fiscal.json', []);
+  const it = itens.find(x => x.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Item não encontrado.' });
+  const d = req.body || {};
+  if (d.status && STATUS_FISCAL.includes(d.status)) { it.status = d.status; it.pagoEm = d.status === 'pago' ? new Date().toISOString() : null; }
+  for (const c of ['tributo', 'competencia', 'vencimento', 'periodicidade', 'obs']) if (d[c] != null) it[c] = String(d[c]).trim();
+  if (d.valor !== undefined) it.valor = d.valor === '' || d.valor == null ? 0 : Number(String(d.valor).replace(',', '.')) || 0;
+  salvarJSON('fiscal.json', itens);
+  res.json({ ok: true, item: it });
+});
+app.delete('/staff/api/fiscal/:id', requirePublishOrSession, (req, res) => {
+  if (!podeFiscal(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('fiscal.json', []);
+  salvarJSON('fiscal.json', itens.filter(x => x.id !== req.params.id && x.refId !== req.params.id));
+  res.json({ ok: true });
+});
+
+// ---- Consentimentos LGPD (opt-in / opt-out por contato) ----
+const STATUS_LGPD = ['opt-in', 'opt-out'];
+function podeLGPD(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'juridico') || podeArea(req.user, 'ceo'))); }
+app.get('/staff/api/lgpd/consentimentos', requirePublishOrSession, (req, res) => {
+  if (!podeLGPD(req)) return res.status(403).json({ erro: 'Acesso restrito (Jurídico/admin).' });
+  let itens = lerJSON('consentimentos.json', []);
+  const q = semAcento(req.query.busca || '').trim();
+  if (q) itens = itens.filter(c => semAcento([c.contato, c.canal, c.origem].join(' ')).includes(q));
+  itens.sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  const optout = lerJSON('consentimentos.json', []).filter(c => c.status === 'opt-out').length;
+  res.json({ itens, optout });
+});
+app.post('/staff/api/lgpd/consentimentos', requirePublishOrSession, (req, res) => {
+  if (!podeLGPD(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const d = req.body || {};
+  const contato = String(d.contato || '').trim();
+  if (!contato) return res.status(400).json({ erro: 'Informe o contato (telefone/e-mail).' });
+  const itens = lerJSON('consentimentos.json', []);
+  const it = {
+    id: novoId(), contato,
+    canal: String(d.canal || '').trim(), origem: String(d.origem || '').trim(),
+    status: STATUS_LGPD.includes(d.status) ? d.status : 'opt-in',
+    data: String(d.data || '').trim() || new Date().toISOString().slice(0, 10),
+    obs: String(d.obs || '').trim(),
+    quem: req.viaChave ? 'agente' : (req.user.nome || 'staff'), criadoEm: new Date().toISOString(),
+  };
+  itens.push(it);
+  salvarJSON('consentimentos.json', itens);
+  res.json({ ok: true, item: it });
+});
+app.delete('/staff/api/lgpd/consentimentos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeLGPD(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('consentimentos.json', []);
+  salvarJSON('consentimentos.json', itens.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
+// ---- Compras: registro de compras + histórico de preços (por item e fornecedor) ----
+function podeCompras(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'compras') || podeArea(req.user, 'financeiro') || podeArea(req.user, 'ceo'))); }
+app.get('/staff/api/compras/registro', requirePublishOrSession, (req, res) => {
+  if (!podeCompras(req)) return res.status(403).json({ erro: 'Acesso restrito (Compras/Financeiro).' });
+  const regs = lerJSON('compras-registro.json', []);
+  // histórico de preços por item (nome normalizado)
+  const porItem = {}; const porFornecedor = {};
+  for (const r of regs) {
+    const chave = semAcento(r.item);
+    const pu = Number(r.valorUnitario) || 0;
+    if (!porItem[chave]) porItem[chave] = { item: r.item, compras: 0, min: pu, max: pu, soma: 0, ultimo: null, ultimoData: '' };
+    const p = porItem[chave]; p.compras++; p.soma += pu; if (pu < p.min || p.min === 0) p.min = pu; if (pu > p.max) p.max = pu;
+    if (!p.ultimoData || r.data > p.ultimoData) { p.ultimoData = r.data; p.ultimo = pu; }
+    const f = (r.fornecedor || '—').trim() || '—';
+    porFornecedor[f] = (porFornecedor[f] || 0) + (Number(r.valorTotal) || 0);
+  }
+  const historico = Object.values(porItem).map(p => ({ item: p.item, compras: p.compras, min: p.min, medio: Math.round(p.soma / p.compras * 100) / 100, max: p.max, ultimo: p.ultimo, ultimoData: p.ultimoData })).sort((a, b) => a.item.localeCompare(b.item));
+  const fornecedores = Object.entries(porFornecedor).map(([f, v]) => ({ fornecedor: f, total: Math.round(v * 100) / 100 })).sort((a, b) => b.total - a.total);
+  res.json({ registros: regs.sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 200), historico, fornecedores });
+});
+app.post('/staff/api/compras/registro', requirePublishOrSession, (req, res) => {
+  if (!podeCompras(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const d = req.body || {};
+  const item = String(d.item || '').trim();
+  if (!item) return res.status(400).json({ erro: 'Informe o item.' });
+  const regs = lerJSON('compras-registro.json', []);
+  const qtd = Number(d.quantidade) || 1;
+  const vu = d.valorUnitario != null && d.valorUnitario !== '' ? Number(String(d.valorUnitario).replace(',', '.')) || 0 : 0;
+  const reg = {
+    id: novoId(), item, categoria: String(d.categoria || '').trim(),
+    fornecedor: String(d.fornecedor || '').trim(), casa: String(d.casa || '').trim(),
+    quantidade: qtd, valorUnitario: vu, valorTotal: Math.round(qtd * vu * 100) / 100,
+    data: String(d.data || '').trim() || hojeBrasil(),
+    quem: req.viaChave ? 'agente' : (req.user.nome || 'staff'), criadoEm: new Date().toISOString(),
+  };
+  regs.push(reg);
+  salvarJSON('compras-registro.json', regs);
+  res.json({ ok: true, registro: reg });
+});
+app.delete('/staff/api/compras/registro/:id', requirePublishOrSession, (req, res) => {
+  if (!podeCompras(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const regs = lerJSON('compras-registro.json', []);
+  salvarJSON('compras-registro.json', regs.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
 // O portal registra pedidos de CRIAR/EXCLUIR evento; uma rotina do Claude (com acesso ao Google
 // Calendar) lê os pendentes, efetiva e marca como feito (PATCH).
