@@ -1909,6 +1909,174 @@ app.get('/staff/api/marketing/conversao', requireAuth, (req, res) => {
   res.json({ linhas, totalLeads: linhas.reduce((s, l) => s + l.leads, 0), totalGanhos: linhas.reduce((s, l) => s + l.ganhos, 0) });
 });
 
+// ============================ ONDA 5: Metas (OKR), SLA de vendas, Receita prevista, Datas quentes ============================
+
+// ---- Metas por área (OKR) com termômetro ----
+// Indicadores AUTO (valor atual calculado) ou manuais. metas.json: {id, area, mes, indicadorKey,
+// titulo, alvo, unidade, atualManual, obs}. Admin/CEO gerencia.
+const META_AUTO = {
+  receita_liquida_mes: { titulo: 'Receita líquida do mês', unidade: 'R$' },
+  reservas_mes: { titulo: 'Reservas do mês', unidade: 'nº' },
+  leads_mes: { titulo: 'Leads no mês', unidade: 'nº' },
+  avaliacoes_mes: { titulo: 'Avaliações no mês', unidade: 'nº' },
+};
+function podeMetas(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'ceo'))); }
+async function valorAutoMeta(key, mes, cacheStays) {
+  if (key === 'leads_mes') return lerContatos().filter(c => (c.criadoEm || '').slice(0, 7) === mes).length;
+  if (key === 'avaliacoes_mes') return lerAvaliacoes().filter(a => (a.criadoEm || '').slice(0, 7) === mes).length;
+  if (key === 'receita_liquida_mes' || key === 'reservas_mes') {
+    if (!cacheStays[mes]) {
+      const rec = await receitaPorImovelMes(mes);
+      let receita = 0, reservas = 0;
+      for (const v of Object.values(rec)) { receita += v.receitaLiquida; reservas += v.reservas; }
+      cacheStays[mes] = { receita: Math.round(receita), reservas };
+    }
+    return key === 'receita_liquida_mes' ? cacheStays[mes].receita : cacheStays[mes].reservas;
+  }
+  return null;
+}
+app.get('/staff/api/metas', requireAuth, async (req, res) => {
+  // Ver: admin/ceo veem tudo; demais veem as metas da sua área.
+  const metas = lerJSON('metas.json', []);
+  const visiveis = (req.user.papel === 'admin' || podeArea(req.user, 'ceo'))
+    ? metas : metas.filter(m => podeArea(req.user, m.area));
+  const cache = {};
+  const out = [];
+  for (const m of visiveis) {
+    let atual = m.atualManual;
+    if (m.indicadorKey && META_AUTO[m.indicadorKey]) {
+      try { const v = await valorAutoMeta(m.indicadorKey, m.mes, cache); if (v != null) atual = v; } catch (_) {}
+    }
+    const pct = m.alvo ? Math.round(1000 * (Number(atual) || 0) / m.alvo) / 10 : null;
+    out.push({ ...m, atual: Number(atual) || 0, pct });
+  }
+  out.sort((a, b) => String(b.mes).localeCompare(String(a.mes)) || String(a.area).localeCompare(String(b.area)));
+  res.json({ metas: out, indicadoresAuto: META_AUTO, areas: AREAS });
+});
+app.post('/staff/api/metas', requireAuth, (req, res) => {
+  if (!podeMetas(req)) return res.status(403).json({ erro: 'Só admin/CEO define metas.' });
+  const d = req.body || {};
+  if (!/^\d{4}-\d{2}$/.test(d.mes || '')) return res.status(400).json({ erro: 'Informe o mês (yyyy-MM).' });
+  const key = META_AUTO[d.indicadorKey] ? d.indicadorKey : '';
+  const titulo = (key ? META_AUTO[key].titulo : String(d.titulo || '').trim());
+  if (!titulo) return res.status(400).json({ erro: 'Informe o indicador da meta.' });
+  const metas = lerJSON('metas.json', []);
+  const meta = {
+    id: novoId(), area: AREAS.some(a => a.id === d.area) ? d.area : 'ceo', mes: d.mes,
+    indicadorKey: key, titulo,
+    alvo: Number(String(d.alvo).replace(',', '.')) || 0,
+    unidade: key ? META_AUTO[key].unidade : (['R$', '%', 'nº'].includes(d.unidade) ? d.unidade : 'nº'),
+    atualManual: d.atualManual != null && d.atualManual !== '' ? Number(String(d.atualManual).replace(',', '.')) || 0 : 0,
+    obs: String(d.obs || '').trim(),
+    quem: req.user.nome || req.user.email || 'staff', criadoEm: new Date().toISOString(),
+  };
+  metas.push(meta);
+  salvarJSON('metas.json', metas);
+  res.json({ ok: true, meta });
+});
+app.patch('/staff/api/metas/:id', requireAuth, (req, res) => {
+  if (!podeMetas(req)) return res.status(403).json({ erro: 'Só admin/CEO define metas.' });
+  const metas = lerJSON('metas.json', []);
+  const m = metas.find(x => x.id === req.params.id);
+  if (!m) return res.status(404).json({ erro: 'Meta não encontrada.' });
+  const d = req.body || {};
+  if (d.alvo !== undefined) m.alvo = Number(String(d.alvo).replace(',', '.')) || 0;
+  if (d.atualManual !== undefined) m.atualManual = d.atualManual === '' || d.atualManual == null ? 0 : Number(String(d.atualManual).replace(',', '.')) || 0;
+  if (d.obs != null) m.obs = String(d.obs).trim();
+  if (!m.indicadorKey && d.titulo) m.titulo = String(d.titulo).trim();
+  salvarJSON('metas.json', metas);
+  res.json({ ok: true, meta: m });
+});
+app.delete('/staff/api/metas/:id', requireAuth, (req, res) => {
+  if (!podeMetas(req)) return res.status(403).json({ erro: 'Só admin/CEO define metas.' });
+  const metas = lerJSON('metas.json', []);
+  salvarJSON('metas.json', metas.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
+// ---- CRM: SLA de 1ª resposta (leads novos sem resposta humana) ----
+app.get('/staff/api/crm/sla', requirePublishOrSession, podeCRM, (req, res) => {
+  const horas = Math.max(1, parseInt(req.query.horas) || 2);
+  const limite = Date.now() - horas * 3600000;
+  // lê todas as atividades uma vez, agrupa por contato (ignorando a nota automática de criação)
+  const f = path.join(DATA_DIR, 'atividades.jsonl');
+  const humanas = {};
+  if (fs.existsSync(f)) {
+    for (const l of fs.readFileSync(f, 'utf8').trim().split('\n').filter(Boolean)) {
+      let a; try { a = JSON.parse(l); } catch { continue; }
+      if (!a || !a.contatoId) continue;
+      const ehCriacao = a.autor === 'sistema' && /contato criado/i.test(a.texto || '');
+      if (!ehCriacao) humanas[a.contatoId] = true;
+    }
+  }
+  const atrasados = lerContatos()
+    .filter(c => c.estagio === 'novo' && !humanas[c.id] && Date.parse(c.criadoEm || 0) < limite)
+    .map(c => ({ id: c.id, nome: c.nome || c.telefone || 'sem nome', telefone: c.telefone || '', origem: c.origem || '', imovelInteresse: c.imovelInteresse || '', esperaHoras: Math.round((Date.now() - Date.parse(c.criadoEm || Date.now())) / 3600000) }))
+    .sort((a, b) => b.esperaHoras - a.esperaHoras);
+  res.json({ horas, atrasados });
+});
+
+// ---- CRM: receita prevista por mês (funil) ----
+app.get('/staff/api/crm/receita-prevista', requirePublishOrSession, podeCRM, (req, res) => {
+  const abertos = ['novo', 'contato', 'orcamento', 'negociacao', 'reserva'];
+  const porMes = {};
+  let semData = 0, total = 0;
+  for (const c of lerContatos()) {
+    if (!abertos.includes(c.estagio)) continue;
+    const v = Number(c.valorEstimado) || 0;
+    if (!v) continue;
+    total += v;
+    const ci = c.periodo && c.periodo.checkin ? String(c.periodo.checkin).slice(0, 7) : '';
+    if (/^\d{4}-\d{2}$/.test(ci)) porMes[ci] = (porMes[ci] || 0) + v; else semData += v;
+  }
+  const meses = Object.keys(porMes).sort().map(m => ({ mes: m, valor: Math.round(porMes[m]) }));
+  res.json({ meses, semData: Math.round(semData), total: Math.round(total) });
+});
+
+// ---- Revenue: datas quentes (alta demanda) ----
+function podeRevenue(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'revenue') || podeArea(req.user, 'ceo'))); }
+app.get('/staff/api/revenue/datas-quentes', requireAuth, (req, res) => {
+  if (!podeRevenue(req) && !podeArea(req.user, 'vendas')) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const hoje = hojeBrasil();
+  const datas = lerJSON('datas-quentes.json', []).map(d => ({ ...d, passada: d.ate && d.ate < hoje }))
+    .sort((a, b) => String(a.de).localeCompare(String(b.de)));
+  res.json({ datas, hoje });
+});
+app.post('/staff/api/revenue/datas-quentes', requirePublishOrSession, (req, res) => {
+  if (!podeRevenue(req)) return res.status(403).json({ erro: 'Acesso restrito (Revenue/CEO).' });
+  const d = req.body || {};
+  const nome = String(d.nome || '').trim();
+  if (!nome) return res.status(400).json({ erro: 'Informe o nome do evento/período.' });
+  const datas = lerJSON('datas-quentes.json', []);
+  const item = {
+    id: novoId(), nome, de: String(d.de || '').trim(), ate: String(d.ate || '').trim(),
+    minStay: d.minStay != null && d.minStay !== '' ? parseInt(d.minStay) || 0 : 0,
+    precoAjustado: !!d.precoAjustado, obs: String(d.obs || '').trim(),
+    quem: req.viaChave ? 'agente' : (req.user.nome || req.user.email || 'staff'), criadoEm: new Date().toISOString(),
+  };
+  datas.push(item);
+  salvarJSON('datas-quentes.json', datas);
+  res.json({ ok: true, item });
+});
+app.patch('/staff/api/revenue/datas-quentes/:id', requirePublishOrSession, (req, res) => {
+  if (!podeRevenue(req)) return res.status(403).json({ erro: 'Acesso restrito (Revenue/CEO).' });
+  const datas = lerJSON('datas-quentes.json', []);
+  const it = datas.find(x => x.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Data não encontrada.' });
+  const d = req.body || {};
+  if (d.precoAjustado != null) it.precoAjustado = !!d.precoAjustado;
+  for (const campo of ['nome', 'de', 'ate', 'obs']) if (d[campo] != null) it[campo] = String(d[campo]).trim();
+  if (d.minStay !== undefined) it.minStay = d.minStay === '' || d.minStay == null ? 0 : parseInt(d.minStay) || 0;
+  salvarJSON('datas-quentes.json', datas);
+  res.json({ ok: true, item: it });
+});
+app.delete('/staff/api/revenue/datas-quentes/:id', requirePublishOrSession, (req, res) => {
+  if (!podeRevenue(req)) return res.status(403).json({ erro: 'Acesso restrito (Revenue/CEO).' });
+  const datas = lerJSON('datas-quentes.json', []);
+  salvarJSON('datas-quentes.json', datas.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
 // O portal registra pedidos de CRIAR/EXCLUIR evento; uma rotina do Claude (com acesso ao Google
 // Calendar) lê os pendentes, efetiva e marca como feito (PATCH).

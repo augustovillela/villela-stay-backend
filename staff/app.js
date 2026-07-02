@@ -165,9 +165,11 @@ function construirItensMenu() {
   if (ehAdmin) hosp.push({ id: 'hospede-info', rot: '🔑 Área do Hóspede' });
   if (hosp.length) itens.push({ grupo: 'Hóspedes' }, ...hosp);
   const gestao = [];
+  if (ehAdmin || tem('ceo')) gestao.push({ id: 'metas', rot: '🎯 Metas (OKR)' });
   if (tem('financeiro') || tem('ceo')) gestao.push({ id: 'contas-pagar', rot: '💰 Contas a pagar' });
   if (tem('financeiro') || tem('ceo')) gestao.push({ id: 'dre', rot: '📊 DRE por imóvel' });
   if (tem('revenue') || tem('ceo') || tem('financeiro')) gestao.push({ id: 'revenue', rot: '📈 Revenue' });
+  if (tem('revenue') || tem('ceo') || tem('vendas')) gestao.push({ id: 'datas-quentes', rot: '🔥 Datas quentes' });
   if (tem('marketing') || tem('vendas') || tem('ceo')) gestao.push({ id: 'mkt-conversao', rot: '🎯 Conversão (marketing)' });
   if (tem('obras') || tem('ceo')) gestao.push({ id: 'obras', rot: '🏗️ Obras & Decoração' });
   if (tem('juridico') || tem('ceo')) gestao.push({ id: 'prazos-juridicos', rot: '⚖️ Prazos jurídicos' });
@@ -307,7 +309,7 @@ function navegar(secao) {
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
   window.scrollTo(0, 0);
-  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -1582,6 +1584,137 @@ async function renderAuditoria() {
   } catch (e) { $('#ad-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
+// --------- Metas (OKR) por área, com termômetro ---------
+async function renderMetas() {
+  const c = conteudo();
+  const podeDef = ESTADO.me.papel === 'admin' || ESTADO.areas.includes('*') || ESTADO.areas.includes('ceo');
+  c.innerHTML = cabecalho('Metas (OKR)', 'Alvos por área e mês, com termômetro de progresso. Indicadores automáticos puxam o valor atual da operação; os demais você atualiza à mão.') + `
+    ${podeDef ? `<details class="cr-box" id="mt-box"><summary class="cr-sum">➕ Nova meta</summary>
+      <form class="form" id="mt-form" style="max-width:660px;margin-top:12px">
+        <div class="hi-grid">
+          <label>Área <select id="mt-area"></select></label>
+          <label>Mês <input id="mt-mes" type="month" value="${mesAtual()}"></label>
+          <label>Indicador <select id="mt-ind"></select></label>
+          <label>Alvo <input id="mt-alvo" type="number" step="0.01" min="0"></label>
+        </div>
+        <label id="mt-wrap-titulo" class="hidden">Nome do indicador (livre) <input id="mt-titulo" maxlength="80" placeholder="ex.: Taxa de ocupação"></label>
+        <label id="mt-wrap-unidade" class="hidden">Unidade <select id="mt-unidade"><option value="nº">nº</option><option value="%">%</option><option value="R$">R$</option></select></label>
+        <label id="mt-wrap-atual" class="hidden">Valor atual (manual) <input id="mt-atual" type="number" step="0.01"></label>
+        <button class="btn" type="submit">Criar meta</button>
+      </form>
+    </details>` : ''}
+    <div id="mt-lista"><p class="vazio">Carregando…</p></div>`;
+  if (podeDef) {
+    const { indicadoresAuto, areas } = await api('GET', '/metas');
+    $('#mt-area').innerHTML = areas.map(a => `<option value="${a.id}" ${a.id === 'ceo' ? 'selected' : ''}>${esc(a.nome)}</option>`).join('');
+    const auto = Object.entries(indicadoresAuto).map(([k, v]) => `<option value="${k}">${esc(v.titulo)} (auto)</option>`).join('');
+    $('#mt-ind').innerHTML = auto + '<option value="">Outro (manual)…</option>';
+    const ajusta = () => {
+      const manual = $('#mt-ind').value === '';
+      $('#mt-wrap-titulo').classList.toggle('hidden', !manual);
+      $('#mt-wrap-unidade').classList.toggle('hidden', !manual);
+      $('#mt-wrap-atual').classList.toggle('hidden', !manual);
+    };
+    $('#mt-ind').onchange = ajusta; ajusta();
+    $('#mt-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const key = $('#mt-ind').value;
+      const corpo = { area: $('#mt-area').value, mes: $('#mt-mes').value, alvo: $('#mt-alvo').value };
+      if (key) corpo.indicadorKey = key;
+      else { corpo.titulo = $('#mt-titulo').value.trim(); corpo.unidade = $('#mt-unidade').value; corpo.atualManual = $('#mt-atual').value; if (!corpo.titulo) { alert('Dê um nome ao indicador.'); return; } }
+      try { await api('POST', '/metas', corpo); $('#mt-form').reset(); $('#mt-mes').value = mesAtual(); ajusta(); $('#mt-box').open = false; carregarMetas(); }
+      catch (e) { alert(e.message); }
+    };
+  }
+  carregarMetas();
+}
+function fmtMeta(v, u) { return u === 'R$' ? rMoney(v) : (Number(v).toLocaleString('pt-BR') + (u === '%' ? '%' : '')); }
+async function carregarMetas() {
+  const alvo = $('#mt-lista'); if (!alvo) return;
+  const podeDef = ESTADO.me.papel === 'admin' || ESTADO.areas.includes('*') || ESTADO.areas.includes('ceo');
+  try {
+    const { metas } = await api('GET', '/metas');
+    if (!metas.length) { alvo.innerHTML = '<div class="vazio">Nenhuma meta definida. Crie a primeira acima.</div>'; return; }
+    alvo.innerHTML = metas.map(m => {
+      const pct = m.pct == null ? 0 : Math.max(0, Math.min(100, m.pct));
+      const cor = pct >= 100 ? 'var(--ok)' : pct >= 60 ? 'var(--lago)' : pct >= 30 ? 'var(--cerrado)' : 'var(--alerta)';
+      return `<div class="item">
+        <div class="meta"><span class="chip">${esc(nomeArea(m.area))}</span><span class="chip">${esc(m.mes)}</span>${m.indicadorKey ? '<span class="chip">auto</span>' : ''}</div>
+        <h3 style="margin:6px 0 2px">${esc(m.titulo)}</h3>
+        <div style="display:flex;align-items:center;gap:10px;margin:6px 0">
+          <div style="flex:1;background:var(--areia);border-radius:20px;height:14px;overflow:hidden;border:1px solid var(--borda)">
+            <div style="height:100%;width:${pct}%;background:${cor};transition:width .3s"></div></div>
+          <b style="color:${cor};white-space:nowrap">${m.pct == null ? '—' : m.pct + '%'}</b>
+        </div>
+        <div class="meta"><span>${fmtMeta(m.atual, m.unidade)} de ${fmtMeta(m.alvo, m.unidade)}</span>${m.obs ? `<span>· ${esc(m.obs)}</span>` : ''}</div>
+        ${podeDef ? `<div class="acoes">
+          ${m.indicadorKey ? '' : `<button class="btn peq secund" data-atual="${m.id}" data-u="${esc(m.unidade)}">Atualizar valor</button>`}
+          <button class="btn peq secund" data-alvo="${m.id}" data-u="${esc(m.unidade)}">Editar alvo</button>
+          <button class="btn peq perigo" data-del-mt="${m.id}">Excluir</button></div>` : ''}
+      </div>`;
+    }).join('');
+    if (podeDef) {
+      alvo.querySelectorAll('[data-atual]').forEach(b => b.onclick = async () => { const v = prompt('Valor atual (' + b.dataset.u + '):'); if (v == null) return; try { await api('PATCH', '/metas/' + b.dataset.atual, { atualManual: v }); carregarMetas(); } catch (e) { alert(e.message); } });
+      alvo.querySelectorAll('[data-alvo]').forEach(b => b.onclick = async () => { const v = prompt('Novo alvo (' + b.dataset.u + '):'); if (v == null) return; try { await api('PATCH', '/metas/' + b.dataset.alvo, { alvo: v }); carregarMetas(); } catch (e) { alert(e.message); } });
+      alvo.querySelectorAll('[data-del-mt]').forEach(b => b.onclick = async () => { if (!confirm('Excluir esta meta?')) return; try { await api('DELETE', '/metas/' + b.dataset.delMt); carregarMetas(); } catch (e) { alert(e.message); } });
+    }
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Datas quentes (alta demanda) ---------
+async function renderDatasQuentes() {
+  const c = conteudo();
+  const podeDef = ESTADO.me.papel === 'admin' || ESTADO.areas.includes('*') || ESTADO.areas.includes('ceo') || ESTADO.areas.includes('revenue');
+  c.innerHTML = cabecalho('Datas quentes', 'Períodos de alta demanda em Brasília. Marque "preço ajustado?" para não vender barato nas datas nobres.') + `
+    ${podeDef ? `<details class="cr-box" id="dq-box"><summary class="cr-sum">➕ Nova data quente</summary>
+      <form class="form" id="dq-form" style="max-width:660px;margin-top:12px">
+        <label>Evento / período * <input id="dq-nome" required maxlength="120" placeholder="ex.: Réveillon 2026/2027"></label>
+        <div class="hi-grid">
+          <label>De <input id="dq-de" type="date"></label>
+          <label>Até <input id="dq-ate" type="date"></label>
+          <label>Estadia mínima (noites) <input id="dq-minstay" type="number" min="0" step="1"></label>
+          <label class="serv-ativo" style="align-self:end"><input type="checkbox" id="dq-preco"> Preço já ajustado</label>
+        </div>
+        <label>Observação <input id="dq-obs" maxlength="200"></label>
+        <button class="btn" type="submit">Adicionar</button>
+      </form>
+    </details>` : ''}
+    <div id="dq-lista"><p class="vazio">Carregando…</p></div>`;
+  if (podeDef) {
+    $('#dq-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const corpo = { nome: $('#dq-nome').value.trim(), de: $('#dq-de').value, ate: $('#dq-ate').value, minStay: $('#dq-minstay').value, precoAjustado: $('#dq-preco').checked, obs: $('#dq-obs').value.trim() };
+      try { await api('POST', '/revenue/datas-quentes', corpo); $('#dq-form').reset(); $('#dq-box').open = false; carregarDatasQuentes(); }
+      catch (e) { alert(e.message); }
+    };
+  }
+  carregarDatasQuentes();
+}
+async function carregarDatasQuentes() {
+  const alvo = $('#dq-lista'); if (!alvo) return;
+  const podeDef = ESTADO.me.papel === 'admin' || ESTADO.areas.includes('*') || ESTADO.areas.includes('ceo') || ESTADO.areas.includes('revenue');
+  try {
+    const { datas } = await api('GET', '/revenue/datas-quentes');
+    if (!datas.length) { alvo.innerHTML = '<div class="vazio">Nenhuma data quente cadastrada. Adicione as datas nobres (Réveillon, Carnaval, Marcha dos Prefeitos…).</div>'; return; }
+    alvo.innerHTML = datas.map(d => {
+      const cor = d.precoAjustado ? 'var(--ok)' : 'var(--alerta)';
+      const per = [d.de, d.ate].filter(Boolean).map(x => x.slice(8, 10) + '/' + x.slice(5, 7)).join(' a ');
+      return `<div class="linha-item" style="border-left:4px solid ${cor};${d.passada ? 'opacity:.55' : ''}">
+        <span class="qtd" style="background:${cor};color:#fff">${d.precoAjustado ? '✓' : '!'}</span>
+        <span class="nome">${esc(d.nome)} <span class="obs">${per ? per : ''}${d.minStay ? ' · mín. ' + d.minStay + ' noites' : ''}${d.obs ? ' · ' + esc(d.obs) : ''}${d.passada ? ' · (passada)' : ''}</span>
+          <br><b style="color:${cor}">${d.precoAjustado ? 'Preço ajustado' : '⚠️ Preço NÃO ajustado'}</b></span>
+        ${podeDef ? `<div class="acoes" style="grid-column:2;grid-row:1/span 3">
+          <button class="btn peq ${d.precoAjustado ? 'secund' : ''}" data-toggle-dq="${d.id}" data-v="${d.precoAjustado ? 0 : 1}">${d.precoAjustado ? 'Desmarcar' : 'Marcar ajustado'}</button>
+          <button class="btn peq perigo" data-del-dq="${d.id}">✕</button></div>` : ''}
+      </div>`;
+    }).join('');
+    if (podeDef) {
+      alvo.querySelectorAll('[data-toggle-dq]').forEach(b => b.onclick = async () => { try { await api('PATCH', '/revenue/datas-quentes/' + b.dataset.toggleDq, { precoAjustado: b.dataset.v === '1' }); carregarDatasQuentes(); } catch (e) { alert(e.message); } });
+      alvo.querySelectorAll('[data-del-dq]').forEach(b => b.onclick = async () => { if (!confirm('Excluir esta data?')) return; try { await api('DELETE', '/revenue/datas-quentes/' + b.dataset.delDq); carregarDatasQuentes(); } catch (e) { alert(e.message); } });
+    }
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
 // --------- Acessos do Hóspede (contas da Área do Hóspede / app) ---------
 async function renderAcessosHospede() {
   const c = conteudo();
@@ -2199,12 +2332,43 @@ async function renderCRM() {
         <button class="btn secund" id="crm-metricas">📊 Métricas</button>
         <input id="crm-busca" placeholder="Buscar nome, telefone ou e-mail…" style="flex:1;min-width:200px">
        </div>
+       <div id="crm-sla"></div>
+       <div id="crm-receita"></div>
        <div id="crm-followups"></div>
        <div id="crm-board" class="kanban"><div class="vazio">Carregando…</div></div>`;
   $('#crm-novo').onclick = () => crmFormContato();
   $('#crm-metricas').onclick = () => renderCRMMetricas();
   let t; $('#crm-busca').oninput = () => { clearTimeout(t); t = setTimeout(crmCarregar, 250); };
   crmCarregar();
+  crmCarregarSla();
+  crmCarregarReceita();
+}
+
+// SLA de 1ª resposta: banner com leads novos parados há mais de 2h sem resposta humana.
+async function crmCarregarSla() {
+  const box = $('#crm-sla'); if (!box) return;
+  try {
+    const { atrasados } = await api('GET', '/crm/sla?horas=2');
+    if (!atrasados.length) { box.innerHTML = ''; return; }
+    box.innerHTML = `<div class="followups" style="border-left-color:var(--alerta);background:#fdf4f3">
+      <strong style="color:var(--alerta)">⏱ ${atrasados.length} lead(s) sem 1ª resposta há +2h</strong>
+      ${atrasados.slice(0, 12).map(a => `<button class="fu-chip atrasado" data-id="${esc(a.id)}">${esc(a.nome)} · ${a.esperaHoras}h${a.origem ? ' · ' + esc(a.origem) : ''}</button>`).join('')}
+    </div>`;
+    box.querySelectorAll('.fu-chip').forEach(b => b.onclick = () => crmAbrirContato(b.dataset.id));
+  } catch (_) { box.innerHTML = ''; }
+}
+
+// Receita prevista por mês (soma de valorEstimado dos negócios em aberto, por mês de check-in).
+async function crmCarregarReceita() {
+  const box = $('#crm-receita'); if (!box) return;
+  try {
+    const { meses, semData, total } = await api('GET', '/crm/receita-prevista');
+    if (!total) { box.innerHTML = ''; return; }
+    const chips = meses.map(m => `<span class="chip">${esc(m.mes)}: <b>${rMoney(m.valor)}</b></span>`).join(' ');
+    box.innerHTML = `<div class="followups" style="border-left-color:var(--lago)">
+      <strong>💰 Receita prevista no funil: ${rMoney(total)}</strong> ${chips}
+      ${semData ? `<span class="chip">sem data: ${rMoney(semData)}</span>` : ''}</div>`;
+  } catch (_) { box.innerHTML = ''; }
 }
 
 async function renderCRMMetricas() {
