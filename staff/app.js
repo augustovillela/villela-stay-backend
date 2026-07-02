@@ -138,10 +138,9 @@ async function abrirApp() {
 }
 
 // --------- menu ---------
-// Menu em grupos por FUNÇÃO (jornada de trabalho): Início → Reservas → Comercial → Hóspedes →
-// Operação → Relatórios & Gestão → Administração → Links. Itens aparecem conforme a área do usuário.
-function montarMenu() {
-  const m = $('#menu'); m.innerHTML = '';
+// Constrói a lista de itens do menu (grupos + itens) conforme as áreas do usuário.
+// Usada pelo menu lateral E pela home-lançador (grade de ícones no estilo do app do hóspede).
+function construirItensMenu() {
   const ehAdmin = ESTADO.me.papel === 'admin';
   const tem = (a) => ehAdmin || ESTADO.areas.includes('*') || ESTADO.areas.includes(a);
   const itens = [
@@ -197,7 +196,46 @@ function montarMenu() {
   itens.push({ rot: '🏨 Painel da Stays ↗', url: 'https://ville.stays.com.br/i/home' });
   itens.push({ rot: '🌐 Site público ↗', url: 'https://villelastay.com.br' });
   itens.push({ rot: '🔑 Área do Hóspede ↗', url: 'https://minha.villelastay.com.br/hospede' });
+  return itens;
+}
 
+// Separa o emoji (ícone) do rótulo de texto: "📆 Calendário" → { ico: '📆', txt: 'Calendário' }.
+function separarIcone(rot) {
+  const m = String(rot || '').match(/^(\S+)\s+(.*)$/);
+  return m ? { ico: m[1], txt: m[2] } : { ico: '•', txt: String(rot || '') };
+}
+
+// Home-lançador: grade de ícones no estilo do app do hóspede (painel escuro da marca).
+function montarLauncher(alvoSel) {
+  const alvo = $(alvoSel); if (!alvo) return;
+  const itens = construirItensMenu();
+  let html = '', grupoAberto = false, temItem = false;
+  const fechaGrupo = () => { if (grupoAberto) { html += '</div></div>'; grupoAberto = false; } };
+  for (const it of itens) {
+    if (it.grupo) {
+      fechaGrupo();
+      // pula o grupo "Início" na grade (já estamos na home)
+      if (it.grupo === 'Início') { grupoAberto = false; continue; }
+      html += `<div class="lc-grupo"><div class="lc-titulo">${esc(it.grupo)}</div><div class="lc-itens">`;
+      grupoAberto = true; continue;
+    }
+    if (it.grupo === undefined && !grupoAberto && it.id) continue; // itens do "Início" pulados
+    const { ico, txt } = separarIcone(it.rot);
+    if (it.url) {
+      html += `<a class="lc-tile" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><span class="lc-ico">${ico}</span><span class="lc-rot">${esc(txt)}</span></a>`;
+    } else {
+      html += `<button type="button" class="lc-tile" data-nav="${esc(it.id)}"><span class="lc-ico">${ico}${it.badge ? '<span class="lc-badge hidden" data-badge="mural-lc"></span>' : ''}</span><span class="lc-rot">${esc(txt)}</span></button>`;
+    }
+    temItem = true;
+  }
+  fechaGrupo();
+  alvo.innerHTML = temItem ? html : '';
+  alvo.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navegar(b.dataset.nav));
+}
+
+function montarMenu() {
+  const m = $('#menu'); m.innerHTML = '';
+  const itens = construirItensMenu();
   for (const it of itens) {
     if (it.grupo) { const g = document.createElement('div'); g.className = 'grupo'; g.textContent = it.grupo; m.appendChild(g); continue; }
     if (it.url) {
@@ -213,16 +251,18 @@ function montarMenu() {
   atualizarBadgeMural();
 }
 
-// Badge de mensagens novas no mural (desde a última visita deste navegador)
+// Badge de mensagens novas no mural (menu lateral + tile do lançador)
 async function atualizarBadgeMural() {
   try {
     const { mensagens } = await api('GET', '/mural');
     const visto = localStorage.getItem('vs_mural_visto') || '';
     const novas = mensagens.filter(x => !visto || x.criadoEm > visto).length;
-    const s = document.querySelector('[data-badge="mural"]');
-    if (!s) return;
-    if (novas > 0 && ESTADO.secao !== 'mural') { s.textContent = novas > 99 ? '99+' : novas; s.classList.remove('hidden'); }
-    else s.classList.add('hidden');
+    const alvos = document.querySelectorAll('[data-badge="mural"], [data-badge="mural-lc"]');
+    if (!alvos.length) return;
+    alvos.forEach(s => {
+      if (novas > 0 && ESTADO.secao !== 'mural') { s.textContent = novas > 99 ? '99+' : novas; s.classList.remove('hidden'); }
+      else s.classList.add('hidden');
+    });
   } catch (_) {}
 }
 
@@ -265,6 +305,8 @@ async function ligarPush() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
+  const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
+  window.scrollTo(0, 0);
   const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
@@ -852,11 +894,14 @@ async function renderVisao() {
     <input id="busca-home-input" type="search" placeholder="🔎 Buscar em todos os relatórios e entregas…" style="flex:1;min-width:220px">
     <button class="btn" type="submit">Buscar</button>
   </form>
+  <div id="ck-launcher" class="launcher"></div>
   <div id="ck-cards" class="cards"><div class="card"><div class="n">…</div><div class="rot">Carregando o dia</div></div></div>
   <div id="ck-detalhe"></div>
   <div id="ck-mural"></div>
   <h2 class="titulo" style="font-size:1.15rem">Últimas entregas</h2><div id="ck-entregas" class="vazio">Carregando…</div>`;
   $('#busca-home').onsubmit = (ev) => { ev.preventDefault(); ESTADO.buscaPrefill = $('#busca-home-input').value; navegar('relatorios'); };
+  montarLauncher('#ck-launcher');
+  atualizarBadgeMural();
 
   // Entregas (rápido) e cockpit (Stays, pode demorar) carregam em paralelo.
   api('GET', '/visao-geral').then(vg => {
@@ -2461,5 +2506,7 @@ $('#form-trocar').onsubmit = async (ev) => {
   } catch (e) { erro.textContent = e.message; }
 };
 $('#btn-sair').onclick = async () => { try { await api('POST', '/logout'); } catch {} ESTADO.me = null; mostrarLogin(); };
+// Botão ☰ (mobile): abre/fecha a gaveta do menu
+if ($('#btn-menu')) $('#btn-menu').onclick = () => { const m = $('#menu'); if (m) m.classList.toggle('aberto'); };
 
 init();
