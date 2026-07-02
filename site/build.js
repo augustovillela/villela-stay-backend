@@ -285,6 +285,7 @@ ${corpo}
   <div class="rodape-links rodape-compacto">
     <strong>${t('Navegue', 'Browse', 'Navega')}</strong>
     <a href="${L('/faq.html')}">${t('Perguntas Frequentes (FAQ)', 'FAQ — Frequently Asked Questions', 'Preguntas Frecuentes (FAQ)')}</a>
+    <a href="${L('/app.html')}">${t('📲 Baixar o app', '📲 Get the app', '📲 Descargar la app')}</a>
     <a href="${L('/links.html')}">Linktree</a>
     <a href="${L('/pre-checkin.html')}">${t('Check-in on-line', 'Online check-in', 'Check-in en línea')}</a>
     <a href="${L('/guia.html')}">${t('Guia do Hóspede', 'Guest Guide', 'Guía del Huésped')}</a>
@@ -1413,6 +1414,85 @@ fs.writeFileSync(path.join(od, 'faq.html'), renderFaqPage({
 }));
 console.log(`FAQ gerado (${LANG})`);
 
+// ------------------------- app do hóspede (instalação + notificações) -------------------------
+const appPassos = [
+  ['🔗', t('Acesse o app', 'Open the app', 'Abra la app'),
+    t('No celular, entre em <strong>minha.villelastay.com.br</strong>.', 'On your phone, go to <strong>minha.villelastay.com.br</strong>.', 'En el celular, entre en <strong>minha.villelastay.com.br</strong>.')],
+  ['📧', t('Peça o seu link de acesso', 'Request your access link', 'Pida su enlace de acceso'),
+    t('Toque em <strong>“Entre com o seu e-mail”</strong> (embaixo de “Primeiro acesso ou esqueceu a senha?”), digite o seu e-mail e toque em <strong>“Enviar link de acesso”</strong>.', 'Tap <strong>“Sign in with your email”</strong> (under “First time or forgot your password?”), type your email and tap <strong>“Send access link”</strong>.', 'Toque en <strong>“Ingrese con su correo”</strong> (debajo de “¿Primer acceso u olvidó la contraseña?”), escriba su correo y toque en <strong>“Enviar enlace de acceso”</strong>.')],
+  ['✉️', t('Crie a sua senha', 'Create your password', 'Cree su contraseña'),
+    t('Abra o e-mail que enviamos e toque no <strong>link de acesso</strong>. O app abre em <strong>“Crie a sua senha de acesso”</strong>: escolha uma senha (mín. 8 caracteres) e toque em <strong>“Salvar e entrar”</strong>. <span class="app-nota">O link vale por 45 minutos.</span>', 'Open the email we sent and tap the <strong>access link</strong>. The app opens on <strong>“Create your access password”</strong>: choose a password (min. 8 characters) and tap <strong>“Save and enter”</strong>. <span class="app-nota">The link is valid for 45 minutes.</span>', 'Abra el correo que enviamos y toque el <strong>enlace de acceso</strong>. La app abre en <strong>“Cree su contraseña de acceso”</strong>: elija una contraseña (mín. 8 caracteres) y toque en <strong>“Guardar y entrar”</strong>. <span class="app-nota">El enlace es válido por 45 minutos.</span>')],
+  ['⬇️', t('Abra a instalação', 'Open the install screen', 'Abra la instalación'),
+    t('Já dentro do app, toque no botão dourado <strong>“Instalação”</strong>, no alto da tela.', 'Once inside the app, tap the golden <strong>“Install”</strong> button at the top of the screen.', 'Ya dentro de la app, toque el botón dorado <strong>“Instalar”</strong>, arriba en la pantalla.')],
+  ['📲', t('Adicione à tela do celular', 'Add it to your home screen', 'Agréguela a la pantalla'),
+    t('<strong>🍎 iPhone/iPad (Safari):</strong> toque em <em>Compartilhar</em> ⬆️ → <em>“Adicionar à Tela de Início”</em> → <em>Adicionar</em>.<br><strong>🤖 Android (Chrome):</strong> toque no menu <em>⋮</em> → <em>“Instalar app”</em> → <em>Confirmar</em>.', '<strong>🍎 iPhone/iPad (Safari):</strong> tap <em>Share</em> ⬆️ → <em>“Add to Home Screen”</em> → <em>Add</em>.<br><strong>🤖 Android (Chrome):</strong> tap the <em>⋮</em> menu → <em>“Install app”</em> → <em>Confirm</em>.', '<strong>🍎 iPhone/iPad (Safari):</strong> toque en <em>Compartir</em> ⬆️ → <em>“Agregar a pantalla de inicio”</em> → <em>Agregar</em>.<br><strong>🤖 Android (Chrome):</strong> toque el menú <em>⋮</em> → <em>“Instalar app”</em> → <em>Confirmar</em>.')],
+  ['🔔', t('Ative as notificações', 'Turn on notifications', 'Active las notificaciones'),
+    t('Abra o app pelo <strong>novo ícone</strong> na tela inicial, toque no <strong>sininho 🔔</strong> (no topo) e depois em <strong>“Ativar notificações”</strong> → <em>Permitir</em>. Pronto! 🎉', 'Open the app from the <strong>new icon</strong> on your home screen, tap the <strong>bell 🔔</strong> (top) and then <strong>“Enable notifications”</strong> → <em>Allow</em>. Done! 🎉', 'Abra la app desde el <strong>nuevo ícono</strong> en la pantalla, toque la <strong>campanita 🔔</strong> (arriba) y luego <strong>“Activar notificaciones”</strong> → <em>Permitir</em>. ¡Listo! 🎉')],
+];
+const appBeneficios = [
+  ['🗓️', t('Reservas e disponibilidade', 'Bookings & availability', 'Reservas y disponibilidad')],
+  ['💳', t('Conta, extrato e recibos', 'Account, statement & receipts', 'Cuenta, extracto y recibos')],
+  ['🎁', t('Cash back, fidelidade e indicações', 'Cash back, loyalty & referrals', 'Cash back, fidelidad y referidos')],
+  ['🛎️', t('Pedidos, eventos e serviços extras', 'Requests, events & extra services', 'Solicitudes, eventos y servicios extra')],
+  ['🔑', t('Check-in on-line, Wi-Fi e manual da casa', 'Online check-in, Wi-Fi & house manual', 'Check-in en línea, Wi-Fi y manual de la casa')],
+  ['🤖', t('Eva, sua concierge com IA', 'Eva, your AI concierge', 'Eva, su concierge con IA')],
+  ['🍽️', t('Dicas de restaurantes e passeios', 'Restaurant & tour tips', 'Recomendaciones de restaurantes y paseos')],
+];
+const appPage = layout(
+  t('Baixe o app da Villela Stay — instalação e notificações', 'Get the Villela Stay app — install & notifications', 'Descargue la app de Villela Stay — instalación y notificaciones') + ' | Villela Stay',
+  t('Como instalar o app da Villela Stay no iPhone ou Android e ativar as notificações em 6 passos: reservas, check-in on-line, conta, fidelidade, Eva (concierge com IA) e mais.', 'How to install the Villela Stay app on iPhone or Android and enable notifications in 6 steps: bookings, online check-in, account, loyalty, Eva (AI concierge) and more.', 'Cómo instalar la app de Villela Stay en iPhone o Android y activar las notificaciones en 6 pasos: reservas, check-in en línea, cuenta, fidelidad, Eva (concierge con IA) y más.'),
+  `
+<section class="app-hero">
+  <h1>📲 ${t('Baixe o app da Villela Stay', 'Get the Villela Stay app', 'Descargue la app de Villela Stay')}</h1>
+  <p>${t('Instale em segundos e ative as notificações — toda a sua estadia na palma da mão, em português, inglês ou espanhol.', 'Install in seconds and enable notifications — your whole stay in the palm of your hand, in Portuguese, English or Spanish.', 'Instale en segundos y active las notificaciones — toda su estadía en la palma de la mano, en portugués, inglés o español.')}</p>
+  <a class="app-cta" href="https://minha.villelastay.com.br">${t('Abrir o app agora', 'Open the app now', 'Abrir la app ahora')} →</a>
+</section>
+<div class="app-wrap">
+  <ol class="app-passos">
+    ${appPassos.map((p, i) => `<li class="app-passo"><span class="app-num">${i + 1}</span><div class="app-passo-txt"><h2>${p[0]} ${p[1]}</h2><p>${p[2]}</p></div></li>`).join('\n')}
+  </ol>
+
+  <section class="app-benef">
+    <h2>✅ ${t('Tudo em um só app', 'Everything in one app', 'Todo en una sola app')}</h2>
+    <ul class="app-chips">
+      ${appBeneficios.map(b => `<li>${b[0]} ${b[1]}</li>`).join('\n')}
+    </ul>
+  </section>
+
+  <p class="app-ota">🧳 ${t('Reservou por Airbnb, Booking ou outro site? Na tela de login toque em <strong>“Crie seu acesso com o código da reserva”</strong> e informe localizador + sobrenome + data do check-in.', 'Booked via Airbnb, Booking or another site? On the login screen tap <strong>“Create your access with the reservation code”</strong> and enter the booking code + last name + check-in date.', '¿Reservó por Airbnb, Booking u otro sitio? En la pantalla de acceso toque <strong>“Cree su acceso con el código de la reserva”</strong> e indique el localizador + apellido + fecha de check-in.')}</p>
+
+  <div class="app-fim">
+    <a class="app-cta" href="https://minha.villelastay.com.br">${t('Começar agora', 'Get started', 'Comenzar ahora')} →</a>
+    <a class="app-cta app-cta-sec" href="${waLink(t('Olá! Preciso de ajuda para instalar o app da Villela Stay.', 'Hi! I need help installing the Villela Stay app.', '¡Hola! Necesito ayuda para instalar la app de Villela Stay.'))}">${t('Precisa de ajuda?', 'Need help?', '¿Necesita ayuda?')} 💬</a>
+  </div>
+</div>`,
+  {
+    caminho: '/app.html',
+    extraHead: `<style>
+.app-hero{max-width:820px;margin:0 auto;padding:34px 18px 4px;text-align:center}
+.app-hero h1{margin:0 0 8px;color:#5a3e2b}
+.app-hero p{margin:0 auto;max-width:640px;line-height:1.55}
+.app-wrap{max-width:820px;margin:0 auto;padding:8px 18px 44px}
+.app-cta{display:inline-block;margin-top:14px;background:#d9a441;color:#3a2a17;font-weight:800;text-decoration:none;padding:11px 22px;border-radius:999px}
+.app-cta-sec{background:transparent;border:2px solid #d9a441;color:#8a6a2b}
+.app-passos{list-style:none;margin:24px 0 0;padding:0;display:grid;gap:14px;counter-reset:none}
+.app-passo{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid #ece3d3;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.app-num{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:#5a3e2b;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:1.05rem}
+.app-passo-txt h2{margin:3px 0 5px;font-size:1.12rem;color:#5a3e2b}
+.app-passo-txt p{margin:0;line-height:1.55}
+.app-nota{display:inline-block;margin-top:5px;font-size:.9rem;color:#8a6a2b;font-style:italic}
+.app-benef{margin:32px 0 6px}
+.app-benef h2{color:#5a3e2b;font-size:1.2rem;margin-bottom:6px}
+.app-chips{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:10px}
+.app-chips li{background:#f4ecdd;border-radius:999px;padding:8px 14px;font-size:.95rem}
+.app-ota{margin:26px 0 0;background:#fbf6ee;border:1px dashed #d9a441;border-radius:12px;padding:14px 16px;line-height:1.5}
+.app-fim{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+</style>`
+  }
+);
+fs.writeFileSync(path.join(od, 'app.html'), appPage);
+console.log(`App page gerada (${LANG})`);
+
 // ------------------------- guia do hóspede -------------------------
 const guia = layout(
   t('Guia do Hóspede | Villela Stay', 'Guest Guide | Villela Stay', 'Guía del Huésped | Villela Stay'),
@@ -2271,7 +2351,7 @@ const PRECACHE_URLS = [
   '/', '/index.html', '/style.css', '/offline.html', '/manifest.webmanifest',
   ...(TEM_LOGO ? ['/logo.png'] : []),
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
-  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/faq.html', '/blog.html', '/links.html',
+  '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/faq.html', '/app.html', '/blog.html', '/links.html',
   ...listings.map(l => `/hospedagem/${l.id}.html`)
 ];
 const sw = `// Service Worker da Villela Stay (PWA) — gerado por build.js. NÃO editar à mão.
@@ -2350,6 +2430,7 @@ const rotas = [
   { loc: '/guia.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/regras.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/faq.html', changefreq: 'monthly', priority: '0.6' },
+  { loc: '/app.html', changefreq: 'monthly', priority: '0.6' },
   { loc: '/pre-checkin.html', changefreq: 'monthly', priority: '0.3' },
   { loc: '/links.html', changefreq: 'monthly', priority: '0.4' },
   ...listings.map(l => ({ loc: `/hospedagem/${l.id}.html`, changefreq: 'weekly', priority: '0.8' }))
