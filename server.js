@@ -2254,6 +2254,157 @@ app.post('/staff/api/estoque/:id/repor', requirePublishOrSession, (req, res) => 
   res.json({ ok: true });
 });
 
+// ============================ ONDA 7: Materiais de marca, Calendário editorial, Depoimentos, Redes ============================
+function podeMkt(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'marketing') || podeArea(req.user, 'ceo'))); }
+
+// ---- Galeria de materiais de marca (placas, QR, iscas, artes, logos, documentos) ----
+const MATERIAIS_DIR = path.join(DATA_DIR, 'materiais');
+fs.mkdirSync(MATERIAIS_DIR, { recursive: true });
+const CAT_MATERIAL = ['placa', 'qr', 'isca', 'arte', 'logo', 'cartao', 'documento', 'video', 'outro'];
+const EXT_MAT_OK = { '.jpg': 1, '.jpeg': 1, '.png': 1, '.webp': 1, '.gif': 1, '.svg': 1, '.pdf': 1, '.mp4': 1, '.zip': 1, '.docx': 1, '.pptx': 1 };
+app.get('/staff/api/materiais', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req) && !(req.user && (podeArea(req.user, 'vendas') || podeArea(req.user, 'concierge')))) return res.status(403).json({ erro: 'Acesso restrito.' });
+  let mats = lerJSON('materiais.json', []);
+  if (req.query.categoria) mats = mats.filter(m => m.categoria === req.query.categoria);
+  res.json({ materiais: mats.map(({ arquivo, ...m }) => m).sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))), categorias: CAT_MATERIAL });
+});
+app.post('/staff/api/materiais', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito (Marketing/CEO).' });
+  const d = req.body || {};
+  const titulo = String(d.titulo || '').trim();
+  if (!titulo) return res.status(400).json({ erro: 'Informe o título do material.' });
+  const mats = lerJSON('materiais.json', []);
+  const base = {
+    id: novoId(), titulo,
+    categoria: CAT_MATERIAL.includes(d.categoria) ? d.categoria : 'outro',
+    tags: String(d.tags || '').slice(0, 200), tipo: 'link', url: '',
+    quem: req.viaChave ? 'agente' : (req.user.nome || req.user.email || 'staff'), criadoEm: new Date().toISOString(),
+  };
+  if (d.base64 && d.nomeArquivo) {
+    const ext = path.extname(String(d.nomeArquivo)).toLowerCase().slice(0, 8);
+    if (!EXT_MAT_OK[ext]) return res.status(400).json({ erro: 'Formato não suportado.' });
+    const buf = Buffer.from(String(d.base64), 'base64');
+    if (buf.length > 20 * 1024 * 1024) return res.status(400).json({ erro: 'Arquivo acima de 20 MB.' });
+    const arquivo = base.id + ext;
+    try { fs.writeFileSync(path.join(MATERIAIS_DIR, arquivo), buf); } catch (e) { return res.status(400).json({ erro: 'Arquivo inválido.' }); }
+    base.tipo = EXT_IMG[ext] ? 'imagem' : 'arquivo'; base.arquivo = arquivo; base.ext = ext; base.nomeArquivo = String(d.nomeArquivo).slice(0, 200);
+  } else if (d.url) {
+    base.tipo = 'link'; base.url = String(d.url).slice(0, 1000);
+  } else return res.status(400).json({ erro: 'Envie um arquivo ou um link.' });
+  mats.push(base);
+  salvarJSON('materiais.json', mats);
+  res.json({ ok: true, material: { ...base, arquivo: undefined } });
+});
+app.get('/staff/api/materiais/:id/arquivo', requireAuth, (req, res) => {
+  const m = lerJSON('materiais.json', []).find(x => x.id === req.params.id);
+  if (!m || !m.arquivo) return res.sendStatus(404);
+  const alvo = path.join(MATERIAIS_DIR, m.arquivo);
+  if (!fs.existsSync(alvo)) return res.sendStatus(404);
+  res.sendFile(alvo);
+});
+app.delete('/staff/api/materiais/:id', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const mats = lerJSON('materiais.json', []);
+  const m = mats.find(x => x.id === req.params.id);
+  if (m && m.arquivo) { try { fs.unlinkSync(path.join(MATERIAIS_DIR, m.arquivo)); } catch {} }
+  salvarJSON('materiais.json', mats.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
+// ---- Calendário editorial (posts, artigos, campanhas B2B) ----
+const EDIT_CANAIS = ['instagram', 'facebook', 'tiktok', 'linkedin', 'blog', 'email', 'whatsapp', 'b2b', 'outro'];
+const EDIT_STATUS = ['ideia', 'producao', 'agendado', 'publicado'];
+app.get('/staff/api/marketing/editorial', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req) && !(req.user && podeArea(req.user, 'vendas'))) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('editorial.json', []).sort((a, b) => String(a.data || '9999').localeCompare(String(b.data || '9999')));
+  res.json({ itens, canais: EDIT_CANAIS, status: EDIT_STATUS });
+});
+app.post('/staff/api/marketing/editorial', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito (Marketing/CEO).' });
+  const d = req.body || {};
+  const titulo = String(d.titulo || '').trim();
+  if (!titulo) return res.status(400).json({ erro: 'Informe o título/pauta.' });
+  const itens = lerJSON('editorial.json', []);
+  const it = {
+    id: novoId(), titulo,
+    canal: EDIT_CANAIS.includes(d.canal) ? d.canal : 'instagram',
+    data: String(d.data || '').trim(),
+    status: EDIT_STATUS.includes(d.status) ? d.status : 'ideia',
+    responsavel: String(d.responsavel || '').trim(), link: String(d.link || '').trim(), obs: String(d.obs || '').trim(),
+    quem: req.viaChave ? 'agente' : (req.user.nome || req.user.email || 'staff'), criadoEm: new Date().toISOString(),
+  };
+  itens.push(it);
+  salvarJSON('editorial.json', itens);
+  res.json({ ok: true, item: it });
+});
+app.patch('/staff/api/marketing/editorial/:id', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('editorial.json', []);
+  const it = itens.find(x => x.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Item não encontrado.' });
+  const d = req.body || {};
+  if (d.status && EDIT_STATUS.includes(d.status)) it.status = d.status;
+  if (d.canal && EDIT_CANAIS.includes(d.canal)) it.canal = d.canal;
+  for (const c of ['titulo', 'data', 'responsavel', 'link', 'obs']) if (d[c] != null) it[c] = String(d[c]).trim();
+  salvarJSON('editorial.json', itens);
+  res.json({ ok: true, item: it });
+});
+app.delete('/staff/api/marketing/editorial/:id', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('editorial.json', []);
+  salvarJSON('editorial.json', itens.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
+// ---- Depoimentos: avaliações 5★ prontas para virar prova social (com consentimento) ----
+app.get('/staff/api/marketing/depoimentos', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req) && !(req.user && (podeArea(req.user, 'vendas') || podeArea(req.user, 'concierge')))) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const estado = lerJSON('depoimentos-estado.json', {}); // { avaliacaoId: { publicado, aprovadoEm } }
+  const min = Math.max(1, parseInt(req.query.min) || 4);
+  const deps = lerAvaliacoes().filter(a => (Number(a.nota) || 0) >= min && String(a.comentario || '').trim())
+    .map(a => ({ id: a.id, hospedeNome: a.hospedeNome || '—', nota: a.nota, comentario: a.comentario, imovel: a.imovel || '', imovelTitulo: a.imovelTitulo || '', criadoEm: a.criadoEm, publicado: !!(estado[a.id] && estado[a.id].publicado) }))
+    .sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
+  res.json({ depoimentos: deps, publicados: deps.filter(d => d.publicado).length });
+});
+app.post('/staff/api/marketing/depoimentos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito (Marketing/CEO).' });
+  const estado = lerJSON('depoimentos-estado.json', {});
+  const pub = !!(req.body && req.body.publicado);
+  estado[req.params.id] = { publicado: pub, aprovadoEm: pub ? new Date().toISOString() : null };
+  salvarJSON('depoimentos-estado.json', estado);
+  res.json({ ok: true, publicado: pub });
+});
+
+// ---- Métricas de redes sociais (manual ou auto via rotina Metricool) ----
+const REDES = ['instagram', 'facebook', 'tiktok', 'linkedin', 'youtube', 'google'];
+app.get('/staff/api/marketing/redes', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito (Marketing/CEO).' });
+  const itens = lerJSON('redes-metricas.json', []).sort((a, b) => String(b.mes).localeCompare(String(a.mes)) || String(a.rede).localeCompare(String(b.rede)));
+  res.json({ itens, redes: REDES });
+});
+app.post('/staff/api/marketing/redes', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito (Marketing/CEO).' });
+  const d = req.body || {};
+  if (!/^\d{4}-\d{2}$/.test(d.mes || '')) return res.status(400).json({ erro: 'Informe o mês (yyyy-MM).' });
+  const rede = String(d.rede || '').trim();
+  if (!rede) return res.status(400).json({ erro: 'Informe a rede.' });
+  const itens = lerJSON('redes-metricas.json', []);
+  const refId = d.mes + '|' + rede;
+  let it = itens.find(x => x.refId === refId);
+  const num = (v) => v != null && v !== '' ? Number(String(v).replace(/\D/g, '')) || 0 : 0;
+  const dados = { seguidores: num(d.seguidores), alcance: num(d.alcance), engajamento: num(d.engajamento), posts: num(d.posts), obs: String(d.obs || '').trim() };
+  if (it) { Object.assign(it, dados); it.atualizadoEm = new Date().toISOString(); }
+  else { it = { id: novoId(), rede, mes: d.mes, refId, ...dados, quem: req.viaChave ? 'agente' : (req.user.nome || 'staff'), criadoEm: new Date().toISOString() }; itens.push(it); }
+  salvarJSON('redes-metricas.json', itens);
+  res.json({ ok: true, item: it });
+});
+app.delete('/staff/api/marketing/redes/:id', requirePublishOrSession, (req, res) => {
+  if (!podeMkt(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('redes-metricas.json', []);
+  salvarJSON('redes-metricas.json', itens.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
 // O portal registra pedidos de CRIAR/EXCLUIR evento; uma rotina do Claude (com acesso ao Google
 // Calendar) lê os pendentes, efetiva e marca como feito (PATCH).
