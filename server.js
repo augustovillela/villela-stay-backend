@@ -2478,11 +2478,17 @@ app.get('/staff/api/juridico/contratos/pendentes', requireAuth, async (req, res)
     const cache = await resolverClientes(criadas.map(r => r._idclient));
     const cts = lerJSON('contratos.json', []);
     const temContrato = (r) => cts.some(c => (c.reservaId && c.reservaId === r.id) || (c.hospede && r._idclient && cache[r._idclient] && semAcento(c.hospede) === semAcento(cache[r._idclient])));
-    const pendentes = criadas.filter(r => !temContrato(r)).map(r => ({
-      reserva: r.id, hospede: (r._idclient && cache[r._idclient]) || '—', imovel: mapa[r._idlisting] || '—',
-      checkIn: r.checkInDate, checkOut: r.checkOutDate, criadoEm: (r.creationDate || r.createdAt || '').slice(0, 10),
-    })).sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
-    res.json({ dias, pendentes });
+    const agora = Date.now();
+    const pendentes = criadas.filter(r => !temContrato(r)).map(r => {
+      const criadoIso = r.creationDate || r.createdAt || '';
+      const horas = criadoIso ? Math.floor((agora - Date.parse(criadoIso)) / 3600000) : null;
+      return {
+        reserva: r.id, hospede: (r._idclient && cache[r._idclient]) || '—', imovel: mapa[r._idlisting] || '—',
+        checkIn: r.checkInDate, checkOut: r.checkOutDate, criadoEm: criadoIso.slice(0, 10),
+        horasDesde: horas, atrasado48h: horas != null && horas > 48,
+      };
+    }).sort((a, b) => (b.atrasado48h - a.atrasado48h) || String(b.criadoEm).localeCompare(String(a.criadoEm)));
+    res.json({ dias, pendentes, atrasados48h: pendentes.filter(p => p.atrasado48h).length });
   } catch (e) { console.error('[contratos pendentes]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
 });
 
@@ -2698,6 +2704,120 @@ app.post('/staff/api/login-magico', (req, res) => {
     res.cookie('staff_token', sess, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/staff' });
     res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
   } catch (e) { return res.status(401).json({ erro: 'Link inválido ou expirado.' }); }
+});
+
+// ============================ ONDA 10: Recebimentos, Fechamento contábil + guias ============================
+// (contratos-48h é um enriquecimento do endpoint /juridico/contratos/pendentes, feito lá em cima.)
+
+// ---- Controle de recebimento de reservas (a API Stays NÃO expõe pagamento → controle manual) ----
+// Marca sinal/saldo por reserva; painel destaca reservas diretas com check-in próximo sem sinal.
+function podeReceb(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'financeiro') || podeArea(req.user, 'vendas') || podeArea(req.user, 'ceo'))); }
+app.get('/staff/api/financeiro/recebimentos', requireAuth, async (req, res) => {
+  if (!podeReceb(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/Vendas).' });
+  try {
+    const dias = Math.min(Math.max(parseInt(req.query.dias) || 21, 1), 90);
+    const hoje = hojeBrasil();
+    const ate = new Date(Date.parse(hoje) + dias * 86400000).toISOString().slice(0, 10);
+    const listings = await staysPaginado('/content/listings', {});
+    const mapa = {}; listings.forEach(l => { mapa[l._id] = l.id; });
+    // reservas diretas com chegada de hoje até +N dias
+    const arr = (await staysPaginado('/booking/reservations', { from: hoje, to: ate, dateType: 'arrival' }))
+      .filter(r => !['canceled', 'blocked', 'maintenance'].includes(r.type) && normalizarPlataforma(r.partner).chave === 'direto');
+    const cache = await resolverClientes(arr.map(r => r._idclient));
+    const rec = lerJSON('recebimentos.json', {});
+    const lista = arr.map(r => {
+      const e = rec[r.id] || {};
+      const diasAte = Math.round((Date.parse(r.checkInDate) - Date.parse(hoje)) / 86400000);
+      return {
+        reserva: r.id, hospede: (r._idclient && cache[r._idclient]) || '—', imovel: mapa[r._idlisting] || '—',
+        checkIn: r.checkInDate, checkOut: r.checkOutDate, diasAte,
+        valorTotal: (r.price && r.price._f_total) || 0,
+        sinalRecebido: !!e.sinalRecebido, saldoRecebido: !!e.saldoRecebido, obs: e.obs || '',
+        alerta: !e.sinalRecebido && diasAte <= 7,
+      };
+    }).sort((a, b) => (b.alerta - a.alerta) || String(a.checkIn).localeCompare(String(b.checkIn)));
+    res.set('Cache-Control', 'no-store');
+    res.json({ dias, reservas: lista, alertas: lista.filter(x => x.alerta).length });
+  } catch (e) { console.error('[recebimentos]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
+});
+app.post('/staff/api/financeiro/recebimentos/:reservaId', requireAuth, (req, res) => {
+  if (!podeReceb(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const rec = lerJSON('recebimentos.json', {});
+  const d = req.body || {};
+  const e = rec[req.params.reservaId] || {};
+  if (d.sinalRecebido != null) e.sinalRecebido = !!d.sinalRecebido;
+  if (d.saldoRecebido != null) e.saldoRecebido = !!d.saldoRecebido;
+  if (d.obs != null) e.obs = String(d.obs).slice(0, 200);
+  e.atualizadoEm = new Date().toISOString(); e.quem = req.user.nome || req.user.email || 'staff';
+  rec[req.params.reservaId] = e;
+  salvarJSON('recebimentos.json', rec);
+  res.json({ ok: true });
+});
+
+// ---- Fechamento contábil: checklist mensal + guias/comprovantes ----
+const FISCAL_DOCS_DIR = path.join(DATA_DIR, 'fiscal-docs');
+fs.mkdirSync(FISCAL_DOCS_DIR, { recursive: true });
+const CHECKLIST_FECHAMENTO = [
+  { chave: 'extrato', rot: 'Extrato bancário lançado (C6)' },
+  { chave: 'recebiveis', rot: 'Contas a receber baixadas' },
+  { chave: 'despesas', rot: 'Despesas categorizadas' },
+  { chave: 'guias', rot: 'Guias/tributos pagos' },
+  { chave: 'dre', rot: 'DRE conferido' },
+  { chave: 'relatorio', rot: 'Relatório enviado ao contador' },
+];
+app.get('/staff/api/contabil/fechamento', requirePublishOrSession, (req, res) => {
+  if (!podeFiscal(req)) return res.status(403).json({ erro: 'Acesso restrito (Contador/Financeiro).' });
+  const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : hojeBrasil().slice(0, 7);
+  const todos = lerJSON('fechamento.json', {});
+  const estado = todos[mes] || { itens: {}, obs: '' };
+  const docs = lerJSON('fiscal-docs.json', []).filter(d => d.mes === mes).map(({ arquivo, ...m }) => m);
+  res.json({ mes, checklist: CHECKLIST_FECHAMENTO, estado, docs });
+});
+app.post('/staff/api/contabil/fechamento', requirePublishOrSession, (req, res) => {
+  if (!podeFiscal(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const d = req.body || {};
+  if (!/^\d{4}-\d{2}$/.test(d.mes || '')) return res.status(400).json({ erro: 'Informe o mês (yyyy-MM).' });
+  const todos = lerJSON('fechamento.json', {});
+  const estado = todos[d.mes] || { itens: {}, obs: '' };
+  if (d.chave && CHECKLIST_FECHAMENTO.some(x => x.chave === d.chave)) estado.itens[d.chave] = !!d.valor;
+  if (d.obs != null) estado.obs = String(d.obs).slice(0, 500);
+  estado.atualizadoEm = new Date().toISOString();
+  todos[d.mes] = estado;
+  salvarJSON('fechamento.json', todos);
+  res.json({ ok: true, estado });
+});
+app.post('/staff/api/contabil/documentos', requirePublishOrSession, (req, res) => {
+  if (!podeFiscal(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const d = req.body || {};
+  if (!/^\d{4}-\d{2}$/.test(d.mes || '')) return res.status(400).json({ erro: 'Informe o mês.' });
+  if (!d.base64 || !d.nomeArquivo) return res.status(400).json({ erro: 'Envie o arquivo.' });
+  const ext = path.extname(String(d.nomeArquivo)).toLowerCase().slice(0, 8);
+  if (!EXT_DOC[ext]) return res.status(400).json({ erro: 'Formato inválido (PDF, imagem…).' });
+  const buf = Buffer.from(String(d.base64), 'base64');
+  if (buf.length > 20 * 1024 * 1024) return res.status(400).json({ erro: 'Arquivo acima de 20 MB.' });
+  const docs = lerJSON('fiscal-docs.json', []);
+  const id = novoId(), arquivo = id + ext;
+  try { fs.writeFileSync(path.join(FISCAL_DOCS_DIR, arquivo), buf); } catch (e) { return res.status(400).json({ erro: 'Arquivo inválido.' }); }
+  const doc = { id, mes: d.mes, titulo: String(d.titulo || d.nomeArquivo).slice(0, 120), arquivo, ext, nomeArquivo: String(d.nomeArquivo).slice(0, 200), quem: req.viaChave ? 'agente' : (req.user.nome || 'staff'), criadoEm: new Date().toISOString() };
+  docs.push(doc);
+  salvarJSON('fiscal-docs.json', docs);
+  res.json({ ok: true, doc: { ...doc, arquivo: undefined } });
+});
+app.get('/staff/api/contabil/documentos/:id/arquivo', requireAuth, (req, res) => {
+  if (!podeFiscal(req)) return res.sendStatus(403);
+  const doc = lerJSON('fiscal-docs.json', []).find(x => x.id === req.params.id);
+  if (!doc) return res.sendStatus(404);
+  const alvo = path.join(FISCAL_DOCS_DIR, doc.arquivo);
+  if (!fs.existsSync(alvo)) return res.sendStatus(404);
+  res.sendFile(alvo);
+});
+app.delete('/staff/api/contabil/documentos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeFiscal(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const docs = lerJSON('fiscal-docs.json', []);
+  const doc = docs.find(x => x.id === req.params.id);
+  if (doc) { try { fs.unlinkSync(path.join(FISCAL_DOCS_DIR, doc.arquivo)); } catch {} }
+  salvarJSON('fiscal-docs.json', docs.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
 });
 
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================

@@ -179,6 +179,7 @@ function construirItensMenu() {
   if (hosp.length) itens.push({ grupo: 'Hóspedes' }, ...hosp);
   const gestao = [];
   if (ehAdmin || tem('ceo')) gestao.push({ id: 'metas', rot: '🎯 Metas (OKR)' });
+  if (tem('financeiro') || tem('vendas') || tem('ceo')) gestao.push({ id: 'recebimentos', rot: '💵 Recebimentos' });
   if (tem('financeiro') || tem('ceo')) gestao.push({ id: 'contas-pagar', rot: '💰 Contas a pagar' });
   if (tem('financeiro') || tem('ceo')) gestao.push({ id: 'dre', rot: '📊 DRE por imóvel' });
   if (tem('revenue') || tem('ceo') || tem('financeiro')) gestao.push({ id: 'revenue', rot: '📈 Revenue' });
@@ -193,6 +194,7 @@ function construirItensMenu() {
   if (tem('juridico') || tem('ceo')) gestao.push({ id: 'contratos', rot: '📑 Contratos' });
   if (tem('juridico') || tem('ceo')) gestao.push({ id: 'lgpd', rot: '🔒 Consentimentos LGPD' });
   if (tem('contador') || tem('financeiro') || tem('ceo')) gestao.push({ id: 'fiscal', rot: '🧾 Calendário fiscal' });
+  if (tem('contador') || tem('financeiro') || tem('ceo')) gestao.push({ id: 'fechamento', rot: '📁 Fechamento contábil' });
   if (tem('compras') || tem('financeiro') || tem('ceo')) gestao.push({ id: 'compras-precos', rot: '🛍️ Histórico de preços' });
   if (gestao.length) itens.push({ grupo: 'Gestão' }, ...gestao);
   itens.push({ grupo: 'Operação' });
@@ -344,7 +346,7 @@ function navegar(secao) {
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
   window.scrollTo(0, 0);
-  const rotas = { visao: renderVisao, mural: renderMural, faq: renderFAQ, concierge: renderConcierge, 'pos-estadia': renderPosEstadia, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, ativos: renderAtivos, estoque: renderEstoque, materiais: renderMateriais, editorial: renderEditorial, depoimentos: renderDepoimentos, redes: renderRedes, contratos: renderContratos, lgpd: renderLGPD, fiscal: renderFiscal, 'compras-precos': renderComprasPrecos, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, faq: renderFAQ, concierge: renderConcierge, 'pos-estadia': renderPosEstadia, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, ativos: renderAtivos, estoque: renderEstoque, materiais: renderMateriais, editorial: renderEditorial, depoimentos: renderDepoimentos, redes: renderRedes, contratos: renderContratos, lgpd: renderLGPD, fiscal: renderFiscal, 'compras-precos': renderComprasPrecos, recebimentos: renderRecebimentos, fechamento: renderFechamento, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -2096,11 +2098,11 @@ async function renderContratos() {
 async function carregarContratosPendentes() {
   const box = $('#ct-pendentes'); if (!box) return;
   try {
-    const { pendentes } = await api('GET', '/juridico/contratos/pendentes?dias=30');
+    const { pendentes, atrasados48h } = await api('GET', '/juridico/contratos/pendentes?dias=30');
     if (!pendentes.length) { box.innerHTML = '<div class="aviso" style="background:#f3faf4;border-color:#bfe3c8">✅ Todas as reservas diretas recentes têm contrato arquivado.</div>'; return; }
     box.innerHTML = `<div class="followups" style="border-left-color:var(--alerta);background:#fdf4f3">
-      <strong style="color:var(--alerta)">⚠️ ${pendentes.length} reserva(s) direta(s) sem contrato (últimos 30 dias)</strong>
-      ${pendentes.slice(0, 12).map(p => `<span class="chip">${esc(p.hospede)} · ${esc(p.imovel)} · ${esc(p.checkIn || '')}${p.reserva ? ' · ' + esc(p.reserva) : ''}</span>`).join('')}</div>`;
+      <strong style="color:var(--alerta)">⚠️ ${pendentes.length} reserva(s) direta(s) sem contrato${atrasados48h ? ` · ${atrasados48h} há mais de 48h` : ''}</strong>
+      ${pendentes.slice(0, 15).map(p => `<span class="chip"${p.atrasado48h ? ' style="background:#fde7e6;border-color:#f3c9c6;color:var(--alerta);font-weight:600"' : ''}>${p.atrasado48h ? '⏰ ' : ''}${esc(p.hospede)} · ${esc(p.imovel)}${p.horasDesde != null ? ' · ' + (p.horasDesde < 48 ? p.horasDesde + 'h' : Math.floor(p.horasDesde / 24) + 'd') : ''}${p.reserva ? ' · ' + esc(p.reserva) : ''}</span>`).join('')}</div>`;
   } catch (_) { box.innerHTML = ''; }
 }
 async function carregarContratos(busca) {
@@ -2271,6 +2273,77 @@ async function carregarComprasPrecos() {
       <button class="btn peq perigo" data-del-cp2="${r.id}" style="grid-column:2;grid-row:1/span 3">✕</button></div>`).join('') : '';
     $('#cp2-regs').querySelectorAll('[data-del-cp2]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este registro?')) return; try { await api('DELETE', '/compras/registro/' + b.dataset.delCp2); carregarComprasPrecos(); } catch (e) { alert(e.message); } });
   } catch (e) { H.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Recebimentos (controle manual de sinal/saldo das reservas diretas) ---------
+async function renderRecebimentos() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Recebimentos', 'Reservas diretas com check-in próximo. A Stays não informa o pagamento, então marque aqui o sinal e o saldo recebidos. Fica em vermelho quando o check-in está a ≤7 dias e o sinal ainda não entrou.') + `
+    <div class="barra"><label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Próximos
+      <select id="rc-dias"><option value="14">14 dias</option><option value="21" selected>21 dias</option><option value="45">45 dias</option></select></label>
+      <button class="btn secund peq" id="rc-atualizar">Atualizar</button></div>
+    <div id="rc-lista"><p class="vazio">Carregando…</p></div>`;
+  $('#rc-dias').onchange = carregarRecebimentos;
+  $('#rc-atualizar').onclick = carregarRecebimentos;
+  carregarRecebimentos();
+}
+async function carregarRecebimentos() {
+  const alvo = $('#rc-lista'); if (!alvo) return;
+  try {
+    const { reservas, alertas } = await api('GET', '/financeiro/recebimentos?dias=' + ($('#rc-dias').value || 21));
+    if (!reservas.length) { alvo.innerHTML = '<div class="vazio">Nenhuma reserva direta com check-in no período.</div>'; return; }
+    alvo.innerHTML = (alertas ? `<div class="aviso">⚠️ ${alertas} reserva(s) com check-in em ≤7 dias e sinal ainda não recebido.</div>` : '') + reservas.map(r => `
+      <div class="item" style="${r.alerta ? 'border-left:4px solid var(--alerta)' : (r.sinalRecebido && r.saldoRecebido ? 'border-left:4px solid var(--ok)' : '')}">
+        <h3 style="margin:0 0 4px">${esc(r.imovel)} · ${esc(r.hospede)}</h3>
+        <div class="meta"><span>check-in ${esc(r.checkIn)} (${r.diasAte === 0 ? 'hoje' : 'em ' + r.diasAte + 'd'})</span>${r.valorTotal ? `<span class="chip">${rMoney(r.valorTotal)}</span>` : ''}${r.reserva ? `<span class="chip">${esc(r.reserva)}</span>` : ''}</div>
+        <div class="acoes" style="margin-top:8px">
+          <button class="btn peq ${r.sinalRecebido ? '' : 'secund'}" data-sinal="${r.reserva}" data-v="${r.sinalRecebido ? 0 : 1}">${r.sinalRecebido ? '✅ Sinal recebido' : 'Marcar sinal'}</button>
+          <button class="btn peq ${r.saldoRecebido ? '' : 'secund'}" data-saldo="${r.reserva}" data-v="${r.saldoRecebido ? 0 : 1}">${r.saldoRecebido ? '✅ Saldo recebido' : 'Marcar saldo'}</button>
+        </div>
+      </div>`).join('');
+    const flip = async (el, attr, campo) => { try { await api('POST', '/financeiro/recebimentos/' + el.dataset[attr], { [campo]: el.dataset.v === '1' }); carregarRecebimentos(); } catch (e) { alert(e.message); } };
+    alvo.querySelectorAll('[data-sinal]').forEach(b => b.onclick = () => flip(b, 'sinal', 'sinalRecebido'));
+    alvo.querySelectorAll('[data-saldo]').forEach(b => b.onclick = () => flip(b, 'saldo', 'saldoRecebido'));
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Fechamento contábil (checklist mensal + guias) ---------
+async function renderFechamento() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Fechamento contábil', 'Checklist do fechamento de cada mês e a pasta de guias/comprovantes.') + `
+    <div class="barra"><label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Mês <input type="month" id="fc-mes" value="${mesAtual()}"></label></div>
+    <div class="ficha">
+      <div class="ficha-col"><div class="ficha-bloco"><h3>✅ Checklist</h3><div id="fc-check"><p class="vazio">Carregando…</p></div>
+        <label style="margin-top:10px">Observações <textarea id="fc-obs" rows="2" maxlength="500"></textarea></label>
+        <button class="btn peq secund" id="fc-obs-salvar">Salvar observações</button></div></div>
+      <div class="ficha-col"><div class="ficha-bloco"><h3>📎 Guias e comprovantes</h3>
+        <label class="btn peq" style="display:inline-block;cursor:pointer">➕ Anexar documento<input type="file" id="fc-arq" accept=".pdf,image/*" style="display:none"></label>
+        <p id="fc-msg" class="sub" style="margin:8px 0 0"></p>
+        <div id="fc-docs" style="margin-top:10px"></div></div></div>
+    </div>`;
+  $('#fc-mes').onchange = carregarFechamento;
+  $('#fc-obs-salvar').onclick = async () => { try { await api('POST', '/contabil/fechamento', { mes: $('#fc-mes').value, obs: $('#fc-obs').value }); $('#fc-obs-salvar').textContent = '✓ Salvo'; setTimeout(() => $('#fc-obs-salvar').textContent = 'Salvar observações', 1500); } catch (e) { alert(e.message); } };
+  $('#fc-arq').onchange = async (ev) => {
+    const file = ev.target.files[0]; if (!file) return;
+    const msg = $('#fc-msg'); msg.textContent = 'Enviando…';
+    try { if (file.size > 20 * 1024 * 1024) throw new Error('Arquivo acima de 20 MB.'); const base64 = await arquivoParaBase64(file); await api('POST', '/contabil/documentos', { mes: $('#fc-mes').value, nomeArquivo: file.name, titulo: file.name, base64 }); msg.textContent = ''; ev.target.value = ''; carregarFechamento(); }
+    catch (e) { msg.textContent = e.message; }
+  };
+  carregarFechamento();
+}
+async function carregarFechamento() {
+  const mes = $('#fc-mes').value || mesAtual();
+  try {
+    const { checklist, estado, docs } = await api('GET', '/contabil/fechamento?mes=' + mes);
+    const feitos = checklist.filter(x => estado.itens && estado.itens[x.chave]).length;
+    $('#fc-check').innerHTML = `<p class="sub" style="margin:0 0 8px">${feitos}/${checklist.length} concluído(s)</p>` + checklist.map(x => `
+      <label style="display:flex;flex-direction:row;align-items:center;gap:8px;padding:6px 0;font-weight:500;cursor:pointer">
+        <input type="checkbox" data-chk="${x.chave}" ${estado.itens && estado.itens[x.chave] ? 'checked' : ''} style="width:auto;flex:none"> <span>${esc(x.rot)}</span></label>`).join('');
+    if ($('#fc-obs')) $('#fc-obs').value = estado.obs || '';
+    $('#fc-check').querySelectorAll('[data-chk]').forEach(cb => cb.onchange = async () => { try { await api('POST', '/contabil/fechamento', { mes, chave: cb.dataset.chk, valor: cb.checked }); carregarFechamento(); } catch (e) { alert(e.message); } });
+    $('#fc-docs').innerHTML = docs.length ? docs.map(d => `<div class="linha-item"><span class="nome">📄 <a href="/staff/api/contabil/documentos/${d.id}/arquivo" target="_blank" rel="noopener">${esc(d.titulo)}</a></span><button class="btn peq perigo" data-del-doc="${d.id}" style="grid-column:2;grid-row:1/span 3">✕</button></div>`).join('') : '<p class="sub" style="margin:0">Nenhum documento anexado neste mês.</p>';
+    $('#fc-docs').querySelectorAll('[data-del-doc]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este documento?')) return; try { await api('DELETE', '/contabil/documentos/' + b.dataset.delDoc); carregarFechamento(); } catch (e) { alert(e.message); } });
+  } catch (e) { $('#fc-check').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Metas (OKR) por área, com termômetro ---------
