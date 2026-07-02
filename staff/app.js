@@ -77,6 +77,16 @@ function mdParaHtml(md) {
 
 // --------- bootstrap ---------
 async function init() {
+  // Login mágico: ?acesso=<token> (link enviado pelo admin via WhatsApp) autentica e entra direto.
+  try {
+    const p = new URLSearchParams(location.search);
+    const acesso = p.get('acesso');
+    if (acesso) {
+      p.delete('acesso');
+      history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p.toString() : ''));
+      try { const r = await api('POST', '/login-magico', { token: acesso }); aposLogin(r); return; } catch (_) {}
+    }
+  } catch (_) {}
   try {
     const r = await api('GET', '/me');
     aposLogin(r);
@@ -119,6 +129,7 @@ async function abrirApp() {
   try { const vg = await api('GET', '/visao-geral'); ESTADO.painelDisp = vg.painelDisponivel || {}; } catch {}
   ESTADO.podeEstat = ['marketing', 'ti', 'ceo'].some(a => ESTADO.areas.includes(a));
   montarMenu();
+  iniciarPolling();
   // Deep-link: ?rel=<id>[&fmt=arquivo] abre um relatório específico (links diretos do Boletim Executivo
   // e de outros painéis). Para arquivos o link aponta direto a /arquivo, mas aceitamos fmt aqui também.
   try {
@@ -147,6 +158,7 @@ function construirItensMenu() {
     { grupo: 'Início' },
     { id: 'visao', rot: '🏠 Visão geral' },
     { id: 'mural', rot: '💬 Mural da equipe', badge: 'mural' },
+    { id: 'faq', rot: '❓ FAQ oficial' },
     { grupo: 'Reservas & Calendário' },
     { id: 'calendario', rot: '📆 Calendário (Stays)' },
     { id: 'stays-reservas', rot: '🗂️ Reservas (Stays)' },
@@ -159,6 +171,7 @@ function construirItensMenu() {
   if (com.length) itens.push({ grupo: 'Comercial' }, ...com);
   const hosp = [];
   if (tem('concierge') || tem('vendas')) hosp.push({ id: 'concierge', rot: '🛎️ Central do concierge' });
+  if (tem('concierge') || tem('vendas') || tem('marketing')) hosp.push({ id: 'pos-estadia', rot: '👋 Pós-estadia' });
   if (tem('concierge') || tem('vendas')) hosp.push({ id: 'hospede-pedidos', rot: '📨 Pedidos de hóspedes' });
   if (ESTADO.painelDisp.precheckins) hosp.push({ id: 'precheckins', rot: '🛬 Pré-check-ins' });
   if (tem('financeiro') || tem('concierge') || tem('vendas')) hosp.push({ id: 'hospede-conta', rot: '💳 Conta corrente' });
@@ -263,6 +276,18 @@ function montarMenu() {
   atualizarBadgeMural();
 }
 
+// Atualização ao vivo (leve): a cada 30s atualiza o badge do mural e, se a tela do mural
+// estiver aberta, recarrega as mensagens. Pausa quando a aba está em segundo plano.
+let _pollTimer = null;
+function iniciarPolling() {
+  if (_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(() => {
+    if (document.hidden || !ESTADO.me) return;
+    if (ESTADO.secao === 'mural') carregarMural();
+    else atualizarBadgeMural();
+  }, 30000);
+}
+
 // Badge de mensagens novas no mural (menu lateral + tile do lançador)
 async function atualizarBadgeMural() {
   try {
@@ -319,7 +344,7 @@ function navegar(secao) {
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
   window.scrollTo(0, 0);
-  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, ativos: renderAtivos, estoque: renderEstoque, materiais: renderMateriais, editorial: renderEditorial, depoimentos: renderDepoimentos, redes: renderRedes, contratos: renderContratos, lgpd: renderLGPD, fiscal: renderFiscal, 'compras-precos': renderComprasPrecos, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, faq: renderFAQ, concierge: renderConcierge, 'pos-estadia': renderPosEstadia, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, ativos: renderAtivos, estoque: renderEstoque, materiais: renderMateriais, editorial: renderEditorial, depoimentos: renderDepoimentos, redes: renderRedes, contratos: renderContratos, lgpd: renderLGPD, fiscal: renderFiscal, 'compras-precos': renderComprasPrecos, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -1239,6 +1264,58 @@ async function carregarMural() {
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
+// --------- FAQ oficial pesquisável ---------
+async function renderFAQ() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('FAQ oficial', 'Respostas padrão da Villela Stay para dúvidas de hóspedes e leads. Busque e copie a resposta para usar em qualquer canal.') + `
+    <div class="barra"><input id="fq-busca" type="search" placeholder="🔎 Buscar pergunta ou resposta…" style="flex:1;min-width:220px" autofocus></div>
+    <div id="fq-lista"><p class="vazio">Carregando…</p></div>`;
+  let itens = [];
+  try { itens = (await api('GET', '/faq')).itens; } catch (e) { $('#fq-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  const render = () => {
+    const q = normaliza($('#fq-busca').value).trim();
+    const termos = q ? q.split(/\s+/) : [];
+    const filtrados = itens.filter(x => { if (!termos.length) return true; const alvo = normaliza(x.pergunta + ' ' + x.resposta + ' ' + x.categoria); return termos.every(t => alvo.includes(t)); });
+    if (!filtrados.length) { $('#fq-lista').innerHTML = `<div class="vazio">${itens.length ? 'Nada encontrado.' : 'FAQ ainda não carregado. Peça ao marketing para publicar o FAQ oficial.'}</div>`; return; }
+    // agrupa por categoria
+    const cats = {}; filtrados.forEach(x => { (cats[x.categoria || 'Geral'] = cats[x.categoria || 'Geral'] || []).push(x); });
+    $('#fq-lista').innerHTML = `<p class="sub" style="margin:0 0 10px">${filtrados.length} pergunta(s)</p>` + Object.entries(cats).map(([cat, arr]) => `
+      <h3 style="color:var(--petroleo);margin:16px 0 8px">${esc(cat)}</h3>
+      ${arr.map(x => `<details class="fq-item"><summary>${esc(x.pergunta)}</summary>
+        <div class="fq-resp">${mdParaHtml(x.resposta)}</div>
+        <button class="btn peq secund" data-copy-fq="${x.id}">📋 Copiar resposta</button></details>`).join('')}`).join('');
+    $('#fq-lista').querySelectorAll('[data-copy-fq]').forEach(b => b.onclick = () => { const x = itens.find(i => i.id === b.dataset.copyFq); navigator.clipboard.writeText(x.resposta).then(() => { b.textContent = '✓ Copiado'; setTimeout(() => b.textContent = '📋 Copiar resposta', 1500); }); });
+  };
+  $('#fq-busca').oninput = render;
+  render();
+}
+
+// --------- Pós-estadia (check-outs recentes + status de avaliação) ---------
+async function renderPosEstadia() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Pós-estadia', 'Check-outs recentes e quem ainda não avaliou — para o concierge pedir a avaliação e estimular o retorno.') + `
+    <div class="barra"><label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Últimos
+      <select id="pe-dias"><option value="7">7 dias</option><option value="14" selected>14 dias</option><option value="30">30 dias</option></select></label>
+      <button class="btn secund peq" id="pe-atualizar">Atualizar</button></div>
+    <div id="pe-lista"><p class="vazio">Carregando…</p></div>`;
+  $('#pe-dias').onchange = carregarPosEstadia;
+  $('#pe-atualizar').onclick = carregarPosEstadia;
+  carregarPosEstadia();
+}
+async function carregarPosEstadia() {
+  const alvo = $('#pe-lista'); if (!alvo) return;
+  try {
+    const { saidas, semAvaliacao } = await api('GET', '/concierge/pos-estadia?dias=' + ($('#pe-dias').value || 14));
+    if (!saidas.length) { alvo.innerHTML = '<div class="vazio">Nenhum check-out no período.</div>'; return; }
+    alvo.innerHTML = `<p class="sub" style="margin:0 0 10px">${saidas.length} check-out(s) · ${semAvaliacao} sem avaliação</p>` + saidas.map(s => `
+      <div class="linha-item" style="${s.avaliou ? '' : 'border-left:3px solid var(--cerrado)'}">
+        <span class="qtd">${esc((s.checkOut || '').slice(8, 10) + '/' + (s.checkOut || '').slice(5, 7))}</span>
+        <span class="nome">${esc(s.imovel)} · ${esc(s.hospede)} <span class="obs">saída ${esc(s.checkOut || '')}${s.reserva ? ' · ' + esc(s.reserva) : ''}</span></span>
+        <span class="quem">${s.avaliou ? '⭐ avaliou' : '⏳ sem avaliação'}</span>
+      </div>`).join('');
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
 // --------- Central do concierge (fila única + dossiê de chegadas) ---------
 async function renderConcierge() {
   const c = conteudo();
@@ -1525,8 +1602,22 @@ async function renderRevenue() {
       <p class="cal-rodape">Ocupação e ADR aproximados (por anúncio ativo; imóveis interligados têm 2 anúncios). RevPAR = receita ÷ (unidades × dias).</p>`;
     const mix = d.mixCanal.length ? `<h2 class="titulo" style="font-size:1.15rem">Mix de canais (estadias futuras — 90 dias)</h2>
       <div class="lista-itens">${d.mixCanal.map(m => `<div class="linha-item"><span class="nome">${esc(m.canal)}</span><span class="quem">${m.n} reserva(s)</span></div>`).join('')}</div>` : '';
-    $('#rv-corpo').innerHTML = cards + tabela + mix;
+    $('#rv-corpo').innerHTML = cards + tabela + mix + '<div id="rv-porcasa" style="margin-top:24px"><p class="sub">Carregando receita por casa…</p></div>';
+    carregarRevenuePorCasa();
   } catch (e) { $('#rv-corpo').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+async function carregarRevenuePorCasa() {
+  const box = $('#rv-porcasa'); if (!box) return;
+  try {
+    const { mes, mesAnterior, linhas, totalAtual, totalAnterior } = await api('GET', '/revenue/por-casa');
+    if (!linhas.length) { box.innerHTML = ''; return; }
+    const seta = (v) => v == null ? '' : v > 0 ? `<span style="color:var(--ok)">▲ ${v}%</span>` : v < 0 ? `<span style="color:var(--alerta)">▼ ${Math.abs(v)}%</span>` : '0%';
+    box.innerHTML = `<h2 class="titulo" style="font-size:1.15rem">Receita líquida por casa — ${esc(mes)} vs ${esc(mesAnterior)}</h2>
+      <table><thead><tr><th>Imóvel</th><th>${esc(mes)}</th><th>${esc(mesAnterior)}</th><th>Variação</th><th>Reservas</th></tr></thead><tbody>
+      ${linhas.map(l => `<tr><td><b>${esc(l.imovel)}</b></td><td>${rMoney(l.atual)}</td><td>${rMoney(l.anterior)}</td><td>${seta(l.variacao)}</td><td>${l.reservas} · ${l.noites}n</td></tr>`).join('')}
+      <tr style="background:var(--areia);font-weight:800"><td>TOTAL</td><td>${rMoney(totalAtual)}</td><td>${rMoney(totalAnterior)}</td><td>${seta(totalAnterior ? Math.round(1000 * (totalAtual - totalAnterior) / totalAnterior) / 10 : null)}</td><td></td></tr>
+      </tbody></table><p class="cal-rodape">Receita líquida (total − comissão) por mês de check-in. Compara com o mês anterior.</p>`;
+  } catch (e) { box.innerHTML = `<p class="sub">Receita por casa indisponível: ${esc(e.message)}</p>`; }
 }
 
 // --------- Conversão por origem (marketing) ---------
@@ -2519,15 +2610,28 @@ function formUsuario(u) {
     ${ed ? `<label><input type="checkbox" id="u-ativo" ${u.ativo ? 'checked' : ''}> Usuário ativo</label>` : ''}
     <div class="acoes">
       <button class="btn" type="submit">${ed ? 'Salvar' : 'Criar usuário'}</button>
+      ${ed ? `<button class="btn secund" type="button" id="u-link">🔗 Link de acesso</button>` : ''}
       ${ed && u.id !== ESTADO.me.id ? `<button class="btn perigo" type="button" id="u-del">Remover</button>` : ''}
       <button class="btn secund" type="button" id="u-cancel">Cancelar</button>
     </div>
+    <div id="u-link-box" class="hidden aviso" style="margin-top:10px"></div>
     <p id="u-msg" class="erro"></p>
   </form>`;
   const togglAreas = () => { $('#bloco-areas').style.display = $('#u-papel').value === 'admin' ? 'none' : ''; };
   $('#u-papel').onchange = togglAreas; togglAreas();
   $('#u-cancel').onclick = () => navegar('usuarios');
   if ($('#u-del')) $('#u-del').onclick = async () => { if (!confirm('Remover este usuário?')) return; try { await api('DELETE', '/usuarios/' + u.id); navegar('usuarios'); } catch (e) { $('#u-msg').textContent = e.message; } };
+  if ($('#u-link')) $('#u-link').onclick = async () => {
+    try {
+      const r = await api('POST', '/usuarios/' + u.id + '/link-acesso');
+      const url = location.origin + '/staff/?acesso=' + r.token;
+      const box = $('#u-link-box'); box.classList.remove('hidden');
+      box.innerHTML = `Link de acesso (válido ${r.expiraMin} min) — envie por WhatsApp para <b>${esc(u.nome)}</b>:<br>
+        <input value="${esc(url)}" readonly style="width:100%;margin:6px 0" onclick="this.select()">
+        <button class="btn peq" id="u-link-copy">📋 Copiar</button>`;
+      $('#u-link-copy').onclick = () => navigator.clipboard.writeText(url).then(() => { $('#u-link-copy').textContent = '✓ Copiado'; });
+    } catch (e) { $('#u-msg').textContent = e.message; }
+  };
   $('#form-user').onsubmit = async (ev) => {
     ev.preventDefault();
     const areas = Array.from(document.querySelectorAll('#bloco-areas input:checked')).map(c => c.value);

@@ -2618,6 +2618,88 @@ app.delete('/staff/api/compras/registro/:id', requirePublishOrSession, (req, res
   res.json({ ok: true });
 });
 
+// ============================ ONDA 9: FAQ, Pós-estadia, Revenue por casa, Login mágico ============================
+
+// ---- FAQ oficial pesquisável (todos os logados leem; admin/marketing edita) ----
+app.get('/staff/api/faq', requireAuth, (req, res) => {
+  res.json({ itens: lerJSON('faq.json', []) });
+});
+app.put('/staff/api/faq', requirePublishOrSession, (req, res) => {
+  if (!req.viaChave && !(req.user && (req.user.papel === 'admin' || podeArea(req.user, 'marketing')))) return res.status(403).json({ erro: 'Acesso restrito (Marketing/admin).' });
+  const itens = Array.isArray(req.body && req.body.itens) ? req.body.itens : null;
+  if (!itens) return res.status(400).json({ erro: 'Envie a lista de perguntas (itens).' });
+  const limpos = itens.map(x => ({
+    id: String(x.id || novoId()), categoria: String(x.categoria || '').slice(0, 80),
+    pergunta: String(x.pergunta || '').slice(0, 400), resposta: String(x.resposta || '').slice(0, 4000),
+  })).filter(x => x.pergunta && x.resposta);
+  salvarJSON('faq.json', limpos);
+  res.json({ ok: true, total: limpos.length });
+});
+
+// ---- Pós-estadia: check-outs recentes e quem já avaliou (concierge cobra a avaliação) ----
+app.get('/staff/api/concierge/pos-estadia', requireAuth, async (req, res) => {
+  if (!['concierge', 'vendas', 'marketing'].some(a => podeArea(req.user, a)) && req.user.papel !== 'admin')
+    return res.status(403).json({ erro: 'Acesso restrito.' });
+  try {
+    const dias = Math.min(Math.max(parseInt(req.query.dias) || 14, 1), 60);
+    const hoje = hojeBrasil();
+    const de = new Date(Date.parse(hoje) - dias * 86400000).toISOString().slice(0, 10);
+    const listings = await staysPaginado('/content/listings', {});
+    const mapa = {}; listings.forEach(l => { mapa[l._id] = l.id; });
+    const saidas = (await staysPaginado('/booking/reservations', { from: de, to: hoje, dateType: 'departure' }))
+      .filter(r => !['canceled', 'blocked', 'maintenance'].includes(r.type) && r.checkOutDate <= hoje);
+    const cache = await resolverClientes(saidas.map(r => r._idclient));
+    const avaliacoes = lerAvaliacoes();
+    const lista = saidas.map(r => {
+      const avaliou = avaliacoes.some(a => a.reservaId === r.id || (a.staysClientId && a.staysClientId === r._idclient && a.imovel === (mapa[r._idlisting] || '')));
+      return { reserva: r.id, hospede: (r._idclient && cache[r._idclient]) || '—', imovel: mapa[r._idlisting] || '—', checkOut: r.checkOutDate, avaliou };
+    }).sort((a, b) => String(b.checkOut).localeCompare(String(a.checkOut)));
+    res.set('Cache-Control', 'no-store');
+    res.json({ dias, saidas: lista, semAvaliacao: lista.filter(x => !x.avaliou).length });
+  } catch (e) { console.error('[pos-estadia]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
+});
+
+// ---- Revenue por casa (mês vs mês anterior, receita líquida) ----
+function mesAnterior(mes) { const [a, m] = mes.split('-').map(Number); const d = new Date(a, m - 2, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; }
+app.get('/staff/api/revenue/por-casa', requireAuth, async (req, res) => {
+  if (!['revenue', 'ceo', 'financeiro'].some(a => podeArea(req.user, a)) && req.user.papel !== 'admin')
+    return res.status(403).json({ erro: 'Acesso restrito.' });
+  const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : hojeBrasil().slice(0, 7);
+  const ant = mesAnterior(mes);
+  try {
+    const [atual, anterior] = await Promise.all([receitaPorImovelMes(mes), receitaPorImovelMes(ant)]);
+    const codigos = [...new Set([...Object.keys(atual), ...Object.keys(anterior)])].filter(c => c && c !== '—').sort();
+    const linhas = codigos.map(cod => {
+      const a = atual[cod] || { receitaLiquida: 0, reservas: 0, noites: 0 };
+      const b = anterior[cod] || { receitaLiquida: 0 };
+      const va = Math.round(a.receitaLiquida), vb = Math.round(b.receitaLiquida);
+      return { imovel: cod, atual: va, anterior: vb, variacao: vb ? Math.round(1000 * (va - vb) / vb) / 10 : null, reservas: a.reservas, noites: a.noites };
+    }).sort((x, y) => y.atual - x.atual);
+    res.json({ mes, mesAnterior: ant, linhas, totalAtual: linhas.reduce((s, l) => s + l.atual, 0), totalAnterior: linhas.reduce((s, l) => s + l.anterior, 0) });
+  } catch (e) { console.error('[revenue por-casa]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
+});
+
+// ---- Login mágico: admin gera um link de acesso curto p/ um usuário (enviado por WhatsApp) ----
+app.post('/staff/api/usuarios/:id/link-acesso', requireAuth, requireAdmin, (req, res) => {
+  const u = lerUsuarios().find(x => x.id === req.params.id);
+  if (!u || !u.ativo) return res.status(404).json({ erro: 'Usuário não encontrado ou inativo.' });
+  const token = jwt.sign({ tipo: 'staff-magic', uid: u.id }, JWT_SECRET, { expiresIn: '30m' });
+  registrarAuditoria(req, 'usuario.link-acesso', `${u.nome} <${u.email}>`);
+  res.json({ ok: true, token, expiraMin: 30 });
+});
+app.post('/staff/api/login-magico', (req, res) => {
+  const token = String((req.body && req.body.token) || '');
+  try {
+    const dec = jwt.verify(token, JWT_SECRET);
+    if (!dec || dec.tipo !== 'staff-magic' || !dec.uid) return res.status(401).json({ erro: 'Link inválido ou expirado.' });
+    const u = lerUsuarios().find(x => x.id === dec.uid && x.ativo);
+    if (!u) return res.status(401).json({ erro: 'Usuário não encontrado.' });
+    const sess = jwt.sign({ uid: u.id }, JWT_SECRET, { expiresIn: '30d' });
+    res.cookie('staff_token', sess, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/staff' });
+    res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
+  } catch (e) { return res.status(401).json({ erro: 'Link inválido ou expirado.' }); }
+});
+
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
 // O portal registra pedidos de CRIAR/EXCLUIR evento; uma rotina do Claude (com acesso ao Google
 // Calendar) lê os pendentes, efetiva e marca como feito (PATCH).
