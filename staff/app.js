@@ -167,6 +167,10 @@ function montarMenu() {
   if (hosp.length) itens.push({ grupo: 'Hóspedes' }, ...hosp);
   const gestao = [];
   if (tem('financeiro') || tem('ceo')) gestao.push({ id: 'contas-pagar', rot: '💰 Contas a pagar' });
+  if (tem('financeiro') || tem('ceo')) gestao.push({ id: 'dre', rot: '📊 DRE por imóvel' });
+  if (tem('revenue') || tem('ceo') || tem('financeiro')) gestao.push({ id: 'revenue', rot: '📈 Revenue' });
+  if (tem('marketing') || tem('vendas') || tem('ceo')) gestao.push({ id: 'mkt-conversao', rot: '🎯 Conversão (marketing)' });
+  if (tem('obras') || tem('ceo')) gestao.push({ id: 'obras', rot: '🏗️ Obras & Decoração' });
   if (tem('juridico') || tem('ceo')) gestao.push({ id: 'prazos-juridicos', rot: '⚖️ Prazos jurídicos' });
   if (gestao.length) itens.push({ grupo: 'Gestão' }, ...gestao);
   itens.push({ grupo: 'Operação' });
@@ -185,6 +189,8 @@ function montarMenu() {
   if (ESTADO.painelDisp.eventos) itens.push({ id: 'eventos', rot: '⚡ Eventos (Stays)' });
   itens.push({ grupo: 'Administração' });
   if (ehAdmin) itens.push({ id: 'usuarios', rot: '👤 Usuários' });
+  if (ehAdmin) itens.push({ id: 'automacoes', rot: '🚦 Automações' });
+  if (ehAdmin) itens.push({ id: 'auditoria', rot: '📜 Auditoria' });
   itens.push({ id: 'conta', rot: '⚙️ Minha conta' });
   itens.push({ grupo: 'Links' });
   itens.push({ rot: '🏨 Painel da Stays ↗', url: 'https://ville.stays.com.br/i/home' });
@@ -258,7 +264,7 @@ async function ligarPush() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -1306,6 +1312,228 @@ async function carregarPrazos() {
     alvo.querySelectorAll('[data-reabrir-pj]').forEach(b => b.onclick = async () => { try { await api('PATCH', '/juridico/prazos/' + b.dataset.reabrirPj, { status: 'aberto' }); carregarPrazos(); } catch (e) { alert(e.message); } });
     alvo.querySelectorAll('[data-del-pj]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este prazo?')) return; try { await api('DELETE', '/juridico/prazos/' + b.dataset.delPj); carregarPrazos(); } catch (e) { alert(e.message); } });
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- DRE por imóvel (receita líquida Stays − custos lançados) ---------
+const mesAtual = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+const rMoney = (v) => 'R$ ' + Math.round(Number(v) || 0).toLocaleString('pt-BR');
+async function renderDRE() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('DRE por imóvel', 'Resultado por casa no mês: receita líquida da Stays (por check-in) menos os custos lançados. Lance os custos abaixo para ver a margem real.') + `
+    <div class="barra">
+      <label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Mês <input type="month" id="dre-mes" value="${mesAtual()}"></label>
+      <button class="btn secund peq" id="dre-atualizar">Atualizar</button>
+    </div>
+    <div id="dre-tabela"><p class="vazio">Consultando a Stays…</p></div>
+    <details class="cr-box" style="margin-top:16px"><summary class="cr-sum">➕ Lançar custo do mês</summary>
+      <form class="form" id="dre-form" style="max-width:640px;margin-top:12px">
+        <div class="hi-grid">
+          <label>Imóvel <select id="dre-imovel"><option value="">Carregando…</option></select></label>
+          <label>Categoria <select id="dre-cat"></select></label>
+          <label>Valor (R$) <input id="dre-valor" type="number" min="0" step="0.01"></label>
+          <label>Observação <input id="dre-obs" maxlength="120"></label>
+        </div>
+        <button class="btn" type="submit">Lançar custo</button>
+      </form>
+      <div id="dre-custos" style="margin-top:12px"></div>
+    </details>`;
+  $('#dre-mes').onchange = carregarDRE;
+  $('#dre-atualizar').onclick = carregarDRE;
+  // popular selects
+  try { if (!_cotImoveis) _cotImoveis = (await api('GET', '/stays/imoveis')).imoveis; } catch (_) { _cotImoveis = []; }
+  $('#dre-imovel').innerHTML = '<option value="">— imóvel —</option>' + (_cotImoveis || []).map(im => `<option value="${esc(im.codigo)}">${esc(im.codigo)} · ${esc(im.titulo)}</option>`).join('');
+  try {
+    const { categorias } = await api('GET', '/financeiro/custos?mes=' + $('#dre-mes').value);
+    $('#dre-cat').innerHTML = categorias.map(x => `<option value="${x}">${x}</option>`).join('');
+  } catch (_) {}
+  $('#dre-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    if (!$('#dre-imovel').value) { alert('Escolha o imóvel.'); return; }
+    try {
+      await api('POST', '/financeiro/custos', { mes: $('#dre-mes').value, imovel: $('#dre-imovel').value, categoria: $('#dre-cat').value, valor: $('#dre-valor').value, obs: $('#dre-obs').value.trim() });
+      $('#dre-valor').value = ''; $('#dre-obs').value = '';
+      carregarDRE();
+    } catch (e) { alert(e.message); }
+  };
+  carregarDRE();
+}
+async function carregarDRE() {
+  const alvo = $('#dre-tabela'); if (!alvo) return;
+  const mes = $('#dre-mes').value || mesAtual();
+  alvo.innerHTML = '<p class="vazio">Consultando a Stays…</p>';
+  try {
+    const { linhas, total } = await api('GET', '/financeiro/dre?mes=' + mes);
+    if (!linhas.length) { alvo.innerHTML = '<div class="vazio">Sem reservas nem custos neste mês.</div>'; }
+    else {
+      const cor = (v) => v > 0 ? 'var(--ok)' : v < 0 ? 'var(--alerta)' : 'inherit';
+      alvo.innerHTML = `<table><thead><tr><th>Imóvel</th><th>Receita líq.</th><th>Custos</th><th>Resultado</th><th>Margem</th><th>Reservas</th></tr></thead><tbody>
+        ${linhas.map(l => `<tr>
+          <td><b>${esc(l.imovel)}</b></td>
+          <td>${rMoney(l.receitaLiquida)}</td>
+          <td>${l.temCusto ? rMoney(l.custos) : '<span style="color:var(--concreto-claro)">— lançar —</span>'}</td>
+          <td style="color:${cor(l.resultado)};font-weight:700">${rMoney(l.resultado)}</td>
+          <td>${l.margem == null ? '—' : l.margem + '%'}</td>
+          <td>${l.reservas} · ${l.noites}n</td></tr>`).join('')}
+        <tr style="background:var(--areia);font-weight:800"><td>TOTAL</td><td>${rMoney(total.receitaLiquida)}</td><td>${rMoney(total.custos)}</td><td style="color:${cor(total.resultado)}">${rMoney(total.resultado)}</td><td>${total.receitaLiquida ? Math.round(1000 * total.resultado / total.receitaLiquida) / 10 + '%' : '—'}</td><td></td></tr>
+      </tbody></table>
+      <p class="cal-rodape">Receita líquida = total das reservas (por check-in) − comissão da plataforma. "— lançar —" indica imóvel sem custo lançado no mês (resultado ainda sem despesas).</p>`;
+    }
+    // lista de custos lançados no mês (para remover)
+    const box = $('#dre-custos'); if (box) {
+      const { custos } = await api('GET', '/financeiro/custos?mes=' + mes);
+      box.innerHTML = custos.length ? custos.map(cu => `<div class="linha-item"><span class="qtd">${esc(cu.imovel)}</span><span class="nome">${esc(cu.categoria)} <span class="obs">${cu.obs ? esc(cu.obs) : ''}</span></span><span class="quem">${rMoney(cu.valor)}</span><button class="btn peq perigo" data-del-custo="${cu.id}" style="grid-column:2;grid-row:1/span 3">✕</button></div>`).join('') : '<p class="sub" style="margin:0">Nenhum custo lançado neste mês.</p>';
+      box.querySelectorAll('[data-del-custo]').forEach(b => b.onclick = async () => { try { await api('DELETE', '/financeiro/custos/' + b.dataset.delCusto); carregarDRE(); } catch (e) { alert(e.message); } });
+    }
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Cockpit de revenue ---------
+async function renderRevenue() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Revenue', 'Ritmo de vendas (pickup), ocupação futura e diária média — ao vivo da Stays.') + '<div id="rv-corpo"><p class="vazio">Consultando a Stays…</p></div>';
+  try {
+    const d = await api('GET', '/revenue/cockpit');
+    const cards = `<div class="cards">
+      <div class="card"><div class="n">${d.pickup7.reservas}</div><div class="rot">🆕 Reservas (7 dias) · ${rMoney(d.pickup7.valor)}</div></div>
+      <div class="card"><div class="n">${d.pickup30.reservas}</div><div class="rot">🆕 Reservas (30 dias) · ${rMoney(d.pickup30.valor)}</div></div>
+      <div class="card"><div class="n">${d.unidades}</div><div class="rot">🏠 Unidades ativas</div></div>
+    </div>`;
+    const tabela = `<h2 class="titulo" style="font-size:1.15rem">Ocupação futura e diária média</h2>
+      <table><thead><tr><th>Janela</th><th>Ocupação</th><th>Noites vendidas</th><th>Receita prevista</th><th>Diária média (ADR)</th><th>RevPAR</th></tr></thead><tbody>
+      ${d.futuro.map(b => `<tr><td><b>${b.dias} dias</b></td><td>${b.ocupacaoPct}%</td><td>${b.noitesVendidas}</td><td>${rMoney(b.receitaPrevista)}</td><td>${rMoney(b.adr)}</td><td>${rMoney(b.revpar)}</td></tr>`).join('')}
+      </tbody></table>
+      <p class="cal-rodape">Ocupação e ADR aproximados (por anúncio ativo; imóveis interligados têm 2 anúncios). RevPAR = receita ÷ (unidades × dias).</p>`;
+    const mix = d.mixCanal.length ? `<h2 class="titulo" style="font-size:1.15rem">Mix de canais (estadias futuras — 90 dias)</h2>
+      <div class="lista-itens">${d.mixCanal.map(m => `<div class="linha-item"><span class="nome">${esc(m.canal)}</span><span class="quem">${m.n} reserva(s)</span></div>`).join('')}</div>` : '';
+    $('#rv-corpo').innerHTML = cards + tabela + mix;
+  } catch (e) { $('#rv-corpo').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Conversão por origem (marketing) ---------
+async function renderMktConversao() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Conversão por origem', 'De onde vêm os leads e qual origem mais converte em reserva (dados do CRM).') + '<div id="mk-corpo"><p class="vazio">Carregando…</p></div>';
+  try {
+    const { linhas, totalLeads, totalGanhos } = await api('GET', '/marketing/conversao');
+    if (!linhas.length) { $('#mk-corpo').innerHTML = '<div class="vazio">Ainda não há contatos no CRM.</div>'; return; }
+    const cards = `<div class="cards">
+      <div class="card"><div class="n">${totalLeads}</div><div class="rot">Leads no CRM</div></div>
+      <div class="card"><div class="n">${totalGanhos}</div><div class="rot">Convertidos em reserva</div></div>
+      <div class="card"><div class="n">${totalLeads ? Math.round(1000 * totalGanhos / totalLeads) / 10 : 0}%</div><div class="rot">Conversão geral</div></div>
+    </div>`;
+    $('#mk-corpo').innerHTML = cards + `<table><thead><tr><th>Origem</th><th>Leads</th><th>Ganhos</th><th>Perdidos</th><th>Conversão</th><th>Valor ganho</th></tr></thead><tbody>
+      ${linhas.map(l => `<tr><td><b>${esc(l.origem)}</b></td><td>${l.leads}</td><td style="color:var(--ok)">${l.ganhos}</td><td style="color:var(--concreto-claro)">${l.perdidos}</td><td>${l.conversao}%</td><td>${rMoney(l.valorGanho)}</td></tr>`).join('')}
+    </tbody></table>`;
+  } catch (e) { $('#mk-corpo').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Obras & Decoração (quadro com ROI) ---------
+const OBRA_COLS = [{ id: 'ideia', rot: '💡 Ideia' }, { id: 'orcamento', rot: '📄 Orçamento' }, { id: 'aprovado', rot: '✅ Aprovado' }, { id: 'em_obra', rot: '🏗️ Em obra' }, { id: 'concluido', rot: '🎉 Concluído' }];
+async function renderObras() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Obras & Decoração', 'Da ideia à entrega, com custo e retorno estimado (payback pela diária extra que a melhoria gera).') + `
+    <details class="cr-box" id="ob-box"><summary class="cr-sum">➕ Nova obra/melhoria</summary>
+      <form class="form" id="ob-form" style="max-width:660px;margin-top:12px">
+        <input type="hidden" id="ob-id">
+        <label>Título * <input id="ob-titulo" required maxlength="160" placeholder="ex.: Deck e ofurô na Villa Kubitschek"></label>
+        <div class="hi-grid">
+          <label>Imóvel <input id="ob-imovel" maxlength="80"></label>
+          <label>Custo previsto (R$) <input id="ob-cp" type="number" min="0" step="0.01"></label>
+          <label>Custo real (R$) <input id="ob-cr" type="number" min="0" step="0.01"></label>
+          <label>Diária extra gerada (R$) <input id="ob-de" type="number" min="0" step="0.01" placeholder="quanto a mais por noite"></label>
+          <label>Noites extras/mês <input id="ob-om" type="number" min="0" step="1" placeholder="ex.: 12"></label>
+        </div>
+        <label>Descrição <textarea id="ob-desc" rows="2" maxlength="1000"></textarea></label>
+        <button class="btn" type="submit" id="ob-salvar">Adicionar</button>
+      </form>
+    </details>
+    <div id="ob-board" class="kanban"><p class="vazio">Carregando…</p></div>`;
+  $('#ob-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const corpo = { titulo: $('#ob-titulo').value.trim(), imovel: $('#ob-imovel').value.trim(), descricao: $('#ob-desc').value.trim(), custoPrevisto: $('#ob-cp').value, custoReal: $('#ob-cr').value, diariaExtra: $('#ob-de').value, ocupacaoMes: $('#ob-om').value };
+    try {
+      const id = $('#ob-id').value;
+      if (id) await api('PATCH', '/obras/' + id, corpo); else await api('POST', '/obras', corpo);
+      $('#ob-form').reset(); $('#ob-id').value = ''; $('#ob-salvar').textContent = 'Adicionar'; $('#ob-box').open = false;
+      carregarObras();
+    } catch (e) { alert(e.message); }
+  };
+  carregarObras();
+}
+function obraPayback(o) {
+  const custo = Number(o.custoReal) || Number(o.custoPrevisto) || 0;
+  const ganhoMes = (Number(o.diariaExtra) || 0) * (Number(o.ocupacaoMes) || 0);
+  if (!custo || !ganhoMes) return null;
+  return Math.round(10 * custo / ganhoMes) / 10; // meses
+}
+async function carregarObras() {
+  const board = $('#ob-board'); if (!board) return;
+  try {
+    const { obras } = await api('GET', '/obras');
+    const porCol = {}; OBRA_COLS.forEach(col => porCol[col.id] = []);
+    obras.forEach(o => (porCol[o.status] || porCol.ideia).push(o));
+    const opc = (atual) => OBRA_COLS.map(col => `<option value="${col.id}" ${col.id === atual ? 'selected' : ''}>${col.rot}</option>`).join('');
+    board.innerHTML = OBRA_COLS.map(col => {
+      const lista = porCol[col.id];
+      return `<div class="col">
+        <div class="col-head"><span>${col.rot}</span><span class="col-n">${lista.length}</span></div>
+        <div class="col-cards">${lista.map(o => {
+          const pb = obraPayback(o);
+          const custo = Number(o.custoReal) || Number(o.custoPrevisto) || 0;
+          return `<div class="kard" style="cursor:default">
+            <div class="kard-nome">${esc(o.titulo)}</div>
+            <div class="kard-meta">${o.imovel ? `<span class="chip">${esc(o.imovel)}</span>` : ''}${custo ? `<span class="chip">${rMoney(custo)}</span>` : ''}</div>
+            ${pb != null ? `<div class="kard-acao ${pb <= 12 ? 'futuro' : ''}">📈 payback ~${pb} ${pb === 1 ? 'mês' : 'meses'}</div>` : (o.diariaExtra ? '<div class="kard-acao">preencha custo + noites p/ ROI</div>' : '')}
+            ${o.descricao ? `<div class="kard-origem">${esc(o.descricao.slice(0, 80))}</div>` : ''}
+            <div class="acoes" style="margin-top:8px">
+              <select data-mover-ob="${o.id}" style="font-size:.78rem;padding:4px 6px">${opc(o.status)}</select>
+              <button class="btn peq secund" data-editar-ob="${o.id}">✎</button>
+              <button class="btn peq perigo" data-del-ob="${o.id}">✕</button>
+            </div></div>`;
+        }).join('') || '<div class="col-vazio">—</div>'}</div>
+      </div>`;
+    }).join('');
+    board.querySelectorAll('[data-mover-ob]').forEach(s => s.onchange = async () => { try { await api('PATCH', '/obras/' + s.dataset.moverOb, { status: s.value }); carregarObras(); } catch (e) { alert(e.message); } });
+    board.querySelectorAll('[data-del-ob]').forEach(b => b.onclick = async () => { if (!confirm('Excluir esta obra?')) return; try { await api('DELETE', '/obras/' + b.dataset.delOb); carregarObras(); } catch (e) { alert(e.message); } });
+    board.querySelectorAll('[data-editar-ob]').forEach(b => b.onclick = () => {
+      const o = obras.find(x => x.id === b.dataset.editarOb); if (!o) return;
+      $('#ob-id').value = o.id; $('#ob-titulo').value = o.titulo; $('#ob-imovel').value = o.imovel || ''; $('#ob-desc').value = o.descricao || '';
+      $('#ob-cp').value = o.custoPrevisto || ''; $('#ob-cr').value = o.custoReal || ''; $('#ob-de').value = o.diariaExtra || ''; $('#ob-om').value = o.ocupacaoMes || '';
+      $('#ob-salvar').textContent = 'Salvar alterações'; $('#ob-box').open = true; window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  } catch (e) { board.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Semáforo de automações (admin) ---------
+async function renderAutomacoes() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Automações', 'Cada rotina registra sua última execução. Verde = em dia; âmbar = atrasada; vermelho = muito atrasada ou com erro.') + '<div id="au-lista"><p class="vazio">Carregando…</p></div>';
+  try {
+    const { itens } = await api('GET', '/automacoes');
+    if (!itens.length) { $('#au-lista').innerHTML = '<div class="vazio">Nenhuma automação registrou heartbeat ainda. As rotinas passam a aparecer aqui quando reportarem execução.</div>'; return; }
+    const dot = { verde: 'var(--ok)', ambar: 'var(--cerrado)', vermelho: 'var(--alerta)' };
+    $('#au-lista').innerHTML = itens.map(a => `<div class="linha-item" style="border-left:4px solid ${dot[a.semaforo]}">
+      <span class="qtd" style="background:${dot[a.semaforo]};color:#fff">●</span>
+      <span class="nome">${esc(a.tarefa)} ${a.detalhe ? `<span class="obs">${esc(a.detalhe)}</span>` : ''}
+        <br><span class="obs">${a.grupo ? esc(a.grupo) + ' · ' : ''}última há ${a.idadeHoras}h${a.status === 'erro' ? ' · ⚠️ reportou ERRO' : ''} · validade ${a.validadeHoras}h</span></span>
+      <span class="quem">${dataBr(a.ultima)}</span>
+      <button class="btn peq perigo" data-del-au="${encodeURIComponent(a.tarefa)}" style="grid-column:2;grid-row:1/span 3">✕</button>
+    </div>`).join('');
+    $('#au-lista').querySelectorAll('[data-del-au]').forEach(b => b.onclick = async () => { if (!confirm('Remover esta automação do painel?')) return; try { await api('DELETE', '/automacoes/' + b.dataset.delAu); renderAutomacoes(); } catch (e) { alert(e.message); } });
+  } catch (e) { $('#au-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Auditoria (admin) ---------
+async function renderAuditoria() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Auditoria', 'Registro das ações sensíveis (usuários, reservas/bloqueios na Stays, lançamentos em conta corrente).') + '<div id="ad-lista"><p class="vazio">Carregando…</p></div>';
+  try {
+    const { eventos } = await api('GET', '/auditoria?n=200');
+    if (!eventos.length) { $('#ad-lista').innerHTML = '<div class="vazio">Nenhum evento registrado ainda.</div>'; return; }
+    $('#ad-lista').innerHTML = `<table><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Detalhe</th></tr></thead><tbody>
+      ${eventos.map(e => `<tr><td>${dataBr(e.quando)}</td><td>${esc(e.quem || '—')}</td><td><span class="chip">${esc(e.acao || '')}</span></td><td>${esc(e.detalhe || '')}</td></tr>`).join('')}
+    </tbody></table>`;
+  } catch (e) { $('#ad-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Relatórios ---------

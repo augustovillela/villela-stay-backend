@@ -662,6 +662,7 @@ app.post('/staff/api/usuarios', requireAuth, requireAdmin, (req, res) => {
   };
   usuarios.push(novo);
   salvarUsuarios(usuarios);
+  registrarAuditoria(req, 'usuario.criar', `${nome} <${email}> (${papel})`);
   res.json({ ok: true, usuario: semSenha(novo) });
 });
 
@@ -685,6 +686,7 @@ app.patch('/staff/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => {
     u.precisaTrocarSenha = true;
   }
   salvarUsuarios(usuarios);
+  registrarAuditoria(req, 'usuario.editar', `${u.nome} <${u.email}>${typeof d.novaSenha === 'string' && d.novaSenha ? ' (senha redefinida)' : ''}`);
   res.json({ ok: true, usuario: semSenha(u) });
 });
 
@@ -696,6 +698,7 @@ app.delete('/staff/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => {
   if (u.papel === 'admin' && usuarios.filter(x => x.papel === 'admin' && x.ativo).length <= 1)
     return res.status(400).json({ erro: 'Não é possível remover o único administrador.' });
   salvarUsuarios(usuarios.filter(x => x.id !== u.id));
+  registrarAuditoria(req, 'usuario.remover', `${u.nome} <${u.email}>`);
   res.json({ ok: true });
 });
 
@@ -1664,6 +1667,248 @@ app.delete('/staff/api/juridico/prazos/:id', requirePublishOrSession, (req, res)
   res.json({ ok: true, removidos: prazos.length - rest.length });
 });
 
+// ============================ ONDA 4: DRE por imóvel, Revenue, Obras, Marketing, Automações, Auditoria ============================
+
+// ---- Auditoria: log de ações sensíveis (usuários, reservas, conta corrente) ----
+function registrarAuditoria(req, acao, detalhe) {
+  try {
+    appendJsonl('auditoria.jsonl', {
+      quando: new Date().toISOString(),
+      quem: req.viaChave ? 'agente/chave' : (req.user && (req.user.nome || req.user.email)) || 'desconhecido',
+      email: (req.user && req.user.email) || '',
+      acao, detalhe: String(detalhe || '').slice(0, 300),
+      ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0],
+    });
+  } catch (_) {}
+}
+app.get('/staff/api/auditoria', requireAuth, requireAdmin, (req, res) => {
+  res.json({ eventos: leUltimasLinhas('auditoria.jsonl', Math.min(parseInt(req.query.n) || 200, 500)) });
+});
+
+// ---- Semáforo de automações (heartbeat): cada rotina registra sua última execução OK ----
+// verde = executou dentro da validade; âmbar = atrasada até 2×; vermelho = muito atrasada ou com erro.
+app.post('/staff/api/automacoes/heartbeat', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const tarefa = String(d.tarefa || '').trim();
+  if (!tarefa) return res.status(400).json({ erro: 'Informe a tarefa.' });
+  const mapa = lerJSON('automacoes.json', {});
+  mapa[tarefa] = {
+    tarefa,
+    status: d.status === 'erro' ? 'erro' : 'ok',
+    detalhe: String(d.detalhe || '').slice(0, 200),
+    validadeHoras: Number(d.validadeHoras) || mapa[tarefa]?.validadeHoras || 26,
+    grupo: String(d.grupo || mapa[tarefa]?.grupo || '').slice(0, 40),
+    ultima: new Date().toISOString(),
+  };
+  salvarJSON('automacoes.json', mapa);
+  res.json({ ok: true });
+});
+app.get('/staff/api/automacoes', requireAuth, (req, res) => {
+  const mapa = lerJSON('automacoes.json', {});
+  const agora = Date.now();
+  const itens = Object.values(mapa).map(a => {
+    const idadeH = (agora - Date.parse(a.ultima)) / 3600000;
+    let semaforo = 'verde';
+    if (a.status === 'erro') semaforo = 'vermelho';
+    else if (idadeH > 2 * (a.validadeHoras || 26)) semaforo = 'vermelho';
+    else if (idadeH > (a.validadeHoras || 26)) semaforo = 'ambar';
+    return { ...a, idadeHoras: Math.round(idadeH * 10) / 10, semaforo };
+  }).sort((a, b) => ({ vermelho: 0, ambar: 1, verde: 2 }[a.semaforo] - { vermelho: 0, ambar: 1, verde: 2 }[b.semaforo]) || String(a.grupo).localeCompare(String(b.grupo)));
+  res.json({ itens });
+});
+app.delete('/staff/api/automacoes/:tarefa', requireAuth, requireAdmin, (req, res) => {
+  const mapa = lerJSON('automacoes.json', {});
+  delete mapa[req.params.tarefa];
+  salvarJSON('automacoes.json', mapa);
+  res.json({ ok: true });
+});
+
+// ---- Receita por imóvel (mês, competência por check-in) — base do DRE ----
+// Retorna { CODIGO: { receitaBruta, comissao, receitaLiquida, reservas, noites } } para o mês yyyy-MM.
+async function receitaPorImovelMes(mes) {
+  const ini = mes + '-01';
+  const [a, m] = mes.split('-').map(Number);
+  const fim = `${mes}-${String(new Date(a, m, 0).getDate()).padStart(2, '0')}`;
+  const listings = await staysPaginado('/content/listings', {});
+  const codPorId = {}; listings.forEach(l => { codPorId[l._id] = l.id; });
+  const reservas = (await staysPaginado('/booking/reservations', { from: ini, to: fim, dateType: 'arrival' }))
+    .filter(r => !['canceled', 'blocked', 'maintenance'].includes(r.type));
+  const out = {};
+  for (const r of reservas) {
+    const cod = codPorId[r._idlisting] || '—';
+    if (!out[cod]) out[cod] = { receitaBruta: 0, comissao: 0, receitaLiquida: 0, reservas: 0, noites: 0 };
+    const bruto = (r.price && r.price._f_total) || 0;
+    const com = (r.partner && r.partner.commission && r.partner.commission._mcval && r.partner.commission._mcval.BRL) || 0;
+    const noites = (r.checkInDate && r.checkOutDate) ? Math.max(0, Math.round((Date.parse(r.checkOutDate) - Date.parse(r.checkInDate)) / 86400000)) : 0;
+    out[cod].receitaBruta += bruto; out[cod].comissao += com; out[cod].receitaLiquida += bruto - com;
+    out[cod].reservas += 1; out[cod].noites += noites;
+  }
+  return out;
+}
+
+// ---- Custos por imóvel (lançamento mensal) ----
+const CAT_CUSTO = ['energia', 'agua', 'internet', 'limpeza', 'piscina', 'jardim', 'condominio', 'iptu', 'manutencao', 'suprimentos', 'outros'];
+app.get('/staff/api/financeiro/custos', requirePublishOrSession, (req, res) => {
+  if (!podeFinanceiro(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/CEO).' });
+  let custos = lerJSON('custos-imovel.json', []);
+  if (req.query.mes) custos = custos.filter(c => c.mes === req.query.mes);
+  res.json({ custos, categorias: CAT_CUSTO });
+});
+app.post('/staff/api/financeiro/custos', requirePublishOrSession, (req, res) => {
+  if (!podeFinanceiro(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/CEO).' });
+  const d = req.body || {};
+  if (!/^\d{4}-\d{2}$/.test(d.mes || '')) return res.status(400).json({ erro: 'Informe o mês (yyyy-MM).' });
+  const imovel = String(d.imovel || '').trim();
+  if (!imovel) return res.status(400).json({ erro: 'Informe o imóvel.' });
+  const custos = lerJSON('custos-imovel.json', []);
+  const item = {
+    id: novoId(), mes: d.mes, imovel,
+    categoria: CAT_CUSTO.includes(d.categoria) ? d.categoria : 'outros',
+    valor: d.valor != null && d.valor !== '' ? Number(String(d.valor).replace(',', '.')) || 0 : 0,
+    obs: String(d.obs || '').trim(),
+    quem: req.viaChave ? 'agente' : (req.user.nome || req.user.email || 'staff'),
+    criadoEm: new Date().toISOString(),
+  };
+  custos.push(item);
+  salvarJSON('custos-imovel.json', custos);
+  res.json({ ok: true, item });
+});
+app.delete('/staff/api/financeiro/custos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeFinanceiro(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/CEO).' });
+  const custos = lerJSON('custos-imovel.json', []);
+  const rest = custos.filter(c => c.id !== req.params.id);
+  salvarJSON('custos-imovel.json', rest);
+  res.json({ ok: true, removidos: custos.length - rest.length });
+});
+
+// ---- DRE por imóvel (mês): receita líquida da Stays − custos lançados ----
+app.get('/staff/api/financeiro/dre', requirePublishOrSession, async (req, res) => {
+  if (!podeFinanceiro(req)) return res.status(403).json({ erro: 'Acesso restrito (Financeiro/CEO).' });
+  const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : hojeBrasil().slice(0, 7);
+  try {
+    const receita = await receitaPorImovelMes(mes);
+    const custos = lerJSON('custos-imovel.json', []).filter(c => c.mes === mes);
+    const custoPorImovel = {}; for (const c of custos) custoPorImovel[c.imovel] = (custoPorImovel[c.imovel] || 0) + (Number(c.valor) || 0);
+    const codigos = [...new Set([...Object.keys(receita), ...Object.keys(custoPorImovel)])].filter(c => c && c !== '—').sort();
+    const linhas = codigos.map(cod => {
+      const r = receita[cod] || { receitaBruta: 0, comissao: 0, receitaLiquida: 0, reservas: 0, noites: 0 };
+      const custo = custoPorImovel[cod] || 0;
+      const resultado = r.receitaLiquida - custo;
+      return { imovel: cod, receitaBruta: Math.round(r.receitaBruta), comissao: Math.round(r.comissao), receitaLiquida: Math.round(r.receitaLiquida), custos: Math.round(custo), resultado: Math.round(resultado), margem: r.receitaLiquida ? Math.round(1000 * resultado / r.receitaLiquida) / 10 : null, reservas: r.reservas, noites: r.noites, temCusto: cod in custoPorImovel };
+    });
+    const tot = linhas.reduce((s, l) => ({ receitaBruta: s.receitaBruta + l.receitaBruta, comissao: s.comissao + l.comissao, receitaLiquida: s.receitaLiquida + l.receitaLiquida, custos: s.custos + l.custos, resultado: s.resultado + l.resultado }), { receitaBruta: 0, comissao: 0, receitaLiquida: 0, custos: 0, resultado: 0 });
+    res.json({ mes, linhas, total: tot });
+  } catch (e) { console.error('[dre]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
+});
+
+// ---- Cockpit de revenue: pickup, ocupação futura, ADR/RevPAR, mix por canal ----
+app.get('/staff/api/revenue/cockpit', requireAuth, async (req, res) => {
+  if (!['revenue', 'ceo', 'financeiro'].some(a => podeArea(req.user, a)) && req.user.papel !== 'admin')
+    return res.status(403).json({ erro: 'Acesso restrito (Revenue/CEO).' });
+  try {
+    const hoje = hojeBrasil();
+    const listings = await staysPaginado('/content/listings', {});
+    const ativos = listings.filter(l => l.status === 'active');
+    const nUnid = ativos.length;
+    const codPorId = {}; ativos.forEach(l => { codPorId[l._id] = l.id; });
+    // Pickup: reservas criadas nos últimos 30 dias
+    const de30 = new Date(Date.parse(hoje) - 30 * 86400000).toISOString().slice(0, 10);
+    const criadas = (await staysPaginado('/booking/reservations', { from: de30, to: hoje, dateType: 'creation' }))
+      .filter(r => !['canceled', 'blocked', 'maintenance'].includes(r.type));
+    const de7 = new Date(Date.parse(hoje) - 7 * 86400000).toISOString().slice(0, 10);
+    const pickup30 = { reservas: criadas.length, valor: Math.round(criadas.reduce((s, r) => s + ((r.price && r.price._f_total) || 0), 0)) };
+    const c7 = criadas.filter(r => (r.creationDate || r.createdAt || '').slice(0, 10) >= de7);
+    const pickup7 = { reservas: c7.length, valor: Math.round(c7.reduce((s, r) => s + ((r.price && r.price._f_total) || 0), 0)) };
+    // Janela futura 90 dias (uma leitura), recorta 30/60/90
+    const ate90 = new Date(Date.parse(hoje) + 90 * 86400000).toISOString().slice(0, 10);
+    const futuras = (await staysPaginado('/booking/reservations', { from: hoje, to: ate90, dateType: 'included' }))
+      .filter(r => !['canceled'].includes(r.type));
+    const estadias = futuras.filter(r => r.type !== 'blocked' && r.type !== 'maintenance');
+    const noitesNaJanela = (r, ini, fim) => {
+      const ci = r.checkInDate > ini ? r.checkInDate : ini, co = r.checkOutDate < fim ? r.checkOutDate : fim;
+      return Math.max(0, Math.round((Date.parse(co) - Date.parse(ci)) / 86400000));
+    };
+    const bloco = (dias) => {
+      const fim = new Date(Date.parse(hoje) + dias * 86400000).toISOString().slice(0, 10);
+      let noitesVend = 0, receita = 0;
+      for (const r of estadias) { const n = noitesNaJanela(r, hoje, fim); if (n > 0) { noitesVend += n; const noitesTot = Math.max(1, Math.round((Date.parse(r.checkOutDate) - Date.parse(r.checkInDate)) / 86400000)); receita += ((r.price && r.price._f_total) || 0) * n / noitesTot; } }
+      const noitesDisp = nUnid * dias;
+      return { dias, ocupacaoPct: noitesDisp ? Math.round(1000 * noitesVend / noitesDisp) / 10 : 0, noitesVendidas: noitesVend, receitaPrevista: Math.round(receita), adr: noitesVend ? Math.round(receita / noitesVend) : 0, revpar: noitesDisp ? Math.round(receita / noitesDisp) : 0 };
+    };
+    // Mix por canal (estadias futuras)
+    const mix = {};
+    for (const r of estadias) { const p = normalizarPlataforma(r.partner).rotulo; mix[p] = (mix[p] || 0) + 1; }
+    res.set('Cache-Control', 'no-store');
+    res.json({ hoje, unidades: nUnid, pickup7, pickup30, futuro: [bloco(30), bloco(60), bloco(90)], mixCanal: Object.entries(mix).map(([k, v]) => ({ canal: k, n: v })).sort((a, b) => b.n - a.n) });
+  } catch (e) { console.error('[revenue]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
+});
+
+// ---- Obras e Decoração: quadro com ROI ----
+const OBRA_STATUS = ['ideia', 'orcamento', 'aprovado', 'em_obra', 'concluido'];
+function podeObras(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'obras') || podeArea(req.user, 'ceo'))); }
+app.get('/staff/api/obras', requirePublishOrSession, (req, res) => {
+  if (!podeObras(req)) return res.status(403).json({ erro: 'Acesso restrito (Obras/CEO).' });
+  res.json({ obras: lerJSON('obras.json', []) });
+});
+app.post('/staff/api/obras', requirePublishOrSession, (req, res) => {
+  if (!podeObras(req)) return res.status(403).json({ erro: 'Acesso restrito (Obras/CEO).' });
+  const d = req.body || {};
+  const titulo = String(d.titulo || '').trim();
+  if (!titulo) return res.status(400).json({ erro: 'Informe o título da obra/melhoria.' });
+  const obras = lerJSON('obras.json', []);
+  const num = (v) => v != null && v !== '' ? Number(String(v).replace(',', '.')) || 0 : 0;
+  const o = {
+    id: novoId(), titulo, imovel: String(d.imovel || '').trim(), descricao: String(d.descricao || '').trim(),
+    status: OBRA_STATUS.includes(d.status) ? d.status : 'ideia',
+    custoPrevisto: num(d.custoPrevisto), custoReal: num(d.custoReal),
+    diariaExtra: num(d.diariaExtra), ocupacaoMes: d.ocupacaoMes != null && d.ocupacaoMes !== '' ? num(d.ocupacaoMes) : 12,
+    quem: req.viaChave ? 'agente' : (req.user.nome || req.user.email || 'staff'),
+    criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
+  };
+  obras.push(o);
+  salvarJSON('obras.json', obras);
+  res.json({ ok: true, obra: o });
+});
+app.patch('/staff/api/obras/:id', requirePublishOrSession, (req, res) => {
+  if (!podeObras(req)) return res.status(403).json({ erro: 'Acesso restrito (Obras/CEO).' });
+  const obras = lerJSON('obras.json', []);
+  const o = obras.find(x => x.id === req.params.id);
+  if (!o) return res.status(404).json({ erro: 'Obra não encontrada.' });
+  const d = req.body || {};
+  const num = (v) => v === '' || v == null ? 0 : Number(String(v).replace(',', '.')) || 0;
+  if (d.status && OBRA_STATUS.includes(d.status)) o.status = d.status;
+  for (const campo of ['titulo', 'imovel', 'descricao']) if (d[campo] != null) o[campo] = String(d[campo]).trim();
+  for (const campo of ['custoPrevisto', 'custoReal', 'diariaExtra', 'ocupacaoMes']) if (d[campo] !== undefined) o[campo] = num(d[campo]);
+  o.atualizadoEm = new Date().toISOString();
+  salvarJSON('obras.json', obras);
+  res.json({ ok: true, obra: o });
+});
+app.delete('/staff/api/obras/:id', requirePublishOrSession, (req, res) => {
+  if (!podeObras(req)) return res.status(403).json({ erro: 'Acesso restrito (Obras/CEO).' });
+  const obras = lerJSON('obras.json', []);
+  const rest = obras.filter(x => x.id !== req.params.id);
+  salvarJSON('obras.json', rest);
+  res.json({ ok: true, removidos: obras.length - rest.length });
+});
+
+// ---- Marketing: conversão por origem (a partir do CRM) ----
+app.get('/staff/api/marketing/conversao', requireAuth, (req, res) => {
+  if (!['marketing', 'vendas', 'ceo'].some(a => podeArea(req.user, a)) && req.user.papel !== 'admin')
+    return res.status(403).json({ erro: 'Acesso restrito (Marketing/Vendas/CEO).' });
+  const ganhosEst = ['reserva', 'hospedado', 'posvenda'];
+  const porOrigem = {};
+  for (const c of lerContatos()) {
+    const o = (c.origem || 'manual').trim() || 'manual';
+    if (!porOrigem[o]) porOrigem[o] = { origem: o, leads: 0, ganhos: 0, perdidos: 0, valorGanho: 0 };
+    porOrigem[o].leads++;
+    if (ganhosEst.includes(c.estagio)) { porOrigem[o].ganhos++; porOrigem[o].valorGanho += Number(c.valorEstimado) || 0; }
+    else if (c.estagio === 'perdido') porOrigem[o].perdidos++;
+  }
+  const linhas = Object.values(porOrigem).map(o => ({ ...o, valorGanho: Math.round(o.valorGanho), conversao: o.leads ? Math.round(1000 * o.ganhos / o.leads) / 10 : 0 }))
+    .sort((a, b) => b.leads - a.leads);
+  res.json({ linhas, totalLeads: linhas.reduce((s, l) => s + l.leads, 0), totalGanhos: linhas.reduce((s, l) => s + l.ganhos, 0) });
+});
+
 // ============================ Agenda: pedidos de evento (portal → Claude executa) ============================
 // O portal registra pedidos de CRIAR/EXCLUIR evento; uma rotina do Claude (com acesso ao Google
 // Calendar) lê os pendentes, efetiva e marca como feito (PATCH).
@@ -1953,6 +2198,7 @@ app.post('/staff/api/stays/reserva', requireAuth, requireAdmin, async (req, res)
 
     if (tipo === 'bloqueio') {
       const r = await staysPost('/booking/reservations', { type: 'blocked', listingId, checkInDate, checkOutDate });
+      registrarAuditoria(req, 'stays.bloqueio', `${listingId} ${checkInDate}→${checkOutDate}`);
       return res.json({ ok: true, tipo: 'bloqueio', reserva: { id: r.id, idInterno: r._id, checkIn: r.checkInDate, checkOut: r.checkOutDate } });
     }
     // Reserva: garante o cliente (existente ou cadastra novo)
@@ -1970,6 +2216,7 @@ app.post('/staff/api/stays/reserva', requireAuth, requireAdmin, async (req, res)
     if (!clienteId) return res.status(400).json({ erro: 'Informe um hóspede (escolha um existente ou cadastre um novo).' });
     const guests = Math.max(1, parseInt(d.guests) || 1);
     const r = await staysPost('/booking/reservations', { type: 'booked', listingId, checkInDate, checkOutDate, _idclient: clienteId, guests });
+    registrarAuditoria(req, 'stays.reserva', `${listingId} ${checkInDate}→${checkOutDate} (${guests} hósp.)`);
     res.json({ ok: true, tipo: 'reserva', reserva: { id: r.id, idInterno: r._id, checkIn: r.checkInDate, checkOut: r.checkOutDate, valorTotal: (r.price && r.price._f_total) || null, moeda: (r.price && r.price.currency) || 'BRL', hospedes: r.guests } });
   } catch (e) {
     console.error('[stays criar]', e.message);
@@ -3365,6 +3612,7 @@ app.post('/staff/api/hospede/conta/:hospedeId/lancamento', requirePublishOrAdmin
     criadoEm: new Date().toISOString(), criadoPor: req.viaChave ? 'sistema' : ((req.user && req.user.nome) || 'admin'),
   };
   const ls = lerLancamentos(); ls.push(lanc); salvarLancamentos(ls);
+  registrarAuditoria(req, 'conta.lancamento', `${h.nome || h.id}: ${d.tipo} ${valor} — ${descricao}`);
   res.json({ ok: true, conta: resumoConta(h.id) });
 });
 app.delete('/staff/api/hospede/conta/:hospedeId/lancamento/:id', requirePublishOrAdmin, (req, res) => {
