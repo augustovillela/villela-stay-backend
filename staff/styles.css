@@ -327,6 +327,14 @@ tr:last-child td { border-bottom: none; }
 .cr-resumo.bloq { border-left-color: var(--alerta); background: #fdf4f3; }
 .sh-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); border-color: var(--lago); }
 
+/* ---------- Fotos (chamados / obras / limpeza) ---------- */
+.ft-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.ft-item { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; border: 1px solid var(--borda); background: var(--areia); }
+.ft-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ft-del { position: absolute; top: 4px; right: 4px; background: rgba(179,38,30,.9); color: #fff; border: none;
+  border-radius: 8px; width: 22px; height: 22px; cursor: pointer; font-size: .8rem; line-height: 1; }
+.ft-del:hover { background: var(--alerta); }
+
 /* ---------- Mural da equipe (comunicação interna) ---------- */
 .mural-form { background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 14px 16px; margin-bottom: 18px; display: grid; gap: 10px; }
 .mural-form textarea { resize: vertical; }

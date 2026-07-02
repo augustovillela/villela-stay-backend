@@ -1382,6 +1382,7 @@ app.post('/staff/api/manutencao/chamados', requirePublishOrSession, (req, res) =
     status: CHAMADO_STATUS.includes(d.status) ? d.status : 'aberto',
     tecnico: String(d.tecnico || '').trim(),
     custo: d.custo != null && d.custo !== '' ? Number(d.custo) || 0 : null,
+    ativoId: String(d.ativoId || '').trim(),
     origem: req.viaChave ? (String(d.origem || '').trim() || 'agente') : 'portal',
     quem: req.viaChave ? (String(d.quem || '').trim() || 'Agente Claude') : (req.user.nome || req.user.email || 'staff'),
     criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(), concluidoEm: null,
@@ -1397,7 +1398,7 @@ app.patch('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, r
   if (!ch) return res.status(404).json({ erro: 'Chamado não encontrado.' });
   const d = req.body || {};
   if (d.status && CHAMADO_STATUS.includes(d.status)) { ch.status = d.status; ch.concluidoEm = d.status === 'concluido' ? new Date().toISOString() : null; }
-  for (const campo of ['titulo', 'casa', 'descricao', 'tecnico']) if (d[campo] != null) ch[campo] = String(d[campo]).trim();
+  for (const campo of ['titulo', 'casa', 'descricao', 'tecnico', 'ativoId']) if (d[campo] != null) ch[campo] = String(d[campo]).trim();
   if (d.custo !== undefined) ch.custo = d.custo === '' || d.custo == null ? null : Number(d.custo) || 0;
   ch.atualizadoEm = new Date().toISOString();
   salvarJSON('manutencao-chamados.json', chamados);
@@ -2074,6 +2075,182 @@ app.delete('/staff/api/revenue/datas-quentes/:id', requirePublishOrSession, (req
   if (!podeRevenue(req)) return res.status(403).json({ erro: 'Acesso restrito (Revenue/CEO).' });
   const datas = lerJSON('datas-quentes.json', []);
   salvarJSON('datas-quentes.json', datas.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
+// ============================ ONDA 6: Fotos, Ativos (equipamentos), Estoque (enxoval/amenities) ============================
+
+// ---- Fotos genéricas por entidade (chamado, obra, limpeza) ----
+const FOTOS_DIR = path.join(DATA_DIR, 'fotos');
+fs.mkdirSync(FOTOS_DIR, { recursive: true });
+const EXT_IMG = { '.jpg': 1, '.jpeg': 1, '.png': 1, '.webp': 1, '.gif': 1, '.heic': 1 };
+
+app.get('/staff/api/fotos', requirePublishOrSession, (req, res) => {
+  let fotos = lerJSON('fotos.json', []);
+  if (req.query.entidade) fotos = fotos.filter(f => f.entidade === req.query.entidade);
+  if (req.query.entidadeId) fotos = fotos.filter(f => f.entidadeId === req.query.entidadeId);
+  res.json({ fotos: fotos.map(({ arquivo, ...m }) => m).sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))) });
+});
+
+app.post('/staff/api/fotos', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const entidade = String(d.entidade || '').trim();
+  const entidadeId = String(d.entidadeId || '').trim();
+  if (!entidade || !entidadeId) return res.status(400).json({ erro: 'Informe a entidade e o id.' });
+  if (!d.base64 || !d.nomeArquivo) return res.status(400).json({ erro: 'Envie a imagem.' });
+  const ext = path.extname(String(d.nomeArquivo)).toLowerCase().slice(0, 8);
+  if (!EXT_IMG[ext]) return res.status(400).json({ erro: 'Formato inválido (use JPG, PNG, WEBP…).' });
+  const buf = Buffer.from(String(d.base64), 'base64');
+  if (buf.length > 6 * 1024 * 1024) return res.status(400).json({ erro: 'Imagem acima de 6 MB.' });
+  const fotos = lerJSON('fotos.json', []);
+  const id = novoId();
+  const arquivo = id + ext;
+  try { fs.writeFileSync(path.join(FOTOS_DIR, arquivo), buf); } catch (e) { return res.status(400).json({ erro: 'Imagem inválida.' }); }
+  const foto = {
+    id, entidade, entidadeId, arquivo, ext,
+    legenda: String(d.legenda || '').slice(0, 200),
+    quem: req.viaChave ? 'agente' : (req.user.nome || req.user.email || 'staff'),
+    criadoEm: new Date().toISOString(),
+  };
+  fotos.push(foto);
+  salvarJSON('fotos.json', fotos);
+  res.json({ ok: true, foto: { ...foto, arquivo: undefined } });
+});
+
+app.get('/staff/api/fotos/:id/arquivo', requireAuth, (req, res) => {
+  const f = lerJSON('fotos.json', []).find(x => x.id === req.params.id);
+  if (!f) return res.sendStatus(404);
+  const alvo = path.join(FOTOS_DIR, f.arquivo);
+  if (!fs.existsSync(alvo)) return res.sendStatus(404);
+  res.sendFile(alvo);
+});
+
+app.delete('/staff/api/fotos/:id', requirePublishOrSession, (req, res) => {
+  const fotos = lerJSON('fotos.json', []);
+  const f = fotos.find(x => x.id === req.params.id);
+  if (f) { try { fs.unlinkSync(path.join(FOTOS_DIR, f.arquivo)); } catch {} }
+  salvarJSON('fotos.json', fotos.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
+// ---- Ativos (equipamentos): ficha por equipamento com histórico e gasto ----
+const CAT_ATIVO = ['ar-condicionado', 'aquecedor', 'piscina', 'eletrodomestico', 'mobiliario', 'hidraulica', 'eletrica', 'outro'];
+function podeManut(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'manutencao') || podeArea(req.user, 'operacoes') || podeArea(req.user, 'obras') || podeArea(req.user, 'ceo'))); }
+app.get('/staff/api/ativos', requirePublishOrSession, (req, res) => {
+  if (!podeManut(req)) return res.status(403).json({ erro: 'Acesso restrito (Manutenção/Operações).' });
+  const ativos = lerJSON('ativos.json', []);
+  const chamados = lerJSON('manutencao-chamados.json', []);
+  const out = ativos.map(a => {
+    const chs = chamados.filter(c => c.ativoId === a.id);
+    const gasto = chs.reduce((s, c) => s + (Number(c.custo) || 0), 0);
+    return { ...a, chamados: chs.length, gastoAcumulado: Math.round(gasto * 100) / 100 };
+  }).sort((a, b) => String(a.casa).localeCompare(String(b.casa)) || String(a.nome).localeCompare(String(b.nome)));
+  res.json({ ativos: out, categorias: CAT_ATIVO });
+});
+app.get('/staff/api/ativos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeManut(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const a = lerJSON('ativos.json', []).find(x => x.id === req.params.id);
+  if (!a) return res.status(404).json({ erro: 'Ativo não encontrado.' });
+  const chamados = lerJSON('manutencao-chamados.json', []).filter(c => c.ativoId === a.id)
+    .sort((x, y) => String(y.criadoEm).localeCompare(String(x.criadoEm)));
+  const gasto = chamados.reduce((s, c) => s + (Number(c.custo) || 0), 0);
+  res.json({ ativo: a, chamados, gastoAcumulado: Math.round(gasto * 100) / 100 });
+});
+app.post('/staff/api/ativos', requirePublishOrSession, (req, res) => {
+  if (!podeManut(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const d = req.body || {};
+  const nome = String(d.nome || '').trim();
+  if (!nome) return res.status(400).json({ erro: 'Informe o nome do equipamento.' });
+  const ativos = lerJSON('ativos.json', []);
+  const a = {
+    id: novoId(), nome, casa: String(d.casa || '').trim(),
+    categoria: CAT_ATIVO.includes(d.categoria) ? d.categoria : 'outro',
+    marca: String(d.marca || '').trim(), modelo: String(d.modelo || '').trim(),
+    dataInstalacao: String(d.dataInstalacao || '').trim(), obs: String(d.obs || '').trim(),
+    quem: req.viaChave ? 'agente' : (req.user.nome || req.user.email || 'staff'), criadoEm: new Date().toISOString(),
+  };
+  ativos.push(a);
+  salvarJSON('ativos.json', ativos);
+  res.json({ ok: true, ativo: a });
+});
+app.patch('/staff/api/ativos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeManut(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const ativos = lerJSON('ativos.json', []);
+  const a = ativos.find(x => x.id === req.params.id);
+  if (!a) return res.status(404).json({ erro: 'Ativo não encontrado.' });
+  const d = req.body || {};
+  for (const c of ['nome', 'casa', 'marca', 'modelo', 'dataInstalacao', 'obs']) if (d[c] != null) a[c] = String(d[c]).trim();
+  if (d.categoria && CAT_ATIVO.includes(d.categoria)) a.categoria = d.categoria;
+  salvarJSON('ativos.json', ativos);
+  res.json({ ok: true, ativo: a });
+});
+app.delete('/staff/api/ativos/:id', requirePublishOrSession, (req, res) => {
+  if (!podeManut(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const ativos = lerJSON('ativos.json', []);
+  salvarJSON('ativos.json', ativos.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
+// ---- Estoque (enxoval / amenities) com alerta de mínimo e "repor" na lista de compras ----
+function podeEstoque(req) { return req.viaChave || (req.user && (req.user.papel === 'admin' || podeArea(req.user, 'operacoes') || podeArea(req.user, 'compras') || podeArea(req.user, 'ceo'))); }
+app.get('/staff/api/estoque', requirePublishOrSession, (req, res) => {
+  if (!podeEstoque(req)) return res.status(403).json({ erro: 'Acesso restrito (Operações/Compras).' });
+  const itens = lerJSON('estoque.json', []).map(i => ({ ...i, baixo: Number(i.quantidade) <= Number(i.minimo) }))
+    .sort((a, b) => (b.baixo - a.baixo) || String(a.casa).localeCompare(String(b.casa)) || String(a.item).localeCompare(String(b.item)));
+  res.json({ itens });
+});
+app.post('/staff/api/estoque', requirePublishOrSession, (req, res) => {
+  if (!podeEstoque(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const d = req.body || {};
+  const item = String(d.item || '').trim();
+  if (!item) return res.status(400).json({ erro: 'Informe o item.' });
+  const itens = lerJSON('estoque.json', []);
+  const novo = {
+    id: novoId(), item, casa: String(d.casa || '').trim(),
+    categoria: String(d.categoria || '').trim(), unidade: String(d.unidade || 'un').trim().slice(0, 12),
+    quantidade: Number(d.quantidade) || 0, minimo: Number(d.minimo) || 0,
+    obs: String(d.obs || '').trim(),
+    quem: req.viaChave ? 'agente' : (req.user.nome || req.user.email || 'staff'), criadoEm: new Date().toISOString(),
+  };
+  itens.push(novo);
+  salvarJSON('estoque.json', itens);
+  res.json({ ok: true, item: novo });
+});
+app.patch('/staff/api/estoque/:id', requirePublishOrSession, (req, res) => {
+  if (!podeEstoque(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('estoque.json', []);
+  const it = itens.find(x => x.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Item não encontrado.' });
+  const d = req.body || {};
+  for (const c of ['item', 'casa', 'categoria', 'unidade', 'obs']) if (d[c] != null) it[c] = String(d[c]).trim();
+  if (d.quantidade !== undefined) it.quantidade = Number(d.quantidade) || 0;
+  if (d.minimo !== undefined) it.minimo = Number(d.minimo) || 0;
+  salvarJSON('estoque.json', itens);
+  res.json({ ok: true, item: it });
+});
+app.delete('/staff/api/estoque/:id', requirePublishOrSession, (req, res) => {
+  if (!podeEstoque(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const itens = lerJSON('estoque.json', []);
+  salvarJSON('estoque.json', itens.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+// Repor: joga o item na lista de compras (dedupe por refId 'estoque:<id>')
+app.post('/staff/api/estoque/:id/repor', requirePublishOrSession, (req, res) => {
+  if (!podeEstoque(req)) return res.status(403).json({ erro: 'Acesso restrito.' });
+  const it = lerJSON('estoque.json', []).find(x => x.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Item não encontrado.' });
+  const compras = lerJSON('lista-compras.json', []);
+  const refId = 'estoque:' + it.id;
+  if (compras.some(c => c.refId === refId)) return res.json({ ok: true, duplicado: true });
+  const qtd = (req.body && req.body.quantidade) || '';
+  compras.push({
+    id: novoId(), quantidade: String(qtd).trim(),
+    nome: it.item + (it.casa ? ' (' + it.casa + ')' : ''),
+    obs: 'Reposição de estoque' + (it.minimo ? ' · mínimo ' + it.minimo + ' ' + it.unidade : ''),
+    origem: 'portal', quem: req.viaChave ? 'Estoque' : (req.user.nome || 'staff'), refId,
+    criadoEm: new Date().toISOString(),
+  });
+  salvarJSON('lista-compras.json', compras);
   res.json({ ok: true });
 });
 

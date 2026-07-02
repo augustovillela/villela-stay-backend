@@ -179,6 +179,8 @@ function construirItensMenu() {
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
   itens.push({ id: 'manutencao', rot: '🔧 Lista de manutenção' });
   itens.push({ id: 'manutencao-chamados', rot: '🛠️ Chamados de manutenção' });
+  if (tem('manutencao') || tem('operacoes') || tem('obras') || tem('ceo')) itens.push({ id: 'ativos', rot: '🧰 Equipamentos' });
+  if (tem('operacoes') || tem('compras') || tem('ceo')) itens.push({ id: 'estoque', rot: '🧴 Estoque & enxoval' });
   // Pendências é restrita à área CEO (admin vê tudo); demais não veem o item.
   if (tem('ceo')) itens.push({ id: 'pendencias', rot: '✅ Pendências' });
   itens.push({ id: 'agenda', rot: '📅 Agenda (eventos)' });
@@ -309,7 +311,7 @@ function navegar(secao) {
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
   window.scrollTo(0, 0);
-  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, ativos: renderAtivos, estoque: renderEstoque, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -985,8 +987,10 @@ async function carregarLimpezas() {
         <span class="qtd">${t.tipo === 'faxina' ? '🧹 Faxina' : '🛏️ Preparação'}</span>
         <span class="nome">${esc(t.codigo)} · ${esc(t.titulo)} <span class="obs">${t.tipo === 'faxina' ? 'saída' : 'chegada'} de ${esc(t.hospede)}${t.hospedes ? ' (' + t.hospedes + ' hósp.)' : ''}</span></span>
         <span class="quem">${t.concluida ? '✅ ' + esc(t.quem) + ' · ' + dataBr(t.quando) : 'pendente'}</span>
-        <button class="btn peq ${t.concluida ? 'secund' : ''}" data-cod="${esc(t.codigo)}" data-tipo="${t.tipo}" data-desfazer="${t.concluida ? 1 : 0}">
-          ${t.concluida ? 'Desfazer' : 'Concluído ✓'}</button>
+        <div class="acoes" style="grid-column:2;grid-row:1/span 3">
+          <button class="btn peq secund" data-fotos="limpeza:${dia}|${esc(t.codigo)}|${t.tipo}" data-tit="${esc(t.codigo)} · ${t.tipo === 'faxina' ? 'faxina' : 'preparação'}">📷</button>
+          <button class="btn peq ${t.concluida ? 'secund' : ''}" data-cod="${esc(t.codigo)}" data-tipo="${t.tipo}" data-desfazer="${t.concluida ? 1 : 0}">${t.concluida ? 'Desfazer' : 'Concluído ✓'}</button>
+        </div>
       </div>`).join('');
     alvo.querySelectorAll('button[data-cod]').forEach(b => b.onclick = async () => {
       try {
@@ -994,7 +998,59 @@ async function carregarLimpezas() {
         carregarLimpezas();
       } catch (e) { alert(e.message); }
     });
+    alvo.querySelectorAll('[data-fotos]').forEach(b => b.onclick = () => { const i = b.dataset.fotos.indexOf(':'); abrirFotosModal(b.dataset.fotos.slice(0, i), b.dataset.fotos.slice(i + 1), b.dataset.tit); });
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Fotos (reaproveitável: chamados, obras, limpeza) ---------
+// Lê e converte um arquivo de imagem em base64 (sem o prefixo data:).
+function arquivoParaBase64(file) {
+  return new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = no; fr.readAsDataURL(file); });
+}
+async function abrirFotosModal(entidade, entidadeId, titulo) {
+  const antigo = document.querySelector('.cal-modal'); if (antigo) antigo.remove();
+  const modal = document.createElement('div'); modal.className = 'cal-modal';
+  modal.innerHTML = `<div class="cal-modal-cx" style="max-width:560px">
+    <button class="cal-modal-x" id="ft-x">✕</button>
+    <h3>📷 Fotos — ${esc(titulo || '')}</h3>
+    <label class="btn peq" style="display:inline-block;cursor:pointer">➕ Adicionar foto<input type="file" id="ft-input" accept="image/*" capture="environment" style="display:none"></label>
+    <p id="ft-msg" class="sub" style="margin:8px 0 0"></p>
+    <div id="ft-grade" class="ft-grade" style="margin-top:12px"><p class="vazio">Carregando…</p></div>
+  </div>`;
+  document.body.appendChild(modal);
+  const fechar = () => modal.remove();
+  modal.onclick = (e) => { if (e.target === modal) fechar(); };
+  $('#ft-x').onclick = fechar;
+  const carregar = async () => {
+    try {
+      const { fotos } = await api('GET', `/fotos?entidade=${encodeURIComponent(entidade)}&entidadeId=${encodeURIComponent(entidadeId)}`);
+      const g = $('#ft-grade'); if (!g) return;
+      g.innerHTML = fotos.length ? fotos.map(f => `<div class="ft-item">
+        <a href="/staff/api/fotos/${f.id}/arquivo" target="_blank" rel="noopener"><img src="/staff/api/fotos/${f.id}/arquivo" alt="${esc(f.legenda || '')}" loading="lazy"></a>
+        <button class="ft-del" data-del-ft="${f.id}" title="Excluir">✕</button>
+      </div>`).join('') : '<p class="vazio">Sem fotos ainda. Toque em “Adicionar foto”.</p>';
+      g.querySelectorAll('[data-del-ft]').forEach(b => b.onclick = async () => { if (!confirm('Excluir esta foto?')) return; try { await api('DELETE', '/fotos/' + b.dataset.delFt); carregar(); atualizarContadorFotos(entidade, entidadeId); } catch (e) { alert(e.message); } });
+    } catch (e) { $('#ft-grade').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+  };
+  $('#ft-input').onchange = async (ev) => {
+    const file = ev.target.files[0]; if (!file) return;
+    const msg = $('#ft-msg'); msg.textContent = 'Enviando…';
+    try {
+      if (file.size > 6 * 1024 * 1024) throw new Error('Imagem acima de 6 MB.');
+      const base64 = await arquivoParaBase64(file);
+      await api('POST', '/fotos', { entidade, entidadeId, nomeArquivo: file.name, base64 });
+      msg.textContent = ''; ev.target.value = ''; carregar(); atualizarContadorFotos(entidade, entidadeId);
+    } catch (e) { msg.textContent = e.message; }
+  };
+  carregar();
+}
+// Atualiza o rótulo "📷 N" do botão da entidade após adicionar/remover foto.
+async function atualizarContadorFotos(entidade, entidadeId) {
+  try {
+    const { fotos } = await api('GET', `/fotos?entidade=${encodeURIComponent(entidade)}&entidadeId=${encodeURIComponent(entidadeId)}`);
+    const b = document.querySelector(`[data-fotos="${entidade}:${entidadeId}"]`);
+    if (b) b.textContent = '📷 ' + fotos.length;
+  } catch (_) {}
 }
 
 // --------- Chamados de manutenção (quadro por status, com técnico e custo) ---------
@@ -1012,14 +1068,18 @@ async function renderChamadosManutencao() {
         <label>Casa / unidade <input id="ch-casa" maxlength="80" placeholder="ex.: Casa Modernista, Villa Kubitschek…"></label>
         <label>Descrição <textarea id="ch-desc" rows="2" maxlength="1000"></textarea></label>
         <label>Técnico / responsável <input id="ch-tecnico" maxlength="80" placeholder="ex.: Rosivaldo, Julio, Antônio…"></label>
-        <label>Custo (R$) <input id="ch-custo" type="number" min="0" step="0.01" placeholder="deixe vazio se ainda não sabe"></label>
+        <div class="hi-grid">
+          <label>Custo (R$) <input id="ch-custo" type="number" min="0" step="0.01" placeholder="deixe vazio se ainda não sabe"></label>
+          <label>Equipamento (opcional) <select id="ch-ativo"><option value="">— nenhum —</option></select></label>
+        </div>
         <button class="btn" type="submit" id="ch-salvar">Abrir chamado</button>
       </form>
     </details>
     <div id="ch-board" class="kanban"><p class="vazio">Carregando…</p></div>`;
+  try { const { ativos } = await api('GET', '/ativos'); $('#ch-ativo').innerHTML = '<option value="">— nenhum —</option>' + ativos.map(a => `<option value="${a.id}">${esc(a.nome)}${a.casa ? ' · ' + esc(a.casa) : ''}</option>`).join(''); } catch (_) {}
   $('#ch-form').onsubmit = async (ev) => {
     ev.preventDefault();
-    const corpo = { titulo: $('#ch-titulo').value.trim(), casa: $('#ch-casa').value.trim(), descricao: $('#ch-desc').value.trim(), tecnico: $('#ch-tecnico').value.trim(), custo: $('#ch-custo').value };
+    const corpo = { titulo: $('#ch-titulo').value.trim(), casa: $('#ch-casa').value.trim(), descricao: $('#ch-desc').value.trim(), tecnico: $('#ch-tecnico').value.trim(), custo: $('#ch-custo').value, ativoId: $('#ch-ativo').value };
     try {
       const id = $('#ch-id').value;
       if (id) await api('PATCH', '/manutencao/chamados/' + id, corpo);
@@ -1051,6 +1111,7 @@ async function carregarChamados() {
             <div class="kard-origem">${esc(ch.quem)} · ${dataBr(ch.criadoEm)}</div>
             <div class="acoes" style="margin-top:8px">
               <select data-mover="${ch.id}" style="font-size:.78rem;padding:4px 6px">${opcoesStatus(ch.status)}</select>
+              <button class="btn peq secund" data-fotos="chamado:${ch.id}" data-tit="${esc(ch.titulo)}">📷</button>
               <button class="btn peq secund" data-editar="${ch.id}">Editar</button>
               <button class="btn peq perigo" data-remover="${ch.id}">✕</button>
             </div>
@@ -1064,8 +1125,10 @@ async function carregarChamados() {
       const ch = chamados.find(x => x.id === b.dataset.editar); if (!ch) return;
       $('#ch-id').value = ch.id; $('#ch-titulo').value = ch.titulo; $('#ch-casa').value = ch.casa || '';
       $('#ch-desc').value = ch.descricao || ''; $('#ch-tecnico').value = ch.tecnico || ''; $('#ch-custo').value = ch.custo != null ? ch.custo : '';
+      if ($('#ch-ativo')) $('#ch-ativo').value = ch.ativoId || '';
       $('#ch-salvar').textContent = 'Salvar alterações'; $('#ch-box').open = true; window.scrollTo({ top: 0, behavior: 'smooth' });
     });
+    board.querySelectorAll('[data-fotos]').forEach(b => b.onclick = () => { const [ent, eid] = b.dataset.fotos.split(':'); abrirFotosModal(ent, eid, b.dataset.tit); });
     board.querySelectorAll('[data-remover]').forEach(b => b.onclick = async () => {
       if (!confirm('Excluir este chamado?')) return;
       try { await api('DELETE', '/manutencao/chamados/' + b.dataset.remover); carregarChamados(); } catch (e) { alert(e.message); }
@@ -1535,6 +1598,7 @@ async function carregarObras() {
             ${o.descricao ? `<div class="kard-origem">${esc(o.descricao.slice(0, 80))}</div>` : ''}
             <div class="acoes" style="margin-top:8px">
               <select data-mover-ob="${o.id}" style="font-size:.78rem;padding:4px 6px">${opc(o.status)}</select>
+              <button class="btn peq secund" data-fotos="obra:${o.id}" data-tit="${esc(o.titulo)}">📷</button>
               <button class="btn peq secund" data-editar-ob="${o.id}">✎</button>
               <button class="btn peq perigo" data-del-ob="${o.id}">✕</button>
             </div></div>`;
@@ -1543,6 +1607,7 @@ async function carregarObras() {
     }).join('');
     board.querySelectorAll('[data-mover-ob]').forEach(s => s.onchange = async () => { try { await api('PATCH', '/obras/' + s.dataset.moverOb, { status: s.value }); carregarObras(); } catch (e) { alert(e.message); } });
     board.querySelectorAll('[data-del-ob]').forEach(b => b.onclick = async () => { if (!confirm('Excluir esta obra?')) return; try { await api('DELETE', '/obras/' + b.dataset.delOb); carregarObras(); } catch (e) { alert(e.message); } });
+    board.querySelectorAll('[data-fotos]').forEach(b => b.onclick = () => { const [ent, eid] = b.dataset.fotos.split(':'); abrirFotosModal(ent, eid, b.dataset.tit); });
     board.querySelectorAll('[data-editar-ob]').forEach(b => b.onclick = () => {
       const o = obras.find(x => x.id === b.dataset.editarOb); if (!o) return;
       $('#ob-id').value = o.id; $('#ob-titulo').value = o.titulo; $('#ob-imovel').value = o.imovel || ''; $('#ob-desc').value = o.descricao || '';
@@ -1582,6 +1647,123 @@ async function renderAuditoria() {
       ${eventos.map(e => `<tr><td>${dataBr(e.quando)}</td><td>${esc(e.quem || '—')}</td><td><span class="chip">${esc(e.acao || '')}</span></td><td>${esc(e.detalhe || '')}</td></tr>`).join('')}
     </tbody></table>`;
   } catch (e) { $('#ad-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Equipamentos (ativos): ficha com histórico e gasto ---------
+async function renderAtivos() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Equipamentos', 'Ficha de cada ativo (ar-condicionado, aquecedor, piscina…) com histórico de chamados e gasto acumulado. Vincule os chamados ao equipamento para decidir troca × conserto com dado.') + `
+    <details class="cr-box" id="at-box"><summary class="cr-sum">➕ Novo equipamento</summary>
+      <form class="form" id="at-form" style="max-width:660px;margin-top:12px">
+        <input type="hidden" id="at-id">
+        <label>Nome * <input id="at-nome" required maxlength="120" placeholder="ex.: Ar-condicionado Sala"></label>
+        <div class="hi-grid">
+          <label>Casa / unidade <input id="at-casa" maxlength="80"></label>
+          <label>Categoria <select id="at-cat"></select></label>
+          <label>Marca <input id="at-marca" maxlength="60"></label>
+          <label>Modelo <input id="at-modelo" maxlength="60"></label>
+          <label>Instalado em <input id="at-data" type="date"></label>
+        </div>
+        <label>Observação <input id="at-obs" maxlength="200"></label>
+        <button class="btn" type="submit" id="at-salvar">Adicionar</button>
+      </form>
+    </details>
+    <div id="at-lista"><p class="vazio">Carregando…</p></div>`;
+  try { const { categorias } = await api('GET', '/ativos'); $('#at-cat').innerHTML = categorias.map(x => `<option value="${x}">${x}</option>`).join(''); } catch (_) {}
+  $('#at-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const corpo = { nome: $('#at-nome').value.trim(), casa: $('#at-casa').value.trim(), categoria: $('#at-cat').value, marca: $('#at-marca').value.trim(), modelo: $('#at-modelo').value.trim(), dataInstalacao: $('#at-data').value, obs: $('#at-obs').value.trim() };
+    try { const id = $('#at-id').value; if (id) await api('PATCH', '/ativos/' + id, corpo); else await api('POST', '/ativos', corpo); $('#at-form').reset(); $('#at-id').value = ''; $('#at-salvar').textContent = 'Adicionar'; $('#at-box').open = false; carregarAtivos(); }
+    catch (e) { alert(e.message); }
+  };
+  carregarAtivos();
+}
+async function carregarAtivos() {
+  const alvo = $('#at-lista'); if (!alvo) return;
+  try {
+    const { ativos } = await api('GET', '/ativos');
+    if (!ativos.length) { alvo.innerHTML = '<div class="vazio">Nenhum equipamento cadastrado. Adicione os ativos das casas (ar-condicionado, aquecedor, bomba da piscina…).</div>'; return; }
+    alvo.innerHTML = ativos.map(a => `<div class="item">
+      <h3 style="margin:0 0 4px">${esc(a.nome)}</h3>
+      <div class="meta"><span class="chip">${esc(a.categoria)}</span>${a.casa ? `<span class="chip">${esc(a.casa)}</span>` : ''}${a.marca || a.modelo ? `<span>${esc([a.marca, a.modelo].filter(Boolean).join(' '))}</span>` : ''}${a.dataInstalacao ? `<span>instalado ${esc(a.dataInstalacao)}</span>` : ''}</div>
+      <div class="meta" style="margin-top:6px"><span>🛠️ ${a.chamados} chamado(s)</span><span>💸 gasto acumulado <b>${rMoney(a.gastoAcumulado)}</b></span></div>
+      ${a.obs ? `<p style="margin:6px 0 0;font-size:.9rem">${esc(a.obs)}</p>` : ''}
+      <div class="acoes"><button class="btn peq" data-hist="${a.id}" data-n="${esc(a.nome)}">Ver histórico</button><button class="btn peq secund" data-edit-at="${a.id}">Editar</button><button class="btn peq perigo" data-del-at="${a.id}">Excluir</button></div>
+    </div>`).join('');
+    alvo.querySelectorAll('[data-hist]').forEach(b => b.onclick = () => abrirAtivo(b.dataset.hist, b.dataset.n));
+    alvo.querySelectorAll('[data-del-at]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este equipamento? (os chamados não são apagados)')) return; try { await api('DELETE', '/ativos/' + b.dataset.delAt); carregarAtivos(); } catch (e) { alert(e.message); } });
+    alvo.querySelectorAll('[data-edit-at]').forEach(b => b.onclick = async () => {
+      const { ativo: a } = await api('GET', '/ativos/' + b.dataset.editAt);
+      $('#at-id').value = a.id; $('#at-nome').value = a.nome; $('#at-casa').value = a.casa || ''; $('#at-cat').value = a.categoria; $('#at-marca').value = a.marca || ''; $('#at-modelo').value = a.modelo || ''; $('#at-data').value = a.dataInstalacao || ''; $('#at-obs').value = a.obs || '';
+      $('#at-salvar').textContent = 'Salvar alterações'; $('#at-box').open = true; window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+async function abrirAtivo(id, nome) {
+  try {
+    const { ativo: a, chamados, gastoAcumulado } = await api('GET', '/ativos/' + id);
+    const rot = { aberto: 'Aberto', agendado: 'Agendado', em_execucao: 'Em execução', concluido: 'Concluído' };
+    conteudo().innerHTML = `<button class="btn secund peq" id="at-voltar">← Voltar aos equipamentos</button>
+      ${cabecalho(a.nome, [a.categoria, a.casa].filter(Boolean).join(' · '))}
+      <div class="cards"><div class="card"><div class="n">${chamados.length}</div><div class="rot">Chamados</div></div>
+        <div class="card"><div class="n">${rMoney(gastoAcumulado)}</div><div class="rot">Gasto acumulado</div></div></div>
+      <h2 class="titulo" style="font-size:1.15rem">Histórico de chamados</h2>
+      ${chamados.length ? chamados.map(ch => `<div class="linha-item"><span class="qtd">${dataBr(ch.criadoEm).slice(0, 5)}</span><span class="nome">${esc(ch.titulo)} <span class="obs">${rot[ch.status] || ch.status}${ch.tecnico ? ' · ' + esc(ch.tecnico) : ''}</span></span><span class="quem">${ch.custo != null ? rMoney(ch.custo) : '—'}</span></div>`).join('') : '<div class="vazio">Sem chamados vinculados. Ao abrir um chamado, escolha este equipamento no campo “Equipamento”.</div>'}`;
+    $('#at-voltar').onclick = () => navegar('ativos');
+  } catch (e) { alert(e.message); }
+}
+
+// --------- Estoque (enxoval / amenities) com mínimo e reposição ---------
+async function renderEstoque() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Estoque & enxoval', 'Controle de enxoval e amenities por casa. Itens abaixo do mínimo ficam em destaque; toque em “Repor” para jogar na lista de compras.') + `
+    <details class="cr-box" id="es-box"><summary class="cr-sum">➕ Novo item</summary>
+      <form class="form" id="es-form" style="max-width:660px;margin-top:12px">
+        <input type="hidden" id="es-id">
+        <label>Item * <input id="es-item" required maxlength="120" placeholder="ex.: Jogo de toalhas, Shampoo, Papel higiênico"></label>
+        <div class="hi-grid">
+          <label>Casa <input id="es-casa" maxlength="80"></label>
+          <label>Categoria <input id="es-cat" maxlength="60" placeholder="enxoval / amenities / limpeza"></label>
+          <label>Quantidade <input id="es-qtd" type="number" min="0" step="1"></label>
+          <label>Mínimo <input id="es-min" type="number" min="0" step="1"></label>
+          <label>Unidade <input id="es-un" maxlength="12" placeholder="un / jogo / pct"></label>
+        </div>
+        <label>Observação <input id="es-obs" maxlength="200"></label>
+        <button class="btn" type="submit" id="es-salvar">Adicionar</button>
+      </form>
+    </details>
+    <div id="es-lista"><p class="vazio">Carregando…</p></div>`;
+  $('#es-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const corpo = { item: $('#es-item').value.trim(), casa: $('#es-casa').value.trim(), categoria: $('#es-cat').value.trim(), quantidade: $('#es-qtd').value, minimo: $('#es-min').value, unidade: $('#es-un').value.trim(), obs: $('#es-obs').value.trim() };
+    try { const id = $('#es-id').value; if (id) await api('PATCH', '/estoque/' + id, corpo); else await api('POST', '/estoque', corpo); $('#es-form').reset(); $('#es-id').value = ''; $('#es-salvar').textContent = 'Adicionar'; $('#es-box').open = false; carregarEstoque(); }
+    catch (e) { alert(e.message); }
+  };
+  carregarEstoque();
+}
+async function carregarEstoque() {
+  const alvo = $('#es-lista'); if (!alvo) return;
+  try {
+    const { itens } = await api('GET', '/estoque');
+    const baixos = itens.filter(i => i.baixo).length;
+    if (!itens.length) { alvo.innerHTML = '<div class="vazio">Nenhum item no estoque. Cadastre o enxoval e os amenities por casa.</div>'; return; }
+    alvo.innerHTML = (baixos ? `<div class="aviso">⚠️ ${baixos} item(ns) no mínimo ou abaixo — considere repor.</div>` : '') + itens.map(i => `
+      <div class="linha-item" style="${i.baixo ? 'border-left:4px solid var(--alerta)' : ''}">
+        <span class="qtd" style="${i.baixo ? 'color:var(--alerta)' : ''}">${i.quantidade}${i.unidade ? ' ' + esc(i.unidade) : ''}</span>
+        <span class="nome">${esc(i.item)} ${i.casa ? `<span class="obs">${esc(i.casa)}</span>` : ''}${i.categoria ? ` <span class="chip">${esc(i.categoria)}</span>` : ''}
+          <br><span class="obs">mínimo ${i.minimo}${i.unidade ? ' ' + esc(i.unidade) : ''}${i.baixo ? ' · ⚠️ repor' : ''}${i.obs ? ' · ' + esc(i.obs) : ''}</span></span>
+        <div class="acoes" style="grid-column:2;grid-row:1/span 3">
+          <button class="btn peq secund" data-mais="${i.id}">＋</button>
+          <button class="btn peq secund" data-menos="${i.id}">－</button>
+          <button class="btn peq" data-repor="${i.id}">Repor</button>
+          <button class="btn peq perigo" data-del-es="${i.id}">✕</button>
+        </div></div>`).join('');
+    const ajusta = async (id, delta) => { const it = itens.find(x => x.id === id); if (!it) return; try { await api('PATCH', '/estoque/' + id, { quantidade: Math.max(0, Number(it.quantidade) + delta) }); carregarEstoque(); } catch (e) { alert(e.message); } };
+    alvo.querySelectorAll('[data-mais]').forEach(b => b.onclick = () => ajusta(b.dataset.mais, 1));
+    alvo.querySelectorAll('[data-menos]').forEach(b => b.onclick = () => ajusta(b.dataset.menos, -1));
+    alvo.querySelectorAll('[data-repor]').forEach(b => b.onclick = async () => { try { const r = await api('POST', '/estoque/' + b.dataset.repor + '/repor', {}); alert(r.duplicado ? 'Este item já está na lista de compras.' : 'Adicionado à lista de compras.'); } catch (e) { alert(e.message); } });
+    alvo.querySelectorAll('[data-del-es]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este item do estoque?')) return; try { await api('DELETE', '/estoque/' + b.dataset.delEs); carregarEstoque(); } catch (e) { alert(e.message); } });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Metas (OKR) por área, com termômetro ---------
