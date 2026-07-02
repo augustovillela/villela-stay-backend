@@ -3410,6 +3410,38 @@ app.get('/hospede/api/propriedade/:codigo', requireHospede, async (req, res) => 
 app.get('/staff/api/hospede/contas', requireAuth, requireAdmin, (req, res) => {
   res.json({ contas: lerHospedes().map(semSenhaHosp) });
 });
+
+// Estatísticas de ACESSO à Área do Hóspede / app (agregado, sem dados pessoais) — admin ou CEO.
+app.get('/staff/api/hospede/acessos-stats', requireAuth, (req, res) => {
+  if (req.user.papel !== 'admin' && !podeArea(req.user, 'ceo')) return res.status(403).json({ erro: 'Acesso restrito (admin/CEO).' });
+  const hospedes = lerHospedes();
+  const agora = Date.now();
+  const dias = (iso) => iso ? (agora - Date.parse(iso)) / 86400000 : Infinity;
+  let total = 0, ativas = 0, comApp = 0, jaAcessaram = 0, pendentes1oAcesso = 0, comVinculoStays = 0, novos30 = 0, ativos30 = 0, ativos7 = 0;
+  const porMes = {};
+  for (const h of hospedes) {
+    total++;
+    if (h.ativo) ativas++;
+    if (Array.isArray(h.pushSubs) && h.pushSubs.length) comApp++;
+    if (h.ultimoLogin) jaAcessaram++;
+    if (h.precisaTrocarSenha && !h.ultimoLogin) pendentes1oAcesso++;
+    if (h.staysClientId) comVinculoStays++;
+    if (dias(h.criadoEm) <= 30) novos30++;
+    if (dias(h.ultimoLogin) <= 30) ativos30++;
+    if (dias(h.ultimoLogin) <= 7) ativos7++;
+    const m = (h.criadoEm || '').slice(0, 7); if (/^\d{4}-\d{2}$/.test(m)) porMes[m] = (porMes[m] || 0) + 1;
+  }
+  // últimos 6 meses de cadastro (crescimento) + últimos cadastros (só 1º nome + data, sem PII sensível)
+  const meses = Object.keys(porMes).sort().slice(-6).map(m => ({ mes: m, n: porMes[m] }));
+  const recentes = [...hospedes].sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))).slice(0, 8)
+    .map(h => ({ nome: String(h.nome || '—').split(' ')[0], criadoEm: h.criadoEm || '', acessou: !!h.ultimoLogin, app: Array.isArray(h.pushSubs) && h.pushSubs.length > 0 }));
+  res.json({
+    geradoEm: new Date().toISOString(),
+    total, ativas, inativas: total - ativas, comApp, jaAcessaram,
+    nuncaAcessaram: total - jaAcessaram, pendentes1oAcesso, comVinculoStays,
+    novos30, ativos30, ativos7, meses, recentes,
+  });
+});
 app.get('/staff/api/hospede/propriedades-info', requirePublishOrAdmin, (req, res) => {
   res.json({ info: lerPropInfo() });
 });

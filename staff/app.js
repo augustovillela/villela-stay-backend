@@ -184,6 +184,7 @@ function montarMenu() {
   if (ESTADO.painelDisp.chamados) itens.push({ id: 'chamados', rot: '🛎️ Chamados do site' });
   itens.push({ grupo: 'Relatórios & Gestão' });
   itens.push({ id: 'relatorios', rot: '📄 Relatórios & Entregas' });
+  if (ehAdmin || tem('ceo')) itens.push({ id: 'acessos-hospede', rot: '🔑 Acessos do Hóspede' });
   itens.push({ id: 'publicar', rot: '➕ Publicar entrega' });
   if (ESTADO.podeEstat) itens.push({ id: 'estatisticas', rot: '📊 Visitas do site' });
   if (ESTADO.painelDisp.eventos) itens.push({ id: 'eventos', rot: '⚡ Eventos (Stays)' });
@@ -264,7 +265,7 @@ async function ligarPush() {
 function navegar(secao) {
   ESTADO.secao = secao;
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
-  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
+  const rotas = { visao: renderVisao, mural: renderMural, concierge: renderConcierge, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), manutencao: () => renderLista('manutencao', 'Lista de manutenção'), pendencias: () => renderLista('pendencias', 'Pendências', { semQtd: true, rotuloNome: 'Pendência *', sub: 'Pendências e tarefas em aberto. Qualquer pessoa da equipe pode incluir e dar baixa.' }), agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta };
   (rotas[secao] || renderVisao)();
 }
 
@@ -1534,6 +1535,34 @@ async function renderAuditoria() {
       ${eventos.map(e => `<tr><td>${dataBr(e.quando)}</td><td>${esc(e.quem || '—')}</td><td><span class="chip">${esc(e.acao || '')}</span></td><td>${esc(e.detalhe || '')}</td></tr>`).join('')}
     </tbody></table>`;
   } catch (e) { $('#ad-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Acessos do Hóspede (contas da Área do Hóspede / app) ---------
+async function renderAcessosHospede() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Acessos do Hóspede', 'Quantas pessoas têm cadastro (login e senha) para acessar a Área do Hóspede e o app — sempre atualizado.') + '<div id="ah-corpo"><p class="vazio">Carregando…</p></div>';
+  try {
+    const d = await api('GET', '/hospede/acessos-stats');
+    const pct = (a, b) => b ? Math.round(1000 * a / b) / 10 : 0;
+    const cards = `<div class="cards">
+      <div class="card"><div class="n">${d.total}</div><div class="rot">👤 Contas cadastradas (login e senha)</div></div>
+      <div class="card"><div class="n" style="color:var(--ok)">${d.ativas}</div><div class="rot">✅ Ativas</div></div>
+      <div class="card"><div class="n">${d.jaAcessaram}</div><div class="rot">🔓 Já acessaram (${pct(d.jaAcessaram, d.total)}%)</div></div>
+      <div class="card"><div class="n" style="color:${d.pendentes1oAcesso ? 'var(--cerrado)' : 'var(--ok)'}">${d.pendentes1oAcesso}</div><div class="rot">⏳ Pendentes de 1º acesso</div></div>
+      <div class="card"><div class="n" style="color:var(--lago)">${d.comApp}</div><div class="rot">📱 Com app/notificações ativas</div></div>
+      <div class="card"><div class="n">${d.ativos30}</div><div class="rot">🔁 Ativos nos últimos 30 dias</div></div>
+      <div class="card"><div class="n">${d.novos30}</div><div class="rot">🆕 Novos nos últimos 30 dias</div></div>
+      <div class="card"><div class="n">${d.comVinculoStays}</div><div class="rot">🔗 Vinculadas a cliente da Stays</div></div>
+    </div>`;
+    const trend = d.meses && d.meses.length ? `<h2 class="titulo" style="font-size:1.15rem">Novos cadastros por mês</h2>
+      <div class="lista-itens">${d.meses.map(m => {
+        const max = Math.max(...d.meses.map(x => x.n)) || 1;
+        return `<div class="linha-item"><span class="nome">${esc(m.mes)}</span><span class="quem" style="display:flex;align-items:center;gap:8px"><span style="display:inline-block;height:10px;width:${Math.round(160 * m.n / max)}px;background:var(--lago);border-radius:5px"></span> ${m.n}</span></div>`;
+      }).join('')}</div>` : '';
+    const rec = d.recentes && d.recentes.length ? `<h2 class="titulo" style="font-size:1.15rem">Últimos cadastros</h2>
+      <div class="lista-itens">${d.recentes.map(r => `<div class="linha-item"><span class="nome">${esc(r.nome)} ${r.app ? '<span class="chip">📱 app</span>' : ''} ${r.acessou ? '<span class="chip">🔓 acessou</span>' : '<span class="chip">⏳ 1º acesso</span>'}</span><span class="quem">${r.criadoEm ? dataBr(r.criadoEm) : ''}</span></div>`).join('')}</div>` : '';
+    $('#ah-corpo').innerHTML = cards + trend + rec + `<p class="cal-rodape">Atualizado em ${dataBr(d.geradoEm)}. "Pendentes de 1º acesso" = receberam a senha temporária e ainda não entraram. "Com app" = instalaram o app (PWA) e ativaram notificações. Sem dados pessoais nesta tela (LGPD); a lista completa fica em Área do Hóspede, só admin.</p>`;
+  } catch (e) { $('#ah-corpo').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Relatórios ---------
