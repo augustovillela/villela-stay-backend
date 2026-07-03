@@ -118,11 +118,25 @@ async function confirmarReservaWhatsApp(evento) {
     const listing = await stays(`/content/listings/${p._idlisting}`);
     const titulo = (listing && listing._mstitle && listing._mstitle.pt_BR) || 'sua hospedagem na Villela Stay';
     const fmt = d => { const [a, m, dia] = String(d).split('-'); return `${dia}/${m}/${a}`; };
+    // Valor total (variável {{5}} do template). NUNCA pode ir vazio — a Meta rejeita variável vazia.
+    let valorNum = p.price && (p.price._f_total != null ? p.price._f_total : p.price.total);
+    let moeda = (p.price && p.price.currency) || 'BRL';
+    if (valorNum == null) {
+      try {
+        const rsv = await stays(`/booking/reservations/${p.id || p._id}`);
+        valorNum = rsv && rsv.price && rsv.price._f_total;
+        moeda = (rsv && rsv.price && rsv.price.currency) || moeda;
+      } catch (e) { console.error('[confirmacao] valor total indisponível:', e.message); }
+    }
+    const valorTotal = valorNum != null
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moeda }).format(Number(valorNum))
+      : 'sob consulta';
     const corpo = {
       to: String(foneBruto).replace(/\D/g, ''),
       template: 'confirmacao_reserva::pt_BR',
       p1: cli.fName || cli.name || 'hóspede', p2: titulo,
-      p3: fmt(p.checkInDate), p4: fmt(p.checkOutDate)
+      p3: fmt(p.checkInDate), p4: fmt(p.checkOutDate),
+      p5: valorTotal
     };
     await fetch(process.env.MAKE_WA_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
     console.log('[confirmacao] template enviado para', corpo.to, '— reserva', p.id);
