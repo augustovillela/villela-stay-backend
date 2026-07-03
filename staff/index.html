@@ -66,7 +66,20 @@
     </div>
   </div>
 
-  <script src="/staff/app.js"></script>
+  <!-- SPA modularizada em scripts clássicos (compartilham o escopo global). Ordem importa:
+       app-core primeiro (helpers/shell) e app-boot por último (chama init()). -->
+  <script src="/staff/app-core.js"></script>
+  <script src="/staff/app-listas.js"></script>
+  <script src="/staff/app-calendario.js"></script>
+  <script src="/staff/app-operacao.js"></script>
+  <script src="/staff/app-atendimento.js"></script>
+  <script src="/staff/app-gestao.js"></script>
+  <script src="/staff/app-recursos.js"></script>
+  <script src="/staff/app-juridico-fiscal.js"></script>
+  <script src="/staff/app-estrategia.js"></script>
+  <script src="/staff/app-hospede.js"></script>
+  <script src="/staff/app-crm.js"></script>
+  <script src="/staff/app-boot.js"></script>
   <script>
     // PWA: registra o service worker (sem cache — só para o portal ser instalável como app)
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/staff/sw.js').catch(() => {});
