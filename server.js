@@ -3476,7 +3476,7 @@ async function enviarWhatsApp(to, text) {
 async function enviarCredenciais(conta, senha) {
   const login = conta.email || conta.telefone;
   const nome = (conta.nome || 'hóspede').split(' ')[0];
-  const txt = `Ola, ${nome}! 👋\n\nSua Area do Hospede da Villela Stay ja esta pronta. Nela voce consulta a sua reserva e recebe as informacoes da casa (Wi-Fi, acesso, guia local).\n\n🔗 Acesse: ${AREA_HOSPEDE_URL}\n👤 Login: ${login}\n🔑 Senha temporaria: ${senha}\n\nNo primeiro acesso voce define uma nova senha. Qualquer duvida, e so chamar por aqui!`;
+  const txt = `Olá, ${nome}! 👋\n\nSua Área do Hóspede da Villela Stay já está pronta. Nela você consulta a sua reserva e recebe as informações da casa (Wi-Fi, acesso, guia local).\n\n🔗 Acesse: ${AREA_HOSPEDE_URL}\n👤 Login: ${login}\n🔑 Senha temporária: ${senha}\n\nNo primeiro acesso você define uma nova senha. Qualquer dúvida, é só chamar por aqui!`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#2b2d2f">
     <div style="background:#0c3644;color:#f2ecd8;padding:18px 22px;border-radius:10px 10px 0 0"><strong style="font-size:18px">Villela Stay</strong><br><span style="font-size:13px;color:#d9a441">Área do Hóspede</span></div>
     <div style="border:1px solid #e3ddd0;border-top:none;padding:22px;border-radius:0 0 10px 10px">
