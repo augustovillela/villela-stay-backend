@@ -1463,7 +1463,8 @@ function normChamado(ch) {
     despMaoObra: ch.despMaoObra != null ? Number(ch.despMaoObra) || 0 : 0,
     despDeslocamento: ch.despDeslocamento != null ? Number(ch.despDeslocamento) || 0 : 0,
     custo: ch.custo != null && ch.custo !== '' ? Number(ch.custo) || 0 : null,
-    proximaVisita: ch.proximaVisita || '', periodicoFreqMeses: ch.periodicoFreqMeses != null ? Number(ch.periodicoFreqMeses) || 0 : 0,
+    proximaVisita: ch.proximaVisita || '', proximaVisitaAgendada: ch.proximaVisitaAgendada || '',
+    periodicoFreqMeses: ch.periodicoFreqMeses != null ? Number(ch.periodicoFreqMeses) || 0 : 0, periodicoRegistrado: !!ch.periodicoRegistrado,
     ativoId: ch.ativoId || '', solicitante: ch.solicitante || '', origem: ch.origem || 'portal',
     refId: ch.refId || '', documentado: !!ch.documentado,
     quem: ch.quem || '', criadoEm: ch.criadoEm || '', atualizadoEm: ch.atualizadoEm || '', concluidoEm: ch.concluidoEm || null,
@@ -1517,6 +1518,26 @@ function upsertTecnico(nome, telefone, especialidade) {
   } catch (e) { console.error('[upsertTecnico]', e.message); return null; }
 }
 
+// 4b: "próxima visita" do chamado → pedido de evento no Google Calendar (a rotina Claude
+// agenda-processar-pedidos efetiva). Dedupe por data já agendada (proximaVisitaAgendada).
+function agendarVisitaChamado(ch) {
+  try {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ch.proximaVisita || '')) return;
+    if (ch.proximaVisitaAgendada === ch.proximaVisita) return;
+    const pedidos = lerJSON('agenda-pedidos.json', []);
+    pedidos.push({
+      id: novoId(), acao: 'criar',
+      titulo: '🛠️ Manutenção: ' + (ch.titulo || 'visita técnica') + (ch.tecnico ? ' — ' + ch.tecnico : ''),
+      data: ch.proximaVisita, hora: '', duracaoMin: 60,
+      descricao: [ch.casa ? 'Casa: ' + ch.casa : '', ch.tecnico ? 'Técnico: ' + ch.tecnico + (ch.tecnicoTelefone ? ' (' + ch.tecnicoTelefone + ')' : '') : '', ch.comoResolvido ? 'Serviço: ' + ch.comoResolvido : ''].filter(Boolean).join(' · '),
+      local: ch.casa || '', eventoId: '', refPedidoId: 'chamado:' + ch.id,
+      status: 'pendente', quem: 'manutencao', criadoEm: new Date().toISOString(), processadoEm: null, resultado: '',
+    });
+    salvarJSON('agenda-pedidos.json', pedidos);
+    ch.proximaVisitaAgendada = ch.proximaVisita;
+  } catch (e) { console.error('[chamado->agenda]', e.message); }
+}
+
 // GET: ?busca= (palavra em qualquer campo) ?status= ?arquivo=1 (só concluídos). Devolve abertos e
 // arquivados (concluídos, mais recentes primeiro) já separados p/ a tela.
 app.get('/staff/api/manutencao/chamados', requirePublishOrSession, (req, res) => {
@@ -1558,7 +1579,8 @@ app.post('/staff/api/manutencao/chamados', requirePublishOrSession, (req, res) =
     despMaterial: numBR(d.despMaterial), despMaoObra: numBR(d.despMaoObra), despDeslocamento: numBR(d.despDeslocamento),
     custo: d.custo != null && d.custo !== '' ? Number(d.custo) || 0 : null,
     proximaVisita: /^\d{4}-\d{2}-\d{2}$/.test(d.proximaVisita || '') ? d.proximaVisita : '',
-    periodicoFreqMeses: numBR(d.periodicoFreqMeses),
+    proximaVisitaAgendada: '',
+    periodicoFreqMeses: numBR(d.periodicoFreqMeses), periodicoRegistrado: false,
     ativoId: String(d.ativoId || '').trim(),
     solicitante: String(d.solicitante || '').trim(),
     origem: req.viaChave ? (String(d.origem || '').trim() || 'agente') : 'portal',
@@ -1584,6 +1606,7 @@ app.patch('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, r
   if (d.dataResolucao != null) ch.dataResolucao = /^\d{4}-\d{2}-\d{2}$/.test(d.dataResolucao) ? d.dataResolucao : '';
   if (d.proximaVisita != null) ch.proximaVisita = /^\d{4}-\d{2}-\d{2}$/.test(d.proximaVisita) ? d.proximaVisita : '';
   for (const campo of ['despMaterial', 'despMaoObra', 'despDeslocamento', 'periodicoFreqMeses']) if (d[campo] !== undefined) ch[campo] = numBR(d[campo]);
+  if (d.periodicoRegistrado != null) ch.periodicoRegistrado = !!d.periodicoRegistrado;
   if (d.custo !== undefined) ch.custo = d.custo === '' || d.custo == null ? null : Number(d.custo) || 0;
   if (d.status && CHAMADO_STATUS.includes(d.status)) {
     ch.status = d.status;
@@ -1607,6 +1630,16 @@ app.patch('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, r
     // já documentado e editaram despesas/técnico → mantém DRE e cadastro em dia
     lancarCustoManutencao(ch);
     if (ch.tecnico || ch.tecnicoTelefone) upsertTecnico(ch.tecnico, ch.tecnicoTelefone, ch.tipo);
+  }
+  // 4b: próxima visita → Google Calendar (via agenda-pedidos; dedupe por data já agendada)
+  agendarVisitaChamado(ch);
+  // 4a (loop): chamado vindo de pedido de hóspede e agora concluído → fecha o pedido do hóspede
+  if (ch.status === 'concluido' && String(ch.refId || '').startsWith('pedidohosp:')) {
+    try {
+      const pid = ch.refId.slice('pedidohosp:'.length);
+      const peds = lerPedidosHosp(); const p = peds.find(x => x.id === pid);
+      if (p && p.status !== 'concluido') { p.status = 'concluido'; p.atualizadoEm = new Date().toISOString(); if (!p.respostaAdmin) p.respostaAdmin = 'Manutenção concluída. Obrigado por avisar!'; salvarPedidosHosp(peds); }
+    } catch (e) { console.error('[chamado->pedidohosp]', e.message); }
   }
   ch.atualizadoEm = new Date().toISOString();
   salvarJSON('manutencao-chamados.json', chamados);
@@ -4363,6 +4396,31 @@ ${faqTexto()}
 });
 
 // Criar pedido: ALTERAÇÃO de reserva (só direta/WhatsApp), EVENTO ou SERVIÇO extra. Vai p/ aprovação do Augusto.
+// 4a: pedido de manutenção do hóspede (site/app) → CHAMADO no hub (origem hospede, dedupe por refId).
+// Mantém o pedido do hóspede (p/ "Meus pedidos") e liga os dois por refId 'pedidohosp:<id>'.
+function criarChamadoDePedidoHosp(pedido, r) {
+  try {
+    const refId = 'pedidohosp:' + pedido.id;
+    const chamados = lerJSON('manutencao-chamados.json', []);
+    const ja = chamados.find(c => c.refId === refId);
+    if (ja) return ja;
+    const m = pedido.manutencao || {};
+    const descPartes = [m.descricao || pedido.mensagem || '', m.local ? ('Local: ' + m.local) : '', m.urgencia ? ('Urgência: ' + m.urgencia) : ''].filter(Boolean);
+    const titulo = String(m.descricao || pedido.mensagem || 'Manutenção solicitada pelo hóspede').slice(0, 120);
+    const ch = {
+      id: novoId(), titulo, casa: (r && r.imovel) || pedido.imovel || '', descricao: descPartes.join(' — '),
+      tipo: '', status: 'aberto', tecnico: '', tecnicoTelefone: '', tecnicoId: '',
+      comoResolvido: '', dataResolucao: '', despMaterial: 0, despMaoObra: 0, despDeslocamento: 0, custo: null,
+      proximaVisita: '', proximaVisitaAgendada: '', periodicoFreqMeses: 0, periodicoRegistrado: false, ativoId: '',
+      solicitante: (pedido.hospedeNome || 'Hóspede') + (pedido.reservaId ? ' — reserva ' + pedido.reservaId : ''),
+      origem: 'hospede', refId, documentado: false, quem: 'app-hospede',
+      criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(), concluidoEm: null,
+    };
+    chamados.push(ch); salvarJSON('manutencao-chamados.json', chamados);
+    return ch;
+  } catch (e) { console.error('[hosp->chamado]', e.message); return null; }
+}
+
 app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
   const d = req.body || {};
   const tipo = ['evento', 'servico', 'manutencao'].includes(d.tipo) ? d.tipo : 'alteracao';
@@ -4413,6 +4471,8 @@ app.post('/hospede/api/pedido', requireHospede, async (req, res) => {
     };
     pedidos.unshift(pedido);
     salvarPedidosHosp(pedidos);
+    // Unificação: pedido de manutenção do hóspede também abre um CHAMADO no hub de manutenção.
+    if (tipo === 'manutencao') { const ch = criarChamadoDePedidoHosp(pedido, r); if (ch) { pedido.chamadoId = ch.id; salvarPedidosHosp(pedidos); } }
     const rotuloTipo = tipo === 'evento' ? 'EVENTO' : tipo === 'servico' ? 'SERVICO (' + servico.nome + ')' : tipo === 'manutencao' ? 'MANUTENCAO' : 'alteracao de reserva';
     alertaAugusto(`Novo pedido de ${rotuloTipo} de ${pedido.hospedeNome || 'hospede'}${reservaId ? ' - reserva ' + reservaId : ''}${r && r.imovel ? ' (' + r.imovel + ')' : ''}. Veja no Portal Staff > Pedidos de hospedes.`).catch(() => { });
     res.json({ ok: true, pedido });
