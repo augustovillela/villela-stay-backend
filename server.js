@@ -1749,7 +1749,7 @@ app.post('/staff/api/automacoes/heartbeat', requirePublishOrSession, (req, res) 
   salvarJSON('automacoes.json', mapa);
   res.json({ ok: true });
 });
-app.get('/staff/api/automacoes', requireAuth, (req, res) => {
+app.get('/staff/api/automacoes', requireAdminOuChave, (req, res) => {
   const mapa = lerJSON('automacoes.json', {});
   const agora = Date.now();
   const itens = Object.values(mapa).map(a => {
