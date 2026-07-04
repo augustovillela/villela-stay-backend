@@ -96,7 +96,7 @@ const I18N = {
     'Novo check-in:': 'New check-in:', 'Novo check-out:': 'New check-out:', 'Imóvel:': 'Property:',
     'Evento': 'Event', 'Manutenção': 'Maintenance', 'Check-in': 'Check-in', 'Alteração': 'Change',
     'Orçamento:': 'Quote:', 'a combinar': 'to be arranged',
-    'Ola! Quero confirmar e combinar o pagamento do meu pedido': 'Hello! I would like to confirm and arrange payment for my request',
+    'Olá! Quero confirmar e combinar o pagamento do meu pedido': 'Hello! I would like to confirm and arrange payment for my request',
     'de': 'for', 'de evento': 'for an event', 'reserva': 'booking', 'Confirmar e pagar pelo WhatsApp': 'Confirm and pay via WhatsApp',
     'Senha alterada com sucesso.': 'Password changed successfully.',
     'App já instalado 🎉': 'App already installed 🎉',
@@ -242,7 +242,7 @@ const I18N = {
     'Novo check-in:': 'Nuevo check-in:', 'Novo check-out:': 'Nuevo check-out:', 'Imóvel:': 'Propiedad:',
     'Evento': 'Evento', 'Manutenção': 'Mantenimiento', 'Check-in': 'Check-in', 'Alteração': 'Cambio',
     'Orçamento:': 'Presupuesto:', 'a combinar': 'a acordar',
-    'Ola! Quero confirmar e combinar o pagamento do meu pedido': '¡Hola! Quiero confirmar y acordar el pago de mi solicitud',
+    'Olá! Quero confirmar e combinar o pagamento do meu pedido': '¡Hola! Quiero confirmar y acordar el pago de mi solicitud',
     'de': 'de', 'de evento': 'de evento', 'reserva': 'reserva', 'Confirmar e pagar pelo WhatsApp': 'Confirmar y pagar por WhatsApp',
     'Senha alterada com sucesso.': 'Contraseña cambiada con éxito.',
     'App já instalado 🎉': 'App ya instalada 🎉',
@@ -849,7 +849,7 @@ async function carregarPedidos() {
       const orc = p.orcamento ? `<div class="ped-orc">💰 ${t('Orçamento:')} ${p.orcamento.valor != null ? fmtMoeda(p.orcamento.valor, 'BRL') : t('a combinar')}${p.orcamento.detalhes ? ' — ' + esc(p.orcamento.detalhes) : ''}</div>` : '';
       const resp = p.respostaAdmin ? `<div class="ped-resp">💬 ${esc(p.respostaAdmin)}</div>` : '';
       const podePagar = p.orcamento || p.status === 'aprovado';
-      const waTxt = t('Ola! Quero confirmar e combinar o pagamento do meu pedido') + (p.tipo === 'servico' && p.servico ? ' ' + t('de') + ' ' + p.servico.nome : p.tipo === 'evento' ? ' ' + t('de evento') : '') + (p.reservaId ? ' (' + t('reserva') + ' ' + p.reservaId + ')' : '') + '.';
+      const waTxt = t('Olá! Quero confirmar e combinar o pagamento do meu pedido') + (p.tipo === 'servico' && p.servico ? ' ' + t('de') + ' ' + p.servico.nome : p.tipo === 'evento' ? ' ' + t('de evento') : '') + (p.reservaId ? ' (' + t('reserva') + ' ' + p.reservaId + ')' : '') + '.';
       const wa = podePagar ? `<a class="btn btn-wa-pag" target="_blank" rel="noopener" href="https://wa.me/556191935013?text=${encodeURIComponent(waTxt)}">💬 ${t('Confirmar e pagar pelo WhatsApp')}</a>` : '';
       return `<div class="ped-card">
         <div class="cr-topo"><strong>${titulo}${ctx}</strong>

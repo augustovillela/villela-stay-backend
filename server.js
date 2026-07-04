@@ -4263,7 +4263,7 @@ app.get('/hospede/api/carteira/:reservaId', requireHospede, async (req, res) => 
     const r = (reservas || []).find(x => x.id === req.params.reservaId && x.status !== 'canceled' && x.status !== 'blocked');
     if (!r) return res.status(404).json({ erro: 'Reserva não encontrada na sua conta.' });
     const nome1 = (req.hospede.nome || '').split(' ')[0] || 'hóspede';
-    const waTxt = `Ola! Sou ${nome1}, cheguei para o check-in. Reserva ${r.id}${r.imovelTitulo ? ' - ' + r.imovelTitulo : ''}.`;
+    const waTxt = `Olá! Sou ${nome1}, cheguei para o check-in. Reserva ${r.id}${r.imovelTitulo ? ' - ' + r.imovelTitulo : ''}.`;
     const link = 'https://wa.me/556191935013?text=' + encodeURIComponent(waTxt);
     let qrSvg = '';
     try { const QRCode = require('qrcode'); qrSvg = await QRCode.toString(link, { type: 'svg', margin: 1, width: 240, color: { dark: '#0c3644', light: '#ffffff' } }); }
