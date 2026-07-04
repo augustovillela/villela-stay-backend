@@ -1274,10 +1274,32 @@ for (const pai of Object.keys(FILHOS_OCUP)) {
   DESC_OCUP[pai] = seen;
 }
 const N_DESC_OCUP = {}; for (const p of Object.keys(DESC_OCUP)) N_DESC_OCUP[p] = DESC_OCUP[p].size;
-// Acrescenta ao conjunto de códigos ocupados os componentes bloqueados por espaços inteiros alugados
-// (restrito ao universo de anúncios ativos, quando informado).
+// Espelhamento PARA CIMA: alugar um componente (filho) bloqueia os espaços que o contêm (ancestrais),
+// pois eles não podem mais ser vendidos inteiros. Ex.: alugar Villa Kubitschek (GG04I) ou Villa Catetinho
+// (PL02I) bloqueia a Gran Villela (GD03H). NÃO bloqueia irmãos (a outra casa do compound segue à venda).
+const PAI_OCUP = {}; // filho -> pai direto
+for (const pai of Object.keys(FILHOS_OCUP)) for (const f of FILHOS_OCUP[pai]) PAI_OCUP[f] = pai;
+const ANC_OCUP = {}; // código -> Set de ancestrais transitivos (bloqueados quando ele é alugado)
+for (const cod of Object.keys(PAI_OCUP)) {
+  const anc = new Set(); let p = PAI_OCUP[cod];
+  while (p) { anc.add(p); p = PAI_OCUP[p]; }
+  ANC_OCUP[cod] = anc;
+}
+const N_ANC_OCUP = {}; for (const c of Object.keys(ANC_OCUP)) N_ANC_OCUP[c] = ANC_OCUP[c].size;
+// Espelho MÚTUO: anúncios que são o MESMO imóvel físico (Casa 4 = YV01I e GI01I, 2 anúncios do mesmo
+// espaço). Alugar um bloqueia o outro. Sem essa relação, a ocupação da rede travava em ~90% (18/20).
+const ESPELHO_OCUP = { YV01I: ['GI01I'], GI01I: ['YV01I'] };
+const N_ESP_OCUP = {}; for (const c of Object.keys(ESPELHO_OCUP)) N_ESP_OCUP[c] = ESPELHO_OCUP[c].length;
+// Acrescenta ao conjunto de códigos ocupados os anúncios bloqueados pelo espelhamento — nas DUAS direções
+// (pai alugado ocupa os componentes/descendentes E componente alugado ocupa os espaços que o contêm/ancestrais)
+// mais o espelho mútuo do mesmo imóvel. Itera sobre o SNAPSHOT inicial: os códigos acrescidos não são
+// reprocessados, então bloquear o pai NÃO cascateia de volta para os irmãos. (Restrito ao universo ativo.)
 function expandirBloqueados(ocupCodes, universo) {
-  for (const cod of [...ocupCodes]) { const desc = DESC_OCUP[cod]; if (desc) for (const d of desc) if (!universo || universo.has(d)) ocupCodes.add(d); }
+  for (const cod of [...ocupCodes]) {
+    const desc = DESC_OCUP[cod]; if (desc) for (const d of desc) if (!universo || universo.has(d)) ocupCodes.add(d);
+    const anc = ANC_OCUP[cod]; if (anc) for (const a of anc) if (!universo || universo.has(a)) ocupCodes.add(a);
+    const esp = ESPELHO_OCUP[cod]; if (esp) for (const e of esp) if (!universo || universo.has(e)) ocupCodes.add(e);
+  }
 }
 
 // ---- Cockpit (home): KPIs vivos do dia, agregados no servidor (1 chamada do front) ----
@@ -1881,9 +1903,11 @@ app.get('/staff/api/revenue/cockpit', requireAuth, async (req, res) => {
         const n = noitesNaJanela(r, hoje, fim);
         if (n > 0) {
           noitesVend += n;
-          // espelhamento: espaço inteiro alugado bloqueia (ocupa) as noites dos componentes
-          const nDesc = N_DESC_OCUP[codPorId[r._idlisting]] || 0;
-          if (nDesc) noitesBloq += n * nDesc;
+          // espelhamento nas DUAS direções: alugar um anúncio bloqueia (ocupa) as noites dos componentes
+          // que ele contém (descendentes) E dos espaços que o contêm (ancestrais). Não conta irmãos.
+          const codR = codPorId[r._idlisting];
+          const nBloq = (N_DESC_OCUP[codR] || 0) + (N_ANC_OCUP[codR] || 0) + (N_ESP_OCUP[codR] || 0);
+          if (nBloq) noitesBloq += n * nBloq;
           const noitesTot = Math.max(1, Math.round((Date.parse(r.checkOutDate) - Date.parse(r.checkInDate)) / 86400000));
           receita += ((r.price && r.price._f_total) || 0) * n / noitesTot;
         }
