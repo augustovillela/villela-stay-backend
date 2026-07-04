@@ -52,6 +52,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
   border-radius: 10px; font-size: 1.2rem; line-height: 1; padding: 4px 11px; cursor: pointer; }
 .topo-dir { display: flex; align-items: center; gap: 14px; color: var(--creme); font-size: .9rem; }
 .link-sair { background: none; border: 1px solid var(--creme); color: var(--creme); border-radius: 18px; padding: 5px 14px; cursor: pointer; font-size: .85rem; }
+.btn-inicio { background: rgba(242,236,216,.12); border: 1px solid var(--creme); color: var(--creme); border-radius: 18px; padding: 5px 12px; cursor: pointer; font-size: .85rem; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.btn-inicio:hover { background: rgba(242,236,216,.24); }
+/* Visor de relatório/arquivo embutido no app (dashboard HTML, PDF, imagem), com botão Voltar */
+.visor-topo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.visor-arquivo { width: 100%; height: calc(100vh - 195px); min-height: 380px; border: 1px solid var(--borda); border-radius: 12px; background: #fff; }
 .link-sair:hover { background: rgba(255,255,255,.12); }
 .link-site { color: var(--creme); border: 1px solid rgba(242,236,216,.5); border-radius: 18px; padding: 5px 14px; font-size: .85rem; white-space: nowrap; }
 .link-site:hover { background: rgba(255,255,255,.12); border-color: var(--cerrado); }
@@ -211,6 +216,8 @@ tr:last-child td { border-bottom: none; }
 @media (max-width: 760px) {
   .corpo { flex-direction: column; }
   .btn-menu { display: inline-flex; align-items: center; }
+  .rot-inicio { display: none; } /* no celular mostra só o 🏠 para poupar espaço no cabeçalho */
+  .topo-dir { gap: 9px; }
   /* No celular o menu vira gaveta: escondido por padrão, aberto pelo botão ☰.
      A home mostra o lançador de ícones (estilo app); o menu serve para navegar fora dela. */
   .menu { width: 100%; position: static; max-height: none; display: none; flex-wrap: wrap; gap: 4px; padding: 10px; }

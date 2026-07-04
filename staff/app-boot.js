@@ -22,5 +22,7 @@ $('#form-trocar').onsubmit = async (ev) => {
 $('#btn-sair').onclick = async () => { try { await api('POST', '/logout'); } catch {} ESTADO.me = null; mostrarLogin(); };
 // Botão ☰ (mobile): abre/fecha a gaveta do menu
 if ($('#btn-menu')) $('#btn-menu').onclick = () => { const m = $('#menu'); if (m) m.classList.toggle('aberto'); };
+// Botão 🏠 Início: sempre visível, volta à Visão geral (home do app) de qualquer tela/relatório
+if ($('#btn-inicio')) $('#btn-inicio').onclick = () => navegar('visao');
 
 init();

@@ -227,7 +227,18 @@ function ligarAcoesRelatorio() {
   });
 }
 async function abrirRelatorio(id, fmt) {
-  if (fmt === 'arquivo') { window.open('/staff/api/relatorios/' + id + '/arquivo', '_blank'); return; }
+  if (fmt === 'arquivo') {
+    // Abre o arquivo (dashboard HTML, PDF, imagem) DENTRO do app, num visor com botão de voltar,
+    // em vez de uma aba nova solta (de onde é difícil retornar ao app, sobretudo no celular/PWA).
+    const url = '/staff/api/relatorios/' + id + '/arquivo';
+    conteudo().innerHTML = `<div class="visor-topo">
+        <button class="btn secund peq" id="voltar">← Voltar</button>
+        <a class="btn secund peq" href="${url}" target="_blank" rel="noopener">Abrir em nova aba ↗</a>
+      </div>
+      <iframe class="visor-arquivo" src="${url}" title="Relatório"></iframe>`;
+    $('#voltar').onclick = () => navegar('relatorios');
+    return;
+  }
   try {
     const { relatorio: r } = await api('GET', '/relatorios/' + id);
     let corpo = '';
