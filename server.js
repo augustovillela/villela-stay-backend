@@ -1256,8 +1256,32 @@ app.delete('/staff/api/mural/:id', requirePublishOrSession, (req, res) => {
 // Data de HOJE no fuso de Brasília (hojeISO() é UTC e viraria o dia às 21h locais).
 function hojeBrasil() { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
 
+// Espelhamento de ocupação: alugar um espaço INTEIRO bloqueia (ocupa) os componentes que o compõem,
+// recursivamente. Mesma hierarquia dos relatórios (stays/dashboard-visual.ps1 e boletim-ops.ps1) —
+// MANTER EM SINCRONIA. Pai -> códigos de anúncio que ele bloqueia quando alugado.
+const FILHOS_OCUP = {
+  GD01H: ['UH01H', 'UH05H', 'UH06H', 'UH04H', 'UH03H'], // Casa Modernista -> Felipe, Master, Pedro, Sofia, Família
+  GD03H: ['GG04I', 'PL02I'],                            // Gran Villela -> Villa Kubitschek, Villa Catetinho
+  GG04I: ['VH01H', 'VH02H'],                            // Villa Kubitschek -> Flat da Família, Flat dos Amigos
+  VH01H: ['UF06H', 'UD03H'],                            // Flat da Família -> Suíte do Amor, Flat dos Solteiros
+  VH02H: ['UF05H', 'UD09H'],                            // Flat dos Amigos -> Suíte do Chef, Suíte do Renato Russo
+  PL02I: ['UF07H', 'UF01H', 'UF08H'],                   // Villa Catetinho -> Oscar, Burle Marx, Cássia Eller
+};
+const DESC_OCUP = {}; // pai -> Set de descendentes transitivos (bloqueados)
+for (const pai of Object.keys(FILHOS_OCUP)) {
+  const seen = new Set(), fila = [...FILHOS_OCUP[pai]];
+  while (fila.length) { const c = fila.shift(); if (!seen.has(c)) { seen.add(c); if (FILHOS_OCUP[c]) fila.push(...FILHOS_OCUP[c]); } }
+  DESC_OCUP[pai] = seen;
+}
+const N_DESC_OCUP = {}; for (const p of Object.keys(DESC_OCUP)) N_DESC_OCUP[p] = DESC_OCUP[p].size;
+// Acrescenta ao conjunto de códigos ocupados os componentes bloqueados por espaços inteiros alugados
+// (restrito ao universo de anúncios ativos, quando informado).
+function expandirBloqueados(ocupCodes, universo) {
+  for (const cod of [...ocupCodes]) { const desc = DESC_OCUP[cod]; if (desc) for (const d of desc) if (!universo || universo.has(d)) ocupCodes.add(d); }
+}
+
 // ---- Cockpit (home): KPIs vivos do dia, agregados no servidor (1 chamada do front) ----
-// Ocupação é APROXIMADA por anúncio ativo (imóveis interligados têm 2 anúncios).
+// Ocupação de hoje considera o espelhamento: espaço inteiro alugado ocupa seus componentes (ver FILHOS_OCUP).
 let _cacheCockpit = { quando: 0, dia: '', stays: null };
 async function cockpitStays() {
   const dia = hojeBrasil();
@@ -1271,7 +1295,14 @@ async function cockpitStays() {
   const estadias = doDia.filter(r => r.type !== 'blocked' && r.type !== 'maintenance');
   const chegadas = estadias.filter(r => r.checkInDate === dia);
   const saidas = estadias.filter(r => r.checkOutDate === dia);
-  const ocupadas = new Set(estadias.filter(r => r.checkInDate <= dia && r.checkOutDate > dia).map(r => r._idlisting));
+  // Ocupação REAL: converte para código e um espaço inteiro alugado ocupa seus componentes (espelhamento).
+  const universo = new Set(ativos.map(l => l.id));
+  const ocupadas = new Set();
+  for (const r of estadias) if (r.checkInDate <= dia && r.checkOutDate > dia) {
+    const cod = (mapa[r._idlisting] || {}).codigo;
+    if (cod && universo.has(cod)) ocupadas.add(cod);
+  }
+  expandirBloqueados(ocupadas, universo);
   const cache = await resolverClientes([...chegadas, ...saidas].map(r => r._idclient));
   const resumo = (r) => ({
     imovel: (mapa[r._idlisting] || {}).codigo || '—',
@@ -1845,10 +1876,22 @@ app.get('/staff/api/revenue/cockpit', requireAuth, async (req, res) => {
     };
     const bloco = (dias) => {
       const fim = new Date(Date.parse(hoje) + dias * 86400000).toISOString().slice(0, 10);
-      let noitesVend = 0, receita = 0;
-      for (const r of estadias) { const n = noitesNaJanela(r, hoje, fim); if (n > 0) { noitesVend += n; const noitesTot = Math.max(1, Math.round((Date.parse(r.checkOutDate) - Date.parse(r.checkInDate)) / 86400000)); receita += ((r.price && r.price._f_total) || 0) * n / noitesTot; } }
+      let noitesVend = 0, noitesBloq = 0, receita = 0;
+      for (const r of estadias) {
+        const n = noitesNaJanela(r, hoje, fim);
+        if (n > 0) {
+          noitesVend += n;
+          // espelhamento: espaço inteiro alugado bloqueia (ocupa) as noites dos componentes
+          const nDesc = N_DESC_OCUP[codPorId[r._idlisting]] || 0;
+          if (nDesc) noitesBloq += n * nDesc;
+          const noitesTot = Math.max(1, Math.round((Date.parse(r.checkOutDate) - Date.parse(r.checkInDate)) / 86400000));
+          receita += ((r.price && r.price._f_total) || 0) * n / noitesTot;
+        }
+      }
       const noitesDisp = nUnid * dias;
-      return { dias, ocupacaoPct: noitesDisp ? Math.round(1000 * noitesVend / noitesDisp) / 10 : 0, noitesVendidas: noitesVend, receitaPrevista: Math.round(receita), adr: noitesVend ? Math.round(receita / noitesVend) : 0, revpar: noitesDisp ? Math.round(receita / noitesDisp) : 0 };
+      // Ocupação inclui as noites bloqueadas (cap no disponível); ADR/RevPAR usam só as noites efetivamente vendidas.
+      const noitesOcup = Math.min(noitesDisp, noitesVend + noitesBloq);
+      return { dias, ocupacaoPct: noitesDisp ? Math.round(1000 * noitesOcup / noitesDisp) / 10 : 0, noitesVendidas: noitesVend, receitaPrevista: Math.round(receita), adr: noitesVend ? Math.round(receita / noitesVend) : 0, revpar: noitesDisp ? Math.round(receita / noitesDisp) : 0 };
     };
     // Mix por canal (estadias futuras)
     const mix = {};
