@@ -242,6 +242,8 @@ async function renderChamadosManutencao() {
     } catch (e) { alert(e.message); }
   };
   let bt; $('#ch-busca').oninput = () => { clearTimeout(bt); bt = setTimeout(carregarArquivo, 300); };
+  // busca pré-preenchida (ex.: "ver serviços" de um técnico) — filtra o arquivo já na abertura
+  if (window.__chBuscaInicial) { $('#ch-busca').value = window.__chBuscaInicial; window.__chBuscaInicial = ''; }
   carregarChamados();
 }
 
@@ -390,4 +392,82 @@ function abrirBaixaChamado(ch) {
   };
   $('#bx-salvar').onclick = () => enviar({ status: 'concluido' });
   $('#bx-arquivar').onclick = () => enviar({ documentado: true });
+}
+
+// --------- Técnicos (cadastro reutilizado na manutenção) ---------
+let TEC_LISTA = [];
+async function renderTecnicos() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Técnicos', 'Cadastro de técnicos e prestadores da manutenção. Entram sozinhos nas baixas de chamados e são reaproveitados no seletor de técnico.') + `
+    <details class="cr-box" id="tec-box"><summary class="cr-sum">➕ Novo técnico</summary>
+      <form class="form" id="tec-form" style="max-width:640px;margin-top:12px">
+        <input type="hidden" id="tec-id">
+        <div class="hi-grid">
+          <label>Nome * <input id="tec-nome" required maxlength="80" placeholder="ex.: Julio César Rodrigues Martins"></label>
+          <label>WhatsApp <input id="tec-fone" maxlength="30" placeholder="+5561992867402"></label>
+        </div>
+        <label>Especialidades
+          <div id="tec-espec" class="tec-espec">${CH_TIPOS.map(t => `<label class="tec-chk"><input type="checkbox" value="${t[0]}"> ${t[1]}</label>`).join('')}</div>
+        </label>
+        <label>Observações <textarea id="tec-obs" rows="2" maxlength="500"></textarea></label>
+        <button class="btn" type="submit" id="tec-salvar">Cadastrar</button>
+      </form>
+    </details>
+    <input id="tec-busca" placeholder="🔎 Buscar técnico (nome, telefone, especialidade)" style="width:100%;max-width:640px;margin-bottom:12px;padding:9px 12px;border:1px solid var(--linha);border-radius:8px">
+    <div id="tec-lista"><p class="vazio">Carregando…</p></div>`;
+  $('#tec-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const espec = [...document.querySelectorAll('#tec-espec input:checked')].map(x => x.value);
+    const corpo = { nome: $('#tec-nome').value.trim(), telefone: $('#tec-fone').value.trim(), especialidades: espec, obs: $('#tec-obs').value.trim() };
+    try {
+      const id = $('#tec-id').value;
+      if (id) await api('PATCH', '/manutencao/tecnicos/' + id, corpo);
+      else await api('POST', '/manutencao/tecnicos', corpo);
+      $('#tec-form').reset(); $('#tec-id').value = ''; $('#tec-salvar').textContent = 'Cadastrar'; $('#tec-box').open = false;
+      carregarTecnicosTela();
+    } catch (e) { alert(e.message); }
+  };
+  let bt; $('#tec-busca').oninput = () => { clearTimeout(bt); bt = setTimeout(carregarTecnicosTela, 300); };
+  carregarTecnicosTela();
+}
+async function carregarTecnicosTela() {
+  const box = $('#tec-lista'); if (!box) return;
+  const busca = ($('#tec-busca') && $('#tec-busca').value.trim()) || '';
+  try {
+    const [tRes, chRes] = await Promise.all([
+      api('GET', '/manutencao/tecnicos' + (busca ? '?busca=' + encodeURIComponent(busca) : '')),
+      api('GET', '/manutencao/chamados').catch(() => ({ abertos: [], arquivados: [] })),
+    ]);
+    TEC_LISTA = tRes.tecnicos || [];
+    // agrega nº de serviços e gasto por técnico (chave = telefone só-dígitos, senão nome)
+    const soDig = s => String(s || '').replace(/\D/g, '');
+    const todos = [].concat(chRes.abertos || [], chRes.arquivados || []);
+    const agg = {};
+    todos.forEach(ch => { const k = soDig(ch.tecnicoTelefone) || ('n:' + String(ch.tecnico || '').toLowerCase().trim()); if (!k || k === 'n:') return; const a = agg[k] || (agg[k] = { concl: 0, gasto: 0 }); if (ch.status === 'concluido') { a.concl++; a.gasto += Number(ch.custo) || 0; } });
+    if (!TEC_LISTA.length) { box.innerHTML = `<p class="vazio">${busca ? 'Nenhum técnico encontrado.' : 'Nenhum técnico cadastrado ainda. Eles entram sozinhos quando você baixa um chamado com técnico.'}</p>`; return; }
+    box.innerHTML = TEC_LISTA.map(t => {
+      const k = soDig(t.telefone) || ('n:' + String(t.nome || '').toLowerCase().trim());
+      const a = agg[k] || { concl: 0, gasto: 0 };
+      const wa = soDig(t.telefone);
+      return `<div class="card-arq">
+        <div class="card-arq-top"><b>${esc(t.nome)}</b>${wa ? `<a class="sub" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 ${esc(t.telefone)}</a>` : '<span class="sub">sem WhatsApp</span>'}</div>
+        <div class="kard-meta" style="margin:5px 0">${(t.especialidades || []).map(e => `<span class="chip">${chTipoRot(e) || esc(e)}</span>`).join('') || '<span class="sub">sem especialidade</span>'}</div>
+        ${t.obs ? `<div class="sub">${esc(t.obs)}</div>` : ''}
+        <div class="sub">🔧 ${a.concl} serviço(s) concluído(s) · 💰 ${chMoney(a.gasto)}</div>
+        <div class="acoes" style="margin-top:8px">
+          <button class="btn peq secund" data-tecserv="${esc(t.nome)}">🔧 Ver serviços</button>
+          <button class="btn peq secund" data-tecedit="${t.id}">✏️ Editar</button>
+          <button class="btn peq perigo" data-tecdel="${t.id}">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+    box.querySelectorAll('[data-tecedit]').forEach(b => b.onclick = () => {
+      const t = TEC_LISTA.find(x => x.id === b.dataset.tecedit); if (!t) return;
+      $('#tec-id').value = t.id; $('#tec-nome').value = t.nome; $('#tec-fone').value = t.telefone || ''; $('#tec-obs').value = t.obs || '';
+      document.querySelectorAll('#tec-espec input').forEach(x => { x.checked = (t.especialidades || []).includes(x.value); });
+      $('#tec-salvar').textContent = 'Salvar alterações'; $('#tec-box').open = true; window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    box.querySelectorAll('[data-tecdel]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este técnico do cadastro?')) return; try { await api('DELETE', '/manutencao/tecnicos/' + b.dataset.tecdel); carregarTecnicosTela(); } catch (e) { alert(e.message); } });
+    box.querySelectorAll('[data-tecserv]').forEach(b => b.onclick = () => { window.__chBuscaInicial = b.dataset.tecserv; navegar('manutencao-chamados'); });
+  } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }

@@ -167,6 +167,12 @@ tr:last-child td { border-bottom: none; }
 .card-arq { background: #fff; border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
 .card-arq-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .card-arq-top b { font-size: .98rem; }
+.card-arq-top a { text-decoration: none; }
+/* Grade de especialidades (cadastro de técnico) */
+.tec-espec { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; margin-top: 6px; }
+.tec-espec .tec-chk { flex-direction: row; align-items: center; gap: 6px; font-weight: 500; font-size: .9rem; }
+.tec-espec .tec-chk input { width: auto; }
+@media (max-width: 600px) { .tec-espec { grid-template-columns: 1fr; } }
 .aviso { background: #fff7e6; border: 1px solid #f0dca6; border-radius: 10px; padding: 12px 14px; font-size: .88rem; margin-bottom: 18px; }
 
 /* ---------- CRM / Funil ---------- */
