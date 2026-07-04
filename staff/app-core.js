@@ -207,7 +207,7 @@ function construirItensMenu() {
   itens.push({ id: 'limpezas', rot: '🧹 Limpezas de hoje' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
   itens.push({ id: 'manutencao', rot: '🔧 Lista de manutenção' });
-  itens.push({ id: 'manutencao-chamados', rot: '🛠️ Chamados de manutenção' });
+  itens.push({ id: 'manutencao-chamados', rot: '🛠️ Manutenção' });
   if (tem('manutencao') || tem('operacoes') || tem('obras') || tem('ceo')) itens.push({ id: 'ativos', rot: '🧰 Equipamentos' });
   if (tem('operacoes') || tem('compras') || tem('ceo')) itens.push({ id: 'estoque', rot: '🧴 Estoque & enxoval' });
   // Pendências é restrita à área CEO (admin vê tudo); demais não veem o item.

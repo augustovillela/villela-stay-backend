@@ -54,7 +54,7 @@ async function renderVisao() {
       card(ck.listas.manutencao, '🔧 Itens de manutenção', 'manutencao');
       if (ck.listas.pendencias != null) card(ck.listas.pendencias, '✅ Pendências (CEO)', 'pendencias');
     }
-    if (ck.chamadosAbertos != null) card(ck.chamadosAbertos, '🛠️ Chamados de manutenção abertos', 'manutencao-chamados', ck.chamadosAbertos > 0 ? 'var(--cerrado)' : 'var(--ok)');
+    if (ck.chamadosAbertos != null) card(ck.chamadosAbertos, '🛠️ Manutenção — abertos', 'manutencao-chamados', ck.chamadosAbertos > 0 ? 'var(--cerrado)' : 'var(--ok)');
     $('#ck-cards').innerHTML = cards.join('') || '<div class="vazio">Sem dados no momento.</div>';
     document.querySelectorAll('.card-nav').forEach(el => el.onclick = () => navegar(el.dataset.nav));
 
@@ -171,33 +171,68 @@ async function atualizarContadorFotos(entidade, entidadeId) {
   } catch (_) {}
 }
 
-// --------- Chamados de manutenção (quadro por status, com técnico e custo) ---------
+// --------- Manutenção: HUB único (abertos em quadro + arquivo pesquisável + baixa documentada) ---------
 const CH_COLS = [
-  { id: 'aberto', rot: '🔴 Aberto' }, { id: 'agendado', rot: '📅 Agendado' },
-  { id: 'em_execucao', rot: '🛠️ Em execução' }, { id: 'concluido', rot: '✅ Concluído' },
+  { id: 'aberto', rot: '🔴 Aberto' }, { id: 'agendado', rot: '📅 Agendado' }, { id: 'em_execucao', rot: '🛠️ Em execução' },
 ];
+const CH_TIPOS = [
+  ['hidraulico', '🚰 Hidráulico'], ['eletrico', '⚡ Elétrico'], ['marcenaria', '🪵 Marcenaria'], ['pintura', '🎨 Pintura'],
+  ['reparo', '🔧 Reparo'], ['ar_condicionado', '❄️ Ar-condicionado'], ['concessionaria_agua', '💧 Concessionária de água'], ['concessionaria_luz', '💡 Concessionária de luz'],
+];
+const chTipoRot = (t) => (CH_TIPOS.find(x => x[0] === t) || [null, ''])[1];
+// Códigos de imóvel (o custo entra no DRE por este código; datalist ajuda a acertar).
+const CH_CASAS = [
+  ['GD01H', 'Casa Modernista'], ['GD03H', 'Gran Villela'], ['GG04I', 'Villa Kubitschek'], ['PL02I', 'Villa Catetinho'],
+  ['YV01I', 'Jardim dos Sentidos'], ['GI01I', 'Casa Villela'], ['VH01H', 'Flat da Família'], ['VH02H', 'Flat dos Amigos'],
+  ['UF07H', 'Flat do Oscar'], ['UD03H', 'Flat dos Solteiros'], ['UF01H', 'Flat do Burle Marx'], ['UF08H', 'Flat da Cassia Eller'],
+  ['UD09H', 'Suíte do Renato Russo'], ['UF05H', 'Suíte do Chef'], ['UF06H', 'Suíte do Amor'], ['UH01H', 'Suíte do Felipe'],
+  ['UH03H', 'Suíte da Família'], ['UH04H', 'Suíte da Sofia'], ['UH05H', 'Suíte Master QI 7'], ['UH06H', 'Suíte do Pedro'],
+];
+let CH_TECNICOS = [];      // cache do cadastro de técnicos
+const chMoney = (v) => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+async function carregarTecnicos() {
+  try { CH_TECNICOS = (await api('GET', '/manutencao/tecnicos')).tecnicos || []; } catch (_) { CH_TECNICOS = []; }
+  const dl = $('#ch-tecnicos-dl'); if (dl) dl.innerHTML = CH_TECNICOS.map(t => `<option value="${esc(t.nome)}">${esc(t.telefone || '')}${(t.especialidades || []).length ? ' · ' + t.especialidades.map(chTipoRot).filter(Boolean).join(', ') : ''}</option>`).join('');
+}
+function foneDoTecnico(nome) { const t = CH_TECNICOS.find(x => (x.nome || '').toLowerCase() === String(nome || '').trim().toLowerCase()); return t ? (t.telefone || '') : ''; }
+
 async function renderChamadosManutencao() {
   const c = conteudo();
-  c.innerHTML = cabecalho('Chamados de manutenção', 'Do problema ao conserto: aberto → agendado → em execução → concluído, com técnico e custo.') + `
+  c.innerHTML = cabecalho('Manutenção', 'Hub único (WhatsApp, hóspede e portal). Do problema ao conserto documentado — técnico, custos e arquivo pesquisável.') + `
     <details class="cr-box" id="ch-box"><summary class="cr-sum">➕ Novo chamado</summary>
-      <form class="form" id="ch-form" style="max-width:640px;margin-top:12px">
+      <form class="form" id="ch-form" style="max-width:660px;margin-top:12px">
         <input type="hidden" id="ch-id">
-        <label>Título * <input id="ch-titulo" required maxlength="160" placeholder="ex.: Chuveiro da Suíte Master pingando"></label>
-        <label>Casa / unidade <input id="ch-casa" maxlength="80" placeholder="ex.: Casa Modernista, Villa Kubitschek…"></label>
-        <label>Descrição <textarea id="ch-desc" rows="2" maxlength="1000"></textarea></label>
-        <label>Técnico / responsável <input id="ch-tecnico" maxlength="80" placeholder="ex.: Rosivaldo, Julio, Antônio…"></label>
+        <label>Título * <input id="ch-titulo" required maxlength="160" placeholder="ex.: Ar-condicionado da Villa Kubitschek pingando"></label>
         <div class="hi-grid">
-          <label>Custo (R$) <input id="ch-custo" type="number" min="0" step="0.01" placeholder="deixe vazio se ainda não sabe"></label>
+          <label>Casa / unidade <input id="ch-casa" list="ch-casas-dl" maxlength="80" placeholder="ex.: GG04I"></label>
+          <label>Tipo <select id="ch-tipo"><option value="">—</option>${CH_TIPOS.map(t => `<option value="${t[0]}">${t[1]}</option>`).join('')}</select></label>
+        </div>
+        <label>Descrição <textarea id="ch-desc" rows="2" maxlength="1000"></textarea></label>
+        <div class="hi-grid">
+          <label>Técnico <input id="ch-tecnico" list="ch-tecnicos-dl" maxlength="80" placeholder="ex.: Julio César…"></label>
+          <label>WhatsApp do técnico <input id="ch-tecfone" maxlength="30" placeholder="ex.: +5561992867402"></label>
+        </div>
+        <div class="hi-grid">
+          <label>Solicitante <input id="ch-solic" maxlength="80" placeholder="quem pediu (hóspede, equipe…)"></label>
           <label>Equipamento (opcional) <select id="ch-ativo"><option value="">— nenhum —</option></select></label>
         </div>
         <button class="btn" type="submit" id="ch-salvar">Abrir chamado</button>
       </form>
     </details>
-    <div id="ch-board" class="kanban"><p class="vazio">Carregando…</p></div>`;
+    <datalist id="ch-tecnicos-dl"></datalist>
+    <datalist id="ch-casas-dl">${CH_CASAS.map(x => `<option value="${x[0]}">${esc(x[1])}</option>`).join('')}</datalist>
+    <div id="ch-board" class="kanban"><p class="vazio">Carregando…</p></div>
+    <h3 style="margin:24px 0 4px">🗄️ Arquivo de manutenções (concluídas)</h3>
+    <p class="sub" style="margin:0 0 10px">Ordem cronológica (mais recentes primeiro). Busque por qualquer palavra: problema, técnico, casa, tipo, como resolveu…</p>
+    <input id="ch-busca" placeholder="🔎 Buscar no histórico (ex.: ar-condicionado, Julio, vazamento, Villa Kubitschek)" style="width:100%;max-width:660px;margin-bottom:12px;padding:9px 12px;border:1px solid var(--linha);border-radius:8px">
+    <div id="ch-arquivo"><p class="vazio">Carregando…</p></div>`;
+  await carregarTecnicos();
+  $('#ch-tecnico').oninput = () => { const f = foneDoTecnico($('#ch-tecnico').value); if (f && !$('#ch-tecfone').value.trim()) $('#ch-tecfone').value = f; };
   try { const { ativos } = await api('GET', '/ativos'); $('#ch-ativo').innerHTML = '<option value="">— nenhum —</option>' + ativos.map(a => `<option value="${a.id}">${esc(a.nome)}${a.casa ? ' · ' + esc(a.casa) : ''}</option>`).join(''); } catch (_) {}
   $('#ch-form').onsubmit = async (ev) => {
     ev.preventDefault();
-    const corpo = { titulo: $('#ch-titulo').value.trim(), casa: $('#ch-casa').value.trim(), descricao: $('#ch-desc').value.trim(), tecnico: $('#ch-tecnico').value.trim(), custo: $('#ch-custo').value, ativoId: $('#ch-ativo').value };
+    const corpo = { titulo: $('#ch-titulo').value.trim(), casa: $('#ch-casa').value.trim(), tipo: $('#ch-tipo').value, descricao: $('#ch-desc').value.trim(), tecnico: $('#ch-tecnico').value.trim(), tecnicoTelefone: $('#ch-tecfone').value.trim(), solicitante: $('#ch-solic').value.trim(), ativoId: $('#ch-ativo').value };
     try {
       const id = $('#ch-id').value;
       if (id) await api('PATCH', '/manutencao/chamados/' + id, corpo);
@@ -206,43 +241,47 @@ async function renderChamadosManutencao() {
       carregarChamados();
     } catch (e) { alert(e.message); }
   };
+  let bt; $('#ch-busca').oninput = () => { clearTimeout(bt); bt = setTimeout(carregarArquivo, 300); };
   carregarChamados();
 }
+
+// Quadro dos ABERTOS (aberto/agendado/em execução). Concluídos vão para o arquivo (abaixo).
 async function carregarChamados() {
   const board = $('#ch-board'); if (!board) return;
   try {
-    const { chamados } = await api('GET', '/manutencao/chamados');
+    const { abertos } = await api('GET', '/manutencao/chamados');
+    window.__chAbertos = abertos;
     const porCol = {}; CH_COLS.forEach(col => porCol[col.id] = []);
-    chamados.forEach(ch => (porCol[ch.status] || porCol.aberto).push(ch));
+    abertos.forEach(ch => (porCol[ch.status] || porCol.aberto).push(ch));
     const opcoesStatus = (atual) => CH_COLS.map(col => `<option value="${col.id}" ${col.id === atual ? 'selected' : ''}>${col.rot}</option>`).join('');
     board.innerHTML = CH_COLS.map(col => {
       const lista = porCol[col.id];
-      const custo = lista.reduce((s, ch) => s + (Number(ch.custo) || 0), 0);
       return `<div class="col">
         <div class="col-head"><span>${col.rot}</span><span class="col-n">${lista.length}</span></div>
-        ${custo ? `<div class="col-valor">R$ ${custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>` : ''}
         <div class="col-cards">${lista.map(ch => `
           <div class="kard" style="cursor:default">
             <div class="kard-nome">${esc(ch.titulo)}</div>
-            <div class="kard-meta">${ch.casa ? `<span class="chip">${esc(ch.casa)}</span>` : ''}${ch.custo != null ? `<span class="chip">R$ ${Number(ch.custo).toLocaleString('pt-BR')}</span>` : ''}</div>
-            ${ch.tecnico ? `<div class="kard-acao">👷 ${esc(ch.tecnico)}</div>` : ''}
-            <div class="kard-origem">${esc(ch.quem)} · ${dataBr(ch.criadoEm)}</div>
+            <div class="kard-meta">${ch.casa ? `<span class="chip">${esc(ch.casa)}</span>` : ''}${ch.tipo ? `<span class="chip">${chTipoRot(ch.tipo)}</span>` : ''}${ch.origem && ch.origem !== 'portal' ? `<span class="chip">${esc(ch.origem)}</span>` : ''}</div>
+            ${ch.tecnico ? `<div class="kard-acao">👷 ${esc(ch.tecnico)}${ch.tecnicoTelefone ? ' · ' + esc(ch.tecnicoTelefone) : ''}</div>` : ''}
+            <div class="kard-origem">${esc(ch.solicitante || ch.quem)} · ${dataBr(ch.criadoEm)}</div>
             <div class="acoes" style="margin-top:8px">
               <select data-mover="${ch.id}" style="font-size:.78rem;padding:4px 6px">${opcoesStatus(ch.status)}</select>
+              <button class="btn peq" data-baixar="${ch.id}">✅ Baixar</button>
               <button class="btn peq secund" data-fotos="chamado:${ch.id}" data-tit="${esc(ch.titulo)}">📷</button>
-              <button class="btn peq secund" data-editar="${ch.id}">Editar</button>
+              <button class="btn peq secund" data-editar="${ch.id}">✏️</button>
               <button class="btn peq perigo" data-remover="${ch.id}">✕</button>
             </div>
           </div>`).join('') || '<div class="col-vazio">—</div>'}</div>
       </div>`;
     }).join('');
     board.querySelectorAll('[data-mover]').forEach(s => s.onchange = async () => {
-      try { await api('PATCH', '/manutencao/chamados/' + s.dataset.mover, { status: s.value }); carregarChamados(); } catch (e) { alert(e.message); }
+      try { await api('PATCH', '/manutencao/chamados/' + s.dataset.mover, { status: s.value }); if (s.value === 'concluido') { const ch = (window.__chAbertos || []).find(x => x.id === s.dataset.mover); abrirBaixaChamado(Object.assign({}, ch, { status: 'concluido' })); } carregarChamados(); } catch (e) { alert(e.message); }
     });
+    board.querySelectorAll('[data-baixar]').forEach(b => b.onclick = () => abrirBaixaChamado((window.__chAbertos || []).find(x => x.id === b.dataset.baixar)));
     board.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => {
-      const ch = chamados.find(x => x.id === b.dataset.editar); if (!ch) return;
-      $('#ch-id').value = ch.id; $('#ch-titulo').value = ch.titulo; $('#ch-casa').value = ch.casa || '';
-      $('#ch-desc').value = ch.descricao || ''; $('#ch-tecnico').value = ch.tecnico || ''; $('#ch-custo').value = ch.custo != null ? ch.custo : '';
+      const ch = (window.__chAbertos || []).find(x => x.id === b.dataset.editar); if (!ch) return;
+      $('#ch-id').value = ch.id; $('#ch-titulo').value = ch.titulo; $('#ch-casa').value = ch.casa || ''; $('#ch-tipo').value = ch.tipo || '';
+      $('#ch-desc').value = ch.descricao || ''; $('#ch-tecnico').value = ch.tecnico || ''; $('#ch-tecfone').value = ch.tecnicoTelefone || ''; $('#ch-solic').value = ch.solicitante || '';
       if ($('#ch-ativo')) $('#ch-ativo').value = ch.ativoId || '';
       $('#ch-salvar').textContent = 'Salvar alterações'; $('#ch-box').open = true; window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -251,5 +290,104 @@ async function carregarChamados() {
       if (!confirm('Excluir este chamado?')) return;
       try { await api('DELETE', '/manutencao/chamados/' + b.dataset.remover); carregarChamados(); } catch (e) { alert(e.message); }
     });
+    carregarArquivo();
   } catch (e) { board.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// Arquivo (concluídos), ordem cronológica, com busca por palavra em qualquer campo.
+async function carregarArquivo() {
+  const box = $('#ch-arquivo'); if (!box) return;
+  const busca = ($('#ch-busca') && $('#ch-busca').value.trim()) || '';
+  try {
+    const { arquivados } = await api('GET', '/manutencao/chamados?status=concluido' + (busca ? '&busca=' + encodeURIComponent(busca) : ''));
+    window.__chArquivo = arquivados;
+    if (!arquivados.length) { box.innerHTML = `<p class="vazio">${busca ? 'Nada encontrado para “' + esc(busca) + '”.' : 'Nenhuma manutenção concluída ainda.'}</p>`; return; }
+    box.innerHTML = arquivados.map(ch => {
+      const total = (Number(ch.despMaterial) || 0) + (Number(ch.despMaoObra) || 0) + (Number(ch.despDeslocamento) || 0);
+      const quando = ch.dataResolucao || (ch.concluidoEm || '').slice(0, 10);
+      return `<div class="card-arq">
+        <div class="card-arq-top">
+          <b>${esc(ch.titulo)}</b>
+          <span class="sub">${quando ? dataBr(quando) : '—'}</span>
+        </div>
+        <div class="kard-meta" style="margin:4px 0">${ch.casa ? `<span class="chip">${esc(ch.casa)}</span>` : ''}${ch.tipo ? `<span class="chip">${chTipoRot(ch.tipo)}</span>` : ''}${!ch.documentado ? '<span class="chip" style="background:var(--cerrado);color:#fff">⚠️ completar dados</span>' : ''}</div>
+        ${ch.tecnico ? `<div class="sub">👷 ${esc(ch.tecnico)}${ch.tecnicoTelefone ? ' · ' + esc(ch.tecnicoTelefone) : ''}</div>` : ''}
+        ${ch.comoResolvido ? `<div style="margin:4px 0;font-size:.9rem">🛠️ ${esc(ch.comoResolvido)}</div>` : ''}
+        <div class="sub">💰 ${chMoney(total)}${total ? ` <span style="opacity:.8">(mat ${chMoney(ch.despMaterial)} · mão ${chMoney(ch.despMaoObra)} · desl ${chMoney(ch.despDeslocamento)})</span>` : ''}</div>
+        <div class="acoes" style="margin-top:8px">
+          <button class="btn peq" data-arqedit="${ch.id}">${ch.documentado ? '✏️ Editar' : '📝 Completar / arquivar'}</button>
+          <button class="btn peq secund" data-fotos="chamado:${ch.id}" data-tit="${esc(ch.titulo)}">📷</button>
+          <button class="btn peq secund" data-reabrir="${ch.id}">↩️ Reabrir</button>
+          <button class="btn peq perigo" data-remover2="${ch.id}">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+    box.querySelectorAll('[data-arqedit]').forEach(b => b.onclick = () => abrirBaixaChamado((window.__chArquivo || []).find(x => x.id === b.dataset.arqedit)));
+    box.querySelectorAll('[data-fotos]').forEach(b => b.onclick = () => { const [ent, eid] = b.dataset.fotos.split(':'); abrirFotosModal(ent, eid, b.dataset.tit); });
+    box.querySelectorAll('[data-reabrir]').forEach(b => b.onclick = async () => { try { await api('PATCH', '/manutencao/chamados/' + b.dataset.reabrir, { status: 'em_execucao' }); carregarChamados(); } catch (e) { alert(e.message); } });
+    box.querySelectorAll('[data-remover2]').forEach(b => b.onclick = async () => { if (!confirm('Excluir do arquivo?')) return; try { await api('DELETE', '/manutencao/chamados/' + b.dataset.remover2); carregarArquivo(); } catch (e) { alert(e.message); } });
+  } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// Modal de BAIXA/ARQUIVO: coleta os campos obrigatórios. Dois caminhos:
+//  • "Salvar (concluído)" = fecha o chamado, mesmo incompleto (completa depois).
+//  • "Arquivar (definitivo)" = exige os campos; lança a despesa no DRE e cadastra o técnico.
+function abrirBaixaChamado(ch) {
+  if (!ch) return;
+  const antigo = document.querySelector('.cal-modal'); if (antigo) antigo.remove();
+  const hoje = new Date().toISOString().slice(0, 10);
+  const m = document.createElement('div'); m.className = 'cal-modal';
+  m.innerHTML = `<div class="cal-modal-cx" style="max-width:600px">
+    <button class="cal-modal-x" id="bx-x">✕</button>
+    <h3>✅ Baixar manutenção</h3>
+    <p class="sub" style="margin:-4px 0 10px">${esc(ch.titulo)}${ch.casa ? ' · ' + esc(ch.casa) : ''}</p>
+    <form class="form" id="bx-form">
+      <div class="hi-grid">
+        <label>Tipo * <select id="bx-tipo"><option value="">—</option>${CH_TIPOS.map(t => `<option value="${t[0]}" ${ch.tipo === t[0] ? 'selected' : ''}>${t[1]}</option>`).join('')}</select></label>
+        <label>Data da resolução * <input id="bx-data" type="date" value="${ch.dataResolucao || hoje}"></label>
+      </div>
+      <div class="hi-grid">
+        <label>Técnico * <input id="bx-tec" list="ch-tecnicos-dl" maxlength="80" value="${esc(ch.tecnico || '')}"></label>
+        <label>WhatsApp do técnico * <input id="bx-fone" maxlength="30" value="${esc(ch.tecnicoTelefone || '')}" placeholder="+5561…"></label>
+      </div>
+      <label>Como foi resolvido * <textarea id="bx-como" rows="2" maxlength="1000">${esc(ch.comoResolvido || '')}</textarea></label>
+      <div class="hi-grid hi-grid-3">
+        <label>Despesa material (R$) <input id="bx-mat" type="number" min="0" step="0.01" value="${ch.despMaterial || ''}"></label>
+        <label>Mão de obra (R$) <input id="bx-mao" type="number" min="0" step="0.01" value="${ch.despMaoObra || ''}"></label>
+        <label>Deslocamento (R$) <input id="bx-desl" type="number" min="0" step="0.01" value="${ch.despDeslocamento || ''}"></label>
+      </div>
+      <p class="sub" id="bx-total" style="margin:2px 0">Total: ${chMoney((Number(ch.despMaterial) || 0) + (Number(ch.despMaoObra) || 0) + (Number(ch.despDeslocamento) || 0))}</p>
+      <div class="hi-grid">
+        <label>Próxima visita (opcional) <input id="bx-prox" type="date" value="${ch.proximaVisita || ''}"></label>
+        <label>Repetir a cada (meses) <input id="bx-freq" type="number" min="0" step="1" value="${ch.periodicoFreqMeses || ''}" placeholder="ex.: 3"></label>
+      </div>
+      <p class="sub" style="margin:0">📅 Próxima visita e periodicidade serão levadas ao Google Calendar / agenda preventiva (Fase 4).</p>
+      <p id="bx-msg" class="erro" style="margin:6px 0 0;display:none"></p>
+      <div class="acoes" style="margin-top:12px">
+        <button class="btn" type="button" id="bx-arquivar">🗄️ Arquivar (definitivo)</button>
+        <button class="btn secund" type="button" id="bx-salvar">Salvar (concluído, completar depois)</button>
+      </div>
+    </form>
+  </div>`;
+  document.body.appendChild(m);
+  const fechar = () => m.remove();
+  m.onclick = (e) => { if (e.target === m) fechar(); };
+  $('#bx-x').onclick = fechar;
+  $('#bx-tec').oninput = () => { const f = foneDoTecnico($('#bx-tec').value); if (f && !$('#bx-fone').value.trim()) $('#bx-fone').value = f; };
+  const recalc = () => { $('#bx-total').textContent = 'Total: ' + chMoney((Number($('#bx-mat').value) || 0) + (Number($('#bx-mao').value) || 0) + (Number($('#bx-desl').value) || 0)); };
+  ['#bx-mat', '#bx-mao', '#bx-desl'].forEach(s => $(s).oninput = recalc);
+  const corpo = () => ({
+    tipo: $('#bx-tipo').value, dataResolucao: $('#bx-data').value, tecnico: $('#bx-tec').value.trim(), tecnicoTelefone: $('#bx-fone').value.trim(),
+    comoResolvido: $('#bx-como').value.trim(), despMaterial: $('#bx-mat').value, despMaoObra: $('#bx-mao').value, despDeslocamento: $('#bx-desl').value,
+    proximaVisita: $('#bx-prox').value, periodicoFreqMeses: $('#bx-freq').value,
+  });
+  const enviar = async (extra) => {
+    const msg = $('#bx-msg'); msg.style.display = 'none';
+    try {
+      await api('PATCH', '/manutencao/chamados/' + ch.id, Object.assign(corpo(), extra));
+      fechar(); await carregarTecnicos(); carregarChamados();
+    } catch (e) { msg.textContent = e.message; msg.style.display = 'block'; }
+  };
+  $('#bx-salvar').onclick = () => enviar({ status: 'concluido' });
+  $('#bx-arquivar').onclick = () => enviar({ documentado: true });
 }

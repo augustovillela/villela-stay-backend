@@ -63,6 +63,8 @@ function appendJsonl(file, obj) {
 
 // Normaliza para busca tolerante: minúsculas e SEM acento (ex.: "otavio" acha "Otávio").
 function semAcento(s) { return String(s == null ? '' : s).normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '').toLowerCase(); }
+// Palavras de uma busca livre (sem acento, minúsculas) — casamento multi-palavra AND.
+function tokensBusca(q) { return semAcento(q || '').trim().split(/\s+/).filter(Boolean); }
 
 app.get('/health', (req, res) => res.json({ ok: true, servico: 'villela-stay-backend' }));
 
@@ -1429,12 +1431,109 @@ app.post('/staff/api/limpezas/confirmar', requirePublishOrSession, (req, res) =>
   res.json({ ok: true, dia, confirmadas: Object.keys(doDia).length });
 });
 
-// ---- Chamados de manutenção: quadro com status, técnico e custo ----
-// Fluxo: aberto → agendado → em_execucao → concluido. Qualquer logado gerencia; agentes via chave.
+// ---- Manutenção: HUB ÚNICO (chamados) — portal/app staff + WhatsApp + hóspede ----
+// Fluxo: aberto → agendado → em_execucao → concluido. WhatsApp/atalho pode CONCLUIR com campos
+// incompletos (documentado=false, completa depois); ARQUIVAR de vez (documentado=true) exige os
+// campos de baixa. Concluídos ficam no arquivo (ordem cronológica, busca em qualquer campo).
 const CHAMADO_STATUS = ['aberto', 'agendado', 'em_execucao', 'concluido'];
+const CHAMADO_TIPOS = ['hidraulico', 'eletrico', 'marcenaria', 'pintura', 'reparo', 'ar_condicionado', 'concessionaria_agua', 'concessionaria_luz'];
+const soDig = (v) => String(v == null ? '' : v).replace(/\D/g, '');
+const numBR = (v) => (v != null && v !== '' ? Number(String(v).replace(',', '.')) || 0 : 0);
 
+// Campos que faltam para ARQUIVAR (documentar) um chamado. Despesas aceitam 0 (não exigidas).
+function faltamBaixaChamado(ch) {
+  const f = [];
+  if (!CHAMADO_TIPOS.includes(ch.tipo)) f.push('tipo');
+  if (!String(ch.tecnico || '').trim()) f.push('tecnico');
+  if (!String(ch.tecnicoTelefone || '').trim()) f.push('tecnicoTelefone');
+  if (!String(ch.comoResolvido || '').trim()) f.push('comoResolvido');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ch.dataResolucao || '')) f.push('dataResolucao');
+  return f;
+}
+
+// Normaliza um chamado (defaults dos campos novos p/ registros antigos) — leitura tolerante.
+function normChamado(ch) {
+  return {
+    id: ch.id, titulo: ch.titulo || '', casa: ch.casa || '', descricao: ch.descricao || '',
+    tipo: CHAMADO_TIPOS.includes(ch.tipo) ? ch.tipo : '',
+    status: CHAMADO_STATUS.includes(ch.status) ? ch.status : 'aberto',
+    tecnico: ch.tecnico || '', tecnicoTelefone: ch.tecnicoTelefone || '', tecnicoId: ch.tecnicoId || '',
+    comoResolvido: ch.comoResolvido || '', dataResolucao: ch.dataResolucao || '',
+    despMaterial: ch.despMaterial != null ? Number(ch.despMaterial) || 0 : 0,
+    despMaoObra: ch.despMaoObra != null ? Number(ch.despMaoObra) || 0 : 0,
+    despDeslocamento: ch.despDeslocamento != null ? Number(ch.despDeslocamento) || 0 : 0,
+    custo: ch.custo != null && ch.custo !== '' ? Number(ch.custo) || 0 : null,
+    proximaVisita: ch.proximaVisita || '', periodicoFreqMeses: ch.periodicoFreqMeses != null ? Number(ch.periodicoFreqMeses) || 0 : 0,
+    ativoId: ch.ativoId || '', solicitante: ch.solicitante || '', origem: ch.origem || 'portal',
+    refId: ch.refId || '', documentado: !!ch.documentado,
+    quem: ch.quem || '', criadoEm: ch.criadoEm || '', atualizadoEm: ch.atualizadoEm || '', concluidoEm: ch.concluidoEm || null,
+  };
+}
+function custoTotalChamado(ch) { return numBR(ch.despMaterial) + numBR(ch.despMaoObra) + numBR(ch.despDeslocamento); }
+
+// Lança a despesa do chamado no DRE/custos por imóvel (categoria manutenção). Dedupe por refId
+// 'chamado:<id>' (re-editar atualiza, não duplica). Só lança com total>0, mês e imóvel válidos.
+function lancarCustoManutencao(ch) {
+  try {
+    const total = custoTotalChamado(ch);
+    const mes = String(ch.dataResolucao || '').slice(0, 7);
+    const imovel = String(ch.casa || '').trim();
+    const refId = 'chamado:' + ch.id;
+    const custos = lerJSON('custos-imovel.json', []);
+    const idx = custos.findIndex(c => c.refId === refId);
+    if (!(total > 0) || !/^\d{4}-\d{2}$/.test(mes) || !imovel) {
+      if (idx >= 0) { custos.splice(idx, 1); salvarJSON('custos-imovel.json', custos); }  // deixou de ter despesa
+      return;
+    }
+    const item = {
+      id: idx >= 0 ? custos[idx].id : novoId(), mes, imovel, categoria: 'manutencao', valor: total,
+      obs: ('Manut.: ' + (ch.titulo || '') + (ch.tecnico ? ' — ' + ch.tecnico : '') +
+            ' (mat ' + numBR(ch.despMaterial) + ' + mão ' + numBR(ch.despMaoObra) + ' + desl ' + numBR(ch.despDeslocamento) + ')').slice(0, 200),
+      refId, quem: 'manutencao', criadoEm: idx >= 0 ? custos[idx].criadoEm : new Date().toISOString(),
+    };
+    if (idx >= 0) custos[idx] = item; else custos.push(item);
+    salvarJSON('custos-imovel.json', custos);
+  } catch (e) { console.error('[manut->custo]', e.message); }
+}
+
+// Registra/atualiza o técnico no cadastro do portal (dedupe por telefone). Best-effort.
+function upsertTecnico(nome, telefone, especialidade) {
+  try {
+    nome = String(nome || '').trim(); const tel = soDig(telefone);
+    if (!nome && !tel) return null;
+    const tecs = lerJSON('tecnicos-manutencao.json', []);
+    let t = tel ? tecs.find(x => soDig(x.telefone) === tel) : tecs.find(x => x.nome === nome);
+    if (t) {
+      if (nome) t.nome = nome;
+      if (telefone) t.telefone = String(telefone).trim();
+      if (especialidade && !(t.especialidades || []).includes(especialidade)) t.especialidades = [...(t.especialidades || []), especialidade];
+      t.atualizadoEm = new Date().toISOString();
+    } else {
+      t = { id: novoId(), nome, telefone: String(telefone || '').trim(), especialidades: especialidade ? [especialidade] : [], obs: '', criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString() };
+      tecs.push(t);
+    }
+    salvarJSON('tecnicos-manutencao.json', tecs);
+    return t;
+  } catch (e) { console.error('[upsertTecnico]', e.message); return null; }
+}
+
+// GET: ?busca= (palavra em qualquer campo) ?status= ?arquivo=1 (só concluídos). Devolve abertos e
+// arquivados (concluídos, mais recentes primeiro) já separados p/ a tela.
 app.get('/staff/api/manutencao/chamados', requirePublishOrSession, (req, res) => {
-  res.json({ chamados: lerJSON('manutencao-chamados.json', []) });
+  let lista = lerJSON('manutencao-chamados.json', []).map(normChamado);
+  const busca = tokensBusca(req.query.busca);
+  if (busca.length) {
+    lista = lista.filter(ch => {
+      const alvo = semAcento([ch.titulo, ch.casa, ch.descricao, ch.tipo, ch.tecnico, ch.tecnicoTelefone, ch.comoResolvido, ch.solicitante, ch.origem, ch.quem].join(' ').toLowerCase());
+      return busca.every(t => alvo.includes(t));
+    });
+  }
+  if (CHAMADO_STATUS.includes(req.query.status)) lista = lista.filter(ch => ch.status === req.query.status);
+  const abertos = lista.filter(ch => ch.status !== 'concluido');
+  const arquivados = lista.filter(ch => ch.status === 'concluido')
+    .sort((a, b) => String(b.concluidoEm || b.dataResolucao || b.criadoEm).localeCompare(String(a.concluidoEm || a.dataResolucao || a.criadoEm)));
+  // 'chamados' (compat) = tudo; abertos/arquivados = separados para a tela nova.
+  res.json({ chamados: lista, abertos, arquivados, tipos: CHAMADO_TIPOS });
 });
 
 app.post('/staff/api/manutencao/chamados', requirePublishOrSession, (req, res) => {
@@ -1442,21 +1541,36 @@ app.post('/staff/api/manutencao/chamados', requirePublishOrSession, (req, res) =
   const titulo = String(d.titulo || '').trim();
   if (!titulo) return res.status(400).json({ erro: 'Informe o título do chamado.' });
   const chamados = lerJSON('manutencao-chamados.json', []);
+  // dedupe por refId (WhatsApp/hóspede reenviando o mesmo pedido)
+  const refId = d.refId ? String(d.refId).trim() : '';
+  if (refId) { const ex = chamados.find(c => c.refId === refId); if (ex) return res.json({ ok: true, duplicado: true, chamado: normChamado(ex) }); }
   const ch = {
     id: novoId(), titulo,
     casa: String(d.casa || '').trim(),
     descricao: String(d.descricao || '').trim(),
+    tipo: CHAMADO_TIPOS.includes(d.tipo) ? d.tipo : '',
     status: CHAMADO_STATUS.includes(d.status) ? d.status : 'aberto',
     tecnico: String(d.tecnico || '').trim(),
+    tecnicoTelefone: String(d.tecnicoTelefone || '').trim(),
+    tecnicoId: String(d.tecnicoId || '').trim(),
+    comoResolvido: String(d.comoResolvido || '').trim(),
+    dataResolucao: /^\d{4}-\d{2}-\d{2}$/.test(d.dataResolucao || '') ? d.dataResolucao : '',
+    despMaterial: numBR(d.despMaterial), despMaoObra: numBR(d.despMaoObra), despDeslocamento: numBR(d.despDeslocamento),
     custo: d.custo != null && d.custo !== '' ? Number(d.custo) || 0 : null,
+    proximaVisita: /^\d{4}-\d{2}-\d{2}$/.test(d.proximaVisita || '') ? d.proximaVisita : '',
+    periodicoFreqMeses: numBR(d.periodicoFreqMeses),
     ativoId: String(d.ativoId || '').trim(),
+    solicitante: String(d.solicitante || '').trim(),
     origem: req.viaChave ? (String(d.origem || '').trim() || 'agente') : 'portal',
+    refId,
+    documentado: false,
     quem: req.viaChave ? (String(d.quem || '').trim() || 'Agente Claude') : (req.user.nome || req.user.email || 'staff'),
     criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(), concluidoEm: null,
   };
+  ch.custo = custoTotalChamado(ch) || ch.custo;
   chamados.push(ch);
   salvarJSON('manutencao-chamados.json', chamados);
-  res.json({ ok: true, chamado: ch });
+  res.json({ ok: true, chamado: normChamado(ch) });
 });
 
 app.patch('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, res) => {
@@ -1464,12 +1578,39 @@ app.patch('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, r
   const ch = chamados.find(x => x.id === req.params.id);
   if (!ch) return res.status(404).json({ erro: 'Chamado não encontrado.' });
   const d = req.body || {};
-  if (d.status && CHAMADO_STATUS.includes(d.status)) { ch.status = d.status; ch.concluidoEm = d.status === 'concluido' ? new Date().toISOString() : null; }
-  for (const campo of ['titulo', 'casa', 'descricao', 'tecnico', 'ativoId']) if (d[campo] != null) ch[campo] = String(d[campo]).trim();
+  // campos texto
+  for (const campo of ['titulo', 'casa', 'descricao', 'tecnico', 'tecnicoTelefone', 'tecnicoId', 'comoResolvido', 'ativoId', 'solicitante']) if (d[campo] != null) ch[campo] = String(d[campo]).trim();
+  if (d.tipo != null) ch.tipo = CHAMADO_TIPOS.includes(d.tipo) ? d.tipo : '';
+  if (d.dataResolucao != null) ch.dataResolucao = /^\d{4}-\d{2}-\d{2}$/.test(d.dataResolucao) ? d.dataResolucao : '';
+  if (d.proximaVisita != null) ch.proximaVisita = /^\d{4}-\d{2}-\d{2}$/.test(d.proximaVisita) ? d.proximaVisita : '';
+  for (const campo of ['despMaterial', 'despMaoObra', 'despDeslocamento', 'periodicoFreqMeses']) if (d[campo] !== undefined) ch[campo] = numBR(d[campo]);
   if (d.custo !== undefined) ch.custo = d.custo === '' || d.custo == null ? null : Number(d.custo) || 0;
+  if (d.status && CHAMADO_STATUS.includes(d.status)) {
+    ch.status = d.status;
+    if (d.status === 'concluido') { if (!ch.concluidoEm) ch.concluidoEm = new Date().toISOString(); }
+    else { ch.concluidoEm = null; ch.documentado = false; }  // reabriu
+  }
+  // custo total = soma das despesas (quando houver); senão mantém o custo manual
+  const totalDesp = custoTotalChamado(ch);
+  if (totalDesp > 0) ch.custo = totalDesp;
+  // ARQUIVAR (documentar): exige os campos de baixa
+  if (d.documentado === true) {
+    const faltam = faltamBaixaChamado(ch);
+    if (faltam.length) return res.status(400).json({ erro: 'Para arquivar, preencha: ' + faltam.join(', ') + '.', faltam });
+    ch.status = 'concluido'; if (!ch.concluidoEm) ch.concluidoEm = new Date().toISOString();
+    ch.documentado = true;
+    upsertTecnico(ch.tecnico, ch.tecnicoTelefone, ch.tipo);
+    lancarCustoManutencao(ch);
+  } else if (d.documentado === false) {
+    ch.documentado = false;
+  } else if (ch.documentado) {
+    // já documentado e editaram despesas/técnico → mantém DRE e cadastro em dia
+    lancarCustoManutencao(ch);
+    if (ch.tecnico || ch.tecnicoTelefone) upsertTecnico(ch.tecnico, ch.tecnicoTelefone, ch.tipo);
+  }
   ch.atualizadoEm = new Date().toISOString();
   salvarJSON('manutencao-chamados.json', chamados);
-  res.json({ ok: true, chamado: ch });
+  res.json({ ok: true, chamado: normChamado(ch) });
 });
 
 app.delete('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, res) => {
@@ -1477,6 +1618,46 @@ app.delete('/staff/api/manutencao/chamados/:id', requirePublishOrSession, (req, 
   const rest = chamados.filter(x => x.id !== req.params.id);
   salvarJSON('manutencao-chamados.json', rest);
   res.json({ ok: true, removidos: chamados.length - rest.length });
+});
+
+// ---- Cadastro de Técnicos (manutenção) — usado pelo hub e reaproveitável na preventiva ----
+app.get('/staff/api/manutencao/tecnicos', requirePublishOrSession, (req, res) => {
+  let tecs = lerJSON('tecnicos-manutencao.json', []);
+  const busca = tokensBusca(req.query.busca);
+  if (busca.length) tecs = tecs.filter(t => { const alvo = semAcento([t.nome, t.telefone, (t.especialidades || []).join(' '), t.obs].join(' ').toLowerCase()); return busca.every(x => alvo.includes(x)); });
+  res.json({ tecnicos: tecs.sort((a, b) => String(a.nome).localeCompare(String(b.nome))) });
+});
+app.post('/staff/api/manutencao/tecnicos', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const nome = String(d.nome || '').trim();
+  if (!nome) return res.status(400).json({ erro: 'Informe o nome do técnico.' });
+  const espec = Array.isArray(d.especialidades) ? d.especialidades : (d.especialidade ? [d.especialidade] : []);
+  const tecs = lerJSON('tecnicos-manutencao.json', []);
+  const tel = soDig(d.telefone);
+  let t = tel ? tecs.find(x => soDig(x.telefone) === tel) : null;
+  if (t) { t.nome = nome; if (d.telefone) t.telefone = String(d.telefone).trim(); if (espec.length) t.especialidades = [...new Set([...(t.especialidades || []), ...espec])]; if (d.obs != null) t.obs = String(d.obs).trim(); t.atualizadoEm = new Date().toISOString(); }
+  else { t = { id: novoId(), nome, telefone: String(d.telefone || '').trim(), especialidades: espec, obs: String(d.obs || '').trim(), criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString() }; tecs.push(t); }
+  salvarJSON('tecnicos-manutencao.json', tecs);
+  res.json({ ok: true, tecnico: t });
+});
+app.patch('/staff/api/manutencao/tecnicos/:id', requirePublishOrSession, (req, res) => {
+  const tecs = lerJSON('tecnicos-manutencao.json', []);
+  const t = tecs.find(x => x.id === req.params.id);
+  if (!t) return res.status(404).json({ erro: 'Técnico não encontrado.' });
+  const d = req.body || {};
+  if (d.nome != null) t.nome = String(d.nome).trim();
+  if (d.telefone != null) t.telefone = String(d.telefone).trim();
+  if (d.obs != null) t.obs = String(d.obs).trim();
+  if (Array.isArray(d.especialidades)) t.especialidades = d.especialidades;
+  t.atualizadoEm = new Date().toISOString();
+  salvarJSON('tecnicos-manutencao.json', tecs);
+  res.json({ ok: true, tecnico: t });
+});
+app.delete('/staff/api/manutencao/tecnicos/:id', requirePublishOrSession, (req, res) => {
+  const tecs = lerJSON('tecnicos-manutencao.json', []);
+  const rest = tecs.filter(x => x.id !== req.params.id);
+  salvarJSON('tecnicos-manutencao.json', rest);
+  res.json({ ok: true, removidos: tecs.length - rest.length });
 });
 
 // ---- Backup do DATA_DIR (espelho para máquina local) ----
