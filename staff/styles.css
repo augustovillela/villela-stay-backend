@@ -255,6 +255,22 @@ tr:last-child td { border-bottom: none; }
 .linha-item .nome .obs { font-weight: 400; color: var(--concreto-claro); font-size: .9rem; }
 .linha-item .quem { grid-column: 1; font-size: .78rem; color: var(--concreto-claro); white-space: normal; }
 .linha-item .btn.peq { grid-column: 2; grid-row: 1 / span 3; align-self: center; padding: 4px 9px; white-space: nowrap; }
+/* --- Pendências: mural de post-its coloridos + linhas com categoria --- */
+.postit-mural { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin: 4px 0 22px; }
+.postit { background: var(--pcor, #ffe08a); border-radius: 5px; padding: 12px 14px 14px; box-shadow: 0 4px 11px rgba(0,0,0,.14); }
+.postit-cab { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 7px; }
+.postit-tit { font-weight: 800; color: #3a3320; font-size: .95rem; line-height: 1.2; }
+.postit-n { background: rgba(0,0,0,.16); color: #2b2d2f; border-radius: 10px; padding: 0 8px; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
+.postit-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.postit-lista li { display: flex; align-items: flex-start; gap: 7px; font-size: .86rem; color: #322d20; line-height: 1.35; }
+.postit-check { flex-shrink: 0; width: 19px; height: 19px; border: none; border-radius: 50%; background: rgba(255,255,255,.65); cursor: pointer; font-size: .74rem; line-height: 1; color: var(--lago-escuro); font-weight: 700; }
+.postit-check:hover { background: #fff; }
+.pend-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 9px 12px; }
+.pend-linha .nome { flex: 1; min-width: 150px; font-weight: 600; color: var(--concreto); }
+.pend-linha .nome .obs { font-weight: 400; color: var(--concreto-claro); font-size: .9rem; }
+.pend-linha .quem { font-size: .76rem; color: var(--concreto-claro); }
+.cat-badge { font-size: .68rem; font-weight: 800; color: #2b2d2f; padding: 3px 9px; border-radius: 11px; white-space: nowrap; }
+.pend-cat-sel { font-size: .78rem; padding: 4px 6px; border: 1px solid var(--borda); border-radius: 8px; background: #fff; max-width: 140px; }
 .badge { display: inline-block; font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: .3px; margin-right: 4px; }
 .st-pendente { background: #fdf3e3; color: #8a5a00; }
 .st-feito { background: #e6f4ea; color: var(--ok); }

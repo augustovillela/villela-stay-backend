@@ -1094,6 +1094,10 @@ app.get('/staff/api/visao-geral', requireAuth, (req, res) => {
 // Fonte ÚNICA das listas. Itens entram pelo portal (qualquer usuário logado) OU pela captura do
 // WhatsApp (script local, via PUBLISH_KEY, com refId p/ dedupe). Excluíveis por qualquer logado.
 const LISTA_ARQ = { compras: 'lista-compras.json', manutencao: 'lista-manutencao.json', pendencias: 'lista-pendencias.json' };
+// Categorias (áreas) das pendências — lista editável, semeada com as áreas iniciais do Augusto.
+const PEND_CAT_PADRAO = ['PC Windows', 'Site', 'Automação', 'Financeiro', 'Marketing', 'CEO', 'Negociações', 'Estudo', 'Sites novos'];
+const lerPendCats = () => { const a = lerJSON('categorias-pendencias.json', null); return Array.isArray(a) && a.length ? a : PEND_CAT_PADRAO.slice(); };
+const salvarPendCats = (a) => salvarJSON('categorias-pendencias.json', a);
 
 // 'pendencias' é restrita: só admin ou usuário com a área 'ceo' (acesso por sessão).
 // O bypass por PUBLISH_KEY (req.viaChave) continua liberado (seed/automação).
@@ -1129,6 +1133,7 @@ app.post('/staff/api/listas/:tipo', requirePublishOrSession, (req, res) => {
     quantidade: String(d.quantidade || '').trim(),
     nome,
     obs: String(d.obs || '').trim(),
+    categoria: String(d.categoria || '').trim().slice(0, 40),  // "área" da pendência (opcional)
     // Via PUBLISH_KEY o padrão é 'whatsapp' (captura da equipe); um seeder pode informar
     // origem explícita no corpo (ex.: 'portal' p/ pendências do CEO). Sessão = sempre 'portal'.
     origem: req.viaChave ? (['portal', 'whatsapp'].includes(String(d.origem || '').trim()) ? String(d.origem).trim() : 'whatsapp') : 'portal',
@@ -1150,6 +1155,44 @@ app.delete('/staff/api/listas/:tipo/:id', requirePublishOrSession, (req, res) =>
   const restantes = itens.filter(i => i.id !== req.params.id && i.refId !== req.params.id);
   salvarJSON(arq, restantes);
   res.json({ ok: true, removidos: itens.length - restantes.length });
+});
+
+// Editar um item (hoje usado p/ trocar a categoria/área da pendência; também nome/obs).
+app.patch('/staff/api/listas/:tipo/:id', requirePublishOrSession, (req, res) => {
+  const arq = LISTA_ARQ[req.params.tipo];
+  if (!arq) return res.status(400).json({ erro: 'Tipo inválido.' });
+  if (!podeLista(req, res)) return;
+  const itens = lerJSON(arq, []);
+  const it = itens.find(i => i.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Item não encontrado.' });
+  const d = req.body || {};
+  if (d.categoria !== undefined) it.categoria = String(d.categoria || '').trim().slice(0, 40);
+  if (typeof d.nome === 'string' && d.nome.trim()) it.nome = d.nome.trim();
+  if (d.obs !== undefined) it.obs = String(d.obs || '').trim();
+  salvarJSON(arq, itens);
+  res.json({ ok: true, item: it });
+});
+
+// Categorias das pendências — listar (store + as usadas nos itens) e criar nova (admin/CEO ou chave).
+function podePend(req, res) {
+  if (req.viaChave) return true;
+  if (!podeArea(req.user, 'ceo')) { res.status(403).json({ erro: 'Acesso negado: área CEO.' }); return false; }
+  return true;
+}
+app.get('/staff/api/pendencias/categorias', requirePublishOrSession, (req, res) => {
+  if (!podePend(req, res)) return;
+  const store = lerPendCats();
+  const usadas = [...new Set(lerJSON('lista-pendencias.json', []).map(i => i.categoria).filter(Boolean))];
+  const extras = usadas.filter(c => !store.some(s => s.toLowerCase() === c.toLowerCase()));
+  res.json({ categorias: store.concat(extras) });
+});
+app.post('/staff/api/pendencias/categorias', requirePublishOrSession, (req, res) => {
+  if (!podePend(req, res)) return;
+  const nome = String((req.body && req.body.categoria) || '').trim().slice(0, 40);
+  if (!nome) return res.status(400).json({ erro: 'Informe a categoria.' });
+  const store = lerPendCats();
+  if (!store.some(s => s.toLowerCase() === nome.toLowerCase())) { store.push(nome); salvarPendCats(store); }
+  res.json({ ok: true, categorias: store });
 });
 
 app.post('/staff/api/listas/:tipo/limpar', requirePublishOrSession, (req, res) => {

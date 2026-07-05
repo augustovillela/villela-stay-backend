@@ -54,6 +54,94 @@ async function carregarItens(tipo, opcoes) {
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
+// --------- Pendências (lista do CEO): categorias/áreas + mural de post-its ---------
+const PEND_CORES = ['#ffe08a', '#ffd0a6', '#bff0c3', '#a6e6e6', '#c8bdf0', '#f7c0e6', '#f3f0a6', '#a6d8ff', '#ffb3b3', '#c9f0d8', '#e6c9a0', '#d4c5f9'];
+let PEND_CATS = [];
+function pendCor(cat) {
+  if (!cat) return '#e8e6e0'; // sem categoria — neutro
+  let idx = PEND_CATS.findIndex(c => c.toLowerCase() === cat.toLowerCase());
+  if (idx < 0) idx = Math.abs([...cat].reduce((a, ch) => a + ch.charCodeAt(0), 0));
+  return PEND_CORES[idx % PEND_CORES.length];
+}
+async function garantirCategoria(cat) {
+  if (!cat || PEND_CATS.some(c => c.toLowerCase() === cat.toLowerCase())) return;
+  try { const r = await api('POST', '/pendencias/categorias', { categoria: cat }); PEND_CATS = r.categorias || PEND_CATS; } catch (_) {}
+}
+async function renderPendencias() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Pendências', 'Suas pendências e tarefas em aberto, por área. Inclua abaixo ou pelo WhatsApp; o mural colorido agrupa por categoria para achar rápido na primeira tela.');
+  c.innerHTML += `
+    <div id="pend-mural" class="postit-mural"></div>
+    <form id="pend-form" class="barra" style="flex-wrap:wrap">
+      <input id="pd-nome" placeholder="Pendência *" style="flex:2;min-width:220px" required aria-label="Pendência">
+      <input id="pd-cat" list="pend-cats-dl" placeholder="Área / categoria" style="width:190px" aria-label="Área">
+      <input id="pd-obs" placeholder="Observação (opcional)" style="flex:1;min-width:150px" aria-label="Observação">
+      <button class="btn" type="submit">+ Adicionar</button>
+    </form>
+    <datalist id="pend-cats-dl"></datalist>
+    <p class="sub" style="margin:-4px 0 10px">Dica: digite uma <b>área nova</b> no campo de categoria para criá-la na hora. Para mudar a área de uma pendência já existente, use o seletor na linha dela.</p>
+    <div id="pend-lista" class="lista-itens"><p class="vazio">Carregando…</p></div>`;
+  $('#pend-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const nome = $('#pd-nome').value.trim(); if (!nome) return;
+    const categoria = $('#pd-cat').value.trim();
+    try {
+      await api('POST', '/listas/pendencias', { nome, obs: $('#pd-obs').value, categoria });
+      await garantirCategoria(categoria);
+      $('#pend-form').reset(); $('#pd-nome').focus();
+      carregarPendencias();
+    } catch (e) { alert(e.message); }
+  };
+  carregarPendencias();
+}
+async function carregarPendencias() {
+  try {
+    const [cats, lista] = await Promise.all([
+      api('GET', '/pendencias/categorias'),
+      api('GET', '/listas/pendencias'),
+    ]);
+    PEND_CATS = cats.categorias || [];
+    const itens = lista.itens || [];
+    const dl = $('#pend-cats-dl'); if (dl) dl.innerHTML = PEND_CATS.map(c => `<option value="${esc(c)}">`).join('');
+    // agrupa por categoria; ordem = categorias do store (com itens) + extras + "sem área" por último
+    const grupos = {}; itens.forEach(i => { const k = i.categoria || ''; (grupos[k] = grupos[k] || []).push(i); });
+    const ordem = PEND_CATS.filter(cat => (grupos[cat] || []).length);
+    Object.keys(grupos).forEach(k => { if (k && !ordem.some(o => o.toLowerCase() === k.toLowerCase())) ordem.push(k); });
+    if ((grupos[''] || []).length) ordem.push('');
+    // ---- Mural de post-its ----
+    const mural = $('#pend-mural');
+    if (mural) mural.innerHTML = ordem.length ? ordem.map(cat => {
+      const its = grupos[cat] || [];
+      return `<div class="postit" style="--pcor:${pendCor(cat)}">
+        <div class="postit-cab"><span class="postit-tit">${esc(cat || 'Sem área')}</span><span class="postit-n">${its.length}</span></div>
+        <ul class="postit-lista">${its.map(i => `<li><button class="postit-check" data-baixa="${i.id}" title="Concluir">✓</button><span>${esc(i.nome)}</span></li>`).join('')}</ul>
+      </div>`;
+    }).join('') : `<p class="vazio" style="margin:0">Sem pendências no momento. 🎉</p>`;
+    // ---- Lista detalhada (seletor de área por item) ----
+    const alvo = $('#pend-lista');
+    const opcoesCat = (sel) => `<option value="">— sem área —</option>` + PEND_CATS.map(c => `<option value="${esc(c)}"${sel && sel.toLowerCase() === c.toLowerCase() ? ' selected' : ''}>${esc(c)}</option>`).join('');
+    if (alvo) alvo.innerHTML = itens.length
+      ? `<div class="lista-cab"><span>${itens.length} ${itens.length === 1 ? 'pendência' : 'pendências'}</span><button class="btn peq perigo" id="pend-limpar">Limpar tudo</button></div>` +
+        itens.map(i => `
+        <div class="pend-linha">
+          <span class="cat-badge" style="background:${pendCor(i.categoria)}">${esc(i.categoria || 'sem área')}</span>
+          <span class="nome">${esc(i.nome)}${i.obs ? ` <span class="obs">— ${esc(i.obs)}</span>` : ''}</span>
+          <span class="quem">${i.origem === 'whatsapp' ? '📱' : '💻'} ${esc(i.quem || '')} · ${dataBr(i.criadoEm)}</span>
+          <select class="pend-cat-sel" data-cat="${i.id}" title="Mudar a área">${opcoesCat(i.categoria)}</select>
+          <button class="btn peq" data-baixa="${i.id}" title="Concluir / remover">✓</button>
+        </div>`).join('')
+      : `<p class="vazio">Nenhuma pendência. Adicione a primeira acima.</p>`;
+    document.querySelectorAll('#pend-mural [data-baixa], #pend-lista [data-baixa]').forEach(b => b.onclick = async () => {
+      try { await api('DELETE', '/listas/pendencias/' + b.dataset.baixa); carregarPendencias(); } catch (e) { alert(e.message); }
+    });
+    document.querySelectorAll('.pend-cat-sel').forEach(s => s.onchange = async () => {
+      try { await api('PATCH', '/listas/pendencias/' + s.dataset.cat, { categoria: s.value }); carregarPendencias(); } catch (e) { alert(e.message); }
+    });
+    const lb = $('#pend-limpar');
+    if (lb) lb.onclick = async () => { if (confirm('Limpar TODAS as pendências?')) { try { await api('POST', '/listas/pendencias/limpar'); carregarPendencias(); } catch (e) { alert(e.message); } } };
+  } catch (e) { const a = $('#pend-lista'); if (a) a.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
 // --------- Agenda (pedidos de evento → Claude executa) ---------
 async function renderAgenda() {
   const c = conteudo();
