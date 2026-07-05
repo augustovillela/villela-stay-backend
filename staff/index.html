@@ -9,6 +9,12 @@
   <link rel="apple-touch-icon" href="/staff/logo-192.png">
   <link rel="manifest" href="/staff/manifest.webmanifest">
   <meta name="theme-color" content="#0c3644">
+  <!-- PWA standalone (iOS + Android): app instalado abre em tela cheia, sem a barra do navegador.
+       Sem 'apple-mobile-web-app-capable' o iPhone NÃO roda como app (abre no Safari). -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Villela Staff">
   <link rel="stylesheet" href="/staff/styles.css">
 </head>
 <body>
@@ -26,7 +32,7 @@
       </label>
       <button type="submit" class="btn">Entrar</button>
       <p id="login-erro" class="erro"></p>
-      <a class="login-voltar" href="https://villelastay.com.br">← Voltar ao site público</a>
+      <a class="login-voltar" href="https://villelastay.com.br" target="_blank" rel="noopener">← Voltar ao site público</a>
     </form>
   </main>
 
@@ -56,7 +62,7 @@
       <div class="marca">Villela Stay <span class="tag">Staff</span></div>
       <div class="topo-dir">
         <button id="btn-inicio" class="btn-inicio" title="Voltar ao início do app" aria-label="Início do app">🏠 <span class="rot-inicio">Início</span></button>
-        <a class="link-site" href="https://villelastay.com.br" title="Voltar ao site público">🌐 Site público</a>
+        <a class="link-site" href="https://villelastay.com.br" target="_blank" rel="noopener" title="Abrir o site público (nova aba)">🌐 Site público</a>
         <span id="quem"></span>
         <button id="btn-sair" class="link-sair">Sair</button>
       </div>

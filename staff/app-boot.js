@@ -25,4 +25,19 @@ if ($('#btn-menu')) $('#btn-menu').onclick = () => { const m = $('#menu'); if (m
 // Botão 🏠 Início: sempre visível, volta à Visão geral (home do app) de qualquer tela/relatório
 if ($('#btn-inicio')) $('#btn-inicio').onclick = () => navegar('visao');
 
+// PWA: em app INSTALADO (standalone), nenhum link pode "escapar" para o navegador e derrubar o app.
+// A navegação interna do portal é toda por BOTÃO/JS (não por <a href>); logo, qualquer <a> que aponte
+// para FORA do escopo /staff/ (site público, links externos) abre em NOVA ABA e o app segue vivo.
+// (Downloads/anexos em /staff/... continuam abrindo normalmente; no navegador comum nada muda.)
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('a[href]');
+  if (!a) return;
+  let u; try { u = new URL(a.getAttribute('href'), location.href); } catch (_) { return; }
+  const foraDoApp = u.origin !== location.origin || !u.pathname.startsWith('/staff/');
+  if (foraDoApp && typeof appInstalado === 'function' && appInstalado()) {
+    e.preventDefault();
+    window.open(u.href, '_blank', 'noopener');
+  }
+}, true);
+
 init();
