@@ -1330,13 +1330,28 @@ function mdChat(txt) {
 }
 function chatAdd(role, texto, temp) {
   const msgs = $('#chat-msgs');
+  const row = document.createElement('div');
+  row.className = 'chat-row chat-row-' + role;
+  if (role === 'assistant') {
+    const av = document.createElement('div');
+    av.className = 'chat-avatar';
+    av.innerHTML = '<i class="ti ti-sparkles" aria-hidden="true"></i>';
+    row.appendChild(av);
+  }
   const div = document.createElement('div');
   div.className = 'chat-bolha chat-' + role + (temp ? ' chat-temp' : '');
-  if (role === 'assistant' && !temp) div.innerHTML = mdChat(texto); // resposta da IA: renderiza markdown
-  else div.textContent = texto;                                     // usuário/"pensando": texto puro
-  msgs.appendChild(div);
+  if (temp) {                                                       // "digitando…" — três pontinhos animados
+    div.classList.add('chat-typing');
+    div.innerHTML = '<span></span><span></span><span></span>';
+  } else if (role === 'assistant') {
+    div.innerHTML = mdChat(texto);                                  // resposta da IA: renderiza markdown
+  } else {
+    div.textContent = texto;                                        // usuário: texto puro
+  }
+  row.appendChild(div);
+  msgs.appendChild(row);
   msgs.scrollTop = msgs.scrollHeight;
-  return div;
+  return row;
 }
 function renderAjudaIA() {
   if (CHAT_INIT) return;
