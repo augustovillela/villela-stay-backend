@@ -1165,7 +1165,8 @@ app.delete('/staff/api/listas/:tipo/:id', requirePublishOrSession, (req, res) =>
   // remove por id do item OU por refId (id da mensagem do WhatsApp) — facilita a baixa pelo script
   const restantes = itens.filter(i => i.id !== req.params.id && i.refId !== req.params.id);
   // Pendência concluída (portal ✓ ou comando de WhatsApp) vai para o ARQUIVO em vez de sumir.
-  if (req.params.tipo === 'pendencias') {
+  // Exclusão SEM concluir (?arquivar=nao) apaga de vez, sem arquivar.
+  if (req.params.tipo === 'pendencias' && req.query.arquivar !== 'nao') {
     const baixados = itens.filter(i => i.id === req.params.id || i.refId === req.params.id);
     arquivarPendencias(baixados, req.viaChave ? 'WhatsApp/sistema' : (req.user.nome || req.user.email || 'staff'));
   }
@@ -1219,7 +1220,10 @@ app.get('/staff/api/pendencias/arquivo', requirePublishOrSession, (req, res) => 
   const filtrados = termos.length
     ? todos.filter(i => { const alvo = semAcento([i.nome, i.categoria, i.obs, i.quem, i.concluidoPor].join(' ')); return termos.every(t => alvo.includes(t)); })
     : todos;
-  res.json({ itens: filtrados.slice(0, 300), total: todos.length, mostrando: Math.min(filtrados.length, 300), filtrados: filtrados.length });
+  const cont = {};
+  for (const i of filtrados) { const k = (i.categoria || '').trim() || 'Sem área'; cont[k] = (cont[k] || 0) + 1; }
+  const porCategoria = Object.entries(cont).sort((a, b) => a[0].localeCompare(b[0], 'pt', { sensitivity: 'base' })).map(([cat, n]) => ({ cat, n }));
+  res.json({ itens: filtrados.slice(0, 300), total: todos.length, mostrando: Math.min(filtrados.length, 300), filtrados: filtrados.length, porCategoria });
 });
 app.delete('/staff/api/pendencias/arquivo/:id', requirePublishOrSession, (req, res) => {
   if (!podePend(req, res)) return;

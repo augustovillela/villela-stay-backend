@@ -271,6 +271,8 @@ tr:last-child td { border-bottom: none; }
 .pend-linha .quem { font-size: .76rem; color: var(--concreto-claro); }
 .cat-badge { font-size: .68rem; font-weight: 800; color: #2b2d2f; padding: 3px 9px; border-radius: 11px; white-space: nowrap; }
 .pend-cat-sel { font-size: .78rem; padding: 4px 6px; border: 1px solid var(--borda); border-radius: 8px; background: #fff; max-width: 140px; }
+.pend-arq-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.pend-arq-chips .cat-badge { font-size: .72rem; }
 .badge { display: inline-block; font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: .3px; margin-right: 4px; }
 .st-pendente { background: #fdf3e3; color: #8a5a00; }
 .st-feito { background: #e6f4ea; color: var(--ok); }

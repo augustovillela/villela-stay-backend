@@ -57,6 +57,7 @@ async function carregarItens(tipo, opcoes) {
 // --------- Pendências (lista do CEO): categorias/áreas + mural de post-its ---------
 const PEND_CORES = ['#ffe08a', '#ffd0a6', '#bff0c3', '#a6e6e6', '#c8bdf0', '#f7c0e6', '#f3f0a6', '#a6d8ff', '#ffb3b3', '#c9f0d8', '#e6c9a0', '#d4c5f9'];
 let PEND_CATS = [];
+let PEND_ITENS = [];
 function pendCor(cat) {
   if (!cat) return '#e8e6e0'; // sem categoria — neutro
   let idx = PEND_CATS.findIndex(c => c.toLowerCase() === cat.toLowerCase());
@@ -106,7 +107,9 @@ async function carregarArquivoPend(busca) {
     const r = await api('GET', '/pendencias/arquivo' + (busca ? '?busca=' + encodeURIComponent(busca) : ''));
     const itens = r.itens || [];
     if (!itens.length) { box.innerHTML = `<p class="vazio">${busca ? 'Nada encontrado no arquivo.' : 'Nenhuma pendência concluída ainda.'}</p>`; return; }
+    const chips = (r.porCategoria || []).map(c => `<span class="cat-badge" style="background:${pendCor(c.cat === 'Sem área' ? '' : c.cat)}">${esc(c.cat)} · ${c.n}</span>`).join('');
     box.innerHTML = `<p class="sub" style="margin:0 0 8px">${r.filtrados}${r.filtrados < r.total ? ' de ' + r.total : ''} concluída(s)${r.filtrados > itens.length ? ' · mostrando ' + itens.length : ''}</p>` +
+      (chips ? `<div class="pend-arq-chips" title="Arquivadas por categoria">${chips}</div>` : '') +
       itens.map(i => `
       <div class="pend-linha" style="opacity:.9">
         <span class="cat-badge" style="background:${pendCor(i.categoria)}">${esc(i.categoria || 'sem área')}</span>
@@ -132,6 +135,7 @@ async function carregarPendencias() {
     ]);
     PEND_CATS = (cats.categorias || []).slice().sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' }));
     const itens = lista.itens || [];
+    PEND_ITENS = itens;
     const dl = $('#pend-cats-dl'); if (dl) dl.innerHTML = PEND_CATS.map(c => `<option value="${esc(c)}">`).join('');
     // agrupa por categoria; ordem = categorias do store (com itens) + extras + "sem área" por último
     const grupos = {}; itens.forEach(i => { const k = i.categoria || ''; (grupos[k] = grupos[k] || []).push(i); });
@@ -158,7 +162,9 @@ async function carregarPendencias() {
           <span class="nome">${esc(i.nome)}${i.obs ? ` <span class="obs">— ${esc(i.obs)}</span>` : ''}</span>
           <span class="quem">${i.origem === 'whatsapp' ? '📱' : '💻'} ${esc(i.quem || '')} · ${dataBr(i.criadoEm)}</span>
           <select class="pend-cat-sel" data-cat="${i.id}" title="Mudar a área">${opcoesCat(i.categoria)}</select>
-          <button class="btn peq" data-baixa="${i.id}" title="Concluir / remover">✓</button>
+          <button class="btn peq secund" data-editar="${i.id}" title="Editar o texto">✏️</button>
+          <button class="btn peq" data-baixa="${i.id}" title="Concluir (vai para o arquivo)">✓</button>
+          <button class="btn peq perigo" data-excluir="${i.id}" title="Excluir sem arquivar">🗑️</button>
         </div>`).join('')
       : `<p class="vazio">Nenhuma pendência. Adicione a primeira acima.</p>`;
     document.querySelectorAll('#pend-mural [data-baixa], #pend-lista [data-baixa]').forEach(b => b.onclick = async () => {
@@ -166,6 +172,29 @@ async function carregarPendencias() {
     });
     document.querySelectorAll('.pend-cat-sel').forEach(s => s.onchange = async () => {
       try { await api('PATCH', '/listas/pendencias/' + s.dataset.cat, { categoria: s.value }); carregarPendencias(); } catch (e) { alert(e.message); }
+    });
+    // Editar o texto (e observação) da pendência — edição inline na própria linha.
+    document.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => {
+      const it = PEND_ITENS.find(x => x.id === b.dataset.editar); if (!it) return;
+      const row = b.closest('.pend-linha'); if (!row) return;
+      row.innerHTML = `
+        <input class="pd-ed-nome" value="${esc(it.nome)}" style="flex:2;min-width:180px" aria-label="Texto da pendência">
+        <input class="pd-ed-obs" value="${esc(it.obs || '')}" placeholder="Observação (opcional)" style="flex:1;min-width:130px" aria-label="Observação">
+        <button class="btn peq" data-salvar="${it.id}">Salvar</button>
+        <button class="btn peq secund" data-cancelar="1">Cancelar</button>`;
+      const nomeInp = row.querySelector('.pd-ed-nome'); nomeInp.focus(); nomeInp.select();
+      const salvar = async () => {
+        const nome = row.querySelector('.pd-ed-nome').value.trim(); if (!nome) { nomeInp.focus(); return; }
+        try { await api('PATCH', '/listas/pendencias/' + it.id, { nome, obs: row.querySelector('.pd-ed-obs').value }); carregarPendencias(); } catch (e) { alert(e.message); }
+      };
+      row.querySelector('[data-salvar]').onclick = salvar;
+      row.querySelector('[data-cancelar]').onclick = () => carregarPendencias();
+      nomeInp.onkeydown = (e) => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') carregarPendencias(); };
+    });
+    // Excluir SEM arquivar (não conclui, não vai para o arquivo).
+    document.querySelectorAll('[data-excluir]').forEach(b => b.onclick = async () => {
+      if (!confirm('Excluir esta pendência SEM arquivar? Ela não vai para o arquivo de concluídas.')) return;
+      try { await api('DELETE', '/listas/pendencias/' + b.dataset.excluir + '?arquivar=nao'); carregarPendencias(); } catch (e) { alert(e.message); }
     });
     const lb = $('#pend-limpar');
     if (lb) lb.onclick = async () => { if (confirm('Concluir e ARQUIVAR todas as pendências ativas?')) { try { await api('POST', '/listas/pendencias/limpar'); carregarPendencias(); } catch (e) { alert(e.message); } } };
