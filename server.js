@@ -1194,6 +1194,20 @@ app.post('/staff/api/pendencias/categorias', requirePublishOrSession, (req, res)
   if (!store.some(s => s.toLowerCase() === nome.toLowerCase())) { store.push(nome); salvarPendCats(store); }
   res.json({ ok: true, categorias: store });
 });
+// Substituir a lista inteira de categorias (reordenar / corrigir). Admin/CEO ou chave.
+app.put('/staff/api/pendencias/categorias', requirePublishOrSession, (req, res) => {
+  if (!podePend(req, res)) return;
+  const arr = Array.isArray(req.body && req.body.categorias) ? req.body.categorias : null;
+  if (!arr) return res.status(400).json({ erro: 'Envie { categorias: [...] }.' });
+  const out = []; const vistos = new Set();
+  for (const c of arr) {
+    const nome = String(c || '').trim().slice(0, 40);
+    if (nome && !vistos.has(nome.toLowerCase())) { vistos.add(nome.toLowerCase()); out.push(nome); }
+    if (out.length >= 100) break;
+  }
+  salvarPendCats(out);
+  res.json({ ok: true, categorias: out });
+});
 
 app.post('/staff/api/listas/:tipo/limpar', requirePublishOrSession, (req, res) => {
   const arq = LISTA_ARQ[req.params.tipo];
