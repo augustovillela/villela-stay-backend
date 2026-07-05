@@ -1098,6 +1098,17 @@ const LISTA_ARQ = { compras: 'lista-compras.json', manutencao: 'lista-manutencao
 const PEND_CAT_PADRAO = ['PC Windows', 'Site', 'Automação', 'Financeiro', 'Marketing', 'CEO', 'Negociações', 'Estudo', 'Sites novos'];
 const lerPendCats = () => { const a = lerJSON('categorias-pendencias.json', null); return Array.isArray(a) && a.length ? a : PEND_CAT_PADRAO.slice(); };
 const salvarPendCats = (a) => salvarJSON('categorias-pendencias.json', a);
+// Arquivo das pendências CONCLUÍDAS (baixa via portal ✓ ou comando de WhatsApp).
+const lerPendArquivo = () => { const a = lerJSON('pendencias-arquivo.json', []); return Array.isArray(a) ? a : []; };
+const salvarPendArquivo = (a) => salvarJSON('pendencias-arquivo.json', a);
+function arquivarPendencias(itens, quem) {
+  if (!itens || !itens.length) return;
+  const arq = lerPendArquivo();
+  const when = new Date().toISOString();
+  for (const it of itens) arq.unshift(Object.assign({}, it, { concluidoEm: when, concluidoPor: quem }));
+  if (arq.length > 2000) arq.length = 2000;
+  salvarPendArquivo(arq);
+}
 
 // 'pendencias' é restrita: só admin ou usuário com a área 'ceo' (acesso por sessão).
 // O bypass por PUBLISH_KEY (req.viaChave) continua liberado (seed/automação).
@@ -1153,6 +1164,11 @@ app.delete('/staff/api/listas/:tipo/:id', requirePublishOrSession, (req, res) =>
   const itens = lerJSON(arq, []);
   // remove por id do item OU por refId (id da mensagem do WhatsApp) — facilita a baixa pelo script
   const restantes = itens.filter(i => i.id !== req.params.id && i.refId !== req.params.id);
+  // Pendência concluída (portal ✓ ou comando de WhatsApp) vai para o ARQUIVO em vez de sumir.
+  if (req.params.tipo === 'pendencias') {
+    const baixados = itens.filter(i => i.id === req.params.id || i.refId === req.params.id);
+    arquivarPendencias(baixados, req.viaChave ? 'WhatsApp/sistema' : (req.user.nome || req.user.email || 'staff'));
+  }
   salvarJSON(arq, restantes);
   res.json({ ok: true, removidos: itens.length - restantes.length });
 });
@@ -1194,6 +1210,37 @@ app.post('/staff/api/pendencias/categorias', requirePublishOrSession, (req, res)
   if (!store.some(s => s.toLowerCase() === nome.toLowerCase())) { store.push(nome); salvarPendCats(store); }
   res.json({ ok: true, categorias: store });
 });
+// Arquivo de pendências concluídas — buscar (com filtro), restaurar e excluir.
+app.get('/staff/api/pendencias/arquivo', requirePublishOrSession, (req, res) => {
+  if (!podePend(req, res)) return;
+  const todos = lerPendArquivo();
+  const q = semAcento(String(req.query.busca || '')).trim();
+  const termos = q ? q.split(/\s+/) : [];
+  const filtrados = termos.length
+    ? todos.filter(i => { const alvo = semAcento([i.nome, i.categoria, i.obs, i.quem, i.concluidoPor].join(' ')); return termos.every(t => alvo.includes(t)); })
+    : todos;
+  res.json({ itens: filtrados.slice(0, 300), total: todos.length, mostrando: Math.min(filtrados.length, 300), filtrados: filtrados.length });
+});
+app.delete('/staff/api/pendencias/arquivo/:id', requirePublishOrSession, (req, res) => {
+  if (!podePend(req, res)) return;
+  const todos = lerPendArquivo();
+  const out = todos.filter(i => i.id !== req.params.id);
+  salvarPendArquivo(out);
+  res.json({ ok: true, removidos: todos.length - out.length });
+});
+app.post('/staff/api/pendencias/arquivo/:id/restaurar', requirePublishOrSession, (req, res) => {
+  if (!podePend(req, res)) return;
+  const todos = lerPendArquivo();
+  const it = todos.find(i => i.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Não encontrado no arquivo.' });
+  salvarPendArquivo(todos.filter(i => i.id !== req.params.id));
+  const ativos = lerJSON('lista-pendencias.json', []);
+  const limpo = Object.assign({}, it); delete limpo.concluidoEm; delete limpo.concluidoPor;
+  ativos.push(limpo);
+  salvarJSON('lista-pendencias.json', ativos);
+  res.json({ ok: true, item: limpo });
+});
+
 // Substituir a lista inteira de categorias (reordenar / corrigir). Admin/CEO ou chave.
 app.put('/staff/api/pendencias/categorias', requirePublishOrSession, (req, res) => {
   if (!podePend(req, res)) return;
@@ -1213,6 +1260,9 @@ app.post('/staff/api/listas/:tipo/limpar', requirePublishOrSession, (req, res) =
   const arq = LISTA_ARQ[req.params.tipo];
   if (!arq) return res.status(400).json({ erro: 'Tipo inválido.' });
   if (!podeLista(req, res)) return;
+  if (req.params.tipo === 'pendencias') {
+    arquivarPendencias(lerJSON(arq, []), req.viaChave ? 'WhatsApp/sistema' : (req.user.nome || req.user.email || 'staff'));
+  }
   salvarJSON(arq, []);
   res.json({ ok: true });
 });

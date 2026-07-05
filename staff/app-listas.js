@@ -80,7 +80,12 @@ async function renderPendencias() {
     </form>
     <datalist id="pend-cats-dl"></datalist>
     <p class="sub" style="margin:-4px 0 10px">Dica: digite uma <b>área nova</b> no campo de categoria para criá-la na hora. Para mudar a área de uma pendência já existente, use o seletor na linha dela.</p>
-    <div id="pend-lista" class="lista-itens"><p class="vazio">Carregando…</p></div>`;
+    <div id="pend-lista" class="lista-itens"><p class="vazio">Carregando…</p></div>
+    <details style="margin-top:22px">
+      <summary style="cursor:pointer;font-weight:700;color:var(--petroleo)">🗄️ Pendências concluídas (arquivo)</summary>
+      <input id="pend-busca" type="search" placeholder="🔎 Buscar no arquivo (texto, área, quem)…" style="width:100%;max-width:520px;margin:12px 0 10px" aria-label="Buscar no arquivo">
+      <div id="pend-arquivo"><p class="vazio">Carregando…</p></div>
+    </details>`;
   $('#pend-form').onsubmit = async (ev) => {
     ev.preventDefault();
     const nome = $('#pd-nome').value.trim(); if (!nome) return;
@@ -92,7 +97,32 @@ async function renderPendencias() {
       carregarPendencias();
     } catch (e) { alert(e.message); }
   };
+  let bt; $('#pend-busca').oninput = () => { clearTimeout(bt); bt = setTimeout(() => carregarArquivoPend($('#pend-busca').value.trim()), 300); };
   carregarPendencias();
+}
+async function carregarArquivoPend(busca) {
+  const box = $('#pend-arquivo'); if (!box) return;
+  try {
+    const r = await api('GET', '/pendencias/arquivo' + (busca ? '?busca=' + encodeURIComponent(busca) : ''));
+    const itens = r.itens || [];
+    if (!itens.length) { box.innerHTML = `<p class="vazio">${busca ? 'Nada encontrado no arquivo.' : 'Nenhuma pendência concluída ainda.'}</p>`; return; }
+    box.innerHTML = `<p class="sub" style="margin:0 0 8px">${r.filtrados}${r.filtrados < r.total ? ' de ' + r.total : ''} concluída(s)${r.filtrados > itens.length ? ' · mostrando ' + itens.length : ''}</p>` +
+      itens.map(i => `
+      <div class="pend-linha" style="opacity:.9">
+        <span class="cat-badge" style="background:${pendCor(i.categoria)}">${esc(i.categoria || 'sem área')}</span>
+        <span class="nome">${esc(i.nome)}${i.obs ? ` <span class="obs">— ${esc(i.obs)}</span>` : ''}</span>
+        <span class="quem">✅ ${esc((i.concluidoEm || '').slice(0, 10))} · ${esc(i.concluidoPor || i.quem || '')}</span>
+        <button class="btn peq secund" data-restaurar="${i.id}" title="Voltar às pendências ativas">↩︎ Restaurar</button>
+        <button class="btn peq perigo" data-arqdel="${i.id}" title="Excluir do arquivo (definitivo)">✕</button>
+      </div>`).join('');
+    box.querySelectorAll('[data-restaurar]').forEach(b => b.onclick = async () => {
+      try { await api('POST', '/pendencias/arquivo/' + b.dataset.restaurar + '/restaurar'); carregarPendencias(); } catch (e) { alert(e.message); }
+    });
+    box.querySelectorAll('[data-arqdel]').forEach(b => b.onclick = async () => {
+      if (!confirm('Excluir do arquivo? Não dá para desfazer.')) return;
+      try { await api('DELETE', '/pendencias/arquivo/' + b.dataset.arqdel); carregarArquivoPend($('#pend-busca') ? $('#pend-busca').value.trim() : ''); } catch (e) { alert(e.message); }
+    });
+  } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 async function carregarPendencias() {
   try {
@@ -100,7 +130,7 @@ async function carregarPendencias() {
       api('GET', '/pendencias/categorias'),
       api('GET', '/listas/pendencias'),
     ]);
-    PEND_CATS = cats.categorias || [];
+    PEND_CATS = (cats.categorias || []).slice().sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' }));
     const itens = lista.itens || [];
     const dl = $('#pend-cats-dl'); if (dl) dl.innerHTML = PEND_CATS.map(c => `<option value="${esc(c)}">`).join('');
     // agrupa por categoria; ordem = categorias do store (com itens) + extras + "sem área" por último
@@ -121,7 +151,7 @@ async function carregarPendencias() {
     const alvo = $('#pend-lista');
     const opcoesCat = (sel) => `<option value="">— sem área —</option>` + PEND_CATS.map(c => `<option value="${esc(c)}"${sel && sel.toLowerCase() === c.toLowerCase() ? ' selected' : ''}>${esc(c)}</option>`).join('');
     if (alvo) alvo.innerHTML = itens.length
-      ? `<div class="lista-cab"><span>${itens.length} ${itens.length === 1 ? 'pendência' : 'pendências'}</span><button class="btn peq perigo" id="pend-limpar">Limpar tudo</button></div>` +
+      ? `<div class="lista-cab"><span>${itens.length} ${itens.length === 1 ? 'pendência' : 'pendências'}</span><button class="btn peq secund" id="pend-limpar" title="Conclui e arquiva todas">Concluir todas</button></div>` +
         itens.map(i => `
         <div class="pend-linha">
           <span class="cat-badge" style="background:${pendCor(i.categoria)}">${esc(i.categoria || 'sem área')}</span>
@@ -138,7 +168,9 @@ async function carregarPendencias() {
       try { await api('PATCH', '/listas/pendencias/' + s.dataset.cat, { categoria: s.value }); carregarPendencias(); } catch (e) { alert(e.message); }
     });
     const lb = $('#pend-limpar');
-    if (lb) lb.onclick = async () => { if (confirm('Limpar TODAS as pendências?')) { try { await api('POST', '/listas/pendencias/limpar'); carregarPendencias(); } catch (e) { alert(e.message); } } };
+    if (lb) lb.onclick = async () => { if (confirm('Concluir e ARQUIVAR todas as pendências ativas?')) { try { await api('POST', '/listas/pendencias/limpar'); carregarPendencias(); } catch (e) { alert(e.message); } } };
+    // mantém o arquivo em sincronia (uma pendência concluída acabou de entrar nele)
+    if ($('#pend-arquivo')) carregarArquivoPend($('#pend-busca') ? $('#pend-busca').value.trim() : '');
   } catch (e) { const a = $('#pend-lista'); if (a) a.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
