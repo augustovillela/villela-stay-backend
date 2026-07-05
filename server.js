@@ -1985,6 +1985,21 @@ app.post('/staff/api/automacoes/heartbeat', requirePublishOrSession, (req, res) 
   salvarJSON('automacoes.json', mapa);
   res.json({ ok: true });
 });
+// Diagnóstico do monitor local: anota o PORQUÊ de uma rotina estar atrasada/erro (última execução,
+// código de resultado e estado da Tarefa do Windows) e a AÇÃO de correção aplicada — SEM tocar em
+// 'ultima'/'status' (não maquia o semáforo). Alimenta o painel com a causa. Via PUBLISH_KEY (monitor).
+app.post('/staff/api/automacoes/diagnostico', requirePublishOrSession, (req, res) => {
+  const d = req.body || {};
+  const tarefa = String(d.tarefa || '').trim();
+  if (!tarefa) return res.status(400).json({ erro: 'Informe a tarefa.' });
+  const mapa = lerJSON('automacoes.json', {});
+  if (!mapa[tarefa]) return res.json({ ok: true, inexistente: true });
+  if (d.diagnostico !== undefined) mapa[tarefa].diagnostico = String(d.diagnostico || '').slice(0, 300);
+  if (d.correcao !== undefined) mapa[tarefa].correcao = String(d.correcao || '').slice(0, 200);
+  mapa[tarefa].diagnosticoEm = new Date().toISOString();
+  salvarJSON('automacoes.json', mapa);
+  res.json({ ok: true });
+});
 app.get('/staff/api/automacoes', requireAdminOuChave, (req, res) => {
   const mapa = lerJSON('automacoes.json', {});
   const agora = Date.now();

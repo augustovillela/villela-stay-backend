@@ -7,7 +7,7 @@
 // --------- Semáforo de automações (admin) ---------
 async function renderAutomacoes() {
   const c = conteudo();
-  c.innerHTML = cabecalho('Automações', 'Cada rotina registra sua última execução. Verde = em dia; âmbar = atrasada; vermelho = muito atrasada ou com erro.') + '<div id="au-lista"><p class="vazio">Carregando…</p></div>';
+  c.innerHTML = cabecalho('Automações', 'Verde = em dia · âmbar = atrasada · vermelho = muito atrasada ou com erro. O monitor local anota o 🔎 motivo (última execução/erro da Tarefa do Windows), 🛠️ tenta corrigir sozinho os casos conhecidos e avisa você no WhatsApp quando algo quebra.') + '<div id="au-lista"><p class="vazio">Carregando…</p></div>';
   try {
     const { itens } = await api('GET', '/automacoes');
     if (!itens.length) { $('#au-lista').innerHTML = '<div class="vazio">Nenhuma automação registrou heartbeat ainda. As rotinas passam a aparecer aqui quando reportarem execução.</div>'; return; }
@@ -15,7 +15,9 @@ async function renderAutomacoes() {
     $('#au-lista').innerHTML = itens.map(a => `<div class="linha-item" style="border-left:4px solid ${dot[a.semaforo]}">
       <span class="qtd" style="background:${dot[a.semaforo]};color:#fff">●</span>
       <span class="nome">${esc(a.tarefa)} ${a.detalhe ? `<span class="obs">${esc(a.detalhe)}</span>` : ''}
-        <br><span class="obs">${a.grupo ? esc(a.grupo) + ' · ' : ''}última há ${a.idadeHoras}h${a.status === 'erro' ? ' · ⚠️ reportou ERRO' : ''} · validade ${a.validadeHoras}h</span></span>
+        <br><span class="obs">${a.grupo ? esc(a.grupo) + ' · ' : ''}última há ${a.idadeHoras}h${a.status === 'erro' ? ' · ⚠️ reportou ERRO' : ''} · validade ${a.validadeHoras}h</span>
+        ${a.diagnostico ? `<br><span class="obs" style="color:var(--alerta)">🔎 ${esc(a.diagnostico)}</span>` : ''}
+        ${a.correcao ? `<br><span class="obs" style="color:var(--ok)">🛠️ ${esc(a.correcao)}</span>` : ''}</span>
       <span class="quem">${dataBr(a.ultima)}</span>
       <button class="btn peq perigo" data-del-au="${encodeURIComponent(a.tarefa)}" style="grid-column:2;grid-row:1/span 3">✕</button>
     </div>`).join('');
