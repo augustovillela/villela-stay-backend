@@ -219,6 +219,19 @@ async function renderRelatorios() {
   $('#busca').oninput = aplicar;
   carregar();
 }
+// Abre a entrega "FAQ do Claude" (área TI) pelo TÍTULO — robusto a republicações (o id muda no upsert).
+async function renderFaqClaude() {
+  conteudo().innerHTML = cabecalho('🤖 FAQ do Claude', 'Abrindo…');
+  try {
+    const r = await api('GET', '/relatorios?area=ti');
+    const faq = (r.relatorios || []).find(x => normaliza(x.titulo).startsWith('faq do claude'));
+    if (faq) { abrirRelatorio(faq.id, faq.formato === 'arquivo' ? 'arquivo' : undefined); return; }
+    ESTADO.buscaPrefill = 'FAQ do Claude';
+    navegar('relatorios');
+  } catch (e) {
+    conteudo().innerHTML = cabecalho('🤖 FAQ do Claude', '') + `<p class="erro">${esc(e.message)}</p>`;
+  }
+}
 function ligarAcoesRelatorio() {
   document.querySelectorAll('[data-abrir]').forEach(b => b.onclick = () => abrirRelatorio(b.dataset.abrir, b.dataset.fmt));
   document.querySelectorAll('[data-excluir]').forEach(b => b.onclick = async () => {
