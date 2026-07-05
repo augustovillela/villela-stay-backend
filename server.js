@@ -3655,6 +3655,26 @@ const EVA_KB_MAX = 40000;    // teto de caracteres por entrada
 const EVA_KB_BUDGET = 12000; // teto total injetado na Eva por conversa (controla custo/contexto)
 const lerEvaKB = () => { const a = lerJSON('eva-conhecimento.json', []); return Array.isArray(a) ? a : []; };
 const salvarEvaKB = (a) => salvarJSON('eva-conhecimento.json', a);
+// Consumo de tokens da Eva (para o Augusto acompanhar o impacto/custo no portal).
+// Preços por 1M de tokens (US$) — aproximados; atualizar se a Anthropic mudar a tabela.
+const EVA_PRECO = {
+  'claude-sonnet-5': { in: 3, out: 15 }, 'claude-sonnet-4-6': { in: 3, out: 15 },
+  'claude-opus-4-8': { in: 5, out: 25 }, 'claude-haiku-4-5': { in: 1, out: 5 },
+};
+const evaCustoUSD = (modelo, inp, out) => { const p = EVA_PRECO[modelo] || EVA_PRECO['claude-haiku-4-5']; return (inp / 1e6) * p.in + (out / 1e6) * p.out; };
+function registrarUsoEva(inp, out, modelo) {
+  try {
+    const u = lerJSON('eva-uso.json', null) || { totalIn: 0, totalOut: 0, totalMsgs: 0, custoUSD: 0, porDia: {} };
+    const dia = hojeBrasil();
+    u.totalIn += inp; u.totalOut += out; u.totalMsgs += 1; u.custoUSD = (u.custoUSD || 0) + evaCustoUSD(modelo, inp, out);
+    const d = u.porDia[dia] || { in: 0, out: 0, msgs: 0, custoUSD: 0 };
+    d.in += inp; d.out += out; d.msgs += 1; d.custoUSD += evaCustoUSD(modelo, inp, out);
+    u.porDia[dia] = d;
+    const dias = Object.keys(u.porDia).sort(); while (dias.length > 90) delete u.porDia[dias.shift()];
+    u.modelo = modelo;
+    salvarJSON('eva-uso.json', u);
+  } catch (_) { /* nao quebra o chat por causa da metrica */ }
+}
 // Extrai texto de PDF sem dependência externa (best-effort): infla streams FlateDecode (zlib) e
 // junta as strings dos operadores de texto Tj/TJ. Cobre PDFs de texto comuns; PDF escaneado (imagem)
 // rende pouco — nesse caso o endpoint orienta a colar o texto.
@@ -4449,10 +4469,10 @@ ${faqTexto()}
 
     // Chamada à API da Claude com BUSCA NA WEB (server tool) + tratamento de pause_turn (loop do server tool)
     const modelo = process.env.CHAT_MODEL || 'claude-haiku-4-5';
-    const wsType = /sonnet-4-6|opus-4-(6|7|8)|fable-5/.test(modelo) ? 'web_search_20260209' : 'web_search_20250305';
+    const wsType = /sonnet-5|sonnet-4-6|opus-4-(6|7|8)|fable-5/.test(modelo) ? 'web_search_20260209' : 'web_search_20250305';
     const tools = [{ type: wsType, name: 'web_search', max_uses: 3 }];
     const messages = [...historico, { role: 'user', content: msg }];
-    let d = null;
+    let d = null, usoIn = 0, usoOut = 0;
     for (let i = 0; i < 4; i++) {
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -4461,9 +4481,11 @@ ${faqTexto()}
       });
       if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[chat] anthropic', r.status, t.slice(0, 300)); return res.status(502).json({ erro: 'Não consegui responder agora. Tente de novo em instantes ou fale pelo WhatsApp: wa.me/556191935013' }); }
       d = await r.json();
+      if (d.usage) { usoIn += (d.usage.input_tokens || 0) + (d.usage.cache_read_input_tokens || 0) + (d.usage.cache_creation_input_tokens || 0); usoOut += (d.usage.output_tokens || 0); }
       if (d.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: d.content }); continue; }
       break;
     }
+    registrarUsoEva(usoIn, usoOut, modelo);
     const resposta = ((d && d.content) ? d.content : []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
       || 'Desculpe, não consegui formular uma resposta. Pode reformular, ou falar com a gente pelo WhatsApp?';
     res.json({ resposta });
@@ -4892,6 +4914,21 @@ app.get('/staff/api/eva/conhecimento', requirePublishOrAdmin, (req, res) => {
       'Vitrines curadas: Gastronomia, Turismo e Pacotes',
       'Busca na web para info externa/atual (voos, aluguel de carro, transporte, clima, horários)',
     ],
+  });
+});
+app.get('/staff/api/eva/uso', requirePublishOrAdmin, (req, res) => {
+  const u = lerJSON('eva-uso.json', null) || { totalIn: 0, totalOut: 0, totalMsgs: 0, custoUSD: 0, porDia: {} };
+  const dia = hojeBrasil(), mes = dia.slice(0, 7);
+  let hoje = { in: 0, out: 0, msgs: 0, custoUSD: 0 }, mesAcc = { in: 0, out: 0, msgs: 0, custoUSD: 0 };
+  for (const [d, v] of Object.entries(u.porDia || {})) {
+    if (d === dia) hoje = v;
+    if (d.startsWith(mes)) { mesAcc.in += v.in; mesAcc.out += v.out; mesAcc.msgs += v.msgs; mesAcc.custoUSD += (v.custoUSD || 0); }
+  }
+  const ultimos = Object.entries(u.porDia || {}).sort().slice(-14).map(([d, v]) => ({ dia: d, ...v }));
+  res.json({
+    modelo: process.env.CHAT_MODEL || 'claude-haiku-4-5',
+    total: { in: u.totalIn || 0, out: u.totalOut || 0, msgs: u.totalMsgs || 0, custoUSD: u.custoUSD || 0 },
+    mes: mesAcc, hoje, ultimos,
   });
 });
 app.post('/staff/api/eva/conhecimento', requirePublishOrAdmin, (req, res) => {

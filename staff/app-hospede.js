@@ -369,6 +369,7 @@ async function renderEvaConhecimento() {
   const c = conteudo();
   c.innerHTML = cabecalho('Conhecimento da Eva', 'A Eva é a concierge virtual dos hóspedes (no app). Aqui você vê o que ela já sabe e alimenta a inteligência dela com o seu material — cole um texto ou anexe um arquivo (.pdf, .txt, .md). Ela usa isso junto do FAQ ao responder.') +
     `<div id="eva-resumo" class="aviso">Carregando…</div>
+     <div id="eva-uso" class="aviso" style="margin-top:10px">Carregando consumo…</div>
      <details class="hi-bloco" open><summary><strong>➕ Alimentar a Eva</strong> (texto ou arquivo)</summary>
        <form class="form form-larga" id="eva-form" style="margin-top:10px">
          <label>Título <input id="eva-tit" maxlength="120" placeholder="ex.: Regras da piscina / Parceiros de passeio / Wi-Fi da área comum"></label>
@@ -382,6 +383,7 @@ async function renderEvaConhecimento() {
      <h3 style="margin:18px 0 4px">📚 O que a Eva já aprendeu (base do anfitrião)</h3>
      <div id="eva-lista"><p class="aviso">Carregando…</p></div>`;
   await carregarEvaKB();
+  carregarEvaUso();
   $('#eva-form').onsubmit = async (ev) => {
     ev.preventDefault();
     const msg = $('#eva-msg'); msg.className = 'erro'; msg.textContent = '';
@@ -429,4 +431,21 @@ async function carregarEvaKB() {
     lista.querySelectorAll('[data-eva-toggle]').forEach(b => b.onclick = async () => { const it = d.itens.find(x => x.id === b.dataset.evaToggle); try { await api('PATCH', '/eva/conhecimento/' + b.dataset.evaToggle, { ativo: it.ativo === false }); carregarEvaKB(); } catch (e) { alert(e.message); } });
     lista.querySelectorAll('[data-eva-del]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este item do conhecimento da Eva?')) return; try { await api('DELETE', '/eva/conhecimento/' + b.dataset.evaDel); carregarEvaKB(); } catch (e) { alert(e.message); } });
   } catch (e) { $('#eva-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+async function carregarEvaUso() {
+  const box = $('#eva-uso'); if (!box) return;
+  try {
+    const u = await api('GET', '/eva/uso');
+    const nomeModelo = { 'claude-sonnet-5': 'Sonnet 5', 'claude-sonnet-4-6': 'Sonnet 4.6', 'claude-opus-4-8': 'Opus 4.8', 'claude-haiku-4-5': 'Haiku 4.5' }[u.modelo] || u.modelo;
+    const tok = (n) => (n || 0).toLocaleString('pt-BR');
+    const usd = (n) => 'US$ ' + (n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const linha = (rot, v) => `<tr><td>${rot}</td><td style="text-align:right">${v.msgs || 0}</td><td style="text-align:right">${tok(v.in)}</td><td style="text-align:right">${tok(v.out)}</td><td style="text-align:right">${usd(v.custoUSD)}</td></tr>`;
+    box.innerHTML =
+      `<strong>📊 Consumo de tokens da Eva</strong> — modelo atual: <strong>${esc(nomeModelo)}</strong>.` +
+      `<table style="margin-top:8px;width:100%;max-width:560px;font-size:.9rem">
+         <thead><tr><th style="text-align:left">Período</th><th style="text-align:right">Msgs</th><th style="text-align:right">Tokens entrada</th><th style="text-align:right">Tokens saída</th><th style="text-align:right">Custo estim.</th></tr></thead>
+         <tbody>${linha('Hoje', u.hoje)}${linha('Este mês', u.mes)}${linha('Total', u.total)}</tbody>
+       </table>` +
+      `<p class="sub" style="margin:6px 0 0">Custo estimado em dólar (a Anthropic cobra em US$), pelos preços de tabela do modelo — valor aproximado. Cada resposta da Eva já inclui o FAQ + base + contexto do hóspede.</p>`;
+  } catch (e) { box.innerHTML = `<p class="sub" style="margin:0">Consumo indisponível: ${esc(e.message)}</p>`; }
 }
