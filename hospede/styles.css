@@ -183,8 +183,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .estrela:hover { color: var(--cerrado); }
 
 /* ---------- modal ---------- */
-.modal { position: fixed; inset: 0; background: rgba(12,54,68,.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
-.modal-card { background: #fff; width: 100%; max-width: 380px; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.modal { position: fixed; inset: 0; background: rgba(12,54,68,.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; overscroll-behavior: contain; }
+/* max-height + rolagem interna: formularios longos (ex.: check-in) nao estouram a tela.
+   dvh cobre as barras do navegador mobile; vh fica de fallback para navegadores antigos.
+   overscroll-behavior: contain impede que o scroll "vaze" para a pagina de fundo. */
+.modal-card { background: #fff; width: 100%; max-width: 380px; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .modal-card h3 { margin: 0; color: var(--petroleo); }
 .modal-acoes { display: flex; gap: 10px; justify-content: flex-end; }
 
