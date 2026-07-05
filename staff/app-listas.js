@@ -74,7 +74,7 @@ async function renderAgenda() {
       <button class="btn" type="submit">Enviar pedido</button>
     </form>
     <h2 class="titulo" style="font-size:1.1rem;margin-top:22px">Pedidos e eventos</h2>
-    <p class="sub" style="margin-top:-6px">Para <b>excluir um evento já criado</b>, use o botão <b>🗑️ Excluir</b> na linha dele. Para <b>cancelar um pedido</b> que ainda não rodou, use <b>✕ Cancelar</b>.</p>
+    <p class="sub" style="margin-top:-6px">Para <b>remover um registro da lista</b>, use <b>✕ Remover</b> (não altera o Google Calendar). Para <b>excluir do Google um evento já criado</b>, use <b>🗑️ Excluir do Google</b> na linha dele. Pedido que ainda não rodou aparece como <b>✕ Cancelar</b>.</p>
     <div id="ev-lista" class="lista-itens"><p class="vazio">Carregando…</p></div>`;
   $('#form-ev').onsubmit = async (ev) => {
     ev.preventDefault();
@@ -94,13 +94,17 @@ async function carregarPedidos() {
     // eventos que já têm uma exclusão pedida (não oferecer o botão de excluir de novo)
     const jaExcluir = new Set(pedidos.filter(p => p.acao === 'excluir' && p.eventoId).map(p => p.eventoId));
     alvo.innerHTML = pedidos.slice().reverse().map(p => {
-      let acao = '<span></span>';
-      if (p.status === 'pendente') {
-        acao = `<button class="btn peq" data-cancelar="${p.id}" title="Cancelar este pedido (ainda não executado)">✕ Cancelar</button>`;
-      } else if (p.acao === 'criar' && p.status === 'feito' && p.eventoId && !jaExcluir.has(p.eventoId)) {
+      const acoes = [];
+      // Excluir o EVENTO do Google Calendar (só p/ criação efetivada e evento ainda existente).
+      if (p.acao === 'criar' && p.status === 'feito' && p.eventoId && !jaExcluir.has(p.eventoId)) {
         const dados = esc(JSON.stringify({ id: p.id, eventoId: p.eventoId, titulo: p.titulo, data: p.data, hora: p.hora }));
-        acao = `<button class="btn peq perigo" data-excluir-ev="${dados}" title="Excluir este evento do Google Calendar">🗑️ Excluir</button>`;
+        acoes.push(`<button class="btn peq perigo" data-excluir-ev="${dados}" title="Pedir a exclusão deste evento do Google Calendar">🗑️ Excluir do Google</button>`);
       }
+      // Remover o REGISTRO da lista — SEMPRE disponível (não altera o Google Calendar).
+      const rotRem = p.status === 'pendente' ? '✕ Cancelar' : '✕ Remover';
+      const titRem = p.status === 'pendente' ? 'Cancelar este pedido (ainda não executado)' : 'Remover este registro da lista (não altera o Google Calendar)';
+      acoes.push(`<button class="btn peq secund" data-remover="${p.id}" data-pend="${p.status === 'pendente' ? 1 : 0}" title="${titRem}">${rotRem}</button>`);
+      const acao = acoes.join(' ');
       return `<div class="linha-item">
         <span class="qtd">${p.acao === 'excluir' ? '🗑️' : '➕'}</span>
         <span class="nome">${esc(p.titulo)}${p.data ? ` <span class="obs">— ${esc(p.data)}${p.hora ? ' ' + esc(p.hora) : ''}</span>` : ''}</span>
@@ -108,8 +112,9 @@ async function carregarPedidos() {
         ${acao}
       </div>`;
     }).join('');
-    alvo.querySelectorAll('[data-cancelar]').forEach(b => b.onclick = async () => {
-      try { await api('DELETE', '/agenda/pedidos/' + b.dataset.cancelar); carregarPedidos(); } catch (e) { alert(e.message); }
+    alvo.querySelectorAll('[data-remover]').forEach(b => b.onclick = async () => {
+      if (!confirm(b.dataset.pend === '1' ? 'Cancelar este pedido?' : 'Remover este registro da lista? (não altera o Google Calendar)')) return;
+      try { await api('DELETE', '/agenda/pedidos/' + b.dataset.remover); carregarPedidos(); } catch (e) { alert(e.message); }
     });
     alvo.querySelectorAll('[data-excluir-ev]').forEach(b => b.onclick = async () => {
       const ev = JSON.parse(b.dataset.excluirEv);
