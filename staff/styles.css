@@ -184,6 +184,9 @@ tr:last-child td { border-bottom: none; }
 .col-cards { padding: 6px; display: flex; flex-direction: column; gap: 8px; min-height: 44px; flex: 1; }
 .col-cards.sobre { background: #e2eef2; border-radius: 8px; outline: 2px dashed var(--lago); }
 .col-vazio { text-align: center; color: var(--concreto-claro); font-size: .8rem; padding: 8px; }
+/* Manutenção: as 3 colunas (aberto/agendado/em execução) dividem por igual a largura,
+   ocupando a mesma faixa do box "➕ Novo chamado" (só neste quadro; os demais kanbans seguem fixos). */
+#ch-board .col { width: auto; flex: 1 1 0; min-width: 180px; }
 .kard { background: #fff; border: 1px solid var(--borda); border-left: 3px solid var(--lago); border-radius: 8px; padding: 9px 11px; cursor: grab; }
 .kard:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
 .kard.arrastando { opacity: .45; }
