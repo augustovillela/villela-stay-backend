@@ -363,3 +363,70 @@ function renderConta() {
     catch (e) { msg.textContent = e.message; }
   };
 }
+
+// --------- Conhecimento da Eva (base que alimenta a concierge IA dos hóspedes) ---------
+async function renderEvaConhecimento() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('Conhecimento da Eva', 'A Eva é a concierge virtual dos hóspedes (no app). Aqui você vê o que ela já sabe e alimenta a inteligência dela com o seu material — cole um texto ou anexe um arquivo (.pdf, .txt, .md). Ela usa isso junto do FAQ ao responder.') +
+    `<div id="eva-resumo" class="aviso">Carregando…</div>
+     <details class="hi-bloco" open><summary><strong>➕ Alimentar a Eva</strong> (texto ou arquivo)</summary>
+       <form class="form form-larga" id="eva-form" style="margin-top:10px">
+         <label>Título <input id="eva-tit" maxlength="120" placeholder="ex.: Regras da piscina / Parceiros de passeio / Wi-Fi da área comum"></label>
+         <label>Texto <textarea id="eva-txt" rows="5" placeholder="Cole aqui a informação que a Eva deve saber…"></textarea></label>
+         <label>…ou anexe um arquivo <input type="file" id="eva-arq" accept=".pdf,.txt,.md,.csv"></label>
+         <p class="dica">PDF escaneado (imagem) rende pouco texto — nesse caso, copie e cole o conteúdo.</p>
+         <div class="modal-acoes"><button class="btn" type="submit">Adicionar ao conhecimento</button></div>
+         <p id="eva-msg" class="erro"></p>
+       </form>
+     </details>
+     <h3 style="margin:18px 0 4px">📚 O que a Eva já aprendeu (base do anfitrião)</h3>
+     <div id="eva-lista"><p class="aviso">Carregando…</p></div>`;
+  await carregarEvaKB();
+  $('#eva-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const msg = $('#eva-msg'); msg.className = 'erro'; msg.textContent = '';
+    const titulo = $('#eva-tit').value.trim();
+    const arq = $('#eva-arq').files[0];
+    const texto = $('#eva-txt').value.trim();
+    if (!arq && !texto) { msg.textContent = 'Cole um texto ou anexe um arquivo.'; return; }
+    try {
+      let body;
+      if (arq) {
+        if (arq.size > 12 * 1024 * 1024) { msg.textContent = 'Arquivo muito grande (máx. 12 MB).'; return; }
+        const base64 = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1] || ''); fr.onerror = () => no(new Error('Falha ao ler o arquivo.')); fr.readAsDataURL(arq); });
+        body = { titulo, arquivoBase64: base64, nomeArquivo: arq.name };
+      } else { body = { titulo, texto }; }
+      await api('POST', '/eva/conhecimento', body);
+      $('#eva-form').reset();
+      await carregarEvaKB();
+    } catch (e) { msg.textContent = e.message; }
+  };
+}
+async function carregarEvaKB() {
+  try {
+    const d = await api('GET', '/eva/conhecimento');
+    const ativos = d.itens.filter(x => x.ativo !== false).length;
+    const pct = d.budget ? Math.min(100, Math.round((d.totalCharsAtivos / d.budget) * 100)) : 0;
+    $('#eva-resumo').innerHTML =
+      `<strong>Resumo do que a Eva já sabe.</strong> Além do material abaixo, ela sempre recebe automaticamente:` +
+      `<ul style="margin:6px 0 6px 18px">${d.fontesAutomaticas.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` +
+      `Base do anfitrião: <strong>${ativos}</strong> item(ns) ativo(s) · ${(d.totalCharsAtivos || 0).toLocaleString('pt-BR')}/${(d.budget || 0).toLocaleString('pt-BR')} caracteres usados por conversa (${pct}%).` +
+      (pct >= 100 ? ` <span class="erro">Limite atingido — desative itens menos importantes para caber.</span>` : '');
+    const lista = $('#eva-lista');
+    if (!d.itens.length) { lista.innerHTML = '<p class="vazio">Nada ainda. Adicione o primeiro material acima.</p>'; return; }
+    lista.innerHTML = d.itens.map(x => `
+      <div style="border:1px solid var(--linha);border-radius:10px;padding:10px 12px;margin-bottom:8px;${x.ativo === false ? 'opacity:.55' : ''}">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <strong>${esc(x.titulo)}</strong>
+          <span class="sub">${x.origem === 'arquivo' ? '📎 ' + esc(x.nomeArquivo || 'arquivo') : '✍️ texto'} · ${(x.chars || 0).toLocaleString('pt-BR')} car.</span>
+        </div>
+        <details style="margin-top:6px"><summary style="cursor:pointer" class="sub">Ver conteúdo</summary><pre style="white-space:pre-wrap;font-family:inherit;font-size:.9rem;margin:6px 0">${esc(String(x.texto || '').slice(0, 4000))}${(x.texto || '').length > 4000 ? '…' : ''}</pre></details>
+        <div class="acoes" style="margin-top:8px">
+          <button class="btn peq secund" data-eva-toggle="${x.id}">${x.ativo === false ? '☑️ Ativar' : '⬜ Desativar'}</button>
+          <button class="btn peq perigo" data-eva-del="${x.id}">🗑️ Excluir</button>
+        </div>
+      </div>`).join('');
+    lista.querySelectorAll('[data-eva-toggle]').forEach(b => b.onclick = async () => { const it = d.itens.find(x => x.id === b.dataset.evaToggle); try { await api('PATCH', '/eva/conhecimento/' + b.dataset.evaToggle, { ativo: it.ativo === false }); carregarEvaKB(); } catch (e) { alert(e.message); } });
+    lista.querySelectorAll('[data-eva-del]').forEach(b => b.onclick = async () => { if (!confirm('Excluir este item do conhecimento da Eva?')) return; try { await api('DELETE', '/eva/conhecimento/' + b.dataset.evaDel); carregarEvaKB(); } catch (e) { alert(e.message); } });
+  } catch (e) { $('#eva-lista').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}

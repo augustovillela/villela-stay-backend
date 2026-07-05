@@ -3648,6 +3648,50 @@ function lerConteudo() {
 }
 const salvarConteudo = (c) => salvarJSON('conteudo-hospede.json', c);
 
+// ---- Base de conhecimento da Eva (concierge IA) — material que o anfitrião alimenta pelo portal ----
+// Texto livre e/ou arquivos (.txt/.md/.csv nativo; .pdf best-effort). Entradas:
+// { id, titulo, texto, origem:'texto'|'arquivo', nomeArquivo, chars, ativo, criadoEm, quem }.
+const EVA_KB_MAX = 40000;    // teto de caracteres por entrada
+const EVA_KB_BUDGET = 12000; // teto total injetado na Eva por conversa (controla custo/contexto)
+const lerEvaKB = () => { const a = lerJSON('eva-conhecimento.json', []); return Array.isArray(a) ? a : []; };
+const salvarEvaKB = (a) => salvarJSON('eva-conhecimento.json', a);
+// Extrai texto de PDF sem dependência externa (best-effort): infla streams FlateDecode (zlib) e
+// junta as strings dos operadores de texto Tj/TJ. Cobre PDFs de texto comuns; PDF escaneado (imagem)
+// rende pouco — nesse caso o endpoint orienta a colar o texto.
+function extrairTextoPdf(buf) {
+  const zlib = require('zlib');
+  const partes = [];
+  const sMark = Buffer.from('stream'), eMark = Buffer.from('endstream');
+  let i = 0;
+  while (true) {
+    const s = buf.indexOf(sMark, i); if (s < 0) break;
+    let p = s + sMark.length;
+    if (buf[p] === 0x0d) p++; if (buf[p] === 0x0a) p++;
+    const e = buf.indexOf(eMark, p); if (e < 0) break;
+    const chunk = buf.slice(p, e);
+    let dec = null;
+    try { dec = zlib.inflateSync(chunk); } catch (_) { try { dec = zlib.inflateRawSync(chunk); } catch (_2) { dec = chunk; } }
+    partes.push(dec.toString('latin1'));
+    i = e + eMark.length;
+  }
+  const raw = partes.join('\n');
+  let txt = '';
+  const re = /\(((?:[^()\\]|\\[\s\S])*)\)/g; let m;
+  while ((m = re.exec(raw)) !== null) {
+    txt += m[1]
+      .replace(/\\([nrtbf])/g, (x, c) => ({ n: '\n', r: '', t: '\t', b: '', f: '' }[c] || ''))
+      .replace(/\\([0-7]{1,3})/g, (x, o) => String.fromCharCode(parseInt(o, 8)))
+      .replace(/\\(.)/g, '$1') + ' ';
+  }
+  return txt.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+}
+function extrairTextoArquivo(base64, nome) {
+  const buf = Buffer.from(String(base64 || ''), 'base64');
+  const ext = (nome && nome.indexOf('.') >= 0) ? nome.slice(nome.lastIndexOf('.')).toLowerCase() : '';
+  if (ext === '.pdf') return extrairTextoPdf(buf);
+  return buf.toString('utf8'); // .txt/.md/.csv e afins
+}
+
 // ---- Conta corrente do hóspede (extrato de lançamentos + saldo) + pagamento (Mercado Pago) ----
 const lerLancamentos = () => lerJSON('lancamentos.json', []);
 const salvarLancamentos = (l) => salvarJSON('lancamentos.json', l);
@@ -4372,13 +4416,29 @@ app.post('/hospede/api/chat', requireHospede, async (req, res) => {
       }
       if (bloco) contexto += '\n\n=== RECOMENDACOES CURADAS DA VILLELA STAY (use quando o hospede pedir dicas de comer/passear/pacotes) ===' + bloco;
     } catch (e) { /* sem conteudo */ }
+    // (d) Base de conhecimento alimentada pelo anfitriao no portal (material interno da casa)
+    try {
+      const kb = lerEvaKB().filter(x => x.ativo !== false);
+      if (kb.length) {
+        let bloco = '', usado = 0;
+        for (const x of kb) {
+          if (usado >= EVA_KB_BUDGET) break;
+          const restante = EVA_KB_BUDGET - usado;
+          const corpo = String(x.texto || '').slice(0, restante);
+          bloco += `\n\n[${x.titulo}]\n${corpo}`;
+          usado += corpo.length + String(x.titulo || '').length + 4;
+        }
+        if (bloco) contexto += '\n\n=== BASE DE CONHECIMENTO DA VILLELA (material do anfitriao; fonte INTERNA, priorize junto do FAQ) ===' + bloco;
+      }
+    } catch (e) { /* sem base */ }
 
     const system = `Você é a Eva, a concierge virtual da Villela Stay, hospedagem premium por temporada no Lago Sul, Brasília-DF. Atenda como uma anfitriã premiada: acolhedora, cordial, direta e prestativa. Se apresente como Eva quando fizer sentido. Responda SEMPRE no mesmo idioma da pergunta do hóspede (português, inglês ou espanhol).
 
-Use como FONTE DE VERDADE o FAQ oficial e os dados abaixo (reserva, conta e recomendações da casa). Regras:
+Use como FONTE DE VERDADE o FAQ oficial e os dados abaixo (reserva, conta, recomendações e base de conhecimento da casa). Regras:
 - Preço, contrato, cancelamento, taxas e datas especiais: siga EXATAMENTE o FAQ. Nunca invente e NUNCA use a busca na web para políticas/preços/regras da Villela.
-- Dicas de gastronomia, turismo e pacotes: priorize as RECOMENDAÇÕES CURADAS abaixo (é a seleção da casa). Pode complementar com a web para informação atual (horário de funcionamento, eventos, clima), deixando claro quando a info vier da internet.
-- Busca na web: use SÓ para informação externa/atual que o FAQ e os dados não cobrem. Não pesquise assuntos internos da Villela na web.
+- Dicas de gastronomia, turismo, passeios e pacotes: COMECE SEMPRE pelas RECOMENDAÇÕES CURADAS e pela BASE DE CONHECIMENTO DA VILLELA abaixo (é a seleção e o material da casa) — só depois complemente. Se houver item curado que sirva, ofereça-o primeiro.
+- Você TAMBÉM ajuda o hóspede com a logística de viagem: passagens aéreas, aluguel de carro, transporte/traslado, táxi/app, transfer do aeroporto, rotas e deslocamento na cidade. Para esses assuntos e para informação atual (horário de funcionamento, eventos, clima, preços de terceiros), use a busca na web e deixe claro quando a info vier da internet. Ao falar de traslado/transfer, lembre que a Villela oferece esse serviço (veja Serviços extras no app).
+- Busca na web: use para informação externa/atual que o FAQ e os dados não cobrem (inclui a logística de viagem acima). Não pesquise assuntos internos da Villela na web.
 - Wi-Fi e códigos de acesso (portão/fechadura) NÃO ficam aqui: oriente o hóspede a abrir o ícone "Wi-Fi" no app — liberados a partir de 2 dias antes do check-in.
 - Se não tiver certeza, ou for exceção comercial, oriente a falar pelo WhatsApp (wa.me/556191935013). Não invente.
 - Seja conciso e responda só o que foi perguntado.
@@ -4815,6 +4875,60 @@ app.put('/staff/api/hospede/conteudo', requirePublishOrAdmin, (req, res) => {
   }
   salvarConteudo(out);
   res.json({ ok: true, conteudo: out });
+});
+
+// Base de conhecimento da Eva — listar / adicionar (texto ou arquivo) / editar / remover (admin OU PUBLISH_KEY).
+app.get('/staff/api/eva/conhecimento', requirePublishOrAdmin, (req, res) => {
+  const itens = lerEvaKB();
+  const ativos = itens.filter(x => x.ativo !== false);
+  const totalCharsAtivos = ativos.reduce((s, x) => s + (x.chars || String(x.texto || '').length), 0);
+  res.json({
+    itens, budget: EVA_KB_BUDGET, totalCharsAtivos,
+    // "Resumo do que a Eva já sabe" — as fontes automáticas que ela sempre recebe, além da base abaixo.
+    fontesAutomaticas: [
+      'FAQ oficial da Villela Stay (regras, preços, políticas)',
+      'Reserva do próprio hóspede + infos da casa (horários, contatos, manual, guia)',
+      'Conta corrente / cash back / fidelidade do hóspede',
+      'Vitrines curadas: Gastronomia, Turismo e Pacotes',
+      'Busca na web para info externa/atual (voos, aluguel de carro, transporte, clima, horários)',
+    ],
+  });
+});
+app.post('/staff/api/eva/conhecimento', requirePublishOrAdmin, (req, res) => {
+  const d = req.body || {};
+  let texto = String(d.texto || '').trim();
+  let origem = 'texto', nomeArquivo = '';
+  if (d.arquivoBase64) {
+    try { texto = String(extrairTextoArquivo(d.arquivoBase64, d.nomeArquivo) || '').trim(); }
+    catch (e) { return res.status(400).json({ erro: 'Não consegui ler o arquivo.' }); }
+    origem = 'arquivo'; nomeArquivo = String(d.nomeArquivo || 'arquivo').slice(0, 120);
+    if (texto.length < 20) return res.status(422).json({ erro: 'Extraí pouco texto desse arquivo (pode ser um PDF escaneado/imagem). Copie e cole o texto no campo de texto.' });
+  }
+  if (!texto) return res.status(400).json({ erro: 'Envie um texto ou um arquivo com conteúdo.' });
+  texto = texto.slice(0, EVA_KB_MAX);
+  const titulo = (String(d.titulo || '').trim() || nomeArquivo || 'Sem título').slice(0, 120);
+  const itens = lerEvaKB();
+  const item = { id: crypto.randomBytes(6).toString('hex'), titulo, texto, origem, nomeArquivo, chars: texto.length, ativo: true, criadoEm: new Date().toISOString(), quem: (req.user && req.user.email) || (req.viaChave ? 'chave' : 'admin') };
+  itens.unshift(item);
+  salvarEvaKB(itens);
+  res.json({ ok: true, item });
+});
+app.patch('/staff/api/eva/conhecimento/:id', requirePublishOrAdmin, (req, res) => {
+  const itens = lerEvaKB(); const it = itens.find(x => x.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Não encontrado.' });
+  const d = req.body || {};
+  if (d.ativo != null) it.ativo = !!d.ativo;
+  if (typeof d.titulo === 'string' && d.titulo.trim()) it.titulo = d.titulo.trim().slice(0, 120);
+  if (typeof d.texto === 'string') { it.texto = d.texto.slice(0, EVA_KB_MAX); it.chars = it.texto.length; }
+  salvarEvaKB(itens);
+  res.json({ ok: true, item: it });
+});
+app.delete('/staff/api/eva/conhecimento/:id', requirePublishOrAdmin, (req, res) => {
+  const itens = lerEvaKB(); const n = itens.length;
+  const out = itens.filter(x => x.id !== req.params.id);
+  if (out.length === n) return res.status(404).json({ erro: 'Não encontrado.' });
+  salvarEvaKB(out);
+  res.json({ ok: true });
 });
 
 // Catálogo de serviços extras — editar (admin OU PUBLISH_KEY): preços, textos, ativar/desativar.
