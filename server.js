@@ -1504,8 +1504,15 @@ app.get('/staff/api/limpezas', requirePublishOrSession, async (req, res) => {
     const dia = /^\d{4}-\d{2}-\d{2}$/.test(req.query.dia || '') ? req.query.dia : hojeBrasil();
     const listings = await staysPaginado('/content/listings', {});
     const mapa = {}; listings.forEach(l => { mapa[l._id] = { codigo: l.id, titulo: l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id }; });
-    const doDia = (await staysPaginado('/booking/reservations', { from: dia, to: dia, dateType: 'included' }))
-      .filter(r => !['canceled', 'blocked', 'maintenance'].includes(r.type));
+    // Duas consultas: chegadas (arrival) e saídas (departure) do dia. NÃO usar 'included' aqui —
+    // o dia do check-out não é noite ocupada, então 'included' [dia,dia] PERDE as faxinas pós-saída.
+    const [chegadas, saidas] = await Promise.all([
+      staysPaginado('/booking/reservations', { from: dia, to: dia, dateType: 'arrival' }),
+      staysPaginado('/booking/reservations', { from: dia, to: dia, dateType: 'departure' }),
+    ]);
+    const porId = {};
+    for (const r of [...chegadas, ...saidas]) { if (!['canceled', 'blocked', 'maintenance'].includes(r.type)) porId[r._id] = r; }
+    const doDia = Object.values(porId);
     const cache = await resolverClientes(doDia.filter(r => r.checkInDate === dia || r.checkOutDate === dia).map(r => r._idclient));
     const conf = (lerJSON('limpezas-confirmadas.json', {})[dia]) || {};
     const tarefas = [];
