@@ -1,0 +1,136 @@
+// =====================================================================
+// Livraria Villela — rotas públicas (loja) + APIs + webhook + download
+// =====================================================================
+'use strict';
+
+function registrarRotasPublicas(app, deps) {
+  const { repo, pagamentos, eventos, fluxo, storefront, legais, downloads, urls } = deps;
+
+  // Nunca cachear as APIs da loja.
+  app.use('/livraria/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+
+  // ----------------------------------------------------- páginas (SEO server-side)
+  app.get('/livros', (req, res) => {
+    res.type('html').send(storefront.vitrine(repo.Books.listarPublico()));
+  });
+  app.get('/livros/:slug', (req, res) => {
+    const b = repo.Books.porSlug(req.params.slug);
+    if (!b || !b.ativo) return res.status(404).type('html').send(storefront.vitrine(repo.Books.listarPublico()));
+    res.type('html').send(storefront.paginaLivro(b));
+  });
+  app.get('/checkout', (req, res) => {
+    const b = req.query.livro ? repo.Books.porSlug(String(req.query.livro)) : null;
+    if (!b || !b.ativo) return res.redirect(302, '/livros');
+    const tipo = ['pdf', 'impresso', 'combo'].includes(String(req.query.tipo)) ? String(req.query.tipo) : 'pdf';
+    res.type('html').send(storefront.checkout(b, tipo));
+  });
+  app.get('/obrigado', (req, res) => {
+    const order = req.query.p ? repo.Orders.obter(String(req.query.p)) : null;
+    res.type('html').send(storefront.obrigado(order));
+  });
+  app.get('/minha-biblioteca', (req, res) => {
+    const order = req.query.p ? repo.Orders.obter(String(req.query.p)) : null;
+    const tokensPorLivro = {};
+    if (order) for (const it of (order.itens || [])) tokensPorLivro[it.book_id] = repo.Tokens.daOrder(order.id).filter(t => t.book_id === it.book_id);
+    res.type('html').send(storefront.biblioteca(order, tokensPorLivro));
+  });
+  app.get('/suporte-livros', (req, res) => res.type('html').send(storefront.suporte()));
+
+  // páginas legais
+  app.get('/termos-de-uso', (req, res) => res.type('html').send(legais.termos()));
+  app.get('/politica-de-privacidade', (req, res) => res.type('html').send(legais.privacidade()));
+  app.get('/politica-de-compra-e-entrega', (req, res) => res.type('html').send(legais.compraEntrega()));
+  app.get('/politica-de-livro-impresso', (req, res) => res.type('html').send(legais.livroImpresso()));
+  app.get('/politica-de-reembolso', (req, res) => res.type('html').send(legais.reembolso()));
+
+  // ----------------------------------------------------- download seguro
+  app.get('/download/:token', downloads.servirDownload(repo));
+
+  // ----------------------------------------------------- API: validar cupom
+  app.post('/livraria/api/cupom', (req, res) => {
+    const d = req.body || {};
+    const items = Array.isArray(d.items) ? d.items : [];
+    if (!d.codigo || !items.length) return res.status(400).json({ ok: false, motivo: 'Dados insuficientes.' });
+    // subtotal a partir do banco (nunca do cliente)
+    let subtotal = 0; const bookIds = [];
+    for (const it of items) {
+      const b = repo.Books.obter(it.book_id); if (!b) continue;
+      const col = { pdf: 'preco_pdf', impresso: 'preco_impresso', combo: 'preco_combo' }[it.tipo] || 'preco_pdf';
+      if (b[col] != null) { subtotal += b[col] * (Number(it.quantidade) || 1); bookIds.push(b.id); }
+    }
+    const av = repo.Coupons.avaliar(d.codigo, bookIds, subtotal);
+    if (!av.ok) return res.json({ ok: false, motivo: av.motivo });
+    res.json({ ok: true, desconto: av.desconto });
+  });
+
+  // ----------------------------------------------------- API: criar checkout
+  app.post('/livraria/api/checkout', async (req, res) => {
+    try {
+      const d = req.body || {};
+      if (!d.customer || !d.customer.email || !d.customer.nome) return res.status(400).json({ erro: 'Informe nome e e-mail.' });
+      if (!Array.isArray(d.items) || !d.items.length) return res.status(400).json({ erro: 'Carrinho vazio.' });
+      if (!d.customer.consentimentos || !d.customer.consentimentos.termos) return res.status(400).json({ erro: 'É preciso aceitar os Termos.' });
+      // exige endereço para impresso/combo
+      const temImpresso = d.items.some(it => it.tipo === 'impresso' || it.tipo === 'combo');
+      if (temImpresso && (!d.endereco_entrega || !d.endereco_entrega.cep || !d.endereco_entrega.logradouro)) {
+        return res.status(400).json({ erro: 'Informe o endereço de entrega para o livro impresso.' });
+      }
+      if (!pagamentos.disponivel()) return res.status(503).json({ erro: 'Pagamento online em configuração. Fale conosco pelo WhatsApp.' });
+      const order = repo.Orders.criar({ customer: d.customer, items: d.items, cupom: d.cupom, origem: d.origem, endereco_entrega: d.endereco_entrega });
+      const prov = pagamentos.provedor('mercadopago');
+      const pref = await prov.criarCheckout(order, {
+        success: urls.obrigado(order.id), pending: urls.obrigado(order.id), failure: urls.obrigado(order.id),
+        notification: urls.webhook(),
+      });
+      repo.Payments.registrar(order.id, { provider: 'mercadopago', provider_ref: pref.ref, status: 'pendente', valor: order.valor_total });
+      res.json({ ok: true, url: pref.url, order_id: order.id });
+    } catch (e) {
+      console.error('[livraria checkout]', e.message);
+      res.status(400).json({ erro: e.message || 'Não foi possível iniciar o pagamento.' });
+    }
+  });
+
+  // ----------------------------------------------------- API: biblioteca por e-mail
+  // Envia por e-mail os links das compras pagas daquele e-mail (não revela nada na resposta).
+  app.post('/livraria/api/biblioteca-email', async (req, res) => {
+    const email = String((req.body && req.body.email) || '').toLowerCase().trim();
+    res.json({ ok: true }); // resposta neutra (não enumera contas)
+    if (!email) return;
+    try {
+      const cli = repo.Customers.porEmail(email);
+      if (!cli) return;
+      const pagas = repo.Customers.comprasDe(cli.id).filter(o => o.status === 'pago');
+      if (!pagas.length) return;
+      const linhas = pagas.map(o => `<li><a href="${urls.biblioteca(o.id)}">Pedido de ${new Date(o.created_at).toLocaleDateString('pt-BR')} — ${repo.brl(o.valor_total)}</a></li>`).join('');
+      const html = storefront.pagina ? null : null; // usa template simples
+      const corpo = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto"><h2 style="color:#0c3644">Sua biblioteca — Villela Stay</h2><p>Aqui estão seus pedidos e acessos:</p><ul>${linhas}</ul><p style="color:#8a9296;font-size:13px">Se você não pediu isto, ignore este e-mail.</p></div>`;
+      await deps.enviarEmail(email, 'Seus livros — Livraria Villela', corpo);
+      repo.Notif.log('email', { destino: email, assunto: 'biblioteca', status: 'enviado' });
+    } catch (e) { console.error('[biblioteca-email]', e.message); }
+  });
+
+  // ----------------------------------------------------- webhook Mercado Pago (isolado)
+  app.post('/livraria/webhooks/mercadopago', async (req, res) => {
+    res.sendStatus(200); // responde rápido; processa em seguida
+    try {
+      const q = req.query || {}, b = req.body || {};
+      const tipo = b.type || q.type || q.topic || '';
+      const payId = (b.data && b.data.id) || q['data.id'] || (tipo === 'payment' ? q.id : null);
+      if (!payId || (tipo && !/payment/i.test(String(tipo)))) return;
+      const prov = pagamentos.provedor('mercadopago');
+      const pag = await prov.consultarPagamento(payId);
+      if (!pag) return;
+      if (!pag.externalRef.startsWith('livro:')) return; // não é da livraria (conta do hóspede usa outro webhook)
+      const orderId = pag.externalRef.slice('livro:'.length);
+      // idempotência por (provider,payment_id)
+      const ev = repo.Webhooks.registrar('mercadopago', pag.provider_payment_id, pag.status, pag.raw);
+      if (!ev.novo) return; // já processado
+      if (pag.status === 'aprovado') { await fluxo.confirmarPagamento(orderId, pag); repo.Webhooks.marcar(ev.id, 'confirmado'); }
+      else if (pag.status === 'recusado') { await fluxo.registrarRecusa(orderId, pag); repo.Webhooks.marcar(ev.id, 'recusado'); }
+      else if (pag.status === 'reembolsado') { const o = repo.Orders.obter(orderId); if (o) await fluxo.reembolsar(orderId, { id: 'mercadopago', nome: 'Mercado Pago' }, ''); repo.Webhooks.marcar(ev.id, 'reembolsado'); }
+      else { repo.Webhooks.marcar(ev.id, 'pendente:' + pag.status); }
+    } catch (e) { console.error('[livraria mp webhook]', e.message); }
+  });
+}
+
+module.exports = { registrarRotasPublicas };

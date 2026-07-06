@@ -359,6 +359,7 @@ const AREAS = [
   { id: 'juridico', nome: 'Jurídico' },
   { id: 'contador', nome: 'Contábil / Fiscal' },
   { id: 'ti', nome: 'TI / Site' },
+  { id: 'livros', nome: 'Livraria' },
 ];
 const AREA_IDS = new Set(AREAS.map(a => a.id));
 
@@ -5255,8 +5256,22 @@ app.post('/webhooks/mercadopago', async (req, res) => {
 app.get('/', (req, res) => {
   const host = (req.hostname || '').toLowerCase();
   if (host.startsWith('staff.')) return res.redirect(302, '/staff/');
+  if (host.startsWith('livros.') || host.startsWith('livraria.')) return res.redirect(302, '/livros');
   return res.redirect(302, '/hospede');
 });
+
+// =========================== Livraria Villela (loja de livros) ===========================
+// Loja pública server-rendered (SEO) + Portal Staff (Gestão de Livros) + webhook próprio.
+// Reaproveita auth/e-mail/WhatsApp/Mercado Pago já existentes (injeção de deps).
+try {
+  require('./livraria').montar(app, {
+    express, requireAuth, requireAdmin, lerUsuarios, salvarUsuarios,
+    enviarEmail, enviarWhatsApp,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
+  });
+} catch (e) { console.error('[livraria] falha ao montar módulo:', e.message); }
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
