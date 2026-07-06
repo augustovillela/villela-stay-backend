@@ -1425,11 +1425,16 @@ async function cockpitStays() {
   const listings = await staysPaginado('/content/listings', {});
   const ativos = listings.filter(l => l.status === 'active');
   const mapa = {}; ativos.forEach(l => { mapa[l._id] = { codigo: l.id, titulo: l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id }; });
-  const doDia = (await staysPaginado('/booking/reservations', { from: dia, to: dia, dateType: 'included' }))
-    .filter(r => r.type !== 'canceled');
+  // 'included' pega estadias que OCUPAM a noite de hoje (p/ ocupação e chegadas). As SAÍDAS de hoje
+  // NÃO estão aí (o dia do check-out não é noite ocupada) → consulta 'departure' à parte (ver stays-api.md).
+  const [incluidas, partidas] = await Promise.all([
+    staysPaginado('/booking/reservations', { from: dia, to: dia, dateType: 'included' }),
+    staysPaginado('/booking/reservations', { from: dia, to: dia, dateType: 'departure' }),
+  ]);
+  const doDia = incluidas.filter(r => r.type !== 'canceled');
   const estadias = doDia.filter(r => r.type !== 'blocked' && r.type !== 'maintenance');
   const chegadas = estadias.filter(r => r.checkInDate === dia);
-  const saidas = estadias.filter(r => r.checkOutDate === dia);
+  const saidas = partidas.filter(r => r.type !== 'canceled' && r.type !== 'blocked' && r.type !== 'maintenance' && r.checkOutDate === dia);
   // Ocupação REAL: converte para código e um espaço inteiro alugado ocupa seus componentes (espelhamento).
   const universo = new Set(ativos.map(l => l.id));
   const ocupadas = new Set();
@@ -1547,6 +1552,49 @@ app.post('/staff/api/limpezas/confirmar', requirePublishOrSession, (req, res) =>
   for (const k of Object.keys(tudo)) if (k < limite) delete tudo[k];
   salvarJSON('limpezas-confirmadas.json', tudo);
   res.json({ ok: true, dia, confirmadas: Object.keys(doDia).length });
+});
+
+// Limpezas da SEMANA (domingo→domingo, mesma janela da agenda semanal do WhatsApp). Uma consulta
+// arrival + uma departure para a semana toda; agrupa por dia. Mesmo shape de tarefa do endpoint diário.
+const _isoAddDias = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const _isoDow = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay(); // 0=domingo
+app.get('/staff/api/limpezas/semana', requirePublishOrSession, async (req, res) => {
+  try {
+    const base = /^\d{4}-\d{2}-\d{2}$/.test(req.query.dia || '') ? req.query.dia : hojeBrasil();
+    const inicio = _isoAddDias(base, -_isoDow(base));   // domingo desta semana
+    const fim = _isoAddDias(inicio, 7);                 // domingo seguinte (fim da janela)
+    const listings = await staysPaginado('/content/listings', {});
+    const mapa = {}; listings.forEach(l => { mapa[l._id] = { codigo: l.id, titulo: l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id }; });
+    const ativa = r => !['canceled', 'blocked', 'maintenance'].includes(r.type);
+    const [chegadas, saidas] = await Promise.all([
+      staysPaginado('/booking/reservations', { from: inicio, to: fim, dateType: 'arrival' }),
+      staysPaginado('/booking/reservations', { from: inicio, to: fim, dateType: 'departure' }),
+    ]);
+    const relevantes = [...chegadas, ...saidas].filter(ativa);
+    const cache = await resolverClientes(relevantes.map(r => r._idclient));
+    const conf = lerJSON('limpezas-confirmadas.json', {});
+    const dias = [];
+    let totalTarefas = 0, totalConcluidas = 0;
+    for (let i = 0; i < 7; i++) {
+      const ds = _isoAddDias(inicio, i);
+      const confDia = conf[ds] || {};
+      const tarefas = [];
+      for (const r of saidas) if (ativa(r) && r.checkOutDate === ds) {
+        const im = mapa[r._idlisting] || { codigo: '—', titulo: '—' };
+        tarefas.push({ tipo: 'faxina', rotulo: 'Faxina pós-checkout', codigo: im.codigo, titulo: im.titulo, hospede: (r._idclient && cache[r._idclient]) || '—', hospedes: r.guests || null });
+      }
+      for (const r of chegadas) if (ativa(r) && r.checkInDate === ds) {
+        const im = mapa[r._idlisting] || { codigo: '—', titulo: '—' };
+        tarefas.push({ tipo: 'preparacao', rotulo: 'Preparação pré-checkin', codigo: im.codigo, titulo: im.titulo, hospede: (r._idclient && cache[r._idclient]) || '—', hospedes: r.guests || null });
+      }
+      tarefas.sort((a, b) => (a.tipo === b.tipo ? a.codigo.localeCompare(b.codigo) : (a.tipo === 'faxina' ? -1 : 1)));
+      for (const t of tarefas) { const c = confDia[`${t.codigo}|${t.tipo}`]; t.concluida = !!c; t.quem = c ? c.quem : ''; t.quando = c ? c.quando : ''; }
+      totalTarefas += tarefas.length; totalConcluidas += tarefas.filter(t => t.concluida).length;
+      dias.push({ dia: ds, dow: i, tarefas });
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json({ inicio, fim: _isoAddDias(fim, -1), dias, totalTarefas, totalConcluidas });
+  } catch (e) { console.error('[limpezas/semana]', e.message); res.status(502).json({ erro: 'Falha ao consultar a Stays.' }); }
 });
 
 // ---- Manutenção: HUB ÚNICO (chamados) — portal/app staff + WhatsApp + hóspede ----

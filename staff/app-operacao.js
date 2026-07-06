@@ -77,46 +77,84 @@ async function renderVisao() {
   } catch (e) { $('#ck-cards').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
-// --------- Limpezas de hoje (espelho do painel de limpeza, com confirmação) ---------
+// --------- Limpezas: Hoje / Semana (ao vivo da Stays, com confirmação) ---------
+let _lpModo = 'hoje';
+const _dataCurta = (iso) => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '—';
+const _diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 async function renderLimpezas() {
   const c = conteudo();
-  c.innerHTML = cabecalho('Limpezas de hoje', 'Faxinas pós-checkout e preparações pré-checkin do dia (ao vivo da Stays). Toque em Concluído ao terminar cada unidade.') + `
+  c.innerHTML = cabecalho('Limpezas', 'Faxinas pós-checkout e preparações pré-checkin (ao vivo da Stays). Toque em Concluído ao terminar cada unidade.') + `
     <div class="barra">
+      <span id="lp-modo" style="display:inline-flex;gap:6px">
+        <button class="btn peq ${_lpModo === 'hoje' ? '' : 'secund'}" data-modo="hoje">Hoje</button>
+        <button class="btn peq ${_lpModo === 'semana' ? '' : 'secund'}" data-modo="semana">Semana</button>
+      </span>
       <label style="flex-direction:row;align-items:center;gap:8px;font-weight:600">Dia
         <input type="date" id="lp-dia" value="${hojeInput()}"></label>
       <button class="btn secund peq" id="lp-atualizar">Atualizar</button>
     </div>
     <div id="lp-lista"><p class="vazio">Carregando…</p></div>`;
-  $('#lp-dia').onchange = carregarLimpezas;
-  $('#lp-atualizar').onclick = carregarLimpezas;
-  carregarLimpezas();
+  $('#lp-dia').onchange = recarregarLimpezas;
+  $('#lp-atualizar').onclick = recarregarLimpezas;
+  document.querySelectorAll('#lp-modo [data-modo]').forEach(b => b.onclick = () => {
+    _lpModo = b.dataset.modo;
+    document.querySelectorAll('#lp-modo [data-modo]').forEach(x => x.classList.toggle('secund', x !== b));
+    recarregarLimpezas();
+  });
+  recarregarLimpezas();
 }
 function hojeInput() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
+function recarregarLimpezas() { return _lpModo === 'semana' ? carregarLimpezasSemana() : carregarLimpezas(); }
+// HTML de uma linha de tarefa (reusado por Hoje e Semana; o botão carrega o próprio dia).
+function _linhaLimpeza(dia, t) {
+  return `<div class="linha-item" style="${t.concluida ? 'opacity:.65' : ''}">
+      <span class="qtd">${t.tipo === 'faxina' ? '🧹 Faxina' : '🛏️ Preparação'}</span>
+      <span class="nome">${esc(t.codigo)} · ${esc(t.titulo)} <span class="obs">${t.tipo === 'faxina' ? 'saída' : 'chegada'} de ${esc(t.hospede)}${t.hospedes ? ' (' + t.hospedes + ' hósp.)' : ''}</span></span>
+      <span class="quem">${t.concluida ? '✅ ' + esc(t.quem) + ' · ' + dataBr(t.quando) : 'pendente'}</span>
+      <div class="acoes" style="grid-column:2;grid-row:1/span 3">
+        <button class="btn peq secund" data-fotos="limpeza:${dia}|${esc(t.codigo)}|${t.tipo}" data-tit="${esc(t.codigo)} · ${t.tipo === 'faxina' ? 'faxina' : 'preparação'}">📷</button>
+        <button class="btn peq ${t.concluida ? 'secund' : ''}" data-dia="${dia}" data-cod="${esc(t.codigo)}" data-tipo="${t.tipo}" data-desfazer="${t.concluida ? 1 : 0}">${t.concluida ? 'Desfazer' : 'Concluído ✓'}</button>
+      </div>
+    </div>`;
+}
+function _wireLimpeza(scope, reload) {
+  scope.querySelectorAll('button[data-cod]').forEach(b => b.onclick = async () => {
+    try {
+      await api('POST', '/limpezas/confirmar', { dia: b.dataset.dia, codigo: b.dataset.cod, tipo: b.dataset.tipo, desfazer: b.dataset.desfazer === '1' });
+      reload();
+    } catch (e) { alert(e.message); }
+  });
+  scope.querySelectorAll('[data-fotos]').forEach(b => b.onclick = () => { const i = b.dataset.fotos.indexOf(':'); abrirFotosModal(b.dataset.fotos.slice(0, i), b.dataset.fotos.slice(i + 1), b.dataset.tit); });
+}
 async function carregarLimpezas() {
   const alvo = $('#lp-lista'); if (!alvo) return;
   const dia = $('#lp-dia').value || hojeInput();
+  alvo.innerHTML = '<p class="vazio">Carregando…</p>';
   try {
     const { tarefas, concluidas } = await api('GET', '/limpezas?dia=' + dia);
     if (!tarefas.length) { alvo.innerHTML = '<div class="vazio">Sem limpezas neste dia — nenhuma chegada ou saída. 🎉</div>'; return; }
-    alvo.innerHTML = `<p class="sub" style="margin:0 0 10px">${concluidas}/${tarefas.length} concluída(s)</p>` + tarefas.map(t => `
-      <div class="linha-item" style="${t.concluida ? 'opacity:.65' : ''}">
-        <span class="qtd">${t.tipo === 'faxina' ? '🧹 Faxina' : '🛏️ Preparação'}</span>
-        <span class="nome">${esc(t.codigo)} · ${esc(t.titulo)} <span class="obs">${t.tipo === 'faxina' ? 'saída' : 'chegada'} de ${esc(t.hospede)}${t.hospedes ? ' (' + t.hospedes + ' hósp.)' : ''}</span></span>
-        <span class="quem">${t.concluida ? '✅ ' + esc(t.quem) + ' · ' + dataBr(t.quando) : 'pendente'}</span>
-        <div class="acoes" style="grid-column:2;grid-row:1/span 3">
-          <button class="btn peq secund" data-fotos="limpeza:${dia}|${esc(t.codigo)}|${t.tipo}" data-tit="${esc(t.codigo)} · ${t.tipo === 'faxina' ? 'faxina' : 'preparação'}">📷</button>
-          <button class="btn peq ${t.concluida ? 'secund' : ''}" data-cod="${esc(t.codigo)}" data-tipo="${t.tipo}" data-desfazer="${t.concluida ? 1 : 0}">${t.concluida ? 'Desfazer' : 'Concluído ✓'}</button>
-        </div>
-      </div>`).join('');
-    alvo.querySelectorAll('button[data-cod]').forEach(b => b.onclick = async () => {
-      try {
-        await api('POST', '/limpezas/confirmar', { dia, codigo: b.dataset.cod, tipo: b.dataset.tipo, desfazer: b.dataset.desfazer === '1' });
-        carregarLimpezas();
-      } catch (e) { alert(e.message); }
-    });
-    alvo.querySelectorAll('[data-fotos]').forEach(b => b.onclick = () => { const i = b.dataset.fotos.indexOf(':'); abrirFotosModal(b.dataset.fotos.slice(0, i), b.dataset.fotos.slice(i + 1), b.dataset.tit); });
+    alvo.innerHTML = `<p class="sub" style="margin:0 0 10px">${concluidas}/${tarefas.length} concluída(s)</p>` + tarefas.map(t => _linhaLimpeza(dia, t)).join('');
+    _wireLimpeza(alvo, carregarLimpezas);
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+async function carregarLimpezasSemana() {
+  const alvo = $('#lp-lista'); if (!alvo) return;
+  const base = $('#lp-dia').value || hojeInput();
+  alvo.innerHTML = '<p class="vazio">Carregando a semana…</p>';
+  try {
+    const r = await api('GET', '/limpezas/semana?dia=' + base);
+    const hj = hojeInput();
+    let html = `<p class="sub" style="margin:0 0 10px">Semana ${_dataCurta(r.inicio)} a ${_dataCurta(r.fim)} · ${r.totalConcluidas}/${r.totalTarefas} concluída(s)</p>`;
+    if (!r.totalTarefas) html += '<div class="vazio">Sem limpezas nesta semana — nenhuma chegada ou saída. 🎉</div>';
+    for (const d of r.dias) {
+      const marca = d.dia === hj ? ' · hoje' : '';
+      html += `<h3 style="margin:16px 0 6px;font-weight:800;font-size:1rem">${_diasSemana[d.dow]} ${_dataCurta(d.dia)}${marca}${d.tarefas.length ? '' : ' <span class="obs" style="font-weight:400">— sem movimento</span>'}</h3>`;
+      html += d.tarefas.map(t => _linhaLimpeza(d.dia, t)).join('');
+    }
+    alvo.innerHTML = html;
+    _wireLimpeza(alvo, carregarLimpezasSemana);
   } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
