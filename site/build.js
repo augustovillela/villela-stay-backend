@@ -858,7 +858,7 @@ const CASAS_EVENTO = [
 
 const cardsEventos = CASAS_EVENTO.map(c => {
   const l = porId[c.id];
-  const exemplo = c.convidados * 100 + 1000;
+  const exemplo = c.convidados * 100 + 900;
   return `
 <article class="casa-pacote">
   ${l ? img(l.fotoPrincipal, { alt: c.nome, width: 340, height: 280, sizes: '(max-width: 760px) 100vw, 340px' }) : '<img alt="" width="340" height="280">'}
@@ -867,7 +867,7 @@ const cardsEventos = CASAS_EVENTO.map(c => {
     <p class="casa-meta">🕺 ${t('até', 'up to', 'hasta')} ${c.convidados} ${t('convidados', 'guests', 'invitados')} · 🕙 ${t('das 10h às 22h', '10 AM–10 PM', 'de 10h a 22h')} · 📍 ${esc(c.local)}</p>
     <p>${esc(c.destaque)}.</p>
     <div class="preco-bloco">
-      <div class="preco-principal">R$ 100 <span>${t('por convidado', 'per guest', 'por invitado')}</span> + R$ 1.000 <span>${t('de limpeza profissional', 'professional cleaning', 'de limpieza profesional')}</span></div>
+      <div class="preco-principal">R$ 100 <span>${t('por convidado', 'per guest', 'por invitado')}</span> + R$ 900 <span>${t('de limpeza profissional', 'professional cleaning', 'de limpieza profesional')}</span></div>
       <div class="preco-detalhe">${t(`Exemplo com lotação máxima (${c.convidados} convidados): <strong>${real(exemplo)}</strong> pelo dia inteiro de evento — piscina, churrasqueira e cozinha completa inclusas.`, `Example at full capacity (${c.convidados} guests): <strong>${real(exemplo)}</strong> for the full event day — pool, barbecue and full kitchen included.`, `Ejemplo con aforo máximo (${c.convidados} invitados): <strong>${real(exemplo)}</strong> por el día entero de evento — piscina, parrilla y cocina completa incluidas.`)}</div>
     </div>
     <a class="btn btn-wa" href="${waLink(t(`Olá! Quero fazer um evento na ${c.nome}. Data: ___ | Nº de convidados: ___ | Tipo de evento: ___`, `Hi! I'd like to host an event at ${c.nome}. Date: ___ | Number of guests: ___ | Type of event: ___`, `¡Hola! Quiero hacer un evento en ${c.nome}. Fecha: ___ | Nº de invitados: ___ | Tipo de evento: ___`))}">${t('Orçar evento na', 'Get a quote for', 'Cotizar evento en')} ${esc(c.nome)} →</a>
@@ -889,7 +889,7 @@ const eventos = layout(
     <h2 class="secao-titulo">${t('Como funciona', 'How it works', 'Cómo funciona')}</h2>
     <div class="passos">
       <div class="passo"><strong>${t('1. Escolha a casa pelo tamanho da festa', '1. Choose the house by the size of your party', '1. Elige la casa según el tamaño de la fiesta')}</strong><br>${t('Eventos de 30 a 150 convidados com espaço exclusivo das 10h às 22h.', 'Events from 30 to 150 guests with exclusive use from 10 AM to 10 PM.', 'Eventos de 30 a 150 invitados con espacio exclusivo de 10h a 22h.')}</div>
-      <div class="passo"><strong>${t('2. Preço simples e transparente', '2. Simple, transparent pricing', '2. Precio simple y transparente')}</strong><br>${t('Por apenas R$ 100 por convidado e R$ 1000 de taxa de limpeza — necessários para pagar duas diaristas, material de limpeza, sacos de lixo, etc.', 'Just R$ 100 per guest and a R$ 1,000 cleaning fee — needed to pay two cleaners, cleaning supplies, rubbish bags, etc.', 'Solo R$ 100 por invitado y R$ 1.000 de tarifa de limpieza — necesarios para pagar a dos personas de limpieza, materiales, bolsas de basura, etc.')}</div>
+      <div class="passo"><strong>${t('2. Preço simples e transparente', '2. Simple, transparent pricing', '2. Precio simple y transparente')}</strong><br>${t('Por apenas R$ 100 por convidado e R$ 900 de taxa de limpeza — necessários para pagar duas diaristas, material de limpeza, sacos de lixo, etc.', 'Just R$ 100 per guest and a R$ 900 cleaning fee — needed to pay two cleaners, cleaning supplies, rubbish bags, etc.', 'Solo R$ 100 por invitado y R$ 900 de tarifa de limpieza — necesarios para pagar a dos personas de limpieza, materiales, bolsas de basura, etc.')}</div>
       <div class="passo"><strong>${t('3. Estrutura pronta', '3. Everything ready', '3. Estructura lista')}</strong><br>${t('Cozinha com gás, utensílios, detergente; churrasqueira a gás e a carvão; banheiros com sabonete líquido, papel toalha e papel higiênico.', 'Kitchen with gas, utensils and detergent; gas and charcoal barbecue; bathrooms with liquid soap, paper towels and toilet paper.', 'Cocina con gas, utensilios y detergente; parrilla a gas y a carbón; baños con jabón líquido, papel toalla y papel higiénico.')}</div>
     </div>
   </section>
@@ -961,7 +961,7 @@ const nPessoas = s => LANG === 'pt' ? s : s.replace(/(\d+) pessoas/g, (m, n) => 
 const CASAS_PACOTE = [
   {
     id: 'GD01H', nome: 'Casa Modernista', hospedes: 24, convidados: 80,
-    local: 'SHIS QI 7, Conjunto 3, Lago Sul', pacote: 15400, limpeza: 1000,
+    local: 'SHIS QI 7, Conjunto 3, Lago Sul', pacote: 15300, limpeza: 900,
     quartos: [
       ['Suíte Master (4 pessoas)', '1 cama king · 1 cama box de solteiro · 1 sofá-cama de casal'],
       ['Suíte da Sofia (5 pessoas)', '1 cama king · 1 cama box de solteiro · 1 beliche de solteiro'],
@@ -972,7 +972,7 @@ const CASAS_PACOTE = [
   },
   {
     id: 'GI01I', nome: 'Casa Villela', hospedes: 15, convidados: 50,
-    local: 'SMDB Conjunto 29, Lago Sul', pacote: 9800, limpeza: 800,
+    local: 'SMDB Conjunto 29, Lago Sul', pacote: 9900, limpeza: 900,
     quartos: [
       ['Flat do Lúcio Costa (6 pessoas)', '1 cama king · 1 triliche (1 casal + 2 solteiros) · 1 sofá-cama de solteiro'],
       ['Flat do Athos Bulcão (6 pessoas)', '1 cama king · 1 triliche (1 casal + 2 solteiros) · 1 sofá-cama de casal'],
@@ -981,7 +981,7 @@ const CASAS_PACOTE = [
   },
   {
     id: 'GG04I', nome: 'Villa Kubitschek', hospedes: 21, convidados: 150,
-    local: 'SMDB Conjunto 29, Lago Sul', pacote: 13600, limpeza: 1000,
+    local: 'SMDB Conjunto 29, Lago Sul', pacote: 13500, limpeza: 900,
     quartos: [
       ['Suíte do Amor (4 pessoas)', '1 cama de casal · 1 cama box de solteiro · 1 sofá-cama'],
       ['Flat dos Solteiros (7 pessoas)', '2 beliches de solteiro · 2 camas auxiliares · 1 sofá-cama de casal'],
@@ -991,7 +991,7 @@ const CASAS_PACOTE = [
   },
   {
     id: 'PL02I', nome: 'Villa Catetinho', hospedes: 21, convidados: 150,
-    local: 'SMDB Conjunto 29, Lago Sul', pacote: 13600, limpeza: 1000,
+    local: 'SMDB Conjunto 29, Lago Sul', pacote: 13500, limpeza: 900,
     quartos: [
       ['Flat do Oscar (7 pessoas)', '1 cama de casal · 1 beliche de solteiro · 1 cama de solteiro auxiliar · 1 sofá-cama de casal · 1 cama box de solteiro'],
       ['Flat do Burle Marx (7 pessoas)', '1 cama de casal · 1 beliche de solteiro · 1 cama de solteiro auxiliar · 1 sofá-cama de casal'],

@@ -211,8 +211,8 @@ Diga a data e o número de convidados que indicamos o espaço certo.
 **Como é a cobrança de um evento?**
 O modelo é: **diária do espaço/hospedagem + taxa por convidado + taxa de limpeza do evento**. A **diária do
 espaço para eventos é proporcional ao número de convidados**. A referência é **R$ 100 por convidado**,
-podendo ser mais ou menos dependendo das circunstâncias do ajuste. Além disso, cobramos **taxa de limpeza a
-partir de R$ 800** (varia conforme o porte). O valor final depende da casa, da data e do número de
+podendo ser mais ou menos dependendo das circunstâncias do ajuste. Além disso, cobramos **taxa de limpeza
+de evento de R$ 900**. O valor final depende da casa, da data e do número de
 convidados — montamos a proposta para você.
 
 **O que conta como "convidado"? Quem dorme também paga por convidado?**
