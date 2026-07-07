@@ -208,9 +208,10 @@ e-mail) + envio p/ aprovação e status no detalhe do documento + KPI no dashboa
 
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
 ~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (produção) · ~~F5 IA documental~~
-✅ (branch) → **F6 workflows de aprovação** (etapas, aprovadores, prazos, histórico) → F7
-compartilhamento externo + portal do usuário externo** → F8 billing (Mercado Pago) + relatórios SaaS → F9 API
-pública + integrações → F10 enterprise (SSO, 2FA, retenção avançada, observabilidade).
+✅ (produção) · ~~F6 workflows~~ ✅ (branch) → **F7 compartilhamento externo + portal do
+usuário externo** (links seguros com senha/expiração, salas, solicitação de documentos) →
+F8 billing (Mercado Pago) + relatórios SaaS → F9 API pública + integrações → F10 enterprise
+(SSO, 2FA, retenção avançada, observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
