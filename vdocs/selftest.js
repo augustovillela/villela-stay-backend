@@ -530,6 +530,76 @@ function teste(nome, cond) {
   dbTeste.prepare('UPDATE workflow_instances SET prazo_em = ? WHERE id = ?').run('2000-01-01T00:00:00.000Z', r.dados.id);
   teste('rotina lembra aprovações atrasadas', (await wf.lembrarAtrasadas()) >= 1);
 
+  // ================== FASE 7: compartilhamento externo ==================
+  // share de DOCUMENTO com senha + expiração
+  r = await req('POST', '/vdocs/api/compartilhamentos', { body: { alvo_tipo: 'documento', alvo_id: docDistrato, senha: 'segredo123', permite_download: true, expira_dias: 7, rotulo: 'Cliente X' }, jar: 'anaA' });
+  teste('share de documento criado com link', r.status === 200 && /\/vdocs\/s\//.test(r.dados.link));
+  const shareLink = r.dados.link.replace(/^https?:\/\/[^/]+/, '');
+  const shareId = r.dados.id;
+  r = await req('POST', '/vdocs/api/compartilhamentos', { body: { alvo_tipo: 'documento', alvo_id: docDistrato }, jar: 'carlaA' });
+  teste('papel aprovador sem compartilhar_documento → 403', r.status === 403);
+
+  // acesso público: pede senha, senha errada, senha certa
+  {
+    let resp = await fetch(BASE + shareLink);
+    teste('página pública pede senha', resp.status === 200 && (await resp.text()).includes('exige senha'));
+    resp = await fetch(BASE + shareLink, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'senha=errada' });
+    teste('senha errada volta ao formulário', (await resp.text()).includes('Senha incorreta'));
+    resp = await fetch(BASE + shareLink, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'senha=segredo123' });
+    const corpo = await resp.text();
+    teste('senha certa mostra o documento', resp.status === 200 && corpo.includes('Distrato Fornecedor Y'));
+    resp = await fetch(BASE + shareLink + '/baixar', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'senha=segredo123&doc=' + docDistrato });
+    teste('download público com senha funciona', resp.status === 200 && String(resp.headers.get('content-disposition')).includes('attachment'));
+    resp = await fetch(BASE + shareLink + '/baixar', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'senha=segredo123&doc=' + docAta });
+    teste('download de documento FORA do link negado', (await resp.text()).includes('fora deste link') || resp.status === 410);
+  }
+  r = await req('GET', '/vdocs/api/compartilhamentos/' + shareId + '/acessos', { jar: 'anaA' });
+  teste('acessos externos logados (visualizar+baixar+senha_errada)', r.status === 200 && ['visualizar', 'baixar', 'senha_errada'].every(a => r.dados.acessos.some(x => x.acao === a)));
+
+  // sala segura (pasta) só-visualização: lista docs e mostra texto, sem download
+  r = await req('POST', '/vdocs/api/compartilhamentos', { body: { alvo_tipo: 'pasta', alvo_id: pastaContratos, permite_download: false, rotulo: 'Auditoria externa' }, jar: 'anaA' });
+  teste('sala segura (pasta) criada', r.status === 200);
+  const salaLink = r.dados.link.replace(/^https?:\/\/[^/]+/, '');
+  {
+    const resp = await fetch(BASE + salaLink);
+    const corpo = await resp.text();
+    teste('sala lista documentos da pasta com texto e sem download', resp.status === 200 && corpo.includes('só visualização') && !corpo.includes('⬇️ Baixar'));
+    const dl = await fetch(BASE + salaLink + '/baixar', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'doc=' + docId });
+    teste('download bloqueado em link só-visualização', (await dl.text()).includes('somente visualização') || dl.status === 410);
+  }
+
+  // revogação corta o acesso na hora
+  r = await req('DELETE', '/vdocs/api/compartilhamentos/' + shareId, { jar: 'anaA' });
+  teste('share revogado', r.status === 200);
+  {
+    const resp = await fetch(BASE + shareLink);
+    teste('link revogado → indisponível', resp.status === 410);
+  }
+  r = await req('DELETE', '/vdocs/api/compartilhamentos/' + shareId, { jar: 'bobB' });
+  teste('B não revoga share de A', r.status === 400 || r.status === 403);
+
+  // solicitação de documentos (upload externo)
+  r = await req('POST', '/vdocs/api/solicitacoes', { body: { titulo: 'Documentos do fornecedor', instrucoes: 'Envie o contrato assinado.', folder_id: pastaContratos, expira_dias: 7, max_arquivos: 2 }, jar: 'anaA' });
+  teste('solicitação criada com link', r.status === 200 && /\/vdocs\/r\//.test(r.dados.link));
+  const reqLink = r.dados.link.replace(/^https?:\/\/[^/]+/, '');
+  const reqId = r.dados.id;
+  {
+    let resp = await fetch(BASE + reqLink);
+    teste('página pública da solicitação abre', resp.status === 200 && (await resp.text()).includes('Documentos do fornecedor'));
+    resp = await fetch(BASE + reqLink + '/enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ remetente: 'João da Silva', arquivo_nome: 'contrato-assinado.txt', conteudo_base64: B64('contrato assinado pelo fornecedor joao') }) });
+    teste('externo envia arquivo', resp.status === 200);
+    resp = await fetch(BASE + reqLink + '/enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ arquivo_nome: 'virus.exe', conteudo_base64: B64('MZ') }) });
+    teste('upload externo também valida extensão', resp.status === 400);
+  }
+  r = await req('GET', '/vdocs/api/documentos?pasta=' + pastaContratos, { jar: 'anaA' });
+  teste('arquivo do externo virou documento na pasta', r.dados.documentos.some(d => d.nome === 'contrato-assinado.txt'));
+  r = await req('DELETE', '/vdocs/api/solicitacoes/' + reqId, { jar: 'anaA' });
+  teste('solicitação encerrada', r.status === 200);
+  {
+    const resp = await fetch(BASE + reqLink);
+    teste('link de solicitação encerrado → indisponível', resp.status === 410);
+  }
+
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });
   teste('lead da landing gravado', r.status === 200);

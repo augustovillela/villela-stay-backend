@@ -4,9 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fases 1–5 EM PRODUÇÃO** (último deploy `c5e7e78`, 07/07/2026 — IA validada com
-pergunta real em produção) · **Fase 6 (workflows de aprovação) COMPLETA** na branch
-`feat/vdocs-f6` (aguardando validação p/ merge). Testes: `npm run test:vdocs` (142/142).
+Status: **Fases 1–6 EM PRODUÇÃO** (último deploy `699948b`, 07/07/2026) · **Fase 7
+(compartilhamento externo) COMPLETA** na branch `feat/vdocs-f7` (aguardando validação p/
+merge). Testes: `npm run test:vdocs` (163/163).
 
 | O quê | Onde |
 |---|---|
@@ -164,7 +164,17 @@ cancela. Notificações: e-mail ao(s) aprovador(es) da etapa e ao solicitante no
 p/ mim com aprovar/rejeitar, minhas solicitações, histórico, modelos com aprovadores por
 e-mail) + envio p/ aprovação e status no detalhe do documento + KPI no dashboard.
 
-**Fases 7+ (especificado, não criado)** — na ordem do roadmap:
+**Fase 7 (criado)**: `shares` (link p/ DOCUMENTO ou PASTA = "sala segura"; token de 24 bytes só
+existe na criação — no banco fica sha256; senha opcional em bcrypt com throttle por IP;
+expiração; modo só-visualização mostra o TEXTO EXTRAÍDO sem download; revogação imediata),
+`share_access_logs` (visualizar/baixar/senha_errada com IP — LGPD) e `document_requests`
+(solicitação de upload externo: página pública onde o convidado envia arquivos que viram
+documentos normais na pasta escolhida — mesma validação de extensão/tamanho/limites do plano,
+`forcar_duplicado` pois o externo não decide dedupe; e-mail ao solicitante a cada recebimento).
+Páginas públicas `/vdocs/s/:token` e `/vdocs/r/:token` (noindex; download por POST p/ senha
+nunca ir em query/log). Tela 🔗 Compartilhamentos no painel + botão no detalhe do documento.
+
+**Fases 8+ (especificado, não criado)** — na ordem do roadmap:
 - F2/F3 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel
   cobre), `document_shares`/links externos (F7), previews/miniaturas, upload multipart resumable,
   OCR real (tesseract/serviço externo) plugando em `processing_jobs`.
@@ -208,17 +218,19 @@ e-mail) + envio p/ aprovação e status no detalhe do documento + KPI no dashboa
 
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
 ~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (produção) · ~~F5 IA documental~~
-✅ (produção) · ~~F6 workflows~~ ✅ (branch) → **F7 compartilhamento externo + portal do
-usuário externo** (links seguros com senha/expiração, salas, solicitação de documentos) →
-F8 billing (Mercado Pago) + relatórios SaaS → F9 API pública + integrações → F10 enterprise
-(SSO, 2FA, retenção avançada, observabilidade).
+✅ (produção) · ~~F6 workflows~~ ✅ (produção) · ~~F7 compartilhamento externo~~ ✅ (branch) →
+**F8 billing** (assinatura Mercado Pago, trial→pagante, bloqueio por inadimplência, página de
+preços viva, relatórios SaaS no staff: MRR/churn/custo por tenant) → F9 API pública +
+integrações → F10 enterprise (SSO, 2FA, retenção avançada, observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 6 (tela ✅ Aprovações: modelos, enviar, aprovar/rejeitar, histórico) e autoriza merge `feat/vdocs-f6` → master (deploy Render).
+1. [ ] Augusto valida a Fase 7 (tela 🔗: criar link com senha, sala de pasta, revogar, acessos;
+   solicitação de upload externo) e autoriza merge `feat/vdocs-f7` → master (deploy Render).
 2. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
    → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
-3. [ ] Iniciar Fase 7 (compartilhamento externo + portal) — sem env var nova.
+3. [ ] Iniciar Fase 8 (billing Mercado Pago + relatórios SaaS) — decisão a colher: preço anual
+   com desconto? cupons já na v1?
 
 ## Teste local
 

@@ -310,6 +310,7 @@ const TELAS=[
  ['busca','🔎 Busca',m=>m.permissoes.ver_documentos],
  ['ia','🤖 IA documental',m=>m.permissoes.usar_ia],
  ['workflows','✅ Aprovações',m=>m.permissoes.ver_documentos],
+ ['compartilhar','🔗 Compartilhamentos',m=>m.permissoes.compartilhar_documento],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
  ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
  ['plano','📦 Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca],
@@ -318,7 +319,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Disponível na próxima fase">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,workflows:vWorkflows,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,workflows:vWorkflows,compartilhar:vShares,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -415,7 +416,8 @@ async function abrirDoc(id){
     :st?'⏳ Extração de texto em processamento…':'';
   const selPasta='<select id="dd-pasta"><option value="">🏠 Início</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
   $('corpo').innerHTML='<p><a href="#" onclick="return irPasta(S.pasta)">← voltar</a></p><h2>'+esc(d.nome)+'</h2>'+
-   (P.usar_ia?'<p><button class="btn btn-ghost peq" onclick="S.iaEscopo={tipo:\\'documento\\',ref:\\''+d.id+'\\'};S.iaConv=\\'\\';ir(\\'ia\\')">🤖 Perguntar à IA sobre este documento</button></p>':'')+
+   '<p>'+(P.usar_ia?'<button class="btn btn-ghost peq" onclick="S.iaEscopo={tipo:\\'documento\\',ref:\\''+d.id+'\\'};S.iaConv=\\'\\';ir(\\'ia\\')">🤖 Perguntar à IA</button> ':'')+
+   (P.compartilhar_documento?'<button class="btn btn-ghost peq" onclick="compartilharDoc(\\''+d.id+'\\')">🔗 Compartilhar por link</button>':'')+'</p>'+
    '<div class="card">'+
    (P.editar_metadados?'<label>Nome</label><input id="dd-nome" value="'+esc(d.nome)+'">'+
     '<label>Descrição</label><textarea id="dd-desc" rows="2">'+esc(d.descricao)+'</textarea>'+
@@ -512,6 +514,58 @@ async function salvarBuscaAtual(){
 }
 function usarSalva(json){const sv=JSON.parse(json);const f=sv.filtros||{};S.buscaF={q:sv.termo||f.q||'',tipo:f.tipo||'',tag:f.tag||'',pasta:f.pasta||'',de:f.de||'',ate:f.ate||'',vencendo:f.vencendo||''};vBusca(true);}
 async function delSalva(id){if(!confirm('Excluir esta busca salva?'))return false;try{await api('DELETE','/buscas-salvas/'+id);S.buscaCtx=null;vBusca(false);}catch(e){alert(e.message);}return false;}
+
+// ---------------- Compartilhamentos (Fase 7) ----------------
+async function vShares(){
+  const [{shares,solicitacoes},pastasR]=await Promise.all([api('GET','/compartilhamentos'),api('GET','/pastas').catch(()=>({pastas:[]}))]);
+  S.pastas=pastasR.pastas||S.pastas||[];
+  const nomeP=id=>{const p=(S.pastas||[]).find(x=>x.id===id);return p?'📁 '+p.nome:'🏠 Início';};
+  $('corpo').innerHTML='<h2>🔗 Compartilhamentos</h2>'+
+   '<div class="card"><b>Links ativos e histórico</b><table><tr><th>Alvo</th><th>Rótulo</th><th>Proteções</th><th>Expira</th><th>Acessos</th><th>Status</th><th></th></tr>'+
+   (shares.length?shares.map(x=>'<tr><td>'+(x.alvo_tipo==='pasta'?'📁 ':'📄 ')+esc(x.alvo_nome)+'</td><td>'+esc(x.rotulo)+'</td>'+
+    '<td>'+(x.com_senha?'🔒 senha ':'')+(x.permite_download?'⬇️ download':'👁 só visualização')+'</td>'+
+    '<td>'+(x.expira_em?dt(x.expira_em):'—')+'</td><td><a href="#" onclick="return verAcessosShare(\\''+x.id+'\\')">'+x.acessos+'</a></td>'+
+    '<td>'+(x.ativo?'🟢 ativo':(x.revogado_em?'⚪ revogado':'🔴 expirado'))+'</td>'+
+    '<td>'+(x.ativo?'<button class="btn btn-ghost peq" onclick="revogarShare(\\''+x.id+'\\')">Revogar</button>':'')+'</td></tr>').join(''):'<tr><td colspan="7" style="color:var(--suave)">Nenhum link criado — compartilhe pelo detalhe do documento ou crie uma sala abaixo.</td></tr>')+'</table>'+
+   '<p><b>Nova sala segura (compartilhar uma pasta):</b></p><div style="display:flex;gap:8px;flex-wrap:wrap">'+
+   '<select id="sh-pasta" style="max-width:200px">'+(S.pastas||[]).map(p=>'<option value="'+p.id+'">📁 '+esc(p.nome)+'</option>').join('')+'</select>'+
+   '<input id="sh-rotulo" placeholder="Rótulo (p/ quem é)" style="max-width:170px"><input id="sh-senha" placeholder="Senha (opcional)" style="max-width:140px">'+
+   '<input id="sh-dias" type="number" placeholder="Dias" title="Expira em N dias (vazio = sem expiração)" style="max-width:80px">'+
+   '<label style="margin:0;display:flex;align-items:center;gap:4px;font-weight:400"><input id="sh-dl" type="checkbox" checked style="width:auto"> permitir download</label>'+
+   '<button class="btn peq" onclick="criarSala()">Criar link</button></div><div id="sh-out" style="margin-top:8px;font-size:13px"></div></div>'+
+   '<div id="sh-acessos"></div>'+
+   '<div class="card" style="margin-top:12px"><b>Solicitações de documentos</b> <span class="sub">(link p/ alguém de fora enviar arquivos)</span>'+
+   '<table><tr><th>Título</th><th>Destino</th><th>Recebidos</th><th>Expira</th><th>Status</th><th></th></tr>'+
+   (solicitacoes.length?solicitacoes.map(x=>'<tr><td>'+esc(x.titulo)+'</td><td>'+nomeP(x.folder_id)+'</td><td>'+x.recebidos+'/'+x.max_arquivos+'</td><td>'+dt(x.expira_em)+'</td>'+
+    '<td>'+(x.ativa?'🟢 ativa':'⚪ encerrada')+'</td><td>'+(x.ativa?'<button class="btn btn-ghost peq" onclick="revogarReq(\\''+x.id+'\\')">Encerrar</button>':'')+'</td></tr>').join(''):'<tr><td colspan="6" style="color:var(--suave)">Nenhuma solicitação.</td></tr>')+'</table>'+
+   '<p><b>Nova solicitação:</b></p><div style="display:flex;gap:8px;flex-wrap:wrap">'+
+   '<input id="rq-titulo" placeholder="Ex.: Documentos do contrato X" style="flex:1;min-width:200px">'+
+   '<select id="rq-pasta" style="max-width:200px"><option value="">🏠 Início</option>'+(S.pastas||[]).map(p=>'<option value="'+p.id+'">📁 '+esc(p.nome)+'</option>').join('')+'</select>'+
+   '<input id="rq-dias" type="number" value="14" title="validade em dias" style="max-width:80px">'+
+   '<button class="btn peq" onclick="criarReq()">Criar link</button></div>'+
+   '<input id="rq-instr" placeholder="Instruções para quem vai enviar (opcional)" style="margin-top:8px"><div id="rq-out" style="margin-top:8px;font-size:13px"></div></div>';
+}
+function mostrarLink(el,link){$(el).innerHTML='✅ Link criado (envie a quem for acessar):<br><code style="word-break:break-all">'+esc(link)+'</code>';}
+async function criarSala(){try{
+  const r=await api('POST','/compartilhamentos',{alvo_tipo:'pasta',alvo_id:$('sh-pasta').value,senha:$('sh-senha').value,permite_download:$('sh-dl').checked,expira_dias:Number($('sh-dias').value)||0,rotulo:$('sh-rotulo').value});
+  mostrarLink('sh-out',r.link);}catch(e){$('sh-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
+async function revogarShare(id){if(!confirm('Revogar este link? Quem o tiver perde o acesso imediatamente.'))return;await api('DELETE','/compartilhamentos/'+id);vShares();}
+async function verAcessosShare(id){
+  const {acessos}=await api('GET','/compartilhamentos/'+id+'/acessos');
+  $('sh-acessos').innerHTML='<div class="card" style="margin-top:12px"><b>Acessos do link</b><table><tr><th>Quando</th><th>Ação</th><th>IP</th></tr>'+
+   (acessos.length?acessos.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.acao)+'</td><td>'+esc(a.ip)+'</td></tr>').join(''):'<tr><td colspan="3" style="color:var(--suave)">Nenhum acesso ainda.</td></tr>')+'</table></div>';
+  return false;}
+async function criarReq(){try{
+  const r=await api('POST','/solicitacoes',{titulo:$('rq-titulo').value,instrucoes:$('rq-instr').value,folder_id:$('rq-pasta').value,expira_dias:Number($('rq-dias').value)||14});
+  mostrarLink('rq-out',r.link);}catch(e){$('rq-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
+async function revogarReq(id){if(!confirm('Encerrar esta solicitação?'))return;await api('DELETE','/solicitacoes/'+id);vShares();}
+async function compartilharDoc(id){
+  const senha=prompt('Senha do link (vazio = sem senha):')||'';
+  const dias=Number(prompt('Expira em quantos dias? (vazio = sem expiração)')||0)||0;
+  const dl=confirm('Permitir DOWNLOAD? (Cancelar = só visualização)');
+  try{const r=await api('POST','/compartilhamentos',{alvo_tipo:'documento',alvo_id:id,senha,permite_download:dl,expira_dias:dias});
+    prompt('Link criado — copie e envie:',r.link);}catch(e){alert(e.message);}
+}
 
 // ---------------- Aprovações (Fase 6) ----------------
 async function vWorkflows(){
@@ -666,14 +720,112 @@ boot().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>
 </script></body></html>`;
 }
 
-function registrarPaginas(app) {
-  const html = (res, corpo) => { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.send(corpo); };
+// ------------------------------------------------------------ páginas públicas do compartilhamento (Fase 7)
+const paginaExterna = (titulo, inner) => pagina({
+  titulo: `${titulo} — Villela Docs`, descricao: 'Acesso seguro a documentos compartilhados.',
+  corpo: `<section class="alt" style="min-height:60vh"><div class="wrap"><div class="card" style="padding:26px;max-width:820px;margin:0 auto">
+    <h2 style="margin-top:0">${esc(titulo)}</h2>${inner}
+    <p style="font-size:12px;color:var(--suave);margin-top:18px">🔐 Acesso registrado (data, hora e IP) — Villela Docs Intelligence.</p></div></div></section>`,
+});
+
+function paginaShare(token, sh, comp, { senha = '', erroSenha = false } = {}) {
+  if (sh.senha_hash && !senha) {
+    return paginaExterna('Conteúdo protegido', `
+      ${erroSenha ? '<div class="erro">Senha incorreta.</div>' : ''}
+      <p style="color:var(--suave)">Este link exige senha. Informe a senha que você recebeu de quem compartilhou.</p>
+      <form method="POST" action="/vdocs/s/${esc(token)}"><label>Senha</label><input type="password" name="senha" required>
+      <p><button class="btn" type="submit">Acessar</button></p></form>`);
+  }
+  const cont = comp.conteudoDoShare(sh);
+  const linhas = cont.documentos.map(d => `<tr><td><b>${esc(d.nome)}</b>${d.descricao ? `<br><span style="font-size:13px;color:var(--suave)">${esc(d.descricao)}</span>` : ''}</td>
+    <td>${esc(d.tipo_documental)}</td><td>v${d.versao}</td>
+    <td>${sh.permite_download ? `<form method="POST" action="/vdocs/s/${esc(token)}/baixar" style="margin:0">
+      <input type="hidden" name="doc" value="${esc(d.id)}"><input type="hidden" name="senha" value="${esc(senha)}">
+      <button class="btn peq" type="submit">⬇️ Baixar</button></form>` : '<span class="chip">só visualização</span>'}</td></tr>`).join('');
+  const textos = sh.permite_download ? '' : cont.documentos.filter(d => d.texto).map(d =>
+    `<h3>${esc(d.nome)}</h3><div class="card" style="background:var(--fundo);white-space:pre-wrap;font-size:14px;max-height:420px;overflow:auto">${esc(d.texto)}</div>`).join('');
+  return paginaExterna(cont.titulo, `
+    <p style="color:var(--suave)">${cont.documentos.length} documento(s) compartilhado(s)${sh.expira_em ? ` · acesso até ${sh.expira_em.slice(0, 10).split('-').reverse().join('/')}` : ''}.</p>
+    <div style="overflow-x:auto"><table><tr><th>Documento</th><th>Tipo</th><th>Versão</th><th></th></tr>${linhas}</table></div>${textos}`);
+}
+
+function paginaSolicitacao(token, rq) {
+  return paginaExterna(rq.titulo, `
+    ${rq.instrucoes ? `<p>${esc(rq.instrucoes)}</p>` : ''}
+    <p style="color:var(--suave)">Envie até ${rq.max_arquivos - rq.recebidos} arquivo(s) (PDF, Office, imagens — máx. 20 MB cada)${rq.expira_em ? ` até ${rq.expira_em.slice(0, 10).split('-').reverse().join('/')}` : ''}.</p>
+    <label>Seu nome</label><input id="rq-nome" placeholder="Para identificarmos quem enviou">
+    <label>Arquivos</label><input id="rq-files" type="file" multiple>
+    <p><button class="btn" id="rq-btn" onclick="enviar()">Enviar arquivos</button></p><div id="rq-out"></div>
+    <script>
+    function b64(f){return new Promise((ok,err)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]||'');r.onerror=err;r.readAsDataURL(f);});}
+    async function enviar(){
+      const files=Array.from(document.getElementById('rq-files').files||[]);
+      if(!files.length){alert('Escolha os arquivos.');return;}
+      const btn=document.getElementById('rq-btn');btn.disabled=true;btn.textContent='Enviando…';
+      const out=document.getElementById('rq-out');
+      for(const f of files){
+        out.innerHTML='<div class="aviso">Enviando '+f.name+'…</div>';
+        const r=await fetch('/vdocs/r/${esc(token)}/enviar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({remetente:document.getElementById('rq-nome').value,arquivo_nome:f.name,conteudo_base64:await b64(f)})});
+        const d=await r.json().catch(()=>({}));
+        if(!r.ok){out.innerHTML='<div class="erro">'+f.name+': '+(d.erro||'falha no envio')+'</div>';btn.disabled=false;btn.textContent='Enviar arquivos';return;}
+      }
+      out.innerHTML='<div class="aviso">✅ Tudo enviado — obrigado! Pode fechar esta página.</div>';btn.textContent='Enviado';
+    }
+    </script>`);
+}
+
+function registrarPaginas(app, { express } = {}) {
+  const html = (res, corpo) => { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.setHeader('X-Robots-Tag', 'noindex'); res.send(corpo); };
   app.get('/vdocs', (req, res) => html(res, landing()));
   app.get('/vdocs/precos', (req, res) => html(res, precos()));
   app.get('/vdocs/cadastro', (req, res) => html(res, cadastro()));
   app.get('/vdocs/login', (req, res) => html(res, login()));
   app.get('/vdocs/convite/:token', (req, res) => html(res, convite(req.params.token)));
   app.get('/vdocs/app', (req, res) => { res.setHeader('Cache-Control', 'no-store'); html(res, appTenant()); });
+
+  // ---- acesso externo (Fase 7) — sem sessão; tudo logado por IP ----
+  if (!express) return;
+  const comp = require('./compartilhar');
+  const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
+  const guard = (fn) => (req, res) => {
+    try { fn(req, res); }
+    catch (e) { res.status(410); html(res, paginaExterna('Link indisponível', `<div class="erro">${esc(e.message)}</div>`)); }
+  };
+  const form = express.urlencoded({ extended: false, limit: '10kb' });
+
+  app.get('/vdocs/s/:token', guard((req, res) => {
+    const sh = comp.resolverShare(req.params.token);
+    if (!sh.senha_hash) comp.logAcesso(sh, 'visualizar', '', ipDe(req));
+    html(res, paginaShare(req.params.token, sh, comp));
+  }));
+  app.post('/vdocs/s/:token', form, guard((req, res) => {
+    const sh = comp.resolverShare(req.params.token);
+    const senha = String((req.body || {}).senha || '');
+    if (!comp.conferirSenha(sh, senha, ipDe(req))) return html(res, paginaShare(req.params.token, sh, comp, { erroSenha: true }));
+    comp.logAcesso(sh, 'visualizar', '', ipDe(req));
+    html(res, paginaShare(req.params.token, sh, comp, { senha }));
+  }));
+  app.post('/vdocs/s/:token/baixar', form, guard((req, res) => {
+    const sh = comp.resolverShare(req.params.token);
+    const b = req.body || {};
+    if (!comp.conferirSenha(sh, String(b.senha || ''), ipDe(req))) return html(res, paginaShare(req.params.token, sh, comp, { erroSenha: true }));
+    const { buffer, nome, mime } = comp.baixarDoShare(sh, String(b.doc || ''), ipDe(req));
+    res.setHeader('Content-Type', mime);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(nome)}`);
+    res.send(buffer);
+  }));
+
+  app.get('/vdocs/r/:token', guard((req, res) => {
+    html(res, paginaSolicitacao(req.params.token, comp.resolverSolicitacao(req.params.token)));
+  }));
+  app.post('/vdocs/r/:token/enviar', express.json({ limit: '30mb' }), (req, res) => {
+    try {
+      const rq = comp.resolverSolicitacao(req.params.token);
+      const id = comp.receberArquivo(rq, req.body || {}, ipDe(req));
+      res.json({ ok: true, id });
+    } catch (e) { res.status(400).json({ erro: e.message }); }
+  });
 }
 
 module.exports = { registrarPaginas };

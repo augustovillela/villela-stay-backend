@@ -11,6 +11,7 @@ const jobs = require('./jobs');
 const busca = require('./busca');
 const ia = require('./ia');
 const wf = require('./workflows');
+const comp = require('./compartilhar');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -250,6 +251,31 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
   r.delete('/buscas-salvas/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     busca.excluirSalva(req.vd.tenant.id, req.vd.user.id, req.params.id);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ compartilhamento externo (Fase 7)
+  const linkBase = (req) => `${req.protocol}://${req.get('host')}`;
+  r.get('/compartilhamentos', requireTenant, requirePerm('compartilhar_documento'), h(async (req, res) => {
+    res.json({ shares: comp.listarShares(req.vd.tenant.id), solicitacoes: comp.listarSolicitacoes(req.vd.tenant.id) });
+  }));
+  r.post('/compartilhamentos', requireTenant, requirePerm('compartilhar_documento'), h(async (req, res) => {
+    const { id, token } = comp.criarShare(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip);
+    res.json({ ok: true, id, link: `${linkBase(req)}/vdocs/s/${token}` });
+  }));
+  r.delete('/compartilhamentos/:id', requireTenant, requirePerm('compartilhar_documento'), h(async (req, res) => {
+    comp.revogarShare(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
+    res.json({ ok: true });
+  }));
+  r.get('/compartilhamentos/:id/acessos', requireTenant, requirePerm('compartilhar_documento'), h(async (req, res) => {
+    res.json({ acessos: comp.acessosDoShare(req.vd.tenant.id, req.params.id) });
+  }));
+  r.post('/solicitacoes', requireTenant, requirePerm('criar_documento'), h(async (req, res) => {
+    const { id, token } = comp.criarSolicitacao(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip);
+    res.json({ ok: true, id, link: `${linkBase(req)}/vdocs/r/${token}` });
+  }));
+  r.delete('/solicitacoes/:id', requireTenant, requirePerm('criar_documento'), h(async (req, res) => {
+    comp.revogarSolicitacao(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
     res.json({ ok: true });
   }));
 

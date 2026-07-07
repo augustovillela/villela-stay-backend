@@ -27,11 +27,12 @@ function montar(app, injected = {}) {
   const notificar = (msg) => Promise.resolve((alertaAugusto || (async () => {}))(msg)).catch(() => {});
   registrarRotasApi(app, { express, auth, notificar, enviarEmail });
   registrarRotasStaff(app, { express, requireAuth, requireAdmin });
-  registrarPaginas(app);
+  registrarPaginas(app, { express });
   const jobs = require('./jobs');
   jobs.configurar({ enviarEmail, notificar });
   jobs.iniciar(); // worker de extração + rotinas diárias (VDOCS_ROTINAS=off desliga)
   require('./workflows').configurar({ enviarEmail });
+  require('./compartilhar').configurar({ enviarEmail, notificar });
   console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-6: fundação, documentos, processamento, busca, IA e workflows).');
   return { repo, permissoes, auth, jobs };
 }

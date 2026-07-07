@@ -391,3 +391,52 @@ CREATE TABLE IF NOT EXISTS workflow_approvals (
   criado_em     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_wfa_inst ON workflow_approvals (tenant_id, instance_id);
+
+-- ---------- Fase 7: compartilhamento externo ----------
+
+-- Link seguro p/ documento OU pasta ("sala segura" = share de pasta).
+-- token NUNCA é gravado — só o sha256; senha opcional em bcrypt.
+CREATE TABLE IF NOT EXISTS shares (
+  id               TEXT PRIMARY KEY,
+  tenant_id        TEXT NOT NULL,
+  alvo_tipo        TEXT NOT NULL,            -- documento|pasta
+  alvo_id          TEXT NOT NULL,
+  token_hash       TEXT NOT NULL,
+  senha_hash       TEXT DEFAULT '',          -- '' = sem senha
+  permite_download INTEGER DEFAULT 1,        -- 0 = só visualização
+  expira_em        TEXT DEFAULT '',          -- '' = sem expiração
+  revogado_em      TEXT DEFAULT '',
+  rotulo           TEXT DEFAULT '',          -- p/ quem é (aparece na gestão, não no público)
+  criado_em        TEXT NOT NULL,
+  criado_por       TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_sh_tenant ON shares (tenant_id, criado_em);
+CREATE INDEX IF NOT EXISTS idx_sh_token ON shares (token_hash);
+
+CREATE TABLE IF NOT EXISTS share_access_logs (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id   TEXT NOT NULL,
+  share_id    TEXT NOT NULL,
+  acao        TEXT NOT NULL,                 -- visualizar|baixar|senha_errada
+  document_id TEXT DEFAULT '',
+  ip          TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_shl_share ON share_access_logs (tenant_id, share_id, criado_em);
+
+-- Solicitação de documentos a alguém de fora (upload externo p/ uma pasta).
+CREATE TABLE IF NOT EXISTS document_requests (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL,
+  folder_id    TEXT DEFAULT '',
+  titulo       TEXT NOT NULL,
+  instrucoes   TEXT DEFAULT '',
+  token_hash   TEXT NOT NULL,
+  expira_em    TEXT DEFAULT '',
+  max_arquivos INTEGER DEFAULT 10,
+  recebidos    INTEGER DEFAULT 0,
+  revogado_em  TEXT DEFAULT '',
+  criado_em    TEXT NOT NULL,
+  criado_por   TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_dr_token ON document_requests (token_hash);
