@@ -918,8 +918,9 @@ const LG = {
         esc(m.nome), esc(m.email), LG.chip(m.role_id), esc(m.oab || '—'), esc((m.nucleos || []).join(', ') || '—'), m.ativo ? '✅' : '⛔',
       ])) : '<p class="vazio">Nenhum perfil atribuído ainda.</p>'}</div>
       <div class="card"><h3>Atribuir perfil</h3>
+      <p class="sub">Admins do portal continuam Super Admin — cadastre-os aqui apenas para registrar OAB e núcleos (a OAB alimenta a coleta do DJEN).</p>
       <form class="form" id="lg-eq-form" style="max-width:560px"><div class="hi-grid">
-        <label>Usuário do portal <select id="lge-user">${d.usuariosPortal.filter(u => u.papel !== 'admin').map(u => `<option value="${u.id}">${esc(u.nome)} (${esc(u.email)})</option>`).join('')}</select></label>
+        <label>Usuário do portal <select id="lge-user">${d.usuariosPortal.map(u => `<option value="${u.id}">${esc(u.nome)} (${esc(u.email)})${u.papel === 'admin' ? ' 👑' : ''}</option>`).join('')}</select></label>
         <label>Perfil <select id="lge-role">${d.perfis.filter(p => !['super_admin', 'cliente'].includes(p.id)).map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></label>
         <label>OAB <input id="lge-oab" maxlength="30"></label></div>
         <button class="btn" type="submit">Salvar</button><p id="lge-msg" class="erro"></p></form>
@@ -933,12 +934,36 @@ const LG = {
     };
   },
 
-  // -------------------------------------------------------- AUDITORIA
+  // -------------------------------------------------------- AUDITORIA + INTEGRAÇÕES
   async vAuditoria() {
-    const { eventos } = await LG.api('GET', '/auditoria');
-    LG.body().innerHTML = `<div class="card">${eventos.length ? tabela(['Quando', 'Quem', 'Ação', 'Entidade', 'Detalhe'], eventos.map(e => [
+    const [{ eventos }, integ] = await Promise.all([
+      LG.api('GET', '/auditoria'), LG.api('GET', '/integracoes').catch(() => ({ logs: [], webhooks: [] })),
+    ]);
+    LG.body().innerHTML = `<div class="card"><h3>🔌 Integrações (DataJud/DJEN) e rotinas</h3>
+      <p class="sub">A rotina diária roda sozinha no servidor (~7h de Brasília): coleta andamentos e publicações, envia o digest aos clientes, processa a fila de IA (modo direto) e arquiva o relatório do sócio. Disparo manual:</p>
+      <p><button class="btn peq" onclick="LG.coletar('andamentos')">⚖️ Coletar andamentos (DataJud)</button>
+      <button class="btn peq" onclick="LG.coletar('publicacoes')">📰 Coletar publicações (DJEN)</button>
+      <button class="btn secund peq" onclick="LG.coletar('rotina')">▶️ Rodar rotina diária completa</button></p>
+      <p id="lg-col-msg" class="sub"></p>
+      <h3 style="margin-top:14px">Últimas execuções</h3>
+      ${integ.logs.length ? tabela(['Quando', 'Fonte', 'Operação', 'Status', 'Detalhe'], integ.logs.slice(0, 20).map(l => [
+        new Date(l.quando).toLocaleString('pt-BR'), LG.chip(l.fonte), esc(l.operacao), l.status === 'ok' ? '✅' : '❌', esc(l.detalhe || ''),
+      ])) : '<p class="vazio">Nenhuma execução ainda.</p>'}</div>
+      <div class="card"><h3>📜 Auditoria</h3>${eventos.length ? tabela(['Quando', 'Quem', 'Ação', 'Entidade', 'Detalhe'], eventos.map(e => [
       new Date(e.quando).toLocaleString('pt-BR'), esc(e.quem), esc(e.acao), esc(e.entidade + (e.entidade_id ? ' #' + e.entidade_id.slice(0, 6) : '')), esc(e.detalhe || ''),
     ])) : '<p class="vazio">Nada registrado ainda.</p>'}</div>`;
+  },
+  async coletar(tipo) {
+    const msg = document.getElementById('lg-col-msg');
+    msg.textContent = '⏳ Executando (DataJud/DJEN podem levar até 1 min)…';
+    try {
+      const rota = tipo === 'rotina' ? '/integracoes/rotina-diaria' : '/integracoes/coletar/' + tipo;
+      const r = await LG.api('POST', rota, {});
+      msg.textContent = '✅ ' + (tipo === 'andamentos' ? `${r.novos} andamento(s) novo(s) em ${r.encontrados}/${r.monitorados} processos (${r.erros} erro(s))`
+        : tipo === 'publicacoes' ? `${r.novas || 0} publicação(ões) nova(s) de ${r.comunicacoes || 0} comunicações (${r.oabs} OAB)`
+        : 'Rotina completa executada — veja as execuções abaixo.');
+      setTimeout(() => LG.pintar(), 1200);
+    } catch (e) { msg.textContent = '❌ ' + e.message; }
   },
 };
 

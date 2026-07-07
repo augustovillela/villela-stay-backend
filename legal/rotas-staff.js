@@ -9,7 +9,7 @@
 'use strict';
 
 function registrarRotasStaff(app, deps) {
-  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
   const jwt = require('jsonwebtoken');
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
@@ -622,6 +622,29 @@ function registrarRotasStaff(app, deps) {
     const d = req.body || {};
     repo.Integracoes.log(d.fonte, d.operacao, d.status, d.detalhe, d.itens);
     res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------------- COLETA E ROTINAS (Fase 7)
+  // Disparo manual (painel) ou por agente/Tarefa do Windows (PUBLISH_KEY).
+  app.post('/staff/api/legal/integracoes/coletar/andamentos', requirePublishOrSession, pode('gerir_publicacoes'), ha(async (req, res) => {
+    const r = await coleta.coletarAndamentos(req.body || {});
+    auditar(req, 'coleta.andamentos', 'case_movements', '', `${r.novos} novos de ${r.monitorados} monitorados`);
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/legal/integracoes/coletar/publicacoes', requirePublishOrSession, pode('gerir_publicacoes'), ha(async (req, res) => {
+    const r = await coleta.coletarPublicacoes(req.body || {});
+    auditar(req, 'coleta.publicacoes', 'case_publications', '', `${r.novas || 0} novas (${r.oabs} OAB)`);
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/legal/integracoes/rotina-diaria', requirePublishOrSession, pode('gerir_publicacoes'), ha(async (req, res) => {
+    const r = await coleta.rotinaDiaria();
+    auditar(req, 'coleta.rotina-diaria', 'integration_logs', '', 'disparo manual');
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/legal/ia/processar-fila', requirePublishOrSession, pode('usar_ia'), ha(async (req, res) => {
+    const r = await coleta.processarFila((req.body || {}).limite);
+    auditar(req, 'ia.processar-fila', 'ai_queries', '', `${r.processadas} processadas`);
+    res.json({ ok: true, ...r });
   }));
   // webhooks de fornecedores futuros — só ARMAZENA o evento (processamento nas Fases 7+)
   app.post('/staff/api/legal/webhooks/:origem', requirePublishOrSession, pode('gerir_publicacoes'), h((req, res) => {

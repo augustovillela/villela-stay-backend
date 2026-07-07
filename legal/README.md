@@ -1,10 +1,10 @@
 # Villela Legal Intelligence — módulo jurídico
 
 Sistema de gestão para escritório de advocacia, construído como **módulo do backend
-existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-6 —
-fundação, núcleo jurídico, IA, peças e contratos, portal do cliente/notificações e
-relatórios gerenciais** (visão do sócio, por núcleo, financeiro com inadimplência e
-margem, prestação de contas com CSV/HTML, arquivo dos relatórios gerados).
+existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-7 —
+fundação, núcleo jurídico, IA, peças e contratos, portal do cliente/notificações,
+relatórios gerenciais e integrações externas** (coleta DataJud/DJEN com rotina diária
+server-side, digest para clientes, processamento automático da fila de IA).
 
 ## FASE 0 — Diagnóstico técnico do projeto (06/07/2026)
 
@@ -110,6 +110,7 @@ staff/app-legal.js # painel (sub-app com abas) no Portal Staff — menu "⚖️ 
 | IA | `GET /ia`, `GET /ia/status`, `GET /ia/agentes`, `GET /ia/prompts`, `GET /ia/buscar?q=`, `POST /ia/consultas`, `GET /ia/consultas/pendentes` †, `POST /ia/consultas/:id/responder` †, `GET/POST †/DELETE /ia/conhecimento`, `POST /ia/extracao` †, `POST /ia/reindexar`, `GET /ia/runs` (custos), `GET /ia/respostas/:id`, `POST /ia/registrar` †, `POST /ia/respostas/:id/revisar` | `usar_ia` / `aprovar_documentos` / `ver_auditoria` |
 | Financeiro | `GET/POST /financeiro`, `PATCH /financeiro/:id` | `ver_/gerir_financeiro` |
 | Auditoria | `GET /auditoria`, `GET /integracoes`, `POST /integracoes/log` †, `POST /webhooks/:origem` † | `ver_auditoria` / `gerir_publicacoes` |
+| Coleta/rotinas | `POST /integracoes/coletar/andamentos` †, `POST /integracoes/coletar/publicacoes` †, `POST /integracoes/rotina-diaria` †, `POST /ia/processar-fila` † | `gerir_publicacoes` / `usar_ia` |
 
 † = aceita também `x-publish-key: PUBLISH_KEY` (ingestão por agentes, perfil efetivo `agente_ia`).
 
@@ -186,9 +187,22 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   `dashboard_metrics` materializada — volume de escritório não justifica); exportações HTML
   imprimível e CSV (com BOM p/ Excel) ficam ARQUIVADAS em `generated_reports` (re-download fiel
   ao momento + auditoria de quem gerou). Relatórios diários automáticos = rotinas da Fase 7.
-- **Fase 7 — Integrações**: rotina diária DataJud/DJEN gravando via API deste módulo (reusar
-  `stays/juridico.ps1` + monitor DJEN existente → `POST /publicacoes` e `/processos/:id/andamentos`),
-  LexML, fornecedores licenciados via `webhook_events`.
+- **Fase 7 — CONCLUÍDA (07/07/2026)**: integrações e rotinas (`coleta.js`).
+  *DataJud/CNJ*: coleta de andamentos de todos os processos ativos com CNJ — tribunal deduzido
+  do próprio número (estaduais/TRFs/TRTs/superiores), APIKey PÚBLICA do CNJ (override
+  `DATAJUD_API_KEY`), dedupe por hash, classificação heurística do movimento, capa enriquecida
+  sem sobrescrever o que o advogado preencheu, retry c/ backoff (429/5xx) + 1,5s entre processos
+  (a API pública tem rate limit agressivo — em teste local chegou a limitar o IP; 1×/dia no
+  Render passa). *DJEN/Comunica*: publicações por OAB dos advogados da Equipe (campo `oab`,
+  parser tolerante a "OAB-DF 12003"/"12003/DF"; fallback env `LEGAL_OAB`+`LEGAL_OAB_UF`),
+  vínculo automático ao processo pelo CNJ, `tem_prazo` heurístico, alerta WhatsApp se houver
+  novas. **Validado AO VIVO**: intimação real do Augusto (TJSP, exec. New Avenue) importada.
+  *LexML*: SEM integração viva (SRU fora do ar — memória do projeto); legislação via base de
+  conhecimento + agente local. *Rotina diária server-side* (~7h Brasília, `LEGAL_ROTINA_HORA`;
+  `LEGAL_ROTINAS=off` desliga): coleta + digest consolidado por cliente (24h) + fila de IA no
+  modo direto (consultas, geração de peça e análise de contrato) + relatório do sócio arquivado
+  + aviso à equipe (WhatsApp só com novidade). Disparos manuais no painel (aba Auditoria) e por
+  PUBLISH_KEY. Fornecedores licenciados: continuam entrando por `POST /webhooks/:origem`.
 - **Fase 8 — Testes, segurança, deploy**: suíte de testes de rotas, revisão LGPD, deploy Render.
 
 ## Checklists

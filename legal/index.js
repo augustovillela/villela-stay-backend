@@ -20,6 +20,7 @@ const contratos = require('./contratos');
 const notif = require('./notificacoes');
 const portalCliente = require('./portal-cliente');
 const relatorios = require('./relatorios');
+const coleta = require('./coleta');
 const { semearIA } = require('./prompts-seed');
 const { registrarRotasStaff } = require('./rotas-staff');
 
@@ -35,13 +36,14 @@ function montar(app, injected = {}) {
   contratos.semearTemplates(); // modelos de contrato + cláusulas (Módulo 13)
   notif.configurar({ enviarEmail, enviarWhatsApp, alertaAugusto }); // canais reais do server.js
   registrarRotasStaff(app, {
-    repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, jwtSecret,
+    repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, jwtSecret,
     requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios,
   });
   if (jwtSecret) portalCliente.registrarPortalCliente(app, { jwtSecret });
   else console.warn('[legal] jwtSecret ausente — Portal do Cliente NÃO montado.');
-  console.log(`[legal] Villela Legal Intelligence montado (Fases 1-6). IA: ${llm.ativo() ? 'direto (' + llm.MODELOS[0] + ')' : 'fila (agente local)'} · RAG: ${ia.ftsOK ? 'FTS5 ok' : 'indisponível'}`);
-  return { repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios };
+  coleta.iniciarRotinas(); // rotina diária server-side (LEGAL_ROTINAS=off desliga)
+  console.log(`[legal] Villela Legal Intelligence montado (Fases 1-7). IA: ${llm.ativo() ? 'direto (' + llm.MODELOS[0] + ')' : 'fila (agente local)'} · RAG: ${ia.ftsOK ? 'FTS5 ok' : 'indisponível'}`);
+  return { repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta };
 }
 
-module.exports = { montar, repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios };
+module.exports = { montar, repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta };
