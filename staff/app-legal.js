@@ -38,6 +38,7 @@ const LG = {
     if (LG.perm.ver_documentos) t.push(['pecas', '📝 Peças']);
     if (LG.perm.ver_documentos) t.push(['contratos', '📑 Contratos']);
     if (LG.perm.ver_financeiro) t.push(['financeiro', '💰 Financeiro']);
+    if (LG.perm.ver_financeiro || LG.perm.exportar_relatorios) t.push(['relatorios', '📊 Relatórios']);
     if (LG.perm.usar_ia) t.push(['ia', '🤖 IA jurídica']);
     if (LG.perm.gerir_usuarios) t.push(['equipe', '⚙️ Equipe']);
     if (LG.perm.ver_auditoria) t.push(['auditoria', '📜 Auditoria']);
@@ -53,7 +54,7 @@ const LG = {
   body() { return document.getElementById('lg-body'); },
   async pintar() {
     try {
-      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, tarefas: LG.vTarefas, documentos: LG.vDocumentos, pecas: LG.vPecas, contratos: LG.vContratos, financeiro: LG.vFinanceiro, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
+      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, tarefas: LG.vTarefas, documentos: LG.vDocumentos, pecas: LG.vPecas, contratos: LG.vContratos, financeiro: LG.vFinanceiro, relatorios: LG.vRelatorios, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
       if (v) await v();
     } catch (e) { LG.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -737,6 +738,69 @@ const LG = {
       });
       LG.pintar();
     };
+  },
+
+  // -------------------------------------------------------- RELATÓRIOS (Fase 6)
+  async vRelatorios() {
+    const v = await LG.api('GET', '/relatorios/socio');
+    const kpi = (rot, val, alerta) => `<div class="card" style="min-width:150px;flex:1${alerta && val && val !== 'R$ 0,00' ? ';border-color:var(--alerta)' : ''}"><div class="sub">${rot}</div><div style="font-size:1.4rem;font-weight:700">${val}</div></div>`;
+    let h = `<div class="card" style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
+      <a class="btn peq" href="/staff/api/legal/relatorios/socio/exportar" target="_blank" rel="noopener">🖨️ Relatório do sócio (HTML/PDF)</a>
+      <select id="lgr-nucleo"><option value="">— núcleo —</option>${LG.nucleos.map(n => `<option>${n}</option>`).join('')}</select>
+      <button class="btn secund peq" onclick="LG.verNucleo()">Ver núcleo</button>
+      <button class="btn secund peq" onclick="LG.verFinanceiroRel()">💰 Financeiro</button>
+      <input id="lgr-cli" placeholder="ID do cliente" maxlength="20" style="width:130px">
+      <button class="btn secund peq" onclick="LG.verPrestacao()">Prestação de contas</button>
+      <button class="btn secund peq" onclick="LG.verGerados()">🗄️ Gerados</button></div>`;
+    h += `<div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0">
+      ${kpi('Processos ativos', v.processos.ativos)}${kpi('Prazos vencidos', v.prazos.vencidos, true)}
+      ${kpi('Prazos 7 dias', v.prazos.proximos_7d)}${kpi('A receber', LG.brl(v.financeiro.a_receber))}
+      ${kpi('Inadimplência', LG.brl(v.financeiro.inadimplencia), true)}${kpi('Margem', LG.brl(v.financeiro.margem))}</div>`;
+    h += `<div id="lgr-corpo">
+      <div class="card"><h3>⏰ Prazos críticos (7 dias)</h3>${v.prazos.criticos.length ? tabela(['Fatal', 'Título', 'CNJ', 'Prioridade'], v.prazos.criticos.map(z => [LG.dt(z.data_fatal), esc(z.titulo), esc(z.numero_cnj || '—'), LG.chip(z.prioridade)])) : '<p class="vazio">Nenhum. 🎉</p>'}</div>
+      <div class="card"><h3>⚖️ Risco da carteira</h3>${tabela(['Risco', 'Processos', 'Valor em causa'], v.processos.risco_carteira.map(r => [esc(r.risco), r.n, LG.brl(r.valor)]))}</div>
+      <div class="card"><h3>🏢 Por núcleo</h3>${tabela(['Núcleo', 'Ativos'], v.processos.por_nucleo.map(x => [esc(x.nucleo), x.n]))}</div>
+      <div class="card"><h3>📈 Produtividade (30d)</h3><p class="sub">Andamentos: ${v.produtividade_30d.andamentos_registrados} · Versões de peça: ${v.produtividade_30d.pecas_criadas} · Consultas IA: ${v.produtividade_30d.consultas_ia}</p>
+        ${v.produtividade_30d.tarefas_concluidas.length ? tabela(['Quem', 'Tarefas concluídas'], v.produtividade_30d.tarefas_concluidas.map(t => [esc(t.quem), t.n])) : '<p class="vazio">Sem conclusões no período.</p>'}</div>
+      <div class="card"><h3>🚧 Gargalos</h3>${v.gargalos.length ? tabela(['Responsável', 'Tarefas atrasadas'], v.gargalos.map(g => [esc(g.responsavel), g.atrasadas])) : '<p class="vazio">Nenhum atraso. 🎉</p>'}</div></div>`;
+    LG.body().innerHTML = h;
+  },
+  async verNucleo() {
+    const n = document.getElementById('lgr-nucleo').value;
+    if (!n) return alert('Escolha o núcleo.');
+    const v = await LG.api('GET', '/relatorios/nucleo/' + encodeURIComponent(n));
+    document.getElementById('lgr-corpo').innerHTML = `<div class="card"><h3>🏢 Núcleo ${esc(n)} ${v.atrasos ? `<span class="chip" style="color:var(--alerta)">⚠️ ${v.atrasos} tarefa(s) atrasada(s)</span>` : ''}</h3>
+      ${tabela(['Fase', 'Processos'], v.processos_por_fase.map(x => [esc(x.fase), x.qtd]))}</div>
+      <div class="card"><h3>✅ Tarefas abertas</h3>${v.tarefas_abertas.length ? tabela(['Título', 'Responsável', 'Prazo', 'Status'], v.tarefas_abertas.map(t => [esc(t.titulo), esc(t.responsavel || '—'), LG.dt(t.prazo), LG.chip(t.status)])) : '<p class="vazio">Nenhuma.</p>'}</div>
+      <div class="card"><h3>⏰ Prazos</h3>${v.prazos.length ? tabela(['Fatal', 'Título', 'CNJ', 'Status'], v.prazos.map(z => [LG.dt(z.data_fatal), esc(z.titulo), esc(z.numero_cnj || '—'), LG.chip(z.status)])) : '<p class="vazio">Nenhum.</p>'}</div>
+      <div class="card"><h3>🏛️ Audiências (30d)</h3>${v.audiencias_30d.length ? tabela(['Quando', 'Tipo', 'Juízo', 'CNJ'], v.audiencias_30d.map(a => [LG.dt(a.data_hora) + ' ' + String(a.data_hora).slice(11, 16), esc(a.tipo), esc(a.juizo || '—'), esc(a.numero_cnj || '—')])) : '<p class="vazio">Nenhuma.</p>'}</div>`;
+  },
+  async verFinanceiroRel() {
+    const v = await LG.api('GET', '/relatorios/financeiro');
+    const r = v.resumo;
+    document.getElementById('lgr-corpo').innerHTML = `<div class="card"><h3>💰 Financeiro</h3>
+      <p>A receber: <b>${LG.brl(r.a_receber)}</b> · Inadimplência: <b style="color:var(--alerta)">${LG.brl(r.inadimplencia)}</b> · Recebido: <b>${LG.brl(r.receita_recebida)}</b> · Despesas pagas: <b>${LG.brl(r.despesas_pagas)}</b> · Margem: <b>${LG.brl(r.margem)}</b> · Repasses pendentes: <b>${LG.brl(r.repasses_pendentes)}</b></p></div>
+      <div class="card"><h3>Por tipo × status</h3>${tabela(['Tipo', 'Status', 'Qtd', 'Total'], v.por_tipo.map(x => [LG.chip(x.tipo), LG.chip(x.status), x.qtd, LG.brl(x.total)]))}</div>
+      <div class="card"><h3>🔴 Inadimplentes</h3>${v.inadimplentes.length ? tabela(['Cliente', 'Descrição', 'Valor', 'Venceu em'], v.inadimplentes.map(i => [esc(i.nome || '—'), esc(i.descricao), LG.brl(i.valor), LG.dt(i.vencimento)])) : '<p class="vazio">Nenhum. 🎉</p>'}</div>
+      <div class="card"><h3>🏆 Top clientes</h3>${v.top_clientes.length ? tabela(['Cliente', 'Recebido', 'Em aberto'], v.top_clientes.map(c => [esc(c.nome), LG.brl(c.recebido), LG.brl(c.em_aberto)])) : '<p class="vazio">Sem lançamentos.</p>'}</div>`;
+  },
+  async verPrestacao() {
+    const id = document.getElementById('lgr-cli').value.trim();
+    if (!id) return alert('Informe o ID do cliente (aba Clientes).');
+    const v = await LG.api('GET', '/relatorios/prestacao-contas/' + id);
+    document.getElementById('lgr-corpo').innerHTML = `<div class="card"><h3>🧾 Prestação de contas — ${esc(v.cliente.nome)}</h3>
+      <p>Recebido: <b>${LG.brl(v.totais.recebido)}</b> · Em aberto: <b>${LG.brl(v.totais.em_aberto)}</b> · Repassado: <b>${LG.brl(v.totais.repassado)}</b></p>
+      <p><a class="btn secund peq" href="/staff/api/legal/relatorios/prestacao-contas/${id}/exportar?formato=csv">⬇️ CSV (Excel)</a>
+      <a class="btn secund peq" href="/staff/api/legal/relatorios/prestacao-contas/${id}/exportar" target="_blank" rel="noopener">🖨️ HTML/PDF</a></p>
+      ${v.lancamentos.length ? tabela(['Vencimento', 'Tipo', 'Descrição', 'CNJ', 'Valor', 'Status'], v.lancamentos.map(l => [LG.dt(l.vencimento || l.criado_em), LG.chip(l.tipo), esc(l.descricao), esc(l.numero_cnj || '—'), LG.brl(l.valor), LG.chip(l.status)])) : '<p class="vazio">Nenhum lançamento.</p>'}</div>`;
+  },
+  async verGerados() {
+    const { gerados } = await LG.api('GET', '/relatorios/gerados');
+    document.getElementById('lgr-corpo').innerHTML = `<div class="card"><h3>🗄️ Relatórios gerados</h3>
+      ${gerados.length ? tabela(['Quando', 'Tipo', 'Título', 'Formato', 'Por', ''], gerados.map(g => [
+        new Date(g.criado_em).toLocaleString('pt-BR'), LG.chip(g.tipo), esc(g.titulo), g.formato, esc(g.criado_por),
+        `<a class="btn secund peq" href="/staff/api/legal/relatorios/gerados/${g.id}" target="_blank" rel="noopener">Abrir</a>`,
+      ])) : '<p class="vazio">Nenhum relatório exportado ainda.</p>'}</div>`;
   },
 
   // -------------------------------------------------------- IA JURÍDICA (Fase 3)

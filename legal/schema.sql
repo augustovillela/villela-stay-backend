@@ -699,3 +699,21 @@ CREATE TABLE IF NOT EXISTS client_accounts (
   criado_em   TEXT NOT NULL,
   ultimo_login TEXT DEFAULT ''
 );
+
+-- =====================================================================
+-- FASE 6 — MÓDULO 20: RELATÓRIOS GERENCIAIS
+-- Métricas são calculadas AO VIVO (relatorios.js) — sem dashboard_metrics
+-- materializada (decisão no README). Aqui fica só o arquivo dos relatórios
+-- exportados (auditoria: o que foi gerado, por quem, com que conteúdo).
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS generated_reports (
+  id         TEXT PRIMARY KEY,
+  tipo       TEXT NOT NULL,     -- socio|nucleo|financeiro|prestacao-contas
+  titulo     TEXT NOT NULL,
+  parametros TEXT DEFAULT '{}', -- JSON (ex.: {nucleo}, {client_id})
+  conteudo   TEXT NOT NULL,     -- HTML/CSV gerado (re-download fiel ao momento)
+  formato    TEXT NOT NULL DEFAULT 'html', -- html|csv
+  criado_por TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_reports_tipo ON generated_reports(tipo, criado_em);

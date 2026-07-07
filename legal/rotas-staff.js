@@ -9,7 +9,7 @@
 'use strict';
 
 function registrarRotasStaff(app, deps) {
-  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
   const jwt = require('jsonwebtoken');
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
@@ -561,6 +561,48 @@ function registrarRotasStaff(app, deps) {
     const r = contratos.importarContratosLegado(req.user && req.user.id);
     auditar(req, 'legado.importar-contratos', 'documents', '', `encontrados ${r.encontrados}, importados ${r.importados}, pulados ${r.pulados}`);
     res.json({ ok: true, ...r });
+  }));
+
+  // ------------------------------------------------------- RELATÓRIOS GERENCIAIS (Fase 6, Módulo 20)
+  app.get('/staff/api/legal/relatorios/socio', requireAuth, pode('ver_financeiro'), h((req, res) => {
+    res.json(relatorios.visaoSocio());
+  }));
+  app.get('/staff/api/legal/relatorios/socio/exportar', requireAuth, pode('exportar_relatorios'), h((req, res) => {
+    const r = relatorios.relatorioSocioHTML(quemFez(req));
+    auditar(req, 'relatorio.exportar', 'generated_reports', r.id, 'socio');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(r.html);
+  }));
+  app.get('/staff/api/legal/relatorios/nucleo/:nucleo', requireAuth, pode('ver_processos'), h((req, res) => {
+    res.json(relatorios.visaoNucleo(req.params.nucleo));
+  }));
+  app.get('/staff/api/legal/relatorios/financeiro', requireAuth, pode('ver_financeiro'), h((req, res) => {
+    res.json(relatorios.visaoFinanceiro());
+  }));
+  app.get('/staff/api/legal/relatorios/prestacao-contas/:clientId', requireAuth, pode('ver_prestacao_contas'), h((req, res) => {
+    res.json(relatorios.prestacaoContas(req.params.clientId));
+  }));
+  app.get('/staff/api/legal/relatorios/prestacao-contas/:clientId/exportar', requireAuth, pode('exportar_relatorios'), h((req, res) => {
+    const r = relatorios.prestacaoContasExport(req.params.clientId, req.query.formato, quemFez(req));
+    auditar(req, 'relatorio.exportar', 'generated_reports', r.id, 'prestacao-contas');
+    if (r.formato === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${r.nome}"`);
+    } else res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(r.conteudo);
+  }));
+  // arquivo dos relatórios já gerados (re-download fiel ao momento da geração)
+  app.get('/staff/api/legal/relatorios/gerados', requireAuth, pode('exportar_relatorios'), h((req, res) => {
+    res.json({ gerados: relatorios.listarGerados(req.query.n) });
+  }));
+  app.get('/staff/api/legal/relatorios/gerados/:id', requireAuth, pode('exportar_relatorios'), h((req, res) => {
+    const g = relatorios.obterGerado(req.params.id);
+    if (!g) return res.status(404).json({ erro: 'Relatório não encontrado.' });
+    if (g.formato === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="relatorio.csv"');
+    } else res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(g.conteudo);
   }));
 
   // ------------------------------------------------------- NOTIFICAÇÕES DA EQUIPE (Fase 5)

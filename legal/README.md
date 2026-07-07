@@ -1,10 +1,10 @@
 # Villela Legal Intelligence — módulo jurídico
 
 Sistema de gestão para escritório de advocacia, construído como **módulo do backend
-existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-5 —
-fundação + núcleo jurídico + IA jurídica + peças e contratos + portal do cliente e
-notificações** (login próprio do cliente, linguagem simples, mensagens bidirecionais,
-notificações internas/e-mail/WhatsApp por preferência).
+existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-6 —
+fundação, núcleo jurídico, IA, peças e contratos, portal do cliente/notificações e
+relatórios gerenciais** (visão do sócio, por núcleo, financeiro com inadimplência e
+margem, prestação de contas com CSV/HTML, arquivo dos relatórios gerados).
 
 ## FASE 0 — Diagnóstico técnico do projeto (06/07/2026)
 
@@ -103,6 +103,7 @@ staff/app-legal.js # painel (sub-app com abas) no Portal Staff — menu "⚖️ 
 | Peças | `GET/POST /pecas`, `GET/PATCH /pecas/:id` (gates aprovar/protocolar/enviar), `POST /pecas/:id/versoes` †, `POST /pecas/:id/gerar`, `GET /pecas/:id/exportar?formato=html\|doc` | `ver_/criar_/editar_documentos` + especiais |
 | Contratos | `GET /contratos/templates`, `POST /contratos/gerar` (wizard), `GET/POST /contratos/analises`, `GET/PATCH † /contratos/analises/:id` | `ver_documentos` / `criar_documentos` / `usar_ia` |
 | Portal do cliente (staff) | `GET/POST /clientes/:id/portal-acesso` (cria conta + link de senha), `GET /notificacoes` (alertas da equipe) | `gerir_clientes` / `ver_processos` |
+| Relatórios | `GET /relatorios/socio(/exportar)`, `GET /relatorios/nucleo/:n`, `GET /relatorios/financeiro`, `GET /relatorios/prestacao-contas/:cid(/exportar?formato=csv\|html)`, `GET /relatorios/gerados(/:id)` | `ver_financeiro` / `ver_processos` / `ver_prestacao_contas` / `exportar_relatorios` |
 | Portal do cliente (público) | `/cliente-juridico` (app) + `/cliente-juridico/api/*`: login/logout/definir-senha, me, processos(/:id), documentos (listar/baixar/enviar), conta, mensagens, notificações | cookie próprio do cliente |
 | Tarefas | `GET/POST † /tarefas`, `GET /tarefas/kanban`, `PATCH /tarefas/:id`, `GET .../historico`, `GET/POST .../comentarios` | `gerir_tarefas` |
 | Documentos | `GET/POST /documentos`, `GET/PATCH /documentos/:id`, `POST .../versao`, `GET .../download` | `ver_/criar_/editar_documentos` (+especiais p/ aprovar/enviar/protocolar) |
@@ -174,7 +175,17 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   novo andamento → cliente (desativável com `notificar_cliente:false`); documento
   liberado/enviado → cliente; mensagem do escritório → cliente; mensagem/upload do cliente →
   equipe (interna + WhatsApp do Augusto). Digests agendados ficam nas rotinas da Fase 7.
-- **Fase 6 — Relatórios e gestão**: dashboards por sócio/núcleo/cliente, relatório diário.
+- **Fase 6 — CONCLUÍDA (07/07/2026)**: relatórios gerenciais (`relatorios.js`).
+  *Visões (Módulo 20)*: **sócio** (processos ativos/núcleo/fase, risco da carteira com valor em
+  causa, prazos vencidos/7d/sem validação + críticos, publicações/peças/IA pendentes, financeiro,
+  clientes estratégicos, produtividade 30d via `task_status_history`, gargalos por responsável,
+  processos parados 30d+); **núcleo** (fases, tarefas, prazos, audiências 30d, atrasos);
+  **financeiro** (a receber, inadimplência = faturado vencido, receita recebida − despesas pagas
+  = margem, repasses pendentes, por tipo×status, inadimplentes, top clientes); **prestação de
+  contas por cliente** (extrato completo + totais). *Decisão*: métricas calculadas AO VIVO (sem
+  `dashboard_metrics` materializada — volume de escritório não justifica); exportações HTML
+  imprimível e CSV (com BOM p/ Excel) ficam ARQUIVADAS em `generated_reports` (re-download fiel
+  ao momento + auditoria de quem gerou). Relatórios diários automáticos = rotinas da Fase 7.
 - **Fase 7 — Integrações**: rotina diária DataJud/DJEN gravando via API deste módulo (reusar
   `stays/juridico.ps1` + monitor DJEN existente → `POST /publicacoes` e `/processos/:id/andamentos`),
   LexML, fornecedores licenciados via `webhook_events`.
