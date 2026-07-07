@@ -364,6 +364,52 @@ function teste(nome, cond) {
   r = await req('GET', '/vdocs/api/dashboard', { jar: 'anaA' });
   teste('dashboard mostra vencendo em 30 dias', r.dados.vencendo_30dias >= 1 && Array.isArray(r.dados.docs_vencendo));
 
+  // ================== FASE 4: busca avançada ==================
+  // massa: mais um doc p/ diferenciar operadores
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'distrato.txt', nome: 'Distrato Fornecedor Y', tipo_documental: 'contrato', tags: ['fornecedor'], conteudo_base64: B64('Distrato amigavel do contrato de manutencao predial, sem multa rescisoria.') }, jar: 'anaA' });
+  const docDistrato = r.dados.documento.id;
+  await jobs.processarPendentes(20);
+
+  r = await req('GET', '/vdocs/api/busca?q=' + encodeURIComponent('manutencao predial'), { jar: 'anaA' });
+  teste('busca AND acha por conteúdo', r.status === 200 && r.dados.resultados.some(d => d.id === docDistrato));
+  r = await req('GET', '/vdocs/api/busca?q=' + encodeURIComponent('"multa rescisoria"'), { jar: 'anaA' });
+  teste('busca por frase exata', r.dados.resultados.some(d => d.id === docDistrato));
+  r = await req('GET', '/vdocs/api/busca?q=' + encodeURIComponent('"rescisoria multa"'), { jar: 'anaA' });
+  teste('frase na ordem errada NÃO acha', !r.dados.resultados.some(d => d.id === docDistrato));
+  r = await req('GET', '/vdocs/api/busca?q=' + encodeURIComponent('manutencao -predial'), { jar: 'anaA' });
+  teste('operador -excluir tira o documento', !r.dados.resultados.some(d => d.id === docDistrato));
+  r = await req('GET', '/vdocs/api/busca?q=' + encodeURIComponent('inexistentexyz OR distrato'), { jar: 'anaA' });
+  teste('operador OR acha pela alternativa', r.dados.resultados.some(d => d.id === docDistrato));
+  r = await req('GET', '/vdocs/api/busca?q=Distrato', { jar: 'anaA' });
+  teste('busca híbrida acha pelo NOME também', r.dados.resultados.some(d => d.id === docDistrato && (d.onde === 'nome' || d.onde === 'conteúdo')));
+
+  // filtros
+  r = await req('GET', '/vdocs/api/busca?q=fornecedor&tipo=contrato', { jar: 'anaA' });
+  teste('filtro por tipo documental', r.status === 200 && r.dados.resultados.every(d => d.tipo_documental === 'contrato'));
+  r = await req('GET', '/vdocs/api/busca?tag=fornecedor', { jar: 'anaA' });
+  teste('busca só por filtro (sem termo) via tag', r.dados.resultados.length >= 1 && r.dados.resultados.every(d => d.tags.includes('fornecedor')));
+  r = await req('GET', '/vdocs/api/busca?vencendo=1', { jar: 'anaA' });
+  teste('filtro só vencendo (30d) pega o doc com validade', r.dados.resultados.some(d => d.id === docPdf));
+
+  // isolamento + injeção FTS
+  r = await req('GET', '/vdocs/api/busca?q=distrato', { jar: 'bobB' });
+  teste('busca avançada de B não vê docs de A', r.status === 200 && r.dados.resultados.length === 0);
+  r = await req('GET', '/vdocs/api/busca?q=' + encodeURIComponent('nome:* OR (texto NEAR/2 x) "'), { jar: 'anaA' });
+  teste('sintaxe FTS maliciosa não quebra (tokens escapados)', r.status === 200);
+
+  // buscas salvas + histórico
+  r = await req('POST', '/vdocs/api/buscas-salvas', { body: { nome: 'Contratos de fornecedor', termo: 'fornecedor', filtros: { tipo: 'contrato' } }, jar: 'anaA' });
+  teste('busca salva criada', r.status === 200 && r.dados.id);
+  const salvaId = r.dados.id;
+  r = await req('GET', '/vdocs/api/busca/contexto', { jar: 'anaA' });
+  teste('contexto traz salvas + histórico', r.dados.salvas.some(x => x.id === salvaId) && r.dados.historico.length >= 1);
+  r = await req('GET', '/vdocs/api/busca/contexto', { jar: 'carlaA' });
+  teste('busca salva é pessoal (Carla não vê a da Ana)', !r.dados.salvas.some(x => x.id === salvaId));
+  r = await req('DELETE', '/vdocs/api/buscas-salvas/' + salvaId, { jar: 'bobB' });
+  teste('B não exclui busca salva de A', r.status === 400 || r.status === 403);
+  r = await req('DELETE', '/vdocs/api/buscas-salvas/' + salvaId, { jar: 'anaA' });
+  teste('dona exclui a busca salva', r.status === 200);
+
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });
   teste('lead da landing gravado', r.status === 200);

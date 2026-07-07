@@ -307,7 +307,7 @@ async function sair(){await api('POST','/logout').catch(()=>{});location.href='/
 const TELAS=[
  ['dashboard','📊 Dashboard',()=>true],
  ['documentos','📁 Documentos',m=>m.permissoes.ver_documentos],
- ['busca','🔎 Busca',()=>true,'breve'],
+ ['busca','🔎 Busca',m=>m.permissoes.ver_documentos],
  ['ia','🤖 IA documental',()=>true,'breve'],
  ['workflows','✅ Aprovações',()=>true,'breve'],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
@@ -318,7 +318,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Disponível na próxima fase">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -447,6 +447,54 @@ async function novaVersaoDoc(id,f){if(!f)return;try{
 async function restaurarVersaoDoc(id,n){if(!confirm('Tornar a v'+n+' vigente? (vira uma nova versão)'))return;
   try{await api('POST','/documentos/'+id+'/versoes/'+n+'/restaurar');abrirDoc(id);}catch(e){alert(e.message);}}
 async function reprocDoc(id){try{await api('POST','/documentos/'+id+'/reprocessar');alert('Reprocessamento na fila — atualize em instantes.');abrirDoc(id);}catch(e){alert(e.message);}}
+
+// ---------------- Busca avançada (Fase 4) ----------------
+S.buscaF={q:'',tipo:'',tag:'',pasta:'',de:'',ate:'',vencendo:''};
+// JSON seguro p/ atributo onclick delimitado por aspas simples
+function jsonAttr(o){return JSON.stringify(JSON.stringify(o)).replace(/</g,'\\\\u003c').replace(/'/g,'\\\\u0027');}
+async function vBusca(rodar){
+  if(!S.buscaCtx)S.buscaCtx=await api('GET','/busca/contexto');
+  const C=S.buscaCtx,F=S.buscaF;
+  const opt=(v,rot,sel)=>'<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(rot)+'</option>';
+  $('corpo').innerHTML='<h2>🔎 Busca avançada</h2>'+
+   '<div class="card">'+
+   '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="bq" value="'+esc(F.q)+'" placeholder=\\'Ex.: contrato "manutenção predial" -rascunho · reajuste OR correção\\' style="flex:2;min-width:240px" onkeydown="if(event.key===\\'Enter\\')rodarBusca()">'+
+   '<button class="btn peq" onclick="rodarBusca()">Buscar</button>'+
+   '<button class="btn btn-ghost peq" onclick="salvarBuscaAtual()">💾 Salvar busca</button></div>'+
+   '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+   '<select id="bf-tipo" style="max-width:170px"><option value="">— tipo —</option>'+C.tipos.map(t=>opt(t,t,F.tipo)).join('')+'</select>'+
+   '<input id="bf-tag" value="'+esc(F.tag)+'" placeholder="tag" style="max-width:120px">'+
+   '<select id="bf-pasta" style="max-width:180px"><option value="">— qualquer pasta —</option>'+C.pastas.map(p=>opt(p.id,'📁 '+p.nome,F.pasta)).join('')+'</select>'+
+   '<label style="margin:0;display:flex;align-items:center;gap:4px;font-weight:400">de <input id="bf-de" type="date" value="'+esc(F.de)+'" style="width:auto"></label>'+
+   '<label style="margin:0;display:flex;align-items:center;gap:4px;font-weight:400">até <input id="bf-ate" type="date" value="'+esc(F.ate)+'" style="width:auto"></label>'+
+   '<label style="margin:0;display:flex;align-items:center;gap:4px;font-weight:400"><input id="bf-venc" type="checkbox"'+(F.vencendo?' checked':'')+' style="width:auto"> só vencendo (30d)</label></div>'+
+   '<p class="sub" style="font-size:12px;margin:.5rem 0 0">Operadores: <code>"frase exata"</code> · <code>OR</code> · <code>-excluir</code>. Busca em nome + conteúdo extraído.</p></div>'+
+   (C.salvas.length?'<div class="card" style="margin-top:10px"><b>Buscas salvas:</b> '+C.salvas.map(sv=>'<button class="btn btn-ghost peq" onclick=\\'usarSalva('+jsonAttr(sv)+')\\'>'+esc(sv.nome)+'</button> <a href="#" onclick="return delSalva(\\''+sv.id+'\\')" title="excluir">✕</a> ').join(' ')+'</div>':'')+
+   (C.historico.length?'<div class="card" style="margin-top:10px"><b>Recentes:</b> '+C.historico.map(hh=>'<button class="btn btn-ghost peq" onclick=\\'usarSalva('+jsonAttr(hh)+')\\'>'+esc(hh.termo)+'</button>').join(' ')+'</div>':'')+
+   '<div id="b-res" style="margin-top:10px">'+(rodar?'<p class="sub">Buscando…</p>':'')+'</div>';
+  if(rodar)await execBusca();
+}
+function lerFiltros(){S.buscaF={q:$('bq').value,tipo:$('bf-tipo').value,tag:$('bf-tag').value,pasta:$('bf-pasta').value,de:$('bf-de').value,ate:$('bf-ate').value,vencendo:$('bf-venc').checked?'1':''};}
+async function rodarBusca(){lerFiltros();S.buscaCtx=null;await vBusca(true);}
+async function execBusca(){
+  const F=S.buscaF;
+  const qs=Object.entries(F).filter(([,v])=>v).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+  const {resultados}=await api('GET','/busca?'+(qs||'q='));
+  const nomePasta=id=>{const p=(S.buscaCtx?S.buscaCtx.pastas:[]).find(x=>x.id===id);return p?'📁 '+p.nome:'🏠 Início';};
+  $('b-res').innerHTML='<div class="card"><b>'+resultados.length+' resultado(s)</b><table><tr><th>Documento</th><th>Pasta</th><th>Tipo</th><th>Validade</th><th>Onde achou</th></tr>'+
+   (resultados.length?resultados.map(d=>'<tr><td><a href="#" onclick="S.tela=\\'documentos\\';menu();abrirDoc(\\''+d.id+'\\');return false">'+esc(d.nome)+'</a>'+
+    (d.trecho?'<br><span style="font-size:12px;color:var(--suave)">…'+esc(d.trecho)+'…</span>':'')+'</td>'+
+    '<td>'+esc(nomePasta(d.folder_id))+'</td><td>'+esc(d.tipo_documental)+'</td>'+
+    '<td>'+(d.validade?(d.vencido?'🔴 ':'')+d.validade.split('-').reverse().join('/'):'—')+'</td>'+
+    '<td><span class="chip">'+esc(d.onde)+'</span></td></tr>').join(''):'<tr><td colspan="5" style="color:var(--suave)">Nada encontrado — tente outros termos ou menos filtros.</td></tr>')+'</table></div>';
+}
+async function salvarBuscaAtual(){
+  lerFiltros();
+  const nome=prompt('Nome desta busca salva:');if(!nome)return;
+  try{await api('POST','/buscas-salvas',{nome,termo:S.buscaF.q,filtros:S.buscaF});S.buscaCtx=null;vBusca(false);}catch(e){alert(e.message);}
+}
+function usarSalva(json){const sv=JSON.parse(json);const f=sv.filtros||{};S.buscaF={q:sv.termo||f.q||'',tipo:f.tipo||'',tag:f.tag||'',pasta:f.pasta||'',de:f.de||'',ate:f.ate||'',vencendo:f.vencendo||''};vBusca(true);}
+async function delSalva(id){if(!confirm('Excluir esta busca salva?'))return false;try{await api('DELETE','/buscas-salvas/'+id);S.buscaCtx=null;vBusca(false);}catch(e){alert(e.message);}return false;}
 
 async function vUsuarios(){
   const d=await api('GET','/usuarios');const papeis=S.me.papeis_embutidos;

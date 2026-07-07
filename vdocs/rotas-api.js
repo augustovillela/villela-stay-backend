@@ -8,6 +8,7 @@
 const repo = require('./repo');
 const docs = require('./docs');
 const jobs = require('./jobs');
+const busca = require('./busca');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -223,6 +224,29 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
   r.delete('/documentos/:id', requireTenant, requirePerm('excluir_documento'), h(async (req, res) => {
     docs.excluirDefinitivo(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ busca avançada (Fase 4)
+  r.get('/busca', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    const q = req.query || {};
+    res.json({
+      resultados: busca.buscar(req.vd.tenant.id, { q: q.q, tipo: q.tipo, tag: q.tag, pasta: q.pasta, de: q.de, ate: q.ate, vencendo: q.vencendo }, req.vd.user),
+    });
+  }));
+  r.get('/busca/contexto', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    res.json({
+      salvas: busca.listarSalvas(req.vd.tenant.id, req.vd.user.id),
+      historico: busca.historico(req.vd.tenant.id, req.vd.user.id),
+      tipos: docs.TIPOS_DOCUMENTAIS,
+      pastas: docs.listarPastas(req.vd.tenant.id),
+    });
+  }));
+  r.post('/buscas-salvas', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    res.json({ ok: true, id: busca.salvarBusca(req.vd.tenant.id, req.vd.user.id, req.body || {}, req.vd.ip) });
+  }));
+  r.delete('/buscas-salvas/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    busca.excluirSalva(req.vd.tenant.id, req.vd.user.id, req.params.id);
     res.json({ ok: true });
   }));
 

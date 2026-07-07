@@ -4,9 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fases 1–2 EM PRODUÇÃO** (deploys `4fc4f1c` e `bc0e59f`, 07/07/2026, validados pelo
-Augusto) · **Fase 3 (processamento assíncrono) COMPLETA** na branch `feat/vdocs-f3`
-(aguardando validação p/ merge). Testes: `npm run test:vdocs` (92/92).
+Status: **Fases 1–3 EM PRODUÇÃO** (último deploy `3f07e7e`, 07/07/2026, validados pelo Augusto)
+· **Fase 4 (busca avançada) COMPLETA** na branch `feat/vdocs-f4` (aguardando validação p/ merge).
+Testes: `npm run test:vdocs` (108/108).
 
 | O quê | Onde |
 |---|---|
@@ -130,7 +130,16 @@ DECISÕES F3: OCR de imagem/escaneado NÃO embarcado (tesseract.js é pesado p/ 
 — fica na fila como `ocr_pendente` e pluga depois sem mudar o fluxo; formatos legados .doc/.xls/
 .ppt → orientar conversão; previews/miniaturas exigiriam renderer nativo → adiado.
 
-**Fases 4+ (especificado, não criado)** — na ordem do roadmap:
+**Fase 4 (criado)**: `search_queries` (histórico p/ sugestões — só termo/filtros, nunca conteúdo)
+e `saved_searches` (pessoais por usuário, upsert por nome). Motor em `busca.js`: busca HÍBRIDA
+(nome via LIKE + conteúdo via FTS5/BM25, casar nos dois sobe no ranking) com **operadores**
+(`"frase exata"`, `OR`, `-excluir`; cada token escapado — sem injeção de sintaxe FTS) e filtros
+(tipo, tag, pasta, período de criação, só vencendo em 30 dias). Tela 🔎 Busca no painel com
+buscas salvas e recentes. Rotas: `GET /busca`, `GET /busca/contexto`, `POST|DELETE /buscas-salvas`.
+ADIADO p/ fase futura: alertas de busca salva (documento novo que casa com a busca) e busca
+semântica por embeddings (F5 usa o FTS como RAG; vetores só se a qualidade pedir — decisão igual à do legal).
+
+**Fases 5+ (especificado, não criado)** — na ordem do roadmap:
 - F2/F3 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel
   cobre), `document_shares`/links externos (F7), previews/miniaturas, upload multipart resumable,
   OCR real (tesseract/serviço externo) plugando em `processing_jobs`.
@@ -173,19 +182,20 @@ DECISÕES F3: OCR de imagem/escaneado NÃO embarcado (tesseract.js é pesado p/ 
 ## Roadmap (10 fases — spec completa com o Augusto; ordem confirmada em 07/07/2026)
 
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
-~~F3 processamento~~ ✅ (branch) → **F4 busca avançada** (tela dedicada, filtros combinados,
-operadores, buscas salvas, busca híbrida) → F5 IA documental (chat com fontes, análise,
-classificação — reusar padrão modo duplo do legal) → F6 workflows → F7 compartilhamento externo
-+ portal → F8 billing (Mercado Pago) + relatórios SaaS → F9 API pública + integrações →
-F10 enterprise (SSO, 2FA, retenção avançada, observabilidade).
+~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (branch) → **F5 IA documental**
+(chat com fontes citadas, análise, classificação — reusar padrão modo duplo do legal; RAG =
+FTS existente) → F6 workflows → F7 compartilhamento externo + portal → F8 billing (Mercado
+Pago) + relatórios SaaS → F9 API pública + integrações → F10 enterprise (SSO, 2FA, retenção
+avançada, observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 3 (busca por conteúdo, status de processamento no detalhe do
-   documento, banner de vencimentos) e autoriza merge `feat/vdocs-f3` → master (deploy Render).
+1. [ ] Augusto valida a Fase 4 (tela 🔎 Busca: operadores, filtros, buscas salvas) e autoriza
+   merge `feat/vdocs-f4` → master (deploy Render).
 2. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
    → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
-3. [ ] Iniciar Fase 4 (busca avançada) — sem env var nova.
+3. [ ] Iniciar Fase 5 (IA documental) — decidir se usa a mesma ANTHROPIC_API_KEY do Render
+   (custo por tenant medido em ia_consultas) ou chave própria do produto.
 
 ## Teste local
 

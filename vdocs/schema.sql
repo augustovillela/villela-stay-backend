@@ -264,3 +264,28 @@ CREATE TABLE IF NOT EXISTS document_texts (
 CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts USING fts5(
   tenant_id UNINDEXED, document_id UNINDEXED, nome, texto, tokenize='unicode61'
 );
+
+-- ---------- Fase 4: busca avançada ----------
+
+-- Histórico de buscas (sugestões + auditoria de uso; LGPD: só termo/filtros, nunca conteúdo).
+CREATE TABLE IF NOT EXISTS search_queries (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id  TEXT NOT NULL,
+  user_id    TEXT DEFAULT '',
+  termo      TEXT DEFAULT '',
+  filtros    TEXT DEFAULT '{}',             -- JSON
+  resultados INTEGER DEFAULT 0,
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sq_tenant ON search_queries (tenant_id, user_id, criado_em);
+
+CREATE TABLE IF NOT EXISTS saved_searches (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  user_id    TEXT NOT NULL,                 -- busca salva é pessoal
+  nome       TEXT NOT NULL,
+  termo      TEXT DEFAULT '',
+  filtros    TEXT DEFAULT '{}',
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ss_tenant ON saved_searches (tenant_id, user_id);
