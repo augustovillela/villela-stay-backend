@@ -203,8 +203,10 @@ function relatorioSocioHTML(quem) {
 function prestacaoContasExport(clientId, formato, quem) {
   const p = prestacaoContas(clientId);
   if (formato === 'csv') {
+    // célula iniciada por = + - @ vira fórmula no Excel (CSV injection) → prefixa com apóstrofo
+    const csvSafe = (v) => { const t = String(v == null ? '' : v).replace(/[;\r\n]/g, ' '); return /^[=+\-@]/.test(t) ? "'" + t : t; };
     const linhas = [['data_vencimento', 'tipo', 'descricao', 'processo', 'valor_reais', 'status']];
-    for (const l of p.lancamentos) linhas.push([l.vencimento || l.criado_em.slice(0, 10), l.tipo, l.descricao.replace(/[;\n]/g, ' '), l.numero_cnj || '', (l.valor / 100).toFixed(2).replace('.', ','), l.status]);
+    for (const l of p.lancamentos) linhas.push([l.vencimento || l.criado_em.slice(0, 10), l.tipo, csvSafe(l.descricao), csvSafe(l.numero_cnj || ''), (l.valor / 100).toFixed(2).replace('.', ','), l.status]);
     linhas.push([], ['TOTAIS', '', 'recebido: ' + (p.totais.recebido / 100).toFixed(2), 'em aberto: ' + (p.totais.em_aberto / 100).toFixed(2), 'repassado: ' + (p.totais.repassado / 100).toFixed(2), '']);
     const csv = '﻿' + linhas.map(l => l.join(';')).join('\r\n'); // BOM p/ Excel abrir acentos
     const id = salvarGerado({ tipo: 'prestacao-contas', titulo: 'Prestação de contas — ' + p.cliente.nome, parametros: { client_id: clientId }, conteudo: csv, formato: 'csv', quem });

@@ -50,6 +50,18 @@ function registrarPortalCliente(app, { jwtSecret }) {
   if (!jwtSecret) throw new Error('portal-cliente: jwtSecret não injetado.');
   const seguro = process.env.NODE_ENV !== 'development';
 
+  // rate limit do login/definir-senha (mesma política do Portal Staff:
+  // 5 falhas por IP → bloqueio de 15 min; sucesso zera)
+  const tentativas = new Map();
+  const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
+  const bloqueado = (ip) => { const t = tentativas.get(ip); return !!(t && t.ate && t.ate > Date.now()); };
+  const registraFalha = (ip) => {
+    const t = tentativas.get(ip) || { n: 0, ate: 0 };
+    t.n++;
+    if (t.n >= 5) { t.ate = Date.now() + 15 * 60 * 1000; t.n = 0; }
+    tentativas.set(ip, t);
+  };
+
   // ---- auth ----
   function requireCliente(req, res, next) {
     try {
@@ -65,12 +77,16 @@ function registrarPortalCliente(app, { jwtSecret }) {
   app.use('/cliente-juridico/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
   app.post('/cliente-juridico/api/login', h(async (req, res) => {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
     const email = s((req.body || {}).email, 120).toLowerCase();
     const senha = String((req.body || {}).senha || '');
     const conta = db.prepare('SELECT * FROM client_accounts WHERE lower(email) = ? AND ativo = 1').get(email);
     if (!conta || !conta.senha_hash || !bcrypt.compareSync(senha, conta.senha_hash)) {
+      registraFalha(ip);
       return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
     }
+    tentativas.delete(ip);
     db.prepare('UPDATE client_accounts SET ultimo_login = ? WHERE id = ?').run(nowISO(), conta.id);
     const token = jwt.sign({ aid: conta.id }, jwtSecret, { expiresIn: '30d' });
     res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/cliente-juridico' });
@@ -79,9 +95,11 @@ function registrarPortalCliente(app, { jwtSecret }) {
   app.post('/cliente-juridico/api/logout', (req, res) => { res.clearCookie(COOKIE, { path: '/cliente-juridico' }); res.json({ ok: true }); });
 
   app.post('/cliente-juridico/api/definir-senha', h(async (req, res) => {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
     const { token, senha } = req.body || {};
     let dec;
-    try { dec = jwt.verify(String(token || ''), jwtSecret); } catch (_) { return res.status(400).json({ erro: 'Link inválido ou expirado — peça um novo ao escritório.' }); }
+    try { dec = jwt.verify(String(token || ''), jwtSecret); } catch (_) { registraFalha(ip); return res.status(400).json({ erro: 'Link inválido ou expirado — peça um novo ao escritório.' }); }
     if (dec.tipo !== 'legal-cli-setup') return res.status(400).json({ erro: 'Link inválido.' });
     if (String(senha || '').length < 8) return res.status(400).json({ erro: 'A senha precisa de pelo menos 8 caracteres.' });
     db.prepare('UPDATE client_accounts SET senha_hash = ? WHERE id = ?').run(bcrypt.hashSync(String(senha), 10), dec.aid);

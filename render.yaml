@@ -28,3 +28,8 @@ services:
         sync: false
       - key: PUBLISH_KEY          # chave usada pelos agentes para publicar entregas
         sync: false
+      # Villela Legal Intelligence (opcional):
+      # - ANTHROPIC_API_KEY -> IA juridica em modo DIRETO (sem ela: fila p/ agente local)
+      # - LEGAL_LLM_MODELS, LEGAL_ROTINAS(=off), LEGAL_ROTINA_HORA, LEGAL_OAB(+_UF): ver backend/legal/README.md
+      - key: ANTHROPIC_API_KEY
+        sync: false

@@ -1,10 +1,11 @@
 # Villela Legal Intelligence — módulo jurídico
 
 Sistema de gestão para escritório de advocacia, construído como **módulo do backend
-existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-7 —
-fundação, núcleo jurídico, IA, peças e contratos, portal do cliente/notificações,
-relatórios gerenciais e integrações externas** (coleta DataJud/DJEN com rotina diária
-server-side, digest para clientes, processamento automático da fila de IA).
+existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-8
+COMPLETAS** — fundação, núcleo jurídico, IA, peças e contratos, portal do cliente e
+notificações, relatórios gerenciais, integrações DataJud/DJEN com rotina diária e,
+na Fase 8, suíte de testes (23 casos, `npm run test:legal`), revisão de segurança e
+checklist de deploy. **Pronto para deploy** (pendente de autorização do Augusto).
 
 ## FASE 0 — Diagnóstico técnico do projeto (06/07/2026)
 
@@ -203,20 +204,68 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   modo direto (consultas, geração de peça e análise de contrato) + relatório do sócio arquivado
   + aviso à equipe (WhatsApp só com novidade). Disparos manuais no painel (aba Auditoria) e por
   PUBLISH_KEY. Fornecedores licenciados: continuam entrando por `POST /webhooks/:origem`.
-- **Fase 8 — Testes, segurança, deploy**: suíte de testes de rotas, revisão LGPD, deploy Render.
+- **Fase 8 — CONCLUÍDA (07/07/2026)**: testes, segurança e preparação de deploy.
+  *Testes*: `legal/selftest.js` (23 casos cobrindo o §13 do plano — permissões, clientes,
+  processos, andamentos, publicações, prazos/travas/calculadora, tarefas/kanban, documentos/
+  sigilo, IA/fila/revisão, peças/travas/export, contratos, prestação de contas, notificações,
+  portal do cliente/exposição/rate-limit, auditoria, webhooks, rotinas) — roda o Express real
+  com auth de teste injetada e banco descartável; `npm run test:legal`. A suíte pegou um bug
+  real (agente_ia sem `editar_processos` → ingestão de andamentos via chave dava 403).
+  *Segurança (correções da revisão)*: rate-limit no login/definir-senha do portal do cliente
+  (5 falhas/IP → 15 min) e neutralização de CSV injection na prestação de contas.
+  *Deploy*: checklist abaixo; `render.yaml` ganhou `ANTHROPIC_API_KEY` (opcional) e a lista
+  das envs `LEGAL_*`. O deploy em si aguarda autorização (inclui os commits da Livraria).
+
+## Manual rápido
+
+**Advogado/equipe (Portal Staff → ⚖️ Villela Legal)**: Painel = saúde do dia. Fluxo típico:
+Publicações (triagem do DJEN) → Prazos (calculadora sugere, VOCÊ valida) → Tarefas (kanban) →
+Peças (gerar minuta com IA → revisar → aprovar → exportar) → Audiências (roteiro + providências
+viram tarefa). Consultas jurídicas na aba IA (sempre MINUTA). Perfis/OAB na aba Equipe — a OAB
+cadastrada alimenta a coleta do DJEN. Relatórios na aba 📊.
+
+**Cliente**: recebe do escritório o link de definição de senha → acessa `/cliente-juridico`.
+Vê processos em linguagem simples, próximas datas, documentos liberados, prestação de contas;
+envia documentos e mensagens. Nunca vê estratégia, valores internos ou processos sigilosos.
+
+**Administrador**: acesso do cliente na ficha (Clientes → Portal do cliente); coletas manuais e
+saúde das integrações em Auditoria; custos de IA em `GET /ia/runs`; fila de IA no modo fila é
+esvaziada pelo agente local (`GET /ia/consultas/pendentes` + respostas via PUBLISH_KEY).
+
+## Checklist de deploy (Render)
+
+1. [ ] Merge `feat/livraria` + `feat/legal` → `master` (legal foi ramificado da livraria — sobem juntos)
+2. [ ] `npm run test:legal` verde no commit final
+3. [ ] Push do repo `villela-stay-backend` (deploy automático no Render)
+4. [ ] Conferir logs: `[legal] ... montado (Fases 1-7)` + `Portal do Cliente ativo`
+5. [ ] Env opcionais no painel do Render: `ANTHROPIC_API_KEY` (modo direto), `LEGAL_ROTINA_HORA`
+6. [ ] Cadastrar a OAB do Augusto na aba Equipe (alimenta o DJEN) — ou `LEGAL_OAB`+`LEGAL_OAB_UF`
+7. [ ] Rodar "Coletar publicações" manualmente 1× e conferir a triagem
+8. [ ] Importar legados (botões: prazos na aba Prazos; contratos na aba Contratos)
+9. [ ] Criar o acesso de um cliente piloto e validar o portal em produção
+10. [ ] Backup: `DATA_DIR/legal/` já entra no espelho diário existente de `/var/data`
 
 ## Checklists
 
-**Segurança/LGPD (estado atual)**
+**Segurança/LGPD (revisão final — Fase 8)**
 - [x] Autenticação por sessão JWT httpOnly (reuso do portal) + rate-limit de login
+- [x] Portal do cliente: login/definir-senha com rate-limit (5 falhas/IP → 15 min) e cookie restrito ao path
 - [x] Autorização por perfil (12 perfis × 21 permissões) + trava de dados sensíveis (CPF/RG/estratégia)
-- [x] Auditoria de escrita (audit_logs) e de acesso a documento (document_access_logs)
-- [x] Registro de consentimento LGPD por finalidade/base legal
-- [x] Upload validado (extensão allowlist, 10 MB, sha256) fora de pasta pública
+- [x] Auditoria de escrita (audit_logs), de acesso a documento (document_access_logs) e de exportações
+- [x] Registro de consentimento LGPD por finalidade/base legal; WhatsApp só com opt-in explícito
+- [x] Upload validado (extensão allowlist, 10 MB, sha256) fora de pasta pública — staff e cliente
 - [x] Ingestão externa só com PUBLISH_KEY; payload bruto preservado p/ auditoria
-- [ ] Criptografia em repouso de campos sensíveis (avaliar na Fase 8)
-- [ ] Política de retenção/anonimização (Fase 8)
-- [ ] Backup do `legal.db` no snapshot OneDrive/repo (incluir na rotina existente)
+- [x] CSV de prestação de contas com neutralização de fórmulas (Excel injection)
+- [x] Exposição ao cliente filtrada no SERVIDOR (sigiloso/estratégia/prognóstico/risco/prazos não validados)
+- [x] Estratégia sigilosa fora do índice RAG; guardrails de IA no system prompt (fontes obrigatórias, MINUTA)
+- [x] Coleta só por API oficial (DataJud/DJEN) — sem scraping/captcha; rate-limit respeitado (retry/backoff)
+- [x] Suíte de testes cobrindo permissões, travas e exposição (23 casos — `npm run test:legal`)
+- [ ] Criptografia em repouso de campos sensíveis — DECISÃO ADIADA: o disco do Render já é
+      criptografado em repouso pela plataforma; criptografia por campo entraria se houver
+      requisito contratual específico (anotar quando surgir)
+- [ ] Política formal de retenção/anonimização — definir com o Augusto os prazos por tipo de
+      dado (processual encerrado, cliente inativo) antes de automatizar exclusão
+- [x] Backup: `DATA_DIR/legal/` incluído no espelho diário existente de `/var/data` (backup-portal.ps1)
 
 **Regras invioláveis herdadas do projeto**
 - Coleta processual só por API oficial (DataJud/DJEN/LexML) — sem scraping/captcha-bypass.

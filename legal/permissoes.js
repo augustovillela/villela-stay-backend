@@ -55,9 +55,11 @@ const PERFIS = [
   // Cliente: acessa só o Portal do Cliente (Fase 5) — NUNCA o painel interno.
   { id: 'cliente', nome: 'Cliente', nivel: 10, permissoes: ['ver_prestacao_contas'] },
   // Agente de IA: ingestão e leitura, sem aprovar/enviar/protocolar nada.
+  // editar_processos = registrar andamentos via PUBLISH_KEY (as rotas de
+  // alteração de capa/status são requireAuth — a chave não chega nelas).
   {
     id: 'agente_ia', nome: 'Agente de IA jurídico', nivel: 20,
-    permissoes: ['ver_processos', 'ver_documentos', 'criar_documentos', 'gerir_prazos', 'gerir_tarefas', 'gerir_publicacoes', 'usar_ia'],
+    permissoes: ['ver_processos', 'editar_processos', 'ver_documentos', 'criar_documentos', 'gerir_prazos', 'gerir_tarefas', 'gerir_publicacoes', 'usar_ia'],
   },
   { id: 'visualizador', nome: 'Visualizador (somente leitura)', nivel: 15, permissoes: ['ver_processos', 'ver_documentos'] },
 ];
