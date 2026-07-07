@@ -5272,6 +5272,16 @@ try {
   });
 } catch (e) { console.error('[livraria] falha ao montar módulo:', e.message); }
 
+// =========================== Villela Legal Intelligence (módulo jurídico) ===========================
+// Fase 1 (fundação): clientes, processos, andamentos, publicações, prazos, tarefas,
+// documentos, registro de IA, financeiro jurídico, auditoria. SQLite próprio em
+// DATA_DIR/legal/. Autenticação = sessão do portal; ingestão por agentes = PUBLISH_KEY.
+try {
+  require('./legal').montar(app, {
+    express, requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios,
+  });
+} catch (e) { console.error('[legal] falha ao montar módulo:', e.message); }
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
