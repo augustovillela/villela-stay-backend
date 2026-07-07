@@ -479,3 +479,90 @@ CREATE TABLE IF NOT EXISTS webhook_events (
   detalhe   TEXT DEFAULT '',
   quando    TEXT NOT NULL
 );
+
+-- =====================================================================
+-- FASE 2 — MÓDULO 15: AUDIÊNCIAS
+-- Roteiro/estratégia são internos (nunca visíveis ao cliente); a ata é um
+-- documento vinculado (documents.id). Providências viram tarefas.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS hearings (
+  id           TEXT PRIMARY KEY,
+  case_id      TEXT REFERENCES cases(id),
+  tipo         TEXT NOT NULL DEFAULT 'conciliacao', -- conciliacao|instrucao|julgamento|una|justificacao|custodia|outra
+  data_hora    TEXT NOT NULL,      -- ISO local: 2026-08-01T14:00
+  modalidade   TEXT NOT NULL DEFAULT 'presencial', -- presencial|virtual|hibrida
+  local_link   TEXT DEFAULT '',    -- endereço da vara OU link da sala virtual
+  juizo        TEXT DEFAULT '',
+  status       TEXT NOT NULL DEFAULT 'agendada',   -- agendada|realizada|adiada|cancelada
+  docs_necessarios TEXT DEFAULT '',
+  roteiro      TEXT DEFAULT '',    -- INTERNO: perguntas, ordem, pontos a provar
+  estrategia   TEXT DEFAULT '',    -- SIGILOSO: nunca visível ao cliente
+  resultado    TEXT DEFAULT '',
+  ata_doc_id   TEXT DEFAULT '',    -- documents.id da ata, quando arquivada
+  obs          TEXT DEFAULT '',
+  criado_por   TEXT DEFAULT '',
+  criado_em    TEXT NOT NULL,
+  atualizado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_hearings_data ON hearings(data_hora);
+CREATE INDEX IF NOT EXISTS idx_hearings_case ON hearings(case_id);
+
+CREATE TABLE IF NOT EXISTS hearing_participants (
+  id         TEXT PRIMARY KEY,
+  hearing_id TEXT NOT NULL REFERENCES hearings(id) ON DELETE CASCADE,
+  tipo       TEXT NOT NULL DEFAULT 'testemunha', -- parte|testemunha|advogado|preposto|perito|outro
+  nome       TEXT NOT NULL,
+  contato    TEXT DEFAULT '',   -- dado pessoal — só local
+  intimado   INTEGER NOT NULL DEFAULT 0,
+  obs        TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS hearing_followups (
+  id         TEXT PRIMARY KEY,
+  hearing_id TEXT NOT NULL REFERENCES hearings(id) ON DELETE CASCADE,
+  descricao  TEXT NOT NULL,
+  responsavel TEXT DEFAULT '',
+  prazo      TEXT DEFAULT '',
+  status     TEXT NOT NULL DEFAULT 'pendente', -- pendente|concluida|cancelada
+  task_id    TEXT DEFAULT '',   -- tarefa gerada a partir da providência
+  criado_em  TEXT NOT NULL
+);
+
+-- =====================================================================
+-- FASE 2 — MÓDULO 5 (complemento): FERIADOS FORENSES E CÁLCULO DE PRAZO
+-- O cálculo é SUGESTÃO: fica em deadlines.calculo_sugerido e o prazo só
+-- avança com validado_por humano (trava da Fase 1). Cada cálculo é logado.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS court_holidays (
+  data      TEXT NOT NULL,      -- YYYY-MM-DD
+  ambito    TEXT NOT NULL DEFAULT 'nacional', -- nacional|TJDFT|STJ|... (feriado local por tribunal)
+  descricao TEXT NOT NULL,
+  tipo      TEXT NOT NULL DEFAULT 'feriado',  -- feriado|suspensao (ex.: art. 220 CPC, 20/12–20/01)
+  PRIMARY KEY (data, ambito)
+);
+
+CREATE TABLE IF NOT EXISTS deadline_calculation_logs (
+  id            TEXT PRIMARY KEY,
+  deadline_id   TEXT DEFAULT '',   -- preenchido quando o cálculo virou prazo
+  termo_inicial TEXT NOT NULL,
+  dias          INTEGER NOT NULL,
+  modo          TEXT NOT NULL,     -- uteis|corridos
+  ambito        TEXT DEFAULT 'nacional',
+  resultado     TEXT NOT NULL,     -- data sugerida
+  memoria       TEXT DEFAULT '',   -- explicação do cálculo (dias pulados etc.)
+  quem          TEXT DEFAULT '',
+  quando        TEXT NOT NULL
+);
+
+-- =====================================================================
+-- FASE 2 — MÓDULO 19 (complemento): HISTÓRICO DE STATUS DA TAREFA (Kanban)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS task_status_history (
+  id       TEXT PRIMARY KEY,
+  task_id  TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  de       TEXT NOT NULL,
+  para     TEXT NOT NULL,
+  quem     TEXT DEFAULT '',
+  quando   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_taskhist_task ON task_status_history(task_id);

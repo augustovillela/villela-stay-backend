@@ -6,7 +6,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { db, transacao, nowISO, novoId, sha256, j, DOCS_DIR } = require('./db');
+const { db, transacao, nowISO, novoId, sha256, j, DOCS_DIR, DATA_DIR } = require('./db');
 
 // ---- enums (validados na escrita) ----
 const E = {
@@ -22,6 +22,9 @@ const E = {
   sigiloDoc: ['interno', 'restrito', 'cliente'],
   tipoFin: ['honorario_contratual', 'honorario_exito', 'custas', 'diligencia', 'despesa', 'reembolso', 'repasse', 'recebimento_judicial', 'alvara', 'acordo'],
   statusFin: ['previsto', 'faturado', 'pago', 'repassado', 'cancelado'],
+  tipoAudiencia: ['conciliacao', 'instrucao', 'julgamento', 'una', 'justificacao', 'custodia', 'outra'],
+  statusAudiencia: ['agendada', 'realizada', 'adiada', 'cancelada'],
+  modalidade: ['presencial', 'virtual', 'hibrida'],
 };
 const valida = (valor, lista, campo) => {
   if (valor == null || valor === '') return lista.includes('') ? '' : lista[0];
@@ -351,7 +354,7 @@ const Tarefas = {
         j.str(Array.isArray(d.checklist) ? d.checklist : []), s(autor, 40), agora, agora);
     return db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
   },
-  atualizar(id, d) {
+  atualizar(id, d, autor) {
     const t = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
     if (!t) throw new Error('Tarefa não encontrada.');
     for (const campo of ['titulo', 'descricao', 'nucleo', 'responsavel', 'prazo']) {
@@ -360,7 +363,12 @@ const Tarefas = {
     if (d.case_id != null) t.case_id = fk(d.case_id);
     if (d.client_id != null) t.client_id = fk(d.client_id);
     if (d.prioridade != null) t.prioridade = valida(d.prioridade, E.prioridade, 'prioridade');
-    if (d.status != null) t.status = valida(d.status, E.statusTask, 'status');
+    if (d.status != null && d.status !== t.status) {
+      const novo = valida(d.status, E.statusTask, 'status');
+      db.prepare('INSERT INTO task_status_history (id, task_id, de, para, quem, quando) VALUES (?,?,?,?,?,?)')
+        .run(novoId(), id, t.status, novo, s(autor, 120), nowISO());
+      t.status = novo;
+    }
     if (d.checklist != null) t.checklist = j.str(Array.isArray(d.checklist) ? d.checklist : []);
     db.prepare(`UPDATE tasks SET case_id=?, client_id=?, titulo=?, descricao=?, nucleo=?, responsavel=?, prazo=?,
       prioridade=?, status=?, checklist=?, atualizado_em=? WHERE id=?`)
@@ -374,6 +382,143 @@ const Tarefas = {
     return id;
   },
   comentarios(taskId) { return db.prepare('SELECT * FROM task_comments WHERE task_id = ? ORDER BY criado_em').all(taskId); },
+  historico(taskId) { return db.prepare('SELECT * FROM task_status_history WHERE task_id = ? ORDER BY quando DESC').all(taskId); },
+  // Kanban: todas as ativas (+ concluídas recentes) agrupadas por status
+  kanban() {
+    const ativas = db.prepare(`SELECT t.*, c.numero_cnj FROM tasks t LEFT JOIN cases c ON c.id = t.case_id
+      WHERE t.status IN ('aberta','em_andamento','em_revisao') ORDER BY CASE WHEN t.prazo = '' THEN 1 ELSE 0 END, t.prazo`).all();
+    const concluidas = db.prepare(`SELECT t.*, c.numero_cnj FROM tasks t LEFT JOIN cases c ON c.id = t.case_id
+      WHERE t.status = 'concluida' ORDER BY t.atualizado_em DESC LIMIT 15`).all();
+    const cols = { aberta: [], em_andamento: [], em_revisao: [], concluida: concluidas };
+    for (const t of ativas) cols[t.status].push(t);
+    return cols;
+  },
+};
+
+// =====================================================================
+// AUDIÊNCIAS (Fase 2 — Módulo 15)
+// =====================================================================
+const Audiencias = {
+  listar({ case_id = '', status = '', desde = '', ate = '', limite = 200 } = {}) {
+    let sql = `SELECT h.*, c.numero_cnj, cl.nome AS cliente_nome FROM hearings h
+      LEFT JOIN cases c ON c.id = h.case_id LEFT JOIN clients cl ON cl.id = c.client_id`, where = [], args = [];
+    if (case_id) { where.push('h.case_id = ?'); args.push(case_id); }
+    if (status) { where.push('h.status = ?'); args.push(status); }
+    if (desde) { where.push('h.data_hora >= ?'); args.push(desde); }
+    if (ate) { where.push('h.data_hora <= ?'); args.push(ate + 'T23:59'); }
+    if (where.length) sql += ' WHERE ' + where.join(' AND ');
+    sql += ' ORDER BY h.data_hora LIMIT ?'; args.push(Math.min(Number(limite) || 200, 500));
+    return db.prepare(sql).all(...args);
+  },
+  obter(id, { comSigilo = false } = {}) {
+    const h = db.prepare(`SELECT h.*, c.numero_cnj, cl.nome AS cliente_nome FROM hearings h
+      LEFT JOIN cases c ON c.id = h.case_id LEFT JOIN clients cl ON cl.id = c.client_id WHERE h.id = ?`).get(id);
+    if (!h) return null;
+    if (!comSigilo) h.estrategia = h.estrategia ? '[restrito]' : '';
+    h.participantes = db.prepare('SELECT * FROM hearing_participants WHERE hearing_id = ?').all(id);
+    h.providencias = db.prepare('SELECT * FROM hearing_followups WHERE hearing_id = ? ORDER BY criado_em').all(id);
+    return h;
+  },
+  criar(d, autor) {
+    if (!d.data_hora || !/^\d{4}-\d{2}-\d{2}/.test(String(d.data_hora))) throw new Error('Informe data/hora da audiência.');
+    const id = novoId(); const agora = nowISO();
+    db.prepare(`INSERT INTO hearings (id, case_id, tipo, data_hora, modalidade, local_link, juizo, status, docs_necessarios,
+      roteiro, estrategia, resultado, ata_doc_id, obs, criado_por, criado_em, atualizado_em) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(id, fk(d.case_id), valida(d.tipo || 'conciliacao', E.tipoAudiencia, 'tipo'), s(d.data_hora, 20),
+        valida(d.modalidade || 'presencial', E.modalidade, 'modalidade'), s(d.local_link, 300), s(d.juizo, 160),
+        valida(d.status || 'agendada', E.statusAudiencia, 'status'), s(d.docs_necessarios, 2000),
+        s(d.roteiro, 8000), s(d.estrategia, 4000), s(d.resultado, 4000), s(d.ata_doc_id, 40), s(d.obs, 2000),
+        s(autor, 40), agora, agora);
+    return db.prepare('SELECT * FROM hearings WHERE id = ?').get(id);
+  },
+  atualizar(id, d) {
+    const h = db.prepare('SELECT * FROM hearings WHERE id = ?').get(id);
+    if (!h) throw new Error('Audiência não encontrada.');
+    for (const campo of ['data_hora', 'local_link', 'juizo', 'docs_necessarios', 'roteiro', 'estrategia', 'resultado', 'ata_doc_id', 'obs']) {
+      if (d[campo] != null) h[campo] = s(d[campo], 8000);
+    }
+    if (d.case_id != null) h.case_id = fk(d.case_id);
+    if (d.tipo != null) h.tipo = valida(d.tipo, E.tipoAudiencia, 'tipo');
+    if (d.modalidade != null) h.modalidade = valida(d.modalidade, E.modalidade, 'modalidade');
+    if (d.status != null) h.status = valida(d.status, E.statusAudiencia, 'status');
+    db.prepare(`UPDATE hearings SET case_id=?, tipo=?, data_hora=?, modalidade=?, local_link=?, juizo=?, status=?,
+      docs_necessarios=?, roteiro=?, estrategia=?, resultado=?, ata_doc_id=?, obs=?, atualizado_em=? WHERE id=?`)
+      .run(h.case_id, h.tipo, h.data_hora, h.modalidade, h.local_link, h.juizo, h.status,
+        h.docs_necessarios, h.roteiro, h.estrategia, h.resultado, h.ata_doc_id, h.obs, nowISO(), id);
+    return h;
+  },
+  addParticipante(hearingId, d) {
+    if (!db.prepare('SELECT id FROM hearings WHERE id = ?').get(hearingId)) throw new Error('Audiência não encontrada.');
+    const id = novoId();
+    db.prepare('INSERT INTO hearing_participants (id, hearing_id, tipo, nome, contato, intimado, obs) VALUES (?,?,?,?,?,?,?)')
+      .run(id, hearingId, ['parte', 'testemunha', 'advogado', 'preposto', 'perito', 'outro'].includes(d.tipo) ? d.tipo : 'testemunha',
+        s(d.nome, 160) || 'Participante', s(d.contato, 60), d.intimado ? 1 : 0, s(d.obs, 300));
+    return id;
+  },
+  rmParticipante(id) { db.prepare('DELETE FROM hearing_participants WHERE id = ?').run(id); },
+  addProvidencia(hearingId, d, taskId) {
+    if (!db.prepare('SELECT id FROM hearings WHERE id = ?').get(hearingId)) throw new Error('Audiência não encontrada.');
+    const id = novoId();
+    db.prepare('INSERT INTO hearing_followups (id, hearing_id, descricao, responsavel, prazo, status, task_id, criado_em) VALUES (?,?,?,?,?,?,?,?)')
+      .run(id, hearingId, s(d.descricao, 500) || 'Providência', s(d.responsavel, 40), s(d.prazo, 30), 'pendente', s(taskId, 40), nowISO());
+    return id;
+  },
+  providenciaStatus(id, status) {
+    if (!['pendente', 'concluida', 'cancelada'].includes(status)) throw new Error('Status inválido.');
+    db.prepare('UPDATE hearing_followups SET status = ? WHERE id = ?').run(status, id);
+  },
+};
+
+// =====================================================================
+// AGENDA UNIFICADA (Fase 2) — prazos + audiências dos próximos N dias
+// =====================================================================
+const Agenda = {
+  proxima(dias = 30) {
+    const hoje = nowISO().slice(0, 10);
+    const ate = new Date(Date.now() + Math.min(Number(dias) || 30, 120) * 86400000).toISOString().slice(0, 10);
+    const prazos = db.prepare(`SELECT d.id, d.titulo, d.tipo, d.data_fatal, d.data_interna, d.prioridade, d.status, d.validado_por, d.calculo_sugerido, c.numero_cnj
+      FROM deadlines d LEFT JOIN cases c ON c.id = d.case_id
+      WHERE d.status NOT IN ('cumprido','cancelado','perdido')
+        AND ((d.data_fatal != '' AND d.data_fatal <= ?) OR (d.data_interna != '' AND d.data_interna <= ?))
+      ORDER BY CASE WHEN d.data_fatal = '' THEN d.data_interna ELSE d.data_fatal END`).all(ate, ate);
+    const audiencias = db.prepare(`SELECT h.id, h.tipo, h.data_hora, h.modalidade, h.local_link, h.juizo, h.status, c.numero_cnj, cl.nome AS cliente_nome
+      FROM hearings h LEFT JOIN cases c ON c.id = h.case_id LEFT JOIN clients cl ON cl.id = c.client_id
+      WHERE h.status = 'agendada' AND h.data_hora >= ? AND h.data_hora <= ? ORDER BY h.data_hora`).all(hoje, ate + 'T23:59');
+    return { hoje, ate, prazos, audiencias };
+  },
+};
+
+// =====================================================================
+// IMPORTAÇÃO DO LEGADO (Fase 2) — prazos-juridicos.json do portal antigo
+// Idempotente: cada prazo legado é marcado com [legado:<id>] na obs.
+// A tela antiga continua funcionando; isto só ESPELHA para o módulo novo.
+// =====================================================================
+const Legado = {
+  importarPrazos(autor) {
+    const f = path.join(DATA_DIR, 'prazos-juridicos.json');
+    if (!fs.existsSync(f)) return { encontrados: 0, importados: 0, pulados: 0, detalhe: 'prazos-juridicos.json não existe neste DATA_DIR.' };
+    let legado = [];
+    try { legado = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { throw new Error('prazos-juridicos.json inválido: ' + e.message); }
+    if (!Array.isArray(legado)) legado = [];
+    const mapaStatus = { aberto: 'identificado', cumprido: 'cumprido', cancelado: 'cancelado' };
+    let importados = 0, pulados = 0;
+    for (const p of legado) {
+      const marca = `[legado:${p.id}]`;
+      if (db.prepare("SELECT id FROM deadlines WHERE obs LIKE ?").get('%' + marca + '%')) { pulados++; continue; }
+      const cnj = normCNJ(p.processo);
+      const kase = cnj ? db.prepare('SELECT id FROM cases WHERE numero_cnj = ?').get(cnj) : null;
+      const obs = [p.processo && 'Processo: ' + p.processo, p.tribunal && 'Tribunal: ' + p.tribunal,
+        p.fonte && 'Fonte: ' + p.fonte, p.link && 'Link: ' + p.link, p.obs, marca].filter(Boolean).join(' · ');
+      Prazos.criar({
+        case_id: kase ? kase.id : '', titulo: p.descricao || 'Prazo importado', tipo: 'fatal',
+        data_fatal: (p.dataLimite || '').slice(0, 10), prioridade: p.prioridade,
+        status: mapaStatus[p.status] || 'identificado', obs,
+        validado_por: p.quem || 'legado (validado no portal antigo)', // legado era gerido por humano; sem cálculo automático
+      }, autor);
+      importados++;
+    }
+    return { encontrados: legado.length, importados, pulados };
+  },
 };
 
 // =====================================================================
@@ -585,6 +730,7 @@ const Dashboard = {
       prazos_7dias: um("SELECT COUNT(*) n FROM deadlines WHERE status NOT IN ('cumprido','cancelado') AND data_fatal != '' AND data_fatal <= ?", em7).n,
       prazos_sem_validacao: um("SELECT COUNT(*) n FROM deadlines WHERE status NOT IN ('cumprido','cancelado') AND calculo_sugerido != '' AND validado_por = ''").n,
       publicacoes_novas: um("SELECT COUNT(*) n FROM case_publications WHERE status = 'nova'").n,
+      audiencias_7dias: um("SELECT COUNT(*) n FROM hearings WHERE status = 'agendada' AND data_hora >= ? AND data_hora <= ?", hoje, em7 + 'T23:59').n,
       tarefas_abertas: um("SELECT COUNT(*) n FROM tasks WHERE status IN ('aberta','em_andamento')").n,
       tarefas_atrasadas: um("SELECT COUNT(*) n FROM tasks WHERE status IN ('aberta','em_andamento') AND prazo != '' AND prazo < ?", hoje).n,
       docs_em_revisao: um("SELECT COUNT(*) n FROM documents WHERE status = 'revisao_pendente'").n,
@@ -596,4 +742,5 @@ const Dashboard = {
 module.exports = {
   E, normCNJ,
   Auditoria, Clientes, Processos, Andamentos, Publicacoes, Prazos, Tarefas, Documentos, IA, Financeiro, Integracoes, Dashboard,
+  Audiencias, Agenda, Legado,
 };

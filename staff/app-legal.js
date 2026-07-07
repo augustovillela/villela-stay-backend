@@ -30,6 +30,8 @@ const LG = {
     if (LG.perm.gerir_clientes) t.push(['clientes', '👥 Clientes']);
     if (LG.perm.ver_processos) t.push(['processos', '⚖️ Processos']);
     if (LG.perm.ver_processos) t.push(['prazos', '⏰ Prazos']);
+    if (LG.perm.ver_processos) t.push(['agenda', '📅 Agenda']);
+    if (LG.perm.ver_processos) t.push(['audiencias', '🏛️ Audiências']);
     if (LG.perm.gerir_publicacoes) t.push(['publicacoes', '📰 Publicações']);
     if (LG.perm.gerir_tarefas) t.push(['tarefas', '✅ Tarefas']);
     if (LG.perm.ver_documentos) t.push(['documentos', '📂 Documentos']);
@@ -49,7 +51,7 @@ const LG = {
   body() { return document.getElementById('lg-body'); },
   async pintar() {
     try {
-      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, publicacoes: LG.vPublicacoes, tarefas: LG.vTarefas, documentos: LG.vDocumentos, financeiro: LG.vFinanceiro, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
+      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, tarefas: LG.vTarefas, documentos: LG.vDocumentos, financeiro: LG.vFinanceiro, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
       if (v) await v();
     } catch (e) { LG.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -63,7 +65,7 @@ const LG = {
     const kpi = (rot, val, alerta) => `<div class="card" style="min-width:150px;flex:1${alerta && val ? ';border-color:var(--alerta)' : ''}"><div class="sub">${rot}</div><div style="font-size:1.5rem;font-weight:700${alerta && val ? ';color:var(--alerta)' : ''}">${val}</div></div>`;
     LG.body().innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0">
       ${kpi('Processos ativos', r.processos_ativos)}${kpi('Clientes ativos', r.clientes_ativos)}
-      ${kpi('Prazos até hoje', r.prazos_hoje, true)}${kpi('Prazos em 7 dias', r.prazos_7dias)}
+      ${kpi('Prazos até hoje', r.prazos_hoje, true)}${kpi('Prazos em 7 dias', r.prazos_7dias)}${kpi('Audiências em 7 dias', r.audiencias_7dias)}
       ${kpi('Prazos sem validação humana', r.prazos_sem_validacao, true)}${kpi('Publicações novas', r.publicacoes_novas, true)}
       ${kpi('Tarefas abertas', r.tarefas_abertas)}${kpi('Tarefas atrasadas', r.tarefas_atrasadas, true)}
       ${kpi('Docs em revisão', r.docs_em_revisao)}${kpi('Respostas de IA sem revisão', r.ia_sem_revisao, true)}</div>
@@ -198,9 +200,22 @@ const LG = {
   },
 
   // -------------------------------------------------------- PRAZOS
+  _calc: null, // último cálculo da calculadora (log_id + memória) p/ amarrar ao prazo criado
   async vPrazos() {
     const { prazos } = await LG.api('GET', '/prazos');
+    LG._calc = null;
     let h = '';
+    if (LG.perm.gerir_prazos) h += `<details class="cr-box"><summary class="cr-sum">🧮 Calculadora de prazo (sugestão — exige validação)</summary>
+      <form class="form" id="lg-calc-form" style="max-width:660px;margin-top:12px">
+        <div class="hi-grid">
+          <label>Termo inicial (publicação/intimação) <input id="lgk-ini" type="date" required></label>
+          <label>Dias <input id="lgk-dias" type="number" min="1" max="400" value="15" required></label>
+          <label>Contagem <select id="lgk-modo"><option value="uteis">Dias úteis (art. 219 CPC)</option><option value="corridos">Corridos</option></select></label>
+          <label>Âmbito (feriados locais) <input id="lgk-amb" maxlength="20" value="nacional" placeholder="nacional, TJDFT…"></label>
+        </div>
+        <button class="btn peq" type="submit">Calcular</button>
+        <div id="lgk-out"></div>
+      </form></details>`;
     if (LG.perm.gerir_prazos) h += `<details class="cr-box"><summary class="cr-sum">➕ Novo prazo</summary>
       <form class="form" id="lg-prz-form" style="max-width:660px;margin-top:12px">
         <label>Título * <input id="lgz-tit" required maxlength="200"></label>
@@ -211,8 +226,10 @@ const LG = {
           <label>Prioridade ${LG.sel('lgz-pri', LG.enums.prioridade, 'media')}</label>
         </div>
         <label>ID do processo (opcional) <input id="lgz-case" maxlength="20"></label>
+        <p class="sub" id="lgz-calc-aviso"></p>
         <button class="btn" type="submit">Criar</button><p id="lgz-msg" class="erro"></p>
       </form></details>`;
+    if (LG.perm.gerir_prazos) h += `<p><button class="btn secund peq" onclick="LG.importarLegado()">📥 Importar prazos do portal antigo</button></p>`;
     h += `<div class="aviso">⚠️ Prazo com cálculo sugerido automaticamente NÃO avança de status sem "validado por" (advogado humano).</div>`;
     h += `<div class="card">${prazos.length ? tabela(['Título', 'CNJ', 'Fatal', 'Interna', 'Prioridade', 'Status', 'Validação', ''], prazos.map(z => [
       esc(z.titulo), esc(z.numero_cnj || '—'), LG.dt(z.data_fatal), LG.dt(z.data_interna), LG.chip(z.prioridade), LG.chip(z.status),
@@ -220,19 +237,52 @@ const LG = {
       LG.perm.gerir_prazos ? `<button class="btn secund peq" onclick="LG.mudarPrazo('${z.id}','${z.status}')">Status</button>` : '',
     ])) : '<p class="vazio">Nenhum prazo em aberto.</p>'}</div>`;
     LG.body().innerHTML = h;
+    const fc = document.getElementById('lg-calc-form');
+    if (fc) fc.onsubmit = async (ev) => {
+      ev.preventDefault(); const out = document.getElementById('lgk-out');
+      try {
+        const r = await LG.api('POST', '/prazos/calcular', {
+          termo_inicial: document.getElementById('lgk-ini').value, dias: document.getElementById('lgk-dias').value,
+          modo: document.getElementById('lgk-modo').value, ambito: document.getElementById('lgk-amb').value.trim() || 'nacional',
+        });
+        LG._calc = { log_id: r.log_id, memoria: r.memoria, resultado: r.resultado };
+        out.innerHTML = `<div class="aviso">📌 Vencimento sugerido: <b>${LG.dt(r.resultado)}</b><br><span class="sub">${esc(r.memoria)}</span><br>
+          <button class="btn peq" type="button" onclick="LG.usarCalculo()">Usar no novo prazo</button></div>`;
+      } catch (e) { out.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+    };
     const f = document.getElementById('lg-prz-form');
     if (f) f.onsubmit = async (ev) => {
       ev.preventDefault(); const msg = document.getElementById('lgz-msg'); msg.textContent = '';
       try {
+        const usandoCalc = LG._calc && document.getElementById('lgz-fat').value === LG._calc.resultado;
         await LG.api('POST', '/prazos', {
           titulo: document.getElementById('lgz-tit').value, tipo: document.getElementById('lgz-tipo').value,
           data_interna: document.getElementById('lgz-int').value, data_fatal: document.getElementById('lgz-fat').value,
           prioridade: document.getElementById('lgz-pri').value, case_id: document.getElementById('lgz-case').value.trim(),
-          validado_por: ESTADO.me && ESTADO.me.nome, // criado manualmente = já validado por quem criou
+          // com cálculo automático: NÃO se auto-valida — a trava exige advogado depois
+          calculo_sugerido: usandoCalc ? LG._calc.memoria : '',
+          calculo_log_id: usandoCalc ? LG._calc.log_id : '',
+          validado_por: usandoCalc ? '' : (ESTADO.me && ESTADO.me.nome),
         });
+        LG._calc = null;
         LG.pintar();
       } catch (e) { msg.textContent = e.message; }
     };
+  },
+  usarCalculo() {
+    if (!LG._calc) return;
+    const box = document.getElementById('lg-prz-form'); if (box) box.closest('details').open = true;
+    document.getElementById('lgz-tipo').value = 'fatal';
+    document.getElementById('lgz-fat').value = LG._calc.resultado;
+    document.getElementById('lgz-calc-aviso').textContent = '🧮 Data fatal veio da calculadora — o prazo será criado SEM validação (um advogado precisa validar antes de avançar).';
+  },
+  async importarLegado() {
+    if (!confirm('Importar os prazos do portal antigo (prazos-juridicos.json) para o módulo? A operação é idempotente.')) return;
+    try {
+      const r = await LG.api('POST', '/importar/prazos-legado');
+      alert(`Legado: ${r.encontrados} encontrados, ${r.importados} importados, ${r.pulados} já existiam.${r.detalhe ? '\n' + r.detalhe : ''}`);
+      LG.pintar();
+    } catch (e) { alert(e.message); }
   },
   async mudarPrazo(id, atual) {
     const novo = prompt('Novo status (' + (LG.enums.statusPrazo || []).join(', ') + '):', atual);
@@ -241,6 +291,143 @@ const LG = {
       await LG.api('PATCH', '/prazos/' + id, { status: novo.trim(), validado_por: ESTADO.me && ESTADO.me.nome });
       LG.pintar();
     } catch (e) { alert(e.message); }
+  },
+
+  // -------------------------------------------------------- AGENDA (prazos + audiências + feriados)
+  async vAgenda() {
+    const ag = await LG.api('GET', '/agenda?dias=30');
+    const { feriados } = await LG.api('GET', '/feriados?ano=' + ag.hoje.slice(0, 4));
+    const hoje = ag.hoje;
+    const linhaPrazo = (z) => {
+      const data = z.data_fatal || z.data_interna;
+      const atrasado = data && data < hoje;
+      return `<tr${atrasado ? ' style="color:var(--alerta)"' : ''}><td>${LG.dt(data)}</td><td>⏰ ${z.tipo === 'fatal' ? '<b>FATAL</b>' : 'interno'}</td>
+        <td>${esc(z.titulo)}${z.calculo_sugerido && !z.validado_por ? ' ⚠️ sem validação' : ''}</td><td>${esc(z.numero_cnj || '—')}</td><td>${LG.chip(z.status)}</td></tr>`;
+    };
+    const linhaAud = (a) => `<tr><td>${LG.dt(a.data_hora)} ${esc(String(a.data_hora).slice(11, 16))}</td><td>🏛️ audiência</td>
+      <td>${esc(a.tipo)} (${esc(a.modalidade)}) — ${esc(a.juizo || a.local_link || '')}</td><td>${esc(a.numero_cnj || '—')}</td><td>${LG.chip(a.status)}</td></tr>`;
+    const eventos = [...ag.prazos.map(z => ({ d: z.data_fatal || z.data_interna, html: linhaPrazo(z) })), ...ag.audiencias.map(a => ({ d: String(a.data_hora).slice(0, 10), html: linhaAud(a) }))]
+      .sort((x, y) => String(x.d).localeCompare(String(y.d)));
+    let h = `<div class="card"><h3>📅 Próximos 30 dias (${LG.dt(ag.hoje)} → ${LG.dt(ag.ate)})</h3>
+      ${eventos.length ? `<table class="tabela"><thead><tr><th>Data</th><th>Tipo</th><th>O quê</th><th>CNJ</th><th>Status</th></tr></thead><tbody>${eventos.map(e => e.html).join('')}</tbody></table>` : '<p class="vazio">Nada agendado no período. 🎉</p>'}</div>`;
+    h += `<div class="card"><h3>🗓️ Feriados forenses e suspensões (${ag.hoje.slice(0, 4)})</h3>
+      <p class="sub">Base do cálculo de prazos. Nacionais + art. 220 CPC já semeados; feriados locais entram por âmbito (ex.: TJDFT).</p>
+      ${feriados.length ? tabela(['Data', 'Âmbito', 'Descrição', 'Tipo', ''], feriados.map(f => [LG.dt(f.data), esc(f.ambito), esc(f.descricao), f.tipo === 'suspensao' ? '⏸️ suspensão' : '🎌 feriado',
+        LG.perm.gerir_prazos && f.ambito !== 'nacional' ? `<button class="btn secund peq" onclick="LG.rmFeriado('${f.data}','${esc(f.ambito)}')">✕</button>` : ''])) : '<p class="vazio">Nenhum.</p>'}
+      ${LG.perm.gerir_prazos ? `<form class="form" id="lg-fer-form" style="max-width:560px"><div class="hi-grid">
+        <label>Data <input id="lgh-data" type="date" required></label>
+        <label>Âmbito <input id="lgh-amb" maxlength="20" placeholder="TJDFT" required></label>
+        <label>Descrição <input id="lgh-desc" maxlength="120" required></label>
+        <label>Tipo <select id="lgh-tipo"><option value="feriado">Feriado</option><option value="suspensao">Suspensão</option></select></label></div>
+        <button class="btn peq" type="submit">Adicionar feriado local</button></form>` : ''}</div>`;
+    LG.body().innerHTML = h;
+    const f = document.getElementById('lg-fer-form');
+    if (f) f.onsubmit = async (ev) => {
+      ev.preventDefault();
+      await LG.api('POST', '/feriados', { data: document.getElementById('lgh-data').value, ambito: document.getElementById('lgh-amb').value.trim(), descricao: document.getElementById('lgh-desc').value, tipo: document.getElementById('lgh-tipo').value });
+      LG.pintar();
+    };
+  },
+  async rmFeriado(data, ambito) {
+    if (!confirm(`Remover ${data} (${ambito})?`)) return;
+    await LG.api('DELETE', `/feriados?data=${encodeURIComponent(data)}&ambito=${encodeURIComponent(ambito)}`);
+    LG.pintar();
+  },
+
+  // -------------------------------------------------------- AUDIÊNCIAS
+  async vAudiencias() {
+    const { audiencias } = await LG.api('GET', '/audiencias');
+    let h = '';
+    if (LG.perm.gerir_prazos) h += `<details class="cr-box"><summary class="cr-sum">➕ Nova audiência</summary>
+      <form class="form" id="lg-aud-form" style="max-width:660px;margin-top:12px">
+        <div class="hi-grid">
+          <label>Data e hora * <input id="lga-dt" type="datetime-local" required></label>
+          <label>Tipo ${LG.sel('lga-tipo', LG.enums.tipoAudiencia, 'conciliacao')}</label>
+          <label>Modalidade ${LG.sel('lga-mod', LG.enums.modalidade, 'presencial')}</label>
+          <label>Juízo <input id="lga-juizo" maxlength="160"></label>
+        </div>
+        <label>Local ou link <input id="lga-local" maxlength="300"></label>
+        <label>ID do processo <input id="lga-case" maxlength="20"></label>
+        <label>Roteiro (interno) <input id="lga-rot" maxlength="2000"></label>
+        <button class="btn" type="submit">Agendar</button><p id="lga-msg" class="erro"></p>
+      </form></details>`;
+    h += `<div class="card">${audiencias.length ? tabela(['Quando', 'Tipo', 'Modalidade', 'Juízo', 'CNJ', 'Cliente', 'Status', ''], audiencias.map(a => [
+      LG.dt(a.data_hora) + ' ' + esc(String(a.data_hora).slice(11, 16)), esc(a.tipo), esc(a.modalidade), esc(a.juizo || '—'),
+      esc(a.numero_cnj || '—'), esc(a.cliente_nome || '—'), LG.chip(a.status),
+      `<button class="btn secund peq" onclick="LG.verAudiencia('${a.id}')">Abrir</button>`,
+    ])) : '<p class="vazio">Nenhuma audiência.</p>'}</div>`;
+    LG.body().innerHTML = h;
+    const f = document.getElementById('lg-aud-form');
+    if (f) f.onsubmit = async (ev) => {
+      ev.preventDefault(); const msg = document.getElementById('lga-msg'); msg.textContent = '';
+      try {
+        await LG.api('POST', '/audiencias', {
+          data_hora: document.getElementById('lga-dt').value, tipo: document.getElementById('lga-tipo').value,
+          modalidade: document.getElementById('lga-mod').value, juizo: document.getElementById('lga-juizo').value,
+          local_link: document.getElementById('lga-local').value, case_id: document.getElementById('lga-case').value.trim(),
+          roteiro: document.getElementById('lga-rot').value,
+        });
+        LG.pintar();
+      } catch (e) { msg.textContent = e.message; }
+    };
+  },
+  async verAudiencia(id) {
+    const { audiencia: a } = await LG.api('GET', '/audiencias/' + id);
+    LG.body().innerHTML = `<div class="card"><button class="btn secund peq" onclick="LG.pintar()">← Voltar</button>
+      <h3 style="margin:.6rem 0 0">🏛️ ${esc(a.tipo)} — ${LG.dt(a.data_hora)} ${esc(String(a.data_hora).slice(11, 16))} ${LG.chip(a.status)}</h3>
+      <p class="sub">${esc(a.modalidade)} · ${esc(a.juizo || '')} · ${esc(a.local_link || '')} · Processo: ${esc(a.numero_cnj || '—')} · Cliente: ${esc(a.cliente_nome || '—')}</p>
+      ${a.docs_necessarios ? `<p><b>Documentos necessários:</b> ${esc(a.docs_necessarios)}</p>` : ''}
+      ${a.roteiro ? `<div class="aviso">📋 Roteiro (interno): ${esc(a.roteiro)}</div>` : ''}
+      ${a.estrategia && a.estrategia !== '[restrito]' ? `<div class="aviso">🧠 Estratégia (sigilosa): ${esc(a.estrategia)}</div>` : ''}
+      ${a.resultado ? `<p><b>Resultado:</b> ${esc(a.resultado)}</p>` : ''}
+      ${LG.perm.gerir_prazos ? `<p><button class="btn secund peq" onclick="LG.mudarAudiencia('${a.id}','${a.status}')">Mudar status</button>
+        <button class="btn secund peq" onclick="LG.resultadoAudiencia('${a.id}')">Registrar resultado</button></p>` : ''}</div>
+      <div class="card"><h3>👥 Participantes</h3>
+      ${a.participantes.length ? tabela(['Tipo', 'Nome', 'Intimado', 'Obs', ''], a.participantes.map(p => [esc(p.tipo), esc(p.nome), p.intimado ? '✅' : '—', esc(p.obs || ''),
+        LG.perm.gerir_prazos ? `<button class="btn secund peq" onclick="LG.rmParticipante('${p.id}','${a.id}')">✕</button>` : ''])) : '<p class="vazio">Nenhum.</p>'}
+      ${LG.perm.gerir_prazos ? `<form class="form" id="lg-part-form" style="max-width:560px"><div class="hi-grid">
+        <label>Tipo <select id="lgpp-tipo"><option>testemunha</option><option>parte</option><option>advogado</option><option>preposto</option><option>perito</option><option>outro</option></select></label>
+        <label>Nome <input id="lgpp-nome" maxlength="160" required></label></div>
+        <label class="serv-ativo"><input type="checkbox" id="lgpp-int"> Já intimado</label>
+        <button class="btn peq" type="submit">Adicionar</button></form>` : ''}</div>
+      <div class="card"><h3>📌 Providências pós-audiência</h3>
+      ${a.providencias.length ? tabela(['Descrição', 'Prazo', 'Status', 'Tarefa', ''], a.providencias.map(v => [esc(v.descricao), LG.dt(v.prazo), LG.chip(v.status), v.task_id ? '✅' : '—',
+        LG.perm.gerir_prazos && v.status === 'pendente' ? `<button class="btn secund peq" onclick="LG.concluirProvidencia('${v.id}','${a.id}')">Concluir</button>` : ''])) : '<p class="vazio">Nenhuma.</p>'}
+      ${LG.perm.gerir_prazos ? `<form class="form" id="lg-prov-form" style="max-width:560px">
+        <label>Descrição <input id="lgpv-desc" maxlength="300" required></label>
+        <div class="hi-grid"><label>Prazo <input id="lgpv-prazo" type="date"></label></div>
+        <label class="serv-ativo"><input type="checkbox" id="lgpv-task" checked> Criar tarefa automaticamente</label>
+        <button class="btn peq" type="submit">Registrar providência</button></form>` : ''}</div>`;
+    const fp = document.getElementById('lg-part-form');
+    if (fp) fp.onsubmit = async (ev) => {
+      ev.preventDefault();
+      await LG.api('POST', `/audiencias/${id}/participantes`, { tipo: document.getElementById('lgpp-tipo').value, nome: document.getElementById('lgpp-nome').value, intimado: document.getElementById('lgpp-int').checked });
+      LG.verAudiencia(id);
+    };
+    const fv = document.getElementById('lg-prov-form');
+    if (fv) fv.onsubmit = async (ev) => {
+      ev.preventDefault();
+      await LG.api('POST', `/audiencias/${id}/providencias`, { descricao: document.getElementById('lgpv-desc').value, prazo: document.getElementById('lgpv-prazo').value, criar_tarefa: document.getElementById('lgpv-task').checked });
+      LG.verAudiencia(id);
+    };
+  },
+  async mudarAudiencia(id, atual) {
+    const novo = prompt('Novo status (' + (LG.enums.statusAudiencia || []).join(', ') + '):', atual);
+    if (!novo || novo === atual) return;
+    try { await LG.api('PATCH', '/audiencias/' + id, { status: novo.trim() }); LG.verAudiencia(id); } catch (e) { alert(e.message); }
+  },
+  async resultadoAudiencia(id) {
+    const r = prompt('Resultado da audiência:');
+    if (!r) return;
+    try { await LG.api('PATCH', '/audiencias/' + id, { resultado: r, status: 'realizada' }); LG.verAudiencia(id); } catch (e) { alert(e.message); }
+  },
+  async rmParticipante(pid, hid) {
+    await LG.api('DELETE', '/audiencias/participantes/' + pid);
+    LG.verAudiencia(hid);
+  },
+  async concluirProvidencia(vid, hid) {
+    await LG.api('PATCH', '/providencias/' + vid, { status: 'concluida' });
+    LG.verAudiencia(hid);
   },
 
   // -------------------------------------------------------- PUBLICAÇÕES
@@ -260,7 +447,6 @@ const LG = {
 
   // -------------------------------------------------------- TAREFAS
   async vTarefas() {
-    const { tarefas } = await LG.api('GET', '/tarefas');
     let h = `<details class="cr-box"><summary class="cr-sum">➕ Nova tarefa</summary>
       <form class="form" id="lg-tar-form" style="max-width:660px;margin-top:12px">
         <label>Título * <input id="lgt-tit" required maxlength="200"></label>
@@ -271,10 +457,23 @@ const LG = {
         </div>
         <label>Descrição <input id="lgt-desc" maxlength="1000"></label>
         <button class="btn" type="submit">Criar</button></form></details>`;
-    h += `<div class="card">${tarefas.length ? tabela(['Título', 'CNJ', 'Prazo', 'Prioridade', 'Status', ''], tarefas.map(t => [
-      esc(t.titulo), esc(t.numero_cnj || '—'), LG.dt(t.prazo), LG.chip(t.prioridade), LG.chip(t.status),
-      `<button class="btn secund peq" onclick="LG.mudarTarefa('${t.id}','${t.status}')">Status</button>`,
-    ])) : '<p class="vazio">Nenhuma tarefa aberta.</p>'}</div>`;
+    // Kanban jurídico (Fase 2): colunas por status, mover com ◀ ▶ (histórico fica em task_status_history)
+    const { colunas } = await LG.api('GET', '/tarefas/kanban');
+    const ordem = ['aberta', 'em_andamento', 'em_revisao', 'concluida'];
+    const rotulos = { aberta: '📥 Abertas', em_andamento: '🔧 Em andamento', em_revisao: '👀 Em revisão', concluida: '✅ Concluídas (últimas 15)' };
+    const hoje = new Date().toISOString().slice(0, 10);
+    const cartao = (t, col) => {
+      const i = ordem.indexOf(col);
+      const atrasada = t.prazo && t.prazo < hoje && col !== 'concluida';
+      return `<div class="card" style="padding:.5rem;margin:.4rem 0${atrasada ? ';border-color:var(--alerta)' : ''}">
+        <b>${esc(t.titulo)}</b><br><span class="sub">${t.prazo ? (atrasada ? '⚠️ ' : '📅 ') + LG.dt(t.prazo) + ' · ' : ''}${esc(t.numero_cnj || '')} ${LG.chip(t.prioridade)}</span><br>
+        ${i > 0 ? `<button class="btn secund peq" onclick="LG.moverTarefa('${t.id}','${ordem[i - 1]}')">◀ ${ordem[i - 1].replace(/_/g, ' ')}</button> ` : ''}
+        ${i < 3 ? `<button class="btn secund peq" onclick="LG.moverTarefa('${t.id}','${ordem[i + 1]}')">${ordem[i + 1].replace(/_/g, ' ')} ▶</button>` : ''}
+      </div>`;
+    };
+    h += `<div style="display:flex;gap:.6rem;align-items:flex-start;overflow-x:auto">` + ordem.map(col => `
+      <div style="flex:1;min-width:220px"><div class="card" style="background:#f7f7f4"><b>${rotulos[col]}</b> <span class="sub">(${colunas[col].length})</span>
+        ${colunas[col].map(t => cartao(t, col)).join('') || '<p class="vazio">—</p>'}</div></div>`).join('') + `</div>`;
     LG.body().innerHTML = h;
     document.getElementById('lg-tar-form').onsubmit = async (ev) => {
       ev.preventDefault();
@@ -290,6 +489,9 @@ const LG = {
     const novo = prompt('Novo status (' + (LG.enums.statusTask || []).join(', ') + '):', atual);
     if (!novo || novo === atual) return;
     try { await LG.api('PATCH', '/tarefas/' + id, { status: novo.trim() }); LG.pintar(); } catch (e) { alert(e.message); }
+  },
+  async moverTarefa(id, novo) {
+    try { await LG.api('PATCH', '/tarefas/' + id, { status: novo }); LG.pintar(); } catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------- DOCUMENTOS

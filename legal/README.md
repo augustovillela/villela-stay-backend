@@ -1,7 +1,9 @@
 # Villela Legal Intelligence — módulo jurídico
 
 Sistema de gestão para escritório de advocacia, construído como **módulo do backend
-existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fase 1 — fundação**.
+existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1+2 —
+fundação + núcleo jurídico** (audiências, agenda, feriados forenses, calculadora de
+prazos, Kanban, importação do legado).
 
 ## FASE 0 — Diagnóstico técnico do projeto (06/07/2026)
 
@@ -51,11 +53,14 @@ montado no `server.js` via injeção de dependências — **nenhuma rota ou tela
 
 ```
 legal/
-  schema.sql       # 30+ tabelas (CREATE IF NOT EXISTS, idempotente) + tabela migrations
+  schema.sql       # 35+ tabelas (CREATE IF NOT EXISTS, idempotente) + tabela migrations
   db.js            # conexão node:sqlite (DATA_DIR/legal/legal.db, WAL), helpers
   permissoes.js    # perfis, matriz de permissões, seed, resolução de perfil
-  repo.js          # CRUD/validações: Clientes, Processos, Andamentos, Publicações,
-                   #   Prazos, Tarefas, Documentos, IA, Financeiro, Auditoria, Integrações, Dashboard
+  feriados.js      # feriados forenses (seed nacional + art. 220 CPC) e cálculo SUGERIDO
+                   #   de prazo (arts. 219/224 CPC) — todo cálculo é logado e exige validação
+  repo.js          # CRUD/validações: Clientes, Processos, Andamentos, Publicações, Prazos,
+                   #   Tarefas (Kanban+histórico), Audiências, Agenda, Documentos, IA,
+                   #   Financeiro, Legado, Auditoria, Integrações, Dashboard
   rotas-staff.js   # API REST /staff/api/legal/* (auth sessão + PUBLISH_KEY p/ ingestão)
   index.js         # montar(app, deps) — chamado pelo server.js
   README.md        # este arquivo
@@ -76,6 +81,9 @@ staff/app-legal.js # painel (sub-app com abas) no Portal Staff — menu "⚖️ 
 - **Peças/contratos (fundação)**: `legal_drafts`, `legal_draft_versions`, `contract_reviews`
 - **Financeiro**: `financial_accounts` (10 tipos, visível_cliente p/ prestação de contas)
 - **Infra**: `notifications`, `audit_logs`, `integration_logs`, `webhook_events`, `migrations`
+- **Fase 2**: `hearings` + `hearing_participants` + `hearing_followups` (audiências; roteiro interno,
+  estratégia sigilosa, providência→tarefa), `court_holidays` (feriados por âmbito + suspensões art. 220),
+  `deadline_calculation_logs` (memória auditável de cada cálculo), `task_status_history` (Kanban)
 
 ## API (prefixo `/staff/api/legal`)
 
@@ -87,8 +95,11 @@ staff/app-legal.js # painel (sub-app com abas) no Portal Staff — menu "⚖️ 
 | Processos | `GET/POST /processos`, `GET/PATCH /processos/:id`, `POST .../partes|advogados` | `ver_/criar_/editar_processos` |
 | Andamentos | `GET/POST /processos/:id/andamentos` † | `editar_processos` |
 | Publicações | `GET/POST /publicacoes` †, `PATCH /publicacoes/:id` | `gerir_publicacoes` |
-| Prazos | `GET/POST † /prazos`, `PATCH /prazos/:id`, `GET /prazos/:id/eventos` | `gerir_prazos` |
-| Tarefas | `GET/POST † /tarefas`, `PATCH /tarefas/:id`, `GET/POST .../comentarios` | `gerir_tarefas` |
+| Prazos | `GET/POST † /prazos`, `POST /prazos/calcular` †, `PATCH /prazos/:id`, `GET /prazos/:id/eventos` | `gerir_prazos` |
+| Audiências | `GET/POST † /audiencias`, `GET/PATCH /audiencias/:id`, `POST .../participantes`, `POST .../providencias` (opção criar_tarefa), `PATCH /providencias/:id` | `ver_processos` / `gerir_prazos` |
+| Agenda/Feriados | `GET /agenda?dias=`, `GET/POST/DELETE /feriados` | `ver_processos` / `gerir_prazos` |
+| Legado | `POST /importar/prazos-legado` (idempotente, marca `[legado:id]`) | `gerir_prazos` |
+| Tarefas | `GET/POST † /tarefas`, `GET /tarefas/kanban`, `PATCH /tarefas/:id`, `GET .../historico`, `GET/POST .../comentarios` | `gerir_tarefas` |
 | Documentos | `GET/POST /documentos`, `GET/PATCH /documentos/:id`, `POST .../versao`, `GET .../download` | `ver_/criar_/editar_documentos` (+especiais p/ aprovar/enviar/protocolar) |
 | IA | `GET /ia`, `GET /ia/respostas/:id`, `POST /ia/registrar` †, `POST /ia/respostas/:id/revisar` | `usar_ia` / `aprovar_documentos` |
 | Financeiro | `GET/POST /financeiro`, `PATCH /financeiro/:id` | `ver_/gerir_financeiro` |
@@ -106,9 +117,11 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
 
 ## Plano de evolução (próximas fases — sem retrabalho da fundação)
 
-- **Fase 2 — Núcleo jurídico completo**: audiências (`hearings*`), Kanban de tarefas, calendário
-  de prazos com feriados forenses (`court_holidays`), importação dos prazos/contratos já existentes
-  no portal antigo (telas Contratos/Prazos jurídicos atuais continuam funcionando até lá).
+- **Fase 2 — CONCLUÍDA (06/07/2026)**: audiências com participantes/roteiro/providências→tarefa;
+  agenda unificada (prazos+audiências, 30 dias); feriados forenses por âmbito + suspensão art. 220
+  CPC semeados; calculadora de prazo (arts. 219/224) com log auditável e trava de validação humana;
+  Kanban de tarefas com histórico de status; importação idempotente de `prazos-juridicos.json`.
+  *Nota*: a importação de contratos legados ficou para a Fase 4 (módulo de contratos).
 - **Fase 3 — IA jurídica**: geração via camada LLM + RAG (embeddings em tabela própria; candidato:
   `sqlite-vec` ou busca híbrida FTS5), `prompt_templates`, agentes por especialidade (`ai_agents*`),
   reaproveitando as skills `pesquisa-juridica`/`parecer-juridico` e o agente `juridico`.

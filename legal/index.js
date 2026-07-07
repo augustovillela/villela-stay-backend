@@ -12,6 +12,7 @@
 'use strict';
 const repo = require('./repo');
 const permissoes = require('./permissoes');
+const feriados = require('./feriados');
 const { registrarRotasStaff } = require('./rotas-staff');
 
 function montar(app, injected = {}) {
@@ -19,9 +20,9 @@ function montar(app, injected = {}) {
   if (!express || !requireAuth || !requirePublishOrSession || !lerUsuarios) {
     throw new Error('legal.montar: faltam deps (express, requireAuth, requirePublishOrSession, lerUsuarios).');
   }
-  registrarRotasStaff(app, { repo, permissoes, requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios });
-  console.log('[legal] Villela Legal Intelligence montado (Fase 1 — fundação). API: /staff/api/legal/*');
-  return { repo, permissoes };
+  registrarRotasStaff(app, { repo, permissoes, feriados, requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios });
+  console.log('[legal] Villela Legal Intelligence montado (Fases 1+2 — fundação + núcleo). API: /staff/api/legal/*');
+  return { repo, permissoes, feriados };
 }
 
-module.exports = { montar, repo, permissoes };
+module.exports = { montar, repo, permissoes, feriados };

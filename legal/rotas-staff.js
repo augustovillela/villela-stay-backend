@@ -9,7 +9,7 @@
 'use strict';
 
 function registrarRotasStaff(app, deps) {
-  const { repo, permissoes, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const { repo, permissoes, feriados, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
   // permissões efetivas do request (sessão => usuário do portal; PUBLISH_KEY => agente_ia)
@@ -159,8 +159,15 @@ function registrarRotasStaff(app, deps) {
   app.get('/staff/api/legal/prazos', requireAuth, pode('ver_processos'), h((req, res) => {
     res.json({ prazos: repo.Prazos.listar(req.query) });
   }));
+  // calculadora de prazo (Fase 2): SUGESTÃO auditada — nunca vira prazo válido sem validação humana
+  app.post('/staff/api/legal/prazos/calcular', requirePublishOrSession, pode('gerir_prazos'), h((req, res) => {
+    const d = req.body || {};
+    const r = feriados.calcularPrazo({ termo_inicial: d.termo_inicial, dias: d.dias, modo: d.modo, ambito: d.ambito }, quemFez(req));
+    res.json({ ok: true, ...r, aviso: 'Sugestão automática — validação por advogado obrigatória (validado_por).' });
+  }));
   app.post('/staff/api/legal/prazos', requirePublishOrSession, pode('gerir_prazos'), h((req, res) => {
     const p = repo.Prazos.criar(req.body || {}, quemFez(req));
+    if ((req.body || {}).calculo_log_id) feriados.vincularLog(req.body.calculo_log_id, p.id); // amarra o log do cálculo ao prazo
     auditar(req, 'prazo.criar', 'deadlines', p.id, p.titulo);
     res.json({ ok: true, prazo: p });
   }));
@@ -177,14 +184,20 @@ function registrarRotasStaff(app, deps) {
   app.get('/staff/api/legal/tarefas', requireAuth, pode('gerir_tarefas'), h((req, res) => {
     res.json({ tarefas: repo.Tarefas.listar(req.query) });
   }));
+  app.get('/staff/api/legal/tarefas/kanban', requireAuth, pode('gerir_tarefas'), h((req, res) => {
+    res.json({ colunas: repo.Tarefas.kanban() });
+  }));
   app.post('/staff/api/legal/tarefas', requirePublishOrSession, pode('gerir_tarefas'), h((req, res) => {
     const t = repo.Tarefas.criar(req.body || {}, quemFez(req));
     auditar(req, 'tarefa.criar', 'tasks', t.id, t.titulo);
     res.json({ ok: true, tarefa: t });
   }));
   app.patch('/staff/api/legal/tarefas/:id', requireAuth, pode('gerir_tarefas'), h((req, res) => {
-    const t = repo.Tarefas.atualizar(req.params.id, req.body || {});
+    const t = repo.Tarefas.atualizar(req.params.id, req.body || {}, quemFez(req));
     res.json({ ok: true, tarefa: t });
+  }));
+  app.get('/staff/api/legal/tarefas/:id/historico', requireAuth, pode('gerir_tarefas'), h((req, res) => {
+    res.json({ historico: repo.Tarefas.historico(req.params.id) });
   }));
   app.post('/staff/api/legal/tarefas/:id/comentarios', requireAuth, pode('gerir_tarefas'), h((req, res) => {
     const id = repo.Tarefas.addComentario(req.params.id, (req.body || {}).texto, quemFez(req));
@@ -192,6 +205,77 @@ function registrarRotasStaff(app, deps) {
   }));
   app.get('/staff/api/legal/tarefas/:id/comentarios', requireAuth, pode('gerir_tarefas'), h((req, res) => {
     res.json({ comentarios: repo.Tarefas.comentarios(req.params.id) });
+  }));
+
+  // ------------------------------------------------------- AUDIÊNCIAS (Fase 2)
+  app.get('/staff/api/legal/audiencias', requireAuth, pode('ver_processos'), h((req, res) => {
+    res.json({ audiencias: repo.Audiencias.listar(req.query) });
+  }));
+  app.get('/staff/api/legal/audiencias/:id', requireAuth, pode('ver_processos'), h((req, res) => {
+    const a = repo.Audiencias.obter(req.params.id, { comSigilo: !!req.legal.permissoes.ver_dados_sensiveis });
+    if (!a) return res.status(404).json({ erro: 'Audiência não encontrada.' });
+    res.json({ audiencia: a });
+  }));
+  app.post('/staff/api/legal/audiencias', requirePublishOrSession, pode('gerir_prazos'), h((req, res) => {
+    const a = repo.Audiencias.criar(req.body || {}, req.user && req.user.id);
+    auditar(req, 'audiencia.criar', 'hearings', a.id, a.tipo + ' ' + a.data_hora);
+    res.json({ ok: true, audiencia: a });
+  }));
+  app.patch('/staff/api/legal/audiencias/:id', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    const a = repo.Audiencias.atualizar(req.params.id, req.body || {});
+    auditar(req, 'audiencia.editar', 'hearings', a.id, a.status);
+    res.json({ ok: true, audiencia: a });
+  }));
+  app.post('/staff/api/legal/audiencias/:id/participantes', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    const id = repo.Audiencias.addParticipante(req.params.id, req.body || {});
+    res.json({ ok: true, id });
+  }));
+  app.delete('/staff/api/legal/audiencias/participantes/:id', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    repo.Audiencias.rmParticipante(req.params.id);
+    res.json({ ok: true });
+  }));
+  // providência pós-audiência — opcionalmente já vira tarefa (criar_tarefa: true)
+  app.post('/staff/api/legal/audiencias/:id/providencias', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    const d = req.body || {};
+    let taskId = '';
+    if (d.criar_tarefa) {
+      const a = repo.Audiencias.obter(req.params.id);
+      const t = repo.Tarefas.criar({ titulo: d.descricao, case_id: a && a.case_id, prazo: d.prazo, responsavel: d.responsavel, prioridade: 'alta', descricao: 'Providência pós-audiência ' + req.params.id }, quemFez(req));
+      taskId = t.id;
+    }
+    const id = repo.Audiencias.addProvidencia(req.params.id, d, taskId);
+    auditar(req, 'audiencia.providencia', 'hearing_followups', id, d.descricao);
+    res.json({ ok: true, id, task_id: taskId });
+  }));
+  app.patch('/staff/api/legal/providencias/:id', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    repo.Audiencias.providenciaStatus(req.params.id, (req.body || {}).status);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------------- AGENDA + FERIADOS (Fase 2)
+  app.get('/staff/api/legal/agenda', requireAuth, pode('ver_processos'), h((req, res) => {
+    res.json(repo.Agenda.proxima(req.query.dias));
+  }));
+  app.get('/staff/api/legal/feriados', requireAuth, pode('ver_processos'), h((req, res) => {
+    res.json({ feriados: feriados.Feriados.listar(req.query) });
+  }));
+  app.post('/staff/api/legal/feriados', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    feriados.Feriados.criar(req.body || {});
+    auditar(req, 'feriado.criar', 'court_holidays', (req.body || {}).data, (req.body || {}).descricao);
+    res.json({ ok: true });
+  }));
+  app.delete('/staff/api/legal/feriados', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    feriados.Feriados.remover(req.query.data, req.query.ambito);
+    auditar(req, 'feriado.remover', 'court_holidays', req.query.data, req.query.ambito);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------------- IMPORTAÇÃO DO LEGADO (Fase 2)
+  // Espelha prazos-juridicos.json (portal antigo) → deadlines. Idempotente ([legado:id]).
+  app.post('/staff/api/legal/importar/prazos-legado', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    const r = repo.Legado.importarPrazos(req.user && req.user.id);
+    auditar(req, 'legado.importar-prazos', 'deadlines', '', `encontrados ${r.encontrados}, importados ${r.importados}, pulados ${r.pulados}`);
+    res.json({ ok: true, ...r });
   }));
 
   // ------------------------------------------------------- DOCUMENTOS
