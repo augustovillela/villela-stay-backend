@@ -49,6 +49,9 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin }) {
   // relatório SaaS: receita, assinaturas, trials expirando, custo de IA por tenant (Fase 8)
   r.get('/receita', h(async (req, res) => res.json(require('./billing').receitaPlataforma())));
 
+  // saúde do sistema: jobs, webhooks, IA, volumes (Fase 10)
+  r.get('/saude', h(async (req, res) => res.json(require('./enterprise').saudePlataforma())));
+
   // auditoria da plataforma (tenant_id = '')
   r.get('/auditoria', h(async (req, res) => res.json({ eventos: repo.listarAuditoria('', { limite: req.query.limite || 200 }) })));
 

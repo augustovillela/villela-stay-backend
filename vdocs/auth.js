@@ -77,15 +77,44 @@ function criarAuth({ jwtSecret }) {
     if (!tenants.length) { res.status(403).json({ erro: 'Sua conta não participa de nenhuma empresa.' }); return null; }
     const alvo = tenants.find(t => t.id === String(tenant_id || '')) || tenants[0];
     limpaFalhas(ip);
-    repo.userPorId(user.id); // noop de leitura; atualização abaixo
-    const { db, nowISO } = require('./db');
-    db.prepare('UPDATE users SET ultimo_login = ? WHERE id = ?').run(nowISO(), user.id);
-    repo.auditar(alvo.id, user, 'login.ok', 'users', user.id, {}, ip);
-    emitirSessao(res, user.id, alvo.id);
+    // 2FA ativo → senha ok NÃO emite sessão: devolve um token curto p/ o 2º passo
+    if (user.totp_ativo) {
+      const tfa_token = jwt.sign({ uid: String(user.id), tid: String(alvo.id), tfa: 1 }, jwtSecret, { expiresIn: '5m' });
+      res.json({ ok: true, precisa_2fa: true, tfa_token });
+      return null;
+    }
+    concluirLogin(res, user, alvo.id, ip);
     return { user, tenant: alvo, tenants };
   }
 
-  return { COOKIE, ipDe, bloqueado, registraFalha, limpaFalhas, emitirSessao, limparSessao, requireTenant, requirePerm, login };
+  function concluirLogin(res, user, tenantId, ip) {
+    const { db, nowISO } = require('./db');
+    db.prepare('UPDATE users SET ultimo_login = ? WHERE id = ?').run(nowISO(), user.id);
+    repo.auditar(tenantId, user, 'login.ok', 'users', user.id, {}, ip);
+    emitirSessao(res, user.id, tenantId);
+  }
+
+  // 2º passo do login (TOTP ou código de recuperação).
+  function login2fa(req, res, { tfa_token, codigo }) {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) { res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' }); return null; }
+    let claims;
+    try { claims = jwt.verify(String(tfa_token || ''), jwtSecret); if (!claims.tfa) throw new Error('x'); }
+    catch (_) { res.status(401).json({ erro: 'Sessão de verificação expirada — faça login de novo.' }); return null; }
+    const user = repo.userPorId(claims.uid);
+    if (!user || !user.ativo) { res.status(401).json({ erro: 'Conta indisponível.' }); return null; }
+    if (!require('./enterprise').verificarSegundoFator(user.id, codigo)) {
+      registraFalha(ip);
+      repo.auditar(claims.tid, user, 'login.2fa_falhou', 'users', user.id, {}, ip);
+      res.status(401).json({ erro: 'Código incorreto.' });
+      return null;
+    }
+    limpaFalhas(ip);
+    concluirLogin(res, user, claims.tid, ip);
+    return { user, tenant: repo.obterTenant(claims.tid) };
+  }
+
+  return { COOKIE, ipDe, bloqueado, registraFalha, limpaFalhas, emitirSessao, limparSessao, requireTenant, requirePerm, login, login2fa };
 }
 
 module.exports = { criarAuth, COOKIE };

@@ -243,12 +243,25 @@ const login = () => formPagina('Entrar', `
     <p><button class="btn" type="submit" style="width:100%">Entrar</button></p>
   </form>
   <p style="font-size:13px;color:var(--suave)">Ainda não tem conta? <a href="/vdocs/cadastro">Teste grátis 14 dias</a></p>
+  <div id="tfa" style="display:none">
+    <p style="color:var(--suave)">Sua conta tem verificação em duas etapas. Digite o código do app autenticador (ou um código de recuperação).</p>
+    <label>Código</label><input id="f-codigo" inputmode="numeric" autocomplete="one-time-code">
+    <p><button class="btn" style="width:100%" onclick="enviar2fa()">Verificar</button></p>
+  </div>
   <script>
+  let tfaToken='';
   async function enviar(ev){ev.preventDefault();const v=id=>document.getElementById(id).value;
     const r=await fetch('/vdocs/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:v('f-email'),senha:v('f-senha')})});
     const d=await r.json().catch(()=>({}));
-    if(r.ok)location.href='/vdocs/app';else document.getElementById('erro').innerHTML='<div class="erro">'+(d.erro||'Erro no login.')+'</div>';
+    if(r.ok&&d.precisa_2fa){tfaToken=d.tfa_token;document.querySelector('form').style.display='none';document.getElementById('tfa').style.display='block';document.getElementById('f-codigo').focus();}
+    else if(r.ok)location.href='/vdocs/app';
+    else document.getElementById('erro').innerHTML='<div class="erro">'+(d.erro||'Erro no login.')+'</div>';
     return false;}
+  async function enviar2fa(){
+    const r=await fetch('/vdocs/api/login-2fa',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tfa_token:tfaToken,codigo:document.getElementById('f-codigo').value})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok)location.href='/vdocs/app';else document.getElementById('erro').innerHTML='<div class="erro">'+(d.erro||'Código incorreto.')+'</div>';
+  }
   </script>`);
 
 const convite = (token) => formPagina('Aceitar convite', `
@@ -418,7 +431,9 @@ async function abrirDoc(id){
   const selPasta='<select id="dd-pasta"><option value="">🏠 Início</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
   $('corpo').innerHTML='<p><a href="#" onclick="return irPasta(S.pasta)">← voltar</a></p><h2>'+esc(d.nome)+'</h2>'+
    '<p>'+(P.usar_ia?'<button class="btn btn-ghost peq" onclick="S.iaEscopo={tipo:\\'documento\\',ref:\\''+d.id+'\\'};S.iaConv=\\'\\';ir(\\'ia\\')">🤖 Perguntar à IA</button> ':'')+
-   (P.compartilhar_documento?'<button class="btn btn-ghost peq" onclick="compartilharDoc(\\''+d.id+'\\')">🔗 Compartilhar por link</button>':'')+'</p>'+
+   (P.compartilhar_documento?'<button class="btn btn-ghost peq" onclick="compartilharDoc(\\''+d.id+'\\')">🔗 Compartilhar por link</button> ':'')+
+   (d.legal_hold?'<span class="chip" style="background:#fde8e8">⚖️ retenção legal</span> ':'')+
+   (P.gerir_configuracoes?'<button class="btn btn-ghost peq" onclick="alternarHold(\\''+d.id+'\\','+(d.legal_hold?'false':'true')+')">'+(d.legal_hold?'Remover retenção legal':'⚖️ Marcar retenção legal')+'</button>':'')+'</p>'+
    '<div class="card">'+
    (P.editar_metadados?'<label>Nome</label><input id="dd-nome" value="'+esc(d.nome)+'">'+
     '<label>Descrição</label><textarea id="dd-desc" rows="2">'+esc(d.descricao)+'</textarea>'+
@@ -450,6 +465,9 @@ async function salvarDoc(id){try{
   await api('PATCH','/documentos/'+id,{nome:$('dd-nome').value,descricao:$('dd-desc').value,tipo_documental:$('dd-tipo').value,validade:$('dd-val').value,tags:$('dd-tags').value.split(',').map(t=>t.trim()).filter(Boolean)});
   $('dd-out').textContent='✅ salvo';}catch(e){$('dd-out').textContent='⚠️ '+e.message;}}
 async function moverDoc(id){try{await api('POST','/documentos/'+id+'/mover',{folder_id:$('dd-pasta').value});abrirDoc(id);}catch(e){alert(e.message);}}
+async function alternarHold(id,ativo){
+  if(ativo&&!confirm('Marcar retenção legal? O documento ficará IMPOSSÍVEL de excluir até a trava ser removida.'))return;
+  try{await api('POST','/documentos/'+id+'/retencao-legal',{ativo:ativo===true||ativo==='true'});abrirDoc(id);}catch(e){alert(e.message);}}
 async function enviarAprovacao(id){
   try{
     const {modelos}=await api('GET','/workflows');
@@ -771,12 +789,37 @@ async function vConfig(){
    '<label>E-mail de contato</label><input id="cf-email" value="'+esc(t.email_contato)+'">'+
    '<label>Telefone</label><input id="cf-tel" value="'+esc(t.telefone)+'">'+
    '<label>Retenção padrão (dias; 0 = sem descarte automático)</label><input id="cf-ret" type="number" value="'+esc(st.retencao_padrao_dias||'0')+'">'+
+   '<label>Lixeira: excluir definitivamente após (dias)</label><input id="cf-lix" type="number" value="'+esc(st.retencao_lixeira_dias||'30')+'">'+
    '<p><button class="btn" onclick="salvarCfg()">Salvar</button> <span id="cf-out"></span></p></div>'+
+   '<div class="card" style="margin-top:14px"><b>🔐 Verificação em duas etapas (2FA)</b> <span class="chip">'+(S.me.totp_ativo?'ativa':'inativa')+'</span>'+
+   '<p class="sub" style="font-size:13px">Protege o SEU login com um código do app autenticador (Google Authenticator, 1Password…).</p>'+
+   '<div id="tfa-area">'+(S.me.totp_ativo
+     ?'<label>Código atual (ou de recuperação) p/ desativar</label><div style="display:flex;gap:8px"><input id="tfa-cod" style="max-width:160px"><button class="btn btn-ghost peq" onclick="desativar2fa()">Desativar 2FA</button></div>'
+     :'<button class="btn peq" onclick="iniciar2fa()">Ativar 2FA</button>')+'</div></div>'+
+   (S.me.permissoes.exportar_dados?'<div class="card" style="margin-top:14px"><b>📦 Exportar todos os dados (LGPD)</b>'+
+    '<p class="sub" style="font-size:13px">Baixa um ZIP com todos os dados da empresa (cadastros, documentos, auditoria) e os arquivos vigentes.</p>'+
+    '<a class="btn btn-ghost peq" href="/vdocs/api/exportacao">⬇️ Baixar exportação completa</a></div>':'')+
    '<div class="card" style="margin-top:14px"><b>Identificador (slug):</b> <code>'+esc(t.slug)+'</code> · criado em '+dt(t.criado_em)+'</div>';
 }
 async function salvarCfg(){try{
-  await api('PATCH','/config',{tenant:{nome:$('cf-nome').value,cnpj:$('cf-cnpj').value,email_contato:$('cf-email').value,telefone:$('cf-tel').value},settings:{retencao_padrao_dias:$('cf-ret').value}});
+  await api('PATCH','/config',{tenant:{nome:$('cf-nome').value,cnpj:$('cf-cnpj').value,email_contato:$('cf-email').value,telefone:$('cf-tel').value},settings:{retencao_padrao_dias:$('cf-ret').value,retencao_lixeira_dias:$('cf-lix').value}});
   $('cf-out').textContent='✅ salvo';}catch(e){$('cf-out').textContent='⚠️ '+e.message;}}
+async function iniciar2fa(){try{
+  const r=await api('POST','/seguranca/2fa/iniciar');
+  $('tfa-area').innerHTML='<p style="font-size:13px">1) Escaneie no app autenticador (ou digite o segredo):</p>'+
+   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">'+(r.qr_svg||'')+'<code style="word-break:break-all">'+esc(r.secret)+'</code></div>'+
+   '<p style="font-size:13px">2) Digite o código de 6 dígitos para confirmar:</p>'+
+   '<div style="display:flex;gap:8px"><input id="tfa-conf" inputmode="numeric" style="max-width:140px"><button class="btn peq" onclick="confirmar2fa()">Confirmar</button></div><div id="tfa-out" style="margin-top:8px;font-size:13px"></div>';
+ }catch(e){alert(e.message);}}
+async function confirmar2fa(){try{
+  const r=await api('POST','/seguranca/2fa/confirmar',{codigo:$('tfa-conf').value});
+  S.me.totp_ativo=true;
+  $('tfa-area').innerHTML='<div class="aviso">✅ 2FA ativado! <b>Guarde os códigos de recuperação</b> (cada um vale 1 vez, não aparecem de novo):<br><code>'+r.recovery.join('</code> · <code>')+'</code></div>';
+ }catch(e){$('tfa-out').textContent='⚠️ '+e.message;}}
+async function desativar2fa(){try{
+  await api('POST','/seguranca/2fa/desativar',{codigo:$('tfa-cod').value});
+  S.me.totp_ativo=false;alert('2FA desativado.');vConfig();
+ }catch(e){alert(e.message);}}
 boot().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');
 </script></body></html>`;
 }

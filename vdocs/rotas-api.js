@@ -14,6 +14,7 @@ const wf = require('./workflows');
 const comp = require('./compartilhar');
 const billing = require('./billing');
 const apiPub = require('./api-publica');
+const ent = require('./enterprise');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -49,6 +50,14 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
 
   r.post('/logout', (req, res) => { auth.limparSessao(res); res.json({ ok: true }); });
 
+  // 2º passo do login quando o usuário tem 2FA (Fase 10)
+  r.post('/login-2fa', h(async (req, res) => {
+    const b = req.body || {};
+    const sessao = auth.login2fa(req, res, { tfa_token: b.tfa_token, codigo: b.codigo });
+    if (!sessao) return;
+    res.json({ ok: true, tenant: { id: sessao.tenant.id, nome: sessao.tenant.nome } });
+  }));
+
   r.post('/convites/aceitar', h(async (req, res) => {
     const b = req.body || {};
     const { user, tenantId } = repo.aceitarConvite(b.token, { nome: b.nome, senha: b.senha }, auth.ipDe(req));
@@ -76,6 +85,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     const { user, tenant, vinculo, permissoes, papelNome, bloqueado } = req.vd;
     res.json({
       user: { id: user.id, nome: user.nome, email: user.email },
+      totp_ativo: !!user.totp_ativo,
       tenant: { id: tenant.id, nome: tenant.nome, slug: tenant.slug, status: tenant.status, trial_expira_em: tenant.trial_expira_em },
       papel: vinculo.papel, papel_nome: papelNome, permissoes, bloqueado,
       tenants: repo.tenantsDoUsuario(user.id),
@@ -256,6 +266,29 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.delete('/buscas-salvas/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     busca.excluirSalva(req.vd.tenant.id, req.vd.user.id, req.params.id);
     res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ enterprise (Fase 10)
+  r.post('/seguranca/2fa/iniciar', requireTenant, h(async (req, res) => {
+    res.json({ ok: true, ...(await ent.iniciar2fa(req.vd.user)) });
+  }));
+  r.post('/seguranca/2fa/confirmar', requireTenant, h(async (req, res) => {
+    res.json({ ok: true, ...ent.confirmar2fa(req.vd.tenant.id, req.vd.user, (req.body || {}).codigo, req.vd.ip) });
+  }));
+  r.post('/seguranca/2fa/desativar', requireTenant, h(async (req, res) => {
+    ent.desativar2fa(req.vd.tenant.id, req.vd.user, (req.body || {}).codigo, req.vd.ip);
+    res.json({ ok: true });
+  }));
+  r.post('/documentos/:id/retencao-legal', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {
+    docs.alternarLegalHold(req.vd.tenant.id, req.params.id, !!(req.body || {}).ativo, req.vd.user, req.vd.ip);
+    res.json({ ok: true });
+  }));
+  // takeout LGPD: exportação completa (dados + arquivos vigentes) em ZIP
+  r.get('/exportacao', requireTenant, requirePerm('exportar_dados'), h(async (req, res) => {
+    const zip = ent.exportarTenant(req.vd.tenant.id, req.vd.user, req.vd.ip);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent('villela-docs-' + req.vd.tenant.slug + '.zip')}`);
+    res.send(zip);
   }));
 
   // ------------------------------------------------ integrações/API (Fase 9)

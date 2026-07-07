@@ -15,7 +15,7 @@ const VD = {
 
   abrir(tab) { if (tab) VD.tab = tab; VD.render(); },
   render() {
-    const abas = [['visao', '📊 Visão'], ['receita', '💰 Receita'], ['tenants', '🏢 Empresas'], ['planos', '📦 Planos'], ['leads', '📥 Leads'], ['auditoria', '📜 Auditoria']]
+    const abas = [['visao', '📊 Visão'], ['receita', '💰 Receita'], ['tenants', '🏢 Empresas'], ['planos', '📦 Planos'], ['leads', '📥 Leads'], ['auditoria', '📜 Auditoria'], ['saude', '🩺 Saúde']]
       .map(([id, rot]) => `<button class="btn ${VD.tab === id ? '' : 'secund'} peq" onclick="VD.ir('${id}')">${rot}</button>`).join(' ');
     conteudo().innerHTML = cabecalho('🗂️ Villela Docs Intelligence', 'Administração da plataforma SaaS de gestão documental. Produto: <a href="/vdocs" target="_blank">/vdocs</a> · painel do cliente: <a href="/vdocs/app" target="_blank">/vdocs/app</a>.')
       + `<div class="card" style="display:flex;flex-wrap:wrap;gap:.4rem">${abas}</div><div id="vd-body"><p class="sub">Carregando…</p></div>`;
@@ -25,7 +25,7 @@ const VD = {
   body() { return document.getElementById('vd-body'); },
   async pintar() {
     try {
-      const v = { visao: VD.vVisao, receita: VD.vReceita, tenants: VD.vTenants, planos: VD.vPlanos, leads: VD.vLeads, auditoria: VD.vAuditoria }[VD.tab];
+      const v = { visao: VD.vVisao, receita: VD.vReceita, tenants: VD.vTenants, planos: VD.vPlanos, leads: VD.vLeads, auditoria: VD.vAuditoria, saude: VD.vSaude }[VD.tab];
       if (v) await v();
     } catch (e) { VD.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -56,6 +56,18 @@ const VD = {
       <div class="card"><b>Custo de IA por empresa</b> <span class="sub">(centavos de USD estimados — insumo da margem)</span>
         <table class="tabela"><tr><th>Empresa</th><th>Chamadas</th><th>Tokens</th><th>Custo (¢ USD)</th></tr>
         ${r.custo_ia_por_tenant.map(c => `<tr><td>${esc(c.nome)}</td><td>${c.chamadas}</td><td>${Number(c.tokens).toLocaleString('pt-BR')}</td><td>${c.custo}</td></tr>`).join('') || '<tr><td colspan="4" class="sub">Sem uso de IA ainda.</td></tr>'}</table></div>`;
+  },
+
+  async vSaude() {
+    const r = await VD.api('GET', '/saude');
+    const kpi = (rot, val, alerta) => `<div class="card" style="min-width:150px;flex:1${alerta && val ? ';border-color:var(--alerta)' : ''}"><div class="sub">${rot}</div><div style="font-size:1.5rem;font-weight:700${alerta && val ? ';color:var(--alerta)' : ''}">${val}</div></div>`;
+    VD.body().innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0">
+      ${kpi('Jobs aguardando', r.jobs.aguardando)}${kpi('Jobs com erro', r.jobs.erro, true)}${kpi('OCR pendente', r.jobs.ocr_pendente)}
+      ${kpi('Webhooks pendentes', r.webhooks.pendentes)}${kpi('Webhooks erro (24h)', r.webhooks.erro_24h, true)}
+      ${kpi('IA erros (24h)', r.ia.erros_24h, true)}${kpi('Custo IA total', '¢' + r.ia.custo_total_centavos_usd)}
+      ${kpi('Documentos', r.volumes.documentos)}${kpi('Banco', r.volumes.db_mb + ' MB')}${kpi('Storage', r.volumes.storage_mb + ' MB')}</div>
+      ${r.jobs.ultimas_falhas.length ? `<div class="card"><b>Últimas falhas de extração</b><table class="tabela"><tr><th>Documento</th><th>Erro</th><th>Quando</th></tr>
+        ${r.jobs.ultimas_falhas.map(f => `<tr><td>${esc(f.document_id)}</td><td>${esc(f.erro)}</td><td>${VD.dt(f.atualizado_em)}</td></tr>`).join('')}</table></div>` : '<div class="aviso">✅ Sem falhas de extração registradas.</div>'}`;
   },
 
   async vTenants() {

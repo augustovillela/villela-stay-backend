@@ -4,9 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fases 1–8 EM PRODUÇÃO** (último deploy `99008e3`, 07/07/2026 — billing validado) ·
-**Fase 9 (API pública + integrações) COMPLETA** na branch `feat/vdocs-f9` (aguardando
-validação p/ merge). Testes: `npm run test:vdocs` (198/198).
+Status: **Fases 1–9 EM PRODUÇÃO** (último deploy `0c31f52`, 07/07/2026) · **Fase 10
+(enterprise) COMPLETA** na branch `feat/vdocs-f10` — **ROADMAP DAS 10 FASES CONCLUÍDO**
+(aguardando validação final p/ merge). Testes: `npm run test:vdocs` (222/222).
 
 | O quê | Onde |
 |---|---|
@@ -203,7 +203,20 @@ aprovacao.finalizada + secret `whsec_` mostrado 1×) e `webhook_deliveries` (ent
 tick do jobs; anti-SSRF: https-only e sem hosts internos em produção). Tela 🔌 Integrações no
 painel (chaves, webhooks, entregas recentes e doc da API com exemplos curl).
 
-**Fase 10 (especificado, não criado)** — na ordem do roadmap:
+**Fase 10 (criado)**: **2FA TOTP** (RFC 6238 implementado com o crypto nativo — zero dependência
+nova; QR via pacote `qrcode` existente; ativação exige confirmar código; 8 códigos de
+recuperação sha256 de uso único; login vira 2 passos: senha → `tfa_token` 5 min →
+`POST /login-2fa`), **retenção legal** (`documents.legal_hold` trava lixeira e exclusão
+definitiva; toggle exige gerir_configuracoes) + **purga automática da lixeira** (rotina diária;
+`retencao_lixeira_dias` por tenant, padrão 30; respeita o hold), **takeout LGPD**
+(`GET /exportacao`, perm exportar_dados: ZIP com dados.json completo + arquivos vigentes;
+ZIP "stored" próprio; teto VDOCS_TAKEOUT_MAX_MB=200; auditado) e **saúde da plataforma**
+(`GET /staff/api/vdocs/saude` + aba 🩺 no staff: jobs por status/falhas, webhooks pendentes/
+erro 24h, erros e custo de IA, volumes de banco/storage).
+ADIADO (sem demanda ainda): SSO/SAML/OIDC (arquitetura pronta: `verificarSegundoFator` e o
+login são pontos únicos de troca), ABAC por documento, tracing distribuído.
+
+**Backlog pós-roadmap** (evoluções mapeadas nas fases):
 - F2/F3 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel
   cobre), `document_shares`/links externos (F7), previews/miniaturas, upload multipart resumable,
   OCR real (tesseract/serviço externo) plugando em `processing_jobs`.
@@ -248,20 +261,21 @@ painel (chaves, webhooks, entregas recentes e doc da API com exemplos curl).
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
 ~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (produção) · ~~F5 IA documental~~
 ✅ (produção) · ~~F6 workflows~~ ✅ (produção) · ~~F7 compartilhamento externo~~ ✅ (produção) ·
-~~F8 billing~~ ✅ (produção) · ~~F9 API pública~~ ✅ (branch) → **F10 enterprise** (2FA, SSO,
-retenção/descarte avançados, exportação total do tenant — LGPD takeout, observabilidade).
+~~F8 billing~~ ✅ (produção) · ~~F9 API pública~~ ✅ (produção) · ~~F10 enterprise~~ ✅ (branch)
+— **ROADMAP COMPLETO**. Backlog: OCR real, previews, plano anual/cupons, SSO, alertas de busca
+salva, busca semântica, marca própria/white-label.
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 9 (aba 🔌 Integrações: chave, API v1, webhook de saída) e autoriza
-   merge `feat/vdocs-f9` → master (deploy Render).
+1. [ ] Augusto valida a Fase 10 (2FA nas Configurações, retenção legal no documento, exportação
+   LGPD, aba 🩺 Saúde no staff) e autoriza o merge FINAL `feat/vdocs-f10` → master.
 2. [ ] **PENDÊNCIA (Augusto, F8 já no ar)**: configurar o webhook de assinaturas no painel do
    Mercado Pago → `https://villela-stay-backend.onrender.com/vdocs/api/billing/webhook`
    (sem isso a ativação automática pós-pagamento não dispara).
 3. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
    → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
-4. [ ] Decisões de billing quando quiser evoluir: plano anual com desconto? cupons?
-5. [ ] Iniciar Fase 10 (enterprise: 2FA, retenção avançada, takeout LGPD, observabilidade).
+4. [ ] Comercial: primeiro cliente piloto de verdade + marca definitiva do produto.
+5. [ ] Backlog técnico quando a demanda pedir: OCR real, previews, plano anual/cupons, SSO.
 
 ## Teste local
 

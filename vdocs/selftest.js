@@ -760,6 +760,83 @@ function teste(nome, cond) {
     teste('chave revogada → 401', resp.status === 401);
   }
 
+  // ================== FASE 10: enterprise (2FA, retenção legal, takeout, saúde) ==================
+  const ent = require('./enterprise');
+
+  // ---- 2FA (TOTP) ----
+  r = await req('POST', '/vdocs/api/seguranca/2fa/iniciar', { jar: 'anaA' });
+  teste('2FA: secret gerado com otpauth', r.status === 200 && /^[A-Z2-7]{32}$/.test(r.dados.secret) && /otpauth:\/\//.test(r.dados.uri));
+  const tfaSecret = r.dados.secret;
+  r = await req('POST', '/vdocs/api/seguranca/2fa/confirmar', { body: { codigo: '000000' }, jar: 'anaA' });
+  teste('2FA: código errado não ativa', r.status === 400);
+  r = await req('POST', '/vdocs/api/seguranca/2fa/confirmar', { body: { codigo: ent.totpAgora(tfaSecret) }, jar: 'anaA' });
+  teste('2FA ativado com 8 códigos de recuperação', r.status === 200 && r.dados.recovery.length === 8);
+  const recovery = r.dados.recovery;
+  // login agora exige o 2º passo
+  r = await req('POST', '/vdocs/api/login', { body: { email: 'ana@a.com', senha: 'senha1234' }, jar: 'ana2fa' });
+  teste('login com 2FA pede o código (sem sessão ainda)', r.status === 200 && r.dados.precisa_2fa && r.dados.tfa_token && !jars.ana2fa);
+  const tfaToken = r.dados.tfa_token;
+  r = await req('POST', '/vdocs/api/login-2fa', { body: { tfa_token: tfaToken, codigo: '123456' }, jar: 'ana2fa' });
+  teste('2º passo com código errado → 401', r.status === 401);
+  r = await req('POST', '/vdocs/api/login-2fa', { body: { tfa_token: tfaToken, codigo: ent.totpAgora(tfaSecret) }, jar: 'ana2fa' });
+  teste('2º passo com TOTP correto loga', r.status === 200);
+  r = await req('GET', '/vdocs/api/me', { jar: 'ana2fa' });
+  teste('sessão pós-2FA funciona e expõe totp_ativo', r.status === 200 && r.dados.totp_ativo === true);
+  // código de recuperação: vale 1 vez
+  r = await req('POST', '/vdocs/api/login', { body: { email: 'ana@a.com', senha: 'senha1234' }, jar: 'ana2fb' });
+  r = await req('POST', '/vdocs/api/login-2fa', { body: { tfa_token: r.dados.tfa_token, codigo: recovery[0] }, jar: 'ana2fb' });
+  teste('código de recuperação loga', r.status === 200);
+  r = await req('POST', '/vdocs/api/login', { body: { email: 'ana@a.com', senha: 'senha1234' }, jar: 'ana2fc' });
+  r = await req('POST', '/vdocs/api/login-2fa', { body: { tfa_token: r.dados.tfa_token, codigo: recovery[0] }, jar: 'ana2fc' });
+  teste('código de recuperação NÃO vale duas vezes', r.status === 401);
+  r = await req('POST', '/vdocs/api/seguranca/2fa/desativar', { body: { codigo: ent.totpAgora(tfaSecret) }, jar: 'anaA' });
+  teste('2FA desativado com código', r.status === 200);
+  r = await req('POST', '/vdocs/api/login', { body: { email: 'ana@a.com', senha: 'senha1234' }, jar: 'ana2fd' });
+  teste('sem 2FA o login volta a ser direto', r.status === 200 && !r.dados.precisa_2fa);
+
+  // ---- retenção legal + purga da lixeira ----
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'contrato-judicial.txt', nome: 'Contrato em disputa', conteudo_base64: B64('processo em curso') }, jar: 'anaA' });
+  const docHold = r.dados.documento.id;
+  r = await req('POST', '/vdocs/api/documentos/' + docHold + '/retencao-legal', { body: { ativo: true }, jar: 'carlaA' });
+  teste('retenção legal exige gerir_configuracoes (403 p/ aprovador)', r.status === 403);
+  r = await req('POST', '/vdocs/api/documentos/' + docHold + '/retencao-legal', { body: { ativo: true }, jar: 'anaA' });
+  teste('retenção legal ativada', r.status === 200);
+  r = await req('POST', '/vdocs/api/documentos/' + docHold + '/lixeira', { jar: 'anaA' });
+  teste('documento sob retenção legal não vai à lixeira', r.status === 400 && /retenção legal/.test(r.dados.erro));
+  // purga: doc na lixeira há 40 dias sai
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'velho.txt', nome: 'Doc antigo na lixeira', conteudo_base64: B64('conteudo antigo qualquer') }, jar: 'anaA' });
+  const docVelho = r.dados.documento.id;
+  r = await req('POST', '/vdocs/api/documentos/' + docVelho + '/lixeira', { jar: 'anaA' });
+  dbTeste.prepare('UPDATE documents SET excluido_em = ? WHERE id = ?').run(new Date(Date.now() - 40 * 86400000).toISOString(), docVelho);
+  const purgados = await ent.purgarLixeiras();
+  teste('purga automática removeu o doc velho da lixeira', purgados >= 1);
+  r = await req('GET', '/vdocs/api/documentos/' + docVelho, { jar: 'anaA' });
+  teste('doc purgado não existe mais', r.status === 400 || r.status === 404);
+  r = await req('POST', '/vdocs/api/documentos/' + docHold + '/retencao-legal', { body: { ativo: false }, jar: 'anaA' });
+  teste('retenção legal removida', r.status === 200);
+
+  // ---- takeout LGPD ----
+  r = await req('GET', '/vdocs/api/exportacao', { jar: 'carlaA' });
+  teste('takeout exige exportar_dados (403 p/ aprovador)', r.status === 403);
+  {
+    const resp = await fetch(BASE + '/vdocs/api/exportacao', { headers: { Cookie: jars.anaA } });
+    const buf = Buffer.from(await resp.arrayBuffer());
+    teste('takeout ZIP baixa', resp.status === 200 && String(resp.headers.get('content-type')).includes('zip') && buf.readUInt32LE(0) === 0x04034b50);
+    const { lerZip } = require('./extrair');
+    const zip = lerZip(buf);
+    const dados = JSON.parse(zip.arquivo('dados.json').toString('utf8'));
+    teste('takeout tem dados.json com documentos e auditoria', dados.tenant.id === tenantA.id && dados.documentos.length >= 3 && dados.auditoria.length > 10);
+    teste('takeout inclui os arquivos vigentes', zip.nomes().some(n => n.startsWith('arquivos/')));
+  }
+  r = await req('GET', '/vdocs/api/auditoria', { jar: 'anaA' });
+  teste('exportação auditada', r.dados.eventos.some(e => e.acao === 'lgpd.exportacao_completa'));
+
+  // ---- saúde (staff) ----
+  r = await req('GET', '/staff/api/vdocs/saude', { staff: 'adm' });
+  teste('saúde: jobs/webhooks/volumes presentes', r.status === 200 && typeof r.dados.jobs.erro === 'number' && typeof r.dados.volumes.storage_mb === 'number' && r.dados.volumes.tenants === 2);
+  r = await req('GET', '/staff/api/vdocs/saude', { staff: 'fora' });
+  teste('saúde bloqueada p/ área sem acesso', r.status === 403);
+
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });
   teste('lead da landing gravado', r.status === 200);

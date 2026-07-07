@@ -169,7 +169,7 @@ function administrarTenant(tenantId, { status, plano_slug }, ator, ip) {
 }
 
 // ------------------------------------------------------------ settings
-const CONFIG_PERMITIDAS = ['idioma', 'fuso', 'logo_url', 'cor_primaria', 'retencao_padrao_dias', 'notificar_email'];
+const CONFIG_PERMITIDAS = ['idioma', 'fuso', 'logo_url', 'cor_primaria', 'retencao_padrao_dias', 'retencao_lixeira_dias', 'notificar_email'];
 function lerSettings(tenantId) {
   const out = {};
   for (const r of db.prepare('SELECT chave, valor FROM tenant_settings WHERE tenant_id = ?').all(String(tenantId))) out[r.chave] = r.valor;

@@ -38,6 +38,10 @@ db.exec(schema);
 // ---- migrações (só acrescentar no fim; cada uma roda UMA vez) ----
 const MIGRACOES = [
   { nome: '001-subscriptions-mp-preapproval', sql: "ALTER TABLE subscriptions ADD COLUMN mp_preapproval_id TEXT DEFAULT ''" },
+  { nome: '002-users-totp-secret', sql: "ALTER TABLE users ADD COLUMN totp_secret TEXT DEFAULT ''" },
+  { nome: '003-users-totp-ativo', sql: 'ALTER TABLE users ADD COLUMN totp_ativo INTEGER DEFAULT 0' },
+  { nome: '004-users-recovery-codes', sql: "ALTER TABLE users ADD COLUMN recovery_codes TEXT DEFAULT '[]'" },
+  { nome: '005-documents-legal-hold', sql: 'ALTER TABLE documents ADD COLUMN legal_hold INTEGER DEFAULT 0' },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

@@ -159,6 +159,7 @@ function iniciar() {
       rotinaVencimentos().then(n => n && console.log(`[vdocs jobs] rotina de vencimentos: ${n} empresa(s) alertada(s)`)).catch(e => console.error('[vdocs jobs]', e.message));
       require('./workflows').lembrarAtrasadas().then(n => n && console.log(`[vdocs jobs] ${n} aprovação(ões) atrasada(s) lembrada(s)`)).catch(e => console.error('[vdocs jobs]', e.message));
       require('./billing').rotinaBilling().then(n => n && console.log(`[vdocs jobs] billing: ${n} trial(s) expirando avisados`)).catch(e => console.error('[vdocs jobs]', e.message));
+      require('./enterprise').purgarLixeiras().then(n => n && console.log(`[vdocs jobs] retenção: ${n} documento(s) purgado(s) da lixeira`)).catch(e => console.error('[vdocs jobs]', e.message));
     }
   }, 5 * 60 * 1000));
   for (const t of _timers) t.unref && t.unref();

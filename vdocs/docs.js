@@ -247,6 +247,7 @@ function restaurarVersao(tenantId, id, numero, ator, ip) {
 // ------------------------------------------------------------ lixeira
 function paraLixeira(tenantId, id, ator, ip) {
   const d = obterDocumento(tenantId, id);
+  if (d.legal_hold) throw new Error('Documento sob retenção legal — remova a trava antes de excluir.');
   if (d.status !== 'ativo') throw new Error('Documento já está na lixeira.');
   db.prepare("UPDATE documents SET status = 'lixeira', excluido_em = ?, excluido_por = ?, atualizado_em = ? WHERE id = ?")
     .run(nowISO(), s(ator && ator.id, 40), nowISO(), d.id);
@@ -264,6 +265,7 @@ function restaurarDaLixeira(tenantId, id, ator, ip) {
 }
 function excluirDefinitivo(tenantId, id, ator, ip) {
   const d = obterDocumento(tenantId, id);
+  if (d.legal_hold) throw new Error('Documento sob retenção legal — exclusão bloqueada.');
   if (d.status !== 'lixeira') throw new Error('Só documentos na lixeira podem ser excluídos definitivamente.');
   const versoes = db.prepare('SELECT file_path FROM document_versions WHERE tenant_id = ? AND document_id = ?').all(String(tenantId), d.id);
   transacao(() => {
@@ -276,6 +278,14 @@ function excluirDefinitivo(tenantId, id, ator, ip) {
   for (const v of versoes) { try { fs.unlinkSync(path.resolve(STORAGE_DIR, v.file_path)); } catch (_) {} }
   try { fs.rmdirSync(path.join(STORAGE_DIR, String(tenantId), d.id)); } catch (_) {}
   repo.auditar(tenantId, ator, 'documento.excluir_definitivo', 'documents', d.id, { nome: d.nome }, ip);
+}
+
+// Retenção legal: trava exclusão (lógica e definitiva) até ser removida.
+function alternarLegalHold(tenantId, id, valor, ator, ip) {
+  const d = obterDocumento(tenantId, id);
+  db.prepare('UPDATE documents SET legal_hold = ?, atualizado_em = ? WHERE id = ? AND tenant_id = ?')
+    .run(valor ? 1 : 0, nowISO(), d.id, String(tenantId));
+  repo.auditar(tenantId, ator, valor ? 'documento.retencao_legal_ativada' : 'documento.retencao_legal_removida', 'documents', d.id, { nome: d.nome }, ip);
 }
 
 // ------------------------------------------------------------ download seguro
@@ -312,7 +322,7 @@ module.exports = {
   EXTENSOES, TIPOS_DOCUMENTAIS, MAX_ARQUIVO_MB,
   listarPastas, criarPasta, renomearPasta, moverPasta, excluirPasta,
   criarDocumento, obterDocumento, listarDocumentos, atualizarDocumento, moverDocumento,
-  novaVersao, restaurarVersao, paraLixeira, restaurarDaLixeira, excluirDefinitivo,
+  novaVersao, restaurarVersao, paraLixeira, restaurarDaLixeira, excluirDefinitivo, alternarLegalHold,
   baixar, logVisualizacao, acessosDoDocumento, usoVivo,
   lerArquivoInterno: lerArquivo, // uso interno do worker de extração (jobs.js)
 };
