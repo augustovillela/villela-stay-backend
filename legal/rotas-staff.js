@@ -9,7 +9,8 @@
 'use strict';
 
 function registrarRotasStaff(app, deps) {
-  const { repo, permissoes, feriados, ia, llm, pecas, contratos, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const jwt = require('jsonwebtoken');
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
   // permissões efetivas do request (sessão => usuário do portal; PUBLISH_KEY => agente_ia)
@@ -97,8 +98,29 @@ function registrarRotasStaff(app, deps) {
     res.json({ ok: true, id });
   }));
   app.post('/staff/api/legal/clientes/:id/notas', requireAuth, pode('gerir_clientes'), h((req, res) => {
-    const id = repo.Clientes.addNota(req.params.id, req.body || {}, quemFez(req));
+    const d = req.body || {};
+    const id = repo.Clientes.addNota(req.params.id, d, quemFez(req));
+    // nota NÃO interna = mensagem ao cliente → avisa no portal/e-mail
+    if (d.interna === false) {
+      notif.notificarCliente(req.params.id, {
+        titulo: 'Nova mensagem do escritório', corpo: String(d.texto || '').slice(0, 300),
+        ref_tipo: 'client', ref_id: req.params.id,
+      }).catch(() => {});
+    }
     res.json({ ok: true, id });
+  }));
+
+  // ------------------------------------------------------- PORTAL DO CLIENTE (Fase 5): acesso
+  app.get('/staff/api/legal/clientes/:id/portal-acesso', requireAuth, pode('gerir_clientes'), h((req, res) => {
+    res.json({ conta: portalCliente.Contas.de(req.params.id) || null });
+  }));
+  app.post('/staff/api/legal/clientes/:id/portal-acesso', requireAuth, pode('gerir_clientes'), h((req, res) => {
+    const r = portalCliente.Contas.criarOuResetar(req.params.id, (req.body || {}).email);
+    const token = jwt.sign({ tipo: 'legal-cli-setup', aid: r.account_id }, jwtSecret, { expiresIn: '7d' });
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const url = `${proto}://${req.get('host')}/cliente-juridico/definir-senha?token=${token}`;
+    auditar(req, 'cliente.portal-acesso', 'client_accounts', r.account_id, (r.reset ? 'reset ' : 'criado ') + r.email);
+    res.json({ ok: true, ...r, url, validade: '7 dias' });
   }));
 
   // ------------------------------------------------------- PROCESSOS
@@ -136,7 +158,19 @@ function registrarRotasStaff(app, deps) {
   }));
   app.post('/staff/api/legal/processos/:id/andamentos', requirePublishOrSession, pode('editar_processos'), h((req, res) => {
     const r = repo.Andamentos.criar(req.params.id, req.body || {}, req.user && req.user.id);
-    if (!r.duplicado) auditar(req, 'andamento.criar', 'case_movements', r.id, (req.body || {}).fonte || 'manual');
+    if (!r.duplicado) {
+      auditar(req, 'andamento.criar', 'case_movements', r.id, (req.body || {}).fonte || 'manual');
+      // notifica o cliente do processo (best-effort, não bloqueia a resposta)
+      const kase = require('./db').db.prepare('SELECT client_id, numero_cnj, sigiloso FROM cases WHERE id = ?').get(req.params.id);
+      if (kase && kase.client_id && !kase.sigiloso && (req.body || {}).notificar_cliente !== false) {
+        const d = req.body || {};
+        notif.notificarCliente(kase.client_id, {
+          titulo: 'Novidade no seu processo ' + (kase.numero_cnj || ''),
+          corpo: String(d.resumo || d.descricao || '').slice(0, 300),
+          ref_tipo: 'case', ref_id: req.params.id,
+        }).catch(() => {});
+      }
+    }
     res.json({ ok: true, ...r });
   }));
 
@@ -304,8 +338,21 @@ function registrarRotasStaff(app, deps) {
     if (d.status === 'aprovado' && !req.legal.permissoes.aprovar_documentos) return res.status(403).json({ erro: 'Sem permissão para aprovar documentos.' });
     if (d.status === 'enviado_cliente' && !req.legal.permissoes.enviar_cliente) return res.status(403).json({ erro: 'Sem permissão para enviar ao cliente.' });
     if (d.status === 'protocolado' && !req.legal.permissoes.protocolar) return res.status(403).json({ erro: 'Sem permissão para marcar como protocolado.' });
+    const antes = repo.Documentos.obter(req.params.id);
     const doc = repo.Documentos.atualizar(req.params.id, d);
     auditar(req, 'documento.editar', 'documents', doc.id, doc.status);
+    // documento liberado/enviado ao cliente → avisa o cliente dono
+    const liberou = (d.status === 'enviado_cliente' && antes && antes.status !== 'enviado_cliente')
+      || (d.sigilo === 'cliente' && antes && antes.sigilo !== 'cliente');
+    if (liberou) {
+      const dono = doc.client_id || (doc.case_id && (require('./db').db.prepare('SELECT client_id FROM cases WHERE id = ?').get(doc.case_id) || {}).client_id);
+      if (dono) {
+        notif.notificarCliente(dono, {
+          titulo: 'Documento disponível no seu portal', corpo: doc.titulo,
+          ref_tipo: 'document', ref_id: doc.id,
+        }).catch(() => {});
+      }
+    }
     res.json({ ok: true, documento: doc });
   }));
   app.get('/staff/api/legal/documentos/:id/download', requireAuth, pode('ver_documentos'), h((req, res) => {
@@ -514,6 +561,11 @@ function registrarRotasStaff(app, deps) {
     const r = contratos.importarContratosLegado(req.user && req.user.id);
     auditar(req, 'legado.importar-contratos', 'documents', '', `encontrados ${r.encontrados}, importados ${r.importados}, pulados ${r.pulados}`);
     res.json({ ok: true, ...r });
+  }));
+
+  // ------------------------------------------------------- NOTIFICAÇÕES DA EQUIPE (Fase 5)
+  app.get('/staff/api/legal/notificacoes', requireAuth, pode('ver_processos'), h((req, res) => {
+    res.json({ notificacoes: notif.Notificacoes.daEquipe(req.query.limite) });
   }));
 
   // ------------------------------------------------------- AUDITORIA / INTEGRAÇÕES / WEBHOOKS

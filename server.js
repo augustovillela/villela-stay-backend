@@ -5279,6 +5279,9 @@ try {
 try {
   require('./legal').montar(app, {
     express, requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios,
+    enviarEmail, enviarWhatsApp,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[legal] falha ao montar módulo:', e.message); }
 

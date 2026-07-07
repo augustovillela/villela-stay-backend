@@ -683,3 +683,19 @@ CREATE TABLE IF NOT EXISTS contract_generation_sessions (
   criado_por  TEXT DEFAULT '',
   criado_em   TEXT NOT NULL
 );
+
+-- =====================================================================
+-- FASE 5 — MÓDULO 17: PORTAL DO CLIENTE
+-- Conta de acesso do cliente (login próprio, separado do Portal Staff).
+-- Preferências de notificação moram em clients.preferencias_comunicacao
+-- (JSON já existente) — decisão registrada no README.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS client_accounts (
+  id          TEXT PRIMARY KEY,
+  client_id   TEXT NOT NULL UNIQUE REFERENCES clients(id) ON DELETE CASCADE,
+  email       TEXT NOT NULL,
+  senha_hash  TEXT DEFAULT '',   -- vazio = acesso criado, senha ainda não definida
+  ativo       INTEGER NOT NULL DEFAULT 1,
+  criado_em   TEXT NOT NULL,
+  ultimo_login TEXT DEFAULT ''
+);

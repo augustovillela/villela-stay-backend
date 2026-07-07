@@ -111,20 +111,28 @@ const LG = {
     };
   },
   async verCliente(id) {
-    const { cliente: c } = await LG.api('GET', '/clientes/' + id);
+    const [{ cliente: c }, { conta }] = await Promise.all([
+      LG.api('GET', '/clientes/' + id), LG.api('GET', `/clientes/${id}/portal-acesso`).catch(() => ({ conta: null })),
+    ]);
     LG.body().innerHTML = `<div class="card"><button class="btn secund peq" onclick="LG.pintar()">← Voltar</button>
       <h3 style="margin:.6rem 0 0">${esc(c.nome)} ${LG.chip(c.tipo_cliente)} ${LG.chip(c.tipo_pessoa)}</h3>
       <p class="sub">${esc(c.email || '')} · ${esc(c.whatsapp || '')} · CPF/CNPJ: ${esc(c.cpf_cnpj || '—')}</p>
       ${c.obs ? `<p>${esc(c.obs)}</p>` : ''}</div>
+      <div class="card"><h3>🔑 Portal do cliente</h3>
+      ${conta ? `<p class="sub">Acesso: <b>${esc(conta.email)}</b> · ${conta.senha_definida ? '✅ senha definida' : '⏳ aguardando definir senha'} ${conta.ultimo_login ? '· último acesso ' + LG.dt(conta.ultimo_login) : ''}</p>` : '<p class="sub">Este cliente ainda não tem acesso ao portal.</p>'}
+      <p><button class="btn peq" onclick="LG.gerarAcessoPortal('${id}')">${conta ? '♻️ Gerar novo link (reseta a senha)' : '➕ Criar acesso e gerar link'}</button></p>
+      <p id="lg-portal-link" class="sub" style="word-break:break-all"></p></div>
       <div class="card"><h3>⚖️ Processos vinculados</h3>${c.processos.length ? tabela(['CNJ', 'Tribunal', 'Status', 'Fase'], c.processos.map(p => [esc(p.numero_cnj || '(consultivo)'), esc(p.tribunal || '—'), LG.chip(p.status), esc(p.fase || '—')])) : '<p class="vazio">Nenhum.</p>'}</div>
       <div class="card"><h3>🔒 Consentimentos LGPD</h3>${c.consentimentos.length ? tabela(['Finalidade', 'Base legal', 'Concedido', 'Quando'], c.consentimentos.map(x => [esc(x.finalidade), esc(x.base_legal || '—'), x.concedido ? '✅' : '⛔', LG.dt(x.quando)])) : '<p class="vazio">Nenhum registrado.</p>'}
         <form class="form" id="lg-cons-form" style="max-width:560px"><div class="hi-grid">
           <label>Finalidade <input id="lgcs-fin" maxlength="120" placeholder="comunicacao-processual"></label>
           <label>Base legal <input id="lgcs-base" maxlength="120" placeholder="execução de contrato"></label></div>
           <button class="btn peq" type="submit">Registrar consentimento</button></form></div>
-      <div class="card"><h3>📝 Notas internas (nunca visíveis ao cliente)</h3>
-        ${c.notas.map(n => `<p><b>${esc(n.autor)}</b> <span class="sub">${LG.dt(n.criado_em)}</span><br>${esc(n.texto)}</p>`).join('') || '<p class="vazio">Sem notas.</p>'}
-        <form class="form" id="lg-nota-form"><label>Nova nota <input id="lgn-txt" maxlength="2000"></label><button class="btn peq" type="submit">Adicionar</button></form></div>`;
+      <div class="card"><h3>📝 Notas e mensagens</h3>
+        ${c.notas.map(n => `<p>${n.interna ? '🔒' : '💬'} <b>${esc(n.autor)}</b> <span class="sub">${LG.dt(n.criado_em)}${n.interna ? ' · interna' : ' · visível ao cliente'}</span><br>${esc(n.texto)}</p>`).join('') || '<p class="vazio">Sem notas.</p>'}
+        <form class="form" id="lg-nota-form"><label>Nova nota/mensagem <input id="lgn-txt" maxlength="2000"></label>
+        <label class="serv-ativo"><input type="checkbox" id="lgn-vis"> 💬 Enviar como MENSAGEM ao cliente (visível no portal + notificação)</label>
+        <button class="btn peq" type="submit">Adicionar</button></form></div>`;
     document.getElementById('lg-cons-form').onsubmit = async (ev) => {
       ev.preventDefault();
       await LG.api('POST', `/clientes/${id}/consentimentos`, { finalidade: document.getElementById('lgcs-fin').value, base_legal: document.getElementById('lgcs-base').value });
@@ -132,9 +140,18 @@ const LG = {
     };
     document.getElementById('lg-nota-form').onsubmit = async (ev) => {
       ev.preventDefault();
-      await LG.api('POST', `/clientes/${id}/notas`, { texto: document.getElementById('lgn-txt').value });
+      await LG.api('POST', `/clientes/${id}/notas`, { texto: document.getElementById('lgn-txt').value, interna: !document.getElementById('lgn-vis').checked });
       LG.verCliente(id);
     };
+  },
+  async gerarAcessoPortal(id) {
+    if (!confirm('Gerar link de acesso ao portal do cliente? (se já existir conta, a senha será resetada)')) return;
+    try {
+      const r = await LG.api('POST', `/clientes/${id}/portal-acesso`);
+      const alvo = document.getElementById('lg-portal-link');
+      alvo.innerHTML = `🔗 Link para o cliente definir a senha (validade ${esc(r.validade)}):<br><b>${esc(r.url)}</b>`;
+      try { await navigator.clipboard.writeText(r.url); alvo.innerHTML += '<br>✅ copiado para a área de transferência'; } catch (_) {}
+    } catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------- PROCESSOS

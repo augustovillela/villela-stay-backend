@@ -1,10 +1,10 @@
 # Villela Legal Intelligence — módulo jurídico
 
 Sistema de gestão para escritório de advocacia, construído como **módulo do backend
-existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-4 —
-fundação + núcleo jurídico + IA jurídica + peças e contratos** (gerador de peças com
-versões e travas, wizard de contratos com biblioteca de cláusulas, análise de contrato
-por IA, exportação HTML/Word, migração dos contratos legados).
+existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-5 —
+fundação + núcleo jurídico + IA jurídica + peças e contratos + portal do cliente e
+notificações** (login próprio do cliente, linguagem simples, mensagens bidirecionais,
+notificações internas/e-mail/WhatsApp por preferência).
 
 ## FASE 0 — Diagnóstico técnico do projeto (06/07/2026)
 
@@ -102,6 +102,8 @@ staff/app-legal.js # painel (sub-app com abas) no Portal Staff — menu "⚖️ 
 | Legado | `POST /importar/prazos-legado` (idempotente, marca `[legado:id]`), `POST /importar/contratos-legado` (idempotente, `documents.legado_id`) | `gerir_prazos` / `criar_documentos` |
 | Peças | `GET/POST /pecas`, `GET/PATCH /pecas/:id` (gates aprovar/protocolar/enviar), `POST /pecas/:id/versoes` †, `POST /pecas/:id/gerar`, `GET /pecas/:id/exportar?formato=html\|doc` | `ver_/criar_/editar_documentos` + especiais |
 | Contratos | `GET /contratos/templates`, `POST /contratos/gerar` (wizard), `GET/POST /contratos/analises`, `GET/PATCH † /contratos/analises/:id` | `ver_documentos` / `criar_documentos` / `usar_ia` |
+| Portal do cliente (staff) | `GET/POST /clientes/:id/portal-acesso` (cria conta + link de senha), `GET /notificacoes` (alertas da equipe) | `gerir_clientes` / `ver_processos` |
+| Portal do cliente (público) | `/cliente-juridico` (app) + `/cliente-juridico/api/*`: login/logout/definir-senha, me, processos(/:id), documentos (listar/baixar/enviar), conta, mensagens, notificações | cookie próprio do cliente |
 | Tarefas | `GET/POST † /tarefas`, `GET /tarefas/kanban`, `PATCH /tarefas/:id`, `GET .../historico`, `GET/POST .../comentarios` | `gerir_tarefas` |
 | Documentos | `GET/POST /documentos`, `GET/PATCH /documentos/:id`, `POST .../versao`, `GET .../download` | `ver_/criar_/editar_documentos` (+especiais p/ aprovar/enviar/protocolar) |
 | IA | `GET /ia`, `GET /ia/status`, `GET /ia/agentes`, `GET /ia/prompts`, `GET /ia/buscar?q=`, `POST /ia/consultas`, `GET /ia/consultas/pendentes` †, `POST /ia/consultas/:id/responder` †, `GET/POST †/DELETE /ia/conhecimento`, `POST /ia/extracao` †, `POST /ia/reindexar`, `GET /ia/runs` (custos), `GET /ia/respostas/:id`, `POST /ia/registrar` †, `POST /ia/respostas/:id/revisar` | `usar_ia` / `aprovar_documentos` / `ver_auditoria` |
@@ -156,8 +158,22 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   `contract_generation_sessions`; análise por IA com schema JSON próprio (direto ou fila,
   agente `contratual`); migração idempotente de `contratos.json` + arquivos do portal antigo
   (`documents.legado_id`, migração 001/002 no runner novo do `db.js`).
-- **Fase 5 — Portal do cliente + notificações**: conta de cliente (padrão da Área do Hóspede),
-  prestação de contas visível, e-mail (nodemailer já existe) e WhatsApp (integração existente).
+- **Fase 5 — CONCLUÍDA (07/07/2026)**: portal do cliente + notificações.
+  *Portal (Módulo 17, `portal-cliente.js`)*: páginas server-rendered em `/cliente-juridico`
+  (login próprio — `client_accounts`, bcrypt, cookie JWT restrito ao path; staff cria o acesso na
+  ficha do cliente e envia link de definição de senha com validade de 7 dias). O cliente vê:
+  processos (SEM sigilosos; SEM estratégia/prognóstico/risco/valor), andamentos em linguagem
+  simples (resumo>descrição), próximas datas (só prazos VALIDADOS e ativos), documentos
+  `sigilo='cliente'` (download logado), prestação de contas (`visivel_cliente=1` + total em
+  aberto), upload de documentos ao escritório e mensagens bidirecionais (= `client_notes` com
+  `interna=0`; a nota interna continua invisível).
+  *Notificações (Módulo 18, `notificacoes.js`)*: serviço único — linha `interna` sempre (sino do
+  portal) + e-mail (padrão ligado se houver endereço) + WhatsApp (só opt-in explícito em
+  `clients.preferencias_comunicacao` — decisão: preferências nesse JSON já existente, sem tabela
+  nova); envio best-effort com status por canal na tabela `notifications`. Ganchos ativos:
+  novo andamento → cliente (desativável com `notificar_cliente:false`); documento
+  liberado/enviado → cliente; mensagem do escritório → cliente; mensagem/upload do cliente →
+  equipe (interna + WhatsApp do Augusto). Digests agendados ficam nas rotinas da Fase 7.
 - **Fase 6 — Relatórios e gestão**: dashboards por sócio/núcleo/cliente, relatório diário.
 - **Fase 7 — Integrações**: rotina diária DataJud/DJEN gravando via API deste módulo (reusar
   `stays/juridico.ps1` + monitor DJEN existente → `POST /publicacoes` e `/processos/:id/andamentos`),
