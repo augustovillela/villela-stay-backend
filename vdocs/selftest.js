@@ -192,6 +192,93 @@ function teste(nome, cond) {
   r = await req('PATCH', '/staff/api/vdocs/tenants/' + tenantB.id, { body: { status: 'ativa' }, staff: 'adm' });
   teste('admin reativa tenant B', r.status === 200 && r.dados.tenant.status === 'ativa');
 
+  // ================== FASE 2: pastas, documentos, versões, lixeira ==================
+  const B64 = (t) => Buffer.from(t).toString('base64');
+
+  // pastas
+  r = await req('POST', '/vdocs/api/pastas', { body: { nome: 'Contratos' }, jar: 'anaA' });
+  teste('pasta criada', r.status === 200 && r.dados.id);
+  const pastaContratos = r.dados.id;
+  r = await req('POST', '/vdocs/api/pastas', { body: { nome: 'Fornecedores', parent_id: pastaContratos }, jar: 'anaA' });
+  const pastaFornec = r.dados.id;
+  teste('subpasta criada', r.status === 200);
+  r = await req('PATCH', '/vdocs/api/pastas/' + pastaContratos, { body: { parent_id: pastaFornec }, jar: 'anaA' });
+  teste('mover pasta para dentro dela mesma é recusado (anti-ciclo)', r.status === 400);
+  r = await req('POST', '/vdocs/api/pastas', { body: { nome: 'Hack', parent_id: pastaContratos }, jar: 'bobB' });
+  teste('B não cria pasta dentro de pasta de A', r.status === 400);
+
+  // upload
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'contrato.pdf', nome: 'Contrato Fornecedor X', folder_id: pastaContratos, tipo_documental: 'contrato', tags: ['fornecedor', '2026'], conteudo_base64: B64('%PDF-1.4 conteudo do contrato') }, jar: 'anaA' });
+  teste('upload de documento', r.status === 200 && r.dados.documento.versao_atual === 1);
+  const docId = r.dados.documento.id;
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'contrato2.pdf', conteudo_base64: B64('%PDF-1.4 conteudo do contrato') }, jar: 'anaA' });
+  teste('duplicado por hash detectado (409)', r.status === 409 && r.dados.duplicado);
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'contrato2.pdf', conteudo_base64: B64('%PDF-1.4 conteudo do contrato'), forcar_duplicado: true }, jar: 'anaA' });
+  teste('duplicado forçado passa', r.status === 200);
+  const docDup = r.dados.documento.id;
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'virus.exe', conteudo_base64: B64('MZ...') }, jar: 'anaA' });
+  teste('extensão perigosa recusada', r.status === 400);
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'x.pdf', conteudo_base64: '' }, jar: 'anaA' });
+  teste('arquivo vazio recusado', r.status === 400);
+
+  // isolamento de documentos
+  r = await req('GET', '/vdocs/api/documentos/' + docId, { jar: 'bobB' });
+  teste('B não abre documento de A', r.status === 400 || r.status === 404);
+  r = await req('GET', '/vdocs/api/documentos/' + docId + '/baixar', { jar: 'bobB' });
+  teste('B não baixa documento de A', r.status !== 200);
+  r = await req('GET', '/vdocs/api/documentos?pasta=' + pastaContratos, { jar: 'bobB' });
+  teste('lista de B na pasta de A vem vazia', r.status === 200 && r.dados.documentos.length === 0);
+
+  // permissões: Carla tem papel custom Fiscal (ver_documentos+ver_auditoria, SEM baixar/criar)
+  r = await req('GET', '/vdocs/api/documentos?pasta=' + pastaContratos, { jar: 'carlaA' });
+  teste('Carla (custom) vê a lista', r.status === 200 && r.dados.documentos.length >= 1);
+  r = await req('GET', '/vdocs/api/documentos/' + docId + '/baixar', { jar: 'carlaA' });
+  teste('Carla sem baixar_documento → 403', r.status === 403);
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'y.pdf', conteudo_base64: B64('yy') }, jar: 'carlaA' });
+  teste('Carla sem criar_documento → 403', r.status === 403);
+
+  // download real + log de acesso
+  {
+    const resp = await fetch(BASE + '/vdocs/api/documentos/' + docId + '/baixar', { headers: { Cookie: jars.anaA } });
+    const corpo = await resp.text();
+    teste('download devolve o conteúdo com attachment', resp.status === 200 && corpo.includes('conteudo do contrato') && String(resp.headers.get('content-disposition')).includes('attachment'));
+  }
+  r = await req('GET', '/vdocs/api/documentos/' + docId, { jar: 'anaA' });
+  teste('acessos registrados (visualizar+baixar)', r.status === 200 && r.dados.acessos.some(a => a.acao === 'baixar') && r.dados.acessos.some(a => a.acao === 'visualizar'));
+
+  // metadados + versões
+  r = await req('PATCH', '/vdocs/api/documentos/' + docId, { body: { descricao: 'Contrato de manutenção', validade: '2027-01-31', metadados: { cnpj_fornecedor: '00.000.000/0001-00', valor_mensal: 'R$ 1.500' } }, jar: 'anaA' });
+  teste('metadados personalizados gravados', r.status === 200 && r.dados.documento.metadados.cnpj_fornecedor === '00.000.000/0001-00');
+  r = await req('POST', '/vdocs/api/documentos/' + docId + '/versoes', { body: { arquivo_nome: 'contrato-v2.pdf', conteudo_base64: B64('%PDF-1.4 versao dois'), comentario: 'reajuste anual' }, jar: 'anaA' });
+  teste('nova versão criada (v2)', r.status === 200 && r.dados.versao === 2);
+  r = await req('POST', '/vdocs/api/documentos/' + docId + '/versoes/1/restaurar', { jar: 'anaA' });
+  teste('restaurar v1 gera v3 vigente', r.status === 200 && r.dados.versao === 3);
+  {
+    const resp = await fetch(BASE + '/vdocs/api/documentos/' + docId + '/baixar', { headers: { Cookie: jars.anaA } });
+    teste('download da vigente traz o conteúdo da v1 restaurada', (await resp.text()).includes('conteudo do contrato'));
+  }
+
+  // mover + lixeira + exclusão definitiva
+  r = await req('POST', '/vdocs/api/documentos/' + docDup + '/mover', { body: { folder_id: pastaFornec }, jar: 'anaA' });
+  teste('documento movido de pasta', r.status === 200);
+  r = await req('DELETE', '/vdocs/api/pastas/' + pastaFornec, { jar: 'anaA' });
+  teste('pasta com documento não pode ser excluída', r.status === 400);
+  r = await req('POST', '/vdocs/api/documentos/' + docDup + '/lixeira', { jar: 'anaA' });
+  teste('documento vai à lixeira', r.status === 200);
+  r = await req('GET', '/vdocs/api/documentos?status=lixeira', { jar: 'anaA' });
+  teste('lixeira lista o documento', r.status === 200 && r.dados.documentos.some(d => d.id === docDup));
+  r = await req('POST', '/vdocs/api/documentos/' + docDup + '/restaurar', { jar: 'anaA' });
+  teste('restaurado da lixeira', r.status === 200);
+  r = await req('POST', '/vdocs/api/documentos/' + docDup + '/lixeira', { jar: 'anaA' });
+  r = await req('DELETE', '/vdocs/api/documentos/' + docDup, { jar: 'anaA' });
+  teste('exclusão definitiva', r.status === 200);
+  r = await req('GET', '/vdocs/api/documentos/' + docDup, { jar: 'anaA' });
+  teste('documento excluído não existe mais', r.status === 400 || r.status === 404);
+
+  // uso vivo no dashboard
+  r = await req('GET', '/vdocs/api/dashboard', { jar: 'anaA' });
+  teste('dashboard conta documentos ativos', r.dados.documentos === 1);
+
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });
   teste('lead da landing gravado', r.status === 200);

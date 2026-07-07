@@ -4,7 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fase 1 (fundação SaaS) COMPLETA** — branch `feat/vdocs`, testes `npm run test:vdocs` (47/47).
+Status: **Fase 1 EM PRODUÇÃO** (merge→master `4fc4f1c`, deploy Render live 07/07/2026, preços
+aprovados) · **Fase 2 (gestão documental básica) COMPLETA** na branch `feat/vdocs-f2`
+(aguardando validação do Augusto p/ merge). Testes: `npm run test:vdocs` (76/76).
 
 | O quê | Onde |
 |---|---|
@@ -106,9 +108,18 @@ Plataforma (sessão staff, áreas ti/ceo; escrita admin): `GET /staff/api/vdocs/
 Convenções: id `base64url(9)`, datas ISO-8601 TEXT, JSON em TEXT (`j.parse/str`),
 `tenant_id` obrigatório em tudo que é dado de cliente.
 
-**Fases 2+ (especificado, não criado)** — na ordem do roadmap:
-- F2 documentos: `folders`, `documents`, `document_files` (hash sha256, dedupe), `document_versions`,
-  `document_metadata`, `document_types`, `document_permissions`, `document_shares`, `upload_sessions`.
+**Fase 2 (criado)**: `folders` (árvore com anti-ciclo), `documents` (tipo documental, tags,
+validade, lixeira), `document_versions` (sha256, dedupe por conteúdo, restaurar = nova versão),
+`document_metadata` (chave→valor por documento), `document_access_logs` (visualizar/baixar com
+IP — LGPD). Domínio em `docs.js`; storage privado em `DATA_DIR/vdocs/storage/<tenant>/<doc>/`
+com nome interno gerado, caminho validado (anti path-traversal) e download SEMPRE autenticado
+com `Content-Disposition: attachment` + `nosniff`. Upload em base64 (JSON até 30 MB → arquivo
+≤20 MB), lista fechada de extensões (executáveis recusados). Limites do plano aplicados em
+documentos e armazenamento (uso "vivo" no `usoDoMes`). Convite agora dispara e-mail (best-effort).
+
+**Fases 3+ (especificado, não criado)** — na ordem do roadmap:
+- F2 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel cobre),
+  `document_shares`/links externos (F7), previews/miniaturas (F3), upload multipart resumable.
 - F3 processamento: `ocr_jobs`, `document_texts`, `document_pages`, `document_previews`, `indexing_jobs`, `processing_logs`.
 - F4 busca: `search_queries`, `saved_searches` (FTS5/BM25 do node:sqlite — mesmo caminho provado no legal).
 - F5 IA: `ai_conversations`, `ai_messages`, `ai_sources` (citação obrigatória), `ai_feedback`,
@@ -145,23 +156,22 @@ Convenções: id `base64url(9)`, datas ISO-8601 TEXT, JSON em TEXT (`j.parse/str
 - [ ] F7: exportação completa dos dados do tenant (takeout) e exclusão/anonimização no cancelamento
 - [ ] F8: DPA (contrato de processamento de dados) no onboarding; política de privacidade e termos formais
 
-## Roadmap (10 fases — spec completa com o Augusto)
+## Roadmap (10 fases — spec completa com o Augusto; ordem confirmada em 07/07/2026)
 
-~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ · **F2 documentos** (pastas, upload seguro,
-versões, metadados, lixeira, e-mail de convite) → F3 processamento (OCR/preview/indexação em
-jobs) → F4 busca (FTS5 híbrida, filtros, buscas salvas) → F5 IA documental (chat com fontes,
-análise, classificação — reusar padrão modo duplo do legal) → F6 workflows → F7 compartilhamento
-externo + portal → F8 billing (Mercado Pago) + relatórios SaaS → F9 API pública + integrações →
-F10 enterprise (SSO, 2FA, retenção avançada, observabilidade).
+~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (branch) →
+**F3 processamento** (OCR/preview/indexação em jobs, alertas de vencimento) → F4 busca (FTS5
+híbrida, filtros, buscas salvas) → F5 IA documental (chat com fontes, análise, classificação —
+reusar padrão modo duplo do legal) → F6 workflows → F7 compartilhamento externo + portal →
+F8 billing (Mercado Pago) + relatórios SaaS → F9 API pública + integrações → F10 enterprise
+(SSO, 2FA, retenção avançada, observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 1 local: `node stays/start-staff-dev.js` → http://localhost:3000/vdocs
-   (criar conta trial) e Portal Staff → aba 🗂️ Villela Docs.
-2. [ ] Ajustar preços/limites reais dos planos (aba Planos ou `PATCH /staff/api/vdocs/planos/:id`).
-3. [ ] Decidir domínio comercial (docs.villelastay.com.br já redireciona; marca própria depois?).
-4. [ ] Merge `feat/vdocs` → `master` + push (deploy Render) quando aprovado — **decisão do Augusto**.
-5. [ ] Iniciar Fase 2 (documentos) — não precisa de env var nova.
+1. [ ] Augusto valida a Fase 2 local (`node stays/start-staff-dev.js` → /vdocs/app → Documentos)
+   e autoriza merge `feat/vdocs-f2` → master (deploy Render).
+2. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
+   → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
+3. [ ] Iniciar Fase 3 (processamento) — sem env var nova.
 
 ## Teste local
 

@@ -306,7 +306,7 @@ async function sair(){await api('POST','/logout').catch(()=>{});location.href='/
 
 const TELAS=[
  ['dashboard','📊 Dashboard',()=>true],
- ['documentos','📁 Documentos',()=>true,'breve'],
+ ['documentos','📁 Documentos',m=>m.permissoes.ver_documentos],
  ['busca','🔎 Busca',()=>true,'breve'],
  ['ia','🤖 IA documental',()=>true,'breve'],
  ['workflows','✅ Aprovações',()=>true,'breve'],
@@ -318,7 +318,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Disponível na próxima fase">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -336,13 +336,107 @@ async function vDash(){
    '<div class="kpis">'+
    '<div class="kpi"><div class="n">'+d.usuarios_ativos+'</div><div class="r">usuários ativos'+(L.usuarios?' / '+L.usuarios:'')+'</div></div>'+
    '<div class="kpi"><div class="n">'+d.convites_pendentes+'</div><div class="r">convites pendentes</div></div>'+
-   '<div class="kpi"><div class="n">'+d.documentos+'</div><div class="r">documentos (Fase 2)</div></div>'+
+   '<div class="kpi"><div class="n">'+d.documentos+'</div><div class="r">documentos</div></div>'+
    '<div class="kpi"><div class="n">'+(d.armazenamento_mb||0)+' MB</div><div class="r">armazenamento usado</div></div></div>'+
    (L.usuarios?'<div class="card"><b>Uso de usuários</b><div class="barra" style="margin-top:6px"><i style="width:'+pct(d.usuarios_ativos,L.usuarios)+'%"></i></div><span class="r" style="font-size:12px;color:var(--suave)">'+d.usuarios_ativos+' de '+L.usuarios+'</span></div>':'')+
    '<div class="card" style="margin-top:14px"><b>Atividade recente</b><table><tr><th>Quando</th><th>Quem</th><th>Ação</th></tr>'+
    d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></div>'+
-   '<div class="aviso" style="margin-top:14px">🚧 <b>Fase 1 (fundação).</b> Upload de documentos, pastas, busca, OCR, IA e workflows chegam nas próximas fases.</div>';
+   '<div class="aviso" style="margin-top:14px">🚧 Busca avançada, OCR, IA documental e workflows de aprovação chegam nas próximas fases.</div>';
 }
+// ---------------- Documentos (Fase 2) ----------------
+S.pasta='';S.lixeira=false;S.pastas=[];
+const kb=n=>{n=Number(n||0);return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';};
+function trilha(){
+  const partes=[];let id=S.pasta;
+  while(id){const p=S.pastas.find(x=>x.id===id);if(!p)break;partes.unshift(p);id=p.parent_id;}
+  return '<a href="#" onclick="return irPasta(\\'\\')">🏠 Início</a>'+partes.map(p=>' / <a href="#" onclick="return irPasta(\\''+p.id+'\\')">'+esc(p.nome)+'</a>').join('');
+}
+function irPasta(id){S.pasta=id;S.lixeira=false;vDocs();return false;}
+async function vDocs(){
+  const P=S.me.permissoes;
+  const filtro=($('dq')&&$('dq').value)||'';
+  const [ps,ds]=await Promise.all([api('GET','/pastas'),api('GET','/documentos?busca='+encodeURIComponent(filtro)+'&'+(S.lixeira?'status=lixeira':'pasta='+encodeURIComponent(S.pasta)))]);
+  S.pastas=ps.pastas;S.tiposDoc=ds.tipos;
+  const sub=S.lixeira?[]:S.pastas.filter(p=>p.parent_id===S.pasta);
+  const docsL=ds.documentos;
+  $('corpo').innerHTML='<h2>'+(S.lixeira?'🗑️ Lixeira':'Documentos')+'</h2>'+
+   '<div class="card" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
+   '<div style="flex:1;min-width:220px;font-size:14px">'+(S.lixeira?'Documentos excluídos (restaure ou exclua definitivamente)':trilha())+'</div>'+
+   '<input id="dq" placeholder="Buscar por nome…" value="'+esc(filtro)+'" style="max-width:200px" oninput="clearTimeout(S._t);S._t=setTimeout(vDocs,400)">'+
+   (P.criar_pasta&&!S.lixeira?'<button class="btn btn-ghost peq" onclick="novaPasta()">📁 Nova pasta</button>':'')+
+   (P.criar_documento&&!S.lixeira?'<button class="btn peq" onclick="$(\\'up-file\\').click()">⬆️ Enviar arquivos</button><input id="up-file" type="file" multiple style="display:none" onchange="enviarArquivos(this.files)">':'')+
+   (P.excluir_documento||P.restaurar_documento?'<button class="btn btn-ghost peq" onclick="S.lixeira=!S.lixeira;vDocs()">'+(S.lixeira?'← Voltar aos documentos':'🗑️ Lixeira')+'</button>':'')+
+   '</div><div id="up-out"></div>'+
+   (sub.length?'<div class="card" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">'+sub.map(p=>'<button class="btn btn-ghost peq" onclick="irPasta(\\''+p.id+'\\')">📁 '+esc(p.nome)+'</button>'+(P.excluir_documento?'<button class="btn btn-ghost peq" title="Excluir pasta vazia" onclick="excluirPasta(\\''+p.id+'\\')">✕</button>':'')).join(''):'')+ (sub.length?'</div>':'')+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Documento</th><th>Tipo</th><th>Tags</th><th>Versão</th><th>Atualizado</th><th></th></tr>'+
+   (docsL.length?docsL.map(d=>{
+     return '<tr><td><a href="#" onclick="return abrirDoc(\\''+d.id+'\\')">'+esc(d.nome)+'</a></td>'+
+     '<td>'+esc(d.tipo_documental)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
+     '<td>v'+d.versao_atual+'</td><td>'+dt(d.atualizado_em||d.criado_em)+'</td><td>'+
+     (S.lixeira?((P.restaurar_documento?'<button class="btn peq" onclick="docAcao(\\''+d.id+'\\',\\'restaurar\\')">Restaurar</button> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="excluirDefinitivo(\\''+d.id+'\\')">Excluir de vez</button>':''))
+      :((P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar">⬇️</a> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="docAcao(\\''+d.id+'\\',\\'lixeira\\')">🗑️</button>':'')))+'</td></tr>';
+   }).join(''):'<tr><td colspan="6" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':'Nenhum documento nesta pasta ainda.')+'</td></tr>')+'</table></div>';
+}
+async function novaPasta(){const n=prompt('Nome da nova pasta:');if(!n)return;
+  try{await api('POST','/pastas',{nome:n,parent_id:S.pasta});vDocs();}catch(e){alert(e.message);}}
+async function excluirPasta(id){if(!confirm('Excluir esta pasta? (precisa estar vazia)'))return;
+  try{await api('DELETE','/pastas/'+id);vDocs();}catch(e){alert(e.message);}}
+function b64(file){return new Promise((ok,err)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]||'');r.onerror=err;r.readAsDataURL(file);});}
+async function enviarArquivos(files){
+  const out=$('up-out');
+  for(const f of Array.from(files||[])){
+    out.innerHTML='<div class="aviso">Enviando '+esc(f.name)+'…</div>';
+    try{
+      const conteudo=await b64(f);
+      try{await api('POST','/documentos',{arquivo_nome:f.name,nome:f.name,folder_id:S.pasta,conteudo_base64:conteudo});}
+      catch(e){
+        if(/idêntico já existe/.test(e.message)&&confirm(e.message+'\\n\\nEnviar mesmo assim?'))
+          await api('POST','/documentos',{arquivo_nome:f.name,nome:f.name,folder_id:S.pasta,conteudo_base64:conteudo,forcar_duplicado:true});
+        else if(!/idêntico já existe/.test(e.message))throw e;
+      }
+    }catch(e){out.innerHTML='<div class="erro">'+esc(f.name)+': '+esc(e.message)+'</div>';return;}
+  }
+  out.innerHTML='';vDocs();
+}
+async function docAcao(id,acao){try{await api('POST','/documentos/'+id+'/'+acao);vDocs();}catch(e){alert(e.message);}}
+async function excluirDefinitivo(id){if(!confirm('Excluir DEFINITIVAMENTE? Todas as versões serão apagadas do servidor. Não dá para desfazer.'))return;
+  try{await api('DELETE','/documentos/'+id);vDocs();}catch(e){alert(e.message);}}
+async function abrirDoc(id){
+  const P=S.me.permissoes;
+  const {documento:d,acessos}=await api('GET','/documentos/'+id);
+  const selPasta='<select id="dd-pasta"><option value="">🏠 Início</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
+  $('corpo').innerHTML='<p><a href="#" onclick="return irPasta(S.pasta)">← voltar</a></p><h2>'+esc(d.nome)+'</h2>'+
+   '<div class="card">'+
+   (P.editar_metadados?'<label>Nome</label><input id="dd-nome" value="'+esc(d.nome)+'">'+
+    '<label>Descrição</label><textarea id="dd-desc" rows="2">'+esc(d.descricao)+'</textarea>'+
+    '<label>Tipo documental</label><select id="dd-tipo">'+S.tiposDoc.map(t=>'<option'+(t===d.tipo_documental?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
+    '<label>Tags (separadas por vírgula)</label><input id="dd-tags" value="'+esc(d.tags.join(', '))+'">'+
+    '<label>Validade (para alertas de vencimento)</label><input id="dd-val" type="date" value="'+esc(d.validade)+'">'+
+    '<p><button class="btn peq" onclick="salvarDoc(\\''+d.id+'\\')">Salvar</button> <span id="dd-out"></span></p>'
+    :'<p>'+esc(d.descricao||'Sem descrição.')+'</p><p>Tipo: '+esc(d.tipo_documental)+' · Tags: '+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</p>')+
+   (P.mover_documento?'<label>Pasta</label><div style="display:flex;gap:8px">'+selPasta+'<button class="btn btn-ghost peq" onclick="moverDoc(\\''+d.id+'\\')">Mover</button></div>':'')+
+   '</div>'+
+   '<div class="card" style="margin-top:12px"><b>Versões</b> '+
+   (P.criar_documento?'<button class="btn btn-ghost peq" onclick="$(\\'dd-file\\').click()">⬆️ Nova versão</button><input id="dd-file" type="file" style="display:none" onchange="novaVersaoDoc(\\''+d.id+'\\',this.files[0])">':'')+
+   '<table><tr><th>Versão</th><th>Arquivo</th><th>Tamanho</th><th>Enviada em</th><th>Comentário</th><th></th></tr>'+
+   d.versoes.map(v=>'<tr'+(v.numero===d.versao_atual?' style="font-weight:700"':'')+'><td>v'+v.numero+(v.numero===d.versao_atual?' <span class="chip">vigente</span>':'')+'</td><td>'+esc(v.nome_arquivo)+'</td><td>'+kb(v.tamanho)+'</td><td>'+dt(v.criado_em)+'</td><td>'+esc(v.comentario)+'</td><td>'+
+    (P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar?versao='+v.numero+'">⬇️</a> ':'')+
+    (P.criar_documento&&v.numero!==d.versao_atual?'<button class="btn btn-ghost peq" onclick="restaurarVersaoDoc(\\''+d.id+'\\','+v.numero+')">↩️ Tornar vigente</button>':'')+'</td></tr>').join('')+'</table></div>'+
+   (acessos.length?'<div class="card" style="margin-top:12px"><b>Acessos recentes</b><table><tr><th>Quando</th><th>Ação</th><th>Versão</th><th>IP</th></tr>'+
+    acessos.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.acao)+'</td><td>'+(a.versao||'—')+'</td><td>'+esc(a.ip)+'</td></tr>').join('')+'</table></div>':'');
+  return false;
+}
+async function salvarDoc(id){try{
+  await api('PATCH','/documentos/'+id,{nome:$('dd-nome').value,descricao:$('dd-desc').value,tipo_documental:$('dd-tipo').value,validade:$('dd-val').value,tags:$('dd-tags').value.split(',').map(t=>t.trim()).filter(Boolean)});
+  $('dd-out').textContent='✅ salvo';}catch(e){$('dd-out').textContent='⚠️ '+e.message;}}
+async function moverDoc(id){try{await api('POST','/documentos/'+id+'/mover',{folder_id:$('dd-pasta').value});abrirDoc(id);}catch(e){alert(e.message);}}
+async function novaVersaoDoc(id,f){if(!f)return;try{
+  const conteudo=await b64(f);const c=prompt('Comentário da versão (opcional):')||'';
+  await api('POST','/documentos/'+id+'/versoes',{arquivo_nome:f.name,conteudo_base64:conteudo,comentario:c});abrirDoc(id);
+ }catch(e){alert(e.message);}}
+async function restaurarVersaoDoc(id,n){if(!confirm('Tornar a v'+n+' vigente? (vira uma nova versão)'))return;
+  try{await api('POST','/documentos/'+id+'/versoes/'+n+'/restaurar');abrirDoc(id);}catch(e){alert(e.message);}}
+
 async function vUsuarios(){
   const d=await api('GET','/usuarios');const papeis=S.me.papeis_embutidos;
   const opts=sel=>Object.entries(papeis).filter(([k])=>k!=='dono').map(([k,n])=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+esc(n)+'</option>').join('');

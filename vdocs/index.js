@@ -18,17 +18,17 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
 function montar(app, injected = {}) {
-  const { express, requireAuth, requireAdmin, alertaAugusto, jwtSecret } = injected;
+  const { express, requireAuth, requireAdmin, alertaAugusto, enviarEmail, jwtSecret } = injected;
   if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
     throw new Error('vdocs.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
   repo.semearPlanos(); // Starter/Professional/Business/Enterprise (upsert idempotente)
   const auth = criarAuth({ jwtSecret });
   const notificar = (msg) => Promise.resolve((alertaAugusto || (async () => {}))(msg)).catch(() => {});
-  registrarRotasApi(app, { express, auth, notificar });
+  registrarRotasApi(app, { express, auth, notificar, enviarEmail });
   registrarRotasStaff(app, { express, requireAuth, requireAdmin });
   registrarPaginas(app);
-  console.log('[vdocs] Villela Docs Intelligence montado (Fase 1 — fundação SaaS multi-tenant).');
+  console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-2: fundação SaaS + gestão documental).');
   return { repo, permissoes, auth };
 }
 

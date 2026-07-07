@@ -158,3 +158,74 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   criado_em    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_tenant ON audit_logs (tenant_id, criado_em);
+
+-- ---------- Fase 2: gestão documental básica ----------
+
+CREATE TABLE IF NOT EXISTS folders (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  parent_id     TEXT DEFAULT '',            -- '' = raiz
+  nome          TEXT NOT NULL,
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT '',
+  criado_por    TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_folders_tenant ON folders (tenant_id, parent_id);
+
+CREATE TABLE IF NOT EXISTS documents (
+  id              TEXT PRIMARY KEY,
+  tenant_id       TEXT NOT NULL,
+  folder_id       TEXT DEFAULT '',          -- '' = raiz
+  nome            TEXT NOT NULL,            -- nome de exibição (editável)
+  descricao       TEXT DEFAULT '',
+  tipo_documental TEXT DEFAULT '',          -- contrato|nota_fiscal|recibo|politica|rh|juridico|outro...
+  tags            TEXT DEFAULT '[]',        -- JSON array
+  status          TEXT DEFAULT 'ativo',     -- ativo|lixeira
+  versao_atual    INTEGER DEFAULT 1,
+  validade        TEXT DEFAULT '',          -- data ISO p/ alertas de vencimento (rotina na F3+)
+  criado_em       TEXT NOT NULL,
+  atualizado_em   TEXT DEFAULT '',
+  criado_por      TEXT DEFAULT '',
+  excluido_em     TEXT DEFAULT '',
+  excluido_por    TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_docs_tenant ON documents (tenant_id, status, folder_id);
+
+CREATE TABLE IF NOT EXISTS document_versions (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL,
+  document_id  TEXT NOT NULL,
+  numero       INTEGER NOT NULL,
+  nome_arquivo TEXT NOT NULL,               -- nome original do upload
+  mime         TEXT DEFAULT '',
+  tamanho      INTEGER DEFAULT 0,           -- bytes
+  sha256       TEXT NOT NULL,
+  file_path    TEXT NOT NULL,               -- relativo a STORAGE_DIR (nunca exposto ao cliente)
+  comentario   TEXT DEFAULT '',
+  criado_em    TEXT NOT NULL,
+  criado_por   TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vers_doc ON document_versions (tenant_id, document_id, numero);
+CREATE INDEX IF NOT EXISTS idx_vers_hash ON document_versions (tenant_id, sha256);
+
+-- Metadados personalizados (chave→valor por documento; campos padrão ficam em documents).
+CREATE TABLE IF NOT EXISTS document_metadata (
+  tenant_id   TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  chave       TEXT NOT NULL,
+  valor       TEXT DEFAULT '',
+  PRIMARY KEY (tenant_id, document_id, chave)
+);
+
+-- LGPD/auditoria fina: quem viu/baixou cada documento.
+CREATE TABLE IF NOT EXISTS document_access_logs (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id   TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  user_id     TEXT DEFAULT '',
+  acao        TEXT NOT NULL,                -- visualizar|baixar
+  versao      INTEGER DEFAULT 0,
+  ip          TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_acc_doc ON document_access_logs (tenant_id, document_id, criado_em);

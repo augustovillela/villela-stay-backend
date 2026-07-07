@@ -73,6 +73,8 @@ function usoDoMes(tenantId) {
   for (const r of rows) uso[r.metrica] = r.quantidade;
   // métricas "vivas" (contadas na hora, não acumuladas no mês)
   uso.usuarios = db.prepare("SELECT COUNT(*) n FROM tenant_users WHERE tenant_id = ? AND status = 'ativo'").get(String(tenantId)).n;
+  uso.documentos = db.prepare("SELECT COUNT(*) n FROM documents WHERE tenant_id = ? AND status = 'ativo'").get(String(tenantId)).n;
+  uso.armazenamento_mb = Math.ceil(db.prepare('SELECT COALESCE(SUM(tamanho),0) t FROM document_versions WHERE tenant_id = ?').get(String(tenantId)).t / (1024 * 1024));
   return uso;
 }
 function planoDoTenant(tenantId) {

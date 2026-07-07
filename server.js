@@ -5292,7 +5292,7 @@ try {
 // da plataforma na aba 🗂️ do Portal Staff. SQLite próprio em DATA_DIR/vdocs/.
 try {
   require('./vdocs').montar(app, {
-    express, requireAuth, requireAdmin,
+    express, requireAuth, requireAdmin, enviarEmail,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     jwtSecret: JWT_SECRET,
   });
