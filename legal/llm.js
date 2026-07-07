@@ -96,17 +96,14 @@ function logRun({ agente, query_id, modelo, usage, duracao_ms, status, detalhe }
   } catch (_) { /* log nunca derruba a chamada */ }
 }
 
-// Responde uma consulta jurídica com saída estruturada garantida.
-// Retorna { json, modelo, usage } ou lança erro (fila continua como fallback).
-async function consultar({ agentePrompt, agenteId, queryId, pergunta, contexto }) {
+// Execução genérica com fallback de modelo. Com `schema` → structured output
+// (retorna { json }); sem → texto livre (retorna { texto }). Sempre loga o run.
+async function executar({ agenteId, queryId, systemExtra, prompt, schema }) {
   if (!ativo()) throw new Error('LLM inativo: ANTHROPIC_API_KEY não definida — use a fila (agente local).');
   const system = [
     { type: 'text', text: GUARDRAILS, cache_control: { type: 'ephemeral' } },
-    ...(agentePrompt ? [{ type: 'text', text: agentePrompt, cache_control: { type: 'ephemeral' } }] : []),
+    ...(systemExtra ? [{ type: 'text', text: systemExtra, cache_control: { type: 'ephemeral' } }] : []),
   ];
-  const userMsg = (contexto ? `CONTEXTO RECUPERADO (fontes internas do escritório — cite pelo campo "citacao" indicado):\n${contexto}\n\n` : '')
-    + `CONSULTA:\n${pergunta}`;
-
   let ultimoErro = null;
   for (const modelo of MODELOS) {
     const t0 = Date.now();
@@ -116,8 +113,8 @@ async function consultar({ agentePrompt, agenteId, queryId, pergunta, contexto }
         max_tokens: MAX_TOKENS,
         thinking: { type: 'adaptive' },
         system,
-        output_config: { format: { type: 'json_schema', schema: SCHEMA_RESPOSTA } },
-        messages: [{ role: 'user', content: userMsg }],
+        ...(schema ? { output_config: { format: { type: 'json_schema', schema } } } : {}),
+        messages: [{ role: 'user', content: prompt }],
       });
       const msg = await stream.finalMessage();
       if (msg.stop_reason === 'refusal') {
@@ -125,9 +122,8 @@ async function consultar({ agentePrompt, agenteId, queryId, pergunta, contexto }
         throw new Error('O modelo recusou a solicitação (stop_reason=refusal).');
       }
       const texto = (msg.content.find(b => b.type === 'text') || {}).text || '';
-      const json = JSON.parse(texto);
       logRun({ agente: agenteId, query_id: queryId, modelo, usage: msg.usage, duracao_ms: Date.now() - t0, status: 'ok' });
-      return { json, modelo, usage: msg.usage };
+      return { texto, json: schema ? JSON.parse(texto) : null, modelo, usage: msg.usage };
     } catch (e) {
       ultimoErro = e;
       logRun({ agente: agenteId, query_id: queryId, modelo, duracao_ms: Date.now() - t0, status: 'erro', detalhe: e.message });
@@ -139,4 +135,12 @@ async function consultar({ agentePrompt, agenteId, queryId, pergunta, contexto }
   throw ultimoErro || new Error('Falha na chamada de IA.');
 }
 
-module.exports = { ativo, consultar, MODELOS, GUARDRAILS, SCHEMA_RESPOSTA, logRun };
+// Responde uma consulta jurídica com saída estruturada garantida (Fase 3).
+async function consultar({ agentePrompt, agenteId, queryId, pergunta, contexto }) {
+  const prompt = (contexto ? `CONTEXTO RECUPERADO (fontes internas do escritório — cite pelo campo "citacao" indicado):\n${contexto}\n\n` : '')
+    + `CONSULTA:\n${pergunta}`;
+  const r = await executar({ agenteId, queryId, systemExtra: agentePrompt, prompt, schema: SCHEMA_RESPOSTA });
+  return { json: r.json, modelo: r.modelo, usage: r.usage };
+}
+
+module.exports = { ativo, consultar, executar, MODELOS, GUARDRAILS, SCHEMA_RESPOSTA, logRun };

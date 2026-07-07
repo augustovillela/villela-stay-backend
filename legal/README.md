@@ -1,9 +1,10 @@
 # Villela Legal Intelligence — módulo jurídico
 
 Sistema de gestão para escritório de advocacia, construído como **módulo do backend
-existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1+2+3 —
-fundação + núcleo jurídico + IA jurídica** (RAG com FTS5/BM25, 16 agentes especialistas,
-biblioteca de prompts, consultas com fontes obrigatórias, fila para o agente local).
+existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-4 —
+fundação + núcleo jurídico + IA jurídica + peças e contratos** (gerador de peças com
+versões e travas, wizard de contratos com biblioteca de cláusulas, análise de contrato
+por IA, exportação HTML/Word, migração dos contratos legados).
 
 ## FASE 0 — Diagnóstico técnico do projeto (06/07/2026)
 
@@ -98,7 +99,9 @@ staff/app-legal.js # painel (sub-app com abas) no Portal Staff — menu "⚖️ 
 | Prazos | `GET/POST † /prazos`, `POST /prazos/calcular` †, `PATCH /prazos/:id`, `GET /prazos/:id/eventos` | `gerir_prazos` |
 | Audiências | `GET/POST † /audiencias`, `GET/PATCH /audiencias/:id`, `POST .../participantes`, `POST .../providencias` (opção criar_tarefa), `PATCH /providencias/:id` | `ver_processos` / `gerir_prazos` |
 | Agenda/Feriados | `GET /agenda?dias=`, `GET/POST/DELETE /feriados` | `ver_processos` / `gerir_prazos` |
-| Legado | `POST /importar/prazos-legado` (idempotente, marca `[legado:id]`) | `gerir_prazos` |
+| Legado | `POST /importar/prazos-legado` (idempotente, marca `[legado:id]`), `POST /importar/contratos-legado` (idempotente, `documents.legado_id`) | `gerir_prazos` / `criar_documentos` |
+| Peças | `GET/POST /pecas`, `GET/PATCH /pecas/:id` (gates aprovar/protocolar/enviar), `POST /pecas/:id/versoes` †, `POST /pecas/:id/gerar`, `GET /pecas/:id/exportar?formato=html\|doc` | `ver_/criar_/editar_documentos` + especiais |
+| Contratos | `GET /contratos/templates`, `POST /contratos/gerar` (wizard), `GET/POST /contratos/analises`, `GET/PATCH † /contratos/analises/:id` | `ver_documentos` / `criar_documentos` / `usar_ia` |
 | Tarefas | `GET/POST † /tarefas`, `GET /tarefas/kanban`, `PATCH /tarefas/:id`, `GET .../historico`, `GET/POST .../comentarios` | `gerir_tarefas` |
 | Documentos | `GET/POST /documentos`, `GET/PATCH /documentos/:id`, `POST .../versao`, `GET .../download` | `ver_/criar_/editar_documentos` (+especiais p/ aprovar/enviar/protocolar) |
 | IA | `GET /ia`, `GET /ia/status`, `GET /ia/agentes`, `GET /ia/prompts`, `GET /ia/buscar?q=`, `POST /ia/consultas`, `GET /ia/consultas/pendentes` †, `POST /ia/consultas/:id/responder` †, `GET/POST †/DELETE /ia/conhecimento`, `POST /ia/extracao` †, `POST /ia/reindexar`, `GET /ia/runs` (custos), `GET /ia/respostas/:id`, `POST /ia/registrar` †, `POST /ia/respostas/:id/revisar` | `usar_ia` / `aprovar_documentos` / `ver_auditoria` |
@@ -136,8 +139,23 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   e devolve por `POST /ia/consultas/:id/responder` — ambos via PUBLISH_KEY.
   *Decisão embeddings*: sem provedor de embeddings na infra, o retrieval é lexical (BM25); a
   migração para vetores (`sqlite-vec`/pgvector + API de embeddings) fica isolada em `ia.js`.
-- **Fase 4 — Peças e contratos**: wizard sobre `legal_drafts`/`contract_*`, exportação DOCX/PDF
-  (padrão do `gerar-contrato-hospede`), biblioteca de cláusulas.
+- **Fase 4 — CONCLUÍDA (06/07/2026)**: peças e contratos.
+  *Peças (Módulo 10, `pecas.js`)*: `legal_drafts` + versões; 28 tipos de peça; fluxo
+  rascunho→revisão→aprovado→protocolado/enviado com gates de permissão; TRAVAS: aprovar exige
+  sessão humana identificada, e peça `gerado_por_ia` não protocola/envia sem `aprovado_por`;
+  geração assistida (modo direto `llm.executar` texto, ou FILA — ai_query com
+  `{finalidade:'gerar-peca', draft_id}`; o agente local devolve em `POST /pecas/:id/versoes`);
+  toda versão entra no RAG; exportação HTML (imprimir→PDF) e .doc (HTML+mime Word — decisão:
+  zero dependência; DOCX real fica p/ quando houver lib aprovada) com carimbo MINUTA enquanto
+  não aprovada e log em `legal_draft_exports`.
+  *Contratos (Módulos 12+13, `contratos.js`)*: mapeamento — contrato recebido/assinado =
+  `documents` (tipo contrato); minuta em elaboração = `legal_drafts`; análise =
+  `contract_reviews` (+`analise_json` via migração). Biblioteca de 4 modelos seed
+  (prestação de serviços, NDA, honorários, hospedagem/temporada padrão Villela) com cláusulas
+  obrigatórias/opcionais e placeholders `{{campo}}`; wizard grava a sessão em
+  `contract_generation_sessions`; análise por IA com schema JSON próprio (direto ou fila,
+  agente `contratual`); migração idempotente de `contratos.json` + arquivos do portal antigo
+  (`documents.legado_id`, migração 001/002 no runner novo do `db.js`).
 - **Fase 5 — Portal do cliente + notificações**: conta de cliente (padrão da Área do Hóspede),
   prestação de contas visível, e-mail (nodemailer já existe) e WhatsApp (integração existente).
 - **Fase 6 — Relatórios e gestão**: dashboards por sócio/núcleo/cliente, relatório diário.

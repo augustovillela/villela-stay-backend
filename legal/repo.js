@@ -767,6 +767,7 @@ const Dashboard = {
       tarefas_abertas: um("SELECT COUNT(*) n FROM tasks WHERE status IN ('aberta','em_andamento')").n,
       tarefas_atrasadas: um("SELECT COUNT(*) n FROM tasks WHERE status IN ('aberta','em_andamento') AND prazo != '' AND prazo < ?", hoje).n,
       docs_em_revisao: um("SELECT COUNT(*) n FROM documents WHERE status = 'revisao_pendente'").n,
+      pecas_em_revisao: um("SELECT COUNT(*) n FROM legal_drafts WHERE status = 'revisao_pendente'").n,
       ia_sem_revisao: um("SELECT COUNT(*) n FROM ai_responses WHERE status = 'rascunho'").n,
       ia_pendentes: um('SELECT COUNT(*) n FROM ai_queries q LEFT JOIN ai_responses r ON r.query_id = q.id WHERE r.id IS NULL').n,
     };

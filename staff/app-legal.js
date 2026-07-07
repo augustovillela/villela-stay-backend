@@ -35,6 +35,8 @@ const LG = {
     if (LG.perm.gerir_publicacoes) t.push(['publicacoes', '📰 Publicações']);
     if (LG.perm.gerir_tarefas) t.push(['tarefas', '✅ Tarefas']);
     if (LG.perm.ver_documentos) t.push(['documentos', '📂 Documentos']);
+    if (LG.perm.ver_documentos) t.push(['pecas', '📝 Peças']);
+    if (LG.perm.ver_documentos) t.push(['contratos', '📑 Contratos']);
     if (LG.perm.ver_financeiro) t.push(['financeiro', '💰 Financeiro']);
     if (LG.perm.usar_ia) t.push(['ia', '🤖 IA jurídica']);
     if (LG.perm.gerir_usuarios) t.push(['equipe', '⚙️ Equipe']);
@@ -51,7 +53,7 @@ const LG = {
   body() { return document.getElementById('lg-body'); },
   async pintar() {
     try {
-      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, tarefas: LG.vTarefas, documentos: LG.vDocumentos, financeiro: LG.vFinanceiro, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
+      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, tarefas: LG.vTarefas, documentos: LG.vDocumentos, pecas: LG.vPecas, contratos: LG.vContratos, financeiro: LG.vFinanceiro, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
       if (v) await v();
     } catch (e) { LG.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -68,7 +70,7 @@ const LG = {
       ${kpi('Prazos até hoje', r.prazos_hoje, true)}${kpi('Prazos em 7 dias', r.prazos_7dias)}${kpi('Audiências em 7 dias', r.audiencias_7dias)}
       ${kpi('Prazos sem validação humana', r.prazos_sem_validacao, true)}${kpi('Publicações novas', r.publicacoes_novas, true)}
       ${kpi('Tarefas abertas', r.tarefas_abertas)}${kpi('Tarefas atrasadas', r.tarefas_atrasadas, true)}
-      ${kpi('Docs em revisão', r.docs_em_revisao)}${kpi('Consultas de IA na fila', r.ia_pendentes, true)}${kpi('Respostas de IA sem revisão', r.ia_sem_revisao, true)}</div>
+      ${kpi('Docs em revisão', r.docs_em_revisao)}${kpi('Peças em revisão', r.pecas_em_revisao, true)}${kpi('Consultas de IA na fila', r.ia_pendentes, true)}${kpi('Respostas de IA sem revisão', r.ia_sem_revisao, true)}</div>
       <div class="aviso">🧭 Fase 1 (fundação). Coleta automática DataJud/DJEN, RAG e geração de peças chegam nas próximas fases — ver README do módulo.</div>`;
   },
 
@@ -537,6 +539,157 @@ const LG = {
     const novo = prompt('Novo status (' + (LG.enums.statusDoc || []).join(', ') + '):', atual);
     if (!novo || novo === atual) return;
     try { await LG.api('PATCH', '/documentos/' + id, { status: novo.trim() }); LG.pintar(); } catch (e) { alert(e.message); }
+  },
+
+  // -------------------------------------------------------- PEÇAS (Fase 4)
+  async vPecas() {
+    const { pecas, tipos } = await LG.api('GET', '/pecas');
+    let h = '';
+    if (LG.perm.criar_documentos) h += `<details class="cr-box"><summary class="cr-sum">➕ Nova peça</summary>
+      <form class="form" id="lg-pec-form" style="max-width:660px;margin-top:12px">
+        <div class="hi-grid">
+          <label>Tipo <select id="lgp2-tipo">${tipos.map(t => `<option>${t}</option>`).join('')}</select></label>
+          <label>ID do processo (opcional) <input id="lgp2-case" maxlength="20"></label>
+        </div>
+        <label>Objetivo <input id="lgp2-obj" maxlength="500" placeholder="ex.: contestar ação de despejo alegando..."></label>
+        <button class="btn" type="submit">Criar</button></form></details>`;
+    h += `<div class="aviso">📝 Peça gerada por IA é sempre MINUTA: não protocola nem vai ao cliente sem aprovação de advogado.</div>`;
+    h += `<div class="card">${pecas.length ? tabela(['Tipo', 'Objetivo', 'CNJ', 'Cliente', 'v', 'Status', 'IA', ''], pecas.map(p => [
+      esc(p.tipo_peca), esc((p.objetivo || '').slice(0, 50)), esc(p.numero_cnj || '—'), esc(p.cliente_nome || '—'),
+      p.versoes ? 'v' + p.versoes : '—', LG.chip(p.status), p.gerado_por_ia ? '🤖' : '—',
+      `<button class="btn secund peq" onclick="LG.verPeca('${p.id}')">Abrir</button>`,
+    ])) : '<p class="vazio">Nenhuma peça.</p>'}</div>`;
+    LG.body().innerHTML = h;
+    const f = document.getElementById('lg-pec-form');
+    if (f) f.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const r = await LG.api('POST', '/pecas', { tipo_peca: document.getElementById('lgp2-tipo').value, objetivo: document.getElementById('lgp2-obj').value, case_id: document.getElementById('lgp2-case').value.trim() });
+      LG.verPeca(r.peca.id);
+    };
+  },
+  async verPeca(id) {
+    const { peca: p } = await LG.api('GET', '/pecas/' + id);
+    const podeAprovar = LG.perm.aprovar_documentos;
+    LG.body().innerHTML = `<div class="card"><button class="btn secund peq" onclick="LG.pintar()">← Voltar</button>
+      <h3 style="margin:.6rem 0 0">📝 ${esc(p.tipo_peca)} ${LG.chip(p.status)} ${p.gerado_por_ia ? '🤖 assistida por IA' : ''}</h3>
+      <p class="sub">${esc(p.objetivo || '')} · ${esc(p.numero_cnj || '')} ${p.cliente_nome ? '· ' + esc(p.cliente_nome) : ''} · ${p.versao_atual ? 'v' + p.versao_atual : 'sem conteúdo'} ${p.aprovado_por ? '· ✅ aprovada por ' + esc(p.aprovado_por) : ''}</p>
+      <p>
+        ${LG.perm.usar_ia ? `<button class="btn peq" onclick="LG.gerarPeca('${p.id}')">🤖 Gerar minuta com IA</button>` : ''}
+        ${p.versao_atual ? `<a class="btn secund peq" href="/staff/api/legal/pecas/${p.id}/exportar?formato=html" target="_blank" rel="noopener">🖨️ HTML/PDF</a>
+        <a class="btn secund peq" href="/staff/api/legal/pecas/${p.id}/exportar?formato=doc">⬇️ Word (.doc)</a>` : ''}
+        ${p.status === 'rascunho' || p.status === 'revisao_pendente' ? `
+          ${podeAprovar && p.versao_atual ? `<button class="btn peq" onclick="LG.statusPeca('${p.id}','aprovado')">✅ Aprovar</button>` : ''}
+          <button class="btn secund peq" onclick="LG.statusPeca('${p.id}','revisao_pendente')">👀 Enviar p/ revisão</button>` : ''}
+        ${p.status === 'aprovado' ? `
+          ${LG.perm.protocolar ? `<button class="btn peq" onclick="LG.statusPeca('${p.id}','protocolado')">📤 Protocolada</button>` : ''}
+          ${LG.perm.enviar_cliente ? `<button class="btn secund peq" onclick="LG.statusPeca('${p.id}','enviado_cliente')">✉️ Enviada ao cliente</button>` : ''}` : ''}
+      </p>
+      <p class="sub" id="lgp2-msg"></p></div>
+      ${p.pontos_atencao ? `<div class="aviso">⚠️ Pontos de atenção: ${esc(p.pontos_atencao)}</div>` : ''}
+      <div class="card"><h3>Conteúdo ${p.versao_atual ? '(v' + p.versao_atual + ')' : ''}</h3>
+      ${p.conteudo ? `<pre style="white-space:pre-wrap;font-size:.9rem;max-height:420px;overflow:auto;background:#faf9f6;padding:12px;border-radius:8px">${esc(p.conteudo)}</pre>` : '<p class="vazio">Sem conteúdo ainda — gere com IA ou cole uma versão abaixo.</p>'}
+      ${LG.perm.editar_documentos ? `<form class="form" id="lg-ver-form">
+        <label>Nova versão (colar texto integral) <textarea id="lgv-txt" rows="5" style="width:100%"></textarea></label>
+        <button class="btn peq" type="submit">Salvar versão</button></form>` : ''}</div>
+      ${(p.fontes || []).length ? `<div class="card"><h3>📚 Fontes</h3>${tabela(['Tipo', 'Referência'], p.fontes.map(f => [esc(f.tipo || '—'), esc(f.citacao || f.titulo || JSON.stringify(f).slice(0, 80))]))}</div>` : ''}
+      <div class="card"><h3>Versões</h3>${p.versoes.length ? tabela(['v', 'Por', 'Quando'], p.versoes.map(v => ['v' + v.versao, esc(v.criado_por), LG.dt(v.criado_em)])) : '<p class="vazio">Nenhuma.</p>'}</div>`;
+    const f = document.getElementById('lg-ver-form');
+    if (f) f.onsubmit = async (ev) => {
+      ev.preventDefault();
+      await LG.api('POST', `/pecas/${id}/versoes`, { conteudo: document.getElementById('lgv-txt').value });
+      LG.verPeca(id);
+    };
+  },
+  async gerarPeca(id) {
+    const msg = document.getElementById('lgp2-msg');
+    msg.textContent = '🧠 Gerando minuta (modo direto pode levar 1-2 min; sem chave vai para a fila)…';
+    try {
+      const r = await LG.api('POST', `/pecas/${id}/gerar`);
+      if (r.situacao === 'gerada') { LG.verPeca(id); return; }
+      msg.textContent = '⏳ ' + (r.detalhe || 'Pedido na fila do agente local.');
+    } catch (e) { msg.textContent = '❌ ' + e.message; }
+  },
+  async statusPeca(id, novo) {
+    try { await LG.api('PATCH', '/pecas/' + id, { status: novo }); LG.verPeca(id); } catch (e) { alert(e.message); }
+  },
+
+  // -------------------------------------------------------- CONTRATOS (Fase 4)
+  async vContratos() {
+    const [{ templates }, { analises }] = await Promise.all([
+      LG.api('GET', '/contratos/templates'), LG.api('GET', '/contratos/analises'),
+    ]);
+    LG._tpls = templates;
+    let h = `<details class="cr-box" open><summary class="cr-sum">🧙 Gerar contrato (wizard)</summary>
+      <form class="form" id="lg-wiz-form" style="max-width:660px;margin-top:12px">
+        <label>Modelo <select id="lgw-tpl" onchange="LG.wizardCampos()">${templates.map(t => `<option value="${t.id}">${esc(t.nome)}</option>`).join('')}</select></label>
+        <div id="lgw-campos"></div>
+        <button class="btn" type="submit">Gerar minuta</button><p id="lgw-msg" class="erro"></p>
+      </form></details>`;
+    if (LG.perm.usar_ia) h += `<details class="cr-box"><summary class="cr-sum">🔬 Analisar contrato (documento)</summary>
+      <form class="form" id="lg-ana-form" style="max-width:560px;margin-top:12px">
+        <label>ID do documento (aba Documentos, tipo contrato) <input id="lga2-doc" required maxlength="20"></label>
+        <p class="sub">O documento precisa de texto extraído (o agente local extrai via /ia/extracao).</p>
+        <button class="btn peq" type="submit">Analisar</button><p id="lga2-msg" class="sub"></p></form></details>`;
+    if (LG.perm.criar_documentos) h += `<p><button class="btn secund peq" onclick="LG.importarContratosLegado()">📥 Importar contratos do portal antigo</button></p>`;
+    h += `<div class="card"><h3>Análises de contrato</h3>${analises.length ? tabela(['Documento', 'Partes', 'Nota', 'Status', ''], analises.map(a => [
+      esc(a.documento_titulo || a.document_id || '—'), esc((a.partes || '—').slice(0, 40)),
+      a.analise ? LG.chip(a.analise.nota_risco) : '—', LG.chip(a.status),
+      `<button class="btn secund peq" onclick="LG.verAnalise('${a.id}')">Abrir</button>`,
+    ])) : '<p class="vazio">Nenhuma análise.</p>'}</div>`;
+    LG.body().innerHTML = h;
+    LG.wizardCampos();
+    document.getElementById('lg-wiz-form').onsubmit = async (ev) => {
+      ev.preventDefault(); const msg = document.getElementById('lgw-msg'); msg.textContent = '';
+      const t = LG._tpls.find(x => x.id === document.getElementById('lgw-tpl').value);
+      const respostas = {};
+      for (const c of t.campos) respostas[c.id] = (document.getElementById('lgw-' + c.id) || {}).value || '';
+      const opcionais = [...document.querySelectorAll('.lgw-opc:checked')].map(x => x.value);
+      try {
+        const r = await LG.api('POST', '/contratos/gerar', { template_id: t.id, respostas, clausulas_opcionais: opcionais });
+        LG.verPeca(r.draft_id);
+      } catch (e) { msg.textContent = e.message; }
+    };
+    const fa = document.getElementById('lg-ana-form');
+    if (fa) fa.onsubmit = async (ev) => {
+      ev.preventDefault(); const msg = document.getElementById('lga2-msg');
+      msg.textContent = 'Analisando…';
+      try {
+        const r = await LG.api('POST', '/contratos/analises', { document_id: document.getElementById('lga2-doc').value.trim() });
+        if (r.situacao === 'analisada') { LG.verAnalise(r.review_id); return; }
+        msg.textContent = '⏳ ' + (r.detalhe || 'Análise na fila.');
+      } catch (e) { msg.textContent = '❌ ' + e.message; }
+    };
+  },
+  wizardCampos() {
+    const t = (LG._tpls || []).find(x => x.id === document.getElementById('lgw-tpl').value);
+    const alvo = document.getElementById('lgw-campos'); if (!t || !alvo) return;
+    alvo.innerHTML = `<p class="sub">${esc(t.descricao)}</p><div class="hi-grid">`
+      + t.campos.map(c => `<label>${esc(c.rotulo)}${c.obrigatorio ? ' *' : ''} <input id="lgw-${c.id}" type="${c.tipo === 'date' ? 'date' : 'text'}" maxlength="300"></label>`).join('')
+      + `</div>` + (t.clausulas.some(c => !c.obrigatoria) ? `<p><b>Cláusulas opcionais:</b></p>`
+      + t.clausulas.filter(c => !c.obrigatoria).map(c => `<label class="serv-ativo"><input type="checkbox" class="lgw-opc" value="${c.id}" checked> ${esc(c.titulo)}</label>`).join('') : '');
+  },
+  async verAnalise(id) {
+    const { analise: a } = await LG.api('GET', '/contratos/analises/' + id);
+    const x = a.analise;
+    LG.body().innerHTML = `<div class="card"><button class="btn secund peq" onclick="LG.pintar()">← Voltar</button>
+      <h3 style="margin:.6rem 0 0">🔬 Análise — ${esc(a.documento_titulo || a.document_id)} ${LG.chip(a.status)} ${x ? LG.chip('risco ' + x.nota_risco) : ''}</h3>
+      ${a.revisado_por ? `<p class="sub">✅ revisada por ${esc(a.revisado_por)}</p>` : '<div class="aviso">⚠️ Análise assistida por IA — validação por advogado obrigatória.</div>'}
+      ${LG.perm.aprovar_documentos && a.status === 'revisao_pendente' ? `<p><button class="btn peq" onclick="LG.revisarAnalise('${a.id}','aprovado')">✅ Validar análise</button></p>` : ''}</div>
+      ${x ? `<div class="card"><p><b>Partes:</b> ${esc((x.partes || []).join(' × '))}</p><p><b>Objeto:</b> ${esc(x.objeto)}</p>
+        <p><b>Vigência:</b> ${esc(x.vigencia)} · <b>Valores:</b> ${esc(x.valores)}</p><p><b>Riscos gerais:</b> ${esc(x.riscos_gerais)}</p></div>
+      <div class="card"><h3>⚠️ Cláusulas críticas</h3>${(x.clausulas_criticas || []).length ? tabela(['Cláusula', 'Risco', 'Sugestão'], x.clausulas_criticas.map(c => [esc(c.clausula), esc(c.risco), esc(c.sugestao)])) : '<p class="vazio">Nenhuma.</p>'}</div>
+      <div class="card"><h3>❌ Cláusulas faltantes</h3>${(x.clausulas_faltantes || []).length ? '<ul>' + x.clausulas_faltantes.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' : '<p class="vazio">Nenhuma.</p>'}</div>` : '<div class="card"><p class="vazio">Análise ainda pendente (fila do agente local ou documento sem texto extraído).</p></div>'}`;
+  },
+  async revisarAnalise(id, status) {
+    try { await LG.api('PATCH', '/contratos/analises/' + id, { status }); LG.verAnalise(id); } catch (e) { alert(e.message); }
+  },
+  async importarContratosLegado() {
+    if (!confirm('Importar os contratos do portal antigo (contratos.json + arquivos) como documentos? Operação idempotente.')) return;
+    try {
+      const r = await LG.api('POST', '/importar/contratos-legado');
+      alert(`Contratos legado: ${r.encontrados} encontrados, ${r.importados} importados, ${r.pulados} já existiam.${r.detalhe ? '\n' + r.detalhe : ''}`);
+      LG.pintar();
+    } catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------- FINANCEIRO

@@ -35,16 +35,33 @@ db.exec('PRAGMA busy_timeout = 4000;');
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 db.exec(schema);
 
+// ---- migrações (ALTERs e mudanças que CREATE IF NOT EXISTS não cobre) ----
+// Cada entrada roda UMA vez (controle na tabela migrations). Só acrescentar no fim.
+const MIGRACOES = [
+  { nome: '001-documents-legado-id', sql: "ALTER TABLE documents ADD COLUMN legado_id TEXT DEFAULT ''" },
+  { nome: '002-contract-reviews-analise-json', sql: "ALTER TABLE contract_reviews ADD COLUMN analise_json TEXT DEFAULT ''" },
+];
+for (const m of MIGRACOES) {
+  if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
+  db.exec(m.sql);
+  db.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
+}
+
 // ---- helpers (mesmos idiomas do livraria/db.js) ----
 const nowISO = () => new Date().toISOString();
 const novoId = () => crypto.randomBytes(9).toString('base64url');
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
-// Executa fn dentro de uma transação (rollback em erro).
+// Executa fn dentro de uma transação (rollback em erro). Reentrante: chamadas
+// aninhadas participam da transação externa (SQLite não aninha BEGIN).
+let _txDepth = 0;
 function transacao(fn) {
+  if (_txDepth > 0) { _txDepth++; try { return fn(); } finally { _txDepth--; } }
+  _txDepth = 1;
   db.exec('BEGIN');
   try { const r = fn(); db.exec('COMMIT'); return r; }
   catch (e) { try { db.exec('ROLLBACK'); } catch (_) {} throw e; }
+  finally { _txDepth = 0; }
 }
 
 // JSON seguro (colunas TEXT que guardam JSON).

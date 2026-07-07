@@ -9,7 +9,7 @@
 'use strict';
 
 function registrarRotasStaff(app, deps) {
-  const { repo, permissoes, feriados, ia, llm, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const { repo, permissoes, feriados, ia, llm, pecas, contratos, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
   // permissões efetivas do request (sessão => usuário do portal; PUBLISH_KEY => agente_ia)
@@ -422,6 +422,98 @@ function registrarRotasStaff(app, deps) {
     const f = repo.Financeiro.atualizar(req.params.id, req.body || {});
     auditar(req, 'financeiro.editar', 'financial_accounts', f.id, f.status);
     res.json({ ok: true, lancamento: f });
+  }));
+
+  // ------------------------------------------------------- PEÇAS JURÍDICAS (Fase 4, Módulo 10)
+  app.get('/staff/api/legal/pecas', requireAuth, pode('ver_documentos'), h((req, res) => {
+    res.json({ pecas: pecas.Pecas.listar(req.query), tipos: pecas.Pecas.TIPOS_PECA, status: pecas.Pecas.STATUS_PECA });
+  }));
+  app.get('/staff/api/legal/pecas/:id', requireAuth, pode('ver_documentos'), h((req, res) => {
+    const d = pecas.Pecas.obter(req.params.id);
+    if (!d) return res.status(404).json({ erro: 'Peça não encontrada.' });
+    res.json({ peca: d });
+  }));
+  app.post('/staff/api/legal/pecas', requireAuth, pode('criar_documentos'), h((req, res) => {
+    const d = pecas.Pecas.criar(req.body || {}, req.user && req.user.id);
+    auditar(req, 'peca.criar', 'legal_drafts', d.id, d.tipo_peca);
+    res.json({ ok: true, peca: d });
+  }));
+  // nova versão do conteúdo — sessão OU agente local (fila de geração devolve aqui)
+  app.post('/staff/api/legal/pecas/:id/versoes', requirePublishOrSession, pode('criar_documentos'), h((req, res) => {
+    const v = pecas.Pecas.novaVersao(req.params.id, req.body || {}, quemFez(req), { viaIA: !!req.viaChave || !!(req.body || {}).via_ia });
+    auditar(req, 'peca.versao', 'legal_drafts', req.params.id, 'v' + v.versao);
+    res.json({ ok: true, ...v });
+  }));
+  // geração assistida por IA (direto ou fila)
+  app.post('/staff/api/legal/pecas/:id/gerar', requireAuth, pode('usar_ia'), ha(async (req, res) => {
+    const r = await pecas.Pecas.gerar(req.params.id, req.user && req.user.id);
+    auditar(req, 'peca.gerar', 'legal_drafts', req.params.id, r.situacao);
+    res.json({ ok: true, ...r, aviso: 'Minuta gerada por IA — revisão integral por advogado é obrigatória.' });
+  }));
+  // transições de status — gates de permissão; aprovar é SEMPRE sessão humana
+  app.patch('/staff/api/legal/pecas/:id', requireAuth, pode('editar_documentos'), h((req, res) => {
+    const novo = (req.body || {}).status;
+    if (novo === 'aprovado' && !req.legal.permissoes.aprovar_documentos) return res.status(403).json({ erro: 'Sem permissão para aprovar peças.' });
+    if (novo === 'protocolado' && !req.legal.permissoes.protocolar) return res.status(403).json({ erro: 'Sem permissão para protocolar.' });
+    if (novo === 'enviado_cliente' && !req.legal.permissoes.enviar_cliente) return res.status(403).json({ erro: 'Sem permissão para enviar ao cliente.' });
+    const d = pecas.Pecas.mudarStatus(req.params.id, novo, quemFez(req), { aprovador: novo === 'aprovado' ? quemFez(req) : '' });
+    auditar(req, 'peca.status', 'legal_drafts', d.id, d.status);
+    res.json({ ok: true, peca: d });
+  }));
+  app.get('/staff/api/legal/pecas/:id/exportar', requireAuth, pode('ver_documentos'), h((req, res) => {
+    const e = pecas.Pecas.exportar(req.params.id, req.query.formato, quemFez(req));
+    auditar(req, 'peca.exportar', 'legal_drafts', req.params.id, e.nome);
+    if (e.doc) {
+      res.setHeader('Content-Type', 'application/msword');
+      res.setHeader('Content-Disposition', `attachment; filename="${e.nome}"`);
+    } else {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    }
+    res.send(e.html);
+  }));
+
+  // ------------------------------------------------------- CONTRATOS (Fase 4, Módulos 12+13)
+  app.get('/staff/api/legal/contratos/templates', requireAuth, pode('ver_documentos'), h((req, res) => {
+    res.json({ templates: contratos.Templates.listar() });
+  }));
+  // wizard: gera a minuta de contrato a partir do modelo + respostas
+  app.post('/staff/api/legal/contratos/gerar', requireAuth, pode('criar_documentos'), h((req, res) => {
+    const r = contratos.gerarContrato(req.body || {}, req.user && req.user.id);
+    auditar(req, 'contrato.gerar', 'legal_drafts', r.draft_id, (req.body || {}).template_id);
+    res.json({ ok: true, ...r, aviso: 'MINUTA de contrato — revisão de advogado obrigatória.' });
+  }));
+  app.get('/staff/api/legal/contratos/analises', requireAuth, pode('ver_documentos'), h((req, res) => {
+    res.json({ analises: contratos.Analises.listar(req.query) });
+  }));
+  app.get('/staff/api/legal/contratos/analises/:id', requireAuth, pode('ver_documentos'), h((req, res) => {
+    const r = contratos.Analises.obter(req.params.id);
+    if (!r) return res.status(404).json({ erro: 'Análise não encontrada.' });
+    res.json({ analise: r });
+  }));
+  app.post('/staff/api/legal/contratos/analises', requireAuth, pode('usar_ia'), ha(async (req, res) => {
+    const r = await contratos.Analises.criar(req.body || {}, req.user && req.user.id);
+    auditar(req, 'contrato.analisar', 'contract_reviews', r.review_id, r.situacao);
+    res.json({ ok: true, ...r });
+  }));
+  // o agente local devolve a análise estruturada (ou um humano ajusta o status)
+  app.patch('/staff/api/legal/contratos/analises/:id', requirePublishOrSession, pode('usar_ia'), h((req, res) => {
+    const d = req.body || {};
+    let r;
+    if (d.analise) r = contratos.Analises.registrarResultado(req.params.id, d.analise, quemFez(req));
+    else if (d.status) {
+      if (d.status === 'aprovado' && (req.viaChave || !req.legal.permissoes.aprovar_documentos)) {
+        return res.status(403).json({ erro: 'Aprovar análise exige sessão humana com permissão.' });
+      }
+      r = contratos.Analises.revisar(req.params.id, d, quemFez(req));
+    } else return res.status(400).json({ erro: 'Envie "analise" (resultado) ou "status".' });
+    auditar(req, 'contrato.analise.atualizar', 'contract_reviews', req.params.id, d.status || 'resultado');
+    res.json({ ok: true, analise: r });
+  }));
+  // migração dos contratos do portal antigo (contratos.json) — idempotente
+  app.post('/staff/api/legal/importar/contratos-legado', requireAuth, pode('criar_documentos'), h((req, res) => {
+    const r = contratos.importarContratosLegado(req.user && req.user.id);
+    auditar(req, 'legado.importar-contratos', 'documents', '', `encontrados ${r.encontrados}, importados ${r.importados}, pulados ${r.pulados}`);
+    res.json({ ok: true, ...r });
   }));
 
   // ------------------------------------------------------- AUDITORIA / INTEGRAÇÕES / WEBHOOKS

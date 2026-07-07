@@ -634,3 +634,52 @@ CREATE TABLE IF NOT EXISTS document_text_extractions (
   extraido_em TEXT NOT NULL,
   por         TEXT DEFAULT ''
 );
+
+-- =====================================================================
+-- FASE 4 — MÓDULOS 10/12/13: PEÇAS E CONTRATOS
+-- Mapeamento vs. o plano: contrato ASSINADO/recebido = documents (tipo
+-- 'contrato') + document_versions; análise = contract_reviews (+ coluna
+-- analise_json via migração); minuta em elaboração = legal_drafts.
+-- =====================================================================
+
+-- Registro de exportações de peça (auditoria: quem exportou o quê)
+CREATE TABLE IF NOT EXISTS legal_draft_exports (
+  id        TEXT PRIMARY KEY,
+  draft_id  TEXT NOT NULL REFERENCES legal_drafts(id) ON DELETE CASCADE,
+  versao    INTEGER NOT NULL,
+  formato   TEXT NOT NULL,     -- html|doc
+  quem      TEXT DEFAULT '',
+  quando    TEXT NOT NULL
+);
+
+-- Biblioteca de modelos de contrato (Módulo 13) — seed versionado no código
+CREATE TABLE IF NOT EXISTS contract_templates (
+  id        TEXT PRIMARY KEY,  -- ex.: prestacao-servicos, nda, honorarios
+  nome      TEXT NOT NULL,
+  descricao TEXT DEFAULT '',
+  campos    TEXT NOT NULL DEFAULT '[]', -- JSON: [{id, rotulo, tipo(text|date|money), obrigatorio}]
+  versao    INTEGER NOT NULL DEFAULT 1,
+  ativo     INTEGER NOT NULL DEFAULT 1,
+  atualizado_em TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS contract_template_clauses (
+  id          TEXT PRIMARY KEY,
+  template_id TEXT NOT NULL REFERENCES contract_templates(id) ON DELETE CASCADE,
+  ordem       INTEGER NOT NULL DEFAULT 0,
+  titulo      TEXT NOT NULL,
+  texto       TEXT NOT NULL,    -- com placeholders {{campo}}
+  obrigatoria INTEGER NOT NULL DEFAULT 1, -- 0 = opcional (checkbox no wizard)
+  alternativa_de TEXT DEFAULT ''          -- id da cláusula da qual esta é variação
+);
+
+-- Sessão do wizard (Módulo 13): o que foi respondido e qual minuta saiu
+CREATE TABLE IF NOT EXISTS contract_generation_sessions (
+  id          TEXT PRIMARY KEY,
+  template_id TEXT NOT NULL,
+  respostas   TEXT NOT NULL DEFAULT '{}', -- JSON: {campo: valor}
+  clausulas   TEXT NOT NULL DEFAULT '[]', -- JSON: ids das cláusulas escolhidas
+  draft_id    TEXT DEFAULT '',            -- legal_drafts.id da minuta gerada
+  criado_por  TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL
+);
