@@ -440,3 +440,28 @@ CREATE TABLE IF NOT EXISTS document_requests (
   criado_por   TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_dr_token ON document_requests (token_hash);
+
+-- ---------- Fase 8: billing (assinaturas Mercado Pago) ----------
+
+-- Pagamentos recebidos (recorrência da assinatura). Nada de cartão aqui —
+-- o Checkout/preapproval é hospedado no Mercado Pago.
+CREATE TABLE IF NOT EXISTS payments (
+  id             TEXT PRIMARY KEY,
+  tenant_id      TEXT NOT NULL,
+  mp_payment_id  TEXT UNIQUE,
+  valor_centavos INTEGER DEFAULT 0,
+  status         TEXT DEFAULT '',            -- aprovado|pendente|recusado|reembolsado
+  detalhe        TEXT DEFAULT '',
+  criado_em      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pay_tenant ON payments (tenant_id, criado_em);
+
+-- Log bruto dos eventos de billing (webhooks) p/ auditoria/replay.
+CREATE TABLE IF NOT EXISTS billing_events (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id TEXT DEFAULT '',
+  tipo      TEXT NOT NULL,
+  ref       TEXT DEFAULT '',
+  payload   TEXT DEFAULT '{}',
+  criado_em TEXT NOT NULL
+);

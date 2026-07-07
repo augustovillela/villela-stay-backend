@@ -600,6 +600,84 @@ function teste(nome, cond) {
     teste('link de solicitação encerrado → indisponível', resp.status === 410);
   }
 
+  // ================== FASE 8: billing (Mercado Pago mockado) ==================
+  const billing = require('./billing');
+
+  // sem MP configurado → aviso claro
+  r = await req('POST', '/vdocs/api/billing/assinar', { body: { plano_slug: 'starter' }, jar: 'anaA' });
+  teste('assinar sem MP → erro claro', r.status === 400 && /indisponível/i.test(r.dados.erro));
+
+  // mock do Mercado Pago
+  const chamadasMP = [];
+  const preapprovals = {}; // id -> objeto
+  const mockMp = async (pathname, opts) => {
+    chamadasMP.push({ pathname, method: (opts || {}).method || 'GET' });
+    if (pathname === '/preapproval' && opts && opts.method === 'POST') {
+      const body = JSON.parse(opts.body);
+      const id = 'pre_' + (Object.keys(preapprovals).length + 1);
+      preapprovals[id] = { id, status: 'pending', external_reference: body.external_reference, init_point: 'https://mp.test/autorizar/' + id };
+      return preapprovals[id];
+    }
+    let m;
+    if ((m = pathname.match(/^\/preapproval\/(.+)$/))) {
+      const pre = preapprovals[m[1]];
+      if (!pre) throw new Error('Mercado Pago 404');
+      if (opts && opts.method === 'PUT') { pre.status = JSON.parse(opts.body).status; return pre; }
+      return pre;
+    }
+    if ((m = pathname.match(/^\/v1\/payments\/(.+)$/))) {
+      return { id: m[1], status: 'approved', status_detail: 'accredited', transaction_amount: 99.0, external_reference: 'vdocs:' + tenantB.id };
+    }
+    throw new Error('rota MP não mockada: ' + pathname);
+  };
+  mockMp.__mock = true;
+  billing.configurar({ mpFetch: mockMp });
+
+  // Bob (dono do tenant B) assina o Starter
+  r = await req('GET', '/vdocs/api/billing', { jar: 'bobB' });
+  teste('estado de billing disponível p/ dono', r.status === 200 && r.dados.online_disponivel === true && Array.isArray(r.dados.planos));
+  r = await req('POST', '/vdocs/api/billing/assinar', { body: { plano_slug: 'starter' }, jar: 'bobB' });
+  teste('assinar cria preapproval e devolve link do MP', r.status === 200 && /mp\.test\/autorizar/.test(r.dados.link));
+  const preId = r.dados.preapproval_id;
+  // Carla (papel aprovador, sem administrar_cobranca) não mexe em billing
+  r = await req('POST', '/vdocs/api/billing/assinar', { body: { plano_slug: 'starter' }, jar: 'carlaA' });
+  teste('sem administrar_cobranca → 403', r.status === 403);
+
+  // webhook: MP autorizou → assinatura ativa + tenant ativa
+  preapprovals[preId].status = 'authorized';
+  r = await req('POST', '/vdocs/api/billing/webhook', { body: { type: 'subscription_preapproval', data: { id: preId } } });
+  teste('webhook preapproval processado', r.status === 200);
+  r = await req('GET', '/vdocs/api/me', { jar: 'bobB' });
+  teste('tenant B ativo após autorização', r.dados.tenant.status === 'ativa');
+  r = await req('GET', '/vdocs/api/billing', { jar: 'bobB' });
+  teste('assinatura marcada como recorrente MP', r.dados.plano && r.dados.plano.recorrencia_mp === true && r.dados.plano.status === 'ativa');
+
+  // webhook de pagamento aprovado → payments + idempotente
+  r = await req('POST', '/vdocs/api/billing/webhook', { body: { type: 'payment', data: { id: 'pay_1' } } });
+  r = await req('POST', '/vdocs/api/billing/webhook', { body: { type: 'payment', data: { id: 'pay_1' } } });
+  r = await req('GET', '/vdocs/api/billing', { jar: 'bobB' });
+  teste('pagamento registrado 1x (idempotente)', r.dados.pagamentos.filter(p => p.status === 'aprovado').length === 1 && r.dados.pagamentos[0].valor_centavos === 9900);
+
+  // webhook alheio/ruim não quebra
+  r = await req('POST', '/vdocs/api/billing/webhook', { body: { type: 'subscription_preapproval', data: { id: 'pre_inexistente' } } });
+  teste('webhook de recurso desconhecido responde 200 sem efeito', r.status === 200);
+
+  // relatório SaaS no staff
+  r = await req('GET', '/staff/api/vdocs/receita', { staff: 'ceo' });
+  teste('staff/receita: MRR e pagamento do mês', r.status === 200 && r.dados.mrr_centavos >= 9900 && r.dados.recebido_mes_centavos === 9900 && r.dados.assinaturas.some(a => a.recorrencia_mp));
+  r = await req('GET', '/staff/api/vdocs/receita', { staff: 'fora' });
+  teste('staff/receita bloqueado p/ área sem acesso', r.status === 403);
+
+  // cancelamento → MP PUT + tenant suspenso
+  r = await req('POST', '/vdocs/api/billing/cancelar', { jar: 'bobB' });
+  teste('cancelamento chama o MP e responde ok', r.status === 200 && chamadasMP.some(c => c.method === 'PUT'));
+  r = await req('GET', '/vdocs/api/me', { jar: 'bobB' });
+  teste('tenant suspenso após cancelar', r.dados.tenant.status === 'suspensa' && r.dados.bloqueado === true);
+  // reativa p/ os testes seguintes (leads etc.)
+  r = await req('PATCH', '/staff/api/vdocs/tenants/' + tenantB.id, { body: { status: 'ativa', plano_slug: 'starter' }, staff: 'adm' });
+  teste('staff reativa tenant B manualmente', r.status === 200);
+  billing.configurar({ mpFetch: null });
+
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });
   teste('lead da landing gravado', r.status === 200);

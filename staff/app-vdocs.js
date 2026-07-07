@@ -15,7 +15,7 @@ const VD = {
 
   abrir(tab) { if (tab) VD.tab = tab; VD.render(); },
   render() {
-    const abas = [['visao', '📊 Visão'], ['tenants', '🏢 Empresas'], ['planos', '📦 Planos'], ['leads', '📥 Leads'], ['auditoria', '📜 Auditoria']]
+    const abas = [['visao', '📊 Visão'], ['receita', '💰 Receita'], ['tenants', '🏢 Empresas'], ['planos', '📦 Planos'], ['leads', '📥 Leads'], ['auditoria', '📜 Auditoria']]
       .map(([id, rot]) => `<button class="btn ${VD.tab === id ? '' : 'secund'} peq" onclick="VD.ir('${id}')">${rot}</button>`).join(' ');
     conteudo().innerHTML = cabecalho('🗂️ Villela Docs Intelligence', 'Administração da plataforma SaaS de gestão documental. Produto: <a href="/vdocs" target="_blank">/vdocs</a> · painel do cliente: <a href="/vdocs/app" target="_blank">/vdocs/app</a>.')
       + `<div class="card" style="display:flex;flex-wrap:wrap;gap:.4rem">${abas}</div><div id="vd-body"><p class="sub">Carregando…</p></div>`;
@@ -25,7 +25,7 @@ const VD = {
   body() { return document.getElementById('vd-body'); },
   async pintar() {
     try {
-      const v = { visao: VD.vVisao, tenants: VD.vTenants, planos: VD.vPlanos, leads: VD.vLeads, auditoria: VD.vAuditoria }[VD.tab];
+      const v = { visao: VD.vVisao, receita: VD.vReceita, tenants: VD.vTenants, planos: VD.vPlanos, leads: VD.vLeads, auditoria: VD.vAuditoria }[VD.tab];
       if (v) await v();
     } catch (e) { VD.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -39,6 +39,23 @@ const VD = {
       ${kpi('Suspensas', st.suspensa || 0)}${kpi('MRR', VD.brl(r.mrr_centavos))}
       ${kpi('Usuários', r.usuarios_total)}${kpi('Leads novos', r.leads_novos)}</div>
       <div class="aviso">🧭 Fase 1 (fundação SaaS). Documentos, OCR, busca, IA e workflows chegam nas próximas fases — ver <code>backend/vdocs/README.md</code>.</div>`;
+  },
+
+  async vReceita() {
+    const r = await VD.api('GET', '/receita');
+    const kpi = (rot, val) => `<div class="card" style="min-width:150px;flex:1"><div class="sub">${rot}</div><div style="font-size:1.5rem;font-weight:700">${val}</div></div>`;
+    VD.body().innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0">
+      ${kpi('MRR (assinaturas ativas)', VD.brl(r.mrr_centavos))}${kpi('Recebido no mês', VD.brl(r.recebido_mes_centavos))}
+      ${kpi('Trials expirando (7d)', r.trials_expirando_7d.length)}${kpi('Assinaturas', r.assinaturas.length)}</div>
+      ${r.trials_expirando_7d.length ? `<div class="card"><b>⏳ Trials expirando</b><table class="tabela"><tr><th>Empresa</th><th>Expira</th></tr>
+        ${r.trials_expirando_7d.map(t => `<tr><td>${esc(t.nome)}</td><td>${VD.dt(t.trial_expira_em)}</td></tr>`).join('')}</table></div>` : ''}
+      <div class="card"><b>Assinaturas</b><table class="tabela"><tr><th>Empresa</th><th>Plano</th><th>Status</th><th>Recorrência MP</th></tr>
+        ${r.assinaturas.map(a => `<tr><td>${esc(a.tenant_nome)}</td><td>${esc(a.plano)} (${VD.brl(a.preco_centavos)})</td><td>${VD.chip(a.status)}</td><td>${a.recorrencia_mp ? '✅' : '— manual'}</td></tr>`).join('') || '<tr><td colspan="4" class="sub">Nenhuma assinatura ainda.</td></tr>'}</table></div>
+      <div class="card"><b>Recebido por mês</b><table class="tabela"><tr><th>Mês</th><th>Valor</th></tr>
+        ${r.recebido_por_mes.map(m => `<tr><td>${m.mes}</td><td>${VD.brl(m.v)}</td></tr>`).join('') || '<tr><td colspan="2" class="sub">Nenhum pagamento ainda.</td></tr>'}</table></div>
+      <div class="card"><b>Custo de IA por empresa</b> <span class="sub">(centavos de USD estimados — insumo da margem)</span>
+        <table class="tabela"><tr><th>Empresa</th><th>Chamadas</th><th>Tokens</th><th>Custo (¢ USD)</th></tr>
+        ${r.custo_ia_por_tenant.map(c => `<tr><td>${esc(c.nome)}</td><td>${c.chamadas}</td><td>${Number(c.tokens).toLocaleString('pt-BR')}</td><td>${c.custo}</td></tr>`).join('') || '<tr><td colspan="4" class="sub">Sem uso de IA ainda.</td></tr>'}</table></div>`;
   },
 
   async vTenants() {

@@ -18,7 +18,7 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
 function montar(app, injected = {}) {
-  const { express, requireAuth, requireAdmin, alertaAugusto, enviarEmail, jwtSecret } = injected;
+  const { express, requireAuth, requireAdmin, alertaAugusto, enviarEmail, mpFetch, jwtSecret } = injected;
   if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
     throw new Error('vdocs.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
@@ -33,6 +33,7 @@ function montar(app, injected = {}) {
   jobs.iniciar(); // worker de extração + rotinas diárias (VDOCS_ROTINAS=off desliga)
   require('./workflows').configurar({ enviarEmail });
   require('./compartilhar').configurar({ enviarEmail, notificar });
+  require('./billing').configurar({ mpFetch, notificar });
   console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-6: fundação, documentos, processamento, busca, IA e workflows).');
   return { repo, permissoes, auth, jobs };
 }

@@ -12,6 +12,7 @@ const busca = require('./busca');
 const ia = require('./ia');
 const wf = require('./workflows');
 const comp = require('./compartilhar');
+const billing = require('./billing');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -254,6 +255,24 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.delete('/buscas-salvas/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     busca.excluirSalva(req.vd.tenant.id, req.vd.user.id, req.params.id);
     res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ billing (Fase 8)
+  r.get('/billing', requireTenant, h(async (req, res) => {
+    if (!req.vd.permissoes.administrar_cobranca && !req.vd.permissoes.ver_uso) return res.status(403).json({ erro: 'Sem permissão: administrar_cobranca' });
+    res.json(billing.estado(req.vd.tenant.id));
+  }));
+  r.post('/billing/assinar', requireTenant, requirePerm('administrar_cobranca'), h(async (req, res) => {
+    const url = `${protoDe(req)}://${req.get('host')}/vdocs/app`;
+    res.json({ ok: true, ...(await billing.assinar(req.vd.tenant.id, (req.body || {}).plano_slug, req.vd.user, url, req.vd.ip)) });
+  }));
+  r.post('/billing/cancelar', requireTenant, requirePerm('administrar_cobranca'), h(async (req, res) => {
+    await billing.cancelarAssinatura(req.vd.tenant.id, req.vd.user, req.vd.ip);
+    res.json({ ok: true });
+  }));
+  // webhook do Mercado Pago (público; o estado real é relido da API do MP)
+  r.post('/billing/webhook', h(async (req, res) => {
+    res.json(await billing.processarWebhook(req.body || {}, req.query || {}));
   }));
 
   // ------------------------------------------------ compartilhamento externo (Fase 7)

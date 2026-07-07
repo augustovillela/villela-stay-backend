@@ -700,7 +700,30 @@ async function vPlano(){
    linha('Usuários ativos','usuarios',L.usuarios)+linha('Documentos','documentos',L.documentos)+
    linha('Armazenamento (MB)','armazenamento_mb',L.armazenamento_mb)+linha('Páginas OCR','ocr_paginas',L.ocr_paginas_mes)+
    linha('Consultas de IA','ia_consultas',L.ia_consultas_mes)+'</table></div>'+
-   '<div class="aviso">Para mudar de plano, fale com a Villela Docs pela página inicial (cobrança automática chega na Fase 8).</div>';
+   '<div id="pl-billing" style="margin-top:12px"><p class="sub">Carregando cobrança…</p></div>';
+  if(S.me.permissoes.administrar_cobranca)vBilling().catch(e=>$('pl-billing').innerHTML='<div class="erro">'+esc(e.message)+'</div>');
+  else $('pl-billing').innerHTML='<div class="aviso">Assinatura e cobrança: fale com o Dono da conta.</div>';
+}
+async function vBilling(){
+  const b=await api('GET','/billing');
+  const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const atual=b.plano||{};
+  $('pl-billing').innerHTML='<div class="card"><b>💳 Assinatura</b>'+
+   (atual.recorrencia_mp?'<p>Cobrança recorrente ATIVA no Mercado Pago ('+esc(atual.nome)+', '+brl(atual.preco_centavos)+'/mês). <button class="btn btn-ghost peq" onclick="cancelarAssinatura()">Cancelar assinatura</button></p>'
+    :atual.status==='trial'?'<p>Você está no período de teste. Assine para continuar depois do trial:</p>':'<p>Escolha um plano para assinar:</p>')+
+   (!atual.recorrencia_mp?(b.online_disponivel
+     ?'<div style="display:flex;gap:8px;flex-wrap:wrap">'+b.planos.map(p=>'<button class="btn '+(p.slug===atual.slug?'':'btn-ghost ')+'peq" onclick="assinarPlano(\\''+p.slug+'\\')">'+esc(p.nome)+' — '+brl(p.preco_centavos)+'/mês</button>').join('')+'</div><p class="sub" style="font-size:12px">Você será levado ao Mercado Pago para autorizar a cobrança mensal. Cancele quando quiser.</p>'
+     :'<div class="aviso">Pagamento online em configuração — fale com a Villela Docs pelo formulário da <a href="/vdocs#demo" target="_blank">página inicial</a> para ativar seu plano.</div>'):'')+
+   (b.pagamentos.length?'<b>Pagamentos</b><table><tr><th>Quando</th><th>Valor</th><th>Status</th></tr>'+b.pagamentos.map(p=>'<tr><td>'+dt(p.criado_em)+'</td><td>'+brl(p.valor_centavos)+'</td><td>'+esc(p.status)+'</td></tr>').join('')+'</table>':'')+
+   '</div>';
+}
+async function assinarPlano(slug){
+  if(!confirm('Assinar o plano '+slug+'? Você será redirecionado ao Mercado Pago para autorizar a cobrança mensal.'))return;
+  try{const r=await api('POST','/billing/assinar',{plano_slug:slug});location.href=r.link;}catch(e){alert(e.message);}
+}
+async function cancelarAssinatura(){
+  if(!confirm('Cancelar a assinatura? Sua conta perderá o acesso pago.'))return;
+  try{await api('POST','/billing/cancelar');alert('Assinatura cancelada.');vPlano();}catch(e){alert(e.message);}
 }
 async function vConfig(){
   const d=await api('GET','/config');const t=d.tenant,st=d.settings;

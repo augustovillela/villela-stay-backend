@@ -36,7 +36,9 @@ const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 db.exec(schema);
 
 // ---- migrações (só acrescentar no fim; cada uma roda UMA vez) ----
-const MIGRACOES = [];
+const MIGRACOES = [
+  { nome: '001-subscriptions-mp-preapproval', sql: "ALTER TABLE subscriptions ADD COLUMN mp_preapproval_id TEXT DEFAULT ''" },
+];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
   db.exec(m.sql);

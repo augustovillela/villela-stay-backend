@@ -5295,6 +5295,7 @@ try {
   require('./vdocs').montar(app, {
     express, requireAuth, requireAdmin, enviarEmail,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[vdocs] falha ao montar módulo:', e.message); }

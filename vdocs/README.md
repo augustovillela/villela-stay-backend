@@ -4,9 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fases 1–6 EM PRODUÇÃO** (último deploy `699948b`, 07/07/2026) · **Fase 7
-(compartilhamento externo) COMPLETA** na branch `feat/vdocs-f7` (aguardando validação p/
-merge). Testes: `npm run test:vdocs` (163/163).
+Status: **Fases 1–7 EM PRODUÇÃO** (último deploy `cdc12f6`, 07/07/2026) · **Fase 8 (billing
+Mercado Pago) COMPLETA** na branch `feat/vdocs-f8` (aguardando validação p/ merge).
+Testes: `npm run test:vdocs` (177/177).
 
 | O quê | Onde |
 |---|---|
@@ -174,7 +174,24 @@ documentos normais na pasta escolhida — mesma validação de extensão/tamanho
 Páginas públicas `/vdocs/s/:token` e `/vdocs/r/:token` (noindex; download por POST p/ senha
 nunca ir em query/log). Tela 🔗 Compartilhamentos no painel + botão no detalhe do documento.
 
-**Fases 8+ (especificado, não criado)** — na ordem do roadmap:
+**Fase 8 (criado)**: `payments` (recorrência recebida; idempotente por mp_payment_id),
+`billing_events` (webhooks brutos p/ auditoria/replay) e migração `mp_preapproval_id` em
+subscriptions. Motor em `billing.js`: assinatura MENSAL via **Mercado Pago preapproval**
+(mesma conta MP do backend, `mpFetch` injetado; nenhum dado de cartão no nosso lado) —
+dono clica Assinar → autoriza no MP → webhook `POST /vdocs/api/billing/webhook` relê o
+recurso na API do MP (padrão da Livraria; payload é só aviso) → assinatura ativa + tenant
+ativa (encerra o trial); cancelamento/pausa (inadimplência) → tenant SUSPENSA + alerta ao
+Augusto; pagamento aprovado → payments + alerta. Tela Plano e uso ganhou 💳 Assinatura
+(assinar/cancelar/pagamentos; sem MP_ACCESS_TOKEN mostra fallback de contato) e o staff
+ganhou aba 💰 Receita (MRR, recebido/mês, trials expirando 7d — também na rotina diária via
+WhatsApp —, assinaturas e CUSTO DE IA POR TENANT p/ margem).
+DECISÕES F8 (padrão razoável até o Augusto definir): só mensal (anual = evolução); sem cupons
+na v1; trocar de plano = cancelar e assinar de novo (ou manual pelo staff).
+⚠️ CONFIGURAR NO MP (pós-deploy): webhook de assinaturas apontando p/
+`https://villela-stay-backend.onrender.com/vdocs/api/billing/webhook` (painel do MP →
+notificações), senão a ativação depende de conferência manual.
+
+**Fases 9+ (especificado, não criado)** — na ordem do roadmap:
 - F2/F3 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel
   cobre), `document_shares`/links externos (F7), previews/miniaturas, upload multipart resumable,
   OCR real (tesseract/serviço externo) plugando em `processing_jobs`.
@@ -218,19 +235,21 @@ nunca ir em query/log). Tela 🔗 Compartilhamentos no painel + botão no detalh
 
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
 ~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (produção) · ~~F5 IA documental~~
-✅ (produção) · ~~F6 workflows~~ ✅ (produção) · ~~F7 compartilhamento externo~~ ✅ (branch) →
-**F8 billing** (assinatura Mercado Pago, trial→pagante, bloqueio por inadimplência, página de
-preços viva, relatórios SaaS no staff: MRR/churn/custo por tenant) → F9 API pública +
-integrações → F10 enterprise (SSO, 2FA, retenção avançada, observabilidade).
+✅ (produção) · ~~F6 workflows~~ ✅ (produção) · ~~F7 compartilhamento externo~~ ✅ (produção) ·
+~~F8 billing~~ ✅ (branch) → **F9 API pública + integrações** (api_keys por tenant, rate limit
+por plano, webhooks de eventos, docs da API) → F10 enterprise (SSO, 2FA, retenção avançada,
+observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 7 (tela 🔗: criar link com senha, sala de pasta, revogar, acessos;
-   solicitação de upload externo) e autoriza merge `feat/vdocs-f7` → master (deploy Render).
-2. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
+1. [ ] Augusto valida a Fase 8 (tela 💳 Assinatura + aba 💰 Receita no staff) e autoriza merge
+   `feat/vdocs-f8` → master (deploy Render).
+2. [ ] Pós-deploy F8: configurar o webhook de assinaturas no painel do Mercado Pago →
+   `https://villela-stay-backend.onrender.com/vdocs/api/billing/webhook`.
+3. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
    → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
-3. [ ] Iniciar Fase 8 (billing Mercado Pago + relatórios SaaS) — decisão a colher: preço anual
-   com desconto? cupons já na v1?
+4. [ ] Decisões de billing quando quiser evoluir: plano anual com desconto? cupons?
+5. [ ] Iniciar Fase 9 (API pública + integrações) — sem env var nova.
 
 ## Teste local
 
