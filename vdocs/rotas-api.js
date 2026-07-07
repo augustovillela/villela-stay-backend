@@ -324,8 +324,8 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     res.json(billing.estado(req.vd.tenant.id));
   }));
   r.post('/billing/assinar', requireTenant, requirePerm('administrar_cobranca'), h(async (req, res) => {
-    const url = `${protoDe(req)}://${req.get('host')}/vdocs/app`;
-    res.json({ ok: true, ...(await billing.assinar(req.vd.tenant.id, (req.body || {}).plano_slug, req.vd.user, url, req.vd.ip)) });
+    const base = `${protoDe(req)}://${req.get('host')}`;
+    res.json({ ok: true, ...(await billing.assinar(req.vd.tenant.id, (req.body || {}).plano_slug, req.vd.user, base, req.vd.ip)) });
   }));
   r.post('/billing/cancelar', requireTenant, requirePerm('administrar_cobranca'), h(async (req, res) => {
     await billing.cancelarAssinatura(req.vd.tenant.id, req.vd.user, req.vd.ip);

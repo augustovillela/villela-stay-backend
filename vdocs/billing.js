@@ -52,7 +52,10 @@ function estado(tenantId) {
 }
 
 // Cria a assinatura no MP e devolve o link de autorização (init_point).
-async function assinar(tenantId, planoSlug, user, urlRetorno, ip) {
+// baseUrl (ex.: https://villela-stay-backend.onrender.com) → back_url e
+// notification_url próprios: a assinatura fica AUTO-SUFICIENTE (não depende
+// do webhook global do painel do MP), igual ao hóspede e à livraria.
+async function assinar(tenantId, planoSlug, user, baseUrl, ip) {
   if (!ativo()) throw new Error('Pagamento online indisponível — fale com a Villela Docs para ativar seu plano.');
   const plano = repo.planoPorSlug(planoSlug);
   if (!plano || !plano.ativo || !plano.preco_centavos) throw new Error('Plano inválido para assinatura online.');
@@ -60,6 +63,7 @@ async function assinar(tenantId, planoSlug, user, urlRetorno, ip) {
   if (atual && atual.mp_preapproval_id && atual.status === 'ativa') {
     throw new Error('Já existe uma assinatura ativa — cancele-a antes de trocar de plano (ou fale com o suporte).');
   }
+  const base = String(baseUrl || 'https://villela-stay-backend.onrender.com').replace(/\/+$/, '');
   const pre = await mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
@@ -67,7 +71,8 @@ async function assinar(tenantId, planoSlug, user, urlRetorno, ip) {
       external_reference: 'vdocs:' + String(tenantId),
       payer_email: user.email,
       auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: Number((plano.preco_centavos / 100).toFixed(2)), currency_id: 'BRL' },
-      back_url: urlRetorno,
+      back_url: `${base}/vdocs/app`,
+      notification_url: `${base}/vdocs/api/billing/webhook`,
       status: 'pending',
     }),
   });
