@@ -19,6 +19,7 @@
     "express": "^4.19.0",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^9.0.1",
+    "pdfjs-dist": "^6.1.200",
     "qrcode": "^1.5.4",
     "web-push": "^3.6.7"
   }
