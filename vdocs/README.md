@@ -4,9 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fases 1–3 EM PRODUÇÃO** (último deploy `3f07e7e`, 07/07/2026, validados pelo Augusto)
-· **Fase 4 (busca avançada) COMPLETA** na branch `feat/vdocs-f4` (aguardando validação p/ merge).
-Testes: `npm run test:vdocs` (108/108).
+Status: **Fases 1–4 EM PRODUÇÃO** (último deploy `6f2e64f`, 07/07/2026, validados pelo Augusto)
+· **Fase 5 (IA documental) COMPLETA** na branch `feat/vdocs-f5` (aguardando validação p/ merge).
+Testes: `npm run test:vdocs` (123/123).
 
 | O quê | Onde |
 |---|---|
@@ -139,7 +139,21 @@ buscas salvas e recentes. Rotas: `GET /busca`, `GET /busca/contexto`, `POST|DELE
 ADIADO p/ fase futura: alertas de busca salva (documento novo que casa com a busca) e busca
 semântica por embeddings (F5 usa o FTS como RAG; vetores só se a qualidade pedir — decisão igual à do legal).
 
-**Fases 5+ (especificado, não criado)** — na ordem do roadmap:
+**Fase 5 (criado)**: `ai_conversations`/`ai_messages` (conversa pessoal com escopo base|pasta|
+documento), `ai_feedback` (útil/incorreta/sensível) e `ai_runs` (tokens + custo estimado POR
+TENANT — insumo da margem no Módulo 20). Motor em `ia.js`: **modo DIRETO com a
+ANTHROPIC_API_KEY do Render** (decisão do Augusto 07/07 — SaaS não tem fila de agente local;
+sem chave → indisponível com aviso claro), modelos `VDOCS_LLM_MODELS` (default opus-4-8 →
+sonnet-4-6, fallback), structured output (resposta + fontes_usadas + nao_encontrado +
+nivel_confianca), guardrails: responde SÓ com base nos trechos, cita [n], diz quando não achou,
+não transcreve dado pessoal. RAG = FTS5 (termos da pergunta em OR, BM25 top 8, filtrado pelo
+ESCOPO e sempre pelo tenant). Pergunta consome `ia_consultas` do plano (checado ANTES da
+chamada). Tela 🤖 no painel com conversas, fontes clicáveis e feedback; botão "Perguntar à IA"
+no detalhe do documento. Selftest usa `ia.__mockParaTeste` — nunca chama a API real.
+BUG CORRIGIDO de tabela: `checarLimite` agora mapeia métrica→chave do plano
+(ia_consultas→ia_consultas_mes, ocr_paginas→ocr_paginas_mes) — antes essas duas nunca limitavam.
+
+**Fases 6+ (especificado, não criado)** — na ordem do roadmap:
 - F2/F3 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel
   cobre), `document_shares`/links externos (F7), previews/miniaturas, upload multipart resumable,
   OCR real (tesseract/serviço externo) plugando em `processing_jobs`.
@@ -182,20 +196,19 @@ semântica por embeddings (F5 usa o FTS como RAG; vetores só se a qualidade ped
 ## Roadmap (10 fases — spec completa com o Augusto; ordem confirmada em 07/07/2026)
 
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
-~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (branch) → **F5 IA documental**
-(chat com fontes citadas, análise, classificação — reusar padrão modo duplo do legal; RAG =
-FTS existente) → F6 workflows → F7 compartilhamento externo + portal → F8 billing (Mercado
-Pago) + relatórios SaaS → F9 API pública + integrações → F10 enterprise (SSO, 2FA, retenção
-avançada, observabilidade).
+~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (produção) · ~~F5 IA documental~~
+✅ (branch) → **F6 workflows de aprovação** (etapas, aprovadores, prazos, histórico) → F7
+compartilhamento externo + portal → F8 billing (Mercado Pago) + relatórios SaaS → F9 API
+pública + integrações → F10 enterprise (SSO, 2FA, retenção avançada, observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 4 (tela 🔎 Busca: operadores, filtros, buscas salvas) e autoriza
-   merge `feat/vdocs-f4` → master (deploy Render).
+1. [ ] Augusto valida a Fase 5 (tela 🤖 IA: perguntar com fontes, escopos, feedback) e autoriza
+   merge `feat/vdocs-f5` → master. Após o deploy, fazer 1 pergunta real em produção (gasta
+   centavos na ANTHROPIC_API_KEY) p/ validar ponta a ponta.
 2. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
    → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
-3. [ ] Iniciar Fase 5 (IA documental) — decidir se usa a mesma ANTHROPIC_API_KEY do Render
-   (custo por tenant medido em ia_consultas) ou chave própria do produto.
+3. [ ] Iniciar Fase 6 (workflows de aprovação) — sem env var nova.
 
 ## Teste local
 

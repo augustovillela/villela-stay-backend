@@ -289,3 +289,58 @@ CREATE TABLE IF NOT EXISTS saved_searches (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ss_tenant ON saved_searches (tenant_id, user_id);
+
+-- ---------- Fase 5: IA documental ----------
+
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  user_id       TEXT NOT NULL,              -- conversa é pessoal
+  titulo        TEXT DEFAULT '',
+  escopo_tipo   TEXT DEFAULT 'base',        -- base|pasta|documento
+  escopo_ref    TEXT DEFAULT '',            -- folder_id/document_id conforme o tipo
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_aic_tenant ON ai_conversations (tenant_id, user_id, atualizado_em);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id              TEXT PRIMARY KEY,
+  tenant_id       TEXT NOT NULL,
+  conversation_id TEXT NOT NULL,
+  papel           TEXT NOT NULL,            -- usuario|assistente
+  conteudo        TEXT DEFAULT '',
+  fontes          TEXT DEFAULT '[]',        -- JSON [{document_id, nome, trecho}]
+  nao_encontrado  INTEGER DEFAULT 0,
+  nivel_confianca TEXT DEFAULT '',
+  modelo          TEXT DEFAULT '',
+  input_tokens    INTEGER DEFAULT 0,
+  output_tokens   INTEGER DEFAULT 0,
+  criado_em       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aim_conv ON ai_messages (tenant_id, conversation_id, criado_em);
+
+CREATE TABLE IF NOT EXISTS ai_feedback (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id  TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  user_id    TEXT DEFAULT '',
+  tipo       TEXT NOT NULL,                 -- util|incorreta|sensivel
+  comentario TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL
+);
+
+-- Log de cada chamada ao LLM (custo por tenant p/ margem — Módulo 20).
+CREATE TABLE IF NOT EXISTS ai_runs (
+  id                 TEXT PRIMARY KEY,
+  tenant_id          TEXT NOT NULL,
+  modelo             TEXT DEFAULT '',
+  input_tokens       INTEGER DEFAULT 0,
+  output_tokens      INTEGER DEFAULT 0,
+  custo_centavos_usd INTEGER DEFAULT 0,
+  duracao_ms         INTEGER DEFAULT 0,
+  status             TEXT DEFAULT 'ok',
+  detalhe            TEXT DEFAULT '',
+  criado_em          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_air_tenant ON ai_runs (tenant_id, criado_em);

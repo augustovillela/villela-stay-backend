@@ -9,6 +9,7 @@ const repo = require('./repo');
 const docs = require('./docs');
 const jobs = require('./jobs');
 const busca = require('./busca');
+const ia = require('./ia');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -247,6 +248,29 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
   r.delete('/buscas-salvas/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     busca.excluirSalva(req.vd.tenant.id, req.vd.user.id, req.params.id);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ IA documental (Fase 5)
+  r.get('/ia/conversas', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    res.json({ ativo: ia.ativo(), conversas: ia.listarConversas(req.vd.tenant.id, req.vd.user.id) });
+  }));
+  r.get('/ia/conversas/:id', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    res.json({ conversa: ia.obterConversa(req.vd.tenant.id, req.vd.user.id, req.params.id) });
+  }));
+  r.delete('/ia/conversas/:id', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    ia.excluirConversa(req.vd.tenant.id, req.vd.user.id, req.params.id);
+    res.json({ ok: true });
+  }));
+  r.post('/ia/perguntar', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    const b = req.body || {};
+    res.json(await ia.perguntar(req.vd.tenant.id, req.vd.user, {
+      conversation_id: b.conversation_id, escopo_tipo: b.escopo_tipo, escopo_ref: b.escopo_ref, pergunta: b.pergunta,
+    }, req.vd.ip));
+  }));
+  r.post('/ia/mensagens/:id/feedback', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    const b = req.body || {};
+    ia.darFeedback(req.vd.tenant.id, req.vd.user.id, req.params.id, b.tipo, b.comentario);
     res.json({ ok: true });
   }));
 

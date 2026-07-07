@@ -410,6 +410,60 @@ function teste(nome, cond) {
   r = await req('DELETE', '/vdocs/api/buscas-salvas/' + salvaId, { jar: 'anaA' });
   teste('dona exclui a busca salva', r.status === 200);
 
+  // ================== FASE 5: IA documental (LLM mockado) ==================
+  const ia = require('./ia');
+
+  // sem chave e sem mock → indisponível com aviso claro
+  r = await req('POST', '/vdocs/api/ia/perguntar', { body: { pergunta: 'Qual a multa do distrato?' }, jar: 'anaA' });
+  teste('IA sem chave → erro claro de indisponível', r.status === 400 && /indisponível/i.test(r.dados.erro));
+
+  // mock: devolve resposta citando a 1ª fonte do contexto
+  let ultimoPrompt = '';
+  ia.__mockParaTeste(async ({ prompt }) => {
+    ultimoPrompt = prompt;
+    const temContexto = prompt.includes('TRECHOS DE DOCUMENTOS');
+    return { json: { resposta: temContexto ? 'O distrato é amigável e não prevê multa rescisória [1].' : 'Não encontrei nos documentos.', fontes_usadas: temContexto ? [1] : [], nao_encontrado: !temContexto, nivel_confianca: temContexto ? 'alto' : 'baixo' }, modelo: 'mock-1', usage: { input_tokens: 100, output_tokens: 50 } };
+  });
+
+  r = await req('POST', '/vdocs/api/ia/perguntar', { body: { pergunta: 'O distrato do fornecedor prevê multa rescisoria?', escopo_tipo: 'base' }, jar: 'anaA' });
+  teste('IA responde com fontes citadas', r.status === 200 && r.dados.mensagem.fontes.length >= 1 && /\[1\]/.test(r.dados.mensagem.conteudo));
+  teste('RAG entregou trecho do documento certo no prompt', ultimoPrompt.includes('Distrato Fornecedor Y'));
+  const convId = r.dados.conversation_id;
+  r = await req('POST', '/vdocs/api/ia/perguntar', { body: { conversation_id: convId, pergunta: 'E qual a data disso?' }, jar: 'anaA' });
+  teste('pergunta de acompanhamento na mesma conversa', r.status === 200 && ultimoPrompt.includes('CONVERSA ANTERIOR'));
+  r = await req('GET', '/vdocs/api/ia/conversas/' + convId, { jar: 'anaA' });
+  teste('conversa gravada com 4 mensagens', r.status === 200 && r.dados.conversa.mensagens.length === 4);
+
+  // permissões e isolamento
+  r = await req('POST', '/vdocs/api/ia/perguntar', { body: { pergunta: 'x' }, jar: 'carlaA' });
+  teste('papel custom sem usar_ia → 403', r.status === 403);
+  r = await req('GET', '/vdocs/api/ia/conversas/' + convId, { jar: 'bobB' });
+  teste('B não abre conversa de A', r.status === 400 || r.status === 403);
+  r = await req('POST', '/vdocs/api/ia/perguntar', { body: { pergunta: 'segredos', escopo_tipo: 'documento', escopo_ref: docDistrato }, jar: 'bobB' });
+  teste('escopo com documento de A negado para B', (r.status === 400 || r.status === 403));
+  r = await req('POST', '/vdocs/api/ia/perguntar', { body: { pergunta: 'ata OR distrato OR manutencao', escopo_tipo: 'base' }, jar: 'bobB' });
+  teste('RAG de B não recebe trechos de A no prompt', r.status === 200 && !ultimoPrompt.includes('Distrato Fornecedor Y') && !ultimoPrompt.includes('manutencao predial'));
+
+  // escopo documento + feedback + auditoria + uso
+  r = await req('POST', '/vdocs/api/ia/perguntar', { body: { pergunta: 'Resuma este documento.', escopo_tipo: 'documento', escopo_ref: docDistrato }, jar: 'anaA' });
+  teste('escopo documento responde', r.status === 200);
+  const msgId = r.dados.mensagem.id;
+  r = await req('POST', '/vdocs/api/ia/mensagens/' + msgId + '/feedback', { body: { tipo: 'util' }, jar: 'anaA' });
+  teste('feedback registrado', r.status === 200);
+  r = await req('POST', '/vdocs/api/ia/mensagens/' + msgId + '/feedback', { body: { tipo: 'hackear' }, jar: 'anaA' });
+  teste('feedback com tipo inválido rejeitado', r.status === 400);
+  r = await req('GET', '/vdocs/api/uso', { jar: 'anaA' });
+  teste('consultas de IA contam no uso do plano', Number(r.dados.uso.ia_consultas) >= 3);
+  r = await req('GET', '/vdocs/api/auditoria', { jar: 'anaA' });
+  teste('auditoria registra ia.perguntar', r.dados.eventos.some(e => e.acao === 'ia.perguntar'));
+
+  // limite do plano bloqueia (starter do tenant B: 50/mês)
+  repo.registrarUso(tenantB.id, 'ia_consultas', 50);
+  r = await req('POST', '/vdocs/api/ia/perguntar', { body: { pergunta: 'alguma coisa' }, jar: 'bobB' });
+  teste('limite ia_consultas_mes do plano bloqueia', r.status === 400 && /Limite do plano/.test(r.dados.erro));
+
+  ia.__mockParaTeste(null);
+
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });
   teste('lead da landing gravado', r.status === 200);

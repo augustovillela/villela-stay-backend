@@ -84,10 +84,12 @@ function planoDoTenant(tenantId) {
   return p ? { ...p, limites: j.parse(p.limites, {}), subscription: sub } : null;
 }
 // Lança erro se a métrica estourar o limite do plano (0 = ilimitado).
+// Métricas mensais têm sufixo _mes na chave de limites do plano.
+const LIMITE_POR_METRICA = { usuarios: 'usuarios', documentos: 'documentos', armazenamento_mb: 'armazenamento_mb', ia_consultas: 'ia_consultas_mes', ocr_paginas: 'ocr_paginas_mes' };
 function checarLimite(tenantId, metrica, adicionando = 1) {
   const plano = planoDoTenant(tenantId);
   if (!plano) throw new Error('Empresa sem assinatura ativa.');
-  const lim = Number(plano.limites[metrica === 'usuarios' ? 'usuarios' : metrica] || 0);
+  const lim = Number(plano.limites[LIMITE_POR_METRICA[metrica] || metrica] || 0);
   if (!lim) return; // ilimitado/negociado
   const atual = Number(usoDoMes(tenantId)[metrica] || 0);
   if (atual + adicionando > lim) {

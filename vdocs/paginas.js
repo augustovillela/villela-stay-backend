@@ -308,7 +308,7 @@ const TELAS=[
  ['dashboard','📊 Dashboard',()=>true],
  ['documentos','📁 Documentos',m=>m.permissoes.ver_documentos],
  ['busca','🔎 Busca',m=>m.permissoes.ver_documentos],
- ['ia','🤖 IA documental',()=>true,'breve'],
+ ['ia','🤖 IA documental',m=>m.permissoes.usar_ia],
  ['workflows','✅ Aprovações',()=>true,'breve'],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
  ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
@@ -318,7 +318,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Disponível na próxima fase">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -414,6 +414,7 @@ async function abrirDoc(id){
     :st?'⏳ Extração de texto em processamento…':'';
   const selPasta='<select id="dd-pasta"><option value="">🏠 Início</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
   $('corpo').innerHTML='<p><a href="#" onclick="return irPasta(S.pasta)">← voltar</a></p><h2>'+esc(d.nome)+'</h2>'+
+   (P.usar_ia?'<p><button class="btn btn-ghost peq" onclick="S.iaEscopo={tipo:\\'documento\\',ref:\\''+d.id+'\\'};S.iaConv=\\'\\';ir(\\'ia\\')">🤖 Perguntar à IA sobre este documento</button></p>':'')+
    '<div class="card">'+
    (P.editar_metadados?'<label>Nome</label><input id="dd-nome" value="'+esc(d.nome)+'">'+
     '<label>Descrição</label><textarea id="dd-desc" rows="2">'+esc(d.descricao)+'</textarea>'+
@@ -495,6 +496,54 @@ async function salvarBuscaAtual(){
 }
 function usarSalva(json){const sv=JSON.parse(json);const f=sv.filtros||{};S.buscaF={q:sv.termo||f.q||'',tipo:f.tipo||'',tag:f.tag||'',pasta:f.pasta||'',de:f.de||'',ate:f.ate||'',vencendo:f.vencendo||''};vBusca(true);}
 async function delSalva(id){if(!confirm('Excluir esta busca salva?'))return false;try{await api('DELETE','/buscas-salvas/'+id);S.buscaCtx=null;vBusca(false);}catch(e){alert(e.message);}return false;}
+
+// ---------------- IA documental (Fase 5) ----------------
+S.iaConv='';S.iaEscopo={tipo:'base',ref:''};
+async function vIA(){
+  const [{ativo,conversas},pastasR]=await Promise.all([api('GET','/ia/conversas'),api('GET','/pastas').catch(()=>({pastas:[]}))]);
+  S.iaPastas=pastasR.pastas||[];
+  const E=S.iaEscopo;
+  $('corpo').innerHTML='<h2>🤖 IA documental</h2>'+
+   (!ativo?'<div class="erro">A IA está indisponível no momento (servidor sem chave de IA). Fale com o suporte.</div>':'')+
+   '<div class="card"><b>Escopo da conversa:</b> '+
+   '<select id="ia-tipo" onchange="S.iaEscopo={tipo:this.value,ref:\\'\\'};vIA()" style="width:auto">'+
+   ['base','pasta'].map(t=>'<option value="'+t+'"'+(E.tipo===t?' selected':'')+'>'+(t==='base'?'📚 Todos os documentos':'📁 Uma pasta')+'</option>').join('')+
+   (E.tipo==='documento'?'<option value="documento" selected>📄 Um documento</option>':'')+'</select> '+
+   (E.tipo==='pasta'?'<select id="ia-ref" onchange="S.iaEscopo.ref=this.value" style="width:auto">'+S.iaPastas.map(p=>'<option value="'+p.id+'"'+(E.ref===p.id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>':'')+
+   (E.tipo==='documento'?'<span class="chip">documento selecionado</span>':'')+
+   '<p class="sub" style="font-size:12px;margin:.4rem 0 0">A IA responde APENAS com base nos seus documentos e cita as fontes. Quando não encontra, ela diz. Novas conversas usam o escopo escolhido.</p></div>'+
+   (conversas.length?'<div class="card" style="margin-top:10px"><b>Conversas:</b> <button class="btn btn-ghost peq" onclick="S.iaConv=\\'\\';vIA()">+ nova</button> '+
+    conversas.map(c=>'<button class="btn '+(S.iaConv===c.id?'':'btn-ghost ')+'peq" onclick="abrirConv(\\''+c.id+'\\')">'+esc(c.titulo||'(sem título)')+'</button> <a href="#" onclick="return delConv(\\''+c.id+'\\')" title="excluir">✕</a> ').join(' ')+'</div>':'')+
+   '<div id="ia-chat" style="margin-top:10px"></div>'+
+   '<div class="card" style="margin-top:10px;display:flex;gap:8px"><input id="ia-q" placeholder="Pergunte algo sobre os documentos… (ex.: quais contratos vencem este ano?)" style="flex:1" onkeydown="if(event.key===\\'Enter\\')perguntarIA()">'+
+   '<button class="btn peq" id="ia-btn" onclick="perguntarIA()"'+(!ativo?' disabled':'')+'>Perguntar</button></div>';
+  if(S.iaConv)await pintarConv();
+}
+function fonteChips(fontes){return (fontes||[]).map((f,i)=>'<button class="btn btn-ghost peq" title="'+esc((f.trecho||'').slice(0,200))+'" onclick="S.tela=\\'documentos\\';menu();abrirDoc(\\''+f.document_id+'\\')">['+(i+1)+'] 📄 '+esc(f.nome)+'</button>').join(' ');}
+function balao(m){
+  const eu=m.papel==='usuario';
+  return '<div style="display:flex;'+(eu?'justify-content:flex-end':'')+'"><div class="card" style="max-width:80%;margin:4px 0;'+(eu?'background:var(--indigo2);color:#fff':'')+'">'+
+   esc(m.conteudo).replace(/\\n/g,'<br>')+
+   (!eu&&m.nao_encontrado?'<div class="aviso" style="margin:.5rem 0 0">ℹ️ A informação não foi encontrada nos documentos.</div>':'')+
+   (!eu&&(m.fontes||[]).length?'<div style="margin-top:.5rem;font-size:12px"><b>Fontes:</b> '+fonteChips(m.fontes)+'</div>':'')+
+   (!eu&&m.nivel_confianca?'<div style="margin-top:.3rem;font-size:11px;color:'+(eu?'#c9d1f2':'var(--suave)')+'">confiança: '+esc(m.nivel_confianca)+' · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'util\\')">👍 útil</a> · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'incorreta\\')">👎 incorreta</a> · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'sensivel\\')">⚠️ sensível</a></div>':'')+
+   '</div></div>';
+}
+async function pintarConv(){
+  const {conversa}=await api('GET','/ia/conversas/'+S.iaConv);
+  $('ia-chat').innerHTML='<div class="card">'+conversa.mensagens.map(balao).join('')+'</div>';
+}
+async function abrirConv(id){S.iaConv=id;await vIA();}
+async function delConv(id){if(!confirm('Excluir esta conversa?'))return false;await api('DELETE','/ia/conversas/'+id);if(S.iaConv===id)S.iaConv='';vIA();return false;}
+async function perguntarIA(){
+  const q=$('ia-q').value.trim();if(!q)return;
+  $('ia-btn').disabled=true;$('ia-btn').textContent='Pensando…';
+  try{
+    const r=await api('POST','/ia/perguntar',{conversation_id:S.iaConv||undefined,escopo_tipo:S.iaEscopo.tipo,escopo_ref:S.iaEscopo.ref,pergunta:q});
+    S.iaConv=r.conversation_id;$('ia-q').value='';await vIA();
+  }catch(e){alert(e.message);$('ia-btn').disabled=false;$('ia-btn').textContent='Perguntar';}
+}
+async function fbIA(id,tipo){try{await api('POST','/ia/mensagens/'+id+'/feedback',{tipo});alert('Feedback registrado — obrigado!');}catch(e){alert(e.message);}return false;}
 
 async function vUsuarios(){
   const d=await api('GET','/usuarios');const papeis=S.me.papeis_embutidos;
