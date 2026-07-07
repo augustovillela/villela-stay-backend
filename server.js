@@ -5257,6 +5257,7 @@ app.get('/', (req, res) => {
   const host = (req.hostname || '').toLowerCase();
   if (host.startsWith('staff.')) return res.redirect(302, '/staff/');
   if (host.startsWith('livros.') || host.startsWith('livraria.')) return res.redirect(302, '/livros');
+  if (host.startsWith('docs.')) return res.redirect(302, '/vdocs');
   return res.redirect(302, '/hospede');
 });
 
@@ -5284,6 +5285,18 @@ try {
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[legal] falha ao montar módulo:', e.message); }
+
+// =========================== Villela Docs Intelligence (SaaS de gestão documental) ===========================
+// Produto multi-tenant vendido a OUTRAS empresas: landing/preços em /vdocs, painel do
+// cliente em /vdocs/app (sessão própria 'vdocs_sess', isolada do staff), administração
+// da plataforma na aba 🗂️ do Portal Staff. SQLite próprio em DATA_DIR/vdocs/.
+try {
+  require('./vdocs').montar(app, {
+    express, requireAuth, requireAdmin,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[vdocs] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
