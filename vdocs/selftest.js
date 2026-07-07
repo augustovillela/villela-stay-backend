@@ -13,6 +13,7 @@
 'use strict';
 process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'vdocs-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
+process.env.VDOCS_ROTINAS = 'off'; // timers desligados — o teste processa a fila manualmente
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -278,6 +279,90 @@ function teste(nome, cond) {
   // uso vivo no dashboard
   r = await req('GET', '/vdocs/api/dashboard', { jar: 'anaA' });
   teste('dashboard conta documentos ativos', r.dados.documentos === 1);
+
+  // ================== FASE 3: extração, indexação, busca por conteúdo, vencimentos ==================
+  const jobs = require('./jobs');
+
+  // txt: extração + FTS
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'ata-reuniao.txt', nome: 'Ata da Diretoria', conteudo_base64: B64('Ata da reunião: aprovado o orçamento de marketing digital para 2027.') }, jar: 'anaA' });
+  const docAta = r.dados.documento.id;
+  await jobs.processarPendentes(20);
+  r = await req('GET', '/vdocs/api/documentos/' + docAta, { jar: 'anaA' });
+  teste('texto extraído do txt', r.dados.processamento.texto && r.dados.processamento.texto.metodo === 'texto' && r.dados.processamento.texto.chars > 20);
+  teste('job concluído', r.dados.processamento.job && r.dados.processamento.job.status === 'concluido');
+  r = await req('GET', '/vdocs/api/documentos?busca=' + encodeURIComponent('orçamento de marketing'), { jar: 'anaA' });
+  teste('busca por CONTEÚDO acha o documento com trecho', r.status === 200 && r.dados.documentos.some(d => d.id === docAta && d.trecho));
+  r = await req('GET', '/vdocs/api/documentos?busca=' + encodeURIComponent('orçamento de marketing'), { jar: 'bobB' });
+  teste('busca por conteúdo de B não vê documento de A (isolamento FTS)', r.status === 200 && !r.dados.documentos.some(d => d.id === docAta));
+
+  // pdf: extração real via pdfjs
+  const PDF_MIN = '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length 62>>stream\nBT /F1 12 Tf 72 720 Td (Clausula de rescisao contratual) Tj ET\nendstream\nendobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>';
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'clausulas.pdf', nome: 'Cláusulas', conteudo_base64: B64(PDF_MIN) }, jar: 'anaA' });
+  const docPdf = r.dados.documento.id;
+  await jobs.processarPendentes(20);
+  r = await req('GET', '/vdocs/api/documentos/' + docPdf, { jar: 'anaA' });
+  teste('PDF extraído (método pdf, 1 página)', r.dados.processamento.texto && r.dados.processamento.texto.metodo === 'pdf' && r.dados.processamento.texto.paginas === 1);
+  r = await req('GET', '/vdocs/api/documentos?busca=rescisao', { jar: 'anaA' });
+  teste('busca acha conteúdo do PDF', r.dados.documentos.some(d => d.id === docPdf));
+
+  // docx: zip mínimo com word/document.xml (stored, gerado à mão)
+  function zipStored(entradas) {
+    const locais = []; const cds = []; let off = 0;
+    const crc = (buf) => { let c = ~0; for (const b of buf) { c ^= b; for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xEDB88320 & -(c & 1)); } return ~c >>> 0; };
+    for (const [nome, conteudo] of entradas) {
+      const nomeB = Buffer.from(nome), dado = Buffer.from(conteudo);
+      const lh = Buffer.alloc(30);
+      lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(0, 8);
+      lh.writeUInt32LE(crc(dado), 14); lh.writeUInt32LE(dado.length, 18); lh.writeUInt32LE(dado.length, 22);
+      lh.writeUInt16LE(nomeB.length, 26);
+      const cd = Buffer.alloc(46);
+      cd.writeUInt32LE(0x02014b50, 0); cd.writeUInt16LE(20, 6); cd.writeUInt16LE(0, 10);
+      cd.writeUInt32LE(crc(dado), 16); cd.writeUInt32LE(dado.length, 20); cd.writeUInt32LE(dado.length, 24);
+      cd.writeUInt16LE(nomeB.length, 28); cd.writeUInt32LE(off, 42);
+      locais.push(lh, nomeB, dado); cds.push(Buffer.concat([cd, nomeB]));
+      off += 30 + nomeB.length + dado.length;
+    }
+    const cdBuf = Buffer.concat(cds);
+    const eocd = Buffer.alloc(22);
+    eocd.writeUInt32LE(0x06054b50, 0); eocd.writeUInt16LE(entradas.length, 8); eocd.writeUInt16LE(entradas.length, 10);
+    eocd.writeUInt32LE(cdBuf.length, 12); eocd.writeUInt32LE(off, 16);
+    return Buffer.concat([...locais, cdBuf, eocd]);
+  }
+  const docxBuf = zipStored([['word/document.xml', '<?xml version="1.0"?><w:document><w:body><w:p><w:r><w:t>Manual de conduta dos colaboradores</w:t></w:r></w:p></w:body></w:document>']]);
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'manual.docx', nome: 'Manual', conteudo_base64: docxBuf.toString('base64') }, jar: 'anaA' });
+  teste('docx aceito', r.status === 200);
+  await jobs.processarPendentes(20);
+  r = await req('GET', '/vdocs/api/documentos?busca=conduta', { jar: 'anaA' });
+  teste('busca acha conteúdo do DOCX', r.dados.documentos.some(d => d.nome === 'Manual'));
+
+  // imagem → ocr_pendente + reprocessar
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'foto.png', nome: 'Foto do alvará', conteudo_base64: B64('PNGFAKE') }, jar: 'anaA' });
+  const docImg = r.dados.documento.id;
+  await jobs.processarPendentes(20);
+  r = await req('GET', '/vdocs/api/documentos/' + docImg, { jar: 'anaA' });
+  teste('imagem fica ocr_pendente (sem erro)', r.dados.processamento.job && r.dados.processamento.job.status === 'ocr_pendente');
+  r = await req('POST', '/vdocs/api/documentos/' + docImg + '/reprocessar', { jar: 'anaA' });
+  teste('reprocessar reabre o job', r.status === 200);
+  r = await req('POST', '/vdocs/api/documentos/' + docImg + '/reprocessar', { jar: 'bobB' });
+  teste('B não reprocessa documento de A', r.status === 400 || r.status === 403);
+  await jobs.processarPendentes(20);
+
+  // lixeira tira da busca; restauração devolve
+  r = await req('POST', '/vdocs/api/documentos/' + docAta + '/lixeira', { jar: 'anaA' });
+  r = await req('GET', '/vdocs/api/documentos?busca=' + encodeURIComponent('orçamento de marketing'), { jar: 'anaA' });
+  teste('documento na lixeira some da busca por conteúdo', !r.dados.documentos.some(d => d.id === docAta));
+  r = await req('POST', '/vdocs/api/documentos/' + docAta + '/restaurar', { jar: 'anaA' });
+  r = await req('GET', '/vdocs/api/documentos?busca=' + encodeURIComponent('orçamento de marketing'), { jar: 'anaA' });
+  teste('restaurado volta à busca', r.dados.documentos.some(d => d.id === docAta));
+
+  // vencimentos
+  const amanha = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
+  r = await req('PATCH', '/vdocs/api/documentos/' + docPdf, { body: { validade: amanha }, jar: 'anaA' });
+  teste('validade gravada', r.status === 200);
+  const alertados = await jobs.rotinaVencimentos();
+  teste('rotina de vencimentos alerta a empresa A', alertados >= 1);
+  r = await req('GET', '/vdocs/api/dashboard', { jar: 'anaA' });
+  teste('dashboard mostra vencendo em 30 dias', r.dados.vencendo_30dias >= 1 && Array.isArray(r.dados.docs_vencendo));
 
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });

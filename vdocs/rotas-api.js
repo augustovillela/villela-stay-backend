@@ -7,6 +7,7 @@
 'use strict';
 const repo = require('./repo');
 const docs = require('./docs');
+const jobs = require('./jobs');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -156,10 +157,21 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   // ------------------------------------------------ documentos (Fase 2)
   r.get('/documentos', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     const q = req.query || {};
-    res.json({
-      documentos: docs.listarDocumentos(req.vd.tenant.id, { folder_id: q.pasta, status: q.status, busca: q.busca, tipo: q.tipo, tag: q.tag }),
-      tipos: docs.TIPOS_DOCUMENTAIS,
-    });
+    const lista = docs.listarDocumentos(req.vd.tenant.id, { folder_id: q.pasta, status: q.status, busca: q.busca, tipo: q.tipo, tag: q.tag });
+    // busca também no CONTEÚDO extraído (FTS) — resultados fora da pasta atual entram marcados
+    let porConteudo = [];
+    if (q.busca && q.status !== 'lixeira') {
+      const hits = jobs.buscarPorConteudo(req.vd.tenant.id, q.busca);
+      const jaTem = new Set(lista.map(d => d.id));
+      for (const hit of hits) {
+        if (jaTem.has(hit.document_id)) { const d = lista.find(x => x.id === hit.document_id); d.trecho = hit.trecho; continue; }
+        try {
+          const d = docs.obterDocumento(req.vd.tenant.id, hit.document_id);
+          if (d.status === 'ativo') porConteudo.push({ id: d.id, folder_id: d.folder_id, nome: d.nome, tipo_documental: d.tipo_documental, tags: d.tags, status: d.status, versao_atual: d.versao_atual, validade: d.validade, criado_em: d.criado_em, atualizado_em: d.atualizado_em, trecho: hit.trecho, fora_da_pasta: true });
+        } catch (_) {}
+      }
+    }
+    res.json({ documentos: lista.concat(porConteudo), tipos: docs.TIPOS_DOCUMENTAIS });
   }));
   r.post('/documentos', requireTenant, requirePerm('criar_documento'), h(async (req, res) => {
     try {
@@ -172,7 +184,14 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.get('/documentos/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     const d = docs.obterDocumento(req.vd.tenant.id, req.params.id, { comVersoes: true });
     docs.logVisualizacao(req.vd.tenant.id, d.id, req.vd.user, req.vd.ip);
-    res.json({ documento: d, acessos: req.vd.permissoes.ver_auditoria ? docs.acessosDoDocumento(req.vd.tenant.id, d.id, 30) : [] });
+    res.json({
+      documento: d,
+      processamento: jobs.statusProcessamento(req.vd.tenant.id, d.id),
+      acessos: req.vd.permissoes.ver_auditoria ? docs.acessosDoDocumento(req.vd.tenant.id, d.id, 30) : [],
+    });
+  }));
+  r.post('/documentos/:id/reprocessar', requireTenant, requirePerm('criar_documento'), h(async (req, res) => {
+    res.json({ ok: true, job: jobs.reprocessar(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip) });
   }));
   r.patch('/documentos/:id', requireTenant, requirePerm('editar_metadados'), h(async (req, res) => {
     res.json({ ok: true, documento: docs.atualizarDocumento(req.vd.tenant.id, req.params.id, req.body || {}, req.vd.user, req.vd.ip) });

@@ -316,7 +316,11 @@ function dashboardTenant(tenantId) {
   const uso = usoDoMes(tenantId);
   const plano = planoDoTenant(tenantId);
   const t = obterTenant(tenantId);
+  const vencendo = require('./jobs').documentosVencendo(tenantId, 30); // require tardio (jobs → docs → repo)
   return {
+    vencendo_30dias: vencendo.length,
+    vencidos: vencendo.filter(d => d.vencido).length,
+    docs_vencendo: vencendo.slice(0, 10),
     empresa: { nome: t.nome, status: t.status, trial_expira_em: t.trial_expira_em },
     usuarios_ativos: uso.usuarios,
     convites_pendentes: listarConvites(tenantId).length,

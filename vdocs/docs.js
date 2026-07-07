@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { db, transacao, nowISO, novoId, sha256, j, STORAGE_DIR } = require('./db');
 const repo = require('./repo');
+const jobs = require('./jobs');
 
 const s = repo.s;
 const MB = 1024 * 1024;
@@ -140,6 +141,7 @@ function criarDocumento(tenantId, { nome, folder_id, descricao, tipo_documental,
       VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
       .run(novoId(), String(tenantId), id, 1, s(arquivo_nome, 200), EXTENSOES[ext], buffer.length, hash, rel, agora, s(ator && ator.id, 40));
     repo.auditar(tenantId, ator, 'documento.criar', 'documents', id, { nome: s(nome || arquivo_nome, 200), tamanho: buffer.length }, ip);
+    jobs.enfileirarExtracao(tenantId, id, 1); // extração/indexação em background (Fase 3)
     return obterDocumento(tenantId, id);
   });
 }
@@ -186,6 +188,10 @@ function atualizarDocumento(tenantId, id, campos, ator, ip) {
     }
   }
   repo.auditar(tenantId, ator, 'documento.editar_metadados', 'documents', d.id, { campos: Object.keys(campos) }, ip);
+  if (campos.nome && campos.nome !== d.nome) { // mantém o índice de busca coerente com o novo nome
+    const txt = db.prepare('SELECT texto FROM document_texts WHERE tenant_id = ? AND document_id = ?').get(String(tenantId), d.id);
+    jobs.indexar(tenantId, d.id, s(campos.nome, 200), txt ? txt.texto : '');
+  }
   return obterDocumento(tenantId, d.id);
 }
 
@@ -211,6 +217,7 @@ function novaVersao(tenantId, id, { arquivo_nome, conteudo_base64, comentario },
       .run(novoId(), String(tenantId), d.id, numero, s(arquivo_nome, 200), EXTENSOES[ext], buffer.length, sha256(buffer), rel, s(comentario, 300), nowISO(), s(ator && ator.id, 40));
     db.prepare('UPDATE documents SET versao_atual = ?, atualizado_em = ? WHERE id = ?').run(numero, nowISO(), d.id);
     repo.auditar(tenantId, ator, 'documento.nova_versao', 'documents', d.id, { versao: numero, comentario: s(comentario, 300) }, ip);
+    jobs.enfileirarExtracao(tenantId, d.id, numero); // re-extrai a nova vigente
     return numero;
   });
 }
@@ -231,6 +238,7 @@ function restaurarVersao(tenantId, id, numero, ator, ip) {
       .run(novoId(), String(tenantId), d.id, novoNum, v.nome_arquivo, v.mime, v.tamanho, v.sha256, rel, `Restauração da v${v.numero}`, nowISO(), s(ator && ator.id, 40));
     db.prepare('UPDATE documents SET versao_atual = ?, atualizado_em = ? WHERE id = ?').run(novoNum, nowISO(), d.id);
     repo.auditar(tenantId, ator, 'documento.restaurar_versao', 'documents', d.id, { de: v.numero, para: novoNum }, ip);
+    jobs.enfileirarExtracao(tenantId, d.id, novoNum);
     return novoNum;
   });
 }
@@ -241,12 +249,15 @@ function paraLixeira(tenantId, id, ator, ip) {
   if (d.status !== 'ativo') throw new Error('Documento já está na lixeira.');
   db.prepare("UPDATE documents SET status = 'lixeira', excluido_em = ?, excluido_por = ?, atualizado_em = ? WHERE id = ?")
     .run(nowISO(), s(ator && ator.id, 40), nowISO(), d.id);
+  db.prepare('DELETE FROM docs_fts WHERE tenant_id = ? AND document_id = ?').run(String(tenantId), d.id); // some da busca (texto extraído fica p/ restauração)
   repo.auditar(tenantId, ator, 'documento.excluir', 'documents', d.id, { nome: d.nome }, ip);
 }
 function restaurarDaLixeira(tenantId, id, ator, ip) {
   const d = obterDocumento(tenantId, id);
   if (d.status !== 'lixeira') throw new Error('Documento não está na lixeira.');
   db.prepare("UPDATE documents SET status = 'ativo', excluido_em = '', excluido_por = '', atualizado_em = ? WHERE id = ?").run(nowISO(), d.id);
+  const txt = db.prepare('SELECT texto FROM document_texts WHERE tenant_id = ? AND document_id = ?').get(String(tenantId), d.id);
+  if (txt) jobs.indexar(tenantId, d.id, d.nome, txt.texto); // volta ao índice de busca
   repo.auditar(tenantId, ator, 'documento.restaurar', 'documents', d.id, { nome: d.nome }, ip);
 }
 function excluirDefinitivo(tenantId, id, ator, ip) {
@@ -257,7 +268,9 @@ function excluirDefinitivo(tenantId, id, ator, ip) {
     db.prepare('DELETE FROM document_versions WHERE tenant_id = ? AND document_id = ?').run(String(tenantId), d.id);
     db.prepare('DELETE FROM document_metadata WHERE tenant_id = ? AND document_id = ?').run(String(tenantId), d.id);
     db.prepare('DELETE FROM documents WHERE id = ? AND tenant_id = ?').run(d.id, String(tenantId));
+    db.prepare('DELETE FROM processing_jobs WHERE tenant_id = ? AND document_id = ?').run(String(tenantId), d.id);
   });
+  jobs.removerDoIndice(tenantId, d.id);
   for (const v of versoes) { try { fs.unlinkSync(path.resolve(STORAGE_DIR, v.file_path)); } catch (_) {} }
   try { fs.rmdirSync(path.join(STORAGE_DIR, String(tenantId), d.id)); } catch (_) {}
   repo.auditar(tenantId, ator, 'documento.excluir_definitivo', 'documents', d.id, { nome: d.nome }, ip);
@@ -299,4 +312,5 @@ module.exports = {
   criarDocumento, obterDocumento, listarDocumentos, atualizarDocumento, moverDocumento,
   novaVersao, restaurarVersao, paraLixeira, restaurarDaLixeira, excluirDefinitivo,
   baixar, logVisualizacao, acessosDoDocumento, usoVivo,
+  lerArquivoInterno: lerArquivo, // uso interno do worker de extração (jobs.js)
 };

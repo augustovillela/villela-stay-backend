@@ -332,7 +332,8 @@ async function vDash(){
   const L=(d.plano&&d.plano.limites)||{};
   const pct=(v,l)=>l?Math.min(100,Math.round(100*v/l)):0;
   const trial=d.empresa.status==='trial'?'<div class="aviso">🕑 Período de teste até <b>'+new Date(d.empresa.trial_expira_em).toLocaleDateString('pt-BR')+'</b> (plano '+esc(d.plano?d.plano.nome:'')+').</div>':'';
-  $('corpo').innerHTML='<h2>Dashboard</h2>'+trial+
+  const venc=d.vencendo_30dias?'<div class="erro" style="background:#fef7e0;border-color:#f5d78e;color:var(--ink)">📅 <b>'+d.vencendo_30dias+' documento(s) com validade nos próximos 30 dias'+(d.vencidos?' ('+d.vencidos+' já vencido(s))':'')+':</b> '+d.docs_vencendo.map(x=>(x.vencido?'🔴 ':'🟡 ')+esc(x.nome)+' ('+x.validade.split('-').reverse().join('/')+')').join(' · ')+'</div>':'';
+  $('corpo').innerHTML='<h2>Dashboard</h2>'+trial+venc+
    '<div class="kpis">'+
    '<div class="kpi"><div class="n">'+d.usuarios_ativos+'</div><div class="r">usuários ativos'+(L.usuarios?' / '+L.usuarios:'')+'</div></div>'+
    '<div class="kpi"><div class="n">'+d.convites_pendentes+'</div><div class="r">convites pendentes</div></div>'+
@@ -370,7 +371,9 @@ async function vDocs(){
    (sub.length?'<div class="card" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">'+sub.map(p=>'<button class="btn btn-ghost peq" onclick="irPasta(\\''+p.id+'\\')">📁 '+esc(p.nome)+'</button>'+(P.excluir_documento?'<button class="btn btn-ghost peq" title="Excluir pasta vazia" onclick="excluirPasta(\\''+p.id+'\\')">✕</button>':'')).join(''):'')+ (sub.length?'</div>':'')+
    '<div class="card" style="margin-top:12px"><table><tr><th>Documento</th><th>Tipo</th><th>Tags</th><th>Versão</th><th>Atualizado</th><th></th></tr>'+
    (docsL.length?docsL.map(d=>{
-     return '<tr><td><a href="#" onclick="return abrirDoc(\\''+d.id+'\\')">'+esc(d.nome)+'</a></td>'+
+     return '<tr><td><a href="#" onclick="return abrirDoc(\\''+d.id+'\\')">'+esc(d.nome)+'</a>'+
+     (d.fora_da_pasta?' <span class="chip" title="Encontrado pelo conteúdo em outra pasta">em outra pasta</span>':'')+
+     (d.trecho?'<br><span style="font-size:12px;color:var(--suave)">…'+esc(d.trecho)+'…</span>':'')+'</td>'+
      '<td>'+esc(d.tipo_documental)+'</td><td>'+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</td>'+
      '<td>v'+d.versao_atual+'</td><td>'+dt(d.atualizado_em||d.criado_em)+'</td><td>'+
      (S.lixeira?((P.restaurar_documento?'<button class="btn peq" onclick="docAcao(\\''+d.id+'\\',\\'restaurar\\')">Restaurar</button> ':'')+(P.excluir_documento?'<button class="btn btn-ghost peq" onclick="excluirDefinitivo(\\''+d.id+'\\')">Excluir de vez</button>':''))
@@ -403,7 +406,12 @@ async function excluirDefinitivo(id){if(!confirm('Excluir DEFINITIVAMENTE? Todas
   try{await api('DELETE','/documentos/'+id);vDocs();}catch(e){alert(e.message);}}
 async function abrirDoc(id){
   const P=S.me.permissoes;
-  const {documento:d,acessos}=await api('GET','/documentos/'+id);
+  const {documento:d,acessos,processamento:pr}=await api('GET','/documentos/'+id);
+  const st=(pr&&pr.job&&pr.job.status)||'';
+  const proc=pr&&pr.texto?'✅ Texto extraído ('+esc(pr.texto.metodo)+', '+pr.texto.chars.toLocaleString('pt-BR')+' caracteres'+(pr.texto.paginas?', '+pr.texto.paginas+' pág.':'')+') — este documento já aparece na busca por conteúdo.'
+    :st==='ocr_pendente'?'🟡 Sem texto extraível (imagem/escaneado) — OCR chega em fase futura.'
+    :st==='erro'?'🔴 Falha na extração: '+esc((pr.job&&pr.job.erro)||'')
+    :st?'⏳ Extração de texto em processamento…':'';
   const selPasta='<select id="dd-pasta"><option value="">🏠 Início</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
   $('corpo').innerHTML='<p><a href="#" onclick="return irPasta(S.pasta)">← voltar</a></p><h2>'+esc(d.nome)+'</h2>'+
    '<div class="card">'+
@@ -416,6 +424,8 @@ async function abrirDoc(id){
     :'<p>'+esc(d.descricao||'Sem descrição.')+'</p><p>Tipo: '+esc(d.tipo_documental)+' · Tags: '+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</p>')+
    (P.mover_documento?'<label>Pasta</label><div style="display:flex;gap:8px">'+selPasta+'<button class="btn btn-ghost peq" onclick="moverDoc(\\''+d.id+'\\')">Mover</button></div>':'')+
    '</div>'+
+   (proc?'<div class="card" style="margin-top:12px"><b>Processamento</b><p style="font-size:14px;margin:.4rem 0">'+proc+'</p>'+
+    (P.criar_documento&&(st==='erro'||st==='ocr_pendente')?'<button class="btn btn-ghost peq" onclick="reprocDoc(\\''+d.id+'\\')">🔄 Reprocessar</button>':'')+'</div>':'')+
    '<div class="card" style="margin-top:12px"><b>Versões</b> '+
    (P.criar_documento?'<button class="btn btn-ghost peq" onclick="$(\\'dd-file\\').click()">⬆️ Nova versão</button><input id="dd-file" type="file" style="display:none" onchange="novaVersaoDoc(\\''+d.id+'\\',this.files[0])">':'')+
    '<table><tr><th>Versão</th><th>Arquivo</th><th>Tamanho</th><th>Enviada em</th><th>Comentário</th><th></th></tr>'+
@@ -436,6 +446,7 @@ async function novaVersaoDoc(id,f){if(!f)return;try{
  }catch(e){alert(e.message);}}
 async function restaurarVersaoDoc(id,n){if(!confirm('Tornar a v'+n+' vigente? (vira uma nova versão)'))return;
   try{await api('POST','/documentos/'+id+'/versoes/'+n+'/restaurar');abrirDoc(id);}catch(e){alert(e.message);}}
+async function reprocDoc(id){try{await api('POST','/documentos/'+id+'/reprocessar');alert('Reprocessamento na fila — atualize em instantes.');abrirDoc(id);}catch(e){alert(e.message);}}
 
 async function vUsuarios(){
   const d=await api('GET','/usuarios');const papeis=S.me.papeis_embutidos;

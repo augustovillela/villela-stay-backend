@@ -28,8 +28,11 @@ function montar(app, injected = {}) {
   registrarRotasApi(app, { express, auth, notificar, enviarEmail });
   registrarRotasStaff(app, { express, requireAuth, requireAdmin });
   registrarPaginas(app);
-  console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-2: fundação SaaS + gestão documental).');
-  return { repo, permissoes, auth };
+  const jobs = require('./jobs');
+  jobs.configurar({ enviarEmail, notificar });
+  jobs.iniciar(); // worker de extração + rotina de vencimentos (VDOCS_ROTINAS=off desliga)
+  console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-3: fundação + documentos + processamento).');
+  return { repo, permissoes, auth, jobs };
 }
 
 module.exports = { montar, repo, permissoes };

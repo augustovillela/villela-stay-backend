@@ -229,3 +229,38 @@ CREATE TABLE IF NOT EXISTS document_access_logs (
   criado_em   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_acc_doc ON document_access_logs (tenant_id, document_id, criado_em);
+
+-- ---------- Fase 3: processamento assíncrono (extração de texto e indexação) ----------
+
+CREATE TABLE IF NOT EXISTS processing_jobs (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  document_id   TEXT NOT NULL,
+  versao        INTEGER DEFAULT 0,
+  tipo          TEXT NOT NULL,              -- extrair_texto (OCR real pluga aqui no futuro)
+  status        TEXT DEFAULT 'aguardando',  -- aguardando|processando|concluido|erro|ocr_pendente
+  tentativas    INTEGER DEFAULT 0,
+  erro          TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON processing_jobs (status, criado_em);
+CREATE INDEX IF NOT EXISTS idx_jobs_doc ON processing_jobs (tenant_id, document_id);
+
+-- Texto extraído da versão VIGENTE do documento (re-extraído a cada versão nova).
+CREATE TABLE IF NOT EXISTS document_texts (
+  tenant_id   TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  versao      INTEGER DEFAULT 0,
+  texto       TEXT DEFAULT '',
+  metodo      TEXT DEFAULT '',              -- texto|pdf|docx|xlsx|pptx|ocr (futuro)
+  paginas     INTEGER DEFAULT 0,
+  chars       INTEGER DEFAULT 0,
+  extraido_em TEXT DEFAULT '',
+  PRIMARY KEY (tenant_id, document_id)
+);
+
+-- Índice de busca por conteúdo (BM25). tenant_id/document_id UNINDEXED = filtro pós-match.
+CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts USING fts5(
+  tenant_id UNINDEXED, document_id UNINDEXED, nome, texto, tokenize='unicode61'
+);

@@ -4,9 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fase 1 EM PRODUÇÃO** (merge→master `4fc4f1c`, deploy Render live 07/07/2026, preços
-aprovados) · **Fase 2 (gestão documental básica) COMPLETA** na branch `feat/vdocs-f2`
-(aguardando validação do Augusto p/ merge). Testes: `npm run test:vdocs` (76/76).
+Status: **Fases 1–2 EM PRODUÇÃO** (deploys `4fc4f1c` e `bc0e59f`, 07/07/2026, validados pelo
+Augusto) · **Fase 3 (processamento assíncrono) COMPLETA** na branch `feat/vdocs-f3`
+(aguardando validação p/ merge). Testes: `npm run test:vdocs` (92/92).
 
 | O quê | Onde |
 |---|---|
@@ -117,9 +117,23 @@ com `Content-Disposition: attachment` + `nosniff`. Upload em base64 (JSON até 3
 ≤20 MB), lista fechada de extensões (executáveis recusados). Limites do plano aplicados em
 documentos e armazenamento (uso "vivo" no `usoDoMes`). Convite agora dispara e-mail (best-effort).
 
-**Fases 3+ (especificado, não criado)** — na ordem do roadmap:
-- F2 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel cobre),
-  `document_shares`/links externos (F7), previews/miniaturas (F3), upload multipart resumable.
+**Fase 3 (criado)**: `processing_jobs` (fila com retentativa ≤3, status
+aguardando|processando|concluido|erro|ocr_pendente), `document_texts` (texto da versão vigente),
+`docs_fts` (FTS5/BM25 — mesma técnica do RAG do legal). Motor em `extrair.js` (SEM dependência
+nativa): txt/csv/md/json/xml direto; docx/xlsx/pptx/odt/ods/odp via leitor ZIP próprio (zlib);
+**PDF via `pdfjs-dist`** (JS puro; PDF escaneado sem camada de texto → `ocr_pendente`).
+Worker in-process (`jobs.js`, timer 7 s, 1 job por vez — upload nunca espera extração) +
+**rotina diária de vencimentos** (~8h Brasília: documents.validade ≤30 dias → e-mail ao contato
+da empresa + banner no dashboard). Busca agora cobre CONTEÚDO (snippet destacado; resultado de
+outra pasta vem marcado). `VDOCS_ROTINAS=off` desliga os timers (testes).
+DECISÕES F3: OCR de imagem/escaneado NÃO embarcado (tesseract.js é pesado p/ a instância starter)
+— fica na fila como `ocr_pendente` e pluga depois sem mudar o fluxo; formatos legados .doc/.xls/
+.ppt → orientar conversão; previews/miniaturas exigiriam renderer nativo → adiado.
+
+**Fases 4+ (especificado, não criado)** — na ordem do roadmap:
+- F2/F3 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel
+  cobre), `document_shares`/links externos (F7), previews/miniaturas, upload multipart resumable,
+  OCR real (tesseract/serviço externo) plugando em `processing_jobs`.
 - F3 processamento: `ocr_jobs`, `document_texts`, `document_pages`, `document_previews`, `indexing_jobs`, `processing_logs`.
 - F4 busca: `search_queries`, `saved_searches` (FTS5/BM25 do node:sqlite — mesmo caminho provado no legal).
 - F5 IA: `ai_conversations`, `ai_messages`, `ai_sources` (citação obrigatória), `ai_feedback`,
@@ -158,20 +172,20 @@ documentos e armazenamento (uso "vivo" no `usoDoMes`). Convite agora dispara e-m
 
 ## Roadmap (10 fases — spec completa com o Augusto; ordem confirmada em 07/07/2026)
 
-~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (branch) →
-**F3 processamento** (OCR/preview/indexação em jobs, alertas de vencimento) → F4 busca (FTS5
-híbrida, filtros, buscas salvas) → F5 IA documental (chat com fontes, análise, classificação —
-reusar padrão modo duplo do legal) → F6 workflows → F7 compartilhamento externo + portal →
-F8 billing (Mercado Pago) + relatórios SaaS → F9 API pública + integrações → F10 enterprise
-(SSO, 2FA, retenção avançada, observabilidade).
+~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
+~~F3 processamento~~ ✅ (branch) → **F4 busca avançada** (tela dedicada, filtros combinados,
+operadores, buscas salvas, busca híbrida) → F5 IA documental (chat com fontes, análise,
+classificação — reusar padrão modo duplo do legal) → F6 workflows → F7 compartilhamento externo
++ portal → F8 billing (Mercado Pago) + relatórios SaaS → F9 API pública + integrações →
+F10 enterprise (SSO, 2FA, retenção avançada, observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 2 local (`node stays/start-staff-dev.js` → /vdocs/app → Documentos)
-   e autoriza merge `feat/vdocs-f2` → master (deploy Render).
+1. [ ] Augusto valida a Fase 3 (busca por conteúdo, status de processamento no detalhe do
+   documento, banner de vencimentos) e autoriza merge `feat/vdocs-f3` → master (deploy Render).
 2. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
    → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
-3. [ ] Iniciar Fase 3 (processamento) — sem env var nova.
+3. [ ] Iniciar Fase 4 (busca avançada) — sem env var nova.
 
 ## Teste local
 
