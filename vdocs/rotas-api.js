@@ -20,6 +20,8 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.use(express.json({ limit: '30mb' }));
   r.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   const h = (fn) => (req, res) => { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); };
+  // atrás do proxy do Render req.protocol é 'http' — links gerados devem usar o protocolo real
+  const protoDe = (req) => String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
   const { requireTenant, requirePerm } = auth;
 
   // ------------------------------------------------ públicas
@@ -113,7 +115,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.post('/convites', requireTenant, requirePerm('gerir_usuarios'), h(async (req, res) => {
     const b = req.body || {};
     const conv = repo.criarConvite(req.vd.tenant.id, { email: b.email, papel: b.papel }, req.vd.user, req.vd.ip);
-    const link = `${req.protocol}://${req.get('host')}/vdocs/convite/${conv.token}`;
+    const link = `${protoDe(req)}://${req.get('host')}/vdocs/convite/${conv.token}`;
     // e-mail automático (best-effort — o link também volta na resposta p/ envio manual)
     let email_enviado = false;
     if (typeof enviarEmail === 'function') {
@@ -255,7 +257,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
 
   // ------------------------------------------------ compartilhamento externo (Fase 7)
-  const linkBase = (req) => `${req.protocol}://${req.get('host')}`;
+  const linkBase = (req) => `${protoDe(req)}://${req.get('host')}`;
   r.get('/compartilhamentos', requireTenant, requirePerm('compartilhar_documento'), h(async (req, res) => {
     res.json({ shares: comp.listarShares(req.vd.tenant.id), solicitacoes: comp.listarSolicitacoes(req.vd.tenant.id) });
   }));
