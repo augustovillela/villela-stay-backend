@@ -13,6 +13,7 @@ const ia = require('./ia');
 const wf = require('./workflows');
 const comp = require('./compartilhar');
 const billing = require('./billing');
+const apiPub = require('./api-publica');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -254,6 +255,33 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
   r.delete('/buscas-salvas/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     busca.excluirSalva(req.vd.tenant.id, req.vd.user.id, req.params.id);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ integrações/API (Fase 9)
+  r.get('/integracoes', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    const plano = repo.planoDoTenant(req.vd.tenant.id);
+    res.json({
+      api_disponivel: !!(plano && plano.limites.api),
+      chaves: apiPub.listarChaves(req.vd.tenant.id),
+      webhooks: apiPub.listarWebhooks(req.vd.tenant.id),
+      entregas: apiPub.entregasRecentes(req.vd.tenant.id),
+      eventos: apiPub.EVENTOS,
+      base_url: `${protoDe(req)}://${req.get('host')}/vdocs/api/v1`,
+    });
+  }));
+  r.post('/integracoes/chaves', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    res.json({ ok: true, ...apiPub.criarChave(req.vd.tenant.id, (req.body || {}).nome, req.vd.user, req.vd.ip) });
+  }));
+  r.delete('/integracoes/chaves/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    apiPub.revogarChave(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
+    res.json({ ok: true });
+  }));
+  r.post('/integracoes/webhooks', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    res.json({ ok: true, ...apiPub.criarWebhook(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip) });
+  }));
+  r.delete('/integracoes/webhooks/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
+    apiPub.excluirWebhook(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
     res.json({ ok: true });
   }));
 

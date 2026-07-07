@@ -465,3 +465,48 @@ CREATE TABLE IF NOT EXISTS billing_events (
   payload   TEXT DEFAULT '{}',
   criado_em TEXT NOT NULL
 );
+
+-- ---------- Fase 9: API pública + integrações ----------
+
+-- Chave de API por tenant. A chave só existe na criação — no banco fica
+-- o sha256; o prefixo (vd_...8) identifica a chave em telas e logs.
+CREATE TABLE IF NOT EXISTS api_keys (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  nome        TEXT NOT NULL,
+  prefixo     TEXT NOT NULL,
+  key_hash    TEXT UNIQUE NOT NULL,
+  ultimo_uso  TEXT DEFAULT '',
+  revogada_em TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL,
+  criado_por  TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_ak_tenant ON api_keys (tenant_id);
+
+-- Webhooks DE SAÍDA (o cliente integra o sistema dele): url + eventos +
+-- secret p/ assinatura HMAC. Entregas com retentativa ficam em deliveries.
+CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  url         TEXT NOT NULL,
+  eventos     TEXT DEFAULT '[]',            -- JSON: documento.criado|documento.excluido|aprovacao.finalizada
+  secret      TEXT NOT NULL,                -- p/ header X-VDocs-Signature (HMAC sha256)
+  ativo       INTEGER DEFAULT 1,
+  criado_em   TEXT NOT NULL,
+  criado_por  TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_ws_tenant ON webhook_subscriptions (tenant_id);
+
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+  id              TEXT PRIMARY KEY,
+  tenant_id       TEXT NOT NULL,
+  subscription_id TEXT NOT NULL,
+  evento          TEXT NOT NULL,
+  payload         TEXT DEFAULT '{}',
+  status          TEXT DEFAULT 'pendente',  -- pendente|entregue|erro
+  tentativas      INTEGER DEFAULT 0,
+  resposta        TEXT DEFAULT '',
+  proximo_em      TEXT DEFAULT '',
+  criado_em       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_wd_status ON webhook_deliveries (status, proximo_em);

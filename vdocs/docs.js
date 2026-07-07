@@ -142,6 +142,7 @@ function criarDocumento(tenantId, { nome, folder_id, descricao, tipo_documental,
       .run(novoId(), String(tenantId), id, 1, s(arquivo_nome, 200), EXTENSOES[ext], buffer.length, hash, rel, agora, s(ator && ator.id, 40));
     repo.auditar(tenantId, ator, 'documento.criar', 'documents', id, { nome: s(nome || arquivo_nome, 200), tamanho: buffer.length }, ip);
     jobs.enfileirarExtracao(tenantId, id, 1); // extração/indexação em background (Fase 3)
+    require('./api-publica').emitir(tenantId, 'documento.criado', { document_id: id, nome: s(nome || arquivo_nome, 200), folder_id: s(folder_id, 40) });
     return obterDocumento(tenantId, id);
   });
 }
@@ -251,6 +252,7 @@ function paraLixeira(tenantId, id, ator, ip) {
     .run(nowISO(), s(ator && ator.id, 40), nowISO(), d.id);
   db.prepare('DELETE FROM docs_fts WHERE tenant_id = ? AND document_id = ?').run(String(tenantId), d.id); // some da busca (texto extraído fica p/ restauração)
   repo.auditar(tenantId, ator, 'documento.excluir', 'documents', d.id, { nome: d.nome }, ip);
+  require('./api-publica').emitir(tenantId, 'documento.excluido', { document_id: d.id, nome: d.nome });
 }
 function restaurarDaLixeira(tenantId, id, ator, ip) {
   const d = obterDocumento(tenantId, id);

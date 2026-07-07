@@ -4,9 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fases 1–7 EM PRODUÇÃO** (último deploy `cdc12f6`, 07/07/2026) · **Fase 8 (billing
-Mercado Pago) COMPLETA** na branch `feat/vdocs-f8` (aguardando validação p/ merge).
-Testes: `npm run test:vdocs` (177/177).
+Status: **Fases 1–8 EM PRODUÇÃO** (último deploy `99008e3`, 07/07/2026 — billing validado) ·
+**Fase 9 (API pública + integrações) COMPLETA** na branch `feat/vdocs-f9` (aguardando
+validação p/ merge). Testes: `npm run test:vdocs` (198/198).
 
 | O quê | Onde |
 |---|---|
@@ -191,7 +191,19 @@ na v1; trocar de plano = cancelar e assinar de novo (ou manual pelo staff).
 `https://villela-stay-backend.onrender.com/vdocs/api/billing/webhook` (painel do MP →
 notificações), senão a ativação depende de conferência manual.
 
-**Fases 9+ (especificado, não criado)** — na ordem do roadmap:
+**Fase 9 (criado)**: `api_keys` (chave `vd_...` mostrada 1×, sha256 no banco, prefixo p/
+identificação, revogação imediata), API v1 em `/vdocs/api/v1/*` (ping, pastas, documentos:
+listar/buscar/enviar/detalhe/baixar, uso) autenticada por `Authorization: Bearer`/`X-Api-Key`
+— exige plano com `api=true` (Business/Enterprise; 403 sugere upgrade), rate limit 120 req/min
+por chave (VDOCS_API_RPM) com headers X-RateLimit-*, consumo mensal em `api_chamadas`, e a
+chave age como "gestor de documentos" (nunca usuários/billing). **Webhooks de SAÍDA**:
+`webhook_subscriptions` (URL https + eventos documento.criado|documento.excluido|
+aprovacao.finalizada + secret `whsec_` mostrado 1×) e `webhook_deliveries` (entrega assinada
+`X-VDocs-Signature: sha256=HMAC(corpo, secret)`, timeout 10 s, retentativas 1/5/30 min via
+tick do jobs; anti-SSRF: https-only e sem hosts internos em produção). Tela 🔌 Integrações no
+painel (chaves, webhooks, entregas recentes e doc da API com exemplos curl).
+
+**Fase 10 (especificado, não criado)** — na ordem do roadmap:
 - F2/F3 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel
   cobre), `document_shares`/links externos (F7), previews/miniaturas, upload multipart resumable,
   OCR real (tesseract/serviço externo) plugando em `processing_jobs`.
@@ -236,20 +248,20 @@ notificações), senão a ativação depende de conferência manual.
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
 ~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (produção) · ~~F5 IA documental~~
 ✅ (produção) · ~~F6 workflows~~ ✅ (produção) · ~~F7 compartilhamento externo~~ ✅ (produção) ·
-~~F8 billing~~ ✅ (branch) → **F9 API pública + integrações** (api_keys por tenant, rate limit
-por plano, webhooks de eventos, docs da API) → F10 enterprise (SSO, 2FA, retenção avançada,
-observabilidade).
+~~F8 billing~~ ✅ (produção) · ~~F9 API pública~~ ✅ (branch) → **F10 enterprise** (2FA, SSO,
+retenção/descarte avançados, exportação total do tenant — LGPD takeout, observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 8 (tela 💳 Assinatura + aba 💰 Receita no staff) e autoriza merge
-   `feat/vdocs-f8` → master (deploy Render).
-2. [ ] Pós-deploy F8: configurar o webhook de assinaturas no painel do Mercado Pago →
-   `https://villela-stay-backend.onrender.com/vdocs/api/billing/webhook`.
+1. [ ] Augusto valida a Fase 9 (aba 🔌 Integrações: chave, API v1, webhook de saída) e autoriza
+   merge `feat/vdocs-f9` → master (deploy Render).
+2. [ ] **PENDÊNCIA (Augusto, F8 já no ar)**: configurar o webhook de assinaturas no painel do
+   Mercado Pago → `https://villela-stay-backend.onrender.com/vdocs/api/billing/webhook`
+   (sem isso a ativação automática pós-pagamento não dispara).
 3. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
    → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
 4. [ ] Decisões de billing quando quiser evoluir: plano anual com desconto? cupons?
-5. [ ] Iniciar Fase 9 (API pública + integrações) — sem env var nova.
+5. [ ] Iniciar Fase 10 (enterprise: 2FA, retenção avançada, takeout LGPD, observabilidade).
 
 ## Teste local
 

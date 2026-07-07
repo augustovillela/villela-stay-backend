@@ -34,6 +34,7 @@ function montar(app, injected = {}) {
   require('./workflows').configurar({ enviarEmail });
   require('./compartilhar').configurar({ enviarEmail, notificar });
   require('./billing').configurar({ mpFetch, notificar });
+  require('./api-publica').registrarApiPublica(app, { express }); // API v1 por chave (Fase 9)
   console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-6: fundação, documentos, processamento, busca, IA e workflows).');
   return { repo, permissoes, auth, jobs };
 }

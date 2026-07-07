@@ -678,6 +678,88 @@ function teste(nome, cond) {
   teste('staff reativa tenant B manualmente', r.status === 200);
   billing.configurar({ mpFetch: null });
 
+  // ================== FASE 9: API pública + webhooks de saída ==================
+  const apiPub = require('./api-publica');
+
+  // receptor local p/ os webhooks de saída (registra corpo e assinatura)
+  const recebidos = [];
+  app.post('/receptor-teste', express.json(), (rq2, rs2) => {
+    recebidos.push({ evento: rq2.headers['x-vdocs-event'], assinatura: rq2.headers['x-vdocs-signature'], corpo: rq2.body, bruto: JSON.stringify(rq2.body) });
+    rs2.json({ ok: true });
+  });
+
+  // chave exige permissão configurar_integracoes
+  r = await req('POST', '/vdocs/api/integracoes/chaves', { body: { nome: 'ERP' }, jar: 'carlaA' });
+  teste('criar chave sem configurar_integracoes → 403', r.status === 403);
+  r = await req('POST', '/vdocs/api/integracoes/chaves', { body: { nome: 'ERP financeiro' }, jar: 'anaA' });
+  teste('chave criada (mostrada 1x)', r.status === 200 && /^vd_/.test(r.dados.chave));
+  const chaveA = r.dados.chave;
+  const chaveAId = r.dados.id;
+
+  // plano sem API (A está no trial = Professional, api=false) → 403 com upgrade
+  {
+    let resp = await fetch(BASE + '/vdocs/api/v1/ping', { headers: { Authorization: 'Bearer ' + chaveA } });
+    teste('plano sem API → 403 sugerindo upgrade', resp.status === 403 && /Business/.test((await resp.json()).erro));
+    // sobe A para business e tenta de novo
+    repo.administrarTenant(tenantA.id, { plano_slug: 'business' }, staff, 'teste');
+    resp = await fetch(BASE + '/vdocs/api/v1/ping', { headers: { Authorization: 'Bearer ' + chaveA } });
+    const pj = await resp.json();
+    teste('ping autenticado no plano Business', resp.status === 200 && pj.tenant === tenantA.id);
+    teste('headers de rate limit presentes', resp.headers.get('x-ratelimit-limit') !== null);
+    resp = await fetch(BASE + '/vdocs/api/v1/ping', { headers: { Authorization: 'Bearer vd_chave_falsa' } });
+    teste('chave inválida → 401', resp.status === 401);
+    resp = await fetch(BASE + '/vdocs/api/v1/ping');
+    teste('sem chave → 401', resp.status === 401);
+    // upload + busca + download via API
+    resp = await fetch(BASE + '/vdocs/api/v1/documentos', { method: 'POST', headers: { Authorization: 'Bearer ' + chaveA, 'Content-Type': 'application/json' }, body: JSON.stringify({ arquivo_nome: 'nf-api.txt', nome: 'NF via API', conteudo_base64: B64('nota fiscal emitida pela integracao do ERP') }) });
+    const up = await resp.json();
+    teste('upload via API v1', resp.status === 200 && up.documento && up.documento.nome === 'NF via API');
+    await jobs.processarPendentes(20);
+    resp = await fetch(BASE + '/vdocs/api/v1/documentos?busca=' + encodeURIComponent('integracao do ERP'), { headers: { Authorization: 'Bearer ' + chaveA } });
+    const bs = await resp.json();
+    teste('busca via API v1 acha por conteúdo', resp.status === 200 && bs.resultados.some(x => x.id === up.documento.id));
+    resp = await fetch(BASE + '/vdocs/api/v1/documentos/' + up.documento.id + '/baixar', { headers: { Authorization: 'Bearer ' + chaveA } });
+    teste('download via API v1', resp.status === 200 && (await resp.text()).includes('nota fiscal'));
+    // isolamento: chave de A não vê docs de B
+    resp = await fetch(BASE + '/vdocs/api/v1/documentos?busca=qualquer', { headers: { Authorization: 'Bearer ' + chaveA } });
+    teste('API v1 respeita o tenant da chave', resp.status === 200);
+    // uso registrado
+    r = await req('GET', '/vdocs/api/uso', { jar: 'anaA' });
+    teste('api_chamadas contam no uso', Number(r.dados.uso.api_chamadas) >= 5);
+  }
+
+  // webhooks de saída
+  r = await req('POST', '/vdocs/api/integracoes/webhooks', { body: { url: 'ftp://x', eventos: ['documento.criado'] }, jar: 'anaA' });
+  teste('webhook com URL inválida rejeitado', r.status === 400);
+  r = await req('POST', '/vdocs/api/integracoes/webhooks', { body: { url: BASE + '/receptor-teste', eventos: ['documento.criado', 'aprovacao.finalizada'] }, jar: 'anaA' });
+  teste('webhook criado com secret 1x', r.status === 200 && /^whsec_/.test(r.dados.secret));
+  const whSecret = r.dados.secret;
+  const whId = r.dados.id;
+  // dispara um evento real (upload) e processa entregas
+  r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'evento.txt', nome: 'Doc do evento', conteudo_base64: B64('conteudo evento webhook') }, jar: 'anaA' });
+  const docEvento = r.dados.documento.id;
+  await apiPub.processarEntregas(10);
+  teste('webhook entregue ao receptor', recebidos.some(x => x.evento === 'documento.criado' && x.corpo.dados.document_id === docEvento));
+  {
+    const ent = recebidos.find(x => x.evento === 'documento.criado');
+    const esperada = 'sha256=' + require('crypto').createHmac('sha256', whSecret).update(JSON.stringify(ent.corpo)).digest('hex');
+    teste('assinatura HMAC confere', ent.assinatura === esperada);
+  }
+  r = await req('GET', '/vdocs/api/integracoes', { jar: 'anaA' });
+  teste('tela de integrações lista entrega como entregue', r.dados.entregas.some(e => e.status === 'entregue'));
+  // B não vê nem mexe nas integrações de A
+  r = await req('GET', '/vdocs/api/integracoes', { jar: 'bobB' });
+  teste('integrações de B vêm vazias (isolamento)', r.status === 200 && r.dados.chaves.length === 0 && r.dados.webhooks.length === 0);
+  r = await req('DELETE', '/vdocs/api/integracoes/webhooks/' + whId, { jar: 'bobB' });
+  teste('B não exclui webhook de A', r.status === 400 || r.status === 403);
+  // revogação da chave corta o acesso
+  r = await req('DELETE', '/vdocs/api/integracoes/chaves/' + chaveAId, { jar: 'anaA' });
+  teste('chave revogada', r.status === 200);
+  {
+    const resp = await fetch(BASE + '/vdocs/api/v1/ping', { headers: { Authorization: 'Bearer ' + chaveA } });
+    teste('chave revogada → 401', resp.status === 401);
+  }
+
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });
   teste('lead da landing gravado', r.status === 200);

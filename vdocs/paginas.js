@@ -311,6 +311,7 @@ const TELAS=[
  ['ia','🤖 IA documental',m=>m.permissoes.usar_ia],
  ['workflows','✅ Aprovações',m=>m.permissoes.ver_documentos],
  ['compartilhar','🔗 Compartilhamentos',m=>m.permissoes.compartilhar_documento],
+ ['integracoes','🔌 Integrações',m=>m.permissoes.configurar_integracoes],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
  ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
  ['plano','📦 Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca],
@@ -319,7 +320,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Disponível na próxima fase">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,workflows:vWorkflows,compartilhar:vShares,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,workflows:vWorkflows,compartilhar:vShares,integracoes:vInteg,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -566,6 +567,43 @@ async function compartilharDoc(id){
   try{const r=await api('POST','/compartilhamentos',{alvo_tipo:'documento',alvo_id:id,senha,permite_download:dl,expira_dias:dias});
     prompt('Link criado — copie e envie:',r.link);}catch(e){alert(e.message);}
 }
+
+// ---------------- Integrações/API (Fase 9) ----------------
+async function vInteg(){
+  const d=await api('GET','/integracoes');
+  const exemplo='# testar a chave\\ncurl -H "Authorization: Bearer vd_SUA_CHAVE" '+d.base_url+'/ping\\n\\n# listar/buscar documentos\\ncurl -H "Authorization: Bearer vd_SUA_CHAVE" "'+d.base_url+'/documentos?busca=contrato"\\n\\n# enviar documento (JSON com o arquivo em base64)\\ncurl -X POST -H "Authorization: Bearer vd_SUA_CHAVE" -H "Content-Type: application/json" -d \\'{"arquivo_nome":"nota.pdf","nome":"NF 123","conteudo_base64":"..."}\\' '+d.base_url+'/documentos\\n\\n# baixar\\ncurl -OJ -H "Authorization: Bearer vd_SUA_CHAVE" '+d.base_url+'/documentos/ID/baixar';
+  $('corpo').innerHTML='<h2>🔌 Integrações</h2>'+
+   (!d.api_disponivel?'<div class="aviso">⚠️ Seu plano atual não inclui API — as chaves só funcionam nos planos <b>Business</b> e <b>Enterprise</b>. Webhooks funcionam em todos os planos.</div>':'')+
+   '<div class="card"><b>🔑 Chaves de API</b> <span class="sub" style="font-size:12px">(autenticam sistemas externos: ERP, RPA, Zapier/Make…)</span>'+
+   '<table><tr><th>Nome</th><th>Prefixo</th><th>Último uso</th><th>Status</th><th></th></tr>'+
+   (d.chaves.length?d.chaves.map(k=>'<tr><td>'+esc(k.nome)+'</td><td><code>'+esc(k.prefixo)+'…</code></td><td>'+dt(k.ultimo_uso)+'</td>'+
+    '<td>'+(k.revogada_em?'⚪ revogada':'🟢 ativa')+'</td><td>'+(k.revogada_em?'':'<button class="btn btn-ghost peq" onclick="revogarChave(\\''+k.id+'\\')">Revogar</button>')+'</td></tr>').join(''):'<tr><td colspan="5" style="color:var(--suave)">Nenhuma chave.</td></tr>')+'</table>'+
+   '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><input id="ak-nome" placeholder="Nome da chave (ex.: ERP financeiro)" style="max-width:260px"><button class="btn peq" onclick="criarChave()">Criar chave</button></div><div id="ak-out" style="margin-top:8px;font-size:13px"></div></div>'+
+   '<div class="card" style="margin-top:12px"><b>📡 Webhooks de eventos</b> <span class="sub" style="font-size:12px">(avisamos o SEU sistema quando algo acontece aqui)</span>'+
+   '<table><tr><th>URL</th><th>Eventos</th><th></th></tr>'+
+   (d.webhooks.length?d.webhooks.map(w=>'<tr><td style="word-break:break-all">'+esc(w.url)+'</td><td>'+w.eventos.map(e=>'<span class="chip">'+esc(e)+'</span>').join(' ')+'</td>'+
+    '<td><button class="btn btn-ghost peq" onclick="delWebhook(\\''+w.id+'\\')">Excluir</button></td></tr>').join(''):'<tr><td colspan="3" style="color:var(--suave)">Nenhum webhook.</td></tr>')+'</table>'+
+   '<div style="margin-top:8px"><input id="wh-url" placeholder="https://seu-sistema.com/webhook">'+
+   '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;align-items:center">'+d.eventos.map(e=>'<label style="margin:0;display:flex;align-items:center;gap:4px;font-weight:400"><input type="checkbox" class="wh-ev" value="'+esc(e)+'" style="width:auto"> '+esc(e)+'</label>').join('')+
+   '<button class="btn peq" onclick="criarWebhook()">Criar webhook</button></div><div id="wh-out" style="margin-top:8px;font-size:13px"></div></div>'+
+   (d.entregas.length?'<div class="card" style="margin-top:12px"><b>Entregas recentes</b><table><tr><th>Quando</th><th>Evento</th><th>Status</th><th>Tentativas</th><th>Resposta</th></tr>'+
+    d.entregas.map(e=>'<tr><td>'+dt(e.criado_em)+'</td><td>'+esc(e.evento)+'</td><td>'+(e.status==='entregue'?'✅':e.status==='erro'?'🔴':'⏳')+' '+esc(e.status)+'</td><td>'+e.tentativas+'</td><td>'+esc(e.resposta)+'</td></tr>').join('')+'</table></div>':'')+
+   '<div class="card" style="margin-top:12px"><b>📖 Como usar a API</b>'+
+   '<p style="font-size:13px">Base: <code>'+esc(d.base_url)+'</code> · autentique com <code>Authorization: Bearer vd_...</code> · limite de 120 requisições/min por chave · disponível nos planos com API.</p>'+
+   '<pre style="background:var(--fundo);padding:10px;border-radius:8px;font-size:12px;overflow-x:auto">'+esc(exemplo)+'</pre>'+
+   '<p style="font-size:13px">Webhooks: enviamos POST JSON com os headers <code>X-VDocs-Event</code> e <code>X-VDocs-Signature: sha256=HMAC-SHA256(corpo, seu_secret)</code> — valide a assinatura antes de confiar. Retentativas automáticas: 1, 5 e 30 minutos.</p></div>';
+}
+async function criarChave(){try{
+  const r=await api('POST','/integracoes/chaves',{nome:$('ak-nome').value});
+  $('ak-out').innerHTML='✅ Chave criada — <b>copie AGORA (não aparece de novo)</b>:<br><code style="word-break:break-all">'+esc(r.chave)+'</code>';
+ }catch(e){$('ak-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
+async function revogarChave(id){if(!confirm('Revogar esta chave? Integrações que a usam param imediatamente.'))return;await api('DELETE','/integracoes/chaves/'+id);vInteg();}
+async function criarWebhook(){try{
+  const eventos=[...document.querySelectorAll('.wh-ev:checked')].map(x=>x.value);
+  const r=await api('POST','/integracoes/webhooks',{url:$('wh-url').value,eventos});
+  $('wh-out').innerHTML='✅ Webhook criado — <b>guarde o secret (não aparece de novo)</b>:<br><code style="word-break:break-all">'+esc(r.secret)+'</code>';
+ }catch(e){$('wh-out').innerHTML='<span style="color:var(--alerta)">'+esc(e.message)+'</span>';}}
+async function delWebhook(id){if(!confirm('Excluir este webhook?'))return;await api('DELETE','/integracoes/webhooks/'+id);vInteg();}
 
 // ---------------- Aprovações (Fase 6) ----------------
 async function vWorkflows(){

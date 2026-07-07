@@ -148,6 +148,7 @@ let _timers = [];
 function iniciar() {
   if (String(process.env.VDOCS_ROTINAS || '').toLowerCase() === 'off') { console.log('[vdocs jobs] rotinas desligadas (VDOCS_ROTINAS=off)'); return; }
   _timers.push(setInterval(() => { processarPendentes().catch(e => console.error('[vdocs jobs]', e.message)); }, 7000));
+  _timers.push(setInterval(() => { require('./api-publica').processarEntregas().catch(e => console.error('[vdocs webhooks]', e.message)); }, 10000));
   // vencimentos: 1x/dia ~08h Brasília (11h UTC)
   let ultimaData = '';
   _timers.push(setInterval(() => {

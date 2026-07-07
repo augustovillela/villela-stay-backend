@@ -129,6 +129,7 @@ function decidir(tenantId, instanceId, { decisao, justificativa }, ator, ip) {
       db.prepare("UPDATE workflow_instances SET status = 'rejeitado', finalizado_em = ? WHERE id = ?").run(nowISO(), inst.id);
       repo.auditar(tenantId, ator, 'aprovacao.rejeitar', 'workflow_instances', inst.id, { etapa: etapa.nome, justificativa: s(justificativa, 200) }, ip);
       avisarSolicitante(tenantId, inst, `rejeitado na etapa "${etapa.nome}": ${s(justificativa, 200)}`);
+      require('./api-publica').emitir(tenantId, 'aprovacao.finalizada', { instance_id: inst.id, document_id: inst.document_id, fluxo: inst.workflow_nome, resultado: 'rejeitado', justificativa: s(justificativa, 200) });
       return { status: 'rejeitado' };
     }
     const proxima = inst.etapa_atual + 1;
@@ -136,6 +137,7 @@ function decidir(tenantId, instanceId, { decisao, justificativa }, ator, ip) {
       db.prepare("UPDATE workflow_instances SET status = 'aprovado', finalizado_em = ? WHERE id = ?").run(nowISO(), inst.id);
       repo.auditar(tenantId, ator, 'aprovacao.aprovar_final', 'workflow_instances', inst.id, { fluxo: inst.workflow_nome }, ip);
       avisarSolicitante(tenantId, inst, 'APROVADO em todas as etapas ✅');
+      require('./api-publica').emitir(tenantId, 'aprovacao.finalizada', { instance_id: inst.id, document_id: inst.document_id, fluxo: inst.workflow_nome, resultado: 'aprovado' });
       return { status: 'aprovado' };
     }
     const prazo = prazoDe(inst.etapas[proxima]);
