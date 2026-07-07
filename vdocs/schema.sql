@@ -344,3 +344,50 @@ CREATE TABLE IF NOT EXISTS ai_runs (
   criado_em          TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_air_tenant ON ai_runs (tenant_id, criado_em);
+
+-- ---------- Fase 6: workflows de aprovação ----------
+
+-- Modelo de fluxo por tenant. Etapas em JSON:
+--   [{ nome, aprovadores: [user_id...], prazo_dias }]  (etapas sequenciais;
+--   dentro da etapa QUALQUER aprovador listado decide — decisão no README)
+CREATE TABLE IF NOT EXISTS workflows (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  nome       TEXT NOT NULL,
+  descricao  TEXT DEFAULT '',
+  etapas     TEXT DEFAULT '[]',
+  ativo      INTEGER DEFAULT 1,
+  criado_em  TEXT NOT NULL,
+  criado_por TEXT DEFAULT '',
+  UNIQUE (tenant_id, nome)
+);
+
+CREATE TABLE IF NOT EXISTS workflow_instances (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  workflow_id   TEXT NOT NULL,
+  workflow_nome TEXT DEFAULT '',            -- congelado (modelo pode mudar depois)
+  etapas        TEXT DEFAULT '[]',          -- congeladas na abertura
+  document_id   TEXT NOT NULL,
+  versao        INTEGER DEFAULT 0,          -- versão do documento submetida
+  etapa_atual   INTEGER DEFAULT 0,          -- índice da etapa em andamento
+  status        TEXT DEFAULT 'em_andamento',-- em_andamento|aprovado|rejeitado|cancelado
+  prazo_em      TEXT DEFAULT '',            -- prazo da etapa atual
+  criado_em     TEXT NOT NULL,
+  criado_por    TEXT DEFAULT '',
+  finalizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_wfi_tenant ON workflow_instances (tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_wfi_doc ON workflow_instances (tenant_id, document_id);
+
+CREATE TABLE IF NOT EXISTS workflow_approvals (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id     TEXT NOT NULL,
+  instance_id   TEXT NOT NULL,
+  etapa         INTEGER DEFAULT 0,
+  aprovador_id  TEXT NOT NULL,
+  decisao       TEXT NOT NULL,              -- aprovar|rejeitar
+  justificativa TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_wfa_inst ON workflow_approvals (tenant_id, instance_id);

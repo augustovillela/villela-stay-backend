@@ -309,7 +309,7 @@ const TELAS=[
  ['documentos','📁 Documentos',m=>m.permissoes.ver_documentos],
  ['busca','🔎 Busca',m=>m.permissoes.ver_documentos],
  ['ia','🤖 IA documental',m=>m.permissoes.usar_ia],
- ['workflows','✅ Aprovações',()=>true,'breve'],
+ ['workflows','✅ Aprovações',m=>m.permissoes.ver_documentos],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
  ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
  ['plano','📦 Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca],
@@ -318,7 +318,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Disponível na próxima fase">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,workflows:vWorkflows,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -337,6 +337,7 @@ async function vDash(){
    '<div class="kpis">'+
    '<div class="kpi"><div class="n">'+d.usuarios_ativos+'</div><div class="r">usuários ativos'+(L.usuarios?' / '+L.usuarios:'')+'</div></div>'+
    '<div class="kpi"><div class="n">'+d.convites_pendentes+'</div><div class="r">convites pendentes</div></div>'+
+   '<div class="kpi"><div class="n">'+(d.aprovacoes_pendentes||0)+'</div><div class="r">aprovações para você</div></div>'+
    '<div class="kpi"><div class="n">'+d.documentos+'</div><div class="r">documentos</div></div>'+
    '<div class="kpi"><div class="n">'+(d.armazenamento_mb||0)+' MB</div><div class="r">armazenamento usado</div></div></div>'+
    (L.usuarios?'<div class="card"><b>Uso de usuários</b><div class="barra" style="margin-top:6px"><i style="width:'+pct(d.usuarios_ativos,L.usuarios)+'%"></i></div><span class="r" style="font-size:12px;color:var(--suave)">'+d.usuarios_ativos+' de '+L.usuarios+'</span></div>':'')+
@@ -406,7 +407,7 @@ async function excluirDefinitivo(id){if(!confirm('Excluir DEFINITIVAMENTE? Todas
   try{await api('DELETE','/documentos/'+id);vDocs();}catch(e){alert(e.message);}}
 async function abrirDoc(id){
   const P=S.me.permissoes;
-  const {documento:d,acessos,processamento:pr}=await api('GET','/documentos/'+id);
+  const {documento:d,acessos,processamento:pr,aprovacoes:aps}=await api('GET','/documentos/'+id);
   const st=(pr&&pr.job&&pr.job.status)||'';
   const proc=pr&&pr.texto?'✅ Texto extraído ('+esc(pr.texto.metodo)+', '+pr.texto.chars.toLocaleString('pt-BR')+' caracteres'+(pr.texto.paginas?', '+pr.texto.paginas+' pág.':'')+') — este documento já aparece na busca por conteúdo.'
     :st==='ocr_pendente'?'🟡 Sem texto extraível (imagem/escaneado) — OCR chega em fase futura.'
@@ -427,6 +428,11 @@ async function abrirDoc(id){
    '</div>'+
    (proc?'<div class="card" style="margin-top:12px"><b>Processamento</b><p style="font-size:14px;margin:.4rem 0">'+proc+'</p>'+
     (P.criar_documento&&(st==='erro'||st==='ocr_pendente')?'<button class="btn btn-ghost peq" onclick="reprocDoc(\\''+d.id+'\\')">🔄 Reprocessar</button>':'')+'</div>':'')+
+   '<div class="card" style="margin-top:12px"><b>Aprovações</b> '+
+   (P.criar_workflow?'<button class="btn btn-ghost peq" onclick="enviarAprovacao(\\''+d.id+'\\')">📨 Enviar para aprovação</button>':'')+
+   ((aps||[]).length?'<table><tr><th>Fluxo</th><th>Etapa</th><th>Status</th><th>Prazo</th><th>Enviado em</th></tr>'+
+    aps.map(a=>'<tr><td>'+esc(a.workflow_nome)+'</td><td>'+esc(a.etapa)+' ('+(a.etapa_atual+1)+'/'+a.total+')</td><td>'+(a.status==='aprovado'?'✅ aprovado':a.status==='rejeitado'?'❌ rejeitado':a.status==='cancelado'?'⚪ cancelado':'⏳ em andamento')+'</td><td>'+(a.prazo_em?dt(a.prazo_em):'—')+'</td><td>'+dt(a.criado_em)+'</td></tr>').join('')+'</table>'
+    :'<p class="sub" style="font-size:13px">Nenhuma aprovação para este documento.</p>')+'</div>'+
    '<div class="card" style="margin-top:12px"><b>Versões</b> '+
    (P.criar_documento?'<button class="btn btn-ghost peq" onclick="$(\\'dd-file\\').click()">⬆️ Nova versão</button><input id="dd-file" type="file" style="display:none" onchange="novaVersaoDoc(\\''+d.id+'\\',this.files[0])">':'')+
    '<table><tr><th>Versão</th><th>Arquivo</th><th>Tamanho</th><th>Enviada em</th><th>Comentário</th><th></th></tr>'+
@@ -441,6 +447,16 @@ async function salvarDoc(id){try{
   await api('PATCH','/documentos/'+id,{nome:$('dd-nome').value,descricao:$('dd-desc').value,tipo_documental:$('dd-tipo').value,validade:$('dd-val').value,tags:$('dd-tags').value.split(',').map(t=>t.trim()).filter(Boolean)});
   $('dd-out').textContent='✅ salvo';}catch(e){$('dd-out').textContent='⚠️ '+e.message;}}
 async function moverDoc(id){try{await api('POST','/documentos/'+id+'/mover',{folder_id:$('dd-pasta').value});abrirDoc(id);}catch(e){alert(e.message);}}
+async function enviarAprovacao(id){
+  try{
+    const {modelos}=await api('GET','/workflows');
+    if(!modelos.length){alert('Crie um modelo de fluxo primeiro (tela Aprovações).');return;}
+    const nome=prompt('Qual fluxo usar?\\n'+modelos.map((w,i)=>(i+1)+'. '+w.nome).join('\\n')+'\\n\\nDigite o número:');
+    const w=modelos[Number(nome)-1];if(!w)return;
+    await api('POST','/documentos/'+id+'/aprovacao',{workflow_id:w.id});
+    alert('Enviado para aprovação no fluxo "'+w.nome+'".');abrirDoc(id);
+  }catch(e){alert(e.message);}
+}
 async function novaVersaoDoc(id,f){if(!f)return;try{
   const conteudo=await b64(f);const c=prompt('Comentário da versão (opcional):')||'';
   await api('POST','/documentos/'+id+'/versoes',{arquivo_nome:f.name,conteudo_base64:conteudo,comentario:c});abrirDoc(id);
@@ -496,6 +512,57 @@ async function salvarBuscaAtual(){
 }
 function usarSalva(json){const sv=JSON.parse(json);const f=sv.filtros||{};S.buscaF={q:sv.termo||f.q||'',tipo:f.tipo||'',tag:f.tag||'',pasta:f.pasta||'',de:f.de||'',ate:f.ate||'',vencendo:f.vencendo||''};vBusca(true);}
 async function delSalva(id){if(!confirm('Excluir esta busca salva?'))return false;try{await api('DELETE','/buscas-salvas/'+id);S.buscaCtx=null;vBusca(false);}catch(e){alert(e.message);}return false;}
+
+// ---------------- Aprovações (Fase 6) ----------------
+async function vWorkflows(){
+  const P=S.me.permissoes;
+  const [{pendentes,minhas},{modelos}]=await Promise.all([api('GET','/aprovacoes'),api('GET','/workflows')]);
+  S.wfModelos=modelos;
+  const linha=(a,acoes)=>'<tr'+(a.atrasada?' style="background:#fef7e0"':'')+'><td><a href="#" onclick="S.tela=\\'documentos\\';menu();abrirDoc(\\''+a.document_id+'\\');return false">'+esc(a.documento)+'</a> <span class="chip">v'+a.versao+'</span></td>'+
+   '<td>'+esc(a.workflow_nome)+'</td><td>'+esc(a.etapa_nome)+' ('+(a.etapa_atual+1)+'/'+a.total_etapas+')</td>'+
+   '<td>'+(a.prazo_em?(a.atrasada?'🔴 ':'')+dt(a.prazo_em):'—')+'</td><td>'+esc(a.status)+'</td><td>'+acoes+'</td></tr>';
+  $('corpo').innerHTML='<h2>✅ Aprovações</h2>'+
+   '<div class="card"><b>Pendentes para você ('+pendentes.length+')</b><table><tr><th>Documento</th><th>Fluxo</th><th>Etapa</th><th>Prazo</th><th>Status</th><th></th></tr>'+
+   (pendentes.length?pendentes.map(a=>linha(a,(P.aprovar_documento?'<button class="btn peq" onclick="decidirWf(\\''+a.id+'\\',\\'aprovar\\')">✔ Aprovar</button> <button class="btn btn-ghost peq" onclick="decidirWf(\\''+a.id+'\\',\\'rejeitar\\')">✖ Rejeitar</button>':'<span class="sub">sem permissão de aprovar</span>'))).join(''):'<tr><td colspan="6" style="color:var(--suave)">Nada pendente para você. 🎉</td></tr>')+'</table></div>'+
+   '<div class="card" style="margin-top:12px"><b>Minhas solicitações</b><table><tr><th>Documento</th><th>Fluxo</th><th>Etapa</th><th>Prazo</th><th>Status</th><th></th></tr>'+
+   (minhas.length?minhas.map(a=>linha(a,(a.status==='em_andamento'&&P.criar_workflow?'<button class="btn btn-ghost peq" onclick="cancelarWf(\\''+a.id+'\\')">Cancelar</button>':'')+' <button class="btn btn-ghost peq" onclick="verWf(\\''+a.id+'\\')">Histórico</button>')).join(''):'<tr><td colspan="6" style="color:var(--suave)">Você ainda não enviou documentos para aprovação.</td></tr>')+'</table></div>'+
+   '<div id="wf-hist"></div>'+
+   (P.criar_workflow?'<div class="card" style="margin-top:12px"><b>Modelos de fluxo</b> '+
+    (modelos.length?'<table><tr><th>Nome</th><th>Etapas</th></tr>'+modelos.map(w=>'<tr><td>'+esc(w.nome)+'</td><td>'+w.etapas.map((e,i)=>(i+1)+'. '+esc(e.nome)+' ('+e.aprovadores.length+' aprovador(es)'+(e.prazo_dias?', '+e.prazo_dias+'d':'')+')').join(' → ')+'</td></tr>').join('')+'</table>':'<p class="sub">Nenhum modelo ainda.</p>')+
+    '<p><b>Novo modelo:</b></p><label>Nome</label><input id="wf-nome" placeholder="Ex.: Aprovação de contratos">'+
+    '<label>Etapas (uma por linha: nome | e-mails dos aprovadores separados por vírgula | prazo em dias)</label>'+
+    '<textarea id="wf-etapas" rows="3" placeholder="Revisão jurídica | maria@empresa.com | 3&#10;Assinatura diretoria | joao@empresa.com, ana@empresa.com | 5"></textarea>'+
+    '<p><button class="btn peq" onclick="criarModeloWf()">Criar modelo</button> <span id="wf-out"></span></p></div>':'');
+}
+async function decidirWf(id,decisao){
+  let justificativa='';
+  if(decisao==='rejeitar'){justificativa=prompt('Justificativa da rejeição (obrigatória):')||'';if(!justificativa)return;}
+  else if(!confirm('Confirmar aprovação desta etapa?'))return;
+  try{await api('POST','/aprovacoes/'+id+'/decidir',{decisao,justificativa});vWorkflows();}catch(e){alert(e.message);}
+}
+async function cancelarWf(id){if(!confirm('Cancelar esta aprovação?'))return;try{await api('POST','/aprovacoes/'+id+'/cancelar');vWorkflows();}catch(e){alert(e.message);}}
+async function verWf(id){
+  const {aprovacao:a}=await api('GET','/aprovacoes/'+id);
+  document.getElementById('wf-hist').innerHTML='<div class="card" style="margin-top:12px"><b>Histórico — '+esc(a.workflow_nome)+'</b> <span class="chip">'+esc(a.status)+'</span>'+
+   '<table><tr><th>Quando</th><th>Etapa</th><th>Decisão</th><th>Justificativa</th></tr>'+
+   (a.decisoes.length?a.decisoes.map(d=>'<tr><td>'+dt(d.criado_em)+'</td><td>'+esc((a.etapas[d.etapa]||{}).nome||String(d.etapa+1))+'</td><td>'+(d.decisao==='aprovar'?'✔ aprovado':'✖ rejeitado')+'</td><td>'+esc(d.justificativa)+'</td></tr>').join(''):'<tr><td colspan="4" style="color:var(--suave)">Sem decisões ainda.</td></tr>')+'</table></div>';
+}
+async function criarModeloWf(){
+  try{
+    const nome=$('wf-nome').value;
+    const linhas=$('wf-etapas').value.split('\\n').map(l=>l.trim()).filter(Boolean);
+    if(!linhas.length)throw new Error('Descreva as etapas.');
+    let mapa={};
+    try{const d=await api('GET','/usuarios');for(const u of d.usuarios)if(u.status==='ativo')mapa[u.email.toLowerCase()]=u.user_id;}
+    catch(_){throw new Error('Criar modelos exige a permissão de gerenciar usuários (para localizar os aprovadores por e-mail).');}
+    const etapas=linhas.map(l=>{const [n,emails,prazo]=l.split('|').map(x=>(x||'').trim());
+      const aprovadores=(emails||'').split(',').map(e=>mapa[e.trim().toLowerCase()]).filter(Boolean);
+      if(!aprovadores.length)throw new Error('Etapa "'+n+'": nenhum e-mail corresponde a um usuário ativo.');
+      return {nome:n,aprovadores,prazo_dias:Number(prazo)||0};});
+    await api('POST','/workflows',{nome,etapas});
+    $('wf-out').textContent='✅ modelo criado';vWorkflows();
+  }catch(e){$('wf-out').textContent='⚠️ '+e.message;}
+}
 
 // ---------------- IA documental (Fase 5) ----------------
 S.iaConv='';S.iaEscopo={tipo:'base',ref:''};

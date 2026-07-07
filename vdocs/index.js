@@ -30,8 +30,9 @@ function montar(app, injected = {}) {
   registrarPaginas(app);
   const jobs = require('./jobs');
   jobs.configurar({ enviarEmail, notificar });
-  jobs.iniciar(); // worker de extração + rotina de vencimentos (VDOCS_ROTINAS=off desliga)
-  console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-3: fundação + documentos + processamento).');
+  jobs.iniciar(); // worker de extração + rotinas diárias (VDOCS_ROTINAS=off desliga)
+  require('./workflows').configurar({ enviarEmail });
+  console.log('[vdocs] Villela Docs Intelligence montado (Fases 1-6: fundação, documentos, processamento, busca, IA e workflows).');
   return { repo, permissoes, auth, jobs };
 }
 

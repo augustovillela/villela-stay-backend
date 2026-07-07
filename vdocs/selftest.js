@@ -464,6 +464,72 @@ function teste(nome, cond) {
 
   ia.__mockParaTeste(null);
 
+  // ================== FASE 6: workflows de aprovação ==================
+  const wf = require('./workflows');
+
+  // aprovadores: Ana (dono) e Carla (papel custom SEM aprovar_documento — vamos promovê-la a aprovador)
+  const usuariosA2 = (await req('GET', '/vdocs/api/usuarios', { jar: 'anaA' })).dados.usuarios;
+  const carlaUserId = usuariosA2.find(u => u.email === 'carla@a.com').user_id;
+  const anaUserId = usuariosA2.find(u => u.email === 'ana@a.com').user_id;
+  r = await req('PATCH', '/vdocs/api/usuarios/' + vinculoCarla, { body: { papel: 'aprovador' }, jar: 'anaA' });
+  teste('Carla vira papel aprovador', r.status === 200);
+
+  // modelo com 2 etapas: Carla → Ana
+  r = await req('POST', '/vdocs/api/workflows', { body: { nome: 'Aprovação de contratos', etapas: [{ nome: 'Revisão', aprovadores: [carlaUserId], prazo_dias: 3 }, { nome: 'Diretoria', aprovadores: [anaUserId], prazo_dias: 5 }] }, jar: 'anaA' });
+  teste('modelo de fluxo criado', r.status === 200 && r.dados.id);
+  const wfId = r.dados.id;
+  r = await req('POST', '/vdocs/api/workflows', { body: { nome: 'Fluxo inválido', etapas: [{ nome: 'X', aprovadores: ['nao-existe'] }] }, jar: 'anaA' });
+  teste('modelo com aprovador inexistente rejeitado', r.status === 400);
+  r = await req('POST', '/vdocs/api/workflows', { body: { nome: 'Hack', etapas: [{ nome: 'X', aprovadores: [carlaUserId] }] }, jar: 'carlaA' });
+  teste('papel aprovador não cria modelos (sem criar_workflow)', r.status === 403);
+
+  // iniciar no documento
+  r = await req('POST', '/vdocs/api/documentos/' + docDistrato + '/aprovacao', { body: { workflow_id: wfId }, jar: 'anaA' });
+  teste('aprovação iniciada', r.status === 200 && r.dados.id);
+  const instId = r.dados.id;
+  r = await req('POST', '/vdocs/api/documentos/' + docDistrato + '/aprovacao', { body: { workflow_id: wfId }, jar: 'anaA' });
+  teste('segunda aprovação simultânea no mesmo doc bloqueada', r.status === 400);
+
+  // pendências e permissões de decisão
+  r = await req('GET', '/vdocs/api/aprovacoes', { jar: 'carlaA' });
+  teste('pendente aparece para Carla (etapa 1)', r.dados.pendentes.some(a => a.id === instId));
+  r = await req('GET', '/vdocs/api/aprovacoes', { jar: 'anaA' });
+  teste('não aparece para Ana ainda (etapa 2)', !r.dados.pendentes.some(a => a.id === instId) && r.dados.minhas.some(a => a.id === instId));
+  r = await req('POST', '/vdocs/api/aprovacoes/' + instId + '/decidir', { body: { decisao: 'aprovar' }, jar: 'anaA' });
+  teste('Ana não decide etapa que não é dela', r.status === 400);
+  r = await req('POST', '/vdocs/api/aprovacoes/' + instId + '/decidir', { body: { decisao: 'rejeitar' }, jar: 'carlaA' });
+  teste('rejeição sem justificativa recusada', r.status === 400);
+  r = await req('POST', '/vdocs/api/aprovacoes/' + instId + '/decidir', { body: { decisao: 'aprovar' }, jar: 'carlaA' });
+  teste('Carla aprova etapa 1 → avança', r.status === 200 && r.dados.status === 'em_andamento' && r.dados.etapa_atual === 1);
+  r = await req('POST', '/vdocs/api/aprovacoes/' + instId + '/decidir', { body: { decisao: 'aprovar' }, jar: 'anaA' });
+  teste('Ana aprova etapa final → aprovado', r.status === 200 && r.dados.status === 'aprovado');
+  r = await req('GET', '/vdocs/api/aprovacoes/' + instId, { jar: 'anaA' });
+  teste('histórico com 2 decisões', r.dados.aprovacao.decisoes.length === 2 && r.dados.aprovacao.status === 'aprovado');
+
+  // fluxo de rejeição + cancelamento + isolamento
+  r = await req('POST', '/vdocs/api/documentos/' + docAta + '/aprovacao', { body: { workflow_id: wfId }, jar: 'anaA' });
+  const inst2 = r.dados.id;
+  r = await req('POST', '/vdocs/api/aprovacoes/' + inst2 + '/decidir', { body: { decisao: 'rejeitar', justificativa: 'Falta anexo do orçamento.' }, jar: 'carlaA' });
+  teste('rejeição com justificativa encerra', r.status === 200 && r.dados.status === 'rejeitado');
+  r = await req('POST', '/vdocs/api/documentos/' + docAta + '/aprovacao', { body: { workflow_id: wfId }, jar: 'anaA' });
+  const inst3 = r.dados.id;
+  r = await req('POST', '/vdocs/api/aprovacoes/' + inst3 + '/cancelar', { jar: 'anaA' });
+  teste('solicitante cancela', r.status === 200);
+  r = await req('GET', '/vdocs/api/aprovacoes/' + instId, { jar: 'bobB' });
+  teste('B não vê aprovação de A', r.status === 400 || r.status === 403);
+
+  // documento mostra as aprovações; dashboard conta pendentes
+  r = await req('GET', '/vdocs/api/documentos/' + docDistrato, { jar: 'anaA' });
+  teste('detalhe do documento lista a aprovação', r.dados.aprovacoes.some(a => a.id === instId && a.status === 'aprovado'));
+  r = await req('GET', '/vdocs/api/dashboard', { jar: 'anaA' });
+  teste('dashboard traz aprovacoes_pendentes', typeof r.dados.aprovacoes_pendentes === 'number');
+
+  // lembrete de atrasadas (unidade)
+  const { db: dbTeste } = require('./db');
+  r = await req('POST', '/vdocs/api/documentos/' + docAta + '/aprovacao', { body: { workflow_id: wfId }, jar: 'anaA' });
+  dbTeste.prepare('UPDATE workflow_instances SET prazo_em = ? WHERE id = ?').run('2000-01-01T00:00:00.000Z', r.dados.id);
+  teste('rotina lembra aprovações atrasadas', (await wf.lembrarAtrasadas()) >= 1);
+
   // ---------- leads ----------
   r = await req('POST', '/vdocs/api/leads', { body: { nome: 'Lead', email: 'lead@x.com', empresa: 'X SA' } });
   teste('lead da landing gravado', r.status === 200);

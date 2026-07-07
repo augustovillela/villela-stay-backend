@@ -4,9 +4,9 @@
 gestão de documentos com organização, permissões, workflows, OCR, busca e IA documental.
 **Este README é a fonte da verdade do assunto** (mesmo papel do `legal/README.md` no módulo jurídico).
 
-Status: **Fases 1–4 EM PRODUÇÃO** (último deploy `6f2e64f`, 07/07/2026, validados pelo Augusto)
-· **Fase 5 (IA documental) COMPLETA** na branch `feat/vdocs-f5` (aguardando validação p/ merge).
-Testes: `npm run test:vdocs` (123/123).
+Status: **Fases 1–5 EM PRODUÇÃO** (último deploy `c5e7e78`, 07/07/2026 — IA validada com
+pergunta real em produção) · **Fase 6 (workflows de aprovação) COMPLETA** na branch
+`feat/vdocs-f6` (aguardando validação p/ merge). Testes: `npm run test:vdocs` (142/142).
 
 | O quê | Onde |
 |---|---|
@@ -153,7 +153,18 @@ no detalhe do documento. Selftest usa `ia.__mockParaTeste` — nunca chama a API
 BUG CORRIGIDO de tabela: `checarLimite` agora mapeia métrica→chave do plano
 (ia_consultas→ia_consultas_mes, ocr_paginas→ocr_paginas_mes) — antes essas duas nunca limitavam.
 
-**Fases 6+ (especificado, não criado)** — na ordem do roadmap:
+**Fase 6 (criado)**: `workflows` (modelos por tenant; etapas SEQUENCIAIS em JSON com nome,
+aprovadores e prazo_dias), `workflow_instances` (etapas CONGELADAS na abertura; versão do
+documento submetida registrada; status em_andamento|aprovado|rejeitado|cancelado) e
+`workflow_approvals` (histórico de decisões). DECISÕES MVP: dentro da etapa QUALQUER aprovador
+listado decide sozinho (paralelismo/unanimidade ficam p/ evolução); rejeição exige justificativa
+e ENCERRA a instância (reenvio = nova); 1 aprovação em andamento por documento; só o solicitante
+cancela. Notificações: e-mail ao(s) aprovador(es) da etapa e ao solicitante no desfecho
+(best-effort); lembrete diário de atrasadas na rotina do jobs.js. Tela ✅ Aprovações (pendentes
+p/ mim com aprovar/rejeitar, minhas solicitações, histórico, modelos com aprovadores por
+e-mail) + envio p/ aprovação e status no detalhe do documento + KPI no dashboard.
+
+**Fases 7+ (especificado, não criado)** — na ordem do roadmap:
 - F2/F3 extras adiados: `document_permissions` finas por pasta/documento (hoje o RBAC de papel
   cobre), `document_shares`/links externos (F7), previews/miniaturas, upload multipart resumable,
   OCR real (tesseract/serviço externo) plugando em `processing_jobs`.
@@ -198,19 +209,17 @@ BUG CORRIGIDO de tabela: `checarLimite` agora mapeia métrica→chave do plano
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS~~ ✅ (produção) · ~~F2 documentos~~ ✅ (produção) ·
 ~~F3 processamento~~ ✅ (produção) · ~~F4 busca avançada~~ ✅ (produção) · ~~F5 IA documental~~
 ✅ (branch) → **F6 workflows de aprovação** (etapas, aprovadores, prazos, histórico) → F7
-compartilhamento externo + portal → F8 billing (Mercado Pago) + relatórios SaaS → F9 API
+compartilhamento externo + portal do usuário externo** → F8 billing (Mercado Pago) + relatórios SaaS → F9 API
 pública + integrações → F10 enterprise (SSO, 2FA, retenção avançada, observabilidade).
 
 ## Próximos passos imediatos (checklist)
 
-1. [ ] Augusto valida a Fase 5 (tela 🤖 IA: perguntar com fontes, escopos, feedback) e autoriza
-   merge `feat/vdocs-f5` → master. Após o deploy, fazer 1 pergunta real em produção (gasta
-   centavos na ANTHROPIC_API_KEY) p/ validar ponta a ponta.
+1. [ ] Augusto valida a Fase 6 (tela ✅ Aprovações: modelos, enviar, aprovar/rejeitar, histórico) e autoriza merge `feat/vdocs-f6` → master (deploy Render).
 2. [ ] **DNS pendente (Augusto)**: criar CNAMEs `docs.`, `livros.` e `juridico.` villelastay.com.br
    → Render + adicioná-los em Custom Domains do serviço (verificado 07/07: os 3 não resolvem).
-3. [ ] Iniciar Fase 6 (workflows de aprovação) — sem env var nova.
+3. [ ] Iniciar Fase 7 (compartilhamento externo + portal) — sem env var nova.
 
 ## Teste local
 
 `node stays/start-staff-dev.js` → produto em `http://localhost:3000/vdocs`, staff em `/staff/`
-(admin teste@villelastay.com.br / TesteLocal123!). Suíte: `npm run test:vdocs` (banco temporário, 47 testes).
+(admin teste@villelastay.com.br / TesteLocal123!). Suíte: `npm run test:vdocs` (banco temporário, 142 testes).

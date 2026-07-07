@@ -10,6 +10,7 @@ const docs = require('./docs');
 const jobs = require('./jobs');
 const busca = require('./busca');
 const ia = require('./ia');
+const wf = require('./workflows');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -87,7 +88,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
 
   r.get('/dashboard', requireTenant, h(async (req, res) => {
-    res.json(repo.dashboardTenant(req.vd.tenant.id));
+    res.json({ ...repo.dashboardTenant(req.vd.tenant.id), aprovacoes_pendentes: wf.listar(req.vd.tenant.id, req.vd.user.id).pendentes.length });
   }));
 
   // ------------------------------------------------ empresa (config)
@@ -189,6 +190,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     res.json({
       documento: d,
       processamento: jobs.statusProcessamento(req.vd.tenant.id, d.id),
+      aprovacoes: wf.doDocumento(req.vd.tenant.id, d.id),
       acessos: req.vd.permissoes.ver_auditoria ? docs.acessosDoDocumento(req.vd.tenant.id, d.id, 30) : [],
     });
   }));
@@ -248,6 +250,31 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
   r.delete('/buscas-salvas/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
     busca.excluirSalva(req.vd.tenant.id, req.vd.user.id, req.params.id);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ workflows de aprovação (Fase 6)
+  r.get('/workflows', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    res.json({ modelos: wf.listarModelos(req.vd.tenant.id, !req.query.todos), usuarios: repo.listarUsuarios(req.vd.tenant.id).filter(u => u.status === 'ativo').map(u => ({ user_id: u.user_id, nome: u.nome })) });
+  }));
+  r.post('/workflows', requireTenant, requirePerm('criar_workflow'), h(async (req, res) => {
+    res.json({ ok: true, id: wf.salvarModelo(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip) });
+  }));
+  r.get('/aprovacoes', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    res.json(wf.listar(req.vd.tenant.id, req.vd.user.id));
+  }));
+  r.get('/aprovacoes/:id', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
+    res.json({ aprovacao: wf.obterInstancia(req.vd.tenant.id, req.params.id) });
+  }));
+  r.post('/documentos/:id/aprovacao', requireTenant, requirePerm('criar_workflow'), h(async (req, res) => {
+    res.json({ ok: true, id: wf.iniciar(req.vd.tenant.id, { document_id: req.params.id, workflow_id: (req.body || {}).workflow_id }, req.vd.user, req.vd.ip) });
+  }));
+  r.post('/aprovacoes/:id/decidir', requireTenant, requirePerm('aprovar_documento'), h(async (req, res) => {
+    const b = req.body || {};
+    res.json({ ok: true, ...wf.decidir(req.vd.tenant.id, req.params.id, { decisao: b.decisao, justificativa: b.justificativa }, req.vd.user, req.vd.ip) });
+  }));
+  r.post('/aprovacoes/:id/cancelar', requireTenant, requirePerm('criar_workflow'), h(async (req, res) => {
+    wf.cancelar(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);
     res.json({ ok: true });
   }));
 
