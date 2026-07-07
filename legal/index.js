@@ -13,6 +13,9 @@
 const repo = require('./repo');
 const permissoes = require('./permissoes');
 const feriados = require('./feriados');
+const llm = require('./llm');
+const ia = require('./ia');
+const { semearIA } = require('./prompts-seed');
 const { registrarRotasStaff } = require('./rotas-staff');
 
 function montar(app, injected = {}) {
@@ -20,9 +23,10 @@ function montar(app, injected = {}) {
   if (!express || !requireAuth || !requirePublishOrSession || !lerUsuarios) {
     throw new Error('legal.montar: faltam deps (express, requireAuth, requirePublishOrSession, lerUsuarios).');
   }
-  registrarRotasStaff(app, { repo, permissoes, feriados, requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios });
-  console.log('[legal] Villela Legal Intelligence montado (Fases 1+2 — fundação + núcleo). API: /staff/api/legal/*');
-  return { repo, permissoes, feriados };
+  semearIA(); // agentes especialistas + biblioteca de prompts (upsert idempotente)
+  registrarRotasStaff(app, { repo, permissoes, feriados, ia, llm, requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios });
+  console.log(`[legal] Villela Legal Intelligence montado (Fases 1-3). IA: ${llm.ativo() ? 'direto (' + llm.MODELOS[0] + ')' : 'fila (agente local)'} · RAG: ${ia.ftsOK ? 'FTS5 ok' : 'indisponível'}`);
+  return { repo, permissoes, feriados, ia, llm };
 }
 
-module.exports = { montar, repo, permissoes, feriados };
+module.exports = { montar, repo, permissoes, feriados, ia, llm };

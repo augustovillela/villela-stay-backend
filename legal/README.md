@@ -1,9 +1,9 @@
 # Villela Legal Intelligence — módulo jurídico
 
 Sistema de gestão para escritório de advocacia, construído como **módulo do backend
-existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1+2 —
-fundação + núcleo jurídico** (audiências, agenda, feriados forenses, calculadora de
-prazos, Kanban, importação do legado).
+existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1+2+3 —
+fundação + núcleo jurídico + IA jurídica** (RAG com FTS5/BM25, 16 agentes especialistas,
+biblioteca de prompts, consultas com fontes obrigatórias, fila para o agente local).
 
 ## FASE 0 — Diagnóstico técnico do projeto (06/07/2026)
 
@@ -101,7 +101,7 @@ staff/app-legal.js # painel (sub-app com abas) no Portal Staff — menu "⚖️ 
 | Legado | `POST /importar/prazos-legado` (idempotente, marca `[legado:id]`) | `gerir_prazos` |
 | Tarefas | `GET/POST † /tarefas`, `GET /tarefas/kanban`, `PATCH /tarefas/:id`, `GET .../historico`, `GET/POST .../comentarios` | `gerir_tarefas` |
 | Documentos | `GET/POST /documentos`, `GET/PATCH /documentos/:id`, `POST .../versao`, `GET .../download` | `ver_/criar_/editar_documentos` (+especiais p/ aprovar/enviar/protocolar) |
-| IA | `GET /ia`, `GET /ia/respostas/:id`, `POST /ia/registrar` †, `POST /ia/respostas/:id/revisar` | `usar_ia` / `aprovar_documentos` |
+| IA | `GET /ia`, `GET /ia/status`, `GET /ia/agentes`, `GET /ia/prompts`, `GET /ia/buscar?q=`, `POST /ia/consultas`, `GET /ia/consultas/pendentes` †, `POST /ia/consultas/:id/responder` †, `GET/POST †/DELETE /ia/conhecimento`, `POST /ia/extracao` †, `POST /ia/reindexar`, `GET /ia/runs` (custos), `GET /ia/respostas/:id`, `POST /ia/registrar` †, `POST /ia/respostas/:id/revisar` | `usar_ia` / `aprovar_documentos` / `ver_auditoria` |
 | Financeiro | `GET/POST /financeiro`, `PATCH /financeiro/:id` | `ver_/gerir_financeiro` |
 | Auditoria | `GET /auditoria`, `GET /integracoes`, `POST /integracoes/log` †, `POST /webhooks/:origem` † | `ver_auditoria` / `gerir_publicacoes` |
 
@@ -122,9 +122,20 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   CPC semeados; calculadora de prazo (arts. 219/224) com log auditável e trava de validação humana;
   Kanban de tarefas com histórico de status; importação idempotente de `prazos-juridicos.json`.
   *Nota*: a importação de contratos legados ficou para a Fase 4 (módulo de contratos).
-- **Fase 3 — IA jurídica**: geração via camada LLM + RAG (embeddings em tabela própria; candidato:
-  `sqlite-vec` ou busca híbrida FTS5), `prompt_templates`, agentes por especialidade (`ai_agents*`),
-  reaproveitando as skills `pesquisa-juridica`/`parecer-juridico` e o agente `juridico`.
+- **Fase 3 — CONCLUÍDA (06/07/2026)**: IA jurídica em MODO DUPLO.
+  *Arquitetura*: `llm.js` (camada abstrata Anthropic — SDK oficial `@anthropic-ai/sdk`, modelo
+  `claude-opus-4-8` c/ fallback `claude-sonnet-4-6` via `LEGAL_LLM_MODELS`, adaptive thinking,
+  structured outputs JSON com schema §9, prompt caching nos guardrails, custo/latência logados em
+  `ai_agent_runs`) + `ia.js` (RAG: FTS5/BM25 nativo do node:sqlite — sem dependência de embeddings;
+  índice `rag_index` sobre conhecimento curado, extrações de documentos, minutas, publicações,
+  andamentos e processos — estratégia sigilosa fica FORA do índice) + `prompts-seed.js` (16 agentes
+  especialistas do Módulo 11 + 18 prompts do §6, versionados e semeados por upsert).
+  *Modo direto*: com `ANTHROPIC_API_KEY` no Render, `POST /ia/consultas` responde na hora.
+  *Modo fila*: sem chave, a consulta fica pendente; o agente jurídico local consome
+  `GET /ia/consultas/pendentes` (pergunta + prompt do especialista + guardrails + contexto RAG)
+  e devolve por `POST /ia/consultas/:id/responder` — ambos via PUBLISH_KEY.
+  *Decisão embeddings*: sem provedor de embeddings na infra, o retrieval é lexical (BM25); a
+  migração para vetores (`sqlite-vec`/pgvector + API de embeddings) fica isolada em `ia.js`.
 - **Fase 4 — Peças e contratos**: wizard sobre `legal_drafts`/`contract_*`, exportação DOCX/PDF
   (padrão do `gerar-contrato-hospede`), biblioteca de cláusulas.
 - **Fase 5 — Portal do cliente + notificações**: conta de cliente (padrão da Área do Hóspede),

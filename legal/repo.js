@@ -641,8 +641,41 @@ const IA = {
     const qs = db.prepare('SELECT * FROM ai_queries ORDER BY criado_em DESC LIMIT ?').all(Math.min(Number(limite) || 50, 200));
     for (const q of qs) {
       q.respostas = db.prepare('SELECT id, nivel_confianca, status, revisado_por, criado_em FROM ai_responses WHERE query_id = ?').all(q.id);
+      q.situacao = q.respostas.length ? 'respondida' : 'pendente'; // fila = consultas sem resposta
     }
     return qs;
+  },
+  // Fase 3: cria SÓ a consulta (a resposta chega depois — LLM direto ou agente local via fila)
+  criarConsulta(d, autor) {
+    const qid = novoId();
+    db.prepare('INSERT INTO ai_queries (id, user_id, case_id, client_id, agente, pergunta, contexto, modelo, criado_em) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(qid, s(autor, 40), s(d.case_id, 40), s(d.client_id, 40), s(d.agente, 60), s(d.pergunta, 8000), j.str(d.contexto || {}), '', nowISO());
+    return qid;
+  },
+  // Fase 3: anexa a resposta estruturada a uma consulta existente
+  responder(queryId, d) {
+    const q = db.prepare('SELECT id FROM ai_queries WHERE id = ?').get(queryId);
+    if (!q) throw new Error('Consulta não encontrada.');
+    return transacao(() => {
+      const rid = novoId(); const agora = nowISO();
+      if (d.modelo) db.prepare('UPDATE ai_queries SET modelo = ? WHERE id = ?').run(s(d.modelo, 60), queryId);
+      db.prepare(`INSERT INTO ai_responses (id, query_id, resposta, riscos, lacunas, nivel_confianca, status, revisado_por, feedback, criado_em)
+        VALUES (?,?,?,?,?,?,?,?,?,?)`)
+        .run(rid, queryId, s(d.resposta, 100000), s(d.riscos, 4000), s(d.lacunas, 4000), s(d.nivel_confianca, 10), 'rascunho', '', '', agora);
+      for (const f of (Array.isArray(d.fontes) ? d.fontes : [])) {
+        db.prepare(`INSERT INTO ai_sources (id, response_id, tipo, citacao, url, tribunal, processo, orgao_julgador, relator, data_julgado, trecho, data_coleta)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .run(novoId(), rid, s(f.tipo, 30) || 'legislacao', s(f.citacao, 500) || '(sem citação)', s(f.url, 500),
+            s(f.tribunal, 40), s(f.processo, 40), s(f.orgao_julgador, 120), s(f.relator, 120), s(f.data_julgado, 30), s(f.trecho, 4000), agora);
+      }
+      return rid;
+    });
+  },
+  // Fase 3: fila para o agente local (consultas sem resposta)
+  pendentes(limite = 20) {
+    return db.prepare(`SELECT q.* FROM ai_queries q LEFT JOIN ai_responses r ON r.query_id = q.id
+      WHERE r.id IS NULL ORDER BY q.criado_em LIMIT ?`).all(Math.min(Number(limite) || 20, 100))
+      .map(q => ({ ...q, contexto: j.parse(q.contexto, {}) }));
   },
   obterResposta(id) {
     const r = db.prepare('SELECT * FROM ai_responses WHERE id = ?').get(id);
@@ -735,6 +768,7 @@ const Dashboard = {
       tarefas_atrasadas: um("SELECT COUNT(*) n FROM tasks WHERE status IN ('aberta','em_andamento') AND prazo != '' AND prazo < ?", hoje).n,
       docs_em_revisao: um("SELECT COUNT(*) n FROM documents WHERE status = 'revisao_pendente'").n,
       ia_sem_revisao: um("SELECT COUNT(*) n FROM ai_responses WHERE status = 'rascunho'").n,
+      ia_pendentes: um('SELECT COUNT(*) n FROM ai_queries q LEFT JOIN ai_responses r ON r.query_id = q.id WHERE r.id IS NULL').n,
     };
   },
 };

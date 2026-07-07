@@ -9,7 +9,7 @@
 'use strict';
 
 function registrarRotasStaff(app, deps) {
-  const { repo, permissoes, feriados, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const { repo, permissoes, feriados, ia, llm, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
   // permissões efetivas do request (sessão => usuário do portal; PUBLISH_KEY => agente_ia)
@@ -318,9 +318,80 @@ function registrarRotasStaff(app, deps) {
     res.download(arq.caminho, arq.versao.nome_original || 'documento');
   }));
 
-  // ------------------------------------------------------- IA (registro/revisão — geração chega na Fase 3)
+  // ------------------------------------------------------- IA JURÍDICA (Fase 3: RAG + consultas + fila)
+  const ha = (fn) => (req, res) => { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); };
+
   app.get('/staff/api/legal/ia', requireAuth, pode('usar_ia'), h((req, res) => {
     res.json({ consultas: repo.IA.listar(req.query) });
+  }));
+  // modo de operação (direto via API Anthropic × fila p/ agente local) + saúde do RAG
+  app.get('/staff/api/legal/ia/status', requireAuth, pode('usar_ia'), h((req, res) => {
+    res.json({ modo: llm.ativo() ? 'direto' : 'fila', modelos: llm.MODELOS, rag: ia.ftsOK, pendentes: repo.IA.pendentes(100).length });
+  }));
+  app.get('/staff/api/legal/ia/agentes', requireAuth, pode('usar_ia'), h((req, res) => {
+    res.json({ agentes: ia.agentes() });
+  }));
+  app.get('/staff/api/legal/ia/prompts', requireAuth, pode('usar_ia'), h((req, res) => {
+    res.json({ prompts: ia.prompts() });
+  }));
+  // busca RAG (BM25 sobre fontes internas)
+  app.get('/staff/api/legal/ia/buscar', requireAuth, pode('usar_ia'), h((req, res) => {
+    const tipos = String(req.query.tipos || '').split(',').map(t => t.trim()).filter(Boolean);
+    res.json(ia.buscar(req.query.q, { limite: req.query.limite, tipos }));
+  }));
+  // nova consulta: responde na hora (LLM direto) ou entra na fila
+  app.post('/staff/api/legal/ia/consultas', requireAuth, pode('usar_ia'), ha(async (req, res) => {
+    const r = await ia.consultar(req.body || {}, req.user && req.user.id);
+    auditar(req, 'ia.consultar', 'ai_queries', r.query_id, (req.body || {}).agente || 'geral');
+    res.json({ ok: true, ...r, aviso: 'Resposta de IA é MINUTA — revisão de advogado obrigatória.' });
+  }));
+  // fila para o agente jurídico local (PUBLISH_KEY): consultas sem resposta + contexto RAG
+  app.get('/staff/api/legal/ia/consultas/pendentes', requirePublishOrSession, pode('usar_ia'), h((req, res) => {
+    const pendentes = repo.IA.pendentes(req.query.limite).map(q => ({
+      ...q,
+      agente_prompt: (q.agente && (ia.agente(q.agente) || {}).system_prompt) || '',
+      contexto_rag: ia.montarContexto(q.pergunta, { case_id: q.case_id }).texto,
+    }));
+    res.json({ pendentes, guardrails: llm.GUARDRAILS });
+  }));
+  // o agente local devolve a resposta estruturada da consulta
+  app.post('/staff/api/legal/ia/consultas/:id/responder', requirePublishOrSession, pode('usar_ia'), h((req, res) => {
+    const rid = repo.IA.responder(req.params.id, req.body || {});
+    auditar(req, 'ia.responder', 'ai_responses', rid, 'via ' + (req.viaChave ? 'agente local' : 'sessão'));
+    res.json({ ok: true, response_id: rid, aviso: 'Registrada como rascunho — exige revisão humana.' });
+  }));
+  // base de conhecimento curada (entra no RAG)
+  app.get('/staff/api/legal/ia/conhecimento', requireAuth, pode('usar_ia'), h((req, res) => {
+    res.json({ itens: ia.Conhecimento.listar(req.query) });
+  }));
+  app.post('/staff/api/legal/ia/conhecimento', requirePublishOrSession, pode('usar_ia'), h((req, res) => {
+    const k = ia.Conhecimento.criar(req.body || {}, req.user && req.user.id);
+    auditar(req, 'ia.conhecimento.criar', 'legal_knowledge_base', k.id, k.titulo);
+    res.json({ ok: true, item: k });
+  }));
+  app.delete('/staff/api/legal/ia/conhecimento/:id', requireAuth, pode('usar_ia'), h((req, res) => {
+    ia.Conhecimento.remover(req.params.id);
+    auditar(req, 'ia.conhecimento.remover', 'legal_knowledge_base', req.params.id, '');
+    res.json({ ok: true });
+  }));
+  // texto extraído de documento (agente local faz OCR/extração e manda p/ o RAG)
+  app.post('/staff/api/legal/ia/extracao', requirePublishOrSession, pode('usar_ia'), h((req, res) => {
+    const d = req.body || {};
+    ia.registrarExtracao(d.document_id, d.texto, d.metodo, quemFez(req));
+    auditar(req, 'ia.extracao', 'document_text_extractions', d.document_id, d.metodo || '');
+    res.json({ ok: true });
+  }));
+  app.post('/staff/api/legal/ia/reindexar', requireAuth, pode('usar_ia'), h((req, res) => {
+    const r = ia.reindexarTudo();
+    auditar(req, 'ia.reindexar', 'rag_index', '', 'indexados: ' + (r.indexados || 0));
+    res.json({ ok: true, ...r });
+  }));
+  // custos/execuções de IA (controle de custos — §4 arquitetura)
+  app.get('/staff/api/legal/ia/runs', requireAuth, pode('ver_auditoria'), h((req, res) => {
+    const runs = require('./db').db.prepare('SELECT * FROM ai_agent_runs ORDER BY quando DESC LIMIT ?').all(Math.min(parseInt(req.query.n) || 100, 500));
+    const totais = require('./db').db.prepare(`SELECT COUNT(*) chamadas, SUM(input_tokens) tokens_in, SUM(output_tokens) tokens_out,
+      SUM(custo_centavos_usd) custo_centavos FROM ai_agent_runs WHERE quando >= ?`).get(new Date(Date.now() - 30 * 86400000).toISOString());
+    res.json({ runs, ultimos_30_dias: totais });
   }));
   app.get('/staff/api/legal/ia/respostas/:id', requireAuth, pode('usar_ia'), h((req, res) => {
     const r = repo.IA.obterResposta(req.params.id);

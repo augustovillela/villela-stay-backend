@@ -68,7 +68,7 @@ const LG = {
       ${kpi('Prazos até hoje', r.prazos_hoje, true)}${kpi('Prazos em 7 dias', r.prazos_7dias)}${kpi('Audiências em 7 dias', r.audiencias_7dias)}
       ${kpi('Prazos sem validação humana', r.prazos_sem_validacao, true)}${kpi('Publicações novas', r.publicacoes_novas, true)}
       ${kpi('Tarefas abertas', r.tarefas_abertas)}${kpi('Tarefas atrasadas', r.tarefas_atrasadas, true)}
-      ${kpi('Docs em revisão', r.docs_em_revisao)}${kpi('Respostas de IA sem revisão', r.ia_sem_revisao, true)}</div>
+      ${kpi('Docs em revisão', r.docs_em_revisao)}${kpi('Consultas de IA na fila', r.ia_pendentes, true)}${kpi('Respostas de IA sem revisão', r.ia_sem_revisao, true)}</div>
       <div class="aviso">🧭 Fase 1 (fundação). Coleta automática DataJud/DJEN, RAG e geração de peças chegam nas próximas fases — ver README do módulo.</div>`;
   },
 
@@ -569,16 +569,94 @@ const LG = {
     };
   },
 
-  // -------------------------------------------------------- IA JURÍDICA
+  // -------------------------------------------------------- IA JURÍDICA (Fase 3)
   async vIA() {
-    const { consultas } = await LG.api('GET', '/ia');
-    LG.body().innerHTML = `<div class="aviso">🤖 Fase 1: registro e revisão. Toda resposta é MINUTA (rascunho) até um advogado revisar. A geração assistida (RAG) chega na Fase 3.</div>
-      <div class="card">${consultas.length ? consultas.map(q => `
-        <div style="border-bottom:1px solid #eee;padding:.5rem 0">
-          <b>${esc((q.pergunta || '').slice(0, 120))}</b> <span class="sub">${LG.dt(q.criado_em)} · ${esc(q.agente || 'sem agente')}</span><br>
-          ${q.respostas.map(r => `${LG.chip(r.status)} confiança: ${esc(r.nivel_confianca || '—')} ${r.revisado_por ? '· revisado por ' + esc(r.revisado_por) : ''}
-            <button class="btn secund peq" onclick="LG.verRespostaIA('${r.id}')">Ver</button>`).join(' ')}
-        </div>`).join('') : '<p class="vazio">Nenhuma consulta registrada.</p>'}</div>`;
+    const [{ consultas }, st, { agentes }] = await Promise.all([
+      LG.api('GET', '/ia'), LG.api('GET', '/ia/status'), LG.api('GET', '/ia/agentes'),
+    ]);
+    let h = `<div class="aviso">🤖 Modo: <b>${st.modo === 'direto' ? 'direto (API Anthropic — ' + esc(st.modelos[0]) + ')' : 'fila — o agente jurídico local responde as consultas pendentes'}</b>
+      · RAG: ${st.rag ? '✅ ativo' : '⛔ indisponível'} · Pendentes: ${st.pendentes}. Toda resposta é MINUTA (revisão de advogado obrigatória).</div>`;
+    h += `<details class="cr-box" open><summary class="cr-sum">💬 Nova consulta jurídica</summary>
+      <form class="form" id="lg-ia-form" style="max-width:660px;margin-top:12px">
+        <label>Consulta * <textarea id="lgi-perg" required rows="3" maxlength="8000" style="width:100%"></textarea></label>
+        <div class="hi-grid">
+          <label>Especialista <select id="lgi-agente"><option value="">Geral</option>${agentes.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('')}</select></label>
+          <label>ID do processo (opcional) <input id="lgi-case" maxlength="20"></label>
+        </div>
+        <button class="btn" type="submit" id="lgi-enviar">Consultar</button><p id="lgi-msg" class="sub"></p>
+      </form></details>`;
+    h += `<details class="cr-box"><summary class="cr-sum">🔎 Buscar nas fontes internas (RAG)</summary>
+      <div class="barra" style="margin-top:12px"><input id="lgi-busca" type="search" placeholder="ex.: despejo temporada caução" style="flex:1;min-width:220px">
+      <button class="btn peq" type="button" onclick="LG.buscarRAG()">Buscar</button>
+      ${LG.perfil === 'super_admin' ? `<button class="btn secund peq" type="button" onclick="LG.reindexarRAG()">♻️ Reindexar</button>` : ''}</div>
+      <div id="lgi-hits"></div></details>`;
+    h += `<details class="cr-box"><summary class="cr-sum">📚 Base de conhecimento (teses, precedentes, legislação)</summary>
+      <form class="form" id="lg-kb-form" style="max-width:660px;margin-top:12px"><div class="hi-grid">
+        <label>Tipo <select id="lgk-tipo"><option>legislacao</option><option>jurisprudencia</option><option>tese</option><option>parecer</option><option>modelo</option><option>doutrina</option></select></label>
+        <label>Título * <input id="lgk-tit" required maxlength="300"></label>
+        <label>Citação <input id="lgk-cit" maxlength="500" placeholder="Lei 8.245/91, art. 48"></label>
+        <label>URL <input id="lgk-url" maxlength="500"></label></div>
+        <label>Conteúdo * <textarea id="lgk-corpo" required rows="3" style="width:100%"></textarea></label>
+        <button class="btn peq" type="submit">Adicionar ao conhecimento</button></form>
+      <div id="lgi-kb"><p class="sub">Carregando…</p></div></details>`;
+    h += `<div class="card"><h3>Consultas</h3>${consultas.length ? consultas.map(q => `
+      <div style="border-bottom:1px solid #eee;padding:.5rem 0">
+        <b>${esc((q.pergunta || '').slice(0, 120))}</b> <span class="sub">${LG.dt(q.criado_em)} · ${esc(q.agente || 'geral')}</span> ${LG.chip(q.situacao)}<br>
+        ${q.respostas.map(r => `${LG.chip(r.status)} confiança: ${esc(r.nivel_confianca || '—')} ${r.revisado_por ? '· revisado por ' + esc(r.revisado_por) : ''}
+          <button class="btn secund peq" onclick="LG.verRespostaIA('${r.id}')">Ver</button>`).join(' ')}
+      </div>`).join('') : '<p class="vazio">Nenhuma consulta registrada.</p>'}</div>`;
+    LG.body().innerHTML = h;
+    LG.carregarKB();
+    document.getElementById('lg-ia-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = document.getElementById('lgi-msg'); const btn = document.getElementById('lgi-enviar');
+      btn.disabled = true; msg.textContent = st.modo === 'direto' ? '🧠 Consultando a IA (pode levar 1-2 min)…' : 'Registrando na fila…';
+      try {
+        const r = await LG.api('POST', '/ia/consultas', {
+          pergunta: document.getElementById('lgi-perg').value, agente: document.getElementById('lgi-agente').value,
+          case_id: document.getElementById('lgi-case').value.trim(),
+        });
+        if (r.situacao === 'respondida') { LG.verRespostaIA(r.response_id); return; }
+        msg.textContent = '⏳ ' + (r.detalhe || 'Consulta na fila.');
+        btn.disabled = false;
+      } catch (e) { msg.textContent = '❌ ' + e.message; btn.disabled = false; }
+    };
+    document.getElementById('lg-kb-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      await LG.api('POST', '/ia/conhecimento', {
+        tipo: document.getElementById('lgk-tipo').value, titulo: document.getElementById('lgk-tit').value,
+        citacao: document.getElementById('lgk-cit').value, url: document.getElementById('lgk-url').value,
+        corpo: document.getElementById('lgk-corpo').value,
+      });
+      document.getElementById('lg-kb-form').reset(); LG.carregarKB();
+    };
+  },
+  async carregarKB() {
+    const alvo = document.getElementById('lgi-kb'); if (!alvo) return;
+    try {
+      const { itens } = await LG.api('GET', '/ia/conhecimento');
+      alvo.innerHTML = itens.length ? tabela(['Tipo', 'Título', 'Citação', ''], itens.map(k => [
+        LG.chip(k.tipo), esc(k.titulo), esc(k.citacao || '—'),
+        `<button class="btn secund peq" onclick="LG.rmKB('${k.id}')">✕</button>`,
+      ])) : '<p class="vazio">Nada curado ainda — adicione teses, precedentes e trechos de lei que o RAG deve priorizar.</p>';
+    } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+  },
+  async rmKB(id) {
+    if (!confirm('Remover este item do conhecimento?')) return;
+    await LG.api('DELETE', '/ia/conhecimento/' + id); LG.carregarKB();
+  },
+  async buscarRAG() {
+    const q = document.getElementById('lgi-busca').value.trim(); const alvo = document.getElementById('lgi-hits');
+    if (!q) return;
+    alvo.innerHTML = '<p class="sub">Buscando…</p>';
+    const r = await LG.api('GET', '/ia/buscar?q=' + encodeURIComponent(q));
+    alvo.innerHTML = r.resultados.length ? tabela(['Fonte', 'Título', 'Trecho'], r.resultados.map(x => [
+      LG.chip(x.tipo), esc(x.titulo), esc(x.trecho),
+    ])) : '<p class="vazio">Nada encontrado nas fontes internas.</p>';
+  },
+  async reindexarRAG() {
+    const r = await LG.api('POST', '/ia/reindexar');
+    alert('Reindexado: ' + (r.indexados || 0) + ' itens.');
   },
   async verRespostaIA(id) {
     const { resposta: r, aviso } = await LG.api('GET', '/ia/respostas/' + id);

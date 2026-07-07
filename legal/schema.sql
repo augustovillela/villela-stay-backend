@@ -566,3 +566,71 @@ CREATE TABLE IF NOT EXISTS task_status_history (
   quando   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_taskhist_task ON task_status_history(task_id);
+
+-- =====================================================================
+-- FASE 3 — MÓDULOS 7/11 (IA JURÍDICA): RAG, agentes, prompts, conhecimento
+-- O índice de busca (FTS5, tabela virtual rag_index) é criado pelo ia.js —
+-- fora deste arquivo de propósito, para degradar com aviso se FTS5 faltar.
+-- =====================================================================
+
+-- Biblioteca de prompts versionados (§6 do plano) — seed no boot (upsert)
+CREATE TABLE IF NOT EXISTS prompt_templates (
+  id        TEXT PRIMARY KEY,   -- ex.: resumo-andamento, parecer-juridico
+  nome      TEXT NOT NULL,
+  versao    INTEGER NOT NULL DEFAULT 1,
+  conteudo  TEXT NOT NULL,      -- o prompt em si (estrutura §6)
+  formato   TEXT NOT NULL DEFAULT 'json', -- json|texto
+  atualizado_em TEXT NOT NULL
+);
+
+-- Agentes especialistas (Módulo 11) — prompt próprio, escopo e limites
+CREATE TABLE IF NOT EXISTS ai_agents (
+  id           TEXT PRIMARY KEY, -- ex.: civel, penal, contratual...
+  nome         TEXT NOT NULL,
+  especialidade TEXT NOT NULL,
+  system_prompt TEXT NOT NULL,
+  versao       INTEGER NOT NULL DEFAULT 1,
+  ativo        INTEGER NOT NULL DEFAULT 1,
+  atualizado_em TEXT NOT NULL
+);
+
+-- Registro de cada execução de IA (custo/latência/modelo) — controle de custos
+CREATE TABLE IF NOT EXISTS ai_agent_runs (
+  id          TEXT PRIMARY KEY,
+  agente      TEXT DEFAULT '',
+  query_id    TEXT DEFAULT '',
+  modelo      TEXT DEFAULT '',
+  input_tokens  INTEGER DEFAULT 0,
+  output_tokens INTEGER DEFAULT 0,
+  cache_read_tokens INTEGER DEFAULT 0,
+  custo_centavos_usd INTEGER DEFAULT 0, -- estimado, em centavos de USD
+  duracao_ms  INTEGER DEFAULT 0,
+  status      TEXT NOT NULL DEFAULT 'ok', -- ok|erro|recusado
+  detalhe     TEXT DEFAULT '',
+  quando      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_airuns_quando ON ai_agent_runs(quando);
+
+-- Base de conhecimento curada (teses, precedentes favoritos, pareceres aprovados,
+-- trechos de legislação) — entra no RAG com prioridade
+CREATE TABLE IF NOT EXISTS legal_knowledge_base (
+  id        TEXT PRIMARY KEY,
+  tipo      TEXT NOT NULL DEFAULT 'tese', -- legislacao|jurisprudencia|tese|parecer|modelo|doutrina
+  titulo    TEXT NOT NULL,
+  citacao   TEXT DEFAULT '',   -- ex.: "STJ, REsp 1.192.678" / "Lei 8.245/91, art. 48"
+  url       TEXT DEFAULT '',
+  corpo     TEXT NOT NULL,     -- o conteúdo pesquisável
+  tags      TEXT DEFAULT '',
+  criado_por TEXT DEFAULT '',
+  criado_em TEXT NOT NULL,
+  atualizado_em TEXT NOT NULL
+);
+
+-- Texto extraído de documentos (OCR/extração feita pelo agente local) — alimenta o RAG
+CREATE TABLE IF NOT EXISTS document_text_extractions (
+  document_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
+  texto       TEXT NOT NULL,
+  metodo      TEXT DEFAULT '',  -- ex.: pdftotext, ocr, manual
+  extraido_em TEXT NOT NULL,
+  por         TEXT DEFAULT ''
+);
