@@ -237,3 +237,46 @@ CREATE TABLE IF NOT EXISTS project_decisions (
   criado_em     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_vpe_dec ON project_decisions (tenant_id, project_id, criado_em);
+
+-- ---------- Fase 3: execução (tarefas, checklists, riscos) ----------
+
+CREATE TABLE IF NOT EXISTS project_tasks (
+  id             TEXT PRIMARY KEY,
+  tenant_id      TEXT NOT NULL,
+  project_id     TEXT NOT NULL,
+  parent_id      TEXT DEFAULT '',            -- subtarefa
+  titulo         TEXT NOT NULL,
+  descricao      TEXT DEFAULT '',
+  responsavel_id TEXT DEFAULT '',            -- user_id do tenant
+  prioridade     TEXT DEFAULT 'media',       -- alta|media|baixa
+  prazo          TEXT DEFAULT '',            -- YYYY-MM-DD (atrasada = derivado)
+  status         TEXT DEFAULT 'pendente',    -- pendente|em_andamento|aguardando|em_revisao|concluida|cancelada
+  etiquetas      TEXT DEFAULT '[]',
+  checklist      TEXT DEFAULT '[]',          -- [{t:'texto', feito:bool}]
+  dependencia_de TEXT DEFAULT '',            -- task_id que precisa concluir antes
+  ordem          INTEGER DEFAULT 0,
+  concluida_em   TEXT DEFAULT '',
+  criado_em      TEXT NOT NULL,
+  atualizado_em  TEXT DEFAULT '',
+  criado_por     TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_task ON project_tasks (tenant_id, project_id, status);
+CREATE INDEX IF NOT EXISTS idx_vpe_task_resp ON project_tasks (tenant_id, responsavel_id, status);
+CREATE INDEX IF NOT EXISTS idx_vpe_task_prazo ON project_tasks (tenant_id, prazo);
+
+CREATE TABLE IF NOT EXISTS project_risks (
+  id                 TEXT PRIMARY KEY,
+  tenant_id          TEXT NOT NULL,
+  project_id         TEXT NOT NULL,
+  descricao          TEXT NOT NULL,
+  probabilidade      TEXT DEFAULT 'media',   -- baixa|media|alta
+  impacto            TEXT DEFAULT 'medio',   -- baixo|medio|alto
+  plano_prevencao    TEXT DEFAULT '',
+  plano_contingencia TEXT DEFAULT '',
+  responsavel        TEXT DEFAULT '',
+  status             TEXT DEFAULT 'aberto',  -- aberto|mitigado|ocorreu|encerrado
+  criado_em          TEXT NOT NULL,
+  atualizado_em      TEXT DEFAULT '',
+  criado_por         TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_risk ON project_risks (tenant_id, project_id, status);

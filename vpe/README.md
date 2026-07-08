@@ -84,6 +84,19 @@ staff/app-vpe.js   aba 📋 no Portal Staff (com o botão de seed interno)
 Comercial · Financeiro · Colaborador · Auditor · Leitor · Cliente externo (portal na F7).
 Permissão especial `decidir_projeto`: pausar/cancelar/arquivar exige-a além de `editar_projeto`.
 
+## Fase 3 (criado)
+
+`project_tasks` (subtarefas 2 níveis, checklist embutido, etiquetas, prazo, responsável do
+tenant, DEPENDÊNCIA que trava a conclusão; "atrasada" é sempre DERIVADO de prazo<hoje, nunca
+gravado) e `project_risks` (probabilidade × impacto → severidade 1-9; prevenção/contingência;
+status aberto|mitigado|ocorreu|encerrado). Domínio em `tarefas.js`. Visões: Kanban por status
+(aba ✅ Tarefas do projeto), lista global "só as minhas / só atrasadas", agenda por dia
+(14 dias + atrasadas) e resumo no dashboard (tarefas abertas/atrasadas, riscos críticos).
+Criar/editar tarefa exige `gerir_tarefas`; risco exige `editar_projeto`. LIÇÃO REFORÇADA: a
+UI do painel vive dentro de UM template literal gigante — evitar `
+` em string e regex com
+barra invertida (o template literal os consome); checklist virou checkboxes por isso.
+
 ## Fase 2 (criado)
 
 `business_plans` (1 por projeto; 18 seções em JSON — catálogo em portfolio.js; completude %)
@@ -137,21 +150,22 @@ abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = F
 
 ## Roadmap (8 fases do plano-mestre)
 
-~~F0 diagnóstico~~ ✅ · ~~F1 fundação + seed 16~~ ✅ (produção) · ~~F2 portfólio avançado~~ ✅
-(branch) → **F3 execução** (tarefas, Kanban, Gantt, riscos) → F4 eventos
+~~F0 diagnóstico~~ ✅ · ~~F1 fundação + seed 16~~ ✅ · ~~F2 portfólio avançado~~ ✅ (produção) ·
+~~F3 execução (tarefas/Kanban/checklist/riscos)~~ ✅ (branch; Gantt/caminho crítico ficam p/
+F3b quando houver demanda) → **F4 eventos**
 (briefing→pós-evento, fornecedores, equipe, convidados) → F5 comercial+financeiro (CRM,
 propostas, contratos, orçamentos, billing SaaS) → F6 IA+automações (17 agentes, relatório
 diário do CEO) → F7 portal do cliente + SaaS admin → F8 integrações+deploy final.
 
 ## Próximos passos imediatos
 
-1. [ ] Augusto valida a Fase 2 (abas Plano/Viabilidade/Decisões + Ranking) e autoriza merge `feat/vpe-f2` → master.
+1. [ ] Augusto valida a Fase 3 (aba ✅ Tarefas com Kanban + ⚠️ Riscos no projeto; tela global de Tarefas) e autoriza merge `feat/vpe-f3` → master.
 2. [ ] Pós-deploy: clicar "Semear workspace interno" em produção (guarda a senha inicial!)
    e revisar os 16 projetos (prioridades/estágios são propostas minhas).
 3. [ ] Preços dos planos (149/349/799/sob consulta) são proposta — ajustar na aba Planos.
 4. [ ] DNS `projetos.villelastay.com(.br)` quando quiser divulgar (Custom Domain no Render
    via Claude + CNAME na Locaweb — processo já dominado).
-5. [ ] Iniciar Fase 3 (execução: tarefas/Kanban) — sem env var nova.
+5. [ ] Iniciar Fase 4 (eventos) — sem env var nova.
 
 ## Teste local
 

@@ -223,7 +223,7 @@ async function sair(){await api('POST','/logout').catch(()=>{});location.href='/
 const TELAS=[
  ['dashboard','📊 Dashboard',()=>true],
  ['portfolio','💡 Portfólio',m=>m.permissoes.ver_projetos],
- ['tarefas','✅ Tarefas & Kanban',()=>true,'breve'],
+ ['tarefas','✅ Tarefas',m=>m.permissoes.ver_projetos],
  ['eventos','🎪 Eventos',()=>true,'breve'],
  ['crm','🤝 CRM & Propostas',()=>true,'breve'],
  ['financeiro','💰 Financeiro',()=>true,'breve'],
@@ -236,7 +236,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Próximas fases">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -257,6 +257,9 @@ async function vDash(){
    '<div class="kpi"><div class="n">'+d.projetos_alta_prioridade.length+'</div><div class="r">alta prioridade</div></div>'+
    '<div class="kpi"><div class="n">'+brl(d.investimento_estimado_total)+'</div><div class="r">investimento estimado</div></div>'+
    '<div class="kpi"><div class="n">'+brl(d.receita_potencial_total)+'</div><div class="r">receita potencial/ano</div></div>'+
+   '<div class="kpi"><div class="n">'+(d.tarefas_abertas||0)+'</div><div class="r">tarefas abertas</div></div>'+
+   '<div class="kpi">'+(d.tarefas_atrasadas?'':'')+'<div class="n"'+(d.tarefas_atrasadas?' style="color:var(--alerta)"':'')+'>'+(d.tarefas_atrasadas||0)+'</div><div class="r">tarefas atrasadas</div></div>'+
+   '<div class="kpi"><div class="n"'+(d.riscos_criticos?' style="color:var(--alerta)"':'')+'>'+(d.riscos_criticos||0)+'</div><div class="r">riscos críticos</div></div>'+
    '<div class="kpi"><div class="n">'+d.usuarios_ativos+'</div><div class="r">usuários ativos</div></div></div>'+
    '<div class="card"><b>Portfólio por estágio</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">'+
    est.map(([e,n])=>'<span class="chip">'+esc(rot(e))+': <b>'+n+'</b></span>').join('')+'</div></div>'+
@@ -264,7 +267,7 @@ async function vDash(){
     d.projetos_alta_prioridade.map(p=>'<tr><td><a href="#" onclick="return abrirProj(\\''+p.id+'\\')">'+esc(p.nome)+'</a></td><td>'+esc(rot(p.estagio))+'</td><td>'+esc(p.horizonte)+'</td><td style="font-size:13px">'+esc((p.proximos_passos||'').slice(0,90))+'</td></tr>').join('')+'</table></div>':'')+
    '<div class="card" style="margin-top:14px"><b>Atividade recente</b><table><tr><th>Quando</th><th>Quem</th><th>Ação</th></tr>'+
    d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></div>'+
-   '<div class="aviso" style="margin-top:14px">🚧 <b>Fase 1 (fundação).</b> Tarefas/Kanban, eventos, CRM, financeiro e agentes de IA chegam nas próximas fases.</div>';
+   '<div class="aviso" style="margin-top:14px">🚧 Eventos, CRM, financeiro e agentes de IA chegam nas próximas fases.</div>';
 }
 // ---------------- Portfólio ----------------
 S.pf={estagio:'',categoria:'',busca:''};
@@ -307,11 +310,11 @@ async function abrirProj(id,aba){
   S.projId=id;S.projAba=aba||\'dados\';
   const {projeto:p}=await api(\'GET\',\'/projetos/\'+id);
   S.proj=p;S.enums=S.enums||(await api(\'GET\',\'/me\')).enums;
-  const abas=[[\'dados\',\'📄 Dados\'],[\'plano\',\'📘 Plano de negócio\'],[\'viab\',\'📊 Viabilidade\'],[\'dec\',\'⚖️ Decisões\']];
+  const abas=[[\'dados\',\'📄 Dados\'],[\'plano\',\'📘 Plano de negócio\'],[\'viab\',\'📊 Viabilidade\'],[\'tar\',\'✅ Tarefas\'],[\'risco\',\'⚠️ Riscos\'],[\'dec\',\'⚖️ Decisões\']];
   $(\'corpo\').innerHTML=\'<p><a href="#" onclick="ir(\\'portfolio\\');return false">← portfólio</a></p><h2>\'+esc(p.nome)+\' <span class="chip">\'+esc(rot(p.estagio))+\'</span>\'+(p.status!==\'ativo\'?\' <span class="chip" style="background:#fde8e8">\'+p.status+\'</span>\':\'\')+\'</h2>\'+
    \'<div class="card" style="display:flex;gap:6px;flex-wrap:wrap">\'+abas.map(([k,r2])=>\'<button class="btn \'+(S.projAba===k?\'\':\'btn-ghost \')+\'peq" onclick="abrirProj(\\'\'+id+\'\\',\\'\'+k+\'\\')">\'+r2+\'</button>\').join(\'\')+\'</div>\'+
    \'<div id="pj-corpo" style="margin-top:12px"><p class="sub">Carregando…</p></div>\';
-  await ({dados:vProjDados,plano:vProjPlano,viab:vProjViab,dec:vProjDec}[S.projAba])();
+  await ({dados:vProjDados,plano:vProjPlano,viab:vProjViab,tar:vProjTarefas,risco:vProjRiscos,dec:vProjDec}[S.projAba])();
   return false;
 }
 async function vProjDados(){
@@ -389,6 +392,93 @@ async function decidir(decisao){try{
 async function salvarProj(id){try{
   await api(\'PATCH\',\'/projetos/\'+id,{nome:$(\'pj-nome\').value,descricao:$(\'pj-desc\').value,categoria:$(\'pj-cat\').value,estagio:$(\'pj-est\').value,horizonte:$(\'pj-hor\').value,prioridade:$(\'pj-pri\').value,investimento_estimado:Math.round(Number($(\'pj-inv\').value)*100)||0,receita_potencial:Math.round(Number($(\'pj-rec\').value)*100)||0,responsavel:$(\'pj-resp\').value,riscos:$(\'pj-risco\').value,proximos_passos:$(\'pj-prox\').value});
   $(\'pj-out\').textContent=\'✅ salvo\';}catch(e){$(\'pj-out\').textContent=\'⚠️ \'+e.message;}}
+
+// ---------------- Execução: tarefas e riscos (Fase 3) ----------------
+const ST_ROT={pendente:'📥 Pendente',em_andamento:'🔨 Em andamento',aguardando:'⏳ Aguardando',em_revisao:'👀 Em revisão',concluida:'✅ Concluída',cancelada:'✖ Cancelada'};
+function tChip(t){return (t.atrasada?'<span class="chip" style="background:#fde8e8">atrasada</span> ':'')+(t.prazo?'<span class="chip">'+t.prazo.split('-').reverse().join('/')+'</span> ':'')+(t.subtarefas_total?'<span class="chip">'+t.subtarefas_feitas+'/'+t.subtarefas_total+' sub</span> ':'')+(t.checklist&&t.checklist.length?'<span class="chip">☑ '+t.checklist.filter(c=>c.feito).length+'/'+t.checklist.length+'</span>':'');}
+async function vTarefas(){
+  S.tf=S.tf||{minhas:'1',atrasadas:''};
+  const q='?'+(S.tf.minhas?'minhas=1&':'')+(S.tf.atrasadas?'atrasadas=1&':'');
+  const [{tarefas:ts},ag]=await Promise.all([api('GET','/tarefas'+q),api('GET','/tarefas/agenda?dias=14'+(S.tf.minhas?'&minhas=1':''))]);
+  if(!S.projNomes){const pr=await api('GET','/projetos');S.projNomes={};pr.projetos.forEach(p=>S.projNomes[p.id]=p.nome);}
+  const nomeProj=S.projNomes;
+  $('corpo').innerHTML='<h2>✅ Tarefas</h2>'+
+   '<div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'+
+   '<label style="margin:0;display:flex;gap:4px;align-items:center;font-weight:400"><input type="checkbox" '+(S.tf.minhas?'checked':'')+' onchange="S.tf.minhas=this.checked?String(1):String();vTarefas()" style="width:auto"> só as minhas</label>'+
+   '<label style="margin:0;display:flex;gap:4px;align-items:center;font-weight:400"><input type="checkbox" '+(S.tf.atrasadas?'checked':'')+' onchange="S.tf.atrasadas=this.checked?String(1):String();vTarefas()" style="width:auto"> só atrasadas</label>'+
+   '<span class="sub" style="font-size:12px">Para criar tarefas, abra o projeto → aba ✅ Tarefas.</span></div>'+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Tarefa</th><th>Projeto</th><th>Status</th><th>Prior.</th><th>Info</th></tr>'+
+   (ts.length?ts.map(t=>'<tr><td><a href="#" onclick="return abrirTarefa(\\''+t.id+'\\')">'+esc(t.titulo)+'</a></td>'+
+    '<td>'+esc(nomeProj[t.project_id]||'—')+'</td><td>'+(ST_ROT[t.status]||t.status)+'</td><td>'+esc(t.prioridade)+'</td><td>'+tChip(t)+'</td></tr>').join(''):'<tr><td colspan="5" style="color:var(--suave)">Nenhuma tarefa.</td></tr>')+'</table></div>'+
+   (ag.dias.length?'<div class="card" style="margin-top:12px"><b>📅 Agenda (14 dias + atrasadas)</b>'+
+    ag.dias.map(d=>'<p style="margin:.5rem 0 .2rem"><b>'+d.split('-').reverse().join('/')+'</b></p>'+ag.porDia[d].map(t=>'<div style="font-size:13.5px">'+(t.atrasada?'🔴':'•')+' <a href="#" onclick="return abrirTarefa(\\''+t.id+'\\')">'+esc(t.titulo)+'</a> <span class="sub">('+esc(t.projeto_nome)+')</span></div>').join('')).join('')+'</div>':'');
+}
+async function vProjTarefas(){
+  const P=S.me.permissoes;
+  const kb=await api('GET','/projetos/'+S.projId+'/kanban');
+  const colunas=kb.ordem_colunas.filter(c=>c!=='cancelada');
+  const card=t=>'<div class="card" style="padding:10px;margin-bottom:8px"><a href="#" onclick="return abrirTarefa(\\''+t.id+'\\')"><b>'+esc(t.titulo)+'</b></a><br>'+tChip(t)+
+   (P.gerir_tarefas?'<div style="margin-top:6px"><select onchange="moverTarefa(\\''+t.id+'\\',this.value)" style="font-size:12px;padding:4px">'+kb.ordem_colunas.map(c2=>'<option value="'+c2+'"'+(c2===t.status?' selected':'')+'>'+(ST_ROT[c2]||c2)+'</option>').join('')+'</select></div>':'')+'</div>';
+  $('pj-corpo').innerHTML=(P.gerir_tarefas?'<div class="card" style="display:flex;gap:8px;flex-wrap:wrap"><input id="nt-titulo" placeholder="Nova tarefa…" style="flex:1;min-width:220px"><input id="nt-prazo" type="date" style="width:auto"><button class="btn peq" onclick="novaTarefa()">Criar</button></div>':'')+
+   '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:10px">'+
+   colunas.map(c=>'<div><div style="font-weight:700;font-size:13px;margin-bottom:6px">'+(ST_ROT[c]||c)+' ('+kb.colunas[c].length+')</div>'+kb.colunas[c].map(card).join('')+'</div>').join('')+'</div>';
+}
+async function novaTarefa(){try{await api('POST','/projetos/'+S.projId+'/tarefas',{titulo:$('nt-titulo').value,prazo:$('nt-prazo').value});vProjTarefas();}catch(e){alert(e.message);}}
+async function moverTarefa(id,status){try{await api('PATCH','/tarefas/'+id,{status});if(S.tela==='tarefas')vTarefas();else vProjTarefas();}catch(e){alert(e.message);vProjTarefas();}}
+async function abrirTarefa(id){
+  const P=S.me.permissoes;
+  const {tarefa:t}=await api('GET','/tarefas/'+id);
+  const podeEd=P.gerir_tarefas;
+  if(!S.usuariosCache&&P.gerir_usuarios){try{S.usuariosCache=(await api('GET','/usuarios')).usuarios.filter(u=>u.status==='ativo');}catch(_){S.usuariosCache=[];}}
+  const usuarios=S.usuariosCache;
+  S.chkTmp=t.checklist.slice();
+  const dis=podeEd?'':' disabled';
+  $('corpo').innerHTML='<p><a href="#" onclick="return voltarTarefa()">← voltar</a></p><h2>'+esc(t.titulo)+' '+(t.atrasada?'<span class="chip" style="background:#fde8e8">atrasada</span>':'')+'</h2>'+
+   '<div class="card">'+
+   '<label>Título</label><input id="tt-titulo" value="'+esc(t.titulo)+'"'+dis+'>'+
+   '<label>Descrição</label><textarea id="tt-desc" rows="2"'+dis+'>'+esc(t.descricao)+'</textarea>'+
+   '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">'+
+   '<div><label>Status</label><select id="tt-status"'+dis+'>'+Object.entries(ST_ROT).map(([k,r2])=>'<option value="'+k+'"'+(k===t.status?' selected':'')+'>'+r2+'</option>').join('')+'</select></div>'+
+   '<div><label>Prioridade</label><select id="tt-pri"'+dis+'>'+['alta','media','baixa'].map(x=>'<option'+(x===t.prioridade?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+   '<div><label>Prazo</label><input id="tt-prazo" type="date" value="'+esc(t.prazo)+'"'+dis+'></div>'+
+   (usuarios?'<div><label>Responsável</label><select id="tt-resp"'+dis+'><option value="">—</option>'+usuarios.map(u=>'<option value="'+u.user_id+'"'+(u.user_id===t.responsavel_id?' selected':'')+'>'+esc(u.nome)+'</option>').join('')+'</select></div>':'')+'</div>'+
+   '<label>Checklist</label><div id="tt-check">'+renderChecklist()+'</div>'+
+   (podeEd?'<div style="display:flex;gap:6px;margin-top:4px"><input id="chk-novo" placeholder="Novo item do checklist" style="flex:1"><button class="btn btn-ghost peq" onclick="addChk()">+</button></div>':'')+
+   (podeEd?'<p style="margin-top:10px"><button class="btn peq" onclick="salvarTarefa(\\''+t.id+'\\')">Salvar</button> <button class="btn btn-ghost peq" onclick="excluirTarefaUi(\\''+t.id+'\\')">Excluir</button> <span id="tt-out"></span></p>':'')+
+   '</div>'+
+   '<div class="card" style="margin-top:12px"><b>Subtarefas</b> '+
+   (podeEd&&!t.parent_id?'<div style="display:flex;gap:8px;margin-top:6px"><input id="st-titulo" placeholder="Nova subtarefa…" style="flex:1"><button class="btn peq" onclick="novaSubtarefa(\\''+t.project_id+'\\',\\''+t.id+'\\')">+</button></div>':'')+
+   (t.subtarefas.length?'<table style="margin-top:6px"><tr><th>Subtarefa</th><th>Status</th><th>Prazo</th></tr>'+t.subtarefas.map(st=>'<tr><td><a href="#" onclick="return abrirTarefa(\\''+st.id+'\\')">'+esc(st.titulo)+'</a></td><td>'+(ST_ROT[st.status]||st.status)+'</td><td>'+(st.prazo||'—')+'</td></tr>').join('')+'</table>':'<p class="sub" style="font-size:13px">Nenhuma.</p>')+'</div>';
+  return false;
+}
+function voltarTarefa(){if(S.tela==='tarefas'&&!S.projAbaVinda){vTarefas();}else if(S.projId){abrirProj(S.projId,'tar');}else{ir('tarefas');}return false;}
+function renderChecklist(){return (S.chkTmp||[]).map((c,i)=>'<label style="display:flex;gap:6px;align-items:center;margin:2px 0;font-weight:400"><input type="checkbox" '+(c.feito?'checked':'')+' onchange="S.chkTmp['+i+'].feito=this.checked" style="width:auto"> '+esc(c.t)+' <a href="#" onclick="S.chkTmp.splice('+i+',1);document.getElementById(String(\\'tt-check\\')).innerHTML=renderChecklist();return false" style="font-size:12px">✕</a></label>').join('')||'<span class="sub" style="font-size:13px">Sem itens.</span>';}
+function addChk(){const v=$('chk-novo').value.trim();if(!v)return;S.chkTmp.push({t:v,feito:false});$('chk-novo').value='';$('tt-check').innerHTML=renderChecklist();}
+async function salvarTarefa(id){try{
+  const body={titulo:$('tt-titulo').value,descricao:$('tt-desc').value,status:$('tt-status').value,prioridade:$('tt-pri').value,prazo:$('tt-prazo').value,checklist:S.chkTmp};
+  const resp=document.getElementById('tt-resp');if(resp)body.responsavel_id=resp.value;
+  await api('PATCH','/tarefas/'+id,body);
+  $('tt-out').textContent='✅ salvo';
+ }catch(e){$('tt-out').textContent='⚠️ '+e.message;}}
+async function excluirTarefaUi(id){if(!confirm('Excluir a tarefa (e subtarefas)?'))return;try{await api('DELETE','/tarefas/'+id);voltarTarefa();}catch(e){alert(e.message);}}
+async function novaSubtarefa(projId,paiId){try{await api('POST','/projetos/'+projId+'/tarefas',{titulo:$('st-titulo').value,parent_id:paiId});abrirTarefa(paiId);}catch(e){alert(e.message);}}
+async function vProjRiscos(){
+  const P=S.me.permissoes;
+  const {riscos}=await api('GET','/projetos/'+S.projId+'/riscos');
+  const sev=r=>r.severidade>=6?'🔴':r.severidade>=3?'🟡':'🟢';
+  $('pj-corpo').innerHTML=(P.editar_projeto?'<div class="card"><b>Novo risco</b>'+
+   '<label>Descrição</label><input id="rk-desc">'+
+   '<div style="display:flex;gap:10px;flex-wrap:wrap"><div><label>Probabilidade</label><select id="rk-prob">'+['baixa','media','alta'].map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
+   '<div><label>Impacto</label><select id="rk-imp">'+['baixo','medio','alto'].map(x=>'<option>'+x+'</option>').join('')+'</select></div></div>'+
+   '<label>Plano de prevenção</label><input id="rk-prev"><label>Plano de contingência</label><input id="rk-cont">'+
+   '<p><button class="btn peq" onclick="novoRisco()">Registrar risco</button></p></div>':'')+
+   '<div class="card" style="margin-top:12px"><table><tr><th></th><th>Risco</th><th>Prob.</th><th>Impacto</th><th>Status</th><th>Prevenção</th></tr>'+
+   (riscos.length?riscos.map(r=>'<tr><td>'+sev(r)+'</td><td>'+esc(r.descricao)+'</td><td>'+r.probabilidade+'</td><td>'+r.impacto+'</td>'+
+    '<td>'+(P.editar_projeto?'<select onchange="statusRisco(\\''+r.id+'\\',this.value)">'+['aberto','mitigado','ocorreu','encerrado'].map(x=>'<option'+(x===r.status?' selected':'')+'>'+x+'</option>').join('')+'</select>':r.status)+'</td>'+
+    '<td style="font-size:13px">'+esc(r.plano_prevencao)+'</td></tr>').join(''):'<tr><td colspan="6" style="color:var(--suave)">Nenhum risco registrado.</td></tr>')+'</table></div>';
+}
+async function novoRisco(){try{await api('POST','/projetos/'+S.projId+'/riscos',{descricao:$('rk-desc').value,probabilidade:$('rk-prob').value,impacto:$('rk-imp').value,plano_prevencao:$('rk-prev').value,plano_contingencia:$('rk-cont').value});vProjRiscos();}catch(e){alert(e.message);}}
+async function statusRisco(id,status){try{await api('PATCH','/riscos/'+id,{status});}catch(e){alert(e.message);vProjRiscos();}}
 
 // ---------------- Usuários ----------------
 async function vUsuarios(){

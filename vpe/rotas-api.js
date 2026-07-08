@@ -7,6 +7,7 @@
 'use strict';
 const repo = require('./repo');
 const portfolio = require('./portfolio');
+const tarefas = require('./tarefas');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -78,7 +79,9 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     auth.emitirSessao(res, req.vp.user.id, alvo);
     res.json({ ok: true });
   }));
-  r.get('/dashboard', requireTenant, h(async (req, res) => res.json(repo.dashboardTenant(req.vp.tenant.id))));
+  r.get('/dashboard', requireTenant, h(async (req, res) => {
+    res.json({ ...repo.dashboardTenant(req.vp.tenant.id), ...tarefas.resumoExecucao(req.vp.tenant.id) });
+  }));
 
   // ------------------------------------------------ portfólio (núcleo Fase 1)
   r.get('/projetos', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
@@ -130,6 +133,45 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.post('/projetos/:id/decisoes', requireTenant, requirePerm('decidir_projeto'), h(async (req, res) => {
     const b = req.body || {};
     res.json({ ok: true, decisoes: portfolio.registrarDecisao(req.vp.tenant.id, req.params.id, { decisao: b.decisao, justificativa: b.justificativa }, req.vp.user, req.vp.ip) });
+  }));
+
+  // ------------------------------------------------ execução (Fase 3)
+  r.get('/tarefas', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    const q = req.query || {};
+    res.json({
+      tarefas: tarefas.listarTarefas(req.vp.tenant.id, { project_id: q.projeto, responsavel_id: q.minhas ? req.vp.user.id : q.responsavel, status: q.status, so_atrasadas: q.atrasadas === '1' }),
+      status: tarefas.STATUS_TAREFA,
+    });
+  }));
+  r.get('/tarefas/agenda', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    const q = req.query || {};
+    res.json(tarefas.agenda(req.vp.tenant.id, { dias: Number(q.dias) || 30, responsavel_id: q.minhas ? req.vp.user.id : '' }));
+  }));
+  r.get('/projetos/:id/kanban', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json(tarefas.kanban(req.vp.tenant.id, req.params.id));
+  }));
+  r.post('/projetos/:id/tarefas', requireTenant, requirePerm('gerir_tarefas'), h(async (req, res) => {
+    res.json({ ok: true, tarefa: tarefas.criarTarefa(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.get('/tarefas/:id', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json({ tarefa: tarefas.obterTarefa(req.vp.tenant.id, req.params.id) });
+  }));
+  r.patch('/tarefas/:id', requireTenant, requirePerm('gerir_tarefas'), h(async (req, res) => {
+    res.json({ ok: true, tarefa: tarefas.atualizarTarefa(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.delete('/tarefas/:id', requireTenant, requirePerm('gerir_tarefas'), h(async (req, res) => {
+    tarefas.excluirTarefa(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
+  }));
+  r.get('/projetos/:id/riscos', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json({ riscos: tarefas.listarRiscos(req.vp.tenant.id, req.params.id) });
+  }));
+  r.post('/projetos/:id/riscos', requireTenant, requirePerm('editar_projeto'), h(async (req, res) => {
+    res.json({ ok: true, id: tarefas.criarRisco(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.patch('/riscos/:id', requireTenant, requirePerm('editar_projeto'), h(async (req, res) => {
+    tarefas.atualizarRisco(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
   }));
 
   // ------------------------------------------------ empresa / usuários / papéis

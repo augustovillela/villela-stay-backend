@@ -220,6 +220,65 @@ function teste(nome, cond) {
   r = await req('GET', '/vpe/api/portfolio/ranking', { jar: 'bobB' });
   teste('ranking de B não contém projA', !r.dados.ranking.some(x => x.id === projA));
 
+  // ================== FASE 3: execução (tarefas, checklists, riscos) ==================
+  // criar tarefa exige gerir_tarefas; comercial (Carla, papel custom sem ela) não pode
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/tarefas', { body: { titulo: 'Testar cardápio' }, jar: 'carlaA' });
+  teste('papel sem gerir_tarefas não cria tarefa', r.status === 403);
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/tarefas', { body: { titulo: 'Comprar a food bike', prioridade: 'alta', prazo: '2020-01-01' }, jar: 'anaA' });
+  teste('tarefa criada', r.status === 200 && r.dados.tarefa.status === 'pendente');
+  const tA = r.dados.tarefa.id;
+  r = await req('GET', '/vpe/api/tarefas', { jar: 'anaA' });
+  const tObj = r.dados.tarefas.find(x => x.id === tA);
+  teste('tarefa com prazo passado vem marcada atrasada (derivado)', tObj && tObj.atrasada === true);
+  // dependência trava conclusão
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/tarefas', { body: { titulo: 'Montar operação', dependencia_de: tA }, jar: 'anaA' });
+  const tDep = r.dados.tarefa.id;
+  r = await req('PATCH', '/vpe/api/tarefas/' + tDep, { body: { status: 'concluida' }, jar: 'anaA' });
+  teste('conclusão travada por dependência aberta', r.status === 400 && /dependência/i.test(r.dados.erro));
+  r = await req('PATCH', '/vpe/api/tarefas/' + tA, { body: { status: 'concluida' }, jar: 'anaA' });
+  teste('concluir a dependência registra concluida_em', r.status === 200 && r.dados.tarefa.concluida_em);
+  r = await req('PATCH', '/vpe/api/tarefas/' + tDep, { body: { status: 'concluida' }, jar: 'anaA' });
+  teste('agora a dependente conclui', r.status === 200 && r.dados.tarefa.status === 'concluida');
+  // subtarefa (2 níveis; 3º recusado)
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/tarefas', { body: { titulo: 'Sub 1', parent_id: tDep }, jar: 'anaA' });
+  teste('subtarefa criada', r.status === 200);
+  const sub = r.dados.tarefa.id;
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/tarefas', { body: { titulo: 'Sub da sub', parent_id: sub }, jar: 'anaA' });
+  teste('subtarefa de subtarefa é recusada (máx 2 níveis)', r.status === 400);
+  // checklist sanitizado
+  r = await req('PATCH', '/vpe/api/tarefas/' + tDep, { body: { checklist: [{ t: 'Alugar espaço', feito: true }, { t: '', feito: false }, { t: 'Contratar chef' }] }, jar: 'anaA' });
+  teste('checklist descarta itens vazios e normaliza', r.status === 200 && r.dados.tarefa.checklist.length === 2 && r.dados.tarefa.checklist[0].feito === true);
+  // responsável precisa ser do tenant
+  r = await req('PATCH', '/vpe/api/tarefas/' + tDep, { body: { responsavel_id: 'bob-fake' }, jar: 'anaA' });
+  teste('responsável fora da empresa recusado', r.status === 400);
+  // kanban
+  r = await req('GET', '/vpe/api/projetos/' + projA + '/kanban', { jar: 'anaA' });
+  teste('kanban agrupa por status', r.status === 200 && Array.isArray(r.dados.colunas.concluida) && r.dados.ordem_colunas.includes('em_andamento'));
+  // agenda + resumo no dashboard
+  r = await req('GET', '/vpe/api/tarefas/agenda?dias=30', { jar: 'anaA' });
+  teste('agenda retorna dias agrupados', r.status === 200 && Array.isArray(r.dados.dias));
+  r = await req('GET', '/vpe/api/dashboard', { jar: 'anaA' });
+  teste('dashboard traz métricas de execução', typeof r.dados.tarefas_abertas === 'number' && typeof r.dados.tarefas_atrasadas === 'number' && typeof r.dados.riscos_criticos === 'number');
+
+  // isolamento das tarefas
+  r = await req('GET', '/vpe/api/tarefas/' + tDep, { jar: 'bobB' });
+  teste('B não abre tarefa de A (anti-IDOR)', r.status === 400 || r.status === 404);
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/tarefas', { body: { titulo: 'hack' }, jar: 'bobB' });
+  teste('B não cria tarefa em projeto de A', r.status === 400 || r.status === 403 || r.status === 404);
+
+  // riscos (probabilidade × impacto → severidade; exige editar_projeto)
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/riscos', { body: { descricao: 'Clima no dia do evento', probabilidade: 'alta', impacto: 'alto', plano_prevencao: 'Tenda reserva.' }, jar: 'anaA' });
+  teste('risco criado', r.status === 200);
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/riscos', { body: { descricao: 'x' }, jar: 'carlaA' });
+  teste('risco exige editar_projeto (403)', r.status === 403);
+  r = await req('GET', '/vpe/api/projetos/' + projA + '/riscos', { jar: 'anaA' });
+  const rk = r.dados.riscos[0];
+  teste('risco alta×alto = severidade 9 e vem no topo', rk && rk.severidade === 9);
+  r = await req('PATCH', '/vpe/api/riscos/' + rk.id, { body: { status: 'mitigado' }, jar: 'anaA' });
+  teste('risco pode ser mitigado', r.status === 200);
+  r = await req('GET', '/vpe/api/dashboard', { jar: 'anaA' });
+  teste('risco mitigado não conta mais como crítico', r.dados.riscos_criticos === 0);
+
   // ---------- staff da plataforma ----------
   r = await req('GET', '/staff/api/vpe/resumo', { staff: 'ceo' });
   teste('staff resumo com projetos_total e MRR', r.status === 200 && r.dados.projetos_total >= 17 && typeof r.dados.mrr_centavos === 'number');
