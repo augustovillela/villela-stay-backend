@@ -145,6 +145,48 @@ async function rodar() {
     const fat = require('./db').db.prepare("SELECT status FROM invoices WHERE tenant_id = ?").all(sub.tenant_id);
     assert.ok(fat.some(f => f.status === 'paga'));
   });
+  // ---- APP DE GESTÃO REAL (assinante Beta = pro/ativa, cookie ativo) ----
+  let imovelId;
+  await t('app: cadastra imóvel', async () => {
+    const r = await req('POST', '/gestao/api/app/imoveis', { corpo: { nome: 'Casa Azul', tipo: 'casa', capacidade: 4, tarifa_base_centavos: 50000 }, cookies: true });
+    assert.equal(r.st, 200); imovelId = r.json.imovel.id;
+  });
+  await t('app: lança reserva → gera limpeza de check-out + receita', async () => {
+    const r = await req('POST', '/gestao/api/app/reservas', { corpo: { imovel_id: imovelId, hospede_nome: 'João', checkin: '2026-08-01', checkout: '2026-08-05', valor_centavos: 200000, canal: 'direto' }, cookies: true });
+    assert.equal(r.st, 200); assert.equal(r.json.reserva.noites, 4);
+    const lp = await req('GET', '/gestao/api/app/limpezas', { cookies: true });
+    assert.ok(lp.json.limpezas.some(l => l.reserva_id === r.json.reserva.id && l.tipo === 'checkout'));
+    const fi = await req('GET', '/gestao/api/app/financeiro', { cookies: true });
+    assert.ok(fi.json.lancamentos.some(l => l.tipo === 'receita' && l.valor_centavos === 200000));
+  });
+  await t('app: anti-overbooking bloqueia sobreposição', async () => {
+    const r = await req('POST', '/gestao/api/app/reservas', { corpo: { imovel_id: imovelId, hospede_nome: 'Maria', checkin: '2026-08-03', checkout: '2026-08-06' }, cookies: true });
+    assert.equal(r.st, 400); assert.ok(/overbooking|conflito/i.test(r.json.erro));
+  });
+  await t('app: painel conta imóveis e reservas', async () => {
+    const r = await req('GET', '/gestao/api/app/painel', { cookies: true });
+    assert.ok(r.json.painel.imoveis >= 1 && r.json.painel.reservas_ativas >= 1);
+  });
+  await t('app: gating por módulo + limite de imóveis (plano starter)', async () => {
+    const nova = await req('POST', '/staff/api/vsm/tenants', { corpo: { nome: 'Hostel Delta', email: 'delta@t.br', plano: 'starter' } });
+    const link = await req('POST', `/staff/api/vsm/tenants/${nova.json.tenant.id}/link-acesso`);
+    const token = new URL(link.json.url).searchParams.get('token');
+    assert.equal((await req('POST', '/gestao/api/definir-senha', { corpo: { token, senha: 'SenhaForte2' } })).st, 200);
+    assert.equal((await req('POST', '/gestao/api/login', { corpo: { email: 'delta@t.br', senha: 'SenhaForte2' }, cookies: true })).st, 200);
+    // starter (editado no teste p/ [imoveis, reservas]): hospede → 403, imoveis → 200
+    assert.equal((await req('GET', '/gestao/api/app/hospedes', { cookies: true })).st, 403);
+    assert.equal((await req('GET', '/gestao/api/app/imoveis', { cookies: true })).st, 200);
+    // limite de 3 imóveis do starter
+    for (let i = 0; i < 3; i++) assert.equal((await req('POST', '/gestao/api/app/imoveis', { corpo: { nome: 'Q' + i }, cookies: true })).st, 200);
+    const q4 = await req('POST', '/gestao/api/app/imoveis', { corpo: { nome: 'Q4' }, cookies: true });
+    assert.equal(q4.st, 400); assert.ok(/limite/i.test(q4.json.erro));
+  });
+  await t('app: suspensa bloqueia o acesso ao app (403)', async () => {
+    const delta = (await req('GET', '/staff/api/vsm/tenants')).json.tenants.find(x => x.email_contato === 'delta@t.br');
+    await req('POST', `/staff/api/vsm/tenants/${delta.id}/status`, { corpo: { status: 'suspensa' } });
+    assert.equal((await req('GET', '/gestao/api/app/imoveis', { cookies: true })).st, 403);
+  });
+
   await t('ciclo de vida: trial vencido → inadimplente', async () => {
     const nova = await req('POST', '/staff/api/vsm/tenants', { corpo: { nome: 'Gama Stays', email: 'gama@t.br', plano: 'trial' } });
     require('./db').db.prepare("UPDATE tenants SET trial_expira_em = '2020-01-01T00:00:00Z' WHERE id = ?").run(nova.json.tenant.id);

@@ -15,6 +15,7 @@ const repo = require('./repo');
 const billing = require('./billing');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasCliente } = require('./rotas-cliente');
+const { registrarRotasApp } = require('./rotas-app');
 const { registrarPaginas } = require('./paginas');
 
 let _timer = null;
@@ -29,7 +30,8 @@ function montar(app, injected = {}) {
   billing.configurar({ mpFetch, notificar });
 
   registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviarEmail });
-  registrarRotasCliente(app, { jwtSecret, enviarEmail });
+  const cliente = registrarRotasCliente(app, { jwtSecret, enviarEmail });
+  registrarRotasApp(app, { requireAssinante: cliente.requireAssinante });
   registrarPaginas(app, { jwtSecret, enviarEmail, notificar });
 
   // webhook do Mercado Pago (assinatura recorrente / pagamento)

@@ -212,3 +212,110 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   ip         TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_vsm_audit_quando ON audit_logs(quando);
+
+-- =====================================================================
+-- APP DE GESTÃO REAL (marco 2) — mini-PMS multi-tenant que o ASSINANTE usa.
+-- Todas as tabelas escopadas por tenant_id (isolamento lógico, igual vdocs).
+-- Gateadas pelos entitlements do plano (podeModulo/dentroLimite). Cada
+-- operação gerencia os PRÓPRIOS imóveis/reservas/limpezas/financeiro — nada
+-- a ver com a conta Stays da Villela (control plane ≠ app do cliente).
+-- =====================================================================
+
+-- ---- IMÓVEIS / ANÚNCIOS do assinante ----
+CREATE TABLE IF NOT EXISTS app_imoveis (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  workspace_id  TEXT DEFAULT '',
+  codigo        TEXT DEFAULT '',       -- código interno do anfitrião
+  nome          TEXT NOT NULL,
+  tipo          TEXT DEFAULT 'casa',   -- casa|apartamento|flat|quarto|chale|pousada
+  quartos       INTEGER DEFAULT 0,
+  capacidade    INTEGER DEFAULT 1,
+  endereco      TEXT DEFAULT '',
+  comodidades   TEXT DEFAULT '[]',     -- JSON
+  tarifa_base_centavos INTEGER DEFAULT 0,
+  ativo         INTEGER DEFAULT 1,
+  obs           TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_app_imoveis_tenant ON app_imoveis(tenant_id);
+
+-- ---- HÓSPEDES do assinante ----
+CREATE TABLE IF NOT EXISTS app_hospedes (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  nome       TEXT NOT NULL,
+  email      TEXT DEFAULT '',
+  telefone   TEXT DEFAULT '',
+  documento  TEXT DEFAULT '',
+  obs        TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_app_hospedes_tenant ON app_hospedes(tenant_id);
+
+-- ---- RESERVAS do assinante ----
+CREATE TABLE IF NOT EXISTS app_reservas (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  imovel_id     TEXT NOT NULL,
+  hospede_id    TEXT DEFAULT '',
+  hospede_nome  TEXT DEFAULT '',       -- denormalizado p/ listagem rápida
+  checkin       TEXT NOT NULL,         -- YYYY-MM-DD
+  checkout      TEXT NOT NULL,         -- YYYY-MM-DD
+  noites        INTEGER DEFAULT 1,
+  hospedes_qtd  INTEGER DEFAULT 1,
+  valor_centavos INTEGER DEFAULT 0,
+  canal         TEXT DEFAULT 'direto', -- direto|airbnb|booking|vrbo|decolar|outro
+  status        TEXT DEFAULT 'confirmada', -- pendente|confirmada|cancelada|concluida
+  obs           TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_app_reservas_tenant ON app_reservas(tenant_id, checkin);
+CREATE INDEX IF NOT EXISTS idx_app_reservas_imovel ON app_reservas(imovel_id, status);
+
+-- ---- LIMPEZAS / OPERAÇÕES ----
+CREATE TABLE IF NOT EXISTS app_limpezas (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL,
+  imovel_id    TEXT NOT NULL,
+  reserva_id   TEXT DEFAULT '',
+  data         TEXT NOT NULL,          -- YYYY-MM-DD
+  tipo         TEXT DEFAULT 'checkout', -- checkout|checkin|periodica
+  status       TEXT DEFAULT 'pendente', -- pendente|concluida
+  responsavel  TEXT DEFAULT '',
+  obs          TEXT DEFAULT '',
+  criado_em    TEXT NOT NULL,
+  concluida_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_app_limpezas_tenant ON app_limpezas(tenant_id, data);
+
+-- ---- MANUTENÇÃO (chamados) ----
+CREATE TABLE IF NOT EXISTS app_manutencao (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL,
+  imovel_id    TEXT DEFAULT '',
+  titulo       TEXT NOT NULL,
+  descricao    TEXT DEFAULT '',
+  prioridade   TEXT DEFAULT 'media',  -- alta|media|baixa
+  status       TEXT DEFAULT 'aberto', -- aberto|em_andamento|resolvido
+  criado_em    TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_app_manut_tenant ON app_manutencao(tenant_id, status);
+
+-- ---- FINANCEIRO (lançamentos: receitas/despesas) ----
+CREATE TABLE IF NOT EXISTS app_financeiro (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  tipo          TEXT NOT NULL,         -- receita|despesa
+  categoria     TEXT DEFAULT '',       -- hospedagem|limpeza|manutencao|comissao|imposto|outro
+  descricao     TEXT DEFAULT '',
+  valor_centavos INTEGER DEFAULT 0,
+  data          TEXT NOT NULL,         -- YYYY-MM-DD
+  imovel_id     TEXT DEFAULT '',
+  reserva_id    TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_app_fin_tenant ON app_financeiro(tenant_id, data);

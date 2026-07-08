@@ -5,6 +5,7 @@
 // =====================================================================
 'use strict';
 const jwt = require('jsonwebtoken');
+const path = require('path');
 const repo = require('./repo');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -128,46 +129,23 @@ function assinarHTML(planoSlug) {
         +'<p><a class="btn" href="/gestao/app">Ir para o painel</a></p></div>';};`);
 }
 
+// Painel do assinante = app de gestão real (SPA carregada de /gestao/app.js).
 function appHTML() {
-  return shell(`<div id="app"><div class="card"><h3>Entrar</h3>
-    <input id="em" type="email" placeholder="E-mail"><input id="sn" type="password" placeholder="Senha">
-    <button class="btn" onclick="entrar()">Entrar</button><p id="msg" class="erro"></p>
-    <p class="sub">Novo por aqui? <a href="/gestao/assinar?plano=trial">Teste grátis</a>.</p></div></div>`,
-    `const app=document.getElementById('app');
-    const api=async(m,p,b)=>{const r=await fetch('/gestao/api'+p,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});const d=await r.json();if(!r.ok)throw new Error(d.erro||'erro');return d};
-    const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
-    const dt=t=>t?String(t).slice(0,10).split('-').reverse().join('/'):'—';
-    async function entrar(){const m=document.getElementById('msg');m.textContent='';try{await api('POST','/login',{email:em.value,senha:sn.value});home()}catch(e){m.textContent=e.message}}
-    window.entrar=entrar;
-    async function home(){let me;try{me=await api('GET','/me')}catch(_){return}
-      const ent=me.entitlements;
-      const alerta=me.operacao.status!=='ativa'&&me.operacao.status!=='trial'?'<div class="aviso">⚠️ Sua conta está <b>'+esc(me.operacao.status)+'</b>. Regularize a cobrança para reativar o acesso.</div>':(me.operacao.status==='trial'?'<div class="aviso">🎁 Você está no <b>período de teste</b> até '+dt(ent.trial_expira_em)+'. Assine para continuar sem interrupção.</div>':'');
-      app.innerHTML='<div class="card"><h3>'+esc(me.operacao.nome)+' <span class="tag">'+esc(ent.plano||'—')+'</span></h3>'+alerta
-        +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vSup()">🎧 Suporte</button></div>'
-        +'<p class="sub">Olá, '+esc(me.usuario.nome||me.usuario.email)+' · <a href="#" onclick="sair();return false">sair</a></p></div><div id="c"></div>';
-      vPlano();}
-    window.home=home;const c=()=>document.getElementById('c');
-    async function sair(){await api('POST','/logout').catch(()=>{});location.reload()}window.sair=sair;
-    async function vPlano(){const d=await api('GET','/cobranca');
-      c().innerHTML='<div class="card"><h3>Plano e cobrança</h3><p>Plano atual: <b>'+esc(d.plano?d.plano.nome:'—')+'</b> · assinatura: <span class="tag">'+esc(d.assinatura?d.assinatura.status:'—')+'</span>'+(d.assinatura&&d.assinatura.proximo_venc?' · próx. venc. '+dt(d.assinatura.proximo_venc):'')+'</p>'
-        +'<h3 style="margin-top:12px">Planos</h3>'+d.planos_disponiveis.map(p=>'<div class="lin"><b>'+esc(p.nome)+'</b> — '+(p.preco_centavos?brl(p.preco_centavos)+'/mês':'sob consulta')+(p.preco_centavos?' <button class="btn g" style="padding:6px 14px" onclick="assinar(\\''+p.slug+'\\')">Assinar</button>':'')+'</div>').join('')
-        +(d.mp_ativo?'':'<p class="aviso">Pagamento online em configuração — fale com o suporte para ativar seu plano.</p>')
-        +(d.assinatura&&d.assinatura.recorrencia_mp?'<p style="margin-top:12px"><button class="btn g" onclick="cancelar()">Cancelar assinatura</button></p>':'')+'</div>';}
-    window.vPlano=vPlano;
-    async function assinar(slug){try{const r=await api('POST','/cobranca/assinar',{plano:slug});location.href=r.link;}catch(e){alert(e.message)}}window.assinar=assinar;
-    async function cancelar(){if(!confirm('Cancelar a assinatura?'))return;try{await api('POST','/cobranca/cancelar');vPlano()}catch(e){alert(e.message)}}window.cancelar=cancelar;
-    async function vUso(){const me=await api('GET','/me');const ent=me.entitlements;const u=me.uso;
-      const lim=(k)=>ent.limites[k]||0;const usado=(k)=>u[k]||0;
-      const linhas=Object.keys(ent.limites).map(k=>'<div class="lin">'+esc(k.replace(/_/g,\" \"))+': <b>'+usado(k)+'</b> / '+(lim(k)===0?'ilimitado':lim(k))+'</div>').join('');
-      c().innerHTML='<div class="card"><h3>Uso do mês</h3>'+linhas+'<h3 style="margin-top:14px">Módulos do seu plano</h3><p>'+ent.modulos.map(m=>'<span class="tag" style="margin:2px">'+esc(m.replace(/_/g,\" \"))+'</span>').join(' ')+'</p></div>';}
-    window.vUso=vUso;
-    async function vSup(){const {tickets}=await api('GET','/tickets');
-      c().innerHTML='<div class="card"><h3>Suporte</h3>'+(tickets.length?tickets.map(t=>'<div class="lin"><b>'+esc(t.assunto)+'</b> <span class="tag">'+esc(t.status)+'</span> <span class="sub">'+dt(t.criado_em)+'</span></div>').join(''):'<p class="sub">Nenhum chamado.</p>')
-        +'<h3 style="margin-top:12px">Abrir chamado</h3><input id="tk-a" placeholder="Assunto"><textarea id="tk-t" rows="3" placeholder="Descreva sua dúvida"></textarea><button class="btn" onclick="abrirTk()">Enviar</button></div>';}
-    window.vSup=vSup;
-    async function abrirTk(){const a=document.getElementById('tk-a').value,t=document.getElementById('tk-t').value;if(!a||!t)return;await api('POST','/tickets',{assunto:a,texto:t});vSup();}window.abrirTk=abrirTk;
-    home();`);
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title><style>${CSS}
+    .cx{max-width:1040px;margin:20px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
+    .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
+    .kpi{background:#fff;border:1px solid #e7e1d4;border-radius:10px;padding:10px 16px;min-width:120px}
+    .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem;margin:.4rem 0}
+    .erro{color:#b00020}.btn.peq{padding:6px 14px;font-size:.85rem}.btn.secund{background:#eef3f4;color:#0c3644}
+    .hi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+    label{font-size:.85rem;font-weight:600;display:block}
+    table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #f0ece2}
+    th{color:#5b6b70;font-weight:600}.chip,.tag{display:inline-block;background:#eef3f4;color:#0c3644;border-radius:12px;padding:2px 9px;font-size:.78rem}
+    </style></head><body><div class="cx">
+    <h2 style="color:#0c3644">🏨 Villela Stay Manager <span class="tag">painel da operação</span></h2>
+    <div id="app"><p class="sub">Carregando…</p></div></div>
+    <script src="/gestao/app.js"></script><script>bootGestao();</script></body></html>`;
 }
 
 function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
@@ -176,6 +154,7 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
   app.get('/gestao', (req, res) => res.send(landingHTML()));
   app.get('/gestao/assinar', (req, res) => res.send(assinarHTML(s(req.query.plano, 60))));
   app.get('/gestao/app', (req, res) => res.send(appHTML()));
+  app.get('/gestao/app.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-cliente.js')));
   app.get(['/gestao/definir-senha', '/gestao/app/definir-senha'], (req, res) => res.send(shell(
     `<div class="card"><h3>Defina sua senha</h3><input id="s1" type="password" placeholder="Nova senha (8+)"><input id="s2" type="password" placeholder="Confirme"><button class="btn" onclick="salvar()">Salvar</button><p id="m" class="erro"></p></div>`,
     `async function salvar(){const m=document.getElementById('m');m.textContent='';if(s1.value!==s2.value){m.textContent='As senhas não conferem.';return}
