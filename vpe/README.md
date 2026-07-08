@@ -4,9 +4,9 @@
 portfólio INTERNO de negócios da Villela (16 projetos, workspace `villela-interno`) e
 (2) SaaS vendável a outras empresas. **Este README é a fonte da verdade do assunto.**
 
-Status: **Fase 1 EM PRODUÇÃO** (deploy `ae3b626` 08/07/2026, validada) · **Fase 2 (portfólio
-avançado) COMPLETA** na branch `feat/vpe-f2` (aguardando validação p/ merge).
-Testes: `npm run test:vpe` (66/66).
+Status: **Fases 1-3 EM PRODUÇÃO** (último deploy `ebbede0` 08/07/2026, validadas) · **Fase 4
+(eventos) COMPLETA** na branch `feat/vpe-f4` (aguardando validação p/ merge).
+Testes: `npm run test:vpe` (106/106).
 ⚠️ PENDÊNCIA pós-F1: clicar "Semear workspace interno" na aba 📋 do staff EM PRODUÇÃO
 (guardar a senha inicial que aparece 1×).
 
@@ -84,6 +84,18 @@ staff/app-vpe.js   aba 📋 no Portal Staff (com o botão de seed interno)
 Comercial · Financeiro · Colaborador · Auditor · Leitor · Cliente externo (portal na F7).
 Permissão especial `decidir_projeto`: pausar/cancelar/arquivar exige-a além de `editar_projeto`.
 
+## Fase 4 (criado)
+
+`events` (ciclo lead→pós-evento, 16 tipos, vínculo opcional a projeto do portfólio, briefing
+por 8 seções em JSON, checklist e pós-evento embutidos, financeiro consolidado receita − custo
+evento − custo fornecedores = margem), `suppliers` (fornecedores do TENANT, reutilizáveis, 16
+categorias, favorito/bloqueado), `event_suppliers` (alocação com valor e status cotado|
+confirmado|pago|cancelado; bloqueado não aloca) e `event_guests` (RSVP, acompanhantes contam no
+total, restrição alimentar, check-in). Domínio em `eventos.js`; tela 🎪 Eventos (lista+filtro)
+com detalhe em 5 abas (Dados&Briefing / Fornecedores / Convidados / Checklist / Pós-evento) +
+tela 🤝 Fornecedores; KPIs de eventos no dashboard. Consome `eventos` do plano (limite
+eventos_mes). Layout/gastronomia detalhados, ingressos pagos e QR de check-in: fases futuras.
+
 ## Fase 3 (criado)
 
 `project_tasks` (subtarefas 2 níveis, checklist embutido, etiquetas, prazo, responsável do
@@ -150,22 +162,21 @@ abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = F
 
 ## Roadmap (8 fases do plano-mestre)
 
-~~F0 diagnóstico~~ ✅ · ~~F1 fundação + seed 16~~ ✅ · ~~F2 portfólio avançado~~ ✅ (produção) ·
-~~F3 execução (tarefas/Kanban/checklist/riscos)~~ ✅ (branch; Gantt/caminho crítico ficam p/
-F3b quando houver demanda) → **F4 eventos**
-(briefing→pós-evento, fornecedores, equipe, convidados) → F5 comercial+financeiro (CRM,
+~~F0 diagnóstico~~ ✅ · ~~F1 fundação + seed 16~~ ✅ · ~~F2 portfólio avançado~~ ✅ ·
+~~F3 execução (tarefas/Kanban/checklist/riscos)~~ ✅ (produção; Gantt/caminho crítico p/ F3b) ·
+~~F4 eventos (briefing/fornecedores/convidados/pós)~~ ✅ (branch) → **F5 comercial+financeiro** (CRM,
 propostas, contratos, orçamentos, billing SaaS) → F6 IA+automações (17 agentes, relatório
 diário do CEO) → F7 portal do cliente + SaaS admin → F8 integrações+deploy final.
 
 ## Próximos passos imediatos
 
-1. [ ] Augusto valida a Fase 3 (aba ✅ Tarefas com Kanban + ⚠️ Riscos no projeto; tela global de Tarefas) e autoriza merge `feat/vpe-f3` → master.
+1. [ ] Augusto valida a Fase 4 (🎪 Eventos: briefing, fornecedores, convidados/RSVP/check-in, checklist, pós-evento; 🤝 Fornecedores) e autoriza merge `feat/vpe-f4` → master.
 2. [ ] Pós-deploy: clicar "Semear workspace interno" em produção (guarda a senha inicial!)
    e revisar os 16 projetos (prioridades/estágios são propostas minhas).
 3. [ ] Preços dos planos (149/349/799/sob consulta) são proposta — ajustar na aba Planos.
 4. [ ] DNS `projetos.villelastay.com(.br)` quando quiser divulgar (Custom Domain no Render
    via Claude + CNAME na Locaweb — processo já dominado).
-5. [ ] Iniciar Fase 4 (eventos) — sem env var nova.
+5. [ ] Iniciar Fase 5 (comercial + financeiro) — sem env var nova.
 
 ## Teste local
 

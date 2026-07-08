@@ -8,6 +8,7 @@
 const repo = require('./repo');
 const portfolio = require('./portfolio');
 const tarefas = require('./tarefas');
+const eventos = require('./eventos');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -80,7 +81,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     res.json({ ok: true });
   }));
   r.get('/dashboard', requireTenant, h(async (req, res) => {
-    res.json({ ...repo.dashboardTenant(req.vp.tenant.id), ...tarefas.resumoExecucao(req.vp.tenant.id) });
+    res.json({ ...repo.dashboardTenant(req.vp.tenant.id), ...tarefas.resumoExecucao(req.vp.tenant.id), ...eventos.resumoEventos(req.vp.tenant.id) });
   }));
 
   // ------------------------------------------------ portfólio (núcleo Fase 1)
@@ -171,6 +172,63 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
   r.patch('/riscos/:id', requireTenant, requirePerm('editar_projeto'), h(async (req, res) => {
     tarefas.atualizarRisco(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ eventos (Fase 4)
+  r.get('/eventos', requireTenant, requirePerm('ver_eventos'), h(async (req, res) => {
+    const q = req.query || {};
+    res.json({
+      eventos: eventos.listarEventos(req.vp.tenant.id, { status: q.status, tipo: q.tipo, busca: q.busca, projeto: q.projeto }),
+      enums: { status: eventos.STATUS_EVENTO, tipos: eventos.TIPOS },
+    });
+  }));
+  r.post('/eventos', requireTenant, requirePerm('gerir_eventos'), h(async (req, res) => {
+    res.json({ ok: true, evento: eventos.criarEvento(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.get('/eventos/:id', requireTenant, requirePerm('ver_eventos'), h(async (req, res) => {
+    res.json({ evento: eventos.obterEvento(req.vp.tenant.id, req.params.id), enums: { status: eventos.STATUS_EVENTO, tipos: eventos.TIPOS, categorias_fornecedor: eventos.CAT_FORNECEDOR } });
+  }));
+  r.patch('/eventos/:id', requireTenant, requirePerm('gerir_eventos'), h(async (req, res) => {
+    res.json({ ok: true, evento: eventos.atualizarEvento(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  // fornecedores do evento
+  r.post('/eventos/:id/fornecedores', requireTenant, requirePerm('gerir_eventos'), h(async (req, res) => {
+    res.json({ ok: true, id: eventos.alocarFornecedor(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.patch('/eventos-fornecedores/:id', requireTenant, requirePerm('gerir_eventos'), h(async (req, res) => {
+    eventos.atualizarAlocacao(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
+  }));
+  r.delete('/eventos-fornecedores/:id', requireTenant, requirePerm('gerir_eventos'), h(async (req, res) => {
+    eventos.removerAlocacao(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
+  }));
+  // convidados
+  r.get('/eventos/:id/convidados', requireTenant, requirePerm('ver_eventos'), h(async (req, res) => {
+    res.json({ convidados: eventos.listarConvidados(req.vp.tenant.id, req.params.id) });
+  }));
+  r.post('/eventos/:id/convidados', requireTenant, requirePerm('gerir_eventos'), h(async (req, res) => {
+    res.json({ ok: true, id: eventos.adicionarConvidado(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.patch('/convidados/:id', requireTenant, requirePerm('gerir_eventos'), h(async (req, res) => {
+    eventos.atualizarConvidado(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
+  }));
+  r.delete('/convidados/:id', requireTenant, requirePerm('gerir_eventos'), h(async (req, res) => {
+    eventos.removerConvidado(req.vp.tenant.id, req.params.id);
+    res.json({ ok: true });
+  }));
+  // fornecedores (tenant, reutilizáveis)
+  r.get('/fornecedores', requireTenant, requirePerm('ver_eventos'), h(async (req, res) => {
+    const q = req.query || {};
+    res.json({ fornecedores: eventos.listarFornecedores(req.vp.tenant.id, { categoria: q.categoria, busca: q.busca }), categorias: eventos.CAT_FORNECEDOR });
+  }));
+  r.post('/fornecedores', requireTenant, requirePerm('gerir_fornecedores'), h(async (req, res) => {
+    res.json({ ok: true, id: eventos.criarFornecedor(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.patch('/fornecedores/:id', requireTenant, requirePerm('gerir_fornecedores'), h(async (req, res) => {
+    eventos.atualizarFornecedor(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip);
     res.json({ ok: true });
   }));
 

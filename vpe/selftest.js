@@ -279,6 +279,74 @@ function teste(nome, cond) {
   r = await req('GET', '/vpe/api/dashboard', { jar: 'anaA' });
   teste('risco mitigado não conta mais como crítico', r.dados.riscos_criticos === 0);
 
+  // ================== FASE 4: eventos ==================
+  // criar evento exige gerir_eventos; comercial (Carla, custom sem ela) não pode
+  r = await req('POST', '/vpe/api/eventos', { body: { nome: 'Casamento teste' }, jar: 'carlaA' });
+  teste('papel sem gerir_eventos não cria evento', r.status === 403);
+  r = await req('POST', '/vpe/api/eventos', { body: { nome: 'Casamento na Casa Modernista', tipo: 'casamento', cliente_nome: 'Maria', data: '2026-12-20', convidados_previstos: 80, receita_centavos: 4000000, orcamento_centavos: 1500000, project_id: projA }, jar: 'anaA' });
+  teste('evento criado (status lead) com vínculo a projeto', r.status === 200 && r.dados.evento.status === 'lead' && r.dados.evento.project_id === projA);
+  const evA = r.dados.evento.id;
+  r = await req('PATCH', '/vpe/api/eventos/' + evA, { body: { status: 'confirmado', briefing: { objetivo: 'Celebrar o casamento', alimentacao: 'Buffet completo + bar' } }, jar: 'anaA' });
+  teste('mudança de status + briefing salvos', r.status === 200 && r.dados.evento.status === 'confirmado' && r.dados.evento.briefing.objetivo.includes('Celebrar'));
+  r = await req('GET', '/vpe/api/auditoria', { jar: 'anaA' });
+  teste('auditoria registra evento.mudar_status', r.dados.eventos.some(e => e.acao === 'evento.mudar_status'));
+
+  // fornecedores (tenant) + alocação ao evento
+  r = await req('POST', '/vpe/api/fornecedores', { body: { nome: 'Buffet Sabor & Arte', categoria: 'buffet', telefone: '61999990000' }, jar: 'anaA' });
+  teste('fornecedor criado', r.status === 200);
+  const supA = r.dados.id;
+  r = await req('POST', '/vpe/api/fornecedores', { body: { nome: 'x' }, jar: 'carlaA' });
+  teste('fornecedor exige gerir_fornecedores (403)', r.status === 403);
+  r = await req('POST', '/vpe/api/eventos/' + evA + '/fornecedores', { body: { supplier_id: supA, valor_centavos: 900000, status: 'confirmado' }, jar: 'anaA' });
+  teste('fornecedor alocado ao evento', r.status === 200);
+  const alocA = r.dados.id;
+  r = await req('GET', '/vpe/api/eventos/' + evA, { jar: 'anaA' });
+  teste('financeiro consolida receita − custo evento − fornecedores', r.dados.evento.financeiro.custo_fornecedores === 900000 && r.dados.evento.financeiro.margem === 4000000 - 1500000 - 900000);
+  // fornecedor bloqueado não aloca
+  r = await req('PATCH', '/vpe/api/fornecedores/' + supA, { body: { bloqueado: true }, jar: 'anaA' });
+  r = await req('POST', '/vpe/api/eventos/' + evA + '/fornecedores', { body: { supplier_id: supA }, jar: 'anaA' });
+  teste('fornecedor bloqueado não pode ser alocado', r.status === 400);
+  r = await req('PATCH', '/vpe/api/fornecedores/' + supA, { body: { bloqueado: false }, jar: 'anaA' });
+  r = await req('DELETE', '/vpe/api/eventos-fornecedores/' + alocA, { jar: 'anaA' });
+  teste('alocação removida', r.status === 200);
+
+  // convidados: RSVP, acompanhantes e check-in
+  r = await req('POST', '/vpe/api/eventos/' + evA + '/convidados', { body: { nome: 'João e família', acompanhantes: 3, restricao_alimentar: 'sem glúten' }, jar: 'anaA' });
+  const gA = r.dados.id;
+  r = await req('PATCH', '/vpe/api/convidados/' + gA, { body: { rsvp: 'confirmado' }, jar: 'anaA' });
+  teste('RSVP confirmado', r.status === 200);
+  r = await req('GET', '/vpe/api/eventos/' + evA, { jar: 'anaA' });
+  teste('convidados contam titular + acompanhantes (4)', r.dados.evento.convidados.confirmados === 4);
+  r = await req('PATCH', '/vpe/api/convidados/' + gA, { body: { checkin: true }, jar: 'anaA' });
+  r = await req('GET', '/vpe/api/eventos/' + evA, { jar: 'anaA' });
+  teste('check-in registrado', r.dados.evento.convidados.checkins === 1);
+
+  // checklist e pós-evento
+  r = await req('PATCH', '/vpe/api/eventos/' + evA, { body: { checklist: [{ t: 'Confirmar cardápio', feito: true }, { t: '', feito: false }, { t: 'Escala da equipe' }] }, jar: 'anaA' });
+  teste('checklist do evento sanitizado', r.dados.evento.checklist.length === 2);
+  r = await req('PATCH', '/vpe/api/eventos/' + evA, { body: { status: 'realizado', pos_evento: { avaliacao: 'Cliente muito satisfeito', depoimento: 'Melhor evento!' } }, jar: 'anaA' });
+  teste('pós-evento salvo', r.status === 200 && r.dados.evento.pos_evento.avaliacao.includes('satisfeito'));
+
+  // isolamento entre tenants
+  r = await req('GET', '/vpe/api/eventos/' + evA, { jar: 'bobB' });
+  teste('B não abre evento de A (anti-IDOR)', r.status === 400 || r.status === 404);
+  r = await req('GET', '/vpe/api/eventos', { jar: 'bobB' });
+  teste('lista de eventos de B não contém o de A', !r.dados.eventos.some(e => e.id === evA));
+  r = await req('POST', '/vpe/api/eventos/' + evA + '/fornecedores', { body: { supplier_id: supA }, jar: 'bobB' });
+  teste('B não aloca fornecedor no evento de A', r.status === 400 || r.status === 403 || r.status === 404);
+
+  // limite de eventos do plano (tenant B no Starter: 5/mês)
+  const staffAtor2 = { id: 'adm', nome: 'Admin Villela' };
+  const eventosMod = require('./eventos');
+  for (let i = 0; i < 5; i++) eventosMod.criarEvento(tenantB.id, { nome: 'Ev ' + i }, staffAtor2, 'teste');
+  let estourouEv = false;
+  try { eventosMod.criarEvento(tenantB.id, { nome: 'Ev6' }, staffAtor2, 'teste'); } catch (e) { estourouEv = /Limite do plano/.test(e.message); }
+  teste('limite de eventos/mês do Starter bloqueia o 6º', estourouEv);
+
+  // dashboard traz resumo de eventos
+  r = await req('GET', '/vpe/api/dashboard', { jar: 'anaA' });
+  teste('dashboard traz métricas de eventos', typeof r.dados.eventos_confirmados === 'number' && typeof r.dados.eventos_proximos_30d === 'number');
+
   // ---------- staff da plataforma ----------
   r = await req('GET', '/staff/api/vpe/resumo', { staff: 'ceo' });
   teste('staff resumo com projetos_total e MRR', r.status === 200 && r.dados.projetos_total >= 17 && typeof r.dados.mrr_centavos === 'number');

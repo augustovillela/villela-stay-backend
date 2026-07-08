@@ -224,7 +224,7 @@ const TELAS=[
  ['dashboard','📊 Dashboard',()=>true],
  ['portfolio','💡 Portfólio',m=>m.permissoes.ver_projetos],
  ['tarefas','✅ Tarefas',m=>m.permissoes.ver_projetos],
- ['eventos','🎪 Eventos',()=>true,'breve'],
+ ['eventos','🎪 Eventos',m=>m.permissoes.ver_eventos],
  ['crm','🤝 CRM & Propostas',()=>true,'breve'],
  ['financeiro','💰 Financeiro',()=>true,'breve'],
  ['ia','🤖 Agentes de IA',()=>true,'breve'],
@@ -236,7 +236,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Próximas fases">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -257,6 +257,8 @@ async function vDash(){
    '<div class="kpi"><div class="n">'+d.projetos_alta_prioridade.length+'</div><div class="r">alta prioridade</div></div>'+
    '<div class="kpi"><div class="n">'+brl(d.investimento_estimado_total)+'</div><div class="r">investimento estimado</div></div>'+
    '<div class="kpi"><div class="n">'+brl(d.receita_potencial_total)+'</div><div class="r">receita potencial/ano</div></div>'+
+   '<div class="kpi"><div class="n">'+(d.eventos_confirmados||0)+'</div><div class="r">eventos confirmados</div></div>'+
+   '<div class="kpi"><div class="n">'+(d.eventos_proximos_30d||0)+'</div><div class="r">eventos em 30 dias</div></div>'+
    '<div class="kpi"><div class="n">'+(d.tarefas_abertas||0)+'</div><div class="r">tarefas abertas</div></div>'+
    '<div class="kpi">'+(d.tarefas_atrasadas?'':'')+'<div class="n"'+(d.tarefas_atrasadas?' style="color:var(--alerta)"':'')+'>'+(d.tarefas_atrasadas||0)+'</div><div class="r">tarefas atrasadas</div></div>'+
    '<div class="kpi"><div class="n"'+(d.riscos_criticos?' style="color:var(--alerta)"':'')+'>'+(d.riscos_criticos||0)+'</div><div class="r">riscos críticos</div></div>'+
@@ -267,7 +269,7 @@ async function vDash(){
     d.projetos_alta_prioridade.map(p=>'<tr><td><a href="#" onclick="return abrirProj(\\''+p.id+'\\')">'+esc(p.nome)+'</a></td><td>'+esc(rot(p.estagio))+'</td><td>'+esc(p.horizonte)+'</td><td style="font-size:13px">'+esc((p.proximos_passos||'').slice(0,90))+'</td></tr>').join('')+'</table></div>':'')+
    '<div class="card" style="margin-top:14px"><b>Atividade recente</b><table><tr><th>Quando</th><th>Quem</th><th>Ação</th></tr>'+
    d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></div>'+
-   '<div class="aviso" style="margin-top:14px">🚧 Eventos, CRM, financeiro e agentes de IA chegam nas próximas fases.</div>';
+   '<div class="aviso" style="margin-top:14px">🚧 CRM, financeiro e agentes de IA chegam nas próximas fases.</div>';
 }
 // ---------------- Portfólio ----------------
 S.pf={estagio:'',categoria:'',busca:''};
@@ -479,6 +481,132 @@ async function vProjRiscos(){
 }
 async function novoRisco(){try{await api('POST','/projetos/'+S.projId+'/riscos',{descricao:$('rk-desc').value,probabilidade:$('rk-prob').value,impacto:$('rk-imp').value,plano_prevencao:$('rk-prev').value,plano_contingencia:$('rk-cont').value});vProjRiscos();}catch(e){alert(e.message);}}
 async function statusRisco(id,status){try{await api('PATCH','/riscos/'+id,{status});}catch(e){alert(e.message);vProjRiscos();}}
+
+// ---------------- Eventos (Fase 4) ----------------
+const EV_ROT={lead:'Lead',briefing:'Briefing',proposta:'Proposta',negociacao:'Negociação',aprovado:'Aprovado',confirmado:'Confirmado',em_preparacao:'Em preparação',realizado:'Realizado',pos_evento:'Pós-evento',cancelado:'Cancelado'};
+async function vEventos(){
+  S.evF=S.evF||{status:'',busca:''};
+  const q='?'+(S.evF.status?'status='+S.evF.status+'&':'')+(S.evF.busca?'busca='+encodeURIComponent(S.evF.busca)+'&':'');
+  const {eventos:evs,enums}=await api('GET','/eventos'+q);
+  S.evEnums=enums;
+  const opt=(lista,sel,rotulo,mapa)=>'<option value="">— '+rotulo+' —</option>'+lista.map(x=>'<option value="'+x+'"'+(x===sel?' selected':'')+'>'+((mapa&&mapa[x])||rot(x))+'</option>').join('');
+  $('corpo').innerHTML='<h2>🎪 Eventos</h2>'+
+   '<div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+   '<input id="ev-busca" placeholder="Buscar evento/cliente…" value="'+esc(S.evF.busca)+'" style="max-width:200px" onkeydown="if(event.keyCode===13)filtrarEv()">'+
+   '<select id="ev-status" style="max-width:170px" onchange="filtrarEv()">'+opt(enums.status,S.evF.status,'status',EV_ROT)+'</select>'+
+   (S.me.permissoes.gerir_eventos?'<button class="btn peq" onclick="novoEvento()">+ Novo evento</button>':'')+
+   '<button class="btn btn-ghost peq" onclick="ir(String.fromCharCode(102,111,114,110,101,99,101,100,111,114,101,115))">🤝 Fornecedores</button></div>'+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Evento</th><th>Tipo</th><th>Cliente</th><th>Data</th><th>Convidados</th><th>Status</th><th>Valor</th></tr>'+
+   (evs.length?evs.map(e=>'<tr><td><a href="#" onclick="return abrirEvento(\\''+e.id+'\\')">'+esc(e.nome)+'</a></td>'+
+    '<td>'+esc(rot(e.tipo))+'</td><td>'+esc(e.cliente_nome||'—')+'</td><td>'+(e.data?e.data.split('-').reverse().join('/'):'—')+'</td>'+
+    '<td>'+(e.convidados_previstos||'—')+'</td><td><span class="chip">'+(EV_ROT[e.status]||e.status)+'</span></td><td>'+brl(e.receita_centavos)+'</td></tr>').join(''):'<tr><td colspan="7" style="color:var(--suave)">Nenhum evento — crie o primeiro.</td></tr>')+'</table></div>';
+}
+function filtrarEv(){S.evF={status:$('ev-status').value,busca:$('ev-busca').value};vEventos();}
+async function novoEvento(){const nome=prompt('Nome do evento:');if(!nome)return;try{const r=await api('POST','/eventos',{nome});abrirEvento(r.evento.id);}catch(e){alert(e.message);}}
+async function abrirEvento(id,aba){
+  S.evId=id;S.evAba=aba||'dados';
+  const {evento:e,enums}=await api('GET','/eventos/'+id);
+  S.ev=e;S.evEnums2=enums;
+  const abas=[['dados','📋 Dados & Briefing'],['forn','🤝 Fornecedores'],['conv','👥 Convidados'],['check','✅ Checklist'],['pos','🎬 Pós-evento']];
+  $('corpo').innerHTML='<p><a href="#" onclick="ir(String.fromCharCode(101,118,101,110,116,111,115));return false">← eventos</a></p><h2>'+esc(e.nome)+' <span class="chip">'+(EV_ROT[e.status]||e.status)+'</span></h2>'+
+   '<div class="card" style="display:flex;gap:6px;flex-wrap:wrap">'+abas.map(([k,r2])=>'<button class="btn '+(S.evAba===k?'':'btn-ghost ')+'peq" onclick="abrirEvento(\\''+id+'\\',\\''+k+'\\')">'+r2+'</button>').join('')+'</div>'+
+   '<div class="card" style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px">'+
+   '<span>👥 <b>'+e.convidados.confirmados+'</b> confirmados / '+e.convidados.pendentes+' pendentes</span>'+
+   '<span>✅ check-in: <b>'+e.convidados.checkins+'</b></span>'+
+   '<span>💰 receita <b>'+brl(e.financeiro.receita)+'</b> · custo '+brl(e.financeiro.custo_total)+' · margem <b style="color:'+(e.financeiro.margem>=0?'var(--acc)':'var(--alerta)')+'">'+brl(e.financeiro.margem)+'</b></span></div>'+
+   '<div id="ev-corpo" style="margin-top:12px"><p class="sub">Carregando…</p></div>';
+  await ({dados:vEvDados,forn:vEvForn,conv:vEvConv,check:vEvCheck,pos:vEvPos}[S.evAba])();
+  return false;
+}
+async function vEvDados(){
+  const e=S.ev;const P=S.me.permissoes;const En=S.evEnums2;const dis=P.gerir_eventos?'':' disabled';
+  const sel=(idc,lista,atual,mapa)=>'<select id="'+idc+'"'+dis+'>'+lista.map(x=>'<option value="'+x+'"'+(x===atual?' selected':'')+'>'+((mapa&&mapa[x])||rot(x))+'</option>').join('')+'</select>';
+  $('ev-corpo').innerHTML='<div class="card">'+
+   '<label>Nome</label><input id="ed-nome" value="'+esc(e.nome)+'"'+dis+'>'+
+   '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">'+
+   '<div><label>Tipo</label>'+sel('ed-tipo',En.tipos,e.tipo)+'</div>'+
+   '<div><label>Status</label>'+sel('ed-status',En.status,e.status,EV_ROT)+'</div>'+
+   '<div><label>Data</label><input id="ed-data" type="date" value="'+esc(e.data)+'"'+dis+'></div>'+
+   '<div><label>Hora</label><input id="ed-hora" value="'+esc(e.hora)+'"'+dis+'></div>'+
+   '<div><label>Convidados previstos</label><input id="ed-conv" type="number" value="'+e.convidados_previstos+'"'+dis+'></div>'+
+   '<div><label>Local</label><input id="ed-local" value="'+esc(e.local)+'"'+dis+'></div>'+
+   '<div><label>Cliente</label><input id="ed-cli" value="'+esc(e.cliente_nome)+'"'+dis+'></div>'+
+   '<div><label>Contato do cliente</label><input id="ed-clicontato" value="'+esc(e.cliente_contato)+'"'+dis+'></div>'+
+   '<div><label>Orçamento/custo (R$)</label><input id="ed-orc" type="number" value="'+Math.round((e.orcamento_centavos||0)/100)+'"'+dis+'></div>'+
+   '<div><label>Receita fechada (R$)</label><input id="ed-rec" type="number" value="'+Math.round((e.receita_centavos||0)/100)+'"'+dis+'></div></div>'+
+   '<h3 style="font-size:16px;margin-top:14px">Briefing</h3>'+
+   e.catalogo_briefing.map(([k,r2])=>'<label>'+esc(r2)+'</label><textarea class="eb-sec" data-k="'+k+'" rows="2"'+dis+'>'+esc(e.briefing[k]||'')+'</textarea>').join('')+
+   (P.gerir_eventos?'<p style="margin-top:10px"><button class="btn peq" onclick="salvarEvento()">Salvar</button> <span id="ed-out"></span></p>':'')+
+   '</div>';
+}
+async function salvarEvento(){try{
+  const briefing={};document.querySelectorAll('.eb-sec').forEach(t=>briefing[t.dataset.k]=t.value);
+  await api('PATCH','/eventos/'+S.evId,{nome:$('ed-nome').value,tipo:$('ed-tipo').value,status:$('ed-status').value,data:$('ed-data').value,hora:$('ed-hora').value,convidados_previstos:Number($('ed-conv').value)||0,local:$('ed-local').value,cliente_nome:$('ed-cli').value,cliente_contato:$('ed-clicontato').value,orcamento_centavos:Math.round(Number($('ed-orc').value)*100)||0,receita_centavos:Math.round(Number($('ed-rec').value)*100)||0,briefing});
+  $('ed-out').textContent='✅ salvo';abrirEvento(S.evId,'dados');
+ }catch(e){$('ed-out').textContent='⚠️ '+e.message;}}
+async function vEvForn(){
+  const P=S.me.permissoes;const e=S.ev;
+  const fornDisp=(await api('GET','/fornecedores')).fornecedores.filter(f=>!f.bloqueado);
+  $('ev-corpo').innerHTML=(P.gerir_eventos?'<div class="card"><b>Alocar fornecedor</b>'+
+   (fornDisp.length?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><select id="ef-sup" style="flex:1;min-width:200px">'+fornDisp.map(f=>'<option value="'+f.id+'">'+esc(f.nome)+' ('+esc(f.categoria)+')</option>').join('')+'</select>'+
+    '<input id="ef-valor" type="number" placeholder="Valor R$" style="max-width:130px"><button class="btn peq" onclick="alocarForn()">Alocar</button></div>':'<p class="sub">Cadastre fornecedores em 🤝 Fornecedores primeiro.</p>')+'</div>':'')+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Fornecedor</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr>'+
+   (e.fornecedores.length?e.fornecedores.map(a=>'<tr><td>'+esc(a.fornecedor_nome||'(removido)')+'</td><td>'+esc(a.categoria)+'</td><td>'+brl(a.valor_centavos)+'</td>'+
+    '<td>'+(P.gerir_eventos?'<select onchange="statusAloc(\\''+a.id+'\\',this.value)">'+['cotado','confirmado','pago','cancelado'].map(x=>'<option'+(x===a.status?' selected':'')+'>'+x+'</option>').join('')+'</select>':a.status)+'</td>'+
+    '<td>'+(P.gerir_eventos?'<button class="btn btn-ghost peq" onclick="removerAloc(\\''+a.id+'\\')">✕</button>':'')+'</td></tr>').join(''):'<tr><td colspan="5" style="color:var(--suave)">Nenhum fornecedor alocado.</td></tr>')+'</table></div>';
+}
+async function alocarForn(){try{await api('POST','/eventos/'+S.evId+'/fornecedores',{supplier_id:$('ef-sup').value,valor_centavos:Math.round(Number($('ef-valor').value)*100)||0});abrirEvento(S.evId,'forn');}catch(e){alert(e.message);}}
+async function statusAloc(id,status){try{await api('PATCH','/eventos-fornecedores/'+id,{status});abrirEvento(S.evId,'forn');}catch(e){alert(e.message);}}
+async function removerAloc(id){if(!confirm('Remover este fornecedor do evento?'))return;try{await api('DELETE','/eventos-fornecedores/'+id);abrirEvento(S.evId,'forn');}catch(e){alert(e.message);}}
+async function vEvConv(){
+  const P=S.me.permissoes;
+  const {convidados}=await api('GET','/eventos/'+S.evId+'/convidados');
+  const rsvpChip={pendente:'⏳ pendente',confirmado:'✅ confirmado',recusado:'✖ recusado'};
+  $('ev-corpo').innerHTML=(P.gerir_eventos?'<div class="card"><b>Adicionar convidado</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><input id="cv-nome" placeholder="Nome" style="flex:1;min-width:160px"><input id="cv-acomp" type="number" placeholder="Acomp." style="max-width:90px"><input id="cv-restr" placeholder="Restrição alimentar" style="max-width:180px"><button class="btn peq" onclick="addConvidado()">Adicionar</button></div></div>':'')+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Nome</th><th>Acomp.</th><th>RSVP</th><th>Restrição</th><th>Check-in</th><th></th></tr>'+
+   (convidados.length?convidados.map(g=>'<tr><td>'+esc(g.nome)+'</td><td>'+g.acompanhantes+'</td>'+
+    '<td>'+(P.gerir_eventos?'<select onchange="rsvpConv(\\''+g.id+'\\',this.value)">'+['pendente','confirmado','recusado'].map(x=>'<option value="'+x+'"'+(x===g.rsvp?' selected':'')+'>'+(rsvpChip[x])+'</option>').join('')+'</select>':(rsvpChip[g.rsvp]||g.rsvp))+'</td>'+
+    '<td>'+esc(g.restricao_alimentar||'—')+'</td>'+
+    '<td>'+(g.checkin_em?'✅ '+dt(g.checkin_em):(P.gerir_eventos?'<button class="btn btn-ghost peq" onclick="checkinConv(\\''+g.id+'\\',true)">Check-in</button>':'—'))+'</td>'+
+    '<td>'+(P.gerir_eventos?'<button class="btn btn-ghost peq" onclick="delConv(\\''+g.id+'\\')">✕</button>':'')+'</td></tr>').join(''):'<tr><td colspan="6" style="color:var(--suave)">Nenhum convidado.</td></tr>')+'</table></div>';
+}
+async function addConvidado(){try{await api('POST','/eventos/'+S.evId+'/convidados',{nome:$('cv-nome').value,acompanhantes:Number($('cv-acomp').value)||0,restricao_alimentar:$('cv-restr').value});abrirEvento(S.evId,'conv');}catch(e){alert(e.message);}}
+async function rsvpConv(id,rsvp){try{await api('PATCH','/convidados/'+id,{rsvp});abrirEvento(S.evId,'conv');}catch(e){alert(e.message);}}
+async function checkinConv(id){try{await api('PATCH','/convidados/'+id,{checkin:true});abrirEvento(S.evId,'conv');}catch(e){alert(e.message);}}
+async function delConv(id){if(!confirm('Remover convidado?'))return;try{await api('DELETE','/convidados/'+id);abrirEvento(S.evId,'conv');}catch(e){alert(e.message);}}
+async function vEvCheck(){
+  const P=S.me.permissoes;S.evChk=S.ev.checklist.slice();
+  $('ev-corpo').innerHTML='<div class="card"><b>Checklist do evento</b><div id="ev-chk" style="margin-top:8px">'+renderEvChk()+'</div>'+
+   (P.gerir_eventos?'<div style="display:flex;gap:6px;margin-top:6px"><input id="evchk-novo" placeholder="Novo item" style="flex:1"><button class="btn btn-ghost peq" onclick="addEvChk()">+</button></div>'+
+    '<p><button class="btn peq" onclick="salvarEvChk()">Salvar checklist</button> <span id="evchk-out"></span></p>':'')+'</div>';
+}
+function renderEvChk(){return (S.evChk||[]).map((c,i)=>'<label style="display:flex;gap:6px;align-items:center;margin:2px 0;font-weight:400"><input type="checkbox" '+(c.feito?'checked':'')+' onchange="S.evChk['+i+'].feito=this.checked" style="width:auto"> '+esc(c.t)+' <a href="#" onclick="S.evChk.splice('+i+',1);document.getElementById(String.fromCharCode(101,118,45,99,104,107)).innerHTML=renderEvChk();return false" style="font-size:12px">✕</a></label>').join('')||'<span class="sub" style="font-size:13px">Sem itens.</span>';}
+function addEvChk(){const v=$('evchk-novo').value.trim();if(!v)return;S.evChk.push({t:v,feito:false});$('evchk-novo').value='';$('ev-chk').innerHTML=renderEvChk();}
+async function salvarEvChk(){try{await api('PATCH','/eventos/'+S.evId,{checklist:S.evChk});$('evchk-out').textContent='✅ salvo';}catch(e){$('evchk-out').textContent='⚠️ '+e.message;}}
+async function vEvPos(){
+  const P=S.me.permissoes;const pos=S.ev.pos_evento||{};const dis=P.gerir_eventos?'':' disabled';
+  $('ev-corpo').innerHTML='<div class="card"><b>Pós-evento e encerramento</b>'+
+   '<label>Avaliação do cliente / do evento</label><textarea id="pos-aval" rows="2"'+dis+'>'+esc(pos.avaliacao||'')+'</textarea>'+
+   '<label>Lições aprendidas</label><textarea id="pos-licoes" rows="2"'+dis+'>'+esc(pos.licoes||'')+'</textarea>'+
+   '<label>Depoimento</label><textarea id="pos-dep" rows="2"'+dis+'>'+esc(pos.depoimento||'')+'</textarea>'+
+   '<label>Pendências</label><textarea id="pos-pend" rows="2"'+dis+'>'+esc(pos.pendencias||'')+'</textarea>'+
+   (P.gerir_eventos?'<p><button class="btn peq" onclick="salvarPos()">Salvar</button> <button class="btn btn-ghost peq" onclick="marcarRealizado()">Marcar como realizado</button> <span id="pos-out"></span></p>':'')+'</div>';
+}
+async function salvarPos(){try{await api('PATCH','/eventos/'+S.evId,{pos_evento:{avaliacao:$('pos-aval').value,licoes:$('pos-licoes').value,depoimento:$('pos-dep').value,pendencias:$('pos-pend').value}});$('pos-out').textContent='✅ salvo';}catch(e){$('pos-out').textContent='⚠️ '+e.message;}}
+async function marcarRealizado(){try{await api('PATCH','/eventos/'+S.evId,{status:'realizado'});abrirEvento(S.evId,'pos');}catch(e){alert(e.message);}}
+// ---------------- Fornecedores (tenant) ----------------
+async function vFornecedores(){
+  const P=S.me.permissoes;
+  const {fornecedores,categorias}=await api('GET','/fornecedores');
+  $('corpo').innerHTML='<h2>🤝 Fornecedores</h2><p><a href="#" onclick="ir(String.fromCharCode(101,118,101,110,116,111,115));return false">← eventos</a></p>'+
+   (P.gerir_fornecedores?'<div class="card"><b>Novo fornecedor</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><input id="nf-nome" placeholder="Nome" style="flex:1;min-width:160px"><select id="nf-cat">'+categorias.map(c=>'<option>'+c+'</option>').join('')+'</select><input id="nf-tel" placeholder="Telefone" style="max-width:130px"><button class="btn peq" onclick="novoFornecedor()">Cadastrar</button></div></div>':'')+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Nome</th><th>Categoria</th><th>Telefone</th><th>E-mail</th><th></th></tr>'+
+   (fornecedores.length?fornecedores.map(f=>'<tr><td>'+(f.favorito?'⭐ ':'')+(f.bloqueado?'🚫 ':'')+esc(f.nome)+'</td><td>'+esc(f.categoria)+'</td><td>'+esc(f.telefone||'—')+'</td><td>'+esc(f.email||'—')+'</td>'+
+    '<td>'+(P.gerir_fornecedores?'<button class="btn btn-ghost peq" onclick="toggleFav(\\''+f.id+'\\','+(f.favorito?'false':'true')+')">'+(f.favorito?'★':'☆')+'</button> <button class="btn btn-ghost peq" onclick="toggleBloq(\\''+f.id+'\\','+(f.bloqueado?'false':'true')+')">'+(f.bloqueado?'desbloq.':'bloq.')+'</button>':'')+'</td></tr>').join(''):'<tr><td colspan="5" style="color:var(--suave)">Nenhum fornecedor.</td></tr>')+'</table></div>';
+}
+async function novoFornecedor(){try{await api('POST','/fornecedores',{nome:$('nf-nome').value,categoria:$('nf-cat').value,telefone:$('nf-tel').value});vFornecedores();}catch(e){alert(e.message);}}
+async function toggleFav(id,v){try{await api('PATCH','/fornecedores/'+id,{favorito:v===true||v==='true'});vFornecedores();}catch(e){alert(e.message);}}
+async function toggleBloq(id,v){try{await api('PATCH','/fornecedores/'+id,{bloqueado:v===true||v==='true'});vFornecedores();}catch(e){alert(e.message);}}
 
 // ---------------- Usuários ----------------
 async function vUsuarios(){

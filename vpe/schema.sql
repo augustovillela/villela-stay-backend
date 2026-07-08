@@ -280,3 +280,76 @@ CREATE TABLE IF NOT EXISTS project_risks (
   criado_por         TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_vpe_risk ON project_risks (tenant_id, project_id, status);
+
+-- ---------- Fase 4: eventos ----------
+
+-- Fornecedores são do TENANT (reutilizáveis entre eventos), não do evento.
+CREATE TABLE IF NOT EXISTS suppliers (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  nome          TEXT NOT NULL,
+  categoria     TEXT DEFAULT 'outro',       -- buffet|chef|garcons|decoracao|som|iluminacao|dj|fotografo|filmagem|limpeza|transporte|mobiliario|seguranca|cerimonial|nautica|outro
+  telefone      TEXT DEFAULT '',
+  email         TEXT DEFAULT '',
+  observacoes   TEXT DEFAULT '',
+  favorito      INTEGER DEFAULT 0,
+  bloqueado     INTEGER DEFAULT 0,
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT '',
+  criado_por    TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_sup ON suppliers (tenant_id, categoria);
+
+CREATE TABLE IF NOT EXISTS events (
+  id                   TEXT PRIMARY KEY,
+  tenant_id            TEXT NOT NULL,
+  project_id           TEXT DEFAULT '',      -- vínculo opcional a um projeto do portfólio
+  nome                 TEXT NOT NULL,
+  tipo                 TEXT DEFAULT 'outro', -- casamento|aniversario|confraternizacao|churrasco|corporativo|infantil|jantar|brunch|coffee_break|curso|palestra|lancamento|hospedagem_evento|day_use|online|hibrido|outro
+  cliente_nome         TEXT DEFAULT '',
+  cliente_contato      TEXT DEFAULT '',
+  local                TEXT DEFAULT '',
+  data                 TEXT DEFAULT '',      -- YYYY-MM-DD
+  hora                 TEXT DEFAULT '',
+  convidados_previstos INTEGER DEFAULT 0,
+  orcamento_centavos   INTEGER DEFAULT 0,    -- custo previsto
+  receita_centavos     INTEGER DEFAULT 0,    -- valor fechado com o cliente
+  status               TEXT DEFAULT 'lead',  -- lead|briefing|proposta|negociacao|aprovado|confirmado|em_preparacao|realizado|pos_evento|cancelado
+  briefing             TEXT DEFAULT '{}',    -- JSON (seções em eventos.js)
+  checklist            TEXT DEFAULT '[]',    -- [{t, feito}]
+  pos_evento           TEXT DEFAULT '{}',    -- JSON: avaliacao, licoes, depoimento, pendencias
+  observacoes          TEXT DEFAULT '',
+  criado_em            TEXT NOT NULL,
+  atualizado_em        TEXT DEFAULT '',
+  criado_por           TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_ev ON events (tenant_id, status, data);
+
+-- Fornecedores alocados a um evento (com valor e status de contratação).
+CREATE TABLE IF NOT EXISTS event_suppliers (
+  id             TEXT PRIMARY KEY,
+  tenant_id      TEXT NOT NULL,
+  event_id       TEXT NOT NULL,
+  supplier_id    TEXT NOT NULL,
+  categoria      TEXT DEFAULT '',
+  valor_centavos INTEGER DEFAULT 0,
+  status         TEXT DEFAULT 'cotado',      -- cotado|confirmado|pago|cancelado
+  observacoes    TEXT DEFAULT '',
+  criado_em      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_evsup ON event_suppliers (tenant_id, event_id);
+
+CREATE TABLE IF NOT EXISTS event_guests (
+  id                 TEXT PRIMARY KEY,
+  tenant_id          TEXT NOT NULL,
+  event_id           TEXT NOT NULL,
+  nome               TEXT NOT NULL,
+  contato            TEXT DEFAULT '',
+  acompanhantes      INTEGER DEFAULT 0,
+  rsvp               TEXT DEFAULT 'pendente', -- pendente|confirmado|recusado
+  restricao_alimentar TEXT DEFAULT '',
+  categoria          TEXT DEFAULT '',
+  checkin_em         TEXT DEFAULT '',
+  criado_em          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_guest ON event_guests (tenant_id, event_id, rsvp);
