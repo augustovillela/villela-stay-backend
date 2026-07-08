@@ -227,7 +227,7 @@ const TELAS=[
  ['eventos','🎪 Eventos',m=>m.permissoes.ver_eventos],
  ['crm','🤝 CRM & Comercial',m=>m.permissoes.gerir_crm||m.permissoes.gerir_propostas],
  ['financeiro','💰 Financeiro',m=>m.permissoes.ver_financeiro],
- ['ia','🤖 Agentes de IA',()=>true,'breve'],
+ ['ia','🤖 IA & Automações',m=>m.permissoes.usar_ia||m.permissoes.gerir_automacoes||m.permissoes.ver_relatorios],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
  ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
  ['plano','📦 Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca],
@@ -236,7 +236,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Próximas fases">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,ia:vIa,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -270,7 +270,7 @@ async function vDash(){
     d.projetos_alta_prioridade.map(p=>'<tr><td><a href="#" onclick="return abrirProj(\\''+p.id+'\\')">'+esc(p.nome)+'</a></td><td>'+esc(rot(p.estagio))+'</td><td>'+esc(p.horizonte)+'</td><td style="font-size:13px">'+esc((p.proximos_passos||'').slice(0,90))+'</td></tr>').join('')+'</table></div>':'')+
    '<div class="card" style="margin-top:14px"><b>Atividade recente</b><table><tr><th>Quando</th><th>Quem</th><th>Ação</th></tr>'+
    d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></div>'+
-   '<div class="aviso" style="margin-top:14px">🚧 Agentes de IA, automações, portal do cliente e integrações chegam nas próximas fases.</div>';
+   '<div class="aviso" style="margin-top:14px">🚧 Portal do cliente e integrações externas chegam nas próximas fases.</div>';
 }
 // ---------------- Portfólio ----------------
 S.pf={estagio:'',categoria:'',busca:''};
@@ -730,6 +730,151 @@ function filtrarFin(){S.finF={tipo:$('ff-tipo').value,status:$('ff-status').valu
 async function novoLanc(){try{await api('POST','/financeiro',{tipo:$('nf-tipo').value,descricao:$('nf-desc').value,valor_centavos:Math.round(Number($('nf-valor').value)*100)||0,vencimento:$('nf-venc').value});vFinanceiro();}catch(e){alert(e.message);}}
 async function statusLanc(id,status){try{await api('PATCH','/financeiro/'+id,{status});vFinanceiro();}catch(e){alert(e.message);vFinanceiro();}}
 async function delLanc(id){if(!confirm('Excluir lançamento?'))return;try{await api('DELETE','/financeiro/'+id);vFinanceiro();}catch(e){alert(e.message);}}
+
+// ---------------- IA & Automações (Fase 6) ----------------
+async function vIa(){
+  S.iaAba=S.iaAba||'assistente';
+  const P=S.me.permissoes;
+  const abas=[];
+  if(P.usar_ia){abas.push(['assistente','💬 Assistente']);abas.push(['agentes','🧠 Agentes']);}
+  if(P.gerir_automacoes)abas.push(['automacoes','⚙️ Automações']);
+  if(P.ver_relatorios)abas.push(['ceo','📈 Relatório do CEO']);
+  if(!abas.some(a=>a[0]===S.iaAba))S.iaAba=abas.length?abas[0][0]:'assistente';
+  $('corpo').innerHTML='<h2>🤖 IA & Automações</h2>'+
+   '<div class="card" style="display:flex;gap:6px;flex-wrap:wrap">'+abas.map(a=>'<button class="btn '+(S.iaAba===a[0]?'':'btn-ghost ')+'peq" onclick="iaIr(\\''+a[0]+'\\')">'+a[1]+'</button>').join('')+'</div>'+
+   '<div id="ia-corpo" style="margin-top:12px"><p class="sub">Carregando…</p></div>';
+  await ({assistente:vIaAssist,agentes:vIaAgentes,automacoes:vIaAutos,ceo:vIaCeo}[S.iaAba]||vIaAssist)();
+}
+function iaIr(k){S.iaAba=k;vIa();}
+function avisoIA(ativo){return ativo?'':'<div class="aviso" style="margin-top:0">🔌 A IA está indisponível: o servidor está sem a chave ANTHROPIC_API_KEY. As telas funcionam, mas gerar respostas exige a chave.</div>';}
+
+// -------- Assistente --------
+async function vIaAssist(){
+  const st=await api('GET','/ia/status');
+  S.aiConv=S.aiConv||null;S.aiMsgs=S.aiMsgs||[];
+  const escopo='<select id="ai-escopo" style="min-width:150px"><option value="geral">Visão geral</option><option value="projeto">Um projeto…</option><option value="evento">Um evento…</option></select>';
+  $('ia-corpo').innerHTML=avisoIA(st.ativo)+
+   '<div class="card"><b>Assistente de gestão</b><p class="sub">Responde com base nos SEUS dados (portfólio, tarefas, eventos, CRM, financeiro). Não inventa números.</p>'+
+   '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">'+escopo+'<input id="ai-ref" placeholder="ID do projeto/evento (opcional)" style="flex:1;min-width:160px;display:none">'+
+   '<button class="btn btn-ghost peq" onclick="aiLimpar()">Nova conversa</button></div>'+
+   '<div style="display:flex;gap:8px"><input id="ai-q" placeholder="Ex.: quais projetos de alta prioridade estão sem tarefas?" style="flex:1" onkeydown="if(event.keyCode===13)aiPerg()"><button class="btn" onclick="aiPerg()">Perguntar</button></div></div>'+
+   '<div id="ai-chat" style="margin-top:12px"></div>';
+  document.getElementById('ai-escopo').onchange=function(){$('ai-ref').style.display=this.value==='geral'?'none':'';};
+  aiRender();
+}
+function aiLimpar(){S.aiConv=null;S.aiMsgs=[];aiRender();}
+function aiRender(){
+  const c=$('ai-chat');if(!c)return;
+  c.innerHTML=S.aiMsgs.map(m=>'<div class="card" style="margin-bottom:8px;'+(m.papel==='usuario'?'background:var(--fundo2)':'')+'"><b>'+(m.papel==='usuario'?'Você':'🤖 Assistente')+'</b>'+(m.nivel_confianca?' <span class="chip">confiança '+esc(m.nivel_confianca)+'</span>':'')+(m.nao_encontrado?' <span class="chip" style="color:var(--alerta)">fora dos dados</span>':'')+'<div style="white-space:pre-wrap;margin-top:6px">'+esc(m.conteudo)+'</div></div>').join('');
+}
+async function aiPerg(){
+  const q=$('ai-q').value.trim();if(!q)return;
+  const escopo=$('ai-escopo').value,ref=$('ai-ref').value.trim();
+  S.aiMsgs.push({papel:'usuario',conteudo:q});$('ai-q').value='';aiRender();
+  S.aiMsgs.push({papel:'assistente',conteudo:'Pensando…'});aiRender();
+  try{
+    const d=await api('POST','/ia/perguntar',{conversation_id:S.aiConv,escopo_tipo:escopo,escopo_ref:ref,pergunta:q});
+    S.aiConv=d.conversation_id;S.aiMsgs.pop();S.aiMsgs.push(d.mensagem);aiRender();
+  }catch(e){S.aiMsgs.pop();S.aiMsgs.push({papel:'assistente',conteudo:'⚠️ '+e.message});aiRender();}
+}
+
+// -------- Agentes especialistas --------
+async function vIaAgentes(){
+  const d=await api('GET','/ia/agentes');S.agEsc=S.agEsc||{};
+  const cards=d.agentes.map(a=>'<div class="card" style="width:230px"><b>'+esc(a.nome)+'</b>'+(a.minuta?' <span class="chip">MINUTA</span>':'')+'<p class="sub" style="min-height:38px">'+esc(a.desc)+'</p><div class="chip">escopo: '+esc(a.escopo)+'</div><div style="margin-top:8px"><button class="btn peq" onclick="abrirAgente(\\''+a.chave+'\\')">Usar</button></div></div>').join('');
+  $('ia-corpo').innerHTML=avisoIA(d.ativo)+
+   '<div style="display:flex;gap:10px;flex-wrap:wrap">'+cards+'</div>'+
+   '<div id="ag-form" style="margin-top:12px"></div>'+
+   '<div class="card" style="margin-top:12px"><b>Entregas recentes</b>'+(d.execucoes.length?'<table><tr><th>Quando</th><th>Agente</th><th>Escopo</th><th></th></tr>'+d.execucoes.map(e=>'<tr><td>'+dt(e.criado_em)+'</td><td>'+esc(e.agente)+'</td><td>'+esc(e.escopo_tipo)+'</td><td><button class="btn btn-ghost peq" onclick="verEntrega(\\''+e.id+'\\')">ver</button></td></tr>').join('')+'</table>':'<p class="sub">Nenhuma entrega ainda.</p>')+'</div>'+
+   '<div id="ag-saida"></div>';
+  S.agExecs=d.execucoes;S.agList=d.agentes;
+}
+async function abrirAgente(chave){
+  const a=(S.agList||[]).find(x=>x.chave===chave);if(!a)return;
+  let seletor='';
+  if(a.escopo==='projeto'||a.escopo==='evento'){
+    const rota=a.escopo==='projeto'?'/projetos':'/eventos';
+    let itens=[];try{const r=await api('GET',rota);itens=(r.projetos||r.eventos||[]);}catch(e){}
+    seletor='<select id="ag-ref" style="min-width:220px"><option value="">— escolha o '+a.escopo+' —</option>'+itens.map(i=>'<option value="'+i.id+'">'+esc(i.nome)+'</option>').join('')+'</select>';
+  }
+  $('ag-form').innerHTML='<div class="card"><b>'+esc(a.nome)+'</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">'+seletor+
+   '<input id="ag-extra" placeholder="Observações para o agente (opcional)" style="flex:1;min-width:200px"></div>'+
+   '<button class="btn" onclick="agExec(\\''+chave+'\\')">Gerar rascunho</button> <span class="sub">A entrega é um rascunho para validação humana.</span></div>';
+  $('ag-saida').innerHTML='';
+}
+async function agExec(chave){
+  const ref=$('ag-ref')?$('ag-ref').value:'';const extra=$('ag-extra')?$('ag-extra').value:'';
+  $('ag-saida').innerHTML='<div class="card"><p class="sub">Gerando…</p></div>';
+  try{
+    const d=await api('POST','/ia/agentes/executar',{agente:chave,escopo_ref:ref,instrucao_extra:extra});
+    $('ag-saida').innerHTML='<div class="card"><b>'+esc(d.resultado.nome)+'</b> <span class="chip">'+esc(d.resultado.modelo||'')+'</span><div style="white-space:pre-wrap;margin-top:8px">'+esc(d.resultado.saida)+'</div></div>';
+    vIaAgentes();
+  }catch(e){$('ag-saida').innerHTML='<div class="erro">'+esc(e.message)+'</div>';}
+}
+function verEntrega(id){
+  const e=(S.agExecs||[]).find(x=>x.id===id);if(!e)return;
+  $('ag-saida').innerHTML='<div class="card"><b>'+esc(e.agente)+'</b> <span class="sub">'+dt(e.criado_em)+'</span><div style="white-space:pre-wrap;margin-top:8px">'+esc(e.saida)+'</div></div>';
+  $('ag-saida').scrollIntoView({behavior:'smooth'});
+}
+
+// -------- Automações --------
+async function vIaAutos(){
+  const d=await api('GET','/automacoes');S.autoGat=d.gatilhos;S.autoAc=d.acoes;
+  const gOpts=Object.entries(d.gatilhos).map(g=>'<option value="'+g[0]+'">'+esc(g[1].nome)+'</option>').join('');
+  const aOpts=Object.entries(d.acoes).map(a=>'<option value="'+a[0]+'">'+esc(a[1].nome)+'</option>').join('');
+  $('ia-corpo').innerHTML=
+   '<div class="card"><b>Nova automação (gatilho → ação)</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+   '<input id="au-nome" placeholder="Nome" style="flex:1;min-width:160px">'+
+   '<select id="au-gat">'+gOpts+'</select><input id="au-dias" type="number" min="1" value="7" title="dias" style="width:80px">'+
+   '<select id="au-ac">'+aOpts+'</select><input id="au-cfg" placeholder="e-mail / ID do projeto (conforme a ação)" style="flex:1;min-width:180px">'+
+   '<button class="btn" onclick="criarAuto()">Criar</button></div>'+
+   '<p class="sub" style="margin-top:6px">Gatilhos usam o campo dias (evento próximo, deal parado, conta a vencer, projeto sem atividade). Ação por e-mail usa o campo de config; criar tarefa usa o ID do projeto.</p></div>'+
+   '<div class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b>Automações</b><button class="btn btn-ghost peq" onclick="avaliarTodas()">▶ Avaliar agora</button></div>'+
+   (d.automacoes.length?'<table><tr><th>Nome</th><th>Gatilho</th><th>Ação</th><th>Ativa</th><th>Última execução</th><th></th></tr>'+
+    d.automacoes.map(a=>'<tr><td>'+esc(a.nome)+'</td><td>'+esc((d.gatilhos[a.gatilho]||{}).nome||a.gatilho)+(a.gatilho_config&&a.gatilho_config.dias?' ('+a.gatilho_config.dias+'d)':'')+'</td><td>'+esc((d.acoes[a.acao]||{}).nome||a.acao)+'</td><td>'+(a.ativo?'✅':'⏸️')+'</td><td class="sub">'+(a.ultima_exec?dt(a.ultima_exec)+' — '+esc((a.ultima_msg||'').slice(0,60)):'—')+'</td>'+
+     '<td style="white-space:nowrap"><button class="btn btn-ghost peq" onclick="testarAuto(\\''+a.id+'\\')">testar</button> <button class="btn btn-ghost peq" onclick="toggAuto(\\''+a.id+'\\','+(a.ativo?'false':'true')+')">'+(a.ativo?'pausar':'ativar')+'</button> <button class="btn btn-ghost peq" onclick="delAuto(\\''+a.id+'\\')">✕</button></td></tr>').join('')+'</table>':'<p class="sub">Nenhuma automação ainda.</p>')+'</div>'+
+   '<div id="au-res"></div>';
+}
+async function criarAuto(){
+  const gat=$('au-gat').value,ac=$('au-ac').value;
+  const gcfg={dias:Number($('au-dias').value)||7};
+  const raw=$('au-cfg').value.trim();const acfg={};
+  if(ac==='alerta_email')acfg.email=raw;else if(ac==='criar_tarefa')acfg.project_id=raw;
+  try{await api('POST','/automacoes',{nome:$('au-nome').value,gatilho:gat,gatilho_config:gcfg,acao:ac,acao_config:acfg});vIaAutos();}catch(e){alert(e.message);}
+}
+async function testarAuto(id){
+  $('au-res').innerHTML='<div class="card"><p class="sub">Testando…</p></div>';
+  try{const d=await api('POST','/automacoes/'+id+'/testar');const r=d.resultado;
+    $('au-res').innerHTML='<div class="card"><b>Teste: '+esc(r.nome)+'</b><p>'+(r.disparou?'🔔 Dispararia — ':'😴 Nada a fazer — ')+esc(r.detalhe)+'</p>'+(r.exemplos&&r.exemplos.length?'<ul>'+r.exemplos.map(x=>'<li>'+esc(x.texto)+(x.extra?' — '+esc(x.extra):'')+'</li>').join('')+'</ul>':'')+'</div>';
+  }catch(e){$('au-res').innerHTML='<div class="erro">'+esc(e.message)+'</div>';}
+}
+async function toggAuto(id,ativo){try{await api('PATCH','/automacoes/'+id,{ativo:ativo});vIaAutos();}catch(e){alert(e.message);}}
+async function delAuto(id){if(!confirm('Excluir automação?'))return;try{await api('DELETE','/automacoes/'+id);vIaAutos();}catch(e){alert(e.message);}}
+async function avaliarTodas(){
+  $('au-res').innerHTML='<div class="card"><p class="sub">Avaliando todas as automações ativas…</p></div>';
+  try{const d=await api('POST','/automacoes/avaliar');
+    $('au-res').innerHTML='<div class="card"><b>Avaliação concluída</b><p>'+d.avaliadas+' avaliada(s), '+d.dispararam+' dispararam.</p>'+(d.resultados.length?'<ul>'+d.resultados.map(r=>'<li>'+(r.disparou?'🔔':'😴')+' '+esc(r.nome)+' — '+esc(r.detalhe)+'</li>').join('')+'</ul>':'')+'</div>';vIaAutos();
+  }catch(e){$('au-res').innerHTML='<div class="erro">'+esc(e.message)+'</div>';}
+}
+
+// -------- Relatório do CEO --------
+async function vIaCeo(){
+  const d=await api('GET','/ceo/relatorios');const c=d.atual;
+  const kpi=(n,r)=>'<div class="kpi"><div class="n">'+n+'</div><div class="r">'+r+'</div></div>';
+  $('ia-corpo').innerHTML=
+   '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>Relatório executivo de hoje</b><button class="btn" onclick="gerarCeo()">'+(d.ia_ativa?'Gerar com IA':'Gerar (sem narrativa)')+'</button></div>'+
+   '<div class="kpis" style="margin-top:10px">'+
+   kpi(c.projetos_total,'projetos')+kpi(c.tarefas_atrasadas,'tarefas atrasadas')+kpi(c.eventos_proximos_30d,'eventos em 30d')+
+   kpi(c.crm_abertos,'oportunidades')+kpi(brl(c.a_receber),'a receber')+kpi(brl(c.inadimplencia),'inadimplência')+kpi(brl(c.margem_prevista),'margem prevista')+'</div></div>'+
+   '<div id="ceo-res" style="margin-top:12px"></div>'+
+   '<div class="card" style="margin-top:12px"><b>Relatórios anteriores</b>'+(d.relatorios.length?'<table><tr><th>Data</th><th>Resumo</th></tr>'+d.relatorios.map(r=>'<tr><td>'+esc(r.data)+'</td><td style="font-size:13px">'+esc((r.narrativa||'(sem narrativa)').slice(0,140))+'</td></tr>').join('')+'</table>':'<p class="sub">Nenhum relatório gerado ainda.</p>')+'</div>';
+}
+async function gerarCeo(){
+  $('ceo-res').innerHTML='<div class="card"><p class="sub">Consolidando e gerando narrativa…</p></div>';
+  try{const d=await api('POST','/ceo/relatorios/gerar',{});const r=d.relatorio;
+    $('ceo-res').innerHTML='<div class="card"><b>Relatório de '+esc(r.data)+'</b><div style="white-space:pre-wrap;margin-top:8px">'+esc(r.narrativa||'(IA indisponível — números consolidados acima.)')+'</div></div>';vIaCeo();
+  }catch(e){$('ceo-res').innerHTML='<div class="erro">'+esc(e.message)+'</div>';}
+}
 
 // ---------------- Usuários ----------------
 async function vUsuarios(){

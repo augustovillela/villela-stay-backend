@@ -459,3 +459,108 @@ CREATE TABLE IF NOT EXISTS finance_entries (
 );
 CREATE INDEX IF NOT EXISTS idx_vpe_fin ON finance_entries (tenant_id, tipo, status);
 CREATE INDEX IF NOT EXISTS idx_vpe_fin_venc ON finance_entries (tenant_id, vencimento);
+
+-- =====================================================================
+-- FASE 6 — IA + automações + relatório do CEO
+-- =====================================================================
+
+-- Assistente de IA: conversas ancoradas nos DADOS do próprio tenant.
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  user_id     TEXT NOT NULL,
+  titulo      TEXT DEFAULT '',
+  escopo_tipo TEXT DEFAULT 'geral',    -- geral|projeto|evento
+  escopo_ref  TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_aiconv ON ai_conversations (tenant_id, user_id, atualizado_em);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  conversation_id TEXT NOT NULL,
+  papel       TEXT NOT NULL,           -- usuario|assistente
+  conteudo    TEXT DEFAULT '',
+  nivel_confianca TEXT DEFAULT '',
+  nao_encontrado  INTEGER DEFAULT 0,
+  modelo      TEXT DEFAULT '',
+  input_tokens  INTEGER DEFAULT 0,
+  output_tokens INTEGER DEFAULT 0,
+  criado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_aimsg ON ai_messages (tenant_id, conversation_id, criado_em);
+
+-- Custo/telemetria de toda chamada de IA (assistente e agentes).
+CREATE TABLE IF NOT EXISTS ai_runs (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  tipo        TEXT DEFAULT '',         -- assistente|agente:<chave>|ceo
+  modelo      TEXT DEFAULT '',
+  input_tokens  INTEGER DEFAULT 0,
+  output_tokens INTEGER DEFAULT 0,
+  custo_centavos_usd INTEGER DEFAULT 0,
+  duracao_ms  INTEGER DEFAULT 0,
+  status      TEXT DEFAULT 'ok',       -- ok|erro|recusado
+  detalhe     TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_airun ON ai_runs (tenant_id, criado_em);
+
+-- Execuções dos agentes especialistas (entregas em rascunho — validação humana).
+CREATE TABLE IF NOT EXISTS ai_agent_runs (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  agente      TEXT NOT NULL,
+  escopo_tipo TEXT DEFAULT '',
+  escopo_ref  TEXT DEFAULT '',
+  entrada     TEXT DEFAULT '',
+  saida       TEXT DEFAULT '',
+  modelo      TEXT DEFAULT '',
+  input_tokens  INTEGER DEFAULT 0,
+  output_tokens INTEGER DEFAULT 0,
+  criado_por  TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_agentrun ON ai_agent_runs (tenant_id, agente, criado_em);
+
+-- Motor de automações: gatilho → ação.
+CREATE TABLE IF NOT EXISTS automations (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  nome          TEXT NOT NULL,
+  gatilho       TEXT NOT NULL,         -- tarefa_atrasada|evento_proximo|deal_parado|conta_vencendo|projeto_sem_atividade
+  gatilho_config TEXT DEFAULT '{}',    -- JSON (ex.: {"dias":7})
+  acao          TEXT NOT NULL,         -- notificar_augusto|alerta_email|criar_tarefa|registrar_log
+  acao_config   TEXT DEFAULT '{}',     -- JSON (ex.: {"email":"..."} / {"titulo":"..."})
+  ativo         INTEGER DEFAULT 1,
+  ultima_exec   TEXT DEFAULT '',
+  ultima_msg    TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  criado_por    TEXT DEFAULT '',
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_autom ON automations (tenant_id, ativo);
+
+CREATE TABLE IF NOT EXISTS automation_runs (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  automation_id TEXT NOT NULL,
+  disparou      INTEGER DEFAULT 0,
+  itens         INTEGER DEFAULT 0,
+  detalhe       TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_automrun ON automation_runs (tenant_id, automation_id, criado_em);
+
+-- Relatório diário do CEO (consolidação + narrativa opcional por IA).
+CREATE TABLE IF NOT EXISTS ceo_reports (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  data        TEXT NOT NULL,           -- YYYY-MM-DD
+  conteudo    TEXT DEFAULT '{}',       -- JSON com os números
+  narrativa   TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_ceorep ON ceo_reports (tenant_id, data);

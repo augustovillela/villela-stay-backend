@@ -4,9 +4,10 @@
 portfólio INTERNO de negócios da Villela (16 projetos, workspace `villela-interno`) e
 (2) SaaS vendável a outras empresas. **Este README é a fonte da verdade do assunto.**
 
-Status: **Fases 1-4 EM PRODUÇÃO** (fundação, portfólio, execução, eventos — na master) ·
-**Fase 5 (comercial + financeiro) COMPLETA** na branch `feat/vpe-f5` (aguardando validação p/ merge).
-Testes: `npm run test:vpe` (131/131).
+Status: **Fases 1-5 EM PRODUÇÃO** (fundação, portfólio, execução, eventos, comercial+financeiro —
+deploy `b4ed350` 08/07/2026 live). **Fase 6 (IA + agentes + automações + relatório do CEO) COMPLETA**
+na branch `feat/vpe-f6` (aguardando validação p/ merge). Testes: `npm run test:vpe` (157/157).
+IA usa a **mesma `ANTHROPIC_API_KEY` já configurada no Render** (do vdocs) — sem env var nova.
 ⚠️ PENDÊNCIA pós-F1: clicar "Semear workspace interno" na aba 📋 do staff EM PRODUÇÃO
 (guardar a senha inicial que aparece 1×).
 
@@ -83,6 +84,28 @@ staff/app-vpe.js   aba 📋 no Portal Staff (com o botão de seed interno)
 **Papéis embutidos**: Dono · Administrador · Gerente de projetos · Produtor de eventos ·
 Comercial · Financeiro · Colaborador · Auditor · Leitor · Cliente externo (portal na F7).
 Permissão especial `decidir_projeto`: pausar/cancelar/arquivar exige-a além de `editar_projeto`.
+
+## Fase 6 (criado)
+
+IA em **modo direto `ANTHROPIC_API_KEY`** (padrão vdocs/legal; sem chave → recurso indisponível com
+aviso claro, telas seguem funcionando). Tudo logado em `ai_runs` (custo/tokens) e consome o limite
+`ia_consultas_mes`. Domínios em `ia.js` e `automacoes.js`.
+
+- **Assistente** (`ai_conversations`/`ai_messages`): chat ancorado num SNAPSHOT dos DADOS do próprio
+  tenant (portfólio, tarefas, eventos, CRM, financeiro) — nunca conhecimento externo. Escopo geral,
+  por projeto ou por evento (ref validado contra o tenant = anti-IDOR). Guardrails: não inventa
+  números; marca `nao_encontrado`; devolve `nivel_confianca`.
+- **Agentes especialistas** (`ai_agent_runs`): catálogo de 8 entregas em RASCUNHO (plano de negócio,
+  viabilidade, mapa de riscos, briefing e checklist de evento, texto de proposta — carimbado
+  **MINUTA** —, follow-up de CRM, resumo executivo). Toda entrega exige validação humana.
+- **Motor de automações** (`automations`/`automation_runs`): 5 gatilhos (tarefa_atrasada,
+  evento_proximo, deal_parado, conta_vencendo, projeto_sem_atividade) × 4 ações (notificar_augusto no
+  WhatsApp, alerta_email, criar_tarefa, registrar_log). `testar` = dry-run (não notifica);
+  `/automacoes/avaliar` roda as ativas (uma Tarefa do Windows/cron dispara em produção). Consome o
+  limite `automacoes` do plano. Ações reusam os hooks `notificar`/`enviarEmail` — sem canal novo.
+- **Relatório diário do CEO** (`ceo_reports`): consolida portfólio/execução/eventos/CRM/financeiro +
+  narrativa executiva por IA (opcional); upsert por dia. UI: tela 🤖 IA & Automações com 4 sub-abas.
+- Permissões: `usar_ia` (assistente+agentes), `gerir_automacoes` (nova), `ver_relatorios` (CEO).
 
 ## Fase 5 (criado)
 
@@ -182,19 +205,22 @@ abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = F
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação + seed 16~~ ✅ · ~~F2 portfólio avançado~~ ✅ ·
 ~~F3 execução (tarefas/Kanban/checklist/riscos)~~ ✅ (produção; Gantt/caminho crítico p/ F3b) ·
 ~~F4 eventos (briefing/fornecedores/convidados/pós)~~ ✅ (produção) ·
-~~F5 comercial+financeiro (CRM, propostas, contratos, receitas/despesas)~~ ✅ (branch) → **F6
-IA+automações** (17 agentes, relatório diário do CEO) → F7 portal do cliente + SaaS admin →
-F8 integrações+deploy final. (Orçamentos por projeto e billing SaaS Mercado Pago: dentro de F6/F8.)
+~~F5 comercial+financeiro (CRM, propostas, contratos, receitas/despesas)~~ ✅ (produção) ·
+~~F6 IA+agentes+automações+relatório do CEO~~ ✅ (branch) → **F7 portal do cliente + SaaS admin**
+→ F8 integrações+deploy final. (Orçamentos por projeto e billing SaaS Mercado Pago: dentro de F7/F8;
+a Tarefa do Windows que dispara `/automacoes/avaliar` e o relatório diário do CEO: rotina a agendar.)
 
 ## Próximos passos imediatos
 
-1. [ ] Augusto valida a Fase 5 (🤝 CRM & Comercial: funil/propostas/contratos-MINUTA; 💰 Financeiro: receitas/despesas, inadimplência) e autoriza merge `feat/vpe-f5` → master.
+1. [ ] Augusto valida a Fase 6 (🤖 IA & Automações: assistente ancorado nos dados, 8 agentes especialistas, motor gatilho→ação, relatório do CEO) e autoriza merge `feat/vpe-f6` → master.
 2. [ ] Pós-deploy: clicar "Semear workspace interno" em produção (guarda a senha inicial!)
    e revisar os 16 projetos (prioridades/estágios são propostas minhas).
 3. [ ] Preços dos planos (149/349/799/sob consulta) são proposta — ajustar na aba Planos.
 4. [ ] DNS `projetos.villelastay.com(.br)` quando quiser divulgar (Custom Domain no Render
    via Claude + CNAME na Locaweb — processo já dominado).
-5. [ ] Iniciar Fase 6 (IA + automações) — precisa de `ANTHROPIC_API_KEY` (padrão vdocs).
+5. [ ] Pós-deploy F6: agendar Tarefa do Windows/cron que chame `/automacoes/avaliar` e gere o
+   relatório diário do CEO por tenant (a lógica está pronta; falta o disparo agendado).
+6. [ ] Iniciar Fase 7 (portal do cliente + SaaS admin completo).
 
 ## Teste local
 

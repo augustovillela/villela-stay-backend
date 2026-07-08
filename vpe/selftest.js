@@ -414,6 +414,83 @@ function teste(nome, cond) {
   r = await req('GET', '/vpe/api/dashboard', { jar: 'anaA' });
   teste('dashboard traz a_receber/a_pagar/inadimplência', typeof r.dados.a_receber === 'number' && typeof r.dados.a_pagar === 'number');
 
+  // ================== FASE 6: IA + automações + relatório do CEO ==================
+  const ia = require('./ia');
+  ia.__mockParaTeste(async ({ schema }) => {
+    if (schema) { const jr = { resposta: 'Com base nos dados, há projetos de alta prioridade a acompanhar.', nao_encontrado: false, nivel_confianca: 'alto' }; return { texto: JSON.stringify(jr), json: jr, modelo: 'mock-1', usage: { input_tokens: 120, output_tokens: 40 } }; }
+    return { texto: 'RASCUNHO — análise executiva de teste com 3 recomendações.', json: null, modelo: 'mock-1', usage: { input_tokens: 90, output_tokens: 30 } };
+  });
+
+  // -- assistente (ancorado nos dados; consome ia_consultas) --
+  r = await req('GET', '/vpe/api/ia/status', { jar: 'anaA' });
+  teste('IA status: ativa (mock) + catálogo de agentes', r.status === 200 && r.dados.ativo === true && r.dados.agentes.length >= 6);
+  r = await req('POST', '/vpe/api/ia/perguntar', { body: { escopo_tipo: 'geral', pergunta: 'Quais projetos de alta prioridade preciso acompanhar?' }, jar: 'anaA' });
+  teste('assistente responde e abre conversa', r.status === 200 && r.dados.mensagem.conteudo && r.dados.conversation_id);
+  const convA = r.dados.conversation_id;
+  r = await req('POST', '/vpe/api/ia/perguntar', { body: { conversation_id: convA, escopo_tipo: 'geral', pergunta: 'E os riscos?' }, jar: 'anaA' });
+  teste('acompanhamento na mesma conversa', r.status === 200 && r.dados.conversation_id === convA);
+  r = await req('GET', '/vpe/api/ia/conversas', { jar: 'anaA' });
+  teste('lista de conversas do usuário', r.status === 200 && r.dados.conversas.some(c => c.id === convA));
+  r = await req('GET', '/vpe/api/ia/conversas/' + convA, { jar: 'anaA' });
+  teste('conversa traz as mensagens (2 perguntas + 2 respostas)', r.status === 200 && r.dados.conversa.mensagens.length === 4);
+  r = await req('POST', '/vpe/api/ia/perguntar', { body: { pergunta: 'x' }, jar: 'carlaA' });
+  teste('assistente exige usar_ia (403)', r.status === 403);
+  r = await req('GET', '/vpe/api/ia/conversas/' + convA, { jar: 'bobB' });
+  teste('B não abre conversa de A', r.status === 400 || r.status === 404);
+
+  // -- agentes especialistas --
+  r = await req('POST', '/vpe/api/ia/agentes/executar', { body: { agente: 'resumo_executivo', escopo_tipo: 'geral' }, jar: 'anaA' });
+  teste('agente resumo_executivo entrega rascunho', r.status === 200 && r.dados.resultado.saida.length > 10);
+  r = await req('POST', '/vpe/api/ia/agentes/executar', { body: { agente: 'plano_negocio', escopo_ref: projA }, jar: 'anaA' });
+  teste('agente de projeto carimba MINUTA', r.status === 200 && /MINUTA/.test(r.dados.resultado.saida) && r.dados.resultado.escopo_tipo === 'projeto');
+  r = await req('POST', '/vpe/api/ia/agentes/executar', { body: { agente: 'agente_inexistente' }, jar: 'anaA' });
+  teste('agente inexistente é rejeitado', r.status === 400);
+  r = await req('POST', '/vpe/api/ia/agentes/executar', { body: { agente: 'plano_negocio', escopo_ref: projA }, jar: 'bobB' });
+  teste('B não roda agente sobre projeto de A (anti-IDOR)', r.status === 400 || r.status === 404);
+  r = await req('GET', '/vpe/api/ia/agentes', { jar: 'anaA' });
+  teste('execuções de agente ficam registradas', r.status === 200 && r.dados.execucoes.length >= 2);
+
+  // -- automações (gatilho → ação) --
+  await req('POST', '/vpe/api/financeiro', { body: { tipo: 'receita', descricao: 'Parcela atrasada', valor_centavos: 500000, vencimento: '2020-05-01', status: 'pendente' }, jar: 'anaA' });
+  r = await req('POST', '/vpe/api/automacoes', { body: { nome: 'Cobrar contas vencidas', gatilho: 'conta_vencendo', gatilho_config: { dias: 30 }, acao: 'notificar_augusto' }, jar: 'anaA' });
+  teste('automação criada', r.status === 200 && r.dados.automacao.ativo === true);
+  const autoA = r.dados.automacao.id;
+  r = await req('POST', '/vpe/api/automacoes', { body: { nome: 'x', gatilho: 'foo', acao: 'registrar_log' }, jar: 'anaA' });
+  teste('gatilho inválido rejeitado', r.status === 400);
+  r = await req('POST', '/vpe/api/automacoes', { body: { nome: 'x', gatilho: 'tarefa_atrasada', acao: 'registrar_log' }, jar: 'carlaA' });
+  teste('automação exige gerir_automacoes (403)', r.status === 403);
+  const alertasAntes = alertas.length;
+  r = await req('POST', '/vpe/api/automacoes/' + autoA + '/testar', { jar: 'anaA' });
+  teste('testar (dry-run) mostra que dispararia sem notificar', r.status === 200 && r.dados.resultado.disparou === true && alertas.length === alertasAntes);
+  r = await req('POST', '/vpe/api/automacoes/avaliar', { jar: 'anaA' });
+  teste('avaliar dispara ação (WhatsApp ao dono)', r.status === 200 && r.dados.dispararam >= 1 && alertas.length > alertasAntes);
+  r = await req('GET', '/vpe/api/automacoes/' + autoA, { jar: 'anaA' });
+  teste('histórico da automação registra a execução', r.status === 200 && r.dados.historico.length >= 1 && r.dados.historico[0].disparou === true);
+  // ação por e-mail
+  const emailsAntes = emails.length;
+  r = await req('POST', '/vpe/api/automacoes', { body: { nome: 'Alertar financeiro', gatilho: 'conta_vencendo', gatilho_config: { dias: 30 }, acao: 'alerta_email', acao_config: { email: 'financeiro@alfa.com' } }, jar: 'anaA' });
+  await req('POST', '/vpe/api/automacoes/avaliar', { jar: 'anaA' });
+  teste('ação alerta_email envia e-mail', emails.length > emailsAntes);
+  r = await req('PATCH', '/vpe/api/automacoes/' + autoA, { body: { ativo: false }, jar: 'anaA' });
+  teste('pausar automação', r.status === 200 && r.dados.automacao.ativo === false);
+  r = await req('GET', '/vpe/api/automacoes', { jar: 'bobB' });
+  teste('B não vê automações de A', r.status === 200 && !r.dados.automacoes.some(a => a.id === autoA));
+
+  // -- relatório do CEO --
+  r = await req('GET', '/vpe/api/ceo/relatorios', { jar: 'anaA' });
+  teste('CEO: consolidação atual com números', r.status === 200 && typeof r.dados.atual.projetos_total === 'number' && typeof r.dados.atual.a_receber === 'number');
+  r = await req('POST', '/vpe/api/ceo/relatorios/gerar', { body: {}, jar: 'anaA' });
+  teste('gerar relatório do CEO com narrativa (IA)', r.status === 200 && r.dados.relatorio.narrativa && r.dados.relatorio.data);
+  r = await req('POST', '/vpe/api/ceo/relatorios/gerar', { body: {}, jar: 'anaA' });
+  r = await req('GET', '/vpe/api/ceo/relatorios', { jar: 'anaA' });
+  teste('regerar no mesmo dia faz upsert (1 relatório)', r.dados.relatorios.length === 1);
+  r = await req('POST', '/vpe/api/ceo/relatorios/gerar', { body: {}, jar: 'carlaA' });
+  teste('relatório do CEO exige ver_relatorios (403)', r.status === 403);
+  r = await req('GET', '/vpe/api/ceo/relatorios', { jar: 'bobB' });
+  teste('relatórios do CEO isolados por tenant', r.status === 200 && r.dados.relatorios.length === 0);
+
+  ia.__mockParaTeste(null);
+
   // ---------- staff da plataforma ----------
   r = await req('GET', '/staff/api/vpe/resumo', { staff: 'ceo' });
   teste('staff resumo com projetos_total e MRR', r.status === 200 && r.dados.projetos_total >= 17 && typeof r.dados.mrr_centavos === 'number');
