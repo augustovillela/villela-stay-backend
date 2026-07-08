@@ -4,11 +4,12 @@
 portfólio INTERNO de negócios da Villela (16 projetos, workspace `villela-interno`) e
 (2) SaaS vendável a outras empresas. **Este README é a fonte da verdade do assunto.**
 
-Status: **Fases 1-7 EM PRODUÇÃO** (deploy `c501645` 08/07/2026 live; IA ativa). **Fase 8 (billing
-SaaS Mercado Pago + API pública por chave + webhooks de saída) COMPLETA** na branch `feat/vpe-f8`
-(aguardando validação p/ merge) — **fecha o roadmap das 8 fases do plano-mestre**.
-Testes: `npm run test:vpe` (194/194). Billing usa a **mesma conta Mercado Pago (`MP_ACCESS_TOKEN`)**
-do backend — assinatura auto-suficiente (notification_url própria), sem config no painel do MP.
+Status: 🏁 **ROADMAP DAS 8 FASES 100% EM PRODUÇÃO** (deploy `4e09af1` 08/07/2026 live; IA ativa,
+billing online — MP_ACCESS_TOKEN presente no Render). Fundação, portfólio, execução, eventos,
+comercial+financeiro, IA+automações, portal do cliente, billing SaaS+API+webhooks — tudo no ar em
+`/vpe`. Testes: `npm run test:vpe` (194/194). Billing usa a **mesma conta Mercado Pago
+(`MP_ACCESS_TOKEN`)** do backend — assinatura auto-suficiente (notification_url própria), sem config
+no painel do MP.
 ⚠️ PENDÊNCIA pós-F1: clicar "Semear workspace interno" na aba 📋 do staff EM PRODUÇÃO
 (guardar a senha inicial que aparece 1×).
 
@@ -261,7 +262,7 @@ integração documental com o Villela Docs, orçamentos detalhados por projeto, 
 
 ## Próximos passos imediatos
 
-1. [ ] Augusto valida a Fase 8 (📦 Plano: assinar/cancelar via Mercado Pago; 🔌 Integrações: chaves de API + webhooks) e autoriza merge `feat/vpe-f8` → master.
+1. [x] ~~Fase 8 validada → merge + deploy (4e09af1 live). ROADMAP COMPLETO.~~
 2. [ ] Pós-deploy: clicar "Semear workspace interno" em produção (guarda a senha inicial!)
    e revisar os 16 projetos (prioridades/estágios são propostas minhas).
 3. [ ] Preços dos planos (149/349/799/sob consulta) são proposta — ajustar na aba Planos.
