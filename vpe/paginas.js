@@ -228,6 +228,7 @@ const TELAS=[
  ['crm','🤝 CRM & Comercial',m=>m.permissoes.gerir_crm||m.permissoes.gerir_propostas],
  ['financeiro','💰 Financeiro',m=>m.permissoes.ver_financeiro],
  ['ia','🤖 IA & Automações',m=>m.permissoes.usar_ia||m.permissoes.gerir_automacoes||m.permissoes.ver_relatorios],
+ ['portalcli','🔗 Portal do cliente',m=>m.permissoes.gerir_eventos||m.permissoes.editar_projeto||m.permissoes.gerir_propostas||m.permissoes.gerir_contratos],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
  ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
  ['plano','📦 Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca],
@@ -236,7 +237,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Próximas fases">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,ia:vIa,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,ia:vIa,portalcli:vPortalCli,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -876,6 +877,59 @@ async function gerarCeo(){
   }catch(e){$('ceo-res').innerHTML='<div class="erro">'+esc(e.message)+'</div>';}
 }
 
+// ---------------- Portal do cliente (Fase 7) ----------------
+async function vPortalCli(){
+  const d=await api('GET','/compartilhamentos');S.shTipos=d.tipos;
+  const P=S.me.permissoes;
+  const permTipo={evento:'gerir_eventos',projeto:'editar_projeto',proposta:'gerir_propostas',contrato:'gerir_contratos'};
+  const tiposOk=d.tipos.filter(t=>P[permTipo[t]]);
+  const tOpts=tiposOk.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
+  const base=location.origin+'/vpe/portal/';
+  $('corpo').innerHTML='<h2>🔗 Portal do cliente</h2>'+
+   (d.recurso_liberado?'':'<div class="aviso">⚠️ O portal do cliente não está incluído no seu plano atual. Você pode ver os compartilhamentos existentes, mas criar novos exige upgrade.</div>')+
+   '<div class="card"><b>Compartilhar um item com um cliente</b><p class="sub">Gera um link público e só-leitura. Propostas e contratos podem receber aceite do cliente.</p>'+
+   '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><select id="sh-tipo" onchange="shCarregarItens()" style="min-width:130px">'+tOpts+'</select>'+
+   '<select id="sh-ref" style="flex:1;min-width:200px"><option value="">— carregando… —</option></select>'+
+   '<input id="sh-cli" placeholder="Nome do cliente" style="flex:1;min-width:150px"><input id="sh-email" placeholder="E-mail (opcional)" style="flex:1;min-width:150px">'+
+   '<label style="display:flex;align-items:center;gap:6px;margin:0;font-size:13px"><input type="checkbox" id="sh-aceite" style="width:auto"> permitir aceite</label>'+
+   '<button class="btn" onclick="criarShare()">Gerar link</button></div></div>'+
+   '<div id="sh-novo"></div>'+
+   '<div class="card" style="margin-top:12px"><b>Compartilhamentos</b>'+
+   (d.compartilhamentos.length?'<table><tr><th>Item</th><th>Tipo</th><th>Cliente</th><th>Aceite</th><th>Acessos</th><th>Ativo</th><th>Link</th><th></th></tr>'+
+    d.compartilhamentos.map(sh=>'<tr><td>'+esc(sh.titulo)+'</td><td>'+esc(sh.tipo)+'</td><td>'+esc(sh.cliente_nome||'—')+'</td><td>'+(sh.pode_aceitar?'✅':'—')+'</td><td>'+sh.acessos+'</td><td>'+(sh.ativo?'✅':'⏸️')+'</td>'+
+     '<td><a href="#" onclick="return copiarLink(\\''+sh.token+'\\')">copiar</a></td>'+
+     '<td style="white-space:nowrap"><button class="btn btn-ghost peq" onclick="toggShare(\\''+sh.id+'\\','+(sh.ativo?'false':'true')+')">'+(sh.ativo?'pausar':'ativar')+'</button> <button class="btn btn-ghost peq" onclick="delShare(\\''+sh.id+'\\')">✕</button></td></tr>').join('')+'</table>':'<p class="sub">Nenhum compartilhamento ainda.</p>')+'</div>';
+  S.shBase=base;
+  if(tiposOk.length)shCarregarItens();
+}
+async function shCarregarItens(){
+  const tipo=$('sh-tipo').value;const sel=$('sh-ref');if(!sel)return;
+  const rota={evento:'/eventos',projeto:'/projetos',proposta:'/propostas',contrato:'/contratos'}[tipo];
+  sel.innerHTML='<option value="">— carregando… —</option>';
+  try{const r=await api('GET',rota);const itens=r.eventos||r.projetos||r.propostas||r.contratos||[];
+    sel.innerHTML='<option value="">— escolha o '+tipo+' —</option>'+itens.map(i=>'<option value="'+i.id+'">'+esc(i.nome||i.titulo||i.id)+'</option>').join('');
+  }catch(e){sel.innerHTML='<option value="">(sem itens ou sem permissão)</option>';}
+  const aceite=$('sh-aceite');if(aceite)aceite.disabled=!(tipo==='proposta'||tipo==='contrato');
+}
+async function criarShare(){
+  const tipo=$('sh-tipo').value,ref=$('sh-ref').value;
+  if(!ref){alert('Escolha o item a compartilhar.');return;}
+  try{
+    const d=await api('POST','/compartilhamentos',{tipo:tipo,ref_id:ref,cliente_nome:$('sh-cli').value,cliente_email:$('sh-email').value,pode_aceitar:$('sh-aceite').checked});
+    const link=S.shBase+d.compartilhamento.token;
+    $('sh-novo').innerHTML='<div class="card" style="border-color:var(--acc)"><b>✅ Link gerado</b><div style="display:flex;gap:8px;margin-top:8px"><input id="sh-link" value="'+esc(link)+'" readonly><button class="btn peq" onclick="copiarLink(\\''+d.compartilhamento.token+'\\')">Copiar</button></div></div>';
+    vPortalCli();
+  }catch(e){alert(e.message);}
+}
+function copiarLink(token){
+  const link=S.shBase+token;
+  if(navigator.clipboard)navigator.clipboard.writeText(link).then(function(){},function(){});
+  prompt('Link do portal do cliente:',link);
+  return false;
+}
+async function toggShare(id,ativo){try{await api('PATCH','/compartilhamentos/'+id,{ativo:ativo});vPortalCli();}catch(e){alert(e.message);}}
+async function delShare(id){if(!confirm('Revogar este compartilhamento? O link deixará de funcionar.'))return;try{await api('DELETE','/compartilhamentos/'+id);vPortalCli();}catch(e){alert(e.message);}}
+
 // ---------------- Usuários ----------------
 async function vUsuarios(){
   const d=await api('GET','/usuarios');const papeis=S.me.papeis_embutidos;
@@ -928,6 +982,74 @@ boot().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>
 </script></body></html>`;
 }
 
+// ---- Portal do cliente (público, server-rendered a partir da visão curada) ----
+function portalMoeda(c) { return 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function portalShell(corpoHtml) {
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Portal do cliente — Villela Projects</title>
+<style>${CSS}.pcard{max-width:760px;margin:26px auto}pre.doc{white-space:pre-wrap;background:var(--fundo);border:1px solid var(--borda);border-radius:10px;padding:16px;font-family:inherit;font-size:14px;max-height:60vh;overflow:auto}</style></head><body>
+<header class="top"><div class="wrap"><span class="brand">Villela <b>Projects</b> & Events</span></div></header>
+<div class="wrap pcard">${corpoHtml}</div>
+<footer><div class="wrap">Portal do cliente · documento apresentado por meio do Villela Projects & Events.</div></footer></body></html>`;
+}
+function portalCliente(view, token) {
+  const d = view.dados || {};
+  const chip = (t) => `<span class="chip">${esc(t)}</span>`;
+  let corpo = '';
+  if (view.tipo === 'evento') {
+    corpo = `<div class="card"><div class="badge">Evento</div><h2>${esc(d.nome)}</h2>
+      <p>${chip('Tipo: ' + (d.tipo || '—'))} ${chip('Status: ' + (d.status || '—'))} ${d.data ? chip('Data: ' + d.data) : ''} ${d.local ? chip(d.local) : ''} ${d.convidados_previstos ? chip(d.convidados_previstos + ' convidados') : ''}</p>
+      <p class="sub">Acompanhe aqui as informações do seu evento com a ${esc(view.empresa)}.</p></div>`;
+  } else if (view.tipo === 'projeto') {
+    corpo = `<div class="card"><div class="badge">Projeto</div><h2>${esc(d.nome)}</h2>
+      <p>${chip(d.categoria || '—')} ${chip('Estágio: ' + (d.estagio || '—'))}</p>
+      ${d.descricao ? `<p>${esc(d.descricao)}</p>` : ''}
+      ${d.proximos_passos ? `<p><b>Próximos passos:</b> ${esc(d.proximos_passos)}</p>` : ''}</div>`;
+  } else if (view.tipo === 'proposta') {
+    const linhas = (d.itens || []).map(i => `<tr><td>${esc(i.descricao)}</td><td>${i.qtd}</td><td>${portalMoeda(i.preco_unit_centavos)}</td><td>${portalMoeda(i.qtd * i.preco_unit_centavos)}</td></tr>`).join('');
+    corpo = `<div class="card"><div class="badge">Proposta comercial</div><h2>${esc(d.titulo)}</h2>
+      <table><tr><th>Item</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr>${linhas || '<tr><td colspan="4" class="sub">Sem itens.</td></tr>'}</table>
+      ${d.desconto_centavos ? `<p style="text-align:right">Desconto: −${portalMoeda(d.desconto_centavos)}</p>` : ''}
+      <h3 style="text-align:right">Total: ${portalMoeda(d.total_centavos)}</h3>
+      ${d.condicoes_pagamento ? `<p><b>Condições:</b> ${esc(d.condicoes_pagamento)}</p>` : ''}
+      ${d.validade ? `<p class="sub">Válida até ${esc(d.validade)}.</p>` : ''}</div>`;
+  } else if (view.tipo === 'contrato') {
+    corpo = `<div class="card"><div class="badge">Contrato — MINUTA</div><h2>${esc(d.titulo)}</h2>
+      <div class="aviso">Este é um documento em <b>MINUTA</b>, sujeito a validação jurídica. O aceite eletrônico registra sua concordância com o teor apresentado.</div>
+      <pre class="doc">${esc(d.conteudo || '(conteúdo ainda não disponível)')}</pre></div>`;
+  } else {
+    corpo = `<div class="card"><h2>${esc(view.titulo || 'Documento')}</h2></div>`;
+  }
+  // bloco de aceite
+  if (view.pode_aceitar) {
+    if (view.aceito) {
+      corpo += `<div class="card"><div class="badge" style="background:#bbf7d0">✔ ${view.tipo === 'contrato' ? 'Aceito' : 'Aprovada'}</div><p>Este ${view.tipo} já foi ${view.tipo === 'contrato' ? 'aceito' : 'aprovado'}. Obrigado!</p></div>`;
+    } else {
+      corpo += `<div class="card" id="aceite"><b>${view.tipo === 'contrato' ? 'Aceitar contrato' : 'Aprovar proposta'}</b>
+        <p class="sub">Digite seu nome completo para registrar seu ${view.tipo === 'contrato' ? 'aceite' : 'aval'}.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="ac-nome" placeholder="Seu nome completo" style="flex:1;min-width:200px">
+        <button class="btn" id="ac-btn">${view.tipo === 'contrato' ? 'Aceitar' : 'Aprovar'}</button></div>
+        <div id="ac-msg"></div></div>
+      <script>
+      (function(){var b=document.getElementById('ac-btn');b.onclick=function(){
+        var nome=document.getElementById('ac-nome').value.trim();var m=document.getElementById('ac-msg');
+        if(!nome){m.innerHTML='<div class="erro">Informe seu nome.</div>';return;}
+        b.disabled=true;m.innerHTML='<p class="sub">Registrando…</p>';
+        fetch('/vpe/api/portal/${esc(token)}/aceite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:nome})})
+        .then(function(r){return r.json();}).then(function(d){
+          if(d.ok){document.getElementById('aceite').innerHTML='<div class="badge" style="background:#bbf7d0">✔ Registrado</div><p>Obrigado, '+nome.replace(/</g,'')+'! Seu aceite foi registrado.</p>';}
+          else{b.disabled=false;m.innerHTML='<div class="erro">'+(d.erro||'Erro ao registrar.')+'</div>';}
+        }).catch(function(){b.disabled=false;m.innerHTML='<div class="erro">Falha de conexão.</div>';});
+      };})();
+      </script>`;
+    }
+  }
+  return portalShell(corpo);
+}
+function portalErro(msg) {
+  return portalShell(`<div class="card"><h2>Link indisponível</h2><p>${esc(msg)}</p><p class="sub">Fale com a empresa que compartilhou este link.</p></div>`);
+}
+
 function registrarPaginas(app) {
   const html = (res, corpo) => { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.setHeader('X-Robots-Tag', 'noindex'); res.send(corpo); };
   app.get('/vpe', (req, res) => html(res, landing()));
@@ -935,6 +1057,11 @@ function registrarPaginas(app) {
   app.get('/vpe/login', (req, res) => html(res, login()));
   app.get('/vpe/convite/:token', (req, res) => html(res, convite(req.params.token)));
   app.get('/vpe/app', (req, res) => { res.setHeader('Cache-Control', 'no-store'); html(res, appTenant()); });
+  app.get('/vpe/portal/:token', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try { html(res, portalCliente(require('./portal').visaoPublica(req.params.token), req.params.token)); }
+    catch (e) { res.status(404); html(res, portalErro(e.message)); }
+  });
 }
 
 module.exports = { registrarPaginas };

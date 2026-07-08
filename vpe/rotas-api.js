@@ -13,6 +13,7 @@ const comercial = require('./comercial');
 const financeiro = require('./financeiro');
 const ia = require('./ia');
 const automacoes = require('./automacoes');
+const portal = require('./portal');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -63,6 +64,13 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     repo.criarLead(b);
     notificar(`📋 Villela Projects: novo lead — ${repo.s(b.nome, 80) || 'sem nome'} <${repo.emailNorm(b.email)}> ${repo.s(b.empresa, 80)}`.trim());
     res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ portal do cliente — PÚBLICO por token (Fase 7)
+  r.get('/portal/:token', h(async (req, res) => res.json(portal.visaoPublica(req.params.token))));
+  r.post('/portal/:token/aceite', h(async (req, res) => {
+    const ip = auth.ipDe(req);
+    res.json(portal.aceitarPorToken(req.params.token, req.body || {}, ip));
   }));
 
   // ------------------------------------------------ sessão / contexto
@@ -311,6 +319,26 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.get('/ceo/relatorios', requireTenant, requirePerm('ver_relatorios'), h(async (req, res) => res.json({ relatorios: automacoes.listarRelatoriosCeo(req.vp.tenant.id), atual: automacoes.consolidarCeo(req.vp.tenant.id), ia_ativa: ia.ativo() })));
   r.post('/ceo/relatorios/gerar', requireTenant, requirePerm('ver_relatorios'), h(async (req, res) => res.json({ ok: true, relatorio: await automacoes.gerarRelatorioCeo(req.vp.tenant.id, { comIA: (req.body || {}).comIA !== false }) })));
   r.get('/ceo/relatorios/:id', requireTenant, requirePerm('ver_relatorios'), h(async (req, res) => res.json({ relatorio: automacoes.obterRelatorioCeo(req.vp.tenant.id, req.params.id) })));
+
+  // ------------------------------------------------ portal do cliente — gestão (Fase 7)
+  // criar/gerir share exige a permissão do PRÓPRIO tipo de item.
+  const PERM_DO_TIPO = { evento: 'gerir_eventos', projeto: 'editar_projeto', proposta: 'gerir_propostas', contrato: 'gerir_contratos' };
+  const podeCompartilhar = (req) => Object.values(PERM_DO_TIPO).some(p => req.vp.permissoes[p]);
+  const exigeAlgumCompart = (req, res, next) => podeCompartilhar(req) ? next() : res.status(403).json({ erro: 'Sem permissão para compartilhar com clientes.' });
+
+  r.get('/compartilhamentos', requireTenant, exigeAlgumCompart, h(async (req, res) => res.json({
+    compartilhamentos: portal.listarShares(req.vp.tenant.id), tipos: portal.TIPOS,
+    recurso_liberado: repo.recursoLiberado(req.vp.tenant.id, 'portal_cliente'),
+  })));
+  r.post('/compartilhamentos', requireTenant, h(async (req, res) => {
+    const tipo = (req.body || {}).tipo;
+    const perm = PERM_DO_TIPO[tipo];
+    if (!perm) return res.status(400).json({ erro: 'Tipo inválido.' });
+    if (!req.vp.permissoes[perm]) return res.status(403).json({ erro: 'Sem permissão: ' + perm });
+    res.json({ ok: true, compartilhamento: portal.criarShare(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.patch('/compartilhamentos/:id', requireTenant, exigeAlgumCompart, h(async (req, res) => res.json({ ok: true, compartilhamento: portal.atualizarShare(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.delete('/compartilhamentos/:id', requireTenant, exigeAlgumCompart, h(async (req, res) => { portal.revogarShare(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip); res.json({ ok: true }); }));
 
   // ------------------------------------------------ empresa / usuários / papéis
   r.get('/config', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {

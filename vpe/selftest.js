@@ -491,6 +491,71 @@ function teste(nome, cond) {
 
   ia.__mockParaTeste(null);
 
+  // ================== FASE 7: portal do cliente (share por token) ==================
+  // itens frescos p/ controlar o estado de aceite
+  r = await req('POST', '/vpe/api/propostas', { body: { titulo: 'Proposta do portal', itens: [{ descricao: 'Serviço', qtd: 1, preco_unit_centavos: 250000 }] }, jar: 'anaA' });
+  const propP = r.dados.proposta.id;
+  r = await req('POST', '/vpe/api/contratos', { body: { titulo: 'Contrato do portal', tipo: 'evento' }, jar: 'anaA' });
+  const contP = r.dados.contrato.id;
+  await req('PATCH', '/vpe/api/contratos/' + contP, { body: { conteudo: 'CLÁUSULA 1 — objeto...' }, jar: 'anaA' });
+
+  // criar compartilhamentos (plano professional libera portal_cliente)
+  r = await req('POST', '/vpe/api/compartilhamentos', { body: { tipo: 'proposta', ref_id: propP, cliente_nome: 'Cliente Final', pode_aceitar: true }, jar: 'anaA' });
+  teste('compartilhar proposta gera token', r.status === 200 && r.dados.compartilhamento.token && r.dados.compartilhamento.pode_aceitar === true);
+  const tokProp = r.dados.compartilhamento.token;
+  r = await req('POST', '/vpe/api/compartilhamentos', { body: { tipo: 'contrato', ref_id: contP, pode_aceitar: true }, jar: 'anaA' });
+  const tokCont = r.dados.compartilhamento.token;
+  r = await req('POST', '/vpe/api/compartilhamentos', { body: { tipo: 'projeto', ref_id: projA }, jar: 'anaA' });
+  teste('compartilhar projeto (sem aceite)', r.status === 200 && r.dados.compartilhamento.pode_aceitar === false);
+  const tokProj = r.dados.compartilhamento.token;
+
+  // visão pública por token (SEM sessão)
+  r = await req('GET', '/vpe/api/portal/' + tokProp);
+  teste('portal público: proposta com total e itens', r.status === 200 && r.dados.tipo === 'proposta' && r.dados.dados.total_centavos === 250000 && r.dados.pode_aceitar === true);
+  r = await req('GET', '/vpe/api/portal/' + tokProj);
+  teste('portal público: projeto não vaza viabilidade/custos', r.status === 200 && r.dados.dados.nome && r.dados.dados.viabilidade === undefined && r.dados.dados.investimento_estimado === undefined);
+  r = await req('GET', '/vpe/api/portal/token-invalido-xyz');
+  teste('token inválido é rejeitado', r.status === 400);
+
+  // aceite pelo cliente (público)
+  r = await req('POST', '/vpe/api/portal/' + tokCont + '/aceite', { body: { nome: 'João Cliente' } });
+  teste('cliente aceita contrato pelo portal', r.status === 200 && r.dados.status === 'aceito');
+  r = await req('GET', '/vpe/api/contratos/' + contP, { jar: 'anaA' });
+  teste('aceite do portal reflete no contrato (aceito + nome)', r.dados.contrato.status === 'aceito' && r.dados.contrato.aceite.nome === 'João Cliente');
+  r = await req('POST', '/vpe/api/portal/' + tokProp + '/aceite', { body: { nome: 'Maria' } });
+  teste('cliente aprova proposta pelo portal', r.status === 200 && r.dados.status === 'aprovada');
+  r = await req('POST', '/vpe/api/portal/' + tokProj + '/aceite', { body: { nome: 'X' } });
+  teste('item sem aceite habilitado recusa aceite', r.status === 400);
+  r = await req('POST', '/vpe/api/portal/' + tokCont + '/aceite', { body: { nome: '' } });
+  teste('aceite exige nome', r.status === 400);
+
+  // revogar/pausar corta o acesso público
+  const shareList = (await req('GET', '/vpe/api/compartilhamentos', { jar: 'anaA' })).dados.compartilhamentos;
+  const shProj = shareList.find(x => x.token === tokProj).id;
+  await req('PATCH', '/vpe/api/compartilhamentos/' + shProj, { body: { ativo: false }, jar: 'anaA' });
+  r = await req('GET', '/vpe/api/portal/' + tokProj);
+  teste('share pausado bloqueia o link público', r.status === 400);
+
+  // permissão e isolamento
+  r = await req('POST', '/vpe/api/compartilhamentos', { body: { tipo: 'evento', ref_id: evConv }, jar: 'carlaA' });
+  teste('compartilhar exige permissão do item (403)', r.status === 403);
+  r = await req('POST', '/vpe/api/compartilhamentos', { body: { tipo: 'projeto', ref_id: projA }, jar: 'bobB' });
+  teste('B não compartilha projeto de A (anti-IDOR)', r.status === 400 || r.status === 404);
+  r = await req('GET', '/vpe/api/compartilhamentos', { jar: 'bobB' });
+  teste('B não vê compartilhamentos de A', r.status === 200 && !r.dados.compartilhamentos.some(x => x.token === tokProp));
+
+  // gating por plano: um tenant no starter não pode criar portal
+  r = await req('POST', '/vpe/api/cadastro', { body: { empresa: 'Gate Ltda', nome: 'Gil', email: 'gil@gate.com', senha: 'senha1234' }, jar: 'gilG' });
+  const tenantGate = r.dados.tenant.id;
+  await req('PATCH', '/staff/api/vpe/tenants/' + tenantGate, { body: { plano_slug: 'starter' }, staff: 'adm' });
+  r = await req('POST', '/vpe/api/compartilhamentos', { body: { tipo: 'evento', ref_id: 'qualquer' }, jar: 'gilG' });
+  teste('plano starter não libera portal do cliente', r.status === 400 && /plano/i.test(r.dados.erro || ''));
+
+  // admin SaaS: estender trial
+  const antesTrial = (await req('GET', '/staff/api/vpe/tenants/' + tenantGate, { staff: 'adm' })).dados.tenant.trial_expira_em;
+  r = await req('PATCH', '/staff/api/vpe/tenants/' + tenantGate, { body: { estender_trial_dias: 30 }, staff: 'adm' });
+  teste('admin estende o trial do tenant', r.status === 200 && r.dados.tenant.trial_expira_em > antesTrial);
+
   // ---------- staff da plataforma ----------
   r = await req('GET', '/staff/api/vpe/resumo', { staff: 'ceo' });
   teste('staff resumo com projetos_total e MRR', r.status === 200 && r.dados.projetos_total >= 17 && typeof r.dados.mrr_centavos === 'number');

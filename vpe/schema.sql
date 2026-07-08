@@ -564,3 +564,26 @@ CREATE TABLE IF NOT EXISTS ceo_reports (
   criado_em   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_vpe_ceorep ON ceo_reports (tenant_id, data);
+
+-- =====================================================================
+-- FASE 7 — portal do cliente (compartilhamento externo por token)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS client_shares (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  tipo          TEXT NOT NULL,          -- evento|projeto|proposta|contrato
+  ref_id        TEXT NOT NULL,
+  token         TEXT NOT NULL UNIQUE,
+  titulo        TEXT DEFAULT '',
+  cliente_nome  TEXT DEFAULT '',
+  cliente_email TEXT DEFAULT '',
+  pode_aceitar  INTEGER DEFAULT 0,      -- proposta/contrato: cliente pode aprovar/aceitar
+  ativo         INTEGER DEFAULT 1,
+  expira_em     TEXT DEFAULT '',        -- YYYY-MM-DD ('' = sem expiração)
+  acessos       INTEGER DEFAULT 0,
+  ultimo_acesso TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  criado_por    TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_share ON client_shares (tenant_id, tipo, ref_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_vpe_share_tok ON client_shares (token);

@@ -4,10 +4,10 @@
 portfólio INTERNO de negócios da Villela (16 projetos, workspace `villela-interno`) e
 (2) SaaS vendável a outras empresas. **Este README é a fonte da verdade do assunto.**
 
-Status: **Fases 1-5 EM PRODUÇÃO** (fundação, portfólio, execução, eventos, comercial+financeiro —
-deploy `b4ed350` 08/07/2026 live). **Fase 6 (IA + agentes + automações + relatório do CEO) COMPLETA**
-na branch `feat/vpe-f6` (aguardando validação p/ merge). Testes: `npm run test:vpe` (157/157).
-IA usa a **mesma `ANTHROPIC_API_KEY` já configurada no Render** (do vdocs) — sem env var nova.
+Status: **Fases 1-6 EM PRODUÇÃO** (fundação, portfólio, execução, eventos, comercial+financeiro,
+IA+automações — deploy `94063c1` 08/07/2026 live; IA ativa, ANTHROPIC_API_KEY presente no Render).
+**Fase 7 (portal do cliente + admin SaaS estendido) COMPLETA** na branch `feat/vpe-f7` (aguardando
+validação p/ merge). Testes: `npm run test:vpe` (173/173).
 ⚠️ PENDÊNCIA pós-F1: clicar "Semear workspace interno" na aba 📋 do staff EM PRODUÇÃO
 (guardar a senha inicial que aparece 1×).
 
@@ -84,6 +84,24 @@ staff/app-vpe.js   aba 📋 no Portal Staff (com o botão de seed interno)
 **Papéis embutidos**: Dono · Administrador · Gerente de projetos · Produtor de eventos ·
 Comercial · Financeiro · Colaborador · Auditor · Leitor · Cliente externo (portal na F7).
 Permissão especial `decidir_projeto`: pausar/cancelar/arquivar exige-a além de `editar_projeto`.
+
+## Fase 7 (criado)
+
+**Portal do cliente por TOKEN de compartilhamento** (`client_shares`; `portal.js`): o tenant
+compartilha UM item (evento, projeto, proposta ou contrato) com um cliente → link público
+`/vpe/portal/<token>` (server-rendered, curado e só-leitura). Propostas e contratos com
+`pode_aceitar` recebem **aceite eletrônico** do cliente (nome+IP; proposta→`aprovada`,
+contrato→`aceito` via `comercial.registrarAceite`). A visão pública **nunca vaza** dados internos
+(viabilidade, custos, auditoria). Segurança: recurso `portal_cliente` é gated pelo plano
+(`repo.exigirRecurso`; interno sempre liberado); criar/gerir share exige a permissão do PRÓPRIO
+item (evento→gerir_eventos, projeto→editar_projeto, proposta→gerir_propostas,
+contrato→gerir_contratos); ref validado contra o tenant (anti-IDOR); pausar/revogar corta o link na
+hora; token de 18 bytes. UI: tela 🔗 Portal do cliente (criar link, copiar, pausar/ativar, revogar).
+Rotas públicas: `GET /vpe/portal/:token` (HTML) + `GET/POST /vpe/api/portal/:token[/aceite]`.
+
+**Admin SaaS estendido** (staff): `administrarTenant` ganhou `estender_trial_dias`; a tela de
+detalhe do tenant no Portal Staff mostra a data de expiração do trial e um botão para estender.
+(Base do admin — resumo/MRR, tenants, planos, semear-interno, leads — já vinha da Fase 1.)
 
 ## Fase 6 (criado)
 
@@ -197,8 +215,10 @@ abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = F
 - [x] Isolamento por tenant (testado — inclusive o interno não vaza p/ clientes)
 - [x] Trilha de auditoria por tenant; ações da plataforma espelhadas
 - [x] Landing com finalidade explícita do lead
-- [ ] F7: exportação total (takeout — reusar zipStored do vdocs) e exclusão/anonimização
-- [ ] F5: DPA no onboarding; termos e política formais
+- [x] F7: portal do cliente só-leitura por token (18 bytes), gated por plano, sem vazar dados
+  internos; pausar/revogar corta o link; aceite registra nome+IP
+- [ ] F8: exportação total (takeout — reusar zipStored do vdocs) e exclusão/anonimização
+- [ ] F8: DPA no onboarding; termos e política formais
 
 ## Roadmap (8 fases do plano-mestre)
 
@@ -206,13 +226,15 @@ abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = F
 ~~F3 execução (tarefas/Kanban/checklist/riscos)~~ ✅ (produção; Gantt/caminho crítico p/ F3b) ·
 ~~F4 eventos (briefing/fornecedores/convidados/pós)~~ ✅ (produção) ·
 ~~F5 comercial+financeiro (CRM, propostas, contratos, receitas/despesas)~~ ✅ (produção) ·
-~~F6 IA+agentes+automações+relatório do CEO~~ ✅ (branch) → **F7 portal do cliente + SaaS admin**
-→ F8 integrações+deploy final. (Orçamentos por projeto e billing SaaS Mercado Pago: dentro de F7/F8;
-a Tarefa do Windows que dispara `/automacoes/avaliar` e o relatório diário do CEO: rotina a agendar.)
+~~F6 IA+agentes+automações+relatório do CEO~~ ✅ (produção) ·
+~~F7 portal do cliente (share por token) + admin SaaS estendido~~ ✅ (branch) → **F8 integrações +
+billing SaaS + deploy final** (Google Calendar/Make por chave — padrão vdocs F9; billing Mercado Pago
+reusando adapter do vdocs; documentos: INTEGRAR com o Villela Docs; orçamentos por projeto).
+Rotina a agendar: Tarefa do Windows que dispara `/automacoes/avaliar` + relatório diário do CEO.
 
 ## Próximos passos imediatos
 
-1. [ ] Augusto valida a Fase 6 (🤖 IA & Automações: assistente ancorado nos dados, 8 agentes especialistas, motor gatilho→ação, relatório do CEO) e autoriza merge `feat/vpe-f6` → master.
+1. [ ] Augusto valida a Fase 7 (🔗 Portal do cliente: compartilhar proposta/contrato/evento/projeto por link, aceite do cliente; admin: estender trial no staff) e autoriza merge `feat/vpe-f7` → master.
 2. [ ] Pós-deploy: clicar "Semear workspace interno" em produção (guarda a senha inicial!)
    e revisar os 16 projetos (prioridades/estágios são propostas minhas).
 3. [ ] Preços dos planos (149/349/799/sob consulta) são proposta — ajustar na aba Planos.
@@ -220,7 +242,7 @@ a Tarefa do Windows que dispara `/automacoes/avaliar` e o relatório diário do 
    via Claude + CNAME na Locaweb — processo já dominado).
 5. [ ] Pós-deploy F6: agendar Tarefa do Windows/cron que chame `/automacoes/avaliar` e gere o
    relatório diário do CEO por tenant (a lógica está pronta; falta o disparo agendado).
-6. [ ] Iniciar Fase 7 (portal do cliente + SaaS admin completo).
+6. [ ] Iniciar Fase 8 (integrações externas + billing SaaS Mercado Pago + deploy final).
 
 ## Teste local
 
