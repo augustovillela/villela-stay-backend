@@ -5,6 +5,7 @@
 // =====================================================================
 'use strict';
 const jwt = require('jsonwebtoken');
+const path = require('path');
 const repo = require('./repo');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -146,7 +147,8 @@ function appHTML() {
       const ent=me.entitlements;
       const alerta=me.escritorio.status!=='ativa'&&me.escritorio.status!=='trial'?'<div class="aviso">⚠️ Sua conta está <b>'+esc(me.escritorio.status)+'</b>. Regularize a cobrança para reativar o acesso.</div>':(me.escritorio.status==='trial'?'<div class="aviso">🎁 Você está no <b>período de teste</b> até '+dt(ent.trial_expira_em)+'. Assine para continuar sem interrupção.</div>':'');
       app.innerHTML='<div class="card"><h3>'+esc(me.escritorio.nome)+' <span class="tag">'+esc(ent.plano||'—')+'</span></h3>'+alerta
-        +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vSup()">🎧 Suporte</button></div>'
+        +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
+        +((me.escritorio.status==='ativa'||me.escritorio.status==='trial')?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')+'</div>'
         +'<p class="sub">Olá, '+esc(me.usuario.nome||me.usuario.email)+' · <a href="#" onclick="sair();return false">sair</a></p></div><div id="c"></div>';
       vPlano();}
     window.home=home;const c=()=>document.getElementById('c');
@@ -172,7 +174,43 @@ function appHTML() {
     home();`);
 }
 
+// Página do WORKSPACE JURÍDICO do assinante: reusa o SPA app-legal.js do Portal
+// Staff, servido sob /juridico com a casca legal-assinante-shell.js (API em
+// /juridico/api/legal, cookie jur_saas). Sem `${}` aqui de propósito.
+function appJuridicoHTML() {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Meu Jurídico — Villela Legal</title><style>
+*{box-sizing:border-box}body{font-family:system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:#1e2b30;background:#f7f5ef}
+.topo{background:#0c3644;color:#f2ecd8;padding:10px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.topo b{font-size:1.05rem}.topo a{color:#d9a441;text-decoration:none;font-weight:600;cursor:pointer}
+.area{max-width:1100px;margin:16px auto;padding:0 16px}
+.titulo{font-size:1.5rem;color:#0c3644;margin:.3rem 0}.sub{color:#5b6b70;font-size:.92rem;margin:.2rem 0 .8rem}
+.card{background:#fff;border:1px solid #e7e1d4;border-radius:12px;padding:16px;margin:.5rem 0}
+.btn{display:inline-block;background:#d9a441;color:#0c3644;font-weight:700;border:0;border-radius:22px;padding:9px 18px;cursor:pointer;font-size:.95rem;text-decoration:none}
+.btn.secund{background:#eef3f4;color:#0c3644}.btn.peq{padding:5px 12px;font-size:.85rem}
+.chip{display:inline-block;background:#eef3f4;color:#0c3644;border-radius:12px;padding:2px 9px;font-size:.8rem;margin:1px}
+.tag{display:inline-block;background:#0c3644;color:#f2ecd8;border-radius:12px;padding:2px 10px;font-size:.78rem}
+.aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem;margin:.5rem 0}
+input,select,textarea{width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font:inherit;margin:4px 0 10px}
+label{font-size:.9rem;font-weight:600}table{width:100%;border-collapse:collapse}
+</style></head><body>
+<div class="topo"><b id="esc-nome">Meu escritório</b>
+  <span><a href="/juridico/app">← Painel</a> &nbsp;·&nbsp; <a onclick="sairLegal()">Sair</a></span></div>
+<div class="area"><div id="conteudo"><p class="sub">Carregando…</p></div></div>
+<script src="/juridico/legal-shell.js"></script>
+<script src="/juridico/app-legal.js"></script>
+<script>bootLegal();</script>
+</body></html>`;
+}
+
 function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
+  const STAFF_DIR = path.join(__dirname, '..', 'staff');
+  const jsFile = (nome) => (req, res) => res.type('application/javascript').sendFile(path.join(STAFF_DIR, nome));
+  // assets do workspace jurídico do assinante (mesmo SPA do staff, base de API própria)
+  app.get('/juridico/legal-shell.js', jsFile('legal-assinante-shell.js'));
+  app.get('/juridico/app-legal.js', jsFile('app-legal.js'));
+  app.get('/juridico/app/juridico', (req, res) => res.send(appJuridicoHTML()));
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
 
   app.get('/juridico', (req, res) => res.send(landingHTML()));

@@ -8,6 +8,9 @@
 
 const LG = {
   tab: 'painel', perm: {}, perfil: '', nomePerfil: '', enums: {}, nucleos: [],
+  // base dos links diretos (download/export). No Portal Staff = /staff/api/legal;
+  // servido ao ASSINANTE (painel /juridico) a casca define LEGAL_HREF_BASE.
+  hrefBase: (typeof LEGAL_HREF_BASE !== 'undefined' ? LEGAL_HREF_BASE : '/staff/api/legal'),
   api(m, c, b) { return api(m, '/legal' + c, b); },
   brl(c) { return 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); },
   dt(s) { return s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—'; },
@@ -532,7 +535,7 @@ const LG = {
       </form></details>`;
     h += `<div class="card">${documentos.length ? tabela(['Título', 'Tipo', 'Sigilo', 'Status', 'v', ''], documentos.map(d => [
       esc(d.titulo), esc(d.tipo || '—'), LG.chip(d.sigilo), LG.chip(d.status), 'v' + d.versao_atual,
-      `<a class="btn secund peq" href="/staff/api/legal/documentos/${d.id}/download">⬇️</a> ` +
+      `<a class="btn secund peq" href="${LG.hrefBase}/documentos/${d.id}/download">⬇️</a> ` +
       (LG.perm.editar_documentos ? `<button class="btn secund peq" onclick="LG.mudarDoc('${d.id}','${d.status}')">Status</button>` : ''),
     ])) : '<p class="vazio">Nenhum documento.</p>'}</div>`;
     LG.body().innerHTML = h;
@@ -593,8 +596,8 @@ const LG = {
       <p class="sub">${esc(p.objetivo || '')} · ${esc(p.numero_cnj || '')} ${p.cliente_nome ? '· ' + esc(p.cliente_nome) : ''} · ${p.versao_atual ? 'v' + p.versao_atual : 'sem conteúdo'} ${p.aprovado_por ? '· ✅ aprovada por ' + esc(p.aprovado_por) : ''}</p>
       <p>
         ${LG.perm.usar_ia ? `<button class="btn peq" onclick="LG.gerarPeca('${p.id}')">🤖 Gerar minuta com IA</button>` : ''}
-        ${p.versao_atual ? `<a class="btn secund peq" href="/staff/api/legal/pecas/${p.id}/exportar?formato=html" target="_blank" rel="noopener">🖨️ HTML/PDF</a>
-        <a class="btn secund peq" href="/staff/api/legal/pecas/${p.id}/exportar?formato=doc">⬇️ Word (.doc)</a>` : ''}
+        ${p.versao_atual ? `<a class="btn secund peq" href="${LG.hrefBase}/pecas/${p.id}/exportar?formato=html" target="_blank" rel="noopener">🖨️ HTML/PDF</a>
+        <a class="btn secund peq" href="${LG.hrefBase}/pecas/${p.id}/exportar?formato=doc">⬇️ Word (.doc)</a>` : ''}
         ${p.status === 'rascunho' || p.status === 'revisao_pendente' ? `
           ${podeAprovar && p.versao_atual ? `<button class="btn peq" onclick="LG.statusPeca('${p.id}','aprovado')">✅ Aprovar</button>` : ''}
           <button class="btn secund peq" onclick="LG.statusPeca('${p.id}','revisao_pendente')">👀 Enviar p/ revisão</button>` : ''}
@@ -745,7 +748,7 @@ const LG = {
     const v = await LG.api('GET', '/relatorios/socio');
     const kpi = (rot, val, alerta) => `<div class="card" style="min-width:150px;flex:1${alerta && val && val !== 'R$ 0,00' ? ';border-color:var(--alerta)' : ''}"><div class="sub">${rot}</div><div style="font-size:1.4rem;font-weight:700">${val}</div></div>`;
     let h = `<div class="card" style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
-      <a class="btn peq" href="/staff/api/legal/relatorios/socio/exportar" target="_blank" rel="noopener">🖨️ Relatório do sócio (HTML/PDF)</a>
+      <a class="btn peq" href="${LG.hrefBase}/relatorios/socio/exportar" target="_blank" rel="noopener">🖨️ Relatório do sócio (HTML/PDF)</a>
       <select id="lgr-nucleo"><option value="">— núcleo —</option>${LG.nucleos.map(n => `<option>${n}</option>`).join('')}</select>
       <button class="btn secund peq" onclick="LG.verNucleo()">Ver núcleo</button>
       <button class="btn secund peq" onclick="LG.verFinanceiroRel()">💰 Financeiro</button>
@@ -790,8 +793,8 @@ const LG = {
     const v = await LG.api('GET', '/relatorios/prestacao-contas/' + id);
     document.getElementById('lgr-corpo').innerHTML = `<div class="card"><h3>🧾 Prestação de contas — ${esc(v.cliente.nome)}</h3>
       <p>Recebido: <b>${LG.brl(v.totais.recebido)}</b> · Em aberto: <b>${LG.brl(v.totais.em_aberto)}</b> · Repassado: <b>${LG.brl(v.totais.repassado)}</b></p>
-      <p><a class="btn secund peq" href="/staff/api/legal/relatorios/prestacao-contas/${id}/exportar?formato=csv">⬇️ CSV (Excel)</a>
-      <a class="btn secund peq" href="/staff/api/legal/relatorios/prestacao-contas/${id}/exportar" target="_blank" rel="noopener">🖨️ HTML/PDF</a></p>
+      <p><a class="btn secund peq" href="${LG.hrefBase}/relatorios/prestacao-contas/${id}/exportar?formato=csv">⬇️ CSV (Excel)</a>
+      <a class="btn secund peq" href="${LG.hrefBase}/relatorios/prestacao-contas/${id}/exportar" target="_blank" rel="noopener">🖨️ HTML/PDF</a></p>
       ${v.lancamentos.length ? tabela(['Vencimento', 'Tipo', 'Descrição', 'CNJ', 'Valor', 'Status'], v.lancamentos.map(l => [LG.dt(l.vencimento || l.criado_em), LG.chip(l.tipo), esc(l.descricao), esc(l.numero_cnj || '—'), LG.brl(l.valor), LG.chip(l.status)])) : '<p class="vazio">Nenhum lançamento.</p>'}</div>`;
   },
   async verGerados() {
@@ -799,7 +802,7 @@ const LG = {
     document.getElementById('lgr-corpo').innerHTML = `<div class="card"><h3>🗄️ Relatórios gerados</h3>
       ${gerados.length ? tabela(['Quando', 'Tipo', 'Título', 'Formato', 'Por', ''], gerados.map(g => [
         new Date(g.criado_em).toLocaleString('pt-BR'), LG.chip(g.tipo), esc(g.titulo), g.formato, esc(g.criado_por),
-        `<a class="btn secund peq" href="/staff/api/legal/relatorios/gerados/${g.id}" target="_blank" rel="noopener">Abrir</a>`,
+        `<a class="btn secund peq" href="${LG.hrefBase}/relatorios/gerados/${g.id}" target="_blank" rel="noopener">Abrir</a>`,
       ])) : '<p class="vazio">Nenhum relatório exportado ainda.</p>'}</div>`;
   },
 
