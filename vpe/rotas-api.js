@@ -14,6 +14,8 @@ const financeiro = require('./financeiro');
 const ia = require('./ia');
 const automacoes = require('./automacoes');
 const portal = require('./portal');
+const billing = require('./billing');
+const apiPublica = require('./api-publica');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -65,6 +67,12 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     notificar(`📋 Villela Projects: novo lead — ${repo.s(b.nome, 80) || 'sem nome'} <${repo.emailNorm(b.email)}> ${repo.s(b.empresa, 80)}`.trim());
     res.json({ ok: true });
   }));
+
+  // ------------------------------------------------ billing: webhook do Mercado Pago — PÚBLICO (Fase 8)
+  r.post('/billing/webhook', async (req, res) => {
+    const out = await billing.processarWebhook(req.body || {}, req.query || {});
+    res.json(out); // sempre 200 — MP reenvia em 5xx
+  });
 
   // ------------------------------------------------ portal do cliente — PÚBLICO por token (Fase 7)
   r.get('/portal/:token', h(async (req, res) => res.json(portal.visaoPublica(req.params.token))));
@@ -339,6 +347,30 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
   r.patch('/compartilhamentos/:id', requireTenant, exigeAlgumCompart, h(async (req, res) => res.json({ ok: true, compartilhamento: portal.atualizarShare(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) })));
   r.delete('/compartilhamentos/:id', requireTenant, exigeAlgumCompart, h(async (req, res) => { portal.revogarShare(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip); res.json({ ok: true }); }));
+
+  // ------------------------------------------------ billing SaaS — tenant (Fase 8)
+  r.get('/billing', requireTenant, h(async (req, res) => {
+    if (!req.vp.permissoes.administrar_cobranca && !req.vp.permissoes.ver_uso) return res.status(403).json({ erro: 'Sem permissão: administrar_cobranca' });
+    res.json(billing.estado(req.vp.tenant.id));
+  }));
+  r.post('/billing/assinar', requireTenant, requirePerm('administrar_cobranca'), h(async (req, res) => {
+    const base = `${protoDe(req)}://${req.get('host')}`;
+    res.json({ ok: true, ...await billing.assinar(req.vp.tenant.id, (req.body || {}).plano_slug, req.vp.user, base, req.vp.ip) });
+  }));
+  r.post('/billing/cancelar', requireTenant, requirePerm('administrar_cobranca'), h(async (req, res) => { await billing.cancelarAssinatura(req.vp.tenant.id, req.vp.user, req.vp.ip); res.json({ ok: true }); }));
+
+  // ------------------------------------------------ API pública: chaves + webhooks (Fase 8)
+  r.get('/integracoes', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => res.json({
+    api_liberada: repo.recursoLiberado(req.vp.tenant.id, 'api'),
+    chaves: apiPublica.listarChaves(req.vp.tenant.id),
+    webhooks: apiPublica.listarWebhooks(req.vp.tenant.id),
+    eventos: apiPublica.EVENTOS,
+    entregas: apiPublica.entregasRecentes(req.vp.tenant.id),
+  })));
+  r.post('/integracoes/chaves', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => res.json({ ok: true, ...apiPublica.criarChave(req.vp.tenant.id, (req.body || {}).nome, req.vp.user, req.vp.ip) })));
+  r.delete('/integracoes/chaves/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => { apiPublica.revogarChave(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip); res.json({ ok: true }); }));
+  r.post('/integracoes/webhooks', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => res.json({ ok: true, ...apiPublica.criarWebhook(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.delete('/integracoes/webhooks/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => { apiPublica.excluirWebhook(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip); res.json({ ok: true }); }));
 
   // ------------------------------------------------ empresa / usuários / papéis
   r.get('/config', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {

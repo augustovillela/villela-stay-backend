@@ -4,10 +4,11 @@
 portfólio INTERNO de negócios da Villela (16 projetos, workspace `villela-interno`) e
 (2) SaaS vendável a outras empresas. **Este README é a fonte da verdade do assunto.**
 
-Status: **Fases 1-6 EM PRODUÇÃO** (fundação, portfólio, execução, eventos, comercial+financeiro,
-IA+automações — deploy `94063c1` 08/07/2026 live; IA ativa, ANTHROPIC_API_KEY presente no Render).
-**Fase 7 (portal do cliente + admin SaaS estendido) COMPLETA** na branch `feat/vpe-f7` (aguardando
-validação p/ merge). Testes: `npm run test:vpe` (173/173).
+Status: **Fases 1-7 EM PRODUÇÃO** (deploy `c501645` 08/07/2026 live; IA ativa). **Fase 8 (billing
+SaaS Mercado Pago + API pública por chave + webhooks de saída) COMPLETA** na branch `feat/vpe-f8`
+(aguardando validação p/ merge) — **fecha o roadmap das 8 fases do plano-mestre**.
+Testes: `npm run test:vpe` (194/194). Billing usa a **mesma conta Mercado Pago (`MP_ACCESS_TOKEN`)**
+do backend — assinatura auto-suficiente (notification_url própria), sem config no painel do MP.
 ⚠️ PENDÊNCIA pós-F1: clicar "Semear workspace interno" na aba 📋 do staff EM PRODUÇÃO
 (guardar a senha inicial que aparece 1×).
 
@@ -84,6 +85,30 @@ staff/app-vpe.js   aba 📋 no Portal Staff (com o botão de seed interno)
 **Papéis embutidos**: Dono · Administrador · Gerente de projetos · Produtor de eventos ·
 Comercial · Financeiro · Colaborador · Auditor · Leitor · Cliente externo (portal na F7).
 Permissão especial `decidir_projeto`: pausar/cancelar/arquivar exige-a além de `editar_projeto`.
+
+## Fase 8 (criado) — fecha o roadmap
+
+**Billing SaaS Mercado Pago** (`billing.js`, portado do vdocs): assinatura MENSAL via MP *preapproval*
+(recorrência hospedada no MP — nenhum dado de cartão do nosso lado). `external_reference='vpe:<id>'`,
+back_url `/vpe/app`, notification_url `/vpe/api/billing/webhook` → **auto-suficiente** (não depende do
+webhook global do painel). Webhook = só AVISO; o estado real é SEMPRE relido da API do MP. Tenant
+assina/cancela na aba 📦 Plano e uso; autorização → tenant `ativa`; cancelamento/inadimplência →
+`suspensa`. Workspace interno nunca cobra. Tabelas `payments`, `billing_events`; `subscriptions`
+ganhou `mp_preapproval_id` (migração). Staff vê MRR/assinaturas via `billing.receitaPlataforma`.
+
+**API pública por chave** (`api-publica.js`, portado do vdocs): `/vpe/api/v1/*` autenticada por chave
+`vp_...` (Authorization Bearer ou X-Api-Key), **gated por `api=true` no plano** (Business/Enterprise),
+rate limit por minuto (`VPE_API_RPM`, 120) + consumo `api_chamadas`. Endpoints: ping, projetos
+(GET/POST/:id), eventos (GET/POST/:id), crm/deals, uso. A chave dá poderes de gestão de conteúdo —
+nunca usuários/billing. Chave `api_keys` guarda só o hash (aparece 1×).
+
+**Webhooks de saída** (Make/n8n/Zapier): tenant cadastra URL + eventos + recebe secret; cada entrega é
+assinada (`X-VPE-Signature = HMAC-SHA256`), com retentativa 1/5/30min (timer in-process em `index.js`,
+`VPE_ROTINAS=off` desliga). Eventos: `projeto.criado`, `evento.confirmado`, `deal.ganho`,
+`proposta.aprovada`, `contrato.aceito` — emitidos nos módulos de domínio (cobre UI, API e portal).
+UI: tela 🔌 Integrações & API (chaves + webhooks + entregas). Tabelas `api_keys`,
+`webhook_subscriptions`, `webhook_deliveries`. Rotina diária de billing (trials vencendo) avisa o
+Augusto por WhatsApp.
 
 ## Fase 7 (criado)
 
@@ -217,8 +242,10 @@ abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = F
 - [x] Landing com finalidade explícita do lead
 - [x] F7: portal do cliente só-leitura por token (18 bytes), gated por plano, sem vazar dados
   internos; pausar/revogar corta o link; aceite registra nome+IP
-- [ ] F8: exportação total (takeout — reusar zipStored do vdocs) e exclusão/anonimização
-- [ ] F8: DPA no onboarding; termos e política formais
+- [x] F8: billing via MP preapproval (nenhum dado de cartão local; webhook relê o estado real);
+  API por chave só com hash guardado + rate limit; webhooks de saída assinados (HMAC) + SSRF guard
+- [ ] Evolução: exportação total (takeout — reusar zipStored do vdocs) e exclusão/anonimização
+- [ ] Evolução: DPA no onboarding; termos e política formais
 
 ## Roadmap (8 fases do plano-mestre)
 
@@ -227,14 +254,14 @@ abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = F
 ~~F4 eventos (briefing/fornecedores/convidados/pós)~~ ✅ (produção) ·
 ~~F5 comercial+financeiro (CRM, propostas, contratos, receitas/despesas)~~ ✅ (produção) ·
 ~~F6 IA+agentes+automações+relatório do CEO~~ ✅ (produção) ·
-~~F7 portal do cliente (share por token) + admin SaaS estendido~~ ✅ (branch) → **F8 integrações +
-billing SaaS + deploy final** (Google Calendar/Make por chave — padrão vdocs F9; billing Mercado Pago
-reusando adapter do vdocs; documentos: INTEGRAR com o Villela Docs; orçamentos por projeto).
-Rotina a agendar: Tarefa do Windows que dispara `/automacoes/avaliar` + relatório diário do CEO.
+~~F7 portal do cliente (share por token) + admin SaaS estendido~~ ✅ (produção) ·
+~~F8 billing SaaS Mercado Pago + API pública por chave + webhooks de saída~~ ✅ (branch).
+🏁 **ROADMAP DAS 8 FASES COMPLETO.** Evoluções futuras (fora do plano-mestre): Google Calendar OAuth,
+integração documental com o Villela Docs, orçamentos detalhados por projeto, Gantt/caminho crítico.
 
 ## Próximos passos imediatos
 
-1. [ ] Augusto valida a Fase 7 (🔗 Portal do cliente: compartilhar proposta/contrato/evento/projeto por link, aceite do cliente; admin: estender trial no staff) e autoriza merge `feat/vpe-f7` → master.
+1. [ ] Augusto valida a Fase 8 (📦 Plano: assinar/cancelar via Mercado Pago; 🔌 Integrações: chaves de API + webhooks) e autoriza merge `feat/vpe-f8` → master.
 2. [ ] Pós-deploy: clicar "Semear workspace interno" em produção (guarda a senha inicial!)
    e revisar os 16 projetos (prioridades/estágios são propostas minhas).
 3. [ ] Preços dos planos (149/349/799/sob consulta) são proposta — ajustar na aba Planos.
@@ -242,9 +269,9 @@ Rotina a agendar: Tarefa do Windows que dispara `/automacoes/avaliar` + relatór
    via Claude + CNAME na Locaweb — processo já dominado).
 5. [ ] Pós-deploy F6: agendar Tarefa do Windows/cron que chame `/automacoes/avaliar` e gere o
    relatório diário do CEO por tenant (a lógica está pronta; falta o disparo agendado).
-6. [ ] Iniciar Fase 8 (integrações externas + billing SaaS Mercado Pago + deploy final).
+6. [ ] Comercial: definir marca/preços definitivos e primeiro cliente pago (billing já funciona).
 
 ## Teste local
 
 `node stays/start-staff-dev.js` → produto em `http://localhost:3000/vpe`, staff em `/staff/`.
-Suíte: `npm run test:vpe` (banco temporário, 49 testes).
+Suíte: `npm run test:vpe` (banco temporário, 194 testes).

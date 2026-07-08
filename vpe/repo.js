@@ -322,6 +322,7 @@ function criarProjeto(tenantId, campos, ator, ip) {
       j.str((Array.isArray(campos.tags) ? campos.tags : []).map(t => s(t, 40)).filter(Boolean).slice(0, 15)),
       Math.trunc(Number(campos.ordem) || 0), nowISO(), s(ator && ator.id, 40));
   auditar(tenantId, ator, 'projeto.criar', 'projects', id, { nome: s(campos.nome, 160), estagio: campos.estagio || 'ideia' }, ip);
+  try { require('./api-publica').emitir(tenantId, 'projeto.criado', { projeto_id: id, nome: s(campos.nome, 160) }); } catch (_) {}
   return obterProjeto(tenantId, id);
 }
 function obterProjeto(tenantId, id) {

@@ -7,6 +7,7 @@
 'use strict';
 process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'vpe-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
+process.env.VPE_ROTINAS = 'off'; // sem timers (webhooks/billing) durante os testes
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const express = require('express');
@@ -555,6 +556,90 @@ function teste(nome, cond) {
   const antesTrial = (await req('GET', '/staff/api/vpe/tenants/' + tenantGate, { staff: 'adm' })).dados.tenant.trial_expira_em;
   r = await req('PATCH', '/staff/api/vpe/tenants/' + tenantGate, { body: { estender_trial_dias: 30 }, staff: 'adm' });
   teste('admin estende o trial do tenant', r.status === 200 && r.dados.tenant.trial_expira_em > antesTrial);
+
+  // ================== FASE 8: billing (MP mockado) + API pública + webhooks ==================
+  const billing = require('./billing');
+  const apiV1 = (caminho, chave) => fetch(BASE + '/vpe/api/v1' + caminho, { headers: chave ? { Authorization: 'Bearer ' + chave } : {} }).then(async rr => ({ status: rr.status, dados: await rr.json().catch(() => ({})) }));
+
+  // sem MP configurado → aviso claro
+  r = await req('POST', '/vpe/api/billing/assinar', { body: { plano_slug: 'professional' }, jar: 'bobB' });
+  teste('assinar sem MP → erro claro', r.status === 400 && /indisponível/i.test(r.dados.erro || ''));
+
+  // mock do Mercado Pago
+  const preapprovals = {};
+  const mockMp = async (pathname, opts) => {
+    if (pathname === '/preapproval' && opts && opts.method === 'POST') {
+      const body = JSON.parse(opts.body);
+      const id = 'pre_' + (Object.keys(preapprovals).length + 1);
+      preapprovals[id] = { id, status: 'pending', external_reference: body.external_reference, init_point: 'https://mp.test/autorizar/' + id };
+      return preapprovals[id];
+    }
+    let m;
+    if ((m = pathname.match(/^\/preapproval\/(.+)$/))) {
+      const pre = preapprovals[m[1]];
+      if (!pre) throw new Error('MP 404');
+      if (opts && opts.method === 'PUT') { pre.status = JSON.parse(opts.body).status; return pre; }
+      return pre;
+    }
+    if ((m = pathname.match(/^\/v1\/payments\/(.+)$/))) return { id: m[1], status: 'approved', status_detail: 'accredited', transaction_amount: 349.0, external_reference: 'vpe:' + tenantB.id };
+    throw new Error('rota MP não mockada: ' + pathname);
+  };
+  mockMp.__mock = true;
+  billing.configurar({ mpFetch: mockMp });
+
+  r = await req('GET', '/vpe/api/billing', { jar: 'bobB' });
+  teste('estado de billing p/ dono (online disponível + planos)', r.status === 200 && r.dados.online_disponivel === true && Array.isArray(r.dados.planos) && r.dados.planos.length >= 1);
+  r = await req('POST', '/vpe/api/billing/assinar', { body: { plano_slug: 'professional' }, jar: 'carlaA' });
+  teste('assinar exige administrar_cobranca (403)', r.status === 403);
+  r = await req('POST', '/vpe/api/billing/assinar', { body: { plano_slug: 'professional' }, jar: 'bobB' });
+  teste('assinar cria preapproval e devolve link do MP', r.status === 200 && /mp\.test\/autorizar/.test(r.dados.link || ''));
+  const preId = r.dados.preapproval_id;
+  // webhook: MP autorizou → assinatura ativa
+  preapprovals[preId].status = 'authorized';
+  r = await req('POST', '/vpe/api/billing/webhook', { body: { type: 'subscription_preapproval', data: { id: preId } } });
+  teste('webhook preapproval processado (200)', r.status === 200);
+  r = await req('GET', '/vpe/api/me', { jar: 'bobB' });
+  teste('tenant B fica ativo após autorização', r.dados.tenant.status === 'ativa');
+  r = await req('GET', '/vpe/api/billing', { jar: 'bobB' });
+  teste('assinatura marcada como recorrência MP', r.dados.plano && r.dados.plano.recorrencia_mp === true && r.dados.plano.status === 'ativa');
+  // webhook de pagamento aprovado (idempotente por mp_payment_id)
+  await req('POST', '/vpe/api/billing/webhook', { body: { type: 'payment', data: { id: 'pay_1' } } });
+  await req('POST', '/vpe/api/billing/webhook', { body: { type: 'payment', data: { id: 'pay_1' } } });
+  r = await req('GET', '/vpe/api/billing', { jar: 'bobB' });
+  teste('pagamento aprovado registrado 1× (idempotente)', r.dados.pagamentos.filter(p => p.status === 'aprovado').length === 1);
+  // cancelar → suspende
+  r = await req('POST', '/vpe/api/billing/cancelar', { jar: 'bobB' });
+  teste('cancelar assinatura', r.status === 200);
+  r = await req('GET', '/vpe/api/me', { jar: 'bobB' });
+  teste('cancelamento suspende o tenant', r.dados.tenant.status === 'suspensa');
+
+  // ---- API pública por chave (precisa de plano Business/Enterprise) ----
+  r = await req('POST', '/vpe/api/integracoes/chaves', { body: { nome: 'ERP' }, jar: 'anaA' });
+  teste('plano professional não libera API (chave barrada)', r.status === 400 && /API/i.test(r.dados.erro || ''));
+  await req('PATCH', '/staff/api/vpe/tenants/' + tenantA.id, { body: { plano_slug: 'business' }, staff: 'adm' });
+  r = await req('POST', '/vpe/api/integracoes/chaves', { body: { nome: 'ERP financeiro' }, jar: 'anaA' });
+  teste('Business libera criação de chave (aparece 1×)', r.status === 200 && /^vp_/.test(r.dados.chave || ''));
+  const chaveApi = r.dados.chave;
+  r = await apiV1('/ping', chaveApi);
+  teste('API v1: ping autentica pela chave', r.status === 200 && r.dados.ok === true && r.dados.tenant === tenantA.id);
+  r = await apiV1('/projetos', chaveApi);
+  teste('API v1: lista projetos do tenant da chave', r.status === 200 && Array.isArray(r.dados.projetos));
+  r = await apiV1('/ping', 'vp_chave_falsa_123');
+  teste('API v1: chave inválida → 401', r.status === 401);
+  r = await apiV1('/ping', '');
+  teste('API v1: sem chave → 401', r.status === 401);
+  // criar projeto via API dispara webhook (evento projeto.criado)
+  r = await req('POST', '/vpe/api/integracoes/webhooks', { body: { url: 'https://hook.exemplo.com/vpe', eventos: ['projeto.criado', 'contrato.aceito'] }, jar: 'anaA' });
+  teste('webhook de saída criado (secret 1×)', r.status === 200 && /^whsec_/.test(r.dados.secret || ''));
+  r = await apiV1('/projetos', chaveApi); const antesProjetos = r.dados.projetos.length;
+  await fetch(BASE + '/vpe/api/v1/projetos', { method: 'POST', headers: { Authorization: 'Bearer ' + chaveApi, 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: 'Projeto via API', categoria: 'eventos' }) });
+  r = await req('GET', '/vpe/api/integracoes', { jar: 'anaA' });
+  teste('evento projeto.criado gerou entrega de webhook pendente', r.dados.entregas.some(e => e.evento === 'projeto.criado'));
+  teste('projeto criado via API aparece no tenant', (await apiV1('/projetos', chaveApi)).dados.projetos.length === antesProjetos + 1);
+  r = await req('POST', '/vpe/api/integracoes/chaves', { body: { nome: 'x' }, jar: 'carlaA' });
+  teste('integrações exigem configurar_integracoes (403)', r.status === 403);
+  r = await apiV1('/projetos', chaveApi.slice(0, -2) + 'zz');
+  teste('chave adulterada não autentica', r.status === 401);
 
   // ---------- staff da plataforma ----------
   r = await req('GET', '/staff/api/vpe/resumo', { staff: 'ceo' });

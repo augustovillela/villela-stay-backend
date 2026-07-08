@@ -17,18 +17,38 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
 function montar(app, injected = {}) {
-  const { express, requireAuth, requireAdmin, alertaAugusto, enviarEmail, jwtSecret } = injected;
+  const { express, requireAuth, requireAdmin, alertaAugusto, enviarEmail, mpFetch, jwtSecret } = injected;
   if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
     throw new Error('vpe.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
   repo.semearPlanos();
   const auth = criarAuth({ jwtSecret });
   const notificar = (msg) => Promise.resolve((alertaAugusto || (async () => {}))(msg)).catch(() => {});
+  require('./billing').configurar({ mpFetch, notificar });
   registrarRotasApi(app, { express, auth, notificar, enviarEmail });
+  require('./api-publica').registrarApiPublica(app, { express });
   registrarRotasStaff(app, { express, requireAuth, requireAdmin });
   registrarPaginas(app);
-  console.log('[vpe] Villela Projects & Events montado (Fases 1-7 — +portal do cliente por token e admin SaaS estendido).');
+  iniciarJobs();
+  console.log('[vpe] Villela Projects & Events montado (Fases 1-8 — +billing SaaS Mercado Pago, API pública por chave e webhooks de saída).');
   return { repo, permissoes, auth };
+}
+
+// Timers in-process (single instance Render). VPE_ROTINAS=off desliga (testes).
+let _timers = [];
+function iniciarJobs() {
+  if (_timers.length) return;
+  if (String(process.env.VPE_ROTINAS || '').toLowerCase() === 'off') return;
+  const apiPublica = require('./api-publica');
+  _timers.push(setInterval(() => { apiPublica.processarEntregas().catch(e => console.error('[vpe webhooks]', e.message)); }, 12000));
+  // rotina diária de billing (trials vencendo) — checa de hora em hora, dispara 1×/dia por instância
+  let ultimoDia = '';
+  _timers.push(setInterval(() => {
+    const dia = new Date().toISOString().slice(0, 10);
+    if (dia === ultimoDia) return; ultimoDia = dia;
+    require('./billing').rotinaBilling().catch(e => console.error('[vpe billing]', e.message));
+  }, 3600000));
+  if (_timers[0] && _timers[0].unref) _timers.forEach(t => t.unref && t.unref());
 }
 
 module.exports = { montar, repo, permissoes };

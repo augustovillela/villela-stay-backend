@@ -136,6 +136,7 @@ function atualizarEvento(tenantId, id, campos, ator, ip) {
       campos.status || e.status, j.str(brief), j.str(checklist), j.str(pos), s(campos.observacoes ?? e.observacoes, 2000), nowISO(), e.id, String(tenantId));
   repo.auditar(tenantId, ator, campos.status && campos.status !== e.status ? 'evento.mudar_status' : 'evento.atualizar', 'events', e.id,
     campos.status && campos.status !== e.status ? { de: e.status, para: campos.status } : { campos: Object.keys(campos) }, ip);
+  if (campos.status === 'confirmado' && e.status !== 'confirmado') { try { require('./api-publica').emitir(tenantId, 'evento.confirmado', { evento_id: e.id, nome: campos.nome || e.nome, data: campos.data ?? e.data }); } catch (_) {} }
   return obterEvento(tenantId, e.id);
 }
 

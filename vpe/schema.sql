@@ -587,3 +587,72 @@ CREATE TABLE IF NOT EXISTS client_shares (
 );
 CREATE INDEX IF NOT EXISTS idx_vpe_share ON client_shares (tenant_id, tipo, ref_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_vpe_share_tok ON client_shares (token);
+
+-- =====================================================================
+-- FASE 8 — billing SaaS (Mercado Pago) + API pública por chave + webhooks
+-- =====================================================================
+-- Pagamentos confirmados (estado real relido do MP; idempotente por mp_payment_id).
+CREATE TABLE IF NOT EXISTS payments (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  mp_payment_id TEXT UNIQUE,
+  valor_centavos INTEGER DEFAULT 0,
+  status        TEXT DEFAULT 'pendente',   -- aprovado|pendente|recusado|reembolsado
+  detalhe       TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_pay ON payments (tenant_id, criado_em);
+
+-- Eventos brutos do billing (auditoria/replay do webhook do MP).
+CREATE TABLE IF NOT EXISTS billing_events (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id TEXT DEFAULT '',
+  tipo      TEXT DEFAULT '',
+  ref       TEXT DEFAULT '',
+  payload   TEXT DEFAULT '',
+  criado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_billev ON billing_events (tenant_id, criado_em);
+
+-- Chaves de API (hash guardado; a chave completa só aparece na criação).
+CREATE TABLE IF NOT EXISTS api_keys (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  nome       TEXT NOT NULL,
+  prefixo    TEXT DEFAULT '',
+  key_hash   TEXT NOT NULL,
+  ultimo_uso TEXT DEFAULT '',
+  revogada_em TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL,
+  criado_por TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_apikey ON api_keys (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_vpe_apikey_hash ON api_keys (key_hash);
+
+-- Webhooks de saída (integração Make/n8n/Zapier por evento).
+CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  url        TEXT NOT NULL,
+  eventos    TEXT DEFAULT '[]',
+  secret     TEXT NOT NULL,
+  ativo      INTEGER DEFAULT 1,
+  criado_em  TEXT NOT NULL,
+  criado_por TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_whsub ON webhook_subscriptions (tenant_id, ativo);
+
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+  id              TEXT PRIMARY KEY,
+  tenant_id       TEXT NOT NULL,
+  subscription_id TEXT NOT NULL,
+  evento          TEXT NOT NULL,
+  payload         TEXT DEFAULT '',
+  status          TEXT DEFAULT 'pendente',   -- pendente|entregue|erro
+  tentativas      INTEGER DEFAULT 0,
+  resposta        TEXT DEFAULT '',
+  proximo_em      TEXT DEFAULT '',
+  criado_em       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_whdel ON webhook_deliveries (status, proximo_em);
+CREATE INDEX IF NOT EXISTS idx_vpe_whdel_t ON webhook_deliveries (tenant_id, criado_em);
