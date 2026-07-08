@@ -5288,6 +5288,19 @@ try {
   });
 } catch (e) { console.error('[legal] falha ao montar módulo:', e.message); }
 
+// =========================== Villela Legal SaaS (venda do jurídico a outros escritórios) ===========================
+// Plano comercial multi-tenant do produto jurídico: landing/preços em /juridico, painel do
+// assinante em /juridico/app (sessão 'jur_saas'), administração na aba ⚖️💼 do Portal Staff.
+// SQLite próprio em DATA_DIR/legal-saas/. Cobrança recorrente via Mercado Pago (mpFetch).
+try {
+  require('./legal-saas').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[legal-saas] falha ao montar módulo:', e.message); }
+
 // =========================== Villela Docs Intelligence (SaaS de gestão documental) ===========================
 // Produto multi-tenant vendido a OUTRAS empresas: landing/preços em /vdocs, painel do
 // cliente em /vdocs/app (sessão própria 'vdocs_sess', isolada do staff), administração
