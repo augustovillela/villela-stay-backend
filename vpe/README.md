@@ -4,8 +4,11 @@
 portfólio INTERNO de negócios da Villela (16 projetos, workspace `villela-interno`) e
 (2) SaaS vendável a outras empresas. **Este README é a fonte da verdade do assunto.**
 
-Status: **Fase 1 (fundação SaaS + portfólio) COMPLETA** — branch `feat/vpe`, aguardando
-validação do Augusto p/ merge. Testes: `npm run test:vpe` (49/49).
+Status: **Fase 1 EM PRODUÇÃO** (deploy `ae3b626` 08/07/2026, validada) · **Fase 2 (portfólio
+avançado) COMPLETA** na branch `feat/vpe-f2` (aguardando validação p/ merge).
+Testes: `npm run test:vpe` (66/66).
+⚠️ PENDÊNCIA pós-F1: clicar "Semear workspace interno" na aba 📋 do staff EM PRODUÇÃO
+(guardar a senha inicial que aparece 1×).
 
 | O quê | Onde |
 |---|---|
@@ -81,6 +84,18 @@ staff/app-vpe.js   aba 📋 no Portal Staff (com o botão de seed interno)
 Comercial · Financeiro · Colaborador · Auditor · Leitor · Cliente externo (portal na F7).
 Permissão especial `decidir_projeto`: pausar/cancelar/arquivar exige-a além de `editar_projeto`.
 
+## Fase 2 (criado)
+
+`business_plans` (1 por projeto; 18 seções em JSON — catálogo em portfolio.js; completude %)
++ `business_plan_versions` (SNAPSHOT a cada salvamento; status rascunho|em_analise|aprovado),
+`viability_scores` (11 critérios 0-10 "quanto maior melhor" → score = média×10, ESPELHADO em
+projects.viabilidade) e `project_decisions` (governança: avancar|amadurecer|pausar|descartar|
+retomar com justificativa OBRIGATÓRIA; pausar/descartar/retomar aplicam o status no projeto;
+exige decidir_projeto). **Ranking do portfólio**: score composto = viabilidade×3 + retorno
+relativo (receita/investimento, teto 5×)×2 + prioridade×1; matriz de quadrantes ganho_rapido/
+aposta_grande/tarefa_menor/reavaliar (corte de esforço: R$ 100k). UI: detalhe do projeto com
+abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = Fase 6 (decisão).
+
 ## Modelo de dados das próximas fases (especificado, não criado)
 
 - **F2 Portfólio avançado**: `business_plans` (canvas/SWOT/projeções), `viability_scores`
@@ -122,23 +137,21 @@ Permissão especial `decidir_projeto`: pausar/cancelar/arquivar exige-a além de
 
 ## Roadmap (8 fases do plano-mestre)
 
-~~F0 diagnóstico~~ ✅ · ~~F1 fundação SaaS + portfólio + seed 16~~ ✅ (branch) →
-**F2 portfólio avançado** (plano de negócio, score de viabilidade guiado, decisões,
-comparação/ranking de ideias) → F3 execução (tarefas, Kanban, Gantt, riscos) → F4 eventos
+~~F0 diagnóstico~~ ✅ · ~~F1 fundação + seed 16~~ ✅ (produção) · ~~F2 portfólio avançado~~ ✅
+(branch) → **F3 execução** (tarefas, Kanban, Gantt, riscos) → F4 eventos
 (briefing→pós-evento, fornecedores, equipe, convidados) → F5 comercial+financeiro (CRM,
 propostas, contratos, orçamentos, billing SaaS) → F6 IA+automações (17 agentes, relatório
 diário do CEO) → F7 portal do cliente + SaaS admin → F8 integrações+deploy final.
 
 ## Próximos passos imediatos
 
-1. [ ] Augusto valida a Fase 1 local (`node stays/start-staff-dev.js` → /vpe e /vpe/app;
-   staff → aba 📋 → "Semear workspace interno") e autoriza merge `feat/vpe` → master.
+1. [ ] Augusto valida a Fase 2 (abas Plano/Viabilidade/Decisões + Ranking) e autoriza merge `feat/vpe-f2` → master.
 2. [ ] Pós-deploy: clicar "Semear workspace interno" em produção (guarda a senha inicial!)
    e revisar os 16 projetos (prioridades/estágios são propostas minhas).
 3. [ ] Preços dos planos (149/349/799/sob consulta) são proposta — ajustar na aba Planos.
 4. [ ] DNS `projetos.villelastay.com(.br)` quando quiser divulgar (Custom Domain no Render
    via Claude + CNAME na Locaweb — processo já dominado).
-5. [ ] Iniciar Fase 2 (portfólio avançado) — sem env var nova.
+5. [ ] Iniciar Fase 3 (execução: tarefas/Kanban) — sem env var nova.
 
 ## Teste local
 

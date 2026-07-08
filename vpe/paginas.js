@@ -278,46 +278,117 @@ async function vPortfolio(){
    '<input id="pf-busca" placeholder="Buscar…" value="'+esc(S.pf.busca)+'" style="max-width:180px" onkeydown="if(event.key===\\'Enter\\')filtrarPf()">'+
    '<select id="pf-estagio" style="max-width:170px" onchange="filtrarPf()">'+opt(S.enums.estagios,S.pf.estagio,'estágio')+'</select>'+
    '<select id="pf-cat" style="max-width:170px" onchange="filtrarPf()">'+opt(S.enums.categorias,S.pf.categoria,'categoria')+'</select>'+
-   (S.me.permissoes.criar_projeto?'<button class="btn peq" onclick="novoProj()">+ Nova ideia/projeto</button>':'')+'</div>'+
+   (S.me.permissoes.criar_projeto?'<button class="btn peq" onclick="novoProj()">+ Nova ideia/projeto</button>':'')+
+   '<button class="btn btn-ghost peq" onclick="vRanking()">🏁 Ranking / Matriz</button></div>'+
    '<div class="card" style="margin-top:12px"><table><tr><th>Projeto</th><th>Categoria</th><th>Estágio</th><th>Horizonte</th><th>Prior.</th><th>Invest.</th><th>Receita/ano</th></tr>'+
    (projetos.length?projetos.map(p=>'<tr class="pri-'+p.prioridade+'"><td><a href="#" onclick="return abrirProj(\\''+p.id+'\\')">'+esc(p.nome)+'</a>'+(p.status!=='ativo'?' <span class="chip">'+p.status+'</span>':'')+'</td>'+
     '<td>'+esc(p.categoria)+'</td><td>'+esc(rot(p.estagio))+'</td><td>'+esc(p.horizonte)+'</td><td>'+esc(p.prioridade)+'</td><td>'+brl(p.investimento_estimado)+'</td><td>'+brl(p.receita_potencial)+'</td></tr>').join(''):'<tr><td colspan="7" style="color:var(--suave)">Nenhum projeto — crie a primeira ideia.</td></tr>')+'</table></div>';
 }
 function filtrarPf(){S.pf={busca:$('pf-busca').value,estagio:$('pf-estagio').value,categoria:$('pf-cat').value};vPortfolio();}
+async function vRanking(){
+  const d=await api('GET','/portfolio/ranking');
+  const corQ={ganho_rapido:'#dcfce7',aposta_grande:'#fef9c3',tarefa_menor:'#e0f2fe',reavaliar:'#fde8e8'};
+  $('corpo').innerHTML='<h2>🏁 Ranking do portfólio</h2>'+
+   '<p><a href="#" onclick="ir(\\'portfolio\\');return false">← lista</a></p>'+
+   '<div class="card"><p class="sub" style="font-size:12px">Score composto = viabilidade (peso 3) + retorno receita/investimento (peso 2) + prioridade (peso 1). Quadrante = impacto × esforço (investimento).</p>'+
+   '<table><tr><th>#</th><th>Projeto</th><th>Score</th><th>Viab.</th><th>Retorno</th><th>Invest.</th><th>Quadrante</th><th>Plano?</th></tr>'+
+   d.ranking.map((p,i)=>'<tr><td>'+(i+1)+'</td><td><a href="#" onclick="return abrirProj(\\''+p.id+'\\')">'+esc(p.nome)+'</a></td>'+
+    '<td><b>'+p.score_composto+'</b></td><td>'+p.viabilidade+'</td><td>'+p.retorno_relativo+'</td><td>'+brl(p.investimento_estimado)+'</td>'+
+    '<td><span class="chip" style="background:'+(corQ[p.quadrante]||'#fff')+'">'+esc(rot(p.quadrante))+'</span></td>'+
+    '<td>'+(p.tem_plano?'📘':'—')+'</td></tr>').join('')+'</table></div>'+
+   '<div class="card" style="margin-top:12px"><b>Legenda dos quadrantes</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'+
+   Object.entries(d.quadrantes).map(([k,v])=>'<span class="chip" style="background:'+(corQ[k]||'#fff')+'">'+esc(v)+'</span>').join('')+'</div></div>';
+}
 async function novoProj(){
   const nome=prompt('Nome da ideia/projeto:');if(!nome)return;
   try{const r=await api('POST','/projetos',{nome});abrirProj(r.projeto.id);}catch(e){alert(e.message);}
 }
-async function abrirProj(id){
-  const {projeto:p}=await api('GET','/projetos/'+id);
-  const P=S.me.permissoes;const E=S.enums||(await api('GET','/me')).enums;
-  const sel=(idc,lista,atual)=>'<select id="'+idc+'"'+(P.editar_projeto?'':' disabled')+'>'+lista.map(x=>'<option value="'+x+'"'+(x===atual?' selected':'')+'>'+rot(x)+'</option>').join('')+'</select>';
-  $('corpo').innerHTML='<p><a href="#" onclick="ir(\\'portfolio\\');return false">← portfólio</a></p><h2>'+esc(p.nome)+'</h2>'+
-   '<div class="card">'+
-   '<label>Nome</label><input id="pj-nome" value="'+esc(p.nome)+'"'+(P.editar_projeto?'':' disabled')+'>'+
-   '<label>Descrição</label><textarea id="pj-desc" rows="3"'+(P.editar_projeto?'':' disabled')+'>'+esc(p.descricao)+'</textarea>'+
-   '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">'+
-   '<div><label>Categoria</label>'+sel('pj-cat',E.categorias,p.categoria)+'</div>'+
-   '<div><label>Estágio</label>'+sel('pj-est',E.estagios,p.estagio)+'</div>'+
-   '<div><label>Horizonte</label>'+sel('pj-hor',E.horizontes,p.horizonte)+'</div>'+
-   '<div><label>Prioridade</label>'+sel('pj-pri',E.prioridades,p.prioridade)+'</div>'+
-   '<div><label>Viabilidade (0-100)</label><input id="pj-via" type="number" min="0" max="100" value="'+p.viabilidade+'"'+(P.editar_projeto?'':' disabled')+'></div>'+
-   '<div><label>Investimento (R$)</label><input id="pj-inv" type="number" value="'+Math.round((p.investimento_estimado||0)/100)+'"'+(P.editar_projeto?'':' disabled')+'></div>'+
-   '<div><label>Receita/ano (R$)</label><input id="pj-rec" type="number" value="'+Math.round((p.receita_potencial||0)/100)+'"'+(P.editar_projeto?'':' disabled')+'></div>'+
-   '<div><label>Responsável</label><input id="pj-resp" value="'+esc(p.responsavel)+'"'+(P.editar_projeto?'':' disabled')+'></div></div>'+
-   '<label>Riscos</label><textarea id="pj-risco" rows="2"'+(P.editar_projeto?'':' disabled')+'>'+esc(p.riscos)+'</textarea>'+
-   '<label>Próximos passos</label><textarea id="pj-prox" rows="2"'+(P.editar_projeto?'':' disabled')+'>'+esc(p.proximos_passos)+'</textarea>'+
-   (P.editar_projeto?'<p><button class="btn peq" onclick="salvarProj(\\''+p.id+'\\')">Salvar</button> '+
-    (P.decidir_projeto?'<button class="btn btn-ghost peq" onclick="decidirProj(\\''+p.id+'\\',\\'pausado\\')">⏸ Pausar</button> <button class="btn btn-ghost peq" onclick="decidirProj(\\''+p.id+'\\',\\'arquivado\\')">🗂 Arquivar</button>':'')+
-    ' <span id="pj-out"></span></p>':'')+
-   '</div>'+
-   '<div class="aviso" style="margin-top:12px">🧭 Plano de negócio, score de viabilidade guiado, tarefas e cronograma deste projeto chegam nas Fases 2-3.</div>';
+async function abrirProj(id,aba){
+  S.projId=id;S.projAba=aba||\'dados\';
+  const {projeto:p}=await api(\'GET\',\'/projetos/\'+id);
+  S.proj=p;S.enums=S.enums||(await api(\'GET\',\'/me\')).enums;
+  const abas=[[\'dados\',\'📄 Dados\'],[\'plano\',\'📘 Plano de negócio\'],[\'viab\',\'📊 Viabilidade\'],[\'dec\',\'⚖️ Decisões\']];
+  $(\'corpo\').innerHTML=\'<p><a href="#" onclick="ir(\\'portfolio\\');return false">← portfólio</a></p><h2>\'+esc(p.nome)+\' <span class="chip">\'+esc(rot(p.estagio))+\'</span>\'+(p.status!==\'ativo\'?\' <span class="chip" style="background:#fde8e8">\'+p.status+\'</span>\':\'\')+\'</h2>\'+
+   \'<div class="card" style="display:flex;gap:6px;flex-wrap:wrap">\'+abas.map(([k,r2])=>\'<button class="btn \'+(S.projAba===k?\'\':\'btn-ghost \')+\'peq" onclick="abrirProj(\\'\'+id+\'\\',\\'\'+k+\'\\')">\'+r2+\'</button>\').join(\'\')+\'</div>\'+
+   \'<div id="pj-corpo" style="margin-top:12px"><p class="sub">Carregando…</p></div>\';
+  await ({dados:vProjDados,plano:vProjPlano,viab:vProjViab,dec:vProjDec}[S.projAba])();
   return false;
 }
+async function vProjDados(){
+  const p=S.proj;const P=S.me.permissoes;const E=S.enums;
+  const sel=(idc,lista,atual)=>\'<select id="\'+idc+\'"\'+(P.editar_projeto?\'\':\' disabled\')+\'>\'+lista.map(x=>\'<option value="\'+x+\'"\'+(x===atual?\' selected\':\'\')+\'>\'+rot(x)+\'</option>\').join(\'\')+\'</select>\';
+  $(\'pj-corpo\').innerHTML=\'<div class="card">\'+
+   \'<label>Nome</label><input id="pj-nome" value="\'+esc(p.nome)+\'"\'+(P.editar_projeto?\'\':\' disabled\')+\'>\'+
+   \'<label>Descrição</label><textarea id="pj-desc" rows="3"\'+(P.editar_projeto?\'\':\' disabled\')+\'>\'+esc(p.descricao)+\'</textarea>\'+
+   \'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">\'+
+   \'<div><label>Categoria</label>\'+sel(\'pj-cat\',E.categorias,p.categoria)+\'</div>\'+
+   \'<div><label>Estágio</label>\'+sel(\'pj-est\',E.estagios,p.estagio)+\'</div>\'+
+   \'<div><label>Horizonte</label>\'+sel(\'pj-hor\',E.horizontes,p.horizonte)+\'</div>\'+
+   \'<div><label>Prioridade</label>\'+sel(\'pj-pri\',E.prioridades,p.prioridade)+\'</div>\'+
+   \'<div><label>Viabilidade (via aba 📊)</label><input value="\'+p.viabilidade+\'/100" disabled></div>\'+
+   \'<div><label>Investimento (R$)</label><input id="pj-inv" type="number" value="\'+Math.round((p.investimento_estimado||0)/100)+\'"\'+(P.editar_projeto?\'\':\' disabled\')+\'></div>\'+
+   \'<div><label>Receita/ano (R$)</label><input id="pj-rec" type="number" value="\'+Math.round((p.receita_potencial||0)/100)+\'"\'+(P.editar_projeto?\'\':\' disabled\')+\'></div>\'+
+   \'<div><label>Responsável</label><input id="pj-resp" value="\'+esc(p.responsavel)+\'"\'+(P.editar_projeto?\'\':\' disabled\')+\'></div></div>\'+
+   \'<label>Riscos</label><textarea id="pj-risco" rows="2"\'+(P.editar_projeto?\'\':\' disabled\')+\'>\'+esc(p.riscos)+\'</textarea>\'+
+   \'<label>Próximos passos</label><textarea id="pj-prox" rows="2"\'+(P.editar_projeto?\'\':\' disabled\')+\'>\'+esc(p.proximos_passos)+\'</textarea>\'+
+   (P.editar_projeto?\'<p><button class="btn peq" onclick="salvarProj(\\'\'+p.id+\'\\')">Salvar</button> <span id="pj-out"></span></p>\':\'\')+
+   \'</div>\';
+}
+async function vProjPlano(){
+  const P=S.me.permissoes;
+  const d=await api(\'GET\',\'/projetos/\'+S.projId+\'/plano\');
+  const vers=(await api(\'GET\',\'/projetos/\'+S.projId+\'/plano/versoes\')).versoes;
+  $(\'pj-corpo\').innerHTML=\'<div class="card"><b>Plano de negócio</b> <span class="chip">\'+(d.plano?(\'v\'+d.plano.versao+\' · \'+esc(d.plano.status)):\'ainda não iniciado\')+\'</span>\'+
+   \' <span class="chip">completude: \'+d.completude+\'%</span>\'+
+   \'<p class="sub" style="font-size:12px">Preencha as seções que fizerem sentido — cada salvamento gera uma versão. Geração assistida por IA chega na Fase 6.</p>\'+
+   d.catalogo.map(([k,r2])=>\'<label>\'+esc(r2)+\'</label><textarea class="bp-sec" data-k="\'+k+\'" rows="3"\'+(P.editar_projeto?\'\':\' disabled\')+\'>\'+esc(d.secoes[k]||\'\')+\'</textarea>\').join(\'\')+
+   (P.editar_projeto?\'<p style="margin-top:10px"><button class="btn peq" onclick="salvarPlanoNeg()">Salvar plano (gera versão)</button> \'+
+    \'<select id="bp-status" style="width:auto"><option value="">status…</option>\'+[\'rascunho\',\'em_analise\',\'aprovado\'].map(s2=>\'<option\'+((d.plano&&d.plano.status)===s2?\' selected\':\'\')+\'>\'+s2+\'</option>\').join(\'\')+\'</select>\'+
+    \' <span id="bp-out"></span></p>\':\'\')+
+   (vers.length?\'<p class="sub" style="font-size:12px"><b>Versões:</b> \'+vers.map(v=>\'v\'+v.numero+\' (\'+dt(v.criado_em)+\')\').join(\' · \')+\'</p>\':\'\')+
+   \'</div>\';
+}
+async function salvarPlanoNeg(){try{
+  const secoes={};document.querySelectorAll(\'.bp-sec\').forEach(t=>secoes[t.dataset.k]=t.value);
+  const status=$(\'bp-status\').value||undefined;
+  const d=await api(\'PUT\',\'/projetos/\'+S.projId+\'/plano\',{secoes,status});
+  $(\'bp-out\').textContent=\'✅ salvo (v\'+d.plano.versao+\', \'+d.completude+\'%)\';
+ }catch(e){$(\'bp-out\').textContent=\'⚠️ \'+e.message;}}
+async function vProjViab(){
+  const P=S.me.permissoes;
+  const d=await api(\'GET\',\'/projetos/\'+S.projId+\'/viabilidade\');
+  $(\'pj-corpo\').innerHTML=\'<div class="card"><b>Score de viabilidade</b> <span class="chip" style="font-size:14px">\'+d.score+\'/100</span>\'+
+   \'<p class="sub" style="font-size:12px">Nota de 0 a 10 por critério (10 = melhor cenário). O score é a média ×10 e alimenta o ranking.</p>\'+
+   \'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px">\'+
+   d.catalogo.map(([k,r2])=>\'<div><label style="margin-top:4px">\'+esc(r2)+\'</label><input class="vb-c" data-k="\'+k+\'" type="number" min="0" max="10" value="\'+(d.criterios[k]!=null?d.criterios[k]:\'\')+\'"\'+(P.editar_projeto?\'\':\' disabled\')+\'></div>\').join(\'\')+\'</div>\'+
+   \'<label>Observações</label><textarea id="vb-obs" rows="2"\'+(P.editar_projeto?\'\':\' disabled\')+\'>\'+esc(d.observacoes)+\'</textarea>\'+
+   (P.editar_projeto?\'<p><button class="btn peq" onclick="salvarViab()">Calcular e salvar score</button> <span id="vb-out"></span></p>\':\'\')+
+   \'</div>\';
+}
+async function salvarViab(){try{
+  const criterios={};document.querySelectorAll(\'.vb-c\').forEach(i=>{if(i.value!==\'\')criterios[i.dataset.k]=Number(i.value);});
+  const d=await api(\'PUT\',\'/projetos/\'+S.projId+\'/viabilidade\',{criterios,observacoes:$(\'vb-obs\').value});
+  $(\'vb-out\').textContent=\'✅ score: \'+d.score+\'/100\';
+ }catch(e){$(\'vb-out\').textContent=\'⚠️ \'+e.message;}}
+async function vProjDec(){
+  const P=S.me.permissoes;
+  const {decisoes}=await api(\'GET\',\'/projetos/\'+S.projId+\'/decisoes\');
+  const rotD={avancar:\'▶ Avançar\',amadurecer:\'🌱 Amadurecer\',pausar:\'⏸ Pausar\',descartar:\'✖ Descartar\',retomar:\'↩ Retomar\'};
+  $(\'pj-corpo\').innerHTML=\'<div class="card"><b>Decisões (governança)</b>\'+
+   \'<p class="sub" style="font-size:12px">Toda decisão exige justificativa e fica no histórico. Pausar/descartar/retomar aplicam o status no projeto.</p>\'+
+   (P.decidir_projeto?\'<label>Justificativa</label><textarea id="dc-just" rows="2"></textarea>\'+
+    \'<p>\'+Object.entries(rotD).map(([k,r2])=>\'<button class="btn \'+(k===\'avancar\'?\'\':\'btn-ghost \')+\'peq" onclick="decidir(\\'\'+k+\'\\')">\'+r2+\'</button> \').join(\'\')+\'</p><div id="dc-out"></div>\'
+    :\'<p class="sub">Você não tem a permissão decidir_projeto.</p>\')+
+   \'<table><tr><th>Quando</th><th>Decisão</th><th>Por</th><th>Justificativa</th></tr>\'+
+   (decisoes.length?decisoes.map(d=>\'<tr><td>\'+dt(d.criado_em)+\'</td><td>\'+esc(rotD[d.decisao]||d.decisao)+\'</td><td>\'+esc(d.decidido_nome)+\'</td><td>\'+esc(d.justificativa)+\'</td></tr>\').join(\'\'):\'<tr><td colspan="4" style="color:var(--suave)">Nenhuma decisão registrada.</td></tr>\')+\'</table></div>\';
+}
+async function decidir(decisao){try{
+  await api(\'POST\',\'/projetos/\'+S.projId+\'/decisoes\',{decisao,justificativa:$(\'dc-just\').value});
+  abrirProj(S.projId,\'dec\');
+ }catch(e){$(\'dc-out\').innerHTML=\'<div class="erro">\'+esc(e.message)+\'</div>\';}}
 async function salvarProj(id){try{
-  await api('PATCH','/projetos/'+id,{nome:$('pj-nome').value,descricao:$('pj-desc').value,categoria:$('pj-cat').value,estagio:$('pj-est').value,horizonte:$('pj-hor').value,prioridade:$('pj-pri').value,viabilidade:Number($('pj-via').value)||0,investimento_estimado:Math.round(Number($('pj-inv').value)*100)||0,receita_potencial:Math.round(Number($('pj-rec').value)*100)||0,responsavel:$('pj-resp').value,riscos:$('pj-risco').value,proximos_passos:$('pj-prox').value});
-  $('pj-out').textContent='✅ salvo';}catch(e){$('pj-out').textContent='⚠️ '+e.message;}}
-async function decidirProj(id,status){if(!confirm('Confirmar: '+status+'?'))return;try{await api('PATCH','/projetos/'+id,{status});ir('portfolio');}catch(e){alert(e.message);}}
+  await api(\'PATCH\',\'/projetos/\'+id,{nome:$(\'pj-nome\').value,descricao:$(\'pj-desc\').value,categoria:$(\'pj-cat\').value,estagio:$(\'pj-est\').value,horizonte:$(\'pj-hor\').value,prioridade:$(\'pj-pri\').value,investimento_estimado:Math.round(Number($(\'pj-inv\').value)*100)||0,receita_potencial:Math.round(Number($(\'pj-rec\').value)*100)||0,responsavel:$(\'pj-resp\').value,riscos:$(\'pj-risco\').value,proximos_passos:$(\'pj-prox\').value});
+  $(\'pj-out\').textContent=\'✅ salvo\';}catch(e){$(\'pj-out\').textContent=\'⚠️ \'+e.message;}}
 
 // ---------------- Usuários ----------------
 async function vUsuarios(){

@@ -174,6 +174,52 @@ function teste(nome, cond) {
   r = await req('GET', '/vpe/api/projetos', { jar: 'anaA' });
   teste('tenant A não vê projetos internos da Villela', !r.dados.projetos.some(p => p.nome.includes('Villela Stay')));
 
+  // ================== FASE 2: portfólio avançado ==================
+  // plano de negócio com versões
+  r = await req('PUT', '/vpe/api/projetos/' + projA + '/plano', { body: { secoes: { resumo: 'Food bike de brunch para eventos e hospedagens.', modelo_receita: 'Venda por evento + assinatura mensal p/ pousadas.' } }, jar: 'anaA' });
+  teste('plano salvo gera v1 e completude', r.status === 200 && r.dados.plano.versao === 1 && r.dados.completude > 0);
+  r = await req('PUT', '/vpe/api/projetos/' + projA + '/plano', { body: { secoes: { swot: 'F: mobilidade. O: eventos. F: clima. A: concorrência.' }, status: 'em_analise' }, jar: 'anaA' });
+  teste('2º salvamento vira v2, mescla seções e muda status', r.dados.plano.versao === 2 && r.dados.plano.status === 'em_analise' && r.dados.secoes.resumo.includes('Food bike'));
+  r = await req('GET', '/vpe/api/projetos/' + projA + '/plano/versoes', { jar: 'anaA' });
+  teste('lista de versões tem 2', r.dados.versoes.length === 2);
+  r = await req('GET', '/vpe/api/projetos/' + projA + '/plano/versoes/1', { jar: 'anaA' });
+  teste('snapshot v1 não tem o SWOT', r.status === 200 && !r.dados.secoes.swot);
+  r = await req('PUT', '/vpe/api/projetos/' + projA + '/plano', { body: { secoes: { resumo: 'hack' } }, jar: 'carlaA' });
+  teste('papel custom sem editar_projeto não salva plano', r.status === 403);
+  r = await req('GET', '/vpe/api/projetos/' + projA + '/plano', { jar: 'bobB' });
+  teste('B não lê plano de A (anti-IDOR)', r.status === 400 || r.status === 404);
+
+  // viabilidade guiada → espelha em projects.viabilidade
+  r = await req('PUT', '/vpe/api/projetos/' + projA + '/viabilidade', { body: { criterios: { potencial_mercado: 8, sinergia: 9, investimento: 7, margem: 8 }, observacoes: 'Forte sinergia com hospedagem.' }, jar: 'anaA' });
+  teste('score = média×10 dos preenchidos (8)', r.status === 200 && r.dados.score === 80);
+  r = await req('GET', '/vpe/api/projetos/' + projA, { jar: 'anaA' });
+  teste('projects.viabilidade espelhado', r.dados.projeto.viabilidade === 80);
+  r = await req('PUT', '/vpe/api/projetos/' + projA + '/viabilidade', { body: { criterios: { risco_regulatorio: 15 } }, jar: 'anaA' });
+  teste('nota é limitada a 0-10', r.dados.criterios.risco_regulatorio === 10);
+
+  // decisões (governança)
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/decisoes', { body: { decisao: 'avancar' }, jar: 'anaA' });
+  teste('decisão sem justificativa é recusada', r.status === 400);
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/decisoes', { body: { decisao: 'avancar', justificativa: 'Score 80 e sinergia alta — seguir para plano completo.' }, jar: 'anaA' });
+  teste('decisão avançar registrada', r.status === 200 && r.dados.decisoes[0].decisao === 'avancar');
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/decisoes', { body: { decisao: 'pausar', justificativa: 'Aguardar alta temporada.' }, jar: 'anaA' });
+  teste('decisão pausar aplica status no projeto', r.status === 200);
+  r = await req('GET', '/vpe/api/projetos/' + projA, { jar: 'anaA' });
+  teste('projeto ficou pausado', r.dados.projeto.status === 'pausado');
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/decisoes', { body: { decisao: 'retomar', justificativa: 'Temporada chegou.' }, jar: 'anaA' });
+  r = await req('GET', '/vpe/api/projetos/' + projA, { jar: 'anaA' });
+  teste('retomar volta a ativo', r.dados.projeto.status === 'ativo');
+  r = await req('POST', '/vpe/api/projetos/' + projA + '/decisoes', { body: { decisao: 'pausar', justificativa: 'x' }, jar: 'carlaA' });
+  teste('decisão exige decidir_projeto (custom sem ela → 403)', r.status === 403);
+
+  // ranking / matriz
+  r = await req('GET', '/vpe/api/portfolio/ranking', { jar: 'anaA' });
+  teste('ranking ordena por score composto e marca quadrante+plano', r.status === 200 && r.dados.ranking.length >= 1 &&
+    r.dados.ranking[0].score_composto >= (r.dados.ranking[1] ? r.dados.ranking[1].score_composto : 0) &&
+    r.dados.ranking.find(x => x.id === projA).tem_plano === true && ['ganho_rapido', 'aposta_grande', 'tarefa_menor', 'reavaliar'].includes(r.dados.ranking[0].quadrante));
+  r = await req('GET', '/vpe/api/portfolio/ranking', { jar: 'bobB' });
+  teste('ranking de B não contém projA', !r.dados.ranking.some(x => x.id === projA));
+
   // ---------- staff da plataforma ----------
   r = await req('GET', '/staff/api/vpe/resumo', { staff: 'ceo' });
   teste('staff resumo com projetos_total e MRR', r.status === 200 && r.dados.projetos_total >= 17 && typeof r.dados.mrr_centavos === 'number');

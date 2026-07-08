@@ -6,6 +6,7 @@
 // =====================================================================
 'use strict';
 const repo = require('./repo');
+const portfolio = require('./portfolio');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -97,6 +98,38 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
       if (!req.vp.permissoes.decidir_projeto) return res.status(403).json({ erro: 'Sem permissão: decidir_projeto' });
     }
     res.json({ ok: true, projeto: repo.atualizarProjeto(req.vp.tenant.id, req.params.id, b, req.vp.user, req.vp.ip) });
+  }));
+
+  // ------------------------------------------------ portfólio avançado (Fase 2)
+  r.get('/portfolio/ranking', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json(portfolio.ranking(req.vp.tenant.id));
+  }));
+  r.get('/projetos/:id/plano', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json(portfolio.obterPlano(req.vp.tenant.id, req.params.id));
+  }));
+  r.put('/projetos/:id/plano', requireTenant, requirePerm('editar_projeto'), h(async (req, res) => {
+    const b = req.body || {};
+    res.json({ ok: true, ...portfolio.salvarPlano(req.vp.tenant.id, req.params.id, { secoes: b.secoes, status: b.status }, req.vp.user, req.vp.ip) });
+  }));
+  r.get('/projetos/:id/plano/versoes', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json({ versoes: portfolio.versoesDoPlano(req.vp.tenant.id, req.params.id) });
+  }));
+  r.get('/projetos/:id/plano/versoes/:numero', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json(portfolio.versaoDoPlano(req.vp.tenant.id, req.params.id, req.params.numero));
+  }));
+  r.get('/projetos/:id/viabilidade', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json(portfolio.obterViabilidade(req.vp.tenant.id, req.params.id));
+  }));
+  r.put('/projetos/:id/viabilidade', requireTenant, requirePerm('editar_projeto'), h(async (req, res) => {
+    const b = req.body || {};
+    res.json({ ok: true, ...portfolio.salvarViabilidade(req.vp.tenant.id, req.params.id, { criterios: b.criterios, observacoes: b.observacoes }, req.vp.user, req.vp.ip) });
+  }));
+  r.get('/projetos/:id/decisoes', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json({ decisoes: portfolio.listarDecisoes(req.vp.tenant.id, req.params.id) });
+  }));
+  r.post('/projetos/:id/decisoes', requireTenant, requirePerm('decidir_projeto'), h(async (req, res) => {
+    const b = req.body || {};
+    res.json({ ok: true, decisoes: portfolio.registrarDecisao(req.vp.tenant.id, req.params.id, { decisao: b.decisao, justificativa: b.justificativa }, req.vp.user, req.vp.ip) });
   }));
 
   // ------------------------------------------------ empresa / usuários / papéis

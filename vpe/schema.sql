@@ -183,3 +183,57 @@ CREATE TABLE IF NOT EXISTS projects (
   criado_por            TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_vpe_proj ON projects (tenant_id, status, estagio);
+
+-- ---------- Fase 2: portfólio avançado ----------
+
+-- Plano de negócio: 1 por projeto, seções em JSON (catálogo em portfolio.js).
+-- Cada salvamento gera snapshot em business_plan_versions (controle de versões).
+CREATE TABLE IF NOT EXISTS business_plans (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  project_id    TEXT UNIQUE NOT NULL,
+  secoes        TEXT DEFAULT '{}',
+  versao        INTEGER DEFAULT 0,
+  status        TEXT DEFAULT 'rascunho',   -- rascunho|em_analise|aprovado
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT '',
+  atualizado_por TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_bp ON business_plans (tenant_id, project_id);
+
+CREATE TABLE IF NOT EXISTS business_plan_versions (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  plan_id    TEXT NOT NULL,
+  numero     INTEGER NOT NULL,
+  secoes     TEXT DEFAULT '{}',
+  criado_em  TEXT NOT NULL,
+  criado_por TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_bpv ON business_plan_versions (tenant_id, plan_id, numero);
+
+-- Score de viabilidade guiado: 11 critérios 0-10 → score 0-100 (espelhado
+-- em projects.viabilidade a cada salvamento).
+CREATE TABLE IF NOT EXISTS viability_scores (
+  tenant_id     TEXT NOT NULL,
+  project_id    TEXT NOT NULL,
+  criterios     TEXT DEFAULT '{}',
+  score         INTEGER DEFAULT 0,
+  observacoes   TEXT DEFAULT '',
+  atualizado_em TEXT DEFAULT '',
+  atualizado_por TEXT DEFAULT '',
+  PRIMARY KEY (tenant_id, project_id)
+);
+
+-- Governança: decisões formais sobre cada projeto (histórico imutável).
+CREATE TABLE IF NOT EXISTS project_decisions (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id     TEXT NOT NULL,
+  project_id    TEXT NOT NULL,
+  decisao       TEXT NOT NULL,             -- avancar|amadurecer|pausar|descartar|retomar
+  justificativa TEXT DEFAULT '',
+  decidido_por  TEXT DEFAULT '',
+  decidido_nome TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_dec ON project_decisions (tenant_id, project_id, criado_em);

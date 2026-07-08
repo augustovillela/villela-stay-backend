@@ -27,7 +27,7 @@ function montar(app, injected = {}) {
   registrarRotasApi(app, { express, auth, notificar, enviarEmail });
   registrarRotasStaff(app, { express, requireAuth, requireAdmin });
   registrarPaginas(app);
-  console.log('[vpe] Villela Projects & Events montado (Fase 1 — fundação SaaS multi-tenant + portfólio).');
+  console.log('[vpe] Villela Projects & Events montado (Fases 1-2 — fundação + portfólio avançado).');
   return { repo, permissoes, auth };
 }
 
