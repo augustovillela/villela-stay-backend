@@ -5309,6 +5309,7 @@ try {
   require('./vpe').montar(app, {
     express, requireAuth, requireAdmin, enviarEmail,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[vpe] falha ao montar módulo:', e.message); }

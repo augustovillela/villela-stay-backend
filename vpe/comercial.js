@@ -83,7 +83,7 @@ function converterDeal(tenantId, dealId, alvo, ator, ip) {
   const d = obterDeal(tenantId, dealId);
   const repoMod = require('./repo');
   const eventosMod = require('./eventos');
-  return transacao(() => {
+  const res = transacao(() => {
     let vinculo = {};
     if (alvo === 'projeto') {
       const p = repoMod.criarProjeto(tenantId, { nome: d.titulo, categoria: 'eventos', responsavel: s(ator && ator.nome, 120), receita_potencial: d.valor_estimado_centavos }, ator, ip);
@@ -98,6 +98,8 @@ function converterDeal(tenantId, dealId, alvo, ator, ip) {
     repo.auditar(tenantId, ator, 'crm.deal_converter', 'crm_deals', d.id, { alvo, ...vinculo }, ip);
     return { ...vinculo };
   });
+  try { require('./api-publica').emitir(tenantId, 'deal.ganho', { deal_id: d.id, titulo: d.titulo, alvo, ...res }); } catch (_) {}
+  return res;
 }
 function funil(tenantId) {
   const deals = listarDeals(tenantId, { status: 'aberto' });
@@ -159,6 +161,7 @@ function atualizarProposta(tenantId, id, campos, ator, ip) {
       s(campos.validade ?? p.validade, 10), s(campos.condicoes_pagamento ?? p.condicoes_pagamento, 500),
       campos.status || p.status, s(campos.observacoes ?? p.observacoes, 1000), nowISO(), p.id, String(tenantId));
   repo.auditar(tenantId, ator, campos.status && campos.status !== p.status ? 'proposta.mudar_status' : 'proposta.atualizar', 'proposals', p.id, { status: campos.status }, ip);
+  if (campos.status === 'aprovada' && p.status !== 'aprovada') { try { require('./api-publica').emitir(tenantId, 'proposta.aprovada', { proposta_id: p.id, titulo: p.titulo }); } catch (_) {} }
   return obterProposta(tenantId, p.id);
 }
 
@@ -211,6 +214,7 @@ function registrarAceite(tenantId, id, { nome }, ator, ip) {
   db.prepare("UPDATE contracts SET status = 'aceito', aceite = ?, atualizado_em = ? WHERE id = ? AND tenant_id = ?")
     .run(j.str({ aceito_em: nowISO(), ip: s(ip, 60), nome: s(nome, 160) }), nowISO(), c.id, String(tenantId));
   repo.auditar(tenantId, ator, 'contrato.aceite', 'contracts', c.id, { nome: s(nome, 120) }, ip);
+  try { require('./api-publica').emitir(tenantId, 'contrato.aceito', { contrato_id: c.id, titulo: c.titulo, nome: s(nome, 160) }); } catch (_) {}
   return obterContrato(tenantId, c.id);
 }
 

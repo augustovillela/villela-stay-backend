@@ -229,6 +229,7 @@ const TELAS=[
  ['financeiro','💰 Financeiro',m=>m.permissoes.ver_financeiro],
  ['ia','🤖 IA & Automações',m=>m.permissoes.usar_ia||m.permissoes.gerir_automacoes||m.permissoes.ver_relatorios],
  ['portalcli','🔗 Portal do cliente',m=>m.permissoes.gerir_eventos||m.permissoes.editar_projeto||m.permissoes.gerir_propostas||m.permissoes.gerir_contratos],
+ ['integra','🔌 Integrações & API',m=>m.permissoes.configurar_integracoes],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
  ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
  ['plano','📦 Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca],
@@ -237,7 +238,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Próximas fases">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,ia:vIa,portalcli:vPortalCli,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,ia:vIa,portalcli:vPortalCli,integra:vIntegra,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -930,6 +931,45 @@ function copiarLink(token){
 async function toggShare(id,ativo){try{await api('PATCH','/compartilhamentos/'+id,{ativo:ativo});vPortalCli();}catch(e){alert(e.message);}}
 async function delShare(id){if(!confirm('Revogar este compartilhamento? O link deixará de funcionar.'))return;try{await api('DELETE','/compartilhamentos/'+id);vPortalCli();}catch(e){alert(e.message);}}
 
+// ---------------- Integrações & API (Fase 8) ----------------
+async function vIntegra(){
+  const d=await api('GET','/integracoes');S.igEventos=d.eventos;
+  const origin=location.origin;
+  const evChecks=d.eventos.map(e=>'<label style="display:inline-flex;align-items:center;gap:5px;margin:0 10px 6px 0;font-size:13px;font-weight:400"><input type="checkbox" class="wh-ev" value="'+e+'" style="width:auto"> '+e+'</label>').join('');
+  $('corpo').innerHTML='<h2>🔌 Integrações & API</h2>'+
+   (d.api_liberada?'':'<div class="aviso">⚠️ Chaves de API e webhooks exigem plano Business ou Enterprise. Faça upgrade em Plano e uso.</div>')+
+   '<div class="card"><b>Chaves de API</b><p class="sub">Para integrar seu ERP/sistema à API REST do Villela Projects (base: '+origin+'/vpe/api/v1). A chave aparece só uma vez.</p>'+
+   '<div style="display:flex;gap:8px;margin-top:8px"><input id="ak-nome" placeholder="Nome da chave (ex.: ERP financeiro)" style="flex:1"><button class="btn" onclick="criarChaveApi()">Gerar chave</button></div>'+
+   '<div id="ak-nova"></div>'+
+   (d.chaves.length?'<table style="margin-top:10px"><tr><th>Nome</th><th>Prefixo</th><th>Último uso</th><th>Status</th><th></th></tr>'+
+    d.chaves.map(k=>'<tr><td>'+esc(k.nome)+'</td><td><code>'+esc(k.prefixo)+'…</code></td><td class="sub">'+(k.ultimo_uso?dt(k.ultimo_uso):'—')+'</td><td>'+(k.revogada_em?'<span class="chip">revogada</span>':'✅ ativa')+'</td><td>'+(k.revogada_em?'':'<button class="btn btn-ghost peq" onclick="revogarChaveApi(\\''+k.id+'\\')">revogar</button>')+'</td></tr>').join('')+'</table>':'<p class="sub" style="margin-top:8px">Nenhuma chave.</p>')+'</div>'+
+   '<div class="card" style="margin-top:12px"><b>Webhooks de saída</b><p class="sub">Receba eventos no Make/n8n/Zapier. Cada entrega é assinada (HMAC-SHA256 no header X-VPE-Signature).</p>'+
+   '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><input id="wh-url" placeholder="https://hook.seu-sistema.com/..." style="flex:1;min-width:240px"></div>'+
+   '<div style="margin-top:8px">'+evChecks+'</div>'+
+   '<button class="btn" onclick="criarWebhook()">Criar webhook</button><div id="wh-novo"></div>'+
+   (d.webhooks.length?'<table style="margin-top:10px"><tr><th>URL</th><th>Eventos</th><th>Ativo</th><th></th></tr>'+
+    d.webhooks.map(w=>'<tr><td style="word-break:break-all;font-size:13px">'+esc(w.url)+'</td><td class="sub">'+esc((w.eventos||[]).join(', '))+'</td><td>'+(w.ativo?'✅':'⏸️')+'</td><td><button class="btn btn-ghost peq" onclick="delWebhook(\\''+w.id+'\\')">✕</button></td></tr>').join('')+'</table>':'<p class="sub" style="margin-top:8px">Nenhum webhook.</p>')+
+   (d.entregas&&d.entregas.length?'<div style="margin-top:12px"><b>Entregas recentes</b><table><tr><th>Quando</th><th>Evento</th><th>Status</th><th>Tent.</th><th>Resposta</th></tr>'+d.entregas.map(e=>'<tr><td>'+dt(e.criado_em)+'</td><td>'+esc(e.evento)+'</td><td>'+esc(e.status)+'</td><td>'+e.tentativas+'</td><td class="sub">'+esc(e.resposta||'—')+'</td></tr>').join('')+'</table></div>':'')+'</div>';
+}
+async function criarChaveApi(){
+  const nome=$('ak-nome').value.trim();if(!nome){alert('Dê um nome à chave.');return;}
+  try{const d=await api('POST','/integracoes/chaves',{nome:nome});
+    $('ak-nova').innerHTML='<div class="aviso" style="margin-top:10px">🔑 Copie agora — não será mostrada de novo:<br><code style="word-break:break-all">'+esc(d.chave)+'</code></div>';
+    vIntegraPreserva();
+  }catch(e){alert(e.message);}
+}
+function vIntegraPreserva(){var nova=$('ak-nova')?$('ak-nova').innerHTML:'';vIntegra().then(function(){if(nova&&$('ak-nova'))$('ak-nova').innerHTML=nova;});}
+async function revogarChaveApi(id){if(!confirm('Revogar esta chave? Integrações que a usam vão parar.'))return;try{await api('DELETE','/integracoes/chaves/'+id);vIntegra();}catch(e){alert(e.message);}}
+async function criarWebhook(){
+  const url=$('wh-url').value.trim();
+  const eventos=[].slice.call(document.querySelectorAll('.wh-ev:checked')).map(function(c){return c.value;});
+  if(!url){alert('Informe a URL.');return;}if(!eventos.length){alert('Escolha ao menos um evento.');return;}
+  try{const d=await api('POST','/integracoes/webhooks',{url:url,eventos:eventos});
+    $('wh-novo').innerHTML='<div class="aviso" style="margin-top:10px">🔐 Secret do webhook (guarde — valida a assinatura):<br><code style="word-break:break-all">'+esc(d.secret)+'</code></div>';
+  }catch(e){alert(e.message);}
+}
+async function delWebhook(id){if(!confirm('Excluir este webhook?'))return;try{await api('DELETE','/integracoes/webhooks/'+id);vIntegra();}catch(e){alert(e.message);}}
+
 // ---------------- Usuários ----------------
 async function vUsuarios(){
   const d=await api('GET','/usuarios');const papeis=S.me.papeis_embutidos;
@@ -958,13 +998,36 @@ async function vAudit(){
 async function vPlano(){
   const d=await api('GET','/uso');const L=(d.plano&&d.plano.limites)||{};
   const linha=(rotu,met,lim)=>'<tr><td>'+rotu+'</td><td>'+Number(d.uso[met]||0)+'</td><td>'+(lim?lim:'ilimitado')+'</td></tr>';
+  let billingHtml='';
+  const P=S.me.permissoes;
+  if(P.administrar_cobranca||P.ver_uso){
+    try{
+      const b=await api('GET','/billing');
+      if(b.interno){billingHtml='<div class="aviso">🏠 Workspace interno — sem cobrança.</div>';}
+      else{
+        const planos=(b.planos||[]).map(p=>'<div class="card" style="width:200px"><b>'+esc(p.nome)+'</b><div style="font-size:20px;font-weight:800;color:var(--verde2)">R$ '+(p.preco_centavos/100).toLocaleString('pt-BR')+'<span style="font-size:12px;font-weight:400">/mês</span></div>'+(P.administrar_cobranca&&b.online_disponivel?'<button class="btn peq" style="margin-top:8px" onclick="assinarPlano(\\''+p.slug+'\\')">Assinar</button>':'')+'</div>').join('');
+        const recorrente=b.plano&&b.plano.recorrencia_mp;
+        billingHtml='<div class="card" style="margin-top:12px"><b>Assinatura</b>'+
+         (b.online_disponivel?'':'<div class="aviso">Pagamento online indisponível no momento — fale com a Villela.</div>')+
+         '<p class="sub">Plano atual: <b>'+esc(b.plano?b.plano.nome:'—')+'</b> · status '+esc(b.plano?b.plano.status:'—')+(recorrente?' · recorrência Mercado Pago ativa':'')+'</p>'+
+         (P.administrar_cobranca?'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+planos+'</div>'+(recorrente?'<button class="btn btn-ghost peq" style="margin-top:10px" onclick="cancelarAssin()">Cancelar assinatura</button>':''):'')+
+         (b.pagamentos&&b.pagamentos.length?'<table style="margin-top:12px"><tr><th>Data</th><th>Valor</th><th>Status</th></tr>'+b.pagamentos.map(pg=>'<tr><td>'+dt(pg.criado_em)+'</td><td>'+brl(pg.valor_centavos)+'</td><td>'+esc(pg.status)+'</td></tr>').join('')+'</table>':'')+'</div>';
+      }
+    }catch(e){billingHtml='<div class="erro">'+esc(e.message)+'</div>';}
+  }
   $('corpo').innerHTML='<h2>Plano e uso</h2>'+
    '<div class="card"><b>Plano atual:</b> '+esc(d.plano?d.plano.nome:'—')+' <span class="chip">'+esc(d.plano?d.plano.subscription.status:'')+'</span>'+
    '<table style="margin-top:10px"><tr><th>Métrica</th><th>Uso</th><th>Limite</th></tr>'+
    linha('Usuários ativos','usuarios',L.usuarios)+linha('Projetos','projetos',L.projetos)+
-   linha('Eventos no mês','eventos',L.eventos_mes)+linha('Consultas de IA','ia_consultas',L.ia_consultas_mes)+'</table></div>'+
-   '<div class="aviso">Assinatura online chega junto com o módulo comercial (Fase 5+) — por ora, plano é gerido pela Villela.</div>';
+   linha('Eventos no mês','eventos',L.eventos_mes)+linha('Consultas de IA','ia_consultas',L.ia_consultas_mes)+
+   linha('Chamadas de API','api_chamadas',0)+'</table></div>'+billingHtml;
 }
+async function assinarPlano(slug){
+  if(!confirm('Assinar o plano '+slug+'? Você será levado ao Mercado Pago para autorizar a cobrança mensal.'))return;
+  try{const d=await api('POST','/billing/assinar',{plano_slug:slug});if(d.link)location.href=d.link;else alert('Assinatura iniciada.');}
+  catch(e){alert(e.message);}
+}
+async function cancelarAssin(){if(!confirm('Cancelar a assinatura? Sua conta pode ser suspensa ao fim do período pago.'))return;try{await api('POST','/billing/cancelar');vPlano();}catch(e){alert(e.message);}}
 async function vConfig(){
   const d=await api('GET','/config');const t=d.tenant;
   $('corpo').innerHTML='<h2>Configurações da empresa</h2><div class="card">'+
