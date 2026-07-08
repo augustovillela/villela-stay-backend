@@ -225,8 +225,8 @@ const TELAS=[
  ['portfolio','💡 Portfólio',m=>m.permissoes.ver_projetos],
  ['tarefas','✅ Tarefas',m=>m.permissoes.ver_projetos],
  ['eventos','🎪 Eventos',m=>m.permissoes.ver_eventos],
- ['crm','🤝 CRM & Propostas',()=>true,'breve'],
- ['financeiro','💰 Financeiro',()=>true,'breve'],
+ ['crm','🤝 CRM & Comercial',m=>m.permissoes.gerir_crm||m.permissoes.gerir_propostas],
+ ['financeiro','💰 Financeiro',m=>m.permissoes.ver_financeiro],
  ['ia','🤖 Agentes de IA',()=>true,'breve'],
  ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
  ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
@@ -236,7 +236,7 @@ const TELAS=[
 function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
   t[3]?'<button class="breve" title="Próximas fases">'+t[1]+' <span class="chip">em breve</span></button>'
   :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -257,6 +257,7 @@ async function vDash(){
    '<div class="kpi"><div class="n">'+d.projetos_alta_prioridade.length+'</div><div class="r">alta prioridade</div></div>'+
    '<div class="kpi"><div class="n">'+brl(d.investimento_estimado_total)+'</div><div class="r">investimento estimado</div></div>'+
    '<div class="kpi"><div class="n">'+brl(d.receita_potencial_total)+'</div><div class="r">receita potencial/ano</div></div>'+
+   (d.a_receber!=null?'<div class="kpi"><div class="n">'+brl(d.a_receber)+'</div><div class="r">a receber</div></div><div class="kpi"><div class="n"'+(d.inadimplencia?' style="color:var(--alerta)"':'')+'>'+brl(d.inadimplencia||0)+'</div><div class="r">inadimplência</div></div>':'')+
    '<div class="kpi"><div class="n">'+(d.eventos_confirmados||0)+'</div><div class="r">eventos confirmados</div></div>'+
    '<div class="kpi"><div class="n">'+(d.eventos_proximos_30d||0)+'</div><div class="r">eventos em 30 dias</div></div>'+
    '<div class="kpi"><div class="n">'+(d.tarefas_abertas||0)+'</div><div class="r">tarefas abertas</div></div>'+
@@ -269,7 +270,7 @@ async function vDash(){
     d.projetos_alta_prioridade.map(p=>'<tr><td><a href="#" onclick="return abrirProj(\\''+p.id+'\\')">'+esc(p.nome)+'</a></td><td>'+esc(rot(p.estagio))+'</td><td>'+esc(p.horizonte)+'</td><td style="font-size:13px">'+esc((p.proximos_passos||'').slice(0,90))+'</td></tr>').join('')+'</table></div>':'')+
    '<div class="card" style="margin-top:14px"><b>Atividade recente</b><table><tr><th>Quando</th><th>Quem</th><th>Ação</th></tr>'+
    d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></div>'+
-   '<div class="aviso" style="margin-top:14px">🚧 CRM, financeiro e agentes de IA chegam nas próximas fases.</div>';
+   '<div class="aviso" style="margin-top:14px">🚧 Agentes de IA, automações, portal do cliente e integrações chegam nas próximas fases.</div>';
 }
 // ---------------- Portfólio ----------------
 S.pf={estagio:'',categoria:'',busca:''};
@@ -607,6 +608,128 @@ async function vFornecedores(){
 async function novoFornecedor(){try{await api('POST','/fornecedores',{nome:$('nf-nome').value,categoria:$('nf-cat').value,telefone:$('nf-tel').value});vFornecedores();}catch(e){alert(e.message);}}
 async function toggleFav(id,v){try{await api('PATCH','/fornecedores/'+id,{favorito:v===true||v==='true'});vFornecedores();}catch(e){alert(e.message);}}
 async function toggleBloq(id,v){try{await api('PATCH','/fornecedores/'+id,{bloqueado:v===true||v==='true'});vFornecedores();}catch(e){alert(e.message);}}
+
+// ---------------- CRM & Comercial (Fase 5) ----------------
+const FN_ROT={novo:'Novo',contato:'Contato',briefing:'Briefing',reuniao:'Reunião',proposta_elaboracao:'Elaborando proposta',proposta_enviada:'Proposta enviada',negociacao:'Negociação',contrato_enviado:'Contrato enviado',fechado:'Fechado',perdido:'Perdido'};
+async function vCrm(){
+  S.crmAba=S.crmAba||'funil';
+  const abas=[['funil','📊 Funil'],['propostas','📄 Propostas'],['contratos','📑 Contratos']];
+  $('corpo').innerHTML='<h2>🤝 CRM & Comercial</h2>'+
+   '<div class="card" style="display:flex;gap:6px;flex-wrap:wrap">'+abas.map(([k,r2])=>'<button class="btn '+(S.crmAba===k?'':'btn-ghost ')+'peq" onclick="crmIr(\\''+k+'\\')">'+r2+'</button>').join('')+'</div>'+
+   '<div id="crm-corpo" style="margin-top:12px"><p class="sub">Carregando…</p></div>';
+  await ({funil:vFunil,propostas:vPropostas,contratos:vContratos}[S.crmAba])();
+}
+function crmIr(k){S.crmAba=k;vCrm();}
+async function vFunil(){
+  const P=S.me.permissoes;const f=await api('GET','/crm/funil');
+  const kpi=(rot,val)=>'<div class="kpi"><div class="n">'+val+'</div><div class="r">'+rot+'</div></div>';
+  $('crm-corpo').innerHTML='<div class="kpis">'+kpi('Abertos',f.abertos)+kpi('Ganhos',f.ganhos)+kpi('Perdidos',f.perdidos)+kpi('Taxa de conversão',f.taxa_conversao+'%')+kpi('Valor ganho',brl(f.valor_ganho))+'</div>'+
+   (P.gerir_crm?'<div class="card" style="display:flex;gap:8px;flex-wrap:wrap"><input id="nd-titulo" placeholder="Nova oportunidade…" style="flex:1;min-width:200px"><input id="nd-cli" placeholder="Cliente" style="max-width:160px"><input id="nd-valor" type="number" placeholder="Valor R$" style="max-width:120px"><button class="btn peq" onclick="novoDeal()">+ Criar</button></div>':'')+
+   '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px">'+
+   f.ordem.filter(e=>e!=='perdido').map(e=>'<div><div style="font-weight:700;font-size:13px;margin-bottom:6px">'+(FN_ROT[e]||e)+' ('+f.colunas[e].deals.length+') · '+brl(f.colunas[e].valor)+'</div>'+
+    f.colunas[e].deals.map(d=>'<div class="card" style="padding:10px;margin-bottom:8px"><a href="#" onclick="return abrirDeal(\\''+d.id+'\\')"><b>'+esc(d.titulo)+'</b></a><br><span class="sub" style="font-size:12px">'+esc(d.cliente_nome||d.empresa||'—')+' · '+brl(d.valor_estimado_centavos)+' · '+d.probabilidade+'%</span>'+
+     (P.gerir_crm?'<div style="margin-top:6px"><select onchange="moverDeal(\\''+d.id+'\\',this.value)" style="font-size:12px;padding:4px">'+f.ordem.map(e2=>'<option value="'+e2+'"'+(e2===d.estagio?' selected':'')+'>'+(FN_ROT[e2]||e2)+'</option>').join('')+'</select></div>':'')+'</div>').join('')+'</div>').join('')+'</div>';
+}
+async function novoDeal(){try{const r=await api('POST','/crm/deals',{titulo:$('nd-titulo').value,cliente_nome:$('nd-cli').value,valor_estimado_centavos:Math.round(Number($('nd-valor').value)*100)||0});abrirDeal(r.deal.id);}catch(e){alert(e.message);}}
+async function moverDeal(id,estagio){try{await api('PATCH','/crm/deals/'+id,{estagio});vFunil();}catch(e){alert(e.message);vFunil();}}
+async function abrirDeal(id){
+  const P=S.me.permissoes;const {deal:d,estagios}=await api('GET','/crm/deals/'+id);
+  const dis=P.gerir_crm?'':' disabled';
+  $('corpo').innerHTML='<p><a href="#" onclick="ir(String.fromCharCode(99,114,109));return false">← CRM</a></p><h2>'+esc(d.titulo)+' <span class="chip">'+(FN_ROT[d.estagio]||d.estagio)+'</span> <span class="chip">'+esc(d.status)+'</span></h2>'+
+   '<div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">'+
+   '<div><label>Cliente</label><input id="dd-cli" value="'+esc(d.cliente_nome)+'"'+dis+'></div>'+
+   '<div><label>Empresa</label><input id="dd-emp" value="'+esc(d.empresa)+'"'+dis+'></div>'+
+   '<div><label>Contato</label><input id="dd-contato" value="'+esc(d.contato)+'"'+dis+'></div>'+
+   '<div><label>Origem</label><input id="dd-origem" value="'+esc(d.origem)+'"'+dis+'></div>'+
+   '<div><label>Valor estimado (R$)</label><input id="dd-valor" type="number" value="'+Math.round((d.valor_estimado_centavos||0)/100)+'"'+dis+'></div>'+
+   '<div><label>Probabilidade (%)</label><input id="dd-prob" type="number" min="0" max="100" value="'+d.probabilidade+'"'+dis+'></div>'+
+   '<div><label>Estágio</label><select id="dd-est"'+dis+'>'+estagios.map(x=>'<option value="'+x+'"'+(x===d.estagio?' selected':'')+'>'+(FN_ROT[x]||x)+'</option>').join('')+'</select></div>'+
+   '<div><label>Próximo contato</label><input id="dd-prox" type="date" value="'+esc(d.proximo_contato)+'"'+dis+'></div></div>'+
+   (P.gerir_crm?'<p><button class="btn peq" onclick="salvarDeal(\\''+d.id+'\\')">Salvar</button> '+
+    (d.status==='aberto'?'<button class="btn btn-ghost peq" onclick="converterDeal(\\''+d.id+'\\',String.fromCharCode(112,114,111,106,101,116,111))">→ Projeto</button> <button class="btn btn-ghost peq" onclick="converterDeal(\\''+d.id+'\\',String.fromCharCode(101,118,101,110,116,111))">→ Evento</button>':'')+
+    ' <span id="dd-out"></span></p>':'')+'</div>'+
+   '<div class="card" style="margin-top:12px"><b>Follow-up / anotações</b>'+
+   (P.gerir_crm?'<div style="display:flex;gap:8px;margin-top:6px"><input id="dn-texto" placeholder="Registrar contato/observação…" style="flex:1"><button class="btn peq" onclick="addNota(\\''+d.id+'\\')">Registrar</button></div>':'')+
+   (d.notas.length?'<div style="margin-top:8px">'+d.notas.map(n=>'<div style="font-size:13.5px;border-bottom:1px solid var(--borda);padding:4px 0">'+esc(n.texto)+' <span class="sub" style="font-size:11px">— '+esc(n.autor_nome)+', '+dt(n.criado_em)+'</span></div>').join('')+'</div>':'<p class="sub" style="font-size:13px">Sem anotações.</p>')+'</div>'+
+   (d.propostas.length?'<div class="card" style="margin-top:12px"><b>Propostas</b><table><tr><th>Título</th><th>Status</th></tr>'+d.propostas.map(pr=>'<tr><td><a href="#" onclick="return abrirProposta(\\''+pr.id+'\\')">'+esc(pr.titulo)+'</a></td><td>'+esc(pr.status)+'</td></tr>').join('')+'</table></div>':'');
+  return false;
+}
+async function salvarDeal(id){try{await api('PATCH','/crm/deals/'+id,{cliente_nome:$('dd-cli').value,empresa:$('dd-emp').value,contato:$('dd-contato').value,origem:$('dd-origem').value,valor_estimado_centavos:Math.round(Number($('dd-valor').value)*100)||0,probabilidade:Number($('dd-prob').value)||0,estagio:$('dd-est').value,proximo_contato:$('dd-prox').value});$('dd-out').textContent='✅ salvo';}catch(e){$('dd-out').textContent='⚠️ '+e.message;}}
+async function addNota(id){try{if(!$('dn-texto').value.trim())return;await api('POST','/crm/deals/'+id+'/notas',{texto:$('dn-texto').value});abrirDeal(id);}catch(e){alert(e.message);}}
+async function converterDeal(id,alvo){if(!confirm('Converter esta oportunidade em '+alvo+'? (marca como ganho)'))return;try{await api('POST','/crm/deals/'+id+'/converter',{alvo});alert('Convertido em '+alvo+'.');abrirDeal(id);}catch(e){alert(e.message);}}
+// ---- propostas ----
+async function vPropostas(){
+  const P=S.me.permissoes;const {propostas}=await api('GET','/propostas');
+  $('crm-corpo').innerHTML=(P.gerir_propostas?'<div class="card" style="display:flex;gap:8px;flex-wrap:wrap"><input id="np-titulo" placeholder="Nova proposta…" style="flex:1;min-width:200px"><input id="np-cli" placeholder="Cliente" style="max-width:160px"><button class="btn peq" onclick="novaProposta()">+ Criar</button></div>':'')+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Título</th><th>Cliente</th><th>Total</th><th>Status</th><th>Validade</th></tr>'+
+   (propostas.length?propostas.map(p=>'<tr><td><a href="#" onclick="return abrirProposta(\\''+p.id+'\\')">'+esc(p.titulo)+'</a></td><td>'+esc(p.cliente_nome||'—')+'</td><td>'+brl(p.total_centavos)+'</td><td><span class="chip">'+esc(p.status)+'</span></td><td>'+(p.validade?p.validade.split('-').reverse().join('/'):'—')+'</td></tr>').join(''):'<tr><td colspan="5" style="color:var(--suave)">Nenhuma proposta.</td></tr>')+'</table></div>';
+}
+async function novaProposta(){try{const r=await api('POST','/propostas',{titulo:$('np-titulo').value,cliente_nome:$('np-cli').value});abrirProposta(r.proposta.id);}catch(e){alert(e.message);}}
+async function abrirProposta(id){
+  const P=S.me.permissoes;const {proposta:p,status}=await api('GET','/propostas/'+id);
+  S.propItens=p.itens.slice();S.propId=id;
+  const dis=P.gerir_propostas?'':' disabled';
+  $('corpo').innerHTML='<p><a href="#" onclick="S.crmAba=String.fromCharCode(112,114,111,112,111,115,116,97,115);ir(String.fromCharCode(99,114,109));return false">← propostas</a></p><h2>'+esc(p.titulo)+'</h2>'+
+   '<div class="card"><label>Título</label><input id="pp-titulo" value="'+esc(p.titulo)+'"'+dis+'>'+
+   '<label>Cliente</label><input id="pp-cli" value="'+esc(p.cliente_nome)+'"'+dis+'>'+
+   '<label>Status</label><select id="pp-status"'+dis+'>'+status.map(x=>'<option'+(x===p.status?' selected':'')+'>'+x+'</option>').join('')+'</select>'+
+   '<label>Condições de pagamento</label><input id="pp-cond" value="'+esc(p.condicoes_pagamento)+'"'+dis+'>'+
+   '<label>Validade</label><input id="pp-val" type="date" value="'+esc(p.validade)+'"'+dis+'>'+
+   '<h3 style="font-size:16px;margin-top:12px">Itens</h3><div id="pp-itens">'+renderPropItens()+'</div>'+
+   (P.gerir_propostas?'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><input id="pi-desc" placeholder="Descrição" style="flex:1;min-width:160px"><input id="pi-qtd" type="number" placeholder="Qtd" style="max-width:80px"><input id="pi-preco" type="number" placeholder="Preço unit. R$" style="max-width:140px"><button class="btn btn-ghost peq" onclick="addPropItem()">+ item</button></div>':'')+
+   '<label style="margin-top:10px">Desconto (R$)</label><input id="pp-desc-v" type="number" value="'+Math.round((p.desconto_centavos||0)/100)+'"'+dis+' onchange="calcTotal()">'+
+   '<p style="font-size:16px;margin-top:8px">Total: <b id="pp-total">'+brl(p.total_centavos)+'</b></p>'+
+   (P.gerir_propostas?'<p><button class="btn peq" onclick="salvarProposta()">Salvar proposta</button> <span id="pp-out"></span></p>':'')+'</div>';
+  return false;
+}
+function renderPropItens(){return '<table><tr><th>Descrição</th><th>Qtd</th><th>Preço unit.</th><th>Subtotal</th><th></th></tr>'+(S.propItens||[]).map((it,i)=>'<tr><td>'+esc(it.descricao)+'</td><td>'+it.qtd+'</td><td>'+brl(it.preco_unit_centavos)+'</td><td>'+brl(it.qtd*it.preco_unit_centavos)+'</td><td><a href="#" onclick="S.propItens.splice('+i+',1);document.getElementById(String.fromCharCode(112,112,45,105,116,101,110,115)).innerHTML=renderPropItens();calcTotal();return false">✕</a></td></tr>').join('')+'</table>';}
+function addPropItem(){const d=$('pi-desc').value.trim();if(!d)return;S.propItens.push({descricao:d,qtd:Number($('pi-qtd').value)||1,preco_unit_centavos:Math.round(Number($('pi-preco').value)*100)||0});$('pi-desc').value='';$('pi-qtd').value='';$('pi-preco').value='';$('pp-itens').innerHTML=renderPropItens();calcTotal();}
+function calcTotal(){const bruto=(S.propItens||[]).reduce((a,it)=>a+it.qtd*it.preco_unit_centavos,0);const desc=Math.round(Number($('pp-desc-v').value)*100)||0;$('pp-total').textContent=brl(Math.max(0,bruto-desc));}
+async function salvarProposta(){try{await api('PATCH','/propostas/'+S.propId,{titulo:$('pp-titulo').value,cliente_nome:$('pp-cli').value,status:$('pp-status').value,condicoes_pagamento:$('pp-cond').value,validade:$('pp-val').value,itens:S.propItens,desconto_centavos:Math.round(Number($('pp-desc-v').value)*100)||0});$('pp-out').textContent='✅ salvo';}catch(e){$('pp-out').textContent='⚠️ '+e.message;}}
+// ---- contratos ----
+async function vContratos(){
+  const P=S.me.permissoes;const {contratos,tipos}=await api('GET','/contratos');
+  $('crm-corpo').innerHTML='<div class="aviso">⚖️ Todo contrato gerado aqui é <b>MINUTA</b> — exige revisão de advogado antes do uso.</div>'+
+   (P.gerir_contratos?'<div class="card" style="display:flex;gap:8px;flex-wrap:wrap"><input id="nc-titulo" placeholder="Novo contrato…" style="flex:1;min-width:200px"><select id="nc-tipo">'+tipos.map(x=>'<option>'+x+'</option>').join('')+'</select><button class="btn peq" onclick="novoContrato()">+ Criar</button></div>':'')+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Título</th><th>Tipo</th><th>Versão</th><th>Status</th></tr>'+
+   (contratos.length?contratos.map(c=>'<tr><td><a href="#" onclick="return abrirContrato(\\''+c.id+'\\')">'+esc(c.titulo)+'</a></td><td>'+esc(c.tipo)+'</td><td>v'+c.versao+'</td><td><span class="chip">'+esc(c.status)+'</span></td></tr>').join(''):'<tr><td colspan="4" style="color:var(--suave)">Nenhum contrato.</td></tr>')+'</table></div>';
+}
+async function novoContrato(){try{const r=await api('POST','/contratos',{titulo:$('nc-titulo').value,tipo:$('nc-tipo').value});abrirContrato(r.contrato.id);}catch(e){alert(e.message);}}
+async function abrirContrato(id){
+  const P=S.me.permissoes;const {contrato:c,tipos,status}=await api('GET','/contratos/'+id);
+  const dis=P.gerir_contratos?'':' disabled';
+  $('corpo').innerHTML='<p><a href="#" onclick="S.crmAba=String.fromCharCode(99,111,110,116,114,97,116,111,115);ir(String.fromCharCode(99,114,109));return false">← contratos</a></p><h2>'+esc(c.titulo)+' <span class="chip">MINUTA</span></h2>'+
+   '<div class="card"><label>Título</label><input id="ct-titulo" value="'+esc(c.titulo)+'"'+dis+'>'+
+   '<div style="display:flex;gap:10px;flex-wrap:wrap"><div><label>Tipo</label><select id="ct-tipo"'+dis+'>'+tipos.map(x=>'<option'+(x===c.tipo?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+   '<div><label>Status</label><select id="ct-status"'+dis+'>'+status.map(x=>'<option'+(x===c.status?' selected':'')+'>'+x+'</option>').join('')+'</select></div></div>'+
+   '<label>Conteúdo da minuta</label><textarea id="ct-conteudo" rows="12"'+dis+'>'+esc(c.conteudo)+'</textarea>'+
+   (P.gerir_contratos?'<p><button class="btn peq" onclick="salvarContrato(\\''+c.id+'\\')">Salvar (gera versão)</button> <span id="ct-out"></span></p>':'')+
+   (c.versoes.length?'<p class="sub" style="font-size:12px">Versões: '+c.versoes.map(v=>'v'+v.numero+' ('+dt(v.criado_em)+')').join(' · ')+'</p>':'')+
+   (c.aceite&&c.aceite.aceito_em?'<div class="aviso">✅ Aceite registrado por '+esc(c.aceite.nome||'—')+' em '+dt(c.aceite.aceito_em)+' (IP '+esc(c.aceite.ip||'')+').</div>':'')+'</div>';
+  return false;
+}
+async function salvarContrato(id){try{await api('PATCH','/contratos/'+id,{titulo:$('ct-titulo').value,tipo:$('ct-tipo').value,status:$('ct-status').value,conteudo:$('ct-conteudo').value});$('ct-out').textContent='✅ salvo';}catch(e){$('ct-out').textContent='⚠️ '+e.message;}}
+// ---------------- Financeiro (Fase 5) ----------------
+async function vFinanceiro(){
+  S.finF=S.finF||{tipo:'',status:''};
+  const P=S.me.permissoes;
+  const q='?'+(S.finF.tipo?'tipo='+S.finF.tipo+'&':'')+(S.finF.status?'status='+S.finF.status+'&':'');
+  const {lancamentos,consolidado:co}=await api('GET','/financeiro'+q);
+  const kpi=(rot,val,alerta)=>'<div class="kpi"><div class="n"'+(alerta&&val?' style="color:var(--alerta)"':'')+'>'+brl(val)+'</div><div class="r">'+rot+'</div></div>';
+  $('corpo').innerHTML='<h2>💰 Financeiro</h2>'+
+   '<div class="kpis">'+kpi('A receber',co.a_receber)+kpi('A pagar',co.a_pagar)+kpi('Inadimplência',co.inadimplencia,true)+kpi('Margem realizada',co.margem_realizada)+kpi('Margem prevista',co.margem_prevista)+'</div>'+
+   (P.lancar_financeiro?'<div class="card"><b>Novo lançamento</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><select id="nf-tipo"><option value="receita">Receita</option><option value="despesa">Despesa</option></select><input id="nf-desc" placeholder="Descrição" style="flex:1;min-width:160px"><input id="nf-valor" type="number" placeholder="Valor R$" style="max-width:120px"><input id="nf-venc" type="date" style="width:auto"><button class="btn peq" onclick="novoLanc()">Lançar</button></div></div>':'')+
+   '<div class="card" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="ff-tipo" onchange="filtrarFin()"><option value="">— tipo —</option><option value="receita"'+(S.finF.tipo==='receita'?' selected':'')+'>Receitas</option><option value="despesa"'+(S.finF.tipo==='despesa'?' selected':'')+'>Despesas</option></select>'+
+   '<select id="ff-status" onchange="filtrarFin()"><option value="">— status —</option>'+['previsto','pendente','pago','cancelado'].map(x=>'<option'+(S.finF.status===x?' selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+   '<div class="card" style="margin-top:12px"><table><tr><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Vencimento</th><th>Status</th><th></th></tr>'+
+   (lancamentos.length?lancamentos.map(l=>'<tr'+(l.atrasado?' style="background:#fde8e8"':'')+'><td>'+esc(l.descricao)+'</td><td>'+(l.tipo==='receita'?'🟢 receita':'🔴 despesa')+'</td><td>'+brl(l.valor_centavos)+'</td><td>'+(l.vencimento?l.vencimento.split('-').reverse().join('/'):'—')+(l.atrasado?' ⚠️':'')+'</td>'+
+    '<td>'+(P.lancar_financeiro?'<select onchange="statusLanc(\\''+l.id+'\\',this.value)">'+['previsto','pendente','pago','cancelado'].map(x=>'<option'+(x===l.status?' selected':'')+'>'+x+'</option>').join('')+'</select>':l.status)+'</td>'+
+    '<td>'+(P.lancar_financeiro?'<button class="btn btn-ghost peq" onclick="delLanc(\\''+l.id+'\\')">✕</button>':'')+'</td></tr>').join(''):'<tr><td colspan="6" style="color:var(--suave)">Nenhum lançamento.</td></tr>')+'</table></div>';
+}
+function filtrarFin(){S.finF={tipo:$('ff-tipo').value,status:$('ff-status').value};vFinanceiro();}
+async function novoLanc(){try{await api('POST','/financeiro',{tipo:$('nf-tipo').value,descricao:$('nf-desc').value,valor_centavos:Math.round(Number($('nf-valor').value)*100)||0,vencimento:$('nf-venc').value});vFinanceiro();}catch(e){alert(e.message);}}
+async function statusLanc(id,status){try{await api('PATCH','/financeiro/'+id,{status});vFinanceiro();}catch(e){alert(e.message);vFinanceiro();}}
+async function delLanc(id){if(!confirm('Excluir lançamento?'))return;try{await api('DELETE','/financeiro/'+id);vFinanceiro();}catch(e){alert(e.message);}}
 
 // ---------------- Usuários ----------------
 async function vUsuarios(){
