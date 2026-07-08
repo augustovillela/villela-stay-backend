@@ -27,7 +27,7 @@ function montar(app, injected = {}) {
   registrarRotasApi(app, { express, auth, notificar, enviarEmail });
   registrarRotasStaff(app, { express, requireAuth, requireAdmin });
   registrarPaginas(app);
-  console.log('[vpe] Villela Projects & Events montado (Fases 1-5 — fundação, portfólio, execução, eventos, comercial+financeiro).');
+  console.log('[vpe] Villela Projects & Events montado (Fases 1-6 — +IA, agentes especialistas, automações e relatório do CEO).');
   return { repo, permissoes, auth };
 }
 

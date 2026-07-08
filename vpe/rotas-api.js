@@ -11,6 +11,8 @@ const tarefas = require('./tarefas');
 const eventos = require('./eventos');
 const comercial = require('./comercial');
 const financeiro = require('./financeiro');
+const ia = require('./ia');
+const automacoes = require('./automacoes');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -284,6 +286,31 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.post('/financeiro', requireTenant, requirePerm('lancar_financeiro'), h(async (req, res) => res.json({ ok: true, lancamento: financeiro.criarLancamento(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) })));
   r.patch('/financeiro/:id', requireTenant, requirePerm('lancar_financeiro'), h(async (req, res) => res.json({ ok: true, lancamento: financeiro.atualizarLancamento(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) })));
   r.delete('/financeiro/:id', requireTenant, requirePerm('lancar_financeiro'), h(async (req, res) => { financeiro.excluirLancamento(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip); res.json({ ok: true }); }));
+
+  // ------------------------------------------------ IA: assistente (Fase 6)
+  r.get('/ia/status', requireTenant, h(async (req, res) => res.json({ ativo: ia.ativo(), agentes: ia.listarAgentes() })));
+  r.get('/ia/conversas', requireTenant, requirePerm('usar_ia'), h(async (req, res) => res.json({ conversas: ia.listarConversas(req.vp.tenant.id, req.vp.user.id), ativo: ia.ativo() })));
+  r.get('/ia/conversas/:id', requireTenant, requirePerm('usar_ia'), h(async (req, res) => res.json({ conversa: ia.obterConversa(req.vp.tenant.id, req.vp.user.id, req.params.id) })));
+  r.post('/ia/perguntar', requireTenant, requirePerm('usar_ia'), h(async (req, res) => res.json({ ok: true, ...await ia.perguntar(req.vp.tenant.id, req.vp.user, req.body || {}, req.vp.ip) })));
+  r.delete('/ia/conversas/:id', requireTenant, requirePerm('usar_ia'), h(async (req, res) => { ia.excluirConversa(req.vp.tenant.id, req.vp.user.id, req.params.id); res.json({ ok: true }); }));
+
+  // ------------------------------------------------ IA: agentes especialistas (Fase 6)
+  r.get('/ia/agentes', requireTenant, requirePerm('usar_ia'), h(async (req, res) => res.json({ agentes: ia.listarAgentes(), ativo: ia.ativo(), execucoes: ia.listarExecucoesAgente(req.vp.tenant.id, { agente: req.query.agente }) })));
+  r.post('/ia/agentes/executar', requireTenant, requirePerm('usar_ia'), h(async (req, res) => res.json({ ok: true, resultado: await ia.executarAgente(req.vp.tenant.id, req.vp.user, req.body || {}, req.vp.ip) })));
+
+  // ------------------------------------------------ automações (Fase 6)
+  r.get('/automacoes', requireTenant, requirePerm('gerir_automacoes'), h(async (req, res) => res.json({ automacoes: automacoes.listarAutomacoes(req.vp.tenant.id), gatilhos: automacoes.GATILHOS, acoes: automacoes.ACOES })));
+  r.post('/automacoes', requireTenant, requirePerm('gerir_automacoes'), h(async (req, res) => res.json({ ok: true, automacao: automacoes.criarAutomacao(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.get('/automacoes/:id', requireTenant, requirePerm('gerir_automacoes'), h(async (req, res) => res.json({ automacao: automacoes.obterAutomacao(req.vp.tenant.id, req.params.id), historico: automacoes.historico(req.vp.tenant.id, req.params.id) })));
+  r.patch('/automacoes/:id', requireTenant, requirePerm('gerir_automacoes'), h(async (req, res) => res.json({ ok: true, automacao: automacoes.atualizarAutomacao(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.delete('/automacoes/:id', requireTenant, requirePerm('gerir_automacoes'), h(async (req, res) => { automacoes.excluirAutomacao(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip); res.json({ ok: true }); }));
+  r.post('/automacoes/:id/testar', requireTenant, requirePerm('gerir_automacoes'), h(async (req, res) => res.json({ ok: true, resultado: await automacoes.testar(req.vp.tenant.id, req.params.id) })));
+  r.post('/automacoes/avaliar', requireTenant, requirePerm('gerir_automacoes'), h(async (req, res) => res.json({ ok: true, ...await automacoes.avaliarTenant(req.vp.tenant.id, { notificar, enviarEmail }) })));
+
+  // ------------------------------------------------ relatório do CEO (Fase 6)
+  r.get('/ceo/relatorios', requireTenant, requirePerm('ver_relatorios'), h(async (req, res) => res.json({ relatorios: automacoes.listarRelatoriosCeo(req.vp.tenant.id), atual: automacoes.consolidarCeo(req.vp.tenant.id), ia_ativa: ia.ativo() })));
+  r.post('/ceo/relatorios/gerar', requireTenant, requirePerm('ver_relatorios'), h(async (req, res) => res.json({ ok: true, relatorio: await automacoes.gerarRelatorioCeo(req.vp.tenant.id, { comIA: (req.body || {}).comIA !== false }) })));
+  r.get('/ceo/relatorios/:id', requireTenant, requirePerm('ver_relatorios'), h(async (req, res) => res.json({ relatorio: automacoes.obterRelatorioCeo(req.vp.tenant.id, req.params.id) })));
 
   // ------------------------------------------------ empresa / usuários / papéis
   r.get('/config', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {

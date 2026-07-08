@@ -24,6 +24,7 @@ const PERMISSOES = {
   ver_documentos: 'Ver documentos',
   gerir_documentos: 'Enviar/organizar documentos',
   usar_ia: 'Usar agentes de IA',
+  gerir_automacoes: 'Criar/editar automações (gatilho → ação)',
   ver_relatorios: 'Ver relatórios e dashboards',
   exportar_dados: 'Exportar dados/relatórios',
   ver_auditoria: 'Ver trilha de auditoria',
@@ -44,7 +45,7 @@ const PAPEIS = {
     nome: 'Gerente de projetos',
     permissoes: so('ver_projetos', 'criar_projeto', 'editar_projeto', 'decidir_projeto', 'gerir_tarefas',
       'ver_eventos', 'gerir_fornecedores', 'gerir_equipe', 'ver_documentos', 'gerir_documentos',
-      'usar_ia', 'ver_relatorios', 'exportar_dados', 'ver_financeiro', 'ver_uso'),
+      'usar_ia', 'gerir_automacoes', 'ver_relatorios', 'exportar_dados', 'ver_financeiro', 'ver_uso'),
   },
   produtor_eventos: {
     nome: 'Produtor de eventos',
