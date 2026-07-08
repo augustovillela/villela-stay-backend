@@ -4,9 +4,9 @@
 portfólio INTERNO de negócios da Villela (16 projetos, workspace `villela-interno`) e
 (2) SaaS vendável a outras empresas. **Este README é a fonte da verdade do assunto.**
 
-Status: **Fases 1-3 EM PRODUÇÃO** (último deploy `ebbede0` 08/07/2026, validadas) · **Fase 4
-(eventos) COMPLETA** na branch `feat/vpe-f4` (aguardando validação p/ merge).
-Testes: `npm run test:vpe` (106/106).
+Status: **Fases 1-4 EM PRODUÇÃO** (fundação, portfólio, execução, eventos — na master) ·
+**Fase 5 (comercial + financeiro) COMPLETA** na branch `feat/vpe-f5` (aguardando validação p/ merge).
+Testes: `npm run test:vpe` (131/131).
 ⚠️ PENDÊNCIA pós-F1: clicar "Semear workspace interno" na aba 📋 do staff EM PRODUÇÃO
 (guardar a senha inicial que aparece 1×).
 
@@ -83,6 +83,23 @@ staff/app-vpe.js   aba 📋 no Portal Staff (com o botão de seed interno)
 **Papéis embutidos**: Dono · Administrador · Gerente de projetos · Produtor de eventos ·
 Comercial · Financeiro · Colaborador · Auditor · Leitor · Cliente externo (portal na F7).
 Permissão especial `decidir_projeto`: pausar/cancelar/arquivar exige-a além de `editar_projeto`.
+
+## Fase 5 (criado)
+
+`crm_deals` (funil de 10 estágios novo→fechado/perdido; status aberto|ganho|perdido; probabilidade;
+vínculo opcional a projeto/evento) + `crm_notes` (follow-ups datados), `proposals` (itens em JSON,
+total = Σ qtd×preço − desconto, status rascunho→enviada→aceita/recusada→convertida), `contracts`
+(SEMPRE **MINUTA** — `minuta:true` imutável, valida com advogado OAB) + `contract_versions`
+(SNAPSHOT a cada salvamento) e aceite datado, `finance_entries` (receita|despesa; status
+previsto|pendente|pago|cancelado; vínculo a projeto/evento; **"atrasado" é sempre DERIVADO** de
+vencimento<hoje e não liquidado, nunca gravado). Domínios em `comercial.js` (CRM/propostas/
+contratos) e `financeiro.js` (lançamentos + `consolidado()`: receita prevista×realizada, despesa,
+margem, a receber, a pagar, inadimplência). `converterDeal` cria projeto OU evento em transação e
+marca o deal ganho. UI: tela 🤝 CRM & Comercial (abas Funil kanban / Propostas / Contratos) e tela
+💰 Financeiro (KPIs + lançamento + tabela com atrasados destacados); dashboard ganha a_receber /
+a_pagar / inadimplência (gated por `ver_financeiro`). Permissões: `gerir_crm`, `gerir_propostas`,
+`gerir_contratos`, `ver_financeiro` (ler), `lancar_financeiro` (escrever). Billing SaaS via Mercado
+Pago (adapter do vdocs) e orçamentos por projeto: fases futuras.
 
 ## Fase 4 (criado)
 
@@ -164,19 +181,20 @@ abas Dados|Plano|Viabilidade|Decisões + tela 🏁 Ranking. Geração por IA = F
 
 ~~F0 diagnóstico~~ ✅ · ~~F1 fundação + seed 16~~ ✅ · ~~F2 portfólio avançado~~ ✅ ·
 ~~F3 execução (tarefas/Kanban/checklist/riscos)~~ ✅ (produção; Gantt/caminho crítico p/ F3b) ·
-~~F4 eventos (briefing/fornecedores/convidados/pós)~~ ✅ (branch) → **F5 comercial+financeiro** (CRM,
-propostas, contratos, orçamentos, billing SaaS) → F6 IA+automações (17 agentes, relatório
-diário do CEO) → F7 portal do cliente + SaaS admin → F8 integrações+deploy final.
+~~F4 eventos (briefing/fornecedores/convidados/pós)~~ ✅ (produção) ·
+~~F5 comercial+financeiro (CRM, propostas, contratos, receitas/despesas)~~ ✅ (branch) → **F6
+IA+automações** (17 agentes, relatório diário do CEO) → F7 portal do cliente + SaaS admin →
+F8 integrações+deploy final. (Orçamentos por projeto e billing SaaS Mercado Pago: dentro de F6/F8.)
 
 ## Próximos passos imediatos
 
-1. [ ] Augusto valida a Fase 4 (🎪 Eventos: briefing, fornecedores, convidados/RSVP/check-in, checklist, pós-evento; 🤝 Fornecedores) e autoriza merge `feat/vpe-f4` → master.
+1. [ ] Augusto valida a Fase 5 (🤝 CRM & Comercial: funil/propostas/contratos-MINUTA; 💰 Financeiro: receitas/despesas, inadimplência) e autoriza merge `feat/vpe-f5` → master.
 2. [ ] Pós-deploy: clicar "Semear workspace interno" em produção (guarda a senha inicial!)
    e revisar os 16 projetos (prioridades/estágios são propostas minhas).
 3. [ ] Preços dos planos (149/349/799/sob consulta) são proposta — ajustar na aba Planos.
 4. [ ] DNS `projetos.villelastay.com(.br)` quando quiser divulgar (Custom Domain no Render
    via Claude + CNAME na Locaweb — processo já dominado).
-5. [ ] Iniciar Fase 5 (comercial + financeiro) — sem env var nova.
+5. [ ] Iniciar Fase 6 (IA + automações) — precisa de `ANTHROPIC_API_KEY` (padrão vdocs).
 
 ## Teste local
 

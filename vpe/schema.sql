@@ -353,3 +353,109 @@ CREATE TABLE IF NOT EXISTS event_guests (
   criado_em          TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_vpe_guest ON event_guests (tenant_id, event_id, rsvp);
+
+-- ---------- Fase 5: comercial + financeiro ----------
+
+-- Funil de vendas (oportunidades) do tenant. Converte em projeto/evento.
+CREATE TABLE IF NOT EXISTS crm_deals (
+  id                     TEXT PRIMARY KEY,
+  tenant_id              TEXT NOT NULL,
+  titulo                 TEXT NOT NULL,
+  cliente_nome           TEXT DEFAULT '',
+  empresa                TEXT DEFAULT '',
+  contato                TEXT DEFAULT '',
+  origem                 TEXT DEFAULT '',        -- indicacao|site|instagram|whatsapp|evento|outro
+  valor_estimado_centavos INTEGER DEFAULT 0,
+  probabilidade          INTEGER DEFAULT 0,      -- 0-100
+  estagio                TEXT DEFAULT 'novo',    -- novo|contato|briefing|reuniao|proposta_elaboracao|proposta_enviada|negociacao|contrato_enviado|fechado|perdido
+  status                 TEXT DEFAULT 'aberto',  -- aberto|ganho|perdido
+  motivo_perda           TEXT DEFAULT '',
+  proximo_contato        TEXT DEFAULT '',        -- YYYY-MM-DD
+  project_id             TEXT DEFAULT '',        -- convertido
+  event_id               TEXT DEFAULT '',        -- convertido
+  criado_em              TEXT NOT NULL,
+  atualizado_em          TEXT DEFAULT '',
+  criado_por             TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_deal ON crm_deals (tenant_id, status, estagio);
+
+CREATE TABLE IF NOT EXISTS crm_notes (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id  TEXT NOT NULL,
+  deal_id    TEXT NOT NULL,
+  texto      TEXT NOT NULL,
+  autor_nome TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_dealnote ON crm_notes (tenant_id, deal_id, criado_em);
+
+CREATE TABLE IF NOT EXISTS proposals (
+  id                   TEXT PRIMARY KEY,
+  tenant_id            TEXT NOT NULL,
+  deal_id              TEXT DEFAULT '',
+  event_id             TEXT DEFAULT '',
+  project_id           TEXT DEFAULT '',
+  titulo               TEXT NOT NULL,
+  cliente_nome         TEXT DEFAULT '',
+  itens                TEXT DEFAULT '[]',        -- [{descricao, qtd, preco_unit_centavos}]
+  desconto_centavos    INTEGER DEFAULT 0,
+  validade             TEXT DEFAULT '',
+  condicoes_pagamento  TEXT DEFAULT '',
+  status               TEXT DEFAULT 'rascunho',  -- rascunho|enviada|visualizada|em_negociacao|aprovada|recusada|vencida|convertida
+  observacoes          TEXT DEFAULT '',
+  criado_em            TEXT NOT NULL,
+  atualizado_em        TEXT DEFAULT '',
+  criado_por           TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_prop ON proposals (tenant_id, status);
+
+-- Contratos — SEMPRE minuta (carimbo MINUTA na exportação; validação humana).
+CREATE TABLE IF NOT EXISTS contracts (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  deal_id       TEXT DEFAULT '',
+  event_id      TEXT DEFAULT '',
+  project_id    TEXT DEFAULT '',
+  proposal_id   TEXT DEFAULT '',
+  tipo          TEXT DEFAULT 'servico',   -- evento|servico|locacao|fornecedor|parceria|projeto
+  titulo        TEXT NOT NULL,
+  conteudo      TEXT DEFAULT '',
+  versao        INTEGER DEFAULT 0,
+  status        TEXT DEFAULT 'rascunho',  -- rascunho|em_revisao|enviado|aceito|distrato
+  aceite        TEXT DEFAULT '{}',        -- {aceito_em, ip, nome}
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT '',
+  criado_por    TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_contract ON contracts (tenant_id, status);
+
+CREATE TABLE IF NOT EXISTS contract_versions (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  contract_id TEXT NOT NULL,
+  numero     INTEGER NOT NULL,
+  conteudo   TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL,
+  criado_por TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_contractv ON contract_versions (tenant_id, contract_id, numero);
+
+-- Financeiro: receitas/despesas por projeto/evento (contas a receber/pagar).
+CREATE TABLE IF NOT EXISTS finance_entries (
+  id             TEXT PRIMARY KEY,
+  tenant_id      TEXT NOT NULL,
+  tipo           TEXT NOT NULL,            -- receita|despesa
+  descricao      TEXT NOT NULL,
+  valor_centavos INTEGER DEFAULT 0,
+  categoria      TEXT DEFAULT '',
+  project_id     TEXT DEFAULT '',
+  event_id       TEXT DEFAULT '',
+  vencimento     TEXT DEFAULT '',          -- YYYY-MM-DD
+  status         TEXT DEFAULT 'pendente',  -- previsto|pendente|pago|cancelado  (atrasado = derivado)
+  liquidado_em   TEXT DEFAULT '',
+  criado_em      TEXT NOT NULL,
+  atualizado_em  TEXT DEFAULT '',
+  criado_por     TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_fin ON finance_entries (tenant_id, tipo, status);
+CREATE INDEX IF NOT EXISTS idx_vpe_fin_venc ON finance_entries (tenant_id, vencimento);

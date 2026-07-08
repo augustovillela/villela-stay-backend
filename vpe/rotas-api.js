@@ -9,6 +9,8 @@ const repo = require('./repo');
 const portfolio = require('./portfolio');
 const tarefas = require('./tarefas');
 const eventos = require('./eventos');
+const comercial = require('./comercial');
+const financeiro = require('./financeiro');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -81,7 +83,9 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     res.json({ ok: true });
   }));
   r.get('/dashboard', requireTenant, h(async (req, res) => {
-    res.json({ ...repo.dashboardTenant(req.vp.tenant.id), ...tarefas.resumoExecucao(req.vp.tenant.id), ...eventos.resumoEventos(req.vp.tenant.id) });
+    const base = { ...repo.dashboardTenant(req.vp.tenant.id), ...tarefas.resumoExecucao(req.vp.tenant.id), ...eventos.resumoEventos(req.vp.tenant.id) };
+    if (req.vp.permissoes.ver_financeiro) Object.assign(base, financeiro.resumoFinanceiro(req.vp.tenant.id));
+    res.json(base);
   }));
 
   // ------------------------------------------------ portfólio (núcleo Fase 1)
@@ -231,6 +235,55 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     eventos.atualizarFornecedor(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip);
     res.json({ ok: true });
   }));
+
+  // ------------------------------------------------ CRM (Fase 5)
+  r.get('/crm/funil', requireTenant, requirePerm('gerir_crm'), h(async (req, res) => res.json(comercial.funil(req.vp.tenant.id))));
+  r.get('/crm/deals', requireTenant, requirePerm('gerir_crm'), h(async (req, res) => {
+    const q = req.query || {};
+    res.json({ deals: comercial.listarDeals(req.vp.tenant.id, { status: q.status, estagio: q.estagio, busca: q.busca }), estagios: comercial.ESTAGIOS_FUNIL });
+  }));
+  r.post('/crm/deals', requireTenant, requirePerm('gerir_crm'), h(async (req, res) => {
+    res.json({ ok: true, deal: comercial.criarDeal(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.get('/crm/deals/:id', requireTenant, requirePerm('gerir_crm'), h(async (req, res) => res.json({ deal: comercial.obterDeal(req.vp.tenant.id, req.params.id), estagios: comercial.ESTAGIOS_FUNIL })));
+  r.patch('/crm/deals/:id', requireTenant, requirePerm('gerir_crm'), h(async (req, res) => {
+    res.json({ ok: true, deal: comercial.atualizarDeal(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.post('/crm/deals/:id/notas', requireTenant, requirePerm('gerir_crm'), h(async (req, res) => {
+    res.json({ ok: true, deal: comercial.adicionarNota(req.vp.tenant.id, req.params.id, (req.body || {}).texto, req.vp.user, req.vp.ip) });
+  }));
+  r.post('/crm/deals/:id/converter', requireTenant, requirePerm('gerir_crm'), h(async (req, res) => {
+    // converter cria projeto/evento → exige também a permissão do alvo
+    const alvo = (req.body || {}).alvo;
+    if (alvo === 'projeto' && !req.vp.permissoes.criar_projeto) return res.status(403).json({ erro: 'Sem permissão: criar_projeto' });
+    if (alvo === 'evento' && !req.vp.permissoes.gerir_eventos) return res.status(403).json({ erro: 'Sem permissão: gerir_eventos' });
+    res.json({ ok: true, ...comercial.converterDeal(req.vp.tenant.id, req.params.id, alvo, req.vp.user, req.vp.ip) });
+  }));
+
+  // ------------------------------------------------ propostas (Fase 5)
+  r.get('/propostas', requireTenant, requirePerm('gerir_propostas'), h(async (req, res) => res.json({ propostas: comercial.listarPropostas(req.vp.tenant.id, { status: req.query.status }), status: comercial.STATUS_PROPOSTA })));
+  r.post('/propostas', requireTenant, requirePerm('gerir_propostas'), h(async (req, res) => res.json({ ok: true, proposta: comercial.criarProposta(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.get('/propostas/:id', requireTenant, requirePerm('gerir_propostas'), h(async (req, res) => res.json({ proposta: comercial.obterProposta(req.vp.tenant.id, req.params.id), status: comercial.STATUS_PROPOSTA })));
+  r.patch('/propostas/:id', requireTenant, requirePerm('gerir_propostas'), h(async (req, res) => res.json({ ok: true, proposta: comercial.atualizarProposta(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) })));
+
+  // ------------------------------------------------ contratos (Fase 5 — SEMPRE minuta)
+  r.get('/contratos', requireTenant, requirePerm('gerir_contratos'), h(async (req, res) => res.json({ contratos: comercial.listarContratos(req.vp.tenant.id, { status: req.query.status }), tipos: comercial.TIPOS_CONTRATO, status: comercial.STATUS_CONTRATO })));
+  r.post('/contratos', requireTenant, requirePerm('gerir_contratos'), h(async (req, res) => res.json({ ok: true, contrato: comercial.criarContrato(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.get('/contratos/:id', requireTenant, requirePerm('gerir_contratos'), h(async (req, res) => res.json({ contrato: comercial.obterContrato(req.vp.tenant.id, req.params.id), tipos: comercial.TIPOS_CONTRATO, status: comercial.STATUS_CONTRATO })));
+  r.patch('/contratos/:id', requireTenant, requirePerm('gerir_contratos'), h(async (req, res) => res.json({ ok: true, contrato: comercial.salvarContrato(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.post('/contratos/:id/aceite', requireTenant, requirePerm('gerir_contratos'), h(async (req, res) => res.json({ ok: true, contrato: comercial.registrarAceite(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) })));
+
+  // ------------------------------------------------ financeiro (Fase 5)
+  r.get('/financeiro', requireTenant, requirePerm('ver_financeiro'), h(async (req, res) => {
+    const q = req.query || {};
+    res.json({
+      lancamentos: financeiro.listarLancamentos(req.vp.tenant.id, { tipo: q.tipo, status: q.status, project_id: q.projeto, event_id: q.evento, so_atrasados: q.atrasados === '1' }),
+      consolidado: financeiro.consolidado(req.vp.tenant.id, { project_id: q.projeto, event_id: q.evento }),
+    });
+  }));
+  r.post('/financeiro', requireTenant, requirePerm('lancar_financeiro'), h(async (req, res) => res.json({ ok: true, lancamento: financeiro.criarLancamento(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.patch('/financeiro/:id', requireTenant, requirePerm('lancar_financeiro'), h(async (req, res) => res.json({ ok: true, lancamento: financeiro.atualizarLancamento(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) })));
+  r.delete('/financeiro/:id', requireTenant, requirePerm('lancar_financeiro'), h(async (req, res) => { financeiro.excluirLancamento(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip); res.json({ ok: true }); }));
 
   // ------------------------------------------------ empresa / usuários / papéis
   r.get('/config', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {

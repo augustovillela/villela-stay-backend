@@ -347,6 +347,73 @@ function teste(nome, cond) {
   r = await req('GET', '/vpe/api/dashboard', { jar: 'anaA' });
   teste('dashboard traz métricas de eventos', typeof r.dados.eventos_confirmados === 'number' && typeof r.dados.eventos_proximos_30d === 'number');
 
+  // ================== FASE 5: comercial + financeiro ==================
+  // CRM: deals no funil (exige gerir_crm). Carla é comercial? Não — virou papel custom sem gerir_crm.
+  r = await req('POST', '/vpe/api/crm/deals', { body: { titulo: 'Casamento 200 pessoas', cliente_nome: 'Beatriz', valor_estimado_centavos: 5000000 }, jar: 'carlaA' });
+  teste('papel sem gerir_crm não cria deal', r.status === 403);
+  r = await req('POST', '/vpe/api/crm/deals', { body: { titulo: 'Casamento 200 pessoas', cliente_nome: 'Beatriz', empresa: '', valor_estimado_centavos: 5000000, probabilidade: 60 }, jar: 'anaA' });
+  teste('deal criado (funil novo)', r.status === 200 && r.dados.deal.estagio === 'novo' && r.dados.deal.status === 'aberto');
+  const dealA = r.dados.deal.id;
+  r = await req('POST', '/vpe/api/crm/deals/' + dealA + '/notas', { body: { texto: 'Cliente pediu proposta com bar aberto.' }, jar: 'anaA' });
+  teste('follow-up registrado', r.status === 200 && r.dados.deal.notas.length === 1);
+  r = await req('PATCH', '/vpe/api/crm/deals/' + dealA, { body: { estagio: 'negociacao' }, jar: 'anaA' });
+  teste('deal movido no funil', r.status === 200 && r.dados.deal.estagio === 'negociacao');
+  r = await req('GET', '/vpe/api/crm/funil', { jar: 'anaA' });
+  teste('funil agrupa por estágio com valor e taxa', r.status === 200 && r.dados.colunas.negociacao.deals.some(d => d.id === dealA) && typeof r.dados.taxa_conversao === 'number');
+  // converter em evento (exige gerir_eventos além de gerir_crm)
+  r = await req('POST', '/vpe/api/crm/deals/' + dealA + '/converter', { body: { alvo: 'evento' }, jar: 'anaA' });
+  teste('deal convertido em evento', r.status === 200 && r.dados.event_id);
+  const evConv = r.dados.event_id;
+  r = await req('GET', '/vpe/api/crm/deals/' + dealA, { jar: 'anaA' });
+  teste('deal marcado ganho após conversão', r.dados.deal.status === 'ganho' && r.dados.deal.event_id === evConv);
+  // isolamento
+  r = await req('GET', '/vpe/api/crm/deals/' + dealA, { jar: 'bobB' });
+  teste('B não abre deal de A', r.status === 400 || r.status === 404);
+
+  // Propostas: total = itens×qtd − desconto
+  r = await req('POST', '/vpe/api/propostas', { body: { titulo: 'Proposta casamento', deal_id: dealA, itens: [{ descricao: 'Buffet', qtd: 200, preco_unit_centavos: 15000 }, { descricao: 'Decoração', qtd: 1, preco_unit_centavos: 800000 }], desconto_centavos: 300000 }, jar: 'anaA' });
+  teste('proposta com total calculado', r.status === 200 && r.dados.proposta.total_centavos === (200 * 15000 + 800000 - 300000));
+  const propA = r.dados.proposta.id;
+  r = await req('POST', '/vpe/api/propostas', { body: { titulo: 'x' }, jar: 'carlaA' });
+  teste('proposta exige gerir_propostas (403)', r.status === 403);
+  r = await req('PATCH', '/vpe/api/propostas/' + propA, { body: { status: 'enviada', itens: [{ descricao: 'Item', qtd: 2, preco_unit_centavos: 5000 }], desconto_centavos: 0 }, jar: 'anaA' });
+  teste('proposta atualizada recalcula total', r.status === 200 && r.dados.proposta.total_centavos === 10000 && r.dados.proposta.status === 'enviada');
+
+  // Contratos: sempre minuta; salvar gera versão; aceite
+  r = await req('POST', '/vpe/api/contratos', { body: { titulo: 'Contrato de evento', tipo: 'evento', event_id: evConv }, jar: 'anaA' });
+  teste('contrato criado (minuta)', r.status === 200 && r.dados.contrato.minuta === true && r.dados.contrato.versao === 0);
+  const contA = r.dados.contrato.id;
+  r = await req('PATCH', '/vpe/api/contratos/' + contA, { body: { conteudo: 'CLÁUSULA 1...' }, jar: 'anaA' });
+  teste('salvar conteúdo gera v1', r.status === 200 && r.dados.contrato.versao === 1);
+  r = await req('PATCH', '/vpe/api/contratos/' + contA, { body: { conteudo: 'CLÁUSULA 1 revisada...' }, jar: 'anaA' });
+  teste('novo conteúdo gera v2 (histórico)', r.dados.contrato.versao === 2 && r.dados.contrato.versoes.length === 2);
+  r = await req('POST', '/vpe/api/contratos/' + contA + '/aceite', { body: { nome: 'Beatriz' }, jar: 'anaA' });
+  teste('aceite registrado com data/nome', r.status === 200 && r.dados.contrato.status === 'aceito' && r.dados.contrato.aceite.nome === 'Beatriz');
+  r = await req('GET', '/vpe/api/contratos/' + contA, { jar: 'bobB' });
+  teste('B não abre contrato de A', r.status === 400 || r.status === 404);
+
+  // Financeiro: receitas/despesas, consolidação, atrasado derivado
+  r = await req('POST', '/vpe/api/financeiro', { body: { tipo: 'receita', descricao: 'Sinal do casamento', valor_centavos: 2000000, event_id: evConv, vencimento: '2020-01-01', status: 'pendente' }, jar: 'anaA' });
+  teste('receita lançada', r.status === 200);
+  const finA = r.dados.lancamento.id;
+  r = await req('POST', '/vpe/api/financeiro', { body: { tipo: 'receita', descricao: 'x' }, jar: 'carlaA' });
+  teste('financeiro exige lancar_financeiro (403)', r.status === 403);
+  r = await req('POST', '/vpe/api/financeiro', { body: { tipo: 'despesa', descricao: 'Buffet', valor_centavos: 900000, event_id: evConv, status: 'pendente' }, jar: 'anaA' });
+  r = await req('GET', '/vpe/api/financeiro?evento=' + evConv, { jar: 'anaA' });
+  teste('consolidado do evento: a receber, a pagar, margem prevista', r.dados.consolidado.a_receber === 2000000 && r.dados.consolidado.a_pagar === 900000 && r.dados.consolidado.margem_prevista === 2000000 - 900000);
+  teste('lançamento vencido vem marcado atrasado (derivado)', r.dados.lancamentos.find(l => l.id === finA).atrasado === true);
+  teste('inadimplência conta a receita vencida', r.dados.consolidado.inadimplencia === 2000000);
+  r = await req('PATCH', '/vpe/api/financeiro/' + finA, { body: { status: 'pago' }, jar: 'anaA' });
+  teste('marcar pago registra liquidação e sai da inadimplência', r.status === 200 && r.dados.lancamento.status === 'pago' && r.dados.lancamento.liquidado_em);
+  r = await req('GET', '/vpe/api/financeiro?evento=' + evConv, { jar: 'anaA' });
+  teste('após pago: receita realizada sobe, inadimplência zera', r.dados.consolidado.receita_realizada === 2000000 && r.dados.consolidado.inadimplencia === 0);
+  // ver_financeiro (auditor/financeiro) vê mas não lança
+  r = await req('GET', '/vpe/api/financeiro', { jar: 'bobB' });
+  teste('financeiro de B não vê lançamentos de A', r.status === 200 && !r.dados.lancamentos.some(l => l.id === finA));
+  // dashboard com resumo financeiro
+  r = await req('GET', '/vpe/api/dashboard', { jar: 'anaA' });
+  teste('dashboard traz a_receber/a_pagar/inadimplência', typeof r.dados.a_receber === 'number' && typeof r.dados.a_pagar === 'number');
+
   // ---------- staff da plataforma ----------
   r = await req('GET', '/staff/api/vpe/resumo', { staff: 'ceo' });
   teste('staff resumo com projetos_total e MRR', r.status === 200 && r.dados.projetos_total >= 17 && typeof r.dados.mrr_centavos === 'number');
