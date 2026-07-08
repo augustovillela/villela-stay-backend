@@ -245,9 +245,24 @@ function listarRelatoriosCeo(tenantId, limite = 30) {
     .map(r => ({ ...r, conteudo: j.parse(r.conteudo, {}) }));
 }
 
+// ------------------------------------------------------------ rotina diária (todos os tenants)
+// Chamada por endpoint key-gated (Tarefa do Windows). Idempotente por dia:
+// avalia automações ativas de cada tenant e gera o relatório do CEO 1×/dia.
+const temRelatorioHoje = (tenantId) => !!db.prepare('SELECT 1 FROM ceo_reports WHERE tenant_id = ? AND data = ?').get(String(tenantId), hoje());
+async function rotinaDiariaTodos(deps = {}) {
+  const tenants = repo.listarTenantsPlataforma().filter(t => !['suspensa', 'cancelada'].includes(t.status));
+  let automacoesDispararam = 0, relatorios = 0, erros = 0;
+  for (const t of tenants) {
+    try { const r = await avaliarTenant(t.id, deps); automacoesDispararam += r.dispararam; } catch (_) { erros++; }
+    try { if (!temRelatorioHoje(t.id)) { await gerarRelatorioCeo(t.id, { comIA: true }); relatorios++; } } catch (_) { erros++; }
+  }
+  return { tenants: tenants.length, automacoes_dispararam: automacoesDispararam, relatorios_gerados: relatorios, erros };
+}
+
 module.exports = {
   GATILHOS, ACOES,
   criarAutomacao, obterAutomacao, listarAutomacoes, atualizarAutomacao, excluirAutomacao, historico,
   avaliarGatilho, testar, avaliarTenant,
   consolidarCeo, gerarRelatorioCeo, obterRelatorioCeo, listarRelatoriosCeo,
+  rotinaDiariaTodos,
 };

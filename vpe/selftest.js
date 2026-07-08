@@ -8,6 +8,7 @@
 process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'vpe-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
 process.env.VPE_ROTINAS = 'off'; // sem timers (webhooks/billing) durante os testes
+process.env.PUBLISH_KEY = 'chave-cron-teste'; // rotina diária key-gated
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const express = require('express');
@@ -640,6 +641,16 @@ function teste(nome, cond) {
   teste('integrações exigem configurar_integracoes (403)', r.status === 403);
   r = await apiV1('/projetos', chaveApi.slice(0, -2) + 'zz');
   teste('chave adulterada não autentica', r.status === 401);
+
+  // ---- rotina diária key-gated (Tarefa do Windows) ----
+  r = await req('POST', '/vpe/api/cron/rotina-diaria');
+  teste('rotina diária sem chave → 403', r.status === 403);
+  r = await req('POST', '/vpe/api/cron/rotina-diaria', { body: {} });
+  const rotComChave = await fetch(BASE + '/vpe/api/cron/rotina-diaria', { method: 'POST', headers: { 'x-publish-key': 'chave-cron-teste', 'Content-Type': 'application/json' }, body: '{}' });
+  const rotDados = await rotComChave.json().catch(() => ({}));
+  teste('rotina diária com chave roda p/ todos os tenants', rotComChave.status === 200 && rotDados.ok === true && typeof rotDados.tenants === 'number' && typeof rotDados.relatorios_gerados === 'number');
+  const rotErrada = await fetch(BASE + '/vpe/api/cron/rotina-diaria', { method: 'POST', headers: { 'x-publish-key': 'errada', 'Content-Type': 'application/json' }, body: '{}' });
+  teste('rotina diária com chave errada → 403', rotErrada.status === 403);
 
   // ---------- staff da plataforma ----------
   r = await req('GET', '/staff/api/vpe/resumo', { staff: 'ceo' });

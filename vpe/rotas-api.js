@@ -74,6 +74,17 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     res.json(out); // sempre 200 — MP reenvia em 5xx
   });
 
+  // ------------------------------------------------ rotina diária — key-gated (Tarefa do Windows)
+  // Avalia automações de todos os tenants + gera o relatório do CEO (1×/dia).
+  // Auth: header x-publish-key (ou ?key=) == PUBLISH_KEY. Nunca por sessão.
+  r.post('/cron/rotina-diaria', h(async (req, res) => {
+    const key = String(req.headers['x-publish-key'] || (req.query || {}).key || '');
+    if (!process.env.PUBLISH_KEY || key !== process.env.PUBLISH_KEY) return res.status(403).json({ erro: 'chave inválida' });
+    const out = await automacoes.rotinaDiariaTodos({ notificar, enviarEmail });
+    for (let i = 0; i < 3; i++) { try { await apiPublica.processarEntregas(20); } catch (_) {} }
+    res.json({ ok: true, ...out });
+  }));
+
   // ------------------------------------------------ portal do cliente — PÚBLICO por token (Fase 7)
   r.get('/portal/:token', h(async (req, res) => res.json(portal.visaoPublica(req.params.token))));
   r.post('/portal/:token/aceite', h(async (req, res) => {
