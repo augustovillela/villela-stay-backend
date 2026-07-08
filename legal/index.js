@@ -57,4 +57,85 @@ function montar(app, injected = {}) {
   return { repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta };
 }
 
-module.exports = { montar, repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta };
+// =====================================================================
+// PONTE DE ACESSO DO ASSINANTE (Legal SaaS → núcleo jurídico)
+// Remonta TODAS as rotas do núcleo sob /juridico/api/legal para o assinante
+// logado no /juridico/app (sessão jur_saas), sem duplicar código: um "app
+// proxy" reescreve o prefixo /staff/api/legal → /juridico/api/legal e injeta
+// auth+tenant+entitlements do assinante. Assim o cookie jur_saas (path
+// /juridico) é enviado pelo navegador e o núcleo roda no BANCO do escritório.
+//
+// injected:
+//  - express (obrigatório)
+//  - jwtSecret (p/ tokens do portal do cliente-do-assinante)
+//  - assinanteDeReq(req) -> null | {
+//       uid, tenantSlug, tenantId, papel, nome, email,
+//       acessoLiberado: bool, podeModulo: (modulo)=>bool }
+//    (montado no server.js usando o cookie jur_saas + repo do legal-saas)
+// =====================================================================
+const PREFIXO_ASSINANTE = '/juridico/api/legal';
+const BASE_STAFF = '/staff/api/legal';
+// 1º segmento do caminho → módulo do produto (entitlements). Segmentos sem
+// módulo (clientes, financeiro, equipe, dashboard, auditoria...) são baseline.
+const SEGMENTO_MODULO = {
+  processos: 'processos', andamentos: 'processos', publicacoes: 'publicacoes',
+  prazos: 'prazos', audiencias: 'audiencias', tarefas: 'tarefas', documentos: 'documentos',
+  ia: 'ia', pecas: 'pecas', contratos: 'contratos', relatorios: 'relatorios',
+};
+
+function montarAssinante(app, injected = {}) {
+  const { express, assinanteDeReq, jwtSecret } = injected;
+  if (!express || typeof assinanteDeReq !== 'function') {
+    throw new Error('legal.montarAssinante: faltam deps (express, assinanteDeReq).');
+  }
+
+  // adapta a sessão do assinante ao formato que o núcleo espera (req.user + tenant)
+  function requireAssinanteLegal(req, res, next) {
+    let a; try { a = assinanteDeReq(req); } catch (_) { a = null; }
+    if (!a) return res.status(401).json({ erro: 'não autenticado' });
+    if (!a.acessoLiberado) return res.status(403).json({ erro: 'Assinatura inativa (trial vencido, inadimplente ou suspensa). Regularize no painel para acessar.' });
+    req.tenantLegal = a.tenantSlug;      // resolverTenant do núcleo escopa o banco do escritório
+    req.assinanteLegal = a;
+    // usuário sintético: admin do escritório = super_admin do próprio workspace; demais = leitura
+    req.user = { id: 'assinante:' + a.uid, nome: a.nome || a.email, email: a.email, papel: a.papel === 'admin' ? 'admin' : 'membro', areas: ['juridico'] };
+    next();
+  }
+
+  // bloqueia módulo fora do plano do escritório
+  function gateModulo(req, res, next) {
+    const p = String(req.originalUrl || '').split('?')[0];
+    const resto = p.startsWith(PREFIXO_ASSINANTE) ? p.slice(PREFIXO_ASSINANTE.length) : p;
+    const seg = resto.replace(/^\/+/, '').split('/')[0];
+    const mod = SEGMENTO_MODULO[seg];
+    if (mod && req.assinanteLegal && !req.assinanteLegal.podeModulo(mod)) {
+      return res.status(403).json({ erro: `O módulo "${mod}" não está incluído no seu plano.` });
+    }
+    next();
+  }
+
+  // guardas ANTES das rotas (rodam antes do tenantMw e dos handlers do núcleo)
+  app.use(PREFIXO_ASSINANTE, requireAssinanteLegal, gateModulo);
+
+  // app proxy: reescreve o prefixo; os handlers são os MESMOS do núcleo
+  const proxyApp = {};
+  for (const m of ['get', 'post', 'patch', 'put', 'delete', 'use']) {
+    proxyApp[m] = (caminho, ...handlers) => {
+      const novo = typeof caminho === 'string' ? caminho.replace(BASE_STAFF, PREFIXO_ASSINANTE) : caminho;
+      return app[m](novo, ...handlers);
+    };
+  }
+
+  // registra as 106 rotas do núcleo sob o novo prefixo, com deps do assinante.
+  // auth por-rota é no-op: a autenticação já foi feita pelo app.use acima.
+  const passa = (req, res, n) => n();
+  registrarRotasStaff(proxyApp, {
+    repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, jwtSecret,
+    requireAuth: passa, requireAdmin: passa, requirePublishOrSession: passa,
+    lerUsuarios: () => [], // gestão de equipe do escritório fica no painel do assinante (fora desta ponte)
+  });
+
+  console.log(`[legal] Ponte do assinante montada em ${PREFIXO_ASSINANTE}/* (sessão jur_saas → banco do escritório, gating por plano).`);
+  return { PREFIXO: PREFIXO_ASSINANTE };
+}
+
+module.exports = { montar, montarAssinante, repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta };

@@ -156,6 +156,14 @@ const Tenants = {
     const u = db.prepare('SELECT tenant_id FROM tenant_users WHERE lower(email) = ? AND ativo = 1').get(s(email, 120).toLowerCase());
     return u ? Tenants.obter(u.tenant_id) : null;
   },
+  // Usado pela PONTE de acesso ao núcleo jurídico: resolve o usuário assinante
+  // (tenant_users.id do JWT jur_saas) → dados do escritório (tenant) p/ escopar
+  // o banco legal e checar entitlements. Retorna null se inativo/inexistente.
+  usuarioAssinante(uid) {
+    const u = db.prepare(`SELECT u.id, u.tenant_id, u.nome, u.email, u.papel, t.slug AS tenant_slug, t.status AS tenant_status
+      FROM tenant_users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = ? AND u.ativo = 1`).get(s(uid, 40));
+    return u || null;
+  },
   // cria escritório + workspace padrão + usuário admin (sem senha ainda) + assinatura trial
   criar(d, quem) {
     const nome = s(d.nome, 200);

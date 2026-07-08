@@ -5293,12 +5293,34 @@ try {
 // assinante em /juridico/app (sessão 'jur_saas'), administração na aba ⚖️💼 do Portal Staff.
 // SQLite próprio em DATA_DIR/legal-saas/. Cobrança recorrente via Mercado Pago (mpFetch).
 try {
-  require('./legal-saas').montar(app, {
+  const legalSaas = require('./legal-saas');
+  legalSaas.montar(app, {
     express, requireAuth, requireAdmin, enviarEmail,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
     jwtSecret: JWT_SECRET,
   });
+
+  // ---- PONTE: assinante logado (jur_saas) acessa o núcleo jurídico sob /juridico/api/legal ----
+  // Resolve o escritório a partir do cookie jur_saas e escopa o núcleo no banco
+  // dele (chave 'esc-<slug>', sem colisão com o tenant interno 'villela'),
+  // gateando módulos pelos entitlements do plano.
+  const jwtLib = require('jsonwebtoken');
+  const assinanteDeReq = (req) => {
+    const tok = req.cookies && req.cookies['jur_saas'];
+    if (!tok) return null;
+    let uid; try { ({ uid } = jwtLib.verify(tok, JWT_SECRET)); } catch (_) { return null; }
+    const u = legalSaas.repo.Tenants.usuarioAssinante(uid);
+    if (!u) return null;
+    const ent = legalSaas.repo.entitlements(u.tenant_id);
+    return {
+      uid, tenantId: u.tenant_id, tenantSlug: 'esc-' + u.tenant_slug,
+      papel: u.papel, nome: u.nome, email: u.email,
+      acessoLiberado: !!(ent && ent.acesso_liberado),
+      podeModulo: (mod) => legalSaas.repo.podeModulo(u.tenant_id, mod),
+    };
+  };
+  require('./legal').montarAssinante(app, { express, assinanteDeReq, jwtSecret: JWT_SECRET });
 } catch (e) { console.error('[legal-saas] falha ao montar módulo:', e.message); }
 
 // =========================== Villela Docs Intelligence (SaaS de gestão documental) ===========================

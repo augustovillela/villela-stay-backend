@@ -55,13 +55,36 @@ const legal = require('./index');
 legal.montar(app, { express, requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios, ...canais, jwtSecret: 'segredo-teste' });
 legal.permissoes.salvarMembro({ id: 'est', nome: 'Estagiário Teste', email: 'est@t', role_id: 'estagiario', oab: '', nucleos: ['civel'] });
 
+// ---- PONTE do assinante: mock de assinanteDeReq dirigido por headers x-fake-* ----
+// (em produção vem do cookie jur_saas + repo do legal-saas; aqui simulamos)
+const TODOS_MODULOS = 'processos,prazos,publicacoes,audiencias,tarefas,documentos,ia,pecas,contratos,relatorios';
+function fakeAssinante(req) {
+  const uid = req.headers['x-fake-uid'];
+  if (!uid) return null;
+  const modulos = String(req.headers['x-fake-modulos'] || TODOS_MODULOS).split(',').filter(Boolean);
+  return {
+    uid, tenantId: 'tid-' + uid, tenantSlug: 'esc-' + (req.headers['x-fake-slug'] || uid),
+    papel: req.headers['x-fake-papel'] || 'admin', nome: 'Assinante ' + uid, email: uid + '@esc.com',
+    acessoLiberado: req.headers['x-fake-acesso'] !== '0',
+    podeModulo: (m) => modulos.includes(m),
+  };
+}
+legal.montarAssinante(app, { express, assinanteDeReq: fakeAssinante, jwtSecret: 'segredo-teste' });
+
 // ---- mini harness ----
 let BASE = '', ok = 0, falhas = [];
 const jarCliente = {}; // cookies do portal do cliente
-async function req(metodo, caminho, { corpo, user = 'adm', chave, cookies, raw, tenant } = {}) {
+async function req(metodo, caminho, { corpo, user = 'adm', chave, cookies, raw, tenant, fake } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (chave) headers['x-publish-key'] = 'test-key'; else headers['x-test-user'] = user;
   if (tenant) headers['x-legal-tenant'] = tenant; // seam multi-tenant (só honrado em NODE_ENV=development)
+  if (fake) { // simula sessão de assinante (ponte /juridico/api/legal)
+    if (fake.uid) headers['x-fake-uid'] = fake.uid;
+    if (fake.slug) headers['x-fake-slug'] = fake.slug;
+    if (fake.papel) headers['x-fake-papel'] = fake.papel;
+    if (fake.acesso === false) headers['x-fake-acesso'] = '0';
+    if (fake.modulos) headers['x-fake-modulos'] = fake.modulos;
+  }
   if (cookies) headers.Cookie = Object.entries(jarCliente).map(([k, v]) => `${k}=${v}`).join('; ');
   const r = await fetch(BASE + caminho, { method: metodo, headers, body: corpo ? JSON.stringify(corpo) : undefined, redirect: 'manual' });
   (r.headers.getSetCookie ? r.headers.getSetCookie() : []).forEach(c => { const [kv] = c.split(';'); const [k, v] = kv.split('='); jarCliente[k] = v; });
@@ -320,6 +343,36 @@ async function rodar() {
     const p = await req('POST', '/staff/api/legal/processos', { tenant: B, corpo: { numero_cnj: '07001112220268070001', tribunal: 'TJDFT', assunto: 'Processo do B', client_id: bCliId, nucleo: 'civel' } });
     assert.equal(p.st, 200);
     assert.equal(p.json.processo.numero_cnj, '0700111-22.2026.8.07.0001');
+  });
+
+  // ---------------------------------------------------------------------
+  // 28. PONTE DE ACESSO DO ASSINANTE (/juridico/api/legal → banco do escritório)
+  // ---------------------------------------------------------------------
+  await t('ponte assinante: sem sessão jur_saas → 401', async () => {
+    const r = await req('GET', '/juridico/api/legal/clientes'); // sem fake → assinanteDeReq null
+    assert.equal(r.st, 401);
+  });
+  await t('ponte assinante: escritório acessa e vê só os PRÓPRIOS dados (isolado do interno)', async () => {
+    const c = await req('POST', '/juridico/api/legal/clientes', { fake: { uid: 'b2' }, corpo: { nome: 'Cliente do Assinante B2', email: 'x@b2.com', tipo_cliente: 'ativo' } });
+    assert.equal(c.st, 200);
+    const lst = await req('GET', '/juridico/api/legal/clientes', { fake: { uid: 'b2' } });
+    assert.equal(lst.st, 200);
+    assert.equal(lst.json.clientes.length, 1);
+    assert.equal(lst.json.clientes[0].nome, 'Cliente do Assinante B2');
+    // escritório interno (villela, via staff) NÃO vê o cliente do assinante
+    const staff = await req('GET', '/staff/api/legal/clientes');
+    assert.ok(!staff.json.clientes.some(x => x.nome === 'Cliente do Assinante B2'), 'interno não pode ver dados do assinante');
+  });
+  await t('ponte assinante: módulo fora do plano → 403; baseline (clientes) liberado', async () => {
+    // b3 só tem 'documentos' no plano: processos deve barrar, clientes (baseline) passa
+    const proc = await req('GET', '/juridico/api/legal/processos', { fake: { uid: 'b3', modulos: 'documentos' } });
+    assert.equal(proc.st, 403);
+    const cli = await req('GET', '/juridico/api/legal/clientes', { fake: { uid: 'b3', modulos: 'documentos' } });
+    assert.equal(cli.st, 200);
+  });
+  await t('ponte assinante: assinatura inativa (acesso não liberado) → 403', async () => {
+    const r = await req('GET', '/juridico/api/legal/clientes', { fake: { uid: 'b4', acesso: false } });
+    assert.equal(r.st, 403);
   });
 
   srv.close();
