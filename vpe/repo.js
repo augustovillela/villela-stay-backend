@@ -89,6 +89,20 @@ function checarLimite(tenantId, metrica, adicionando = 1) {
   if (atual + adicionando > lim) throw new Error(`Limite do plano ${plano.nome} atingido para ${metrica} (${atual}/${lim}). Faça upgrade para continuar.`);
 }
 
+// recurso booleano do plano (ex.: portal_cliente, api). Interno sempre liberado.
+function recursoLiberado(tenantId, chave) {
+  const t = obterTenant(tenantId);
+  if (t && t.interno) return true;
+  const plano = planoDoTenant(tenantId);
+  return !!(plano && plano.limites && plano.limites[chave] === true);
+}
+function exigirRecurso(tenantId, chave, nomeAmigavel) {
+  if (!recursoLiberado(tenantId, chave)) {
+    const plano = planoDoTenant(tenantId);
+    throw new Error(`${nomeAmigavel || chave} não está incluído no plano ${plano ? plano.nome : 'atual'}. Faça upgrade para habilitar.`);
+  }
+}
+
 // ------------------------------------------------------------ tenants
 function slugDisponivel(base) {
   let slug = s(base, 60).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -139,13 +153,19 @@ function atualizarTenant(tenantId, campos, ator, ip) {
   auditar(t.id, ator, 'tenant.atualizar', 'tenant', t.id, { campos: Object.keys(campos) }, ip);
   return obterTenant(t.id);
 }
-function administrarTenant(tenantId, { status, plano_slug }, ator, ip) {
+function administrarTenant(tenantId, { status, plano_slug, estender_trial_dias }, ator, ip) {
   const t = obterTenant(tenantId);
   if (!t) throw new Error('Empresa não encontrada.');
   if (status) {
     if (!['trial', 'ativa', 'suspensa', 'cancelada'].includes(status)) throw new Error('Status inválido.');
     if (t.interno && ['suspensa', 'cancelada'].includes(status)) throw new Error('O workspace interno da Villela não pode ser suspenso.');
     db.prepare('UPDATE tenants SET status = ?, atualizado_em = ? WHERE id = ?').run(status, nowISO(), t.id);
+  }
+  if (estender_trial_dias) {
+    const dias = Math.max(1, Math.min(365, Math.trunc(Number(estender_trial_dias) || 0)));
+    const baseISO = (t.trial_expira_em && t.trial_expira_em > nowISO()) ? t.trial_expira_em : nowISO();
+    const nova = new Date(new Date(baseISO).getTime() + dias * 86400000).toISOString();
+    db.prepare('UPDATE tenants SET trial_expira_em = ?, atualizado_em = ? WHERE id = ?').run(nova, nowISO(), t.id);
   }
   if (plano_slug) {
     const p = planoPorSlug(plano_slug);
@@ -445,7 +465,7 @@ module.exports = {
   s, emailNorm, emailOK, periodoAtual,
   semearPlanos, listarPlanos, planoPorSlug, atualizarPlano,
   auditar, listarAuditoria,
-  registrarUso, usoDoMes, planoDoTenant, checarLimite,
+  registrarUso, usoDoMes, planoDoTenant, checarLimite, recursoLiberado, exigirRecurso,
   criarTenantComDono, obterTenant, tenantPorSlug, atualizarTenant, administrarTenant,
   lerSettings, gravarSetting, CONFIG_PERMITIDAS,
   userPorEmail, userPorId, vinculo, tenantsDoUsuario, listarUsuarios, alterarVinculo,

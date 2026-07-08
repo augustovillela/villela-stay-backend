@@ -29,7 +29,7 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin }) {
   }));
   r.patch('/tenants/:id', requireAdmin, h(async (req, res) => {
     const b = req.body || {};
-    res.json({ ok: true, tenant: repo.administrarTenant(req.params.id, { status: b.status, plano_slug: b.plano_slug }, req.user, ipDe(req)) });
+    res.json({ ok: true, tenant: repo.administrarTenant(req.params.id, { status: b.status, plano_slug: b.plano_slug, estender_trial_dias: b.estender_trial_dias }, req.user, ipDe(req)) });
   }));
 
   // Seed do workspace interno Villela (idempotente). A senha inicial só sai aqui.

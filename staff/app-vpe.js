@@ -65,9 +65,12 @@ const VP = {
     const acao = (rot, status, cls) => `<button class="btn ${cls || 'secund'} peq" onclick="VP.mudarStatus('${t.id}','${status}')">${rot}</button>`;
     document.getElementById('vp-det').innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(t.nome)} ${VP.chip(t.status)}${t.interno ? ' 🏠 interno' : ''}</h3>
       <p class="sub">Plano: <b>${esc(d.plano ? d.plano.nome : '—')}</b> · projetos: ${d.projetos} · uso: ${Object.entries(d.uso).map(([k, v]) => `${esc(k)}=${v}`).join(' · ')}</p>
+      ${t.status === 'trial' && t.trial_expira_em ? `<p class="sub">Trial expira em <b>${new Date(t.trial_expira_em).toLocaleDateString('pt-BR')}</b>.</p>` : ''}
       ${t.interno ? '<p class="sub">Workspace interno — não pode ser suspenso.</p>' : `<p>${t.status === 'suspensa' ? acao('▶ Reativar', 'ativa') : acao('⏸ Suspender', 'suspensa', 'alerta')}
       Plano: <select id="vp-plano"><option value="">— trocar —</option>${['starter', 'professional', 'business', 'enterprise'].map(p => `<option value="${p}">${p}</option>`).join('')}</select>
-      <button class="btn peq" onclick="VP.mudarPlano('${t.id}')">Aplicar</button></p>`}
+      <button class="btn peq" onclick="VP.mudarPlano('${t.id}')">Aplicar</button>
+      · Estender trial <input id="vp-trial-dias" type="number" value="15" min="1" max="365" style="width:64px"> dias
+      <button class="btn secund peq" onclick="VP.estenderTrial('${t.id}')">Estender</button></p>`}
       <b>Usuários</b><table class="tabela"><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Status</th></tr>
       ${d.usuarios.map(u => `<tr><td>${esc(u.nome)}</td><td>${esc(u.email)}</td><td>${esc(u.papel)}</td><td>${esc(u.status)}</td></tr>`).join('')}</table></div>`;
   },
@@ -80,6 +83,12 @@ const VP = {
     const p = document.getElementById('vp-plano').value;
     if (!p || !confirm(`Trocar o plano para "${p}"?`)) return;
     await VP.api('PATCH', '/tenants/' + id, { plano_slug: p });
+    VP.detalhe(id);
+  },
+  async estenderTrial(id) {
+    const dias = Number(document.getElementById('vp-trial-dias').value) || 0;
+    if (!dias || !confirm(`Estender o trial em ${dias} dias?`)) return;
+    await VP.api('PATCH', '/tenants/' + id, { estender_trial_dias: dias });
     VP.detalhe(id);
   },
 
