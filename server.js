@@ -5258,7 +5258,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('staff.')) return res.redirect(302, '/staff/');
   if (host.startsWith('livros.') || host.startsWith('livraria.')) return res.redirect(302, '/livros');
   if (host.startsWith('docs.')) return res.redirect(302, '/vdocs');
-  if (host.startsWith('juridico.')) return res.redirect(302, '/cliente-juridico');
+  if (host.startsWith('juridico.')) return res.redirect(302, '/juridico'); // landing de vendas do Legal SaaS (assinantes); portal do cliente final = /cliente-juridico
   if (host.startsWith('projetos.') || host.startsWith('projects.')) return res.redirect(302, '/vpe');
   return res.redirect(302, '/hospede');
 });
