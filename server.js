@@ -5259,6 +5259,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('livros.') || host.startsWith('livraria.')) return res.redirect(302, '/livros');
   if (host.startsWith('docs.')) return res.redirect(302, '/vdocs');
   if (host.startsWith('juridico.')) return res.redirect(302, '/cliente-juridico');
+  if (host.startsWith('projetos.') || host.startsWith('projects.')) return res.redirect(302, '/vpe');
   return res.redirect(302, '/hospede');
 });
 
@@ -5299,6 +5300,18 @@ try {
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[vdocs] falha ao montar módulo:', e.message); }
+
+// =========================== Villela Projects & Events (SaaS de gestão de projetos/eventos) ===========================
+// Produto multi-tenant (uso interno Villela = tenant 'villela-interno' com os 16 projetos +
+// venda a terceiros): landing em /vpe, painel em /vpe/app (sessão própria 'vpe_sess'),
+// administração na aba 📋 do Portal Staff. SQLite próprio em DATA_DIR/vpe/.
+try {
+  require('./vpe').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[vpe] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));

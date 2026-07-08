@@ -1,0 +1,157 @@
+// =====================================================================
+// Villela Projects & Events — API do produto (/vpe/api/*), Fase 1.
+// Públicas: cadastro (trial), login, aceite de convite, lead.
+// Autenticadas: requireTenant → req.vp.tenant.id é a única fonte do
+// tenant (isolamento). Permissão fina via requirePerm.
+// =====================================================================
+'use strict';
+const repo = require('./repo');
+const { PERMISSOES, PAPEIS } = require('./permissoes');
+
+function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
+  const r = express.Router();
+  r.use(express.json({ limit: '2mb' }));
+  r.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+  const h = (fn) => (req, res) => { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); };
+  // atrás do proxy do Render req.protocol é 'http' — links usam o protocolo real (lição do vdocs)
+  const protoDe = (req) => String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
+  const { requireTenant, requirePerm } = auth;
+
+  // ------------------------------------------------ públicas
+  r.post('/cadastro', h(async (req, res) => {
+    const ip = auth.ipDe(req);
+    if (auth.bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+    const b = req.body || {};
+    let criado;
+    try { criado = repo.criarTenantComDono({ empresa: b.empresa, nome: b.nome, email: b.email, senha: b.senha, ip }); }
+    catch (e) { auth.registraFalha(ip); throw e; }
+    auth.limpaFalhas(ip);
+    auth.emitirSessao(res, criado.user.id, criado.tenant.id);
+    notificar(`📋 Villela Projects: novo trial — ${criado.tenant.nome} (${criado.user.email}).`);
+    res.json({ ok: true, tenant: { id: criado.tenant.id, nome: criado.tenant.nome, slug: criado.tenant.slug } });
+  }));
+
+  r.post('/login', h(async (req, res) => {
+    const b = req.body || {};
+    const sessao = auth.login(req, res, { email: b.email, senha: b.senha, tenant_id: b.tenant_id });
+    if (!sessao) return;
+    res.json({ ok: true, tenant: { id: sessao.tenant.id, nome: sessao.tenant.nome }, tenants: sessao.tenants });
+  }));
+  r.post('/logout', (req, res) => { auth.limparSessao(res); res.json({ ok: true }); });
+
+  r.post('/convites/aceitar', h(async (req, res) => {
+    const b = req.body || {};
+    const { user, tenantId } = repo.aceitarConvite(b.token, { nome: b.nome, senha: b.senha }, auth.ipDe(req));
+    auth.emitirSessao(res, user.id, tenantId);
+    res.json({ ok: true });
+  }));
+
+  const leadsPorIp = new Map();
+  r.post('/leads', h(async (req, res) => {
+    const ip = auth.ipDe(req);
+    if (Date.now() - (leadsPorIp.get(ip) || 0) < 30 * 1000) return res.status(429).json({ erro: 'Aguarde um instante e tente de novo.' });
+    leadsPorIp.set(ip, Date.now());
+    const b = req.body || {};
+    if (!repo.emailOK(repo.emailNorm(b.email))) throw new Error('Informe um e-mail válido.');
+    repo.criarLead(b);
+    notificar(`📋 Villela Projects: novo lead — ${repo.s(b.nome, 80) || 'sem nome'} <${repo.emailNorm(b.email)}> ${repo.s(b.empresa, 80)}`.trim());
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ sessão / contexto
+  r.get('/me', requireTenant, h(async (req, res) => {
+    const { user, tenant, vinculo, permissoes, papelNome, bloqueado } = req.vp;
+    res.json({
+      user: { id: user.id, nome: user.nome, email: user.email },
+      tenant: { id: tenant.id, nome: tenant.nome, slug: tenant.slug, status: tenant.status, interno: !!tenant.interno, trial_expira_em: tenant.trial_expira_em },
+      papel: vinculo.papel, papel_nome: papelNome, permissoes, bloqueado,
+      tenants: repo.tenantsDoUsuario(user.id),
+      catalogo_permissoes: PERMISSOES,
+      papeis_embutidos: Object.fromEntries(Object.entries(PAPEIS).map(([k, v]) => [k, v.nome])),
+      enums: { estagios: repo.ESTAGIOS, categorias: repo.CATEGORIAS, horizontes: repo.HORIZONTES, prioridades: repo.PRIORIDADES },
+    });
+  }));
+  r.post('/trocar-tenant', requireTenant, h(async (req, res) => {
+    const alvo = String((req.body || {}).tenant_id || '');
+    if (!repo.tenantsDoUsuario(req.vp.user.id).some(t => t.id === alvo)) throw new Error('Você não participa dessa empresa.');
+    auth.emitirSessao(res, req.vp.user.id, alvo);
+    res.json({ ok: true });
+  }));
+  r.get('/dashboard', requireTenant, h(async (req, res) => res.json(repo.dashboardTenant(req.vp.tenant.id))));
+
+  // ------------------------------------------------ portfólio (núcleo Fase 1)
+  r.get('/projetos', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    const q = req.query || {};
+    res.json({ projetos: repo.listarProjetos(req.vp.tenant.id, { status: q.status, estagio: q.estagio, categoria: q.categoria, busca: q.busca }), enums: { estagios: repo.ESTAGIOS, categorias: repo.CATEGORIAS, horizontes: repo.HORIZONTES, prioridades: repo.PRIORIDADES } });
+  }));
+  r.post('/projetos', requireTenant, requirePerm('criar_projeto'), h(async (req, res) => {
+    res.json({ ok: true, projeto: repo.criarProjeto(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.get('/projetos/:id', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
+    res.json({ projeto: repo.obterProjeto(req.vp.tenant.id, req.params.id) });
+  }));
+  r.patch('/projetos/:id', requireTenant, requirePerm('editar_projeto'), h(async (req, res) => {
+    const b = req.body || {};
+    // mudanças de status/estágio que encerram ou pausam exigem decidir_projeto
+    if ((b.status && b.status !== 'ativo') || ['pausado', 'cancelado', 'arquivado'].includes(b.estagio || '')) {
+      if (!req.vp.permissoes.decidir_projeto) return res.status(403).json({ erro: 'Sem permissão: decidir_projeto' });
+    }
+    res.json({ ok: true, projeto: repo.atualizarProjeto(req.vp.tenant.id, req.params.id, b, req.vp.user, req.vp.ip) });
+  }));
+
+  // ------------------------------------------------ empresa / usuários / papéis
+  r.get('/config', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {
+    res.json({ tenant: repo.obterTenant(req.vp.tenant.id), settings: repo.lerSettings(req.vp.tenant.id), chaves: repo.CONFIG_PERMITIDAS });
+  }));
+  r.patch('/config', requireTenant, requirePerm('gerir_configuracoes'), h(async (req, res) => {
+    const b = req.body || {};
+    if (b.tenant) repo.atualizarTenant(req.vp.tenant.id, b.tenant, req.vp.user, req.vp.ip);
+    for (const [k, v] of Object.entries(b.settings || {})) repo.gravarSetting(req.vp.tenant.id, k, v, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
+  }));
+
+  r.get('/usuarios', requireTenant, requirePerm('gerir_usuarios'), h(async (req, res) => {
+    res.json({ usuarios: repo.listarUsuarios(req.vp.tenant.id), convites: repo.listarConvites(req.vp.tenant.id) });
+  }));
+  r.patch('/usuarios/:vinculoId', requireTenant, requirePerm('gerir_usuarios'), h(async (req, res) => {
+    res.json({ ok: true, vinculo: repo.alterarVinculo(req.vp.tenant.id, req.params.vinculoId, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.post('/convites', requireTenant, requirePerm('gerir_usuarios'), h(async (req, res) => {
+    const b = req.body || {};
+    const conv = repo.criarConvite(req.vp.tenant.id, { email: b.email, papel: b.papel, funcao: b.funcao }, req.vp.user, req.vp.ip);
+    const link = `${protoDe(req)}://${req.get('host')}/vpe/convite/${conv.token}`;
+    let email_enviado = false;
+    if (typeof enviarEmail === 'function') {
+      email_enviado = await Promise.resolve(enviarEmail(conv.email,
+        `Convite — ${req.vp.tenant.nome} no Villela Projects`,
+        `<p>${repo.s(req.vp.user.nome, 120)} convidou você para a gestão de projetos e eventos de <b>${repo.s(req.vp.tenant.nome, 120)}</b>.</p>
+         <p><a href="${link}">Aceitar o convite</a> (válido por 7 dias)</p>`)).catch(() => false);
+    }
+    res.json({ ok: true, convite: { id: conv.id, email: conv.email }, link, email_enviado });
+  }));
+  r.delete('/convites/:id', requireTenant, requirePerm('gerir_usuarios'), h(async (req, res) => {
+    repo.revogarConvite(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
+  }));
+  r.get('/papeis', requireTenant, requirePerm('gerir_usuarios'), h(async (req, res) => res.json({ papeis: repo.listarRoles(req.vp.tenant.id) })));
+  r.post('/papeis', requireTenant, requirePerm('gerir_papeis'), h(async (req, res) => {
+    res.json({ ok: true, id: repo.salvarRole(req.vp.tenant.id, req.body || {}, req.vp.user, req.vp.ip) });
+  }));
+  r.delete('/papeis/:id', requireTenant, requirePerm('gerir_papeis'), h(async (req, res) => {
+    repo.excluirRole(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ auditoria / uso
+  r.get('/auditoria', requireTenant, requirePerm('ver_auditoria'), h(async (req, res) => {
+    res.json({ eventos: repo.listarAuditoria(req.vp.tenant.id, { limite: req.query.limite, antes: req.query.antes }) });
+  }));
+  r.get('/uso', requireTenant, h(async (req, res) => {
+    if (!req.vp.permissoes.ver_uso && !req.vp.permissoes.administrar_cobranca) return res.status(403).json({ erro: 'Sem permissão: ver_uso' });
+    res.json({ uso: repo.usoDoMes(req.vp.tenant.id), plano: repo.planoDoTenant(req.vp.tenant.id), planos: repo.listarPlanos() });
+  }));
+
+  app.use('/vpe/api', r);
+}
+
+module.exports = { registrarRotasApi };
