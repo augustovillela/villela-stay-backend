@@ -16,7 +16,7 @@
 'use strict';
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { db, nowISO, novoId, j } = require('./db');
+const { db, nowISO, novoId, j, comTenant, TENANT_PADRAO } = require('./db');
 const repo = require('./repo');
 const notif = require('./notificacoes');
 
@@ -74,6 +74,14 @@ function registrarPortalCliente(app, { jwtSecret }) {
     } catch (_) { res.status(401).json({ erro: 'não autenticado' }); }
   }
   const h = (fn) => (req, res) => { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); };
+
+  // Escopa TODO o portal do cliente no banco do tenant (isolamento por escritório).
+  // Produção: tenant vem do assinante (req.tenantLegal, ponte futura); dev/teste:
+  // header x-legal-tenant; senão o escritório interno do Augusto (TENANT_PADRAO).
+  const tenantDoCliente = (req) => req.tenantLegal
+    || (process.env.NODE_ENV === 'development' && req.headers['x-legal-tenant'] ? String(req.headers['x-legal-tenant']) : TENANT_PADRAO);
+  app.use('/cliente-juridico', (req, res, next) => comTenant(tenantDoCliente(req), () => next()));
+
   app.use('/cliente-juridico/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
   app.post('/cliente-juridico/api/login', h(async (req, res) => {

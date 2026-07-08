@@ -58,9 +58,10 @@ legal.permissoes.salvarMembro({ id: 'est', nome: 'Estagiário Teste', email: 'es
 // ---- mini harness ----
 let BASE = '', ok = 0, falhas = [];
 const jarCliente = {}; // cookies do portal do cliente
-async function req(metodo, caminho, { corpo, user = 'adm', chave, cookies, raw } = {}) {
+async function req(metodo, caminho, { corpo, user = 'adm', chave, cookies, raw, tenant } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (chave) headers['x-publish-key'] = 'test-key'; else headers['x-test-user'] = user;
+  if (tenant) headers['x-legal-tenant'] = tenant; // seam multi-tenant (só honrado em NODE_ENV=development)
   if (cookies) headers.Cookie = Object.entries(jarCliente).map(([k, v]) => `${k}=${v}`).join('; ');
   const r = await fetch(BASE + caminho, { method: metodo, headers, body: corpo ? JSON.stringify(corpo) : undefined, redirect: 'manual' });
   (r.headers.getSetCookie ? r.headers.getSetCookie() : []).forEach(c => { const [kv] = c.split(';'); const [k, v] = kv.split('='); jarCliente[k] = v; });
@@ -278,6 +279,47 @@ async function rodar() {
     assert.equal(legal.coleta.classificarMovimento('Audiência designada'), 'audiencia');
     const f = await legal.coleta.processarFila();
     assert.equal(f.processadas, 0); // modo fila: agente local processa
+  });
+
+  // ---------------------------------------------------------------------
+  // 24. ISOLAMENTO POR TENANT (caminho B — instância por escritório)
+  // Todo o bloco acima rodou no tenant padrão (villela). Aqui usamos o seam
+  // de teste (header x-legal-tenant, honrado só em NODE_ENV=development) para
+  // provar que o escritório 'escritorio-b' tem dados 100% separados.
+  // ---------------------------------------------------------------------
+  const B = 'escritorio-b';
+  let bCliId;
+  await t('isolamento: banco do escritório B nasce vazio e semeado (não vê clientes do interno)', async () => {
+    const eu = await req('GET', '/staff/api/legal/eu', { tenant: B });
+    assert.equal(eu.st, 200); assert.equal(eu.json.perfil, 'super_admin'); // módulo alcança o banco de B, já semeado
+    const lst = await req('GET', '/staff/api/legal/clientes', { tenant: B });
+    assert.equal(lst.st, 200);
+    assert.equal(lst.json.clientes.length, 0, 'B deveria começar SEM clientes (banco próprio)');
+  });
+  await t('isolamento: cliente criado em B não aparece no escritório interno (e vice-versa)', async () => {
+    const c = await req('POST', '/staff/api/legal/clientes', { tenant: B, corpo: { nome: 'Cliente do B', email: 'b@b.com', tipo_cliente: 'ativo' } });
+    assert.equal(c.st, 200); bCliId = c.json.cliente.id;
+    // B enxerga só o dele
+    const lstB = await req('GET', '/staff/api/legal/clientes', { tenant: B });
+    assert.equal(lstB.json.clientes.length, 1);
+    assert.equal(lstB.json.clientes[0].nome, 'Cliente do B');
+    // interno (villela) NÃO enxerga o de B, mas mantém o seu ('Cliente Teste')
+    const lstV = await req('GET', '/staff/api/legal/clientes');
+    assert.ok(lstV.json.clientes.some(x => x.id === cliId), 'interno deve manter o próprio cliente');
+    assert.ok(!lstV.json.clientes.some(x => x.id === bCliId), 'interno NÃO pode ver cliente de B');
+  });
+  await t('isolamento: id de um tenant não é acessível pelo outro (404 cruzado)', async () => {
+    const bPorInterno = await req('GET', '/staff/api/legal/clientes/' + bCliId);         // villela buscando id de B
+    assert.equal(bPorInterno.st, 404);
+    const internoPorB = await req('GET', '/staff/api/legal/clientes/' + cliId, { tenant: B }); // B buscando id de villela
+    assert.equal(internoPorB.st, 404);
+  });
+  await t('isolamento: mesmo número CNJ coexiste nos dois tenants (índice único é por-banco)', async () => {
+    // villela já tem o CNJ 0700111-22.2026.8.07.0001 (teste 3). Em B, o MESMO
+    // número deve ser aceito (200), não "duplicado 400" — prova de banco físico separado.
+    const p = await req('POST', '/staff/api/legal/processos', { tenant: B, corpo: { numero_cnj: '07001112220268070001', tribunal: 'TJDFT', assunto: 'Processo do B', client_id: bCliId, nucleo: 'civel' } });
+    assert.equal(p.st, 200);
+    assert.equal(p.json.processo.numero_cnj, '0700111-22.2026.8.07.0001');
   });
 
   srv.close();

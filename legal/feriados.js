@@ -38,7 +38,8 @@ function semearFeriados() {
     }
   }
 }
-semearFeriados();
+// Semeadura roda por-banco via inicializador (index.js) — não no load, pois
+// o db é multi-tenant e no carregamento ainda não há handle de tenant.
 
 // ---- helpers de data (UTC meio-dia p/ nunca escorregar de fuso) ----
 const paraData = (s) => new Date(String(s).slice(0, 10) + 'T12:00:00Z');

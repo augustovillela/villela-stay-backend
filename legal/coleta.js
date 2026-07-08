@@ -17,7 +17,7 @@
 // Tudo logado em integration_logs; disparo manual pelas rotas.
 // =====================================================================
 'use strict';
-const { db, nowISO } = require('./db');
+const { db, nowISO, comTenant, listarTenants } = require('./db');
 const repo = require('./repo');
 const llm = require('./llm');
 const ia = require('./ia');
@@ -294,8 +294,13 @@ function iniciarRotinas() {
   const horaAlvo = parseInt(process.env.LEGAL_ROTINA_HORA, 10) || 7; // hora de Brasília (UTC-3, sem horário de verão)
   const tick = () => {
     const horaBrasilia = (new Date().getUTCHours() + 24 - 3) % 24;
-    if (horaBrasilia === horaAlvo && !jaRodouHoje()) {
-      rotinaDiaria().catch(e => repo.Integracoes.log('rotina', 'rotina-diaria', 'erro', e.message, 0));
+    if (horaBrasilia !== horaAlvo) return;
+    // Multi-tenant: roda a rotina para CADA escritório provisionado, no banco dele.
+    for (const tid of listarTenants()) {
+      comTenant(tid, () => {
+        if (jaRodouHoje()) return;
+        rotinaDiaria().catch(e => repo.Integracoes.log('rotina', 'rotina-diaria', 'erro', e.message, 0));
+      });
     }
   };
   _timer = setInterval(tick, 15 * 60 * 1000); // checa a cada 15 min

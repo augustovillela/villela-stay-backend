@@ -77,7 +77,8 @@ function semearPerfis() {
     for (const perm of p.permissoes) addPerm.run(p.id, perm);
   }
 }
-semearPerfis();
+// NÃO semeia no load: o db é multi-tenant (db.js) e no carregamento ainda não
+// há tenant/handle. A semeadura roda por-banco via inicializador (index.js).
 
 const porId = new Map(PERFIS.map(p => [p.id, p]));
 
@@ -120,4 +121,4 @@ function salvarMembro({ id, nome, email, role_id, oab, nucleos, ativo }) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
-module.exports = { PERMISSOES, PERFIS, NUCLEOS, perfilDe, permissoesDe, listarEquipe, salvarMembro };
+module.exports = { PERMISSOES, PERFIS, NUCLEOS, perfilDe, permissoesDe, listarEquipe, salvarMembro, semearPerfis };

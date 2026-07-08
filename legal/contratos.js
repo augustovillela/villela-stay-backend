@@ -17,7 +17,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { db, transacao, nowISO, novoId, sha256, j, DATA_DIR, DOCS_DIR } = require('./db');
+const { db, transacao, nowISO, novoId, sha256, j, DATA_DIR, docsDir } = require('./db');
 const repo = require('./repo');
 const llm = require('./llm');
 const ia = require('./ia');
@@ -280,7 +280,7 @@ function importarContratosLegado(autor) {
         const buf = fs.readFileSync(path.join(dirLegado, path.basename(c.arquivo)));
         const ext = path.extname(c.arquivo).toLowerCase() || '.pdf';
         const arquivo = id + '-v1' + ext;
-        fs.writeFileSync(path.join(DOCS_DIR, arquivo), buf);
+        fs.writeFileSync(path.join(docsDir(), arquivo), buf);
         db.prepare(`INSERT INTO document_versions (id, document_id, versao, arquivo, nome_original, mime, tamanho, sha256, motivo, criado_por, criado_em)
           VALUES (?,?,1,?,?,?,?,?,?,?,?)`)
           .run(novoId(), id, arquivo, c.nomeArquivo || c.arquivo, '', buf.length, sha256(buf), 'importado do portal antigo', s(autor, 40), nowISO());

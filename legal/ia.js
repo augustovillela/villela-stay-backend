@@ -16,12 +16,17 @@ const repo = require('./repo');
 const llm = require('./llm');
 
 // ---- índice FTS5 (contentless não — tabela normal p/ simplificar upsert) ----
+// Multi-tenant: criado POR BANCO via garantirFTS() (inicializador no index.js),
+// não no load — no carregamento ainda não há handle de tenant (db.js).
 let ftsOK = false;
-try {
-  db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS rag_index USING fts5(tipo, ref_id, titulo, corpo)`);
-  ftsOK = true;
-} catch (e) {
-  console.error('[legal/ia] FTS5 indisponível — busca RAG desativada:', e.message);
+function garantirFTS() {
+  try {
+    db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS rag_index USING fts5(tipo, ref_id, titulo, corpo)`);
+    ftsOK = true;
+  } catch (e) {
+    console.error('[legal/ia] FTS5 indisponível — busca RAG desativada:', e.message);
+  }
+  return ftsOK;
 }
 
 const s = (v, max = 100000) => String(v == null ? '' : v).trim().slice(0, max);
@@ -177,7 +182,8 @@ async function consultar(d, autor) {
 }
 
 module.exports = {
-  ftsOK, indexar, removerDoIndice, buscar, reindexarTudo,
+  get ftsOK() { return ftsOK; }, // getter: reflete o estado após garantirFTS()
+  garantirFTS, indexar, removerDoIndice, buscar, reindexarTudo,
   Conhecimento, registrarExtracao, agentes, agente, prompts,
   montarContexto, consultar,
 };

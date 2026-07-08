@@ -6,7 +6,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { db, transacao, nowISO, novoId, sha256, j, DOCS_DIR, DATA_DIR } = require('./db');
+const { db, transacao, nowISO, novoId, sha256, j, docsDir, DATA_DIR } = require('./db');
 
 // ---- enums (validados na escrita) ----
 const E = {
@@ -552,7 +552,7 @@ const Documentos = {
     return transacao(() => {
       const id = novoId(); const agora = nowISO();
       const arquivo = id + '-v1' + ext;
-      fs.writeFileSync(path.join(DOCS_DIR, arquivo), buf);
+      fs.writeFileSync(path.join(docsDir(),arquivo), buf);
       db.prepare(`INSERT INTO documents (id, client_id, case_id, task_id, titulo, tipo, pasta, sigilo, status, versao_atual,
         criado_por, criado_em, atualizado_em) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(id, fk(d.client_id), fk(d.case_id), s(d.task_id, 40), s(d.titulo, 300) || nome, s(d.tipo, 40),
@@ -576,7 +576,7 @@ const Documentos = {
     return transacao(() => {
       const versao = doc.versao_atual + 1;
       const arquivo = docId + '-v' + versao + ext;
-      fs.writeFileSync(path.join(DOCS_DIR, arquivo), buf);
+      fs.writeFileSync(path.join(docsDir(),arquivo), buf);
       db.prepare(`INSERT INTO document_versions (id, document_id, versao, arquivo, nome_original, mime, tamanho, sha256, motivo, criado_por, criado_em)
         VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
         .run(novoId(), docId, versao, arquivo, nome, s(d.mime, 100), buf.length, sha256(buf), s(d.motivo, 300) || 'nova versão', s(autor, 40), nowISO());
@@ -602,7 +602,7 @@ const Documentos = {
       ? db.prepare('SELECT * FROM document_versions WHERE document_id = ? AND versao = ?').get(docId, Number(versao))
       : db.prepare('SELECT * FROM document_versions WHERE document_id = ? ORDER BY versao DESC LIMIT 1').get(docId);
     if (!v) return null;
-    const p = path.join(DOCS_DIR, path.basename(v.arquivo)); // basename: nunca sair da pasta
+    const p = path.join(docsDir(),path.basename(v.arquivo)); // basename: nunca sair da pasta
     return fs.existsSync(p) ? { caminho: p, versao: v } : null;
   },
   logAcesso(docId, user, acao, ip) {

@@ -7,6 +7,19 @@
 // Toda escrita registra auditoria em audit_logs.
 // =====================================================================
 'use strict';
+const dbmod = require('./db');
+
+// Resolve o tenant (escritório) desta requisição — a PONTE do isolamento.
+//  1) req.tenantLegal: setado por uma camada acima (ex.: futura ponte do
+//     assinante logado no /juridico/app → seu tenant). É o caminho de produção.
+//  2) header x-legal-tenant: SÓ em desenvolvimento/teste (seam dos testes de
+//     isolamento). Ignorado em produção p/ não permitir spoofing de tenant.
+//  3) senão, o escritório interno do Augusto (TENANT_PADRAO).
+function resolverTenant(req) {
+  if (req.tenantLegal) return req.tenantLegal;
+  if (process.env.NODE_ENV === 'development' && req.headers['x-legal-tenant']) return String(req.headers['x-legal-tenant']);
+  return dbmod.TENANT_PADRAO;
+}
 
 function registrarRotasStaff(app, deps) {
   const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
@@ -36,7 +49,10 @@ function registrarRotasStaff(app, deps) {
     next();
   };
 
-  app.use('/staff/api/legal', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+  app.use('/staff/api/legal', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    dbmod.comTenant(resolverTenant(req), () => next()); // escopa TODO o núcleo no banco do tenant
+  });
 
   // erro padronizado p/ handlers síncronos
   const h = (fn) => (req, res) => { try { fn(req, res); } catch (e) { res.status(400).json({ erro: e.message }); } };

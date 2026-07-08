@@ -10,6 +10,7 @@
 // nem geração por IA ainda (Fases 2+ — ver README.md).
 // =====================================================================
 'use strict';
+const dbmod = require('./db');
 const repo = require('./repo');
 const permissoes = require('./permissoes');
 const feriados = require('./feriados');
@@ -32,8 +33,18 @@ function montar(app, injected = {}) {
   if (!express || !requireAuth || !requirePublishOrSession || !lerUsuarios) {
     throw new Error('legal.montar: faltam deps (express, requireAuth, requirePublishOrSession, lerUsuarios).');
   }
-  semearIA(); // agentes especialistas + biblioteca de prompts (upsert idempotente)
-  contratos.semearTemplates(); // modelos de contrato + cláusulas (Módulo 13)
+  // Isolamento por tenant (caminho B): cada escritório tem seu próprio banco.
+  // Os seeds abaixo rodam POR BANCO na 1ª abertura (inicializador), dentro do
+  // contexto do tenant — assim todo escritório novo nasce com perfis, FTS,
+  // agentes/prompts de IA, modelos de contrato e feriados forenses.
+  dbmod.registrarInicializador(() => {
+    permissoes.semearPerfis();     // roles + matriz de permissões
+    ia.garantirFTS();              // índice FTS5 (rag_index) do banco do tenant
+    semearIA();                    // agentes especialistas + biblioteca de prompts
+    contratos.semearTemplates();   // modelos de contrato + cláusulas (Módulo 13)
+    feriados.semearFeriados();     // feriados forenses + suspensão art. 220 CPC
+  });
+  dbmod.garantirTenant(dbmod.TENANT_PADRAO); // aquece + semeia o escritório interno (Augusto)
   notif.configurar({ enviarEmail, enviarWhatsApp, alertaAugusto }); // canais reais do server.js
   registrarRotasStaff(app, {
     repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, jwtSecret,
