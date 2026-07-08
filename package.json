@@ -9,7 +9,8 @@
     "test:legal": "node legal/selftest.js",
     "test:legal-saas": "node legal-saas/selftest.js",
     "test:vdocs": "node vdocs/selftest.js",
-    "test:vpe": "node vpe/selftest.js"
+    "test:vpe": "node vpe/selftest.js",
+    "test:vsm": "node vsm/selftest.js"
   },
   "engines": {
     "node": ">=22"

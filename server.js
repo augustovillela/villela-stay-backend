@@ -5260,6 +5260,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('docs.')) return res.redirect(302, '/vdocs');
   if (host.startsWith('juridico.')) return res.redirect(302, '/juridico'); // landing de vendas do Legal SaaS (assinantes); portal do cliente final = /cliente-juridico
   if (host.startsWith('projetos.') || host.startsWith('projects.')) return res.redirect(302, '/vpe');
+  if (host.startsWith('manager.') || host.startsWith('gestao.')) return res.redirect(302, '/gestao'); // landing de vendas do Villela Stay Manager
   return res.redirect(302, '/hospede');
 });
 
@@ -5348,6 +5349,20 @@ try {
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[vpe] falha ao montar módulo:', e.message); }
+
+// =========================== Villela Stay Manager (SaaS de gestão de hospedagem) ===========================
+// Control plane comercial que vende o sistema de gestão de hospedagem por temporada a outros
+// anfitriões/gestores: landing/preços em /gestao, painel do assinante em /gestao/app
+// (sessão própria 'vsm_sess', isolada do staff), administração na aba 🏨 do Portal Staff.
+// SQLite próprio em DATA_DIR/vsm/. Cobrança recorrente via Mercado Pago (mpFetch).
+try {
+  require('./vsm').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[vsm] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
