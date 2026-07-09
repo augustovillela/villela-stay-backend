@@ -117,13 +117,14 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
   app.get('/academy/api/aluno/biblioteca', requireUsuario, requirePapel('aluno'), h((req, res) => {
     const cursos = ct.Matriculas.doAluno(req.usuario.id)
       .map(e => ({ ...e, progresso: ct.Progresso.doProduto(req.usuario.id, e.product_id) }));
-    res.json({ cursos, continuar: ct.Progresso.continuar(req.usuario.id) });
+    const assinaturas = require('./billing').Assinaturas.doUsuario(req.usuario.id);
+    res.json({ cursos, assinaturas, continuar: ct.Progresso.continuar(req.usuario.id) });
   }));
   // estrutura do curso p/ estudo (matrícula ativa OU aulas gratuitas)
   app.get('/academy/api/aluno/cursos/:productId', requireUsuario, requirePapel('aluno'), h((req, res) => {
     const p = ct.Produtos.obter(req.params.productId);
     if (!p || ['suspenso', 'removido'].includes(p.status)) return res.status(404).json({ erro: 'Produto não encontrado.' });
-    const matriculado = ct.Matriculas.ativa(req.usuario.id, p.id);
+    const matriculado = ct.temAcesso(req.usuario.id, p.id); // matrícula OU assinatura (clube)
     const estrutura = ct.Produtos.estrutura(p.id).map(m => ({
       ...m,
       aulas: m.aulas.map(a => {
@@ -135,6 +136,7 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
     res.json({
       produto: { id: p.id, titulo: p.titulo, subtitulo: p.subtitulo, tipo: p.tipo, capa_media_id: matriculado ? p.capa_media_id : '' },
       matriculado, estrutura,
+      incluidos: (p.tipo === 'clube' && matriculado) ? ct.Clube.itens(p.id).filter(i => i.status === 'publicado') : [],
       progresso: matriculado ? ct.Progresso.doProduto(req.usuario.id, p.id) : null,
       progresso_aulas: matriculado ? ct.Progresso.porAula(req.usuario.id, p.id) : {},
     });

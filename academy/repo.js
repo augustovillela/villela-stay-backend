@@ -254,6 +254,8 @@ const Dashboard = {
       vendas: c("SELECT COUNT(*) n FROM orders WHERE status = 'paga'"),
       pedidos_pendentes: c("SELECT COUNT(*) n FROM orders WHERE status = 'pendente'"),
       reembolsos: c("SELECT COUNT(*) n FROM orders WHERE status = 'reembolsada'"),
+      assinaturas_ativas: c("SELECT COUNT(*) n FROM subscriptions WHERE status = 'ativa'"),
+      mrr_centavos: c("SELECT COALESCE(SUM(valor_centavos),0) n FROM subscriptions WHERE status = 'ativa'"),
     };
   },
   aluno(userId) { // composição rica (biblioteca+progresso) em repo-conteudo.dashboardAluno

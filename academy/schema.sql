@@ -359,6 +359,43 @@ CREATE TABLE IF NOT EXISTS commissions (
 CREATE INDEX IF NOT EXISTS idx_comm_aff ON commissions(affiliate_user_id);
 CREATE INDEX IF NOT EXISTS idx_comm_status ON commissions(status);
 
+-- =====================================================================
+-- FASE 6 — Assinaturas e clubes.
+-- Clube = produto tipo 'clube' do produtor: mensalidade (preapproval do
+-- Mercado Pago) que dá acesso ao conteúdo do próprio clube + aos produtos
+-- incluídos (club_items, sempre do MESMO produtor). Acesso condicionado a
+-- assinatura ATIVA (temAcesso). Cada cobrança recorrente vira um pedido
+-- (orders.tipo='assinatura') — GMV/receita unificados, plataforma 10%.
+-- Afiliado NÃO comissiona assinatura nesta fase (melhoria futura).
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id                TEXT PRIMARY KEY,
+  user_id           TEXT NOT NULL REFERENCES users(id),
+  product_id        TEXT NOT NULL REFERENCES products(id),  -- o clube
+  produto_titulo    TEXT DEFAULT '',
+  producer_id       TEXT DEFAULT '',
+  valor_centavos    INTEGER DEFAULT 0,     -- mensalidade (snapshot)
+  plataforma_pct    INTEGER DEFAULT 10,
+  status            TEXT DEFAULT 'pendente', -- pendente|ativa|pausada (inadimplente)|cancelada
+  mp_preapproval_id TEXT DEFAULT '',
+  criado_em         TEXT NOT NULL,
+  ativa_em          TEXT DEFAULT '',
+  cancelada_em      TEXT DEFAULT '',
+  atualizado_em     TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subs_product ON subscriptions(product_id);
+CREATE INDEX IF NOT EXISTS idx_subs_status ON subscriptions(status);
+
+-- produtos incluídos no clube (do mesmo produtor)
+CREATE TABLE IF NOT EXISTS club_items (
+  club_product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id      TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  criado_em       TEXT NOT NULL,
+  PRIMARY KEY (club_product_id, product_id)
+);
+
 -- ---- DENÚNCIAS de conteúdo (usuário logado; admin resolve) ----
 CREATE TABLE IF NOT EXISTS moderation_reports (
   id         TEXT PRIMARY KEY,

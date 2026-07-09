@@ -57,6 +57,9 @@ fase corrente em aberto.
 - ✅ F5: atribuição de afiliado validada server-side (produto do link, afiliado aprovado,
   nunca auto-compra/produtor); comissão cancelada em reembolso/chargeback; comissão só
   vira paga a partir de disponível (pós-garantia) — tudo coberto por teste
+- ✅ F6: acesso por assinatura SÓ com status 'ativa' vindo do MP (webhook preapproval);
+  pausa/cancelamento derruba o acesso na hora; cobrança recorrente idempotente por
+  payment id; clube só inclui produtos do MESMO produtor — tudo coberto por teste
 - ⬜ 1ª venda real: conferir com pagamento de verdade (sandbox/produção) antes de divulgar
 - ⬜ Recibos/nota fiscal: validar com contador antes de escala (F10)
 

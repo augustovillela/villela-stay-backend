@@ -1,9 +1,10 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASES 0–5 concluídas em 08/07/2026 (diagnóstico, fundação, produtos e cursos,
-marketplace, checkout Mercado Pago, afiliados e comissões) — ver README. Cada
-fase termina com: testes verdes na suíte, checklist de segurança da fase
-fechado, doc do assunto atualizado. **A plataforma vende e comissiona.**
+FASES 0–6 concluídas em 08/07/2026 (diagnóstico, fundação, produtos e cursos,
+marketplace, checkout Mercado Pago, afiliados e comissões, assinaturas e
+clubes) — ver README. Cada fase termina com: testes verdes na suíte, checklist
+de segurança da fase fechado, doc do assunto atualizado.
+**A plataforma vende avulso, comissiona afiliados e cobra assinatura recorrente.**
 
 ## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
 Entregue: produtos de 6 tipos com fluxo editorial completo (rascunho→revisão→
@@ -50,10 +51,19 @@ do afiliado, produtos afiliáveis com simulação de ganho, comissões no
 admin/staff. Split real do MP fica p/ quando houver volume (o cálculo interno
 já separa as três partes em cada pedido). 72 testes.
 
-## FASE 6 — Assinaturas e clubes
-Planos recorrentes (preapproval MP — padrão billing do vsm/legal-saas), clube
-de cursos, renovação, inadimplência/dunning, acesso condicionado à assinatura
-ativa, upgrade/downgrade.
+## ✅ FASE 6 — Assinaturas e clubes (CONCLUÍDA 08/07/2026)
+Entregue: **clube = tipo de produto** com mensalidade (preapproval do MP,
+padrão vsm/legal-saas) que dá acesso ao conteúdo próprio + produtos incluídos
+do MESMO produtor (club_items, gerenciados no painel); acesso condicionado a
+assinatura ATIVA (`temAcesso` unifica matrícula+assinatura em mídia, aulas,
+progresso e avaliações); ativação/pausa/cancelamento via webhook do preapproval;
+**cada cobrança recorrente vira pedido** (tipo 'assinatura', plataforma 10%,
+GMV/receita unificados, idempotente por payment id); pagamento em dia reativa
+assinatura pausada (inadimplência); cancelamento pelo assinante/admin/staff
+encerra o acesso na hora; biblioteca mostra assinaturas; KPIs assinaturas
+ativas + MRR. Afiliado não comissiona assinatura (melhoria futura);
+upgrade/downgrade entre clubes = cancelar e assinar outro (documentado).
+80 testes.
 
 ## FASE 7 — Vídeo, proteção e escala
 Storage S3-compatível (Cloudflare R2 ou similar), URLs assinadas com expiração,

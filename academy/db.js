@@ -37,6 +37,11 @@ const MIGRACOES = [
           ALTER TABLE orders ADD COLUMN afiliado_pct INTEGER DEFAULT 0;
           ALTER TABLE orders ADD COLUMN comissao_afiliado_centavos INTEGER DEFAULT 0;`,
   },
+  { // FASE 6: pedido de cobrança recorrente de assinatura (GMV unificado)
+    nome: 'orders-tipo-2026-07-08',
+    sql: `ALTER TABLE orders ADD COLUMN tipo TEXT DEFAULT 'avulsa';
+          ALTER TABLE orders ADD COLUMN subscription_id TEXT DEFAULT '';`,
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

@@ -16,7 +16,7 @@ const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const ARQUIVOS_DIR = path.join(MOD_DIR, 'arquivos'); // privado; NUNCA servido estático
 fs.mkdirSync(ARQUIVOS_DIR, { recursive: true });
 
-const TIPOS_PRODUTO = ['curso', 'ebook', 'pdf', 'audio', 'pacote', 'mentoria'];
+const TIPOS_PRODUTO = ['curso', 'ebook', 'pdf', 'audio', 'pacote', 'mentoria', 'clube'];
 const TIPOS_AULA = ['video', 'texto', 'pdf', 'audio', 'arquivo', 'link'];
 const CATEGORIAS = ['negocios', 'marketing', 'vendas', 'tecnologia', 'inteligencia-artificial',
   'direito', 'gestao-documental', 'aluguel-temporada', 'hospedagem', 'gastronomia', 'eventos',
@@ -102,8 +102,14 @@ const Produtos = {
     if (!p) throw new Error('Produto não encontrado.');
     const permitidas = (TRANSICOES[comoPapel] || {})[p.status] || [];
     if (!permitidas.includes(novoStatus)) throw new Error(`Transição ${p.status} → ${novoStatus} não permitida para ${comoPapel}.`);
-    if (novoStatus === 'em_revisao' && !db.prepare('SELECT 1 FROM lessons WHERE product_id = ? LIMIT 1').get(id)) {
+    if (novoStatus === 'em_revisao' && p.tipo !== 'clube' && !db.prepare('SELECT 1 FROM lessons WHERE product_id = ? LIMIT 1').get(id)) {
       throw new Error('Adicione pelo menos uma aula/conteúdo antes de enviar para revisão.');
+    }
+    if (novoStatus === 'em_revisao' && p.tipo === 'clube') {
+      if (!(p.preco_promo_centavos || p.preco_centavos)) throw new Error('Clube precisa de mensalidade (preço > 0).');
+      const temItem = db.prepare('SELECT 1 FROM club_items WHERE club_product_id = ? LIMIT 1').get(id);
+      const temAula = db.prepare('SELECT 1 FROM lessons WHERE product_id = ? LIMIT 1').get(id);
+      if (!temItem && !temAula) throw new Error('Inclua produtos no clube ou adicione conteúdo próprio antes de enviar para revisão.');
     }
     db.prepare('UPDATE products SET status = ?, motivo_status = ?, atualizado_em = ? WHERE id = ?')
       .run(novoStatus, s(motivo, 500), nowISO(), id);
@@ -234,12 +240,40 @@ const Midia = {
       UNION SELECT p.id AS product_id, 0 AS gratuita FROM products p WHERE p.capa_media_id = ?`).all(mediaId, mediaId, mediaId);
     for (const r of refs) {
       if (r.gratuita) return true; // degustação
-      if (Matriculas.ativa(usuario.id, r.product_id)) return true;
+      if (temAcesso(usuario.id, r.product_id)) return true; // matrícula ou assinatura (clube)
     }
     return false;
   },
   logAcesso(userId, mediaId, ip) {
     db.prepare('INSERT INTO download_logs (quando, user_id, media_id, ip) VALUES (?, ?, ?, ?)').run(nowISO(), s(userId, 40), s(mediaId, 40), s(ip, 60));
+  },
+};
+
+// acesso efetivo (F6): matrícula ativa OU assinatura ativa do clube OU
+// assinatura ativa de um clube que inclui o produto
+function temAcesso(userId, productId) {
+  if (Matriculas.ativa(userId, productId)) return true;
+  if (db.prepare("SELECT 1 FROM subscriptions WHERE user_id = ? AND product_id = ? AND status = 'ativa'").get(userId, productId)) return true;
+  return !!db.prepare(`SELECT 1 FROM subscriptions s JOIN club_items ci ON ci.club_product_id = s.product_id
+    WHERE s.user_id = ? AND s.status = 'ativa' AND ci.product_id = ?`).get(userId, productId);
+}
+
+// itens do clube (sempre produtos do MESMO produtor)
+const Clube = {
+  itens(clubProductId) {
+    return db.prepare(`SELECT ci.product_id, p.titulo, p.tipo, p.slug, p.status FROM club_items ci
+      JOIN products p ON p.id = ci.product_id WHERE ci.club_product_id = ? ORDER BY ci.criado_em`).all(clubProductId);
+  },
+  addItem(clube, productId) {
+    if (clube.tipo !== 'clube') throw new Error('Este produto não é um clube.');
+    const p = db.prepare('SELECT * FROM products WHERE id = ?').get(String(productId || ''));
+    if (!p || p.producer_id !== clube.producer_id) throw new Error('Só produtos seus podem entrar no clube.');
+    if (p.id === clube.id || p.tipo === 'clube') throw new Error('Um clube não pode conter outro clube.');
+    db.prepare('INSERT OR IGNORE INTO club_items (club_product_id, product_id, criado_em) VALUES (?, ?, ?)')
+      .run(clube.id, p.id, nowISO());
+  },
+  removerItem(clubeId, productId) {
+    db.prepare('DELETE FROM club_items WHERE club_product_id = ? AND product_id = ?').run(clubeId, String(productId || ''));
   },
 };
 
@@ -282,7 +316,7 @@ const Progresso = {
   marcar(userId, lessonId, { concluida, posicao_seg } = {}) {
     const aula = db.prepare('SELECT * FROM lessons WHERE id = ?').get(lessonId);
     if (!aula) throw new Error('Aula não encontrada.');
-    if (!aula.gratuita && !Matriculas.ativa(userId, aula.product_id)) throw new Error('Você não está matriculado neste produto.');
+    if (!aula.gratuita && !temAcesso(userId, aula.product_id)) throw new Error('Você não tem acesso a este produto.');
     db.prepare(`INSERT INTO student_progress (user_id, lesson_id, product_id, concluida, posicao_seg, atualizado_em)
       VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, lesson_id) DO UPDATE SET
       concluida = excluded.concluida, posicao_seg = excluded.posicao_seg, atualizado_em = excluded.atualizado_em`)
@@ -376,7 +410,7 @@ const Reviews = {
   avaliar(productId, userId, { nota, texto }) {
     nota = parseInt(nota, 10);
     if (!(nota >= 1 && nota <= 5)) throw new Error('Nota de 1 a 5.');
-    if (!Matriculas.ativa(userId, productId)) throw new Error('Só alunos matriculados avaliam.');
+    if (!temAcesso(userId, productId)) throw new Error('Só quem tem acesso (matrícula ou assinatura) avalia.');
     db.prepare(`INSERT INTO reviews (id, product_id, user_id, nota, texto, status, criado_em) VALUES (?, ?, ?, ?, ?, 'publicada', ?)
       ON CONFLICT(product_id, user_id) DO UPDATE SET nota = excluded.nota, texto = excluded.texto, criado_em = excluded.criado_em`)
       .run(novoId(), productId, userId, nota, s(texto, 1000), nowISO());
@@ -428,4 +462,5 @@ module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
   Produtos, Conteudo, Midia, Matriculas, Progresso, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
+  temAcesso, Clube,
 };

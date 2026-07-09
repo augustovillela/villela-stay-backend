@@ -17,6 +17,7 @@ const { registrarRotasCliente } = require('./rotas-cliente');
 const { registrarRotasConteudo } = require('./rotas-conteudo');
 const { registrarRotasCheckout, registrarRotasCheckoutStaff } = require('./rotas-checkout');
 const { registrarRotasAfiliado, registrarRotasAfiliadoStaff } = require('./rotas-afiliado');
+const { registrarRotasAssinaturas, registrarRotasAssinaturasStaff } = require('./rotas-assinaturas');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
@@ -36,6 +37,8 @@ function montar(app, injected = {}) {
   registrarRotasCheckout(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarRotasAfiliado(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarRotasAfiliadoStaff(app, { requireAuth, requireAdmin });
+  registrarRotasAssinaturas(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
+  registrarRotasAssinaturasStaff(app, { requireAuth, requireAdmin });
   registrarPaginas(app, { notificar });
 
   // webhook do Mercado Pago (200 rápido; processamento assíncrono e idempotente)

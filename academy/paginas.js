@@ -97,7 +97,8 @@ function appHTML() {
 
 // ==================== FASE 3 — vitrine pública (SEO/OG) ====================
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-const TIPOS_ROT = { curso: 'Curso', ebook: 'E-book', pdf: 'PDF', audio: 'Áudio', pacote: 'Pacote', mentoria: 'Mentoria' };
+const TIPOS_ROT = { curso: 'Curso', ebook: 'E-book', pdf: 'PDF', audio: 'Áudio', pacote: 'Pacote', mentoria: 'Mentoria', clube: 'Clube (assinatura)' };
+const sufixoMes = (p) => (p.tipo === 'clube' ? '<small>/mês</small>' : '');
 
 // shell público com SEO/OG; TODO conteúdo de produtor passa por esc()
 function shellPublico({ titulo, descricao, url, corpo }) {
@@ -121,8 +122,8 @@ function shellPublico({ titulo, descricao, url, corpo }) {
 function cardProduto(p) {
   const capa = p.capa_media_id ? `<img src="/academy/capa/${esc(p.id)}" alt="" style="width:100%;border-radius:10px;aspect-ratio:16/9;object-fit:cover;margin-bottom:10px">` : '';
   const preco = p.preco_promo_centavos
-    ? `<span class="preco"><s>${brl(p.preco_centavos)}</s> ${brl(p.preco_promo_centavos)}</span>`
-    : `<span class="preco">${p.preco_centavos ? brl(p.preco_centavos) : 'Grátis'}</span>`;
+    ? `<span class="preco"><s>${brl(p.preco_centavos)}</s> ${brl(p.preco_promo_centavos)}${sufixoMes(p)}</span>`
+    : `<span class="preco">${p.preco_centavos ? brl(p.preco_centavos) + sufixoMes(p) : 'Grátis'}</span>`;
   return `<a class="cardp" href="/academy/cursos/${esc(p.slug)}" style="text-decoration:none;color:inherit">${capa}
     <span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span><b style="margin:6px 0">${esc(p.titulo)}</b>
     <span class="sub" style="text-align:left;margin:0;flex:1">${esc(p.descricao_curta || p.subtitulo)}</span>
@@ -161,9 +162,10 @@ function cursoHTML(slug) {
   const reviews = ct.Reviews.publicas(p.id);
   const resumo = ct.Marketplace.resumoConteudo(p.id);
   const emb = embedDe(sp.video_url);
+  const mes = p.tipo === 'clube' ? '<span style="font-size:1rem">/mês</span>' : '';
   const preco = p.preco_promo_centavos
-    ? `<s style="color:#9a92b0">${brl(p.preco_centavos)}</s> <span style="font-size:1.9rem;font-weight:800">${brl(p.preco_promo_centavos)}</span>`
-    : `<span style="font-size:1.9rem;font-weight:800">${p.preco_centavos ? brl(p.preco_centavos) : 'Grátis'}</span>`;
+    ? `<s style="color:#9a92b0">${brl(p.preco_centavos)}</s> <span style="font-size:1.9rem;font-weight:800">${brl(p.preco_promo_centavos)}${mes}</span>`
+    : `<span style="font-size:1.9rem;font-weight:800">${p.preco_centavos ? brl(p.preco_centavos) + mes : 'Grátis'}</span>`;
   const bloco = (titulo, html) => html ? `<div class="sec" style="padding:26px 0"><div class="wrap"><h2 style="text-align:left;font-size:1.3rem">${titulo}</h2>${html}</div></div>` : '';
   const corpo = `
     <div class="hero" style="padding:44px 0"><div class="wrap">
@@ -173,7 +175,7 @@ function cursoHTML(slug) {
       <p class="sub" style="text-align:left;margin:6px 0;color:#d9d2f2">por <a href="/academy/produtores/${esc(p.produtor_slug)}" style="color:#ffb84d">${esc(p.produtor_nome)}</a></p>
       <p style="margin-top:18px">${preco}<br><br>
         ${(billing.ativo() || !(p.preco_promo_centavos || p.preco_centavos))
-          ? `<a class="btn" href="/academy/checkout/${esc(p.slug)}">${(p.preco_promo_centavos || p.preco_centavos) ? '🛒 Comprar agora' : '🎁 Matricular grátis'}</a>`
+          ? `<a class="btn" href="/academy/checkout/${esc(p.slug)}">${p.tipo === 'clube' ? '🔁 Assinar agora' : ((p.preco_promo_centavos || p.preco_centavos) ? '🛒 Comprar agora' : '🎁 Matricular grátis')}</a>`
           : `<a class="btn" href="#comprar">Quero este ${(TIPOS_ROT[p.tipo] || 'produto').toLowerCase()}</a>`}
         &nbsp;<a class="btn o" href="/academy/app">Já sou aluno</a></p>
     </div></div>
@@ -211,29 +213,37 @@ function checkoutHTML(slug) {
   const p = ct.Marketplace.porSlug(slug);
   if (!p) return null;
   const valor = p.preco_promo_centavos || p.preco_centavos || 0;
+  const clube = p.tipo === 'clube';
   const corpo = `<div class="sec"><div class="wrap" style="max-width:560px">
-    <h2>Finalizar ${valor ? 'compra' : 'matrícula'}</h2>
+    <h2>${clube ? 'Assinar clube' : `Finalizar ${valor ? 'compra' : 'matrícula'}`}</h2>
     <div class="card"><b>${esc(p.titulo)}</b><br><span class="sub" style="text-align:left;margin:0">por ${esc(p.produtor_nome)}</span>
-      <p style="font-size:1.5rem;font-weight:800;color:#1d1440;margin:10px 0 0">${valor ? brl(valor) : 'Grátis'}</p>
+      <p style="font-size:1.5rem;font-weight:800;color:#1d1440;margin:10px 0 0">${valor ? brl(valor) + (clube ? '/mês' : '') : 'Grátis'}</p>
       ${p.preco_promo_centavos ? `<p class="sub" style="text-align:left;margin:0"><s>${brl(p.preco_centavos)}</s> preço promocional</p>` : ''}
     </div>
     <div class="card" id="cx-box"><p class="sub">Carregando…</p></div>
     <p class="sub">Pagamento processado pelo Mercado Pago. O acesso é liberado automaticamente após a confirmação.
-      Ao comprar você concorda com os <a href="/academy/termos" target="_blank">Termos</a> e a <a href="/academy/reembolso" target="_blank">Política de Reembolso</a>.</p>
+      ${clube ? 'Assinatura mensal com renovação automática — cancele quando quiser no painel.' : ''}
+      Ao ${clube ? 'assinar' : 'comprar'} você concorda com os <a href="/academy/termos" target="_blank">Termos</a> e a <a href="/academy/reembolso" target="_blank">Política de Reembolso</a>.</p>
   </div></div>
   <script>
   (function(){
     var box=document.getElementById('cx-box');
+    var CLUBE=${clube ? 'true' : 'false'};
     function pagar(){
       box.innerHTML='<p class="sub">Preparando o pagamento…</p>';
-      fetch('/academy/api/checkout/${esc(p.id)}',{method:'POST',headers:{'Content-Type':'application/json'}})
+      var url=CLUBE?'/academy/api/assinar/${esc(p.id)}':'/academy/api/checkout/${esc(p.id)}';
+      fetch(url,{method:'POST',headers:{'Content-Type':'application/json'}})
         .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.erro||'erro');return d;})})
-        .then(function(d){ if(d.gratis){location.href='/academy/obrigado?pedido='+d.order_id;} else {location.href=d.init_point;} })
+        .then(function(d){
+          if(d.gratis){location.href='/academy/obrigado?pedido='+d.order_id;}
+          else if(CLUBE){location.href=d.init_point;}
+          else {location.href=d.init_point;}
+        })
         .catch(function(e){ box.innerHTML='<p class="erro">'+e.message+'</p><p><button class="btn peq" onclick="location.reload()">Tentar de novo</button></p>'; });
     }
     function formPagar(me){
       box.innerHTML='<p>Olá, <b>'+me.usuario.nome.replace(/</g,'&lt;')+'</b>! O acesso será liberado nesta conta ('+me.usuario.email.replace(/</g,'&lt;')+').</p>'+
-        '<p><button class="btn" id="b-pagar">${valor ? '💳 Pagar com Mercado Pago' : '🎁 Confirmar matrícula grátis'}</button></p>';
+        '<p><button class="btn" id="b-pagar">${clube ? '🔁 Assinar com Mercado Pago' : (valor ? '💳 Pagar com Mercado Pago' : '🎁 Confirmar matrícula grátis')}</button></p>';
       document.getElementById('b-pagar').onclick=pagar;
     }
     function formLogin(){
@@ -278,6 +288,28 @@ function obrigadoHTML() {
   })();
   </script>`;
   return shellPublico({ titulo: 'Obrigado', descricao: 'Confirmação de compra na Villela Academy.', corpo });
+}
+
+function obrigadoAssinaturaHTML() {
+  const corpo = `<div class="sec"><div class="wrap" style="max-width:560px">
+    <div class="card" id="oa-box"><h2 style="text-align:left">⏳ Ativando sua assinatura…</h2>
+      <p class="sub" style="text-align:left">A confirmação chega em instantes, assim que o Mercado Pago autorizar a recorrência.</p></div>
+  </div></div>
+  <script>
+  (function(){
+    var id=new URLSearchParams(location.search).get('assinatura'); var box=document.getElementById('oa-box'); var tent=0;
+    function checa(){
+      fetch('/academy/api/assinaturas/'+id+'/status').then(function(r){return r.json();}).then(function(d){
+        if(d.status==='ativa'){ box.innerHTML='<h2 style="text-align:left">🎉 Assinatura ativa!</h2><p>Bem-vindo ao <b>'+String(d.produto_titulo||'clube').replace(/</g,'&lt;')+'</b>.</p><p><a class="btn" href="/academy/app">Ir para a minha biblioteca</a></p>'; return; }
+        if(d.status==='cancelada'){ box.innerHTML='<h2 style="text-align:left">😕 Assinatura não concluída</h2><p><a class="btn" href="javascript:history.back()">Tentar novamente</a></p>'; return; }
+        if(++tent<20) setTimeout(checa,4000);
+        else box.innerHTML+='<p class="aviso">Ainda aguardando a autorização. Pode fechar — o acesso aparece na sua biblioteca em /academy/app assim que ativar.</p>';
+      }).catch(function(){ if(++tent<20) setTimeout(checa,4000); });
+    }
+    if(id) checa(); else box.innerHTML='<p class="erro">Assinatura não informada.</p>';
+  })();
+  </script>`;
+  return shellPublico({ titulo: 'Assinatura', descricao: 'Confirmação de assinatura na Villela Academy.', corpo });
 }
 
 function produtorHTML(slug) {
@@ -370,6 +402,7 @@ function registrarPaginas(app, { notificar }) {
     res.send(html);
   });
   app.get('/academy/obrigado', (req, res) => res.send(obrigadoHTML()));
+  app.get('/academy/obrigado-assinatura', (req, res) => res.send(obrigadoAssinaturaHTML()));
   app.get('/academy/produtores/:slug', (req, res) => {
     const html = produtorHTML(s(req.params.slug, 90));
     if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Produtor não encontrado.</p>'));

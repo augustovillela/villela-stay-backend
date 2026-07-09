@@ -21,16 +21,35 @@ const requireAdmin = (req, res, next) => (req.user && req.user.papel === 'admin'
 const alertas = [];
 const alertaAugusto = async (m) => { alertas.push(m); };
 
-// Mercado Pago mock (FASE 4): preferências, pagamentos com status controlável,
-// busca por external_reference e reembolso
+// Mercado Pago mock (FASES 4 e 6): preferências, pagamentos com status
+// controlável, busca por external_reference, reembolso e preapproval
 const mpChamadas = [];
 const MP_STATUS = { 901: 'approved', 902: 'rejected' };
+const PAY_REF = {};   // payment id → external_reference (p/ cobranças de assinatura)
+const PRE_STATE = {}; // preapproval id → status
+const PRE_REF = {};   // preapproval id → external_reference
 let ULTIMO_REF = '';
+let preSeq = 0;
 const mpFetch = async (p, opts) => {
-  mpChamadas.push(p);
+  mpChamadas.push((opts && opts.method ? opts.method + ' ' : '') + p);
   if (p === '/checkout/preferences' && opts && opts.method === 'POST') {
     ULTIMO_REF = JSON.parse(opts.body).external_reference;
     return { id: 'PREF-1', init_point: 'https://mp.test/checkout/PREF-1' };
+  }
+  if (p === '/preapproval' && opts && opts.method === 'POST') {
+    const id = 'PRE-' + (++preSeq);
+    PRE_REF[id] = JSON.parse(opts.body).external_reference;
+    PRE_STATE[id] = 'pending';
+    return { id, init_point: 'https://mp.test/preapproval/' + id, status: 'pending' };
+  }
+  if (p.startsWith('/preapproval/') && opts && opts.method === 'PUT') {
+    const id = p.split('/')[2];
+    PRE_STATE[id] = 'cancelled';
+    return { id, status: 'cancelled' };
+  }
+  if (p.startsWith('/preapproval/')) {
+    const id = p.split('/')[2];
+    return { id, status: PRE_STATE[id] || 'pending', external_reference: PRE_REF[id] || '' };
   }
   if (p.startsWith('/v1/payments/search')) {
     const ref = decodeURIComponent((p.match(/external_reference=([^&]+)/) || [])[1] || '');
@@ -39,7 +58,7 @@ const mpFetch = async (p, opts) => {
   if (/^\/v1\/payments\/\d+\/refunds$/.test(p)) return { id: 'REF-9', status: 'approved' };
   if (p.startsWith('/v1/payments/')) {
     const id = p.split('/')[3];
-    return { id: Number(id), status: MP_STATUS[id] || 'approved', external_reference: ULTIMO_REF };
+    return { id: Number(id), status: MP_STATUS[id] || 'approved', external_reference: PAY_REF[id] || ULTIMO_REF };
   }
   return {};
 };
@@ -440,7 +459,7 @@ async function main() {
     const r = await req('POST', `/academy/api/checkout/${prodId}`, { jar: 'bruno' });
     assert.equal(r.st, 200); pedidoBruno = r.json.order_id;
     assert.equal(r.json.init_point, 'https://mp.test/checkout/PREF-1');
-    assert.ok(mpChamadas.includes('/checkout/preferences'));
+    assert.ok(mpChamadas.some(x => x.includes('/checkout/preferences')));
     const st = await req('GET', `/academy/api/pedidos/${pedidoBruno}/status`, { jar: 'bruno' });
     assert.equal(st.json.status, 'pendente');
     // "voltou do MP" mas sem webhook: nada de matrícula
@@ -630,6 +649,102 @@ async function main() {
     assert.equal(r.st, 200);
     assert.equal(r.json.comissoes.length, 2); // fabi (paga) + gabi (cancelada)
     assert.ok(r.json.comissoes.every(c => ['paga', 'cancelada'].includes(c.status)));
+  });
+
+  // ================= FASE 6 — assinaturas e clubes =================
+  console.log('\n— FASE 6: clube do produtor —');
+  let clubeId, clubeSlug;
+  await t('clube exige mensalidade e conteúdo/itens antes da revisão; só produto próprio entra', async () => {
+    const r = await req('POST', '/academy/api/produtor/produtos', { jar: 'maria', corpo: { titulo: 'Clube Villela de Gestão', tipo: 'clube', preco_centavos: 4900 } });
+    clubeId = r.json.produto.id; clubeSlug = r.json.produto.slug;
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${clubeId}/status`, { jar: 'maria', corpo: { status: 'em_revisao' } })).st, 400); // sem itens
+    // produto de outra produtora não entra
+    const alheio = academy.repo.Usuarios.porEmail(ANA.email).id; // dono ana
+    const rascunhoAna = require('./db').db.prepare('SELECT id FROM products WHERE producer_id = ?').get(alheio);
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${clubeId}/clube/itens`, { jar: 'maria', corpo: { product_id: rascunhoAna.id } })).st, 400);
+    // produto próprio publicado entra
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${clubeId}/clube/itens`, { jar: 'maria', corpo: { product_id: prodId } })).st, 200);
+    const g = await req('GET', `/academy/api/produtor/produtos/${clubeId}/clube`, { jar: 'maria' });
+    assert.equal(g.json.itens.length, 1);
+  });
+  await t('clube publica e aparece com /mês; compra avulsa de clube é bloqueada', async () => {
+    await req('POST', `/academy/api/produtor/produtos/${clubeId}/status`, { jar: 'maria', corpo: { status: 'em_revisao' } });
+    await req('POST', `/academy/api/admin/produtos/${clubeId}/decidir`, { jar: 'maria', corpo: { status: 'aprovado' } });
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${clubeId}/status`, { jar: 'maria', corpo: { status: 'publicado' } })).st, 200);
+    const pg = await req('GET', `/academy/cursos/${clubeSlug}`);
+    assert.equal(pg.st, 200); assert.ok(pg.texto.includes('/mês')); assert.ok(pg.texto.includes('Assinar agora'));
+    const cx = await req('GET', `/academy/checkout/${clubeSlug}`);
+    assert.ok(cx.texto.includes('Assinar clube'));
+    assert.equal((await req('POST', `/academy/api/checkout/${clubeId}`, { jar: 'dani' })).st, 400); // clube não é compra avulsa
+  });
+
+  console.log('\n— FASE 6: assinar, acesso e cobrança recorrente —');
+  let subId, preId;
+  await t('assinar cria preapproval; acesso SÓ depois do authorized (webhook)', async () => {
+    assert.equal((await req('POST', `/academy/api/assinar/${clubeId}`)).st, 401); // exige login
+    const r = await req('POST', `/academy/api/assinar/${clubeId}`, { jar: 'dani' });
+    assert.equal(r.st, 200); subId = r.json.assinatura_id;
+    assert.ok(r.json.init_point.includes('/preapproval/'));
+    preId = academy.billing.Assinaturas.obter(subId).mp_preapproval_id;
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${clubeId}`, { jar: 'dani' })).json.matriculado, false);
+    assert.equal((await req('POST', `/academy/api/assinar/${clubeId}`, { jar: 'dani' })).st, 400); // não assina 2x
+    PRE_STATE[preId] = 'authorized';
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'subscription_preapproval', data: { id: preId } } });
+    await espera(200);
+    assert.equal(academy.billing.Assinaturas.obter(subId).status, 'ativa');
+  });
+  await t('assinante acessa o clube E os produtos incluídos (mídia inclusive)', async () => {
+    const clube = await req('GET', `/academy/api/aluno/cursos/${clubeId}`, { jar: 'dani' });
+    assert.ok(clube.json.matriculado);
+    assert.equal(clube.json.incluidos.length, 1);
+    const item = await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'dani' });
+    assert.ok(item.json.matriculado, 'acesso ao item via assinatura');
+    assert.equal((await req('GET', `/academy/api/media/${mediaId}`, { jar: 'dani' })).st, 200, 'mídia do item liberada');
+    const bib = await req('GET', '/academy/api/aluno/biblioteca', { jar: 'dani' });
+    assert.equal(bib.json.assinaturas.length, 1);
+    // avaliação via assinatura (temAcesso)
+    assert.equal((await req('POST', `/academy/api/aluno/cursos/${prodId}/avaliar`, { jar: 'dani', corpo: { nota: 4, texto: 'via clube' } })).st, 200);
+  });
+  await t('cobrança recorrente vira pedido (comissão 10%) e é idempotente; KPIs MRR', async () => {
+    PAY_REF['905'] = 'academy-sub:' + subId;
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '905' } } });
+    await espera(200);
+    const o = require('./db').db.prepare("SELECT * FROM orders WHERE subscription_id = ?").get(subId);
+    assert.ok(o); assert.equal(o.tipo, 'assinatura'); assert.equal(o.valor_centavos, 4900);
+    assert.equal(o.comissao_plataforma_centavos, 490);
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '905' } } });
+    await espera(200);
+    assert.equal(require('./db').db.prepare("SELECT COUNT(*) n FROM orders WHERE subscription_id = ?").get(subId).n, 1, 'cobrança duplicada não repete');
+    const d = await req('GET', '/academy/api/admin/dashboard', { jar: 'maria' });
+    assert.equal(d.json.dashboard.assinaturas_ativas, 1);
+    assert.equal(d.json.dashboard.mrr_centavos, 4900);
+  });
+  await t('pausada (inadimplência) derruba o acesso; pagamento reativa', async () => {
+    PRE_STATE[preId] = 'paused';
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'subscription_preapproval', data: { id: preId } } });
+    await espera(200);
+    assert.equal(academy.billing.Assinaturas.obter(subId).status, 'pausada');
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'dani' })).json.matriculado, false);
+    PAY_REF['906'] = 'academy-sub:' + subId;
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '906' } } });
+    await espera(200);
+    assert.equal(academy.billing.Assinaturas.obter(subId).status, 'ativa');
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'dani' })).json.matriculado, true);
+  });
+  await t('cancelar (assinante) chama o MP e encerra o acesso', async () => {
+    const r = await req('POST', `/academy/api/assinaturas/${subId}/cancelar`, { jar: 'dani' });
+    assert.equal(r.st, 200);
+    assert.ok(mpChamadas.some(x => x.startsWith('PUT /preapproval/')));
+    assert.equal(academy.billing.Assinaturas.obter(subId).status, 'cancelada');
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${clubeId}`, { jar: 'dani' })).json.matriculado, false);
+  });
+  await t('staff e admin listam assinaturas; assinar de novo após cancelar funciona', async () => {
+    const st = await req('GET', '/staff/api/academy/assinaturas');
+    assert.equal(st.st, 200); assert.equal(st.json.assinaturas.length, 1);
+    const r = await req('POST', `/academy/api/assinar/${clubeId}`, { jar: 'dani' });
+    assert.equal(r.st, 200);
+    // limpeza: cancela a pendente
+    assert.equal((await req('POST', `/academy/api/assinaturas/${r.json.assinatura_id}/cancelar`, { jar: 'dani' })).st, 200);
   });
 
   srv.close();

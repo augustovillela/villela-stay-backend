@@ -56,7 +56,8 @@ const Pedidos = {
 async function criarCheckout(usuario, productId, baseUrl, refCodigo) {
   const p = ct.Produtos.obter(productId);
   if (!p || p.status !== 'publicado') throw new Error('Produto não disponível para compra.');
-  if (ct.Matriculas.ativa(usuario.id, p.id)) throw new Error('Você já tem acesso a este produto.');
+  if (p.tipo === 'clube') throw new Error('Clube é assinatura recorrente — use /academy/api/assinar.');
+  if (ct.temAcesso(usuario.id, p.id)) throw new Error('Você já tem acesso a este produto.');
   const pendente = db.prepare("SELECT * FROM orders WHERE user_id = ? AND product_id = ? AND status = 'pendente'").get(usuario.id, p.id);
   const valor = p.preco_promo_centavos || p.preco_centavos || 0;
   const comissoes = repo.Config.obter('comissoes', { plataforma_pct: 10 });
@@ -107,6 +108,13 @@ async function criarCheckout(usuario, productId, baseUrl, refCodigo) {
 // aplica o resultado de um pagamento do MP a um pedido (idempotente)
 function aplicarPagamento(pay) {
   const ref = String(pay.external_reference || '');
+  if (ref.startsWith('academy-sub:')) { // cobrança recorrente de assinatura
+    const sub = Assinaturas.obter(ref.slice('academy-sub:'.length));
+    if (!sub) return { resultado: 'ignorado' };
+    db.prepare('INSERT INTO payment_events (quando, order_id, mp_payment_id, status, payload) VALUES (?, ?, ?, ?, ?)')
+      .run(nowISO(), 'sub:' + sub.id, s(pay.id, 40), s(pay.status, 30), j.str(pay).slice(0, 8000));
+    return registrarCobrancaAssinatura(sub, pay);
+  }
   if (!ref.startsWith('academy:')) return { resultado: 'ignorado' };
   const order = Pedidos.obter(ref.slice('academy:'.length));
   if (!order) return { resultado: 'ignorado' };
@@ -168,6 +176,104 @@ async function reembolsar(orderId, { motivo, quem } = {}) {
   return { ok: true };
 }
 
+// ================= FASE 6 — assinaturas (clubes, preapproval MP) =================
+const Assinaturas = {
+  obter(id) { return db.prepare('SELECT * FROM subscriptions WHERE id = ?').get(id) || null; },
+  doUsuario(userId) { return db.prepare('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY criado_em DESC').all(userId); },
+  ativaDoUsuario(userId, productId) {
+    return db.prepare("SELECT * FROM subscriptions WHERE user_id = ? AND product_id = ? AND status IN ('pendente','ativa')").get(userId, productId) || null;
+  },
+  listarAdmin({ status, n } = {}) {
+    let sql = `SELECT s.*, u.email AS assinante_email FROM subscriptions s JOIN users u ON u.id = s.user_id`;
+    const args = [];
+    if (status) { sql += ' WHERE s.status = ?'; args.push(status); }
+    sql += ' ORDER BY s.criado_em DESC LIMIT ?'; args.push(Math.min(parseInt(n, 10) || 200, 1000));
+    return db.prepare(sql).all(...args);
+  },
+  kpis() {
+    const ativa = db.prepare("SELECT COUNT(*) n, COALESCE(SUM(valor_centavos),0) v FROM subscriptions WHERE status = 'ativa'").get();
+    return { assinaturas_ativas: ativa.n, mrr_centavos: ativa.v };
+  },
+  mudarStatus(sub, status) {
+    const campos = { ativa: 'ativa_em', cancelada: 'cancelada_em' };
+    db.prepare(`UPDATE subscriptions SET status = ?, atualizado_em = ?${campos[status] ? `, ${campos[status]} = ?` : ''} WHERE id = ?`)
+      .run(...(campos[status] ? [status, nowISO(), nowISO(), sub.id] : [status, nowISO(), sub.id]));
+  },
+};
+
+// assinar um clube: cria a assinatura pendente + preapproval no MP
+async function criarAssinatura(usuario, productId, baseUrl) {
+  const p = ct.Produtos.obter(productId);
+  if (!p || p.status !== 'publicado' || p.tipo !== 'clube') throw new Error('Clube não disponível para assinatura.');
+  if (Assinaturas.ativaDoUsuario(usuario.id, p.id)) throw new Error('Você já tem uma assinatura deste clube.');
+  if (!ativo()) throw new Error('Pagamento online indisponível no momento.');
+  const valor = p.preco_promo_centavos || p.preco_centavos;
+  const comissoes = repo.Config.obter('comissoes', { plataforma_pct: 10 });
+  const pct = Math.max(0, Math.min(100, parseInt(comissoes.plataforma_pct, 10) || 10));
+  const id = novoId();
+  db.prepare(`INSERT INTO subscriptions (id, user_id, product_id, produto_titulo, producer_id, valor_centavos,
+    plataforma_pct, status, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?)`)
+    .run(id, usuario.id, p.id, p.titulo, p.producer_id, valor, pct, nowISO());
+  const pre = await _mpFetch('/preapproval', {
+    method: 'POST',
+    body: JSON.stringify({
+      reason: `Villela Academy — ${s(p.titulo, 100)}`,
+      external_reference: 'academy-sub:' + id,
+      payer_email: usuario.email,
+      auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: Math.round(valor) / 100, currency_id: 'BRL' },
+      back_url: `${baseUrl}/academy/obrigado-assinatura?assinatura=${id}`,
+      status: 'pending',
+    }),
+  });
+  db.prepare('UPDATE subscriptions SET mp_preapproval_id = ?, atualizado_em = ? WHERE id = ?').run(s(pre.id, 80), nowISO(), id);
+  return { assinatura_id: id, init_point: pre.init_point || pre.sandbox_init_point || '' };
+}
+
+// aplica o estado do preapproval do MP à assinatura local (idempotente)
+function aplicarPreapproval(pre) {
+  const ref = String(pre.external_reference || '');
+  if (!ref.startsWith('academy-sub:')) return { resultado: 'ignorado' };
+  const sub = Assinaturas.obter(ref.slice('academy-sub:'.length));
+  if (!sub) return { resultado: 'ignorado' };
+  const mapa = { authorized: 'ativa', paused: 'pausada', cancelled: 'cancelada' };
+  const novo = mapa[String(pre.status || '')];
+  if (!novo || sub.status === novo) return { resultado: 'sem-acao' };
+  Assinaturas.mudarStatus(sub, novo);
+  repo.Auditoria.registrar({ quem: 'mercadopago', acao: 'assinatura.' + novo, entidade: 'subscriptions', entidade_id: sub.id, detalhe: sub.produto_titulo });
+  if (novo === 'ativa') _notificar(`🔁 Villela Academy: assinatura ATIVA — "${sub.produto_titulo}" (R$ ${(sub.valor_centavos / 100).toFixed(2)}/mês).`).catch(() => {});
+  if (novo === 'pausada') _notificar(`⚠️ Villela Academy: assinatura PAUSADA (inadimplência?) — "${sub.produto_titulo}".`).catch(() => {});
+  return { resultado: novo };
+}
+
+// cobrança recorrente aprovada → vira pedido tipo 'assinatura' (idempotente por payment id)
+function registrarCobrancaAssinatura(sub, pay) {
+  if (String(pay.status || '') !== 'approved') return { resultado: 'sem-acao:' + pay.status };
+  if (db.prepare('SELECT 1 FROM orders WHERE mp_payment_id = ? AND subscription_id = ?').get(String(pay.id), sub.id)) return { resultado: 'ja-registrada' };
+  const comissao = Math.round(sub.valor_centavos * sub.plataforma_pct / 100);
+  db.prepare(`INSERT INTO orders (id, user_id, product_id, produto_titulo, producer_id, valor_centavos, plataforma_pct,
+    comissao_plataforma_centavos, liquido_produtor_centavos, status, tipo, subscription_id, mp_payment_id, criado_em, pago_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'paga', 'assinatura', ?, ?, ?, ?)`)
+    .run(novoId(), sub.user_id, sub.product_id, sub.produto_titulo, sub.producer_id, sub.valor_centavos, sub.plataforma_pct,
+      comissao, sub.valor_centavos - comissao, sub.id, String(pay.id), nowISO(), nowISO());
+  if (sub.status !== 'ativa') Assinaturas.mudarStatus(sub, 'ativa'); // pagamento em dia reativa
+  return { resultado: 'cobranca-registrada' };
+}
+
+// cancelamento (assinante, admin ou staff): cancela no MP e localmente
+async function cancelarAssinatura(subId, quem) {
+  const sub = Assinaturas.obter(subId);
+  if (!sub) throw new Error('Assinatura não encontrada.');
+  if (['cancelada'].includes(sub.status)) return { ok: true, status: sub.status };
+  if (sub.mp_preapproval_id && ativo()) {
+    try { await _mpFetch(`/preapproval/${sub.mp_preapproval_id}`, { method: 'PUT', body: JSON.stringify({ status: 'cancelled' }) }); }
+    catch (e) { if (sub.status !== 'pendente') throw e; } // pendente pode nem existir no MP
+  }
+  Assinaturas.mudarStatus(sub, 'cancelada');
+  repo.Auditoria.registrar({ quem: s(quem, 80), acao: 'assinatura.cancelar', entidade: 'subscriptions', entidade_id: sub.id, detalhe: sub.produto_titulo });
+  _notificar(`🔕 Villela Academy: assinatura cancelada — "${sub.produto_titulo}".`).catch(() => {});
+  return { ok: true, status: 'cancelada' };
+}
+
 // webhook do MP: salva cru, busca o pagamento e aplica (idempotente)
 async function processarWebhook(body, query) {
   const topico = s((body && body.type) || (query && (query.type || query.topic)), 40);
@@ -176,7 +282,12 @@ async function processarWebhook(body, query) {
     .run(nowISO(), topico, mpId, j.str({ body, query }).slice(0, 8000), '');
   const marcar = (r) => db.prepare('UPDATE webhook_events SET resultado = ? WHERE id = ?').run(s(r, 200), reg.lastInsertRowid);
   try {
-    if (topico !== 'payment' || !mpId || !ativo()) return marcar('ignorado');
+    if (!mpId || !ativo()) return marcar('ignorado');
+    if (['subscription_preapproval', 'preapproval'].includes(topico)) {
+      const pre = await _mpFetch(`/preapproval/${mpId}`);
+      return marcar(aplicarPreapproval(pre).resultado);
+    }
+    if (topico !== 'payment') return marcar('ignorado');
     const pay = await _mpFetch(`/v1/payments/${mpId}`);
     marcar(aplicarPagamento(pay).resultado);
   } catch (e) { marcar('erro:' + e.message); }
@@ -192,4 +303,7 @@ async function conferirPedido(orderId) {
   return { status: Pedidos.obter(orderId).status };
 }
 
-module.exports = { configurar, ativo, Pedidos, criarCheckout, processarWebhook, conferirPedido, reembolsar, aplicarPagamento };
+module.exports = {
+  configurar, ativo, Pedidos, criarCheckout, processarWebhook, conferirPedido, reembolsar, aplicarPagamento,
+  Assinaturas, criarAssinatura, cancelarAssinatura, aplicarPreapproval,
+};

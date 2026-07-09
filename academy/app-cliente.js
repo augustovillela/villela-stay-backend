@@ -25,7 +25,8 @@
 
   var STATUS_PERFIL = { em_analise: '⏳ em análise', aprovado: '✅ aprovado', rejeitado: '❌ rejeitado', suspenso: '⚠️ suspenso', bloqueado: '🚫 bloqueado' };
   var STATUS_PRODUTO = { rascunho: '📝 rascunho', em_revisao: '⏳ em revisão', aprovado: '✅ aprovado', rejeitado: '❌ rejeitado', publicado: '🟢 publicado', pausado: '⏸️ pausado', suspenso: '⚠️ suspenso', removido: '🗑️ removido' };
-  var TIPOS_PROD = { curso: '🎓 Curso', ebook: '📖 E-book', pdf: '📄 PDF', audio: '🎧 Áudio', pacote: '📦 Pacote', mentoria: '🧭 Mentoria' };
+  var TIPOS_PROD = { curso: '🎓 Curso', ebook: '📖 E-book', pdf: '📄 PDF', audio: '🎧 Áudio', pacote: '📦 Pacote', mentoria: '🧭 Mentoria', clube: '🔁 Clube' };
+  var STATUS_ASSINATURA = { pendente: '⏳ aguardando pagamento', ativa: '🟢 ativa', pausada: '⚠️ pausada (pagamento)', cancelada: '🚫 cancelada' };
   var barra = function (pct) {
     return '<div style="background:#efe9fb;border-radius:8px;height:10px;overflow:hidden"><div style="background:#4a2fbd;height:10px;width:' + (pct || 0) + '%"></div></div>';
   };
@@ -106,10 +107,23 @@
             '<button class="btn peq" data-curso="' + c.product_id + '">' + (c.progresso.pct > 0 ? 'Continuar' : 'Começar') + '</button></div>';
         }).join('');
       }
-      html += '</div>' + cartaoVireProdutorAfiliado();
+      html += '</div>';
+      if ((d.assinaturas || []).length) {
+        html += '<div class="card"><h3>🔁 Minhas assinaturas</h3>' + d.assinaturas.map(function (a) {
+          return '<div class="lin"><b>' + esc(a.produto_titulo) + '</b> · ' + brl(a.valor_centavos) + '/mês · ' + (STATUS_ASSINATURA[a.status] || esc(a.status)) +
+            (a.status === 'ativa' ? ' <button class="btn peq" data-curso="' + a.product_id + '">Abrir clube</button> <button class="btn peq secund" data-cancsub="' + a.id + '">Cancelar</button>' : '') + '</div>';
+        }).join('') + '</div>';
+      }
+      html += cartaoVireProdutorAfiliado();
       setView(html);
       Array.prototype.forEach.call(document.querySelectorAll('[data-curso]'), function (b) {
         b.onclick = function () { vCurso(b.getAttribute('data-curso')); };
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-cancsub]'), function (b) {
+        b.onclick = function () {
+          if (!confirm('Cancelar a assinatura? O acesso ao clube termina agora.')) return;
+          api('POST', '/assinaturas/' + b.getAttribute('data-cancsub') + '/cancelar').then(vAluno).catch(function (e) { alert(e.message); });
+        };
       });
       ligarOnboarding();
     }).catch(erroBox);
@@ -130,6 +144,11 @@
         (d.produto.subtitulo ? '<p class="sub" style="text-align:left">' + esc(d.produto.subtitulo) + '</p>' : '') +
         (d.matriculado ? '<div style="max-width:340px">' + barra(d.progresso.pct) + '</div><p class="sub" style="text-align:left;margin:4px 0 0">' + d.progresso.concluidas + '/' + d.progresso.total_aulas + ' aulas concluídas</p>'
           : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas.</div>') + '</div>';
+      if ((d.incluidos || []).length) {
+        html += '<div class="card"><b>🎁 Incluído na sua assinatura</b>' + d.incluidos.map(function (i) {
+          return '<div class="lin">' + (TIPOS_PROD[i.tipo] || '') + ' <a href="#" data-curso-inc="' + i.product_id + '">' + esc(i.titulo) + '</a></div>';
+        }).join('') + '</div>';
+      }
       html += d.estrutura.map(function (mo) {
         return '<div class="card"><b>📚 ' + esc(mo.titulo) + '</b>' + mo.aulas.map(function (a) {
           var feito = pa[a.id] && pa[a.id].concluida;
@@ -148,6 +167,9 @@
       html += '<div id="player"></div>';
       setView(html);
       el('b-volta').onclick = function (e) { e.preventDefault(); vAluno(); };
+      Array.prototype.forEach.call(document.querySelectorAll('[data-curso-inc]'), function (lk) {
+        lk.onclick = function (e) { e.preventDefault(); vCurso(lk.getAttribute('data-curso-inc')); };
+      });
       if (el('b-avaliar')) el('b-avaliar').onclick = function () {
         api('POST', '/aluno/cursos/' + pid + '/avaliar', { nota: val('av-nota'), texto: val('av-texto') })
           .then(function () { el('av-msg').textContent = '✅ obrigado!'; }).catch(function (e) { el('av-msg').textContent = e.message; });
@@ -323,6 +345,11 @@
         '<p style="margin-top:10px"><input id="nm-titulo" placeholder="Título do novo módulo" style="max-width:300px"> ' +
         '<button class="btn peq" id="b-addmod">+ Módulo</button> <span id="bl-msg" class="erro"></span></p></div>';
 
+      // clube (FASE 6): produtos incluídos na assinatura
+      if (p.tipo === 'clube') {
+        html += '<div class="card"><h3>🔁 Produtos incluídos no clube</h3><div id="cl-box"><p class="sub">Carregando…</p></div></div>';
+      }
+
       // capa + página de venda (FASE 3)
       html += '<div class="card"><h3>🖼️ Capa</h3>' +
         (p.capa_media_id ? '<p class="sub" style="text-align:left">Capa atual definida.' + (p.status === 'publicado' ? ' <a href="/academy/capa/' + p.id + '" target="_blank">ver</a>' : '') + '</p>' : '<p class="sub" style="text-align:left">Sem capa — imagens 16:9 (jpg/png/webp) até 10 MB.</p>') +
@@ -389,7 +416,33 @@
         }).then(function () { vProduto(pid); }).catch(function (e) { el('capa-msg').textContent = e.message; });
       };
       editorPaginaVenda(pid);
+      if (p.tipo === 'clube') gestorClube(pid);
     }).catch(erroBox);
+  }
+
+  function gestorClube(pid) {
+    api('GET', '/produtor/produtos/' + pid + '/clube').then(function (d) {
+      var itens = d.itens.map(function (i) {
+        return '<div class="lin">' + (TIPOS_PROD[i.tipo] || '') + ' ' + esc(i.titulo) +
+          ' <button class="btn peq secund" data-clrm="' + i.product_id + '">Remover</button></div>';
+      }).join('') || '<p class="sub" style="text-align:left">Nenhum produto incluído ainda.</p>';
+      var opts = d.candidatos.filter(function (c) { return !d.itens.some(function (i) { return i.product_id === c.id; }); })
+        .map(function (c) { return '<option value="' + c.id + '">' + esc(c.titulo) + '</option>'; }).join('');
+      el('cl-box').innerHTML = itens +
+        (opts ? '<p style="margin-top:10px"><select id="cl-add" style="max-width:320px">' + opts + '</select> <button class="btn peq" id="b-cladd">+ Incluir no clube</button> <span id="cl-msg" class="erro"></span></p>'
+          : '<p class="sub" style="text-align:left">Publique outros produtos seus para poder incluí-los.</p>') +
+        '<p class="sub" style="text-align:left">Assinantes ativos têm acesso a tudo que está incluído + ao conteúdo próprio do clube.</p>';
+      if (el('b-cladd')) el('b-cladd').onclick = function () {
+        api('POST', '/produtor/produtos/' + pid + '/clube/itens', { product_id: val('cl-add') })
+          .then(function () { gestorClube(pid); }).catch(function (e) { el('cl-msg').textContent = e.message; });
+      };
+      Array.prototype.forEach.call(document.querySelectorAll('[data-clrm]'), function (b) {
+        b.onclick = function () {
+          api('DELETE', '/produtor/produtos/' + pid + '/clube/itens/' + b.getAttribute('data-clrm'))
+            .then(function () { gestorClube(pid); }).catch(function (e) { alert(e.message); });
+        };
+      });
+    }).catch(function (e) { el('cl-box').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
   }
 
   // editor da página de venda: listas em textarea (1 item por linha);
@@ -502,7 +555,10 @@
         '<span class="kpi"><b>' + brl(r.gmv_centavos) + '</b>GMV</span>' +
         '<span class="kpi"><b>' + brl(r.receita_plataforma_centavos) + '</b>receita plataforma</span>' +
         '<span class="kpi"><b>' + r.vendas + '</b>vendas</span>' +
-        '<span class="kpi"><b>' + r.reembolsos + '</b>reembolsos</span></div>';
+        '<span class="kpi"><b>' + r.reembolsos + '</b>reembolsos</span>' +
+        '<span class="kpi"><b>' + r.assinaturas_ativas + '</b>assinaturas</span>' +
+        '<span class="kpi"><b>' + brl(r.mrr_centavos) + '</b>MRR</span></div>';
+      html += '<div class="card"><h3>🔁 Assinaturas</h3><div id="adm-subs"><p class="sub">Carregando…</p></div></div>';
       html += '<div class="card"><h3>🧾 Pedidos</h3><div id="adm-ped"><p class="sub">Carregando…</p></div></div>' +
         '<div class="card"><h3>💸 Comissões de afiliados</h3><div id="adm-com"><p class="sub">Carregando…</p></div></div>';
       html += '<div class="card"><h3>🧐 Produtos aguardando revisão</h3>' + (prods.length
@@ -533,6 +589,21 @@
           };
         });
       }).catch(function (e) { el('adm-ped').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+      api('GET', '/admin/assinaturas?n=50').then(function (ds) {
+        el('adm-subs').innerHTML = ds.assinaturas.length
+          ? '<table><tr><th>Clube</th><th>Assinante</th><th>Mensalidade</th><th>Status</th><th>Desde</th><th></th></tr>' + ds.assinaturas.map(function (a) {
+            return '<tr><td>' + esc(a.produto_titulo) + '</td><td>' + esc(a.assinante_email) + '</td><td>' + brl(a.valor_centavos) +
+              '</td><td>' + (STATUS_ASSINATURA[a.status] || esc(a.status)) + '</td><td>' + dt(a.criado_em) +
+              '</td><td>' + (['ativa', 'pausada', 'pendente'].indexOf(a.status) >= 0 ? '<button class="btn peq secund" data-subcanc="' + a.id + '">Cancelar</button>' : '') + '</td></tr>';
+          }).join('') + '</table>'
+          : '<p class="sub" style="text-align:left">Nenhuma assinatura ainda.</p>';
+        Array.prototype.forEach.call(document.querySelectorAll('[data-subcanc]'), function (b) {
+          b.onclick = function () {
+            if (!confirm('Cancelar esta assinatura? O assinante perde o acesso.')) return;
+            api('POST', '/admin/assinaturas/' + b.getAttribute('data-subcanc') + '/cancelar').then(vAdmin).catch(function (e) { alert(e.message); });
+          };
+        });
+      }).catch(function (e) { el('adm-subs').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
       api('GET', '/admin/comissoes?n=50').then(function (dc) {
         el('adm-com').innerHTML = dc.comissoes.length
           ? '<table><tr><th>Afiliado</th><th>Produto</th><th>Valor</th><th>Status</th><th>Libera em</th><th></th></tr>' + dc.comissoes.map(function (cm) {

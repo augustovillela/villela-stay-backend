@@ -6,9 +6,10 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASES 1–5 concluídas (fundação, produtos e cursos, marketplace,
-checkout Mercado Pago, afiliados e comissões) — a plataforma vende e
-comissiona.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
+**Status: FASES 1–6 concluídas (fundação, produtos e cursos, marketplace,
+checkout Mercado Pago, afiliados e comissões, assinaturas e clubes) — a
+plataforma vende avulso, comissiona e cobra recorrente.** Fases seguintes em
+[ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
 
@@ -81,6 +82,9 @@ entram como camadas novas nas fases seguintes sem tocar na fundação.
 **FASE 5 (criado)**: `affiliate_links`, `affiliate_clicks`, `commissions`;
 colunas `products.afiliado_pct` e `orders.{affiliate_user_id,afiliado_pct,
 comissao_afiliado_centavos}` via migração.
+
+**FASE 6 (criado)**: `subscriptions`, `club_items`; colunas
+`orders.{tipo,subscription_id}` via migração.
 
 **Fases seguintes (planejado — criar quando a fase chegar)**:
 - F3 marketplace: `sales_pages`, `page_sections`, `reviews`
@@ -174,6 +178,16 @@ webhook/consulta segura (nunca pelo retorno do navegador).
    produto vence (liberação preguiçosa ao consultar, sem scheduler) → paga
    (repasse manual via Pix marcado por admin/staff). Split automático do MP
    só quando houver volume que justifique.
+20. **Clube = produto (F6)**: assinatura recorrente é um produto tipo 'clube'
+   com mensalidade via preapproval do MP; dá acesso ao conteúdo próprio + aos
+   produtos incluídos (sempre do mesmo produtor). `temAcesso` unifica
+   matrícula/assinatura em TODA checagem de acesso.
+21. **Cobrança recorrente vira pedido (F6)**: cada pagamento aprovado da
+   assinatura entra em `orders` (tipo 'assinatura') — GMV, receita e líquido
+   do produtor num lugar só. Pagamento em dia reativa assinatura pausada.
+22. **Cancelamento encerra o acesso na hora (F6)** — manter acesso até o fim
+   do ciclo pago é melhoria futura, documentada. Afiliado não comissiona
+   assinatura nesta fase.
 
 ## Rodar e testar
 
