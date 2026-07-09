@@ -14,6 +14,12 @@ const MANUAIS_SERVICOS = [
   { slug: 'manutencao', ico: '🛠️', nome: 'Manutenção', desc: 'Chamados, preventiva, técnicos e equipamentos.' },
   { slug: 'gestao-livros', ico: '📚', nome: 'Gestão de Livros (Livraria)', desc: 'Administração da loja de livros.' },
   { slug: 'legal-intelligence', ico: '⚖️', nome: 'Villela Legal Intelligence', desc: 'Processos, prazos, clientes e IA jurídica (MINUTA).' },
+  { slug: 'academy-admin', ico: '🎓', nome: 'Villela Academy (administração)', desc: 'Administração do marketplace: produtores, produtos, vendas e suporte.' },
+  { slug: 'vdocs-admin', ico: '🗂️', nome: 'Villela Docs (administração)', desc: 'Administração da plataforma: empresas clientes, planos e saúde.' },
+  { slug: 'vpe-admin', ico: '📋', nome: 'Villela Projects (administração)', desc: 'Administração da plataforma de projetos & eventos.' },
+  { slug: 'vsm-admin', ico: '🏨', nome: 'Stay Manager (administração)', desc: 'Administração da plataforma de gestão de hospedagem.' },
+  { slug: 'vcrm-admin', ico: '🤝', nome: 'Villela CRM (administração)', desc: 'Administração do produto CRM SaaS (≠ CRM/Funil interno).' },
+  { slug: 'legal-saas-admin', ico: '⚖️💼', nome: 'Legal SaaS (administração)', desc: 'Administração da venda do jurídico a outros escritórios.' },
 ];
 
 const MANUAIS_SAAS = [

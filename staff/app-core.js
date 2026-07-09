@@ -47,8 +47,9 @@ function mdParaHtml(md) {
   const head = (l) => /^#{1,6}\s/.test(l);
   const tab = (l) => /^\s*\|.*\|\s*$/.test(l);
   const lista = (l) => /^\s*[-*]\s+/.test(l);
+  const numerada = (l) => /^\s*\d+[.)]\s+/.test(l);
   const quote = (l) => /^\s*>\s?/.test(l);
-  const novoBloco = (l) => branco(l) || head(l) || tab(l) || lista(l) || quote(l);
+  const novoBloco = (l) => branco(l) || head(l) || tab(l) || lista(l) || numerada(l) || quote(l);
   let out = '', i = 0;
   while (i < linhas.length) {
     const l = linhas[i];
@@ -63,9 +64,20 @@ function mdParaHtml(md) {
       continue;
     }
     if (quote(l)) { const buf = []; while (i < linhas.length && quote(linhas[i])) { buf.push(linhas[i].replace(/^\s*>\s?/, '')); i++; } out += `<blockquote>${inline(buf.join(' '))}</blockquote>`; continue; }
+    if (numerada(l)) {
+      const it = [];
+      while (i < linhas.length && !branco(linhas[i]) && !head(linhas[i]) && !tab(linhas[i]) && !quote(linhas[i]) && !lista(linhas[i])) {
+        if (numerada(linhas[i])) it.push(linhas[i].replace(/^\s*\d+[.)]\s+/, ''));
+        else if (it.length) it[it.length - 1] += ' ' + linhas[i].trim();
+        else break;
+        i++;
+      }
+      out += `<ol>${it.map(t => `<li>${inline(t)}</li>`).join('')}</ol>`;
+      continue;
+    }
     if (lista(l)) {
       const it = [];
-      while (i < linhas.length && !branco(linhas[i]) && !head(linhas[i]) && !tab(linhas[i]) && !quote(linhas[i])) {
+      while (i < linhas.length && !branco(linhas[i]) && !head(linhas[i]) && !tab(linhas[i]) && !quote(linhas[i]) && !numerada(linhas[i])) {
         if (lista(linhas[i])) it.push(linhas[i].replace(/^\s*[-*]\s+/, ''));
         else if (it.length) it[it.length - 1] += ' ' + linhas[i].trim();
         else it.push(linhas[i].trim());
