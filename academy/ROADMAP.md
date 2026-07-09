@@ -1,9 +1,9 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASE 0 (diagnóstico), FASE 1 (fundação) e FASE 2 (produtos e cursos) concluídas
-em 08/07/2026 — ver README. Cada fase termina com: testes verdes na suíte,
-checklist de segurança da fase fechado, doc do assunto atualizado. Ordem pensada
-para vender o quanto antes (F3→F4 é o caminho crítico até a primeira venda).
+FASES 0 (diagnóstico), 1 (fundação), 2 (produtos e cursos) e 3 (marketplace e
+páginas de venda) concluídas em 08/07/2026 — ver README. Cada fase termina com:
+testes verdes na suíte, checklist de segurança da fase fechado, doc do assunto
+atualizado. Próximo passo crítico: F4 (checkout) é o que destrava a 1ª venda.
 
 ## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
 Entregue: produtos de 6 tipos com fluxo editorial completo (rascunho→revisão→
@@ -15,12 +15,16 @@ matrícula + download_logs; vídeo por URL externa (embed YouTube/Vimeo) até a 
 parou); matrícula cortesia (produtor/admin/staff); moderação no painel admin e
 no staff. 39 testes.
 
-## FASE 3 — Marketplace e páginas de venda
-Vitrine pública (/academy/marketplace), categorias, busca, página do curso e
-do produtor (slug), SEO/OG; página de venda por seções (headline, benefícios,
-depoimentos, FAQ, garantia, CTA) com templates; avaliações de alunos;
-moderação editorial ativa (fila de revisão + denúncias). Termos do
-Produtor/Afiliado e políticas (MINUTA → OAB).
+## ✅ FASE 3 — Marketplace e páginas de venda (CONCLUÍDA 08/07/2026)
+Entregue: vitrine pública `/academy/marketplace` (busca + categorias, só
+publicados), página do curso `/academy/cursos/<slug>` server-rendered com
+SEO/OG e seções da página de venda (headline, vídeo, promessa, benefícios,
+para quem, aprender, conteúdo com degustação, bônus, depoimentos+avaliações,
+garantia, FAQ, CTA de interesse→lead+alerta), página do produtor
+`/academy/produtores/<slug>`, capa pública (só de publicado), editor de página
+de venda no painel do produtor, avaliações (só matriculado, 1 por aluno,
+moderáveis), denúncias com fila no admin/staff, Termos do Produtor/Afiliado e
+Política de Reembolso (MINUTA → OAB). 49 testes.
 
 ## FASE 4 — Checkout e pagamentos (Mercado Pago)
 Checkout Pro (Pix/cartão), pedidos (orders/order_items/payments), webhook

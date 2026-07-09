@@ -74,6 +74,20 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
     res.json({ ok: true, id });
   }));
 
+  // denúncias e avaliações (FASE 3)
+  app.get('/staff/api/academy/denuncias', ...A, h((req, res) => res.json({ denuncias: ct.Denuncias.abertas() })));
+  app.post('/staff/api/academy/denuncias/:id/resolver', ...A, h((req, res) => {
+    ct.Denuncias.resolver(req.params.id, req.body || {});
+    aud(req, 'denuncia.resolver', 'moderation_reports', req.params.id, String((req.body || {}).status || ''));
+    res.json({ ok: true });
+  }));
+  app.get('/staff/api/academy/avaliacoes', ...A, h((req, res) => res.json({ avaliacoes: ct.Reviews.listarAdmin(req.query.n) })));
+  app.post('/staff/api/academy/avaliacoes/:id/moderar', ...A, h((req, res) => {
+    ct.Reviews.moderar(req.params.id, String((req.body || {}).status || ''));
+    aud(req, 'avaliacao.moderar', 'reviews', req.params.id, String((req.body || {}).status || ''));
+    res.json({ ok: true });
+  }));
+
   // leads / auditoria
   app.get('/staff/api/academy/leads', ...A, h((req, res) => res.json({ leads: repo.Leads.listar(req.query.n) })));
   app.post('/staff/api/academy/leads/:id/status', ...A, h((req, res) => { repo.Leads.status(req.params.id, (req.body || {}).status); res.json({ ok: true }); }));

@@ -144,6 +144,48 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
     res.json({ ok: true, progresso: prog });
   }));
 
+  // ============================ FASE 3: página de venda / avaliações / denúncias ============================
+  app.get('/academy/api/produtor/produtos/:id/pagina', ...P, h((req, res) => {
+    const p = doDono(req);
+    res.json({ secoes: ct.SalesPages.obter(p.id), url_publica: p.status === 'publicado' ? `/academy/cursos/${p.slug}` : null });
+  }));
+  app.put('/academy/api/produtor/produtos/:id/pagina', ...P, h((req, res) => {
+    const p = doDono(req);
+    const secoes = ct.SalesPages.salvar(p.id, req.body || {});
+    aud(req, 'pagina-venda.salvar', 'sales_pages', p.id, '');
+    res.json({ ok: true, secoes });
+  }));
+
+  app.post('/academy/api/aluno/cursos/:productId/avaliar', requireUsuario, requirePapel('aluno'), h((req, res) => {
+    ct.Reviews.avaliar(req.params.productId, req.usuario.id, req.body || {});
+    aud(req, 'avaliacao.criar', 'reviews', req.params.productId, `nota ${s((req.body || {}).nota, 3)}`);
+    res.json({ ok: true });
+  }));
+
+  app.post('/academy/api/denunciar', requireUsuario, h((req, res) => {
+    const d = req.body || {};
+    const id = ct.Denuncias.criar(s(d.product_id, 40), req.usuario.id, d);
+    aud(req, 'denuncia.criar', 'moderation_reports', id, s(d.motivo, 40));
+    res.json({ ok: true, id });
+  }));
+
+  app.get('/academy/api/admin/denuncias', ...ADM, h((req, res) => {
+    res.json({ denuncias: ct.Denuncias.abertas() });
+  }));
+  app.post('/academy/api/admin/denuncias/:id/resolver', ...ADM, h((req, res) => {
+    ct.Denuncias.resolver(req.params.id, req.body || {});
+    aud(req, 'denuncia.resolver', 'moderation_reports', req.params.id, s((req.body || {}).status, 20));
+    res.json({ ok: true });
+  }));
+  app.get('/academy/api/admin/avaliacoes', ...ADM, h((req, res) => {
+    res.json({ avaliacoes: ct.Reviews.listarAdmin(req.query.n) });
+  }));
+  app.post('/academy/api/admin/avaliacoes/:id/moderar', ...ADM, h((req, res) => {
+    ct.Reviews.moderar(req.params.id, s((req.body || {}).status, 20));
+    aud(req, 'avaliacao.moderar', 'reviews', req.params.id, s((req.body || {}).status, 20));
+    res.json({ ok: true });
+  }));
+
   // ============================ MÍDIA (entrega privada) ============================
   app.get('/academy/api/media/:id', requireUsuario, h((req, res) => {
     const m = ct.Midia.obter(req.params.id);

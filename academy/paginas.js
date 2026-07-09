@@ -7,6 +7,7 @@
 'use strict';
 const path = require('path');
 const repo = require('./repo');
+const ct = require('./repo-conteudo');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -49,7 +50,8 @@ function landingHTML() {
       <span class="badge">Villela Academy</span>
       <h1>Ensine, aprenda e venda conhecimento em um só lugar.</h1>
       <p>Marketplace de cursos online e produtos digitais: produtores publicam, afiliados divulgam, alunos aprendem — com checkout nacional e área de membros.</p>
-      <p style="margin-top:26px"><a class="btn" href="/academy/app#cadastro">Criar conta grátis</a>
+      <p style="margin-top:26px"><a class="btn" href="/academy/marketplace">Explorar o marketplace</a>
+      &nbsp;<a class="btn g" href="/academy/app#cadastro">Criar conta grátis</a>
       &nbsp;<a class="btn o" href="/academy/app">Entrar</a></p>
     </div></div>
     <div class="sec"><div class="wrap"><h2>Feita para os três lados do balcão</h2>
@@ -68,7 +70,7 @@ function landingHTML() {
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
     <footer>Villela Academy — produto da Villela Stay (Augusto Villela Ltda) ·
-      <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/app">Entrar</a>
+      <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/app">Entrar</a>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/academy/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           nome:l_nome.value,email:l_email.value,telefone:l_tel.value,interesse:l_int.value,mensagem:l_msg.value})});
@@ -92,6 +94,127 @@ function appHTML() {
     <script src="/academy/app.js"></script><script>bootAcademy();</script></body></html>`;
 }
 
+// ==================== FASE 3 — vitrine pública (SEO/OG) ====================
+const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+const TIPOS_ROT = { curso: 'Curso', ebook: 'E-book', pdf: 'PDF', audio: 'Áudio', pacote: 'Pacote', mentoria: 'Mentoria' };
+
+// shell público com SEO/OG; TODO conteúdo de produtor passa por esc()
+function shellPublico({ titulo, descricao, url, corpo }) {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${esc(titulo)} — Villela Academy</title>
+    <meta name="description" content="${esc(descricao)}">
+    <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
+    <meta property="og:type" content="website">${url ? `<meta property="og:url" content="${esc(url)}">` : ''}
+    <meta property="og:site_name" content="Villela Academy">
+    <style>${CSS} .top{background:#1d1440;padding:12px 0}.top a{color:#f4f0ff;text-decoration:none;margin-right:16px}
+    .cardp{background:#fff;border:1px solid #e8e2f4;border-radius:14px;padding:18px;display:flex;flex-direction:column}
+    .cardp .preco{font-size:1.3rem;font-weight:800;color:#1d1440}.cardp .preco s{color:#9a92b0;font-weight:400;font-size:.95rem}
+    .estrela{color:#d9a441}</style></head><body>
+    <div class="top"><div class="wrap"><a href="/academy">Villela Academy</a><a href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a></div></div>
+    ${corpo}
+    <footer>Villela Academy — produto da Villela Stay (Augusto Villela Ltda) ·
+      <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/reembolso">Reembolso</a> ·
+      <a href="/academy/termos-produtor">Produtores</a> · <a href="/academy/termos-afiliado">Afiliados</a></footer></body></html>`;
+}
+
+function cardProduto(p) {
+  const capa = p.capa_media_id ? `<img src="/academy/capa/${esc(p.id)}" alt="" style="width:100%;border-radius:10px;aspect-ratio:16/9;object-fit:cover;margin-bottom:10px">` : '';
+  const preco = p.preco_promo_centavos
+    ? `<span class="preco"><s>${brl(p.preco_centavos)}</s> ${brl(p.preco_promo_centavos)}</span>`
+    : `<span class="preco">${p.preco_centavos ? brl(p.preco_centavos) : 'Grátis'}</span>`;
+  return `<a class="cardp" href="/academy/cursos/${esc(p.slug)}" style="text-decoration:none;color:inherit">${capa}
+    <span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span><b style="margin:6px 0">${esc(p.titulo)}</b>
+    <span class="sub" style="text-align:left;margin:0;flex:1">${esc(p.descricao_curta || p.subtitulo)}</span>
+    <span class="sub" style="text-align:left;margin:6px 0 8px">por ${esc(p.produtor_nome || '')}</span>${preco}</a>`;
+}
+
+function marketplaceHTML({ q, categoria }) {
+  const itens = ct.Marketplace.listar({ q, categoria });
+  const cats = ct.CATEGORIAS.map(c =>
+    `<a class="btn peq ${c === categoria ? '' : 'secund'}" href="/academy/marketplace?categoria=${c}" style="margin:3px">${esc(c.replace(/-/g, ' '))}</a>`).join('');
+  const corpo = `<div class="sec"><div class="wrap"><h2>Marketplace</h2>
+    <p class="sub">Cursos e produtos digitais dos produtores da Villela Academy.</p>
+    <form method="get" action="/academy/marketplace" style="max-width:480px;margin:0 auto 18px;display:flex;gap:8px">
+      <input name="q" value="${esc(q || '')}" placeholder="Buscar curso, e-book, mentoria..."><button class="btn peq" type="submit">Buscar</button></form>
+    <p style="text-align:center;margin-bottom:22px">${cats}</p>
+    ${itens.length ? `<div class="grid">${itens.map(cardProduto).join('')}</div>`
+      : '<p class="sub">Nenhum produto encontrado' + (q || categoria ? ' com esse filtro.' : ' ainda — os primeiros produtores estão chegando.') + '</p>'}
+  </div></div>`;
+  return shellPublico({ titulo: 'Marketplace' + (categoria ? ` · ${categoria}` : ''), descricao: 'Cursos online, e-books e produtos digitais na Villela Academy.', corpo });
+}
+
+function embedDe(url) {
+  let m = String(url || '').match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,20})/);
+  if (m) return 'https://www.youtube.com/embed/' + m[1];
+  m = String(url || '').match(/vimeo\.com\/(\d+)/);
+  if (m) return 'https://player.vimeo.com/video/' + m[1];
+  return null;
+}
+const li = (arr, icone) => arr && arr.length ? `<ul style="list-style:none;padding:0">${arr.map(x => `<li style="padding:5px 0">${icone} ${esc(x)}</li>`).join('')}</ul>` : '';
+
+function cursoHTML(slug) {
+  const p = ct.Marketplace.porSlug(slug);
+  if (!p) return null;
+  const sp = ct.SalesPages.obter(p.id);
+  const nota = ct.Reviews.media(p.id);
+  const reviews = ct.Reviews.publicas(p.id);
+  const resumo = ct.Marketplace.resumoConteudo(p.id);
+  const emb = embedDe(sp.video_url);
+  const preco = p.preco_promo_centavos
+    ? `<s style="color:#9a92b0">${brl(p.preco_centavos)}</s> <span style="font-size:1.9rem;font-weight:800">${brl(p.preco_promo_centavos)}</span>`
+    : `<span style="font-size:1.9rem;font-weight:800">${p.preco_centavos ? brl(p.preco_centavos) : 'Grátis'}</span>`;
+  const bloco = (titulo, html) => html ? `<div class="sec" style="padding:26px 0"><div class="wrap"><h2 style="text-align:left;font-size:1.3rem">${titulo}</h2>${html}</div></div>` : '';
+  const corpo = `
+    <div class="hero" style="padding:44px 0"><div class="wrap">
+      <span class="badge">${TIPOS_ROT[p.tipo] || esc(p.tipo)}${nota.media ? ` · ★ ${nota.media} (${nota.total})` : ''}</span>
+      <h1>${esc(sp.headline || p.titulo)}</h1>
+      <p>${esc(sp.subheadline || p.subtitulo || p.descricao_curta)}</p>
+      <p class="sub" style="text-align:left;margin:6px 0;color:#d9d2f2">por <a href="/academy/produtores/${esc(p.produtor_slug)}" style="color:#ffb84d">${esc(p.produtor_nome)}</a></p>
+      <p style="margin-top:18px">${preco}<br><br>
+        <a class="btn" href="#comprar">Quero este ${(TIPOS_ROT[p.tipo] || 'produto').toLowerCase()}</a>
+        &nbsp;<a class="btn o" href="/academy/app">Já sou aluno</a></p>
+    </div></div>
+    ${emb ? `<div class="sec" style="padding:26px 0"><div class="wrap"><iframe src="${esc(emb)}" style="width:100%;max-width:760px;aspect-ratio:16/9;border:0;border-radius:12px;display:block;margin:0 auto" allowfullscreen></iframe></div></div>` : ''}
+    ${bloco('O que você vai conquistar', sp.promessa ? `<p>${esc(sp.promessa)}</p>` : '')}
+    ${bloco('Benefícios', li(sp.beneficios, '✅'))}
+    ${bloco('Para quem é', li(sp.para_quem, '🎯'))}
+    ${bloco('O que você vai aprender', li(sp.aprender, '📌'))}
+    ${bloco('Conteúdo', resumo.modulos.length ? `<p class="sub" style="text-align:left">${resumo.total_aulas} aula(s)</p>` +
+      resumo.modulos.map(m => `<div class="card" style="margin:8px 0"><b>📚 ${esc(m.titulo)}</b>${m.aulas.map(a =>
+        `<div style="padding:4px 0 0 14px">${a.gratuita ? '🎁' : '▫️'} ${esc(a.titulo)}${a.gratuita ? ' <span class="tag">degustação grátis</span>' : ''}</div>`).join('')}</div>`).join('') : '')}
+    ${bloco('Bônus', li(sp.bonus, '🎁'))}
+    ${bloco('Quem já fez recomenda', (sp.depoimentos || []).concat(reviews.map(r => ({ nome: r.nome, texto: r.texto, nota: r.nota }))).map(d =>
+      `<div class="card" style="margin:8px 0">${d.nota ? '<span class="estrela">' + '★'.repeat(d.nota) + '</span> ' : ''}"${esc(d.texto)}"<br><b>— ${esc(d.nome)}</b></div>`).join('') || '')}
+    ${bloco('Garantia', sp.garantia_texto ? `<p>🛡️ ${esc(sp.garantia_texto)}</p>` : (p.garantia_dias ? `<p>🛡️ Garantia de ${p.garantia_dias} dias.</p>` : ''))}
+    ${bloco('Perguntas frequentes', (sp.faq || []).map(f => `<div class="card" style="margin:8px 0"><b>${esc(f.p)}</b><br>${esc(f.r)}</div>`).join('') || '')}
+    <div class="sec" id="comprar" style="background:#f1ecfa"><div class="wrap" style="max-width:560px">
+      <h2>Garanta o seu acesso</h2>
+      <p class="sub">O pagamento online chega em breve. Deixe seu contato que avisamos você — ou o produtor libera seu acesso direto.</p>
+      <form class="form" id="int">
+        <input id="i-nome" placeholder="Seu nome" required><input id="i-email" type="email" placeholder="E-mail" required>
+        <input id="i-tel" placeholder="WhatsApp"><button class="btn" type="submit">Quero ser avisado</button>
+        <p id="i-msg" class="sub" style="margin:8px 0 0"></p></form>
+      <script>document.getElementById('int').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('i-msg');
+        const r=await fetch('/academy/api/cursos/${esc(p.id)}/interesse',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({nome:i_nome.value,email:i_email.value,telefone:i_tel.value})});
+        m.textContent=r.ok?'✅ Anotado! Você será avisado.':'Erro ao enviar.';if(r.ok)document.getElementById('int').reset();};</script>
+    </div></div>`;
+  return shellPublico({ titulo: p.titulo, descricao: p.descricao_curta || sp.headline || p.subtitulo || p.titulo, url: `/academy/cursos/${p.slug}`, corpo });
+}
+
+function produtorHTML(slug) {
+  const pr = ct.Marketplace.produtorPorSlug(slug);
+  if (!pr) return null;
+  const corpo = `<div class="hero" style="padding:40px 0"><div class="wrap">
+      <span class="badge">Produtor</span><h1>${esc(pr.nome_publico)}</h1>
+      <p>${esc(pr.bio || '')}</p>${pr.site ? `<p><a class="btn o" href="${esc(pr.site)}" rel="noopener nofollow" target="_blank">Site / rede social</a></p>` : ''}
+    </div></div>
+    <div class="sec"><div class="wrap"><h2>Produtos de ${esc(pr.nome_publico)}</h2>
+      ${pr.produtos.length ? `<div class="grid">${pr.produtos.map(p => cardProduto({ ...p, produtor_nome: pr.nome_publico })).join('')}</div>` : '<p class="sub">Nenhum produto publicado ainda.</p>'}
+    </div></div>`;
+  return shellPublico({ titulo: pr.nome_publico, descricao: (pr.bio || `Produtos de ${pr.nome_publico} na Villela Academy.`).slice(0, 200), url: `/academy/produtores/${pr.slug}`, corpo });
+}
+
 // Termos/privacidade: MINUTA — precisa de revisão por advogado (OAB) antes
 // de a plataforma operar comercialmente. O texto deixa isso explícito.
 function paginaLegal(titulo, corpo) {
@@ -109,6 +232,22 @@ const TERMOS = `<p>Estes Termos de Uso regem o acesso à plataforma Villela Acad
   <li>É proibido conteúdo ilegal, enganoso, adulto, perigoso, discriminatório ou que viole direitos de terceiros; a plataforma pode revisar, suspender e remover conteúdo e contas.</li>
   <li>Comissões, prazos de repasse e política de reembolso serão definidos nos Termos do Produtor e do Afiliado.</li>
   <li>Compartilhar acesso, redistribuir ou revender conteúdo comprado viola estes termos.</li></ul>`;
+const TERMOS_PRODUTOR = `<p>Termos específicos de quem vende na Villela Academy (complementam os Termos de Uso).</p>
+  <ul><li>O produtor declara ser titular dos direitos do conteúdo publicado e responde civil e criminalmente por ele.</li>
+  <li>Todo produto passa por revisão editorial e pode ser rejeitado, suspenso ou removido conforme a Política de Conteúdo.</li>
+  <li>Comissões da plataforma, prazos de repasse e taxas serão definidos comercialmente antes da ativação do checkout (Fase 4).</li>
+  <li>Reembolsos concedidos ao comprador estornam o valor do produtor conforme a Política de Reembolso.</li>
+  <li>Dados de alunos ficam restritos à finalidade da entrega do produto (LGPD) — proibido exportar para uso externo sem consentimento.</li></ul>`;
+const TERMOS_AFILIADO = `<p>Termos específicos de quem divulga produtos da Villela Academy por comissão.</p>
+  <ul><li>Divulgação honesta: proibido spam, promessas enganosas, uso indevido de marca ou compra pelo próprio link.</li>
+  <li>A comissão só é devida sobre venda confirmada e é bloqueada em caso de reembolso ou chargeback.</li>
+  <li>Percentuais, prazo de cookie e regras de atribuição são definidos por produto (Fase 5).</li>
+  <li>Violação das regras leva a suspensão/bloqueio e perda das comissões pendentes.</li></ul>`;
+const REEMBOLSO = `<p>Política de reembolso (consumidor).</p>
+  <ul><li>Compras online têm direito de arrependimento de 7 dias (art. 49 do CDC), com reembolso integral.</li>
+  <li>Produtos podem oferecer garantia estendida própria (indicada na página de venda).</li>
+  <li>Ao reembolsar, o acesso ao conteúdo é revogado e comissões associadas são canceladas.</li>
+  <li>Solicitações: pelo painel do aluno ou canal de suporte.</li></ul>`;
 const PRIVACIDADE = `<p>Tratamos dados pessoais conforme a LGPD (Lei 13.709/2018).</p>
   <ul><li>Coletamos o mínimo necessário: nome, e-mail, telefone e, para produtores/afiliados, dados de documento e pagamento para repasses.</li>
   <li>Usamos os dados para operar a plataforma (conta, compras, entrega de conteúdo, comissões) e, com consentimento, para comunicações.</li>
@@ -124,6 +263,42 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy/app.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-cliente.js')));
   app.get('/academy/termos', (req, res) => res.send(paginaLegal('Termos de Uso', TERMOS)));
   app.get('/academy/privacidade', (req, res) => res.send(paginaLegal('Política de Privacidade', PRIVACIDADE)));
+  app.get('/academy/termos-produtor', (req, res) => res.send(paginaLegal('Termos do Produtor', TERMOS_PRODUTOR)));
+  app.get('/academy/termos-afiliado', (req, res) => res.send(paginaLegal('Termos do Afiliado', TERMOS_AFILIADO)));
+  app.get('/academy/reembolso', (req, res) => res.send(paginaLegal('Política de Reembolso', REEMBOLSO)));
+
+  // ---- vitrine pública (FASE 3) ----
+  app.get('/academy/marketplace', (req, res) => res.send(marketplaceHTML({ q: s(req.query.q, 80), categoria: s(req.query.categoria, 40) })));
+  app.get('/academy/categorias/:slug', (req, res) => res.redirect(302, '/academy/marketplace?categoria=' + encodeURIComponent(s(req.params.slug, 40))));
+  app.get('/academy/cursos/:slug', (req, res) => {
+    const html = cursoHTML(s(req.params.slug, 90));
+    if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Este produto não existe ou não está publicado.</p>'));
+    res.send(html);
+  });
+  app.get('/academy/produtores/:slug', (req, res) => {
+    const html = produtorHTML(s(req.params.slug, 90));
+    if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Produtor não encontrado.</p>'));
+    res.send(html);
+  });
+  // capa pública: SÓ de produto publicado (sem sessão; único arquivo exposto sem login)
+  app.get('/academy/capa/:productId', (req, res) => {
+    const p = ct.Produtos.obter(s(req.params.productId, 40));
+    if (!p || p.status !== 'publicado' || !p.capa_media_id) return res.sendStatus(404);
+    const m = ct.Midia.obter(p.capa_media_id);
+    if (!m || !m.mime.startsWith('image/')) return res.sendStatus(404);
+    res.setHeader('Content-Type', m.mime);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.sendFile(ct.Midia.caminhoAbsoluto(m));
+  });
+  // interesse de compra (pré-checkout): vira lead + alerta
+  app.post('/academy/api/cursos/:id/interesse', h(async (req, res) => {
+    const p = ct.Produtos.obter(s(req.params.id, 40));
+    if (!p || p.status !== 'publicado') return res.status(404).json({ erro: 'Produto não encontrado.' });
+    const d = req.body || {};
+    const id = repo.Leads.criar({ nome: d.nome, email: d.email, telefone: d.telefone, interesse: 'compra', mensagem: `Interesse no produto: ${p.titulo} (${p.id})` });
+    if (notificar) notificar(`🛒 Villela Academy: interesse de compra — ${s(d.nome, 60)} quer "${p.titulo}".`).catch(() => {});
+    res.json({ ok: true, id });
+  }));
 
   // lead da landing
   app.post('/academy/api/lead', h(async (req, res) => {

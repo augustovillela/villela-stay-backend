@@ -8,7 +8,8 @@ Documento vivo. ⚠️ **Termos de Uso e Política de Privacidade publicados em
 - ✅ Política de Privacidade e Termos de Uso publicados (MINUTA, com aviso visível)
 - ✅ Aceite explícito de termos/privacidade no cadastro (registrado com data em `consentimentos`)
 - ✅ Consentimento SEPARADO para comunicações de marketing (opt-in, não pré-marcado)
-- ⬜ F3: Termos do Produtor, Termos do Afiliado, Política de Reembolso, Política de Conteúdo/Denúncia (todas MINUTA → OAB)
+- ✅ F3: Termos do Produtor, Termos do Afiliado e Política de Reembolso publicados
+  (MINUTA → OAB); fluxo de denúncia no ar (usuário denuncia, admin resolve, tudo auditado)
 
 ## Minimização e finalidade
 - ✅ Cadastro pede o mínimo: nome, e-mail, senha; telefone opcional

@@ -301,7 +301,126 @@ const Progresso = {
   },
 };
 
+// ================= FASE 3 — marketplace público, página de venda, avaliações, denúncias =================
+
+// vitrine: SÓ produtos publicados; nunca vaza rascunho/suspenso
+const Marketplace = {
+  listar({ q, categoria, n } = {}) {
+    let rows = db.prepare(`SELECT p.id, p.tipo, p.titulo, p.subtitulo, p.slug, p.categoria, p.descricao_curta,
+      p.capa_media_id, p.preco_centavos, p.preco_promo_centavos, pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug
+      FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
+      WHERE p.status = 'publicado' ORDER BY p.atualizado_em DESC LIMIT ?`).all(Math.min(parseInt(n, 10) || 60, 200));
+    if (categoria) rows = rows.filter(r => r.categoria === categoria);
+    if (q) {
+      const t = s(q, 80).toLowerCase();
+      rows = rows.filter(r => (r.titulo + ' ' + r.subtitulo + ' ' + r.descricao_curta).toLowerCase().includes(t));
+    }
+    return rows;
+  },
+  porSlug(slug) {
+    const p = db.prepare(`SELECT p.*, pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug, pr.bio AS produtor_bio
+      FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
+      WHERE p.slug = ? AND p.status = 'publicado'`).get(String(slug || ''));
+    return normProduto(p);
+  },
+  produtorPorSlug(slug) {
+    const pr = db.prepare(`SELECT pr.user_id, pr.nome_publico, pr.slug, pr.bio, pr.site
+      FROM producer_profiles pr WHERE pr.slug = ? AND pr.status = 'aprovado'`).get(String(slug || ''));
+    if (!pr) return null;
+    pr.produtos = db.prepare(`SELECT id, tipo, titulo, subtitulo, slug, categoria, descricao_curta, capa_media_id,
+      preco_centavos, preco_promo_centavos FROM products WHERE producer_id = ? AND status = 'publicado' ORDER BY atualizado_em DESC`).all(pr.user_id);
+    return pr;
+  },
+  // aulas de degustação p/ mostrar na vitrine (só títulos + contagem)
+  resumoConteudo(productId) {
+    const modulos = db.prepare('SELECT id, titulo FROM course_modules WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
+    const aulas = db.prepare('SELECT module_id, titulo, gratuita FROM lessons WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
+    return {
+      total_aulas: aulas.length,
+      modulos: modulos.map(m => ({ titulo: m.titulo, aulas: aulas.filter(a => a.module_id === m.id).map(a => ({ titulo: a.titulo, gratuita: !!a.gratuita })) })),
+    };
+  },
+};
+
+const SalesPages = {
+  obter(productId) {
+    const r = db.prepare('SELECT secoes FROM sales_pages WHERE product_id = ?').get(productId);
+    return r ? j.parse(r.secoes, {}) : {};
+  },
+  salvar(productId, secoes = {}) {
+    const lista = (v, max) => (Array.isArray(v) ? v : []).slice(0, max);
+    const limpo = {
+      headline: s(secoes.headline, 200), subheadline: s(secoes.subheadline, 300),
+      video_url: s(secoes.video_url, 300), promessa: s(secoes.promessa, 1000),
+      beneficios: lista(secoes.beneficios, 12).map(x => s(x, 200)).filter(Boolean),
+      para_quem: lista(secoes.para_quem, 10).map(x => s(x, 200)).filter(Boolean),
+      aprender: lista(secoes.aprender, 15).map(x => s(x, 200)).filter(Boolean),
+      bonus: lista(secoes.bonus, 8).map(x => s(x, 200)).filter(Boolean),
+      depoimentos: lista(secoes.depoimentos, 10).map(x => ({ nome: s(x && x.nome, 80), texto: s(x && x.texto, 500) })).filter(x => x.texto),
+      faq: lista(secoes.faq, 12).map(x => ({ p: s(x && x.p, 200), r: s(x && x.r, 800) })).filter(x => x.p && x.r),
+      garantia_texto: s(secoes.garantia_texto, 500),
+    };
+    db.prepare(`INSERT INTO sales_pages (product_id, secoes, atualizado_em) VALUES (?, ?, ?)
+      ON CONFLICT(product_id) DO UPDATE SET secoes = excluded.secoes, atualizado_em = excluded.atualizado_em`)
+      .run(productId, j.str(limpo), nowISO());
+    return limpo;
+  },
+};
+
+const Reviews = {
+  avaliar(productId, userId, { nota, texto }) {
+    nota = parseInt(nota, 10);
+    if (!(nota >= 1 && nota <= 5)) throw new Error('Nota de 1 a 5.');
+    if (!Matriculas.ativa(userId, productId)) throw new Error('Só alunos matriculados avaliam.');
+    db.prepare(`INSERT INTO reviews (id, product_id, user_id, nota, texto, status, criado_em) VALUES (?, ?, ?, ?, ?, 'publicada', ?)
+      ON CONFLICT(product_id, user_id) DO UPDATE SET nota = excluded.nota, texto = excluded.texto, criado_em = excluded.criado_em`)
+      .run(novoId(), productId, userId, nota, s(texto, 1000), nowISO());
+  },
+  publicas(productId) {
+    return db.prepare(`SELECT r.nota, r.texto, r.criado_em, u.nome FROM reviews r JOIN users u ON u.id = r.user_id
+      WHERE r.product_id = ? AND r.status = 'publicada' ORDER BY r.criado_em DESC LIMIT 30`).all(productId);
+  },
+  media(productId) {
+    const r = db.prepare("SELECT AVG(nota) m, COUNT(*) n FROM reviews WHERE product_id = ? AND status = 'publicada'").get(productId);
+    return { media: r.m ? Math.round(r.m * 10) / 10 : null, total: r.n };
+  },
+  moderar(reviewId, status) {
+    if (!['publicada', 'oculta'].includes(status)) throw new Error('Status inválido.');
+    const r = db.prepare('SELECT 1 FROM reviews WHERE id = ?').get(reviewId);
+    if (!r) throw new Error('Avaliação não encontrada.');
+    db.prepare('UPDATE reviews SET status = ? WHERE id = ?').run(status, reviewId);
+  },
+  listarAdmin(n) {
+    return db.prepare(`SELECT r.*, u.nome, p.titulo AS produto_titulo FROM reviews r
+      JOIN users u ON u.id = r.user_id JOIN products p ON p.id = r.product_id
+      ORDER BY r.criado_em DESC LIMIT ?`).all(Math.min(parseInt(n, 10) || 100, 500));
+  },
+};
+
+const Denuncias = {
+  MOTIVOS: ['direitos-autorais', 'enganoso', 'ilegal', 'adulto', 'outro'],
+  criar(productId, userId, { motivo, texto }) {
+    if (!db.prepare('SELECT 1 FROM products WHERE id = ?').get(productId)) throw new Error('Produto não encontrado.');
+    const id = novoId();
+    db.prepare('INSERT INTO moderation_reports (id, product_id, user_id, motivo, texto, criado_em) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, productId, s(userId, 40), this.MOTIVOS.includes(motivo) ? motivo : 'outro', s(texto, 2000), nowISO());
+    return id;
+  },
+  abertas() {
+    return db.prepare(`SELECT r.*, p.titulo AS produto_titulo, p.status AS produto_status FROM moderation_reports r
+      JOIN products p ON p.id = r.product_id WHERE r.status = 'aberta' ORDER BY r.criado_em`).all();
+  },
+  resolver(id, { status, resolucao }) {
+    if (!['resolvida', 'descartada'].includes(status)) throw new Error('Status inválido.');
+    const r = db.prepare('SELECT 1 FROM moderation_reports WHERE id = ?').get(id);
+    if (!r) throw new Error('Denúncia não encontrada.');
+    db.prepare('UPDATE moderation_reports SET status = ?, resolucao = ?, resolvido_em = ? WHERE id = ?')
+      .run(status, s(resolucao, 500), nowISO(), id);
+  },
+};
+
 module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
   Produtos, Conteudo, Midia, Matriculas, Progresso, ARQUIVOS_DIR,
+  Marketplace, SalesPages, Reviews, Denuncias,
 };

@@ -27,6 +27,9 @@ fase corrente em aberto.
 - ✅ Hash de senha nunca sai na API (`semSegredos`)
 - ✅ F2: upload validado (allowlist de mime, 10 MB, extensão derivada do mime — nunca do nome)
 - ✅ F2: aula bloqueada não vaza conteúdo/arquivo na API (só título)
+- ✅ F3: páginas públicas escapam TODO conteúdo de produtor (headline com HTML vira texto — testado)
+- ✅ F3: vitrine/página/capa só expõem produto `publicado`; rascunho dá 404 e não sai na busca
+- ✅ F3: seções da página de venda validadas e limitadas no servidor (tamanhos e quantidade)
 - ⬜ F4: validação de CPF/CNPJ
 
 ## Dados e segredos

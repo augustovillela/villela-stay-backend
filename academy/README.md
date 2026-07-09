@@ -6,7 +6,8 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASES 1 (fundação) e 2 (produtos e cursos) concluídas.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
+**Status: FASES 1 (fundação), 2 (produtos e cursos) e 3 (marketplace e páginas
+de venda) concluídas.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
 
@@ -70,6 +71,8 @@ entram como camadas novas nas fases seguintes sem tocar na fundação.
 
 **FASE 2 (criado)**: `products` (com fluxo editorial), `course_modules`, `lessons`,
 `lesson_materials`, `media_files`, `enrollments`, `student_progress`, `download_logs`.
+
+**FASE 3 (criado)**: `sales_pages` (seções JSON), `reviews`, `moderation_reports`.
 
 **Fases seguintes (planejado — criar quando a fase chegar)**:
 - F3 marketplace: `sales_pages`, `page_sections`, `reviews`
@@ -135,6 +138,15 @@ webhook/consulta segura (nunca pelo retorno do navegador).
    admin: em_revisao→aprovado/rejeitado, suspender/reativar/remover).
 10. **Matrícula cortesia (F2)**: produtor/admin liberam acesso por e-mail de
    conta existente — é como se testa a entrega antes do checkout (F4).
+11. **Vitrine server-rendered (F3)**: páginas públicas com SEO/OG renderizadas
+   no servidor; TODO conteúdo de produtor é escapado (nunca HTML cru — testado).
+   Vitrine só mostra `status='publicado'`; capa é o único arquivo servido sem
+   login (e só de produto publicado). CTA pré-checkout = interesse→lead+alerta.
+12. **Página de venda = seções JSON (F3)** validadas/limitadas no servidor
+   (`SalesPages.salvar`), editadas em formulário simples no painel — construtor
+   visual drag-and-drop fica para quando houver demanda real.
+13. **Avaliações (F3)**: só aluno matriculado, 1 por produto (upsert), média na
+   página; moderação oculta/republica sem apagar (trilha preservada).
 
 ## Rodar e testar
 

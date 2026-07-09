@@ -138,9 +138,28 @@
             : '🔒 <span style="color:#888">' + esc(a.titulo) + '</span>') + '</div>';
         }).join('') + '</div>';
       }).join('');
+      if (d.matriculado) {
+        html += '<div class="card"><b>⭐ Avaliar este produto</b><br>' +
+          '<select id="av-nota" style="max-width:90px"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select> ' +
+          '<input id="av-texto" placeholder="Conte como foi (opcional)" style="max-width:380px"> ' +
+          '<button class="btn peq" id="b-avaliar">Enviar</button> <span id="av-msg" class="erro"></span></div>';
+      }
+      html += '<p class="sub" style="text-align:left"><a href="#" id="b-denunciar">🚩 Denunciar conteúdo irregular</a></p>';
       html += '<div id="player"></div>';
       setView(html);
       el('b-volta').onclick = function (e) { e.preventDefault(); vAluno(); };
+      if (el('b-avaliar')) el('b-avaliar').onclick = function () {
+        api('POST', '/aluno/cursos/' + pid + '/avaliar', { nota: val('av-nota'), texto: val('av-texto') })
+          .then(function () { el('av-msg').textContent = '✅ obrigado!'; }).catch(function (e) { el('av-msg').textContent = e.message; });
+      };
+      el('b-denunciar').onclick = function (e) {
+        e.preventDefault();
+        var motivo = prompt('Motivo (direitos-autorais, enganoso, ilegal, adulto, outro):', 'outro');
+        if (motivo == null) return;
+        var texto = prompt('Descreva o problema:') || '';
+        api('POST', '/denunciar', { product_id: pid, motivo: motivo, texto: texto })
+          .then(function () { alert('Denúncia registrada. Obrigado.'); }).catch(function (er) { alert(er.message); });
+      };
       Array.prototype.forEach.call(document.querySelectorAll('[data-aula]'), function (lk) {
         lk.onclick = function (e) {
           e.preventDefault();
@@ -294,6 +313,12 @@
         '<p style="margin-top:10px"><input id="nm-titulo" placeholder="Título do novo módulo" style="max-width:300px"> ' +
         '<button class="btn peq" id="b-addmod">+ Módulo</button> <span id="bl-msg" class="erro"></span></p></div>';
 
+      // capa + página de venda (FASE 3)
+      html += '<div class="card"><h3>🖼️ Capa</h3>' +
+        (p.capa_media_id ? '<p class="sub" style="text-align:left">Capa atual definida.' + (p.status === 'publicado' ? ' <a href="/academy/capa/' + p.id + '" target="_blank">ver</a>' : '') + '</p>' : '<p class="sub" style="text-align:left">Sem capa — imagens 16:9 (jpg/png/webp) até 10 MB.</p>') +
+        '<input id="capa-file" type="file" accept="image/*" style="max-width:280px"> <button class="btn peq" id="b-capa">Enviar capa</button> <span id="capa-msg" class="erro"></span></div>';
+      html += '<div class="card"><h3>🛍️ Página de venda</h3><div id="pv-box"><p class="sub">Carregando…</p></div></div>';
+
       // alunos
       html += '<div class="card"><h3>👥 Alunos</h3><div id="pd-alunos"><p class="sub">Carregando…</p></div>' +
         '<p><input id="mt-email" type="email" placeholder="e-mail do aluno (conta já criada)" style="max-width:300px"> ' +
@@ -348,7 +373,52 @@
         api('POST', '/produtor/produtos/' + pid + '/matricular', { email: val('mt-email') })
           .then(function () { vProduto(pid); }).catch(function (e) { el('mt-msg').textContent = e.message; });
       };
+      el('b-capa').onclick = function () {
+        upload(el('capa-file')).then(function (mediaId) {
+          return api('PATCH', '/produtor/produtos/' + pid, { capa_media_id: mediaId });
+        }).then(function () { vProduto(pid); }).catch(function (e) { el('capa-msg').textContent = e.message; });
+      };
+      editorPaginaVenda(pid);
     }).catch(erroBox);
+  }
+
+  // editor da página de venda: listas em textarea (1 item por linha);
+  // depoimentos "Nome | texto" e FAQ "Pergunta | Resposta"
+  function editorPaginaVenda(pid) {
+    api('GET', '/produtor/produtos/' + pid + '/pagina').then(function (d) {
+      var sp = d.secoes || {};
+      var linhas = function (arr) { return (arr || []).join('\n'); };
+      var pares = function (arr, a, b) { return (arr || []).map(function (x) { return (x[a] || '') + ' | ' + (x[b] || ''); }).join('\n'); };
+      el('pv-box').innerHTML =
+        (d.url_publica ? '<p class="sub" style="text-align:left">🌐 Página pública: <a href="' + d.url_publica + '" target="_blank">' + d.url_publica + '</a></p>'
+          : '<p class="sub" style="text-align:left">A página pública aparece no marketplace quando o produto for publicado.</p>') +
+        '<label>Headline</label><input id="pv-head" value="' + esc(sp.headline || '') + '">' +
+        '<label>Sub-headline</label><input id="pv-sub" value="' + esc(sp.subheadline || '') + '">' +
+        '<label>Vídeo de vendas (YouTube/Vimeo)</label><input id="pv-video" value="' + esc(sp.video_url || '') + '">' +
+        '<label>Promessa</label><textarea id="pv-prom" rows="2">' + esc(sp.promessa || '') + '</textarea>' +
+        '<label>Benefícios (1 por linha)</label><textarea id="pv-benef" rows="3">' + esc(linhas(sp.beneficios)) + '</textarea>' +
+        '<label>Para quem é (1 por linha)</label><textarea id="pv-quem" rows="2">' + esc(linhas(sp.para_quem)) + '</textarea>' +
+        '<label>O que vai aprender (1 por linha)</label><textarea id="pv-apr" rows="3">' + esc(linhas(sp.aprender)) + '</textarea>' +
+        '<label>Bônus (1 por linha)</label><textarea id="pv-bonus" rows="2">' + esc(linhas(sp.bonus)) + '</textarea>' +
+        '<label>Depoimentos (Nome | texto — 1 por linha)</label><textarea id="pv-dep" rows="3">' + esc(pares(sp.depoimentos, 'nome', 'texto')) + '</textarea>' +
+        '<label>FAQ (Pergunta | Resposta — 1 por linha)</label><textarea id="pv-faq" rows="3">' + esc(pares(sp.faq, 'p', 'r')) + '</textarea>' +
+        '<label>Texto da garantia</label><input id="pv-gar" value="' + esc(sp.garantia_texto || '') + '">' +
+        '<p><button class="btn peq" id="pv-salvar">💾 Salvar página de venda</button> <span id="pv-msg" class="erro"></span></p>';
+      var deLinhas = function (id) { return val(id).split('\n').map(function (x) { return x.trim(); }).filter(Boolean); };
+      var dePares = function (id, a, b) {
+        return val(id).split('\n').map(function (x) {
+          var i = x.indexOf('|'); if (i < 0) return null;
+          var o = {}; o[a] = x.slice(0, i).trim(); o[b] = x.slice(i + 1).trim(); return o;
+        }).filter(Boolean);
+      };
+      el('pv-salvar').onclick = function () {
+        api('PUT', '/produtor/produtos/' + pid + '/pagina', {
+          headline: val('pv-head'), subheadline: val('pv-sub'), video_url: val('pv-video'), promessa: val('pv-prom'),
+          beneficios: deLinhas('pv-benef'), para_quem: deLinhas('pv-quem'), aprender: deLinhas('pv-apr'), bonus: deLinhas('pv-bonus'),
+          depoimentos: dePares('pv-dep', 'nome', 'texto'), faq: dePares('pv-faq', 'p', 'r'), garantia_texto: val('pv-gar'),
+        }).then(function () { el('pv-msg').textContent = '✅ salvo'; }).catch(function (e) { el('pv-msg').textContent = e.message; });
+      };
+    }).catch(function (e) { el('pv-box').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
   }
 
   // ================= AFILIADO =================
@@ -393,9 +463,42 @@
         }).join('') + '</table>' : '<p class="sub" style="text-align:left">Nada aguardando revisão.</p>') + '</div>';
       html += '<div class="card"><h3>⏳ Perfis pendentes</h3>' +
         (pendentes ? '<table><tr><th>Quem</th><th>Tipo</th><th>Nome público</th><th>Desde</th><th></th></tr>' + pendentes + '</table>' : '<p class="sub" style="text-align:left">Nada pendente.</p>') + '</div>' +
+        '<div class="card"><h3>🚩 Denúncias abertas</h3><div id="adm-den"><p class="sub">Carregando…</p></div></div>' +
+        '<div class="card"><h3>⭐ Avaliações (moderação)</h3><div id="adm-rev"><p class="sub">Carregando…</p></div></div>' +
         '<div class="card"><h3>👥 Usuários</h3><div id="adm-users"><p class="sub">Carregando…</p></div></div>' +
         '<div class="card"><h3>📜 Auditoria (últimos eventos)</h3><div id="adm-audit"><p class="sub">Carregando…</p></div></div>';
       setView(html);
+      api('GET', '/admin/denuncias').then(function (dd) {
+        el('adm-den').innerHTML = dd.denuncias.length
+          ? '<table><tr><th>Produto</th><th>Motivo</th><th>Descrição</th><th></th></tr>' + dd.denuncias.map(function (x) {
+            return '<tr><td>' + esc(x.produto_titulo) + '</td><td>' + esc(x.motivo) + '</td><td>' + esc(x.texto || '') +
+              '</td><td><button class="btn peq" data-denr="' + x.id + '">Resolver</button> <button class="btn peq secund" data-dend="' + x.id + '">Descartar</button></td></tr>';
+          }).join('') + '</table>'
+          : '<p class="sub" style="text-align:left">Nenhuma denúncia aberta.</p>';
+        var acaoDen = function (attr, status) {
+          Array.prototype.forEach.call(document.querySelectorAll('[data-' + attr + ']'), function (b) {
+            b.onclick = function () {
+              var res = prompt('Resolução (registrada na denúncia):') || '';
+              api('POST', '/admin/denuncias/' + b.getAttribute('data-' + attr) + '/resolver', { status: status, resolucao: res }).then(vAdmin).catch(function (e) { alert(e.message); });
+            };
+          });
+        };
+        acaoDen('denr', 'resolvida'); acaoDen('dend', 'descartada');
+      }).catch(function (e) { el('adm-den').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+      api('GET', '/admin/avaliacoes?n=30').then(function (dr) {
+        el('adm-rev').innerHTML = dr.avaliacoes.length
+          ? '<table><tr><th>Produto</th><th>Aluno</th><th>Nota</th><th>Texto</th><th>Status</th><th></th></tr>' + dr.avaliacoes.map(function (r) {
+            return '<tr><td>' + esc(r.produto_titulo) + '</td><td>' + esc(r.nome) + '</td><td>' + r.nota + '★</td><td>' + esc(r.texto || '') + '</td><td>' + esc(r.status) +
+              '</td><td><button class="btn peq secund" data-mod="' + r.id + ':' + (r.status === 'publicada' ? 'oculta' : 'publicada') + '">' + (r.status === 'publicada' ? 'Ocultar' : 'Republicar') + '</button></td></tr>';
+          }).join('') + '</table>'
+          : '<p class="sub" style="text-align:left">Nenhuma avaliação ainda.</p>';
+        Array.prototype.forEach.call(document.querySelectorAll('[data-mod]'), function (b) {
+          b.onclick = function () {
+            var kv = b.getAttribute('data-mod').split(':');
+            api('POST', '/admin/avaliacoes/' + kv[0] + '/moderar', { status: kv[1] }).then(vAdmin).catch(function (e) { alert(e.message); });
+          };
+        });
+      }).catch(function (e) { el('adm-rev').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
       var decidirPerfil = function (attr, status) {
         Array.prototype.forEach.call(document.querySelectorAll('[data-' + attr + ']'), function (b) {
           b.onclick = function () {

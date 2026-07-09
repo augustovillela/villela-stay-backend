@@ -225,3 +225,45 @@ CREATE TABLE IF NOT EXISTS download_logs (
   media_id TEXT DEFAULT '',
   ip       TEXT DEFAULT ''
 );
+
+-- =====================================================================
+-- FASE 3 — Marketplace público, páginas de venda, avaliações, denúncias.
+-- Páginas públicas são server-rendered (SEO/OG); TODO conteúdo de
+-- produtor é escapado na renderização (nunca HTML cru).
+-- =====================================================================
+
+-- ---- PÁGINA DE VENDA (seções em JSON, editadas pelo produtor) ----
+CREATE TABLE IF NOT EXISTS sales_pages (
+  product_id    TEXT PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
+  secoes        TEXT DEFAULT '{}',  -- JSON: {headline, subheadline, video_url, promessa,
+                                    --  beneficios[], para_quem[], aprender[], bonus[],
+                                    --  depoimentos[{nome,texto}], faq[{p,r}], garantia_texto}
+  atualizado_em TEXT DEFAULT ''
+);
+
+-- ---- AVALIAÇÕES (só aluno matriculado; 1 por aluno/produto; moderável) ----
+CREATE TABLE IF NOT EXISTS reviews (
+  id         TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  nota       INTEGER NOT NULL,     -- 1..5
+  texto      TEXT DEFAULT '',
+  status     TEXT DEFAULT 'publicada', -- publicada|oculta (moderação)
+  criado_em  TEXT NOT NULL,
+  UNIQUE(product_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id);
+
+-- ---- DENÚNCIAS de conteúdo (usuário logado; admin resolve) ----
+CREATE TABLE IF NOT EXISTS moderation_reports (
+  id         TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  user_id    TEXT DEFAULT '',
+  motivo     TEXT DEFAULT '',      -- direitos-autorais|enganoso|ilegal|adulto|outro
+  texto      TEXT DEFAULT '',
+  status     TEXT DEFAULT 'aberta',-- aberta|resolvida|descartada
+  resolucao  TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL,
+  resolvido_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON moderation_reports(status);

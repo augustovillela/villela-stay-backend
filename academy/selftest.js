@@ -315,6 +315,86 @@ async function main() {
     assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'ana' })).json.cursos.length, 0);
   });
 
+  // ================= FASE 3 — marketplace, página de venda, avaliações, denúncias =================
+  console.log('\n— FASE 3: vitrine pública —');
+  await t('marketplace lista SÓ publicados e busca funciona', async () => {
+    const r = await req('GET', '/academy/marketplace');
+    assert.equal(r.st, 200); assert.ok(r.texto.includes('Gestão de Temporada'));
+    await req('POST', '/academy/api/produtor/produtos', { jar: 'ana', corpo: { titulo: 'Rascunho Secreto da Ana' } });
+    const r2 = await req('GET', '/academy/marketplace');
+    assert.ok(!r2.texto.includes('Rascunho Secreto'), 'rascunho não vaza na vitrine');
+    assert.ok((await req('GET', '/academy/marketplace?q=temporada')).texto.includes('Gestão de Temporada'));
+    assert.ok(!(await req('GET', '/academy/marketplace?q=inexistente-xyz')).texto.includes('Gestão de Temporada'));
+  });
+  await t('página do curso publicado com SEO/OG e degustação; rascunho é 404', async () => {
+    const r = await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica');
+    assert.equal(r.st, 200);
+    assert.ok(r.texto.includes('og:title')); assert.ok(r.texto.includes('degustação'));
+    assert.equal((await req('GET', '/academy/cursos/rascunho-secreto-da-ana')).st, 404);
+  });
+  await t('página do produtor por slug', async () => {
+    const r = await req('GET', '/academy/produtores/cursos-da-maria');
+    assert.equal(r.st, 200); assert.ok(r.texto.includes('Gestão de Temporada'));
+  });
+  await t('políticas novas carimbadas MINUTA', async () => {
+    for (const p of ['/academy/termos-produtor', '/academy/termos-afiliado', '/academy/reembolso']) {
+      const r = await req('GET', p); assert.equal(r.st, 200); assert.ok(r.texto.includes('MINUTA'), p);
+    }
+  });
+
+  console.log('\n— FASE 3: página de venda e capa —');
+  await t('produtor edita página de venda; conteúdo aparece escapado na página pública', async () => {
+    const put = await req('PUT', `/academy/api/produtor/produtos/${prodId}/pagina`, { jar: 'maria', corpo: {
+      headline: 'Do zero ao <b>lucro</b> na temporada', promessa: 'Sua operação rodando em 30 dias',
+      beneficios: ['Calendário sem overbooking', 'Precificação certa'], faq: [{ p: 'Tem certificado?', r: 'Sim, ao concluir.' }],
+    } });
+    assert.equal(put.st, 200);
+    const pg = await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica');
+    assert.ok(pg.texto.includes('Do zero ao &lt;b&gt;lucro&lt;/b&gt;'), 'headline escapada (sem HTML cru)');
+    assert.ok(pg.texto.includes('Calendário sem overbooking'));
+    assert.ok(pg.texto.includes('Tem certificado?'));
+  });
+  await t('outro produtor não edita a página de venda alheia', async () => {
+    assert.equal((await req('PUT', `/academy/api/produtor/produtos/${prodId}/pagina`, { jar: 'ana', corpo: { headline: 'hack' } })).st, 400);
+  });
+  await t('capa pública só de produto publicado', async () => {
+    assert.equal((await req('GET', `/academy/capa/${prodId}`)).st, 404); // sem capa ainda
+    const up = await req('POST', '/academy/api/produtor/upload', { jar: 'maria', corpo: { nome: 'capa.png', mime: 'image/png', conteudo_base64: Buffer.from('PNGfake').toString('base64') } });
+    assert.equal((await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { capa_media_id: up.json.id } })).st, 200);
+    const r = await req('GET', `/academy/capa/${prodId}`);
+    assert.equal(r.st, 200); assert.ok(r.ct.includes('image/png'));
+  });
+  await t('interesse de compra vira lead e alerta', async () => {
+    const antes = alertas.length;
+    const r = await req('POST', `/academy/api/cursos/${prodId}/interesse`, { corpo: { nome: 'Comprador X', email: 'x@y.com' } });
+    assert.equal(r.st, 200);
+    assert.ok(alertas.length > antes && alertas[alertas.length - 1].includes('interesse de compra'));
+  });
+
+  console.log('\n— FASE 3: avaliações e denúncias —');
+  await t('só matriculado avalia; avaliação aparece na página; admin oculta', async () => {
+    assert.equal((await req('POST', `/academy/api/aluno/cursos/${prodId}/avaliar`, { jar: 'bruno', corpo: { nota: 5, texto: 'top' } })).st, 400);
+    await req('POST', `/academy/api/produtor/produtos/${prodId}/matricular`, { jar: 'maria', corpo: { email: ANA.email } }); // reativa a matrícula revogada
+    assert.equal((await req('POST', `/academy/api/aluno/cursos/${prodId}/avaliar`, { jar: 'ana', corpo: { nota: 5, texto: 'Curso excelente, mudou minha operação' } })).st, 200);
+    const pg = await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica');
+    assert.ok(pg.texto.includes('Curso excelente'));
+    assert.ok(pg.texto.includes('★ 5'));
+    const lista = await req('GET', '/academy/api/admin/avaliacoes', { jar: 'maria' });
+    const rid = lista.json.avaliacoes[0].id;
+    assert.equal((await req('POST', `/academy/api/admin/avaliacoes/${rid}/moderar`, { jar: 'maria', corpo: { status: 'oculta' } })).st, 200);
+    assert.ok(!(await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica')).texto.includes('Curso excelente'), 'oculta some da página');
+  });
+  await t('denúncia: usuário abre, admin resolve (e staff enxerga)', async () => {
+    const r = await req('POST', '/academy/api/denunciar', { jar: 'bruno', corpo: { product_id: prodId, motivo: 'enganoso', texto: 'promete demais' } });
+    assert.equal(r.st, 200);
+    const staffVe = await req('GET', '/staff/api/academy/denuncias');
+    assert.equal(staffVe.json.denuncias.length, 1);
+    const lista = await req('GET', '/academy/api/admin/denuncias', { jar: 'maria' });
+    assert.equal(lista.json.denuncias.length, 1);
+    assert.equal((await req('POST', `/academy/api/admin/denuncias/${r.json.id}/resolver`, { jar: 'maria', corpo: { status: 'descartada', resolucao: 'sem irregularidade' } })).st, 200);
+    assert.equal((await req('GET', '/academy/api/admin/denuncias', { jar: 'maria' })).json.denuncias.length, 0);
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }
