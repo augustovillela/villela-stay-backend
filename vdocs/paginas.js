@@ -27,6 +27,7 @@ header.top.xl .brand{gap:18px;font-size:3.2rem}header.top.xl .brand img{height:1
 .btn:hover{background:var(--indigo);text-decoration:none}
 .btn-ciano{background:var(--ciano);color:#1B2A4A!important}.btn-ciano:hover{background:#B8921F}
 .btn-ghost{background:transparent;border:1.5px solid var(--borda);color:var(--indigo2)!important}
+.hero .btn-ghost{border-color:rgba(248,249,250,.75);color:#F8F9FA!important}.hero .btn-ghost:hover{background:rgba(248,249,250,.12)}
 .hero{background:linear-gradient(155deg,var(--indigo),var(--indigo2) 60%,#2E4370);color:#e6ebf4;padding:64px 0}
 .hero h1{color:#fff;font-size:40px;max-width:760px}.hero p.sub{font-size:19px;max-width:640px;color:#c6d0e2}
 .eyebrow{text-transform:uppercase;letter-spacing:1.5px;font-size:12px;color:var(--ciano);font-weight:700}
