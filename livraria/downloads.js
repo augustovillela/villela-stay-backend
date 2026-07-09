@@ -61,12 +61,12 @@ function servirDownload(repo) {
 
 function paginaErro(msg) {
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Download — Villela Stay</title>
-  <div style="font-family:system-ui,Arial,sans-serif;max-width:520px;margin:12vh auto;padding:0 20px;color:#0c3644;text-align:center">
+  <title>Download — Livraria Villela</title>
+  <div style="font-family:system-ui,Arial,sans-serif;max-width:520px;margin:12vh auto;padding:0 20px;color:#1B2A4A;text-align:center">
     <div style="font-size:40px">📕</div>
     <h1 style="font-size:20px">Livraria Villela</h1>
     <p style="color:#5a6b72;line-height:1.6">${msg}</p>
-    <p><a href="/suporte-livros" style="color:#1c6e8c">Falar com o suporte</a></p>
+    <p><a href="/suporte-livros" style="color:#7F1D1D">Falar com o suporte</a></p>
   </div>`;
 }
 

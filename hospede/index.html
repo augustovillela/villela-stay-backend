@@ -5,14 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Área do Hóspede — Villela Stay</title>
-  <link rel="icon" type="image/png" href="/staff/logo.png">
-  <link rel="apple-touch-icon" href="/staff/logo.png">
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/villela-stay/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-stay/favicon-192.png">
+  <link rel="apple-touch-icon" href="/assets/brand/villela-stay/apple-touch-icon.png">
   <link rel="manifest" href="/hospede/manifest.json">
-  <meta name="theme-color" content="#0c3644">
+  <meta name="theme-color" content="#1B2A4A">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Villela Stay">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
   <link rel="stylesheet" href="/hospede/styles.css">
 </head>
@@ -21,7 +25,7 @@
   <!-- ===================== LOGIN ===================== -->
   <main id="tela-login" class="login hidden">
     <form id="form-login" class="login-card" autocomplete="on">
-      <div class="marca">Villela Stay</div>
+      <div class="marca"><img src="/assets/brand/villela-stay/simbolo-v.svg" alt="Villela Stay" style="height:30px;vertical-align:middle"> Villela Stay</div>
       <p class="login-sub" data-i18n="login_sub">Área do Hóspede — acesso exclusivo</p>
       <label><span data-i18n="login_id">E-mail ou telefone</span>
         <input type="text" id="login-email" name="username" required autocomplete="username" autocapitalize="off" spellcheck="false">
@@ -36,13 +40,14 @@
       <p class="login-alt"><span data-i18n="reservou_ota">Reservou pelo Airbnb, Booking ou outro site?</span>
         <a href="#" id="ir-registrar" data-i18n="crie_acesso_codigo">Crie seu acesso com o código da reserva</a>.</p>
       <a class="login-voltar" href="https://villelastay.com.br" data-i18n="voltar_site">← Voltar ao site</a>
+      <p class="login-rodape" style="text-align:center;font-size:.75rem;color:#6b7075;margin:8px 0 0">Villela Stay · Uma empresa do Grupo Villela</p>
     </form>
   </main>
 
   <!-- ===================== ACESSO POR E-MAIL (link de verificação) ===================== -->
   <main id="tela-email" class="login hidden">
     <form id="form-email" class="login-card">
-      <div class="marca">Villela Stay</div>
+      <div class="marca"><img src="/assets/brand/villela-stay/simbolo-v.svg" alt="Villela Stay" style="height:30px;vertical-align:middle"> Villela Stay</div>
       <p class="login-sub" data-i18n="email_titulo">Acesso por e-mail</p>
       <p class="login-alt" data-i18n="email_ajuda">Digite o e-mail que você usou na sua reserva. Se encontrarmos uma reserva sua,
         enviaremos um link para você criar a sua senha e entrar — as suas reservas anteriores
@@ -60,7 +65,7 @@
   <!-- ===================== DEFINIR SENHA (via link do e-mail) ===================== -->
   <main id="tela-definir" class="login hidden">
     <form id="form-definir" class="login-card">
-      <div class="marca">Villela Stay</div>
+      <div class="marca"><img src="/assets/brand/villela-stay/simbolo-v.svg" alt="Villela Stay" style="height:30px;vertical-align:middle"> Villela Stay</div>
       <p class="login-sub" data-i18n="crie_senha_acesso">Crie a sua senha de acesso</p>
       <label><span data-i18n="nova_senha_min">Nova senha (mín. 8 caracteres)</span>
         <input type="password" id="df-senha" required minlength="8" autocomplete="new-password">
@@ -76,7 +81,7 @@
   <!-- ===================== CADASTRO POR CÓDIGO (OTA) ===================== -->
   <main id="tela-registrar" class="login hidden">
     <form id="form-registrar" class="login-card">
-      <div class="marca">Villela Stay</div>
+      <div class="marca"><img src="/assets/brand/villela-stay/simbolo-v.svg" alt="Villela Stay" style="height:30px;vertical-align:middle"> Villela Stay</div>
       <p class="login-sub" data-i18n="criar_acesso_codigo_sub">Criar acesso com o código da reserva</p>
       <label><span data-i18n="localizador_label">Localizador / código da reserva</span>
         <input type="text" id="rg-localizador" required autocapitalize="characters" spellcheck="false" placeholder="Ex.: LR03J">
@@ -102,7 +107,7 @@
   <!-- ===================== TROCAR SENHA (1º acesso) ===================== -->
   <main id="tela-trocar" class="login hidden">
     <form id="form-trocar" class="login-card">
-      <div class="marca">Villela Stay</div>
+      <div class="marca"><img src="/assets/brand/villela-stay/simbolo-v.svg" alt="Villela Stay" style="height:30px;vertical-align:middle"> Villela Stay</div>
       <p class="login-sub" data-i18n="defina_nova_senha">Defina uma nova senha para continuar</p>
       <label><span data-i18n="senha_atual_recebeu">Senha atual (a que você recebeu)</span>
         <input type="password" id="tr-atual" required autocomplete="current-password">
@@ -120,7 +125,7 @@
     <header class="topo">
       <button type="button" id="btn-voltar" class="ico-topo hidden" aria-label="Voltar ao início"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
       <div class="marca-bloco">
-        <img class="marca-logo" src="/staff/logo.png" alt="" aria-hidden="true">
+        <img class="marca-logo" src="/assets/brand/villela-stay/logo-negativo.svg" alt="" aria-hidden="true">
         <span class="marca">Villela Stay</span>
         <span class="tag" data-i18n="hospede_tag">Hóspede</span>
       </div>

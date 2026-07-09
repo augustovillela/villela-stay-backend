@@ -28,7 +28,7 @@
   var TIPOS_PROD = { curso: '🎓 Curso', ebook: '📖 E-book', pdf: '📄 PDF', audio: '🎧 Áudio', pacote: '📦 Pacote', mentoria: '🧭 Mentoria', clube: '🔁 Clube' };
   var STATUS_ASSINATURA = { pendente: '⏳ aguardando pagamento', ativa: '🟢 ativa', pausada: '⚠️ pausada (pagamento)', cancelada: '🚫 cancelada' };
   var barra = function (pct) {
-    return '<div style="background:#efe9fb;border-radius:8px;height:10px;overflow:hidden"><div style="background:#4a2fbd;height:10px;width:' + (pct || 0) + '%"></div></div>';
+    return '<div style="background:#E2E6EC;border-radius:8px;height:10px;overflow:hidden"><div style="background:#D97706;height:10px;width:' + (pct || 0) + '%"></div></div>';
   };
 
   // ---------------- login / cadastro / boot ----------------
@@ -273,7 +273,7 @@
           : (a.url_externa ? '<p><a class="btn peq" href="' + esc(a.url_externa) + '" target="_blank" rel="noopener">▶️ Assistir vídeo</a></p>' : '<p class="sub">Vídeo ainda não configurado.</p>');
       }
     } else if (a.tipo === 'pdf' && media) {
-      corpo = '<iframe src="' + media + '" style="width:100%;height:70vh;border:1px solid #e8e2f4;border-radius:10px"></iframe>';
+      corpo = '<iframe src="' + media + '" style="width:100%;height:70vh;border:1px solid #E2E6EC;border-radius:10px"></iframe>';
     } else if (a.tipo === 'audio' && media) {
       corpo = '<audio controls style="width:100%" src="' + media + '"></audio>';
     } else if (a.tipo === 'arquivo' && media) {

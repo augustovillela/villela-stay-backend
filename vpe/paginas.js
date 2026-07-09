@@ -1,6 +1,6 @@
 // =====================================================================
 // Villela Projects & Events — páginas públicas + painel (/vpe/app).
-// Identidade própria (verde-petróleo executivo), separada dos irmãos.
+// Identidade Grupo Villela (navy + dourado, acento violeta #7C3AED).
 // SPA leve em fetch, sem framework — padrão provado no Villela Docs.
 // =====================================================================
 'use strict';
@@ -10,52 +10,64 @@ const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</
 const brl = (c) => Number(c || 0) === 0 ? 'Sob consulta' : 'R$ ' + (Number(c) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 }) + '/mês';
 
 const CSS = `
-:root{--ink:#12241f;--verde:#14532d;--verde2:#0c3b20;--acc:#16a34a;--ambar:#d97706;--fundo:#f4f7f5;--borda:#dde5df;--suave:#5b6b62;--alerta:#d93025}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.6}
-h1,h2,h3{line-height:1.2;margin:.2em 0 .5em;color:var(--verde2)}
+:root{--ink:#1F2933;--verde:#1B2A4A;--verde2:#24365C;--acc:#7C3AED;--ambar:#C9A227;--fundo:#F8F9FA;--borda:#E2E6EC;--suave:#5D6673;--alerta:#d93025}
+*{box-sizing:border-box}body{margin:0;font-family:'Inter',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.6}
+h1,h2,h3{font-family:'Lora',Georgia,serif;line-height:1.2;margin:.2em 0 .5em;color:var(--verde2)}
 a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
 .wrap{max-width:1080px;margin:0 auto;padding:0 20px}.wrap-sm{max-width:560px;margin:0 auto;padding:0 20px}
 header.top{background:var(--verde2);color:#fff;position:sticky;top:0;z-index:20}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
-header.top a{color:#e6f2ea}.brand{font-weight:800;font-size:19px;color:#fff!important}.brand b{color:#86efac}
+header.top a{color:#E8ECF4}.brand{display:inline-flex;align-items:center;gap:9px;font-family:'Lora',Georgia,serif;font-weight:700;font-size:19px;color:#fff!important}.brand b{font-family:'Inter',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:2.5px;color:#A78BFA}
 .nav a{margin-left:18px;font-size:15px}
 .btn{display:inline-block;background:var(--acc);color:#fff!important;padding:12px 24px;border-radius:9px;font-weight:700;border:0;cursor:pointer;font-size:15px;text-align:center;transition:.15s}
 .btn:hover{background:var(--verde)}
 .btn-ghost{background:transparent;border:1.5px solid var(--borda);color:var(--verde2)!important}
 .btn.peq{padding:7px 13px;font-size:13px}
-.hero{background:linear-gradient(155deg,var(--verde2),var(--verde) 65%,#1d6b38);color:#e6f2ea;padding:60px 0}
-.hero h1{color:#fff;font-size:38px;max-width:780px}.hero p.sub{font-size:19px;max-width:640px;color:#c4e5cf}
-.eyebrow{text-transform:uppercase;letter-spacing:1.5px;font-size:12px;color:#86efac;font-weight:700}
+.hero{background:linear-gradient(155deg,var(--verde2),var(--verde) 65%,#31406E);color:#E8ECF4;padding:60px 0}
+.hero h1{color:#fff;font-size:38px;max-width:780px}.hero p.sub{font-size:19px;max-width:640px;color:#C7D0E2}
+.eyebrow{text-transform:uppercase;letter-spacing:1.5px;font-size:12px;color:var(--acc);font-weight:700}
+.hero .eyebrow{color:#A78BFA}
 section{padding:46px 0}section.alt{background:var(--fundo)}
 .grid{display:grid;gap:22px}.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:22px}
 .card h3{margin-top:0;font-size:18px}
 .plano{display:flex;flex-direction:column}.plano .preco{font-size:26px;font-weight:800;color:var(--verde2)}
 .plano ul{padding-left:18px;margin:10px 0;color:var(--suave);flex:1}
-.badge{display:inline-block;background:#86efac;color:#052e16;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;text-transform:uppercase}
+.badge{display:inline-block;background:#DDD3F7;color:#2E1065;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;text-transform:uppercase}
 input,select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--borda);border-radius:9px;font-size:15px;font-family:inherit;background:#fff}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc)}
 label{font-size:13px;font-weight:600;color:var(--suave);display:block;margin:12px 0 4px}
 .aviso{background:#fef7e0;border:1px solid #f5d78e;border-radius:9px;padding:10px 14px;font-size:14px;margin:10px 0}
 .erro{background:#fde8e8;border:1px solid #f5b5b5;border-radius:9px;padding:10px 14px;font-size:14px;margin:10px 0;color:var(--alerta)}
-footer{background:var(--ink);color:#b7c6bd;padding:32px 0;font-size:14px}footer a{color:#d4e5da}
+footer{background:var(--ink);color:#B9C2CF;padding:32px 0;font-size:14px}footer a{color:#D6DCE8}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--borda)}th{color:var(--suave);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 .chip{display:inline-block;background:var(--fundo);border:1px solid var(--borda);border-radius:99px;padding:2px 10px;font-size:12px}
 @media(max-width:640px){.hero h1{font-size:28px}.nav a.esconde{display:none}}
 `;
 
-function pagina({ titulo, descricao, corpo }) {
+const HEAD_MARCA = `<link rel="icon" type="image/svg+xml" href="/assets/brand/villela-projects/favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-projects/favicon-192.png">
+<link rel="apple-touch-icon" href="/assets/brand/villela-projects/apple-touch-icon.png">
+<meta name="theme-color" content="#1B2A4A">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">`;
+
+const BRAND_LOCKUP = `<img src="/assets/brand/villela-projects/logo-negativo.svg" alt="Villela Projects" style="height:30px">Villela <b>Projects</b>`;
+
+function pagina({ titulo, descricao, corpo, og }) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title><meta name="description" content="${esc(descricao)}">
+${og ? `<meta property="og:type" content="website"><meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}"><meta property="og:image" content="https://projetos.villelastay.com.br/assets/brand/villela-projects/og-image.png">
+` : ''}${HEAD_MARCA}
 <style>${CSS}</style></head><body>
 <header class="top"><div class="wrap">
-  <a class="brand" href="/vpe">Villela <b>Projects</b> & Events</a>
-  <nav class="nav"><a class="esconde" href="/vpe#recursos">Recursos</a><a class="esconde" href="/vpe#planos">Planos</a><a href="/vpe/login">Entrar</a> <a class="btn" style="padding:9px 16px;background:#86efac;color:#052e16!important" href="/vpe/cadastro">Teste grátis</a></nav>
+  <a class="brand" href="/vpe">${BRAND_LOCKUP}</a>
+  <nav class="nav"><a class="esconde" href="/vpe#recursos">Recursos</a><a class="esconde" href="/vpe#planos">Planos</a><a href="/vpe/login">Entrar</a> <a class="btn" style="padding:9px 16px;background:#DDD3F7;color:#2E1065!important" href="/vpe/cadastro">Teste grátis</a></nav>
 </div></header>
 ${corpo}
-<footer><div class="wrap"><b style="color:#fff">Villela Projects & Events Intelligence</b> — gestão de projetos e eventos com IA.<br>
-Um produto Augusto Villela Ltda · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
+<footer><div class="wrap"><b style="color:#fff">Villela Projects</b> · Projetos, processos e automações em um só lugar<br>
+Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
 <a href="/vpe/login">Entrar</a> · <a href="/vpe/cadastro">Criar conta</a></div></footer>
 </body></html>`;
 }
@@ -67,10 +79,10 @@ function landing() {
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Gestão de projetos e eventos com IA</div>
   <h1>Da ideia ao lançamento — e do briefing ao pós-evento — em um só lugar.</h1>
-  <p class="sub">O Villela Projects & Events organiza seu portfólio de negócios (ideia → viabilidade → plano → execução → operação) e sua operação de eventos (briefing, proposta, fornecedores, equipe, financeiro), com agentes de IA trabalhando como parte do time.</p>
-  <p style="margin-top:22px"><a class="btn" style="background:#86efac;color:#052e16!important" href="/vpe/cadastro">Começar teste grátis de 14 dias</a>
-  <a class="btn btn-ghost" style="margin-left:8px;border-color:#2e7d4a;color:#c4e5cf!important" href="#demo">Pedir demonstração</a></p>
-  <p style="font-size:13px;color:#9fcfaf">Sem cartão de crédito · Cancele quando quiser · LGPD</p>
+  <p class="sub">Projetos, processos e automações em um só lugar: o Villela Projects organiza seu portfólio de negócios (ideia → viabilidade → plano → execução → operação) e sua operação de eventos (briefing, proposta, fornecedores, equipe, financeiro), com agentes de IA trabalhando como parte do time.</p>
+  <p style="margin-top:22px"><a class="btn" style="background:#DDD3F7;color:#2E1065!important" href="/vpe/cadastro">Começar teste grátis de 14 dias</a>
+  <a class="btn btn-ghost" style="margin-left:8px;border-color:#4A5A85;color:#C7D0E2!important" href="#demo">Pedir demonstração</a></p>
+  <p style="font-size:13px;color:#A9B4CC">Sem cartão de crédito · Cancele quando quiser · LGPD</p>
 </div></div>
 
 <section id="recursos"><div class="wrap">
@@ -125,11 +137,11 @@ function landing() {
     return false;}
   </script>
 </div></section>`;
-  return pagina({ titulo: 'Villela Projects & Events — Gestão de projetos e eventos com IA', descricao: 'Portfólio de ideias, projetos por fases, eventos de ponta a ponta e agentes de IA. Teste grátis 14 dias.', corpo });
+  return pagina({ titulo: 'Villela Projects — Projetos, processos e automações em um só lugar', descricao: 'Portfólio de ideias, projetos por fases, eventos de ponta a ponta e agentes de IA. Teste grátis 14 dias.', corpo, og: true });
 }
 
 const formPagina = (titulo, inner) => pagina({
-  titulo: `${titulo} — Villela Projects & Events`, descricao: 'Gestão de projetos e eventos com IA.',
+  titulo: `${titulo} — Villela Projects`, descricao: 'Projetos, processos e automações em um só lugar.',
   corpo: `<section class="alt" style="min-height:60vh"><div class="wrap-sm"><div class="card" style="padding:28px"><h2 style="margin-top:0">${esc(titulo)}</h2>${inner}</div></div></section>`,
 });
 
@@ -187,7 +199,9 @@ const convite = (token) => formPagina('Aceitar convite', `
 function appTenant() {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Villela Projects — Painel</title><style>${CSS}
+<title>Villela Projects — Painel</title>
+${HEAD_MARCA}
+<style>${CSS}
 body{background:var(--fundo)}
 .layout{display:flex;min-height:calc(100vh - 60px)}
 aside{width:235px;background:#fff;border-right:1px solid var(--borda);padding:18px 12px;flex-shrink:0}
@@ -202,8 +216,8 @@ main{flex:1;padding:26px;max-width:1080px}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
 </style></head><body>
 <header class="top"><div class="wrap" style="max-width:none">
-  <a class="brand" href="/vpe/app">Villela <b>Projects</b></a>
-  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c4e5cf"></span> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
+  <a class="brand" href="/vpe/app">${BRAND_LOCKUP}</a>
+  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#C7D0E2"></span> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
 </div></header>
 <div class="layout"><aside id="menu"></aside><main id="corpo"><p>Carregando…</p></main></div>
 <script>
@@ -1050,10 +1064,11 @@ function portalMoeda(c) { return 'R$ ' + (Number(c || 0) / 100).toLocaleString('
 function portalShell(corpoHtml) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Portal do cliente — Villela Projects</title>
+${HEAD_MARCA}
 <style>${CSS}.pcard{max-width:760px;margin:26px auto}pre.doc{white-space:pre-wrap;background:var(--fundo);border:1px solid var(--borda);border-radius:10px;padding:16px;font-family:inherit;font-size:14px;max-height:60vh;overflow:auto}</style></head><body>
-<header class="top"><div class="wrap"><span class="brand">Villela <b>Projects</b> & Events</span></div></header>
+<header class="top"><div class="wrap"><span class="brand">${BRAND_LOCKUP}</span></div></header>
 <div class="wrap pcard">${corpoHtml}</div>
-<footer><div class="wrap">Portal do cliente · documento apresentado por meio do Villela Projects & Events.</div></footer></body></html>`;
+<footer><div class="wrap">Portal do cliente · documento apresentado por meio do Villela Projects, uma empresa do Grupo Villela.</div></footer></body></html>`;
 }
 function portalCliente(view, token) {
   const d = view.dados || {};

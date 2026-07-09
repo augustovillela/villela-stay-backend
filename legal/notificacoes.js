@@ -36,7 +36,7 @@ async function notificarCliente(clientId, { titulo, corpo, ref_tipo, ref_id }) {
   const resultados = { interna: true };
   if (prefs.email !== false && c.email) { // padrão: e-mail ligado se houver endereço
     const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#2b2d2f">
-      <div style="background:#0c3644;color:#f2ecd8;padding:16px 22px;border-radius:10px 10px 0 0"><strong>Villela Legal</strong></div>
+      <div style="background:#1B2A4A;color:#F8F9FA;padding:16px 22px;border-radius:10px 10px 0 0"><strong>Villela Legal</strong></div>
       <div style="border:1px solid #e5e0d5;border-top:0;padding:18px 22px;border-radius:0 0 10px 10px">
       <p><strong>${s(titulo, 200)}</strong></p><p>${s(corpo, 2000).replace(/\n/g, '<br>')}</p>
       <p style="color:#777;font-size:12px">Acompanhe os detalhes no seu portal do cliente.</p></div></div>`;

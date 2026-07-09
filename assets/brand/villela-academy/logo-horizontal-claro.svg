@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 120" role="img">
+  <g>
+  <polygon points="14,26 60,58 106,26 106,40 60,72 14,40" fill="#C9A227"/>
+  <polygon points="16,46 42,64 42,100 16,112" fill="#1B2A4A"/>
+  <polygon points="104,46 78,64 78,100 104,112" fill="#1B2A4A"/>
+    <path d="M60 72 L63.5 78 L69 79 L63.5 81 L60 87 L56.5 81 L51 79 L56.5 78 Z" fill="#D97706"/>
+    <path d="M60 85 C69 92 69 102 60 108 C51 102 51 92 60 85 Z" fill="#D97706"/></g>
+  <text x="140" y="68" font-family="Lora, Georgia, 'Times New Roman', serif" font-weight="600" font-size="46" letter-spacing="1" fill="#1B2A4A">Villela</text>
+  <text x="142" y="92" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-weight="600" font-size="19" letter-spacing="7" fill="#D97706">ACADEMY</text>
+</svg>

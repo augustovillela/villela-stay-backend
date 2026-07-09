@@ -1,7 +1,8 @@
 // =====================================================================
-// Villela Docs Intelligence — páginas públicas (server-rendered, SEO) e
-// painel do cliente (/vdocs/app — SPA leve em fetch, sem framework).
-// Identidade própria (índigo corporativo), separada do site da Villela Stay.
+// Villela Docs (Document Intelligence) — páginas públicas (server-rendered,
+// SEO) e painel do cliente (/vdocs/app — SPA leve em fetch, sem framework).
+// Identidade do GRUPO VILLELA (navy + azul-aço #2563EB + dourado),
+// separada do site da Villela Stay. Assets: /assets/brand/villela-docs/.
 // =====================================================================
 'use strict';
 const repo = require('./repo');
@@ -10,21 +11,21 @@ const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</
 const brl = (c) => Number(c || 0) === 0 ? 'Sob consulta' : 'R$ ' + (Number(c) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 }) + '/mês';
 
 const CSS = `
-:root{--ink:#141a2e;--indigo:#2b3a8f;--indigo2:#1e2a6e;--azul:#3b5bdb;--ciano:#12b5cb;--fundo:#f6f7fb;--borda:#e3e6f0;--suave:#5b6478;--ok:#0f9d58;--alerta:#d93025}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.6}
-h1,h2,h3{line-height:1.2;margin:.2em 0 .5em;color:var(--indigo2)}
+:root{--ink:#1F2933;--indigo:#1B2A4A;--indigo2:#24365C;--azul:#2563EB;--ciano:#C9A227;--fundo:#F8F9FA;--borda:#E2E6EC;--suave:#5b6478;--ok:#0f9d58;--alerta:#d93025}
+*{box-sizing:border-box}body{margin:0;font-family:'Inter',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.6}
+h1,h2,h3{font-family:'Lora',Georgia,serif;line-height:1.2;margin:.2em 0 .5em;color:var(--indigo2)}
 a{color:var(--azul);text-decoration:none}a:hover{text-decoration:underline}
 .wrap{max-width:1080px;margin:0 auto;padding:0 20px}.wrap-sm{max-width:560px;margin:0 auto;padding:0 20px}
 header.top{background:var(--indigo2);color:#fff;position:sticky;top:0;z-index:20}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
-header.top a{color:#e8ebfa}.brand{font-weight:800;font-size:19px;letter-spacing:.3px;color:#fff!important}.brand b{color:var(--ciano)}
+header.top a{color:#e6ebf4}.brand{display:flex;align-items:center;gap:9px;font-family:'Lora',Georgia,serif;font-weight:700;font-size:19px;letter-spacing:.3px;color:#fff!important}.brand img{height:32px;display:block}.brand b{font-family:'Inter',sans-serif;font-weight:700;font-size:14px;letter-spacing:.22em;color:var(--azul)}
 .nav a{margin-left:18px;font-size:15px}
 .btn{display:inline-block;background:var(--azul);color:#fff!important;padding:12px 24px;border-radius:9px;font-weight:700;border:0;cursor:pointer;font-size:15px;text-align:center;transition:.15s}
 .btn:hover{background:var(--indigo);text-decoration:none}
-.btn-ciano{background:var(--ciano);color:#06323a!important}.btn-ciano:hover{background:#0ea2b5}
+.btn-ciano{background:var(--ciano);color:#1B2A4A!important}.btn-ciano:hover{background:#B8921F}
 .btn-ghost{background:transparent;border:1.5px solid var(--borda);color:var(--indigo2)!important}
-.hero{background:linear-gradient(155deg,var(--indigo2),var(--indigo) 60%,#38449b);color:#e8ebfa;padding:64px 0}
-.hero h1{color:#fff;font-size:40px;max-width:760px}.hero p.sub{font-size:19px;max-width:640px;color:#c9d1f2}
+.hero{background:linear-gradient(155deg,var(--indigo),var(--indigo2) 60%,#2E4370);color:#e6ebf4;padding:64px 0}
+.hero h1{color:#fff;font-size:40px;max-width:760px}.hero p.sub{font-size:19px;max-width:640px;color:#c6d0e2}
 .eyebrow{text-transform:uppercase;letter-spacing:1.5px;font-size:12px;color:var(--ciano);font-weight:700}
 section{padding:48px 0}section.alt{background:var(--fundo)}
 .grid{display:grid;gap:22px}.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
@@ -32,7 +33,7 @@ section{padding:48px 0}section.alt{background:var(--fundo)}
 .card h3{margin-top:0;font-size:18px}
 .plano{display:flex;flex-direction:column}.plano .preco{font-size:26px;font-weight:800;color:var(--indigo2)}
 .plano ul{padding-left:18px;margin:10px 0;color:var(--suave);flex:1}.plano li{margin:4px 0}
-.badge{display:inline-block;background:var(--ciano);color:#06323a;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
+.badge{display:inline-block;background:var(--ciano);color:#1B2A4A;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
 input,select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--borda);border-radius:9px;font-size:15px;font-family:inherit;background:#fff}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul)}
 label{font-size:13px;font-weight:600;color:var(--suave);display:block;margin:12px 0 4px}
@@ -46,21 +47,34 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 @media(max-width:640px){.hero h1{font-size:29px}.nav a.esconde{display:none}}
 `;
 
+// Head comum da identidade Grupo Villela (fontes, favicons, theme-color)
+const BRAND_DIR = '/assets/brand/villela-docs';
+const BASE_URL = 'https://docs.villelastay.com.br';
+const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="${BRAND_DIR}/favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="${BRAND_DIR}/favicon-192.png">
+<link rel="apple-touch-icon" href="${BRAND_DIR}/apple-touch-icon.png">
+<meta name="theme-color" content="#1B2A4A">`;
+const MARCA = `<img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Docs" style="height:32px"> Villela <b>DOCS</b>`;
+
 function pagina({ titulo, descricao, corpo, canonical }) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title><meta name="description" content="${esc(descricao)}">
 ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
+<meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
+${HEAD_MARCA}
 <style>${CSS}</style></head><body>
 <header class="top"><div class="wrap">
-  <a class="brand" href="/vdocs">Villela <b>Docs</b> Intelligence</a>
+  <a class="brand" href="/vdocs">${MARCA}</a>
   <nav class="nav"><a class="esconde" href="/vdocs#recursos">Recursos</a><a class="esconde" href="/vdocs/precos">Planos</a><a href="/vdocs/login">Entrar</a> <a class="btn btn-ciano" style="padding:9px 16px" href="/vdocs/cadastro">Teste grátis</a></nav>
 </div></header>
 ${corpo}
 <footer><div class="wrap">
-  <b style="color:#fff">Villela Docs Intelligence</b> — gestão documental inteligente para empresas.<br>
-  Um produto Augusto Villela Ltda · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
+  <b style="color:#fff">Villela Docs</b> · Inteligência documental para empresas<br>
+  Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
   <a href="/vdocs/precos">Planos</a> · <a href="/vdocs/login">Entrar</a> · <a href="/vdocs/cadastro">Criar conta</a>
   <div style="margin-top:8px;font-size:12px">Seus documentos são privados: armazenamento isolado por empresa, criptografia em trânsito e trilha de auditoria completa (LGPD).</div>
 </div></footer>
@@ -72,12 +86,12 @@ function landing() {
   const planos = repo.listarPlanos();
   const corpo = `
 <div class="hero"><div class="wrap">
-  <div class="eyebrow">Gestão documental com inteligência artificial</div>
+  <div class="eyebrow">Inteligência documental para empresas</div>
   <h1>Todos os documentos da sua empresa organizados, seguros e com respostas em segundos.</h1>
-  <p class="sub">O Villela Docs Intelligence centraliza contratos, notas, políticas e processos em um só lugar — com busca inteligente, aprovações, controle de versão, trilha de auditoria e uma IA que responde citando os documentos.</p>
+  <p class="sub">O Villela Docs — Document Intelligence centraliza contratos, notas, políticas e processos em um só lugar — com busca inteligente, aprovações, controle de versão, trilha de auditoria e uma IA que responde citando os documentos.</p>
   <p style="margin-top:22px"><a class="btn btn-ciano" href="/vdocs/cadastro">Começar teste grátis de 14 dias</a>
   <a class="btn btn-ghost" style="margin-left:8px" href="#demo">Pedir demonstração</a></p>
-  <p style="font-size:13px;color:#aab4e6">Sem cartão de crédito · Cancele quando quiser · Dados no Brasil, adequado à LGPD</p>
+  <p style="font-size:13px;color:#9fb0cc">Sem cartão de crédito · Cancele quando quiser · Dados no Brasil, adequado à LGPD</p>
 </div></div>
 
 <section><div class="wrap">
@@ -167,7 +181,7 @@ function landing() {
   <details><summary>E se eu cancelar?</summary>Você exporta todos os seus documentos e dados antes de sair. Sem fidelidade, sem multa.</details>
   <details><summary>Atende à LGPD?</summary>Sim: controle de acesso, registro de tratamento, retenção e descarte controlados, exportação e exclusão de dados quando aplicável.</details>
 </div></section>`;
-  return pagina({ titulo: 'Villela Docs Intelligence — Gestão de documentos com IA para empresas', descricao: 'Centralize, organize e encontre os documentos da sua empresa com busca inteligente, workflows de aprovação, auditoria e IA que cita as fontes. Teste grátis 14 dias.', corpo });
+  return pagina({ titulo: 'Villela Docs — Document Intelligence: gestão de documentos com IA para empresas', descricao: 'Inteligência documental para empresas: centralize, organize e encontre os documentos da sua empresa com busca inteligente, workflows de aprovação, auditoria e IA que cita as fontes. Teste grátis 14 dias.', corpo });
 }
 
 function planoBullets(p) {
@@ -207,12 +221,12 @@ function precos() {
   </table></div>
   <div class="aviso">Precisa de volumes maiores, SSO ou contrato personalizado? <a href="/vdocs#demo">Fale com a gente</a> — o plano Enterprise é sob medida.</div>
 </div></section>`;
-  return pagina({ titulo: 'Planos e preços — Villela Docs Intelligence', descricao: 'Planos Starter, Professional, Business e Enterprise. Teste grátis 14 dias, sem cartão.', corpo });
+  return pagina({ titulo: 'Planos e preços — Villela Docs', descricao: 'Planos Starter, Professional, Business e Enterprise. Teste grátis 14 dias, sem cartão.', corpo });
 }
 
 // ------------------------------------------------------------ cadastro / login / convite
 const formPagina = (titulo, inner) => pagina({
-  titulo: `${titulo} — Villela Docs Intelligence`, descricao: 'Gestão documental inteligente para empresas.',
+  titulo: `${titulo} — Villela Docs`, descricao: 'Inteligência documental para empresas.',
   corpo: `<section class="alt" style="min-height:60vh"><div class="wrap-sm"><div class="card" style="padding:28px"><h2 style="margin-top:0">${esc(titulo)}</h2>${inner}</div></div></section>`,
 });
 
@@ -284,7 +298,9 @@ const convite = (token) => formPagina('Aceitar convite', `
 function appTenant() {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Villela Docs — Painel</title><style>${CSS}
+<title>Villela Docs — Painel</title>
+${HEAD_MARCA}
+<style>${CSS}
 body{background:var(--fundo)}
 .layout{display:flex;min-height:calc(100vh - 60px)}
 aside{width:230px;background:#fff;border-right:1px solid var(--borda);padding:18px 12px;flex-shrink:0}
@@ -301,8 +317,8 @@ main{flex:1;padding:26px;max-width:1000px}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
 </style></head><body>
 <header class="top"><div class="wrap" style="max-width:none">
-  <a class="brand" href="/vdocs/app">Villela <b>Docs</b></a>
-  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c9d1f2"></span> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
+  <a class="brand" href="/vdocs/app">${MARCA}</a>
+  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c6d0e2"></span> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
 </div></header>
 <div class="layout"><aside id="menu"></aside><main id="corpo"><p>Carregando…</p></main></div>
 <script>
@@ -703,7 +719,7 @@ function balao(m){
    esc(m.conteudo).replace(/\\n/g,'<br>')+
    (!eu&&m.nao_encontrado?'<div class="aviso" style="margin:.5rem 0 0">ℹ️ A informação não foi encontrada nos documentos.</div>':'')+
    (!eu&&(m.fontes||[]).length?'<div style="margin-top:.5rem;font-size:12px"><b>Fontes:</b> '+fonteChips(m.fontes)+'</div>':'')+
-   (!eu&&m.nivel_confianca?'<div style="margin-top:.3rem;font-size:11px;color:'+(eu?'#c9d1f2':'var(--suave)')+'">confiança: '+esc(m.nivel_confianca)+' · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'util\\')">👍 útil</a> · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'incorreta\\')">👎 incorreta</a> · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'sensivel\\')">⚠️ sensível</a></div>':'')+
+   (!eu&&m.nivel_confianca?'<div style="margin-top:.3rem;font-size:11px;color:'+(eu?'#c6d0e2':'var(--suave)')+'">confiança: '+esc(m.nivel_confianca)+' · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'util\\')">👍 útil</a> · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'incorreta\\')">👎 incorreta</a> · <a href="#" onclick="return fbIA(\\''+m.id+'\\',\\'sensivel\\')">⚠️ sensível</a></div>':'')+
    '</div></div>';
 }
 async function pintarConv(){
@@ -829,7 +845,7 @@ const paginaExterna = (titulo, inner) => pagina({
   titulo: `${titulo} — Villela Docs`, descricao: 'Acesso seguro a documentos compartilhados.',
   corpo: `<section class="alt" style="min-height:60vh"><div class="wrap"><div class="card" style="padding:26px;max-width:820px;margin:0 auto">
     <h2 style="margin-top:0">${esc(titulo)}</h2>${inner}
-    <p style="font-size:12px;color:var(--suave);margin-top:18px">🔐 Acesso registrado (data, hora e IP) — Villela Docs Intelligence.</p></div></div></section>`,
+    <p style="font-size:12px;color:var(--suave);margin-top:18px">🔐 Acesso registrado (data, hora e IP) — Villela Docs.</p></div></div></section>`,
 });
 
 function paginaShare(token, sh, comp, { senha = '', erroSenha = false } = {}) {

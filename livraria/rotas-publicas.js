@@ -103,7 +103,7 @@ function registrarRotasPublicas(app, deps) {
       if (!pagas.length) return;
       const linhas = pagas.map(o => `<li><a href="${urls.biblioteca(o.id)}">Pedido de ${new Date(o.created_at).toLocaleDateString('pt-BR')} — ${repo.brl(o.valor_total)}</a></li>`).join('');
       const html = storefront.pagina ? null : null; // usa template simples
-      const corpo = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto"><h2 style="color:#0c3644">Sua biblioteca — Villela Stay</h2><p>Aqui estão seus pedidos e acessos:</p><ul>${linhas}</ul><p style="color:#8a9296;font-size:13px">Se você não pediu isto, ignore este e-mail.</p></div>`;
+      const corpo = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto"><h2 style="color:#1B2A4A">Sua biblioteca — Livraria Villela</h2><p>Aqui estão seus pedidos e acessos:</p><ul>${linhas}</ul><p style="color:#8a9296;font-size:13px">Se você não pediu isto, ignore este e-mail.</p></div>`;
       await deps.enviarEmail(email, 'Seus livros — Livraria Villela', corpo);
       repo.Notif.log('email', { destino: email, assunto: 'biblioteca', status: 'enviado' });
     } catch (e) { console.error('[biblioteca-email]', e.message); }

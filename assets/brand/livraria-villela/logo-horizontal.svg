@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 120" role="img">
+  <g>
+  <polygon points="14,26 60,58 106,26 106,40 60,72 14,40" fill="#C9A227"/>
+  <polygon points="16,46 42,64 42,100 16,112" fill="#FFFFFF"/>
+  <polygon points="104,46 78,64 78,100 104,112" fill="#FFFFFF"/>
+    <polygon points="36,78 60,89 60,104 36,93" fill="#7F1D1D"/>
+    <polygon points="84,78 60,89 60,104 84,93" fill="#7F1D1D"/>
+    <polygon points="36,71 60,82 84,71 84,78 60,89 36,78" fill="#C9A227"/></g>
+  <text x="140" y="88" font-family="Lora, Georgia, 'Times New Roman', serif" font-weight="600" font-size="46" letter-spacing="1" fill="#FFFFFF">Villela</text>
+  <text x="142" y="52" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-weight="600" font-size="19" letter-spacing="7" fill="#7F1D1D">LIVRARIA</text>
+</svg>

@@ -302,7 +302,7 @@ function tabela(cols, linhas) {
     <tbody>${linhas.map(l => `<tr>${l.map(c => `<td style="border-bottom:1px solid #eee;padding:.4rem">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function badge(status) {
-  const cor = { pago: '#1c6e8c', pendente: '#c8912f', recusado: '#b3261e', cancelado: '#777', reembolsado: '#7a3ca1' }[status] || '#555';
+  const cor = { pago: '#0E7490', pendente: '#c8912f', recusado: '#b3261e', cancelado: '#777', reembolsado: '#7a3ca1' }[status] || '#555';
   return `<span style="background:${cor};color:#fff;padding:.1rem .5rem;border-radius:99px;font-size:.75rem">${status}</span>`;
 }
 

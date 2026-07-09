@@ -12,8 +12,8 @@ self.addEventListener('push', (event) => {
   const titulo = d.title || 'Villela Stay — Staff';
   event.waitUntil(self.registration.showNotification(titulo, {
     body: d.body || '',
-    icon: '/staff/logo-192.png',
-    badge: '/staff/logo-192.png',
+    icon: '/assets/brand/grupo-villela/favicon-192.png',
+    badge: '/assets/brand/grupo-villela/favicon-192.png',
     data: { url: d.url || '/staff/' },
   }));
 });

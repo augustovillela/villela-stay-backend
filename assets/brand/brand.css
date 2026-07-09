@@ -1,0 +1,27 @@
+/* =====================================================================
+   Grupo Villela — tokens oficiais de marca (sistema V-Portal / V-Frame)
+   Fonte da verdade visual: assets/brand/README.md e o Estudo de
+   Logomarcas (dados\marketing\portfolio-saas\estudo-logomarcas.md).
+   Base: azul-marinho + branco gelo + grafite + dourado.
+   Cores das verticais são ACENTO, nunca excesso.
+   ===================================================================== */
+:root {
+  --villela-navy: #1B2A4A;
+  --villela-navy-2: #24365C;   /* navy elevado (cards/hover sobre navy) */
+  --villela-gold: #C9A227;
+  --villela-gold-2: #B08E1F;   /* dourado hover */
+  --villela-ice: #F8F9FA;
+  --villela-graphite: #1F2933;
+  --villela-border: #E2E6EC;
+
+  --villela-stay: #C9A227;
+  --villela-stay-manager: #0E7490;
+  --villela-docs: #2563EB;
+  --villela-legal: #14532D;
+  --villela-academy: #D97706;
+  --villela-projects: #7C3AED;
+  --villela-library: #7F1D1D;
+
+  --font-villela-brand: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-villela-ui: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}

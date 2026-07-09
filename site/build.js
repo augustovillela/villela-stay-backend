@@ -17,9 +17,9 @@ const SITE_URL = 'https://villelastay.com.br';
 // ----------------------------------------------------------------- PWA
 // Cores da marca usadas no manifest, theme-color e ícones (coerentes com os cartões).
 const PWA = {
-  themeColor: '#5a3e2b',       // marrom da marca (barra do app)
-  backgroundColor: '#fbf6ee',  // creme claro (splash screen)
-  cacheVersion: 'vstay-v5'     // bump para invalidar o cache do Service Worker
+  themeColor: '#1B2A4A',       // navy do Grupo Villela (barra do app)
+  backgroundColor: '#F8F9FA',  // ice (splash screen)
+  cacheVersion: 'vstay-v6'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -218,11 +218,15 @@ gtag('config', 'G-5L2YQ2BPQW');
 <meta name="description" content="${esc(descricao)}">
 <link rel="canonical" href="${urlAtual}">
 ${hreflangTags(caminho)}
-${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
+<link rel="icon" type="image/svg+xml" href="/assets/brand/villela-stay/favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-stay/favicon-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="${PWA.themeColor}">
-<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon-180.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon-180.png">
+<link rel="apple-touch-icon" href="/assets/brand/villela-stay/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/brand/villela-stay/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -281,6 +285,7 @@ ${corpo}
       ${t('Casa Modernista: 10 minutos do Aeroporto', 'Casa Modernista: 10 minutes from the Airport', 'Casa Modernista: 10 minutos del Aeropuerto')}<br>
       ${t('Gran Villela Home Stay: 15 minutos da Esplanada', 'Gran Villela Home Stay: 15 minutes from the Esplanada', 'Gran Villela Home Stay: 15 minutos de la Explanada')}
     </p>
+    <p class="rodape-grupo">${t('Uma empresa do Grupo Villela', 'A Grupo Villela company', 'Una empresa del Grupo Villela')} · CNPJ 56.776.526/0001-12</p>
   </div>
   <div class="rodape-links rodape-compacto">
     <strong>${t('Navegue', 'Browse', 'Navega')}</strong>
@@ -397,6 +402,51 @@ const depoimentos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'dep
 const depTexto = d => (LANG === 'en' && d.texto_en) ? d.texto_en : ((LANG === 'es' && d.texto_es) ? d.texto_es : d.texto);
 const depSelo = () => LANG === 'pt' ? '' : ` · <span class="dep-traduzido">${t('', 'translated from Portuguese', 'traducido del portugués')}</span>`;
 
+// ------------------------------------------- Produtos do Grupo Villela (seção institucional da home)
+// Símbolos locais em /assets/brand/<marca>/simbolo-v.svg (copiados no build — o site não enxerga o backend).
+const PRODUTOS_GRUPO = [
+  { nome: 'Villela Stay', pasta: 'villela-stay', cor: '#C9A227', url: 'https://villelastay.com.br',
+    tag: ['Hospedagens inteligentes para experiências inesquecíveis', 'Smart stays for unforgettable experiences', 'Alojamientos inteligentes para experiencias inolvidables'],
+    frase: ['Casas, flats e suítes por temporada no Lago Sul, em Brasília, com reserva direta com o anfitrião.', 'Vacation houses, flats and suites in Lago Sul, Brasília, booked directly with the host.', 'Casas, flats y suites por temporada en Lago Sul, Brasília, con reserva directa con el anfitrión.'] },
+  { nome: 'Villela Stay Manager', pasta: 'villela-stay-manager', cor: '#0E7490', url: 'https://manager.villelastay.com.br',
+    tag: ['Gestão profissional para aluguel por temporada', 'Professional vacation rental management', 'Gestión profesional de alquiler por temporada'],
+    frase: ['Sistema completo para anfitriões e gestores: reservas, limpezas, manutenção e financeiro em um só painel.', 'A complete system for hosts and managers: bookings, cleaning, maintenance and finances in one dashboard.', 'Sistema completo para anfitriones y gestores: reservas, limpiezas, mantenimiento y finanzas en un solo panel.'] },
+  { nome: 'Villela Docs', pasta: 'villela-docs', cor: '#2563EB', url: 'https://docs.villelastay.com.br',
+    tag: ['Inteligência documental para empresas', 'Document intelligence for business', 'Inteligencia documental para empresas'],
+    frase: ['Organize, encontre e entenda os documentos da sua empresa com apoio de inteligência artificial.', 'Organise, find and understand your company documents with AI support.', 'Organiza, encuentra y entiende los documentos de tu empresa con apoyo de IA.'] },
+  { nome: 'Villela Legal', pasta: 'villela-legal', cor: '#14532D', url: 'https://juridico.villelastay.com.br',
+    tag: ['Gestão jurídica inteligente', 'Smart legal management', 'Gestión jurídica inteligente'],
+    frase: ['Processos, prazos, intimações e clientes sob controle em uma plataforma feita para escritórios.', 'Cases, deadlines, court notices and clients under control in a platform built for law firms.', 'Procesos, plazos, notificaciones y clientes bajo control en una plataforma para despachos.'] },
+  { nome: 'Villela Academy', pasta: 'villela-academy', cor: '#D97706', url: 'https://academia.villelastay.com.br',
+    tag: ['Aprenda, aplique e transforme', 'Learn, apply, transform', 'Aprende, aplica y transforma'],
+    frase: ['Cursos online e produtos digitais criados a partir da experiência real de quem opera o negócio.', 'Online courses and digital products born from real hands-on business experience.', 'Cursos online y productos digitales nacidos de la experiencia real de negocio.'] },
+  { nome: 'Villela Projects', pasta: 'villela-projects', cor: '#7C3AED', url: 'https://projetos.villelastay.com.br',
+    tag: ['Projetos, processos e automações em um só lugar', 'Projects, processes and automations in one place', 'Proyectos, procesos y automatizaciones en un solo lugar'],
+    frase: ['Planeje e execute projetos e eventos com portfólio, tarefas, relatórios e portal do cliente.', 'Plan and deliver projects and events with portfolio, tasks, reports and a client portal.', 'Planifica y ejecuta proyectos y eventos con portafolio, tareas, informes y portal del cliente.'] },
+  { nome: 'Livraria Villela', pasta: 'livraria-villela', cor: '#7F1D1D', url: 'https://livros.villelastay.com.br',
+    tag: ['Livros, ideias e conhecimento aplicado', 'Books, ideas and applied knowledge', 'Libros, ideas y conocimiento aplicado'],
+    frase: ['Livros digitais e impressos que levam o conhecimento da prática direto para a sua estante.', 'Digital and printed books that bring hands-on knowledge straight to your shelf.', 'Libros digitales e impresos que llevan el conocimiento práctico directo a tu estantería.'] }
+];
+const grupoSecao = () => `
+<section id="grupo" class="grupo-wrap">
+  <div class="grupo-inner">
+    <h2>${t('Produtos do Grupo Villela', 'Grupo Villela Products', 'Productos del Grupo Villela')}</h2>
+    <p class="grupo-intro">${t(
+      'O Grupo Villela reúne soluções inteligentes para hospedagem, gestão, documentos, jurídico, educação, projetos e conhecimento aplicado. Cada produto nasce da experiência prática da nossa operação e carrega o mesmo compromisso com organização, confiança e resultado.',
+      'Grupo Villela brings together smart solutions for hospitality, management, documents, legal, education, projects and applied knowledge. Each product is born from the hands-on experience of our own operation and carries the same commitment to organisation, trust and results.',
+      'El Grupo Villela reúne soluciones inteligentes para hospedaje, gestión, documentos, jurídico, educación, proyectos y conocimiento aplicado. Cada producto nace de la experiencia práctica de nuestra operación y lleva el mismo compromiso con la organización, la confianza y el resultado.'
+    )}</p>
+    <div class="grupo-grade">${PRODUTOS_GRUPO.map(p => `
+      <a class="produto-card" href="${p.url}" style="--acento:${p.cor}"${p.url === SITE_URL ? '' : ' target="_blank" rel="noopener"'}>
+        <img src="/assets/brand/${p.pasta}/simbolo-v.svg" alt="" width="44" height="44" loading="lazy" decoding="async">
+        <h3>${p.nome}</h3>
+        <p class="produto-tag">${esc(t(...p.tag))}</p>
+        <p>${esc(t(...p.frase))}</p>
+      </a>`).join('')}
+    </div>
+  </div>
+</section>`;
+
 const home = layout(
   t('Villela Stay — Casas, flats e suítes no Lago Sul, Brasília', 'Villela Stay — Houses, flats and suites in Lago Sul, Brasília', 'Villela Stay — Casas, flats y suites en Lago Sul, Brasília'),
   t('Hospedagem por temporada no Lago Sul: casas com piscina aquecida para até 32 pessoas, flats e suítes. Reserva direta com o anfitrião.', 'Vacation rentals in Lago Sul: houses with heated pools for up to 32 people, flats and suites. Book directly with the host.', 'Alquiler por temporada en Lago Sul: casas con piscina climatizada para hasta 32 personas, flats y suites. Reserva directa con el anfitrión.'),
@@ -458,6 +508,7 @@ window.addEventListener('load', function(){
 <section id="hospedagens" class="grade-wrap">
 ${cards}
 </section>
+${grupoSecao()}
 <script>
 window.addEventListener('load', function(){
 fetch('${BACKEND}/api/ultima-hora')
@@ -1262,7 +1313,7 @@ const FAQ_SECOES = [
   ]]
 ];
 // --- helpers e geração das páginas FAQ (PT/EN/ES) ---
-const FAQ_STYLE = `<style>.faq-q{margin:18px 0 4px;font-size:1.06rem;color:var(--petroleo,#0c3644)}.faq-a{margin:0 0 6px;line-height:1.6}.faq-a p{margin:0 0 8px}.faq-langs{margin:14px 0 0;font-size:.95rem}.faq-tabela{width:100%;border-collapse:collapse;margin:10px 0;font-size:.92rem}.faq-tabela th,.faq-tabela td{border:1px solid rgba(0,0,0,.12);padding:6px 9px;text-align:left}.faq-tabela th{background:rgba(12,54,68,.06)}</style>`;
+const FAQ_STYLE = `<style>.faq-q{margin:18px 0 4px;font-size:1.06rem;color:var(--petroleo,#1B2A4A)}.faq-a{margin:0 0 6px;line-height:1.6}.faq-a p{margin:0 0 8px}.faq-langs{margin:14px 0 0;font-size:.95rem}.faq-tabela{width:100%;border-collapse:collapse;margin:10px 0;font-size:.92rem}.faq-tabela th,.faq-tabela td{border:1px solid rgba(0,0,0,.12);padding:6px 9px;text-align:left}.faq-tabela th{background:rgba(12,54,68,.06)}</style>`;
 const FAQ_HREFLANG = `<link rel="alternate" hreflang="pt-BR" href="${SITE_URL}/faq.html"><link rel="alternate" hreflang="en" href="${SITE_URL}/faq-en.html"><link rel="alternate" hreflang="es" href="${SITE_URL}/faq-es.html"><link rel="alternate" hreflang="x-default" href="${SITE_URL}/faq.html">`;
 function faqSchema(secoes) {
   return `<script type="application/ld+json">${JSON.stringify({
@@ -1473,19 +1524,19 @@ const appPage = layout(
 .app-hero h1{margin:0 0 8px;color:#5a3e2b}
 .app-hero p{margin:0 auto;max-width:640px;line-height:1.55}
 .app-wrap{max-width:820px;margin:0 auto;padding:8px 18px 44px}
-.app-cta{display:inline-block;margin-top:14px;background:#d9a441;color:#3a2a17;font-weight:800;text-decoration:none;padding:11px 22px;border-radius:999px}
-.app-cta-sec{background:transparent;border:2px solid #d9a441;color:#8a6a2b}
+.app-cta{display:inline-block;margin-top:14px;background:#C9A227;color:#1B2A4A;font-weight:800;text-decoration:none;padding:11px 22px;border-radius:999px}
+.app-cta-sec{background:transparent;border:2px solid #C9A227;color:#8A6F1B}
 .app-passos{list-style:none;margin:24px 0 0;padding:0;display:grid;gap:14px;counter-reset:none}
 .app-passo{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid #ece3d3;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
-.app-num{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:#5a3e2b;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:1.05rem}
-.app-passo-txt h2{margin:3px 0 5px;font-size:1.12rem;color:#5a3e2b}
+.app-num{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:#1B2A4A;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:1.05rem}
+.app-passo-txt h2{margin:3px 0 5px;font-size:1.12rem;color:#1B2A4A}
 .app-passo-txt p{margin:0;line-height:1.55}
 .app-nota{display:inline-block;margin-top:5px;font-size:.9rem;color:#8a6a2b;font-style:italic}
 .app-benef{margin:32px 0 6px}
-.app-benef h2{color:#5a3e2b;font-size:1.2rem;margin-bottom:6px}
+.app-benef h2{color:#1B2A4A;font-size:1.2rem;margin-bottom:6px}
 .app-chips{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:10px}
 .app-chips li{background:#f4ecdd;border-radius:999px;padding:8px 14px;font-size:.95rem}
-.app-ota{margin:26px 0 0;background:#fbf6ee;border:1px dashed #d9a441;border-radius:12px;padding:14px 16px;line-height:1.5}
+.app-ota{margin:26px 0 0;background:#F8F9FA;border:1px dashed #C9A227;border-radius:12px;padding:14px 16px;line-height:1.5}
 .app-fim{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 </style>`
   }
@@ -2187,7 +2238,7 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>
 <style>
-  :root{ --lt-fundo:#0c3644; --lt-fundo2:#145066; --lt-creme:#f2ecd8; --lt-ouro:#d9a441; --lt-branco:#fff; }
+  :root{ --lt-fundo:#1B2A4A; --lt-fundo2:#24365C; --lt-creme:#F8F9FA; --lt-ouro:#C9A227; --lt-branco:#fff; }
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
     background:radial-gradient(120% 80% at 50% 0%, var(--lt-fundo2) 0%, var(--lt-fundo) 60%) fixed;
@@ -2283,6 +2334,11 @@ fs.mkdirSync(ICON_DST, { recursive: true });
 const ICON_FILES = ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon-180.png'];
 for (const f of ICON_FILES) fs.copyFileSync(path.join(ICON_SRC, f), path.join(ICON_DST, f));
 
+// Identidade do Grupo Villela: símbolos das marcas + favicons/ícones da Villela Stay.
+// O site é um serviço estático separado (sem acesso ao /assets/brand do backend), então os
+// arquivos vivem em site/assets/brand/ e são copiados para dist/assets/brand/ a cada build.
+fs.cpSync(path.join(__dirname, 'assets', 'brand'), path.join(DIST, 'assets', 'brand'), { recursive: true });
+
 // manifest.webmanifest
 const manifest = {
   name: 'Villela Stay',
@@ -2298,9 +2354,9 @@ const manifest = {
   background_color: PWA.backgroundColor,
   categories: ['travel', 'lifestyle', 'business'],
   icons: [
-    { src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-    { src: '/assets/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-    { src: '/assets/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+    { src: '/assets/brand/villela-stay/favicon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/assets/brand/villela-stay/icon-pwa.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/assets/brand/villela-stay/icon-pwa.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ],
   // Shortcuts precisam estar DENTRO do scope (mesma origem) — links externos (wa.me) são
   // ignorados por alguns navegadores. O CTA para o WhatsApp fica nas próprias páginas.
@@ -2309,19 +2365,19 @@ const manifest = {
       name: 'Ver as casas', short_name: 'Reservar',
       description: 'Ver e reservar as hospedagens',
       url: '/?source=pwa#hospedagens',
-      icons: [{ src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+      icons: [{ src: '/assets/brand/villela-stay/favicon-192.png', sizes: '192x192', type: 'image/png' }]
     },
     {
       name: 'Eventos', short_name: 'Eventos',
       description: 'Casamentos, formaturas e festas no Lago Sul',
       url: '/eventos.html',
-      icons: [{ src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+      icons: [{ src: '/assets/brand/villela-stay/favicon-192.png', sizes: '192x192', type: 'image/png' }]
     },
     {
       name: 'Pacotes especiais', short_name: 'Pacotes',
       description: 'Natal, Réveillon, Posse 2027 e Carnaval',
       url: '/pacotes.html',
-      icons: [{ src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+      icons: [{ src: '/assets/brand/villela-stay/favicon-192.png', sizes: '192x192', type: 'image/png' }]
     }
   ]
 };
@@ -2351,6 +2407,7 @@ const PRECACHE_URLS = [
   '/', '/index.html', '/style.css', '/offline.html', '/manifest.webmanifest',
   ...(TEM_LOGO ? ['/logo.png'] : []),
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
+  ...['favicon.svg', 'favicon-192.png', 'icon-pwa.png', 'apple-touch-icon.png'].map(f => `/assets/brand/villela-stay/${f}`),
   '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/faq.html', '/app.html', '/blog.html', '/links.html',
   ...listings.map(l => `/hospedagem/${l.id}.html`)
 ];

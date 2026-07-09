@@ -19,7 +19,7 @@ function doc(titulo, path, corpoHtml) {
     ${corpoHtml}
     <p class="muted" style="margin-top:24px">Contato: <a href="mailto:${CONTATO}">${CONTATO}</a> · <a href="/suporte-livros">Suporte</a></p>
   </div></section>`;
-  return pagina({ title: `${titulo} — Villela Stay`, description: titulo, path, body });
+  return pagina({ title: `${titulo} — Livraria Villela`, description: titulo, path, body });
 }
 
 const paginas = {

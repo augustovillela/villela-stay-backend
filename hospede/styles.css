@@ -1,21 +1,22 @@
 /* Área do Hóspede — Villela Stay. Paleta da marca (petróleo/creme/lago/cerrado). */
 :root {
-  --petroleo: #0c3644;
-  --creme: #f2ecd8;
-  --lago: #1c6e8c;
-  --lago-escuro: #145066;
-  --cerrado: #d9a441;
-  --areia: #f7f4ee;
-  --concreto: #2b2d2f;
+  --petroleo: #1B2A4A;
+  --creme: #F8F9FA;
+  --lago: #0E7490;
+  --lago-escuro: #0A5666;
+  --cerrado: #C9A227;
+  --areia: #F8F9FA;
+  --concreto: #1F2933;
   --concreto-claro: #6b7075;
-  --borda: #e3ddd0;
+  --borda: #E2E6EC;
   --ok: #2e7d32;
   --alerta: #b3261e;
   --branco: #fff;
 }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   color: var(--concreto); background: var(--areia); line-height: 1.55; }
+h1, h2, h3, .marca { font-family: 'Lora', Georgia, serif; }
 .hidden { display: none !important; }
 a { color: var(--lago); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -51,7 +52,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
   padding: 12px max(20px, calc((100% - 720px) / 2 + 16px));
   background: var(--petroleo); border-bottom: 3px solid var(--cerrado); position: sticky; top: 0; z-index: 10; }
 .marca-bloco { display: flex; align-items: center; }
-.marca-logo { height: 36px; width: auto; margin-right: 9px; border-radius: 7px; background: #fff; padding: 2px; box-sizing: border-box; }
+.marca-logo { height: 32px; width: auto; margin-right: 9px; box-sizing: border-box; }
 .topo .marca { white-space: nowrap; }
 #app:not(.em-home) .topo .tag { display: none; } /* libera espaço nas sub-telas (com botão voltar) */
 .topo-dir { display: flex; align-items: center; gap: 12px; color: var(--creme); font-size: .9rem; }
@@ -153,10 +154,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .login-card .lang-switch { justify-content: center; margin: 0 0 14px; }
 .home-lang { display: flex; justify-content: center; align-items: center; }
 .btn-instalar { flex-shrink: 0; }
-.lang-opt { border: 1px solid var(--lago-escuro, #0c3644); background: transparent; color: var(--lago-escuro, #0c3644); border-radius: 999px; padding: 2px 9px; font-size: .72rem; font-weight: 800; cursor: pointer; opacity: .55; line-height: 1.4; }
-.lang-opt.ativo { background: var(--lago-escuro, #0c3644); color: #fff; opacity: 1; }
-.topo .lang-opt, .home-lang .lang-opt { color: #f2ecd8; border-color: rgba(242, 236, 216, .5); }
-.topo .lang-opt.ativo, .home-lang .lang-opt.ativo { background: #f2ecd8; color: #0c3644; border-color: #f2ecd8; }
+.lang-opt { border: 1px solid var(--lago-escuro, #1B2A4A); background: transparent; color: var(--lago-escuro, #1B2A4A); border-radius: 999px; padding: 2px 9px; font-size: .72rem; font-weight: 800; cursor: pointer; opacity: .55; line-height: 1.4; }
+.lang-opt.ativo { background: var(--lago-escuro, #1B2A4A); color: #fff; opacity: 1; }
+.topo .lang-opt, .home-lang .lang-opt { color: #F8F9FA; border-color: rgba(248, 249, 250, .5); }
+.topo .lang-opt.ativo, .home-lang .lang-opt.ativo { background: #F8F9FA; color: #1B2A4A; border-color: #F8F9FA; }
 .lanc-pagamento { background: #e8e3f3; color: #5b3f8c; }
 .lanc-val { font-size: .72rem; color: var(--concreto-claro); }
 

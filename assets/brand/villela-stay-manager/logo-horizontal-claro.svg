@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 120" role="img">
+  <g>
+  <polygon points="14,26 60,58 106,26 106,40 60,72 14,40" fill="#C9A227"/>
+  <polygon points="16,46 42,64 42,100 16,112" fill="#1B2A4A"/>
+  <polygon points="104,46 78,64 78,100 104,112" fill="#1B2A4A"/>
+    <rect x="46" y="78" width="28" height="24" rx="3" fill="#0E7490"/>
+    <rect x="50" y="74" width="3" height="7" fill="#C9A227"/>
+    <rect x="67" y="74" width="3" height="7" fill="#C9A227"/>
+    <rect x="51" y="84" width="4" height="3.5" fill="#FFFFFF"/><rect x="57.5" y="84" width="4" height="3.5" fill="#FFFFFF"/><rect x="64" y="84" width="4" height="3.5" fill="#FFFFFF"/><rect x="51" y="89.5" width="4" height="3.5" fill="#FFFFFF"/><rect x="57.5" y="89.5" width="4" height="3.5" fill="#FFFFFF"/><rect x="64" y="89.5" width="4" height="3.5" fill="#FFFFFF"/><rect x="51" y="95" width="4" height="3.5" fill="#FFFFFF"/><rect x="57.5" y="95" width="4" height="3.5" fill="#FFFFFF"/><rect x="64" y="95" width="4" height="3.5" fill="#FFFFFF"/></g>
+  <text x="140" y="68" font-family="Lora, Georgia, 'Times New Roman', serif" font-weight="600" font-size="46" letter-spacing="1" fill="#1B2A4A">Villela</text>
+  <text x="142" y="92" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-weight="600" font-size="19" letter-spacing="7" fill="#0E7490">STAY MANAGER</text>
+</svg>

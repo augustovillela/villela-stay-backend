@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img">
+  <polygon points="14,26 60,58 106,26 106,40 60,72 14,40" fill="currentColor"/>
+  <polygon points="16,46 42,64 42,100 16,112" fill="currentColor"/>
+  <polygon points="104,46 78,64 78,100 104,112" fill="currentColor"/>
+    <path d="M60 72 L63.5 78 L69 79 L63.5 81 L60 87 L56.5 81 L51 79 L56.5 78 Z" fill="currentColor"/>
+    <path d="M60 85 C69 92 69 102 60 108 C51 102 51 92 60 85 Z" fill="currentColor"/>
+</svg>

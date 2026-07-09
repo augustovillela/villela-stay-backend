@@ -5,10 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Portal Staff — Villela Stay</title>
-  <link rel="icon" type="image/png" href="/staff/logo.png">
-  <link rel="apple-touch-icon" href="/staff/logo-192.png">
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/grupo-villela/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/grupo-villela/favicon-192.png">
+  <link rel="apple-touch-icon" href="/assets/brand/grupo-villela/apple-touch-icon.png">
   <link rel="manifest" href="/staff/manifest.webmanifest">
-  <meta name="theme-color" content="#0c3644">
+  <meta name="theme-color" content="#1B2A4A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&display=swap">
   <!-- PWA standalone (iOS + Android): app instalado abre em tela cheia, sem a barra do navegador.
        Sem 'apple-mobile-web-app-capable' o iPhone NÃO roda como app (abre no Safari). -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,7 +26,7 @@
   <!-- ===================== LOGIN ===================== -->
   <main id="tela-login" class="login hidden">
     <form id="form-login" class="login-card" autocomplete="on" method="POST" action="/staff/api/login">
-      <div class="marca">Villela Stay</div>
+      <div class="marca"><img src="/assets/brand/grupo-villela/simbolo-v.svg" alt="Grupo Villela" style="height:30px;vertical-align:middle"> Grupo Villela</div>
       <p class="login-sub">Portal Staff — acesso restrito</p>
       <label>E-mail
         <input type="email" id="login-email" name="email" required autocomplete="username" autocapitalize="off" spellcheck="false">
@@ -33,13 +37,14 @@
       <button type="submit" class="btn">Entrar</button>
       <p id="login-erro" class="erro"></p>
       <a class="login-voltar" href="https://villelastay.com.br" target="_blank" rel="noopener">← Voltar ao site público</a>
+      <p class="login-rodape" style="text-align:center;font-size:.75rem;color:#6b7075;margin:8px 0 0">Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12</p>
     </form>
   </main>
 
   <!-- ===================== TROCAR SENHA (1º acesso) ===================== -->
   <main id="tela-trocar" class="login hidden">
     <form id="form-trocar" class="login-card">
-      <div class="marca">Villela Stay</div>
+      <div class="marca"><img src="/assets/brand/grupo-villela/simbolo-v.svg" alt="Grupo Villela" style="height:30px;vertical-align:middle"> Grupo Villela</div>
       <p class="login-sub">Defina uma nova senha para continuar</p>
       <label>Senha atual
         <input type="password" id="tr-atual" required autocomplete="current-password">
@@ -59,7 +64,7 @@
   <div id="app" class="hidden">
     <header class="topo">
       <button id="btn-menu" class="btn-menu" aria-label="Abrir menu">☰</button>
-      <div class="marca">Villela Stay <span class="tag">Staff</span></div>
+      <div class="marca"><img src="/assets/brand/grupo-villela/logo-negativo.svg" alt="Grupo Villela" style="height:30px;vertical-align:middle"> Grupo Villela <span class="tag">Staff</span></div>
       <div class="topo-dir">
         <button id="btn-inicio" class="btn-inicio" title="Voltar ao início do app" aria-label="Início do app">🏠 <span class="rot-inicio">Início</span></button>
         <a class="link-site" href="https://villelastay.com.br" target="_blank" rel="noopener" title="Abrir o site público (nova aba)">🌐 Site público</a>

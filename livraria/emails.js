@@ -2,7 +2,7 @@
 // Livraria Villela — templates transacionais (e-mail HTML + texto WhatsApp)
 // Funções puras: recebem dados, devolvem { assunto, html, texto }.
 // O envio em si é feito pelos helpers injetados (enviarEmail/enviarWhatsApp).
-// Paleta: azul petróleo #0c3644 / #1c6e8c, dourado #d9a441, creme #f2ecd8.
+// Paleta Grupo Villela: navy #1B2A4A, bordô editorial #7F1D1D, dourado #C9A227.
 // =====================================================================
 'use strict';
 const { brl } = require('./repo');
@@ -11,15 +11,15 @@ const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</
 const primeiroNome = (n) => String(n || 'leitor(a)').trim().split(' ')[0];
 
 function wrap(subtitulo, corpo, cta) {
-  const botao = cta ? `<p style="margin:22px 0"><a href="${cta.url}" style="background:#1c6e8c;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">${esc(cta.texto)}</a></p>` : '';
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:540px;margin:auto;color:#2b2d2f">
-    <div style="background:#0c3644;color:#f2ecd8;padding:18px 24px;border-radius:10px 10px 0 0">
-      <strong style="font-size:19px">Villela Stay</strong><br><span style="font-size:13px;color:#d9a441">Livraria Villela</span></div>
-    <div style="border:1px solid #e3ddd0;border-top:none;padding:24px;border-radius:0 0 10px 10px;line-height:1.6">
+  const botao = cta ? `<p style="margin:22px 0"><a href="${cta.url}" style="background:#7F1D1D;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">${esc(cta.texto)}</a></p>` : '';
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:540px;margin:auto;color:#1F2933">
+    <div style="background:#1B2A4A;color:#F8F9FA;padding:18px 24px;border-radius:10px 10px 0 0">
+      <strong style="font-size:19px">Livraria Villela</strong><br><span style="font-size:13px;color:#C9A227">Livros, ideias e conhecimento aplicado</span></div>
+    <div style="border:1px solid #E2E6EC;border-top:none;padding:24px;border-radius:0 0 10px 10px;line-height:1.6">
       <p style="font-size:12px;letter-spacing:.5px;color:#8a9296;text-transform:uppercase;margin:0 0 10px">${esc(subtitulo)}</p>
       ${corpo}${botao}
       <p style="font-size:12px;color:#8a9296;margin-top:22px;border-top:1px solid #eee;padding-top:12px">
-        Villela Stay · Lago Sul, Brasília-DF · <a href="/suporte-livros" style="color:#1c6e8c">Suporte</a></p>
+        Livraria Villela · Uma empresa do Grupo Villela · Brasília-DF · <a href="/suporte-livros" style="color:#7F1D1D">Suporte</a></p>
     </div></div>`;
 }
 function itensHtml(order) {

@@ -1,7 +1,7 @@
 /* Service worker da Área do Hóspede (PWA). Fase A: instalável + shell em cache (network-first).
    NUNCA cacheia /hospede/api (dados sempre frescos). Offline da info da casa = Fase E. */
 'use strict';
-const CACHE = 'villela-hospede-v3';
+const CACHE = 'villela-hospede-v4'; // v4: identidade Grupo Villela (assets /assets/brand, fontes, paleta)
 const SHELL = ['/hospede/', '/hospede/index.html', '/hospede/app.js', '/hospede/styles.css', '/hospede/manifest.json'];
 
 self.addEventListener('install', (e) => {
@@ -45,8 +45,8 @@ self.addEventListener('push', (e) => {
   const titulo = d.title || 'Villela Stay';
   const opts = {
     body: d.body || '',
-    icon: '/staff/logo.png',
-    badge: '/staff/logo.png',
+    icon: '/assets/brand/villela-stay/favicon-192.png',
+    badge: '/assets/brand/villela-stay/favicon-192.png',
     data: { url: d.url || '/hospede/' },
     tag: d.tag || 'villela',
   };

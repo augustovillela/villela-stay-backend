@@ -1,7 +1,8 @@
 // =====================================================================
 // Livraria Villela — renderização server-side das páginas públicas (SEO).
 // Tudo em HTML gerado no servidor: title/meta/OG/canonical/JSON-LD,
-// slugs amigáveis. Paleta: azul petróleo, branco, cinza claro, dourado.
+// slugs amigáveis. Identidade Grupo Villela: navy #1B2A4A, acento bordô
+// editorial #7F1D1D, dourado #C9A227, gelo #F8F9FA (Lora + Inter).
 // =====================================================================
 'use strict';
 const { brl } = require('./repo');
@@ -28,9 +29,9 @@ function pixelEvento(evento, dados) {
 }
 
 const CSS = `
-:root{--petroleo:#0c3644;--petroleo2:#12495b;--teal:#1c6e8c;--dourado:#d9a441;--dourado2:#c8912f;--creme:#f7f3ea;--cinza:#f4f6f7;--cinza2:#e7ecee;--tinta:#26313a;--suave:#5f7079}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--tinta);background:#fff;line-height:1.6}
-h1,h2,h3{font-family:Georgia,'Times New Roman',serif;color:var(--petroleo);line-height:1.2;margin:.2em 0 .5em}
+:root{--petroleo:#1B2A4A;--petroleo2:#24365C;--teal:#7F1D1D;--dourado:#C9A227;--dourado2:#B08E1F;--creme:#F8F9FA;--cinza:#F8F9FA;--cinza2:#E2E6EC;--tinta:#1F2933;--suave:#5B6B7A}
+*{box-sizing:border-box}body{margin:0;font-family:'Inter',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--tinta);background:#fff;line-height:1.6}
+h1,h2,h3{font-family:'Lora',Georgia,serif;color:var(--petroleo);line-height:1.2;margin:.2em 0 .5em}
 a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}
 img{max-width:100%;height:auto;display:block}
 .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
@@ -38,10 +39,12 @@ img{max-width:100%;height:auto;display:block}
 header.top{background:var(--petroleo);color:var(--creme);position:sticky;top:0;z-index:20}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:62px}
 header.top a{color:var(--creme)}
-.brand{font-weight:700;font-size:19px;letter-spacing:.3px}.brand b{color:var(--dourado)}
+.brand{display:flex;align-items:center;gap:10px;font-size:19px}.brand:hover{text-decoration:none}
+.brand .lv{font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:2.5px;font-size:12px;font-weight:700;color:var(--dourado)}
+.brand b{font-family:'Lora',Georgia,serif;font-weight:700;font-size:20px;color:#fff;line-height:1}
 .nav a{margin-left:20px;font-size:15px}
 .btn{display:inline-block;background:var(--teal);color:#fff;padding:13px 26px;border-radius:9px;font-weight:700;border:0;cursor:pointer;font-size:16px;text-align:center;transition:.15s}
-.btn:hover{background:#155a73;text-decoration:none}
+.btn:hover{background:#641717;text-decoration:none}
 .btn-ouro{background:var(--dourado);color:#3a2c07}.btn-ouro:hover{background:var(--dourado2)}
 .btn-wa{background:#25d366;color:#0a2e17}.btn-wa:hover{background:#1eb955}
 .btn-ghost{background:transparent;border:1.5px solid var(--cinza2);color:var(--petroleo)}
@@ -51,11 +54,11 @@ header.top a{color:var(--creme)}
 .grid{display:grid;gap:26px}
 .grid-books{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
 .card{background:#fff;border:1px solid var(--cinza2);border-radius:14px;overflow:hidden;transition:.15s;display:flex;flex-direction:column}
-.card:hover{box-shadow:0 10px 30px rgba(12,54,68,.12);transform:translateY(-2px)}
+.card:hover{box-shadow:0 10px 30px rgba(27,42,74,.12);transform:translateY(-2px)}
 .card .capa{aspect-ratio:3/4;background:var(--cinza);display:flex;align-items:center;justify-content:center;color:var(--suave);overflow:hidden}
 .card .capa img{width:100%;height:100%;object-fit:cover}
 .card .corpo{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1}
-.card h3{margin:0;font-size:18px}.card .preco{color:var(--petroleo);font-weight:700}
+.card h3{margin:0;font-size:18px}.card .preco{color:var(--teal);font-weight:700}
 .badge{display:inline-block;background:var(--dourado);color:#3a2c07;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
 section{padding:44px 0}section.alt{background:var(--cinza)}
 .sec-narrow{max-width:760px}
@@ -64,11 +67,11 @@ section{padding:44px 0}section.alt{background:var(--cinza)}
 .precos{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 .plano{border:2px solid var(--cinza2);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:10px;background:#fff}
 .plano.destaque{border-color:var(--dourado);box-shadow:0 8px 24px rgba(217,164,65,.15)}
-.plano .valor{font-size:30px;font-weight:800;color:var(--petroleo);font-family:Georgia,serif}
+.plano .valor{font-size:30px;font-weight:700;color:var(--teal);font-family:'Lora',Georgia,serif}
 .plano .tipo{font-weight:700;text-transform:uppercase;letter-spacing:.5px;font-size:13px;color:var(--suave)}
 .faq details{border-bottom:1px solid var(--cinza2);padding:14px 0}.faq summary{cursor:pointer;font-weight:700;color:var(--petroleo)}
 .dep{background:#fff;border:1px solid var(--cinza2);border-radius:12px;padding:18px}.dep .nome{font-weight:700;color:var(--petroleo);margin-top:8px}
-.garantia{display:flex;gap:16px;align-items:center;background:var(--creme);border:1px solid #ece0c7;border-radius:14px;padding:20px}
+.garantia{display:flex;gap:16px;align-items:center;background:var(--creme);border:1px solid var(--cinza2);border-radius:14px;padding:20px}
 .garantia .selo{font-size:40px}
 footer.rod{background:var(--petroleo);color:#c6d6db;padding:34px 0;margin-top:20px;font-size:14px}
 footer.rod a{color:#c6d6db}footer.rod .cols{display:flex;flex-wrap:wrap;gap:26px;justify-content:space-between}
@@ -83,13 +86,19 @@ footer.rod a{color:#c6d6db}footer.rod .cols{display:flex;flex-wrap:wrap;gap:26px
 
 function pagina({ title, description, path = '/', ogImage, schema, body, extraHead = '' }) {
   const canonical = SITE + path;
-  const og = ogImage || (SITE + '/livros/og-default.png');
+  const og = ogImage || (SITE + '/assets/brand/livraria-villela/og-image.png');
   return `<!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description || '')}">
 <link rel="canonical" href="${esc(canonical)}">
-<meta property="og:type" content="website"><meta property="og:site_name" content="Villela Stay">
+<meta name="theme-color" content="#1B2A4A">
+<link rel="icon" type="image/svg+xml" href="/assets/brand/livraria-villela/favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/livraria-villela/favicon-192.png">
+<link rel="apple-touch-icon" href="/assets/brand/livraria-villela/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Livraria Villela">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description || '')}">
 <meta property="og:url" content="${esc(canonical)}"><meta property="og:image" content="${esc(og)}">
 <meta name="twitter:card" content="summary_large_image">
@@ -97,12 +106,12 @@ ${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script
 <style>${CSS}</style>${pixelsHead()}${extraHead}
 </head><body>
 <header class="top"><div class="wrap">
-  <a class="brand" href="/livros">Livraria <b>Villela</b></a>
+  <a class="brand" href="/livros"><img src="/assets/brand/livraria-villela/logo-negativo.svg" alt="Livraria Villela" style="height:32px"><span><span class="lv">Livraria</span> <b>Villela</b></span></a>
   <nav class="nav"><a href="/livros">Livros</a><a href="/minha-biblioteca">Minha biblioteca</a><a href="${SITE_PRINCIPAL}">Villela Stay</a></nav>
 </div></header>
 ${body}
 <footer class="rod"><div class="wrap"><div class="cols">
-  <div><strong style="color:#fff">Villela Stay · Livraria</strong><br>Lago Sul, Brasília-DF<br>Augusto Villela Ltda · CNPJ 56.776.526/0001-12</div>
+  <div><strong style="color:#fff">Livraria Villela</strong> · Livros, ideias e conhecimento aplicado<br>Uma empresa do <strong style="color:var(--dourado)">Grupo Villela</strong> · CNPJ 56.776.526/0001-12 · Brasília-DF</div>
   <div><a href="/politica-de-privacidade">Privacidade</a> · <a href="/termos-de-uso">Termos</a><br>
     <a href="/politica-de-compra-e-entrega">Compra e entrega</a> · <a href="/politica-de-reembolso">Reembolso</a><br>
     <a href="/politica-de-livro-impresso">Livro impresso</a> · <a href="/suporte-livros">Suporte</a></div>
@@ -164,7 +173,7 @@ function paginaLivro(b) {
 
   const body = `
   <section class="hero"><div class="wrap" style="display:grid;grid-template-columns:280px 1fr;gap:34px;align-items:center">
-    <div class="capa" style="aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#0a2b37;display:flex;align-items:center;justify-content:center;font-size:60px">${b.capa_url ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}" style="width:100%;height:100%;object-fit:cover">` : '📕'}</div>
+    <div class="capa" style="aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#14203A;display:flex;align-items:center;justify-content:center;font-size:60px">${b.capa_url ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}" style="width:100%;height:100%;object-fit:cover">` : '📕'}</div>
     <div>
       <p class="eyebrow">${esc(b.categoria || 'Livro')}</p>
       <h1>${esc(b.titulo)}</h1>
@@ -316,7 +325,7 @@ function obrigado(order) {
     <p style="margin-top:18px"><a class="btn btn-wa" href="${waLink()}">Precisa de ajuda? Chame no WhatsApp</a></p>
   </div></section>
   ${pago ? pixelEvento('Purchase', { value: (order.valor_total / 100), currency: 'BRL', content_ids: (order.itens || []).map(i => i.book_id) }) : ''}`;
-  return pagina({ title: pago ? 'Obrigado pela compra! — Villela Stay' : 'Confirmando pagamento — Villela Stay', description: 'Obrigado pela sua compra.', path: '/obrigado', body, extraHead: '<meta name="robots" content="noindex"><meta http-equiv="refresh" content="' + (pago ? '' : '15') + '">' });
+  return pagina({ title: pago ? 'Obrigado pela compra! — Livraria Villela' : 'Confirmando pagamento — Livraria Villela', description: 'Obrigado pela sua compra.', path: '/obrigado', body, extraHead: '<meta name="robots" content="noindex"><meta http-equiv="refresh" content="' + (pago ? '' : '15') + '">' });
 }
 
 // ------------------------------------------------------------ minha biblioteca

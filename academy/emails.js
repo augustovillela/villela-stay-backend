@@ -28,15 +28,15 @@ function log(canal, destino, template, status, detalhe) {
 
 // moldura HTML padrão dos e-mails (marca própria)
 function moldura(titulo, corpo, rodape) {
-  return `<div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;color:#241f33">
-    <div style="background:#1d1440;border-radius:12px 12px 0 0;padding:18px 24px">
-      <span style="color:#ffb84d;font-weight:800;font-size:1.1rem">🎓 Villela Academy</span></div>
-    <div style="border:1px solid #e8e2f4;border-top:0;border-radius:0 0 12px 12px;padding:24px">
-      <h2 style="margin:0 0 12px;color:#1d1440">${titulo}</h2>${corpo}
-      <p style="color:#6b6480;font-size:.85rem;margin-top:24px">${rodape || 'Villela Academy — produto da Villela Stay (Augusto Villela Ltda).'}</p>
+  return `<div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1F2933">
+    <div style="background:#1B2A4A;border-radius:12px 12px 0 0;padding:18px 24px">
+      <span style="color:#D97706;font-weight:800;font-size:1.1rem">🎓 Villela Academy</span></div>
+    <div style="border:1px solid #E2E6EC;border-top:0;border-radius:0 0 12px 12px;padding:24px">
+      <h2 style="margin:0 0 12px;color:#1B2A4A">${titulo}</h2>${corpo}
+      <p style="color:#5B6472;font-size:.85rem;margin-top:24px">${rodape || 'Villela Academy · Aprenda, aplique e transforme — uma empresa do Grupo Villela.'}</p>
     </div></div>`;
 }
-const botao = (url, rotulo) => `<p style="margin:20px 0"><a href="${url}" style="background:#ffb84d;color:#1d1440;font-weight:700;padding:12px 26px;border-radius:24px;text-decoration:none">${rotulo}</a></p>`;
+const botao = (url, rotulo) => `<p style="margin:20px 0"><a href="${url}" style="background:#D97706;color:#fff;font-weight:700;padding:12px 26px;border-radius:24px;text-decoration:none">${rotulo}</a></p>`;
 
 // envio best-effort + log (nunca lança)
 async function enviar(para, assunto, html, template) {

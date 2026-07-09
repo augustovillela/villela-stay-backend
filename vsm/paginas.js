@@ -12,28 +12,43 @@ const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 });
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
-const CSS = `*{box-sizing:border-box}body{font-family:system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:#1e2b30;background:#f7f5ef}
-a{color:#0c3644}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
-.hero{background:linear-gradient(135deg,#0c3644,#12525f);color:#f2ecd8;padding:64px 0 72px}
-.hero h1{font-size:2.4rem;margin:.2rem 0;max-width:640px;line-height:1.15}.hero p{font-size:1.15rem;max-width:560px;color:#d7e2e5}
-.badge{display:inline-block;background:#d9a441;color:#0c3644;font-weight:700;padding:4px 12px;border-radius:20px;font-size:.85rem}
-.btn{display:inline-block;background:#d9a441;color:#0c3644;font-weight:700;border:0;border-radius:26px;padding:13px 28px;cursor:pointer;font-size:1rem;text-decoration:none}
-.btn.g{background:#fff;color:#0c3644}.btn.o{background:transparent;border:2px solid #f2ecd8;color:#f2ecd8}
-.sec{padding:56px 0}.sec h2{font-size:1.7rem;color:#0c3644;text-align:center;margin-bottom:8px}
+const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#0E7490;--acento2:#0A5666;--borda:#E2E6EC}
+*{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
+h1,h2,h3{font-family:'Lora',Georgia,serif}
+a{color:var(--acento)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+.hero{background:linear-gradient(135deg,var(--villela-navy),var(--villela-navy2));color:#f4f6f9;padding:64px 0 72px}
+.hero h1{font-size:2.4rem;margin:.2rem 0;max-width:640px;line-height:1.15}.hero p{font-size:1.15rem;max-width:560px;color:#cfd8e6}
+.badge{display:inline-block;background:var(--villela-gold);color:var(--villela-navy);font-weight:700;padding:4px 12px;border-radius:20px;font-size:.85rem}
+.btn{display:inline-block;background:var(--acento);color:#fff;font-weight:700;border:0;border-radius:26px;padding:13px 28px;cursor:pointer;font-size:1rem;text-decoration:none}
+.btn:hover{background:var(--acento2)}
+.btn.g{background:#fff;color:var(--acento)}.btn.g:hover{background:#eef6f8}.btn.o{background:transparent;border:2px solid #f4f6f9;color:#f4f6f9}.btn.o:hover{background:rgba(255,255,255,.12)}
+.sec{padding:56px 0}.sec h2{font-size:1.7rem;color:var(--villela-navy);text-align:center;margin-bottom:8px}
 .sub{text-align:center;color:#5b6b70;max-width:620px;margin:0 auto 34px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
-.card{background:#fff;border:1px solid #e7e1d4;border-radius:14px;padding:22px}
+.card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:22px}
 .feat{display:flex;gap:12px;align-items:flex-start}.feat .i{font-size:1.5rem}
 .planos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;align-items:stretch}
-.plano{background:#fff;border:1px solid #e7e1d4;border-radius:16px;padding:24px;display:flex;flex-direction:column}
-.plano.dest{border:2px solid #d9a441;box-shadow:0 10px 30px rgba(12,54,68,.12)}
-.plano h3{margin:.2rem 0;color:#0c3644}.preco{font-size:2rem;font-weight:800;color:#0c3644}.preco small{font-size:.9rem;font-weight:400;color:#7a8890}
-.plano ul{list-style:none;padding:0;margin:16px 0;flex:1}.plano li{padding:5px 0;border-bottom:1px solid #f0ece2;font-size:.92rem}
-footer{background:#0c3644;color:#c7d3d6;padding:30px 0;text-align:center;font-size:.9rem}
+.plano{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:24px;display:flex;flex-direction:column}
+.plano.dest{border:2px solid var(--villela-gold);box-shadow:0 10px 30px rgba(27,42,74,.12)}
+.plano h3{margin:.2rem 0;color:var(--villela-navy)}.preco{font-size:2rem;font-weight:800;color:var(--villela-navy)}.preco small{font-size:.9rem;font-weight:400;color:#7a8890}
+.plano ul{list-style:none;padding:0;margin:16px 0;flex:1}.plano li{padding:5px 0;border-bottom:1px solid var(--borda);font-size:.92rem}
+footer{background:var(--villela-navy);color:#c3cbd9;padding:30px 0;text-align:center;font-size:.9rem}
 input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:9px;font:inherit;margin:5px 0 12px}
-.form{max-width:460px;margin:0 auto;background:#fff;padding:26px;border-radius:14px;border:1px solid #e7e1d4}
-.tag{display:inline-block;background:#eef3f4;color:#0c3644;border-radius:12px;padding:2px 10px;font-size:.8rem}
+.form{max-width:460px;margin:0 auto;background:#fff;padding:26px;border-radius:14px;border:1px solid var(--borda)}
+.tag{display:inline-block;background:#e6f1f4;color:var(--acento2);border-radius:12px;padding:2px 10px;font-size:.8rem}
+.marca{display:inline-flex;align-items:center;gap:10px}.marca img{height:32px}
+.marca .m1{font-family:'Lora',Georgia,serif;font-weight:700;font-size:1.3rem;color:var(--villela-navy)}
+.marca .m2{font-family:'Inter',system-ui,sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--acento)}
+.marca.neg .m1{color:#fff}.marca.neg .m2{color:#67E8F9}
 @media(max-width:640px){.hero h1{font-size:1.8rem}}`;
+
+const BRAND = '/assets/brand/villela-stay-manager';
+const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg"><link rel="icon" type="image/png" sizes="192x192" href="${BRAND}/favicon-192.png">
+    <link rel="apple-touch-icon" href="${BRAND}/apple-touch-icon.png"><meta name="theme-color" content="#1B2A4A">`;
+// Lockup da marca: negativo (símbolo dourado) sobre fundo escuro; símbolo-v sobre fundo claro.
+const marca = (neg) => `<span class="marca${neg ? ' neg' : ''}"><img src="${BRAND}/${neg ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Stay Manager"><span><span class="m1">Villela</span> <span class="m2">Stay Manager</span></span></span>`;
 
 function landingHTML() {
   const planos = repo.Planos.listar();
@@ -62,20 +77,27 @@ function landingHTML() {
   ];
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela Stay Manager — sistema de gestão para aluguel por temporada</title>
-    <meta name="description" content="Gestão de imóveis, reservas, canais/OTAs, limpeza, financeiro e IA para anfitriões e gestores de aluguel por temporada. Teste grátis por 14 dias.">
+    <meta name="description" content="Gestão profissional para aluguel por temporada: imóveis, reservas, canais/OTAs, limpeza, financeiro e IA para anfitriões e gestores. Teste grátis por 14 dias.">
+    <meta property="og:title" content="Villela Stay Manager — Gestão profissional para aluguel por temporada">
+    <meta property="og:description" content="Imóveis, reservas, canais/OTAs, limpeza, financeiro e IA em um só lugar. Gestão testada na operação real da Villela Stay. Teste grátis por 14 dias.">
+    <meta property="og:image" content="https://manager.villelastay.com.br${BRAND}/og-image.png">
+    <meta property="og:type" content="website"><meta property="og:url" content="https://manager.villelastay.com.br/gestao">
+    ${HEAD_MARCA}
     <style>${CSS}</style></head><body>
     <div class="hero"><div class="wrap">
+      <p style="margin:0 0 20px">${marca(true)}</p>
       <span class="badge">Sistema de gestão de hospedagem</span>
       <h1>Toda a sua operação de temporada em um só lugar.</h1>
-      <p>Imóveis, reservas, canais, limpeza, financeiro e IA. Feito por quem opera aluguel por temporada — para anfitriões e gestores brasileiros.</p>
+      <p>Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA — para anfitriões e gestores brasileiros.</p>
       <p style="margin-top:26px"><a class="btn" href="/gestao/assinar?plano=trial">Testar 14 dias grátis</a>
       &nbsp;<a class="btn o" href="/gestao/app">Já sou cliente</a></p>
+      <p style="font-size:.95rem;margin-top:18px;color:#cfd8e6"><span style="color:var(--villela-gold)">★</span> Gestão testada na operação real da Villela Stay</p>
     </div></div>
     <div class="sec"><div class="wrap"><h2>Tudo que a sua operação precisa</h2>
       <p class="sub">Do anúncio ao repasse do proprietário — sem colar planilha com WhatsApp e calendário de OTA.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
-    <div class="sec" id="planos" style="background:#efeae0"><div class="wrap"><h2>Planos</h2>
+    <div class="sec" id="planos" style="background:#EDF1F5"><div class="wrap"><h2>Planos</h2>
       <p class="sub">Preços de lançamento, ajustáveis. Comece no trial e evolua quando quiser.</p>
       <div class="planos">${planos.map(cardPlano).join('')}</div>
       <p class="sub" style="margin-top:24px">Você conecta os seus próprios canais (Airbnb/Booking/channel manager). Conteúdo gerado por IA é sugestão — a palavra final é sempre sua.</p>
@@ -88,7 +110,8 @@ function landingHTML() {
         <textarea id="l-msg" rows="3" placeholder="Quantos imóveis você opera? Como podemos ajudar?"></textarea>
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
-    <footer>Villela Stay Manager — produto da Villela Stay · <a href="/gestao/app" style="color:#d9a441">Painel do cliente</a>
+    <footer>Villela Stay Manager · Gestão profissional para aluguel por temporada · <a href="/gestao/app" style="color:var(--villela-gold)">Painel do cliente</a>
+      <br><span style="opacity:.8">Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/gestao/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           nome:l_nome.value,empresa:l_esc.value,email:l_email.value,telefone:l_tel.value,mensagem:l_msg.value})});
@@ -98,13 +121,13 @@ function landingHTML() {
 
 function shell(corpo, script) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title>${HEAD_MARCA}<style>${CSS}
     .cx{max-width:720px;margin:24px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.menu button{flex:1;min-width:96px}
-    .kpi{display:inline-block;background:#fff;border:1px solid #e7e1d4;border-radius:10px;padding:10px 16px;margin:4px}
+    .kpi{display:inline-block;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;margin:4px}
     .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem}
     .erro{color:#b00020}</style></head><body><div class="cx">
-    <h2 style="color:#0c3644">🏨 Villela Stay Manager <span class="tag">painel da operação</span></h2>${corpo}</div><script>${script}</script></body></html>`;
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}<span class="tag">painel da operação</span></div>${corpo}</div><script>${script}</script></body></html>`;
 }
 
 function assinarHTML(planoSlug) {
@@ -132,18 +155,18 @@ function assinarHTML(planoSlug) {
 // Painel do assinante = app de gestão real (SPA carregada de /gestao/app.js).
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title>${HEAD_MARCA}<style>${CSS}
     .cx{max-width:1040px;margin:20px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
-    .kpi{background:#fff;border:1px solid #e7e1d4;border-radius:10px;padding:10px 16px;min-width:120px}
+    .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:120px}
     .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem;margin:.4rem 0}
-    .erro{color:#b00020}.btn.peq{padding:6px 14px;font-size:.85rem}.btn.secund{background:#eef3f4;color:#0c3644}
+    .erro{color:#b00020}.btn.peq{padding:6px 14px;font-size:.85rem}.btn.secund{background:#e6f1f4;color:var(--acento2)}.btn.secund:hover{background:#d8e9ee}
     .hi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
     label{font-size:.85rem;font-weight:600;display:block}
-    table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #f0ece2}
-    th{color:#5b6b70;font-weight:600}.chip,.tag{display:inline-block;background:#eef3f4;color:#0c3644;border-radius:12px;padding:2px 9px;font-size:.78rem}
+    table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--borda)}
+    th{color:#5b6b70;font-weight:600}.chip,.tag{display:inline-block;background:#e6f1f4;color:var(--acento2);border-radius:12px;padding:2px 9px;font-size:.78rem}
     </style></head><body><div class="cx">
-    <h2 style="color:#0c3644">🏨 Villela Stay Manager <span class="tag">painel da operação</span></h2>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}<span class="tag">painel da operação</span></div>
     <div id="app"><p class="sub">Carregando…</p></div></div>
     <script src="/gestao/app.js"></script><script>bootGestao();</script></body></html>`;
 }

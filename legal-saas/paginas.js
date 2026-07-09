@@ -12,27 +12,42 @@ const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 });
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
-const CSS = `*{box-sizing:border-box}body{font-family:system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:#1e2b30;background:#f7f5ef}
-a{color:#0c3644}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
-.hero{background:linear-gradient(135deg,#0c3644,#12525f);color:#f2ecd8;padding:64px 0 72px}
-.hero h1{font-size:2.4rem;margin:.2rem 0;max-width:640px;line-height:1.15}.hero p{font-size:1.15rem;max-width:560px;color:#d7e2e5}
-.badge{display:inline-block;background:#d9a441;color:#0c3644;font-weight:700;padding:4px 12px;border-radius:20px;font-size:.85rem}
-.btn{display:inline-block;background:#d9a441;color:#0c3644;font-weight:700;border:0;border-radius:26px;padding:13px 28px;cursor:pointer;font-size:1rem;text-decoration:none}
-.btn.g{background:#fff;color:#0c3644}.btn.o{background:transparent;border:2px solid #f2ecd8;color:#f2ecd8}
-.sec{padding:56px 0}.sec h2{font-size:1.7rem;color:#0c3644;text-align:center;margin-bottom:8px}
+// Identidade GRUPO VILLELA — marca Villela Legal (assets em /assets/brand/villela-legal)
+const BRAND_DIR = '/assets/brand/villela-legal';
+const BRAND_HEAD = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="${BRAND_DIR}/favicon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="${BRAND_DIR}/favicon-192.png">
+    <link rel="apple-touch-icon" href="${BRAND_DIR}/apple-touch-icon.png">
+    <meta name="theme-color" content="#1B2A4A">`;
+// logotipo: símbolo (negativo p/ fundo escuro, colorido p/ fundo claro) + wordmark tipográfico
+const MARCA = (escuro) => `<img src="${BRAND_DIR}/${escuro ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Legal" style="height:32px;vertical-align:middle">`;
+const WORDMARK = `<span style="font-family:'Lora',Georgia,serif;font-weight:700">Villela</span> <span style="font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.22em;color:var(--villela-gold);font-size:.72em">LEGAL</span>`;
+
+const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#14532D;--acento2:#0E3B20;--borda:#E2E6EC}
+*{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
+h1,h2,h3{font-family:'Lora',Georgia,serif}
+a{color:var(--villela-navy)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+.hero{background:linear-gradient(135deg,var(--villela-navy),var(--villela-navy2));color:var(--villela-ice);padding:64px 0 72px}
+.hero h1{font-size:2.4rem;margin:.2rem 0;max-width:640px;line-height:1.15}.hero p{font-size:1.15rem;max-width:560px;color:#cfd6e4}
+.badge{display:inline-block;background:var(--villela-gold);color:var(--villela-navy);font-weight:700;padding:4px 12px;border-radius:20px;font-size:.85rem}
+.btn{display:inline-block;background:var(--acento);color:#fff;font-weight:700;border:0;border-radius:26px;padding:13px 28px;cursor:pointer;font-size:1rem;text-decoration:none}
+.btn:hover{background:var(--acento2)}
+.btn.g{background:#fff;color:var(--villela-navy)}.btn.o{background:transparent;border:2px solid var(--villela-ice);color:var(--villela-ice)}
+.sec{padding:56px 0}.sec h2{font-size:1.7rem;color:var(--villela-navy);text-align:center;margin-bottom:8px}
 .sub{text-align:center;color:#5b6b70;max-width:620px;margin:0 auto 34px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
-.card{background:#fff;border:1px solid #e7e1d4;border-radius:14px;padding:22px}
+.card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:22px}
 .feat{display:flex;gap:12px;align-items:flex-start}.feat .i{font-size:1.5rem}
 .planos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;align-items:stretch}
-.plano{background:#fff;border:1px solid #e7e1d4;border-radius:16px;padding:24px;display:flex;flex-direction:column}
-.plano.dest{border:2px solid #d9a441;box-shadow:0 10px 30px rgba(12,54,68,.12)}
-.plano h3{margin:.2rem 0;color:#0c3644}.preco{font-size:2rem;font-weight:800;color:#0c3644}.preco small{font-size:.9rem;font-weight:400;color:#7a8890}
-.plano ul{list-style:none;padding:0;margin:16px 0;flex:1}.plano li{padding:5px 0;border-bottom:1px solid #f0ece2;font-size:.92rem}
-footer{background:#0c3644;color:#c7d3d6;padding:30px 0;text-align:center;font-size:.9rem}
+.plano{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:24px;display:flex;flex-direction:column}
+.plano.dest{border:2px solid var(--villela-gold);box-shadow:0 10px 30px rgba(27,42,74,.12)}
+.plano h3{margin:.2rem 0;color:var(--villela-navy)}.preco{font-size:2rem;font-weight:800;color:var(--villela-navy)}.preco small{font-size:.9rem;font-weight:400;color:#7a8890}
+.plano ul{list-style:none;padding:0;margin:16px 0;flex:1}.plano li{padding:5px 0;border-bottom:1px solid var(--borda);font-size:.92rem}
+footer{background:var(--villela-navy);color:#c3cbdb;padding:30px 0;text-align:center;font-size:.9rem}
 input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:9px;font:inherit;margin:5px 0 12px}
-.form{max-width:460px;margin:0 auto;background:#fff;padding:26px;border-radius:14px;border:1px solid #e7e1d4}
-.tag{display:inline-block;background:#eef3f4;color:#0c3644;border-radius:12px;padding:2px 10px;font-size:.8rem}
+.form{max-width:460px;margin:0 auto;background:#fff;padding:26px;border-radius:14px;border:1px solid var(--borda)}
+.tag{display:inline-block;background:#eef3f4;color:var(--villela-navy);border-radius:12px;padding:2px 10px;font-size:.8rem}
 @media(max-width:640px){.hero h1{font-size:1.8rem}}`;
 
 const ROTULO_MOD = Object.fromEntries(repo.MODULOS.map(m => [m[0], m[1]]));
@@ -65,11 +80,16 @@ function landingHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela Legal — software jurídico para escritórios de advocacia</title>
     <meta name="description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 14 dias.">
+    <meta property="og:title" content="Villela Legal — software jurídico para escritórios de advocacia">
+    <meta property="og:description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 14 dias.">
+    <meta property="og:image" content="https://juridico.villelastay.com.br${BRAND_DIR}/og-image.png">
+    ${BRAND_HEAD}
     <style>${CSS}</style></head><body>
     <div class="hero"><div class="wrap">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">${MARCA(true)}<span style="font-size:1.4rem">${WORDMARK}</span></div>
       <span class="badge">Software jurídico completo</span>
       <h1>O escritório inteiro em um só lugar — com IA que cita as fontes.</h1>
-      <p>Processos, prazos, publicações, peças, contratos e portal do cliente. Feito por quem advoga, para escritórios brasileiros.</p>
+      <p>Gestão jurídica inteligente: processos, prazos, publicações, peças, contratos e portal do cliente. Feito por quem advoga, para escritórios brasileiros.</p>
       <p style="margin-top:26px"><a class="btn" href="/juridico/assinar?plano=trial">Testar 14 dias grátis</a>
       &nbsp;<a class="btn o" href="/juridico/app">Já sou cliente</a></p>
     </div></div>
@@ -77,7 +97,7 @@ function landingHTML() {
       <p class="sub">Um sistema que cobre da captação ao arquivamento — sem colar planilha com WhatsApp.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
-    <div class="sec" id="planos" style="background:#efeae0"><div class="wrap"><h2>Planos</h2>
+    <div class="sec" id="planos" style="background:#EFF1F6"><div class="wrap"><h2>Planos</h2>
       <p class="sub">Preços de lançamento, ajustáveis. Comece no trial e evolua quando quiser.</p>
       <div class="planos">${planos.map(cardPlano).join('')}</div>
       <p class="sub" style="margin-top:24px">⚠️ Conteúdo gerado por IA é sempre <b>minuta</b> — a revisão do advogado é obrigatória. Coleta apenas por fontes oficiais (DataJud/DJEN).</p>
@@ -90,7 +110,8 @@ function landingHTML() {
         <textarea id="l-msg" rows="3" placeholder="Como podemos ajudar?"></textarea>
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
-    <footer>Villela Legal — produto da Villela Stay · <a href="/juridico/app" style="color:#d9a441">Painel do cliente</a>
+    <footer>Villela Legal · Gestão jurídica inteligente · <a href="/juridico/app" style="color:var(--villela-gold)">Painel do cliente</a>
+      <br><span style="font-size:.85em;opacity:.85">Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/juridico/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           nome:l_nome.value,escritorio:l_esc.value,email:l_email.value,telefone:l_tel.value,mensagem:l_msg.value})});
@@ -100,13 +121,13 @@ function landingHTML() {
 
 function shell(corpo, script) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Legal — Painel</title><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Legal — Painel</title>${BRAND_HEAD}<style>${CSS}
     .cx{max-width:720px;margin:24px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.menu button{flex:1;min-width:96px}
-    .kpi{display:inline-block;background:#fff;border:1px solid #e7e1d4;border-radius:10px;padding:10px 16px;margin:4px}
+    .kpi{display:inline-block;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;margin:4px}
     .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem}
     .erro{color:#b00020}</style></head><body><div class="cx">
-    <h2 style="color:#0c3644">⚖️ Villela Legal <span class="tag">painel do escritório</span></h2>${corpo}</div><script>${script}</script></body></html>`;
+    <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${MARCA(false)}<span>${WORDMARK}</span> <span class="tag" style="font-family:'Inter',system-ui,sans-serif">painel do escritório</span></h2>${corpo}</div><script>${script}</script></body></html>`;
 }
 
 function assinarHTML(planoSlug) {
@@ -180,22 +201,31 @@ function appHTML() {
 function appJuridicoHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Meu Jurídico — Villela Legal</title><style>
-*{box-sizing:border-box}body{font-family:system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:#1e2b30;background:#f7f5ef}
-.topo{background:#0c3644;color:#f2ecd8;padding:10px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.topo b{font-size:1.05rem}.topo a{color:#d9a441;text-decoration:none;font-weight:600;cursor:pointer}
+<title>Meu Jurídico — Villela Legal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="/assets/brand/villela-legal/favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-legal/favicon-192.png">
+<link rel="apple-touch-icon" href="/assets/brand/villela-legal/apple-touch-icon.png">
+<meta name="theme-color" content="#1B2A4A"><style>
+:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#14532D;--acento2:#0E3B20;--borda:#E2E6EC}
+*{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
+h1,h2,h3{font-family:'Lora',Georgia,serif}
+.topo{background:var(--villela-navy);color:var(--villela-ice);padding:10px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.topo b{font-size:1.05rem}.topo a{color:var(--villela-gold);text-decoration:none;font-weight:600;cursor:pointer}
 .area{max-width:1100px;margin:16px auto;padding:0 16px}
-.titulo{font-size:1.5rem;color:#0c3644;margin:.3rem 0}.sub{color:#5b6b70;font-size:.92rem;margin:.2rem 0 .8rem}
-.card{background:#fff;border:1px solid #e7e1d4;border-radius:12px;padding:16px;margin:.5rem 0}
-.btn{display:inline-block;background:#d9a441;color:#0c3644;font-weight:700;border:0;border-radius:22px;padding:9px 18px;cursor:pointer;font-size:.95rem;text-decoration:none}
-.btn.secund{background:#eef3f4;color:#0c3644}.btn.peq{padding:5px 12px;font-size:.85rem}
-.chip{display:inline-block;background:#eef3f4;color:#0c3644;border-radius:12px;padding:2px 9px;font-size:.8rem;margin:1px}
-.tag{display:inline-block;background:#0c3644;color:#f2ecd8;border-radius:12px;padding:2px 10px;font-size:.78rem}
+.titulo{font-size:1.5rem;color:var(--villela-navy);margin:.3rem 0;font-family:'Lora',Georgia,serif}.sub{color:#5b6b70;font-size:.92rem;margin:.2rem 0 .8rem}
+.card{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:16px;margin:.5rem 0}
+.btn{display:inline-block;background:var(--acento);color:#fff;font-weight:700;border:0;border-radius:22px;padding:9px 18px;cursor:pointer;font-size:.95rem;text-decoration:none}
+.btn:hover{background:var(--acento2)}
+.btn.secund{background:#eef3f4;color:var(--villela-navy)}.btn.peq{padding:5px 12px;font-size:.85rem}
+.chip{display:inline-block;background:#eef3f4;color:var(--villela-navy);border-radius:12px;padding:2px 9px;font-size:.8rem;margin:1px}
+.tag{display:inline-block;background:var(--villela-navy);color:var(--villela-ice);border-radius:12px;padding:2px 10px;font-size:.78rem}
 .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem;margin:.5rem 0}
 input,select,textarea{width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font:inherit;margin:4px 0 10px}
 label{font-size:.9rem;font-weight:600}table{width:100%;border-collapse:collapse}
 </style></head><body>
-<div class="topo"><b id="esc-nome">Meu escritório</b>
+<div class="topo"><span style="display:flex;align-items:center;gap:10px"><img src="/assets/brand/villela-legal/logo-negativo.svg" alt="Villela Legal" style="height:26px"><b id="esc-nome">Meu escritório</b></span>
   <span><a href="/juridico/app">← Painel</a> &nbsp;·&nbsp; <a onclick="sairLegal()">Sair</a></span></div>
 <div class="area"><div id="conteudo"><p class="sub">Carregando…</p></div></div>
 <script src="/juridico/legal-shell.js"></script>

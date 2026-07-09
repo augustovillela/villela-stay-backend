@@ -165,7 +165,7 @@ const listarGerados = (n = 30) => db.prepare('SELECT id, tipo, titulo, formato, 
 const obterGerado = (id) => db.prepare('SELECT * FROM generated_reports WHERE id = ?').get(String(id));
 
 const CSS_REL = `body{font-family:Arial,Helvetica,sans-serif;font-size:11pt;max-width:21cm;margin:1.5cm auto;color:#222}
-  h1{font-size:16pt;color:#0c3644}h2{font-size:12pt;color:#0c3644;border-bottom:1px solid #ccc;padding-bottom:3px;margin-top:22px}
+  h1{font-size:16pt;color:#1B2A4A}h2{font-size:12pt;color:#1B2A4A;border-bottom:1px solid #ccc;padding-bottom:3px;margin-top:22px}
   table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border:1px solid #ddd;padding:5px 8px;text-align:left;font-size:10pt}
   th{background:#f0efe9}.kpis{display:flex;flex-wrap:wrap;gap:10px}.kpi{border:1px solid #ddd;border-radius:8px;padding:8px 14px;min-width:130px}
   .kpi b{font-size:14pt;display:block}.sub{color:#777;font-size:9pt}.alerta{color:#b00020}`;

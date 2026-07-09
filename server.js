@@ -3660,11 +3660,11 @@ async function enviarCredenciais(conta, senha) {
   const nome = (conta.nome || 'hóspede').split(' ')[0];
   const txt = `Olá, ${nome}! 👋\n\nSua Área do Hóspede da Villela Stay já está pronta. Nela você consulta a sua reserva e recebe as informações da casa (Wi-Fi, acesso, guia local).\n\n🔗 Acesse: ${AREA_HOSPEDE_URL}\n👤 Login: ${login}\n🔑 Senha temporária: ${senha}\n\nNo primeiro acesso você define uma nova senha. Qualquer dúvida, é só chamar por aqui!`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#2b2d2f">
-    <div style="background:#0c3644;color:#f2ecd8;padding:18px 22px;border-radius:10px 10px 0 0"><strong style="font-size:18px">Villela Stay</strong><br><span style="font-size:13px;color:#d9a441">Área do Hóspede</span></div>
-    <div style="border:1px solid #e3ddd0;border-top:none;padding:22px;border-radius:0 0 10px 10px">
+    <div style="background:#1B2A4A;color:#F8F9FA;padding:18px 22px;border-radius:10px 10px 0 0"><strong style="font-size:18px">Villela Stay</strong><br><span style="font-size:13px;color:#C9A227">Área do Hóspede</span></div>
+    <div style="border:1px solid #E2E6EC;border-top:none;padding:22px;border-radius:0 0 10px 10px">
       <p>Olá, <strong>${escHtml(nome)}</strong>! 👋</p>
       <p>Sua <strong>Área do Hóspede</strong> já está pronta. Nela você consulta a sua reserva e recebe as informações da casa (Wi-Fi, acesso, guia local).</p>
-      <p style="margin:18px 0"><a href="${AREA_HOSPEDE_URL}" style="background:#1c6e8c;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Entrar na Área do Hóspede</a></p>
+      <p style="margin:18px 0"><a href="${AREA_HOSPEDE_URL}" style="background:#0E7490;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Entrar na Área do Hóspede</a></p>
       <table style="font-size:14px;border-collapse:collapse"><tr><td style="padding:3px 12px 3px 0">👤 Login:</td><td><strong>${escHtml(login)}</strong></td></tr>
       <tr><td style="padding:3px 12px 3px 0">🔑 Senha temporária:</td><td><strong>${escHtml(senha)}</strong></td></tr></table>
       <p style="font-size:13px;color:#6b7075;margin-top:16px">No primeiro acesso você define uma nova senha. Se você não reconhece esta mensagem, basta ignorá-la.</p>
@@ -4101,10 +4101,10 @@ function reciboHtml(h, r, conta) {
 <style>
   body{font-family:Arial,Helvetica,sans-serif;color:#2b2d2f;background:#f7f4ee;margin:0;padding:24px}
   .doc{max-width:620px;margin:auto;background:#fff;border:1px solid #e3ddd0;border-radius:12px;overflow:hidden}
-  .cab{background:#0c3644;color:#f2ecd8;padding:22px 26px}
-  .cab .marca{font-size:20px;font-weight:800}.cab .sub{color:#d9a441;font-size:13px}
+  .cab{background:#1B2A4A;color:#F8F9FA;padding:22px 26px}
+  .cab .marca{font-size:20px;font-weight:800}.cab .sub{color:#C9A227;font-size:13px}
   .corpo{padding:24px 26px}
-  h1{font-size:18px;color:#0c3644;margin:0 0 14px}
+  h1{font-size:18px;color:#1B2A4A;margin:0 0 14px}
   table{width:100%;border-collapse:collapse;font-size:14px}
   td{padding:8px 6px;border-bottom:1px solid #eee;vertical-align:top}
   td.k{color:#6b7075;width:42%}
@@ -4117,7 +4117,7 @@ function reciboHtml(h, r, conta) {
   .saldo.neg{color:#b23b3b}.saldo.pos{color:#1c7a4b}
   .rod{font-size:12px;color:#6b7075;margin-top:16px}
   .acao{margin:18px 26px;text-align:center}
-  .btn{background:#1c6e8c;color:#fff;border:none;padding:11px 20px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px}
+  .btn{background:#0E7490;color:#fff;border:none;padding:11px 20px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px}
   .btn:disabled{opacity:.6;cursor:default}
   @media print{.acao{display:none}body{background:#fff;padding:0}.doc{border:none}}
 </style></head><body>
@@ -4426,11 +4426,11 @@ async function enviarEmailAcesso(to, nome, link, jaTinha) {
   const primeiro = (nome || 'hóspede').split(' ')[0];
   const acao = jaTinha ? 'redefinir a sua senha' : 'criar a sua senha e ativar o seu acesso';
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#2b2d2f">
-    <div style="background:#0c3644;color:#f2ecd8;padding:18px 22px;border-radius:10px 10px 0 0"><strong style="font-size:18px">Villela Stay</strong><br><span style="font-size:13px;color:#d9a441">Área do Hóspede</span></div>
-    <div style="border:1px solid #e3ddd0;border-top:none;padding:22px;border-radius:0 0 10px 10px">
+    <div style="background:#1B2A4A;color:#F8F9FA;padding:18px 22px;border-radius:10px 10px 0 0"><strong style="font-size:18px">Villela Stay</strong><br><span style="font-size:13px;color:#C9A227">Área do Hóspede</span></div>
+    <div style="border:1px solid #E2E6EC;border-top:none;padding:22px;border-radius:0 0 10px 10px">
       <p>Olá, <strong>${escHtml(primeiro)}</strong>! 👋</p>
       <p>Recebemos um pedido para ${acao} na <strong>Área do Hóspede</strong> da Villela Stay. É lá que você vê as suas reservas, recebe as informações da casa (Wi-Fi, acesso, guia) e ativa as notificações.</p>
-      <p style="margin:18px 0"><a href="${link}" style="background:#1c6e8c;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Criar minha senha e entrar</a></p>
+      <p style="margin:18px 0"><a href="${link}" style="background:#0E7490;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Criar minha senha e entrar</a></p>
       <p style="font-size:13px;color:#6b7075">Este link vale por <strong>45 minutos</strong>. Se você não fez este pedido, é só ignorar este e-mail — nada muda na sua conta.</p>
     </div></div>`;
   return enviarEmail(to, 'Seu acesso à Área do Hóspede — Villela Stay', html);
@@ -4512,7 +4512,7 @@ app.get('/hospede/api/carteira/:reservaId', requireHospede, async (req, res) => 
     const waTxt = `Olá! Sou ${nome1}, cheguei para o check-in. Reserva ${r.id}${r.imovelTitulo ? ' - ' + r.imovelTitulo : ''}.`;
     const link = 'https://wa.me/556191935013?text=' + encodeURIComponent(waTxt);
     let qrSvg = '';
-    try { const QRCode = require('qrcode'); qrSvg = await QRCode.toString(link, { type: 'svg', margin: 1, width: 240, color: { dark: '#0c3644', light: '#ffffff' } }); }
+    try { const QRCode = require('qrcode'); qrSvg = await QRCode.toString(link, { type: 'svg', margin: 1, width: 240, color: { dark: '#1B2A4A', light: '#ffffff' } }); }
     catch (e) { console.error('[carteira qr]', e.message); }
     res.json({
       nome: req.hospede.nome || '',
@@ -5250,6 +5250,9 @@ app.post('/webhooks/mercadopago', async (req, res) => {
     alertaAugusto(`Pagamento recebido (Mercado Pago) de ${h.nome || 'hospede'}: R$ ${Number(pay.transaction_amount || 0).toFixed(2)}.`).catch(() => { });
   } catch (e) { console.error('[mp webhook]', e.message); }
 });
+
+// ===== Grupo Villela — assets oficiais de marca (V-Portal): logos, favicons, PWA icons, OG =====
+app.use('/assets/brand', express.static(path.join(__dirname, 'assets', 'brand'), { maxAge: '7d' }));
 
 // Raiz → destino conforme o subdomínio: staff.villelastay.com.br abre o Portal Staff;
 // os demais (minha.villelastay.com.br / onrender) vão para a Área do Hóspede.

@@ -218,20 +218,29 @@ function registrarPortalCliente(app, { jwtSecret }) {
   }));
 
   // ---- páginas (shell única com JS inline; visual da Área do Hóspede) ----
-  const CSS = `*{box-sizing:border-box}body{font-family:system-ui,Segoe UI,Arial,sans-serif;background:#0c3644;margin:0;color:#2b2d2f}
+  const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#14532D;--acento2:#0E3B20;--borda:#E2E6EC}
+    *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;background:var(--villela-navy);margin:0;color:var(--villela-graphite)}
     .cx{max-width:640px;margin:24px auto;padding:0 14px}.card{background:#fff;border-radius:12px;padding:18px 20px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
-    h1{color:#f2ecd8;font-size:1.25rem}h1 small{color:#d9a441;font-weight:400}h3{margin:.2rem 0 .6rem;color:#0c3644}
-    .btn{background:#0c3644;color:#f2ecd8;border:0;border-radius:22px;padding:10px 20px;cursor:pointer;font-size:1rem}
-    .btn.sec{background:#eee;color:#0c3644}.sub{color:#777;font-size:.85rem}.erro{color:#b00020}
+    h1,h3{font-family:'Lora',Georgia,serif}
+    h1{color:var(--villela-ice);font-size:1.25rem}h1 small{color:var(--villela-gold);font-weight:400;font-family:'Inter',system-ui,sans-serif}h3{margin:.2rem 0 .6rem;color:var(--villela-navy)}
+    .btn{background:var(--acento);color:#fff;border:0;border-radius:22px;padding:10px 20px;cursor:pointer;font-size:1rem}
+    .btn:hover{background:var(--acento2)}
+    .btn.sec{background:#eee;color:var(--villela-navy)}.sub{color:#777;font-size:.85rem}.erro{color:#b00020}
     input,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit;margin:4px 0 12px}
-    .lin{border-bottom:1px solid #eee;padding:8px 0}.tag{background:#eef3f5;border-radius:12px;padding:2px 10px;font-size:.8rem;color:#0c3644}
+    .lin{border-bottom:1px solid #eee;padding:8px 0}.tag{background:#eef3f5;border-radius:12px;padding:2px 10px;font-size:.8rem;color:var(--villela-navy)}
     .menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.menu button{flex:1;min-width:90px}
     .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:8px;padding:8px 12px;font-size:.85rem}`;
 
   const shell = (corpo, script) => `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-    <title>Villela Legal — Portal do Cliente</title><style>${CSS}</style></head>
-    <body><div class="cx"><h1>⚖️ Villela Legal <small>· portal do cliente</small></h1>${corpo}</div>
+    <title>Villela Legal — Portal do Cliente</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/assets/brand/villela-legal/favicon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-legal/favicon-192.png">
+    <link rel="apple-touch-icon" href="/assets/brand/villela-legal/apple-touch-icon.png">
+    <meta name="theme-color" content="#1B2A4A"><style>${CSS}</style></head>
+    <body><div class="cx"><h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><img src="/assets/brand/villela-legal/logo-negativo.svg" alt="Villela Legal" style="height:32px"><span><span style="font-family:'Lora',Georgia,serif;font-weight:700">Villela</span> <span style="font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.22em;color:var(--villela-gold);font-size:.72em">LEGAL</span></span> <small>· portal do cliente</small></h1>${corpo}</div>
     <script>${script}</script></body></html>`;
 
   app.get('/cliente-juridico/definir-senha', (req, res) => {

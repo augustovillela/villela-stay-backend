@@ -1,14 +1,14 @@
 /* Portal Staff — Villela Stay. Paleta alinhada ao site público. */
 :root {
-  --petroleo: #0c3644;
-  --creme: #f2ecd8;
-  --lago: #1c6e8c;
-  --lago-escuro: #145066;
-  --cerrado: #d9a441;
-  --areia: #f7f4ee;
-  --concreto: #2b2d2f;
+  --petroleo: #1B2A4A;
+  --creme: #F8F9FA;
+  --lago: #0E7490;
+  --lago-escuro: #0A5666;
+  --cerrado: #C9A227;
+  --areia: #F8F9FA;
+  --concreto: #1F2933;
   --concreto-claro: #6b7075;
-  --borda: #e3ddd0;
+  --borda: #E2E6EC;
   --ok: #2e7d32;
   --alerta: #b3261e;
   --branco: #fff;
@@ -16,9 +16,10 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   color: var(--concreto); background: var(--areia); line-height: 1.55;
 }
+h1, h2, h3, .marca { font-family: 'Lora', Georgia, serif; }
 .hidden { display: none !important; }
 a { color: var(--lago); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -260,7 +261,7 @@ tr:last-child td { border-bottom: none; }
 .postit { background: var(--pcor, #ffe08a); border-radius: 5px; padding: 12px 14px 14px; box-shadow: 0 4px 11px rgba(0,0,0,.14); }
 .postit-cab { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 7px; }
 .postit-tit { font-weight: 800; color: #3a3320; font-size: .95rem; line-height: 1.2; }
-.postit-n { background: rgba(0,0,0,.16); color: #2b2d2f; border-radius: 10px; padding: 0 8px; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
+.postit-n { background: rgba(0,0,0,.16); color: #1F2933; border-radius: 10px; padding: 0 8px; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
 .postit-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
 .postit-lista li { display: flex; align-items: flex-start; gap: 7px; font-size: .86rem; color: #322d20; line-height: 1.35; }
 .postit-check { flex-shrink: 0; width: 19px; height: 19px; border: none; border-radius: 50%; background: rgba(255,255,255,.65); cursor: pointer; font-size: .74rem; line-height: 1; color: var(--lago-escuro); font-weight: 700; }
@@ -269,7 +270,7 @@ tr:last-child td { border-bottom: none; }
 .pend-linha .nome { flex: 1; min-width: 150px; font-weight: 600; color: var(--concreto); }
 .pend-linha .nome .obs { font-weight: 400; color: var(--concreto-claro); font-size: .9rem; }
 .pend-linha .quem { font-size: .76rem; color: var(--concreto-claro); }
-.cat-badge { font-size: .68rem; font-weight: 800; color: #2b2d2f; padding: 3px 9px; border-radius: 11px; white-space: nowrap; }
+.cat-badge { font-size: .68rem; font-weight: 800; color: #1F2933; padding: 3px 9px; border-radius: 11px; white-space: nowrap; }
 .pend-cat-sel { font-size: .78rem; padding: 4px 6px; border: 1px solid var(--borda); border-radius: 8px; background: #fff; max-width: 140px; }
 .pend-arq-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .pend-arq-chips .cat-badge { font-size: .72rem; }
