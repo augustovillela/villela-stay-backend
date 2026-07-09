@@ -5,6 +5,7 @@
 'use strict';
 process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'academy-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
+process.env.ACADEMY_ROTINAS = 'off'; // sem timer de pedidos abandonados no teste
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -20,6 +21,8 @@ function requireAuth(req, res, next) { const u = USUARIOS.find(x => x.id === (re
 const requireAdmin = (req, res, next) => (req.user && req.user.papel === 'admin') ? next() : res.status(403).json({ erro: 'admin' });
 const alertas = [];
 const alertaAugusto = async (m) => { alertas.push(m); };
+const enviados = [];
+const enviarEmail = async (to, ass, html) => { enviados.push({ to, ass, html }); };
 
 // Mercado Pago mock (FASES 4 e 6): preferências, pagamentos com status
 // controlável, busca por external_reference, reembolso e preapproval
@@ -67,7 +70,7 @@ const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 const academy = require('./index');
-academy.montar(app, { express, requireAuth, requireAdmin, alertaAugusto, mpFetch, jwtSecret: 'seg-teste' });
+academy.montar(app, { express, requireAuth, requireAdmin, alertaAugusto, enviarEmail, mpFetch, jwtSecret: 'seg-teste' });
 const espera = (ms) => new Promise(r => setTimeout(r, ms));
 
 let BASE = '', ok = 0, falhas = [];
@@ -790,6 +793,87 @@ async function main() {
       assert.ok(/X-Amz-Signature=[0-9a-f]{64}$/.test(u));
     }
     assert.ok(!storage.s3Ativo(), 'sem env, driver s3 fica desligado');
+  });
+
+  // ================= FASE 8 — comunicações =================
+  console.log('\n— FASE 8: verificação de e-mail e reset de senha —');
+  const HUGO = { nome: 'Hugo', email: 'hugo@t.com', senha: 'senha-forte-9', aceite_termos: true };
+  await t('signup envia boas-vindas; link confirma o e-mail', async () => {
+    await req('POST', '/academy/api/signup', { corpo: HUGO, jar: 'hugo' });
+    await espera(100);
+    const mail = enviados.find(e => e.to === HUGO.email && e.ass.includes('confirme'));
+    assert.ok(mail, 'e-mail de boas-vindas enviado');
+    const token = (mail.html.match(/verificar-email\?token=([^"&]+)/) || [])[1];
+    assert.ok(token, 'link de verificação presente');
+    assert.equal((await req('GET', '/academy/verificar-email?token=' + token)).st, 200); // página existe
+    assert.equal((await req('POST', '/academy/api/verificar-email', { corpo: { token } })).st, 200);
+    const me = await req('GET', '/academy/api/me', { jar: 'hugo' });
+    assert.equal(me.json.usuario.email_verificado, 1);
+    assert.equal((await req('POST', '/academy/api/verificar-email', { corpo: { token: 'x' } })).st, 400);
+  });
+  await t('esqueci senha: sem enumeração, token redefine e derruba sessões', async () => {
+    assert.equal((await req('POST', '/academy/api/senha/esquecer', { corpo: { email: 'naoexiste@t.com' } })).st, 200); // resposta idêntica
+    assert.equal((await req('POST', '/academy/api/senha/esquecer', { corpo: { email: HUGO.email } })).st, 200);
+    await espera(100);
+    const mail = [...enviados].reverse().find(e => e.to === HUGO.email && e.ass.includes('redefinir'));
+    assert.ok(mail);
+    const token = (mail.html.match(/redefinir-senha\?token=([^"&]+)/) || [])[1];
+    assert.equal((await req('GET', '/academy/redefinir-senha?token=' + token)).st, 200); // página existe
+    assert.equal((await req('POST', '/academy/api/senha/redefinir', { corpo: { token, senha: 'nova-do-hugo-1' } })).st, 200);
+    assert.equal((await req('GET', '/academy/api/me', { jar: 'hugo' })).st, 401, 'sessões derrubadas');
+    assert.equal((await req('POST', '/academy/api/login', { corpo: { email: HUGO.email, senha: HUGO.senha } })).st, 401);
+    assert.equal((await req('POST', '/academy/api/login', { corpo: { email: HUGO.email, senha: 'nova-do-hugo-1' }, jar: 'hugo' })).st, 200);
+  });
+
+  console.log('\n— FASE 8: e-mails de eventos e sininho —');
+  await t('eventos do funil dispararam e-mails (compra, venda, cortesia, perfil, assinatura)', async () => {
+    const assuntos = enviados.map(e => e.ass).join(' | ');
+    assert.ok(assuntos.includes('Acesso liberado'), 'compra paga → comprador');
+    assert.ok(assuntos.includes('Você vendeu'), 'venda → produtor');
+    assert.ok(assuntos.includes('Você ganhou acesso'), 'cortesia → aluno');
+    assert.ok(assuntos.includes('aprovado'), 'perfil aprovado → solicitante');
+    assert.ok(enviados.some(e => e.ass.includes('Clube Villela')), 'assinatura → assinante');
+  });
+  await t('notificações internas: listar e marcar lidas', async () => {
+    const n1 = await req('GET', '/academy/api/notificacoes', { jar: 'fabi' });
+    assert.equal(n1.st, 200);
+    assert.ok(n1.json.nao_lidas >= 1, 'fabi tem notificação da compra');
+    assert.equal((await req('POST', '/academy/api/notificacoes/lidas', { jar: 'fabi' })).st, 200);
+    assert.equal((await req('GET', '/academy/api/notificacoes', { jar: 'fabi' })).json.nao_lidas, 0);
+  });
+  await t('pedido abandonado: lembrete único após 1h pendente', async () => {
+    const r = await req('POST', `/academy/api/checkout/${prodId}`, { jar: 'hugo' });
+    dbx.prepare('UPDATE orders SET criado_em = ? WHERE id = ?').run(new Date(Date.now() - 2 * 3600e3).toISOString(), r.json.order_id);
+    const p1 = await req('POST', '/staff/api/academy/pedidos-abandonados/processar');
+    assert.equal(p1.json.lembretes_enviados, 1);
+    await espera(100);
+    assert.ok(enviados.some(e => e.to === HUGO.email && e.ass.includes('esperando')));
+    const p2 = await req('POST', '/staff/api/academy/pedidos-abandonados/processar');
+    assert.equal(p2.json.lembretes_enviados, 0, 'não repete o lembrete');
+  });
+
+  console.log('\n— FASE 8: webhook de saída e logs —');
+  await t('webhook de saída assinado (Make/n8n) recebe eventos', async () => {
+    const receb = [];
+    const wapp = express();
+    wapp.post('/hook', express.text({ type: () => true }), (rq, rs) => { receb.push({ corpo: rq.body, sig: rq.headers['x-academy-signature'], ev: rq.headers['x-academy-event'] }); rs.json({ ok: true }); });
+    const wsrv = wapp.listen(0);
+    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'webhook_saida', valor: { url: `http://127.0.0.1:${wsrv.address().port}/hook`, secret: 'segredo-hook' } } });
+    await req('POST', '/academy/api/lead', { corpo: { nome: 'Lead Hook', email: 'h@h', interesse: 'produtor' } });
+    await espera(300);
+    wsrv.close();
+    assert.equal(receb.length, 1);
+    assert.equal(receb[0].ev, 'lead.novo');
+    const esperada = require('crypto').createHmac('sha256', 'segredo-hook').update(receb[0].corpo).digest('hex');
+    assert.equal(receb[0].sig, esperada, 'assinatura HMAC confere');
+    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'webhook_saida', valor: null } }); // desliga
+  });
+  await t('staff vê o log de comunicações', async () => {
+    const r = await req('GET', '/staff/api/academy/comunicacoes-log');
+    assert.equal(r.st, 200);
+    assert.ok(r.json.eventos.some(e => e.canal === 'email' && e.status === 'ok'));
+    assert.ok(r.json.eventos.some(e => e.canal === 'webhook'));
+    assert.ok(r.json.eventos.some(e => e.canal === 'interna'));
   });
 
   srv.close();

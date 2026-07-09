@@ -6,11 +6,11 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASES 1–7 concluídas (fundação, produtos e cursos, marketplace,
+**Status: FASES 1–8 concluídas (fundação, produtos e cursos, marketplace,
 checkout Mercado Pago, afiliados e comissões, assinaturas e clubes,
-storage/URLs assinadas/vídeo) — a plataforma vende avulso, comissiona e cobra
-recorrente, com entrega de conteúdo protegida.** Fases seguintes em
-[ROADMAP.md](ROADMAP.md).
+storage/URLs assinadas/vídeo, comunicações) — vende, comissiona, cobra
+recorrente, entrega protegido e conversa com aluno/produtor/afiliado.**
+Fases seguintes em [ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
 
@@ -201,6 +201,16 @@ webhook/consulta segura (nunca pelo retorno do navegador).
 25. **Vídeo nativo (F7)**: só via upload direto ao bucket (presigned PUT, até
    2 GB) — o servidor nunca segura o arquivo. Sem S3 configurado, vídeo
    continua por URL externa e o sistema explica isso ao produtor.
+26. **Comunicação best-effort (F8)**: e-mail/notificação/webhook NUNCA derruba
+   o fluxo de negócio — tudo em try/catch com log em `notification_logs`.
+   Verificação de e-mail é soft (banner + flag, sem bloquear login) até haver
+   motivo comercial para endurecer.
+27. **Webhook de saída (F8)**: um único endpoint configurável
+   (`webhook_saida` em platform_settings) com HMAC no corpo — é o plugue
+   genérico p/ Make/n8n/CRM sem acoplar a plataforma a nenhum deles.
+28. **Sem WhatsApp automático a clientes (F8)**: regra da casa — business só
+   com template aprovado e nunca em massa; os alertas ao dono já cobrem o
+   operacional. Integração de templates fica para quando houver demanda real.
 
 ## Rodar e testar
 

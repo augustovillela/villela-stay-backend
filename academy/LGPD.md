@@ -21,7 +21,9 @@ Documento vivo. ⚠️ **Termos de Uso e Política de Privacidade publicados em
 - ✅ Exclusão: anonimização irreversível a pedido, confirmada por senha (`/academy/api/me/excluir`)
 - ✅ Retificação: edição de nome/telefone no painel
 - ✅ Ambos auditados (`lgpd.exportar`, `lgpd.excluir`)
-- ⬜ F8: descadastro de marketing em 1 clique nos e-mails
+- ✅ F8: e-mails enviados são TODOS transacionais (conta/compra/acesso — não exigem opt-in);
+  marketing continua condicionado ao consentimento do cadastro
+- ⬜ Descadastro de marketing em 1 clique: quando houver e-mail de marketing de fato (F10+)
 
 ## Segurança do tratamento
 - ✅ Logs de acesso e auditoria (quem, quando, IP, ação)

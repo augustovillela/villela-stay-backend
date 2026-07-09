@@ -432,8 +432,31 @@ function registrarPaginas(app, { notificar }) {
   app.post('/academy/api/lead', h(async (req, res) => {
     const id = repo.Leads.criar(req.body || {});
     if (notificar) notificar(`📩 Villela Academy: novo lead — ${s((req.body || {}).nome, 60)} (${s((req.body || {}).interesse, 20)}).`).catch(() => {});
+    require('./emails').webhookSaida('lead.novo', { id, nome: s((req.body || {}).nome, 80), interesse: s((req.body || {}).interesse, 30) }).catch(() => {});
     res.json({ ok: true, id });
   }));
+
+  // F8: páginas de verificação de e-mail e redefinição de senha
+  app.get('/academy/verificar-email', (req, res) => res.send(shellPublico({
+    titulo: 'Verificar e-mail', descricao: 'Confirmação de e-mail na Villela Academy.',
+    corpo: `<div class="sec"><div class="wrap" style="max-width:520px"><div class="card" id="vf-box"><p class="sub">Confirmando…</p></div></div></div>
+    <script>fetch('/academy/api/verificar-email',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token:new URLSearchParams(location.search).get('token')})})
+      .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.erro||'erro');});})
+      .then(function(){document.getElementById('vf-box').innerHTML='<h2 style="text-align:left">✅ E-mail confirmado!</h2><p><a class="btn" href="/academy/app">Ir para o painel</a></p>';})
+      .catch(function(e){document.getElementById('vf-box').innerHTML='<p class="erro">'+e.message+'</p>';});</script>` })));
+  app.get('/academy/redefinir-senha', (req, res) => res.send(shellPublico({
+    titulo: 'Redefinir senha', descricao: 'Redefinição de senha na Villela Academy.',
+    corpo: `<div class="sec"><div class="wrap" style="max-width:520px"><div class="card">
+      <h2 style="text-align:left">Criar nova senha</h2>
+      <input id="s1" type="password" placeholder="Nova senha (8+)"><input id="s2" type="password" placeholder="Confirme">
+      <p><button class="btn" onclick="salvar()">Salvar nova senha</button></p><p id="m" class="erro"></p></div></div></div>
+    <script>function salvar(){var m=document.getElementById('m');m.textContent='';
+      if(s1.value!==s2.value){m.textContent='As senhas não conferem.';return}
+      fetch('/academy/api/senha/redefinir',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({token:new URLSearchParams(location.search).get('token'),senha:s1.value})})
+        .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.erro||'erro');});})
+        .then(function(){location.href='/academy/app';}).catch(function(e){m.textContent=e.message;});}</script>` })));
 }
 
 module.exports = { registrarPaginas, landingHTML, appHTML };

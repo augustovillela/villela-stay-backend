@@ -7,6 +7,7 @@
 'use strict';
 const jwt = require('jsonwebtoken');
 const repo = require('./repo');
+const com = require('./emails'); // F8
 
 const COOKIE = 'academy_sess';
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -55,6 +56,10 @@ function registrarRotasCliente(app, { jwtSecret }) {
     let u;
     try { u = repo.Usuarios.criar(d); } catch (e) { falha(ip); throw e; }
     repo.Auditoria.registrar({ quem: u.id, papel: 'aluno', acao: 'auth.signup', entidade: 'users', entidade_id: u.id, detalhe: u.email, ip });
+    // F8: boas-vindas com link de verificação de e-mail (best-effort)
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const tokVerif = jwt.sign({ tipo: 'academy-verify', uid: u.id }, jwtSecret, { expiresIn: '7d' });
+    com.Emails.boasVindas(u, `${proto}://${req.get('host')}/academy/verificar-email?token=${tokVerif}`);
     const jti = repo.Sessoes.criar(u.id, { ip, userAgent: req.headers['user-agent'] });
     const token = jwt.sign({ uid: u.id, jti }, jwtSecret, { expiresIn: '30d' });
     res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/academy' });
@@ -113,6 +118,54 @@ function registrarRotasCliente(app, { jwtSecret }) {
     res.json({ ok: true, relogin: true });
   }));
 
+  // ---- F8: verificação de e-mail + recuperação de senha + notificações ----
+  app.post('/academy/api/me/reenviar-verificacao', requireUsuario, h(async (req, res) => {
+    if (req.usuario.email_verificado) return res.json({ ok: true, ja_verificado: true });
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const tok = jwt.sign({ tipo: 'academy-verify', uid: req.usuario.id }, jwtSecret, { expiresIn: '7d' });
+    await com.Emails.reenviarVerificacao(req.usuario, `${proto}://${req.get('host')}/academy/verificar-email?token=${tok}`);
+    res.json({ ok: true });
+  }));
+  app.post('/academy/api/verificar-email', h(async (req, res) => {
+    let dec; try { dec = jwt.verify(s((req.body || {}).token, 2000), jwtSecret); } catch (_) { return res.status(400).json({ erro: 'Link inválido ou expirado.' }); }
+    if (dec.tipo !== 'academy-verify') return res.status(400).json({ erro: 'Link inválido.' });
+    repo.Usuarios.marcarEmailVerificado(dec.uid);
+    repo.Auditoria.registrar({ quem: dec.uid, acao: 'auth.email-verificado', entidade: 'users', entidade_id: dec.uid, ip: ipDe(req) });
+    res.json({ ok: true });
+  }));
+
+  // esqueci minha senha: sempre responde ok (sem enumeração de e-mails)
+  app.post('/academy/api/senha/esquecer', h(async (req, res) => {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente em 15 minutos.' });
+    falha(ip); // conta contra o rate limit p/ evitar abuso do disparo
+    const u = repo.Usuarios.porEmail((req.body || {}).email);
+    if (u && u.status === 'ativo') {
+      const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const tok = jwt.sign({ tipo: 'academy-reset', uid: u.id }, jwtSecret, { expiresIn: '30m' });
+      com.Emails.redefinirSenha(u, `${proto}://${req.get('host')}/academy/redefinir-senha?token=${tok}`);
+      repo.Auditoria.registrar({ quem: u.id, acao: 'auth.senha-esquecer', entidade: 'users', entidade_id: u.id, ip });
+    }
+    res.json({ ok: true }); // resposta idêntica exista ou não a conta
+  }));
+  app.post('/academy/api/senha/redefinir', h(async (req, res) => {
+    let dec; try { dec = jwt.verify(s((req.body || {}).token, 2000), jwtSecret); } catch (_) { return res.status(400).json({ erro: 'Link inválido ou expirado.' }); }
+    if (dec.tipo !== 'academy-reset') return res.status(400).json({ erro: 'Link inválido.' });
+    repo.Usuarios.trocarSenha(dec.uid, (req.body || {}).senha);
+    repo.Sessoes.revogarDoUsuario(dec.uid); // troca derruba sessões
+    repo.Auditoria.registrar({ quem: dec.uid, acao: 'auth.senha-redefinida', entidade: 'users', entidade_id: dec.uid, ip: ipDe(req) });
+    res.json({ ok: true });
+  }));
+
+  // sininho
+  app.get('/academy/api/notificacoes', requireUsuario, h(async (req, res) => {
+    res.json(com.Notificacoes.doUsuario(req.usuario.id));
+  }));
+  app.post('/academy/api/notificacoes/lidas', requireUsuario, h(async (req, res) => {
+    com.Notificacoes.marcarLidas(req.usuario.id);
+    res.json({ ok: true });
+  }));
+
   // LGPD: takeout + exclusão (anonimização) pelo próprio titular
   app.get('/academy/api/me/exportar', requireUsuario, h(async (req, res) => {
     aud(req, 'lgpd.exportar', 'users', req.usuario.id, '');
@@ -165,6 +218,11 @@ function registrarRotasCliente(app, { jwtSecret }) {
     if (!['produtor', 'afiliado'].includes(tipo)) return res.status(400).json({ erro: 'Tipo inválido.' });
     const p = repo.Perfis.decidir(tipo, userId, s((req.body || {}).status, 20), (req.body || {}).motivo);
     aud(req, `perfil.${tipo}.${p.status}`, tipo === 'produtor' ? 'producer_profiles' : 'affiliate_profiles', userId, s((req.body || {}).motivo, 200));
+    const alvo = repo.Usuarios.porId(userId); // F8: avisa o solicitante
+    if (alvo) {
+      com.Emails.perfilDecidido(alvo, tipo, p.status, (req.body || {}).motivo);
+      com.Notificacoes.criar(alvo.id, `Cadastro de ${tipo}: ${p.status}`, p.status === 'aprovado' ? 'A nova aba já está no seu painel.' : s((req.body || {}).motivo, 200), '/academy/app');
+    }
     res.json({ ok: true, perfil: { status: p.status } });
   }));
   app.post('/academy/api/admin/usuarios/:id/status', ...ADM, h(async (req, res) => {

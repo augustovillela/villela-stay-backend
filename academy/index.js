@@ -30,6 +30,14 @@ function montar(app, injected = {}) {
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
   require('./storage').configurar({ segredo: jwtSecret }); // URLs assinadas (F7)
+  const emails = require('./emails');
+  emails.configurar({ enviarEmail: injected.enviarEmail }); // e-mails transacionais (F8)
+
+  // rotina F8: lembrete de pedido abandonado (1x/h; ACADEMY_ROTINAS=off desliga)
+  if (String(process.env.ACADEMY_ROTINAS || 'on').toLowerCase() !== 'off') {
+    const t = setInterval(() => { emails.processarPedidosAbandonados(emails.base()).catch(() => {}); }, 3600e3);
+    if (t.unref) t.unref();
+  }
 
   registrarRotasStaff(app, { requireAuth, requireAdmin });
   registrarRotasCheckoutStaff(app, { requireAuth, requireAdmin });

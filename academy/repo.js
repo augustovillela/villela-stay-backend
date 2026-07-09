@@ -56,6 +56,10 @@ const Usuarios = {
     return this.porId(id);
   },
 
+  marcarEmailVerificado(id) {
+    db.prepare('UPDATE users SET email_verificado = 1, atualizado_em = ? WHERE id = ?').run(nowISO(), id);
+  },
+
   mudarStatus(id, status) {
     if (!['ativo', 'suspenso', 'bloqueado'].includes(status)) throw new Error('Status inválido.');
     db.prepare('UPDATE users SET status = ?, atualizado_em = ? WHERE id = ?').run(status, nowISO(), id);

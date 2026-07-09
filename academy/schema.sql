@@ -102,6 +102,29 @@ CREATE TABLE IF NOT EXISTS leads (
   criado_em TEXT NOT NULL
 );
 
+-- ---- NOTIFICAÇÕES internas (sininho do painel) — FASE 8 ----
+CREATE TABLE IF NOT EXISTS notifications (
+  id        TEXT PRIMARY KEY,
+  user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  titulo    TEXT NOT NULL,
+  texto     TEXT DEFAULT '',
+  url       TEXT DEFAULT '',
+  lida      INTEGER DEFAULT 0,
+  criado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, lida);
+
+-- ---- LOG de comunicações (e-mail/webhook/interna) — FASE 8 ----
+CREATE TABLE IF NOT EXISTS notification_logs (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  quando   TEXT NOT NULL,
+  canal    TEXT DEFAULT '',   -- email|webhook|interna
+  destino  TEXT DEFAULT '',
+  template TEXT DEFAULT '',
+  status   TEXT DEFAULT '',   -- ok|erro:<msg>
+  detalhe  TEXT DEFAULT ''
+);
+
 -- ---- CONFIG DA PLATAFORMA (chave-valor; comissões padrão, flags, textos) ----
 CREATE TABLE IF NOT EXISTS platform_settings (
   chave         TEXT PRIMARY KEY,

@@ -47,7 +47,22 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
     if (!['produtor', 'afiliado'].includes(tipo)) return res.status(400).json({ erro: 'Tipo inválido.' });
     const p = repo.Perfis.decidir(tipo, userId, String((req.body || {}).status || ''), (req.body || {}).motivo);
     aud(req, `perfil.${tipo}.${p.status}`, tipo === 'produtor' ? 'producer_profiles' : 'affiliate_profiles', userId, String((req.body || {}).motivo || ''));
+    const com = require('./emails'); // F8: avisa o solicitante
+    const alvo = repo.Usuarios.porId(userId);
+    if (alvo) {
+      com.Emails.perfilDecidido(alvo, tipo, p.status, (req.body || {}).motivo);
+      com.Notificacoes.criar(alvo.id, `Cadastro de ${tipo}: ${p.status}`, p.status === 'aprovado' ? 'A nova aba já está no seu painel.' : String((req.body || {}).motivo || ''), '/academy/app');
+    }
     res.json({ ok: true, perfil: { status: p.status } });
+  }));
+
+  // F8: log de comunicações (e-mail/webhook/interna) + disparo manual da rotina de abandono
+  app.get('/staff/api/academy/comunicacoes-log', ...A, h((req, res) => {
+    res.json({ eventos: require('./emails').Logs.listar(req.query.n) });
+  }));
+  app.post('/staff/api/academy/pedidos-abandonados/processar', ...A, h(async (req, res) => {
+    const n = await require('./emails').processarPedidosAbandonados(require('./emails').base());
+    res.json({ ok: true, lembretes_enviados: n });
   }));
 
   // config comercial (comissões padrão etc.)

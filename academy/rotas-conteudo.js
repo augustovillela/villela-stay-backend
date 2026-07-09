@@ -116,6 +116,12 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
     const p = doDono(req);
     const id = ct.Matriculas.criar(p.id, s((req.body || {}).email, 120), req.usuario.id, 'cortesia');
     aud(req, 'matricula.cortesia', 'enrollments', id, s((req.body || {}).email, 120));
+    const com = require('./emails'); // F8: avisa o aluno
+    const aluno = repo.Usuarios.porEmail((req.body || {}).email);
+    if (aluno) {
+      com.Emails.cortesia(aluno, p.titulo, com.base());
+      com.Notificacoes.criar(aluno.id, '🎁 Acesso liberado', `Você recebeu acesso de cortesia a "${p.titulo}".`, '/academy/app');
+    }
     res.json({ ok: true, id });
   }));
   app.post('/academy/api/produtor/produtos/:id/matriculas/:eid/revogar', ...P, h((req, res) => {

@@ -1,11 +1,11 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASES 0–7 concluídas em 08–09/07/2026 (diagnóstico, fundação, produtos e
+FASES 0–8 concluídas em 08–09/07/2026 (diagnóstico, fundação, produtos e
 cursos, marketplace, checkout Mercado Pago, afiliados e comissões, assinaturas
-e clubes, storage/URLs assinadas/vídeo) — ver README. Cada fase termina com:
-testes verdes na suíte, checklist de segurança da fase fechado, doc do assunto
-atualizado.
-**A plataforma vende avulso, comissiona afiliados e cobra assinatura recorrente.**
+e clubes, storage/URLs assinadas/vídeo, comunicações) — ver README. Cada fase
+termina com: testes verdes na suíte, checklist de segurança da fase fechado,
+doc do assunto atualizado.
+**A plataforma vende, comissiona, cobra recorrente e conversa com todo mundo.**
 
 ## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
 Entregue: produtos de 6 tipos com fluxo editorial completo (rascunho→revisão→
@@ -80,10 +80,19 @@ do Augusto — sem isso vídeo segue por URL externa); watermark real em PDF
 (exige pdf-lib); transcode/thumbnail (exige worker/ffmpeg — quando houver
 volume). 84 testes.
 
-## FASE 8 — Comunicação e automações
-E-mails transacionais (compra, acesso, senha, lembretes), WhatsApp via
-infraestrutura existente (templates business), carrinho abandonado (com
-consentimento), notificações internas, integração Make/n8n e CRM Villela.
+## ✅ FASE 8 — Comunicação e automações (CONCLUÍDA 09/07/2026)
+Entregue: e-mails transacionais com templates da marca (boas-vindas +
+**verificação de e-mail**, **recuperação de senha** com token 30 min que
+derruba sessões, compra paga → comprador e produtor, reembolso, assinatura
+ativa/pausada/cancelada, matrícula cortesia, perfil aprovado/rejeitado),
+**notificações internas** (sininho no painel, badge + marcar lidas),
+**pedido abandonado** (lembrete único por e-mail p/ pendente entre 1h e 48h;
+rotina horária + disparo manual no staff), **webhook de saída assinado**
+(HMAC `X-Academy-Signature`) p/ Make/n8n/CRM nos eventos venda.paga,
+lead.novo, assinatura.ativa e reembolso (config `webhook_saida` via staff),
+log completo em `notification_logs`. Tudo best-effort — comunicação nunca
+derruba o fluxo. WhatsApp automático a clientes NÃO entrou (regra da casa:
+business só com template aprovado; alertas ao dono já saem). 91 testes.
 
 ## FASE 9 — IA
 Agentes: criador de curso, copywriter de página de venda, pedagógico (quizzes),

@@ -47,6 +47,11 @@ const MIGRACOES = [
     sql: `ALTER TABLE media_files ADD COLUMN storage TEXT DEFAULT 'local';
           ALTER TABLE media_files ADD COLUMN confirmado INTEGER DEFAULT 1;`,
   },
+  { // FASE 8: verificação de e-mail e lembrete de pedido abandonado
+    nome: 'comunicacoes-2026-07-09',
+    sql: `ALTER TABLE users ADD COLUMN email_verificado INTEGER DEFAULT 0;
+          ALTER TABLE orders ADD COLUMN lembrete_em TEXT DEFAULT '';`,
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

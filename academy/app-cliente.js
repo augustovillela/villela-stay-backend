@@ -41,12 +41,20 @@
     root().innerHTML = '<div class="card" style="max-width:420px"><h3>Entrar</h3>' +
       '<input id="em" type="email" placeholder="E-mail"><input id="sn" type="password" placeholder="Senha">' +
       '<button class="btn" id="b-entrar">Entrar</button><p id="msg" class="erro"></p>' +
-      '<p class="sub" style="text-align:left">Novo por aqui? <a href="#cadastro" id="b-cad">Crie sua conta grátis</a>.</p></div>';
+      '<p class="sub" style="text-align:left">Novo por aqui? <a href="#cadastro" id="b-cad">Crie sua conta grátis</a> · <a href="#" id="b-esqueci">Esqueci minha senha</a></p></div>';
     el('b-entrar').onclick = function () {
       el('msg').textContent = '';
       api('POST', '/login', { email: val('em'), senha: val('sn') }).then(bootAcademy).catch(function (e) { el('msg').textContent = e.message; });
     };
     el('b-cad').onclick = function (e) { e.preventDefault(); renderCadastro(); };
+    el('b-esqueci').onclick = function (e) {
+      e.preventDefault();
+      var em = prompt('Qual o seu e-mail de cadastro?', val('em'));
+      if (!em) return;
+      api('POST', '/senha/esquecer', { email: em })
+        .then(function () { alert('Se este e-mail tiver conta, o link de redefinição chega em instantes.'); })
+        .catch(function (er) { alert(er.message); });
+    };
   }
   function renderCadastro() {
     root().innerHTML = '<div class="card" style="max-width:460px"><h3>Criar conta</h3>' +
@@ -75,11 +83,35 @@
     if (papeis.indexOf('admin') >= 0) tabs.push(['admin', '🛠️ Admin', vAdmin]);
     tabs.push(['conta', '👤 Conta', vConta]);
     var nav = tabs.map(function (t) { return '<button class="btn g peq" data-nav="' + t[0] + '">' + t[1] + '</button>'; }).join('');
+    var bannerVerif = me.usuario.email_verificado ? '' :
+      '<div class="aviso">📧 Confirme seu e-mail para receber avisos de compra e acesso. <a href="#" id="b-reenv">Reenviar link</a> <span id="rv-msg"></span></div>';
     root().innerHTML = '<div class="card"><h3>Olá, ' + esc(me.usuario.nome) + ' ' +
-      papeis.map(function (p) { return '<span class="chip">' + esc(p) + '</span>'; }).join(' ') + '</h3>' +
+      papeis.map(function (p) { return '<span class="chip">' + esc(p) + '</span>'; }).join(' ') +
+      ' <a href="#" id="b-sino" style="text-decoration:none;float:right">🔔<span id="sino-n" class="chip" style="display:none"></span></a></h3>' +
+      bannerVerif + '<div id="sino-box" style="display:none"></div>' +
       '<div class="menu" id="nav">' + nav + '</div>' +
       '<p class="sub" style="text-align:left;margin:0">' + esc(me.usuario.email) + ' · <a href="#" id="b-sair">sair</a></p></div><div id="c"></div>';
     el('b-sair').onclick = function (e) { e.preventDefault(); sair(); };
+    if (el('b-reenv')) el('b-reenv').onclick = function (e) {
+      e.preventDefault();
+      api('POST', '/me/reenviar-verificacao').then(function () { el('rv-msg').textContent = '✅ enviado!'; }).catch(function (er) { el('rv-msg').textContent = er.message; });
+    };
+    // sininho (F8)
+    api('GET', '/notificacoes').then(function (d) {
+      if (d.nao_lidas > 0) { var b = el('sino-n'); b.style.display = ''; b.textContent = d.nao_lidas; }
+      el('b-sino').onclick = function (e) {
+        e.preventDefault();
+        var box = el('sino-box');
+        if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+        box.style.display = '';
+        box.innerHTML = d.itens.length
+          ? d.itens.map(function (n) {
+            return '<div class="lin"' + (n.lida ? ' style="opacity:.6"' : '') + '><b>' + esc(n.titulo) + '</b><br><span class="sub" style="text-align:left;margin:0">' + esc(n.texto) + ' · ' + dt(n.criado_em) + '</span></div>';
+          }).join('')
+          : '<p class="sub" style="text-align:left">Nenhuma notificação.</p>';
+        if (d.nao_lidas > 0) api('POST', '/notificacoes/lidas').then(function () { el('sino-n').style.display = 'none'; d.nao_lidas = 0; }).catch(function () {});
+      };
+    }).catch(function () {});
     var map = {};
     tabs.forEach(function (t) { map[t[0]] = t[2]; });
     Array.prototype.forEach.call(document.querySelectorAll('#nav [data-nav]'), function (b) {

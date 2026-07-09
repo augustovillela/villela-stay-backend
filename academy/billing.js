@@ -10,6 +10,7 @@ const { db, transacao, nowISO, novoId, j } = require('./db');
 const repo = require('./repo');
 const ct = require('./repo-conteudo');
 const af = require('./repo-afiliados');
+const com = require('./emails'); // F8: e-mails, notificações internas, webhook de saída
 
 let _mpFetch = null;
 let _notificar = async () => {};
@@ -133,6 +134,18 @@ function aplicarPagamento(pay) {
     });
     repo.Auditoria.registrar({ quem: 'mercadopago', acao: 'pedido.pago', entidade: 'orders', entidade_id: order.id, detalhe: `R$ ${(order.valor_centavos / 100).toFixed(2)}` });
     _notificar(`💰 Villela Academy: venda paga — "${order.produto_titulo}" (R$ ${(order.valor_centavos / 100).toFixed(2)}). Comissão da plataforma: R$ ${(order.comissao_plataforma_centavos / 100).toFixed(2)}.`).catch(() => {});
+    // F8: comprador + produtor (e-mail e sininho) + webhook de saída
+    const comprador = repo.Usuarios.porId(order.user_id);
+    const produtor = repo.Usuarios.porId(order.producer_id);
+    if (comprador) {
+      com.Emails.compraPaga(comprador, order, com.base());
+      com.Notificacoes.criar(comprador.id, '🎉 Acesso liberado', `"${order.produto_titulo}" já está na sua biblioteca.`, '/academy/app');
+    }
+    if (produtor) {
+      com.Emails.vendaAoProdutor(produtor, order);
+      com.Notificacoes.criar(produtor.id, '💰 Você vendeu!', `"${order.produto_titulo}" — líquido R$ ${(order.liquido_produtor_centavos / 100).toFixed(2)}.`, '/academy/app');
+    }
+    com.webhookSaida('venda.paga', { order_id: order.id, produto: order.produto_titulo, valor_centavos: order.valor_centavos }).catch(() => {});
     return { resultado: 'paga' };
   }
   if (['rejected', 'cancelled'].includes(st) && order.status === 'pendente') {
@@ -158,6 +171,12 @@ function aplicarReembolso(order, { motivo, quem, mp_refund_id } = {}) {
   });
   repo.Auditoria.registrar({ quem: s(quem, 80), acao: 'pedido.reembolsar', entidade: 'orders', entidade_id: order.id, detalhe: s(motivo, 200) });
   _notificar(`↩️ Villela Academy: reembolso — "${order.produto_titulo}" (R$ ${(order.valor_centavos / 100).toFixed(2)}). Acesso revogado.`).catch(() => {});
+  const comprador = repo.Usuarios.porId(order.user_id);
+  if (comprador) {
+    com.Emails.reembolso(comprador, order);
+    com.Notificacoes.criar(comprador.id, '↩️ Reembolso processado', `"${order.produto_titulo}" foi estornado e o acesso encerrado.`, '');
+  }
+  com.webhookSaida('reembolso', { order_id: order.id, produto: order.produto_titulo, valor_centavos: order.valor_centavos }).catch(() => {});
 }
 
 // reembolso disparado por admin/staff (chama o MP e aplica localmente)
@@ -242,6 +261,12 @@ function aplicarPreapproval(pre) {
   repo.Auditoria.registrar({ quem: 'mercadopago', acao: 'assinatura.' + novo, entidade: 'subscriptions', entidade_id: sub.id, detalhe: sub.produto_titulo });
   if (novo === 'ativa') _notificar(`🔁 Villela Academy: assinatura ATIVA — "${sub.produto_titulo}" (R$ ${(sub.valor_centavos / 100).toFixed(2)}/mês).`).catch(() => {});
   if (novo === 'pausada') _notificar(`⚠️ Villela Academy: assinatura PAUSADA (inadimplência?) — "${sub.produto_titulo}".`).catch(() => {});
+  const assinante = repo.Usuarios.porId(sub.user_id);
+  if (assinante) {
+    com.Emails.assinatura(assinante, sub, novo, com.base());
+    com.Notificacoes.criar(assinante.id, `Assinatura ${novo}`, `"${sub.produto_titulo}" — assinatura ${novo}.`, '/academy/app');
+  }
+  if (novo === 'ativa') com.webhookSaida('assinatura.ativa', { subscription_id: sub.id, produto: sub.produto_titulo, valor_centavos: sub.valor_centavos }).catch(() => {});
   return { resultado: novo };
 }
 
@@ -271,6 +296,11 @@ async function cancelarAssinatura(subId, quem) {
   Assinaturas.mudarStatus(sub, 'cancelada');
   repo.Auditoria.registrar({ quem: s(quem, 80), acao: 'assinatura.cancelar', entidade: 'subscriptions', entidade_id: sub.id, detalhe: sub.produto_titulo });
   _notificar(`🔕 Villela Academy: assinatura cancelada — "${sub.produto_titulo}".`).catch(() => {});
+  const assinante = repo.Usuarios.porId(sub.user_id);
+  if (assinante) {
+    com.Emails.assinatura(assinante, sub, 'cancelada', com.base());
+    com.Notificacoes.criar(assinante.id, 'Assinatura cancelada', `"${sub.produto_titulo}" — acesso encerrado.`, '');
+  }
   return { ok: true, status: 'cancelada' };
 }
 

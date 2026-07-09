@@ -10,7 +10,9 @@ fase corrente em aberto.
 - ✅ Sessões revogáveis (jti em `sessions`): logout, troca de senha e suspensão derrubam sessões
 - ✅ Rate limit de login/signup (5 falhas/IP → 15 min)
 - ✅ Resposta idêntica p/ e-mail inexistente vs senha errada (sem enumeração)
-- ⬜ F8: verificação de e-mail no cadastro (junto com e-mails transacionais) · ⬜ F10: 2FA opcional (padrão vdocs)
+- ✅ F8: verificação de e-mail no cadastro (link 7d; flag no painel; soft até haver motivo p/ endurecer)
+- ✅ F8: recuperação de senha com token 30 min, resposta sem enumeração, rate limit e derrubada de sessões
+- ⬜ F10: 2FA opcional (padrão vdocs)
 
 ## Autorização
 - ✅ Papéis (aluno/produtor/afiliado/admin) + permissões derivadas (`repo.PERMISSOES`)
