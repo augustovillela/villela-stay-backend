@@ -2,7 +2,7 @@
   <rect width="120" height="120" rx="24" fill="#1B2A4A"/>
   <g transform="translate(0,-4)">
   <polygon points="14,26 60,58 106,26 106,40 60,72 14,40" fill="#C9A227"/>
-  <polygon points="16,46 42,64 42,100 16,112" fill="#BE123C"/>
-  <polygon points="104,46 78,64 78,100 104,112" fill="#BE123C"/>
+  <polygon points="16,46 42,64 42,100 16,112" fill="#B0185A"/>
+  <polygon points="104,46 78,64 78,100 104,112" fill="#B0185A"/>
   </g>
 </svg>

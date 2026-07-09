@@ -27,7 +27,7 @@ Pranchas de referência geradas por IA e aprovadas pelo Augusto: `*/referencia-b
 
 `grupo-villela` (dourado) · `villela-stay` (dourado) · `villela-stay-manager` #0E7490 ·
 `villela-docs` #2563EB · `villela-legal` #14532D+dourado · `villela-academy` #D97706 ·
-`villela-projects` #7C3AED · `livraria-villela` #7F1D1D · `villela-crm` #BE123C. Base: navy #1B2A4A · gold #C9A227 ·
+`villela-projects` #7C3AED · `livraria-villela` #7F1D1D · `villela-crm` #B0185A. Base: navy #1B2A4A · gold #C9A227 ·
 ice #F8F9FA · graphite #1F2933. Tipografia: Lora (marca) + Inter (UI).
 
 ## Regenerar

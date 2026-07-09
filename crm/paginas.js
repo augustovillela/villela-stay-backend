@@ -2,7 +2,7 @@
 // Villela CRM — páginas públicas + painel do assinante.
 // Landing/preços/signup em /crm · painel em /crm/app (SPA app-cliente.js)
 // · proposta pública em /crm/p/:token. Server-rendered, sem build.
-// Identidade: sistema V-Portal do Grupo Villela Stay; acento CRM #BE123C.
+// Identidade: sistema V-Portal do Grupo Villela Stay; acento CRM #B0185A.
 // =====================================================================
 'use strict';
 const jwt = require('jsonwebtoken');
@@ -14,7 +14,7 @@ const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 });
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
-const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#BE123C;--acento2:#9F1239;--borda:#E2E6EC}
+const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#B0185A;--acento2:#8E1348;--borda:#E2E6EC}
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}
 a{color:var(--acento)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
@@ -23,7 +23,7 @@ a{color:var(--acento)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
 .badge{display:inline-block;background:var(--villela-gold);color:var(--villela-navy);font-weight:700;padding:4px 12px;border-radius:20px;font-size:.85rem}
 .btn{display:inline-block;background:var(--acento);color:#fff;font-weight:700;border:0;border-radius:26px;padding:13px 28px;cursor:pointer;font-size:1rem;text-decoration:none}
 .btn:hover{background:var(--acento2)}
-.btn.g{background:#fff;color:var(--acento)}.btn.g:hover{background:#fdeef1}.btn.o{background:transparent;border:2px solid #f4f6f9;color:#f4f6f9}.btn.o:hover{background:rgba(255,255,255,.12)}
+.btn.g{background:#fff;color:var(--acento)}.btn.g:hover{background:#fdeef6}.btn.o{background:transparent;border:2px solid #f4f6f9;color:#f4f6f9}.btn.o:hover{background:rgba(255,255,255,.12)}
 .sec{padding:56px 0}.sec h2{font-size:1.7rem;color:var(--villela-navy);text-align:center;margin-bottom:8px}
 .sub{text-align:center;color:#5b6b70;max-width:620px;margin:0 auto 34px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
@@ -37,11 +37,11 @@ a{color:var(--acento)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
 footer{background:var(--villela-navy);color:#c3cbd9;padding:30px 0;text-align:center;font-size:.9rem}
 input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:9px;font:inherit;margin:5px 0 12px}
 .form{max-width:460px;margin:0 auto;background:#fff;padding:26px;border-radius:14px;border:1px solid var(--borda)}
-.tag{display:inline-block;background:#fbe7ec;color:var(--acento2);border-radius:12px;padding:2px 10px;font-size:.8rem}
+.tag{display:inline-block;background:#fbe7f1;color:var(--acento2);border-radius:12px;padding:2px 10px;font-size:.8rem}
 .marca{display:inline-flex;align-items:center;gap:10px}.marca img{height:32px}
 .marca .m1{font-family:'Lora',Georgia,serif;font-weight:700;font-size:1.3rem;color:var(--villela-navy)}
 .marca .m2{font-family:'Inter',system-ui,sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--acento)}
-.marca.neg .m1{color:#fff}.marca.neg .m2{color:#FDA4AF}
+.marca.neg .m1{color:#fff}.marca.neg .m2{color:#F6A8CE}
 header.top{background:var(--villela-navy2);color:#fff}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:18px;padding-bottom:18px}
 header.top a{color:#E8ECF4;text-decoration:none}
@@ -134,7 +134,7 @@ function landingHTML() {
         <textarea id="l-msg" rows="3" placeholder="Quantos leads/mês você recebe? Como podemos ajudar?"></textarea>
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
-    <footer>Villela CRM · Relacionamento e vendas inteligentes · <a href="/crm/app" style="color:var(--villela-gold)">Painel do cliente</a> · <a href="/crm/ajuda" style="color:var(--villela-gold)">Ajuda</a>
+    <footer>Villela CRM · Relacionamento que aproxima. Processos que convertem. · <a href="/crm/app" style="color:var(--villela-gold)">Painel do cliente</a> · <a href="/crm/ajuda" style="color:var(--villela-gold)">Ajuda</a>
       <br><span style="opacity:.8">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/crm/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -182,11 +182,11 @@ function appHTML() {
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:118px}
     .kpi .n{font-size:1.4rem;font-weight:800;color:var(--villela-navy)}.kpi .r{font-size:.78rem;color:#5b6b70}
     .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem;margin:.4rem 0}
-    .erro{color:#b00020}.btn.peq{padding:6px 14px;font-size:.85rem}.btn.secund{background:#fbe7ec;color:var(--acento2)}.btn.secund:hover{background:#f7d5de}
+    .erro{color:#b00020}.btn.peq{padding:6px 14px;font-size:.85rem}.btn.secund{background:#fbe7f1;color:var(--acento2)}.btn.secund:hover{background:#f7d3e7}
     .hi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
     label{font-size:.85rem;font-weight:600;display:block}
     table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--borda)}
-    th{color:#5b6b70;font-weight:600}.chip,.tag{display:inline-block;background:#fbe7ec;color:var(--acento2);border-radius:12px;padding:2px 9px;font-size:.78rem}
+    th{color:#5b6b70;font-weight:600}.chip,.tag{display:inline-block;background:#fbe7f1;color:var(--acento2);border-radius:12px;padding:2px 9px;font-size:.78rem}
     .chip.frio{background:#e8eef4;color:#3b556e}.chip.morno{background:#fdf1dc;color:#92610a}.chip.quente{background:#fde3d2;color:#b4470b}.chip.muito-quente{background:#fbdada;color:#a31212}
     .kanban{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px}
     .kcol{min-width:230px;max-width:250px;background:#EDF1F5;border-radius:12px;padding:8px;flex-shrink:0}
