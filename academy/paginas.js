@@ -51,7 +51,11 @@ input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radiu
 .marca{display:inline-flex;align-items:center;gap:10px;text-decoration:none}
 .marca .mnome{font-family:'Lora',Georgia,serif;font-weight:700;font-size:1.15rem}
 .marca .msub{font-family:'Inter',system-ui,sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.22em;color:var(--acento)}
-@media(max-width:640px){.hero h1{font-size:1.8rem}}`;
+header.top{background:var(--villela-navy2);color:#fff;position:sticky;top:0;z-index:20}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+header.top a{color:#E8ECF4;text-decoration:none}
+header.top nav{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+@media(max-width:640px){.hero h1{font-size:1.8rem}header.top .esconde{display:none}}`;
 
 function landingHTML() {
   const feats = [
@@ -71,15 +75,18 @@ function landingHTML() {
     <meta property="og:image" content="${BASE_URL()}${BRAND}/og-image.png">
     ${HEAD_MARCA}
     <style>${CSS}</style></head><body>
+    <header class="top"><div class="wrap">
+      ${marca({ escuro: true, altura: 32 })}
+      <nav><a class="esconde" href="/academy#recursos">Recursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
+    </div></header>
     <div class="hero"><div class="wrap">
-      <p style="margin:0 0 14px">${marca({ escuro: true, altura: 36 })}</p>
       <h1>Ensine, aprenda e venda conhecimento em um só lugar.</h1>
       <p><b>Aprenda, aplique e transforme</b> — marketplace de cursos online e produtos digitais: produtores publicam, afiliados divulgam, alunos aprendem, com checkout nacional e área de membros.</p>
       <p style="margin-top:26px"><a class="btn" href="/academy/marketplace">Explorar o marketplace</a>
       &nbsp;<a class="btn g" href="/academy/app#cadastro">Criar conta grátis</a>
       &nbsp;<a class="btn o" href="/academy/app">Entrar</a></p>
     </div></div>
-    <div class="sec"><div class="wrap"><h2>Feita para os três lados do balcão</h2>
+    <div class="sec" id="recursos"><div class="wrap"><h2>Feita para os três lados do balcão</h2>
       <p class="sub">Aluno, produtor e afiliado com painéis próprios — e a plataforma cuidando de pagamento, entrega e segurança.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
