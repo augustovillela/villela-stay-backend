@@ -6,8 +6,9 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASES 1–4 concluídas (fundação, produtos e cursos, marketplace,
-checkout Mercado Pago) — a plataforma já vende.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
+**Status: FASES 1–5 concluídas (fundação, produtos e cursos, marketplace,
+checkout Mercado Pago, afiliados e comissões) — a plataforma vende e
+comissiona.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
 
@@ -76,6 +77,10 @@ entram como camadas novas nas fases seguintes sem tocar na fundação.
 
 **FASE 4 (criado)**: `orders` (com snapshot de comissão), `payment_events`,
 `webhook_events`, `refunds`.
+
+**FASE 5 (criado)**: `affiliate_links`, `affiliate_clicks`, `commissions`;
+colunas `products.afiliado_pct` e `orders.{affiliate_user_id,afiliado_pct,
+comissao_afiliado_centavos}` via migração.
 
 **Fases seguintes (planejado — criar quando a fase chegar)**:
 - F3 marketplace: `sales_pages`, `page_sections`, `reviews`
@@ -159,7 +164,16 @@ webhook/consulta segura (nunca pelo retorno do navegador).
 16. **Comissões (F4)**: plataforma 10% e afiliado padrão 10% — decisão oficial
    do Augusto (fonte: `regras\regras-negocio.md`; viva em `platform_settings`).
    O pedido guarda snapshot do % vigente; reembolso/chargeback revoga o acesso
-   e (F5) bloqueará a comissão do afiliado.
+   e cancela a comissão do afiliado.
+17. **Atribuição de afiliado (F5) — estrita e last-click**: o link vale só para
+   o produto dele; cookie `academy_ref` httpOnly (30d config.); nunca atribui
+   auto-compra nem o próprio produtor; validação toda server-side no checkout.
+18. **Comissão do afiliado sai da parte do produtor** (padrão do mercado de
+   infoprodutos): líquido = valor − plataforma − afiliado.
+19. **Ciclo da comissão (F5)**: pendente → disponível quando a garantia do
+   produto vence (liberação preguiçosa ao consultar, sem scheduler) → paga
+   (repasse manual via Pix marcado por admin/staff). Split automático do MP
+   só quando houver volume que justifique.
 
 ## Rodar e testar
 

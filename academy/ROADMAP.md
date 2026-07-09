@@ -1,9 +1,9 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASES 0 (diagnóstico), 1 (fundação), 2 (produtos e cursos), 3 (marketplace e
-páginas de venda) e 4 (checkout Mercado Pago) concluídas em 08/07/2026 — ver
-README. Cada fase termina com: testes verdes na suíte, checklist de segurança
-da fase fechado, doc do assunto atualizado. **A plataforma já vende.**
+FASES 0–5 concluídas em 08/07/2026 (diagnóstico, fundação, produtos e cursos,
+marketplace, checkout Mercado Pago, afiliados e comissões) — ver README. Cada
+fase termina com: testes verdes na suíte, checklist de segurança da fase
+fechado, doc do assunto atualizado. **A plataforma vende e comissiona.**
 
 ## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
 Entregue: produtos de 6 tipos com fluxo editorial completo (rascunho→revisão→
@@ -38,11 +38,17 @@ registra), compras do aluno, vendas do produtor (líquido), KPIs GMV/receita.
 Pendências herdadas: cupons/order bump (futuro), carrinho multi-item (futuro),
 recibos/NF (validar com contador). 62 testes.
 
-## FASE 5 — Afiliados e comissões
-Links rastreáveis (?ref=), cookie de atribuição (prazo configurável), cliques/
-conversões, regras de comissão por produto, extrato (pendente/disponível/
-bloqueada), bloqueio por reembolso/chargeback, split PREPARADO (cálculo interno
-primeiro; split real do MP quando houver volume). Painel do afiliado completo.
+## ✅ FASE 5 — Afiliados e comissões (CONCLUÍDA 08/07/2026)
+Entregue: links rastreáveis por (afiliado, produto) `?ref=<código>`, cookie de
+atribuição `academy_ref` (30 dias, configurável), cliques/conversões por link,
+atribuição estrita no checkout (mesmo produto; nunca auto-compra nem o
+produtor), comissão criada na venda paga com snapshot do % (**afiliado 10%
+padrão — oficial**; produto sobrepõe 0–90, 0 desliga), ciclo pendente →
+disponível (pós-garantia, liberação preguiçosa) → paga (repasse manual
+admin/staff), **cancelada em reembolso/chargeback**, extrato/saldos no painel
+do afiliado, produtos afiliáveis com simulação de ganho, comissões no
+admin/staff. Split real do MP fica p/ quando houver volume (o cálculo interno
+já separa as três partes em cada pedido). 72 testes.
 
 ## FASE 6 — Assinaturas e clubes
 Planos recorrentes (preapproval MP — padrão billing do vsm/legal-saas), clube

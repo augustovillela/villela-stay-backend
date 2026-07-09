@@ -316,6 +316,49 @@ CREATE TABLE IF NOT EXISTS refunds (
   criado_em      TEXT NOT NULL
 );
 
+-- =====================================================================
+-- FASE 5 — Afiliados e comissões.
+-- Link rastreável por (afiliado, produto): /academy/cursos/<slug>?ref=<codigo>.
+-- Cookie de atribuição `academy_ref` (prazo em platform_settings.comissoes.
+-- cookie_dias). Atribuição estrita: só vale para o produto do link.
+-- Comissão: pendente → disponível (após a garantia) → paga; cancelada em
+-- reembolso/chargeback. Split real do MP fica p/ quando houver volume —
+-- por ora o repasse é manual com base no extrato.
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS affiliate_links (
+  id                TEXT PRIMARY KEY,          -- o próprio código do link (?ref=)
+  affiliate_user_id TEXT NOT NULL REFERENCES users(id),
+  product_id        TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  criado_em         TEXT NOT NULL,
+  UNIQUE(affiliate_user_id, product_id)
+);
+CREATE INDEX IF NOT EXISTS idx_afflinks_user ON affiliate_links(affiliate_user_id);
+
+CREATE TABLE IF NOT EXISTS affiliate_clicks (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  link_id TEXT NOT NULL,
+  quando  TEXT NOT NULL,
+  ip      TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_affclicks_link ON affiliate_clicks(link_id);
+
+CREATE TABLE IF NOT EXISTS commissions (
+  id                TEXT PRIMARY KEY,
+  order_id          TEXT UNIQUE NOT NULL REFERENCES orders(id),
+  affiliate_user_id TEXT NOT NULL REFERENCES users(id),
+  product_id        TEXT NOT NULL,
+  produto_titulo    TEXT DEFAULT '',
+  valor_centavos    INTEGER DEFAULT 0,
+  pct               INTEGER DEFAULT 0,
+  status            TEXT DEFAULT 'pendente',   -- pendente|disponivel|paga|cancelada
+  criado_em         TEXT NOT NULL,
+  disponivel_em     TEXT DEFAULT '',           -- vira 'disponivel' depois desta data (fim da garantia)
+  atualizado_em     TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_comm_aff ON commissions(affiliate_user_id);
+CREATE INDEX IF NOT EXISTS idx_comm_status ON commissions(status);
+
 -- ---- DENÚNCIAS de conteúdo (usuário logado; admin resolve) ----
 CREATE TABLE IF NOT EXISTS moderation_reports (
   id         TEXT PRIMARY KEY,

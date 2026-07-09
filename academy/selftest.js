@@ -530,6 +530,108 @@ async function main() {
     assert.ok(dbx.prepare('SELECT COUNT(*) n FROM payment_events').get().n >= 3);
   });
 
+  // ================= FASE 5 — afiliados e comissões =================
+  console.log('\n— FASE 5: links de afiliado —');
+  const dbx = require('./db').db;
+  let brunoId, linkCode;
+  await t('staff aprova afiliado; afiliado vê produtos com % efetivo (10)', async () => {
+    brunoId = academy.repo.Usuarios.porEmail(BRUNO.email).id;
+    assert.equal((await req('POST', `/staff/api/academy/perfis/afiliado/${brunoId}/decidir`, { corpo: { status: 'aprovado' } })).st, 200);
+    const r = await req('GET', '/academy/api/afiliado/produtos', { jar: 'bruno' });
+    assert.equal(r.st, 200);
+    const p = r.json.produtos.find(x => x.id === prodId);
+    assert.ok(p); assert.equal(p.pct_efetivo, 10);
+    assert.equal(r.json.cookie_dias, 30);
+  });
+  await t('gera link rastreável (idempotente); sem papel afiliado é 403', async () => {
+    const r1 = await req('POST', '/academy/api/afiliado/links', { jar: 'bruno', corpo: { product_id: prodId } });
+    assert.equal(r1.st, 200); linkCode = r1.json.link.id;
+    const r2 = await req('POST', '/academy/api/afiliado/links', { jar: 'bruno', corpo: { product_id: prodId } });
+    assert.equal(r2.json.link.id, linkCode);
+    assert.equal((await req('POST', '/academy/api/afiliado/links', { jar: 'carla', corpo: { product_id: prodId } })).st, 403);
+  });
+  await t('clique ?ref= arma cookie e conta; código inválido não arma', async () => {
+    const FABI = { nome: 'Fabi', email: 'fabi@t.com', senha: 'senha-forte-7', aceite_termos: true };
+    await req('POST', '/academy/api/signup', { corpo: FABI, jar: 'fabi' });
+    const r = await req('GET', `/academy/cursos/gestao-de-temporada-na-pratica?ref=${linkCode}`, { jar: 'fabi' });
+    assert.equal(r.st, 200);
+    assert.equal(jars.fabi.academy_ref, linkCode, 'cookie de atribuição armado');
+    assert.equal(dbx.prepare('SELECT COUNT(*) n FROM affiliate_clicks WHERE link_id = ?').get(linkCode).n, 1);
+    const jarLimpo = {}; jars.x = jarLimpo;
+    await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica?ref=nao-existe', { jar: 'x' });
+    assert.ok(!jars.x.academy_ref, 'ref inválido não arma cookie');
+  });
+
+  console.log('\n— FASE 5: atribuição e comissões —');
+  let pedidoFabi;
+  await t('compra atribuída: comissão do afiliado 10% e líquido do produtor correto', async () => {
+    const r = await req('POST', `/academy/api/checkout/${prodId}`, { jar: 'fabi' });
+    pedidoFabi = r.json.order_id;
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '903' } } });
+    await espera(200);
+    const o = academy.billing.Pedidos.obter(pedidoFabi);
+    assert.equal(o.status, 'paga');
+    assert.equal(o.affiliate_user_id, brunoId);
+    assert.equal(o.comissao_afiliado_centavos, 1990);          // 10% do afiliado
+    assert.equal(o.comissao_plataforma_centavos, 1990);        // 10% da plataforma
+    assert.equal(o.liquido_produtor_centavos, 19900 - 1990 - 1990);
+    const cm = dbx.prepare('SELECT * FROM commissions WHERE order_id = ?').get(pedidoFabi);
+    assert.ok(cm); assert.equal(cm.status, 'pendente'); assert.equal(cm.valor_centavos, 1990);
+  });
+  await t('extrato e dashboard do afiliado com números reais', async () => {
+    const e = await req('GET', '/academy/api/afiliado/extrato', { jar: 'bruno' });
+    assert.equal(e.json.saldos.pendente_centavos, 1990);
+    const d = await req('GET', '/academy/api/afiliado/dashboard', { jar: 'bruno' });
+    assert.equal(d.json.dashboard.cliques, 1);
+    assert.equal(d.json.dashboard.conversoes, 1);
+    const l = await req('GET', '/academy/api/afiliado/links', { jar: 'bruno' });
+    assert.equal(l.json.links[0].conversoes, 1);
+  });
+  await t('comissão libera após a garantia; admin marca paga (repasse manual)', async () => {
+    dbx.prepare("UPDATE commissions SET disponivel_em = '2020-01-01' WHERE order_id = ?").run(pedidoFabi);
+    const e = await req('GET', '/academy/api/afiliado/extrato', { jar: 'bruno' });
+    assert.equal(e.json.comissoes[0].status, 'disponivel');
+    const cid = e.json.comissoes[0].id;
+    // pagar antes de disponível já foi bloqueado acima; agora paga de verdade
+    assert.equal((await req('POST', `/academy/api/admin/comissoes/${cid}/pagar`, { jar: 'maria' })).st, 200);
+    assert.equal((await req('GET', '/academy/api/afiliado/extrato', { jar: 'bruno' })).json.saldos.paga_centavos, 1990);
+  });
+  await t('auto-compra com o próprio link não gera comissão', async () => {
+    await req('GET', `/academy/cursos/gestao-de-temporada-na-pratica?ref=${linkCode}`, { jar: 'bruno' });
+    const r = await req('POST', `/academy/api/checkout/${prodId}`, { jar: 'bruno' });
+    const o = academy.billing.Pedidos.obter(r.json.order_id);
+    assert.equal(o.affiliate_user_id, '');
+    assert.equal(o.comissao_afiliado_centavos, 0);
+  });
+  await t('% por produto sobrepõe o padrão (20%); reembolso cancela a comissão', async () => {
+    assert.equal((await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { afiliado_pct: 20 } })).st, 200);
+    const GABI = { nome: 'Gabi', email: 'gabi@t.com', senha: 'senha-forte-8', aceite_termos: true };
+    await req('POST', '/academy/api/signup', { corpo: GABI, jar: 'gabi' });
+    await req('GET', `/academy/cursos/gestao-de-temporada-na-pratica?ref=${linkCode}`, { jar: 'gabi' });
+    const r = await req('POST', `/academy/api/checkout/${prodId}`, { jar: 'gabi' });
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '904' } } });
+    await espera(200);
+    const o = academy.billing.Pedidos.obter(r.json.order_id);
+    assert.equal(o.afiliado_pct, 20);
+    assert.equal(o.comissao_afiliado_centavos, 3980);
+    assert.equal((await req('POST', `/academy/api/admin/pedidos/${o.id}/reembolsar`, { jar: 'maria', corpo: { motivo: 'teste F5' } })).st, 200);
+    assert.equal(dbx.prepare('SELECT status FROM commissions WHERE order_id = ?').get(o.id).status, 'cancelada');
+  });
+  await t('afiliado_pct 0 desliga a afiliação do produto (e restaura)', async () => {
+    await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { afiliado_pct: 0 } });
+    const r = await req('GET', '/academy/api/afiliado/produtos', { jar: 'bruno' });
+    assert.ok(!r.json.produtos.find(x => x.id === prodId), 'produto some da lista de afiliáveis');
+    await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { afiliado_pct: '' } }); // volta ao padrão
+    const r2 = await req('GET', '/academy/api/afiliado/produtos', { jar: 'bruno' });
+    assert.equal(r2.json.produtos.find(x => x.id === prodId).pct_efetivo, 10);
+  });
+  await t('staff lista comissões e KPIs seguem consistentes', async () => {
+    const r = await req('GET', '/staff/api/academy/comissoes');
+    assert.equal(r.st, 200);
+    assert.equal(r.json.comissoes.length, 2); // fabi (paga) + gabi (cancelada)
+    assert.ok(r.json.comissoes.every(c => ['paga', 'cancelada'].includes(c.status)));
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

@@ -54,6 +54,9 @@ fase corrente em aberto.
 - ✅ Access token do MP só no servidor (mpFetch injetado; nunca no frontend)
 - ✅ Trilha financeira completa: webhook_events + payment_events + audit_logs
 - ✅ Snapshot da comissão no pedido (mudança de % não altera vendas passadas)
+- ✅ F5: atribuição de afiliado validada server-side (produto do link, afiliado aprovado,
+  nunca auto-compra/produtor); comissão cancelada em reembolso/chargeback; comissão só
+  vira paga a partir de disponível (pós-garantia) — tudo coberto por teste
 - ⬜ 1ª venda real: conferir com pagamento de verdade (sandbox/produção) antes de divulgar
 - ⬜ Recibos/nota fiscal: validar com contador antes de escala (F10)
 

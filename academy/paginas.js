@@ -352,6 +352,16 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy/cursos/:slug', (req, res) => {
     const html = cursoHTML(s(req.params.slug, 90));
     if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Este produto não existe ou não está publicado.</p>'));
+    // rastreio de afiliado (?ref=): registra o clique e arma o cookie de atribuição
+    const ref = s(req.query.ref, 30);
+    if (ref) {
+      const af = require('./repo-afiliados');
+      const l = af.Links.registrarClique(ref, String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim());
+      if (l) res.cookie('academy_ref', l.id, {
+        httpOnly: true, secure: process.env.NODE_ENV !== 'development', sameSite: 'lax',
+        maxAge: af.cookieDias() * 864e5, path: '/academy',
+      });
+    }
     res.send(html);
   });
   app.get('/academy/checkout/:slug', (req, res) => {

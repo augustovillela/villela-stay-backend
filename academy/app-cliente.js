@@ -299,6 +299,7 @@
         '<label>Descrição curta (vitrine)</label><input id="e-curta" value="' + esc(p.descricao_curta) + '">' +
         '<label>Descrição longa</label><textarea id="e-longa" rows="4">' + esc(p.descricao_longa) + '</textarea>' +
         '<label>Preço (R$)</label><input id="e-preco" value="' + (p.preco_centavos / 100).toFixed(2).replace('.', ',') + '" style="max-width:140px">' +
+        '<label>Comissão do afiliado % (vazio = padrão da plataforma; 0 = sem afiliados)</label><input id="e-afpct" value="' + (p.afiliado_pct == null ? '' : p.afiliado_pct) + '" style="max-width:140px">' +
         '<p><button class="btn peq" id="b-salvar">💾 Salvar</button> ' +
         acoes.map(function (a) { return '<button class="btn peq secund" data-st="' + a[0] + '">' + a[1] + '</button>'; }).join(' ') +
         ' <span id="e-msg" class="erro"></span></p></div>';
@@ -336,7 +337,7 @@
       setView(html);
       el('b-volta').onclick = function (e) { e.preventDefault(); vProdutor(); };
       el('b-salvar').onclick = function () {
-        api('PATCH', '/produtor/produtos/' + pid, { titulo: val('e-titulo'), subtitulo: val('e-sub'), descricao_curta: val('e-curta'), descricao_longa: val('e-longa'), preco_centavos: centavos(val('e-preco')) })
+        api('PATCH', '/produtor/produtos/' + pid, { titulo: val('e-titulo'), subtitulo: val('e-sub'), descricao_curta: val('e-curta'), descricao_longa: val('e-longa'), preco_centavos: centavos(val('e-preco')), afiliado_pct: val('e-afpct') })
           .then(function () { vProduto(pid); }).catch(function (e) { el('e-msg').textContent = e.message; });
       };
       Array.prototype.forEach.call(document.querySelectorAll('[data-st]'), function (b) {
@@ -431,15 +432,48 @@
   }
 
   // ================= AFILIADO =================
+  var STATUS_COMISSAO = { pendente: '⏳ pendente (garantia)', disponivel: '💵 disponível', paga: '✅ paga', cancelada: '🚫 cancelada (reembolso)' };
   function vAfiliado() {
-    api('GET', '/afiliado/dashboard').then(function (d) {
-      var db = d.dashboard;
-      setView('<div class="card"><h3>🤝 Painel do afiliado</h3>' +
-        '<span class="kpi"><b>' + db.links.length + '</b>links</span>' +
+    Promise.all([api('GET', '/afiliado/dashboard'), api('GET', '/afiliado/links'), api('GET', '/afiliado/produtos'), api('GET', '/afiliado/extrato')]).then(function (rs) {
+      var db = rs[0].dashboard, links = rs[1].links, prods = rs[2].produtos, ext = rs[3];
+      var base = location.origin;
+      var html = '<div class="card"><h3>🤝 Painel do afiliado</h3>' +
         '<span class="kpi"><b>' + db.cliques + '</b>cliques</span>' +
         '<span class="kpi"><b>' + db.conversoes + '</b>vendas</span>' +
-        '<span class="kpi"><b>' + brl(db.comissao_pendente_centavos) + '</b>comissão pendente</span>' +
-        '<div class="aviso">🚧 Links rastreáveis e comissões chegam na FASE 5, junto com o checkout. Seu cadastro já está aprovado.</div></div>');
+        '<span class="kpi"><b>' + brl(ext.saldos.pendente_centavos) + '</b>pendente</span>' +
+        '<span class="kpi"><b>' + brl(ext.saldos.disponivel_centavos) + '</b>disponível</span>' +
+        '<span class="kpi"><b>' + brl(ext.saldos.paga_centavos) + '</b>recebido</span>' +
+        '<p class="sub" style="text-align:left">Cookie de atribuição: ' + rs[2].cookie_dias + ' dias · comissão pendente libera quando a garantia do produto vence.</p></div>';
+      html += '<div class="card"><h3>🔗 Meus links</h3>' + (links.length
+        ? '<table><tr><th>Produto</th><th>Link</th><th>Cliques</th><th>Vendas</th></tr>' + links.map(function (l) {
+          var url = base + '/academy/cursos/' + l.slug + '?ref=' + l.id;
+          return '<tr><td>' + esc(l.titulo) + '</td><td><input readonly value="' + esc(url) + '" style="max-width:280px;margin:0" onclick="this.select()"> ' +
+            '<button class="btn peq secund" data-copia="' + esc(url) + '">copiar</button></td><td>' + l.cliques + '</td><td>' + l.conversoes + '</td></tr>';
+        }).join('') + '</table>' : '<p class="sub" style="text-align:left">Nenhum link ainda — gere abaixo.</p>') + '</div>';
+      html += '<div class="card"><h3>🛍️ Produtos para divulgar</h3>' + (prods.length
+        ? '<table><tr><th>Produto</th><th>Produtor</th><th>Preço</th><th>Sua comissão</th><th></th></tr>' + prods.map(function (p) {
+          var v = p.preco_promo_centavos || p.preco_centavos;
+          return '<tr><td>' + esc(p.titulo) + '</td><td>' + esc(p.produtor_nome) + '</td><td>' + brl(v) + '</td><td>' + p.pct_efetivo + '% (' + brl(Math.round(v * p.pct_efetivo / 100)) + ')' +
+            '</td><td><button class="btn peq" data-gera="' + p.id + '">Gerar link</button></td></tr>';
+        }).join('') + '</table>' : '<p class="sub" style="text-align:left">Nenhum produto afiliável publicado ainda.</p>') + '</div>';
+      html += '<div class="card"><h3>💰 Extrato de comissões</h3>' + (ext.comissoes.length
+        ? '<table><tr><th>Produto</th><th>Valor</th><th>%</th><th>Status</th><th>Data</th></tr>' + ext.comissoes.map(function (cm) {
+          return '<tr><td>' + esc(cm.produto_titulo) + '</td><td>' + brl(cm.valor_centavos) + '</td><td>' + cm.pct + '%</td><td>' +
+            (STATUS_COMISSAO[cm.status] || esc(cm.status)) + '</td><td>' + dt(cm.criado_em) + '</td></tr>';
+        }).join('') + '</table><p class="sub" style="text-align:left">O repasse do saldo disponível é feito pela plataforma (Pix) e marcado como pago aqui.</p>'
+        : '<p class="sub" style="text-align:left">Nenhuma comissão ainda — divulgue seus links!</p>') + '</div>';
+      setView(html);
+      Array.prototype.forEach.call(document.querySelectorAll('[data-gera]'), function (b) {
+        b.onclick = function () {
+          api('POST', '/afiliado/links', { product_id: b.getAttribute('data-gera') }).then(vAfiliado).catch(function (e) { alert(e.message); });
+        };
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-copia]'), function (b) {
+        b.onclick = function () {
+          (navigator.clipboard ? navigator.clipboard.writeText(b.getAttribute('data-copia')) : Promise.reject())
+            .then(function () { b.textContent = '✅'; }).catch(function () { alert(b.getAttribute('data-copia')); });
+        };
+      });
     }).catch(erroBox);
   }
 
@@ -469,7 +503,8 @@
         '<span class="kpi"><b>' + brl(r.receita_plataforma_centavos) + '</b>receita plataforma</span>' +
         '<span class="kpi"><b>' + r.vendas + '</b>vendas</span>' +
         '<span class="kpi"><b>' + r.reembolsos + '</b>reembolsos</span></div>';
-      html += '<div class="card"><h3>🧾 Pedidos</h3><div id="adm-ped"><p class="sub">Carregando…</p></div></div>';
+      html += '<div class="card"><h3>🧾 Pedidos</h3><div id="adm-ped"><p class="sub">Carregando…</p></div></div>' +
+        '<div class="card"><h3>💸 Comissões de afiliados</h3><div id="adm-com"><p class="sub">Carregando…</p></div></div>';
       html += '<div class="card"><h3>🧐 Produtos aguardando revisão</h3>' + (prods.length
         ? '<table><tr><th>Produto</th><th>Produtor</th><th>Tipo</th><th>Preço</th><th></th></tr>' + prods.map(function (p) {
           return '<tr><td>' + esc(p.titulo) + '</td><td>' + esc(p.produtor_nome) + '</td><td>' + (TIPOS_PROD[p.tipo] || esc(p.tipo)) + '</td><td>' + brl(p.preco_centavos) +
@@ -498,6 +533,21 @@
           };
         });
       }).catch(function (e) { el('adm-ped').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+      api('GET', '/admin/comissoes?n=50').then(function (dc) {
+        el('adm-com').innerHTML = dc.comissoes.length
+          ? '<table><tr><th>Afiliado</th><th>Produto</th><th>Valor</th><th>Status</th><th>Libera em</th><th></th></tr>' + dc.comissoes.map(function (cm) {
+            return '<tr><td>' + esc(cm.afiliado_nome) + '<br><span class="sub" style="text-align:left;margin:0">' + esc(cm.afiliado_email) + '</span></td><td>' + esc(cm.produto_titulo) +
+              '</td><td>' + brl(cm.valor_centavos) + ' (' + cm.pct + '%)</td><td>' + (STATUS_COMISSAO[cm.status] || esc(cm.status)) + '</td><td>' + dt(cm.disponivel_em) +
+              '</td><td>' + (cm.status === 'disponivel' ? '<button class="btn peq" data-cpag="' + cm.id + '">💸 Marcar paga</button>' : '') + '</td></tr>';
+          }).join('') + '</table><p class="sub" style="text-align:left">Repasse manual (Pix) — marque como paga após transferir.</p>'
+          : '<p class="sub" style="text-align:left">Nenhuma comissão ainda.</p>';
+        Array.prototype.forEach.call(document.querySelectorAll('[data-cpag]'), function (b) {
+          b.onclick = function () {
+            if (!confirm('Confirma que o repasse já foi transferido ao afiliado?')) return;
+            api('POST', '/admin/comissoes/' + b.getAttribute('data-cpag') + '/pagar').then(vAdmin).catch(function (e) { alert(e.message); });
+          };
+        });
+      }).catch(function (e) { el('adm-com').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
       api('GET', '/admin/denuncias').then(function (dd) {
         el('adm-den').innerHTML = dd.denuncias.length
           ? '<table><tr><th>Produto</th><th>Motivo</th><th>Descrição</th><th></th></tr>' + dd.denuncias.map(function (x) {

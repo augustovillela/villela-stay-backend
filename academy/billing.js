@@ -9,6 +9,7 @@
 const { db, transacao, nowISO, novoId, j } = require('./db');
 const repo = require('./repo');
 const ct = require('./repo-conteudo');
+const af = require('./repo-afiliados');
 
 let _mpFetch = null;
 let _notificar = async () => {};
@@ -50,8 +51,9 @@ const Pedidos = {
   },
 };
 
-// cria o pedido e (se pago) a preferência do MP; produto grátis matricula direto
-async function criarCheckout(usuario, productId, baseUrl) {
+// cria o pedido e (se pago) a preferência do MP; produto grátis matricula direto.
+// refCodigo = cookie de atribuição de afiliado (?ref=), validado server-side.
+async function criarCheckout(usuario, productId, baseUrl, refCodigo) {
   const p = ct.Produtos.obter(productId);
   if (!p || p.status !== 'publicado') throw new Error('Produto não disponível para compra.');
   if (ct.Matriculas.ativa(usuario.id, p.id)) throw new Error('Você já tem acesso a este produto.');
@@ -60,6 +62,8 @@ async function criarCheckout(usuario, productId, baseUrl) {
   const comissoes = repo.Config.obter('comissoes', { plataforma_pct: 10 });
   const pct = Math.max(0, Math.min(100, parseInt(comissoes.plataforma_pct, 10) || 10));
   const comissao = Math.round(valor * pct / 100);
+  const atrib = valor ? af.atribuir(refCodigo, usuario.id, p) : null;
+  const comissaoAfiliado = atrib ? Math.round(valor * atrib.pct / 100) : 0;
 
   // grátis: matrícula imediata (sem MP), pedido 'paga' de valor 0 p/ trilha
   if (!valor) {
@@ -77,9 +81,12 @@ async function criarCheckout(usuario, productId, baseUrl) {
   const id = (pendente && pendente.id) || novoId();
   if (!pendente) {
     db.prepare(`INSERT INTO orders (id, user_id, product_id, produto_titulo, producer_id, valor_centavos,
-      plataforma_pct, comissao_plataforma_centavos, liquido_produtor_centavos, status, criado_em)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?)`)
-      .run(id, usuario.id, p.id, p.titulo, p.producer_id, valor, pct, comissao, valor - comissao, nowISO());
+      plataforma_pct, comissao_plataforma_centavos, liquido_produtor_centavos,
+      affiliate_user_id, afiliado_pct, comissao_afiliado_centavos, status, criado_em)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?)`)
+      .run(id, usuario.id, p.id, p.titulo, p.producer_id, valor, pct, comissao,
+        valor - comissao - comissaoAfiliado,
+        atrib ? atrib.affiliate_user_id : '', atrib ? atrib.pct : 0, comissaoAfiliado, nowISO());
   }
   const pref = await _mpFetch('/checkout/preferences', {
     method: 'POST',
@@ -114,6 +121,7 @@ function aplicarPagamento(pay) {
         .run(s(pay.id, 40), nowISO(), nowISO(), order.id);
       const u = repo.Usuarios.porId(order.user_id);
       if (u && !ct.Matriculas.ativa(u.id, order.product_id)) ct.Matriculas.criar(order.product_id, u.email, 'mercadopago', 'compra');
+      af.Comissoes.criarDoPedido(order); // comissão do afiliado (se houver atribuição)
     });
     repo.Auditoria.registrar({ quem: 'mercadopago', acao: 'pedido.pago', entidade: 'orders', entidade_id: order.id, detalhe: `R$ ${(order.valor_centavos / 100).toFixed(2)}` });
     _notificar(`💰 Villela Academy: venda paga — "${order.produto_titulo}" (R$ ${(order.valor_centavos / 100).toFixed(2)}). Comissão da plataforma: R$ ${(order.comissao_plataforma_centavos / 100).toFixed(2)}.`).catch(() => {});
@@ -138,6 +146,7 @@ function aplicarReembolso(order, { motivo, quem, mp_refund_id } = {}) {
       .run(novoId(), order.id, order.valor_centavos, s(motivo, 300), s(quem, 80), s(mp_refund_id, 60), nowISO());
     const e = db.prepare("SELECT id FROM enrollments WHERE user_id = ? AND product_id = ? AND status = 'ativa'").get(order.user_id, order.product_id);
     if (e) db.prepare("UPDATE enrollments SET status = 'revogada' WHERE id = ?").run(e.id);
+    af.Comissoes.cancelarDoPedido(order.id); // reembolso/chargeback bloqueia a comissão
   });
   repo.Auditoria.registrar({ quem: s(quem, 80), acao: 'pedido.reembolsar', entidade: 'orders', entidade_id: order.id, detalhe: s(motivo, 200) });
   _notificar(`↩️ Villela Academy: reembolso — "${order.produto_titulo}" (R$ ${(order.valor_centavos / 100).toFixed(2)}). Acesso revogado.`).catch(() => {});

@@ -271,7 +271,16 @@ const Dashboard = {
     };
   },
   afiliado(userId) {
-    return { links: [], cliques: 0, conversoes: 0, comissao_pendente_centavos: 0, comissao_disponivel_centavos: 0 }; // FASE 5
+    const c = (sql, ...a) => (db.prepare(sql).get(...a) || { n: 0 }).n;
+    const soma = (st) => (db.prepare('SELECT COALESCE(SUM(valor_centavos),0) n FROM commissions WHERE affiliate_user_id = ? AND status = ?').get(userId, st) || { n: 0 }).n;
+    return {
+      links: db.prepare('SELECT id FROM affiliate_links WHERE affiliate_user_id = ?').all(userId),
+      cliques: c('SELECT COUNT(*) n FROM affiliate_clicks c JOIN affiliate_links l ON l.id = c.link_id WHERE l.affiliate_user_id = ?', userId),
+      conversoes: c("SELECT COUNT(*) n FROM commissions WHERE affiliate_user_id = ? AND status != 'cancelada'", userId),
+      comissao_pendente_centavos: soma('pendente'),
+      comissao_disponivel_centavos: soma('disponivel'),
+      comissao_paga_centavos: soma('paga'),
+    };
   },
 };
 

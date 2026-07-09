@@ -21,11 +21,13 @@ function registrarRotasCheckout(app, { requireUsuario, requirePapel }) {
   });
   const ADM = [requireUsuario, requirePapel('admin')];
 
-  // iniciar compra (logado): grátis matricula direto; pago cria preferência MP
+  // iniciar compra (logado): grátis matricula direto; pago cria preferência MP.
+  // A atribuição de afiliado vem do cookie academy_ref (armado no clique ?ref=).
   app.post('/academy/api/checkout/:productId', requireUsuario, h(async (req, res) => {
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const r = await billing.criarCheckout(req.usuario, s(req.params.productId, 40), `${proto}://${req.get('host')}`);
-    aud(req, 'checkout.iniciar', 'orders', r.order_id, r.gratis ? 'grátis' : '');
+    const ref = s(req.cookies && req.cookies.academy_ref, 30);
+    const r = await billing.criarCheckout(req.usuario, s(req.params.productId, 40), `${proto}://${req.get('host')}`, ref);
+    aud(req, 'checkout.iniciar', 'orders', r.order_id, r.gratis ? 'grátis' : (ref ? 'ref:' + ref : ''));
     res.json({ ok: true, ...r });
   }));
 

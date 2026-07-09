@@ -27,6 +27,16 @@ const MIGRACOES = [
     nome: 'comissoes-oficiais-2026-07-08',
     sql: `UPDATE platform_settings SET valor = '{"plataforma_pct":10,"afiliado_padrao_pct":10,"cookie_dias":30}', atualizado_em = '2026-07-08T00:00:00.000Z' WHERE chave = 'comissoes'`,
   },
+  { // FASE 5: % de afiliado por produto (NULL = usa o padrão global; 0 = produto não comissiona)
+    nome: 'products-afiliado-pct-2026-07-08',
+    sql: 'ALTER TABLE products ADD COLUMN afiliado_pct INTEGER',
+  },
+  { // FASE 5: atribuição de afiliado no pedido (snapshot no momento da compra)
+    nome: 'orders-afiliado-2026-07-08',
+    sql: `ALTER TABLE orders ADD COLUMN affiliate_user_id TEXT DEFAULT '';
+          ALTER TABLE orders ADD COLUMN afiliado_pct INTEGER DEFAULT 0;
+          ALTER TABLE orders ADD COLUMN comissao_afiliado_centavos INTEGER DEFAULT 0;`,
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

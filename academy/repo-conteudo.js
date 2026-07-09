@@ -88,6 +88,11 @@ const Produtos = {
         d.capa_media_id != null ? s(d.capa_media_id, 40) : p.capa_media_id,
         d.tags != null ? j.str((Array.isArray(d.tags) ? d.tags : []).slice(0, 12).map(t => s(t, 40))) : j.str(p.tags),
         nowISO(), id);
+    // % de afiliado do produto (F5): '' → NULL (usa padrão global); 0 desliga a comissão
+    if ('afiliado_pct' in d) {
+      const v = d.afiliado_pct === '' || d.afiliado_pct == null ? null : Math.max(0, Math.min(90, parseInt(d.afiliado_pct, 10) || 0));
+      db.prepare('UPDATE products SET afiliado_pct = ? WHERE id = ?').run(v, id);
+    }
     return this.obter(id);
   },
 
