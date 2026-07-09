@@ -35,7 +35,7 @@ fase corrente em aberto.
 ## Dados e segredos
 - ✅ JWT_SECRET por env (nunca em código/commit); banco fora do git (DATA_DIR)
 - ✅ Documento (CPF/CNPJ) e dados de pagamento nunca em página pública; só admin vê
-- ⬜ F4: access token do MP só no servidor; webhooks validados; payloads salvos; idempotência
+- ✅ F4: access token do MP só no servidor; webhooks com payload salvo e idempotência
 - ✅ F2: arquivos em `DATA_DIR/academy/arquivos/` (privado, nunca estático); entrega SÓ via
   `/academy/api/media/:id` com checagem dono/admin/matrícula/degustação + `download_logs`
 - ⬜ F7: storage S3-compatível, URLs assinadas com expiração, anti-hotlink, watermark
@@ -46,11 +46,16 @@ fase corrente em aberto.
 - ⬜ F4: log financeiro completo (payment_events/webhook_events) · ⬜ F9: log de IA
 - ⬜ F10: alertas de anomalia (picos de falha de login, chargebacks)
 
-## Regras de pagamento (F4 — obrigatórias antes de vender)
-- ⬜ Acesso liberado SÓ por webhook confirmado ou consulta segura ao MP (nunca pelo redirect)
-- ⬜ Eventos duplicados tratados (idempotency key)
-- ⬜ Reembolso/chargeback bloqueia comissão e acesso conforme regra
-- ⬜ Sandbox testado antes de produção
+## Regras de pagamento (F4)
+- ✅ Acesso liberado SÓ por webhook confirmado ou consulta segura server-side ao MP
+  (retorno do navegador NUNCA libera — coberto por teste)
+- ✅ Eventos duplicados idempotentes (estado terminal não reaplica; payloads salvos)
+- ✅ Reembolso e chargeback (`refunded`/`charged_back`) revogam o acesso e registram
+- ✅ Access token do MP só no servidor (mpFetch injetado; nunca no frontend)
+- ✅ Trilha financeira completa: webhook_events + payment_events + audit_logs
+- ✅ Snapshot da comissão no pedido (mudança de % não altera vendas passadas)
+- ⬜ 1ª venda real: conferir com pagamento de verdade (sandbox/produção) antes de divulgar
+- ⬜ Recibos/nota fiscal: validar com contador antes de escala (F10)
 
 ## Plataforma
 - ✅ Módulo isolado: falha na montagem não derruba o site/portal

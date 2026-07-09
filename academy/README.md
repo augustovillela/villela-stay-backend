@@ -6,8 +6,8 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASES 1 (fundação), 2 (produtos e cursos) e 3 (marketplace e páginas
-de venda) concluídas.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
+**Status: FASES 1–4 concluídas (fundação, produtos e cursos, marketplace,
+checkout Mercado Pago) — a plataforma já vende.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
 
@@ -73,6 +73,9 @@ entram como camadas novas nas fases seguintes sem tocar na fundação.
 `lesson_materials`, `media_files`, `enrollments`, `student_progress`, `download_logs`.
 
 **FASE 3 (criado)**: `sales_pages` (seções JSON), `reviews`, `moderation_reports`.
+
+**FASE 4 (criado)**: `orders` (com snapshot de comissão), `payment_events`,
+`webhook_events`, `refunds`.
 
 **Fases seguintes (planejado — criar quando a fase chegar)**:
 - F3 marketplace: `sales_pages`, `page_sections`, `reviews`
@@ -147,6 +150,16 @@ webhook/consulta segura (nunca pelo retorno do navegador).
    visual drag-and-drop fica para quando houver demanda real.
 13. **Avaliações (F3)**: só aluno matriculado, 1 por produto (upsert), média na
    página; moderação oculta/republica sem apagar (trilha preservada).
+14. **Checkout de produto único (F4)**: infoproduto raramente precisa de
+   carrinho; `orders` referencia o produto direto (order_items só se/quando
+   houver carrinho multi-item). Checkout Pro do MP via `mpFetch` injetado.
+15. **Liberação de acesso (F4)**: SÓ por webhook confirmado ou consulta segura
+   (`/v1/payments/search` server-side); o retorno do navegador nunca libera.
+   Webhook idempotente; payload cru salvo em `webhook_events`/`payment_events`.
+16. **Comissões (F4)**: plataforma 10% e afiliado padrão 10% — decisão oficial
+   do Augusto (fonte: `regras\regras-negocio.md`; viva em `platform_settings`).
+   O pedido guarda snapshot do % vigente; reembolso/chargeback revoga o acesso
+   e (F5) bloqueará a comissão do afiliado.
 
 ## Rodar e testar
 

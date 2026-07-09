@@ -1,9 +1,9 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASES 0 (diagnóstico), 1 (fundação), 2 (produtos e cursos) e 3 (marketplace e
-páginas de venda) concluídas em 08/07/2026 — ver README. Cada fase termina com:
-testes verdes na suíte, checklist de segurança da fase fechado, doc do assunto
-atualizado. Próximo passo crítico: F4 (checkout) é o que destrava a 1ª venda.
+FASES 0 (diagnóstico), 1 (fundação), 2 (produtos e cursos), 3 (marketplace e
+páginas de venda) e 4 (checkout Mercado Pago) concluídas em 08/07/2026 — ver
+README. Cada fase termina com: testes verdes na suíte, checklist de segurança
+da fase fechado, doc do assunto atualizado. **A plataforma já vende.**
 
 ## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
 Entregue: produtos de 6 tipos com fluxo editorial completo (rascunho→revisão→
@@ -26,12 +26,17 @@ de venda no painel do produtor, avaliações (só matriculado, 1 por aluno,
 moderáveis), denúncias com fila no admin/staff, Termos do Produtor/Afiliado e
 Política de Reembolso (MINUTA → OAB). 49 testes.
 
-## FASE 4 — Checkout e pagamentos (Mercado Pago)
-Checkout Pro (Pix/cartão), pedidos (orders/order_items/payments), webhook
-validado + payloads salvos + idempotência, liberação automática SÓ pós-
-confirmação, página de obrigado, pagamento pendente/recusado, reembolso
-básico, recibos. Reaproveitar mpFetch injetado (padrão vsm/vpe/vdocs).
-⚠️ Pré-requisito comercial: Augusto definir comissão da plataforma.
+## ✅ FASE 4 — Checkout e pagamentos (CONCLUÍDA 08/07/2026)
+Entregue: Checkout Pro do MP (Pix/cartão) de produto único em
+`/academy/checkout/<slug>` (login inline), pedidos com snapshot de comissão
+(**plataforma 10% — decisão oficial**, líquido do produtor calculado),
+webhook idempotente com payloads salvos (webhook_events/payment_events),
+**liberação SÓ por webhook ou consulta segura** (retorno do navegador nunca
+libera — testado), página /academy/obrigado com acompanhamento, produto grátis
+matricula direto, reembolso admin/staff (estorna no MP + revoga acesso +
+registra), compras do aluno, vendas do produtor (líquido), KPIs GMV/receita.
+Pendências herdadas: cupons/order bump (futuro), carrinho multi-item (futuro),
+recibos/NF (validar com contador). 62 testes.
 
 ## FASE 5 — Afiliados e comissões
 Links rastreáveis (?ref=), cookie de atribuição (prazo configurável), cliques/

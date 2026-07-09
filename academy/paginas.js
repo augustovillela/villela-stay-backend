@@ -8,6 +8,7 @@
 const path = require('path');
 const repo = require('./repo');
 const ct = require('./repo-conteudo');
+const billing = require('./billing');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -171,7 +172,9 @@ function cursoHTML(slug) {
       <p>${esc(sp.subheadline || p.subtitulo || p.descricao_curta)}</p>
       <p class="sub" style="text-align:left;margin:6px 0;color:#d9d2f2">por <a href="/academy/produtores/${esc(p.produtor_slug)}" style="color:#ffb84d">${esc(p.produtor_nome)}</a></p>
       <p style="margin-top:18px">${preco}<br><br>
-        <a class="btn" href="#comprar">Quero este ${(TIPOS_ROT[p.tipo] || 'produto').toLowerCase()}</a>
+        ${(billing.ativo() || !(p.preco_promo_centavos || p.preco_centavos))
+          ? `<a class="btn" href="/academy/checkout/${esc(p.slug)}">${(p.preco_promo_centavos || p.preco_centavos) ? '🛒 Comprar agora' : '🎁 Matricular grátis'}</a>`
+          : `<a class="btn" href="#comprar">Quero este ${(TIPOS_ROT[p.tipo] || 'produto').toLowerCase()}</a>`}
         &nbsp;<a class="btn o" href="/academy/app">Já sou aluno</a></p>
     </div></div>
     ${emb ? `<div class="sec" style="padding:26px 0"><div class="wrap"><iframe src="${esc(emb)}" style="width:100%;max-width:760px;aspect-ratio:16/9;border:0;border-radius:12px;display:block;margin:0 auto" allowfullscreen></iframe></div></div>` : ''}
@@ -200,6 +203,81 @@ function cursoHTML(slug) {
         m.textContent=r.ok?'✅ Anotado! Você será avisado.':'Erro ao enviar.';if(r.ok)document.getElementById('int').reset();};</script>
     </div></div>`;
   return shellPublico({ titulo: p.titulo, descricao: p.descricao_curta || sp.headline || p.subtitulo || p.titulo, url: `/academy/cursos/${p.slug}`, corpo });
+}
+
+// checkout de produto único: resumo + login inline + botão de pagamento.
+// A matrícula em si só acontece server-side (webhook/consulta segura).
+function checkoutHTML(slug) {
+  const p = ct.Marketplace.porSlug(slug);
+  if (!p) return null;
+  const valor = p.preco_promo_centavos || p.preco_centavos || 0;
+  const corpo = `<div class="sec"><div class="wrap" style="max-width:560px">
+    <h2>Finalizar ${valor ? 'compra' : 'matrícula'}</h2>
+    <div class="card"><b>${esc(p.titulo)}</b><br><span class="sub" style="text-align:left;margin:0">por ${esc(p.produtor_nome)}</span>
+      <p style="font-size:1.5rem;font-weight:800;color:#1d1440;margin:10px 0 0">${valor ? brl(valor) : 'Grátis'}</p>
+      ${p.preco_promo_centavos ? `<p class="sub" style="text-align:left;margin:0"><s>${brl(p.preco_centavos)}</s> preço promocional</p>` : ''}
+    </div>
+    <div class="card" id="cx-box"><p class="sub">Carregando…</p></div>
+    <p class="sub">Pagamento processado pelo Mercado Pago. O acesso é liberado automaticamente após a confirmação.
+      Ao comprar você concorda com os <a href="/academy/termos" target="_blank">Termos</a> e a <a href="/academy/reembolso" target="_blank">Política de Reembolso</a>.</p>
+  </div></div>
+  <script>
+  (function(){
+    var box=document.getElementById('cx-box');
+    function pagar(){
+      box.innerHTML='<p class="sub">Preparando o pagamento…</p>';
+      fetch('/academy/api/checkout/${esc(p.id)}',{method:'POST',headers:{'Content-Type':'application/json'}})
+        .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.erro||'erro');return d;})})
+        .then(function(d){ if(d.gratis){location.href='/academy/obrigado?pedido='+d.order_id;} else {location.href=d.init_point;} })
+        .catch(function(e){ box.innerHTML='<p class="erro">'+e.message+'</p><p><button class="btn peq" onclick="location.reload()">Tentar de novo</button></p>'; });
+    }
+    function formPagar(me){
+      box.innerHTML='<p>Olá, <b>'+me.usuario.nome.replace(/</g,'&lt;')+'</b>! O acesso será liberado nesta conta ('+me.usuario.email.replace(/</g,'&lt;')+').</p>'+
+        '<p><button class="btn" id="b-pagar">${valor ? '💳 Pagar com Mercado Pago' : '🎁 Confirmar matrícula grátis'}</button></p>';
+      document.getElementById('b-pagar').onclick=pagar;
+    }
+    function formLogin(){
+      box.innerHTML='<p><b>Entre para continuar</b> — o acesso fica vinculado à sua conta.</p>'+
+        '<input id="cx-em" type="email" placeholder="E-mail"><input id="cx-sn" type="password" placeholder="Senha">'+
+        '<p><button class="btn peq" id="cx-entrar">Entrar</button> <span id="cx-msg" class="erro"></span></p>'+
+        '<p class="sub" style="text-align:left">Não tem conta? <a href="/academy/app#cadastro" target="_blank">Crie grátis</a> e depois <a href="#" onclick="location.reload();return false">continue aqui</a>.</p>';
+      document.getElementById('cx-entrar').onclick=function(){
+        fetch('/academy/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('cx-em').value,senha:document.getElementById('cx-sn').value})})
+          .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.erro||'erro');return d;})})
+          .then(boot).catch(function(e){document.getElementById('cx-msg').textContent=e.message;});
+      };
+    }
+    function boot(){ fetch('/academy/api/me').then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(formPagar).catch(formLogin); }
+    boot();
+  })();
+  </script>`;
+  return shellPublico({ titulo: 'Checkout — ' + p.titulo, descricao: 'Finalize sua compra na Villela Academy.', corpo });
+}
+
+function obrigadoHTML() {
+  const corpo = `<div class="sec"><div class="wrap" style="max-width:560px">
+    <div class="card" id="ob-box"><h2 style="text-align:left">⏳ Confirmando seu pagamento…</h2>
+      <p class="sub" style="text-align:left">Isso costuma levar poucos segundos. Pix aprova na hora; boleto pode demorar até a compensação.</p></div>
+  </div></div>
+  <script>
+  (function(){
+    var id=new URLSearchParams(location.search).get('pedido'); var box=document.getElementById('ob-box'); var tent=0;
+    function pronto(t){ box.innerHTML='<h2 style="text-align:left">🎉 Acesso liberado!</h2><p>Seu acesso a <b>'+t.replace(/</g,'&lt;')+'</b> está ativo.</p><p><a class="btn" href="/academy/app">Ir para a minha biblioteca</a></p>'; }
+    function falhou(st){ box.innerHTML='<h2 style="text-align:left">😕 Pagamento '+st+'</h2><p class="sub" style="text-align:left">Você pode tentar de novo — nenhum valor foi cobrado.</p><p><a class="btn" href="javascript:history.back()">Tentar novamente</a></p>'; }
+    function checa(){
+      fetch('/academy/api/pedidos/'+id+'/status').then(function(r){return r.json();}).then(function(d){
+        if(d.status==='paga') return pronto(d.produto_titulo||'seu produto');
+        if(d.status==='recusada'||d.status==='cancelada') return falhou(d.status);
+        tent++;
+        if(tent===3) fetch('/academy/api/pedidos/'+id+'/conferir',{method:'POST'}).catch(function(){});
+        if(tent<20) setTimeout(checa,4000);
+        else box.innerHTML+='<p class="aviso">Ainda aguardando a confirmação. Pode fechar esta página — o acesso é liberado automaticamente quando o pagamento cair, e fica na sua biblioteca em /academy/app.</p>';
+      }).catch(function(){ if(++tent<20) setTimeout(checa,4000); });
+    }
+    if(id) checa(); else box.innerHTML='<p class="erro">Pedido não informado.</p>';
+  })();
+  </script>`;
+  return shellPublico({ titulo: 'Obrigado', descricao: 'Confirmação de compra na Villela Academy.', corpo });
 }
 
 function produtorHTML(slug) {
@@ -253,7 +331,8 @@ const PRIVACIDADE = `<p>Tratamos dados pessoais conforme a LGPD (Lei 13.709/2018
   <li>Usamos os dados para operar a plataforma (conta, compras, entrega de conteúdo, comissões) e, com consentimento, para comunicações.</li>
   <li>Você pode exportar seus dados e pedir exclusão (anonimização) direto no painel, em Conta.</li>
   <li>Registramos logs de acesso e auditoria por segurança e obrigação legal.</li>
-  <li>Não vendemos dados pessoais. Compartilhamos apenas com operadores essenciais (ex.: processador de pagamento).</li></ul>`;
+  <li>Não vendemos dados pessoais. Compartilhamos apenas com operadores essenciais — em especial o
+  Mercado Pago, que processa os pagamentos (dados de cartão vão direto a ele, nunca aos nossos servidores).</li></ul>`;
 
 function registrarPaginas(app, { notificar }) {
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
@@ -275,6 +354,12 @@ function registrarPaginas(app, { notificar }) {
     if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Este produto não existe ou não está publicado.</p>'));
     res.send(html);
   });
+  app.get('/academy/checkout/:slug', (req, res) => {
+    const html = checkoutHTML(s(req.params.slug, 90));
+    if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Este produto não existe ou não está publicado.</p>'));
+    res.send(html);
+  });
+  app.get('/academy/obrigado', (req, res) => res.send(obrigadoHTML()));
   app.get('/academy/produtores/:slug', (req, res) => {
     const html = produtorHTML(s(req.params.slug, 90));
     if (!html) return res.status(404).send(paginaLegal('Não encontrado', '<p>Produtor não encontrado.</p>'));

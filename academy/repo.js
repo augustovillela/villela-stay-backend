@@ -225,9 +225,12 @@ const Config = {
 };
 
 // defaults comerciais (upsert idempotente; preserva valores editados)
+// Números OFICIAIS (decisão do Augusto 08/07/2026): plataforma 10%, afiliado 10%.
+// Fonte: regras\regras-negocio.md. A migração 'comissoes-oficiais-2026-07-08'
+// (db.js) corrige bancos que nasceram com o seed provisório (afiliado 30%).
 function semear() {
   if (Config.obter('comissoes', null) == null) {
-    Config.salvar('comissoes', { plataforma_pct: 10, afiliado_padrao_pct: 30, cookie_dias: 30 }); // provisórios — decisão comercial do Augusto
+    Config.salvar('comissoes', { plataforma_pct: 10, afiliado_padrao_pct: 10, cookie_dias: 30 });
   }
 }
 
@@ -246,8 +249,11 @@ const Dashboard = {
       produtos_em_revisao: c("SELECT COUNT(*) n FROM products WHERE status = 'em_revisao'"),
       cursos_publicados: c("SELECT COUNT(*) n FROM products WHERE status = 'publicado'"),
       matriculas_ativas: c("SELECT COUNT(*) n FROM enrollments WHERE status = 'ativa'"),
-      // FASE 4+: gmv_centavos, receita_plataforma_centavos, reembolsos, assinaturas
-      gmv_centavos: 0, vendas: 0,
+      gmv_centavos: c("SELECT COALESCE(SUM(valor_centavos),0) n FROM orders WHERE status = 'paga'"),
+      receita_plataforma_centavos: c("SELECT COALESCE(SUM(comissao_plataforma_centavos),0) n FROM orders WHERE status = 'paga'"),
+      vendas: c("SELECT COUNT(*) n FROM orders WHERE status = 'paga'"),
+      pedidos_pendentes: c("SELECT COUNT(*) n FROM orders WHERE status = 'pendente'"),
+      reembolsos: c("SELECT COUNT(*) n FROM orders WHERE status = 'reembolsada'"),
     };
   },
   aluno(userId) { // composição rica (biblioteca+progresso) em repo-conteudo.dashboardAluno
@@ -259,7 +265,9 @@ const Dashboard = {
       produtos: c("SELECT COUNT(*) n FROM products WHERE producer_id = ? AND status != 'removido'", userId),
       publicados: c("SELECT COUNT(*) n FROM products WHERE producer_id = ? AND status = 'publicado'", userId),
       alunos: c("SELECT COUNT(DISTINCT e.user_id) n FROM enrollments e JOIN products p ON p.id = e.product_id WHERE p.producer_id = ? AND e.status = 'ativa'", userId),
-      vendas_mes_centavos: 0, comissoes_pendentes_centavos: 0, avaliacoes: [], // F4/F3
+      vendas_mes_centavos: (db.prepare("SELECT COALESCE(SUM(liquido_produtor_centavos),0) v FROM orders WHERE producer_id = ? AND status = 'paga' AND pago_em >= ?")
+        .get(userId, new Date().toISOString().slice(0, 7)) || { v: 0 }).v, // líquido (já sem os 10% da plataforma)
+      comissoes_pendentes_centavos: 0, avaliacoes: [], // F5/F3
     };
   },
   afiliado(userId) {

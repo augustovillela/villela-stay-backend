@@ -21,11 +21,35 @@ const requireAdmin = (req, res, next) => (req.user && req.user.papel === 'admin'
 const alertas = [];
 const alertaAugusto = async (m) => { alertas.push(m); };
 
+// Mercado Pago mock (FASE 4): preferências, pagamentos com status controlável,
+// busca por external_reference e reembolso
+const mpChamadas = [];
+const MP_STATUS = { 901: 'approved', 902: 'rejected' };
+let ULTIMO_REF = '';
+const mpFetch = async (p, opts) => {
+  mpChamadas.push(p);
+  if (p === '/checkout/preferences' && opts && opts.method === 'POST') {
+    ULTIMO_REF = JSON.parse(opts.body).external_reference;
+    return { id: 'PREF-1', init_point: 'https://mp.test/checkout/PREF-1' };
+  }
+  if (p.startsWith('/v1/payments/search')) {
+    const ref = decodeURIComponent((p.match(/external_reference=([^&]+)/) || [])[1] || '');
+    return { results: [{ id: 555, status: 'approved', external_reference: ref }] };
+  }
+  if (/^\/v1\/payments\/\d+\/refunds$/.test(p)) return { id: 'REF-9', status: 'approved' };
+  if (p.startsWith('/v1/payments/')) {
+    const id = p.split('/')[3];
+    return { id: Number(id), status: MP_STATUS[id] || 'approved', external_reference: ULTIMO_REF };
+  }
+  return {};
+};
+
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 const academy = require('./index');
-academy.montar(app, { express, requireAuth, requireAdmin, alertaAugusto, jwtSecret: 'seg-teste' });
+academy.montar(app, { express, requireAuth, requireAdmin, alertaAugusto, mpFetch, jwtSecret: 'seg-teste' });
+const espera = (ms) => new Promise(r => setTimeout(r, ms));
 
 let BASE = '', ok = 0, falhas = [];
 // jars de cookie por "pessoa" (cada usuário de teste tem a própria sessão)
@@ -198,11 +222,14 @@ async function main() {
     assert.equal(r.st, 200); assert.equal(r.json.leads.length, 1);
     assert.ok(alertas.some(a => a.includes('novo lead')));
   });
-  await t('config comercial semeada e editável pelo staff', async () => {
+  await t('config comercial oficial (10%/10%) semeada e editável pelo staff', async () => {
     const r = await req('GET', '/staff/api/academy/config');
     assert.equal(r.json.comissoes.plataforma_pct, 10);
-    assert.equal((await req('POST', '/staff/api/academy/config', { corpo: { chave: 'comissoes', valor: { plataforma_pct: 12 } } })).st, 200);
+    assert.equal(r.json.comissoes.afiliado_padrao_pct, 10); // decisão do Augusto 08/07/2026
+    assert.equal((await req('POST', '/staff/api/academy/config', { corpo: { chave: 'comissoes', valor: { plataforma_pct: 12, afiliado_padrao_pct: 10, cookie_dias: 30 } } })).st, 200);
     assert.equal((await req('GET', '/staff/api/academy/config')).json.comissoes.plataforma_pct, 12);
+    // restaura o valor oficial p/ os testes de checkout
+    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'comissoes', valor: { plataforma_pct: 10, afiliado_padrao_pct: 10, cookie_dias: 30 } } });
   });
 
   // ================= FASE 2 — produtos, conteúdo, matrículas, progresso =================
@@ -393,6 +420,114 @@ async function main() {
     assert.equal(lista.json.denuncias.length, 1);
     assert.equal((await req('POST', `/academy/api/admin/denuncias/${r.json.id}/resolver`, { jar: 'maria', corpo: { status: 'descartada', resolucao: 'sem irregularidade' } })).st, 200);
     assert.equal((await req('GET', '/academy/api/admin/denuncias', { jar: 'maria' })).json.denuncias.length, 0);
+  });
+
+  // ================= FASE 4 — checkout Mercado Pago =================
+  console.log('\n— FASE 4: checkout e pagamentos —');
+  await t('páginas de checkout e obrigado respondem; CTA da vitrine vira Comprar agora', async () => {
+    const cx = await req('GET', '/academy/checkout/gestao-de-temporada-na-pratica');
+    assert.equal(cx.st, 200); assert.ok(cx.texto.includes('Finalizar compra'));
+    assert.equal((await req('GET', '/academy/checkout/nao-existe')).st, 404);
+    assert.equal((await req('GET', '/academy/obrigado?pedido=x')).st, 200);
+    assert.ok((await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica')).texto.includes('Comprar agora'));
+  });
+  await t('checkout exige login', async () => {
+    assert.equal((await req('POST', `/academy/api/checkout/${prodId}`)).st, 401);
+  });
+
+  let pedidoBruno;
+  await t('produto pago: pedido pendente + preferência MP; retorno do navegador NÃO libera', async () => {
+    const r = await req('POST', `/academy/api/checkout/${prodId}`, { jar: 'bruno' });
+    assert.equal(r.st, 200); pedidoBruno = r.json.order_id;
+    assert.equal(r.json.init_point, 'https://mp.test/checkout/PREF-1');
+    assert.ok(mpChamadas.includes('/checkout/preferences'));
+    const st = await req('GET', `/academy/api/pedidos/${pedidoBruno}/status`, { jar: 'bruno' });
+    assert.equal(st.json.status, 'pendente');
+    // "voltou do MP" mas sem webhook: nada de matrícula
+    assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'bruno' })).json.cursos.length, 0);
+  });
+  await t('status de pedido é só do dono (anti-IDOR)', async () => {
+    assert.equal((await req('GET', `/academy/api/pedidos/${pedidoBruno}/status`, { jar: 'ana' })).st, 404);
+  });
+  await t('webhook approved libera matrícula e calcula comissão 10%', async () => {
+    const antes = alertas.length;
+    assert.equal((await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '901' } } })).st, 200);
+    await espera(200);
+    const o = academy.billing.Pedidos.obter(pedidoBruno);
+    assert.equal(o.status, 'paga');
+    assert.equal(o.valor_centavos, 19900);
+    assert.equal(o.comissao_plataforma_centavos, 1990);   // 10% da plataforma
+    assert.equal(o.liquido_produtor_centavos, 17910);
+    assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'bruno' })).json.cursos.length, 1);
+    assert.ok(alertas.length > antes && alertas[alertas.length - 1].includes('venda paga'));
+  });
+  await t('webhook duplicado é idempotente', async () => {
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '901' } } });
+    await espera(200);
+    const n = require('./db').db.prepare("SELECT COUNT(*) n FROM enrollments WHERE product_id = ? AND status = 'ativa'").get(prodId).n;
+    assert.equal(n, 2); // ana + bruno, sem duplicar
+    assert.equal(academy.billing.Pedidos.obter(pedidoBruno).status, 'paga');
+  });
+  await t('KPIs da plataforma refletem a venda (GMV/receita)', async () => {
+    const d = await req('GET', '/academy/api/admin/dashboard', { jar: 'maria' });
+    assert.equal(d.json.dashboard.gmv_centavos, 19900);
+    assert.equal(d.json.dashboard.receita_plataforma_centavos, 1990);
+    const v = await req('GET', '/academy/api/produtor/vendas', { jar: 'maria' });
+    assert.equal(v.json.vendas.filter(x => x.status === 'paga').length, 1);
+  });
+
+  await t('consulta segura ("já paguei") confirma pedido pendente', async () => {
+    const CARLA = { nome: 'Carla', email: 'carla@t.com', senha: 'senha-forte-5', aceite_termos: true };
+    await req('POST', '/academy/api/signup', { corpo: CARLA, jar: 'carla' });
+    const r = await req('POST', `/academy/api/checkout/${prodId}`, { jar: 'carla' });
+    assert.equal((await req('GET', `/academy/api/pedidos/${r.json.order_id}/status`, { jar: 'carla' })).json.status, 'pendente');
+    const c = await req('POST', `/academy/api/pedidos/${r.json.order_id}/conferir`, { jar: 'carla' });
+    assert.equal(c.json.status, 'paga');
+    assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'carla' })).json.cursos.length, 1);
+  });
+  await t('webhook rejected marca recusada e não matricula', async () => {
+    const DANI = { nome: 'Dani', email: 'dani@t.com', senha: 'senha-forte-6', aceite_termos: true };
+    await req('POST', '/academy/api/signup', { corpo: DANI, jar: 'dani' });
+    const r = await req('POST', `/academy/api/checkout/${prodId}`, { jar: 'dani' });
+    await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '902' } } });
+    await espera(200);
+    assert.equal((await req('GET', `/academy/api/pedidos/${r.json.order_id}/status`, { jar: 'dani' })).json.status, 'recusada');
+    assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'dani' })).json.cursos.length, 0);
+  });
+
+  await t('produto grátis matricula direto (sem MP)', async () => {
+    const np = await req('POST', '/academy/api/produtor/produtos', { jar: 'maria', corpo: { titulo: 'Aula Aberta de Boas-Vindas', tipo: 'curso', preco_centavos: 0 } });
+    const gid = np.json.produto.id;
+    const m = await req('POST', `/academy/api/produtor/produtos/${gid}/modulos`, { jar: 'maria', corpo: { titulo: 'Único' } });
+    await req('POST', `/academy/api/produtor/produtos/${gid}/modulos/${m.json.id}/aulas`, { jar: 'maria', corpo: { titulo: 'Aula 1', tipo: 'texto', conteudo: 'oi' } });
+    await req('POST', `/academy/api/produtor/produtos/${gid}/status`, { jar: 'maria', corpo: { status: 'em_revisao' } });
+    await req('POST', `/academy/api/admin/produtos/${gid}/decidir`, { jar: 'maria', corpo: { status: 'aprovado' } });
+    await req('POST', `/academy/api/produtor/produtos/${gid}/status`, { jar: 'maria', corpo: { status: 'publicado' } });
+    const r = await req('POST', `/academy/api/checkout/${gid}`, { jar: 'dani' });
+    assert.equal(r.st, 200); assert.ok(r.json.gratis);
+    assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'dani' })).json.cursos.length, 1);
+  });
+
+  await t('reembolso: chama o MP, revoga a matrícula e registra', async () => {
+    const antesMp = mpChamadas.filter(p => p.includes('/refunds')).length;
+    const r = await req('POST', `/academy/api/admin/pedidos/${pedidoBruno}/reembolsar`, { jar: 'maria', corpo: { motivo: 'teste de reembolso' } });
+    assert.equal(r.st, 200);
+    assert.equal(mpChamadas.filter(p => p.includes('/refunds')).length, antesMp + 1);
+    assert.equal(academy.billing.Pedidos.obter(pedidoBruno).status, 'reembolsada');
+    assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'bruno' })).json.cursos.length, 0);
+    const refs = require('./db').db.prepare('SELECT COUNT(*) n FROM refunds').get().n;
+    assert.ok(refs >= 1);
+  });
+  await t('staff enxerga pedidos e KPIs', async () => {
+    const r = await req('GET', '/staff/api/academy/pedidos');
+    assert.equal(r.st, 200);
+    assert.ok(r.json.pedidos.length >= 3);
+    assert.equal(r.json.kpis.reembolsos, 1);
+  });
+  await t('trilha financeira: webhooks e payment_events gravados', async () => {
+    const dbx = require('./db').db;
+    assert.ok(dbx.prepare('SELECT COUNT(*) n FROM webhook_events').get().n >= 3);
+    assert.ok(dbx.prepare('SELECT COUNT(*) n FROM payment_events').get().n >= 3);
   });
 
   srv.close();

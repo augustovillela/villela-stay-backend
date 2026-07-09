@@ -240,7 +240,8 @@
         '<span class="kpi"><b>' + db.produtos + '</b>produtos</span>' +
         '<span class="kpi"><b>' + db.publicados + '</b>publicados</span>' +
         '<span class="kpi"><b>' + db.alunos + '</b>alunos</span>' +
-        '<span class="kpi"><b>' + brl(db.vendas_mes_centavos) + '</b>vendas no mês (F4)</span></div>';
+        '<span class="kpi"><b>' + brl(db.vendas_mes_centavos) + '</b>líquido no mês</span></div>';
+      html += '<div class="card"><h3>💵 Vendas</h3><div id="pd-vendas"><p class="sub">Carregando…</p></div></div>';
       html += '<div class="card"><h3>➕ Novo produto</h3>' +
         '<input id="np-titulo" placeholder="Título *" style="max-width:420px"> ' +
         '<select id="np-tipo" style="max-width:180px">' + Object.keys(TIPOS_PROD).map(function (t) { return '<option value="' + t + '">' + TIPOS_PROD[t] + '</option>'; }).join('') + '</select> ' +
@@ -259,6 +260,14 @@
       Array.prototype.forEach.call(document.querySelectorAll('[data-abre]'), function (b) {
         b.onclick = function () { vProduto(b.getAttribute('data-abre')); };
       });
+      api('GET', '/produtor/vendas').then(function (dv) {
+        el('pd-vendas').innerHTML = dv.vendas.length
+          ? '<table><tr><th>Produto</th><th>Comprador</th><th>Valor</th><th>Seu líquido</th><th>Status</th><th>Data</th></tr>' + dv.vendas.map(function (o) {
+            return '<tr><td>' + esc(o.produto_titulo) + '</td><td>' + esc(o.comprador_nome) + '</td><td>' + brl(o.valor_centavos) +
+              '</td><td>' + brl(o.liquido_produtor_centavos) + '</td><td>' + (STATUS_PEDIDO[o.status] || esc(o.status)) + '</td><td>' + dt(o.criado_em) + '</td></tr>';
+          }).join('') + '</table>'
+          : '<p class="sub" style="text-align:left">Nenhuma venda ainda. Publique e divulgue a página do seu produto.</p>';
+      }).catch(function (e) { el('pd-vendas').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
     }).catch(erroBox);
   }
 
@@ -455,7 +464,12 @@
         '<span class="kpi"><b>' + r.matriculas_ativas + '</b>matrículas</span>' +
         '<span class="kpi"><b>' + r.perfis_em_analise + '</b>perfis em análise</span>' +
         '<span class="kpi"><b>' + r.produtos_em_revisao + '</b>produtos em revisão</span>' +
-        '<span class="kpi"><b>' + r.leads_novos + '</b>leads novos</span></div>';
+        '<span class="kpi"><b>' + r.leads_novos + '</b>leads novos</span>' +
+        '<span class="kpi"><b>' + brl(r.gmv_centavos) + '</b>GMV</span>' +
+        '<span class="kpi"><b>' + brl(r.receita_plataforma_centavos) + '</b>receita plataforma</span>' +
+        '<span class="kpi"><b>' + r.vendas + '</b>vendas</span>' +
+        '<span class="kpi"><b>' + r.reembolsos + '</b>reembolsos</span></div>';
+      html += '<div class="card"><h3>🧾 Pedidos</h3><div id="adm-ped"><p class="sub">Carregando…</p></div></div>';
       html += '<div class="card"><h3>🧐 Produtos aguardando revisão</h3>' + (prods.length
         ? '<table><tr><th>Produto</th><th>Produtor</th><th>Tipo</th><th>Preço</th><th></th></tr>' + prods.map(function (p) {
           return '<tr><td>' + esc(p.titulo) + '</td><td>' + esc(p.produtor_nome) + '</td><td>' + (TIPOS_PROD[p.tipo] || esc(p.tipo)) + '</td><td>' + brl(p.preco_centavos) +
@@ -468,6 +482,22 @@
         '<div class="card"><h3>👥 Usuários</h3><div id="adm-users"><p class="sub">Carregando…</p></div></div>' +
         '<div class="card"><h3>📜 Auditoria (últimos eventos)</h3><div id="adm-audit"><p class="sub">Carregando…</p></div></div>';
       setView(html);
+      api('GET', '/admin/pedidos?n=50').then(function (dp) {
+        el('adm-ped').innerHTML = dp.pedidos.length
+          ? '<table><tr><th>Produto</th><th>Comprador</th><th>Valor</th><th>Status</th><th>Data</th><th></th></tr>' + dp.pedidos.map(function (o) {
+            return '<tr><td>' + esc(o.produto_titulo) + '</td><td>' + esc(o.comprador_email) + '</td><td>' + (o.valor_centavos ? brl(o.valor_centavos) : 'grátis') +
+              '</td><td>' + (STATUS_PEDIDO[o.status] || esc(o.status)) + '</td><td>' + dt(o.criado_em) +
+              '</td><td>' + (o.status === 'paga' && o.valor_centavos ? '<button class="btn peq secund" data-reemb="' + o.id + '">↩️ Reembolsar</button>' : '') + '</td></tr>';
+          }).join('') + '</table>'
+          : '<p class="sub" style="text-align:left">Nenhum pedido ainda.</p>';
+        Array.prototype.forEach.call(document.querySelectorAll('[data-reemb]'), function (b) {
+          b.onclick = function () {
+            var motivo = prompt('Motivo do reembolso (o comprador perde o acesso):');
+            if (motivo == null) return;
+            api('POST', '/admin/pedidos/' + b.getAttribute('data-reemb') + '/reembolsar', { motivo: motivo }).then(vAdmin).catch(function (e) { alert(e.message); });
+          };
+        });
+      }).catch(function (e) { el('adm-ped').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
       api('GET', '/admin/denuncias').then(function (dd) {
         el('adm-den').innerHTML = dd.denuncias.length
           ? '<table><tr><th>Produto</th><th>Motivo</th><th>Descrição</th><th></th></tr>' + dd.denuncias.map(function (x) {
@@ -534,10 +564,13 @@
     }).catch(erroBox);
   }
 
-  // ================= CONTA (dados, senha, LGPD) =================
+  var STATUS_PEDIDO = { pendente: '⏳ pendente', paga: '✅ paga', recusada: '❌ recusada', cancelada: '🚫 cancelada', reembolsada: '↩️ reembolsada', expirada: '⌛ expirada' };
+
+  // ================= CONTA (dados, compras, senha, LGPD) =================
   function vConta() {
     var u = ME.usuario;
-    setView('<div class="card"><h3>👤 Meus dados</h3>' +
+    setView('<div class="card"><h3>🧾 Minhas compras</h3><div id="c-compras"><p class="sub">Carregando…</p></div></div>' +
+      '<div class="card"><h3>👤 Meus dados</h3>' +
       '<label>Nome</label><input id="c-nome" value="' + esc(u.nome) + '"><label>Telefone</label><input id="c-tel" value="' + esc(u.telefone || '') + '">' +
       '<button class="btn peq" id="b-salvar">Salvar</button> <span id="c-msg" class="erro"></span></div>' +
       '<div class="card"><h3>🔑 Trocar senha</h3>' +
@@ -549,6 +582,14 @@
       '<p class="sub" style="text-align:left">Excluir a conta anonimiza seus dados pessoais de forma irreversível.</p>' +
       '<input id="x-senha" type="password" placeholder="Confirme sua senha para excluir" style="max-width:320px">' +
       '<button class="btn peq" style="background:#b00020;color:#fff" id="b-excluir">Excluir minha conta</button> <span id="x-msg" class="erro"></span></div>');
+    api('GET', '/pedidos').then(function (d) {
+      el('c-compras').innerHTML = d.pedidos.length
+        ? '<table><tr><th>Produto</th><th>Valor</th><th>Status</th><th>Data</th></tr>' + d.pedidos.map(function (o) {
+          return '<tr><td>' + esc(o.produto_titulo) + '</td><td>' + (o.valor_centavos ? brl(o.valor_centavos) : 'grátis') +
+            '</td><td>' + (STATUS_PEDIDO[o.status] || esc(o.status)) + '</td><td>' + dt(o.criado_em) + '</td></tr>';
+        }).join('') + '</table>'
+        : '<p class="sub" style="text-align:left">Nenhuma compra ainda — explore o <a href="/academy/marketplace">marketplace</a>.</p>';
+    }).catch(function (e) { el('c-compras').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
     el('b-salvar').onclick = function () {
       api('PATCH', '/me', { nome: val('c-nome'), telefone: val('c-tel') }).then(bootAcademy).catch(function (e) { el('c-msg').textContent = e.message; });
     };

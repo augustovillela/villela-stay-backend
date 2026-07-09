@@ -23,6 +23,10 @@ db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
 // ---- migrações (ALTERs; roda uma vez cada) ----
 const MIGRACOES = [
   // acrescentar no fim quando evoluir o schema
+  { // comissões oficiais decididas pelo Augusto (regras\regras-negocio.md); corrige o seed provisório
+    nome: 'comissoes-oficiais-2026-07-08',
+    sql: `UPDATE platform_settings SET valor = '{"plataforma_pct":10,"afiliado_padrao_pct":10,"cookie_dias":30}', atualizado_em = '2026-07-08T00:00:00.000Z' WHERE chave = 'comissoes'`,
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

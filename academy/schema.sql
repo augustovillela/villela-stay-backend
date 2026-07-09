@@ -254,6 +254,68 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id);
 
+-- =====================================================================
+-- FASE 4 — Checkout e pagamentos (Mercado Pago).
+-- Regra de ouro: acesso NUNCA é liberado pelo retorno do navegador —
+-- só por webhook confirmado ou consulta segura à API do MP.
+-- Comissões oficiais: plataforma 10%, afiliado 10% (regras-negocio.md).
+-- =====================================================================
+
+-- ---- PEDIDOS (checkout direto de 1 produto; carrinho multi-item = futuro) ----
+CREATE TABLE IF NOT EXISTS orders (
+  id               TEXT PRIMARY KEY,
+  user_id          TEXT NOT NULL REFERENCES users(id),
+  product_id       TEXT NOT NULL REFERENCES products(id),
+  produto_titulo   TEXT DEFAULT '',          -- snapshot no momento da compra
+  producer_id      TEXT DEFAULT '',
+  valor_centavos   INTEGER DEFAULT 0,        -- efetivamente cobrado (promo se houver)
+  plataforma_pct   INTEGER DEFAULT 10,       -- snapshot da comissão vigente
+  comissao_plataforma_centavos INTEGER DEFAULT 0,
+  liquido_produtor_centavos    INTEGER DEFAULT 0, -- valor − comissão plataforma (afiliado desconta na F5)
+  status           TEXT DEFAULT 'pendente',  -- pendente|paga|recusada|cancelada|reembolsada|expirada
+  mp_preference_id TEXT DEFAULT '',
+  mp_payment_id    TEXT DEFAULT '',
+  criado_em        TEXT NOT NULL,
+  atualizado_em    TEXT DEFAULT '',
+  pago_em          TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_product ON orders(product_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_producer ON orders(producer_id);
+
+-- ---- EVENTOS de pagamento por pedido (trilha financeira) ----
+CREATE TABLE IF NOT EXISTS payment_events (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  quando        TEXT NOT NULL,
+  order_id      TEXT DEFAULT '',
+  mp_payment_id TEXT DEFAULT '',
+  status        TEXT DEFAULT '',
+  payload       TEXT DEFAULT ''             -- JSON cru do MP
+);
+CREATE INDEX IF NOT EXISTS idx_payev_order ON payment_events(order_id);
+
+-- ---- WEBHOOKS crus (tudo que o MP manda; idempotência e auditoria) ----
+CREATE TABLE IF NOT EXISTS webhook_events (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  quando    TEXT NOT NULL,
+  topico    TEXT DEFAULT '',
+  mp_id     TEXT DEFAULT '',
+  payload   TEXT DEFAULT '',
+  resultado TEXT DEFAULT ''                 -- processado|ignorado|erro:<msg>
+);
+
+-- ---- REEMBOLSOS ----
+CREATE TABLE IF NOT EXISTS refunds (
+  id             TEXT PRIMARY KEY,
+  order_id       TEXT NOT NULL REFERENCES orders(id),
+  valor_centavos INTEGER DEFAULT 0,
+  motivo         TEXT DEFAULT '',
+  quem           TEXT DEFAULT '',           -- quem autorizou (admin/staff)
+  mp_refund_id   TEXT DEFAULT '',
+  criado_em      TEXT NOT NULL
+);
+
 -- ---- DENÚNCIAS de conteúdo (usuário logado; admin resolve) ----
 CREATE TABLE IF NOT EXISTS moderation_reports (
   id         TEXT PRIMARY KEY,

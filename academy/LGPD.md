@@ -34,7 +34,8 @@ Documento vivo. ⚠️ **Termos de Uso e Política de Privacidade publicados em
 - ⬜ F10: política de retenção formal por categoria de dado
 
 ## Operadores e compartilhamento
-- ⬜ F4: Mercado Pago como operador de pagamento (citar na política revisada)
+- ✅ F4: Mercado Pago citado como operador na Política de Privacidade (dados de
+  cartão vão direto ao MP; nossos servidores não os recebem)
 - ⬜ F8: provedores de e-mail/WhatsApp como operadores (citar na política)
 - ✅ Regra da casa: dados pessoais de terceiros nunca em commit, Portal Staff público, site ou resposta
 
