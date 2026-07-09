@@ -40,7 +40,11 @@ input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radiu
 .marca .m1{font-family:'Lora',Georgia,serif;font-weight:700;font-size:1.3rem;color:var(--villela-navy)}
 .marca .m2{font-family:'Inter',system-ui,sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--acento)}
 .marca.neg .m1{color:#fff}.marca.neg .m2{color:#67E8F9}
-@media(max-width:640px){.hero h1{font-size:1.8rem}}`;
+header.top{background:var(--villela-navy2);color:#fff;position:sticky;top:0;z-index:20}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+header.top a{color:#E8ECF4;text-decoration:none}
+header.top nav{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+@media(max-width:640px){.hero h1{font-size:1.8rem}header.top .esconde{display:none}}`;
 
 const BRAND = '/assets/brand/villela-stay-manager';
 const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,8 +88,11 @@ function landingHTML() {
     <meta property="og:type" content="website"><meta property="og:url" content="https://manager.villelastay.com.br/gestao">
     ${HEAD_MARCA}
     <style>${CSS}</style></head><body>
+    <header class="top"><div class="wrap">
+      <a href="/gestao" style="text-decoration:none">${marca(true)}</a>
+      <nav><a class="esconde" href="/gestao#recursos">Recursos</a><a class="esconde" href="/gestao#planos">Planos</a><a href="/gestao/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/gestao/assinar?plano=trial">Teste grátis</a></nav>
+    </div></header>
     <div class="hero"><div class="wrap">
-      <p style="margin:0 0 20px">${marca(true)}</p>
       <span class="badge">Sistema de gestão de hospedagem</span>
       <h1>Toda a sua operação de temporada em um só lugar.</h1>
       <p>Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA — para anfitriões e gestores brasileiros.</p>
@@ -93,7 +100,7 @@ function landingHTML() {
       &nbsp;<a class="btn o" href="/gestao/app">Já sou cliente</a></p>
       <p style="font-size:.95rem;margin-top:18px;color:#cfd8e6"><span style="color:var(--villela-gold)">★</span> Gestão testada na operação real da Villela Stay</p>
     </div></div>
-    <div class="sec"><div class="wrap"><h2>Tudo que a sua operação precisa</h2>
+    <div class="sec" id="recursos"><div class="wrap"><h2>Tudo que a sua operação precisa</h2>
       <p class="sub">Do anúncio ao repasse do proprietário — sem colar planilha com WhatsApp e calendário de OTA.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>

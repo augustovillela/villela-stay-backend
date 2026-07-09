@@ -28,6 +28,12 @@ const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}
 a{color:var(--villela-navy)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+header.top{background:var(--villela-navy2);color:#fff;position:sticky;top:0;z-index:20}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+header.top a{color:#E8ECF4;text-decoration:none}
+header.top nav{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header.top .brand{display:inline-flex;align-items:center;gap:9px;font-size:1.15rem;color:#fff!important}
+@media(max-width:640px){header.top .esconde{display:none}}
 .hero{background:linear-gradient(135deg,var(--villela-navy),var(--villela-navy2));color:var(--villela-ice);padding:64px 0 72px}
 .hero h1{font-size:2.4rem;margin:.2rem 0;max-width:640px;line-height:1.15}.hero p{font-size:1.15rem;max-width:560px;color:#cfd6e4}
 .badge{display:inline-block;background:var(--villela-gold);color:var(--villela-navy);font-weight:700;padding:4px 12px;border-radius:20px;font-size:.85rem}
@@ -85,15 +91,18 @@ function landingHTML() {
     <meta property="og:image" content="https://juridico.villelastay.com.br${BRAND_DIR}/og-image.png">
     ${BRAND_HEAD}
     <style>${CSS}</style></head><body>
+    <header class="top"><div class="wrap">
+      <a class="brand" href="/juridico">${MARCA(true)}<span>${WORDMARK}</span></a>
+      <nav><a class="esconde" href="/juridico#recursos">Recursos</a><a class="esconde" href="/juridico#planos">Planos</a><a href="/juridico/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/juridico/assinar?plano=trial">Teste grátis</a></nav>
+    </div></header>
     <div class="hero"><div class="wrap">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">${MARCA(true)}<span style="font-size:1.4rem">${WORDMARK}</span></div>
       <span class="badge">Software jurídico completo</span>
       <h1>O escritório inteiro em um só lugar — com IA que cita as fontes.</h1>
       <p>Gestão jurídica inteligente: processos, prazos, publicações, peças, contratos e portal do cliente. Feito por quem advoga, para escritórios brasileiros.</p>
       <p style="margin-top:26px"><a class="btn" href="/juridico/assinar?plano=trial">Testar 14 dias grátis</a>
       &nbsp;<a class="btn o" href="/juridico/app">Já sou cliente</a></p>
     </div></div>
-    <div class="sec"><div class="wrap"><h2>Tudo que a banca precisa</h2>
+    <div class="sec" id="recursos"><div class="wrap"><h2>Tudo que a banca precisa</h2>
       <p class="sub">Um sistema que cobre da captação ao arquivamento — sem colar planilha com WhatsApp.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
