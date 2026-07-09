@@ -5261,6 +5261,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('juridico.')) return res.redirect(302, '/juridico'); // landing de vendas do Legal SaaS (assinantes); portal do cliente final = /cliente-juridico
   if (host.startsWith('projetos.') || host.startsWith('projects.')) return res.redirect(302, '/vpe');
   if (host.startsWith('manager.') || host.startsWith('gestao.')) return res.redirect(302, '/gestao'); // landing de vendas do Villela Stay Manager
+  if (host.startsWith('academy.') || host.startsWith('cursos.')) return res.redirect(302, '/academy'); // Villela Academy Marketplace
   return res.redirect(302, '/hospede');
 });
 
@@ -5363,6 +5364,19 @@ try {
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[vsm] falha ao montar módulo:', e.message); }
+
+// =========================== Villela Academy Marketplace (cursos online e produtos digitais) ===========================
+// Marketplace multi-produtor de cursos/infoprodutos: landing em /academy, painel
+// (aluno/produtor/afiliado/admin) em /academy/app (sessão própria 'academy_sess'),
+// administração da plataforma em /staff/api/academy/*. SQLite próprio em
+// DATA_DIR/academy/. FASE 1 = fundação; roadmap em academy/ROADMAP.md.
+try {
+  require('./academy').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[academy] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));

@@ -1,0 +1,66 @@
+// =====================================================================
+// Villela Academy Marketplace — API de ADMINISTRAÇÃO DA PLATAFORMA
+// (Portal Staff). Prefixo /staff/api/academy/*. requireAuth + requireAdmin
+// (dono da plataforma). É por aqui que se concede o papel 'admin' da
+// Academy a um usuário. Tudo auditado.
+// =====================================================================
+'use strict';
+const repo = require('./repo');
+
+function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
+  const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || 'plataforma');
+  const A = [requireAuth, requireAdmin];
+  const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
+  const aud = (req, acao, ent, id, det) => repo.Auditoria.registrar({ quem: quem(req), papel: 'staff', acao, entidade: ent, entidade_id: id, detalhe: det, ip: ipDe(req) });
+
+  app.use('/staff/api/academy', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+
+  // visão geral da plataforma
+  app.get('/staff/api/academy/dashboard', ...A, h((req, res) => {
+    res.json({ resumo: repo.Dashboard.plataforma(), pendentes: repo.Perfis.pendentes(), config: { comissoes: repo.Config.obter('comissoes', {}) } });
+  }));
+
+  // usuários
+  app.get('/staff/api/academy/usuarios', ...A, h((req, res) => res.json({ usuarios: repo.Usuarios.listar(req.query) })));
+  app.post('/staff/api/academy/usuarios/:id/papeis', ...A, h((req, res) => {
+    const { conceder, revogar } = req.body || {};
+    let u;
+    if (conceder) { u = repo.Usuarios.concederPapel(req.params.id, String(conceder)); aud(req, 'papel.conceder', 'users', u.id, String(conceder)); }
+    if (revogar) { u = repo.Usuarios.revogarPapel(req.params.id, String(revogar)); aud(req, 'papel.revogar', 'users', u.id, String(revogar)); }
+    if (!u) return res.status(400).json({ erro: 'Informe conceder ou revogar.' });
+    res.json({ ok: true, usuario: repo.semSegredos(u) });
+  }));
+  app.post('/staff/api/academy/usuarios/:id/status', ...A, h((req, res) => {
+    const u = repo.Usuarios.mudarStatus(req.params.id, String((req.body || {}).status || ''));
+    aud(req, 'usuario.status', 'users', u.id, u.status);
+    res.json({ ok: true, usuario: repo.semSegredos(u) });
+  }));
+
+  // aprovação de perfis (produtor/afiliado)
+  app.get('/staff/api/academy/pendentes', ...A, h((req, res) => res.json(repo.Perfis.pendentes())));
+  app.post('/staff/api/academy/perfis/:tipo/:userId/decidir', ...A, h((req, res) => {
+    const { tipo, userId } = req.params;
+    if (!['produtor', 'afiliado'].includes(tipo)) return res.status(400).json({ erro: 'Tipo inválido.' });
+    const p = repo.Perfis.decidir(tipo, userId, String((req.body || {}).status || ''), (req.body || {}).motivo);
+    aud(req, `perfil.${tipo}.${p.status}`, tipo === 'produtor' ? 'producer_profiles' : 'affiliate_profiles', userId, String((req.body || {}).motivo || ''));
+    res.json({ ok: true, perfil: { status: p.status } });
+  }));
+
+  // config comercial (comissões padrão etc.)
+  app.get('/staff/api/academy/config', ...A, h((req, res) => res.json({ comissoes: repo.Config.obter('comissoes', {}) })));
+  app.post('/staff/api/academy/config', ...A, h((req, res) => {
+    const { chave, valor } = req.body || {};
+    if (!chave) return res.status(400).json({ erro: 'Informe chave e valor.' });
+    repo.Config.salvar(String(chave), valor);
+    aud(req, 'config.salvar', 'platform_settings', String(chave), '');
+    res.json({ ok: true });
+  }));
+
+  // leads / auditoria
+  app.get('/staff/api/academy/leads', ...A, h((req, res) => res.json({ leads: repo.Leads.listar(req.query.n) })));
+  app.post('/staff/api/academy/leads/:id/status', ...A, h((req, res) => { repo.Leads.status(req.params.id, (req.body || {}).status); res.json({ ok: true }); }));
+  app.get('/staff/api/academy/auditoria', ...A, h((req, res) => res.json({ eventos: repo.Auditoria.listar(req.query.n) })));
+}
+
+module.exports = { registrarRotasStaff };
