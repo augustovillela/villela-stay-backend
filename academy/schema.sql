@@ -483,3 +483,14 @@ CREATE TABLE IF NOT EXISTS moderation_reports (
   resolvido_em TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_reports_status ON moderation_reports(status);
+
+-- ---- WEB PUSH do painel (PWA): assinaturas de notificação por usuário ----
+-- O Academy não é multi-tenant (usuários direto na plataforma), então a
+-- tabela guarda só o user_id — sem a coluna tenant_id do padrão CRM.
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint   TEXT PRIMARY KEY,      -- endpoint único da PushSubscription
+  user_id    TEXT NOT NULL,
+  dados      TEXT NOT NULL,         -- JSON completo da PushSubscription
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subs(user_id);

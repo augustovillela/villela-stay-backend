@@ -103,6 +103,29 @@ self.addEventListener('fetch', (e) => {
       }))
   );
 });
+
+/* Web Push: recebe a notificação e abre o painel no clique (padrão do app do hóspede). */
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data && e.data.text ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || '${p.nome}', {
+    body: d.body || '',
+    icon: '/assets/brand/${p.marca}/favicon-192.png',
+    badge: '/assets/brand/${p.marca}/favicon-192.png',
+    data: { url: d.url || '${p.inicio}' },
+    tag: d.tag || 'villela-${p.slug}',
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const alvo = (e.notification.data && e.notification.data.url) || '${p.inicio}';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cls) => {
+      for (const c of cls) { if (c.url.indexOf('${p.base}') !== -1 && 'focus' in c) { c.navigate(alvo); return c.focus(); } }
+      if (self.clients.openWindow) return self.clients.openWindow(alvo);
+    })
+  );
+});
 `;
 }
 

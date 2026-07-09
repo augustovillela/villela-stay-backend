@@ -173,6 +173,18 @@ function registrarRotasCliente(app, { jwtSecret }) {
     res.json({ ok: true });
   }));
 
+  // ---- notificações push do painel (PWA) — espelham o sininho no celular ----
+  const push = require('./push');
+  app.get('/academy/api/push/chave', requireUsuario, h(async (req, res) => res.json({ publicKey: push.chavePublica() })));
+  app.post('/academy/api/push/subscribe', requireUsuario, h(async (req, res) => {
+    push.salvar(req.usuario.id, (req.body || {}).subscription);
+    res.json({ ok: true });
+  }));
+  app.post('/academy/api/push/unsubscribe', requireUsuario, h(async (req, res) => {
+    push.remover((req.body || {}).endpoint);
+    res.json({ ok: true });
+  }));
+
   // LGPD: takeout + exclusão (anonimização) pelo próprio titular
   app.get('/academy/api/me/exportar', requireUsuario, h(async (req, res) => {
     aud(req, 'lgpd.exportar', 'users', req.usuario.id, '');

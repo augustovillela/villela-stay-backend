@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const { db, nowISO } = require('./db');
 const repo = require('./repo');
 const billing = require('./billing');
+const push = require('./push');
 
 const COOKIE = 'jur_saas';
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -104,6 +105,19 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
     const t = repo.Tickets.obter(req.params.id);
     if (!t || t.tenant_id !== req.assinante.tenant_id) return res.status(404).json({ erro: 'Ticket não encontrado.' });
     repo.Tickets.responder(req.params.id, { texto: s((req.body || {}).texto, 4000), lado: 'cliente', autor: req.assinante.email });
+    res.json({ ok: true });
+  }));
+
+  // ---- notificações push do painel (PWA) — por usuário, sem gate de plano ----
+  app.get('/juridico/api/push/chave', requireAssinante, h(async (req, res) => {
+    res.json({ publicKey: push.chavePublica() });
+  }));
+  app.post('/juridico/api/push/subscribe', requireAssinante, h(async (req, res) => {
+    push.salvar(req.assinante.tenant_id, req.assinante.id, (req.body || {}).subscription);
+    res.json({ ok: true });
+  }));
+  app.post('/juridico/api/push/unsubscribe', requireAssinante, h(async (req, res) => {
+    push.remover((req.body || {}).endpoint);
     res.json({ ok: true });
   }));
 

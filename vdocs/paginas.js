@@ -344,7 +344,7 @@ main{flex:1;padding:26px;max-width:1000px}
 </style></head><body>
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vdocs/app">${MARCA}</a>
-  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c6d0e2"></span> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
+  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c6d0e2"></span> <button id="push-btn" style="display:none;margin-left:14px;background:none;border:1px solid #3a4a66;color:#c6d0e2;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
 </div></header>
 <div class="layout"><aside id="menu"></aside><main id="corpo"><p>Carregando…</p></main></div>
 <script>
@@ -358,6 +358,38 @@ async function api(m,c,b){const r=await fetch('/vdocs/api'+c,{method:m,headers:{
   if(r.status===401){location.href='/vdocs/login';throw new Error('sessão expirada');}
   if(!r.ok)throw new Error(d.erro||('HTTP '+r.status));return d;}
 async function sair(){await api('POST','/logout').catch(()=>{});location.href='/vdocs/login';return false;}
+
+// ---- notificações push do painel (PWA) — avisos de aprovação no celular ----
+function pushOk(){return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);}
+function b64ParaU8(b){const pad='='.repeat((4-b.length%4)%4);const s=(b+pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(s);const a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a;}
+async function pushAssinado(){
+  try{const reg=await navigator.serviceWorker.ready;return await reg.pushManager.getSubscription();}
+  catch(_){return null;}}
+async function pintarBotaoPush(){
+  const btn=$('push-btn');
+  if(!btn||!pushOk())return;
+  const sub=await pushAssinado();
+  btn.style.display='';
+  btn.textContent=sub?'🔔 Avisos ✓':'🔔 Avisos';
+  btn.title=sub?'Notificações ativadas — toque para desativar':'Receber avisos de aprovações pendentes no celular';
+  btn.onclick=alternarPush;}
+async function alternarPush(){
+  try{
+    const sub=await pushAssinado();
+    if(sub){
+      await api('POST','/push/unsubscribe',{endpoint:sub.endpoint}).catch(()=>{});
+      await sub.unsubscribe();
+    }else{
+      const d=await api('GET','/push/chave');
+      if(!d.publicKey)return alert('As notificações ainda não estão disponíveis. Tente mais tarde.');
+      if((await Notification.requestPermission())!=='granted')return alert('Permissão negada. Libere as notificações deste site nas configurações do navegador.');
+      const reg=await navigator.serviceWorker.ready;
+      const nova=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ParaU8(d.publicKey)});
+      await api('POST','/push/subscribe',{subscription:nova.toJSON()});
+    }
+  }catch(e){alert(e.message);}
+  pintarBotaoPush();}
 
 const TELAS=[
  ['dashboard','📊 Dashboard',()=>true],
@@ -381,6 +413,7 @@ async function boot(){
   S.me=await api('GET','/me');
   $('quem').textContent=S.me.user.nome+' · '+S.me.tenant.nome+' ('+S.me.papel_nome+')';
   menu();
+  pintarBotaoPush().catch(()=>{});
   if(S.me.bloqueado){$('corpo').innerHTML='<div class="erro"><b>Conta bloqueada.</b> '+(S.me.tenant.status==='suspensa'?'Sua conta está suspensa — fale com a Villela Docs.':'Seu período de teste terminou — escolha um plano para continuar (fale com a gente pelo formulário da página inicial).')+'</div>';return;}
   ir('dashboard');
 }

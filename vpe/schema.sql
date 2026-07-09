@@ -656,3 +656,13 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
 );
 CREATE INDEX IF NOT EXISTS idx_vpe_whdel ON webhook_deliveries (status, proximo_em);
 CREATE INDEX IF NOT EXISTS idx_vpe_whdel_t ON webhook_deliveries (tenant_id, criado_em);
+
+-- ---- WEB PUSH do painel (PWA): assinaturas de notificação por usuário ----
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint   TEXT PRIMARY KEY,      -- endpoint único da PushSubscription
+  tenant_id  TEXT NOT NULL,
+  user_id    TEXT NOT NULL,
+  dados      TEXT NOT NULL,         -- JSON completo da PushSubscription
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vpe_push_tenant ON push_subs (tenant_id);

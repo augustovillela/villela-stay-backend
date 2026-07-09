@@ -510,3 +510,14 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
   criado_em       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_wd_status ON webhook_deliveries (status, proximo_em);
+
+-- WEB PUSH do painel (PWA): assinaturas de notificação por usuário
+-- (mesmo padrão do CRM; envio pelo helper compartilhado ../push-saas.js).
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint   TEXT PRIMARY KEY,      -- endpoint único da PushSubscription
+  tenant_id  TEXT NOT NULL,
+  user_id    TEXT NOT NULL,
+  dados      TEXT NOT NULL,         -- JSON completo da PushSubscription
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_tenant ON push_subs(tenant_id);

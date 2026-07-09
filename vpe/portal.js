@@ -17,6 +17,7 @@ const crypto = require('crypto');
 const { db, nowISO, novoId, j } = require('./db');
 const repo = require('./repo');
 const comercial = require('./comercial');
+const push = require('./push');
 
 const s = repo.s;
 const TIPOS = ['evento', 'projeto', 'proposta', 'contrato'];
@@ -115,11 +116,21 @@ function aceitarPorToken(token, { nome }, ip) {
   if (!nomeC) throw new Error('Informe seu nome para registrar o aceite.');
   const ator = { id: 'portal-cliente:' + nomeC.slice(0, 40) };
   if (sh.tipo === 'contrato') {
+    const jaAceito = comercial.obterContrato(sh.tenant_id, sh.ref_id).status === 'aceito';
     const c = comercial.registrarAceite(sh.tenant_id, sh.ref_id, { nome: nomeC }, ator, ip);
+    // push best-effort ao tenant: negócio fechado pelo portal do cliente (só na transição)
+    if (!jaAceito && c.status === 'aceito') {
+      push.notificarTenant(sh.tenant_id, { title: '✍️ Contrato aceito no Projects', body: sh.titulo || 'Contrato', url: '/vpe/app', tag: 'vpe-portal' }).catch(() => {});
+    }
     return { ok: true, status: c.status };
   }
   if (sh.tipo === 'proposta') {
+    const jaAprovada = comercial.obterProposta(sh.tenant_id, sh.ref_id).status === 'aprovada';
     const p = comercial.atualizarProposta(sh.tenant_id, sh.ref_id, { status: 'aprovada' }, ator, ip);
+    // push best-effort ao tenant: proposta aprovada pelo cliente (só na transição)
+    if (!jaAprovada && p.status === 'aprovada') {
+      push.notificarTenant(sh.tenant_id, { title: '🎉 Proposta aprovada no Projects', body: sh.titulo || 'Proposta comercial', url: '/vpe/app', tag: 'vpe-portal' }).catch(() => {});
+    }
     return { ok: true, status: p.status };
   }
   throw new Error('Só propostas e contratos podem ser aceitos pelo portal.');

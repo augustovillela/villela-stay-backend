@@ -337,3 +337,13 @@ CREATE TABLE IF NOT EXISTS app_stays_conta (
   criado_em     TEXT NOT NULL,
   atualizado_em TEXT DEFAULT ''
 );
+
+-- ---- WEB PUSH do painel (PWA): assinaturas de notificação por usuário ----
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint   TEXT PRIMARY KEY,      -- endpoint único da PushSubscription
+  tenant_id  TEXT NOT NULL,
+  user_id    TEXT NOT NULL,
+  dados      TEXT NOT NULL,         -- JSON completo da PushSubscription
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_tenant ON push_subs(tenant_id);

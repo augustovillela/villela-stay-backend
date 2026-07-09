@@ -7,6 +7,7 @@
 const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 const billing = require('./billing');
+const push = require('./push');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviarEmail }) {
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
@@ -49,6 +50,8 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
   }));
   app.post('/staff/api/legal-saas/tenants/:id/status', ...A, h((req, res) => {
     const t = repo.Tenants.mudarStatus(req.params.id, (req.body || {}).status, quem(req), (req.body || {}).detalhe);
+    // aviso push ao escritório: status da conta mudado pela plataforma (best-effort)
+    push.notificarTenant(req.params.id, { title: 'Status da sua conta atualizado', body: 'Sua conta agora está: ' + String((req.body || {}).status || ''), url: '/juridico/app', tag: 'legal-conta' }).catch(() => {});
     res.json({ ok: true, tenant: t });
   }));
   app.post('/staff/api/legal-saas/tenants/:id/plano', ...A, h((req, res) => {
@@ -96,6 +99,11 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
   }));
   app.post('/staff/api/legal-saas/tickets/:id/responder', ...A, h((req, res) => {
     repo.Tickets.responder(req.params.id, { texto: (req.body || {}).texto, lado: 'plataforma', autor: quem(req) });
+    // aviso push ao escritório dono do ticket (best-effort; nunca bloqueia a rota)
+    const t = repo.Tickets.obter(req.params.id);
+    if (t && t.tenant_id) {
+      push.notificarTenant(t.tenant_id, { title: 'Resposta no seu ticket', body: t.assunto || 'Suporte Villela Legal', url: '/juridico/app', tag: 'legal-ticket' }).catch(() => {});
+    }
     res.json({ ok: true });
   }));
   app.post('/staff/api/legal-saas/tickets/:id/status', ...A, h((req, res) => {

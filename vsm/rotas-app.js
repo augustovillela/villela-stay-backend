@@ -8,6 +8,7 @@
 const repo = require('./repo');
 const app = require('./app-repo');
 const stays = require('./app-stays-repo');
+const push = require('./push');
 
 function registrarRotasApp(server, { requireAssinante }) {
   // captura throws síncronos E assíncronos (handlers do app lançam de forma síncrona)
@@ -54,7 +55,12 @@ function registrarRotasApp(server, { requireAssinante }) {
     if (!r) return res.status(404).json({ erro: 'Reserva não encontrada.' });
     res.json({ reserva: r });
   }));
-  server.post('/gestao/api/app/reservas', ...G('reservas'), h((req, res) => res.json({ ok: true, reserva: app.Reservas.criar(tid(req), req.body || {}) })));
+  server.post('/gestao/api/app/reservas', ...G('reservas'), h((req, res) => {
+    const reserva = app.Reservas.criar(tid(req), req.body || {});
+    // aviso push da nova reserva (best-effort: nunca bloqueia a rota)
+    push.notificarTenant(tid(req), { title: 'Nova reserva', body: `${reserva.hospede_nome || 'Hóspede'} · ${reserva.imovel_nome || 'imóvel'} (${reserva.checkin} → ${reserva.checkout})`, url: '/gestao/app', tag: 'vsm-reserva' }).catch(() => {});
+    res.json({ ok: true, reserva });
+  }));
   server.post('/gestao/api/app/reservas/:id/status', ...G('reservas'), h((req, res) => res.json({ ok: true, reserva: app.Reservas.mudarStatus(tid(req), req.params.id, (req.body || {}).status) })));
 
   // ---- limpezas ----
@@ -74,8 +80,27 @@ function registrarRotasApp(server, { requireAssinante }) {
   // ---- Stays.net (channel manager do assinante) — módulo 'canais' ----
   server.get('/gestao/api/app/stays', ...G('canais'), h((req, res) => res.json({ conta: stays.Conta.statusPublico(tid(req)) })));
   server.post('/gestao/api/app/stays/conectar', ...G('canais'), h(async (req, res) => res.json({ ok: true, conta: await stays.Conta.salvar(tid(req), req.body || {}) })));
-  server.post('/gestao/api/app/stays/sincronizar', ...G('canais'), h(async (req, res) => res.json({ ok: true, ...(await stays.sincronizar(tid(req))) })));
+  server.post('/gestao/api/app/stays/sincronizar', ...G('canais'), h(async (req, res) => {
+    const r = await stays.sincronizar(tid(req));
+    // aviso push SÓ para reservas NOVAS (updates de upsert não notificam); agregado num único aviso
+    if (r.reservas_novas > 0) {
+      const body = r.reservas_novas === 1 ? '1 nova reserva importada da Stays.' : `${r.reservas_novas} novas reservas importadas da Stays.`;
+      push.notificarTenant(tid(req), { title: 'Nova reserva', body, url: '/gestao/app', tag: 'vsm-reserva' }).catch(() => {});
+    }
+    res.json({ ok: true, ...r });
+  }));
   server.post('/gestao/api/app/stays/desconectar', ...G('canais'), h((req, res) => res.json({ ok: true, ...stays.Conta.desconectar(tid(req)) })));
+
+  // ---- notificações push do painel (PWA) — por usuário, sem gate de módulo ----
+  server.get('/gestao/api/app/push/chave', requireAssinante, h((req, res) => res.json({ publicKey: push.chavePublica() })));
+  server.post('/gestao/api/app/push/subscribe', requireAssinante, h((req, res) => {
+    push.salvar(tid(req), req.assinante.id, (req.body || {}).subscription);
+    res.json({ ok: true });
+  }));
+  server.post('/gestao/api/app/push/unsubscribe', requireAssinante, h((req, res) => {
+    push.remover((req.body || {}).endpoint);
+    res.json({ ok: true });
+  }));
 }
 
 module.exports = { registrarRotasApp };

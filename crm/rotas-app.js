@@ -8,6 +8,8 @@
 'use strict';
 const repo = require('./repo');
 const app = require('./app-repo');
+const push = require('./push');
+const { db } = require('./db');
 
 function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   const h = (fn) => async (req, res) => { try { await fn(req, res); } catch (e) { res.status(400).json({ erro: e.message }); } };
@@ -158,6 +160,17 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
     res.json({ ok: true, ...app.ApiKeys.criar(tid(req), (req.body || {}).nome) });
   }));
   server.delete('/crm/api/app/chaves/:id', ...GE('api', 'gerir_conta'), h((req, res) => res.json({ ok: true, ...app.ApiKeys.revogar(tid(req), req.params.id) })));
+
+  // ---- notificações push do painel (PWA) — por usuário, sem gate de módulo ----
+  server.get('/crm/api/app/push/chave', requireAssinante, h((req, res) => res.json({ publicKey: push.chavePublica() })));
+  server.post('/crm/api/app/push/subscribe', requireAssinante, h((req, res) => {
+    push.salvar(tid(req), req.assinante.id, (req.body || {}).subscription);
+    res.json({ ok: true });
+  }));
+  server.post('/crm/api/app/push/unsubscribe', requireAssinante, h((req, res) => {
+    push.remover((req.body || {}).endpoint);
+    res.json({ ok: true });
+  }));
 }
 
 // ---- endpoints PÚBLICOS (sem sessão) ----
@@ -174,6 +187,9 @@ function registrarRotasPublicas(server) {
     if (!lim.ok) return res.status(400).json({ erro: 'Limite de contatos do plano atingido.' });
     const d = req.body || {};
     const r = app.Contatos.criar(c.tenant_id, { ...d, origem: app.ORIGENS.includes(d.origem) ? d.origem : 'formulario-externo' }, 'webhook');
+    if (!r.existente) {
+      push.notificarTenant(c.tenant_id, { title: 'Novo lead no CRM', body: (r.contato.nome || 'Contato sem nome') + ' entrou pelo formulário.', url: '/crm/app', tag: 'crm-lead' }).catch(() => {});
+    }
     res.json({ ok: true, contato_id: r.contato.id, existente: r.existente });
   }));
 
@@ -184,7 +200,13 @@ function registrarRotasPublicas(server) {
     res.json({ proposta: p });
   }));
   server.post('/crm/api/p/:token/responder', h((req, res) => {
-    res.json({ ok: true, ...app.Propostas.responderPublica(req.params.token, !!(req.body || {}).aceite) });
+    const antes = db.prepare('SELECT tenant_id, titulo, status FROM crm_propostas WHERE token = ?').get(String(req.params.token || '').slice(0, 60));
+    const r = app.Propostas.responderPublica(req.params.token, !!(req.body || {}).aceite);
+    if (antes && !['aceita', 'recusada'].includes(antes.status) && ['aceita', 'recusada'].includes(r.status)) {
+      const rot = r.status === 'aceita' ? '🎉 Proposta ACEITA' : 'Proposta recusada';
+      push.notificarTenant(antes.tenant_id, { title: rot, body: antes.titulo || 'Proposta comercial', url: '/crm/app', tag: 'crm-proposta' }).catch(() => {});
+    }
+    res.json({ ok: true, status: r.status });
   }));
 
   // API pública por chave vc_ (header x-api-key): criar e listar contatos

@@ -12,6 +12,7 @@
 'use strict';
 const { db, transacao, nowISO, novoId, j } = require('./db');
 const repo = require('./repo');
+const push = require('./push');
 
 const s = repo.s;
 let _canais = { enviarEmail: null };
@@ -54,6 +55,15 @@ function salvarModelo(tenantId, { id, nome, descricao, etapas, ativo }, ator, ip
 
 // ------------------------------------------------------------ instâncias
 function notificarAprovadores(tenantId, inst, etapa) {
+  // push do painel (PWA) — best-effort, nunca bloqueia o fluxo de aprovação
+  const docPush = inst.document_id
+    ? db.prepare('SELECT nome FROM documents WHERE id = ? AND tenant_id = ?').get(String(inst.document_id), String(tenantId))
+    : null;
+  const corpoPush = `${docPush ? docPush.nome : (inst.workflow_nome || 'Documento')} aguarda sua decisão` +
+    (etapa && etapa.nome ? ` (etapa: ${etapa.nome})` : '') + '.';
+  for (const uid of ((etapa && etapa.aprovadores) || [])) {
+    push.notificarUsuario(uid, { title: 'Aprovação pendente', body: corpoPush, url: '/vdocs/app', tag: 'vdocs-aprovacao' }).catch(() => {});
+  }
   if (typeof _canais.enviarEmail !== 'function') return;
   for (const uid of etapa.aprovadores) {
     const u = repo.userPorId(uid);
@@ -80,7 +90,7 @@ function iniciar(tenantId, { document_id, workflow_id }, ator, ip) {
   const etapas = j.parse(w.etapas, []);
   const id = novoId();
   const inst = {
-    id, workflow_nome: w.nome, prazo_em: prazoDe(etapas[0]),
+    id, workflow_nome: w.nome, prazo_em: prazoDe(etapas[0]), document_id: d.id,
   };
   db.prepare(`INSERT INTO workflow_instances (id, tenant_id, workflow_id, workflow_nome, etapas, document_id, versao, etapa_atual, status, prazo_em, criado_em, criado_por)
     VALUES (?,?,?,?,?,?,?,0,'em_andamento',?,?,?)`)

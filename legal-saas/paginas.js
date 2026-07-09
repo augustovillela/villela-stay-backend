@@ -196,8 +196,10 @@ function appHTML() {
       const alerta=me.escritorio.status!=='ativa'&&me.escritorio.status!=='trial'?'<div class="aviso">⚠️ Sua conta está <b>'+esc(me.escritorio.status)+'</b>. Regularize a cobrança para reativar o acesso.</div>':(me.escritorio.status==='trial'?'<div class="aviso">🎁 Você está no <b>período de teste</b> até '+dt(ent.trial_expira_em)+'. Assine para continuar sem interrupção.</div>':'');
       app.innerHTML='<div class="card"><h3>'+esc(me.escritorio.nome)+' <span class="tag">'+esc(ent.plano||'—')+'</span></h3>'+alerta
         +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
-        +((me.escritorio.status==='ativa'||me.escritorio.status==='trial')?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')+'</div>'
+        +((me.escritorio.status==='ativa'||me.escritorio.status==='trial')?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')
+        +'<button class="btn g" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button></div>'
         +'<p class="sub">Olá, '+esc(me.usuario.nome||me.usuario.email)+' · <a href="#" onclick="sair();return false">sair</a></p></div><div id="c"></div>';
+      pintarBotaoPush();
       vPlano();}
     window.home=home;const c=()=>document.getElementById('c');
     async function sair(){await api('POST','/logout').catch(()=>{});location.reload()}window.sair=sair;
@@ -219,6 +221,25 @@ function appHTML() {
         +'<h3 style="margin-top:12px">Abrir chamado</h3><input id="tk-a" placeholder="Assunto"><textarea id="tk-t" rows="3" placeholder="Descreva sua dúvida"></textarea><button class="btn" onclick="abrirTk()">Enviar</button></div>';}
     window.vSup=vSup;
     async function abrirTk(){const a=document.getElementById('tk-a').value,t=document.getElementById('tk-t').value;if(!a||!t)return;await api('POST','/tickets',{assunto:a,texto:t});vSup();}window.abrirTk=abrirTk;
+    // ---- notificações push do painel (PWA) — avisos de ticket/conta no celular ----
+    function pushOk(){return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window)}
+    function b64ParaU8(b){const pad='='.repeat((4-b.length%4)%4);const s=(b+pad).replace(/-/g,'+').replace(/_/g,'/');const raw=atob(s);const a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a}
+    async function pushAssinado(){try{const reg=await navigator.serviceWorker.ready;return await reg.pushManager.getSubscription()}catch(_){return null}}
+    async function pintarBotaoPush(){const btn=document.getElementById('push-btn');if(!btn||!pushOk())return;const sub=await pushAssinado();
+      btn.style.display='';btn.textContent=sub?'🔔 Avisos ✓':'🔔 Avisos';
+      btn.title=sub?'Notificações ativadas — toque para desativar':'Receber avisos de tickets e da conta no celular';
+      btn.onclick=()=>alternarPush()}
+    async function alternarPush(){try{const sub=await pushAssinado();
+      if(sub){await api('POST','/push/unsubscribe',{endpoint:sub.endpoint}).catch(()=>{});await sub.unsubscribe()}
+      else{const d=await api('GET','/push/chave');
+        if(!d.publicKey)return alert('As notificações ainda não estão disponíveis. Tente mais tarde.');
+        if((await Notification.requestPermission())!=='granted')return alert('Permissão negada. Libere as notificações deste site nas configurações do navegador.');
+        const reg=await navigator.serviceWorker.ready;
+        const nova=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ParaU8(d.publicKey)});
+        await api('POST','/push/subscribe',{subscription:nova.toJSON()})}
+      }catch(e){alert(e.message)}
+      pintarBotaoPush()}
+    window.pintarBotaoPush=pintarBotaoPush;window.alternarPush=alternarPush;
     home();`);
 }
 

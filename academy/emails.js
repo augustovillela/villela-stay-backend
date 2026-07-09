@@ -124,11 +124,14 @@ const Emails = {
 };
 
 // ---------------- notificações internas (sininho) ----------------
+const push = require('./push'); // Web Push espelha o sininho (sem ciclo: push só depende de db + ../push-saas)
 const Notificacoes = {
   criar(userId, titulo, texto, url) {
     db.prepare('INSERT INTO notifications (id, user_id, titulo, texto, url, criado_em) VALUES (?, ?, ?, ?, ?, ?)')
       .run(novoId(), userId, s(titulo, 160), s(texto, 500), s(url, 200), nowISO());
     log('interna', userId, 'notificacao', 'ok', s(titulo, 80));
+    // espelho no celular: best-effort, fire-and-forget — nunca bloqueia o sininho
+    push.notificarUsuario(userId, { title: s(titulo, 160), body: s(texto, 500), url: '/academy/app', tag: 'academy' }).catch(() => {});
   },
   doUsuario(userId) {
     return {

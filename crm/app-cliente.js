@@ -63,14 +63,55 @@ function telaApp() {
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><b>${esc(ME.empresa.nome)}</b> <span class="tag">${esc(ME.entitlements.plano || '')}</span>
         <span class="sub" style="margin:0">· ${esc(ME.usuario.nome || ME.usuario.email)} (${esc(ME.usuario.papel)})</span></div>
-      <button class="btn peq secund" id="sair">Sair</button>
+      <div style="display:flex;gap:8px"><button class="btn peq secund" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button><button class="btn peq secund" id="sair">Sair</button></div>
     </div>
     ${bloq ? `<div class="aviso">⚠️ Acesso bloqueado (${esc(ME.empresa.status)}). Regularize o plano na aba Conta.</div>` : ''}
     ${ME.empresa.status === 'trial' && ME.entitlements.trial_expira_em ? `<div class="aviso">🕒 Trial até ${dataBr(ME.entitlements.trial_expira_em)}. Assine na aba Conta para não perder o acesso.</div>` : ''}
     <div class="menu">${botoes}</div><div id="tela"></div>`;
   $('#sair').onclick = async () => { await api('POST', '/logout'); location.reload(); };
   document.querySelectorAll('.menu [data-v]').forEach(b => b.onclick = () => navegar(b.dataset.v));
+  pintarBotaoPush();
   navegar(bloq ? 'conta' : 'dash');
+}
+
+// ---- notificações push do painel (PWA) — avisos de lead/proposta no celular ----
+function pushOk() { return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window); }
+function b64ParaU8(b) {
+  const pad = '='.repeat((4 - b.length % 4) % 4);
+  const s = (b + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(s); const a = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i);
+  return a;
+}
+async function pushAssinado() {
+  try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); }
+  catch (_) { return null; }
+}
+async function pintarBotaoPush() {
+  const btn = $('#push-btn');
+  if (!btn || !pushOk()) return;
+  const sub = await pushAssinado();
+  btn.style.display = '';
+  btn.textContent = sub ? '🔔 Avisos ✓' : '🔔 Avisos';
+  btn.title = sub ? 'Notificações ativadas — toque para desativar' : 'Receber avisos de leads e propostas no celular';
+  btn.onclick = () => alternarPush(btn);
+}
+async function alternarPush() {
+  try {
+    const sub = await pushAssinado();
+    if (sub) {
+      await api('POST', '/app/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => {});
+      await sub.unsubscribe();
+    } else {
+      const { publicKey } = await api('GET', '/app/push/chave');
+      if (!publicKey) return alert('As notificações ainda não estão disponíveis. Tente mais tarde.');
+      if ((await Notification.requestPermission()) !== 'granted') return alert('Permissão negada. Libere as notificações deste site nas configurações do navegador.');
+      const reg = await navigator.serviceWorker.ready;
+      const nova = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ParaU8(publicKey) });
+      await api('POST', '/app/push/subscribe', { subscription: nova.toJSON() });
+    }
+  } catch (e) { alert(e.message); }
+  pintarBotaoPush();
 }
 function navegar(v) {
   const mapa = { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, campanhas: vCampanhas, ia: vIA, conta: vConta };

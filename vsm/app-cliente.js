@@ -60,14 +60,55 @@
       '<button class="btn g peq" data-nav="plano">💳 Plano</button><button class="btn g peq" data-nav="uso">📈 Uso</button><button class="btn g peq" data-nav="suporte">🎧 Suporte</button>';
     root().innerHTML = '<div class="card"><h3>' + esc(me.operacao.nome) + ' <span class="tag">' + esc(ent.plano || '—') + '</span></h3>' + alerta +
       '<div class="menu" id="nav">' + nav + '</div>' +
-      '<p class="sub">Olá, ' + esc(me.usuario.nome || me.usuario.email) + ' · <a href="#" id="b-sair">sair</a></p></div><div id="c"></div>';
+      '<p class="sub">Olá, ' + esc(me.usuario.nome || me.usuario.email) + ' · <button class="btn secund peq" id="push-btn" style="display:none" title="Receber avisos de novas reservas no celular">🔔 Avisos</button> <a href="#" id="b-sair">sair</a></p></div><div id="c"></div>';
     el('b-sair').onclick = function (e) { e.preventDefault(); sair(); };
+    pintarBotaoPush();
     var map = { painel: vPainel, plano: vPlano, uso: vUso, suporte: vSuporte };
     TABS.forEach(function (t) { map[t[0]] = t[2]; });
     Array.prototype.forEach.call(document.querySelectorAll('#nav [data-nav]'), function (b) {
       b.onclick = function () { (map[b.getAttribute('data-nav')] || vPainel)(); };
     });
     (liberado ? vPainel : vPlano)();
+  }
+
+  // ---- notificações push do painel (PWA) — avisos de novas reservas no celular ----
+  function pushOk() { return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window); }
+  function b64ParaU8(b) {
+    var pad = '='.repeat((4 - b.length % 4) % 4);
+    var s = (b + pad).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(s); var a = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i);
+    return a;
+  }
+  function pushAssinado() {
+    return navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).catch(function () { return null; });
+  }
+  function pintarBotaoPush() {
+    var btn = el('push-btn');
+    if (!btn || !pushOk()) return;
+    pushAssinado().then(function (sub) {
+      btn.style.display = '';
+      btn.textContent = sub ? '🔔 Avisos ✓' : '🔔 Avisos';
+      btn.title = sub ? 'Notificações ativadas — toque para desativar' : 'Receber avisos de novas reservas no celular';
+      btn.onclick = function () { alternarPush(); };
+    });
+  }
+  function alternarPush() {
+    pushAssinado().then(function (sub) {
+      if (sub) {
+        return app('POST', '/push/unsubscribe', { endpoint: sub.endpoint }).catch(function () {})
+          .then(function () { return sub.unsubscribe(); });
+      }
+      return app('GET', '/push/chave').then(function (d) {
+        if (!d.publicKey) { alert('As notificações ainda não estão disponíveis. Tente mais tarde.'); return; }
+        return Notification.requestPermission().then(function (perm) {
+          if (perm !== 'granted') { alert('Permissão negada. Libere as notificações deste site nas configurações do navegador.'); return; }
+          return navigator.serviceWorker.ready.then(function (reg) {
+            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ParaU8(d.publicKey) });
+          }).then(function (nova) { return app('POST', '/push/subscribe', { subscription: nova.toJSON() }); });
+        });
+      });
+    }).catch(function (e) { alert(e.message); }).then(function () { pintarBotaoPush(); });
   }
 
   function erroBox(e) { setView('<div class="card erro">' + esc(e.message || e) + '</div>'); }

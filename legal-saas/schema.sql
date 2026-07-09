@@ -211,3 +211,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   ip         TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_saas_audit_quando ON audit_logs(quando);
+
+-- ---- WEB PUSH do painel (PWA): assinaturas de notificação por usuário ----
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint   TEXT PRIMARY KEY,      -- endpoint único da PushSubscription
+  tenant_id  TEXT NOT NULL,
+  user_id    TEXT NOT NULL,
+  dados      TEXT NOT NULL,         -- JSON completo da PushSubscription
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_tenant ON push_subs(tenant_id);

@@ -15,6 +15,7 @@ const ia = require('./ia');
 const automacoes = require('./automacoes');
 const portal = require('./portal');
 const billing = require('./billing');
+const push = require('./push');
 const apiPublica = require('./api-publica');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
@@ -185,13 +186,24 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     res.json(tarefas.kanban(req.vp.tenant.id, req.params.id));
   }));
   r.post('/projetos/:id/tarefas', requireTenant, requirePerm('gerir_tarefas'), h(async (req, res) => {
-    res.json({ ok: true, tarefa: tarefas.criarTarefa(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+    const tarefa = tarefas.criarTarefa(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip);
+    // push best-effort: avisa o responsável quando a tarefa nasce atribuída a outra pessoa
+    if (tarefa.responsavel_id && tarefa.responsavel_id !== req.vp.user.id) {
+      push.notificarUsuario(tarefa.responsavel_id, { title: 'Tarefa para você', body: tarefa.titulo, url: '/vpe/app', tag: 'vpe-tarefa' }).catch(() => {});
+    }
+    res.json({ ok: true, tarefa });
   }));
   r.get('/tarefas/:id', requireTenant, requirePerm('ver_projetos'), h(async (req, res) => {
     res.json({ tarefa: tarefas.obterTarefa(req.vp.tenant.id, req.params.id) });
   }));
   r.patch('/tarefas/:id', requireTenant, requirePerm('gerir_tarefas'), h(async (req, res) => {
-    res.json({ ok: true, tarefa: tarefas.atualizarTarefa(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip) });
+    const antes = tarefas.obterTarefa(req.vp.tenant.id, req.params.id);
+    const tarefa = tarefas.atualizarTarefa(req.vp.tenant.id, req.params.id, req.body || {}, req.vp.user, req.vp.ip);
+    // push best-effort: avisa o NOVO responsável quando a atribuição muda (nunca quem fez a ação)
+    if (tarefa.responsavel_id && tarefa.responsavel_id !== antes.responsavel_id && tarefa.responsavel_id !== req.vp.user.id) {
+      push.notificarUsuario(tarefa.responsavel_id, { title: 'Tarefa para você', body: tarefa.titulo, url: '/vpe/app', tag: 'vpe-tarefa' }).catch(() => {});
+    }
+    res.json({ ok: true, tarefa });
   }));
   r.delete('/tarefas/:id', requireTenant, requirePerm('gerir_tarefas'), h(async (req, res) => {
     tarefas.excluirTarefa(req.vp.tenant.id, req.params.id, req.vp.user, req.vp.ip);
@@ -433,6 +445,17 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.get('/uso', requireTenant, h(async (req, res) => {
     if (!req.vp.permissoes.ver_uso && !req.vp.permissoes.administrar_cobranca) return res.status(403).json({ erro: 'Sem permissão: ver_uso' });
     res.json({ uso: repo.usoDoMes(req.vp.tenant.id), plano: repo.planoDoTenant(req.vp.tenant.id), planos: repo.listarPlanos() });
+  }));
+
+  // ------------------------------------------------ notificações push do painel (PWA) — por usuário, sem gate de módulo
+  r.get('/push/chave', requireTenant, h(async (req, res) => res.json({ publicKey: push.chavePublica() })));
+  r.post('/push/subscribe', requireTenant, h(async (req, res) => {
+    push.salvar(req.vp.tenant.id, req.vp.user.id, (req.body || {}).subscription);
+    res.json({ ok: true });
+  }));
+  r.post('/push/unsubscribe', requireTenant, h(async (req, res) => {
+    push.remover((req.body || {}).endpoint);
+    res.json({ ok: true });
   }));
 
   app.use('/vpe/api', r);

@@ -15,6 +15,7 @@ const comp = require('./compartilhar');
 const billing = require('./billing');
 const apiPub = require('./api-publica');
 const ent = require('./enterprise');
+const push = require('./push');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
 function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
@@ -406,6 +407,19 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   r.post('/ia/mensagens/:id/feedback', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
     const b = req.body || {};
     ia.darFeedback(req.vd.tenant.id, req.vd.user.id, req.params.id, b.tipo, b.comentario);
+    res.json({ ok: true });
+  }));
+
+  // ------------------------------------------------ notificações push do painel (PWA)
+  // Por usuário logado, sem gate de permissão fina: qualquer membro ativo
+  // pode ativar os avisos no próprio celular. tenant + user vêm da sessão.
+  r.get('/push/chave', requireTenant, h(async (req, res) => res.json({ publicKey: push.chavePublica() })));
+  r.post('/push/subscribe', requireTenant, h(async (req, res) => {
+    push.salvar(req.vd.tenant.id, req.vd.user.id, (req.body || {}).subscription);
+    res.json({ ok: true });
+  }));
+  r.post('/push/unsubscribe', requireTenant, h(async (req, res) => {
+    push.remover((req.body || {}).endpoint);
     res.json({ ok: true });
   }));
 

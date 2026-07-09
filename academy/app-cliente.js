@@ -96,7 +96,8 @@
       ' <a href="#" id="b-sino" style="text-decoration:none;float:right">🔔<span id="sino-n" class="chip" style="display:none"></span></a></h3>' +
       bannerVerif + '<div id="sino-box" style="display:none"></div>' +
       '<div class="menu" id="nav">' + nav + '</div>' +
-      '<p class="sub" style="text-align:left;margin:0">' + esc(me.usuario.email) + ' · <a href="#" id="b-sair">sair</a></p></div><div id="c"></div>';
+      '<p class="sub" style="text-align:left;margin:0">' + esc(me.usuario.email) + ' · <a href="#" id="b-sair">sair</a>' +
+      ' <button class="btn g peq" id="push-btn" style="display:none;margin-left:8px" title="Notificações no celular">🔔 Avisos</button></p></div><div id="c"></div>';
     el('b-sair').onclick = function (e) { e.preventDefault(); sair(); };
     if (el('b-reenv')) el('b-reenv').onclick = function (e) {
       e.preventDefault();
@@ -123,7 +124,51 @@
     Array.prototype.forEach.call(document.querySelectorAll('#nav [data-nav]'), function (b) {
       b.onclick = function () { (map[b.getAttribute('data-nav')] || vAluno)(); };
     });
+    pintarBotaoPush();
     vAluno();
+  }
+
+  // ---- notificações push do painel (PWA) — espelham o sininho no celular ----
+  function pushOk() { return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window); }
+  function b64ParaU8(b) {
+    var pad = '='.repeat((4 - b.length % 4) % 4);
+    var s = (b + pad).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(s); var a = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i);
+    return a;
+  }
+  function pushAssinado() {
+    return navigator.serviceWorker.ready
+      .then(function (reg) { return reg.pushManager.getSubscription(); })
+      .catch(function () { return null; });
+  }
+  function pintarBotaoPush() {
+    var btn = el('push-btn');
+    if (!btn || !pushOk()) return;
+    pushAssinado().then(function (sub) {
+      btn.style.display = '';
+      btn.textContent = sub ? '🔔 Avisos ✓' : '🔔 Avisos';
+      btn.title = sub ? 'Notificações ativadas — toque para desativar' : 'Receber os avisos do sininho no celular';
+      btn.onclick = alternarPush;
+    });
+  }
+  function alternarPush() {
+    pushAssinado().then(function (sub) {
+      if (sub) {
+        return api('POST', '/push/unsubscribe', { endpoint: sub.endpoint })
+          .catch(function () {})
+          .then(function () { return sub.unsubscribe(); });
+      }
+      return api('GET', '/push/chave').then(function (d) {
+        if (!d.publicKey) { alert('As notificações ainda não estão disponíveis. Tente mais tarde.'); return; }
+        return Notification.requestPermission().then(function (perm) {
+          if (perm !== 'granted') { alert('Permissão negada. Libere as notificações deste site nas configurações do navegador.'); return; }
+          return navigator.serviceWorker.ready.then(function (reg) {
+            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ParaU8(d.publicKey) });
+          }).then(function (nova) { return api('POST', '/push/subscribe', { subscription: nova.toJSON() }); });
+        });
+      });
+    }).catch(function (e) { alert(e.message); }).then(pintarBotaoPush);
   }
 
   // ================= ALUNO: biblioteca + curso + player =================
