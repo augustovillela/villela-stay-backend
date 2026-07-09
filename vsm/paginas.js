@@ -54,6 +54,8 @@ const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><
     <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg"><link rel="icon" type="image/png" sizes="192x192" href="${BRAND}/favicon-192.png">
     <link rel="apple-touch-icon" href="${BRAND}/apple-touch-icon.png"><meta name="theme-color" content="#1B2A4A">`;
+// GA4 do grupo (mesma propriedade do site; tráfego segmentável por hostname) — só páginas públicas.
+const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
 // Lockup da marca: negativo (símbolo dourado) sobre fundo escuro; símbolo-v sobre fundo claro.
 const marca = (neg) => `<span class="marca${neg ? ' neg' : ''}"><img src="${BRAND}/${neg ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Stay Manager"><span><span class="m1">Villela</span> <span class="m2">Stay Manager</span></span></span>`;
 
@@ -89,7 +91,9 @@ function landingHTML() {
     <meta property="og:description" content="Imóveis, reservas, canais/OTAs, limpeza, financeiro e IA em um só lugar. Gestão testada na operação real da Villela Stay. Teste grátis por 14 dias.">
     <meta property="og:image" content="https://manager.villelastay.com.br${BRAND}/og-image.png">
     <meta property="og:type" content="website"><meta property="og:url" content="https://manager.villelastay.com.br/gestao">
-    ${HEAD_MARCA}
+    <link rel="canonical" href="https://manager.villelastay.com.br/gestao">
+    ${HEAD_MARCA}${GA}
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Stay Manager","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA.","offers":{"@type":"Offer","price":"99.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
       <a href="/gestao" style="text-decoration:none">${marca(true)}</a>

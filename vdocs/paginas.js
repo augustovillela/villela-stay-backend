@@ -61,6 +61,8 @@ const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><
 <link rel="apple-touch-icon" href="${BRAND_DIR}/apple-touch-icon.png">
 <meta name="theme-color" content="#1B2A4A">`;
 const MARCA = `<img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Docs" style="height:32px"> Villela <b>DOCS</b>`;
+// GA4 do grupo (mesma propriedade do site; tráfego segmentável por hostname) — só páginas públicas.
+const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
 // lockup GRANDE das páginas públicas (masthead 5x — símbolo 150px, nome empilhado)
 const MARCA_XL = `<img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Docs" style="height:150px"><span style="display:flex;flex-direction:column;line-height:1.05"><span>Villela</span><b>DOCS</b></span>`;
 
@@ -71,7 +73,7 @@ function pagina({ titulo, descricao, corpo, canonical }) {
 ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
-${HEAD_MARCA}
+${HEAD_MARCA}${GA}
 <style>${CSS}</style></head><body>
 <header class="top xl"><div class="wrap">
   <a class="brand" href="/vdocs">${MARCA_XL}</a>
@@ -199,7 +201,12 @@ function landing() {
   <details><summary>E se eu cancelar?</summary>Você exporta todos os seus documentos e dados antes de sair. Sem fidelidade, sem multa.</details>
   <details><summary>Atende à LGPD?</summary>Sim: controle de acesso, registro de tratamento, retenção e descarte controlados, exportação e exclusão de dados quando aplicável.</details>
 </div></section>`;
-  return pagina({ titulo: 'Villela Docs — Document Intelligence: gestão de documentos com IA para empresas', descricao: 'Inteligência documental para empresas: centralize, organize e encontre os documentos da sua empresa com busca inteligente, workflows de aprovação, auditoria e IA que cita as fontes. Teste grátis 14 dias.', corpo });
+  return pagina({
+    titulo: 'Villela Docs — Document Intelligence: gestão de documentos com IA para empresas',
+    descricao: 'Inteligência documental para empresas: centralize, organize e encontre os documentos da sua empresa com busca inteligente, workflows de aprovação, auditoria e IA que cita as fontes. Teste grátis 14 dias.',
+    canonical: 'https://docs.villelastay.com.br/vdocs',
+    corpo: `<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Docs","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Inteligência documental para empresas: busca inteligente, workflows, auditoria e IA que responde citando as fontes.","offers":{"@type":"Offer","price":"99.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>` + corpo,
+  });
 }
 
 function planoBullets(p) {

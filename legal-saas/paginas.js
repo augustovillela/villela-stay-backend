@@ -24,6 +24,9 @@ const BRAND_HEAD = `<link rel="preconnect" href="https://fonts.googleapis.com"><
 const MARCA = (escuro) => `<img src="${BRAND_DIR}/${escuro ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Legal" style="height:32px;vertical-align:middle">`;
 const WORDMARK = `<span style="font-family:'Lora',Georgia,serif;font-weight:700">Villela</span> <span style="font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.22em;color:var(--villela-gold);font-size:.72em">LEGAL</span>`;
 
+// GA4 do grupo (mesma propriedade do site; tráfego segmentável por hostname) — só páginas públicas.
+const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
+
 const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#14532D;--acento2:#0E3B20;--borda:#E2E6EC}
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}
@@ -92,7 +95,9 @@ function landingHTML() {
     <meta property="og:title" content="Villela Legal — software jurídico para escritórios de advocacia">
     <meta property="og:description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 14 dias.">
     <meta property="og:image" content="https://juridico.villelastay.com.br${BRAND_DIR}/og-image.png">
-    ${BRAND_HEAD}
+    <link rel="canonical" href="https://juridico.villelastay.com.br/juridico">
+    ${BRAND_HEAD}${GA}
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Legal","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão jurídica inteligente: processos, prazos, publicações DJEN/DataJud, peças, contratos e portal do cliente para escritórios brasileiros.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
       <a class="brand" href="/juridico"><img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Legal" style="height:150px"><span><span class="bnome">Villela</span><span class="bdesc">LEGAL</span></span></a>

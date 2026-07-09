@@ -59,12 +59,14 @@ const BRAND_LOCKUP = `<img src="/assets/brand/villela-projects/logo-negativo.svg
 // lockup GRANDE das páginas públicas (masthead 5x — símbolo 150px, nome empilhado)
 const BRAND_XL = `<img src="/assets/brand/villela-projects/logo-negativo.svg" alt="Villela Projects" style="height:150px"><span style="display:flex;flex-direction:column;line-height:1.05"><span>Villela</span><b>Projects</b></span>`;
 
-function pagina({ titulo, descricao, corpo, og }) {
+const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
+
+function pagina({ titulo, descricao, corpo, og, extraHead }) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title><meta name="description" content="${esc(descricao)}">
 ${og ? `<meta property="og:type" content="website"><meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}"><meta property="og:image" content="https://projetos.villelastay.com.br/assets/brand/villela-projects/og-image.png">
-` : ''}${HEAD_MARCA}
+` : ''}${extraHead || ''}${HEAD_MARCA}${GA}
 <style>${CSS}</style></head><body>
 <header class="top"><div class="wrap">
   <a class="brand xl" href="/vpe">${BRAND_XL}</a>
@@ -154,7 +156,14 @@ function landing() {
     return false;}
   </script>
 </div></section>`;
-  return pagina({ titulo: 'Villela Projects — Projetos, processos e automações em um só lugar', descricao: 'Portfólio de ideias, projetos por fases, eventos de ponta a ponta e agentes de IA. Teste grátis 14 dias.', corpo, og: true });
+  return pagina({
+    titulo: 'Villela Projects — Projetos, processos e automações em um só lugar',
+    descricao: 'Portfólio de ideias, projetos por fases, eventos de ponta a ponta e agentes de IA. Teste grátis 14 dias.',
+    corpo, og: true,
+    extraHead: `<link rel="canonical" href="https://projetos.villelastay.com.br/vpe">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Projects","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Projetos, processos e automações em um só lugar: portfólio, Kanban, eventos, financeiro e IA.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>
+`,
+  });
 }
 
 const formPagina = (titulo, inner) => pagina({

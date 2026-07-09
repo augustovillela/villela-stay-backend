@@ -26,6 +26,9 @@ const marca = ({ escuro = true, altura = 32 } = {}) =>
   `<a class="marca" href="/academy"><img src="${BRAND}/${escuro ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Academy" style="height:${altura}px">
    <span><span class="mnome" style="color:${escuro ? '#F8F9FA' : 'var(--villela-navy)'}">Villela</span> <span class="msub">ACADEMY</span></span></a>`;
 
+// GA4 do grupo (mesma propriedade do site; tráfego segmentável por hostname) — só páginas públicas.
+const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
+
 const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#D97706;--acento2:#B45309;--borda:#E2E6EC;--ambar-claro:#FDE9D2}
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}
@@ -76,7 +79,9 @@ function landingHTML() {
     <meta property="og:description" content="Aprenda, aplique e transforme — marketplace brasileiro de cursos online e produtos digitais.">
     <meta property="og:type" content="website"><meta property="og:site_name" content="Villela Academy">
     <meta property="og:image" content="${BASE_URL()}${BRAND}/og-image.png">
-    ${HEAD_MARCA}
+    <link rel="canonical" href="${BASE_URL()}/academy">
+    ${HEAD_MARCA}${GA}
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
