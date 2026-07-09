@@ -75,7 +75,7 @@ ${og ? `<meta property="og:type" content="website"><meta property="og:title" con
 ${corpo}
 <footer><div class="wrap"><b style="color:#fff">Villela Projects</b> · Projetos, processos e automações em um só lugar<br>
 Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
-<a href="/vpe/login">Entrar</a> · <a href="/vpe/cadastro">Criar conta</a></div></footer>
+<a href="/vpe/login">Entrar</a> · <a href="/vpe/cadastro">Criar conta</a> · <a href="/vpe/ajuda">Ajuda</a></div></footer>
 </body></html>`;
 }
 

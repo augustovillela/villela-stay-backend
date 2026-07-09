@@ -133,7 +133,7 @@ function landingHTML() {
         <textarea id="l-msg" rows="3" placeholder="Quantos imóveis você opera? Como podemos ajudar?"></textarea>
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
-    <footer>Villela Stay Manager · Gestão profissional para aluguel por temporada · <a href="/gestao/app" style="color:var(--villela-gold)">Painel do cliente</a>
+    <footer>Villela Stay Manager · Gestão profissional para aluguel por temporada · <a href="/gestao/app" style="color:var(--villela-gold)">Painel do cliente</a> · <a href="/gestao/ajuda" style="color:var(--villela-gold)">Ajuda</a>
       <br><span style="opacity:.8">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/gestao/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({

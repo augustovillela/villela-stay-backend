@@ -5268,6 +5268,11 @@ app.get('/', (req, res) => {
   return res.redirect(302, '/hospede');
 });
 
+// =========================== Central de Ajuda dos produtos (manual + FAQ) ===========================
+// Páginas públicas <base>/ajuda, /ajuda/manual e /ajuda/faq de cada produto SaaS, renderizadas
+// do markdown em ajuda/conteudo/. Registrado ANTES dos módulos para ter prioridade de rota.
+try { require('./ajuda').montar(app); } catch (e) { console.error('[ajuda] falha ao montar módulo:', e.message); }
+
 // =========================== Livraria Villela (loja de livros) ===========================
 // Loja pública server-rendered (SEO) + Portal Staff (Gestão de Livros) + webhook próprio.
 // Reaproveita auth/e-mail/WhatsApp/Mercado Pago já existentes (injeção de deps).

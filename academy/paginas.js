@@ -120,7 +120,7 @@ function landingHTML() {
       </form></div></div>
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
       Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12<br>
-      <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/app">Entrar</a>
+      <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/ajuda">Ajuda</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/app">Entrar</a>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/academy/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           nome:l_nome.value,email:l_email.value,telefone:l_tel.value,interesse:l_int.value,mensagem:l_msg.value})});
@@ -168,7 +168,7 @@ function shellPublico({ titulo, descricao, url, corpo, imagem }) {
     ${corpo}
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
       Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12<br>
-      <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/reembolso">Reembolso</a> ·
+      <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/ajuda">Ajuda</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/reembolso">Reembolso</a> ·
       <a href="/academy/termos-produtor">Produtores</a> · <a href="/academy/termos-afiliado">Afiliados</a></footer></body></html>`;
 }
 

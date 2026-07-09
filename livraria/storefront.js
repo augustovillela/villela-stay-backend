@@ -120,7 +120,8 @@ ${body}
   <div><strong style="color:#fff">Livraria Villela</strong> · Livros, ideias e conhecimento aplicado<br>Uma empresa do <strong style="color:var(--dourado)">Grupo Villela Stay</strong> · CNPJ 56.776.526/0001-12 · Brasília-DF</div>
   <div><a href="/politica-de-privacidade">Privacidade</a> · <a href="/termos-de-uso">Termos</a><br>
     <a href="/politica-de-compra-e-entrega">Compra e entrega</a> · <a href="/politica-de-reembolso">Reembolso</a><br>
-    <a href="/politica-de-livro-impresso">Livro impresso</a> · <a href="/suporte-livros">Suporte</a></div>
+    <a href="/politica-de-livro-impresso">Livro impresso</a> · <a href="/suporte-livros">Suporte</a><br>
+    <a href="/livros/ajuda">Manual e perguntas frequentes</a></div>
   <div><a class="btn-wa btn" href="${waLink()}">Falar no WhatsApp</a></div>
 </div></div></footer>
 </body></html>`;

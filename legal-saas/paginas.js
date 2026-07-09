@@ -136,7 +136,7 @@ function landingHTML() {
         <textarea id="l-msg" rows="3" placeholder="Como podemos ajudar?"></textarea>
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
-    <footer>Villela Legal · Gestão jurídica inteligente · <a href="/juridico/app" style="color:var(--villela-gold)">Painel do cliente</a>
+    <footer>Villela Legal · Gestão jurídica inteligente · <a href="/juridico/app" style="color:var(--villela-gold)">Painel do cliente</a> · <a href="/juridico/ajuda" style="color:var(--villela-gold)">Ajuda</a>
       <br><span style="font-size:.85em;opacity:.85">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/juridico/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({

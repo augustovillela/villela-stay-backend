@@ -83,7 +83,7 @@ ${corpo}
 <footer><div class="wrap">
   <b style="color:#fff">Villela Docs</b> · Inteligência documental para empresas<br>
   Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
-  <a href="/vdocs/precos">Planos</a> · <a href="/vdocs/login">Entrar</a> · <a href="/vdocs/cadastro">Criar conta</a>
+  <a href="/vdocs/precos">Planos</a> · <a href="/vdocs/login">Entrar</a> · <a href="/vdocs/cadastro">Criar conta</a> · <a href="/vdocs/ajuda">Ajuda</a>
   <div style="margin-top:8px;font-size:12px">Seus documentos são privados: armazenamento isolado por empresa, criptografia em trânsito e trilha de auditoria completa (LGPD).</div>
 </div></footer>
 </body></html>`;
