@@ -5382,6 +5382,20 @@ try {
   });
 } catch (e) { console.error('[academy] falha ao montar módulo:', e.message); }
 
+// =========================== Villela CRM (SaaS de CRM inteligente multicanal) ===========================
+// CRM multi-tenant vendido a outras empresas (e usado pelo grupo como tenant interno):
+// landing/preços em /crm, painel do assinante em /crm/app (sessão própria 'crm_sess'),
+// administração da plataforma em /staff/api/vcrm/* (vcrm ≠ CRM legado do staff em
+// /staff/api/crm/*). SQLite próprio em DATA_DIR/crm/. Cobrança recorrente via MP.
+try {
+  require('./crm').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[crm] falha ao montar módulo:', e.message); }
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.

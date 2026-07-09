@@ -11,7 +11,8 @@
     "test:vdocs": "node vdocs/selftest.js",
     "test:vpe": "node vpe/selftest.js",
     "test:vsm": "node vsm/selftest.js",
-    "test:academy": "node academy/selftest.js"
+    "test:academy": "node academy/selftest.js",
+    "test:crm": "node crm/selftest.js"
   },
   "engines": {
     "node": ">=22"
