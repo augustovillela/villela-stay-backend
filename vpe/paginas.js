@@ -18,6 +18,9 @@ a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
 header.top{background:var(--verde2);color:#fff;position:sticky;top:0;z-index:20}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
 header.top a{color:#E8ECF4}.brand{display:inline-flex;align-items:center;gap:9px;font-family:'Lora',Georgia,serif;font-weight:700;font-size:19px;color:#fff!important}.brand b{font-family:'Inter',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:2.5px;color:#A78BFA}
+header.top{position:static}header.top .wrap{height:auto;padding-top:18px;padding-bottom:18px;gap:14px;flex-wrap:wrap}
+.brand.xl{gap:18px;font-size:3.2rem}.brand.xl b{font-size:1.4rem;letter-spacing:.18em}
+@media(max-width:640px){.brand.xl img{height:84px!important}.brand.xl{font-size:2rem}.brand.xl b{font-size:.95rem}}
 .nav a{margin-left:18px;font-size:15px}
 .btn{display:inline-block;background:var(--acc);color:#fff!important;padding:12px 24px;border-radius:9px;font-weight:700;border:0;cursor:pointer;font-size:15px;text-align:center;transition:.15s}
 .btn:hover{background:var(--verde)}
@@ -53,6 +56,8 @@ const HEAD_MARCA = `<link rel="icon" type="image/svg+xml" href="/assets/brand/vi
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">`;
 
 const BRAND_LOCKUP = `<img src="/assets/brand/villela-projects/logo-negativo.svg" alt="Villela Projects" style="height:30px">Villela <b>Projects</b>`;
+// lockup GRANDE das páginas públicas (masthead 5x — símbolo 150px, nome empilhado)
+const BRAND_XL = `<img src="/assets/brand/villela-projects/logo-negativo.svg" alt="Villela Projects" style="height:150px"><span style="display:flex;flex-direction:column;line-height:1.05"><span>Villela</span><b>Projects</b></span>`;
 
 function pagina({ titulo, descricao, corpo, og }) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -62,7 +67,7 @@ ${og ? `<meta property="og:type" content="website"><meta property="og:title" con
 ` : ''}${HEAD_MARCA}
 <style>${CSS}</style></head><body>
 <header class="top"><div class="wrap">
-  <a class="brand" href="/vpe">${BRAND_LOCKUP}</a>
+  <a class="brand xl" href="/vpe">${BRAND_XL}</a>
   <nav class="nav"><a class="esconde" href="/vpe#recursos">Recursos</a><a class="esconde" href="/vpe#planos">Planos</a><a href="/vpe/login">Entrar</a> <a class="btn" style="padding:9px 16px;background:#DDD3F7;color:#2E1065!important" href="/vpe/cadastro">Teste grátis</a></nav>
 </div></header>
 ${corpo}

@@ -19,6 +19,9 @@ a{color:var(--azul);text-decoration:none}a:hover{text-decoration:underline}
 header.top{background:var(--indigo2);color:#fff;position:sticky;top:0;z-index:20}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
 header.top a{color:#e6ebf4}.brand{display:flex;align-items:center;gap:9px;font-family:'Lora',Georgia,serif;font-weight:700;font-size:19px;letter-spacing:.3px;color:#fff!important}.brand img{height:32px;display:block}.brand b{font-family:'Inter',sans-serif;font-weight:700;font-size:14px;letter-spacing:.22em;color:var(--azul)}
+header.top.xl{position:static}header.top.xl .wrap{height:auto;padding-top:18px;padding-bottom:18px;gap:14px;flex-wrap:wrap}
+header.top.xl .brand{gap:18px;font-size:3.2rem}header.top.xl .brand img{height:150px}header.top.xl .brand b{font-size:1.4rem;letter-spacing:.18em;color:#7FA6FF}
+@media(max-width:640px){header.top.xl .brand img{height:84px!important}header.top.xl .brand{font-size:2rem}header.top.xl .brand b{font-size:.95rem}}
 .nav a{margin-left:18px;font-size:15px}
 .btn{display:inline-block;background:var(--azul);color:#fff!important;padding:12px 24px;border-radius:9px;font-weight:700;border:0;cursor:pointer;font-size:15px;text-align:center;transition:.15s}
 .btn:hover{background:var(--indigo);text-decoration:none}
@@ -57,6 +60,8 @@ const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><
 <link rel="apple-touch-icon" href="${BRAND_DIR}/apple-touch-icon.png">
 <meta name="theme-color" content="#1B2A4A">`;
 const MARCA = `<img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Docs" style="height:32px"> Villela <b>DOCS</b>`;
+// lockup GRANDE das páginas públicas (masthead 5x — símbolo 150px, nome empilhado)
+const MARCA_XL = `<img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Docs" style="height:150px"><span style="display:flex;flex-direction:column;line-height:1.05"><span>Villela</span><b>DOCS</b></span>`;
 
 function pagina({ titulo, descricao, corpo, canonical }) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -67,8 +72,8 @@ ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
 ${HEAD_MARCA}
 <style>${CSS}</style></head><body>
-<header class="top"><div class="wrap">
-  <a class="brand" href="/vdocs">${MARCA}</a>
+<header class="top xl"><div class="wrap">
+  <a class="brand" href="/vdocs">${MARCA_XL}</a>
   <nav class="nav"><a class="esconde" href="/vdocs#recursos">Recursos</a><a class="esconde" href="/vdocs/precos">Planos</a><a href="/vdocs/login">Entrar</a> <a class="btn btn-ciano" style="padding:9px 16px" href="/vdocs/cadastro">Teste grátis</a></nav>
 </div></header>
 ${corpo}

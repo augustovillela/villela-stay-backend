@@ -28,12 +28,15 @@ const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}
 a{color:var(--villela-navy)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
-header.top{background:var(--villela-navy2);color:#fff;position:sticky;top:0;z-index:20}
-header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+header.top{background:var(--villela-navy2);color:#fff}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:18px;padding-bottom:18px}
 header.top a{color:#E8ECF4;text-decoration:none}
 header.top nav{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-header.top .brand{display:inline-flex;align-items:center;gap:9px;font-size:1.15rem;color:#fff!important}
-@media(max-width:640px){header.top .esconde{display:none}}
+header.top .brand{display:inline-flex;align-items:center;gap:18px;color:#fff!important}
+header.top .brand>span{display:flex;flex-direction:column;line-height:1.05}
+header.top .bnome{font-family:'Lora',Georgia,serif;font-weight:700;font-size:3.2rem}
+header.top .bdesc{font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.18em;color:var(--villela-gold);font-size:1.4rem}
+@media(max-width:640px){header.top .esconde{display:none}header.top .brand img{height:84px!important}header.top .bnome{font-size:2rem}header.top .bdesc{font-size:.95rem}}
 .hero{background:linear-gradient(135deg,var(--villela-navy),var(--villela-navy2));color:var(--villela-ice);padding:64px 0 72px}
 .hero h1{font-size:2.4rem;margin:.2rem 0;max-width:640px;line-height:1.15}.hero p{font-size:1.15rem;max-width:560px;color:#cfd6e4}
 .badge{display:inline-block;background:var(--villela-gold);color:var(--villela-navy);font-weight:700;padding:4px 12px;border-radius:20px;font-size:.85rem}
@@ -92,7 +95,7 @@ function landingHTML() {
     ${BRAND_HEAD}
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
-      <a class="brand" href="/juridico">${MARCA(true)}<span>${WORDMARK}</span></a>
+      <a class="brand" href="/juridico"><img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Legal" style="height:150px"><span><span class="bnome">Villela</span><span class="bdesc">LEGAL</span></span></a>
       <nav><a class="esconde" href="/juridico#recursos">Recursos</a><a class="esconde" href="/juridico#planos">Planos</a><a href="/juridico/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/juridico/assinar?plano=trial">Teste grátis</a></nav>
     </div></header>
     <div class="hero"><div class="wrap">

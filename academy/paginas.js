@@ -51,11 +51,14 @@ input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radiu
 .marca{display:inline-flex;align-items:center;gap:10px;text-decoration:none}
 .marca .mnome{font-family:'Lora',Georgia,serif;font-weight:700;font-size:1.15rem}
 .marca .msub{font-family:'Inter',system-ui,sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.22em;color:var(--acento)}
-header.top{background:var(--villela-navy2);color:#fff;position:sticky;top:0;z-index:20}
-header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+header.top{background:var(--villela-navy2);color:#fff}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:18px;padding-bottom:18px}
 header.top a{color:#E8ECF4;text-decoration:none}
 header.top nav{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-@media(max-width:640px){.hero h1{font-size:1.8rem}header.top .esconde{display:none}}`;
+header.top .marca{gap:18px}
+header.top .marca>span{display:flex;flex-direction:column;line-height:1.05}
+header.top .mnome{font-size:3.2rem}header.top .msub{font-size:1.4rem;letter-spacing:.18em}
+@media(max-width:640px){.hero h1{font-size:1.8rem}header.top .esconde{display:none}header.top .marca img{height:84px!important}header.top .mnome{font-size:2rem}header.top .msub{font-size:.95rem}}`;
 
 function landingHTML() {
   const feats = [
@@ -76,7 +79,7 @@ function landingHTML() {
     ${HEAD_MARCA}
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
-      ${marca({ escuro: true, altura: 32 })}
+      ${marca({ escuro: true, altura: 150 })}
       <nav><a class="esconde" href="/academy#recursos">Recursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
     </div></header>
     <div class="hero"><div class="wrap">

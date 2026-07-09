@@ -36,12 +36,14 @@ a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}
 img{max-width:100%;height:auto;display:block}
 .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
 .wrap-sm{max-width:720px;margin:0 auto;padding:0 20px}
-header.top{background:var(--petroleo);color:var(--creme);position:sticky;top:0;z-index:20}
-header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:62px}
+header.top{background:var(--petroleo);color:var(--creme)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:18px;padding-bottom:18px}
 header.top a{color:var(--creme)}
-.brand{display:flex;align-items:center;gap:10px;font-size:19px}.brand:hover{text-decoration:none}
-.brand .lv{font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:2.5px;font-size:12px;font-weight:700;color:var(--dourado)}
-.brand b{font-family:'Lora',Georgia,serif;font-weight:700;font-size:20px;color:#fff;line-height:1}
+.brand{display:flex;align-items:center;gap:18px;font-size:19px}.brand:hover{text-decoration:none}
+.brand>span{display:flex;flex-direction:column;line-height:1.05}
+.brand .lv{font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:.18em;font-size:1.4rem;font-weight:700;color:var(--dourado)}
+.brand b{font-family:'Lora',Georgia,serif;font-weight:700;font-size:3.2rem;color:#fff;line-height:1.05}
+@media(max-width:640px){.brand img{height:84px!important}.brand b{font-size:2rem}.brand .lv{font-size:.95rem}}
 .nav a{margin-left:20px;font-size:15px}
 .btn{display:inline-block;background:var(--teal);color:#fff;padding:13px 26px;border-radius:9px;font-weight:700;border:0;cursor:pointer;font-size:16px;text-align:center;transition:.15s}
 .btn:hover{background:#641717;text-decoration:none}
@@ -106,7 +108,7 @@ ${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script
 <style>${CSS}</style>${pixelsHead()}${extraHead}
 </head><body>
 <header class="top"><div class="wrap">
-  <a class="brand" href="/livros"><img src="/assets/brand/livraria-villela/logo-negativo.svg" alt="Livraria Villela" style="height:32px"><span><span class="lv">Livraria</span> <b>Villela</b></span></a>
+  <a class="brand" href="/livros"><img src="/assets/brand/livraria-villela/logo-negativo.svg" alt="Livraria Villela" style="height:150px"><span><span class="lv">Livraria</span> <b>Villela</b></span></a>
   <nav class="nav"><a href="/livros">Livros</a><a href="/minha-biblioteca">Minha biblioteca</a><a href="${SITE_PRINCIPAL}">Villela Stay</a></nav>
 </div></header>
 ${body}

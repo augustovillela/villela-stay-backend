@@ -40,11 +40,14 @@ input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radiu
 .marca .m1{font-family:'Lora',Georgia,serif;font-weight:700;font-size:1.3rem;color:var(--villela-navy)}
 .marca .m2{font-family:'Inter',system-ui,sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--acento)}
 .marca.neg .m1{color:#fff}.marca.neg .m2{color:#67E8F9}
-header.top{background:var(--villela-navy2);color:#fff;position:sticky;top:0;z-index:20}
-header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+header.top{background:var(--villela-navy2);color:#fff}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:18px;padding-bottom:18px}
 header.top a{color:#E8ECF4;text-decoration:none}
 header.top nav{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-@media(max-width:640px){.hero h1{font-size:1.8rem}header.top .esconde{display:none}}`;
+header.top .marca{gap:18px}header.top .marca img{height:150px}
+header.top .marca>span{display:flex;flex-direction:column;line-height:1.05}
+header.top .m1{font-size:3.2rem}header.top .m2{font-size:1.4rem;letter-spacing:.18em}
+@media(max-width:640px){.hero h1{font-size:1.8rem}header.top .esconde{display:none}header.top .marca img{height:84px}header.top .m1{font-size:2rem}header.top .m2{font-size:.95rem}}`;
 
 const BRAND = '/assets/brand/villela-stay-manager';
 const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
