@@ -24,7 +24,11 @@ db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
 
 // ---- migrações (ALTERs; roda uma vez cada) ----
 const MIGRACOES = [
-  // acrescentar no fim quando evoluir o schema
+  // marco 3 (Stays): rastrear origem e id externo de imóveis/reservas importados.
+  // Colunas adicionadas por ALTER (as tabelas app_* já existem em produção); por
+  // isso NÃO ficam no CREATE do schema.sql — este é o único ponto que as cria.
+  { nome: '2026-07-09-app-imoveis-stays', sql: "ALTER TABLE app_imoveis ADD COLUMN stays_id TEXT DEFAULT ''; ALTER TABLE app_imoveis ADD COLUMN origem TEXT DEFAULT 'manual';" },
+  { nome: '2026-07-09-app-reservas-stays', sql: "ALTER TABLE app_reservas ADD COLUMN stays_id TEXT DEFAULT ''; ALTER TABLE app_reservas ADD COLUMN origem TEXT DEFAULT 'manual';" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

@@ -7,6 +7,7 @@
 'use strict';
 const repo = require('./repo');
 const app = require('./app-repo');
+const stays = require('./app-stays-repo');
 
 function registrarRotasApp(server, { requireAssinante }) {
   // captura throws síncronos E assíncronos (handlers do app lançam de forma síncrona)
@@ -69,6 +70,12 @@ function registrarRotasApp(server, { requireAssinante }) {
   // ---- financeiro ----
   server.get('/gestao/api/app/financeiro', ...G('financeiro'), h((req, res) => res.json({ lancamentos: app.Financeiro.listar(tid(req), req.query), resumo: app.Financeiro.resumo(tid(req)) })));
   server.post('/gestao/api/app/financeiro', ...G('financeiro'), h((req, res) => res.json({ ok: true, lancamento: app.Financeiro.criar(tid(req), req.body || {}) })));
+
+  // ---- Stays.net (channel manager do assinante) — módulo 'canais' ----
+  server.get('/gestao/api/app/stays', ...G('canais'), h((req, res) => res.json({ conta: stays.Conta.statusPublico(tid(req)) })));
+  server.post('/gestao/api/app/stays/conectar', ...G('canais'), h(async (req, res) => res.json({ ok: true, conta: await stays.Conta.salvar(tid(req), req.body || {}) })));
+  server.post('/gestao/api/app/stays/sincronizar', ...G('canais'), h(async (req, res) => res.json({ ok: true, ...(await stays.sincronizar(tid(req))) })));
+  server.post('/gestao/api/app/stays/desconectar', ...G('canais'), h((req, res) => res.json({ ok: true, ...stays.Conta.desconectar(tid(req)) })));
 }
 
 module.exports = { registrarRotasApp };

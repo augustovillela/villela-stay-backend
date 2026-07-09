@@ -37,6 +37,12 @@ app.use(cookieParser());
 const saas = require('./index');
 saas.montar(app, { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret: 'seg-teste' });
 
+// Stays mockada (fábrica de cliente injetável — sem rede)
+const fakeListings = [{ _id: 'L1', id: 'CASA1', _mstitle: { pt_BR: 'Casa da Praia' }, _i_maxGuests: 6, _i_rooms: 3 }];
+const fakeReservas = [{ _id: 'R1', _idlisting: 'L1', _idclient: 'C1', type: 'booked', checkInDate: '2026-10-01', checkOutDate: '2026-10-05', price: { _f_total: 1500 }, partner: { name: 'Airbnb' }, guests: 2 }];
+const fakeCli = { base: 'https://minha.stays.com.br/external/v1', testar: async () => true, listings: async () => fakeListings, reservations: async () => fakeReservas, cliente: async (id) => ({ name: 'Cliente ' + id }) };
+require('./app-stays-repo').setFabrica(() => fakeCli);
+
 let BASE = '', ok = 0, falhas = [];
 const jar = {};
 async function req(m, p, { corpo, user = 'adm', cookies } = {}) {
@@ -167,6 +173,26 @@ async function rodar() {
     const r = await req('GET', '/gestao/api/app/painel', { cookies: true });
     assert.ok(r.json.painel.imoveis >= 1 && r.json.painel.reservas_ativas >= 1);
   });
+  await t('app/stays: conectar valida credencial e salva (mascarada)', async () => {
+    const r = await req('POST', '/gestao/api/app/stays/conectar', { corpo: { base_url: 'minha.stays.com.br', client_id: 'meu-id-123456', secret: 'meu-secret' }, cookies: true });
+    assert.equal(r.st, 200); assert.equal(r.json.conta.conectada, true);
+    assert.ok(/•/.test(r.json.conta.client_id) && !r.json.conta.client_id.includes('123456')); // nunca devolve cru
+  });
+  await t('app/stays: sincronizar importa anúncios e reservas', async () => {
+    const r = await req('POST', '/gestao/api/app/stays/sincronizar', { cookies: true });
+    assert.equal(r.st, 200); assert.ok(r.json.imoveis >= 1 && r.json.reservas_novas >= 1);
+    const im = await req('GET', '/gestao/api/app/imoveis', { cookies: true });
+    assert.ok(im.json.imoveis.some(i => i.nome === 'Casa da Praia' && i.origem === 'stays'));
+    const rv = await req('GET', '/gestao/api/app/reservas', { cookies: true });
+    assert.ok(rv.json.reservas.some(x => x.canal === 'airbnb' && x.hospede_nome === 'Cliente C1' && x.origem === 'stays'));
+  });
+  await t('app/stays: reimportar é idempotente (upsert, não duplica)', async () => {
+    const antes = (await req('GET', '/gestao/api/app/reservas', { cookies: true })).json.reservas.length;
+    await req('POST', '/gestao/api/app/stays/sincronizar', { cookies: true });
+    const depois = (await req('GET', '/gestao/api/app/reservas', { cookies: true })).json.reservas.length;
+    assert.equal(antes, depois);
+  });
+
   await t('app: gating por módulo + limite de imóveis (plano starter)', async () => {
     const nova = await req('POST', '/staff/api/vsm/tenants', { corpo: { nome: 'Hostel Delta', email: 'delta@t.br', plano: 'starter' } });
     const link = await req('POST', `/staff/api/vsm/tenants/${nova.json.tenant.id}/link-acesso`);

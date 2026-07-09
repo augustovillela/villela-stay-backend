@@ -21,6 +21,10 @@ Duas camadas, ambas no ar:
    automaticamente no check-out), manutenção, financeiro (receita automática da reserva) e
    painel. Cada operação gerencia os **próprios** dados — nada a ver com a conta Stays da
    Villela. Ver §App de gestão real.
+3. **Integração Stays.net por tenant (módulo `canais`)** — cada assinante conecta a **própria**
+   conta Stays.net (que já sincroniza Airbnb/Booking/Decolar/Vrbo/Expedia/Google e diretas) e
+   o sistema **importa anúncios → imóveis e reservas → reservas** (upsert por id externo).
+   Ver §Integração Stays.net.
 
 ## Fatos técnicos
 
@@ -68,7 +72,9 @@ Duas camadas, ambas no ar:
 | `rotas-staff.js` | API admin `/staff/api/vsm/*` (requireAuth + requireAdmin, auditado) |
 | `rotas-cliente.js` | API assinante `/gestao/api/*` (cookie `vsm_sess`, rate-limit) |
 | `app-repo.js` | **app de gestão real**: imóveis/hóspedes/reservas/limpezas/manutenção/financeiro/painel (tudo por tenant_id) |
-| `rotas-app.js` | API do app `/gestao/api/app/*` (requireAssinante + requireAcesso + gateModulo) |
+| `stays.js` | cliente Stays.net **por tenant** (Basic Auth, paginação; fetch injetável p/ testes) |
+| `app-stays-repo.js` | conta Stays do tenant + **sincronização** (import anúncios/reservas, upsert por id externo; fábrica injetável) |
+| `rotas-app.js` | API do app `/gestao/api/app/*` (requireAssinante + requireAcesso + gateModulo) — inclui `/stays/*` |
 | `app-cliente.js` | SPA do assinante servida em `/gestao/app.js` (JS clássico, sem build) |
 | `paginas.js` | landing + assinar + painel do assinante + signup/lead (server-rendered) |
 | `selftest.js` | suíte `npm run test:vsm` (25 testes: control plane + app) |
@@ -110,16 +116,34 @@ SPA: `app-cliente.js` servida em `/gestao/app.js`, montada por `bootGestao()` no
 (`paginas.js` → `/gestao/app`). Mostra só as abas dos módulos do plano; conta bloqueada
 (suspensa) cai no Plano/Suporte.
 
-## Roadmap (marco 3 — integração com channel manager)
+## Integração Stays.net (marco 3 — channel manager por tenant)
 
-Conectar a conta de OTA/channel manager **de cada cliente** (Airbnb/Booking/Stays do próprio
-anfitrião) para sincronizar disponibilidade e importar reservas — hoje o app é o registro
-central próprio da operação. `repo.Tenants.usuarioAssinante` e o escopo por tenant já servem
-de base.
+Decisão comercial: as plataformas de hospedagem só liberam API a **channel managers
+credenciados**, então o produto se integra **só à Stays.net** (que já fala com Airbnb, Booking,
+Decolar, Vrbo, Expedia, Google Rentals e diretas). **Quem contrata o Villela Stay Manager
+precisa também ter conta na Stays.net** e conectá-la aqui.
+
+- **Credenciais por tenant** em `app_stays_conta` (base_url + client_id + secret do PRÓPRIO
+  cliente). Guardadas no disco do produto; **nunca devolvidas cruas** (a API só mostra versão
+  mascarada). Validadas (`testar()` = 1 página de anúncios) antes de gravar.
+- **Cliente** `stays.js`: Basic Auth, paginação 20/pág (espelha `server.js`); `fetch` injetável.
+- **Sincronização** `app-stays-repo.sincronizar(tenantId)`: importa `/content/listings` →
+  `app_imoveis` e `/booking/reservations` (chegadas, janela −30d/+365d) → `app_reservas`,
+  **upsert por id externo** (`stays_id`) — idempotente, não duplica; marca `origem='stays'`.
+  Import ignora anti-overbooking/limite (é dado real que já existe). Nomes de hóspede via
+  `/booking/clients/{id}` (best-effort). Canal normalizado do `partner.name`.
+- **Rotas** (módulo `canais`): `GET /gestao/api/app/stays` (status mascarado), `POST .../conectar`,
+  `POST .../sincronizar`, `POST .../desconectar`. UI = aba **🔗 Canais** na SPA.
+- **Colunas** `stays_id`/`origem` em `app_imoveis`/`app_reservas` adicionadas por MIGRAÇÃO
+  (db.js) — as tabelas já existiam em produção.
+
+Futuro (quando houver demanda): sincronização incremental por webhook da Stays, push de
+disponibilidade/bloqueios de volta, e mapa de `_idlisting` para múltiplos workspaces.
 
 ## Pendências
 
 1. **Comercial (Augusto):** marca definitiva (hoje "Villela Stay Manager" em `/gestao`),
    preços finais (editáveis no painel) e 1º cliente piloto. NÃO ativar 1º cliente pago antes
    de definir o comercial (mesma regra dos outros SaaS).
-2. **Marco 3** (integração com channel manager de cada cliente) — quando houver demanda.
+2. **Validação com conta Stays real** de um cliente (o import foi testado com cliente mockado;
+   um piloto com conta Stays de verdade fecha o ciclo).

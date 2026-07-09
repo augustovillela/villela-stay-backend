@@ -319,3 +319,21 @@ CREATE TABLE IF NOT EXISTS app_financeiro (
   criado_em     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_app_fin_tenant ON app_financeiro(tenant_id, data);
+
+-- ---- CONEXÃO STAYS.NET do assinante (channel manager) ----
+-- Cada operação traz a PRÓPRIA conta Stays.net (que já fala com Airbnb/Booking/
+-- Decolar/Vrbo/Expedia/Google...). Guardamos as credenciais no disco do produto
+-- (nunca em commit/resposta; a API só devolve versão mascarada). Módulo 'canais'.
+CREATE TABLE IF NOT EXISTS app_stays_conta (
+  tenant_id     TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+  base_url      TEXT NOT NULL,          -- ex.: https://<conta>.stays.com.br/external/v1
+  client_id     TEXT NOT NULL,
+  secret        TEXT NOT NULL,          -- credencial do TENANT (nunca exposta)
+  status        TEXT DEFAULT 'conectada', -- conectada|erro
+  ultimo_sync   TEXT DEFAULT '',
+  ultimo_erro   TEXT DEFAULT '',
+  imoveis_sync  INTEGER DEFAULT 0,
+  reservas_sync INTEGER DEFAULT 0,
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);

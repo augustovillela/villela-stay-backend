@@ -27,6 +27,7 @@
   // catálogo de abas do app: módulo → {rot, fn}
   var TABS = [
     ['imoveis', '🏠 Imóveis', vImoveis], ['reservas', '📅 Reservas', vReservas],
+    ['canais', '🔗 Canais', vCanais],
     ['limpeza', '🧹 Limpezas', vLimpezas], ['manutencao', '🛠️ Manutenção', vManutencao],
     ['financeiro', '💰 Financeiro', vFinanceiro], ['hospede', '👥 Hóspedes', vHospedes],
   ];
@@ -215,6 +216,38 @@
         el('hp-msg').textContent = '';
         app('POST', '/hospedes', { nome: val('hp-nome'), email: val('hp-email'), telefone: val('hp-tel') }).then(vHospedes).catch(function (e) { el('hp-msg').textContent = e.message; });
       };
+    }).catch(erroBox);
+  }
+
+  // ---------------- canais (Stays.net) ----------------
+  function vCanais() {
+    app('GET', '/stays').then(function (d) {
+      var c = d.conta;
+      if (c && c.conectada) {
+        setView('<div class="card"><h3>Stays.net conectada ✅</h3>' +
+          '<p class="sub">Conta: <b>' + esc(c.base_url) + '</b> · client_id ' + esc(c.client_id) + (c.status === 'erro' ? ' · <span style="color:#b00020">erro</span>' : '') + '</p>' +
+          '<p>Última sincronização: <b>' + (c.ultimo_sync ? dt(c.ultimo_sync) : 'nunca') + '</b> · anúncios: <b>' + (c.imoveis_sync || 0) + '</b> · reservas: <b>' + (c.reservas_sync || 0) + '</b></p>' +
+          (c.ultimo_erro ? '<p class="aviso">Último erro: ' + esc(c.ultimo_erro) + '</p>' : '') +
+          '<button class="btn" id="b-sync">🔄 Sincronizar agora</button> <button class="btn secund peq" id="b-desc">Desconectar</button><p id="cn-msg" class="sub"></p></div>' +
+          '<div class="card"><p class="sub">A sincronização importa seus <b>anúncios</b> e <b>reservas</b> da Stays (que já integra Airbnb, Booking, Decolar, Vrbo, Expedia, Google e reservas diretas) para as abas Imóveis e Reservas.</p></div>');
+        el('b-sync').onclick = function () {
+          el('cn-msg').textContent = 'Sincronizando…';
+          app('POST', '/stays/sincronizar', {}).then(function (r) { el('cn-msg').textContent = '✅ ' + r.imoveis + ' anúncio(s), ' + r.reservas_novas + ' nova(s) e ' + r.reservas_atualizadas + ' atualizada(s).'; setTimeout(vCanais, 1400); }).catch(function (e) { el('cn-msg').textContent = '❌ ' + e.message; });
+        };
+        el('b-desc').onclick = function () { if (confirm('Desconectar a conta Stays? Os dados já importados continuam no sistema.')) app('POST', '/stays/desconectar', {}).then(vCanais).catch(function (e) { alert(e.message); }); };
+      } else {
+        setView('<div class="card"><h3>Conectar sua conta Stays.net</h3>' +
+          '<p class="sub">O Villela Stay Manager se integra ao seu channel manager <b>Stays.net</b> — que já sincroniza Airbnb, Booking, Decolar, Vrbo, Expedia, Google Rentals e reservas diretas. Você precisa ter uma conta Stays.net com API habilitada.</p>' +
+          '<label>URL da sua conta <input id="st-base" placeholder="ex.: minhaconta.stays.com.br"></label>' +
+          '<label>Client ID <input id="st-id" placeholder="client_id da API Stays"></label>' +
+          '<label>Secret <input id="st-sec" type="password" placeholder="secret da API Stays"></label>' +
+          '<button class="btn" id="b-con">Conectar e validar</button><p id="cn-msg" class="erro"></p>' +
+          '<p class="sub">Suas credenciais ficam guardadas com segurança e nunca são exibidas de volta.</p></div>');
+        el('b-con').onclick = function () {
+          el('cn-msg').textContent = 'Validando…';
+          app('POST', '/stays/conectar', { base_url: val('st-base'), client_id: val('st-id'), secret: val('st-sec') }).then(vCanais).catch(function (e) { el('cn-msg').textContent = e.message; });
+        };
+      }
     }).catch(erroBox);
   }
 
