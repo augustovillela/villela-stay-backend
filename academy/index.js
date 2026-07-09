@@ -19,6 +19,7 @@ const { registrarRotasCheckout, registrarRotasCheckoutStaff } = require('./rotas
 const { registrarRotasAfiliado, registrarRotasAfiliadoStaff } = require('./rotas-afiliado');
 const { registrarRotasAssinaturas, registrarRotasAssinaturasStaff } = require('./rotas-assinaturas');
 const { registrarRotasIA, registrarRotasIAStaff } = require('./rotas-ia');
+const { registrarRotasGovernanca, registrarRotasGovernancaStaff } = require('./rotas-governanca');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
@@ -40,6 +41,28 @@ function montar(app, injected = {}) {
     if (t.unref) t.unref();
   }
 
+  // hardening (F10): headers de segurança em tudo do módulo; rate limit de API
+  // por IP só em produção (600 req/min — generoso; o teste local fica livre)
+  app.use('/academy', (req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    next();
+  });
+  if (process.env.NODE_ENV !== 'development') {
+    const janelas = new Map();
+    app.use('/academy/api', (req, res, next) => {
+      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
+      const agora = Math.floor(Date.now() / 60000);
+      const chave = ip + ':' + agora;
+      const n = (janelas.get(chave) || 0) + 1;
+      janelas.set(chave, n);
+      if (janelas.size > 10000) janelas.clear(); // higiene simples
+      if (n > 600) return res.status(429).json({ erro: 'Muitas requisições — aguarde um minuto.' });
+      next();
+    });
+  }
+
   registrarRotasStaff(app, { requireAuth, requireAdmin });
   registrarRotasCheckoutStaff(app, { requireAuth, requireAdmin });
   const cliente = registrarRotasCliente(app, { jwtSecret });
@@ -51,6 +74,8 @@ function montar(app, injected = {}) {
   registrarRotasAssinaturasStaff(app, { requireAuth, requireAdmin });
   registrarRotasIA(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarRotasIAStaff(app, { requireAuth, requireAdmin });
+  registrarRotasGovernanca(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
+  registrarRotasGovernancaStaff(app, { requireAuth, requireAdmin });
   registrarPaginas(app, { notificar });
 
   // webhook do Mercado Pago (200 rápido; processamento assíncrono e idempotente)

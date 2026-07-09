@@ -125,6 +125,42 @@ CREATE TABLE IF NOT EXISTS notification_logs (
   detalhe  TEXT DEFAULT ''
 );
 
+-- ---- CERTIFICADOS (FASE 10): emitidos ao concluir 100%; validação pública ----
+CREATE TABLE IF NOT EXISTS certificates (
+  id             TEXT PRIMARY KEY,          -- código público de validação
+  user_id        TEXT NOT NULL REFERENCES users(id),
+  product_id     TEXT NOT NULL REFERENCES products(id),
+  aluno_nome     TEXT DEFAULT '',           -- snapshot no momento da emissão
+  produto_titulo TEXT DEFAULT '',
+  produtor_nome  TEXT DEFAULT '',
+  total_aulas    INTEGER DEFAULT 0,
+  emitido_em     TEXT NOT NULL,
+  UNIQUE(user_id, product_id)
+);
+
+-- ---- SUPORTE (FASE 10): tickets de aluno/produtor/afiliado ----
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id),
+  assunto       TEXT NOT NULL,
+  categoria     TEXT DEFAULT 'geral',       -- geral|pagamento|conteudo|conta|denuncia
+  status        TEXT DEFAULT 'aberto',      -- aberto|respondido|fechado
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_tickets_user ON support_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status);
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id        TEXT PRIMARY KEY,
+  ticket_id TEXT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+  lado      TEXT DEFAULT 'usuario',         -- usuario|plataforma
+  autor     TEXT DEFAULT '',
+  texto     TEXT NOT NULL,
+  criado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_supmsg_ticket ON support_messages(ticket_id);
+
 -- ---- USO DE IA (FASE 9): quem, qual agente, tokens e custo estimado ----
 CREATE TABLE IF NOT EXISTS ai_usage_logs (
   id            TEXT PRIMARY KEY,

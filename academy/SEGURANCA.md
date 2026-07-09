@@ -12,7 +12,8 @@ fase corrente em aberto.
 - ✅ Resposta idêntica p/ e-mail inexistente vs senha errada (sem enumeração)
 - ✅ F8: verificação de e-mail no cadastro (link 7d; flag no painel; soft até haver motivo p/ endurecer)
 - ✅ F8: recuperação de senha com token 30 min, resposta sem enumeração, rate limit e derrubada de sessões
-- ⬜ F10: 2FA opcional (padrão vdocs)
+- ✅ F10: 2FA opcional TOTP (RFC 6238, padrão vdocs) — login exige código quando ativo;
+  ativar/desativar exigem código válido (testado)
 
 ## Autorização
 - ✅ Papéis (aluno/produtor/afiliado/admin) + permissões derivadas (`repo.PERMISSOES`)
@@ -73,5 +74,7 @@ fase corrente em aberto.
 
 ## Plataforma
 - ✅ Módulo isolado: falha na montagem não derruba o site/portal
-- ✅ Suíte de testes cobre auth, permissões, sessões, LGPD (24 testes)
-- ⬜ F10: backup/restore do academy.db documentado; rate limit global; CORS explícito p/ API pública
+- ✅ Suíte de testes cobre auth, permissões, sessões, LGPD, dinheiro, IA e governança (101 testes)
+- ✅ F10: backup/restore documentado (README); headers de segurança
+  (nosniff/frame/referrer) em todo o módulo; rate limit de API 600 req/min/IP em produção
+- ⬜ CORS explícito: quando houver API pública (backlog)

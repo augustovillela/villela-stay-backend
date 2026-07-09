@@ -40,11 +40,17 @@
   function renderLogin() {
     root().innerHTML = '<div class="card" style="max-width:420px"><h3>Entrar</h3>' +
       '<input id="em" type="email" placeholder="E-mail"><input id="sn" type="password" placeholder="Senha">' +
+      '<div id="fa-box" style="display:none"><input id="fa-cod" placeholder="Código do app autenticador (2FA)"></div>' +
       '<button class="btn" id="b-entrar">Entrar</button><p id="msg" class="erro"></p>' +
       '<p class="sub" style="text-align:left">Novo por aqui? <a href="#cadastro" id="b-cad">Crie sua conta grátis</a> · <a href="#" id="b-esqueci">Esqueci minha senha</a></p></div>';
     el('b-entrar').onclick = function () {
       el('msg').textContent = '';
-      api('POST', '/login', { email: val('em'), senha: val('sn') }).then(bootAcademy).catch(function (e) { el('msg').textContent = e.message; });
+      var corpo = { email: val('em'), senha: val('sn') };
+      if (val('fa-cod')) corpo.codigo = val('fa-cod');
+      fetch('/academy/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+        .then(function (r) { return r.json().then(function (d) { if (!r.ok) { var e = new Error(d.erro || 'erro'); e.precisa_2fa = d.precisa_2fa; throw e; } }); })
+        .then(bootAcademy)
+        .catch(function (e) { if (e.precisa_2fa) el('fa-box').style.display = ''; el('msg').textContent = e.message; });
     };
     el('b-cad').onclick = function (e) { e.preventDefault(); renderCadastro(); };
     el('b-esqueci').onclick = function (e) {
@@ -174,7 +180,8 @@
       var pa = d.progresso_aulas || {};
       var html = '<div class="card"><p><a href="#" id="b-volta">← biblioteca</a></p><h3>' + esc(d.produto.titulo) + '</h3>' +
         (d.produto.subtitulo ? '<p class="sub" style="text-align:left">' + esc(d.produto.subtitulo) + '</p>' : '') +
-        (d.matriculado ? '<div style="max-width:340px">' + barra(d.progresso.pct) + '</div><p class="sub" style="text-align:left;margin:4px 0 0">' + d.progresso.concluidas + '/' + d.progresso.total_aulas + ' aulas concluídas</p>'
+        (d.matriculado ? '<div style="max-width:340px">' + barra(d.progresso.pct) + '</div><p class="sub" style="text-align:left;margin:4px 0 0">' + d.progresso.concluidas + '/' + d.progresso.total_aulas + ' aulas concluídas' +
+          (d.progresso.pct === 100 ? ' · <a href="#" id="b-cert">🎓 Emitir certificado</a>' : '') + '</p>'
           : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas.</div>') + '</div>';
       if ((d.incluidos || []).length) {
         html += '<div class="card"><b>🎁 Incluído na sua assinatura</b>' + d.incluidos.map(function (i) {
@@ -208,6 +215,12 @@
       Array.prototype.forEach.call(document.querySelectorAll('[data-curso-inc]'), function (lk) {
         lk.onclick = function (e) { e.preventDefault(); vCurso(lk.getAttribute('data-curso-inc')); };
       });
+      if (el('b-cert')) el('b-cert').onclick = function (e) {
+        e.preventDefault();
+        api('POST', '/aluno/cursos/' + pid + '/certificado').then(function (r) {
+          window.open(r.url, '_blank');
+        }).catch(function (er) { alert(er.message); });
+      };
       if (el('b-ia-perg')) el('b-ia-perg').onclick = function () {
         el('ia-perg-msg').textContent = '⏳ pensando…';
         api('POST', '/ia/aluno/perguntar', { product_id: pid, pergunta: val('ia-perg') }).then(function (d) {
@@ -690,6 +703,8 @@
         '<span class="kpi"><b>' + r.assinaturas_ativas + '</b>assinaturas</span>' +
         '<span class="kpi"><b>' + brl(r.mrr_centavos) + '</b>MRR</span></div>';
       html += '<div class="card"><h3>🔁 Assinaturas</h3><div id="adm-subs"><p class="sub">Carregando…</p></div></div>';
+      html += '<div class="card"><h3>📈 Relatórios (6 meses)</h3><div id="adm-rep"><p class="sub">Carregando…</p></div></div>' +
+        '<div class="card"><h3>🎧 Tickets de suporte</h3><div id="adm-tk"><p class="sub">Carregando…</p></div></div>';
       html += '<div class="card"><h3>🤖 Relatório executivo (IA)</h3>' +
         '<p><button class="btn peq" id="ia-rel">Gerar relatório</button> <span id="ia-rel-msg" class="erro"></span></p><div id="ia-rel-out"></div></div>';
       html += '<div class="card"><h3>🧾 Pedidos</h3><div id="adm-ped"><p class="sub">Carregando…</p></div></div>' +
@@ -722,6 +737,41 @@
           };
         });
       }).catch(function (e) { el('adm-ped').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+      api('GET', '/admin/relatorios').then(function (dr) {
+        el('adm-rep').innerHTML = '<table><tr><th>Mês</th><th>GMV</th><th>Receita</th><th>Vendas</th><th>Novos usuários</th><th>Matrículas</th></tr>' +
+          dr.serie_mensal.map(function (m) {
+            return '<tr><td>' + esc(m.mes) + '</td><td>' + brl(m.gmv_centavos) + '</td><td>' + brl(m.receita_centavos) + '</td><td>' + m.vendas + '</td><td>' + m.novos_usuarios + '</td><td>' + m.novas_matriculas + '</td></tr>';
+          }).join('') + '</table>' +
+          '<p class="sub" style="text-align:left">Conversão de pedidos: <b>' + (dr.conversao.pct == null ? '—' : dr.conversao.pct + '%') + '</b> (' + dr.conversao.pagos + '/' + dr.conversao.pedidos + ')' +
+          ' · Churn do mês: <b>' + (dr.churn.pct == null ? '—' : dr.churn.pct + '%') + '</b>' +
+          ' · Tickets abertos: <b>' + dr.tickets_abertos + '</b> · Certificados: <b>' + dr.certificados_emitidos + '</b></p>';
+      }).catch(function (e) { el('adm-rep').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+      function carregarTicketsAdm() {
+        api('GET', '/admin/tickets?n=30').then(function (dt2) {
+          el('adm-tk').innerHTML = dt2.tickets.length
+            ? '<table><tr><th>Assunto</th><th>Quem</th><th>Categoria</th><th>Status</th><th></th></tr>' + dt2.tickets.map(function (t) {
+              return '<tr><td>' + esc(t.assunto) + '</td><td>' + esc(t.email) + '</td><td>' + esc(t.categoria) + '</td><td>' + esc(t.status) +
+                '</td><td><button class="btn peq" data-tka="' + t.id + '">Responder</button> ' +
+                (t.status !== 'fechado' ? '<button class="btn peq secund" data-tkf="' + t.id + '">Fechar</button>' : '') + '</td></tr>';
+            }).join('') + '</table>'
+            : '<p class="sub" style="text-align:left">Nenhum ticket.</p>';
+          Array.prototype.forEach.call(document.querySelectorAll('[data-tka]'), function (b) {
+            b.onclick = function () {
+              api('GET', '/admin/tickets/' + b.getAttribute('data-tka')).then(function (r) {
+                var msgs = r.ticket.mensagens.map(function (m) { return (m.lado === 'plataforma' ? '🎧 ' : '🙋 ') + esc(m.texto); }).join('\n\n');
+                var resp = prompt(msgs + '\n\nResposta da plataforma:');
+                if (resp) api('POST', '/admin/tickets/' + r.ticket.id + '/responder', { texto: resp }).then(carregarTicketsAdm).catch(function (e) { alert(e.message); });
+              }).catch(function (e) { alert(e.message); });
+            };
+          });
+          Array.prototype.forEach.call(document.querySelectorAll('[data-tkf]'), function (b) {
+            b.onclick = function () {
+              api('POST', '/admin/tickets/' + b.getAttribute('data-tkf') + '/status', { status: 'fechado' }).then(carregarTicketsAdm).catch(function (e) { alert(e.message); });
+            };
+          });
+        }).catch(function (e) { el('adm-tk').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+      }
+      carregarTicketsAdm();
       el('ia-rel').onclick = function () {
         el('ia-rel-msg').textContent = '⏳ analisando…';
         api('POST', '/ia/admin/relatorio').then(function (d) {
@@ -834,6 +884,17 @@
   function vConta() {
     var u = ME.usuario;
     setView('<div class="card"><h3>🧾 Minhas compras</h3><div id="c-compras"><p class="sub">Carregando…</p></div></div>' +
+      '<div class="card"><h3>🎓 Meus certificados</h3><div id="c-certs"><p class="sub">Carregando…</p></div></div>' +
+      '<div class="card"><h3>🎧 Suporte</h3><div id="c-tickets"><p class="sub">Carregando…</p></div>' +
+      '<p><input id="tk-assunto" placeholder="Assunto" style="max-width:260px"> ' +
+      '<select id="tk-cat" style="max-width:140px"><option value="geral">Geral</option><option value="pagamento">Pagamento</option><option value="conteudo">Conteúdo</option><option value="conta">Conta</option></select></p>' +
+      '<textarea id="tk-texto" rows="2" placeholder="Descreva sua dúvida ou problema"></textarea>' +
+      '<button class="btn peq" id="b-ticket">Abrir ticket</button> <span id="tk-msg" class="erro"></span></div>' +
+      '<div class="card"><h3>🔐 Autenticação em 2 fatores (2FA)</h3><div id="c-2fa">' +
+      (u.totp_ativo
+        ? '<p>2FA está <b>ativo</b>. <input id="fa-des" placeholder="Código p/ desativar" style="max-width:180px"> <button class="btn peq secund" id="b-2fa-des">Desativar</button> <span id="fa-msg" class="erro"></span></p>'
+        : '<p class="sub" style="text-align:left">Proteja sua conta exigindo um código do app autenticador no login.</p><button class="btn peq" id="b-2fa-ger">Ativar 2FA</button> <span id="fa-msg" class="erro"></span><div id="fa-setup"></div>') +
+      '</div></div>' +
       '<div class="card"><h3>👤 Meus dados</h3>' +
       '<label>Nome</label><input id="c-nome" value="' + esc(u.nome) + '"><label>Telefone</label><input id="c-tel" value="' + esc(u.telefone || '') + '">' +
       '<button class="btn peq" id="b-salvar">Salvar</button> <span id="c-msg" class="erro"></span></div>' +
@@ -846,6 +907,55 @@
       '<p class="sub" style="text-align:left">Excluir a conta anonimiza seus dados pessoais de forma irreversível.</p>' +
       '<input id="x-senha" type="password" placeholder="Confirme sua senha para excluir" style="max-width:320px">' +
       '<button class="btn peq" style="background:#b00020;color:#fff" id="b-excluir">Excluir minha conta</button> <span id="x-msg" class="erro"></span></div>');
+    api('GET', '/aluno/certificados').then(function (d) {
+      el('c-certs').innerHTML = d.certificados.length
+        ? d.certificados.map(function (c) {
+          return '<div class="lin">🎓 <a href="/academy/certificados/' + esc(c.id) + '" target="_blank">' + esc(c.produto_titulo) + '</a> <span class="chip">' + esc(c.id) + '</span> · ' + dt(c.emitido_em) + '</div>';
+        }).join('')
+        : '<p class="sub" style="text-align:left">Conclua 100% de um curso para emitir o certificado.</p>';
+    }).catch(function () { el('c-certs').innerHTML = ''; });
+    function carregarTickets() {
+      api('GET', '/tickets').then(function (d) {
+        el('c-tickets').innerHTML = d.tickets.length
+          ? d.tickets.map(function (t) {
+            return '<div class="lin"><b>' + esc(t.assunto) + '</b> <span class="chip">' + esc(t.status) + '</span> · ' + dt(t.atualizado_em) +
+              ' <button class="btn peq secund" data-tk="' + t.id + '">Ver</button></div>';
+          }).join('')
+          : '<p class="sub" style="text-align:left">Nenhum ticket. Precisa de ajuda? Abra um abaixo.</p>';
+        Array.prototype.forEach.call(document.querySelectorAll('[data-tk]'), function (b) {
+          b.onclick = function () {
+            api('GET', '/tickets/' + b.getAttribute('data-tk')).then(function (r) {
+              var msgs = r.ticket.mensagens.map(function (m) { return (m.lado === 'plataforma' ? '🎧 ' : '🙋 ') + esc(m.texto); }).join('\n\n');
+              var resp = prompt(msgs + '\n\nResponder (vazio = só fechar a janela):');
+              if (resp) api('POST', '/tickets/' + r.ticket.id + '/responder', { texto: resp }).then(carregarTickets).catch(function (e) { alert(e.message); });
+            }).catch(function (e) { alert(e.message); });
+          };
+        });
+      }).catch(function () { el('c-tickets').innerHTML = ''; });
+    }
+    carregarTickets();
+    el('b-ticket').onclick = function () {
+      api('POST', '/tickets', { assunto: val('tk-assunto'), categoria: val('tk-cat'), texto: val('tk-texto') })
+        .then(function () { el('tk-msg').textContent = '✅ aberto!'; carregarTickets(); })
+        .catch(function (e) { el('tk-msg').textContent = e.message; });
+    };
+    if (el('b-2fa-ger')) el('b-2fa-ger').onclick = function () {
+      api('POST', '/me/2fa/gerar').then(function (d) {
+        el('fa-setup').innerHTML = '<div class="aviso">1) Adicione no app autenticador (Google Authenticator, 1Password...):<br>' +
+          '<b style="word-break:break-all">' + esc(d.secret) + '</b><br><span class="sub" style="text-align:left;margin:0;word-break:break-all">' + esc(d.otpauth) + '</span><br>' +
+          '2) Digite o código gerado: <input id="fa-cod-atv" placeholder="000000" style="max-width:120px"> <button class="btn peq" id="b-2fa-atv">Confirmar</button></div>';
+        el('b-2fa-atv').onclick = function () {
+          api('POST', '/me/2fa/ativar', { codigo: val('fa-cod-atv') })
+            .then(function () { alert('2FA ativado! O código será pedido no próximo login.'); bootAcademy(); })
+            .catch(function (e) { el('fa-msg').textContent = e.message; });
+        };
+      }).catch(function (e) { el('fa-msg').textContent = e.message; });
+    };
+    if (el('b-2fa-des')) el('b-2fa-des').onclick = function () {
+      api('POST', '/me/2fa/desativar', { codigo: val('fa-des') })
+        .then(function () { alert('2FA desativado.'); bootAcademy(); })
+        .catch(function (e) { el('fa-msg').textContent = e.message; });
+    };
     api('GET', '/pedidos').then(function (d) {
       el('c-compras').innerHTML = d.pedidos.length
         ? '<table><tr><th>Produto</th><th>Valor</th><th>Status</th><th>Data</th></tr>' + d.pedidos.map(function (o) {

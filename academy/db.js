@@ -52,6 +52,11 @@ const MIGRACOES = [
     sql: `ALTER TABLE users ADD COLUMN email_verificado INTEGER DEFAULT 0;
           ALTER TABLE orders ADD COLUMN lembrete_em TEXT DEFAULT '';`,
   },
+  { // FASE 10: 2FA opcional (TOTP, padrão vdocs)
+    nome: 'totp-2026-07-09',
+    sql: `ALTER TABLE users ADD COLUMN totp_secret TEXT DEFAULT '';
+          ALTER TABLE users ADD COLUMN totp_ativo INTEGER DEFAULT 0;`,
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

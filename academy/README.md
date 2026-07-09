@@ -6,10 +6,10 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASES 1–9 concluídas (fundação, produtos e cursos, marketplace,
-checkout Mercado Pago, afiliados e comissões, assinaturas e clubes,
-storage/URLs assinadas/vídeo, comunicações, IA) — falta só a F10
-(governança).** Fases em [ROADMAP.md](ROADMAP.md).
+**Status: 🏁 ROADMAP 100% CONCLUÍDO — Fases 1–10 em produção** (fundação,
+produtos e cursos, marketplace, checkout Mercado Pago, afiliados e comissões,
+assinaturas e clubes, storage/URLs assinadas/vídeo, comunicações, IA e
+governança). Detalhe por fase e backlog em [ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
 
@@ -221,9 +221,25 @@ webhook/consulta segura (nunca pelo retorno do navegador).
 ## Rodar e testar
 
 ```
-npm run test:academy      # suíte da fundação (24 testes)
+npm run test:academy      # suíte completa (101 testes)
 npm start                 # sobe tudo; landing em http://localhost:3000/academy
 ```
+
+## Backup e restore (F10)
+
+- **O que persiste**: `DATA_DIR/academy/academy.db` (SQLite, WAL) +
+  `DATA_DIR/academy/arquivos/` (mídia local). No Render, `DATA_DIR` aponta
+  para o disco persistente — sobrevive a deploys.
+- **Backup**: copiar o diretório `DATA_DIR/academy/` inteiro (o `.db` com WAL
+  copia consistente se o serviço estiver parado; a quente, usar
+  `sqlite3 academy.db ".backup backup.db"` ou aceitar o par db+wal).
+  O backup diário do disco do Render (villela) já cobre; para cópia externa,
+  baixar via shell do Render.
+- **Restore**: parar o serviço → substituir `DATA_DIR/academy/` → subir.
+  Migrações são idempotentes (tabela `migrations`), então um banco antigo
+  atualiza sozinho no boot.
+- **Com S3/R2 ativo (F7)**: a mídia nova mora no bucket (versionamento/
+  replicação do provedor); o `.db` continua sendo o item crítico do backup.
 
 ## Documentos
 

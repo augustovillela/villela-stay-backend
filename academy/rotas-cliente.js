@@ -75,6 +75,13 @@ function registrarRotasCliente(app, { jwtSecret }) {
       repo.Auditoria.registrar({ quem: (u && u.id) || 'anonimo', acao: 'auth.login.falha', entidade: 'users', detalhe: s((req.body || {}).email, 120), ip });
       return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
     }
+    // F10: segundo fator quando o usuário ativou 2FA
+    const fa = require('./governanca').DoisFA.conferirLogin(u.id, (req.body || {}).codigo);
+    if (fa.precisa && !fa.ok) {
+      if (!(req.body || {}).codigo) return res.status(401).json({ erro: 'Informe o código do autenticador.', precisa_2fa: true });
+      falha(ip);
+      return res.status(401).json({ erro: 'Código 2FA incorreto.', precisa_2fa: true });
+    }
     tentativas.delete(ip);
     require('./db').db.prepare('UPDATE users SET ultimo_login = ? WHERE id = ?').run(new Date().toISOString(), u.id);
     const jti = repo.Sessoes.criar(u.id, { ip, userAgent: req.headers['user-agent'] });

@@ -932,6 +932,74 @@ async function main() {
     await req('POST', '/staff/api/academy/config', { corpo: { chave: 'ia', valor: { consultas_dia: 30 } } });
   });
 
+  // ================= FASE 10 — governança =================
+  console.log('\n— FASE 10: certificados —');
+  let certCodigo;
+  await t('certificado só com 100%; emissão idempotente; validação pública', async () => {
+    assert.equal((await req('POST', `/academy/api/aluno/cursos/${prodId}/certificado`, { jar: 'fabi' })).st, 400, '0% não emite');
+    await req('POST', `/academy/api/aluno/aulas/${aulaPdfId}/progresso`, { jar: 'ana', corpo: { concluida: true } }); // ana chega a 100%
+    const r = await req('POST', `/academy/api/aluno/cursos/${prodId}/certificado`, { jar: 'ana' });
+    assert.equal(r.st, 200); certCodigo = r.json.codigo;
+    assert.ok(certCodigo.startsWith('VA-'));
+    const r2 = await req('POST', `/academy/api/aluno/cursos/${prodId}/certificado`, { jar: 'ana' });
+    assert.equal(r2.json.codigo, certCodigo, 'não duplica');
+    const pub = await req('GET', `/academy/certificados/${certCodigo}`);
+    assert.equal(pub.st, 200);
+    assert.ok(pub.texto.includes('Ana Aluna')); assert.ok(pub.texto.includes('Gestão de Temporada'));
+    assert.equal((await req('GET', '/academy/certificados/VA-NAOEXISTE')).st, 404);
+    const lista = await req('GET', '/academy/api/aluno/certificados', { jar: 'ana' });
+    assert.equal(lista.json.certificados.length, 1);
+  });
+
+  console.log('\n— FASE 10: suporte (tickets) —');
+  await t('ticket: usuário abre, plataforma responde (com sininho), fecha', async () => {
+    const r = await req('POST', '/academy/api/tickets', { jar: 'fabi', corpo: { assunto: 'Dúvida de acesso', categoria: 'conta', texto: 'Não acho meu curso.' } });
+    assert.equal(r.st, 200);
+    const notifAntes = (await req('GET', '/academy/api/notificacoes', { jar: 'fabi' })).json.nao_lidas;
+    assert.equal((await req('POST', `/academy/api/admin/tickets/${r.json.id}/responder`, { jar: 'maria', corpo: { texto: 'Está na aba Aluno → biblioteca.' } })).st, 200);
+    const t1 = await req('GET', `/academy/api/tickets/${r.json.id}`, { jar: 'fabi' });
+    assert.equal(t1.json.ticket.status, 'respondido');
+    assert.equal(t1.json.ticket.mensagens.length, 2);
+    assert.ok((await req('GET', '/academy/api/notificacoes', { jar: 'fabi' })).json.nao_lidas > notifAntes, 'sininho avisou');
+    assert.equal((await req('GET', `/academy/api/tickets/${r.json.id}`, { jar: 'ana' })).st, 404, 'ticket é privado');
+    assert.equal((await req('POST', `/academy/api/admin/tickets/${r.json.id}/status`, { jar: 'maria', corpo: { status: 'fechado' } })).st, 200);
+    const staffVe = await req('GET', '/staff/api/academy/tickets');
+    assert.ok(staffVe.json.tickets.length >= 1);
+  });
+
+  console.log('\n— FASE 10: relatórios avançados —');
+  await t('série mensal, conversão e churn no admin e no staff', async () => {
+    const r = await req('GET', '/academy/api/admin/relatorios', { jar: 'maria' });
+    assert.equal(r.st, 200);
+    assert.equal(r.json.serie_mensal.length, 6);
+    const mesAtual = r.json.serie_mensal[5];
+    assert.ok(mesAtual.gmv_centavos > 0, 'GMV do mês reflete as vendas do teste');
+    assert.ok(r.json.conversao.pedidos > 0 && r.json.conversao.pct != null);
+    assert.ok(r.json.certificados_emitidos >= 1);
+    assert.equal((await req('GET', '/staff/api/academy/relatorios')).st, 200);
+  });
+
+  console.log('\n— FASE 10: 2FA e hardening —');
+  await t('2FA: gerar → ativar → login exige código → desativar', async () => {
+    const gov = require('./governanca');
+    const g = await req('POST', '/academy/api/me/2fa/gerar', { jar: 'hugo' });
+    assert.equal(g.st, 200); assert.ok(g.json.otpauth.includes('otpauth://totp/'));
+    assert.equal((await req('POST', '/academy/api/me/2fa/ativar', { jar: 'hugo', corpo: { codigo: '000000' } })).st, 400, 'código errado não ativa');
+    assert.equal((await req('POST', '/academy/api/me/2fa/ativar', { jar: 'hugo', corpo: { codigo: gov.totpAgora(g.json.secret) } })).st, 200);
+    const semCod = await req('POST', '/academy/api/login', { corpo: { email: HUGO.email, senha: 'nova-do-hugo-1' } });
+    assert.equal(semCod.st, 401); assert.ok(semCod.json.precisa_2fa);
+    assert.equal((await req('POST', '/academy/api/login', { corpo: { email: HUGO.email, senha: 'nova-do-hugo-1', codigo: '123456' } })).st, 401);
+    assert.equal((await req('POST', '/academy/api/login', { corpo: { email: HUGO.email, senha: 'nova-do-hugo-1', codigo: gov.totpAgora(g.json.secret) }, jar: 'hugo' })).st, 200);
+    assert.equal((await req('POST', '/academy/api/me/2fa/desativar', { jar: 'hugo', corpo: { codigo: gov.totpAgora(g.json.secret) } })).st, 200);
+    assert.equal((await req('POST', '/academy/api/login', { corpo: { email: HUGO.email, senha: 'nova-do-hugo-1' } })).st, 200, 'sem 2FA volta ao normal');
+  });
+  await t('headers de segurança presentes nas páginas do módulo', async () => {
+    const r = await fetch(BASE + '/academy');
+    assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(r.headers.get('x-frame-options'), 'SAMEORIGIN');
+    assert.ok(r.headers.get('referrer-policy'));
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

@@ -1,10 +1,10 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASES 0–9 concluídas em 08–09/07/2026 (diagnóstico, fundação, produtos e
-cursos, marketplace, checkout Mercado Pago, afiliados e comissões, assinaturas
-e clubes, storage/URLs assinadas/vídeo, comunicações, IA) — ver README. Cada
-fase termina com: testes verdes na suíte, checklist de segurança da fase
-fechado, doc do assunto atualizado. **Falta só a F10 (governança).**
+🏁 **ROADMAP 100% CONCLUÍDO — FASES 0–10 em produção (08–09/07/2026).**
+Diagnóstico, fundação, produtos e cursos, marketplace, checkout Mercado Pago,
+afiliados e comissões, assinaturas e clubes, storage/URLs assinadas/vídeo,
+comunicações, IA e governança. 101 testes na suíte. O que resta é comercial
+(marca, domínio, 1º produtor) e as pendências externas listadas no fim.
 
 ## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
 Entregue: produtos de 6 tipos com fluxo editorial completo (rascunho→revisão→
@@ -105,12 +105,25 @@ quando falta informação, saída é SUGESTÃO (aplicar é ação humana). Uso l
 em `ai_usage_logs` (tokens + custo estimado, visível no staff) e **limite
 diário por usuário** (config `ia.consultas_dia`, padrão 30 → 429). 96 testes.
 
-## FASE 10 — SaaS avançado e governança
-Planos da plataforma p/ produtores (comissão/mensalidade/híbrido — Starter/
-Professional/Business/Enterprise com limites), billing do produtor, quizzes/
-certificados com validação pública, comunidades, suporte com tickets/SLA,
-relatórios avançados (GMV, churn, conversão), 2FA, backup/restore formal,
-revisão jurídica final de todos os documentos, hardening e API pública.
+## ✅ FASE 10 — Governança (CONCLUÍDA 09/07/2026)
+Entregue: **certificados de conclusão** (100% das aulas → código único
+`VA-...`, página pública de validação imprimível, idempotente), **tickets de
+suporte** (usuário abre/responde; admin e staff respondem — c/ sininho — e
+fecham), **relatórios avançados** (série mensal de 6 meses: GMV/receita/
+vendas/novos usuários/matrículas + conversão de pedidos + churn de
+assinaturas), **2FA opcional TOTP** (RFC 6238, padrão vdocs: gerar → app
+autenticador → ativar; login pede o código; desativar exige código),
+**hardening** (headers de segurança em todo o módulo; rate limit de API
+600 req/min/IP em produção) e **backup/restore documentado** no README.
+Decisões: monetização segue SÓ por comissão (10%) — planos/mensalidade de
+produtor exigem decisão comercial; comunidades e API pública ficam no
+backlog pós-roadmap (sob demanda real). 101 testes.
+
+## Backlog pós-roadmap (sob demanda)
+- Planos/mensalidade de produtor (Starter/Pro/Business) — após decisão comercial
+- Comunidades por curso/produtor · API pública com chaves · quizzes formais c/ nota
+- Split automático do MP · acesso até o fim do ciclo pago no cancelamento
+- Watermark PDF (pdf-lib) · transcode/thumbnails de vídeo (worker) · cupons/order bump
 
 ## Pendências que dependem do Augusto (não técnicas)
 - Marca definitiva ("Villela Academy" é provisório) e identidade

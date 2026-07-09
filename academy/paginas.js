@@ -436,6 +436,28 @@ function registrarPaginas(app, { notificar }) {
     res.json({ ok: true, id });
   }));
 
+  // F10: validação pública de certificado (imprimível)
+  app.get('/academy/certificados/:codigo', (req, res) => {
+    const c = require('./governanca').Certificados.porCodigo(s(req.params.codigo, 30));
+    if (!c) return res.status(404).send(paginaLegal('Certificado não encontrado', '<p>Este código de certificado não existe. Confira o código e tente de novo.</p>'));
+    const corpo = `<div class="sec"><div class="wrap" style="max-width:680px">
+      <div class="card" style="border:3px solid #d9a441;text-align:center;padding:40px">
+        <p style="color:#4a2fbd;font-weight:800;letter-spacing:2px">🎓 VILLELA ACADEMY</p>
+        <h1 style="color:#1d1440;margin:8px 0">Certificado de Conclusão</h1>
+        <p class="sub">certificamos que</p>
+        <p style="font-size:1.6rem;font-weight:800;color:#1d1440;margin:6px 0">${esc(c.aluno_nome)}</p>
+        <p class="sub">concluiu com êxito</p>
+        <p style="font-size:1.2rem;font-weight:700;margin:6px 0">${esc(c.produto_titulo)}</p>
+        ${c.produtor_nome ? `<p class="sub">por ${esc(c.produtor_nome)}</p>` : ''}
+        <p class="sub">${c.total_aulas} aula(s) · emitido em ${esc(String(c.emitido_em).slice(0, 10).split('-').reverse().join('/'))}</p>
+        <p style="margin-top:18px"><span class="tag">Código de validação: ${esc(c.id)}</span></p>
+        <p class="sub" style="font-size:.8rem">Autenticidade verificável em villelastay.com.br — /academy/certificados/${esc(c.id)}</p>
+      </div>
+      <p style="text-align:center;margin-top:14px"><button class="btn peq" onclick="window.print()">🖨️ Imprimir / salvar PDF</button></p>
+    </div></div>`;
+    res.send(shellPublico({ titulo: 'Certificado ' + c.id, descricao: `Certificado de conclusão de ${c.aluno_nome} — ${c.produto_titulo}.`, corpo }));
+  });
+
   // F8: páginas de verificação de e-mail e redefinição de senha
   app.get('/academy/verificar-email', (req, res) => res.send(shellPublico({
     titulo: 'Verificar e-mail', descricao: 'Confirmação de e-mail na Villela Academy.',
