@@ -229,12 +229,13 @@ const Config = {
 };
 
 // defaults comerciais (upsert idempotente; preserva valores editados)
-// Números OFICIAIS (decisão do Augusto 08/07/2026): plataforma 10%, afiliado 10%.
-// Fonte: regras\regras-negocio.md. A migração 'comissoes-oficiais-2026-07-08'
-// (db.js) corrige bancos que nasceram com o seed provisório (afiliado 30%).
+// Números OFICIAIS (decisão do Augusto 09/07/2026, benchmark de mercado):
+// plataforma 8,9% + R$1,00 fixo por venda; afiliado 10%.
+// Fonte: regras\regras-negocio.md. A migração 'comissoes-oficiais-2026-07-09'
+// (db.js) atualiza bancos que nasceram com valores anteriores (10%/10%).
 function semear() {
   if (Config.obter('comissoes', null) == null) {
-    Config.salvar('comissoes', { plataforma_pct: 10, afiliado_padrao_pct: 10, cookie_dias: 30 });
+    Config.salvar('comissoes', { plataforma_pct: 8.9, fixo_centavos: 100, afiliado_padrao_pct: 10, cookie_dias: 30 });
   }
 }
 
@@ -272,7 +273,7 @@ const Dashboard = {
       publicados: c("SELECT COUNT(*) n FROM products WHERE producer_id = ? AND status = 'publicado'", userId),
       alunos: c("SELECT COUNT(DISTINCT e.user_id) n FROM enrollments e JOIN products p ON p.id = e.product_id WHERE p.producer_id = ? AND e.status = 'ativa'", userId),
       vendas_mes_centavos: (db.prepare("SELECT COALESCE(SUM(liquido_produtor_centavos),0) v FROM orders WHERE producer_id = ? AND status = 'paga' AND pago_em >= ?")
-        .get(userId, new Date().toISOString().slice(0, 7)) || { v: 0 }).v, // líquido (já sem os 10% da plataforma)
+        .get(userId, new Date().toISOString().slice(0, 7)) || { v: 0 }).v, // líquido (já sem a comissão da plataforma)
       comissoes_pendentes_centavos: 0, avaliacoes: [], // F5/F3
     };
   },

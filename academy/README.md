@@ -133,8 +133,8 @@ webhook/consulta segura (nunca pelo retorno do navegador).
    financeira/auditoria exigível legalmente.
 4. **Aprovar perfil concede papel; suspender NÃO revoga papel**: o gate por
    status do perfil já bloqueia, e o histórico do usuário fica preservado.
-5. **Comissões padrão em `platform_settings`** (plataforma 10%, afiliado 30%,
-   cookie 30 dias): números **provisórios** — decisão comercial do Augusto antes da F5.
+5. **Comissões padrão em `platform_settings`** (registro histórico da F1: seed
+   provisório 10%/30%): os valores oficiais vigentes estão no item 16.
 6. **Streaming próprio de vídeo fica para F7** (storage S3-compatível + URLs
    assinadas); na F2, vídeo = URL externa (YouTube não listado/Vimeo) com embed.
 7. **Conteúdo unificado (F2)**: todo tipo de produto (curso, e-book, PDF, áudio,
@@ -165,10 +165,13 @@ webhook/consulta segura (nunca pelo retorno do navegador).
 15. **Liberação de acesso (F4)**: SÓ por webhook confirmado ou consulta segura
    (`/v1/payments/search` server-side); o retorno do navegador nunca libera.
    Webhook idempotente; payload cru salvo em `webhook_events`/`payment_events`.
-16. **Comissões (F4)**: plataforma 10% e afiliado padrão 10% — decisão oficial
-   do Augusto (fonte: `regras\regras-negocio.md`; viva em `platform_settings`).
-   O pedido guarda snapshot do % vigente; reembolso/chargeback revoga o acesso
-   e cancela a comissão do afiliado.
+16. **Comissões (F4)**: plataforma **8,9% + R$ 1,00 fixo por venda** (decisão de
+   09/07/2026; antes 10%) e afiliado padrão 10% — decisão oficial do Augusto
+   (fonte: `regras\regras-negocio.md`; viva em `platform_settings.comissoes`,
+   campos `plataforma_pct`/`fixo_centavos`). O pedido guarda snapshot do %; a
+   parcela fixa é lida da config a cada cobrança (inclusive recorrente), e a
+   comissão é limitada para o líquido do produtor nunca ficar negativo.
+   Reembolso/chargeback revoga o acesso e cancela a comissão do afiliado.
 17. **Atribuição de afiliado (F5) — estrita e last-click**: o link vale só para
    o produto dele; cookie `academy_ref` httpOnly (30d config.); nunca atribui
    auto-compra nem o próprio produtor; validação toda server-side no checkout.

@@ -57,6 +57,11 @@ const MIGRACOES = [
     sql: `ALTER TABLE users ADD COLUMN totp_secret TEXT DEFAULT '';
           ALTER TABLE users ADD COLUMN totp_ativo INTEGER DEFAULT 0;`,
   },
+  { // comissão oficial revisada pelo Augusto 09/07/2026 (benchmark de mercado):
+    // plataforma 8,9% + R$1,00 fixo por venda (abaixo da Hotmart 9,9%+R$1); afiliado segue 10%
+    nome: 'comissoes-oficiais-2026-07-09',
+    sql: `UPDATE platform_settings SET valor = '{"plataforma_pct":8.9,"fixo_centavos":100,"afiliado_padrao_pct":10,"cookie_dias":30}', atualizado_em = '2026-07-09T00:00:00.000Z' WHERE chave = 'comissoes'`,
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

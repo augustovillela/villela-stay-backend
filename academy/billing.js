@@ -3,7 +3,8 @@
 // único, webhook idempotente, consulta segura e reembolso.
 // Regra de ouro: matrícula NUNCA é criada pelo retorno do navegador —
 // só por webhook confirmado ou consulta server-side à API do MP.
-// Comissões oficiais: plataforma 10% (snapshot por pedido); afiliado F5.
+// Comissões oficiais: plataforma 8,9% + R$1,00 fixo por venda paga (pct em snapshot por
+// pedido/assinatura; a parcela fixa é lida da config no momento de cada cobrança); afiliado F5.
 // =====================================================================
 'use strict';
 const { db, transacao, nowISO, novoId, j } = require('./db');
@@ -52,6 +53,14 @@ const Pedidos = {
   },
 };
 
+// comissão oficial da plataforma (regras\regras-negocio.md): % + parcela fixa em centavos
+function _comissaoCfg() {
+  const c = repo.Config.obter('comissoes', {});
+  const pct = Math.max(0, Math.min(100, Number(c.plataforma_pct ?? 8.9) || 0));
+  const fixo = Math.max(0, Math.round(Number(c.fixo_centavos ?? 100) || 0));
+  return { pct, fixo };
+}
+
 // cria o pedido e (se pago) a preferência do MP; produto grátis matricula direto.
 // refCodigo = cookie de atribuição de afiliado (?ref=), validado server-side.
 async function criarCheckout(usuario, productId, baseUrl, refCodigo) {
@@ -61,11 +70,11 @@ async function criarCheckout(usuario, productId, baseUrl, refCodigo) {
   if (ct.temAcesso(usuario.id, p.id)) throw new Error('Você já tem acesso a este produto.');
   const pendente = db.prepare("SELECT * FROM orders WHERE user_id = ? AND product_id = ? AND status = 'pendente'").get(usuario.id, p.id);
   const valor = p.preco_promo_centavos || p.preco_centavos || 0;
-  const comissoes = repo.Config.obter('comissoes', { plataforma_pct: 10 });
-  const pct = Math.max(0, Math.min(100, parseInt(comissoes.plataforma_pct, 10) || 10));
-  const comissao = Math.round(valor * pct / 100);
+  const { pct, fixo } = _comissaoCfg();
   const atrib = valor ? af.atribuir(refCodigo, usuario.id, p) : null;
   const comissaoAfiliado = atrib ? Math.round(valor * atrib.pct / 100) : 0;
+  // % + fixo, limitada para o líquido do produtor nunca ficar negativo
+  const comissao = valor ? Math.min(Math.round(valor * pct / 100) + fixo, Math.max(0, valor - comissaoAfiliado)) : 0;
 
   // grátis: matrícula imediata (sem MP), pedido 'paga' de valor 0 p/ trilha
   if (!valor) {
@@ -227,8 +236,7 @@ async function criarAssinatura(usuario, productId, baseUrl) {
   if (Assinaturas.ativaDoUsuario(usuario.id, p.id)) throw new Error('Você já tem uma assinatura deste clube.');
   if (!ativo()) throw new Error('Pagamento online indisponível no momento.');
   const valor = p.preco_promo_centavos || p.preco_centavos;
-  const comissoes = repo.Config.obter('comissoes', { plataforma_pct: 10 });
-  const pct = Math.max(0, Math.min(100, parseInt(comissoes.plataforma_pct, 10) || 10));
+  const { pct } = _comissaoCfg();
   const id = novoId();
   db.prepare(`INSERT INTO subscriptions (id, user_id, product_id, produto_titulo, producer_id, valor_centavos,
     plataforma_pct, status, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?)`)
@@ -274,7 +282,8 @@ function aplicarPreapproval(pre) {
 function registrarCobrancaAssinatura(sub, pay) {
   if (String(pay.status || '') !== 'approved') return { resultado: 'sem-acao:' + pay.status };
   if (db.prepare('SELECT 1 FROM orders WHERE mp_payment_id = ? AND subscription_id = ?').get(String(pay.id), sub.id)) return { resultado: 'ja-registrada' };
-  const comissao = Math.round(sub.valor_centavos * sub.plataforma_pct / 100);
+  const comissao = Math.min(sub.valor_centavos,
+    Math.round(sub.valor_centavos * sub.plataforma_pct / 100) + _comissaoCfg().fixo);
   db.prepare(`INSERT INTO orders (id, user_id, product_id, produto_titulo, producer_id, valor_centavos, plataforma_pct,
     comissao_plataforma_centavos, liquido_produtor_centavos, status, tipo, subscription_id, mp_payment_id, criado_em, pago_em)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'paga', 'assinatura', ?, ?, ?, ?)`)

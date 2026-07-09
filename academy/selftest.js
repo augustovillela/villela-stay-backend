@@ -244,14 +244,15 @@ async function main() {
     assert.equal(r.st, 200); assert.equal(r.json.leads.length, 1);
     assert.ok(alertas.some(a => a.includes('novo lead')));
   });
-  await t('config comercial oficial (10%/10%) semeada e editável pelo staff', async () => {
+  await t('config comercial oficial (8,9%+R$1 / 10%) semeada e editável pelo staff', async () => {
     const r = await req('GET', '/staff/api/academy/config');
-    assert.equal(r.json.comissoes.plataforma_pct, 10);
-    assert.equal(r.json.comissoes.afiliado_padrao_pct, 10); // decisão do Augusto 08/07/2026
-    assert.equal((await req('POST', '/staff/api/academy/config', { corpo: { chave: 'comissoes', valor: { plataforma_pct: 12, afiliado_padrao_pct: 10, cookie_dias: 30 } } })).st, 200);
+    assert.equal(r.json.comissoes.plataforma_pct, 8.9);      // decisão do Augusto 09/07/2026
+    assert.equal(r.json.comissoes.fixo_centavos, 100);       // + R$1,00 fixo por venda
+    assert.equal(r.json.comissoes.afiliado_padrao_pct, 10);  // decisão do Augusto 08/07/2026
+    assert.equal((await req('POST', '/staff/api/academy/config', { corpo: { chave: 'comissoes', valor: { plataforma_pct: 12, fixo_centavos: 100, afiliado_padrao_pct: 10, cookie_dias: 30 } } })).st, 200);
     assert.equal((await req('GET', '/staff/api/academy/config')).json.comissoes.plataforma_pct, 12);
     // restaura o valor oficial p/ os testes de checkout
-    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'comissoes', valor: { plataforma_pct: 10, afiliado_padrao_pct: 10, cookie_dias: 30 } } });
+    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'comissoes', valor: { plataforma_pct: 8.9, fixo_centavos: 100, afiliado_padrao_pct: 10, cookie_dias: 30 } } });
   });
 
   // ================= FASE 2 — produtos, conteúdo, matrículas, progresso =================
@@ -471,15 +472,15 @@ async function main() {
   await t('status de pedido é só do dono (anti-IDOR)', async () => {
     assert.equal((await req('GET', `/academy/api/pedidos/${pedidoBruno}/status`, { jar: 'ana' })).st, 404);
   });
-  await t('webhook approved libera matrícula e calcula comissão 10%', async () => {
+  await t('webhook approved libera matrícula e calcula comissão 8,9% + R$1', async () => {
     const antes = alertas.length;
     assert.equal((await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '901' } } })).st, 200);
     await espera(200);
     const o = academy.billing.Pedidos.obter(pedidoBruno);
     assert.equal(o.status, 'paga');
     assert.equal(o.valor_centavos, 19900);
-    assert.equal(o.comissao_plataforma_centavos, 1990);   // 10% da plataforma
-    assert.equal(o.liquido_produtor_centavos, 17910);
+    assert.equal(o.comissao_plataforma_centavos, 1871);   // 8,9% de 199,00 (17,71) + R$1,00
+    assert.equal(o.liquido_produtor_centavos, 18029);
     assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'bruno' })).json.cursos.length, 1);
     assert.ok(alertas.length > antes && alertas[alertas.length - 1].includes('venda paga'));
   });
@@ -493,7 +494,7 @@ async function main() {
   await t('KPIs da plataforma refletem a venda (GMV/receita)', async () => {
     const d = await req('GET', '/academy/api/admin/dashboard', { jar: 'maria' });
     assert.equal(d.json.dashboard.gmv_centavos, 19900);
-    assert.equal(d.json.dashboard.receita_plataforma_centavos, 1990);
+    assert.equal(d.json.dashboard.receita_plataforma_centavos, 1871);
     const v = await req('GET', '/academy/api/produtor/vendas', { jar: 'maria' });
     assert.equal(v.json.vendas.filter(x => x.status === 'paga').length, 1);
   });
@@ -595,8 +596,8 @@ async function main() {
     assert.equal(o.status, 'paga');
     assert.equal(o.affiliate_user_id, brunoId);
     assert.equal(o.comissao_afiliado_centavos, 1990);          // 10% do afiliado
-    assert.equal(o.comissao_plataforma_centavos, 1990);        // 10% da plataforma
-    assert.equal(o.liquido_produtor_centavos, 19900 - 1990 - 1990);
+    assert.equal(o.comissao_plataforma_centavos, 1871);        // 8,9% + R$1 da plataforma
+    assert.equal(o.liquido_produtor_centavos, 19900 - 1990 - 1871);
     const cm = dbx.prepare('SELECT * FROM commissions WHERE order_id = ?').get(pedidoFabi);
     assert.ok(cm); assert.equal(cm.status, 'pendente'); assert.equal(cm.valor_centavos, 1990);
   });
@@ -708,13 +709,13 @@ async function main() {
     // avaliação via assinatura (temAcesso)
     assert.equal((await req('POST', `/academy/api/aluno/cursos/${prodId}/avaliar`, { jar: 'dani', corpo: { nota: 4, texto: 'via clube' } })).st, 200);
   });
-  await t('cobrança recorrente vira pedido (comissão 10%) e é idempotente; KPIs MRR', async () => {
+  await t('cobrança recorrente vira pedido (comissão 8,9%+R$1) e é idempotente; KPIs MRR', async () => {
     PAY_REF['905'] = 'academy-sub:' + subId;
     await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '905' } } });
     await espera(200);
     const o = require('./db').db.prepare("SELECT * FROM orders WHERE subscription_id = ?").get(subId);
     assert.ok(o); assert.equal(o.tipo, 'assinatura'); assert.equal(o.valor_centavos, 4900);
-    assert.equal(o.comissao_plataforma_centavos, 490);
+    assert.equal(o.comissao_plataforma_centavos, 536); // 8,9% de 49,00 (4,36) + R$1,00
     await req('POST', '/academy/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: '905' } } });
     await espera(200);
     assert.equal(require('./db').db.prepare("SELECT COUNT(*) n FROM orders WHERE subscription_id = ?").get(subId).n, 1, 'cobrança duplicada não repete');
