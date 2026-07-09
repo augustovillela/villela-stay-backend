@@ -30,6 +30,16 @@ db.exec('PRAGMA busy_timeout = 4000;');
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 db.exec(schema);
 
+// Correção pontual (idempotente): a capa do 1º livro apontava para um link de
+// VISUALIZAÇÃO do Google Drive, que não renderiza como <img>. Capa oficial agora
+// hospedada no próprio backend em /assets/livros/ (só substitui se ainda for o Drive).
+try {
+  db.prepare(`UPDATE books SET
+      capa_url = '/assets/livros/pilotagem-de-drones-na-pratica.jpg',
+      og_image = 'https://livros.villelastay.com.br/assets/livros/pilotagem-de-drones-na-pratica.jpg'
+    WHERE slug = 'pilotagem-de-drones-na-pratica-dji-mini-3' AND capa_url LIKE '%drive.google.com%'`).run();
+} catch (e) { console.error('[livraria] fix capa:', e.message); }
+
 // ---- helpers ----
 const nowISO = () => new Date().toISOString();
 // ID curto, opaco e url-safe (mesmo estilo do server.js: base64url).

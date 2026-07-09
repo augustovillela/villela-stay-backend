@@ -5251,8 +5251,8 @@ app.post('/webhooks/mercadopago', async (req, res) => {
   } catch (e) { console.error('[mp webhook]', e.message); }
 });
 
-// ===== Grupo Villela — assets oficiais de marca (V-Portal): logos, favicons, PWA icons, OG =====
-app.use('/assets/brand', express.static(path.join(__dirname, 'assets', 'brand'), { maxAge: '7d' }));
+// ===== Grupo Villela — assets estáticos: marca (/assets/brand) + capas de livros (/assets/livros) =====
+app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '7d' }));
 
 // Raiz → destino conforme o subdomínio: staff.villelastay.com.br abre o Portal Staff;
 // os demais (minha.villelastay.com.br / onrender) vão para a Área do Hóspede.
