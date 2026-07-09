@@ -141,6 +141,18 @@ function landing() {
   </div>
 </div></section>
 
+<section id="confianca"><div class="wrap">
+  <div class="eyebrow">Por que confiar</div>
+  <h2>Tecnologia testada na vida real</h2>
+  <p class="sub" style="max-width:640px">Nossa missão é transformar o arquivo morto da sua empresa em respostas — busca que entende o conteúdo e IA que responde <b>citando a fonte</b>. O Villela Docs nasceu dentro do Grupo Villela, para organizar os contratos, notas e políticas de uma operação real.</p>
+  <div class="grid g3">
+    <div class="card"><h3>🏢 Nascido numa operação real</h3>Construído pelo Grupo Villela com os mesmos padrões de segurança, auditoria e isolamento que usamos nos nossos próprios sistemas em produção.</div>
+    <div class="card"><h3>📎 IA que cita a fonte</h3>Cada resposta aponta o documento e o trecho de origem — você confere em um clique, nada de resposta solta.</div>
+    <div class="card"><h3>✅ 222 verificações automatizadas</h3>Cada atualização passa por 222 testes antes de chegar a você.</div>
+  </div>
+  <p class="sub" style="margin-top:24px">🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago</p>
+</div></section>
+
 <section class="alt"><div class="wrap">
   <div class="eyebrow">Planos</div>
   <h2>Comece pequeno, cresça sem trocar de ferramenta</h2>

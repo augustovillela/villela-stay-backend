@@ -93,6 +93,15 @@ function landingHTML() {
       <p class="sub">Aluno, produtor e afiliado com painéis próprios — e a plataforma cuidando de pagamento, entrega e segurança.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
+    <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
+      <p class="sub">Nossa missão é ser o caminho mais curto do conhecimento à renda: <b>publicar é grátis — você só paga quando vende</b>. A plataforma nasceu dentro do Grupo Villela, com os mesmos padrões de segurança dos nossos outros sistemas.</p>
+      <div class="grid">
+        <div class="card feat"><div class="i">💰</div><div><b>Taxa transparente: 8,9% + R$ 1</b><br><span class="sub" style="text-align:left;margin:0">Por venda aprovada. Sem mensalidade, sem taxa de adesão, sem surpresa no saque.</span></div></div>
+        <div class="card feat"><div class="i">🇧🇷</div><div><b>Pagamento nacional de verdade</b><br><span class="sub" style="text-align:left;margin:0">Pix e cartão via Mercado Pago; o acesso só libera com pagamento confirmado na fonte.</span></div></div>
+        <div class="card feat"><div class="i">📜</div><div><b>Certificado com validação pública</b><br><span class="sub" style="text-align:left;margin:0">Cada certificado tem código verificável por qualquer pessoa — o diploma do seu aluno vale algo.</span></div></div>
+      </div>
+      <p class="sub" style="margin-top:26px">🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago</p>
+    </div></div>
     <div class="sec" id="produtores" style="background:var(--ambar-claro)"><div class="wrap"><h2>Quer vender seu curso aqui?</h2>
       <p class="sub">Estamos abrindo a plataforma para os primeiros produtores e afiliados. Deixe seu contato que a gente chama você.</p>
       <form class="form" id="lead">

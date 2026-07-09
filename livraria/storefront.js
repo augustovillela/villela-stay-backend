@@ -112,6 +112,10 @@ ${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script
   <nav class="nav"><a href="/livros">Livros</a><a href="/minha-biblioteca">Minha biblioteca</a><a href="${SITE_PRINCIPAL}">Villela Stay</a></nav>
 </div></header>
 ${body}
+<div class="wrap" style="text-align:center;padding:26px 20px 6px;color:var(--suave);font-size:14px">
+  <strong style="color:var(--petroleo)">Tecnologia testada na vida real</strong> — loja própria do Grupo Villela: do autor para as suas mãos, sem intermediário.<br>
+  🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago &nbsp;·&nbsp; ↩️ Garantia de 7 dias
+</div>
 <footer class="rod"><div class="wrap"><div class="cols">
   <div><strong style="color:#fff">Livraria Villela</strong> · Livros, ideias e conhecimento aplicado<br>Uma empresa do <strong style="color:var(--dourado)">Grupo Villela</strong> · CNPJ 56.776.526/0001-12 · Brasília-DF</div>
   <div><a href="/politica-de-privacidade">Privacidade</a> · <a href="/termos-de-uso">Termos</a><br>

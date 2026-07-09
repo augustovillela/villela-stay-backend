@@ -109,6 +109,15 @@ function landingHTML() {
       <p class="sub">Um sistema que cobre da captação ao arquivamento — sem colar planilha com WhatsApp.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
+    <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
+      <p class="sub">Nossa missão é tirar prazos e intimações do improviso — com IA que trabalha como um estagiário sênior e <b>nunca assina sozinha</b>. Antes de chegar a você, o Villela Legal roda todos os dias no escritório do próprio Grupo Villela.</p>
+      <div class="grid">
+        <div class="card feat"><div class="i">⚖️</div><div><b>Usado no escritório próprio</b><br><span class="sub" style="text-align:left;margin:0">Processos, prazos e publicações reais passam por aqui diariamente — comemos a nossa própria comida.</span></div></div>
+        <div class="card feat"><div class="i">📡</div><div><b>Mais de 2.400 andamentos monitorados</b><br><span class="sub" style="text-align:left;margin:0">Coleta diária apenas em fontes oficiais: DJEN e DataJud/CNJ.</span></div></div>
+        <div class="card feat"><div class="i">🔐</div><div><b>Sigilo por escritório</b><br><span class="sub" style="text-align:left;margin:0">Cada banca em banco de dados isolado; conteúdo de IA sempre como minuta para a sua revisão.</span></div></div>
+      </div>
+      <p class="sub" style="margin-top:26px">🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago</p>
+    </div></div>
     <div class="sec" id="planos" style="background:#EFF1F6"><div class="wrap"><h2>Planos</h2>
       <p class="sub">Preços de lançamento, ajustáveis. Comece no trial e evolua quando quiser.</p>
       <div class="planos">${planos.map(cardPlano).join('')}</div>

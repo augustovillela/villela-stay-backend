@@ -107,6 +107,15 @@ function landingHTML() {
       <p class="sub">Do anúncio ao repasse do proprietário — sem colar planilha com WhatsApp e calendário de OTA.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
+    <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
+      <p class="sub">Nossa missão é entregar ao anfitrião independente a mesma máquina de gestão dos grandes operadores — sem consultor, sem implantação cara. O Stay Manager é o sistema que o Grupo Villela usa <b>na própria operação, todos os dias</b>.</p>
+      <div class="grid">
+        <div class="card feat"><div class="i">🏘️</div><div><b>20 anúncios reais geridos aqui</b><br><span class="sub" style="text-align:left;margin:0">As 4 casas e os 20 anúncios da Villela Stay no Lago Sul rodam neste mesmo sistema.</span></div></div>
+        <div class="card feat"><div class="i">🛡️</div><div><b>Anti-overbooking de verdade</b><br><span class="sub" style="text-align:left;margin:0">Regras de bloqueio testadas em casas interligadas, onde um furo de calendário custa caro.</span></div></div>
+        <div class="card feat"><div class="i">🔗</div><div><b>Seus canais, sua conta</b><br><span class="sub" style="text-align:left;margin:0">Conecte a sua conta Stays.net e importe anúncios e reservas de Airbnb, Booking, Decolar, Vrbo e Expedia.</span></div></div>
+      </div>
+      <p class="sub" style="margin-top:26px">🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago</p>
+    </div></div>
     <div class="sec" id="planos" style="background:#EDF1F5"><div class="wrap"><h2>Planos</h2>
       <p class="sub">Preços de lançamento, ajustáveis. Comece no trial e evolua quando quiser.</p>
       <div class="planos">${planos.map(cardPlano).join('')}</div>

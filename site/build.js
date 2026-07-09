@@ -430,6 +430,7 @@ const grupoSecao = () => `
 <section id="grupo" class="grupo-wrap">
   <div class="grupo-inner">
     <h2>${t('Produtos do Grupo Villela', 'Grupo Villela Products', 'Productos del Grupo Villela')}</h2>
+    <p class="grupo-fio">${t('Tecnologia testada na vida real.', 'Technology tested in real life.', 'Tecnología probada en la vida real.')}</p>
     <p class="grupo-intro">${t(
       'O Grupo Villela reúne soluções inteligentes para hospedagem, gestão, documentos, jurídico, educação, projetos e conhecimento aplicado. Cada produto nasce da experiência prática da nossa operação e carrega o mesmo compromisso com organização, confiança e resultado.',
       'Grupo Villela brings together smart solutions for hospitality, management, documents, legal, education, projects and applied knowledge. Each product is born from the hands-on experience of our own operation and carries the same commitment to organisation, trust and results.',

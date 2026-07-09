@@ -103,6 +103,18 @@ function landing() {
   </div>
 </div></section>
 
+<section id="confianca"><div class="wrap">
+  <div class="eyebrow">Por que confiar</div>
+  <h2>Tecnologia testada na vida real</h2>
+  <p class="sub" style="max-width:640px">Nossa missão é uma gestão de projetos que uma equipe brasileira adota em uma tarde — do plano ao evento, com IA que escreve o relatório que ninguém quer escrever. E antes de chegar a você, ela gere o portfólio do próprio Grupo Villela.</p>
+  <div class="grid g3">
+    <div class="card"><h3>📋 16 projetos reais dentro dele</h3>O portfólio do Grupo Villela — hospedagem, eventos e expansões — é gerido neste mesmo sistema, todos os dias.</div>
+    <div class="card"><h3>🎪 Eventos de verdade</h3>Nasceu numa operação que recebe casamentos, formaturas e eventos corporativos — o módulo de eventos não é enfeite.</div>
+    <div class="card"><h3>✅ 197 verificações automatizadas</h3>Cada atualização passa por 197 testes antes de entrar no ar — estabilidade não é promessa, é rotina.</div>
+  </div>
+  <p class="sub" style="margin-top:24px">🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago</p>
+</div></section>
+
 <section class="alt" id="planos"><div class="wrap">
   <div class="eyebrow">Planos</div>
   <h2>Do primeiro projeto à operação completa</h2>
