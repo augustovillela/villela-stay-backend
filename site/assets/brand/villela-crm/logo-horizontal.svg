@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 120" role="img">
+  <g>
+  <polygon points="14,26 60,58 106,26 106,40 60,72 14,40" fill="#C9A227"/>
+  <polygon points="16,46 42,64 42,100 16,112" fill="#FFFFFF"/>
+  <polygon points="104,46 78,64 78,100 104,112" fill="#FFFFFF"/>
+  <rect x="46" y="76" width="28" height="6" rx="2" fill="#BE123C"/>
+  <rect x="51" y="86" width="18" height="6" rx="2" fill="#BE123C"/>
+  <rect x="56" y="96" width="8" height="6" rx="2" fill="#C9A227"/></g>
+  <text x="140" y="68" font-family="Lora, Georgia, 'Times New Roman', serif" font-weight="600" font-size="46" letter-spacing="1" fill="#FFFFFF">Villela</text>
+  <text x="142" y="92" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-weight="600" font-size="19" letter-spacing="7" fill="#BE123C">CRM</text>
+</svg>

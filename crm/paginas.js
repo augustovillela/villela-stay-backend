@@ -52,7 +52,8 @@ header.top .marca img{height:56px}
 const BRAND = '/assets/brand/villela-crm';
 const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg"><meta name="theme-color" content="#1B2A4A">`;
+    <link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg"><link rel="icon" type="image/png" sizes="192x192" href="${BRAND}/favicon-192.png">
+    <link rel="apple-touch-icon" href="${BRAND}/apple-touch-icon.png"><meta name="theme-color" content="#1B2A4A">`;
 // GA4 do grupo — só páginas públicas.
 const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
 const marca = (neg) => `<span class="marca${neg ? ' neg' : ''}"><img src="${BRAND}/${neg ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela CRM"><span><span class="m1">Villela</span> <span class="m2">CRM</span></span></span>`;
@@ -88,7 +89,9 @@ function landingHTML() {
     <meta name="description" content="CRM inteligente multicanal: leads com origem e UTM, funis Kanban, follow-ups automáticos, lead scoring, propostas com link, campanhas e agentes de IA. Teste grátis 14 dias.">
     <meta property="og:title" content="Villela CRM — CRM inteligente multicanal">
     <meta property="og:description" content="Capte, organize, converta: funis Kanban, follow-up automático, scoring, propostas e campanhas em um só lugar. Teste grátis por 14 dias.">
-    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://crm.villelastay.com.br${BRAND}/og-image.png">
+    <meta property="og:type" content="website"><meta property="og:url" content="https://crm.villelastay.com.br/crm">
+    <link rel="canonical" href="https://crm.villelastay.com.br/crm">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela CRM","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"CRM inteligente multicanal: leads, funis, follow-ups, scoring, propostas, campanhas e agentes de IA.","offers":{"@type":"Offer","price":"79.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
     <style>${CSS}</style></head><body>
@@ -131,7 +134,7 @@ function landingHTML() {
         <textarea id="l-msg" rows="3" placeholder="Quantos leads/mês você recebe? Como podemos ajudar?"></textarea>
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
-    <footer>Villela CRM · CRM inteligente multicanal · <a href="/crm/app" style="color:var(--villela-gold)">Painel do cliente</a> · <a href="/crm/ajuda" style="color:var(--villela-gold)">Ajuda</a>
+    <footer>Villela CRM · Relacionamento e vendas inteligentes · <a href="/crm/app" style="color:var(--villela-gold)">Painel do cliente</a> · <a href="/crm/ajuda" style="color:var(--villela-gold)">Ajuda</a>
       <br><span style="opacity:.8">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/crm/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({

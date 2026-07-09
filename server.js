@@ -5265,6 +5265,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('projetos.') || host.startsWith('projects.')) return res.redirect(302, '/vpe');
   if (host.startsWith('manager.') || host.startsWith('gestao.')) return res.redirect(302, '/gestao'); // landing de vendas do Villela Stay Manager
   if (host.startsWith('academia.') || host.startsWith('academy.') || host.startsWith('cursos.')) return res.redirect(302, '/academy'); // Villela Academy Marketplace (domínio oficial: academia.)
+  if (host.startsWith('crm.')) return res.redirect(302, '/crm'); // landing de vendas do Villela CRM
   return res.redirect(302, '/hospede');
 });
 

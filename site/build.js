@@ -422,6 +422,9 @@ const PRODUTOS_GRUPO = [
   { nome: 'Villela Projects', pasta: 'villela-projects', cor: '#7C3AED', url: 'https://projetos.villelastay.com.br',
     tag: ['Projetos, processos e automações em um só lugar', 'Projects, processes and automations in one place', 'Proyectos, procesos y automatizaciones en un solo lugar'],
     frase: ['Planeje e execute projetos e eventos com portfólio, tarefas, relatórios e portal do cliente.', 'Plan and deliver projects and events with portfolio, tasks, reports and a client portal.', 'Planifica y ejecuta proyectos y eventos con portafolio, tareas, informes y portal del cliente.'] },
+  { nome: 'Villela CRM', pasta: 'villela-crm', cor: '#BE123C', url: 'https://crm.villelastay.com.br',
+    tag: ['Relacionamento e vendas inteligentes', 'Smart relationships and sales', 'Relaciones y ventas inteligentes'],
+    frase: ['CRM multicanal com funis Kanban, follow-ups automáticos, lead scoring e propostas — do lead ao pós-venda.', 'Multichannel CRM with Kanban pipelines, automatic follow-ups, lead scoring and proposals — from lead to after-sales.', 'CRM multicanal con embudos Kanban, seguimientos automáticos, lead scoring y propuestas — del lead a la posventa.'] },
   { nome: 'Livraria Villela', pasta: 'livraria-villela', cor: '#7F1D1D', url: 'https://livros.villelastay.com.br',
     tag: ['Livros, ideias e conhecimento aplicado', 'Books, ideas and applied knowledge', 'Libros, ideas y conocimiento aplicado'],
     frase: ['Livros digitais e impressos que levam o conhecimento da prática direto para a sua estante.', 'Digital and printed books that bring hands-on knowledge straight to your shelf.', 'Libros digitales e impresos que llevan el conocimiento práctico directo a tu estantería.'] }
