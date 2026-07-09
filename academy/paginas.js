@@ -81,7 +81,7 @@ function landingHTML() {
     <meta property="og:image" content="${BASE_URL()}${BRAND}/og-image.png">
     <link rel="canonical" href="${BASE_URL()}/academy">
     ${HEAD_MARCA}${GA}
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
@@ -99,7 +99,7 @@ function landingHTML() {
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
     <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
-      <p class="sub">Nossa missão é ser o caminho mais curto do conhecimento à renda: <b>publicar é grátis — você só paga quando vende</b>. A plataforma nasceu dentro do Grupo Villela, com os mesmos padrões de segurança dos nossos outros sistemas.</p>
+      <p class="sub">Nossa missão é ser o caminho mais curto do conhecimento à renda: <b>publicar é grátis — você só paga quando vende</b>. A plataforma nasceu dentro do Grupo Villela Stay, com os mesmos padrões de segurança dos nossos outros sistemas.</p>
       <div class="grid">
         <div class="card feat"><div class="i">💰</div><div><b>Taxa transparente: 8,9% + R$ 1</b><br><span class="sub" style="text-align:left;margin:0">Por venda aprovada. Sem mensalidade, sem taxa de adesão, sem surpresa no saque.</span></div></div>
         <div class="card feat"><div class="i">🇧🇷</div><div><b>Pagamento nacional de verdade</b><br><span class="sub" style="text-align:left;margin:0">Pix e cartão via Mercado Pago; o acesso só libera com pagamento confirmado na fonte.</span></div></div>
@@ -119,7 +119,7 @@ function landingHTML() {
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
-      Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12<br>
+      Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12<br>
       <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/app">Entrar</a>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/academy/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -167,7 +167,7 @@ function shellPublico({ titulo, descricao, url, corpo, imagem }) {
     <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
-      Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12<br>
+      Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12<br>
       <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/reembolso">Reembolso</a> ·
       <a href="/academy/termos-produtor">Produtores</a> · <a href="/academy/termos-afiliado">Afiliados</a></footer></body></html>`;
 }

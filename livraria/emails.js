@@ -2,7 +2,7 @@
 // Livraria Villela — templates transacionais (e-mail HTML + texto WhatsApp)
 // Funções puras: recebem dados, devolvem { assunto, html, texto }.
 // O envio em si é feito pelos helpers injetados (enviarEmail/enviarWhatsApp).
-// Paleta Grupo Villela: navy #1B2A4A, bordô editorial #7F1D1D, dourado #C9A227.
+// Paleta Grupo Villela Stay: navy #1B2A4A, bordô editorial #7F1D1D, dourado #C9A227.
 // =====================================================================
 'use strict';
 const { brl } = require('./repo');
@@ -19,7 +19,7 @@ function wrap(subtitulo, corpo, cta) {
       <p style="font-size:12px;letter-spacing:.5px;color:#8a9296;text-transform:uppercase;margin:0 0 10px">${esc(subtitulo)}</p>
       ${corpo}${botao}
       <p style="font-size:12px;color:#8a9296;margin-top:22px;border-top:1px solid #eee;padding-top:12px">
-        Livraria Villela · Uma empresa do Grupo Villela · Brasília-DF · <a href="/suporte-livros" style="color:#7F1D1D">Suporte</a></p>
+        Livraria Villela · Uma empresa do Grupo Villela Stay · Brasília-DF · <a href="/suporte-livros" style="color:#7F1D1D">Suporte</a></p>
     </div></div>`;
 }
 function itensHtml(order) {

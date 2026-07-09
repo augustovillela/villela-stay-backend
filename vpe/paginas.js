@@ -1,6 +1,6 @@
 // =====================================================================
 // Villela Projects & Events — páginas públicas + painel (/vpe/app).
-// Identidade Grupo Villela (navy + dourado, acento violeta #7C3AED).
+// Identidade Grupo Villela Stay (navy + dourado, acento violeta #7C3AED).
 // SPA leve em fetch, sem framework — padrão provado no Villela Docs.
 // =====================================================================
 'use strict';
@@ -74,7 +74,7 @@ ${og ? `<meta property="og:type" content="website"><meta property="og:title" con
 </div></header>
 ${corpo}
 <footer><div class="wrap"><b style="color:#fff">Villela Projects</b> · Projetos, processos e automações em um só lugar<br>
-Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
+Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
 <a href="/vpe/login">Entrar</a> · <a href="/vpe/cadastro">Criar conta</a></div></footer>
 </body></html>`;
 }
@@ -108,9 +108,9 @@ function landing() {
 <section id="confianca"><div class="wrap">
   <div class="eyebrow">Por que confiar</div>
   <h2>Tecnologia testada na vida real</h2>
-  <p class="sub" style="max-width:640px">Nossa missão é uma gestão de projetos que uma equipe brasileira adota em uma tarde — do plano ao evento, com IA que escreve o relatório que ninguém quer escrever. E antes de chegar a você, ela gere o portfólio do próprio Grupo Villela.</p>
+  <p class="sub" style="max-width:640px">Nossa missão é uma gestão de projetos que uma equipe brasileira adota em uma tarde — do plano ao evento, com IA que escreve o relatório que ninguém quer escrever. E antes de chegar a você, ela gere o portfólio do próprio Grupo Villela Stay.</p>
   <div class="grid g3">
-    <div class="card"><h3>📋 16 projetos reais dentro dele</h3>O portfólio do Grupo Villela — hospedagem, eventos e expansões — é gerido neste mesmo sistema, todos os dias.</div>
+    <div class="card"><h3>📋 16 projetos reais dentro dele</h3>O portfólio do Grupo Villela Stay — hospedagem, eventos e expansões — é gerido neste mesmo sistema, todos os dias.</div>
     <div class="card"><h3>🎪 Eventos de verdade</h3>Nasceu numa operação que recebe casamentos, formaturas e eventos corporativos — o módulo de eventos não é enfeite.</div>
     <div class="card"><h3>✅ 197 verificações automatizadas</h3>Cada atualização passa por 197 testes antes de entrar no ar — estabilidade não é promessa, é rotina.</div>
   </div>
@@ -161,7 +161,7 @@ function landing() {
     descricao: 'Portfólio de ideias, projetos por fases, eventos de ponta a ponta e agentes de IA. Teste grátis 14 dias.',
     corpo, og: true,
     extraHead: `<link rel="canonical" href="https://projetos.villelastay.com.br/vpe">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Projects","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Projetos, processos e automações em um só lugar: portfólio, Kanban, eventos, financeiro e IA.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Projects","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Projetos, processos e automações em um só lugar: portfólio, Kanban, eventos, financeiro e IA.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
 `,
   });
 }
@@ -1094,7 +1094,7 @@ ${HEAD_MARCA}
 <style>${CSS}.pcard{max-width:760px;margin:26px auto}pre.doc{white-space:pre-wrap;background:var(--fundo);border:1px solid var(--borda);border-radius:10px;padding:16px;font-family:inherit;font-size:14px;max-height:60vh;overflow:auto}</style></head><body>
 <header class="top"><div class="wrap"><span class="brand">${BRAND_LOCKUP}</span></div></header>
 <div class="wrap pcard">${corpoHtml}</div>
-<footer><div class="wrap">Portal do cliente · documento apresentado por meio do Villela Projects, uma empresa do Grupo Villela.</div></footer></body></html>`;
+<footer><div class="wrap">Portal do cliente · documento apresentado por meio do Villela Projects, uma empresa do Grupo Villela Stay.</div></footer></body></html>`;
 }
 function portalCliente(view, token) {
   const d = view.dados || {};

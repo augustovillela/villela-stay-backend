@@ -33,7 +33,7 @@ function moldura(titulo, corpo, rodape) {
       <span style="color:#D97706;font-weight:800;font-size:1.1rem">🎓 Villela Academy</span></div>
     <div style="border:1px solid #E2E6EC;border-top:0;border-radius:0 0 12px 12px;padding:24px">
       <h2 style="margin:0 0 12px;color:#1B2A4A">${titulo}</h2>${corpo}
-      <p style="color:#5B6472;font-size:.85rem;margin-top:24px">${rodape || 'Villela Academy · Aprenda, aplique e transforme — uma empresa do Grupo Villela.'}</p>
+      <p style="color:#5B6472;font-size:.85rem;margin-top:24px">${rodape || 'Villela Academy · Aprenda, aplique e transforme — uma empresa do Grupo Villela Stay.'}</p>
     </div></div>`;
 }
 const botao = (url, rotulo) => `<p style="margin:20px 0"><a href="${url}" style="background:#D97706;color:#fff;font-weight:700;padding:12px 26px;border-radius:24px;text-decoration:none">${rotulo}</a></p>`;

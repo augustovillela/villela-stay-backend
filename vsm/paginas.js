@@ -93,7 +93,7 @@ function landingHTML() {
     <meta property="og:type" content="website"><meta property="og:url" content="https://manager.villelastay.com.br/gestao">
     <link rel="canonical" href="https://manager.villelastay.com.br/gestao">
     ${HEAD_MARCA}${GA}
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Stay Manager","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA.","offers":{"@type":"Offer","price":"99.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Stay Manager","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA.","offers":{"@type":"Offer","price":"99.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
       <a href="/gestao" style="text-decoration:none">${marca(true)}</a>
@@ -112,7 +112,7 @@ function landingHTML() {
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
     <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
-      <p class="sub">Nossa missão é entregar ao anfitrião independente a mesma máquina de gestão dos grandes operadores — sem consultor, sem implantação cara. O Stay Manager é o sistema que o Grupo Villela usa <b>na própria operação, todos os dias</b>.</p>
+      <p class="sub">Nossa missão é entregar ao anfitrião independente a mesma máquina de gestão dos grandes operadores — sem consultor, sem implantação cara. O Stay Manager é o sistema que o Grupo Villela Stay usa <b>na própria operação, todos os dias</b>.</p>
       <div class="grid">
         <div class="card feat"><div class="i">🏘️</div><div><b>20 anúncios reais geridos aqui</b><br><span class="sub" style="text-align:left;margin:0">As 4 casas e os 20 anúncios da Villela Stay no Lago Sul rodam neste mesmo sistema.</span></div></div>
         <div class="card feat"><div class="i">🛡️</div><div><b>Anti-overbooking de verdade</b><br><span class="sub" style="text-align:left;margin:0">Regras de bloqueio testadas em casas interligadas, onde um furo de calendário custa caro.</span></div></div>
@@ -134,7 +134,7 @@ function landingHTML() {
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
     <footer>Villela Stay Manager · Gestão profissional para aluguel por temporada · <a href="/gestao/app" style="color:var(--villela-gold)">Painel do cliente</a>
-      <br><span style="opacity:.8">Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12</span>
+      <br><span style="opacity:.8">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/gestao/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           nome:l_nome.value,empresa:l_esc.value,email:l_email.value,telefone:l_tel.value,mensagem:l_msg.value})});

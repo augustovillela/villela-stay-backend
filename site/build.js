@@ -17,7 +17,7 @@ const SITE_URL = 'https://villelastay.com.br';
 // ----------------------------------------------------------------- PWA
 // Cores da marca usadas no manifest, theme-color e ícones (coerentes com os cartões).
 const PWA = {
-  themeColor: '#1B2A4A',       // navy do Grupo Villela (barra do app)
+  themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
   cacheVersion: 'vstay-v6'     // bump para invalidar o cache do Service Worker
 };
@@ -284,7 +284,7 @@ ${corpo}
       ${t('Casa Modernista: 10 minutos do Aeroporto', 'Casa Modernista: 10 minutes from the Airport', 'Casa Modernista: 10 minutos del Aeropuerto')}<br>
       ${t('Gran Villela Home Stay: 15 minutos da Esplanada', 'Gran Villela Home Stay: 15 minutes from the Esplanada', 'Gran Villela Home Stay: 15 minutos de la Explanada')}
     </p>
-    <p class="rodape-grupo">${t('Uma empresa do Grupo Villela', 'A Grupo Villela company', 'Una empresa del Grupo Villela')} · CNPJ 56.776.526/0001-12</p>
+    <p class="rodape-grupo">${t('Uma empresa do Grupo Villela Stay', 'A Grupo Villela Stay company', 'Una empresa del Grupo Villela Stay')} · CNPJ 56.776.526/0001-12</p>
   </div>
   <div class="rodape-links rodape-compacto">
     <strong>${t('Navegue', 'Browse', 'Navega')}</strong>
@@ -401,7 +401,7 @@ const depoimentos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'dep
 const depTexto = d => (LANG === 'en' && d.texto_en) ? d.texto_en : ((LANG === 'es' && d.texto_es) ? d.texto_es : d.texto);
 const depSelo = () => LANG === 'pt' ? '' : ` · <span class="dep-traduzido">${t('', 'translated from Portuguese', 'traducido del portugués')}</span>`;
 
-// ------------------------------------------- Produtos do Grupo Villela (seção institucional da home)
+// ------------------------------------------- Produtos do Grupo Villela Stay (seção institucional da home)
 // Símbolos locais em /assets/brand/<marca>/simbolo-v.svg (copiados no build — o site não enxerga o backend).
 const PRODUTOS_GRUPO = [
   { nome: 'Villela Stay', pasta: 'villela-stay', cor: '#C9A227', url: 'https://villelastay.com.br',
@@ -429,12 +429,12 @@ const PRODUTOS_GRUPO = [
 const grupoSecao = () => `
 <section id="grupo" class="grupo-wrap">
   <div class="grupo-inner">
-    <h2>${t('Produtos do Grupo Villela', 'Grupo Villela Products', 'Productos del Grupo Villela')}</h2>
+    <h2>${t('Produtos do Grupo Villela Stay', 'Grupo Villela Stay Products', 'Productos del Grupo Villela Stay')}</h2>
     <p class="grupo-fio">${t('Tecnologia testada na vida real.', 'Technology tested in real life.', 'Tecnología probada en la vida real.')}</p>
     <p class="grupo-intro">${t(
-      'O Grupo Villela reúne soluções inteligentes para hospedagem, gestão, documentos, jurídico, educação, projetos e conhecimento aplicado. Cada produto nasce da experiência prática da nossa operação e carrega o mesmo compromisso com organização, confiança e resultado.',
-      'Grupo Villela brings together smart solutions for hospitality, management, documents, legal, education, projects and applied knowledge. Each product is born from the hands-on experience of our own operation and carries the same commitment to organisation, trust and results.',
-      'El Grupo Villela reúne soluciones inteligentes para hospedaje, gestión, documentos, jurídico, educación, proyectos y conocimiento aplicado. Cada producto nace de la experiencia práctica de nuestra operación y lleva el mismo compromiso con la organización, la confianza y el resultado.'
+      'O Grupo Villela Stay reúne soluções inteligentes para hospedagem, gestão, documentos, jurídico, educação, projetos e conhecimento aplicado. Cada produto nasce da experiência prática da nossa operação e carrega o mesmo compromisso com organização, confiança e resultado.',
+      'Grupo Villela Stay brings together smart solutions for hospitality, management, documents, legal, education, projects and applied knowledge. Each product is born from the hands-on experience of our own operation and carries the same commitment to organisation, trust and results.',
+      'El Grupo Villela Stay reúne soluciones inteligentes para hospedaje, gestión, documentos, jurídico, educación, proyectos y conocimiento aplicado. Cada producto nace de la experiencia práctica de nuestra operación y lleva el mismo compromiso con la organización, la confianza y el resultado.'
     )}</p>
     <div class="grupo-grade">${PRODUTOS_GRUPO.map(p => `
       <a class="produto-card" href="${p.url}" style="--acento:${p.cor}"${p.url === SITE_URL ? '' : ' target="_blank" rel="noopener"'}>
@@ -2335,7 +2335,7 @@ fs.mkdirSync(ICON_DST, { recursive: true });
 const ICON_FILES = ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon-180.png'];
 for (const f of ICON_FILES) fs.copyFileSync(path.join(ICON_SRC, f), path.join(ICON_DST, f));
 
-// Identidade do Grupo Villela: símbolos das marcas + favicons/ícones da Villela Stay.
+// Identidade do Grupo Villela Stay: símbolos das marcas + favicons/ícones da Villela Stay.
 // O site é um serviço estático separado (sem acesso ao /assets/brand do backend), então os
 // arquivos vivem em site/assets/brand/ e são copiados para dist/assets/brand/ a cada build.
 fs.cpSync(path.join(__dirname, 'assets', 'brand'), path.join(DIST, 'assets', 'brand'), { recursive: true });

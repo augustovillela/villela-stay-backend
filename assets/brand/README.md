@@ -1,4 +1,4 @@
-# Assets de marca — Grupo Villela (sistema V-Portal / V-Frame)
+# Assets de marca — Grupo Villela Stay (sistema V-Portal / V-Frame)
 
 Identidade oficial provisória (09/07/2026). Referência conceitual:
 `D:\ClaudeData\Claude\dados\marketing\portfolio-saas\estudo-logomarcas.md`.

@@ -505,7 +505,7 @@ a { color: var(--lago); text-decoration: none; }
 .lang-switch .lang-menu a:hover { background: rgba(27,42,74,.08); }
 .lang-switch .lang-menu a[aria-current="true"] { font-weight: 700; color: var(--petroleo, #1B2A4A); }
 
-/* ---------- Produtos do Grupo Villela ---------- */
+/* ---------- Produtos do Grupo Villela Stay ---------- */
 .grupo-wrap { padding: 64px 5vw; background: var(--areia); }
 .grupo-inner { max-width: 1280px; margin: 0 auto; }
 .grupo-inner > h2 { font-size: 1.7rem; color: var(--petroleo); letter-spacing: -.3px; }

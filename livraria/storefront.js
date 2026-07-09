@@ -1,7 +1,7 @@
 // =====================================================================
 // Livraria Villela — renderização server-side das páginas públicas (SEO).
 // Tudo em HTML gerado no servidor: title/meta/OG/canonical/JSON-LD,
-// slugs amigáveis. Identidade Grupo Villela: navy #1B2A4A, acento bordô
+// slugs amigáveis. Identidade Grupo Villela Stay: navy #1B2A4A, acento bordô
 // editorial #7F1D1D, dourado #C9A227, gelo #F8F9FA (Lora + Inter).
 // =====================================================================
 'use strict';
@@ -113,11 +113,11 @@ ${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script
 </div></header>
 ${body}
 <div class="wrap" style="text-align:center;padding:26px 20px 6px;color:var(--suave);font-size:14px">
-  <strong style="color:var(--petroleo)">Tecnologia testada na vida real</strong> — loja própria do Grupo Villela: do autor para as suas mãos, sem intermediário.<br>
+  <strong style="color:var(--petroleo)">Tecnologia testada na vida real</strong> — loja própria do Grupo Villela Stay: do autor para as suas mãos, sem intermediário.<br>
   🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago &nbsp;·&nbsp; ↩️ Garantia de 7 dias
 </div>
 <footer class="rod"><div class="wrap"><div class="cols">
-  <div><strong style="color:#fff">Livraria Villela</strong> · Livros, ideias e conhecimento aplicado<br>Uma empresa do <strong style="color:var(--dourado)">Grupo Villela</strong> · CNPJ 56.776.526/0001-12 · Brasília-DF</div>
+  <div><strong style="color:#fff">Livraria Villela</strong> · Livros, ideias e conhecimento aplicado<br>Uma empresa do <strong style="color:var(--dourado)">Grupo Villela Stay</strong> · CNPJ 56.776.526/0001-12 · Brasília-DF</div>
   <div><a href="/politica-de-privacidade">Privacidade</a> · <a href="/termos-de-uso">Termos</a><br>
     <a href="/politica-de-compra-e-entrega">Compra e entrega</a> · <a href="/politica-de-reembolso">Reembolso</a><br>
     <a href="/politica-de-livro-impresso">Livro impresso</a> · <a href="/suporte-livros">Suporte</a></div>

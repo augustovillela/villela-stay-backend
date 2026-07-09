@@ -51,7 +51,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 @media(max-width:640px){.hero h1{font-size:29px}.nav a.esconde{display:none}}
 `;
 
-// Head comum da identidade Grupo Villela (fontes, favicons, theme-color)
+// Head comum da identidade Grupo Villela Stay (fontes, favicons, theme-color)
 const BRAND_DIR = '/assets/brand/villela-docs';
 const BASE_URL = 'https://docs.villelastay.com.br';
 const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -82,7 +82,7 @@ ${HEAD_MARCA}${GA}
 ${corpo}
 <footer><div class="wrap">
   <b style="color:#fff">Villela Docs</b> · Inteligência documental para empresas<br>
-  Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
+  Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
   <a href="/vdocs/precos">Planos</a> · <a href="/vdocs/login">Entrar</a> · <a href="/vdocs/cadastro">Criar conta</a>
   <div style="margin-top:8px;font-size:12px">Seus documentos são privados: armazenamento isolado por empresa, criptografia em trânsito e trilha de auditoria completa (LGPD).</div>
 </div></footer>
@@ -147,9 +147,9 @@ function landing() {
 <section id="confianca"><div class="wrap">
   <div class="eyebrow">Por que confiar</div>
   <h2>Tecnologia testada na vida real</h2>
-  <p class="sub" style="max-width:640px">Nossa missão é transformar o arquivo morto da sua empresa em respostas — busca que entende o conteúdo e IA que responde <b>citando a fonte</b>. O Villela Docs nasceu dentro do Grupo Villela, para organizar os contratos, notas e políticas de uma operação real.</p>
+  <p class="sub" style="max-width:640px">Nossa missão é transformar o arquivo morto da sua empresa em respostas — busca que entende o conteúdo e IA que responde <b>citando a fonte</b>. O Villela Docs nasceu dentro do Grupo Villela Stay, para organizar os contratos, notas e políticas de uma operação real.</p>
   <div class="grid g3">
-    <div class="card"><h3>🏢 Nascido numa operação real</h3>Construído pelo Grupo Villela com os mesmos padrões de segurança, auditoria e isolamento que usamos nos nossos próprios sistemas em produção.</div>
+    <div class="card"><h3>🏢 Nascido numa operação real</h3>Construído pelo Grupo Villela Stay com os mesmos padrões de segurança, auditoria e isolamento que usamos nos nossos próprios sistemas em produção.</div>
     <div class="card"><h3>📎 IA que cita a fonte</h3>Cada resposta aponta o documento e o trecho de origem — você confere em um clique, nada de resposta solta.</div>
     <div class="card"><h3>✅ 222 verificações automatizadas</h3>Cada atualização passa por 222 testes antes de chegar a você.</div>
   </div>
@@ -205,7 +205,7 @@ function landing() {
     titulo: 'Villela Docs — Document Intelligence: gestão de documentos com IA para empresas',
     descricao: 'Inteligência documental para empresas: centralize, organize e encontre os documentos da sua empresa com busca inteligente, workflows de aprovação, auditoria e IA que cita as fontes. Teste grátis 14 dias.',
     canonical: 'https://docs.villelastay.com.br/vdocs',
-    corpo: `<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Docs","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Inteligência documental para empresas: busca inteligente, workflows, auditoria e IA que responde citando as fontes.","offers":{"@type":"Offer","price":"99.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>` + corpo,
+    corpo: `<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Docs","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Inteligência documental para empresas: busca inteligente, workflows, auditoria e IA que responde citando as fontes.","offers":{"@type":"Offer","price":"99.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>` + corpo,
   });
 }
 

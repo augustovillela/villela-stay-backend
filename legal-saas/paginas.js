@@ -97,7 +97,7 @@ function landingHTML() {
     <meta property="og:image" content="https://juridico.villelastay.com.br${BRAND_DIR}/og-image.png">
     <link rel="canonical" href="https://juridico.villelastay.com.br/juridico">
     ${BRAND_HEAD}${GA}
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Legal","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão jurídica inteligente: processos, prazos, publicações DJEN/DataJud, peças, contratos e portal do cliente para escritórios brasileiros.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela"}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Legal","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão jurídica inteligente: processos, prazos, publicações DJEN/DataJud, peças, contratos e portal do cliente para escritórios brasileiros.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
       <a class="brand" href="/juridico"><img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Legal" style="height:150px"><span><span class="bnome">Villela</span><span class="bdesc">LEGAL</span></span></a>
@@ -115,7 +115,7 @@ function landingHTML() {
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
     <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
-      <p class="sub">Nossa missão é tirar prazos e intimações do improviso — com IA que trabalha como um estagiário sênior e <b>nunca assina sozinha</b>. Antes de chegar a você, o Villela Legal roda todos os dias no escritório do próprio Grupo Villela.</p>
+      <p class="sub">Nossa missão é tirar prazos e intimações do improviso — com IA que trabalha como um estagiário sênior e <b>nunca assina sozinha</b>. Antes de chegar a você, o Villela Legal roda todos os dias no escritório do próprio Grupo Villela Stay.</p>
       <div class="grid">
         <div class="card feat"><div class="i">⚖️</div><div><b>Usado no escritório próprio</b><br><span class="sub" style="text-align:left;margin:0">Processos, prazos e publicações reais passam por aqui diariamente — comemos a nossa própria comida.</span></div></div>
         <div class="card feat"><div class="i">📡</div><div><b>Mais de 2.400 andamentos monitorados</b><br><span class="sub" style="text-align:left;margin:0">Coleta diária apenas em fontes oficiais: DJEN e DataJud/CNJ.</span></div></div>
@@ -137,7 +137,7 @@ function landingHTML() {
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
     <footer>Villela Legal · Gestão jurídica inteligente · <a href="/juridico/app" style="color:var(--villela-gold)">Painel do cliente</a>
-      <br><span style="font-size:.85em;opacity:.85">Uma empresa do Grupo Villela · CNPJ 56.776.526/0001-12</span>
+      <br><span style="font-size:.85em;opacity:.85">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/juridico/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           nome:l_nome.value,escritorio:l_esc.value,email:l_email.value,telefone:l_tel.value,mensagem:l_msg.value})});

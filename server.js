@@ -5251,7 +5251,7 @@ app.post('/webhooks/mercadopago', async (req, res) => {
   } catch (e) { console.error('[mp webhook]', e.message); }
 });
 
-// ===== Grupo Villela — assets estáticos: marca (/assets/brand) + capas de livros (/assets/livros) =====
+// ===== Grupo Villela Stay — assets estáticos: marca (/assets/brand) + capas de livros (/assets/livros) =====
 app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '7d' }));
 
 // Raiz → destino conforme o subdomínio: staff.villelastay.com.br abre o Portal Staff;
