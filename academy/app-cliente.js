@@ -195,6 +195,12 @@
           '<input id="av-texto" placeholder="Conte como foi (opcional)" style="max-width:380px"> ' +
           '<button class="btn peq" id="b-avaliar">Enviar</button> <span id="av-msg" class="erro"></span></div>';
       }
+      if (d.matriculado) {
+        html += '<div class="card"><b>🤖 Tirar dúvida com o tutor IA</b><br>' +
+          '<input id="ia-perg" placeholder="Pergunte algo sobre o conteúdo deste curso" style="max-width:420px"> ' +
+          '<button class="btn peq" id="b-ia-perg">Perguntar</button> <span id="ia-perg-msg" class="erro"></span>' +
+          '<div id="ia-perg-out"></div></div>';
+      }
       html += '<p class="sub" style="text-align:left"><a href="#" id="b-denunciar">🚩 Denunciar conteúdo irregular</a></p>';
       html += '<div id="player"></div>';
       setView(html);
@@ -202,6 +208,15 @@
       Array.prototype.forEach.call(document.querySelectorAll('[data-curso-inc]'), function (lk) {
         lk.onclick = function (e) { e.preventDefault(); vCurso(lk.getAttribute('data-curso-inc')); };
       });
+      if (el('b-ia-perg')) el('b-ia-perg').onclick = function () {
+        el('ia-perg-msg').textContent = '⏳ pensando…';
+        api('POST', '/ia/aluno/perguntar', { product_id: pid, pergunta: val('ia-perg') }).then(function (d) {
+          el('ia-perg-msg').textContent = '';
+          el('ia-perg-out').innerHTML = '<div class="aviso">' + esc(d.resposta || '') +
+            (d.aula_referencia ? '<br><span class="chip">📚 ' + esc(d.aula_referencia) + '</span>' : '') +
+            (d.nao_encontrado ? '<br><i>Não achei isso no conteúdo — vale perguntar ao produtor.</i>' : '') + '</div>';
+        }).catch(function (e) { el('ia-perg-msg').textContent = e.message; });
+      };
       if (el('b-avaliar')) el('b-avaliar').onclick = function () {
         api('POST', '/aluno/cursos/' + pid + '/avaliar', { nota: val('av-nota'), texto: val('av-texto') })
           .then(function () { el('av-msg').textContent = '✅ obrigado!'; }).catch(function (e) { el('av-msg').textContent = e.message; });
@@ -406,6 +421,14 @@
         html += '<div class="card"><h3>🔁 Produtos incluídos no clube</h3><div id="cl-box"><p class="sub">Carregando…</p></div></div>';
       }
 
+      // IA do produtor (FASE 9)
+      html += '<div class="card"><h3>🤖 IA do produtor</h3>' +
+        '<p><button class="btn peq" id="ia-estr">🧱 Estruturar curso</button> ' +
+        '<button class="btn peq" id="ia-copy">✍️ Gerar página de venda</button> ' +
+        '<button class="btn peq" id="ia-ped">🎓 Sugestões pedagógicas</button> <span id="ia-msg" class="erro"></span></p>' +
+        '<p class="sub" style="text-align:left;margin:0">A IA sugere — você revisa e aplica. Nada é publicado sozinho.</p>' +
+        '<div id="ia-out"></div></div>';
+
       // capa + página de venda (FASE 3)
       html += '<div class="card"><h3>🖼️ Capa</h3>' +
         (p.capa_media_id ? '<p class="sub" style="text-align:left">Capa atual definida.' + (p.status === 'publicado' ? ' <a href="/academy/capa/' + p.id + '" target="_blank">ver</a>' : '') + '</p>' : '<p class="sub" style="text-align:left">Sem capa — imagens 16:9 (jpg/png/webp) até 10 MB.</p>') +
@@ -473,7 +496,59 @@
       };
       editorPaginaVenda(pid);
       if (p.tipo === 'clube') gestorClube(pid);
+      ligarIAProdutor(pid);
     }).catch(erroBox);
+  }
+
+  function ligarIAProdutor(pid) {
+    var out = function (html) { el('ia-out').innerHTML = html; };
+    var ocupado = function (b) { el('ia-msg').textContent = b ? '⏳ pensando…' : ''; };
+    el('ia-estr').onclick = function () {
+      var tema = prompt('Tema/foco do curso (vazio = usar o título):') || '';
+      ocupado(true);
+      api('POST', '/ia/produtor/estruturar', { product_id: pid, tema: tema }).then(function (d) {
+        ocupado(false);
+        var e = d.estrutura;
+        out('<div class="aviso"><b>Estrutura sugerida:</b>' + (e.modulos || []).map(function (m) {
+          return '<br><b>📚 ' + esc(m.titulo) + '</b>' + (m.aulas || []).map(function (a) {
+            return '<br>&nbsp;&nbsp;▫️ ' + esc(a.titulo) + ' <span class="chip">' + esc(a.tipo || 'texto') + '</span>' + (a.objetivo ? ' — ' + esc(a.objetivo) : '');
+          }).join('');
+        }).join('') + (e.observacoes ? '<br><i>' + esc(e.observacoes) + '</i>' : '') +
+          '<p><button class="btn peq" id="ia-aplicar">✅ Aplicar (cria módulos/aulas rascunho)</button></p></div>');
+        el('ia-aplicar').onclick = function () {
+          api('POST', '/ia/produtor/estruturar/aplicar', { product_id: pid, estrutura: e })
+            .then(function (r) { alert(r.modulos + ' módulo(s) e ' + r.aulas + ' aula(s) criados.'); vProduto(pid); })
+            .catch(function (er) { alert(er.message); });
+        };
+      }).catch(function (e) { ocupado(false); el('ia-msg').textContent = e.message; });
+    };
+    el('ia-copy').onclick = function () {
+      ocupado(true);
+      api('POST', '/ia/produtor/copy', { product_id: pid }).then(function (d) {
+        ocupado(false);
+        var sc = d.secoes;
+        out('<div class="aviso"><b>Página de venda sugerida:</b><br><b>' + esc(sc.headline || '') + '</b><br>' + esc(sc.subheadline || '') +
+          '<br>' + esc(sc.promessa || '') + '<br>✅ ' + (sc.beneficios || []).map(esc).join(' · ') +
+          (sc.observacoes ? '<br><i>' + esc(sc.observacoes) + '</i>' : '') +
+          '<p><button class="btn peq" id="ia-copy-apl">✅ Aplicar na página de venda</button></p></div>');
+        el('ia-copy-apl').onclick = function () {
+          api('PUT', '/produtor/produtos/' + pid + '/pagina', sc)
+            .then(function () { alert('Página de venda atualizada — revise no editor abaixo.'); vProduto(pid); })
+            .catch(function (er) { alert(er.message); });
+        };
+      }).catch(function (e) { ocupado(false); el('ia-msg').textContent = e.message; });
+    };
+    el('ia-ped').onclick = function () {
+      ocupado(true);
+      api('POST', '/ia/produtor/pedagogico', { product_id: pid }).then(function (d) {
+        ocupado(false);
+        out('<div class="aviso"><b>Avaliação pedagógica:</b> ' + esc(d.avaliacao || '') +
+          '<br><b>Sugestões:</b> ' + (d.sugestoes || []).map(esc).join(' · ') +
+          ((d.quiz || []).length ? '<br><b>Quiz sugerido:</b>' + d.quiz.map(function (q, i) {
+            return '<br>' + (i + 1) + '. ' + esc(q.pergunta) + ' <span class="chip">' + esc(q.aula || '') + '</span>';
+          }).join('') : '') + '</div>');
+      }).catch(function (e) { ocupado(false); el('ia-msg').textContent = e.message; });
+    };
   }
 
   function gestorClube(pid) {
@@ -615,6 +690,8 @@
         '<span class="kpi"><b>' + r.assinaturas_ativas + '</b>assinaturas</span>' +
         '<span class="kpi"><b>' + brl(r.mrr_centavos) + '</b>MRR</span></div>';
       html += '<div class="card"><h3>🔁 Assinaturas</h3><div id="adm-subs"><p class="sub">Carregando…</p></div></div>';
+      html += '<div class="card"><h3>🤖 Relatório executivo (IA)</h3>' +
+        '<p><button class="btn peq" id="ia-rel">Gerar relatório</button> <span id="ia-rel-msg" class="erro"></span></p><div id="ia-rel-out"></div></div>';
       html += '<div class="card"><h3>🧾 Pedidos</h3><div id="adm-ped"><p class="sub">Carregando…</p></div></div>' +
         '<div class="card"><h3>💸 Comissões de afiliados</h3><div id="adm-com"><p class="sub">Carregando…</p></div></div>';
       html += '<div class="card"><h3>🧐 Produtos aguardando revisão</h3>' + (prods.length
@@ -645,6 +722,16 @@
           };
         });
       }).catch(function (e) { el('adm-ped').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+      el('ia-rel').onclick = function () {
+        el('ia-rel-msg').textContent = '⏳ analisando…';
+        api('POST', '/ia/admin/relatorio').then(function (d) {
+          el('ia-rel-msg').textContent = '';
+          el('ia-rel-out').innerHTML = '<div class="aviso">' + esc(d.resumo || '') +
+            ((d.destaques || []).length ? '<br><b>Destaques:</b> ' + d.destaques.map(esc).join(' · ') : '') +
+            ((d.alertas || []).length ? '<br><b>⚠️ Alertas:</b> ' + d.alertas.map(esc).join(' · ') : '') +
+            ((d.recomendacoes || []).length ? '<br><b>👉 Recomendações:</b> ' + d.recomendacoes.map(esc).join(' · ') : '') + '</div>';
+        }).catch(function (e) { el('ia-rel-msg').textContent = e.message; });
+      };
       api('GET', '/admin/assinaturas?n=50').then(function (ds) {
         el('adm-subs').innerHTML = ds.assinaturas.length
           ? '<table><tr><th>Clube</th><th>Assinante</th><th>Mensalidade</th><th>Status</th><th>Desde</th><th></th></tr>' + ds.assinaturas.map(function (a) {

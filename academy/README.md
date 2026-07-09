@@ -6,11 +6,10 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASES 1–8 concluídas (fundação, produtos e cursos, marketplace,
+**Status: FASES 1–9 concluídas (fundação, produtos e cursos, marketplace,
 checkout Mercado Pago, afiliados e comissões, assinaturas e clubes,
-storage/URLs assinadas/vídeo, comunicações) — vende, comissiona, cobra
-recorrente, entrega protegido e conversa com aluno/produtor/afiliado.**
-Fases seguintes em [ROADMAP.md](ROADMAP.md).
+storage/URLs assinadas/vídeo, comunicações, IA) — falta só a F10
+(governança).** Fases em [ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
 
@@ -211,6 +210,13 @@ webhook/consulta segura (nunca pelo retorno do navegador).
 28. **Sem WhatsApp automático a clientes (F8)**: regra da casa — business só
    com template aprovado e nunca em massa; os alertas ao dono já cobrem o
    operacional. Integração de templates fica para quando houver demanda real.
+29. **IA como sugestão (F9)**: os agentes NUNCA aplicam nada sozinhos — a
+   saída é JSON de sugestão e "aplicar" é um clique separado do humano
+   (regra da casa p/ conteúdo gerado). Suporte ao aluno monta o contexto SÓ
+   com o conteúdo a que ele tem acesso (aulas bloqueadas ficam de fora).
+30. **Custo de IA sob controle (F9)**: todo uso em `ai_usage_logs` (tokens +
+   custo estimado em ¢USD) e limite diário por usuário via config
+   (`ia.consultas_dia`) — sem chave configurada o recurso avisa e desliga.
 
 ## Rodar e testar
 

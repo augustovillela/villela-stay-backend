@@ -876,6 +876,62 @@ async function main() {
     assert.ok(r.json.eventos.some(e => e.canal === 'interna'));
   });
 
+  // ================= FASE 9 — IA =================
+  console.log('\n— FASE 9: IA (agentes, escopo e limites) —');
+  const iaMod = require('./ia');
+  iaMod.__mockParaTeste(async ({ agente, prompt }) => {
+    if (agente === 'estruturar') return { json: { modulos: [{ titulo: 'Módulo IA', aulas: [{ titulo: 'Aula IA 1', tipo: 'texto', objetivo: 'aprender X' }, { titulo: 'Aula IA 2', tipo: 'video' }] }], observacoes: 'ok' } };
+    if (agente === 'copy') return { json: { headline: 'Headline da IA', subheadline: 'Sub', promessa: 'P', beneficios: ['b1', 'b2'], para_quem: [], aprender: [], bonus: [], faq: [], garantia_texto: '' } };
+    if (agente === 'pedagogico') return { json: { avaliacao: 'boa sequência', sugestoes: ['s1'], quiz: [{ pergunta: 'q1', alternativas: ['a', 'b'], correta: 0, aula: 'Boas-vindas' }] } };
+    if (agente === 'suporte') return { json: { resposta: 'Contexto tinha ' + (prompt.includes('Bem-vindo ao curso!') ? 'CONTEUDO-LIBERADO' : 'SEM-CONTEUDO'), aula_referencia: 'Boas-vindas', nao_encontrado: false } };
+    if (agente === 'relatorio') return { json: { resumo: 'Plataforma saudável.', destaques: ['GMV ok'], alertas: [], recomendacoes: ['divulgar'] } };
+    return { json: {} };
+  });
+  await t('status da IA + estruturar curso e APLICAR cria módulos/aulas rascunho', async () => {
+    const st = await req('GET', '/academy/api/ia/status', { jar: 'maria' });
+    assert.equal(st.st, 200); assert.ok(st.json.ativo); assert.equal(st.json.limite_dia, 30);
+    const novo = await req('POST', '/academy/api/produtor/produtos', { jar: 'maria', corpo: { titulo: 'Curso via IA', tipo: 'curso', preco_centavos: 5000 } });
+    const nid = novo.json.produto.id;
+    const r = await req('POST', '/academy/api/ia/produtor/estruturar', { jar: 'maria', corpo: { product_id: nid, tema: 'gestão' } });
+    assert.equal(r.st, 200); assert.equal(r.json.estrutura.modulos.length, 1);
+    const ap = await req('POST', '/academy/api/ia/produtor/estruturar/aplicar', { jar: 'maria', corpo: { product_id: nid, estrutura: r.json.estrutura } });
+    assert.equal(ap.json.modulos, 1); assert.equal(ap.json.aulas, 2);
+    const est = await req('GET', `/academy/api/produtor/produtos/${nid}`, { jar: 'maria' });
+    assert.equal(est.json.estrutura[0].aulas.length, 2);
+    assert.ok(est.json.estrutura[0].aulas[0].conteudo.includes('Objetivo'));
+  });
+  await t('copywriter gera seções aplicáveis; pedagógico sugere quiz; só o dono usa', async () => {
+    const r = await req('POST', '/academy/api/ia/produtor/copy', { jar: 'maria', corpo: { product_id: prodId } });
+    assert.equal(r.st, 200); assert.equal(r.json.secoes.headline, 'Headline da IA');
+    assert.equal((await req('PUT', `/academy/api/produtor/produtos/${prodId}/pagina`, { jar: 'maria', corpo: r.json.secoes })).st, 200);
+    const p = await req('POST', '/academy/api/ia/produtor/pedagogico', { jar: 'maria', corpo: { product_id: prodId } });
+    assert.equal(p.json.quiz.length, 1);
+    assert.equal((await req('POST', '/academy/api/ia/produtor/copy', { jar: 'ana', corpo: { product_id: prodId } })).st, 400, 'produto alheio');
+  });
+  await t('suporte ao aluno: exige acesso e o contexto respeita o que está liberado', async () => {
+    assert.equal((await req('POST', '/academy/api/ia/aluno/perguntar', { jar: 'hugo', corpo: { product_id: prodId, pergunta: 'oi?' } })).st, 404, 'sem acesso');
+    const r = await req('POST', '/academy/api/ia/aluno/perguntar', { jar: 'ana', corpo: { product_id: prodId, pergunta: 'do que fala a aula 1?' } });
+    assert.equal(r.st, 200);
+    assert.ok(r.json.resposta.includes('CONTEUDO-LIBERADO'), 'conteúdo do matriculado entrou no contexto');
+  });
+  await t('relatório executivo do admin + logs/custo no staff', async () => {
+    const r = await req('POST', '/academy/api/ia/admin/relatorio', { jar: 'maria' });
+    assert.equal(r.st, 200); assert.equal(r.json.resumo, 'Plataforma saudável.');
+    assert.equal((await req('POST', '/academy/api/ia/admin/relatorio', { jar: 'ana' })).st, 403, 'só admin');
+    const logs = await req('GET', '/staff/api/academy/ia-logs');
+    assert.equal(logs.st, 200);
+    assert.ok(logs.json.consultas >= 5);
+    assert.ok(logs.json.eventos.some(e => e.agente === 'suporte'));
+  });
+  await t('limite diário de IA por usuário (429)', async () => {
+    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'ia', valor: { consultas_dia: 2 } } });
+    // ana já usou 1 (suporte); segunda ainda passa, terceira estoura
+    assert.equal((await req('POST', '/academy/api/ia/aluno/perguntar', { jar: 'ana', corpo: { product_id: prodId, pergunta: 'mais uma' } })).st, 200);
+    const r = await req('POST', '/academy/api/ia/aluno/perguntar', { jar: 'ana', corpo: { product_id: prodId, pergunta: 'estourou?' } });
+    assert.equal(r.st, 429);
+    await req('POST', '/staff/api/academy/config', { corpo: { chave: 'ia', valor: { consultas_dia: 30 } } });
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

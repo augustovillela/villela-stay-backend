@@ -125,6 +125,21 @@ CREATE TABLE IF NOT EXISTS notification_logs (
   detalhe  TEXT DEFAULT ''
 );
 
+-- ---- USO DE IA (FASE 9): quem, qual agente, tokens e custo estimado ----
+CREATE TABLE IF NOT EXISTS ai_usage_logs (
+  id            TEXT PRIMARY KEY,
+  quando        TEXT NOT NULL,
+  user_id       TEXT DEFAULT '',
+  agente        TEXT DEFAULT '',   -- estruturar|copy|pedagogico|suporte|relatorio
+  modelo        TEXT DEFAULT '',
+  input_tokens  INTEGER DEFAULT 0,
+  output_tokens INTEGER DEFAULT 0,
+  custo_centavos_usd INTEGER DEFAULT 0,
+  status        TEXT DEFAULT 'ok', -- ok|erro|recusado
+  detalhe       TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_ai_user ON ai_usage_logs(user_id, quando);
+
 -- ---- CONFIG DA PLATAFORMA (chave-valor; comissões padrão, flags, textos) ----
 CREATE TABLE IF NOT EXISTS platform_settings (
   chave         TEXT PRIMARY KEY,

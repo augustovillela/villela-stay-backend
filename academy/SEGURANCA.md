@@ -49,7 +49,9 @@ fase corrente em aberto.
 ## Auditoria e monitoramento
 - ✅ `audit_logs`: signup, login (ok/falha), logout, troca de senha, perfis, papéis, status, LGPD, config
 - ✅ Auditoria visível ao admin da Academy e ao Portal Staff
-- ⬜ F4: log financeiro completo (payment_events/webhook_events) · ⬜ F9: log de IA
+- ✅ F4: log financeiro completo (payment_events/webhook_events)
+- ✅ F9: log de IA (ai_usage_logs c/ tokens+custo), limite diário por usuário, escopo do
+  suporte ao aluno restrito ao conteúdo com acesso (testado)
 - ⬜ F10: alertas de anomalia (picos de falha de login, chargebacks)
 
 ## Regras de pagamento (F4)

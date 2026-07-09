@@ -1,11 +1,10 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASES 0–8 concluídas em 08–09/07/2026 (diagnóstico, fundação, produtos e
+FASES 0–9 concluídas em 08–09/07/2026 (diagnóstico, fundação, produtos e
 cursos, marketplace, checkout Mercado Pago, afiliados e comissões, assinaturas
-e clubes, storage/URLs assinadas/vídeo, comunicações) — ver README. Cada fase
-termina com: testes verdes na suíte, checklist de segurança da fase fechado,
-doc do assunto atualizado.
-**A plataforma vende, comissiona, cobra recorrente e conversa com todo mundo.**
+e clubes, storage/URLs assinadas/vídeo, comunicações, IA) — ver README. Cada
+fase termina com: testes verdes na suíte, checklist de segurança da fase
+fechado, doc do assunto atualizado. **Falta só a F10 (governança).**
 
 ## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
 Entregue: produtos de 6 tipos com fluxo editorial completo (rascunho→revisão→
@@ -94,11 +93,17 @@ log completo em `notification_logs`. Tudo best-effort — comunicação nunca
 derruba o fluxo. WhatsApp automático a clientes NÃO entrou (regra da casa:
 business só com template aprovado; alertas ao dono já saem). 91 testes.
 
-## FASE 9 — IA
-Agentes: criador de curso, copywriter de página de venda, pedagógico (quizzes),
-suporte ao aluno (escopo = conteúdo comprado), comercial e administrativo.
-Logs de uso/custo de IA (ai_usage_logs); IA nunca inventa dados e respeita
-permissões. Reaproveitar padrão de IA dos módulos vpe/vdocs.
+## ✅ FASE 9 — IA (CONCLUÍDA 09/07/2026)
+Entregue (padrão vdocs: ANTHROPIC_API_KEY direta, lista de modelos com
+fallback, mock p/ teste): **5 agentes** — criador de curso (estrutura sugerida
+→ botão APLICAR cria módulos/aulas rascunho), copywriter (gera as seções da
+página de venda no formato do editor → aplicar), pedagógico (avaliação
+didática + quiz sugerido baseado SÓ no conteúdo real), **suporte ao aluno**
+(escopo = APENAS o conteúdo a que ele tem acesso — testado) e relatório
+executivo do admin (KPIs reais → análise). Guardrails: nunca inventa, avisa
+quando falta informação, saída é SUGESTÃO (aplicar é ação humana). Uso logado
+em `ai_usage_logs` (tokens + custo estimado, visível no staff) e **limite
+diário por usuário** (config `ia.consultas_dia`, padrão 30 → 429). 96 testes.
 
 ## FASE 10 — SaaS avançado e governança
 Planos da plataforma p/ produtores (comissão/mensalidade/híbrido — Starter/
