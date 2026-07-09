@@ -747,6 +747,51 @@ async function main() {
     assert.equal((await req('POST', `/academy/api/assinaturas/${r.json.assinatura_id}/cancelar`, { jar: 'dani' })).st, 200);
   });
 
+  // ================= FASE 7 — storage, URLs assinadas e vídeo =================
+  console.log('\n— FASE 7: URLs assinadas e storage —');
+  const storage = require('./storage');
+  const crypto = require('crypto');
+  await t('link assinado: quem tem acesso gera; URL funciona SEM cookie e expira', async () => {
+    const r = await req('GET', `/academy/api/media/${mediaId}/link`, { jar: 'ana' });
+    assert.equal(r.st, 200);
+    assert.ok(r.json.url.includes('/academy/media-s/')); assert.ok(r.json.expira_epoch > Date.now() / 1000);
+    const pub = await fetch(BASE + r.json.url); // sem cookie nenhum
+    assert.equal(pub.status, 200);
+    assert.ok((pub.headers.get('content-type') || '').includes('pdf'));
+    // assinatura adulterada → 403
+    const quebrada = r.json.url.replace(/s=[^&]+/, 's=aaaaadulterada');
+    assert.equal((await fetch(BASE + quebrada)).status, 403);
+    // expirada (HMAC correto, mas e no passado) → 403
+    const anaId = academy.repo.Usuarios.porEmail(ANA.email).id;
+    const e = Math.floor(Date.now() / 1000) - 10;
+    const sig = crypto.createHmac('sha256', 'seg-teste').update(`${mediaId}.${anaId}.${e}`).digest('base64url');
+    assert.equal((await fetch(`${BASE}/academy/media-s/${mediaId}?u=${anaId}&e=${e}&s=${sig}`)).status, 403);
+  });
+  await t('sem acesso não emite link; acessos pela URL assinada são logados', async () => {
+    assert.equal((await req('GET', `/academy/api/media/${mediaId}/link`, { jar: 'bruno' })).st, 404);
+    const antes = dbx.prepare('SELECT COUNT(*) n FROM download_logs').get().n;
+    const r = await req('GET', `/academy/api/media/${mediaId}/link`, { jar: 'ana' });
+    await fetch(BASE + r.json.url);
+    assert.ok(dbx.prepare('SELECT COUNT(*) n FROM download_logs').get().n >= antes + 2, 'emissão + consumo logados');
+  });
+  await t('vídeo não sobe por base64; upload grande exige S3 configurado', async () => {
+    const v = await req('POST', '/academy/api/produtor/upload', { jar: 'maria', corpo: { nome: 'aula.mp4', mime: 'video/mp4', conteudo_base64: Buffer.from('x').toString('base64') } });
+    assert.equal(v.st, 400); assert.ok(v.json.erro.includes('upload de vídeo') || v.json.erro.includes('URL externa'));
+    const g = await req('POST', '/academy/api/produtor/upload-grande', { jar: 'maria', corpo: { nome: 'aula.mp4', mime: 'video/mp4', tamanho: 1000 } });
+    assert.equal(g.st, 400); assert.ok(g.json.erro.includes('S3/R2'));
+  });
+  await t('presign SigV4 (S3/R2) gera URLs válidas em formato', async () => {
+    const cfg = { endpoint: 'https://conta.r2.cloudflarestorage.com', bucket: 'academy', key: 'AKIATESTE', secret: 'segredo', region: 'auto' };
+    for (const met of ['GET', 'PUT', 'HEAD']) {
+      const u = storage.presignS3(cfg, met, 'videos/aula 1.mp4', 600);
+      assert.ok(u.startsWith('https://conta.r2.cloudflarestorage.com/academy/videos/aula%201.mp4?'), met);
+      assert.ok(u.includes('X-Amz-Algorithm=AWS4-HMAC-SHA256'));
+      assert.ok(u.includes('X-Amz-Credential=AKIATESTE%2F'));
+      assert.ok(/X-Amz-Signature=[0-9a-f]{64}$/.test(u));
+    }
+    assert.ok(!storage.s3Ativo(), 'sem env, driver s3 fica desligado');
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

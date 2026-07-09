@@ -26,7 +26,8 @@ Documento vivo. ⚠️ **Termos de Uso e Política de Privacidade publicados em
 ## Segurança do tratamento
 - ✅ Logs de acesso e auditoria (quem, quando, IP, ação)
 - ✅ Sessões revogáveis; senha com hash forte; dados em banco local fora do git
-- ⬜ F7: criptografia/controle de acesso de arquivos de conteúdo; logs de visualização/download
+- ✅ F7: controle de acesso de arquivos com URLs assinadas temporárias e pessoais;
+  logs de emissão e consumo em `download_logs` (quem, quando, IP)
 
 ## Retenção e ciclo de vida
 - ✅ Exclusão preserva apenas o esqueleto anonimizado (integridade referencial + trilha de auditoria)

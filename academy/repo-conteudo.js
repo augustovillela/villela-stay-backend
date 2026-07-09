@@ -10,11 +10,11 @@ const path = require('path');
 const crypto = require('crypto');
 const { db, transacao, nowISO, novoId, j, MOD_DIR } = require('./db');
 const { Usuarios } = require('./repo');
+const storage = require('./storage'); // F7: driver local|s3, URLs assinadas
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
-const ARQUIVOS_DIR = path.join(MOD_DIR, 'arquivos'); // privado; NUNCA servido estático
-fs.mkdirSync(ARQUIVOS_DIR, { recursive: true });
+const ARQUIVOS_DIR = storage.ARQUIVOS_DIR; // privado; NUNCA servido estático
 
 const TIPOS_PRODUTO = ['curso', 'ebook', 'pdf', 'audio', 'pacote', 'mentoria', 'clube'];
 const TIPOS_AULA = ['video', 'texto', 'pdf', 'audio', 'arquivo', 'link'];
@@ -209,23 +209,57 @@ const Conteudo = {
   },
 };
 
+// vídeo só via upload-grande (direto ao bucket, F7); nunca por base64
+const MIMES_VIDEO = { 'video/mp4': '.mp4', 'video/webm': '.webm' };
+const UPLOAD_GRANDE_MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB (vai direto ao S3)
+
 const Midia = {
-  salvar(ownerUserId, { nome, mime, conteudo_base64 }) {
+  async salvar(ownerUserId, { nome, mime, conteudo_base64 }) {
     mime = s(mime, 100).toLowerCase();
-    if (!MIMES_PERMITIDOS[mime]) throw new Error('Tipo de arquivo não permitido (aceitos: PDF, imagem, áudio, ZIP). Vídeo: use URL externa até a Fase 7.');
+    if (MIMES_VIDEO[mime]) throw new Error('Vídeo: use o upload de vídeo (direto ao storage) ou URL externa.');
+    if (!MIMES_PERMITIDOS[mime]) throw new Error('Tipo de arquivo não permitido (aceitos: PDF, imagem, áudio, ZIP).');
     const buffer = Buffer.from(String(conteudo_base64 || ''), 'base64');
     if (!buffer.length) throw new Error('Arquivo vazio.');
     if (buffer.length > UPLOAD_MAX_BYTES) throw new Error('Arquivo acima de 10 MB.');
     const id = novoId();
     const rel = id + MIMES_PERMITIDOS[mime];
-    fs.writeFileSync(path.join(ARQUIVOS_DIR, rel), buffer);
-    db.prepare('INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, sha256, file_path, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    const onde = await storage.salvar(rel, buffer, mime);
+    db.prepare('INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, sha256, file_path, storage, confirmado, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)')
       .run(id, ownerUserId, s(nome, 200) || rel, mime, buffer.length,
-        crypto.createHash('sha256').update(buffer).digest('hex'), rel, nowISO());
+        crypto.createHash('sha256').update(buffer).digest('hex'), rel, onde, nowISO());
     return { id, tamanho: buffer.length };
   },
-  obter(id) { return db.prepare('SELECT * FROM media_files WHERE id = ?').get(id) || null; },
-  caminhoAbsoluto(m) { return path.join(ARQUIVOS_DIR, m.file_path); },
+
+  // F7: upload GRANDE (vídeo) direto ao bucket — o arquivo não passa pelo servidor.
+  // 1) iniciar → presigned PUT; 2) cliente sobe; 3) confirmar → HEAD no bucket.
+  iniciarUploadGrande(ownerUserId, { nome, mime, tamanho }) {
+    if (!storage.s3Ativo()) throw new Error('Upload de vídeo exige o storage externo (S3/R2) configurado — use URL externa (YouTube não listado/Vimeo) por enquanto.');
+    mime = s(mime, 100).toLowerCase();
+    const ext = MIMES_VIDEO[mime] || MIMES_PERMITIDOS[mime];
+    if (!ext) throw new Error('Tipo de arquivo não permitido no upload grande (vídeo mp4/webm, PDF, imagem, áudio, ZIP).');
+    tamanho = parseInt(tamanho, 10) || 0;
+    if (!tamanho || tamanho > UPLOAD_GRANDE_MAX_BYTES) throw new Error('Tamanho inválido (máx. 2 GB).');
+    const id = novoId();
+    const rel = id + ext;
+    db.prepare("INSERT INTO media_files (id, owner_user_id, nome, mime, tamanho, file_path, storage, confirmado, criado_em) VALUES (?, ?, ?, ?, ?, ?, 's3', 0, ?)")
+      .run(id, ownerUserId, s(nome, 200) || rel, mime, tamanho, rel, nowISO());
+    return { id, upload_url: storage.presignS3(storage.s3cfg(), 'PUT', rel, 3600), expira_seg: 3600 };
+  },
+  async confirmarUploadGrande(id, ownerUserId) {
+    const m = this.obter(id);
+    if (!m || m.owner_user_id !== ownerUserId) throw new Error('Upload não encontrado.');
+    if (m.confirmado) return m;
+    const obj = await storage.s3Existe(m.file_path);
+    if (!obj) throw new Error('Arquivo ainda não chegou ao storage — envie e confirme de novo.');
+    db.prepare('UPDATE media_files SET confirmado = 1, tamanho = ? WHERE id = ?').run(obj.tamanho || m.tamanho, id);
+    return this.obter(id);
+  },
+
+  obter(id) { return db.prepare('SELECT * FROM media_files WHERE id = ? AND confirmado = 1').get(id) || null; },
+  obterMesmoPendente(id) { return db.prepare('SELECT * FROM media_files WHERE id = ?').get(id) || null; },
+  caminhoAbsoluto(m) { return storage.caminhoLocal(m.file_path); },
+  // URL temporária assinada (local: HMAC próprio; s3: presigned do bucket)
+  urlTemporaria(m, uid, segundos) { return storage.urlDeLeitura(m, uid, segundos); },
 
   // controle de acesso do arquivo: dono, admin, matriculado ativo no produto
   // que o referencia, ou aula gratuita (degustação, exige login)

@@ -198,9 +198,20 @@
     var corpo = '';
     var media = a.media_id ? '/academy/api/media/' + a.media_id : '';
     if (a.tipo === 'video') {
-      var emb = embedDe(a.url_externa);
-      corpo = emb ? '<iframe src="' + emb + '" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px" allowfullscreen></iframe>'
-        : (a.url_externa ? '<p><a class="btn peq" href="' + esc(a.url_externa) + '" target="_blank" rel="noopener">▶️ Assistir vídeo</a></p>' : '<p class="sub">Vídeo ainda não configurado.</p>');
+      if (a.media_id) { // vídeo nativo (F7): player com URL assinada temporária
+        corpo = '<div id="vd-box"><p class="sub">Carregando vídeo…</p></div>';
+        setTimeout(function () {
+          api('GET', '/media/' + a.media_id + '/link').then(function (d) {
+            var vb = el('vd-box');
+            if (vb) vb.innerHTML = '<video controls playsinline style="width:100%;border-radius:10px;background:#000" src="' + esc(d.url) + '"></video>' +
+              '<p class="sub" style="text-align:left">Link do vídeo é temporário e pessoal.</p>';
+          }).catch(function (e) { var vb = el('vd-box'); if (vb) vb.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+        }, 0);
+      } else {
+        var emb = embedDe(a.url_externa);
+        corpo = emb ? '<iframe src="' + emb + '" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px" allowfullscreen></iframe>'
+          : (a.url_externa ? '<p><a class="btn peq" href="' + esc(a.url_externa) + '" target="_blank" rel="noopener">▶️ Assistir vídeo</a></p>' : '<p class="sub">Vídeo ainda não configurado.</p>');
+      }
     } else if (a.tipo === 'pdf' && media) {
       corpo = '<iframe src="' + media + '" style="width:100%;height:70vh;border:1px solid #e8e2f4;border-radius:10px"></iframe>';
     } else if (a.tipo === 'audio' && media) {
@@ -297,7 +308,8 @@
     return new Promise(function (resolve, reject) {
       var f = inputEl.files && inputEl.files[0];
       if (!f) return reject(new Error('Escolha um arquivo.'));
-      if (f.size > 10 * 1024 * 1024) return reject(new Error('Arquivo acima de 10 MB.'));
+      if (String(f.type).indexOf('video/') === 0) return resolve(uploadGrande(f)); // vídeo → direto ao bucket
+      if (f.size > 10 * 1024 * 1024) return reject(new Error('Arquivo acima de 10 MB (vídeos vão pelo upload direto).'));
       var rd = new FileReader();
       rd.onload = function () {
         var b64 = String(rd.result).split(',')[1] || '';
@@ -307,6 +319,18 @@
       rd.onerror = function () { reject(new Error('Falha ao ler o arquivo.')); };
       rd.readAsDataURL(f);
     });
+  }
+  // F7: vídeo sobe DIRETO ao storage (presigned PUT), sem passar pelo servidor
+  function uploadGrande(f) {
+    var mediaId;
+    return api('POST', '/produtor/upload-grande', { nome: f.name, mime: f.type, tamanho: f.size })
+      .then(function (r) {
+        mediaId = r.id;
+        return fetch(r.upload_url, { method: 'PUT', headers: { 'Content-Type': f.type }, body: f });
+      })
+      .then(function (r) { if (!r.ok) throw new Error('Falha ao enviar o vídeo ao storage (' + r.status + ').'); })
+      .then(function () { return api('POST', '/produtor/upload-grande/' + mediaId + '/confirmar'); })
+      .then(function () { return mediaId; });
   }
 
   function vProduto(pid) {

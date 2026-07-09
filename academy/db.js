@@ -42,6 +42,11 @@ const MIGRACOES = [
     sql: `ALTER TABLE orders ADD COLUMN tipo TEXT DEFAULT 'avulsa';
           ALTER TABLE orders ADD COLUMN subscription_id TEXT DEFAULT '';`,
   },
+  { // FASE 7: onde o arquivo mora (local|s3) e confirmação de upload direto
+    nome: 'media-storage-2026-07-09',
+    sql: `ALTER TABLE media_files ADD COLUMN storage TEXT DEFAULT 'local';
+          ALTER TABLE media_files ADD COLUMN confirmado INTEGER DEFAULT 1;`,
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

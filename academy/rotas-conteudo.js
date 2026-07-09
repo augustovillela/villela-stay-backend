@@ -89,10 +89,22 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
   }));
 
   // upload privado (JSON base64 — padrão da casa; 10 MB; mimes controlados)
-  app.post('/academy/api/produtor/upload', ...P, h((req, res) => {
-    const r = ct.Midia.salvar(req.usuario.id, req.body || {});
+  app.post('/academy/api/produtor/upload', ...P, h(async (req, res) => {
+    const r = await ct.Midia.salvar(req.usuario.id, req.body || {});
     aud(req, 'midia.upload', 'media_files', r.id, `${s((req.body || {}).nome, 80)} (${r.tamanho}b)`);
     res.json({ ok: true, ...r });
+  }));
+
+  // F7: upload GRANDE (vídeo) direto ao bucket S3/R2 (presigned PUT; exige storage externo)
+  app.post('/academy/api/produtor/upload-grande', ...P, h((req, res) => {
+    const r = ct.Midia.iniciarUploadGrande(req.usuario.id, req.body || {});
+    aud(req, 'midia.upload-grande.iniciar', 'media_files', r.id, s((req.body || {}).nome, 80));
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/academy/api/produtor/upload-grande/:id/confirmar', ...P, h(async (req, res) => {
+    const m = await ct.Midia.confirmarUploadGrande(req.params.id, req.usuario.id);
+    aud(req, 'midia.upload-grande.confirmar', 'media_files', m.id, `${m.nome} (${m.tamanho}b)`);
+    res.json({ ok: true, id: m.id, tamanho: m.tamanho });
   }));
 
   // alunos do produto + matrícula cortesia
@@ -189,13 +201,37 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
   }));
 
   // ============================ MÍDIA (entrega privada) ============================
+  const storage = require('./storage');
   app.get('/academy/api/media/:id', requireUsuario, h((req, res) => {
     const m = ct.Midia.obter(req.params.id);
     if (!m || !ct.Midia.podeAcessar(m.id, req.usuario)) return res.status(404).json({ erro: 'Arquivo não encontrado.' });
     ct.Midia.logAcesso(req.usuario.id, m.id, ipDe(req));
+    if (m.storage === 's3') { // no bucket: redireciona p/ URL presignada curta
+      return res.redirect(302, ct.Midia.urlTemporaria(m, req.usuario.id, 600).url);
+    }
     res.setHeader('Content-Type', m.mime);
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(m.nome)}"`);
     res.setHeader('Cache-Control', 'private, max-age=300');
+    res.sendFile(ct.Midia.caminhoAbsoluto(m));
+  }));
+
+  // F7: emite URL ASSINADA temporária (player de vídeo, CDN futuro) — autoriza aqui, entrega sem cookie
+  app.get('/academy/api/media/:id/link', requireUsuario, h((req, res) => {
+    const m = ct.Midia.obter(req.params.id);
+    if (!m || !ct.Midia.podeAcessar(m.id, req.usuario)) return res.status(404).json({ erro: 'Arquivo não encontrado.' });
+    ct.Midia.logAcesso(req.usuario.id, m.id, ipDe(req));
+    res.json({ ok: true, ...ct.Midia.urlTemporaria(m, req.usuario.id, 600) });
+  }));
+  // rota pública validada por HMAC + expiração (driver local; sem cookie)
+  app.get('/academy/media-s/:id', h((req, res) => {
+    const ok = storage.validarLocalAssinada(req.params.id, req.query);
+    if (!ok) return res.status(403).json({ erro: 'Link expirado ou inválido.' });
+    const m = ct.Midia.obter(req.params.id);
+    if (!m || m.storage !== 'local') return res.sendStatus(404);
+    ct.Midia.logAcesso(ok.uid, m.id, ipDe(req));
+    res.setHeader('Content-Type', m.mime);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(m.nome)}"`);
+    res.setHeader('Cache-Control', 'private, max-age=60');
     res.sendFile(ct.Midia.caminhoAbsoluto(m));
   }));
 

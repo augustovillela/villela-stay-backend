@@ -38,7 +38,11 @@ fase corrente em aberto.
 - ✅ F4: access token do MP só no servidor; webhooks com payload salvo e idempotência
 - ✅ F2: arquivos em `DATA_DIR/academy/arquivos/` (privado, nunca estático); entrega SÓ via
   `/academy/api/media/:id` com checagem dono/admin/matrícula/degustação + `download_logs`
-- ⬜ F7: storage S3-compatível, URLs assinadas com expiração, anti-hotlink, watermark
+- ✅ F7: URLs assinadas com expiração (10 min) e vinculadas ao usuário nos DOIS drivers;
+  adulteração e expiração rejeitadas (testado); acesso autorizado SEMPRE antes de emitir
+- ✅ F7: driver S3-compatível pronto (SigV4); credenciais só por env; upload grande direto
+  ao bucket via presigned PUT (servidor nunca recebe o arquivo)
+- ⬜ Watermark em PDF (exige pdf-lib — pendência documentada) · ⬜ anti-hotlink por Referer (opcional c/ CDN)
 
 ## Auditoria e monitoramento
 - ✅ `audit_logs`: signup, login (ok/falha), logout, troca de senha, perfis, papéis, status, LGPD, config

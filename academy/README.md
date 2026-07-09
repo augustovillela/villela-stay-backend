@@ -6,9 +6,10 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASES 1–6 concluídas (fundação, produtos e cursos, marketplace,
-checkout Mercado Pago, afiliados e comissões, assinaturas e clubes) — a
-plataforma vende avulso, comissiona e cobra recorrente.** Fases seguintes em
+**Status: FASES 1–7 concluídas (fundação, produtos e cursos, marketplace,
+checkout Mercado Pago, afiliados e comissões, assinaturas e clubes,
+storage/URLs assinadas/vídeo) — a plataforma vende avulso, comissiona e cobra
+recorrente, com entrega de conteúdo protegida.** Fases seguintes em
 [ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
@@ -188,6 +189,18 @@ webhook/consulta segura (nunca pelo retorno do navegador).
 22. **Cancelamento encerra o acesso na hora (F6)** — manter acesso até o fim
    do ciclo pago é melhoria futura, documentada. Afiliado não comissiona
    assinatura nesta fase.
+23. **Storage plugável (F7)**: `storage.js` isola local vs S3-compatível
+   (SigV4 implementado à mão — zero dependência nova, padrão da casa). Ligar
+   R2 = só setar env `ACADEMY_S3_{ENDPOINT,BUCKET,KEY,SECRET}` — nada de
+   código. Uploads pequenos gravam onde o driver mandar; a entrega segue as
+   mesmas rotas.
+24. **URLs assinadas (F7)**: a autorização acontece SEMPRE em
+   `/academy/api/media/:id[/link]` (cookie); o link emitido é temporário
+   (10 min), pessoal (uid na assinatura) e funciona sem cookie — é o que
+   permite player de vídeo, CDN e apps futuros sem afrouxar o controle.
+25. **Vídeo nativo (F7)**: só via upload direto ao bucket (presigned PUT, até
+   2 GB) — o servidor nunca segura o arquivo. Sem S3 configurado, vídeo
+   continua por URL externa e o sistema explica isso ao produtor.
 
 ## Rodar e testar
 

@@ -29,6 +29,7 @@ function montar(app, injected = {}) {
   repo.semear(); // config comercial padrão (upsert idempotente)
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
+  require('./storage').configurar({ segredo: jwtSecret }); // URLs assinadas (F7)
 
   registrarRotasStaff(app, { requireAuth, requireAdmin });
   registrarRotasCheckoutStaff(app, { requireAuth, requireAdmin });

@@ -1,9 +1,10 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASES 0–6 concluídas em 08/07/2026 (diagnóstico, fundação, produtos e cursos,
-marketplace, checkout Mercado Pago, afiliados e comissões, assinaturas e
-clubes) — ver README. Cada fase termina com: testes verdes na suíte, checklist
-de segurança da fase fechado, doc do assunto atualizado.
+FASES 0–7 concluídas em 08–09/07/2026 (diagnóstico, fundação, produtos e
+cursos, marketplace, checkout Mercado Pago, afiliados e comissões, assinaturas
+e clubes, storage/URLs assinadas/vídeo) — ver README. Cada fase termina com:
+testes verdes na suíte, checklist de segurança da fase fechado, doc do assunto
+atualizado.
 **A plataforma vende avulso, comissiona afiliados e cobra assinatura recorrente.**
 
 ## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
@@ -65,10 +66,19 @@ ativas + MRR. Afiliado não comissiona assinatura (melhoria futura);
 upgrade/downgrade entre clubes = cancelar e assinar outro (documentado).
 80 testes.
 
-## FASE 7 — Vídeo, proteção e escala
-Storage S3-compatível (Cloudflare R2 ou similar), URLs assinadas com expiração,
-player com proteção, thumbnails, processamento assíncrono, watermark em PDF,
-logs de visualização/download, CDN.
+## ✅ FASE 7 — Vídeo, proteção e escala (CONCLUÍDA 09/07/2026)
+Entregue: **camada de storage abstrata** (`storage.js`) com driver local +
+driver **S3-compatível completo** (R2/AWS/Backblaze; assinatura SigV4 sem SDK)
+ativado só por env `ACADEMY_S3_*`; **URLs assinadas com expiração** para toda
+mídia nos dois drivers (local = HMAC próprio em `/academy/media-s`, sem cookie;
+s3 = presigned GET do bucket) emitidas por `/academy/api/media/:id/link` após
+autorização; **upload GRANDE de vídeo direto ao bucket** (presigned PUT até
+2 GB, iniciar→enviar→confirmar com HEAD; o arquivo não passa pelo servidor);
+player de vídeo nativo no aluno via URL assinada; logs de emissão e consumo.
+Pendências documentadas: ⚠️ criar conta/bucket R2 e setar env (decisão/custo
+do Augusto — sem isso vídeo segue por URL externa); watermark real em PDF
+(exige pdf-lib); transcode/thumbnail (exige worker/ffmpeg — quando houver
+volume). 84 testes.
 
 ## FASE 8 — Comunicação e automações
 E-mails transacionais (compra, acesso, senha, lembretes), WhatsApp via
