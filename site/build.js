@@ -31,14 +31,13 @@ fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(path.join(DIST, 'hospedagem'), { recursive: true });
 fs.copyFileSync(path.join(__dirname, 'src', 'style.css'), path.join(DIST, 'style.css'));
 
-// Logo: se src/logo.png existir, usa a imagem; senão, marca em texto
+// Logo antigo (foto): ainda copiado por compatibilidade de links externos que apontem p/ /logo.png
 const TEM_LOGO = fs.existsSync(path.join(__dirname, 'src', 'logo.png'));
 if (TEM_LOGO) fs.copyFileSync(path.join(__dirname, 'src', 'logo.png'), path.join(DIST, 'logo.png'));
 // Imagem social da home (1200x630 para WhatsApp/redes)
 if (fs.existsSync(path.join(__dirname, 'src', 'og-home.jpg'))) fs.copyFileSync(path.join(__dirname, 'src', 'og-home.jpg'), path.join(DIST, 'og-home.jpg'));
-const MARCA = TEM_LOGO
-  ? `<a class="marca" href="/"><img class="logo" src="/logo.png" width="128" height="128" alt="Villela Stay — Hospedagens Inteligentes" fetchpriority="high"></a>`
-  : `<a class="marca" href="/">Villela <span>Stay</span></a>`;
+// Marca oficial: lockup V-Portal (símbolo negativo sobre o topo navy) + wordmark Lora/Inter
+const MARCA = `<a class="marca" href="/"><img class="logo-v" src="/assets/brand/villela-stay/logo-negativo.svg" width="56" height="56" alt="Villela Stay — Hospedagens Inteligentes" fetchpriority="high"><span class="marca-txt">Villela<span class="marca-desc">Stay</span></span></a>`;
 // Função (não const string) para traduzir por idioma — é avaliada dentro do loop, quando t() já existe.
 const TAGLINE = () => `<span class="tagline">${t('Hospedagens Inteligentes<br>para Experiências Inesquecíveis.', 'Smart Stays<br>for Unforgettable Experiences.', 'Alojamientos Inteligentes<br>para Experiencias Inolvidables.')}</span>`;
 
@@ -133,7 +132,7 @@ const NAP = {
 const ORG_ID = `${SITE_URL}/#organizacao`;
 const orgSchema = {
   '@context': 'https://schema.org', '@type': 'Organization', '@id': ORG_ID,
-  name: NAP.nome, legalName: NAP.legal, url: SITE_URL, logo: `${SITE_URL}/logo.png`,
+  name: NAP.nome, legalName: NAP.legal, url: SITE_URL, logo: `${SITE_URL}/assets/brand/villela-stay/icon-pwa.png`,
   image: `${SITE_URL}/og-home.jpg`, telephone: NAP.telefone, email: NAP.email,
   address: { '@type': 'PostalAddress', streetAddress: NAP.rua, addressLocality: NAP.cidade, addressRegion: NAP.uf, addressCountry: NAP.pais },
   areaServed: 'Brasília-DF', sameAs: NAP.sameAs
@@ -191,7 +190,7 @@ function resumoImovel(l) { const m = RESUMO_IMOVEL[l.id]; return (LANG !== 'pt' 
 function descricaoImovel(l) { const m = DESC_IMOVEL[l.id]; return (LANG !== 'pt' && m && m[LANG]) ? m[LANG] : l.descricao; }
 
 function layout(titulo, descricao, corpo, opts = {}) {
-  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/logo.png`, ogType = 'website', lang = HTML_LANG[LANG] } = opts;
+  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/assets/brand/villela-stay/og-image.png`, ogType = 'website', lang = HTML_LANG[LANG] } = opts;
   const ogLocale = lang === 'en' ? 'en_US' : (lang === 'es' ? 'es_ES' : 'pt_BR');
   const urlAtual = `${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}${caminho}`;
   // Organization injetada em toda página (âncora de identidade @id reutilizada nos schemas locais)
@@ -2226,7 +2225,8 @@ const linktreeHtml = `<!DOCTYPE html>
 <meta name="description" content="${esc(t('Todos os links da Villela Stay: reservar, WhatsApp, eventos, pacotes, blog e redes sociais. Hospedagens inteligentes no Lago Sul, Brasília.', 'All Villela Stay links: book, WhatsApp, events, packages, blog and social media. Smart stays in Lago Sul, Brasília.', 'Todos los enlaces de Villela Stay: reservar, WhatsApp, eventos, paquetes, blog y redes sociales. Alojamientos inteligentes en Lago Sul, Brasília.'))}">
 <link rel="canonical" href="${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}/links.html">
 ${hreflangTags('/links.html')}
-${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
+<link rel="icon" type="image/svg+xml" href="/assets/brand/villela-stay/favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-stay/favicon-192.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Villela Stay">
 <meta property="og:title" content="${esc(t('Links da Villela Stay', 'Villela Stay Links', 'Enlaces de Villela Stay'))}">
@@ -2287,7 +2287,7 @@ ${TEM_LOGO ? '<link rel="icon" type="image/png" href="/logo.png">' : ''}
 </head>
 <body>
 <main class="lt-wrap">
-  ${TEM_LOGO ? '<img class="lt-logo" src="/logo.png" alt="Villela Stay" width="104" height="104">' : ''}
+  <img class="lt-logo" src="/assets/brand/villela-stay/logo-negativo.svg" alt="Villela Stay" width="104" height="104">
   <div class="lt-marca">Villela <span>Stay</span></div>
   <p class="lt-tag">${t('Hospedagens Inteligentes · para Experiências Inesquecíveis', 'Smart Stays · for Unforgettable Experiences', 'Alojamientos Inteligentes · para Experiencias Inolvidables')}</p>
 
