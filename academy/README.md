@@ -6,7 +6,7 @@ publicam e vendem, **afiliados** divulgam por comissão, **admin** governa a
 plataforma. Conceito funcional inspirado em plataformas de infoprodutos, com
 identidade, código e arquitetura próprios (nada copiado de terceiros).
 
-**Status: FASE 1 (fundação) concluída.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
+**Status: FASES 1 (fundação) e 2 (produtos e cursos) concluídas.** Fases seguintes em [ROADMAP.md](ROADMAP.md).
 
 ## FASE 0 — Diagnóstico (por que o módulo é assim)
 
@@ -33,7 +33,9 @@ academy/
 ├── db.js             SQLite (node:sqlite) em DATA_DIR/academy/academy.db · WAL · migrações
 ├── schema.sql        tabelas da FASE 1 (idempotente, CREATE IF NOT EXISTS)
 ├── repo.js           domínio: usuários, papéis/permissões, perfis, sessões, auditoria, leads, config
+├── repo-conteudo.js  domínio F2: produtos, módulos/aulas/materiais, mídia privada, matrículas, progresso
 ├── rotas-cliente.js  API /academy/api/* (sessão própria academy_sess, path /academy)
+├── rotas-conteudo.js API F2: produtor (builder/upload/alunos), aluno (biblioteca/curso/progresso), mídia, moderação
 ├── rotas-staff.js    API /staff/api/academy/* (admin da plataforma = Portal Staff)
 ├── paginas.js        landing /academy + shell do app + termos/privacidade (MINUTA)
 ├── app-cliente.js    SPA do painel (aluno/produtor/afiliado/admin) — sem build
@@ -66,10 +68,10 @@ entram como camadas novas nas fases seguintes sem tocar na fundação.
 **FASE 1 (criado)**: `users`, `producer_profiles`, `affiliate_profiles`,
 `sessions`, `audit_logs`, `leads`, `platform_settings`, `migrations`.
 
+**FASE 2 (criado)**: `products` (com fluxo editorial), `course_modules`, `lessons`,
+`lesson_materials`, `media_files`, `enrollments`, `student_progress`, `download_logs`.
+
 **Fases seguintes (planejado — criar quando a fase chegar)**:
-- F2 produtos/cursos: `products`, `product_categories`, `courses`, `course_modules`,
-  `lessons`, `lesson_materials`, `enrollments`, `student_progress`, `media_files`,
-  `upload_sessions`, `download_logs`
 - F3 marketplace: `sales_pages`, `page_sections`, `reviews`
 - F4 checkout/MP: `orders`, `order_items`, `payments`, `payment_events`,
   `webhook_events`, `refunds`, `chargebacks`, `coupons`, `abandoned_checkouts`
@@ -118,8 +120,21 @@ webhook/consulta segura (nunca pelo retorno do navegador).
    status do perfil já bloqueia, e o histórico do usuário fica preservado.
 5. **Comissões padrão em `platform_settings`** (plataforma 10%, afiliado 30%,
    cookie 30 dias): números **provisórios** — decisão comercial do Augusto antes da F5.
-6. **Uploads/vídeo ficam para F7** com storage S3-compatível + URLs assinadas;
-   nunca arquivos em pasta pública (regra já registrada no checklist de segurança).
+6. **Streaming próprio de vídeo fica para F7** (storage S3-compatível + URLs
+   assinadas); na F2, vídeo = URL externa (YouTube não listado/Vimeo) com embed.
+7. **Conteúdo unificado (F2)**: todo tipo de produto (curso, e-book, PDF, áudio,
+   pacote, mentoria) usa a mesma estrutura módulos→aulas→materiais — um e-book é
+   um produto com 1 aula tipo pdf. Menos tabelas, entrega/progresso uniformes
+   (a tabela `courses` planejada foi absorvida por `products.config`).
+8. **Upload (F2)**: JSON base64 (padrão da casa, limite global 15 MB), máx. 10 MB
+   por arquivo, mimes controlados (PDF/imagem/áudio/ZIP), gravado em
+   `DATA_DIR/academy/arquivos/` (privado) e servido SÓ por `/academy/api/media/:id`
+   com checagem de acesso (dono/admin/matriculado/degustação) + `download_logs`.
+9. **Fluxo editorial (F2)**: transições válidas por papel em `TRANSICOES`
+   (produtor: rascunho→em_revisao, aprovado→publicado, pausar/republicar;
+   admin: em_revisao→aprovado/rejeitado, suspender/reativar/remover).
+10. **Matrícula cortesia (F2)**: produtor/admin liberam acesso por e-mail de
+   conta existente — é como se testa a entrega antes do checkout (F4).
 
 ## Rodar e testar
 

@@ -13,6 +13,7 @@
 'use strict';
 const repo = require('./repo');
 const { registrarRotasCliente } = require('./rotas-cliente');
+const { registrarRotasConteudo } = require('./rotas-conteudo');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
@@ -25,7 +26,8 @@ function montar(app, injected = {}) {
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
 
   registrarRotasStaff(app, { requireAuth, requireAdmin });
-  registrarRotasCliente(app, { jwtSecret });
+  const cliente = registrarRotasCliente(app, { jwtSecret });
+  registrarRotasConteudo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarPaginas(app, { notificar });
 
   console.log('[academy] Villela Academy montada. Landing: /academy · painel: /academy/app');

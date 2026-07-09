@@ -2,13 +2,15 @@
  * Villela Academy — SPA do painel (aluno/produtor/afiliado/admin).
  * Servido em /academy/app.js e inicializado por bootAcademy() no shell
  * (paginas.js). Fala com /academy/api. Sem build, JS clássico.
+ * FASE 2: biblioteca+player do aluno, builder do produtor, moderação.
  * ===================================================================== */
 (function () {
   'use strict';
   var ME = null;
-  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function brl(c) { return 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
   function dt(t) { return t ? String(t).slice(0, 10).split('-').reverse().join('/') : '—'; }
+  function centavos(v) { return Math.round(Number(String(v).replace(',', '.') || 0) * 100); }
   function el(id) { return document.getElementById(id); }
   function val(id) { var e = el(id); return e ? e.value : ''; }
 
@@ -22,6 +24,11 @@
   function erroBox(e) { setView('<div class="card erro">' + esc(e.message || e) + '</div>'); }
 
   var STATUS_PERFIL = { em_analise: '⏳ em análise', aprovado: '✅ aprovado', rejeitado: '❌ rejeitado', suspenso: '⚠️ suspenso', bloqueado: '🚫 bloqueado' };
+  var STATUS_PRODUTO = { rascunho: '📝 rascunho', em_revisao: '⏳ em revisão', aprovado: '✅ aprovado', rejeitado: '❌ rejeitado', publicado: '🟢 publicado', pausado: '⏸️ pausado', suspenso: '⚠️ suspenso', removido: '🗑️ removido' };
+  var TIPOS_PROD = { curso: '🎓 Curso', ebook: '📖 E-book', pdf: '📄 PDF', audio: '🎧 Áudio', pacote: '📦 Pacote', mentoria: '🧭 Mentoria' };
+  var barra = function (pct) {
+    return '<div style="background:#efe9fb;border-radius:8px;height:10px;overflow:hidden"><div style="background:#4a2fbd;height:10px;width:' + (pct || 0) + '%"></div></div>';
+  };
 
   // ---------------- login / cadastro / boot ----------------
   function bootAcademy() {
@@ -80,19 +87,102 @@
     vAluno();
   }
 
-  // ---------------- dashboard do ALUNO ----------------
+  // ================= ALUNO: biblioteca + curso + player =================
   function vAluno() {
-    api('GET', '/aluno/dashboard').then(function (d) {
-      var db = d.dashboard;
-      var html = '<div class="card"><h3>🎓 Minha biblioteca</h3>' +
-        '<span class="kpi"><b>' + db.cursos.length + '</b>cursos</span>' +
-        '<span class="kpi"><b>' + db.certificados.length + '</b>certificados</span>' +
-        '<span class="kpi"><b>' + db.compras.length + '</b>compras</span>';
-      html += db.cursos.length ? '' : '<div class="aviso">Você ainda não tem cursos. O marketplace abre na FASE 3 — em breve você encontra aqui os primeiros cursos da Villela Academy.</div>';
+    api('GET', '/aluno/biblioteca').then(function (d) {
+      var html = '';
+      if (d.continuar) {
+        html += '<div class="card"><b>▶️ Continuar de onde parou:</b> ' + esc(d.continuar.produto_titulo) + ' — ' + esc(d.continuar.aula_titulo) +
+          ' <button class="btn peq" data-curso="' + d.continuar.product_id + '">Continuar</button></div>';
+      }
+      html += '<div class="card"><h3>🎓 Minha biblioteca</h3>';
+      if (!d.cursos.length) {
+        html += '<div class="aviso">Você ainda não tem cursos. O marketplace público abre na FASE 3 — enquanto isso, um produtor pode liberar acesso de cortesia para o seu e-mail.</div>';
+      } else {
+        html += d.cursos.map(function (c) {
+          return '<div class="lin"><b>' + esc(c.titulo) + '</b> <span class="chip">' + (TIPOS_PROD[c.tipo] || esc(c.tipo)) + '</span>' +
+            '<div style="max-width:340px;margin:6px 0">' + barra(c.progresso.pct) + '</div>' +
+            '<span class="sub" style="text-align:left;margin:0">' + c.progresso.concluidas + '/' + c.progresso.total_aulas + ' aulas (' + c.progresso.pct + '%)</span> ' +
+            '<button class="btn peq" data-curso="' + c.product_id + '">' + (c.progresso.pct > 0 ? 'Continuar' : 'Começar') + '</button></div>';
+        }).join('');
+      }
       html += '</div>' + cartaoVireProdutorAfiliado();
       setView(html);
+      Array.prototype.forEach.call(document.querySelectorAll('[data-curso]'), function (b) {
+        b.onclick = function () { vCurso(b.getAttribute('data-curso')); };
+      });
       ligarOnboarding();
     }).catch(erroBox);
+  }
+
+  function embedDe(url) { // YouTube/Vimeo → iframe; outros → link
+    var m = String(url || '').match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,20})/);
+    if (m) return 'https://www.youtube.com/embed/' + m[1];
+    m = String(url || '').match(/vimeo\.com\/(\d+)/);
+    if (m) return 'https://player.vimeo.com/video/' + m[1];
+    return null;
+  }
+
+  function vCurso(pid) {
+    api('GET', '/aluno/cursos/' + pid).then(function (d) {
+      var pa = d.progresso_aulas || {};
+      var html = '<div class="card"><p><a href="#" id="b-volta">← biblioteca</a></p><h3>' + esc(d.produto.titulo) + '</h3>' +
+        (d.produto.subtitulo ? '<p class="sub" style="text-align:left">' + esc(d.produto.subtitulo) + '</p>' : '') +
+        (d.matriculado ? '<div style="max-width:340px">' + barra(d.progresso.pct) + '</div><p class="sub" style="text-align:left;margin:4px 0 0">' + d.progresso.concluidas + '/' + d.progresso.total_aulas + ' aulas concluídas</p>'
+          : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas.</div>') + '</div>';
+      html += d.estrutura.map(function (mo) {
+        return '<div class="card"><b>📚 ' + esc(mo.titulo) + '</b>' + mo.aulas.map(function (a) {
+          var feito = pa[a.id] && pa[a.id].concluida;
+          return '<div class="lin">' + (a.liberada
+            ? '<a href="#" data-aula="' + a.id + '" data-pid="' + pid + '">' + (feito ? '✅' : '▫️') + ' ' + esc(a.titulo) + '</a>' + (a.gratuita ? ' <span class="chip">degustação</span>' : '')
+            : '🔒 <span style="color:#888">' + esc(a.titulo) + '</span>') + '</div>';
+        }).join('') + '</div>';
+      }).join('');
+      html += '<div id="player"></div>';
+      setView(html);
+      el('b-volta').onclick = function (e) { e.preventDefault(); vAluno(); };
+      Array.prototype.forEach.call(document.querySelectorAll('[data-aula]'), function (lk) {
+        lk.onclick = function (e) {
+          e.preventDefault();
+          var aula = null;
+          d.estrutura.forEach(function (mo) { mo.aulas.forEach(function (a) { if (a.id === lk.getAttribute('data-aula')) aula = a; }); });
+          abrirAula(pid, aula, pa, d.matriculado);
+        };
+      });
+    }).catch(erroBox);
+  }
+
+  function abrirAula(pid, a, pa, matriculado) {
+    if (!a) return;
+    var corpo = '';
+    var media = a.media_id ? '/academy/api/media/' + a.media_id : '';
+    if (a.tipo === 'video') {
+      var emb = embedDe(a.url_externa);
+      corpo = emb ? '<iframe src="' + emb + '" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px" allowfullscreen></iframe>'
+        : (a.url_externa ? '<p><a class="btn peq" href="' + esc(a.url_externa) + '" target="_blank" rel="noopener">▶️ Assistir vídeo</a></p>' : '<p class="sub">Vídeo ainda não configurado.</p>');
+    } else if (a.tipo === 'pdf' && media) {
+      corpo = '<iframe src="' + media + '" style="width:100%;height:70vh;border:1px solid #e8e2f4;border-radius:10px"></iframe>';
+    } else if (a.tipo === 'audio' && media) {
+      corpo = '<audio controls style="width:100%" src="' + media + '"></audio>';
+    } else if (a.tipo === 'arquivo' && media) {
+      corpo = '<p><a class="btn peq" href="' + media + '" target="_blank">⬇️ Abrir arquivo</a></p>';
+    } else if (a.tipo === 'link' && a.url_externa) {
+      corpo = '<p><a class="btn peq" href="' + esc(a.url_externa) + '" target="_blank" rel="noopener">🔗 Abrir link</a></p>';
+    }
+    if (a.conteudo) corpo += '<div style="white-space:pre-wrap;margin-top:10px">' + esc(a.conteudo) + '</div>';
+    var mats = (a.materiais || []).map(function (m) {
+      return '<div class="lin">📎 <a href="/academy/api/media/' + m.media_id + '" target="_blank">' + esc(m.nome) + '</a></div>';
+    }).join('');
+    var feito = pa[a.id] && pa[a.id].concluida;
+    el('player').innerHTML = '<div class="card"><h3>' + esc(a.titulo) + '</h3>' + corpo +
+      (mats ? '<p style="margin-top:12px"><b>Materiais</b></p>' + mats : '') +
+      (matriculado || a.gratuita ? '<p style="margin-top:14px"><button class="btn peq ' + (feito ? 'secund' : '') + '" id="b-feito">' +
+        (feito ? '↩️ Desmarcar conclusão' : '✅ Marcar como concluída') + '</button></p>' : '') + '</div>';
+    el('player').scrollIntoView({ behavior: 'smooth' });
+    var bf = el('b-feito');
+    if (bf) bf.onclick = function () {
+      api('POST', '/aluno/aulas/' + a.id + '/progresso', { concluida: !feito }).then(function () { vCurso(pid); }).catch(function (e) { alert(e.message); });
+    };
   }
 
   function cartaoVireProdutorAfiliado() {
@@ -123,19 +213,145 @@
     };
   }
 
-  // ---------------- dashboard do PRODUTOR ----------------
+  // ================= PRODUTOR: produtos + builder + alunos =================
   function vProdutor() {
-    api('GET', '/produtor/dashboard').then(function (d) {
-      var db = d.dashboard;
-      setView('<div class="card"><h3>🎬 Painel do produtor <span class="chip">' + esc((d.perfil || {}).nome_publico || '') + '</span></h3>' +
-        '<span class="kpi"><b>' + db.produtos.length + '</b>produtos</span>' +
-        '<span class="kpi"><b>' + brl(db.vendas_mes_centavos) + '</b>vendas no mês</span>' +
+    Promise.all([api('GET', '/produtor/dashboard'), api('GET', '/produtor/produtos')]).then(function (rs) {
+      var db = rs[0].dashboard, lp = rs[1];
+      var html = '<div class="card"><h3>🎬 Painel do produtor</h3>' +
+        '<span class="kpi"><b>' + db.produtos + '</b>produtos</span>' +
+        '<span class="kpi"><b>' + db.publicados + '</b>publicados</span>' +
         '<span class="kpi"><b>' + db.alunos + '</b>alunos</span>' +
-        '<div class="aviso">🚧 O construtor de cursos e produtos chega na FASE 2. Seu cadastro já está aprovado — você será o primeiro a saber.</div></div>');
+        '<span class="kpi"><b>' + brl(db.vendas_mes_centavos) + '</b>vendas no mês (F4)</span></div>';
+      html += '<div class="card"><h3>➕ Novo produto</h3>' +
+        '<input id="np-titulo" placeholder="Título *" style="max-width:420px"> ' +
+        '<select id="np-tipo" style="max-width:180px">' + Object.keys(TIPOS_PROD).map(function (t) { return '<option value="' + t + '">' + TIPOS_PROD[t] + '</option>'; }).join('') + '</select> ' +
+        '<button class="btn peq" id="b-np">Criar rascunho</button> <span id="np-msg" class="erro"></span></div>';
+      html += '<div class="card"><h3>📦 Meus produtos</h3>' + (lp.produtos.length
+        ? '<table><tr><th>Produto</th><th>Tipo</th><th>Preço</th><th>Status</th><th></th></tr>' + lp.produtos.map(function (p) {
+          return '<tr><td>' + esc(p.titulo) + '</td><td>' + (TIPOS_PROD[p.tipo] || esc(p.tipo)) + '</td><td>' + brl(p.preco_centavos) +
+            '</td><td>' + (STATUS_PRODUTO[p.status] || esc(p.status)) + (p.status === 'rejeitado' && p.motivo_status ? '<br><span class="sub" style="text-align:left;margin:0">' + esc(p.motivo_status) + '</span>' : '') +
+            '</td><td><button class="btn peq" data-abre="' + p.id + '">Abrir</button></td></tr>';
+        }).join('') + '</table>' : '<p class="sub" style="text-align:left">Nenhum produto ainda — crie o primeiro acima.</p>') + '</div>';
+      setView(html);
+      el('b-np').onclick = function () {
+        api('POST', '/produtor/produtos', { titulo: val('np-titulo'), tipo: val('np-tipo') })
+          .then(function (r) { vProduto(r.produto.id); }).catch(function (e) { el('np-msg').textContent = e.message; });
+      };
+      Array.prototype.forEach.call(document.querySelectorAll('[data-abre]'), function (b) {
+        b.onclick = function () { vProduto(b.getAttribute('data-abre')); };
+      });
     }).catch(erroBox);
   }
 
-  // ---------------- dashboard do AFILIADO ----------------
+  function upload(inputEl) { // lê o <input type=file> e sobe via base64; retorna Promise<media_id>
+    return new Promise(function (resolve, reject) {
+      var f = inputEl.files && inputEl.files[0];
+      if (!f) return reject(new Error('Escolha um arquivo.'));
+      if (f.size > 10 * 1024 * 1024) return reject(new Error('Arquivo acima de 10 MB.'));
+      var rd = new FileReader();
+      rd.onload = function () {
+        var b64 = String(rd.result).split(',')[1] || '';
+        api('POST', '/produtor/upload', { nome: f.name, mime: f.type, conteudo_base64: b64 })
+          .then(function (r) { resolve(r.id); }).catch(reject);
+      };
+      rd.onerror = function () { reject(new Error('Falha ao ler o arquivo.')); };
+      rd.readAsDataURL(f);
+    });
+  }
+
+  function vProduto(pid) {
+    api('GET', '/produtor/produtos/' + pid).then(function (d) {
+      var p = d.produto;
+      var acoes = { rascunho: [['em_revisao', '📤 Enviar para revisão']], rejeitado: [['em_revisao', '📤 Reenviar para revisão']], aprovado: [['publicado', '🟢 Publicar']], publicado: [['pausado', '⏸️ Pausar']], pausado: [['publicado', '🟢 Republicar']] }[p.status] || [];
+      var html = '<div class="card"><p><a href="#" id="b-volta">← meus produtos</a></p>' +
+        '<h3>' + esc(p.titulo) + ' <span class="chip">' + (TIPOS_PROD[p.tipo] || esc(p.tipo)) + '</span> ' + (STATUS_PRODUTO[p.status] || esc(p.status)) + '</h3>' +
+        (p.status === 'rejeitado' && p.motivo_status ? '<div class="aviso">Motivo da rejeição: ' + esc(p.motivo_status) + '</div>' : '') +
+        '<label>Título</label><input id="e-titulo" value="' + esc(p.titulo) + '">' +
+        '<label>Subtítulo</label><input id="e-sub" value="' + esc(p.subtitulo) + '">' +
+        '<label>Descrição curta (vitrine)</label><input id="e-curta" value="' + esc(p.descricao_curta) + '">' +
+        '<label>Descrição longa</label><textarea id="e-longa" rows="4">' + esc(p.descricao_longa) + '</textarea>' +
+        '<label>Preço (R$)</label><input id="e-preco" value="' + (p.preco_centavos / 100).toFixed(2).replace('.', ',') + '" style="max-width:140px">' +
+        '<p><button class="btn peq" id="b-salvar">💾 Salvar</button> ' +
+        acoes.map(function (a) { return '<button class="btn peq secund" data-st="' + a[0] + '">' + a[1] + '</button>'; }).join(' ') +
+        ' <span id="e-msg" class="erro"></span></p></div>';
+
+      // builder
+      html += '<div class="card"><h3>🧱 Conteúdo</h3><div id="builder">' + d.estrutura.map(function (mo) {
+        return '<div class="lin"><b>📚 ' + esc(mo.titulo) + '</b> <button class="btn peq secund" data-delmod="' + mo.id + '">🗑️</button>' +
+          mo.aulas.map(function (a) {
+            return '<div style="margin:4px 0 4px 18px">' + (a.gratuita ? '🎁' : '▫️') + ' ' + esc(a.titulo) + ' <span class="chip">' + esc(a.tipo) + '</span> ' +
+              '<button class="btn peq secund" data-delaula="' + a.id + '">🗑️</button>' +
+              (a.materiais.length ? '<span class="sub" style="text-align:left;margin:0"> · ' + a.materiais.length + ' material(is)</span>' : '') + '</div>';
+          }).join('') +
+          '<div style="margin:8px 0 0 18px;background:#f7f4fd;border-radius:9px;padding:8px">' +
+          '<input class="na-titulo" data-mod="' + mo.id + '" placeholder="Título da nova aula" style="max-width:280px"> ' +
+          '<select class="na-tipo" data-mod="' + mo.id + '" style="max-width:120px">' + d.tipos_aula.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select> ' +
+          '<input class="na-url" data-mod="' + mo.id + '" placeholder="URL (vídeo/link)" style="max-width:220px"> ' +
+          '<input class="na-file" data-mod="' + mo.id + '" type="file" style="max-width:220px"> ' +
+          '<label style="display:inline;font-weight:400"><input class="na-gratis" data-mod="' + mo.id + '" type="checkbox" style="width:auto"> degustação</label> ' +
+          '<button class="btn peq" data-addaula="' + mo.id + '">+ Aula</button></div></div>';
+      }).join('') + '</div>' +
+        '<p style="margin-top:10px"><input id="nm-titulo" placeholder="Título do novo módulo" style="max-width:300px"> ' +
+        '<button class="btn peq" id="b-addmod">+ Módulo</button> <span id="bl-msg" class="erro"></span></p></div>';
+
+      // alunos
+      html += '<div class="card"><h3>👥 Alunos</h3><div id="pd-alunos"><p class="sub">Carregando…</p></div>' +
+        '<p><input id="mt-email" type="email" placeholder="e-mail do aluno (conta já criada)" style="max-width:300px"> ' +
+        '<button class="btn peq" id="b-mt">🎁 Matricular cortesia</button> <span id="mt-msg" class="erro"></span></p></div>';
+
+      setView(html);
+      el('b-volta').onclick = function (e) { e.preventDefault(); vProdutor(); };
+      el('b-salvar').onclick = function () {
+        api('PATCH', '/produtor/produtos/' + pid, { titulo: val('e-titulo'), subtitulo: val('e-sub'), descricao_curta: val('e-curta'), descricao_longa: val('e-longa'), preco_centavos: centavos(val('e-preco')) })
+          .then(function () { vProduto(pid); }).catch(function (e) { el('e-msg').textContent = e.message; });
+      };
+      Array.prototype.forEach.call(document.querySelectorAll('[data-st]'), function (b) {
+        b.onclick = function () {
+          api('POST', '/produtor/produtos/' + pid + '/status', { status: b.getAttribute('data-st') })
+            .then(function () { vProduto(pid); }).catch(function (e) { el('e-msg').textContent = e.message; });
+        };
+      });
+      el('b-addmod').onclick = function () {
+        api('POST', '/produtor/produtos/' + pid + '/modulos', { titulo: val('nm-titulo') })
+          .then(function () { vProduto(pid); }).catch(function (e) { el('bl-msg').textContent = e.message; });
+      };
+      Array.prototype.forEach.call(document.querySelectorAll('[data-delmod]'), function (b) {
+        b.onclick = function () { if (confirm('Remover módulo e suas aulas?')) api('DELETE', '/produtor/produtos/' + pid + '/modulos/' + b.getAttribute('data-delmod')).then(function () { vProduto(pid); }).catch(function (e) { alert(e.message); }); };
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-delaula]'), function (b) {
+        b.onclick = function () { if (confirm('Remover aula?')) api('DELETE', '/produtor/produtos/' + pid + '/aulas/' + b.getAttribute('data-delaula')).then(function () { vProduto(pid); }).catch(function (e) { alert(e.message); }); };
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-addaula]'), function (b) {
+        b.onclick = function () {
+          var mid = b.getAttribute('data-addaula');
+          var q = function (cls) { return document.querySelector('.' + cls + '[data-mod="' + mid + '"]'); };
+          var corpo = { titulo: q('na-titulo').value, tipo: q('na-tipo').value, url_externa: q('na-url').value, gratuita: q('na-gratis').checked };
+          var fileEl = q('na-file');
+          var fluxo = (fileEl.files && fileEl.files[0])
+            ? upload(fileEl).then(function (mediaId) { corpo.media_id = mediaId; })
+            : Promise.resolve();
+          fluxo.then(function () { return api('POST', '/produtor/produtos/' + pid + '/modulos/' + mid + '/aulas', corpo); })
+            .then(function () { vProduto(pid); }).catch(function (e) { el('bl-msg').textContent = e.message; });
+        };
+      });
+      api('GET', '/produtor/produtos/' + pid + '/alunos').then(function (da) {
+        el('pd-alunos').innerHTML = da.alunos.length
+          ? '<table><tr><th>Nome</th><th>E-mail</th><th>Origem</th><th>Status</th><th>Desde</th><th></th></tr>' + da.alunos.map(function (a) {
+            return '<tr><td>' + esc(a.nome) + '</td><td>' + esc(a.email) + '</td><td>' + esc(a.origem) + '</td><td>' + esc(a.status) + '</td><td>' + dt(a.criado_em) +
+              '</td><td>' + (a.status === 'ativa' ? '<button class="btn peq secund" data-rev="' + a.id + '">Revogar</button>' : '') + '</td></tr>';
+          }).join('') + '</table>' : '<p class="sub" style="text-align:left">Nenhum aluno ainda.</p>';
+        Array.prototype.forEach.call(document.querySelectorAll('[data-rev]'), function (b) {
+          b.onclick = function () { api('POST', '/produtor/produtos/' + pid + '/matriculas/' + b.getAttribute('data-rev') + '/revogar').then(function () { vProduto(pid); }).catch(function (e) { alert(e.message); }); };
+        });
+      });
+      el('b-mt').onclick = function () {
+        api('POST', '/produtor/produtos/' + pid + '/matricular', { email: val('mt-email') })
+          .then(function () { vProduto(pid); }).catch(function (e) { el('mt-msg').textContent = e.message; });
+      };
+    }).catch(erroBox);
+  }
+
+  // ================= AFILIADO =================
   function vAfiliado() {
     api('GET', '/afiliado/dashboard').then(function (d) {
       var db = d.dashboard;
@@ -148,10 +364,10 @@
     }).catch(erroBox);
   }
 
-  // ---------------- dashboard do ADMIN ----------------
+  // ================= ADMIN =================
   function vAdmin() {
-    api('GET', '/admin/dashboard').then(function (d) {
-      var r = d.dashboard, pend = d.pendentes;
+    Promise.all([api('GET', '/admin/dashboard'), api('GET', '/admin/produtos?status=em_revisao')]).then(function (rs) {
+      var d = rs[0], r = d.dashboard, pend = d.pendentes, prods = rs[1].produtos;
       var linhaPerfil = function (tipo, p) {
         return '<tr><td>' + esc(p.nome) + '<br><span class="sub" style="text-align:left;margin:0">' + esc(p.email) + '</span></td>' +
           '<td>' + tipo + '</td><td>' + esc(p.nome_publico || '') + '</td><td>' + dt(p.criado_em) + '</td>' +
@@ -160,18 +376,27 @@
       };
       var pendentes = (pend.produtores || []).map(function (p) { return linhaPerfil('produtor', p); })
         .concat((pend.afiliados || []).map(function (p) { return linhaPerfil('afiliado', p); })).join('');
-      setView('<div class="card"><h3>🛠️ Plataforma</h3>' +
+      var html = '<div class="card"><h3>🛠️ Plataforma</h3>' +
         '<span class="kpi"><b>' + r.usuarios + '</b>usuários</span>' +
         '<span class="kpi"><b>' + r.produtores_aprovados + '</b>produtores</span>' +
         '<span class="kpi"><b>' + r.afiliados_aprovados + '</b>afiliados</span>' +
-        '<span class="kpi"><b>' + r.perfis_em_analise + '</b>em análise</span>' +
-        '<span class="kpi"><b>' + r.leads_novos + '</b>leads novos</span>' +
-        '<span class="kpi"><b>' + brl(r.gmv_centavos) + '</b>GMV</span></div>' +
-        '<div class="card"><h3>⏳ Aprovações pendentes</h3>' +
+        '<span class="kpi"><b>' + r.produtos + '</b>produtos</span>' +
+        '<span class="kpi"><b>' + r.cursos_publicados + '</b>publicados</span>' +
+        '<span class="kpi"><b>' + r.matriculas_ativas + '</b>matrículas</span>' +
+        '<span class="kpi"><b>' + r.perfis_em_analise + '</b>perfis em análise</span>' +
+        '<span class="kpi"><b>' + r.produtos_em_revisao + '</b>produtos em revisão</span>' +
+        '<span class="kpi"><b>' + r.leads_novos + '</b>leads novos</span></div>';
+      html += '<div class="card"><h3>🧐 Produtos aguardando revisão</h3>' + (prods.length
+        ? '<table><tr><th>Produto</th><th>Produtor</th><th>Tipo</th><th>Preço</th><th></th></tr>' + prods.map(function (p) {
+          return '<tr><td>' + esc(p.titulo) + '</td><td>' + esc(p.produtor_nome) + '</td><td>' + (TIPOS_PROD[p.tipo] || esc(p.tipo)) + '</td><td>' + brl(p.preco_centavos) +
+            '</td><td><button class="btn peq" data-pap="' + p.id + '">Aprovar</button> <button class="btn peq secund" data-prj="' + p.id + '">Rejeitar</button></td></tr>';
+        }).join('') + '</table>' : '<p class="sub" style="text-align:left">Nada aguardando revisão.</p>') + '</div>';
+      html += '<div class="card"><h3>⏳ Perfis pendentes</h3>' +
         (pendentes ? '<table><tr><th>Quem</th><th>Tipo</th><th>Nome público</th><th>Desde</th><th></th></tr>' + pendentes + '</table>' : '<p class="sub" style="text-align:left">Nada pendente.</p>') + '</div>' +
         '<div class="card"><h3>👥 Usuários</h3><div id="adm-users"><p class="sub">Carregando…</p></div></div>' +
-        '<div class="card"><h3>📜 Auditoria (últimos eventos)</h3><div id="adm-audit"><p class="sub">Carregando…</p></div></div>');
-      var decidir = function (attr, status) {
+        '<div class="card"><h3>📜 Auditoria (últimos eventos)</h3><div id="adm-audit"><p class="sub">Carregando…</p></div></div>';
+      setView(html);
+      var decidirPerfil = function (attr, status) {
         Array.prototype.forEach.call(document.querySelectorAll('[data-' + attr + ']'), function (b) {
           b.onclick = function () {
             var kv = b.getAttribute('data-' + attr).split(':');
@@ -180,7 +405,16 @@
           };
         });
       };
-      decidir('ap', 'aprovado'); decidir('rj', 'rejeitado');
+      decidirPerfil('ap', 'aprovado'); decidirPerfil('rj', 'rejeitado');
+      var decidirProduto = function (attr, status) {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-' + attr + ']'), function (b) {
+          b.onclick = function () {
+            var motivo = status === 'rejeitado' ? (prompt('Motivo da rejeição (o produtor vê):') || '') : '';
+            api('POST', '/admin/produtos/' + b.getAttribute('data-' + attr) + '/decidir', { status: status, motivo: motivo }).then(vAdmin).catch(function (e) { alert(e.message); });
+          };
+        });
+      };
+      decidirProduto('pap', 'aprovado'); decidirProduto('prj', 'rejeitado');
       api('GET', '/admin/usuarios?n=50').then(function (du) {
         el('adm-users').innerHTML = '<table><tr><th>Nome</th><th>E-mail</th><th>Papéis</th><th>Status</th><th>Criado</th></tr>' +
           du.usuarios.map(function (u) {
@@ -197,7 +431,7 @@
     }).catch(erroBox);
   }
 
-  // ---------------- conta (dados, senha, LGPD) ----------------
+  // ================= CONTA (dados, senha, LGPD) =================
   function vConta() {
     var u = ME.usuario;
     setView('<div class="card"><h3>👤 Meus dados</h3>' +

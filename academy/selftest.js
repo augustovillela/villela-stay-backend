@@ -205,6 +205,116 @@ async function main() {
     assert.equal((await req('GET', '/staff/api/academy/config')).json.comissoes.plataforma_pct, 12);
   });
 
+  // ================= FASE 2 — produtos, conteúdo, matrículas, progresso =================
+  console.log('\n— FASE 2: produtos e fluxo editorial —');
+  const ANA = { nome: 'Ana Aluna', email: 'ana@t.com', senha: 'senha-forte-3', aceite_termos: true };
+  const BRUNO = { nome: 'Bruno Visitante', email: 'bruno@t.com', senha: 'senha-forte-4', aceite_termos: true };
+  await req('POST', '/academy/api/signup', { corpo: ANA, jar: 'ana' });
+  await req('POST', '/academy/api/signup', { corpo: BRUNO, jar: 'bruno' });
+
+  let prodId, aulaTextoId, aulaPdfId, mediaId;
+  await t('produtor cria produto rascunho com slug', async () => {
+    const r = await req('POST', '/academy/api/produtor/produtos', { jar: 'maria', corpo: { titulo: 'Gestão de Temporada na Prática', tipo: 'curso' } });
+    assert.equal(r.st, 200); prodId = r.json.produto.id;
+    assert.equal(r.json.produto.status, 'rascunho');
+    assert.equal(r.json.produto.slug, 'gestao-de-temporada-na-pratica');
+  });
+  await t('aluno comum não cria produto (403)', async () => {
+    assert.equal((await req('POST', '/academy/api/produtor/produtos', { jar: 'ana', corpo: { titulo: 'X' } })).st, 403);
+  });
+  await t('editar produto (preço/descrição)', async () => {
+    const r = await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { preco_centavos: 19900, descricao_curta: 'Aprenda a operar temporada' } });
+    assert.equal(r.st, 200); assert.equal(r.json.produto.preco_centavos, 19900);
+  });
+  await t('enviar p/ revisão sem aulas é bloqueado', async () => {
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${prodId}/status`, { jar: 'maria', corpo: { status: 'em_revisao' } })).st, 400);
+  });
+
+  console.log('\n— FASE 2: builder e upload —');
+  let modId;
+  await t('builder: módulo + aula texto (degustação) + aula pdf com upload', async () => {
+    const m = await req('POST', `/academy/api/produtor/produtos/${prodId}/modulos`, { jar: 'maria', corpo: { titulo: 'Fundamentos' } });
+    assert.equal(m.st, 200); modId = m.json.id;
+    const a1 = await req('POST', `/academy/api/produtor/produtos/${prodId}/modulos/${modId}/aulas`, { jar: 'maria', corpo: { titulo: 'Boas-vindas', tipo: 'texto', conteudo: 'Bem-vindo ao curso!', gratuita: true } });
+    assert.equal(a1.st, 200); aulaTextoId = a1.json.id;
+    const up = await req('POST', '/academy/api/produtor/upload', { jar: 'maria', corpo: { nome: 'apostila.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 conteudo de teste').toString('base64') } });
+    assert.equal(up.st, 200); mediaId = up.json.id;
+    const a2 = await req('POST', `/academy/api/produtor/produtos/${prodId}/modulos/${modId}/aulas`, { jar: 'maria', corpo: { titulo: 'Apostila', tipo: 'pdf', media_id: mediaId } });
+    assert.equal(a2.st, 200); aulaPdfId = a2.json.id;
+    const est = await req('GET', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria' });
+    assert.equal(est.json.estrutura.length, 1); assert.equal(est.json.estrutura[0].aulas.length, 2);
+  });
+  await t('upload de mime proibido é rejeitado', async () => {
+    const r = await req('POST', '/academy/api/produtor/upload', { jar: 'maria', corpo: { nome: 'virus.exe', mime: 'application/x-msdownload', conteudo_base64: Buffer.from('x').toString('base64') } });
+    assert.equal(r.st, 400);
+  });
+
+  console.log('\n— FASE 2: moderação e publicação —');
+  await t('fluxo editorial: em_revisao → produtor NÃO aprova → admin aprova → produtor publica', async () => {
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${prodId}/status`, { jar: 'maria', corpo: { status: 'em_revisao' } })).st, 200);
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${prodId}/status`, { jar: 'maria', corpo: { status: 'aprovado' } })).st, 400); // transição de admin
+    const fila = await req('GET', '/academy/api/admin/produtos?status=em_revisao', { jar: 'maria' });
+    assert.equal(fila.json.produtos.length, 1);
+    assert.equal((await req('POST', `/academy/api/admin/produtos/${prodId}/decidir`, { jar: 'maria', corpo: { status: 'aprovado' } })).st, 200);
+    const pub = await req('POST', `/academy/api/produtor/produtos/${prodId}/status`, { jar: 'maria', corpo: { status: 'publicado' } });
+    assert.equal(pub.st, 200); assert.equal(pub.json.produto.status, 'publicado');
+  });
+  await t('staff também vê e modera produtos', async () => {
+    const r = await req('GET', '/staff/api/academy/produtos');
+    assert.equal(r.st, 200); assert.ok(r.json.produtos.length >= 1);
+  });
+  await t('isolamento entre produtores (anti-IDOR)', async () => {
+    await req('POST', '/academy/api/tornar-se-afiliado', { jar: 'bruno', corpo: { nome_publico: 'x' } }); // ruído
+    await req('POST', '/academy/api/tornar-se-produtor', { jar: 'ana', corpo: { nome_publico: 'Ana Cursos' } });
+    const anaId = academy.repo.Usuarios.porEmail(ANA.email).id;
+    await req('POST', `/staff/api/academy/perfis/produtor/${anaId}/decidir`, { corpo: { status: 'aprovado' } });
+    assert.equal((await req('GET', `/academy/api/produtor/produtos/${prodId}`, { jar: 'ana' })).st, 400);
+    assert.equal((await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'ana', corpo: { titulo: 'hackeado' } })).st, 400);
+  });
+
+  console.log('\n— FASE 2: matrícula, área do aluno e mídia protegida —');
+  await t('matrícula cortesia pelo produtor + biblioteca do aluno', async () => {
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${prodId}/matricular`, { jar: 'maria', corpo: { email: ANA.email } })).st, 200);
+    const b = await req('GET', '/academy/api/aluno/biblioteca', { jar: 'ana' });
+    assert.equal(b.st, 200); assert.equal(b.json.cursos.length, 1);
+    assert.equal(b.json.cursos[0].progresso.total_aulas, 2);
+  });
+  await t('matriculado vê estrutura completa; não matriculado só degustação', async () => {
+    const ca = await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'ana' });
+    assert.ok(ca.json.matriculado);
+    assert.ok(ca.json.estrutura[0].aulas.every(a => a.liberada));
+    const cb = await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'bruno' });
+    assert.ok(!cb.json.matriculado);
+    const aulas = cb.json.estrutura[0].aulas;
+    assert.ok(aulas.find(a => a.id === aulaTextoId).liberada, 'gratuita liberada');
+    const bloqueada = aulas.find(a => a.id === aulaPdfId);
+    assert.ok(!bloqueada.liberada && !bloqueada.media_id && !bloqueada.conteudo, 'bloqueada não vaza conteúdo');
+  });
+  await t('mídia: matriculado 200 (pdf) e acesso logado; não matriculado 404', async () => {
+    const ra = await req('GET', `/academy/api/media/${mediaId}`, { jar: 'ana' });
+    assert.equal(ra.st, 200); assert.ok(ra.ct.includes('pdf'));
+    assert.equal((await req('GET', `/academy/api/media/${mediaId}`, { jar: 'bruno' })).st, 404);
+    assert.equal((await req('GET', `/academy/api/media/${mediaId}`)).st, 401); // sem login
+    const logs = require('./db').db.prepare('SELECT COUNT(*) n FROM download_logs').get().n;
+    assert.ok(logs >= 1, 'download logado');
+  });
+  await t('progresso: marcar concluída → 50% e continuar-de-onde-parou', async () => {
+    const r = await req('POST', `/academy/api/aluno/aulas/${aulaTextoId}/progresso`, { jar: 'ana', corpo: { concluida: true } });
+    assert.equal(r.st, 200); assert.equal(r.json.progresso.pct, 50);
+    const b = await req('GET', '/academy/api/aluno/biblioteca', { jar: 'ana' });
+    assert.equal(b.json.continuar.lesson_id, aulaTextoId);
+  });
+  await t('não matriculado não marca progresso de aula paga', async () => {
+    assert.equal((await req('POST', `/academy/api/aluno/aulas/${aulaPdfId}/progresso`, { jar: 'bruno', corpo: { concluida: true } })).st, 400);
+  });
+  await t('revogar matrícula corta o acesso à mídia', async () => {
+    const alunos = await req('GET', `/academy/api/produtor/produtos/${prodId}/alunos`, { jar: 'maria' });
+    const eid = alunos.json.alunos.find(a => a.email === ANA.email).id;
+    assert.equal((await req('POST', `/academy/api/produtor/produtos/${prodId}/matriculas/${eid}/revogar`, { jar: 'maria' })).st, 200);
+    assert.equal((await req('GET', `/academy/api/media/${mediaId}`, { jar: 'ana' })).st, 404);
+    assert.equal((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'ana' })).json.cursos.length, 0);
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

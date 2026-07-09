@@ -11,7 +11,10 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || 'plataforma');
   const A = [requireAuth, requireAdmin];
-  const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
+  const h = (fn) => (req, res) => { // captura erro síncrono E assíncrono → 400
+    try { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); }
+    catch (e) { res.status(400).json({ erro: e.message }); }
+  };
   const aud = (req, acao, ent, id, det) => repo.Auditoria.registrar({ quem: quem(req), papel: 'staff', acao, entidade: ent, entidade_id: id, detalhe: det, ip: ipDe(req) });
 
   app.use('/staff/api/academy', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -55,6 +58,20 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
     repo.Config.salvar(String(chave), valor);
     aud(req, 'config.salvar', 'platform_settings', String(chave), '');
     res.json({ ok: true });
+  }));
+
+  // produtos (moderação da plataforma) e matrícula cortesia
+  const ct = require('./repo-conteudo');
+  app.get('/staff/api/academy/produtos', ...A, h((req, res) => res.json({ produtos: ct.Produtos.listarAdmin(req.query) })));
+  app.post('/staff/api/academy/produtos/:id/decidir', ...A, h((req, res) => {
+    const p = ct.Produtos.transicionar(req.params.id, String((req.body || {}).status || ''), { comoPapel: 'admin', motivo: (req.body || {}).motivo });
+    aud(req, `produto.${p.status}`, 'products', p.id, String((req.body || {}).motivo || ''));
+    res.json({ ok: true, produto: p });
+  }));
+  app.post('/staff/api/academy/produtos/:id/matricular', ...A, h((req, res) => {
+    const id = ct.Matriculas.criar(req.params.id, String((req.body || {}).email || ''), quem(req), 'cortesia');
+    aud(req, 'matricula.cortesia', 'enrollments', id, String((req.body || {}).email || ''));
+    res.json({ ok: true, id });
   }));
 
   // leads / auditoria

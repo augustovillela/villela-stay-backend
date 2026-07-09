@@ -242,15 +242,25 @@ const Dashboard = {
       afiliados_aprovados: c("SELECT COUNT(*) n FROM affiliate_profiles WHERE status = 'aprovado'"),
       perfis_em_analise: c("SELECT COUNT(*) n FROM producer_profiles WHERE status = 'em_analise'") + c("SELECT COUNT(*) n FROM affiliate_profiles WHERE status = 'em_analise'"),
       leads_novos: c("SELECT COUNT(*) n FROM leads WHERE status = 'novo'"),
+      produtos: c("SELECT COUNT(*) n FROM products WHERE status NOT IN ('removido')"),
+      produtos_em_revisao: c("SELECT COUNT(*) n FROM products WHERE status = 'em_revisao'"),
+      cursos_publicados: c("SELECT COUNT(*) n FROM products WHERE status = 'publicado'"),
+      matriculas_ativas: c("SELECT COUNT(*) n FROM enrollments WHERE status = 'ativa'"),
       // FASE 4+: gmv_centavos, receita_plataforma_centavos, reembolsos, assinaturas
-      gmv_centavos: 0, vendas: 0, cursos_publicados: 0,
+      gmv_centavos: 0, vendas: 0,
     };
   },
-  aluno(userId) {
-    return { cursos: [], progresso: [], certificados: [], compras: [], assinaturas: [] }; // FASE 2+ preenche
+  aluno(userId) { // composição rica (biblioteca+progresso) em repo-conteudo.dashboardAluno
+    return { cursos: [], progresso: [], certificados: [], compras: [], assinaturas: [] };
   },
   produtor(userId) {
-    return { produtos: [], vendas_mes_centavos: 0, alunos: 0, comissoes_pendentes_centavos: 0, avaliacoes: [] }; // FASE 2+/4+
+    const c = (sql, ...a) => (db.prepare(sql).get(...a) || { n: 0 }).n;
+    return {
+      produtos: c("SELECT COUNT(*) n FROM products WHERE producer_id = ? AND status != 'removido'", userId),
+      publicados: c("SELECT COUNT(*) n FROM products WHERE producer_id = ? AND status = 'publicado'", userId),
+      alunos: c("SELECT COUNT(DISTINCT e.user_id) n FROM enrollments e JOIN products p ON p.id = e.product_id WHERE p.producer_id = ? AND e.status = 'ativa'", userId),
+      vendas_mes_centavos: 0, comissoes_pendentes_centavos: 0, avaliacoes: [], // F4/F3
+    };
   },
   afiliado(userId) {
     return { links: [], cliques: 0, conversoes: 0, comissao_pendente_centavos: 0, comissao_disponivel_centavos: 0 }; // FASE 5

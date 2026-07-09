@@ -108,3 +108,120 @@ CREATE TABLE IF NOT EXISTS platform_settings (
   valor         TEXT DEFAULT '',           -- JSON
   atualizado_em TEXT DEFAULT ''
 );
+
+-- =====================================================================
+-- FASE 2 — Produtos, cursos, conteúdo, matrículas e progresso.
+-- Decisão: conteúdo UNIFICADO — todo produto (curso, e-book, PDF, áudio,
+-- pacote, mentoria) usa a mesma estrutura módulos→aulas→materiais; um
+-- e-book é um produto com 1 aula tipo pdf. Vídeo = URL externa até a F7.
+-- =====================================================================
+
+-- ---- PRODUTOS (dono = produtor aprovado; fluxo editorial da plataforma) ----
+CREATE TABLE IF NOT EXISTS products (
+  id              TEXT PRIMARY KEY,
+  producer_id     TEXT NOT NULL REFERENCES users(id),
+  tipo            TEXT DEFAULT 'curso',    -- curso|ebook|pdf|audio|pacote|mentoria
+  titulo          TEXT NOT NULL,
+  subtitulo       TEXT DEFAULT '',
+  slug            TEXT UNIQUE,
+  categoria       TEXT DEFAULT '',
+  descricao_curta TEXT DEFAULT '',
+  descricao_longa TEXT DEFAULT '',
+  capa_media_id   TEXT DEFAULT '',
+  preco_centavos  INTEGER DEFAULT 0,
+  preco_promo_centavos INTEGER DEFAULT 0,  -- 0 = sem promoção
+  garantia_dias   INTEGER DEFAULT 7,
+  status          TEXT DEFAULT 'rascunho', -- rascunho|em_revisao|aprovado|rejeitado|publicado|pausado|suspenso|removido
+  motivo_status   TEXT DEFAULT '',
+  tags            TEXT DEFAULT '[]',       -- JSON
+  config          TEXT DEFAULT '{}',       -- JSON: {liberacao:'imediata'} (progressiva/por_data = F6+)
+  criado_em       TEXT NOT NULL,
+  atualizado_em   TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_products_producer ON products(producer_id);
+CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
+
+-- ---- MÓDULOS e AULAS ----
+CREATE TABLE IF NOT EXISTS course_modules (
+  id         TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  titulo     TEXT NOT NULL,
+  ordem      INTEGER DEFAULT 0,
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_modules_product ON course_modules(product_id);
+
+CREATE TABLE IF NOT EXISTS lessons (
+  id          TEXT PRIMARY KEY,
+  module_id   TEXT NOT NULL REFERENCES course_modules(id) ON DELETE CASCADE,
+  product_id  TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  titulo      TEXT NOT NULL,
+  tipo        TEXT DEFAULT 'texto',        -- video|texto|pdf|audio|arquivo|link
+  conteudo    TEXT DEFAULT '',             -- texto/markdown da aula
+  media_id    TEXT DEFAULT '',             -- arquivo principal (pdf/audio/arquivo)
+  url_externa TEXT DEFAULT '',             -- vídeo embed (YouTube/Vimeo) ou link
+  duracao_seg INTEGER DEFAULT 0,
+  gratuita    INTEGER DEFAULT 0,           -- 1 = aula de degustação (aberta a logados)
+  ordem       INTEGER DEFAULT 0,
+  criado_em   TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_lessons_module ON lessons(module_id);
+CREATE INDEX IF NOT EXISTS idx_lessons_product ON lessons(product_id);
+
+CREATE TABLE IF NOT EXISTS lesson_materials (
+  id        TEXT PRIMARY KEY,
+  lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  nome      TEXT NOT NULL,
+  media_id  TEXT NOT NULL,
+  criado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_materials_lesson ON lesson_materials(lesson_id);
+
+-- ---- ARQUIVOS (storage privado em DATA_DIR/academy/arquivos/; NUNCA público) ----
+CREATE TABLE IF NOT EXISTS media_files (
+  id            TEXT PRIMARY KEY,
+  owner_user_id TEXT NOT NULL REFERENCES users(id),
+  nome          TEXT NOT NULL,             -- nome original
+  mime          TEXT DEFAULT '',
+  tamanho       INTEGER DEFAULT 0,
+  sha256        TEXT DEFAULT '',
+  file_path     TEXT NOT NULL,             -- relativo a ARQUIVOS_DIR
+  criado_em     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_media_owner ON media_files(owner_user_id);
+
+-- ---- MATRÍCULAS (F2 = cortesia; F4 = compra) ----
+CREATE TABLE IF NOT EXISTS enrollments (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  product_id TEXT NOT NULL REFERENCES products(id),
+  origem     TEXT DEFAULT 'cortesia',      -- cortesia|compra (F4)|assinatura (F6)
+  status     TEXT DEFAULT 'ativa',         -- ativa|suspensa|revogada
+  criado_em  TEXT NOT NULL,
+  criado_por TEXT DEFAULT '',
+  UNIQUE(user_id, product_id)
+);
+CREATE INDEX IF NOT EXISTS idx_enroll_user ON enrollments(user_id);
+CREATE INDEX IF NOT EXISTS idx_enroll_product ON enrollments(product_id);
+
+-- ---- PROGRESSO do aluno ----
+CREATE TABLE IF NOT EXISTS student_progress (
+  user_id       TEXT NOT NULL REFERENCES users(id),
+  lesson_id     TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  product_id    TEXT NOT NULL,
+  concluida     INTEGER DEFAULT 0,
+  posicao_seg   INTEGER DEFAULT 0,         -- retomar áudio/vídeo de onde parou
+  atualizado_em TEXT NOT NULL,
+  PRIMARY KEY (user_id, lesson_id)
+);
+CREATE INDEX IF NOT EXISTS idx_progress_user_product ON student_progress(user_id, product_id);
+
+-- ---- LOG de acesso a arquivos (base p/ antipirataria e LGPD) ----
+CREATE TABLE IF NOT EXISTS download_logs (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  quando   TEXT NOT NULL,
+  user_id  TEXT DEFAULT '',
+  media_id TEXT DEFAULT '',
+  ip       TEXT DEFAULT ''
+);

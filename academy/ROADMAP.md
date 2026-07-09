@@ -1,18 +1,19 @@
 # Villela Academy — Roadmap (fases 2–10)
 
-FASE 0 (diagnóstico) e FASE 1 (fundação) concluídas em 08/07/2026 — ver README.
-Cada fase termina com: testes verdes na suíte, checklist de segurança da fase
-fechado, doc do assunto atualizado. Ordem pensada para vender o quanto antes
-(F2→F4 é o caminho crítico até a primeira venda).
+FASE 0 (diagnóstico), FASE 1 (fundação) e FASE 2 (produtos e cursos) concluídas
+em 08/07/2026 — ver README. Cada fase termina com: testes verdes na suíte,
+checklist de segurança da fase fechado, doc do assunto atualizado. Ordem pensada
+para vender o quanto antes (F3→F4 é o caminho crítico até a primeira venda).
 
-## FASE 2 — Produtos e cursos
-Cadastro de produtos (curso, e-book, PDF, áudio, pacote, mentoria) com status
-editorial (rascunho→em revisão→aprovado→publicado→pausado/suspenso/removido);
-construtor de curso (módulos, aulas, ordenação, materiais); upload básico
-privado (limites por tipo); área do aluno real (biblioteca, player simples,
-progresso, continuar de onde parou); matrícula manual (cortesia) p/ testar
-entrega antes do checkout. Tabelas: products, courses, course_modules, lessons,
-lesson_materials, enrollments, student_progress, media_files.
+## ✅ FASE 2 — Produtos e cursos (CONCLUÍDA 08/07/2026)
+Entregue: produtos de 6 tipos com fluxo editorial completo (rascunho→revisão→
+aprovado→publicado→pausado/suspenso/removido, transições validadas por papel);
+builder (módulos, aulas de 6 tipos, materiais, aula de degustação); upload
+privado base64 (10 MB; PDF/imagem/áudio/ZIP) com entrega protegida por
+matrícula + download_logs; vídeo por URL externa (embed YouTube/Vimeo) até a F7;
+área do aluno real (biblioteca, curso, player, progresso, continuar de onde
+parou); matrícula cortesia (produtor/admin/staff); moderação no painel admin e
+no staff. 39 testes.
 
 ## FASE 3 — Marketplace e páginas de venda
 Vitrine pública (/academy/marketplace), categorias, busca, página do curso e

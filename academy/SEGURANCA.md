@@ -10,27 +10,32 @@ fase corrente em aberto.
 - ✅ Sessões revogáveis (jti em `sessions`): logout, troca de senha e suspensão derrubam sessões
 - ✅ Rate limit de login/signup (5 falhas/IP → 15 min)
 - ✅ Resposta idêntica p/ e-mail inexistente vs senha errada (sem enumeração)
-- ⬜ F2: verificação de e-mail no cadastro · ⬜ F10: 2FA opcional (padrão vdocs)
+- ⬜ F8: verificação de e-mail no cadastro (junto com e-mails transacionais) · ⬜ F10: 2FA opcional (padrão vdocs)
 
 ## Autorização
 - ✅ Papéis (aluno/produtor/afiliado/admin) + permissões derivadas (`repo.PERMISSOES`)
 - ✅ Gate duplo produtor/afiliado: papel E perfil aprovado
 - ✅ Admin da Academy só concedido via Portal Staff; admin não altera o próprio status
 - ✅ Anti-IDOR: queries sempre escopadas pelo usuário da sessão (`req.usuario.id`)
-- ⬜ F2+: revalidar escopo por produtor (produtor só vê os próprios produtos/alunos/vendas)
+- ✅ F2: escopo por produtor (`obterDoDono` em todo o builder — produto/módulo/aula/material/alunos; testado)
+- ✅ F2: transições editoriais validadas por papel (produtor não aprova o próprio produto)
 
 ## Entrada e saída
 - ✅ Sanitização/truncamento de toda entrada (`s()`), JSON parse defensivo
 - ✅ Escape de HTML em toda renderização (`esc()`), SPA sem innerHTML de dado bruto sem escape
 - ✅ `Cache-Control: no-store` em todas as APIs
 - ✅ Hash de senha nunca sai na API (`semSegredos`)
-- ⬜ F4: validação de CPF/CNPJ; F2: validação de upload (tipo/tamanho/extensão)
+- ✅ F2: upload validado (allowlist de mime, 10 MB, extensão derivada do mime — nunca do nome)
+- ✅ F2: aula bloqueada não vaza conteúdo/arquivo na API (só título)
+- ⬜ F4: validação de CPF/CNPJ
 
 ## Dados e segredos
 - ✅ JWT_SECRET por env (nunca em código/commit); banco fora do git (DATA_DIR)
 - ✅ Documento (CPF/CNPJ) e dados de pagamento nunca em página pública; só admin vê
 - ⬜ F4: access token do MP só no servidor; webhooks validados; payloads salvos; idempotência
-- ⬜ F7: storage privado S3-compatível, URLs assinadas com expiração, anti-hotlink, watermark
+- ✅ F2: arquivos em `DATA_DIR/academy/arquivos/` (privado, nunca estático); entrega SÓ via
+  `/academy/api/media/:id` com checagem dono/admin/matrícula/degustação + `download_logs`
+- ⬜ F7: storage S3-compatível, URLs assinadas com expiração, anti-hotlink, watermark
 
 ## Auditoria e monitoramento
 - ✅ `audit_logs`: signup, login (ok/falha), logout, troca de senha, perfis, papéis, status, LGPD, config
