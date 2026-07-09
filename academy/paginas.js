@@ -20,7 +20,8 @@ const BASE_URL = () => (process.env.ACADEMY_BASE_URL || 'https://academia.villel
 const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg"><link rel="icon" type="image/png" sizes="192x192" href="${BRAND}/favicon-192.png">
-    <link rel="apple-touch-icon" href="${BRAND}/apple-touch-icon.png"><meta name="theme-color" content="#1B2A4A">`;
+    <link rel="apple-touch-icon" href="${BRAND}/apple-touch-icon.png"><meta name="theme-color" content="#1B2A4A">
+    <link rel="manifest" href="/academy/manifest.webmanifest"><script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/academy/sw.js').catch(function(){})})}</script>`;
 // lockup da marca: logo + "Villela" (Lora) + "ACADEMY" (Inter caixa alta, âmbar)
 const marca = ({ escuro = true, altura = 32 } = {}) =>
   `<a class="marca" href="/academy"><img src="${BRAND}/${escuro ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Academy" style="height:${altura}px">

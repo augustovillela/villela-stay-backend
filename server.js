@@ -5254,6 +5254,11 @@ app.post('/webhooks/mercadopago', async (req, res) => {
 // ===== Grupo Villela Stay — assets estáticos: marca (/assets/brand) + capas de livros (/assets/livros) =====
 app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '7d' }));
 
+// ===== PWA dos produtos SaaS (app instalável no celular do assinante) =====
+// Manifest + service worker por produto (pwa.js). Registrado ANTES dos módulos
+// para que /livros/manifest.webmanifest vença a rota /livros/:slug da Livraria.
+try { require('./pwa').montar(app); } catch (e) { console.error('[pwa] falha ao montar módulo:', e.message); }
+
 // Raiz → destino conforme o subdomínio: staff.villelastay.com.br abre o Portal Staff;
 // os demais (minha.villelastay.com.br / onrender) vão para a Área do Hóspede.
 app.get('/', (req, res) => {

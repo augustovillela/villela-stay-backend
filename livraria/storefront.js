@@ -98,6 +98,7 @@ function pagina({ title, description, path = '/', ogImage, schema, body, extraHe
 <link rel="icon" type="image/svg+xml" href="/assets/brand/livraria-villela/favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/livraria-villela/favicon-192.png">
 <link rel="apple-touch-icon" href="/assets/brand/livraria-villela/apple-touch-icon.png">
+<link rel="manifest" href="/livros/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Livraria Villela">

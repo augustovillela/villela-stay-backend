@@ -52,6 +52,7 @@ const HEAD_MARCA = `<link rel="icon" type="image/svg+xml" href="/assets/brand/vi
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-projects/favicon-192.png">
 <link rel="apple-touch-icon" href="/assets/brand/villela-projects/apple-touch-icon.png">
 <meta name="theme-color" content="#1B2A4A">
+<link rel="manifest" href="/vpe/manifest.webmanifest"><script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/vpe/sw.js').catch(function(){})})}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">`;
 

@@ -59,7 +59,8 @@ const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><
 <link rel="icon" type="image/svg+xml" href="${BRAND_DIR}/favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="${BRAND_DIR}/favicon-192.png">
 <link rel="apple-touch-icon" href="${BRAND_DIR}/apple-touch-icon.png">
-<meta name="theme-color" content="#1B2A4A">`;
+<meta name="theme-color" content="#1B2A4A">
+<link rel="manifest" href="/vdocs/manifest.webmanifest"><script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/vdocs/sw.js').catch(function(){})})}</script>`;
 const MARCA = `<img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Docs" style="height:32px"> Villela <b>DOCS</b>`;
 // GA4 do grupo (mesma propriedade do site; tráfego segmentável por hostname) — só páginas públicas.
 const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
