@@ -53,6 +53,7 @@ global.fetch = async (url, opts) => {
   const u = String(url);
   const metodo = (opts && opts.method) || 'GET';
   if (u.startsWith('https://api.mercadopago.com')) {
+    if (u.includes('/checkout/preferences')) return resp({ id: 'PREF1', init_point: 'https://mp/checkout/PREF1' });
     const m = u.match(/\/v1\/payments\/([^/?]+)/);
     if (m) return resp(mpPayments[m[1]] || { status: 'rejected' });
     return resp({});
@@ -234,6 +235,28 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal((await req('DELETE', '/staff/api/crm/contatos/' + cid, { cookie: opCookie })).status, 403, 'membro não exclui');
     assert.equal((await req('DELETE', '/staff/api/crm/contatos/' + cid, { cookie: adminCookie })).status, 200);
     assert.equal((await req('GET', '/staff/api/crm/contatos/' + cid, { cookie: adminCookie })).status, 404);
+  });
+
+  // ---------- Hóspede: conta corrente / fidelidade / Mercado Pago (dinheiro) ----------
+  await t('fidelidade view/config respondem 200 (staff)', async () => {
+    assert.equal((await req('GET', '/staff/api/hospede/fidelidade', { cookie: adminCookie })).status, 200);
+    assert.equal((await req('GET', '/staff/api/hospede/fidelidade-config', { headers: { 'x-publish-key': 'pk-test' } })).status, 200);
+  });
+  await t('hóspede: extrato /conta e guarda de /conta/pagar (sem pendência → 400)', async () => {
+    const login = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaHospede1' }, headers: comIp('10.4.4.1') });
+    const hc = pegaCookie(login.setCookie, 'hospede_token'); assert.ok(hc);
+    const conta = await req('GET', '/hospede/api/conta', { cookie: hc });
+    assert.equal(conta.status, 200); assert.ok('saldo' in conta.json && Array.isArray(conta.json.lancamentos));
+    assert.equal((await req('POST', '/hospede/api/conta/pagar', { cookie: hc })).status, 400, 'sem valor pendente → 400');
+  });
+  await t('hóspede: /conta/pagar cria checkout MP quando há valor pendente', async () => {
+    const ls = lerData('lancamentos.json') || [];
+    ls.push({ id: 'dbg-teste', hospedeId: 'H1', tipo: 'debito', descricao: 'Serviço extra (teste)', valor: -500, criadoEm: new Date().toISOString() });
+    fs.writeFileSync(path.join(DATA_DIR, 'lancamentos.json'), JSON.stringify(ls, null, 2));
+    const login = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaHospede1' }, headers: comIp('10.4.4.2') });
+    const hc = pegaCookie(login.setCookie, 'hospede_token');
+    const pg = await req('POST', '/hospede/api/conta/pagar', { cookie: hc });
+    assert.equal(pg.status, 200); assert.ok(String(pg.json.url).includes('PREF1'), 'retorna URL do checkout MP');
   });
 
   // ---------- Webhook da Stays (segredo) ----------
