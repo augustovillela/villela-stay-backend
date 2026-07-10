@@ -40,6 +40,7 @@ seed('usuarios.json', [
   { id: 'adm', nome: 'Admin', email: 'adm@t.com', senhaHash: bcrypt.hashSync(SENHA_ADM, 10), papel: 'admin', areas: ['*'], ativo: true },
   { id: 'op', nome: 'Operador', email: 'op@t.com', senhaHash: bcrypt.hashSync(SENHA_OP, 10), papel: 'membro', areas: ['ti'], ativo: true },
   { id: 'ina', nome: 'Inativo', email: 'ina@t.com', senhaHash: bcrypt.hashSync('SenhaInativa1', 10), papel: 'membro', areas: ['ti'], ativo: false },
+  { id: 'pw', nome: 'PwTest', email: 'pw@t.com', senhaHash: bcrypt.hashSync('SenhaPw123456', 10), papel: 'membro', areas: ['ti'], ativo: true },
 ]);
 seed('hospedes.json', [
   { id: 'H1', nome: 'Hospede Um', email: 'h1@t.com', telefone: '', senhaHash: bcrypt.hashSync('SenhaHospede1', 10), staysClientId: 'C1', ativo: true },
@@ -159,6 +160,33 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
   await t('ADMIN_KEY: /api/eventos com chave certa=200, errada=401', async () => {
     assert.equal((await req('GET', '/api/eventos', { headers: { 'x-admin-key': 'ak-test' } })).status, 200);
     assert.equal((await req('GET', '/api/eventos', { headers: { 'x-admin-key': 'errada' } })).status, 401);
+  });
+
+  // ---------- staff-core: troca de senha, CRUD de usuários, link/login-mágico ----------
+  await t('staff-core: trocar senha (atual errada→400, curta→400, ok→200; nova loga, antiga não)', async () => {
+    const login = await req('POST', '/staff/api/login', { json: { email: 'pw@t.com', senha: 'SenhaPw123456' }, headers: comIp('10.7.7.1') });
+    const pc = pegaCookie(login.setCookie, 'staff_token'); assert.ok(pc);
+    assert.equal((await req('POST', '/staff/api/conta/senha', { json: { atual: 'errada', nova: 'NovaSenha123' }, cookie: pc })).status, 400);
+    assert.equal((await req('POST', '/staff/api/conta/senha', { json: { atual: 'SenhaPw123456', nova: 'curta' }, cookie: pc })).status, 400);
+    assert.equal((await req('POST', '/staff/api/conta/senha', { json: { atual: 'SenhaPw123456', nova: 'NovaSenha123' }, cookie: pc })).status, 200);
+    assert.equal((await req('POST', '/staff/api/login', { json: { email: 'pw@t.com', senha: 'NovaSenha123' }, headers: comIp('10.7.7.2') })).status, 200);
+    assert.equal((await req('POST', '/staff/api/login', { json: { email: 'pw@t.com', senha: 'SenhaPw123456' }, headers: comIp('10.7.7.3') })).status, 401);
+  });
+  await t('staff-core: CRUD de usuários (criar/duplicado-409/patch/excluir; protege self)', async () => {
+    const cria = await req('POST', '/staff/api/usuarios', { json: { nome: 'Novo', email: 'novo@t.com', senha: 'SenhaNova123', papel: 'staff', areas: ['ti'] }, cookie: adminCookie });
+    assert.equal(cria.status, 200); const nid = cria.json.usuario.id;
+    assert.equal((await req('POST', '/staff/api/usuarios', { json: { nome: 'Dup', email: 'novo@t.com', senha: 'SenhaNova123' }, cookie: adminCookie })).status, 409);
+    assert.equal((await req('PATCH', '/staff/api/usuarios/' + nid, { json: { nome: 'Renomeado' }, cookie: adminCookie })).status, 200);
+    assert.equal((await req('DELETE', '/staff/api/usuarios/adm', { cookie: adminCookie })).status, 400, 'não remove a si mesmo');
+    assert.equal((await req('DELETE', '/staff/api/usuarios/' + nid, { cookie: adminCookie })).status, 200);
+  });
+  await t('staff-core: link-acesso (admin) + login-mágico trocam por sessão; inválido→401', async () => {
+    const lk = await req('POST', '/staff/api/usuarios/op/link-acesso', { cookie: adminCookie });
+    assert.equal(lk.status, 200); assert.ok(lk.json.token);
+    const mg = await req('POST', '/staff/api/login-magico', { json: { token: lk.json.token } });
+    assert.equal(mg.status, 200); assert.ok(pegaCookie(mg.setCookie, 'staff_token'));
+    assert.equal((await req('POST', '/staff/api/login-magico', { json: { token: 'lixo' } })).status, 401);
+    assert.equal((await req('POST', '/staff/api/usuarios/op/link-acesso', { cookie: opCookie })).status, 403, 'membro não gera link');
   });
 
   // ---------- Analytics (/api/hit, /api/leads) ----------
