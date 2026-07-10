@@ -47,7 +47,7 @@ Duas camadas, ambas no ar:
   administração `/staff/api/vsm/*` (só admin). Domínio sugerido: `gestao.villelastay.com.br`
   (redirect por prefixo de host no server.js ainda NÃO criado).
 - **Leads** da landing caem na aba do staff e alertam o Augusto no WhatsApp (via `alertaAugusto`).
-- **Testes:** `npm run test:vsm` (19/19 — landing, entitlements, overrides, suspensão,
+- **Testes:** `npm run test:vsm` (29/29 — landing, entitlements, overrides, suspensão,
   editar planos, upgrade/downgrade, custo/margem, signup, definir senha, tickets, assinatura
   MP mock, webhook, ciclo de vida, rate-limit, leads, auditoria).
 
@@ -77,7 +77,7 @@ Duas camadas, ambas no ar:
 | `rotas-app.js` | API do app `/gestao/api/app/*` (requireAssinante + requireAcesso + gateModulo) — inclui `/stays/*` |
 | `app-cliente.js` | SPA do assinante servida em `/gestao/app.js` (JS clássico, sem build) |
 | `paginas.js` | landing + assinar + painel do assinante + signup/lead (server-rendered) |
-| `selftest.js` | suíte `npm run test:vsm` (25 testes: control plane + app) |
+| `selftest.js` | suíte `npm run test:vsm` (29 testes: control plane + app + idempotência de billing) |
 | `../staff/app-vsm.js` | painel da plataforma no Portal Staff (aba 🏨, `renderVsm`) |
 
 ## Pontos de montagem (no restante do backend)

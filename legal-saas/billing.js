@@ -94,12 +94,15 @@ function aplicarPreapproval(tenantId, preapprovalId, statusMP) {
   if (!sub) return;
   const agora = nowISO();
   if (statusMP === 'authorized') {
+    const jaAtiva = sub.status === 'ativa'; // preapproval reenviado → não duplicar fatura/alerta
     db.prepare("UPDATE subscriptions SET status = 'ativa', proximo_venc = ?, atualizado_em = ? WHERE id = ?")
       .run(new Date(Date.now() + 30 * 86400000).toISOString(), agora, sub.id);
     db.prepare("UPDATE subscriptions SET status = 'cancelada', fim = ? WHERE tenant_id = ? AND status IN ('trial','ativa') AND id != ?").run(agora, sub.tenant_id, sub.id);
     repo.Tenants.mudarStatus(sub.tenant_id, 'ativa', 'mercadopago', 'assinatura autorizada');
-    gerarFatura(sub.tenant_id, 'paga');
-    _notificar(`💚 Villela Legal SaaS: novo assinante pagante — tenant ${sub.tenant_id}.`);
+    if (!jaAtiva) {
+      gerarFatura(sub.tenant_id, 'paga');
+      _notificar(`💚 Villela Legal SaaS: novo assinante pagante — tenant ${sub.tenant_id}.`);
+    }
   } else if (statusMP === 'paused' || statusMP === 'cancelled') {
     db.prepare('UPDATE subscriptions SET status = ?, atualizado_em = ? WHERE id = ?').run(statusMP === 'paused' ? 'inadimplente' : 'cancelada', agora, sub.id);
     if (sub.status === 'ativa' || sub.status === 'pendente') {
@@ -110,20 +113,26 @@ function aplicarPreapproval(tenantId, preapprovalId, statusMP) {
 }
 
 // registra pagamento recorrente aprovado (mantém ativa + estende vencimento)
-function registrarPagamento(tenantId) {
+function registrarPagamento(tenantId, mpPaymentId = '') {
+  // Idempotência: o Mercado Pago re-tenta o mesmo webhook várias vezes. Se este
+  // pagamento já foi registrado, não gera outra fatura nem re-estende o vencimento.
+  if (mpPaymentId && db.prepare('SELECT 1 FROM invoices WHERE mp_payment_id = ?').get(String(mpPaymentId))) {
+    return { resultado: 'ja-registrada' };
+  }
   const sub = assinaturaAtiva(tenantId);
-  if (!sub) return;
+  if (!sub) return { resultado: 'sem-assinatura' };
   db.prepare("UPDATE subscriptions SET status = 'ativa', proximo_venc = ?, atualizado_em = ? WHERE id = ?")
     .run(new Date(Date.now() + 30 * 86400000).toISOString(), nowISO(), sub.id);
   if (repo.Tenants.obter(tenantId).status !== 'ativa') repo.Tenants.mudarStatus(tenantId, 'ativa', 'mercadopago', 'pagamento recorrente');
-  gerarFatura(tenantId, 'paga');
+  gerarFatura(tenantId, 'paga', mpPaymentId);
+  return { resultado: 'registrada' };
 }
 
-function gerarFatura(tenantId, status = 'aberta') {
+function gerarFatura(tenantId, status = 'aberta', mpPaymentId = '') {
   const t = repo.Tenants.obter(tenantId);
   const valor = t.plano ? t.plano.preco_centavos : 0;
-  db.prepare('INSERT INTO invoices (id, tenant_id, valor_centavos, competencia, vencimento, status, criado_em, pago_em) VALUES (?,?,?,?,?,?,?,?)')
-    .run(novoId(), String(tenantId), valor, new Date().toISOString().slice(0, 7), new Date().toISOString().slice(0, 10), status, nowISO(), status === 'paga' ? nowISO() : '');
+  db.prepare('INSERT INTO invoices (id, tenant_id, valor_centavos, competencia, vencimento, status, mp_payment_id, criado_em, pago_em) VALUES (?,?,?,?,?,?,?,?,?)')
+    .run(novoId(), String(tenantId), valor, new Date().toISOString().slice(0, 7), new Date().toISOString().slice(0, 10), status, String(mpPaymentId || ''), nowISO(), status === 'paga' ? nowISO() : '');
 }
 
 // upgrade/downgrade manual (troca o plano; cobrança online exige reassinar)
@@ -156,7 +165,7 @@ async function processarWebhook(body, query) {
       const pay = await mp(`/v1/payments/${id}`);
       const ref = String(pay.external_reference || '');
       const tenantId = ref.startsWith('legalsaas:') ? ref.split(':')[1] : '';
-      if (tenantId && pay.status === 'approved') { registrarPagamento(tenantId); repo.evento(tenantId, 'webhook.mp.payment', id, { status: pay.status }); }
+      if (tenantId && pay.status === 'approved') { const r = registrarPagamento(tenantId, String(pay.id)); repo.evento(tenantId, 'webhook.mp.payment', id, { status: pay.status, resultado: r && r.resultado }); }
     }
     return { ok: true };
   } catch (e) { return { ok: false, erro: e.message }; }

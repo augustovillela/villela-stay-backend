@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   pago_em        TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_crm_invoices_tenant ON invoices(tenant_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_invoices_mppay ON invoices(mp_payment_id) WHERE mp_payment_id != '';
 
 CREATE TABLE IF NOT EXISTS usage_records (
   tenant_id     TEXT NOT NULL,

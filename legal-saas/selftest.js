@@ -24,10 +24,12 @@ const alertaAugusto = async () => {};
 
 // MP mock
 const mpChamadas = [];
+let _payResp = {}; // resposta de /v1/payments/* controlada por teste (idempotência)
 const mpFetch = async (path, opts) => {
   mpChamadas.push(path);
   if (path === '/preapproval' && opts && opts.method === 'POST') return { id: 'PRE999', init_point: 'https://mp/PRE999', status: 'pending', external_reference: 'legalsaas' };
   if (path.startsWith('/preapproval/')) return { id: 'PRE999', status: 'authorized' };
+  if (path.startsWith('/v1/payments/')) return _payResp;
   return {};
 };
 mpFetch.__mock = true;
@@ -146,6 +148,16 @@ async function rodar() {
     assert.equal(tt.status, 'ativa');
     const fat = require('./db').db.prepare("SELECT status FROM invoices WHERE tenant_id = ?").all(sub.tenant_id);
     assert.ok(fat.some(f => f.status === 'paga'));
+  });
+  await t('billing idempotente: webhook de pagamento repetido gera só 1 fatura', async () => {
+    const sub = require('./db').db.prepare("SELECT tenant_id FROM subscriptions WHERE mp_preapproval_id = 'PRE999'").get();
+    _payResp = { id: 'PAY_DUP', status: 'approved', external_reference: `legalsaas:${sub.tenant_id}:profissional` };
+    for (let i = 0; i < 3; i++) { // MP re-tenta o mesmo webhook
+      assert.equal((await req('POST', '/juridico/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 'PAY_DUP' } } })).st, 200);
+      await new Promise(x => setTimeout(x, 80));
+    }
+    const n = require('./db').db.prepare("SELECT COUNT(*) c FROM invoices WHERE mp_payment_id = 'PAY_DUP'").get().c;
+    assert.equal(n, 1, `MP reenviou 3x; deve haver 1 fatura, vieram ${n}`);
   });
   await t('ciclo de vida: trial vencido → inadimplente', async () => {
     const nova = await req('POST', '/staff/api/legal-saas/tenants', { corpo: { nome: 'Gama', email: 'gama@t.br', plano: 'trial' } });

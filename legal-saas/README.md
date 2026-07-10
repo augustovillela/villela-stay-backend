@@ -105,6 +105,6 @@ entra quando o caminho for escolhido.
 
 ## Testes
 
-`npm run test:legal-saas` — 19 casos (landing, permissões, tenant/entitlements, overrides,
+`npm run test:legal-saas` — 20 casos (landing, permissões, tenant/entitlements, overrides,
 suspensão, planos, upgrade/downgrade, custo/margem, signup→senha→login, tickets, assinatura MP
 mockada, webhook, ciclo de vida, rate-limit, leads, auditoria).

@@ -25,9 +25,11 @@ const enviarEmail = async (to, ass, html) => { enviados.push({ to, ass, html });
 const alertaAugusto = async () => {};
 
 // MP mock
+let _payResp = {}; // resposta de /v1/payments/* controlada por teste (idempotência)
 const mpFetch = async (p, opts) => {
   if (p === '/preapproval' && opts && opts.method === 'POST') return { id: 'PRE777', init_point: 'https://mp/PRE777', status: 'pending', external_reference: 'crm' };
   if (p.startsWith('/preapproval/')) return { id: 'PRE777', status: 'authorized' };
+  if (p.startsWith('/v1/payments/')) return _payResp;
   return {};
 };
 mpFetch.__mock = true;
@@ -322,6 +324,16 @@ async function rodar() {
     assert.equal(tBeta.status, 'ativa');
     const fat = require('./db').db.prepare('SELECT status FROM invoices WHERE tenant_id = ?').all(tBeta.id);
     assert.ok(fat.some(f => f.status === 'paga'));
+  });
+  await t('billing idempotente: webhook de pagamento repetido gera só 1 fatura', async () => {
+    const tBeta = saas.repo.Tenants.listar({ busca: 'Pousada Beta' })[0];
+    _payResp = { id: 'PAY_DUP', status: 'approved', external_reference: `crm:${tBeta.id}:professional` };
+    for (let i = 0; i < 3; i++) { // MP re-tenta o mesmo webhook
+      assert.equal((await req('POST', '/crm/webhooks/mercadopago', { corpo: { type: 'payment', data: { id: 'PAY_DUP' } } })).st, 200);
+      await new Promise(x => setTimeout(x, 80));
+    }
+    const n = require('./db').db.prepare("SELECT COUNT(*) c FROM invoices WHERE mp_payment_id = 'PAY_DUP'").get().c;
+    assert.equal(n, 1, `MP reenviou 3x; deve haver 1 fatura, vieram ${n}`);
   });
   await t('ciclo de vida: trial vencido → inadimplente; suspensa bloqueia app', async () => {
     const nova = await req('POST', '/staff/api/vcrm/tenants', { corpo: { nome: 'Gama Vendas', email: 'gama@t.br', plano: 'trial' } });

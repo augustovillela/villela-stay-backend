@@ -50,11 +50,11 @@ telefone; estágios abertos viram oportunidades no funil de hospedagem.
 
 ## Testes
 
-`npm run test:crm` — 35 testes (signup/login/papéis, dedupe/UTM/scoring, kanban, automações,
+`npm run test:crm` — 36 testes (signup/login/papéis, dedupe/UTM/scoring, kanban, automações,
 templates, proposta pública, campanhas+opt-out, agentes, webhook/CSV/API pública, isolamento
 entre tenants, limites, billing MP mock, ciclo de vida, importação do legado, LGPD).
 
 ## Identidade
 
-Sistema V-Portal do Grupo Villela Stay; acento da vertical CRM `#BE123C`; assets em
+Sistema V-Portal do Grupo Villela Stay; acento da vertical CRM `#B0185A` (Rosa Magenta); assets em
 `/assets/brand/villela-crm/` (pictograma = funil de vendas).

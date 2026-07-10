@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   pago_em       TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_invoices_tenant ON invoices(tenant_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_legalsaas_invoices_mppay ON invoices(mp_payment_id) WHERE mp_payment_id != '';
 
 -- ---- MÉTRICAS DE USO (por tenant / período / métrica) ----
 CREATE TABLE IF NOT EXISTS usage_records (
