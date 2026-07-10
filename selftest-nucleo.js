@@ -287,6 +287,31 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(pg.status, 200); assert.ok(String(pg.json.url).includes('PREF1'), 'retorna URL do checkout MP');
   });
 
+  // ---------- Área do Hóspede (app não-financeiro): exercita a maioria das deps ----------
+  await t('hospede-app: auth-gate + guards + GETs simples respondem (deps resolvem)', async () => {
+    for (const p of ['/hospede/api/me', '/hospede/api/servicos', '/hospede/api/minhas-reservas', '/hospede/api/meus-pedidos', '/hospede/api/indicacao'])
+      assert.equal((await req('GET', p)).status, 401, p + ' sem cookie → 401');
+    const login = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaHospede1' }, headers: comIp('10.8.8.1') });
+    const hc = pegaCookie(login.setCookie, 'hospede_token'); assert.ok(hc);
+    for (const p of ['/hospede/api/me', '/hospede/api/servicos', '/hospede/api/fidelidade-config', '/hospede/api/minhas-reservas', '/hospede/api/meus-pedidos', '/hospede/api/minhas-avaliacoes', '/hospede/api/indicacao', '/hospede/api/push/chave'])
+      assert.equal((await req('GET', p, { cookie: hc })).status, 200, p + ' → 200');
+    assert.equal((await req('POST', '/hospede/api/senha', { json: { atual: 'x', nova: 'y' }, cookie: hc })).status, 400);
+    assert.equal((await req('POST', '/hospede/api/indicacao/usar', { json: {}, cookie: hc })).status, 400);
+    assert.equal((await req('POST', '/hospede/api/indicacao', { json: {}, cookie: hc })).status, 400);
+    assert.equal((await req('POST', '/hospede/api/pedido', { json: { tipo: 'servico', servicoId: 'zzz' }, cookie: hc })).status, 400);
+    assert.equal((await req('POST', '/hospede/api/precheckin', { json: {}, cookie: hc })).status, 400);
+    assert.equal((await req('POST', '/hospede/api/avaliacao', { json: {}, cookie: hc })).status, 400);
+    assert.equal((await req('POST', '/hospede/api/push/subscribe', { json: {}, cookie: hc })).status, 400);
+    assert.equal((await req('GET', '/hospede/api/conteudo/inexistente', { cookie: hc })).status, 404); // SECOES_CONTEUDO
+    assert.equal((await req('POST', '/hospede/api/chat', { json: { mensagem: 'oi' }, cookie: hc })).status, 503); // sem ANTHROPIC_API_KEY
+    assert.equal((await req('GET', '/hospede/api/carteira/RX', { cookie: hc })).status, 404); // reservasDoHospede
+    assert.equal((await req('GET', '/hospede/api/propriedade/GD01H', { cookie: hc })).status, 403);
+    // registro/e-mail (exercita stays/getStaysClientes/jwt/linkThrottle)
+    assert.equal((await req('POST', '/hospede/api/registrar', { json: {} })).status, 400);
+    assert.equal((await req('POST', '/hospede/api/registrar-email', { json: { email: 'naoexiste@t.com' } })).status, 200);
+    assert.equal((await req('POST', '/hospede/api/definir-senha', { json: { token: 'lixo', senha: 'SenhaNova123' } })).status, 400);
+  });
+
   // ---------- Webhook da Stays (segredo) ----------
   await t('webhook Stays: sem segredo=401, errado=401, correto=200', async () => {
     assert.equal((await req('POST', '/webhooks/stays', { json: { x: 1 } })).status, 401);
