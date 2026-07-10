@@ -4,8 +4,9 @@ Sistema de gestão para escritório de advocacia, construído como **módulo do 
 existente da Villela Stay** (mesmo padrão da Livraria). Estado atual: **Fases 1-8
 COMPLETAS** — fundação, núcleo jurídico, IA, peças e contratos, portal do cliente e
 notificações, relatórios gerenciais, integrações DataJud/DJEN com rotina diária e,
-na Fase 8, suíte de testes (23 casos, `npm run test:legal`), revisão de segurança e
-checklist de deploy. **Pronto para deploy** (pendente de autorização do Augusto).
+na Fase 8, suíte de testes (31 casos, `npm run test:legal` — inclui isolamento multi-tenant), revisão de segurança e
+checklist de deploy. **EM PRODUÇÃO desde 07/07/2026** (merge feat/legal→master, commit `4de7580`,
+deploy Render conferido via API — subiu junto com a Livraria).
 
 ## FASE 0 — Diagnóstico técnico do projeto (06/07/2026)
 
@@ -205,7 +206,7 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   + aviso à equipe (WhatsApp só com novidade). Disparos manuais no painel (aba Auditoria) e por
   PUBLISH_KEY. Fornecedores licenciados: continuam entrando por `POST /webhooks/:origem`.
 - **Fase 8 — CONCLUÍDA (07/07/2026)**: testes, segurança e preparação de deploy.
-  *Testes*: `legal/selftest.js` (23 casos cobrindo o §13 do plano — permissões, clientes,
+  *Testes*: `legal/selftest.js` (31 casos: 23 do §13 do plano + 8 de isolamento multi-tenant/ponte do assinante — permissões, clientes,
   processos, andamentos, publicações, prazos/travas/calculadora, tarefas/kanban, documentos/
   sigilo, IA/fila/revisão, peças/travas/export, contratos, prestação de contas, notificações,
   portal do cliente/exposição/rate-limit, auditoria, webhooks, rotinas) — roda o Express real
@@ -214,7 +215,7 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   *Segurança (correções da revisão)*: rate-limit no login/definir-senha do portal do cliente
   (5 falhas/IP → 15 min) e neutralização de CSV injection na prestação de contas.
   *Deploy*: checklist abaixo; `render.yaml` ganhou `ANTHROPIC_API_KEY` (opcional) e a lista
-  das envs `LEGAL_*`. O deploy em si aguarda autorização (inclui os commits da Livraria).
+  das envs `LEGAL_*`. Deploy REALIZADO em 07/07/2026 (merge feat/legal→master `4de7580`, subiu com a Livraria).
 
 ## Manual rápido
 
@@ -259,7 +260,7 @@ esvaziada pelo agente local (`GET /ia/consultas/pendentes` + respostas via PUBLI
 - [x] Exposição ao cliente filtrada no SERVIDOR (sigiloso/estratégia/prognóstico/risco/prazos não validados)
 - [x] Estratégia sigilosa fora do índice RAG; guardrails de IA no system prompt (fontes obrigatórias, MINUTA)
 - [x] Coleta só por API oficial (DataJud/DJEN) — sem scraping/captcha; rate-limit respeitado (retry/backoff)
-- [x] Suíte de testes cobrindo permissões, travas e exposição (23 casos — `npm run test:legal`)
+- [x] Suíte de testes cobrindo permissões, travas e exposição (31 casos — `npm run test:legal`)
 - [ ] Criptografia em repouso de campos sensíveis — DECISÃO ADIADA: o disco do Render já é
       criptografado em repouso pela plataforma; criptografia por campo entraria se houver
       requisito contratual específico (anotar quando surgir)
