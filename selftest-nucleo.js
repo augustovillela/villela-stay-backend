@@ -47,10 +47,11 @@ seed('hospedes.json', [
 
 // --- mock de global.fetch: SÓ chamadas de saída (Stays / Mercado Pago) ---
 const mpPayments = {}; // payId -> { status, external_reference, transaction_amount }
-const fix = { checkin: '2026-06-01', checkout: '2026-06-15' };
+const fix = { checkin: '2026-06-01', checkout: '2026-06-15', dispAvail: 1 };
 const resp = (data, ok = true, status = 200) => ({ ok, status, json: async () => data, text: async () => JSON.stringify(data) });
-global.fetch = async (url) => {
+global.fetch = async (url, opts) => {
   const u = String(url);
+  const metodo = (opts && opts.method) || 'GET';
   if (u.startsWith('https://api.mercadopago.com')) {
     const m = u.match(/\/v1\/payments\/([^/?]+)/);
     if (m) return resp(mpPayments[m[1]] || { status: 'rejected' });
@@ -59,13 +60,14 @@ global.fetch = async (url) => {
   if (u.startsWith(process.env.STAYS_BASE)) {
     const rel = u.slice(process.env.STAYS_BASE.length);
     let m;
-    if ((m = rel.match(/^\/booking\/reservations\/([^/?]+)/))) {          // reserva individual (preço real)
-      return resp({ id: m[1], price: { _f_total: 1000 }, checkInDate: fix.checkin, checkOutDate: fix.checkout });
-    }
-    if (rel.startsWith('/booking/reservations')) {                        // lista (departure window)
-      return resp([{ id: 'R1', type: 'booked', _idclient: 'C1', partner: { name: '' }, price: { _f_total: 1 }, checkInDate: fix.checkin, checkOutDate: fix.checkout }]);
-    }
-    if (rel.startsWith('/booking/clients/')) return resp({ reservations: [] }); // sem estadia anterior
+    if (metodo === 'POST' && rel.startsWith('/booking/reservations')) return resp({ id: 'RNEW', _id: 'rnew', checkInDate: '2026-08-01', checkOutDate: '2026-08-03', price: { _f_total: 0, currency: 'BRL' }, guests: 2 });
+    if (metodo === 'POST' && rel.startsWith('/booking/clients')) return resp({ _id: 'CNEW' });
+    if (rel.startsWith('/content/listings')) return resp([{ _id: 'L1', id: 'GD01H', status: 'active', subtype: 'entire_home', internalName: 'Casa Teste', _mstitle: { pt_BR: 'Casa Teste' } }]);
+    if ((m = rel.match(/^\/calendar\/listing\/([^/?]+)/))) return resp([{ date: '2026-08-01', avail: fix.dispAvail, prices: [{ _mcval: { BRL: 500 } }] }, { date: '2026-08-02', avail: fix.dispAvail, prices: [{ _mcval: { BRL: 500 } }] }]);
+    if ((m = rel.match(/^\/booking\/reservations\/([^/?]+)/))) return resp({ id: m[1], price: { _f_total: 1000 }, checkInDate: fix.checkin, checkOutDate: fix.checkout }); // reserva individual
+    if (rel.startsWith('/booking/reservations')) return resp([{ id: 'R1', type: 'booked', _idclient: 'C1', partner: { name: '' }, price: { _f_total: 1 }, checkInDate: fix.checkin, checkOutDate: fix.checkout }]); // lista
+    if ((m = rel.match(/^\/booking\/clients\/([^/?]+)/))) return resp({ reservations: [] }); // cliente individual
+    if (rel.startsWith('/booking/clients')) return resp([{ _id: 'C1', name: 'Cliente Um', clientSource: 'direct', creationDate: '2026-01-01' }]); // lista de clientes
     return resp({});
   }
   return resp({}); // qualquer outra saída → vazio benigno
@@ -180,6 +182,34 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(trav.status, 400, 'path traversal → 400');
     const ok2 = await req('GET', '/staff/api/backup/arquivo?caminho=usuarios.json', { cookie: adminCookie });
     assert.equal(ok2.status, 200, 'arquivo válido do DATA_DIR servido');
+  });
+
+  // ---------- Stays proxy (/staff/api/stays/*) ----------
+  await t('stays-proxy: as 6 rotas exigem sessão (401 sem cookie)', async () => {
+    for (const p of ['/staff/api/stays/imoveis', '/staff/api/stays/clientes', '/staff/api/stays/cliente/C1',
+      '/staff/api/stays/reservas?from=2026-08-01&to=2026-08-10', '/staff/api/stays/disponibilidade?listingId=L1&from=2026-08-01&to=2026-08-03'])
+      assert.equal((await req('GET', p)).status, 401, p + ' sem cookie');
+    assert.equal((await req('POST', '/staff/api/stays/reserva', { json: {} })).status, 401);
+  });
+  await t('stays-proxy: imoveis/clientes/cliente/reservas/disponibilidade respondem 200', async () => {
+    fix.dispAvail = 1;
+    const im = await req('GET', '/staff/api/stays/imoveis', { cookie: adminCookie });
+    assert.equal(im.status, 200); assert.ok(im.json.imoveis.some(x => x.codigo === 'GD01H'));
+    const cl = await req('GET', '/staff/api/stays/clientes', { cookie: adminCookie });
+    assert.equal(cl.status, 200); assert.ok(cl.json.clientes.some(x => x.nome === 'Cliente Um'));
+    assert.equal((await req('GET', '/staff/api/stays/cliente/C1', { cookie: adminCookie })).status, 200);
+    assert.equal((await req('GET', '/staff/api/stays/reservas?from=2026-08-01&to=2026-08-10', { cookie: adminCookie })).status, 200);
+    const dp = await req('GET', '/staff/api/stays/disponibilidade?listingId=L1&from=2026-08-01&to=2026-08-03', { cookie: adminCookie });
+    assert.equal(dp.status, 200); assert.equal(dp.json.todasLivres, true);
+  });
+  await t('stays-proxy: criar bloqueio confere disponibilidade e exige admin', async () => {
+    const corpo = { tipo: 'bloqueio', listingId: 'L1', checkInDate: '2026-08-01', checkOutDate: '2026-08-03' };
+    assert.equal((await req('POST', '/staff/api/stays/reserva', { json: corpo, cookie: opCookie })).status, 403, 'não-admin → 403');
+    fix.dispAvail = 0;
+    assert.equal((await req('POST', '/staff/api/stays/reserva', { json: corpo, cookie: adminCookie })).status, 409, 'datas ocupadas → 409');
+    fix.dispAvail = 1;
+    const ok2 = await req('POST', '/staff/api/stays/reserva', { json: corpo, cookie: adminCookie });
+    assert.equal(ok2.status, 200); assert.equal(ok2.json.tipo, 'bloqueio');
   });
 
   // ---------- Webhook da Stays (segredo) ----------
