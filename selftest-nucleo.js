@@ -212,6 +212,30 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(ok2.status, 200); assert.equal(ok2.json.tipo, 'bloqueio');
   });
 
+  // ---------- CRM legado (/staff/api/crm/*) ----------
+  await t('crm-legado: criar (dedupe), listar, detalhe, patch estágio, funil', async () => {
+    const cria = await req('POST', '/staff/api/crm/contatos', { json: { nome: 'Lead CRM', telefone: '61988887777', origem: 'site' }, cookie: adminCookie });
+    assert.equal(cria.status, 200); assert.ok(cria.json.contato && cria.json.contato.id); const cid = cria.json.contato.id;
+    const dup = await req('POST', '/staff/api/crm/contatos', { json: { nome: 'Lead CRM', telefone: '61988887777' }, cookie: adminCookie });
+    assert.equal(dup.json.novo, false, 'dedupe por telefone');
+    assert.ok((await req('GET', '/staff/api/crm/contatos?busca=Lead', { cookie: adminCookie })).json.contatos.some(c => c.id === cid));
+    assert.equal((await req('GET', '/staff/api/crm/contatos/' + cid, { cookie: adminCookie })).status, 200);
+    assert.equal((await req('GET', '/staff/api/crm/contatos/' + cid + '/stays', { cookie: adminCookie })).status, 200); // sem staysClientId → vinculado:false
+    const pt = await req('PATCH', '/staff/api/crm/contatos/' + cid, { json: { estagio: 'negociacao', valorEstimado: 5000 }, cookie: adminCookie });
+    assert.equal(pt.status, 200); assert.equal(pt.json.contato.estagio, 'negociacao');
+    assert.equal((await req('PATCH', '/staff/api/crm/contatos/' + cid, { json: { estagio: 'xyz' }, cookie: adminCookie })).status, 400);
+    assert.ok((await req('GET', '/staff/api/crm/funil', { cookie: adminCookie })).json.porEstagio.negociacao.n >= 1);
+  });
+  await t('crm-legado: métricas/followups/sla/receita 200; excluir exige admin (403 membro)', async () => {
+    for (const p of ['/staff/api/crm/metricas', '/staff/api/crm/followups', '/staff/api/crm/sla', '/staff/api/crm/receita-prevista'])
+      assert.equal((await req('GET', p, { cookie: adminCookie })).status, 200, p);
+    const c = await req('POST', '/staff/api/crm/contatos', { json: { nome: 'Para Excluir', telefone: '61911112222' }, cookie: adminCookie });
+    const cid = c.json.contato.id;
+    assert.equal((await req('DELETE', '/staff/api/crm/contatos/' + cid, { cookie: opCookie })).status, 403, 'membro não exclui');
+    assert.equal((await req('DELETE', '/staff/api/crm/contatos/' + cid, { cookie: adminCookie })).status, 200);
+    assert.equal((await req('GET', '/staff/api/crm/contatos/' + cid, { cookie: adminCookie })).status, 404);
+  });
+
   // ---------- Webhook da Stays (segredo) ----------
   await t('webhook Stays: sem segredo=401, errado=401, correto=200', async () => {
     assert.equal((await req('POST', '/webhooks/stays', { json: { x: 1 } })).status, 401);
