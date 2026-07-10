@@ -12,7 +12,8 @@
     "test:vpe": "node vpe/selftest.js",
     "test:vsm": "node vsm/selftest.js",
     "test:academy": "node academy/selftest.js",
-    "test:crm": "node crm/selftest.js"
+    "test:crm": "node crm/selftest.js",
+    "test:nucleo": "node selftest-nucleo.js"
   },
   "engines": {
     "node": ">=22"
@@ -20,6 +21,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
     "bcryptjs": "^2.4.3",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.6",
     "express": "^4.19.0",
     "jsonwebtoken": "^9.0.2",

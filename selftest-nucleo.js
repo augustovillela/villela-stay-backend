@@ -1,0 +1,242 @@
+// =====================================================================
+// Villela Stay — SUÍTE DE TESTES DO NÚCLEO (server.js). npm run test:nucleo
+// Black-box: sobe o server.js real in-process com DATA_DIR temporário e
+// mock só das chamadas de SAÍDA (Stays/Mercado Pago via global.fetch); o
+// cliente de teste usa node:http (não afetado pelo mock). Cobre: auth/RBAC,
+// PUBLISH_KEY/ADMIN_KEY, webhook Stays (segredo), webhook MP (dinheiro +
+// idempotência), motor de fidelidade (dinheiro + idempotência) e a escrita
+// atômica de JSON (round-trip). Sem framework: assert + contadores.
+// =====================================================================
+'use strict';
+const os = require('os');
+const fs = require('fs');
+const net = require('net');
+const http = require('http');
+const path = require('path');
+const assert = require('assert');
+const bcrypt = require('bcryptjs');
+
+const PORT = 4090;
+const BASE = 'http://127.0.0.1:' + PORT;
+const DATA_DIR = path.join(os.tmpdir(), 'nucleo-selftest-' + process.pid + '-' + Date.now());
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// --- env de teste ANTES de requerer o server ---
+Object.assign(process.env, {
+  DATA_DIR,
+  NODE_ENV: 'development',           // COOKIE_SECURE=false (cookie sobre http)
+  STAYS_CLIENT_ID: 'x', STAYS_SECRET: 'x', STAYS_BASE: 'https://stays.mock/v1',
+  JWT_SECRET: 'test-secret-nucleo',
+  PUBLISH_KEY: 'pk-test', ADMIN_KEY: 'ak-test', STAYS_WEBHOOK_SECRET: 'sw-test',
+  MP_ACCESS_TOKEN: 'mp-test',
+  MANUTENCAO_OFF: '1',               // sem o timer diário de snapshots/purga no teste
+  PORT: String(PORT),
+});
+
+// --- seeds no DATA_DIR ---
+const SENHA_ADM = 'SenhaAdmin1', SENHA_OP = 'SenhaOperador1';
+const seed = (arq, obj) => fs.writeFileSync(path.join(DATA_DIR, arq), JSON.stringify(obj, null, 2));
+seed('usuarios.json', [
+  { id: 'adm', nome: 'Admin', email: 'adm@t.com', senhaHash: bcrypt.hashSync(SENHA_ADM, 10), papel: 'admin', areas: ['*'], ativo: true },
+  { id: 'op', nome: 'Operador', email: 'op@t.com', senhaHash: bcrypt.hashSync(SENHA_OP, 10), papel: 'membro', areas: ['ti'], ativo: true },
+  { id: 'ina', nome: 'Inativo', email: 'ina@t.com', senhaHash: bcrypt.hashSync('SenhaInativa1', 10), papel: 'membro', areas: ['ti'], ativo: false },
+]);
+seed('hospedes.json', [
+  { id: 'H1', nome: 'Hospede Um', email: 'h1@t.com', telefone: '', senhaHash: bcrypt.hashSync('SenhaHospede1', 10), staysClientId: 'C1', ativo: true },
+]);
+
+// --- mock de global.fetch: SÓ chamadas de saída (Stays / Mercado Pago) ---
+const mpPayments = {}; // payId -> { status, external_reference, transaction_amount }
+const fix = { checkin: '2026-06-01', checkout: '2026-06-15' };
+const resp = (data, ok = true, status = 200) => ({ ok, status, json: async () => data, text: async () => JSON.stringify(data) });
+global.fetch = async (url) => {
+  const u = String(url);
+  if (u.startsWith('https://api.mercadopago.com')) {
+    const m = u.match(/\/v1\/payments\/([^/?]+)/);
+    if (m) return resp(mpPayments[m[1]] || { status: 'rejected' });
+    return resp({});
+  }
+  if (u.startsWith(process.env.STAYS_BASE)) {
+    const rel = u.slice(process.env.STAYS_BASE.length);
+    let m;
+    if ((m = rel.match(/^\/booking\/reservations\/([^/?]+)/))) {          // reserva individual (preço real)
+      return resp({ id: m[1], price: { _f_total: 1000 }, checkInDate: fix.checkin, checkOutDate: fix.checkout });
+    }
+    if (rel.startsWith('/booking/reservations')) {                        // lista (departure window)
+      return resp([{ id: 'R1', type: 'booked', _idclient: 'C1', partner: { name: '' }, price: { _f_total: 1 }, checkInDate: fix.checkin, checkOutDate: fix.checkout }]);
+    }
+    if (rel.startsWith('/booking/clients/')) return resp({ reservations: [] }); // sem estadia anterior
+    return resp({});
+  }
+  return resp({}); // qualquer outra saída → vazio benigno
+};
+
+require('./server.js'); // sobe e escuta em PORT
+
+// --- cliente HTTP de teste (node:http) ---
+function req(method, pth, { json, cookie, headers } = {}) {
+  return new Promise((resolve, reject) => {
+    const body = json !== undefined ? JSON.stringify(json) : null;
+    const h = Object.assign({ Accept: 'application/json' }, headers || {});
+    if (body) { h['Content-Type'] = 'application/json'; h['Content-Length'] = Buffer.byteLength(body); }
+    if (cookie) h['Cookie'] = cookie;
+    const r = http.request(BASE + pth, { method, headers: h }, (res) => {
+      let data = ''; res.on('data', c => (data += c));
+      res.on('end', () => { let j = null; try { j = JSON.parse(data); } catch {} resolve({ status: res.statusCode, json: j, text: data, setCookie: res.headers['set-cookie'] || [] }); });
+    });
+    r.on('error', reject);
+    if (body) r.write(body);
+    r.end();
+  });
+}
+const pegaCookie = (setCookie, nome) => { for (const c of setCookie || []) { const m = c.match(new RegExp(nome + '=([^;]+)')); if (m) return nome + '=' + m[1]; } return ''; };
+const lerData = (arq) => { try { return JSON.parse(fs.readFileSync(path.join(DATA_DIR, arq), 'utf8')); } catch { return null; } };
+const espera = (ms) => new Promise(r => setTimeout(r, ms));
+function esperarPorta() {
+  return new Promise((resolve, reject) => {
+    let n = 0;
+    const tenta = () => { const s = net.connect(PORT, '127.0.0.1'); s.on('connect', () => { s.end(); resolve(); }); s.on('error', () => { s.destroy(); if (++n > 100) return reject(new Error('server não subiu')); setTimeout(tenta, 50); }); };
+    tenta();
+  });
+}
+
+// --- runner ---
+let ok = 0; const falhas = [];
+async function t(nome, fn) { try { await fn(); ok++; console.log('  ✅', nome); } catch (e) { falhas.push(nome + ': ' + e.message); console.log('  ❌', nome, '—', e.message); } }
+// cada teste de login usa um X-Forwarded-For próprio (trust proxy=1 → req.ip) p/ não colidir no lockout
+const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {});
+
+(async () => {
+  await esperarPorta();
+  console.log('Villela Stay — selftest do núcleo (server.js)\nDATA_DIR:', DATA_DIR, '\n');
+
+  // ---------- Auth / sessão ----------
+  await t('login: senha errada → 401', async () => {
+    const r = await req('POST', '/staff/api/login', { json: { email: 'adm@t.com', senha: 'errada' }, headers: comIp('10.1.1.1') });
+    assert.equal(r.status, 401);
+  });
+  let adminCookie = '';
+  await t('login: correto → 200 + cookie staff_token', async () => {
+    const r = await req('POST', '/staff/api/login', { json: { email: 'adm@t.com', senha: SENHA_ADM }, headers: comIp('10.1.1.2') });
+    assert.equal(r.status, 200); assert.ok(r.json && r.json.ok);
+    adminCookie = pegaCookie(r.setCookie, 'staff_token');
+    assert.ok(adminCookie, 'cookie staff_token setado');
+  });
+  let opCookie = '';
+  await t('login: usuário membro (não-admin) ok', async () => {
+    const r = await req('POST', '/staff/api/login', { json: { email: 'op@t.com', senha: SENHA_OP }, headers: comIp('10.1.1.5') });
+    assert.equal(r.status, 200); opCookie = pegaCookie(r.setCookie, 'staff_token'); assert.ok(opCookie);
+  });
+  await t('login: usuário inativo → 401', async () => {
+    const r = await req('POST', '/staff/api/login', { json: { email: 'ina@t.com', senha: 'SenhaInativa1' }, headers: comIp('10.1.1.3') });
+    assert.equal(r.status, 401);
+  });
+  await t('login: lockout após 5 erros → 429', async () => {
+    for (let i = 0; i < 5; i++) { const r = await req('POST', '/staff/api/login', { json: { email: 'adm@t.com', senha: 'x' }, headers: comIp('10.9.9.9') }); assert.equal(r.status, 401); }
+    const r6 = await req('POST', '/staff/api/login', { json: { email: 'adm@t.com', senha: SENHA_ADM }, headers: comIp('10.9.9.9') });
+    assert.equal(r6.status, 429, 'bloqueado mesmo com senha certa após 5 erros');
+  });
+  await t('/staff/api/me sem cookie → 401', async () => { assert.equal((await req('GET', '/staff/api/me')).status, 401); });
+  await t('/staff/api/me com cookie → 200 + usuário', async () => {
+    const r = await req('GET', '/staff/api/me', { cookie: adminCookie });
+    assert.equal(r.status, 200); assert.equal(r.json.usuario.email, 'adm@t.com');
+  });
+
+  // ---------- RBAC ----------
+  await t('RBAC: /staff/api/usuarios admin=200, membro=403, anônimo=401', async () => {
+    assert.equal((await req('GET', '/staff/api/usuarios', { cookie: adminCookie })).status, 200);
+    assert.equal((await req('GET', '/staff/api/usuarios', { cookie: opCookie })).status, 403);
+    assert.equal((await req('GET', '/staff/api/usuarios')).status, 401);
+  });
+  await t('PUBLISH_KEY: relatórios com chave=200, sem chave e sem sessão=401', async () => {
+    assert.equal((await req('GET', '/staff/api/relatorios', { headers: { 'x-publish-key': 'pk-test' } })).status, 200);
+    assert.equal((await req('GET', '/staff/api/relatorios', { headers: { 'x-publish-key': 'errada' } })).status, 401);
+    assert.equal((await req('GET', '/staff/api/relatorios')).status, 401);
+  });
+  await t('ADMIN_KEY: /api/eventos com chave certa=200, errada=401', async () => {
+    assert.equal((await req('GET', '/api/eventos', { headers: { 'x-admin-key': 'ak-test' } })).status, 200);
+    assert.equal((await req('GET', '/api/eventos', { headers: { 'x-admin-key': 'errada' } })).status, 401);
+  });
+
+  // ---------- Analytics (/api/hit, /api/leads) ----------
+  await t('analytics /api/hit: responde 204 e estoura rate-limit (120/min)', async () => {
+    assert.equal((await req('GET', '/api/hit?p=/home', { headers: comIp('10.3.3.1') })).status, 204);
+    let bateu429 = false;
+    for (let i = 0; i < 130; i++) { if ((await req('GET', '/api/hit?p=/x', { headers: comIp('10.3.3.9') })).status === 429) { bateu429 = true; break; } }
+    assert.ok(bateu429, 'estoura o rate-limit de 120/min por IP');
+  });
+  await t('analytics /api/leads: cria lead; sem nome/contato → 400', async () => {
+    assert.equal((await req('POST', '/api/leads', { json: { nome: 'Fulano Lead', contato: '61999990000', origem: 'site' } })).status, 200);
+    assert.equal((await req('POST', '/api/leads', { json: { mensagem: 'sem nome nem contato' } })).status, 400);
+    assert.ok(fs.readFileSync(path.join(DATA_DIR, 'leads.jsonl'), 'utf8').includes('Fulano Lead'), 'lead gravado em leads.jsonl');
+  });
+
+  // ---------- Backup do DATA_DIR ----------
+  await t('backup: lista admin=200/anônimo=401; arquivo bloqueia path traversal, serve válido', async () => {
+    const l = await req('GET', '/staff/api/backup/lista', { cookie: adminCookie });
+    assert.equal(l.status, 200); assert.ok(Array.isArray(l.json.arquivos), 'retorna lista de arquivos');
+    assert.equal((await req('GET', '/staff/api/backup/lista')).status, 401);
+    const trav = await req('GET', '/staff/api/backup/arquivo?caminho=' + encodeURIComponent('../server.js'), { cookie: adminCookie });
+    assert.equal(trav.status, 400, 'path traversal → 400');
+    const ok2 = await req('GET', '/staff/api/backup/arquivo?caminho=usuarios.json', { cookie: adminCookie });
+    assert.equal(ok2.status, 200, 'arquivo válido do DATA_DIR servido');
+  });
+
+  // ---------- Webhook da Stays (segredo) ----------
+  await t('webhook Stays: sem segredo=401, errado=401, correto=200', async () => {
+    assert.equal((await req('POST', '/webhooks/stays', { json: { x: 1 } })).status, 401);
+    assert.equal((await req('POST', '/webhooks/stays?s=errado', { json: { x: 1 } })).status, 401);
+    assert.equal((await req('POST', '/webhooks/stays?s=sw-test', { json: { x: 1 } })).status, 200);
+  });
+
+  // ---------- Escrita atômica (round-trip mural) ----------
+  await t('escrita atômica: POST mural → GET mural retorna a mensagem', async () => {
+    const texto = 'aviso de teste ' + Date.now();
+    const p = await req('POST', '/staff/api/mural', { json: { texto }, headers: { 'x-publish-key': 'pk-test' } });
+    assert.equal(p.status, 200);
+    const g = await req('GET', '/staff/api/mural', { headers: { 'x-publish-key': 'pk-test' } });
+    const lista = Array.isArray(g.json) ? g.json : (g.json && g.json.mensagens) || [];
+    assert.ok(lista.some(m => m.texto === texto), 'mensagem persistida e lida de volta');
+    assert.ok(fs.existsSync(path.join(DATA_DIR, 'mural.json')), 'mural.json gravado');
+  });
+
+  // ---------- Webhook Mercado Pago (dinheiro + idempotência) ----------
+  await t('webhook MP: pagamento aprovado credita 1 lançamento e é idempotente', async () => {
+    mpPayments['PAY1'] = { id: 'PAY1', status: 'approved', external_reference: 'conta:H1', transaction_amount: 250 };
+    for (let i = 0; i < 3; i++) { // MP re-tenta o mesmo webhook
+      const r = await req('POST', '/webhooks/mercadopago', { json: { type: 'payment', data: { id: 'PAY1' } } });
+      assert.equal(r.status, 200);
+      await espera(120); // o handler responde 200 e processa em seguida
+    }
+    const ls = (lerData('lancamentos.json') || []).filter(l => l.pagamentoRef === 'PAY1');
+    assert.equal(ls.length, 1, `esperava 1 lançamento de pagamento, veio ${ls.length}`);
+    assert.equal(ls[0].valor, 250);
+    assert.equal(ls[0].hospedeId, 'H1');
+  });
+
+  // ---------- Motor de fidelidade (dinheiro + idempotência + lock) ----------
+  await t('fidelidade: credita cashback 5% e é idempotente', async () => {
+    fix.checkout = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10); // dentro da janela (>5 dias)
+    const r1 = await req('POST', '/staff/api/hospede/fidelidade/rodar', { json: { force: true }, headers: { 'x-publish-key': 'pk-test' } });
+    assert.equal(r1.status, 200);
+    const cash1 = (lerData('lancamentos.json') || []).filter(l => l.tipo === 'cashback' && l.hospedeId === 'H1');
+    assert.equal(cash1.length, 1, 'creditou exatamente 1 cashback');
+    assert.equal(cash1[0].valor, 50, 'cashback = 5% de 1000 (líquido)');
+    await req('POST', '/staff/api/hospede/fidelidade/rodar', { json: { force: true }, headers: { 'x-publish-key': 'pk-test' } });
+    const cash2 = (lerData('lancamentos.json') || []).filter(l => l.tipo === 'cashback' && l.hospedeId === 'H1');
+    assert.equal(cash2.length, 1, 'idempotente: continua 1 cashback');
+  });
+
+  // ---------- Área do Hóspede (login) ----------
+  await t('hóspede: login correto=200+cookie, senha errada=401', async () => {
+    const bom = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaHospede1' }, headers: comIp('10.2.2.2') });
+    assert.equal(bom.status, 200); assert.ok(pegaCookie(bom.setCookie, 'hospede_token'), 'cookie hospede_token setado');
+    const ruim = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'errada' }, headers: comIp('10.2.2.3') });
+    assert.equal(ruim.status, 401);
+  });
+
+  console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
+  try { fs.rmSync(DATA_DIR, { recursive: true, force: true }); } catch {}
+  if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }
+  process.exit(0);
+})().catch(e => { console.error('FALHA GERAL:', e); process.exit(1); });

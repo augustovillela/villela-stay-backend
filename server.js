@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 
 // Credenciais via variáveis de ambiente — NUNCA no código.
 const STAYS_BASE = process.env.STAYS_BASE || 'https://ville.stays.com.br/external/v1';
@@ -33,9 +34,34 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const app = express();
+app.set('trust proxy', 1); // Render põe 1 proxy na frente → req.ip = IP real do cliente (não o X-Forwarded-For forjável)
 app.use(express.json({ limit: '15mb' })); // 15mb p/ aceitar PDFs em base64 no upload de relatórios
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); // form-urlencoded (ex.: ingestão do Make → CRM)
 app.use(cookieParser());
+app.use(compression()); // gzip nas respostas (JSON/HTML/JS) — o web service do Render não comprime por você
+// Cabeçalhos de segurança (equivalente leve ao helmet, sem dependência nova)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+// Comparação de segredos em tempo constante (evita timing attack em chaves/tokens)
+function tokensIguais(a, b) {
+  const ba = Buffer.from(String(a || '')), bb = Buffer.from(String(b || ''));
+  if (ba.length === 0 || ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+// Rate-limit simples em memória (processo único). Retorna false quando estourou a cota.
+const _taxaMap = new Map();
+function limiteTaxa(chave, max, janelaMs) {
+  const agora = Date.now();
+  let e = _taxaMap.get(chave);
+  if (!e || agora > e.reset) { e = { count: 0, reset: agora + janelaMs }; _taxaMap.set(chave, e); }
+  e.count++;
+  return e.count <= max;
+}
+setInterval(() => { const t = Date.now(); for (const [k, v] of _taxaMap) if (t > v.reset) _taxaMap.delete(k); }, 300000).unref();
 
 // CORS restrito ao site público
 app.use((req, res, next) => {
@@ -145,8 +171,17 @@ async function confirmarReservaWhatsApp(evento) {
   } catch (e) { console.error('[confirmacao] erro:', e.message); }
 }
 
-// Webhook da Stays (configurar na Stays apontando para https://SEU-DOMINIO/webhooks/stays)
+// Webhook da Stays (configurar na Stays apontando para https://SEU-DOMINIO/webhooks/stays?s=<STAYS_WEBHOOK_SECRET>)
 app.post('/webhooks/stays', (req, res) => {
+  // Autenticação por segredo (query ?s= ou header x-webhook-secret). Enquanto o segredo não
+  // estiver configurado, mantém o comportamento antigo mas avisa — assim a integração viva não
+  // quebra antes de o Augusto setar STAYS_WEBHOOK_SECRET e ajustar a URL na Stays.
+  const seg = process.env.STAYS_WEBHOOK_SECRET;
+  if (seg) {
+    if (!tokensIguais(req.query.s || req.headers['x-webhook-secret'], seg)) return res.sendStatus(401);
+  } else {
+    console.warn('[webhook stays] STAYS_WEBHOOK_SECRET não configurado — endpoint aberto; configure a env e atualize a URL na Stays.');
+  }
   console.log('[webhook stays]', JSON.stringify(req.body).slice(0, 500));
   appendJsonl('eventos.jsonl', { origem: 'stays', evento: req.body });
   confirmarReservaWhatsApp(req.body); // assíncrono, não bloqueia a resposta
@@ -154,51 +189,7 @@ app.post('/webhooks/stays', (req, res) => {
   res.sendStatus(200);
 });
 
-// Consulta dos últimos eventos recebidos (protegido por chave de admin)
-app.get('/api/eventos', (req, res) => {
-  if (!process.env.ADMIN_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_KEY) {
-    return res.sendStatus(401);
-  }
-  const file = path.join(DATA_DIR, 'eventos.jsonl');
-  if (!fs.existsSync(file)) return res.json([]);
-  const linhas = fs.readFileSync(file, 'utf8').trim().split('\n').slice(-50);
-  res.json(linhas.map(l => { try { return JSON.parse(l); } catch { return { bruto: l }; } }));
-});
-
-// Analytics próprio: registra page views (GET sem preflight de CORS; sem cookies — LGPD ok)
-app.get('/api/hit', (req, res) => {
-  const { p, r } = req.query;
-  if (p) appendJsonl('hits.jsonl', { pagina: String(p).slice(0, 200), origemRef: String(r || '').slice(0, 300), ua: String(req.headers['user-agent'] || '').slice(0, 200) });
-  res.sendStatus(204);
-});
-
-// Resumo de visitas (protegido): páginas mais vistas e visitas por dia
-app.get('/api/estatisticas', (req, res) => {
-  if (!process.env.ADMIN_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_KEY) return res.sendStatus(401);
-  const file = path.join(DATA_DIR, 'hits.jsonl');
-  if (!fs.existsSync(file)) return res.json({ totalVisitas: 0, porPagina: {}, porDia: {} });
-  const linhas = fs.readFileSync(file, 'utf8').trim().split('\n');
-  const porPagina = {}, porDia = {};
-  for (const l of linhas) {
-    try {
-      const h = JSON.parse(l);
-      porPagina[h.pagina] = (porPagina[h.pagina] || 0) + 1;
-      const dia = (h._recebido || '').slice(0, 10);
-      porDia[dia] = (porDia[dia] || 0) + 1;
-    } catch {}
-  }
-  res.json({ totalVisitas: linhas.length, porPagina, porDia });
-});
-
-// Captura de leads do site (formulário de orçamento / chat)
-app.post('/api/leads', (req, res) => {
-  const { nome, contato, mensagem, origem } = req.body || {};
-  if (!nome || !contato) return res.status(400).json({ erro: 'nome e contato são obrigatórios' });
-  appendJsonl('leads.jsonl', { nome, contato, mensagem, origem: origem || 'site' }); // mantém log antigo
-  try { upsertContato({ nome, contato, mensagem, origem: origem || 'site' }); } // CRM: vira contato (dedupe)
-  catch (e) { console.error('[crm] falha ao criar contato do lead:', e.message); }
-  res.json({ ok: true });
-});
+// Analytics (page views) + captura de leads → extraídos para nucleo/analytics.js (montado no fim).
 
 // Ofertas de última hora: janelas livres nos próximos 15 dias (cache de 6h)
 let cacheUltimaHora = { quando: 0, dados: [] };
@@ -319,7 +310,7 @@ app.post('/api/chamados', (req, res) => {
 // Leitura protegida dos registros (para os agentes)
 function leitorJsonl(arquivo) {
   return (req, res) => {
-    if (!process.env.ADMIN_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_KEY) return res.sendStatus(401);
+    if (!process.env.ADMIN_KEY || !tokensIguais(req.headers['x-admin-key'], process.env.ADMIN_KEY)) return res.sendStatus(401);
     const file = path.join(DATA_DIR, arquivo);
     if (!fs.existsSync(file)) return res.json([]);
     const linhas = fs.readFileSync(file, 'utf8').trim().split('\n').slice(-100);
@@ -372,7 +363,26 @@ function lerJSON(arquivo, padrao) {
   } catch (e) { console.error('[staff] erro lendo', arquivo, e.message); return padrao; }
 }
 function salvarJSON(arquivo, obj) {
-  fs.writeFileSync(path.join(DATA_DIR, arquivo), JSON.stringify(obj, null, 2));
+  // Escrita atômica: grava num temporário e renomeia (rename é atômico no mesmo filesystem).
+  // Evita deixar o JSON truncado se o processo cair no meio do write (dados financeiros/usuários).
+  const destino = path.join(DATA_DIR, arquivo);
+  const tmp = destino + '.tmp-' + crypto.randomBytes(6).toString('hex');
+  fs.writeFileSync(tmp, JSON.stringify(obj, null, 2));
+  fs.renameSync(tmp, destino);
+}
+// Mutação serializada por arquivo (lock por coleção): evita lost-update quando um fluxo async lê,
+// dá await e só então grava. fn(atual) roda em fila por `arquivo`; se retornar valor, é gravado.
+const _jsonLocks = new Map();
+function atualizarJSON(arquivo, fn, padrao) {
+  const anterior = _jsonLocks.get(arquivo) || Promise.resolve();
+  const proximo = anterior.then(async () => {
+    const atual = lerJSON(arquivo, padrao);
+    const novo = await fn(atual);
+    if (novo !== undefined) salvarJSON(arquivo, novo);
+    return novo;
+  });
+  _jsonLocks.set(arquivo, proximo.then(() => {}, () => {})); // a fila continua viva mesmo após erro
+  return proximo;
 }
 const lerUsuarios = () => lerJSON('usuarios.json', []);
 const salvarUsuarios = (u) => salvarJSON('usuarios.json', u);
@@ -585,14 +595,14 @@ function requireAdmin(req, res, next) {
 // Publicação por agentes: aceita a PUBLISH_KEY (scripts locais) OU uma sessão válida.
 function requirePublishOrSession(req, res, next) {
   const key = req.headers['x-publish-key'];
-  if (process.env.PUBLISH_KEY && key && key === process.env.PUBLISH_KEY) { req.viaChave = true; return next(); }
+  if (process.env.PUBLISH_KEY && key && tokensIguais(key, process.env.PUBLISH_KEY)) { req.viaChave = true; return next(); }
   return requireAuth(req, res, next);
 }
 // Como requirePublishOrSession, mas a sessão precisa ser admin (a PUBLISH_KEY sempre passa).
 // Usado na config da Área do Hóspede (imóveis, serviços, fidelidade) p/ permitir manutenção via chave.
 function requirePublishOrAdmin(req, res, next) {
   const key = req.headers['x-publish-key'];
-  if (process.env.PUBLISH_KEY && key && key === process.env.PUBLISH_KEY) { req.viaChave = true; return next(); }
+  if (process.env.PUBLISH_KEY && key && tokensIguais(key, process.env.PUBLISH_KEY)) { req.viaChave = true; return next(); }
   return requireAuth(req, res, () => requireAdmin(req, res, next));
 }
 
@@ -607,7 +617,7 @@ app.post('/staff/api/login', (req, res) => {
   // o prompt de forma confiavel. Detecta o modo pela negociacao de conteudo: pedido JSON
   // (fetch antigo) -> mantem a resposta JSON; pedido de pagina (form nativo) -> redirect 303.
   const querJson = req.is('application/json') || req.accepts(['html', 'json']) === 'json';
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip';
+  const ip = req.ip || 'ip';
   if (loginBloqueado(ip)) {
     if (querJson) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
     return res.redirect(303, '/staff/?login_erro=2');
@@ -1865,32 +1875,11 @@ app.delete('/staff/api/manutencao/tecnicos/:id', requirePublishOrSession, (req, 
 // permitem que um script local (stays\backup-portal.ps1, tarefa diária) espelhe tudo.
 // Auth: ADMIN_KEY (header x-admin-key) OU sessão de admin.
 function requireAdminOuChave(req, res, next) {
-  if (process.env.ADMIN_KEY && req.headers['x-admin-key'] === process.env.ADMIN_KEY) return next();
+  if (process.env.ADMIN_KEY && tokensIguais(req.headers['x-admin-key'], process.env.ADMIN_KEY)) return next();
   return requireAuth(req, res, () => requireAdmin(req, res, next));
 }
 
-function backupWalk(dir, base, out) {
-  for (const nome of fs.readdirSync(dir)) {
-    const cheio = path.join(dir, nome);
-    const st = fs.statSync(cheio);
-    if (st.isDirectory()) backupWalk(cheio, base, out);
-    else out.push({ caminho: path.relative(base, cheio).split(path.sep).join('/'), tamanho: st.size, mtime: st.mtime.toISOString() });
-  }
-  return out;
-}
-
-app.get('/staff/api/backup/lista', requireAdminOuChave, (req, res) => {
-  try { res.json({ dataDir: true, arquivos: backupWalk(DATA_DIR, DATA_DIR, []) }); }
-  catch (e) { res.status(500).json({ erro: 'Falha ao listar: ' + e.message }); }
-});
-
-app.get('/staff/api/backup/arquivo', requireAdminOuChave, (req, res) => {
-  const rel = String(req.query.caminho || '');
-  const alvo = path.resolve(DATA_DIR, rel);
-  if (!alvo.startsWith(path.resolve(DATA_DIR) + path.sep)) return res.status(400).json({ erro: 'Caminho inválido.' });
-  if (!fs.existsSync(alvo) || !fs.statSync(alvo).isFile()) return res.status(404).json({ erro: 'Arquivo não encontrado.' });
-  res.sendFile(alvo);
-});
+// Backup do DATA_DIR (lista + arquivo) → extraído para nucleo/backup.js (montado no fim).
 
 // ============================ ONDA 3: Concierge, Contas a pagar, Prazos jurídicos, Push equipe ============================
 
@@ -2126,7 +2115,7 @@ function registrarAuditoria(req, acao, detalhe) {
       quem: req.viaChave ? 'agente/chave' : (req.user && (req.user.nome || req.user.email)) || 'desconhecido',
       email: (req.user && req.user.email) || '',
       acao, detalhe: String(detalhe || '').slice(0, 300),
-      ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0],
+      ip: (req.ip || '').toString(),
     });
   } catch (_) {}
 }
@@ -3947,9 +3936,9 @@ async function motorFidelidade(opts) {
     const hospedesTodos = lerHospedes();
     const porCliente = {}; const nomeP = {}; hospedesTodos.forEach(h => { if (h.staysClientId) porCliente[h.staysClientId] = h; nomeP[h.id] = h.nome || h.email || h.telefone || h.id; });
     const creditado = lerJSON('fidelidade-creditado.json', {});
-    const ls = lerLancamentos();
+    const novos = []; // acumula os novos lançamentos; anexados a uma leitura FRESCA sob lock no fim
     const preview = [];
-    const push = (l) => { if (simular) preview.push({ hospedeNome: nomeP[l.hospedeId] || l.hospedeId, tipo: l.tipo, rotulo: ROTULO_LANC[l.tipo] || l.tipo, valor: l.valor, descricao: l.descricao, validade: l.validade }); else ls.push(l); };
+    const push = (l) => { if (simular) preview.push({ hospedeNome: nomeP[l.hospedeId] || l.hospedeId, tipo: l.tipo, rotulo: ROTULO_LANC[l.tipo] || l.tipo, valor: l.valor, descricao: l.descricao, validade: l.validade }); else novos.push(l); };
     let n = 0;
     for (const r of reservas) {
       if (!['booked', 'reserved', 'contract'].includes(r.type)) continue;
@@ -3987,7 +3976,8 @@ async function motorFidelidade(opts) {
       n++;
     }
     if (simular) { return { simulado: true, estadias: n, lancamentos: preview, totalCredito: Math.round(preview.reduce((s, l) => s + l.valor, 0) * 100) / 100 }; }
-    salvarLancamentos(ls);
+    // lock por coleção: relê lancamentos FRESCO e anexa só os novos (não sobrescreve com snapshot velho)
+    if (novos.length) await atualizarJSON('lancamentos.json', prev => prev.concat(novos), []);
     salvarJSON('fidelidade-creditado.json', creditado);
     const exp = expirarCreditos();
     if (n || exp.expirados) console.log('[motor fidelidade] creditou', n, 'estadia(s); expirou', exp.expirados, 'crédito(s)');
@@ -4329,7 +4319,7 @@ app.use('/hospede/api', (req, res, next) => {
 
 // =========================== sessão do hóspede ===========================
 app.post('/hospede/api/login', (req, res) => {
-  const ip = 'h:' + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip');
+  const ip = 'h:' + (req.ip || 'ip');
   if (loginBloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
   const idRaw = String((req.body && (req.body.email != null ? req.body.email : req.body.identificador)) || '').trim();
   const senha = String((req.body && (req.body.senha != null ? req.body.senha : req.body.password)) || '');
@@ -4445,7 +4435,7 @@ function linkThrottle(ip) {
 }
 // Passo 1: hóspede informa o e-mail → se houver reserva/conta, enviamos um link. Resposta SEMPRE genérica (anti-enumeração).
 app.post('/hospede/api/registrar-email', async (req, res) => {
-  const ip = 'he:' + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip');
+  const ip = 'he:' + (req.ip || 'ip');
   const email = String((req.body && req.body.email) || '').trim().toLowerCase();
   if (!email.includes('@') || email.length > 200) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
   const generico = { ok: true, mensagem: 'Se houver uma reserva com esse e-mail, enviamos um link para você criar a sua senha e entrar. Confira a sua caixa de entrada (e o spam).' };
@@ -5257,6 +5247,10 @@ app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '7d'
 // ===== PWA dos produtos SaaS (app instalável no celular do assinante) =====
 // Manifest + service worker por produto (pwa.js). Registrado ANTES dos módulos
 // para que /livros/manifest.webmanifest vença a rota /livros/:slug da Livraria.
+// Núcleo modularizado (Projeto 2): analytics + captura de leads; backup do DATA_DIR
+try { require('./nucleo/analytics').montar(app, { DATA_DIR, tokensIguais, limiteTaxa, appendJsonl, upsertContato }); } catch (e) { console.error('[nucleo/analytics] falha ao montar:', e.message); }
+try { require('./nucleo/backup').montar(app, { DATA_DIR, requireAdminOuChave }); } catch (e) { console.error('[nucleo/backup] falha ao montar:', e.message); }
+
 try { require('./pwa').montar(app); } catch (e) { console.error('[pwa] falha ao montar módulo:', e.message); }
 
 // Raiz → destino conforme o subdomínio: staff.villelastay.com.br abre o Portal Staff;
@@ -5411,6 +5405,33 @@ try {
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
 app.use('/hospede', express.static(path.join(__dirname, 'hospede')));
+
+// Manutenção diária do DATA_DIR: snapshots consistentes (backup restaurável off-site) +
+// purga de eventos antigos (>90d nas tabelas de log de alto volume) + alarme de disco.
+// MANUTENCAO_OFF=1 desliga tudo; SNAPSHOTS_OFF/SNAPSHOTS_MANTER/PURGA_DIAS/DISK_LIMIT_MB ajustam.
+if (process.env.MANUTENCAO_OFF !== '1') {
+  const { snapshotTodos } = require('./snapshots');
+  const { purgarEventosAntigos, tamanhoDir } = require('./manutencao');
+  const LIMITE_MB = Number(process.env.DISK_LIMIT_MB) || 1024; // disco do Render = 1GB
+  const rodarManutencao = async () => {
+    try {
+      if (process.env.SNAPSHOTS_OFF !== '1') {
+        const feitos = snapshotTodos(DATA_DIR, { manter: Number(process.env.SNAPSHOTS_MANTER) || 7 });
+        if (feitos.length) console.log('[manutencao] snapshots:', feitos.length, 'banco(s) SQLite');
+      }
+      const purga = purgarEventosAntigos(DATA_DIR, { dias: Number(process.env.PURGA_DIAS) || 90 });
+      if (purga.totalApagado) console.log('[manutencao] purga:', purga.totalApagado, 'evento(s) antigos', JSON.stringify(purga.detalhe));
+      const usadoMB = Math.round(tamanhoDir(DATA_DIR) / 1048576);
+      const pct = Math.round((usadoMB / LIMITE_MB) * 100);
+      console.log(`[manutencao] disco: ${usadoMB}MB / ${LIMITE_MB}MB (${pct}%)`);
+      if (pct >= 80) {
+        try { await alertaAugusto(`Disco do backend em ${pct}% (${usadoMB}MB de ${LIMITE_MB}MB). Os 7 SaaS compartilham este volume — verifique/limpe antes de encher.`); } catch {}
+      }
+    } catch (e) { console.error('[manutencao] erro:', e.message); }
+  };
+  setTimeout(rodarManutencao, 60000).unref();             // ~1 min após subir (idempotente por dia)
+  setInterval(rodarManutencao, 24 * 3600 * 1000).unref(); // e a cada 24h
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Backend Villela Stay rodando na porta ${PORT}`));
