@@ -71,3 +71,7 @@ O sistema avisa quando um limite é atingido (por exemplo, número de usuários 
 ### Como falo com o suporte?
 
 Pelo formulário da página inicial ("Peça uma demonstração" / "Fale com a gente"): deixe nome, e-mail e a sua mensagem, e retornamos em até 1 dia útil.
+
+### Posso usar no celular como aplicativo?
+
+Sim. Abra o [painel](/vdocs/app) no navegador do celular e toque em **📲 Instalar app** (Android) — no iPhone use Compartilhar → "Adicionar à Tela de Início". Depois, ative o botão **🔔 Avisos** para receber notificações de documentos aguardando a sua aprovação direto no celular. Passo a passo completo no Manual do Usuário.

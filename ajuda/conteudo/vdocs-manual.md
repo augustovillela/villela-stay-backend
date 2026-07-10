@@ -149,3 +149,17 @@ Se o período de teste terminar sem assinatura, a conta fica bloqueada (os dados
 
 - **Formulário da página inicial** ("Peça uma demonstração" / "Fale com a gente"): deixe seus dados e retornamos em até 1 dia útil. Use-o também para dúvidas comerciais, upgrade para o Enterprise e questões de conta.
 - As **perguntas frequentes** na página inicial e o documento de FAQ complementam este manual.
+
+## Usar como app no celular (e receber avisos)
+
+O painel do Villela Docs Intelligence pode ser instalado como aplicativo no seu celular — sem loja de aplicativos e sempre atualizado:
+
+1. Abra o [painel](/vdocs/app) no navegador do celular e entre na sua conta.
+2. **Android (Chrome)**: toque no botão **📲 Instalar app** no topo do painel — ou aceite a oferta "Instalar app" do próprio navegador.
+3. **iPhone (Safari)**: toque em **Compartilhar** (o quadrado com a seta ↑) e escolha **"Adicionar à Tela de Início"**.
+
+O app abre em tela cheia, com o ícone do Villela Docs Intelligence na tela inicial do celular.
+
+### Notificações no celular
+
+Com o app instalado (ou direto no navegador), toque em **🔔 Avisos** no topo do painel e autorize as notificações. Você passa a receber um aviso no celular quando houver documentos aguardando a sua aprovação. Para desativar, toque no mesmo botão.

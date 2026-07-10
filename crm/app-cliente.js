@@ -63,7 +63,7 @@ function telaApp() {
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><b>${esc(ME.empresa.nome)}</b> <span class="tag">${esc(ME.entitlements.plano || '')}</span>
         <span class="sub" style="margin:0">· ${esc(ME.usuario.nome || ME.usuario.email)} (${esc(ME.usuario.papel)})</span></div>
-      <div style="display:flex;gap:8px"><button class="btn peq secund" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button><button class="btn peq secund" id="sair">Sair</button></div>
+      <div style="display:flex;gap:8px"><button class="btn peq secund" id="pwa-btn" style="display:none" title="Instalar o Villela CRM como app no celular">📲 Instalar app</button><button class="btn peq secund" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button><button class="btn peq secund" id="sair">Sair</button></div>
     </div>
     ${bloq ? `<div class="aviso">⚠️ Acesso bloqueado (${esc(ME.empresa.status)}). Regularize o plano na aba Conta.</div>` : ''}
     ${ME.empresa.status === 'trial' && ME.entitlements.trial_expira_em ? `<div class="aviso">🕒 Trial até ${dataBr(ME.entitlements.trial_expira_em)}. Assine na aba Conta para não perder o acesso.</div>` : ''}
@@ -71,7 +71,29 @@ function telaApp() {
   $('#sair').onclick = async () => { await api('POST', '/logout'); location.reload(); };
   document.querySelectorAll('.menu [data-v]').forEach(b => b.onclick = () => navegar(b.dataset.v));
   pintarBotaoPush();
+  pintarBotaoInstalar();
   navegar(bloq ? 'conta' : 'dash');
+}
+
+// ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
+let PWA_EVT = null; // beforeinstallprompt pode disparar antes de telaApp renderizar
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); PWA_EVT = e; pintarBotaoInstalar(); });
+function emModoApp() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+function ehIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+function pintarBotaoInstalar() {
+  const btn = $('#pwa-btn');
+  if (!btn) return;
+  if (emModoApp()) { btn.style.display = 'none'; return; }
+  if (PWA_EVT || ehIOS()) { btn.style.display = ''; btn.onclick = instalarApp; }
+}
+async function instalarApp() {
+  if (PWA_EVT) {
+    PWA_EVT.prompt();
+    const r = await PWA_EVT.userChoice.catch(() => null);
+    if (r && r.outcome === 'accepted') { PWA_EVT = null; pintarBotaoInstalar(); }
+    return;
+  }
+  alert('Para instalar no iPhone:\n1. Toque em Compartilhar (o quadrado com a seta ↑)\n2. Escolha "Adicionar à Tela de Início"');
 }
 
 // ---- notificações push do painel (PWA) — avisos de lead/proposta no celular ----

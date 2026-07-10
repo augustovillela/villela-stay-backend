@@ -86,3 +86,13 @@ relação dos seus pedidos pagos com os acessos — direto na sua caixa de entra
 - Tenha em mãos o **e-mail usado na compra** e, se possível, o número do pedido.
 
 Boa leitura!
+
+## Usar a loja como app no celular
+
+A Livraria Villela pode ficar na tela inicial do seu celular, como um app:
+
+1. Abra [livros.villelastay.com.br](/livros) no navegador do celular.
+2. **Android (Chrome)**: menu ⋮ → **"Adicionar à tela inicial"** (ou "Instalar app").
+3. **iPhone (Safari)**: **Compartilhar** (quadrado com a seta ↑) → **"Adicionar à Tela de Início"**.
+
+A loja abre em tela cheia, e os livros que você comprou ficam sempre à mão em [Minha biblioteca](/minha-biblioteca).

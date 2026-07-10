@@ -67,3 +67,7 @@ Provavelmente ela tem uma **dependência**: tarefas dependentes só podem ser co
 ### Como falo com o suporte?
 
 Pelo formulário da página inicial ("Peça uma demonstração" / "Fale com a gente"): deixe nome, e-mail e a sua mensagem, e nossa equipe retorna em breve.
+
+### Posso usar no celular como aplicativo?
+
+Sim. Abra o [painel](/vpe/app) no navegador do celular e toque em **📲 Instalar app** (Android) — no iPhone use Compartilhar → "Adicionar à Tela de Início". Depois, ative o botão **🔔 Avisos** para receber notificações de tarefas atribuídas a você e contratos/propostas aceitos pelo cliente no portal direto no celular. Passo a passo completo no Manual do Usuário.

@@ -164,3 +164,17 @@ Se o teste terminar sem assinatura, a conta fica bloqueada (com os dados preserv
 
 - **Formulário da página inicial** ("Peça uma demonstração" / "Fale com a gente"): deixe seus dados e a sua mensagem, e nossa equipe retorna em breve. Use-o também para dúvidas comerciais e para o plano Enterprise.
 - O documento de **Perguntas Frequentes** complementa este manual.
+
+## Usar como app no celular (e receber avisos)
+
+O painel do Villela Projects & Events pode ser instalado como aplicativo no seu celular — sem loja de aplicativos e sempre atualizado:
+
+1. Abra o [painel](/vpe/app) no navegador do celular e entre na sua conta.
+2. **Android (Chrome)**: toque no botão **📲 Instalar app** no topo do painel — ou aceite a oferta "Instalar app" do próprio navegador.
+3. **iPhone (Safari)**: toque em **Compartilhar** (o quadrado com a seta ↑) e escolha **"Adicionar à Tela de Início"**.
+
+O app abre em tela cheia, com o ícone do Villela Projects & Events na tela inicial do celular.
+
+### Notificações no celular
+
+Com o app instalado (ou direto no navegador), toque em **🔔 Avisos** no topo do painel e autorize as notificações. Você passa a receber um aviso no celular quando houver tarefas atribuídas a você e contratos/propostas aceitos pelo cliente no portal. Para desativar, toque no mesmo botão.

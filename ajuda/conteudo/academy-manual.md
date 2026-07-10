@@ -164,3 +164,17 @@ Pagamentos de compradores são processados pelo Mercado Pago. A plataforma nunca
 - **Chamados de suporte**: abra um ticket na aba **Conta** do painel, com assunto e categoria. As respostas chegam no próprio ticket e geram notificação no sininho.
 - **Denúncias**: usuários logados podem denunciar um produto diretamente na página dele; a equipe de moderação analisa cada caso.
 - **Políticas**: Termos de Uso, Política de Privacidade e Política de Reembolso estão no rodapé do site (produtores e afiliados têm termos específicos: Termos do Produtor e Termos do Afiliado).
+
+## Usar como app no celular (e receber avisos)
+
+O painel do Villela Academy pode ser instalado como aplicativo no seu celular — sem loja de aplicativos e sempre atualizado:
+
+1. Abra o [painel](/academy/app) no navegador do celular e entre na sua conta.
+2. **Android (Chrome)**: toque no botão **📲 Instalar app** no topo do painel — ou aceite a oferta "Instalar app" do próprio navegador.
+3. **iPhone (Safari)**: toque em **Compartilhar** (o quadrado com a seta ↑) e escolha **"Adicionar à Tela de Início"**.
+
+O app abre em tela cheia, com o ícone do Villela Academy na tela inicial do celular.
+
+### Notificações no celular
+
+Com o app instalado (ou direto no navegador), toque em **🔔 Avisos** no topo do painel e autorize as notificações. Você passa a receber um aviso no celular quando houver vendas, avisos da conta e respostas de suporte — tudo o que chega no sininho. Para desativar, toque no mesmo botão.

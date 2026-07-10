@@ -97,3 +97,7 @@ descrição e acompanhe o andamento por ali. Assuntos comerciais: formulário em
 
 O recurso de marca própria (white label) está disponível nos planos superiores — consulte a
 página de planos ou fale com o suporte.
+
+### Posso usar no celular como aplicativo?
+
+Sim. Abra o [painel](/juridico/app) no navegador do celular e toque em **📲 Instalar app** (Android) — no iPhone use Compartilhar → "Adicionar à Tela de Início". Depois, ative o botão **🔔 Avisos** para receber notificações de respostas nos seus tickets de suporte e mudanças no status da conta direto no celular. Passo a passo completo no Manual do Usuário.

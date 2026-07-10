@@ -75,6 +75,7 @@ ${og ? `<meta property="og:type" content="website"><meta property="og:title" con
 </div></header>
 ${corpo}
 <footer><div class="wrap"><b style="color:#fff">Villela Projects</b> · Projetos, processos e automações em um só lugar<br>
+<span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/vpe/ajuda/manual" style="color:var(--ambar)">abra o painel e instale</a></span><br>
 Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
 <a href="/vpe/login">Entrar</a> · <a href="/vpe/cadastro">Criar conta</a> · <a href="/vpe/ajuda">Ajuda</a></div></footer>
 </body></html>`;
@@ -244,7 +245,7 @@ main{flex:1;padding:26px;max-width:1080px}
 </style></head><body>
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vpe/app">${BRAND_LOCKUP}</a>
-  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#C7D0E2"></span> <button id="push-btn" style="display:none;background:none;border:1px solid #C7D0E2;color:#C7D0E2;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:13px;margin-left:14px" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
+  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#C7D0E2"></span> <button id="pwa-btn" style="display:none;background:none;border:1px solid #C7D0E2;color:#C7D0E2;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:13px;margin-left:14px" title="Instalar o Villela Projects como app no celular">📲 Instalar app</button> <button id="push-btn" style="display:none;background:none;border:1px solid #C7D0E2;color:#C7D0E2;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:13px;margin-left:14px" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
 </div></header>
 <div class="layout"><aside id="menu"></aside><main id="corpo"><p>Carregando…</p></main></div>
 <script>
@@ -260,6 +261,27 @@ async function api(m,c,b){const r=await fetch('/vpe/api'+c,{method:m,headers:{'C
   if(r.status===401){location.href='/vpe/login';throw new Error('sessão expirada');}
   if(!r.ok)throw new Error(d.erro||('HTTP '+r.status));return d;}
 async function sair(){await api('POST','/logout').catch(()=>{});location.href='/vpe/login';return false;}
+
+// ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
+let PWA_EVT=null; // beforeinstallprompt pode disparar antes do boot renderizar
+window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();PWA_EVT=e;pintarBotaoInstalar();});
+function emModoApp(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;}
+function ehIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent);}
+function pintarBotaoInstalar(){
+  const btn=$('pwa-btn');
+  if(!btn)return;
+  if(emModoApp()){btn.style.display='none';return;}
+  if(PWA_EVT||ehIOS()){btn.style.display='';btn.onclick=instalarApp;}
+}
+async function instalarApp(){
+  if(PWA_EVT){
+    PWA_EVT.prompt();
+    const r=await PWA_EVT.userChoice.catch(()=>null);
+    if(r&&r.outcome==='accepted'){PWA_EVT=null;pintarBotaoInstalar();}
+    return;
+  }
+  alert('Para instalar no iPhone:\\n1. Toque em Compartilhar (o quadrado com a seta ↑)\\n2. Escolha "Adicionar à Tela de Início"');
+}
 
 // ---- notificações push do painel (PWA) — avisos de tarefas e negócios no celular ----
 function pushOk(){return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);}
@@ -326,6 +348,7 @@ async function boot(){
   $('quem').textContent=S.me.user.nome+' · '+S.me.tenant.nome+' ('+S.me.papel_nome+')';
   menu();
   pintarBotaoPush();
+  pintarBotaoInstalar();
   if(S.me.bloqueado){$('corpo').innerHTML='<div class="erro"><b>Conta bloqueada.</b> '+(S.me.tenant.status==='suspensa'?'Sua conta está suspensa — fale com a Villela.':'Seu período de teste terminou — fale com a gente pela página inicial.')+'</div>';return;}
   ir('dashboard');
 }

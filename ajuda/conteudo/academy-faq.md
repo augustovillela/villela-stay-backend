@@ -67,3 +67,7 @@ Estando logado, use a opção de **denúncia** na página do produto e escolha o
 ### Como falo com o suporte?
 
 Abra um chamado na aba **Conta** do painel, com assunto e categoria. As respostas chegam no próprio ticket e você é avisado pela notificação no sininho.
+
+### Posso usar no celular como aplicativo?
+
+Sim. Abra o [painel](/academy/app) no navegador do celular e toque em **📲 Instalar app** (Android) — no iPhone use Compartilhar → "Adicionar à Tela de Início". Depois, ative o botão **🔔 Avisos** para receber notificações de vendas, avisos da conta e respostas de suporte — tudo o que chega no sininho direto no celular. Passo a passo completo no Manual do Usuário.

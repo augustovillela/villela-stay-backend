@@ -67,3 +67,7 @@ Sim. Cada empresa assinante tem seus dados logicamente isolados, e as permissõe
 ### Como falo com o suporte?
 
 Assinantes abrem **chamados (tickets) no próprio painel** e acompanham as respostas por lá. Antes de assinar — ou para assuntos comerciais como Enterprise e migração — use o formulário **"Fale com a gente"** na página do produto.
+
+### Posso usar no celular como aplicativo?
+
+Sim. Abra o [painel](/crm/app) no navegador do celular e toque em **📲 Instalar app** (Android) — no iPhone use Compartilhar → "Adicionar à Tela de Início". Depois, ative o botão **🔔 Avisos** para receber notificações de novos leads que entram pelo formulário e propostas aceitas ou recusadas pelo cliente direto no celular. Passo a passo completo no Manual do Usuário.

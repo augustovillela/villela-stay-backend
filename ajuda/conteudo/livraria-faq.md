@@ -92,3 +92,7 @@ serviços de envio/e-mail — e não vendemos dados. Detalhes na Política de Pr
 
 Pelo botão **Falar no WhatsApp**, presente em toda a loja, ou pela página de suporte em
 `/suporte-livros`. Tenha em mãos o e-mail usado na compra e o número do pedido.
+
+### Posso usar a loja no celular como aplicativo?
+
+Sim. Abra a loja no navegador do celular e use **"Adicionar à tela inicial"** (Android, menu ⋮) ou Compartilhar → **"Adicionar à Tela de Início"** (iPhone). A loja abre como app, com a sua biblioteca de compras.

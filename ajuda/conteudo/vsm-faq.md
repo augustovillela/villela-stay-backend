@@ -98,3 +98,7 @@ página `/gestao#contato`.
 
 Sim. Os dados pessoais são tratados conforme a Lei 13.709/2018 (LGPD), apenas para a
 prestação do serviço, com conexão segura (HTTPS) e acesso restrito por conta.
+
+### Posso usar no celular como aplicativo?
+
+Sim. Abra o [painel](/gestao/app) no navegador do celular e toque em **📲 Instalar app** (Android) — no iPhone use Compartilhar → "Adicionar à Tela de Início". Depois, ative o botão **🔔 Avisos** para receber notificações de novas reservas — lançadas no sistema ou importadas da sua conta Stays direto no celular. Passo a passo completo no Manual do Usuário.

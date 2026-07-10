@@ -138,6 +138,7 @@ function landingHTML() {
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
     <footer>Villela CRM · Relacionamento que aproxima. Processos que convertem. · <a href="/crm/app" style="color:var(--villela-gold)">Painel do cliente</a> · <a href="/crm/ajuda" style="color:var(--villela-gold)">Ajuda</a>
+      <br><span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/crm/ajuda/manual" style="color:var(--villela-gold)">abra o painel e instale</a></span>
       <br><span style="opacity:.8">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/crm/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({

@@ -154,3 +154,17 @@ acesso até a regularização; os dados do escritório são preservados.
   migração de outro sistema, dúvidas antes de assinar).
 
 Boa advocacia — com prazos fora do improviso.
+
+## Usar como app no celular (e receber avisos)
+
+O painel do Villela Legal pode ser instalado como aplicativo no seu celular — sem loja de aplicativos e sempre atualizado:
+
+1. Abra o [painel](/juridico/app) no navegador do celular e entre na sua conta.
+2. **Android (Chrome)**: toque no botão **📲 Instalar app** no topo do painel — ou aceite a oferta "Instalar app" do próprio navegador.
+3. **iPhone (Safari)**: toque em **Compartilhar** (o quadrado com a seta ↑) e escolha **"Adicionar à Tela de Início"**.
+
+O app abre em tela cheia, com o ícone do Villela Legal na tela inicial do celular.
+
+### Notificações no celular
+
+Com o app instalado (ou direto no navegador), toque em **🔔 Avisos** no topo do painel e autorize as notificações. Você passa a receber um aviso no celular quando houver respostas nos seus tickets de suporte e mudanças no status da conta. Para desativar, toque no mesmo botão.

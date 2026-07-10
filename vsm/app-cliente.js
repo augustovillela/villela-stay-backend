@@ -60,15 +60,38 @@
       '<button class="btn g peq" data-nav="plano">💳 Plano</button><button class="btn g peq" data-nav="uso">📈 Uso</button><button class="btn g peq" data-nav="suporte">🎧 Suporte</button>';
     root().innerHTML = '<div class="card"><h3>' + esc(me.operacao.nome) + ' <span class="tag">' + esc(ent.plano || '—') + '</span></h3>' + alerta +
       '<div class="menu" id="nav">' + nav + '</div>' +
-      '<p class="sub">Olá, ' + esc(me.usuario.nome || me.usuario.email) + ' · <button class="btn secund peq" id="push-btn" style="display:none" title="Receber avisos de novas reservas no celular">🔔 Avisos</button> <a href="#" id="b-sair">sair</a></p></div><div id="c"></div>';
+      '<p class="sub">Olá, ' + esc(me.usuario.nome || me.usuario.email) + ' · <button class="btn secund peq" id="pwa-btn" style="display:none" title="Instalar o Villela Stay Manager como app no celular">📲 Instalar app</button> <button class="btn secund peq" id="push-btn" style="display:none" title="Receber avisos de novas reservas no celular">🔔 Avisos</button> <a href="#" id="b-sair">sair</a></p></div><div id="c"></div>';
     el('b-sair').onclick = function (e) { e.preventDefault(); sair(); };
     pintarBotaoPush();
+    pintarBotaoInstalar();
     var map = { painel: vPainel, plano: vPlano, uso: vUso, suporte: vSuporte };
     TABS.forEach(function (t) { map[t[0]] = t[2]; });
     Array.prototype.forEach.call(document.querySelectorAll('#nav [data-nav]'), function (b) {
       b.onclick = function () { (map[b.getAttribute('data-nav')] || vPainel)(); };
     });
     (liberado ? vPainel : vPlano)();
+  }
+
+  // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
+  var PWA_EVT = null; // beforeinstallprompt pode disparar antes de render() montar o painel
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); PWA_EVT = e; pintarBotaoInstalar(); });
+  function emModoApp() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+  function ehIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+  function pintarBotaoInstalar() {
+    var btn = el('pwa-btn');
+    if (!btn) return;
+    if (emModoApp()) { btn.style.display = 'none'; return; }
+    if (PWA_EVT || ehIOS()) { btn.style.display = ''; btn.onclick = instalarApp; }
+  }
+  function instalarApp() {
+    if (PWA_EVT) {
+      PWA_EVT.prompt();
+      PWA_EVT.userChoice.catch(function () { return null; }).then(function (r) {
+        if (r && r.outcome === 'accepted') { PWA_EVT = null; pintarBotaoInstalar(); }
+      });
+      return;
+    }
+    alert('Para instalar no iPhone:\n1. Toque em Compartilhar (o quadrado com a seta ↑)\n2. Escolha "Adicionar à Tela de Início"');
   }
 
   // ---- notificações push do painel (PWA) — avisos de novas reservas no celular ----

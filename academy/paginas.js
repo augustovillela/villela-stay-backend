@@ -120,6 +120,7 @@ function landingHTML() {
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
+      <span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/academy/ajuda/manual" style="color:var(--villela-gold)">abra o painel e instale</a></span><br>
       Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12<br>
       <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/ajuda">Ajuda</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/app">Entrar</a>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
@@ -168,6 +169,7 @@ function shellPublico({ titulo, descricao, url, corpo, imagem }) {
     <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
+      <span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/academy/ajuda/manual" style="color:var(--villela-gold)">abra o painel e instale</a></span><br>
       Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12<br>
       <a href="/academy/marketplace">Marketplace</a> · <a href="/academy/ajuda">Ajuda</a> · <a href="/academy/termos">Termos</a> · <a href="/academy/privacidade">Privacidade</a> · <a href="/academy/reembolso">Reembolso</a> ·
       <a href="/academy/termos-produtor">Produtores</a> · <a href="/academy/termos-afiliado">Afiliados</a></footer></body></html>`;

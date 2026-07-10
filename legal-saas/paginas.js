@@ -138,6 +138,7 @@ function landingHTML() {
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
     <footer>Villela Legal · Gestão jurídica inteligente · <a href="/juridico/app" style="color:var(--villela-gold)">Painel do cliente</a> · <a href="/juridico/ajuda" style="color:var(--villela-gold)">Ajuda</a>
+      <br><span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/juridico/ajuda/manual" style="color:var(--villela-gold)">abra o painel e instale</a></span>
       <br><span style="font-size:.85em;opacity:.85">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/juridico/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -197,8 +198,10 @@ function appHTML() {
       app.innerHTML='<div class="card"><h3>'+esc(me.escritorio.nome)+' <span class="tag">'+esc(ent.plano||'—')+'</span></h3>'+alerta
         +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
         +((me.escritorio.status==='ativa'||me.escritorio.status==='trial')?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')
+        +'<button class="btn g" id="pwa-btn" style="display:none" title="Instalar o Villela Legal como app no celular">📲 Instalar app</button>'
         +'<button class="btn g" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button></div>'
         +'<p class="sub">Olá, '+esc(me.usuario.nome||me.usuario.email)+' · <a href="#" onclick="sair();return false">sair</a></p></div><div id="c"></div>';
+      pintarBotaoInstalar();
       pintarBotaoPush();
       vPlano();}
     window.home=home;const c=()=>document.getElementById('c');
@@ -240,6 +243,19 @@ function appHTML() {
       }catch(e){alert(e.message)}
       pintarBotaoPush()}
     window.pintarBotaoPush=pintarBotaoPush;window.alternarPush=alternarPush;
+    // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
+    let PWA_EVT=null; // beforeinstallprompt pode disparar antes de home() renderizar
+    window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();PWA_EVT=e;pintarBotaoInstalar()});
+    function emModoApp(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
+    function ehIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)}
+    function pintarBotaoInstalar(){const btn=document.getElementById('pwa-btn');if(!btn)return;
+      if(emModoApp()){btn.style.display='none';return}
+      if(PWA_EVT||ehIOS()){btn.style.display='';btn.onclick=instalarApp}}
+    async function instalarApp(){
+      if(PWA_EVT){PWA_EVT.prompt();const r=await PWA_EVT.userChoice.catch(()=>null);
+        if(r&&r.outcome==='accepted'){PWA_EVT=null;pintarBotaoInstalar()}return}
+      alert('Para instalar no iPhone:\\n1. Toque em Compartilhar (o quadrado com a seta ↑)\\n2. Escolha "Adicionar à Tela de Início"')}
+    window.pintarBotaoInstalar=pintarBotaoInstalar;window.instalarApp=instalarApp;
     home();`);
 }
 

@@ -83,6 +83,7 @@ ${HEAD_MARCA}${GA}
 ${corpo}
 <footer><div class="wrap">
   <b style="color:#fff">Villela Docs</b> · Inteligência documental para empresas<br>
+  <span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/vdocs/ajuda/manual" style="color:var(--ciano)">abra o painel e instale</a></span><br>
   Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12 · Brasília-DF<br>
   <a href="/vdocs/precos">Planos</a> · <a href="/vdocs/login">Entrar</a> · <a href="/vdocs/cadastro">Criar conta</a> · <a href="/vdocs/ajuda">Ajuda</a>
   <div style="margin-top:8px;font-size:12px">Seus documentos são privados: armazenamento isolado por empresa, criptografia em trânsito e trilha de auditoria completa (LGPD).</div>
@@ -344,7 +345,7 @@ main{flex:1;padding:26px;max-width:1000px}
 </style></head><body>
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vdocs/app">${MARCA}</a>
-  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c6d0e2"></span> <button id="push-btn" style="display:none;margin-left:14px;background:none;border:1px solid #3a4a66;color:#c6d0e2;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
+  <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c6d0e2"></span> <button id="pwa-btn" style="display:none;margin-left:14px;background:none;border:1px solid #3a4a66;color:#c6d0e2;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit" title="Instalar o Villela Docs como app no celular">📲 Instalar app</button> <button id="push-btn" style="display:none;margin-left:14px;background:none;border:1px solid #3a4a66;color:#c6d0e2;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
 </div></header>
 <div class="layout"><aside id="menu"></aside><main id="corpo"><p>Carregando…</p></main></div>
 <script>
@@ -358,6 +359,25 @@ async function api(m,c,b){const r=await fetch('/vdocs/api'+c,{method:m,headers:{
   if(r.status===401){location.href='/vdocs/login';throw new Error('sessão expirada');}
   if(!r.ok)throw new Error(d.erro||('HTTP '+r.status));return d;}
 async function sair(){await api('POST','/logout').catch(()=>{});location.href='/vdocs/login';return false;}
+
+// ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
+let PWA_EVT=null; // beforeinstallprompt pode disparar antes do boot renderizar
+window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();PWA_EVT=e;pintarBotaoInstalar();});
+function emModoApp(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;}
+function ehIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent);}
+function pintarBotaoInstalar(){
+  const btn=$('pwa-btn');
+  if(!btn)return;
+  if(emModoApp()){btn.style.display='none';return;}
+  if(PWA_EVT||ehIOS()){btn.style.display='';btn.onclick=instalarApp;}}
+async function instalarApp(){
+  if(PWA_EVT){
+    PWA_EVT.prompt();
+    const r=await PWA_EVT.userChoice.catch(()=>null);
+    if(r&&r.outcome==='accepted'){PWA_EVT=null;pintarBotaoInstalar();}
+    return;
+  }
+  alert('Para instalar no iPhone:\\n1. Toque em Compartilhar (o quadrado com a seta ↑)\\n2. Escolha "Adicionar à Tela de Início"');}
 
 // ---- notificações push do painel (PWA) — avisos de aprovação no celular ----
 function pushOk(){return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);}
@@ -413,6 +433,7 @@ async function boot(){
   S.me=await api('GET','/me');
   $('quem').textContent=S.me.user.nome+' · '+S.me.tenant.nome+' ('+S.me.papel_nome+')';
   menu();
+  pintarBotaoInstalar();
   pintarBotaoPush().catch(()=>{});
   if(S.me.bloqueado){$('corpo').innerHTML='<div class="erro"><b>Conta bloqueada.</b> '+(S.me.tenant.status==='suspensa'?'Sua conta está suspensa — fale com a Villela Docs.':'Seu período de teste terminou — escolha um plano para continuar (fale com a gente pelo formulário da página inicial).')+'</div>';return;}
   ir('dashboard');

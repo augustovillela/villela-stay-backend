@@ -97,6 +97,7 @@
       bannerVerif + '<div id="sino-box" style="display:none"></div>' +
       '<div class="menu" id="nav">' + nav + '</div>' +
       '<p class="sub" style="text-align:left;margin:0">' + esc(me.usuario.email) + ' · <a href="#" id="b-sair">sair</a>' +
+      ' <button class="btn g peq" id="pwa-btn" style="display:none;margin-left:8px" title="Instalar a Villela Academy como app no celular">📲 Instalar app</button>' +
       ' <button class="btn g peq" id="push-btn" style="display:none;margin-left:8px" title="Notificações no celular">🔔 Avisos</button></p></div><div id="c"></div>';
     el('b-sair').onclick = function (e) { e.preventDefault(); sair(); };
     if (el('b-reenv')) el('b-reenv').onclick = function (e) {
@@ -125,7 +126,30 @@
       b.onclick = function () { (map[b.getAttribute('data-nav')] || vAluno)(); };
     });
     pintarBotaoPush();
+    pintarBotaoInstalar();
     vAluno();
+  }
+
+  // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
+  var PWA_EVT = null; // beforeinstallprompt pode disparar antes do render()
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); PWA_EVT = e; pintarBotaoInstalar(); });
+  function emModoApp() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+  function ehIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+  function pintarBotaoInstalar() {
+    var btn = el('pwa-btn');
+    if (!btn) return;
+    if (emModoApp()) { btn.style.display = 'none'; return; }
+    if (PWA_EVT || ehIOS()) { btn.style.display = ''; btn.onclick = instalarApp; }
+  }
+  function instalarApp() {
+    if (PWA_EVT) {
+      PWA_EVT.prompt();
+      PWA_EVT.userChoice
+        .then(function (r) { if (r && r.outcome === 'accepted') { PWA_EVT = null; pintarBotaoInstalar(); } })
+        .catch(function () {});
+      return;
+    }
+    alert('Para instalar no iPhone:\n1. Toque em Compartilhar (o quadrado com a seta ↑)\n2. Escolha "Adicionar à Tela de Início"');
   }
 
   // ---- notificações push do painel (PWA) — espelham o sininho no celular ----
