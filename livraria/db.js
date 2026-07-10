@@ -40,6 +40,24 @@ try {
     WHERE slug = 'pilotagem-de-drones-na-pratica-dji-mini-3' AND capa_url LIKE '%drive.google.com%'`).run();
 } catch (e) { console.error('[livraria] fix capa:', e.message); }
 
+// Correção pontual (idempotente): capa oficial do "Claude AI na Prática" hospedada em
+// /assets/livros/ (só preenche se ainda estiver sem capa) + conserto do typo "Prátcia"
+// nos textos do livro (REPLACE é no-op quando não há ocorrência; slug preservado).
+try {
+  db.prepare(`UPDATE books SET
+      capa_url = '/assets/livros/claude-ai-na-pratica.jpg',
+      og_image = 'https://livros.villelastay.com.br/assets/livros/claude-ai-na-pratica.jpg'
+    WHERE slug = 'claude-ai-na-pratcia' AND (capa_url IS NULL OR capa_url = '')`).run();
+  db.prepare(`UPDATE books SET
+      titulo = REPLACE(titulo, 'Prátcia', 'Prática'),
+      subtitulo = REPLACE(subtitulo, 'Prátcia', 'Prática'),
+      descricao_curta = REPLACE(descricao_curta, 'Prátcia', 'Prática'),
+      descricao_longa = REPLACE(descricao_longa, 'Prátcia', 'Prática'),
+      seo_title = REPLACE(seo_title, 'Prátcia', 'Prática'),
+      seo_description = REPLACE(seo_description, 'Prátcia', 'Prática')
+    WHERE slug = 'claude-ai-na-pratcia'`).run();
+} catch (e) { console.error('[livraria] fix capa claude:', e.message); }
+
 // ---- helpers ----
 const nowISO = () => new Date().toISOString();
 // ID curto, opaco e url-safe (mesmo estilo do server.js: base64url).
