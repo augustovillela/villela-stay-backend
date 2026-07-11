@@ -24,6 +24,7 @@ const MODULOS = [
   ['financeiro', 'Financeiro e repasses'], ['hospede', 'Comunicação e concierge'],
   ['precificacao', 'Precificação (revenue)'], ['contratos', 'Contratos de temporada'],
   ['relatorios', 'Relatórios e dashboards'], ['ia', 'IA (assistente)'],
+  ['estoque', 'Estoque e insumos'],
 ];
 const MODULOS_KEYS = MODULOS.map(m => m[0]);
 
@@ -55,15 +56,15 @@ const PLANOS_SEED = [
     slug: 'starter', nome: 'Starter', descricao: 'Para o anfitrião com poucos imóveis começando a profissionalizar.',
     preco_centavos: 9900, ordem: 1,
     limites: { imoveis: 3, usuarios: 2, reservas_mes: 60, ia_consultas_mes: 0, armazenamento_mb: 2048, workspaces: 1 },
-    modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'relatorios'],
+    modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'relatorios', 'estoque'],
     flags: { ia_direta: false, api_publica: false, white_label: false, canais_ilimitados: false, dominio_proprio: false },
   },
   {
     slug: 'pro', nome: 'Pro', descricao: 'Operação em crescimento: IA, precificação, concierge e contratos.',
     preco_centavos: 24900, ordem: 2,
     limites: { imoveis: 10, usuarios: 5, reservas_mes: 300, ia_consultas_mes: 300, armazenamento_mb: 10240, workspaces: 2 },
-    modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'hospede', 'precificacao', 'contratos', 'relatorios', 'ia'],
-    flags: { ia_direta: true, api_publica: false, white_label: false, canais_ilimitados: true, dominio_proprio: false },
+    modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'hospede', 'precificacao', 'contratos', 'relatorios', 'ia', 'estoque'],
+    flags: { ia_direta: true, api_publica: true, white_label: false, canais_ilimitados: true, dominio_proprio: false },
   },
   {
     slug: 'business', nome: 'Business', descricao: 'Gestora estabelecida: tudo liberado, API, marca própria e domínio.',

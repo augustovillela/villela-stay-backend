@@ -348,3 +348,63 @@ CREATE TABLE IF NOT EXISTS push_subs (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_push_subs_tenant ON push_subs(tenant_id);
+
+-- ---- TOKENS DE API do assinante (flag api_publica) ----
+-- Token fixo p/ integrações do cliente (scripts, Claude Code) sem depender do
+-- cookie vsm_sess. Guardamos só o hash SHA-256; o token é exibido UMA vez.
+CREATE TABLE IF NOT EXISTS app_api_tokens (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL,         -- tenant_users.id que o token personifica
+  nome        TEXT DEFAULT '',       -- rótulo ("Claude Code", "planilha"...)
+  token_hash  TEXT NOT NULL UNIQUE,  -- sha256 hex do token
+  prefixo     TEXT DEFAULT '',       -- 'vsm_ab12…' p/ identificação visual
+  criado_em   TEXT NOT NULL,
+  ultimo_uso  TEXT DEFAULT '',
+  revogado_em TEXT DEFAULT ''        -- '' = ativo
+);
+CREATE INDEX IF NOT EXISTS idx_app_tokens_tenant ON app_api_tokens(tenant_id);
+
+-- ---- ESTOQUE (módulo 'estoque'): insumos p/ receber o hóspede ----
+CREATE TABLE IF NOT EXISTS app_estoque (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  nome          TEXT NOT NULL,
+  categoria     TEXT DEFAULT 'limpeza', -- limpeza|pessoal|outro
+  unidade       TEXT DEFAULT 'un',
+  quantidade    INTEGER DEFAULT 0,
+  minimo        INTEGER DEFAULT 0,      -- abaixo disso = em falta (alerta)
+  por_reserva   INTEGER DEFAULT 0,      -- consumo padrão na baixa por reserva
+  obs           TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_app_estoque_tenant ON app_estoque(tenant_id);
+
+CREATE TABLE IF NOT EXISTS app_estoque_mov (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  item_id    TEXT NOT NULL,
+  delta      INTEGER NOT NULL,       -- + entrada / − baixa
+  motivo     TEXT DEFAULT '',        -- compra|reserva|ajuste|perda
+  reserva_id TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_app_estoque_mov ON app_estoque_mov(tenant_id, item_id);
+
+-- ---- WEBHOOKS de eventos do app (flag api_publica) ----
+-- Entrega assíncrona (fire-and-forget c/ HMAC) de reserva.criada/confirmada/
+-- cancelada/concluida e estoque.baixo para integrações do assinante.
+CREATE TABLE IF NOT EXISTS app_webhooks (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  url          TEXT NOT NULL,
+  segredo      TEXT NOT NULL,        -- HMAC-SHA256 do corpo (X-VSM-Assinatura)
+  eventos      TEXT DEFAULT '[]',    -- JSON; [] = todos os eventos
+  ativo        INTEGER DEFAULT 1,
+  falhas       INTEGER DEFAULT 0,    -- consecutivas; 20+ desativa sozinho
+  ultimo_envio TEXT DEFAULT '',
+  ultimo_erro  TEXT DEFAULT '',
+  criado_em    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_app_webhooks_tenant ON app_webhooks(tenant_id);

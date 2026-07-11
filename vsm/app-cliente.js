@@ -30,6 +30,7 @@
     ['canais', '🔗 Canais', vCanais],
     ['limpeza', '🧹 Limpezas', vLimpezas], ['manutencao', '🛠️ Manutenção', vManutencao],
     ['financeiro', '💰 Financeiro', vFinanceiro], ['hospede', '👥 Hóspedes', vHospedes],
+    ['estoque', '📦 Estoque', vEstoque],
   ];
 
   // ---------------- login / boot ----------------
@@ -57,14 +58,16 @@
     var tabs = liberado ? TABS.filter(function (t) { return ent.modulos.indexOf(t[0]) >= 0; }) : [];
     var nav = '<button class="btn g peq" data-nav="painel">📊 Painel</button>' +
       tabs.map(function (t) { return '<button class="btn g peq" data-nav="' + t[0] + '">' + t[1] + '</button>'; }).join('') +
-      '<button class="btn g peq" data-nav="plano">💳 Plano</button><button class="btn g peq" data-nav="uso">📈 Uso</button><button class="btn g peq" data-nav="suporte">🎧 Suporte</button>';
+      '<button class="btn g peq" data-nav="plano">💳 Plano</button><button class="btn g peq" data-nav="uso">📈 Uso</button>' +
+      (liberado ? '<button class="btn g peq" data-nav="integracoes">🔌 API</button>' : '') +
+      '<button class="btn g peq" data-nav="suporte">🎧 Suporte</button>';
     root().innerHTML = '<div class="card"><h3>' + esc(me.operacao.nome) + ' <span class="tag">' + esc(ent.plano || '—') + '</span></h3>' + alerta +
       '<div class="menu" id="nav">' + nav + '</div>' +
       '<p class="sub">Olá, ' + esc(me.usuario.nome || me.usuario.email) + ' · <button class="btn secund peq" id="pwa-btn" style="display:none" title="Instalar o Villela Stay Manager como app no celular">📲 Instalar app</button> <button class="btn secund peq" id="push-btn" style="display:none" title="Receber avisos de novas reservas no celular">🔔 Avisos</button> <a href="#" id="b-sair">sair</a></p></div><div id="c"></div>';
     el('b-sair').onclick = function (e) { e.preventDefault(); sair(); };
     pintarBotaoPush();
     pintarBotaoInstalar();
-    var map = { painel: vPainel, plano: vPlano, uso: vUso, suporte: vSuporte };
+    var map = { painel: vPainel, plano: vPlano, uso: vUso, suporte: vSuporte, integracoes: vIntegracoes };
     TABS.forEach(function (t) { map[t[0]] = t[2]; });
     Array.prototype.forEach.call(document.querySelectorAll('#nav [data-nav]'), function (b) {
       b.onclick = function () { (map[b.getAttribute('data-nav')] || vPainel)(); };
@@ -147,6 +150,7 @@
       setView('<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0">' +
         kpi('Imóveis', p.imoveis) + kpi('Reservas ativas', p.reservas_ativas) + kpi('Check-ins 7d', p.checkins_7d) +
         kpi('Check-outs 7d', p.checkouts_7d) + kpi('Limpezas pendentes', p.limpezas_pendentes) + kpi('Manutenção aberta', p.manutencao_aberta) +
+        kpi('Etapas pendentes 7d', p.etapas_pendentes || 0) + kpi('Estoque em falta', p.estoque_em_falta || 0) +
         kpi('Receita do mês', brl(f.receita_centavos)) + kpi('Resultado do mês', brl(f.resultado_centavos)) + '</div>' +
         '<div class="card"><h3>Próximas reservas</h3>' + (p.proximas.length
           ? '<table><tr><th>Imóvel</th><th>Hóspede</th><th>Check-in</th><th>Check-out</th><th></th></tr>' +
@@ -178,13 +182,18 @@
     }).catch(erroBox);
   }
 
-  // ---------------- reservas ----------------
+  // ---------------- reservas (com checklist de etapas) ----------------
+  var ckAberta = null; // reserva com o checklist expandido
   function vReservas() {
     Promise.all([app('GET', '/reservas'), app('GET', '/imoveis')]).then(function (rs) {
       var reservas = rs[0].reservas, imoveis = rs[1].imoveis;
       var linhas = reservas.map(function (r) {
+        var prog = (r.checklist_feitas || 0) + '/' + (r.checklist_total || 10);
+        var completo = r.checklist_feitas >= r.checklist_total;
         return '<tr><td>' + esc(r.imovel_nome || '—') + '</td><td>' + esc(r.hospede_nome || '—') + '</td><td>' + dt(r.checkin) + '→' + dt(r.checkout) + '</td><td>' + brl(r.valor_centavos) + '</td><td><span class="tag">' + esc(r.canal) + '</span></td>' +
-          '<td><span class="tag">' + esc(r.status) + '</span></td><td>' + (r.status !== 'cancelada' && r.status !== 'concluida' ? '<button class="btn secund peq" data-cc="' + r.id + '">Concluir</button> <button class="btn secund peq" data-cx="' + r.id + '">Cancelar</button>' : '') + '</td></tr>';
+          '<td><span class="tag">' + esc(r.status) + '</span></td>' +
+          '<td><button class="btn secund peq" data-ck="' + r.id + '" title="Etapas da reserva">' + (completo ? '✅ ' : '☑️ ') + prog + '</button></td>' +
+          '<td>' + (r.status !== 'cancelada' && r.status !== 'concluida' ? '<button class="btn secund peq" data-cc="' + r.id + '">Concluir</button> <button class="btn secund peq" data-cx="' + r.id + '">Cancelar</button>' : '') + '</td></tr>';
       }).join('');
       setView('<div class="card"><h3>Nova reserva</h3>' + (imoveis.length ? '' : '<p class="aviso">Cadastre um imóvel primeiro (aba Imóveis).</p>') +
         '<div class="hi-grid"><label>Imóvel <select id="rv-im">' + imovelOptions(imoveis) + '</select></label>' +
@@ -193,7 +202,8 @@
         '<label>Valor total (R$) <input id="rv-val" type="number" step="0.01"></label>' +
         '<label>Canal <select id="rv-can"><option>direto</option><option>airbnb</option><option>booking</option><option>vrbo</option><option>decolar</option><option>outro</option></select></label></div>' +
         '<button class="btn" id="b-rv">Lançar reserva</button><p id="rv-msg" class="erro"></p><p class="sub">Anti-overbooking automático por imóvel.</p></div>' +
-        '<div class="card"><h3>Reservas (' + reservas.length + ')</h3>' + (reservas.length ? '<table><tr><th>Imóvel</th><th>Hóspede</th><th>Período</th><th>Valor</th><th>Canal</th><th>Status</th><th></th></tr>' + linhas + '</table>' : '<p class="sub">Nenhuma reserva ainda.</p>') + '</div>');
+        '<div id="ck-panel"></div>' +
+        '<div class="card"><h3>Reservas (' + reservas.length + ')</h3>' + (reservas.length ? '<table><tr><th>Imóvel</th><th>Hóspede</th><th>Período</th><th>Valor</th><th>Canal</th><th>Status</th><th>Etapas</th><th></th></tr>' + linhas + '</table>' : '<p class="sub">Nenhuma reserva ainda.</p>') + '</div>');
       el('b-rv').onclick = function () {
         el('rv-msg').textContent = '';
         app('POST', '/reservas', { imovel_id: val('rv-im'), hospede_nome: val('rv-hosp'), checkin: val('rv-ci'), checkout: val('rv-co'), valor_centavos: centavos(val('rv-val')), canal: val('rv-can') })
@@ -201,7 +211,33 @@
       };
       Array.prototype.forEach.call(document.querySelectorAll('[data-cc]'), function (b) { b.onclick = function () { app('POST', '/reservas/' + b.getAttribute('data-cc') + '/status', { status: 'concluida' }).then(vReservas).catch(function (e) { alert(e.message); }); }; });
       Array.prototype.forEach.call(document.querySelectorAll('[data-cx]'), function (b) { b.onclick = function () { if (confirm('Cancelar a reserva?')) app('POST', '/reservas/' + b.getAttribute('data-cx') + '/status', { status: 'cancelada' }).then(vReservas).catch(function (e) { alert(e.message); }); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-ck]'), function (b) {
+        b.onclick = function () { var id = b.getAttribute('data-ck'); ckAberta = (ckAberta === id) ? null : id; pintarChecklist(); };
+      });
+      pintarChecklist();
     }).catch(erroBox);
+  }
+  // card do checklist da reserva selecionada ("já executei esta operação?")
+  function pintarChecklist() {
+    var box = el('ck-panel');
+    if (!box) return;
+    if (!ckAberta) { box.innerHTML = ''; return; }
+    app('GET', '/reservas/' + ckAberta).then(function (d) {
+      var r = d.reserva;
+      var itens = (r.checklist || []).map(function (e, i) {
+        return '<div class="lin"><label style="display:flex;gap:8px;align-items:center;cursor:pointer;margin:0">' +
+          '<input type="checkbox" style="width:auto;margin:0" data-et="' + e.chave + '"' + (e.feito ? ' checked' : '') + '> ' +
+          '<span>' + (i + 1) + '. ' + esc(e.rotulo) + (e.feito && e.em ? ' <span class="sub" style="margin:0">✓ ' + dt(e.em) + '</span>' : '') + '</span></label></div>';
+      }).join('');
+      box.innerHTML = '<div class="card"><h3>☑️ Etapas — ' + esc(r.hospede_nome || 'reserva') + ' · ' + esc(r.imovel_nome || '') + ' (' + dt(r.checkin) + '→' + dt(r.checkout) + ') <span class="tag">' + r.checklist_feitas + '/' + r.checklist_total + '</span></h3>' +
+        '<p class="sub" style="text-align:left;margin:0 0 8px">Marque cada etapa ao executá-la — o sistema lembra por você o que ainda falta.</p>' + itens + '</div>';
+      Array.prototype.forEach.call(box.querySelectorAll('[data-et]'), function (c) {
+        c.onchange = function () {
+          app('POST', '/reservas/' + r.id + '/checklist', { etapa: c.getAttribute('data-et'), feito: c.checked })
+            .then(vReservas).catch(function (e) { alert(e.message); vReservas(); });
+        };
+      });
+    }).catch(function (e) { box.innerHTML = '<div class="card erro">' + esc(e.message) + '</div>'; });
   }
 
   // ---------------- limpezas ----------------
@@ -312,6 +348,83 @@
           app('POST', '/stays/conectar', { base_url: val('st-base'), client_id: val('st-id'), secret: val('st-sec') }).then(vCanais).catch(function (e) { el('cn-msg').textContent = e.message; });
         };
       }
+    }).catch(erroBox);
+  }
+
+  // ---------------- estoque ----------------
+  function vEstoque() {
+    app('GET', '/estoque').then(function (d) {
+      var linhas = d.itens.map(function (i) {
+        return '<tr' + (i.em_falta ? ' style="background:#fff3f3"' : '') + '><td>' + esc(i.nome) + (i.em_falta ? ' <span class="tag" style="background:#fde2e2;color:#b00020">em falta</span>' : '') + '</td>' +
+          '<td><span class="tag">' + esc(i.categoria) + '</span></td><td><b>' + i.quantidade + '</b> ' + esc(i.unidade) + '</td><td>' + i.minimo + '</td><td>' + i.por_reserva + '</td>' +
+          '<td><button class="btn secund peq" data-in="' + i.id + '">＋ Entrada</button> <button class="btn secund peq" data-out="' + i.id + '">− Baixa</button> <button class="btn secund peq" data-rm="' + i.id + '">Excluir</button></td></tr>';
+      }).join('');
+      setView('<div class="card"><h3>Novo item de estoque</h3><div class="hi-grid">' +
+        '<label>Nome <input id="es-nome" placeholder="Papel higiênico, café, sabão..."></label>' +
+        '<label>Categoria <select id="es-cat"><option>limpeza</option><option>pessoal</option><option>outro</option></select></label>' +
+        '<label>Quantidade <input id="es-qt" type="number" value="0"></label>' +
+        '<label>Mínimo (alerta) <input id="es-min" type="number" value="0"></label>' +
+        '<label>Consumo por reserva <input id="es-pr" type="number" value="0" title="Quanto baixa a cada reserva (baixa padrão)"></label></div>' +
+        '<button class="btn" id="b-es">Cadastrar</button><p id="es-msg" class="erro"></p>' +
+        '<p class="sub">Itens com "consumo por reserva" entram na baixa padrão a cada reserva; abaixo do mínimo o item fica <b>em falta</b> (vira lista de compras).</p></div>' +
+        '<div class="card"><h3>Itens (' + d.itens.length + ')</h3>' + (d.itens.length ? '<table><tr><th>Item</th><th>Categoria</th><th>Qtde</th><th>Mín.</th><th>Por reserva</th><th></th></tr>' + linhas + '</table>' : '<p class="sub">Nenhum item ainda. Cadastre os insumos de limpeza e bens pessoais que você repõe a cada hóspede.</p>') + '</div>');
+      el('b-es').onclick = function () {
+        el('es-msg').textContent = '';
+        app('POST', '/estoque', { nome: val('es-nome'), categoria: val('es-cat'), quantidade: val('es-qt'), minimo: val('es-min'), por_reserva: val('es-pr') })
+          .then(vEstoque).catch(function (e) { el('es-msg').textContent = e.message; });
+      };
+      function mov(id, sinal) {
+        var q = prompt(sinal > 0 ? 'Quantidade que ENTROU (compra):' : 'Quantidade que SAIU (baixa/perda):');
+        if (!q) return;
+        app('POST', '/estoque/' + id + '/mov', { delta: sinal * Math.abs(Number(q) || 0), motivo: sinal > 0 ? 'compra' : 'ajuste' }).then(vEstoque).catch(function (e) { alert(e.message); });
+      }
+      Array.prototype.forEach.call(document.querySelectorAll('[data-in]'), function (b) { b.onclick = function () { mov(b.getAttribute('data-in'), 1); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-out]'), function (b) { b.onclick = function () { mov(b.getAttribute('data-out'), -1); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-rm]'), function (b) { b.onclick = function () { if (confirm('Excluir este item?')) app('DELETE', '/estoque/' + b.getAttribute('data-rm')).then(vEstoque).catch(function (e) { alert(e.message); }); }; });
+    }).catch(erroBox);
+  }
+
+  // ---------------- integrações (tokens de API + webhooks) ----------------
+  function vIntegracoes() {
+    Promise.all([api('GET', '/tokens'), app('GET', '/webhooks')]).then(function (rs) {
+      var tk = rs[0], wh = rs[1];
+      if (!tk.api_publica) {
+        setView('<div class="card"><h3>🔌 API e webhooks</h3><p class="aviso">A <b>API pública</b> não está no seu plano. Faça upgrade (aba Plano) para integrar o sistema aos seus scripts, planilhas e assistentes (Claude, etc.).</p></div>');
+        return;
+      }
+      var tks = tk.tokens.map(function (t) {
+        return '<div class="lin"><b>' + esc(t.nome) + '</b> <code>' + esc(t.prefixo) + '</code> <span class="sub">criado ' + dt(t.criado_em) + (t.ultimo_uso ? ' · último uso ' + dt(t.ultimo_uso) : ' · nunca usado') + '</span> <button class="btn secund peq" data-rvg="' + t.id + '">Revogar</button></div>';
+      }).join('');
+      var whs = wh.webhooks.map(function (w) {
+        return '<div class="lin"><code>' + esc(w.url) + '</code> ' + (w.ativo ? '<span class="tag">ativo</span>' : '<span class="tag" style="background:#fde2e2;color:#b00020">desativado</span>') +
+          ' <span class="sub">' + (w.eventos.length ? w.eventos.join(', ') : 'todos os eventos') + (w.ultimo_erro ? ' · erro: ' + esc(w.ultimo_erro) : '') + '</span>' +
+          ' <button class="btn secund peq" data-wt="' + w.id + '">Testar</button> <button class="btn secund peq" data-wr="' + w.id + '">Remover</button></div>';
+      }).join('');
+      setView('<div class="card"><h3>🔑 Tokens de API</h3>' +
+        '<p class="sub" style="text-align:left;margin:0 0 8px">Use nos seus scripts e integrações: header <code>Authorization: Bearer vsm_…</code> nas rotas <code>/gestao/api/app/*</code>. O token não expira (revogue quando quiser).</p>' +
+        (tks || '<p class="sub">Nenhum token ativo.</p>') +
+        '<div class="hi-grid" style="margin-top:8px"><label>Nome do token <input id="tk-nome" placeholder="ex.: Claude Code do escritório"></label></div>' +
+        '<button class="btn" id="b-tk">Gerar token</button><p id="tk-novo" class="sub" style="text-align:left;word-break:break-all"></p></div>' +
+        '<div class="card"><h3>🪝 Webhooks</h3>' +
+        '<p class="sub" style="text-align:left;margin:0 0 8px">Receba um POST assinado (HMAC no header <code>X-VSM-Assinatura</code>) a cada evento: ' + wh.eventos.join(' · ') + '.</p>' +
+        (whs || '<p class="sub">Nenhum webhook.</p>') +
+        '<div class="hi-grid" style="margin-top:8px"><label>URL <input id="wh-url" placeholder="https://minha-integracao.com/webhook"></label>' +
+        '<label>Eventos (vazio = todos) <input id="wh-evs" placeholder="reserva.criada, reserva.confirmada"></label></div>' +
+        '<button class="btn" id="b-wh">Cadastrar webhook</button><p id="wh-novo" class="sub" style="text-align:left;word-break:break-all"></p></div>');
+      el('b-tk').onclick = function () {
+        api('POST', '/tokens', { nome: val('tk-nome') }).then(function (r) {
+          el('tk-novo').innerHTML = '⚠️ Guarde agora (não aparece de novo):<br><code>' + esc(r.token) + '</code>';
+        }).catch(function (e) { alert(e.message); });
+      };
+      el('b-wh').onclick = function () {
+        var evs = val('wh-evs').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+        app('POST', '/webhooks', { url: val('wh-url'), eventos: evs }).then(function (r) {
+          el('wh-novo').innerHTML = '✅ Webhook cadastrado. ⚠️ Segredo do HMAC (guarde agora, não aparece de novo):<br><code>' + esc(r.webhook.segredo) + '</code><br>Recarregue a aba 🔌 API para ver a lista atualizada.';
+        }).catch(function (e) { alert(e.message); });
+      };
+      Array.prototype.forEach.call(document.querySelectorAll('[data-rvg]'), function (b) { b.onclick = function () { if (confirm('Revogar este token? As integrações que o usam vão parar.')) api('DELETE', '/tokens/' + b.getAttribute('data-rvg')).then(vIntegracoes).catch(function (e) { alert(e.message); }); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-wr]'), function (b) { b.onclick = function () { if (confirm('Remover este webhook?')) app('DELETE', '/webhooks/' + b.getAttribute('data-wr')).then(vIntegracoes).catch(function (e) { alert(e.message); }); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-wt]'), function (b) { b.onclick = function () { app('POST', '/webhooks/' + b.getAttribute('data-wt') + '/testar', {}).then(function (r) { alert(r.entregue ? '✅ Entregue!' : '❌ Falhou — veja o último erro na lista.'); vIntegracoes(); }).catch(function (e) { alert(e.message); }); }; });
     }).catch(erroBox);
   }
 

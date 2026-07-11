@@ -8,8 +8,9 @@
 // de negócio; o gating de acesso mora nas rotas (rotas-app.js).
 // =====================================================================
 'use strict';
-const { db, nowISO, novoId, periodoAtual, j } = require('./db');
+const { db, transacao, nowISO, novoId, periodoAtual, j } = require('./db');
 const repo = require('./repo');
+const integ = require('./integracoes');
 
 const s = (v, max = 2000) => String(v == null ? '' : v).trim().slice(0, max);
 const cent = (v) => Math.round(Number(v || 0));
@@ -95,8 +96,37 @@ const Hospedes = {
 };
 
 // =====================================================================
-// RESERVAS (com anti-overbooking e limite mensal do plano)
+// RESERVAS (com anti-overbooking, limite mensal do plano e CHECKLIST DE
+// ETAPAS — o "sistema que não deixa esquecer etapa": cada reserva carrega
+// as etapas da jornada e o anfitrião marca o que já executou)
 // =====================================================================
+const ETAPAS_RESERVA = [
+  ['consulta', 'Consulta respondida'],
+  ['pendencia', 'Pendência resolvida'],
+  ['reserva', 'Reserva confirmada'],
+  ['cadastro', 'Dados de cadastro completos'],
+  ['faxina', 'Faxina e lavanderia agendadas (entrada e saída)'],
+  ['condominio', 'Cadastro no condomínio solicitado'],
+  ['estoque', 'Estoque conferido para receber'],
+  ['boas_vindas', 'Carta de boas-vindas enviada'],
+  ['checkin', 'Hóspede recebido (check-in)'],
+  ['despedida', 'Despedida e pós-estadia'],
+];
+const ETAPAS_KEYS = ETAPAS_RESERVA.map(e => e[0]);
+
+function hidratarChecklist(raw) {
+  const c = j.parse(raw, {});
+  return ETAPAS_RESERVA.map(([chave, rotulo]) => ({ chave, rotulo, feito: !!(c[chave] && c[chave].feito), em: (c[chave] && c[chave].em) || '' }));
+}
+const contarFeitas = (raw) => { const c = j.parse(raw, {}); return ETAPAS_KEYS.filter(k => c[k] && c[k].feito).length; };
+// marca etapas direto no JSON da reserva (uso interno; não valida existência)
+function marcarEtapasInterno(tenantId, reservaId, etapas, feito = true) {
+  const r = db.prepare('SELECT checklist FROM app_reservas WHERE id = ? AND tenant_id = ?').get(s(reservaId, 40), tenantId);
+  if (!r) return;
+  const c = j.parse(r.checklist, {});
+  for (const e of etapas) { if (!ETAPAS_KEYS.includes(e)) continue; if (feito) c[e] = { feito: 1, em: nowISO() }; else delete c[e]; }
+  db.prepare('UPDATE app_reservas SET checklist = ? WHERE id = ? AND tenant_id = ?').run(j.str(c), s(reservaId, 40), tenantId);
+}
 function conflitoReserva(tenantId, imovelId, checkin, checkout, ignoreId = '') {
   // sobreposição: novo.checkin < existente.checkout E novo.checkout > existente.checkin
   return db.prepare(`SELECT id, checkin, checkout FROM app_reservas
@@ -113,10 +143,12 @@ const Reservas = {
     if (de) { sql += ' AND r.checkout >= ?'; args.push(dia(de)); }
     if (ate) { sql += ' AND r.checkin <= ?'; args.push(dia(ate)); }
     sql += ' ORDER BY r.checkin DESC LIMIT ?'; args.push(Math.min(Number(limite) || 300, 1000));
-    return db.prepare(sql).all(...args);
+    return db.prepare(sql).all(...args)
+      .map(r => ({ ...r, checklist_feitas: contarFeitas(r.checklist), checklist_total: ETAPAS_KEYS.length, checklist: undefined }));
   },
   obter(tenantId, id) {
-    return db.prepare('SELECT r.*, i.nome AS imovel_nome FROM app_reservas r LEFT JOIN app_imoveis i ON i.id = r.imovel_id WHERE r.id = ? AND r.tenant_id = ?').get(s(id, 40), tenantId) || null;
+    const r = db.prepare('SELECT r.*, i.nome AS imovel_nome FROM app_reservas r LEFT JOIN app_imoveis i ON i.id = r.imovel_id WHERE r.id = ? AND r.tenant_id = ?').get(s(id, 40), tenantId);
+    return r ? { ...r, checklist: hidratarChecklist(r.checklist), checklist_feitas: contarFeitas(r.checklist), checklist_total: ETAPAS_KEYS.length } : null;
   },
   criar(tenantId, d) {
     const imovel = Imoveis.obter(tenantId, d.imovel_id);
@@ -145,13 +177,30 @@ const Reservas = {
     if (status === 'confirmada' || status === 'concluida') {
       Limpezas.criar(tenantId, { imovel_id: imovel.id, reserva_id: id, data: checkout, tipo: 'checkout' }, true);
       if (cent(d.valor_centavos) > 0) Financeiro.criar(tenantId, { tipo: 'receita', categoria: 'hospedagem', descricao: `Reserva ${hospedeNome || imovel.nome}`, valor_centavos: d.valor_centavos, data: checkin, imovel_id: imovel.id, reserva_id: id }, true);
+      // reserva já nasce confirmada → as etapas pré-reserva ficam prontas
+      marcarEtapasInterno(tenantId, id, ['consulta', 'pendencia', 'reserva']);
     }
-    return Reservas.obter(tenantId, id);
+    const nova = Reservas.obter(tenantId, id);
+    integ.Webhooks.disparar(tenantId, 'reserva.criada', { reserva: nova });
+    if (status === 'confirmada') integ.Webhooks.disparar(tenantId, 'reserva.confirmada', { reserva: nova });
+    return nova;
   },
   mudarStatus(tenantId, id, status) {
     if (!['pendente', 'confirmada', 'cancelada', 'concluida'].includes(status)) throw new Error('Status inválido.');
     const r = db.prepare('UPDATE app_reservas SET status = ?, atualizado_em = ? WHERE id = ? AND tenant_id = ?').run(status, nowISO(), s(id, 40), tenantId);
     if (!r.changes) throw new Error('Reserva não encontrada.');
+    if (status === 'confirmada') marcarEtapasInterno(tenantId, id, ['consulta', 'pendencia', 'reserva']);
+    if (status === 'concluida') marcarEtapasInterno(tenantId, id, ['checkin']);
+    const res = Reservas.obter(tenantId, id);
+    if (status !== 'pendente') integ.Webhooks.disparar(tenantId, 'reserva.' + status, { reserva: res });
+    return res;
+  },
+  // marca/desmarca uma etapa do checklist da reserva
+  marcarEtapa(tenantId, id, etapa, feito = true) {
+    if (!ETAPAS_KEYS.includes(etapa)) throw new Error('Etapa inválida.');
+    const r = db.prepare('SELECT id FROM app_reservas WHERE id = ? AND tenant_id = ?').get(s(id, 40), tenantId);
+    if (!r) throw new Error('Reserva não encontrada.');
+    marcarEtapasInterno(tenantId, id, [etapa], !!feito);
     return Reservas.obter(tenantId, id);
   },
   // ocupação de um mês por imóvel (para o calendário)
@@ -256,6 +305,88 @@ const Financeiro = {
 };
 
 // =====================================================================
+// ESTOQUE (módulo 'estoque') — insumos p/ receber o hóspede (bens pessoais
+// e limpeza), com mínimo, baixa por reserva e alerta de item em falta.
+// =====================================================================
+const Estoque = {
+  listar(tenantId) {
+    return db.prepare('SELECT * FROM app_estoque WHERE tenant_id = ? ORDER BY categoria, nome').all(tenantId)
+      .map(i => ({ ...i, em_falta: i.quantidade < i.minimo }));
+  },
+  obter(tenantId, id) {
+    const i = db.prepare('SELECT * FROM app_estoque WHERE id = ? AND tenant_id = ?').get(s(id, 40), tenantId);
+    return i ? { ...i, em_falta: i.quantidade < i.minimo } : null;
+  },
+  criar(tenantId, d) {
+    const nome = s(d.nome, 120);
+    if (!nome) throw new Error('Informe o nome do item.');
+    const id = novoId(); const agora = nowISO();
+    db.prepare('INSERT INTO app_estoque (id, tenant_id, nome, categoria, unidade, quantidade, minimo, por_reserva, obs, criado_em, atualizado_em) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+      .run(id, tenantId, nome, ['limpeza', 'pessoal', 'outro'].includes(d.categoria) ? d.categoria : 'limpeza', s(d.unidade, 20) || 'un',
+        Math.round(Number(d.quantidade) || 0), Math.max(0, Math.round(Number(d.minimo) || 0)), Math.max(0, Math.round(Number(d.por_reserva) || 0)), s(d.obs, 500), agora, agora);
+    return Estoque.obter(tenantId, id);
+  },
+  atualizar(tenantId, id, d) {
+    const i = db.prepare('SELECT * FROM app_estoque WHERE id = ? AND tenant_id = ?').get(s(id, 40), tenantId);
+    if (!i) throw new Error('Item não encontrado.');
+    const c = {
+      nome: d.nome != null ? s(d.nome, 120) : i.nome,
+      categoria: d.categoria != null && ['limpeza', 'pessoal', 'outro'].includes(d.categoria) ? d.categoria : i.categoria,
+      unidade: d.unidade != null ? s(d.unidade, 20) : i.unidade,
+      minimo: d.minimo != null ? Math.max(0, Math.round(Number(d.minimo) || 0)) : i.minimo,
+      por_reserva: d.por_reserva != null ? Math.max(0, Math.round(Number(d.por_reserva) || 0)) : i.por_reserva,
+      obs: d.obs != null ? s(d.obs, 500) : i.obs,
+    };
+    db.prepare('UPDATE app_estoque SET nome=?, categoria=?, unidade=?, minimo=?, por_reserva=?, obs=?, atualizado_em=? WHERE id=? AND tenant_id=?')
+      .run(c.nome, c.categoria, c.unidade, c.minimo, c.por_reserva, c.obs, nowISO(), i.id, tenantId);
+    return Estoque.obter(tenantId, id);
+  },
+  remover(tenantId, id) {
+    const r = db.prepare('DELETE FROM app_estoque WHERE id = ? AND tenant_id = ?').run(s(id, 40), tenantId);
+    db.prepare('DELETE FROM app_estoque_mov WHERE item_id = ? AND tenant_id = ?').run(s(id, 40), tenantId);
+    return { removidos: r.changes };
+  },
+  // movimento manual: delta + = entrada (compra), − = baixa/perda
+  movimentar(tenantId, itemId, delta, motivo = 'ajuste', reservaId = '') {
+    const i = db.prepare('SELECT * FROM app_estoque WHERE id = ? AND tenant_id = ?').get(s(itemId, 40), tenantId);
+    if (!i) throw new Error('Item não encontrado.');
+    const dlt = Math.round(Number(delta) || 0);
+    if (!dlt) throw new Error('Informe a quantidade (+ entrada / − baixa).');
+    const estavaOk = i.quantidade >= i.minimo;
+    transacao(() => {
+      db.prepare('UPDATE app_estoque SET quantidade = quantidade + ?, atualizado_em = ? WHERE id = ?').run(dlt, nowISO(), i.id);
+      db.prepare('INSERT INTO app_estoque_mov (id, tenant_id, item_id, delta, motivo, reserva_id, criado_em) VALUES (?,?,?,?,?,?,?)')
+        .run(novoId(), tenantId, i.id, dlt, s(motivo, 30) || 'ajuste', s(reservaId, 40), nowISO());
+    });
+    const depois = Estoque.obter(tenantId, itemId);
+    if (estavaOk && depois.em_falta) integ.Webhooks.disparar(tenantId, 'estoque.baixo', { item: depois });
+    return depois;
+  },
+  // baixa padrão de uma reserva: consome `por_reserva` de cada item e marca a
+  // etapa "estoque" do checklist da reserva
+  baixaReserva(tenantId, reservaId) {
+    const r = db.prepare('SELECT id FROM app_reservas WHERE id = ? AND tenant_id = ?').get(s(reservaId, 40), tenantId);
+    if (!r) throw new Error('Reserva não encontrada.');
+    // não duplica: se a reserva já tem baixa registrada, devolve o que existe
+    const jaFeita = db.prepare("SELECT 1 FROM app_estoque_mov WHERE tenant_id = ? AND reserva_id = ? AND motivo = 'reserva' LIMIT 1").get(tenantId, r.id);
+    const itens = db.prepare('SELECT * FROM app_estoque WHERE tenant_id = ? AND por_reserva > 0').all(tenantId);
+    const baixados = [];
+    if (!jaFeita) {
+      for (const i of itens) baixados.push(Estoque.movimentar(tenantId, i.id, -i.por_reserva, 'reserva', r.id));
+      marcarEtapasInterno(tenantId, r.id, ['estoque']);
+    }
+    return { ja_feita: !!jaFeita, itens: baixados, em_falta: Estoque.listar(tenantId).filter(i => i.em_falta) };
+  },
+  emFalta(tenantId) {
+    return db.prepare('SELECT COUNT(*) n FROM app_estoque WHERE tenant_id = ? AND quantidade < minimo').get(tenantId).n;
+  },
+  movimentos(tenantId, itemId, limite = 50) {
+    return db.prepare('SELECT * FROM app_estoque_mov WHERE tenant_id = ? AND item_id = ? ORDER BY criado_em DESC LIMIT ?')
+      .all(tenantId, s(itemId, 40), Math.min(Number(limite) || 50, 200));
+  },
+};
+
+// =====================================================================
 // PAINEL do assinante (visão geral da operação)
 // =====================================================================
 function painel(tenantId) {
@@ -269,6 +400,12 @@ function painel(tenantId) {
     checkouts_7d: um("SELECT COUNT(*) n FROM app_reservas WHERE tenant_id = ? AND status IN ('pendente','confirmada','concluida') AND checkout >= ? AND checkout <= ?", hoje, em7),
     limpezas_pendentes: um("SELECT COUNT(*) n FROM app_limpezas WHERE tenant_id = ? AND status = 'pendente'"),
     manutencao_aberta: um("SELECT COUNT(*) n FROM app_manutencao WHERE tenant_id = ? AND status IN ('aberto','em_andamento')"),
+    estoque_em_falta: Estoque.emFalta(tenantId),
+    // reservas ativas com check-in nos próximos 7 dias e checklist incompleto —
+    // é o "o que não posso esquecer" do anfitrião
+    etapas_pendentes: db.prepare(`SELECT checklist FROM app_reservas
+      WHERE tenant_id = ? AND status IN ('pendente','confirmada') AND checkin >= ? AND checkin <= ?`).all(tenantId, hoje, em7)
+      .filter(r => contarFeitas(r.checklist) < ETAPAS_KEYS.length).length,
     financeiro_mes: Financeiro.resumo(tenantId),
     proximas: db.prepare(`SELECT r.checkin, r.checkout, r.hospede_nome, r.status, i.nome AS imovel_nome
       FROM app_reservas r LEFT JOIN app_imoveis i ON i.id = r.imovel_id
@@ -276,4 +413,4 @@ function painel(tenantId) {
   };
 }
 
-module.exports = { Imoveis, Hospedes, Reservas, Limpezas, Manutencao, Financeiro, painel, sincronizarUsoImoveis, conflitoReserva };
+module.exports = { Imoveis, Hospedes, Reservas, Limpezas, Manutencao, Financeiro, Estoque, ETAPAS_RESERVA, painel, sincronizarUsoImoveis, conflitoReserva };

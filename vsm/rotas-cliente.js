@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const { db, nowISO } = require('./db');
 const repo = require('./repo');
 const billing = require('./billing');
+const integ = require('./integracoes');
 
 const COOKIE = 'vsm_sess';
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -25,6 +26,16 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
   const falha = (ip) => { const t = tentativas.get(ip) || { n: 0, ate: 0 }; if (++t.n >= 5) { t.ate = Date.now() + 15 * 60 * 1000; t.n = 0; } tentativas.set(ip, t); };
 
   function requireAssinante(req, res, next) {
+    // 1) token de API fixo (Bearer vsm_…) — integrações do cliente, flag api_publica
+    const auth = String(req.headers.authorization || '');
+    if (auth.startsWith('Bearer ')) {
+      const u = integ.Tokens.autenticar(auth.slice(7));
+      if (!u) return res.status(401).json({ erro: 'token de API inválido ou revogado' });
+      if (!repo.flag(u.tenant_id, 'api_publica')) return res.status(403).json({ erro: 'A API pública não está no seu plano. Faça upgrade para liberar.', flag: 'api_publica' });
+      req.assinante = u; req.viaToken = true;
+      return next();
+    }
+    // 2) sessão do painel (cookie vsm_sess)
     try {
       const { uid } = jwt.verify(req.cookies && req.cookies[COOKIE], jwtSecret);
       const u = db.prepare('SELECT u.*, t.nome AS tenant_nome, t.status AS tenant_status FROM tenant_users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = ? AND u.ativo = 1').get(uid);
@@ -33,6 +44,8 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
       next();
     } catch (_) { res.status(401).json({ erro: 'não autenticado' }); }
   }
+  // gestão de credenciais só pela sessão do painel (um token não cria/revoga tokens)
+  const soSessao = (req, res, next) => req.viaToken ? res.status(403).json({ erro: 'Use o painel (sessão) para gerenciar credenciais.' }) : next();
 
   app.use('/gestao/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
@@ -106,6 +119,22 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
     if (!t || t.tenant_id !== req.assinante.tenant_id) return res.status(404).json({ erro: 'Ticket não encontrado.' });
     repo.Tickets.responder(req.params.id, { texto: s((req.body || {}).texto, 4000), lado: 'cliente', autor: req.assinante.email });
     res.json({ ok: true });
+  }));
+
+  // ---- tokens de API (flag api_publica; admin, só via sessão do painel) ----
+  const requireApiPublica = (req, res, next) => repo.flag(req.assinante.tenant_id, 'api_publica') ? next()
+    : res.status(403).json({ erro: 'A API pública não está no seu plano. Faça upgrade para liberar.', flag: 'api_publica' });
+  app.get('/gestao/api/tokens', requireAssinante, soSessao, h(async (req, res) => {
+    res.json({ api_publica: repo.flag(req.assinante.tenant_id, 'api_publica'), tokens: integ.Tokens.listar(req.assinante.tenant_id) });
+  }));
+  app.post('/gestao/api/tokens', requireAssinante, soSessao, requireApiPublica, h(async (req, res) => {
+    if (req.assinante.papel !== 'admin') return res.status(403).json({ erro: 'Apenas o administrador cria tokens.' });
+    const r = integ.Tokens.criar(req.assinante.tenant_id, req.assinante.id, (req.body || {}).nome);
+    res.json({ ok: true, ...r, aviso: 'Guarde o token agora — ele não será exibido de novo.' });
+  }));
+  app.delete('/gestao/api/tokens/:id', requireAssinante, soSessao, h(async (req, res) => {
+    if (req.assinante.papel !== 'admin') return res.status(403).json({ erro: 'Apenas o administrador revoga tokens.' });
+    res.json({ ok: true, ...integ.Tokens.revogar(req.assinante.tenant_id, req.params.id) });
   }));
 
   // workspaces da operação

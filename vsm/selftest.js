@@ -47,8 +47,8 @@ require('./app-stays-repo').setFabrica(() => fakeCli);
 
 let BASE = '', ok = 0, falhas = [];
 const jar = {};
-async function req(m, p, { corpo, user = 'adm', cookies } = {}) {
-  const headers = { 'Content-Type': 'application/json', 'x-test-user': user };
+async function req(m, p, { corpo, user = 'adm', cookies, headers: extras } = {}) {
+  const headers = { 'Content-Type': 'application/json', 'x-test-user': user, ...(extras || {}) };
   if (cookies) headers.Cookie = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ');
   const r = await fetch(BASE + p, { method: m, headers, body: corpo ? JSON.stringify(corpo) : undefined, redirect: 'manual' });
   (r.headers.getSetCookie ? r.headers.getSetCookie() : []).forEach(c => { const [kv] = c.split(';'); const [k, v] = kv.split('='); jar[k] = v; });
@@ -205,15 +205,101 @@ async function rodar() {
     assert.equal(antes, depois);
   });
 
+  // ---- CHECKLIST DE ETAPAS por reserva ----
+  let reservaJoao;
+  await t('checklist: reserva confirmada nasce com etapas pré-reserva prontas', async () => {
+    const rs = (await req('GET', '/gestao/api/app/reservas', { cookies: true })).json.reservas;
+    reservaJoao = rs.find(r => r.hospede_nome === 'João');
+    assert.equal(reservaJoao.checklist_feitas, 3); // consulta + pendência + reserva
+    const det = (await req('GET', '/gestao/api/app/reservas/' + reservaJoao.id, { cookies: true })).json.reserva;
+    assert.ok(det.checklist.find(e => e.chave === 'reserva').feito);
+    assert.ok(!det.checklist.find(e => e.chave === 'boas_vindas').feito);
+  });
+  await t('checklist: marcar/desmarcar etapa e rejeitar etapa inválida', async () => {
+    const r = await req('POST', `/gestao/api/app/reservas/${reservaJoao.id}/checklist`, { corpo: { etapa: 'boas_vindas' }, cookies: true });
+    assert.equal(r.st, 200); assert.equal(r.json.reserva.checklist_feitas, 4);
+    const des = await req('POST', `/gestao/api/app/reservas/${reservaJoao.id}/checklist`, { corpo: { etapa: 'boas_vindas', feito: false }, cookies: true });
+    assert.equal(des.json.reserva.checklist_feitas, 3);
+    assert.equal((await req('POST', `/gestao/api/app/reservas/${reservaJoao.id}/checklist`, { corpo: { etapa: 'inexistente' }, cookies: true })).st, 400);
+  });
+
+  // ---- ESTOQUE ----
+  await t('estoque: item com mínimo + baixa por reserva marca a etapa e alerta falta', async () => {
+    const it = await req('POST', '/gestao/api/app/estoque', { corpo: { nome: 'Papel higiênico', categoria: 'pessoal', quantidade: 5, minimo: 4, por_reserva: 2 }, cookies: true });
+    assert.equal(it.st, 200); assert.equal(it.json.item.em_falta, false);
+    const bx = await req('POST', '/gestao/api/app/estoque/baixa-reserva', { corpo: { reserva_id: reservaJoao.id }, cookies: true });
+    assert.equal(bx.st, 200); assert.equal(bx.json.ja_feita, false);
+    assert.equal(bx.json.itens[0].quantidade, 3);
+    assert.ok(bx.json.em_falta.some(i => i.nome === 'Papel higiênico')); // 3 < mínimo 4
+    const det = (await req('GET', '/gestao/api/app/reservas/' + reservaJoao.id, { cookies: true })).json.reserva;
+    assert.ok(det.checklist.find(e => e.chave === 'estoque').feito); // baixa marcou a etapa
+  });
+  await t('estoque: baixa repetida da mesma reserva não duplica', async () => {
+    const bx = await req('POST', '/gestao/api/app/estoque/baixa-reserva', { corpo: { reserva_id: reservaJoao.id }, cookies: true });
+    assert.equal(bx.json.ja_feita, true);
+    const itens = (await req('GET', '/gestao/api/app/estoque', { cookies: true })).json.itens;
+    assert.equal(itens.find(i => i.nome === 'Papel higiênico').quantidade, 3);
+  });
+
+  // ---- TOKEN DE API (flag api_publica — plano pro do Beta tem) ----
+  let tokenApi, tokenId;
+  await t('api: gerar token (exibido 1x) e autenticar por Bearer sem cookie', async () => {
+    const r = await req('POST', '/gestao/api/tokens', { corpo: { nome: 'Claude Code' }, cookies: true });
+    assert.equal(r.st, 200); assert.ok(r.json.token.startsWith('vsm_'));
+    tokenApi = r.json.token; tokenId = r.json.id;
+    const lista = (await req('GET', '/gestao/api/tokens', { cookies: true })).json.tokens;
+    assert.ok(lista.length === 1 && !JSON.stringify(lista).includes(tokenApi)); // nunca devolve o token cru
+    const im = await req('GET', '/gestao/api/app/imoveis', { headers: { Authorization: 'Bearer ' + tokenApi } });
+    assert.equal(im.st, 200); assert.ok(im.json.imoveis.length >= 1);
+  });
+  await t('api: token não gerencia credenciais; revogado → 401', async () => {
+    assert.equal((await req('POST', '/gestao/api/tokens', { corpo: { nome: 'x' }, headers: { Authorization: 'Bearer ' + tokenApi } })).st, 403);
+    assert.equal((await req('DELETE', '/gestao/api/tokens/' + tokenId, { cookies: true })).st, 200);
+    assert.equal((await req('GET', '/gestao/api/app/imoveis', { headers: { Authorization: 'Bearer ' + tokenApi } })).st, 401);
+  });
+
+  // ---- WEBHOOKS de eventos ----
+  const entregas = [];
+  const receptor = require('http').createServer((rq, rs) => {
+    let corpo = '';
+    rq.on('data', c => corpo += c);
+    rq.on('end', () => { entregas.push({ corpo, assinatura: rq.headers['x-vsm-assinatura'] }); rs.end('ok'); });
+  });
+  await new Promise(x => receptor.listen(0, x));
+  let segredoWh;
+  await t('webhooks: cadastrar endpoint devolve o segredo 1x', async () => {
+    const url = 'http://127.0.0.1:' + receptor.address().port + '/hook';
+    const r = await req('POST', '/gestao/api/app/webhooks', { corpo: { url, eventos: ['reserva.confirmada'] }, cookies: true });
+    assert.equal(r.st, 200); assert.ok(r.json.webhook.segredo.startsWith('whsec_'));
+    segredoWh = r.json.webhook.segredo;
+    const lista = (await req('GET', '/gestao/api/app/webhooks', { cookies: true })).json.webhooks;
+    assert.ok(lista.length === 1 && !JSON.stringify(lista).includes(segredoWh)); // segredo mascarado na listagem
+  });
+  await t('webhooks: reserva confirmada entrega POST com HMAC válido', async () => {
+    const r = await req('POST', '/gestao/api/app/reservas', { corpo: { imovel_id: imovelId, hospede_nome: 'Web Hook', checkin: '2026-09-01', checkout: '2026-09-03', valor_centavos: 10000 }, cookies: true });
+    assert.equal(r.st, 200);
+    for (let i = 0; i < 30 && !entregas.length; i++) await new Promise(x => setTimeout(x, 100)); // entrega assíncrona
+    assert.ok(entregas.length >= 1, 'webhook não entregue');
+    const ev = JSON.parse(entregas[0].corpo);
+    assert.equal(ev.evento, 'reserva.confirmada');
+    assert.equal(ev.dados.reserva.hospede_nome, 'Web Hook');
+    const hmac = require('crypto').createHmac('sha256', segredoWh).update(entregas[0].corpo).digest('hex');
+    assert.equal(entregas[0].assinatura, 'sha256=' + hmac);
+  });
+
   await t('app: gating por módulo + limite de imóveis (plano starter)', async () => {
     const nova = await req('POST', '/staff/api/vsm/tenants', { corpo: { nome: 'Hostel Delta', email: 'delta@t.br', plano: 'starter' } });
     const link = await req('POST', `/staff/api/vsm/tenants/${nova.json.tenant.id}/link-acesso`);
     const token = new URL(link.json.url).searchParams.get('token');
     assert.equal((await req('POST', '/gestao/api/definir-senha', { corpo: { token, senha: 'SenhaForte2' } })).st, 200);
     assert.equal((await req('POST', '/gestao/api/login', { corpo: { email: 'delta@t.br', senha: 'SenhaForte2' }, cookies: true })).st, 200);
-    // starter (editado no teste p/ [imoveis, reservas]): hospede → 403, imoveis → 200
+    // starter (editado no teste p/ [imoveis, reservas]): hospede/estoque → 403, imoveis → 200
     assert.equal((await req('GET', '/gestao/api/app/hospedes', { cookies: true })).st, 403);
+    assert.equal((await req('GET', '/gestao/api/app/estoque', { cookies: true })).st, 403);
     assert.equal((await req('GET', '/gestao/api/app/imoveis', { cookies: true })).st, 200);
+    // starter não tem api_publica → gerar token e cadastrar webhook = 403
+    assert.equal((await req('POST', '/gestao/api/tokens', { corpo: { nome: 'x' }, cookies: true })).st, 403);
+    assert.equal((await req('POST', '/gestao/api/app/webhooks', { corpo: { url: 'https://x.br/h' }, cookies: true })).st, 403);
     // limite de 3 imóveis do starter
     for (let i = 0; i < 3; i++) assert.equal((await req('POST', '/gestao/api/app/imoveis', { corpo: { nome: 'Q' + i }, cookies: true })).st, 200);
     const q4 = await req('POST', '/gestao/api/app/imoveis', { corpo: { nome: 'Q4' }, cookies: true });
@@ -244,7 +330,7 @@ async function rodar() {
     assert.ok((await req('GET', '/staff/api/vsm/auditoria')).json.eventos.some(e => e.acao === 'tenant.criar'));
   });
 
-  srv.close();
+  srv.close(); receptor.close();
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }
 }

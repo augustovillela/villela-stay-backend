@@ -29,6 +29,8 @@ const MIGRACOES = [
   // isso NÃO ficam no CREATE do schema.sql — este é o único ponto que as cria.
   { nome: '2026-07-09-app-imoveis-stays', sql: "ALTER TABLE app_imoveis ADD COLUMN stays_id TEXT DEFAULT ''; ALTER TABLE app_imoveis ADD COLUMN origem TEXT DEFAULT 'manual';" },
   { nome: '2026-07-09-app-reservas-stays', sql: "ALTER TABLE app_reservas ADD COLUMN stays_id TEXT DEFAULT ''; ALTER TABLE app_reservas ADD COLUMN origem TEXT DEFAULT 'manual';" },
+  // checklist de etapas por reserva (JSON {etapa:{feito,em}}) — diferencial "não esqueço etapa"
+  { nome: '2026-07-11-app-reservas-checklist', sql: "ALTER TABLE app_reservas ADD COLUMN checklist TEXT DEFAULT '{}';" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

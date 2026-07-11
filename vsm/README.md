@@ -47,16 +47,20 @@ Duas camadas, ambas no ar:
   administração `/staff/api/vsm/*` (só admin). Domínio sugerido: `gestao.villelastay.com.br`
   (redirect por prefixo de host no server.js ainda NÃO criado).
 - **Leads** da landing caem na aba do staff e alertam o Augusto no WhatsApp (via `alertaAugusto`).
-- **Testes:** `npm run test:vsm` (29/29 — landing, entitlements, overrides, suspensão,
+- **Testes:** `npm run test:vsm` (37/37 — landing, entitlements, overrides, suspensão,
   editar planos, upgrade/downgrade, custo/margem, signup, definir senha, tickets, assinatura
-  MP mock, webhook, ciclo de vida, rate-limit, leads, auditoria).
+  MP mock, webhook MP, ciclo de vida, rate-limit, leads, auditoria, checklist de etapas,
+  estoque, token de API e webhooks de eventos).
 
 ## Catálogo do produto (editável no painel 🏨 → Planos)
 
-- **Módulos (12):** imoveis · reservas · canais · checkin · limpeza · manutencao ·
-  financeiro · hospede · precificacao · contratos · relatorios · ia.
+- **Módulos (13):** imoveis · reservas · canais · checkin · limpeza · manutencao ·
+  financeiro · hospede · precificacao · contratos · relatorios · ia · **estoque**.
 - **Limites:** imoveis · usuarios · reservas_mes · ia_consultas_mes · armazenamento_mb · workspaces.
 - **Flags:** ia_direta · api_publica · white_label · canais_ilimitados · dominio_proprio.
+  A flag `api_publica` agora vem LIGADA no plano Pro (além do Business/Enterprise) — decisão
+  de produto 11/07/2026: o cliente-alvo do Pro é exatamente quem integra scripts/Claude Code.
+  ⚠️ `semear()` sobrescreve módulos/flags dos planos a cada boot (só preço é preservado).
 - **Planos-semente (preços PROVISÓRIOS, editáveis):** Trial 14d · **Starter R$ 99** ·
   **Pro R$ 249** (destaque) · **Business R$ 599** · **Enterprise** (sob consulta, ilimitado).
   Semear é idempotente e **preserva preço já editado** no painel.
@@ -71,7 +75,8 @@ Duas camadas, ambas no ar:
 | `billing.js` | MP preapproval, webhook, upgrade/downgrade, faturas, dunning |
 | `rotas-staff.js` | API admin `/staff/api/vsm/*` (requireAuth + requireAdmin, auditado) |
 | `rotas-cliente.js` | API assinante `/gestao/api/*` (cookie `vsm_sess`, rate-limit) |
-| `app-repo.js` | **app de gestão real**: imóveis/hóspedes/reservas/limpezas/manutenção/financeiro/painel (tudo por tenant_id) |
+| `app-repo.js` | **app de gestão real**: imóveis/hóspedes/reservas (c/ checklist de etapas)/limpezas/manutenção/financeiro/estoque/painel (tudo por tenant_id) |
+| `integracoes.js` | tokens de API (Bearer, hash SHA-256) + webhooks de eventos (HMAC) — flag `api_publica` |
 | `stays.js` | cliente Stays.net **por tenant** (Basic Auth, paginação; fetch injetável p/ testes) |
 | `app-stays-repo.js` | conta Stays do tenant + **sincronização** (import anúncios/reservas, upsert por id externo; fábrica injetável) |
 | `rotas-app.js` | API do app `/gestao/api/app/*` (requireAssinante + requireAcesso + gateModulo) — inclui `/stays/*` |
@@ -106,11 +111,43 @@ vencido/suspensa/inadimplente → 403) → `gateModulo(mod)` (respeita os módul
 - **Reservas** — CRUD + calendário; **anti-overbooking** por imóvel (rejeita sobreposição de
   datas em reservas pendentes/confirmadas); limite `reservas_mes` do plano; ao confirmar,
   **gera a limpeza de check-out** e **lança a receita** automaticamente.
+- **Checklist de etapas por reserva** (11/07/2026) — cada reserva carrega 10 etapas da jornada
+  (consulta → pendência → reserva → cadastro → faxina → condomínio → estoque → boas-vindas →
+  check-in → despedida; catálogo `ETAPAS_RESERVA` em app-repo.js), JSON na coluna
+  `app_reservas.checklist` (migração). Confirmar marca as 3 pré-reserva; concluir marca
+  check-in; a baixa de estoque marca "estoque". `POST /reservas/:id/checklist {etapa, feito}`;
+  listagem devolve `checklist_feitas/checklist_total`; painel conta `etapas_pendentes`
+  (check-ins em 7d com checklist incompleto). É o diferencial "o sistema que não deixa
+  esquecer etapa".
+- **Estoque (módulo `estoque`)** (11/07/2026) — itens com categoria (limpeza/pessoal/outro),
+  mínimo (abaixo = **em falta**, vira lista de compras) e `por_reserva` (consumo padrão).
+  `POST /estoque/:id/mov` (± com histórico em `app_estoque_mov`) e
+  `POST /estoque/baixa-reserva` (idempotente por reserva; marca a etapa "estoque").
+  Painel conta `estoque_em_falta`; cruzar o mínimo dispara webhook `estoque.baixo`.
 - **Limpezas** — geradas do check-out ou manuais; concluir.
 - **Manutenção** — chamados com prioridade e fluxo aberto→em_andamento→resolvido.
 - **Financeiro** — receitas/despesas + resumo do mês (receita/despesa/resultado).
 - **Painel** — imóveis, reservas ativas, check-ins/outs 7d, limpezas/manutenção pendentes,
-  financeiro do mês e próximas reservas.
+  etapas pendentes 7d, estoque em falta, financeiro do mês e próximas reservas.
+
+## Integrações do assinante (flag `api_publica`) — 11/07/2026
+
+Arquivo `integracoes.js`; UI na aba **🔌 API** da SPA. Tudo gateado pela flag `api_publica`
+(Pro/Business/Enterprise ou override por tenant).
+
+- **Token de API fixo** — `POST /gestao/api/tokens` (admin, só via sessão) gera
+  `vsm_<48 chars>`; guardamos **só o hash SHA-256** e o token aparece UMA vez. Autentica
+  qualquer rota do assinante com `Authorization: Bearer vsm_…` (o `requireAssinante` tenta o
+  Bearer antes do cookie `vsm_sess`); um token NÃO cria/revoga credenciais (`soSessao`).
+  Máx. 5 ativos por tenant; cada chamada registra a métrica `api_chamadas` e o `ultimo_uso`.
+  `GET /gestao/api/tokens` lista (mascarado); `DELETE /gestao/api/tokens/:id` revoga.
+- **Webhooks de eventos** — `POST /gestao/api/app/webhooks {url, eventos[]}` (máx. 3; devolve
+  o `segredo` whsec_ UMA vez). Eventos: `reserva.criada` · `reserva.confirmada` ·
+  `reserva.cancelada` · `reserva.concluida` · `estoque.baixo` (lista vazia = todos). Entrega
+  fire-and-forget (timeout 6 s) com HMAC-SHA256 do corpo no header `X-VSM-Assinatura:
+  sha256=…`; 20 falhas consecutivas desativam o endpoint sozinho (`falhas`/`ultimo_erro` na
+  listagem). `POST …/webhooks/:id/testar` envia evento `teste`. Import da Stays NÃO dispara
+  webhooks (upsert direto, não passa por `Reservas.criar`).
 
 SPA: `app-cliente.js` servida em `/gestao/app.js`, montada por `bootGestao()` no shell
 (`paginas.js` → `/gestao/app`). Mostra só as abas dos módulos do plano; conta bloqueada

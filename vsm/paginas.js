@@ -83,7 +83,8 @@ function landingHTML() {
     ['🔗', 'Canais / OTAs', 'Conecte Airbnb, Booking, Vrbo, Decolar e reservas diretas — sincronização de disponibilidade e preços.'],
     ['🧹', 'Limpeza e manutenção', 'Agenda automática de faxina pelos check-ins/outs, chamados e checklist boutique para a equipe.'],
     ['💰', 'Financeiro e repasses', 'Receitas por competência, despesas, repasses a proprietários e relatórios de resultado.'],
-    ['🤖', 'IA e concierge', 'Assistente que responde hóspedes, sugere preços e monta relatórios — sempre com você no controle.'],
+    ['☑️', 'Checklist de etapas e estoque', 'Cada reserva carrega as etapas da jornada (cadastro, faxina, condomínio, boas-vindas…) — o sistema lembra o que falta. Estoque com baixa por reserva e lista de compras.'],
+    ['🤖', 'IA, API e webhooks', 'Assistente que responde hóspedes e sugere preços; API com token e webhooks para integrar seus scripts e assistentes.'],
   ];
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela Stay Manager — sistema de gestão para aluguel por temporada</title>

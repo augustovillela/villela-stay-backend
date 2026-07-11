@@ -9,6 +9,7 @@ const repo = require('./repo');
 const app = require('./app-repo');
 const stays = require('./app-stays-repo');
 const push = require('./push');
+const integ = require('./integracoes');
 
 function registrarRotasApp(server, { requireAssinante }) {
   // captura throws síncronos E assíncronos (handlers do app lançam de forma síncrona)
@@ -62,6 +63,11 @@ function registrarRotasApp(server, { requireAssinante }) {
     res.json({ ok: true, reserva });
   }));
   server.post('/gestao/api/app/reservas/:id/status', ...G('reservas'), h((req, res) => res.json({ ok: true, reserva: app.Reservas.mudarStatus(tid(req), req.params.id, (req.body || {}).status) })));
+  // checklist de etapas da reserva ("já executei esta operação?")
+  server.post('/gestao/api/app/reservas/:id/checklist', ...G('reservas'), h((req, res) => {
+    const b = req.body || {};
+    res.json({ ok: true, reserva: app.Reservas.marcarEtapa(tid(req), req.params.id, String(b.etapa || ''), b.feito !== false) });
+  }));
 
   // ---- limpezas ----
   server.get('/gestao/api/app/limpezas', ...G('limpeza'), h((req, res) => res.json({ limpezas: app.Limpezas.listar(tid(req), req.query) })));
@@ -76,6 +82,38 @@ function registrarRotasApp(server, { requireAssinante }) {
   // ---- financeiro ----
   server.get('/gestao/api/app/financeiro', ...G('financeiro'), h((req, res) => res.json({ lancamentos: app.Financeiro.listar(tid(req), req.query), resumo: app.Financeiro.resumo(tid(req)) })));
   server.post('/gestao/api/app/financeiro', ...G('financeiro'), h((req, res) => res.json({ ok: true, lancamento: app.Financeiro.criar(tid(req), req.body || {}) })));
+
+  // ---- estoque (módulo 'estoque') — insumos p/ receber o hóspede ----
+  server.get('/gestao/api/app/estoque', ...G('estoque'), h((req, res) => res.json({ itens: app.Estoque.listar(tid(req)) })));
+  server.post('/gestao/api/app/estoque', ...G('estoque'), h((req, res) => res.json({ ok: true, item: app.Estoque.criar(tid(req), req.body || {}) })));
+  server.patch('/gestao/api/app/estoque/:id', ...G('estoque'), h((req, res) => res.json({ ok: true, item: app.Estoque.atualizar(tid(req), req.params.id, req.body || {}) })));
+  server.delete('/gestao/api/app/estoque/:id', ...G('estoque'), h((req, res) => res.json({ ok: true, ...app.Estoque.remover(tid(req), req.params.id) })));
+  server.post('/gestao/api/app/estoque/:id/mov', ...G('estoque'), h((req, res) => {
+    const b = req.body || {};
+    res.json({ ok: true, item: app.Estoque.movimentar(tid(req), req.params.id, b.delta, b.motivo, b.reserva_id) });
+  }));
+  server.get('/gestao/api/app/estoque/:id/movimentos', ...G('estoque'), h((req, res) => res.json({ movimentos: app.Estoque.movimentos(tid(req), req.params.id) })));
+  // baixa padrão dos insumos de uma reserva (consome `por_reserva` de cada item)
+  server.post('/gestao/api/app/estoque/baixa-reserva', ...G('estoque'), h((req, res) => res.json({ ok: true, ...app.Estoque.baixaReserva(tid(req), (req.body || {}).reserva_id) })));
+
+  // ---- webhooks de eventos (flag api_publica) ----
+  const requireApiPublica = (req, res, next) => repo.flag(req.assinante.tenant_id, 'api_publica') ? next()
+    : res.status(403).json({ erro: 'A API pública (webhooks) não está no seu plano. Faça upgrade para liberar.', flag: 'api_publica' });
+  server.get('/gestao/api/app/webhooks', ...B, h((req, res) => res.json({
+    api_publica: repo.flag(tid(req), 'api_publica'), eventos: integ.EVENTOS, webhooks: integ.Webhooks.listar(tid(req)),
+  })));
+  server.post('/gestao/api/app/webhooks', ...B, requireApiPublica, h((req, res) => {
+    if (req.assinante.papel !== 'admin') return res.status(403).json({ erro: 'Apenas o administrador cadastra webhooks.' });
+    const r = integ.Webhooks.criar(tid(req), req.body || {});
+    res.json({ ok: true, webhook: r, aviso: 'Guarde o segredo agora — ele não será exibido de novo.' });
+  }));
+  server.delete('/gestao/api/app/webhooks/:id', ...B, h((req, res) => {
+    if (req.assinante.papel !== 'admin') return res.status(403).json({ erro: 'Apenas o administrador remove webhooks.' });
+    res.json({ ok: true, ...integ.Webhooks.remover(tid(req), req.params.id) });
+  }));
+  server.post('/gestao/api/app/webhooks/:id/testar', ...B, requireApiPublica, h(async (req, res) => {
+    res.json({ ok: true, entregue: await integ.Webhooks.testar(tid(req), req.params.id) });
+  }));
 
   // ---- Stays.net (channel manager do assinante) — módulo 'canais' ----
   server.get('/gestao/api/app/stays', ...G('canais'), h((req, res) => res.json({ conta: stays.Conta.statusPublico(tid(req)) })));
