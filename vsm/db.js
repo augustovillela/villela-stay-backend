@@ -31,6 +31,9 @@ const MIGRACOES = [
   { nome: '2026-07-09-app-reservas-stays', sql: "ALTER TABLE app_reservas ADD COLUMN stays_id TEXT DEFAULT ''; ALTER TABLE app_reservas ADD COLUMN origem TEXT DEFAULT 'manual';" },
   // checklist de etapas por reserva (JSON {etapa:{feito,em}}) — diferencial "não esqueço etapa"
   { nome: '2026-07-11-app-reservas-checklist', sql: "ALTER TABLE app_reservas ADD COLUMN checklist TEXT DEFAULT '{}';" },
+  // preços FINAIS dos planos (autorização do Augusto 11/07/2026) — só troca quem ainda
+  // está no preço-semente provisório (edição manual no painel é preservada)
+  { nome: '2026-07-11-precos-finais', sql: "UPDATE plans SET preco_centavos = 12900 WHERE slug = 'starter' AND preco_centavos = 9900; UPDATE plans SET preco_centavos = 29900 WHERE slug = 'pro' AND preco_centavos = 24900; UPDATE plans SET preco_centavos = 69900 WHERE slug = 'business' AND preco_centavos = 59900;" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

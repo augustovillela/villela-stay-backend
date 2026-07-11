@@ -305,6 +305,148 @@ const Financeiro = {
 };
 
 // =====================================================================
+// CONSULTAS (mini-funil pré-reserva; módulo 'reservas') — o interessado que
+// ainda não fechou. nova → respondida → pendencia → convertida | perdida.
+// Converter cria a reserva e marca as etapas pré-reserva do checklist.
+// =====================================================================
+const CONSULTA_STATUS = ['nova', 'respondida', 'pendencia', 'convertida', 'perdida'];
+const Consultas = {
+  listar(tenantId, { status = '', limite = 300 } = {}) {
+    let sql = `SELECT c.*, i.nome AS imovel_nome FROM app_consultas c LEFT JOIN app_imoveis i ON i.id = c.imovel_id WHERE c.tenant_id = ?`;
+    const args = [tenantId];
+    if (status) { sql += ' AND c.status = ?'; args.push(status); }
+    sql += ' ORDER BY c.criado_em DESC LIMIT ?'; args.push(Math.min(Number(limite) || 300, 1000));
+    return db.prepare(sql).all(...args);
+  },
+  obter(tenantId, id) {
+    return db.prepare('SELECT c.*, i.nome AS imovel_nome FROM app_consultas c LEFT JOIN app_imoveis i ON i.id = c.imovel_id WHERE c.id = ? AND c.tenant_id = ?').get(s(id, 40), tenantId) || null;
+  },
+  criar(tenantId, d) {
+    const nome = s(d.hospede_nome || d.nome, 200);
+    if (!nome) throw new Error('Informe o nome (ou apelido) do interessado.');
+    const id = novoId(); const agora = nowISO();
+    db.prepare(`INSERT INTO app_consultas (id, tenant_id, imovel_id, hospede_nome, contato, canal, checkin, checkout, hospedes_qtd, valor_cotado_centavos, status, obs, criado_em, atualizado_em)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(id, tenantId, s(d.imovel_id, 40), nome, s(d.contato, 200), s(d.canal, 20) || 'airbnb',
+        dia(d.checkin), dia(d.checkout), Math.max(1, Number(d.hospedes_qtd) || 1), cent(d.valor_cotado_centavos), 'nova', s(d.obs, 1000), agora, agora);
+    const nova = Consultas.obter(tenantId, id);
+    integ.Webhooks.disparar(tenantId, 'consulta.criada', { consulta: nova });
+    return nova;
+  },
+  atualizar(tenantId, id, d) {
+    const c = db.prepare('SELECT * FROM app_consultas WHERE id = ? AND tenant_id = ?').get(s(id, 40), tenantId);
+    if (!c) throw new Error('Consulta não encontrada.');
+    const n = {
+      imovel_id: d.imovel_id != null ? s(d.imovel_id, 40) : c.imovel_id,
+      hospede_nome: d.hospede_nome != null ? s(d.hospede_nome, 200) : c.hospede_nome,
+      contato: d.contato != null ? s(d.contato, 200) : c.contato,
+      canal: d.canal != null ? s(d.canal, 20) : c.canal,
+      checkin: d.checkin != null ? dia(d.checkin) : c.checkin,
+      checkout: d.checkout != null ? dia(d.checkout) : c.checkout,
+      hospedes_qtd: d.hospedes_qtd != null ? Math.max(1, Number(d.hospedes_qtd) || 1) : c.hospedes_qtd,
+      valor: d.valor_cotado_centavos != null ? cent(d.valor_cotado_centavos) : c.valor_cotado_centavos,
+      obs: d.obs != null ? s(d.obs, 1000) : c.obs,
+    };
+    db.prepare('UPDATE app_consultas SET imovel_id=?, hospede_nome=?, contato=?, canal=?, checkin=?, checkout=?, hospedes_qtd=?, valor_cotado_centavos=?, obs=?, atualizado_em=? WHERE id=? AND tenant_id=?')
+      .run(n.imovel_id, n.hospede_nome, n.contato, n.canal, n.checkin, n.checkout, n.hospedes_qtd, n.valor, n.obs, nowISO(), c.id, tenantId);
+    return Consultas.obter(tenantId, id);
+  },
+  mudarStatus(tenantId, id, status) {
+    if (!CONSULTA_STATUS.includes(status)) throw new Error('Status inválido.');
+    if (status === 'convertida') throw new Error('Use a conversão (que cria a reserva) em vez de marcar convertida na mão.');
+    const c = db.prepare('SELECT status FROM app_consultas WHERE id = ? AND tenant_id = ?').get(s(id, 40), tenantId);
+    if (!c) throw new Error('Consulta não encontrada.');
+    if (c.status === 'convertida') throw new Error('Consulta já convertida em reserva.');
+    db.prepare('UPDATE app_consultas SET status = ?, atualizado_em = ? WHERE id = ? AND tenant_id = ?').run(status, nowISO(), s(id, 40), tenantId);
+    return Consultas.obter(tenantId, id);
+  },
+  // converte a consulta em RESERVA (herda os dados; extras sobrepõem) e marca
+  // as etapas pré-reserva do checklist. A reserva nasce confirmada por padrão.
+  converter(tenantId, id, extras = {}) {
+    const c = db.prepare('SELECT * FROM app_consultas WHERE id = ? AND tenant_id = ?').get(s(id, 40), tenantId);
+    if (!c) throw new Error('Consulta não encontrada.');
+    if (c.status === 'convertida') throw new Error('Consulta já convertida em reserva.');
+    const dados = {
+      imovel_id: s(extras.imovel_id, 40) || c.imovel_id,
+      hospede_nome: c.hospede_nome,
+      checkin: dia(extras.checkin) || c.checkin,
+      checkout: dia(extras.checkout) || c.checkout,
+      hospedes_qtd: extras.hospedes_qtd != null ? extras.hospedes_qtd : c.hospedes_qtd,
+      valor_centavos: extras.valor_centavos != null ? extras.valor_centavos : c.valor_cotado_centavos,
+      canal: c.canal, obs: c.obs,
+      status: ['pendente', 'confirmada'].includes(extras.status) ? extras.status : 'confirmada',
+    };
+    if (!dados.imovel_id) throw new Error('Defina o imóvel antes de converter.');
+    if (!dados.checkin || !dados.checkout) throw new Error('Defina check-in e check-out antes de converter.');
+    const reserva = Reservas.criar(tenantId, dados);
+    // mesmo nascendo pendente, o funil já passou por consulta+pendência
+    marcarEtapasInterno(tenantId, reserva.id, ['consulta', 'pendencia']);
+    db.prepare("UPDATE app_consultas SET status = 'convertida', reserva_id = ?, atualizado_em = ? WHERE id = ?").run(reserva.id, nowISO(), c.id);
+    const conv = Consultas.obter(tenantId, id);
+    integ.Webhooks.disparar(tenantId, 'consulta.convertida', { consulta: conv, reserva: Reservas.obter(tenantId, reserva.id) });
+    return { consulta: conv, reserva: Reservas.obter(tenantId, reserva.id) };
+  },
+  abertas(tenantId) {
+    return db.prepare("SELECT COUNT(*) n FROM app_consultas WHERE tenant_id = ? AND status IN ('nova','respondida','pendencia')").get(tenantId).n;
+  },
+};
+
+// =====================================================================
+// PRECIFICAÇÃO assistida (módulo 'precificacao') — preço mínimo com lucro:
+// (fixos da estadia/noites + variável/noite) / (1 − comissão − imposto − margem)
+// — a fórmula do plano comercial, com o imposto (DARF/DAS) DENTRO do preço.
+// =====================================================================
+const PRECIF_PADRAO = { faxina_centavos: 0, lavanderia_centavos: 0, insumos_centavos: 0, custo_noite_centavos: 0, comissao_pct: 15, imposto_pct: 0, margem_pct: 20 };
+const Precificacao = {
+  obter(tenantId, imovelId) {
+    const p = db.prepare('SELECT * FROM app_precificacao WHERE tenant_id = ? AND imovel_id = ?').get(tenantId, s(imovelId, 40));
+    return p || { tenant_id: tenantId, imovel_id: s(imovelId, 40), ...PRECIF_PADRAO, atualizado_em: '' };
+  },
+  salvar(tenantId, imovelId, d) {
+    const imovel = Imoveis.obter(tenantId, imovelId);
+    if (!imovel) throw new Error('Selecione um imóvel válido.');
+    const atual = Precificacao.obter(tenantId, imovelId);
+    const pct = (v, atualV) => { const n = v != null ? Number(v) : atualV; if (!isFinite(n) || n < 0 || n > 90) throw new Error('Percentuais devem ficar entre 0 e 90.'); return n; };
+    const n = {
+      faxina: d.faxina_centavos != null ? cent(d.faxina_centavos) : atual.faxina_centavos,
+      lavanderia: d.lavanderia_centavos != null ? cent(d.lavanderia_centavos) : atual.lavanderia_centavos,
+      insumos: d.insumos_centavos != null ? cent(d.insumos_centavos) : atual.insumos_centavos,
+      custo_noite: d.custo_noite_centavos != null ? cent(d.custo_noite_centavos) : atual.custo_noite_centavos,
+      comissao: pct(d.comissao_pct, atual.comissao_pct),
+      imposto: pct(d.imposto_pct, atual.imposto_pct),
+      margem: pct(d.margem_pct, atual.margem_pct),
+    };
+    if (n.comissao + n.imposto + n.margem >= 95) throw new Error('Comissão + imposto + margem precisam somar menos de 95%.');
+    db.prepare(`INSERT INTO app_precificacao (tenant_id, imovel_id, faxina_centavos, lavanderia_centavos, insumos_centavos, custo_noite_centavos, comissao_pct, imposto_pct, margem_pct, atualizado_em)
+      VALUES (?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(tenant_id, imovel_id) DO UPDATE SET faxina_centavos=excluded.faxina_centavos, lavanderia_centavos=excluded.lavanderia_centavos,
+        insumos_centavos=excluded.insumos_centavos, custo_noite_centavos=excluded.custo_noite_centavos, comissao_pct=excluded.comissao_pct,
+        imposto_pct=excluded.imposto_pct, margem_pct=excluded.margem_pct, atualizado_em=excluded.atualizado_em`)
+      .run(tenantId, imovel.id, n.faxina, n.lavanderia, n.insumos, n.custo_noite, n.comissao, n.imposto, n.margem, nowISO());
+    return Precificacao.obter(tenantId, imovelId);
+  },
+  simular(tenantId, imovelId, noites) {
+    const imovel = Imoveis.obter(tenantId, imovelId);
+    if (!imovel) throw new Error('Selecione um imóvel válido.');
+    const nts = Math.max(1, Math.round(Number(noites) || 1));
+    const p = Precificacao.obter(tenantId, imovelId);
+    const fixos = p.faxina_centavos + p.lavanderia_centavos + p.insumos_centavos;
+    const custoNoite = fixos / nts + p.custo_noite_centavos;
+    const divisor = 1 - (p.comissao_pct + p.imposto_pct + p.margem_pct) / 100;
+    const precoMinNoite = Math.round(custoNoite / divisor);
+    return {
+      imovel_id: imovel.id, imovel_nome: imovel.nome, noites: nts, parametros: p,
+      custos_fixos_estadia_centavos: fixos,
+      custo_por_noite_centavos: Math.round(custoNoite),
+      preco_minimo_noite_centavos: precoMinNoite,
+      preco_minimo_estadia_centavos: precoMinNoite * nts,
+      tarifa_base_centavos: imovel.tarifa_base_centavos,
+      tarifa_base_cobre: imovel.tarifa_base_centavos >= precoMinNoite,
+    };
+  },
+};
+
+// =====================================================================
 // ESTOQUE (módulo 'estoque') — insumos p/ receber o hóspede (bens pessoais
 // e limpeza), com mínimo, baixa por reserva e alerta de item em falta.
 // =====================================================================
@@ -395,6 +537,7 @@ function painel(tenantId) {
   const um = (sql, ...a) => db.prepare(sql).get(tenantId, ...a).n;
   return {
     imoveis: um('SELECT COUNT(*) n FROM app_imoveis WHERE tenant_id = ? AND ativo = 1'),
+    consultas_abertas: Consultas.abertas(tenantId),
     reservas_ativas: um("SELECT COUNT(*) n FROM app_reservas WHERE tenant_id = ? AND status IN ('pendente','confirmada')"),
     checkins_7d: um("SELECT COUNT(*) n FROM app_reservas WHERE tenant_id = ? AND status IN ('pendente','confirmada') AND checkin >= ? AND checkin <= ?", hoje, em7),
     checkouts_7d: um("SELECT COUNT(*) n FROM app_reservas WHERE tenant_id = ? AND status IN ('pendente','confirmada','concluida') AND checkout >= ? AND checkout <= ?", hoje, em7),
@@ -413,4 +556,4 @@ function painel(tenantId) {
   };
 }
 
-module.exports = { Imoveis, Hospedes, Reservas, Limpezas, Manutencao, Financeiro, Estoque, ETAPAS_RESERVA, painel, sincronizarUsoImoveis, conflitoReserva };
+module.exports = { Imoveis, Hospedes, Reservas, Consultas, Precificacao, Limpezas, Manutencao, Financeiro, Estoque, ETAPAS_RESERVA, painel, sincronizarUsoImoveis, conflitoReserva };

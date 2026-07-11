@@ -47,10 +47,10 @@ Duas camadas, ambas no ar:
   administração `/staff/api/vsm/*` (só admin). Domínio sugerido: `gestao.villelastay.com.br`
   (redirect por prefixo de host no server.js ainda NÃO criado).
 - **Leads** da landing caem na aba do staff e alertam o Augusto no WhatsApp (via `alertaAugusto`).
-- **Testes:** `npm run test:vsm` (37/37 — landing, entitlements, overrides, suspensão,
+- **Testes:** `npm run test:vsm` (41/41 — landing, entitlements, overrides, suspensão,
   editar planos, upgrade/downgrade, custo/margem, signup, definir senha, tickets, assinatura
   MP mock, webhook MP, ciclo de vida, rate-limit, leads, auditoria, checklist de etapas,
-  estoque, token de API e webhooks de eventos).
+  estoque, token de API, webhooks de eventos, funil de consultas, precificação e preços finais).
 
 ## Catálogo do produto (editável no painel 🏨 → Planos)
 
@@ -61,9 +61,11 @@ Duas camadas, ambas no ar:
   A flag `api_publica` agora vem LIGADA no plano Pro (além do Business/Enterprise) — decisão
   de produto 11/07/2026: o cliente-alvo do Pro é exatamente quem integra scripts/Claude Code.
   ⚠️ `semear()` sobrescreve módulos/flags dos planos a cada boot (só preço é preservado).
-- **Planos-semente (preços PROVISÓRIOS, editáveis):** Trial 14d · **Starter R$ 99** ·
-  **Pro R$ 249** (destaque) · **Business R$ 599** · **Enterprise** (sob consulta, ilimitado).
-  Semear é idempotente e **preserva preço já editado** no painel.
+- **Planos (preços FINAIS 11/07/2026, autorizados pelo Augusto):** Trial 14d ·
+  **Starter R$ 129** · **Pro R$ 299** (destaque; agora com API) · **Business R$ 699** ·
+  **Enterprise** (sob consulta, ilimitado). Aplicados por MIGRAÇÃO `2026-07-11-precos-finais`
+  (só troca quem estava no preço-semente antigo — edição manual no painel é preservada).
+  Semear segue idempotente e **preserva preço já editado** no painel.
 
 ## Arquivos
 
@@ -111,6 +113,20 @@ vencido/suspensa/inadimplente → 403) → `gateModulo(mod)` (respeita os módul
 - **Reservas** — CRUD + calendário; **anti-overbooking** por imóvel (rejeita sobreposição de
   datas em reservas pendentes/confirmadas); limite `reservas_mes` do plano; ao confirmar,
   **gera a limpeza de check-out** e **lança a receita** automaticamente.
+- **Consultas — mini-funil pré-reserva** (11/07/2026, módulo `reservas`) — o interessado que
+  ainda não fechou: `nova → respondida → pendencia → convertida | perdida` em `app_consultas`
+  (nome, contato, canal, datas/valor cotado opcionais). `POST /consultas/:id/converter` cria a
+  reserva (herda os dados; extras sobrepõem; nasce confirmada por padrão), grava `reserva_id`,
+  marca as etapas consulta+pendência do checklist e dispara `consulta.convertida`; criar
+  dispara `consulta.criada`. Status `convertida` só via conversão. Painel: `consultas_abertas`.
+  UI: aba **📨 Consultas** (funil com botões + painel de conversão).
+- **Precificação assistida** (11/07/2026, módulo `precificacao`) — parâmetros por imóvel em
+  `app_precificacao` (faxina/lavanderia/insumos por estadia, custo variável/noite, comissão %,
+  imposto % — DARF/DAS com o contador —, margem %). `GET/PUT /precificacao/:imovelId` e
+  `GET /precificacao/:imovelId/simular?noites=N` devolvem o **preço mínimo com lucro**:
+  `(fixos/noites + variável) / (1 − comissão − imposto − margem)`; compara com a tarifa base
+  (`tarifa_base_cobre`). Percentuais 0–90 e soma < 95. UI: aba **💲 Preços** com simulador e
+  botão "aplicar o mínimo como tarifa base".
 - **Checklist de etapas por reserva** (11/07/2026) — cada reserva carrega 10 etapas da jornada
   (consulta → pendência → reserva → cadastro → faxina → condomínio → estoque → boas-vindas →
   check-in → despedida; catálogo `ETAPAS_RESERVA` em app-repo.js), JSON na coluna
@@ -142,8 +158,9 @@ Arquivo `integracoes.js`; UI na aba **🔌 API** da SPA. Tudo gateado pela flag 
   Máx. 5 ativos por tenant; cada chamada registra a métrica `api_chamadas` e o `ultimo_uso`.
   `GET /gestao/api/tokens` lista (mascarado); `DELETE /gestao/api/tokens/:id` revoga.
 - **Webhooks de eventos** — `POST /gestao/api/app/webhooks {url, eventos[]}` (máx. 3; devolve
-  o `segredo` whsec_ UMA vez). Eventos: `reserva.criada` · `reserva.confirmada` ·
-  `reserva.cancelada` · `reserva.concluida` · `estoque.baixo` (lista vazia = todos). Entrega
+  o `segredo` whsec_ UMA vez). Eventos: `consulta.criada` · `consulta.convertida` ·
+  `reserva.criada` · `reserva.confirmada` · `reserva.cancelada` · `reserva.concluida` ·
+  `estoque.baixo` (lista vazia = todos). Entrega
   fire-and-forget (timeout 6 s) com HMAC-SHA256 do corpo no header `X-VSM-Assinatura:
   sha256=…`; 20 falhas consecutivas desativam o endpoint sozinho (`falhas`/`ultimo_erro` na
   listagem). `POST …/webhooks/:id/testar` envia evento `teste`. Import da Stays NÃO dispara

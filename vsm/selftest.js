@@ -69,6 +69,11 @@ async function rodar() {
     assert.equal((await req('GET', '/staff/api/vsm/dashboard', { user: 'op' })).st, 403);
     assert.equal((await req('GET', '/staff/api/vsm/dashboard')).st, 200);
   });
+  await t('preços finais (11/07): starter 129, pro 299, business 699', async () => {
+    const { planos } = (await req('GET', '/staff/api/vsm/planos')).json;
+    const preco = (slug) => planos.find(p => p.slug === slug).preco_centavos;
+    assert.equal(preco('starter'), 12900); assert.equal(preco('pro'), 29900); assert.equal(preco('business'), 69900);
+  });
 
   let tid;
   await t('criar operação (tenant) em trial', async () => {
@@ -285,6 +290,40 @@ async function rodar() {
     assert.equal(ev.dados.reserva.hospede_nome, 'Web Hook');
     const hmac = require('crypto').createHmac('sha256', segredoWh).update(entregas[0].corpo).digest('hex');
     assert.equal(entregas[0].assinatura, 'sha256=' + hmac);
+  });
+
+  // ---- CONSULTAS (mini-funil pré-reserva) ----
+  let consultaId;
+  await t('consultas: registrar e mover no funil; converter exige imóvel+datas', async () => {
+    const r = await req('POST', '/gestao/api/app/consultas', { corpo: { hospede_nome: 'Ana Interessada', contato: '61 9....', canal: 'airbnb', obs: 'perguntou fim de semana' }, cookies: true });
+    assert.equal(r.st, 200); assert.equal(r.json.consulta.status, 'nova'); consultaId = r.json.consulta.id;
+    const resp = await req('POST', `/gestao/api/app/consultas/${consultaId}/status`, { corpo: { status: 'respondida' }, cookies: true });
+    assert.equal(resp.json.consulta.status, 'respondida');
+    assert.equal((await req('POST', `/gestao/api/app/consultas/${consultaId}/converter`, { corpo: {}, cookies: true })).st, 400); // sem imóvel/datas
+    const painel = (await req('GET', '/gestao/api/app/painel', { cookies: true })).json.painel;
+    assert.ok(painel.consultas_abertas >= 1);
+  });
+  await t('consultas: converter cria reserva confirmada com etapas pré-reserva prontas', async () => {
+    const r = await req('POST', `/gestao/api/app/consultas/${consultaId}/converter`, { corpo: { imovel_id: imovelId, checkin: '2026-11-10', checkout: '2026-11-12', valor_centavos: 80000 }, cookies: true });
+    assert.equal(r.st, 200);
+    assert.equal(r.json.consulta.status, 'convertida');
+    assert.equal(r.json.consulta.reserva_id, r.json.reserva.id);
+    assert.equal(r.json.reserva.status, 'confirmada');
+    assert.equal(r.json.reserva.checklist_feitas, 3); // consulta + pendência + reserva
+    // consulta convertida não volta pro funil
+    assert.equal((await req('POST', `/gestao/api/app/consultas/${consultaId}/status`, { corpo: { status: 'perdida' }, cookies: true })).st, 400);
+  });
+
+  // ---- PRECIFICAÇÃO assistida ----
+  await t('precificação: salvar parâmetros e simular preço mínimo com lucro', async () => {
+    const p = await req('PUT', '/gestao/api/app/precificacao/' + imovelId, { corpo: { faxina_centavos: 15000, lavanderia_centavos: 5000, insumos_centavos: 3000, custo_noite_centavos: 2000, comissao_pct: 15, imposto_pct: 10, margem_pct: 20 }, cookies: true });
+    assert.equal(p.st, 200);
+    const s2 = (await req('GET', '/gestao/api/app/precificacao/' + imovelId + '/simular?noites=2', { cookies: true })).json.simulacao;
+    assert.equal(s2.custos_fixos_estadia_centavos, 23000);
+    assert.equal(s2.preco_minimo_noite_centavos, Math.round((23000 / 2 + 2000) / 0.55)); // 245,45
+    assert.equal(s2.tarifa_base_cobre, s2.tarifa_base_centavos >= s2.preco_minimo_noite_centavos);
+    // percentuais fora da régua → 400
+    assert.equal((await req('PUT', '/gestao/api/app/precificacao/' + imovelId, { corpo: { margem_pct: 91 }, cookies: true })).st, 400);
   });
 
   await t('app: gating por módulo + limite de imóveis (plano starter)', async () => {

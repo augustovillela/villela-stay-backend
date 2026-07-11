@@ -95,7 +95,7 @@ function landingHTML() {
     <meta property="og:type" content="website"><meta property="og:url" content="https://manager.villelastay.com.br/gestao">
     <link rel="canonical" href="https://manager.villelastay.com.br/gestao">
     ${HEAD_MARCA}${GA}
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Stay Manager","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA.","offers":{"@type":"Offer","price":"99.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Stay Manager","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA.","offers":{"@type":"Offer","price":"129.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
       <a href="/gestao" style="text-decoration:none">${marca(true)}</a>

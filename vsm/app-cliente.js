@@ -24,13 +24,18 @@
   var view = function () { return el('c'); };
   function setView(html) { var v = view(); if (v) v.innerHTML = html; }
 
-  // catálogo de abas do app: módulo → {rot, fn}
+  // catálogo de abas do app: [navId, módulo do plano, rótulo, view]
   var TABS = [
-    ['imoveis', '🏠 Imóveis', vImoveis], ['reservas', '📅 Reservas', vReservas],
-    ['canais', '🔗 Canais', vCanais],
-    ['limpeza', '🧹 Limpezas', vLimpezas], ['manutencao', '🛠️ Manutenção', vManutencao],
-    ['financeiro', '💰 Financeiro', vFinanceiro], ['hospede', '👥 Hóspedes', vHospedes],
-    ['estoque', '📦 Estoque', vEstoque],
+    ['imoveis', 'imoveis', '🏠 Imóveis', vImoveis],
+    ['consultas', 'reservas', '📨 Consultas', vConsultas],
+    ['reservas', 'reservas', '📅 Reservas', vReservas],
+    ['canais', 'canais', '🔗 Canais', vCanais],
+    ['limpeza', 'limpeza', '🧹 Limpezas', vLimpezas],
+    ['manutencao', 'manutencao', '🛠️ Manutenção', vManutencao],
+    ['financeiro', 'financeiro', '💰 Financeiro', vFinanceiro],
+    ['precificacao', 'precificacao', '💲 Preços', vPrecificacao],
+    ['hospede', 'hospede', '👥 Hóspedes', vHospedes],
+    ['estoque', 'estoque', '📦 Estoque', vEstoque],
   ];
 
   // ---------------- login / boot ----------------
@@ -55,9 +60,9 @@
     var alerta = !liberado
       ? '<div class="aviso">⚠️ Sua conta está <b>' + esc(st) + '</b>. Regularize a cobrança para voltar a usar o sistema.</div>'
       : (st === 'trial' ? '<div class="aviso">🎁 Período de teste até <b>' + dt(ent.trial_expira_em) + '</b>. Assine para continuar sem interrupção.</div>' : '');
-    var tabs = liberado ? TABS.filter(function (t) { return ent.modulos.indexOf(t[0]) >= 0; }) : [];
+    var tabs = liberado ? TABS.filter(function (t) { return ent.modulos.indexOf(t[1]) >= 0; }) : [];
     var nav = '<button class="btn g peq" data-nav="painel">📊 Painel</button>' +
-      tabs.map(function (t) { return '<button class="btn g peq" data-nav="' + t[0] + '">' + t[1] + '</button>'; }).join('') +
+      tabs.map(function (t) { return '<button class="btn g peq" data-nav="' + t[0] + '">' + t[2] + '</button>'; }).join('') +
       '<button class="btn g peq" data-nav="plano">💳 Plano</button><button class="btn g peq" data-nav="uso">📈 Uso</button>' +
       (liberado ? '<button class="btn g peq" data-nav="integracoes">🔌 API</button>' : '') +
       '<button class="btn g peq" data-nav="suporte">🎧 Suporte</button>';
@@ -68,7 +73,7 @@
     pintarBotaoPush();
     pintarBotaoInstalar();
     var map = { painel: vPainel, plano: vPlano, uso: vUso, suporte: vSuporte, integracoes: vIntegracoes };
-    TABS.forEach(function (t) { map[t[0]] = t[2]; });
+    TABS.forEach(function (t) { map[t[0]] = t[3]; });
     Array.prototype.forEach.call(document.querySelectorAll('#nav [data-nav]'), function (b) {
       b.onclick = function () { (map[b.getAttribute('data-nav')] || vPainel)(); };
     });
@@ -148,7 +153,7 @@
       var p = d.painel, f = p.financeiro_mes;
       var kpi = function (r, v) { return '<div class="kpi"><div class="sub">' + r + '</div><div style="font-size:1.4rem;font-weight:700">' + v + '</div></div>'; };
       setView('<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0">' +
-        kpi('Imóveis', p.imoveis) + kpi('Reservas ativas', p.reservas_ativas) + kpi('Check-ins 7d', p.checkins_7d) +
+        kpi('Imóveis', p.imoveis) + kpi('Consultas abertas', p.consultas_abertas || 0) + kpi('Reservas ativas', p.reservas_ativas) + kpi('Check-ins 7d', p.checkins_7d) +
         kpi('Check-outs 7d', p.checkouts_7d) + kpi('Limpezas pendentes', p.limpezas_pendentes) + kpi('Manutenção aberta', p.manutencao_aberta) +
         kpi('Etapas pendentes 7d', p.etapas_pendentes || 0) + kpi('Estoque em falta', p.estoque_em_falta || 0) +
         kpi('Receita do mês', brl(f.receita_centavos)) + kpi('Resultado do mês', brl(f.resultado_centavos)) + '</div>' +
@@ -179,6 +184,127 @@
       };
       Array.prototype.forEach.call(document.querySelectorAll('[data-tg]'), function (b) { b.onclick = function () { app('PATCH', '/imoveis/' + b.getAttribute('data-tg'), { ativo: b.getAttribute('data-at') === '1' }).then(vImoveis).catch(function (e) { alert(e.message); }); }; });
       Array.prototype.forEach.call(document.querySelectorAll('[data-rm]'), function (b) { b.onclick = function () { if (confirm('Excluir este imóvel?')) app('DELETE', '/imoveis/' + b.getAttribute('data-rm')).then(vImoveis).catch(function (e) { alert(e.message); }); }; });
+    }).catch(erroBox);
+  }
+
+  // ---------------- consultas (mini-funil pré-reserva) ----------------
+  var cvAberta = null; // consulta com o painel de conversão aberto
+  function vConsultas() {
+    Promise.all([app('GET', '/consultas'), app('GET', '/imoveis')]).then(function (rs) {
+      var consultas = rs[0].consultas, imoveis = rs[1].imoveis;
+      var corSt = { nova: '#e6f1f4', respondida: '#fdf3d7', pendencia: '#fde9d7', convertida: '#e1f5e4', perdida: '#f1f1f1' };
+      var linhas = consultas.map(function (c) {
+        var acoes = '';
+        if (c.status !== 'convertida' && c.status !== 'perdida') {
+          if (c.status === 'nova') acoes += '<button class="btn secund peq" data-st="' + c.id + '" data-to="respondida">✉️ Respondida</button> ';
+          if (c.status !== 'pendencia') acoes += '<button class="btn secund peq" data-st="' + c.id + '" data-to="pendencia">⏳ Pendência</button> ';
+          acoes += '<button class="btn secund peq" data-cv="' + c.id + '">✅ Converter</button> <button class="btn secund peq" data-st="' + c.id + '" data-to="perdida">✖ Perdida</button>';
+        } else if (c.status === 'convertida') acoes = '🎉';
+        return '<tr><td>' + esc(c.hospede_nome) + (c.contato ? '<br><span class="sub" style="margin:0">' + esc(c.contato) + '</span>' : '') + '</td>' +
+          '<td>' + esc(c.imovel_nome || '—') + '</td><td>' + (c.checkin ? dt(c.checkin) + '→' + dt(c.checkout) : '—') + '</td>' +
+          '<td>' + (c.valor_cotado_centavos ? brl(c.valor_cotado_centavos) : '—') + '</td><td><span class="tag">' + esc(c.canal) + '</span></td>' +
+          '<td><span class="tag" style="background:' + (corSt[c.status] || '#eee') + '">' + esc(c.status) + '</span></td><td>' + acoes + '</td></tr>';
+      }).join('');
+      setView('<div class="card"><h3>Nova consulta</h3>' +
+        '<p class="sub" style="text-align:left;margin:0 0 8px">Interessado que ainda não fechou (Airbnb, WhatsApp, Instagram…). O funil: nova → respondida → pendência → convertida em reserva.</p>' +
+        '<div class="hi-grid"><label>Nome do interessado <input id="cv-nome"></label>' +
+        '<label>Contato (tel/e-mail/perfil) <input id="cv-cont"></label>' +
+        '<label>Canal <select id="cv-can"><option>airbnb</option><option>booking</option><option>direto</option><option>instagram</option><option>outro</option></select></label>' +
+        '<label>Imóvel (se já souber) <select id="cv-im"><option value="">(a definir)</option>' + imovelOptions(imoveis) + '</select></label>' +
+        '<label>Check-in <input id="cv-ci" type="date"></label><label>Check-out <input id="cv-co" type="date"></label>' +
+        '<label>Valor cotado (R$) <input id="cv-val" type="number" step="0.01"></label></div>' +
+        '<label>Observações <input id="cv-obs" placeholder="o que o interessado perguntou / combinado"></label>' +
+        '<button class="btn" id="b-cv">Registrar consulta</button><p id="cv-msg" class="erro"></p></div>' +
+        '<div id="cv-panel"></div>' +
+        '<div class="card"><h3>Consultas (' + consultas.length + ')</h3>' + (consultas.length
+          ? '<table><tr><th>Interessado</th><th>Imóvel</th><th>Datas</th><th>Cotação</th><th>Canal</th><th>Status</th><th></th></tr>' + linhas + '</table>'
+          : '<p class="sub">Nenhuma consulta. Registre aqui cada interessado antes de virar reserva — nada se perde no caminho.</p>') + '</div>');
+      el('b-cv').onclick = function () {
+        el('cv-msg').textContent = '';
+        app('POST', '/consultas', { hospede_nome: val('cv-nome'), contato: val('cv-cont'), canal: val('cv-can'), imovel_id: val('cv-im'), checkin: val('cv-ci'), checkout: val('cv-co'), valor_cotado_centavos: centavos(val('cv-val')), obs: val('cv-obs') })
+          .then(vConsultas).catch(function (e) { el('cv-msg').textContent = e.message; });
+      };
+      Array.prototype.forEach.call(document.querySelectorAll('[data-st]'), function (b) {
+        b.onclick = function () { app('POST', '/consultas/' + b.getAttribute('data-st') + '/status', { status: b.getAttribute('data-to') }).then(vConsultas).catch(function (e) { alert(e.message); }); };
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-cv]'), function (b) {
+        b.onclick = function () { var id = b.getAttribute('data-cv'); cvAberta = (cvAberta === id) ? null : id; pintarConversao(imoveis, consultas); };
+      });
+      pintarConversao(imoveis, consultas);
+    }).catch(erroBox);
+  }
+  function pintarConversao(imoveis, consultas) {
+    var box = el('cv-panel');
+    if (!box) return;
+    if (!cvAberta) { box.innerHTML = ''; return; }
+    var c = null;
+    consultas.forEach(function (x) { if (x.id === cvAberta) c = x; });
+    if (!c) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="card"><h3>✅ Converter em reserva — ' + esc(c.hospede_nome) + '</h3>' +
+      '<div class="hi-grid"><label>Imóvel <select id="cx-im">' + imovelOptions(imoveis, c.imovel_id) + '</select></label>' +
+      '<label>Check-in <input id="cx-ci" type="date" value="' + esc(c.checkin || '') + '"></label>' +
+      '<label>Check-out <input id="cx-co" type="date" value="' + esc(c.checkout || '') + '"></label>' +
+      '<label>Valor total (R$) <input id="cx-val" type="number" step="0.01" value="' + (c.valor_cotado_centavos ? (c.valor_cotado_centavos / 100) : '') + '"></label>' +
+      '<label>Status <select id="cx-st"><option value="confirmada">confirmada</option><option value="pendente">pendente</option></select></label></div>' +
+      '<button class="btn" id="b-cx">Criar a reserva</button><p id="cx-msg" class="erro"></p>' +
+      '<p class="sub" style="text-align:left;margin:0">A reserva nasce com anti-overbooking, limpeza de check-out, receita e checklist de etapas.</p></div>';
+    el('b-cx').onclick = function () {
+      el('cx-msg').textContent = '';
+      app('POST', '/consultas/' + c.id + '/converter', { imovel_id: val('cx-im'), checkin: val('cx-ci'), checkout: val('cx-co'), valor_centavos: centavos(val('cx-val')), status: val('cx-st') })
+        .then(function () { cvAberta = null; vConsultas(); }).catch(function (e) { el('cx-msg').textContent = e.message; });
+    };
+  }
+
+  // ---------------- precificação assistida ----------------
+  function vPrecificacao() {
+    app('GET', '/imoveis').then(function (d) {
+      var imoveis = d.imoveis.filter(function (i) { return i.ativo; });
+      if (!imoveis.length) { setView('<div class="card"><p class="aviso">Cadastre um imóvel primeiro (aba Imóveis).</p></div>'); return; }
+      setView('<div class="card"><h3>💲 Preço mínimo com lucro</h3>' +
+        '<p class="sub" style="text-align:left;margin:0 0 8px">Fórmula: (custos fixos da estadia ÷ noites + custo por noite) ÷ (1 − comissão − imposto − margem). O imposto (DARF/DAS — confirme a alíquota com seu contador) entra DENTRO do preço: sem susto no fim do mês.</p>' +
+        '<div class="hi-grid"><label>Imóvel <select id="pr-im">' + imovelOptions(imoveis) + '</select></label>' +
+        '<label>Faxina (R$/estadia) <input id="pr-fx" type="number" step="0.01"></label>' +
+        '<label>Lavanderia (R$/estadia) <input id="pr-lv" type="number" step="0.01"></label>' +
+        '<label>Kit/insumos (R$/estadia) <input id="pr-in" type="number" step="0.01"></label>' +
+        '<label>Custo por noite (R$) <input id="pr-cn" type="number" step="0.01" title="luz, gás, internet rateados"></label>' +
+        '<label>Comissão do canal (%) <input id="pr-cm" type="number" step="0.1"></label>' +
+        '<label>Imposto (%) <input id="pr-ip" type="number" step="0.1" title="alíquota efetiva — confirme com o contador"></label>' +
+        '<label>Margem de lucro (%) <input id="pr-mg" type="number" step="0.1"></label>' +
+        '<label>Noites da simulação <input id="pr-nt" type="number" value="2" min="1"></label></div>' +
+        '<button class="btn" id="b-pr">Salvar e simular</button><p id="pr-msg" class="erro"></p></div>' +
+        '<div id="pr-out"></div>');
+      function carregar() {
+        app('GET', '/precificacao/' + val('pr-im')).then(function (r) {
+          var p = r.parametros;
+          el('pr-fx').value = p.faxina_centavos / 100; el('pr-lv').value = p.lavanderia_centavos / 100;
+          el('pr-in').value = p.insumos_centavos / 100; el('pr-cn').value = p.custo_noite_centavos / 100;
+          el('pr-cm').value = p.comissao_pct; el('pr-ip').value = p.imposto_pct; el('pr-mg').value = p.margem_pct;
+          simular();
+        }).catch(function (e) { el('pr-msg').textContent = e.message; });
+      }
+      function simular() {
+        app('GET', '/precificacao/' + val('pr-im') + '/simular?noites=' + (val('pr-nt') || 2)).then(function (r) {
+          var s = r.simulacao;
+          el('pr-out').innerHTML = '<div class="card"><h3>' + esc(s.imovel_nome) + ' — estadia de ' + s.noites + ' noite(s)</h3>' +
+            '<div class="lin">Custos fixos da estadia: <b>' + brl(s.custos_fixos_estadia_centavos) + '</b></div>' +
+            '<div class="lin">Custo total por noite: <b>' + brl(s.custo_por_noite_centavos) + '</b></div>' +
+            '<div class="lin" style="font-size:1.15rem">Preço mínimo por noite: <b>' + brl(s.preco_minimo_noite_centavos) + '</b> · estadia: <b>' + brl(s.preco_minimo_estadia_centavos) + '</b></div>' +
+            '<div class="lin">Tarifa base atual: <b>' + brl(s.tarifa_base_centavos) + '</b> ' + (s.tarifa_base_cobre ? '<span class="tag" style="background:#e1f5e4">✅ cobre o mínimo</span>' : '<span class="tag" style="background:#fde2e2;color:#b00020">⚠️ ABAIXO do mínimo — prejuízo</span>') + '</div>' +
+            (!s.tarifa_base_cobre ? '<p style="margin-top:8px"><button class="btn peq" id="b-apl">Aplicar o mínimo como tarifa base</button></p>' : '') + '</div>';
+          if (el('b-apl')) el('b-apl').onclick = function () {
+            app('PATCH', '/imoveis/' + s.imovel_id, { tarifa_base_centavos: s.preco_minimo_noite_centavos }).then(simular).catch(function (e) { alert(e.message); });
+          };
+        }).catch(function (e) { el('pr-out').innerHTML = '<div class="card erro">' + esc(e.message) + '</div>'; });
+      }
+      el('pr-im').onchange = carregar;
+      el('b-pr').onclick = function () {
+        el('pr-msg').textContent = '';
+        app('PUT', '/precificacao/' + val('pr-im'), {
+          faxina_centavos: centavos(val('pr-fx')), lavanderia_centavos: centavos(val('pr-lv')), insumos_centavos: centavos(val('pr-in')),
+          custo_noite_centavos: centavos(val('pr-cn')), comissao_pct: val('pr-cm'), imposto_pct: val('pr-ip'), margem_pct: val('pr-mg'),
+        }).then(simular).catch(function (e) { el('pr-msg').textContent = e.message; });
+      };
+      carregar();
     }).catch(erroBox);
   }
 

@@ -44,7 +44,7 @@ const FLAGS_SEED = [
   ['dominio_proprio', 'Domínio próprio', 'Painel e área do hóspede sob o domínio do cliente.', 0],
 ];
 
-// ---- PLANOS (seed; preços PROVISÓRIOS, editáveis no painel) ----
+// ---- PLANOS (seed; preços FINAIS desde 11/07/2026 — seguem editáveis no painel) ----
 const PLANOS_SEED = [
   {
     slug: 'trial', nome: 'Trial (14 dias)', descricao: 'Avaliação completa por 14 dias, sem cartão.',
@@ -54,21 +54,21 @@ const PLANOS_SEED = [
   },
   {
     slug: 'starter', nome: 'Starter', descricao: 'Para o anfitrião com poucos imóveis começando a profissionalizar.',
-    preco_centavos: 9900, ordem: 1,
+    preco_centavos: 12900, ordem: 1,
     limites: { imoveis: 3, usuarios: 2, reservas_mes: 60, ia_consultas_mes: 0, armazenamento_mb: 2048, workspaces: 1 },
     modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'relatorios', 'estoque'],
     flags: { ia_direta: false, api_publica: false, white_label: false, canais_ilimitados: false, dominio_proprio: false },
   },
   {
-    slug: 'pro', nome: 'Pro', descricao: 'Operação em crescimento: IA, precificação, concierge e contratos.',
-    preco_centavos: 24900, ordem: 2,
+    slug: 'pro', nome: 'Pro', descricao: 'Operação em crescimento: IA, precificação, API, estoque e concierge.',
+    preco_centavos: 29900, ordem: 2,
     limites: { imoveis: 10, usuarios: 5, reservas_mes: 300, ia_consultas_mes: 300, armazenamento_mb: 10240, workspaces: 2 },
     modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'hospede', 'precificacao', 'contratos', 'relatorios', 'ia', 'estoque'],
     flags: { ia_direta: true, api_publica: true, white_label: false, canais_ilimitados: true, dominio_proprio: false },
   },
   {
     slug: 'business', nome: 'Business', descricao: 'Gestora estabelecida: tudo liberado, API, marca própria e domínio.',
-    preco_centavos: 59900, ordem: 3,
+    preco_centavos: 69900, ordem: 3,
     limites: { imoveis: 30, usuarios: 15, reservas_mes: 1500, ia_consultas_mes: 1500, armazenamento_mb: 51200, workspaces: 5 },
     modulos: MODULOS_KEYS, flags: { ia_direta: true, api_publica: true, white_label: true, canais_ilimitados: true, dominio_proprio: true },
   },

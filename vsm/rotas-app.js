@@ -69,6 +69,22 @@ function registrarRotasApp(server, { requireAssinante }) {
     res.json({ ok: true, reserva: app.Reservas.marcarEtapa(tid(req), req.params.id, String(b.etapa || ''), b.feito !== false) });
   }));
 
+  // ---- consultas (mini-funil pré-reserva; módulo 'reservas') ----
+  server.get('/gestao/api/app/consultas', ...G('reservas'), h((req, res) => res.json({ consultas: app.Consultas.listar(tid(req), req.query) })));
+  server.post('/gestao/api/app/consultas', ...G('reservas'), h((req, res) => res.json({ ok: true, consulta: app.Consultas.criar(tid(req), req.body || {}) })));
+  server.patch('/gestao/api/app/consultas/:id', ...G('reservas'), h((req, res) => res.json({ ok: true, consulta: app.Consultas.atualizar(tid(req), req.params.id, req.body || {}) })));
+  server.post('/gestao/api/app/consultas/:id/status', ...G('reservas'), h((req, res) => res.json({ ok: true, consulta: app.Consultas.mudarStatus(tid(req), req.params.id, (req.body || {}).status) })));
+  server.post('/gestao/api/app/consultas/:id/converter', ...G('reservas'), h((req, res) => {
+    const r = app.Consultas.converter(tid(req), req.params.id, req.body || {});
+    push.notificarTenant(tid(req), { title: 'Consulta convertida 🎉', body: `${r.reserva.hospede_nome || 'Hóspede'} · ${r.reserva.imovel_nome || 'imóvel'} (${r.reserva.checkin} → ${r.reserva.checkout})`, url: '/gestao/app', tag: 'vsm-reserva' }).catch(() => {});
+    res.json({ ok: true, ...r });
+  }));
+
+  // ---- precificação assistida (módulo 'precificacao') ----
+  server.get('/gestao/api/app/precificacao/:imovelId', ...G('precificacao'), h((req, res) => res.json({ parametros: app.Precificacao.obter(tid(req), req.params.imovelId) })));
+  server.put('/gestao/api/app/precificacao/:imovelId', ...G('precificacao'), h((req, res) => res.json({ ok: true, parametros: app.Precificacao.salvar(tid(req), req.params.imovelId, req.body || {}) })));
+  server.get('/gestao/api/app/precificacao/:imovelId/simular', ...G('precificacao'), h((req, res) => res.json({ simulacao: app.Precificacao.simular(tid(req), req.params.imovelId, req.query.noites) })));
+
   // ---- limpezas ----
   server.get('/gestao/api/app/limpezas', ...G('limpeza'), h((req, res) => res.json({ limpezas: app.Limpezas.listar(tid(req), req.query) })));
   server.post('/gestao/api/app/limpezas', ...G('limpeza'), h((req, res) => res.json({ ok: true, limpeza: app.Limpezas.criar(tid(req), req.body || {}) })));

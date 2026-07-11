@@ -16,7 +16,7 @@ const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const sha256 = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
 // eventos que o app dispara (catálogo p/ validação e UI)
-const EVENTOS = ['reserva.criada', 'reserva.confirmada', 'reserva.cancelada', 'reserva.concluida', 'estoque.baixo'];
+const EVENTOS = ['consulta.criada', 'consulta.convertida', 'reserva.criada', 'reserva.confirmada', 'reserva.cancelada', 'reserva.concluida', 'estoque.baixo'];
 
 const MAX_TOKENS = 5;
 const MAX_WEBHOOKS = 3;

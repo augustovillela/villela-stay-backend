@@ -392,6 +392,45 @@ CREATE TABLE IF NOT EXISTS app_estoque_mov (
 );
 CREATE INDEX IF NOT EXISTS idx_app_estoque_mov ON app_estoque_mov(tenant_id, item_id);
 
+-- ---- CONSULTAS (mini-funil pré-reserva; módulo 'reservas') ----
+-- Interessado que ainda não fechou: nova → respondida → pendencia →
+-- convertida (vira reserva, guarda reserva_id) | perdida.
+CREATE TABLE IF NOT EXISTS app_consultas (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  imovel_id     TEXT DEFAULT '',
+  hospede_nome  TEXT NOT NULL,
+  contato       TEXT DEFAULT '',        -- telefone/e-mail/perfil
+  canal         TEXT DEFAULT 'airbnb',  -- airbnb|booking|direto|instagram|outro
+  checkin       TEXT DEFAULT '',        -- YYYY-MM-DD (se já falou datas)
+  checkout      TEXT DEFAULT '',
+  hospedes_qtd  INTEGER DEFAULT 1,
+  valor_cotado_centavos INTEGER DEFAULT 0,
+  status        TEXT DEFAULT 'nova',    -- nova|respondida|pendencia|convertida|perdida
+  obs           TEXT DEFAULT '',
+  reserva_id    TEXT DEFAULT '',        -- preenchido ao converter
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_app_consultas_tenant ON app_consultas(tenant_id, status);
+
+-- ---- PRECIFICAÇÃO assistida (módulo 'precificacao') ----
+-- Parâmetros de custo por imóvel p/ calcular o PREÇO MÍNIMO com lucro:
+-- (fixos/noites + variável/noite) / (1 − comissão% − imposto% − margem%).
+CREATE TABLE IF NOT EXISTS app_precificacao (
+  tenant_id     TEXT NOT NULL,
+  imovel_id     TEXT NOT NULL,
+  faxina_centavos      INTEGER DEFAULT 0,  -- custo fixo por estadia
+  lavanderia_centavos  INTEGER DEFAULT 0,  -- custo fixo por estadia
+  insumos_centavos     INTEGER DEFAULT 0,  -- kit/amenities por estadia
+  custo_noite_centavos INTEGER DEFAULT 0,  -- variável por noite (luz, gás...)
+  comissao_pct  REAL DEFAULT 15,           -- comissão do canal (Airbnb ~15)
+  imposto_pct   REAL DEFAULT 0,            -- alíquota efetiva (DARF/DAS c/ contador)
+  margem_pct    REAL DEFAULT 20,           -- lucro desejado
+  atualizado_em TEXT DEFAULT '',
+  PRIMARY KEY (tenant_id, imovel_id)
+);
+
 -- ---- WEBHOOKS de eventos do app (flag api_publica) ----
 -- Entrega assíncrona (fire-and-forget c/ HMAC) de reserva.criada/confirmada/
 -- cancelada/concluida e estoque.baixo para integrações do assinante.
