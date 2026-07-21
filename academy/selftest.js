@@ -1019,9 +1019,17 @@ async function main() {
     assert.ok(c.json.acesso.definir_senha_url.includes('/academy/redefinir-senha?token='), 'link definir-senha');
     assert.ok(c.json.acesso.painel_url.endsWith('/academy/app'), 'painel_url = área do aluno');
     assert.ok(c.json.acesso.produtos_liberados >= 1, 'liberou >= 1 produto');
+    // flag de usuário ligada (acesso total)
+    assert.equal(dbT.prepare('SELECT cortesia FROM users WHERE id = ?').get(uid).cortesia, 1, 'flag cortesia = 1');
     // acesso a produto PAGO sem ter comprado (nenhuma order)
     assert.equal(ct.temAcesso(uid, pagoId), true, 'ANTES: tem acesso ao produto pago sem pagar');
     assert.equal(dbT.prepare("SELECT COUNT(*) n FROM orders WHERE user_id = ? AND status = 'paga'").get(uid).n, 0, 'não houve compra');
+    // acesso a produto FUTURO (publicado depois, SEM matrícula) — via flag
+    const futuroId = require('./db').novoId();
+    dbT.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, preco_centavos, status, criado_em) VALUES (?,?,?,?,?,?, 'publicado', ?)")
+      .run(futuroId, uid, 'curso', 'Curso Futuro', 'curso-futuro-selftest', 15000, new Date().toISOString());
+    assert.equal(dbT.prepare('SELECT COUNT(*) n FROM enrollments WHERE user_id = ? AND product_id = ?').get(uid, futuroId).n, 0, 'sem matrícula no produto futuro');
+    assert.equal(ct.temAcesso(uid, futuroId), true, 'flag libera produto futuro sem matrícula');
     // aparece na listagem, marcado como cortesia ativo
     const item = (await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(a => a.id === uid);
     assert.ok(item && item.produtos_liberados >= 1 && item.ativo === true, 'listado como cortesia ativo');
@@ -1032,13 +1040,16 @@ async function main() {
     // idempotente: conceder de novo não duplica matrícula
     assert.equal((await req('POST', '/staff/api/academy/cortesia', { corpo: { nome: 'Convidado Beta', email } })).st, 200);
     assert.equal(dbT.prepare('SELECT COUNT(*) n FROM enrollments WHERE user_id = ? AND product_id = ?').get(uid, pagoId).n, 1, 'sem matrícula duplicada');
-    // revogar corta o acesso
+    // revogar corta o acesso (flag=0 → produto pago E futuro perdem acesso)
     assert.equal((await req('POST', `/staff/api/academy/cortesia/${uid}/revogar`)).st, 200);
-    assert.equal(ct.temAcesso(uid, pagoId), false, 'DEPOIS de revogar: sem acesso');
+    assert.equal(dbT.prepare('SELECT cortesia FROM users WHERE id = ?').get(uid).cortesia, 0, 'flag cortesia = 0 após revogar');
+    assert.equal(ct.temAcesso(uid, pagoId), false, 'DEPOIS de revogar: sem acesso ao produto pago');
+    assert.equal(ct.temAcesso(uid, futuroId), false, 'DEPOIS de revogar: sem acesso ao produto futuro');
     assert.equal((await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(a => a.id === uid).ativo, false, 'listado como inativo');
     // reativar volta a conceder
     assert.equal((await req('POST', `/staff/api/academy/cortesia/${uid}/reativar`)).st, 200);
     assert.equal(ct.temAcesso(uid, pagoId), true, 'DEPOIS de reativar: acesso restaurado');
+    assert.equal(ct.temAcesso(uid, futuroId), true, 'DEPOIS de reativar: produto futuro liberado de novo');
   });
   await t('cortesia exige e-mail e guarda requireAuth+requireAdmin', async () => {
     assert.equal((await req('POST', '/staff/api/academy/cortesia', { corpo: { nome: 'Sem email' } })).st, 400);

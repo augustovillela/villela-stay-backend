@@ -283,9 +283,12 @@ const Midia = {
   },
 };
 
-// acesso efetivo (F6): matrícula ativa OU assinatura ativa do clube OU
+// acesso efetivo (F6): CORTESIA total (flag do usuário → libera TUDO, inclusive
+// produtos futuros) OU matrícula ativa OU assinatura ativa do clube OU
 // assinatura ativa de um clube que inclui o produto
 function temAcesso(userId, productId) {
+  const u = db.prepare('SELECT cortesia FROM users WHERE id = ?').get(userId);
+  if (u && u.cortesia === 1) return true; // acesso de cortesia vitalício a todo o catálogo
   if (Matriculas.ativa(userId, productId)) return true;
   if (db.prepare("SELECT 1 FROM subscriptions WHERE user_id = ? AND product_id = ? AND status = 'ativa'").get(userId, productId)) return true;
   return !!db.prepare(`SELECT 1 FROM subscriptions s JOIN club_items ci ON ci.club_product_id = s.product_id
@@ -388,50 +391,59 @@ const Cortesia = {
   contarLiberados(userId) {
     return db.prepare("SELECT COUNT(*) n FROM enrollments WHERE user_id = ? AND origem = 'cortesia' AND status = 'ativa'").get(userId).n;
   },
+  // é/foi de cortesia: flag do usuário OU histórico de matrícula cortesia
   ehCortesia(userId) {
+    const u = db.prepare('SELECT cortesia FROM users WHERE id = ?').get(userId);
+    if (u && u.cortesia === 1) return true;
     return !!db.prepare("SELECT 1 FROM enrollments WHERE user_id = ? AND origem = 'cortesia' LIMIT 1").get(userId);
   },
 
-  // concede acesso vitalício a TUDO a partir de {nome,email}
+  // concede acesso vitalício a TUDO a partir de {nome,email}: liga o FLAG
+  // (acesso total, cobre catálogo vazio e produtos futuros) E matricula nos
+  // publicados atuais (p/ aparecerem em "meus cursos"). Idempotente.
   concederTotal({ nome, email }, criadoPor = 'staff') {
     return transacao(() => {
       const { usuario, novo, senha_temporaria } = this.acharOuCriarUsuario({ nome, email });
+      db.prepare('UPDATE users SET cortesia = 1, atualizado_em = ? WHERE id = ?').run(nowISO(), usuario.id);
       let novos = 0;
       for (const pid of this.idsDeTudo()) {
         const r = this.garantirMatricula(usuario, pid, criadoPor);
         if (r.origem === 'cortesia' && r.novo) novos++;
       }
-      return { usuario, novo, senha_temporaria, novos, produtos_liberados: this.contarLiberados(usuario.id) };
+      return { usuario, novo, senha_temporaria, cortesia_total: true, novos, produtos_liberados: this.contarLiberados(usuario.id) };
     });
   },
 
-  // corta o acesso: inativa as matrículas de cortesia (compra/assinatura ficam intactas)
+  // corta o acesso: desliga o flag E inativa as matrículas de cortesia
+  // (compra/assinatura ficam intactas)
   revogarTotal(userId) {
     const u = Usuarios.porId(userId); if (!u) throw new Error('Usuário não encontrado.');
     if (!this.ehCortesia(userId)) throw new Error('Este usuário não tem acesso de cortesia.');
+    db.prepare('UPDATE users SET cortesia = 0, atualizado_em = ? WHERE id = ?').run(nowISO(), userId);
     const r = db.prepare("UPDATE enrollments SET status = 'revogada' WHERE user_id = ? AND origem = 'cortesia' AND status = 'ativa'").run(userId);
     return { revogadas: r.changes };
   },
 
-  // volta a conceder: reativa o que estava revogado e cobre novos produtos
+  // volta a conceder: religa o flag, reativa o que estava revogado e cobre
+  // novos produtos (funciona mesmo se a revogação zerou as matrículas)
   reativarTotal(userId, criadoPor = 'staff') {
     const u = Usuarios.porId(userId); if (!u) throw new Error('Usuário não encontrado.');
-    if (!this.ehCortesia(userId)) throw new Error('Este usuário não tem acesso de cortesia.');
     return this.concederTotal({ nome: u.nome, email: u.email }, criadoPor);
   },
 
-  // lista os usuários de cortesia (ativos ou revogados) para o painel staff
+  // painel staff: cortesia ativa (flag=1) + histórico revogado (já teve matrícula
+  // cortesia). Aparece mesmo com 0 produtos liberados.
   listar() {
     return db.prepare(`
-      SELECT u.id, u.nome, u.email, u.criado_em,
-        SUM(CASE WHEN e.status = 'ativa' THEN 1 ELSE 0 END) AS produtos_liberados,
-        MAX(CASE WHEN e.status = 'ativa' THEN 1 ELSE 0 END) AS ativo
-      FROM enrollments e JOIN users u ON u.id = e.user_id
-      WHERE e.origem = 'cortesia'
-      GROUP BY u.id, u.nome, u.email, u.criado_em
+      SELECT u.id, u.nome, u.email, u.criado_em, u.cortesia,
+        (SELECT COUNT(*) FROM enrollments e WHERE e.user_id = u.id AND e.origem = 'cortesia' AND e.status = 'ativa') AS produtos_liberados
+      FROM users u
+      WHERE u.cortesia = 1
+         OR EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = u.id AND e.origem = 'cortesia')
       ORDER BY u.criado_em DESC LIMIT 500`).all()
       .map(r => ({ id: r.id, nome: r.nome, email: r.email, criado_em: r.criado_em,
-        produtos_liberados: r.produtos_liberados, ativo: !!r.ativo }));
+        produtos_liberados: r.produtos_liberados, ativo: r.cortesia === 1,
+        status: r.cortesia === 1 ? 'ativo' : 'revogado' }));
   },
 };
 

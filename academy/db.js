@@ -62,6 +62,12 @@ const MIGRACOES = [
     nome: 'comissoes-oficiais-2026-07-09',
     sql: `UPDATE platform_settings SET valor = '{"plataforma_pct":8.9,"fixo_centavos":100,"afiliado_padrao_pct":10,"cookie_dias":30}', atualizado_em = '2026-07-09T00:00:00.000Z' WHERE chave = 'comissoes'`,
   },
+  { // acesso de CORTESIA/BETA como FLAG do usuário: acesso TOTAL vitalício a
+    // todos os produtos (inclusive catálogo vazio e produtos publicados no
+    // futuro). 1 = cortesia ativa; 0 = sem cortesia (nunca teve ou revogada).
+    nome: 'users-cortesia-2026-07-21',
+    sql: 'ALTER TABLE users ADD COLUMN cortesia INTEGER DEFAULT 0',
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
