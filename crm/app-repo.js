@@ -946,8 +946,39 @@ function dashboard(tid) {
   };
 }
 
+// =====================================================================
+// SEED DEMO — dados FICTÍCIOS para tenants de cortesia/beta não verem
+// telas vazias. Nunca copia dados reais. Idempotente.
+// =====================================================================
+function seedDemo(tid) {
+  const t = T(tid);
+  if (db.prepare('SELECT 1 FROM crm_contatos WHERE tenant_id = ? LIMIT 1').get(t)) return { ok: true, ja_semeado: true };
+  const funil = Funis.padrao(t) || (Funis.listar(t)[0] || null);
+  const abertos = funil ? funil.estagios.filter(e => e.tipo === 'aberto') : [];
+  const est = (i) => abertos.length ? abertos[Math.min(i, abertos.length - 1)].id : '';
+  const hoje = hojeISO();
+  const DEMO = [
+    { nome: 'Marina Alves', tel: '+5561999990001', email: 'marina.demo@exemplo.com', tipo: 'lead-hospedagem', origem: 'site', prod: 'Casa Modernista', ticket: 480000, e: 0, tit: 'Reserva 5 noites — Casa Modernista' },
+    { nome: 'Bruno Costa', tel: '+5561999990002', email: 'bruno.demo@exemplo.com', tipo: 'lead-evento', origem: 'instagram', prod: 'Villa Kubitschek', ticket: 1200000, e: 2, tit: 'Casamento — 120 convidados' },
+    { nome: 'Carla Nunes', tel: '+5561999990003', email: 'carla.demo@exemplo.com', tipo: 'hospede', origem: 'indicacao', prod: 'Flat da Família', ticket: 260000, e: 1, tit: 'Estadia corporativa — 3 diárias' },
+    { nome: 'Diego Ramos', tel: '+5561999990004', email: 'diego.demo@exemplo.com', tipo: 'lead-hospedagem', origem: 'airbnb', prod: 'Gran Villela Home Stay', ticket: 900000, e: 0, tit: 'Confraternização de fim de ano' },
+  ];
+  let contatos = 0, oportunidades = 0;
+  for (const d of DEMO) {
+    let r; try { r = Contatos.criar(t, { nome: d.nome, telefone: d.tel, email: d.email, tipo: d.tipo, origem: d.origem, produto_interesse: d.prod, ticket_centavos: d.ticket, obs: 'Contato de demonstração (dados fictícios).' }, 'demo'); } catch (_) { continue; }
+    if (!r || r.existente) continue;
+    contatos++;
+    if (funil) { try { Oportunidades.criar(t, { contato_id: r.contato.id, funil_id: funil.id, estagio_id: est(d.e), titulo: d.tit, produto: d.prod, valor_centavos: d.ticket, previsao: hoje }, 'demo'); oportunidades++; } catch (_) {} }
+  }
+  try {
+    Tarefas.criar(t, { titulo: 'Ligar para Marina Alves (demo)', tipo: 'ligacao', vence_em: hoje, obs: 'Tarefa de demonstração.' }, 'demo');
+    Tarefas.criar(t, { titulo: 'Enviar proposta do casamento (demo)', tipo: 'proposta', vence_em: hoje, obs: 'Tarefa de demonstração.' }, 'demo');
+  } catch (_) {}
+  return { ok: true, contatos, oportunidades };
+}
+
 module.exports = {
-  provisionar, Config, TIPOS_CONTATO, ORIGENS, VARIAVEIS, normTelefone,
+  provisionar, seedDemo, Config, TIPOS_CONTATO, ORIGENS, VARIAVEIS, normTelefone,
   calcularScore, faixaScore, recalcularScore, statsDoContato,
   Contatos, Empresas, Funis, Oportunidades, Atividades, Tarefas, Templates, Propostas, Campanhas,
   rodarAutomacoes, Agentes, ApiKeys, dashboard,

@@ -176,6 +176,40 @@ function teste(nome, cond) {
   r = await req('GET', '/vpe/api/projetos', { jar: 'anaA' });
   teste('tenant A não vê projetos internos da Villela', !r.dados.projetos.some(p => p.nome.includes('Villela Stay')));
 
+  // ---------- ACESSO DE CORTESIA / BETA ----------
+  r = await req('POST', '/staff/api/vpe/cortesia', { body: { nome: 'Testador Beta', email: 'testador@cortesia.com' }, staff: 'ceo' });
+  teste('cortesia exige admin (ceo → 403)', r.status === 403);
+  r = await req('POST', '/staff/api/vpe/cortesia', { body: { nome: 'Testador Beta', email: 'testador@cortesia.com' }, staff: 'adm' });
+  teste('cortesia criada com senha temporária + painel + seed', r.status === 200 && /^Cortesia-/.test(r.dados.acesso.senha_temporaria) && /\/vpe\/login$/.test(r.dados.acesso.painel_url) && r.dados.seed.projetos === 2);
+  const cortesiaId = r.dados.tenant.id;
+  const senhaCortesia = r.dados.acesso.senha_temporaria;
+  const cortesiaTenant = repo.obterTenant(cortesiaId);
+  teste('cortesia marcada (cortesia=1, interno=1, ativa, sem trial)', cortesiaTenant.cortesia === 1 && cortesiaTenant.interno === 1 && cortesiaTenant.status === 'ativa' && !cortesiaTenant.trial_expira_em);
+  // listagem NÃO inclui o interno REAL da Villela
+  r = await req('GET', '/staff/api/vpe/cortesia', { staff: 'adm' });
+  teste('listagem de cortesia inclui o novo acesso', r.dados.acessos.some(a => a.id === cortesiaId));
+  teste('listagem de cortesia NÃO vaza o interno real da Villela', !r.dados.acessos.some(a => a.slug === 'villela-interno' || a.cortesia !== 1));
+  // owner loga e o GATE LIBERA (interno herdado, sem 402), com o seed demo visível
+  r = await req('POST', '/vpe/api/login', { body: { email: 'testador@cortesia.com', senha: senhaCortesia }, jar: 'cort' });
+  teste('dono de cortesia loga', r.status === 200);
+  r = await req('GET', '/vpe/api/dashboard', { jar: 'cort' });
+  teste('gate LIBERA cortesia (200, interno=true, sem 402)', r.status === 200 && r.dados.empresa.interno === true);
+  r = await req('GET', '/vpe/api/projetos', { jar: 'cort' });
+  teste('cortesia vê os projetos de demonstração (fictícios)', r.status === 200 && r.dados.projetos.length === 2 && r.dados.projetos.every(p => /demonstração/.test(p.nome)));
+  // REVOGAR → gate BLOQUEIA (402)
+  r = await req('POST', '/staff/api/vpe/cortesia/' + cortesiaId + '/revogar', { staff: 'adm' });
+  teste('cortesia revogada (interno=0, suspensa)', r.status === 200 && r.dados.tenant.interno === 0 && r.dados.tenant.status === 'suspensa');
+  r = await req('GET', '/vpe/api/dashboard', { jar: 'cort' });
+  teste('gate BLOQUEIA cortesia revogada (402)', r.status === 402);
+  // REATIVAR → gate LIBERA de novo
+  r = await req('POST', '/staff/api/vpe/cortesia/' + cortesiaId + '/reativar', { staff: 'adm' });
+  teste('cortesia reativada (interno=1, ativa)', r.status === 200 && r.dados.tenant.interno === 1 && r.dados.tenant.status === 'ativa');
+  r = await req('GET', '/vpe/api/dashboard', { jar: 'cort' });
+  teste('gate volta a LIBERAR cortesia reativada (200)', r.status === 200);
+  // seed é idempotente
+  const seedNovo = repo.seedDemo(cortesiaId, staffAtor, 'teste');
+  teste('seedDemo é idempotente (não repete)', seedNovo.ja_semeado === true && seedNovo.projetos === 0);
+
   // ================== FASE 2: portfólio avançado ==================
   // plano de negócio com versões
   r = await req('PUT', '/vpe/api/projetos/' + projA + '/plano', { body: { secoes: { resumo: 'Food bike de brunch para eventos e hospedagens.', modelo_receita: 'Venda por evento + assinatura mensal p/ pousadas.' } }, jar: 'anaA' });

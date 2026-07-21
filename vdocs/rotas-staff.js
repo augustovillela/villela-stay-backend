@@ -55,6 +55,45 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin }) {
   // auditoria da plataforma (tenant_id = '')
   r.get('/auditoria', h(async (req, res) => res.json({ eventos: repo.listarAuditoria('', { limite: req.query.limite || 200 }) })));
 
+  // ---- ACESSOS DE CORTESIA / BETA (teste sem pagamento; liberado até a plataforma revogar) ----
+  // Contrato idêntico ao dos demais produtos (tela central de cortesia).
+  r.get('/cortesia', h(async (req, res) => {
+    res.json({ acessos: repo.listarTenantsPlataforma().filter(t => t.status === 'cortesia') });
+  }));
+  r.post('/cortesia', requireAdmin, h(async (req, res) => {
+    const b = req.body || {};
+    if (!b.email || !String(b.email).includes('@')) throw new Error('Informe o e-mail do testador.');
+    const nome = repo.s(b.nome || b.email, 120);
+    const criado = repo.criarTenantComDono({
+      empresa: nome, nome, email: b.email, cortesia: true, seed_demo: b.seed_demo !== false, ip: ipDe(req),
+    });
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const base = `${proto}://${req.get('host')}`;
+    repo.auditar('', req.user, 'plataforma.cortesia.criar', 'tenant', criado.tenant.id, { nome, email: criado.user.email }, ipDe(req));
+    res.json({
+      ok: true,
+      tenant: criado.tenant,
+      acesso: {
+        email: criado.user.email,
+        senha_temporaria: criado.senha_temporaria || '',
+        definir_senha_url: '', // vdocs não tem fluxo de definir-senha do dono; usa senha temporária
+        login_url: `${base}/vdocs/login`,
+        painel_url: `${base}/vdocs/app`,
+        validade_link: 'sem expiração',
+      },
+    });
+  }));
+  r.post('/cortesia/:id/revogar', requireAdmin, h(async (req, res) => {
+    const t = repo.administrarTenant(req.params.id, { status: 'suspensa' }, req.user, ipDe(req));
+    repo.auditar('', req.user, 'plataforma.cortesia.revogar', 'tenant', t.id, { nome: t.nome }, ipDe(req));
+    res.json({ ok: true, tenant: t });
+  }));
+  r.post('/cortesia/:id/reativar', requireAdmin, h(async (req, res) => {
+    const t = repo.administrarTenant(req.params.id, { status: 'cortesia' }, req.user, ipDe(req));
+    repo.auditar('', req.user, 'plataforma.cortesia.reativar', 'tenant', t.id, { nome: t.nome }, ipDe(req));
+    res.json({ ok: true, tenant: t });
+  }));
+
   app.use('/staff/api/vdocs', r);
 }
 

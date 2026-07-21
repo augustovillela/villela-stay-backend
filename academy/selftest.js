@@ -1001,6 +1001,50 @@ async function main() {
     assert.ok(r.headers.get('referrer-policy'));
   });
 
+  // ================= ACESSO DE CORTESIA / BETA (staff) =================
+  console.log('\n— CORTESIA: acesso vitalício a tudo, revogável —');
+  await t('conceder cortesia total libera produto pago sem pagar; revogar corta; reativar volta', async () => {
+    const ct = require('./repo-conteudo');
+    const dbT = require('./db').db;
+    const email = 'cortesia@t.com';
+    // há pelo menos um produto PAGO publicado (prodId = R$199)
+    const pago = dbT.prepare("SELECT id FROM products WHERE status = 'publicado' AND preco_centavos > 0 LIMIT 1").get();
+    assert.ok(pago, 'existe produto pago publicado');
+    const pagoId = pago.id;
+    // conceder cortesia total
+    const c = await req('POST', '/staff/api/academy/cortesia', { corpo: { nome: 'Convidado Beta', email } });
+    assert.equal(c.st, 200); assert.ok(c.json.ok);
+    const uid = c.json.usuario.id;
+    assert.equal(c.json.usuario.email, email);
+    assert.ok(c.json.acesso.definir_senha_url.includes('/academy/redefinir-senha?token='), 'link definir-senha');
+    assert.ok(c.json.acesso.painel_url.endsWith('/academy/app'), 'painel_url = área do aluno');
+    assert.ok(c.json.acesso.produtos_liberados >= 1, 'liberou >= 1 produto');
+    // acesso a produto PAGO sem ter comprado (nenhuma order)
+    assert.equal(ct.temAcesso(uid, pagoId), true, 'ANTES: tem acesso ao produto pago sem pagar');
+    assert.equal(dbT.prepare("SELECT COUNT(*) n FROM orders WHERE user_id = ? AND status = 'paga'").get(uid).n, 0, 'não houve compra');
+    // aparece na listagem, marcado como cortesia ativo
+    const item = (await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(a => a.id === uid);
+    assert.ok(item && item.produtos_liberados >= 1 && item.ativo === true, 'listado como cortesia ativo');
+    // o link definir-senha realmente define a senha e permite login
+    const tok = decodeURIComponent(c.json.acesso.definir_senha_url.split('token=')[1]);
+    assert.equal((await req('POST', '/academy/api/senha/redefinir', { corpo: { token: tok, senha: 'senha-cortesia-1' } })).st, 200);
+    assert.equal((await req('POST', '/academy/api/login', { corpo: { email, senha: 'senha-cortesia-1' }, jar: 'convidado' })).st, 200);
+    // idempotente: conceder de novo não duplica matrícula
+    assert.equal((await req('POST', '/staff/api/academy/cortesia', { corpo: { nome: 'Convidado Beta', email } })).st, 200);
+    assert.equal(dbT.prepare('SELECT COUNT(*) n FROM enrollments WHERE user_id = ? AND product_id = ?').get(uid, pagoId).n, 1, 'sem matrícula duplicada');
+    // revogar corta o acesso
+    assert.equal((await req('POST', `/staff/api/academy/cortesia/${uid}/revogar`)).st, 200);
+    assert.equal(ct.temAcesso(uid, pagoId), false, 'DEPOIS de revogar: sem acesso');
+    assert.equal((await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(a => a.id === uid).ativo, false, 'listado como inativo');
+    // reativar volta a conceder
+    assert.equal((await req('POST', `/staff/api/academy/cortesia/${uid}/reativar`)).st, 200);
+    assert.equal(ct.temAcesso(uid, pagoId), true, 'DEPOIS de reativar: acesso restaurado');
+  });
+  await t('cortesia exige e-mail e guarda requireAuth+requireAdmin', async () => {
+    assert.equal((await req('POST', '/staff/api/academy/cortesia', { corpo: { nome: 'Sem email' } })).st, 400);
+    assert.equal((await req('GET', '/staff/api/academy/cortesia', { user: 'op' })).st, 403); // operador não-admin
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

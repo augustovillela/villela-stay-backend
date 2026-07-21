@@ -30,6 +30,10 @@ db.exec(schema);
 // ---- migrações (só acrescentar no fim; cada uma roda UMA vez) ----
 const MIGRACOES = [
   { nome: 'f8-subscriptions-mp-preapproval', sql: "ALTER TABLE subscriptions ADD COLUMN mp_preapproval_id TEXT DEFAULT ''" },
+  // Acesso de cortesia/beta: marcador que distingue um tenant de cortesia
+  // (interno=1 p/ herdar "vitalício, sem billing, sem 402") do workspace
+  // interno REAL da Villela (cortesia=0). Permite listar e revogar cortesias.
+  { nome: 'cortesia-tenants', sql: 'ALTER TABLE tenants ADD COLUMN cortesia INTEGER DEFAULT 0' },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

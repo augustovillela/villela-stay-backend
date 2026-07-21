@@ -170,24 +170,31 @@ const Tenants = {
     if (!nome) throw new Error('Informe o nome do escritório.');
     const email = s(d.email_contato || d.email, 120).toLowerCase();
     if (!email || !email.includes('@')) throw new Error('Informe um e-mail de contato válido.');
-    const planoSlug = s(d.plano || 'trial', 60);
-    const plano = Planos.porSlug(planoSlug) || Planos.porSlug('trial');
+    // cortesia/beta: acesso vitalício sem cobrança (plano cheio, sem expiração) — só o dono revoga
+    const ehCortesia = d.status_inicial === 'cortesia';
+    const plano = ehCortesia
+      ? (Planos.porSlug('enterprise') || Planos.porSlug('escritorio') || Planos.porSlug('trial'))
+      : (Planos.porSlug(s(d.plano || 'trial', 60)) || Planos.porSlug('trial'));
     return transacao(() => {
       const id = novoId(); const agora = nowISO();
       let slug = slugify(nome); let n = 1;
       while (db.prepare('SELECT 1 FROM tenants WHERE slug = ?').get(slug)) slug = slugify(nome) + '-' + (++n);
       const trialAte = new Date(Date.now() + DIAS_TRIAL * 86400000).toISOString();
-      const ehTrial = plano.slug === 'trial' || plano.preco_centavos === 0 ? true : (d.iniciar_trial !== false);
+      const ehTrial = ehCortesia ? false : (plano.slug === 'trial' || plano.preco_centavos === 0 ? true : (d.iniciar_trial !== false));
+      const statusIni = ehCortesia ? 'cortesia' : (ehTrial ? 'trial' : 'ativa');
+      const subStatus = ehCortesia ? 'cortesia' : (ehTrial ? 'trial' : 'ativa');
       db.prepare(`INSERT INTO tenants (id, slug, nome, cnpj, oab_secional, email_contato, telefone, status, plan_id, trial_expira_em, origem, obs, criado_em, criado_por)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(id, slug, nome, s(d.cnpj, 20), s(d.oab_secional, 20), email, s(d.telefone, 20),
-          ehTrial ? 'trial' : 'ativa', plano.id, ehTrial ? trialAte : '', s(d.origem, 30) || 'manual', s(d.obs, 1000), agora, s(quem, 60));
+          statusIni, plano.id, statusIni === 'trial' ? trialAte : '', s(d.origem, 30) || (ehCortesia ? 'cortesia' : 'manual'), s(d.obs, 1000), agora, s(quem, 60));
       db.prepare('INSERT INTO workspaces (id, tenant_id, nome, slug, criado_em) VALUES (?,?,?,?,?)').run(novoId(), id, 'Principal', 'principal', agora);
       db.prepare('INSERT INTO tenant_users (id, tenant_id, nome, email, papel, ativo, criado_em) VALUES (?,?,?,?,?,1,?)')
         .run(novoId(), id, s(d.nome_responsavel || nome, 120), email, 'admin', agora);
       db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, ciclo, inicio, proximo_venc, criado_em) VALUES (?,?,?,?,?,?,?,?)')
-        .run(novoId(), id, plano.id, ehTrial ? 'trial' : 'ativa', 'mensal', agora, ehTrial ? trialAte : '', agora);
-      evento(id, 'tenant.criado', slug, { plano: plano.slug, trial: ehTrial });
+        .run(novoId(), id, plano.id, subStatus, 'mensal', agora, statusIni === 'trial' ? trialAte : '', agora);
+      // dados fictícios de demonstração para o testador de cortesia não ver telas vazias
+      if (ehCortesia && d.seed_demo !== false) { try { seedDemo(id); } catch (_) {} }
+      evento(id, 'tenant.criado', slug, { plano: plano.slug, trial: statusIni === 'trial', cortesia: ehCortesia });
       return Tenants.obter(id);
     });
   },
@@ -202,7 +209,7 @@ const Tenants = {
   },
   // muda status manualmente (suspender/reativar/cancelar pela plataforma)
   mudarStatus(id, status, quem, detalhe) {
-    const ok = ['trial', 'ativa', 'inadimplente', 'suspensa', 'cancelada'];
+    const ok = ['trial', 'ativa', 'inadimplente', 'suspensa', 'cancelada', 'cortesia'];
     if (!ok.includes(status)) throw new Error('Status inválido.');
     db.prepare('UPDATE tenants SET status = ?, atualizado_em = ? WHERE id = ?').run(status, nowISO(), s(id, 40));
     evento(id, 'tenant.status', status, { detalhe: detalhe || '' });
@@ -252,8 +259,8 @@ function entitlements(tenantId) {
   const limites = { ...(plano ? plano.limites : {}), ...j.parse(set.limites_over, {}) };
   const modulos = new Set([...(plano ? plano.modulos : []), ...j.parse(set.modulos_extra, [])]);
   const flags = { ...(plano ? plano.flags : {}), ...j.parse(set.flags_over, {}) };
-  // acesso só quando trial/ativa; suspensa/cancelada/inadimplente = bloqueia entrega
-  const acessoLiberado = ['trial', 'ativa'].includes(t.status);
+  // acesso quando trial/ativa/cortesia; suspensa/cancelada/inadimplente = bloqueia entrega
+  const acessoLiberado = ['trial', 'ativa', 'cortesia'].includes(t.status);
   return {
     tenant_id: t.id, status: t.status, plano: plano ? plano.slug : null, acesso_liberado: acessoLiberado,
     modulos: [...modulos], limites, flags,
@@ -304,6 +311,56 @@ const Uso = {
     const m = {}; for (const r of rows) m[r.metrica] = r.quantidade; return m;
   },
 };
+
+// =====================================================================
+// SEED DEMO — dados FICTÍCIOS para tenants de cortesia/beta não verem
+// telas vazias. Nunca copia dados reais. Idempotente.
+//
+// OBS. ESTRUTURAL: o núcleo jurídico (legal/) ainda é single-tenant — o
+// isolamento de processos/clientes por tenant é MARCO FUTURO (ver README
+// §Roadmap e schema.sql linhas 12-15). Por isso ESTE módulo (control plane)
+// não tem tabelas/funções de criação de clientes/processos por tenant.
+// A semeadura aqui usa só as funções internas existentes e cobre o que o
+// painel do assinante (/juridico/api/me → uso; workspaces) consegue exibir:
+//   • um workspace de demonstração (Tenants.addWorkspace)
+//   • métricas de uso coerentes (Uso.set)
+//   • um registro inspecionável (platform_events) com os clientes/processos/
+//     prazo FICTÍCIOS (CNJ evidentemente falso), que passa a ter home real
+//     quando o núcleo virar multi-tenant.
+// =====================================================================
+function seedDemo(tid) {
+  const t = s(tid, 40);
+  if (!db.prepare('SELECT 1 FROM tenants WHERE id = ?').get(t)) return { ok: false };
+  // idempotência: se já semeado (evento cortesia.seed), não repete
+  if (db.prepare("SELECT 1 FROM platform_events WHERE tenant_id = ? AND tipo = 'cortesia.seed' LIMIT 1").get(t)) return { ok: true, ja_semeado: true };
+  const periodo = periodoAtual();
+  // clientes + processos + prazo FICTÍCIOS (CNJ evidentemente falso: 0000000-00.0000.0.00.0000)
+  const CLIENTES = [
+    { nome: 'Cliente Demonstração 1 — Construtora Exemplo Ltda', doc: '00.000.000/0001-00' },
+    { nome: 'Cliente Demonstração 2 — Maria da Amostra', doc: '000.000.000-00' },
+    { nome: 'Cliente Demonstração 3 — Condomínio Modelo (demo)', doc: '11.111.111/0001-11' },
+  ];
+  const PROCESSOS = [
+    { numero: '0000000-00.0000.0.00.0000', classe: 'Procedimento Comum Cível (demo)', cliente: CLIENTES[0].nome },
+    { numero: '0000001-00.0000.0.00.0000', classe: 'Execução de Título Extrajudicial (demo)', cliente: CLIENTES[1].nome },
+    { numero: '0000002-00.0000.0.00.0000', classe: 'Ação de Cobrança (demo)', cliente: CLIENTES[2].nome },
+  ];
+  const PRAZO = { titulo: 'Contestação — processo 0000000-00.0000.0.00.0000 (demo)', vence_em: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10) };
+  // workspace de demonstração (função interna existente)
+  let workspaceId = '';
+  try { workspaceId = Tenants.addWorkspace(t, 'Núcleo de Demonstração'); } catch (_) {}
+  // métricas de uso coerentes com os fictícios (aparecem em /juridico/api/me → uso)
+  try {
+    Uso.set(t, 'advogados', 2, periodo);
+    Uso.set(t, 'processos_ativos', PROCESSOS.length, periodo);
+    Uso.set(t, 'clientes_portal', CLIENTES.length, periodo);
+    Uso.set(t, 'ia_consultas_mes', 4, periodo);
+    Uso.set(t, 'armazenamento_mb', 120, periodo);
+  } catch (_) {}
+  // registro inspecionável do conteúdo fictício (marca idempotência + rastreabilidade)
+  evento(t, 'cortesia.seed', workspaceId, { clientes: CLIENTES, processos: PROCESSOS, prazo: PRAZO, fonte: 'seedDemo', ficticio: true });
+  return { ok: true, workspace_id: workspaceId, clientes: CLIENTES.length, processos: PROCESSOS.length, prazos: 1 };
+}
 
 // =====================================================================
 // CUSTO POR CLIENTE
@@ -433,7 +490,7 @@ const Dashboard = {
 };
 
 module.exports = {
-  semear, slugify, MODULOS, MODULOS_KEYS, LIMITES, DIAS_TRIAL,
+  semear, slugify, seedDemo, MODULOS, MODULOS_KEYS, LIMITES, DIAS_TRIAL,
   Planos, Tenants, salvarSettings, entitlements, podeModulo, dentroLimite, flag,
   Uso, Custo, Tickets, Flags, Leads, evento, Eventos, Auditoria, Dashboard,
 };

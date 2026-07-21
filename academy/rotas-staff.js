@@ -5,9 +5,10 @@
 // Academy a um usuário. Tudo auditado.
 // =====================================================================
 'use strict';
+const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 
-function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
+function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || 'plataforma');
   const A = [requireAuth, requireAdmin];
@@ -87,6 +88,41 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
     const id = ct.Matriculas.criar(req.params.id, String((req.body || {}).email || ''), quem(req), 'cortesia');
     aud(req, 'matricula.cortesia', 'enrollments', id, String((req.body || {}).email || ''));
     res.json({ ok: true, id });
+  }));
+
+  // ---- ACESSO DE CORTESIA / BETA (acesso vitalício a TUDO, sem pagamento; revogável) ----
+  // Marketplace B2C: o acesso é por USUÁRIO — garante matrícula cortesia em todos
+  // os produtos publicados (+ itens de clubes publicados) a partir de um e-mail.
+  app.get('/staff/api/academy/cortesia', ...A, h((req, res) => {
+    res.json({ acessos: ct.Cortesia.listar() });
+  }));
+  app.post('/staff/api/academy/cortesia', ...A, h((req, res) => {
+    const b = req.body || {};
+    if (!b.email || !String(b.email).includes('@')) return res.status(400).json({ erro: 'Informe o e-mail do testador.' });
+    const r = ct.Cortesia.concederTotal({ nome: b.nome, email: b.email }, quem(req)); // seed_demo ignorado (B2C não tem tenant)
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const base = `${proto}://${req.get('host')}`;
+    const token = jwt.sign({ tipo: 'academy-reset', uid: r.usuario.id }, jwtSecret, { expiresIn: '30d' });
+    aud(req, 'cortesia.conceder', 'enrollments', r.usuario.id, `${r.usuario.email} — ${r.produtos_liberados} produto(s)`);
+    const acesso = {
+      email: r.usuario.email,
+      definir_senha_url: `${base}/academy/redefinir-senha?token=${token}`,
+      painel_url: `${base}/academy/app`,
+      validade_link: '30 dias',
+      produtos_liberados: r.produtos_liberados,
+    };
+    if (r.senha_temporaria) acesso.senha_temporaria = r.senha_temporaria; // conta nova: fallback se não usar o link
+    res.json({ ok: true, usuario: { id: r.usuario.id, nome: r.usuario.nome, email: r.usuario.email }, acesso });
+  }));
+  app.post('/staff/api/academy/cortesia/:userId/revogar', ...A, h((req, res) => {
+    const r = ct.Cortesia.revogarTotal(req.params.userId);
+    aud(req, 'cortesia.revogar', 'enrollments', req.params.userId, `${r.revogadas} matrícula(s)`);
+    res.json({ ok: true });
+  }));
+  app.post('/staff/api/academy/cortesia/:userId/reativar', ...A, h((req, res) => {
+    const r = ct.Cortesia.reativarTotal(req.params.userId, quem(req));
+    aud(req, 'cortesia.reativar', 'enrollments', req.params.userId, `${r.produtos_liberados} produto(s)`);
+    res.json({ ok: true });
   }));
 
   // denúncias e avaliações (FASE 3)

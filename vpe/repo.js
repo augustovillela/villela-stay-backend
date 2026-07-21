@@ -114,20 +114,21 @@ function slugDisponivel(base) {
 const obterTenant = (id) => db.prepare('SELECT * FROM tenants WHERE id = ?').get(String(id));
 const tenantPorSlug = (slug) => db.prepare('SELECT * FROM tenants WHERE slug = ?').get(String(slug));
 
-function criarTenantComDono({ empresa, nome, email, senha, ip, interno = false, planoSlug = 'professional', trialDias = 14 }) {
+function criarTenantComDono({ empresa, nome, email, senha, ip, interno = false, cortesia = false, planoSlug = 'professional', trialDias = 14 }) {
   const em = emailNorm(email);
   if (!s(empresa, 120)) throw new Error('Informe o nome da empresa.');
   if (!s(nome, 120)) throw new Error('Informe o seu nome.');
   if (!emailOK(em)) throw new Error('E-mail inválido.');
   if (String(senha || '').length < 8) throw new Error('A senha precisa de pelo menos 8 caracteres.');
+  if (cortesia) interno = true; // cortesia herda o gate do interno (vitalício, sem billing, sem 402)
   const plano = planoPorSlug(planoSlug);
   if (!plano) throw new Error('Planos não configurados.');
   return transacao(() => {
     const agora = nowISO();
     const trialFim = interno ? '' : new Date(Date.now() + trialDias * 24 * 3600 * 1000).toISOString();
     const tenant = { id: novoId(), slug: slugDisponivel(empresa), nome: s(empresa, 120) };
-    db.prepare('INSERT INTO tenants (id, slug, nome, email_contato, status, interno, trial_expira_em, criado_em) VALUES (?,?,?,?,?,?,?,?)')
-      .run(tenant.id, tenant.slug, tenant.nome, em, interno ? 'ativa' : 'trial', interno ? 1 : 0, trialFim, agora);
+    db.prepare('INSERT INTO tenants (id, slug, nome, email_contato, status, interno, cortesia, trial_expira_em, criado_em) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(tenant.id, tenant.slug, tenant.nome, em, interno ? 'ativa' : 'trial', interno ? 1 : 0, cortesia ? 1 : 0, trialFim, agora);
     let user = userPorEmail(em);
     if (user) {
       if (!bcrypt.compareSync(String(senha), user.senha_hash || '')) throw new Error('Este e-mail já tem conta com outra senha — entre pelo login.');
@@ -141,7 +142,7 @@ function criarTenantComDono({ empresa, nome, email, senha, ip, interno = false, 
       .run(novoId(), tenant.id, user.id, 'dono', 'ativo', agora, user.id);
     db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, inicio, fim, criado_em) VALUES (?,?,?,?,?,?,?)')
       .run(novoId(), tenant.id, plano.id, interno ? 'ativa' : 'trial', agora, trialFim, agora);
-    auditar(tenant.id, user, 'tenant.criar', 'tenant', tenant.id, { empresa: tenant.nome, plano: plano.slug, interno }, ip);
+    auditar(tenant.id, user, 'tenant.criar', 'tenant', tenant.id, { empresa: tenant.nome, plano: plano.slug, interno, cortesia }, ip);
     return { tenant: obterTenant(tenant.id), user };
   });
 }
@@ -404,6 +405,84 @@ function semearInterno({ email, nome, senha }, ator, ip) {
   return { tenant: t, criados, total: PROJETOS_VILLELA.length, senha_inicial: senhaGerada || undefined };
 }
 
+// ------------------------------------------------------------ acesso de cortesia / beta
+// Um acesso de cortesia é um tenant interno=1 (herda "vitalício, sem billing,
+// sem 402") MARCADO com cortesia=1 — o que o distingue do workspace interno
+// REAL da Villela (cortesia=0) e permite listá-lo e revogá-lo.
+// seed_demo: dados FICTÍCIOS de demonstração (2 projetos c/ tarefas + 1 evento).
+const PROJETOS_DEMO = [
+  { nome: 'Reforma da Suíte Master (demonstração)', categoria: 'hospedagem', estagio: 'planejamento', prioridade: 'alta',
+    descricao: 'Projeto FICTÍCIO de demonstração — elevar a suíte a padrão boutique. Sinta-se à vontade para editar ou excluir.',
+    tarefas: ['Orçar materiais de acabamento', 'Contratar equipe de pintura', 'Definir cronograma de obra'] },
+  { nome: 'Festival Gastronômico de Verão (demonstração)', categoria: 'eventos', estagio: 'viabilidade', prioridade: 'media',
+    descricao: 'Evento FICTÍCIO de demonstração — festival com food trucks e chefs convidados. Dados de exemplo.',
+    tarefas: ['Mapear fornecedores de buffet', 'Estimar público e ingressos'] },
+];
+// Idempotente: se o 1º projeto demo já existe, não repete. Nunca usa dados reais.
+function seedDemo(tenantId, ator, ip) {
+  const func = ator && ator.id ? ator : { id: 'seed-demo', nome: 'Seed Demonstração' };
+  const origem = ip || 'seed-demo';
+  if (db.prepare('SELECT 1 FROM projects WHERE tenant_id = ? AND nome = ? LIMIT 1').get(String(tenantId), PROJETOS_DEMO[0].nome)) {
+    return { ja_semeado: true, projetos: 0, tarefas: 0, eventos: 0 };
+  }
+  const tarefas = require('./tarefas');
+  let np = 0, nt = 0, ne = 0;
+  for (const pd of PROJETOS_DEMO) {
+    const proj = criarProjeto(tenantId, { nome: pd.nome, categoria: pd.categoria, estagio: pd.estagio, prioridade: pd.prioridade, descricao: pd.descricao, responsavel: 'Equipe de demonstração' }, func, origem);
+    np++;
+    for (const titulo of pd.tarefas) {
+      try { tarefas.criarTarefa(tenantId, proj.id, { titulo, prioridade: 'media', descricao: 'Tarefa fictícia de demonstração.' }, func, origem); nt++; } catch (_) {}
+    }
+  }
+  try {
+    require('./eventos').criarEvento(tenantId, { nome: 'Casamento Modelo (demonstração)', tipo: 'casamento', cliente_nome: 'Casal Exemplo', convidados_previstos: 80, orcamento_centavos: 2500000, receita_centavos: 4000000 }, func, origem);
+    ne++;
+  } catch (_) {}
+  return { ja_semeado: false, projetos: np, tarefas: nt, eventos: ne };
+}
+
+const donoDoTenant = (tenantId) => db.prepare(`SELECT u.email, u.nome FROM tenant_users tu JOIN users u ON u.id = tu.user_id
+  WHERE tu.tenant_id = ? AND tu.papel = 'dono' AND tu.status != 'removido' ORDER BY tu.criado_em LIMIT 1`).get(String(tenantId)) || null;
+
+// Cria um acesso de cortesia (tenant cortesia=1, interno=1, plano de topo, sem
+// expiração) + dono com senha temporária. seed_demo!==false → semeia demonstração.
+function criarCortesia({ nome, email, seed_demo }, ator, ip) {
+  const em = emailNorm(email);
+  if (!emailOK(em)) throw new Error('Informe um e-mail válido para o acesso de cortesia.');
+  const nomeDono = s(nome, 120) || em.split('@')[0];
+  const empresa = s(nome, 120) ? `${s(nome, 120)} (cortesia)` : `Cortesia ${em}`;
+  const senha = 'Cortesia-' + crypto.randomBytes(9).toString('base64url');
+  const { tenant, user } = criarTenantComDono({ empresa, nome: nomeDono, email: em, senha, ip, cortesia: true, planoSlug: 'enterprise' });
+  auditar(tenant.id, ator, 'cortesia.criar', 'tenant', tenant.id, { email: em, empresa }, ip);
+  const seed = seed_demo === false ? { ja_semeado: false, projetos: 0, tarefas: 0, eventos: 0 } : seedDemo(tenant.id, ator, ip);
+  return { tenant: obterTenant(tenant.id), user, senha_temporaria: senha, seed };
+}
+function listarCortesias() {
+  return db.prepare("SELECT * FROM tenants WHERE cortesia = 1 ORDER BY criado_em DESC").all().map(t => {
+    const uso = usoDoMes(t.id);
+    const dono = donoDoTenant(t.id) || {};
+    return { ...t, email_dono: dono.email || t.email_contato, nome_dono: dono.nome || '',
+      liberado: !!t.interno && t.status !== 'suspensa' && t.status !== 'cancelada',
+      usuarios: uso.usuarios, projetos: uso.projetos };
+  });
+}
+// Revogar: contorna a proibição de suspender interno tirando interno=1→0 e então status='suspensa'.
+function revogarCortesia(tenantId, ator, ip) {
+  const t = obterTenant(tenantId);
+  if (!t || !t.cortesia) throw new Error('Acesso de cortesia não encontrado.');
+  db.prepare("UPDATE tenants SET interno = 0, status = 'suspensa', atualizado_em = ? WHERE id = ?").run(nowISO(), t.id);
+  auditar(t.id, ator, 'cortesia.revogar', 'tenant', t.id, {}, ip);
+  return obterTenant(t.id);
+}
+// Reativar: devolve interno=1 + status='ativa' → volta a liberar o gate do auth.
+function reativarCortesia(tenantId, ator, ip) {
+  const t = obterTenant(tenantId);
+  if (!t || !t.cortesia) throw new Error('Acesso de cortesia não encontrado.');
+  db.prepare("UPDATE tenants SET interno = 1, status = 'ativa', atualizado_em = ? WHERE id = ?").run(nowISO(), t.id);
+  auditar(t.id, ator, 'cortesia.reativar', 'tenant', t.id, {}, ip);
+  return obterTenant(t.id);
+}
+
 // ------------------------------------------------------------ dashboards
 function dashboardTenant(tenantId) {
   const t = obterTenant(tenantId);
@@ -475,6 +554,7 @@ module.exports = {
   ESTAGIOS, CATEGORIAS, HORIZONTES, PRIORIDADES,
   criarProjeto, obterProjeto, listarProjetos, atualizarProjeto,
   PROJETOS_VILLELA, semearInterno,
+  seedDemo, criarCortesia, listarCortesias, revogarCortesia, reativarCortesia,
   dashboardTenant, resumoPlataforma, listarTenantsPlataforma,
   criarLead, listarLeads, atualizarLead,
 };

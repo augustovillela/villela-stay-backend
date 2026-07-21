@@ -39,6 +39,30 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin }) {
     res.json({ ok: true, tenant: { id: r2.tenant.id, slug: r2.tenant.slug, nome: r2.tenant.nome }, projetos_criados: r2.criados, projetos_total: r2.total, senha_inicial: r2.senha_inicial });
   }));
 
+  // ---- ACESSOS DE CORTESIA / BETA (teste sem pagamento; vitalício até revogar) ----
+  // Contrato idêntico em todos os produtos (tela central). Guarda: requireAuth (já
+  // aplicado no router) + requireAdmin. NÃO lista o workspace interno REAL da Villela.
+  r.get('/cortesia', requireAdmin, h(async (req, res) => res.json({ acessos: repo.listarCortesias() })));
+  r.post('/cortesia', requireAdmin, h(async (req, res) => {
+    const b = req.body || {};
+    const out = repo.criarCortesia({ nome: b.nome, email: b.email, seed_demo: b.seed_demo }, req.user, ipDe(req));
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const base = `${proto}://${req.get('host')}`;
+    res.json({
+      ok: true,
+      tenant: { id: out.tenant.id, slug: out.tenant.slug, nome: out.tenant.nome, status: out.tenant.status },
+      acesso: {
+        email: out.user.email,
+        senha_temporaria: out.senha_temporaria, // vpe não tem definir-senha p/ dono → senha temporária
+        painel_url: `${base}/vpe/login`,
+        validade_link: 'vitalício (cortesia — acesso liberado até ser revogado)',
+      },
+      seed: out.seed,
+    });
+  }));
+  r.post('/cortesia/:id/revogar', requireAdmin, h(async (req, res) => res.json({ ok: true, tenant: repo.revogarCortesia(req.params.id, req.user, ipDe(req)) })));
+  r.post('/cortesia/:id/reativar', requireAdmin, h(async (req, res) => res.json({ ok: true, tenant: repo.reativarCortesia(req.params.id, req.user, ipDe(req)) })));
+
   r.get('/planos', h(async (req, res) => res.json({ planos: repo.listarPlanos(false) })));
   r.patch('/planos/:id', requireAdmin, h(async (req, res) => {
     const p = repo.atualizarPlano(req.params.id, req.body || {});

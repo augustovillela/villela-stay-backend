@@ -107,32 +107,86 @@ function slugDisponivel(base) {
 }
 
 // Cadastro do trial: cria tenant + usuário dono + assinatura trial, tudo em transação.
-function criarTenantComDono({ empresa, nome, email, senha, ip }) {
+// Modo CORTESIA/BETA (opts.cortesia === true ou status_inicial === 'cortesia'):
+// tenant nasce com status 'cortesia' (acesso liberado, sem expiração), plano de
+// topo (Enterprise = limites ilimitados) e assinatura 'ativa' para que
+// planoDoTenant/checarLimite funcionem; se não vier senha, gera uma temporária
+// aleatória (devolvida em senha_temporaria) e, ao final, semeia dados de demo.
+function criarTenantComDono({ empresa, nome, email, senha, ip, cortesia, status_inicial, seed_demo } = {}) {
   const em = emailNorm(email);
+  const ehCortesia = cortesia === true || status_inicial === 'cortesia';
+  let senhaFinal = String(senha || '');
+  let senhaTemporaria = '';
+  if (ehCortesia && !senhaFinal) {
+    senhaTemporaria = crypto.randomBytes(12).toString('base64url'); // ~16 chars fortes
+    senhaFinal = senhaTemporaria;
+  }
   if (!s(empresa, 120)) throw new Error('Informe o nome da empresa.');
   if (!s(nome, 120)) throw new Error('Informe o seu nome.');
   if (!emailOK(em)) throw new Error('E-mail inválido.');
-  if (String(senha || '').length < 8) throw new Error('A senha precisa de pelo menos 8 caracteres.');
+  if (!ehCortesia && senhaFinal.length < 8) throw new Error('A senha precisa de pelo menos 8 caracteres.');
   if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(em)) {
     throw new Error('Este e-mail já tem conta. Entre pelo login e crie a empresa por lá, ou use outro e-mail.');
   }
-  const plano = planoPorSlug('professional'); // trial roda no Professional
+  const plano = ehCortesia
+    ? (planoPorSlug('enterprise') || planoPorSlug('business') || planoPorSlug('professional'))
+    : planoPorSlug('professional'); // trial roda no Professional
   if (!plano) throw new Error('Planos não configurados.');
   return transacao(() => {
     const agora = nowISO();
     const trialFim = new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString();
     const tenant = { id: novoId(), slug: slugDisponivel(empresa), nome: s(empresa, 120) };
+    const statusIni = ehCortesia ? 'cortesia' : 'trial';
+    const subStatus = ehCortesia ? 'ativa' : 'trial'; // cortesia: assinatura ativa p/ liberar limites/plano
     db.prepare('INSERT INTO tenants (id, slug, nome, email_contato, status, trial_expira_em, criado_em) VALUES (?,?,?,?,?,?,?)')
-      .run(tenant.id, tenant.slug, tenant.nome, em, 'trial', trialFim, agora);
+      .run(tenant.id, tenant.slug, tenant.nome, em, statusIni, ehCortesia ? '' : trialFim, agora);
     const user = { id: novoId(), email: em, nome: s(nome, 120) };
     db.prepare('INSERT INTO users (id, email, nome, senha_hash, ativo, criado_em) VALUES (?,?,?,?,1,?)')
-      .run(user.id, em, user.nome, bcrypt.hashSync(String(senha), 10), agora);
+      .run(user.id, em, user.nome, bcrypt.hashSync(String(senhaFinal), 10), agora);
     db.prepare('INSERT INTO tenant_users (id, tenant_id, user_id, papel, status, criado_em, criado_por) VALUES (?,?,?,?,?,?,?)')
       .run(novoId(), tenant.id, user.id, 'dono', 'ativo', agora, user.id);
     db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, inicio, fim, criado_em) VALUES (?,?,?,?,?,?,?)')
-      .run(novoId(), tenant.id, plano.id, 'trial', agora, trialFim, agora);
-    auditar(tenant.id, user, 'tenant.criar', 'tenant', tenant.id, { empresa: tenant.nome, plano: plano.slug, trial_expira_em: trialFim }, ip);
-    return { tenant: obterTenant(tenant.id), user };
+      .run(novoId(), tenant.id, plano.id, subStatus, agora, ehCortesia ? '' : trialFim, agora);
+    auditar(tenant.id, user, ehCortesia ? 'tenant.cortesia_criar' : 'tenant.criar', 'tenant', tenant.id,
+      { empresa: tenant.nome, plano: plano.slug, cortesia: ehCortesia, trial_expira_em: ehCortesia ? '' : trialFim }, ip);
+    // dados fictícios de demonstração p/ o testador não ver telas vazias
+    if (ehCortesia && seed_demo !== false) { try { seedDemo(tenant.id, user); } catch (_) {} }
+    return { tenant: obterTenant(tenant.id), user, senha_temporaria: senhaTemporaria };
+  });
+}
+
+// Semeia dados FICTÍCIOS de demonstração (pastas + documentos) num tenant.
+// Idempotente: se já houver qualquer documento, não faz nada. Usa somente as
+// funções internas de criação (docs.js) — nunca escreve tabela na mão.
+function seedDemo(tenantId, ator) {
+  const docs = require('./docs'); // require tardio (docs → repo)
+  const tid = String(tenantId);
+  if (db.prepare('SELECT 1 FROM documents WHERE tenant_id = ? LIMIT 1').get(tid)) return { ok: true, ja_semeado: true };
+  const atorSeed = ator || { id: 'seed', nome: 'Demonstração' };
+  const b64 = (t) => Buffer.from(t, 'utf8').toString('base64');
+  let pastas = 0, documentos = 0;
+  return transacao(() => {
+    let pContratos = '', pFiscal = '';
+    try { pContratos = docs.criarPasta(tid, { nome: 'Contratos (demo)' }, atorSeed, 'seed'); pastas++; } catch (_) {}
+    try { pFiscal = docs.criarPasta(tid, { nome: 'Fiscal (demo)' }, atorSeed, 'seed'); pastas++; } catch (_) {}
+    const DEMO = [
+      { nome: 'Contrato modelo (demo)', arq: 'contrato-modelo-demo.txt', folder: pContratos, tipo: 'contrato', tags: ['demo', 'modelo'],
+        conteudo: 'CONTRATO MODELO (DEMONSTRACAO)\n\nDocumento ficticio de exemplo. As partes, os valores e as clausulas abaixo sao meramente ilustrativos e nao representam dados reais.\n\nClausula 1 - Objeto: exemplo de objeto contratual.\nClausula 2 - Prazo: 12 meses.\n' },
+      { nome: 'Nota fiscal exemplo (demo)', arq: 'nota-fiscal-exemplo-demo.txt', folder: pFiscal, tipo: 'nota_fiscal', tags: ['demo', 'fiscal'],
+        conteudo: 'NOTA FISCAL DE EXEMPLO (DEMONSTRACAO)\n\nDados ficticios: fornecedor exemplo, valor R$ 1.234,56, emitida como amostra para demonstracao do sistema.\n' },
+      { nome: 'Política interna (demo)', arq: 'politica-interna-demo.txt', folder: '', tipo: 'politica_interna', tags: ['demo'],
+        conteudo: 'POLITICA INTERNA (DEMONSTRACAO)\n\nTexto ficticio de exemplo de politica interna, incluido apenas para ilustrar a organizacao de documentos.\n' },
+    ];
+    for (const d of DEMO) {
+      try {
+        docs.criarDocumento(tid, {
+          nome: d.nome, arquivo_nome: d.arq, folder_id: d.folder, tipo_documental: d.tipo, tags: d.tags,
+          descricao: 'Documento de demonstração (dados fictícios).', conteudo_base64: b64(d.conteudo),
+        }, atorSeed, 'seed');
+        documentos++;
+      } catch (_) {}
+    }
+    return { ok: true, pastas, documentos };
   });
 }
 const obterTenant = (id) => db.prepare('SELECT * FROM tenants WHERE id = ?').get(String(id));
@@ -150,7 +204,7 @@ function administrarTenant(tenantId, { status, plano_slug }, ator, ip) {
   const t = obterTenant(tenantId);
   if (!t) throw new Error('Empresa não encontrada.');
   if (status) {
-    if (!['trial', 'ativa', 'suspensa', 'cancelada'].includes(status)) throw new Error('Status inválido.');
+    if (!['trial', 'ativa', 'suspensa', 'cancelada', 'cortesia'].includes(status)) throw new Error('Status inválido.');
     db.prepare('UPDATE tenants SET status = ?, atualizado_em = ? WHERE id = ?').run(status, nowISO(), t.id);
   }
   if (plano_slug) {
@@ -359,7 +413,7 @@ module.exports = {
   semearPlanos, listarPlanos, planoPorSlug, atualizarPlano,
   auditar, listarAuditoria,
   registrarUso, usoDoMes, planoDoTenant, checarLimite,
-  criarTenantComDono, obterTenant, atualizarTenant, administrarTenant,
+  criarTenantComDono, seedDemo, obterTenant, atualizarTenant, administrarTenant,
   lerSettings, gravarSetting, CONFIG_PERMITIDAS,
   userPorEmail, userPorId, vinculo, tenantsDoUsuario, listarUsuarios, alterarVinculo,
   criarConvite, listarConvites, revogarConvite, aceitarConvite,

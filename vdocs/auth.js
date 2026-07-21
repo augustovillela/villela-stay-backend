@@ -48,8 +48,10 @@ function criarAuth({ jwtSecret }) {
       const tenant = repo.obterTenant(tid);
       if (!tenant) throw new Error('x');
       req.vd = { user, tenant, vinculo: v, permissoes: permissoesDe(v), papelNome: nomePapel(v.papel, tid), ip: ipDe(req) };
-      const trialVencido = tenant.status === 'trial' && tenant.trial_expira_em && tenant.trial_expira_em < new Date().toISOString();
-      req.vd.bloqueado = tenant.status === 'suspensa' || tenant.status === 'cancelada' || trialVencido;
+      // Cortesia/beta = acesso LIBERADO por decisão da plataforma: nunca bloqueia e nunca "vence".
+      const cortesia = tenant.status === 'cortesia';
+      const trialVencido = !cortesia && tenant.status === 'trial' && tenant.trial_expira_em && tenant.trial_expira_em < new Date().toISOString();
+      req.vd.bloqueado = !cortesia && (tenant.status === 'suspensa' || tenant.status === 'cancelada' || trialVencido);
       if (req.vd.bloqueado && !req.path.endsWith('/me')) {
         return res.status(402).json({ erro: trialVencido ? 'Período de teste encerrado — escolha um plano para continuar.' : 'Conta suspensa — fale com a Villela Docs para reativar.' });
       }

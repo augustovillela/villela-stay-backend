@@ -63,7 +63,7 @@ function montar(app, injected = {}) {
     });
   }
 
-  registrarRotasStaff(app, { requireAuth, requireAdmin });
+  registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret });
   registrarRotasCheckoutStaff(app, { requireAuth, requireAdmin });
   const cliente = registrarRotasCliente(app, { jwtSecret });
   registrarRotasConteudo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });

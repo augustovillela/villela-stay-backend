@@ -346,6 +346,95 @@ const Matriculas = {
   },
 };
 
+// ---- ACESSO DE CORTESIA / BETA (acesso vitalício a TUDO, sem pagamento,
+// revogável). Marketplace B2C: NÃO há tenant — o acesso é por PRODUTO, via a
+// mesma primitiva de Matriculas.criar (origem 'cortesia'). Um usuário é "de
+// cortesia" quando tem ao menos uma matrícula origem 'cortesia' (rastreável
+// sem nova tabela). "Tudo" = produtos publicados + itens de clubes publicados
+// (cobre itens exclusivos de clube que não aparecem na vitrine).
+const Cortesia = {
+  // acha o usuário por e-mail (case-insensitive) ou cria (papel 'aluno').
+  // conta nova nasce com senha aleatória — a pessoa define a própria pelo
+  // link de definir-senha (reaproveita o fluxo de reset já existente).
+  acharOuCriarUsuario({ nome, email }) {
+    const emailN = s(email, 120).toLowerCase();
+    if (!emailN || !emailN.includes('@')) throw new Error('Informe um e-mail válido.');
+    let u = Usuarios.porEmail(emailN);
+    if (u) {
+      if (u.status !== 'ativo') u = Usuarios.mudarStatus(u.id, 'ativo'); // reativa p/ poder matricular
+      return { usuario: u, novo: false, senha_temporaria: null };
+    }
+    const senha = 'Cx' + crypto.randomBytes(12).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 14);
+    u = Usuarios.criar({ nome: s(nome, 120) || emailN, email: emailN, senha });
+    return { usuario: u, novo: true, senha_temporaria: senha };
+  },
+
+  // conjunto de produtos que compõem "tudo"
+  idsDeTudo() {
+    const set = new Set(db.prepare("SELECT id FROM products WHERE status = 'publicado'").all().map(r => r.id));
+    db.prepare(`SELECT ci.product_id FROM club_items ci JOIN products c ON c.id = ci.club_product_id
+      WHERE c.status = 'publicado'`).all().forEach(r => set.add(r.product_id));
+    return [...set];
+  },
+
+  // garante matrícula cortesia idempotente num produto (não toca compra/assinatura)
+  garantirMatricula(usuario, productId, criadoPor) {
+    const ja = db.prepare('SELECT * FROM enrollments WHERE user_id = ? AND product_id = ?').get(usuario.id, productId);
+    if (ja && ja.status === 'ativa') return { novo: false, origem: ja.origem };
+    Matriculas.criar(productId, usuario.email, criadoPor, 'cortesia'); // reativa revogada OU cria nova
+    return { novo: !ja, origem: 'cortesia' };
+  },
+
+  contarLiberados(userId) {
+    return db.prepare("SELECT COUNT(*) n FROM enrollments WHERE user_id = ? AND origem = 'cortesia' AND status = 'ativa'").get(userId).n;
+  },
+  ehCortesia(userId) {
+    return !!db.prepare("SELECT 1 FROM enrollments WHERE user_id = ? AND origem = 'cortesia' LIMIT 1").get(userId);
+  },
+
+  // concede acesso vitalício a TUDO a partir de {nome,email}
+  concederTotal({ nome, email }, criadoPor = 'staff') {
+    return transacao(() => {
+      const { usuario, novo, senha_temporaria } = this.acharOuCriarUsuario({ nome, email });
+      let novos = 0;
+      for (const pid of this.idsDeTudo()) {
+        const r = this.garantirMatricula(usuario, pid, criadoPor);
+        if (r.origem === 'cortesia' && r.novo) novos++;
+      }
+      return { usuario, novo, senha_temporaria, novos, produtos_liberados: this.contarLiberados(usuario.id) };
+    });
+  },
+
+  // corta o acesso: inativa as matrículas de cortesia (compra/assinatura ficam intactas)
+  revogarTotal(userId) {
+    const u = Usuarios.porId(userId); if (!u) throw new Error('Usuário não encontrado.');
+    if (!this.ehCortesia(userId)) throw new Error('Este usuário não tem acesso de cortesia.');
+    const r = db.prepare("UPDATE enrollments SET status = 'revogada' WHERE user_id = ? AND origem = 'cortesia' AND status = 'ativa'").run(userId);
+    return { revogadas: r.changes };
+  },
+
+  // volta a conceder: reativa o que estava revogado e cobre novos produtos
+  reativarTotal(userId, criadoPor = 'staff') {
+    const u = Usuarios.porId(userId); if (!u) throw new Error('Usuário não encontrado.');
+    if (!this.ehCortesia(userId)) throw new Error('Este usuário não tem acesso de cortesia.');
+    return this.concederTotal({ nome: u.nome, email: u.email }, criadoPor);
+  },
+
+  // lista os usuários de cortesia (ativos ou revogados) para o painel staff
+  listar() {
+    return db.prepare(`
+      SELECT u.id, u.nome, u.email, u.criado_em,
+        SUM(CASE WHEN e.status = 'ativa' THEN 1 ELSE 0 END) AS produtos_liberados,
+        MAX(CASE WHEN e.status = 'ativa' THEN 1 ELSE 0 END) AS ativo
+      FROM enrollments e JOIN users u ON u.id = e.user_id
+      WHERE e.origem = 'cortesia'
+      GROUP BY u.id, u.nome, u.email, u.criado_em
+      ORDER BY u.criado_em DESC LIMIT 500`).all()
+      .map(r => ({ id: r.id, nome: r.nome, email: r.email, criado_em: r.criado_em,
+        produtos_liberados: r.produtos_liberados, ativo: !!r.ativo }));
+  },
+};
+
 const Progresso = {
   marcar(userId, lessonId, { concluida, posicao_seg } = {}) {
     const aula = db.prepare('SELECT * FROM lessons WHERE id = ?').get(lessonId);
@@ -494,7 +583,7 @@ const Denuncias = {
 
 module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
-  Produtos, Conteudo, Midia, Matriculas, Progresso, ARQUIVOS_DIR,
+  Produtos, Conteudo, Midia, Matriculas, Cortesia, Progresso, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube,
 };

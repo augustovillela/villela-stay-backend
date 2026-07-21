@@ -556,4 +556,47 @@ function painel(tenantId) {
   };
 }
 
-module.exports = { Imoveis, Hospedes, Reservas, Consultas, Precificacao, Limpezas, Manutencao, Financeiro, Estoque, ETAPAS_RESERVA, painel, sincronizarUsoImoveis, conflitoReserva };
+// =====================================================================
+// SEED DEMO — dados FICTÍCIOS para tenants de cortesia/beta não verem
+// telas vazias. Nunca copia dados reais. Idempotente.
+// =====================================================================
+function seedDemo(tenantId) {
+  const tid = s(tenantId, 40);
+  // idempotente: se já há imóvel para o tenant, não semeia de novo
+  if (db.prepare('SELECT 1 FROM app_imoveis WHERE tenant_id = ? LIMIT 1').get(tid)) return { ok: true, ja_semeado: true };
+  const d10 = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const IMOVEIS = [
+    { codigo: 'DEMO-01', nome: 'Casa Demonstração — Beira do Lago', tipo: 'casa', quartos: 4, capacidade: 10, endereco: 'Endereço fictício, Lago Sul (demo)', tarifa_base_centavos: 120000, comodidades: ['piscina', 'churrasqueira', 'wi-fi', 'ar-condicionado'], obs: 'Imóvel de demonstração (dados fictícios).' },
+    { codigo: 'DEMO-02', nome: 'Flat Demonstração — Centro', tipo: 'flat', quartos: 1, capacidade: 3, endereco: 'Endereço fictício, Asa Sul (demo)', tarifa_base_centavos: 38000, comodidades: ['wi-fi', 'cozinha', 'garagem'], obs: 'Imóvel de demonstração (dados fictícios).' },
+    { codigo: 'DEMO-03', nome: 'Suíte Demonstração — Vista Jardim', tipo: 'quarto', quartos: 1, capacidade: 2, endereco: 'Endereço fictício, Lago Sul (demo)', tarifa_base_centavos: 26000, comodidades: ['wi-fi', 'ar-condicionado'], obs: 'Imóvel de demonstração (dados fictícios).' },
+  ];
+  let imoveis = 0, hospedes = 0, reservas = 0;
+  const criados = [];
+  for (const im of IMOVEIS) { try { const r = Imoveis.criar(tid, im); if (r) { criados.push(r); imoveis++; } } catch (_) {} }
+  const HOSPEDES = [
+    { nome: 'Marina Alves (demo)', email: 'marina.demo@exemplo.com', telefone: '+5561999990001', obs: 'Hóspede de demonstração (dados fictícios).' },
+    { nome: 'Bruno Costa (demo)', email: 'bruno.demo@exemplo.com', telefone: '+5561999990002', obs: 'Hóspede de demonstração (dados fictícios).' },
+  ];
+  const hosp = [];
+  for (const hp of HOSPEDES) { try { const r = Hospedes.criar(tid, hp); if (r) { hosp.push(r); hospedes++; } } catch (_) {} }
+  if (criados.length) {
+    const plano = [
+      { imovel: criados[0], hospede: hosp[0], ci: d10(3), co: d10(8), valor: 600000, qtd: 8, canal: 'airbnb', status: 'confirmada' },
+      { imovel: criados[Math.min(1, criados.length - 1)], hospede: hosp[Math.min(1, hosp.length - 1)], ci: d10(12), co: d10(15), valor: 114000, qtd: 2, canal: 'direto', status: 'pendente' },
+    ];
+    for (const p of plano) {
+      if (!p.imovel) continue;
+      try {
+        Reservas.criar(tid, {
+          imovel_id: p.imovel.id, hospede_id: p.hospede ? p.hospede.id : '', hospede_nome: p.hospede ? p.hospede.nome : 'Hóspede demo',
+          checkin: p.ci, checkout: p.co, hospedes_qtd: p.qtd, valor_centavos: p.valor, canal: p.canal, status: p.status,
+          obs: 'Reserva de demonstração (dados fictícios).',
+        });
+        reservas++;
+      } catch (_) {}
+    }
+  }
+  return { ok: true, imoveis, hospedes, reservas };
+}
+
+module.exports = { Imoveis, Hospedes, Reservas, Consultas, Precificacao, Limpezas, Manutencao, Financeiro, Estoque, ETAPAS_RESERVA, painel, sincronizarUsoImoveis, conflitoReserva, seedDemo };

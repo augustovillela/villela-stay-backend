@@ -79,6 +79,35 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
     res.json({ ok: true, url, email: owner.email, validade: '7 dias' });
   }));
 
+  // ---- ACESSOS DE CORTESIA / BETA (teste sem pagamento; vitalício até o dono revogar) ----
+  app.get('/staff/api/vcrm/cortesia', ...A, h((req, res) => {
+    res.json({ acessos: repo.Tenants.listar({ status: 'cortesia', limite: 500 }) });
+  }));
+  app.post('/staff/api/vcrm/cortesia', ...A, h((req, res) => {
+    const b = req.body || {};
+    if (!b.email || !String(b.email).includes('@')) return res.status(400).json({ erro: 'Informe o e-mail do testador.' });
+    const t = repo.Tenants.criar({
+      nome: b.nome || b.email, email: b.email, nome_responsavel: b.nome_responsavel || b.nome,
+      status_inicial: 'cortesia', seed_demo: b.seed_demo !== false, origem: 'cortesia', obs: b.obs || 'Acesso de cortesia (fase de testes).',
+    }, quem(req));
+    const owner = t.usuarios.find(u => u.papel === 'owner') || t.usuarios[0];
+    const token = jwt.sign({ tipo: 'crm-setup', uid: owner.id }, jwtSecret, { expiresIn: '30d' });
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const base = `${proto}://${req.get('host')}`;
+    aud(req, 'cortesia.criar', 'tenants', t.id, `${t.nome} <${owner.email}>`);
+    res.json({ ok: true, tenant: t, acesso: { email: owner.email, definir_senha_url: `${base}/crm/definir-senha?token=${token}`, painel_url: `${base}/crm/app`, validade_link: '30 dias' } });
+  }));
+  app.post('/staff/api/vcrm/cortesia/:id/revogar', ...A, h((req, res) => {
+    const t = repo.Tenants.mudarStatus(req.params.id, 'suspensa', quem(req), 'cortesia revogada');
+    aud(req, 'cortesia.revogar', 'tenants', req.params.id, t.nome);
+    res.json({ ok: true, tenant: t });
+  }));
+  app.post('/staff/api/vcrm/cortesia/:id/reativar', ...A, h((req, res) => {
+    const t = repo.Tenants.mudarStatus(req.params.id, 'cortesia', quem(req), 'cortesia reativada');
+    aud(req, 'cortesia.reativar', 'tenants', req.params.id, t.nome);
+    res.json({ ok: true, tenant: t });
+  }));
+
   // ---- tickets / flags / leads / logs ----
   app.get('/staff/api/vcrm/tickets', ...A, h((req, res) => res.json({ tickets: repo.Tickets.listar(req.query) })));
   app.get('/staff/api/vcrm/tickets/:id', ...A, h((req, res) => {

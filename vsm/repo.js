@@ -172,24 +172,31 @@ const Tenants = {
     if (!nome) throw new Error('Informe o nome da operação.');
     const email = s(d.email_contato || d.email, 120).toLowerCase();
     if (!email || !email.includes('@')) throw new Error('Informe um e-mail de contato válido.');
-    const planoSlug = s(d.plano || 'trial', 60);
-    const plano = Planos.porSlug(planoSlug) || Planos.porSlug('trial');
+    // cortesia/beta: acesso vitalício sem cobrança (plano cheio, sem expiração) — só o dono revoga
+    const ehCortesia = d.status_inicial === 'cortesia';
+    const plano = ehCortesia
+      ? (Planos.porSlug('enterprise') || Planos.porSlug('business') || Planos.porSlug('trial'))
+      : (Planos.porSlug(s(d.plano || 'trial', 60)) || Planos.porSlug('trial'));
     return transacao(() => {
       const id = novoId(); const agora = nowISO();
       let slug = slugify(nome); let n = 1;
       while (db.prepare('SELECT 1 FROM tenants WHERE slug = ?').get(slug)) slug = slugify(nome) + '-' + (++n);
       const trialAte = new Date(Date.now() + DIAS_TRIAL * 86400000).toISOString();
-      const ehTrial = plano.slug === 'trial' || plano.preco_centavos === 0 ? true : (d.iniciar_trial !== false);
+      const ehTrial = ehCortesia ? false : (plano.slug === 'trial' || plano.preco_centavos === 0 ? true : (d.iniciar_trial !== false));
+      const statusIni = ehCortesia ? 'cortesia' : (d.status_inicial === 'ativa' ? 'ativa' : (ehTrial ? 'trial' : 'ativa'));
+      const subStatus = statusIni === 'trial' ? 'trial' : (ehCortesia ? 'cortesia' : 'ativa');
       db.prepare(`INSERT INTO tenants (id, slug, nome, cnpj, site, email_contato, telefone, status, plan_id, trial_expira_em, origem, obs, criado_em, criado_por)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(id, slug, nome, s(d.cnpj, 20), s(d.site, 200), email, s(d.telefone, 20),
-          ehTrial ? 'trial' : 'ativa', plano.id, ehTrial ? trialAte : '', s(d.origem, 30) || 'manual', s(d.obs, 1000), agora, s(quem, 60));
+          statusIni, plano.id, statusIni === 'trial' ? trialAte : '', s(d.origem, 30) || (ehCortesia ? 'cortesia' : 'manual'), s(d.obs, 1000), agora, s(quem, 60));
       db.prepare('INSERT INTO workspaces (id, tenant_id, nome, slug, criado_em) VALUES (?,?,?,?,?)').run(novoId(), id, 'Principal', 'principal', agora);
       db.prepare('INSERT INTO tenant_users (id, tenant_id, nome, email, papel, ativo, criado_em) VALUES (?,?,?,?,?,1,?)')
         .run(novoId(), id, s(d.nome_responsavel || nome, 120), email, 'admin', agora);
       db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, ciclo, inicio, proximo_venc, criado_em) VALUES (?,?,?,?,?,?,?,?)')
-        .run(novoId(), id, plano.id, ehTrial ? 'trial' : 'ativa', 'mensal', agora, ehTrial ? trialAte : '', agora);
-      evento(id, 'tenant.criado', slug, { plano: plano.slug, trial: ehTrial });
+        .run(novoId(), id, plano.id, subStatus, 'mensal', agora, statusIni === 'trial' ? trialAte : '', agora);
+      // dados fictícios de demonstração para o testador não ver telas vazias
+      if (ehCortesia && d.seed_demo !== false) { try { require('./app-repo').seedDemo(id); } catch (_) {} }
+      evento(id, 'tenant.criado', slug, { plano: plano.slug, trial: statusIni === 'trial', cortesia: ehCortesia });
       return Tenants.obter(id);
     });
   },
@@ -204,7 +211,7 @@ const Tenants = {
   },
   // muda status manualmente (suspender/reativar/cancelar pela plataforma)
   mudarStatus(id, status, quem, detalhe) {
-    const ok = ['trial', 'ativa', 'inadimplente', 'suspensa', 'cancelada'];
+    const ok = ['trial', 'ativa', 'inadimplente', 'suspensa', 'cancelada', 'cortesia'];
     if (!ok.includes(status)) throw new Error('Status inválido.');
     db.prepare('UPDATE tenants SET status = ?, atualizado_em = ? WHERE id = ?').run(status, nowISO(), s(id, 40));
     evento(id, 'tenant.status', status, { detalhe: detalhe || '' });
@@ -254,8 +261,8 @@ function entitlements(tenantId) {
   const limites = { ...(plano ? plano.limites : {}), ...j.parse(set.limites_over, {}) };
   const modulos = new Set([...(plano ? plano.modulos : []), ...j.parse(set.modulos_extra, [])]);
   const flags = { ...(plano ? plano.flags : {}), ...j.parse(set.flags_over, {}) };
-  // acesso só quando trial/ativa; suspensa/cancelada/inadimplente = bloqueia entrega
-  const acessoLiberado = ['trial', 'ativa'].includes(t.status);
+  // acesso quando trial/ativa/cortesia; suspensa/cancelada/inadimplente = bloqueia entrega
+  const acessoLiberado = ['trial', 'ativa', 'cortesia'].includes(t.status);
   return {
     tenant_id: t.id, status: t.status, plano: plano ? plano.slug : null, acesso_liberado: acessoLiberado,
     modulos: [...modulos], limites, flags,
