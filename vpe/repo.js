@@ -445,17 +445,20 @@ const donoDoTenant = (tenantId) => db.prepare(`SELECT u.email, u.nome FROM tenan
   WHERE tu.tenant_id = ? AND tu.papel = 'dono' AND tu.status != 'removido' ORDER BY tu.criado_em LIMIT 1`).get(String(tenantId)) || null;
 
 // Cria um acesso de cortesia (tenant cortesia=1, interno=1, plano de topo, sem
-// expiração) + dono com senha temporária. seed_demo!==false → semeia demonstração.
+// expiração) + dono SEM senha utilizável — o acesso se dá por LINK MÁGICO de
+// definir senha (token vpe-setup assinado na rota staff). seed_demo!==false →
+// semeia demonstração. Devolve o user owner p/ a rota assinar o token.
 function criarCortesia({ nome, email, seed_demo }, ator, ip) {
   const em = emailNorm(email);
   if (!emailOK(em)) throw new Error('Informe um e-mail válido para o acesso de cortesia.');
   const nomeDono = s(nome, 120) || em.split('@')[0];
   const empresa = s(nome, 120) ? `${s(nome, 120)} (cortesia)` : `Cortesia ${em}`;
-  const senha = 'Cortesia-' + crypto.randomBytes(9).toString('base64url');
+  // senha aleatória descartável só p/ criar o registro; o dono define a dele pelo link.
+  const senha = crypto.randomBytes(18).toString('base64url');
   const { tenant, user } = criarTenantComDono({ empresa, nome: nomeDono, email: em, senha, ip, cortesia: true, planoSlug: 'enterprise' });
   auditar(tenant.id, ator, 'cortesia.criar', 'tenant', tenant.id, { email: em, empresa }, ip);
   const seed = seed_demo === false ? { ja_semeado: false, projetos: 0, tarefas: 0, eventos: 0 } : seedDemo(tenant.id, ator, ip);
-  return { tenant: obterTenant(tenant.id), user, senha_temporaria: senha, seed };
+  return { tenant: obterTenant(tenant.id), user, seed };
 }
 function listarCortesias() {
   return db.prepare("SELECT * FROM tenants WHERE cortesia = 1 ORDER BY criado_em DESC").all().map(t => {

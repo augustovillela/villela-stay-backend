@@ -6,9 +6,10 @@
 // audit do tenant afetado (transparência para o cliente).
 // =====================================================================
 'use strict';
+const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 
-function registrarRotasStaff(app, { express, requireAuth, requireAdmin }) {
+function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecret }) {
   const r = express.Router();
   r.use(express.json({ limit: '1mb' }));
   r.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -69,17 +70,17 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin }) {
     });
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
     const base = `${proto}://${req.get('host')}`;
+    // link mágico: o dono define a senha (30 dias) e cai direto no painel
+    const token = jwt.sign({ tipo: 'vdocs-setup', uid: criado.user.id }, jwtSecret, { expiresIn: '30d' });
     repo.auditar('', req.user, 'plataforma.cortesia.criar', 'tenant', criado.tenant.id, { nome, email: criado.user.email }, ipDe(req));
     res.json({
       ok: true,
       tenant: criado.tenant,
       acesso: {
         email: criado.user.email,
-        senha_temporaria: criado.senha_temporaria || '',
-        definir_senha_url: '', // vdocs não tem fluxo de definir-senha do dono; usa senha temporária
-        login_url: `${base}/vdocs/login`,
+        definir_senha_url: `${base}/vdocs/definir-senha?token=${token}`,
         painel_url: `${base}/vdocs/app`,
-        validade_link: 'sem expiração',
+        validade_link: '30 dias',
       },
     });
   }));

@@ -5,6 +5,7 @@
 // fonte do tenant (isolamento). Permissão fina via requirePerm.
 // =====================================================================
 'use strict';
+const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 const docs = require('./docs');
 const jobs = require('./jobs');
@@ -18,7 +19,7 @@ const ent = require('./enterprise');
 const push = require('./push');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
-function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
+function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecret }) {
   const r = express.Router();
   // 30mb: uploads da Fase 2 vêm em base64 no JSON (arquivo de até 20 MB ≈ 27 MB em base64)
   r.use(express.json({ limit: '30mb' }));
@@ -50,6 +51,25 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
   }));
 
   r.post('/logout', (req, res) => { auth.limparSessao(res); res.json({ ok: true }); });
+
+  // Link mágico de definir senha (dono de acesso cortesia/beta): valida o token
+  // 'vdocs-setup', grava a senha no user global e já emite a sessão do painel.
+  r.post('/definir-senha', h(async (req, res) => {
+    const ip = auth.ipDe(req);
+    if (auth.bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+    const b = req.body || {};
+    let dec;
+    try { dec = jwt.verify(String(b.token || ''), jwtSecret); }
+    catch (_) { auth.registraFalha(ip); return res.status(400).json({ erro: 'Link inválido ou expirado.' }); }
+    if (dec.tipo !== 'vdocs-setup') return res.status(400).json({ erro: 'Link inválido.' });
+    if (String(b.senha || '').length < 8) return res.status(400).json({ erro: 'A senha precisa de pelo menos 8 caracteres.' });
+    const user = repo.definirSenha(dec.uid, b.senha);
+    if (!user) return res.status(400).json({ erro: 'Usuário não encontrado.' });
+    auth.limpaFalhas(ip);
+    const tenants = repo.tenantsDoUsuario(user.id); // já loga o dono no painel
+    if (tenants.length) auth.emitirSessao(res, user.id, tenants[0].id);
+    res.json({ ok: true, painel_url: '/vdocs/app' });
+  }));
 
   // 2º passo do login quando o usuário tem 2FA (Fase 10)
   r.post('/login-2fa', h(async (req, res) => {

@@ -19,7 +19,7 @@ const push = require('./push');
 const apiPublica = require('./api-publica');
 const { PERMISSOES, PAPEIS } = require('./permissoes');
 
-function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
+function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecret }) {
   const r = express.Router();
   r.use(express.json({ limit: '2mb' }));
   r.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -55,6 +55,31 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail }) {
     const { user, tenantId } = repo.aceitarConvite(b.token, { nome: b.nome, senha: b.senha }, auth.ipDe(req));
     auth.emitirSessao(res, user.id, tenantId);
     res.json({ ok: true });
+  }));
+
+  // Link mágico de definir senha (cortesia/convite de dono). Verifica JWT
+  // tipo 'vpe-setup', grava o hash na coluna users.senha_hash (a mesma que o
+  // login consome) e já abre a sessão do dono no tenant vinculado.
+  r.post('/definir-senha', h(async (req, res) => {
+    const ip = auth.ipDe(req);
+    if (auth.bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+    const b = req.body || {};
+    let dec;
+    try { dec = require('jsonwebtoken').verify(repo.s(b.token, 4000), jwtSecret); }
+    catch (_) { auth.registraFalha(ip); return res.status(400).json({ erro: 'Link inválido ou expirado.' }); }
+    if (dec.tipo !== 'vpe-setup') return res.status(400).json({ erro: 'Link inválido.' });
+    if (String(b.senha || '').length < 8) return res.status(400).json({ erro: 'A senha precisa de pelo menos 8 caracteres.' });
+    const user = repo.userPorId(dec.uid);
+    if (!user || !user.ativo) return res.status(400).json({ erro: 'Usuário não encontrado.' });
+    const { db, nowISO } = require('./db');
+    db.prepare('UPDATE users SET senha_hash = ?, atualizado_em = ? WHERE id = ?')
+      .run(require('bcryptjs').hashSync(String(b.senha), 10), nowISO(), user.id);
+    auth.limpaFalhas(ip);
+    // abre a sessão no tenant do dono (o mais recente vinculado), se houver
+    const tenants = repo.tenantsDoUsuario(user.id);
+    const alvo = tenants.find(t => t.id === String(dec.tid || '')) || tenants[0];
+    if (alvo) auth.emitirSessao(res, user.id, alvo.id);
+    res.json({ ok: true, painel_url: '/vpe/app' });
   }));
 
   const leadsPorIp = new Map();

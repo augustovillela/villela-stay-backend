@@ -115,15 +115,11 @@ function slugDisponivel(base) {
 function criarTenantComDono({ empresa, nome, email, senha, ip, cortesia, status_inicial, seed_demo } = {}) {
   const em = emailNorm(email);
   const ehCortesia = cortesia === true || status_inicial === 'cortesia';
-  let senhaFinal = String(senha || '');
-  let senhaTemporaria = '';
-  if (ehCortesia && !senhaFinal) {
-    senhaTemporaria = crypto.randomBytes(12).toString('base64url'); // ~16 chars fortes
-    senhaFinal = senhaTemporaria;
-  }
+  const senhaFinal = String(senha || '');
   if (!s(empresa, 120)) throw new Error('Informe o nome da empresa.');
   if (!s(nome, 120)) throw new Error('Informe o seu nome.');
   if (!emailOK(em)) throw new Error('E-mail inválido.');
+  // Cortesia usa LINK MÁGICO de definir-senha: o dono nasce sem senha e a cria pelo link.
   if (!ehCortesia && senhaFinal.length < 8) throw new Error('A senha precisa de pelo menos 8 caracteres.');
   if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(em)) {
     throw new Error('Este e-mail já tem conta. Entre pelo login e crie a empresa por lá, ou use outro e-mail.');
@@ -138,11 +134,13 @@ function criarTenantComDono({ empresa, nome, email, senha, ip, cortesia, status_
     const tenant = { id: novoId(), slug: slugDisponivel(empresa), nome: s(empresa, 120) };
     const statusIni = ehCortesia ? 'cortesia' : 'trial';
     const subStatus = ehCortesia ? 'ativa' : 'trial'; // cortesia: assinatura ativa p/ liberar limites/plano
+    // senha_hash '' = "convite pendente" (login rejeita até o dono definir a senha pelo link)
+    const senhaHash = senhaFinal ? bcrypt.hashSync(senhaFinal, 10) : '';
     db.prepare('INSERT INTO tenants (id, slug, nome, email_contato, status, trial_expira_em, criado_em) VALUES (?,?,?,?,?,?,?)')
       .run(tenant.id, tenant.slug, tenant.nome, em, statusIni, ehCortesia ? '' : trialFim, agora);
     const user = { id: novoId(), email: em, nome: s(nome, 120) };
     db.prepare('INSERT INTO users (id, email, nome, senha_hash, ativo, criado_em) VALUES (?,?,?,?,1,?)')
-      .run(user.id, em, user.nome, bcrypt.hashSync(String(senhaFinal), 10), agora);
+      .run(user.id, em, user.nome, senhaHash, agora);
     db.prepare('INSERT INTO tenant_users (id, tenant_id, user_id, papel, status, criado_em, criado_por) VALUES (?,?,?,?,?,?,?)')
       .run(novoId(), tenant.id, user.id, 'dono', 'ativo', agora, user.id);
     db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, inicio, fim, criado_em) VALUES (?,?,?,?,?,?,?)')
@@ -151,8 +149,19 @@ function criarTenantComDono({ empresa, nome, email, senha, ip, cortesia, status_
       { empresa: tenant.nome, plano: plano.slug, cortesia: ehCortesia, trial_expira_em: ehCortesia ? '' : trialFim }, ip);
     // dados fictícios de demonstração p/ o testador não ver telas vazias
     if (ehCortesia && seed_demo !== false) { try { seedDemo(tenant.id, user); } catch (_) {} }
-    return { tenant: obterTenant(tenant.id), user, senha_temporaria: senhaTemporaria };
+    return { tenant: obterTenant(tenant.id), user };
   });
+}
+
+// Define/redefine a senha de um usuário GLOBAL (users.senha_hash — a mesma
+// coluna que o login consome). Usada pelo link mágico de definir-senha.
+function definirSenha(userId, senha) {
+  const u = userPorId(userId);
+  if (!u) return null;
+  if (String(senha || '').length < 8) throw new Error('A senha precisa de pelo menos 8 caracteres.');
+  db.prepare('UPDATE users SET senha_hash = ?, atualizado_em = ? WHERE id = ?')
+    .run(bcrypt.hashSync(String(senha), 10), nowISO(), String(userId));
+  return userPorId(userId);
 }
 
 // Semeia dados FICTÍCIOS de demonstração (pastas + documentos) num tenant.
@@ -413,7 +422,7 @@ module.exports = {
   semearPlanos, listarPlanos, planoPorSlug, atualizarPlano,
   auditar, listarAuditoria,
   registrarUso, usoDoMes, planoDoTenant, checarLimite,
-  criarTenantComDono, seedDemo, obterTenant, atualizarTenant, administrarTenant,
+  criarTenantComDono, seedDemo, definirSenha, obterTenant, atualizarTenant, administrarTenant,
   lerSettings, gravarSetting, CONFIG_PERMITIDAS,
   userPorEmail, userPorId, vinculo, tenantsDoUsuario, listarUsuarios, alterarVinculo,
   criarConvite, listarConvites, revogarConvite, aceitarConvite,

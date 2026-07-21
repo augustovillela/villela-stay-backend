@@ -223,6 +223,23 @@ const convite = (token) => formPagina('Aceitar convite', `
     return false;}
   </script>`);
 
+const definirSenha = (token) => formPagina('Defina sua senha', `
+  <p style="color:var(--suave)">Crie a senha de acesso ao seu painel do Villela Projects & Events.</p>
+  <div id="erro"></div>
+  <form onsubmit="return enviar(event)">
+    <label>Nova senha (mínimo 8)</label><input id="f-s1" type="password" minlength="8" required>
+    <label>Confirme a senha</label><input id="f-s2" type="password" minlength="8" required>
+    <p><button class="btn" type="submit" style="width:100%">Salvar senha e entrar</button></p>
+  </form>
+  <script>
+  async function enviar(ev){ev.preventDefault();const v=id=>document.getElementById(id).value;const box=document.getElementById('erro');box.innerHTML='';
+    if(v('f-s1')!==v('f-s2')){box.innerHTML='<div class="erro">As senhas não conferem.</div>';return false;}
+    const r=await fetch('/vpe/api/definir-senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:${JSON.stringify(String(token || ''))},senha:v('f-s1')})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok)location.href=(d.painel_url||'/vpe/app');else box.innerHTML='<div class="erro">'+(d.erro||'Link inválido ou expirado.')+'</div>';
+    return false;}
+  </script>`);
+
 // ------------------------------------------------------------ painel (SPA)
 function appTenant() {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -1225,6 +1242,7 @@ function registrarPaginas(app) {
   app.get('/vpe/cadastro', (req, res) => html(res, cadastro()));
   app.get('/vpe/login', (req, res) => html(res, login()));
   app.get('/vpe/convite/:token', (req, res) => html(res, convite(req.params.token)));
+  app.get('/vpe/definir-senha', (req, res) => html(res, definirSenha(req.query.token)));
   app.get('/vpe/app', (req, res) => { res.setHeader('Cache-Control', 'no-store'); html(res, appTenant()); });
   app.get('/vpe/portal/:token', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');

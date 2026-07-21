@@ -25,8 +25,8 @@ function montar(app, injected = {}) {
   repo.semearPlanos(); // Starter/Professional/Business/Enterprise (upsert idempotente)
   const auth = criarAuth({ jwtSecret });
   const notificar = (msg) => Promise.resolve((alertaAugusto || (async () => {}))(msg)).catch(() => {});
-  registrarRotasApi(app, { express, auth, notificar, enviarEmail });
-  registrarRotasStaff(app, { express, requireAuth, requireAdmin });
+  registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecret });
+  registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecret });
   registrarPaginas(app, { express });
   const jobs = require('./jobs');
   jobs.configurar({ enviarEmail, notificar });

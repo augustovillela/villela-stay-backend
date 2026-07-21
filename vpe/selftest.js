@@ -180,18 +180,31 @@ function teste(nome, cond) {
   r = await req('POST', '/staff/api/vpe/cortesia', { body: { nome: 'Testador Beta', email: 'testador@cortesia.com' }, staff: 'ceo' });
   teste('cortesia exige admin (ceo → 403)', r.status === 403);
   r = await req('POST', '/staff/api/vpe/cortesia', { body: { nome: 'Testador Beta', email: 'testador@cortesia.com' }, staff: 'adm' });
-  teste('cortesia criada com senha temporária + painel + seed', r.status === 200 && /^Cortesia-/.test(r.dados.acesso.senha_temporaria) && /\/vpe\/login$/.test(r.dados.acesso.painel_url) && r.dados.seed.projetos === 2);
+  teste('cortesia criada com link mágico + painel + seed', r.status === 200 && /\/vpe\/definir-senha\?token=/.test(r.dados.acesso.definir_senha_url) && /\/vpe\/app$/.test(r.dados.acesso.painel_url) && r.dados.acesso.validade_link === '30 dias' && !r.dados.acesso.senha_temporaria && r.dados.seed.projetos === 2);
   const cortesiaId = r.dados.tenant.id;
-  const senhaCortesia = r.dados.acesso.senha_temporaria;
+  const definirSenhaUrl = r.dados.acesso.definir_senha_url;
+  const cortesiaToken = new URL(definirSenhaUrl).searchParams.get('token');
   const cortesiaTenant = repo.obterTenant(cortesiaId);
   teste('cortesia marcada (cortesia=1, interno=1, ativa, sem trial)', cortesiaTenant.cortesia === 1 && cortesiaTenant.interno === 1 && cortesiaTenant.status === 'ativa' && !cortesiaTenant.trial_expira_em);
   // listagem NÃO inclui o interno REAL da Villela
   r = await req('GET', '/staff/api/vpe/cortesia', { staff: 'adm' });
   teste('listagem de cortesia inclui o novo acesso', r.dados.acessos.some(a => a.id === cortesiaId));
   teste('listagem de cortesia NÃO vaza o interno real da Villela', !r.dados.acessos.some(a => a.slug === 'villela-interno' || a.cortesia !== 1));
-  // owner loga e o GATE LIBERA (interno herdado, sem 402), com o seed demo visível
+  // página de definir senha responde
+  let pg = await fetch(BASE + '/vpe/definir-senha?token=' + cortesiaToken);
+  teste('página /vpe/definir-senha responde 200 html', pg.status === 200 && (pg.headers.get('content-type') || '').includes('text/html'));
+  // link mágico: senha curta é rejeitada; token inválido é rejeitado
+  r = await req('POST', '/vpe/api/definir-senha', { body: { token: cortesiaToken, senha: 'curta' } });
+  teste('definir-senha rejeita senha curta (400)', r.status === 400);
+  r = await req('POST', '/vpe/api/definir-senha', { body: { token: 'lixo', senha: 'senha1234' } });
+  teste('definir-senha rejeita token inválido (400)', r.status === 400);
+  // define a senha pelo link mágico e a sessão do dono já abre
+  const senhaCortesia = 'MinhaSenhaBeta1';
+  r = await req('POST', '/vpe/api/definir-senha', { body: { token: cortesiaToken, senha: senhaCortesia }, jar: 'cortSet' });
+  teste('definir-senha grava e abre sessão do dono', r.status === 200 && /\/vpe\/app/.test(r.dados.painel_url));
+  // owner loga com a senha que definiu e o GATE LIBERA (interno herdado, sem 402)
   r = await req('POST', '/vpe/api/login', { body: { email: 'testador@cortesia.com', senha: senhaCortesia }, jar: 'cort' });
-  teste('dono de cortesia loga', r.status === 200);
+  teste('dono de cortesia loga com a senha definida', r.status === 200);
   r = await req('GET', '/vpe/api/dashboard', { jar: 'cort' });
   teste('gate LIBERA cortesia (200, interno=true, sem 402)', r.status === 200 && r.dados.empresa.interno === true);
   r = await req('GET', '/vpe/api/projetos', { jar: 'cort' });

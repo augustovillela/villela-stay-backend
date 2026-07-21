@@ -321,6 +321,23 @@ const convite = (token) => formPagina('Aceitar convite', `
     return false;}
   </script>`);
 
+const definirSenha = (token) => formPagina('Definir senha de acesso', `
+  <p style="color:var(--suave)">Crie a sua senha para acessar o painel do Villela Docs. Você é o <b>Dono da conta</b>.</p>
+  <div id="erro"></div>
+  <form onsubmit="return enviar(event)">
+    <label>Nova senha (mínimo 8 caracteres)</label><input id="f-senha" type="password" minlength="8" required>
+    <label>Repita a senha</label><input id="f-senha2" type="password" minlength="8" required>
+    <p><button class="btn" type="submit" style="width:100%">Definir senha e entrar</button></p>
+  </form>
+  <script>
+  async function enviar(ev){ev.preventDefault();const v=id=>document.getElementById(id).value;
+    if(v('f-senha')!==v('f-senha2')){document.getElementById('erro').innerHTML='<div class="erro">As senhas não conferem.</div>';return false;}
+    const r=await fetch('/vdocs/api/definir-senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:${JSON.stringify(String(token || ''))},senha:v('f-senha')})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok)location.href='/vdocs/app';else document.getElementById('erro').innerHTML='<div class="erro">'+(d.erro||'Não foi possível definir a senha.')+'</div>';
+    return false;}
+  </script>`);
+
 // ------------------------------------------------------------ painel do cliente (SPA)
 function appTenant() {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -981,6 +998,7 @@ function registrarPaginas(app, { express } = {}) {
   app.get('/vdocs/cadastro', (req, res) => html(res, cadastro()));
   app.get('/vdocs/login', (req, res) => html(res, login()));
   app.get('/vdocs/convite/:token', (req, res) => html(res, convite(req.params.token)));
+  app.get('/vdocs/definir-senha', (req, res) => html(res, definirSenha((req.query || {}).token || '')));
   app.get('/vdocs/app', (req, res) => { res.setHeader('Cache-Control', 'no-store'); html(res, appTenant()); });
 
   // ---- acesso externo (Fase 7) — sem sessão; tudo logado por IP ----

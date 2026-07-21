@@ -25,9 +25,9 @@ function montar(app, injected = {}) {
   const auth = criarAuth({ jwtSecret });
   const notificar = (msg) => Promise.resolve((alertaAugusto || (async () => {}))(msg)).catch(() => {});
   require('./billing').configurar({ mpFetch, notificar });
-  registrarRotasApi(app, { express, auth, notificar, enviarEmail });
+  registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecret });
   require('./api-publica').registrarApiPublica(app, { express });
-  registrarRotasStaff(app, { express, requireAuth, requireAdmin });
+  registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecret });
   registrarPaginas(app);
   iniciarJobs();
   console.log('[vpe] Villela Projects & Events montado (Fases 1-8 — +billing SaaS Mercado Pago, API pública por chave e webhooks de saída).');

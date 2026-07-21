@@ -5,9 +5,10 @@
 // inicial do dono só aparece na resposta (uma vez).
 // =====================================================================
 'use strict';
+const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 
-function registrarRotasStaff(app, { express, requireAuth, requireAdmin }) {
+function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecret }) {
   const r = express.Router();
   r.use(express.json({ limit: '1mb' }));
   r.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -46,16 +47,18 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin }) {
   r.post('/cortesia', requireAdmin, h(async (req, res) => {
     const b = req.body || {};
     const out = repo.criarCortesia({ nome: b.nome, email: b.email, seed_demo: b.seed_demo }, req.user, ipDe(req));
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
     const base = `${proto}://${req.get('host')}`;
+    // link mágico de definir senha (mesmo padrão do CRM): token vpe-setup 30 dias.
+    const token = jwt.sign({ tipo: 'vpe-setup', uid: out.user.id, tid: out.tenant.id }, jwtSecret, { expiresIn: '30d' });
     res.json({
       ok: true,
       tenant: { id: out.tenant.id, slug: out.tenant.slug, nome: out.tenant.nome, status: out.tenant.status },
       acesso: {
         email: out.user.email,
-        senha_temporaria: out.senha_temporaria, // vpe não tem definir-senha p/ dono → senha temporária
-        painel_url: `${base}/vpe/login`,
-        validade_link: 'vitalício (cortesia — acesso liberado até ser revogado)',
+        definir_senha_url: `${base}/vpe/definir-senha?token=${token}`,
+        painel_url: `${base}/vpe/app`,
+        validade_link: '30 dias',
       },
       seed: out.seed,
     });
