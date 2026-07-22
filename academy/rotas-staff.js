@@ -17,6 +17,8 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
     catch (e) { res.status(400).json({ erro: e.message }); }
   };
   const aud = (req, acao, ent, id, det) => repo.Auditoria.registrar({ quem: quem(req), papel: 'staff', acao, entidade: ent, entidade_id: id, detalhe: det, ip: ipDe(req) });
+  // Domínio público do produto (mesma base de paginas.js — NÃO o host interno do Render).
+  const BASE = (process.env.ACADEMY_BASE_URL || 'https://academia.villelastay.com.br').replace(/\/+$/, '');
 
   app.use('/staff/api/academy', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
@@ -100,19 +102,25 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
     const b = req.body || {};
     if (!b.email || !String(b.email).includes('@')) return res.status(400).json({ erro: 'Informe o e-mail do testador.' });
     const r = ct.Cortesia.concederTotal({ nome: b.nome, email: b.email }, quem(req)); // seed_demo ignorado (B2C não tem tenant)
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const base = `${proto}://${req.get('host')}`;
     const token = jwt.sign({ tipo: 'academy-reset', uid: r.usuario.id }, jwtSecret, { expiresIn: '30d' });
     aud(req, 'cortesia.conceder', 'enrollments', r.usuario.id, `${r.usuario.email} — ${r.produtos_liberados} produto(s)`);
     const acesso = {
       email: r.usuario.email,
-      definir_senha_url: `${base}/academy/redefinir-senha?token=${token}`,
-      painel_url: `${base}/academy/app`,
+      definir_senha_url: `${BASE}/academy/redefinir-senha?token=${token}`,
+      painel_url: `${BASE}/academy/app`,
       validade_link: '30 dias',
       produtos_liberados: r.produtos_liberados,
     };
     if (r.senha_temporaria) acesso.senha_temporaria = r.senha_temporaria; // conta nova: fallback se não usar o link
     res.json({ ok: true, usuario: { id: r.usuario.id, nome: r.usuario.nome, email: r.usuario.email }, acesso });
+  }));
+  // regenera o link de acesso (novo token academy-reset 30d) para o usuário de cortesia
+  app.post('/staff/api/academy/cortesia/:userId/link', ...A, h((req, res) => {
+    const u = repo.Usuarios.porId(req.params.userId);
+    if (!u) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+    const token = jwt.sign({ tipo: 'academy-reset', uid: u.id }, jwtSecret, { expiresIn: '30d' });
+    aud(req, 'cortesia.link', 'enrollments', u.id, u.email);
+    res.json({ ok: true, acesso: { email: u.email, definir_senha_url: `${BASE}/academy/redefinir-senha?token=${token}`, painel_url: `${BASE}/academy/app`, validade_link: '30 dias' } });
   }));
   app.post('/staff/api/academy/cortesia/:userId/revogar', ...A, h((req, res) => {
     const r = ct.Cortesia.revogarTotal(req.params.userId);

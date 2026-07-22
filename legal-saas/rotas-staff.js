@@ -15,6 +15,8 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
   const A = [requireAuth, requireAdmin]; // guarda de admin da plataforma
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
   const aud = (req, acao, ent, id, det) => repo.Auditoria.registrar({ quem: quem(req), acao, entidade: ent, entidade_id: id, detalhe: det, ip: ipDe(req) });
+  // Domínio público do produto (NÃO o host interno do Render). Links de acesso saem sempre por aqui.
+  const BASE = (process.env.LEGAL_SAAS_BASE_URL || 'https://juridico.villelastay.com.br').replace(/\/+$/, '');
 
   app.use('/staff/api/legal-saas', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
@@ -81,8 +83,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
     if (!t || !t.usuarios.length) return res.status(404).json({ erro: 'Escritório sem usuário.' });
     const admin = t.usuarios.find(u => u.papel === 'admin') || t.usuarios[0];
     const token = jwt.sign({ tipo: 'legalsaas-setup', uid: admin.id }, jwtSecret, { expiresIn: '7d' });
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const url = `${proto}://${req.get('host')}/juridico/definir-senha?token=${token}`;
+    const url = `${BASE}/juridico/definir-senha?token=${token}`;
     aud(req, 'tenant.link-acesso', 'tenant_users', admin.id, admin.email);
     res.json({ ok: true, url, email: admin.email, validade: '7 dias' });
   }));
@@ -100,10 +101,17 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret, enviar
     }, quem(req));
     const admin = t.usuarios.find(u => u.papel === 'admin') || t.usuarios[0];
     const token = jwt.sign({ tipo: 'legalsaas-setup', uid: admin.id }, jwtSecret, { expiresIn: '30d' });
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const base = `${proto}://${req.get('host')}`;
     aud(req, 'cortesia.criar', 'tenants', t.id, `${t.nome} <${admin.email}>`);
-    res.json({ ok: true, tenant: t, acesso: { email: admin.email, definir_senha_url: `${base}/juridico/definir-senha?token=${token}`, painel_url: `${base}/juridico/app`, validade_link: '30 dias' } });
+    res.json({ ok: true, tenant: t, acesso: { email: admin.email, definir_senha_url: `${BASE}/juridico/definir-senha?token=${token}`, painel_url: `${BASE}/juridico/app`, validade_link: '30 dias' } });
+  }));
+  // regenera o link de acesso (novo token setup 30d) para o admin do escritório de cortesia
+  app.post('/staff/api/legal-saas/cortesia/:id/link', ...A, h((req, res) => {
+    const t = repo.Tenants.obter(req.params.id);
+    if (!t || !t.usuarios || !t.usuarios.length) return res.status(404).json({ erro: 'Acesso de cortesia não encontrado.' });
+    const admin = t.usuarios.find(u => u.papel === 'admin') || t.usuarios[0];
+    const token = jwt.sign({ tipo: 'legalsaas-setup', uid: admin.id }, jwtSecret, { expiresIn: '30d' });
+    aud(req, 'cortesia.link', 'tenants', t.id, admin.email);
+    res.json({ ok: true, acesso: { email: admin.email, definir_senha_url: `${BASE}/juridico/definir-senha?token=${token}`, painel_url: `${BASE}/juridico/app`, validade_link: '30 dias' } });
   }));
   app.post('/staff/api/legal-saas/cortesia/:id/revogar', ...A, h((req, res) => {
     const t = repo.Tenants.mudarStatus(req.params.id, 'suspensa', quem(req), 'cortesia revogada');

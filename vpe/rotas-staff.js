@@ -20,6 +20,8 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecre
   });
   const h = (fn) => (req, res) => { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); };
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  // Domínio público do produto (NÃO o host interno do Render). Links de acesso saem sempre por aqui.
+  const BASE = (process.env.VPE_BASE_URL || 'https://projetos.villelastay.com.br').replace(/\/+$/, '');
 
   r.get('/resumo', h(async (req, res) => res.json(repo.resumoPlataforma())));
   r.get('/tenants', h(async (req, res) => res.json({ tenants: repo.listarTenantsPlataforma() })));
@@ -47,8 +49,6 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecre
   r.post('/cortesia', requireAdmin, h(async (req, res) => {
     const b = req.body || {};
     const out = repo.criarCortesia({ nome: b.nome, email: b.email, seed_demo: b.seed_demo }, req.user, ipDe(req));
-    const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
-    const base = `${proto}://${req.get('host')}`;
     // link mágico de definir senha (mesmo padrão do CRM): token vpe-setup 30 dias.
     const token = jwt.sign({ tipo: 'vpe-setup', uid: out.user.id, tid: out.tenant.id }, jwtSecret, { expiresIn: '30d' });
     res.json({
@@ -56,12 +56,22 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecre
       tenant: { id: out.tenant.id, slug: out.tenant.slug, nome: out.tenant.nome, status: out.tenant.status },
       acesso: {
         email: out.user.email,
-        definir_senha_url: `${base}/vpe/definir-senha?token=${token}`,
-        painel_url: `${base}/vpe/app`,
+        definir_senha_url: `${BASE}/vpe/definir-senha?token=${token}`,
+        painel_url: `${BASE}/vpe/app`,
         validade_link: '30 dias',
       },
       seed: out.seed,
     });
+  }));
+  // regenera o link de acesso (novo token vpe-setup 30d) para o dono do tenant de cortesia
+  r.post('/cortesia/:id/link', requireAdmin, h(async (req, res) => {
+    const t = repo.obterTenant(req.params.id);
+    if (!t || !t.cortesia) return res.status(404).json({ erro: 'Acesso de cortesia não encontrado.' });
+    const dono = repo.listarUsuarios(t.id).find(u => u.papel === 'dono') || repo.listarUsuarios(t.id)[0];
+    if (!dono) return res.status(404).json({ erro: 'Dono do acesso não encontrado.' });
+    const token = jwt.sign({ tipo: 'vpe-setup', uid: dono.user_id, tid: t.id }, jwtSecret, { expiresIn: '30d' });
+    repo.auditar(t.id, req.user, 'cortesia.link', 'tenant', t.id, { email: dono.email }, ipDe(req));
+    res.json({ ok: true, acesso: { email: dono.email, definir_senha_url: `${BASE}/vpe/definir-senha?token=${token}`, painel_url: `${BASE}/vpe/app`, validade_link: '30 dias' } });
   }));
   r.post('/cortesia/:id/revogar', requireAdmin, h(async (req, res) => res.json({ ok: true, tenant: repo.revogarCortesia(req.params.id, req.user, ipDe(req)) })));
   r.post('/cortesia/:id/reativar', requireAdmin, h(async (req, res) => res.json({ ok: true, tenant: repo.reativarCortesia(req.params.id, req.user, ipDe(req)) })));

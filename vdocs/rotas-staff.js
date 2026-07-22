@@ -21,6 +21,8 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecre
   });
   const h = (fn) => (req, res) => { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); };
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  // Domínio público do produto (NÃO o host interno do Render). Links de acesso saem sempre por aqui.
+  const BASE = (process.env.VDOCS_BASE_URL || 'https://docs.villelastay.com.br').replace(/\/+$/, '');
 
   r.get('/resumo', h(async (req, res) => res.json(repo.resumoPlataforma())));
   r.get('/tenants', h(async (req, res) => res.json({ tenants: repo.listarTenantsPlataforma() })));
@@ -68,8 +70,6 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecre
     const criado = repo.criarTenantComDono({
       empresa: nome, nome, email: b.email, cortesia: true, seed_demo: b.seed_demo !== false, ip: ipDe(req),
     });
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const base = `${proto}://${req.get('host')}`;
     // link mágico: o dono define a senha (30 dias) e cai direto no painel
     const token = jwt.sign({ tipo: 'vdocs-setup', uid: criado.user.id }, jwtSecret, { expiresIn: '30d' });
     repo.auditar('', req.user, 'plataforma.cortesia.criar', 'tenant', criado.tenant.id, { nome, email: criado.user.email }, ipDe(req));
@@ -78,11 +78,21 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecre
       tenant: criado.tenant,
       acesso: {
         email: criado.user.email,
-        definir_senha_url: `${base}/vdocs/definir-senha?token=${token}`,
-        painel_url: `${base}/vdocs/app`,
+        definir_senha_url: `${BASE}/vdocs/definir-senha?token=${token}`,
+        painel_url: `${BASE}/vdocs/app`,
         validade_link: '30 dias',
       },
     });
+  }));
+  // regenera o link de acesso (novo token vdocs-setup 30d) para o dono do tenant de cortesia
+  r.post('/cortesia/:id/link', requireAdmin, h(async (req, res) => {
+    const t = repo.obterTenant(req.params.id);
+    if (!t) return res.status(404).json({ erro: 'Acesso de cortesia não encontrado.' });
+    const dono = repo.listarUsuarios(t.id).find(u => u.papel === 'dono') || repo.listarUsuarios(t.id)[0];
+    if (!dono) return res.status(404).json({ erro: 'Dono do acesso não encontrado.' });
+    const token = jwt.sign({ tipo: 'vdocs-setup', uid: dono.user_id }, jwtSecret, { expiresIn: '30d' });
+    repo.auditar('', req.user, 'plataforma.cortesia.link', 'tenant', t.id, { email: dono.email }, ipDe(req));
+    res.json({ ok: true, acesso: { email: dono.email, definir_senha_url: `${BASE}/vdocs/definir-senha?token=${token}`, painel_url: `${BASE}/vdocs/app`, validade_link: '30 dias' } });
   }));
   r.post('/cortesia/:id/revogar', requireAdmin, h(async (req, res) => {
     const t = repo.administrarTenant(req.params.id, { status: 'suspensa' }, req.user, ipDe(req));

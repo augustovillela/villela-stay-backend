@@ -7,12 +7,12 @@
 // Compartilha o escopo global com app-core.js (scripts clássicos).
 // ============================================================================
 const CORTESIA_PRODUTOS = [
-  { chave: 'crm', pref: 'vcrm', nome: 'Villela CRM', emoji: '🤝', painel: '/crm/app' },
-  { chave: 'vsm', pref: 'vsm', nome: 'Villela Stay Manager', emoji: '🏨', painel: '/gestao/app' },
-  { chave: 'legal-saas', pref: 'legal-saas', nome: 'Villela Legal SaaS', emoji: '⚖️', painel: '/juridico/app' },
-  { chave: 'vdocs', pref: 'vdocs', nome: 'Villela Docs', emoji: '🗂️', painel: '/vdocs/app' },
-  { chave: 'vpe', pref: 'vpe', nome: 'Villela Projects', emoji: '📋', painel: '/vpe/app' },
-  { chave: 'academy', pref: 'academy', nome: 'Villela Academy', emoji: '🎓', painel: '/academy/app', tipo: 'usuario' },
+  { chave: 'crm', pref: 'vcrm', nome: 'Villela CRM', emoji: '🤝', painel: 'https://crm.villelastay.com.br/crm/app' },
+  { chave: 'vsm', pref: 'vsm', nome: 'Villela Stay Manager', emoji: '🏨', painel: 'https://manager.villelastay.com.br/gestao/app' },
+  { chave: 'legal-saas', pref: 'legal-saas', nome: 'Villela Legal SaaS', emoji: '⚖️', painel: 'https://juridico.villelastay.com.br/juridico/app' },
+  { chave: 'vdocs', pref: 'vdocs', nome: 'Villela Docs', emoji: '🗂️', painel: 'https://docs.villelastay.com.br/vdocs/app' },
+  { chave: 'vpe', pref: 'vpe', nome: 'Villela Projects', emoji: '📋', painel: 'https://projetos.villelastay.com.br/vpe/app' },
+  { chave: 'academy', pref: 'academy', nome: 'Villela Academy', emoji: '🎓', painel: 'https://academia.villelastay.com.br/academy/app', tipo: 'usuario' },
 ];
 const cortesiaProd = (chave) => CORTESIA_PRODUTOS.find(p => p.chave === chave);
 
@@ -114,6 +114,8 @@ async function cortesiaCarregar() {
         <td>${revogado ? '<span class="badge st-erro">revogado</span>' : '<span class="badge st-feito">ativo</span>'}</td>
         <td>
           <a class="btn peq secund" href="${esc(p.painel)}" target="_blank" rel="noopener">painel ↗</a>
+          ${revogado ? ''
+            : `<button class="btn peq secund ct-link" data-pref="${esc(p.pref)}" data-id="${esc(a.id)}">🔑 copiar link</button>`}
           ${revogado
             ? `<button class="btn peq secund ct-reativar" data-pref="${esc(p.pref)}" data-id="${esc(a.id)}">reativar</button>`
             : `<button class="btn peq secund ct-revogar" data-pref="${esc(p.pref)}" data-id="${esc(a.id)}">revogar</button>`}
@@ -130,5 +132,16 @@ async function cortesiaCarregar() {
   corpo.querySelectorAll('.ct-reativar').forEach(b => b.onclick = async () => {
     try { await api('POST', `/${b.dataset.pref}/cortesia/${encodeURIComponent(b.dataset.id)}/reativar`); cortesiaCarregar(); }
     catch (e) { alert(e.message); }
+  });
+  // regenera um link mágico (branded) para reenviar ao testador, sem recriar a conta
+  corpo.querySelectorAll('.ct-link').forEach(b => b.onclick = async () => {
+    const orig = b.textContent;
+    try {
+      const r = await api('POST', `/${b.dataset.pref}/cortesia/${encodeURIComponent(b.dataset.id)}/link`);
+      const url = r && r.acesso && r.acesso.definir_senha_url;
+      if (!url) { alert('Este produto não retornou um link de definição de senha.'); return; }
+      try { await navigator.clipboard.writeText(url); b.textContent = 'copiado ✓'; setTimeout(() => b.textContent = orig, 1500); } catch (_) {}
+      prompt('Link para o testador definir a senha (envie a ele):', url);
+    } catch (e) { alert(e.message); }
   });
 }
