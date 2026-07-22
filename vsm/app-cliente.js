@@ -56,7 +56,7 @@
 
   function render(me) {
     ME = me; var ent = me.entitlements; var st = me.operacao.status;
-    var liberado = st === 'ativa' || st === 'trial';
+    var liberado = !!(ent && ent.acesso_liberado); // usa o flag do backend (cobre trial/ativa/cortesia)
     var alerta = !liberado
       ? '<div class="aviso">⚠️ Sua conta está <b>' + esc(st) + '</b>. Regularize a cobrança para voltar a usar o sistema.</div>'
       : (st === 'trial' ? '<div class="aviso">🎁 Período de teste até <b>' + dt(ent.trial_expira_em) + '</b>. Assine para continuar sem interrupção.</div>' : '');
