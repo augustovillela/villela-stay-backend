@@ -194,10 +194,10 @@ function appHTML() {
     window.entrar=entrar;
     async function home(){let me;try{me=await api('GET','/me')}catch(_){return}
       const ent=me.entitlements;
-      const alerta=me.escritorio.status!=='ativa'&&me.escritorio.status!=='trial'?'<div class="aviso">⚠️ Sua conta está <b>'+esc(me.escritorio.status)+'</b>. Regularize a cobrança para reativar o acesso.</div>':(me.escritorio.status==='trial'?'<div class="aviso">🎁 Você está no <b>período de teste</b> até '+dt(ent.trial_expira_em)+'. Assine para continuar sem interrupção.</div>':'');
+      const alerta=!(ent&&ent.acesso_liberado)?'<div class="aviso">⚠️ Sua conta está <b>'+esc(me.escritorio.status)+'</b>. Regularize a cobrança para reativar o acesso.</div>':(me.escritorio.status==='trial'?'<div class="aviso">🎁 Você está no <b>período de teste</b> até '+dt(ent.trial_expira_em)+'. Assine para continuar sem interrupção.</div>':'');
       app.innerHTML='<div class="card"><h3>'+esc(me.escritorio.nome)+' <span class="tag">'+esc(ent.plano||'—')+'</span></h3>'+alerta
         +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
-        +((me.escritorio.status==='ativa'||me.escritorio.status==='trial')?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')
+        +((ent&&ent.acesso_liberado)?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')
         +'<button class="btn g" id="pwa-btn" style="display:none" title="Instalar o Villela Legal como app no celular">📲 Instalar app</button>'
         +'<button class="btn g" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button></div>'
         +'<p class="sub">Olá, '+esc(me.usuario.nome||me.usuario.email)+' · <a href="#" onclick="sair();return false">sair</a></p></div><div id="c"></div>';
