@@ -42,6 +42,18 @@ function registrarRotasStaff(app, { express, requireAuth, requireAdmin, jwtSecre
     res.json({ ok: true, tenant: { id: r2.tenant.id, slug: r2.tenant.slug, nome: r2.tenant.nome }, projetos_criados: r2.criados, projetos_total: r2.total, senha_inicial: r2.senha_inicial });
   }));
 
+  // Gera um link mágico para o DONO do workspace interno definir uma senha nova e
+  // entrar (a senha inicial do seed só aparece uma vez). Mesmo fluxo da cortesia.
+  r.post('/interno/link-acesso', requireAdmin, h(async (req, res) => {
+    const t = (repo.listarTenantsPlataforma() || []).find(x => x.slug === 'villela-interno');
+    if (!t) return res.status(404).json({ erro: 'Workspace interno ainda não foi semeado — clique em "Semear" primeiro.' });
+    const dono = repo.listarUsuarios(t.id).find(u => u.papel === 'dono') || repo.listarUsuarios(t.id)[0];
+    if (!dono) return res.status(404).json({ erro: 'Dono do workspace interno não encontrado.' });
+    const token = jwt.sign({ tipo: 'vpe-setup', uid: dono.user_id, tid: t.id }, jwtSecret, { expiresIn: '30d' });
+    repo.auditar(t.id, req.user, 'interno.link-acesso', 'tenant', t.id, { email: dono.email }, ipDe(req));
+    res.json({ ok: true, acesso: { email: dono.email, definir_senha_url: `${BASE}/vpe/definir-senha?token=${token}`, painel_url: `${BASE}/vpe/app`, validade_link: '30 dias' } });
+  }));
+
   // ---- ACESSOS DE CORTESIA / BETA (teste sem pagamento; vitalício até revogar) ----
   // Contrato idêntico em todos os produtos (tela central). Guarda: requireAuth (já
   // aplicado no router) + requireAdmin. NÃO lista o workspace interno REAL da Villela.

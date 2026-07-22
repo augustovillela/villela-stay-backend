@@ -39,6 +39,7 @@ const VP = {
       <div class="card"><b>🏠 Workspace interno Villela</b>
       <p class="sub">Cria (ou completa) o workspace interno com os 16 projetos da Villela. Idempotente — pode clicar de novo sem duplicar. A senha inicial do dono aparece UMA vez.</p>
       <button class="btn peq" onclick="VP.semearInterno()">Semear workspace interno (16 projetos)</button>
+      <button class="btn peq secund" onclick="VP.linkInterno()">🔑 Gerar link de acesso</button>
       <div id="vp-seed-out" style="margin-top:.5rem;font-size:.85rem"></div></div>
       <div class="aviso">🧭 Fase 1 (fundação SaaS + portfólio). Tarefas/Kanban, eventos, CRM, financeiro e IA chegam nas próximas fases — ver <code>backend/vpe/README.md</code>.</div>`;
   },
@@ -46,9 +47,24 @@ const VP = {
     if (!confirm('Semear o workspace interno da Villela com os 16 projetos?')) return;
     try {
       const r = await VP.api('POST', '/semear-interno', {});
-      document.getElementById('vp-seed-out').innerHTML = `✅ ${r.projetos_criados} projeto(s) criado(s) (total ${r.projetos_total}). `
-        + (r.senha_inicial ? `<b>Senha inicial do dono (${'augusto.villela@gmail.com'}) — copie AGORA:</b> <code>${esc(r.senha_inicial)}</code> · <a href="/vpe/login" target="_blank">entrar no painel</a>` : 'Workspace já existia — use sua senha atual.');
+      document.getElementById('vp-seed-out').innerHTML = r.projetos_criados > 0
+        ? `✅ ${r.projetos_criados} projeto(s) criado(s) (total ${r.projetos_total}). `
+          + (r.senha_inicial ? `<b>Senha inicial do dono (augusto.villela@gmail.com) — copie AGORA:</b> <code>${esc(r.senha_inicial)}</code> · <a href="/vpe/login" target="_blank">entrar no painel ↗</a>` : '')
+        : `✅ Workspace interno já existe (${r.projetos_total} projetos) — nada a criar. Para entrar, use <b>🔑 Gerar link de acesso</b> acima.`;
     } catch (e) { document.getElementById('vp-seed-out').innerHTML = `<span style="color:var(--alerta)">${esc(e.message)}</span>`; }
+  },
+
+  async linkInterno() {
+    const out = document.getElementById('vp-seed-out');
+    if (out) out.innerHTML = 'Gerando link…';
+    try {
+      const r = await VP.api('POST', '/interno/link-acesso', {});
+      const a = r.acesso || {};
+      try { await navigator.clipboard.writeText(a.definir_senha_url); } catch (_) {}
+      out.innerHTML = `🔑 Link de acesso do workspace interno — dono <b>${esc(a.email)}</b> (${esc(a.validade_link)}), <b>copiado ✓</b>:<br>`
+        + `<input readonly value="${esc(a.definir_senha_url)}" style="width:100%;font-size:.8rem;margin:.3rem 0" onclick="this.select()"> `
+        + `<a href="${esc(a.painel_url)}" target="_blank">abrir painel ↗</a>`;
+    } catch (e) { out.innerHTML = `<span style="color:var(--alerta)">${esc(e.message)}</span>`; }
   },
 
   async vTenants() {
