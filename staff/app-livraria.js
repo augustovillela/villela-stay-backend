@@ -164,9 +164,15 @@ const LV = {
     LV.tab = 'pedidos'; LV.render();
     const d = await LV.api('GET', '/pedidos/' + id);
     const p = d.pedido; const cli = p.cliente || {};
+    const e = p.endereco_entrega || {};
+    const temEnd = e.cep || e.logradouro || e.numero || e.bairro;
+    const linhaEnd = temEnd
+      ? `${esc([e.logradouro, e.numero].filter(Boolean).join(', '))}${e.complemento ? ' — ' + esc(e.complemento) : ''}${e.bairro ? '<br>' + esc(e.bairro) : ''}<br>${esc(cli.cidade || '')}/${esc(cli.estado || '')}${e.cep ? ' · CEP ' + esc(e.cep) : ''}`
+      : `<span style="color:#b3261e">⚠️ Sem endereço de entrega neste pedido — solicite ao comprador pelo WhatsApp.</span>`;
     let h = `<div class="card"><button class="btn secund peq" onclick="LV.ir('pedidos')">← Voltar</button>
       <h3>Pedido ${p.id.slice(0, 8)} · ${badge(p.status)}</h3>
       <p><b>${esc(cli.nome)}</b> · ${esc(cli.email)} · ${esc(cli.whatsapp)}<br>${esc(cli.doc)} · ${esc(cli.cidade)}/${esc(cli.estado)}</p>
+      <p style="background:#f6f8fa;border-radius:8px;padding:.5rem .7rem"><b>📮 Endereço de entrega</b><br>${linhaEnd}</p>
       ${tabela(['Item', 'Tipo', 'Qtd', 'Preço'], p.itens.map(i => [esc(i.titulo_snapshot), i.tipo, i.quantidade, LV.brl(i.preco_unit)]))}
       <p>Subtotal ${LV.brl(p.valor_bruto)} · Desconto ${LV.brl(p.desconto)} ${p.cupom_codigo ? '(' + esc(p.cupom_codigo) + ')' : ''} · <b>Total ${LV.brl(p.valor_total)}</b></p>`;
     // ações
@@ -198,8 +204,10 @@ const LV = {
   },
   async verCliente(id) {
     const d = await LV.api('GET', '/clientes/' + id); const c = d.cliente;
+    let end = {}; try { end = c.endereco ? JSON.parse(c.endereco) : {}; } catch (_) {}
+    const endLinha = (end.cep || end.logradouro) ? `<br>📮 ${esc([end.logradouro, end.numero].filter(Boolean).join(', '))}${end.complemento ? ' — ' + esc(end.complemento) : ''}${end.bairro ? ', ' + esc(end.bairro) : ''}${end.cep ? ' · CEP ' + esc(end.cep) : ''}` : '';
     let h = `<div class="card"><button class="btn secund peq" onclick="LV.ir('clientes')">← Voltar</button>
-      <h3>${esc(c.nome)}</h3><p>${esc(c.email)} · ${esc(c.whatsapp)}<br>${esc(c.doc)} · ${esc(c.cidade)}/${esc(c.estado)} · ${esc(c.pais)}</p>
+      <h3>${esc(c.nome)}</h3><p>${esc(c.email)} · ${esc(c.whatsapp)}<br>${esc(c.doc)} · ${esc(c.cidade)}/${esc(c.estado)} · ${esc(c.pais)}${endLinha}</p>
       <div style="margin:.5rem 0"><label class="sub">Observações internas</label><textarea id="lv-cli-obs" rows="2" style="width:100%;padding:.5rem">${esc(c.observacoes)}</textarea>
       <button class="btn peq" onclick="LV.salvarCliente('${id}')">💾 Salvar</button></div></div>`;
     h += `<div class="card"><h3>🛒 Compras</h3>${d.compras.length ? tabela(['Data', 'Total', 'Status', ''], d.compras.map(o => [dataBr(o.created_at), LV.brl(o.valor_total), o.status, `<button class="btn secund peq" onclick="LV.verPedido('${o.id}')">Ver</button>`])) : '<p class="sub">Nenhuma.</p>'}</div>`;
@@ -240,9 +248,15 @@ const LV = {
     let h = `<div class="card"><h3>📦 Fila de impressos</h3>`;
     h += impressos.length ? impressos.map(j => {
       const cli = j.pedido && j.pedido.cliente ? j.pedido.cliente : {};
+      const e = (j.pedido && j.pedido.endereco_entrega) || {};
+      const temEnd = e.cep || e.logradouro || e.numero || e.bairro;
+      const endTxt = temEnd
+        ? `📮 ${esc([e.logradouro, e.numero].filter(Boolean).join(', '))}${e.complemento ? ' — ' + esc(e.complemento) : ''}${e.bairro ? ', ' + esc(e.bairro) : ''} · ${esc(cli.cidade || '')}/${esc(cli.estado || '')}${e.cep ? ' · CEP ' + esc(e.cep) : ''}`
+        : `<span style="color:#b3261e">⚠️ Sem endereço — solicitar ao comprador</span>`;
       const opts = STATUS.map(s => `<option value="${s}" ${j.status === s ? 'selected' : ''}>${s}</option>`).join('');
       return `<div style="border:1px solid #ddd;border-radius:8px;padding:.6rem;margin:.5rem 0">
-        <b>${esc(j.livro ? j.livro.titulo : '')}</b> — ${esc(cli.nome || '')} (${esc(cli.cidade || '')}/${esc(cli.estado || '')})
+        <b>${esc(j.livro ? j.livro.titulo : '')}</b> — ${esc(cli.nome || '')}${cli.whatsapp ? ' · ' + esc(cli.whatsapp) : ''}
+        <div class="sub" style="margin:.25rem 0">${endTxt}</div>
         <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.4rem;align-items:center">
           <select id="im-st-${j.id}" style="padding:.4rem">${opts}</select>
           <input id="im-forn-${j.id}" placeholder="Fornecedor" value="${esc(j.fornecedor)}" style="padding:.4rem;width:130px">

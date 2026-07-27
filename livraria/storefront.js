@@ -251,11 +251,12 @@ function checkout(b, tipoInicial) {
           <div class="campo"><label>Estado *</label><input id="estado" required></div>
           <div class="campo"><label>Cidade *</label><input id="cidade" required></div>
         </div>
-        <div id="entrega" style="display:none">
-          <h3>Endereço de entrega (livro impresso)</h3>
-          <div class="row2"><div class="campo"><label>CEP</label><input id="cep"></div><div class="campo"><label>Bairro</label><input id="bairro"></div></div>
-          <div class="campo"><label>Logradouro</label><input id="logradouro"></div>
-          <div class="row2"><div class="campo"><label>Número</label><input id="numero"></div><div class="campo"><label>Complemento</label><input id="complemento"></div></div>
+        <div id="entrega">
+          <h3>Endereço para entrega</h3>
+          <p class="muted" style="font-size:13px;margin:-4px 0 10px">Usamos este endereço para a remessa do exemplar impresso e para o seu cadastro.</p>
+          <div class="row2"><div class="campo"><label>CEP *</label><input id="cep" required autocomplete="postal-code" inputmode="numeric" placeholder="00000-000"></div><div class="campo"><label>Bairro *</label><input id="bairro" required></div></div>
+          <div class="campo"><label>Logradouro (rua / avenida) *</label><input id="logradouro" required autocomplete="street-address"></div>
+          <div class="row2"><div class="campo"><label>Número *</label><input id="numero" required autocomplete="off"></div><div class="campo"><label>Complemento</label><input id="complemento" placeholder="apto, bloco (opcional)"></div></div>
         </div>
         <div class="campo"><label><input type="checkbox" id="termos" required style="width:auto"> Li e aceito os <a href="/termos-de-uso" target="_blank">Termos</a> e a <a href="/politica-de-privacidade" target="_blank">Política de Privacidade</a>.</label></div>
         <div id="erro" class="aviso" style="display:none"></div>
@@ -282,7 +283,6 @@ function checkout(b, tipoInicial) {
     function precoTipo(){return LIVRO.precos[tipo()]||0}
     function fmt(c){return 'R$ '+(c/100).toLocaleString('pt-BR',{minimumFractionDigits:2})}
     function recalc(){
-      document.getElementById('entrega').style.display=(tipo()==='impresso'||tipo()==='combo')?'block':'none';
       var sub=precoTipo();document.getElementById('r-sub').textContent=fmt(sub);
       document.getElementById('r-desc').textContent='− '+fmt(descontoAtual);
       document.getElementById('r-total').textContent=fmt(Math.max(0,sub-descontoAtual));

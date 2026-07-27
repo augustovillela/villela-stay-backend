@@ -70,11 +70,19 @@ function registrarRotasPublicas(app, deps) {
       if (!d.customer || !d.customer.email || !d.customer.nome) return res.status(400).json({ erro: 'Informe nome e e-mail.' });
       if (!Array.isArray(d.items) || !d.items.length) return res.status(400).json({ erro: 'Carrinho vazio.' });
       if (!d.customer.consentimentos || !d.customer.consentimentos.termos) return res.status(400).json({ erro: 'É preciso aceitar os Termos.' });
-      // exige endereço para impresso/combo
-      const temImpresso = d.items.some(it => it.tipo === 'impresso' || it.tipo === 'combo');
-      if (temImpresso && (!d.endereco_entrega || !d.endereco_entrega.cep || !d.endereco_entrega.logradouro)) {
-        return res.status(400).json({ erro: 'Informe o endereço de entrega para o livro impresso.' });
-      }
+      // exige endereço completo em TODO pedido (usado para remessa e cadastro do comprador)
+      const end = d.endereco_entrega || {};
+      const clean = (v) => String(v == null ? '' : v).trim();
+      const faltando = [];
+      if (!clean(d.customer.estado)) faltando.push('estado');
+      if (!clean(d.customer.cidade)) faltando.push('cidade');
+      if (!clean(end.cep)) faltando.push('CEP');
+      if (!clean(end.logradouro)) faltando.push('logradouro');
+      if (!clean(end.numero)) faltando.push('número');
+      if (!clean(end.bairro)) faltando.push('bairro');
+      if (faltando.length) return res.status(400).json({ erro: 'Informe o endereço completo para entrega: ' + faltando.join(', ') + '.' });
+      // guarda o mesmo endereço também no cadastro do cliente (customer.endereco)
+      d.customer.endereco = { cep: clean(end.cep), logradouro: clean(end.logradouro), numero: clean(end.numero), complemento: clean(end.complemento), bairro: clean(end.bairro) };
       if (!pagamentos.disponivel()) return res.status(503).json({ erro: 'Pagamento online em configuração. Fale conosco pelo WhatsApp.' });
       const order = repo.Orders.criar({ customer: d.customer, items: d.items, cupom: d.cupom, origem: d.origem, endereco_entrega: d.endereco_entrega });
       const prov = pagamentos.provedor('mercadopago');
