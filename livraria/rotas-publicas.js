@@ -4,7 +4,7 @@
 'use strict';
 
 function registrarRotasPublicas(app, deps) {
-  const { repo, pagamentos, eventos, fluxo, storefront, legais, downloads, urls } = deps;
+  const { repo, pagamentos, eventos, fluxo, storefront, legais, atualizacoes, downloads, urls } = deps;
 
   // Nunca cachear as APIs da loja.
   app.use('/livraria/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -12,6 +12,10 @@ function registrarRotasPublicas(app, deps) {
   // ----------------------------------------------------- páginas (SEO server-side)
   app.get('/livros', (req, res) => {
     res.type('html').send(storefront.vitrine(repo.Books.listarPublico()));
+  });
+  // atualizações dos livros — endereço impresso na última página; vem ANTES de /livros/:slug
+  app.get('/livros/atualizacoes', (req, res) => {
+    res.type('html').send(atualizacoes.atualizacoes());
   });
   app.get('/livros/:slug', (req, res) => {
     const b = repo.Books.porSlug(req.params.slug);

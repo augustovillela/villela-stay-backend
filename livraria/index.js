@@ -12,6 +12,7 @@ const repo = require('./repo');
 const downloads = require('./downloads');
 const storefront = require('./storefront');
 const legais = require('./paginas-legais');
+const atualizacoes = require('./paginas-atualizacoes');
 const { criarPagamentos } = require('./pagamentos');
 const { criarEventos } = require('./eventos');
 const emails = require('./emails');
@@ -61,7 +62,7 @@ function montar(app, injected = {}) {
   const fluxo = criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alertaAugusto, urls });
 
   const deps = {
-    repo, pagamentos, eventos, emails, fluxo, downloads, storefront, legais, urls,
+    repo, pagamentos, eventos, emails, fluxo, downloads, storefront, legais, atualizacoes, urls,
     express, requireAuth: authComChave, requireAdmin, lerUsuarios, salvarUsuarios, enviarEmail, enviarWhatsApp, alertaAugusto,
   };
 
