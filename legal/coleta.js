@@ -31,7 +31,19 @@ const DATAJUD_KEY = process.env.DATAJUD_API_KEY || 'cDZHYzlZa0JadVREZDJCendQbXY6
 const DJEN_BASE = 'https://comunicaapi.pje.jus.br/api/v1/comunicacao';
 
 // ---- tribunal a partir do número CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO) ----
-const CNJ_ESTADUAL = { '07': 'tjdft', '26': 'tjsp', '19': 'tjrj', '13': 'tjmg', '09': 'tjgo', '05': 'tjba', '08': 'tjes' };
+// Os 27 códigos do campo TR da Justiça Estadual (J=8), extraídos do ANEXO V da
+// Resolução CNJ n. 65/2008 (texto compilado oficial em atos.cnj.jus.br, conferido
+// em 30/07/2026). Antes o mapa tinha só 7 estados e processos dos demais eram
+// silenciosamente ignorados na coleta do DataJud (ex.: 8.21 = TJRS).
+const CNJ_ESTADUAL = {
+  '01': 'tjac', '02': 'tjal', '03': 'tjap', '04': 'tjam', '05': 'tjba', '06': 'tjce',
+  '07': 'tjdft', '08': 'tjes', '09': 'tjgo', '10': 'tjma', '11': 'tjmt', '12': 'tjms',
+  '13': 'tjmg', '14': 'tjpa', '15': 'tjpb', '16': 'tjpr', '17': 'tjpe', '18': 'tjpi',
+  '19': 'tjrj', '20': 'tjrn', '21': 'tjrs', '22': 'tjro', '23': 'tjrr', '24': 'tjsc',
+  '25': 'tjse', '26': 'tjsp', '27': 'tjto',
+};
+// Justiça Militar Estadual (J=9) usa os mesmos códigos de UF: 13 MG, 21 RS, 26 SP.
+const CNJ_MILITAR_ESTADUAL = { '13': 'tjmmg', '21': 'tjmrs', '26': 'tjmsp' };
 function aliasTribunal(numeroCNJ) {
   const d = String(numeroCNJ || '').replace(/\D/g, '');
   if (d.length < 20) return null;
@@ -42,6 +54,7 @@ function aliasTribunal(numeroCNJ) {
   if (seg === '5') return tr === '00' ? 'tst' : 'trt' + parseInt(tr, 10);
   if (seg === '6') return 'tse';
   if (seg === '8') return CNJ_ESTADUAL[tr] || null;
+  if (seg === '9') return CNJ_MILITAR_ESTADUAL[tr] || null;
   return null;
 }
 
@@ -93,13 +106,15 @@ async function consultarDataJud(numeroCNJ) {
   return hits.map(h => h._source);
 }
 
-async function coletarAndamentos({ notificarPorItem = false } = {}) {
+// `consultar` é uma costura de teste: em produção usa o DataJud real; a suíte
+// injeta um dublê para exercitar o laço de movimentos sem tocar a rede.
+async function coletarAndamentos({ notificarPorItem = false, consultar = consultarDataJud } = {}) {
   const casos = db.prepare("SELECT id, numero_cnj, client_id, sigiloso FROM cases WHERE status = 'ativo' AND numero_cnj != ''").all();
-  let novos = 0, erros = 0, processos = 0, i = 0;
+  let novos = 0, erros = 0, processos = 0, i = 0, ignorados = 0;
   for (const c of casos) {
     try {
       if (i++ > 0) await dormir(1500); // gentileza com o rate limit da API pública
-      const fontes = await consultarDataJud(c.numero_cnj);
+      const fontes = await consultar(c.numero_cnj);
       if (!fontes.length) continue;
       processos++;
       const p = fontes[0];
@@ -110,11 +125,24 @@ async function coletarAndamentos({ notificarPorItem = false } = {}) {
           p.tribunal || atual.tribunal || '', c.id);
       for (const m of (p.movimentos || [])) {
         const descricao = [m.nome, ...(m.complementosTabelados || []).map(x => x.nome)].filter(Boolean).join(' — ');
-        const r = repo.Andamentos.criar(c.id, {
-          data: String(m.dataHora || '').slice(0, 10), descricao,
-          classificacao: classificarMovimento(descricao), fonte: 'datajud',
-          payload_raw: m,
-        }, 'coleta');
+        // Um movimento problemático NÃO pode derrubar o resto do processo: o DataJud
+        // devolve movimento sem `nome` de vez em quando, e a validação do repo (correta
+        // para lançamento manual) lançava erro e abortava os demais andamentos daquele
+        // caso. Aqui cada movimento é isolado e o que falha entra na contagem de
+        // ignorados — a coleta segue, e o log diz quantos ficaram de fora.
+        let r;
+        try {
+          r = repo.Andamentos.criar(c.id, {
+            data: String(m.dataHora || '').slice(0, 10), descricao,
+            classificacao: classificarMovimento(descricao), fonte: 'datajud',
+            payload_raw: m,
+          }, 'coleta');
+        } catch (eMov) {
+          ignorados++;
+          repo.Integracoes.log('datajud', 'movimento-ignorado:' + c.numero_cnj, 'erro',
+            `${eMov.message} · codigo=${m.codigo || '?'} data=${String(m.dataHora || '').slice(0, 10)}`, 0);
+          continue;
+        }
         if (!r.duplicado) {
           novos++;
           if (notificarPorItem && c.client_id && !c.sigiloso) {
@@ -128,8 +156,8 @@ async function coletarAndamentos({ notificarPorItem = false } = {}) {
     } catch (e) { erros++; repo.Integracoes.log('datajud', 'coleta-andamentos:' + c.numero_cnj, 'erro', e.message, 0); }
   }
   repo.Integracoes.log('datajud', 'coleta-andamentos', erros && !processos ? 'erro' : 'ok',
-    `${casos.length} processo(s) monitorado(s), ${processos} encontrados, ${novos} andamento(s) novo(s), ${erros} erro(s)`, novos);
-  return { monitorados: casos.length, encontrados: processos, novos, erros };
+    `${casos.length} processo(s) monitorado(s), ${processos} encontrados, ${novos} andamento(s) novo(s), ${ignorados} movimento(s) ignorado(s), ${erros} erro(s)`, novos);
+  return { monitorados: casos.length, encontrados: processos, novos, ignorados, erros };
 }
 
 // ---------------------------------------------------------------------

@@ -303,6 +303,59 @@ async function rodar() {
     const f = await legal.coleta.processarFila();
     assert.equal(f.processadas, 0); // modo fila: agente local processa
   });
+  await t('coleta: os 27 TJs do Anexo V da Res. CNJ 65/2008 são deduzidos do número CNJ', async () => {
+    // o processo real que não coletava (Sofia Villela, TJRS)
+    assert.equal(legal.coleta.aliasTribunal('5002731-07.2025.8.21.0046'), 'tjrs');
+    // amostra que cobre os limites da tabela e os que faltavam
+    const esperado = {
+      '01': 'tjac', '06': 'tjce', '10': 'tjma', '11': 'tjmt', '12': 'tjms', '14': 'tjpa',
+      '15': 'tjpb', '16': 'tjpr', '17': 'tjpe', '18': 'tjpi', '20': 'tjrn', '21': 'tjrs',
+      '22': 'tjro', '23': 'tjrr', '24': 'tjsc', '25': 'tjse', '27': 'tjto',
+    };
+    for (const [tr, alias] of Object.entries(esperado)) {
+      assert.equal(legal.coleta.aliasTribunal(`0000100-15.2026.8.${tr}.0001`), alias, 'TR ' + tr);
+    }
+    // os 7 que já existiam continuam valendo
+    assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.8.26.0001'), 'tjsp');
+    assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.8.13.0001'), 'tjmg');
+    // Justiça Militar Estadual (J=9) e código inexistente
+    assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.9.21.0000'), 'tjmrs');
+    assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.8.99.0001'), null);
+    // outros segmentos seguem intactos
+    assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.4.01.0001'), 'trf1');
+    assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.5.10.0001'), 'trt10');
+    assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.5.00.0000'), 'tst');
+  });
+  await t('coleta: movimento sem descrição é ignorado sem abortar o resto do processo', async () => {
+    // a validação do repo continua valendo para lançamento MANUAL (é guardrail)
+    const manual = await req('POST', `/staff/api/legal/processos/${caseId}/andamentos`, {
+      chave: true, corpo: { data: '2026-07-21', descricao: '', fonte: 'manual' },
+    });
+    assert.equal(manual.st, 400, 'sem descrição, o lançamento manual é recusado');
+
+    // já na COLETA, o movimento problemático não pode derrubar os demais do caso.
+    // Dublê do DataJud: bom → quebrado (sem nome, como o TJES devolveu) → bom.
+    const antes = await req('GET', `/staff/api/legal/processos/${caseId}`);
+    const nAntes = antes.json.processo.movimentos.length;
+    const r = await legal.coleta.coletarAndamentos({
+      consultar: async () => ([{
+        classe: { nome: 'Procedimento Comum' }, tribunal: 'TJDFT',
+        movimentos: [
+          { nome: 'Juntada de petição', dataHora: '2026-07-22T10:00:00', codigo: 26 },
+          { dataHora: '2026-07-22T11:00:00', codigo: 999 },              // sem nome: o bug antigo
+          { nome: 'Conclusão para decisão', dataHora: '2026-07-22T12:00:00', codigo: 51 },
+        ],
+      }]),
+    });
+    assert.equal(r.ignorados, 1, 'o movimento sem descrição entra na contagem de ignorados');
+    assert.equal(r.novos, 2, 'os movimentos válidos ANTES e DEPOIS do inválido foram gravados');
+    assert.equal(r.erros, 0, 'movimento ruim não conta como falha do processo inteiro');
+    const depois = await req('GET', `/staff/api/legal/processos/${caseId}`);
+    assert.equal(depois.json.processo.movimentos.length, nAntes + 2);
+    // o ignorado fica rastreável no log de integrações (não desaparece em silêncio)
+    const log = await req('GET', '/staff/api/legal/integracoes');
+    assert.ok(log.json.logs.some(l => String(l.operacao).startsWith('movimento-ignorado:')), 'ignorado registrado no log');
+  });
 
   // ---------------------------------------------------------------------
   // 24. ISOLAMENTO POR TENANT (caminho B — instância por escritório)
