@@ -219,46 +219,46 @@ function registrarPortalCliente(app, { jwtSecret }) {
 
   // ---- páginas (shell única com JS inline; visual da Área do Hóspede) ----
   const CSS = `
-    /* Portal do cliente — tokens de assets/brand/villela-legal-ui.css.
+    /* Portal do cliente — tokens de assets/brand/villela-ui.css.
        Classes preservadas (.cx .card .btn .sub .lin .tag .menu .aviso .erro):
        nenhum HTML das telas precisou mudar. */
     *{box-sizing:border-box}
-    body{font-family:var(--lgx-font-ui);background:var(--lgx-navy);margin:0;color:var(--lgx-ink);
+    body{font-family:var(--vx-font-ui);background:var(--vx-navy);margin:0;color:var(--vx-ink);
       font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
     .cx{max-width:720px;margin:0 auto;padding:20px 16px 40px}
-    .card{background:var(--lgx-surface);border:1px solid rgba(255,255,255,.06);border-radius:12px;
+    .card{background:var(--vx-surface);border:1px solid rgba(255,255,255,.06);border-radius:12px;
       padding:20px 22px;margin-bottom:14px;box-shadow:0 4px 16px rgba(0,0,0,.18)}
-    h1,h3{font-family:var(--lgx-font-brand);line-height:1.25}
+    h1,h3{font-family:var(--vx-font-brand);line-height:1.25}
     h1{color:#fff;font-size:1.3rem;margin:8px 0 18px}
-    h1 small{color:var(--lgx-gold);font-weight:400;font-family:var(--lgx-font-ui);font-size:.72rem;
+    h1 small{color:var(--vx-gold);font-weight:400;font-family:var(--vx-font-ui);font-size:.72rem;
       letter-spacing:.06em;text-transform:uppercase}
-    h3{margin:0 0 10px;color:var(--lgx-navy);font-size:1.05rem}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--lgx-accent);
+    h3{margin:0 0 10px;color:var(--vx-navy);font-size:1.05rem}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--vx-accent);
       color:#fff;border:1px solid transparent;border-radius:8px;padding:11px 20px;cursor:pointer;
       font:inherit;font-weight:600;font-size:.95rem;min-height:44px;text-decoration:none;
       transition:background 140ms ease}
-    .btn:hover{background:var(--lgx-accent-2)}
+    .btn:hover{background:var(--vx-accent-2)}
     .btn:focus-visible{outline:2px solid #7FB2FF;outline-offset:2px}
     .btn[disabled]{opacity:.55;cursor:not-allowed}
-    .btn.sec{background:var(--lgx-surface);color:var(--lgx-navy);border-color:var(--lgx-border-strong)}
-    .btn.sec:hover{background:var(--lgx-surface-2)}
-    .sub{color:var(--lgx-ink-3);font-size:.85rem}
-    .erro{color:var(--lgx-danger);font-weight:600;font-size:.9rem}
-    label{font-size:.86rem;font-weight:600;color:var(--lgx-ink-2)}
-    /* body.lgx vence a regra genérica do design system: esta é a superfície do
+    .btn.sec{background:var(--vx-surface);color:var(--vx-navy);border-color:var(--vx-border-strong)}
+    .btn.sec:hover{background:var(--vx-surface-2)}
+    .sub{color:var(--vx-ink-3);font-size:.85rem}
+    .erro{color:var(--vx-danger);font-weight:600;font-size:.9rem}
+    label{font-size:.86rem;font-weight:600;color:var(--vx-ink-2)}
+    /* body.vx vence a regra genérica do design system: esta é a superfície do
        CLIENTE, majoritariamente celular, então o alvo de toque é maior (44px). */
-    body.lgx input,body.lgx textarea,body.lgx select{width:100%;padding:12px;border:1px solid var(--lgx-border-strong);
+    body.vx input,body.vx textarea,body.vx select{width:100%;padding:12px;border:1px solid var(--vx-border-strong);
       border-radius:8px;font:inherit;font-size:1rem;margin:4px 0 14px;min-height:46px;background:#fff}
     textarea{min-height:96px;resize:vertical}
-    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--lgx-accent);
+    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--vx-accent);
       box-shadow:0 0 0 3px rgba(20,83,45,.14)}
-    .lin{border-bottom:1px solid var(--lgx-border);padding:11px 0}
+    .lin{border-bottom:1px solid var(--vx-border);padding:11px 0}
     .lin:last-child{border-bottom:0}
-    .tag{display:inline-block;background:var(--lgx-accent-soft);color:var(--lgx-accent-2);
+    .tag{display:inline-block;background:var(--vx-accent-soft);color:var(--vx-accent-2);
       border:1px solid #C6DCCE;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:600}
     .menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
     .menu button{flex:1;min-width:112px}
-    .aviso{background:var(--lgx-warn-soft);border:1px solid #EBDCA8;border-left:3px solid var(--lgx-warn);
+    .aviso{background:var(--vx-warn-soft);border:1px solid #EBDCA8;border-left:3px solid var(--vx-warn);
       border-radius:8px;padding:11px 14px;font-size:.88rem;margin:10px 0}
     @media(max-width:520px){.cx{padding:14px 12px 32px}.card{padding:16px}}
   `;
@@ -272,8 +272,8 @@ function registrarPortalCliente(app, { jwtSecret }) {
     <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-legal/favicon-192.png">
     <link rel="apple-touch-icon" href="/assets/brand/villela-legal/apple-touch-icon.png">
     <meta name="theme-color" content="#1B2A4A">
-    <link rel="stylesheet" href="/assets/brand/villela-legal-ui.css?v=2"><style>${CSS}</style></head>
-    <body class="lgx"><div class="cx"><h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><img src="/assets/brand/villela-legal/logo-negativo.svg" alt="Villela Legal" style="height:32px"><span><span style="font-family:'Lora',Georgia,serif;font-weight:700">Villela</span> <span style="font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.22em;color:var(--villela-gold);font-size:.72em">LEGAL</span></span> <small>· portal do cliente</small></h1>${corpo}</div>
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style></head>
+    <body class="vx" data-vertical="legal"><div class="cx"><h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><img src="/assets/brand/villela-legal/logo-negativo.svg" alt="Villela Legal" style="height:32px"><span><span style="font-family:'Lora',Georgia,serif;font-weight:700">Villela</span> <span style="font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.22em;color:var(--villela-gold);font-size:.72em">LEGAL</span></span> <small>· portal do cliente</small></h1>${corpo}</div>
     <script>${script}</script></body></html>`;
 
   app.get('/cliente-juridico/definir-senha', (req, res) => {

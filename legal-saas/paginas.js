@@ -23,24 +23,24 @@ const BRAND_HEAD = `<link rel="preconnect" href="https://fonts.googleapis.com"><
     <link rel="manifest" href="/juridico/manifest.webmanifest"><script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/juridico/sw.js').catch(function(){})})}</script>`;
 // logotipo: símbolo (negativo p/ fundo escuro, colorido p/ fundo claro) + wordmark tipográfico
 const MARCA = (escuro) => `<img src="${BRAND_DIR}/${escuro ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Legal" style="height:32px;vertical-align:middle">`;
-const WORDMARK = `<span style="font-family:'Lora',Georgia,serif;font-weight:700">Villela</span> <span style="font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.22em;color:var(--lgx-gold);font-size:.72em">LEGAL</span>`;
+const WORDMARK = `<span style="font-family:'Lora',Georgia,serif;font-weight:700">Villela</span> <span style="font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.22em;color:var(--vx-gold);font-size:.72em">LEGAL</span>`;
 
 // GA4 do grupo (mesma propriedade do site; tráfego segmentável por hostname) — só páginas públicas.
 const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
 
 const CSS = `
-/* Villela Legal SaaS — visual construído sobre os tokens de assets/brand/villela-legal-ui.css.
+/* Villela Legal SaaS — visual construído sobre os tokens de assets/brand/villela-ui.css.
    Os nomes de classe são os mesmos de antes: nenhum HTML precisou mudar. */
 *{box-sizing:border-box}
-body{margin:0;background:var(--lgx-bg);color:var(--lgx-ink);font-family:var(--lgx-font-ui);font-size:16px;line-height:1.6}
-h1,h2,h3{font-family:var(--lgx-font-brand);color:var(--lgx-navy);line-height:1.2;margin:0}
-a{color:var(--lgx-accent);text-underline-offset:2px}
+body{margin:0;background:var(--vx-bg);color:var(--vx-ink);font-family:var(--vx-font-ui);font-size:16px;line-height:1.6}
+h1,h2,h3{font-family:var(--vx-font-brand);color:var(--vx-navy);line-height:1.2;margin:0}
+a{color:var(--vx-accent);text-underline-offset:2px}
 img{max-width:100%}
 .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
 .wrap-sm{max-width:760px;margin:0 auto;padding:0 24px}
 
 /* ---------- cabeçalho ---------- */
-header.top{background:var(--lgx-navy);color:#fff;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:20}
+header.top{background:var(--vx-navy);color:#fff;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:20}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px}
 header.top a{color:#DCE3EE;text-decoration:none;font-size:.94rem}
 header.top a:hover{color:#fff}
@@ -48,14 +48,14 @@ header.top nav{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
 header.top .brand{display:inline-flex;align-items:center;gap:12px;color:#fff!important}
 header.top .brand img{height:40px}
 header.top .brand>span{display:flex;flex-direction:column;line-height:1.05}
-.bnome{font-family:var(--lgx-font-brand);font-weight:700;font-size:1.32rem;color:#fff}
-.bdesc{font-family:var(--lgx-font-ui);font-weight:700;letter-spacing:.2em;color:var(--lgx-gold);font-size:.68rem}
+.bnome{font-family:var(--vx-font-brand);font-weight:700;font-size:1.32rem;color:#fff}
+.bdesc{font-family:var(--vx-font-ui);font-weight:700;letter-spacing:.2em;color:var(--vx-gold);font-size:.68rem}
 header.top .btn{padding:9px 18px;font-size:.9rem}
 @media(max-width:760px){header.top .esconde{display:none}header.top .brand img{height:34px}.bnome{font-size:1.12rem}}
 
 /* ---------- hero: sóbrio, alinhado à esquerda, sem gradiente chamativo ---------- */
-.hero{background:var(--lgx-navy);color:#fff;padding:72px 0 76px;position:relative}
-.hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--lgx-accent)}
+.hero{background:var(--vx-navy);color:#fff;padding:72px 0 76px;position:relative}
+.hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--vx-accent)}
 .hero h1{color:#fff;font-size:2.5rem;margin:.35rem 0 .6rem;max-width:19ch;letter-spacing:-.015em}
 .hero p{font-size:1.08rem;max-width:58ch;color:#C8D2E2;margin:0 0 .4rem}
 .hero .badge{margin-bottom:6px}
@@ -63,89 +63,89 @@ header.top .btn{padding:9px 18px;font-size:.9rem}
 @media(max-width:760px){.hero{padding:52px 0 56px}.hero h1{font-size:1.85rem;max-width:none}}
 
 /* ---------- botões ---------- */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--lgx-accent);color:#fff;
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--vx-accent);color:#fff;
   font-weight:600;font-size:.98rem;border:1px solid transparent;border-radius:8px;padding:12px 24px;cursor:pointer;
   text-decoration:none;min-height:44px;transition:background 140ms ease}
-.btn:hover{background:var(--lgx-accent-2);color:#fff}
+.btn:hover{background:var(--vx-accent-2);color:#fff}
 .btn:focus-visible{outline:2px solid #7FB2FF;outline-offset:2px}
 .btn[disabled]{opacity:.55;cursor:not-allowed}
-.btn.g{background:#fff;color:var(--lgx-navy);border-color:#fff}
-.btn.g:hover{background:#EEF1F6;color:var(--lgx-navy)}
+.btn.g{background:#fff;color:var(--vx-navy);border-color:#fff}
+.btn.g:hover{background:#EEF1F6;color:var(--vx-navy)}
 .btn.o{background:transparent;border-color:rgba(255,255,255,.55);color:#fff}
 .btn.o:hover{background:rgba(255,255,255,.10);color:#fff}
-.btn-ghost{background:transparent;color:var(--lgx-accent);border-color:var(--lgx-border-strong)}
-.btn-ghost:hover{background:var(--lgx-accent-soft);color:var(--lgx-accent-2)}
+.btn-ghost{background:transparent;color:var(--vx-accent);border-color:var(--vx-border-strong)}
+.btn-ghost:hover{background:var(--vx-accent-soft);color:var(--vx-accent-2)}
 
 /* ---------- seções ---------- */
-.sec{padding:64px 0;border-top:1px solid var(--lgx-border)}
+.sec{padding:64px 0;border-top:1px solid var(--vx-border)}
 .sec:first-of-type{border-top:0}
 .sec h2{font-size:1.65rem;margin-bottom:10px}
-.sub{color:var(--lgx-ink-2);max-width:64ch;margin:0 0 32px;font-size:1rem}
-.eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--lgx-ink-2);margin:0 0 6px}
+.sub{color:var(--vx-ink-2);max-width:64ch;margin:0 0 32px;font-size:1rem}
+.eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--vx-ink-2);margin:0 0 6px}
 
 /* ---------- cards / recursos ---------- */
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:16px}
-.card{background:var(--lgx-surface);border:1px solid var(--lgx-border);border-radius:12px;padding:22px;box-shadow:var(--lgx-shadow-1)}
+.card{background:var(--vx-surface);border:1px solid var(--vx-border);border-radius:12px;padding:22px;box-shadow:var(--vx-shadow-1)}
 .feat{display:flex;gap:14px;align-items:flex-start}
 .feat .i{font-size:1.35rem;line-height:1.2;width:38px;height:38px;flex:0 0 38px;display:flex;align-items:center;
-  justify-content:center;background:var(--lgx-accent-soft);border-radius:9px}
-.feat b{display:block;color:var(--lgx-navy);font-size:1rem;margin-bottom:3px}
+  justify-content:center;background:var(--vx-accent-soft);border-radius:9px}
+.feat b{display:block;color:var(--vx-navy);font-size:1rem;margin-bottom:3px}
 .feat .sub{margin:0;font-size:.9rem;text-align:left}
 
 /* ---------- planos ---------- */
 .planos{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:16px;align-items:stretch}
-.plano{background:var(--lgx-surface);border:1px solid var(--lgx-border);border-radius:12px;padding:24px;
-  display:flex;flex-direction:column;position:relative;box-shadow:var(--lgx-shadow-1)}
-.plano.dest{border-color:var(--lgx-accent);box-shadow:var(--lgx-shadow-2)}
+.plano{background:var(--vx-surface);border:1px solid var(--vx-border);border-radius:12px;padding:24px;
+  display:flex;flex-direction:column;position:relative;box-shadow:var(--vx-shadow-1)}
+.plano.dest{border-color:var(--vx-accent);box-shadow:var(--vx-shadow-2)}
 .plano.dest .badge{position:absolute;top:-11px;left:24px}
 .plano h3{margin:.2rem 0;font-size:1.12rem}
-.preco{font-size:1.9rem;font-weight:700;color:var(--lgx-navy);font-variant-numeric:tabular-nums;margin-top:6px}
-.preco small{font-size:.85rem;font-weight:500;color:var(--lgx-ink-3)}
+.preco{font-size:1.9rem;font-weight:700;color:var(--vx-navy);font-variant-numeric:tabular-nums;margin-top:6px}
+.preco small{font-size:.85rem;font-weight:500;color:var(--vx-ink-3)}
 .plano ul{list-style:none;padding:0;margin:16px 0;flex:1}
-.plano li{padding:7px 0;border-bottom:1px solid var(--lgx-border);font-size:.9rem;color:var(--lgx-ink-2)}
+.plano li{padding:7px 0;border-bottom:1px solid var(--vx-border);font-size:.9rem;color:var(--vx-ink-2)}
 .plano li:last-child{border-bottom:0}
 .plano .btn{margin-top:8px;width:100%}
 
 /* ---------- badges e tags ---------- */
-.badge{display:inline-block;background:var(--lgx-gold);color:#3F3208;font-weight:700;padding:4px 12px;
+.badge{display:inline-block;background:var(--vx-gold);color:#3F3208;font-weight:700;padding:4px 12px;
   border-radius:999px;font-size:.76rem;letter-spacing:.02em}
-.tag{display:inline-block;background:var(--lgx-accent-soft);color:var(--lgx-accent-2);border:1px solid #C6DCCE;
+.tag{display:inline-block;background:var(--vx-accent-soft);color:var(--vx-accent-2);border:1px solid #C6DCCE;
   border-radius:999px;padding:3px 11px;font-size:.8rem;font-weight:600}
 
 /* ---------- tabela (mapa livro -> sistema) ---------- */
-.tab-wrap{overflow-x:auto;background:var(--lgx-surface);border:1px solid var(--lgx-border);border-radius:12px}
+.tab-wrap{overflow-x:auto;background:var(--vx-surface);border:1px solid var(--vx-border);border-radius:12px}
 .tab-wrap table{width:100%;border-collapse:separate;border-spacing:0;font-size:.92rem}
-.tab-wrap th{background:var(--lgx-navy);color:#fff;text-align:left;padding:12px 14px;font-size:.8rem;
+.tab-wrap th{background:var(--vx-navy);color:#fff;text-align:left;padding:12px 14px;font-size:.8rem;
   font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
-.tab-wrap td{padding:11px 14px;border-bottom:1px solid var(--lgx-border);vertical-align:top;color:var(--lgx-ink-2)}
+.tab-wrap td{padding:11px 14px;border-bottom:1px solid var(--vx-border);vertical-align:top;color:var(--vx-ink-2)}
 .tab-wrap tr:last-child td{border-bottom:0}
-.tab-wrap tbody tr:nth-child(even) td{background:var(--lgx-surface-2)}
-.tab-wrap td:first-child{font-weight:700;color:var(--lgx-navy);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tab-wrap tbody tr:nth-child(even) td{background:var(--vx-surface-2)}
+.tab-wrap td:first-child{font-weight:700;color:var(--vx-navy);white-space:nowrap;font-variant-numeric:tabular-nums}
 
 /* ---------- formulários ---------- */
-input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--lgx-border-strong);border-radius:8px;
-  font:inherit;font-size:.98rem;color:var(--lgx-ink);background:#fff;margin:5px 0 14px;min-height:44px}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--vx-border-strong);border-radius:8px;
+  font:inherit;font-size:.98rem;color:var(--vx-ink);background:#fff;margin:5px 0 14px;min-height:44px}
 textarea{min-height:96px;resize:vertical}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--lgx-accent);box-shadow:0 0 0 3px rgba(20,83,45,.14)}
-label{font-size:.88rem;font-weight:600;color:var(--lgx-ink-2)}
-.form{max-width:520px;background:var(--lgx-surface);padding:28px;border-radius:12px;border:1px solid var(--lgx-border);box-shadow:var(--lgx-shadow-1)}
-.erro{color:var(--lgx-danger);font-weight:600;font-size:.9rem}
-.aviso{background:var(--lgx-warn-soft);border:1px solid #EBDCA8;border-left:3px solid var(--lgx-warn);
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--vx-accent);box-shadow:0 0 0 3px rgba(20,83,45,.14)}
+label{font-size:.88rem;font-weight:600;color:var(--vx-ink-2)}
+.form{max-width:520px;background:var(--vx-surface);padding:28px;border-radius:12px;border:1px solid var(--vx-border);box-shadow:var(--vx-shadow-1)}
+.erro{color:var(--vx-danger);font-weight:600;font-size:.9rem}
+.aviso{background:var(--vx-warn-soft);border:1px solid #EBDCA8;border-left:3px solid var(--vx-warn);
   border-radius:8px;padding:12px 16px;font-size:.92rem;margin:12px 0}
 
 /* ---------- confiança / rodapé ---------- */
-.selos{display:flex;gap:20px;flex-wrap:wrap;color:var(--lgx-ink-3);font-size:.88rem;margin-top:26px}
-footer{background:var(--lgx-navy);color:#AEB9CC;padding:34px 0;font-size:.9rem}
-body.lgx footer a{color:var(--lgx-gold)}
+.selos{display:flex;gap:20px;flex-wrap:wrap;color:var(--vx-ink-3);font-size:.88rem;margin-top:26px}
+footer{background:var(--vx-navy);color:#AEB9CC;padding:34px 0;font-size:.9rem}
+body.vx footer a{color:var(--vx-gold)}
 footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;align-items:center}
 
 /* ---------- painel do assinante (shell) ---------- */
 .cx{max-width:860px;margin:28px auto;padding:0 20px}
-.lin{border-bottom:1px solid var(--lgx-border);padding:10px 0}
+.lin{border-bottom:1px solid var(--vx-border);padding:10px 0}
 .menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .menu button{flex:1;min-width:120px}
-.kpi{display:inline-flex;flex-direction:column;gap:2px;background:var(--lgx-surface);border:1px solid var(--lgx-border);
-  border-left:3px solid var(--lgx-accent);border-radius:10px;padding:12px 18px;margin:4px 4px 4px 0}
+.kpi{display:inline-flex;flex-direction:column;gap:2px;background:var(--vx-surface);border:1px solid var(--vx-border);
+  border-left:3px solid var(--vx-accent);border-radius:10px;padding:12px 18px;margin:4px 4px 4px 0}
 
 @media print{header.top,footer,.hero-acoes{display:none}}
 `;
@@ -206,19 +206,19 @@ function landingHTML() {
     <meta property="og:description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 14 dias.">
     <meta property="og:image" content="https://juridico.villelastay.com.br${BRAND_DIR}/og-image.png">
     <link rel="canonical" href="https://juridico.villelastay.com.br/juridico">
-    ${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-legal-ui.css?v=2">${GA}
+    ${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4">${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Legal","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão jurídica inteligente: processos, prazos, publicações DJEN/DataJud, peças, contratos e portal do cliente para escritórios brasileiros.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <style>${CSS}</style></head><body class="lgx">
+    <style>${CSS}</style></head><body class="vx" data-vertical="legal">
     <header class="top"><div class="wrap">
       <a class="brand" href="/juridico"><img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Legal"><span><span class="bnome">Villela</span><span class="bdesc">LEGAL</span></span></a>
-      <nav><a class="esconde" href="/juridico#recursos">Recursos</a><a class="esconde" href="/juridico#livro">Do livro ao sistema</a><a class="esconde" href="/juridico#planos">Planos</a><a href="/juridico/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--lgx-gold);color:#3F3208" href="/juridico/assinar?plano=trial">Teste grátis</a></nav>
+      <nav><a class="esconde" href="/juridico#recursos">Recursos</a><a class="esconde" href="/juridico#livro">Do livro ao sistema</a><a class="esconde" href="/juridico#planos">Planos</a><a href="/juridico/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--vx-gold);color:#3F3208" href="/juridico/assinar?plano=trial">Teste grátis</a></nav>
     </div></header>
     <div class="hero"><div class="wrap">
       <span class="badge">Software jurídico completo</span>
       <h1>O escritório inteiro em um só lugar — com IA que cita as fontes.</h1>
       <p>Gestão jurídica inteligente: processos, prazos, publicações, CRM, pesquisa auditável, contratos, financeiro,
       controladoria, compliance e portal do cliente. Feito por quem advoga, para escritórios brasileiros.</p>
-      <p style="margin-top:16px"><a href="/juridico#livro" style="color:var(--lgx-gold);font-weight:600;text-decoration:none">📘 Leu “Claude AI na Prática Jurídica”? Veja os 12 protótipos do Cap. 47 já implementados →</a></p>
+      <p style="margin-top:16px"><a href="/juridico#livro" style="color:var(--vx-gold);font-weight:600;text-decoration:none">📘 Leu “Claude AI na Prática Jurídica”? Veja os 12 protótipos do Cap. 47 já implementados →</a></p>
       <div class="hero-acoes">
         <a class="btn" href="/juridico/assinar?plano=trial">Testar 14 dias grátis</a>
         <a class="btn o" href="/juridico/app">Já sou cliente</a>
@@ -233,7 +233,7 @@ function landingHTML() {
       escritório deveria ter (Cap. 47) e o método por trás deles. O Villela Legal é esse livro implementado — inclusive
       as travas: <b>nada sai para o mundo sem um humano aprovar</b>.</p>
       <div class="tab-wrap"><table>
-        <caption class="lgx-sr">Mapa dos doze protótipos do Capítulo 47 do livro e o que existe no Villela Legal</caption>
+        <caption class="vx-sr">Mapa dos doze protótipos do Capítulo 47 do livro e o que existe no Villela Legal</caption>
         <thead><tr><th scope="col">Cap.</th><th scope="col">Protótipo do livro</th><th scope="col">No Villela Legal</th></tr></thead>
         <tbody>${prototipos.map(([c, t, d]) => `<tr>
           <td>${c}</td><td>${esc(t)}</td>
@@ -268,7 +268,7 @@ function landingHTML() {
         <button class="btn" type="submit">Enviar</button><p id="l-msg2" class="sub" style="margin:8px 0 0"></p>
       </form></div></div>
     <footer><div class="wrap-sm" style="text-align:center">Villela Legal · Gestão jurídica inteligente · <a href="/juridico/app">Painel do cliente</a> · <a href="/juridico/ajuda">Ajuda</a>
-      <br><span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/juridico/ajuda/manual" style="color:var(--lgx-gold)">abra o painel e instale</a></span>
+      <br><span style="opacity:.9">📲 Disponível como app para o seu celular — <a href="/juridico/ajuda/manual" style="color:var(--vx-gold)">abra o painel e instale</a></span>
       <br><span style="font-size:.85em;opacity:.85">Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</span>
       <script>document.getElementById('lead').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('l-msg2');
         const r=await fetch('/juridico/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -279,12 +279,12 @@ function landingHTML() {
 
 function shell(corpo, script) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Legal — Painel</title>${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-legal-ui.css?v=2"><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Legal — Painel</title>${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
     .cx{max-width:720px;margin:24px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.menu button{flex:1;min-width:96px}
     .kpi{display:inline-block;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;margin:4px}
     .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem}
-    .erro{color:#b00020}</style></head><body class="lgx"><div class="cx">
+    .erro{color:#b00020}</style></head><body class="vx" data-vertical="legal"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${MARCA(false)}<span>${WORDMARK}</span> <span class="tag" style="font-family:'Inter',system-ui,sans-serif">painel do escritório</span></h2>${corpo}</div><script>${script}</script></body></html>`;
 }
 
@@ -403,7 +403,7 @@ function appJuridicoHTML() {
 <link rel="apple-touch-icon" href="/assets/brand/villela-legal/apple-touch-icon.png">
 <meta name="theme-color" content="#1B2A4A">
 <link rel="manifest" href="/juridico/manifest.webmanifest"><script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/juridico/sw.js').catch(function(){})})}</script>
-<link rel="stylesheet" href="/assets/brand/villela-legal-ui.css?v=2"><style>
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>
 :root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#14532D;--acento2:#0E3B20;--borda:#E2E6EC}
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}

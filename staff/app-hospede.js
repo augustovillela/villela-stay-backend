@@ -240,7 +240,7 @@ async function renderHospedeFidelidade() {
     const { avaliacoes, indicacoes } = await api('GET', '/hospede/fidelidade');
     const estrelas = (n) => '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
     const av = (avaliacoes || []).length
-      ? `<table><thead><tr><th>Hóspede</th><th>Imóvel</th><th>Nota</th><th>Comentário</th><th>Data</th></tr></thead><tbody>${avaliacoes.map(a => `<tr><td>${esc(a.hospedeNome || '—')}</td><td>${esc(a.imovel || '')}</td><td title="${esc(a.nota)}/5" style="color:#C9A227;letter-spacing:2px">${estrelas(a.nota)}</td><td>${esc(a.comentario || '')}</td><td>${esc(String(a.criadoEm).slice(0, 10))}</td></tr>`).join('')}</tbody></table>`
+      ? `<table><thead><tr><th>Hóspede</th><th>Imóvel</th><th>Nota</th><th>Comentário</th><th>Data</th></tr></thead><tbody>${avaliacoes.map(a => `<tr><td>${esc(a.hospedeNome || '—')}</td><td>${esc(a.imovel || '')}</td><td style="color:#B08E1F;letter-spacing:2px;white-space:nowrap">${estrelas(a.nota)} <span style="color:#4A5560;font-size:.85em;letter-spacing:0">${esc(a.nota)}/5</span></td><td>${esc(a.comentario || '')}</td><td>${esc(String(a.criadoEm).slice(0, 10))}</td></tr>`).join('')}</tbody></table>`
       : '<p class="aviso">Nenhuma avaliação ainda.</p>';
     const ind = (indicacoes || []).length
       ? `<table><thead><tr><th>Quem indicou</th><th>Indicado</th><th>Contato</th><th>Mensagem</th><th>Data</th></tr></thead><tbody>${indicacoes.map(i => `<tr><td>${esc(i.hospedeNome || '—')}</td><td>${esc(i.indicadoNome)}</td><td>${esc(i.indicadoContato)}</td><td>${esc(i.mensagem || '')}</td><td>${esc(String(i.criadoEm).slice(0, 10))}</td></tr>`).join('')}</tbody></table>`

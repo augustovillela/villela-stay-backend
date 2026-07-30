@@ -20,9 +20,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Villela Staff">
   <link rel="stylesheet" href="/staff/styles.css">
-  <!-- Design system da vertical jurídica. Todo o CSS vive sob a classe .lgx, então
-       só afeta o módulo Villela Legal — os demais módulos do portal não mudam. -->
-  <link rel="stylesheet" href="/assets/brand/villela-legal-ui.css?v=2">
+  <!-- Design system do portal (todas as verticais). Escopo na classe .vx, aplicada
+       ao #conteudo por navegar(); o atributo data-vertical troca só a cor de acento.
+       styles.css continua valendo fora do escopo — nada quebra. -->
+  <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4">
 </head>
 <body>
 
@@ -100,8 +101,8 @@
   <script src="/staff/app-legal.js"></script>
   <!-- ONDA LIVRO: abas de paridade com o livro "Claude AI na Prática Jurídica" (estende LG) -->
   <script src="/staff/app-legal-livro.js"></script>
-  <!-- REDESIGN: navegação agrupada + painel como central de comando. Sobrescreve
-       LG.render/pintar/vPainel; remover esta linha volta ao visual anterior. -->
+  <!-- REDESIGN do módulo jurídico: navegação agrupada + painel como central de
+       comando. Sobrescreve LG.render/pintar/vPainel; remover volta ao anterior. -->
   <script src="/staff/app-legal-shell.js"></script>
   <script src="/staff/app-legal-saas.js"></script>
   <script src="/staff/app-vdocs.js"></script>

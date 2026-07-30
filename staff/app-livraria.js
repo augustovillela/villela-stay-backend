@@ -309,12 +309,8 @@ const LV = {
   async setPapel(id, papel) { try { await LV.api('PATCH', '/equipe/' + id, { papelLivraria: papel }); } catch (e) { alert(e.message); } },
 };
 
-// helpers locais de tabela/badge (usam esc global)
-function tabela(cols, linhas) {
-  return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.9rem">
-    <thead><tr>${cols.map(c => `<th style="text-align:left;border-bottom:2px solid #ddd;padding:.4rem">${c}</th>`).join('')}</tr></thead>
-    <tbody>${linhas.map(l => `<tr>${l.map(c => `<td style="border-bottom:1px solid #eee;padding:.4rem">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-}
+// tabela() agora vive em app-core.js (helper compartilhado do design system).
+// Estava aqui por acidente de ordem de script e sobrescrevia a versao do nucleo.
 function badge(status) {
   const cor = { pago: '#0E7490', pendente: '#c8912f', recusado: '#b3261e', cancelado: '#777', reembolsado: '#7a3ca1' }[status] || '#555';
   return `<span style="background:${cor};color:#fff;padding:.1rem .5rem;border-radius:99px;font-size:.75rem">${status}</span>`;

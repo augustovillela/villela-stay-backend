@@ -1,6 +1,6 @@
 'use strict';
 // ============================================================================
-// Villela Legal — runtime do design system (companheiro do villela-legal-ui.css)
+// Villela Legal — runtime do design system (companheiro do villela-ui.css)
 //
 // Objetivo: substituir alert()/confirm()/prompt() do navegador — que bloqueiam a
 // página, não são estilizáveis nem acessíveis — por toast e diálogo próprios,
@@ -19,7 +19,7 @@ const LGUI = (function () {
   function areaToasts() {
     if (caixaToasts && document.body.contains(caixaToasts)) return caixaToasts;
     caixaToasts = document.createElement('div');
-    caixaToasts.className = 'lgx lgx-toasts';
+    caixaToasts.className = 'vx vx-toasts';
     // aria-live: leitor de tela anuncia sem roubar o foco de quem está digitando
     caixaToasts.setAttribute('role', 'status');
     caixaToasts.setAttribute('aria-live', 'polite');
@@ -28,7 +28,7 @@ const LGUI = (function () {
   }
   function toast(mensagem, tipo, detalhe) {
     const el = document.createElement('div');
-    el.className = 'lgx-toast' + (tipo === 'erro' ? ' lgx-toast--erro' : (tipo === 'ok' ? ' lgx-toast--ok' : ''));
+    el.className = 'vx-toast' + (tipo === 'erro' ? ' vx-toast--erro' : (tipo === 'ok' ? ' vx-toast--ok' : ''));
     const ico = tipo === 'erro' ? '⚠️' : (tipo === 'ok' ? '✓' : 'ℹ️');
     el.innerHTML = `<span aria-hidden="true">${ico}</span><span><b>${esc(mensagem)}</b>${detalhe ? esc(detalhe) : ''}</span>`;
     areaToasts().appendChild(el);
@@ -43,22 +43,22 @@ const LGUI = (function () {
     return new Promise((resolve) => {
       const origem = document.activeElement;
       const back = document.createElement('div');
-      back.className = 'lgx lgx-backdrop';
+      back.className = 'vx vx-backdrop';
       back.innerHTML = `
-        <div class="lgx-modal${perigo ? ' lgx-modal--perigo' : ''}" role="dialog" aria-modal="true" aria-labelledby="lgui-tit">
-          <div class="lgx-modal-head">
+        <div class="vx-modal${perigo ? ' vx-modal--perigo' : ''}" role="dialog" aria-modal="true" aria-labelledby="lgui-tit">
+          <div class="vx-modal-head">
             <h2 id="lgui-tit">${esc(titulo)}</h2>
-            <button type="button" class="lgx-btn lgx-btn--ico" data-lgui="x" aria-label="Fechar">✕</button>
+            <button type="button" class="vx-btn vx-btn--ico" data-lgui="x" aria-label="Fechar">✕</button>
           </div>
-          <div class="lgx-modal-corpo">${corpo}</div>
-          <div class="lgx-modal-foot">
-            <button type="button" class="lgx-btn lgx-btn--sec" data-lgui="cancelar">${esc(rotuloCancelar)}</button>
-            <button type="button" class="lgx-btn${perigo ? ' lgx-btn--danger' : ''}" data-lgui="ok">${esc(rotuloOk)}</button>
+          <div class="vx-modal-corpo">${corpo}</div>
+          <div class="vx-modal-foot">
+            <button type="button" class="vx-btn vx-btn--sec" data-lgui="cancelar">${esc(rotuloCancelar)}</button>
+            <button type="button" class="vx-btn${perigo ? ' vx-btn--danger' : ''}" data-lgui="ok">${esc(rotuloOk)}</button>
           </div>
         </div>`;
       document.body.appendChild(back);
 
-      const modal = back.querySelector('.lgx-modal');
+      const modal = back.querySelector('.vx-modal');
       const campo = back.querySelector('[data-lgui-campo]');
       const btnOk = back.querySelector('[data-lgui="ok"]');
       const foco = campo || (perigo ? back.querySelector('[data-lgui="cancelar"]') : btnOk);
@@ -75,8 +75,8 @@ const LGUI = (function () {
         const v = campo.value.trim();
         if (campo.required && !v) {
           campo.setAttribute('aria-invalid', 'true');
-          let err = modal.querySelector('.lgx-erro');
-          if (!err) { err = document.createElement('p'); err.className = 'lgx-erro'; campo.insertAdjacentElement('afterend', err); }
+          let err = modal.querySelector('.vx-erro');
+          if (!err) { err = document.createElement('p'); err.className = 'vx-erro'; campo.insertAdjacentElement('afterend', err); }
           err.textContent = 'Este campo é obrigatório.';
           campo.focus();
           return;
@@ -117,9 +117,9 @@ const LGUI = (function () {
       : `<input data-lgui-campo id="lgui-campo" type="text" value="${esc(valor)}"${obrigatorio ? ' required' : ''}>`;
     return dialogo({
       titulo, rotuloOk,
-      corpo: `<div class="lgx-campo">
-        <label for="lgui-campo">${esc(rotulo)}${obrigatorio ? '<span class="lgx-req" aria-hidden="true">*</span>' : ''}</label>
-        ${campo}${ajuda ? `<span class="lgx-ajuda">${esc(ajuda)}</span>` : ''}</div>`,
+      corpo: `<div class="vx-campo">
+        <label for="lgui-campo">${esc(rotulo)}${obrigatorio ? '<span class="vx-req" aria-hidden="true">*</span>' : ''}</label>
+        ${campo}${ajuda ? `<span class="vx-ajuda">${esc(ajuda)}</span>` : ''}</div>`,
     }).then(r => (r === null || r === true ? null : r));
   }
 
@@ -131,7 +131,7 @@ const LGUI = (function () {
     }).join('');
     return dialogo({
       titulo, rotuloOk,
-      corpo: `<div class="lgx-campo"><label for="lgui-campo">${esc(rotulo)}</label>
+      corpo: `<div class="vx-campo"><label for="lgui-campo">${esc(rotulo)}</label>
         <select data-lgui-campo id="lgui-campo" required>${ops}</select></div>`,
     }).then(r => (r === null || r === true ? null : r));
   }
@@ -146,25 +146,25 @@ const LGUI = (function () {
 
   // ------------------------------------------------------------ ESQUELETOS
   function skeleton(tipo = 'linha', n = 3) {
-    if (tipo === 'kpis') return `<div class="lgx-kpis">${'<div class="lgx-skel lgx-skel--kpi"></div>'.repeat(n)}</div>`;
-    if (tipo === 'bloco') return `<div class="lgx-skel lgx-skel--bloco"></div>`;
-    return `<div>${'<div class="lgx-skel lgx-skel--linha"></div>'.repeat(n)}</div>`;
+    if (tipo === 'kpis') return `<div class="vx-kpis">${'<div class="vx-skel vx-skel--kpi"></div>'.repeat(n)}</div>`;
+    if (tipo === 'bloco') return `<div class="vx-skel vx-skel--bloco"></div>`;
+    return `<div>${'<div class="vx-skel vx-skel--linha"></div>'.repeat(n)}</div>`;
   }
   function carregando(texto = 'Carregando…') {
-    return `<p class="lgx-muted" role="status"><span class="lgx-spinner" aria-hidden="true"></span> ${esc(texto)}</p>`;
+    return `<p class="vx-muted" role="status"><span class="vx-spinner" aria-hidden="true"></span> ${esc(texto)}</p>`;
   }
   // Estado vazio que explica o que houve e o que fazer (item 16 do briefing).
   function vazio({ ico = '📄', titulo = 'Nada por aqui ainda', texto = '', acao = '' } = {}) {
-    return `<div class="lgx-vazio">
-      <div class="lgx-vazio-ico" aria-hidden="true">${ico}</div>
-      <div class="lgx-vazio-tit">${esc(titulo)}</div>
+    return `<div class="vx-vazio">
+      <div class="vx-vazio-ico" aria-hidden="true">${ico}</div>
+      <div class="vx-vazio-tit">${esc(titulo)}</div>
       ${texto ? `<p>${esc(texto)}</p>` : ''}${acao || ''}</div>`;
   }
   // Erro com causa e saída — nunca só "Erro: ..."
   function erro({ titulo = 'Não foi possível carregar', texto = '', acao = '' } = {}) {
-    return `<div class="lgx-alerta lgx-alerta--danger" role="alert">
-      <span class="lgx-alerta-ico" aria-hidden="true">⚠️</span>
-      <div><b>${esc(titulo)}</b><p class="lgx-mb0">${esc(texto)}</p>${acao || ''}</div></div>`;
+    return `<div class="vx-alerta vx-alerta--danger" role="alert">
+      <span class="vx-alerta-ico" aria-hidden="true">⚠️</span>
+      <div><b>${esc(titulo)}</b><p class="vx-mb0">${esc(texto)}</p>${acao || ''}</div></div>`;
   }
 
   return { toast, confirmar, pedirTexto, escolher, comCarregando, skeleton, carregando, vazio, erro, dialogo, esc };

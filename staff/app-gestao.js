@@ -46,7 +46,7 @@ async function carregarContasPagar() {
     const totalAberto = abertas.reduce((s, c) => s + (Number(c.valor) || 0), 0);
     $('#cp-cards').innerHTML = `
       <div class="card"><div class="n" style="color:var(--alerta)">${atrasadas.length}</div><div class="rot">Atrasadas</div></div>
-      <div class="card"><div class="n" style="color:var(--cerrado)">${vencendo.length}</div><div class="rot">Vencendo em 7 dias</div></div>
+      <div class="card"><div class="n" style="color:var(--vx-warn,#8A5A00)">${vencendo.length}</div><div class="rot">Vencendo em 7 dias</div></div>
       <div class="card"><div class="n">R$ ${totalAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div><div class="rot">Total em aberto</div></div>`;
     if (!contas.length) { alvo.innerHTML = '<div class="vazio">Nenhuma conta cadastrada. Adicione acima ou o agente financeiro sincroniza a lista.</div>'; return; }
     const cor = { atrasado: 'var(--alerta)', previsto: 'var(--concreto)', pago: 'var(--ok)' };

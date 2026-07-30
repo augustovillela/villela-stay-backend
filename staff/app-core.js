@@ -423,8 +423,26 @@ function renderInstalar() {
   };
 }
 
+// Vertical de cada modulo: alimenta o token --vx-accent do design system
+// (assets/brand/villela-ui.css). So a COR DE ACENTO muda; o resto e igual em
+// todo o portal. Modulo que nao esta no mapa herda 'stay', que e o acento
+// historico do portal (--lago) — assim nada muda de cor sem intencao.
+const VERTICAL_DA_SECAO = {
+  legal: 'legal', 'legal-saas': 'legal',
+  livraria: 'livraria', vdocs: 'docs', vpe: 'projects', vsm: 'manager',
+  vcrm: 'crm', academy: 'academy',
+  visao: 'grupo', mural: 'grupo', manuais: 'grupo', faq: 'grupo', 'faq-claude': 'grupo',
+  instalar: 'grupo', usuarios: 'grupo', conta: 'grupo', auditoria: 'grupo', automacoes: 'grupo',
+};
+
 function navegar(secao) {
   ESTADO.secao = secao;
+  // escopo do design system no container: uma linha cobre TODOS os modulos
+  const cont = $('#conteudo');
+  if (cont) {
+    cont.classList.add('vx');
+    cont.setAttribute('data-vertical', VERTICAL_DA_SECAO[secao] || 'stay');
+  }
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
   window.scrollTo(0, 0);
@@ -434,3 +452,18 @@ function navegar(secao) {
 
 const conteudo = () => $('#conteudo');
 function cabecalho(titulo, sub) { return `<h1 class="titulo">${esc(titulo)}</h1>${sub ? `<p class="sub">${esc(sub)}</p>` : ''}`; }
+
+// Tabela do design system, usada por TODOS os modulos (antes cada um levava
+// estilo inline). Entrega: wrapper com rolagem controlada, cabecalho fixo,
+// th[scope=col] para leitor de tela e data-rot em cada celula — no celular a
+// classe .vx-tabela--cards transforma a linha em card rotulado.
+// Estava definida em app-livraria.js por acidente de ordem de script; o lugar
+// certo e aqui, junto dos outros helpers compartilhados.
+function tabela(cols, linhas) {
+  const rot = (c) => String(c == null ? '' : c).replace(/<[^>]*>/g, '').trim();
+  const cabeca = (cols || []).map(c => `<th scope="col">${c}</th>`).join('');
+  const corpo = (linhas || []).map(l => `<tr>${(l || []).map((c, i) =>
+    `<td data-rot="${esc(rot((cols || [])[i]))}">${c == null ? '' : c}</td>`).join('')}</tr>`).join('');
+  return `<div class="vx-tabela-wrap"><table class="vx-tabela--cards">
+    <thead><tr>${cabeca}</tr></thead><tbody>${corpo}</tbody></table></div>`;
+}

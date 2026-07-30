@@ -150,7 +150,7 @@ async function carregarFiscal() {
     const vencendo = abertos.filter(i => !i.atrasado && i.vencimento && i.vencimento <= em7);
     const totalAberto = abertos.reduce((s, i) => s + (Number(i.valor) || 0), 0);
     $('#fi-cards').innerHTML = `<div class="card"><div class="n" style="color:var(--alerta)">${atrasados.length}</div><div class="rot">Atrasados</div></div>
-      <div class="card"><div class="n" style="color:var(--cerrado)">${vencendo.length}</div><div class="rot">Vencendo em 7 dias</div></div>
+      <div class="card"><div class="n" style="color:var(--vx-warn,#8A5A00)">${vencendo.length}</div><div class="rot">Vencendo em 7 dias</div></div>
       <div class="card"><div class="n">${rMoney(totalAberto)}</div><div class="rot">Total em aberto</div></div>`;
     if (!itens.length) { alvo.innerHTML = '<div class="vazio">Nenhuma obrigação cadastrada. Adicione o calendário fiscal (DAS, DEFIS, ISS, IR…).</div>'; return; }
     const diasAte = (d) => d ? Math.round((Date.parse(d) - Date.parse(hoje)) / 86400000) : null;

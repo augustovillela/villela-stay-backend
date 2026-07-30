@@ -18,31 +18,10 @@
 (function () {
   if (typeof LG === 'undefined') return;
 
-  // ---------------------------------------------------------------------
-  // TABELAS: um único ponto de melhoria para as ~40 tabelas do módulo.
-  // O SPA tem um helper global `tabela(cols, linhas)` usado por TODOS os
-  // módulos do portal. Em vez de tocar nas dezenas de chamadas do jurídico
-  // (ou pior, no helper compartilhado), envelopamos o helper e só mudamos o
-  // resultado QUANDO a tela do jurídico está montada (#lgx-app presente).
-  // Ganhos automáticos: wrapper com rolagem controlada + cabeçalho fixo,
-  // `data-rot` em cada célula (no celular a linha vira card rotulado) e
-  // <th scope="col"> para leitor de tela.
-  // ---------------------------------------------------------------------
-  if (typeof window.tabela === 'function' && !window.tabela.__lgx) {
-    const tabelaOriginal = window.tabela;
-    const noJuridico = () => !!document.getElementById('lgx-app');
-    const tabelaLgx = function (cols, linhas) {
-      if (!noJuridico()) return tabelaOriginal(cols, linhas);
-      const rot = (c) => String(c == null ? '' : c).replace(/<[^>]*>/g, '').trim();
-      const cabecalho = (cols || []).map(c => `<th scope="col">${c}</th>`).join('');
-      const corpo = (linhas || []).map(l => `<tr>${(l || []).map((c, i) =>
-        `<td data-rot="${esc(rot((cols || [])[i]))}">${c == null ? '' : c}</td>`).join('')}</tr>`).join('');
-      return `<div class="lgx-tabela-wrap"><table class="lgx-tabela--cards">
-        <thead><tr>${cabecalho}</tr></thead><tbody>${corpo}</tbody></table></div>`;
-    };
-    tabelaLgx.__lgx = true;
-    window.tabela = tabelaLgx;
-  }
+  // NOTA: a melhoria das tabelas (wrapper, cabecalho fixo, data-rot, modo card
+  // no celular) foi promovida para o helper `tabela()` de app-core.js quando o
+  // design system passou a valer para todos os modulos. Nao ha mais wrapper
+  // especifico do juridico aqui.
 
   // ---- catálogo de navegação: aba -> grupo + ícone + rótulo curto ----------
   // A ordem dos grupos segue o fluxo de trabalho do escritório (item 6.1 do
@@ -103,7 +82,7 @@
   };
 
   LG.resumo = null;                        // último /dashboard, reusado pelos pinos
-  LG.navColapsada = (() => { try { return localStorage.getItem('lgx-nav') === 'colapsada'; } catch (_) { return false; } })();
+  LG.navColapsada = (() => { try { return localStorage.getItem('vx-nav') === 'colapsada'; } catch (_) { return false; } })();
 
   // ---------------------------------------------------------------- NAV
   function montarNav() {
@@ -114,42 +93,42 @@
     for (const [grupo, itens] of GRUPOS) {
       const visiveis = itens.filter(([id]) => disponiveis.has(id));
       if (!visiveis.length) continue;
-      html += `<div class="lgx-nav-grupo">${esc(grupo)}</div>`;
+      html += `<div class="vx-nav-grupo">${esc(grupo)}</div>`;
       for (const [id, ico, rot] of visiveis) {
         usadas.add(id);
         const ativo = LG.tab === id;
         const n = PINOS[id] ? PINOS[id](r) : 0;
-        html += `<button type="button" class="lgx-nav-item" onclick="LG.ir('${id}')"
+        html += `<button type="button" class="vx-nav-item" onclick="LG.ir('${id}')"
           ${ativo ? 'aria-current="page"' : ''} title="${esc(rot)}">
-          <span class="lgx-nav-ico" aria-hidden="true">${ico}</span>
-          <span class="lgx-nav-rot">${esc(rot)}</span>
-          ${n ? `<span class="lgx-nav-pino" aria-label="${n} pendência(s)">${n > 99 ? '99+' : n}</span>` : ''}
+          <span class="vx-nav-ico" aria-hidden="true">${ico}</span>
+          <span class="vx-nav-rot">${esc(rot)}</span>
+          ${n ? `<span class="vx-nav-pino" aria-label="${n} pendência(s)">${n > 99 ? '99+' : n}</span>` : ''}
         </button>`;
       }
     }
     // qualquer aba fora do catálogo continua acessível
     const sobras = [...disponiveis.entries()].filter(([id]) => !usadas.has(id));
     if (sobras.length) {
-      html += `<div class="lgx-nav-grupo">Outros</div>`;
+      html += `<div class="vx-nav-grupo">Outros</div>`;
       for (const [id, rot] of sobras) {
-        html += `<button type="button" class="lgx-nav-item" onclick="LG.ir('${id}')"
-          ${LG.tab === id ? 'aria-current="page"' : ''}><span class="lgx-nav-rot">${esc(rot)}</span></button>`;
+        html += `<button type="button" class="vx-nav-item" onclick="LG.ir('${id}')"
+          ${LG.tab === id ? 'aria-current="page"' : ''}><span class="vx-nav-rot">${esc(rot)}</span></button>`;
       }
     }
-    html += `<hr class="lgx-sep" style="margin:8px 4px">
-      <button type="button" class="lgx-nav-item lgx-nav-toggle" onclick="LG.alternarNav()"
+    html += `<hr class="vx-sep" style="margin:8px 4px">
+      <button type="button" class="vx-nav-item vx-nav-toggle" onclick="LG.alternarNav()"
         aria-label="${LG.navColapsada ? 'Expandir menu' : 'Recolher menu'}">
-        <span class="lgx-nav-ico" aria-hidden="true">${LG.navColapsada ? '»' : '«'}</span>
-        <span class="lgx-nav-rot">Recolher menu</span></button>`;
+        <span class="vx-nav-ico" aria-hidden="true">${LG.navColapsada ? '»' : '«'}</span>
+        <span class="vx-nav-rot">Recolher menu</span></button>`;
     return html;
   }
 
   LG.alternarNav = function () {
     LG.navColapsada = !LG.navColapsada;
-    try { localStorage.setItem('lgx-nav', LG.navColapsada ? 'colapsada' : 'aberta'); } catch (_) {}
-    const app = document.getElementById('lgx-app');
+    try { localStorage.setItem('vx-nav', LG.navColapsada ? 'colapsada' : 'aberta'); } catch (_) {}
+    const app = document.getElementById('vx-app');
     if (app) app.setAttribute('data-nav', LG.navColapsada ? 'colapsada' : 'aberta');
-    const nav = document.getElementById('lgx-nav');
+    const nav = document.getElementById('vx-nav');
     if (nav) nav.innerHTML = montarNav();
   };
 
@@ -166,15 +145,15 @@
   // -------------------------------------------------------------- RENDER
   LG.render = function () {
     const ctx = contexto(LG.tab);
-    conteudo().innerHTML = `<div class="lgx">
-      <div class="lgx-app" id="lgx-app" data-nav="${LG.navColapsada ? 'colapsada' : 'aberta'}">
-        <nav class="lgx-nav" id="lgx-nav" aria-label="Seções do Villela Legal">${montarNav()}</nav>
-        <div class="lgx-main">
-          <div class="lgx-page-head">
+    conteudo().innerHTML = `<div class="vx" data-vertical="legal">
+      <div class="vx-app" id="vx-app" data-nav="${LG.navColapsada ? 'colapsada' : 'aberta'}">
+        <nav class="vx-nav" id="vx-nav" aria-label="Seções do Villela Legal">${montarNav()}</nav>
+        <div class="vx-main">
+          <div class="vx-page-head">
             <div>
-              <div class="lgx-crumb"><span>Villela Legal</span><span aria-hidden="true">›</span><span>${esc(ctx.grupo)}</span></div>
+              <div class="vx-crumb"><span>Villela Legal</span><span aria-hidden="true">›</span><span>${esc(ctx.grupo)}</span></div>
               <h1>${ctx.ico} ${esc(ctx.rot)}</h1>
-              <p class="lgx-muted lgx-mb0">Perfil: <strong>${esc(LG.nomePerfil || '—')}</strong> · conteúdo gerado por IA é sempre <strong>minuta</strong>, com revisão de advogado obrigatória.</p>
+              <p class="vx-muted vx-mb0">Perfil: <strong>${esc(LG.nomePerfil || '—')}</strong> · conteúdo gerado por IA é sempre <strong>minuta</strong>, com revisão de advogado obrigatória.</p>
             </div>
           </div>
           <div id="lg-body">${LGUI.skeleton('kpis', 4)}</div>
@@ -198,7 +177,7 @@
         LG.body().innerHTML = LGUI.erro({
           titulo: 'Não foi possível carregar esta seção',
           texto: e && e.message ? e.message : 'Falha inesperada.',
-          acao: `<p class="lgx-mb0" style="margin-top:8px"><button type="button" class="lgx-btn lgx-btn--sec lgx-btn--sm" onclick="LG.pintar()">Tentar novamente</button></p>`,
+          acao: `<p class="vx-mb0" style="margin-top:8px"><button type="button" class="vx-btn vx-btn--sec vx-btn--sm" onclick="LG.pintar()">Tentar novamente</button></p>`,
         });
       }
     } finally {
@@ -218,20 +197,20 @@
     ]);
     const r = dash.resumo || {};
     LG.resumo = r;
-    const nav = document.getElementById('lgx-nav');
+    const nav = document.getElementById('vx-nav');
     if (nav) nav.innerHTML = montarNav();          // pinos do menu já com os números do dia
 
     const kpi = (rot, val, ctx, tom, aba) => {
-      const corpo = `<span class="lgx-kpi-rot">${esc(rot)}</span>
-        <span class="lgx-kpi-val">${val}</span>
-        ${ctx ? `<span class="lgx-kpi-ctx">${esc(ctx)}</span>` : ''}`;
+      const corpo = `<span class="vx-kpi-rot">${esc(rot)}</span>
+        <span class="vx-kpi-val">${val}</span>
+        ${ctx ? `<span class="vx-kpi-ctx">${esc(ctx)}</span>` : ''}`;
       return aba
-        ? `<button type="button" class="lgx-kpi" data-tom="${tom || ''}" onclick="LG.ir('${aba}')">${corpo}</button>`
-        : `<div class="lgx-kpi" data-tom="${tom || ''}">${corpo}</div>`;
+        ? `<button type="button" class="vx-kpi" data-tom="${tom || ''}" onclick="LG.ir('${aba}')">${corpo}</button>`
+        : `<div class="vx-kpi" data-tom="${tom || ''}">${corpo}</div>`;
     };
-    const secao = (titulo, sub, conteudoHtml) => `<section class="lgx-card">
-      <div class="lgx-card-head"><div><h2>${esc(titulo)}</h2>
-      ${sub ? `<p class="lgx-hint lgx-mb0">${esc(sub)}</p>` : ''}</div></div>${conteudoHtml}</section>`;
+    const secao = (titulo, sub, conteudoHtml) => `<section class="vx-card">
+      <div class="vx-card-head"><div><h2>${esc(titulo)}</h2>
+      ${sub ? `<p class="vx-hint vx-mb0">${esc(sub)}</p>` : ''}</div></div>${conteudoHtml}</section>`;
 
     // ---- 1. exige ação hoje ----
     const criticos = [];
@@ -246,7 +225,7 @@
     let html = '';
     if (criticos.length) {
       html += secao('Exige ação', 'Conferido agora, a partir dos dados — não de status preenchido à mão.',
-        `<div class="lgx-kpis">${criticos.join('')}</div>`);
+        `<div class="vx-kpis">${criticos.join('')}</div>`);
     } else {
       html += secao('Exige ação', 'Conferido agora, a partir dos dados.', LGUI.vazio({
         ico: '✓', titulo: 'Nada pendente no momento',
@@ -255,14 +234,14 @@
     }
 
     // ---- 2. agenda dos próximos dias ----
-    html += secao('Próximos dias', 'Janela de 7 dias.', `<div class="lgx-kpis">
+    html += secao('Próximos dias', 'Janela de 7 dias.', `<div class="vx-kpis">
       ${kpi('Prazos em 7 dias', r.prazos_7dias || 0, 'com data fatal', r.prazos_7dias ? 'atencao' : 'ok', 'prazos')}
       ${kpi('Audiências em 7 dias', r.audiencias_7dias || 0, 'agendadas', '', 'audiencias')}
       ${kpi('Tarefas abertas', r.tarefas_abertas || 0, 'na fila da equipe', '', 'tarefas')}
     </div>`);
 
     // ---- 3. revisão humana pendente (as travas do sistema) ----
-    html += secao('Aguardando revisão humana', 'O sistema não libera nada disso sozinho.', `<div class="lgx-kpis">
+    html += secao('Aguardando revisão humana', 'O sistema não libera nada disso sozinho.', `<div class="vx-kpis">
       ${kpi('Peças em revisão', r.pecas_em_revisao || 0, 'minutas a revisar', r.pecas_em_revisao ? 'atencao' : 'ok', 'pecas')}
       ${kpi('Documentos em revisão', r.docs_em_revisao || 0, 'aguardando aprovação', '', 'documentos')}
       ${LG.perm.usar_ia ? kpi('Respostas de IA sem revisão', r.ia_sem_revisao || 0, 'em rascunho', r.ia_sem_revisao ? 'atencao' : 'ok', 'ia') : ''}
@@ -270,7 +249,7 @@
     </div>`);
 
     // ---- 4. carteira ----
-    html += secao('Carteira', 'Situação geral do escritório.', `<div class="lgx-kpis">
+    html += secao('Carteira', 'Situação geral do escritório.', `<div class="vx-kpis">
       ${kpi('Processos ativos', r.processos_ativos || 0, '', '', 'processos')}
       ${kpi('Clientes ativos', r.clientes_ativos || 0, '', '', LG.perm.gerir_clientes ? 'clientes' : '')}
     </div>`);
@@ -280,7 +259,7 @@
       const ren = (contr.alertas.renovacoes || []).length;
       const atr = (contr.alertas.atrasadas || []).length;
       if (ren || atr) {
-        html += secao('Contratos com data', 'Renovação automática e obrigações vencidas.', `<div class="lgx-kpis">
+        html += secao('Contratos com data', 'Renovação automática e obrigações vencidas.', `<div class="vx-kpis">
           ${kpi('Vigências vencendo (60 dias)', ren, 'conferir janela de denúncia', ren ? 'atencao' : 'ok', 'ciclo')}
           ${kpi('Obrigações atrasadas', atr, 'passaram da data limite', atr ? 'critico' : 'ok', 'ciclo')}
         </div>`);
@@ -307,44 +286,44 @@
       LG.api('GET', '/portal/satisfacao').catch(() => ({ resumo: null, respostas: [] })),
     ]);
     const podeAprovar = !!LG.perm.aprovar_documentos;
-    let h = `<div class="lgx-alerta lgx-alerta--livro"><span class="lgx-alerta-ico" aria-hidden="true">📘</span>
-      <div><b>Protótipo 47.2 do livro.</b><p class="lgx-mb0">A tradução do andamento em linguagem simples
+    let h = `<div class="vx-alerta vx-alerta--livro"><span class="vx-alerta-ico" aria-hidden="true">📘</span>
+      <div><b>Protótipo 47.2 do livro.</b><p class="vx-mb0">A tradução do andamento em linguagem simples
       só fica visível ao cliente depois que uma pessoa aprova — e evento marcado como sensível espera a
       comunicação pessoal antes de publicar.</p></div></div>`;
 
     // traduções aguardando aprovação
-    h += `<section class="lgx-card"><div class="lgx-card-head"><div>
+    h += `<section class="vx-card"><div class="vx-card-head"><div>
       <h2>Traduções aguardando aprovação</h2>
-      <p class="lgx-hint lgx-mb0">${trad.traducoes.length} em rascunho.</p></div></div>`;
-    h += trad.traducoes.length ? `<div class="lgx-tabela-wrap"><table class="lgx-tabela--cards">
-      <thead><tr><th>Andamento (texto do tribunal)</th><th>Tradução proposta</th><th>Origem</th><th>Sensível</th><th class="lgx-acoes-col">Ações</th></tr></thead>
+      <p class="vx-hint vx-mb0">${trad.traducoes.length} em rascunho.</p></div></div>`;
+    h += trad.traducoes.length ? `<div class="vx-tabela-wrap"><table class="vx-tabela--cards">
+      <thead><tr><th>Andamento (texto do tribunal)</th><th>Tradução proposta</th><th>Origem</th><th>Sensível</th><th class="vx-acoes-col">Ações</th></tr></thead>
       <tbody>${trad.traducoes.map(t => `<tr>
-        <td data-rot="Andamento"><span class="lgx-td-trunc" title="${esc(t.movimento || '')}">${esc(t.movimento || '—')}</span></td>
+        <td data-rot="Andamento"><span class="vx-td-trunc" title="${esc(t.movimento || '')}">${esc(t.movimento || '—')}</span></td>
         <td data-rot="Tradução">${esc(t.texto_simples)}</td>
-        <td data-rot="Origem"><span class="lgx-badge">${esc(t.origem)}</span></td>
-        <td data-rot="Sensível">${t.sensivel ? '<span class="lgx-badge lgx-badge--warn">sensível</span>' : '<span class="lgx-badge">não</span>'}</td>
-        <td class="lgx-acoes-col" data-rot="Ações">
-          ${podeAprovar ? `<button type="button" class="lgx-btn lgx-btn--sm" onclick="LG.tradAprovar('${t.id}')">Aprovar</button>
-          <button type="button" class="lgx-btn lgx-btn--sec lgx-btn--sm" onclick="LG.tradReprovar('${t.id}')">Reprovar</button>`
-        : '<span class="lgx-hint">sem permissão</span>'}
+        <td data-rot="Origem"><span class="vx-badge">${esc(t.origem)}</span></td>
+        <td data-rot="Sensível">${t.sensivel ? '<span class="vx-badge vx-badge--warn">sensível</span>' : '<span class="vx-badge">não</span>'}</td>
+        <td class="vx-acoes-col" data-rot="Ações">
+          ${podeAprovar ? `<button type="button" class="vx-btn vx-btn--sm" onclick="LG.tradAprovar('${t.id}')">Aprovar</button>
+          <button type="button" class="vx-btn vx-btn--sec vx-btn--sm" onclick="LG.tradReprovar('${t.id}')">Reprovar</button>`
+        : '<span class="vx-hint">sem permissão</span>'}
         </td></tr>`).join('')}</tbody></table></div>`
       : LGUI.vazio({ ico: '🪟', titulo: 'Nenhuma tradução em rascunho', texto: 'Quando a IA (ou alguém da equipe) propuser uma tradução de andamento, ela aparece aqui para aprovação.' });
     h += `</section>`;
 
     // pendências do cliente
     if (LG.perm.gerir_clientes) {
-      h += `<section class="lgx-card"><div class="lgx-card-head"><div>
+      h += `<section class="vx-card"><div class="vx-card-head"><div>
         <h2>Pendências solicitadas ao cliente</h2>
-        <p class="lgx-hint lgx-mb0">Documento, informação, assinatura ou pagamento em aberto.</p></div></div>`;
-      h += pend.pendencias.length ? `<div class="lgx-tabela-wrap"><table class="lgx-tabela--cards">
-        <thead><tr><th>Cliente</th><th>Pendência</th><th>Tipo</th><th>Prazo</th><th class="lgx-acoes-col">Ações</th></tr></thead>
+        <p class="vx-hint vx-mb0">Documento, informação, assinatura ou pagamento em aberto.</p></div></div>`;
+      h += pend.pendencias.length ? `<div class="vx-tabela-wrap"><table class="vx-tabela--cards">
+        <thead><tr><th>Cliente</th><th>Pendência</th><th>Tipo</th><th>Prazo</th><th class="vx-acoes-col">Ações</th></tr></thead>
         <tbody>${pend.pendencias.map(p => `<tr>
           <td data-rot="Cliente">${esc(p.cliente || p.client_id)}</td>
           <td data-rot="Pendência">${esc(p.titulo)}</td>
-          <td data-rot="Tipo"><span class="lgx-badge">${esc(p.tipo)}</span></td>
+          <td data-rot="Tipo"><span class="vx-badge">${esc(p.tipo)}</span></td>
           <td data-rot="Prazo">${LG.dt(p.prazo)}</td>
-          <td class="lgx-acoes-col" data-rot="Ações">
-            <button type="button" class="lgx-btn lgx-btn--sec lgx-btn--sm" onclick="LG.pendAtender('${p.id}')">Marcar atendida</button>
+          <td class="vx-acoes-col" data-rot="Ações">
+            <button type="button" class="vx-btn vx-btn--sec vx-btn--sm" onclick="LG.pendAtender('${p.id}')">Marcar atendida</button>
           </td></tr>`).join('')}</tbody></table></div>`
         : LGUI.vazio({ ico: '✓', titulo: 'Nenhuma pendência aberta', texto: 'Nada aguardando o cliente neste momento.' });
       h += `</section>`;
@@ -353,12 +332,12 @@
     // satisfação
     const rs = sat.resumo;
     if (rs && rs.respostas) {
-      h += `<section class="lgx-card"><div class="lgx-card-head"><div>
-        <h2>Avaliação do atendimento</h2><p class="lgx-hint lgx-mb0">Últimos 180 dias.</p></div></div>
-        <div class="lgx-kpis">
-          <div class="lgx-kpi"><span class="lgx-kpi-rot">Respostas</span><span class="lgx-kpi-val">${rs.respostas}</span></div>
-          <div class="lgx-kpi"><span class="lgx-kpi-rot">Nota média</span><span class="lgx-kpi-val">${rs.media}</span><span class="lgx-kpi-ctx">de 0 a 10</span></div>
-          <div class="lgx-kpi" data-tom="${rs.nps < 0 ? 'critico' : (rs.nps >= 50 ? 'ok' : '')}"><span class="lgx-kpi-rot">NPS</span><span class="lgx-kpi-val">${rs.nps}</span><span class="lgx-kpi-ctx">promotores − detratores</span></div>
+      h += `<section class="vx-card"><div class="vx-card-head"><div>
+        <h2>Avaliação do atendimento</h2><p class="vx-hint vx-mb0">Últimos 180 dias.</p></div></div>
+        <div class="vx-kpis">
+          <div class="vx-kpi"><span class="vx-kpi-rot">Respostas</span><span class="vx-kpi-val">${rs.respostas}</span></div>
+          <div class="vx-kpi"><span class="vx-kpi-rot">Nota média</span><span class="vx-kpi-val">${rs.media}</span><span class="vx-kpi-ctx">de 0 a 10</span></div>
+          <div class="vx-kpi" data-tom="${rs.nps < 0 ? 'critico' : (rs.nps >= 50 ? 'ok' : '')}"><span class="vx-kpi-rot">NPS</span><span class="vx-kpi-val">${rs.nps}</span><span class="vx-kpi-ctx">promotores − detratores</span></div>
         </div></section>`;
     }
     LG.body().innerHTML = h;
