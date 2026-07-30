@@ -73,7 +73,7 @@ function manifestDe(p) {
 // NUNCA cacheia caminhos de API (dados vivos) nem métodos de escrita.
 function swDe(p) {
   return `'use strict';
-const CACHE = 'villela-pwa-${p.slug}-v1';
+const CACHE = 'villela-pwa-${p.slug}-v2';
 self.addEventListener('install', (e) => { self.skipWaiting(); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -88,10 +88,18 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;                // CDN/externos: rede direta
   if (url.pathname.indexOf('/api') !== -1) return;           // API: dados sempre frescos, sem cache
+  // HTML de navegacao NUNCA e guardado: pagina em cache faz o app instalado
+  // continuar exibindo o layout antigo depois de um deploy. O cache existe so
+  // para o modo offline, e para isso basta a copia da tela inicial (abaixo).
+  const ehNavegacao = req.mode === 'navigate' || (req.headers.get('accept') || '').indexOf('text/html') !== -1;
   e.respondWith(
     fetch(req)
       .then((resp) => {
-        if (resp && resp.ok) { const copy = resp.clone(); caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {}); }
+        if (resp && resp.ok && !ehNavegacao) { const copy = resp.clone(); caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {}); }
+        if (resp && resp.ok && req.mode === 'navigate') {     // guarda so a tela inicial, p/ offline
+          const copia = resp.clone();
+          caches.open(CACHE).then((c) => c.put('${p.inicio}', copia)).catch(() => {});
+        }
         return resp;
       })
       .catch(() => caches.match(req).then((r) => {

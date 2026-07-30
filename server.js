@@ -38,6 +38,23 @@ app.set('trust proxy', 1); // Render põe 1 proxy na frente → req.ip = IP real
 app.use(express.json({ limit: '15mb' })); // 15mb p/ aceitar PDFs em base64 no upload de relatórios
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); // form-urlencoded (ex.: ingestão do Make → CRM)
 app.use(cookieParser());
+
+// HTML dos produtos e do Portal Staff: SEMPRE revalidar antes de reusar.
+// Sem isto o navegador guardava a pagina por heuristica (nao havia
+// Cache-Control nem Last-Modified, so ETag) e um redesign so aparecia depois
+// de o usuario limpar o cache. Com `no-cache` o navegador ainda reusa a copia
+// local, mas so depois de perguntar ao servidor — e o ETag faz a resposta ser
+// um 304 barato quando nada mudou. NAO afeta /assets (versionado, cache longo)
+// nem /api (que ja mandam no-store).
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  const p = req.path;
+  if (p.startsWith('/assets') || p.includes('/api/')) return next();
+  const deProduto = ['/gestao', '/crm', '/academy', '/vdocs', '/vpe', '/juridico', '/livros',
+    '/cliente-juridico', '/staff'].some(x => p === x || p.startsWith(x + '/'));
+  if (deProduto) res.set('Cache-Control', 'no-cache');
+  next();
+});
 app.use(compression()); // gzip nas respostas (JSON/HTML/JS) — o web service do Render não comprime por você
 // Cabeçalhos de segurança (equivalente leve ao helmet, sem dependência nova)
 app.use((req, res, next) => {
@@ -4158,6 +4175,7 @@ app.delete('/staff/api/hospede/conta/:hospedeId/lancamento/:id', requirePublishO
 
 // ===== Grupo Villela Stay — assets estáticos: marca (/assets/brand) + capas de livros (/assets/livros) =====
 app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '7d' }));
+
 
 // ===== PWA dos produtos SaaS (app instalável no celular do assinante) =====
 // Manifest + service worker por produto (pwa.js). Registrado ANTES dos módulos
