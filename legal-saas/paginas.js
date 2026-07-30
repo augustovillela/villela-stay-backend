@@ -154,7 +154,7 @@ function landingHTML() {
       segurança, tabela de temporalidade e canal de denúncias. Cada escritório novo já nasce com esses documentos como
       <b>minuta pronta para adaptar e aprovar</b>.</p>
       <p style="margin-top:22px"><a class="btn" href="/juridico/assinar?plano=trial">Testar o sistema do livro por 14 dias</a>
-      &nbsp;<a class="btn o" href="https://livros.villelastay.com.br/livro/claude-ai-na-pratica-juridica" target="_blank" rel="noopener">Conhecer o livro</a></p>
+      &nbsp;<a class="btn o" href="https://livros.villelastay.com.br/livros/claude-ai-na-pratica-juridica" target="_blank" rel="noopener">Conhecer o livro</a></p>
     </div></div>
     <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
       <p class="sub">Nossa missão é tirar prazos e intimações do improviso — com IA que trabalha como um estagiário sênior e <b>nunca assina sozinha</b>. Antes de chegar a você, o Villela Legal roda todos os dias no escritório do próprio Grupo Villela Stay.</p>
