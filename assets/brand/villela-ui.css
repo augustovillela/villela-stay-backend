@@ -235,6 +235,8 @@ body.vx { margin: 0; background: var(--vx-bg); }
 .vx-kpi[data-tom="atencao"] { border-left-color: var(--vx-warn); }
 .vx-kpi[data-tom="critico"] { border-left-color: var(--vx-danger); background: var(--vx-danger-soft); }
 .vx-kpi[data-tom="critico"] .vx-kpi-val { color: var(--vx-danger); }
+/* sobre o fundo rosado do KPI critico, o cinza auxiliar cai para 4,39:1 */
+.vx-kpi[data-tom="critico"] .vx-kpi-ctx { color: var(--vx-ink-2); }
 .vx-kpi[data-tom="ok"] { border-left-color: var(--vx-ok); }
 /* KPI clicável leva à tela que resolve o número */
 a.vx-kpi, button.vx-kpi { cursor: pointer; text-decoration: none; font: inherit; width: 100%;
@@ -516,6 +518,18 @@ a.vx-kpi:hover, button.vx-kpi:hover { box-shadow: var(--vx-shadow-2); transform:
 .vx .btn[disabled] { opacity: .5; cursor: not-allowed; background: var(--vx-ink-3); }
 .vx .btn.secund { background: var(--vx-surface); color: var(--vx-navy); border-color: var(--vx-border-strong); }
 .vx .btn.secund:hover { background: var(--vx-surface-2); color: var(--vx-navy); border-color: var(--vx-ink-3); }
+/* Variantes "vazadas" dos produtos. Sem estas regras, `.vx .btn` (0,2,0) vence
+   `.btn-ghost` (0,1,0) e pinta o fundo com o acento por baixo do texto escuro
+   do botao fantasma -> 1,78:1, texto quase invisivel (visto no /vdocs/app). */
+.vx .btn.btn-ghost, .vx .btn.o, .vx .btn.ghost {
+  background: transparent; color: var(--vx-accent); border-color: var(--vx-border-strong);
+}
+.vx .btn.btn-ghost:hover, .vx .btn.ghost:hover { background: var(--vx-accent-soft); color: var(--vx-accent-2); }
+/* .btn.o vive sobre fundo escuro (hero/cabecalho): borda e texto claros */
+.vx .btn.o { color: #fff; border-color: rgba(255,255,255,.55); }
+.vx .btn.o:hover { background: rgba(255,255,255,.12); color: #fff; }
+.vx .btn.g { background: #fff; color: var(--vx-navy); border-color: #fff; }
+.vx .btn.g:hover { background: var(--vx-surface-2); color: var(--vx-navy); }
 .vx .btn.peq { min-height: 32px; padding: 5px 10px; font-size: var(--vx-fs-xs); }
 .vx .btn.perigo { background: var(--vx-danger); }
 .vx .btn.perigo:hover { background: var(--vx-danger-2); }

@@ -68,7 +68,7 @@ function pagina({ titulo, descricao, corpo, og, extraHead }) {
 <title>${esc(titulo)}</title><meta name="description" content="${esc(descricao)}">
 ${og ? `<meta property="og:type" content="website"><meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}"><meta property="og:image" content="https://projetos.villelastay.com.br/assets/brand/villela-projects/og-image.png">
 ` : ''}${extraHead || ''}${HEAD_MARCA}${GA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="projects">
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="projects">
 <header class="top"><div class="wrap">
   <a class="brand xl" href="/vpe">${BRAND_XL}</a>
   <nav class="nav"><a class="esconde" href="/vpe#recursos">Recursos</a><a class="esconde" href="/vpe#planos">Planos</a><a href="/vpe/login">Entrar</a> <a class="btn" style="padding:9px 16px;background:#DDD3F7;color:#2E1065!important" href="/vpe/cadastro">Teste grátis</a></nav>
@@ -246,25 +246,21 @@ function appTenant() {
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Villela Projects — Painel</title>
 ${HEAD_MARCA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}
 body{background:var(--fundo)}
-.layout{display:flex;min-height:calc(100vh - 60px)}
-aside{width:235px;background:#fff;border-right:1px solid var(--borda);padding:18px 12px;flex-shrink:0}
-aside button{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 12px;border-radius:8px;font-size:14.5px;cursor:pointer;color:var(--ink);font-family:inherit}
-aside button.on{background:var(--verde2);color:#fff;font-weight:700}
-aside button:hover:not(.on){background:var(--fundo)}
-aside .breve{opacity:.45;cursor:default}
-main{flex:1;padding:26px;max-width:1080px}
+.vx-app{margin:22px auto;max-width:1240px;padding:0 16px}
+.vx-nav-item.breve{opacity:.5;cursor:default}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:14px 0}
 .kpi{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px}.kpi .n{font-size:24px;font-weight:800;color:var(--verde2)}.kpi .r{font-size:12.5px;color:var(--suave)}
 .pri-alta{border-left:4px solid var(--alerta)}.pri-media{border-left:4px solid var(--ambar)}.pri-baixa{border-left:4px solid var(--borda)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="projects">
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="projects">
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vpe/app">${BRAND_LOCKUP}</a>
   <nav class="nav"><span id="quem" style="font-size:13.5px;color:#C7D0E2"></span> <button id="pwa-btn" style="display:none;background:none;border:1px solid #C7D0E2;color:#C7D0E2;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:13px;margin-left:14px" title="Instalar o Villela Projects como app no celular">📲 Instalar app</button> <button id="push-btn" style="display:none;background:none;border:1px solid #C7D0E2;color:#C7D0E2;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:13px;margin-left:14px" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
 </div></header>
-<div class="layout"><aside id="menu"></aside><main id="corpo"><p>Carregando…</p></main></div>
+<div class="vx-app" id="vp-app"><nav class="vx-nav" id="menu" aria-label="Secoes do painel"></nav>
+<div class="vx-main"><div class="vx-page-head"><div id="vp-head"></div></div><div id="corpo"></div></div></div>
 <script>
 'use strict';
 const S={me:null,tela:'dashboard'};
@@ -273,10 +269,14 @@ const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 const dt=s=>s?new Date(s).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
 const brl=c=>Number(c||0)?('R$ '+(Number(c)/100).toLocaleString('pt-BR',{maximumFractionDigits:0})):'—';
 const rot=s=>String(s||'').replace(/_/g,' ');
-async function api(m,c,b){const r=await fetch('/vpe/api'+c,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
+let SEQ=0; // cresce a cada troca de tela: leitura atrasada nao pinta a tela nova
+async function api(m,c,b){const meu=SEQ;
+  const r=await fetch('/vpe/api'+c,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
   const d=await r.json().catch(()=>({}));
   if(r.status===401){location.href='/vpe/login';throw new Error('sessão expirada');}
-  if(!r.ok)throw new Error(d.erro||('HTTP '+r.status));return d;}
+  if(!r.ok)throw new Error(d.erro||('HTTP '+r.status));
+  if(m==='GET'&&meu!==SEQ)await new Promise(()=>{});
+  return d;}
 async function sair(){await api('POST','/logout').catch(()=>{});location.href='/vpe/login';return false;}
 
 // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
@@ -340,25 +340,59 @@ async function alternarPush(){
   pintarBotaoPush();
 }
 
+// [id, rotulo, quem ve, grupo, icone]
 const TELAS=[
- ['dashboard','📊 Dashboard',()=>true],
- ['portfolio','💡 Portfólio',m=>m.permissoes.ver_projetos],
- ['tarefas','✅ Tarefas',m=>m.permissoes.ver_projetos],
- ['eventos','🎪 Eventos',m=>m.permissoes.ver_eventos],
- ['crm','🤝 CRM & Comercial',m=>m.permissoes.gerir_crm||m.permissoes.gerir_propostas],
- ['financeiro','💰 Financeiro',m=>m.permissoes.ver_financeiro],
- ['ia','🤖 IA & Automações',m=>m.permissoes.usar_ia||m.permissoes.gerir_automacoes||m.permissoes.ver_relatorios],
- ['portalcli','🔗 Portal do cliente',m=>m.permissoes.gerir_eventos||m.permissoes.editar_projeto||m.permissoes.gerir_propostas||m.permissoes.gerir_contratos],
- ['integra','🔌 Integrações & API',m=>m.permissoes.configurar_integracoes],
- ['usuarios','👥 Usuários e permissões',m=>m.permissoes.gerir_usuarios],
- ['auditoria','📜 Auditoria',m=>m.permissoes.ver_auditoria],
- ['plano','📦 Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca],
- ['config','⚙️ Configurações',m=>m.permissoes.gerir_configuracoes],
+ ['dashboard','Dashboard',()=>true,'Visão geral','📊'],
+ ['portfolio','Portfólio',m=>m.permissoes.ver_projetos,'Entrega','💡'],
+ ['tarefas','Tarefas',m=>m.permissoes.ver_projetos,'Entrega','✅'],
+ ['eventos','Eventos',m=>m.permissoes.ver_eventos,'Entrega','🎪'],
+ ['crm','CRM & Comercial',m=>m.permissoes.gerir_crm||m.permissoes.gerir_propostas,'Comercial','🤝'],
+ ['financeiro','Financeiro',m=>m.permissoes.ver_financeiro,'Comercial','💰'],
+ ['portalcli','Portal do cliente',m=>m.permissoes.gerir_eventos||m.permissoes.editar_projeto||m.permissoes.gerir_propostas||m.permissoes.gerir_contratos,'Comercial','🔗'],
+ ['ia','IA & Automações',m=>m.permissoes.usar_ia||m.permissoes.gerir_automacoes||m.permissoes.ver_relatorios,'Inteligência','🤖'],
+ ['integra','Integrações & API',m=>m.permissoes.configurar_integracoes,'Administração','🔌'],
+ ['usuarios','Usuários e permissões',m=>m.permissoes.gerir_usuarios,'Administração','👥'],
+ ['auditoria','Auditoria',m=>m.permissoes.ver_auditoria,'Administração','📜'],
+ ['plano','Plano e uso',m=>m.permissoes.ver_uso||m.permissoes.administrar_cobranca,'Administração','📦'],
+ ['config','Configurações',m=>m.permissoes.gerir_configuracoes,'Administração','⚙️'],
 ];
-function menu(){$('menu').innerHTML=TELAS.filter(t=>t[2](S.me)).map(t=>
-  t[3]?'<button class="breve" title="Próximas fases">'+t[1]+' <span class="chip">em breve</span></button>'
-  :'<button class="'+(S.tela===t[0]?'on':'')+'" onclick="ir(\\''+t[0]+'\\')">'+t[1]+'</button>').join('');}
-function ir(t){S.tela=t;menu();({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,ia:vIa,portalcli:vPortalCli,integra:vIntegra,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');}
+const ORDEM_GRUPOS=['Visão geral','Entrega','Comercial','Inteligência','Administração'];
+let NAV_COLAPSADA=(()=>{try{return localStorage.getItem('vx-nav')==='colapsada'}catch(e){return false}})();
+function visiveis(){return TELAS.filter(t=>t[2](S.me));}
+function menu(){
+  let html='';
+  for(const g of ORDEM_GRUPOS){
+    const doGrupo=visiveis().filter(t=>t[3]===g);
+    if(!doGrupo.length)continue;
+    html+='<div class="vx-nav-grupo">'+esc(g)+'</div>';
+    for(const t of doGrupo)
+      html+='<button type="button" class="vx-nav-item" onclick="ir(\\''+t[0]+'\\')" title="'+esc(t[1])+'"'+(S.tela===t[0]?' aria-current="page"':'')+'>'+
+        '<span class="vx-nav-ico" aria-hidden="true">'+t[4]+'</span><span class="vx-nav-rot">'+esc(t[1])+'</span></button>';
+  }
+  html+='<hr class="vx-sep" style="margin:8px 4px">'+
+    '<button type="button" class="vx-nav-item vx-nav-toggle" onclick="return alternarNav()" aria-label="'+(NAV_COLAPSADA?'Expandir menu':'Recolher menu')+'">'+
+    '<span class="vx-nav-ico" aria-hidden="true">'+(NAV_COLAPSADA?'»':'«')+'</span><span class="vx-nav-rot">Recolher menu</span></button>';
+  $('menu').innerHTML=html;}
+function alternarNav(){
+  NAV_COLAPSADA=!NAV_COLAPSADA;
+  try{localStorage.setItem('vx-nav',NAV_COLAPSADA?'colapsada':'aberta')}catch(e){}
+  const a=$('vp-app');if(a)a.setAttribute('data-nav',NAV_COLAPSADA?'colapsada':'aberta');
+  menu();return false;}
+function ctxDaTela(){return visiveis().find(t=>t[0]===S.tela)||['dashboard','Dashboard',()=>true,'Visão geral','📊'];}
+function pintarCabecalho(){
+  const c=ctxDaTela(),h=$('vp-head');
+  if(!h)return;
+  h.innerHTML='<div class="vx-crumb"><span>'+esc(S.me.tenant.nome)+'</span><span aria-hidden="true">›</span><span>'+esc(c[3])+'</span></div>'+
+    '<h1>'+c[4]+' '+esc(c[1])+'</h1>';}
+function esqueleto(){return '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--bloco"></div>';}
+function erroTela(e){
+  $('corpo').innerHTML='<div class="vx-alerta vx-alerta--danger" role="alert"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span>'+
+    '<div><b>Não foi possível carregar esta tela</b><p class="vx-mb0">'+esc(e&&e.message?e.message:'Erro inesperado.')+'</p>'+
+    '<button class="vx-btn vx-btn--sec vx-btn--sm" style="margin-top:8px" onclick="ir(S.tela)">Tentar novamente</button></div></div>';}
+function ir(t){
+  S.tela=t;SEQ++;menu();pintarCabecalho();
+  $('corpo').innerHTML=esqueleto();
+  ({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,ia:vIa,portalcli:vPortalCli,integra:vIntegra,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(erroTela);}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -372,29 +406,40 @@ async function boot(){
 async function vDash(){
   const d=await api('GET','/dashboard');
   const est=Object.entries(d.projetos_por_estagio).sort((a,b)=>b[1]-a[1]);
-  $('corpo').innerHTML='<h2>Dashboard executivo</h2>'+
-   (d.empresa.interno?'<div class="aviso">🏠 Workspace interno da Villela — portfólio dos negócios próprios.</div>':'')+
-   (d.empresa.status==='trial'?'<div class="aviso">🕑 Período de teste até <b>'+new Date(d.empresa.trial_expira_em).toLocaleDateString('pt-BR')+'</b>.</div>':'')+
-   '<div class="kpis">'+
-   '<div class="kpi"><div class="n">'+d.projetos_total+'</div><div class="r">projetos no portfólio</div></div>'+
-   '<div class="kpi"><div class="n">'+(d.projetos_por_estagio.operacao||0)+'</div><div class="r">em operação</div></div>'+
-   '<div class="kpi"><div class="n">'+d.projetos_alta_prioridade.length+'</div><div class="r">alta prioridade</div></div>'+
-   '<div class="kpi"><div class="n">'+brl(d.investimento_estimado_total)+'</div><div class="r">investimento estimado</div></div>'+
-   '<div class="kpi"><div class="n">'+brl(d.receita_potencial_total)+'</div><div class="r">receita potencial/ano</div></div>'+
-   (d.a_receber!=null?'<div class="kpi"><div class="n">'+brl(d.a_receber)+'</div><div class="r">a receber</div></div><div class="kpi"><div class="n"'+(d.inadimplencia?' style="color:var(--alerta)"':'')+'>'+brl(d.inadimplencia||0)+'</div><div class="r">inadimplência</div></div>':'')+
-   '<div class="kpi"><div class="n">'+(d.eventos_confirmados||0)+'</div><div class="r">eventos confirmados</div></div>'+
-   '<div class="kpi"><div class="n">'+(d.eventos_proximos_30d||0)+'</div><div class="r">eventos em 30 dias</div></div>'+
-   '<div class="kpi"><div class="n">'+(d.tarefas_abertas||0)+'</div><div class="r">tarefas abertas</div></div>'+
-   '<div class="kpi">'+(d.tarefas_atrasadas?'':'')+'<div class="n"'+(d.tarefas_atrasadas?' style="color:var(--alerta)"':'')+'>'+(d.tarefas_atrasadas||0)+'</div><div class="r">tarefas atrasadas</div></div>'+
-   '<div class="kpi"><div class="n"'+(d.riscos_criticos?' style="color:var(--alerta)"':'')+'>'+(d.riscos_criticos||0)+'</div><div class="r">riscos críticos</div></div>'+
-   '<div class="kpi"><div class="n">'+d.usuarios_ativos+'</div><div class="r">usuários ativos</div></div></div>'+
-   '<div class="card"><b>Portfólio por estágio</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">'+
+  const kpi=(rot2,n,ctx,tom,tela)=>{
+    const corpo='<span class="vx-kpi-rot">'+esc(rot2)+'</span><span class="vx-kpi-val">'+n+'</span>'+(ctx?'<span class="vx-kpi-ctx">'+esc(ctx)+'</span>':'');
+    return tela?'<button type="button" class="vx-kpi" data-tom="'+(tom||'')+'" onclick="ir(\\''+tela+'\\')">'+corpo+'</button>'
+               :'<div class="vx-kpi" data-tom="'+(tom||'')+'">'+corpo+'</div>';};
+  const secao=(tit,sub,html)=>'<section class="vx-card"><div class="vx-card-head"><div><h2>'+esc(tit)+'</h2>'+(sub?'<p class="vx-hint vx-mb0">'+esc(sub)+'</p>':'')+'</div></div>'+html+'</section>';
+  const pend=[];
+  if(d.tarefas_atrasadas)pend.push(kpi('Tarefas atrasadas',d.tarefas_atrasadas,'passaram do prazo','critico','tarefas'));
+  if(d.riscos_criticos)pend.push(kpi('Riscos críticos',d.riscos_criticos,'sem plano de resposta','critico','portfolio'));
+  if(d.inadimplencia)pend.push(kpi('Inadimplência',brl(d.inadimplencia),'vencido e não pago','critico','financeiro'));
+  if(d.eventos_proximos_30d)pend.push(kpi('Eventos em 30 dias',d.eventos_proximos_30d,'preparar agora','atencao','eventos'));
+  if(d.projetos_alta_prioridade.length)pend.push(kpi('Alta prioridade',d.projetos_alta_prioridade.length,'projetos em foco','atencao','portfolio'));
+  $('corpo').innerHTML=
+   (d.empresa.interno?'<div class="vx-alerta"><span class="vx-alerta-ico" aria-hidden="true">🏠</span><div><b>Workspace interno da Villela.</b><p class="vx-mb0">Portfólio dos negócios próprios.</p></div></div>':'')+
+   (d.empresa.status==='trial'?'<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">🎁</span><div><b>Período de teste até '+new Date(d.empresa.trial_expira_em).toLocaleDateString('pt-BR')+'.</b><p class="vx-mb0">Assine para continuar sem interrupção.</p></div></div>':'')+
+   secao('Exige ação','O que está esperando por você agora.',
+     pend.length?'<div class="vx-kpis">'+pend.join('')+'</div>':'<p class="vx-vazio">Nada atrasado nem em risco. 👌</p>')+
+   secao('Entrega','Projetos, tarefas e eventos em andamento.','<div class="vx-kpis">'+
+     kpi('Projetos no portfólio',d.projetos_total,'ativos e futuros',null,'portfolio')+
+     kpi('Em operação',(d.projetos_por_estagio.operacao||0),'já rodando',null,'portfolio')+
+     kpi('Tarefas abertas',(d.tarefas_abertas||0),'na fila do time',null,'tarefas')+
+     kpi('Eventos confirmados',(d.eventos_confirmados||0),'com data fechada',null,'eventos')+
+    '</div>')+
+   secao('Dinheiro','O que o portfólio movimenta.','<div class="vx-kpis">'+
+     kpi('Investimento estimado',brl(d.investimento_estimado_total),'para tirar do papel',null,null)+
+     kpi('Receita potencial',brl(d.receita_potencial_total),'por ano, se maduro',null,null)+
+     (d.a_receber!=null?kpi('A receber',brl(d.a_receber),'faturado e no prazo',null,'financeiro'):'')+
+     kpi('Usuários ativos',d.usuarios_ativos,'na equipe',null,'usuarios')+
+    '</div>')+
+   '<div class="vx-card"><b>Portfólio por estágio</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">'+
    est.map(([e,n])=>'<span class="chip">'+esc(rot(e))+': <b>'+n+'</b></span>').join('')+'</div></div>'+
    (d.projetos_alta_prioridade.length?'<div class="card" style="margin-top:14px"><b>🔥 Alta prioridade</b><table><tr><th>Projeto</th><th>Estágio</th><th>Horizonte</th><th>Próximos passos</th></tr>'+
     d.projetos_alta_prioridade.map(p=>'<tr><td><a href="#" onclick="return abrirProj(\\''+p.id+'\\')">'+esc(p.nome)+'</a></td><td>'+esc(rot(p.estagio))+'</td><td>'+esc(p.horizonte)+'</td><td style="font-size:13px">'+esc((p.proximos_passos||'').slice(0,90))+'</td></tr>').join('')+'</table></div>':'')+
    '<div class="card" style="margin-top:14px"><b>Atividade recente</b><table><tr><th>Quando</th><th>Quem</th><th>Ação</th></tr>'+
-   d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></div>'+
-   '<div class="aviso" style="margin-top:14px">🚧 Portal do cliente e integrações externas chegam nas próximas fases.</div>';
+   d.auditoria_recente.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td></tr>').join('')+'</table></div>';
 }
 // ---------------- Portfólio ----------------
 S.pf={estagio:'',categoria:'',busca:''};
@@ -403,7 +448,7 @@ async function vPortfolio(){
   const {projetos,enums}=await api('GET','/projetos'+(q?'?'+q:''));
   S.enums=enums;
   const opt=(lista,sel,rotulo)=>'<option value="">— '+rotulo+' —</option>'+lista.map(x=>'<option value="'+x+'"'+(x===sel?' selected':'')+'>'+rot(x)+'</option>').join('');
-  $('corpo').innerHTML='<h2>💡 Portfólio</h2>'+
+  $('corpo').innerHTML=
    '<div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
    '<input id="pf-busca" placeholder="Buscar…" value="'+esc(S.pf.busca)+'" style="max-width:180px" onkeydown="if(event.key===\\'Enter\\')filtrarPf()">'+
    '<select id="pf-estagio" style="max-width:170px" onchange="filtrarPf()">'+opt(S.enums.estagios,S.pf.estagio,'estágio')+'</select>'+
@@ -529,7 +574,7 @@ async function vTarefas(){
   const [{tarefas:ts},ag]=await Promise.all([api('GET','/tarefas'+q),api('GET','/tarefas/agenda?dias=14'+(S.tf.minhas?'&minhas=1':''))]);
   if(!S.projNomes){const pr=await api('GET','/projetos');S.projNomes={};pr.projetos.forEach(p=>S.projNomes[p.id]=p.nome);}
   const nomeProj=S.projNomes;
-  $('corpo').innerHTML='<h2>✅ Tarefas</h2>'+
+  $('corpo').innerHTML=
    '<div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'+
    '<label style="margin:0;display:flex;gap:4px;align-items:center;font-weight:400"><input type="checkbox" '+(S.tf.minhas?'checked':'')+' onchange="S.tf.minhas=this.checked?String(1):String();vTarefas()" style="width:auto"> só as minhas</label>'+
    '<label style="margin:0;display:flex;gap:4px;align-items:center;font-weight:400"><input type="checkbox" '+(S.tf.atrasadas?'checked':'')+' onchange="S.tf.atrasadas=this.checked?String(1):String();vTarefas()" style="width:auto"> só atrasadas</label>'+
@@ -615,7 +660,7 @@ async function vEventos(){
   const {eventos:evs,enums}=await api('GET','/eventos'+q);
   S.evEnums=enums;
   const opt=(lista,sel,rotulo,mapa)=>'<option value="">— '+rotulo+' —</option>'+lista.map(x=>'<option value="'+x+'"'+(x===sel?' selected':'')+'>'+((mapa&&mapa[x])||rot(x))+'</option>').join('');
-  $('corpo').innerHTML='<h2>🎪 Eventos</h2>'+
+  $('corpo').innerHTML=
    '<div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
    '<input id="ev-busca" placeholder="Buscar evento/cliente…" value="'+esc(S.evF.busca)+'" style="max-width:200px" onkeydown="if(event.keyCode===13)filtrarEv()">'+
    '<select id="ev-status" style="max-width:170px" onchange="filtrarEv()">'+opt(enums.status,S.evF.status,'status',EV_ROT)+'</select>'+
@@ -738,7 +783,7 @@ const FN_ROT={novo:'Novo',contato:'Contato',briefing:'Briefing',reuniao:'Reuniã
 async function vCrm(){
   S.crmAba=S.crmAba||'funil';
   const abas=[['funil','📊 Funil'],['propostas','📄 Propostas'],['contratos','📑 Contratos']];
-  $('corpo').innerHTML='<h2>🤝 CRM & Comercial</h2>'+
+  $('corpo').innerHTML=
    '<div class="card" style="display:flex;gap:6px;flex-wrap:wrap">'+abas.map(([k,r2])=>'<button class="btn '+(S.crmAba===k?'':'btn-ghost ')+'peq" onclick="crmIr(\\''+k+'\\')">'+r2+'</button>').join('')+'</div>'+
    '<div id="crm-corpo" style="margin-top:12px"><p class="sub">Carregando…</p></div>';
   await ({funil:vFunil,propostas:vPropostas,contratos:vContratos}[S.crmAba])();
@@ -840,7 +885,7 @@ async function vFinanceiro(){
   const q='?'+(S.finF.tipo?'tipo='+S.finF.tipo+'&':'')+(S.finF.status?'status='+S.finF.status+'&':'');
   const {lancamentos,consolidado:co}=await api('GET','/financeiro'+q);
   const kpi=(rot,val,alerta)=>'<div class="kpi"><div class="n"'+(alerta&&val?' style="color:var(--alerta)"':'')+'>'+brl(val)+'</div><div class="r">'+rot+'</div></div>';
-  $('corpo').innerHTML='<h2>💰 Financeiro</h2>'+
+  $('corpo').innerHTML=
    '<div class="kpis">'+kpi('A receber',co.a_receber)+kpi('A pagar',co.a_pagar)+kpi('Inadimplência',co.inadimplencia,true)+kpi('Margem realizada',co.margem_realizada)+kpi('Margem prevista',co.margem_prevista)+'</div>'+
    (P.lancar_financeiro?'<div class="card"><b>Novo lançamento</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><select id="nf-tipo"><option value="receita">Receita</option><option value="despesa">Despesa</option></select><input id="nf-desc" placeholder="Descrição" style="flex:1;min-width:160px"><input id="nf-valor" type="number" placeholder="Valor R$" style="max-width:120px"><input id="nf-venc" type="date" style="width:auto"><button class="btn peq" onclick="novoLanc()">Lançar</button></div></div>':'')+
    '<div class="card" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="ff-tipo" onchange="filtrarFin()"><option value="">— tipo —</option><option value="receita"'+(S.finF.tipo==='receita'?' selected':'')+'>Receitas</option><option value="despesa"'+(S.finF.tipo==='despesa'?' selected':'')+'>Despesas</option></select>'+
@@ -864,7 +909,7 @@ async function vIa(){
   if(P.gerir_automacoes)abas.push(['automacoes','⚙️ Automações']);
   if(P.ver_relatorios)abas.push(['ceo','📈 Relatório do CEO']);
   if(!abas.some(a=>a[0]===S.iaAba))S.iaAba=abas.length?abas[0][0]:'assistente';
-  $('corpo').innerHTML='<h2>🤖 IA & Automações</h2>'+
+  $('corpo').innerHTML=
    '<div class="card" style="display:flex;gap:6px;flex-wrap:wrap">'+abas.map(a=>'<button class="btn '+(S.iaAba===a[0]?'':'btn-ghost ')+'peq" onclick="iaIr(\\''+a[0]+'\\')">'+a[1]+'</button>').join('')+'</div>'+
    '<div id="ia-corpo" style="margin-top:12px"><p class="sub">Carregando…</p></div>';
   await ({assistente:vIaAssist,agentes:vIaAgentes,automacoes:vIaAutos,ceo:vIaCeo}[S.iaAba]||vIaAssist)();
@@ -1008,7 +1053,7 @@ async function vPortalCli(){
   const tiposOk=d.tipos.filter(t=>P[permTipo[t]]);
   const tOpts=tiposOk.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
   const base=location.origin+'/vpe/portal/';
-  $('corpo').innerHTML='<h2>🔗 Portal do cliente</h2>'+
+  $('corpo').innerHTML=
    (d.recurso_liberado?'':'<div class="aviso">⚠️ O portal do cliente não está incluído no seu plano atual. Você pode ver os compartilhamentos existentes, mas criar novos exige upgrade.</div>')+
    '<div class="card"><b>Compartilhar um item com um cliente</b><p class="sub">Gera um link público e só-leitura. Propostas e contratos podem receber aceite do cliente.</p>'+
    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><select id="sh-tipo" onchange="shCarregarItens()" style="min-width:130px">'+tOpts+'</select>'+
@@ -1058,7 +1103,7 @@ async function vIntegra(){
   const d=await api('GET','/integracoes');S.igEventos=d.eventos;
   const origin=location.origin;
   const evChecks=d.eventos.map(e=>'<label style="display:inline-flex;align-items:center;gap:5px;margin:0 10px 6px 0;font-size:13px;font-weight:400"><input type="checkbox" class="wh-ev" value="'+e+'" style="width:auto"> '+e+'</label>').join('');
-  $('corpo').innerHTML='<h2>🔌 Integrações & API</h2>'+
+  $('corpo').innerHTML=
    (d.api_liberada?'':'<div class="aviso">⚠️ Chaves de API e webhooks exigem plano Business ou Enterprise. Faça upgrade em Plano e uso.</div>')+
    '<div class="card"><b>Chaves de API</b><p class="sub">Para integrar seu ERP/sistema à API REST do Villela Projects (base: '+origin+'/vpe/api/v1). A chave aparece só uma vez.</p>'+
    '<div style="display:flex;gap:8px;margin-top:8px"><input id="ak-nome" placeholder="Nome da chave (ex.: ERP financeiro)" style="flex:1"><button class="btn" onclick="criarChaveApi()">Gerar chave</button></div>'+
@@ -1096,7 +1141,7 @@ async function delWebhook(id){if(!confirm('Excluir este webhook?'))return;try{aw
 async function vUsuarios(){
   const d=await api('GET','/usuarios');const papeis=S.me.papeis_embutidos;
   const opts=sel=>Object.entries(papeis).filter(([k])=>k!=='dono').map(([k,n])=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+esc(n)+'</option>').join('');
-  $('corpo').innerHTML='<h2>Usuários e permissões</h2>'+
+  $('corpo').innerHTML=
    '<div class="card"><b>Convidar por e-mail</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
    '<input id="cv-email" placeholder="email@empresa.com" style="flex:2;min-width:200px"><select id="cv-papel" style="flex:1;min-width:170px">'+opts('colaborador')+'</select>'+
    '<button class="btn peq" onclick="convidar()">Convidar</button></div><div id="cv-out" style="margin-top:8px;font-size:13px"></div></div>'+
@@ -1114,7 +1159,7 @@ async function mudar(id,campos){try{await api('PATCH','/usuarios/'+id,campos);vU
 async function revogar(id){try{await api('DELETE','/convites/'+id);vUsuarios();}catch(e){alert(e.message);}}
 async function vAudit(){
   const d=await api('GET','/auditoria?limite=200');
-  $('corpo').innerHTML='<h2>Trilha de auditoria</h2><div class="card"><table><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Entidade</th><th>IP</th></tr>'+
+  $('corpo').innerHTML='<div class="card"><table><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Entidade</th><th>IP</th></tr>'+
    d.eventos.map(a=>'<tr><td>'+dt(a.criado_em)+'</td><td>'+esc(a.usuario_nome)+'</td><td>'+esc(a.acao)+'</td><td>'+esc(a.entidade)+(a.entidade_id?' <span class="chip">'+esc(a.entidade_id)+'</span>':'')+'</td><td>'+esc(a.ip)+'</td></tr>').join('')+'</table></div>';
 }
 async function vPlano(){
@@ -1137,7 +1182,7 @@ async function vPlano(){
       }
     }catch(e){billingHtml='<div class="erro">'+esc(e.message)+'</div>';}
   }
-  $('corpo').innerHTML='<h2>Plano e uso</h2>'+
+  $('corpo').innerHTML=
    '<div class="card"><b>Plano atual:</b> '+esc(d.plano?d.plano.nome:'—')+' <span class="chip">'+esc(d.plano?d.plano.subscription.status:'')+'</span>'+
    '<table style="margin-top:10px"><tr><th>Métrica</th><th>Uso</th><th>Limite</th></tr>'+
    linha('Usuários ativos','usuarios',L.usuarios)+linha('Projetos','projetos',L.projetos)+
@@ -1152,7 +1197,7 @@ async function assinarPlano(slug){
 async function cancelarAssin(){if(!confirm('Cancelar a assinatura? Sua conta pode ser suspensa ao fim do período pago.'))return;try{await api('POST','/billing/cancelar');vPlano();}catch(e){alert(e.message);}}
 async function vConfig(){
   const d=await api('GET','/config');const t=d.tenant;
-  $('corpo').innerHTML='<h2>Configurações da empresa</h2><div class="card">'+
+  $('corpo').innerHTML='<div class="card">'+
    '<label>Nome da empresa</label><input id="cf-nome" value="'+esc(t.nome)+'">'+
    '<label>CNPJ</label><input id="cf-cnpj" value="'+esc(t.cnpj)+'">'+
    '<label>E-mail de contato</label><input id="cf-email" value="'+esc(t.email_contato)+'">'+
@@ -1173,7 +1218,7 @@ function portalShell(corpoHtml) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Portal do cliente — Villela Projects</title>
 ${HEAD_MARCA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}.pcard{max-width:760px;margin:26px auto}pre.doc{white-space:pre-wrap;background:var(--fundo);border:1px solid var(--borda);border-radius:10px;padding:16px;font-family:inherit;font-size:14px;max-height:60vh;overflow:auto}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="projects">
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}.pcard{max-width:760px;margin:26px auto}pre.doc{white-space:pre-wrap;background:var(--fundo);border:1px solid var(--borda);border-radius:10px;padding:16px;font-family:inherit;font-size:14px;max-height:60vh;overflow:auto}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="projects">
 <header class="top"><div class="wrap"><span class="brand">${BRAND_LOCKUP}</span></div></header>
 <div class="wrap pcard">${corpoHtml}</div>
 <footer><div class="wrap">Portal do cliente · documento apresentado por meio do Villela Projects, uma empresa do Grupo Villela Stay.</div></footer></body></html>`;
