@@ -15,38 +15,67 @@
   function val(id) { var e = el(id); return e ? e.value : ''; }
 
   function api(m, p, b) {
+    var meu = SEQ; // aba vigente quando a chamada saiu (ver irPara)
     return fetch('/gestao/api' + p, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined })
-      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status)); return d; }); });
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status)); return d; }); })
+      .then(function (d) {
+        // leitura que chegou tarde, de uma aba que o usuário já abandonou:
+        // não deixa pintar por cima do conteúdo da aba nova (promessa morre aqui)
+        if (m === 'GET' && meu !== SEQ) return new Promise(function () {});
+        return d;
+      });
   }
   var app = function (m, p, b) { return api(m, '/app' + p, b); };
 
   var root = function () { return el('app'); };
   var view = function () { return el('c'); };
-  function setView(html) { var v = view(); if (v) v.innerHTML = html; }
+  // SEQ cresce a cada troca de aba: a view que demorar a responder e chegar
+  // depois de o usuário já ter trocado de aba não pinta por cima da nova.
+  var SEQ = 0;
+  var setView = function (html) { var v = view(); if (v) v.innerHTML = html; };
 
   // catálogo de abas do app: [navId, módulo do plano, rótulo, view]
+  // [id, modulo do plano, rotulo com icone, view, grupo, icone, rotulo curto]
   var TABS = [
-    ['imoveis', 'imoveis', '🏠 Imóveis', vImoveis],
-    ['consultas', 'reservas', '📨 Consultas', vConsultas],
-    ['reservas', 'reservas', '📅 Reservas', vReservas],
-    ['canais', 'canais', '🔗 Canais', vCanais],
-    ['limpeza', 'limpeza', '🧹 Limpezas', vLimpezas],
-    ['manutencao', 'manutencao', '🛠️ Manutenção', vManutencao],
-    ['financeiro', 'financeiro', '💰 Financeiro', vFinanceiro],
-    ['precificacao', 'precificacao', '💲 Preços', vPrecificacao],
-    ['hospede', 'hospede', '👥 Hóspedes', vHospedes],
-    ['estoque', 'estoque', '📦 Estoque', vEstoque],
+    ['imoveis', 'imoveis', '🏠 Imóveis', vImoveis, 'Operação', '🏠', 'Imóveis'],
+    ['reservas', 'reservas', '📅 Reservas', vReservas, 'Operação', '📅', 'Reservas'],
+    ['consultas', 'reservas', '📨 Consultas', vConsultas, 'Operação', '📨', 'Consultas'],
+    ['limpeza', 'limpeza', '🧹 Limpezas', vLimpezas, 'Operação', '🧹', 'Limpezas'],
+    ['manutencao', 'manutencao', '🛠️ Manutenção', vManutencao, 'Operação', '🛠️', 'Manutenção'],
+    ['estoque', 'estoque', '📦 Estoque', vEstoque, 'Operação', '📦', 'Estoque'],
+    ['canais', 'canais', '🔗 Canais', vCanais, 'Comercial', '🔗', 'Canais / OTAs'],
+    ['precificacao', 'precificacao', '💲 Preços', vPrecificacao, 'Comercial', '💲', 'Preços'],
+    ['hospede', 'hospede', '👥 Hóspedes', vHospedes, 'Comercial', '👥', 'Hóspedes'],
+    ['financeiro', 'financeiro', '💰 Financeiro', vFinanceiro, 'Financeiro', '💰', 'Lançamentos'],
   ];
+
+  // abas fixas (fora do gating por modulo) + a ordem dos grupos no menu
+  var FIXAS = {
+    painel: ['Visão geral', '📊', 'Painel'],
+    plano: ['Conta', '💳', 'Plano e cobrança'],
+    uso: ['Conta', '📈', 'Uso'],
+    integracoes: ['Conta', '🔌', 'API e integrações'],
+    suporte: ['Conta', '🎧', 'Suporte'],
+  };
+  var ORDEM_GRUPOS = ['Visão geral', 'Operação', 'Comercial', 'Financeiro', 'Conta'];
+  var ABA = 'painel';                       // aba corrente (para marcar a ativa)
+  var MAPA_VIEWS = {};                      // id -> funcao de view
 
   // ---------------- login / boot ----------------
   function bootGestao() {
     api('GET', '/me').then(render).catch(renderLogin);
   }
   function renderLogin() {
-    root().innerHTML = '<div class="card"><h3>Entrar</h3>' +
-      '<input id="em" type="email" placeholder="E-mail"><input id="sn" type="password" placeholder="Senha">' +
-      '<button class="btn" id="b-entrar">Entrar</button><p id="msg" class="erro"></p>' +
-      '<p class="sub">Novo por aqui? <a href="/gestao/assinar?plano=trial">Teste grátis</a>.</p></div>';
+    // rotulos de verdade (placeholder nao e rotulo) + autocomplete do navegador
+    root().innerHTML = '<div class="card" style="max-width:420px;margin:0 auto">' +
+      '<h3 style="margin-bottom:14px">Entrar</h3>' +
+      '<div class="vx-campo"><label for="em">E-mail</label>' +
+      '<input id="em" type="email" autocomplete="username" autocapitalize="off" spellcheck="false"></div>' +
+      '<div class="vx-campo"><label for="sn">Senha</label>' +
+      '<input id="sn" type="password" autocomplete="current-password"></div>' +
+      '<button class="vx-btn vx-btn--block" id="b-entrar">Entrar</button>' +
+      '<p id="msg" class="erro" role="alert"></p>' +
+      '<p class="vx-hint" style="text-align:center;margin:10px 0 0">Novo por aqui? <a href="/gestao/assinar?plano=trial">Teste grátis</a>.</p></div>';
     el('b-entrar').onclick = function () {
       el('msg').textContent = '';
       api('POST', '/login', { email: val('em'), senha: val('sn') }).then(bootGestao).catch(function (e) { el('msg').textContent = e.message; });
@@ -54,30 +83,133 @@
   }
   function sair() { api('POST', '/logout').catch(function () {}).then(function () { location.reload(); }); }
 
+  // itens visiveis do menu, ja filtrados pelo plano, na forma
+  // [id, grupo, icone, rotulo]
+  function itensDoMenu(me) {
+    var ent = me.entitlements;
+    var liberado = !!(ent && ent.acesso_liberado);
+    var itens = [['painel'].concat(FIXAS.painel)];
+    if (liberado) {
+      TABS.filter(function (t) { return ent.modulos.indexOf(t[1]) >= 0; })
+        .forEach(function (t) { itens.push([t[0], t[4], t[5], t[6]]); });
+    }
+    itens.push(['plano'].concat(FIXAS.plano));
+    itens.push(['uso'].concat(FIXAS.uso));
+    if (liberado) itens.push(['integracoes'].concat(FIXAS.integracoes));
+    itens.push(['suporte'].concat(FIXAS.suporte));
+    return itens;
+  }
+
+  function montarNav(me) {
+    var itens = itensDoMenu(me), html = '';
+    ORDEM_GRUPOS.forEach(function (g) {
+      var doGrupo = itens.filter(function (i) { return i[1] === g; });
+      if (!doGrupo.length) return;
+      html += '<div class="vx-nav-grupo">' + esc(g) + '</div>';
+      doGrupo.forEach(function (i) {
+        html += '<button type="button" class="vx-nav-item" data-nav="' + i[0] + '"' +
+          (ABA === i[0] ? ' aria-current="page"' : '') + ' title="' + esc(i[3]) + '">' +
+          '<span class="vx-nav-ico" aria-hidden="true">' + i[2] + '</span>' +
+          '<span class="vx-nav-rot">' + esc(i[3]) + '</span></button>';
+      });
+    });
+    html += '<hr class="vx-sep" style="margin:8px 4px">' +
+      '<button type="button" class="vx-nav-item vx-nav-toggle" data-colapsar="1" aria-label="' +
+      (NAV_COLAPSADA ? 'Expandir menu' : 'Recolher menu') + '">' +
+      '<span class="vx-nav-ico" aria-hidden="true">' + (NAV_COLAPSADA ? '»' : '«') + '</span>' +
+      '<span class="vx-nav-rot">Recolher menu</span></button>';
+    return html;
+  }
+
+  // menu recolhido: mesma preferência do Portal Staff (chave vx-nav)
+  var NAV_COLAPSADA = (function () { try { return localStorage.getItem('vx-nav') === 'colapsada'; } catch (_) { return false; } })();
+  function alternarNav(me) {
+    NAV_COLAPSADA = !NAV_COLAPSADA;
+    try { localStorage.setItem('vx-nav', NAV_COLAPSADA ? 'colapsada' : 'aberta'); } catch (_) {}
+    var a = el('vsm-app'); if (a) a.setAttribute('data-nav', NAV_COLAPSADA ? 'colapsada' : 'aberta');
+    var nav = el('vsm-nav'); if (nav) { nav.innerHTML = montarNav(me); ligarNav(me); }
+  }
+  function ligarNav(me) {
+    Array.prototype.forEach.call(document.querySelectorAll('#vsm-nav [data-nav]'), function (b) {
+      b.onclick = function () { irPara(b.getAttribute('data-nav'), me); };
+    });
+    var t = document.querySelector('#vsm-nav [data-colapsar]');
+    if (t) t.onclick = function () { alternarNav(me); };
+  }
+
+  // contexto da aba corrente, para o cabeçalho de pagina e o breadcrumb
+  function ctxDaAba(me) {
+    var achado = null;
+    itensDoMenu(me).forEach(function (i) { if (i[0] === ABA) achado = i; });
+    return achado || ['painel', 'Visão geral', '📊', 'Painel'];
+  }
+
+  function pintarCabecalho(me) {
+    var c = ctxDaAba(me);
+    var h = el('vsm-head');
+    if (!h) return;
+    h.innerHTML = '<div class="vx-crumb"><span>' + esc(me.operacao.nome) + '</span>' +
+      '<span aria-hidden="true">›</span><span>' + esc(c[1]) + '</span></div>' +
+      '<h1>' + c[2] + ' ' + esc(c[3]) + '</h1>';
+  }
+
+  // troca de aba: marca a ativa, atualiza o cabeçalho e chama a view
+  function irPara(id, me) {
+    ABA = id;
+    var nav = el('vsm-nav');
+    if (nav) {
+      Array.prototype.forEach.call(nav.querySelectorAll('[data-nav]'), function (b) {
+        if (b.getAttribute('data-nav') === id) b.setAttribute('aria-current', 'page');
+        else b.removeAttribute('aria-current');
+      });
+    }
+    pintarCabecalho(me);
+    var v = MAPA_VIEWS[id] || vPainel;
+    SEQ++;
+    setView(esqueleto());
+    v();
+  }
+
+  function esqueleto() {
+    return '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div>' +
+      '<div class="vx-skel vx-skel--bloco"></div>';
+  }
+
   function render(me) {
     ME = me; var ent = me.entitlements; var st = me.operacao.status;
     var liberado = !!(ent && ent.acesso_liberado); // usa o flag do backend (cobre trial/ativa/cortesia)
     var alerta = !liberado
-      ? '<div class="aviso">⚠️ Sua conta está <b>' + esc(st) + '</b>. Regularize a cobrança para voltar a usar o sistema.</div>'
-      : (st === 'trial' ? '<div class="aviso">🎁 Período de teste até <b>' + dt(ent.trial_expira_em) + '</b>. Assine para continuar sem interrupção.</div>' : '');
-    var tabs = liberado ? TABS.filter(function (t) { return ent.modulos.indexOf(t[1]) >= 0; }) : [];
-    var nav = '<button class="btn g peq" data-nav="painel">📊 Painel</button>' +
-      tabs.map(function (t) { return '<button class="btn g peq" data-nav="' + t[0] + '">' + t[2] + '</button>'; }).join('') +
-      '<button class="btn g peq" data-nav="plano">💳 Plano</button><button class="btn g peq" data-nav="uso">📈 Uso</button>' +
-      (liberado ? '<button class="btn g peq" data-nav="integracoes">🔌 API</button>' : '') +
-      '<button class="btn g peq" data-nav="suporte">🎧 Suporte</button>';
-    root().innerHTML = '<div class="card"><h3>' + esc(me.operacao.nome) + ' <span class="tag">' + esc(ent.plano || '—') + '</span></h3>' + alerta +
-      '<div class="menu" id="nav">' + nav + '</div>' +
-      '<p class="sub">Olá, ' + esc(me.usuario.nome || me.usuario.email) + ' · <button class="btn secund peq" id="pwa-btn" style="display:none" title="Instalar o Villela Stay Manager como app no celular">📲 Instalar app</button> <button class="btn secund peq" id="push-btn" style="display:none" title="Receber avisos de novas reservas no celular">🔔 Avisos</button> <a href="#" id="b-sair">sair</a></p></div><div id="c"></div>';
+      ? '<div class="vx-alerta vx-alerta--danger"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span><div><b>Sua conta está ' + esc(st) + '.</b><p class="vx-mb0">Regularize a cobrança para voltar a usar o sistema.</p></div></div>'
+      : (st === 'trial' ? '<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">🎁</span><div><b>Período de teste até ' + dt(ent.trial_expira_em) + '.</b><p class="vx-mb0">Assine para continuar sem interrupção.</p></div></div>' : '');
+
+    MAPA_VIEWS = { painel: vPainel, plano: vPlano, uso: vUso, suporte: vSuporte, integracoes: vIntegracoes };
+    TABS.forEach(function (t) { MAPA_VIEWS[t[0]] = t[3]; });
+    ABA = liberado ? 'painel' : 'plano';
+
+    root().innerHTML =
+      '<div class="vx-app" id="vsm-app" data-nav="' + (NAV_COLAPSADA ? 'colapsada' : 'aberta') + '">' +
+        '<nav class="vx-nav" id="vsm-nav" aria-label="Seções do painel">' + montarNav(me) + '</nav>' +
+        '<div class="vx-main">' +
+          '<div class="vx-page-head">' +
+            '<div id="vsm-head"></div>' +
+            '<div class="vx-acoes">' +
+              '<span class="vx-badge vx-badge--accent">' + esc(ent.plano || '—') + '</span>' +
+              '<button class="vx-btn vx-btn--sec vx-btn--sm" id="pwa-btn" style="display:none" title="Instalar o Villela Stay Manager como app no celular">📲 Instalar app</button>' +
+              '<button class="vx-btn vx-btn--sec vx-btn--sm" id="push-btn" style="display:none" title="Receber avisos de novas reservas no celular">🔔 Avisos</button>' +
+              '<button class="vx-btn vx-btn--ghost vx-btn--sm" id="b-sair">Sair</button>' +
+            '</div>' +
+          '</div>' +
+          '<p class="vx-hint">Conectado como ' + esc(me.usuario.nome || me.usuario.email) + '</p>' +
+          alerta +
+          '<div id="c"></div>' +
+        '</div>' +
+      '</div>';
+
     el('b-sair').onclick = function (e) { e.preventDefault(); sair(); };
     pintarBotaoPush();
     pintarBotaoInstalar();
-    var map = { painel: vPainel, plano: vPlano, uso: vUso, suporte: vSuporte, integracoes: vIntegracoes };
-    TABS.forEach(function (t) { map[t[0]] = t[3]; });
-    Array.prototype.forEach.call(document.querySelectorAll('#nav [data-nav]'), function (b) {
-      b.onclick = function () { (map[b.getAttribute('data-nav')] || vPainel)(); };
-    });
-    (liberado ? vPainel : vPlano)();
+    ligarNav(me);
+    irPara(ABA, me);
   }
 
   // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
@@ -142,7 +274,31 @@
     }).catch(function (e) { alert(e.message); }).then(function () { pintarBotaoPush(); });
   }
 
-  function erroBox(e) { setView('<div class="card erro">' + esc(e.message || e) + '</div>'); }
+  // erro com causa e saida (nunca so a mensagem crua)
+  function erroBox(e) {
+    setView('<div class="vx-alerta vx-alerta--danger" role="alert">' +
+      '<span class="vx-alerta-ico" aria-hidden="true">⚠️</span><div>' +
+      '<b>Não foi possível carregar esta tela</b>' +
+      '<p class="vx-mb0">' + esc(e && e.message ? e.message : e) + '</p>' +
+      '<p class="vx-mb0" style="margin-top:8px"><button type="button" class="vx-btn vx-btn--sec vx-btn--sm" id="vsm-retry">Tentar novamente</button></p>' +
+      '</div></div>');
+    var b = el('vsm-retry');
+    if (b) b.onclick = function () { irPara(ABA, ME); };
+  }
+
+  // tabela do design system: rolagem controlada, cabeçalho fixo, scope e
+  // data-rot (no celular cada linha vira um card rotulado)
+  function tabelaVsm(cols, linhas) {
+    var rot = function (c) { return String(c == null ? '' : c).replace(/<[^>]*>/g, '').trim(); };
+    return '<div class="vx-tabela-wrap"><table class="vx-tabela--cards"><thead><tr>' +
+      cols.map(function (c) { return '<th scope="col">' + c + '</th>'; }).join('') +
+      '</tr></thead><tbody>' +
+      linhas.map(function (l) {
+        return '<tr>' + l.map(function (c, i) {
+          return '<td data-rot="' + esc(rot(cols[i])) + '">' + (c == null ? '' : c) + '</td>';
+        }).join('') + '</tr>';
+      }).join('') + '</tbody></table></div>';
+  }
   function imovelOptions(imoveis, sel) {
     return imoveis.map(function (i) { return '<option value="' + i.id + '"' + (i.id === sel ? ' selected' : '') + '>' + esc(i.nome) + '</option>'; }).join('');
   }
@@ -151,16 +307,63 @@
   function vPainel() {
     app('GET', '/painel').then(function (d) {
       var p = d.painel, f = p.financeiro_mes;
-      var kpi = function (r, v) { return '<div class="kpi"><div class="sub">' + r + '</div><div style="font-size:1.4rem;font-weight:700">' + v + '</div></div>'; };
-      setView('<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0">' +
-        kpi('Imóveis', p.imoveis) + kpi('Consultas abertas', p.consultas_abertas || 0) + kpi('Reservas ativas', p.reservas_ativas) + kpi('Check-ins 7d', p.checkins_7d) +
-        kpi('Check-outs 7d', p.checkouts_7d) + kpi('Limpezas pendentes', p.limpezas_pendentes) + kpi('Manutenção aberta', p.manutencao_aberta) +
-        kpi('Etapas pendentes 7d', p.etapas_pendentes || 0) + kpi('Estoque em falta', p.estoque_em_falta || 0) +
-        kpi('Receita do mês', brl(f.receita_centavos)) + kpi('Resultado do mês', brl(f.resultado_centavos)) + '</div>' +
-        '<div class="card"><h3>Próximas reservas</h3>' + (p.proximas.length
-          ? '<table><tr><th>Imóvel</th><th>Hóspede</th><th>Check-in</th><th>Check-out</th><th></th></tr>' +
-            p.proximas.map(function (r) { return '<tr><td>' + esc(r.imovel_nome || '—') + '</td><td>' + esc(r.hospede_nome || '—') + '</td><td>' + dt(r.checkin) + '</td><td>' + dt(r.checkout) + '</td><td><span class="tag">' + esc(r.status) + '</span></td></tr>'; }).join('') + '</table>'
-          : '<p class="sub">Sem reservas futuras. Cadastre imóveis e lance reservas nas abas acima.</p>') + '</div>');
+      // KPI com rotulo, valor, contexto, tom por urgencia e ACAO (leva a tela que resolve)
+      var kpi = function (rot, valor, ctx, tom, aba) {
+        var corpo = '<span class="vx-kpi-rot">' + esc(rot) + '</span>' +
+          '<span class="vx-kpi-val">' + valor + '</span>' +
+          (ctx ? '<span class="vx-kpi-ctx">' + esc(ctx) + '</span>' : '');
+        return aba
+          ? '<button type="button" class="vx-kpi" data-tom="' + (tom || '') + '" data-ir="' + aba + '">' + corpo + '</button>'
+          : '<div class="vx-kpi" data-tom="' + (tom || '') + '">' + corpo + '</div>';
+      };
+      var secao = function (titulo, sub, html) {
+        return '<section class="vx-card"><div class="vx-card-head"><div><h2>' + esc(titulo) + '</h2>' +
+          (sub ? '<p class="vx-hint vx-mb0">' + esc(sub) + '</p>' : '') + '</div></div>' + html + '</section>';
+      };
+
+      // 1. o que pede providencia hoje
+      var pend = [];
+      if (p.limpezas_pendentes) pend.push(kpi('Limpezas pendentes', p.limpezas_pendentes, 'antes do próximo check-in', 'critico', 'limpeza'));
+      if (p.manutencao_aberta) pend.push(kpi('Manutenção aberta', p.manutencao_aberta, 'chamados sem conclusão', 'atencao', 'manutencao'));
+      if (p.consultas_abertas) pend.push(kpi('Consultas abertas', p.consultas_abertas, 'aguardando resposta', 'atencao', 'consultas'));
+      if (p.estoque_em_falta) pend.push(kpi('Estoque em falta', p.estoque_em_falta, 'itens abaixo do mínimo', 'atencao', 'estoque'));
+      if (p.etapas_pendentes) pend.push(kpi('Etapas pendentes (7d)', p.etapas_pendentes, 'na preparação dos imóveis', 'atencao', 'limpeza'));
+
+      var html = pend.length
+        ? secao('Exige ação', 'Pendências abertas agora.', '<div class="vx-kpis">' + pend.join('') + '</div>')
+        : secao('Exige ação', 'Pendências abertas agora.',
+            '<div class="vx-vazio"><div class="vx-vazio-ico" aria-hidden="true">✓</div>' +
+            '<div class="vx-vazio-tit">Nada pendente no momento</div>' +
+            '<p>Sem limpeza atrasada, manutenção aberta, consulta sem resposta ou item em falta.</p></div>');
+
+      // 2. movimento dos proximos dias
+      html += secao('Próximos 7 dias', 'Entradas e saídas confirmadas.', '<div class="vx-kpis">' +
+        kpi('Check-ins', p.checkins_7d, 'chegadas previstas', p.checkins_7d ? 'ok' : '', 'reservas') +
+        kpi('Check-outs', p.checkouts_7d, 'saídas previstas', '', 'reservas') +
+        kpi('Reservas ativas', p.reservas_ativas, 'no total', '', 'reservas') + '</div>');
+
+      // 3. resultado do mes
+      html += secao('Mês corrente', 'Receita e resultado apurados no período.', '<div class="vx-kpis">' +
+        kpi('Receita', brl(f.receita_centavos), 'entradas do mês', '', 'financeiro') +
+        kpi('Resultado', brl(f.resultado_centavos), 'receita menos despesas',
+            (f.resultado_centavos < 0 ? 'critico' : 'ok'), 'financeiro') +
+        kpi('Imóveis', p.imoveis, 'cadastrados', '', 'imoveis') + '</div>');
+
+      // 4. proximas reservas
+      html += secao('Próximas reservas', '', p.proximas.length
+        ? tabelaVsm(['Imóvel', 'Hóspede', 'Check-in', 'Check-out', 'Situação'], p.proximas.map(function (r) {
+            return [esc(r.imovel_nome || '—'), esc(r.hospede_nome || '—'), dt(r.checkin), dt(r.checkout),
+              '<span class="vx-badge">' + esc(r.status) + '</span>'];
+          }))
+        : '<div class="vx-vazio"><div class="vx-vazio-ico" aria-hidden="true">📅</div>' +
+          '<div class="vx-vazio-tit">Sem reservas futuras</div>' +
+          '<p>Cadastre um imóvel e lance a primeira reserva para o painel começar a mostrar movimento.</p></div>');
+
+      setView(html);
+      // KPI clicavel leva para a tela correspondente
+      Array.prototype.forEach.call(view().querySelectorAll('[data-ir]'), function (b) {
+        b.onclick = function () { irPara(b.getAttribute('data-ir'), ME); };
+      });
     }).catch(erroBox);
   }
 
