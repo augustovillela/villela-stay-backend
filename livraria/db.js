@@ -41,13 +41,19 @@ try {
 } catch (e) { console.error('[livraria] fix capa:', e.message); }
 
 // Correção pontual (idempotente): capa oficial do "Claude AI na Prática" hospedada em
-// /assets/livros/ (só preenche se ainda estiver sem capa) + conserto do typo "Prátcia"
-// nos textos do livro (REPLACE é no-op quando não há ocorrência; slug preservado).
+// /assets/livros/ (só preenche se ainda estiver sem capa) + conserto do typo "Prátcia" nos textos
+// e no SLUG do livro (era 'claude-ai-na-pratcia'; REPLACE é no-op quando não há ocorrência).
+// O slug antigo já circulou, então `/livros/claude-ai-na-pratcia` responde 301 em rotas-publicas.js.
+// A correção do slug fica aqui — e não só na chamada de API que a aplicou em 30/07/2026 — para
+// sobreviver à restauração de um snapshot antigo do banco.
 try {
+  db.prepare(`UPDATE books SET slug = 'claude-ai-na-pratica'
+    WHERE slug = 'claude-ai-na-pratcia'
+      AND NOT EXISTS (SELECT 1 FROM books WHERE slug = 'claude-ai-na-pratica')`).run();
   db.prepare(`UPDATE books SET
       capa_url = '/assets/livros/claude-ai-na-pratica.jpg',
       og_image = 'https://livros.villelastay.com.br/assets/livros/claude-ai-na-pratica.jpg'
-    WHERE slug = 'claude-ai-na-pratcia' AND (capa_url IS NULL OR capa_url = '')`).run();
+    WHERE slug = 'claude-ai-na-pratica' AND (capa_url IS NULL OR capa_url = '')`).run();
   db.prepare(`UPDATE books SET
       titulo = REPLACE(titulo, 'Prátcia', 'Prática'),
       subtitulo = REPLACE(subtitulo, 'Prátcia', 'Prática'),
@@ -55,7 +61,7 @@ try {
       descricao_longa = REPLACE(descricao_longa, 'Prátcia', 'Prática'),
       seo_title = REPLACE(seo_title, 'Prátcia', 'Prática'),
       seo_description = REPLACE(seo_description, 'Prátcia', 'Prática')
-    WHERE slug = 'claude-ai-na-pratcia'`).run();
+    WHERE slug = 'claude-ai-na-pratica'`).run();
 } catch (e) { console.error('[livraria] fix capa claude:', e.message); }
 
 // ---- helpers ----
