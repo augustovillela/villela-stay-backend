@@ -272,7 +272,7 @@ function registrarPortalCliente(app, { jwtSecret }) {
     <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-legal/favicon-192.png">
     <link rel="apple-touch-icon" href="/assets/brand/villela-legal/apple-touch-icon.png">
     <meta name="theme-color" content="#1B2A4A">
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style></head>
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}</style></head>
     <body class="vx" data-vertical="legal"><div class="cx"><h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><img src="/assets/brand/villela-legal/logo-negativo.svg" alt="Villela Legal" style="height:32px"><span><span style="font-family:'Lora',Georgia,serif;font-weight:700">Villela</span> <span style="font-family:'Inter',system-ui,sans-serif;font-weight:700;letter-spacing:.22em;color:var(--villela-gold);font-size:.72em">LEGAL</span></span> <small>· portal do cliente</small></h1>${corpo}</div>
     <script>${script}</script></body></html>`;
 

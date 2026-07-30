@@ -14,7 +14,11 @@ const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { mini
 const dataBr = (iso) => iso ? `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}/${String(iso).slice(0, 4)}` : '—';
 const waLink = (tel, txt) => 'https://wa.me/' + String(tel || '').replace(/\D/g, '') + (txt ? '?text=' + encodeURIComponent(txt) : '');
 
+// SEQ cresce a cada troca de tela: leitura que volta depois de o usuário já
+// ter mudado de tela não pinta por cima da tela nova (a promessa morre aqui).
+let SEQ = 0;
 async function api(metodo, caminho, corpo) {
+  const meu = SEQ;
   const r = await fetch('/crm/api' + caminho, {
     method: metodo, headers: { 'Content-Type': 'application/json' },
     body: corpo ? JSON.stringify(corpo) : undefined, credentials: 'same-origin',
@@ -22,6 +26,7 @@ async function api(metodo, caminho, corpo) {
   const d = await r.json().catch(() => ({}));
   if (r.status === 401) { telaLogin(); throw new Error('Sessão expirada — entre novamente.'); }
   if (!r.ok) throw new Error(d.erro || ('Erro ' + r.status));
+  if (metodo === 'GET' && meu !== SEQ) await new Promise(() => {});
   return d;
 }
 
@@ -32,11 +37,13 @@ async function bootCRM() {
 
 function telaLogin() {
   $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto">
-    <h3>Entrar no Villela CRM</h3>
-    <label>E-mail <input id="lg-email" type="email" autocomplete="username"></label>
-    <label>Senha <input id="lg-senha" type="password" autocomplete="current-password"></label>
-    <button class="btn" id="lg-btn" style="margin-top:8px">Entrar</button>
-    <p id="lg-msg" class="erro"></p>
+    <h3 style="margin-bottom:14px">Entrar no Villela CRM</h3>
+    <div class="vx-campo"><label for="lg-email">E-mail</label>
+      <input id="lg-email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+    <div class="vx-campo"><label for="lg-senha">Senha</label>
+      <input id="lg-senha" type="password" autocomplete="current-password"></div>
+    <button class="vx-btn" id="lg-btn" style="margin-top:8px">Entrar</button>
+    <p id="lg-msg" class="erro" role="alert"></p>
     <p class="sub" style="margin-top:14px;text-align:left">Ainda não tem conta? <a href="/crm/assinar?plano=trial">Teste grátis por 14 dias</a>.</p></div>`;
   const entrar = async () => {
     $('#lg-msg').textContent = '';
@@ -49,30 +56,95 @@ function telaLogin() {
   $('#lg-senha').onkeydown = (ev) => { if (ev.key === 'Enter') entrar(); };
 }
 
+// [id, módulo do plano, grupo do menu, ícone, rótulo]
 const MENU = [
-  ['dash', '📊 Dashboard', 'dashboard'], ['kanban', '📋 Kanban', 'funis'], ['contatos', '👥 Contatos', 'contatos'],
-  ['tarefas', '⏰ Tarefas', 'tarefas'], ['templates', '💬 Templates', 'templates'], ['propostas', '📄 Propostas', 'propostas'],
-  ['campanhas', '📣 Campanhas', 'campanhas'], ['ia', '🤖 Agentes', 'ia'], ['conta', '⚙️ Conta', ''],
+  ['dash', 'dashboard', 'Visão geral', '📊', 'Dashboard'],
+  ['kanban', 'funis', 'Comercial', '📋', 'Kanban'],
+  ['contatos', 'contatos', 'Comercial', '👥', 'Contatos'],
+  ['propostas', 'propostas', 'Comercial', '📄', 'Propostas'],
+  ['tarefas', 'tarefas', 'Relacionamento', '⏰', 'Tarefas'],
+  ['templates', 'templates', 'Relacionamento', '💬', 'Templates'],
+  ['campanhas', 'campanhas', 'Relacionamento', '📣', 'Campanhas'],
+  ['ia', 'ia', 'Inteligência', '🤖', 'Agentes de IA'],
+  ['conta', '', 'Conta', '⚙️', 'Conta e plano'],
 ];
-function telaApp() {
+const ORDEM_GRUPOS = ['Visão geral', 'Comercial', 'Relacionamento', 'Inteligência', 'Conta'];
+let ABA = 'dash';
+let NAV_COLAPSADA = (() => { try { return localStorage.getItem('vx-nav') === 'colapsada'; } catch (_) { return false; } })();
+
+function itensDoMenu() {
   const mods = (ME.entitlements && ME.entitlements.modulos) || [];
+  return MENU.filter(([, mod]) => !mod || mods.includes(mod));
+}
+function montarNav() {
+  let html = '';
+  for (const g of ORDEM_GRUPOS) {
+    const doGrupo = itensDoMenu().filter(i => i[2] === g);
+    if (!doGrupo.length) continue;
+    html += `<div class="vx-nav-grupo">${esc(g)}</div>`;
+    for (const [id, , , ico, rot] of doGrupo) {
+      html += `<button type="button" class="vx-nav-item" data-v="${id}" title="${esc(rot)}"${ABA === id ? ' aria-current="page"' : ''}>` +
+        `<span class="vx-nav-ico" aria-hidden="true">${ico}</span><span class="vx-nav-rot">${esc(rot)}</span></button>`;
+    }
+  }
+  html += `<hr class="vx-sep" style="margin:8px 4px">
+    <button type="button" class="vx-nav-item vx-nav-toggle" data-colapsar="1" aria-label="${NAV_COLAPSADA ? 'Expandir menu' : 'Recolher menu'}">
+      <span class="vx-nav-ico" aria-hidden="true">${NAV_COLAPSADA ? '»' : '«'}</span>
+      <span class="vx-nav-rot">Recolher menu</span></button>`;
+  return html;
+}
+function ligarNav() {
+  document.querySelectorAll('#crm-nav [data-v]').forEach(b => { b.onclick = () => navegar(b.dataset.v); });
+  const t = $('#crm-nav [data-colapsar]');
+  if (t) t.onclick = alternarNav;
+}
+function alternarNav() {
+  NAV_COLAPSADA = !NAV_COLAPSADA;
+  try { localStorage.setItem('vx-nav', NAV_COLAPSADA ? 'colapsada' : 'aberta'); } catch (_) {}
+  const a = $('#crm-app'); if (a) a.setAttribute('data-nav', NAV_COLAPSADA ? 'colapsada' : 'aberta');
+  const nav = $('#crm-nav'); if (nav) { nav.innerHTML = montarNav(); ligarNav(); }
+}
+function ctxDaAba() {
+  return itensDoMenu().find(i => i[0] === ABA) || ['dash', 'dashboard', 'Visão geral', '📊', 'Dashboard'];
+}
+function pintarCabecalho() {
+  const c = ctxDaAba(); const h = $('#crm-head');
+  if (!h) return;
+  h.innerHTML = `<div class="vx-crumb"><span>${esc(ME.empresa.nome)}</span><span aria-hidden="true">›</span><span>${esc(c[2])}</span></div>
+    <h1>${c[3]} ${esc(c[4])}</h1>`;
+}
+
+function telaApp() {
   const bloq = ME.entitlements && !ME.entitlements.acesso_liberado;
-  const botoes = MENU.filter(([, , mod]) => !mod || mods.includes(mod))
-    .map(([id, rot]) => `<button class="btn peq secund" data-v="${id}">${rot}</button>`).join('');
+  ABA = bloq ? 'conta' : 'dash';
+  const alerta = bloq
+    ? `<div class="vx-alerta vx-alerta--danger"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span><div><b>Acesso bloqueado (${esc(ME.empresa.status)}).</b><p class="vx-mb0">Regularize o plano em Conta e plano.</p></div></div>`
+    : (ME.empresa.status === 'trial' && ME.entitlements.trial_expira_em
+      ? `<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">🎁</span><div><b>Período de teste até ${dataBr(ME.entitlements.trial_expira_em)}.</b><p class="vx-mb0">Assine em Conta e plano para não perder o acesso.</p></div></div>`
+      : '');
   $('#app').innerHTML = `
-    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-      <div><b>${esc(ME.empresa.nome)}</b> <span class="tag">${esc(ME.entitlements.plano || '')}</span>
-        <span class="sub" style="margin:0">· ${esc(ME.usuario.nome || ME.usuario.email)} (${esc(ME.usuario.papel)})</span></div>
-      <div style="display:flex;gap:8px"><button class="btn peq secund" id="pwa-btn" style="display:none" title="Instalar o Villela CRM como app no celular">📲 Instalar app</button><button class="btn peq secund" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button><button class="btn peq secund" id="sair">Sair</button></div>
-    </div>
-    ${bloq ? `<div class="aviso">⚠️ Acesso bloqueado (${esc(ME.empresa.status)}). Regularize o plano na aba Conta.</div>` : ''}
-    ${ME.empresa.status === 'trial' && ME.entitlements.trial_expira_em ? `<div class="aviso">🕒 Trial até ${dataBr(ME.entitlements.trial_expira_em)}. Assine na aba Conta para não perder o acesso.</div>` : ''}
-    <div class="menu">${botoes}</div><div id="tela"></div>`;
+    <div class="vx-app" id="crm-app" data-nav="${NAV_COLAPSADA ? 'colapsada' : 'aberta'}">
+      <nav class="vx-nav" id="crm-nav" aria-label="Seções do painel">${montarNav()}</nav>
+      <div class="vx-main">
+        <div class="vx-page-head">
+          <div id="crm-head"></div>
+          <div class="vx-acoes">
+            <span class="vx-badge vx-badge--accent">${esc(ME.entitlements.plano || '—')}</span>
+            <button class="vx-btn vx-btn--sec vx-btn--sm" id="pwa-btn" style="display:none" title="Instalar o Villela CRM como app no celular">📲 Instalar app</button>
+            <button class="vx-btn vx-btn--sec vx-btn--sm" id="push-btn" style="display:none" title="Receber avisos de leads e propostas no celular">🔔 Avisos</button>
+            <button class="vx-btn vx-btn--ghost vx-btn--sm" id="sair">Sair</button>
+          </div>
+        </div>
+        <p class="vx-hint">Conectado como ${esc(ME.usuario.nome || ME.usuario.email)} (${esc(ME.usuario.papel)})</p>
+        ${alerta}
+        <div id="tela"></div>
+      </div>
+    </div>`;
   $('#sair').onclick = async () => { await api('POST', '/logout'); location.reload(); };
-  document.querySelectorAll('.menu [data-v]').forEach(b => b.onclick = () => navegar(b.dataset.v));
+  ligarNav();
   pintarBotaoPush();
   pintarBotaoInstalar();
-  navegar(bloq ? 'conta' : 'dash');
+  navegar(ABA);
 }
 
 // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
@@ -137,29 +209,70 @@ async function alternarPush() {
 }
 function navegar(v) {
   const mapa = { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, campanhas: vCampanhas, ia: vIA, conta: vConta };
-  (mapa[v] || vDash)();
+  ABA = mapa[v] ? v : 'dash';
+  SEQ++;
+  document.querySelectorAll('#crm-nav [data-v]').forEach(b => {
+    if (b.dataset.v === ABA) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  pintarCabecalho();
+  (mapa[ABA] || vDash)();
 }
-const carregando = () => { $('#tela').innerHTML = '<p class="sub">Carregando…</p>'; };
-const erroTela = (e) => { $('#tela').innerHTML = `<p class="erro">${esc(e.message)}</p>`; };
+const carregando = () => {
+  $('#tela').innerHTML = '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--bloco"></div>';
+};
+const erroTela = (e) => {
+  $('#tela').innerHTML = `<div class="vx-alerta vx-alerta--danger" role="alert">
+    <span class="vx-alerta-ico" aria-hidden="true">⚠️</span>
+    <div><b>Não foi possível carregar esta tela</b>
+      <p class="vx-mb0">${esc(e && e.message ? e.message : 'Erro inesperado.')}</p>
+      <button class="vx-btn vx-btn--sec vx-btn--sm" id="crm-retry" style="margin-top:8px">Tentar novamente</button></div></div>`;
+  const b = $('#crm-retry');
+  if (b) b.onclick = () => navegar(ABA);
+};
 
 // ---------------- DASHBOARD ----------------
 async function vDash() {
   carregando();
   try {
     const [{ dashboard: d }, caixa] = await Promise.all([api('GET', '/app/dashboard'), api('GET', '/app/tarefas/caixa').catch(() => null)]);
-    const kpi = (n, r) => `<div class="kpi"><div class="n">${n}</div><div class="r">${esc(r)}</div></div>`;
-    const tab = (titulo, linhas) => linhas && linhas.length ? `<div class="card" style="margin-top:14px"><b>${esc(titulo)}</b><table>${linhas}</table></div>` : '';
-    $('#tela').innerHTML = `
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${kpi(d.leads_novos_7d, 'Leads novos (7d)')} ${kpi(d.contatos_total, 'Contatos ativos')} ${kpi(d.leads_quentes, 'Leads quentes')}
-        ${kpi(d.leads_sem_acao, 'Sem ação')} ${kpi(d.tarefas_hoje, 'Tarefas hoje')} ${kpi(d.tarefas_atrasadas, 'Atrasadas')}
-        ${kpi(d.oportunidades_abertas, 'Negócios abertos')} ${kpi(brl(d.valor_em_negociacao_centavos), 'Em negociação')}
-        ${kpi(brl(d.valor_ganho_centavos), 'Ganho (total)')} ${kpi(d.taxa_conversao_pct + '%', 'Conversão')}
-        ${d.tempo_medio_fechamento_dias != null ? kpi(d.tempo_medio_fechamento_dias + 'd', 'Tempo médio de fechamento') : ''}
-        ${kpi(d.propostas_enviadas, 'Propostas em aberto')} ${kpi(d.propostas_vencidas, 'Propostas vencidas')}
-      </div>
-      ${caixa ? caixaHTML(caixa) : ''}
-      <div class="duas">
+    // KPI acionável: número + o que fazer com ele; data-ir leva à tela certa
+    const kpi = (n, rot, ctx, ir, tom) => {
+      const corpo = `<span class="vx-kpi-rot">${esc(rot)}</span><span class="vx-kpi-val">${n}</span>` +
+        (ctx ? `<span class="vx-kpi-ctx">${esc(ctx)}</span>` : '');
+      return ir
+        ? `<button type="button" class="vx-kpi" data-tom="${tom || ''}" data-ir="${ir}">${corpo}</button>`
+        : `<div class="vx-kpi" data-tom="${tom || ''}">${corpo}</div>`;
+    };
+    const secao = (titulo, sub, corpo) => `<section class="vx-card"><div class="vx-card-head"><div><h2>${esc(titulo)}</h2>` +
+      (sub ? `<p class="vx-hint vx-mb0">${esc(sub)}</p>` : '') + '</div></div>' + corpo + '</section>';
+    const tab = (titulo, linhas) => linhas && linhas.length
+      ? `<div class="vx-card"><h3>${esc(titulo)}</h3><div class="vx-tabela-wrap"><table>${linhas}</table></div></div>` : '';
+
+    const exige = [
+      d.tarefas_atrasadas ? kpi(d.tarefas_atrasadas, 'Tarefas atrasadas', 'passaram do prazo', 'tarefas', 'critico') : '',
+      d.tarefas_hoje ? kpi(d.tarefas_hoje, 'Tarefas de hoje', 'para fechar hoje', 'tarefas', 'atencao') : '',
+      d.leads_sem_acao ? kpi(d.leads_sem_acao, 'Leads sem ação', 'ninguém retomou', 'contatos', 'atencao') : '',
+      d.propostas_vencidas ? kpi(d.propostas_vencidas, 'Propostas vencidas', 'passaram da validade', 'propostas', 'critico') : '',
+    ].filter(Boolean).join('');
+
+    $('#tela').innerHTML =
+      secao('Exige ação', 'O que está esperando por você agora.',
+        (exige ? `<div class="vx-kpis">${exige}</div>` : '<p class="vx-vazio">Nada atrasado. Dia limpo. 👌</p>') +
+        (caixa ? caixaHTML(caixa) : '')) +
+      secao('Funil', 'Como está a carteira hoje.', `<div class="vx-kpis">
+        ${kpi(d.oportunidades_abertas, 'Negócios abertos', 'no funil', 'kanban')}
+        ${kpi(brl(d.valor_em_negociacao_centavos), 'Em negociação', 'valor em aberto', 'kanban')}
+        ${kpi(d.propostas_enviadas, 'Propostas em aberto', 'aguardando resposta', 'propostas')}
+        ${kpi(d.taxa_conversao_pct + '%', 'Conversão', 'do total trabalhado', null)}
+      </div>`) +
+      secao('Carteira', 'Entrada de gente nova e temperatura.', `<div class="vx-kpis">
+        ${kpi(d.leads_novos_7d, 'Leads novos (7d)', 'entraram na semana', 'contatos')}
+        ${kpi(d.contatos_total, 'Contatos ativos', 'na base', 'contatos')}
+        ${kpi(d.leads_quentes, 'Leads quentes', 'prontos para abordar', 'contatos')}
+        ${kpi(brl(d.valor_ganho_centavos), 'Ganho (total)', 'negócios fechados', null)}
+        ${d.tempo_medio_fechamento_dias != null ? kpi(d.tempo_medio_fechamento_dias + 'd', 'Tempo médio de fechamento', 'do 1º contato ao ganho', null) : ''}
+      </div>`) +
+      `<div class="duas">
         ${tab('Leads e conversão por origem', d.por_origem.map(o => `<tr><td>${esc(o.origem || '—')}</td><td style="text-align:right">${o.leads} leads</td><td style="text-align:right">${o.convertidos} conv.</td></tr>`).join(''))}
         ${tab('Receita ganha por origem', d.receita_por_origem.map(o => `<tr><td>${esc(o.origem || '—')}</td><td style="text-align:right">${brl(o.v)}</td></tr>`).join(''))}
         ${tab('Previsão de receita (negócios abertos)', d.previsao_receita_mes.map(m => `<tr><td>${esc(m.mes)}</td><td style="text-align:right">${brl(m.v)}</td></tr>`).join(''))}
@@ -167,13 +280,14 @@ async function vDash() {
         ${tab('Motivos de perda', d.motivos_perda.map(m => `<tr><td>${esc(m.motivo)}</td><td style="text-align:right">${m.n}</td></tr>`).join(''))}
         ${tab('Temperatura dos leads', d.score_faixas.map(f => `<tr><td><span class="chip ${esc(f.faixa)}">${esc(f.faixa)}</span></td><td style="text-align:right">${f.n}</td></tr>`).join(''))}
       </div>`;
+    document.querySelectorAll('#tela [data-ir]').forEach(b => { b.onclick = () => navegar(b.dataset.ir); });
     ligaCaixa();
   } catch (e) { erroTela(e); }
 }
 function caixaHTML(cx) {
   const chip = (t, cls) => t.map(x => `<button class="btn peq secund cx-item" data-id="${esc(x.contato_id || x.id)}" style="margin:2px">${cls} ${esc(x.titulo || x.nome || x.contato_nome || '')}${x.vence_em ? ' · ' + dataBr(x.vence_em) : ''}</button>`).join('');
   if (!cx.atrasadas.length && !cx.hoje.length && !cx.leads_parados.length && !cx.propostas_sem_resposta.length) return '';
-  return `<div class="card" style="margin-top:14px;border-left:4px solid var(--acento)"><b>🔔 Precisa de ação</b><br>
+  return `<div class="vx-card" style="margin-top:14px;border-left:4px solid var(--vx-accent)"><b>🔔 Retomar agora</b><br>
     ${cx.atrasadas.length ? '<p style="margin:6px 0 2px"><b>Atrasadas:</b><br>' + chip(cx.atrasadas, '🔴') + '</p>' : ''}
     ${cx.hoje.length ? '<p style="margin:6px 0 2px"><b>Hoje:</b><br>' + chip(cx.hoje, '🟡') + '</p>' : ''}
     ${cx.leads_parados.length ? '<p style="margin:6px 0 2px"><b>Leads parados:</b><br>' + chip(cx.leads_parados, '🧊') + '</p>' : ''}

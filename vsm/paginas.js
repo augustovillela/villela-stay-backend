@@ -96,7 +96,7 @@ function landingHTML() {
     <link rel="canonical" href="https://manager.villelastay.com.br/gestao">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Stay Manager","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA.","offers":{"@type":"Offer","price":"129.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="manager">
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="manager">
     <header class="top"><div class="wrap">
       <a href="/gestao" style="text-decoration:none">${marca(true)}</a>
       <nav><a class="esconde" href="/gestao#recursos">Recursos</a><a class="esconde" href="/gestao#planos">Planos</a><a href="/gestao/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/gestao/assinar?plano=trial">Teste grátis</a></nav>
@@ -147,12 +147,12 @@ function landingHTML() {
 
 function shell(corpo, script) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}
     .cx{max-width:720px;margin:24px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.menu button{flex:1;min-width:96px}
     .kpi{display:inline-block;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;margin:4px}
     .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem}
-    .erro{color:#b00020}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="manager"><div class="cx">
+    .erro{color:#b00020}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="manager"><div class="cx">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}<span class="tag">painel da operação</span></div>${corpo}</div><script>${script}</script></body></html>`;
 }
 
@@ -181,7 +181,7 @@ function assinarHTML(planoSlug) {
 // Painel do assinante = app de gestão real (SPA carregada de /gestao/app.js).
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Stay Manager — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}
     .cx{max-width:1040px;margin:20px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:120px}
@@ -191,7 +191,7 @@ function appHTML() {
     label{font-size:.85rem;font-weight:600;display:block}
     table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--borda)}
     th{color:#5b6b70;font-weight:600}.chip,.tag{display:inline-block;background:#e6f1f4;color:var(--acento2);border-radius:12px;padding:2px 9px;font-size:.78rem}
-    </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="manager"><div class="cx">
+    </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="manager"><div class="cx">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}<span class="tag">painel da operação</span></div>
     <div id="app"><p class="sub">Carregando…</p></div></div>
     <script src="/gestao/app.js"></script><script>bootGestao();</script></body></html>`;

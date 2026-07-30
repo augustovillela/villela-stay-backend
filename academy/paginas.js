@@ -25,7 +25,7 @@ const HEAD_MARCA = `<link rel="preconnect" href="https://fonts.googleapis.com"><
 // lockup da marca: logo + "Villela" (Lora) + "ACADEMY" (Inter caixa alta, âmbar)
 const marca = ({ escuro = true, altura = 32 } = {}) =>
   `<a class="marca" href="/academy"><img src="${BRAND}/${escuro ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Academy" style="height:${altura}px">
-   <span><span class="mnome" style="color:${escuro ? '#F8F9FA' : 'var(--villela-navy)'}">Villela</span> <span class="msub">ACADEMY</span></span></a>`;
+   <span><span class="mnome" style="color:${escuro ? '#F8F9FA' : 'var(--villela-navy)'}">Villela</span> <span class="msub" style="color:${escuro ? 'var(--acento)' : 'var(--acento2)'}">ACADEMY</span></span></a>`;
 
 // GA4 do grupo (mesma propriedade do site; tráfego segmentável por hostname) — só páginas públicas.
 const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
@@ -33,7 +33,7 @@ const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2
 const CSS = `:root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#D97706;--acento2:#B45309;--borda:#E2E6EC;--ambar-claro:#FDE9D2}
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}
-a{color:var(--acento)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+a{color:var(--acento2)}.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
 .hero{background:linear-gradient(140deg,var(--villela-navy),var(--villela-navy2));color:#F8F9FA;padding:64px 0 72px}
 .hero h1{font-size:2.4rem;margin:.2rem 0;max-width:660px;line-height:1.15}.hero p{font-size:1.15rem;max-width:580px;color:#C7D0E0}
 .badge{display:inline-block;background:var(--villela-gold);color:var(--villela-navy);font-weight:700;padding:4px 12px;border-radius:20px;font-size:.85rem}
@@ -83,7 +83,7 @@ function landingHTML() {
     <link rel="canonical" href="${BASE_URL()}/academy">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="academy">
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="academy">
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
       <nav><a class="esconde" href="/academy#recursos">Recursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
@@ -132,7 +132,7 @@ function landingHTML() {
 
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS}
     .cx{max-width:1040px;margin:20px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:120px;display:inline-block;margin:4px}
@@ -140,7 +140,7 @@ function appHTML() {
     label{font-size:.85rem;font-weight:600;display:block}
     table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #f0ece2}
     th{color:#5B6472;font-weight:600}.chip{display:inline-block;background:var(--ambar-claro);color:var(--villela-navy);border-radius:12px;padding:2px 9px;font-size:.78rem}
-    </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="academy"><div class="cx">
+    </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
     <script src="/academy/app.js"></script><script>bootAcademy();</script></body></html>`;
@@ -162,10 +162,10 @@ function shellPublico({ titulo, descricao, url, corpo, imagem }) {
     <meta property="og:site_name" content="Villela Academy">
     <meta property="og:image" content="${esc(imagem || `${BASE_URL()}${BRAND}/og-image.png`)}">
     ${HEAD_MARCA}
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
     .cardp{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:18px;display:flex;flex-direction:column}
     .cardp .preco{font-size:1.3rem;font-weight:800;color:var(--villela-navy)}.cardp .preco s{color:#8A94A6;font-weight:400;font-size:.95rem}
-    .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="academy">
+    .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head><body class="vx" data-vertical="academy">
     <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
@@ -389,7 +389,7 @@ function produtorHTML(slug) {
 // de a plataforma operar comercialmente. O texto deixa isso explícito.
 function paginaLegal(titulo, corpo) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>${esc(titulo)} — Villela Academy</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS} .doc{max-width:760px;margin:32px auto;padding:0 18px;line-height:1.6}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head>
+    <title>${esc(titulo)} — Villela Academy</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=5"><style>${CSS} .doc{max-width:760px;margin:32px auto;padding:0 18px;line-height:1.6}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=5"></head>
     <body class="vx" data-vertical="academy"><div class="doc"><p><a href="/academy">← Villela Academy</a></p>
     <div class="aviso"><b>MINUTA</b> — documento em elaboração, sujeito a revisão jurídica (advogado OAB) antes da operação comercial.</div>
     <h1 style="color:var(--villela-navy)">${esc(titulo)}</h1>${corpo}

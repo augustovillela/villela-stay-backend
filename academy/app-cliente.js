@@ -14,14 +14,31 @@
   function el(id) { return document.getElementById(id); }
   function val(id) { var e = el(id); return e ? e.value : ''; }
 
+  // SEQ cresce a cada troca de aba: leitura que volta depois de o usuário já
+  // ter mudado de aba não pinta por cima da aba nova.
+  var SEQ = 0;
   function api(m, p, b) {
+    var meu = SEQ;
     return fetch('/academy/api' + p, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined })
-      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status)); return d; }); });
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d && d.erro || ('erro ' + r.status)); return d; }); })
+      .then(function (d) { return (m === 'GET' && meu !== SEQ) ? new Promise(function () {}) : d; });
   }
   var root = function () { return el('app'); };
   var view = function () { return el('c'); };
   function setView(html) { var v = view(); if (v) v.innerHTML = html; }
-  function erroBox(e) { setView('<div class="card erro">' + esc(e.message || e) + '</div>'); }
+  function esqueleto() {
+    return '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div>' +
+      '<div class="vx-skel vx-skel--bloco"></div>';
+  }
+  function erroBox(e) {
+    setView('<div class="vx-alerta vx-alerta--danger" role="alert">' +
+      '<span class="vx-alerta-ico" aria-hidden="true">⚠️</span>' +
+      '<div><b>Não foi possível carregar esta tela</b>' +
+      '<p class="vx-mb0">' + esc(e && e.message ? e.message : 'Erro inesperado.') + '</p>' +
+      '<button class="vx-btn vx-btn--sec vx-btn--sm" id="ac-retry" style="margin-top:8px">Tentar novamente</button></div></div>');
+    var b = el('ac-retry');
+    if (b) b.onclick = function () { irPara(ABA); };
+  }
 
   var STATUS_PERFIL = { em_analise: '⏳ em análise', aprovado: '✅ aprovado', rejeitado: '❌ rejeitado', suspenso: '⚠️ suspenso', bloqueado: '🚫 bloqueado' };
   var STATUS_PRODUTO = { rascunho: '📝 rascunho', em_revisao: '⏳ em revisão', aprovado: '✅ aprovado', rejeitado: '❌ rejeitado', publicado: '🟢 publicado', pausado: '⏸️ pausado', suspenso: '⚠️ suspenso', removido: '🗑️ removido' };
@@ -38,10 +55,14 @@
     });
   }
   function renderLogin() {
-    root().innerHTML = '<div class="card" style="max-width:420px"><h3>Entrar</h3>' +
-      '<input id="em" type="email" placeholder="E-mail"><input id="sn" type="password" placeholder="Senha">' +
-      '<div id="fa-box" style="display:none"><input id="fa-cod" placeholder="Código do app autenticador (2FA)"></div>' +
-      '<button class="btn" id="b-entrar">Entrar</button><p id="msg" class="erro"></p>' +
+    root().innerHTML = '<div class="card" style="max-width:420px"><h3 style="margin-bottom:14px">Entrar</h3>' +
+      '<div class="vx-campo"><label for="em">E-mail</label>' +
+      '<input id="em" type="email" autocomplete="username" autocapitalize="off" spellcheck="false"></div>' +
+      '<div class="vx-campo"><label for="sn">Senha</label>' +
+      '<input id="sn" type="password" autocomplete="current-password"></div>' +
+      '<div id="fa-box" style="display:none"><div class="vx-campo"><label for="fa-cod">Código do app autenticador (2FA)</label>' +
+      '<input id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></div></div>' +
+      '<button class="vx-btn" id="b-entrar">Entrar</button><p id="msg" class="erro" role="alert"></p>' +
       '<p class="sub" style="text-align:left">Novo por aqui? <a href="#cadastro" id="b-cad">Crie sua conta grátis</a> · <a href="#" id="b-esqueci">Esqueci minha senha</a></p></div>';
     el('b-entrar').onclick = function () {
       el('msg').textContent = '';
@@ -80,25 +101,108 @@
   function sair() { api('POST', '/logout').catch(function () {}).then(function () { location.hash = ''; location.reload(); }); }
 
   // ---------------- shell autenticado ----------------
+  // [id, grupo do menu, ícone, rótulo, view] — o papel do usuário decide quais entram
+  var ABA = 'aluno';
+  var MAPA_VIEWS = {};
+  var ORDEM_GRUPOS = ['Aprender', 'Vender', 'Administração', 'Conta'];
+  var NAV_COLAPSADA = (function () { try { return localStorage.getItem('vx-nav') === 'colapsada'; } catch (_) { return false; } })();
+
+  function tabsDoUsuario(me) {
+    var papeis = me.papeis_ativos || [];
+    var tabs = [['aluno', 'Aprender', '🎓', 'Meus cursos', vAluno]];
+    if (papeis.indexOf('produtor') >= 0) tabs.push(['produtor', 'Vender', '🎬', 'Produtor', vProdutor]);
+    if (papeis.indexOf('afiliado') >= 0) tabs.push(['afiliado', 'Vender', '🤝', 'Afiliado', vAfiliado]);
+    if (papeis.indexOf('admin') >= 0) tabs.push(['admin', 'Administração', '🛠️', 'Admin', vAdmin]);
+    tabs.push(['conta', 'Conta', '👤', 'Conta e pagamentos', vConta]);
+    return tabs;
+  }
+  function montarNav(me) {
+    var tabs = tabsDoUsuario(me), html = '';
+    ORDEM_GRUPOS.forEach(function (g) {
+      var doGrupo = tabs.filter(function (t) { return t[1] === g; });
+      if (!doGrupo.length) return;
+      html += '<div class="vx-nav-grupo">' + esc(g) + '</div>';
+      doGrupo.forEach(function (t) {
+        html += '<button type="button" class="vx-nav-item" data-nav="' + t[0] + '" title="' + esc(t[3]) + '"' +
+          (ABA === t[0] ? ' aria-current="page"' : '') + '>' +
+          '<span class="vx-nav-ico" aria-hidden="true">' + t[2] + '</span>' +
+          '<span class="vx-nav-rot">' + esc(t[3]) + '</span></button>';
+      });
+    });
+    html += '<hr class="vx-sep" style="margin:8px 4px">' +
+      '<button type="button" class="vx-nav-item vx-nav-toggle" data-colapsar="1" aria-label="' +
+      (NAV_COLAPSADA ? 'Expandir menu' : 'Recolher menu') + '">' +
+      '<span class="vx-nav-ico" aria-hidden="true">' + (NAV_COLAPSADA ? '»' : '«') + '</span>' +
+      '<span class="vx-nav-rot">Recolher menu</span></button>';
+    return html;
+  }
+  function ligarNav(me) {
+    Array.prototype.forEach.call(document.querySelectorAll('#ac-nav [data-nav]'), function (b) {
+      b.onclick = function () { irPara(b.getAttribute('data-nav')); };
+    });
+    var t = document.querySelector('#ac-nav [data-colapsar]');
+    if (t) t.onclick = function () { alternarNav(me); };
+  }
+  function alternarNav(me) {
+    NAV_COLAPSADA = !NAV_COLAPSADA;
+    try { localStorage.setItem('vx-nav', NAV_COLAPSADA ? 'colapsada' : 'aberta'); } catch (_) {}
+    var a = el('ac-app'); if (a) a.setAttribute('data-nav', NAV_COLAPSADA ? 'colapsada' : 'aberta');
+    var nav = el('ac-nav'); if (nav) { nav.innerHTML = montarNav(me); ligarNav(me); }
+  }
+  function ctxDaAba() {
+    var achado = null;
+    tabsDoUsuario(ME).forEach(function (t) { if (t[0] === ABA) achado = t; });
+    return achado || ['aluno', 'Aprender', '🎓', 'Meus cursos', vAluno];
+  }
+  function pintarCabecalho() {
+    var c = ctxDaAba(), h = el('ac-head');
+    if (!h) return;
+    h.innerHTML = '<div class="vx-crumb"><span>Villela Academy</span>' +
+      '<span aria-hidden="true">›</span><span>' + esc(c[1]) + '</span></div>' +
+      '<h1>' + c[2] + ' ' + esc(c[3]) + '</h1>';
+  }
+  function irPara(id) {
+    ABA = MAPA_VIEWS[id] ? id : 'aluno';
+    SEQ++;
+    Array.prototype.forEach.call(document.querySelectorAll('#ac-nav [data-nav]'), function (b) {
+      if (b.getAttribute('data-nav') === ABA) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    pintarCabecalho();
+    setView(esqueleto());
+    (MAPA_VIEWS[ABA] || vAluno)();
+  }
+
   function render(me) {
     ME = me;
     var papeis = me.papeis_ativos || [];
-    var tabs = [['aluno', '🎓 Aluno', vAluno]];
-    if (papeis.indexOf('produtor') >= 0) tabs.push(['produtor', '🎬 Produtor', vProdutor]);
-    if (papeis.indexOf('afiliado') >= 0) tabs.push(['afiliado', '🤝 Afiliado', vAfiliado]);
-    if (papeis.indexOf('admin') >= 0) tabs.push(['admin', '🛠️ Admin', vAdmin]);
-    tabs.push(['conta', '👤 Conta', vConta]);
-    var nav = tabs.map(function (t) { return '<button class="btn g peq" data-nav="' + t[0] + '">' + t[1] + '</button>'; }).join('');
+    var tabs = tabsDoUsuario(me);
+    MAPA_VIEWS = {};
+    tabs.forEach(function (t) { MAPA_VIEWS[t[0]] = t[4]; });
+    ABA = 'aluno';
     var bannerVerif = me.usuario.email_verificado ? '' :
-      '<div class="aviso">📧 Confirme seu e-mail para receber avisos de compra e acesso. <a href="#" id="b-reenv">Reenviar link</a> <span id="rv-msg"></span></div>';
-    root().innerHTML = '<div class="card"><h3>Olá, ' + esc(me.usuario.nome) + ' ' +
-      papeis.map(function (p) { return '<span class="chip">' + esc(p) + '</span>'; }).join(' ') +
-      ' <a href="#" id="b-sino" style="text-decoration:none;float:right">🔔<span id="sino-n" class="chip" style="display:none"></span></a></h3>' +
-      bannerVerif + '<div id="sino-box" style="display:none"></div>' +
-      '<div class="menu" id="nav">' + nav + '</div>' +
-      '<p class="sub" style="text-align:left;margin:0">' + esc(me.usuario.email) + ' · <a href="#" id="b-sair">sair</a>' +
-      ' <button class="btn g peq" id="pwa-btn" style="display:none;margin-left:8px" title="Instalar a Villela Academy como app no celular">📲 Instalar app</button>' +
-      ' <button class="btn g peq" id="push-btn" style="display:none;margin-left:8px" title="Notificações no celular">🔔 Avisos</button></p></div><div id="c"></div>';
+      '<div class="vx-alerta vx-alerta--warn"><span class="vx-alerta-ico" aria-hidden="true">📧</span>' +
+      '<div><b>Confirme seu e-mail</b><p class="vx-mb0">É por ele que chegam os avisos de compra e de acesso. ' +
+      '<a href="#" id="b-reenv">Reenviar link</a> <span id="rv-msg"></span></p></div></div>';
+    root().innerHTML =
+      '<div class="vx-app" id="ac-app" data-nav="' + (NAV_COLAPSADA ? 'colapsada' : 'aberta') + '">' +
+        '<nav class="vx-nav" id="ac-nav" aria-label="Seções do painel">' + montarNav(me) + '</nav>' +
+        '<div class="vx-main">' +
+          '<div class="vx-page-head">' +
+            '<div id="ac-head"></div>' +
+            '<div class="vx-acoes">' +
+              papeis.map(function (p) { return '<span class="vx-badge">' + esc(p) + '</span>'; }).join('') +
+              '<button class="vx-btn vx-btn--ghost vx-btn--sm" id="b-sino" title="Notificações">🔔<span id="sino-n" class="vx-badge vx-badge--accent" style="display:none;margin-left:6px"></span></button>' +
+              '<button class="vx-btn vx-btn--sec vx-btn--sm" id="pwa-btn" style="display:none" title="Instalar a Villela Academy como app no celular">📲 Instalar app</button>' +
+              '<button class="vx-btn vx-btn--sec vx-btn--sm" id="push-btn" style="display:none" title="Receber avisos no celular">🔔 Avisos</button>' +
+              '<button class="vx-btn vx-btn--ghost vx-btn--sm" id="b-sair">Sair</button>' +
+            '</div>' +
+          '</div>' +
+          '<p class="vx-hint">Conectado como ' + esc(me.usuario.nome) + ' · ' + esc(me.usuario.email) + '</p>' +
+          bannerVerif + '<div id="sino-box" style="display:none"></div>' +
+          '<div id="c"></div>' +
+        '</div>' +
+      '</div>';
     el('b-sair').onclick = function (e) { e.preventDefault(); sair(); };
     if (el('b-reenv')) el('b-reenv').onclick = function (e) {
       e.preventDefault();
@@ -120,14 +224,10 @@
         if (d.nao_lidas > 0) api('POST', '/notificacoes/lidas').then(function () { el('sino-n').style.display = 'none'; d.nao_lidas = 0; }).catch(function () {});
       };
     }).catch(function () {});
-    var map = {};
-    tabs.forEach(function (t) { map[t[0]] = t[2]; });
-    Array.prototype.forEach.call(document.querySelectorAll('#nav [data-nav]'), function (b) {
-      b.onclick = function () { (map[b.getAttribute('data-nav')] || vAluno)(); };
-    });
+    ligarNav(me);
     pintarBotaoPush();
     pintarBotaoInstalar();
-    vAluno();
+    irPara(ABA);
   }
 
   // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----

@@ -474,7 +474,8 @@ a.vx-kpi:hover, button.vx-kpi:hover { box-shadow: var(--vx-shadow-2); transform:
 .vx[data-vertical="projects"]  { --vx-accent: #6D28D9; --vx-accent-2: #551FA8; --vx-accent-soft: #F1EAFC; }
 .vx[data-vertical="livraria"]  { --vx-accent: #7F1D1D; --vx-accent-2: #631616; --vx-accent-soft: #F9EAEA; }
 .vx[data-vertical="manager"]   { --vx-accent: #0E7490; --vx-accent-2: #0A5666; --vx-accent-soft: #E6F1F4; }
-.vx[data-vertical="crm"]       { --vx-accent: #0F766E; --vx-accent-2: #0B5A54; --vx-accent-soft: #E6F2F1; }
+/* CRM = Rosa Magenta oficial (identidade-visual.md); 6,7:1 sobre branco */
+.vx[data-vertical="crm"]       { --vx-accent: #B0185A; --vx-accent-2: #8E1349; --vx-accent-soft: #FBE9F1; }
 /* Neutro (Inicio, Operacao, Gestao, Relatorios...): o navy do grupo e o acento. */
 .vx[data-vertical="grupo"]     { --vx-accent: #24365C; --vx-accent-2: #1B2A4A; --vx-accent-soft: #ECEFF5; }
 
