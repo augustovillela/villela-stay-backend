@@ -110,7 +110,7 @@ ${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script
 </head><body>
 <header class="top"><div class="wrap">
   <a class="brand" href="/livros"><img src="/assets/brand/livraria-villela/logo-negativo.svg" alt="Livraria Villela" style="height:150px"><span><span class="lv">Livraria</span> <b>Villela</b></span></a>
-  <nav class="nav"><a href="/livros">Livros</a><a href="/minha-biblioteca">Minha biblioteca</a><a href="${SITE_PRINCIPAL}">Villela Stay</a></nav>
+  <nav class="nav"><a href="/livros">Livros</a><a href="/livros/atualizacoes">Atualizações</a><a href="/minha-biblioteca">Minha biblioteca</a><a href="${SITE_PRINCIPAL}">Villela Stay</a></nav>
 </div></header>
 ${body}
 <div class="wrap" style="text-align:center;padding:26px 20px 6px;color:var(--suave);font-size:14px">

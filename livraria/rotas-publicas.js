@@ -17,7 +17,12 @@ function registrarRotasPublicas(app, deps) {
   app.get('/livros/atualizacoes', (req, res) => {
     res.type('html').send(atualizacoes.atualizacoes());
   });
+  // Slugs antigos que já circularam publicamente → 301 para o slug atual (não quebra link já dado).
+  const SLUGS_LEGADOS = { 'claude-ai-na-pratcia': 'claude-ai-na-pratica' };
+
   app.get('/livros/:slug', (req, res) => {
+    const legado = SLUGS_LEGADOS[req.params.slug];
+    if (legado) return res.redirect(301, '/livros/' + legado);
     const b = repo.Books.porSlug(req.params.slug);
     if (!b || !b.ativo) return res.status(404).type('html').send(storefront.vitrine(repo.Books.listarPublico()));
     res.type('html').send(storefront.paginaLivro(b));
