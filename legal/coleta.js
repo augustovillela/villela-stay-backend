@@ -267,15 +267,52 @@ async function rotinaDiaria() {
   const pub = await coletarPublicacoes({ dias: 3 }).catch(e => ({ erroFatal: e.message }));
   const dig = await digestClientes().catch(e => ({ erroFatal: e.message }));
   const fila = await processarFila(10).catch(e => ({ erroFatal: e.message }));
+  // ONDA LIVRO: manutenção diária dos módulos do livro + conferência independente.
+  // Roda DEPOIS da coleta de propósito: a controladoria precisa ver o resultado do
+  // dia (inclusive a captura com zero resultados — alerta obrigatório do Cap. 47.4).
+  const livro = manutencaoLivro();
   let socioId = '';
   try { socioId = relatorios.relatorioSocioHTML('rotina-diaria').id; } catch (_) {}
-  const resumo = `Coleta: ${and.novos ?? '?'} andamento(s) novo(s) · ${pub.novas ?? '?'} publicação(ões) · digest p/ ${dig.clientes_notificados ?? 0} cliente(s) · fila IA: ${fila.processadas ?? 0}`;
+  const resumo = `Coleta: ${and.novos ?? '?'} andamento(s) novo(s) · ${pub.novas ?? '?'} publicação(ões) · digest p/ ${dig.clientes_notificados ?? 0} cliente(s) · fila IA: ${fila.processadas ?? 0}`
+    + ` · controladoria: ${livro.achados} achado(s), ${livro.criticos} crítico(s)`;
   repo.Integracoes.log('rotina', 'rotina-diaria', 'ok', resumo + ` (${Math.round((Date.now() - t0) / 1000)}s)`, (and.novos || 0) + (pub.novas || 0));
   await notif.notificarEquipe({
     titulo: 'Rotina diária do jurídico concluída', corpo: resumo + (socioId ? ' · relatório do sócio arquivado' : ''),
     ref_tipo: 'rotina', ref_id: socioId, whatsapp: (and.novos || 0) + (pub.novas || 0) > 0, // só chama no WhatsApp se houver novidade
   }).catch(() => {});
-  return { andamentos: and, publicacoes: pub, digest: dig, fila, relatorio_socio: socioId };
+  return { andamentos: and, publicacoes: pub, digest: dig, fila, relatorio_socio: socioId, livro };
+}
+
+// =====================================================================
+// ONDA LIVRO — manutenção diária dos módulos de paridade com o livro.
+// Tudo síncrono (SQLite local) e sem rede: marca vencidos, calcula os
+// alertas escalonados de prazo (19.7) e roda a controladoria (47.11).
+// Nada aqui APROVA nem ENVIA nada: só marca estado e registra achados.
+// =====================================================================
+function manutencaoLivro() {
+  const L = require('./repo-livro');
+  const out = { obrigacoes_atrasadas: 0, faturas_inadimplentes: 0, obrigacoes_cliente_vencidas: 0, escalonamentos: 0, achados: 0, criticos: 0 };
+  try { out.obrigacoes_atrasadas = L.ContratosCiclo.marcarAtrasadas(); } catch (_) {}
+  try { out.faturas_inadimplentes = L.Faturas.marcarInadimplentes(); } catch (_) {}
+  try { out.obrigacoes_cliente_vencidas = L.Obrigacoes.marcarVencidas(); } catch (_) {}
+  // alertas escalonados de prazo: registra o aviso do nível devido (canal interno).
+  // O disparo por WhatsApp/e-mail continua sendo decisão de quem opera — aqui fica
+  // o registro que a controladoria cobra depois (19.8 confirmação de leitura).
+  try {
+    for (const p of L.Escalonamento.pendentes()) {
+      L.Escalonamento.registrar({
+        deadline_id: p.deadline.id, nivel: p.nivel, dias_antes: p.dias_antes,
+        destino: p.nivel === 1 ? (p.deadline.responsavel || 'responsável') : (p.nivel === 2 ? 'coordenação' : 'sócio'),
+        canal: 'interna',
+      });
+      out.escalonamentos++;
+    }
+  } catch (_) {}
+  try {
+    const r = L.Controladoria.rodar({ escopo: 'diaria' }, 'rotina');
+    out.achados = r.achados; out.criticos = r.criticos;
+  } catch (_) {}
+  return out;
 }
 
 function jaRodouHoje() {
@@ -312,5 +349,5 @@ function iniciarRotinas() {
 module.exports = {
   aliasTribunal, classificarMovimento, consultarDataJud,
   coletarAndamentos, coletarPublicacoes, digestClientes, processarFila,
-  rotinaDiaria, iniciarRotinas, oabsDaEquipe,
+  rotinaDiaria, iniciarRotinas, oabsDaEquipe, manutencaoLivro,
 };

@@ -83,12 +83,34 @@ function landingHTML() {
       <ul>${itens.map(i => `<li>✓ ${esc(i)}</li>`).join('')}</ul>${cta}</div>`;
   };
   const feats = [
-    ['⚖️', 'Processos e prazos', 'Andamentos do DataJud, calculadora de prazos do CPC com validação humana, agenda e Kanban.'],
-    ['📰', 'Publicações (DJEN)', 'Coleta automática por OAB, triagem e vínculo ao processo.'],
+    ['⚖️', 'Processos e prazos', 'Andamentos do DataJud, calculadora de prazos do CPC com validação humana, alertas escalonados e confirmação de leitura.'],
+    ['📰', 'Publicações (DJEN)', 'Coleta automática por OAB, triagem, vínculo ao processo e alerta quando a captura vem vazia.'],
     ['🤖', 'IA jurídica com fontes', 'Consultas, geração de peças e análise de contratos — sempre como MINUTA, com fontes citadas.'],
-    ['📑', 'Peças e contratos', '28 tipos de peça, wizard de contratos e exportação; nada é final sem aprovação do advogado.'],
-    ['👥', 'Portal do cliente', 'Seu cliente acompanha o processo em linguagem simples, sem ver estratégia interna.'],
-    ['📊', 'Gestão do escritório', 'Relatórios do sócio, por núcleo, financeiro e prestação de contas.'],
+    ['📑', 'Peças e contratos', 'Peças versionadas, ciclo contratual completo, cláusulas em três níveis, alçada de aprovação e alerta de renovação.'],
+    ['👥', 'Portal do cliente', 'Andamento traduzido em linguagem simples — e só depois de um humano aprovar. Pendências, documentos e financeiro.'],
+    ['🤝', 'CRM jurídico', 'Funil do lead ao contrato, triagem por urgência, pesquisa de conflito de interesses, KYC e proposta de honorários.'],
+    ['🔎', 'Pesquisa auditável', 'Jurisprudência e legislação com dois blocos separados: o que foi conferido no inteiro teor e o que ainda é hipótese.'],
+    ['💼', 'Financeiro e horas', 'Honorários fixo/mensal/hora/êxito, apontamento de horas, faturamento, fluxo de caixa e cobrança escalonada.'],
+    ['🎛️', 'Controladoria', 'Conferências diárias independentes de quem opera: prazo sem validação, coleta zerada, contrato sem alçada, prazo LGPD vencido.'],
+    ['🛡️', 'Compliance e LGPD', 'Riscos, políticas com ciência da equipe, canal de denúncias, inventário de dados, pedidos de titular e incidentes.'],
+    ['🏛️', 'Portal interno e POPs', 'Avisos com ciência, procedimentos operacionais padrão com checklist e registro das decisões internas.'],
+    ['📊', 'Gestão do escritório', 'Relatórios do sócio, por núcleo, financeiro, rentabilidade por cliente e prestação de contas.'],
+  ];
+  // Mapa livro → sistema (Cap. 47 de "Claude AI na Prática Jurídica"):
+  // é o que o leitor procura ao terminar o livro.
+  const prototipos = [
+    ['47.1', 'CRM jurídico', 'Funil, propostas com aprovação obrigatória, conflito de interesses e KYC.'],
+    ['47.2', 'Portal do cliente', 'Andamento traduzido só publica após aprovação; evento sensível espera a conversa pessoal.'],
+    ['47.3', 'Portal interno da equipe', 'Avisos com ciência, POPs versionados com checklist, decisões internas.'],
+    ['47.4', 'Publicações e prazos', 'Coleta, dedupe, cálculo do CPC, alertas escalonados e alerta de captura vazia.'],
+    ['47.5', 'Gerenciador de processos', 'Cadastro, fases, andamentos, estratégia sigilosa, tarefas e relatórios.'],
+    ['47.6', 'Gerenciador de documentos', 'Versões com hash, OCR, permissões, temporalidade e fila de classificação incerta.'],
+    ['47.7', 'Pesquisa de jurisprudência', 'Plano de busca, achados e relatório com os dois blocos separados.'],
+    ['47.8', 'Pesquisa de legislação', 'Base normativa própria, vigência datada e monitoramento por área e setor.'],
+    ['47.9', 'Sistema de contratos', 'Cláusulas em três níveis, negociação, alçada, obrigações e renovação.'],
+    ['47.10', 'Sistema financeiro', 'Honorários por modalidade, horas, faturamento, fluxo de caixa e cobrança escalonada.'],
+    ['47.11', 'Controladoria jurídica', 'Mais de 20 conferências independentes + indicadores de produtividade e qualidade.'],
+    ['47.12', 'Central de agentes', 'Carta de autonomia por agente com os três blocos do Cap. 10.10 e histórico de execuções.'],
   ];
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela Legal — software jurídico para escritórios de advocacia</title>
@@ -102,18 +124,37 @@ function landingHTML() {
     <style>${CSS}</style></head><body>
     <header class="top"><div class="wrap">
       <a class="brand" href="/juridico"><img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Legal" style="height:150px"><span><span class="bnome">Villela</span><span class="bdesc">LEGAL</span></span></a>
-      <nav><a class="esconde" href="/juridico#recursos">Recursos</a><a class="esconde" href="/juridico#planos">Planos</a><a href="/juridico/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/juridico/assinar?plano=trial">Teste grátis</a></nav>
+      <nav><a class="esconde" href="/juridico#recursos">Recursos</a><a class="esconde" href="/juridico#livro">Do livro ao sistema</a><a class="esconde" href="/juridico#planos">Planos</a><a href="/juridico/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/juridico/assinar?plano=trial">Teste grátis</a></nav>
     </div></header>
     <div class="hero"><div class="wrap">
       <span class="badge">Software jurídico completo</span>
       <h1>O escritório inteiro em um só lugar — com IA que cita as fontes.</h1>
-      <p>Gestão jurídica inteligente: processos, prazos, publicações, peças, contratos e portal do cliente. Feito por quem advoga, para escritórios brasileiros.</p>
+      <p>Gestão jurídica inteligente: processos, prazos, publicações, CRM, pesquisa auditável, contratos, financeiro,
+      controladoria, compliance e portal do cliente. Feito por quem advoga, para escritórios brasileiros.</p>
+      <p style="margin-top:14px"><a href="/juridico#livro" style="color:var(--villela-gold);font-weight:600">📘 Leu “Claude AI na Prática Jurídica”? Veja os 12 protótipos do Cap. 47 já implementados →</a></p>
       <p style="margin-top:26px"><a class="btn" href="/juridico/assinar?plano=trial">Testar 14 dias grátis</a>
       &nbsp;<a class="btn o" href="/juridico/app">Já sou cliente</a></p>
     </div></div>
     <div class="sec" id="recursos"><div class="wrap"><h2>Tudo que a banca precisa</h2>
       <p class="sub">Um sistema que cobre da captação ao arquivamento — sem colar planilha com WhatsApp.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
+    </div></div>
+    <div class="sec" id="livro" style="background:#EFF1F6"><div class="wrap"><h2>Do livro ao sistema</h2>
+      <p class="sub">O livro <b>“Claude AI na Prática Jurídica”</b>, de Augusto Villela, descreve doze sistemas que um
+      escritório deveria ter (Cap. 47) e o método por trás deles. O Villela Legal é esse livro implementado — inclusive
+      as travas: <b>nada sai para o mundo sem um humano aprovar</b>.</p>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;font-size:.92rem">
+        <thead><tr style="background:var(--villela-navy);color:#fff">
+          <th style="text-align:left;padding:10px">Cap.</th><th style="text-align:left;padding:10px">Protótipo do livro</th><th style="text-align:left;padding:10px">No Villela Legal</th></tr></thead>
+        <tbody>${prototipos.map(([c, t, d]) => `<tr style="border-bottom:1px solid #E2E6EC">
+          <td style="padding:9px;white-space:nowrap"><b>${c}</b></td><td style="padding:9px">${esc(t)}</td>
+          <td style="padding:9px">✓ ${esc(d)}</td></tr>`).join('')}</tbody></table></div>
+      <p class="sub" style="margin-top:22px">As regras da Parte VIII também estão no sistema: política institucional de uso de IA
+      (Cap. 6.10), inventário de dados e bases legais, pedidos de titular com o prazo de 15 dias da LGPD, incidentes de
+      segurança, tabela de temporalidade e canal de denúncias. Cada escritório novo já nasce com esses documentos como
+      <b>minuta pronta para adaptar e aprovar</b>.</p>
+      <p style="margin-top:22px"><a class="btn" href="/juridico/assinar?plano=trial">Testar o sistema do livro por 14 dias</a>
+      &nbsp;<a class="btn o" href="https://livros.villelastay.com.br/livro/claude-ai-na-pratica-juridica" target="_blank" rel="noopener">Conhecer o livro</a></p>
     </div></div>
     <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
       <p class="sub">Nossa missão é tirar prazos e intimações do improviso — com IA que trabalha como um estagiário sênior e <b>nunca assina sozinha</b>. Antes de chegar a você, o Villela Legal roda todos os dias no escritório do próprio Grupo Villela Stay.</p>
@@ -295,6 +336,7 @@ label{font-size:.9rem;font-weight:600}table{width:100%;border-collapse:collapse}
 <div class="area"><div id="conteudo"><p class="sub">Carregando…</p></div></div>
 <script src="/juridico/legal-shell.js"></script>
 <script src="/juridico/app-legal.js"></script>
+<script src="/juridico/app-legal-livro.js"></script>
 <script>bootLegal();</script>
 </body></html>`;
 }
@@ -305,6 +347,8 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
   // assets do workspace jurídico do assinante (mesmo SPA do staff, base de API própria)
   app.get('/juridico/legal-shell.js', jsFile('legal-assinante-shell.js'));
   app.get('/juridico/app-legal.js', jsFile('app-legal.js'));
+  // ONDA LIVRO: mesmas abas de paridade com o livro, também para o assinante
+  app.get('/juridico/app-legal-livro.js', jsFile('app-legal-livro.js'));
   app.get('/juridico/app/juridico', (req, res) => res.send(appJuridicoHTML()));
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
 

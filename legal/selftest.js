@@ -375,6 +375,391 @@ async function rodar() {
     assert.equal(r.st, 403);
   });
 
+  // ==================================================================
+  // ONDA LIVRO — paridade com "Claude AI na Prática Jurídica"
+  // Foco: as TRAVAS que o livro exige (aprovação humana antes de sair),
+  // não o CRUD trivial.
+  // ==================================================================
+  const P = '/staff/api/legal';
+  let leadId, propId;
+  await t('livro/CRM: lead entra no funil com score e sinal de spam (Cap. 15.7/15.9)', async () => {
+    const r = await req('POST', P + '/crm/leads', {
+      corpo: {
+        nome: 'Interessado Teste', email: 'i@t.com', telefone: '61999990000', origem: 'indicacao',
+        urgencia: 'alta', resumo_fato: 'Cobrança indevida de taxa condominial com protesto em cartório há oito meses.',
+      },
+    });
+    assert.equal(r.st, 200); leadId = r.json.lead.id;
+    assert.ok(r.json.lead.score > 50, 'score deve refletir indicação + urgência');
+    assert.equal(r.json.lead.spam_score, 0);
+    const spam = await req('POST', P + '/crm/leads', { corpo: { nome: 'XX', resumo_fato: 'bitcoin' } });
+    assert.ok(spam.json.lead.spam_score >= 60, 'lead sem contato e com isca deve pontuar spam');
+  });
+  await t('livro/CRM: proposta NÃO sai sem aprovação humana (trava do 47.1)', async () => {
+    const p = await req('POST', `${P}/crm/leads/${leadId}/propostas`, {
+      corpo: { escopo: 'Ação declaratória de inexistência de débito', modalidade: 'fixo', valor_centavos: 600000 },
+    });
+    assert.equal(p.st, 200); propId = p.json.proposta.id;
+    assert.equal(p.json.proposta.status, 'rascunho');
+    const cedo = await req('POST', `${P}/crm/propostas/${propId}/enviada`);
+    assert.equal(cedo.st, 400);
+    assert.ok(/aprovação humana/i.test(cedo.json.erro));
+    const apr = await req('POST', `${P}/crm/propostas/${propId}/aprovar`);
+    assert.equal(apr.st, 200); assert.ok(apr.json.proposta.aprovada_por);
+    const env = await req('POST', `${P}/crm/propostas/${propId}/enviada`);
+    assert.equal(env.st, 200); assert.equal(env.json.proposta.status, 'enviada');
+  });
+  await t('livro/CRM: editar proposta aprovada derruba a aprovação', async () => {
+    const p2 = await req('POST', `${P}/crm/leads/${leadId}/propostas`, { corpo: { escopo: 'x', valor_centavos: 1000 } });
+    await req('POST', `${P}/crm/propostas/${p2.json.proposta.id}/aprovar`);
+    const ed = await req('PATCH', `${P}/crm/propostas/${p2.json.proposta.id}`, { corpo: { escopo: 'escopo diferente' } });
+    assert.equal(ed.json.proposta.status, 'rascunho');
+    assert.equal(ed.json.proposta.aprovada_por, '');
+  });
+  await t('livro/CRM: conflito de interesses trava a conversão (Cap. 17.1)', async () => {
+    const cedo = await req('PATCH', `${P}/crm/leads/${leadId}`, { corpo: { estagio: 'contratado' } });
+    assert.equal(cedo.st, 400); assert.ok(/conflito/i.test(cedo.json.erro));
+    const pesq = await req('GET', `${P}/crm/conflitos?termo=Interessado`);
+    assert.equal(pesq.st, 200);
+    assert.ok(pesq.json.pesquisa.resultados.some(x => x.tipo === 'lead'));
+    const reg = await req('POST', P + '/crm/conflitos', {
+      corpo: { termo: 'Interessado Teste', lead_id: leadId, veredito: 'livre', justificativa: 'Sem cruzamento com parte contrária.' },
+    });
+    assert.equal(reg.st, 200);
+    const depois = await req('PATCH', `${P}/crm/leads/${leadId}`, { corpo: { estagio: 'contratado' } });
+    assert.equal(depois.st, 200);
+  });
+
+  let pesqId, achadoId;
+  await t('livro/pesquisa: achado nasce como HIPÓTESE e só é conferido com fonte oficial (47.7)', async () => {
+    const pj = await req('POST', P + '/pesquisa/projetos', {
+      corpo: { titulo: 'Taxa condominial — prescrição', questao: 'Qual o prazo prescricional?', plano_busca: 'termos: taxa condominial, prescrição' },
+    });
+    assert.equal(pj.st, 200); pesqId = pj.json.projeto.id;
+    const ac = await req('POST', `${P}/pesquisa/projetos/${pesqId}/achados`, {
+      corpo: { identificacao: 'STJ, REsp 0.000.000/DF', hierarquia: 'persuasivo', ementa: 'ementa de teste' },
+    });
+    assert.equal(ac.st, 200); achadoId = ac.json.achado.id;
+    assert.equal(ac.json.achado.verificado, 0);
+    const semFonte = await req('POST', `${P}/pesquisa/achados/${achadoId}/conferir`, { corpo: {} });
+    assert.equal(semFonte.st, 400);
+    assert.ok(/OFICIAL/i.test(semFonte.json.erro));
+    const conf = await req('POST', `${P}/pesquisa/achados/${achadoId}/conferir`, { corpo: { fonte_url: 'https://scon.stj.jus.br/x' } });
+    assert.equal(conf.st, 200); assert.equal(conf.json.achado.verificado, 1);
+    const det = await req('GET', `${P}/pesquisa/projetos/${pesqId}`);
+    assert.equal(det.json.projeto.conferidos.length, 1);
+    assert.equal(det.json.projeto.hipoteses.length, 0);
+  });
+  await t('livro/pesquisa: alterar o achado conferido devolve ao bloco de hipóteses', async () => {
+    const ed = await req('PATCH', `${P}/pesquisa/achados/${achadoId}`, { corpo: { ementa: 'ementa reescrita' } });
+    assert.equal(ed.json.achado.verificado, 0);
+  });
+  await t('livro/pesquisa: relatório auditável separa os dois blocos', async () => {
+    const r = await req('GET', `${P}/pesquisa/projetos/${pesqId}/relatorio`);
+    assert.equal(r.st, 200);
+    assert.ok(/text\/html/.test(r.ct));
+    assert.ok(r.texto.includes('Localizado e conferido'));
+    assert.ok(r.texto.includes('Hipótese a verificar'));
+    assert.ok(r.texto.includes('MINUTA'));
+  });
+
+  let casoLivroId;
+  await t('livro/matrizes: fato "comprovado" exige fonte (Cap. 5.6) e provas apontam lacunas (24.1)', async () => {
+    const c = await req('POST', P + '/processos', { corpo: { numero_cnj: '0009999-00.2026.8.07.0001', client_id: cliId, nucleo: 'civel' } });
+    assert.equal(c.st, 200); casoLivroId = c.json.processo.id;
+    const semFonte = await req('POST', `${P}/matrizes/${casoLivroId}/fatos`, { corpo: { fato: 'Pagou a taxa', situacao: 'comprovado' } });
+    assert.equal(semFonte.st, 400);
+    const comFonte = await req('POST', `${P}/matrizes/${casoLivroId}/fatos`, { corpo: { fato: 'Pagou a taxa', situacao: 'comprovado', fonte: 'fls. 45 dos autos' } });
+    assert.equal(comFonte.st, 200);
+    const contro = await req('POST', `${P}/matrizes/${casoLivroId}/fatos`, { corpo: { fato: 'Houve notificação prévia', situacao: 'controvertido' } });
+    assert.equal(contro.st, 200);
+    const pv = await req('GET', `${P}/matrizes/${casoLivroId}/provas`);
+    assert.ok(pv.json.lacunas.length >= 1, 'fato controvertido sem prova deve aparecer como lacuna');
+  });
+  await t('livro/estratégia: cenário exige declarar a incerteza (Cap. 23.3)', async () => {
+    const sem = await req('POST', `${P}/estrategia/${casoLivroId}/cenarios`, { corpo: { cenario: 'Procedência total', probabilidade: 'possivel' } });
+    assert.equal(sem.st, 400); assert.ok(/incerteza/i.test(sem.json.erro));
+    const com = await req('POST', `${P}/estrategia/${casoLivroId}/cenarios`, {
+      corpo: { cenario: 'Procedência total', probabilidade: 'possivel', incerteza: 'Não se sabe se há prova do envio da notificação.' },
+    });
+    assert.equal(com.st, 200);
+  });
+  await t('livro/diagnóstico: minuta de IA fica rascunho até validação humana (Cap. 21.9/6.9)', async () => {
+    const dg = await req('POST', `${P}/matrizes/${casoLivroId}/diagnosticos`, {
+      chave: true, corpo: { origem: 'ia', cronologia: 'linha do tempo gerada', riscos_lacunas: 'faltam documentos' },
+    });
+    assert.equal(dg.st, 200); assert.equal(dg.json.diagnostico.status, 'rascunho');
+    const val = await req('POST', `${P}/matrizes/diagnosticos/${dg.json.diagnostico.id}/validar`);
+    assert.equal(val.st, 200); assert.ok(val.json.diagnostico.validado_por);
+  });
+
+  let ctrId;
+  await t('livro/contratos: assinatura bloqueada sem alçada aprovada (Cap. 29.9 / 47.9)', async () => {
+    const c = await req('POST', P + '/contratos-ciclo', {
+      corpo: { titulo: 'Prestação de serviços — teste', tipo: 'servicos', contraparte: 'Empresa X', alcada: 'socio', vigencia_fim: '2027-01-31', renovacao_automatica: true, aviso_previo_dias: 30 },
+    });
+    assert.equal(c.st, 200); ctrId = c.json.contrato.id;
+    const cedo = await req('POST', `${P}/contratos-ciclo/${ctrId}/mover`, { corpo: { status: 'assinatura' } });
+    assert.equal(cedo.st, 400); assert.ok(/alçada/i.test(cedo.json.erro));
+    const ped = await req('POST', `${P}/contratos-ciclo/${ctrId}/aprovacao`, { corpo: {} });
+    assert.equal(ped.st, 200);
+    const apId = ped.json.contrato.aprovacoes[0].id;
+    const semRessalva = await req('POST', `${P}/contratos-ciclo/aprovacoes/${apId}`, { corpo: { decisao: 'com_ressalva' } });
+    assert.equal(semRessalva.st, 400);
+    const dec = await req('POST', `${P}/contratos-ciclo/aprovacoes/${apId}`, { corpo: { decisao: 'aprovado' } });
+    assert.equal(dec.st, 200);
+    const ok2 = await req('POST', `${P}/contratos-ciclo/${ctrId}/mover`, { corpo: { status: 'vigente' } });
+    assert.equal(ok2.st, 200);
+  });
+  await t('livro/contratos: alerta de renovação calcula a janela de denúncia (Cap. 29.11)', async () => {
+    const r = await req('GET', P + '/contratos-ciclo?dias=400');
+    assert.equal(r.st, 200);
+    const alvo = r.json.alertas.renovacoes.find(x => x.id === ctrId);
+    assert.ok(alvo, 'contrato vigente com fim de vigência deve entrar nos alertas');
+    assert.ok(alvo.denuncia_ate && alvo.denuncia_ate < alvo.vigencia_fim, 'denúncia deve vencer antes do fim da vigência');
+  });
+  await t('livro/contratos: cláusula inaceitável exige justificativa (Cap. 29.3)', async () => {
+    const sem = await req('POST', P + '/clausulas', { corpo: { tema: 'Foro', nivel: 'inaceitavel', texto: 'Foro estrangeiro' } });
+    assert.equal(sem.st, 400);
+    const com = await req('POST', P + '/clausulas', { corpo: { tema: 'Foro', nivel: 'inaceitavel', texto: 'Foro estrangeiro', justificativa: 'Inviabiliza a execução no Brasil.' } });
+    assert.equal(com.st, 200);
+  });
+
+  await t('livro/financeiro: hora sem valor/hora não fatura; cobrança nível 2 exige aprovação (47.10)', async () => {
+    const hr = await req('POST', P + '/fin/horas', { corpo: { minutos: 90, atividade: 'Elaboração de petição', client_id: cliId } });
+    assert.equal(hr.st, 200);
+    const semValor = await req('POST', P + '/fin/faturas/de-horas', { corpo: { client_id: cliId } });
+    assert.equal(semValor.st, 400);
+    assert.ok(/valor\/hora/i.test(semValor.json.erro));
+    const fee = await req('POST', P + '/fin/honorarios', { corpo: { client_id: cliId, modalidade: 'hora', valor_hora_centavos: 40000 } });
+    assert.equal(fee.st, 200);
+    const hr2 = await req('POST', P + '/fin/horas', { corpo: { minutos: 60, atividade: 'Audiência', client_id: cliId } });
+    assert.equal(hr2.json.hora.valor_hora_centavos, 40000, 'deve herdar o valor/hora do contrato');
+    const fat = await req('POST', P + '/fin/faturas/de-horas', { corpo: { client_id: cliId } });
+    assert.equal(fat.st, 400, 'a 1ª hora ficou sem valor → ainda barra');
+    // remove o apontamento sem valor e fatura
+    await req('DELETE', `${P}/fin/horas/${hr.json.hora.id}`);
+    const fat2 = await req('POST', P + '/fin/faturas/de-horas', { corpo: { client_id: cliId } });
+    assert.equal(fat2.st, 200);
+    assert.equal(fat2.json.fatura.valor_centavos, 40000);
+    const cb1 = await req('POST', `${P}/fin/faturas/${fat2.json.fatura.id}/cobrancas`, { corpo: { nivel: 1, canal: 'email', texto: 'lembrete' } });
+    const env1 = await req('POST', `${P}/fin/cobrancas/${cb1.json.cobranca.id}/enviada`);
+    assert.equal(env1.st, 200, 'nível 1 é lembrete: sai sem aprovação');
+    const cb2 = await req('POST', `${P}/fin/faturas/${fat2.json.fatura.id}/cobrancas`, { corpo: { nivel: 2, canal: 'email', texto: 'cobrança' } });
+    const env2 = await req('POST', `${P}/fin/cobrancas/${cb2.json.cobranca.id}/enviada`);
+    assert.equal(env2.st, 400); assert.ok(/aprovação humana/i.test(env2.json.erro));
+    await req('POST', `${P}/fin/cobrancas/${cb2.json.cobranca.id}/aprovar`);
+    const env2b = await req('POST', `${P}/fin/cobrancas/${cb2.json.cobranca.id}/enviada`);
+    assert.equal(env2b.st, 200);
+  });
+
+  await t('livro/POP: checklist obrigatório trava a conclusão (Cap. 7.7)', async () => {
+    const pop = await req('POST', P + '/interno/pops', {
+      corpo: {
+        codigo: 'POP-01', titulo: 'Tratamento de publicação', area: 'civel',
+        passos: [{ acao: 'Ler a publicação', responsavel: 'paralegal' }],
+        checklist: [{ item: 'Processo identificado', obrigatorio: true }, { item: 'Cliente avisado', obrigatorio: false }],
+      },
+    });
+    assert.equal(pop.st, 200);
+    const pub = await req('POST', `${P}/interno/pops/${pop.json.pop.id}/publicar`);
+    assert.equal(pub.st, 200); assert.ok(pub.json.pop.aprovado_por);
+    const incompleto = await req('POST', `${P}/interno/pops/${pop.json.pop.id}/executar`, {
+      corpo: { concluido: true, marcados: [{ item: 'Cliente avisado', ok: true }] },
+    });
+    assert.equal(incompleto.st, 400); assert.ok(/obrigatório/i.test(incompleto.json.erro));
+    const completo = await req('POST', `${P}/interno/pops/${pop.json.pop.id}/executar`, {
+      corpo: { concluido: true, marcados: [{ item: 'Processo identificado', ok: true }] },
+    });
+    assert.equal(completo.st, 200);
+  });
+  await t('livro/agentes: carta exige os três blocos do Cap. 10.10', async () => {
+    const sem = await req('POST', P + '/agentes/cartas', { corpo: { agente: 'publicacoes', nome: 'Agente de publicações', pode_sozinho: ['coletar DJEN'] } });
+    assert.equal(sem.st, 400);
+    const com = await req('POST', P + '/agentes/cartas', {
+      corpo: {
+        agente: 'publicacoes', nome: 'Agente de publicações', pode_sozinho: ['coletar DJEN', 'sugerir cálculo de prazo'],
+        exige_aprovacao: ['confirmar prazo', 'avisar cliente'], proibido: ['protocolar peça', 'responder cliente'],
+      },
+    });
+    assert.equal(com.st, 200);
+    const central = await req('GET', P + '/agentes/central');
+    assert.ok(central.json.cartas.some(x => x.agente === 'publicacoes'));
+  });
+
+  await t('livro/compliance: risco alto sem plano barra; LGPD calcula prazo de 15 dias', async () => {
+    const semPlano = await req('POST', P + '/compliance/riscos', { corpo: { risco: 'Perda de prazo por falha de coleta', impacto: 'critico', probabilidade: 'possivel' } });
+    assert.equal(semPlano.st, 400);
+    const comPlano = await req('POST', P + '/compliance/riscos', {
+      corpo: { risco: 'Perda de prazo por falha de coleta', impacto: 'critico', probabilidade: 'possivel', controles: 'Conferência diária independente', plano_correcao: 'Alerta de coleta zero' },
+    });
+    assert.equal(comPlano.st, 200);
+    const dsr = await req('POST', P + '/lgpd/titulares', { corpo: { titular: 'Titular Teste', tipo: 'acesso', recebido_em: '2026-07-01' } });
+    assert.equal(dsr.st, 200); assert.equal(dsr.json.pedido.prazo_em, '2026-07-16');
+    const semResposta = await req('PATCH', `${P}/lgpd/titulares/${dsr.json.pedido.id}`, { corpo: { status: 'atendido' } });
+    assert.equal(semResposta.st, 400);
+  });
+  await t('livro/compliance: eliminação de documento exige autorização nominal e motivo (35.12)', async () => {
+    const sem = await req('POST', P + '/lgpd/eliminacoes', { corpo: { descricao: 'Cópias de autos' } });
+    assert.equal(sem.st, 400);
+    const com = await req('POST', P + '/lgpd/eliminacoes', { corpo: { descricao: 'Cópias de autos', motivo: 'Prazo de guarda vencido (tabela de temporalidade)' } });
+    assert.equal(com.st, 200); assert.ok(com.json.registro.autorizado_por);
+  });
+  await t('livro/compliance: item crítico do inventário exige plano de contingência (12.9)', async () => {
+    const sem = await req('POST', P + '/interno/inventario', { corpo: { nome: 'Coleta DJEN local', tipo: 'automacao', criticidade: 'critica' } });
+    assert.equal(sem.st, 400);
+    const com = await req('POST', P + '/interno/inventario', {
+      corpo: { nome: 'Coleta DJEN local', tipo: 'automacao', criticidade: 'critica', plano_contingencia: 'Conferência manual no DJEN pela equipe.' },
+    });
+    assert.equal(com.st, 200);
+  });
+
+  await t('livro/conteúdo: publicar sem revisão ética é bloqueado (Prov. 205/2021 · Cap. 14.5)', async () => {
+    const ct = await req('POST', P + '/conteudo', { corpo: { titulo: 'Como funciona a usucapião', tipo: 'artigo', texto: 'texto informativo' } });
+    assert.equal(ct.st, 200);
+    const id = ct.json.item.id;
+    const cedo = await req('PATCH', `${P}/conteudo/${id}`, { corpo: { status: 'publicado' } });
+    assert.equal(cedo.st, 400); assert.ok(/ética/i.test(cedo.json.erro));
+    const cl = await req('GET', `${P}/conteudo/${id}`);
+    const obrig = cl.json.checklist.filter(c => c.obrigatorio);
+    // faltando um obrigatório → reprovado
+    const parcial = await req('POST', `${P}/conteudo/${id}/etica`, { corpo: { itens: obrig.slice(1).map(c => ({ item: c.item, ok: true })) } });
+    assert.equal(parcial.st, 200); assert.equal(parcial.json.reprovado, true);
+    const total = await req('POST', `${P}/conteudo/${id}/etica`, { corpo: { itens: cl.json.checklist.map(c => ({ item: c.item, ok: true })) } });
+    assert.equal(total.json.reprovado, false);
+    const pub = await req('PATCH', `${P}/conteudo/${id}`, { corpo: { status: 'publicado', url_publicada: 'https://x/y' } });
+    assert.equal(pub.st, 200);
+    // alterar o texto de conteúdo publicado exige nova versão
+    const reescrever = await req('PATCH', `${P}/conteudo/${id}`, { corpo: { texto: 'outro texto' } });
+    assert.equal(reescrever.st, 400);
+  });
+
+  await t('livro/portal: tradução do andamento só fica visível após aprovação humana (47.2)', async () => {
+    const mov = await req('POST', `${P}/processos/${casoLivroId}/andamentos`, {
+      chave: true, corpo: { data: '2026-07-20', descricao: 'Intimação para manifestação em 15 dias', fonte: 'teste' },
+    });
+    assert.equal(mov.st, 200);
+    const movId = mov.json.id || (mov.json.andamento && mov.json.andamento.id);
+    assert.ok(movId, 'andamento deve retornar id');
+    const tr = await req('POST', `${P}/portal/andamentos/${movId}/traducao`, {
+      chave: true, corpo: { texto_simples: 'O juiz pediu que você envie um documento.', origem: 'ia', sensivel: true },
+    });
+    assert.equal(tr.st, 200); assert.equal(tr.json.traducao.status, 'rascunho');
+    const cedo = await req('POST', `${P}/portal/traducoes/${tr.json.traducao.id}/publicar`, { corpo: {} });
+    assert.equal(cedo.st, 400); assert.ok(/aprovação humana/i.test(cedo.json.erro));
+    await req('POST', `${P}/portal/traducoes/${tr.json.traducao.id}/aprovar`);
+    const sensivel = await req('POST', `${P}/portal/traducoes/${tr.json.traducao.id}/publicar`, { corpo: {} });
+    assert.equal(sensivel.st, 400);
+    assert.ok(/sensível/i.test(sensivel.json.erro), 'evento sensível espera a conversa pessoal');
+    const pub = await req('POST', `${P}/portal/traducoes/${tr.json.traducao.id}/publicar`, { corpo: { conversa_feita: true } });
+    assert.equal(pub.st, 200); assert.equal(pub.json.traducao.status, 'publicada');
+  });
+
+  await t('livro/documentos: classificação de baixa confiança vai para a fila (47.6)', async () => {
+    const doc = await req('POST', P + '/documentos', {
+      corpo: { titulo: 'digitalizacao.pdf', tipo: 'outro', case_id: casoLivroId, nome_original: 'digitalizacao.pdf', base64: Buffer.from('%PDF-1.4 teste').toString('base64') },
+    });
+    assert.equal(doc.st, 200);
+    const docId = doc.json.id;
+    const fila = await req('POST', P + '/documentos-fila', {
+      chave: true, corpo: { document_id: docId, sugestao_tipo: 'sentenca', sugestao_nome: 'Sentença', confianca: 0.42 },
+    });
+    assert.equal(fila.st, 200); assert.equal(fila.json.item.exige_revisao, true);
+    const dec = await req('PATCH', `${P}/documentos-fila/${fila.json.item.id}`, { corpo: { status: 'corrigida', tipo: 'decisao', titulo: 'Decisão interlocutória' } });
+    assert.equal(dec.st, 200);
+    const det = await req('GET', `${P}/documentos/${docId}`);
+    assert.equal(det.json.documento.tipo, 'decisao');
+  });
+
+  await t('livro/controladoria: conferências rodam de forma independente e geram achados (47.11)', async () => {
+    const r = await req('POST', P + '/controladoria/rodar', { corpo: { escopo: 'manual' } });
+    assert.equal(r.st, 200);
+    assert.ok(r.json.achados >= 1, 'com prazo/publicação pendentes deve haver achado');
+    const lst = await req('GET', P + '/controladoria');
+    assert.ok(lst.json.regras.length >= 20, 'catálogo de conferências do livro');
+    const ind = await req('GET', P + '/controladoria/indicadores');
+    assert.ok(ind.json.indicadores.prazos, 'indicadores do Cap. 40');
+    const achado = lst.json.achados[0];
+    const semJust = await req('PATCH', `${P}/controladoria/achados/${achado.id}`, { corpo: { status: 'falso_positivo' } });
+    assert.equal(semJust.st, 400, 'falso positivo exige justificativa');
+    const tratado = await req('PATCH', `${P}/controladoria/achados/${achado.id}`, { corpo: { status: 'tratado', observacao: 'corrigido' } });
+    assert.equal(tratado.st, 200);
+  });
+
+  await t('livro/prazos: escalonamento em três níveis e confirmação de leitura (47.4/19.7/19.8)', async () => {
+    const pz = await req('POST', P + '/prazos', {
+      corpo: { case_id: casoLivroId, titulo: 'Manifestação', tipo: 'fatal', data_fatal: new Date(Date.now() + 864e5).toISOString().slice(0, 10), validado_por: 'Admin Teste' },
+    });
+    assert.equal(pz.st, 200);
+    const pend = await req('GET', P + '/prazos-escalonamento');
+    const meus = pend.json.pendentes.filter(x => x.deadline.id === pz.json.prazo.id);
+    assert.ok(meus.length >= 3, 'prazo em D-1 acumula os níveis 1, 2 e 3');
+    assert.ok(meus.some(x => x.nivel === 3), 'véspera escala até o sócio');
+    const reg = await req('POST', P + '/prazos-escalonamento', {
+      chave: true, corpo: { deadline_id: pz.json.prazo.id, nivel: 3, dias_antes: 1, destino: 'socio', canal: 'whatsapp' },
+    });
+    assert.equal(reg.st, 200);
+    const naoLidos = await req('GET', P + '/prazos-escalonamento');
+    assert.ok(naoLidos.json.nao_lidos.some(x => x.id === reg.json.alerta.id));
+    const lido = await req('POST', `${P}/prazos-escalonamento/${reg.json.alerta.id}/lido`);
+    assert.equal(lido.st, 200); assert.ok(lido.json.alerta.lido_em);
+  });
+
+  await t('livro/seeds: escritório novo nasce com os artefatos do livro (rascunho a aprovar)', async () => {
+    const pol = await req('GET', P + '/compliance/politicas');
+    const ia = pol.json.politicas.find(p => p.tipo === 'politica_ia');
+    assert.ok(ia, 'política de uso de IA semeada (Cap. 6.10/42.12)');
+    assert.equal(ia.status, 'rascunho', 'seed não se autoaprova');
+    const pops = await req('GET', P + '/interno/pops');
+    assert.ok(pops.json.pops.length >= 3, 'POPs iniciais do Cap. 7.8');
+    const cl = await req('GET', P + '/clausulas?tema=Limitação&agrupar=1');
+    assert.ok(cl.json.tema.preferencial.length && cl.json.tema.inaceitavel.length, 'cláusulas em três níveis (Cap. 29.3)');
+    const temp = await req('GET', P + '/lgpd/temporalidade');
+    assert.ok(temp.json.tabela.length >= 5, 'tabela de temporalidade (Cap. 35.11)');
+    const central = await req('GET', P + '/agentes/central');
+    assert.ok(central.json.cartas.length >= 5, 'cartas de autonomia dos agentes do Cap. 10');
+    for (const c of central.json.cartas) {
+      assert.ok(c.proibido.length && c.exige_aprovacao.length, 'toda carta tem os três blocos do Cap. 10.10');
+    }
+  });
+  await t('livro/seeds: base normativa nasce conferida, com fonte oficial e data (Cap. 33.4/33.9)', async () => {
+    const r = await req('GET', P + '/pesquisa/normas');
+    assert.ok(r.json.normas.length >= 9, 'normas que sustentam as minutas semeadas');
+    for (const n of r.json.normas) {
+      assert.ok(n.fonte_url && /^https:\/\//.test(n.fonte_url), 'toda norma semeada aponta fonte oficial: ' + n.identificacao);
+      assert.ok(n.conferida_em && n.conferida_por, 'conferência datada e nominal: ' + n.identificacao);
+    }
+    // as três normas de IA/publicidade que o livro manda conferir (caps. 6/13/42)
+    const tem = (t) => r.json.normas.some(n => n.identificacao.includes(t));
+    assert.ok(tem('205/2021'), 'Provimento 205/2021 (publicidade)');
+    assert.ok(tem('001/2024'), 'Recomendação CFOAB 001/2024 (IA generativa)');
+    assert.ok(tem('615/2025'), 'Resolução CNJ 615/2025 (Política de IA do Judiciário)');
+    assert.equal(r.json.desatualizadas.length, 0, 'nenhuma norma semeada nasce vencida de conferência');
+    // a política de IA precisa citar as normas conferidas, não normas genéricas
+    const pol = await req('GET', P + '/compliance/politicas');
+    const ia = pol.json.politicas.find(p => p.tipo === 'politica_ia');
+    const det = await req('GET', `${P}/compliance/politicas/${ia.id}`);
+    for (const ref of ['001/2024', '615/2025', '205/2021', '13.709']) {
+      assert.ok(det.json.politica.texto.includes(ref), 'política de IA cita ' + ref);
+    }
+    assert.ok(/COMUNICAÇÃO AO CLIENTE/i.test(det.json.politica.texto), 'dever de comunicar o uso de IA ao cliente (Recomendação 001/2024)');
+  });
+  await t('livro/rotina: manutenção diária marca vencidos, escalona prazos e roda conferências', async () => {
+    const r = legal.coleta.manutencaoLivro();
+    assert.ok(typeof r.achados === 'number');
+    assert.ok(r.escalonamentos >= 0);
+    const runs = await req('GET', P + '/controladoria');
+    assert.ok(runs.json.runs.some(x => x.escopo === 'diaria'), 'execução diária registrada');
+  });
+  await t('livro/ponte: módulos novos são gateados pelo plano do assinante', async () => {
+    const semCrm = await req('GET', '/juridico/api/legal/crm/painel', { fake: { uid: 'b5', modulos: 'documentos' } });
+    assert.equal(semCrm.st, 403);
+    const comCrm = await req('GET', '/juridico/api/legal/crm/painel', { fake: { uid: 'b5', modulos: 'documentos,crm' } });
+    assert.equal(comCrm.st, 200);
+    const semCompliance = await req('GET', '/juridico/api/legal/lgpd/inventario', { fake: { uid: 'b5', modulos: 'crm' } });
+    assert.equal(semCompliance.st, 403);
+  });
+
   srv.close();
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

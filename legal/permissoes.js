@@ -24,6 +24,16 @@ const PERMISSOES = [
   'gerir_clientes', 'gerir_usuarios',
   'gerir_prazos', 'gerir_tarefas', 'gerir_publicacoes',
   'usar_ia', 'ver_dados_sensiveis', 'exportar_relatorios', 'ver_auditoria',
+  // ---- ONDA LIVRO (paridade com os 12 protótipos do Cap. 47 + Parte VIII) ----
+  'gerir_crm',          // 47.1 funil, propostas, conflito de interesses, KYC
+  'gerir_pesquisa',     // 47.7/47.8 pesquisa de jurisprudência e legislação
+  'gerir_estrategia',   // Cap. 23/24/5.6 estratégia, matriz de fatos e provas (sigiloso)
+  'gerir_contratos',    // 47.9 ciclo contratual, alçadas e obrigações
+  'apontar_horas',      // 37.5 apontamento de horas (todo mundo aponta o seu)
+  'gerir_pops',         // 7.6/36.5 POPs, avisos e decisões internas
+  'gerir_compliance',   // Cap. 41/42/44 compliance, LGPD, riscos, incidentes
+  'gerir_conteudo',     // Cap. 13/14 marketing jurídico (revisão ética)
+  'ver_controladoria',  // 47.11 painel de controladoria (conferência independente)
 ];
 
 const TODAS = PERMISSOES.slice();
@@ -35,22 +45,29 @@ const PERFIS = [
   { id: 'socio_admin', nome: 'Sócio administrador', nivel: 90, permissoes: TODAS },
   { id: 'adv_senior', nome: 'Advogado sênior', nivel: 70, permissoes: sem('gerir_usuarios') },
   { id: 'adv_pleno', nome: 'Advogado pleno', nivel: 60, permissoes: sem('gerir_usuarios', 'ver_auditoria', 'gerir_financeiro') },
-  { id: 'adv_junior', nome: 'Advogado júnior', nivel: 50, permissoes: sem('gerir_usuarios', 'ver_auditoria', 'gerir_financeiro', 'aprovar_documentos', 'protocolar', 'enviar_cliente') },
+  {
+    id: 'adv_junior', nome: 'Advogado júnior', nivel: 50,
+    permissoes: sem('gerir_usuarios', 'ver_auditoria', 'gerir_financeiro', 'aprovar_documentos', 'protocolar',
+      'enviar_cliente', 'gerir_compliance', 'ver_controladoria'),
+  },
   {
     id: 'estagiario', nome: 'Estagiário', nivel: 30,
-    permissoes: ['ver_processos', 'ver_documentos', 'criar_documentos', 'editar_documentos', 'gerir_tarefas', 'usar_ia'],
+    permissoes: ['ver_processos', 'ver_documentos', 'criar_documentos', 'editar_documentos', 'gerir_tarefas', 'usar_ia',
+      'apontar_horas', 'gerir_pesquisa'],
   },
   {
     id: 'paralegal', nome: 'Paralegal', nivel: 35,
-    permissoes: ['ver_processos', 'ver_documentos', 'criar_documentos', 'editar_documentos', 'gerir_prazos', 'gerir_tarefas', 'gerir_publicacoes', 'usar_ia'],
+    permissoes: ['ver_processos', 'ver_documentos', 'criar_documentos', 'editar_documentos', 'gerir_prazos', 'gerir_tarefas', 'gerir_publicacoes', 'usar_ia',
+      'apontar_horas', 'gerir_pesquisa', 'gerir_crm'],
   },
   {
     id: 'financeiro', nome: 'Financeiro', nivel: 40,
-    permissoes: ['ver_processos', 'ver_financeiro', 'gerir_financeiro', 'ver_prestacao_contas', 'exportar_relatorios'],
+    permissoes: ['ver_processos', 'ver_financeiro', 'gerir_financeiro', 'ver_prestacao_contas', 'exportar_relatorios',
+      'apontar_horas'],
   },
   {
     id: 'atendimento', nome: 'Atendimento / Relacionamento', nivel: 30,
-    permissoes: ['ver_processos', 'gerir_clientes', 'gerir_tarefas'],
+    permissoes: ['ver_processos', 'gerir_clientes', 'gerir_tarefas', 'gerir_crm', 'apontar_horas', 'gerir_conteudo'],
   },
   // Cliente: acessa só o Portal do Cliente (Fase 5) — NUNCA o painel interno.
   { id: 'cliente', nome: 'Cliente', nivel: 10, permissoes: ['ver_prestacao_contas'] },
@@ -58,8 +75,12 @@ const PERFIS = [
   // editar_processos = registrar andamentos via PUBLISH_KEY (as rotas de
   // alteração de capa/status são requireAuth — a chave não chega nelas).
   {
+    // Ingestão e leitura. As rotas de APROVAR/PUBLICAR são requireAuth (sessão
+    // humana) — a chave não chega nelas, então o agente alimenta a fila mas
+    // nunca libera nada ao cliente/mundo (Cap. 10.10).
     id: 'agente_ia', nome: 'Agente de IA jurídico', nivel: 20,
-    permissoes: ['ver_processos', 'editar_processos', 'ver_documentos', 'criar_documentos', 'gerir_prazos', 'gerir_tarefas', 'gerir_publicacoes', 'usar_ia'],
+    permissoes: ['ver_processos', 'editar_processos', 'ver_documentos', 'criar_documentos', 'gerir_prazos', 'gerir_tarefas', 'gerir_publicacoes', 'usar_ia',
+      'gerir_crm', 'gerir_pesquisa', 'apontar_horas', 'ver_controladoria'],
   },
   { id: 'visualizador', nome: 'Visualizador (somente leitura)', nivel: 15, permissoes: ['ver_processos', 'ver_documentos'] },
 ];

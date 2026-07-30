@@ -23,6 +23,7 @@ const portalCliente = require('./portal-cliente');
 const relatorios = require('./relatorios');
 const coleta = require('./coleta');
 const { semearIA } = require('./prompts-seed');
+const { semearLivro } = require('./livro/seeds');
 const { registrarRotasStaff } = require('./rotas-staff');
 
 function montar(app, injected = {}) {
@@ -43,6 +44,9 @@ function montar(app, injected = {}) {
     semearIA();                    // agentes especialistas + biblioteca de prompts
     contratos.semearTemplates();   // modelos de contrato + cláusulas (Módulo 13)
     feriados.semearFeriados();     // feriados forenses + suspensão art. 220 CPC
+    semearLivro();                 // ONDA LIVRO: política de IA, cartas de agentes, POPs,
+                                   // temporalidade, cláusulas em 3 níveis e planos de
+                                   // continuidade — tudo como RASCUNHO a aprovar.
   });
   dbmod.garantirTenant(dbmod.TENANT_PADRAO); // aquece + semeia o escritório interno (Augusto)
   notif.configurar({ enviarEmail, enviarWhatsApp, alertaAugusto }); // canais reais do server.js
@@ -81,6 +85,19 @@ const SEGMENTO_MODULO = {
   processos: 'processos', andamentos: 'processos', publicacoes: 'publicacoes',
   prazos: 'prazos', audiencias: 'audiencias', tarefas: 'tarefas', documentos: 'documentos',
   ia: 'ia', pecas: 'pecas', contratos: 'contratos', relatorios: 'relatorios',
+  // ---- ONDA LIVRO (Cap. 47 + Parte VIII) ----
+  crm: 'crm',                                     // 47.1
+  pesquisa: 'pesquisa',                           // 47.7 + 47.8
+  estrategia: 'estrategia', matrizes: 'estrategia',// Cap. 23/24/5.6/21
+  'contratos-ciclo': 'contratos', clausulas: 'contratos', // 47.9 (mesmo módulo comercial)
+  fin: 'financeiro',                              // 47.10
+  interno: 'portal_interno', agentes: 'portal_interno',   // 47.3 + 47.12
+  compliance: 'compliance', lgpd: 'compliance', crises: 'compliance', // Parte VIII
+  conteudo: 'conteudo', 'conteudo-perguntas': 'conteudo', // Cap. 13/14
+  controladoria: 'controladoria',                 // 47.11
+  portal: 'portal_cliente',                       // 47.2 (traduções/pendências/NPS)
+  'prazos-escalonamento': 'prazos',               // 47.4
+  'documentos-fila': 'documentos',                // 47.6
 };
 
 function montarAssinante(app, injected = {}) {

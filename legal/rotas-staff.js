@@ -8,6 +8,8 @@
 // =====================================================================
 'use strict';
 const dbmod = require('./db');
+const repoLivro = require('./repo-livro');
+const { registrarRotasLivro } = require('./rotas-livro');
 
 // Resolve o tenant (escritório) desta requisição — a PONTE do isolamento.
 //  1) req.tenantLegal: setado por uma camada acima (ex.: futura ponte do
@@ -667,6 +669,15 @@ function registrarRotasStaff(app, deps) {
     const id = repo.Integracoes.webhook(req.params.origem, (req.body || {}).evento, req.body);
     res.json({ ok: true, id });
   }));
+
+  // ---------------------------------------------------------- ONDA LIVRO
+  // Paridade com os 12 protótipos do Cap. 47 + Parte VIII do livro
+  // "Claude AI na Prática Jurídica". Registradas AQUI de propósito: assim a
+  // ponte do assinante (index.js) as remonta em /juridico/api/legal/* sem
+  // duplicar código, e o gating por plano continua valendo.
+  registrarRotasLivro(app, {
+    repo, L: repoLivro, pode, h, auditar, quemFez, requireAuth, requirePublishOrSession,
+  });
 }
 
 module.exports = { registrarRotasStaff };

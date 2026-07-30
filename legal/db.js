@@ -51,7 +51,11 @@ const _inicializadores = [];
 function registrarInicializador(fn) { if (typeof fn === 'function') _inicializadores.push(fn); }
 
 // ---- schema + migrações (aplicados a CADA banco de tenant) ----
-const schemaSQL = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+const schemaSQL = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8')
+  // ONDA LIVRO: tabelas de paridade com o livro "Claude AI na Prática Jurídica"
+  // (Cap. 47 + Parte VIII). Arquivo separado só por legibilidade — roda no
+  // mesmo boot, também idempotente (CREATE ... IF NOT EXISTS).
+  + '\n' + fs.readFileSync(path.join(__dirname, 'schema-livro.sql'), 'utf8');
 // Cada entrada roda UMA vez por banco (controle na tabela migrations). Só acrescentar no fim.
 const MIGRACOES = [
   { nome: '001-documents-legado-id', sql: "ALTER TABLE documents ADD COLUMN legado_id TEXT DEFAULT ''" },

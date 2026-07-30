@@ -57,6 +57,12 @@ montado no `server.js` via injeção de dependências — **nenhuma rota ou tela
 ```
 legal/
   schema.sql       # 35+ tabelas (CREATE IF NOT EXISTS, idempotente) + tabela migrations
+  schema-livro.sql # +50 tabelas da ONDA LIVRO (paridade com o Cap. 47 + Parte VIII do livro)
+  repo-livro.js    # helpers/enums da onda + agregador dos submódulos de livro/
+  livro/           # um submódulo por bloco do livro (crm, pesquisa, estrategia, contratos-ciclo,
+                   #   financeiro, interno, compliance, conteudo, controladoria, portal-extras)
+                   #   + seeds.js (política de IA, cartas de agentes, POPs, temporalidade...)
+  rotas-livro.js   # rotas da onda (chamadas por rotas-staff.js → a ponte do assinante as remonta)
   db.js            # conexão node:sqlite (DATA_DIR/legal/legal.db, WAL), helpers
   permissoes.js    # perfis, matriz de permissões, seed, resolução de perfil
   feriados.js      # feriados forenses (seed nacional + art. 220 CPC) e cálculo SUGERIDO
@@ -115,6 +121,36 @@ staff/app-legal.js # painel (sub-app com abas) no Portal Staff — menu "⚖️ 
 | Coleta/rotinas | `POST /integracoes/coletar/andamentos` †, `POST /integracoes/coletar/publicacoes` †, `POST /integracoes/rotina-diaria` †, `POST /ia/processar-fila` † | `gerir_publicacoes` / `usar_ia` |
 
 † = aceita também `x-publish-key: PUBLISH_KEY` (ingestão por agentes, perfil efetivo `agente_ia`).
+
+### ONDA LIVRO — rotas de paridade com "Claude AI na Prática Jurídica" (Cap. 47 + Parte VIII)
+
+Registradas por `rotas-livro.js`, chamado no fim de `registrarRotasStaff` — logo a **ponte do
+assinante remonta tudo** em `/juridico/api/legal/*` sem duplicar código. Gating por plano em
+`index.js` (`SEGMENTO_MODULO`).
+
+| Bloco (cap.) | Rotas | Permissão |
+|---|---|---|
+| CRM (47.1 · 15/16/17) | `GET /crm/painel`, `GET/POST † /crm/leads`, `GET/PATCH /crm/leads/:id`, `POST † .../interacoes`, `POST .../vincular`, `POST .../propostas`, `PATCH /crm/propostas/:id`, `POST /crm/propostas/:id/aprovar\|enviada\|desfecho`, `GET/POST /crm/conflitos`, `GET/POST /crm/kyc` | `gerir_crm` (+`enviar_cliente` p/ aprovar/enviar proposta) |
+| Pesquisa (47.7/47.8 · 32-34) | `GET/POST † /pesquisa/projetos`, `GET/PATCH † /pesquisa/projetos/:id`, `POST † .../achados`, `PATCH /pesquisa/achados/:id`, `POST /pesquisa/achados/:id/conferir`, `GET .../relatorio` (HTML auditável), `GET/POST/PATCH /pesquisa/normas(/:id)`, `POST /pesquisa/normas/:id/conferir\|versoes`, `GET/POST/PATCH /pesquisa/monitores`, `GET /pesquisa/alertas`, `POST † /pesquisa/monitores/:id/alertas`, `PATCH /pesquisa/alertas/:id` | `gerir_pesquisa` |
+| Estratégia e matrizes (5.6/21/23/24/26/30) | `GET/POST /estrategia/:caseId`, `POST .../cenarios\|decisoes\|recursos`, `POST /estrategia/recursos/:id/decidir`, `POST /estrategia/negociacao`, `GET/POST/PATCH/DELETE /matrizes/:caseId/fatos\|provas`, `GET/POST † /matrizes/:caseId/diagnosticos`, `POST /matrizes/diagnosticos/:id/validar` | `gerir_estrategia` / `editar_processos` (+`ver_dados_sensiveis` p/ ler) |
+| Ciclo contratual (47.9 · 29) | `GET/POST /contratos-ciclo`, `GET/PATCH /contratos-ciclo/:id`, `POST .../mover\|aprovacao\|obrigacoes`, `POST /contratos-ciclo/aprovacoes/:id`, `PATCH /contratos-ciclo/obrigacoes/:id`, `GET/POST/PATCH/DELETE /clausulas` | `gerir_contratos` (+`aprovar_documentos` p/ decidir alçada) |
+| Financeiro (47.10 · 38 + 37.5) | `GET /fin/painel\|rentabilidade\|capacidade`, `GET/POST/PATCH /fin/honorarios`, `GET/POST/DELETE /fin/horas`, `GET/POST/PATCH /fin/faturas(/:id)`, `POST /fin/faturas/de-horas`, `GET /fin/cobrancas`, `POST /fin/faturas/:id/cobrancas`, `POST /fin/cobrancas/:id/aprovar\|enviada`, `GET/POST/DELETE /fin/orcamento` | `ver_/gerir_financeiro`, `apontar_horas`, `enviar_cliente` (cobrança) |
+| Portal interno (47.3 · 36 + 7.6) | `GET/POST/DELETE /interno/mural`, `POST /interno/ciencia`, `GET /interno/ciencias`, `GET/POST/PATCH /interno/pops(/:id)`, `POST /interno/pops/:id/publicar\|executar`, `GET/POST /interno/decisoes`, `GET/POST/PATCH /interno/pedidos`, `GET/POST/DELETE /interno/inventario` | `ver_processos` / `gerir_pops` / `gerir_compliance` |
+| Central de agentes (47.12 · 10.10) | `GET /agentes/central`, `POST/DELETE /agentes/cartas` | `usar_ia` / `gerir_usuarios` |
+| Compliance e LGPD (41/42/44 · 6.10 · 35.11) | `GET /compliance/painel`, `GET/POST/PATCH /compliance/politicas(/:id)` + `/publicar`, `GET/POST/PATCH/DELETE /compliance/riscos`, `GET/POST †/PATCH /compliance/denuncias`, `GET/POST /compliance/dd`, `GET/POST/DELETE /lgpd/inventario`, `GET/POST/PATCH /lgpd/titulares`, `GET/POST /lgpd/incidentes`, `GET/POST/DELETE /lgpd/temporalidade`, `POST /lgpd/eliminacoes`, `GET/POST /crises/investigacoes\|planos`, `GET/POST/DELETE /compliance/obrigacoes` | `gerir_compliance` (leitura de políticas/planos: `ver_processos`) |
+| Conteúdo (13/14) | `GET/POST † /conteudo`, `GET/PATCH/DELETE /conteudo/:id`, `POST /conteudo/:id/etica\|versoes`, `GET/POST † /conteudo-perguntas` | `gerir_conteudo` |
+| Controladoria (47.11 · 40) | `GET /controladoria`, `POST † /controladoria/rodar`, `GET /controladoria/indicadores`, `PATCH /controladoria/achados/:id` | `ver_controladoria` |
+| Portal do cliente extras (47.2 · 18) | `GET /portal/traducoes`, `POST † /portal/andamentos/:id/traducao`, `POST /portal/traducoes/:id/aprovar\|reprovar\|publicar`, `GET/POST/PATCH/DELETE /portal/pendencias`, `GET/POST † /portal/satisfacao` | `aprovar_documentos` / `enviar_cliente` / `gerir_clientes` |
+| Prazos e documentos extras (47.4/47.6) | `GET/POST † /prazos-escalonamento`, `POST /prazos-escalonamento/:id/lido`, `POST /publicacoes/:id/ciencia`, `GET /publicacoes/:id/ciencias`, `GET/POST †/PATCH /documentos-fila(/:id)` | `gerir_prazos` / `gerir_publicacoes` / `ver_/criar_/editar_documentos` |
+
+**Onde mora o quê:** `schema-livro.sql` (tabelas) · `repo-livro.js` (helpers/enums + agregador) ·
+`livro/crm.js`, `livro/pesquisa.js`, `livro/estrategia.js`, `livro/contratos-ciclo.js`,
+`livro/financeiro.js`, `livro/interno.js`, `livro/compliance.js`, `livro/conteudo.js`,
+`livro/controladoria.js`, `livro/portal-extras.js`, `livro/seeds.js` ·
+`rotas-livro.js` · `staff/app-legal-livro.js` (estende o `LG`, não altera `app-legal.js`).
+
+**Regra de ouro da onda:** rota que APROVA/PUBLICA/ENVIA é `requireAuth` (sessão humana), nunca
+PUBLISH_KEY. O agente alimenta a fila; quem libera é pessoa identificada.
 
 ## Como testar localmente
 

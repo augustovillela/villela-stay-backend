@@ -21,9 +21,19 @@ const MODULOS = [
   ['publicacoes', 'Publicações (DJEN)'], ['audiencias', 'Audiências'],
   ['tarefas', 'Tarefas e Kanban'], ['documentos', 'Documentos'],
   ['ia', 'IA jurídica (consultas)'], ['pecas', 'Gerador de peças'],
-  ['contratos', 'Contratos (análise + wizard)'], ['portal_cliente', 'Portal do cliente'],
+  ['contratos', 'Contratos (ciclo completo + cláusulas + alçadas)'], ['portal_cliente', 'Portal do cliente'],
   ['relatorios', 'Relatórios gerenciais'], ['coleta_datajud', 'Coleta DataJud'],
   ['coleta_djen', 'Coleta DJEN'],
+  // ---- ONDA LIVRO: módulos que dão paridade com os 12 protótipos do Cap. 47
+  // do livro "Claude AI na Prática Jurídica" (é o que o leitor vai procurar).
+  ['crm', 'CRM jurídico (funil, propostas, conflito de interesses, KYC)'],
+  ['pesquisa', 'Pesquisa auditável (jurisprudência, legislação, monitoramento)'],
+  ['estrategia', 'Estratégia e matrizes (fatos, provas, cenários, recursos)'],
+  ['financeiro', 'Financeiro completo (honorários, horas, faturas, cobrança)'],
+  ['portal_interno', 'Portal interno, POPs e central de agentes'],
+  ['compliance', 'Compliance, LGPD, riscos e continuidade'],
+  ['conteudo', 'Marketing jurídico com revisão ética (Prov. 205/2021)'],
+  ['controladoria', 'Painel de controladoria jurídica'],
 ];
 const MODULOS_KEYS = MODULOS.map(m => m[0]);
 
@@ -54,14 +64,19 @@ const PLANOS_SEED = [
     slug: 'essencial', nome: 'Essencial', descricao: 'Para o advogado autônomo e bancas pequenas.',
     preco_centavos: 14900, ordem: 1,
     limites: { advogados: 2, processos_ativos: 50, ia_consultas_mes: 100, armazenamento_mb: 2048, clientes_portal: 30 },
-    modulos: ['processos', 'prazos', 'publicacoes', 'audiencias', 'tarefas', 'documentos', 'relatorios', 'coleta_djen'],
+    // Essencial já entrega o núcleo do livro que o autônomo mais usa:
+    // prazos/publicações (47.4), documentos (47.6), CRM (47.1) e controladoria (47.11).
+    modulos: ['processos', 'prazos', 'publicacoes', 'audiencias', 'tarefas', 'documentos', 'relatorios', 'coleta_djen',
+      'crm', 'controladoria', 'portal_interno'],
     flags: { ia_direta: false, api_publica: false, white_label: false, coleta_automatica: true },
   },
   {
     slug: 'profissional', nome: 'Profissional', descricao: 'Escritório em crescimento com IA e portal do cliente.',
     preco_centavos: 34900, ordem: 2,
     limites: { advogados: 5, processos_ativos: 300, ia_consultas_mes: 500, armazenamento_mb: 10240, clientes_portal: 200 },
-    modulos: ['processos', 'prazos', 'publicacoes', 'audiencias', 'tarefas', 'documentos', 'ia', 'pecas', 'contratos', 'portal_cliente', 'relatorios', 'coleta_datajud', 'coleta_djen'],
+    // Profissional = o livro quase inteiro (falta só compliance/LGPD como serviço).
+    modulos: ['processos', 'prazos', 'publicacoes', 'audiencias', 'tarefas', 'documentos', 'ia', 'pecas', 'contratos', 'portal_cliente', 'relatorios', 'coleta_datajud', 'coleta_djen',
+      'crm', 'pesquisa', 'estrategia', 'financeiro', 'portal_interno', 'conteudo', 'controladoria'],
     flags: { ia_direta: true, api_publica: false, white_label: false, coleta_automatica: true },
   },
   {
