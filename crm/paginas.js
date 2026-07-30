@@ -97,7 +97,7 @@ function landingHTML() {
     <link rel="canonical" href="https://crm.villelastay.com.br/crm">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela CRM","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"CRM inteligente multicanal: leads, funis, follow-ups, scoring, propostas, campanhas e agentes de IA.","offers":{"@type":"Offer","price":"79.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <style>${CSS}</style></head><body>
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="crm">
     <header class="top"><div class="wrap">
       <a href="/crm" style="text-decoration:none">${marca(true)}</a>
       <nav><a class="esconde" href="/crm#recursos">Recursos</a><a class="esconde" href="/crm#planos">Planos</a><a href="/crm/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/crm/assinar?plano=trial">Teste grátis</a></nav>
@@ -149,9 +149,9 @@ function landingHTML() {
 
 function shell(corpo, script, titulo = 'Villela CRM — Painel') {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>${esc(titulo)}</title>${HEAD_MARCA}<style>${CSS}
+    <meta name="robots" content="noindex"><title>${esc(titulo)}</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
     .cx{max-width:720px;margin:24px auto;padding:0 14px}.erro{color:#b00020}
-    .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem}</style></head><body><div class="cx">
+    .aviso{background:#fdf6e3;border:1px solid #ecd9a0;border-radius:9px;padding:10px 14px;font-size:.9rem}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="crm"><div class="cx">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}</div>${corpo}</div><script>${script || ''}</script></body></html>`;
 }
 
@@ -180,7 +180,7 @@ function assinarHTML(planoSlug) {
 // Painel do assinante (SPA carregada de /crm/app.js)
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela CRM — Painel</title>${HEAD_MARCA}<style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela CRM — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
     .cx{max-width:1160px;margin:20px auto;padding:0 14px}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:118px}
@@ -203,7 +203,7 @@ function appHTML() {
     .duas{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:820px){.duas{grid-template-columns:1fr}}
     dialog{border:1px solid var(--borda);border-radius:14px;max-width:560px;width:92%;padding:20px}
     dialog::backdrop{background:rgba(27,42,74,.45)}
-    </style></head><body><div class="cx">
+    </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="crm"><div class="cx">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}<span class="tag">painel comercial</span></div>
     <div id="app"><p class="sub">Carregando…</p></div></div>
     <script src="/crm/app.js"></script><script>bootCRM();</script></body></html>`;
@@ -212,9 +212,9 @@ function appHTML() {
 // proposta pública /crm/p/:token
 function propostaHTML(token) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Proposta comercial</title>${HEAD_MARCA}<style>${CSS}
+    <meta name="robots" content="noindex"><title>Proposta comercial</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
     .cx{max-width:680px;margin:26px auto;padding:0 14px}.erro{color:#b00020}
-    .tot{font-size:1.6rem;font-weight:800;color:var(--villela-navy)}</style></head><body><div class="cx">
+    .tot{font-size:1.6rem;font-weight:800;color:var(--villela-navy)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="crm"><div class="cx">
     <div id="p"><p class="sub">Carregando proposta…</p></div></div>
     <script>
     (async()=>{

@@ -68,7 +68,7 @@ function pagina({ titulo, descricao, corpo, og, extraHead }) {
 <title>${esc(titulo)}</title><meta name="description" content="${esc(descricao)}">
 ${og ? `<meta property="og:type" content="website"><meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}"><meta property="og:image" content="https://projetos.villelastay.com.br/assets/brand/villela-projects/og-image.png">
 ` : ''}${extraHead || ''}${HEAD_MARCA}${GA}
-<style>${CSS}</style></head><body>
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="projects">
 <header class="top"><div class="wrap">
   <a class="brand xl" href="/vpe">${BRAND_XL}</a>
   <nav class="nav"><a class="esconde" href="/vpe#recursos">Recursos</a><a class="esconde" href="/vpe#planos">Planos</a><a href="/vpe/login">Entrar</a> <a class="btn" style="padding:9px 16px;background:#DDD3F7;color:#2E1065!important" href="/vpe/cadastro">Teste grátis</a></nav>
@@ -246,7 +246,7 @@ function appTenant() {
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Villela Projects — Painel</title>
 ${HEAD_MARCA}
-<style>${CSS}
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
 body{background:var(--fundo)}
 .layout{display:flex;min-height:calc(100vh - 60px)}
 aside{width:235px;background:#fff;border-right:1px solid var(--borda);padding:18px 12px;flex-shrink:0}
@@ -259,7 +259,7 @@ main{flex:1;padding:26px;max-width:1080px}
 .kpi{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px}.kpi .n{font-size:24px;font-weight:800;color:var(--verde2)}.kpi .r{font-size:12.5px;color:var(--suave)}
 .pri-alta{border-left:4px solid var(--alerta)}.pri-media{border-left:4px solid var(--ambar)}.pri-baixa{border-left:4px solid var(--borda)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style></head><body>
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="projects">
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vpe/app">${BRAND_LOCKUP}</a>
   <nav class="nav"><span id="quem" style="font-size:13.5px;color:#C7D0E2"></span> <button id="pwa-btn" style="display:none;background:none;border:1px solid #C7D0E2;color:#C7D0E2;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:13px;margin-left:14px" title="Instalar o Villela Projects como app no celular">📲 Instalar app</button> <button id="push-btn" style="display:none;background:none;border:1px solid #C7D0E2;color:#C7D0E2;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:13px;margin-left:14px" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>
@@ -1173,7 +1173,7 @@ function portalShell(corpoHtml) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Portal do cliente — Villela Projects</title>
 ${HEAD_MARCA}
-<style>${CSS}.pcard{max-width:760px;margin:26px auto}pre.doc{white-space:pre-wrap;background:var(--fundo);border:1px solid var(--borda);border-radius:10px;padding:16px;font-family:inherit;font-size:14px;max-height:60vh;overflow:auto}</style></head><body>
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}.pcard{max-width:760px;margin:26px auto}pre.doc{white-space:pre-wrap;background:var(--fundo);border:1px solid var(--borda);border-radius:10px;padding:16px;font-family:inherit;font-size:14px;max-height:60vh;overflow:auto}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="projects">
 <header class="top"><div class="wrap"><span class="brand">${BRAND_LOCKUP}</span></div></header>
 <div class="wrap pcard">${corpoHtml}</div>
 <footer><div class="wrap">Portal do cliente · documento apresentado por meio do Villela Projects, uma empresa do Grupo Villela Stay.</div></footer></body></html>`;

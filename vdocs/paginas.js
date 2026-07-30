@@ -75,7 +75,7 @@ ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
 ${HEAD_MARCA}${GA}
-<style>${CSS}</style></head><body>
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="docs">
 <header class="top xl"><div class="wrap">
   <a class="brand" href="/vdocs">${MARCA_XL}</a>
   <nav class="nav"><a class="esconde" href="/vdocs#recursos">Recursos</a><a class="esconde" href="/vdocs/precos">Planos</a><a href="/vdocs/login">Entrar</a> <a class="btn btn-ciano" style="padding:9px 16px" href="/vdocs/cadastro">Teste grátis</a></nav>
@@ -344,7 +344,7 @@ function appTenant() {
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Villela Docs — Painel</title>
 ${HEAD_MARCA}
-<style>${CSS}
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
 body{background:var(--fundo)}
 .layout{display:flex;min-height:calc(100vh - 60px)}
 aside{width:230px;background:#fff;border-right:1px solid var(--borda);padding:18px 12px;flex-shrink:0}
@@ -359,7 +359,7 @@ main{flex:1;padding:26px;max-width:1000px}
 .btn.peq{padding:7px 13px;font-size:13px}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style></head><body>
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="docs">
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vdocs/app">${MARCA}</a>
   <nav class="nav"><span id="quem" style="font-size:13.5px;color:#c6d0e2"></span> <button id="pwa-btn" style="display:none;margin-left:14px;background:none;border:1px solid #3a4a66;color:#c6d0e2;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit" title="Instalar o Villela Docs como app no celular">📲 Instalar app</button> <button id="push-btn" style="display:none;margin-left:14px;background:none;border:1px solid #3a4a66;color:#c6d0e2;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit" title="Notificações no celular">🔔 Avisos</button> <a href="#" onclick="return sair()" style="margin-left:14px">Sair</a></nav>

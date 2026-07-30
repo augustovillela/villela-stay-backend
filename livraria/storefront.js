@@ -106,8 +106,8 @@ function pagina({ title, description, path = '/', ogImage, schema, body, extraHe
 <meta property="og:url" content="${esc(canonical)}"><meta property="og:image" content="${esc(og)}">
 <meta name="twitter:card" content="summary_large_image">
 ${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script>` : ''}
-<style>${CSS}</style>${pixelsHead()}${extraHead}
-</head><body>
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4">${pixelsHead()}${extraHead}
+</head><body class="vx" data-vertical="livraria">
 <header class="top"><div class="wrap">
   <a class="brand" href="/livros"><img src="/assets/brand/livraria-villela/logo-negativo.svg" alt="Livraria Villela" style="height:150px"><span><span class="lv">Livraria</span> <b>Villela</b></span></a>
   <nav class="nav"><a href="/livros">Livros</a><a href="/livros/atualizacoes">Atualizações</a><a href="/minha-biblioteca">Minha biblioteca</a><a href="${SITE_PRINCIPAL}">Villela Stay</a></nav>

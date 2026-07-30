@@ -206,7 +206,7 @@ function landingHTML() {
     <meta property="og:description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 14 dias.">
     <meta property="og:image" content="https://juridico.villelastay.com.br${BRAND_DIR}/og-image.png">
     <link rel="canonical" href="https://juridico.villelastay.com.br/juridico">
-    ${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4">${GA}
+    ${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4">${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Legal","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Gestão jurídica inteligente: processos, prazos, publicações DJEN/DataJud, peças, contratos e portal do cliente para escritórios brasileiros.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
     <style>${CSS}</style></head><body class="vx" data-vertical="legal">
     <header class="top"><div class="wrap">
@@ -279,7 +279,7 @@ function landingHTML() {
 
 function shell(corpo, script) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Legal — Painel</title>${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Legal — Painel</title>${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"><style>${CSS}
     .cx{max-width:720px;margin:24px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.menu button{flex:1;min-width:96px}
     .kpi{display:inline-block;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;margin:4px}
@@ -403,7 +403,7 @@ function appJuridicoHTML() {
 <link rel="apple-touch-icon" href="/assets/brand/villela-legal/apple-touch-icon.png">
 <meta name="theme-color" content="#1B2A4A">
 <link rel="manifest" href="/juridico/manifest.webmanifest"><script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/juridico/sw.js').catch(function(){})})}</script>
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"><style>
 :root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#14532D;--acento2:#0E3B20;--borda:#E2E6EC}
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}

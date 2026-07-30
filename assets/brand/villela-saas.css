@@ -1,0 +1,139 @@
+/* =====================================================================
+   GRUPO VILLELA STAY — CAMADA DE PÁGINA DOS PRODUTOS SaaS
+   =====================================================================
+   Companheira de villela-ui.css (tokens + componentes). Enquanto aquele
+   serve o Portal Staff, esta veste as PÁGINAS PÚBLICAS e os PAINÉIS DO
+   ASSINANTE dos produtos: landing, preços, cadastro, login e app.
+
+   Todos os produtos (vsm, academy, vdocs, vpe, crm, legal-saas) nasceram
+   do mesmo molde e usam as MESMAS classes — .wrap .hero .btn .card .sec
+   .sub .grid .plano .badge .tag .form .cx .lin .menu .aviso — então um
+   arquivo veste todos. A cor muda por `data-vertical` no <body>, igual
+   ao Portal Staff.
+
+   ORDEM DE CARGA (importa):
+     1. villela-ui.css   -> tokens, ANTES do <style> do produto
+     2. <style> do produto -> regras específicas dele, preservadas
+     3. villela-saas.css -> esta folha, DEPOIS, para vencer as primitivas
+   Assim nenhum CSS de produto precisou ser apagado: o que é específico
+   dele continua valendo, e só as primitivas compartilhadas são unificadas.
+   ===================================================================== */
+
+/* Primitivas compartilhadas por todos os produtos SaaS do grupo. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--vx-bg);color:var(--vx-ink);font-family:var(--vx-font-ui);font-size:16px;line-height:1.6}
+:where(h1,h2,h3){font-family:var(--vx-font-brand);color:var(--vx-navy);line-height:1.2;margin:0}
+:where(a){color:var(--vx-accent);text-underline-offset:2px}
+img{max-width:100%}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.wrap-sm{max-width:760px;margin:0 auto;padding:0 24px}
+
+/* ---------- cabeçalho ---------- */
+header.top{background:var(--vx-navy);color:#fff;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:20}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px}
+header.top a{color:#DCE3EE;text-decoration:none;font-size:.94rem}
+header.top a:hover{color:#fff}
+header.top nav{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+header.top .brand{display:inline-flex;align-items:center;gap:12px;color:#fff!important}
+header.top .brand img{height:40px}
+header.top .brand>span{display:flex;flex-direction:column;line-height:1.05}
+.bnome{font-family:var(--vx-font-brand);font-weight:700;font-size:1.32rem;color:#fff}
+.bdesc{font-family:var(--vx-font-ui);font-weight:700;letter-spacing:.2em;color:var(--vx-gold);font-size:.68rem}
+header.top .btn{padding:9px 18px;font-size:.9rem}
+@media(max-width:760px){header.top .esconde{display:none}header.top .brand img{height:34px}.bnome{font-size:1.12rem}}
+
+/* ---------- hero: sóbrio, alinhado à esquerda, sem gradiente chamativo ---------- */
+.hero{background:var(--vx-navy);color:#fff;padding:72px 0 76px;position:relative}
+.hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--vx-accent)}
+.hero h1{color:#fff;font-size:2.5rem;margin:.35rem 0 .6rem;max-width:19ch;letter-spacing:-.015em}
+.hero p{font-size:1.08rem;max-width:58ch;color:#C8D2E2;margin:0 0 .4rem}
+.hero .badge{margin-bottom:6px}
+.hero-acoes{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+@media(max-width:760px){.hero{padding:52px 0 56px}.hero h1{font-size:1.85rem;max-width:none}}
+
+/* ---------- botões ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--vx-accent);color:#fff;
+  font-weight:600;font-size:.98rem;border:1px solid transparent;border-radius:8px;padding:12px 24px;cursor:pointer;
+  text-decoration:none;min-height:44px;transition:background 140ms ease}
+.btn:hover{background:var(--vx-accent-2);color:#fff}
+.btn:focus-visible{outline:2px solid #7FB2FF;outline-offset:2px}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn.g{background:#fff;color:var(--vx-navy);border-color:#fff}
+.btn.g:hover{background:#EEF1F6;color:var(--vx-navy)}
+.btn.o{background:transparent;border-color:rgba(255,255,255,.55);color:#fff}
+.btn.o:hover{background:rgba(255,255,255,.10);color:#fff}
+.btn-ghost{background:transparent;color:var(--vx-accent);border-color:var(--vx-border-strong)}
+.btn-ghost:hover{background:var(--vx-accent-soft);color:var(--vx-accent-2)}
+
+/* ---------- seções ---------- */
+.sec{padding:64px 0;border-top:1px solid var(--vx-border)}
+.sec:first-of-type{border-top:0}
+.sec h2{font-size:1.65rem;margin-bottom:10px}
+.sub{color:var(--vx-ink-2);max-width:64ch;margin:0 0 32px;font-size:1rem}
+.eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--vx-ink-2);margin:0 0 6px}
+
+/* ---------- cards / recursos ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:16px}
+.card{background:var(--vx-surface);border:1px solid var(--vx-border);border-radius:12px;padding:22px;box-shadow:var(--vx-shadow-1)}
+.feat{display:flex;gap:14px;align-items:flex-start}
+.feat .i{font-size:1.35rem;line-height:1.2;width:38px;height:38px;flex:0 0 38px;display:flex;align-items:center;
+  justify-content:center;background:var(--vx-accent-soft);border-radius:9px}
+.feat b{display:block;color:var(--vx-navy);font-size:1rem;margin-bottom:3px}
+.feat .sub{margin:0;font-size:.9rem;text-align:left}
+
+/* ---------- planos ---------- */
+.planos{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:16px;align-items:stretch}
+.plano{background:var(--vx-surface);border:1px solid var(--vx-border);border-radius:12px;padding:24px;
+  display:flex;flex-direction:column;position:relative;box-shadow:var(--vx-shadow-1)}
+.plano.dest{border-color:var(--vx-accent);box-shadow:var(--vx-shadow-2)}
+.plano.dest .badge{position:absolute;top:-11px;left:24px}
+.plano h3{margin:.2rem 0;font-size:1.12rem}
+.preco{font-size:1.9rem;font-weight:700;color:var(--vx-navy);font-variant-numeric:tabular-nums;margin-top:6px}
+.preco small{font-size:.85rem;font-weight:500;color:var(--vx-ink-3)}
+.plano ul{list-style:none;padding:0;margin:16px 0;flex:1}
+.plano li{padding:7px 0;border-bottom:1px solid var(--vx-border);font-size:.9rem;color:var(--vx-ink-2)}
+.plano li:last-child{border-bottom:0}
+.plano .btn{margin-top:8px;width:100%}
+
+/* ---------- badges e tags ---------- */
+.badge{display:inline-block;background:var(--vx-gold);color:#3F3208;font-weight:700;padding:4px 12px;
+  border-radius:999px;font-size:.76rem;letter-spacing:.02em}
+.tag{display:inline-block;background:var(--vx-accent-soft);color:var(--vx-accent-2);border:1px solid #C6DCCE;
+  border-radius:999px;padding:3px 11px;font-size:.8rem;font-weight:600}
+
+/* ---------- tabela (mapa livro -> sistema) ---------- */
+.tab-wrap{overflow-x:auto;background:var(--vx-surface);border:1px solid var(--vx-border);border-radius:12px}
+.tab-wrap table{width:100%;border-collapse:separate;border-spacing:0;font-size:.92rem}
+.tab-wrap th{background:var(--vx-navy);color:#fff;text-align:left;padding:12px 14px;font-size:.8rem;
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.tab-wrap td{padding:11px 14px;border-bottom:1px solid var(--vx-border);vertical-align:top;color:var(--vx-ink-2)}
+.tab-wrap tr:last-child td{border-bottom:0}
+.tab-wrap tbody tr:nth-child(even) td{background:var(--vx-surface-2)}
+.tab-wrap td:first-child{font-weight:700;color:var(--vx-navy);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* ---------- formulários ---------- */
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--vx-border-strong);border-radius:8px;
+  font:inherit;font-size:.98rem;color:var(--vx-ink);background:#fff;margin:5px 0 14px;min-height:44px}
+textarea{min-height:96px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--vx-accent);box-shadow:0 0 0 3px rgba(20,83,45,.14)}
+label{font-size:.88rem;font-weight:600;color:var(--vx-ink-2)}
+.form{max-width:520px;background:var(--vx-surface);padding:28px;border-radius:12px;border:1px solid var(--vx-border);box-shadow:var(--vx-shadow-1)}
+.erro{color:var(--vx-danger);font-weight:600;font-size:.9rem}
+.aviso{background:var(--vx-warn-soft);border:1px solid #EBDCA8;border-left:3px solid var(--vx-warn);
+  border-radius:8px;padding:12px 16px;font-size:.92rem;margin:12px 0}
+
+/* ---------- confiança / rodapé ---------- */
+.selos{display:flex;gap:20px;flex-wrap:wrap;color:var(--vx-ink-3);font-size:.88rem;margin-top:26px}
+footer{background:var(--vx-navy);color:#AEB9CC;padding:34px 0;font-size:.9rem}
+body.vx footer a{color:var(--vx-gold)}
+footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;align-items:center}
+
+/* ---------- painel do assinante (shell) ---------- */
+.cx{max-width:860px;margin:28px auto;padding:0 20px}
+.lin{border-bottom:1px solid var(--vx-border);padding:10px 0}
+.menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.menu button{flex:1;min-width:120px}
+.kpi{display:inline-flex;flex-direction:column;gap:2px;background:var(--vx-surface);border:1px solid var(--vx-border);
+  border-left:3px solid var(--vx-accent);border-radius:10px;padding:12px 18px;margin:4px 4px 4px 0}
+
+@media print{header.top,footer,.hero-acoes{display:none}}

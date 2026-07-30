@@ -83,7 +83,7 @@ function landingHTML() {
     <link rel="canonical" href="${BASE_URL()}/academy">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <style>${CSS}</style></head><body>
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="academy">
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
       <nav><a class="esconde" href="/academy#recursos">Recursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
@@ -132,7 +132,7 @@ function landingHTML() {
 
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS}
     .cx{max-width:1040px;margin:20px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:120px;display:inline-block;margin:4px}
@@ -140,7 +140,7 @@ function appHTML() {
     label{font-size:.85rem;font-weight:600;display:block}
     table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #f0ece2}
     th{color:#5B6472;font-weight:600}.chip{display:inline-block;background:var(--ambar-claro);color:var(--villela-navy);border-radius:12px;padding:2px 9px;font-size:.78rem}
-    </style></head><body><div class="cx">
+    </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
     <script src="/academy/app.js"></script><script>bootAcademy();</script></body></html>`;
@@ -162,10 +162,10 @@ function shellPublico({ titulo, descricao, url, corpo, imagem }) {
     <meta property="og:site_name" content="Villela Academy">
     <meta property="og:image" content="${esc(imagem || `${BASE_URL()}${BRAND}/og-image.png`)}">
     ${HEAD_MARCA}
-    <style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
     .cardp{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:18px;display:flex;flex-direction:column}
     .cardp .preco{font-size:1.3rem;font-weight:800;color:var(--villela-navy)}.cardp .preco s{color:#8A94A6;font-weight:400;font-size:.95rem}
-    .estrela{color:var(--villela-gold)}</style></head><body>
+    .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head><body class="vx" data-vertical="academy">
     <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
     <footer>Villela Academy · Aprenda, aplique e transforme<br>
@@ -389,8 +389,8 @@ function produtorHTML(slug) {
 // de a plataforma operar comercialmente. O texto deixa isso explícito.
 function paginaLegal(titulo, corpo) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>${esc(titulo)} — Villela Academy</title>${HEAD_MARCA}<style>${CSS} .doc{max-width:760px;margin:32px auto;padding:0 18px;line-height:1.6}</style></head>
-    <body><div class="doc"><p><a href="/academy">← Villela Academy</a></p>
+    <title>${esc(titulo)} — Villela Academy</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=4"><style>${CSS} .doc{max-width:760px;margin:32px auto;padding:0 18px;line-height:1.6}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=4"></head>
+    <body class="vx" data-vertical="academy"><div class="doc"><p><a href="/academy">← Villela Academy</a></p>
     <div class="aviso"><b>MINUTA</b> — documento em elaboração, sujeito a revisão jurídica (advogado OAB) antes da operação comercial.</div>
     <h1 style="color:var(--villela-navy)">${esc(titulo)}</h1>${corpo}
     <p class="sub" style="text-align:left">Villela Academy é um produto da Augusto Villela Ltda (CNPJ 56.776.526/0001-12).</p>
