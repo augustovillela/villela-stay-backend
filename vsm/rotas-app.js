@@ -10,6 +10,7 @@ const app = require('./app-repo');
 const stays = require('./app-stays-repo');
 const push = require('./push');
 const integ = require('./integracoes');
+const { registrarRotasLivro } = require('./rotas-livro');
 
 function registrarRotasApp(server, { requireAssinante }) {
   // captura throws síncronos E assíncronos (handlers do app lançam de forma síncrona)
@@ -155,6 +156,12 @@ function registrarRotasApp(server, { requireAssinante }) {
     push.remover((req.body || {}).endpoint);
     res.json({ ok: true });
   }));
+
+  // ---- ONDA LIVRO: as telas que fecham a paridade com o livro ----
+  // Reusa exatamente as mesmas guardas (G/B), o mesmo tratador de erro e o
+  // mesmo escopo por tenant. `quem` alimenta a trilha de auditoria do Cap. 8.
+  const quem = (req) => (req.assinante ? String(req.assinante.nome || req.assinante.email || req.assinante.id || '') : '');
+  registrarRotasLivro(server, { G, B, tid, h, quem });
 }
 
 module.exports = { registrarRotasApp };

@@ -25,6 +25,12 @@ const MODULOS = [
   ['precificacao', 'Precificação (revenue)'], ['contratos', 'Contratos de temporada'],
   ['relatorios', 'Relatórios e dashboards'], ['ia', 'IA (assistente)'],
   ['estoque', 'Estoque e insumos'],
+  // ONDA LIVRO (paridade com "Claude AI na Prática para Hospedagens")
+  ['crm', 'CRM de leads, hóspedes e proprietários'],   // Cap. 23
+  ['mensagens', 'Régua de mensagens e manual do hóspede'], // Caps. 31/34 + Apêndice D
+  ['reputacao', 'Avaliações e diagnóstico de reputação'],  // Cap. 29
+  ['proprietarios', 'Proprietários e prestação de contas'], // Cap. 12
+  ['governanca', 'Governança, permissões e auditoria'],     // Cap. 8
 ];
 const MODULOS_KEYS = MODULOS.map(m => m[0]);
 
@@ -56,14 +62,18 @@ const PLANOS_SEED = [
     slug: 'starter', nome: 'Starter', descricao: 'Para o anfitrião com poucos imóveis começando a profissionalizar.',
     preco_centavos: 12900, ordem: 1,
     limites: { imoveis: 3, usuarios: 2, reservas_mes: 60, ia_consultas_mes: 0, armazenamento_mb: 2048, workspaces: 1 },
-    modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'relatorios', 'estoque'],
+    // Starter leva o Nível 1 do Cap. 49 (o que roda todo dia): painel do dia,
+    // auditoria de sincronização, escala com confirmação e régua de mensagens.
+    modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'relatorios', 'estoque', 'mensagens'],
     flags: { ia_direta: false, api_publica: false, white_label: false, canais_ilimitados: false, dominio_proprio: false },
   },
   {
     slug: 'pro', nome: 'Pro', descricao: 'Operação em crescimento: IA, precificação, API, estoque e concierge.',
     preco_centavos: 29900, ordem: 2,
     limites: { imoveis: 10, usuarios: 5, reservas_mes: 300, ia_consultas_mes: 300, armazenamento_mb: 10240, workspaces: 2 },
-    modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'hospede', 'precificacao', 'contratos', 'relatorios', 'ia', 'estoque'],
+    // Pro leva também o Nível 2 (o que organiza o negócio): CRM, reputação e
+    // governança. O portal do proprietário (Nível 3) fica no Business.
+    modulos: ['imoveis', 'reservas', 'canais', 'checkin', 'limpeza', 'manutencao', 'financeiro', 'hospede', 'precificacao', 'contratos', 'relatorios', 'ia', 'estoque', 'crm', 'mensagens', 'reputacao', 'governanca'],
     flags: { ia_direta: true, api_publica: true, white_label: false, canais_ilimitados: true, dominio_proprio: false },
   },
   {

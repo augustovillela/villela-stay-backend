@@ -783,5 +783,18 @@
     }).catch(erroBox);
   }
 
+  // ---------------- ponto de extensão (ONDA LIVRO) ----------------
+  // app-cliente-livro.js é carregado DEPOIS deste arquivo e antes do boot.
+  // Ele empurra abas em TABS e grupos em ORDEM_GRUPOS; render() reconstrói
+  // MAPA_VIEWS a partir de TABS a cada montagem, então nada aqui precisa
+  // saber que a extensão existe.
+  window.VSM = {
+    api: api, app: app, esc: esc, brl: brl, dt: dt, centavos: centavos,
+    el: el, val: val, setView: setView, erroBox: erroBox,
+    TABS: TABS, FIXAS: FIXAS, ORDEM_GRUPOS: ORDEM_GRUPOS,
+    me: function () { return ME; },
+    ir: function (id) { if (ME) irPara(id, ME); },
+  };
+
   window.bootGestao = bootGestao;
 })();

@@ -47,15 +47,16 @@ Duas camadas, ambas no ar:
   administração `/staff/api/vsm/*` (só admin). Domínio sugerido: `gestao.villelastay.com.br`
   (redirect por prefixo de host no server.js ainda NÃO criado).
 - **Leads** da landing caem na aba do staff e alertam o Augusto no WhatsApp (via `alertaAugusto`).
-- **Testes:** `npm run test:vsm` (41/41 — landing, entitlements, overrides, suspensão,
+- **Testes:** `npm run test:vsm` (75/75 — 41 do núcleo + 34 da ONDA LIVRO; landing, entitlements, overrides, suspensão,
   editar planos, upgrade/downgrade, custo/margem, signup, definir senha, tickets, assinatura
   MP mock, webhook MP, ciclo de vida, rate-limit, leads, auditoria, checklist de etapas,
   estoque, token de API, webhooks de eventos, funil de consultas, precificação e preços finais).
 
 ## Catálogo do produto (editável no painel 🏨 → Planos)
 
-- **Módulos (13):** imoveis · reservas · canais · checkin · limpeza · manutencao ·
-  financeiro · hospede · precificacao · contratos · relatorios · ia · **estoque**.
+- **Módulos (18):** imoveis · reservas · canais · checkin · limpeza · manutencao ·
+  financeiro · hospede · precificacao · contratos · relatorios · ia · estoque ·
+  **crm · mensagens · reputacao · proprietarios · governanca** (ONDA LIVRO).
 - **Limites:** imoveis · usuarios · reservas_mes · ia_consultas_mes · armazenamento_mb · workspaces.
 - **Flags:** ia_direta · api_publica · white_label · canais_ilimitados · dominio_proprio.
   A flag `api_publica` agora vem LIGADA no plano Pro (além do Business/Enterprise) — decisão
@@ -84,7 +85,7 @@ Duas camadas, ambas no ar:
 | `rotas-app.js` | API do app `/gestao/api/app/*` (requireAssinante + requireAcesso + gateModulo) — inclui `/stays/*` |
 | `app-cliente.js` | SPA do assinante servida em `/gestao/app.js` (JS clássico, sem build) |
 | `paginas.js` | landing + assinar + painel do assinante + signup/lead (server-rendered) |
-| `selftest.js` | suíte `npm run test:vsm` (29 testes: control plane + app + idempotência de billing) |
+| `selftest.js` | suíte `npm run test:vsm` (control plane + app + idempotência de billing; chama `selftest-livro.js` ao final) |
 | `../staff/app-vsm.js` | painel da plataforma no Portal Staff (aba 🏨, `renderVsm`) |
 
 ## Pontos de montagem (no restante do backend)
@@ -193,6 +194,97 @@ precisa também ter conta na Stays.net** e conectá-la aqui.
 
 Futuro (quando houver demanda): sincronização incremental por webhook da Stays, push de
 disponibilidade/bloqueios de volta, e mapa de `_idlisting` para múltiplos workspaces.
+
+## ONDA LIVRO — paridade com o livro (31/07/2026)
+
+O livro **"Claude AI na Prática para Hospedagens"** (Augusto Villela, 50 capítulos + 8
+apêndices) virou a régua do produto: cada capítulo que descreve um sistema tem agora a tela
+correspondente, e cada tela cita o capítulo que a justifica. O padrão é o mesmo da ONDA LIVRO
+do Villela Legal: **arquivos novos que estendem, sem reescrever o núcleo**.
+
+### Arquivos
+
+| Arquivo | Papel |
+|---|---|
+| `schema-livro.sql` | 30 tabelas `lv_*`, todas por `tenant_id`. Carregado por `livro/base.js` no mesmo handle do `db.js`. **Nenhuma tabela do `schema.sql` é alterada.** |
+| `seed-livro.js` | catálogos do livro: 11 checklists (Apêndice E), 9 crises (Cap. 39), 50+ gatilhos de escalonamento (Cap. 33), 11 modelos × 4 idiomas (Apêndice D), 22 prompts dos capítulos, dicionário de métricas (Apêndice F), matriz de permissões e as 7 decisões humanas (Cap. 8), roteiro de adoção do Cap. 49 |
+| `livro/base.js` | governança (permissões, auditoria de dados, POPs, crises, prompts), config financeira e `semearTenant()` (idempotente via `lv_seed`) |
+| `livro/operacao.js` | ficha mestre, interligações, bloqueios, auditoria de sincronização, rotinas/heartbeat |
+| `livro/campo.js` | escala do dia, evidência/liberação, inspeção, preventiva, fornecedores, suprimentos, **painel do dia** |
+| `livro/comercial.js` | CRM (contatos/oportunidades/pauta), datas especiais + revisão semanal, política de documentação, conferência e risco |
+| `livro/hospede.js` | régua de mensagens, manual digital, triagem do concierge, reputação |
+| `livro/financeiro.js` | métricas (Apêndice F), DRE por unidade, proprietários e prestação de contas |
+| `repo-livro.js` | índice; instala a guarda de interligação na montagem |
+| `rotas-livro.js` | API `/gestao/api/app/livro/*` + as 2 páginas públicas |
+| `app-cliente-livro.js` | 18 abas novas na SPA (servida em `/gestao/app-livro.js`) |
+| `selftest-livro.js` | 34 testes da onda (rodam dentro de `npm run test:vsm`) |
+| `../staff/app-vsm-livro.js` | aba **📘 Livro & sistema** no Portal Staff: mapa capítulo↔tela, cobertura por plano, o que o sistema NÃO faz |
+
+### O que a onda entrega (e o capítulo que manda)
+
+- **Cadastro mestre** (Cap. 6) — capacidade confortável × máxima (validação de coerência), o que a
+  casa NÃO tem, tempo REAL de preparação, janela mínima, tarifa mínima. Régua, escala e manual
+  saem daqui; ficha incompleta vira **FALTA DADO**, não mensagem inventada.
+- **Interligações** (Caps. 13/20) — `lv_interligacoes` + fecho transitivo (`Interligacoes.espacos`).
+  A trava roda de verdade: `instalarGuardaInterligacao()` **envolve** `app-repo.Reservas.criar`
+  (não o reescreve) e rejeita venda do mesmo espaço nos dois sentidos e sobre bloqueio.
+- **Auditoria de sincronização** (Cap. 20) — compara sistema × Stays, confere as duas direções,
+  acha reserva não propagada, data segurada vencida e valor divergente. **Falha alto**: fonte
+  ilegível ⇒ `parcial: true` e veredito "PARCIAL", nunca "tudo certo".
+- **Painel do dia** (Cap. 39) — as cinco perguntas + heartbeat. Rotina que nunca rodou é
+  `nao_iniciada` (informativo); a que **parou** de reportar é `sem_sinal` (crítico).
+  `POST …/rotinas/:nome/heartbeat` — erro reportado nunca vira `ok`.
+- **Escala** (Cap. 35) — faxina/preparação/**VIRADA** com janela × preparo real (RISCO),
+  SEM RESPONSÁVEL sinalizado, confirmação com evidência e **liberação** formal (exige as duas).
+- **Inspeção** (Cap. 38) — sorteio, recusa autoinspeção, e item que falha em unidades diferentes
+  vira **SISTÊMICO** (problema do POP). Nunca ranqueia pessoas.
+- **Preventiva** (Cap. 37) — janelas SEM HÓSPEDE (considerando interligados), SEM JANELA,
+  reincidência com custo. Não bloqueia calendário nem aciona técnico.
+- **Suprimentos** (Cap. 36) — previsão pelo calendário, **consumo atípico sinalizado e nunca
+  corrigido**, enxoval por lote com vida útil e destino obrigatório na aposentadoria.
+- **CRM** (Cap. 23) — 3 públicos, funil de 5 estágios, **próxima ação com data obrigatória**,
+  motivo de perda em categoria fechada, pauta semanal com o cruzamento cancelamento × quem
+  consultou. Converter passa pelas travas de reserva.
+- **Revenue** (Cap. 21) — datas especiais (recusa tarifa abaixo do piso da unidade), revisão
+  semanal com o **silêncio como saída válida**. `marcarAplicada` só REGISTRA que uma pessoa
+  publicou — o sistema não publica preço.
+- **Documentação e risco** (Caps. 25/30) — política por faixa de valor, conferência que marca
+  **NÃO REGISTRADO**, evento disfarçado de estadia escalonado, sinais de risco só em conjunto e
+  sem rotular ninguém.
+- **Régua** (Caps. 31/34 + Apêndice D) — prepara e **nunca envia**; sabe o estado da reserva;
+  estadia com problema vira **CONTATO PESSOAL**; idempotente por (reserva, modelo).
+- **Manual** (Cap. 31) — página pública `/gestao/manual/:token`, sem login.
+- **Concierge** (Cap. 33) — escalonamento verificado ANTES da resposta; responde só das fontes
+  autorizadas, com a fonte declarada; avisa quando não há plantão.
+- **Reputação** (Cap. 29) — impacto = menções × queda de nota; ciclo com **AMOSTRA INSUFICIENTE**.
+- **Números** (Cap. 22/40 + Apêndice F) — os seis do painel por **espaço físico** (interligados
+  contam uma vez), contra o mesmo mês do ano anterior, com as convenções no cabeçalho; DRE por
+  unidade com provisões, rateio estável, caução separada e "a conferir".
+- **Proprietários** (Cap. 12) — contrato, relatório em 4 blocos e portal público
+  `/gestao/proprietario/:token`. **Compartimentação por arquitetura**: a consulta parte do
+  proprietário e só alcança as unidades dele.
+- **Governança** (Cap. 8) — matriz de permissões (o sistema **recusa** agente com escrita em
+  financeiro/proprietário/contratos), as 7 decisões humanas, a lista do que a máquina PODE fazer
+  sozinha, e trilha `lv_auditoria_dados` com antes/depois/quem/quando.
+
+### Módulos novos no catálogo
+
+`crm` · `mensagens` · `reputacao` · `proprietarios` · `governanca` — distribuídos pela ordem do
+Cap. 49: **Nível 1** (painel do dia, auditoria, escala, régua) já no **Starter**; **Nível 2**
+(CRM, indicadores, DRE, reputação, governança) no **Pro**; **Nível 3** (portal do proprietário)
+no **Business**. ⚠️ `semear()` re-semeia módulos a cada boot — alterar a distribuição é editar
+`PLANOS_SEED` em `repo.js`.
+
+### Detalhes que economizam tempo
+
+- O ponto de extensão da SPA é `window.VSM` (fim do `app-cliente.js`): a extensão empurra abas em
+  `VSM.TABS` e o grupo "Hóspede" em `VSM.ORDEM_GRUPOS`. `render()` reconstrói `MAPA_VIEWS` a
+  partir de `TABS`, então o núcleo não sabe que a extensão existe.
+- No Portal Staff o mesmo padrão: `app-vsm-livro.js` envolve `VSM.abas()` e `VSM.pintar()`.
+- Detector de dado de acesso (`pareceAcesso` em `livro/hospede.js`): casa quando senha/código/PIN
+  aparece na mesma linha que `:`/`=` seguido de valor concreto — e deixa passar marcador entre
+  colchetes e "a senha é enviada pelo anfitrião".
+- `metricas()`/`dre()` tratam `ano=0`/`mes=0` como ausentes (a rota manda 0 quando não há query).
 
 ## Pendências
 

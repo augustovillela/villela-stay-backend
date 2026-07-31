@@ -369,6 +369,10 @@ async function rodar() {
     assert.ok((await req('GET', '/staff/api/vsm/auditoria')).json.eventos.some(e => e.acao === 'tenant.criar'));
   });
 
+  // ---- ONDA LIVRO (paridade com o livro "Claude AI na Prática para Hospedagens") ----
+  console.log('\n  — ONDA LIVRO —');
+  await require('./selftest-livro').rodarTestesLivro({ req, t, assert, saas });
+
   srv.close(); receptor.close();
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

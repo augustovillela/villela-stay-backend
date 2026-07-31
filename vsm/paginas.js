@@ -194,7 +194,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="manager"><div class="cx">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}<span class="tag">painel da operação</span></div>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/gestao/app.js"></script><script>bootGestao();</script></body></html>`;
+    <script src="/gestao/app.js"></script><script src="/gestao/app-livro.js"></script><script>bootGestao();</script></body></html>`;
 }
 
 function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
@@ -204,6 +204,10 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
   app.get('/gestao/assinar', (req, res) => res.send(assinarHTML(s(req.query.plano, 60))));
   app.get('/gestao/app', (req, res) => res.send(appHTML()));
   app.get('/gestao/app.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-cliente.js')));
+  // ONDA LIVRO: extensão da SPA (carregada depois do app.js, antes do boot)
+  app.get('/gestao/app-livro.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-cliente-livro.js')));
+  // páginas públicas do livro: manual do hóspede e portal do proprietário
+  require('./rotas-livro').registrarPaginasLivro(app, { css: CSS, marca: 'Villela Stay Manager' });
   app.get(['/gestao/definir-senha', '/gestao/app/definir-senha'], (req, res) => res.send(shell(
     `<div class="card"><h3>Defina sua senha</h3><input id="s1" type="password" placeholder="Nova senha (8+)"><input id="s2" type="password" placeholder="Confirme"><button class="btn" onclick="salvar()">Salvar</button><p id="m" class="erro"></p></div>`,
     `async function salvar(){const m=document.getElementById('m');m.textContent='';if(s1.value!==s2.value){m.textContent='As senhas não conferem.';return}
