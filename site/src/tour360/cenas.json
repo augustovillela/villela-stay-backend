@@ -1,4 +1,10 @@
 {
+  "composicoes": {
+    "GD03H": [
+      "GG04I",
+      "PL02I"
+    ]
+  },
   "cenas": [
     {
       "id": "kubitschek-patio",
@@ -713,8 +719,8 @@
       "arquivo": "casa-villela-lounge",
       "casa": "Casa Villela",
       "imovel": [
-        "YV01I",
-        "GI01I"
+        "GI01I",
+        "YV01I"
       ],
       "titulo": "Lounge",
       "larguras": [
@@ -735,8 +741,8 @@
       "arquivo": "casa-villela-lounge-da-cozinha",
       "casa": "Casa Villela",
       "imovel": [
-        "YV01I",
-        "GI01I"
+        "GI01I",
+        "YV01I"
       ],
       "titulo": "Lounge visto da cozinha",
       "larguras": [
@@ -757,8 +763,8 @@
       "arquivo": "casa-villela-sala",
       "casa": "Casa Villela",
       "imovel": [
-        "YV01I",
-        "GI01I"
+        "GI01I",
+        "YV01I"
       ],
       "titulo": "Sala",
       "larguras": [
@@ -779,8 +785,8 @@
       "arquivo": "casa-villela-sala-2",
       "casa": "Casa Villela",
       "imovel": [
-        "YV01I",
-        "GI01I"
+        "GI01I",
+        "YV01I"
       ],
       "titulo": "Sala (2)",
       "larguras": [
@@ -801,8 +807,8 @@
       "arquivo": "casa-villela-suite-athos-bulcao",
       "casa": "Casa Villela",
       "imovel": [
-        "YV01I",
-        "GI01I"
+        "GI01I",
+        "YV01I"
       ],
       "titulo": "Suíte Athos Bulcão",
       "larguras": [
@@ -823,8 +829,8 @@
       "arquivo": "casa-villela-banheiro",
       "casa": "Casa Villela",
       "imovel": [
-        "YV01I",
-        "GI01I"
+        "GI01I",
+        "YV01I"
       ],
       "titulo": "Banheiro",
       "larguras": [

@@ -30,6 +30,24 @@ Campos por cena:
 | `hotspots` | pontos clicáveis dentro da cena |
 | `destaque` | `true` = cena de abertura do tour |
 
+### Anúncio composto (`composicoes`)
+
+Quando um anúncio é vendido como o conjunto de outros, declare no topo do `cenas.json`:
+
+```json
+"composicoes": { "GD03H": ["GG04I", "PL02I"] }
+```
+
+A Gran Villela (GD03H) é a Villa Kubitschek + a Villa Catetinho alugadas num contrato só — a
+mesma relação que já bloqueia o calendário das três. Com isso, a página do GD03H e o grupo dele
+no tour mostram **todas** as cenas das duas casas, mais as próprias. As herdadas vêm primeiro
+(por isso o tour da Gran Villela abre no pátio da Kubitschek e não no estacionamento) e o grupo
+ganha a linha "Aluguel único que inclui: …" automaticamente.
+
+Não confundir com `imovel` em lista: `imovel` é a MESMA cena pertencendo a mais de um anúncio
+(a suíte dentro da casa; a Casa Villela vendida como GI01I e YV01I). `composicoes` é um anúncio
+que engloba OUTROS anúncios inteiros.
+
 Hotspot:
 
 ```json

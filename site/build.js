@@ -364,6 +364,11 @@ document.addEventListener('submit', function(e){
 // O tour é OPCIONAL: sem cena válida, nada é gerado e o site sai exatamente como antes.
 const TOUR_DIR = path.join(__dirname, 'src', 'tour360');
 const PANO_DIR = path.join(TOUR_DIR, 'panoramas');
+// Anúncios COMPOSTOS: um código que é vendido como o conjunto de outros. A Gran Villela (GD03H)
+// é a Villa Kubitschek (GG04I) + a Villa Catetinho (PL02I) alugadas num contrato só — a mesma
+// relação que já bloqueia o calendário das três. Quem abre a Gran Villela tem de ver tudo que
+// está incluído, não só o que foi fotografado sob esse nome.
+let TOUR_COMPOSICOES = {};
 const TOUR_CENAS = (() => {
   const arq = path.join(TOUR_DIR, 'cenas.json');
   if (!fs.existsSync(arq)) return [];
@@ -374,6 +379,7 @@ const TOUR_CENAS = (() => {
     console.warn(`[tour360] cenas.json inválido (${e.message}) — tour desativado.`);
     return [];
   }
+  TOUR_COMPOSICOES = dados.composicoes || {};
   // Só entra no ar a cena cujo panorama existe de fato: manifesto adiantado (foto
   // ainda não convertida) não pode gerar 404 nem página de tour quebrada.
   return (dados.cenas || []).filter(c => {
@@ -401,6 +407,15 @@ const TEM_TOUR = TOUR_CENAS.length > 0;
 const codigosDaCena = c => (Array.isArray(c.imovel) ? c.imovel : (c.imovel ? [c.imovel] : [])).filter(Boolean);
 const TOUR_POR_IMOVEL = {};
 for (const c of TOUR_CENAS) for (const cod of codigosDaCena(c)) (TOUR_POR_IMOVEL[cod] = TOUR_POR_IMOVEL[cod] || []).push(c);
+// Anúncio composto herda as cenas das casas que engloba. As herdadas vêm PRIMEIRO e as próprias
+// por último: a cena de abertura do anúncio é a primeira da lista, e a área comum fotografada
+// sob o nome do conjunto (estacionamento) não é o que vende — mesma lógica do roteiro da visita.
+for (const [pai, filhos] of Object.entries(TOUR_COMPOSICOES)) {
+  const lista = [];
+  for (const f of filhos) for (const c of (TOUR_POR_IMOVEL[f] || [])) if (!lista.includes(c)) lista.push(c);
+  for (const c of (TOUR_POR_IMOVEL[pai] || [])) if (!lista.includes(c)) lista.push(c);
+  if (lista.length) TOUR_POR_IMOVEL[pai] = lista;
+}
 // Cena de abertura: a marcada com "destaque", senão a primeira do manifesto.
 const TOUR_INICIAL = (TOUR_CENAS.find(c => c.destaque) || TOUR_CENAS[0] || {}).id || '';
 
@@ -1013,13 +1028,22 @@ if (TEM_TOUR) {
     if (!g) { g = { casa: nome, cenas: [] }; porCasa.push(g); }
     g.cenas.push(c);
   }
+  // Código do anúncio do grupo: o primeiro código da primeira cena que tiver um — é a casa
+  // inteira, não a suíte avulsa que aparecer no meio. Calculado ANTES de herdar cena de outra
+  // casa, senão o anúncio composto passaria a apontar para um dos filhos.
+  for (const g of porCasa) g.codigo = codigosDaCena(g.cenas.find(c => codigosDaCena(c).length) || {})[0];
+  // Grupo de anúncio composto mostra tudo que está incluído no aluguel (ver TOUR_COMPOSICOES).
+  for (const g of porCasa) {
+    const filhos = TOUR_COMPOSICOES[g.codigo];
+    if (!filhos || !filhos.length) continue;
+    g.inclui = filhos.map(f => (porCasa.find(x => x.codigo === f) || {}).casa).filter(Boolean);
+    g.cenas = TOUR_POR_IMOVEL[g.codigo] || g.cenas;
+  }
   const listaCenas = porCasa.map(g => {
-    // Link "ver a hospedagem" do grupo: o anúncio da casa inteira (o primeiro código
-    // da primeira cena que tiver um), não a suíte avulsa que aparecer no meio.
-    const imovel = codigosDaCena(g.cenas.find(c => codigosDaCena(c).length) || {})[0];
-    const l = imovel ? porId[imovel] : null;
+    const l = g.codigo ? porId[g.codigo] : null;
     return `<section class="tour-grupo">
       <h2>${esc(g.casa)}${l ? ` <a class="tour-grupo-link" href="${L(`/hospedagem/${l.id}.html`)}">${t('ver a hospedagem →', 'see the listing →', 'ver el alojamiento →')}</a>` : ''}</h2>
+      ${(g.inclui || []).length ? `<p class="tour-grupo-inclui">${t('Aluguel único que inclui', 'A single rental that includes', 'Alquiler único que incluye')}: ${g.inclui.map(esc).join(' · ')}</p>` : ''}
       <ul class="tour-lista">
         ${g.cenas.map(c => `<li><a href="${L('/tour.html')}?cena=${encodeURIComponent(c.id)}">
           <img src="/tour360/${c.arquivo}-thumb.jpg" alt="${esc(tituloCena(c))} — ${esc(g.casa)}" width="200" height="112" loading="lazy" decoding="async">

@@ -625,6 +625,7 @@ a { color: var(--lago); text-decoration: none; }
 .tour-grupo { margin-bottom: 28px; }
 .tour-grupo h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .tour-grupo-link { font-family: 'Inter', sans-serif; font-size: .82rem; font-weight: 600; white-space: nowrap; }
+.tour-grupo-inclui { font-size: .86rem; color: var(--concreto-claro); margin: -6px 0 12px; }
 .tour-lista { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
 .tour-lista a { display: block; border-radius: 10px; overflow: hidden; border: 1px solid #e5e1d8; background: #fff; color: var(--concreto); }
 .tour-lista a:hover { border-color: var(--lago); box-shadow: 0 4px 14px rgba(0,0,0,.1); }
