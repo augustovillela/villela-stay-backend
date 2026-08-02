@@ -69,12 +69,27 @@ posição exata em que vai ficar. O trabalho fica salvo no navegador (dá para f
 sessões) e "Exportar tudo" gera o JSON de todas as cenas para colar aqui. O `editor.js` só é
 baixado com o parâmetro na URL — visitante comum não paga por ele.
 
+**Rótulo curto compensa.** Quando mais de 3 portais aparecem juntos na tela, o visualizador
+deixa só o ícone e mostra o rótulo do portal mais próximo do centro da vista. Foi a saída para
+o pátio da Kubitschek, onde 6 portas cabem num arco de 60°. Ainda assim, "Suíte do Chef" cabe
+melhor que "Suíte do Chef — entrada pela sala".
+
 ### Vista geral da casa (`hub`)
 
-`"hub": true` marca a cena de vista geral de uma casa. Quem entra num cômodo por um portal ganha
-um botão fixo **"← Voltar à vista geral"**; sem isso o visitante fica preso no quarto. Uma cena
-por `casa`; casa sem hub simplesmente não mostra o botão. Hoje: `kubitschek-patio`,
-`catetinho-rooftop`, `casa-villela-lounge`.
+`"hub": true` marca a cena de vista geral de uma casa; sem isso o visitante fica preso no quarto.
+Uma cena por `casa`. Hoje: `kubitschek-patio`, `catetinho-rooftop`, `casa-villela-lounge`.
+
+O botão de saída volta para **a cena de onde o visitante veio**, caindo no hub da casa só quando
+ele chegou por outro caminho (miniatura, link direto). Isso importa porque portal atravessa casa:
+três portais do pátio da Kubitschek abrem flats da Villa Catetinho, e mandar o visitante para o
+roof top da Catetinho seria o lugar errado.
+
+### Cache do navegador
+
+O `<script>` do visualizador leva `?v=<hash do arquivo>`, gerado no build. **Não remova**: sem
+isso, quem já visitou continua rodando a versão antiga depois do deploy. Aconteceu ao desenvolver
+a anticolisão e custou uma investigação inteira até perceber que o código no ar estava certo e o
+navegador é que estava velho.
 Para achar o ângulo: abra o tour, posicione a vista e leia `?cena=` — ou vá por
 tentativa em passos de 15°, é rápido.
 
