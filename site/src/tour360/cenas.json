@@ -25,7 +25,8 @@
         "fov": 75
       },
       "hotspots": [],
-      "destaque": true
+      "destaque": true,
+      "hub": true
     },
     {
       "id": "kubitschek-patio-2",
@@ -456,7 +457,8 @@
         "fov": 75
       },
       "hotspots": [],
-      "destaque": false
+      "destaque": false,
+      "hub": true
     },
     {
       "id": "catetinho-rooftop-2",
@@ -734,7 +736,8 @@
         "fov": 75
       },
       "hotspots": [],
-      "destaque": false
+      "destaque": false,
+      "hub": true
     },
     {
       "id": "casa-villela-lounge-da-cozinha",

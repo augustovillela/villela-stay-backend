@@ -62,6 +62,19 @@ da casa; nunca reordena por nome.
 
 `yaw` 0° é o centro da foto; positivo gira à direita (mesma convenção do Google Street View).
 `pitch` positivo olha para cima.
+
+**Não descubra o ângulo por tentativa — use o editor:** abra `/tour.html?editor=1`, gire até a
+porta, clique **em cima dela** e escolha o destino numa lista. O portal aparece na hora, na
+posição exata em que vai ficar. O trabalho fica salvo no navegador (dá para fazer em várias
+sessões) e "Exportar tudo" gera o JSON de todas as cenas para colar aqui. O `editor.js` só é
+baixado com o parâmetro na URL — visitante comum não paga por ele.
+
+### Vista geral da casa (`hub`)
+
+`"hub": true` marca a cena de vista geral de uma casa. Quem entra num cômodo por um portal ganha
+um botão fixo **"← Voltar à vista geral"**; sem isso o visitante fica preso no quarto. Uma cena
+por `casa`; casa sem hub simplesmente não mostra o botão. Hoje: `kubitschek-patio`,
+`catetinho-rooftop`, `casa-villela-lounge`.
 Para achar o ângulo: abra o tour, posicione a vista e leia `?cena=` — ou vá por
 tentativa em passos de 15°, é rápido.
 

@@ -654,3 +654,49 @@ a { color: var(--lago); text-decoration: none; }
   .t360-btn { width: 36px; height: 36px; font-size: .95rem; }
   .t360-cena { width: 98px; }
 }
+
+/* botão de saída para a vista geral da casa (hub) */
+.t360-voltar {
+  position: absolute; left: 14px; bottom: 96px; z-index: 2;
+  font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; color: #fff;
+  background: rgba(27,42,74,.78); border: 1px solid rgba(255,255,255,.3);
+  padding: 8px 16px; border-radius: 22px; line-height: 1;
+}
+.t360-voltar:hover { background: var(--lago-escuro); }
+.t360-voltar[hidden] { display: none; }
+@media (max-width: 640px) { .t360-voltar { left: 10px; bottom: 88px; font-size: .78rem; } }
+
+/* ---------- editor de portais (só com ?editor=1) ---------- */
+.t360-ed {
+  position: fixed; right: 16px; bottom: 16px; z-index: 60; width: 320px; max-width: calc(100vw - 32px);
+  background: #1b2a4a; color: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,.4); font-size: .85rem;
+}
+.t360-ed header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(0,0,0,.25); font-weight: 700; }
+.t360-ed-min { font: inherit; cursor: pointer; background: none; border: 0; color: #fff; font-size: 1.1rem; line-height: 1; }
+.t360-ed-encolhido .t360-ed-corpo { display: none; }
+.t360-ed-corpo { padding: 12px 14px; max-height: 62vh; overflow-y: auto; }
+.t360-ed-cena { margin-bottom: 2px; }
+.t360-ed-vista { color: #b9c6dd; font-size: .78rem; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+.t360-ed button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.1); color: #fff; padding: 8px 12px; }
+.t360-ed button:hover { background: rgba(255,255,255,.2); }
+.t360-ed-marcar { width: 100%; font-weight: 600; }
+.t360-ed-armado { background: var(--cerrado); border-color: var(--cerrado); color: #1b2a4a; }
+.t360-ed-form { margin-top: 10px; display: grid; gap: 8px; }
+.t360-ed-form label { display: grid; gap: 4px; font-size: .78rem; color: #b9c6dd; }
+.t360-ed-form select, .t360-ed-form input[type=text], .t360-ed-form input:not([type]) {
+  font: inherit; font-size: .82rem; padding: 7px 9px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.28); background: rgba(0,0,0,.28); color: #fff;
+}
+.t360-ed-form label:has(input[type=checkbox]) { display: flex; align-items: center; gap: 7px; }
+.t360-ed-acoes { display: flex; gap: 8px; }
+.t360-ed-acoes button { flex: 1; }
+.t360-ed-lista { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.t360-ed-lista li { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.25); border-radius: 8px; padding: 7px 10px; }
+.t360-ed-lista li span { flex: 1; min-width: 0; }
+.t360-ed-lista li small { display: block; color: #9fb0cc; font-size: .72rem; font-variant-numeric: tabular-nums; }
+.t360-ed-lista li button { padding: 2px 8px; border: 0; background: none; }
+.t360-ed-vazio { color: #9fb0cc; font-size: .78rem; background: none !important; }
+.t360-ed-rodape { display: flex; gap: 8px; margin-top: 12px; }
+.t360-ed-rodape button { flex: 1; font-size: .78rem; }
+.t360-ed-saida { width: 100%; height: 150px; margin-top: 10px; font-family: ui-monospace, Consolas, monospace; font-size: .72rem; border-radius: 8px; border: 1px solid rgba(255,255,255,.28); background: rgba(0,0,0,.35); color: #dbe6f7; padding: 8px; }

@@ -423,6 +423,8 @@ if (TEM_TOUR) {
   const dst = path.join(DIST, 'tour360');
   fs.mkdirSync(dst, { recursive: true });
   fs.copyFileSync(path.join(TOUR_DIR, 'visualizador.js'), path.join(dst, 'visualizador.js'));
+  // Editor de portais: só é buscado pelo navegador com /tour.html?editor=1.
+  fs.copyFileSync(path.join(TOUR_DIR, 'editor.js'), path.join(dst, 'editor.js'));
   let copiados = 0;
   for (const c of TOUR_CENAS) {
     for (const suf of [...(c.larguras || [1024]), 'thumb']) {
@@ -992,6 +994,7 @@ if (TEM_TOUR) {
     arquivo: c.arquivo,
     titulo: tituloCena(c),
     casa: c.casa || '',
+    hub: !!c.hub,
     imovel: codigosDaCena(c)[0] || '',
     larguras: c.larguras && c.larguras.length ? c.larguras : [1024],
     vistaInicial: c.vistaInicial || { yaw: 0, pitch: 0, fov: 75 },
@@ -1010,6 +1013,7 @@ if (TEM_TOUR) {
     girar: t('Girar sozinho', 'Auto-rotate', 'Girar solo'),
     giroscopio: t('Mover o celular para olhar', 'Move your phone to look around', 'Mueve el móvil para mirar'),
     telaCheia: t('Tela cheia', 'Fullscreen', 'Pantalla completa'),
+    voltar: t('Voltar à vista geral', 'Back to the overview', 'Volver a la vista general'),
     ariaCanvas: t('Panorama 360 graus. Arraste para olhar em volta; use as setas do teclado e + / − para aproximar.',
       'A 360-degree panorama. Drag to look around; use the arrow keys and + / − to zoom.',
       'Panorama de 360 grados. Arrastra para mirar alrededor; usa las flechas y + / − para acercar.'),

@@ -108,6 +108,13 @@
     this.rot = new Float32Array(9);
     this.cache = {};                        // url -> {tex, largura}
     this.cenaAtual = null;
+    // Cena de "vista geral" de cada casa (hub). Quem entra num quarto por um portal precisa
+    // de uma saída óbvia — sem isso o visitante fica preso no cômodo.
+    this.hubs = {};
+    for (var h = 0; h < this.cenas.length; h++) {
+      var ch = this.cenas[h];
+      if (ch.hub && ch.casa && !this.hubs[ch.casa]) this.hubs[ch.casa] = ch.id;
+    }
     this.gyro = false;
     this.destruido = false;
 
@@ -175,6 +182,20 @@
       botao('&#9974;', this.txt.telaCheia || 'Tela cheia', function () { self.telaCheia(); });
     }
     r.appendChild(barra);
+
+    // Saída para a vista geral da casa. Só aparece quando existe hub e não estamos nele.
+    this.btnVoltar = document.createElement('button');
+    this.btnVoltar.type = 'button';
+    this.btnVoltar.className = 't360-voltar';
+    this.btnVoltar.hidden = true;
+    this.btnVoltar.innerHTML = '&#8592; ' + (this.txt.voltar || 'Voltar à vista geral');
+    this.btnVoltar.addEventListener('click', function (e) {
+      e.preventDefault();
+      self.interagiu();
+      var hub = self.cenaAtual && self.hubs[self.cenaAtual.casa];
+      if (hub) self.ir(hub);
+    });
+    r.appendChild(this.btnVoltar);
 
     // Seletor de cenas (também serve de conteúdo indexável quando o JS falha)
     if (this.cenas.length > 1) {
@@ -309,6 +330,8 @@
     this.velYaw = this.velPitch = 0;
 
     this.rotulo.textContent = (cena.casa ? cena.casa + ' · ' : '') + cena.titulo;
+    var hub = this.hubs[cena.casa];
+    if (this.btnVoltar) this.btnVoltar.hidden = !hub || hub === cena.id;
     this.marcarCenaAtiva(id);
     this.desenharHotspots(cena);
     this.carregando.hidden = false;
@@ -613,6 +636,16 @@
       if (q) for (var i = 0; i < cfg.cenas.length; i++) if (cfg.cenas[i].id === q) cfg.inicial = q;
     } catch (e) { /* navegador antigo: usa a cena inicial padrão */ }
     window.__tour360 = new Viewer(raiz, cfg);
+    // Modo autoria (?editor=1): carrega o editor sob demanda. O visitante comum não paga
+    // por código que nunca usa, e o modo não existe sem o parâmetro na URL.
+    try {
+      if (new URLSearchParams(location.search).get('editor') === '1') {
+        var s = document.createElement('script');
+        s.src = (cfg.base || '/tour360') + '/editor.js';
+        s.defer = true;
+        document.body.appendChild(s);
+      }
+    } catch (e) { /* sem editor, o tour segue normal */ }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
