@@ -557,8 +557,17 @@ a { color: var(--lago); text-decoration: none; }
   box-shadow: 0 4px 14px rgba(0,0,0,.35); backdrop-filter: blur(2px);
   animation: t360-pulso 2.6s ease-in-out infinite;
 }
-.t360-hs:hover, .t360-hs:focus-visible { background: var(--lago-escuro); animation: none; transform: translate(-50%,-50%) scale(1.04); }
+/* Sem 'transform' no hover: a posicao do portal vem de style.transform inline (inline vence
+   a folha), entao a regra so anularia o efeito ou moveria o portal para fora do lugar. */
+.t360-hs:hover, .t360-hs:focus-visible { background: var(--lago-escuro); animation: none; box-shadow: 0 0 0 3px rgba(255,255,255,.65), 0 4px 14px rgba(0,0,0,.4); }
 .t360-hs-info { background: rgba(201,162,39,.9); }
+/* Modo compacto: com mais de 3 portais na tela os rotulos nao cabem lado a lado, entao
+   fica so o icone. O rotulo volta no portal em foco (o mais proximo do centro da vista),
+   no hover e no foco de teclado — nunca se perde o que cada portal e. */
+.t360-hs-compacto { padding: 5px; gap: 0; }
+.t360-hs-compacto .t360-hs-txt { display: none; }
+.t360-hs-compacto.t360-hs-foco, .t360-hs-compacto:hover, .t360-hs-compacto:focus-visible { padding: 7px 14px 7px 8px; gap: 8px; z-index: 3; }
+.t360-hs-compacto.t360-hs-foco .t360-hs-txt, .t360-hs-compacto:hover .t360-hs-txt, .t360-hs-compacto:focus-visible .t360-hs-txt { display: inline; }
 .t360-hs-info:hover { background: #a5831c; }
 .t360-hs-icone {
   display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 24px;

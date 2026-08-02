@@ -24,7 +24,78 @@
         "pitch": 0,
         "fov": 75
       },
-      "hotspots": [],
+      "hotspots": [
+        {
+          "yaw": -130,
+          "pitch": 0,
+          "tipo": "cena",
+          "texto": "Flat do Oscar",
+          "destino": "catetinho-flat-do-oscar"
+        },
+        {
+          "yaw": -100,
+          "pitch": -1,
+          "tipo": "cena",
+          "texto": "Flat do Burle Marx",
+          "destino": "catetinho-flat-burle-marx"
+        },
+        {
+          "yaw": -14,
+          "pitch": -1,
+          "tipo": "cena",
+          "texto": "Flat da Cassia Eller",
+          "destino": "catetinho-flat-cassia-eller-2"
+        },
+        {
+          "yaw": 4,
+          "pitch": -1,
+          "tipo": "cena",
+          "texto": "Cozinha",
+          "destino": "kubitschek-cozinha"
+        },
+        {
+          "yaw": 17,
+          "pitch": 5,
+          "tipo": "cena",
+          "texto": "Suíte do Amor",
+          "destino": "kubitschek-suite-do-amor"
+        },
+        {
+          "yaw": 27,
+          "pitch": -1,
+          "tipo": "cena",
+          "texto": "Flat dos Solteiros",
+          "destino": "kubitschek-flat-dos-solteiros"
+        },
+        {
+          "yaw": 43,
+          "pitch": -3,
+          "tipo": "cena",
+          "texto": "Suíte do Chef",
+          "destino": "kubitschek-suite-do-chef-sala"
+        },
+        {
+          "yaw": 63,
+          "pitch": -4,
+          "tipo": "cena",
+          "texto": "Suíte do Renato Russo",
+          "destino": "kubitschek-suite-renato-russo-sala"
+        },
+        {
+          "yaw": 141,
+          "pitch": -6,
+          "tipo": "cena",
+          "texto": "Banheiro Externo",
+          "destino": "kubitschek-banheiro-externo"
+        },
+        {
+          "yaw": 164,
+          "pitch": -7,
+          "tipo": "cena",
+          "texto": "Banheiro Externo",
+          "destino": "kubitschek-banheiro-externo"
+        }
+      ],
       "destaque": true,
       "hub": true
     },

@@ -188,12 +188,10 @@
     this.btnVoltar.type = 'button';
     this.btnVoltar.className = 't360-voltar';
     this.btnVoltar.hidden = true;
-    this.btnVoltar.innerHTML = '&#8592; ' + (this.txt.voltar || 'Voltar à vista geral');
     this.btnVoltar.addEventListener('click', function (e) {
       e.preventDefault();
       self.interagiu();
-      var hub = self.cenaAtual && self.hubs[self.cenaAtual.casa];
-      if (hub) self.ir(hub);
+      if (self.alvoVoltar) self.ir(self.alvoVoltar);
     });
     r.appendChild(this.btnVoltar);
 
@@ -313,7 +311,7 @@
     });
   };
 
-  Viewer.prototype.ir = function (id, primeira) {
+  Viewer.prototype.ir = function (id, primeira, origem) {
     var cena = this.porId[id];
     if (!cena || cena === this.cenaAtual) return;
     var self = this;
@@ -330,8 +328,18 @@
     this.velYaw = this.velPitch = 0;
 
     this.rotulo.textContent = (cena.casa ? cena.casa + ' · ' : '') + cena.titulo;
-    var hub = this.hubs[cena.casa];
-    if (this.btnVoltar) this.btnVoltar.hidden = !hub || hub === cena.id;
+    // Saída: de onde o visitante VEIO, se entrou por um portal; senão a vista geral da casa.
+    // Voltar para a origem é o que importa quando o portal atravessa casas (o pátio da
+    // Kubitschek abre flats da Catetinho — o hub da Catetinho seria o lugar errado).
+    this.origem = (origem && origem !== id) ? origem : null;
+    this.alvoVoltar = this.origem || this.hubs[cena.casa] || null;
+    if (this.alvoVoltar === id) this.alvoVoltar = null;
+    if (this.btnVoltar) {
+      this.btnVoltar.hidden = !this.alvoVoltar;
+      if (this.alvoVoltar && this.porId[this.alvoVoltar]) {
+        this.btnVoltar.textContent = '← ' + (this.txt.voltarPara || 'Voltar para') + ' ' + this.porId[this.alvoVoltar].titulo;
+      }
+    }
     this.marcarCenaAtiva(id);
     this.desenharHotspots(cena);
     this.carregando.hidden = false;
@@ -408,10 +416,16 @@
         b.addEventListener('click', function (e) {
           e.preventDefault(); e.stopPropagation();
           self.interagiu();
-          if (h.tipo !== 'info' && h.destino) self.ir(h.destino);
+          if (h.tipo !== 'info' && h.destino) self.ir(h.destino, false, self.cenaAtual && self.cenaAtual.id);
         });
         self.camadaHotspots.appendChild(b);
-        self.hotspots.push({ el: b, dir: direcao((h.yaw || 0) * RAD, (h.pitch || 0) * RAD) });
+        // Duas larguras medidas UMA vez (ler layout a 60 fps travaria a página): com o
+        // rótulo visível e só com o ícone. A escolha entre as duas é feita por quadro.
+        var wExp = b.offsetWidth, alt = b.offsetHeight;
+        b.classList.add('t360-hs-compacto');
+        var wCom = b.offsetWidth;
+        b.classList.remove('t360-hs-compacto');
+        self.hotspots.push({ el: b, dir: direcao((h.yaw || 0) * RAD, (h.pitch || 0) * RAD), wExp: wExp, wCom: wCom, h: alt });
       })(lista[i]);
     }
   };
@@ -421,6 +435,7 @@
     var w = this.canvas.clientWidth, h = this.canvas.clientHeight;
     var aspect = w / h, tan = Math.tan(this.fov * RAD / 2);
     var m = this.rot; // matriz da câmera (coluna); a transposta leva mundo -> câmera
+    var visiveis = [];
     for (var i = 0; i < this.hotspots.length; i++) {
       var hs = this.hotspots[i], d = hs.dir;
       var cx = m[0] * d[0] + m[1] * d[1] + m[2] * d[2];
@@ -430,8 +445,56 @@
       var x = (cx / -cz) / (tan * aspect), y = (cy / -cz) / tan;
       if (x < -1.4 || x > 1.4 || y < -1.4 || y > 1.4) { hs.el.style.display = 'none'; continue; }
       hs.el.style.display = '';
-      hs.el.style.transform = 'translate(-50%,-50%) translate(' + ((x * 0.5 + 0.5) * w) + 'px,' + ((0.5 - y * 0.5) * h) + 'px)';
+      visiveis.push({ hs: hs, px: (x * 0.5 + 0.5) * w, py: (0.5 - y * 0.5) * h });
     }
+
+    // Aglomeração: no pátio da Kubitschek são 6 portas num arco de 60°, e 6 rótulos longos
+    // não cabem lado a lado de jeito nenhum. Até 3 na tela, mostra todos os rótulos (o caso
+    // comum). Acima disso, só o ícone — e o rótulo aparece no portal que está mais perto do
+    // centro da vista, que é justamente aquele para onde o visitante está olhando.
+    var compacto = visiveis.length > 3;
+    var cxTela = w / 2, cyTela = h / 2;
+
+    // Quem vai ganhar o rótulo é decidido ANTES de posicionar, para que a anticolisão já
+    // reserve a largura expandida dele — senão o rótulo cresce por cima do vizinho.
+    var emFoco = null, menor = Infinity;
+    for (var f = 0; f < visiveis.length; f++) {
+      var fx = visiveis[f].px - cxTela, fy = visiveis[f].py - cyTela, fd = fx * fx + fy * fy;
+      if (fd < menor) { menor = fd; emFoco = visiveis[f]; }
+    }
+
+    // Colocar o portal em foco PRIMEIRO: ele é o que o visitante está olhando, então tem
+    // prioridade sobre o lugar; os outros se ajeitam em volta.
+    visiveis.sort(function (a, b) {
+      if (a === emFoco) return -1;
+      if (b === emFoco) return 1;
+      return a.px - b.px;
+    });
+    var postos = [];
+    for (var k = 0; k < visiveis.length; k++) {
+      var v = visiveis[k];
+      var expandido = !compacto || v === emFoco;
+      v.hs.el.classList.toggle('t360-hs-compacto', compacto);
+      v.hs.el.classList.toggle('t360-hs-foco', compacto && v === emFoco);
+      var eh = v.hs.h || 34, ew = expandido ? (v.hs.wExp || 120) : (v.hs.wCom || 40);
+      var passo = eh + 6, melhor = 0;
+      for (var tent = 0; tent < 7; tent++) {   // 0, ±1, ±2, ±3 linhas
+        var off = (tent === 0) ? 0 : (tent % 2 ? -Math.ceil(tent / 2) : Math.ceil(tent / 2)) * passo;
+        var l = v.px - ew / 2, t = v.py + off - eh / 2;
+        // Desviar não pode jogar o portal para fora do palco: melhor sobrepor um pouco do
+        // que sumir. Deslocamento que estoura o topo ou a base é descartado de saída.
+        if (t < 2 || t + eh > h - 2) continue;
+        var colide = false;
+        for (var j = 0; j < postos.length; j++) {
+          var p = postos[j];
+          if (l < p.l + p.w && l + ew > p.l && t < p.t + p.h && t + eh > p.t) { colide = true; break; }
+        }
+        if (!colide) { melhor = off; break; }
+      }
+      postos.push({ l: v.px - ew / 2, t: v.py + melhor - eh / 2, w: ew, h: eh });
+      v.hs.el.style.transform = 'translate(-50%,-50%) translate(' + v.px + 'px,' + (v.py + melhor) + 'px)';
+    }
+
   };
 
   // ---- controles ----
@@ -641,7 +704,7 @@
     try {
       if (new URLSearchParams(location.search).get('editor') === '1') {
         var s = document.createElement('script');
-        s.src = (cfg.base || '/tour360') + '/editor.js';
+        s.src = (cfg.base || '/tour360') + '/editor.js' + (cfg.ver ? '?v=' + cfg.ver : '');
         s.defer = true;
         document.body.appendChild(s);
       }

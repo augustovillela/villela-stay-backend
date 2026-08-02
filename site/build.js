@@ -369,6 +369,7 @@ const PANO_DIR = path.join(TOUR_DIR, 'panoramas');
 // relação que já bloqueia o calendário das três. Quem abre a Gran Villela tem de ver tudo que
 // está incluído, não só o que foi fotografado sob esse nome.
 let TOUR_COMPOSICOES = {};
+let TOUR_VER = '';   // hash do visualizador.js — cache-buster do <script>
 const TOUR_CENAS = (() => {
   const arq = path.join(TOUR_DIR, 'cenas.json');
   if (!fs.existsSync(arq)) return [];
@@ -425,6 +426,12 @@ if (TEM_TOUR) {
   fs.copyFileSync(path.join(TOUR_DIR, 'visualizador.js'), path.join(dst, 'visualizador.js'));
   // Editor de portais: só é buscado pelo navegador com /tour.html?editor=1.
   fs.copyFileSync(path.join(TOUR_DIR, 'editor.js'), path.join(dst, 'editor.js'));
+  // Impressão digital do visualizador para quebrar o cache do navegador a cada mudança.
+  // Sem isso, quem já visitou continua rodando a versão antiga depois do deploy — foi
+  // exatamente o que aconteceu ao testar a anticolisão dos portais.
+  TOUR_VER = require('crypto').createHash('sha1')
+    .update(fs.readFileSync(path.join(TOUR_DIR, 'visualizador.js')))
+    .digest('hex').slice(0, 8);
   let copiados = 0;
   for (const c of TOUR_CENAS) {
     for (const suf of [...(c.larguras || [1024]), 'thumb']) {
@@ -1013,7 +1020,7 @@ if (TEM_TOUR) {
     girar: t('Girar sozinho', 'Auto-rotate', 'Girar solo'),
     giroscopio: t('Mover o celular para olhar', 'Move your phone to look around', 'Mueve el móvil para mirar'),
     telaCheia: t('Tela cheia', 'Fullscreen', 'Pantalla completa'),
-    voltar: t('Voltar à vista geral', 'Back to the overview', 'Volver a la vista general'),
+    voltarPara: t('Voltar para', 'Back to', 'Volver a'),
     ariaCanvas: t('Panorama 360 graus. Arraste para olhar em volta; use as setas do teclado e + / − para aproximar.',
       'A 360-degree panorama. Drag to look around; use the arrow keys and + / − to zoom.',
       'Panorama de 360 grados. Arrastra para mirar alrededor; usa las flechas y + / − para acercar.'),
@@ -1108,8 +1115,8 @@ if (TEM_TOUR) {
     </div>
   </section>
 </article>
-<script>window.TOUR360 = ${jsonSeguro({ base: '/tour360', cenas: cenasCliente, inicial: TOUR_INICIAL, textos: textosTour })};</script>
-<script src="/tour360/visualizador.js" defer></script>`;
+<script>window.TOUR360 = ${jsonSeguro({ base: '/tour360', ver: TOUR_VER, cenas: cenasCliente, inicial: TOUR_INICIAL, textos: textosTour })};</script>
+<script src="/tour360/visualizador.js?v=${TOUR_VER}" defer></script>`;
 
   fs.writeFileSync(path.join(od, 'tour.html'), layout(tituloPag, descPag, corpoTour, {
     caminho: '/tour.html',
@@ -2643,7 +2650,7 @@ const PRECACHE_URLS = [
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
   ...['favicon.svg', 'favicon-192.png', 'icon-pwa.png', 'apple-touch-icon.png'].map(f => `/assets/brand/villela-stay/${f}`),
   '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/faq.html', '/app.html', '/blog.html', '/links.html',
-  ...(TEM_TOUR ? ['/tour.html', '/tour360/visualizador.js'] : []),
+  ...(TEM_TOUR ? ['/tour.html', `/tour360/visualizador.js?v=${TOUR_VER}`] : []),
   ...listings.map(l => `/hospedagem/${l.id}.html`)
 ];
 const sw = `// Service Worker da Villela Stay (PWA) — gerado por build.js. NÃO editar à mão.
