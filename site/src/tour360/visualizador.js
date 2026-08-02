@@ -170,6 +170,7 @@
     }
     botao('+', this.txt.aproximar || 'Aproximar', function () { self.zoom(-8); });
     botao('&minus;', this.txt.afastar || 'Afastar', function () { self.zoom(8); });
+    this.btnCinema = botao('&#9654;', this.txt.cinema || 'Modo cinema: passear pela casa sozinho', function (b) { self.alternarCinema(b); });
     this.btnAuto = botao('&#10227;', this.txt.girar || 'Girar sozinho', function (b) {
       self.autoRotate = !self.autoRotate;
       b.classList.toggle('t360-btn-on', self.autoRotate);
@@ -181,7 +182,16 @@
     if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
       botao('&#9974;', this.txt.telaCheia || 'Tela cheia', function () { self.telaCheia(); });
     }
+    // Gravar o passeio em vídeo: recurso de bastidor, só com ?gravar=1 na URL.
+    var querGravar = false;
+    try { querGravar = new URLSearchParams(location.search).get('gravar') === '1'; } catch (e) {}
+    if (querGravar) botao('&#9679;', this.txt.gravar || 'Gravar o passeio em vídeo', function (b) { self.gravarCinema(b); });
     r.appendChild(barra);
+
+    // Barra de progresso do passeio (só aparece no modo cinema).
+    this.barraCinema = document.createElement('div');
+    this.barraCinema.className = 't360-progresso';
+    r.appendChild(this.barraCinema);
 
     // Saída para a vista geral da casa. Só aparece quando existe hub e não estamos nele.
     this.btnVoltar = document.createElement('button');
@@ -212,7 +222,7 @@
     b.dataset.cena = cena.id;
     b.innerHTML = '<img src="' + this.cfg.base + '/' + cena.arquivo + '-thumb.jpg" alt="" loading="lazy" width="200" height="112">' +
       '<span>' + cena.titulo + '</span>';
-    b.addEventListener('click', function () { self.interagiu(); self.ir(cena.id); });
+    b.addEventListener('click', function () { self.pararCinema(); self.interagiu(); self.ir(cena.id); });
     return b;
   };
 
@@ -517,6 +527,7 @@
     function fator() { return (self.fov * RAD) / Math.max(1, c.clientHeight); }
 
     function iniciar(e) {
+      if (self.cinema) self.pararCinema();   // o visitante assumiu a camera
       c.setPointerCapture && c.setPointerCapture(e.pointerId);
       ponteiros[e.pointerId] = { x: e.clientX, y: e.clientY };
       var ids = Object.keys(ponteiros);
@@ -565,6 +576,7 @@
 
     c.addEventListener('wheel', function (e) {
       e.preventDefault();
+      if (self.cinema) self.pararCinema();
       self.interagiu();
       self.zoom(e.deltaY > 0 ? 4 : -4);
     }, { passive: false });
@@ -578,7 +590,7 @@
       else if (e.key === '+' || e.key === '=') self.zoom(-5);
       else if (e.key === '-' || e.key === '_') self.zoom(5);
       else tratou = false;
-      if (tratou) { e.preventDefault(); self.interagiu(); }
+      if (tratou) { e.preventDefault(); if (self.cinema) self.pararCinema(); self.interagiu(); }
     });
 
     // Pausa o loop quando o visualizador sai da tela (economiza bateria no celular).
@@ -638,6 +650,143 @@
   };
 
   // ---- loop de render ----
+  // ---------------------------------------------------------------- modo cinema
+  // A câmera passeia sozinha pela casa. O truque que faz parecer travessia, e não corte:
+  // antes de trocar de cena ela MIRA no portal que leva à próxima e aproxima (push in).
+  // Sem portal entre as duas, termina o giro e faz o crossfade normal.
+
+  // Menor diferença entre dois ângulos (evita dar a volta pelo lado longo).
+  function deltaAngulo(de, para) {
+    var d = (para - de) % (2 * Math.PI);
+    if (d > Math.PI) d -= 2 * Math.PI;
+    if (d < -Math.PI) d += 2 * Math.PI;
+    return d;
+  }
+  function suavizar(x) { return x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x); }
+
+  // Roteiro: a vista geral, depois os ambientes que os portais dela abrem (na ordem em que
+  // foram marcados) e por fim o que sobrou da casa, na ordem do manifesto.
+  Viewer.prototype.rotaCinema = function (idInicio) {
+    var atual = this.porId[idInicio] || this.cenaAtual;
+    var daCasa = [];
+    for (var i = 0; i < this.cenas.length; i++) {
+      if (this.cenas[i].casa === atual.casa) daCasa.push(this.cenas[i]);
+    }
+    if (!daCasa.length) return [atual];
+    var inicio = this.porId[this.hubs[atual.casa]] || atual;
+    var rota = [inicio], vistos = {};
+    vistos[inicio.id] = true;
+    var hs = inicio.hotspots || [];
+    for (var k = 0; k < hs.length; k++) {
+      var d = hs[k].destino && this.porId[hs[k].destino];
+      if (d && !vistos[d.id]) { rota.push(d); vistos[d.id] = true; }
+    }
+    for (var j = 0; j < daCasa.length; j++) {
+      if (!vistos[daCasa[j].id]) { rota.push(daCasa[j]); vistos[daCasa[j].id] = true; }
+    }
+    return rota;
+  };
+
+  Viewer.prototype.alternarCinema = function (botao) {
+    if (this.cinema) { this.pararCinema(); return; }
+    var rota = this.rotaCinema(this.cenaAtual && this.cenaAtual.id);
+    if (!rota.length) return;
+    this.cinema = { rota: rota, i: 0, t: 0, dur: 6.5 };
+    this.autoRotate = false; this.velYaw = 0; this.velPitch = 0;
+    if (this.btnAuto) this.btnAuto.classList.remove('t360-btn-on');
+    if (this.dica) this.dica.hidden = true;
+    this.raiz.classList.add('t360-modo-cinema');
+    if (botao) botao.classList.add('t360-btn-on');
+    if (this.cenaAtual !== rota[0]) this.ir(rota[0].id);
+    this.prepararTrechoCinema();
+  };
+
+  Viewer.prototype.pararCinema = function () {
+    if (!this.cinema) return;
+    this.cinema = null;
+    this.raiz.classList.remove('t360-modo-cinema');
+    if (this.btnCinema) this.btnCinema.classList.remove('t360-btn-on');
+    if (this.barraCinema) this.barraCinema.style.transform = 'scaleX(0)';
+    if (this.gravador && this.gravador.state === 'recording') this.gravador.stop();
+  };
+
+  Viewer.prototype.prepararTrechoCinema = function () {
+    var c = this.cinema;
+    if (!c) return;
+    var cena = c.rota[c.i], prox = c.rota[c.i + 1];
+    var v = cena.vistaInicial || {};
+    var base = (v.yaw || 0) * RAD;
+    c.yawIni = base - 42 * RAD;
+    c.yawFim = base + 42 * RAD;
+    c.pitchBase = (v.pitch || 0) * RAD;
+    c.yawSaida = c.yawFim;
+    c.pitchSaida = c.pitchBase;
+    c.temPortal = false;
+    var hs = cena.hotspots || [];
+    for (var i = 0; prox && i < hs.length; i++) {
+      if (hs[i].destino === prox.id) {
+        c.yawSaida = c.yawFim + deltaAngulo(c.yawFim, (hs[i].yaw || 0) * RAD);
+        c.pitchSaida = (hs[i].pitch || 0) * RAD;
+        c.temPortal = true;
+        break;
+      }
+    }
+    c.t = 0;
+  };
+
+  Viewer.prototype.avancarCinema = function (dt) {
+    var c = this.cinema;
+    c.t += dt;
+    var p = c.t / c.dur;
+    if (p < 0.72) {                      // giro pelo ambiente, abrindo o enquadramento
+      var s = suavizar(p / 0.72);
+      this.yaw = c.yawIni + (c.yawFim - c.yawIni) * s;
+      this.pitch = c.pitchBase;
+      this.fov = 86 - 18 * s;
+    } else {                             // mira a saída e aproxima
+      var s2 = suavizar((p - 0.72) / 0.28);
+      this.yaw = c.yawFim + (c.yawSaida - c.yawFim) * s2;
+      this.pitch = c.pitchBase + (c.pitchSaida - c.pitchBase) * s2;
+      this.fov = 68 - (c.temPortal ? 18 : 8) * s2;
+    }
+    if (this.barraCinema) {
+      var total = (c.i + Math.min(1, p)) / c.rota.length;
+      this.barraCinema.style.transform = 'scaleX(' + total.toFixed(4) + ')';
+    }
+    if (p >= 1) {
+      c.i++;
+      if (c.i >= c.rota.length) { this.pararCinema(); return; }
+      this.ir(c.rota[c.i].id);
+      this.prepararTrechoCinema();
+    }
+  };
+
+  // Gravação do passeio (só com ?gravar=1). Grava o CANVAS, então os portais e o resto da
+  // interface ficam de fora — é o que se quer num vídeo. Sem ffmpeg, sem instalar nada.
+  Viewer.prototype.gravarCinema = function (botao) {
+    var self = this;
+    if (this.gravador && this.gravador.state === 'recording') { this.gravador.stop(); return; }
+    if (!window.MediaRecorder || !this.canvas.captureStream) { alert('Este navegador não grava o canvas.'); return; }
+    var fluxo = this.canvas.captureStream(30), mime = '';
+    var tipos = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    for (var i = 0; i < tipos.length; i++) { if (MediaRecorder.isTypeSupported(tipos[i])) { mime = tipos[i]; break; } }
+    var pedacos = [];
+    this.gravador = new MediaRecorder(fluxo, mime ? { mimeType: mime, videoBitsPerSecond: 12000000 } : undefined);
+    this.gravador.ondataavailable = function (e) { if (e.data && e.data.size) pedacos.push(e.data); };
+    this.gravador.onstop = function () {
+      botao.classList.remove('t360-btn-on');
+      var url = URL.createObjectURL(new Blob(pedacos, { type: 'video/webm' }));
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'tour-360-' + ((self.cenaAtual && self.cenaAtual.casa) || 'villela').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.webm';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+    };
+    this.gravador.start();
+    botao.classList.add('t360-btn-on');
+    if (!this.cinema) this.alternarCinema(this.btnCinema);   // gravar sem passeio não faz sentido
+  };
+
   Viewer.prototype.loop = function () {
     var self = this;
     var anterior = 0;
@@ -648,8 +797,10 @@
       anterior = ts;
       if (!self.visivel) return;
 
-      // Inércia depois do arrasto + giro automático de vitrine
-      if (Math.abs(self.velYaw) > 1e-5 || Math.abs(self.velPitch) > 1e-5) {
+      // O modo cinema dirige a câmera; inércia e giro de vitrine ficam de fora.
+      if (self.cinema) {
+        self.avancarCinema(dt);
+      } else if (Math.abs(self.velYaw) > 1e-5 || Math.abs(self.velPitch) > 1e-5) {
         self.yaw += self.velYaw;
         self.pitch = Math.max(-PITCH_MAX * RAD, Math.min(PITCH_MAX * RAD, self.pitch + self.velPitch));
         self.velYaw *= 0.92; self.velPitch *= 0.92;
