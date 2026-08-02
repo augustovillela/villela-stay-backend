@@ -84,6 +84,21 @@ ele chegou por outro caminho (miniatura, link direto). Isso importa porque porta
 três portais do pátio da Kubitschek abrem flats da Villa Catetinho, e mandar o visitante para o
 roof top da Catetinho seria o lugar errado.
 
+### Modo cinema (passeio automático)
+
+Botão ▶ na barra. A câmera passeia sozinha pela casa: em cada ambiente varre ~84° abrindo o
+enquadramento e, **quando existe um portal para a próxima cena, mira nele e aproxima** antes da
+transição — é isso que faz parecer travessia em vez de corte. ~6,5 s por ambiente.
+
+O roteiro sai do manifesto: vista geral (`hub`) → os ambientes que os portais dela abrem, na
+ordem em que foram marcados → o resto da casa. **Mapear portais melhora o cinema de graça**:
+sem portal entre duas cenas, a transição é um corte simples.
+
+Qualquer toque, scroll ou tecla devolve a câmera ao visitante.
+
+Com **`?gravar=1`** aparece um botão que grava o passeio em `.webm` (grava o *canvas*, então o
+vídeo sai sem interface — serve para Instagram). Não precisa de ffmpeg nem de nada instalado.
+
 ### Cache do navegador
 
 O `<script>` do visualizador leva `?v=<hash do arquivo>`, gerado no build. **Não remova**: sem
