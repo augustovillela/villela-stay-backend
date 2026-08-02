@@ -15,12 +15,13 @@
 const { db, nowISO, novoId } = require('./db');
 
 // Modelos em ordem de preferência (o 2º entra se o 1º falhar por indisponibilidade).
-const MODELOS = (process.env.LEGAL_LLM_MODELS || 'claude-opus-4-8,claude-sonnet-4-6')
+const MODELOS = (process.env.LEGAL_LLM_MODELS || 'claude-opus-5,claude-opus-4-8')
   .split(',').map(s => s.trim()).filter(Boolean);
 const MAX_TOKENS = parseInt(process.env.LEGAL_LLM_MAX_TOKENS, 10) || 16000;
 
 // Preço por MTok (USD) p/ estimativa de custo — atualizar junto com o modelo.
 const PRECOS = {
+  'claude-opus-5': { in: 5, out: 25 },
   'claude-opus-4-8': { in: 5, out: 25 },
   'claude-opus-4-7': { in: 5, out: 25 },
   'claude-sonnet-4-6': { in: 3, out: 15 },

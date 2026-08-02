@@ -169,7 +169,7 @@ node stays/start-staff-dev.js   # (ou preview "staff-backend" do launch.json)
   *Nota*: a importação de contratos legados ficou para a Fase 4 (módulo de contratos).
 - **Fase 3 — CONCLUÍDA (06/07/2026)**: IA jurídica em MODO DUPLO.
   *Arquitetura*: `llm.js` (camada abstrata Anthropic — SDK oficial `@anthropic-ai/sdk`, modelo
-  `claude-opus-4-8` c/ fallback `claude-sonnet-4-6` via `LEGAL_LLM_MODELS`, adaptive thinking,
+  `claude-opus-5` c/ fallback `claude-opus-4-8` via `LEGAL_LLM_MODELS`, adaptive thinking,
   structured outputs JSON com schema §9, prompt caching nos guardrails, custo/latência logados em
   `ai_agent_runs`) + `ia.js` (RAG: FTS5/BM25 nativo do node:sqlite — sem dependência de embeddings;
   índice `rag_index` sobre conhecimento curado, extrações de documentos, minutas, publicações,
