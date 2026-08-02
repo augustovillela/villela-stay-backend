@@ -1,7 +1,7 @@
 'use strict';
 // ============================================================================
 // Portal Staff — módulo: app-listas
-// Listas (compras/manutenção/pendências) e Agenda (pedidos de evento).
+// Listas (compras/manutenção/pendências), Bloco de Notas e Agenda (pedidos de evento).
 // Compartilha o escopo global com app-core.js (scripts clássicos, sem import/export).
 // ============================================================================
 // --------- Listas (Compras / Manutenção / Pendências) ---------
@@ -201,6 +201,147 @@ async function carregarPendencias() {
     // mantém o arquivo em sincronia (uma pendência concluída acabou de entrar nele)
     if ($('#pend-arquivo')) carregarArquivoPend($('#pend-busca') ? $('#pend-busca').value.trim() : '');
   } catch (e) { const a = $('#pend-lista'); if (a) a.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+// --------- Bloco de Notas (anotações livres, estilo post-it) ---------
+// Mesmo espírito das Pendências, mas para texto livre: o "bloco de notas do celular" no portal.
+const NOTA_CORES = ['#ffe08a', '#ffd0a6', '#bff0c3', '#a6e6e6', '#c8bdf0', '#f7c0e6', '#f3f0a6', '#a6d8ff', '#ffb3b3', '#c9f0d8', '#e6c9a0', '#d4c5f9'];
+let NOTA_COR_NOVA = NOTA_CORES[0];
+let NOTAS = [];
+function paletaHtml(sel, attr) {
+  return `<div class="nota-cores">${NOTA_CORES.map(c => `<button type="button" class="nota-cor" style="background:${c}" ${attr}="${c}" aria-label="Cor da nota" aria-pressed="${c === sel ? 'true' : 'false'}"></button>`).join('')}</div>`;
+}
+function ligarPaleta(raiz, attr, aoEscolher) {
+  raiz.querySelectorAll('[' + attr + ']').forEach(b => b.onclick = () => {
+    raiz.querySelectorAll('[' + attr + ']').forEach(o => o.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', 'true');
+    aoEscolher(b.getAttribute(attr));
+  });
+}
+async function renderNotas() {
+  const c = conteudo();
+  c.innerHTML = cabecalho('🗒️ Bloco de Notas', 'Suas anotações livres — o bloco de notas do celular aqui dentro. Escreva, fixe o que importa e edite a qualquer hora. Só você (área CEO) enxerga.');
+  c.innerHTML += `
+    <form id="nota-form" class="form" style="max-width:640px;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px">
+      <label>Título (opcional)<input id="nt-titulo" maxlength="120" placeholder="Ex.: Ideias para o Réveillon"></label>
+      <label>Anotação<textarea id="nt-texto" rows="4" maxlength="8000" placeholder="Escreva aqui… pode usar várias linhas."></textarea></label>
+      <div id="nota-paleta-nova" style="margin:2px 0 10px">${paletaHtml(NOTA_COR_NOVA, 'data-cor-nova')}</div>
+      <button class="btn" type="submit">+ Salvar nota</button>
+    </form>
+    <div class="barra" style="margin:16px 0 4px;flex-wrap:wrap">
+      <input id="nota-busca" type="search" placeholder="🔎 Buscar nas notas…" style="flex:1;min-width:220px" aria-label="Buscar nas notas">
+    </div>
+    <div id="notas-mural" class="postit-mural notas-mural"><p class="vazio">Carregando…</p></div>
+    <details style="margin-top:18px">
+      <summary style="cursor:pointer;font-weight:700;color:var(--petroleo)">🗄️ Notas arquivadas</summary>
+      <input id="nota-arq-busca" type="search" placeholder="🔎 Buscar no arquivo…" style="width:100%;max-width:520px;margin:12px 0 10px" aria-label="Buscar no arquivo de notas">
+      <div id="notas-arquivo"><p class="vazio">Carregando…</p></div>
+    </details>`;
+  ligarPaleta($('#nota-paleta-nova'), 'data-cor-nova', (cor) => { NOTA_COR_NOVA = cor; });
+  $('#nota-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const titulo = $('#nt-titulo').value.trim(), texto = $('#nt-texto').value.trim();
+    if (!titulo && !texto) { $('#nt-texto').focus(); return; }
+    try {
+      await api('POST', '/notas', { titulo, texto, cor: NOTA_COR_NOVA });
+      $('#nt-titulo').value = ''; $('#nt-texto').value = ''; $('#nt-titulo').focus();
+      carregarNotas();
+    } catch (e) { alert(e.message); }
+  };
+  let bt; $('#nota-busca').oninput = () => { clearTimeout(bt); bt = setTimeout(carregarNotas, 250); };
+  let ba; $('#nota-arq-busca').oninput = () => { clearTimeout(ba); ba = setTimeout(() => carregarNotasArquivo($('#nota-arq-busca').value.trim()), 300); };
+  carregarNotas();
+  carregarNotasArquivo('');
+}
+function notaPostitHtml(n) {
+  const quando = n.atualizadoEm && n.atualizadoEm !== n.criadoEm ? 'editada ' + dataBr(n.atualizadoEm) : dataBr(n.criadoEm);
+  return `<div class="postit nota-postit${n.fixado ? ' nota-fixada' : ''}" style="--pcor:${esc(n.cor || NOTA_CORES[0])}" data-nota="${esc(n.id)}">
+    <div class="postit-cab">
+      <span class="postit-tit">${n.fixado ? '📌 ' : ''}${esc(n.titulo || 'Sem título')}</span>
+      <span class="nota-acoes">
+        <button class="nota-btn" data-fixar="${esc(n.id)}" title="${n.fixado ? 'Desafixar' : 'Fixar no topo'}">${n.fixado ? '📌' : '📍'}</button>
+        <button class="nota-btn" data-editar-nota="${esc(n.id)}" title="Editar">✏️</button>
+        <button class="nota-btn" data-arquivar-nota="${esc(n.id)}" title="Arquivar (vai para as notas arquivadas)">🗄️</button>
+      </span>
+    </div>
+    ${n.texto ? `<div class="nota-texto">${esc(n.texto)}</div>` : ''}
+    <div class="nota-pe">${esc(quando)}</div>
+  </div>`;
+}
+async function carregarNotas() {
+  const mural = $('#notas-mural'); if (!mural) return;
+  const busca = $('#nota-busca') ? $('#nota-busca').value.trim() : '';
+  try {
+    const r = await api('GET', '/notas' + (busca ? '?busca=' + encodeURIComponent(busca) : ''));
+    NOTAS = r.notas || [];
+    mural.innerHTML = NOTAS.length
+      ? NOTAS.map(notaPostitHtml).join('')
+      : `<p class="vazio" style="margin:0">${busca ? 'Nenhuma nota encontrada para essa busca.' : 'Nenhuma nota ainda. Escreva a primeira acima. 🗒️'}</p>`;
+    mural.querySelectorAll('[data-fixar]').forEach(b => b.onclick = async () => {
+      const n = NOTAS.find(x => x.id === b.dataset.fixar); if (!n) return;
+      try { await api('PATCH', '/notas/' + n.id, { fixado: !n.fixado }); carregarNotas(); } catch (e) { alert(e.message); }
+    });
+    mural.querySelectorAll('[data-arquivar-nota]').forEach(b => b.onclick = async () => {
+      if (!confirm('Arquivar esta nota? Ela sai do mural e fica em "Notas arquivadas".')) return;
+      try { await api('DELETE', '/notas/' + b.dataset.arquivarNota); carregarNotas(); carregarNotasArquivo($('#nota-arq-busca') ? $('#nota-arq-busca').value.trim() : ''); } catch (e) { alert(e.message); }
+    });
+    mural.querySelectorAll('[data-editar-nota]').forEach(b => b.onclick = () => editarNota(b.dataset.editarNota));
+  } catch (e) { mural.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+// Edição no próprio post-it: título, texto e cor.
+function editarNota(id) {
+  const n = NOTAS.find(x => x.id === id); if (!n) return;
+  const card = document.querySelector(`.nota-postit[data-nota="${CSS.escape(id)}"]`); if (!card) return;
+  let cor = n.cor || NOTA_CORES[0];
+  card.innerHTML = `
+    <input class="nota-ed-titulo" maxlength="120" value="${esc(n.titulo || '')}" placeholder="Título (opcional)" aria-label="Título da nota">
+    <textarea class="nota-ed-texto" rows="5" maxlength="8000" placeholder="Anotação" aria-label="Texto da nota">${esc(n.texto || '')}</textarea>
+    ${paletaHtml(cor, 'data-cor-ed')}
+    <div class="nota-ed-acoes">
+      <button class="btn peq" data-salvar-nota="1">Salvar</button>
+      <button class="btn peq secund" data-cancelar-nota="1">Cancelar</button>
+      <button class="btn peq perigo" data-excluir-nota="1" title="Excluir de vez, sem arquivar">🗑️ Excluir</button>
+    </div>`;
+  card.style.setProperty('--pcor', cor);
+  ligarPaleta(card, 'data-cor-ed', (c) => { cor = c; card.style.setProperty('--pcor', c); });
+  const ti = card.querySelector('.nota-ed-titulo'); ti.focus();
+  const salvar = async () => {
+    const titulo = card.querySelector('.nota-ed-titulo').value.trim();
+    const texto = card.querySelector('.nota-ed-texto').value.trim();
+    if (!titulo && !texto) { alert('A nota não pode ficar vazia.'); return; }
+    try { await api('PATCH', '/notas/' + id, { titulo, texto, cor }); carregarNotas(); } catch (e) { alert(e.message); }
+  };
+  card.querySelector('[data-salvar-nota]').onclick = salvar;
+  card.querySelector('[data-cancelar-nota]').onclick = () => carregarNotas();
+  card.querySelector('[data-excluir-nota]').onclick = async () => {
+    if (!confirm('Excluir esta nota DE VEZ? Ela não vai para o arquivo.')) return;
+    try { await api('DELETE', '/notas/' + id + '?arquivar=nao'); carregarNotas(); } catch (e) { alert(e.message); }
+  };
+  ti.onkeydown = (e) => { if (e.key === 'Escape') carregarNotas(); };
+}
+async function carregarNotasArquivo(busca) {
+  const box = $('#notas-arquivo'); if (!box) return;
+  try {
+    const r = await api('GET', '/notas/arquivo' + (busca ? '?busca=' + encodeURIComponent(busca) : ''));
+    const notas = r.notas || [];
+    if (!notas.length) { box.innerHTML = `<p class="vazio">${busca ? 'Nada encontrado no arquivo.' : 'Nenhuma nota arquivada.'}</p>`; return; }
+    box.innerHTML = `<p class="sub" style="margin:0 0 8px">${r.filtradas}${r.filtradas < r.total ? ' de ' + r.total : ''} nota(s) arquivada(s)</p>` +
+      notas.map(n => `
+      <div class="pend-linha">
+        <span class="cat-badge" style="background:${esc(n.cor || NOTA_CORES[0])}">🗒️</span>
+        <span class="nome">${esc(n.titulo || 'Sem título')}${n.texto ? ` <span class="obs">— ${esc(n.texto.slice(0, 140))}${n.texto.length > 140 ? '…' : ''}</span>` : ''}</span>
+        <span class="quem">🗄️ ${esc((n.arquivadoEm || '').slice(0, 10))} · ${esc(n.arquivadoPor || n.quem || '')}</span>
+        <button class="btn peq secund" data-restaurar-nota="${esc(n.id)}" title="Voltar ao mural">↩︎ Restaurar</button>
+        <button class="btn peq perigo" data-apagar-nota="${esc(n.id)}" title="Excluir do arquivo (definitivo)">✕</button>
+      </div>`).join('');
+    box.querySelectorAll('[data-restaurar-nota]').forEach(b => b.onclick = async () => {
+      try { await api('POST', '/notas/arquivo/' + b.dataset.restaurarNota + '/restaurar'); carregarNotas(); carregarNotasArquivo(busca); } catch (e) { alert(e.message); }
+    });
+    box.querySelectorAll('[data-apagar-nota]').forEach(b => b.onclick = async () => {
+      if (!confirm('Excluir do arquivo? Não dá para desfazer.')) return;
+      try { await api('DELETE', '/notas/arquivo/' + b.dataset.apagarNota); carregarNotasArquivo(busca); } catch (e) { alert(e.message); }
+    });
+  } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Agenda (pedidos de evento → Claude executa) ---------

@@ -53,6 +53,7 @@ async function renderVisao() {
       card(ck.listas.compras, '🛒 Itens na lista de compras', 'compras');
       card(ck.listas.manutencao, '🔧 Itens de manutenção', 'manutencao');
       if (ck.listas.pendencias != null) card(ck.listas.pendencias, '✅ Pendências (CEO)', 'pendencias');
+      if (ck.listas.notas != null) card(ck.listas.notas, '🗒️ Bloco de Notas', 'notas');
     }
     if (ck.chamadosAbertos != null) card(ck.chamadosAbertos, '🛠️ Manutenção — abertos', 'manutencao-chamados', ck.chamadosAbertos > 0 ? 'var(--cerrado)' : 'var(--ok)');
     $('#ck-cards').innerHTML = cards.join('') || '<div class="vazio">Sem dados no momento.</div>';

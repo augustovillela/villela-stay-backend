@@ -1008,6 +1008,121 @@ app.post('/staff/api/listas/:tipo/limpar', requirePublishOrSession, (req, res) =
   res.json({ ok: true });
 });
 
+// ============================ Bloco de Notas (anotações livres do CEO) ============================
+// Post-its de texto livre — o "bloco de notas do celular" dentro do portal. Mesma restrição das
+// pendências (área CEO ou admin; PUBLISH_KEY liberado p/ automação). Nota excluída vai para o
+// arquivo (?arquivar=nao apaga de vez), como nas pendências.
+const NOTAS_ARQ = 'bloco-notas.json';
+const NOTAS_ARQUIVO = 'bloco-notas-arquivo.json';
+const NOTA_CORES = ['#ffe08a', '#ffd0a6', '#bff0c3', '#a6e6e6', '#c8bdf0', '#f7c0e6', '#f3f0a6', '#a6d8ff', '#ffb3b3', '#c9f0d8', '#e6c9a0', '#d4c5f9'];
+const NOTAS_MAX = 500, NOTAS_ARQ_MAX = 500;
+const lerNotas = () => { const a = lerJSON(NOTAS_ARQ, []); return Array.isArray(a) ? a : []; };
+const lerNotasArquivo = () => { const a = lerJSON(NOTAS_ARQUIVO, []); return Array.isArray(a) ? a : []; };
+const corNota = (c) => { const v = String(c || '').trim().toLowerCase(); return NOTA_CORES.find(x => x === v) || NOTA_CORES[0]; };
+// fixadas primeiro; depois a mais recentemente mexida
+const ordenarNotas = (n) => n.sort((a, b) => (Number(b.fixado) - Number(a.fixado)) ||
+  String(b.atualizadoEm || b.criadoEm).localeCompare(String(a.atualizadoEm || a.criadoEm)));
+function filtrarNotas(notas, busca) {
+  const q = semAcento(String(busca || '')).trim();
+  if (!q) return notas;
+  const termos = q.split(/\s+/);
+  return notas.filter(n => { const alvo = semAcento([n.titulo, n.texto, n.quem].join(' ')); return termos.every(t => alvo.includes(t)); });
+}
+function podeNota(req, res) {
+  if (req.viaChave) return true;
+  if (!podeArea(req.user, 'ceo')) { res.status(403).json({ erro: 'Acesso negado: área CEO.' }); return false; }
+  return true;
+}
+
+// ATENÇÃO: as rotas de /notas/arquivo vêm ANTES das de /notas/:id (o Express casa por ordem).
+app.get('/staff/api/notas/arquivo', requirePublishOrSession, (req, res) => {
+  if (!podeNota(req, res)) return;
+  const todas = lerNotasArquivo();
+  const filtradas = filtrarNotas(todas, req.query.busca);
+  res.json({ notas: filtradas.slice(0, 200), total: todas.length, filtradas: filtradas.length });
+});
+app.post('/staff/api/notas/arquivo/:id/restaurar', requirePublishOrSession, (req, res) => {
+  if (!podeNota(req, res)) return;
+  const todas = lerNotasArquivo();
+  const it = todas.find(n => n.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Nota não encontrada no arquivo.' });
+  salvarJSON(NOTAS_ARQUIVO, todas.filter(n => n.id !== req.params.id));
+  const nota = Object.assign({}, it); delete nota.arquivadoEm; delete nota.arquivadoPor;
+  const notas = lerNotas(); notas.push(nota);
+  salvarJSON(NOTAS_ARQ, notas);
+  res.json({ ok: true, nota });
+});
+app.delete('/staff/api/notas/arquivo/:id', requirePublishOrSession, (req, res) => {
+  if (!podeNota(req, res)) return;
+  const todas = lerNotasArquivo();
+  const out = todas.filter(n => n.id !== req.params.id);
+  salvarJSON(NOTAS_ARQUIVO, out);
+  res.json({ ok: true, removidas: todas.length - out.length });
+});
+
+app.get('/staff/api/notas', requirePublishOrSession, (req, res) => {
+  if (!podeNota(req, res)) return;
+  const notas = ordenarNotas(lerNotas());
+  const filtradas = filtrarNotas(notas, req.query.busca);
+  res.json({ notas: filtradas, total: notas.length, cores: NOTA_CORES });
+});
+
+app.post('/staff/api/notas', requirePublishOrSession, (req, res) => {
+  if (!podeNota(req, res)) return;
+  const d = req.body || {};
+  const titulo = String(d.titulo || '').trim().slice(0, 120);
+  const texto = String(d.texto || '').trim().slice(0, 8000);
+  if (!titulo && !texto) return res.status(400).json({ erro: 'Escreva um título ou o texto da nota.' });
+  const notas = lerNotas();
+  if (notas.length >= NOTAS_MAX) return res.status(400).json({ erro: `Limite de ${NOTAS_MAX} notas ativas. Arquive alguma antes.` });
+  const agora = new Date().toISOString();
+  const nota = {
+    id: novoId(), titulo, texto,
+    cor: corNota(d.cor),
+    fixado: !!d.fixado,
+    quem: req.viaChave ? (String(d.quem || '').trim() || 'Sistema') : (req.user.nome || req.user.email || 'staff'),
+    criadoEm: agora, atualizadoEm: agora,
+  };
+  notas.push(nota);
+  salvarJSON(NOTAS_ARQ, notas);
+  res.json({ ok: true, nota });
+});
+
+app.patch('/staff/api/notas/:id', requirePublishOrSession, (req, res) => {
+  if (!podeNota(req, res)) return;
+  const notas = lerNotas();
+  const n = notas.find(x => x.id === req.params.id);
+  if (!n) return res.status(404).json({ erro: 'Nota não encontrada.' });
+  const d = req.body || {};
+  if (d.titulo !== undefined) n.titulo = String(d.titulo || '').trim().slice(0, 120);
+  if (d.texto !== undefined) n.texto = String(d.texto || '').trim().slice(0, 8000);
+  if (d.cor !== undefined) n.cor = corNota(d.cor);
+  if (d.fixado !== undefined) n.fixado = !!d.fixado;
+  if (!n.titulo && !n.texto) return res.status(400).json({ erro: 'A nota não pode ficar vazia.' });
+  n.atualizadoEm = new Date().toISOString();
+  salvarJSON(NOTAS_ARQ, notas);
+  res.json({ ok: true, nota: n });
+});
+
+app.delete('/staff/api/notas/:id', requirePublishOrSession, (req, res) => {
+  if (!podeNota(req, res)) return;
+  const notas = lerNotas();
+  const restantes = notas.filter(n => n.id !== req.params.id);
+  if (req.query.arquivar !== 'nao') {
+    const saindo = notas.filter(n => n.id === req.params.id);
+    if (saindo.length) {
+      const arq = lerNotasArquivo();
+      const quando = new Date().toISOString();
+      const quem = req.viaChave ? 'Sistema' : (req.user.nome || req.user.email || 'staff');
+      for (const n of saindo) arq.unshift(Object.assign({}, n, { arquivadoEm: quando, arquivadoPor: quem }));
+      if (arq.length > NOTAS_ARQ_MAX) arq.length = NOTAS_ARQ_MAX;
+      salvarJSON(NOTAS_ARQUIVO, arq);
+    }
+  }
+  salvarJSON(NOTAS_ARQ, restantes);
+  res.json({ ok: true, removidas: notas.length - restantes.length });
+});
+
 // ============================ Mural da equipe (comunicação interna) ============================
 // Canal de comunicação entre membros da equipe e agentes: avisos, recados e coordenação.
 // Qualquer usuário logado lê e posta; agentes (Claude) postam via PUBLISH_KEY. Mensagens podem
@@ -1223,7 +1338,10 @@ app.get('/staff/api/cockpit', requireAuth, async (req, res) => {
       compras: lerJSON('lista-compras.json', []).length,
       manutencao: lerJSON('lista-manutencao.json', []).length,
     };
-    if (podeArea(req.user, 'ceo')) out.listas.pendencias = lerJSON('lista-pendencias.json', []).length;
+    if (podeArea(req.user, 'ceo')) {
+      out.listas.pendencias = lerJSON('lista-pendencias.json', []).length;
+      out.listas.notas = lerJSON('bloco-notas.json', []).length;
+    }
     out.chamadosAbertos = lerJSON('manutencao-chamados.json', []).filter(c => c.status !== 'concluido').length;
     if (podeArea(req.user, 'vendas'))
       out.followupsVencidos = lerContatos().filter(c =>

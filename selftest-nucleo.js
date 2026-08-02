@@ -265,6 +265,42 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal((await req('GET', '/staff/api/crm/contatos/' + cid, { cookie: adminCookie })).status, 404);
   });
 
+  // ---------- Bloco de Notas (anotações livres — restrito à área CEO) ----------
+  await t('notas: RBAC — anônimo 401, membro sem CEO 403, admin 200, PUBLISH_KEY 200', async () => {
+    assert.equal((await req('GET', '/staff/api/notas')).status, 401);
+    assert.equal((await req('GET', '/staff/api/notas', { cookie: opCookie })).status, 403, 'membro area ti → 403');
+    assert.equal((await req('GET', '/staff/api/notas', { cookie: adminCookie })).status, 200);
+    assert.equal((await req('GET', '/staff/api/notas', { headers: { 'x-publish-key': 'pk-test' } })).status, 200);
+  });
+  let notaId = '';
+  await t('notas: criar, editar, fixar (vem primeiro) e buscar; nota vazia → 400', async () => {
+    const c = await req('POST', '/staff/api/notas', { json: { titulo: 'Ideias', texto: 'Comprar toalhas\nFalar com o pintor', cor: '#bff0c3' }, cookie: adminCookie });
+    assert.equal(c.status, 200); notaId = c.json.nota.id; assert.equal(c.json.nota.cor, '#bff0c3');
+    assert.equal((await req('POST', '/staff/api/notas', { json: { titulo: '  ', texto: '' }, cookie: adminCookie })).status, 400, 'sem título e sem texto → 400');
+    const outra = await req('POST', '/staff/api/notas', { json: { texto: 'Reveillon 2027', cor: 'inventada' }, cookie: adminCookie });
+    assert.equal(outra.json.nota.cor, '#ffe08a', 'cor fora da paleta cai no padrão');
+    const pt = await req('PATCH', '/staff/api/notas/' + notaId, { json: { texto: 'Comprar toalhas brancas', fixado: true }, cookie: adminCookie });
+    assert.equal(pt.status, 200); assert.equal(pt.json.nota.fixado, true);
+    assert.equal((await req('PATCH', '/staff/api/notas/' + notaId, { json: { titulo: '', texto: '' }, cookie: adminCookie })).status, 400, 'não deixa esvaziar');
+    const lista = await req('GET', '/staff/api/notas', { cookie: adminCookie });
+    assert.equal(lista.json.notas[0].id, notaId, 'fixada vem primeiro');
+    const busca = await req('GET', '/staff/api/notas?busca=' + encodeURIComponent('reveillon'), { cookie: adminCookie });
+    assert.equal(busca.json.notas.length, 1, 'busca sem acento acha "Réveillon"');
+    assert.equal((await req('PATCH', '/staff/api/notas/naoexiste', { json: { texto: 'x' }, cookie: adminCookie })).status, 404);
+  });
+  await t('notas: arquivar → arquivo, restaurar volta ao mural, ?arquivar=nao apaga de vez', async () => {
+    assert.equal((await req('DELETE', '/staff/api/notas/' + notaId, { cookie: adminCookie })).json.removidas, 1);
+    const arq = await req('GET', '/staff/api/notas/arquivo', { cookie: adminCookie });
+    assert.ok(arq.json.notas.some(n => n.id === notaId), 'nota excluída foi para o arquivo');
+    assert.ok(!(await req('GET', '/staff/api/notas', { cookie: adminCookie })).json.notas.some(n => n.id === notaId));
+    assert.equal((await req('POST', '/staff/api/notas/arquivo/' + notaId + '/restaurar', { cookie: adminCookie })).status, 200);
+    assert.ok((await req('GET', '/staff/api/notas', { cookie: adminCookie })).json.notas.some(n => n.id === notaId), 'restaurada volta ao mural');
+    assert.equal((await req('POST', '/staff/api/notas/arquivo/' + notaId + '/restaurar', { cookie: adminCookie })).status, 404, 'não está mais no arquivo');
+    assert.equal((await req('DELETE', '/staff/api/notas/' + notaId + '?arquivar=nao', { cookie: adminCookie })).status, 200);
+    assert.ok(!(await req('GET', '/staff/api/notas/arquivo', { cookie: adminCookie })).json.notas.some(n => n.id === notaId), 'excluída de vez não vai ao arquivo');
+    assert.equal((await req('DELETE', '/staff/api/notas/arquivo/qualquer', { cookie: opCookie })).status, 403, 'arquivo também é restrito ao CEO');
+  });
+
   // ---------- Hóspede: conta corrente / fidelidade / Mercado Pago (dinheiro) ----------
   await t('fidelidade view/config respondem 200 (staff)', async () => {
     assert.equal((await req('GET', '/staff/api/hospede/fidelidade', { cookie: adminCookie })).status, 200);
