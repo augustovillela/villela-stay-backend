@@ -1,0 +1,68 @@
+# Tour Virtual 360° — como alimentar
+
+Fluxo de ponta a ponta, do cartão da câmera até o site no ar.
+
+## 1. Converter as fotos
+
+```bash
+python tools/preparar-360.py --origem "C:/caminho/das/fotos360" --casa "Villa Kubitschek" --imovel GG04I
+```
+
+O script valida a proporção 2:1, recompõe photo spheres cortados (metadados GPano),
+gera `-1024/-2048/-4096.jpg` + miniatura retilínea em `panoramas/` e faz **upsert**
+em `cenas.json` — rodar de novo nunca apaga ajuste feito à mão.
+
+Antes de gravar qualquer coisa, dá para só inspecionar: `--listar`.
+Uma foto por cômodo/ambiente. Nome do arquivo vira o `id` da cena.
+
+## 2. Revisar `cenas.json`
+
+Campos por cena:
+
+| Campo | O que é |
+|---|---|
+| `id` | identificador na URL (`/tour.html?cena=<id>`) — não mudar depois de divulgado |
+| `arquivo` | nome-base dos JPGs em `panoramas/` |
+| `casa` | nome da casa, agrupa no seletor de cenas |
+| `imovel` | código(s) do anúncio na Stays — liga a cena à página da propriedade. Aceita lista: `["GG04I","UD09H"]` faz a suíte aparecer na página da casa inteira **e** na dela. Ponha o código da CASA primeiro |
+| `titulo` / `tituloEn` / `tituloEs` | nome do ambiente (EN/ES caem no PT se faltarem) |
+| `vistaInicial` | `{ yaw, pitch, fov }` em graus — o ângulo que abre a cena |
+| `hotspots` | pontos clicáveis dentro da cena |
+| `destaque` | `true` = cena de abertura do tour |
+
+Hotspot:
+
+```json
+{ "yaw": 120, "pitch": -5, "tipo": "cena", "destino": "kubitschek-sala", "texto": "Ir para a sala" }
+{ "yaw": -40, "pitch": 10, "tipo": "info", "texto": "Vista para o Lago Paranoá" }
+```
+
+**A ordem das cenas no arquivo é o roteiro da visita.** O botão "Tour 360°" de cada anúncio
+abre na primeira cena daquele anúncio — por isso a área mais bonita vem primeiro e banheiro
+vem por último. O conversor preserva essa ordem e só acrescenta cena nova no fim do grupo
+da casa; nunca reordena por nome.
+
+`yaw` 0° é o centro da foto; positivo gira à direita (mesma convenção do Google Street View).
+`pitch` positivo olha para cima.
+Para achar o ângulo: abra o tour, posicione a vista e leia `?cena=` — ou vá por
+tentativa em passos de 15°, é rápido.
+
+## 3. Publicar
+
+```bash
+node build.js
+```
+
+Gera `/tour.html` nos 3 idiomas, copia os panoramas para `dist/tour360/`, coloca o
+botão **Tour 360°** na página de cada anúncio que tenha cena e entra no sitemap.
+Commit + push → o Render publica sozinho.
+
+## Cuidados
+
+- **Peso**: cada cena fica em torno de 1,5 MB somando as 3 resoluções. O visualizador
+  escolhe a resolução pelo aparelho e carrega a de 1024 primeiro, então o visitante
+  vê a cena na hora. Acima de ~40 cenas, avaliar hospedar as fotos fora do repositório.
+- **Privacidade**: panorama pega a casa inteira. Antes de converter, confira se não
+  há documento, tela de computador, chave, rosto de hóspede ou de funcionário no quadro.
+- **Repositório público**: `villela-stay-backend` é público. O que entra em
+  `panoramas/` fica visível para qualquer um.

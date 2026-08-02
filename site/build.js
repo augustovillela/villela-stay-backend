@@ -252,6 +252,7 @@ ${extraHead}
   <div class="marca-bloco">${MARCA.replace('href="/"', `href="${L('/')}"`)}${TAGLINE()}</div>
   <nav>
     <a href="${L('/')}#hospedagens">${t('Hospedagens', 'Stays', 'Alojamientos')}</a>
+    ${TEM_TOUR ? `<a href="${L('/tour.html')}">${t('Tour 360°', '360° Tour', 'Tour 360°')}</a>` : ''}
     <a href="${L('/eventos.html')}">${t('Eventos', 'Events', 'Eventos')}</a>
     <a href="${L('/pacotes.html')}">${t('Pacotes Especiais', 'Special Packages', 'Paquetes Especiales')}</a>
     <a href="${L('/blog.html')}">Blog</a>
@@ -289,6 +290,7 @@ ${corpo}
   <div class="rodape-links rodape-compacto">
     <strong>${t('Navegue', 'Browse', 'Navega')}</strong>
     <a href="${L('/faq.html')}">${t('Perguntas Frequentes (FAQ)', 'FAQ — Frequently Asked Questions', 'Preguntas Frecuentes (FAQ)')}</a>
+    ${TEM_TOUR ? `<a href="${L('/tour.html')}">${t('Tour Virtual 360°', '360° Virtual Tour', 'Tour Virtual 360°')}</a>` : ''}
     <a href="${L('/app.html')}">${t('📲 Baixar o app', '📲 Get the app', '📲 Descargar la app')}</a>
     <a href="${L('/links.html')}">Linktree</a>
     <a href="${L('/pre-checkin.html')}">${t('Check-in on-line', 'Online check-in', 'Check-in en línea')}</a>
@@ -354,6 +356,72 @@ document.addEventListener('submit', function(e){
 </body>
 </html>`;
 }
+
+// ----------------------------------------------------------------- tour virtual 360°
+// Panoramas equirretangulares preparados por tools/preparar-360.py e descritos em
+// src/tour360/cenas.json. O visualizador é nosso (WebGL puro, sem dependência) —
+// ver src/tour360/visualizador.js e src/tour360/LEIA-ME.md.
+// O tour é OPCIONAL: sem cena válida, nada é gerado e o site sai exatamente como antes.
+const TOUR_DIR = path.join(__dirname, 'src', 'tour360');
+const PANO_DIR = path.join(TOUR_DIR, 'panoramas');
+const TOUR_CENAS = (() => {
+  const arq = path.join(TOUR_DIR, 'cenas.json');
+  if (!fs.existsSync(arq)) return [];
+  let dados;
+  try {
+    dados = JSON.parse(fs.readFileSync(arq, 'utf8').replace(/^﻿/, ''));
+  } catch (e) {
+    console.warn(`[tour360] cenas.json inválido (${e.message}) — tour desativado.`);
+    return [];
+  }
+  // Só entra no ar a cena cujo panorama existe de fato: manifesto adiantado (foto
+  // ainda não convertida) não pode gerar 404 nem página de tour quebrada.
+  return (dados.cenas || []).filter(c => {
+    if (!c || !c.id || !c.arquivo) return false;
+    const ok = fs.existsSync(path.join(PANO_DIR, `${c.arquivo}-1024.jpg`));
+    if (!ok) console.warn(`[tour360] cena "${c.id}" ignorada: falta panoramas/${c.arquivo}-1024.jpg`);
+    return ok;
+  }).map(c => {
+    // O manifesto é editado à mão: uma largura listada sem o arquivo correspondente
+    // viraria 404 no meio do tour. Vale o que está no disco, não o que está escrito.
+    const reais = (c.larguras && c.larguras.length ? c.larguras : [1024])
+      .filter(w => fs.existsSync(path.join(PANO_DIR, `${c.arquivo}-${w}.jpg`)));
+    if (!reais.length) reais.push(1024);
+    if (c.larguras && reais.length !== c.larguras.length) {
+      console.warn(`[tour360] cena "${c.id}": larguras sem arquivo foram descartadas (ficaram ${reais.join(', ')}).`);
+    }
+    return Object.assign({}, c, { larguras: reais });
+  });
+})();
+const TEM_TOUR = TOUR_CENAS.length > 0;
+// Cenas por código de anúncio — alimenta o bloco "Tour 360°" na página da propriedade.
+// "imovel" aceita um código ou vários: o mesmo espaço físico é vendido em mais de um
+// anúncio (YV01I e GI01I são a casa 4; a suíte também aparece na página da casa inteira),
+// e a cena tem de sair nas páginas de todos eles.
+const codigosDaCena = c => (Array.isArray(c.imovel) ? c.imovel : (c.imovel ? [c.imovel] : [])).filter(Boolean);
+const TOUR_POR_IMOVEL = {};
+for (const c of TOUR_CENAS) for (const cod of codigosDaCena(c)) (TOUR_POR_IMOVEL[cod] = TOUR_POR_IMOVEL[cod] || []).push(c);
+// Cena de abertura: a marcada com "destaque", senão a primeira do manifesto.
+const TOUR_INICIAL = (TOUR_CENAS.find(c => c.destaque) || TOUR_CENAS[0] || {}).id || '';
+
+if (TEM_TOUR) {
+  const dst = path.join(DIST, 'tour360');
+  fs.mkdirSync(dst, { recursive: true });
+  fs.copyFileSync(path.join(TOUR_DIR, 'visualizador.js'), path.join(dst, 'visualizador.js'));
+  let copiados = 0;
+  for (const c of TOUR_CENAS) {
+    for (const suf of [...(c.larguras || [1024]), 'thumb']) {
+      const nome = `${c.arquivo}-${suf}.jpg`;
+      const origem = path.join(PANO_DIR, nome);
+      if (fs.existsSync(origem)) { fs.copyFileSync(origem, path.join(dst, nome)); copiados++; }
+    }
+  }
+  console.log(`[tour360] ${TOUR_CENAS.length} cena(s), ${copiados} arquivo(s) de imagem.`);
+}
+
+// Título/legendas da cena no idioma corrente (fallback para PT, como no resto do site).
+const tituloCena = c => (LANG === 'en' && c.tituloEn) ? c.tituloEn : ((LANG === 'es' && c.tituloEs) ? c.tituloEs : (c.titulo || c.id));
+const textoHotspot = h => (LANG === 'en' && h.textoEn) ? h.textoEn : ((LANG === 'es' && h.textoEs) ? h.textoEs : (h.texto || ''));
 
 // ===================== GERAÇÃO POR IDIOMA (PT / EN / ES) =====================
 // Tudo daqui até o fim do links.html é gerado 1x por idioma. PT vai para dist/,
@@ -782,6 +850,16 @@ for (const l of listings) {
       <source src="/videos/${VIDEOS[l.id]}" type="video/mp4">
     </video>
   </section>` : ''}
+  ${(TOUR_POR_IMOVEL[l.id] || []).length ? `<section class="tour-cta">
+    <h2>${t('Visite em 360°', 'Visit in 360°', 'Visita en 360°')}</h2>
+    <p>${t('Entre nos ambientes e olhe em volta como se estivesse aqui.', 'Step into the rooms and look around as if you were here.', 'Entra en los ambientes y mira alrededor como si estuvieras aquí.')}</p>
+    <div class="tour-cta-cenas">
+      ${TOUR_POR_IMOVEL[l.id].slice(0, 6).map(c => `<a href="${L('/tour.html')}?cena=${encodeURIComponent(c.id)}">
+        <img src="/tour360/${c.arquivo}-thumb.jpg" alt="${esc(tituloCena(c))} — ${esc(tituloImovel(l))}" width="200" height="112" loading="lazy" decoding="async">
+        <span>${esc(tituloCena(c))}</span></a>`).join('')}
+    </div>
+    <a class="btn btn-tour" href="${L('/tour.html')}?cena=${encodeURIComponent(TOUR_POR_IMOVEL[l.id][0].id)}">${t('Abrir o tour virtual 360° →', 'Open the 360° virtual tour →', 'Abrir el tour virtual 360° →')}</a>
+  </section>` : ''}
   <section class="lead-box">
     <h2>${t('Prefere receber a cotação? Deixe seu contato 👇', 'Prefer to get a quote? Leave your contact 👇', '¿Prefieres recibir la cotización? Deja tu contacto 👇')}</h2>
     <form class="form-lead">
@@ -889,6 +967,129 @@ for (const l of listings) {
     }
   );
   fs.writeFileSync(path.join(od, 'hospedagem', `${l.id}.html`), pagina);
+}
+
+// ------------------------- tour virtual 360° -------------------------
+if (TEM_TOUR) {
+  // Payload do visualizador: só o necessário, já no idioma da página.
+  const cenasCliente = TOUR_CENAS.map(c => ({
+    id: c.id,
+    arquivo: c.arquivo,
+    titulo: tituloCena(c),
+    casa: c.casa || '',
+    imovel: codigosDaCena(c)[0] || '',
+    larguras: c.larguras && c.larguras.length ? c.larguras : [1024],
+    vistaInicial: c.vistaInicial || { yaw: 0, pitch: 0, fov: 75 },
+    hotspots: (c.hotspots || []).map(h => ({
+      yaw: h.yaw || 0, pitch: h.pitch || 0,
+      tipo: h.tipo === 'info' ? 'info' : 'cena',
+      destino: h.destino || '', texto: textoHotspot(h)
+    }))
+  }));
+  const textosTour = {
+    carregando: t('Carregando a vista…', 'Loading the view…', 'Cargando la vista…'),
+    erro: t('Não foi possível carregar esta vista.', "Couldn't load this view.", 'No fue posible cargar esta vista.'),
+    dica: t('Arraste para olhar em volta', 'Drag to look around', 'Arrastra para mirar alrededor'),
+    aproximar: t('Aproximar', 'Zoom in', 'Acercar'),
+    afastar: t('Afastar', 'Zoom out', 'Alejar'),
+    girar: t('Girar sozinho', 'Auto-rotate', 'Girar solo'),
+    giroscopio: t('Mover o celular para olhar', 'Move your phone to look around', 'Mueve el móvil para mirar'),
+    telaCheia: t('Tela cheia', 'Fullscreen', 'Pantalla completa'),
+    ariaCanvas: t('Panorama 360 graus. Arraste para olhar em volta; use as setas do teclado e + / − para aproximar.',
+      'A 360-degree panorama. Drag to look around; use the arrow keys and + / − to zoom.',
+      'Panorama de 360 grados. Arrastra para mirar alrededor; usa las flechas y + / − para acercar.'),
+    semWebgl: t('Seu navegador não suporta a visualização 360° interativa. A imagem acima mostra a vista panorâmica completa (esticada).',
+      'Your browser does not support the interactive 360° view. The image above shows the full panorama (stretched).',
+      'Tu navegador no admite la vista 360° interactiva. La imagen de arriba muestra el panorama completo (estirado).')
+  };
+  // </script> dentro de string de JSON encerraria a tag antes da hora.
+  const jsonSeguro = o => JSON.stringify(o).replace(/</g, '\\u003c');
+
+  // Cenas agrupadas por casa: vira lista real em HTML (indexável e útil sem JS).
+  const porCasa = [];
+  for (const c of TOUR_CENAS) {
+    const nome = c.casa || t('Outros ambientes', 'Other spaces', 'Otros espacios');
+    let g = porCasa.find(x => x.casa === nome);
+    if (!g) { g = { casa: nome, cenas: [] }; porCasa.push(g); }
+    g.cenas.push(c);
+  }
+  const listaCenas = porCasa.map(g => {
+    // Link "ver a hospedagem" do grupo: o anúncio da casa inteira (o primeiro código
+    // da primeira cena que tiver um), não a suíte avulsa que aparecer no meio.
+    const imovel = codigosDaCena(g.cenas.find(c => codigosDaCena(c).length) || {})[0];
+    const l = imovel ? porId[imovel] : null;
+    return `<section class="tour-grupo">
+      <h2>${esc(g.casa)}${l ? ` <a class="tour-grupo-link" href="${L(`/hospedagem/${l.id}.html`)}">${t('ver a hospedagem →', 'see the listing →', 'ver el alojamiento →')}</a>` : ''}</h2>
+      <ul class="tour-lista">
+        ${g.cenas.map(c => `<li><a href="${L('/tour.html')}?cena=${encodeURIComponent(c.id)}">
+          <img src="/tour360/${c.arquivo}-thumb.jpg" alt="${esc(tituloCena(c))} — ${esc(g.casa)}" width="200" height="112" loading="lazy" decoding="async">
+          <span>${esc(tituloCena(c))}</span></a></li>`).join('')}
+      </ul>
+    </section>`;
+  }).join('');
+
+  const tituloPag = t('Tour Virtual 360° — Villela Stay, Lago Sul, Brasília',
+    '360° Virtual Tour — Villela Stay, Lago Sul, Brasília',
+    'Tour Virtual 360° — Villela Stay, Lago Sul, Brasília');
+  const descPag = t(`Passeie em 360° pelas casas da Villela Stay no Lago Sul, em Brasília: ${TOUR_CENAS.length} ambientes para explorar antes de reservar.`,
+    `Walk through the Villela Stay houses in Lago Sul, Brasília, in 360°: ${TOUR_CENAS.length} spaces to explore before you book.`,
+    `Recorre en 360° las casas de Villela Stay en Lago Sul, Brasília: ${TOUR_CENAS.length} ambientes para explorar antes de reservar.`);
+
+  // Schema: cada panorama é um ImageObject (o Google entende panorama pelo campo
+  // width/height 2:1 + representativeOfPage na cena de abertura).
+  const cenaSchema = {
+    '@context': 'https://schema.org', '@type': 'ItemList',
+    name: tituloPag, numberOfItems: TOUR_CENAS.length,
+    itemListElement: TOUR_CENAS.map((c, i) => ({
+      '@type': 'ListItem', position: i + 1,
+      item: {
+        '@type': 'ImageObject',
+        name: `${tituloCena(c)}${c.casa ? ` — ${c.casa}` : ''}`,
+        contentUrl: `${SITE_URL}/tour360/${c.arquivo}-${Math.max(...c.larguras)}.jpg`,
+        thumbnailUrl: `${SITE_URL}/tour360/${c.arquivo}-thumb.jpg`,
+        representativeOfPage: c.id === TOUR_INICIAL,
+        isPartOf: { '@id': ORG_ID }
+      }
+    }))
+  };
+  const primeira = TOUR_CENAS.find(c => c.id === TOUR_INICIAL) || TOUR_CENAS[0];
+
+  const corpoTour = `
+<article class="tour-pagina">
+  <h1>${t('Tour Virtual 360°', '360° Virtual Tour', 'Tour Virtual 360°')}</h1>
+  <p class="tour-intro">${t(
+    'Entre nas casas antes de reservar. Arraste para olhar em volta, aproxime nos detalhes e passe de um ambiente para outro pelos pontos brilhantes.',
+    'Step inside before you book. Drag to look around, zoom into the details and move between spaces using the glowing dots.',
+    'Entra en las casas antes de reservar. Arrastra para mirar alrededor, acerca los detalles y pasa de un ambiente a otro por los puntos brillantes.')}</p>
+
+  <div id="tour360" class="tour-360"></div>
+  <noscript><p class="tour-noscript">${t('O tour interativo precisa de JavaScript. Abaixo estão todos os ambientes fotografados.',
+    'The interactive tour needs JavaScript. All photographed spaces are listed below.',
+    'El tour interactivo necesita JavaScript. Abajo están todos los ambientes fotografiados.')}</p></noscript>
+
+  <div class="tour-grupos">${listaCenas}</div>
+
+  <section class="tour-cta-final">
+    <h2>${t('Gostou do que viu?', 'Like what you see?', '¿Te gustó lo que viste?')}</h2>
+    <p>${t('Consulte as datas e reserve direto com o anfitrião.', 'Check the dates and book directly with the host.', 'Consulta las fechas y reserva directo con el anfitrión.')}</p>
+    <div class="hero-cta">
+      <a class="btn" href="${L('/')}#hospedagens">${t('Ver as hospedagens', 'See the stays', 'Ver los alojamientos')}</a>
+      <a class="btn btn-wa" href="${waLink(t('Olá! Vi o tour virtual 360° no site e quero saber a disponibilidade.',
+        'Hi! I saw the 360° virtual tour on the website and would like to check availability.',
+        '¡Hola! Vi el tour virtual 360° en el sitio y quiero consultar la disponibilidad.'))}">${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}</a>
+    </div>
+  </section>
+</article>
+<script>window.TOUR360 = ${jsonSeguro({ base: '/tour360', cenas: cenasCliente, inicial: TOUR_INICIAL, textos: textosTour })};</script>
+<script src="/tour360/visualizador.js" defer></script>`;
+
+  fs.writeFileSync(path.join(od, 'tour.html'), layout(tituloPag, descPag, corpoTour, {
+    caminho: '/tour.html',
+    ogImage: `${SITE_URL}/tour360/${primeira.arquivo}-thumb.jpg`,
+    // A cena de abertura em 1024 é o LCP da página: vale o preload.
+    extraHead: `<link rel="preload" as="image" href="/tour360/${primeira.arquivo}-1024.jpg">` +
+      `<script type="application/ld+json">${jsonSeguro(cenaSchema)}</script>`
+  }));
 }
 
 // ------------------------- eventos (página de vendas) -------------------------
@@ -2413,6 +2614,7 @@ const PRECACHE_URLS = [
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
   ...['favicon.svg', 'favicon-192.png', 'icon-pwa.png', 'apple-touch-icon.png'].map(f => `/assets/brand/villela-stay/${f}`),
   '/eventos.html', '/pacotes.html', '/guia.html', '/regras.html', '/faq.html', '/app.html', '/blog.html', '/links.html',
+  ...(TEM_TOUR ? ['/tour.html', '/tour360/visualizador.js'] : []),
   ...listings.map(l => `/hospedagem/${l.id}.html`)
 ];
 const sw = `// Service Worker da Villela Stay (PWA) — gerado por build.js. NÃO editar à mão.
@@ -2443,6 +2645,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;  // ignora cross-origin (backend/API, GA, fontes)
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/webhooks/')) return; // nunca cachear API
+  // Panoramas do tour 360: até ~2 MB cada. Ficam a cargo do cache HTTP do navegador,
+  // nunca do cache do PWA — dezenas de cenas estourariam a cota de armazenamento.
+  if (url.pathname.indexOf('/tour360/') === 0 && url.pathname.slice(-4) === '.jpg') return;
 
   // Navegação / documentos HTML: network-first (não servir página velha), cai no cache, depois offline.html
   const aceitaHtml = req.headers.get('accept') && req.headers.get('accept').indexOf('text/html') !== -1;
@@ -2491,6 +2696,7 @@ const rotas = [
   { loc: '/guia.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/regras.html', changefreq: 'monthly', priority: '0.4' },
   { loc: '/faq.html', changefreq: 'monthly', priority: '0.6' },
+  ...(TEM_TOUR ? [{ loc: '/tour.html', changefreq: 'monthly', priority: '0.8' }] : []),
   { loc: '/app.html', changefreq: 'monthly', priority: '0.6' },
   { loc: '/pre-checkin.html', changefreq: 'monthly', priority: '0.3' },
   { loc: '/links.html', changefreq: 'monthly', priority: '0.4' },

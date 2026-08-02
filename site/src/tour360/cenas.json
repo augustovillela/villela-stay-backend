@@ -1,0 +1,998 @@
+{
+  "cenas": [
+    {
+      "id": "kubitschek-patio",
+      "arquivo": "kubitschek-patio",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Pátio",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": true
+    },
+    {
+      "id": "kubitschek-patio-2",
+      "arquivo": "kubitschek-patio-2",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Pátio (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-patio-3",
+      "arquivo": "kubitschek-patio-3",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Pátio (3)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-patio-4",
+      "arquivo": "kubitschek-patio-4",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Pátio (4)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-cozinha",
+      "arquivo": "kubitschek-cozinha",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Cozinha",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-sofa-externo",
+      "arquivo": "kubitschek-sofa-externo",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Sofá externo entre os flats",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-renato-russo",
+      "arquivo": "kubitschek-suite-renato-russo",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UD09H"
+      ],
+      "titulo": "Suíte do Renato Russo",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-renato-russo-sala",
+      "arquivo": "kubitschek-suite-renato-russo-sala",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UD09H"
+      ],
+      "titulo": "Sala da Suíte do Renato Russo",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-renato-russo-banheiro",
+      "arquivo": "kubitschek-suite-renato-russo-banheiro",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UD09H"
+      ],
+      "titulo": "Banheiro da Suíte do Renato Russo",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-do-chef",
+      "arquivo": "kubitschek-suite-do-chef",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UF05H"
+      ],
+      "titulo": "Suíte do Chef",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-do-chef-sala",
+      "arquivo": "kubitschek-suite-do-chef-sala",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UF05H"
+      ],
+      "titulo": "Sala da Suíte do Chef",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-do-chef-banheiro",
+      "arquivo": "kubitschek-suite-do-chef-banheiro",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UF05H"
+      ],
+      "titulo": "Banheiro da Suíte do Chef",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-do-amor",
+      "arquivo": "kubitschek-suite-do-amor",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UF06H"
+      ],
+      "titulo": "Suíte do Amor",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-do-amor-banheiro",
+      "arquivo": "kubitschek-suite-do-amor-banheiro",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UF06H"
+      ],
+      "titulo": "Banheiro da Suíte do Amor",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-flat-dos-solteiros",
+      "arquivo": "kubitschek-flat-dos-solteiros",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UD03H"
+      ],
+      "titulo": "Flat dos Solteiros",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-flat-dos-solteiros-sala",
+      "arquivo": "kubitschek-flat-dos-solteiros-sala",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UD03H"
+      ],
+      "titulo": "Sala do Flat dos Solteiros",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-flat-dos-solteiros-banheiro",
+      "arquivo": "kubitschek-flat-dos-solteiros-banheiro",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UD03H"
+      ],
+      "titulo": "Banheiro do Flat dos Solteiros",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-banheiro-externo",
+      "arquivo": "kubitschek-banheiro-externo",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Banheiro externo do pátio",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-banheiro-externo-2",
+      "arquivo": "kubitschek-banheiro-externo-2",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Banheiro externo do pátio (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "kubitschek-estacionamento",
+      "arquivo": "kubitschek-estacionamento",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Estacionamento",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-rooftop",
+      "arquivo": "catetinho-rooftop",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Roof top",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-rooftop-2",
+      "arquivo": "catetinho-rooftop-2",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Roof top (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-rooftop-3",
+      "arquivo": "catetinho-rooftop-3",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Roof top (3)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-passarela",
+      "arquivo": "catetinho-passarela",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Passarela",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-passarela-2",
+      "arquivo": "catetinho-passarela-2",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Passarela (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-passarela-3",
+      "arquivo": "catetinho-passarela-3",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Passarela (3)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-passarela-4",
+      "arquivo": "catetinho-passarela-4",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Passarela (4)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-passarela-5",
+      "arquivo": "catetinho-passarela-5",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Passarela (5)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-flat-cassia-eller",
+      "arquivo": "catetinho-flat-cassia-eller",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I",
+        "UF08H"
+      ],
+      "titulo": "Flat da Cassia Eller",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-flat-cassia-eller-2",
+      "arquivo": "catetinho-flat-cassia-eller-2",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I",
+        "UF08H"
+      ],
+      "titulo": "Flat da Cassia Eller (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-flat-burle-marx",
+      "arquivo": "catetinho-flat-burle-marx",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I",
+        "UF01H"
+      ],
+      "titulo": "Flat do Burle Marx",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-flat-do-oscar",
+      "arquivo": "catetinho-flat-do-oscar",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I",
+        "UF07H"
+      ],
+      "titulo": "Flat do Oscar",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-banheiro-feminino",
+      "arquivo": "catetinho-banheiro-feminino",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Banheiro feminino",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "casa-villela-lounge",
+      "arquivo": "casa-villela-lounge",
+      "casa": "Casa Villela",
+      "imovel": [
+        "YV01I",
+        "GI01I"
+      ],
+      "titulo": "Lounge",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "casa-villela-lounge-da-cozinha",
+      "arquivo": "casa-villela-lounge-da-cozinha",
+      "casa": "Casa Villela",
+      "imovel": [
+        "YV01I",
+        "GI01I"
+      ],
+      "titulo": "Lounge visto da cozinha",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "casa-villela-sala",
+      "arquivo": "casa-villela-sala",
+      "casa": "Casa Villela",
+      "imovel": [
+        "YV01I",
+        "GI01I"
+      ],
+      "titulo": "Sala",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "casa-villela-sala-2",
+      "arquivo": "casa-villela-sala-2",
+      "casa": "Casa Villela",
+      "imovel": [
+        "YV01I",
+        "GI01I"
+      ],
+      "titulo": "Sala (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "casa-villela-suite-athos-bulcao",
+      "arquivo": "casa-villela-suite-athos-bulcao",
+      "casa": "Casa Villela",
+      "imovel": [
+        "YV01I",
+        "GI01I"
+      ],
+      "titulo": "Suíte Athos Bulcão",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "casa-villela-banheiro",
+      "arquivo": "casa-villela-banheiro",
+      "casa": "Casa Villela",
+      "imovel": [
+        "YV01I",
+        "GI01I"
+      ],
+      "titulo": "Banheiro",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "gran-villela-estacionamento",
+      "arquivo": "gran-villela-estacionamento",
+      "casa": "Gran Villela Home Stay",
+      "imovel": [
+        "GD03H"
+      ],
+      "titulo": "Estacionamento",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "area-verde-churrasqueira",
+      "arquivo": "area-verde-churrasqueira",
+      "casa": "Área Verde",
+      "imovel": [],
+      "titulo": "Churrasqueira",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "area-verde-campo-society",
+      "arquivo": "area-verde-campo-society",
+      "casa": "Área Verde",
+      "imovel": [],
+      "titulo": "Campo society",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "area-verde-campo-society-2",
+      "arquivo": "area-verde-campo-society-2",
+      "casa": "Área Verde",
+      "imovel": [],
+      "titulo": "Campo society (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "area-verde-passarela",
+      "arquivo": "area-verde-passarela",
+      "casa": "Área Verde",
+      "imovel": [],
+      "titulo": "Passarela",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "area-verde-fundo",
+      "arquivo": "area-verde-fundo",
+      "casa": "Área Verde",
+      "imovel": [],
+      "titulo": "Visão do fundo",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "area-verde-fundo-direito",
+      "arquivo": "area-verde-fundo-direito",
+      "casa": "Área Verde",
+      "imovel": [],
+      "titulo": "Fundo direito",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "area-verde-fundo-esquerdo",
+      "arquivo": "area-verde-fundo-esquerdo",
+      "casa": "Área Verde",
+      "imovel": [],
+      "titulo": "Fundo esquerdo",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    }
+  ]
+}
