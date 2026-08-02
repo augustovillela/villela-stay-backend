@@ -26,27 +26,6 @@
       },
       "hotspots": [
         {
-          "yaw": -130,
-          "pitch": 0,
-          "tipo": "cena",
-          "texto": "Flat do Oscar",
-          "destino": "catetinho-flat-do-oscar"
-        },
-        {
-          "yaw": -100,
-          "pitch": -1,
-          "tipo": "cena",
-          "texto": "Flat do Burle Marx",
-          "destino": "catetinho-flat-burle-marx"
-        },
-        {
-          "yaw": -14,
-          "pitch": -1,
-          "tipo": "cena",
-          "texto": "Flat da Cassia Eller",
-          "destino": "catetinho-flat-cassia-eller-2"
-        },
-        {
           "yaw": 4,
           "pitch": -1,
           "tipo": "cena",
@@ -93,7 +72,7 @@
           "pitch": -7,
           "tipo": "cena",
           "texto": "Banheiro Externo",
-          "destino": "kubitschek-banheiro-externo"
+          "destino": "kubitschek-banheiro-externo-2"
         }
       ],
       "destaque": true,
