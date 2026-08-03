@@ -11,7 +11,9 @@ function registrarRotasPublicas(app, deps) {
 
   // ----------------------------------------------------- páginas (SEO server-side)
   app.get('/livros', (req, res) => {
-    res.type('html').send(storefront.vitrine(repo.Books.listarPublico()));
+    // ?categoria=<slug> e ?q=<busca> — filtram no servidor (funciona sem JS e é indexável)
+    const filtro = { categoria: String(req.query.categoria || '').slice(0, 80), q: String(req.query.q || '').slice(0, 120) };
+    res.type('html').send(storefront.vitrine(repo.Books.listarPublico(), filtro));
   });
   // atualizações dos livros — endereço impresso na última página; vem ANTES de /livros/:slug
   app.get('/livros/atualizacoes', (req, res) => {

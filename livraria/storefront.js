@@ -62,6 +62,20 @@ header.top a{color:var(--creme)}
 .card .corpo{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1}
 .card h3{margin:0;font-size:18px}.card .preco{color:var(--teal);font-weight:700}
 .badge{display:inline-block;background:var(--dourado);color:#3a2c07;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
+.card .lv-cat{margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--suave)}
+/* busca + abas de categoria da vitrine */
+.lv-busca{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.lv-busca input{flex:1;min-width:220px;max-width:460px;padding:12px 14px;border:1px solid var(--cinza2);border-radius:10px;font:inherit;background:#fff}
+.lv-busca input:focus{outline:2px solid var(--teal);outline-offset:1px}
+.lv-busca .lv-limpar{color:var(--suave);font-size:14px}
+.lv-abas{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.lv-abas .lv-aba{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--cinza2);border-radius:99px;background:#fff;color:var(--petroleo);font-size:14px;font-weight:600;text-decoration:none}
+.lv-abas .lv-aba span{color:var(--suave);font-weight:500;font-size:12px}
+.lv-abas .lv-aba:hover{border-color:var(--teal)}
+.lv-abas .lv-aba.on{background:var(--petroleo);border-color:var(--petroleo);color:#fff}
+.lv-abas .lv-aba.on span{color:var(--dourado)}
+.lv-grupo{padding:0;margin:0 0 34px}
+.lv-grupo h2{font-size:22px;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--cinza2)}
 section{padding:44px 0}section.alt{background:var(--cinza)}
 .sec-narrow{max-width:760px}
 .lista-check{list-style:none;padding:0;margin:0}.lista-check li{padding:8px 0 8px 32px;position:relative}
@@ -130,28 +144,117 @@ ${body}
 }
 
 // ------------------------------------------------------------ vitrine /livros
-function vitrine(livros) {
-  const cards = livros.length ? livros.map(b => `
-    <a class="card" href="/livros/${esc(b.slug)}">
+// Filtro por categoria e busca funcionam SEM JavaScript (links e <form> GET, para o
+// robô de busca enxergar); com JS, o campo filtra os cards na hora, sem recarregar.
+const SEM_CAT = 'Outros';
+const catDe = (b) => (b.categoria || '').trim() || SEM_CAT;
+const semAcento = (s) => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const catSlug = (c) => semAcento(c).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// tudo que a busca enxerga: categoria, título, subtítulo, autor e o assunto do livro
+function textoBusca(b) {
+  const lista = (v) => (Array.isArray(v) ? v : []).map(x => typeof x === 'string' ? x : Object.values(x || {}).join(' ')).join(' ');
+  return semAcento([b.titulo, b.subtitulo, b.autor, b.categoria, b.slug, b.descricao_curta, b.descricao_longa,
+    b.publico_alvo, b.sumario, lista(b.tags), lista(b.beneficios)].join(' '));
+}
+function vitrine(livros, filtro = {}) {
+  const q = String(filtro.q || '').trim();
+  const termos = semAcento(q).split(/\s+/).filter(Boolean);
+  const catPedida = String(filtro.categoria || '').trim();
+
+  const achados = livros.filter(b => { const t = textoBusca(b); return termos.every(x => t.includes(x)); });
+  // as abas listam todas as categorias do acervo (não só as do resultado), com a contagem do resultado
+  const todasCats = [...new Set(livros.map(catDe))].sort((a, b) => a === SEM_CAT ? 1 : b === SEM_CAT ? -1 : a.localeCompare(b, 'pt-BR'));
+  const contas = {}; for (const b of achados) contas[catDe(b)] = (contas[catDe(b)] || 0) + 1;
+  const catAtiva = todasCats.find(c => catSlug(c) === catSlug(catPedida)) || '';
+  const visiveis = catAtiva ? achados.filter(b => catDe(b) === catAtiva) : achados;
+
+  const url = (c) => '/livros' + (c || q ? '?' + [c ? 'categoria=' + encodeURIComponent(catSlug(c)) : '', q ? 'q=' + encodeURIComponent(q) : ''].filter(Boolean).join('&') : '');
+  const aba = (c, rot, n, ativa) => `<a class="lv-aba${ativa ? ' on' : ''}" href="${esc(url(c))}" data-cat="${esc(c ? catSlug(c) : '')}">${esc(rot)} <span>${n}</span></a>`;
+  const abas = aba('', 'Todos', achados.length, !catAtiva)
+    + todasCats.map(c => aba(c, c, contas[c] || 0, catAtiva === c)).join('');
+
+  const card = (b) => `
+    <a class="card" href="/livros/${esc(b.slug)}" data-cat="${esc(catSlug(catDe(b)))}" data-busca="${esc(textoBusca(b))}">
       <div class="capa">${b.capa_url ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}" loading="lazy">` : '📕'}</div>
       <div class="corpo">
         ${b.destaque ? '<span class="badge">Destaque</span>' : ''}
+        <p class="lv-cat">${esc(catDe(b))}</p>
         <h3>${esc(b.titulo)}</h3>
         <p class="muted" style="margin:0;font-size:14px">${esc(b.subtitulo || '')}</p>
         <div style="margin-top:auto" class="preco">${precoMenor(b)}</div>
-      </div></a>`).join('') : '<p class="muted">Em breve novos títulos. Fale conosco no WhatsApp para novidades.</p>';
+      </div></a>`;
+
+  // sem filtro: agrupa por categoria. com categoria escolhida ou busca: uma grade só.
+  let miolo;
+  if (!livros.length) miolo = '<p class="muted">Em breve novos títulos. Fale conosco no WhatsApp para novidades.</p>';
+  else if (catAtiva || termos.length) miolo = `<div class="grid grid-books">${visiveis.map(card).join('')}</div>`;
+  else miolo = todasCats.map(c => {
+    const doGrupo = visiveis.filter(b => catDe(b) === c);
+    return doGrupo.length ? `<section class="lv-grupo" data-grupo="${esc(catSlug(c))}" id="cat-${esc(catSlug(c))}">
+      <h2>${esc(c)}</h2><div class="grid grid-books">${doGrupo.map(card).join('')}</div></section>` : '';
+  }).join('');
+
   const body = `
   <section class="hero"><div class="wrap">
     <p class="eyebrow">Livraria Villela</p>
     <h1>Livros para quem quer hospedar, empreender e viver melhor</h1>
     <p class="sub">Conteúdo prático escrito por Augusto Villela. Entrega imediata em PDF e opção de exemplar impresso.</p>
   </div></section>
-  <section><div class="wrap"><div class="grid grid-books">${cards}</div></div></section>`;
+  <section><div class="wrap">
+    <form class="lv-busca" method="get" action="/livros" role="search">
+      ${catAtiva ? `<input type="hidden" name="categoria" value="${esc(catSlug(catAtiva))}">` : ''}
+      <input type="search" name="q" id="lv-q" value="${esc(q)}" autocomplete="off"
+             placeholder="Buscar por categoria, título, autor ou assunto…" aria-label="Buscar livros">
+      <button class="btn" type="submit">Buscar</button>
+      ${q ? `<a class="lv-limpar" href="${esc(catAtiva ? '/livros?categoria=' + catSlug(catAtiva) : '/livros')}">✖ limpar</a>` : ''}
+    </form>
+    <nav class="lv-abas" aria-label="Categorias">${abas}</nav>
+    <p class="muted" id="lv-conta" style="font-size:14px;margin:0 0 10px">${visiveis.length} ${visiveis.length === 1 ? 'livro' : 'livros'}${catAtiva ? ' em ' + esc(catAtiva) : ''}${q ? ` para “${esc(q)}”` : ''}</p>
+    <div id="lv-resultados">${miolo}
+      ${livros.length ? `<p class="muted" id="lv-vazio"${visiveis.length ? ' style="display:none"' : ''}>Nenhum livro encontrado${q ? ` para “${esc(q)}”` : ''}. <a href="/livros">Ver todos os livros</a>.</p>` : ''}
+    </div>
+  </div></section>
+  <script>
+  // Progressive enhancement: filtra na hora enquanto digita. Sem JS, o form GET acima resolve.
+  (function(){
+    var campo=document.getElementById('lv-q'); if(!campo) return;
+    var cards=[].slice.call(document.querySelectorAll('#lv-resultados .card'));
+    var grupos=[].slice.call(document.querySelectorAll('#lv-resultados .lv-grupo'));
+    var conta=document.getElementById('lv-conta'), vazio=document.getElementById('lv-vazio');
+    var semAcento=function(s){return (s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();};
+    var catAtiva=${JSON.stringify(catAtiva ? catSlug(catAtiva) : '')};
+    function filtrar(){
+      var termos=semAcento(campo.value).split(/\\s+/).filter(Boolean), n=0;
+      cards.forEach(function(c){
+        var txt=c.getAttribute('data-busca')||'';
+        var ok=termos.every(function(t){return txt.indexOf(t)>-1;}) && (!catAtiva || c.getAttribute('data-cat')===catAtiva);
+        c.style.display=ok?'':'none'; if(ok) n++;
+      });
+      grupos.forEach(function(g){
+        g.style.display=g.querySelectorAll('.card:not([style*="none"])').length?'':'none';
+      });
+      if(conta) conta.textContent=n+(n===1?' livro':' livros')+(campo.value.trim()?' para \\u201C'+campo.value.trim()+'\\u201D':'');
+      if(vazio) vazio.style.display=n?'none':'';
+    }
+    campo.addEventListener('input',filtrar);
+  })();
+  </script>`;
+  const titulo = catAtiva ? `${catAtiva} — Livraria Villela` : 'Livraria Villela — livros de Augusto Villela';
   return pagina({
-    title: 'Livraria Villela — livros de Augusto Villela',
-    description: 'Livros práticos sobre hospedagem, negócios e estilo de vida. PDF com entrega imediata e opção impressa.',
+    title: titulo,
+    description: catAtiva
+      ? `Livros de ${catAtiva} escritos por Augusto Villela. PDF com entrega imediata e opção impressa.`
+      : 'Livros práticos sobre hospedagem, negócios e estilo de vida. PDF com entrega imediata e opção impressa.',
+    // canonical sempre em /livros: as views filtradas são recortes do mesmo acervo (evita conteúdo duplicado)
     path: '/livros', body,
-    schema: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Livraria Villela', url: SITE + '/livros' },
+    extraHead: q ? '<meta name="robots" content="noindex,follow">' : '',
+    schema: {
+      '@context': 'https://schema.org', '@type': 'CollectionPage', name: titulo, url: SITE + '/livros',
+      mainEntity: {
+        '@type': 'ItemList', numberOfItems: visiveis.length,
+        itemListElement: visiveis.map((b, i) => ({ '@type': 'ListItem', position: i + 1, url: SITE + '/livros/' + b.slug, name: b.titulo })),
+      },
+    },
   });
 }
 function precoMenor(b) {

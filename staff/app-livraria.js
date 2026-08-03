@@ -70,20 +70,79 @@ const LV = {
   },
 
   // -------------------------------------------------------- LIVROS
+  // Lista agrupada por categoria + busca livre. O acervo é pequeno (dezenas),
+  // então filtra no cliente: uma chamada só e resposta instantânea ao digitar.
+  livros: [],
+  fLivros: { q: '', cat: '' },
+  SEM_CAT: 'Sem categoria',
   async vLivros() {
     const { livros } = await LV.api('GET', '/livros');
+    LV.livros = livros;
     let h = '';
     if (LV.perm.livros) h += `<div class="card"><button class="btn" onclick="LV.editarLivro()">➕ Novo livro</button></div>`;
-    h += `<div class="card">${livros.length ? tabela(['Título', 'Slug', 'PDF', 'Impresso', 'Combo', 'Ativo', ''], livros.map(b => [
-      esc(b.titulo), esc(b.slug), b.preco_pdf != null ? LV.brl(b.preco_pdf) : '—', b.preco_impresso != null ? LV.brl(b.preco_impresso) : '—',
-      b.preco_combo != null ? LV.brl(b.preco_combo) : '—', b.ativo ? '✅' : '⛔',
-      `<button class="btn secund peq" onclick="LV.editarLivro('${b.id}')">Editar</button>`])) : '<p class="sub">Nenhum livro. Crie o primeiro.</p>'}</div>`;
+    h += `<div class="card">
+      <input id="lv-busca-livro" placeholder="🔎 Buscar por categoria, título, autor, assunto…" value="${esc(LV.fLivros.q)}"
+        oninput="LV.buscarLivros(this.value)" style="width:100%;max-width:460px;padding:.5rem">
+      <div id="lv-livros-cats" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.6rem"></div>
+    </div><div id="lv-livros-lista"></div>`;
     LV.body().innerHTML = h;
+    LV.pintarLivros();
+  },
+  // texto sem acento e em minúsculas, para a busca não depender de acentuação
+  normal(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); },
+  catDe(b) { return (b.categoria || '').trim() || LV.SEM_CAT; },
+  // "qualquer palavra": título, subtítulo, autor, categoria, slug, assunto (descrições, sumário, público, tags, benefícios)
+  textoLivro(b) {
+    const lista = (v) => (Array.isArray(v) ? v : []).map(x => typeof x === 'string' ? x : Object.values(x || {}).join(' ')).join(' ');
+    return LV.normal([b.titulo, b.subtitulo, b.autor, b.categoria, b.slug, b.descricao_curta, b.descricao_longa,
+      b.publico_alvo, b.sumario, b.seo_title, b.seo_description, lista(b.tags), lista(b.beneficios), lista(b.bonus)].join(' '));
+  },
+  // todos os termos precisam bater (busca "e", não "ou")
+  casaBusca(b, termos) { if (!termos.length) return true; const t = LV.textoLivro(b); return termos.every(x => t.includes(x)); },
+  buscarLivros(v) { LV.fLivros.q = v; LV.pintarLivros(); },
+  filtrarCat(c) { LV.fLivros.cat = LV.fLivros.cat === c ? '' : c; LV.pintarLivros(); },
+  limparFiltroLivros() { LV.fLivros = { q: '', cat: '' }; const i = document.getElementById('lv-busca-livro'); if (i) i.value = ''; LV.pintarLivros(); },
+  ordCat(a, b) { if (a === LV.SEM_CAT) return 1; if (b === LV.SEM_CAT) return -1; return a.localeCompare(b, 'pt-BR'); },
+  // repinta só as categorias e a lista — nunca o input, para não roubar o foco de quem digita
+  pintarLivros() {
+    const termos = LV.normal(LV.fLivros.q).split(/\s+/).filter(Boolean);
+    const achados = LV.livros.filter(b => LV.casaBusca(b, termos));
+    // contagem por categoria considera a busca, mas não o filtro de categoria
+    const contas = {};
+    for (const b of achados) { const c = LV.catDe(b); contas[c] = (contas[c] || 0) + 1; }
+    const cats = Object.keys(contas).sort(LV.ordCat);
+    const chip = (id, rot, ativo) => `<button class="btn ${ativo ? '' : 'secund'} peq" onclick="LV.filtrarCat('${id.replace(/'/g, "\\'")}')">${rot}</button>`;
+    const elCats = document.getElementById('lv-livros-cats');
+    if (elCats) {
+      elCats.innerHTML = `<button class="btn ${LV.fLivros.cat ? 'secund' : ''} peq" onclick="LV.filtrarCat('')">Todas (${achados.length})</button>`
+        + cats.map(c => chip(c, `${esc(c)} (${contas[c]})`, LV.fLivros.cat === c)).join('')
+        + (LV.fLivros.q || LV.fLivros.cat ? ` <button class="btn secund peq" onclick="LV.limparFiltroLivros()">✖️ Limpar</button>` : '');
+    }
+    const visiveis = achados.filter(b => !LV.fLivros.cat || LV.catDe(b) === LV.fLivros.cat);
+    const grupos = LV.fLivros.cat ? [LV.fLivros.cat] : cats;
+    const el = document.getElementById('lv-livros-lista');
+    if (!el) return;
+    if (!LV.livros.length) { el.innerHTML = '<div class="card"><p class="sub">Nenhum livro. Crie o primeiro.</p></div>'; return; }
+    if (!visiveis.length) { el.innerHTML = `<div class="card"><p class="sub">Nenhum livro encontrado para “${esc(LV.fLivros.q)}”.</p></div>`; return; }
+    el.innerHTML = grupos.map(c => {
+      const doGrupo = visiveis.filter(b => LV.catDe(b) === c);
+      if (!doGrupo.length) return '';
+      return `<div class="card"><h3>📂 ${esc(c)} <span class="sub">(${doGrupo.length})</span></h3>`
+        + tabela(['Título', 'Autor', 'Slug', 'PDF', 'Impresso', 'Combo', 'Ativo', ''], doGrupo.map(b => [
+          esc(b.titulo), esc(b.autor || ''), esc(b.slug),
+          b.preco_pdf != null ? LV.brl(b.preco_pdf) : '—', b.preco_impresso != null ? LV.brl(b.preco_impresso) : '—',
+          b.preco_combo != null ? LV.brl(b.preco_combo) : '—', b.ativo ? '✅' : '⛔',
+          `<button class="btn secund peq" onclick="LV.editarLivro('${b.id}')">Editar</button>`])) + '</div>';
+    }).join('');
   },
   async editarLivro(id) {
     let b = { titulo: '', subtitulo: '', autor: 'Augusto Villela', slug: '', categoria: '', descricao_curta: '', descricao_longa: '', sumario: '', publico_alvo: '', preco_pdf: '', preco_impresso: '', preco_combo: '', ativo: true, destaque: false, capa_url: '', seo_title: '', seo_description: '', beneficios: [], bonus: [], depoimentos: [], faq: [] };
     let arquivos = [];
     if (id) { const d = await LV.api('GET', '/livros/' + id); b = d.livro; arquivos = d.arquivos; }
+    if (!LV.livros.length) { try { LV.livros = (await LV.api('GET', '/livros')).livros; } catch (_) {} }
+    // sugere as categorias que já existem (o campo continua livre) — evita "Marketing" virar 3 categorias diferentes
+    const catsExist = [...new Set(LV.livros.map(x => (x.categoria || '').trim()).filter(Boolean))].sort((a, c) => a.localeCompare(c, 'pt-BR'));
+    const datalist = `<datalist id="lv-cats">${catsExist.map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
     const preco = (v) => v == null || v === '' ? '' : LV.reais(v);
     const campo = (id2, rot, val, tipo) => `<div style="margin:.5rem 0"><label class="sub">${rot}</label><input id="lv-${id2}" value="${esc(val)}" ${tipo || ''} style="width:100%;padding:.5rem"></div>`;
     const area = (id2, rot, val) => `<div style="margin:.5rem 0"><label class="sub">${rot}</label><textarea id="lv-${id2}" rows="3" style="width:100%;padding:.5rem">${esc(val)}</textarea></div>`;
@@ -91,7 +150,7 @@ const LV = {
     let h = `<div class="card"><h3>${id ? 'Editar' : 'Novo'} livro</h3>
       ${campo('titulo', 'Título *', b.titulo)}
       ${campo('subtitulo', 'Subtítulo', b.subtitulo)}
-      <div style="display:flex;gap:.6rem">${campo('autor', 'Autor', b.autor)}${campo('slug', 'Slug (vazio = auto)', b.slug)}${campo('categoria', 'Categoria', b.categoria)}</div>
+      <div style="display:flex;gap:.6rem">${campo('autor', 'Autor', b.autor)}${campo('slug', 'Slug (vazio = auto)', b.slug)}${campo('categoria', 'Categoria', b.categoria, 'list="lv-cats"')}</div>${datalist}
       ${area('descricao_curta', 'Descrição curta (vitrine/SEO)', b.descricao_curta)}
       ${area('descricao_longa', 'Descrição longa (página de venda)', b.descricao_longa)}
       ${area('publico_alvo', 'Para quem é', b.publico_alvo)}
