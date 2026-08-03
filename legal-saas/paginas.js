@@ -403,7 +403,7 @@ function appJuridicoHTML() {
 <link rel="apple-touch-icon" href="/assets/brand/villela-legal/apple-touch-icon.png">
 <meta name="theme-color" content="#1B2A4A">
 <link rel="manifest" href="/juridico/manifest.webmanifest"><script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/juridico/sw.js').catch(function(){})})}</script>
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><style>
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=8"><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><style>
 :root{--villela-navy:#1B2A4A;--villela-navy2:#24365C;--villela-gold:#C9A227;--villela-ice:#F8F9FA;--villela-graphite:#1F2933;--acento:#14532D;--acento2:#0E3B20;--borda:#E2E6EC}
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--villela-graphite);background:var(--villela-ice)}
 h1,h2,h3{font-family:'Lora',Georgia,serif}

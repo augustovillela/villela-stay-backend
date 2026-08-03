@@ -191,10 +191,12 @@ CREATE TABLE IF NOT EXISTS case_publications (
   payload_raw  TEXT DEFAULT '',
   hash_dedupe  TEXT DEFAULT '',
   coletado_em  TEXT NOT NULL,
-  criado_por   TEXT DEFAULT ''
+  criado_por   TEXT DEFAULT '',
+  movement_id  TEXT DEFAULT ''    -- andamento gerado a partir desta publicação (case_movements.id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_publications_dedupe ON case_publications(hash_dedupe) WHERE hash_dedupe != '';
 CREATE INDEX IF NOT EXISTS idx_publications_status ON case_publications(status);
+CREATE INDEX IF NOT EXISTS idx_publications_data ON case_publications(data_publicacao);
 
 -- =====================================================================
 -- MÓDULO 5 — PRAZOS (cálculo sugerido SEMPRE exige validação humana)

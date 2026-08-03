@@ -234,27 +234,119 @@ const Andamentos = {
 // =====================================================================
 // PUBLICAÇÕES
 // =====================================================================
+// Extrai o 1º número CNJ que aparecer no texto da publicação (o DJEN costuma
+// trazer o número no corpo). Serve para vincular a publicação ao processo já
+// cadastrado quando a coleta não veio com case_id.
+function cnjDoTexto(texto) {
+  const m = String(texto || '').match(/\d{7}-?\d{2}\.?\d{4}\.?\d\.?\d{2}\.?\d{4}/);
+  return m ? normCNJ(m[0]) : '';
+}
+
 const Publicacoes = {
-  listar({ status = '', case_id = '', limite = 100 } = {}) {
-    let sql = 'SELECT * FROM case_publications', where = [], args = [];
-    if (status) { where.push('status = ?'); args.push(status); }
-    if (case_id) { where.push('case_id = ?'); args.push(case_id); }
+  // busca/paginação: o painel precisa mostrar as NOVAS e também as ANTERIORES
+  // (a triagem move o status, e o histórico tem que continuar acessível).
+  listar({ status = '', case_id = '', fonte = '', busca = '', desde = '', ate = '', limite = 100, pagina = 0 } = {}) {
+    const { where, args } = Publicacoes._filtro({ status, case_id, fonte, busca, desde, ate });
+    let sql = `SELECT p.*, c.numero_cnj, c.assunto AS case_assunto FROM case_publications p
+      LEFT JOIN cases c ON c.id = p.case_id`;
     if (where.length) sql += ' WHERE ' + where.join(' AND ');
-    sql += ' ORDER BY data_publicacao DESC, coletado_em DESC LIMIT ?'; args.push(Math.min(Number(limite) || 100, 500));
-    return db.prepare(sql).all(...args);
+    const lim = Math.min(Number(limite) || 100, 500);
+    const off = Math.max(Number(pagina) || 0, 0) * lim;
+    sql += ' ORDER BY p.data_publicacao DESC, p.coletado_em DESC LIMIT ? OFFSET ?';
+    return db.prepare(sql).all(...args, lim, off);
+  },
+  contar({ status = '', case_id = '', fonte = '', busca = '', desde = '', ate = '' } = {}) {
+    const { where, args } = Publicacoes._filtro({ status, case_id, fonte, busca, desde, ate });
+    let sql = 'SELECT COUNT(*) n FROM case_publications p';
+    if (where.length) sql += ' WHERE ' + where.join(' AND ');
+    return db.prepare(sql).get(...args).n;
+  },
+  _filtro({ status, case_id, fonte, busca, desde, ate }) {
+    const where = [], args = [];
+    if (status) { where.push('p.status = ?'); args.push(status); }
+    if (case_id) { where.push('p.case_id = ?'); args.push(case_id); }
+    if (fonte) { where.push('p.fonte = ?'); args.push(fonte); }
+    if (busca) { where.push('(p.texto LIKE ? OR p.orgao LIKE ? OR p.resumo LIKE ?)'); const b = `%${s(busca, 120)}%`; args.push(b, b, b); }
+    if (desde) { where.push('p.data_publicacao >= ?'); args.push(s(desde, 10)); }
+    if (ate) { where.push('p.data_publicacao <= ?'); args.push(s(ate, 10)); }
+    return { where, args };
+  },
+  // ficha completa: texto INTEGRAL + processo vinculado + andamento gerado +
+  // prazos que nasceram desta publicação. É o que a tela abre com um clique.
+  obter(id) {
+    const p = db.prepare(`SELECT p.*, c.numero_cnj, c.assunto AS case_assunto FROM case_publications p
+      LEFT JOIN cases c ON c.id = p.case_id WHERE p.id = ?`).get(id);
+    if (!p) throw new Error('Publicação não encontrada.');
+    p.payload_raw = j.parse(p.payload_raw, null);
+    p.cnj_detectado = p.numero_cnj || cnjDoTexto(p.texto);
+    p.andamento = p.movement_id ? db.prepare('SELECT * FROM case_movements WHERE id = ?').get(p.movement_id) || null : null;
+    p.prazos = db.prepare('SELECT id, titulo, tipo, data_fatal, data_interna, status, validado_por FROM deadlines WHERE publication_id = ? ORDER BY data_fatal').all(id);
+    return p;
   },
   criar(d, autor) {
     const texto = s(d.texto, 20000);
     if (!texto) throw new Error('Informe o texto da publicação.');
     const hash = sha256(s(d.fonte, 30) + '|' + s(d.data_publicacao, 30) + '|' + texto);
-    if (db.prepare('SELECT id FROM case_publications WHERE hash_dedupe = ?').get(hash)) return { duplicado: true };
+    const jaExiste = db.prepare('SELECT id FROM case_publications WHERE hash_dedupe = ?').get(hash);
+    if (jaExiste) return { duplicado: true, id: jaExiste.id };
     const id = novoId();
+    // vínculo com o processo: o que veio na coleta, ou o CNJ que estiver no texto
+    let caseId = fk(d.case_id);
+    if (!caseId) {
+      const cnj = cnjDoTexto(texto);
+      const k = cnj ? db.prepare('SELECT id FROM cases WHERE numero_cnj = ?').get(cnj) : null;
+      if (k) caseId = k.id;
+    }
     db.prepare(`INSERT INTO case_publications (id, case_id, fonte, data_publicacao, orgao, texto, match_por, tem_prazo, status,
       resumo, payload_raw, hash_dedupe, coletado_em, criado_por) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-      .run(id, fk(d.case_id), s(d.fonte, 30) || 'manual', s(d.data_publicacao, 30), s(d.orgao, 120), texto,
+      .run(id, caseId, s(d.fonte, 30) || 'manual', s(d.data_publicacao, 30), s(d.orgao, 120), texto,
         s(d.match_por, 40), d.tem_prazo ? 1 : 0, valida(d.status || 'nova', E.statusPub, 'status'),
         s(d.resumo, 2000), d.payload_raw ? j.str(d.payload_raw) : '', hash, nowISO(), s(autor, 40));
-    return { id, duplicado: false };
+    // o conteúdo da publicação vira ANDAMENTO do processo assim que há vínculo
+    // (é a linha do tempo do caso). Sem processo vinculado fica para a triagem,
+    // que escolhe o processo na tela. `gerar_andamento:false` desliga.
+    let andamento = null;
+    if (caseId && d.gerar_andamento !== false) {
+      try { andamento = Publicacoes.virarAndamento(id, {}, autor); } catch (_) { /* nunca derruba a ingestão */ }
+    }
+    return { id, duplicado: false, case_id: caseId || '', movement_id: andamento ? andamento.movement_id : '' };
+  },
+  // Salva o CONTEÚDO da publicação como andamento do processo. Idempotente: o
+  // dedupe do andamento é por (processo+data+descrição), então reconverter a
+  // mesma publicação devolve o andamento que já existe em vez de duplicar.
+  virarAndamento(id, { case_id = '', classificacao = '', data = '' } = {}, autor) {
+    return transacao(() => {
+      const p = db.prepare('SELECT * FROM case_publications WHERE id = ?').get(id);
+      if (!p) throw new Error('Publicação não encontrada.');
+      let alvo = fk(case_id) || p.case_id;
+      if (!alvo) {
+        const cnj = cnjDoTexto(p.texto);
+        const k = cnj ? db.prepare('SELECT id FROM cases WHERE numero_cnj = ?').get(cnj) : null;
+        if (k) alvo = k.id;
+      }
+      if (!alvo) throw new Error('Publicação sem processo vinculado — escolha o processo para salvar o andamento.');
+      if (!db.prepare('SELECT id FROM cases WHERE id = ?').get(alvo)) throw new Error('Processo não encontrado.');
+
+      const classif = classificacao || (p.tem_prazo ? 'intimacao' : 'informativo');
+      const quando = s(data, 30) || p.data_publicacao || nowISO().slice(0, 10);
+      const r = Andamentos.criar(alvo, {
+        data: quando, descricao: p.texto, classificacao: classif, resumo: p.resumo,
+        fonte: p.fonte || 'publicacao',
+        payload_raw: { publicacao_id: p.id, orgao: p.orgao, match_por: p.match_por, origem: 'publicacao' },
+      }, autor);
+      // dedupe devolve {duplicado:true} sem id — recupera o andamento existente
+      let movId = r.id;
+      if (!movId) {
+        const existente = db.prepare('SELECT id FROM case_movements WHERE hash_dedupe = ?')
+          .get(sha256(alvo + '|' + quando + '|' + s(p.texto, 4000)));
+        movId = existente ? existente.id : '';
+      }
+      // triagem: publicação com andamento salvo deixa de ser "nova"
+      const novoStatus = (p.status === 'nova' || p.status === 'lida') ? 'analisada' : p.status;
+      db.prepare('UPDATE case_publications SET case_id=?, movement_id=?, status=? WHERE id=?')
+        .run(alvo, movId, novoStatus, id);
+      return { movement_id: movId, case_id: alvo, duplicado: !!r.duplicado, status: novoStatus };
+    });
   },
   atualizar(id, d) {
     const p = db.prepare('SELECT * FROM case_publications WHERE id = ?').get(id);

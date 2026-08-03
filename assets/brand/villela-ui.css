@@ -582,6 +582,42 @@ a.vx-kpi:hover, button.vx-kpi:hover { box-shadow: var(--vx-shadow-2); transform:
 .vx .acoes { display: flex; gap: var(--vx-2); flex-wrap: wrap; margin-top: var(--vx-3); }
 .vx .doc { background: var(--vx-surface); border: 1px solid var(--vx-border); border-radius: var(--vx-r); padding: var(--vx-6); }
 
+/* --------------------------------------------------------------------------
+   Lista clicável (registro que abre a ficha com UM clique). Nasceu nas
+   Publicações do jurídico, mas é genérica: qualquer módulo com "acervo que se
+   abre" pode usar. Cada item é um <button> — foco por teclado e leitor de tela
+   de graça, sem depender de onclick numa <tr>.
+   -------------------------------------------------------------------------- */
+.vx .vx-acervo { display: flex; flex-direction: column; gap: var(--vx-2); }
+.vx .vx-acervo-item {
+  display: grid; grid-template-columns: 108px 1fr auto; gap: var(--vx-2) var(--vx-3);
+  align-items: start; width: 100%; text-align: left; font: inherit; cursor: pointer;
+  background: var(--vx-surface); border: 1px solid var(--vx-border);
+  border-left: 3px solid var(--vx-border-strong); border-radius: var(--vx-r);
+  padding: var(--vx-3) var(--vx-4); min-height: 44px;
+}
+.vx .vx-acervo-item:hover { background: var(--vx-surface-2); box-shadow: var(--vx-shadow-1); }
+.vx .vx-acervo-item[data-novo="1"] { border-left-color: var(--vx-warn); background: var(--vx-warn-soft); }
+.vx .vx-acervo-data { font-size: var(--vx-fs-xs); font-weight: 700; color: var(--vx-ink-2); font-variant-numeric: tabular-nums; }
+.vx .vx-acervo-corpo { min-width: 0; }
+.vx .vx-acervo-tit { font-size: var(--vx-fs-sm); font-weight: 600; color: var(--vx-navy); }
+.vx .vx-acervo-txt {
+  font-size: var(--vx-fs-sm); color: var(--vx-ink-2); margin-top: 2px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.vx .vx-acervo-tags { display: flex; gap: var(--vx-1); flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 640px) {
+  .vx .vx-acervo-item { grid-template-columns: 1fr; }
+  .vx .vx-acervo-tags { justify-content: flex-start; }
+}
+
+/* Texto integral de uma publicação/peça: monoespaçado leve, quebra preservada */
+.vx .vx-integra {
+  white-space: pre-wrap; word-break: break-word; font-size: var(--vx-fs-sm); line-height: 1.65;
+  background: var(--vx-surface-2); border: 1px solid var(--vx-border); border-radius: var(--vx-r);
+  padding: var(--vx-4); max-height: 60vh; overflow: auto;
+}
+
 /* Impressão: sem navegação, sem sombra, texto preto (peça/relatório sai limpo) */
 @media print {
   .vx-nav, .vx-toasts, .vx-btn, .vx-filtros { display: none !important; }

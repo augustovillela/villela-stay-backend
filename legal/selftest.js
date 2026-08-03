@@ -158,6 +158,65 @@ async function rodar() {
     assert.equal(up.json.publicacao.status, 'analisada');
   });
 
+  // 5b. acervo de publicações: a íntegra fica acessível com um clique e o
+  // conteúdo vira andamento do processo (pedido do Augusto, 03/08/2026).
+  await t('publicação: ficha com íntegra, acervo pesquisável e busca por status', async () => {
+    const texto = 'INTIMACAO INTEGRAL: fica a parte intimada para manifestar-se em 15 dias sobre o laudo pericial acostado aos autos.';
+    const nova = await req('POST', '/staff/api/legal/publicacoes', { chave: true, corpo: { fonte: 'djen', data_publicacao: '2026-07-08', orgao: 'TJDFT — 2a Vara', texto, tem_prazo: true } });
+    assert.equal(nova.json.duplicado, false);
+    // ficha completa devolve o texto INTEIRO (não truncado) + blocos da tela
+    const ficha = await req('GET', '/staff/api/legal/publicacoes/' + nova.json.id);
+    assert.equal(ficha.st, 200);
+    assert.equal(ficha.json.publicacao.texto, texto, 'íntegra preservada');
+    assert.ok(Array.isArray(ficha.json.publicacao.prazos), 'prazos vinculados listados');
+    // a listagem informa quantas existem e quantas ainda não foram triadas
+    const lista = await req('GET', '/staff/api/legal/publicacoes');
+    assert.ok(lista.json.total >= 2 && lista.json.novas >= 1, 'acervo conta total e novas');
+    // as ANTERIORES (já triadas) continuam acessíveis — não somem da tela
+    const triadas = await req('GET', '/staff/api/legal/publicacoes?status=analisada');
+    assert.ok(triadas.json.publicacoes.length >= 1, 'publicação já triada continua no acervo');
+    // busca textual encontra pelo conteúdo
+    const busca = await req('GET', '/staff/api/legal/publicacoes?busca=laudo%20pericial');
+    assert.equal(busca.json.publicacoes.length, 1);
+    // publicação sem processo vinculado NÃO vira andamento às cegas
+    const semCaso = await req('POST', `/staff/api/legal/publicacoes/${nova.json.id}/andamento`, { corpo: {} });
+    assert.equal(semCaso.st, 400, 'sem processo vinculado o andamento é barrado');
+  });
+
+  await t('publicação → andamento: salva o conteúdo no processo e é idempotente', async () => {
+    const texto = 'DESPACHO: intime-se a parte autora para especificar as provas que pretende produzir.';
+    const pub = await req('POST', '/staff/api/legal/publicacoes', { chave: true, corpo: { fonte: 'djen', data_publicacao: '2026-07-09', orgao: 'TJDFT', texto } });
+    const r = await req('POST', `/staff/api/legal/publicacoes/${pub.json.id}/andamento`, { corpo: { case_id: caseId } });
+    assert.equal(r.st, 200);
+    assert.ok(r.json.movement_id, 'andamento criado');
+    assert.equal(r.json.case_id, caseId);
+    // o CONTEÚDO da publicação está no andamento do processo
+    const ands = await req('GET', `/staff/api/legal/processos/${caseId}/andamentos`);
+    const mov = ands.json.andamentos.find(m => m.id === r.json.movement_id);
+    assert.ok(mov, 'andamento aparece na linha do tempo do processo');
+    assert.equal(mov.descricao, texto);
+    // triagem avança sozinha e o vínculo fica registrado na ficha
+    const ficha = await req('GET', '/staff/api/legal/publicacoes/' + pub.json.id);
+    assert.equal(ficha.json.publicacao.status, 'analisada');
+    assert.equal(ficha.json.publicacao.movement_id, r.json.movement_id);
+    assert.ok(ficha.json.publicacao.andamento, 'ficha traz o andamento gerado');
+    // repetir NÃO duplica o andamento — devolve o mesmo id
+    const r2 = await req('POST', `/staff/api/legal/publicacoes/${pub.json.id}/andamento`, { corpo: { case_id: caseId } });
+    assert.equal(r2.json.movement_id, r.json.movement_id, 'reconversão devolve o mesmo andamento');
+    const ands2 = await req('GET', `/staff/api/legal/processos/${caseId}/andamentos`);
+    assert.equal(ands2.json.andamentos.filter(m => m.descricao === texto).length, 1, 'sem duplicata na linha do tempo');
+  });
+
+  await t('publicação: coleta com CNJ conhecido já entra vinculada e vira andamento', async () => {
+    const texto = '0700111-22.2026.8.07.0001 - SENTENCA: julgo procedente o pedido inicial. Publicacao automatica.';
+    const pub = await req('POST', '/staff/api/legal/publicacoes', { chave: true, corpo: { fonte: 'djen', data_publicacao: '2026-07-10', orgao: 'TJDFT', texto, tem_prazo: true } });
+    assert.equal(pub.json.case_id, caseId, 'vinculou pelo CNJ que veio no texto');
+    assert.ok(pub.json.movement_id, 'andamento gerado junto com a coleta');
+    const ficha = await req('GET', '/staff/api/legal/publicacoes/' + pub.json.id);
+    assert.equal(ficha.json.publicacao.andamento.classificacao, 'intimacao'); // tem_prazo → intimação
+    assert.equal(ficha.json.publicacao.andamento.descricao, texto);
+  });
+
   // 6. prazos: calculadora + trava de validação humana
   await t('prazo: calculadora (dias úteis) e trava sem validado_por', async () => {
     const c = await req('POST', '/staff/api/legal/prazos/calcular', { corpo: { termo_inicial: '2026-07-06', dias: 5, modo: 'uteis' } });

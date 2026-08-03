@@ -60,6 +60,7 @@ const schemaSQL = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8')
 const MIGRACOES = [
   { nome: '001-documents-legado-id', sql: "ALTER TABLE documents ADD COLUMN legado_id TEXT DEFAULT ''" },
   { nome: '002-contract-reviews-analise-json', sql: "ALTER TABLE contract_reviews ADD COLUMN analise_json TEXT DEFAULT ''" },
+  { nome: '003-publications-movement-id', sql: "ALTER TABLE case_publications ADD COLUMN movement_id TEXT DEFAULT ''" },
 ];
 
 // ---- registro de handles abertos, um por tenant ----

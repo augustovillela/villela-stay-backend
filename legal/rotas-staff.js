@@ -194,7 +194,22 @@ function registrarRotasStaff(app, deps) {
 
   // ------------------------------------------------------- PUBLICAÇÕES (ingestão idem)
   app.get('/staff/api/legal/publicacoes', requireAuth, pode('gerir_publicacoes'), h((req, res) => {
-    res.json({ publicacoes: repo.Publicacoes.listar(req.query) });
+    res.json({
+      publicacoes: repo.Publicacoes.listar(req.query),
+      total: repo.Publicacoes.contar(req.query),
+      novas: repo.Publicacoes.contar({ ...req.query, status: 'nova' }),
+    });
+  }));
+  // ficha completa (texto integral + processo + andamento gerado + prazos)
+  app.get('/staff/api/legal/publicacoes/:id', requireAuth, pode('gerir_publicacoes'), h((req, res) => {
+    res.json({ publicacao: repo.Publicacoes.obter(req.params.id) });
+  }));
+  // salva o CONTEÚDO da publicação como andamento do processo (idempotente)
+  app.post('/staff/api/legal/publicacoes/:id/andamento', requirePublishOrSession, pode('gerir_publicacoes'), h((req, res) => {
+    const r = repo.Publicacoes.virarAndamento(req.params.id, req.body || {}, quemFez(req));
+    auditar(req, 'publicacao.andamento', 'case_publications', req.params.id,
+      `andamento ${r.movement_id || '?'} no processo ${r.case_id}${r.duplicado ? ' (já existia)' : ''}`);
+    res.json({ ok: true, ...r });
   }));
   app.post('/staff/api/legal/publicacoes', requirePublishOrSession, pode('gerir_publicacoes'), h((req, res) => {
     const r = repo.Publicacoes.criar(req.body || {}, req.user && req.user.id);

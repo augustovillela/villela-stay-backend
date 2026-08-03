@@ -454,18 +454,142 @@ const LG = {
   },
 
   // -------------------------------------------------------- PUBLICAÇÕES
+  // Acervo: as NOVAS (sem triagem) em cima e as ANTERIORES logo abaixo, cada
+  // uma abrindo a íntegra com UM clique. Nada de texto cortado em 80 caracteres
+  // sem jeito de ler o resto.
+  pubFiltro: { busca: '', fonte: '', status: '' },
   async vPublicacoes() {
-    const { publicacoes } = await LG.api('GET', '/publicacoes');
-    LG.body().innerHTML = `<div class="aviso">📥 Publicações chegam pela ingestão dos agentes (DJEN/recorte, via PUBLISH_KEY) ou cadastro manual via API. Triagem: nova → lida → analisada → prazo criado / descartada.</div>
-      <div class="card">${publicacoes.length ? tabela(['Data', 'Fonte', 'Órgão', 'Texto', 'Prazo?', 'Status', ''], publicacoes.map(p => [
-        LG.dt(p.data_publicacao), esc(p.fonte || '—'), esc(p.orgao || '—'), esc((p.texto || '').slice(0, 80)), p.tem_prazo ? '⚠️' : '—', LG.chip(p.status),
-        `<button class="btn secund peq" onclick="LG.mudarPub('${p.id}','${p.status}')">Status</button>`,
-      ])) : '<p class="vazio">Nenhuma publicação.</p>'}</div>`;
+    const f = LG.pubFiltro;
+    const qs = new URLSearchParams({ limite: '300' });
+    if (f.busca) qs.set('busca', f.busca);
+    if (f.fonte) qs.set('fonte', f.fonte);
+    if (f.status) qs.set('status', f.status);
+    const { publicacoes, total, novas } = await LG.api('GET', '/publicacoes?' + qs.toString());
+
+    const item = (p) => {
+      const novo = p.status === 'nova';
+      const tags = [LG.chip(p.status)];
+      if (p.tem_prazo) tags.unshift('<span class="chip">⚠️ prazo</span>');
+      if (p.movement_id) tags.push('<span class="chip">📌 no processo</span>');
+      return `<button type="button" class="vx-acervo-item" data-novo="${novo ? 1 : 0}" onclick="LG.verPub('${p.id}')">
+        <span class="vx-acervo-data">${LG.dt(p.data_publicacao)}<br><span class="vx-hint">${esc(p.fonte || '—')}</span></span>
+        <span class="vx-acervo-corpo">
+          <span class="vx-acervo-tit">${esc(p.orgao || 'Órgão não informado')}${p.numero_cnj ? ' · ' + esc(p.numero_cnj) : ''}</span>
+          <span class="vx-acervo-txt">${esc(p.texto || '')}</span>
+        </span>
+        <span class="vx-acervo-tags">${tags.join(' ')}</span>
+      </button>`;
+    };
+    const bloco = (titulo, sub, lista) => `<section class="vx-card">
+      <div class="vx-card-head"><div><h2>${titulo} <span class="vx-hint">(${lista.length})</span></h2>
+      <p class="vx-hint vx-mb0">${esc(sub)}</p></div></div>
+      ${lista.length ? `<div class="vx-acervo">${lista.map(item).join('')}</div>` : '<p class="vazio">Nada aqui.</p>'}</section>`;
+
+    const semTriagem = publicacoes.filter(p => p.status === 'nova');
+    const anteriores = publicacoes.filter(p => p.status !== 'nova');
+    const filtrando = !!(f.busca || f.fonte || f.status);
+
+    let h = `<div class="aviso">📥 Publicações do DJEN/recortes entram pela coleta diária (ou cadastro manual) e ficam <b>guardadas aqui para sempre</b>.
+      Clique em qualquer uma para ler a íntegra, vincular ao processo e salvar como andamento.</div>
+      <section class="vx-card"><div class="hi-grid">
+        <label>Buscar no texto/órgão <input id="lgp-busca" value="${esc(f.busca)}" placeholder="ex.: intimação, 0700123, TJDFT"></label>
+        <label>Fonte <select id="lgp-fonte">${['', 'djen', 'diario-oficial', 'recorte', 'manual'].map(v => `<option value="${v}"${v === f.fonte ? ' selected' : ''}>${v || 'todas'}</option>`).join('')}</select></label>
+        <label>Status <select id="lgp-status"><option value="">todos</option>${(LG.enums.statusPub || []).map(v => `<option value="${v}"${v === f.status ? ' selected' : ''}>${v.replace(/_/g, ' ')}</option>`).join('')}</select></label>
+      </div>
+      <div class="acoes"><button class="btn peq" onclick="LG.filtrarPub()">🔎 Filtrar</button>
+        ${filtrando ? '<button class="btn secund peq" onclick="LG.limparFiltroPub()">✕ Limpar</button>' : ''}
+        <span class="vx-hint">${total} publicação(ões) no acervo · ${novas} sem triagem</span></div></section>`;
+
+    if (filtrando) {
+      h += bloco('🔎 Resultado do filtro', 'Filtro ativo — limpe para voltar ao acervo completo.', publicacoes);
+    } else {
+      h += bloco('🆕 Novas (sem triagem)', 'Chegaram e ninguém abriu ainda. Abrir e classificar tira daqui.', semTriagem);
+      h += bloco('📚 Anteriores', 'Todo o histórico já triado — continua acessível e pesquisável.', anteriores);
+    }
+    if (publicacoes.length >= 300) h += `<p class="vx-hint">Mostrando as 300 mais recentes. Use a busca para chegar às mais antigas.</p>`;
+    LG.body().innerHTML = h;
+    const b = document.getElementById('lgp-busca');
+    if (b) b.onkeydown = (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); LG.filtrarPub(); } };
   },
-  async mudarPub(id, atual) {
-    const novo = prompt('Novo status (' + (LG.enums.statusPub || []).join(', ') + '):', atual);
-    if (!novo || novo === atual) return;
-    try { await LG.api('PATCH', '/publicacoes/' + id, { status: novo.trim() }); LG.pintar(); } catch (e) { alert(e.message); }
+  filtrarPub() {
+    LG.pubFiltro = {
+      busca: (document.getElementById('lgp-busca') || {}).value || '',
+      fonte: (document.getElementById('lgp-fonte') || {}).value || '',
+      status: (document.getElementById('lgp-status') || {}).value || '',
+    };
+    LG.pintar();
+  },
+  limparFiltroPub() { LG.pubFiltro = { busca: '', fonte: '', status: '' }; LG.pintar(); },
+
+  // ---- ficha da publicação: íntegra + vínculo + andamento + prazos ----
+  async verPub(id) {
+    const { publicacao: p } = await LG.api('GET', '/publicacoes/' + id);
+    const linhas = [
+      ['Data da publicação', LG.dt(p.data_publicacao)],
+      ['Fonte', esc(p.fonte || '—')],
+      ['Órgão', esc(p.orgao || '—')],
+      ['Localizada por', esc(p.match_por || '—')],
+      ['Processo vinculado', p.case_id ? `${esc(p.numero_cnj || p.case_id)}${p.case_assunto ? ' — ' + esc(p.case_assunto) : ''}` : (p.cnj_detectado ? `<span class="vx-hint">não vinculada (CNJ no texto: ${esc(p.cnj_detectado)} — processo não cadastrado)</span>` : '<span class="vx-hint">não vinculada</span>')],
+      ['Coletada em', LG.dt(p.coletado_em)],
+      ['Status', LG.chip(p.status) + (p.tem_prazo ? ' <span class="chip">⚠️ menciona prazo</span>' : '')],
+    ];
+    const andamento = p.andamento
+      ? `<p class="vx-mb0">✅ Salva como andamento do processo em <b>${LG.dt(p.andamento.data)}</b> (${esc(p.andamento.classificacao || 'informativo')}).</p>`
+      : `<p class="vx-mb0">Esta publicação ainda <b>não</b> foi salva como andamento.</p>
+         <div class="acoes">
+           ${p.case_id
+             ? `<button class="btn peq" onclick="LG.pubParaAndamento('${p.id}')">📌 Salvar como andamento do processo</button>`
+             : `<label style="flex:1;min-width:220px">Processo <select id="lgp-case"><option value="">— escolha o processo —</option></select></label>
+                <button class="btn peq" onclick="LG.pubParaAndamento('${p.id}', true)">📌 Vincular e salvar como andamento</button>`}
+         </div>`;
+
+    LG.body().innerHTML = `<div class="acoes"><button class="btn secund peq" onclick="LG.pintar()">← Voltar às publicações</button></div>
+      <section class="vx-card"><div class="vx-card-head"><div>
+        <h2>📰 Publicação de ${LG.dt(p.data_publicacao)}</h2>
+        <p class="vx-hint vx-mb0">${esc(p.orgao || 'Órgão não informado')}</p></div></div>
+        ${linhas.map(([k, v]) => `<div class="kv"><span>${k}</span><div>${v}</div></div>`).join('')}
+      </section>
+      <section class="vx-card"><div class="vx-card-head"><div><h2>📄 Íntegra</h2>
+        <p class="vx-hint vx-mb0">Texto como veio da fonte — é o que vale para conferir o prazo no sistema do tribunal.</p></div></div>
+        <div class="vx-integra">${esc(p.texto || '')}</div></section>
+      <section class="vx-card"><div class="vx-card-head"><div><h2>📌 Andamento do processo</h2></div></div>${andamento}</section>
+      <section class="vx-card"><div class="vx-card-head"><div><h2>⏰ Prazos originados desta publicação</h2></div></div>
+        ${p.prazos.length ? tabela(['Título', 'Tipo', 'Data fatal', 'Status', 'Validado por'], p.prazos.map(z => [
+          esc(z.titulo), z.tipo === 'fatal' ? '<b>FATAL</b>' : 'interno', LG.dt(z.data_fatal || z.data_interna), LG.chip(z.status),
+          z.validado_por ? esc(z.validado_por) : '<span class="chip">⚠️ sem validação</span>',
+        ])) : '<p class="vazio">Nenhum prazo criado a partir desta publicação.</p>'}</section>
+      <section class="vx-card"><div class="vx-card-head"><div><h2>🗂️ Triagem</h2>
+        <p class="vx-hint vx-mb0">A publicação continua guardada em qualquer status — muda só onde ela aparece na lista.</p></div></div>
+        <div class="acoes">${(LG.enums.statusPub || []).filter(v => v !== p.status)
+          .map(v => `<button class="btn secund peq" onclick="LG.mudarPub('${p.id}','${v}')">${v.replace(/_/g, ' ')}</button>`).join('')}</div>
+      </section>`;
+
+    // seletor de processo (só quando falta vincular)
+    const sel = document.getElementById('lgp-case');
+    if (sel) {
+      try {
+        const { processos } = await LG.api('GET', '/processos?limite=300');
+        sel.innerHTML = '<option value="">— escolha o processo —</option>' + processos.map(k =>
+          `<option value="${k.id}"${p.cnj_detectado && k.numero_cnj === p.cnj_detectado ? ' selected' : ''}>${esc(k.numero_cnj || k.id)} — ${esc(k.assunto || k.classe || '')}</option>`).join('');
+      } catch (_) { /* sem permissão de processos: o botão avisa ao salvar */ }
+    }
+  },
+  async pubParaAndamento(id, comSelecao) {
+    const sel = document.getElementById('lgp-case');
+    const caseId = comSelecao ? (sel && sel.value) : '';
+    if (comSelecao && !caseId) { LGUI.toast('Escolha o processo antes de salvar.', 'erro'); return; }
+    try {
+      const r = await LG.api('POST', `/publicacoes/${id}/andamento`, caseId ? { case_id: caseId } : {});
+      LGUI.toast(r.duplicado ? 'Este andamento já constava no processo.' : 'Publicação salva como andamento do processo.', 'ok');
+      LG.verPub(id);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+  async mudarPub(id, novo) {
+    try {
+      await LG.api('PATCH', '/publicacoes/' + id, { status: novo });
+      LGUI.toast('Status: ' + novo.replace(/_/g, ' '), 'ok');
+      LG.verPub(id);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
   },
 
   // -------------------------------------------------------- TAREFAS
