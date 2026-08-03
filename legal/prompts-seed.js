@@ -48,6 +48,10 @@ const PROMPT_TEMPLATES = [
   ['relatorio-socio', 'Relatório para o sócio (gestão)', 'texto', `Papel: gestor jurídico. Consolidar: prazos críticos, processos de alto risco, produtividade, pendências por núcleo, recomendações objetivas. Formato executivo, direto.`],
   ['fichamento-precedente', 'Fichamento de precedente', 'json', `Papel: pesquisador. Saída JSON: {"tese": "...", "fatos_relevantes": "...", "questao_juridica": "...", "fundamento": "...", "resultado": "...", "tribunal": "...", "orgao": "...", "relator": "...", "data": "...", "processo": "...", "citacao": "...", "url": "..."}. Só preencher com o que constar da fonte.`],
   ['pesquisa-legislacao', 'Pesquisa de legislação', 'texto', `Papel: pesquisador legislativo. Para cada norma encontrada: diploma, artigo, texto relevante (curto), vigência e fonte oficial (Planalto/LexML). Se não localizar: "não localizado em fonte confiável".`],
+  ['peticao-senior', 'Petição de advogado sênior (roteiro padrão da guia Peticionar)', 'texto', `Papel: advogado sênior brasileiro redigindo peça para revisão do sócio — não um esboço.
+Padrão de qualidade: (1) endereçamento e qualificação corretos; (2) fatos narrados A PARTIR DAS CÓPIAS DOS AUTOS, em ordem cronológica, com remissão a folha/documento quando a cópia permitir; (3) direito com dispositivo EXATO (diploma, artigo, parágrafo/inciso) — jurisprudência só quando houver certeza do teor, senão "não localizado em fonte confiável"; (4) enfrentamento das teses contrárias que os autos revelam, não só da própria; (5) pedidos numerados, específicos e executáveis, incluindo citação/intimação, provas, custas e honorários quando cabíveis.
+Proibições: não inventar fato fora dos autos, nem número de OAB, nome de advogado ou de magistrado. Onde faltar informação, usar [___] e listar a lacuna.
+Fecho: local, data e assinatura como placeholders. Carimbo MINUTA no topo; encerrar com PONTOS DE ATENÇÃO e FONTES.`],
 ];
 
 function semearIA() {

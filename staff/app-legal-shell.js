@@ -36,6 +36,7 @@
       ['agenda', '📅', 'Agenda'],
       ['audiencias', '🏛️', 'Audiências'],
       ['publicacoes', '📰', 'Publicações'],
+      ['peticionar', '✍️', 'Peticionar'],
       ['matrizes', '🧩', 'Estratégia e provas'],
     ]],
     ['Relacionamento', [

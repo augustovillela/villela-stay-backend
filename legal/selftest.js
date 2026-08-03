@@ -17,6 +17,9 @@
 'use strict';
 process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'legal-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
+// A suíte exercita o modo FILA (agente local). Sem isto, uma máquina com a
+// chave no ambiente faria chamadas reais à API — caro, lento e não determinístico.
+delete process.env.ANTHROPIC_API_KEY;
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -215,6 +218,108 @@ async function rodar() {
     const ficha = await req('GET', '/staff/api/legal/publicacoes/' + pub.json.id);
     assert.equal(ficha.json.publicacao.andamento.classificacao, 'intimacao'); // tem_prazo → intimação
     assert.equal(ficha.json.publicacao.andamento.descricao, texto);
+  });
+
+  // 5c. PETICIONAR — guia do Contencioso: cópias viram contexto e o agente
+  // sênior redige a minuta (pedido do Augusto, 03/08/2026).
+  let petId;
+  await t('peticionar: abre vinculado ao processo e herda órgão/número/parte', async () => {
+    await req('PATCH', '/staff/api/legal/processos/' + caseId, { corpo: { orgao_julgador: '3a Vara Civel de Brasilia', polo_cliente: 'ativo' } });
+    const p = await req('POST', '/staff/api/legal/peticionar', { corpo: { case_id: caseId, tipo_peca: 'contestacao' } });
+    assert.equal(p.st, 200); petId = p.json.peticionamento.id;
+    assert.equal(p.json.peticionamento.orgao, '3a Vara Civel de Brasilia', 'herdou o órgão do processo');
+    assert.equal(p.json.peticionamento.numero_processo, '0700111-22.2026.8.07.0001');
+    assert.equal(p.json.peticionamento.parte, 'Cliente Teste');
+    // núcleo civel → advogado sênior cível
+    assert.equal(p.json.peticionamento.especialista_sugerido, 'civel');
+  });
+
+  await t('peticionar: cópia colada e arquivo .txt viram CONTEXTO extraído', async () => {
+    const colado = await req('POST', `/staff/api/legal/peticionar/${petId}/texto`, {
+      corpo: { titulo: 'Sentenca (fls. 210-218)', texto: 'SENTENCA: julgo improcedente o pedido de indenizacao por danos morais, ante a ausencia de prova do dano.' },
+    });
+    assert.equal(colado.st, 200);
+    assert.ok(colado.json.caracteres > 50);
+    // arquivo de texto: passa pelo extrator real (vdocs/extrair.js)
+    const arq = await req('POST', `/staff/api/legal/peticionar/${petId}/copias`, {
+      corpo: {
+        titulo: 'Peticao inicial', nome_original: 'inicial.txt', mime: 'text/plain',
+        base64: Buffer.from('PETICAO INICIAL: o autor alega que sofreu dano moral em razao de cobranca indevida no valor de R$ 5.000,00.', 'utf8').toString('base64'),
+      },
+    });
+    assert.equal(arq.st, 200);
+    assert.ok(arq.json.caracteres > 50, 'texto extraído do arquivo');
+    assert.ok(!arq.json.ocr_pendente);
+    const ficha = await req('GET', '/staff/api/legal/peticionar/' + petId);
+    assert.equal(ficha.json.peticionamento.copias.length, 2);
+    assert.ok(ficha.json.peticionamento.contexto_caracteres > 100);
+  });
+
+  await t('peticionar: contexto reúne processo + cópias e a remoção não apaga o arquivo', async () => {
+    const { peticionar } = require('./index');
+    const ctx = peticionar.contextoPeticao(petId);
+    assert.ok(ctx.texto.includes('cobranca indevida'), 'cópia entrou no contexto');
+    assert.ok(ctx.texto.includes('danos morais'), 'texto colado entrou no contexto');
+    assert.ok(ctx.texto.includes('0700111-22.2026.8.07.0001'), 'dados do processo entraram no contexto');
+    assert.equal(ctx.copias.length, 2);
+    // tirar do contexto NÃO apaga o documento (não se destrói prova)
+    const doc = ctx.copias[0].id;
+    await req('DELETE', `/staff/api/legal/peticionar/${petId}/copias/${doc}`);
+    assert.equal(peticionar.contextoPeticao(petId).copias.length, 1);
+    const aindaExiste = await req('GET', '/staff/api/legal/documentos/' + doc);
+    assert.equal(aindaExiste.st, 200, 'documento continua arquivado');
+  });
+
+  await t('peticionar: campos obrigatórios travam a geração', async () => {
+    const semTipo = await req('POST', `/staff/api/legal/peticionar/${petId}/gerar`, { corpo: { tipo_peca: '' } });
+    assert.equal(semTipo.st, 400);
+    const semOrgao = await req('POST', `/staff/api/legal/peticionar/${petId}/gerar`, { corpo: { tipo_peca: 'contestacao', orgao: '' } });
+    assert.equal(semOrgao.st, 400);
+    const semParte = await req('POST', `/staff/api/legal/peticionar/${petId}/gerar`, { corpo: { tipo_peca: 'contestacao', orgao: 'Vara X', parte: '' } });
+    assert.equal(semParte.st, 400);
+  });
+
+  await t('peticionar: sem chave de IA vai para a fila com as cópias no contexto_peticao', async () => {
+    const g = await req('POST', `/staff/api/legal/peticionar/${petId}/gerar`, {
+      corpo: { tipo_peca: 'contestacao', orgao: '3a Vara Civel de Brasilia', parte: 'Cliente Teste', polo: 'passivo', objetivo: 'contestar alegando ausencia de dano' },
+    });
+    assert.equal(g.st, 200);
+    assert.equal(g.json.situacao, 'pendente');       // suíte roda sempre em modo fila
+    assert.ok(g.json.draft_id, 'peça criada para receber a minuta');
+    assert.equal(g.json.especialista, 'Advogado Sênior Cível');
+    // o agente local recebe as CÓPIAS montadas (não cabem no campo pergunta)
+    const pend = await req('GET', '/staff/api/legal/ia/consultas/pendentes', { chave: true });
+    const meu = pend.json.pendentes.find(q => q.id === g.json.query_id);
+    assert.ok(meu, 'consulta na fila');
+    assert.ok(meu.contexto_peticao && meu.contexto_peticao.includes('cobranca indevida'), 'cópias entregues ao agente');
+    assert.ok(meu.agente_prompt.includes('civil'), 'prompt do especialista sênior vai junto');
+    assert.ok(meu.pergunta.includes('ADVOGADO SÊNIOR'), 'instrução pede padrão sênior');
+    assert.ok(meu.pergunta.includes('3a Vara Civel'), 'órgão informado vai na instrução');
+  });
+
+  await t('peticionar: minuta da IA não é aprovada nem protocolada sem advogado', async () => {
+    const ficha = await req('GET', '/staff/api/legal/peticionar/' + petId);
+    const draftId = ficha.json.peticionamento.draft_id;
+    // sem conteúdo ainda (fila): não avança de jeito nenhum
+    const semConteudo = await req('PATCH', `/staff/api/legal/pecas/${draftId}`, { corpo: { status: 'aprovado' } });
+    assert.equal(semConteudo.st, 400);
+    // agente local devolve a minuta (via PUBLISH_KEY) → nasce marcada como IA
+    const v = await req('POST', `/staff/api/legal/pecas/${draftId}/versoes`, {
+      chave: true, corpo: { conteudo: 'MINUTA — SUJEITA A REVISÃO\n\nEXCELENTÍSSIMO...\n\nPONTOS DE ATENÇÃO: conferir prazo.\nFONTES: art. 337 CPC.' },
+    });
+    assert.equal(v.st, 200);
+    const protocolar = await req('PATCH', `/staff/api/legal/pecas/${draftId}`, { corpo: { status: 'protocolado' } });
+    assert.equal(protocolar.st, 400, 'peça de IA não protocola sem aprovação humana');
+  });
+
+  await t('peticionar: avulso (processo não cadastrado) exige número digitado', async () => {
+    const p = await req('POST', '/staff/api/legal/peticionar', { corpo: { tipo_peca: 'peticao-inicial' } });
+    assert.equal(p.st, 200);
+    assert.equal(p.json.peticionamento.case_id, null);
+    const semNumero = await req('POST', `/staff/api/legal/peticionar/${p.json.peticionamento.id}/gerar`, {
+      corpo: { tipo_peca: 'peticao-inicial', orgao: 'Vara Civel', parte: 'Fulano' },
+    });
+    assert.equal(semNumero.st, 400, 'sem processo vinculado, o número é obrigatório');
   });
 
   // 6. prazos: calculadora + trava de validação humana
@@ -485,6 +590,82 @@ async function rodar() {
   await t('ponte assinante: assinatura inativa (acesso não liberado) → 403', async () => {
     const r = await req('GET', '/juridico/api/legal/clientes', { fake: { uid: 'b4', acesso: false } });
     assert.equal(r.st, 403);
+  });
+
+  // ---- as duas entregas de 03/08/2026 valem IGUAL para o assinante ----
+  await t('ponte assinante: acervo de publicações completo (íntegra + virar andamento)', async () => {
+    const f = { uid: 'bp' };
+    const proc = await req('POST', '/juridico/api/legal/processos', { fake: f, corpo: { numero_cnj: '0700222-33.2026.8.07.0001', tribunal: 'TJDFT', assunto: 'Caso do assinante' } });
+    assert.equal(proc.st, 200);
+    const texto = '0700222-33.2026.8.07.0001 - INTIMACAO do assinante: manifeste-se em 15 dias.';
+    const pub = await req('POST', '/juridico/api/legal/publicacoes', { fake: f, corpo: { fonte: 'djen', data_publicacao: '2026-08-01', orgao: 'TJDFT', texto, tem_prazo: true } });
+    assert.equal(pub.st, 200);
+    assert.equal(pub.json.case_id, proc.json.processo.id, 'vinculou pelo CNJ no banco DO ASSINANTE');
+    // ficha com a íntegra
+    const ficha = await req('GET', '/juridico/api/legal/publicacoes/' + pub.json.id, { fake: f });
+    assert.equal(ficha.st, 200);
+    assert.equal(ficha.json.publicacao.texto, texto);
+    assert.ok(ficha.json.publicacao.andamento, 'virou andamento no processo do assinante');
+    // acervo separa novas de anteriores e conta certo
+    const lista = await req('GET', '/juridico/api/legal/publicacoes', { fake: f });
+    assert.equal(lista.json.total, 1);
+    // isolamento: o escritório interno não enxerga nada disso
+    const staff = await req('GET', '/staff/api/legal/publicacoes?busca=INTIMACAO%20do%20assinante');
+    assert.equal(staff.json.publicacoes.length, 0, 'publicação do assinante não vaza para o interno');
+  });
+
+  await t('ponte assinante: guia Peticionar inteira (cópias → contexto → fila do especialista)', async () => {
+    const f = { uid: 'bq' };
+    const p = await req('POST', '/juridico/api/legal/peticionar', {
+      fake: f, corpo: { tipo_peca: 'contestacao', orgao: '2a Vara Civel', numero_processo: '0700444-55.2026.8.07.0001', parte: 'Cliente do Escritorio Assinante', polo: 'passivo' },
+    });
+    assert.equal(p.st, 200);
+    const pid = p.json.peticionamento.id;
+    // cópia dos autos vira contexto extraído, no banco do próprio escritório
+    const cop = await req('POST', `/juridico/api/legal/peticionar/${pid}/copias`, {
+      fake: f, corpo: { titulo: 'Inicial', nome_original: 'inicial.txt', mime: 'text/plain', base64: Buffer.from('O autor alega cobranca indevida de tarifa bancaria.', 'utf8').toString('base64') },
+    });
+    assert.equal(cop.st, 200);
+    assert.ok(cop.json.caracteres > 20, 'texto extraído para o assinante');
+    const ficha = await req('GET', '/juridico/api/legal/peticionar/' + pid, { fake: f });
+    assert.equal(ficha.json.peticionamento.copias.length, 1);
+    // geração entra na fila com o especialista sênior
+    const g = await req('POST', `/juridico/api/legal/peticionar/${pid}/gerar`, { fake: f, corpo: {} });
+    assert.equal(g.st, 200);
+    assert.ok(g.json.draft_id);
+    assert.ok(g.json.especialista.includes('Sênior'), 'redator é o advogado sênior da especialidade');
+    // isolamento: o peticionamento não aparece para o escritório interno
+    const staff = await req('GET', '/staff/api/legal/peticionar');
+    assert.ok(!staff.json.peticionamentos.some(x => x.parte === 'Cliente do Escritorio Assinante'), 'peticionamento do assinante é isolado');
+  });
+
+  await t('ponte assinante: Peticionar é gateado pelo módulo do plano (pecas)', async () => {
+    // plano sem 'pecas': a guia inteira barra, mesmo com processos liberados
+    const semPecas = { uid: 'br', modulos: 'processos,publicacoes,documentos' };
+    const bloq = await req('GET', '/juridico/api/legal/peticionar', { fake: semPecas });
+    assert.equal(bloq.st, 403);
+    assert.ok(/pecas/.test(bloq.json.erro), 'erro diz qual módulo falta: ' + bloq.json.erro);
+    const gerar = await req('POST', '/juridico/api/legal/peticionar/qualquer/gerar', { fake: semPecas, corpo: {} });
+    assert.equal(gerar.st, 403);
+    // publicações seguem liberadas nesse mesmo plano
+    const pub = await req('GET', '/juridico/api/legal/publicacoes', { fake: semPecas });
+    assert.equal(pub.st, 200);
+    // e um plano SEM publicacoes barra o acervo
+    const semPub = await req('GET', '/juridico/api/legal/publicacoes', { fake: { uid: 'bs', modulos: 'processos,pecas' } });
+    assert.equal(semPub.st, 403);
+  });
+
+  await t('peticionar: atalho a partir da publicação já traz o ato como contexto', async () => {
+    const lista = await req('GET', '/staff/api/legal/publicacoes?busca=laudo%20pericial');
+    const pubId = lista.json.publicacoes[0].id;
+    const p = await req('POST', '/staff/api/legal/peticionar', { corpo: { tipo_peca: 'manifestacao', origem: { tipo: 'publicacao', id: pubId } } });
+    assert.equal(p.st, 200);
+    const pet = p.json.peticionamento;
+    assert.ok(pet.orgao, 'órgão veio da publicação');
+    assert.equal(pet.copias.length, 1, 'texto da publicação entrou como contexto');
+    assert.ok(pet.contexto_caracteres > 50);
+    const { peticionar } = require('./index');
+    assert.ok(peticionar.contextoPeticao(pet.id).texto.includes('laudo pericial'), 'a intimação está no contexto da peça');
   });
 
   // ==================================================================

@@ -36,6 +36,7 @@ const LG = {
     if (LG.perm.ver_processos) t.push(['agenda', '📅 Agenda']);
     if (LG.perm.ver_processos) t.push(['audiencias', '🏛️ Audiências']);
     if (LG.perm.gerir_publicacoes) t.push(['publicacoes', '📰 Publicações']);
+    if (LG.perm.ver_documentos) t.push(['peticionar', '✍️ Peticionar']);
     if (LG.perm.gerir_tarefas) t.push(['tarefas', '✅ Tarefas']);
     if (LG.perm.ver_documentos) t.push(['documentos', '📂 Documentos']);
     if (LG.perm.ver_documentos) t.push(['pecas', '📝 Peças']);
@@ -57,7 +58,7 @@ const LG = {
   body() { return document.getElementById('lg-body'); },
   async pintar() {
     try {
-      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, tarefas: LG.vTarefas, documentos: LG.vDocumentos, pecas: LG.vPecas, contratos: LG.vContratos, financeiro: LG.vFinanceiro, relatorios: LG.vRelatorios, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
+      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, peticionar: LG.vPeticionar, tarefas: LG.vTarefas, documentos: LG.vDocumentos, pecas: LG.vPecas, contratos: LG.vContratos, financeiro: LG.vFinanceiro, relatorios: LG.vRelatorios, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
       if (v) await v();
     } catch (e) { LG.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -199,6 +200,7 @@ const LG = {
   async verProcesso(id) {
     const { processo: p } = await LG.api('GET', '/processos/' + id);
     LG.body().innerHTML = `<div class="card"><button class="btn secund peq" onclick="LG.pintar()">← Voltar</button>
+      ${LG.perm.criar_documentos ? `<button class="btn secund peq" onclick="LG.peticionarDe('processo','${p.id}')">✍️ Peticionar neste processo</button>` : ''}
       <h3 style="margin:.6rem 0 0">${esc(p.numero_cnj || '(consultivo)')} ${LG.chip(p.status)} ${p.sigiloso ? '🔒' : ''}</h3>
       <p class="sub">${esc(p.tribunal || '')} · ${esc(p.classe || '')} · Núcleo: ${esc(p.nucleo || '—')} · Cliente: ${esc(p.cliente_nome || '—')} · Valor: ${LG.brl(p.valor_causa)} · Risco: ${esc(p.risco || '—')}</p>
       <p>${esc(p.assunto || '')}</p>
@@ -257,7 +259,8 @@ const LG = {
     h += `<div class="card">${prazos.length ? tabela(['Título', 'CNJ', 'Fatal', 'Interna', 'Prioridade', 'Status', 'Validação', ''], prazos.map(z => [
       esc(z.titulo), esc(z.numero_cnj || '—'), LG.dt(z.data_fatal), LG.dt(z.data_interna), LG.chip(z.prioridade), LG.chip(z.status),
       z.calculo_sugerido && !z.validado_por ? '⚠️ pendente' : (z.validado_por ? '✅ ' + esc(z.validado_por) : '—'),
-      LG.perm.gerir_prazos ? `<button class="btn secund peq" onclick="LG.mudarPrazo('${z.id}','${z.status}')">Status</button>` : '',
+      (LG.perm.gerir_prazos ? `<button class="btn secund peq" onclick="LG.mudarPrazo('${z.id}','${z.status}')">Status</button> ` : '')
+      + (LG.perm.criar_documentos ? `<button class="btn secund peq" onclick="LG.peticionarDe('prazo','${z.id}')">✍️ Peticionar</button>` : ''),
     ])) : '<p class="vazio">Nenhum prazo em aberto.</p>'}</div>`;
     LG.body().innerHTML = h;
     const fc = document.getElementById('lg-calc-form');
@@ -543,7 +546,8 @@ const LG = {
                 <button class="btn peq" onclick="LG.pubParaAndamento('${p.id}', true)">📌 Vincular e salvar como andamento</button>`}
          </div>`;
 
-    LG.body().innerHTML = `<div class="acoes"><button class="btn secund peq" onclick="LG.pintar()">← Voltar às publicações</button></div>
+    LG.body().innerHTML = `<div class="acoes"><button class="btn secund peq" onclick="LG.pintar()">← Voltar às publicações</button>
+      ${LG.perm.criar_documentos ? `<button class="btn peq" onclick="LG.peticionarDe('publicacao','${p.id}')">✍️ Peticionar a partir desta publicação</button>` : ''}</div>
       <section class="vx-card"><div class="vx-card-head"><div>
         <h2>📰 Publicação de ${LG.dt(p.data_publicacao)}</h2>
         <p class="vx-hint vx-mb0">${esc(p.orgao || 'Órgão não informado')}</p></div></div>
@@ -590,6 +594,199 @@ const LG = {
       LGUI.toast('Status: ' + novo.replace(/_/g, ' '), 'ok');
       LG.verPub(id);
     } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+
+  // -------------------------------------------------------- PETICIONAR
+  // Guia do Contencioso: sobe as cópias dos autos (viram contexto de verdade),
+  // informa órgão/número/parte/tipo e manda o advogado sênior de IA redigir.
+  async vPeticionar() {
+    const e = await LG.api('GET', '/peticionar');
+    const podeCriar = !!LG.perm.criar_documentos;
+    let h = `<div class="aviso">✍️ <b>Peticionar</b>: anexe as <b>cópias do processo</b> (viram o contexto — o texto é extraído do PDF/DOCX),
+      informe órgão, número, parte e tipo de petição, e o <b>agente jurídico especialista</b> redige a minuta.
+      ${e.ia_direta ? 'IA no modo <b>direto</b> — a minuta volta na hora.' : 'IA no modo <b>fila</b> — o agente jurídico local devolve a minuta.'}
+      Tudo sai carimbado <b>MINUTA</b>: revisão de advogado é obrigatória antes de protocolar.</div>`;
+    if (podeCriar) {
+      h += `<details class="cr-box" open><summary class="cr-sum">➕ Novo peticionamento</summary>
+        <form class="form" id="lg-pet-form" style="max-width:760px;margin-top:12px">
+          <label>Processo do sistema (opcional — preenche órgão, número e parte)
+            <select id="lgq-case"><option value="">— peticionamento avulso (processo não cadastrado) —</option>
+            ${e.processos.map(p => `<option value="${p.id}">${esc(p.numero_cnj || '(sem número)')} — ${esc((p.assunto || '').slice(0, 60))}</option>`).join('')}</select></label>
+          <div class="hi-grid">
+            <label>Tipo de petição * <select id="lgq-tipo" required><option value="">— escolha —</option>
+              ${e.tipos.map(t => `<option value="${t}">${t.replace(/-/g, ' ')}</option>`).join('')}</select></label>
+            <label>Número do processo <input id="lgq-num" maxlength="60" placeholder="0700123-45.2026.8.07.0001"></label>
+          </div>
+          <label>Órgão / juízo * <input id="lgq-orgao" maxlength="200" placeholder="3ª Vara Cível de Brasília — TJDFT"></label>
+          <div class="hi-grid">
+            <label>Nome da parte representada * <input id="lgq-parte" maxlength="200"></label>
+            <label>Polo <select id="lgq-polo"><option value="">—</option><option value="ativo">ativo</option><option value="passivo">passivo</option><option value="terceiro">terceiro</option></select></label>
+          </div>
+          <label>Objetivo da peça <input id="lgq-obj" maxlength="1000" placeholder="ex.: contestar alegando prescrição e ausência de dano"></label>
+          <button class="btn" type="submit">Abrir peticionamento</button><p id="lgq-msg" class="erro"></p>
+        </form></details>`;
+    }
+    h += `<section class="vx-card"><div class="vx-card-head"><div><h2>📋 Peticionamentos</h2>
+      <p class="vx-hint vx-mb0">Clique para anexar cópias, ajustar os dados e gerar a minuta.</p></div></div>
+      ${e.peticionamentos.length ? `<div class="vx-acervo">${e.peticionamentos.map(p => `
+        <button type="button" class="vx-acervo-item" data-novo="${p.status === 'rascunho' && !p.draft_id ? 1 : 0}" onclick="LG.verPeticionamento('${p.id}')">
+          <span class="vx-acervo-data">${LG.dt(p.criado_em)}<br><span class="vx-hint">${esc((p.tipo_peca || 'sem tipo').replace(/-/g, ' '))}</span></span>
+          <span class="vx-acervo-corpo">
+            <span class="vx-acervo-tit">${esc(p.orgao || 'Órgão a definir')}${p.numero_processo || p.numero_cnj ? ' · ' + esc(p.numero_processo || p.numero_cnj) : ''}</span>
+            <span class="vx-acervo-txt">${esc(p.parte || 'Parte a definir')} · ${p.copias} cópia(s) de contexto</span>
+          </span>
+          <span class="vx-acervo-tags">${LG.chip(p.status)}${p.draft_id ? '<span class="chip">📝 minuta</span>' : ''}</span>
+        </button>`).join('')}</div>` : '<p class="vazio">Nenhum peticionamento ainda.</p>'}</section>`;
+    LG.body().innerHTML = h;
+    const f = document.getElementById('lg-pet-form');
+    if (f) f.onsubmit = async (ev) => {
+      ev.preventDefault(); const msg = document.getElementById('lgq-msg'); msg.textContent = '';
+      try {
+        const r = await LG.api('POST', '/peticionar', {
+          case_id: document.getElementById('lgq-case').value, tipo_peca: document.getElementById('lgq-tipo').value,
+          numero_processo: document.getElementById('lgq-num').value, orgao: document.getElementById('lgq-orgao').value,
+          parte: document.getElementById('lgq-parte').value, polo: document.getElementById('lgq-polo').value,
+          objetivo: document.getElementById('lgq-obj').value,
+        });
+        LG.verPeticionamento(r.peticionamento.id);
+      } catch (er) { msg.textContent = er.message; }
+    };
+  },
+
+  async verPeticionamento(id) {
+    const { peticionamento: p } = await LG.api('GET', '/peticionar/' + id);
+    const e = await LG.api('GET', '/peticionar');
+    const podeCriar = !!LG.perm.criar_documentos;
+    const copias = p.copias.map(c => {
+      const ok = c.caracteres > 0;
+      return [
+        esc(c.titulo),
+        ok ? `${(c.caracteres / 1000).toFixed(1)} mil caracteres` : '<span style="color:var(--vx-danger)">sem texto extraído</span>',
+        esc(c.metodo || '—'),
+        podeCriar ? `<button class="btn secund peq" onclick="LG.tirarCopia('${p.id}','${c.id}')">✕ tirar do contexto</button>` : '',
+      ];
+    });
+    LG.body().innerHTML = `<div class="acoes"><button class="btn secund peq" onclick="LG.pintar()">← Voltar aos peticionamentos</button></div>
+      <section class="vx-card"><div class="vx-card-head"><div>
+        <h2>✍️ ${esc((p.tipo_peca || 'petição').replace(/-/g, ' '))} ${LG.chip(p.status)}</h2>
+        <p class="vx-hint vx-mb0">${esc(p.orgao || 'órgão a definir')} · ${esc(p.numero_processo || p.numero_cnj || 'sem número')}</p></div></div>
+        ${p.detalhe ? `<p class="vx-hint">${esc(p.detalhe)}</p>` : ''}
+        <form class="form" id="lg-pet-ed" style="max-width:760px">
+          <div class="hi-grid">
+            <label>Tipo de petição <select id="lgw-tipo">${e.tipos.map(t => `<option value="${t}"${t === p.tipo_peca ? ' selected' : ''}>${t.replace(/-/g, ' ')}</option>`).join('')}</select></label>
+            <label>Número do processo <input id="lgw-num" maxlength="60" value="${esc(p.numero_processo || '')}"></label>
+          </div>
+          <label>Órgão / juízo <input id="lgw-orgao" maxlength="200" value="${esc(p.orgao || '')}"></label>
+          <div class="hi-grid">
+            <label>Nome da parte <input id="lgw-parte" maxlength="200" value="${esc(p.parte || '')}"></label>
+            <label>Polo <select id="lgw-polo">${['', 'ativo', 'passivo', 'terceiro'].map(v => `<option value="${v}"${v === p.polo ? ' selected' : ''}>${v || '—'}</option>`).join('')}</select></label>
+          </div>
+          <label>Objetivo da peça <input id="lgw-obj" maxlength="1000" value="${esc(p.objetivo || '')}"></label>
+          <label>Advogado sênior (especialista) <select id="lgw-ag"><option value="">— sugerido: ${esc(p.especialista_sugerido || 'processo-civil')} —</option>
+            ${e.especialistas.map(a => `<option value="${a.id}"${a.id === p.agente ? ' selected' : ''}>${esc(a.nome)}</option>`).join('')}</select></label>
+          ${podeCriar ? '<button class="btn secund peq" type="submit">Salvar dados</button>' : ''}<p id="lgw-msg" class="erro"></p>
+        </form></section>
+
+      <section class="vx-card"><div class="vx-card-head"><div><h2>📎 Cópias do processo (contexto)</h2>
+        <p class="vx-hint vx-mb0">O texto é extraído na hora e vira a base factual da peça. PDF escaneado não tem texto — nesse caso cole o conteúdo.</p></div></div>
+        ${p.copias.length ? tabela(['Arquivo', 'Texto extraído', 'Método', ''], copias) : '<p class="vazio">Nenhuma cópia anexada. Sem cópias, a IA só tem os dados digitados.</p>'}
+        <p class="vx-hint">Contexto atual: <b>${(p.contexto_caracteres / 1000).toFixed(1)} mil caracteres</b>.</p>
+        ${podeCriar ? `<div class="hi-grid" style="margin-top:10px">
+          <label>Anexar cópia (PDF, DOCX, TXT — até 10 MB) <input id="lgw-arq" type="file" accept=".pdf,.docx,.odt,.txt,.md,.csv,.xlsx"></label>
+          <label>Título (opcional) <input id="lgw-tit" maxlength="200" placeholder="ex.: petição inicial e documentos"></label>
+        </div>
+        <div class="acoes"><button class="btn peq" onclick="LG.subirCopia('${p.id}')">📎 Anexar e extrair texto</button></div>
+        <details class="cr-box" style="margin-top:10px"><summary class="cr-sum">⌨️ Colar texto (PDF escaneado ou trecho dos autos)</summary>
+          <div style="padding:0 16px 16px">
+            <label>Título <input id="lgw-ctit" maxlength="200" placeholder="ex.: sentença (fls. 210-218)"></label>
+            <label>Texto <textarea id="lgw-ctexto" rows="7" placeholder="Cole aqui o conteúdo da cópia..."></textarea></label>
+            <button class="btn peq" onclick="LG.colarCopia('${p.id}')">Adicionar ao contexto</button>
+          </div></details>` : ''}
+      </section>
+
+      <section class="vx-card"><div class="vx-card-head"><div><h2>🤖 Gerar a minuta</h2>
+        <p class="vx-hint vx-mb0">O especialista escolhido redige lendo as cópias. A peça nasce como MINUTA e não pode ser aprovada nem protocolada pela IA.</p></div></div>
+        ${p.peca ? (p.peca.versao_atual
+          ? `<p class="vx-mb0">📝 Minuta pronta — <b>v${p.peca.versao_atual}</b>, status ${LG.chip(p.peca.status)}.
+              <span class="vx-hint">${esc(p.peca.pontos_atencao || '')}</span></p>`
+          : `<p class="vx-mb0">⏳ Peça criada e <b>na fila do agente jurídico local</b> — a minuta aparece aqui quando ele responder.</p>`)
+          + `<div class="acoes"><button class="btn peq" onclick="LG.verPeca('${p.draft_id}')">Abrir a peça</button>
+          ${podeCriar ? `<button class="btn secund peq" onclick="LG.gerarPeticao('${p.id}')">↻ ${p.peca.versao_atual ? 'Gerar nova versão' : 'Reenviar'}</button>` : ''}</div>`
+        : (podeCriar ? `<div class="acoes"><button class="btn" onclick="LG.gerarPeticao('${p.id}')">✍️ Redigir minuta com o advogado sênior</button></div>`
+          : '<p class="vazio">Sem permissão para gerar peças.</p>')}
+        <p id="lgw-ger" class="sub"></p></section>`;
+
+    const fe = document.getElementById('lg-pet-ed');
+    if (fe) fe.onsubmit = async (ev) => {
+      ev.preventDefault();
+      try { await LG.salvarPeticionamento(id); LGUI.toast('Dados salvos.', 'ok'); }
+      catch (er) { document.getElementById('lgw-msg').textContent = er.message; }
+    };
+  },
+  _dadosPeticao() {
+    return {
+      tipo_peca: (document.getElementById('lgw-tipo') || {}).value || '',
+      numero_processo: (document.getElementById('lgw-num') || {}).value || '',
+      orgao: (document.getElementById('lgw-orgao') || {}).value || '',
+      parte: (document.getElementById('lgw-parte') || {}).value || '',
+      polo: (document.getElementById('lgw-polo') || {}).value || '',
+      objetivo: (document.getElementById('lgw-obj') || {}).value || '',
+      agente: (document.getElementById('lgw-ag') || {}).value || '',
+    };
+  },
+  async salvarPeticionamento(id) { await LG.api('PATCH', '/peticionar/' + id, LG._dadosPeticao()); },
+  // atalho a partir do ato que gerou a necessidade da peça: publicação, prazo
+  // ou processo. Já abre com órgão/número/parte e com o TEXTO do ato no contexto.
+  async peticionarDe(tipo, id) {
+    try {
+      const corpo = tipo === 'processo' ? { case_id: id } : { origem: { tipo, id } };
+      const r = await LG.api('POST', '/peticionar', corpo);
+      LG.tab = 'peticionar';
+      LGUI.toast('Peticionamento aberto — confira os dados e o contexto.', 'ok');
+      LG.render();
+      LG.verPeticionamento(r.peticionamento.id);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+  async subirCopia(id) {
+    const arq = (document.getElementById('lgw-arq') || {}).files && document.getElementById('lgw-arq').files[0];
+    if (!arq) { LGUI.toast('Escolha um arquivo.', 'erro'); return; }
+    if (arq.size > 10 * 1024 * 1024) { LGUI.toast('Arquivo acima de 10 MB.', 'erro'); return; }
+    LGUI.toast('Enviando e extraindo o texto…');
+    try {
+      const r = await LG.api('POST', `/peticionar/${id}/copias`, {
+        titulo: (document.getElementById('lgw-tit') || {}).value || '', nome_original: arq.name,
+        mime: arq.type, base64: await arquivoParaBase64(arq),
+      });
+      LGUI.toast(r.ocr_pendente ? r.detalhe : `Cópia anexada: ${(r.caracteres / 1000).toFixed(1)} mil caracteres de contexto.`, r.ocr_pendente ? 'erro' : 'ok');
+      LG.verPeticionamento(id);
+    } catch (er) { LGUI.toast(er.message, 'erro'); }
+  },
+  async colarCopia(id) {
+    const texto = (document.getElementById('lgw-ctexto') || {}).value || '';
+    try {
+      const r = await LG.api('POST', `/peticionar/${id}/texto`, { titulo: (document.getElementById('lgw-ctit') || {}).value || '', texto });
+      LGUI.toast(`Texto adicionado: ${(r.caracteres / 1000).toFixed(1)} mil caracteres.`, 'ok');
+      LG.verPeticionamento(id);
+    } catch (er) { LGUI.toast(er.message, 'erro'); }
+  },
+  async tirarCopia(id, docId) {
+    await LG.api('DELETE', `/peticionar/${id}/copias/${docId}`);
+    LGUI.toast('Cópia fora do contexto (o arquivo continua arquivado).', 'ok');
+    LG.verPeticionamento(id);
+  },
+  async gerarPeticao(id) {
+    const alvo = document.getElementById('lgw-ger');
+    if (alvo) alvo.textContent = '✍️ Redigindo… peça longa pode levar um minuto.';
+    try {
+      const r = await LG.api('POST', `/peticionar/${id}/gerar`, LG._dadosPeticao());
+      LGUI.toast(r.situacao === 'gerada'
+        ? `Minuta v${r.versao} redigida por ${r.especialista} (${r.copias_usadas} cópia(s)).`
+        : 'Pedido na fila do agente jurídico local.', 'ok');
+      LG.verPeticionamento(id);
+    } catch (er) {
+      if (alvo) alvo.textContent = '';
+      LGUI.toast(er.message, 'erro');
+    }
   },
 
   // -------------------------------------------------------- TAREFAS

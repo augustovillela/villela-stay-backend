@@ -24,7 +24,7 @@ function resolverTenant(req) {
 }
 
 function registrarRotasStaff(app, deps) {
-  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
   const jwt = require('jsonwebtoken');
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
@@ -427,12 +427,64 @@ function registrarRotasStaff(app, deps) {
   }));
   // fila para o agente jurídico local (PUBLISH_KEY): consultas sem resposta + contexto RAG
   app.get('/staff/api/legal/ia/consultas/pendentes', requirePublishOrSession, pode('usar_ia'), h((req, res) => {
-    const pendentes = repo.IA.pendentes(req.query.limite).map(q => ({
-      ...q,
-      agente_prompt: (q.agente && (ia.agente(q.agente) || {}).system_prompt) || '',
-      contexto_rag: ia.montarContexto(q.pergunta, { case_id: q.case_id }).texto,
-    }));
+    const pendentes = repo.IA.pendentes(req.query.limite).map(q => {
+      const ctx = q.contexto || {}; // repo.IA.pendentes já entrega o contexto parseado
+      const base = {
+        ...q,
+        agente_prompt: (q.agente && (ia.agente(q.agente) || {}).system_prompt) || '',
+        contexto_rag: ia.montarContexto(q.pergunta, { case_id: q.case_id }).texto,
+      };
+      // Pedido vindo da guia Peticionar: a base factual são as CÓPIAS DOS AUTOS,
+      // grandes demais para o campo `pergunta` (8000 chars). Vão por aqui, montadas
+      // na hora, para o agente local redigir com os autos à mão.
+      if (ctx.peticionar && ctx.petition_id) {
+        try { base.contexto_peticao = peticionar.contextoPeticao(ctx.petition_id).texto; } catch (_) { base.contexto_peticao = ''; }
+      }
+      return base;
+    });
     res.json({ pendentes, guardrails: llm.GUARDRAILS });
+  }));
+
+  // ------------------------------------------------------- PETICIONAR (guia própria, grupo Contencioso)
+  // Abre o peticionamento -> sobe as cópias dos autos (viram texto/contexto) ->
+  // órgão/número/parte/tipo -> agente sênior redige a MINUTA.
+  // As travas de peça continuam valendo: nasce gerado_por_ia=1, não aprova nem protocola sozinha.
+  app.get('/staff/api/legal/peticionar', requireAuth, pode('ver_documentos'), h((req, res) => {
+    res.json(peticionar.estado(req.query));
+  }));
+  app.get('/staff/api/legal/peticionar/:id', requireAuth, pode('ver_documentos'), h((req, res) => {
+    res.json({ peticionamento: peticionar.obter(req.params.id) });
+  }));
+  app.post('/staff/api/legal/peticionar', requireAuth, pode('criar_documentos'), h((req, res) => {
+    const p = peticionar.abrir(req.body || {}, quemFez(req));
+    auditar(req, 'peticionar.abrir', 'petition_requests', p.id, p.tipo_peca || '(tipo a definir)');
+    res.json({ ok: true, peticionamento: p });
+  }));
+  app.patch('/staff/api/legal/peticionar/:id', requireAuth, pode('criar_documentos'), h((req, res) => {
+    const p = peticionar.atualizar(req.params.id, req.body || {});
+    auditar(req, 'peticionar.editar', 'petition_requests', p.id, p.tipo_peca || '');
+    res.json({ ok: true, peticionamento: p });
+  }));
+  app.post('/staff/api/legal/peticionar/:id/copias', requireAuth, pode('criar_documentos'), ha(async (req, res) => {
+    const r = await peticionar.anexarCopia(req.params.id, req.body || {}, quemFez(req));
+    auditar(req, 'peticionar.copia', 'documents', r.document_id, `${r.titulo} (${r.caracteres} chars)`);
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/legal/peticionar/:id/texto', requireAuth, pode('criar_documentos'), h((req, res) => {
+    const r = peticionar.anexarTexto(req.params.id, req.body || {}, quemFez(req));
+    auditar(req, 'peticionar.texto', 'documents', r.document_id, `${r.titulo} (${r.caracteres} chars)`);
+    res.json({ ok: true, ...r });
+  }));
+  app.delete('/staff/api/legal/peticionar/:id/copias/:docId', requireAuth, pode('criar_documentos'), h((req, res) => {
+    peticionar.removerCopia(req.params.id, req.params.docId);
+    auditar(req, 'peticionar.copia.remover', 'documents', req.params.docId, 'fora do contexto');
+    res.json({ ok: true });
+  }));
+  app.post('/staff/api/legal/peticionar/:id/gerar', requireAuth, pode('criar_documentos'), ha(async (req, res) => {
+    const r = await peticionar.gerar(req.params.id, req.body || {}, quemFez(req));
+    auditar(req, 'peticionar.gerar', 'legal_drafts', r.draft_id,
+      `${r.tipo_peca} · ${r.situacao} · ${r.copias_usadas} cópia(s) · ${r.especialista || ''}`);
+    res.json({ ok: true, ...r, aviso: 'MINUTA gerada por IA — revisão integral por advogado é obrigatória antes de protocolar.' });
   }));
   // o agente local devolve a resposta estruturada da consulta
   app.post('/staff/api/legal/ia/consultas/:id/responder', requirePublishOrSession, pode('usar_ia'), h((req, res) => {

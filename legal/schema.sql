@@ -719,3 +719,40 @@ CREATE TABLE IF NOT EXISTS generated_reports (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_reports_tipo ON generated_reports(tipo, criado_em);
+
+-- =====================================================================
+-- PETICIONAR (guia própria do grupo Contencioso)
+-- O pedido de peticionamento: o advogado sobe as CÓPIAS dos autos, informa
+-- órgão / número / parte / tipo de petição e manda o agente sênior redigir.
+-- O processo é OPCIONAL (dá para peticionar em caso ainda não cadastrado) —
+-- quando existe, o contexto ganha andamentos e publicações dele.
+-- A minuta gerada vive em legal_drafts (draft_id): as travas de peça
+-- continuam sendo as mesmas (IA não aprova, não protocola, não envia).
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS petition_requests (
+  id              TEXT PRIMARY KEY,
+  case_id         TEXT REFERENCES cases(id),   -- NULL = peticionamento avulso
+  orgao           TEXT DEFAULT '',   -- juízo/vara/tribunal a que se endereça
+  numero_processo TEXT DEFAULT '',
+  parte           TEXT DEFAULT '',   -- nome da parte representada
+  polo            TEXT DEFAULT '',   -- ativo|passivo|terceiro
+  tipo_peca       TEXT DEFAULT '',
+  objetivo        TEXT DEFAULT '',   -- o que o advogado quer da peça
+  agente          TEXT DEFAULT '',   -- especialista escolhido (ai_agents.id); vazio = sugerido
+  draft_id        TEXT DEFAULT '',   -- legal_drafts.id da minuta gerada
+  status          TEXT NOT NULL DEFAULT 'rascunho', -- rascunho|gerando|gerado|erro
+  detalhe         TEXT DEFAULT '',
+  criado_por      TEXT DEFAULT '',
+  criado_em       TEXT NOT NULL,
+  atualizado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_petitions_case ON petition_requests(case_id);
+CREATE INDEX IF NOT EXISTS idx_petitions_criado ON petition_requests(criado_em);
+
+-- cópias dos autos que formam o CONTEXTO daquele peticionamento
+CREATE TABLE IF NOT EXISTS petition_sources (
+  petition_id TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  ordem       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (petition_id, document_id)
+);
