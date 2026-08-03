@@ -57,9 +57,27 @@ header.top a{color:var(--creme)}
 /* Número de colunas FIXO (não auto-fit): assim um grupo de 1 ou 2 livros mostra o card do mesmo
    tamanho de um grupo de 3, em vez de esticar para a largura toda. Especificidade acima de
    .grid do villela-saas.css, que carrega depois deste <style>. */
-.wrap .grid.grid-books{grid-template-columns:repeat(3,minmax(0,1fr))}
-@media(max-width:900px){.wrap .grid.grid-books{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.wrap .grid.grid-books{grid-template-columns:minmax(0,1fr)}}
+.wrap .grid.grid-books{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:16px;row-gap:16px}
+/* Mural: as categorias dividem a mesma linha de 3 colunas. Uma categoria ocupa tantas colunas
+   quantos livros tiver (até 3), então 2 livros + 1 livro fecham a linha em vez de gastar duas.
+   O column-gap do mural é igual ao do .grid-books — é isso que faz o card ter exatamente a mesma
+   largura em qualquer grupo. */
+.wrap .lv-mural{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:16px;row-gap:30px;align-items:start}
+.wrap .lv-mural>.lv-grupo{margin:0}
+.lv-g1{grid-column:span 1}.lv-g2{grid-column:span 2}.lv-g3{grid-column:span 3}
+.wrap .lv-g1>.grid.grid-books{grid-template-columns:minmax(0,1fr)}
+.wrap .lv-g2>.grid.grid-books{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wrap .lv-g3>.grid.grid-books{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Telas estreitas: mural vira 2 (depois 1) colunas e cada categoria volta a ocupar a linha toda. */
+@media(max-width:900px){
+  .wrap .lv-mural{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .wrap .lv-mural>.lv-grupo{grid-column:1/-1}
+  .wrap .grid.grid-books,.wrap .lv-g1>.grid.grid-books,.wrap .lv-g2>.grid.grid-books,.wrap .lv-g3>.grid.grid-books{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+  .wrap .lv-mural{grid-template-columns:minmax(0,1fr)}
+  .wrap .grid.grid-books,.wrap .lv-g1>.grid.grid-books,.wrap .lv-g2>.grid.grid-books,.wrap .lv-g3>.grid.grid-books{grid-template-columns:minmax(0,1fr)}
+}
 .card{background:#fff;border:1px solid var(--cinza2);border-radius:14px;overflow:hidden;transition:.15s;display:flex;flex-direction:column}
 .card:hover{box-shadow:0 10px 30px rgba(27,42,74,.12);transform:translateY(-2px)}
 .card .capa{aspect-ratio:3/4;background:var(--cinza);display:flex;align-items:center;justify-content:center;color:var(--suave);overflow:hidden}
@@ -153,6 +171,20 @@ ${body}
 // robô de busca enxergar); com JS, o campo filtra os cards na hora, sem recarregar.
 const SEM_CAT = 'Outros';
 const catDe = (b) => (b.categoria || '').trim() || SEM_CAT;
+// Ordem em que as categorias aparecem (decisão do Augusto, 03/08/2026). É curadoria, não regra
+// derivada dos dados: a sequência foi escolhida para as linhas de 3 fecharem — Desenvolvimento
+// Pessoal (2 livros) + Finanças (1) dividem uma linha e Aeronáutica e Drones fica sozinha no fim.
+// Categoria fora desta lista entra depois, da maior para a menor; "Outros" é sempre a última.
+const ORDEM_CATEGORIAS = ['Negócios e Marketing', 'Tecnologia e IA', 'Desenvolvimento Pessoal', 'Finanças', 'Aeronáutica e Drones'];
+function ordenarCategorias(cats, contas) {
+  const pos = (c) => { const i = ORDEM_CATEGORIAS.indexOf(c); return i < 0 ? ORDEM_CATEGORIAS.length : i; };
+  return cats.slice().sort((a, b) => {
+    if (a === SEM_CAT || b === SEM_CAT) return a === SEM_CAT ? 1 : -1;
+    if (pos(a) !== pos(b)) return pos(a) - pos(b);
+    if ((contas[b] || 0) !== (contas[a] || 0)) return (contas[b] || 0) - (contas[a] || 0);
+    return a.localeCompare(b, 'pt-BR');
+  });
+}
 const semAcento = (s) => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const catSlug = (c) => semAcento(c).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 // tudo que a busca enxerga: categoria, título, subtítulo, autor e o assunto do livro
@@ -168,8 +200,9 @@ function vitrine(livros, filtro = {}) {
 
   const achados = livros.filter(b => { const t = textoBusca(b); return termos.every(x => t.includes(x)); });
   // as abas listam todas as categorias do acervo (não só as do resultado), com a contagem do resultado
-  const todasCats = [...new Set(livros.map(catDe))].sort((a, b) => a === SEM_CAT ? 1 : b === SEM_CAT ? -1 : a.localeCompare(b, 'pt-BR'));
   const contas = {}; for (const b of achados) contas[catDe(b)] = (contas[catDe(b)] || 0) + 1;
+  const totais = {}; for (const b of livros) totais[catDe(b)] = (totais[catDe(b)] || 0) + 1;
+  const todasCats = ordenarCategorias([...new Set(livros.map(catDe))], totais);
   const catAtiva = todasCats.find(c => catSlug(c) === catSlug(catPedida)) || '';
   const visiveis = catAtiva ? achados.filter(b => catDe(b) === catAtiva) : achados;
 
@@ -193,11 +226,13 @@ function vitrine(livros, filtro = {}) {
   let miolo;
   if (!livros.length) miolo = '<p class="muted">Em breve novos títulos. Fale conosco no WhatsApp para novidades.</p>';
   else if (catAtiva || termos.length) miolo = `<div class="grid grid-books">${visiveis.map(card).join('')}</div>`;
-  else miolo = todasCats.map(c => {
+  else miolo = `<div class="lv-mural">` + todasCats.map(c => {
     const doGrupo = visiveis.filter(b => catDe(b) === c);
-    return doGrupo.length ? `<section class="lv-grupo" data-grupo="${esc(catSlug(c))}" id="cat-${esc(catSlug(c))}">
+    // a categoria ocupa uma coluna por livro (no máximo 3) — é o que faz duas categorias
+    // pequenas dividirem a mesma linha em vez de cada uma gastar uma linha inteira
+    return doGrupo.length ? `<section class="lv-grupo lv-g${Math.min(doGrupo.length, 3)}" data-grupo="${esc(catSlug(c))}" id="cat-${esc(catSlug(c))}">
       <h2>${esc(c)}</h2><div class="grid grid-books">${doGrupo.map(card).join('')}</div></section>` : '';
-  }).join('');
+  }).join('') + `</div>`;
 
   const body = `
   <section class="hero"><div class="wrap">
@@ -236,7 +271,11 @@ function vitrine(livros, filtro = {}) {
         c.style.display=ok?'':'none'; if(ok) n++;
       });
       grupos.forEach(function(g){
-        g.style.display=g.querySelectorAll('.card:not([style*="none"])').length?'':'none';
+        // reempacota: a categoria passa a ocupar uma coluna por card ainda visível,
+        // senão a busca deixa buracos na linha
+        var vis=g.querySelectorAll('.card:not([style*="none"])').length;
+        g.style.display=vis?'':'none';
+        g.className='lv-grupo lv-g'+Math.min(vis||1,3);
       });
       if(conta) conta.textContent=n+(n===1?' livro':' livros')+(campo.value.trim()?' para \\u201C'+campo.value.trim()+'\\u201D':'');
       if(vazio) vazio.style.display=n?'none':'';
