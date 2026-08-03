@@ -301,6 +301,30 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal((await req('DELETE', '/staff/api/notas/arquivo/qualquer', { cookie: opCookie })).status, 403, 'arquivo também é restrito ao CEO');
   });
 
+  // ---------- Lista de compras: concluir (✓) x excluir (✕) e a volta dos concluídos ----------
+  await t('compras: ✓ vai p/ concluídos e volta com restaurar; ✕ (?arquivar=nao) não arquiva', async () => {
+    const novo = async (nome) => (await req('POST', '/staff/api/listas/compras', { json: { nome }, cookie: adminCookie })).json.item.id;
+    const ativos = async () => (await req('GET', '/staff/api/listas/compras', { cookie: adminCookie })).json.itens;
+    const conc = async () => (await req('GET', '/staff/api/listas/compras/concluidos', { cookie: adminCookie })).json.itens;
+    const a = await novo('detergente'), b = await novo('papel higiênico');
+    assert.equal((await req('DELETE', '/staff/api/listas/compras/' + a, { cookie: adminCookie })).status, 200);
+    assert.ok((await conc()).some(i => i.id === a), '✓ manda para os concluídos');
+    assert.ok(!(await ativos()).some(i => i.id === a), 'sai da lista ativa');
+    assert.equal((await req('DELETE', '/staff/api/listas/compras/' + b + '?arquivar=nao', { cookie: adminCookie })).status, 200);
+    assert.ok(!(await conc()).some(i => i.id === b), '✕ exclui sem arquivar');
+    const volta = await req('POST', '/staff/api/listas/compras/concluidos/' + a + '/restaurar', { cookie: adminCookie });
+    assert.equal(volta.status, 200);
+    assert.equal(volta.json.item.nome, 'detergente');
+    // id novo + origem portal + sem refId: é o que impede a captura do WhatsApp de apagá-lo de novo
+    assert.notEqual(volta.json.item.id, a); assert.equal(volta.json.item.origem, 'portal'); assert.equal(volta.json.item.refId, '');
+    assert.ok((await ativos()).some(i => i.id === volta.json.item.id), 'voltou para a lista de compras');
+    assert.equal((await conc()).length, 0, 'saiu dos concluídos');
+    assert.equal((await req('POST', '/staff/api/listas/compras/concluidos/' + a + '/restaurar', { cookie: adminCookie })).status, 404);
+    assert.equal((await req('DELETE', '/staff/api/listas/compras/' + volta.json.item.id, { cookie: adminCookie })).status, 200);
+    assert.equal((await req('POST', '/staff/api/listas/compras/concluidos/limpar', { cookie: adminCookie })).status, 200);
+    assert.equal((await conc()).length, 0, 'limpar concluídos zera a lista');
+  });
+
   // ---------- Hóspede: conta corrente / fidelidade / Mercado Pago (dinheiro) ----------
   await t('fidelidade view/config respondem 200 (staff)', async () => {
     assert.equal((await req('GET', '/staff/api/hospede/fidelidade', { cookie: adminCookie })).status, 200);

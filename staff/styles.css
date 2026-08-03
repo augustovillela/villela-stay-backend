@@ -256,6 +256,10 @@ tr:last-child td { border-bottom: none; }
 .linha-item .nome .obs { font-weight: 400; color: var(--concreto-claro); font-size: .9rem; }
 .linha-item .quem { grid-column: 1; font-size: .78rem; color: var(--concreto-claro); white-space: normal; }
 .linha-item .btn.peq { grid-column: 2; grid-row: 1 / span 3; align-self: center; padding: 4px 9px; white-space: nowrap; }
+/* dois botões na mesma linha (✓ concluir e ✕ excluir) — o wrapper ocupa a coluna da direita */
+.linha-item .acoes { grid-column: 2; grid-row: 1 / span 3; align-self: center; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.linha-item.concluido { background: var(--areia, #f6f2ea); }
+.linha-item.concluido .nome { text-decoration: line-through; color: var(--concreto-claro); }
 /* --- Pendências: mural de post-its coloridos + linhas com categoria --- */
 .postit-mural { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin: 4px 0 22px; }
 .postit { background: var(--pcor, #ffe08a); border-radius: 5px; padding: 12px 14px 14px; box-shadow: 0 4px 11px rgba(0,0,0,.14); }

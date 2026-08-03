@@ -5,6 +5,10 @@
 // Compartilha o escopo global com app-core.js (scripts clássicos, sem import/export).
 // ============================================================================
 // --------- Listas (Compras / Manutenção / Pendências) ---------
+// As listas aparecem em ORDEM ALFABÉTICA pelo nome do item (pt-BR: ignora acento e maiúscula,
+// e "10 sabonetes" ordena por número, não por caractere).
+const ordemAlfabetica = (itens) => (itens || []).slice().sort((a, b) =>
+  String(a.nome || '').localeCompare(String(b.nome || ''), 'pt', { sensitivity: 'base', numeric: true }));
 async function renderLista(tipo, titulo, opcoes) {
   const o = opcoes || {};
   const semQtd = !!o.semQtd;
@@ -19,7 +23,11 @@ async function renderLista(tipo, titulo, opcoes) {
       <input id="it-obs" placeholder="Observação (opcional)" style="flex:1;min-width:160px" aria-label="Observação">
       <button class="btn" type="submit">+ Adicionar</button>
     </form>
-    <div id="lista-itens" class="lista-itens"><p class="vazio">Carregando…</p></div>`;
+    <div id="lista-itens" class="lista-itens"><p class="vazio">Carregando…</p></div>
+    ${tipo === 'compras' ? `
+    <h2 class="titulo" style="font-size:1.05rem;margin:26px 0 0">✅ Concluídos</h2>
+    <p class="sub" style="margin-top:2px">O que você marcou como <b>concluído</b> cai aqui. Use <b>↩︎ Incluir</b> para devolver o item à lista de compras acima.</p>
+    <div id="lista-concluidos" class="lista-itens"><p class="vazio">Carregando…</p></div>` : ''}`;
   const f = $('#form-item');
   f.onsubmit = async (ev) => {
     ev.preventDefault();
@@ -35,23 +43,65 @@ async function renderLista(tipo, titulo, opcoes) {
 async function carregarItens(tipo, opcoes) {
   const semQtd = !!(opcoes && opcoes.semQtd);
   const alvo = $('#lista-itens'); if (!alvo) return;
+  const temConcluidos = tipo === 'compras';   // só compras tem a lista de concluídos abaixo
   try {
-    const { itens } = await api('GET', '/listas/' + tipo);
-    if (!itens.length) { alvo.innerHTML = `<p class="vazio">Lista vazia. Adicione o primeiro item acima.</p>`; return; }
-    alvo.innerHTML = `<div class="lista-cab"><span>${itens.length} ${itens.length === 1 ? 'item' : 'itens'}</span><button class="btn peq perigo" id="limpar-lista">Limpar tudo</button></div>` +
+    const r0 = await api('GET', '/listas/' + tipo);
+    const itens = ordemAlfabetica(r0.itens);
+    if (!itens.length) { alvo.innerHTML = `<p class="vazio">Lista vazia. Adicione o primeiro item acima.</p>`; }
+    else {
+      alvo.innerHTML = `<div class="lista-cab"><span>${itens.length} ${itens.length === 1 ? 'item' : 'itens'}</span><button class="btn peq perigo" id="limpar-lista">Limpar tudo</button></div>` +
+        itens.map(i => `
+        <div class="linha-item">
+          ${semQtd ? '' : `<span class="qtd">${esc(i.quantidade || '—')}</span>`}
+          <span class="nome">${esc(i.nome)}${i.obs ? ` <span class="obs">— ${esc(i.obs)}</span>` : ''}</span>
+          <span class="quem">${i.origem === 'whatsapp' ? '📱' : '💻'} ${esc(i.quem || '')} · ${dataBr(i.criadoEm)}</span>
+          <span class="acoes">
+            <button class="btn peq" data-baixa="${i.id}" title="Concluído (vai para a lista de concluídos abaixo)">✓</button>
+            <button class="btn peq perigo" data-excluir-item="${i.id}" title="Excluir da lista (não vai para os concluídos)">✕</button>
+          </span>
+        </div>`).join('');
+      alvo.querySelectorAll('[data-baixa]').forEach(b => b.onclick = async () => {
+        try { await api('DELETE', '/listas/' + tipo + '/' + b.dataset.baixa); carregarItens(tipo, { semQtd }); } catch (e) { alert(e.message); }
+      });
+      alvo.querySelectorAll('[data-excluir-item]').forEach(b => b.onclick = async () => {
+        if (!confirm('Excluir este item da lista? Ele não vai para os concluídos.')) return;
+        try { await api('DELETE', '/listas/' + tipo + '/' + b.dataset.excluirItem + '?arquivar=nao'); carregarItens(tipo, { semQtd }); } catch (e) { alert(e.message); }
+      });
+      const lb = $('#limpar-lista');
+      if (lb) lb.onclick = async () => { if (confirm('Limpar a lista inteira?')) { try { await api('POST', '/listas/' + tipo + '/limpar'); carregarItens(tipo, { semQtd }); } catch (e) { alert(e.message); } } };
+    }
+    if (temConcluidos) carregarConcluidos(tipo, { semQtd });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+// Lista de CONCLUÍDOS (compras): cada item volta para a lista de cima com ↩︎ Incluir.
+async function carregarConcluidos(tipo, opcoes) {
+  const semQtd = !!(opcoes && opcoes.semQtd);
+  const box = $('#lista-concluidos'); if (!box) return;
+  try {
+    const r = await api('GET', '/listas/' + tipo + '/concluidos');
+    const itens = ordemAlfabetica(r.itens);
+    if (!itens.length) { box.innerHTML = `<p class="vazio">Nada concluído ainda.</p>`; return; }
+    box.innerHTML = `<div class="lista-cab"><span>${itens.length}${r.total > itens.length ? ' de ' + r.total : ''} concluído(s)</span><button class="btn peq perigo" id="limpar-concluidos">Limpar concluídos</button></div>` +
       itens.map(i => `
-      <div class="linha-item">
+      <div class="linha-item concluido">
         ${semQtd ? '' : `<span class="qtd">${esc(i.quantidade || '—')}</span>`}
         <span class="nome">${esc(i.nome)}${i.obs ? ` <span class="obs">— ${esc(i.obs)}</span>` : ''}</span>
-        <span class="quem">${i.origem === 'whatsapp' ? '📱' : '💻'} ${esc(i.quem || '')} · ${dataBr(i.criadoEm)}</span>
-        <button class="btn peq" data-baixa="${i.id}" title="Marcar como concluída / remover">✓</button>
+        <span class="quem">✅ ${esc((i.concluidoEm || '').slice(0, 10).split('-').reverse().join('/'))} · ${esc(i.concluidoPor || i.quem || '')}</span>
+        <span class="acoes">
+          <button class="btn peq secund" data-voltar="${i.id}" title="Voltar para a lista de compras">↩︎ Incluir</button>
+          <button class="btn peq perigo" data-apagar-conc="${i.id}" title="Excluir dos concluídos (definitivo)">✕</button>
+        </span>
       </div>`).join('');
-    alvo.querySelectorAll('[data-baixa]').forEach(b => b.onclick = async () => {
-      try { await api('DELETE', '/listas/' + tipo + '/' + b.dataset.baixa); carregarItens(tipo, { semQtd }); } catch (e) { alert(e.message); }
+    box.querySelectorAll('[data-voltar]').forEach(b => b.onclick = async () => {
+      try { await api('POST', '/listas/' + tipo + '/concluidos/' + b.dataset.voltar + '/restaurar'); carregarItens(tipo, { semQtd }); } catch (e) { alert(e.message); }
     });
-    const lb = $('#limpar-lista');
-    if (lb) lb.onclick = async () => { if (confirm('Limpar a lista inteira?')) { try { await api('POST', '/listas/' + tipo + '/limpar'); carregarItens(tipo, { semQtd }); } catch (e) { alert(e.message); } } };
-  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+    box.querySelectorAll('[data-apagar-conc]').forEach(b => b.onclick = async () => {
+      if (!confirm('Excluir dos concluídos? Não dá para desfazer.')) return;
+      try { await api('DELETE', '/listas/' + tipo + '/concluidos/' + b.dataset.apagarConc); carregarConcluidos(tipo, { semQtd }); } catch (e) { alert(e.message); }
+    });
+    const lc = $('#limpar-concluidos');
+    if (lc) lc.onclick = async () => { if (confirm('Limpar TODA a lista de concluídos?')) { try { await api('POST', '/listas/' + tipo + '/concluidos/limpar'); carregarConcluidos(tipo, { semQtd }); } catch (e) { alert(e.message); } } };
+  } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 // --------- Pendências (lista do CEO): categorias/áreas + mural de post-its ---------

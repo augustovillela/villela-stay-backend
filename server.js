@@ -846,6 +846,21 @@ function arquivarPendencias(itens, quem) {
   if (arq.length > 2000) arq.length = 2000;
   salvarPendArquivo(arq);
 }
+// Itens CONCLUÍDOS da lista de compras (✓ no portal ou "já comprei X" no WhatsApp): em vez de sumir,
+// caem numa lista de concluídos logo abaixo, de onde podem VOLTAR para a lista ativa. O botão ✕ da
+// linha exclui sem concluir (?arquivar=nao) — é a diferença entre "comprei" e "não quero mais".
+const COMPRAS_CONCLUIDOS = 'lista-compras-concluidos.json';
+const COMPRAS_CONCLUIDOS_MAX = 500;
+const lerComprasConcluidos = () => { const a = lerJSON(COMPRAS_CONCLUIDOS, []); return Array.isArray(a) ? a : []; };
+const salvarComprasConcluidos = (a) => salvarJSON(COMPRAS_CONCLUIDOS, a);
+function concluirCompras(itens, quem) {
+  if (!itens || !itens.length) return;
+  const arq = lerComprasConcluidos();
+  const when = new Date().toISOString();
+  for (const it of itens) arq.unshift(Object.assign({}, it, { concluidoEm: when, concluidoPor: quem }));
+  if (arq.length > COMPRAS_CONCLUIDOS_MAX) arq.length = COMPRAS_CONCLUIDOS_MAX;
+  salvarComprasConcluidos(arq);
+}
 
 // 'pendencias' é restrita: só admin ou usuário com a área 'ceo' (acesso por sessão).
 // O bypass por PUBLISH_KEY (req.viaChave) continua liberado (seed/automação).
@@ -907,8 +922,52 @@ app.delete('/staff/api/listas/:tipo/:id', requirePublishOrSession, (req, res) =>
     const baixados = itens.filter(i => i.id === req.params.id || i.refId === req.params.id);
     arquivarPendencias(baixados, req.viaChave ? 'WhatsApp/sistema' : (req.user.nome || req.user.email || 'staff'));
   }
+  // Compras: ✓ (concluído) manda para a lista de concluídos; ✕ (?arquivar=nao) exclui sem guardar.
+  if (req.params.tipo === 'compras' && req.query.arquivar !== 'nao') {
+    const baixados = itens.filter(i => i.id === req.params.id || i.refId === req.params.id);
+    concluirCompras(baixados, req.viaChave ? 'WhatsApp/sistema' : (req.user.nome || req.user.email || 'staff'));
+  }
   salvarJSON(arq, restantes);
   res.json({ ok: true, removidos: itens.length - restantes.length });
+});
+
+// ---- Lista de concluídos das COMPRAS: listar, voltar para a lista ativa e excluir de vez ----
+app.get('/staff/api/listas/compras/concluidos', requirePublishOrSession, (req, res) => {
+  const todos = lerComprasConcluidos();
+  res.json({ itens: todos.slice(0, 200), total: todos.length });
+});
+// Voltar para a lista de compras. Entra como item NOVO de origem 'portal' (id novo, sem refId):
+// é o que faz a captura do WhatsApp puxá-lo de volta para a lista local em vez de apagá-lo de novo.
+app.post('/staff/api/listas/compras/concluidos/:id/restaurar', requirePublishOrSession, (req, res) => {
+  const todos = lerComprasConcluidos();
+  const it = todos.find(i => i.id === req.params.id);
+  if (!it) return res.status(404).json({ erro: 'Item não encontrado nos concluídos.' });
+  salvarComprasConcluidos(todos.filter(i => i.id !== req.params.id));
+  const ativos = lerJSON(LISTA_ARQ.compras, []);
+  const volta = {
+    id: novoId(),
+    quantidade: String(it.quantidade || ''),
+    nome: String(it.nome || ''),
+    obs: String(it.obs || ''),
+    categoria: String(it.categoria || ''),
+    origem: 'portal',
+    quem: req.viaChave ? (it.quem || 'WhatsApp') : (req.user.nome || req.user.email || 'staff'),
+    refId: '',
+    criadoEm: new Date().toISOString(),
+  };
+  ativos.push(volta);
+  salvarJSON(LISTA_ARQ.compras, ativos);
+  res.json({ ok: true, item: volta });
+});
+app.delete('/staff/api/listas/compras/concluidos/:id', requirePublishOrSession, (req, res) => {
+  const todos = lerComprasConcluidos();
+  const out = todos.filter(i => i.id !== req.params.id);
+  salvarComprasConcluidos(out);
+  res.json({ ok: true, removidos: todos.length - out.length });
+});
+app.post('/staff/api/listas/compras/concluidos/limpar', requirePublishOrSession, (req, res) => {
+  salvarComprasConcluidos([]);
+  res.json({ ok: true });
 });
 
 // Editar um item (hoje usado p/ trocar a categoria/área da pendência; também nome/obs).
