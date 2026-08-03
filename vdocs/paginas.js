@@ -434,6 +434,7 @@ const TELAS=[
  ['documentos','Documentos',m=>m.permissoes.ver_documentos,'Documentos','📁'],
  ['busca','Busca',m=>m.permissoes.ver_documentos,'Documentos','🔎'],
  ['ia','IA documental',m=>m.permissoes.usar_ia,'Documentos','🤖'],
+ ['redigir','Redigir com IA',m=>m.permissoes.usar_ia,'Documentos','✍️'],
  ['workflows','Aprovações',m=>m.permissoes.ver_documentos,'Fluxos','✅'],
  ['compartilhar','Compartilhamentos',m=>m.permissoes.compartilhar_documento,'Fluxos','🔗'],
  ['integracoes','Integrações',m=>m.permissoes.configurar_integracoes,'Fluxos','🔌'],
@@ -478,7 +479,7 @@ function erroTela(e){
 function ir(t){
   S.tela=t;SEQ++;menu();pintarCabecalho();
   $('corpo').innerHTML=esqueleto();
-  ({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,workflows:vWorkflows,compartilhar:vShares,integracoes:vInteg,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(erroTela);}
+  ({dashboard:vDash,documentos:vDocs,busca:vBusca,ia:vIA,redigir:vRedigir,workflows:vWorkflows,compartilhar:vShares,integracoes:vInteg,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(erroTela);}
 
 async function boot(){
   S.me=await api('GET','/me');
@@ -878,6 +879,50 @@ async function perguntarIA(){
 }
 async function fbIA(id,tipo){try{await api('POST','/ia/mensagens/'+id+'/feedback',{tipo});alert('Feedback registrado — obrigado!');}catch(e){alert(e.message);}return false;}
 
+async function vRedigir(){
+  const [{ativo,tipos,rascunhos},docsR]=await Promise.all([api('GET','/ia/redacoes'),api('GET','/documentos?limite=200').catch(()=>({documentos:[]}))]);
+  S.redDocs=S.redDocs||[];
+  const docs=docsR.documentos||[];
+  $('corpo').innerHTML=
+   (!ativo?'<div class="erro">A IA está indisponível no momento (servidor sem chave de IA). Fale com o suporte.</div>':'')+
+   '<div class="card"><b>✍️ Redigir com IA</b>'+
+   '<p class="sub" style="font-size:12px;margin:.3rem 0 .6rem">Diferente do chat: aqui os documentos escolhidos entram <b>por inteiro</b> no contexto, porque redigir exige ler o documento todo — não um trecho. O resultado nasce como <b>rascunho</b> e só uma pessoa transforma em documento oficial.</p>'+
+   '<label>Documentos que servem de base (segure Ctrl para escolher vários)</label>'+
+   '<select id="red-docs" multiple size="7" style="width:100%">'+docs.map(d=>'<option value="'+d.id+'">'+esc(d.nome)+(d.tipo_documental?' ('+esc(d.tipo_documental)+')':'')+'</option>').join('')+'</select>'+
+   '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+   '<label style="flex:1;min-width:180px">Tipo <select id="red-tipo">'+(tipos||[]).map(x=>'<option value="'+x+'">'+x.replace(/-/g,' ')+'</option>').join('')+'</select></label>'+
+   '<label style="flex:2;min-width:220px">Título (opcional) <input id="red-tit" maxlength="200"></label></div>'+
+   '<label>O que a IA deve redigir <textarea id="red-inst" rows="3" placeholder="ex.: um comunicado interno resumindo as obrigações de renovação dos contratos escolhidos, com as datas"></textarea></label>'+
+   '<button class="btn peq" id="red-btn" onclick="redigirIA()"'+(!ativo?' disabled':'')+'>✍️ Redigir</button></div>'+
+   '<div id="red-saida"></div>'+
+   (rascunhos.length?'<div class="card" style="margin-top:10px"><b>Rascunhos</b>'+
+     '<table style="width:100%;margin-top:6px"><thead><tr><th>Título</th><th>Tipo</th><th>Quando</th><th></th></tr></thead><tbody>'+
+     rascunhos.map(x=>'<tr><td>'+esc(x.titulo)+(x.truncado?' <span class="chip" title="algum documento não coube inteiro no contexto">⚠️ truncado</span>':'')+'</td><td>'+esc(x.tipo||'—')+'</td><td>'+(x.criado_em||'').slice(0,10).split('-').reverse().join('/')+'</td>'+
+     '<td><button class="btn btn-ghost peq" onclick="verRascunho(\''+x.id+'\')">Ler</button> <a href="#" onclick="return delRascunho(\''+x.id+'\')" title="excluir">✕</a></td></tr>').join('')+
+     '</tbody></table></div>':'');
+}
+async function redigirIA(){
+  const sel=[...($('red-docs').selectedOptions||[])].map(o=>o.value);
+  if(!sel.length){alert('Escolha ao menos um documento para servir de base.');return;}
+  const inst=$('red-inst').value.trim();
+  if(!inst){alert('Diga o que a IA deve redigir.');return;}
+  $('red-btn').disabled=true;$('red-btn').textContent='Redigindo…';
+  try{
+    const r=await api('POST','/ia/redigir',{documentos:sel,tipo:$('red-tipo').value,instrucao:inst,titulo:$('red-tit').value});
+    await vRedigir();
+    mostrarRascunho(r.rascunho);
+  }catch(e){alert(e.message);$('red-btn').disabled=false;$('red-btn').textContent='✍️ Redigir';}
+}
+function mostrarRascunho(x){
+  $('red-saida').innerHTML='<div class="card" style="margin-top:10px"><b>'+esc(x.titulo)+'</b>'+
+   (x.truncado?'<div class="aviso" style="margin:.4rem 0">⚠️ Algum documento não coube inteiro no contexto — confira o que a IA declarou nas lacunas.</div>':'')+
+   '<div style="white-space:pre-wrap;background:var(--fundo2,#f7f8fa);border-radius:8px;padding:12px;margin-top:8px;max-height:60vh;overflow:auto;font-size:14px;line-height:1.6">'+esc(x.conteudo||'')+'</div>'+
+   ((x.fontes||[]).length?'<div style="margin-top:.5rem;font-size:12px"><b>Baseado em:</b> '+x.fontes.map(f=>'<span class="chip">📄 '+esc(f.nome)+'</span>').join(' ')+'</div>':'')+
+   '</div>';
+  $('red-saida').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function verRascunho(id){const{rascunho}=await api('GET','/ia/redacoes/'+id);mostrarRascunho(rascunho);}
+async function delRascunho(id){if(!confirm('Excluir este rascunho?'))return false;await api('DELETE','/ia/redacoes/'+id);vRedigir();return false;}
 async function vUsuarios(){
   const d=await api('GET','/usuarios');const papeis=S.me.papeis_embutidos;
   const opts=sel=>Object.entries(papeis).filter(([k])=>k!=='dono').map(([k,n])=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+esc(n)+'</option>').join('');

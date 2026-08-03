@@ -486,6 +486,25 @@ function registrarRotasStaff(app, deps) {
       `${r.tipo_peca} · ${r.situacao} · ${r.copias_usadas} cópia(s) · ${r.especialista || ''}`);
     res.json({ ok: true, ...r, aviso: 'MINUTA gerada por IA — revisão integral por advogado é obrigatória antes de protocolar.' });
   }));
+  // ---- ciclo da peça dentro da guia: refinar, versionar, arquivar, prazo ----
+  app.post('/staff/api/legal/peticionar/:id/refinar', requireAuth, pode('criar_documentos'), ha(async (req, res) => {
+    const r = await peticionar.refinar(req.params.id, req.body || {}, quemFez(req));
+    auditar(req, 'peticionar.refinar', 'legal_drafts', r.draft_id, String((req.body || {}).instrucao || '').slice(0, 150));
+    res.json({ ok: true, ...r, aviso: 'Nova versão — a anterior continua no histórico. Revisão de advogado continua obrigatória.' });
+  }));
+  app.get('/staff/api/legal/pecas/:id/versoes/:n', requireAuth, pode('ver_documentos'), h((req, res) => {
+    res.json({ versao: pecas.Pecas.versao(req.params.id, req.params.n) });
+  }));
+  app.post('/staff/api/legal/peticionar/:id/arquivar', requireAuth, pode('criar_documentos'), h((req, res) => {
+    const r = peticionar.anexarAoProcesso(req.params.id, quemFez(req));
+    auditar(req, 'peticionar.arquivar', 'documents', r.document_id, r.titulo);
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/legal/peticionar/:id/prazo', requireAuth, pode('gerir_prazos'), h((req, res) => {
+    const r = peticionar.abrirPrazoProtocolo(req.params.id, req.body || {}, quemFez(req));
+    auditar(req, 'peticionar.prazo', 'deadlines', r.prazo_id, 'protocolo até ' + r.data_fatal);
+    res.json({ ok: true, ...r, aviso: 'Prazo criado SEM validação — um advogado precisa validar antes de avançar o status.' });
+  }));
   // o agente local devolve a resposta estruturada da consulta
   app.post('/staff/api/legal/ia/consultas/:id/responder', requirePublishOrSession, pode('usar_ia'), h((req, res) => {
     const rid = repo.IA.responder(req.params.id, req.body || {});

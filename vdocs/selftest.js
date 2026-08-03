@@ -462,6 +462,40 @@ function teste(nome, cond) {
   r = await req('POST', '/vdocs/api/ia/perguntar', { body: { pergunta: 'alguma coisa' }, jar: 'bobB' });
   teste('limite ia_consultas_mes do plano bloqueia', r.status === 400 && /Limite do plano/.test(r.dados.erro));
 
+  // ---- REDIGIR com IA: contexto INTEGRAL (não trechos) ----
+  ia.__mockParaTeste(async ({ prompt, schema }) => {
+    ultimoPrompt = prompt;
+    if (schema) return { json: { resposta: 'x', fontes_usadas: [], nao_encontrado: true, nivel_confianca: 'baixo' }, modelo: 'mock-1', usage: {} };
+    return { json: null, texto: 'RASCUNHO GERADO POR IA — revisão humana obrigatória antes de qualquer uso oficial.\n\nCOMUNICADO\n\nO distrato não prevê multa.\n\nLACUNAS E PONTOS DE ATENÇÃO\n- conferir data.', modelo: 'mock-1', usage: { input_tokens: 900, output_tokens: 120 } };
+  });
+
+  r = await req('POST', '/vdocs/api/ia/redigir', { body: { instrucao: 'Comunicado interno', documentos: [] }, jar: 'anaA' });
+  teste('redigir sem documento escolhido → erro claro', r.status === 400 && /Escolha ao menos um documento/.test(r.dados.erro));
+  r = await req('POST', '/vdocs/api/ia/redigir', { body: { instrucao: '', documentos: [docDistrato] }, jar: 'anaA' });
+  teste('redigir sem instrução → erro claro', r.status === 400);
+
+  r = await req('POST', '/vdocs/api/ia/redigir', { body: { instrucao: 'Comunicado interno sobre o distrato', tipo: 'comunicado', documentos: [docDistrato] }, jar: 'anaA' });
+  teste('redigir devolve rascunho carimbado', r.status === 200 && /RASCUNHO GERADO POR IA/.test(r.dados.rascunho.conteudo));
+  teste('rascunho grava a proveniência (fontes)', (r.dados.rascunho.fontes || []).some(f => f.document_id === docDistrato));
+  // a diferença que justifica a onda: documento INTEIRO no prompt, não trecho
+  teste('contexto da redação é INTEGRAL (não snippet do RAG)',
+    ultimoPrompt.includes('DOCUMENTO DA EMPRESA') && ultimoPrompt.includes('Distrato amigavel do contrato de manutencao predial'));
+  teste('prompt proíbe completar com conhecimento geral', /Não complete com conhecimento geral/.test(ultimoPrompt));
+  const rascunhoId = r.dados.rascunho.id;
+
+  r = await req('GET', '/vdocs/api/ia/redacoes', { jar: 'anaA' });
+  teste('rascunhos listados para o tenant', r.status === 200 && r.dados.rascunhos.some(x => x.id === rascunhoId));
+  r = await req('GET', '/vdocs/api/ia/redacoes/' + rascunhoId, { jar: 'bobB' });
+  teste('rascunho de A não abre para B (isolamento)', r.status === 400 || r.status === 403);
+  r = await req('POST', '/vdocs/api/ia/redigir', { body: { instrucao: 'x', documentos: [docDistrato] }, jar: 'bobB' });
+  teste('B não usa documento de A como base', r.status === 400);
+  r = await req('POST', '/vdocs/api/ia/redigir', { body: { instrucao: 'x', documentos: [docDistrato] }, jar: 'carlaA' });
+  teste('papel sem usar_ia não redige → 403', r.status === 403);
+  r = await req('GET', '/vdocs/api/auditoria', { jar: 'anaA' });
+  teste('auditoria registra ia.redigir', r.dados.eventos.some(e => e.acao === 'ia.redigir'));
+  r = await req('DELETE', '/vdocs/api/ia/redacoes/' + rascunhoId, { jar: 'anaA' });
+  teste('rascunho excluído pelo dono', r.status === 200);
+
   ia.__mockParaTeste(null);
 
   // ================== FASE 6: workflows de aprovação ==================

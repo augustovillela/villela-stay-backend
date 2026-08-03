@@ -521,3 +521,24 @@ CREATE TABLE IF NOT EXISTS push_subs (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_push_subs_tenant ON push_subs(tenant_id);
+
+-- =====================================================================
+-- REDIGIR COM IA (mesma mecânica da guia Peticionar do Villela Legal):
+-- o cliente escolhe documentos, o texto INTEGRAL deles vira contexto e a
+-- IA redige. O resultado nasce como RASCUNHO e nunca vira documento
+-- oficial sozinho — quem promove é uma pessoa.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS ai_drafts (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  titulo     TEXT NOT NULL,
+  tipo       TEXT DEFAULT '',
+  instrucao  TEXT DEFAULT '',
+  conteudo   TEXT NOT NULL DEFAULT '',
+  fontes     TEXT DEFAULT '[]',   -- JSON [{document_id, nome}]
+  modelo     TEXT DEFAULT '',
+  truncado   INTEGER NOT NULL DEFAULT 0, -- 1 = algum documento não coube inteiro
+  criado_por TEXT DEFAULT '',
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ai_drafts_tenant ON ai_drafts(tenant_id, criado_em);

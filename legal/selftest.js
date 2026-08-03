@@ -312,6 +312,84 @@ async function rodar() {
     assert.equal(protocolar.st, 400, 'peça de IA não protocola sem aprovação humana');
   });
 
+  // 5d. ciclo da peça na guia (refinar, versões, arquivar, prazo) — onda 2
+  await t('peticionar/ciclo: refinar exige minuta pronta e instrução', async () => {
+    const semMinuta = await req('POST', '/staff/api/legal/peticionar/naoexiste/refinar', { corpo: { instrucao: 'x' } });
+    assert.equal(semMinuta.st, 400);
+    // a peça deste peticionamento veio da fila e JÁ tem conteúdo (teste anterior)
+    const semInstrucao = await req('POST', `/staff/api/legal/peticionar/${petId}/refinar`, { corpo: { instrucao: '' } });
+    assert.equal(semInstrucao.st, 400, 'sem dizer o que mudar, não refina');
+    // modo fila: o ajuste entra na fila carregando a peça atual + autos
+    const r = await req('POST', `/staff/api/legal/peticionar/${petId}/refinar`, { corpo: { instrucao: 'Reforce a preliminar de prescricao.' } });
+    assert.equal(r.st, 200);
+    assert.equal(r.json.situacao, 'pendente');
+    const pend = await req('GET', '/staff/api/legal/ia/consultas/pendentes', { chave: true });
+    const meu = pend.json.pendentes.find(q => q.id === r.json.query_id);
+    assert.ok(meu.contexto_peticao.includes('cobranca indevida'), 'autos seguem no contexto do refino');
+  });
+
+  await t('peticionar/ciclo: versões são lidas uma a uma (nada sobrescreve)', async () => {
+    const ficha = await req('GET', '/staff/api/legal/peticionar/' + petId);
+    const draftId = ficha.json.peticionamento.draft_id;
+    await req('POST', `/staff/api/legal/pecas/${draftId}/versoes`, { chave: true, corpo: { conteudo: 'MINUTA v2 — texto ajustado com a preliminar reforcada.' } });
+    const v1 = await req('GET', `/staff/api/legal/pecas/${draftId}/versoes/1`);
+    const v2 = await req('GET', `/staff/api/legal/pecas/${draftId}/versoes/2`);
+    assert.equal(v1.st, 200); assert.equal(v2.st, 200);
+    assert.ok(v1.json.versao.conteudo.includes('EXCELENTÍSSIMO'), 'v1 intacta');
+    assert.ok(v2.json.versao.conteudo.includes('preliminar reforcada'), 'v2 é outra versão');
+    const inexistente = await req('GET', `/staff/api/legal/pecas/${draftId}/versoes/99`);
+    assert.equal(inexistente.st, 400);
+  });
+
+  await t('peticionar/ciclo: arquiva a peça no processo e abre prazo SEM validação', async () => {
+    const arq = await req('POST', `/staff/api/legal/peticionar/${petId}/arquivar`);
+    assert.equal(arq.st, 200);
+    const docs = await req('GET', '/staff/api/legal/documentos?case_id=' + caseId);
+    assert.ok(docs.json.documentos.some(d => d.id === arq.json.document_id && d.tipo === 'peca'), 'peça na pasta do processo');
+    // prazo de protocolo: nasce sem validado_por (trava humana) e não avança
+    const semData = await req('POST', `/staff/api/legal/peticionar/${petId}/prazo`, { corpo: {} });
+    assert.equal(semData.st, 400);
+    const z = await req('POST', `/staff/api/legal/peticionar/${petId}/prazo`, { corpo: { data_fatal: '2026-09-30' } });
+    assert.equal(z.st, 200);
+    assert.equal(z.json.validado_por, '', 'prazo de protocolo nasce SEM validação humana');
+    const avanca = await req('PATCH', `/staff/api/legal/prazos/${z.json.prazo_id}`, { corpo: { status: 'em_elaboracao' } });
+    assert.equal(avanca.st, 400, 'não avança sem um advogado validar');
+  });
+
+  await t('peticionar/ciclo: peticionamento avulso não arquiva nem abre prazo', async () => {
+    const p = await req('POST', '/staff/api/legal/peticionar', { corpo: { tipo_peca: 'peticao-inicial', orgao: 'Vara X', parte: 'Fulano', numero_processo: '123' } });
+    const pid = p.json.peticionamento.id;
+    const arq = await req('POST', `/staff/api/legal/peticionar/${pid}/arquivar`);
+    assert.equal(arq.st, 400, 'sem processo vinculado não há pasta onde arquivar');
+    const z = await req('POST', `/staff/api/legal/peticionar/${pid}/prazo`, { corpo: { data_fatal: '2026-09-30' } });
+    assert.equal(z.st, 400, 'sem processo vinculado não há onde pendurar o prazo');
+  });
+
+  // 5e. fontes jurídicas conferidas no contexto — onda 3
+  await t('peticionar/fontes: só entra jurisprudência CONFERIDA; hipótese fica de fora', async () => {
+    const { peticionar } = require('./index');
+    const proj = await req('POST', '/staff/api/legal/pesquisa/projetos', { corpo: { titulo: 'Prescricao em cobranca', questao: 'Qual o prazo?' } });
+    assert.equal(proj.st, 200);
+    const projId = proj.json.projeto.id;
+    // 1) achado como HIPÓTESE (sem fonte oficial conferida)
+    const hip = await req('POST', `/staff/api/legal/pesquisa/projetos/${projId}/achados`, {
+      corpo: { identificacao: 'HIPOTESE-XYZ 999/DF', orgao: 'STJ', ementa: 'ementa nao conferida' },
+    });
+    assert.equal(hip.st, 200);
+    let ctx = peticionar.contextoPeticao(petId);
+    assert.ok(!ctx.texto.includes('HIPOTESE-XYZ'), 'hipótese NÃO entra no contexto da peça (trava 47.7)');
+    // 2) conferir no inteiro teor oficial → passa a poder ser citado
+    const conf = await req('POST', `/staff/api/legal/pesquisa/achados/${hip.json.achado.id}/conferir`, {
+      corpo: { fonte_url: 'https://processo.stj.jus.br/inteiro-teor/999', ratio_decidendi: 'prazo decenal do art. 205 CC' },
+    });
+    assert.equal(conf.st, 200);
+    ctx = peticionar.contextoPeticao(petId);
+    assert.ok(ctx.texto.includes('HIPOTESE-XYZ'), 'conferido entra');
+    assert.ok(ctx.texto.includes('JURISPRUDÊNCIA CONFERIDA'), 'vem em bloco rotulado');
+    assert.ok(ctx.texto.includes('não localizado em fonte confiável'), 'instrui a não inventar fora da lista');
+    assert.ok(ctx.fontes.some(f => f.tipo === 'jurisprudencia' && f.citacao.includes('HIPOTESE-XYZ')), 'vira fonte rastreável da peça');
+  });
+
   await t('peticionar: avulso (processo não cadastrado) exige número digitado', async () => {
     const p = await req('POST', '/staff/api/legal/peticionar', { corpo: { tipo_peca: 'peticao-inicial' } });
     assert.equal(p.st, 200);

@@ -29,6 +29,7 @@ const ia = require('./ia');
 const llm = require('./llm');
 const { Pecas } = require('./pecas');
 const { extrairTexto } = require('../vdocs/extrair');
+const ctxIntegral = require('../contexto-integral');
 
 const s = (v, max = 4000) => String(v == null ? '' : v).trim().slice(0, max);
 const fk = (v) => { const x = s(v, 40); return x === '' ? null : x; };
@@ -255,18 +256,17 @@ function contextoPeticao(petitionId, { teto = TETO_CTX } = {}) {
   partes.push(cabeca);
   if (kase) fontes.push({ tipo: 'processo', ref_id: p.case_id, citacao: kase.numero_cnj || 'processo' });
 
-  let orcamento = teto - cabeca.length;
-  for (const c of copias(petitionId)) {
-    if (!c.caracteres || orcamento <= 2000) continue;
-    const row = db.prepare('SELECT texto FROM document_text_extractions WHERE document_id = ?').get(c.id);
-    if (!row || !row.texto) continue;
-    const corte = row.texto.slice(0, orcamento);
-    const truncado = corte.length < row.texto.length;
-    partes.push(`[CÓPIA DOS AUTOS: ${c.titulo}]\n${corte}${truncado ? '\n[...] (cópia truncada pelo limite de contexto)' : ''}`);
-    fontes.push({ tipo: 'documento', ref_id: c.id, citacao: c.titulo });
-    usadas.push({ id: c.id, titulo: c.titulo, caracteres: corte.length, truncado });
-    orcamento -= corte.length;
-  }
+  // montagem do contexto integral (peça compartilhada — ver contexto-integral.js)
+  const bruto = copias(petitionId).map(c => {
+    const row = c.caracteres ? db.prepare('SELECT texto FROM document_text_extractions WHERE document_id = ?').get(c.id) : null;
+    return { id: c.id, titulo: c.titulo, texto: (row && row.texto) || '' };
+  }).filter(x => x.texto);
+  const mont = ctxIntegral.montar({ fontes: bruto, teto: teto - cabeca.length, rotulo: 'CÓPIA DOS AUTOS' });
+  if (mont.texto) partes.push(mont.texto);
+  for (const u of mont.usadas.filter(x => !x.fora)) usadas.push(u);
+  for (const f of mont.fontes) fontes.push({ tipo: 'documento', ref_id: f.id, citacao: f.titulo });
+  const aviso = ctxIntegral.avisoTruncamento(mont.usadas);
+  if (aviso) partes.push(aviso.trim());
 
   if (kase) {
     const movs = (kase.movimentos || []).slice(0, 15);
@@ -275,8 +275,58 @@ function contextoPeticao(petitionId, { teto = TETO_CTX } = {}) {
       WHERE case_id = ? ORDER BY data_publicacao DESC LIMIT 5`).all(p.case_id);
     if (pubs.length) partes.push('[PUBLICAÇÕES]\n' + pubs.map(x => `${x.data_publicacao} (${x.orgao}): ${s(x.texto, 800)}`).join('\n'));
   }
+
+  // ---- fontes jurídicas CONFERIDAS do próprio escritório ----------------
+  const j = jurisprudenciaConferida(p);
+  if (j.texto) { partes.push(j.texto); fontes.push(...j.fontes); }
+
   const texto = partes.join('\n\n---\n\n');
-  return { texto, fontes, copias: usadas, caracteres: texto.length };
+  return { texto, fontes, copias: usadas, caracteres: texto.length, juridicas: j.fontes.length };
+}
+
+// Só entra o que FOI CONFERIDO no inteiro teor oficial (research_findings
+// verificado=1) e norma marcada como vigente. Hipótese NUNCA entra — é a
+// trava 47.7 do livro: citar hipótese como precedente é o erro que destrói
+// a credibilidade da peça. Doutrina/enunciado não vinculante vem rotulado.
+function jurisprudenciaConferida(p) {
+  const termos = [p.objetivo, p.tipo_peca, p.case_assunto].filter(Boolean).join(' ');
+  const fontes = [], blocos = [];
+  let achados = [], normas = [];
+  try {
+    achados = db.prepare(`SELECT identificacao, orgao, hierarquia, posicao, ementa, ratio_decidendi,
+        distinguishing, fonte_url, data_julgamento, tipo
+      FROM research_findings WHERE verificado = 1
+      ORDER BY CASE hierarquia WHEN 'vinculante' THEN 0 WHEN 'persuasivo' THEN 1 ELSE 2 END,
+        data_julgamento DESC LIMIT 12`).all();
+    normas = db.prepare(`SELECT identificacao, tipo, ambito, artigos_chave, ementa, fonte_url
+      FROM norms WHERE vigente = 1 ORDER BY conferida_em DESC LIMIT 12`).all();
+  } catch (_) { return { texto: '', fontes: [] }; } // banco antigo sem as tabelas do livro
+  if (!achados.length && !normas.length) return { texto: '', fontes: [] };
+
+  if (achados.length) {
+    blocos.push('[JURISPRUDÊNCIA CONFERIDA NO INTEIRO TEOR — pode citar]\n'
+      + achados.map(a => {
+        fontes.push({ tipo: 'jurisprudencia', ref_id: '', citacao: a.identificacao, url: a.fonte_url || '' });
+        return `- ${a.identificacao}${a.orgao ? ' (' + a.orgao + ')' : ''} · ${a.hierarquia} · ${a.posicao} para nós`
+          + (a.ratio_decidendi ? `\n  ratio: ${s(a.ratio_decidendi, 600)}` : (a.ementa ? `\n  ementa: ${s(a.ementa, 600)}` : ''))
+          + (a.distinguishing ? `\n  distinguishing: ${s(a.distinguishing, 400)}` : '')
+          + (a.fonte_url ? `\n  fonte: ${a.fonte_url}` : '');
+      }).join('\n'));
+  }
+  if (normas.length) {
+    blocos.push('[LEGISLAÇÃO COM VIGÊNCIA CONFERIDA — pode citar]\n'
+      + normas.map(n => {
+        fontes.push({ tipo: 'legislacao', ref_id: '', citacao: n.identificacao, url: n.fonte_url || '' });
+        return `- ${n.identificacao} (${n.tipo}, ${n.ambito})${n.artigos_chave ? ` · artigos-chave: ${s(n.artigos_chave, 300)}` : ''}`
+          + (n.fonte_url ? ` · ${n.fonte_url}` : '');
+      }).join('\n'));
+  }
+  blocos.push('REGRA DE CITAÇÃO: os itens acima foram conferidos na fonte oficial por pessoa identificada — '
+    + 'pode citar. Precedente ou norma que NÃO esteja nesta lista, você só cita se tiver certeza do teor; '
+    + 'na dúvida, escreva "não localizado em fonte confiável" e registre em PONTOS DE ATENÇÃO. '
+    + 'Confira sempre se o precedente citado é FAVORÁVEL ao polo que representamos'
+    + (termos ? ` (tema: ${s(termos, 300)})` : '') + '.');
+  return { texto: blocos.join('\n\n'), fontes };
 }
 
 // --------------------------------------------------------------- REDAÇÃO
@@ -369,7 +419,98 @@ async function gerar(petitionId, d, autor) {
   }
 }
 
+// ---------------------------------------------------- CICLO DA PEÇA
+// Refina a minuta existente com uma instrução do advogado ("reforce a
+// preliminar de prescrição", "encurte os fatos"). Gera VERSÃO NOVA — nunca
+// sobrescreve: o histórico da peça é rastreabilidade, não rascunho.
+async function refinar(petitionId, d, autor) {
+  const p = obter(petitionId);
+  if (!p.draft_id) throw new Error('Ainda não há minuta para refinar — gere a peça primeiro.');
+  const atual = Pecas.obter(p.draft_id);
+  if (!atual || !atual.conteudo) throw new Error('A minuta ainda não tem conteúdo (pode estar na fila do agente local).');
+  const pedido = s(d.instrucao, 4000);
+  if (!pedido) throw new Error('Diga o que deve mudar na peça.');
+
+  const esp = especialistaDe({ nucleo: p.nucleo, tipo_peca: p.tipo_peca, agente: p.agente });
+  const ctx = contextoPeticao(petitionId);
+  const prompt = `Você já redigiu a peça abaixo. O advogado responsável pediu um AJUSTE.
+
+PEDIDO DO ADVOGADO:
+${pedido}
+
+REGRAS DO AJUSTE
+1. Devolva a peça INTEIRA revisada, não só o trecho alterado.
+2. Mude só o que o pedido exige — preserve o resto do texto, a estrutura e as citações que já estavam corretas.
+3. Continue valendo tudo da redação original: fato só dos autos, dispositivo legal exato, nada de OAB/nome inventado, [___] onde faltar informação.
+4. Se o pedido conflitar com os autos ou com a técnica processual, ATENDA o que for possível e registre a ressalva em PONTOS DE ATENÇÃO — não invente para agradar.
+
+PEÇA ATUAL (v${atual.versao_atual}):
+${atual.conteudo}
+
+AUTOS E CONTEXTO INTERNO (a base factual continua sendo esta):
+${ctx.texto}
+
+SAÍDA: mesma forma de antes — carimbo MINUTA no topo, e ao final PONTOS DE ATENÇÃO e FONTES.`;
+
+  if (!llm.ativo()) {
+    const queryId = repo.IA.criarConsulta({
+      pergunta: `AJUSTE da peça ${p.tipo_peca} (v${atual.versao_atual}). Pedido: ${pedido}\n(a peça atual e os autos vêm em contexto_peticao)`,
+      agente: esp ? esp.id : 'processo-civil', case_id: p.case_id || '', client_id: '',
+      contexto: { finalidade: 'gerar-peca', draft_id: p.draft_id, tipo_peca: p.tipo_peca, peticionar: true, petition_id: petitionId, refino: pedido },
+    }, autor);
+    return { situacao: 'pendente', query_id: queryId, draft_id: p.draft_id };
+  }
+  const r = await llm.executar({
+    agenteId: esp ? esp.id : 'peticionar', queryId: '',
+    systemExtra: esp ? esp.system_prompt : '', prompt,
+  });
+  const v = Pecas.novaVersao(p.draft_id, {
+    conteudo: r.texto, fontes: ctx.fontes,
+    pontos_atencao: `Versão ${atual.versao_atual + 1}: ajuste pedido pelo advogado — "${pedido.slice(0, 200)}". Revisão integral continua obrigatória.`,
+  }, 'ia:' + r.modelo, { viaIA: true });
+  db.prepare('UPDATE petition_requests SET detalhe=?, atualizado_em=? WHERE id=?')
+    .run(`refinada para v${v.versao} (${r.modelo})`, nowISO(), petitionId);
+  return { situacao: 'gerada', versao: v.versao, modelo: r.modelo, draft_id: p.draft_id };
+}
+
+// Arquiva a minuta como DOCUMENTO do processo (a peça continua em
+// legal_drafts; isto é a cópia que fica na pasta do caso).
+function anexarAoProcesso(petitionId, autor) {
+  const p = obter(petitionId);
+  if (!p.case_id) throw new Error('Peticionamento sem processo vinculado — vincule antes de arquivar no caso.');
+  if (!p.draft_id) throw new Error('Ainda não há minuta para arquivar.');
+  const peca = Pecas.obter(p.draft_id);
+  if (!peca || !peca.conteudo) throw new Error('A minuta ainda não tem conteúdo.');
+  const titulo = `${p.tipo_peca} — v${peca.versao_atual}${peca.status === 'aprovado' ? '' : ' (MINUTA)'}`;
+  const docId = repo.Documentos.criar({
+    case_id: p.case_id, titulo, tipo: 'peca', pasta: 'pecas', sigilo: 'interno',
+    status: peca.status === 'aprovado' ? 'aprovado' : 'rascunho',
+    nome_original: `${p.tipo_peca}-v${peca.versao_atual}.txt`, mime: 'text/plain',
+    base64: Buffer.from(
+      (peca.status === 'aprovado' ? '' : 'MINUTA — SUJEITA A REVISÃO DE ADVOGADO (OAB)\n\n') + peca.conteudo, 'utf8').toString('base64'),
+  }, autor);
+  return { document_id: docId, titulo };
+}
+
+// Abre o prazo de PROTOCOLO da peça. Nasce SEM validado_por de propósito:
+// data de protocolo é prazo, e prazo neste sistema exige validação humana
+// antes de avançar (mesma trava da calculadora).
+function abrirPrazoProtocolo(petitionId, d, autor) {
+  const p = obter(petitionId);
+  if (!p.case_id) throw new Error('Peticionamento sem processo vinculado — o prazo precisa de um processo.');
+  const dataFatal = s(d.data_fatal, 30);
+  if (!dataFatal) throw new Error('Informe a data fatal do protocolo.');
+  const z = repo.Prazos.criar({
+    case_id: p.case_id, titulo: s(d.titulo, 300) || `Protocolar ${p.tipo_peca}`,
+    tipo: 'fatal', data_fatal: dataFatal, data_interna: s(d.data_interna, 30),
+    prioridade: d.prioridade || 'alta', responsavel: s(d.responsavel, 40),
+    calculo_sugerido: `Prazo aberto pela guia Peticionar (peça ${p.draft_id || '—'}). Data informada pelo usuário: CONFERIR no sistema do tribunal.`,
+    obs: `Peticionamento ${petitionId}${p.orgao ? ' · ' + p.orgao : ''}`,
+  }, autor);
+  return { prazo_id: z.id, data_fatal: z.data_fatal, validado_por: z.validado_por };
+}
+
 module.exports = {
   abrir, atualizar, obter, estado, anexarCopia, anexarTexto, removerCopia, copias,
-  contextoPeticao, gerar, especialistaDe, TIPO_DOC_COPIA,
+  contextoPeticao, gerar, refinar, anexarAoProcesso, abrirPrazoProtocolo, especialistaDe, TIPO_DOC_COPIA,
 };

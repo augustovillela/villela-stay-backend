@@ -711,10 +711,11 @@ const LG = {
               <span class="vx-hint">${esc(p.peca.pontos_atencao || '')}</span></p>`
           : `<p class="vx-mb0">⏳ Peça criada e <b>na fila do agente jurídico local</b> — a minuta aparece aqui quando ele responder.</p>`)
           + `<div class="acoes"><button class="btn peq" onclick="LG.verPeca('${p.draft_id}')">Abrir a peça</button>
-          ${podeCriar ? `<button class="btn secund peq" onclick="LG.gerarPeticao('${p.id}')">↻ ${p.peca.versao_atual ? 'Gerar nova versão' : 'Reenviar'}</button>` : ''}</div>`
+          ${podeCriar ? `<button class="btn secund peq" onclick="LG.gerarPeticao('${p.id}')">↻ ${p.peca.versao_atual ? 'Gerar do zero' : 'Reenviar'}</button>` : ''}</div>`
         : (podeCriar ? `<div class="acoes"><button class="btn" onclick="LG.gerarPeticao('${p.id}')">✍️ Redigir minuta com o advogado sênior</button></div>`
           : '<p class="vazio">Sem permissão para gerar peças.</p>')}
-        <p id="lgw-ger" class="sub"></p></section>`;
+        <p id="lgw-ger" class="sub"></p></section>
+      ${p.peca && p.peca.versao_atual ? LG._cicloPeca(p, podeCriar) : ''}`;
 
     const fe = document.getElementById('lg-pet-ed');
     if (fe) fe.onsubmit = async (ev) => {
@@ -723,6 +724,110 @@ const LG = {
       catch (er) { document.getElementById('lgw-msg').textContent = er.message; }
     };
   },
+  // ---- ciclo da peça dentro da guia: refinar, versões, exportar, arquivar, prazo ----
+  _cicloPeca(p, podeCriar) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    return `<section class="vx-card"><div class="vx-card-head"><div><h2>🔁 Refinar com o especialista</h2>
+        <p class="vx-hint vx-mb0">Peça o ajuste em português. Gera uma <b>versão nova</b> — a anterior fica no histórico, nada é sobrescrito.</p></div></div>
+        ${podeCriar ? `<label>O que mudar <textarea id="lgw-ref" rows="3" placeholder="ex.: reforce a preliminar de prescrição e reduza a narrativa dos fatos pela metade"></textarea></label>
+        <div class="acoes"><button class="btn peq" onclick="LG.refinarPeticao('${p.id}')">🔁 Refinar</button></div>` : '<p class="vazio">Sem permissão.</p>'}
+      </section>
+
+      <section class="vx-card"><div class="vx-card-head"><div><h2>🗂️ Versões</h2>
+        <p class="vx-hint vx-mb0">Abra qualquer versão ou compare com a anterior para ver o que o ajuste mudou.</p></div></div>
+        ${tabela(['v', 'Por', 'Quando', ''], (p.peca.versoes || []).map(v => [
+          'v' + v.versao, esc(v.criado_por || '—'), LG.dt(v.criado_em),
+          `<button class="btn secund peq" onclick="LG.verVersaoPeca('${p.draft_id}',${v.versao})">Ler</button>`
+          + (v.versao > 1 ? ` <button class="btn secund peq" onclick="LG.compararVersoes('${p.draft_id}',${v.versao})">⇄ vs v${v.versao - 1}</button>` : ''),
+        ]))}
+        <div id="lgw-versao"></div></section>
+
+      <section class="vx-card"><div class="vx-card-head"><div><h2>📤 Levar adiante</h2>
+        <p class="vx-hint vx-mb0">Exportar para revisar fora, arquivar a peça na pasta do processo e abrir o prazo de protocolo.</p></div></div>
+        <div class="acoes">
+          <a class="btn secund peq" href="${LG.hrefBase}/pecas/${p.draft_id}/exportar?formato=html" target="_blank" rel="noopener">🖨️ HTML / PDF</a>
+          <a class="btn secund peq" href="${LG.hrefBase}/pecas/${p.draft_id}/exportar?formato=doc">⬇️ Word (.doc)</a>
+          ${podeCriar && p.case_id ? `<button class="btn secund peq" onclick="LG.arquivarPeticao('${p.id}')">📂 Arquivar no processo</button>` : ''}
+        </div>
+        ${!p.case_id ? '<p class="vx-hint">Peticionamento avulso: vincule um processo para arquivar a peça e abrir prazo.</p>' : ''}
+        ${LG.perm.gerir_prazos && p.case_id ? `<div class="hi-grid" style="margin-top:12px">
+          <label>Título do prazo <input id="lgw-pz-tit" maxlength="200" value="Protocolar ${esc(p.tipo_peca || 'peça')}"></label>
+          <label>Data fatal * <input id="lgw-pz-fat" type="date" min="${hoje}"></label>
+          <label>Data interna (segurança) <input id="lgw-pz-int" type="date" min="${hoje}"></label>
+        </div>
+        <div class="acoes"><button class="btn peq" onclick="LG.prazoPeticao('${p.id}')">⏰ Abrir prazo de protocolo</button></div>
+        <p class="vx-hint">O prazo nasce <b>sem validação</b> de propósito — um advogado precisa validar antes de avançar o status.</p>` : ''}
+      </section>`;
+  },
+  async refinarPeticao(id) {
+    const instrucao = (document.getElementById('lgw-ref') || {}).value || '';
+    if (!instrucao.trim()) { LGUI.toast('Diga o que deve mudar na peça.', 'erro'); return; }
+    LGUI.toast('Refinando… pode levar um minuto.');
+    try {
+      const r = await LG.api('POST', `/peticionar/${id}/refinar`, { instrucao });
+      LGUI.toast(r.situacao === 'gerada' ? `Versão v${r.versao} criada.` : 'Ajuste na fila do agente local.', 'ok');
+      LG.verPeticionamento(id);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+  async verVersaoPeca(draftId, n) {
+    const { versao: v } = await LG.api('GET', `/pecas/${draftId}/versoes/${n}`);
+    document.getElementById('lgw-versao').innerHTML =
+      `<h3 style="margin-top:14px">v${v.versao} — ${esc(v.criado_por || '')} · ${LG.dt(v.criado_em)}</h3>
+       ${v.pontos_atencao ? `<div class="aviso">⚠️ ${esc(v.pontos_atencao)}</div>` : ''}
+       <div class="vx-integra">${esc(v.conteudo || '')}</div>`;
+  },
+  async compararVersoes(draftId, n) {
+    const [nova, velha] = await Promise.all([
+      LG.api('GET', `/pecas/${draftId}/versoes/${n}`), LG.api('GET', `/pecas/${draftId}/versoes/${n - 1}`),
+    ]);
+    document.getElementById('lgw-versao').innerHTML =
+      `<h3 style="margin-top:14px">⇄ v${n - 1} → v${n}</h3>
+       <p class="vx-hint">Linhas <span style="color:var(--vx-ok)">verdes</span> entraram, <span style="color:var(--vx-danger)">vermelhas</span> saíram.</p>
+       <div class="vx-integra">${LG._diff(velha.versao.conteudo || '', nova.versao.conteudo || '')}</div>`;
+  },
+  // diff por linha (LCS) — sem biblioteca; só o suficiente para ver o que o ajuste mexeu
+  _diff(a, b) {
+    const A = String(a).split('\n'), B = String(b).split('\n');
+    const m = A.length, n = B.length;
+    const L = Array.from({ length: m + 1 }, () => new Uint32Array(n + 1));
+    for (let i = m - 1; i >= 0; i--) {
+      for (let jj = n - 1; jj >= 0; jj--) L[i][jj] = A[i] === B[jj] ? L[i + 1][jj + 1] + 1 : Math.max(L[i + 1][jj], L[i][jj + 1]);
+    }
+    const out = [];
+    let i = 0, jj = 0;
+    const linha = (t, tipo) => {
+      if (tipo === '=') return esc(t) + '\n';
+      const cor = tipo === '+' ? 'var(--vx-ok)' : 'var(--vx-danger)';
+      const fundo = tipo === '+' ? 'var(--vx-ok-soft)' : 'var(--vx-danger-soft)';
+      return `<span style="color:${cor};background:${fundo};display:block">${tipo} ${esc(t)}</span>`;
+    };
+    while (i < m && jj < n) {
+      if (A[i] === B[jj]) { out.push(linha(A[i], '=')); i++; jj++; }
+      else if (L[i + 1][jj] >= L[i][jj + 1]) { out.push(linha(A[i], '−')); i++; }
+      else { out.push(linha(B[jj], '+')); jj++; }
+    }
+    while (i < m) out.push(linha(A[i++], '−'));
+    while (jj < n) out.push(linha(B[jj++], '+'));
+    return out.join('');
+  },
+  async arquivarPeticao(id) {
+    try {
+      const r = await LG.api('POST', `/peticionar/${id}/arquivar`);
+      LGUI.toast(`Arquivada na pasta do processo: ${r.titulo}`, 'ok');
+      LG.verPeticionamento(id);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+  async prazoPeticao(id) {
+    try {
+      const r = await LG.api('POST', `/peticionar/${id}/prazo`, {
+        titulo: (document.getElementById('lgw-pz-tit') || {}).value || '',
+        data_fatal: (document.getElementById('lgw-pz-fat') || {}).value || '',
+        data_interna: (document.getElementById('lgw-pz-int') || {}).value || '',
+      });
+      LGUI.toast(`Prazo aberto para ${LG.dt(r.data_fatal)} — falta a validação de um advogado.`, 'ok');
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+
   _dadosPeticao() {
     return {
       tipo_peca: (document.getElementById('lgw-tipo') || {}).value || '',

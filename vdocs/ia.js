@@ -66,8 +66,8 @@ function logRun(tenantId, { modelo, usage, duracao_ms, status, detalhe }) {
   } catch (_) {}
 }
 
-async function executar(tenantId, { prompt }) {
-  if (_mock) return _mock({ prompt });
+async function executar(tenantId, { prompt, schema = SCHEMA_RESPOSTA, systemExtra = '' }) {
+  if (_mock) return _mock({ prompt, schema, systemExtra });
   if (!ativo()) throw new Error('IA indisponível: ANTHROPIC_API_KEY não configurada no servidor.');
   if (!_client) { const Anthropic = require('@anthropic-ai/sdk'); _client = new Anthropic(); }
   let ultimoErro = null;
@@ -77,17 +77,21 @@ async function executar(tenantId, { prompt }) {
       const msg = await _client.messages.create({
         model: modelo,
         max_tokens: MAX_TOKENS,
-        system: [{ type: 'text', text: GUARDRAILS, cache_control: { type: 'ephemeral' } }],
-        output_config: { format: { type: 'json_schema', schema: SCHEMA_RESPOSTA } },
+        system: [
+          { type: 'text', text: GUARDRAILS, cache_control: { type: 'ephemeral' } },
+          ...(systemExtra ? [{ type: 'text', text: systemExtra, cache_control: { type: 'ephemeral' } }] : []),
+        ],
+        // sem schema = texto livre (redação); com schema = resposta estruturada (perguntas)
+        ...(schema ? { output_config: { format: { type: 'json_schema', schema } } } : {}),
         messages: [{ role: 'user', content: prompt }],
       });
       if (msg.stop_reason === 'refusal') {
         logRun(tenantId, { modelo, usage: msg.usage, duracao_ms: Date.now() - t0, status: 'recusado' });
         throw new Error('O modelo recusou a solicitação.');
       }
-      const texto = (msg.content.find(b => b.type === 'text') || {}).text || '{}';
+      const texto = (msg.content.find(b => b.type === 'text') || {}).text || (schema ? '{}' : '');
       logRun(tenantId, { modelo, usage: msg.usage, duracao_ms: Date.now() - t0, status: 'ok' });
-      return { json: JSON.parse(texto), modelo, usage: msg.usage };
+      return { json: schema ? JSON.parse(texto) : null, texto, modelo, usage: msg.usage };
     } catch (e) {
       ultimoErro = e;
       logRun(tenantId, { modelo, duracao_ms: Date.now() - t0, status: 'erro', detalhe: e.message });
@@ -218,4 +222,4 @@ function darFeedback(tenantId, userId, messageId, tipo, comentario) {
     .run(String(tenantId), mm.id, String(userId), tipo, s(comentario, 500), nowISO());
 }
 
-module.exports = { ativo, MODELOS, GUARDRAILS, SCHEMA_RESPOSTA, __mockParaTeste, montarContexto, listarConversas, obterConversa, excluirConversa, perguntar, darFeedback };
+module.exports = { ativo, MODELOS, GUARDRAILS, SCHEMA_RESPOSTA, executar, __mockParaTeste, montarContexto, listarConversas, obterConversa, excluirConversa, perguntar, darFeedback };

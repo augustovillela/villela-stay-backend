@@ -11,6 +11,7 @@ const docs = require('./docs');
 const jobs = require('./jobs');
 const busca = require('./busca');
 const ia = require('./ia');
+const redigir = require('./redigir');
 const wf = require('./workflows');
 const comp = require('./compartilhar');
 const billing = require('./billing');
@@ -424,6 +425,24 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
       conversation_id: b.conversation_id, escopo_tipo: b.escopo_tipo, escopo_ref: b.escopo_ref, pergunta: b.pergunta,
     }, req.vd.ip));
   }));
+  // ---- REDIGIR: documentos escolhidos (texto INTEGRAL) -> IA redige o rascunho ----
+  r.get('/ia/redacoes', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    res.json({ ativo: ia.ativo(), tipos: redigir.TIPOS, rascunhos: redigir.listar(req.vd.tenant.id, req.query) });
+  }));
+  r.get('/ia/redacoes/:id', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    res.json({ rascunho: redigir.obter(req.vd.tenant.id, req.params.id) });
+  }));
+  r.post('/ia/redigir', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    const b = req.body || {};
+    res.json(await redigir.redigir(req.vd.tenant.id, req.vd.user, {
+      documentos: b.documentos, tipo: b.tipo, instrucao: b.instrucao, titulo: b.titulo,
+    }, req.vd.ip));
+  }));
+  r.delete('/ia/redacoes/:id', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
+    redigir.excluir(req.vd.tenant.id, req.params.id);
+    res.json({ ok: true });
+  }));
+
   r.post('/ia/mensagens/:id/feedback', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
     const b = req.body || {};
     ia.darFeedback(req.vd.tenant.id, req.vd.user.id, req.params.id, b.tipo, b.comentario);

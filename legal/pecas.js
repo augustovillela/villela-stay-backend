@@ -55,6 +55,13 @@ const Pecas = {
     if (ultima) { d.conteudo = ultima.conteudo; d.fontes = j.parse(ultima.fontes, []); d.pontos_atencao = ultima.pontos_atencao; d.versao_atual = ultima.versao; }
     return d;
   },
+  // conteúdo de UMA versão (a ficha só devolve a última) — serve para
+  // reler uma versão antiga e para comparar duas.
+  versao(draftId, numero) {
+    const v = db.prepare('SELECT * FROM legal_draft_versions WHERE draft_id = ? AND versao = ?').get(draftId, Number(numero) || 0);
+    if (!v) throw new Error('Versão não encontrada.');
+    return { ...v, fontes: j.parse(v.fontes, []) };
+  },
   criar(d, autor) {
     if (!TIPOS_PECA.includes(d.tipo_peca)) throw new Error('Tipo de peça inválido: ' + d.tipo_peca);
     const id = novoId(); const agora = nowISO();
