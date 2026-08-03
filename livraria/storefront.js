@@ -54,7 +54,12 @@ header.top a{color:var(--creme)}
 .hero h1{color:#fff}.hero p.sub{font-size:19px;color:#dbe6ea;max-width:640px}
 .eyebrow{text-transform:uppercase;letter-spacing:1.5px;font-size:12px;color:var(--dourado);font-weight:700}
 .grid{display:grid;gap:26px}
-.grid-books{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+/* Número de colunas FIXO (não auto-fit): assim um grupo de 1 ou 2 livros mostra o card do mesmo
+   tamanho de um grupo de 3, em vez de esticar para a largura toda. Especificidade acima de
+   .grid do villela-saas.css, que carrega depois deste <style>. */
+.wrap .grid.grid-books{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:900px){.wrap .grid.grid-books{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.wrap .grid.grid-books{grid-template-columns:minmax(0,1fr)}}
 .card{background:#fff;border:1px solid var(--cinza2);border-radius:14px;overflow:hidden;transition:.15s;display:flex;flex-direction:column}
 .card:hover{box-shadow:0 10px 30px rgba(27,42,74,.12);transform:translateY(-2px)}
 .card .capa{aspect-ratio:3/4;background:var(--cinza);display:flex;align-items:center;justify-content:center;color:var(--suave);overflow:hidden}
