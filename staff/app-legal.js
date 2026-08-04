@@ -641,7 +641,8 @@ const LG = {
           ${modo === 'oab' ? '<label>UF da OAB * <input id="lgb-uf" maxlength="2" value="DF" style="text-transform:uppercase"></label>' : ''}
           <label>Período (dias) <input id="lgb-dias" type="number" min="1" max="365" value="90"></label>
         </div>
-        <p class="vx-hint">Tribunais: <b id="lgb-conta">${marcados.size}</b> marcado(s). Nenhum marcado = varredura nacional.</p>
+        <p class="vx-hint">Tribunais: <b id="lgb-conta">${marcados.size}</b> marcado(s). Nenhum marcado = varredura nacional.
+          ${marcados.size > 20 && modo === 'nome' ? '<br>⚠️ Busca por <b>nome</b> em muitos tribunais traz muito homônimo do país inteiro. Para achar só o que é seu, prefira o modo <b>OAB</b>.' : ''}</p>
         ${caixas}
         <div class="acoes"><button class="btn" onclick="LG.rodarBusca()">📡 Pesquisar</button>
           <button class="btn secund peq" onclick="LG.marcarTodos(false)">Limpar seleção</button></div>
@@ -717,22 +718,27 @@ const LG = {
         <tbody>${lista.map(linha).join('')}</tbody></table></div>` : '<p class="vazio">Nenhum.</p>'}</section>`;
 
     LG.body().innerHTML = `<div class="acoes"><button class="btn secund peq" onclick="LG.pintar()">← Voltar às buscas</button>
-      ${b.status !== 'concluida' && LG.perm.criar_processos ? `<button class="btn secund peq" onclick="LG.reexecutarBusca('${b.id}')">↻ Tentar de novo pelo servidor</button>` : ''}</div>
+      ${LG.perm.criar_processos ? `<button class="btn secund peq" onclick="LG.refazerBusca('${b.id}')">↻ Refazer a busca</button>` : ''}</div>
       <section class="vx-card"><div class="vx-card-head"><div>
         <h2>📡 ${esc(b.modo)} = "${esc(b.termo)}${b.uf_oab ? '/' + esc(b.uf_oab) : ''}" ${LG.chip(b.status)}</h2>
         <p class="vx-hint vx-mb0">${b.tribunais.length ? esc(b.tribunais.join(', ')) : 'todos os tribunais'} · últimos ${b.dias} dias
         ${b.executada_por ? '· executada por ' + esc(b.executada_por) : ''}
         ${b.status === 'concluida' ? `· ${b.total_comunicacoes} comunicação(ões) → ${b.total_processos} processo(s)` : ''}</p></div></div>
         ${b.detalhe ? `<div class="aviso">${esc(b.detalhe)}</div>` : ''}
-        ${b.status === 'pendente' ? '<div class="aviso">⏳ Aguardando o runner local (o DJEN recusa o IP do servidor). Assim que ele rodar, o relatório aparece aqui.</div>' : ''}
+        ${b.status === 'pendente' ? '<div class="aviso">⏳ Aguardando o runner local (o DJEN recusa o IP do servidor). O resultado aparece em até 10 minutos.</div>' : ''}
+        ${b.status === 'concluida' && b.resultados.length && b.resultados.every(r => !r.partes.length)
+          ? '<div class="aviso" style="border-color:var(--vx-danger)">⚠️ Este relatório veio <b>sem os nomes das partes</b>, então a triagem de homônimo não pôde ser feita — não cadastre nada a partir dele. Clique em <b>↻ Refazer a busca</b>.</div>' : ''}
       </section>
       ${b.status === 'concluida' ? bloco('✅ Correspondência exata', 'O nome bate exatamente com o que você buscou.', exatos)
         + bloco('⚠️ Parecidos (possíveis homônimos)', 'O DJEN casou por semelhança. Leia o nome antes de cadastrar — pode ser outra pessoa.', parecidos) : ''}`;
   },
-  async reexecutarBusca(id) {
-    LGUI.toast('Tentando pelo servidor…');
-    try { await LG.api('POST', `/buscas/${id}/executar`); LG.verBusca(id); }
-    catch (e) { LGUI.toast(e.message, 'erro'); }
+  async refazerBusca(id) {
+    LGUI.toast('Refazendo…');
+    try {
+      const r = await LG.api('POST', `/buscas/${id}/refazer`);
+      LGUI.toast(r.execucao.status === 'concluida' ? 'Busca refeita.' : 'Na fila do runner local — resultado em até 10 minutos.', 'ok');
+      LG.verBusca(id);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
   },
   async cadastrarDaBusca(hitId) {
     LGUI.toast('Cadastrando e importando o histórico do DataJud…');

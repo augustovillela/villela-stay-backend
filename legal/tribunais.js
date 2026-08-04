@@ -99,6 +99,17 @@ function obter(id) {
   return b;
 }
 
+// Devolve a busca para a fila. Sem isto, busca concluída fica congelada —
+// e ela precisa ser refeita tanto para pegar processo novo quanto quando a
+// execução anterior veio incompleta.
+function refazer(id) {
+  const b = db.prepare('SELECT id FROM court_searches WHERE id = ?').get(id);
+  if (!b) throw new Error('Busca não encontrada.');
+  db.prepare(`UPDATE court_searches SET status='pendente', detalhe='Refazendo — aguardando execução.',
+    executada_por='', concluida_em='' WHERE id=?`).run(id);
+  return obter(id);
+}
+
 // pedidos que o runner local precisa executar (IP residencial)
 function pendentes(limite = 5) {
   return db.prepare("SELECT * FROM court_searches WHERE status IN ('pendente','executando') ORDER BY criado_em LIMIT ?")
@@ -291,6 +302,6 @@ async function cadastrar(hitId, d, autor, { consultar = coleta.consultarDataJud 
 }
 
 module.exports = {
-  catalogo, criar, listar, obter, pendentes, registrarResultado, executarNoServidor, cadastrar,
+  catalogo, criar, listar, obter, refazer, pendentes, registrarResultado, executarNoServidor, cadastrar,
   alvosDe, urlDJEN, TRIBUNAIS, FREQUENTES, MODOS, STATUS, norm, __mockBuscaParaTeste,
 };

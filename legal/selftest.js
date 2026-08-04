@@ -550,6 +550,41 @@ async function rodar() {
     assert.ok(/timeout/.test(b.json.busca.detalhe));
   });
 
+  await t('busca: refazer devolve à fila (busca concluída não fica congelada)', async () => {
+    const antes = await req('GET', '/staff/api/legal/buscas/' + buscaId);
+    assert.equal(antes.json.busca.status, 'concluida');
+    const r = await req('POST', `/staff/api/legal/buscas/${buscaId}/refazer`);
+    assert.equal(r.st, 200);
+    const dep = await req('GET', '/staff/api/legal/buscas/' + buscaId);
+    assert.equal(dep.json.busca.status, 'pendente', 'volta para a fila do runner');
+    // e volta a aparecer para o runner local
+    const pend = await req('GET', '/staff/api/legal/buscas/pendentes', { chave: true });
+    assert.ok(pend.json.pendentes.some(x => x.id === buscaId));
+  });
+
+  // REGRESSÃO (bug real de 03/08/2026): o runner em PowerShell serializava com
+  // ConvertTo-Json sem -Depth (padrão 2) e `destinatarios` — que está no nível 3 —
+  // virava "". O relatório saía sem NENHUM nome de parte e, sem nome, a triagem
+  // de homônimo não existe: tudo cai em "parecidos" e nada é conferível.
+  await t('busca: comunicação sem destinatarios não produz triagem falsa', async () => {
+    const nova = await req('POST', '/staff/api/legal/buscas', { corpo: { modo: 'nome', termo: 'Augusto Villela', tribunais: ['TJDFT'] } });
+    const id = nova.json.busca.id;
+    await req('POST', `/staff/api/legal/buscas/${id}/resultado`, {
+      chave: true,
+      corpo: {
+        por: 'runner-local',
+        comunicacoes: [
+          { siglaTribunal: 'TJDFT', numeroprocessocommascara: '0700333-44.2026.8.07.0001', data_disponibilizacao: '2026-07-10', texto: 'x', destinatarios: [] },
+        ],
+      },
+    });
+    const b = await req('GET', '/staff/api/legal/buscas/' + id);
+    const hit = b.json.busca.resultados[0];
+    assert.equal(hit.partes.length, 0);
+    assert.equal(hit.exato, 0, 'sem nome NÃO pode ser marcado como correspondência exata');
+    assert.equal(hit.nome_casado, '', 'sem nome, não há nome casado — a tela avisa e bloqueia o uso');
+  });
+
   trib.__mockBuscaParaTeste(null);
 
   // 6. prazos: calculadora + trava de validação humana

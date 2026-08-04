@@ -468,6 +468,13 @@ function registrarRotasStaff(app, deps) {
     const r = await tribunais.executarNoServidor(b.id);
     res.json({ ok: true, busca: tribunais.obter(b.id), execucao: r });
   }));
+  // refazer: devolve a busca para a fila (pegar processo novo ou repetir execução incompleta)
+  app.post('/staff/api/legal/buscas/:id/refazer', requireAuth, pode('criar_processos'), ha(async (req, res) => {
+    tribunais.refazer(req.params.id);
+    auditar(req, 'busca.refazer', 'court_searches', req.params.id, '');
+    const r = await tribunais.executarNoServidor(req.params.id);
+    res.json({ ok: true, busca: tribunais.obter(req.params.id), execucao: r });
+  }));
   app.post('/staff/api/legal/buscas/:id/executar', requireAuth, pode('criar_processos'), ha(async (req, res) => {
     const r = await tribunais.executarNoServidor(req.params.id);
     res.json({ ok: true, busca: tribunais.obter(req.params.id), execucao: r });
