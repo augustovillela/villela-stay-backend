@@ -162,7 +162,9 @@ async function abrirApp() {
       return;
     }
   } catch (_) {}
-  navegar('visao');
+  // F5 / link com #secao: reabre o painel que estava aberto; sem hash (ou sem acesso a ele), home.
+  const alvo = secaoDaUrl();
+  navegar(secaoPermitida(alvo) ? alvo : 'visao');
 }
 
 // --------- menu ---------
@@ -226,6 +228,7 @@ function construirItensMenu() {
   if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Projects & Events' }, { id: 'vpe', rot: '📋 Villela Projects' });
   if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Stay Manager' }, { id: 'vsm', rot: '🏨 Stay Manager' });
   if (tem('ti') || tem('ceo') || tem('vendas')) itens.push({ grupo: 'Villela CRM (SaaS)' }, { id: 'vcrm', rot: '🤝 Villela CRM' });
+  if (tem('ti') || tem('ceo') || tem('vendas')) itens.push({ grupo: 'Closet Club (marketplace)' }, { id: 'closet', rot: '👗 Closet Club' });
   itens.push({ grupo: 'Operação' });
   itens.push({ id: 'limpezas', rot: '🧹 Limpezas de hoje' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
@@ -432,13 +435,43 @@ function renderInstalar() {
 const VERTICAL_DA_SECAO = {
   legal: 'legal', 'legal-saas': 'legal',
   livraria: 'livraria', vdocs: 'docs', vpe: 'projects', vsm: 'manager',
-  vcrm: 'crm', academy: 'academy',
+  vcrm: 'crm', academy: 'academy', closet: 'closet',
   visao: 'grupo', mural: 'grupo', manuais: 'grupo', faq: 'grupo', 'faq-claude': 'grupo',
   instalar: 'grupo', usuarios: 'grupo', conta: 'grupo', auditoria: 'grupo', automacoes: 'grupo',
 };
 
+// --------- rota na URL (#secao): F5 recarrega o painel aberto, não a Visão geral ---------
+// SPA sem rota volta para a home a cada F5. O hash é a rota mais barata aqui: não exige nada do
+// servidor (qualquer #x cai no mesmo index.html), não mexe no menu e sobrevive ao recarregar.
+// `replaceState` de propósito, e não `pushState`: o Voltar do navegador continua saindo do portal
+// como sempre saiu — se cada clique de menu virasse uma entrada no histórico, sair daqui passaria
+// a exigir dezenas de Voltar.
+function secaoDaUrl() {
+  const h = decodeURIComponent((location.hash || '').replace(/^#/, '')).trim();
+  return /^[a-z0-9-]{1,40}$/i.test(h) ? h : '';
+}
+// Só aceita seção que o usuário REALMENTE vê no menu: um #hash digitado à mão não abre painel de
+// outra área (a API já barraria, mas a tela ficaria com cara de quebrada em vez de simplesmente
+// não existir). Toda seção do roteador está no menu, então a lista do menu basta como whitelist.
+function secaoPermitida(secao) {
+  if (!secao || !ESTADO.me) return false;
+  try { return construirItensMenu().some(i => i.id === secao); } catch (_) { return false; }
+}
+// Hash trocado por fora (usuário editou a URL, abriu um link com #, ou usou Voltar/Avançar).
+window.addEventListener('hashchange', () => {
+  const app = $('#app');
+  if (!app || app.classList.contains('hidden')) return;   // sem sessão aberta, ignora
+  const s = secaoDaUrl();
+  if (!s || s === ESTADO.secao) return;
+  if (secaoPermitida(s)) navegar(s);
+});
+
 function navegar(secao) {
   ESTADO.secao = secao;
+  // grava a seção na URL para o F5 voltar aqui (sem criar entrada no histórico)
+  try {
+    if (secaoDaUrl() !== secao) history.replaceState(null, '', location.pathname + location.search + '#' + secao);
+  } catch (_) {}
   // escopo do design system no container: uma linha cobre TODOS os modulos
   const cont = $('#conteudo');
   if (cont) {
@@ -448,7 +481,7 @@ function navegar(secao) {
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
   window.scrollTo(0, 0);
-  const rotas = { visao: renderVisao, mural: renderMural, faq: renderFAQ, manuais: (typeof renderManuais === 'function' ? renderManuais : renderVisao), 'faq-claude': renderFaqClaude, concierge: renderConcierge, 'pos-estadia': renderPosEstadia, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, ativos: renderAtivos, estoque: renderEstoque, materiais: renderMateriais, editorial: renderEditorial, depoimentos: renderDepoimentos, redes: renderRedes, contratos: renderContratos, lgpd: renderLGPD, fiscal: renderFiscal, 'compras-precos': renderComprasPrecos, recebimentos: renderRecebimentos, fechamento: renderFechamento, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, tecnicos: renderTecnicos, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), pendencias: renderPendencias, notas: renderNotas, agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'eva-conhecimento': renderEvaConhecimento, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta, instalar: renderInstalar, livraria: (typeof renderLivraria === 'function' ? renderLivraria : renderVisao), legal: (typeof renderLegal === 'function' ? renderLegal : renderVisao), 'legal-saas': (typeof renderLegalSaas === 'function' ? renderLegalSaas : renderVisao), vdocs: (typeof renderVdocs === 'function' ? renderVdocs : renderVisao), vpe: (typeof renderVpe === 'function' ? renderVpe : renderVisao), vsm: (typeof renderVsm === 'function' ? renderVsm : renderVisao), academy: (typeof renderAcademy === 'function' ? renderAcademy : renderVisao), vcrm: (typeof renderVcrm === 'function' ? renderVcrm : renderVisao), cortesia: (typeof renderCortesia === 'function' ? renderCortesia : renderVisao) };
+  const rotas = { visao: renderVisao, mural: renderMural, faq: renderFAQ, manuais: (typeof renderManuais === 'function' ? renderManuais : renderVisao), 'faq-claude': renderFaqClaude, concierge: renderConcierge, 'pos-estadia': renderPosEstadia, 'contas-pagar': renderContasPagar, dre: renderDRE, revenue: renderRevenue, 'mkt-conversao': renderMktConversao, obras: renderObras, ativos: renderAtivos, estoque: renderEstoque, materiais: renderMateriais, editorial: renderEditorial, depoimentos: renderDepoimentos, redes: renderRedes, contratos: renderContratos, lgpd: renderLGPD, fiscal: renderFiscal, 'compras-precos': renderComprasPrecos, recebimentos: renderRecebimentos, fechamento: renderFechamento, metas: renderMetas, 'datas-quentes': renderDatasQuentes, automacoes: renderAutomacoes, auditoria: renderAuditoria, 'acessos-hospede': renderAcessosHospede, 'prazos-juridicos': renderPrazosJuridicos, limpezas: renderLimpezas, 'manutencao-chamados': renderChamadosManutencao, tecnicos: renderTecnicos, relatorios: renderRelatorios, publicar: renderPublicar, calendario: renderCalendario, 'stays-hospedes': renderStaysHospedes, 'stays-reservas': renderStaysReservas, crm: renderCRM, compras: () => renderLista('compras', 'Lista de compras'), pendencias: renderPendencias, notas: renderNotas, agenda: renderAgenda, leads: () => renderPainel('leads', 'Leads'), precheckins: () => renderPainel('precheckins', 'Pré-check-ins'), chamados: () => renderPainel('chamados', 'Chamados'), eventos: () => renderPainel('eventos', 'Eventos (Stays)'), estatisticas: renderEstatisticas, 'hospede-info': renderHospedeInfo, 'eva-conhecimento': renderEvaConhecimento, 'hospede-pedidos': renderHospedePedidos, 'hospede-fidelidade': renderHospedeFidelidade, 'hospede-conta': renderHospedeConta, usuarios: renderUsuarios, conta: renderConta, instalar: renderInstalar, livraria: (typeof renderLivraria === 'function' ? renderLivraria : renderVisao), legal: (typeof renderLegal === 'function' ? renderLegal : renderVisao), 'legal-saas': (typeof renderLegalSaas === 'function' ? renderLegalSaas : renderVisao), vdocs: (typeof renderVdocs === 'function' ? renderVdocs : renderVisao), vpe: (typeof renderVpe === 'function' ? renderVpe : renderVisao), vsm: (typeof renderVsm === 'function' ? renderVsm : renderVisao), academy: (typeof renderAcademy === 'function' ? renderAcademy : renderVisao), vcrm: (typeof renderVcrm === 'function' ? renderVcrm : renderVisao), closet: (typeof renderCloset === 'function' ? renderCloset : renderVisao), cortesia: (typeof renderCortesia === 'function' ? renderCortesia : renderVisao) };
   (rotas[secao] || renderVisao)();
 }
 
