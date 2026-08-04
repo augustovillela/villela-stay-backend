@@ -472,7 +472,10 @@ function registrarRotasStaff(app, deps) {
   app.post('/staff/api/legal/buscas/:id/refazer', requireAuth, pode('criar_processos'), ha(async (req, res) => {
     tribunais.refazer(req.params.id);
     auditar(req, 'busca.refazer', 'court_searches', req.params.id, '');
-    const r = await tribunais.executarNoServidor(req.params.id);
+    // `executar:false` só devolve à fila do runner local, sem tentar pelo servidor
+    const r = (req.body || {}).executar === false
+      ? { status: 'pendente', detalhe: 'Enfileirada para o runner local.' }
+      : await tribunais.executarNoServidor(req.params.id);
     res.json({ ok: true, busca: tribunais.obter(req.params.id), execucao: r });
   }));
   app.post('/staff/api/legal/buscas/:id/executar', requireAuth, pode('criar_processos'), ha(async (req, res) => {

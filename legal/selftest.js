@@ -560,6 +560,11 @@ async function rodar() {
     // e volta a aparecer para o runner local
     const pend = await req('GET', '/staff/api/legal/buscas/pendentes', { chave: true });
     assert.ok(pend.json.pendentes.some(x => x.id === buscaId));
+    // `executar:false` enfileira sem tentar pelo servidor (útil quando se sabe
+    // que o DJEN vai recusar o IP — e é como se testa o runner de ponta a ponta)
+    const so = await req('POST', `/staff/api/legal/buscas/${buscaId}/refazer`, { corpo: { executar: false } });
+    assert.equal(so.json.execucao.status, 'pendente');
+    assert.equal(so.json.busca.executada_por, '', 'não marcou execução pelo servidor');
   });
 
   // REGRESSÃO (bug real de 03/08/2026): o runner em PowerShell serializava com
