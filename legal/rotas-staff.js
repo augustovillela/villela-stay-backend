@@ -459,6 +459,38 @@ function registrarRotasStaff(app, deps) {
   app.get('/staff/api/legal/buscas/pendentes', requirePublishOrSession, pode('gerir_publicacoes'), h((req, res) => {
     res.json({ pendentes: tribunais.pendentes(req.query.limite) });
   }));
+  // ---- RUNNER DA PLATAFORMA (multi-tenant) --------------------------------
+  // O DJEN bloqueia o IP do Render, então quem consulta é o runner local do
+  // OPERADOR — e ele precisa atender também os escritórios ASSINANTES, senão a
+  // busca deles ficaria pendente para sempre. O servidor varre os tenants
+  // INTERNAMENTE (listarTenants + comTenant): o cliente nunca escolhe tenant
+  // ao LER. Exige PUBLISH_KEY (chave do operador), nunca sessão de usuário.
+  const soRunner = (req, res, next) => req.viaChave ? next()
+    : res.status(403).json({ erro: 'Rota do runner da plataforma — exige PUBLISH_KEY.' });
+
+  app.get('/staff/api/legal/buscas/pendentes-todos', requirePublishOrSession, soRunner, pode('gerir_publicacoes'), h((req, res) => {
+    const porTenant = Math.min(Number(req.query.limite) || 3, 10);
+    const out = [];
+    for (const tid of dbmod.listarTenants()) {
+      dbmod.comTenant(tid, () => {
+        for (const b of tribunais.pendentes(porTenant)) out.push({ tenant: tid, ...b });
+      });
+    }
+    res.json({ pendentes: out, tenants: dbmod.listarTenants().length });
+  }));
+  // devolver resultado PARA UM TENANT: o tenant vem no caminho porque o runner
+  // acabou de recebê-lo em /pendentes-todos. Só com PUBLISH_KEY.
+  app.post('/staff/api/legal/buscas/tenant/:tenant/:id/resultado', requirePublishOrSession, soRunner, pode('gerir_publicacoes'), h((req, res) => {
+    const alvo = dbmod.listarTenants().find(x => x === String(req.params.tenant));
+    if (!alvo) return res.status(404).json({ erro: 'Escritório não encontrado.' });
+    const b = req.body || {};
+    const r = dbmod.comTenant(alvo, () => tribunais.registrarResultado(req.params.id, {
+      comunicacoes: b.comunicacoes || [], por: b.por || 'runner-local', erro: b.erro || '',
+    }));
+    auditar(req, 'busca.resultado', 'court_searches', req.params.id,
+      `${(b.comunicacoes || []).length} comunicação(ões) para o escritório ${alvo}`);
+    res.json({ ok: true, tenant: alvo, ...r });
+  }));
   app.get('/staff/api/legal/buscas/:id', requireAuth, pode('ver_processos'), h((req, res) => {
     res.json({ busca: tribunais.obter(req.params.id) });
   }));

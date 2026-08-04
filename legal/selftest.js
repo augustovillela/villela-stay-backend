@@ -912,6 +912,103 @@ async function rodar() {
     assert.ok(!staff.json.peticionamentos.some(x => x.parte === 'Cliente do Escritorio Assinante'), 'peticionamento do assinante é isolado');
   });
 
+  await t('ponte assinante: ciclo da peça completo (refinar, versões, arquivar, prazo)', async () => {
+    const f = { uid: 'bc' };
+    const proc = await req('POST', '/juridico/api/legal/processos', { fake: f, corpo: { numero_cnj: '0700555-66.2026.8.07.0001', tribunal: 'TJDFT', assunto: 'Ciclo do assinante' } });
+    const p = await req('POST', '/juridico/api/legal/peticionar', {
+      fake: f, corpo: { case_id: proc.json.processo.id, tipo_peca: 'contestacao', orgao: 'Vara do assinante', parte: 'Cliente B', numero_processo: '0700555-66.2026.8.07.0001' },
+    });
+    const pid = p.json.peticionamento.id;
+    const g = await req('POST', `/juridico/api/legal/peticionar/${pid}/gerar`, { fake: f, corpo: {} });
+    assert.equal(g.st, 200);
+    const draftId = g.json.draft_id;
+    // agente devolve a minuta e o assinante segue o ciclo inteiro
+    await req('POST', `/juridico/api/legal/pecas/${draftId}/versoes`, { fake: f, corpo: { conteudo: 'MINUTA v1 do assinante.' } });
+    const v = await req('GET', `/juridico/api/legal/pecas/${draftId}/versoes/1`, { fake: f });
+    assert.equal(v.st, 200, 'lê versão específica');
+    const ref = await req('POST', `/juridico/api/legal/peticionar/${pid}/refinar`, { fake: f, corpo: { instrucao: 'Encurte os fatos.' } });
+    assert.equal(ref.st, 200, 'refina');
+    const arq = await req('POST', `/juridico/api/legal/peticionar/${pid}/arquivar`, { fake: f });
+    assert.equal(arq.st, 200, 'arquiva no processo');
+    const pz = await req('POST', `/juridico/api/legal/peticionar/${pid}/prazo`, { fake: f, corpo: { data_fatal: '2026-10-10' } });
+    assert.equal(pz.st, 200, 'abre prazo de protocolo');
+    assert.equal(pz.json.validado_por, '', 'trava humana vale igual para o assinante');
+  });
+
+  // o servidor NAO pode alcancar o DJEN nestes testes: o dublê garante o
+  // caminho real de producao (IP do Render recusado -> busca fica pendente).
+  trib.__mockBuscaParaTeste(async () => { throw new Error('DJEN HTTP 403 (IP bloqueado)'); });
+
+  await t('ponte assinante: busca em tribunais (catálogo, criar, relatório, cadastrar)', async () => {
+    const f = { uid: 'bt' };
+    const cat = await req('GET', '/juridico/api/legal/tribunais', { fake: f });
+    assert.equal(cat.st, 200);
+    assert.ok(cat.json.tribunais.length > 80, 'catálogo completo para o assinante');
+    const b = await req('POST', '/juridico/api/legal/buscas', { fake: f, corpo: { modo: 'nome', termo: 'Cliente do Escritorio B', tribunais: ['TJDFT'] } });
+    assert.equal(b.st, 200);
+    const bid = b.json.busca.id;
+    // resultado entra no banco DO ASSINANTE
+    await req('POST', `/juridico/api/legal/buscas/${bid}/resultado`, {
+      fake: f,
+      corpo: { por: 'runner-local', comunicacoes: [{ siglaTribunal: 'TJDFT', numeroprocessocommascara: '0700777-88.2026.8.07.0001', nomeOrgao: 'Vara B', nomeClasse: 'Comum', data_disponibilizacao: '2026-08-01', texto: 'x', destinatarios: [{ nome: 'CLIENTE DO ESCRITORIO B', polo: 'A' }] }] },
+    });
+    const det = await req('GET', '/juridico/api/legal/buscas/' + bid, { fake: f });
+    assert.equal(det.json.busca.total_processos, 1);
+    const hit = det.json.busca.resultados[0];
+    assert.equal(hit.exato, 1, 'triagem de homônimo funciona para o assinante');
+    // cadastro em 1 clique cria o processo no banco do assinante
+    const cad = await req('POST', `/juridico/api/legal/buscas/hits/${hit.id}/cadastrar`, { fake: f, corpo: {} });
+    assert.equal(cad.st, 200);
+    assert.ok(cad.json.case_id);
+    const procs = await req('GET', '/juridico/api/legal/processos', { fake: f });
+    assert.ok(procs.json.processos.some(x => x.numero_cnj === '0700777-88.2026.8.07.0001'));
+    // isolamento: o interno não vê a busca nem o processo do assinante
+    const staff = await req('GET', '/staff/api/legal/buscas');
+    assert.ok(!staff.json.buscas.some(x => x.termo === 'Cliente do Escritorio B'), 'busca do assinante é isolada');
+  });
+
+  await t('runner da plataforma: enxerga busca pendente de TODOS os escritórios', async () => {
+    const f = { uid: 'bt2', slug: 'bt2' };
+    // busca do assinante fica pendente (o servidor não alcança o DJEN)
+    const b = await req('POST', '/juridico/api/legal/buscas', { fake: f, corpo: { modo: 'oab', termo: '99999', uf_oab: 'SP', tribunais: ['TJSP'] } });
+    assert.equal(b.st, 200);
+    assert.equal(b.json.busca.status, 'pendente');
+    // o runner de tenant único (o de antes) NÃO vê — é o buraco que isto fecha
+    const soInterno = await req('GET', '/staff/api/legal/buscas/pendentes', { chave: true });
+    assert.ok(!soInterno.json.pendentes.some(x => x.id === b.json.busca.id), 'rota de tenant único não alcança o assinante');
+    // o runner da PLATAFORMA vê, com o escritório identificado
+    const todos = await req('GET', '/staff/api/legal/buscas/pendentes-todos', { chave: true });
+    assert.equal(todos.st, 200);
+    const meu = todos.json.pendentes.find(x => x.id === b.json.busca.id);
+    assert.ok(meu, 'busca do assinante aparece para o runner da plataforma');
+    assert.equal(meu.tenant, 'esc-bt2', 'vem com o escritório dono');
+    assert.ok(meu.alvos[0].url.includes('numeroOab=99999'));
+    // e o resultado volta PARA O BANCO DAQUELE escritório
+    const r = await req('POST', `/staff/api/legal/buscas/tenant/${meu.tenant}/${b.json.busca.id}/resultado`, {
+      chave: true,
+      corpo: { por: 'runner-local', comunicacoes: [{ siglaTribunal: 'TJSP', numeroprocessocommascara: '1000111-22.2026.8.26.0100', data_disponibilizacao: '2026-08-02', texto: 'y', destinatarios: [{ nome: 'ESCRITORIO BT2', polo: 'A' }] }] },
+    });
+    assert.equal(r.st, 200);
+    assert.equal(r.json.tenant, 'esc-bt2');
+    const det = await req('GET', '/juridico/api/legal/buscas/' + b.json.busca.id, { fake: f });
+    assert.equal(det.json.busca.status, 'concluida', 'o assinante vê a busca concluída');
+    assert.equal(det.json.busca.resultados.length, 1);
+    // o interno NÃO recebeu nada disso
+    const staff = await req('GET', '/staff/api/legal/buscas');
+    assert.ok(!staff.json.buscas.some(x => x.termo === '99999'), 'resultado não vazou para o escritório interno');
+  });
+
+  await t('runner da plataforma: rotas multi-tenant exigem PUBLISH_KEY (sessão não basta)', async () => {
+    const comSessao = await req('GET', '/staff/api/legal/buscas/pendentes-todos');
+    assert.equal(comSessao.st, 403, 'admin logado não varre os outros escritórios');
+    const post = await req('POST', '/staff/api/legal/buscas/tenant/esc-bt2/x/resultado', { corpo: {} });
+    assert.equal(post.st, 403);
+    const inexistente = await req('POST', '/staff/api/legal/buscas/tenant/nao-existe/x/resultado', { chave: true, corpo: {} });
+    assert.equal(inexistente.st, 404, 'tenant desconhecido é recusado');
+  });
+
+  trib.__mockBuscaParaTeste(null);
+
   await t('ponte assinante: Peticionar é gateado pelo módulo do plano (pecas)', async () => {
     // plano sem 'pecas': a guia inteira barra, mesmo com processos liberados
     const semPecas = { uid: 'br', modulos: 'processos,publicacoes,documentos' };
