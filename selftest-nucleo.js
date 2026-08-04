@@ -417,6 +417,38 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(cash2.length, 1, 'idempotente: continua 1 cashback');
   });
 
+  // ---------- Snapshots dos bancos SQLite (backup restaurável) ----------
+  await t('snapshots: um por banco, tenants de mesmo nome não colidem, retenção não come o vizinho', async () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const { snapshotTodos } = require('./snapshots');
+    const raiz = path.join(DATA_DIR, 'snap-teste');
+    // legal/legal.db e legal-esc-x/legal.db têm o MESMO basename; legal-saas/ tem o mesmo PREFIXO
+    const bancos = ['legal/legal.db', 'legal-esc-x/legal.db', 'legal-saas/legal-saas.db', 'academy/academy.db'];
+    for (const rel of bancos) {
+      const cheio = path.join(raiz, rel);
+      fs.mkdirSync(path.dirname(cheio), { recursive: true });
+      const db = new DatabaseSync(cheio);
+      db.exec('CREATE TABLE t (id INTEGER); INSERT INTO t VALUES (1)');
+      db.close();
+    }
+    const feitos = snapshotTodos(raiz, { manter: 2, hoje: '2026-08-01' });
+    assert.equal(feitos.length, 4, 'um snapshot por banco (nenhum sobrescreve o outro)');
+    const nomes = () => fs.readdirSync(path.join(raiz, '_snapshots')).sort();
+    assert.deepEqual(nomes(), [
+      'academy-2026-08-01.db', 'legal-2026-08-01.db',
+      'legal-esc-x__legal-2026-08-01.db', 'legal-saas-2026-08-01.db',
+    ], 'tenant vira legal-esc-x__legal; pasta com o nome do banco continua sem prefixo');
+    // três dias com retenção 2: cada banco poda os SEUS, sem tocar nos do vizinho de prefixo
+    snapshotTodos(raiz, { manter: 2, hoje: '2026-08-02' });
+    snapshotTodos(raiz, { manter: 2, hoje: '2026-08-03' });
+    const finais = nomes();
+    for (const prefixo of ['academy', 'legal', 'legal-esc-x__legal', 'legal-saas']) {
+      const doBanco = finais.filter(f => /^(.*)-\d{4}-\d{2}-\d{2}\.db$/.exec(f)[1] === prefixo);
+      assert.equal(doBanco.length, 2, `${prefixo}: retém 2 (tem ${doBanco.join()})`);
+      assert.ok(doBanco.includes(prefixo + '-2026-08-03.db'), `${prefixo}: manteve o mais recente`);
+    }
+  });
+
   // ---------- Área do Hóspede (login) ----------
   await t('hóspede: login correto=200+cookie, senha errada=401', async () => {
     const bom = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaHospede1' }, headers: comIp('10.2.2.2') });

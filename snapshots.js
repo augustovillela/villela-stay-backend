@@ -28,8 +28,21 @@ function encontrarDbs(dir, out = []) {
   return out;
 }
 
-function snapshotUmBanco(dbPath, destDir, carimbo, manter) {
-  const nome = path.basename(dbPath, '.db');
+// Nome do snapshot a partir do caminho RELATIVO ao DATA_DIR, não só do basename:
+// escritórios/tenants diferentes têm bancos com o MESMO nome de arquivo
+// (legal/legal.db e legal-esc-fulano/legal.db) e um anularia o outro. Quando a
+// pasta já tem o nome do banco (academy/academy.db) o slug continua "academy",
+// para não renomear os snapshots que já existem.
+function slugDoBanco(dataDir, dbPath) {
+  const rel = path.relative(dataDir, dbPath);
+  const base = path.basename(rel, '.db');
+  const dir = path.dirname(rel);
+  if (dir === '.' || dir === base) return base;
+  return dir.split(/[\\/]/).concat(base).join('__');
+}
+
+function snapshotUmBanco(dbPath, destDir, carimbo, manter, nomeSlug) {
+  const nome = nomeSlug || path.basename(dbPath, '.db');
   const destino = path.join(destDir, `${nome}-${carimbo}.db`);
   if (fs.existsSync(destino)) return destino; // já há snapshot de hoje → idempotente
   const db = new DatabaseSync(dbPath);
@@ -38,9 +51,12 @@ function snapshotUmBanco(dbPath, destDir, carimbo, manter) {
   } finally {
     try { db.close(); } catch {}
   }
-  // retenção: mantém os N snapshots mais recentes DESTE banco (nome-AAAA-MM-DD.db ordena por data)
+  // retenção: mantém os N snapshots mais recentes DESTE banco (nome-AAAA-MM-DD.db ordena por data).
+  // O filtro exige a data no fim: com `startsWith(nome + '-')`, o banco "legal" adotava também os
+  // snapshots de "legal-saas" e apagava os próprios ao podar (era por isso que legal-*.db sumia).
+  const reDoBanco = new RegExp('^' + nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '-\\d{4}-\\d{2}-\\d{2}\\.db$');
   const antigos = fs.readdirSync(destDir)
-    .filter(f => f.startsWith(nome + '-') && f.endsWith('.db'))
+    .filter(f => reDoBanco.test(f))
     .sort();
   for (const f of antigos.slice(0, Math.max(0, antigos.length - manter))) {
     try { fs.rmSync(path.join(destDir, f)); } catch {}
@@ -55,10 +71,10 @@ function snapshotTodos(dataDir, { manter = 7, hoje } = {}) {
   const carimbo = hoje || new Date().toISOString().slice(0, 10);
   const feitos = [];
   for (const db of encontrarDbs(dataDir)) {
-    try { feitos.push(snapshotUmBanco(db, destDir, carimbo, manter)); }
+    try { feitos.push(snapshotUmBanco(db, destDir, carimbo, manter, slugDoBanco(dataDir, db))); }
     catch (e) { console.error('[snapshots] falha em', db, e.message); }
   }
   return feitos;
 }
 
-module.exports = { snapshotTodos, encontrarDbs, snapshotUmBanco };
+module.exports = { snapshotTodos, encontrarDbs, snapshotUmBanco, slugDoBanco };
