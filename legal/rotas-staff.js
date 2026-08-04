@@ -24,7 +24,7 @@ function resolverTenant(req) {
 }
 
 function registrarRotasStaff(app, deps) {
-  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
+  const { repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, tribunais, jwtSecret, requireAuth, requirePublishOrSession, lerUsuarios } = deps;
   const jwt = require('jsonwebtoken');
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
@@ -443,6 +443,53 @@ function registrarRotasStaff(app, deps) {
       return base;
     });
     res.json({ pendentes, guardrails: llm.GUARDRAILS });
+  }));
+
+  // ------------------------------------------------------- BUSCA EM TRIBUNAIS
+  // Acha processos por nome/OAB/número em vários tribunais e cadastra com 1 clique.
+  // O DJEN bloqueia IP de datacenter: o servidor TENTA e, ao falhar, o pedido fica
+  // pendente para o runner local (`stays\legal-busca-tribunais.ps1`, PUBLISH_KEY).
+  app.get('/staff/api/legal/tribunais', requireAuth, pode('ver_processos'), h((req, res) => {
+    res.json(tribunais.catalogo());
+  }));
+  app.get('/staff/api/legal/buscas', requireAuth, pode('ver_processos'), h((req, res) => {
+    res.json({ buscas: tribunais.listar(req.query) });
+  }));
+  // ANTES de /buscas/:id — senão 'pendentes' seria lido como um id
+  app.get('/staff/api/legal/buscas/pendentes', requirePublishOrSession, pode('gerir_publicacoes'), h((req, res) => {
+    res.json({ pendentes: tribunais.pendentes(req.query.limite) });
+  }));
+  app.get('/staff/api/legal/buscas/:id', requireAuth, pode('ver_processos'), h((req, res) => {
+    res.json({ busca: tribunais.obter(req.params.id) });
+  }));
+  app.post('/staff/api/legal/buscas', requireAuth, pode('criar_processos'), ha(async (req, res) => {
+    const b = tribunais.criar(req.body || {}, quemFez(req));
+    auditar(req, 'busca.criar', 'court_searches', b.id, `${b.modo}="${b.termo}" em ${b.tribunais.length || 'todos'} tribunal(is)`);
+    const r = await tribunais.executarNoServidor(b.id);
+    res.json({ ok: true, busca: tribunais.obter(b.id), execucao: r });
+  }));
+  app.post('/staff/api/legal/buscas/:id/executar', requireAuth, pode('criar_processos'), ha(async (req, res) => {
+    const r = await tribunais.executarNoServidor(req.params.id);
+    res.json({ ok: true, busca: tribunais.obter(req.params.id), execucao: r });
+  }));
+  // o runner local devolve as comunicações CRUAS; o agrupamento é aqui (uma só implementação)
+  // o agente_ia (PUBLISH_KEY) TEM gerir_publicacoes e NÃO tem criar_processos: o runner
+  // entrega o resultado da coleta, mas quem cadastra processo é sempre uma pessoa.
+  app.post('/staff/api/legal/buscas/:id/resultado', requirePublishOrSession, pode('gerir_publicacoes'), h((req, res) => {
+    const b = req.body || {};
+    const r = tribunais.registrarResultado(req.params.id, {
+      comunicacoes: b.comunicacoes || [], por: b.por || 'runner-local', erro: b.erro || '',
+    });
+    auditar(req, 'busca.resultado', 'court_searches', req.params.id,
+      `${(b.comunicacoes || []).length} comunicação(ões) via ${b.por || 'runner-local'}`);
+    res.json({ ok: true, ...r });
+  }));
+  // cadastro em 1 clique: cria o processo + partes (DJEN) + capa e andamentos (DataJud)
+  app.post('/staff/api/legal/buscas/hits/:id/cadastrar', requireAuth, pode('criar_processos'), ha(async (req, res) => {
+    const r = await tribunais.cadastrar(req.params.id, req.body || {}, quemFez(req));
+    auditar(req, 'busca.cadastrar', 'cases', r.case_id,
+      `${r.numero_cnj} · ${r.criado ? 'novo' : 'já existia'} · ${r.partes} parte(s) · ${r.andamentos} andamento(s)`);
+    res.json({ ok: true, ...r, aviso: 'Processo ativo com número CNJ — a rotina diária passa a acompanhá-lo automaticamente.' });
   }));
 
   // ------------------------------------------------------- PETICIONAR (guia própria, grupo Contencioso)

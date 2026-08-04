@@ -36,6 +36,7 @@
       ['agenda', '📅', 'Agenda'],
       ['audiencias', '🏛️', 'Audiências'],
       ['publicacoes', '📰', 'Publicações'],
+      ['buscatribunais', '📡', 'Busca em tribunais'],
       ['peticionar', '✍️', 'Peticionar'],
       ['matrizes', '🧩', 'Estratégia e provas'],
     ]],

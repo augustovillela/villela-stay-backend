@@ -756,3 +756,49 @@ CREATE TABLE IF NOT EXISTS petition_sources (
   ordem       INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (petition_id, document_id)
 );
+
+-- =====================================================================
+-- BUSCA EM TRIBUNAIS (achar processos por nome/OAB e passar a acompanhar)
+-- O pedido de busca e o relatório agrupado POR PROCESSO. Duas fontes:
+-- o DJEN acha e nomeia as partes (única API com esse dado) e o DataJud
+-- enriquece a capa e traz todos os andamentos antigos.
+-- O pedido pode ser executado pelo servidor OU pelo runner local — o DJEN
+-- bloqueia IP de datacenter, então na prática hoje é o runner.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS court_searches (
+  id            TEXT PRIMARY KEY,
+  modo          TEXT NOT NULL DEFAULT 'nome',  -- nome|oab|processo
+  termo         TEXT NOT NULL DEFAULT '',
+  uf_oab        TEXT DEFAULT '',
+  tribunais     TEXT DEFAULT '[]',   -- JSON de siglas marcadas ([] = varredura nacional)
+  dias          INTEGER NOT NULL DEFAULT 90,
+  status        TEXT NOT NULL DEFAULT 'pendente', -- pendente|executando|concluida|erro
+  detalhe       TEXT DEFAULT '',
+  executada_por TEXT DEFAULT '',     -- servidor | runner-local
+  total_comunicacoes INTEGER DEFAULT 0,
+  total_processos    INTEGER DEFAULT 0,
+  criado_por    TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  concluida_em  TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_court_searches_status ON court_searches(status, criado_em);
+
+-- um registro POR PROCESSO encontrado (não por comunicação)
+CREATE TABLE IF NOT EXISTS court_search_hits (
+  id           TEXT PRIMARY KEY,
+  search_id    TEXT NOT NULL,
+  numero_cnj   TEXT NOT NULL,
+  tribunal     TEXT DEFAULT '',
+  orgao        TEXT DEFAULT '',
+  classe       TEXT DEFAULT '',
+  partes       TEXT DEFAULT '[]',   -- JSON [{nome, polo}] — vem do DJEN
+  nome_casado  TEXT DEFAULT '',     -- TRIAGEM DE HOMÔNIMO: que nome casou com a busca
+  exato        INTEGER NOT NULL DEFAULT 0, -- 1 = igual ao termo buscado
+  comunicacoes INTEGER DEFAULT 0,
+  primeira_em  TEXT DEFAULT '',
+  ultima_em    TEXT DEFAULT '',
+  amostra      TEXT DEFAULT '',
+  case_id      TEXT DEFAULT '',     -- preenchido ao cadastrar (ou se já existia)
+  criado_em    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_court_hits_busca ON court_search_hits(search_id);

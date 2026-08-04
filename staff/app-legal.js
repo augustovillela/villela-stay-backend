@@ -36,6 +36,7 @@ const LG = {
     if (LG.perm.ver_processos) t.push(['agenda', '📅 Agenda']);
     if (LG.perm.ver_processos) t.push(['audiencias', '🏛️ Audiências']);
     if (LG.perm.gerir_publicacoes) t.push(['publicacoes', '📰 Publicações']);
+    if (LG.perm.ver_processos) t.push(['buscatribunais', '📡 Busca em tribunais']);
     if (LG.perm.ver_documentos) t.push(['peticionar', '✍️ Peticionar']);
     if (LG.perm.gerir_tarefas) t.push(['tarefas', '✅ Tarefas']);
     if (LG.perm.ver_documentos) t.push(['documentos', '📂 Documentos']);
@@ -58,7 +59,7 @@ const LG = {
   body() { return document.getElementById('lg-body'); },
   async pintar() {
     try {
-      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, peticionar: LG.vPeticionar, tarefas: LG.vTarefas, documentos: LG.vDocumentos, pecas: LG.vPecas, contratos: LG.vContratos, financeiro: LG.vFinanceiro, relatorios: LG.vRelatorios, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
+      const v = { painel: LG.vPainel, clientes: LG.vClientes, processos: LG.vProcessos, prazos: LG.vPrazos, agenda: LG.vAgenda, audiencias: LG.vAudiencias, publicacoes: LG.vPublicacoes, buscatribunais: LG.vBuscaTribunais, peticionar: LG.vPeticionar, tarefas: LG.vTarefas, documentos: LG.vDocumentos, pecas: LG.vPecas, contratos: LG.vContratos, financeiro: LG.vFinanceiro, relatorios: LG.vRelatorios, ia: LG.vIA, equipe: LG.vEquipe, auditoria: LG.vAuditoria }[LG.tab];
       if (v) await v();
     } catch (e) { LG.body().innerHTML = `<div class="card">Erro: ${esc(e.message)}</div>`; }
   },
@@ -593,6 +594,152 @@ const LG = {
       await LG.api('PATCH', '/publicacoes/' + id, { status: novo });
       LGUI.toast('Status: ' + novo.replace(/_/g, ' '), 'ok');
       LG.verPub(id);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+
+  // -------------------------------------------------- BUSCA EM TRIBUNAIS
+  // Acha processos por nome/OAB/número em vários tribunais e cadastra com 1
+  // clique. O relatório mostra o NOME QUE CASOU: a busca por nome do DJEN é
+  // frouxa e cadastrar processo de homônimo seria o erro grave aqui.
+  buscaTrib: { modo: 'nome', marcados: null, aberta: '' },
+  async vBuscaTribunais() {
+    const [cat, { buscas }] = await Promise.all([LG.api('GET', '/tribunais'), LG.api('GET', '/buscas')]);
+    if (!LG.buscaTrib.marcados) LG.buscaTrib.marcados = new Set(cat.frequentes);
+    const marcados = LG.buscaTrib.marcados;
+    const modo = LG.buscaTrib.modo;
+    const podeCriar = !!LG.perm.criar_processos;
+
+    const grupos = [...new Set(cat.tribunais.map(t => t.grupo))];
+    const caixas = grupos.map(g => {
+      const itens = cat.tribunais.filter(t => t.grupo === g);
+      return `<details class="cr-box"${g === 'Superiores' || g === 'Justiça Estadual' ? ' open' : ''}>
+        <summary class="cr-sum">${esc(g)} <span class="vx-hint">(${itens.filter(t => marcados.has(t.sigla)).length}/${itens.length})</span>
+          <button type="button" class="btn secund peq" style="margin-left:auto" onclick="event.preventDefault();LG.marcarGrupo('${esc(g)}',true)">todos</button>
+          <button type="button" class="btn secund peq" onclick="event.preventDefault();LG.marcarGrupo('${esc(g)}',false)">nenhum</button></summary>
+        <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:.4rem">
+          ${itens.map(t => `<label style="display:inline-flex;align-items:center;gap:4px;font-weight:400;min-width:150px">
+            <input type="checkbox" style="width:auto;margin:0" data-trib="${t.sigla}" ${marcados.has(t.sigla) ? 'checked' : ''}
+              onchange="LG.marcarTrib('${t.sigla}',this.checked)"> ${esc(t.sigla)}
+            <span class="vx-hint" title="${esc(t.nome)}">${esc(t.nome.length > 26 ? t.nome.slice(0, 24) + '…' : t.nome)}</span></label>`).join('')}
+        </div></details>`;
+    }).join('');
+
+    let h = `<div class="aviso">📡 Procure processos por <b>nome</b>, <b>OAB</b> ou <b>número</b> em vários tribunais de uma vez.
+      O relatório vem agrupado <b>por processo</b> e, com um clique, o processo é cadastrado aqui com partes, capa e
+      <b>todo o histórico de andamentos</b> — passando a ser acompanhado sozinho pela rotina diária.
+      <br>⚠️ A busca por nome do DJEN é frouxa (traz parecidos): confira sempre o <b>nome que casou</b> antes de cadastrar.</div>`;
+
+    if (podeCriar) {
+      h += `<section class="vx-card"><div class="vx-card-head"><div><h2>🔎 Nova busca</h2></div></div>
+        <div class="hi-grid">
+          <label>Buscar por <select id="lgb-modo" onchange="LG.buscaTrib.modo=this.value;LG.pintar()">
+            <option value="nome"${modo === 'nome' ? ' selected' : ''}>Nome da parte</option>
+            <option value="oab"${modo === 'oab' ? ' selected' : ''}>Número da OAB (mais preciso)</option>
+            <option value="processo"${modo === 'processo' ? ' selected' : ''}>Número do processo</option></select></label>
+          <label>${modo === 'nome' ? 'Nome' : (modo === 'oab' ? 'Número da OAB' : 'Número do processo (CNJ)')} *
+            <input id="lgb-termo" maxlength="200" placeholder="${modo === 'nome' ? 'Augusto Villela' : (modo === 'oab' ? '12003' : '0700123-45.2026.8.07.0001')}"></label>
+          ${modo === 'oab' ? '<label>UF da OAB * <input id="lgb-uf" maxlength="2" value="DF" style="text-transform:uppercase"></label>' : ''}
+          <label>Período (dias) <input id="lgb-dias" type="number" min="1" max="365" value="90"></label>
+        </div>
+        <p class="vx-hint">Tribunais: <b id="lgb-conta">${marcados.size}</b> marcado(s). Nenhum marcado = varredura nacional.</p>
+        ${caixas}
+        <div class="acoes"><button class="btn" onclick="LG.rodarBusca()">📡 Pesquisar</button>
+          <button class="btn secund peq" onclick="LG.marcarTodos(false)">Limpar seleção</button></div>
+        <p id="lgb-msg" class="sub"></p></section>`;
+    }
+
+    h += `<section class="vx-card"><div class="vx-card-head"><div><h2>📋 Buscas feitas</h2>
+      <p class="vx-hint vx-mb0">Clique para ver o relatório e cadastrar os processos.</p></div></div>
+      ${buscas.length ? `<div class="vx-acervo">${buscas.map(b => `
+        <button type="button" class="vx-acervo-item" data-novo="${b.status === 'pendente' ? 1 : 0}" onclick="LG.verBusca('${b.id}')">
+          <span class="vx-acervo-data">${LG.dt(b.criado_em)}<br><span class="vx-hint">${esc(b.modo)}</span></span>
+          <span class="vx-acervo-corpo"><span class="vx-acervo-tit">${esc(b.termo)}${b.uf_oab ? '/' + esc(b.uf_oab) : ''}</span>
+            <span class="vx-acervo-txt">${b.tribunais.length ? esc(b.tribunais.join(', ')) : 'todos os tribunais'} · últimos ${b.dias} dias${b.status === 'concluida' ? ` · ${b.total_processos} processo(s) de ${b.total_comunicacoes} comunicação(ões)` : ''}${b.detalhe ? ' · ' + esc(b.detalhe) : ''}</span></span>
+          <span class="vx-acervo-tags">${LG.chip(b.status)}${b.executada_por ? `<span class="chip">${esc(b.executada_por)}</span>` : ''}</span>
+        </button>`).join('')}</div>` : '<p class="vazio">Nenhuma busca ainda.</p>'}</section>`;
+    LG.body().innerHTML = h;
+  },
+  marcarTrib(sigla, ligado) {
+    if (ligado) LG.buscaTrib.marcados.add(sigla); else LG.buscaTrib.marcados.delete(sigla);
+    const c = document.getElementById('lgb-conta');
+    if (c) c.textContent = LG.buscaTrib.marcados.size;
+  },
+  async marcarGrupo(grupo, ligado) {
+    const { tribunais } = await LG.api('GET', '/tribunais');
+    for (const t of tribunais.filter(x => x.grupo === grupo)) LG.marcarTrib(t.sigla, ligado);
+    LG.pintar();
+  },
+  marcarTodos(ligado) { if (!ligado) LG.buscaTrib.marcados.clear(); LG.pintar(); },
+  async rodarBusca() {
+    const msg = document.getElementById('lgb-msg');
+    const corpo = {
+      modo: LG.buscaTrib.modo,
+      termo: (document.getElementById('lgb-termo') || {}).value || '',
+      uf_oab: (document.getElementById('lgb-uf') || {}).value || '',
+      dias: Number((document.getElementById('lgb-dias') || {}).value || 90),
+      tribunais: [...LG.buscaTrib.marcados],
+    };
+    msg.textContent = '📡 Consultando os tribunais…';
+    try {
+      const r = await LG.api('POST', '/buscas', corpo);
+      if (r.execucao.status === 'concluida') LG.verBusca(r.busca.id);
+      else {
+        msg.textContent = '';
+        LGUI.toast('Busca criada. O servidor não alcança o DJEN daqui — o runner local traz o resultado na próxima passada.', 'ok');
+        LG.pintar();
+      }
+    } catch (e) { msg.textContent = ''; LGUI.toast(e.message, 'erro'); }
+  },
+  async verBusca(id) {
+    LG.buscaTrib.aberta = id;
+    const { busca: b } = await LG.api('GET', '/buscas/' + id);
+    const podeCriar = !!LG.perm.criar_processos;
+    const linha = (r) => {
+      const jaTem = !!r.case_id;
+      return `<tr${r.exato ? '' : ' style="opacity:.82"'}>
+        <td data-rot="Processo"><b>${esc(r.numero_cnj)}</b><br><span class="vx-hint">${esc(r.tribunal)}${r.orgao ? ' · ' + esc(r.orgao) : ''}</span></td>
+        <td data-rot="Nome que casou">${r.exato ? '✅ ' : '⚠️ '}${esc(r.nome_casado || '—')}
+          ${r.exato ? '<br><span class="vx-hint">correspondência exata</span>' : '<br><span class="vx-hint" style="color:var(--vx-danger)">NÃO é exato — confira antes</span>'}</td>
+        <td data-rot="Partes">${r.partes.map(p => `${esc(p.nome)} <span class="chip">${p.polo === 'A' ? 'ativo' : (p.polo === 'P' ? 'passivo' : esc(p.polo || '?'))}</span>`).join('<br>') || '—'}</td>
+        <td data-rot="Classe">${esc(r.classe || '—')}</td>
+        <td data-rot="Comunicações">${r.comunicacoes}<br><span class="vx-hint">${LG.dt(r.primeira_em)} → ${LG.dt(r.ultima_em)}</span></td>
+        <td data-rot="">${jaTem
+          ? `<span class="chip">✅ já cadastrado</span><br><button class="btn secund peq" onclick="LG.verProcesso('${r.case_id}')">Abrir</button>`
+          : (podeCriar ? `<button class="btn peq" onclick="LG.cadastrarDaBusca('${r.id}')">➕ Cadastrar e acompanhar</button>` : '—')}</td></tr>`;
+    };
+    const exatos = b.resultados.filter(r => r.exato);
+    const parecidos = b.resultados.filter(r => !r.exato);
+    const bloco = (titulo, sub, lista) => `<section class="vx-card"><div class="vx-card-head"><div>
+      <h2>${titulo} <span class="vx-hint">(${lista.length})</span></h2><p class="vx-hint vx-mb0">${esc(sub)}</p></div></div>
+      ${lista.length ? `<div class="vx-tabela-wrap"><table class="vx-tabela--cards"><thead><tr>
+        <th scope="col">Processo</th><th scope="col">Nome que casou</th><th scope="col">Partes</th>
+        <th scope="col">Classe</th><th scope="col">Comunicações</th><th scope="col"></th></tr></thead>
+        <tbody>${lista.map(linha).join('')}</tbody></table></div>` : '<p class="vazio">Nenhum.</p>'}</section>`;
+
+    LG.body().innerHTML = `<div class="acoes"><button class="btn secund peq" onclick="LG.pintar()">← Voltar às buscas</button>
+      ${b.status !== 'concluida' && LG.perm.criar_processos ? `<button class="btn secund peq" onclick="LG.reexecutarBusca('${b.id}')">↻ Tentar de novo pelo servidor</button>` : ''}</div>
+      <section class="vx-card"><div class="vx-card-head"><div>
+        <h2>📡 ${esc(b.modo)} = "${esc(b.termo)}${b.uf_oab ? '/' + esc(b.uf_oab) : ''}" ${LG.chip(b.status)}</h2>
+        <p class="vx-hint vx-mb0">${b.tribunais.length ? esc(b.tribunais.join(', ')) : 'todos os tribunais'} · últimos ${b.dias} dias
+        ${b.executada_por ? '· executada por ' + esc(b.executada_por) : ''}
+        ${b.status === 'concluida' ? `· ${b.total_comunicacoes} comunicação(ões) → ${b.total_processos} processo(s)` : ''}</p></div></div>
+        ${b.detalhe ? `<div class="aviso">${esc(b.detalhe)}</div>` : ''}
+        ${b.status === 'pendente' ? '<div class="aviso">⏳ Aguardando o runner local (o DJEN recusa o IP do servidor). Assim que ele rodar, o relatório aparece aqui.</div>' : ''}
+      </section>
+      ${b.status === 'concluida' ? bloco('✅ Correspondência exata', 'O nome bate exatamente com o que você buscou.', exatos)
+        + bloco('⚠️ Parecidos (possíveis homônimos)', 'O DJEN casou por semelhança. Leia o nome antes de cadastrar — pode ser outra pessoa.', parecidos) : ''}`;
+  },
+  async reexecutarBusca(id) {
+    LGUI.toast('Tentando pelo servidor…');
+    try { await LG.api('POST', `/buscas/${id}/executar`); LG.verBusca(id); }
+    catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+  async cadastrarDaBusca(hitId) {
+    LGUI.toast('Cadastrando e importando o histórico do DataJud…');
+    try {
+      const r = await LG.api('POST', `/buscas/hits/${hitId}/cadastrar`, {});
+      LGUI.toast(`${r.criado ? 'Processo cadastrado' : 'Processo já existia'}: ${r.partes} parte(s), ${r.andamentos} andamento(s) importado(s).${r.aviso ? ' ' + r.aviso : ''}`, r.aviso ? 'erro' : 'ok');
+      if (LG.buscaTrib.aberta) LG.verBusca(LG.buscaTrib.aberta); // relatório volta com o item marcado
     } catch (e) { LGUI.toast(e.message, 'erro'); }
   },
 

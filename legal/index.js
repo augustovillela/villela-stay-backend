@@ -23,6 +23,7 @@ const portalCliente = require('./portal-cliente');
 const relatorios = require('./relatorios');
 const coleta = require('./coleta');
 const peticionar = require('./peticionar');
+const tribunais = require('./tribunais');
 const { semearIA } = require('./prompts-seed');
 const { semearLivro } = require('./livro/seeds');
 const { registrarRotasStaff } = require('./rotas-staff');
@@ -52,14 +53,14 @@ function montar(app, injected = {}) {
   dbmod.garantirTenant(dbmod.TENANT_PADRAO); // aquece + semeia o escritório interno (Augusto)
   notif.configurar({ enviarEmail, enviarWhatsApp, alertaAugusto }); // canais reais do server.js
   registrarRotasStaff(app, {
-    repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, jwtSecret,
+    repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, tribunais, jwtSecret,
     requireAuth, requireAdmin, requirePublishOrSession, lerUsuarios,
   });
   if (jwtSecret) portalCliente.registrarPortalCliente(app, { jwtSecret });
   else console.warn('[legal] jwtSecret ausente — Portal do Cliente NÃO montado.');
   coleta.iniciarRotinas(); // rotina diária server-side (LEGAL_ROTINAS=off desliga)
   console.log(`[legal] Villela Legal Intelligence montado (Fases 1-7). IA: ${llm.ativo() ? 'direto (' + llm.MODELOS[0] + ')' : 'fila (agente local)'} · RAG: ${ia.ftsOK ? 'FTS5 ok' : 'indisponível'}`);
-  return { repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta, peticionar };
+  return { repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta, peticionar, tribunais };
 }
 
 // =====================================================================
@@ -85,7 +86,7 @@ const BASE_STAFF = '/staff/api/legal';
 const SEGMENTO_MODULO = {
   processos: 'processos', andamentos: 'processos', publicacoes: 'publicacoes',
   prazos: 'prazos', audiencias: 'audiencias', tarefas: 'tarefas', documentos: 'documentos',
-  ia: 'ia', pecas: 'pecas', peticionar: 'pecas', contratos: 'contratos', relatorios: 'relatorios',
+  ia: 'ia', pecas: 'pecas', peticionar: 'pecas', buscas: 'processos', tribunais: 'processos', contratos: 'contratos', relatorios: 'relatorios',
   // ---- ONDA LIVRO (Cap. 47 + Parte VIII) ----
   crm: 'crm',                                     // 47.1
   pesquisa: 'pesquisa',                           // 47.7 + 47.8
@@ -147,7 +148,7 @@ function montarAssinante(app, injected = {}) {
   // auth por-rota é no-op: a autenticação já foi feita pelo app.use acima.
   const passa = (req, res, n) => n();
   registrarRotasStaff(proxyApp, {
-    repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, jwtSecret,
+    repo, permissoes, feriados, ia, llm, pecas, contratos, portalCliente, notif, relatorios, coleta, peticionar, tribunais, jwtSecret,
     requireAuth: passa, requireAdmin: passa, requirePublishOrSession: passa,
     lerUsuarios: () => [], // gestão de equipe do escritório fica no painel do assinante (fora desta ponte)
   });
@@ -156,4 +157,4 @@ function montarAssinante(app, injected = {}) {
   return { PREFIXO: PREFIXO_ASSINANTE };
 }
 
-module.exports = { montar, montarAssinante, repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta, peticionar };
+module.exports = { montar, montarAssinante, repo, permissoes, feriados, ia, llm, pecas, contratos, notif, portalCliente, relatorios, coleta, peticionar, tribunais };

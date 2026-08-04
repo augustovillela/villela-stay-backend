@@ -400,6 +400,158 @@ async function rodar() {
     assert.equal(semNumero.st, 400, 'sem processo vinculado, o número é obrigatório');
   });
 
+  // 5f. BUSCA EM TRIBUNAIS — achar por nome/OAB e cadastrar com 1 clique
+  const trib = require('./tribunais');
+  let buscaId, hitExato, hitHomonimo;
+  // A suíte NUNCA toca a rede: o dublê simula o DJEN recusando o servidor
+  // (que é o comportamento real em produção — bloqueio de IP de datacenter).
+  trib.__mockBuscaParaTeste(async () => { throw new Error('DJEN HTTP 403 (IP bloqueado — use o runner local)'); });
+
+  await t('busca: catálogo cobre superiores, estaduais, federais, trabalho e eleitoral', async () => {
+    const c = await req('GET', '/staff/api/legal/tribunais');
+    assert.equal(c.st, 200);
+    const siglas = c.json.tribunais.map(x => x.sigla);
+    for (const esperado of ['STF', 'STJ', 'TST', 'TJDFT', 'TJSP', 'TJES', 'TRF1', 'TRT10', 'TREDF']) {
+      assert.ok(siglas.includes(esperado), 'catálogo tem ' + esperado);
+    }
+    assert.ok(c.json.frequentes.includes('TJDFT'));
+  });
+
+  await t('busca: monta uma consulta por tribunal marcado (e uma só quando é nacional)', async () => {
+    const b = trib.criar({ modo: 'nome', termo: 'Augusto Villela', tribunais: ['TJDFT', 'TJES'], dias: 60 }, 'teste');
+    const alvos = trib.alvosDe(b);
+    assert.equal(alvos.length, 2, 'uma consulta por tribunal marcado');
+    assert.ok(alvos[0].url.includes('siglaTribunal=TJDFT'));
+    assert.ok(alvos[0].url.includes('nomeParte=Augusto+Villela') || alvos[0].url.includes('nomeParte=Augusto%20Villela'));
+    const nacional = trib.criar({ modo: 'nome', termo: 'X', tribunais: [], dias: 30 }, 'teste');
+    assert.equal(trib.alvosDe(nacional).length, 1, 'sem tribunal marcado = varredura nacional numa chamada');
+    // OAB usa numeroOab+ufOab (bem mais preciso que nome)
+    const porOab = trib.criar({ modo: 'oab', termo: '12003', uf_oab: 'DF', tribunais: ['TJDFT'] }, 'teste');
+    assert.ok(trib.alvosDe(porOab)[0].url.includes('numeroOab=12003'));
+    assert.ok(trib.alvosDe(porOab)[0].url.includes('ufOab=DF'));
+  });
+
+  await t('busca: OAB sem UF é recusada', async () => {
+    const r = await req('POST', '/staff/api/legal/buscas', { corpo: { modo: 'oab', termo: '12003' } });
+    assert.equal(r.st, 400);
+    const semTermo = await req('POST', '/staff/api/legal/buscas', { corpo: { modo: 'nome', termo: '' } });
+    assert.equal(semTermo.st, 400);
+  });
+
+  await t('busca: agrupa comunicações POR PROCESSO e faz a triagem de homônimo', async () => {
+    const criada = await req('POST', '/staff/api/legal/buscas', { corpo: { modo: 'nome', termo: 'Augusto Villela', tribunais: ['TJDFT', 'TJSP'], dias: 60 } });
+    assert.equal(criada.st, 200);
+    buscaId = criada.json.busca.id;
+    // servidor sem DJEN (offline no teste) → fica pendente para o runner local
+    assert.equal(criada.json.execucao.status, 'pendente', 'servidor bloqueado deixa pendente, não perde o pedido');
+    // o runner local devolve as comunicações CRUAS (formato real do DJEN)
+    const r = await req('POST', `/staff/api/legal/buscas/${buscaId}/resultado`, {
+      chave: true,
+      corpo: {
+        por: 'runner-local',
+        comunicacoes: [
+          { siglaTribunal: 'TJDFT', numeroprocessocommascara: '0752020-33.2025.8.07.0016', nomeOrgao: '16a Vara Civel', nomeClasse: 'Procedimento Comum', data_disponibilizacao: '2026-07-10', texto: 'Intimacao da parte autora.', destinatarios: [{ nome: 'AUGUSTO VILLELA', polo: 'A' }, { nome: 'BANCO X', polo: 'P' }] },
+          { siglaTribunal: 'TJDFT', numeroprocessocommascara: '0752020-33.2025.8.07.0016', nomeOrgao: '16a Vara Civel', data_disponibilizacao: '2026-07-20', texto: 'Segunda comunicacao do mesmo processo.', destinatarios: [{ nome: 'AUGUSTO VILLELA', polo: 'A' }] },
+          { siglaTribunal: 'TJSP', numeroprocessocommascara: '4013193-87.2026.8.26.0071', nomeOrgao: 'Vara de SP', data_disponibilizacao: '2026-07-15', texto: 'Processo de outra pessoa.', destinatarios: [{ nome: 'LUCIO AUGUSTO VILLELA DA COSTA', polo: 'A' }] },
+        ],
+      },
+    });
+    assert.equal(r.st, 200);
+    assert.equal(r.json.comunicacoes, 3);
+    assert.equal(r.json.processos, 2, '3 comunicações viram 2 processos');
+
+    const b = await req('GET', '/staff/api/legal/buscas/' + buscaId);
+    assert.equal(b.json.busca.status, 'concluida');
+    assert.equal(b.json.busca.executada_por, 'runner-local');
+    const res = b.json.busca.resultados;
+    hitExato = res.find(x => x.numero_cnj === '0752020-33.2025.8.07.0016');
+    hitHomonimo = res.find(x => x.numero_cnj === '4013193-87.2026.8.26.0071');
+    // TRIAGEM DE HOMÔNIMO: quem é exatamente o buscado × quem só parece
+    assert.equal(hitExato.exato, 1, 'AUGUSTO VILLELA casa exatamente');
+    assert.equal(hitExato.nome_casado, 'AUGUSTO VILLELA');
+    assert.equal(hitHomonimo.exato, 0, 'LUCIO AUGUSTO VILLELA DA COSTA NÃO é correspondência exata');
+    assert.equal(hitHomonimo.nome_casado, 'LUCIO AUGUSTO VILLELA DA COSTA', 'mostra o nome que casou para o usuário julgar');
+    // dados agregados do processo
+    assert.equal(hitExato.comunicacoes, 2);
+    assert.equal(hitExato.primeira_em, '2026-07-10');
+    assert.equal(hitExato.ultima_em, '2026-07-20');
+    assert.equal(hitExato.partes.length, 2, 'as duas partes do processo, com polo');
+    assert.ok(hitExato.partes.some(p => p.nome === 'BANCO X' && p.polo === 'P'));
+    assert.ok(res[0].exato === 1, 'exatos vêm primeiro na lista');
+  });
+
+  await t('busca: 1 clique cadastra o processo com partes e TODOS os andamentos do DataJud', async () => {
+    // dublê do DataJud com o formato real (classe/assuntos/orgaoJulgador/movimentos)
+    const fakeDataJud = async () => ([{
+      numeroProcesso: '07520203320258070016',
+      classe: { nome: 'Procedimento Comum Cível' },
+      assuntos: [{ nome: 'Indenização por Dano Moral' }],
+      orgaoJulgador: { nome: '16ª Vara Cível de Brasília' },
+      grau: 'G1', nivelSigilo: 0,
+      movimentos: [
+        { nome: 'Distribuição', dataHora: '2025-11-02T10:00:00' },
+        { nome: 'Sentença publicada', dataHora: '2026-06-01T09:00:00' },
+        { nome: 'Recurso de apelação', dataHora: '2026-07-02T09:00:00' },
+        { nome: '', dataHora: '2026-07-03T09:00:00' }, // sem nome: ignorado sem derrubar
+      ],
+    }]);
+    const r = await trib.cadastrar(hitExato.id, { nucleo: 'civel' }, 'teste', { consultar: fakeDataJud });
+    assert.ok(r.criado, 'processo criado');
+    assert.equal(r.partes, 2, 'partes do DJEN gravadas');
+    assert.equal(r.andamentos, 3, 'movimentos do DataJud viraram andamentos (o sem nome foi ignorado)');
+    assert.ok(r.capa, 'capa importada');
+
+    const p = await req('GET', '/staff/api/legal/processos/' + r.case_id);
+    assert.equal(p.json.processo.numero_cnj, '0752020-33.2025.8.07.0016');
+    assert.equal(p.json.processo.tribunal, 'TJDFT');
+    assert.equal(p.json.processo.classe, 'Procedimento Comum Cível');
+    assert.equal(p.json.processo.assunto, 'Indenização por Dano Moral');
+    assert.equal(p.json.processo.orgao_julgador, '16ª Vara Cível de Brasília');
+    assert.equal(p.json.processo.status, 'ativo', 'ativo = a rotina diária passa a acompanhar sozinha');
+    assert.equal(p.json.processo.partes.length, 2);
+    assert.ok(p.json.processo.partes.some(x => x.nome === 'AUGUSTO VILLELA' && x.polo === 'ativo'));
+    assert.ok(p.json.processo.partes.some(x => x.nome === 'BANCO X' && x.polo === 'passivo'));
+    assert.equal(p.json.processo.movimentos.length, 3, 'histórico antigo acumulado');
+
+    // reexecutar é idempotente: não duplica processo, parte nem andamento
+    const r2 = await trib.cadastrar(hitExato.id, {}, 'teste', { consultar: fakeDataJud });
+    assert.equal(r2.criado, false);
+    assert.equal(r2.partes, 0);
+    assert.equal(r2.andamentos, 0);
+    assert.equal(r2.case_id, r.case_id);
+  });
+
+  await t('busca: processo já cadastrado aparece marcado no relatório (não duplica)', async () => {
+    const b = await req('GET', '/staff/api/legal/buscas/' + buscaId);
+    const j2 = b.json.busca.resultados.find(x => x.numero_cnj === '0752020-33.2025.8.07.0016');
+    assert.ok(j2.case_id, 'resultado já aponta para o processo cadastrado');
+    assert.equal(j2.case_status, 'ativo');
+  });
+
+  await t('busca: DataJud fora do ar não impede o cadastro (histórico vem depois)', async () => {
+    const explode = async () => { throw new Error('DataJud 429'); };
+    const r = await trib.cadastrar(hitHomonimo.id, {}, 'teste', { consultar: explode });
+    assert.ok(r.case_id, 'processo cadastrado mesmo assim');
+    assert.equal(r.andamentos, 0);
+    assert.ok(/DataJud|429/.test(r.aviso), 'avisa por que o histórico não veio: ' + r.aviso);
+  });
+
+  await t('busca: runner local recebe os pendentes com as URLs prontas', async () => {
+    const nova = await req('POST', '/staff/api/legal/buscas', { corpo: { modo: 'oab', termo: '12003', uf_oab: 'DF', tribunais: ['TJDFT'] } });
+    const pend = await req('GET', '/staff/api/legal/buscas/pendentes', { chave: true });
+    assert.equal(pend.st, 200);
+    const meu = pend.json.pendentes.find(x => x.id === nova.json.busca.id);
+    assert.ok(meu, 'pedido disponível para o runner local');
+    assert.ok(meu.alvos[0].url.startsWith('https://comunicaapi.pje.jus.br/'), 'URL pronta, o runner só busca');
+    // erro reportado pelo runner fica visível na tela
+    await req('POST', `/staff/api/legal/buscas/${nova.json.busca.id}/resultado`, { chave: true, corpo: { erro: 'timeout no DJEN' } });
+    const b = await req('GET', '/staff/api/legal/buscas/' + nova.json.busca.id);
+    assert.equal(b.json.busca.status, 'erro');
+    assert.ok(/timeout/.test(b.json.busca.detalhe));
+  });
+
+  trib.__mockBuscaParaTeste(null);
+
   // 6. prazos: calculadora + trava de validação humana
   await t('prazo: calculadora (dias úteis) e trava sem validado_por', async () => {
     const c = await req('POST', '/staff/api/legal/prazos/calcular', { corpo: { termo_inicial: '2026-07-06', dias: 5, modo: 'uteis' } });
@@ -580,7 +732,10 @@ async function rodar() {
     const antes = await req('GET', `/staff/api/legal/processos/${caseId}`);
     const nAntes = antes.json.processo.movimentos.length;
     const r = await legal.coleta.coletarAndamentos({
-      consultar: async () => ([{
+      // o dublê responde SÓ pelo processo deste teste: a coleta varre todos os
+      // casos ativos, e outros fixtures (ex.: busca em tribunais) entrariam na
+      // contagem e mascarariam o que aqui se quer provar.
+      consultar: async (cnj) => (cnj !== '0700111-22.2026.8.07.0001' ? [] : [{
         classe: { nome: 'Procedimento Comum' }, tribunal: 'TJDFT',
         movimentos: [
           { nome: 'Juntada de petição', dataHora: '2026-07-22T10:00:00', codigo: 26 },
