@@ -8,8 +8,14 @@
 // =====================================================================
 'use strict';
 const captura = require('./captura');
+const canais = require('./canais');
+const repo = require('./repo');
 const tenancy = require('./tenancy');
 const { db, j } = require('./db');
+
+/** A chave pública da conta (a mesma do webhook de leads do CRM). */
+const contaPorChave = (k) =>
+  db.prepare('SELECT tenant_id FROM crm_config WHERE webhook_token = ?').get(String(k || '').slice(0, 80)) || null;
 
 const CORS = (res) => {
   // formulário embutido no site do assinante: precisa ser chamável de fora
@@ -82,6 +88,77 @@ function registrarRotasPublicas(app, { express }) {
       res.sendStatus(204);   // tracking não devolve corpo: nada a vazar
     } catch (_) {
       res.sendStatus(204);   // falha de tracking nunca quebra o site do assinante
+    }
+  });
+
+  // ===================== CHAT DO SITE (Etapa 3) =====================
+  // `k` é a chave pública da conta. A sessão é gerada no navegador do
+  // visitante e é o que amarra as mensagens dele numa conversa só.
+  app.options('/growth/chat/:k', (req, res) => { CORS(res); res.sendStatus(204); });
+
+  app.post('/growth/chat/:k', express.json({ limit: '64kb' }), async (req, res) => {
+    CORS(res);
+    const conta = contaPorChave(req.params.k);
+    if (!conta) return res.status(404).json({ erro: 'Conta não encontrada.' });
+    const c = req.body || {};
+    if (!String(c.sessao || '').trim()) return res.status(400).json({ erro: 'Sessão ausente.' });
+    if (!String(c.texto || '').trim()) return res.status(400).json({ erro: 'Escreva uma mensagem.' });
+    try {
+      const r = await canais.receberWebhook({
+        integracao: 'chat_site', tenantId: conta.tenant_id,
+        corpo: { sessao: c.sessao, texto: c.texto, nome: c.nome, email: c.email, telefone: c.telefone, url: c.url },
+      });
+      res.json({ ok: true, conversas: r.conversas ? r.conversas.length : 0 });
+    } catch (e) {
+      res.status(e.status || 500).json({ erro: e.message });
+    }
+  });
+
+  // O visitante busca o que já foi respondido. Só o que é dele, e nunca
+  // nota interna — a equipe conversa entre si sem o cliente ver.
+  app.get('/growth/chat/:k/:sessao', (req, res) => {
+    CORS(res);
+    const conta = contaPorChave(req.params.k);
+    if (!conta) return res.status(404).json({ erro: 'Conta não encontrada.' });
+    const sessao = String(req.params.sessao || '').slice(0, 60);
+    const desde = String(req.query.desde || '').slice(0, 40);
+    tenancy.comTenant({ tenantId: conta.tenant_id, userId: 'visitante' }, () => {
+      const conversa = repo.um(
+        "SELECT * FROM gx_conversas WHERE tenant_id = :tenant AND canal = 'chat_site' AND chave_externa = :s",
+        { s: sessao }
+      );
+      if (!conversa) return res.json({ mensagens: [], status: 'nova' });
+      const msgs = repo.listar('gx_mensagens', {
+        onde: 'conversa_id = :c AND interna = 0' + (desde ? ' AND criado_em > :d' : ''),
+        params: desde ? { c: conversa.id, d: desde } : { c: conversa.id },
+        ordem: 'criado_em ASC', limite: 100,
+      });
+      res.json({
+        status: conversa.status,
+        mensagens: msgs.map((m) => ({
+          de: m.direcao === 'entrada' ? 'voce' : 'atendimento',
+          texto: m.texto, em: m.criado_em,
+        })),
+      });
+    });
+  });
+
+  // ===================== WEBHOOK DE CANAL (Etapa 3) =====================
+  // Porta única de entrada dos canais externos. O tenant vem da conexão,
+  // nunca do corpo. Conector que não sabe validar assinatura recusa.
+  app.post('/growth/webhook/:integracao', express.json({ limit: '1mb', type: () => true }), async (req, res) => {
+    // responde rápido: plataforma que espera demais reenvia e duplica
+    res.sendStatus(200);
+    try {
+      const r = await canais.receberWebhook({
+        integracao: String(req.params.integracao || '').slice(0, 40),
+        corpo: req.body || {},
+        cabecalhos: req.headers || {},
+        conexaoId: String(req.query.conexao || '').slice(0, 40),
+      });
+      if (r && r.recusado) console.warn(`[growth] webhook ${req.params.integracao} recusado: ${r.motivo}`);
+    } catch (e) {
+      console.error(`[growth] webhook ${req.params.integracao}:`, e.message);
     }
   });
 

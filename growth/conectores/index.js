@@ -16,11 +16,17 @@ const { Conector, MessagingConnector, SocialPublishingConnector, AdsConnector,
 const { db, nowISO, j } = require('../db');
 
 // ------------------------------------------------------------- catálogo
+// Implementações reais (Etapa 3). O chat do site é NOSSO e por isso nasce
+// em produção; e-mail depende do SMTP injetado; WhatsApp é contrato + mock
+// até a conta ser aprovada e a documentação oficial ser lida.
+const chatSite = require('./chat-site');
+const email = require('./email');
+const whatsappCloud = require('./whatsapp-cloud');
+
 const CONECTORES = [
-  new MessagingConnector({
-    chave: 'whatsapp_cloud', nome: 'WhatsApp Business Platform', categoria: 'messaging',
-    bloqueio: 'conta empresarial verificada, número dedicado e templates aprovados por categoria',
-  }),
+  chatSite,
+  email,
+  whatsappCloud,
   new MessagingConnector({
     chave: 'instagram_dm', nome: 'Instagram — mensagens', categoria: 'messaging',
     bloqueio: 'App Review da Meta e conta profissional vinculada a uma página',
@@ -50,7 +56,6 @@ const CONECTORES = [
   new AdsConnector({ chave: 'google_ads', nome: 'Google Ads', categoria: 'ads', bloqueio: 'developer token aprovado' }),
   new AdsConnector({ chave: 'tiktok_ads', nome: 'TikTok Ads', categoria: 'ads', bloqueio: 'aprovação de app' }),
   new AdsConnector({ chave: 'linkedin_ads', nome: 'LinkedIn Ads', categoria: 'ads', bloqueio: 'programa de parceiros' }),
-  new EmailConnector({ chave: 'email', nome: 'E-mail (provedor abstrato)', categoria: 'email', bloqueio: 'domínio autenticado (SPF/DKIM/DMARC) e provedor contratado' }),
   new CalendarConnector({ chave: 'google_calendar', nome: 'Google Calendar', categoria: 'calendar', bloqueio: 'OAuth com tela de consentimento publicada' }),
   new CalendarConnector({ chave: 'microsoft_calendar', nome: 'Microsoft Calendar', categoria: 'calendar', bloqueio: 'registro de aplicativo' }),
   new ReviewConnector({ chave: 'google_business', nome: 'Google Business Profile', categoria: 'review', bloqueio: 'perfil verificado' }),

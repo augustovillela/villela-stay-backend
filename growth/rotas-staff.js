@@ -220,6 +220,69 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   app.post('/staff/api/growth/contas/:tenant/lgpd/supressao', ...naConta('suprimir contato',
     (req) => lgpd.suprimir(req.body || {})));
 
+  // ==================== ETAPA 3 — INBOX E CANAIS ====================
+  const conversas = require('./conversas');
+  const canais = require('./canais');
+
+  app.get('/staff/api/growth/contas/:tenant/inbox', ...naConta('caixa de entrada', (req) => ({
+    conversas: conversas.caixa({
+      status: req.query.status || 'aberta', canal: req.query.canal || '',
+      responsavel: req.query.responsavel || '', filaId: req.query.fila || '', busca: req.query.busca || '',
+    }),
+    filas: conversas.filas(),
+    sla_em_risco: conversas.slaEmRisco(),
+  })));
+
+  app.get('/staff/api/growth/contas/:tenant/inbox/:id', ...naConta('abrir conversa',
+    (req, res) => {
+      const c = conversas.conversa(req.params.id);
+      if (!c) { res.status(404).json({ erro: 'Conversa não encontrada.' }); return undefined; }
+      return c;
+    }));
+
+  app.post('/staff/api/growth/contas/:tenant/inbox/:id/responder', ...naConta('responder conversa',
+    (req) => conversas.responder(req.params.id, Object.assign({}, req.body || {}, {
+      autorId: (req.user && req.user.id) || 'staff',
+    }))));
+
+  app.post('/staff/api/growth/contas/:tenant/inbox/:id/atribuir', ...naConta('atribuir conversa',
+    (req) => conversas.atribuir(req.params.id, req.body || {})));
+
+  app.post('/staff/api/growth/contas/:tenant/inbox/:id/digitando', ...naConta('assumir digitação',
+    (req) => conversas.assumirDigitacao(req.params.id, (req.user && req.user.id) || 'staff')));
+
+  app.post('/staff/api/growth/contas/:tenant/inbox/:id/encerrar', ...naConta('encerrar conversa',
+    (req) => conversas.encerrar(req.params.id, req.body || {})));
+
+  app.get('/staff/api/growth/contas/:tenant/filas', ...naConta('listar filas', () => conversas.filas()));
+  app.post('/staff/api/growth/contas/:tenant/filas', ...naConta('criar fila', (req) => conversas.criarFila(req.body || {})));
+
+  app.get('/staff/api/growth/contas/:tenant/respostas-salvas', ...naConta('respostas salvas', () => conversas.respostasSalvas()));
+  app.post('/staff/api/growth/contas/:tenant/respostas-salvas', ...naConta('salvar resposta', (req) => conversas.salvarResposta(req.body || {})));
+
+  // ---- conexões de canal ----
+  // A tela lê `capacidades` daqui antes de mostrar qualquer botão: o que a
+  // conta não pode fazer não aparece (§13.2 do prompt).
+  app.get('/staff/api/growth/contas/:tenant/canais', ...naConta('canais da conta', () => ({
+    conexoes: canais.conexoes(),
+    disponiveis: conectores.panorama().filter((i) => i.categoria === 'messaging' || i.categoria === 'email'),
+    capacidades: ['chat_site', 'whatsapp_cloud', 'email'].reduce((acc, k) => {
+      acc[k] = canais.capacidades(k); return acc;
+    }, {}),
+  })));
+
+  app.post('/staff/api/growth/contas/:tenant/canais', ...naConta('conectar canal', async (req, res) => {
+    try { res.json(await canais.conectar(req.body || {})); }
+    catch (e) { res.status(e.status || 500).json({ erro: e.message }); }
+    return undefined;
+  }));
+
+  app.post('/staff/api/growth/contas/:tenant/canais/saude', ...naConta('verificar saúde dos canais', async (req, res) => {
+    try { res.json(await canais.verificarSaude()); }
+    catch (e) { res.status(e.status || 500).json({ erro: e.message }); }
+    return undefined;
+  }));
+
   // --------------------------------------------------------- auditoria
   app.get('/staff/api/growth/auditoria', admin, rota('trilha de auditoria', (req) =>
     repo.auditoria.listar(Number(req.query.n) || 200)));

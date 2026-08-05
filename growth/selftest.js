@@ -1,5 +1,5 @@
 // =====================================================================
-// Villela Growth OS — suíte das Etapas 1 e 2.  npm run test:growth
+// Villela Growth OS — suíte das Etapas 1 a 3.  npm run test:growth
 //
 // Banco descartável, worker desligado, Express real para as rotas de
 // administração. O bloco mais importante é o ANTI-VAZAMENTO: ele tenta
@@ -39,7 +39,7 @@ function lanca(nome, fn, padrao) {
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
 const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd } = growth;
+  identidade, captura, segmentos, lgpd, conversas, canais } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
 require('../crm/repo').semear();                 // planos e flags do control plane
@@ -714,7 +714,149 @@ teste('lgpd: anonimizar apaga identificadores e as chaves de identidade', () => 
 });
 
 // =====================================================================
-// 16. ROTAS DE ADMINISTRAÇÃO
+// 16. ETAPA 3 — INBOX OMNICHANNEL
+// =====================================================================
+let filaAtendimento = null;
+teste('inbox: fila com SLA de primeira resposta', () => {
+  filaAtendimento = comoA(() => conversas.criarFila({
+    nome: 'Atendimento', canais: ['chat_site', 'whatsapp'], slaPrimeiraMin: 15, padrao: true,
+  }));
+  assert.strictEqual(filaAtendimento.sla_primeira_min, 15);
+});
+
+let convChat = null;
+teste('inbox: mensagem que chega abre a conversa e identifica a pessoa', () => {
+  const r = comoA(() => conversas.registrarEntrada({
+    canal: 'chat_site', chaveExterna: 'sess-001', texto: 'Oi, quero alugar para um casamento',
+    externaId: 'ext-1',
+    identidades: [{ tipo: 'email', valor: 'noiva@teste.com' }],
+    dadosContato: { nome: 'Bianca' },
+  }));
+  convChat = r.conversa;
+  assert.ok(r.contatoId, 'não identificou a pessoa');
+  assert.strictEqual(convChat.total_mensagens, 1);
+  assert.strictEqual(convChat.nao_lidas, 1);
+  assert.strictEqual(convChat.ultima_de, 'cliente');
+  assert.ok(convChat.sla_primeira_venc, 'não armou o SLA de primeira resposta');
+  assert.strictEqual(convChat.fila_id, filaAtendimento.id, 'não caiu na fila do canal');
+});
+
+teste('inbox: reentrega do mesmo webhook não duplica a mensagem', () => {
+  const r = comoA(() => conversas.registrarEntrada({
+    canal: 'chat_site', chaveExterna: 'sess-001', texto: 'Oi, quero alugar para um casamento', externaId: 'ext-1',
+  }));
+  assert.ok(r.duplicada, 'a mensagem repetida entrou de novo');
+  const n = comoA(() => repo.contar('gx_mensagens', { onde: 'conversa_id = :c', params: { c: convChat.id } }));
+  assert.strictEqual(n, 1, `esperava 1 mensagem, veio ${n}`);
+});
+
+teste('inbox: responder marca a primeira resposta e enfileira a entrega', () => {
+  const r = comoA(() => conversas.responder(convChat.id, { texto: 'Oi Bianca! Temos disponibilidade.', autorId: 'u-atendente' }));
+  assert.ok(r.mensagemId);
+  assert.ok(r.conversa.primeira_resposta_em, 'não registrou a primeira resposta');
+  assert.strictEqual(r.conversa.nao_lidas, 0);
+  const job = db.prepare("SELECT * FROM gx_jobs WHERE tenant_id = ? AND tipo = 'mensagem:entregar'").all(TA);
+  assert.strictEqual(job.length, 1, 'não enfileirou a entrega');
+});
+
+teste('inbox: nota interna não vai para o cliente nem vira entrega', () => {
+  const antes = db.prepare("SELECT COUNT(*) AS n FROM gx_jobs WHERE tenant_id = ? AND tipo = 'mensagem:entregar'").get(TA).n;
+  const r = comoA(() => conversas.responder(convChat.id, { texto: 'Cliente do casamento da Ana', interna: true, autorId: 'u-atendente' }));
+  const m = comoA(() => repo.buscar('gx_mensagens', r.mensagemId));
+  assert.strictEqual(m.interna, 1);
+  assert.strictEqual(m.status, 'enviada', 'nota interna não deveria ficar pendente de entrega');
+  const depois = db.prepare("SELECT COUNT(*) AS n FROM gx_jobs WHERE tenant_id = ? AND tipo = 'mensagem:entregar'").get(TA).n;
+  assert.strictEqual(depois, antes, 'nota interna enfileirou entrega');
+});
+
+teste('inbox: supressão bloqueia o envio — a checagem é no serviço', () => {
+  const contato = appRepo.Contatos.listar(TA, { busca: 'Bianca' })[0];
+  comoA(() => lgpd.suprimir({ canal: 'whatsapp', valor: contato.telefone || '5561900000000', motivo: 'opt_out' }));
+  const conv = comoA(() => conversas.localizarOuAbrir({ canal: 'whatsapp', chaveExterna: '5561900000000', contatoId: contato.id }));
+  comoA(() => conversas.registrarEntrada({ canal: 'whatsapp', chaveExterna: '5561900000000', texto: 'oi', externaId: 'w1' }));
+  appRepo.Contatos.atualizar(TA, contato.id, { telefone: '5561900000000' }, 'teste');
+  try {
+    comoA(() => conversas.responder(conv.id, { texto: 'oi', autorId: 'u' }));
+    falhas.push('inbox: enviou para contato suprimido');
+  } catch (e) {
+    assert.strictEqual(e.status, 403);
+    assert.ok(/não receber/i.test(e.message));
+    ok++;
+  }
+});
+
+teste('inbox: janela do WhatsApp — sem mensagem do cliente, só template', () => {
+  const conv = comoA(() => conversas.localizarOuAbrir({ canal: 'whatsapp', chaveExterna: '5561911112222' }));
+  const p = comoA(() => conversas.politicaDeJanela(conv));
+  assert.strictEqual(p.podeTextoLivre, false);
+  assert.ok(/template/i.test(p.motivo), p.motivo);
+  try {
+    comoA(() => conversas.responder(conv.id, { texto: 'oi', autorId: 'u' }));
+    falhas.push('inbox: mandou texto livre sem janela aberta');
+  } catch (e) { assert.strictEqual(e.status, 422); ok++; }
+});
+
+teste('inbox: janela do WhatsApp — com mensagem recente, texto livre passa', () => {
+  comoA(() => conversas.registrarEntrada({ canal: 'whatsapp', chaveExterna: '5561911112222', texto: 'oi', externaId: 'w2' }));
+  const conv = comoA(() => repo.um("SELECT * FROM gx_conversas WHERE tenant_id = :tenant AND chave_externa = '5561911112222'"));
+  const p = comoA(() => conversas.politicaDeJanela(conv));
+  assert.strictEqual(p.podeTextoLivre, true, p.motivo);
+  const r = comoA(() => conversas.responder(conv.id, { texto: 'Olá!', autorId: 'u' }));
+  assert.ok(r.mensagemId);
+});
+
+teste('inbox: janela do WhatsApp — passadas 24h, texto livre volta a ser bloqueado', () => {
+  const conv = comoA(() => repo.um("SELECT * FROM gx_conversas WHERE tenant_id = :tenant AND chave_externa = '5561911112222'"));
+  const velho = new Date(Date.now() - 30 * 3600000).toISOString();
+  db.prepare("UPDATE gx_mensagens SET criado_em = ? WHERE conversa_id = ? AND direcao = 'entrada'").run(velho, conv.id);
+  const p = comoA(() => conversas.politicaDeJanela(conv));
+  assert.strictEqual(p.podeTextoLivre, false, 'a janela de 24h não fechou');
+  assert.ok(/24h/.test(p.motivo), p.motivo);
+  // com template aprovado, passa
+  const r = comoA(() => conversas.responder(conv.id, { texto: 'Retomando', template: 'retomada_pt', autorId: 'u' }));
+  assert.ok(r.mensagemId, 'template deveria passar mesmo fora da janela');
+});
+
+teste('inbox: dois atendentes não respondem ao mesmo tempo sem aviso', () => {
+  const a = comoA(() => conversas.assumirDigitacao(convChat.id, 'atendente-1'));
+  assert.ok(a.ok);
+  const b = comoA(() => conversas.assumirDigitacao(convChat.id, 'atendente-2'));
+  assert.strictEqual(b.ok, false);
+  assert.strictEqual(b.ocupadaPor, 'atendente-1');
+  try {
+    comoA(() => conversas.responder(convChat.id, { texto: 'duplicando', autorId: 'atendente-2' }));
+    falhas.push('inbox: dois atendentes responderam sem aviso');
+  } catch (e) { assert.strictEqual(e.status, 409); ok++; }
+  // assumir conscientemente é permitido
+  const forcado = comoA(() => conversas.responder(convChat.id, { texto: 'assumindo', autorId: 'atendente-2', forcar: true }));
+  assert.ok(forcado.mensagemId);
+});
+
+teste('inbox: atribuir deixa histórico e emite evento', () => {
+  comoA(() => conversas.atribuir(convChat.id, { paraUsuario: 'u-vendedor', motivo: 'virou oportunidade' }));
+  const c = comoA(() => conversas.conversa(convChat.id));
+  assert.strictEqual(c.responsavel, 'u-vendedor');
+  assert.ok(c.atribuicoes.length >= 1, 'não registrou a transferência');
+  const ev = db.prepare("SELECT * FROM gx_eventos WHERE tipo = 'conversation.assigned' AND tenant_id = ?").all(TA);
+  assert.ok(ev.length >= 1);
+});
+
+teste('inbox: resposta salva aplica as variáveis do contato', () => {
+  comoA(() => conversas.salvarResposta({ atalho: '/ola', titulo: 'Saudação', texto: 'Olá {{nome}}, tudo bem?' }));
+  const contato = appRepo.Contatos.listar(TA, { busca: 'Bianca' })[0];
+  const texto = comoA(() => conversas.aplicarResposta('/ola', contato.id));
+  assert.strictEqual(texto, 'Olá Bianca, tudo bem?');
+});
+
+teste('inbox: a conta B não vê conversa nem mensagem da conta A', () => {
+  comoB(() => {
+    assert.strictEqual(conversas.caixa({ status: 'todas' }).length, 0, 'B enxergou conversa de A');
+    assert.strictEqual(conversas.conversa(convChat.id), null, 'B abriu conversa de A');
+  });
+});
+
+// =====================================================================
+// 17. ROTAS DE ADMINISTRAÇÃO
 // =====================================================================
 const USUARIOS = [
   { id: 'adm', nome: 'Admin', email: 'adm@t', papel: 'admin', areas: ['*'], ativo: true },
@@ -791,9 +933,14 @@ const servidor = app.listen(0, async () => {
     const r = await req('GET', '/staff/api/growth/integracoes');
     assert.strictEqual(r.status, 200);
     const wa = r.dados.find(i => i.chave === 'whatsapp_cloud');
-    assert.strictEqual(wa.status, 'planejada');
-    assert.strictEqual(wa.documentacao_conferida, false);
+    assert.strictEqual(wa.status, 'aguardando_aprovacao', 'o WhatsApp não pode aparecer como pronto');
+    assert.strictEqual(wa.documentacao_conferida, false, 'nenhuma doc oficial foi consultada — não pode dizer que foi');
+    assert.strictEqual(wa.operacional, false);
     assert.ok(wa.bloqueio.length > 0, 'não diz o que falta');
+    // o chat do site é NOSSO: é o único canal que pode nascer operacional
+    const chat = r.dados.find(i => i.chave === 'chat_site');
+    assert.strictEqual(chat.status, 'producao');
+    assert.ok(chat.operacional && chat.capacidades.canReplyMessages, 'o chat do site deveria estar operacional');
   });
 
   await t('rotas: worker manual processa eventos e fila', async () => {
@@ -1022,6 +1169,145 @@ const servidor = app.listen(0, async () => {
     assert.ok(bloqueou, 'não houve limite por origem');
   });
 
+  // ===================================================================
+  // FLUXO E2E OBRIGATÓRIO 2 (§31 do PROMPT_MASTER)
+  // mensagem chega por canal conectado → webhook validado → evento
+  // deduplicado → conversa localizada → contato identificado → mensagem
+  // em tempo real → responsável atribuído → resposta → tudo auditado
+  // ===================================================================
+  const chavePublica = db.prepare('SELECT webhook_token FROM crm_config WHERE tenant_id = ?').get(TA).webhook_token;
+  const SESSAO = 'sess-e2e-chat';
+
+  await t('e2e canal: visitante escreve no chat do site e a conversa nasce identificada', async () => {
+    const r = await fetch(`${BASE}/growth/chat/${encodeURIComponent(chavePublica)}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessao: SESSAO, texto: 'Quero alugar a Villa Kubitschek em dezembro',
+        nome: 'Carlos Mendes', email: 'carlos@teste.com', url: 'https://villelastay.com.br/villa-kubitschek' }),
+    });
+    const d = await r.json();
+    assert.strictEqual(r.status, 200, JSON.stringify(d));
+    const conv = tenancy.comTenant({ tenantId: TA, userId: 't' }, () =>
+      repo.um("SELECT * FROM gx_conversas WHERE tenant_id = :tenant AND chave_externa = :s", { s: SESSAO }));
+    assert.ok(conv, 'conversa não foi criada');
+    assert.strictEqual(conv.canal, 'chat_site');
+    assert.ok(conv.contato_id, 'não identificou a pessoa');
+    const contato = appRepo.Contatos.obter(TA, conv.contato_id);
+    assert.strictEqual(contato.email, 'carlos@teste.com');
+  });
+
+  await t('e2e canal: o payload bruto fica guardado para auditoria', async () => {
+    const bruto = db.prepare("SELECT * FROM gx_webhook_eventos WHERE integracao = 'chat_site' ORDER BY recebido_em DESC LIMIT 1").get();
+    assert.ok(bruto, 'payload bruto não foi preservado');
+    assert.strictEqual(bruto.assinatura_ok, 1);
+    assert.ok(bruto.processado_em, 'não marcou como processado');
+    assert.ok(/Villa Kubitschek/.test(bruto.payload), 'o payload guardado não bate com o recebido');
+  });
+
+  await t('e2e canal: reenvio idêntico é deduplicado antes de virar mensagem', async () => {
+    const antes = db.prepare("SELECT COUNT(*) AS n FROM gx_webhook_eventos WHERE integracao = 'chat_site'").get().n;
+    await fetch(`${BASE}/growth/chat/${encodeURIComponent(chavePublica)}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessao: SESSAO, texto: 'Quero alugar a Villa Kubitschek em dezembro',
+        nome: 'Carlos Mendes', email: 'carlos@teste.com', url: 'https://villelastay.com.br/villa-kubitschek' }),
+    });
+    const depois = db.prepare("SELECT COUNT(*) AS n FROM gx_webhook_eventos WHERE integracao = 'chat_site'").get().n;
+    assert.strictEqual(depois, antes, 'o mesmo payload entrou duas vezes');
+  });
+
+  await t('e2e canal: atendimento responde e a entrega é processada pela fila', async () => {
+    const conv = tenancy.comTenant({ tenantId: TA, userId: 't' }, () =>
+      repo.um("SELECT * FROM gx_conversas WHERE tenant_id = :tenant AND chave_externa = :s", { s: SESSAO }));
+    const at = await req('POST', `/staff/api/growth/contas/${TA}/inbox/${conv.id}/atribuir`, { corpo: { paraUsuario: 'adm' } });
+    assert.strictEqual(at.status, 200);
+    const rp = await req('POST', `/staff/api/growth/contas/${TA}/inbox/${conv.id}/responder`, {
+      corpo: { texto: 'Oi Carlos! Dezembro tem disponibilidade sim.' },
+    });
+    assert.strictEqual(rp.status, 200, JSON.stringify(rp.dados));
+    // a entrega é job: roda o worker e confere o desfecho
+    const r = tenancy.comoPlataforma({ userId: 'w', motivo: 'teste' }, () => fila.processarLote(20));
+    await (r && r.then ? r : Promise.resolve(r));
+    const msg = db.prepare("SELECT * FROM gx_mensagens WHERE conversa_id = ? AND direcao = 'saida' ORDER BY criado_em DESC LIMIT 1").get(conv.id);
+    assert.ok(['enviada', 'entregue'].includes(msg.status), `mensagem ficou em ${msg.status}: ${msg.erro}`);
+    assert.ok(msg.externa_id.startsWith('site:'), 'o conector não devolveu o id externo');
+  });
+
+  await t('e2e canal: o visitante vê a resposta e NÃO vê a nota interna', async () => {
+    const conv = tenancy.comTenant({ tenantId: TA, userId: 't' }, () =>
+      repo.um("SELECT * FROM gx_conversas WHERE tenant_id = :tenant AND chave_externa = :s", { s: SESSAO }));
+    await req('POST', `/staff/api/growth/contas/${TA}/inbox/${conv.id}/responder`, {
+      corpo: { texto: 'SEGREDO INTERNO: cliente veio da campanha X', interna: true },
+    });
+    const r = await fetch(`${BASE}/growth/chat/${encodeURIComponent(chavePublica)}/${SESSAO}`);
+    const d = await r.json();
+    assert.strictEqual(r.status, 200);
+    assert.ok(d.mensagens.some((m) => m.de === 'voce' && /Villa Kubitschek/.test(m.texto)), 'faltou a mensagem do visitante');
+    assert.ok(d.mensagens.some((m) => m.de === 'atendimento' && /disponibilidade/.test(m.texto)), 'faltou a resposta');
+    assert.ok(!JSON.stringify(d).includes('SEGREDO INTERNO'), 'a nota interna vazou para o visitante');
+  });
+
+  await t('e2e canal: sessão de outro visitante não devolve conversa alheia', async () => {
+    const r = await fetch(`${BASE}/growth/chat/${encodeURIComponent(chavePublica)}/sess-de-outro`);
+    const d = await r.json();
+    assert.strictEqual(d.mensagens.length, 0);
+    assert.strictEqual(d.status, 'nova');
+  });
+
+  await t('e2e canal: chave de conta inválida não abre conversa', async () => {
+    const r = await fetch(`${BASE}/growth/chat/chave-falsa`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessao: 'x', texto: 'oi' }),
+    });
+    assert.strictEqual(r.status, 404);
+  });
+
+  await t('e2e canal: webhook do WhatsApp é RECUSADO enquanto a assinatura não é verificável', async () => {
+    delete process.env.WHATSAPP_MOCK;
+    const r = await canais.receberWebhook({
+      integracao: 'whatsapp_cloud', tenantId: TA,
+      corpo: { mensagens: [{ de: '5561955554444', texto: 'oi', id: 'wamid-1', nome: 'Teste' }] },
+    });
+    assert.strictEqual(r.ok, false, 'aceitou webhook sem verificar assinatura');
+    assert.strictEqual(r.recusado, 'assinatura');
+    const conv = tenancy.comTenant({ tenantId: TA, userId: 't' }, () =>
+      repo.um("SELECT * FROM gx_conversas WHERE tenant_id = :tenant AND chave_externa = '5561955554444'"));
+    assert.strictEqual(conv, null, 'a mensagem entrou no domínio mesmo sem assinatura válida');
+    const bruto = db.prepare("SELECT * FROM gx_webhook_eventos WHERE integracao = 'whatsapp_cloud' ORDER BY recebido_em DESC LIMIT 1").get();
+    assert.ok(bruto && bruto.assinatura_ok === 0 && bruto.erro, 'o descarte não ficou registrado com o motivo');
+  });
+
+  await t('e2e canal: com o mock ligado, o pipeline do WhatsApp roda ponta a ponta', async () => {
+    process.env.WHATSAPP_MOCK = '1';
+    const r = await canais.receberWebhook({
+      integracao: 'whatsapp_cloud', tenantId: TA,
+      corpo: { mensagens: [{ de: '+55 61 95555-4444', texto: 'Vi o anúncio de vocês', id: 'wamid-2', nome: 'Rita' }] },
+    });
+    assert.strictEqual(r.ok, true, JSON.stringify(r));
+    assert.strictEqual(r.mensagens, 1);
+    const conv = tenancy.comTenant({ tenantId: TA, userId: 't' }, () =>
+      repo.um("SELECT * FROM gx_conversas WHERE tenant_id = :tenant AND canal = 'whatsapp' AND chave_externa = '5561955554444'"));
+    assert.ok(conv, 'conversa do WhatsApp não foi criada');
+    assert.ok(conv.contato_id, 'não identificou a pessoa pelo número');
+    delete process.env.WHATSAPP_MOCK;
+  });
+
+  await t('e2e canal: o painel de canais informa o que cada conta PODE fazer', async () => {
+    const r = await req('GET', `/staff/api/growth/contas/${TA}/canais`);
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.dados.capacidades.chat_site.capacidades.canReplyMessages, true, 'o chat do site deveria poder responder');
+    assert.strictEqual(r.dados.capacidades.whatsapp_cloud.conectado, false, 'WhatsApp não está conectado e não pode dizer que está');
+    const wa = r.dados.disponiveis.find((i) => i.chave === 'whatsapp_cloud');
+    assert.strictEqual(wa.operacional, false);
+    assert.ok(!Object.values(wa.capacidades).some(Boolean), 'WhatsApp declarou capacidade sem aprovação');
+  });
+
+  await t('e2e canal: a inbox lista a conversa com SLA e fila', async () => {
+    const r = await req('GET', `/staff/api/growth/contas/${TA}/inbox?status=aberta`);
+    assert.strictEqual(r.status, 200);
+    assert.ok(r.dados.conversas.length >= 1, 'a inbox veio vazia');
+    assert.ok(r.dados.filas.length >= 1, 'nenhuma fila');
+    assert.ok(Array.isArray(r.dados.sla_em_risco));
+  });
+
   await t('rotas: correlation id volta no cabeçalho', async () => {
     const r = await fetch(`${BASE}/staff/api/growth/panorama`, { headers: { 'x-test-user': 'adm' } });
     assert.ok(r.headers.get('x-correlation-id'), 'sem X-Correlation-Id');
@@ -1033,12 +1319,12 @@ const servidor = app.listen(0, async () => {
 
   console.log(`\n${'='.repeat(64)}`);
   if (falhas.length) {
-    console.log(`❌ Villela Growth OS — Etapas 1 e 2: ${ok} passaram, ${falhas.length} FALHARAM\n`);
+    console.log(`❌ Villela Growth OS — Etapas 1 a 3: ${ok} passaram, ${falhas.length} FALHARAM\n`);
     for (const f of falhas) console.log('  ✗ ' + f);
     console.log('');
     process.exit(1);
   }
-  console.log(`✅ Villela Growth OS — Etapas 1 e 2: ${ok} testes passaram.`);
+  console.log(`✅ Villela Growth OS — Etapas 1 a 3: ${ok} testes passaram.`);
   console.log(`   Isolamento entre contas verificado em ${[...TABELAS_TENANT].filter(t => t.startsWith('gx_')).length} tabelas.\n`);
   process.exit(0);
 });

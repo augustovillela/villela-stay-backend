@@ -5,10 +5,15 @@
 //   require('./growth').montar(app, { express, requireAuth, requireAdmin,
 //     enviarEmail, alertaAugusto, jwtSecret });
 //
-// Etapa 1 (fundação SaaS): hierarquia, identidade, RBAC, entitlements,
-// eventos com outbox, fila durável, aprovações, incidentes, cofre e
-// catálogo de conectores. Administração em /staff/api/growth/*.
-// Estado real: docs/growth-os/PROJECT_STATE.md
+// Etapa 1 — fundação SaaS: hierarquia, identidade, RBAC, entitlements,
+//   eventos com outbox, fila durável, aprovações, incidentes e cofre.
+// Etapa 2 — CRM e captura: resolução de identidade, formulários, tracking,
+//   segmentos, LGPD e páginas de captura.
+// Etapa 3 — inbox omnichannel: conversas, filas, SLA, conectores de canal
+//   e ingestão de webhook com payload bruto preservado.
+//
+// Administração em /staff/api/growth/* · porta pública em /growth/*.
+// Estado real (o que é implementação e o que é contrato): docs/growth-os/PROJECT_STATE.md
 // =====================================================================
 'use strict';
 const tenancy = require('./tenancy');
@@ -29,6 +34,8 @@ const identidade = require('./identidade');
 const captura = require('./captura');
 const segmentos = require('./segmentos');
 const lgpd = require('./lgpd');
+const conversas = require('./conversas');
+const canais = require('./canais');
 
 let _timer = null;
 
@@ -39,6 +46,9 @@ function montar(app, injected = {}) {
   }
 
   sessao.configurar({ jwtSecret });
+  // o conector de e-mail só sai de "aguardando_credenciais" se houver
+  // transporte real injetado — não existe modo "finge que enviou"
+  const statusEmail = require('./conectores/email').configurar({ enviarEmail: injected.enviarEmail });
   semear();
   registrarHandlersDeFila();
 
@@ -49,14 +59,14 @@ function montar(app, injected = {}) {
 
   iniciarWorker(alertaAugusto);
   console.log(
-    `[growth] Villela Growth OS (Etapas 1-2) montado. Admin: /staff/api/growth · ` +
+    `[growth] Villela Growth OS (Etapas 1-3) montado. Admin: /staff/api/growth · ` +
     `captura: /growth/f/:token · páginas: /growth/p/:slug · ` +
     `perfis: ${rbac.PERFIS.length} · conectores: ${conectores.CONECTORES.length} · ` +
-    `cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
+    `e-mail: ${statusEmail} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );
   return {
     repo, contas, rbac, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores, sessao,
-    identidade, captura, segmentos, lgpd,
+    identidade, captura, segmentos, lgpd, conversas, canais,
   };
 }
 
@@ -78,6 +88,9 @@ function registrarHandlersDeFila() {
     const e = new Error(`Sem executor para a ação "${payload.acao}" — o módulo de destino ainda não existe.`);
     e.status = 501; throw e;
   });
+  // Etapa 3: a entrega da mensagem é job — retry, timeout e DLQ como
+  // qualquer trabalho. Falhar aqui não perde a mensagem.
+  fila.registrar('mensagem:entregar', (payload) => canais.entregar(payload));
 }
 
 /**
@@ -127,5 +140,5 @@ module.exports = {
   montar, semear, iniciarWorker, pararWorker, registrarHandlersDeFila,
   tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila,
   aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd,
+  identidade, captura, segmentos, lgpd, conversas, canais,
 };
