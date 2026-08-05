@@ -486,6 +486,35 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   app.post('/staff/api/growth/contas/:tenant/reunioes/:id/desfecho', ...naConta('marcar desfecho',
     (req) => reunioes.marcarDesfecho(req.params.id, (req.body || {}).status, req.body || {})));
 
+  // ============ ETAPA 9 — COMERCIALIZAÇÃO ============
+  const comercial = require('./comercial');
+
+  // Comparativo de planos: preço vem do banco, recursos da matriz.
+  app.get('/staff/api/growth/planos', admin, rota('comparativo de planos', () => comercial.comparativo()));
+
+  app.get('/staff/api/growth/contas/:tenant/assinatura', ...naConta('assinatura e uso da conta',
+    () => comercial.minhaAssinatura()));
+
+  app.get('/staff/api/growth/contas/:tenant/onboarding', ...naConta('onboarding da conta',
+    () => comercial.onboarding()));
+  app.post('/staff/api/growth/contas/:tenant/onboarding/:passo/dispensar', ...naConta('dispensar passo',
+    (req) => comercial.dispensarPasso(req.params.passo, req.body || {})));
+
+  app.get('/staff/api/growth/contas/:tenant/marca', ...naConta('identidade pública', () => ({
+    identidade: comercial.identidadePublica(),
+    marcas: contas.marcas(),
+    dominios: comercial.dominios(),
+  })));
+  app.post('/staff/api/growth/contas/:tenant/marca', ...naConta('criar marca',
+    (req) => contas.criarMarca(req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/dominios', ...naConta('registrar domínio próprio',
+    (req) => comercial.registrarDominio(req.body || {})));
+
+  // Painel da agência: consolidado das contas dela, cada uma lida no
+  // próprio contexto — não existe consulta que atravessa contas de uma vez.
+  app.get('/staff/api/growth/orgs/:id/painel', admin, rota('painel da agência',
+    (req) => comercial.painelAgencia(req.params.id)));
+
   // --------------------------------------------------------- auditoria
   app.get('/staff/api/growth/auditoria', admin, rota('trilha de auditoria', (req) =>
     repo.auditoria.listar(Number(req.query.n) || 200)));

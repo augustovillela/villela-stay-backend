@@ -45,6 +45,7 @@ const anuncios = require('./anuncios');
 const atribuicao = require('./atribuicao');
 const reputacao = require('./reputacao');
 const reunioes = require('./reunioes');
+const comercial = require('./comercial');
 
 let _timer = null;
 
@@ -69,14 +70,14 @@ function montar(app, injected = {}) {
 
   iniciarWorker(alertaAugusto);
   console.log(
-    `[growth] Villela Growth OS (Etapas 1-8) montado. Admin: /staff/api/growth · ` +
+    `[growth] Villela Growth OS (Etapas 1-9) montado. Admin: /staff/api/growth · ` +
     `captura: /growth/f/:token · páginas: /growth/p/:slug · ` +
     `perfis: ${rbac.PERFIS.length} · conectores: ${conectores.CONECTORES.length} · ` +
     `e-mail: ${statusEmail} · IA: ${agentes.temChaveLLM() ? 'llm disponivel' : 'so regras'} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );
   return {
     repo, contas, rbac, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores, sessao,
-    identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes,
+    identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes, comercial,
   };
 }
 
@@ -85,7 +86,10 @@ function semear() {
   const org = contas.semearPlataforma();
   const perfis = rbac.semear();
   const integracoes = conectores.semear();
-  return { org: org && org.slug, perfis, integracoes };
+  // Etapa 9: os planos passam a carregar os recursos das oito etapas.
+  // Conservador: mexe so em flags/limites, nunca em preco ou assinatura.
+  const planos = comercial.semearRecursos();
+  return { org: org && org.slug, perfis, integracoes, planos };
 }
 
 /**
@@ -169,5 +173,5 @@ module.exports = {
   montar, semear, iniciarWorker, pararWorker, registrarHandlersDeFila,
   tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila,
   aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes,
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes, comercial,
 };

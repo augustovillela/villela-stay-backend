@@ -63,14 +63,23 @@ const marca = (neg) => `<span class="marca${neg ? ' neg' : ''}"><img src="${BRAN
 
 function landingHTML() {
   const planos = repo.Planos.listar();
-  const nomeLimite = (p, k, rot) => { const v = p.limites[k]; return `${v ? v.toLocaleString('pt-BR') : 'Ilimitados'} ${rot}`; };
+  // Duas convenções convivem nesta coluna: o CRM nasceu com 0 = ilimitado;
+  // o Growth OS usa -1 = ilimitado e 0 = NÃO incluído. Aqui as duas são
+  // lidas corretamente, para a página de preços nunca prometer "ilimitado"
+  // num recurso que na verdade não está no plano.
+  const nomeLimite = (p, k, rot) => {
+    const v = Number(p.limites[k]);
+    if (v < 0) return `${rot} ilimitados`;
+    if (v === 0) return `Sem ${rot}`;
+    return `${v.toLocaleString('pt-BR')} ${rot}`;
+  };
   const cardPlano = (p) => {
     const dest = p.slug === 'professional';
     const preco = p.preco_centavos ? `${brl(p.preco_centavos)}<small>/mês</small>` : (p.slug === 'trial' ? 'Grátis' : 'Sob consulta');
     const itens = p.slug === 'trial'
       ? ['Todos os módulos por 14 dias', `${p.limites.contatos} contatos`, `${p.limites.usuarios} usuários`, 'Sem cartão']
       : [nomeLimite(p, 'contatos', 'contatos'), nomeLimite(p, 'usuarios', 'usuários'),
-         p.limites.funis ? `${p.limites.funis} funil(is)` : 'Funis ilimitados',
+         nomeLimite(p, 'funis', 'funis'),
          `${p.modulos.length} módulos${p.flags.ia ? ' · IA' : ''}${p.flags.api_publica ? ' · API' : ''}${p.flags.white_label ? ' · white label' : ''}`];
     const cta = p.slug === 'enterprise'
       ? `<a class="btn g" href="#contato">Falar com vendas</a>`

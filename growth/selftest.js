@@ -1,5 +1,5 @@
 // =====================================================================
-// Villela Growth OS — suíte das Etapas 1 a 8.  npm run test:growth
+// Villela Growth OS — suíte das Etapas 1 a 9 (produto completo).  npm run test:growth
 //
 // Banco descartável, worker desligado, Express real para as rotas de
 // administração. O bloco mais importante é o ANTI-VAZAMENTO: ele tenta
@@ -11,7 +11,7 @@ process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'growth-self
 process.env.NODE_ENV = 'development';
 process.env.CRM_ROTINAS = 'off';
 process.env.GROWTH_WORKER = 'off';
-process.env.GROWTH_FILA_BACKOFF_MS = '10';
+process.env.GROWTH_FILA_BACKOFF_MS = '5000';   // grande o bastante para o teste de backoff não depender do relógio
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -63,7 +63,7 @@ function lanca(nome, fn, padrao) {
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
 const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes } = growth;
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes, comercial } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
 require('../crm/repo').semear();                 // planos e flags do control plane
@@ -1788,7 +1788,145 @@ testeAsync('reputação e reuniões: a conta B não vê nada da conta A', () => 
 });
 
 // =====================================================================
-// 22. ROTAS DE ADMINISTRAÇÃO
+// 22. ETAPA 9 — COMERCIALIZAÇÃO
+// =====================================================================
+testeAsync('comercial: a matriz escreve recursos nos planos sem tocar em preço', () => {
+  const antes = db.prepare("SELECT preco_centavos, nome FROM plans WHERE slug = 'business'").get();
+  const n = comoPlat(() => comercial.semearRecursos());
+  assert.strictEqual(n, 5, `semeou ${n} planos`);
+  const depois = db.prepare("SELECT preco_centavos, nome, flags, limites FROM plans WHERE slug = 'business'").get();
+  assert.strictEqual(depois.preco_centavos, antes.preco_centavos, 'a matriz mexeu no preço');
+  assert.strictEqual(depois.nome, antes.nome, 'a matriz mexeu no nome comercial');
+  const flags = JSON.parse(depois.flags);
+  assert.strictEqual(flags.anuncios, true, 'o plano completo não liberou anúncios');
+  assert.strictEqual(flags.white_label, true);
+  assert.strictEqual(flags.agencia, false, 'só o Enterprise deveria ter painel de agência');
+});
+
+testeAsync('comercial: o plano de entrada NÃO libera o que é do completo', () => {
+  const starter = JSON.parse(db.prepare("SELECT flags FROM plans WHERE slug = 'starter'").get().flags);
+  for (const recurso of ['ia', 'redes_sociais', 'anuncios', 'white_label', 'agencia']) {
+    assert.strictEqual(starter[recurso], false, `starter liberou "${recurso}"`);
+  }
+  const ent = JSON.parse(db.prepare("SELECT flags FROM plans WHERE slug = 'enterprise'").get().flags);
+  assert.strictEqual(ent.agencia, true, 'enterprise não liberou o painel de agência');
+});
+
+testeAsync('comercial: limite -1 significa ilimitado e não bloqueia', () => {
+  const lim = JSON.parse(db.prepare("SELECT limites FROM plans WHERE slug = 'enterprise'").get().limites);
+  assert.strictEqual(lim.contatos, -1);
+  // a barreira só existe para limite >= 0
+  comoA(() => { entitlements.definirLimite('contatos', -1); entitlements.exigirDentroDoLimite('contatos', 999999); });
+  ok++;
+});
+
+testeAsync('comercial: o onboarding reflete o ESTADO REAL, não campo marcado', () => {
+  // publica um formulário AQUI: o da suíte HTTP roda em outra fase e a
+  // ordem entre as duas não é garantida
+  comoA(() => {
+    entitlements.definirLimite('formularios', 20);   // o limite do plano agora é real
+    const f = captura.criar({
+      nome: 'Captura onboarding',
+      campos: [{ chave: 'email', rotulo: 'E-mail', tipo: 'email', obrigatorio: true, mapeia: 'email' }],
+    });
+    captura.publicar(f.id);
+  });
+  const ob = comoA(() => comercial.onboarding());
+  assert.ok(ob.passos.length >= 5, `passos: ${ob.passos.length}`);
+  // a conta A tem contatos, formulário publicado e automação publicada
+  const feitos = ob.passos.filter((p) => p.status === 'feito').map((p) => p.chave);
+  assert.ok(feitos.includes('contatos'), 'não viu que a conta tem contatos');
+  assert.ok(feitos.includes('formulario'), `formulário publicado não contou: ${feitos}`);
+  assert.ok(ob.concluido_pct > 0 && ob.concluido_pct <= 100, `pct: ${ob.concluido_pct}`);
+  assert.ok(ob.proximo === null || ob.proximo.chave, 'próximo passo malformado');
+});
+
+testeAsync('comercial: passo de recurso fora do plano nem aparece', () => {
+  comoB(() => {
+    entitlements.definirFlag('ia', false);
+    entitlements.definirFlag('reunioes', false);
+    const ob = comercial.onboarding();
+    const chaves = ob.passos.map((p) => p.chave);
+    assert.ok(!chaves.includes('agente'), 'ofereceu passo de agente sem o recurso no plano');
+    assert.ok(!chaves.includes('reuniao'), 'ofereceu passo de reunião sem o recurso');
+    assert.ok(chaves.includes('contatos'), 'sumiu com passo que não depende de recurso');
+  });
+});
+
+testeAsync('comercial: dispensar tira o passo da conta do total', () => {
+  const antes = comoA(() => comercial.onboarding());
+  const alvo = antes.passos.find((p) => p.status === 'pendente');
+  if (!alvo) { ok++; return; }
+  const depois = comoA(() => comercial.dispensarPasso(alvo.chave, { observacao: 'não se aplica' }));
+  const oPasso = depois.passos.find((p) => p.chave === alvo.chave);
+  assert.strictEqual(oPasso.status, 'dispensado');
+  assert.ok(depois.concluido_pct >= antes.concluido_pct, 'dispensar baixou o percentual');
+});
+
+lancaAsync('comercial: dispensar passo inexistente é recusado',
+  () => comoA(() => comercial.dispensarPasso('inventado')), /Passo desconhecido/i);
+
+testeAsync('comercial: white-label bloqueado sem o plano devolve a marca do grupo', () => {
+  comoA(() => entitlements.definirFlag('white_label', false));
+  const id = comoA(() => comercial.identidadePublica());
+  assert.strictEqual(id.white_label, false);
+  assert.strictEqual(id.nome, 'Villela Growth OS');
+  assert.ok(id.rodape, 'sem white-label, a assinatura do produto tem de aparecer');
+});
+
+lancaAsync('comercial: registrar domínio próprio sem o plano é recusado com 402',
+  () => comoA(() => comercial.registrarDominio({ dominio: 'exemplo.com.br' })), /não está incluído/i);
+
+testeAsync('comercial: com o plano, a marca do assinante substitui a nossa', () => {
+  comoA(() => {
+    entitlements.definirFlag('white_label', true);
+    contas.criarMarca({ nome: 'Villela Stay', slug: 'villela-stay', cores: { primaria: '#B0185A' }, principal: 1 });
+  });
+  const id = comoA(() => comercial.identidadePublica());
+  assert.strictEqual(id.white_label, true);
+  assert.strictEqual(id.nome, 'Villela Stay');
+  assert.strictEqual(id.cores.primaria, '#B0185A');
+  assert.strictEqual(id.rodape, '', 'com white-label não pode sobrar assinatura nossa');
+});
+
+testeAsync('comercial: domínio duplicado entre contas é recusado', () => {
+  const d = comoA(() => comercial.registrarDominio({ dominio: 'https://crm.exemplo.com.br/x' }));
+  assert.strictEqual(d.dominio, 'crm.exemplo.com.br', 'não normalizou o domínio');
+  assert.strictEqual(d.status, 'pendente');
+  assert.ok(d.token_verificacao.startsWith('gx-verify-'));
+  comoB(() => {
+    entitlements.definirFlag('white_label', true);
+    try { comercial.registrarDominio({ dominio: 'crm.exemplo.com.br' }); falhas.push('comercial: domínio de A foi tomado por B'); }
+    catch (e) { assert.strictEqual(e.status, 409); ok++; }
+  });
+});
+
+testeAsync('comercial: painel da agência consolida sem misturar contas', () => {
+  const org = comoPlat(() => contas.orgPorSlug('ag-teste'));
+  const painel = comoPlat(() => comercial.painelAgencia(org.id));
+  assert.strictEqual(painel.contas.length, 1, `contas da agência: ${painel.contas.length}`);
+  assert.strictEqual(painel.contas[0].tenant_id, TA);
+  assert.ok(painel.totais.contatos > 0, 'não consolidou os contatos');
+  assert.ok(painel.totais.onboarding_medio_pct >= 0);
+  // a conta B não pertence a esta agência e não pode aparecer
+  assert.ok(!painel.contas.some((c) => c.tenant_id === TB), 'conta de fora da agência apareceu');
+});
+
+lancaAsync('comercial: quem não administra a organização não vê o painel',
+  () => comoA(() => comercial.painelAgencia(comoPlat(() => contas.orgPorSlug('ag-teste')).id)),
+  /não administra esta organização/i);
+
+testeAsync('comercial: a assinatura mostra uso contra limite e o que está bloqueado', () => {
+  const a = comoA(() => comercial.minhaAssinatura());
+  assert.ok(a.uso.some((u) => u.recurso === 'contatos' && u.usado > 0), 'não mediu contatos');
+  assert.ok(Array.isArray(a.recursos_liberados) && a.recursos_liberados.length > 0);
+  assert.ok(Array.isArray(a.recursos_bloqueados));
+  assert.ok(a.onboarding && typeof a.onboarding.concluido_pct === 'number');
+  assert.ok(a.identidade && 'white_label' in a.identidade);
+});
+
+// =====================================================================
+// 23. ROTAS DE ADMINISTRAÇÃO
 // =====================================================================
 const USUARIOS = [
   { id: 'adm', nome: 'Admin', email: 'adm@t', papel: 'admin', areas: ['*'], ativo: true },
@@ -2252,12 +2390,12 @@ const servidor = app.listen(0, async () => {
 
   console.log(`\n${'='.repeat(64)}`);
   if (falhas.length) {
-    console.log(`❌ Villela Growth OS — Etapas 1 a 8: ${ok} passaram, ${falhas.length} FALHARAM\n`);
+    console.log(`❌ Villela Growth OS — Etapas 1 a 9: ${ok} passaram, ${falhas.length} FALHARAM\n`);
     for (const f of falhas) console.log('  ✗ ' + f);
     console.log('');
     process.exit(1);
   }
-  console.log(`✅ Villela Growth OS — Etapas 1 a 8: ${ok} testes passaram.`);
+  console.log(`✅ Villela Growth OS — Etapas 1 a 9: ${ok} testes passaram.`);
   console.log(`   Isolamento entre contas verificado em ${[...TABELAS_TENANT].filter(t => t.startsWith('gx_')).length} tabelas.\n`);
   process.exit(0);
 });
