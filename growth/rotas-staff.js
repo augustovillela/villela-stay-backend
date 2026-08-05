@@ -405,6 +405,54 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   app.post('/staff/api/growth/contas/:tenant/comunidade/:id/responder', ...naConta('responder interação',
     (req) => comunidade.responder(req.params.id, Object.assign({}, req.body || {}, { autorId: (req.user && req.user.id) || 'staff' }))));
 
+  // ========== ETAPA 7 — ANÚNCIOS E ATRIBUIÇÃO ==========
+  const anuncios = require('./anuncios');
+  const atribuicao = require('./atribuicao');
+
+  app.get('/staff/api/growth/contas/:tenant/anuncios', ...naConta('painel de anúncios', (req) => ({
+    contas: anuncios.contas(),
+    desempenho: anuncios.desempenho({ de: req.query.de, ate: req.query.ate }),
+    alertas: anuncios.alertas(),
+    alteracoes: anuncios.alteracoes(30),
+    plataformas: anuncios.PLATAFORMAS,
+  })));
+
+  app.post('/staff/api/growth/contas/:tenant/anuncios/contas', ...naConta('conectar conta de anúncio',
+    (req) => anuncios.conectarConta(req.body || {})));
+
+  app.put('/staff/api/growth/contas/:tenant/anuncios/contas/:id/teto', ...naConta('definir teto de gasto',
+    (req) => anuncios.definirTeto(req.params.id, req.body || {})));
+
+  app.post('/staff/api/growth/contas/:tenant/anuncios/contas/:id/sincronizar', ...naConta('sincronizar anúncios',
+    async (req, res) => {
+      try { res.json(await anuncios.sincronizar(req.params.id, req.body || {})); }
+      catch (e) { res.status(e.status || 500).json({ erro: e.message }); }
+      return undefined;
+    }));
+
+  // Pedido de alteração de orçamento. NUNCA aplica direto — abre aprovação.
+  app.post('/staff/api/growth/contas/:tenant/anuncios/orcamento', ...naConta('solicitar alteração de orçamento',
+    (req) => anuncios.solicitarAlteracao(Object.assign({}, req.body || {}, {
+      origemTipo: 'usuario', origemId: (req.user && req.user.id) || 'staff',
+    }))));
+
+  app.get('/staff/api/growth/contas/:tenant/anuncios/comparar', ...naConta('comparar períodos',
+    (req) => anuncios.comparar({ de: req.query.de, ate: req.query.ate })));
+
+  // ---- atribuição (funciona sem anúncio conectado) ----
+  app.get('/staff/api/growth/contas/:tenant/atribuicao', ...naConta('painel de atribuição', (req) => ({
+    por_origem: atribuicao.porOrigem({ de: req.query.de, ate: req.query.ate }),
+    funil: atribuicao.funil({ de: req.query.de, ate: req.query.ate }),
+    modelos: atribuicao.MODELOS,
+    limitacoes: atribuicao.limitacoes(),
+  })));
+
+  app.post('/staff/api/growth/contas/:tenant/atribuicao/recalcular', ...naConta('recalcular atribuição',
+    (req) => atribuicao.recalcular(req.body || {})));
+
+  app.get('/staff/api/growth/contas/:tenant/atribuicao/contato/:id', ...naConta('jornada do contato',
+    (req) => atribuicao.jornadaDoContato(req.params.id)));
+
   // --------------------------------------------------------- auditoria
   app.get('/staff/api/growth/auditoria', admin, rota('trilha de auditoria', (req) =>
     repo.auditoria.listar(Number(req.query.n) || 200)));

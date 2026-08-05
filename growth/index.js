@@ -41,6 +41,8 @@ const agentes = require('./agentes');
 const conhecimento = require('./conhecimento');
 const conteudo = require('./conteudo');
 const comunidade = require('./comunidade');
+const anuncios = require('./anuncios');
+const atribuicao = require('./atribuicao');
 
 let _timer = null;
 
@@ -65,14 +67,14 @@ function montar(app, injected = {}) {
 
   iniciarWorker(alertaAugusto);
   console.log(
-    `[growth] Villela Growth OS (Etapas 1-6) montado. Admin: /staff/api/growth · ` +
+    `[growth] Villela Growth OS (Etapas 1-7) montado. Admin: /staff/api/growth · ` +
     `captura: /growth/f/:token · páginas: /growth/p/:slug · ` +
     `perfis: ${rbac.PERFIS.length} · conectores: ${conectores.CONECTORES.length} · ` +
     `e-mail: ${statusEmail} · IA: ${agentes.temChaveLLM() ? 'llm disponivel' : 'so regras'} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );
   return {
     repo, contas, rbac, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores, sessao,
-    identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade,
+    identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao,
   };
 }
 
@@ -103,6 +105,17 @@ function registrarHandlersDeFila() {
   // Etapa 6: publicar em rede social e importar metrica sao jobs — a rede
   // pode estar fora do ar, e a fila reagenda sem perder o conteudo.
   fila.registrar('conteudo:publicar', (payload) => conteudo.publicar(payload));
+  // Etapa 7: a alteracao de orcamento aprovada e aplicada AQUI, nunca no
+  // momento do pedido. Sem aprovacao registrada, aplicarAlteracao recusa.
+  fila.registrar('aprovacao:anuncio.orcamento_alterar', (payload) => {
+    const dados = payload.dados || {};
+    const alt = repo.um(
+      "SELECT * FROM gx_orcamento_alteracoes WHERE tenant_id = :tenant AND campanha_id = :c AND status = 'aguardando' " +
+      'ORDER BY criado_em DESC LIMIT 1', { c: dados.campanhaId }
+    );
+    if (!alt) { const e = new Error('Alteracao de orcamento nao encontrada ou ja resolvida.'); e.status = 404; throw e; }
+    return anuncios.aplicarAlteracao(alt.id);
+  });
 }
 
 /**
@@ -152,5 +165,5 @@ module.exports = {
   montar, semear, iniciarWorker, pararWorker, registrarHandlersDeFila,
   tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila,
   aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade,
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao,
 };

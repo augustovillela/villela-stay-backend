@@ -1,5 +1,5 @@
 // =====================================================================
-// Villela Growth OS — suíte das Etapas 1 a 6.  npm run test:growth
+// Villela Growth OS — suíte das Etapas 1 a 7.  npm run test:growth
 //
 // Banco descartável, worker desligado, Express real para as rotas de
 // administração. O bloco mais importante é o ANTI-VAZAMENTO: ele tenta
@@ -63,7 +63,7 @@ function lanca(nome, fn, padrao) {
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
 const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade } = growth;
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
 require('../crm/repo').semear();                 // planos e flags do control plane
@@ -1426,7 +1426,190 @@ testeAsync('conteúdo e comunidade: a conta B não vê nada da conta A', () => {
 });
 
 // =====================================================================
-// 20. ROTAS DE ADMINISTRAÇÃO
+// 20. ETAPA 7 — ANÚNCIOS E ATRIBUIÇÃO
+// =====================================================================
+// a flag `anuncios` já foi ligada por um teste anterior; a barreira que
+// pega aqui é o limite do plano — as duas são 402 e as duas valem
+lancaAsync('anúncios: fora do plano, conectar conta é recusado com 402',
+  () => comoA(() => anuncios.conectarConta({ plataforma: 'meta_ads', nome: 'x' })),
+  /não está incluído|plano desta conta permite/i);
+
+let contaAds = null, campanhaAds = null;
+testeAsync('anúncios: conecta a conta com teto e ela nasce PENDENTE (sem conector)', () => {
+  comoA(() => { entitlements.definirFlag('anuncios', true); entitlements.definirLimite('contas_anuncio', 5); });
+  contaAds = comoA(() => anuncios.conectarConta({
+    plataforma: 'meta_ads', nome: 'Villela Stay — Meta', tetoDiarioCent: 20000, tetoMensalCent: 400000,
+  }));
+  assert.strictEqual(contaAds.status, 'pendente', 'conta nasceu ativa sem conexão real');
+  assert.strictEqual(contaAds.teto_diario_cent, 20000);
+});
+
+testeAsync('anúncios: sincronizar devolve PENDÊNCIA, não erro nem número inventado', async () => {
+  const r = await comoA(() => anuncios.sincronizar(contaAds.id));
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.pendente, true, 'tratou 501 do conector como falha de operação');
+  assert.strictEqual(comoA(() => repo.buscar('gx_contas_anuncio', contaAds.id)).status, 'pendente');
+  // e NÃO abriu incidente: contrato não implementado não é incidente
+  const inc = comoA(() => repo.listar('gx_incidentes', { onde: "ref_tipo = 'conta_anuncio'", limite: 5 }));
+  assert.strictEqual(inc.length, 0, 'abriu incidente para conector que ainda é contrato');
+});
+
+testeAsync('anúncios: campanha importada fica disponível para orçamento', () => {
+  const id = comoA(() => anuncios.registrarCampanha(contaAds.id, {
+    externaId: 'camp-1', nome: 'Casamentos DF', orcamentoCent: 10000, utmCampaign: 'casamentos-2026',
+  }));
+  campanhaAds = comoA(() => repo.buscar('gx_campanhas_anuncio', id));
+  assert.strictEqual(campanhaAds.orcamento_cent, 10000);
+  // reimportar não duplica
+  comoA(() => anuncios.registrarCampanha(contaAds.id, { externaId: 'camp-1', nome: 'Casamentos DF', orcamentoCent: 12000 }));
+  assert.strictEqual(comoA(() => repo.contar('gx_campanhas_anuncio', { onde: "externa_id = 'camp-1'" })), 1);
+});
+
+lancaAsync('anúncios: alterar orçamento SEM justificativa é recusado',
+  () => comoA(() => anuncios.solicitarAlteracao({ campanhaId: campanhaAds.id, paraCent: 15000 })), /exige justificativa/i);
+
+let pedidoOrcamento = null;
+testeAsync('anúncios: aumento NUNCA é aplicado direto — vira aprovação', () => {
+  const antes = comoA(() => repo.buscar('gx_campanhas_anuncio', campanhaAds.id)).orcamento_cent;
+  const r = comoA(() => anuncios.solicitarAlteracao({
+    campanhaId: campanhaAds.id, paraCent: antes + 3000, justificativa: 'CPL caiu 20% na última semana',
+  }));
+  pedidoOrcamento = r;
+  assert.strictEqual(r.bloqueada, false);
+  assert.ok(r.aprovacaoId, 'não abriu pedido de aprovação');
+  // o orçamento NÃO mudou
+  assert.strictEqual(comoA(() => repo.buscar('gx_campanhas_anuncio', campanhaAds.id)).orcamento_cent, antes,
+    'o orçamento mudou antes da aprovação');
+  const pedido = comoA(() => repo.buscar('gx_aprovacoes', r.aprovacaoId));
+  assert.strictEqual(pedido.acao, 'anuncio.orcamento_alterar');
+  assert.strictEqual(pedido.nivel, 3);
+});
+
+testeAsync('anúncios: só depois de aprovado o número muda', async () => {
+  const alt = comoA(() => repo.buscar('gx_orcamento_alteracoes', pedidoOrcamento.id));
+  comoA(() => aprovacoes.decidir(alt.aprovacao_id, { decisao: 'aprovar', quem: 'augusto' }));
+  const r = comoPlat(() => fila.processarLote(20));
+  await Promise.resolve(r);
+  assert.strictEqual(comoA(() => repo.buscar('gx_campanhas_anuncio', campanhaAds.id)).orcamento_cent, alt.para_cent,
+    'aprovado e o orçamento não foi aplicado');
+  assert.strictEqual(comoA(() => repo.buscar('gx_orcamento_alteracoes', alt.id)).status, 'aplicada');
+});
+
+lancaAsync('anúncios: aplicar alteração SEM aprovação é bloqueado',
+  () => comoA(() => {
+    const id = repo.inserir('gx_orcamento_alteracoes', {
+      conta_id: contaAds.id, campanha_id: campanhaAds.id, de_cent: 13000, para_cent: 99000,
+      justificativa: 'tentativa direta', status: 'aguardando',
+    });
+    return anuncios.aplicarAlteracao(id);
+  }), /sem aprovação registrada/i);
+
+testeAsync('anúncios: teto diário da conta barra o aumento antes de qualquer aprovação', () => {
+  const r = comoA(() => anuncios.solicitarAlteracao({
+    campanhaId: campanhaAds.id, paraCent: 250000, justificativa: 'quero escalar',
+  }));
+  assert.strictEqual(r.bloqueada, true, 'passou do teto e não foi barrado');
+  assert.ok(/teto/i.test(r.motivo), r.motivo);
+  assert.strictEqual(comoA(() => repo.buscar('gx_campanhas_anuncio', campanhaAds.id)).orcamento_cent,
+    comoA(() => repo.buscar('gx_orcamento_alteracoes', pedidoOrcamento.id)).para_cent, 'o bloqueio alterou o orçamento');
+});
+
+testeAsync('anúncios: salto grande é marcado como anomalia e emite evento', () => {
+  comoA(() => anuncios.definirTeto(contaAds.id, { diarioCent: 500000 }));
+  const r = comoA(() => anuncios.solicitarAlteracao({
+    campanhaId: campanhaAds.id, paraCent: 60000, justificativa: 'campanha de fim de ano',
+  }));
+  assert.strictEqual(r.anomala, true, `variação de ${r.variacao}% não foi marcada como anomalia`);
+  const ev = db.prepare("SELECT * FROM gx_eventos WHERE tipo = 'ad_budget_threshold_reached' AND tenant_id = ?").all(TA);
+  assert.ok(ev.length >= 1, 'não emitiu o evento de anomalia');
+});
+
+testeAsync('anúncios: agente com autonomia alta TAMBÉM não aumenta gasto sozinho', () => {
+  const r = comoA(() => anuncios.solicitarAlteracao({
+    campanhaId: campanhaAds.id, paraCent: 14000, justificativa: 'sugestão do agente de mídia',
+    origemTipo: 'agente', origemId: 'midia',
+  }));
+  assert.ok(r.aprovacaoId, 'agente conseguiu alterar sem aprovação');
+  const pedido = comoA(() => repo.buscar('gx_aprovacoes', r.aprovacaoId));
+  assert.strictEqual(pedido.origem_tipo, 'agente');
+  assert.strictEqual(pedido.status, 'pendente');
+});
+
+// ---- atribuição: a parte que funciona sem plataforma nenhuma ----
+let contatoAtrib = null;
+testeAsync('atribuição: monta a jornada a partir do tracking e da procedência', () => {
+  const chave = db.prepare('SELECT webhook_token FROM crm_config WHERE tenant_id = ?').get(TA).webhook_token;
+  void chave;
+  contatoAtrib = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'jornada@teste.com' }],
+    dados: { nome: 'Jornada', origem: 'google-ads', campanha: 'casamentos-2026' },
+  })).contatoId;
+  comoA(() => {
+    captura.rastrear({ visitanteId: 'v-jornada', url: 'https://villelastay.com.br/?utm_source=google&utm_campaign=casamentos-2026' });
+    captura.rastrear({ visitanteId: 'v-jornada', url: 'https://villelastay.com.br/eventos?utm_source=instagram&utm_campaign=casamentos-2026' });
+    captura.vincularVisitante('v-jornada', contatoAtrib);
+  });
+  const j2 = comoA(() => atribuicao.jornadaDoContato(contatoAtrib));
+  assert.strictEqual(j2.total, 2, `toques: ${j2.total}`);
+  assert.strictEqual(j2.primeiro.origem, 'google');
+  assert.strictEqual(j2.ultimo.origem, 'instagram');
+  assert.ok(j2.limitacoes.length >= 3, 'o relatório precisa declarar o que não enxerga');
+});
+
+testeAsync('atribuição: first e last touch apontam origens diferentes, como devem', () => {
+  // Oportunidades.criar cai no funil e estágio padrão quando não informados
+  const op = comoA(() => appRepo.Oportunidades.criar(TA, {
+    contato_id: contatoAtrib, titulo: 'Casamento outubro', valor_centavos: 800000,
+  }, 'teste'));
+  const opId = op.id || op;
+  comoA(() => repo.exec("UPDATE crm_oportunidades SET status = 'ganha', fechada_em = :em WHERE id = :id AND tenant_id = :tenant",
+    { id: opId, em: nowISO() }));
+
+  const r = comoA(() => atribuicao.calcular(opId));
+  assert.strictEqual(r.ok, true, r.motivo);
+  assert.strictEqual(r.modelos.first_touch.origem, 'google');
+  assert.strictEqual(r.modelos.last_touch.origem, 'instagram');
+  assert.strictEqual(r.modelos.first_touch.valor_cent, 800000);
+});
+
+testeAsync('atribuição: linear divide o valor entre os toques', () => {
+  const partes = atribuicao.distribuir(
+    [{ origem: 'a' }, { origem: 'b' }, { origem: 'c' }, { origem: 'd' }], 1000, 'linear');
+  assert.deepStrictEqual(partes.map((p) => p.valorCent), [250, 250, 250, 250]);
+  const pos = atribuicao.distribuir([{ origem: 'a' }, { origem: 'b' }, { origem: 'c' }], 1000, 'posicional');
+  assert.deepStrictEqual(pos.map((p) => p.valorCent), [400, 200, 400]);
+});
+
+testeAsync('atribuição: o funil por origem sai do CRM, sem depender de anúncio', () => {
+  const f = comoA(() => atribuicao.funil());
+  assert.ok(f.length >= 1, 'funil veio vazio');
+  const comGanho = f.find((l) => l.ganhas > 0);
+  assert.ok(comGanho, 'nenhuma origem com oportunidade ganha');
+  assert.ok(comGanho.receita >= 800000, `receita: ${comGanho.receita}`);
+  assert.ok(comGanho.ticket_medio_cent > 0);
+});
+
+testeAsync('anúncios: o desempenho avisa quando não há métrica importada', () => {
+  const d = comoA(() => anuncios.desempenho({}));
+  assert.strictEqual(d.total.gasto, 0);
+  assert.ok(/não estão conectadas/i.test(d.aviso), d.aviso);
+});
+
+testeAsync('anúncios e atribuição: a conta B não vê nada da conta A', () => {
+  const receitaA = comoA(() => atribuicao.funil()).reduce((t, l) => t + l.receita, 0);
+  assert.ok(receitaA >= 800000, `receita de A: ${receitaA}`);
+  comoB(() => {
+    assert.strictEqual(anuncios.contas().length, 0, 'B enxergou conta de anúncio de A');
+    assert.strictEqual(anuncios.alteracoes().length, 0);
+    // B tem funil PRÓPRIO (contatos dela). O que não pode é a receita de A aparecer.
+    const receitaB = atribuicao.funil().reduce((t, l) => t + l.receita, 0);
+    assert.strictEqual(receitaB, 0, `a receita de A vazou para B: ${receitaB}`);
+    assert.strictEqual(repo.contar('gx_atribuicoes_conversao'), 0, 'B enxergou atribuição de A');
+  });
+});
+
+// =====================================================================
+// 21. ROTAS DE ADMINISTRAÇÃO
 // =====================================================================
 const USUARIOS = [
   { id: 'adm', nome: 'Admin', email: 'adm@t', papel: 'admin', areas: ['*'], ativo: true },
@@ -1890,12 +2073,12 @@ const servidor = app.listen(0, async () => {
 
   console.log(`\n${'='.repeat(64)}`);
   if (falhas.length) {
-    console.log(`❌ Villela Growth OS — Etapas 1 a 6: ${ok} passaram, ${falhas.length} FALHARAM\n`);
+    console.log(`❌ Villela Growth OS — Etapas 1 a 7: ${ok} passaram, ${falhas.length} FALHARAM\n`);
     for (const f of falhas) console.log('  ✗ ' + f);
     console.log('');
     process.exit(1);
   }
-  console.log(`✅ Villela Growth OS — Etapas 1 a 6: ${ok} testes passaram.`);
+  console.log(`✅ Villela Growth OS — Etapas 1 a 7: ${ok} testes passaram.`);
   console.log(`   Isolamento entre contas verificado em ${[...TABELAS_TENANT].filter(t => t.startsWith('gx_')).length} tabelas.\n`);
   process.exit(0);
 });
