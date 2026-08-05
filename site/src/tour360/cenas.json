@@ -1052,6 +1052,885 @@
       },
       "hotspots": [],
       "destaque": false
+    },
+    {
+      "id": "modernista-piscina",
+      "arquivo": "modernista-piscina",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Piscina",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false,
+      "hub": true
+    },
+    {
+      "id": "modernista-area-externa-piscina",
+      "arquivo": "modernista-area-externa-piscina",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Área externa da piscina",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-jacuzzi",
+      "arquivo": "modernista-jacuzzi",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Jacuzzi",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-espaco-gourmet",
+      "arquivo": "modernista-espaco-gourmet",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Espaço gourmet",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-espaco-gourmet-interno",
+      "arquivo": "modernista-espaco-gourmet-interno",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Espaço gourmet (interno)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-espaco-gourmet-externo",
+      "arquivo": "modernista-espaco-gourmet-externo",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Espaço gourmet (externo)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-lounge-externo",
+      "arquivo": "modernista-lounge-externo",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Lounge externo",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-lounge-externo-2",
+      "arquivo": "modernista-lounge-externo-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Lounge externo (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-jardim-externo",
+      "arquivo": "modernista-jardim-externo",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Jardim",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-varanda",
+      "arquivo": "modernista-varanda",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Varanda",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-sala",
+      "arquivo": "modernista-sala",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Sala",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-sala-2",
+      "arquivo": "modernista-sala-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Sala (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-sala-3",
+      "arquivo": "modernista-sala-3",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Sala (3)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-sala-4",
+      "arquivo": "modernista-sala-4",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Sala (4)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-sala-5",
+      "arquivo": "modernista-sala-5",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Sala (5)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-copa",
+      "arquivo": "modernista-copa",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Copa",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-cozinha",
+      "arquivo": "modernista-cozinha",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Cozinha",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-cozinha-2",
+      "arquivo": "modernista-cozinha-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Cozinha (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-master-2",
+      "arquivo": "modernista-suite-master-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH05H"
+      ],
+      "titulo": "Suíte Master",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-master-3",
+      "arquivo": "modernista-suite-master-3",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH05H"
+      ],
+      "titulo": "Suíte Master (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-master-4",
+      "arquivo": "modernista-suite-master-4",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH05H"
+      ],
+      "titulo": "Suíte Master (3)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-master-banheiro",
+      "arquivo": "modernista-suite-master-banheiro",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH05H"
+      ],
+      "titulo": "Suíte Master — banheiro",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-do-felipe",
+      "arquivo": "modernista-suite-do-felipe",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH01H"
+      ],
+      "titulo": "Suíte do Felipe",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-do-felipe-2",
+      "arquivo": "modernista-suite-do-felipe-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH01H"
+      ],
+      "titulo": "Suíte do Felipe (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-do-felipe-banheiro",
+      "arquivo": "modernista-suite-do-felipe-banheiro",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH01H"
+      ],
+      "titulo": "Suíte do Felipe — banheiro",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-do-pedro",
+      "arquivo": "modernista-suite-do-pedro",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH06H"
+      ],
+      "titulo": "Suíte do Pedro",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-do-pedro-2",
+      "arquivo": "modernista-suite-do-pedro-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH06H"
+      ],
+      "titulo": "Suíte do Pedro (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-do-pedro-banheiro",
+      "arquivo": "modernista-suite-do-pedro-banheiro",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH06H"
+      ],
+      "titulo": "Suíte do Pedro — banheiro",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-do-pedro-banheiro-2",
+      "arquivo": "modernista-suite-do-pedro-banheiro-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH06H"
+      ],
+      "titulo": "Suíte do Pedro — banheiro (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-da-sofia",
+      "arquivo": "modernista-suite-da-sofia",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH04H"
+      ],
+      "titulo": "Suíte da Sofia",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-da-sofia-2",
+      "arquivo": "modernista-suite-da-sofia-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH04H"
+      ],
+      "titulo": "Suíte da Sofia (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-da-sofia-banheiro",
+      "arquivo": "modernista-suite-da-sofia-banheiro",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH04H"
+      ],
+      "titulo": "Suíte da Sofia — banheiro",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-da-familia",
+      "arquivo": "modernista-suite-da-familia",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH03H"
+      ],
+      "titulo": "Suíte da Família",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-da-familia-2",
+      "arquivo": "modernista-suite-da-familia-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH03H"
+      ],
+      "titulo": "Suíte da Família (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-suite-da-familia-banheiro",
+      "arquivo": "modernista-suite-da-familia-banheiro",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H",
+        "UH03H"
+      ],
+      "titulo": "Suíte da Família — banheiro",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-lavabo",
+      "arquivo": "modernista-lavabo",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Lavabo",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-lounge-entrada-garagem",
+      "arquivo": "modernista-lounge-entrada-garagem",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Lounge da entrada",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-fachada",
+      "arquivo": "modernista-fachada",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Fachada",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-fachada-2",
+      "arquivo": "modernista-fachada-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Fachada (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-fachada-3",
+      "arquivo": "modernista-fachada-3",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Fachada (3)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "modernista-garagem",
+      "arquivo": "modernista-garagem",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Garagem",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
     }
   ]
 }
