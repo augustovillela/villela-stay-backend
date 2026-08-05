@@ -97,6 +97,24 @@ async function rodar() {
       assert.equal((await req('GET', p)).st, 200, p);
     }
   });
+  await t('termos publicam o articulado da minuta, sem vazar o guia interno', async () => {
+    const r = await req('GET', '/closet/termos');
+    assert.equal(r.st, 200);
+    // articulado presente da primeira à última seção
+    assert.ok(r.texto.includes('IDENTIFICAÇÃO DA PLATAFORMA'), 'seção 1 ausente');
+    assert.ok(r.texto.includes('DECLARAÇÃO DE ACEITE'), 'seção 47 ausente');
+    assert.ok(r.texto.includes('LEGISLAÇÃO APLICÁVEL E FORO'), 'seção 45 ausente');
+    // a controladora tem de bater com a que a Política de Privacidade publica
+    assert.ok(r.texto.includes('Augusto Villela Ltda') && r.texto.includes('56.776.526/0001-12'),
+      'identificação da operadora divergente da Política de Privacidade');
+    // comissão sai da configuração, não de número escrito à mão no texto jurídico
+    assert.ok(r.texto.includes(`${require('./repo').Config.num('comissao_pct', 20)}%`), 'comissão fora de sincronia');
+    // enquanto for minuta, a tarja tem de estar visível
+    assert.ok(/Minuta provis[óo]ria/i.test(r.texto), 'tarja de minuta sumiu de um texto ainda provisório');
+    // o próprio documento manda remover o guia antes de publicar — ele NUNCA pode chegar ao público
+    assert.ok(!/GUIA INTERNO/i.test(r.texto), 'guia interno de preenchimento vazou para a página pública');
+    assert.ok(!/NOTA INTERNA/i.test(r.texto), 'nota interna vazou para a página pública');
+  });
   await t('robots bloqueia painel e API e aponta o sitemap', async () => {
     const r = await req('GET', '/closet/robots.txt');
     assert.ok(r.texto.includes('Disallow: /closet/app') && r.texto.includes('Disallow: /closet/api') && r.texto.includes('sitemap.xml'));

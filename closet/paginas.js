@@ -1064,23 +1064,8 @@ function institucionalHTML(qual) {
         <p>Dano, não devolução ou peça diferente do anúncio: qualquer lado abre disputa e a plataforma media, com o valor ainda bloqueado. A decisão pode reter parte da caução como indenização.</p>`,
     },
     termos: {
-      titulo: 'Termos de uso',
-      corpo: `<h2>Termos de uso</h2>
-        <div class="aviso"><b>Minuta.</b> Esta versão precisa de revisão de advogado antes do lançamento comercial. O texto abaixo descreve o funcionamento real da plataforma e serve de base para essa revisão.</div>
-        <h3 style="margin:26px 0 8px">1. O que é o Closet Club</h3>
-        <p>O Closet Club é um <b>marketplace</b> que conecta pessoas que querem alugar peças de vestuário a pessoas que querem alugá-las. A plataforma <b>não é proprietária das peças</b> e não é parte do contrato de locação entre usuários: atua como intermediadora de pagamento, registro de posse e mediação.</p>
-        <h3 style="margin:26px 0 8px">2. Conta</h3>
-        <p>É preciso ter 18 anos ou mais e fornecer dados verdadeiros. Cada pessoa responde pelo uso da sua conta. A plataforma pode suspender contas com indícios de fraude, reincidência em disputas ou violação destes termos.</p>
-        <h3 style="margin:26px 0 8px">3. Anúncios</h3>
-        <p>O proprietário declara ser dono da peça, descrevê-la com fidelidade (condição, medidas, defeitos) e higienizá-la antes de cada locação. Anúncios passam por moderação.</p>
-        <h3 style="margin:26px 0 8px">4. Pagamento, comissão e repasse</h3>
-        <p>O valor é retido pela plataforma e repassado ao proprietário após a devolução conferida, descontada a comissão de ${Config.num('comissao_pct', 20)}%. A caução é reembolsável e não é receita de ninguém.</p>
-        <h3 style="margin:26px 0 8px">5. Responsabilidade pela peça</h3>
-        <p>O cliente responde por danos além do desgaste normal de uso e pela não devolução, até o valor de reposição declarado. A caução e o seguro opcional servem a essa cobertura.</p>
-        <h3 style="margin:26px 0 8px">6. Proibições</h3>
-        <p>É vedado combinar pagamento fora da plataforma, alugar peça de terceiro sem autorização, anunciar item falsificado ou usar a plataforma para fim diverso da locação.</p>
-        <h3 style="margin:26px 0 8px">7. Foro</h3>
-        <p>Fica eleito o foro de Brasília/DF, sem prejuízo do direito do consumidor de acionar o foro do seu domicílio.</p>`,
+      titulo: require('./termos').titulo,
+      corpo: require('./termos').corpo(),
     },
     privacidade: {
       titulo: 'Privacidade e LGPD',
