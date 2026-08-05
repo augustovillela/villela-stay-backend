@@ -4516,6 +4516,20 @@ try {
   });
 } catch (e) { console.error('[crm] falha ao montar módulo:', e.message); }
 
+// =========================== Closet Club (marketplace de aluguel de roupas) ===========================
+// "O Airbnb dos guarda-roupas": vitrine pública em /closet, painel do usuário em
+// /closet/app (sessão própria 'closet_sess'), administração na aba 👗 do Portal
+// Staff (/staff/api/closet/*). NÃO é multi-tenant: é uma plataforma só, com N
+// proprietários e N clientes. Pagamento em escrow (Pix) e repasse por dono.
+try {
+  require('./closet').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[closet] falha ao montar módulo:', e.message); }
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.

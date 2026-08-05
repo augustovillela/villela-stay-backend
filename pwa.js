@@ -36,6 +36,12 @@ const PRODUTOS = [
     desc: 'Cursos online e produtos digitais: estude, produza e acompanhe suas vendas.',
   },
   {
+    slug: 'closet', base: '/closet', inicio: '/closet/app', escopo: '/closet/',
+    nome: 'Closet Club', curto: 'Closet Club', marca: 'closet-club',
+    desc: 'Alugue o look completo e transforme seu guarda-roupa parado em renda.',
+    tema: '#111111', fundo: '#FFFFFF',
+  },
+  {
     slug: 'legal', base: '/juridico', inicio: '/juridico/app', escopo: '/juridico/',
     nome: 'Villela Legal', curto: 'Jurídico', marca: 'villela-legal',
     desc: 'Plataforma jurídica: processos, prazos, intimações e produção de peças com IA.',
@@ -56,8 +62,9 @@ function manifestDe(p) {
     start_url: p.inicio,
     scope: p.escopo,
     display: 'standalone',
-    background_color: '#F8F9FA',
-    theme_color: '#1B2A4A',
+    // padrão = identidade V-Portal do grupo; produtos com marca própria (Closet Club) sobrescrevem
+    background_color: p.fundo || '#F8F9FA',
+    theme_color: p.tema || '#1B2A4A',
     lang: 'pt-BR',
     dir: 'ltr',
     categories: ['business', 'productivity'],
