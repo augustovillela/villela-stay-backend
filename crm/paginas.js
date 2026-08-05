@@ -215,7 +215,10 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="crm"><div class="cx">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}<span class="tag">painel comercial</span></div>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/crm/app.js"></script><script>bootCRM();</script></body></html>`;
+    <script src="/crm/app.js"></script>
+    <!-- Extensao do Villela Growth OS: acrescenta abas ao shell sem tocar no nucleo -->
+    <script src="/crm/app-growth.js"></script>
+    <script>bootCRM();</script></body></html>`;
 }
 
 // proposta pública /crm/p/:token
@@ -259,6 +262,8 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
   app.get('/crm/assinar', (req, res) => res.send(assinarHTML(s(req.query.plano, 60))));
   app.get('/crm/app', (req, res) => res.send(appHTML()));
   app.get('/crm/app.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-cliente.js')));
+  app.get('/crm/app-growth.js', (req, res) =>
+    res.type('application/javascript').sendFile(path.join(__dirname, '..', 'growth', 'app-assinante.js')));
   app.get('/crm/p/:token', (req, res) => res.send(propostaHTML(req.params.token)));
   app.get('/crm/definir-senha', (req, res) => res.send(shell(
     `<div class="card"><h3>Defina sua senha</h3><input id="s1" type="password" placeholder="Nova senha (8+)"><input id="s2" type="password" placeholder="Confirme"><button class="btn" onclick="salvar()">Salvar</button><p id="m" class="erro"></p></div>`,

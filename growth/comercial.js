@@ -140,9 +140,23 @@ const PASSOS = [
     verificar: () => { const c = require('./lgpd').config(); return !!c.politica_url; } },
 ];
 
+/**
+ * Quantas pessoas têm acesso a esta conta. Conta as DUAS origens porque
+ * elas convivem: quem entrou pelo Villela CRM tem linha em tenant_users e
+ * pode nunca ter ganhado membership no Growth. Contar só uma delas mostrava
+ * "0 usuários" para quem estava logado olhando a tela.
+ * Distinto por e-mail — a mesma pessoa nas duas tabelas é uma pessoa só.
+ */
 const contasDoTenant = () => {
-  try { return repo.q("SELECT COUNT(*) AS n FROM gx_memberships WHERE escopo_tipo = 'tenant' AND escopo_id = :tenant")[0].n; }
-  catch { return 0; }
+  try {
+    return repo.q(
+      "SELECT COUNT(*) AS n FROM (" +
+      "  SELECT lower(u.email) AS e FROM gx_memberships m JOIN gx_users u ON u.id = m.user_id" +
+      "   WHERE m.escopo_tipo = 'tenant' AND m.escopo_id = :tenant AND m.status = 'ativo'" +
+      "  UNION" +
+      "  SELECT lower(email) AS e FROM tenant_users WHERE tenant_id = :tenant AND ativo = 1)"
+    )[0].n;
+  } catch { return 0; }
 };
 
 /** Checklist com o estado real + o que foi dispensado. */
@@ -300,11 +314,14 @@ function minhaAssinatura() {
   const uso = medidas.map(([chave, medir]) => {
     const limite = Number(ent.limites[chave]);
     const atual = safe(medir);
+    // limite 0 não é "lotado", é "não faz parte do plano" — dizer
+    // "no limite" para um recurso que a pessoa nem contratou confunde.
     return {
       recurso: chave, usado: atual, limite,
       ilimitado: limite < 0,
+      incluido: limite !== 0,
       pct: limite > 0 ? Math.min(100, Math.round((atual / limite) * 100)) : null,
-      estourado: limite >= 0 && atual >= limite,
+      estourado: limite > 0 && atual >= limite,
     };
   });
   const porMes = ['mensagens_mes', 'automacoes_execucoes', 'conteudos_mes'].map((m) => ({

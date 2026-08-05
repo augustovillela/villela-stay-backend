@@ -30,6 +30,7 @@ const segredos = require('./segredos');
 const conectores = require('./conectores');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasPublicas } = require('./rotas-publicas');
+const { registrarRotasAssinante } = require('./rotas-assinante');
 const identidade = require('./identidade');
 const captura = require('./captura');
 const segmentos = require('./segmentos');
@@ -65,13 +66,20 @@ function montar(app, injected = {}) {
 
   app.use('/staff/api/growth', tenancy.middlewareCorrelacao);
   app.use('/growth', tenancy.middlewareCorrelacao);
+  app.use('/crm/api/growth', tenancy.middlewareCorrelacao);
   registrarRotasStaff(app, { requireAuth, requireAdmin });
   registrarRotasPublicas(app, { express });
+  // O painel do assinante só existe se o CRM montou antes e cedeu a guarda
+  // de sessão. Sem ela, o Growth sobe sem painel — e diz isso no log, em vez
+  // de servir rota aberta.
+  const painel = !!injected.requireAssinante;
+  if (painel) registrarRotasAssinante(app, { requireAssinante: injected.requireAssinante });
 
   iniciarWorker(alertaAugusto);
   console.log(
     `[growth] Villela Growth OS (Etapas 1-9) montado. Admin: /staff/api/growth · ` +
     `captura: /growth/f/:token · páginas: /growth/p/:slug · ` +
+    `painel do assinante: ${painel ? '/crm/app (abas do Growth)' : 'INDISPONÍVEL (CRM não montou)'} · ` +
     `perfis: ${rbac.PERFIS.length} · conectores: ${conectores.CONECTORES.length} · ` +
     `e-mail: ${statusEmail} · IA: ${agentes.temChaveLLM() ? 'llm disponivel' : 'so regras'} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );

@@ -68,17 +68,31 @@ const MENU = [
   ['ia', 'ia', 'Inteligência', '🤖', 'Agentes de IA'],
   ['conta', '', 'Conta', '⚙️', 'Conta e plano'],
 ];
-const ORDEM_GRUPOS = ['Visão geral', 'Comercial', 'Relacionamento', 'Inteligência', 'Conta'];
+const ORDEM_GRUPOS_BASE = ['Visão geral', 'Comercial', 'Relacionamento', 'Inteligência', 'Conta'];
+// Calculado na hora, não no load: a extensão do Growth OS é carregada
+// DEPOIS deste arquivo. Grupos novos entram antes de "Conta", que fecha.
+function ordemGrupos() {
+  const ext = (window.GX_EXT && GX_EXT.grupos) || [];
+  const novos = ext.filter((g) => !ORDEM_GRUPOS_BASE.includes(g));
+  return ORDEM_GRUPOS_BASE.slice(0, -1).concat(novos, 'Conta');
+}
 let ABA = 'dash';
 let NAV_COLAPSADA = (() => { try { return localStorage.getItem('vx-nav') === 'colapsada'; } catch (_) { return false; } })();
 
+// Ganchos de extensão: o Villela Growth OS acrescenta abas por
+// `window.GX_EXT` (ver growth/app-assinante.js) sem tocar neste núcleo.
+// Item estendido: [id, modulo, grupo, ícone, rótulo, flagDoPlano].
 function itensDoMenu() {
-  const mods = (ME.entitlements && ME.entitlements.modulos) || [];
-  return MENU.filter(([, mod]) => !mod || mods.includes(mod));
+  const ent = ME.entitlements || {};
+  const mods = ent.modulos || [];
+  const flags = ent.flags || {};
+  const extras = (window.GX_EXT && GX_EXT.menu) || [];
+  return MENU.concat(extras).filter(([, mod, , , , flag]) =>
+    (!mod || mods.includes(mod)) && (!flag || flags[flag] === true));
 }
 function montarNav() {
   let html = '';
-  for (const g of ORDEM_GRUPOS) {
+  for (const g of ordemGrupos()) {
     const doGrupo = itensDoMenu().filter(i => i[2] === g);
     if (!doGrupo.length) continue;
     html += `<div class="vx-nav-grupo">${esc(g)}</div>`;
@@ -208,7 +222,10 @@ async function alternarPush() {
   pintarBotaoPush();
 }
 function navegar(v) {
-  const mapa = { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, campanhas: vCampanhas, ia: vIA, conta: vConta };
+  const mapa = Object.assign(
+    { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, campanhas: vCampanhas, ia: vIA, conta: vConta },
+    (window.GX_EXT && GX_EXT.vistas) || {}   // abas do Villela Growth OS
+  );
   ABA = mapa[v] ? v : 'dash';
   SEQ++;
   document.querySelectorAll('#crm-nav [data-v]').forEach(b => {

@@ -44,7 +44,9 @@ function montar(app, injected = {}) {
 
   iniciarRotinas(notificar);
   console.log(`[crm] Villela CRM montado. Landing: /crm · painel: /crm/app · MP: ${billing.ativo() ? 'ativo' : 'manual'}`);
-  return { repo, appRepo, billing };
+  // requireAssinante sai daqui porque o Villela Growth OS estende ESTE painel
+  // (ADR-0002) — o assinante tem um login só, não dois.
+  return { repo, appRepo, billing, requireAssinante: cliente.requireAssinante, requirePapel: cliente.requirePapel };
 }
 
 // agendador interno: ciclo de vida + automações 1×/dia ~6h Brasília

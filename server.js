@@ -4508,8 +4508,9 @@ try {
 // landing/preços em /crm, painel do assinante em /crm/app (sessão própria 'crm_sess'),
 // administração da plataforma em /staff/api/vcrm/* (vcrm ≠ CRM legado do staff em
 // /staff/api/crm/*). SQLite próprio em DATA_DIR/crm/. Cobrança recorrente via MP.
+let crmMontado = null;   // expõe requireAssinante ao Growth OS (ADR-0002)
 try {
-  require('./crm').montar(app, {
+  crmMontado = require('./crm').montar(app, {
     express, requireAuth, requireAdmin, enviarEmail,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
@@ -4543,6 +4544,9 @@ try {
     express, requireAuth, requireAdmin, enviarEmail,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     jwtSecret: JWT_SECRET,
+    // painel do assinante: as abas do Growth entram em /crm/app usando a
+    // sessao do CRM. Se o CRM nao montou, o Growth sobe so com o admin.
+    requireAssinante: crmMontado && crmMontado.requireAssinante,
   });
 } catch (e) { console.error('[growth] falha ao montar módulo:', e.message); }
 

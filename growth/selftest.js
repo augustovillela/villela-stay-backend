@@ -1942,7 +1942,20 @@ const requireAdmin = (req, res, next) => (req.user && req.user.papel === 'admin'
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
-growth.montar(app, { express, requireAuth, requireAdmin, jwtSecret: 'segredo-de-teste', alertaAugusto: async () => {} });
+// Guarda de sessão do assinante: no servidor real vem do Villela CRM
+// (cookie crm_sess). Aqui é o mesmo contrato — quem entra, entra no
+// tenant DA SESSÃO, nunca no que a requisição pedir.
+function requireAssinanteFake(req, res, next) {
+  const t = req.headers['x-test-assinante'];
+  if (!t) return res.status(401).json({ erro: 'sem sessão de assinante' });
+  req.assinante = { id: 'u-' + t, tenant_id: t, papel: req.headers['x-test-papel'] || 'owner' };
+  next();
+}
+
+growth.montar(app, {
+  express, requireAuth, requireAdmin, jwtSecret: 'segredo-de-teste',
+  alertaAugusto: async () => {}, requireAssinante: requireAssinanteFake,
+});
 
 const servidor = app.listen(0, async () => {
   const BASE = `http://127.0.0.1:${servidor.address().port}`;
@@ -2381,6 +2394,109 @@ const servidor = app.listen(0, async () => {
   await t('rotas: correlation id volta no cabeçalho', async () => {
     const r = await fetch(`${BASE}/staff/api/growth/panorama`, { headers: { 'x-test-user': 'adm' } });
     assert.ok(r.headers.get('x-correlation-id'), 'sem X-Correlation-Id');
+  });
+
+  // ---------------------------------------------------------------
+  // 24. PAINEL DO ASSINANTE (abas do Growth dentro de /crm/app)
+  // ---------------------------------------------------------------
+  const comoAssinante = async (tenant, metodo, caminho, corpo) => {
+    const r = await fetch(BASE + '/crm/api/growth' + caminho, {
+      method: metodo,
+      headers: Object.assign({ 'x-test-assinante': tenant }, corpo ? { 'content-type': 'application/json' } : {}),
+      body: corpo ? JSON.stringify(corpo) : undefined,
+    });
+    let dados = null; try { dados = await r.json(); } catch (_) {}
+    return { status: r.status, dados };
+  };
+
+  await t('painel: sem sessão de assinante é 401, não tela vazia', async () => {
+    const r = await fetch(`${BASE}/crm/api/growth/visao`);
+    assert.strictEqual(r.status, 401);
+  });
+
+  await t('painel: a visão geral responde dentro do tenant da sessão', async () => {
+    const r = await comoAssinante(TA, 'GET', '/visao');
+    assert.strictEqual(r.status, 200, JSON.stringify(r.dados).slice(0, 200));
+    assert.ok(r.dados.onboarding && Array.isArray(r.dados.onboarding.passos), 'sem onboarding');
+    assert.ok(r.dados.exige_acao && typeof r.dados.exige_acao.aprovacoes_pendentes === 'number');
+    assert.ok(r.dados.numeros && typeof r.dados.numeros.contatos === 'number');
+  });
+
+  await t('painel: recurso fora do plano é 402 com motivo, não 404', async () => {
+    tenancy.comTenant({ tenantId: TA, userId: 'teste' }, () => entitlements.definirFlag('reputacao', false));
+    const r = await comoAssinante(TA, 'GET', '/reputacao');
+    assert.strictEqual(r.status, 402, `esperava 402, veio ${r.status}`);
+    assert.ok(/plano/i.test(r.dados.erro || ''), `mensagem sem motivo: ${r.dados && r.dados.erro}`);
+    tenancy.comTenant({ tenantId: TA, userId: 'teste' }, () => entitlements.definirFlag('reputacao', true));
+    const r2 = await comoAssinante(TA, 'GET', '/reputacao');
+    assert.strictEqual(r2.status, 200, JSON.stringify(r2.dados).slice(0, 200));
+    assert.ok(r2.dados.indicadores, 'sem indicadores');
+  });
+
+  await t('painel: o assinante da conta B não enxerga a inbox da conta A', async () => {
+    tenancy.comTenant({ tenantId: TA, userId: 'teste' }, () => entitlements.definirFlag('inbox', true));
+    tenancy.comTenant({ tenantId: TB, userId: 'teste' }, () => entitlements.definirFlag('inbox', true));
+    const a = await comoAssinante(TA, 'GET', '/inbox');
+    const b = await comoAssinante(TB, 'GET', '/inbox');
+    assert.strictEqual(a.status, 200); assert.strictEqual(b.status, 200);
+    const idsA = new Set(a.dados.conversas.map((c) => c.id));
+    for (const c of b.dados.conversas) assert.ok(!idsA.has(c.id), `conversa ${c.id} vazou entre contas`);
+  });
+
+  await t('painel: perfil de leitura não responde conversa', async () => {
+    const conv = await comoAssinante(TA, 'GET', '/inbox');
+    const alvo = (conv.dados.conversas || [])[0];
+    if (!alvo) return;   // sem conversa nesta conta, nada a checar
+    const r = await fetch(`${BASE}/crm/api/growth/inbox/${alvo.id}/responder`, {
+      method: 'POST',
+      headers: { 'x-test-assinante': TA, 'x-test-papel': 'leitura', 'content-type': 'application/json' },
+      body: JSON.stringify({ texto: 'oi' }),
+    });
+    assert.strictEqual(r.status, 403, `leitura respondeu conversa (status ${r.status})`);
+  });
+
+  await t('painel: plano e uso listam limite por recurso', async () => {
+    const r = await comoAssinante(TA, 'GET', '/assinatura');
+    assert.strictEqual(r.status, 200);
+    assert.ok(Array.isArray(r.dados.uso) && r.dados.uso.length, 'sem uso');
+    assert.ok(r.dados.uso.every((u) => 'limite' in u && 'usado' in u), 'uso sem limite/usado');
+    // recurso com limite 0 é "fora do plano", nunca "no limite"
+    const fora = r.dados.uso.filter((u) => u.limite === 0);
+    assert.ok(fora.every((u) => u.incluido === false && !u.estourado),
+      'recurso fora do plano apareceu como lotado: ' + JSON.stringify(fora));
+  });
+
+  await t('painel: quem entrou pelo CRM conta como usuário da conta', async () => {
+    const { db } = require('../crm/db');
+    const tid = 'tn-ponte-uso';
+    db.prepare('INSERT OR REPLACE INTO tenants (id, nome, slug, plan_id, status, criado_em) VALUES (?,?,?,?,?,?)')
+      .run(tid, 'Conta Ponte', 'conta-ponte', '', 'ativa', new Date().toISOString());
+    db.prepare('INSERT OR REPLACE INTO tenant_users (id, tenant_id, nome, email, papel, ativo, criado_em) VALUES (?,?,?,?,?,?,?)')
+      .run('tu-ponte', tid, 'Dono', 'dono@ponte.test', 'owner', 1, new Date().toISOString());
+    const r = await comoAssinante(tid, 'GET', '/assinatura');
+    assert.strictEqual(r.status, 200, JSON.stringify(r.dados).slice(0, 200));
+    const usuarios = r.dados.uso.find((u) => u.recurso === 'usuarios');
+    assert.ok(usuarios && usuarios.usado >= 1, `usuários contou ${usuarios && usuarios.usado}, esperava ≥ 1`);
+  });
+
+  await t('painel: as abas do assinante nunca aceitam tenant pela requisição', async () => {
+    const r = await comoAssinante(TB, 'GET', `/visao?tenant=${TA}&tenant_id=${TA}`);
+    assert.strictEqual(r.status, 200);
+    const direto = tenancy.comTenant({ tenantId: TB, userId: 'teste' }, () => repo.contar('crm_contatos'));
+    assert.strictEqual(r.dados.numeros.contatos, direto, 'o tenant da query alterou a resposta');
+  });
+
+  await t('painel: o script da extensão é servido pelo painel do CRM', async () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'app-assinante.js'), 'utf8');
+    assert.ok(/window\.GX_EXT\s*=/.test(src), 'app-assinante.js não define window.GX_EXT');
+    const paginas = require('fs').readFileSync(require('path').join(__dirname, '..', 'crm', 'paginas.js'), 'utf8');
+    assert.ok(paginas.includes('/crm/app-growth.js'), 'paginas.js não carrega a extensão');
+    assert.ok(paginas.indexOf('/crm/app.js"></script>') < paginas.indexOf('/crm/app-growth.js'),
+      'a extensão carrega antes do núcleo do painel');
+    const nucleo = require('fs').readFileSync(require('path').join(__dirname, '..', 'crm', 'app-cliente.js'), 'utf8');
+    for (const gancho of ['GX_EXT.menu', 'GX_EXT.grupos', 'GX_EXT.vistas']) {
+      assert.ok(nucleo.includes(gancho), `o painel do CRM perdeu o gancho ${gancho}`);
+    }
   });
 
   // ------------------------------------------------------------ fecho
