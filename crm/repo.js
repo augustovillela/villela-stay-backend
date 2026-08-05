@@ -46,34 +46,34 @@ const FLAGS_SEED = [
 // ---- PLANOS (seed; preços PROVISÓRIOS, editáveis no painel) ----
 const PLANOS_SEED = [
   {
-    slug: 'trial', nome: 'Trial (14 dias)', descricao: 'Avaliação completa por 14 dias, sem cartão.',
+    slug: 'trial', nome: 'Teste grátis (14 dias)', descricao: 'Avaliação completa por 14 dias, sem cartão.',
     preco_centavos: 0, ordem: 0,
     limites: { contatos: 500, usuarios: 3, funis: 5, campanhas_mes: 3, ia_mes: 30, templates: 30 },
     modulos: MODULOS_KEYS, flags: { automacoes: true, ia: true, api_publica: false, whatsapp_api: false, white_label: false },
   },
   {
-    slug: 'starter', nome: 'Starter', descricao: 'Para quem está saindo da planilha: contatos, funil e tarefas.',
+    slug: 'starter', nome: 'Villela CRM — Essencial', descricao: 'Para quem está saindo da planilha: contatos, funil e tarefas.',
     preco_centavos: 7900, ordem: 1,
     limites: { contatos: 1000, usuarios: 2, funis: 1, campanhas_mes: 0, ia_mes: 0, templates: 10 },
     modulos: ['dashboard', 'contatos', 'funis', 'oportunidades', 'tarefas', 'templates', 'importacao'],
     flags: { automacoes: false, ia: false, api_publica: false, whatsapp_api: false, white_label: false },
   },
   {
-    slug: 'professional', nome: 'Professional', descricao: 'Time comercial: múltiplos funis, automações, propostas, campanhas e scoring.',
+    slug: 'professional', nome: 'Villela CRM — Profissional', descricao: 'Time comercial: múltiplos funis, automações, propostas, campanhas e scoring.',
     preco_centavos: 18900, ordem: 2,
     limites: { contatos: 10000, usuarios: 5, funis: 10, campanhas_mes: 10, ia_mes: 0, templates: 100 },
     modulos: ['dashboard', 'contatos', 'empresas', 'funis', 'oportunidades', 'tarefas', 'templates', 'propostas', 'campanhas', 'automacoes', 'relatorios', 'importacao'],
     flags: { automacoes: true, ia: false, api_publica: false, whatsapp_api: false, white_label: false },
   },
   {
-    slug: 'business', nome: 'Business', descricao: 'Operação completa: agentes de IA, integrações, API pública e WhatsApp API.',
+    slug: 'business', nome: 'Villela Growth — Completo', descricao: 'Operação completa: inbox, campanhas, agentes de IA, integrações, API pública e WhatsApp API.',
     preco_centavos: 44900, ordem: 3,
     limites: { contatos: 100000, usuarios: 15, funis: 0, campanhas_mes: 0, ia_mes: 1000, templates: 0 },
     modulos: MODULOS_KEYS,
     flags: { automacoes: true, ia: true, api_publica: true, whatsapp_api: true, white_label: false },
   },
   {
-    slug: 'enterprise', nome: 'Enterprise', descricao: 'White label, integrações customizadas, SLA e agentes personalizados — sob consulta.',
+    slug: 'enterprise', nome: 'Villela Growth — Enterprise', descricao: 'White label, integrações customizadas, SLA e agentes personalizados — sob consulta.',
     preco_centavos: 0, ordem: 4,
     limites: { contatos: 0, usuarios: 0, funis: 0, campanhas_mes: 0, ia_mes: 0, templates: 0 }, // 0 = ilimitado
     modulos: MODULOS_KEYS,

@@ -58,7 +58,11 @@ async function rodar() {
 
   await t('landing pública renderiza com planos e marca', async () => {
     const r = await req('GET', '/crm');
-    assert.ok(r.texto.includes('Villela') && r.texto.includes('CRM') && r.texto.includes('Professional') && r.texto.includes('Testar 14 dias'));
+    // Nomes comerciais decididos pelo Augusto em 05/08/2026: os planos de
+    // entrada levam a marca "Villela CRM" e os completos, "Villela Growth".
+    assert.ok(r.texto.includes('Villela CRM — Profissional'), 'landing sem o plano Villela CRM — Profissional');
+    assert.ok(r.texto.includes('Villela Growth — Completo'), 'landing sem o plano Villela Growth — Completo');
+    assert.ok(r.texto.includes('Testar 14 dias'), 'landing sem o CTA do teste');
   });
   await t('dashboard da plataforma só admin (operador → 403)', async () => {
     assert.equal((await req('GET', '/staff/api/vcrm/dashboard', { user: 'op' })).st, 403);
