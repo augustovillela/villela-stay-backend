@@ -16,7 +16,11 @@ const base = require('../crm/db');
 
 const { db, transacao, nowISO, hojeISO, novoId, periodoAtual, j, DATA_DIR, SAAS_DIR, DB_PATH } = base;
 
-db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+// Um arquivo de schema por etapa: fica claro o que cada uma acrescentou, e
+// o CREATE IF NOT EXISTS torna a ordem irrelevante em banco já existente.
+for (const arquivo of ['schema.sql', 'schema-etapa2.sql']) {
+  db.exec(fs.readFileSync(path.join(__dirname, arquivo), 'utf8'));
+}
 
 // ---- helpers de introspecção (usados por migrations e pelo guarda) ----
 function colunas(tabela) {

@@ -150,6 +150,76 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   app.post('/staff/api/growth/sincronizar-legado', admin, rota('sincronizar usuários do Villela CRM', () =>
     contas.sincronizarUsuariosLegados()));
 
+  // ============================ ETAPA 2 ============================
+  // Estas rotas operam DENTRO de uma conta. O administrador da plataforma
+  // entra no contexto do tenant escolhido, e a entrada fica auditada — é o
+  // mesmo caminho do operador de agência, não um atalho privilegiado.
+  const naConta = (motivo, fn) => [requireAuth, requireAdmin, (req, res) => {
+    const tid = req.params.tenant;
+    if (!db.prepare('SELECT 1 FROM tenants WHERE id = ?').get(tid)) {
+      return res.status(404).json({ erro: 'Conta não encontrada.' });
+    }
+    try {
+      const saida = tenancy.comTenant(
+        { tenantId: tid, userId: (req.user && req.user.id) || 'staff', correlationId: req.correlationId },
+        () => {
+          const r = fn(req, res);
+          repo.auditar({ acao: 'plataforma.rota_conta', entidade: 'http', entidadeId: `${req.method} ${req.path}`, detalhe: motivo });
+          return r;
+        }
+      );
+      if (saida !== undefined && !res.headersSent) res.json(saida);
+    } catch (e) {
+      if (!res.headersSent) res.status(e.status || 500).json({ erro: e.message });
+    }
+  }];
+
+  const captura = require('./captura');
+  const segmentos = require('./segmentos');
+  const identidade = require('./identidade');
+  const lgpd = require('./lgpd');
+
+  // ---- formulários e captura ----
+  app.get('/staff/api/growth/contas/:tenant/formularios', ...naConta('listar formulários', () => captura.listar()));
+  app.post('/staff/api/growth/contas/:tenant/formularios', ...naConta('criar formulário', (req) => captura.criar(req.body || {})));
+  app.put('/staff/api/growth/contas/:tenant/formularios/:id', ...naConta('editar formulário', (req) => captura.atualizar(req.params.id, req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/formularios/:id/publicar', ...naConta('publicar formulário', (req) => captura.publicar(req.params.id)));
+  app.get('/staff/api/growth/contas/:tenant/formularios/:id/respostas', ...naConta('ver respostas', (req) => captura.respostas(req.params.id)));
+
+  // ---- segmentos ----
+  app.get('/staff/api/growth/contas/:tenant/segmentos', ...naConta('listar segmentos', () => segmentos.listar()));
+  app.post('/staff/api/growth/contas/:tenant/segmentos', ...naConta('criar segmento', (req) => segmentos.criar(req.body || {})));
+  app.get('/staff/api/growth/contas/:tenant/segmentos/:id/contatos', ...naConta('ver contatos do segmento',
+    (req) => segmentos.contatos(req.params.id, { excluirSuprimidos: req.query.suprimidos !== 'incluir' })));
+
+  // ---- duplicatas (resolução de identidade) ----
+  app.get('/staff/api/growth/contas/:tenant/duplicatas', ...naConta('ver duplicatas prováveis', () => identidade.sugestoesPendentes()));
+  app.post('/staff/api/growth/contas/:tenant/duplicatas/:id', ...naConta('decidir duplicata',
+    (req) => identidade.decidirSugestao(req.params.id, {
+      decisao: (req.body || {}).decisao, quem: (req.user && req.user.id) || 'staff', motivo: (req.body || {}).motivo || '',
+    })));
+  app.get('/staff/api/growth/contas/:tenant/contatos/:id/identidades', ...naConta('ver identidades do contato',
+    (req) => ({ identidades: identidade.identidadesDo(req.params.id), atribuicao: captura.atribuicao(req.params.id) })));
+
+  // ---- LGPD ----
+  app.get('/staff/api/growth/contas/:tenant/lgpd', ...naConta('painel LGPD', () => ({
+    config: lgpd.config(),
+    solicitacoes: lgpd.solicitacoesAbertas(),
+    vencidas: lgpd.vencidas(),
+    supressoes: lgpd.suprimidos(100),
+    inventario: lgpd.inventario(),
+  })));
+  app.post('/staff/api/growth/contas/:tenant/lgpd/solicitacoes', ...naConta('abrir solicitação de titular',
+    (req) => lgpd.abrirSolicitacao(req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/lgpd/solicitacoes/:id/atender', ...naConta('atender solicitação',
+    (req) => lgpd.atenderSolicitacao(req.params.id, req.body || {})));
+  app.get('/staff/api/growth/contas/:tenant/lgpd/titular/:contato', ...naConta('exportar dados do titular',
+    (req) => lgpd.exportarTitular(req.params.contato)));
+  app.post('/staff/api/growth/contas/:tenant/lgpd/titular/:contato/anonimizar', ...naConta('anonimizar titular',
+    (req) => lgpd.anonimizar(req.params.contato, { motivo: (req.body || {}).motivo || '' })));
+  app.post('/staff/api/growth/contas/:tenant/lgpd/supressao', ...naConta('suprimir contato',
+    (req) => lgpd.suprimir(req.body || {})));
+
   // --------------------------------------------------------- auditoria
   app.get('/staff/api/growth/auditoria', admin, rota('trilha de auditoria', (req) =>
     repo.auditoria.listar(Number(req.query.n) || 200)));

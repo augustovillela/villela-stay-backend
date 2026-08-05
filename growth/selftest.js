@@ -1,5 +1,5 @@
 // =====================================================================
-// Villela Growth OS — suíte da Etapa 1.  npm run test:growth
+// Villela Growth OS — suíte das Etapas 1 e 2.  npm run test:growth
 //
 // Banco descartável, worker desligado, Express real para as rotas de
 // administração. O bloco mais importante é o ANTI-VAZAMENTO: ele tenta
@@ -38,7 +38,8 @@ function lanca(nome, fn, padrao) {
 
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
-const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores } = growth;
+const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
+  identidade, captura, segmentos, lgpd } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
 require('../crm/repo').semear();                 // planos e flags do control plane
@@ -546,7 +547,174 @@ lanca('incidentes: panorama de todas as contas exige plataforma',
   () => comoA(() => incidentes.abertos()), /plataforma/i);
 
 // =====================================================================
-// 13. ROTAS DE ADMINISTRAÇÃO
+// 13. ETAPA 2 — RESOLUÇÃO DE IDENTIDADE
+// =====================================================================
+const appRepo = require('../crm/app-repo');
+appRepo.provisionar(TA);
+appRepo.provisionar(TB);
+
+teste('identidade: normalização casa o que é a mesma chave escrita diferente', () => {
+  const n = (t, v) => identidade.normalizar(t, v);
+  assert.strictEqual(n('email', 'Maria.Silva+lead@Gmail.com'), n('email', 'mariasilva@gmail.com'));
+  assert.notStrictEqual(n('email', 'a.b@outlook.com'), n('email', 'ab@outlook.com'), 'ponto só é ignorado no Gmail');
+  assert.strictEqual(n('telefone', '(61) 99999-1234'), n('telefone', '+55 61 99999 1234'));
+  assert.strictEqual(n('instagram', 'https://instagram.com/Fulana/'), 'fulana');
+  assert.strictEqual(n('email', 'sem-arroba'), '', 'e-mail inválido não vira chave');
+});
+
+let contatoMaria = null;
+teste('identidade: formulário cria a pessoa e registra a chave', () => {
+  const r = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'Maria.Silva@Gmail.com' }],
+    dados: { nome: 'Maria Silva' }, origem: 'landing',
+  }));
+  assert.ok(r.criado, 'não criou');
+  contatoMaria = r.contatoId;
+  const ids = comoA(() => identidade.identidadesDo(contatoMaria));
+  assert.strictEqual(ids.length, 1);
+  assert.strictEqual(ids[0].valor_norm, 'mariasilva@gmail.com');
+});
+
+teste('identidade: a mesma pessoa por outro canal NÃO vira ficha nova', () => {
+  const r = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'mariasilva@gmail.com' }, { tipo: 'whatsapp', valor: '(61) 99999-1234' }],
+    dados: { cidade: 'Brasília' }, origem: 'whatsapp',
+  }));
+  assert.strictEqual(r.criado, false, 'duplicou a pessoa');
+  assert.strictEqual(r.contatoId, contatoMaria);
+  const ids = comoA(() => identidade.identidadesDo(contatoMaria));
+  assert.strictEqual(ids.length, 2, 'não anexou a chave nova');
+  const ficha = appRepo.Contatos.obter(TA, contatoMaria);
+  assert.strictEqual(ficha.cidade, 'Brasília', 'não preencheu a lacuna');
+});
+
+teste('identidade: chave fraca sozinha NÃO funde — vira ficha separada', () => {
+  const r = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'instagram', valor: '@maria.silva' }],
+    dados: { nome: 'Maria S.' }, origem: 'instagram',
+  }));
+  assert.ok(r.criado, 'fundiu com base só no Instagram (peso 65 < 80)');
+  assert.notStrictEqual(r.contatoId, contatoMaria);
+});
+
+teste('identidade: chave fraca + chave forte gera SUGESTÃO, não mesclagem automática', () => {
+  const antes = appRepo.Contatos.contar(TA);
+  const r = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'instagram', valor: '@maria.silva' }, { tipo: 'whatsapp', valor: '5561999991234' }],
+    origem: 'instagram',
+  }));
+  assert.strictEqual(r.contatoId, contatoMaria, 'não resolveu pela chave forte');
+  assert.strictEqual(appRepo.Contatos.contar(TA), antes, 'mesclou sozinho — não podia');
+  assert.ok(comoA(() => identidade.sugestoesPendentes()).length >= 1, 'não registrou a suspeita');
+});
+
+teste('identidade: só a decisão humana mescla, e o histórico segue a pessoa', () => {
+  const sug = comoA(() => identidade.sugestoesPendentes())[0];
+  const antes = appRepo.Contatos.contar(TA);
+  comoA(() => identidade.decidirSugestao(sug.id, { decisao: 'aplicar', quem: 'augusto' }));
+  assert.strictEqual(appRepo.Contatos.contar(TA), antes - 1, 'não mesclou');
+  const ids = comoA(() => identidade.identidadesDo(contatoMaria)).map((i) => i.tipo).sort();
+  assert.deepStrictEqual(ids, ['email', 'instagram', 'whatsapp'], `identidades após merge: ${ids}`);
+  const ev = db.prepare("SELECT * FROM gx_eventos WHERE tipo = 'contact.identity_merged' AND tenant_id = ?").all(TA);
+  assert.strictEqual(ev.length, 1, 'não emitiu contact.identity_merged');
+});
+
+teste('identidade: rejeitar a sugestão não altera dado nenhum', () => {
+  const a = comoA(() => identidade.resolver({ identidades: [{ tipo: 'email', valor: 'joao@empresa.com' }], dados: { nome: 'João' } }));
+  const b = comoA(() => identidade.resolver({ identidades: [{ tipo: 'email', valor: 'joao@outra.com' }], dados: { nome: 'João' } }));
+  const sug = comoA(() => identidade.sugerir(a.contatoId, b.contatoId, 60, ['mesmo nome']));
+  const antes = appRepo.Contatos.contar(TA);
+  comoA(() => identidade.decidirSugestao(sug.id, { decisao: 'rejeitar', quem: 'augusto' }));
+  assert.strictEqual(appRepo.Contatos.contar(TA), antes, 'rejeitar mexeu nas fichas');
+});
+
+teste('identidade: a mesma chave em contas diferentes são pessoas diferentes', () => {
+  const rB = comoB(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'mariasilva@gmail.com' }], dados: { nome: 'Outra Maria' },
+  }));
+  assert.notStrictEqual(rB.contatoId, contatoMaria, 'a chave atravessou a fronteira entre contas');
+  assert.strictEqual(comoB(() => identidade.identidadesDo(contatoMaria)).length, 0, 'B enxergou identidade de A');
+});
+
+// =====================================================================
+// 14. ETAPA 2 — SEGMENTOS
+// =====================================================================
+teste('segmentos: a regra vira SQL parametrizado e texto legível', () => {
+  const c = segmentos.compilar({ juncao: 'todas', condicoes: [
+    { campo: 'cidade', operador: 'igual', valor: 'Brasília' },
+    { campo: 'score', operador: 'maior', valor: 50 },
+  ] });
+  assert.ok(/cidade = :s0/.test(c.where) && /score > :s1/.test(c.where), c.where);
+  assert.strictEqual(c.params.s0, 'Brasília');
+  assert.ok(/Cidade é igual a Brasília e Score é maior que 50/.test(c.descricao), c.descricao);
+});
+
+teste('segmentos: campo ou operador fora da lista é ignorado, não vira SQL', () => {
+  const c = segmentos.compilar({ condicoes: [
+    { campo: 'nome; DROP TABLE crm_contatos', operador: 'igual', valor: 'x' },
+    { campo: 'cidade', operador: 'ou 1=1', valor: 'x' },
+  ] });
+  assert.strictEqual(c.where, '1=1', `injeção passou: ${c.where}`);
+});
+
+teste('segmentos: filtra de verdade e não enxerga a outra conta', () => {
+  const seg = comoA(() => segmentos.criar({
+    nome: 'Brasília', regras: { condicoes: [{ campo: 'cidade', operador: 'igual', valor: 'Brasília' }] },
+  }));
+  const n = comoA(() => segmentos.contar(seg.id));
+  assert.ok(n >= 1, `esperava ao menos 1 contato em Brasília, veio ${n}`);
+  comoB(() => { try { segmentos.contar(seg.id); falhas.push('segmentos: B leu segmento de A'); } catch (_) { ok++; } });
+});
+
+// =====================================================================
+// 15. ETAPA 2 — LGPD
+// =====================================================================
+teste('lgpd: supressão vence — e é por conta', () => {
+  comoA(() => {
+    lgpd.suprimir({ canal: 'email', valor: 'Maria.Silva+x@Gmail.com', motivo: 'opt_out' });
+    assert.ok(lgpd.estaSuprimido('email', 'mariasilva@gmail.com'), 'não reconheceu a mesma chave escrita diferente');
+    assert.ok(!lgpd.estaSuprimido('email', 'outra@gmail.com'));
+  });
+  comoB(() => assert.ok(!lgpd.estaSuprimido('email', 'mariasilva@gmail.com'), 'supressão de A vazou para B'));
+});
+
+teste('lgpd: segmento com excluirSuprimidos tira quem pediu para não receber', () => {
+  const seg = comoA(() => segmentos.criar({
+    nome: 'Todos ativos', regras: { condicoes: [{ campo: 'email', operador: 'preenchido' }] },
+  }));
+  const todos = comoA(() => segmentos.contatos(seg.id, { excluirSuprimidos: false }));
+  const limpos = comoA(() => segmentos.contatos(seg.id, { excluirSuprimidos: true }));
+  assert.ok(limpos.length < todos.length, `supressão não filtrou (${todos.length} → ${limpos.length})`);
+});
+
+teste('lgpd: solicitação nasce com prazo de 15 dias', () => {
+  const s = comoA(() => lgpd.abrirSolicitacao({ contatoId: contatoMaria, tipo: 'acesso', canal: 'email' }));
+  assert.strictEqual(s.status, 'aberta');
+  const dias = Math.round((new Date(s.prazo) - new Date()) / 86400000);
+  assert.ok(dias >= 14 && dias <= 15, `prazo veio com ${dias} dias`);
+});
+
+teste('lgpd: exportação do titular traz ficha, identidades e procedência', () => {
+  const dump = comoA(() => lgpd.exportarTitular(contatoMaria));
+  assert.ok(dump.contato && dump.contato.id === contatoMaria);
+  assert.ok(dump.identidades.length >= 3, 'faltaram identidades na exportação');
+  assert.ok('navegacao' in dump && 'consentimento' in dump);
+});
+
+teste('lgpd: anonimizar apaga identificadores e as chaves de identidade', () => {
+  const alvo = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'apagar@teste.com' }], dados: { nome: 'Para Apagar' },
+  })).contatoId;
+  comoA(() => lgpd.anonimizar(alvo, { motivo: 'teste' }));
+  const ficha = appRepo.Contatos.obter(TA, alvo);
+  assert.strictEqual(ficha.email, '', 'e-mail sobreviveu');
+  assert.strictEqual(ficha.nome, 'Titular anonimizado');
+  assert.strictEqual(comoA(() => identidade.identidadesDo(alvo)).length, 0, 'chave de identidade sobreviveu → dá para reidentificar');
+  assert.strictEqual(comoA(() => identidade.porChave('email', 'apagar@teste.com')), null);
+});
+
+// =====================================================================
+// 16. ROTAS DE ADMINISTRAÇÃO
 // =====================================================================
 const USUARIOS = [
   { id: 'adm', nome: 'Admin', email: 'adm@t', papel: 'admin', areas: ['*'], ativo: true },
@@ -645,6 +813,215 @@ const servidor = app.listen(0, async () => {
     assert.ok(!Object.values(caps).some(Boolean), 'getCapabilities devolveu capacidade ligada');
   });
 
+  // ===================================================================
+  // FLUXO E2E OBRIGATÓRIO (§31 do PROMPT_MASTER)
+  // lead preenche a página → contato criado → identidade resolvida →
+  // evento emitido → procedência registrada → tudo auditado
+  // ===================================================================
+  let formToken = null, formId = null;
+
+  await t('e2e: formulário é criado e publicado pela administração', async () => {
+    const c = await req('POST', `/staff/api/growth/contas/${TA}/formularios`, { corpo: {
+      nome: 'Cotação de Evento',
+      campos: [
+        { chave: 'nome', rotulo: 'Seu nome', tipo: 'texto', obrigatorio: true, mapeia: 'nome' },
+        { chave: 'email', rotulo: 'E-mail', tipo: 'email', obrigatorio: true, mapeia: 'email' },
+        { chave: 'fone', rotulo: 'WhatsApp', tipo: 'telefone', mapeia: 'whatsapp' },
+        { chave: 'mensagem', rotulo: 'Conte sobre o evento', tipo: 'textarea', mapeia: 'primeira_mensagem' },
+      ],
+      config: { mensagem_ok: 'Recebido! Retornamos em breve.', consentimento_obrigatorio: true,
+        consentimento_texto: 'Autorizo o contato.', base_legal: 'consentimento' },
+    } });
+    assert.strictEqual(c.status, 200, JSON.stringify(c.dados));
+    formId = c.dados.id;
+    const p = await req('POST', `/staff/api/growth/contas/${TA}/formularios/${formId}/publicar`);
+    assert.strictEqual(p.status, 200, JSON.stringify(p.dados));
+    formToken = p.dados.token;
+    assert.ok(formToken && formToken.startsWith('gf_'));
+  });
+
+  await t('e2e: publicar sem e-mail nem telefone é recusado com motivo', async () => {
+    const c = await req('POST', `/staff/api/growth/contas/${TA}/formularios`, { corpo: {
+      nome: 'Só nome', campos: [{ chave: 'n', rotulo: 'Nome', tipo: 'texto', mapeia: 'nome' }],
+    } });
+    const p = await req('POST', `/staff/api/growth/contas/${TA}/formularios/${c.dados.id}/publicar`);
+    assert.strictEqual(p.status, 400);
+    assert.ok(/e-mail ou telefone/i.test(p.dados.erro), p.dados.erro);
+  });
+
+  const postForm = async (corpo) => {
+    const r = await fetch(`${BASE}/growth/f/${formToken}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo),
+    });
+    let dados = null; try { dados = await r.json(); } catch (_) {}
+    return { status: r.status, dados };
+  };
+
+  await t('e2e: a definição pública do formulário não vaza configuração interna', async () => {
+    const r = await fetch(`${BASE}/growth/f/${formToken}`);
+    const d = await r.json();
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(d.campos.length, 4);
+    assert.ok(d.consentimento.obrigatorio);
+    assert.ok(!('base_legal' in d) && !('tenant_id' in d) && !('token' in d), 'vazou dado interno');
+  });
+
+  await t('e2e: lead preenche → contato criado, identidade resolvida, evento emitido', async () => {
+    const antes = appRepo.Contatos.contar(TA);
+    const r = await postForm({
+      dados: { nome: 'Paula Andrade', email: 'Paula.Andrade@Gmail.com', fone: '(61) 98888-7777', mensagem: 'Casamento em outubro' },
+      consentimento: true, visitante: 'v_teste_paula',
+      procedencia: { url: 'https://villelastay.com.br/eventos?utm_source=instagram&utm_campaign=casamentos', referrer: 'https://instagram.com/' },
+    });
+    assert.strictEqual(r.status, 200, JSON.stringify(r.dados));
+    assert.strictEqual(r.dados.mensagem, 'Recebido! Retornamos em breve.');
+    assert.ok(!('contatoId' in r.dados), 'devolveu o id do contato para a internet');
+    assert.strictEqual(appRepo.Contatos.contar(TA), antes + 1, 'não criou o contato');
+
+    const contato = appRepo.Contatos.listar(TA, { busca: 'Paula' })[0];
+    assert.ok(contato, 'contato não encontrado');
+    assert.strictEqual(contato.email, 'paula.andrade@gmail.com');
+    assert.strictEqual(contato.campanha, 'casamentos', 'UTM não virou procedência');
+    assert.strictEqual(contato.primeira_mensagem, 'Casamento em outubro');
+    const cons = typeof contato.consentimento === 'string' ? JSON.parse(contato.consentimento) : contato.consentimento;
+    assert.strictEqual(cons.optIn, true, 'consentimento não registrado');
+
+    // conta só o evento DESTA submissão: a suíte da Etapa 1 publica um
+    // form.submitted sintético na mesma conta para testar idempotência
+    const ev = db.prepare("SELECT * FROM gx_eventos WHERE tipo = 'form.submitted' AND tenant_id = ? AND chave_idem LIKE 'formresp:%'").all(TA);
+    assert.strictEqual(ev.length, 1, `esperava 1 form.submitted desta submissão, veio ${ev.length}`);
+    const lead = db.prepare("SELECT * FROM gx_eventos WHERE tipo = 'lead.created' AND tenant_id = ?").all(TA);
+    assert.ok(lead.length >= 1, 'não emitiu lead.created');
+  });
+
+  await t('e2e: a MESMA pessoa reenviando não vira segunda ficha', async () => {
+    const antes = appRepo.Contatos.contar(TA);
+    const r = await postForm({
+      dados: { nome: 'Paula A.', email: 'paulaandrade@gmail.com', fone: '61988887777', mensagem: 'Reforçando' },
+      consentimento: true, visitante: 'v_outro_navegador',
+    });
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(appRepo.Contatos.contar(TA), antes, 'duplicou a pessoa por causa do ponto no Gmail');
+  });
+
+  await t('e2e: bot que preenche o campo-armadilha é descartado sem virar lead', async () => {
+    const antes = appRepo.Contatos.contar(TA);
+    const r = await postForm({
+      dados: { nome: 'Bot', email: 'bot@spam.com' }, consentimento: true, _hp: 'http://spam.example',
+    });
+    assert.strictEqual(r.status, 200, 'o bot precisa achar que deu certo');
+    assert.strictEqual(appRepo.Contatos.contar(TA), antes, 'o bot virou contato');
+    const spam = db.prepare('SELECT COUNT(*) AS n FROM gx_form_respostas WHERE tenant_id = ? AND spam = 1').get(TA).n;
+    assert.ok(spam >= 1, 'o descarte não ficou registrado');
+  });
+
+  await t('e2e: campo obrigatório em branco devolve 400 com o nome do campo', async () => {
+    const r = await postForm({ dados: { nome: 'Sem email' }, consentimento: true });
+    assert.strictEqual(r.status, 400);
+    assert.ok(/E-mail/.test(r.dados.erro), r.dados.erro);
+  });
+
+  await t('e2e: consentimento obrigatório não aceita envio sem aceite', async () => {
+    const r = await postForm({ dados: { nome: 'X', email: 'x@y.com' } });
+    assert.strictEqual(r.status, 400);
+    assert.ok(/consentimento/i.test(r.dados.erro));
+  });
+
+  await t('e2e: envio idêntico repetido é tratado como duplicata, não como novo lead', async () => {
+    const corpo = { dados: { nome: 'Repetido', email: 'repetido@teste.com' }, consentimento: true };
+    const a = await postForm(corpo);
+    const antes = db.prepare('SELECT COUNT(*) AS n FROM gx_form_respostas WHERE tenant_id = ? AND spam = 0').get(TA).n;
+    const b = await postForm(corpo);
+    const depois = db.prepare('SELECT COUNT(*) AS n FROM gx_form_respostas WHERE tenant_id = ? AND spam = 0').get(TA).n;
+    assert.strictEqual(a.status, 200); assert.strictEqual(b.status, 200);
+    assert.strictEqual(depois, antes, 'gravou a duplicata como resposta nova');
+  });
+
+  await t('e2e: tracking anônimo é vinculado à pessoa quando ela se identifica', async () => {
+    const chave = db.prepare('SELECT webhook_token FROM crm_config WHERE tenant_id = ?').get(TA).webhook_token;
+    for (const url of ['https://villelastay.com.br/?utm_source=google', 'https://villelastay.com.br/eventos']) {
+      const r = await fetch(`${BASE}/growth/t?k=${encodeURIComponent(chave)}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ visitante: 'v_anon_1', url, referrer: 'https://google.com' }),
+      });
+      assert.strictEqual(r.status, 204);
+    }
+    const r = await postForm({
+      dados: { nome: 'Anônimo Virou Lead', email: 'anon@teste.com' }, consentimento: true, visitante: 'v_anon_1',
+    });
+    assert.strictEqual(r.status, 200);
+    const contato = appRepo.Contatos.listar(TA, { busca: 'Anônimo' })[0];
+    const trilha = db.prepare('SELECT COUNT(*) AS n FROM gx_tracking WHERE tenant_id = ? AND contato_id = ?').get(TA, contato.id).n;
+    assert.strictEqual(trilha, 2, `a navegação anterior não foi ligada à pessoa (${trilha})`);
+    const atr = tenancy.comTenant({ tenantId: TA, userId: 't' }, () => captura.atribuicao(contato.id));
+    assert.strictEqual(atr.first.utm.source, 'google', 'first touch errado');
+    assert.strictEqual(atr.toques, 2);
+  });
+
+  await t('e2e: tracking com chave de conta inexistente é recusado', async () => {
+    const r = await fetch(`${BASE}/growth/t?k=chave-inventada`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ visitante: 'v' }),
+    });
+    assert.strictEqual(r.status, 404);
+  });
+
+  await t('e2e: página de captura publica, renderiza o formulário e escapa o conteúdo', async () => {
+    const pagId = tenancy.comTenant({ tenantId: TA, userId: 'staff' }, () => repo.inserir('gx_paginas', {
+      slug: 'evento-2026', titulo: 'Seu evento no Lago Sul', template: 'captura', formulario_id: formId,
+      blocos: [
+        { tipo: 'titulo', texto: 'Casamentos <script>alert(1)</script>' },
+        { tipo: 'texto', texto: 'Quatro casas, uma equipe.' },
+        { tipo: 'botao', texto: 'Quero um orçamento', url: '#gxf' },
+      ],
+      seo: { descricao: 'Eventos no Lago Sul', indexavel: true },
+      status: 'publicada', publicado_em: nowISO(),
+    }));
+    assert.ok(pagId);
+    const r = await fetch(`${BASE}/growth/p/evento-2026`);
+    const html = await r.text();
+    assert.strictEqual(r.status, 200);
+    assert.ok(html.includes('Seu evento no Lago Sul'), 'título ausente');
+    assert.ok(html.includes('Quatro casas, uma equipe.'), 'bloco de texto ausente');
+    assert.ok(!html.includes('<script>alert(1)</script>'), 'XSS: o conteúdo do bloco não foi escapado');
+    assert.ok(html.includes('&lt;script&gt;'), 'o texto deveria aparecer escapado');
+    assert.ok(html.includes(formToken), 'o formulário não foi embutido');
+    assert.ok(html.includes('class="hp"'), 'a armadilha de bot não está na página');
+  });
+
+  await t('e2e: página não publicada devolve 404', async () => {
+    tenancy.comTenant({ tenantId: TA, userId: 'staff' }, () => repo.inserir('gx_paginas', {
+      slug: 'rascunho-x', titulo: 'Rascunho', status: 'rascunho',
+    }));
+    const r = await fetch(`${BASE}/growth/p/rascunho-x`);
+    assert.strictEqual(r.status, 404);
+  });
+
+  await t('e2e: a conta B não enxerga formulário, resposta nem página da conta A', async () => {
+    const f = await req('GET', `/staff/api/growth/contas/${TB}/formularios`);
+    assert.strictEqual(f.status, 200);
+    assert.ok(!f.dados.some((x) => x.id === formId), 'formulário de A apareceu em B');
+    const r = await req('GET', `/staff/api/growth/contas/${TB}/formularios/${formId}/respostas`);
+    assert.ok(!r.dados.length, 'respostas de A apareceram em B');
+  });
+
+  await t('e2e: administração vê as duplicatas prováveis e o painel LGPD da conta', async () => {
+    const d = await req('GET', `/staff/api/growth/contas/${TA}/duplicatas`);
+    assert.strictEqual(d.status, 200);
+    const l = await req('GET', `/staff/api/growth/contas/${TA}/lgpd`);
+    assert.strictEqual(l.status, 200);
+    assert.ok(l.dados.inventario.length >= 5, 'inventário de tratamentos vazio');
+    assert.ok(l.dados.inventario.every((i) => i.finalidade), 'tratamento sem finalidade declarada');
+  });
+
+  await t('e2e: rajada da mesma origem é barrada com 429', async () => {
+    let bloqueou = false;
+    for (let i = 0; i < 12; i++) {
+      const r = await postForm({ dados: { nome: 'Rajada ' + i, email: `rajada${i}@teste.com` }, consentimento: true });
+      if (r.status === 429) { bloqueou = true; break; }
+    }
+    assert.ok(bloqueou, 'não houve limite por origem');
+  });
+
   await t('rotas: correlation id volta no cabeçalho', async () => {
     const r = await fetch(`${BASE}/staff/api/growth/panorama`, { headers: { 'x-test-user': 'adm' } });
     assert.ok(r.headers.get('x-correlation-id'), 'sem X-Correlation-Id');
@@ -656,12 +1033,12 @@ const servidor = app.listen(0, async () => {
 
   console.log(`\n${'='.repeat(64)}`);
   if (falhas.length) {
-    console.log(`❌ Villela Growth OS — Etapa 1: ${ok} passaram, ${falhas.length} FALHARAM\n`);
+    console.log(`❌ Villela Growth OS — Etapas 1 e 2: ${ok} passaram, ${falhas.length} FALHARAM\n`);
     for (const f of falhas) console.log('  ✗ ' + f);
     console.log('');
     process.exit(1);
   }
-  console.log(`✅ Villela Growth OS — Etapa 1: ${ok} testes passaram.`);
+  console.log(`✅ Villela Growth OS — Etapas 1 e 2: ${ok} testes passaram.`);
   console.log(`   Isolamento entre contas verificado em ${[...TABELAS_TENANT].filter(t => t.startsWith('gx_')).length} tabelas.\n`);
   process.exit(0);
 });

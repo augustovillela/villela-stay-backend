@@ -18,6 +18,9 @@ const LIMITES_PADRAO = {
   campanhas_mes: 2, templates: 10, ia_mes: 0,
   conexoes: 1, mensagens_mes: 1000, publicacoes_mes: 0,
   contas_anuncio: 0, workflows: 3, agentes: 0,
+  // Etapa 2 — captura. Chave sem limite declarado resolveria para 0, e 0
+  // bloqueia na primeira tentativa: todo recurso novo precisa nascer aqui.
+  formularios: 3, formularios_respostas: 500, paginas: 3, segmentos: 5,
 };
 
 const FLAGS_PADRAO = {

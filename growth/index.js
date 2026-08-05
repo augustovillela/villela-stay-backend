@@ -24,13 +24,18 @@ const incidentes = require('./incidentes');
 const segredos = require('./segredos');
 const conectores = require('./conectores');
 const { registrarRotasStaff } = require('./rotas-staff');
+const { registrarRotasPublicas } = require('./rotas-publicas');
+const identidade = require('./identidade');
+const captura = require('./captura');
+const segmentos = require('./segmentos');
+const lgpd = require('./lgpd');
 
 let _timer = null;
 
 function montar(app, injected = {}) {
-  const { requireAuth, requireAdmin, jwtSecret, alertaAugusto } = injected;
-  if (!requireAuth || !requireAdmin || !jwtSecret) {
-    throw new Error('growth.montar: faltam deps (requireAuth, requireAdmin, jwtSecret).');
+  const { express, requireAuth, requireAdmin, jwtSecret, alertaAugusto } = injected;
+  if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
+    throw new Error('growth.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
 
   sessao.configurar({ jwtSecret });
@@ -38,15 +43,21 @@ function montar(app, injected = {}) {
   registrarHandlersDeFila();
 
   app.use('/staff/api/growth', tenancy.middlewareCorrelacao);
+  app.use('/growth', tenancy.middlewareCorrelacao);
   registrarRotasStaff(app, { requireAuth, requireAdmin });
+  registrarRotasPublicas(app, { express });
 
   iniciarWorker(alertaAugusto);
   console.log(
-    `[growth] Villela Growth OS (Etapa 1) montado. Admin: /staff/api/growth · ` +
+    `[growth] Villela Growth OS (Etapas 1-2) montado. Admin: /staff/api/growth · ` +
+    `captura: /growth/f/:token · páginas: /growth/p/:slug · ` +
     `perfis: ${rbac.PERFIS.length} · conectores: ${conectores.CONECTORES.length} · ` +
     `cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );
-  return { repo, contas, rbac, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores, sessao };
+  return {
+    repo, contas, rbac, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores, sessao,
+    identidade, captura, segmentos, lgpd,
+  };
 }
 
 /** Semeadura idempotente: roda em todo boot, preserva o que já existe. */
@@ -116,4 +127,5 @@ module.exports = {
   montar, semear, iniciarWorker, pararWorker, registrarHandlersDeFila,
   tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila,
   aprovacoes, incidentes, segredos, conectores,
+  identidade, captura, segmentos, lgpd,
 };
