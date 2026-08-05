@@ -4530,6 +4530,21 @@ try {
   });
 } catch (e) { console.error('[closet] falha ao montar módulo:', e.message); }
 
+// =========================== Villela Growth OS (plataforma de receita) ===========================
+// Evolução do Villela CRM (ADR-0002): MESMO banco DATA_DIR/crm/crm.db, tabelas
+// novas com prefixo gx_. Etapa 1 = fundação SaaS: organizações/agências,
+// identidade global, RBAC granular, entitlements, eventos com outbox, fila
+// durável, aprovações, incidentes, cofre de segredos e catálogo de conectores.
+// Administração em /staff/api/growth/*. GROWTH_WORKER=off desliga o worker.
+// Escopo: docs/PROMPT_MASTER_VILLELA_GROWTH_OS.md · estado: docs/growth-os/PROJECT_STATE.md
+try {
+  require('./growth').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[growth] falha ao montar módulo:', e.message); }
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.

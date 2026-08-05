@@ -13,6 +13,9 @@
     "test:vsm": "node vsm/selftest.js",
     "test:academy": "node academy/selftest.js",
     "test:crm": "node crm/selftest.js",
+    "test:closet": "node closet/selftest.js",
+    "test:growth": "node growth/selftest.js",
+    "verificar:closet": "node closet/verificar-producao.js",
     "test:nucleo": "node selftest-nucleo.js"
   },
   "engines": {

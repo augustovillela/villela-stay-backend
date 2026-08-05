@@ -33,3 +33,8 @@ services:
       # - LEGAL_LLM_MODELS, LEGAL_ROTINAS(=off), LEGAL_ROTINA_HORA, LEGAL_OAB(+_UF): ver backend/legal/README.md
       - key: ANTHROPIC_API_KEY
         sync: false
+      # Villela Growth OS: cofre de credenciais das integracoes (AES-256-GCM).
+      # 32 bytes em hex ou base64. SEM ela o cofre recusa gravar segredo.
+      # Gerar: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      - key: GROWTH_SECRET_KEY
+        sync: false
