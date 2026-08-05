@@ -468,6 +468,46 @@
       "destaque": false
     },
     {
+      "id": "kubitschek-horta",
+      "arquivo": "kubitschek-horta",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Horta",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
+      "id": "kubitschek-horta-2",
+      "arquivo": "kubitschek-horta-2",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I"
+      ],
+      "titulo": "Horta (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
       "id": "kubitschek-estacionamento",
       "arquivo": "kubitschek-estacionamento",
       "casa": "Villa Kubitschek",
@@ -767,6 +807,46 @@
       "destaque": false
     },
     {
+      "id": "catetinho-fachada",
+      "arquivo": "catetinho-fachada",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Fachada",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
+      "id": "catetinho-fachada-2",
+      "arquivo": "catetinho-fachada-2",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Fachada (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
       "id": "casa-villela-lounge",
       "arquivo": "casa-villela-lounge",
       "casa": "Casa Villela",
@@ -878,6 +958,27 @@
       "destaque": false
     },
     {
+      "id": "casa-villela-suite-athos-bulcao-banheiro",
+      "arquivo": "casa-villela-suite-athos-bulcao-banheiro",
+      "casa": "Casa Villela",
+      "imovel": [
+        "GI01I",
+        "YV01I"
+      ],
+      "titulo": "Banheiro da Suíte Athos Bulcão",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
       "id": "casa-villela-banheiro",
       "arquivo": "casa-villela-banheiro",
       "casa": "Casa Villela",
@@ -898,6 +999,27 @@
       },
       "hotspots": [],
       "destaque": false
+    },
+    {
+      "id": "casa-villela-fachada",
+      "arquivo": "casa-villela-fachada",
+      "casa": "Casa Villela",
+      "imovel": [
+        "GI01I",
+        "YV01I"
+      ],
+      "titulo": "Fachada",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
     },
     {
       "id": "gran-villela-estacionamento",
