@@ -1,5 +1,5 @@
 // =====================================================================
-// Villela Growth OS — suíte das Etapas 1 a 3.  npm run test:growth
+// Villela Growth OS — suíte das Etapas 1 a 4.  npm run test:growth
 //
 // Banco descartável, worker desligado, Express real para as rotas de
 // administração. O bloco mais importante é o ANTI-VAZAMENTO: ele tenta
@@ -26,6 +26,18 @@ function teste(nome, fn) {
   try { fn(); ok++; }
   catch (e) { falhas.push(`${nome}: ${e && e.message ? e.message : e}`); }
 }
+// Testes que dependem de trabalho assíncrono (fila, conectores) entram
+// aqui: rodam em cadeia, na ordem, e a suíte espera por eles antes de
+// imprimir o resultado. Sem isto, um `teste()` que devolve Promise seria
+// contado como aprovado sem nunca ter sido verificado.
+let cadeia = Promise.resolve();
+function testeAsync(nome, fn) {
+  cadeia = cadeia.then(async () => {
+    try { await fn(); ok++; }
+    catch (e) { falhas.push(`${nome}: ${e && e.message ? e.message : e}`); }
+  });
+}
+
 function lanca(nome, fn, padrao) {
   try {
     fn();
@@ -39,7 +51,7 @@ function lanca(nome, fn, padrao) {
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
 const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais } = growth;
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
 require('../crm/repo').semear();                 // planos e flags do control plane
@@ -856,7 +868,209 @@ teste('inbox: a conta B não vê conversa nem mensagem da conta A', () => {
 });
 
 // =====================================================================
-// 17. ROTAS DE ADMINISTRAÇÃO
+// 17. ETAPA 4 — MOTOR DE AUTOMAÇÕES
+// =====================================================================
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+lanca('automações: sem a flag no plano, criar é recusado com 402',
+  () => comoA(() => automacoes.criar({ nome: 'x', gatilhoTipo: 'lead.created' })), /não está incluído/i);
+
+teste('automações: liga a flag da conta e o motor no barramento', () => {
+  comoA(() => { entitlements.definirFlag('automacoes', true); entitlements.definirLimite('workflows', 20); });
+  assert.ok(comoA(() => entitlements.flagLigada('automacoes')));
+  // a seção 7 limpou os assinantes para testar o barramento isoladamente;
+  // aqui o motor volta a ouvir, como faz no montar() de verdade
+  automacoes.ligarGatilhos();
+  assert.ok(eventos.assinantesDe('lead.created').some((a) => a.nome === 'automacoes'), 'o motor não assinou o gatilho');
+});
+
+lanca('automações: gatilho inexistente é recusado',
+  () => comoA(() => automacoes.criar({ nome: 'x', gatilhoTipo: 'nao.existe' })), /Gatilho desconhecido/i);
+
+lanca('automações: nó que aponta para o vazio não salva',
+  () => comoA(() => automacoes.criar({
+    nome: 'quebrada', gatilhoTipo: 'lead.created',
+    definicao: { nos: [{ id: 'a', tipo: 'acao', acao: 'crm.atualizar_contato', proximo: 'fantasma' }] },
+  })), /aponta para "fantasma"/i);
+
+lanca('automações: ciclo sem espera é recusado na validação',
+  () => comoA(() => automacoes.criar({
+    nome: 'ciclo', gatilhoTipo: 'lead.created',
+    definicao: { nos: [
+      { id: 'a', tipo: 'acao', acao: 'crm.atualizar_contato', proximo: 'b' },
+      { id: 'b', tipo: 'acao', acao: 'crm.atualizar_contato', proximo: 'a' },
+    ] },
+  })), /Ciclo sem espera/i);
+
+teste('automações: ciclo COM espera é aceito — a espera quebra o giro', () => {
+  const wf = comoA(() => automacoes.criar({
+    nome: 'ciclo com espera', gatilhoTipo: 'lead.created',
+    definicao: { nos: [
+      { id: 'a', tipo: 'acao', acao: 'crm.atualizar_contato', config: {}, proximo: 'w' },
+      { id: 'w', tipo: 'espera', dias: 1, proximo: 'a' },
+    ] },
+  }));
+  assert.ok(wf.id);
+});
+
+let wfBoasVindas = null;
+teste('automações: publicar congela a versão e abre o próximo rascunho', () => {
+  wfBoasVindas = comoA(() => automacoes.criar({
+    nome: 'Boas-vindas', gatilhoTipo: 'lead.created', maxPorContato: 1,
+    definicao: { nos: [
+      { id: 'checa', tipo: 'condicao', condicoes: [{ campo: 'gatilho.origem', operador: 'igual', valor: 'landing' }],
+        seVerdadeiro: 'marca', seFalso: 'fim' },
+      { id: 'marca', tipo: 'acao', acao: 'crm.atualizar_contato', config: { prioridade: 'alta' }, proximo: 'fim' },
+      { id: 'fim', tipo: 'fim' },
+    ] },
+  }));
+  const pub = comoA(() => automacoes.publicar(wfBoasVindas.id, { notas: 'v1' }));
+  assert.strictEqual(pub.status, 'publicado');
+  assert.strictEqual(pub.versao_publicada, 1);
+  assert.strictEqual(pub.versao_rascunho, 2, 'não abriu o próximo rascunho');
+});
+
+teste('automações: alterar o rascunho NÃO muda a versão publicada', () => {
+  comoA(() => automacoes.salvarRascunho(wfBoasVindas.id, { nos: [{ id: 'so-fim', tipo: 'fim' }] }));
+  const def = comoA(() => automacoes.definicaoPublicada(repo.buscar('gx_workflows', wfBoasVindas.id)));
+  assert.strictEqual(def.nos.length, 3, 'o rascunho vazou para a versão publicada');
+});
+
+teste('automações: reverter volta para uma versão já publicada', () => {
+  comoA(() => automacoes.publicar(wfBoasVindas.id, { notas: 'v2 enxuta' }));
+  assert.strictEqual(comoA(() => repo.buscar('gx_workflows', wfBoasVindas.id)).versao_publicada, 2);
+  comoA(() => automacoes.reverter(wfBoasVindas.id, 1));
+  const wf = comoA(() => repo.buscar('gx_workflows', wfBoasVindas.id));
+  assert.strictEqual(wf.versao_publicada, 1, 'não voltou');
+  assert.strictEqual(comoA(() => automacoes.definicaoPublicada(wf)).nos.length, 3);
+});
+
+lanca('automações: reverter para versão nunca publicada é recusado',
+  () => comoA(() => automacoes.reverter(wfBoasVindas.id, 99)), /nunca foi publicada|não existe/i);
+
+teste('automações: o gatilho do barramento cria a execução', () => {
+  const contato = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'lead-wf@teste.com' }], dados: { nome: 'Lead WF' },
+  })).contatoId;
+  comoA(() => eventos.publicar('lead.created', { refTipo: 'contato', refId: contato, payload: { contato_id: contato, origem: 'landing' } }));
+  comoPlat(() => eventos.processarPendentes(50));
+  const execs = comoA(() => automacoes.execucoes(wfBoasVindas.id));
+  assert.ok(execs.length >= 1, 'o gatilho não criou execução');
+  assert.strictEqual(execs[0].contato_id, contato);
+});
+
+testeAsync('automações: a execução percorre condição → ação → fim', async () => {
+  const r = comoPlat(() => fila.processarLote(30));
+  return Promise.resolve(r).then(() => {
+    const exec = comoA(() => automacoes.execucoes(wfBoasVindas.id))[0];
+    assert.strictEqual(exec.status, 'concluida', `status ${exec.status}: ${exec.erro}`);
+    const passos = comoA(() => automacoes.passosDe(exec.id));
+    assert.deepStrictEqual(passos.map((p) => p.no_id), ['checa', 'marca', 'fim'], passos.map((p) => p.no_id).join(','));
+    const contato = appRepo.Contatos.obter(TA, exec.contato_id);
+    assert.strictEqual(contato.prioridade, 'alta', 'a ação não foi executada de verdade');
+  });
+});
+
+teste('automações: teto por contato impede a segunda execução', () => {
+  const exec = comoA(() => automacoes.execucoes(wfBoasVindas.id))[0];
+  const antes = comoA(() => automacoes.execucoes(wfBoasVindas.id)).length;
+  comoA(() => eventos.publicar('lead.created', { payload: { contato_id: exec.contato_id, origem: 'landing' } }));
+  comoPlat(() => eventos.processarPendentes(50));
+  assert.strictEqual(comoA(() => automacoes.execucoes(wfBoasVindas.id)).length, antes, 'rodou de novo para o mesmo contato');
+});
+
+testeAsync('automações: condição falsa desvia para o outro ramo', () => {
+  const outro = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'outro-canal@teste.com' }], dados: { nome: 'Outro' },
+  })).contatoId;
+  comoA(() => eventos.publicar('lead.created', { payload: { contato_id: outro, origem: 'indicacao' } }));
+  comoPlat(() => eventos.processarPendentes(50));
+  const r = comoPlat(() => fila.processarLote(30));
+  return Promise.resolve(r).then(() => {
+    const exec = comoA(() => automacoes.execucoes(wfBoasVindas.id)).find((e) => e.contato_id === outro);
+    assert.ok(exec, 'não criou execução para o outro contato');
+    const passos = comoA(() => automacoes.passosDe(exec.id)).map((p) => p.no_id);
+    assert.deepStrictEqual(passos, ['checa', 'fim'], `caminho: ${passos.join(',')}`);
+    assert.strictEqual(appRepo.Contatos.obter(TA, outro).prioridade, 'media', 'executou a ação do ramo errado');
+  });
+});
+
+teste('automações: workflow não é disparado por evento que ele mesmo gerou', () => {
+  const antes = comoA(() => automacoes.execucoes(wfBoasVindas.id)).length;
+  comoA(() => eventos.publicar('lead.created', {
+    payload: { contato_id: 'qualquer', origem: 'landing', __workflow_id: wfBoasVindas.id }, origem: 'automacao',
+  }));
+  comoPlat(() => eventos.processarPendentes(50));
+  assert.strictEqual(comoA(() => automacoes.execucoes(wfBoasVindas.id)).length, antes, 'a automação se auto-disparou');
+});
+
+testeAsync('automações: supressão bloqueia o passo sem derrubar a execução', () => {
+  const contato = appRepo.Contatos.listar(TA, { busca: 'Bianca' })[0];
+  const conv = comoA(() => conversas.localizarOuAbrir({ canal: 'email', chaveExterna: 'thread-wf', contatoId: contato.id }));
+  appRepo.Contatos.atualizar(TA, contato.id, { email: 'bianca-wf@teste.com' }, 'teste');
+  comoA(() => lgpd.suprimir({ canal: 'email', valor: 'bianca-wf@teste.com', motivo: 'opt_out' }));
+
+  const wf = comoA(() => automacoes.criar({
+    nome: 'Follow-up', gatilhoTipo: 'form.submitted',
+    definicao: { nos: [
+      { id: 'msg', tipo: 'acao', acao: 'mensagem.enviar', config: { conversaId: conv.id, texto: 'Olá {{contato.nome}}' }, proximo: 'fim' },
+      { id: 'fim', tipo: 'fim' },
+    ] },
+  }));
+  comoA(() => automacoes.publicar(wf.id));
+  const exec = comoA(() => automacoes.agendarExecucao(repo.buscar('gx_workflows', wf.id), { payload: { contato_id: contato.id } }));
+  const r = comoPlat(() => fila.processarLote(30));
+  return Promise.resolve(r).then(() => {
+    const e = comoA(() => repo.buscar('gx_workflow_execucoes', exec.id));
+    assert.strictEqual(e.status, 'concluida', `a execução deveria concluir, não falhar: ${e.erro}`);
+    const passo = comoA(() => automacoes.passosDe(exec.id)).find((p) => p.no_id === 'msg');
+    assert.strictEqual(passo.status, 'bloqueado', `passo ficou ${passo.status}`);
+    assert.ok(/não receber/i.test(passo.motivo), passo.motivo);
+  });
+});
+
+testeAsync('automações: simulação percorre o fluxo sem produzir efeito colateral', () => {
+  const alvo = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'simulado@teste.com' }], dados: { nome: 'Simulado' },
+  })).contatoId;
+  return comoA(() => automacoes.simular(wfBoasVindas.id, { contato_id: alvo, gatilho: { origem: 'landing' } }))
+    .then((sim) => {
+      assert.strictEqual(sim.execucao.simulacao, 1);
+      assert.strictEqual(sim.execucao.status, 'concluida');
+      assert.ok(sim.passos.some((p) => p.no_id === 'marca' && p.status === 'simulado'), 'a ação não foi marcada como simulada');
+      assert.strictEqual(appRepo.Contatos.obter(TA, alvo).prioridade, 'media', 'a simulação alterou dado real');
+      const jobs = db.prepare("SELECT COUNT(*) AS n FROM gx_jobs WHERE tenant_id = ? AND chave_idem LIKE ?").get(TA, `wfpasso:${sim.execucao.id}%`).n;
+      assert.strictEqual(jobs, 0, 'a simulação enfileirou trabalho de verdade');
+    });
+});
+
+testeAsync('automações: SSRF — webhook para endereço interno é bloqueado', () => {
+  const proibidos = ['http://127.0.0.1/x', 'http://localhost:3000/x', 'http://169.254.169.254/latest/meta-data',
+    'http://10.0.0.5/x', 'http://192.168.1.1/x', 'file:///etc/passwd'];
+  return Promise.all(proibidos.map((u) =>
+    automacoes.validarUrlExterna(u).then(
+      () => { falhas.push(`automações: SSRF não bloqueou ${u}`); },
+      (e) => { assert.ok(/interno|inválida|http/i.test(e.message), `${u}: ${e.message}`); }
+    )
+  )).then(() => { ok++; });
+});
+
+teste('automações: interpolação usa só fontes permitidas', () => {
+  const ctx = { exec: { contato_id: '' }, contexto: { gatilho: { origem: 'landing' } }, wf: {} };
+  assert.strictEqual(automacoes.interpolar('origem: {{gatilho.origem}}', ctx), 'origem: landing');
+  assert.strictEqual(automacoes.interpolar('{{process.env.JWT_SECRET}}', ctx), '', 'fonte não permitida foi resolvida');
+  assert.strictEqual(automacoes.interpolar('{{contexto.nao_existe}}', ctx), '');
+});
+
+teste('automações: a conta B não vê automação nem execução da conta A', () => {
+  comoB(() => {
+    assert.strictEqual(automacoes.listar().length, 0, 'B enxergou automação de A');
+    assert.strictEqual(automacoes.execucoes().length, 0, 'B enxergou execução de A');
+  });
+});
+
+// =====================================================================
+// 18. ROTAS DE ADMINISTRAÇÃO
 // =====================================================================
 const USUARIOS = [
   { id: 'adm', nome: 'Admin', email: 'adm@t', papel: 'admin', areas: ['*'], ativo: true },
@@ -1314,17 +1528,18 @@ const servidor = app.listen(0, async () => {
   });
 
   // ------------------------------------------------------------ fecho
+  await cadeia;   // espera os testes assíncronos encadeados
   growth.pararWorker();
   servidor.close();
 
   console.log(`\n${'='.repeat(64)}`);
   if (falhas.length) {
-    console.log(`❌ Villela Growth OS — Etapas 1 a 3: ${ok} passaram, ${falhas.length} FALHARAM\n`);
+    console.log(`❌ Villela Growth OS — Etapas 1 a 4: ${ok} passaram, ${falhas.length} FALHARAM\n`);
     for (const f of falhas) console.log('  ✗ ' + f);
     console.log('');
     process.exit(1);
   }
-  console.log(`✅ Villela Growth OS — Etapas 1 a 3: ${ok} testes passaram.`);
+  console.log(`✅ Villela Growth OS — Etapas 1 a 4: ${ok} testes passaram.`);
   console.log(`   Isolamento entre contas verificado em ${[...TABELAS_TENANT].filter(t => t.startsWith('gx_')).length} tabelas.\n`);
   process.exit(0);
 });

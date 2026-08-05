@@ -21,6 +21,8 @@ const LIMITES_PADRAO = {
   // Etapa 2 — captura. Chave sem limite declarado resolveria para 0, e 0
   // bloqueia na primeira tentativa: todo recurso novo precisa nascer aqui.
   formularios: 3, formularios_respostas: 500, paginas: 3, segmentos: 5,
+  // Etapa 4 — automações
+  automacoes_execucoes: 2000,
 };
 
 const FLAGS_PADRAO = {

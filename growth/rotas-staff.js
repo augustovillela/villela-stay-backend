@@ -283,6 +283,46 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
     return undefined;
   }));
 
+  // ================== ETAPA 4 — AUTOMAÇÕES ==================
+  const automacoes = require('./automacoes');
+
+  app.get('/staff/api/growth/contas/:tenant/automacoes', ...naConta('listar automações', () => ({
+    automacoes: automacoes.listar(),
+    gatilhos: automacoes.GATILHOS,
+    acoes: Object.fromEntries(Object.entries(automacoes.ACOES).map(([k, v]) => [k, v.rotulo])),
+  })));
+
+  app.post('/staff/api/growth/contas/:tenant/automacoes', ...naConta('criar automação', (req) => automacoes.criar(req.body || {})));
+
+  app.put('/staff/api/growth/contas/:tenant/automacoes/:id/rascunho', ...naConta('salvar rascunho',
+    (req) => automacoes.salvarRascunho(req.params.id, (req.body || {}).definicao || { nos: [] })));
+
+  app.post('/staff/api/growth/contas/:tenant/automacoes/:id/publicar', ...naConta('publicar automação',
+    (req) => automacoes.publicar(req.params.id, { notas: (req.body || {}).notas || '' })));
+
+  app.post('/staff/api/growth/contas/:tenant/automacoes/:id/reverter', ...naConta('reverter versão',
+    (req) => automacoes.reverter(req.params.id, (req.body || {}).versao)));
+
+  app.post('/staff/api/growth/contas/:tenant/automacoes/:id/pausar', ...naConta('pausar automação',
+    (req) => automacoes.pausar(req.params.id)));
+
+  // Simulação: mostra o caminho que a automação percorreria, sem executar nada.
+  app.post('/staff/api/growth/contas/:tenant/automacoes/:id/simular', ...naConta('simular automação',
+    async (req, res) => {
+      try { res.json(await automacoes.simular(req.params.id, req.body || {})); }
+      catch (e) { res.status(e.status || 500).json({ erro: e.message }); }
+      return undefined;
+    }));
+
+  app.get('/staff/api/growth/contas/:tenant/automacoes/:id/execucoes', ...naConta('execuções da automação',
+    (req) => automacoes.execucoes(req.params.id)));
+
+  app.get('/staff/api/growth/contas/:tenant/execucoes/:id', ...naConta('passos da execução',
+    (req) => ({ execucao: repo.buscar('gx_workflow_execucoes', req.params.id), passos: automacoes.passosDe(req.params.id) })));
+
+  app.post('/staff/api/growth/contas/:tenant/execucoes/:id/cancelar', ...naConta('cancelar execução',
+    (req) => automacoes.cancelar(req.params.id, { motivo: (req.body || {}).motivo || 'cancelada manualmente' })));
+
   // --------------------------------------------------------- auditoria
   app.get('/staff/api/growth/auditoria', admin, rota('trilha de auditoria', (req) =>
     repo.auditoria.listar(Number(req.query.n) || 200)));

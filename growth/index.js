@@ -36,6 +36,7 @@ const segmentos = require('./segmentos');
 const lgpd = require('./lgpd');
 const conversas = require('./conversas');
 const canais = require('./canais');
+const automacoes = require('./automacoes');
 
 let _timer = null;
 
@@ -51,6 +52,7 @@ function montar(app, injected = {}) {
   const statusEmail = require('./conectores/email').configurar({ enviarEmail: injected.enviarEmail });
   semear();
   registrarHandlersDeFila();
+  automacoes.ligarGatilhos();   // o motor passa a ouvir o barramento
 
   app.use('/staff/api/growth', tenancy.middlewareCorrelacao);
   app.use('/growth', tenancy.middlewareCorrelacao);
@@ -59,14 +61,14 @@ function montar(app, injected = {}) {
 
   iniciarWorker(alertaAugusto);
   console.log(
-    `[growth] Villela Growth OS (Etapas 1-3) montado. Admin: /staff/api/growth · ` +
+    `[growth] Villela Growth OS (Etapas 1-4) montado. Admin: /staff/api/growth · ` +
     `captura: /growth/f/:token · páginas: /growth/p/:slug · ` +
     `perfis: ${rbac.PERFIS.length} · conectores: ${conectores.CONECTORES.length} · ` +
     `e-mail: ${statusEmail} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );
   return {
     repo, contas, rbac, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores, sessao,
-    identidade, captura, segmentos, lgpd, conversas, canais,
+    identidade, captura, segmentos, lgpd, conversas, canais, automacoes,
   };
 }
 
@@ -91,6 +93,9 @@ function registrarHandlersDeFila() {
   // Etapa 3: a entrega da mensagem é job — retry, timeout e DLQ como
   // qualquer trabalho. Falhar aqui não perde a mensagem.
   fila.registrar('mensagem:entregar', (payload) => canais.entregar(payload));
+  // Etapa 4: cada passo da automação é job — espera vira job agendado,
+  // falha reagenda, e esgotado vai para a DLQ como qualquer trabalho.
+  fila.registrar('automacao:passo', (payload) => automacoes.rodar(payload.execucaoId));
 }
 
 /**
@@ -140,5 +145,5 @@ module.exports = {
   montar, semear, iniciarWorker, pararWorker, registrarHandlersDeFila,
   tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila,
   aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais,
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes,
 };
