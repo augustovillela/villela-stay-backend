@@ -37,6 +37,8 @@ const lgpd = require('./lgpd');
 const conversas = require('./conversas');
 const canais = require('./canais');
 const automacoes = require('./automacoes');
+const agentes = require('./agentes');
+const conhecimento = require('./conhecimento');
 
 let _timer = null;
 
@@ -61,14 +63,14 @@ function montar(app, injected = {}) {
 
   iniciarWorker(alertaAugusto);
   console.log(
-    `[growth] Villela Growth OS (Etapas 1-4) montado. Admin: /staff/api/growth · ` +
+    `[growth] Villela Growth OS (Etapas 1-5) montado. Admin: /staff/api/growth · ` +
     `captura: /growth/f/:token · páginas: /growth/p/:slug · ` +
     `perfis: ${rbac.PERFIS.length} · conectores: ${conectores.CONECTORES.length} · ` +
-    `e-mail: ${statusEmail} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
+    `e-mail: ${statusEmail} · IA: ${agentes.temChaveLLM() ? 'llm disponivel' : 'so regras'} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );
   return {
     repo, contas, rbac, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores, sessao,
-    identidade, captura, segmentos, lgpd, conversas, canais, automacoes,
+    identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento,
   };
 }
 
@@ -145,5 +147,5 @@ module.exports = {
   montar, semear, iniciarWorker, pararWorker, registrarHandlersDeFila,
   tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila,
   aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais, automacoes,
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento,
 };

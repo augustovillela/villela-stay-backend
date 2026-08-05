@@ -1,5 +1,5 @@
 // =====================================================================
-// Villela Growth OS — suíte das Etapas 1 a 4.  npm run test:growth
+// Villela Growth OS — suíte das Etapas 1 a 5.  npm run test:growth
 //
 // Banco descartável, worker desligado, Express real para as rotas de
 // administração. O bloco mais importante é o ANTI-VAZAMENTO: ele tenta
@@ -38,6 +38,18 @@ function testeAsync(nome, fn) {
   });
 }
 
+function lancaAsync(nome, fn, padrao) {
+  cadeia = cadeia.then(async () => {
+    try {
+      await fn();
+      falhas.push(`${nome}: era para lançar erro e NÃO lançou`);
+    } catch (e) {
+      if (padrao && !padrao.test(String(e.message))) falhas.push(`${nome}: lançou "${e.message}", esperava ${padrao}`);
+      else ok++;
+    }
+  });
+}
+
 function lanca(nome, fn, padrao) {
   try {
     fn();
@@ -51,7 +63,7 @@ function lanca(nome, fn, padrao) {
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
 const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais, automacoes } = growth;
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
 require('../crm/repo').semear();                 // planos e flags do control plane
@@ -1070,7 +1082,175 @@ teste('automações: a conta B não vê automação nem execução da conta A', 
 });
 
 // =====================================================================
-// 18. ROTAS DE ADMINISTRAÇÃO
+// 18. ETAPA 5 — AGENTES DE IA
+// =====================================================================
+testeAsync('agentes: provisionar cria os 12 do catálogo, todos DESLIGADOS', () => {
+  const n = comoA(() => agentes.provisionar());
+  assert.strictEqual(n, 12, `criou ${n}`);
+  // filtra o registro sintético que a varredura anti-vazamento semeia
+  const lista = comoA(() => agentes.listar()).filter((a) => agentes.CATALOGO.some((c) => c.chave === a.chave));
+  assert.strictEqual(lista.length, 12);
+  assert.ok(lista.every((a) => !a.ativo), 'agente nasceu ligado — tem de ser decisão do assinante');
+  assert.strictEqual(comoA(() => agentes.provisionar()), 0, 'provisionar não é idempotente');
+});
+
+testeAsync('agentes: o de IA nasce sem ferramenta de escrita perigosa', () => {
+  const analytics = comoA(() => agentes.porChave('analytics'));
+  assert.strictEqual(analytics.nivel_autonomia, 0, 'analytics deveria ser somente leitura');
+  const ferramentas = JSON.parse(analytics.ferramentas);
+  assert.ok(ferramentas.every((f) => !agentes.FERRAMENTAS[f].escrita), 'analytics veio com ferramenta de escrita');
+});
+
+lancaAsync('agentes: sem a flag de IA no plano, executar é recusado',
+  () => comoA(() => agentes.executar('sdr', { texto: 'oi' })), /desligado|não está incluído/i);
+
+testeAsync('agentes: liga IA no plano e ativa o SDR', () => {
+  comoA(() => {
+    entitlements.definirFlag('ia', true);
+    agentes.configurar('sdr', { ativo: true });
+  });
+  assert.ok(comoA(() => agentes.porChave('sdr')).ativo);
+});
+
+lancaAsync('agentes: ferramenta inexistente é recusada na configuração',
+  () => comoA(() => agentes.configurar('sdr', { ferramentas: ['crm.ler', 'apagar.tudo'] })), /Ferramenta desconhecida/i);
+
+lancaAsync('agentes: nível de autonomia fora de 0–4 é recusado',
+  () => comoA(() => agentes.configurar('sdr', { nivelAutonomia: 9 })), /0 a 4/);
+
+testeAsync('conhecimento: documento em rascunho NÃO é citável', () => {
+  const doc = comoA(() => conhecimento.criar({
+    titulo: 'Política de cancelamento', tipo: 'politica',
+    corpo: 'Cancelamento com mais de 30 dias devolve 100% do valor pago.',
+  }));
+  assert.strictEqual(doc.status, 'rascunho');
+  assert.strictEqual(comoA(() => conhecimento.buscar('cancelamento')).length, 0, 'rascunho apareceu na busca do agente');
+  comoA(() => conhecimento.aprovar(doc.id));
+  const achados = comoA(() => conhecimento.buscar('cancelamento'));
+  assert.strictEqual(achados.length, 1, 'aprovado não apareceu');
+  assert.ok(achados[0].trecho.includes('30 dias'));
+  assert.ok(achados[0].fonte, 'a busca precisa devolver a fonte para poder citar');
+});
+
+testeAsync('conhecimento: documento vencido deixa de ser citável', () => {
+  const doc = comoA(() => conhecimento.criar({
+    titulo: 'Tabela de preços 2025', tipo: 'preco', corpo: 'Diária da Villa Kubitschek: R$ 3.000.',
+    validoAte: '2025-12-31',
+  }));
+  comoA(() => conhecimento.aprovar(doc.id));
+  const achados = comoA(() => conhecimento.buscar('diária Kubitschek'));
+  assert.strictEqual(achados.length, 0, 'preço vencido continuou citável — é como preço errado no site');
+});
+
+testeAsync('conhecimento: editar o corpo derruba a aprovação', () => {
+  const doc = comoA(() => conhecimento.criar({ titulo: 'FAQ check-in', tipo: 'faq', corpo: 'Check-in a partir das 15h.' }));
+  comoA(() => conhecimento.aprovar(doc.id));
+  const editado = comoA(() => conhecimento.atualizar(doc.id, { corpo: 'Check-in a partir das 14h.' }));
+  assert.strictEqual(editado.status, 'rascunho', 'texto mudou e continuou aprovado');
+  assert.strictEqual(editado.versao, 2);
+});
+
+testeAsync('conhecimento: a busca não atravessa contas', () => {
+  comoB(() => assert.strictEqual(conhecimento.buscar('cancelamento').length, 0, 'B leu a base de A'));
+});
+
+let execSdr = null;
+testeAsync('agentes: SDR classifica, cita fonte e propõe ação dentro do papel', async () => {
+  const contato = comoA(() => identidade.resolver({
+    identidades: [{ tipo: 'email', valor: 'lead-agente@teste.com' }], dados: { nome: 'Lead Agente' },
+  })).contatoId;
+  const r = await comoA(() => agentes.executar('sdr', { texto: 'Qual a política de cancelamento?', contatoId: contato }));
+  execSdr = r;
+  assert.strictEqual(r.execucao.status, 'concluida');
+  assert.strictEqual(r.execucao.motor, 'regras', 'sem chave de LLM tem de rodar regras e DIZER isso');
+  assert.strictEqual(r.execucao.fundamentada, 1, 'respondeu sem citar fonte');
+  assert.ok(r.acoes.length >= 1, 'não propôs nenhuma ação');
+  assert.ok(r.acoes.every((a) => a.status !== 'bloqueada'), r.acoes.map((a) => a.motivo).join(' | '));
+});
+
+testeAsync('agentes: pergunta de preço SEM fonte não inventa número', async () => {
+  const r = await comoA(() => agentes.executar('sdr', { texto: 'Quanto custa alugar por uma semana em julho?' }));
+  assert.strictEqual(r.execucao.fundamentada, 0);
+  assert.ok(/não vou arriscar|não encontrei/i.test(r.execucao.saida), r.execucao.saida);
+  assert.ok(/sem fonte/i.test(r.execucao.parada), r.execucao.parada);
+});
+
+testeAsync('agentes: tema jurídico é encaminhado, não respondido', async () => {
+  const r = await comoA(() => agentes.executar('sdr', { texto: 'Quero rescindir o contrato e discutir a multa' }));
+  assert.ok(/encaminhando para uma pessoa/i.test(r.execucao.saida), r.execucao.saida);
+  assert.ok(/tema sensível/i.test(r.execucao.parada));
+  assert.strictEqual(r.execucao.fundamentada, 0);
+});
+
+testeAsync('agentes: ferramenta fora do papel é BLOQUEADA e registrada', async () => {
+  const ag = comoA(() => agentes.porChave('sdr'));
+  const r = await comoA(() => agentes.despacharAcao(ag, { execId: execSdr.execucao.id }, {
+    ferramenta: 'crm.mover_oportunidade', args: { oportunidadeId: 'x', estagioId: 'y' },
+  }));
+  const acao = comoA(() => repo.buscar('gx_agente_acoes', r));
+  assert.strictEqual(acao.status, 'bloqueada');
+  assert.ok(/não está nas ferramentas/i.test(acao.motivo), acao.motivo);
+});
+
+testeAsync('agentes: ação de nível 3 vira pedido de aprovação, não execução', async () => {
+  comoA(() => agentes.configurar('vendas', { ativo: true, nivelAutonomia: 3 }));
+  const ag = comoA(() => agentes.porChave('vendas'));
+  const id = await comoA(() => agentes.despacharAcao(ag, { execId: execSdr.execucao.id }, {
+    ferramenta: 'proposta.preparar', args: {}, justificativa: 'cliente pediu',
+  }));
+  const acao = comoA(() => repo.buscar('gx_agente_acoes', id));
+  assert.strictEqual(acao.status, 'aguardando_aprovacao', `status ${acao.status}: ${acao.motivo}`);
+  assert.ok(acao.aprovacao_id, 'não criou o pedido de aprovação');
+  const pedido = comoA(() => repo.buscar('gx_aprovacoes', acao.aprovacao_id));
+  assert.strictEqual(pedido.origem_tipo, 'agente');
+  assert.strictEqual(pedido.status, 'pendente');
+});
+
+testeAsync('agentes: orçamento estourado impede a execução em vez de gastar', async () => {
+  comoA(() => agentes.configurar('cs', { ativo: true, orcamentoTokensMes: 1 }));
+  const ag = comoA(() => agentes.porChave('cs'));
+  // simula consumo anterior no mês
+  comoA(() => repo.inserir('gx_agente_execucoes', {
+    agente_id: ag.id, status: 'concluida', tokens_entrada: 10, tokens_saida: 10, criado_em: nowISO(),
+  }));
+  const r = await comoA(() => agentes.executar('cs', { texto: 'oi' }));
+  assert.strictEqual(r.execucao.status, 'bloqueada');
+  assert.ok(/orçamento/i.test(r.execucao.parada), r.execucao.parada);
+});
+
+testeAsync('agentes: memória tem escopo e NÃO cruza contas', () => {
+  comoA(() => agentes.lembrar({ escopo: 'contato', escopoId: 'c1', chave: 'preferencia', valor: 'prefere WhatsApp' }));
+  assert.strictEqual(comoA(() => agentes.recordar({ escopo: 'contato', escopoId: 'c1' })).preferencia, 'prefere WhatsApp');
+  assert.deepStrictEqual(comoA(() => agentes.recordar({ escopo: 'contato', escopoId: 'c2' })), {}, 'memória vazou entre contatos');
+  comoB(() => assert.deepStrictEqual(agentes.recordar({ escopo: 'contato', escopoId: 'c1' }), {}, 'memória vazou entre contas'));
+});
+
+lancaAsync('agentes: escopo de memória inválido é recusado',
+  () => comoA(() => agentes.lembrar({ escopo: 'global', chave: 'x', valor: 'y' })), /Escopo de memória inválido/i);
+
+testeAsync('agentes: avaliação negativa conta como correção humana', () => {
+  const antes = comoA(() => agentes.porChave('sdr')).correcoes_humanas;
+  comoA(() => agentes.avaliar(execSdr.execucao.id, { criterio: 'correto', nota: -1, comentario: 'resposta genérica' }));
+  assert.strictEqual(comoA(() => agentes.porChave('sdr')).correcoes_humanas, antes + 1);
+});
+
+testeAsync('agentes: as métricas mostram custo, fundamentação e bloqueios', () => {
+  const m = comoA(() => agentes.metricas('sdr'));
+  assert.ok(m.mes.execucoes >= 3, `execuções: ${m.mes.execucoes}`);
+  assert.ok(typeof m.mes.pct_fundamentadas === 'number');
+  assert.ok(m.acoes.sugeridas >= 1);
+  assert.strictEqual(m.correcoes_humanas, 1);
+});
+
+testeAsync('agentes: a conta B não vê agente, execução nem memória da conta A', () => {
+  comoB(() => {
+    assert.strictEqual(agentes.listar().length, 0, 'B enxergou agentes de A');
+    assert.strictEqual(agentes.execucoes('sdr').length, 0);
+  });
+});
+
+// =====================================================================
+// 19. ROTAS DE ADMINISTRAÇÃO
 // =====================================================================
 const USUARIOS = [
   { id: 'adm', nome: 'Admin', email: 'adm@t', papel: 'admin', areas: ['*'], ativo: true },
@@ -1534,12 +1714,12 @@ const servidor = app.listen(0, async () => {
 
   console.log(`\n${'='.repeat(64)}`);
   if (falhas.length) {
-    console.log(`❌ Villela Growth OS — Etapas 1 a 4: ${ok} passaram, ${falhas.length} FALHARAM\n`);
+    console.log(`❌ Villela Growth OS — Etapas 1 a 5: ${ok} passaram, ${falhas.length} FALHARAM\n`);
     for (const f of falhas) console.log('  ✗ ' + f);
     console.log('');
     process.exit(1);
   }
-  console.log(`✅ Villela Growth OS — Etapas 1 a 4: ${ok} testes passaram.`);
+  console.log(`✅ Villela Growth OS — Etapas 1 a 5: ${ok} testes passaram.`);
   console.log(`   Isolamento entre contas verificado em ${[...TABELAS_TENANT].filter(t => t.startsWith('gx_')).length} tabelas.\n`);
   process.exit(0);
 });

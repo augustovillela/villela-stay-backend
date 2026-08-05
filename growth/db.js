@@ -18,7 +18,7 @@ const { db, transacao, nowISO, hojeISO, novoId, periodoAtual, j, DATA_DIR, SAAS_
 
 // Um arquivo de schema por etapa: fica claro o que cada uma acrescentou, e
 // o CREATE IF NOT EXISTS torna a ordem irrelevante em banco já existente.
-for (const arquivo of ['schema.sql', 'schema-etapa2.sql', 'schema-etapa3.sql', 'schema-etapa4.sql']) {
+for (const arquivo of ['schema.sql', 'schema-etapa2.sql', 'schema-etapa3.sql', 'schema-etapa4.sql', 'schema-etapa5.sql']) {
   db.exec(fs.readFileSync(path.join(__dirname, arquivo), 'utf8'));
 }
 

@@ -323,6 +323,52 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   app.post('/staff/api/growth/contas/:tenant/execucoes/:id/cancelar', ...naConta('cancelar execução',
     (req) => automacoes.cancelar(req.params.id, { motivo: (req.body || {}).motivo || 'cancelada manualmente' })));
 
+  // ================== ETAPA 5 — AGENTES DE IA ==================
+  const agentes = require('./agentes');
+  const conhecimento = require('./conhecimento');
+
+  app.get('/staff/api/growth/contas/:tenant/agentes', ...naConta('listar agentes', () => ({
+    agentes: agentes.listar().map((a) => agentes.metricas(a.chave)),
+    ferramentas: Object.fromEntries(Object.entries(agentes.FERRAMENTAS).map(([k, v]) => [k, { escrita: !!v.escrita, acao: v.acao || null }])),
+    llm_disponivel: agentes.temChaveLLM(),
+  })));
+
+  app.post('/staff/api/growth/contas/:tenant/agentes/provisionar', ...naConta('provisionar agentes',
+    () => ({ criados: agentes.provisionar() })));
+
+  app.put('/staff/api/growth/contas/:tenant/agentes/:chave', ...naConta('configurar agente',
+    (req) => agentes.configurar(req.params.chave, req.body || {})));
+
+  app.post('/staff/api/growth/contas/:tenant/agentes/:chave/prompt', ...naConta('publicar prompt',
+    (req) => agentes.publicarPrompt(req.params.chave, req.body || {})));
+
+  app.post('/staff/api/growth/contas/:tenant/agentes/:chave/executar', ...naConta('executar agente',
+    async (req, res) => {
+      try { res.json(await agentes.executar(req.params.chave, req.body || {})); }
+      catch (e) { res.status(e.status || 500).json({ erro: e.message }); }
+      return undefined;
+    }));
+
+  app.get('/staff/api/growth/contas/:tenant/agentes/:chave/execucoes', ...naConta('execuções do agente',
+    (req) => agentes.execucoes(req.params.chave)));
+
+  app.post('/staff/api/growth/contas/:tenant/execucoes-agente/:id/avaliar', ...naConta('avaliar execução',
+    (req) => agentes.avaliar(req.params.id, req.body || {})));
+
+  // ---- base de conhecimento ----
+  app.get('/staff/api/growth/contas/:tenant/conhecimento', ...naConta('base de conhecimento', () => ({
+    documentos: conhecimento.listar(),
+    vencendo: conhecimento.vencendo(),
+  })));
+  app.post('/staff/api/growth/contas/:tenant/conhecimento', ...naConta('criar documento',
+    (req) => conhecimento.criar(req.body || {})));
+  app.put('/staff/api/growth/contas/:tenant/conhecimento/:id', ...naConta('editar documento',
+    (req) => conhecimento.atualizar(req.params.id, req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/conhecimento/:id/aprovar', ...naConta('aprovar documento',
+    (req) => conhecimento.aprovar(req.params.id)));
+  app.get('/staff/api/growth/contas/:tenant/conhecimento/buscar', ...naConta('buscar na base',
+    (req) => conhecimento.buscar(req.query.q || '', { limite: Number(req.query.n) || 5 })));
+
   // --------------------------------------------------------- auditoria
   app.get('/staff/api/growth/auditoria', admin, rota('trilha de auditoria', (req) =>
     repo.auditoria.listar(Number(req.query.n) || 200)));

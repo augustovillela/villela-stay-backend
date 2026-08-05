@@ -587,9 +587,24 @@ const ACOES = {
 
   'agente.executar': {
     rotulo: 'Acionar agente de IA',
-    async executar() {
-      const e = new Error('Agentes chegam na Etapa 5 — esta ação ainda não tem executor.');
-      e.status = 501; throw e;
+    async executar(config, ctx) {
+      // O agente tem as próprias travas (ferramentas do papel, níveis de
+      // autonomia, orçamento). A automação não as contorna: ela chama a
+      // mesma porta que uma pessoa chamaria.
+      const agentes = require('./agentes');
+      const r = await agentes.executar(config.agente, {
+        texto: interpolar(config.texto || '', ctx),
+        contatoId: ctx.exec.contato_id || '',
+        conversaId: config.conversaId || ctx.exec.conversa_id || '',
+        gatilho: `automacao:${ctx.wf.id}`,
+      });
+      return {
+        execucao_agente: r.execucao.id,
+        motor: r.execucao.motor,
+        fundamentada: !!r.execucao.fundamentada,
+        acoes: r.acoes.length,
+        contexto: { resposta_agente: r.execucao.saida },
+      };
     },
   },
 };
