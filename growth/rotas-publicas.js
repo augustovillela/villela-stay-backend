@@ -162,6 +162,67 @@ function registrarRotasPublicas(app, { express }) {
     }
   });
 
+  // ============ ETAPA 8 — PESQUISA E AGENDAMENTO (público) ============
+  app.options('/growth/s/:token', (req, res) => { CORS(res); res.sendStatus(204); });
+
+  app.get('/growth/s/:token', (req, res) => {
+    CORS(res);
+    const p = require('./reputacao').pesquisaPorToken(req.params.token);
+    if (!p) return res.status(404).json({ erro: 'Pesquisa não encontrada.' });
+    // só o que o respondente precisa ver — nada de token, tenant ou config interna
+    res.json({ nome: p.nome, tipo: p.tipo, pergunta: p.pergunta, pergunta_aberta: p.pergunta_aberta });
+  });
+
+  app.post('/growth/s/:token', express.json({ limit: '32kb' }), (req, res) => {
+    CORS(res);
+    const c = req.body || {};
+    try {
+      const r = require('./reputacao').responder(req.params.token, {
+        nota: c.nota, comentario: c.comentario || '', contatoId: '', unidade: c.unidade || '',
+        chaveIdem: c.idem ? String(c.idem).slice(0, 60) : '',
+      });
+      res.json(r);
+    } catch (e) {
+      res.status(e.status || 400).json({ erro: e.message });
+    }
+  });
+
+  // Página pública de marcação: horários livres e confirmação.
+  app.get('/growth/r/:slug/livres', (req, res) => {
+    CORS(res);
+    const tipo = require('./reunioes').tipoPorSlug(req.params.slug);
+    if (!tipo) return res.status(404).json({ erro: 'Tipo de reunião não encontrado.' });
+    tenancy.comTenant({ tenantId: tipo.tenant_id, userId: 'publico' }, () => {
+      try {
+        res.json({
+          tipo: { nome: tipo.nome, descricao: tipo.descricao, duracao_min: tipo.duracao_min, fuso: tipo.fuso, local: tipo.local },
+          livres: require('./reunioes').horariosLivres(tipo.id, { de: req.query.de, ate: req.query.ate }),
+        });
+      } catch (e) { res.status(e.status || 500).json({ erro: e.message }); }
+    });
+  });
+
+  app.post('/growth/r/:slug', express.json({ limit: '32kb' }), (req, res) => {
+    CORS(res);
+    const tipo = require('./reunioes').tipoPorSlug(req.params.slug);
+    if (!tipo) return res.status(404).json({ erro: 'Tipo de reunião não encontrado.' });
+    tenancy.comTenant({ tenantId: tipo.tenant_id, userId: 'publico' }, () => {
+      try {
+        const a = require('./reunioes').agendar(tipo.id, req.body || {});
+        // devolve só o que o convidado precisa: token para reagendar/cancelar
+        res.json({ ok: true, inicio: a.inicio, fim: a.fim, token: a.token, local: tipo.local || tipo.link_video });
+      } catch (e) { res.status(e.status || 400).json({ erro: e.message }); }
+    });
+  });
+
+  app.post('/growth/r/agendamento/:token/cancelar', express.json({ limit: '16kb' }), (req, res) => {
+    CORS(res);
+    try {
+      require('./reunioes').cancelar(req.params.token, { motivo: (req.body || {}).motivo || '', quem: 'convidado' });
+      res.json({ ok: true });
+    } catch (e) { res.status(e.status || 400).json({ erro: e.message }); }
+  });
+
   // Página de captura publicada. Template controlado, sem HTML livre do usuário.
   app.get('/growth/p/:slug', (req, res) => {
     const pagina = db.prepare(

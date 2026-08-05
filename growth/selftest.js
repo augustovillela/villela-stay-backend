@@ -1,5 +1,5 @@
 // =====================================================================
-// Villela Growth OS — suíte das Etapas 1 a 7.  npm run test:growth
+// Villela Growth OS — suíte das Etapas 1 a 8.  npm run test:growth
 //
 // Banco descartável, worker desligado, Express real para as rotas de
 // administração. O bloco mais importante é o ANTI-VAZAMENTO: ele tenta
@@ -63,7 +63,7 @@ function lanca(nome, fn, padrao) {
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
 const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao } = growth;
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
 require('../crm/repo').semear();                 // planos e flags do control plane
@@ -1609,7 +1609,186 @@ testeAsync('anúncios e atribuição: a conta B não vê nada da conta A', () =>
 });
 
 // =====================================================================
-// 21. ROTAS DE ADMINISTRAÇÃO
+// 21. ETAPA 8 — REPUTAÇÃO E REUNIÕES
+// =====================================================================
+lancaAsync('reputação: sem a flag no plano, criar pesquisa é recusado',
+  () => comoA(() => reputacao.criarPesquisa({ nome: 'x' })), /não está incluído/i);
+
+let pesquisaNps = null;
+testeAsync('reputação: cria pesquisa NPS com pergunta padrão', () => {
+  comoA(() => entitlements.definirFlag('reputacao', true));
+  pesquisaNps = comoA(() => reputacao.criarPesquisa({
+    nome: 'NPS pós-estadia', tipo: 'nps', convidaPublica: true, urlAvaliacao: 'https://g.page/r/exemplo',
+  }));
+  assert.ok(/recomendar/i.test(pesquisaNps.pergunta), pesquisaNps.pergunta);
+  assert.ok(pesquisaNps.token.startsWith('gs_'));
+  comoA(() => reputacao.publicarPesquisa(pesquisaNps.id));
+});
+
+// A trava do §16
+lancaAsync('reputação: condicionar BENEFÍCIO a avaliação positiva é recusado',
+  () => comoA(() => reputacao.criarPesquisa({
+    nome: 'Ganhe desconto', tipo: 'nps', convidaPublica: true, urlAvaliacao: 'https://g.page/x',
+    pergunta: 'Nos avalie e ganhe 10% de desconto na próxima reserva!',
+  })), /benefício a avaliação positiva não é permitido/i);
+
+testeAsync('reputação: a mesma pesquisa SEM convite público pode falar de desconto', () => {
+  const p = comoA(() => reputacao.criarPesquisa({
+    nome: 'Pesquisa com brinde', tipo: 'csat', convidaPublica: false,
+    pergunta: 'Como foi? Quem responde concorre a um brinde.',
+  }));
+  assert.ok(p.id, 'a trava é sobre condicionar avaliação PÚBLICA, não sobre pesquisa interna');
+});
+
+testeAsync('reputação: NPS é calculado por faixa, não por média', () => {
+  const notas = [10, 10, 9, 8, 7, 6, 3];   // 3 promotores, 2 neutros, 2 detratores
+  for (const [i, n] of notas.entries()) {
+    comoA(() => reputacao.responder(pesquisaNps.token, { nota: n, unidade: 'Villa Kubitschek', chaveIdem: `nps-${i}` }));
+  }
+  const ind = comoA(() => reputacao.indicadores({ pesquisaId: pesquisaNps.id }));
+  assert.strictEqual(ind.total, 7);
+  assert.strictEqual(ind.distribuicao.promotor, 3);
+  assert.strictEqual(ind.distribuicao.detrator, 2);
+  assert.strictEqual(ind.nps, Math.round(((3 - 2) / 7) * 100), `NPS veio ${ind.nps}`);
+});
+
+testeAsync('reputação: promotor recebe convite; detrator gera tarefa, não convite', () => {
+  const bom = comoA(() => reputacao.responder(pesquisaNps.token, { nota: 10, chaveIdem: 'nps-bom' }));
+  assert.ok(bom.convite && bom.convite.url, 'promotor não recebeu convite');
+  assert.ok(!/desconto|brinde|cupom/i.test(bom.convite.texto), 'o convite carrega recompensa');
+
+  const antes = comoA(() => repo.contar('crm_tarefas'));
+  const ruim = comoA(() => reputacao.responder(pesquisaNps.token, { nota: 2, comentario: 'ar-condicionado quebrado', chaveIdem: 'nps-ruim' }));
+  assert.strictEqual(ruim.convite, null, 'detrator recebeu convite para avaliar publicamente');
+  assert.ok(comoA(() => repo.contar('crm_tarefas')) > antes, 'detrator não gerou tarefa corretiva');
+});
+
+testeAsync('reputação: resposta repetida com a mesma chave não conta duas vezes', () => {
+  const r = comoA(() => reputacao.responder(pesquisaNps.token, { nota: 10, chaveIdem: 'nps-bom' }));
+  assert.ok(r.duplicada, 'contou a mesma resposta de novo');
+});
+
+testeAsync('reputação: avaliação pública negativa vira tarefa e exige aprovação para responder', () => {
+  const { avaliacao } = comoA(() => reputacao.registrarAvaliacao({
+    fonte: 'google', externaId: 'g1', autor: 'Cliente', nota: 2, notaMaxima: 5,
+    texto: 'Casa suja e o chuveiro quebrado', unidade: 'Villa Kubitschek',
+  }));
+  assert.strictEqual(avaliacao.sentimento, 'negativo');
+  assert.ok(avaliacao.tarefa_id, 'não abriu tarefa corretiva');
+  assert.deepStrictEqual(JSON.parse(avaliacao.problemas).sort(), ['estrutura', 'limpeza']);
+
+  const r = comoA(() => reputacao.responderAvaliacao(avaliacao.id, { texto: 'Lamentamos!' }));
+  assert.strictEqual(r.aguardandoAprovacao, true, 'respondeu avaliação negativa sem aprovação');
+});
+
+testeAsync('reputação: problema recorrente aparece no painel', () => {
+  comoA(() => reputacao.registrarAvaliacao({ fonte: 'airbnb', externaId: 'a1', nota: 2, texto: 'muito sujo', notaMaxima: 5 }));
+  const rec = comoA(() => reputacao.problemasRecorrentes({ minimo: 2 }));
+  assert.ok(rec.some((r) => r.tema === 'limpeza' && r.ocorrencias >= 2), JSON.stringify(rec));
+});
+
+// ---- reuniões ----
+let tipoReuniao = null;
+testeAsync('reuniões: cria tipo e define disponibilidade', () => {
+  comoA(() => entitlements.definirFlag('reunioes', true));
+  tipoReuniao = comoA(() => reunioes.criarTipo({
+    nome: 'Visita à casa', duracaoMin: 60, intervaloMin: 0, antecedenciaMin: 60,
+    janelaDias: 14, responsaveis: ['u-ana'], local: 'SMDB 29',
+  }));
+  assert.strictEqual(tipoReuniao.slug, 'visita-a-casa');
+  const faixas = comoA(() => reunioes.definirDisponibilidade(tipoReuniao.id,
+    [0, 1, 2, 3, 4, 5, 6].map((d) => ({ diaSemana: d, inicio: '09:00', fim: '12:00' }))));
+  assert.strictEqual(faixas.length, 7);
+});
+
+let horarioLivre = null;
+testeAsync('reuniões: horários livres respeitam duração e antecedência', () => {
+  const livres = comoA(() => reunioes.horariosLivres(tipoReuniao.id));
+  assert.ok(livres.length >= 3, `livres: ${livres.length}`);
+  horarioLivre = livres[0];
+  // 3h de faixa / 1h de duração = 3 horários por dia
+  const doDia = livres.filter((l) => l.inicio.slice(0, 10) === horarioLivre.inicio.slice(0, 10));
+  assert.ok(doDia.length <= 3, `${doDia.length} horários num dia de 3h com reunião de 1h`);
+  // nenhum antes da antecedência mínima
+  assert.ok(new Date(horarioLivre.inicio).getTime() >= Date.now() + 59 * 60000, 'ofereceu horário em cima da hora');
+});
+
+let agendamento = null;
+testeAsync('reuniões: agendar identifica a pessoa e emite o evento', () => {
+  agendamento = comoA(() => reunioes.agendar(tipoReuniao.id, {
+    inicio: horarioLivre.inicio, nome: 'Rita Alves', email: 'rita@teste.com', observacao: 'quero ver a piscina',
+  }));
+  assert.strictEqual(agendamento.status, 'confirmado');
+  assert.ok(agendamento.contato_id, 'não identificou quem marcou');
+  assert.ok(agendamento.token.startsWith('ga_'));
+  const ev = db.prepare("SELECT * FROM gx_eventos WHERE tipo = 'meeting.booked' AND tenant_id = ?").all(TA);
+  assert.ok(ev.length >= 1);
+});
+
+testeAsync('reuniões: o mesmo horário NÃO é vendido duas vezes', () => {
+  try {
+    comoA(() => reunioes.agendar(tipoReuniao.id, { inicio: horarioLivre.inicio, nome: 'Outro', email: 'outro@teste.com' }));
+    falhas.push('reuniões: dois agendamentos no mesmo horário');
+  } catch (e) {
+    assert.strictEqual(e.status, 409);
+    assert.ok(/ocupado/i.test(e.message), e.message);
+    ok++;
+  }
+});
+
+testeAsync('reuniões: o horário ocupado some da lista de livres', () => {
+  const livres = comoA(() => reunioes.horariosLivres(tipoReuniao.id));
+  assert.ok(!livres.some((l) => l.inicio === horarioLivre.inicio), 'horário ocupado continuou sendo oferecido');
+});
+
+testeAsync('reuniões: marcar em cima da hora é recusado', () => {
+  try {
+    comoA(() => reunioes.agendar(tipoReuniao.id, {
+      inicio: new Date(Date.now() + 5 * 60000).toISOString(), nome: 'Afobado', email: 'a@t.com',
+    }));
+    falhas.push('reuniões: aceitou marcar em cima da hora');
+  } catch (e) { assert.strictEqual(e.status, 422); ok++; }
+});
+
+testeAsync('reuniões: bloqueio de agenda tira o horário da lista', () => {
+  const livres = comoA(() => reunioes.horariosLivres(tipoReuniao.id));
+  const alvo = livres[0];
+  comoA(() => reunioes.bloquear({ inicio: alvo.inicio, fim: alvo.fim, motivo: 'compromisso' }));
+  const depois = comoA(() => reunioes.horariosLivres(tipoReuniao.id));
+  assert.ok(!depois.some((l) => l.inicio === alvo.inicio), 'horário bloqueado continuou livre');
+});
+
+testeAsync('reuniões: cancelar libera o horário e emite o evento', () => {
+  comoA(() => reunioes.cancelar(agendamento.token, { motivo: 'imprevisto' }));
+  assert.strictEqual(comoA(() => repo.buscar('gx_agendamentos', agendamento.id)).status, 'cancelado');
+  const livres = comoA(() => reunioes.horariosLivres(tipoReuniao.id));
+  assert.ok(livres.some((l) => l.inicio === horarioLivre.inicio), 'cancelou e o horário não voltou');
+  const ev = db.prepare("SELECT * FROM gx_eventos WHERE tipo = 'meeting.cancelled' AND tenant_id = ?").all(TA);
+  assert.ok(ev.length >= 1);
+});
+
+testeAsync('reuniões: no-show entra no indicador', () => {
+  const a = comoA(() => reunioes.agendar(tipoReuniao.id, {
+    inicio: comoA(() => reunioes.horariosLivres(tipoReuniao.id))[0].inicio,
+    nome: 'Sumiu', email: 'sumiu@teste.com',
+  }));
+  comoA(() => reunioes.marcarDesfecho(a.id, 'no_show'));
+  const ind = comoA(() => reunioes.indicadores({}));
+  assert.strictEqual(ind.no_show, 1);
+  assert.strictEqual(ind.taxa_no_show_pct, 100, `taxa: ${ind.taxa_no_show_pct}`);
+});
+
+testeAsync('reputação e reuniões: a conta B não vê nada da conta A', () => {
+  comoB(() => {
+    assert.strictEqual(reputacao.pesquisas().length, 0, 'B enxergou pesquisa de A');
+    assert.strictEqual(reunioes.tipos().length, 0, 'B enxergou tipo de reunião de A');
+    assert.strictEqual(reunioes.agenda({}).length, 0, 'B enxergou a agenda de A');
+    assert.strictEqual(reputacao.indicadores({}).total, 0, 'B enxergou o NPS de A');
+  });
+});
+
+// =====================================================================
+// 22. ROTAS DE ADMINISTRAÇÃO
 // =====================================================================
 const USUARIOS = [
   { id: 'adm', nome: 'Admin', email: 'adm@t', papel: 'admin', areas: ['*'], ativo: true },
@@ -2073,12 +2252,12 @@ const servidor = app.listen(0, async () => {
 
   console.log(`\n${'='.repeat(64)}`);
   if (falhas.length) {
-    console.log(`❌ Villela Growth OS — Etapas 1 a 7: ${ok} passaram, ${falhas.length} FALHARAM\n`);
+    console.log(`❌ Villela Growth OS — Etapas 1 a 8: ${ok} passaram, ${falhas.length} FALHARAM\n`);
     for (const f of falhas) console.log('  ✗ ' + f);
     console.log('');
     process.exit(1);
   }
-  console.log(`✅ Villela Growth OS — Etapas 1 a 7: ${ok} testes passaram.`);
+  console.log(`✅ Villela Growth OS — Etapas 1 a 8: ${ok} testes passaram.`);
   console.log(`   Isolamento entre contas verificado em ${[...TABELAS_TENANT].filter(t => t.startsWith('gx_')).length} tabelas.\n`);
   process.exit(0);
 });

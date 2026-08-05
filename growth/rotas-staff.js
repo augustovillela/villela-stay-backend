@@ -453,6 +453,39 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   app.get('/staff/api/growth/contas/:tenant/atribuicao/contato/:id', ...naConta('jornada do contato',
     (req) => atribuicao.jornadaDoContato(req.params.id)));
 
+  // ========= ETAPA 8 — REPUTAÇÃO E REUNIÕES =========
+  const reputacao = require('./reputacao');
+  const reunioes = require('./reunioes');
+
+  app.get('/staff/api/growth/contas/:tenant/reputacao', ...naConta('painel de reputação',
+    (req) => Object.assign({ pesquisas: reputacao.pesquisas() },
+      reputacao.painel({ de: req.query.de, ate: req.query.ate }))));
+
+  app.post('/staff/api/growth/contas/:tenant/reputacao/pesquisas', ...naConta('criar pesquisa',
+    (req) => reputacao.criarPesquisa(req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/reputacao/pesquisas/:id/publicar', ...naConta('publicar pesquisa',
+    (req) => reputacao.publicarPesquisa(req.params.id)));
+  app.post('/staff/api/growth/contas/:tenant/reputacao/avaliacoes', ...naConta('registrar avaliação',
+    (req) => reputacao.registrarAvaliacao(req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/reputacao/avaliacoes/:id/responder', ...naConta('responder avaliação',
+    (req) => reputacao.responderAvaliacao(req.params.id, req.body || {})));
+
+  app.get('/staff/api/growth/contas/:tenant/reunioes', ...naConta('agenda e tipos', (req) => ({
+    tipos: reunioes.tipos(),
+    agenda: reunioes.agenda({ de: req.query.de, ate: req.query.ate, responsavel: req.query.responsavel }),
+    indicadores: reunioes.indicadores({ de: req.query.de, ate: req.query.ate }),
+  })));
+  app.post('/staff/api/growth/contas/:tenant/reunioes/tipos', ...naConta('criar tipo de reunião',
+    (req) => reunioes.criarTipo(req.body || {})));
+  app.put('/staff/api/growth/contas/:tenant/reunioes/tipos/:id/disponibilidade', ...naConta('definir disponibilidade',
+    (req) => reunioes.definirDisponibilidade(req.params.id, (req.body || {}).faixas || [])));
+  app.get('/staff/api/growth/contas/:tenant/reunioes/tipos/:id/livres', ...naConta('horários livres',
+    (req) => reunioes.horariosLivres(req.params.id, { de: req.query.de, ate: req.query.ate })));
+  app.post('/staff/api/growth/contas/:tenant/reunioes/bloqueios', ...naConta('bloquear agenda',
+    (req) => ({ id: reunioes.bloquear(req.body || {}) })));
+  app.post('/staff/api/growth/contas/:tenant/reunioes/:id/desfecho', ...naConta('marcar desfecho',
+    (req) => reunioes.marcarDesfecho(req.params.id, (req.body || {}).status, req.body || {})));
+
   // --------------------------------------------------------- auditoria
   app.get('/staff/api/growth/auditoria', admin, rota('trilha de auditoria', (req) =>
     repo.auditoria.listar(Number(req.query.n) || 200)));
