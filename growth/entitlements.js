@@ -23,6 +23,8 @@ const LIMITES_PADRAO = {
   formularios: 3, formularios_respostas: 500, paginas: 3, segmentos: 5,
   // Etapa 4 — automações
   automacoes_execucoes: 2000,
+  // Etapa 6 — conteúdo
+  conteudos_mes: 50, midias: 200,
 };
 
 const FLAGS_PADRAO = {

@@ -369,6 +369,42 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   app.get('/staff/api/growth/contas/:tenant/conhecimento/buscar', ...naConta('buscar na base',
     (req) => conhecimento.buscar(req.query.q || '', { limite: Number(req.query.n) || 5 })));
 
+  // ============ ETAPA 6 — CONTEÚDO E REDES SOCIAIS ============
+  const conteudo = require('./conteudo');
+  const comunidade = require('./comunidade');
+
+  // O calendário já devolve `disponibilidade`: é o que a tela lê para
+  // saber quais formatos oferecer em cada rede (§13.2).
+  app.get('/staff/api/growth/contas/:tenant/conteudo', ...naConta('calendário editorial',
+    (req) => conteudo.calendario({ de: req.query.de || '', ate: req.query.ate || '', status: req.query.status || '' })));
+
+  app.post('/staff/api/growth/contas/:tenant/conteudo', ...naConta('criar conteúdo', (req) => conteudo.criar(req.body || {})));
+  app.put('/staff/api/growth/contas/:tenant/conteudo/:id', ...naConta('editar conteúdo',
+    (req) => conteudo.atualizar(req.params.id, req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/conteudo/:id/aprovar', ...naConta('aprovar conteúdo',
+    (req) => conteudo.aprovar(req.params.id)));
+  app.post('/staff/api/growth/contas/:tenant/conteudo/:id/variacao', ...naConta('definir variação por rede',
+    (req) => conteudo.definirVariacao(req.params.id, (req.body || {}).rede, req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/conteudo/:id/agendar', ...naConta('agendar publicação',
+    (req) => conteudo.agendar(req.params.id, req.body || {})));
+  app.get('/staff/api/growth/contas/:tenant/conteudo/:id/validar', ...naConta('validar conteúdo',
+    (req) => ({ problemas: conteudo.validar(repo.buscar('gx_conteudos', req.params.id) || {}) })));
+
+  app.get('/staff/api/growth/contas/:tenant/midias', ...naConta('biblioteca de mídia',
+    () => ({ midias: conteudo.midias(), vencendo: conteudo.midiasVencendo() })));
+  app.post('/staff/api/growth/contas/:tenant/midias', ...naConta('guardar mídia',
+    (req) => conteudo.guardarMidia(req.body || {})));
+
+  app.get('/staff/api/growth/contas/:tenant/comunidade', ...naConta('gestão de comunidade', (req) => ({
+    interacoes: comunidade.caixa({ fila: req.query.fila || '', status: req.query.status || 'aberta', rede: req.query.rede || '' }),
+    panorama: comunidade.panorama(),
+    filas: comunidade.FILAS,
+  })));
+  app.post('/staff/api/growth/contas/:tenant/comunidade', ...naConta('registrar interação',
+    (req) => comunidade.registrar(req.body || {})));
+  app.post('/staff/api/growth/contas/:tenant/comunidade/:id/responder', ...naConta('responder interação',
+    (req) => comunidade.responder(req.params.id, Object.assign({}, req.body || {}, { autorId: (req.user && req.user.id) || 'staff' }))));
+
   // --------------------------------------------------------- auditoria
   app.get('/staff/api/growth/auditoria', admin, rota('trilha de auditoria', (req) =>
     repo.auditoria.listar(Number(req.query.n) || 200)));

@@ -1,5 +1,5 @@
 // =====================================================================
-// Villela Growth OS — suíte das Etapas 1 a 5.  npm run test:growth
+// Villela Growth OS — suíte das Etapas 1 a 6.  npm run test:growth
 //
 // Banco descartável, worker desligado, Express real para as rotas de
 // administração. O bloco mais importante é o ANTI-VAZAMENTO: ele tenta
@@ -63,7 +63,7 @@ function lanca(nome, fn, padrao) {
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
 const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
-  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento } = growth;
+  identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
 require('../crm/repo').semear();                 // planos e flags do control plane
@@ -1250,7 +1250,183 @@ testeAsync('agentes: a conta B não vê agente, execução nem memória da conta
 });
 
 // =====================================================================
-// 19. ROTAS DE ADMINISTRAÇÃO
+// 19. ETAPA 6 — CONTEÚDO E REDES SOCIAIS
+// =====================================================================
+lancaAsync('conteúdo: sem a flag de redes sociais no plano, criar é recusado',
+  () => comoA(() => conteudo.criar({ titulo: 'x' })), /não está incluído/i);
+
+let conteudoId = null;
+testeAsync('conteúdo: liga a flag e cria a ideia', () => {
+  comoA(() => entitlements.definirFlag('redes_sociais', true));
+  const c = comoA(() => conteudo.criar({
+    titulo: 'Casamentos no Lago Sul', formato: 'carrossel', objetivo: 'gerar lead',
+    persona: 'noiva', etapaFunil: 'topo', tom: 'acolhedor',
+  }));
+  conteudoId = c.id;   // guarda o id AQUI: listar() traz também a linha sintética da varredura
+  assert.strictEqual(c.status, 'ideia');
+  assert.strictEqual(c.versao, 1);
+});
+
+testeAsync('conteúdo: editar versiona e guarda o histórico', () => {
+  comoA(() => conteudo.atualizar(conteudoId, { legenda: 'Quatro casas, uma equipe.', cta: 'Peça um orçamento' }));
+  const atualizado = comoA(() => repo.buscar('gx_conteudos', conteudoId));
+  assert.strictEqual(atualizado.versao, 2);
+  const versoes = comoA(() => repo.listar('gx_conteudo_versoes', { onde: 'conteudo_id = :c', params: { c: conteudoId }, limite: 10 }));
+  assert.ok(versoes.length >= 2, `versões: ${versoes.length}`);
+});
+
+testeAsync('conteúdo: palavra proibida barra a aprovação com o motivo', () => {
+  comoA(() => conteudo.definirPalavrasProibidas(['imperdível', 'garantido']));
+  comoA(() => conteudo.atualizar(conteudoId, { legenda: 'Resultado garantido para o seu casamento!' }));
+  try {
+    comoA(() => conteudo.aprovar(conteudoId));
+    falhas.push('conteúdo: aprovou com palavra proibida');
+  } catch (e) {
+    assert.strictEqual(e.status, 422);
+    assert.ok(/palavra proibida: garantido/i.test(e.message), e.message);
+    ok++;
+  }
+});
+
+testeAsync('conteúdo: mídia de terceiro sem licença impede a aprovação', () => {
+  const m = comoA(() => conteudo.guardarMidia({ nome: 'foto-banco.jpg', origem: 'proprio' }));
+  // vira "de terceiro" sem licença por edição direta, simulando importação torta
+  comoA(() => repo.atualizar('gx_midias', m.id, { origem: 'terceiro', licenca: '' }));
+  comoA(() => conteudo.atualizar(conteudoId, { legenda: 'Uma legenda limpa', midias: [m.id] }));
+  const problemas = comoA(() => conteudo.validar(repo.buscar('gx_conteudos', conteudoId)));
+  assert.ok(problemas.some((p) => /licença/i.test(p)), problemas.join(' | '));
+});
+
+lancaAsync('conteúdo: guardar mídia de terceiro SEM licença é recusado na entrada',
+  () => comoA(() => conteudo.guardarMidia({ nome: 'x.jpg', origem: 'terceiro' })), /exige licença/i);
+
+testeAsync('conteúdo: direito de uso vencido também barra', () => {
+  const m = comoA(() => conteudo.guardarMidia({ nome: 'ensaio.jpg', origem: 'cliente', expiraEm: '2025-01-01' }));
+  comoA(() => conteudo.atualizar(conteudoId, { midias: [m.id] }));
+  const problemas = comoA(() => conteudo.validar(repo.buscar('gx_conteudos', conteudoId)));
+  assert.ok(problemas.some((p) => /venceu/i.test(p)), problemas.join(' | '));
+});
+
+testeAsync('conteúdo: limpo passa na aprovação', () => {
+  comoA(() => conteudo.atualizar(conteudoId, { legenda: 'Quatro casas no Lago Sul para o seu evento.', midias: [] }));
+  const c = comoA(() => conteudo.aprovar(conteudoId));
+  assert.strictEqual(c.status, 'aprovado');
+  assert.ok(c.aprovado_em);
+});
+
+testeAsync('conteúdo: editar depois de aprovado derruba a aprovação', () => {
+  comoA(() => conteudo.atualizar(conteudoId, { legenda: 'Texto novo depois da aprovação' }));
+  const c = comoA(() => repo.buscar('gx_conteudos', conteudoId));
+  assert.strictEqual(c.status, 'revisao', 'continuou aprovado com texto novo');
+  assert.strictEqual(c.aprovado_em, '');
+  comoA(() => conteudo.aprovar(conteudoId));
+});
+
+testeAsync('conteúdo: variação por rede respeita o limite de caracteres', () => {
+  comoA(() => conteudo.definirVariacao(conteudoId, 'instagram', { legenda: 'a'.repeat(2500) }));
+  const problemas = comoA(() => conteudo.validar(repo.buscar('gx_conteudos', conteudoId)));
+  assert.ok(problemas.some((p) => /instagram.*2500.*2200/i.test(p)), problemas.join(' | '));
+  comoA(() => conteudo.definirVariacao(conteudoId, 'instagram', { legenda: 'Legenda curta do Instagram' }));
+  assert.strictEqual(comoA(() => conteudo.validar(repo.buscar('gx_conteudos', conteudoId))).length, 0);
+});
+
+testeAsync('conteúdo: a capability matrix não oferece o que a rede não confirma', () => {
+  const disp = comoA(() => conteudo.formatosDisponiveis());
+  for (const rede of conteudo.REDES) {
+    assert.strictEqual(disp[rede].conectado, false, `${rede} apareceu conectado sem conexão`);
+    assert.deepStrictEqual(disp[rede].formatos, [], `${rede} ofereceu formato sem capacidade`);
+  }
+});
+
+testeAsync('conteúdo: publicação sem rede conectada nasce BLOQUEADA com motivo', () => {
+  const r = comoA(() => conteudo.agendar(conteudoId, { redes: ['instagram', 'linkedin'] }));
+  assert.strictEqual(r.publicacoes.length, 2);
+  for (const p of r.publicacoes) {
+    assert.strictEqual(p.status, 'bloqueada', `${p.rede} foi agendada sem conexão`);
+    assert.ok(/não tem .* conectado/i.test(p.motivo), p.motivo);
+  }
+  // e o conteúdo NÃO passa para agendado, porque nada foi de fato agendado
+  assert.strictEqual(comoA(() => repo.buscar('gx_conteudos', conteudoId)).status, 'aprovado');
+  const jobs = db.prepare("SELECT COUNT(*) AS n FROM gx_jobs WHERE tenant_id = ? AND tipo = 'conteudo:publicar'").get(TA).n;
+  assert.strictEqual(jobs, 0, 'enfileirou publicação que não pode acontecer');
+});
+
+testeAsync('conteúdo: o link ganha UTM da campanha automaticamente', () => {
+  comoA(() => conteudo.atualizar(conteudoId, { link: 'https://villelastay.com.br/eventos', campanha: 'casamentos-2026' }));
+  const c = comoA(() => repo.buscar('gx_conteudos', conteudoId));
+  const link = comoA(() => conteudo.linkComUtm(c, 'instagram'));
+  assert.ok(link.includes('utm_source=instagram'), link);
+  assert.ok(link.includes('utm_campaign=casamentos-2026'), link);
+  assert.ok(link.includes('utm_medium=social'), link);
+});
+
+testeAsync('conteúdo: publicado não é editado', () => {
+  const c = comoA(() => conteudo.criar({ titulo: 'Já publicado' }));
+  comoA(() => repo.atualizar('gx_conteudos', c.id, { status: 'publicado' }));
+  try { comoA(() => conteudo.atualizar(c.id, { legenda: 'x' })); falhas.push('conteúdo: editou publicado'); }
+  catch (e) { assert.strictEqual(e.status, 409); ok++; }
+});
+
+// ---- gestão de comunidade ----
+testeAsync('comunidade: comentário comum vai para a fila padrão e pode ser respondido', () => {
+  const r = comoA(() => comunidade.registrar({
+    rede: 'instagram', externaId: 'c1', texto: 'Que casa linda! Parabéns', autorHandle: '@fulana',
+  }));
+  assert.strictEqual(r.interacao.fila, 'padrao');
+  assert.strictEqual(r.interacao.exige_aprovacao, 0);
+  const resp = comoA(() => comunidade.responder(r.interacao.id, { texto: 'Obrigado!', autorId: 'social' }));
+  assert.strictEqual(resp.aguardandoAprovacao, false);
+  assert.strictEqual(resp.interacao.status, 'respondida');
+});
+
+testeAsync('comunidade: termo de crise abre incidente e exige pessoa', () => {
+  const r = comoA(() => comunidade.registrar({
+    rede: 'instagram', externaId: 'c2', texto: 'Vou acionar o Procon e a imprensa, isso é golpe',
+  }));
+  assert.strictEqual(r.interacao.fila, 'crise');
+  assert.strictEqual(r.interacao.exige_aprovacao, 1);
+  assert.strictEqual(r.interacao.prioridade, 'alta');
+  const inc = comoA(() => repo.listar('gx_incidentes', { onde: "ref_tipo = 'interacao'", limite: 10 }));
+  assert.ok(inc.length >= 1, 'crise não abriu incidente');
+});
+
+testeAsync('comunidade: resposta em fila sensível vira pedido de aprovação', () => {
+  const crise = comoA(() => comunidade.caixa({ fila: 'crise' }))[0];
+  const r = comoA(() => comunidade.responder(crise.id, { texto: 'Vamos resolver', autorId: 'social' }));
+  assert.strictEqual(r.aguardandoAprovacao, true, 'respondeu crise sem aprovação');
+  assert.ok(r.aprovacaoId);
+  assert.strictEqual(comoA(() => repo.buscar('gx_interacoes', crise.id)).status, 'escalada');
+});
+
+testeAsync('comunidade: influenciador cai em fila própria mesmo elogiando', () => {
+  const r = comoA(() => comunidade.registrar({
+    rede: 'instagram', externaId: 'c3', texto: 'Adorei o lugar!', seguidores: 50000,
+  }));
+  assert.strictEqual(r.interacao.fila, 'influenciador');
+  assert.strictEqual(r.interacao.exige_aprovacao, 1);
+});
+
+testeAsync('comunidade: a mesma interação reentregue não duplica', () => {
+  const a = comoA(() => comunidade.registrar({ rede: 'instagram', externaId: 'c1', texto: 'Que casa linda! Parabéns' }));
+  assert.ok(a.duplicada, 'duplicou a interação');
+});
+
+testeAsync('comunidade: o panorama separa o que precisa de pessoa', () => {
+  const p = comoA(() => comunidade.panorama());
+  assert.ok(p.por_fila.crise >= 0 && p.por_fila.influenciador >= 1, JSON.stringify(p.por_fila));
+  assert.ok(p.exigem_humano >= 1);
+});
+
+testeAsync('conteúdo e comunidade: a conta B não vê nada da conta A', () => {
+  comoB(() => {
+    assert.strictEqual(conteudo.listar().length, 0, 'B enxergou conteúdo de A');
+    assert.strictEqual(conteudo.midias().length, 0, 'B enxergou mídia de A');
+    assert.strictEqual(comunidade.caixa({ status: 'todas' }).length, 0, 'B enxergou interação de A');
+  });
+});
+
+// =====================================================================
+// 20. ROTAS DE ADMINISTRAÇÃO
 // =====================================================================
 const USUARIOS = [
   { id: 'adm', nome: 'Admin', email: 'adm@t', papel: 'admin', areas: ['*'], ativo: true },
@@ -1714,12 +1890,12 @@ const servidor = app.listen(0, async () => {
 
   console.log(`\n${'='.repeat(64)}`);
   if (falhas.length) {
-    console.log(`❌ Villela Growth OS — Etapas 1 a 5: ${ok} passaram, ${falhas.length} FALHARAM\n`);
+    console.log(`❌ Villela Growth OS — Etapas 1 a 6: ${ok} passaram, ${falhas.length} FALHARAM\n`);
     for (const f of falhas) console.log('  ✗ ' + f);
     console.log('');
     process.exit(1);
   }
-  console.log(`✅ Villela Growth OS — Etapas 1 a 5: ${ok} testes passaram.`);
+  console.log(`✅ Villela Growth OS — Etapas 1 a 6: ${ok} testes passaram.`);
   console.log(`   Isolamento entre contas verificado em ${[...TABELAS_TENANT].filter(t => t.startsWith('gx_')).length} tabelas.\n`);
   process.exit(0);
 });
