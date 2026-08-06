@@ -160,11 +160,75 @@ function registrarRotasAssinante(app, { requireAssinante }) {
   app.get(`${B}/aprovacoes`, ...rota(() => ({
     pendentes: require('./aprovacoes').pendentes(100),
     niveis: require('./aprovacoes').NIVEIS,
+    // o painel avisa ANTES de aprovar quando a ação ainda não tem destino
+    catalogo: require('./executor').catalogo(),
+    historico: repo.listar('gx_aprovacoes', {
+      onde: "status != 'pendente'", ordem: 'decidido_em DESC, criado_em DESC', limite: 20,
+    }),
   })));
 
   app.post(`${B}/aprovacoes/:id/decidir`, ...rota((req, res, a) => {
     rbac.exigir('aprovacao.decidir');
     return require('./aprovacoes').decidir(req.params.id, Object.assign({}, req.body || {}, { quem: a.id }));
+  }));
+
+  // ---- conexões e credenciais ----
+  // O corpo do POST carrega o token do assinante. Ele entra no cofre e não
+  // volta nunca: a resposta traz metadados e o resultado do teste de saúde.
+  app.get(`${B}/conexoes`, ...rota(() => {
+    const canais = require('./canais');
+    const segredos = require('./segredos');
+    const conexoes = canais.conexoes();
+    const meta = segredos.listar({ escopo: 'conexao' });
+    return {
+      conexoes: conexoes.map((c) => Object.assign({}, c, {
+        credenciais: meta.filter((m) => m.ref_id === c.id),
+      })),
+      vencendo: segredos.vencendo(15),
+      integracoes: require('./conectores').panorama(),
+    };
+  }));
+
+  app.post(`${B}/conexoes/:id/credencial`, ...rota((req, res, a) => {
+    rbac.exigir('integracao.conectar');
+    const b = req.body || {};
+    const r = require('./segredos').rotacionarCredencial({
+      escopo: 'conexao', refId: req.params.id,
+      chave: b.chave || 'access_token', valor: b.valor, expiraEm: b.expiraEm || '',
+    });
+    void a;
+    return r;   // { id, primeira_vez, saude } — nunca o valor
+  }));
+
+  app.post(`${B}/conexoes/:id/saude`, ...rota((req) => require('./canais').verificarSaude(req.params.id)));
+
+  // ---- segundo fator (MFA) ----
+  // Sempre do PRÓPRIO usuário logado: não existe rota para ligar/desligar
+  // MFA de outra pessoa. Nem o dono da conta faz isso pelo painel.
+  app.get(`${B}/mfa`, ...rota((req, res, a) => require('./mfa').estado(a.id)));
+
+  app.post(`${B}/mfa/iniciar`, ...rota((req, res, a) =>
+    require('./mfa').iniciar({ userId: a.id, email: a.email })));
+
+  app.post(`${B}/mfa/confirmar`, ...rota((req, res, a) =>
+    require('./mfa').confirmar({ userId: a.id, codigo: (req.body || {}).codigo })));
+
+  app.post(`${B}/mfa/recuperacao`, ...rota((req, res, a) => {
+    const mfa = require('./mfa');
+    if (!mfa.estado(a.id).ativo) { const e = new Error('Ative o segundo fator antes de gerar códigos.'); e.status = 409; throw e; }
+    return { recuperacao: mfa.gerarRecuperacao(a.id) };
+  }));
+
+  // Desligar exige a SENHA: sessão aberta num computador emprestado não
+  // pode bastar para remover o segundo fator.
+  app.post(`${B}/mfa/desativar`, ...rota((req, res, a) => {
+    const bcrypt = require('bcryptjs');
+    const { db } = require('../crm/db');
+    const u = db.prepare('SELECT senha_hash FROM tenant_users WHERE id = ?').get(a.id);
+    if (!u || !u.senha_hash || !bcrypt.compareSync(String((req.body || {}).senha || ''), u.senha_hash)) {
+      const e = new Error('Senha incorreta.'); e.status = 401; throw e;
+    }
+    return require('./mfa').desativar({ userId: a.id });
   }));
 
   // ---- assinatura e marca ----

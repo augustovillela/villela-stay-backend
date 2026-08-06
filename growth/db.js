@@ -41,6 +41,33 @@ const MIGRACOES = [
       }
     },
   },
+  {
+    // Rotação da chave-mestra: sem saber COM QUAL chave cada linha foi
+    // cifrada, trocar GROWTH_SECRET_KEY torna todo segredo ilegível em
+    // silêncio. A impressão digital da chave (8 hex do sha256) permite
+    // diagnosticar e re-cifrar em lote — e nunca revela a chave.
+    nome: 'gx-0002-segredos-impressao-da-chave',
+    aplicar() {
+      if (!temColuna('gx_segredos', 'chave_id')) {
+        db.exec("ALTER TABLE gx_segredos ADD COLUMN chave_id TEXT DEFAULT ''");
+      }
+    },
+  },
+  {
+    // Segundo fator no login do assinante. As colunas ficam em
+    // `tenant_users` (tabela do Villela CRM) porque é ali que a pessoa
+    // entra — o segredo TOTP em si vive cifrado no cofre, não aqui.
+    // Aditiva; o CRM não conhece estas colunas e continua funcionando.
+    nome: 'gx-0003-tenant-users-mfa',
+    aplicar() {
+      if (!temColuna('tenant_users', 'mfa_ativo')) {
+        db.exec('ALTER TABLE tenant_users ADD COLUMN mfa_ativo INTEGER DEFAULT 0');
+      }
+      if (!temColuna('tenant_users', 'mfa_ativado_em')) {
+        db.exec("ALTER TABLE tenant_users ADD COLUMN mfa_ativado_em TEXT DEFAULT ''");
+      }
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

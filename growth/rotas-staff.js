@@ -142,6 +142,13 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
   app.post('/staff/api/growth/incidentes/:id/fechar', admin, rota('fechar incidente', (req) =>
     incidentes.fechar(req.params.id, { obs: (req.body && req.body.obs) || '' })));
 
+  // ------------------------------------------------ cofre e chave-mestra
+  // Diagnóstico não decifra nada: compara impressões digitais. A rotação
+  // é retomável — rodar de novo continua de onde parou.
+  app.get('/staff/api/growth/cofre', admin, rota('diagnóstico da chave-mestra', () => segredos.diagnosticoChave()));
+  app.post('/staff/api/growth/cofre/rotacionar', admin, rota('rotacionar a chave do cofre', (req) =>
+    segredos.rotacionarChave({ limite: (req.body && req.body.limite) || 500 })));
+
   // ------------------------------------------------------- aprovações
   app.get('/staff/api/growth/aprovacoes', admin, rota('aprovações pendentes', () =>
     db.prepare("SELECT * FROM gx_aprovacoes WHERE status = 'pendente' ORDER BY criado_em ASC LIMIT 200").all()));

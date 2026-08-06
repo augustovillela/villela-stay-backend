@@ -62,7 +62,7 @@ function lanca(nome, fn, padrao) {
 
 // ------------------------------------------------------------- ambiente
 const growth = require('./index');
-const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores,
+const { tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila, aprovacoes, executor, mfa, incidentes, segredos, conectores,
   identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes, comercial } = growth;
 const { db, novoId, nowISO, j, TABELAS_TENANT } = require('./db');
 
@@ -175,6 +175,7 @@ teste('isolamento: varredura de todas as tabelas com tenant_id', () => {
   const problemas = [];
 
   db.exec('PRAGMA foreign_keys = OFF;');          // só para semear linhas sintéticas
+  const semeadas = [];                            // limpas no fim: são lixo de teste
   try {
     for (const tabela of alvo) {
       const cols = db.prepare(`PRAGMA table_info(${tabela})`).all();
@@ -191,6 +192,8 @@ teste('isolamento: varredura de todas as tabelas com tenant_id', () => {
       try {
         db.prepare(`INSERT INTO ${tabela} (${nomes.join(', ')}) VALUES (${nomes.map(n => ':' + n).join(', ')})`).run(dados);
       } catch (e) { problemas.push(`${tabela}: não deu para semear (${e.message})`); continue; }
+      const pk = cols.find((c) => c.pk && !/INT/i.test(c.type));
+      if (pk && dados[pk.name]) semeadas.push([tabela, pk.name, dados[pk.name]]);
 
       const visto = comoB(() => repo.contar(tabela));
       const esperado = tabela === 'gx_roles' ? sistemaRoles : 0;   // perfis de sistema são visíveis a todos
@@ -199,7 +202,16 @@ teste('isolamento: varredura de todas as tabelas com tenant_id', () => {
         problemas.push(`${tabela}: conta B enxergou ${visto}, esperado ${esperado + soDeB}`);
       }
     }
-  } finally { db.exec('PRAGMA foreign_keys = ON;'); }
+  } finally {
+    // A linha sintética já provou o que tinha de provar. Deixá-la para
+    // trás contamina os testes seguintes — foi o que fez a rotação do
+    // cofre acusar "segredo ilegível" que na verdade era lixo desta
+    // varredura, com cifra 'x'.
+    for (const [tabela, pk, id] of semeadas) {
+      try { db.prepare(`DELETE FROM ${tabela} WHERE ${pk} = ?`).run(id); } catch (_) { /* melhor esforço */ }
+    }
+    db.exec('PRAGMA foreign_keys = ON;');
+  }
 
   assert.strictEqual(problemas.length, 0, `VAZAMENTO ENTRE CONTAS → ${problemas.join(' · ')}`);
 });
@@ -507,6 +519,85 @@ teste('aprovações: pedido de uma conta não aparece na outra', () => {
   comoB(() => assert.strictEqual(aprovacoes.pendentes().length, 0, 'pedido de A apareceu em B'));
 });
 
+// --- executor: aprovar deixou de ser só registrar a decisão ----------
+growth.registrarHandlersDeFila();   // no servidor real isto roda no montar()
+
+teste('executor: toda ação executável do catálogo tem handler na fila', () => {
+  for (const acao of Object.keys(aprovacoes.ACOES)) {
+    if (aprovacoes.nivelDaAcao(acao) === 4) continue;
+    assert.ok(fila.registrado(`aprovacao:${acao}`), `sem handler para ${acao}`);
+  }
+});
+
+teste('executor: ação sem executor está DECLARADA, não descoberta na hora', () => {
+  const cat = executor.catalogo();
+  for (const c of cat) {
+    if (c.executavel) continue;
+    assert.ok(c.motivo, `${c.acao} não executa e não diz por quê`);
+    assert.ok(executor.SEM_DESTINO[c.acao], `${c.acao} deveria estar em SEM_DESTINO`);
+  }
+  assert.ok(cat.filter((c) => c.executavel).length >= 10, 'quase nada executa de verdade');
+});
+
+teste('executor: aprovar uma tarefa CRIA a tarefa e marca o pedido executada', () => {
+  const p = comoA(() => aprovacoes.solicitar({
+    acao: 'tarefa.criar', titulo: 'Ligar para o lead',
+    dados: { titulo: 'Ligar para o lead', venceEm: '2026-08-10' },
+  }));
+  const dec = comoA(() => aprovacoes.decidir(p.id, { decisao: 'aprovar', quem: 'augusto' }));
+  const job = db.prepare('SELECT * FROM gx_jobs WHERE id = ?').get(dec.job_id);
+  const r = fila.executar(job);
+  assert.ok(r.ok, `job falhou: ${r.erro}`);
+  const depois = comoA(() => repo.buscar('gx_aprovacoes', p.id));
+  assert.strictEqual(depois.status, 'executada', `pedido ficou ${depois.status}: ${depois.resultado}`);
+  const tarefas = comoA(() => repo.listar('crm_tarefas', { onde: "origem = 'aprovacao'", limite: 10 }));
+  assert.ok(tarefas.some((t) => t.titulo === 'Ligar para o lead'), 'a tarefa não foi criada');
+});
+
+teste('executor: entregar o mesmo job duas vezes não duplica o efeito', () => {
+  const p = comoA(() => aprovacoes.solicitar({ acao: 'tarefa.criar', dados: { titulo: 'Só uma vez' } }));
+  const dec = comoA(() => aprovacoes.decidir(p.id, { decisao: 'aprovar', quem: 'augusto' }));
+  const job = db.prepare('SELECT * FROM gx_jobs WHERE id = ?').get(dec.job_id);
+  fila.executar(job);
+  fila.executar(db.prepare('SELECT * FROM gx_jobs WHERE id = ?').get(dec.job_id));
+  const tarefas = comoA(() => repo.listar('crm_tarefas', { onde: "titulo = 'Só uma vez'", limite: 10 }));
+  assert.strictEqual(tarefas.length, 1, `criou ${tarefas.length} tarefas — handler não é idempotente`);
+});
+
+teste('executor: ação sem destino vai DIRETO para a DLQ, com o motivo', () => {
+  const p = comoA(() => aprovacoes.solicitar({ acao: 'servico.contratar', dados: { servico: 'x' } }));
+  const dec = comoA(() => aprovacoes.decidir(p.id, { decisao: 'aprovar', quem: 'augusto' }));
+  const job = db.prepare('SELECT * FROM gx_jobs WHERE id = ?').get(dec.job_id);
+  const r = fila.executar(job);
+  assert.strictEqual(r.ok, false);
+  assert.ok(r.dlq, 'gastou tentativas numa falha que nunca muda');
+  const depois = comoA(() => repo.buscar('gx_aprovacoes', p.id));
+  assert.strictEqual(depois.status, 'falhou');
+  assert.ok(/pessoa|dinheiro/i.test(depois.resultado), `motivo pouco útil: ${depois.resultado}`);
+});
+
+teste('executor: pedido com dado faltando recusa explicando o que faltou', () => {
+  const p = comoA(() => aprovacoes.solicitar({ acao: 'contato.atualizar', dados: {} }));
+  const dec = comoA(() => aprovacoes.decidir(p.id, { decisao: 'aprovar', quem: 'augusto' }));
+  const job = db.prepare('SELECT * FROM gx_jobs WHERE id = ?').get(dec.job_id);
+  const r = fila.executar(job);
+  assert.strictEqual(r.ok, false);
+  assert.ok(/contatoId/.test(r.erro), `erro não diz o que faltou: ${r.erro}`);
+});
+
+teste('executor: rascunho aprovado vira nota INTERNA, não mensagem ao cliente', () => {
+  const conv = comoA(() => conversas.localizarOuAbrir({ canal: 'chat_site', chaveExterna: 'exec-rascunho' }));
+  const p = comoA(() => aprovacoes.solicitar({
+    acao: 'rascunho.criar', dados: { conversaId: conv.id, texto: 'Proposta de resposta' },
+  }));
+  const dec = comoA(() => aprovacoes.decidir(p.id, { decisao: 'aprovar', quem: 'augusto' }));
+  fila.executar(db.prepare('SELECT * FROM gx_jobs WHERE id = ?').get(dec.job_id));
+  const msgs = comoA(() => repo.listar('gx_mensagens', { onde: 'conversa_id = :c', params: { c: conv.id }, limite: 20 }));
+  const nota = msgs.find((m) => m.texto === 'Proposta de resposta');
+  assert.ok(nota, 'o rascunho não foi gravado');
+  assert.strictEqual(Number(nota.interna), 1, 'o rascunho saiu como mensagem ao cliente');
+});
+
 // =====================================================================
 // 10. COFRE DE SEGREDOS
 // =====================================================================
@@ -537,6 +628,154 @@ teste('cofre: cifra adulterada não decifra (GCM autentica)', () => {
   adulterada[0] = adulterada[0] ^ 0xff;
   try { segredos.decifrar({ cifra: adulterada.toString('base64'), iv: c.iv, tag: c.tag }); falhas.push('cofre: decifrou cifra adulterada'); }
   catch (_) { ok++; }
+});
+
+// --- rotação: da credencial e da chave-mestra ------------------------
+teste('cofre: rotacionar credencial mantém legível e marca a troca', () => {
+  comoA(() => {
+    const r = segredos.rotacionarCredencial({ escopo: 'conexao', refId: 'con-1', chave: 'access_token', valor: 'TOKEN-NOVO-456' });
+    assert.strictEqual(r.primeira_vez, false, 'não percebeu que já existia');
+    assert.strictEqual(segredos.revelar({ escopo: 'conexao', refId: 'con-1', chave: 'access_token' }), 'TOKEN-NOVO-456');
+    const meta = segredos.listar({ escopo: 'conexao', refId: 'con-1' })[0];
+    assert.ok(meta.rotacionado_em, 'não registrou quando trocou');
+    assert.ok(!JSON.stringify(r).match(/TOKEN-NOVO/), 'o retorno da rotação vazou a credencial');
+  });
+});
+
+lanca('cofre: credencial vazia não substitui a que funciona',
+  () => comoA(() => segredos.rotacionarCredencial({ refId: 'con-1', chave: 'access_token', valor: '  ' })), /vazia/i);
+
+teste('cofre: trocar a chave-mestra SEM rotacionar torna o segredo ilegível', () => {
+  const nova = require('crypto').randomBytes(32).toString('hex');
+  process.env.GROWTH_SECRET_KEY = nova;
+  delete process.env.GROWTH_SECRET_KEY_ANTERIOR;
+  try {
+    comoA(() => segredos.revelar({ escopo: 'conexao', refId: 'con-1', chave: 'access_token' }));
+    falhas.push('cofre: decifrou com a chave errada');
+  } catch (_) { ok++; }
+  // o diagnóstico VÊ o problema sem decifrar nada
+  const diag = comoPlat(() => segredos.diagnosticoChave());
+  assert.ok(diag.pendentes_de_rotacao > 0, 'o diagnóstico não viu segredo na chave antiga');
+  assert.ok(!diag.pronto_para_remover_a_anterior);
+  process.env.GROWTH_SECRET_KEY = CHAVE_COFRE;   // volta ao estado anterior
+});
+
+teste('cofre: rotação re-cifra tudo e só então libera apagar a chave velha', () => {
+  const nova = require('crypto').randomBytes(32).toString('hex');
+  process.env.GROWTH_SECRET_KEY_ANTERIOR = CHAVE_COFRE;
+  process.env.GROWTH_SECRET_KEY = nova;
+
+  // durante a rotação, a chave anterior ainda abre o que falta
+  assert.strictEqual(comoA(() => segredos.revelar({ escopo: 'conexao', refId: 'con-1', chave: 'access_token' })), 'TOKEN-NOVO-456');
+
+  const r = comoPlat(() => segredos.rotacionarChave());
+  assert.ok(r.rotacionados > 0, 'não rotacionou nada');
+  assert.strictEqual(r.ilegiveis, 0, 'ficou segredo ilegível');
+  assert.strictEqual(r.pendentes_de_rotacao, 0, `sobraram ${r.pendentes_de_rotacao} na chave antiga`);
+  assert.ok(r.pronto_para_remover_a_anterior, 'não liberou apagar a chave anterior');
+
+  // agora a chave nova basta, sozinha
+  delete process.env.GROWTH_SECRET_KEY_ANTERIOR;
+  assert.strictEqual(comoA(() => segredos.revelar({ escopo: 'conexao', refId: 'con-1', chave: 'access_token' })), 'TOKEN-NOVO-456');
+
+  // rodar de novo é inócuo: nada mais está na chave velha
+  const r2 = comoPlat(() => segredos.rotacionarChave());
+  assert.strictEqual(r2.rotacionados, 0, 'rotacionou de novo o que já estava certo');
+  process.env.GROWTH_SECRET_KEY = nova;   // segue com a nova a partir daqui
+});
+
+// --- MFA (TOTP) ------------------------------------------------------
+teste('mfa: base32 vai e volta sem perder byte', () => {
+  const bytes = require('crypto').randomBytes(20);
+  assert.ok(mfa.deBase32(mfa.base32(bytes)).equals(bytes), 'base32 não é reversível');
+});
+
+teste('mfa: o código bate com o vetor de teste da RFC 4226', () => {
+  // segredo "12345678901234567890" em base32, contadores 0..2 da RFC
+  const seg = mfa.base32(Buffer.from('12345678901234567890', 'utf8'));
+  assert.strictEqual(mfa.codigoEm(seg, 0), '755224');
+  assert.strictEqual(mfa.codigoEm(seg, 1), '287082');
+  assert.strictEqual(mfa.codigoEm(seg, 2), '359152');
+});
+
+teste('mfa: aceita a janela vizinha e recusa a distante', () => {
+  const seg = mfa.base32(require('crypto').randomBytes(20));
+  const agora = 1786000000000;
+  const janela = Math.floor(agora / 1000 / 30);
+  assert.ok(mfa.conferirCodigo(seg, mfa.codigoEm(seg, janela), agora), 'recusou o código atual');
+  assert.ok(mfa.conferirCodigo(seg, mfa.codigoEm(seg, janela - 1), agora), 'recusou a janela anterior');
+  assert.ok(!mfa.conferirCodigo(seg, mfa.codigoEm(seg, janela - 5), agora), 'aceitou código velho demais');
+  assert.ok(!mfa.conferirCodigo(seg, '000', agora), 'aceitou código curto');
+});
+
+let MFA_USER = null;
+teste('mfa: ativar exige confirmar com código válido antes de valer', () => {
+  MFA_USER = 'tu-mfa-teste';
+  db.prepare('INSERT OR REPLACE INTO tenant_users (id, tenant_id, nome, email, papel, ativo, senha_hash, criado_em) VALUES (?,?,?,?,?,?,?,?)')
+    .run(MFA_USER, TA, 'Dona MFA', 'mfa@teste.local', 'owner', 1, require('bcryptjs').hashSync('SenhaTeste!2026', 4), nowISO());
+
+  comoA(() => {
+    const inicio = mfa.iniciar({ userId: MFA_USER, email: 'mfa@teste.local' });
+    assert.ok(/^[A-Z2-7]{32}$/.test(inicio.segredo), 'segredo fora do formato base32');
+    assert.ok(inicio.uri.startsWith('otpauth://totp/'), 'sem URI de autenticador');
+    // ainda NÃO está ativo: segredo mal copiado não pode trancar ninguém fora
+    assert.strictEqual(mfa.estado(MFA_USER).ativo, false, 'ligou o MFA antes de confirmar');
+
+    try { mfa.confirmar({ userId: MFA_USER, codigo: '000000' }); falhas.push('mfa: confirmou com código errado'); }
+    catch (e) { assert.ok(/incorreto/i.test(e.message)); }
+
+    const r = mfa.confirmar({ userId: MFA_USER, codigo: mfa.codigoEm(inicio.segredo, Math.floor(Date.now() / 1000 / 30)) });
+    assert.strictEqual(r.ativo, true);
+    assert.strictEqual(r.recuperacao.length, 8, 'não entregou os 8 códigos de recuperação');
+    assert.strictEqual(mfa.estado(MFA_USER).ativo, true);
+  });
+});
+
+teste('mfa: o segredo fica no cofre, cifrado, e não em coluna aberta', () => {
+  const linha = db.prepare('SELECT * FROM tenant_users WHERE id = ?').get(MFA_USER);
+  assert.ok(!JSON.stringify(linha).match(/[A-Z2-7]{32}/), 'o segredo TOTP vazou para tenant_users');
+  const cofre = comoA(() => segredos.listar({ escopo: 'mfa', refId: MFA_USER }));
+  assert.ok(cofre.length >= 1, 'o segredo não foi para o cofre');
+  assert.ok(!JSON.stringify(cofre).match(/cifra|iv|tag/), 'a listagem expôs material criptográfico');
+});
+
+teste('mfa: código de recuperação serve UMA vez', () => {
+  comoA(() => {
+    const codigos = mfa.gerarRecuperacao(MFA_USER);
+    assert.strictEqual(mfa.recuperacaoRestantes(MFA_USER), 8);
+    const r1 = mfa.verificarLogin({ userId: MFA_USER, codigo: codigos[0] });
+    assert.ok(r1.ok && r1.via === 'recuperacao');
+    assert.strictEqual(mfa.recuperacaoRestantes(MFA_USER), 7);
+    assert.strictEqual(mfa.verificarLogin({ userId: MFA_USER, codigo: codigos[0] }).ok, false, 'aceitou o mesmo código duas vezes');
+  });
+});
+
+teste('mfa: código de recuperação de uma conta não vale na outra', () => {
+  const codigos = comoA(() => mfa.gerarRecuperacao(MFA_USER));
+  // no contexto da conta B, o mesmo código não encontra nada: o segredo e
+  // os códigos vivem sob o tenant, como qualquer outro dado
+  comoB(() => {
+    assert.strictEqual(repo.contar('gx_mfa_recuperacao'), 0, 'a conta B enxergou códigos da conta A');
+    assert.strictEqual(mfa.usarRecuperacao(MFA_USER, codigos[0]), false, 'a conta B gastou um código da conta A');
+  });
+  comoA(() => assert.ok(mfa.verificarLogin({ userId: MFA_USER, codigo: codigos[0] }).ok, 'o código não valeu na própria conta'));
+});
+
+teste('mfa: desativar apaga segredo e códigos', () => {
+  comoA(() => {
+    mfa.desativar({ userId: MFA_USER });
+    assert.strictEqual(mfa.estado(MFA_USER).ativo, false);
+    assert.strictEqual(mfa.recuperacaoRestantes(MFA_USER), 0);
+    assert.strictEqual(segredos.revelar({ escopo: 'mfa', refId: MFA_USER, chave: 'totp' }), null);
+  });
+});
+
+teste('cofre: a impressão digital identifica a chave mas não a revela', () => {
+  const id = segredos.chaveAtualId();
+  assert.strictEqual(id.length, 8, 'impressão com tamanho inesperado');
+  assert.ok(!process.env.GROWTH_SECRET_KEY.includes(id) || id.length === 8, 'impressão suspeita');
+  const diag = comoPlat(() => segredos.diagnosticoChave());
+  assert.ok(!JSON.stringify(diag).includes(process.env.GROWTH_SECRET_KEY), 'o diagnóstico vazou a chave');
 });
 
 // =====================================================================

@@ -39,6 +39,28 @@ function registrarRotasCliente(app, { jwtSecret }) {
 
   app.use('/crm/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
+  // Abre a sessão de verdade. Um só lugar cria o cookie — com ou sem MFA.
+  const abrirSessao = (res, u) => {
+    db.prepare('UPDATE tenant_users SET ultimo_login = ? WHERE id = ?').run(nowISO(), u.id);
+    const token = jwt.sign({ uid: u.id }, jwtSecret, { expiresIn: '30d' });
+    res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/crm' });
+    res.json({ ok: true });
+  };
+
+  /**
+   * Segundo fator (Villela Growth OS). `require` tardio de propósito: o
+   * módulo growth já depende de `crm/db`, e exigi-lo no topo daqui fecharia
+   * um ciclo. Em tempo de requisição tudo já está carregado.
+   * Se o módulo não estiver montado, o login segue sem MFA em vez de cair.
+   */
+  const mfaDe = (u) => {
+    if (!u.mfa_ativo) return null;
+    try {
+      const growth = require('../growth');
+      return { mfa: require('../growth/mfa'), comTenant: growth.tenancy.comTenant };
+    } catch (_) { return null; }
+  };
+
   app.post('/crm/api/login', h(async (req, res) => {
     const ip = ipDe(req);
     if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente em 15 minutos.' });
@@ -48,10 +70,34 @@ function registrarRotasCliente(app, { jwtSecret }) {
       falha(ip); return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
     }
     tentativas.delete(ip);
-    db.prepare('UPDATE tenant_users SET ultimo_login = ? WHERE id = ?').run(nowISO(), u.id);
-    const token = jwt.sign({ uid: u.id }, jwtSecret, { expiresIn: '30d' });
-    res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/crm' });
-    res.json({ ok: true });
+
+    // senha certa + MFA ligado = ainda NÃO é sessão: é um desafio de 5 min
+    if (mfaDe(u)) {
+      const desafio = jwt.sign({ uid: u.id, tipo: 'crm-mfa' }, jwtSecret, { expiresIn: '5m' });
+      return res.json({ ok: false, mfa: true, desafio });
+    }
+    abrirSessao(res, u);
+  }));
+
+  app.post('/crm/api/login/mfa', h(async (req, res) => {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente em 15 minutos.' });
+    let dec;
+    try { dec = jwt.verify(s((req.body || {}).desafio, 4000), jwtSecret); } catch (_) { return res.status(401).json({ erro: 'Desafio expirado. Entre de novo.' }); }
+    if (dec.tipo !== 'crm-mfa') return res.status(400).json({ erro: 'Desafio inválido.' });
+
+    const u = db.prepare('SELECT * FROM tenant_users WHERE id = ? AND ativo = 1').get(dec.uid);
+    if (!u) return res.status(401).json({ erro: 'Usuário inativo.' });
+    const dep = mfaDe(u);
+    if (!dep) return res.status(409).json({ erro: 'Este usuário não tem segundo fator ativo.' });
+
+    const r = dep.comTenant({ tenantId: u.tenant_id, userId: u.id }, () =>
+      dep.mfa.verificarLogin({ userId: u.id, codigo: s((req.body || {}).codigo, 40) }));
+    // código errado conta como tentativa: senão o segundo fator vira só
+    // um campo a mais para tentar à vontade
+    if (!r.ok) { falha(ip); return res.status(401).json({ erro: 'Código incorreto ou já usado.' }); }
+    tentativas.delete(ip);
+    abrirSessao(res, u);
   }));
   app.post('/crm/api/logout', (req, res) => { res.clearCookie(COOKIE, { path: '/crm' }); res.json({ ok: true }); });
 

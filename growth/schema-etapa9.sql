@@ -43,3 +43,19 @@ CREATE TABLE IF NOT EXISTS gx_dominios (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_gx_dominios ON gx_dominios(dominio);
 CREATE INDEX IF NOT EXISTS idx_gx_dominios_tenant ON gx_dominios(tenant_id, status);
+
+-- ---------------------------------------------------------------------
+-- Segundo fator (MFA/TOTP). O SEGREDO fica no cofre (gx_segredos, escopo
+-- 'mfa'), cifrado — aqui só moram os códigos de recuperação, e mesmo eles
+-- só como hash: um código de recuperação legível no banco é uma senha
+-- mestra em texto puro.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS gx_mfa_recuperacao (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  user_id     TEXT NOT NULL,
+  codigo_hash TEXT NOT NULL,
+  usado_em    TEXT DEFAULT '',
+  criado_em   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_gx_mfa_rec ON gx_mfa_recuperacao(tenant_id, user_id, usado_em);

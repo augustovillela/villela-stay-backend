@@ -83,12 +83,12 @@ function executar(job) {
       // handler assíncrono: o lote não espera — conclui quando resolver
       return resultado.then(
         (r) => concluir(job, r),
-        (e) => falhar(job, e && e.message ? e.message : String(e))
+        (e) => falhar(job, e && e.message ? e.message : String(e), { permanente: !!(e && e.permanente) })
       );
     }
     return concluir(job, resultado);
   } catch (e) {
-    return falhar(job, e && e.message ? e.message : String(e));
+    return falhar(job, e && e.message ? e.message : String(e), { permanente: !!(e && e.permanente) });
   }
 }
 
@@ -98,9 +98,14 @@ function concluir(job, resultado) {
   return { ok: true, id: job.id };
 }
 
-function falhar(job, mensagem, { semHandler = false } = {}) {
+/**
+ * `permanente` = o motivo não muda com o tempo (ação sem destino, pedido
+ * que não existe mais, payload inválido). Repetir 5 vezes só atrasa o
+ * diagnóstico — vai direto para a DLQ, que é onde alguém olha.
+ */
+function falhar(job, mensagem, { semHandler = false, permanente = false } = {}) {
   const tentativas = Number(job.tentativas || 0) + 1;
-  const esgotou = semHandler || tentativas >= Number(job.max_tentativas || 5);
+  const esgotou = semHandler || permanente || tentativas >= Number(job.max_tentativas || 5);
   if (esgotou) {
     db.prepare("UPDATE gx_jobs SET status = 'dlq', ultimo_erro = ?, concluido_em = ? WHERE id = ?")
       .run(String(mensagem).slice(0, 500), nowISO(), job.id);

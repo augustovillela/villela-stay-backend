@@ -138,9 +138,20 @@
       const r = await api('/aprovacoes');
       if (!r.atual()) return;
       const d = r.dados;
+      const semDestino = {};
+      for (const c of d.catalogo || []) if (!c.executavel) semDestino[c.acao] = c.motivo;
+
+      const historico = (d.historico || []).length ? `<h3 style="margin:22px 0 8px">Decididas recentemente</h3>
+        <div class="card"><table><thead><tr><th>Ação</th><th>Decisão</th><th>Desfecho</th><th>Quando</th></tr></thead><tbody>
+        ${d.historico.map((h) => `<tr><td>${esc(h.titulo || h.acao)}</td>
+          <td><span class="chip ${h.status === 'rejeitada' ? 'frio' : ''}">${esc(h.status)}</span></td>
+          <td>${esc(h.resultado || (h.status === 'aprovada' ? 'na fila' : '—'))}</td>
+          <td>${esc(dataHora(h.decidido_em || h.criado_em))}</td></tr>`).join('')}
+        </tbody></table></div>` : '';
+
       if (!d.pendentes.length) {
         tela('<h2 style="margin:.2rem 0">Aprovações</h2>' + vazio('Nada esperando por você',
-          'Ações de risco propostas por agentes ou automações aparecem aqui antes de acontecer.'));
+          'Ações de risco propostas por agentes ou automações aparecem aqui antes de acontecer.') + historico);
         return;
       }
       tela(`<h2 style="margin:.2rem 0">Aprovações</h2>
@@ -153,10 +164,15 @@
           </div>
           ${p.justificativa ? `<p style="margin:8px 0 0">${esc(p.justificativa)}</p>` : ''}
           ${p.impacto ? `<p class="aviso" style="margin:8px 0 0">${esc(p.impacto)}</p>` : ''}
+          ${semDestino[p.acao] ? `<div class="vx-alerta vx-alerta--warn" style="margin:8px 0 0">
+            <span class="vx-alerta-ico" aria-hidden="true">⚠️</span>
+            <div><b>Aprovar aqui autoriza, mas não executa.</b>
+            <p class="vx-mb0">Esta ação ainda não tem execução automática: ${esc(semDestino[p.acao])}.</p></div></div>` : ''}
           <div style="margin-top:10px;display:flex;gap:8px">
             <button class="btn peq" data-aprovar="${esc(p.id)}">Aprovar</button>
             <button class="btn peq secund" data-rejeitar="${esc(p.id)}">Rejeitar</button>
-          </div></div>`).join('')}`);
+          </div></div>`).join('')}
+        ${historico}`);
 
       const decidir = async (id, decisao) => {
         try { await api('/aprovacoes/' + encodeURIComponent(id) + '/decidir', {
@@ -259,6 +275,176 @@
     <div class="aviso" style="margin-top:12px"><b>O que este cálculo não enxerga:</b>
       <ul style="margin:6px 0 0;padding-left:18px">${(d.limitacoes || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`);
 
+  // ----------------------------------------------------------- CONEXÕES
+  async function vConexoes() {
+    carregando();
+    try {
+      const r = await api('/conexoes');
+      if (!r.atual()) return;
+      const d = r.dados;
+
+      const cartao = (c) => {
+        const cred = (c.credenciais || [])[0];
+        const alerta = cred && cred.vencido ? 'muito-quente' : (cred && cred.chave_antiga ? 'quente' : '');
+        return `<div class="card" style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
+            <div><b>${esc(c.nome || c.integracao)}</b>
+              <div style="font-size:.85rem;color:#5b6b70">${esc(CANAL[c.canal] || c.canal)} ·
+                <span class="chip ${c.status === 'ativa' ? '' : 'frio'}">${esc(c.status)}</span>
+                ${c.verificado_em ? `· verificada em ${esc(dataHora(c.verificado_em))}`
+                  : '· <b>nunca verificada</b>'}</div></div>
+            <button class="btn peq secund" data-saude="${esc(c.id)}">Testar conexão</button>
+          </div>
+          ${cred ? `<p style="margin:8px 0 0;font-size:.9rem">Credencial <code>${esc(cred.chave)}</code>
+            ${cred.rotacionado_em ? `· trocada em ${esc(dataHora(cred.rotacionado_em))}` : '· nunca trocada'}
+            ${cred.expira_em ? `· expira em ${esc(cred.expira_em)}` : ''}
+            ${alerta ? `<span class="chip ${alerta}">${cred.vencido ? 'vencida' : 'na chave antiga'}</span>` : ''}</p>`
+            : '<p style="margin:8px 0 0;font-size:.9rem;color:#5b6b70">Sem credencial guardada.</p>'}
+          <details style="margin-top:10px"><summary style="cursor:pointer">Trocar credencial</summary>
+            <div style="margin-top:8px;display:grid;gap:8px;max-width:520px">
+              <input data-campo="chave" data-conexao="${esc(c.id)}" placeholder="nome da chave (ex.: access_token)" value="${esc((cred && cred.chave) || 'access_token')}">
+              <input data-campo="valor" data-conexao="${esc(c.id)}" type="password" autocomplete="off" placeholder="cole aqui a credencial nova">
+              <input data-campo="expira" data-conexao="${esc(c.id)}" placeholder="expira em (AAAA-MM-DD, opcional)" value="${esc((cred && cred.expira_em) || '')}">
+              <div><button class="btn peq" data-trocar="${esc(c.id)}">Guardar e testar</button></div>
+              <p style="font-size:.85rem;color:#5b6b70;margin:0">A credencial vai cifrada para o cofre e não volta para esta tela nunca mais — nem para nós.</p>
+            </div></details></div>`;
+      };
+
+      tela(`<h2 style="margin:.2rem 0">Conexões</h2>
+        ${d.vencendo.length ? `<div class="aviso"><b>${d.vencendo.length}</b> credencial(is) vencendo nos próximos 15 dias.</div>` : ''}
+        ${d.conexoes.length ? d.conexoes.map(cartao).join('')
+          : vazio('Nenhum canal conectado', 'Conecte um canal para receber mensagens, publicar conteúdo ou importar métricas.')}
+        <h3 style="margin:22px 0 8px">Integrações disponíveis</h3>
+        <div class="card"><table><thead><tr><th>Integração</th><th>Situação</th><th>Verificada</th></tr></thead><tbody>
+        ${(d.integracoes || []).map((i) => `<tr><td>${esc(i.nome || i.chave)}</td>
+          <td><span class="chip ${i.status === 'ativa' ? '' : 'frio'}">${esc(i.status)}</span></td>
+          <td>${esc(i.verificado_em || '—')}</td></tr>`).join('')}
+        </tbody></table>
+        <p style="font-size:.85rem;color:#5b6b70;margin:10px 0 0">Integração em <b>planejada</b> não tem endpoint implementado: o contrato está declarado, mas nada é enviado.</p></div>`);
+
+      const valor = (id, campo) => {
+        const el = document.querySelector(`#tela [data-campo="${campo}"][data-conexao="${id}"]`);
+        return el ? el.value : '';
+      };
+      document.querySelectorAll('#tela [data-trocar]').forEach((b) => {
+        b.onclick = async () => {
+          const id = b.dataset.trocar;
+          if (!valor(id, 'valor').trim()) { alert('Cole a credencial nova.'); return; }
+          b.disabled = true;
+          try {
+            const r2 = await api('/conexoes/' + encodeURIComponent(id) + '/credencial', {
+              method: 'POST', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ chave: valor(id, 'chave'), valor: valor(id, 'valor'), expiraEm: valor(id, 'expira') }),
+            });
+            const s = r2.dados.saude;
+            alert(s && s.ok ? 'Credencial guardada e conexão respondeu.'
+              : `Credencial guardada, mas a conexão não respondeu: ${(s && (s.motivo || s.erro)) || 'sem detalhe'}.`);
+            vConexoes();
+          } catch (e) { b.disabled = false; alert(e.message); }
+        };
+      });
+      document.querySelectorAll('#tela [data-saude]').forEach((b) => {
+        b.onclick = async () => {
+          b.disabled = true;
+          try {
+            const r2 = await api('/conexoes/' + encodeURIComponent(b.dataset.saude) + '/saude', { method: 'POST' });
+            alert(r2.dados.ok ? 'Conexão respondeu.' : `Não respondeu: ${r2.dados.motivo || 'sem detalhe'}.`);
+          } catch (e) { alert(e.message); }
+          b.disabled = false;
+        };
+      });
+    } catch (e) { erro(e); }
+  }
+
+  // --------------------------------------------------------- SEGURANÇA
+  const listaCodigos = (codigos) => `<div class="vx-alerta vx-alerta--warn" style="margin-top:12px">
+    <span class="vx-alerta-ico" aria-hidden="true">🔑</span>
+    <div><b>Guarde estes códigos agora.</b>
+      <p>Cada um serve UMA vez, para entrar sem o celular. Eles não voltam a aparecer.</p>
+      <p style="font-family:ui-monospace,monospace;line-height:1.9;margin:0">${codigos.map((c) => esc(c)).join('<br>')}</p>
+    </div></div>`;
+
+  async function vSeguranca() {
+    carregando();
+    try {
+      const r = await api('/mfa');
+      if (!r.atual()) return;
+      const d = r.dados;
+
+      if (!d.cofre_ok) {
+        tela(`<h2 style="margin:.2rem 0">Segurança</h2>
+          <div class="vx-alerta vx-alerta--danger"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span>
+          <div><b>Segundo fator indisponível</b><p class="vx-mb0">O cofre de credenciais não está configurado no servidor, e sem ele o segredo do seu autenticador não pode ser guardado com segurança.</p></div></div>`);
+        return;
+      }
+
+      if (d.ativo) {
+        tela(`<h2 style="margin:.2rem 0">Segurança</h2>
+          <div class="card"><h3 style="margin:.2rem 0">Segundo fator <span class="chip">ativo</span></h3>
+            <p>Ligado em ${esc(dataHora(d.ativado_em))} · <b>${d.recuperacao_restantes}</b> código(s) de recuperação sem uso.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+              <button class="btn peq secund" id="mfa-novos">Gerar novos códigos de recuperação</button>
+            </div>
+            <details style="margin-top:14px"><summary style="cursor:pointer">Desligar o segundo fator</summary>
+              <div style="margin-top:8px;display:grid;gap:8px;max-width:420px">
+                <input id="mfa-senha" type="password" autocomplete="current-password" placeholder="confirme sua senha">
+                <div><button class="btn peq secund" id="mfa-off">Desligar</button></div>
+              </div></details>
+            <div id="mfa-saida"></div></div>`);
+
+        $('#mfa-novos').onclick = async () => {
+          try {
+            const r2 = await api('/mfa/recuperacao', { method: 'POST' });
+            $('#mfa-saida').innerHTML = listaCodigos(r2.dados.recuperacao);
+          } catch (e) { alert(e.message); }
+        };
+        $('#mfa-off').onclick = async () => {
+          try {
+            await api('/mfa/desativar', {
+              method: 'POST', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ senha: $('#mfa-senha').value }),
+            });
+            vSeguranca();
+          } catch (e) { alert(e.message); }
+        };
+        return;
+      }
+
+      tela(`<h2 style="margin:.2rem 0">Segurança</h2>
+        <div class="card"><h3 style="margin:.2rem 0">Segundo fator <span class="chip frio">desligado</span></h3>
+          <p class="sub" style="text-align:left">Com ele, sua senha sozinha não abre a conta: falta um código que só existe no seu celular.</p>
+          <button class="btn peq" id="mfa-on" style="margin-top:8px">Ativar</button>
+          <div id="mfa-saida"></div></div>`);
+
+      $('#mfa-on').onclick = async () => {
+        try {
+          const r2 = await api('/mfa/iniciar', { method: 'POST' });
+          const s = r2.dados;
+          $('#mfa-saida').innerHTML = `<div style="margin-top:14px;max-width:520px">
+            <p><b>1.</b> No seu autenticador (Google Authenticator, Authy, 1Password…), escolha
+              <i>inserir chave manualmente</i> e cole:</p>
+            <p style="font-family:ui-monospace,monospace;font-size:1.1rem;word-break:break-all;background:#f3f5f8;padding:10px;border-radius:8px">${esc(s.segredo)}</p>
+            <p style="font-size:.85rem;color:#5b6b70">Ou abra este link no celular: <a href="${esc(s.uri)}">${esc(s.uri.slice(0, 60))}…</a></p>
+            <p><b>2.</b> Digite o código de 6 dígitos que aparecer:</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input id="mfa-cod" inputmode="numeric" maxlength="6" placeholder="000000" style="max-width:140px">
+              <button class="btn peq" id="mfa-conf">Confirmar</button>
+            </div><div id="mfa-fim"></div></div>`;
+          $('#mfa-conf').onclick = async () => {
+            try {
+              const r3 = await api('/mfa/confirmar', {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ codigo: $('#mfa-cod').value.trim() }),
+              });
+              $('#mfa-fim').innerHTML = listaCodigos(r3.dados.recuperacao) +
+                '<p style="margin-top:10px">Pronto. Da próxima vez que entrar, o código será pedido.</p>';
+            } catch (e) { alert(e.message); }
+          };
+        } catch (e) { alert(e.message); }
+      };
+    } catch (e) { erro(e); }
+  }
+
   // --------------------------------------------------------- ASSINATURA
   const vAssinatura = view('/assinatura', (d) => `<h2 style="margin:.2rem 0">Seu plano</h2>
     <div class="card" style="margin-bottom:12px">
@@ -287,13 +473,15 @@
       ['gx_reputacao', '', 'Crescimento', '⭐', 'Reputação', 'reputacao'],
       ['gx_agentes', '', 'Inteligência', '🧠', 'Agentes', 'ia'],
       ['gx_aprovacoes', '', 'Governança', '✋', 'Aprovações', ''],
+      ['gx_conexoes', '', 'Governança', '🔌', 'Conexões', ''],
+      ['gx_seguranca', '', 'Conta', '🔒', 'Segurança', ''],
       ['gx_assinatura', '', 'Conta', '💳', 'Plano e uso', ''],
     ],
     vistas: {
       gx_visao: vVisao, gx_inbox: vInbox, gx_reunioes: vReunioes,
       gx_automacoes: vAutomacoes, gx_conteudo: vConteudo, gx_anuncios: vAtribuicao,
       gx_reputacao: vReputacao, gx_agentes: vAgentes, gx_aprovacoes: vAprovacoes,
-      gx_assinatura: vAssinatura,
+      gx_conexoes: vConexoes, gx_seguranca: vSeguranca, gx_assinatura: vAssinatura,
     },
   };
 })();

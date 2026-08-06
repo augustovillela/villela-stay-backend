@@ -6,6 +6,9 @@
 process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'crm-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
 process.env.CRM_ROTINAS = 'off';
+// o teste de MFA usa o cofre do Growth OS (o segredo TOTP é credencial)
+process.env.GROWTH_SECRET_KEY = process.env.GROWTH_SECRET_KEY || require('crypto').randomBytes(32).toString('hex');
+process.env.GROWTH_WORKER = 'off';
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -374,6 +377,40 @@ async function rodar() {
     assert.equal((await req('GET', '/crm/api/app/contatos/' + leadId, { cookies: true })).st, 404);
     assert.equal(require('./db').db.prepare('SELECT COUNT(*) n FROM crm_atividades WHERE contato_id = ?').get(leadId).n, 0);
   });
+  await t('MFA: com segundo fator, senha certa não abre sessão sozinha', async () => {
+    const { db } = require('./db');
+    const growth = require('../growth');
+    const mfa = require('../growth/mfa');
+    const u = db.prepare("SELECT * FROM tenant_users WHERE lower(email) = 'bia@beta.br'").get();
+
+    const inicio = growth.tenancy.comTenant({ tenantId: u.tenant_id, userId: u.id },
+      () => mfa.iniciar({ userId: u.id, email: u.email }));
+    const codigo = mfa.codigoEm(inicio.segredo, Math.floor(Date.now() / 1000 / 30));
+    growth.tenancy.comTenant({ tenantId: u.tenant_id, userId: u.id },
+      () => mfa.confirmar({ userId: u.id, codigo }));
+
+    // 1) senha certa devolve DESAFIO, não sessão
+    const login = await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'SenhaForte1' } });
+    assert.equal(login.st, 200);
+    assert.equal(login.json.mfa, true, 'entrou sem pedir o segundo fator');
+    assert.ok(login.json.desafio, 'não devolveu desafio');
+    assert.ok(!login.json.ok, 'declarou sessão aberta sem o segundo fator');
+
+    // 2) código errado não abre
+    assert.equal((await req('POST', '/crm/api/login/mfa', { corpo: { desafio: login.json.desafio, codigo: '000000' } })).st, 401);
+
+    // 3) código certo abre
+    const ok = await req('POST', '/crm/api/login/mfa', {
+      corpo: { desafio: login.json.desafio, codigo: mfa.codigoEm(inicio.segredo, Math.floor(Date.now() / 1000 / 30)) },
+      cookies: true,
+    });
+    assert.equal(ok.st, 200);
+    assert.equal((await req('GET', '/crm/api/me', { cookies: true })).st, 200, 'a sessão não abriu');
+
+    // limpa para não afetar os testes seguintes
+    growth.tenancy.comTenant({ tenantId: u.tenant_id, userId: u.id }, () => mfa.desativar({ userId: u.id }));
+  });
+
   await t('login errado 5x → 429', async () => {
     for (let i = 0; i < 5; i++) await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'errada' } });
     assert.equal((await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'SenhaForte1' } })).st, 429);

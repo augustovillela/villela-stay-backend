@@ -47,6 +47,8 @@ const atribuicao = require('./atribuicao');
 const reputacao = require('./reputacao');
 const reunioes = require('./reunioes');
 const comercial = require('./comercial');
+const executor = require('./executor');
+const mfa = require('./mfa');
 
 let _timer = null;
 
@@ -84,7 +86,7 @@ function montar(app, injected = {}) {
     `e-mail: ${statusEmail} · IA: ${agentes.temChaveLLM() ? 'llm disponivel' : 'so regras'} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );
   return {
-    repo, contas, rbac, entitlements, eventos, fila, aprovacoes, incidentes, segredos, conectores, sessao,
+    repo, contas, rbac, entitlements, eventos, fila, aprovacoes, executor, incidentes, segredos, conectores, sessao, mfa,
     identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes, comercial,
   };
 }
@@ -100,16 +102,12 @@ function semear() {
   return { org: org && org.slug, perfis, integracoes, planos };
 }
 
-/**
- * Handlers de fila da Etapa 1. Ação aprovada ainda não tem executor real —
- * e é assim que tem de ser: sem módulo de destino, a execução falha com
- * mensagem clara em vez de fingir que funcionou.
- */
+/** Handlers de fila: um por tipo de trabalho durável do módulo. */
 function registrarHandlersDeFila() {
-  fila.registrar('aprovacao:executar', (payload) => {
-    const e = new Error(`Sem executor para a ação "${payload.acao}" — o módulo de destino ainda não existe.`);
-    e.status = 501; throw e;
-  });
+  // Ação aprovada agora tem destino: `executor.js` registra um handler por
+  // ação do catálogo. As três que ainda não têm executor recusam com o
+  // motivo, em vez de morrer com "sem handler registrado".
+  executor.registrarHandlers();
   // Etapa 3: a entrega da mensagem é job — retry, timeout e DLQ como
   // qualquer trabalho. Falhar aqui não perde a mensagem.
   fila.registrar('mensagem:entregar', (payload) => canais.entregar(payload));
@@ -119,19 +117,8 @@ function registrarHandlersDeFila() {
   // Etapa 6: publicar em rede social e importar metrica sao jobs — a rede
   // pode estar fora do ar, e a fila reagenda sem perder o conteudo.
   fila.registrar('conteudo:publicar', (payload) => conteudo.publicar(payload));
-  // Etapa 7: a alteracao de orcamento aprovada e aplicada AQUI, nunca no
-  // momento do pedido. Sem aprovacao registrada, aplicarAlteracao recusa.
   // Etapa 8: lembrete de reuniao e job agendado.
   fila.registrar('reuniao:lembrete', (payload) => reunioes.enviarLembrete(payload));
-  fila.registrar('aprovacao:anuncio.orcamento_alterar', (payload) => {
-    const dados = payload.dados || {};
-    const alt = repo.um(
-      "SELECT * FROM gx_orcamento_alteracoes WHERE tenant_id = :tenant AND campanha_id = :c AND status = 'aguardando' " +
-      'ORDER BY criado_em DESC LIMIT 1', { c: dados.campanhaId }
-    );
-    if (!alt) { const e = new Error('Alteracao de orcamento nao encontrada ou ja resolvida.'); e.status = 404; throw e; }
-    return anuncios.aplicarAlteracao(alt.id);
-  });
 }
 
 /**
@@ -180,6 +167,6 @@ const pararWorker = () => { if (_timer) { clearInterval(_timer); _timer = null; 
 module.exports = {
   montar, semear, iniciarWorker, pararWorker, registrarHandlersDeFila,
   tenancy, repo, rbac, contas, sessao, entitlements, eventos, fila,
-  aprovacoes, incidentes, segredos, conectores,
+  aprovacoes, executor, incidentes, segredos, conectores, mfa,
   identidade, captura, segmentos, lgpd, conversas, canais, automacoes, agentes, conhecimento, conteudo, comunidade, anuncios, atribuicao, reputacao, reunioes, comercial,
 };

@@ -24,7 +24,10 @@ async function api(metodo, caminho, corpo) {
     body: corpo ? JSON.stringify(corpo) : undefined, credentials: 'same-origin',
   });
   const d = await r.json().catch(() => ({}));
-  if (r.status === 401) { telaLogin(); throw new Error('Sessão expirada — entre novamente.'); }
+  // 401 nas rotas de login é "credencial errada", não "sessão expirada":
+  // jogar de volta para a tela de login apagaria o código que a pessoa
+  // acabou de digitar no segundo fator.
+  if (r.status === 401 && !caminho.startsWith('/login')) { telaLogin(); throw new Error('Sessão expirada — entre novamente.'); }
   if (!r.ok) throw new Error(d.erro || ('Erro ' + r.status));
   if (metodo === 'GET' && meu !== SEQ) await new Promise(() => {});
   return d;
@@ -48,12 +51,37 @@ function telaLogin() {
   const entrar = async () => {
     $('#lg-msg').textContent = '';
     try {
-      await api('POST', '/login', { email: $('#lg-email').value.trim(), senha: $('#lg-senha').value });
+      const r = await api('POST', '/login', { email: $('#lg-email').value.trim(), senha: $('#lg-senha').value });
+      // senha certa mas com segundo fator: ainda não há sessão
+      if (r && r.mfa) { telaSegundoFator(r.desafio); return; }
       ME = await api('GET', '/me'); telaApp();
     } catch (e) { $('#lg-msg').textContent = e.message; }
   };
   $('#lg-btn').onclick = entrar;
   $('#lg-senha').onkeydown = (ev) => { if (ev.key === 'Enter') entrar(); };
+}
+
+/** Segunda etapa do login quando a conta tem MFA (Villela Growth OS). */
+function telaSegundoFator(desafio) {
+  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto">
+    <h3 style="margin-bottom:6px">Código de verificação</h3>
+    <p class="sub" style="text-align:left;margin:0 0 14px">Abra seu aplicativo autenticador e digite o código de 6 dígitos. Sem o celular, use um código de recuperação.</p>
+    <div class="vx-campo"><label for="mfa-cod">Código</label>
+      <input id="mfa-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="20" placeholder="000000"></div>
+    <button class="vx-btn" id="mfa-btn">Confirmar</button>
+    <p id="mfa-msg" class="erro" role="alert"></p>
+    <p class="sub" style="margin-top:14px;text-align:left"><a href="#" id="mfa-voltar">Voltar</a></p></div>`;
+  const confirmar = async () => {
+    $('#mfa-msg').textContent = '';
+    try {
+      await api('POST', '/login/mfa', { desafio, codigo: $('#mfa-cod').value.trim() });
+      ME = await api('GET', '/me'); telaApp();
+    } catch (e) { $('#mfa-msg').textContent = e.message; }
+  };
+  $('#mfa-btn').onclick = confirmar;
+  $('#mfa-cod').onkeydown = (ev) => { if (ev.key === 'Enter') confirmar(); };
+  $('#mfa-voltar').onclick = (ev) => { ev.preventDefault(); telaLogin(); };
+  $('#mfa-cod').focus();
 }
 
 // [id, módulo do plano, grupo do menu, ícone, rótulo]
