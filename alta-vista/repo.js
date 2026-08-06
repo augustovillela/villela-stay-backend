@@ -31,7 +31,7 @@ const TERMOS_VERSAO = '2026-08-06-minuta';
 // Configuração
 // ---------------------------------------------------------------------
 const CONFIG_PADRAO = {
-  whatsapp: { valor: '', descricao: 'WhatsApp comercial (só números, com DDI+DDD, ex.: 5561...). Vazio = CTA vira o formulário de orçamento.' },
+  whatsapp: { valor: '5561991935013', descricao: 'WhatsApp comercial (só números, com DDI+DDD). Mesmo número dos demais sistemas do grupo. Vazio = CTA vira o formulário de orçamento.' },
   email_contato: { valor: '', descricao: 'E-mail de contato exibido no site e usado nos avisos.' },
   cidade_base: { valor: 'Brasília · DF', descricao: 'Onde o atendimento presencial acontece.' },
   capacidade_semanal: { valor: '2', descricao: 'Projetos simultâneos que a operação atende sem atraso (portão de prontidão).' },
