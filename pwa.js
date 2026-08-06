@@ -51,6 +51,12 @@ const PRODUTOS = [
     nome: 'Livraria Villela', curto: 'Livraria', marca: 'livraria-villela', semSW: true,
     desc: 'Livros digitais e impressos da Livraria Villela, com a sua biblioteca de compras.',
   },
+  {
+    slug: 'alta-vista', base: '/alta-vista', inicio: '/alta-vista/app', escopo: '/alta-vista/',
+    nome: 'Villela Alta Vista 360', curto: 'Alta Vista 360', marca: 'villela-alta-vista',
+    desc: 'Drone, vídeos com IA e experiências 360° para hospedagens e imóveis.',
+    tema: '#071A2B', fundo: '#F7F6F2',
+  },
 ];
 
 function manifestDe(p) {

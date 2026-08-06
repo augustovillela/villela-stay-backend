@@ -14,6 +14,7 @@
     "test:academy": "node academy/selftest.js",
     "test:crm": "node crm/selftest.js",
     "test:closet": "node closet/selftest.js",
+    "test:alta-vista": "node alta-vista/selftest.js",
     "test:growth": "node growth/selftest.js",
     "verificar:closet": "node closet/verificar-producao.js",
     "test:nucleo": "node selftest-nucleo.js"

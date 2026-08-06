@@ -4381,6 +4381,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('academia.') || host.startsWith('academy.') || host.startsWith('cursos.')) return res.redirect(302, '/academy'); // Villela Academy Marketplace (domínio oficial: academia.)
   if (host.startsWith('crm.')) return res.redirect(302, '/crm'); // landing de vendas do Villela CRM
   if (host.startsWith('closet.')) return res.redirect(302, '/closet'); // vitrine do Closet Club
+  if (host.startsWith('altavista.') || host.startsWith('alta-vista.')) return res.redirect(302, '/alta-vista'); // Villela Alta Vista 360 (estúdio visual)
   return res.redirect(302, '/hospede');
 });
 
@@ -4549,6 +4550,21 @@ try {
     requireAssinante: crmMontado && crmMontado.requireAssinante,
   });
 } catch (e) { console.error('[growth] falha ao montar módulo:', e.message); }
+
+// =========================== Villela Alta Vista 360 (estúdio visual) ===========================
+// Drone, vídeos com IA, fotografia 360° e tours virtuais para hospedagens e
+// imóveis: site público em /alta-vista, administração na aba 🚁 do Portal
+// Staff (/staff/api/alta-vista/*). SQLite próprio em DATA_DIR/alta-vista/.
+// Onda 1 = vitrine + catálogo + leads; plano completo em
+// docs/integracoes/villela-alta-vista-360.md.
+try {
+  require('./alta-vista').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[alta-vista] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
