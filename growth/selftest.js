@@ -246,6 +246,41 @@ lanca('rbac: exigir() sem permissão devolve 403',
 // 4. HIERARQUIA E ACESSO
 // =====================================================================
 let agencia = null, userAgencia = null;
+// --- organização do próprio grupo -----------------------------------
+teste('grupo: a semeadura cria a organizacao do grupo sem inventar a conta', () => {
+  // a conta interna ainda nao existe neste banco de teste
+  const r1 = comoPlat(() => contas.semearGrupoInterno());
+  assert.strictEqual(r1.org, 'grupo-villela-stay');
+  assert.strictEqual(r1.vinculada, false, 'vinculou uma conta que nao existe');
+  assert.ok(/ainda nao existe|ainda não existe/.test(r1.motivo), r1.motivo);
+
+  const org = contas.orgPorSlug('grupo-villela-stay');
+  assert.strictEqual(org.tipo, 'grupo', 'o grupo entrou como agencia cliente');
+  const plat = contas.plataforma();
+  assert.strictEqual(org.parent_id, plat.id, 'o grupo nao pendurou na plataforma');
+});
+
+teste('grupo: quando a conta interna existe, a semeadura pendura nela', () => {
+  const tid = criarTenant('villela-stay', 'Villela Stay', 'enterprise');
+  const r = comoPlat(() => contas.semearGrupoInterno());
+  assert.strictEqual(r.vinculada, true, 'nao vinculou a conta interna');
+  assert.strictEqual(r.ja, false, 'disse que ja estava vinculada');
+
+  const org = contas.orgDoTenant(tid);
+  assert.ok(org && org.slug === 'grupo-villela-stay', 'a conta nao ficou no grupo');
+  const contasDoGrupo = contas.contasDaOrg(org.id);
+  assert.ok(contasDoGrupo.some((c) => c.id === tid), 'a conta nao aparece na organizacao');
+});
+
+teste('grupo: semear de novo nao duplica nem re-vincula', () => {
+  const antes = db.prepare("SELECT COUNT(*) AS n FROM gx_orgs WHERE slug = 'grupo-villela-stay'").get().n;
+  const r = comoPlat(() => contas.semearGrupoInterno());
+  const depois = db.prepare("SELECT COUNT(*) AS n FROM gx_orgs WHERE slug = 'grupo-villela-stay'").get().n;
+  assert.strictEqual(antes, 1);
+  assert.strictEqual(depois, 1, 'criou a organizacao duas vezes');
+  assert.strictEqual(r.ja, true, 'nao percebeu que o vinculo ja existia');
+});
+
 teste('hierarquia: agência administra as contas vinculadas', () => {
   agencia = comoPlat(() => contas.criarOrg({ tipo: 'agencia', nome: 'Agência Teste', slug: 'ag-teste' }));
   comoPlat(() => contas.vincularConta(agencia.id, TA));

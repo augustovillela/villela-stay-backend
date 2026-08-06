@@ -45,6 +45,37 @@ function criarOrg({ tipo = 'agencia', nome, slug, parentId = null, contatoEmail 
   return orgPorId(id);
 }
 
+/**
+ * Semeia a organização do próprio grupo e pendura nela a conta interna.
+ *
+ * Por que na semeadura e não por rota: é dado NOSSO, do dono da instalação,
+ * e precisa existir igual em qualquer boot — como a organização plataforma.
+ * Idempotente: se a org já existe, só confere o vínculo.
+ *
+ * Não inventa a conta. Se o tenant `villela-stay` ainda não existe (o
+ * cadastro é manual, pelo Portal Staff), a org é criada e o vínculo fica
+ * para o próximo boot — e o retorno diz isso, em vez de fingir.
+ */
+function semearGrupoInterno({ slugOrg = 'grupo-villela-stay', nomeOrg = 'Grupo Villela Stay', slugConta = 'villela-stay' } = {}) {
+  let org = orgPorSlug(slugOrg);
+  if (!org) {
+    const pai = plataforma();
+    if (!pai) return { org: null, motivo: 'plataforma ainda não semeada' };
+    const id = novoId();
+    db.prepare(
+      'INSERT INTO gx_orgs (id, tipo, slug, nome, parent_id, status, contato_email, obs, criado_em, criado_por) VALUES (?,?,?,?,?,?,?,?,?,?)'
+    ).run(id, 'grupo', slugOrg, nomeOrg, pai.id, 'ativa', 'contato@villelastay.com.br',
+      'Organização do próprio grupo (dono da instalação), não uma agência cliente.', nowISO(), 'semeadura');
+    org = orgPorId(id);
+  }
+  const conta = db.prepare('SELECT id FROM tenants WHERE slug = ?').get(slugConta);
+  if (!conta) return { org: org.slug, vinculada: false, motivo: `a conta "${slugConta}" ainda não existe` };
+  const ja = db.prepare('SELECT * FROM gx_org_contas WHERE tenant_id = ?').get(conta.id);
+  if (ja && ja.org_id === org.id) return { org: org.slug, vinculada: true, ja: true };
+  vincularConta(org.id, conta.id);
+  return { org: org.slug, vinculada: true, ja: false };
+}
+
 /** Vincula uma conta cliente a uma organização (uma conta = uma org). */
 function vincularConta(orgId, tenantId) {
   if (!orgPorId(orgId)) throw erro(404, 'Organização não encontrada.');
@@ -227,7 +258,7 @@ function sincronizarUsuariosLegados() {
 function erro(status, msg) { const e = new Error(msg); e.status = status; return e; }
 
 module.exports = {
-  semearPlataforma, plataforma, criarOrg, orgPorId, orgPorSlug, vincularConta, orgDoTenant, contasDaOrg,
+  semearPlataforma, semearGrupoInterno, plataforma, criarOrg, orgPorId, orgPorSlug, vincularConta, orgDoTenant, contasDaOrg,
   criarUsuario, usuarioPorEmail, usuarioPorId, conferirSenha, definirSenha,
   conceder, revogar, membershipsDoUsuario, resolverAcesso, contasDoUsuario,
   criarEquipe, equipes, adicionarNaEquipe, criarMarca, marcas,

@@ -21,7 +21,7 @@
 -- plataforma → agência/revenda → (contas cliente ficam em `tenants`)
 CREATE TABLE IF NOT EXISTS gx_orgs (
   id            TEXT PRIMARY KEY,
-  tipo          TEXT NOT NULL DEFAULT 'agencia',   -- plataforma|agencia|revenda
+  tipo          TEXT NOT NULL DEFAULT 'agencia',   -- plataforma|grupo|agencia|revenda
   slug          TEXT UNIQUE NOT NULL,
   nome          TEXT NOT NULL,
   parent_id     TEXT DEFAULT '',                   -- '' só para a plataforma

@@ -94,12 +94,15 @@ function montar(app, injected = {}) {
 /** Semeadura idempotente: roda em todo boot, preserva o que já existe. */
 function semear() {
   const org = contas.semearPlataforma();
+  // A organização do próprio grupo e a conta interna pendurada nela —
+  // é o que faz o painel de agência ter o que mostrar.
+  const grupo = contas.semearGrupoInterno();
   const perfis = rbac.semear();
   const integracoes = conectores.semear();
   // Etapa 9: os planos passam a carregar os recursos das oito etapas.
   // Conservador: mexe so em flags/limites, nunca em preco ou assinatura.
   const planos = comercial.semearRecursos();
-  return { org: org && org.slug, perfis, integracoes, planos };
+  return { org: org && org.slug, grupo, perfis, integracoes, planos };
 }
 
 /** Handlers de fila: um por tipo de trabalho durável do módulo. */

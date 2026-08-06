@@ -58,6 +58,11 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
     usuarios: db.prepare('SELECT COUNT(*) AS n FROM gx_users').get().n,
     perfis: db.prepare("SELECT COUNT(*) AS n FROM gx_roles WHERE tenant_id = ''").get().n,
     cofre_configurado: segredos.configurado(),
+    // a organização do próprio grupo, para conferir o vínculo sem cavar
+    grupo: (() => {
+      const o = contas.orgPorSlug('grupo-villela-stay');
+      return o ? { slug: o.slug, nome: o.nome, contas: contas.contasDaOrg(o.id).map((c) => c.slug) } : null;
+    })(),
   })));
 
   // ----------------------------------------------------- organizações
