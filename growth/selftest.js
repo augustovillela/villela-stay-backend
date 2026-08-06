@@ -2694,6 +2694,123 @@ const servidor = app.listen(0, async () => {
     assert.strictEqual(r.status, 403, `leitura respondeu conversa (status ${r.status})`);
   });
 
+  // ---- editores do painel: criar, nao so olhar ----
+  await t('painel: constroi, simula e publica uma automacao', async () => {
+    tenancy.comTenant({ tenantId: TA, userId: 'teste' }, () => entitlements.definirFlag('automacoes', true));
+    const criada = await comoAssinante(TA, 'POST', '/automacoes', { nome: 'Boas-vindas painel', gatilhoTipo: 'lead.created' });
+    assert.strictEqual(criada.status, 200, JSON.stringify(criada.dados).slice(0, 200));
+    const wid = criada.dados.id;
+
+    const def = { nos: [
+      { id: 'n1', tipo: 'acao', acao: 'crm.criar_tarefa', config: { titulo: 'Ligar' }, proximo: 'n2' },
+      { id: 'n2', tipo: 'espera', minutos: 60, proximo: '' },
+    ] };
+    const salvo = await comoAssinante(TA, 'PUT', '/automacoes/' + wid + '/rascunho', { definicao: def });
+    assert.strictEqual(salvo.status, 200, JSON.stringify(salvo.dados).slice(0, 200));
+
+    // fluxo quebrado e recusado com o motivo, nao salvo torto
+    const torto = await comoAssinante(TA, 'PUT', '/automacoes/' + wid + '/rascunho', {
+      definicao: { nos: [{ id: 'a', tipo: 'acao', acao: 'crm.criar_tarefa', proximo: 'nao-existe' }] },
+    });
+    assert.strictEqual(torto.status, 400);
+    assert.ok(/nao existe|não existe/i.test(torto.dados.erro), torto.dados.erro);
+
+    await comoAssinante(TA, 'PUT', '/automacoes/' + wid + '/rascunho', { definicao: def });
+    const pub = await comoAssinante(TA, 'POST', '/automacoes/' + wid + '/publicar', {});
+    assert.strictEqual(pub.status, 200, JSON.stringify(pub.dados).slice(0, 200));
+    assert.strictEqual(pub.dados.status, 'publicado');
+
+    const lido = await comoAssinante(TA, 'GET', '/automacoes/' + wid);
+    assert.strictEqual(lido.dados.rascunho.nos.length, 2, 'o rascunho nao voltou como salvo');
+    assert.ok(lido.dados.versoes.some((v) => v.publicada_em), 'nenhuma versao publicada no historico');
+  });
+
+  await t('painel: perfil de leitura nao cria automacao', async () => {
+    const r = await fetch(BASE + '/crm/api/growth/automacoes', {
+      method: 'POST',
+      headers: { 'x-test-assinante': TA, 'x-test-papel': 'leitura', 'content-type': 'application/json' },
+      body: JSON.stringify({ nome: 'Nao deveria', gatilhoTipo: 'lead.created' }),
+    });
+    assert.strictEqual(r.status, 403, 'leitura criou automacao (status ' + r.status + ')');
+  });
+
+  await t('painel: provisiona, configura e instrui um agente', async () => {
+    tenancy.comTenant({ tenantId: TA, userId: 'teste' }, () => entitlements.definirFlag('ia', true));
+    const prov = await comoAssinante(TA, 'POST', '/agentes/provisionar', {});
+    assert.strictEqual(prov.status, 200, JSON.stringify(prov.dados).slice(0, 200));
+
+    const lista = await comoAssinante(TA, 'GET', '/agentes');
+    const chave = (lista.dados.agentes[0] || {}).agente;
+    assert.ok(chave, 'nenhum agente provisionado');
+
+    const cfg = await comoAssinante(TA, 'PUT', '/agentes/' + chave, { ativo: true, motor: 'regras', nivelAutonomia: 2, orcamentoTokensMes: 50000 });
+    assert.strictEqual(cfg.status, 200);
+    assert.strictEqual(Number(cfg.dados.nivel_autonomia), 2);
+
+    const pr = await comoAssinante(TA, 'POST', '/agentes/' + chave + '/prompt', { prompt: 'Responda so o que estiver na base.' });
+    assert.strictEqual(pr.status, 200);
+    const det = await comoAssinante(TA, 'GET', '/agentes/' + chave);
+    assert.ok(det.dados.versao && /base/.test(det.dados.versao.prompt), 'o prompt publicado nao voltou');
+  });
+
+  await t('painel: conteudo caminha ate o agendamento e a recusa vem com motivo', async () => {
+    tenancy.comTenant({ tenantId: TA, userId: 'teste' }, () => entitlements.definirFlag('redes_sociais', true));
+    const c = await comoAssinante(TA, 'POST', '/conteudo', { titulo: 'Post do painel', formato: 'post' });
+    assert.strictEqual(c.status, 200, JSON.stringify(c.dados).slice(0, 200));
+    const cid = c.dados.id;
+
+    assert.strictEqual((await comoAssinante(TA, 'PUT', '/conteudo/' + cid, { legenda: 'Texto base' })).status, 200);
+    assert.strictEqual((await comoAssinante(TA, 'POST', '/conteudo/' + cid + '/variacao', { rede: 'instagram', legenda: 'Versao do Instagram' })).status, 200);
+    assert.strictEqual((await comoAssinante(TA, 'POST', '/conteudo/' + cid + '/aprovar', {})).status, 200);
+
+    // sem conexao de rede, o agendamento NAO finge: devolve bloqueada com motivo
+    const ag = await comoAssinante(TA, 'POST', '/conteudo/' + cid + '/agendar', { redes: ['instagram'] });
+    assert.strictEqual(ag.status, 200);
+    const res = (ag.dados.publicacoes || [])[0];
+    assert.ok(res, 'agendar nao devolveu resultado por rede');
+    assert.strictEqual(res.status, 'bloqueada', 'agendou numa rede nao conectada (' + res.status + ')');
+    assert.ok(res.motivo, 'bloqueou sem dizer por que');
+
+    const det = await comoAssinante(TA, 'GET', '/conteudo/' + cid);
+    assert.ok(det.dados.variacoes.some((v) => v.rede === 'instagram'), 'a variacao nao foi guardada');
+  });
+
+  await t('painel: pedir orcamento de anuncio abre APROVACAO, nao aplica', async () => {
+    tenancy.comTenant({ tenantId: TA, userId: 'teste' }, () => entitlements.definirFlag('anuncios', true));
+    const conta = await comoAssinante(TA, 'POST', '/anuncios/contas', { plataforma: 'meta_ads', nome: 'Conta do painel' });
+    assert.strictEqual(conta.status, 200, JSON.stringify(conta.dados).slice(0, 200));
+
+    assert.strictEqual((await comoAssinante(TA, 'PUT', '/anuncios/contas/' + conta.dados.id + '/teto', { diarioCent: 20000, mensalCent: 500000 })).status, 200);
+
+    const camp = await comoAssinante(TA, 'POST', '/anuncios/campanhas', {
+      contaId: conta.dados.id, nome: 'Campanha do painel', orcamentoCent: 10000,
+    });
+    assert.strictEqual(camp.status, 200);
+
+    const campanhas = (await comoAssinante(TA, 'GET', '/anuncios')).dados.campanhas;
+    const alvo = campanhas.find((x) => x.nome === 'Campanha do painel');
+    assert.ok(alvo, 'a campanha nao apareceu na listagem');
+
+    const antes = Number(alvo.orcamento_cent);
+    const ped = await comoAssinante(TA, 'POST', '/anuncios/orcamento', {
+      campanhaId: alvo.id, paraCent: 15000, justificativa: 'teste do painel',
+    });
+    assert.strictEqual(ped.status, 200, JSON.stringify(ped.dados).slice(0, 200));
+
+    const depois = tenancy.comTenant({ tenantId: TA, userId: 'teste' }, () => repo.buscar('gx_campanhas_anuncio', alvo.id));
+    assert.strictEqual(Number(depois.orcamento_cent), antes, 'o orcamento mudou ANTES da aprovacao');
+    const pend = (await comoAssinante(TA, 'GET', '/aprovacoes')).dados.pendentes;
+    assert.ok(pend.some((p) => p.acao === 'anuncio.orcamento_alterar'), 'nao abriu pedido de aprovacao');
+  });
+
+  await t('painel: sem justificativa, alteracao de orcamento e recusada', async () => {
+    const campanhas = (await comoAssinante(TA, 'GET', '/anuncios')).dados.campanhas;
+    const alvo = campanhas.find((x) => x.nome === 'Campanha do painel');
+    const r = await comoAssinante(TA, 'POST', '/anuncios/orcamento', { campanhaId: alvo.id, paraCent: 12000, justificativa: '' });
+    assert.strictEqual(r.status, 400);
+    assert.ok(/justificativa/i.test(r.dados.erro), r.dados.erro);
+  });
+
   await t('painel: plano e uso listam limite por recurso', async () => {
     const r = await comoAssinante(TA, 'GET', '/assinatura');
     assert.strictEqual(r.status, 200);

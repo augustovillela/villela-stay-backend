@@ -115,27 +115,29 @@ const EXECUTORES = {
     // quem decide se a rede aceita é o módulo de conteúdo, pela capability
     // matrix da conexão — aqui não se força publicação em rede não conectada
     const r = require('./conteudo').agendar(conteudoId, { redes, quando: d.quando || nowISO() });
-    const agendadas = (r.resultados || []).filter((x) => x.status === 'agendada');
-    const bloqueadas = (r.resultados || []).filter((x) => x.status === 'bloqueada');
+    const agendadas = (r.publicacoes || []).filter((x) => x.status === 'agendada');
+    const bloqueadas = (r.publicacoes || []).filter((x) => x.status === 'bloqueada');
     if (!agendadas.length) {
       throw permanente(`Nenhuma rede aceitou: ${bloqueadas.map((b) => `${b.rede} (${b.motivo})`).join('; ') || 'sem motivo registrado'}.`);
     }
     return {
       resumo: `Publicação agendada em ${agendadas.map((a) => a.rede).join(', ')}` +
         (bloqueadas.length ? ` · bloqueada em ${bloqueadas.map((b) => `${b.rede} (${b.motivo})`).join(', ')}` : '') + '.',
-      resultados: r.resultados,
+      resultados: r.publicacoes,
     };
   },
 
   'anuncio.criar': (d) => {
     const contaId = exige(d, 'contaId', 'campanha nasce dentro de uma conta de anúncio');
     const nome = exige(d, 'nome', 'a campanha precisa de nome');
-    const c = require('./anuncios').registrarCampanha(contaId, {
-      nome, objetivo: d.objetivo || '', status: d.status || 'pausada',
-      orcamentoDiarioCentavos: Number(d.orcamentoDiarioCentavos) || 0,
-      externaId: d.externaId || '',
+    const status = d.status || 'pausada';
+    const id = require('./anuncios').registrarCampanha(contaId, {
+      nome, objetivo: d.objetivo || '', status,
+      orcamentoCent: Number(d.orcamentoCent) || 0,
+      orcamentoTipo: d.orcamentoTipo || 'diario',
+      externaId: d.externaId || '', utmCampaign: d.utmCampaign || '',
     });
-    return { resumo: `Campanha "${nome}" registrada (status ${c.status}).`, campanhaId: c.id };
+    return { resumo: `Campanha "${nome}" registrada (status ${status}).`, campanhaId: id };
   },
 
   'anuncio.orcamento_alterar': (d) => {

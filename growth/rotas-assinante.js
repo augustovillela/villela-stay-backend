@@ -108,8 +108,59 @@ function registrarRotasAssinante(app, { requireAssinante }) {
   // ---- automações ----
   app.get(`${B}/automacoes`, ...rota(() => {
     const automacoes = require('./automacoes');
-    return { automacoes: automacoes.listar(), gatilhos: automacoes.GATILHOS, execucoes: automacoes.execucoes(null, 30) };
+    return {
+      automacoes: automacoes.listar(), gatilhos: automacoes.GATILHOS,
+      execucoes: automacoes.execucoes(null, 30),
+      // o construtor precisa saber o que existe para oferecer
+      acoes: Object.fromEntries(Object.entries(automacoes.ACOES).map(([k, v]) => [k, v.rotulo])),
+      tipos_no: automacoes.TIPOS_NO,
+    };
   }, { flag: 'automacoes' }));
+
+  app.get(`${B}/automacoes/:id`, ...rota((req, res) => {
+    const automacoes = require('./automacoes');
+    const wf = repo.buscar('gx_workflows', req.params.id);
+    if (!wf) { res.status(404).json({ erro: 'Automação não encontrada.' }); return undefined; }
+    const versoes = repo.listar('gx_workflow_versoes', {
+      onde: 'workflow_id = :w', params: { w: wf.id }, ordem: 'versao DESC', limite: 20,
+    });
+    const rascunho = versoes.find((v) => Number(v.versao) === Number(wf.versao_rascunho));
+    return {
+      workflow: wf,
+      rascunho: rascunho ? j.parse(rascunho.definicao, { nos: [] }) : { nos: [] },
+      versoes: versoes.map((v) => ({ versao: v.versao, publicada_em: v.publicada_em, notas: v.notas })),
+      execucoes: automacoes.execucoes(wf.id, 30),
+    };
+  }, { flag: 'automacoes' }));
+
+  app.post(`${B}/automacoes`, ...rota((req) => {
+    rbac.exigir('automacao.editar');
+    return require('./automacoes').criar(req.body || {});
+  }, { flag: 'automacoes' }));
+
+  app.put(`${B}/automacoes/:id/rascunho`, ...rota((req) => {
+    rbac.exigir('automacao.editar');
+    return require('./automacoes').salvarRascunho(req.params.id, (req.body || {}).definicao || { nos: [] });
+  }, { flag: 'automacoes' }));
+
+  app.post(`${B}/automacoes/:id/publicar`, ...rota((req) => {
+    rbac.exigir('automacao.publicar');
+    return require('./automacoes').publicar(req.params.id, { notas: (req.body || {}).notas || '' });
+  }, { flag: 'automacoes' }));
+
+  app.post(`${B}/automacoes/:id/reverter`, ...rota((req) => {
+    rbac.exigir('automacao.publicar');
+    return require('./automacoes').reverter(req.params.id, (req.body || {}).versao);
+  }, { flag: 'automacoes' }));
+
+  app.post(`${B}/automacoes/:id/pausar`, ...rota((req) => {
+    rbac.exigir('automacao.publicar');
+    return require('./automacoes').pausar(req.params.id);
+  }, { flag: 'automacoes' }));
+
+  // Simular NÃO executa nada: mostra o caminho que percorreria.
+  app.post(`${B}/automacoes/:id/simular`, ...rota((req) =>
+    require('./automacoes').simular(req.params.id, req.body || {}), { flag: 'automacoes' }));
 
   // ---- agentes ----
   app.get(`${B}/agentes`, ...rota(() => {
@@ -118,12 +169,104 @@ function registrarRotasAssinante(app, { requireAssinante }) {
       agentes: agentes.listar().map((x) => agentes.metricas(x.chave)),
       llm_disponivel: agentes.temChaveLLM(),
       conhecimento: require('./conhecimento').listar(50),
+      catalogo: agentes.CATALOGO,
+      niveis: require('./aprovacoes').NIVEIS,
+      ferramentas: Object.fromEntries(Object.entries(agentes.FERRAMENTAS)
+        .map(([k, v]) => [k, { escrita: !!v.escrita, acao: v.acao || null }])),
     };
   }, { flag: 'ia' }));
 
+  app.get(`${B}/agentes/:chave`, ...rota((req, res) => {
+    const agentes = require('./agentes');
+    const ag = agentes.porChave(req.params.chave);
+    if (!ag) { res.status(404).json({ erro: 'Agente não encontrado.' }); return undefined; }
+    return {
+      agente: ag, metricas: agentes.metricas(ag.chave),
+      versao: agentes.versaoAtual(ag),
+      execucoes: agentes.execucoes(ag.chave),
+    };
+  }, { flag: 'ia' }));
+
+  app.post(`${B}/agentes/provisionar`, ...rota(() => {
+    rbac.exigir('agente.configurar');
+    return { criados: require('./agentes').provisionar() };
+  }, { flag: 'ia' }));
+
+  app.put(`${B}/agentes/:chave`, ...rota((req) => {
+    rbac.exigir('agente.configurar');
+    return require('./agentes').configurar(req.params.chave, req.body || {});
+  }, { flag: 'ia' }));
+
+  app.post(`${B}/agentes/:chave/prompt`, ...rota((req) => {
+    rbac.exigir('agente.configurar');
+    return require('./agentes').publicarPrompt(req.params.chave, req.body || {});
+  }, { flag: 'ia' }));
+
+  // ---- base de conhecimento (o que o agente pode citar) ----
+  app.post(`${B}/conhecimento`, ...rota((req) => {
+    rbac.exigir('agente.configurar');
+    return require('./conhecimento').criar(req.body || {});
+  }, { flag: 'ia' }));
+
+  app.post(`${B}/conhecimento/:id/aprovar`, ...rota((req) => {
+    rbac.exigir('agente.configurar');
+    return require('./conhecimento').aprovar(req.params.id);
+  }, { flag: 'ia' }));
+
   // ---- conteúdo ----
-  app.get(`${B}/conteudo`, ...rota((req) =>
-    require('./conteudo').calendario({ de: req.query.de || '', ate: req.query.ate || '' }), { flag: 'redes_sociais' }));
+  app.get(`${B}/conteudo`, ...rota((req) => {
+    const conteudo = require('./conteudo');
+    return Object.assign(
+      conteudo.calendario({ de: req.query.de || '', ate: req.query.ate || '', status: req.query.status || '' }),
+      { redes: conteudo.REDES, formatos: conteudo.FORMATOS, status_possiveis: conteudo.STATUS,
+        limite_legenda: conteudo.LIMITE_LEGENDA }
+    );
+  }, { flag: 'redes_sociais' }));
+
+  app.get(`${B}/conteudo/:id`, ...rota((req, res) => {
+    const conteudo = require('./conteudo');
+    const c = repo.buscar('gx_conteudos', req.params.id);
+    if (!c) { res.status(404).json({ erro: 'Conteúdo não encontrado.' }); return undefined; }
+    return {
+      conteudo: c,
+      variacoes: conteudo.variacoes(c.id),
+      problemas: conteudo.validar(c),
+      disponibilidade: conteudo.formatosDisponiveis(),
+      publicacoes: repo.listar('gx_publicacoes', { onde: 'conteudo_id = :c', params: { c: c.id }, limite: 20 }),
+    };
+  }, { flag: 'redes_sociais' }));
+
+  app.post(`${B}/conteudo`, ...rota((req) => {
+    rbac.exigir('conteudo.criar');
+    return require('./conteudo').criar(req.body || {});
+  }, { flag: 'redes_sociais' }));
+
+  app.put(`${B}/conteudo/:id`, ...rota((req) => {
+    rbac.exigir('conteudo.criar');
+    return require('./conteudo').atualizar(req.params.id, req.body || {});
+  }, { flag: 'redes_sociais' }));
+
+  app.post(`${B}/conteudo/:id/variacao`, ...rota((req) => {
+    rbac.exigir('conteudo.criar');
+    return require('./conteudo').definirVariacao(req.params.id, (req.body || {}).rede, req.body || {});
+  }, { flag: 'redes_sociais' }));
+
+  app.post(`${B}/conteudo/:id/mover`, ...rota((req) => {
+    rbac.exigir('conteudo.criar');
+    return require('./conteudo').mover(req.params.id, (req.body || {}).status);
+  }, { flag: 'redes_sociais' }));
+
+  app.post(`${B}/conteudo/:id/aprovar`, ...rota((req) => {
+    rbac.exigir('conteudo.aprovar');
+    return require('./conteudo').aprovar(req.params.id);
+  }, { flag: 'redes_sociais' }));
+
+  // Agendar só oferece rede que a conexão aceita — a recusa vem do módulo,
+  // com o motivo dela, e a tela mostra tal como veio.
+  app.post(`${B}/conteudo/:id/agendar`, ...rota((req) => {
+    rbac.exigir('conteudo.publicar');
+    return require('./conteudo').agendar(req.params.id, req.body || {});
+  }, { flag: 'redes_sociais' }));
 
   app.get(`${B}/comunidade`, ...rota((req) => {
     const comunidade = require('./comunidade');
@@ -133,7 +276,38 @@ function registrarRotasAssinante(app, { requireAssinante }) {
   // ---- anúncios e atribuição ----
   app.get(`${B}/anuncios`, ...rota((req) => {
     const anuncios = require('./anuncios');
-    return { contas: anuncios.contas(), desempenho: anuncios.desempenho({ de: req.query.de, ate: req.query.ate }), alertas: anuncios.alertas() };
+    return {
+      contas: anuncios.contas(),
+      desempenho: anuncios.desempenho({ de: req.query.de, ate: req.query.ate }),
+      alertas: anuncios.alertas(),
+      alteracoes: anuncios.alteracoes(30),
+      plataformas: anuncios.PLATAFORMAS,
+      campanhas: repo.listar('gx_campanhas_anuncio', { ordem: 'criado_em DESC', limite: 100 }),
+    };
+  }, { flag: 'anuncios' }));
+
+  app.post(`${B}/anuncios/contas`, ...rota((req) => {
+    rbac.exigir('ads.editar');
+    return require('./anuncios').conectarConta(req.body || {});
+  }, { flag: 'anuncios' }));
+
+  app.put(`${B}/anuncios/contas/:id/teto`, ...rota((req) => {
+    rbac.exigir('ads.editar');
+    return require('./anuncios').definirTeto(req.params.id, req.body || {});
+  }, { flag: 'anuncios' }));
+
+  app.post(`${B}/anuncios/campanhas`, ...rota((req) => {
+    rbac.exigir('ads.editar');
+    const b = req.body || {};
+    return require('./anuncios').registrarCampanha(b.contaId, b);
+  }, { flag: 'anuncios' }));
+
+  // Mexer em orçamento NUNCA aplica direto: abre pedido de aprovação.
+  app.post(`${B}/anuncios/orcamento`, ...rota((req, res, a) => {
+    rbac.exigir('ads.orcamento.alterar');
+    return require('./anuncios').solicitarAlteracao(Object.assign({}, req.body || {}, {
+      origemTipo: 'usuario', origemId: a.id,
+    }));
   }, { flag: 'anuncios' }));
 
   app.get(`${B}/atribuicao`, ...rota((req) => {
