@@ -62,7 +62,7 @@ function montar(app, injected = {}) {
   // o conector de e-mail só sai de "aguardando_credenciais" se houver
   // transporte real injetado — não existe modo "finge que enviou"
   const statusEmail = require('./conectores/email').configurar({ enviarEmail: injected.enviarEmail });
-  semear();
+  const resumoSemeadura = semear();
   registrarHandlersDeFila();
   automacoes.ligarGatilhos();   // o motor passa a ouvir o barramento
 
@@ -82,6 +82,9 @@ function montar(app, injected = {}) {
     `[growth] Villela Growth OS (Etapas 1-9) montado. Admin: /staff/api/growth · ` +
     `captura: /growth/f/:token · páginas: /growth/p/:slug · ` +
     `painel do assinante: ${painel ? '/crm/app (abas do Growth)' : 'INDISPONÍVEL (CRM não montou)'} · ` +
+    // o vínculo do grupo aparece no log porque conferi-lo pela API exige
+    // sessão de staff — no boot ele fica visível sem ninguém logar
+    `grupo: ${resumoSemeadura.grupo.org || '—'}${resumoSemeadura.grupo.vinculada ? ' (conta interna vinculada)' : ` (SEM conta: ${resumoSemeadura.grupo.motivo})`} · ` +
     `perfis: ${rbac.PERFIS.length} · conectores: ${conectores.CONECTORES.length} · ` +
     `e-mail: ${statusEmail} · IA: ${agentes.temChaveLLM() ? 'llm disponivel' : 'so regras'} · cofre: ${segredos.configurado() ? 'ok' : 'SEM GROWTH_SECRET_KEY'}`
   );
