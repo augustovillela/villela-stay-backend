@@ -220,11 +220,15 @@ ${FONTES}${PWA_TAGS}${GA}
 <style>${CSS}</style>${extraHead}`;
 
 const marca = () => `<a class="marca" href="${BASE}" aria-label="Villela Alta Vista 360 — início"><b>VILLELA</b><span>ALTA VISTA 360<i>°</i></span></a>`;
+// versão com o símbolo oficial (fundos claros — topo do site); o rodapé escuro segue só tipográfico
+const marcaComSimbolo = () => `<a class="marca" href="${BASE}" aria-label="Villela Alta Vista 360 — início" style="flex-direction:row;align-items:center;gap:10px">
+  <img src="/assets/brand/villela-alta-vista/simbolo.png" alt="" width="42" height="42" style="border-radius:9px" decoding="async">
+  <span style="display:flex;flex-direction:column;line-height:1.05"><b>VILLELA</b><span>ALTA VISTA 360<i>°</i></span></span></a>`;
 
 const topo = (ativo = '') => {
   const item = (href, rot, id, some) => `<a href="${href}"${ativo === id ? ' class="on" aria-current="page"' : ''}${some ? ' data-some class="some"' : ''}>${rot}</a>`;
   return `<a class="pular" href="#conteudo">Pular para o conteúdo</a>
-<header class="topo"><div class="wrap">${marca()}
+<header class="topo"><div class="wrap">${marcaComSimbolo()}
   <nav class="principal" aria-label="Navegação principal">
     ${item(BASE + '/servicos', 'Serviços', 'servicos')}
     ${item(BASE + '/portfolio', 'Portfólio', 'portfolio')}

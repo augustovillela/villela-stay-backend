@@ -524,7 +524,10 @@ const PRODUTOS_GRUPO = [
     frase: ['Livros digitais e impressos que levam o conhecimento da prática direto para a sua estante.', 'Digital and printed books that bring hands-on knowledge straight to your shelf.', 'Libros digitales e impresos que llevan el conocimiento práctico directo a tu estantería.'] },
   { nome: 'Closet Club', pasta: 'closet-club', simbolo: 'simbolo.svg', cor: '#C6A96B', url: 'https://closet.villelastay.com.br',
     tag: ['Seu guarda-roupa rende. O dela também.', 'Your wardrobe earns. So does hers.', 'Tu armario rinde. El de ella también.'],
-    frase: ['Marketplace de aluguel de roupas e acessórios: alugue a peça certa para a ocasião, ou faça a sua render quando estiver parada.', 'A marketplace for renting clothes and accessories: rent the right piece for the occasion, or earn from yours while it sits idle.', 'Marketplace de alquiler de ropa y accesorios: alquila la pieza justa para la ocasión, o haz que la tuya rinda mientras está parada.'] }
+    frase: ['Marketplace de aluguel de roupas e acessórios: alugue a peça certa para a ocasião, ou faça a sua render quando estiver parada.', 'A marketplace for renting clothes and accessories: rent the right piece for the occasion, or earn from yours while it sits idle.', 'Marketplace de alquiler de ropa y accesorios: alquila la pieza justa para la ocasión, o haz que la tuya rinda mientras está parada.'] },
+  { nome: 'Villela Alta Vista 360°', pasta: 'villela-alta-vista', simbolo: 'simbolo.png', cor: '#176B87', url: 'https://altavista.villelastay.com.br',
+    tag: ['Veja de cima. Explore por inteiro.', 'See it from above. Explore it fully.', 'Míralo desde arriba. Explóralo por completo.'],
+    frase: ['Estúdio visual: filmagens com drones, vídeos com IA, fotos 360° e tours virtuais que valorizam imóveis, hospedagens e empresas.', 'A visual studio: drone footage, AI-made videos, 360° photos and virtual tours that elevate properties, stays and businesses.', 'Estudio visual: filmaciones con drones, vídeos con IA, fotos 360° y tours virtuales que valorizan inmuebles, alojamientos y empresas.'] }
 ];
 const grupoSecao = () => `
 <section id="grupo" class="grupo-wrap">
