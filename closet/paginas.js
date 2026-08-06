@@ -65,7 +65,8 @@ img{max-width:100%;display:block}
 /* ---- topo ---- */
 header.topo{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--cinza2)}
 header.topo .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;height:74px}
-.marca{font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;letter-spacing:.02em;white-space:nowrap}
+.marca{font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;letter-spacing:.02em;white-space:nowrap;display:inline-flex;align-items:center;gap:10px}
+.marca img{height:30px;width:auto;display:block}
 .marca b{font-weight:500}
 .marca .club{color:var(--dourado);font-style:italic}
 nav.principal{display:flex;align-items:center;gap:28px;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase}
@@ -210,7 +211,7 @@ ${/noindex/.test(extra) ? '' : GA}<style>${CSS}</style>${extra}`;
 // analytics: é onde há dado pessoal e onde a pessoa já está identificada.
 // Amarrar a regra ao noindex garante que uma página nova não vaze por descuido.
 
-const marca = () => `<a class="marca" href="/closet"><b>CLOSET</b> <span class="club">Club</span></a>`;
+const marca = () => `<a class="marca" href="/closet"><img src="${BRAND}/simbolo.svg" alt=""><b>CLOSET</b> <span class="club">Club</span></a>`;
 
 const topo = (ativo = '') => `<header class="topo"><div class="wrap">
   ${marca()}
