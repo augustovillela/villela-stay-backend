@@ -494,7 +494,9 @@ const depTexto = d => (LANG === 'en' && d.texto_en) ? d.texto_en : ((LANG === 'e
 const depSelo = () => LANG === 'pt' ? '' : ` · <span class="dep-traduzido">${t('', 'translated from Portuguese', 'traducido del portugués')}</span>`;
 
 // ------------------------------------------- Produtos do Grupo Villela Stay (seção institucional da home)
-// Símbolos locais em /assets/brand/<marca>/simbolo-v.svg (copiados no build — o site não enxerga o backend).
+// Símbolos locais em /assets/brand/<marca>/ (copiados no build — o site não enxerga o backend).
+// O padrão é `simbolo-v.svg` (V-Portal). O Closet Club declara `simbolo` porque
+// tem identidade própria de marketplace — cabide dourado sobre preto, não o V.
 const PRODUTOS_GRUPO = [
   { nome: 'Villela Stay', pasta: 'villela-stay', cor: '#C9A227', url: 'https://villelastay.com.br',
     tag: ['Hospedagens inteligentes para experiências inesquecíveis', 'Smart stays for unforgettable experiences', 'Alojamientos inteligentes para experiencias inolvidables'],
@@ -519,7 +521,10 @@ const PRODUTOS_GRUPO = [
     frase: ['CRM multicanal com funis Kanban, follow-ups automáticos, lead scoring e propostas — do lead ao pós-venda.', 'Multichannel CRM with Kanban pipelines, automatic follow-ups, lead scoring and proposals — from lead to after-sales.', 'CRM multicanal con embudos Kanban, seguimientos automáticos, lead scoring y propuestas — del lead a la posventa.'] },
   { nome: 'Livraria Villela', pasta: 'livraria-villela', cor: '#7F1D1D', url: 'https://livros.villelastay.com.br',
     tag: ['Livros, ideias e conhecimento aplicado', 'Books, ideas and applied knowledge', 'Libros, ideas y conocimiento aplicado'],
-    frase: ['Livros digitais e impressos que levam o conhecimento da prática direto para a sua estante.', 'Digital and printed books that bring hands-on knowledge straight to your shelf.', 'Libros digitales e impresos que llevan el conocimiento práctico directo a tu estantería.'] }
+    frase: ['Livros digitais e impressos que levam o conhecimento da prática direto para a sua estante.', 'Digital and printed books that bring hands-on knowledge straight to your shelf.', 'Libros digitales e impresos que llevan el conocimiento práctico directo a tu estantería.'] },
+  { nome: 'Closet Club', pasta: 'closet-club', simbolo: 'simbolo.svg', cor: '#C6A96B', url: 'https://closet.villelastay.com.br',
+    tag: ['Seu guarda-roupa rende. O dela também.', 'Your wardrobe earns. So does hers.', 'Tu armario rinde. El de ella también.'],
+    frase: ['Marketplace de aluguel de roupas e acessórios: alugue a peça certa para a ocasião, ou faça a sua render quando estiver parada.', 'A marketplace for renting clothes and accessories: rent the right piece for the occasion, or earn from yours while it sits idle.', 'Marketplace de alquiler de ropa y accesorios: alquila la pieza justa para la ocasión, o haz que la tuya rinda mientras está parada.'] }
 ];
 const grupoSecao = () => `
 <section id="grupo" class="grupo-wrap">
@@ -533,7 +538,7 @@ const grupoSecao = () => `
     )}</p>
     <div class="grupo-grade">${PRODUTOS_GRUPO.map(p => `
       <a class="produto-card" href="${p.url}" style="--acento:${p.cor}"${p.url === SITE_URL ? '' : ' target="_blank" rel="noopener"'}>
-        <img src="/assets/brand/${p.pasta}/simbolo-v.svg" alt="" width="44" height="44" loading="lazy" decoding="async">
+        <img src="/assets/brand/${p.pasta}/${p.simbolo || 'simbolo-v.svg'}" alt="" width="44" height="44" loading="lazy" decoding="async">
         <h3>${p.nome}</h3>
         <p class="produto-tag">${esc(t(...p.tag))}</p>
         <p>${esc(t(...p.frase))}</p>
