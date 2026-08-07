@@ -16,7 +16,7 @@ const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const n = (v, padrao = 0) => { const x = Number(v); return Number.isFinite(x) ? x : padrao; };
 const inteiro = (v, padrao = 0) => Math.trunc(n(v, padrao));
 
-const FAIXAS = ['7-8', '9-11'];
+const FAIXAS = ['7-8', '9-12']; // brand book: plataforma para 7 a 12 anos
 const MAX_PERFIS = 6; // teto por família (beta): acima disso é uso fora do combinado
 
 // Progressão por competência (PROMPT_MASTER §3): o nível é CALCULADO das
@@ -216,7 +216,7 @@ const Criancas = {
     const apelido = s(d.apelido, 40);
     if (!apelido) throw new Error('Escolha um apelido para a criança.');
     if (/@|\d{4,}/.test(apelido)) throw new Error('O apelido não pode ter e-mail nem números longos — é só como a criança quer ser chamada.');
-    const faixa = FAIXAS.includes(d.faixa) ? d.faixa : '9-11';
+    const faixa = FAIXAS.includes(d.faixa) ? d.faixa : '9-12';
     const ativos = db.prepare("SELECT COUNT(*) AS c FROM children WHERE user_id = ? AND status = 'ativo'").get(userId).c;
     if (ativos >= Config.num('max_perfis_por_conta', MAX_PERFIS)) throw new Error('Limite de perfis desta conta atingido.');
     const id = novoId();

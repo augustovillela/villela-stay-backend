@@ -444,6 +444,25 @@ async function rodar() {
     assert.ok(home.includes('/kids/manifest.webmanifest') && home.includes('/kids/sw.js'), 'HEAD sem tags de PWA');
   });
 
+  // ================= onda 7: portal, faixa 7-12 e certificado =================
+  await t('faixa nova 9-12 é aceita e vira o padrão do perfil', async () => {
+    const r = (await req('POST', '/kids/api/criancas', { como: 'bia', corpo: { apelido: 'Theo', faixa: '9-12', avatar: '🦁' } })).json;
+    assert.equal(r.crianca.faixa, '9-12');
+    const r2 = (await req('POST', '/kids/api/criancas', { como: 'bia', corpo: { apelido: 'Bento' } })).json;
+    assert.equal(r2.crianca.faixa, '9-12', 'faixa padrão não migrou');
+    await req('DELETE', '/kids/api/criancas/' + r.crianca.id, { como: 'bia' });
+    await req('DELETE', '/kids/api/criancas/' + r2.crianca.id, { como: 'bia' });
+  });
+  await t('certificado de conquista sai para missão concluída, só para a família', async () => {
+    const r = await req('GET', `/kids/api/criancas/${nina.id}/missoes/m01-meu-assistente/certificado`, { como: 'bia' });
+    assert.equal(r.st, 200);
+    for (const trecho of ['CERTIFICADO DE CONQUISTA', 'Nina', 'O Meu Assistente', 'Invente Lab', 'uma plataforma Villela Kids']) {
+      assert.ok(r.texto.includes(trecho), 'certificado sem: ' + trecho);
+    }
+    assert.equal((await req('GET', `/kids/api/criancas/${nina.id}/missoes/m03-estudio-ilustracao/certificado`, { como: 'bia' })).st, 400, 'missão não concluída não pode ter certificado');
+    assert.equal((await req('GET', `/kids/api/criancas/${nina.id}/missoes/m01-meu-assistente/certificado`, { como: 'ana' })).st, 400, 'outra família viu certificado');
+  });
+
   // ================= onda 5: ajuda, estúdio gated e homologação =================
   await t('central de ajuda no ar: hub, manual (consentimento parental) e FAQ', async () => {
     assert.equal((await req('GET', '/kids/ajuda')).st, 200);

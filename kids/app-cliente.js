@@ -73,7 +73,30 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
 .kb-chat-linha{display:flex;gap:8px}\
 .kb-chat-linha input{flex:1;padding:11px;border:2px solid #E3E6F5;border-radius:999px;font-size:15px}\
 .kb-modo{color:#92400E;background:#FEF3C7;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:700}\
-.kb-nivel{background:#EDE9FE;color:#5B21B6;border-radius:999px;padding:3px 12px;font-size:13px;font-weight:800;white-space:nowrap}';
+.kb-nivel{background:#EDE9FE;color:#5B21B6;border-radius:999px;padding:3px 12px;font-size:13px;font-weight:800;white-space:nowrap}\
+.kb-lumi{display:flex;gap:14px;align-items:center;background:#fff;border:2px solid #E3E6F5;border-radius:24px;padding:18px 20px;margin-bottom:14px}\
+.kb-lumi svg{flex-shrink:0}\
+.kb-lumi p{margin:0}\
+.kb-dia{background:#23C7E8;color:#14265C;border:0;border-radius:24px;padding:20px;margin-bottom:14px}\
+.kb-dia .rot{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;opacity:.75}\
+.kb-dia h3{margin:4px 0 6px;font-size:22px}\
+.kb-dia .kb-bt{background:#14265C;color:#fff;margin-top:8px}\
+.kb-prog{background:#fff;border:2px solid #E3E6F5;border-radius:24px;padding:16px 20px;margin-bottom:14px}\
+.kb-prog .barra{background:#EEF0FC;border-radius:999px;height:14px;overflow:hidden;margin:8px 0}\
+.kb-prog .barra div{background:#A9E34B;height:14px;border-radius:999px}\
+.kb-ambs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}\
+.kb-amb{border:0;border-radius:24px;padding:18px 14px;color:#fff;font-weight:800;font-size:16px;cursor:pointer;text-align:center;font-family:inherit}\
+.kb-amb img{width:44px;height:44px;display:block;margin:0 auto 8px;filter:brightness(0) invert(1)}\
+.kb-amb small{display:block;font-weight:600;font-size:12px;opacity:.9;margin-top:2px}\
+.kb-amb.lab{background:#23C7E8;color:#14265C}.kb-amb.lab img{filter:none}\
+.kb-amb.arena{background:#FF8A34}.kb-amb.studio{background:#F05AA6}.kb-amb.expo{background:#A9E34B;color:#14265C}.kb-amb.expo img{filter:none}\
+.kb-amb[disabled]{opacity:.55;cursor:default}';
+
+  // Lumi — a centelha-guia do Invente (versão leve do brand book: sem
+  // animação/voz antes da validação com crianças; só boas-vindas e contexto).
+  var LUMI_SVG = '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">' +
+    '<path d="M23 3 L27 18 L42 23 L27 28 L23 43 L19 28 L4 23 L19 18 Z" fill="#6C4DFF"/>' +
+    '<circle cx="23" cy="23" r="4.5" fill="#FFFFFF"/><circle cx="36" cy="9" r="2.5" fill="#A9E34B"/></svg>';
   (function () { var s = document.createElement('style'); s.textContent = CSS_EXTRA; document.head.appendChild(s); })();
 
   function topo(ativo) {
@@ -82,7 +105,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       '<div class="quem">' + (c ? '<span style="font-size:30px">' + esc(c.avatar) + '</span> ' + esc(c.apelido) +
         (c.nivel ? ' <span class="kb-nivel">' + esc(c.nivel.emoji + ' ' + c.nivel.nome) + '</span>' : '') : '✨ Invente') + '</div>' +
       '<div class="acoes">' +
-      (c ? '<button class="kb-lk" data-ir="#missoes">Missões</button><button class="kb-lk" data-ir="#portfolio">Conquistas</button>' : '') +
+      (c ? '<button class="kb-lk" data-ir="#inicio">Início</button><button class="kb-lk" data-ir="#missoes">Missões</button><button class="kb-lk" data-ir="#portfolio">Conquistas</button>' : '') +
       '<button class="kb-lk" data-ir="#perfis">Trocar perfil</button>' +
       '<button class="kb-lk" data-ir="#pais">Área dos pais' + (EST.me && EST.me.nao_lidas ? ' (' + EST.me.nao_lidas + ')' : '') + '</button>' +
       '</div></div>';
@@ -92,6 +115,45 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
   }
 
   // ---------- telas ----------
+
+  // Portal Invente (onda 7): hierarquia do brand book — 1) saudação (Lumi);
+  // 2) missão do dia; 3) progresso; 4) ambientes. Lab abre as missões, Expo
+  // as conquistas; Studio leva ao Estúdio de Ilustração quando desbloqueado;
+  // Arena é honesta: "em preparação" (desafios chegam na fase 2).
+  async function vInicio() {
+    var c = criancaAtiva();
+    if (!c) return irPara('#perfis');
+    var d = await api('GET', '/criancas/' + c.id + '/missoes');
+    var atual = d.missoes.find(function (m) { return m.status === 'em_andamento'; }) ||
+      d.missoes.find(function (m) { return m.status === 'disponivel'; });
+    var concl = d.missoes.filter(function (m) { return m.status === 'concluida'; }).length;
+    var nivel = d.crianca.nivel || {};
+    var m03 = d.missoes.find(function (m) { return m.id === 'm03-estudio-ilustracao'; });
+    var lumiFala = concl === 0
+      ? 'Oi, ' + esc(c.apelido) + '! Eu sou a <b>Lumi</b>, a centelha do portal. Sua primeira missão está te esperando no Lab — vamos inventar?'
+      : (concl >= d.missoes.length
+        ? 'UAU, ' + esc(c.apelido) + '! Você atravessou o portal inteiro — as ' + concl + ' missões! Suas conquistas contam essa história.'
+        : 'Que bom te ver, ' + esc(c.apelido) + '! Você já concluiu ' + concl + (concl === 1 ? ' missão' : ' missões') + ' — a próxima invenção está pertinho.');
+
+    el(topo() +
+      '<h1 class="kb">Olá, ' + esc(c.apelido) + '! Pronto(a) para inventar?</h1>' +
+      '<div class="kb-lumi">' + LUMI_SVG + '<p>' + lumiFala + '</p></div>' +
+      (atual
+        ? '<div class="kb-dia"><span class="rot">' + (atual.status === 'em_andamento' ? 'Continue seu projeto' : 'Missão de hoje') + '</span>' +
+          '<h3>' + esc(atual.emoji + ' ' + atual.titulo) + '</h3><p style="margin:0">' + esc(atual.resumo) + '</p>' +
+          '<button class="kb-bt" data-ir="#missao?m=' + esc(atual.id) + '">' + (atual.status === 'em_andamento' ? 'Continuar meu projeto' : 'Começar uma missão') + '</button></div>'
+        : '') +
+      '<div class="kb-prog"><b>Seu progresso</b><div class="barra"><div style="width:' + Math.round((concl / (d.missoes.length || 1)) * 100) + '%"></div></div>' +
+      concl + ' de ' + d.missoes.length + ' missões · nível ' + esc((nivel.emoji || '') + ' ' + (nivel.nome || '')) + '</div>' +
+      '<div class="kb-ambs">' +
+      '<button class="kb-amb lab" data-ir="#missoes"><img src="/assets/brand/villela-kids/invente/icons/lab.svg" alt="">Invente Lab<small>Teste ideias. Descubra possibilidades.</small></button>' +
+      '<button class="kb-amb studio" ' + (m03 && m03.status !== 'bloqueada' ? 'data-ir="#missao?m=m03-estudio-ilustracao"' : 'disabled title="Abre com a missão 3"') + '><img src="/assets/brand/villela-kids/invente/icons/studio.svg" alt="">Invente Studio<small>Dê forma e voz às suas ideias.</small></button>' +
+      '<button class="kb-amb expo" data-ir="#portfolio"><img src="/assets/brand/villela-kids/invente/icons/expo.svg" alt="">Invente Expo<small>Mostre o que você criou.</small></button>' +
+      '<button class="kb-amb arena" disabled title="Em preparação"><img src="/assets/brand/villela-kids/invente/icons/arena.svg" alt="">Invente Arena<small>Desafios em preparação!</small></button>' +
+      '</div>');
+    ligarNavegacao();
+  }
+
   function vPerfis() {
     var cs = (EST.me.criancas || []);
     el(topo() + '<h1 class="kb">Quem vai inventar hoje?</h1><p class="kb-sub">Escolha o perfil — ou crie um novo (só apelido, nada de dados da criança).</p>' +
@@ -103,15 +165,15 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       }).join('') +
       '<button class="kb-perfil" id="novo"><span class="av">➕</span>Novo perfil</button></div>' +
       '<div id="form-novo" style="display:none" class="kb-card kb-form">' +
-      '<h3>Novo explorador</h3>' +
+      '<h3>Novo inventor / nova inventora</h3>' +
       '<label>Apelido (como a criança quer ser chamada)</label><input id="np-apelido" maxlength="40">' +
-      '<label>Idade</label><select id="np-faixa"><option value="7-8">7 a 8 anos</option><option value="9-11" selected>9 a 11 anos</option></select>' +
+      '<label>Idade</label><select id="np-faixa"><option value="7-8">7 a 8 anos</option><option value="9-12" selected>9 a 12 anos</option></select>' +
       '<label>Avatar</label><select id="np-avatar">' + ['🦖', '🦄', '🤖', '🐱', '🦊', '🐼', '🦁', '🐸', '👾', '🌟'].map(function (e) { return '<option>' + e + '</option>'; }).join('') + '</select>' +
       '<div class="kb-erro" id="np-erro"></div>' +
       '<button class="kb-bt" id="np-criar">Criar perfil</button></div>');
     ligarNavegacao();
     raiz.querySelectorAll('[data-cid]').forEach(function (b) {
-      b.addEventListener('click', function () { localStorage.setItem('kids_crianca', b.getAttribute('data-cid')); irPara('#missoes'); });
+      b.addEventListener('click', function () { localStorage.setItem('kids_crianca', b.getAttribute('data-cid')); irPara('#inicio'); });
     });
     document.getElementById('novo').addEventListener('click', function () { document.getElementById('form-novo').style.display = ''; });
     document.getElementById('np-criar').addEventListener('click', async function () {
@@ -124,7 +186,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         });
         EST.me.criancas.push(d.crianca);
         localStorage.setItem('kids_crianca', d.crianca.id);
-        irPara('#missoes');
+        irPara('#inicio');
       } catch (err) { e.textContent = err.message; }
     });
   }
@@ -139,7 +201,8 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         return '<div class="kb-missao ' + m.status + '">' +
           '<div class="em">' + (m.status === 'concluida' ? '🏆' : m.status === 'bloqueada' ? '🔒' : esc(m.emoji)) + '</div>' +
           '<div style="flex:1"><h3>Missão ' + m.ordem + ' · ' + esc(m.titulo) + '</h3><p>' + esc(m.resumo) + '</p>' +
-          '<span class="kb-tag ' + m.status + '">' + { disponivel: 'Pronta para começar', em_andamento: 'Em andamento', concluida: 'Concluída', bloqueada: 'Bloqueada' }[m.status] + '</span></div>' +
+          '<span class="kb-tag ' + m.status + '">' + { disponivel: 'Pronta para começar', em_andamento: 'Em andamento', concluida: 'Concluída', bloqueada: 'Bloqueada' }[m.status] + '</span>' +
+          (m.status === 'concluida' ? ' <a class="kb-lk" target="_blank" rel="noopener" href="/kids/api/criancas/' + esc(c.id) + '/missoes/' + esc(m.id) + '/certificado">🎓 Certificado</a>' : '') + '</div>' +
           (podeAbrir ? '<button class="kb-bt claro" data-mid="' + esc(m.id) + '">Abrir</button>' : '') +
           '</div>';
       }).join(''));
@@ -392,7 +455,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
   }
 
   // ---------- roteador ----------
-  var ROTAS = { perfis: vPerfis, missoes: vMissoes, missao: vMissao, portfolio: vPortfolio, pais: vPais };
+  var ROTAS = { perfis: vPerfis, inicio: vInicio, missoes: vMissoes, missao: vMissao, portfolio: vPortfolio, pais: vPais };
   async function navegar() {
     try { (ROTAS[rotaAtual()] || vPerfis)(); }
     catch (e) { el('<div class="kb-erro">' + esc(e.message) + '</div>'); }

@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS children (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
   apelido TEXT NOT NULL,                           -- como a criança quer ser chamada; nunca nome completo
-  faixa TEXT NOT NULL DEFAULT '9-11',              -- 7-8 | 9-11 (calibra a linguagem do tutor)
+  faixa TEXT NOT NULL DEFAULT '9-12',              -- 7-8 | 9-12 (calibra a linguagem do tutor)
   avatar TEXT NOT NULL DEFAULT '🙂',               -- um emoji escolhido pela criança
   status TEXT NOT NULL DEFAULT 'ativo',            -- ativo | arquivado
   criado_em TEXT NOT NULL

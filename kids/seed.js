@@ -19,7 +19,7 @@ function semearDemo() {
     nome: 'Família Demonstração', email: 'familia@demo.kids',
     senha, aceite_termos: true, consentimento_parental: true,
   }, { origem: 'seed' });
-  const c = repo.Criancas.criar(u.id, { apelido: 'Exploradora', faixa: '9-11', avatar: '🦄' });
+  const c = repo.Criancas.criar(u.id, { apelido: 'Exploradora', faixa: '9-12', avatar: '🦄' });
   // A demo já mostra o ciclo completo: missão 1 concluída (com criação) e a 2 aberta.
   repo.Missoes.iniciar(u.id, c.id, 'm01-meu-assistente');
   repo.Missoes.concluir(u.id, c.id, 'm01-meu-assistente', {

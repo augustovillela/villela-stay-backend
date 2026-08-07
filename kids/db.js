@@ -21,7 +21,10 @@ db.exec('PRAGMA busy_timeout = 4000;');
 db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
 
 // ---- migrações (ALTERs; roda uma vez cada) ----
-const MIGRACOES = [];
+const MIGRACOES = [
+  // Brand book (07/08/2026) definiu a faixa 7–12; a banda superior vira 9-12.
+  { nome: '2026-08-07-faixa-9-12', sql: "UPDATE children SET faixa = '9-12' WHERE faixa = '9-11'" },
+];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
   db.exec(m.sql);
