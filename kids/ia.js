@@ -59,7 +59,15 @@ function carregar(userId, childId, missionId) {
   return { c, m, rot, p, dados };
 }
 
-const ctxDe = (dados, c) => ({ assistente: dados.respostas['nome'] || 'Assistente', apelido: c.apelido, respostas: dados.respostas });
+// O nome que a criança deu ao assistente na missão 1 acompanha TODAS as
+// missões seguintes (continuidade afetiva — o tutor é "o mesmo amigo").
+function nomeAssistente(dados, c) {
+  if (dados.respostas['nome']) return dados.respostas['nome'];
+  const p1 = Missoes.progresso(c.id, 'm01-meu-assistente');
+  const r1 = p1 ? j.parse(p1.dados, {}) : null;
+  return (r1 && r1.respostas && r1.respostas['nome']) || 'Assistente';
+}
+const ctxDe = (dados, c) => ({ assistente: nomeAssistente(dados, c), apelido: c.apelido, respostas: dados.respostas });
 
 function montarEstado({ c, m, rot, dados }) {
   const i = Math.min(dados.etapa, rot.etapas.length - 1);
@@ -142,7 +150,7 @@ async function responder(userId, childId, missionId, texto) {
     try {
       const r = await llm.responderComoTutor({
         crianca: { apelido: c.apelido, faixa: c.faixa },
-        assistente: dados.respostas['nome'] || '',
+        assistente: nomeAssistente(dados, c),
         missao: m, etapa: e, objetivo: e.objetivo,
         historico: dados.historico.filter((h) => h.etapa === e.id).slice(-8),
         respostas: dados.respostas, mensagem: msg,

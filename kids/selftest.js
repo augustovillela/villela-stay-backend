@@ -212,11 +212,44 @@ async function rodar() {
   // simples" — o que também prova que a missão nunca depende do LLM.
   let nina = null;
   const J = (mid) => `/kids/api/criancas/${nina.id}/missoes/${mid}/jogo`;
-  await t('trilha marca quais missões têm modo guiado (m01 sim, m02 ainda não)', async () => {
+  await t('as 8 missões têm modo guiado (onda 3 completou os roteiros)', async () => {
     nina = (await req('POST', '/kids/api/criancas', { como: 'bia', corpo: { apelido: 'Nina', faixa: '7-8', avatar: '🐼' } })).json.crianca;
     const trilha = (await req('GET', `/kids/api/criancas/${nina.id}/missoes`, { como: 'bia' })).json.missoes;
-    assert.equal(trilha[0].tem_roteiro, true);
-    assert.equal(trilha[1].tem_roteiro, false);
+    assert.equal(trilha.length, 8);
+    for (const m of trilha) assert.equal(m.tem_roteiro, true, m.id + ' sem roteiro');
+  });
+  await t('todo roteiro é bem formado (ids únicos, textos renderizam, criação compõe)', async () => {
+    const { ROTEIROS } = require('./roteiros');
+    assert.equal(Object.keys(ROTEIROS).length, 8);
+    for (const [mid, rot] of Object.entries(ROTEIROS)) {
+      const ids = rot.etapas.map((e) => e.id);
+      assert.equal(new Set(ids).size, ids.length, mid + ': etapa com id repetido');
+      assert.notEqual(rot.etapas[0].tipo, 'concluir', mid + ': primeira etapa não pode concluir');
+      assert.equal(rot.etapas[rot.etapas.length - 1].tipo, 'concluir', mid + ': última etapa deve concluir');
+      const respostas = {};
+      for (const e of rot.etapas) respostas[e.id] = 'Resposta sintética bem comprida para passar em qualquer validação de tamanho mínimo do roteiro.';
+      respostas['nome'] = 'Robi';
+      const ctx = { assistente: 'Robi', apelido: 'Teste', respostas };
+      for (const e of rot.etapas) {
+        assert.ok(['entrada', 'avancar', 'concluir'].includes(e.tipo), mid + '/' + e.id + ': tipo inválido');
+        assert.ok(typeof e.objetivo === 'string' && e.objetivo.length > 10, mid + '/' + e.id + ': sem objetivo pedagógico');
+        const txt = e.texto(ctx);
+        assert.ok(typeof txt === 'string' && txt.length >= 30, mid + '/' + e.id + ': texto curto demais');
+        if (e.tipo === 'entrada') {
+          assert.ok(e.entrada && e.entrada.rotulo, mid + '/' + e.id + ': entrada sem rótulo');
+          assert.ok((e.entrada.min || 1) < (e.entrada.max || 500), mid + '/' + e.id + ': min/max invertidos');
+        }
+        if (e.conversa) assert.ok(Array.isArray(e.fallbacks) && e.fallbacks.length >= 1, mid + '/' + e.id + ': etapa com chat precisa de fallback');
+      }
+      const criacao = rot.montarCriacao(respostas, { apelido: 'Teste' });
+      assert.ok(criacao.titulo_sugerido && criacao.conteudo && criacao.conteudo.length > 40, mid + ': montarCriacao vazia');
+    }
+  });
+  await t('níveis: 0 concluídas = Explorador, 8 = Visionário, e o mapa é monotônico', async () => {
+    assert.equal(repo.nivelDe(0).nome, 'Explorador');
+    assert.equal(repo.nivelDe(1).nome, 'Inventor');
+    assert.equal(repo.nivelDe(8).nome, 'Visionário');
+    assert.equal(repo.NIVEIS.length, 9);
   });
   await t('jogo exige a missão iniciada; estado inicial é a etapa do nome, sem chat', async () => {
     assert.equal((await req('GET', J('m01-meu-assistente'), { como: 'bia' })).st, 400);
@@ -320,6 +353,48 @@ async function rodar() {
     r = (await req('POST', JL('/responder'), { como: 'bia', corpo: { texto: 'e agora?' } })).json;
     assert.equal(r.motor, 'simples');
     iaLlm._injetarParaTeste(null);
+  });
+  await t('missão 2 guiada: o nome do assistente da missão 1 acompanha (continuidade)', async () => {
+    await req('POST', `/kids/api/criancas/${nina.id}/missoes/m02-minha-historia/iniciar`, { como: 'bia' });
+    const g = (await req('GET', J('m02-minha-historia'), { como: 'bia' })).json.jogo;
+    assert.equal(g.indice, 1);
+    assert.equal(g.etapa.id, 'escolha');
+    assert.equal(g.tutor.nome, 'Robi', 'o nome dado na missão 1 não acompanhou');
+  });
+  await t('missão 2 completa: escrita própria vira história no portfólio e sobe o nível', async () => {
+    const passos = [
+      ['escolha', 'Minha avó destemida, na feira do bairro, no dia em que o dinheiro do almoço sumiu.'],
+      ['comeco', 'A feira acordava cedo e cheirava a pastel com caldo de cana. Minha avó segurava minha mão firme enquanto escolhia tomates, e o rádio da banca tocava uma música antiga.'],
+      ['encruzilhada', 'Na hora de pagar, a carteira não estava na bolsa. Minha avó ficou pálida, olhou para mim, e o feirante cruzou os braços esperando. Todo mundo na fila olhava para a gente.'],
+      ['final', 'Foi o menino da banca vizinha que achou a carteira caída perto dos limões. Minha avó agradeceu com um abraço apertado e comprou um pastel para ele também.'],
+      ['revisao', 'A feira acordava cedo e cheirava a pastel. Minha avó segurava minha mão enquanto escolhia tomates. Na hora de pagar, a carteira sumiu, e a fila inteira olhava para a gente. No fim, o menino da banca dos limões achou a carteira no chão, e minha avó comprou um pastel para ele também. Naquele dia aprendi que ajuda vem de onde a gente menos espera.'],
+    ];
+    let g = null;
+    for (const [id, entrada] of passos) {
+      const r = await req('POST', J('m02-minha-historia') + '/avancar', { como: 'bia', corpo: { entrada } });
+      assert.equal(r.st, 200, id + ': ' + JSON.stringify(r.json));
+      g = r.json.jogo;
+    }
+    assert.equal(g.etapa.tipo, 'concluir');
+    assert.equal(g.previa.titulo_sugerido, 'A história de Nina');
+    const fim = (await req('POST', J('m02-minha-historia') + '/concluir', { como: 'bia', corpo: { titulo: 'O dia da feira' } })).json;
+    assert.equal(fim.ok, true);
+    assert.equal(fim.nivel.nome, 'Criador', 'nível esperado após 2 missões');
+    assert.equal(fim.subiu_nivel, true);
+    const pf = (await req('GET', `/kids/api/criancas/${nina.id}/portfolio`, { como: 'bia' })).json.portfolio;
+    assert.equal(pf.length, 2);
+    assert.ok(pf[0].conteudo.includes('pastel'), 'história não foi para o portfólio');
+    const trilha = (await req('GET', `/kids/api/criancas/${nina.id}/missoes`, { como: 'bia' })).json;
+    assert.equal(trilha.missoes[2].status, 'disponivel');
+    assert.equal(trilha.crianca.nivel.nome, 'Criador');
+    const notif = (await req('GET', '/kids/api/notificacoes', { como: 'bia' })).json.notificacoes;
+    assert.ok(notif.some((n) => n.titulo.includes('🎖️') && n.titulo.includes('Criador')), 'sem notificação de nível');
+  });
+  await t('/me devolve o nível de cada criança para o painel da família', async () => {
+    const me = (await req('GET', '/kids/api/me', { como: 'bia' })).json;
+    const n = me.criancas.find((c) => c.apelido === 'Nina');
+    assert.equal(n.nivel.nome, 'Criador');
+    assert.equal(n.nivel.concluidas, 2);
   });
   await t('isolamento também vale para o jogo: outra família não joga a missão de Nina', async () => {
     const r = await req('GET', `/kids/api/criancas/${nina.id}/missoes/m01-meu-assistente/jogo`, { como: 'ana' });

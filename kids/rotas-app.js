@@ -21,7 +21,10 @@ function registrarRotasApp(app, { requireUsuario }) {
   // ---- trilha de missões da criança ----
   app.get('/kids/api/criancas/:id/missoes', requireUsuario, h(async (req, res) => {
     const c = Criancas.exigir(req.usuario.id, req.params.id);
-    res.json({ crianca: c, missoes: Missoes.trilha(c.id).map((m) => ({ ...m, tem_roteiro: ia.temRoteiro(m.id) })) });
+    res.json({
+      crianca: { ...c, nivel: repo.nivelDaCrianca(c.id) },
+      missoes: Missoes.trilha(c.id).map((m) => ({ ...m, tem_roteiro: ia.temRoteiro(m.id) })),
+    });
   }));
   app.post('/kids/api/criancas/:id/missoes/:mid/iniciar', requireUsuario, h(async (req, res) => {
     res.json({ ok: true, missao: Missoes.iniciar(req.usuario.id, req.params.id, req.params.mid) });

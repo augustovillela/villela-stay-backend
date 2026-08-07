@@ -72,13 +72,15 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
 .kb-bolha.tutor{align-self:flex-start;background:#fff;border:2px solid #EBE2D4;border-bottom-left-radius:4px}\
 .kb-chat-linha{display:flex;gap:8px}\
 .kb-chat-linha input{flex:1;padding:11px;border:2px solid #EBE2D4;border-radius:999px;font-size:15px}\
-.kb-modo{color:#92400E;background:#FEF3C7;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:700}';
+.kb-modo{color:#92400E;background:#FEF3C7;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:700}\
+.kb-nivel{background:#EDE9FE;color:#5B21B6;border-radius:999px;padding:3px 12px;font-size:13px;font-weight:800;white-space:nowrap}';
   (function () { var s = document.createElement('style'); s.textContent = CSS_EXTRA; document.head.appendChild(s); })();
 
   function topo(ativo) {
     var c = criancaAtiva();
     return '<div class="kb-topo">' +
-      '<div class="quem">' + (c ? '<span style="font-size:30px">' + esc(c.avatar) + '</span> ' + esc(c.apelido) : '🚀 Clube de Missões') + '</div>' +
+      '<div class="quem">' + (c ? '<span style="font-size:30px">' + esc(c.avatar) + '</span> ' + esc(c.apelido) +
+        (c.nivel ? ' <span class="kb-nivel">' + esc(c.nivel.emoji + ' ' + c.nivel.nome) + '</span>' : '') : '🚀 Clube de Missões') + '</div>' +
       '<div class="acoes">' +
       (c ? '<button class="kb-lk" data-ir="#missoes">Missões</button><button class="kb-lk" data-ir="#portfolio">Portfólio</button>' : '') +
       '<button class="kb-lk" data-ir="#perfis">Trocar perfil</button>' +
@@ -95,7 +97,9 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
     el(topo() + '<h1 class="kb">Quem vai brincar hoje?</h1><p class="kb-sub">Escolha o perfil — ou crie um novo (só apelido, nada de dados da criança).</p>' +
       '<div class="kb-grade">' +
       cs.map(function (c) {
-        return '<button class="kb-perfil" data-cid="' + esc(c.id) + '"><span class="av">' + esc(c.avatar) + '</span>' + esc(c.apelido) + '<br><small style="color:#6B7280;font-weight:400">' + esc(c.faixa) + ' anos</small></button>';
+        return '<button class="kb-perfil" data-cid="' + esc(c.id) + '"><span class="av">' + esc(c.avatar) + '</span>' + esc(c.apelido) +
+          '<br><small style="color:#6B7280;font-weight:400">' + esc(c.faixa) + ' anos</small>' +
+          (c.nivel ? '<br><span class="kb-nivel">' + esc(c.nivel.emoji + ' ' + c.nivel.nome) + '</span>' : '') + '</button>';
       }).join('') +
       '<button class="kb-perfil" id="novo"><span class="av">➕</span>Novo perfil</button></div>' +
       '<div id="form-novo" style="display:none" class="kb-card kb-form">' +
@@ -182,10 +186,12 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
     if (bc) bc.addEventListener('click', async function () {
       var e = document.getElementById('cr-erro'); e.textContent = '';
       try {
-        await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/concluir', {
+        var r = await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/concluir', {
           titulo: document.getElementById('cr-titulo').value,
           conteudo: document.getElementById('cr-texto').value,
         });
+        EST.me = await api('GET', '/me'); // atualiza o selo de nível no topo
+        if (r.subiu_nivel && r.nivel) alert('🎖️ Você subiu de nível: ' + r.nivel.nome + ' ' + r.nivel.emoji + '!');
         irPara('#missoes');
       } catch (err) { e.textContent = err.message; }
     });
@@ -272,7 +278,9 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
     if (bCc) bCc.addEventListener('click', async function () {
       var err = document.getElementById('et-erro'); err.textContent = '';
       try {
-        await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/jogo/concluir', { titulo: document.getElementById('cc-titulo').value });
+        var r = await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/jogo/concluir', { titulo: document.getElementById('cc-titulo').value });
+        EST.me = await api('GET', '/me'); // atualiza o selo de nível no topo
+        if (r.subiu_nivel && r.nivel) alert('🎖️ Você subiu de nível: ' + r.nivel.nome + ' ' + r.nivel.emoji + '!');
         irPara('#missoes');
       } catch (ex) { err.textContent = ex.message; }
     });

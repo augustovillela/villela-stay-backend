@@ -97,7 +97,7 @@ function registrarRotasConta(app, { jwtSecret }) {
     const u = req.usuario;
     res.json({
       usuario: { id: u.id, nome: u.nome, email: u.email, email_verificado: !!u.email_verificado },
-      criancas: repo.Criancas.listar(u.id),
+      criancas: repo.Criancas.listar(u.id).map((c) => ({ ...c, nivel: repo.nivelDaCrianca(c.id) })),
       nao_lidas: Notificacoes.listar(u.id, { naoLidas: true }).length,
     });
   }));

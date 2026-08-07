@@ -17,6 +17,29 @@ const inteiro = (v, padrao = 0) => Math.trunc(n(v, padrao));
 const FAIXAS = ['7-8', '9-11'];
 const MAX_PERFIS = 6; // teto por família (beta): acima disso é uso fora do combinado
 
+// Progressão por competência (PROMPT_MASTER §3): o nível é CALCULADO das
+// missões concluídas — sem coluna no banco, impossível dessincronizar.
+// Visionário só com as 8; Especialista cobre 4-5 (o platô do meio).
+const NIVEIS = [
+  { nome: 'Explorador', emoji: '🧭' },   // 0
+  { nome: 'Inventor', emoji: '🔧' },     // 1
+  { nome: 'Criador', emoji: '🎨' },      // 2
+  { nome: 'Construtor', emoji: '🏗️' },   // 3
+  { nome: 'Especialista', emoji: '🎯' }, // 4
+  { nome: 'Especialista', emoji: '🎯' }, // 5
+  { nome: 'Mestre', emoji: '🏅' },       // 6
+  { nome: 'Mentor', emoji: '🌟' },       // 7
+  { nome: 'Visionário', emoji: '🚀' },   // 8
+];
+function nivelDe(concluidas) {
+  const i = Math.max(0, Math.min(inteiro(concluidas, 0), NIVEIS.length - 1));
+  return { ...NIVEIS[i], concluidas: inteiro(concluidas, 0) };
+}
+function nivelDaCrianca(childId) {
+  const r = db.prepare("SELECT COUNT(*) AS c FROM child_missions WHERE child_id = ? AND status = 'concluida'").get(s(childId, 40));
+  return nivelDe(r ? r.c : 0);
+}
+
 // ---------------------------------------------------------------------
 // Configuração da plataforma
 // ---------------------------------------------------------------------
@@ -282,6 +305,7 @@ const Missoes = {
     const txt = s(conteudo, 20000);
     if (!tit || !txt) throw new Error('Toda missão termina com uma criação: dê um título e cole o que você criou.');
     const m = Missoes.obter(mid);
+    const nivelAntes = nivelDaCrianca(c.id);
     return transacao(() => {
       const pid = novoId();
       db.prepare('INSERT INTO portfolio (id, child_id, mission_id, tipo, titulo, conteudo, criado_em) VALUES (?,?,?,?,?,?,?)')
@@ -293,7 +317,19 @@ const Missoes = {
         texto: `A criação "${tit}" entrou no portfólio. ${m && m.momento_familia ? 'Momento família: ' + m.momento_familia : ''}`,
         url: '/kids/app#portfolio',
       });
-      return { ok: true, portfolio_id: pid, proxima: Missoes.trilha(c.id).find((x) => x.status === 'disponivel') || null };
+      const nivel = nivelDaCrianca(c.id);
+      const subiu = nivel.nome !== nivelAntes.nome;
+      if (subiu) {
+        Notificacoes.criar(userId, {
+          titulo: `🎖️ ${c.apelido} subiu de nível: ${nivel.nome} ${nivel.emoji}`,
+          texto: `De ${nivelAntes.nome} para ${nivel.nome}, com ${nivel.concluidas} missão(ões) concluída(s). Evidência no portfólio!`,
+          url: '/kids/app#portfolio',
+        });
+      }
+      return {
+        ok: true, portfolio_id: pid, nivel, subiu_nivel: subiu,
+        proxima: Missoes.trilha(c.id).find((x) => x.status === 'disponivel') || null,
+      };
     });
   },
 };
@@ -329,4 +365,4 @@ function semear() {
   }
 }
 
-module.exports = { Config, Auditoria, Notificacoes, Users, Criancas, Missoes, Portfolio, semear, evento, s, n, inteiro, FAIXAS };
+module.exports = { Config, Auditoria, Notificacoes, Users, Criancas, Missoes, Portfolio, semear, evento, s, n, inteiro, FAIXAS, NIVEIS, nivelDe, nivelDaCrianca };
