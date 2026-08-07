@@ -35,8 +35,10 @@ function montar(app, injected = {}) {
   registrarRotasStaff(app, { requireAuth, requireAdmin });
   registrarPaginas(app);
 
+  const iaLlm = require('./ia-llm');
   console.log(`[kids] Villela Kids montado. Landing: /kids · app: /kids/app · staff: /staff/api/kids`
     + ` · missões ativas: ${repo.Missoes.catalogo().length}`
+    + ` · tutor: ${iaLlm.disponivel() ? 'LLM (' + iaLlm.MODELO + ')' : 'modo simples (sem ANTHROPIC_API_KEY ou KIDS_IA_MOTOR=off)'}`
     + ` · beta fechado: ${repo.Config.get('beta_fechado', 'on')}`
     + ` · e-mail: ${emails.ativo() ? 'ligado' : 'desligado'}`);
   return { repo, emails, seed };

@@ -207,6 +207,126 @@ async function rodar() {
     }
   });
 
+  // ================= missão guiada (onda 2) =================
+  // Sem ANTHROPIC_API_KEY no ambiente de teste, o tutor nasce no "modo
+  // simples" — o que também prova que a missão nunca depende do LLM.
+  let nina = null;
+  const J = (mid) => `/kids/api/criancas/${nina.id}/missoes/${mid}/jogo`;
+  await t('trilha marca quais missões têm modo guiado (m01 sim, m02 ainda não)', async () => {
+    nina = (await req('POST', '/kids/api/criancas', { como: 'bia', corpo: { apelido: 'Nina', faixa: '7-8', avatar: '🐼' } })).json.crianca;
+    const trilha = (await req('GET', `/kids/api/criancas/${nina.id}/missoes`, { como: 'bia' })).json.missoes;
+    assert.equal(trilha[0].tem_roteiro, true);
+    assert.equal(trilha[1].tem_roteiro, false);
+  });
+  await t('jogo exige a missão iniciada; estado inicial é a etapa do nome, sem chat', async () => {
+    assert.equal((await req('GET', J('m01-meu-assistente'), { como: 'bia' })).st, 400);
+    await req('POST', `/kids/api/criancas/${nina.id}/missoes/m01-meu-assistente/iniciar`, { como: 'bia' });
+    const g = (await req('GET', J('m01-meu-assistente'), { como: 'bia' })).json.jogo;
+    assert.equal(g.indice, 1);
+    assert.equal(g.total, 7);
+    assert.equal(g.etapa.id, 'nome');
+    assert.equal(g.etapa.conversa, false);
+    assert.equal(g.tutor.motor, 'simples');
+    assert.ok(g.etapa.texto.includes('Nina'), 'texto não personalizou o apelido');
+  });
+  await t('etapa sem chat recusa conversa; avançar valida a entrada (vazia e com telefone)', async () => {
+    assert.equal((await req('POST', J('m01-meu-assistente') + '/responder', { como: 'bia', corpo: { texto: 'oi' } })).st, 400);
+    assert.equal((await req('POST', J('m01-meu-assistente') + '/avancar', { como: 'bia', corpo: { entrada: '' } })).st, 400);
+    const r = await req('POST', J('m01-meu-assistente') + '/avancar', { como: 'bia', corpo: { entrada: '61987654321' } });
+    assert.equal(r.st, 400);
+    assert.ok(/dados pessoais/i.test(r.json.erro));
+  });
+  await t('dar nome ao assistente avança e o nome entra nos textos seguintes', async () => {
+    const g = (await req('POST', J('m01-meu-assistente') + '/avancar', { como: 'bia', corpo: { entrada: 'Robi' } })).json.jogo;
+    assert.equal(g.etapa.id, 'pergunta');
+    assert.equal(g.etapa.conversa, true);
+    assert.equal(g.tutor.nome, 'Robi');
+    assert.ok(g.etapa.texto.includes('Robi'));
+  });
+  await t('concluir antes da última etapa é recusado', async () => {
+    assert.equal((await req('POST', J('m01-meu-assistente') + '/concluir', { como: 'bia', corpo: { titulo: 'x' } })).st, 400);
+  });
+  await t('chat no modo simples responde com os fallbacks curados do roteiro', async () => {
+    const r = (await req('POST', J('m01-meu-assistente') + '/responder', { como: 'bia', corpo: { texto: 'como faço uma pergunta boa?' } })).json;
+    assert.equal(r.motor, 'simples');
+    assert.ok(/DETALHE|CONTEXTO|PEDIDO/.test(r.resposta), 'fallback fora do roteiro: ' + r.resposta);
+  });
+  await t('guarda: dado pessoal no chat não vai ao tutor e volta com orientação', async () => {
+    const r = (await req('POST', J('m01-meu-assistente') + '/responder', { como: 'bia', corpo: { texto: 'meu telefone é 61999998888' } })).json;
+    assert.equal(r.motor, 'guarda');
+    assert.ok(/dados pessoais/i.test(r.resposta));
+  });
+  await t('guarda: sinal de risco aciona notificação imediata ao responsável', async () => {
+    const r = (await req('POST', J('m01-meu-assistente') + '/responder', { como: 'bia', corpo: { texto: 'às vezes eu quero sumir' } })).json;
+    assert.equal(r.motor, 'guarda');
+    assert.ok(/respons/i.test(r.resposta));
+    const notif = (await req('GET', '/kids/api/notificacoes', { como: 'bia' })).json.notificacoes;
+    assert.ok(notif.some((x) => x.tipo === 'alerta' && x.titulo.includes('Nina')), 'sem notificação de alerta');
+  });
+  await t('limite de trocas por etapa fecha o chat com convite à atividade', async () => {
+    let ultimo = null;
+    for (let i = 0; i < 6; i++) {
+      ultimo = (await req('POST', J('m01-meu-assistente') + '/responder', { como: 'bia', corpo: { texto: 'conta mais ' + i } })).json;
+    }
+    assert.equal(ultimo.motor, 'guarda');
+    assert.ok(/mão na massa/i.test(ultimo.resposta));
+  });
+  await t('trilha completa: pergunta → do meu jeito → pegadinha → revelação → regras → manual', async () => {
+    let g = (await req('POST', J('m01-meu-assistente') + '/avancar', { como: 'bia', corpo: { entrada: 'Como os polvos respiram no fundo do mar? Quero uma lista curta para contar na escola.' } })).json.jogo;
+    assert.equal(g.etapa.id, 'do-meu-jeito');
+    g = (await req('POST', J('m01-meu-assistente') + '/avancar', { como: 'bia', corpo: { entrada: 'Pedi para explicar o céu azul como futebol e entendi!' } })).json.jogo;
+    assert.equal(g.etapa.id, 'pegadinha');
+    g = (await req('POST', J('m01-meu-assistente') + '/avancar', { como: 'bia', corpo: { entrada: 'O 2, porque astronauta diz que não dá para ver' } })).json.jogo;
+    assert.equal(g.etapa.id, 'revelacao');
+    assert.ok(g.etapa.texto.includes('Muralha'), 'revelação sem a resposta curada');
+    assert.ok(g.etapa.texto.includes('O 2, porque'), 'revelação não citou o palpite da criança');
+    g = (await req('POST', J('m01-meu-assistente') + '/avancar', { como: 'bia', corpo: {} })).json.jogo;
+    assert.equal(g.etapa.id, 'regras');
+    g = (await req('POST', J('m01-meu-assistente') + '/avancar', { como: 'bia', corpo: { entrada: '1. Perguntar com detalhe\n2. Pedir do meu jeito\n3. Conferir tudo\n4. Não contar meus dados\n5. A IA também erra' } })).json.jogo;
+    assert.equal(g.etapa.id, 'manual');
+    assert.ok(g.previa && g.previa.titulo_sugerido === 'O Manual do Robi');
+    assert.ok(g.previa.conteudo.includes('MANUAL DO ROBI') && g.previa.conteudo.includes('Conferir tudo'));
+  });
+  await t('concluir a missão guiada compõe o Manual no portfólio e abre a missão 2', async () => {
+    const r = await req('POST', J('m01-meu-assistente') + '/concluir', { como: 'bia', corpo: { titulo: '' } });
+    assert.equal(r.st, 200, JSON.stringify(r.json));
+    const pf = (await req('GET', `/kids/api/criancas/${nina.id}/portfolio`, { como: 'bia' })).json.portfolio;
+    assert.equal(pf.length, 1);
+    assert.equal(pf[0].titulo, 'O Manual do Robi');
+    assert.ok(pf[0].conteudo.includes('por Nina'));
+    const trilha = (await req('GET', `/kids/api/criancas/${nina.id}/missoes`, { como: 'bia' })).json.missoes;
+    assert.equal(trilha[0].status, 'concluida');
+    assert.equal(trilha[1].status, 'disponivel');
+  });
+  await t('LLM fake: resposta validada é saneada (sem links) e alerta vira notificação; falha cai no modo simples', async () => {
+    const iaLlm = require('./ia-llm');
+    const lalo = (await req('POST', '/kids/api/criancas', { como: 'bia', corpo: { apelido: 'Lalo', avatar: '🦊' } })).json.crianca;
+    const JL = (rota) => `/kids/api/criancas/${lalo.id}/missoes/m01-meu-assistente/jogo${rota}`;
+    await req('POST', `/kids/api/criancas/${lalo.id}/missoes/m01-meu-assistente/iniciar`, { como: 'bia' });
+    await req('POST', JL('/avancar'), { como: 'bia', corpo: { entrada: 'Zug' } });
+
+    iaLlm._injetarParaTeste(() => ({ resposta: 'Boa pergunta! Veja https://exemplo.com/x e [clique aqui](https://y.com).', alerta_responsavel: '' }));
+    let r = (await req('POST', JL('/responder'), { como: 'bia', corpo: { texto: 'me ajuda?' } })).json;
+    assert.equal(r.motor, 'llm');
+    assert.ok(!r.resposta.includes('https://'), 'link vazou: ' + r.resposta);
+    assert.ok(r.resposta.includes('[link removido]'));
+
+    iaLlm._injetarParaTeste(() => ({ resposta: 'Entendi. Que tal contar isso para alguém da sua casa?', alerta_responsavel: 'A criança relatou situação que merece atenção do responsável.' }));
+    await req('POST', JL('/responder'), { como: 'bia', corpo: { texto: 'uma coisa aconteceu' } });
+    const notif = (await req('GET', '/kids/api/notificacoes', { como: 'bia' })).json.notificacoes;
+    assert.ok(notif.some((x) => x.tipo === 'alerta' && x.titulo.includes('Lalo')), 'alerta do LLM não virou notificação');
+
+    iaLlm._injetarParaTeste(() => { throw new Error('timeout simulado'); });
+    r = (await req('POST', JL('/responder'), { como: 'bia', corpo: { texto: 'e agora?' } })).json;
+    assert.equal(r.motor, 'simples');
+    iaLlm._injetarParaTeste(null);
+  });
+  await t('isolamento também vale para o jogo: outra família não joga a missão de Nina', async () => {
+    const r = await req('GET', `/kids/api/criancas/${nina.id}/missoes/m01-meu-assistente/jogo`, { como: 'ana' });
+    assert.equal(r.st, 400);
+    assert.ok(/não encontrado/i.test(r.json.erro));
+  });
+
   // ================= LGPD =================
   await t('exportar dados traz a família inteira e nunca o hash de senha', async () => {
     const r = await req('GET', '/kids/api/meus-dados', { como: 'ana' });

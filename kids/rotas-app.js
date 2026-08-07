@@ -6,6 +6,7 @@
 // =====================================================================
 'use strict';
 const repo = require('./repo');
+const ia = require('./ia');
 const { Criancas, Missoes, Portfolio } = repo;
 
 function registrarRotasApp(app, { requireUsuario }) {
@@ -20,13 +21,27 @@ function registrarRotasApp(app, { requireUsuario }) {
   // ---- trilha de missões da criança ----
   app.get('/kids/api/criancas/:id/missoes', requireUsuario, h(async (req, res) => {
     const c = Criancas.exigir(req.usuario.id, req.params.id);
-    res.json({ crianca: c, missoes: Missoes.trilha(c.id) });
+    res.json({ crianca: c, missoes: Missoes.trilha(c.id).map((m) => ({ ...m, tem_roteiro: ia.temRoteiro(m.id) })) });
   }));
   app.post('/kids/api/criancas/:id/missoes/:mid/iniciar', requireUsuario, h(async (req, res) => {
     res.json({ ok: true, missao: Missoes.iniciar(req.usuario.id, req.params.id, req.params.mid) });
   }));
   app.post('/kids/api/criancas/:id/missoes/:mid/concluir', requireUsuario, h(async (req, res) => {
     res.json(Missoes.concluir(req.usuario.id, req.params.id, req.params.mid, req.body || {}));
+  }));
+
+  // ---- missão guiada (onda 2): estado, avançar, chat com o tutor, concluir ----
+  app.get('/kids/api/criancas/:id/missoes/:mid/jogo', requireUsuario, h(async (req, res) => {
+    res.json({ jogo: ia.estado(req.usuario.id, req.params.id, req.params.mid) });
+  }));
+  app.post('/kids/api/criancas/:id/missoes/:mid/jogo/avancar', requireUsuario, h(async (req, res) => {
+    res.json({ ok: true, jogo: ia.avancar(req.usuario.id, req.params.id, req.params.mid, req.body || {}) });
+  }));
+  app.post('/kids/api/criancas/:id/missoes/:mid/jogo/responder', requireUsuario, h(async (req, res) => {
+    res.json(await ia.responder(req.usuario.id, req.params.id, req.params.mid, (req.body || {}).texto));
+  }));
+  app.post('/kids/api/criancas/:id/missoes/:mid/jogo/concluir', requireUsuario, h(async (req, res) => {
+    res.json(ia.concluirGuiada(req.usuario.id, req.params.id, req.params.mid, req.body || {}));
   }));
 
   // ---- portfólio (as criações — visíveis só à própria família) ----

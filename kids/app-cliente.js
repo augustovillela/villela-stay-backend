@@ -60,7 +60,19 @@
 .kb-ok{background:#ECFDF5;border:2px solid #A7F3D0;border-radius:14px;padding:14px 18px;margin:12px 0;color:#065F46;font-weight:600}\
 .kb-sub{color:#6B7280;margin:0 0 16px}\
 h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
-.kb-criacao pre{white-space:pre-wrap;font-family:inherit;background:#FAF6EE;border-radius:12px;padding:14px;margin:8px 0 0}';
+.kb-criacao pre{white-space:pre-wrap;font-family:inherit;background:#FAF6EE;border-radius:12px;padding:14px;margin:8px 0 0}\
+.kb-etapa-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}\
+.kb-passos{color:#6B7280;font-weight:700;font-size:14px}\
+.kb-texto{background:#fff;border:2px solid #EBE2D4;border-radius:18px;padding:20px;font-size:17px;white-space:pre-wrap}\
+.kb-chat{background:#FAF6EE;border:2px dashed #EBE2D4;border-radius:18px;padding:14px;margin-top:14px}\
+.kb-chat .titulo-chat{font-weight:800;margin:0 0 8px;font-size:15px}\
+.kb-bolhas{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}\
+.kb-bolha{max-width:85%;padding:10px 14px;border-radius:16px;font-size:15px;white-space:pre-wrap}\
+.kb-bolha.crianca{align-self:flex-end;background:#0F766E;color:#fff;border-bottom-right-radius:4px}\
+.kb-bolha.tutor{align-self:flex-start;background:#fff;border:2px solid #EBE2D4;border-bottom-left-radius:4px}\
+.kb-chat-linha{display:flex;gap:8px}\
+.kb-chat-linha input{flex:1;padding:11px;border:2px solid #EBE2D4;border-radius:999px;font-size:15px}\
+.kb-modo{color:#92400E;background:#FEF3C7;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:700}';
   (function () { var s = document.createElement('style'); s.textContent = CSS_EXTRA; document.head.appendChild(s); })();
 
   function topo(ativo) {
@@ -140,6 +152,8 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
     var d = await api('GET', '/criancas/' + c.id + '/missoes');
     var m = d.missoes.find(function (x) { return x.id === mid; });
     if (!m) return irPara('#missoes');
+    // Missão com roteiro em andamento vai direto para o player guiado.
+    if (m.tem_roteiro && m.status === 'em_andamento') return vJogo(c, mid);
     var corpo = '<h1 class="kb">' + esc(m.emoji) + ' ' + esc(m.titulo) + '</h1>' +
       '<p class="kb-sub">Missão ' + m.ordem + ' · eixo ' + esc(m.eixo).toUpperCase() + '</p>' +
       '<div class="kb-card"><p style="font-size:17px">' + esc(m.resumo) + '</p>' +
@@ -149,8 +163,8 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       corpo += '<p style="margin-top:16px"><button class="kb-bt" id="iniciar">Começar a missão!</button></p>';
     } else if (m.status === 'em_andamento') {
       corpo += '<div class="kb-card kb-form" style="margin-top:16px"><h3>Terminou? Registre a sua criação 🏆</h3>' +
-        '<p class="kb-sub">O tutor por IA chega na próxima atualização — por enquanto, faça a missão do seu jeito e cole aqui o resultado.</p>' +
-        '<label>Nome da criação</label><input id="cr-titulo" maxlength="140" placeholder="Ex.: O Manual do Robi">' +
+        '<p class="kb-sub">Esta missão ainda não tem o modo guiado — faça do seu jeito e cole aqui o resultado.</p>' +
+        '<label>Nome da criação</label><input id="cr-titulo" maxlength="140" placeholder="Ex.: Minha história">' +
         '<label>A criação (texto)</label><textarea id="cr-texto" rows="8" placeholder="Cole ou escreva aqui o que você criou…"></textarea>' +
         '<div class="kb-erro" id="cr-erro"></div>' +
         '<button class="kb-bt" id="concluir">Guardar no portfólio e concluir</button></div>';
@@ -174,6 +188,93 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         });
         irPara('#missoes');
       } catch (err) { e.textContent = err.message; }
+    });
+  }
+
+  // ---------- player da missão guiada (onda 2) ----------
+  function bolha(h) { return '<div class="kb-bolha ' + (h.de === 'crianca' ? 'crianca' : 'tutor') + '">' + esc(h.texto) + '</div>'; }
+
+  async function vJogo(c, mid) {
+    var d = await api('GET', '/criancas/' + c.id + '/missoes/' + mid + '/jogo');
+    var g = d.jogo;
+    var e = g.etapa;
+    var corpo = '<div class="kb-etapa-topo"><h1 class="kb">' + esc(g.missao.emoji) + ' ' + esc(g.missao.titulo) + '</h1>' +
+      '<span class="kb-passos">Etapa ' + g.indice + ' de ' + g.total + '</span></div>' +
+      '<p class="kb-sub"><b>' + esc(e.titulo) + '</b>' +
+      (g.tutor.motor === 'simples' ? ' · <span class="kb-modo">tutor no modo simples</span>' : '') + '</p>' +
+      '<div class="kb-texto">' + esc(e.texto) + '</div>';
+
+    if (e.conversa) {
+      corpo += '<div class="kb-chat"><p class="titulo-chat">💬 Converse com ' + esc(g.tutor.nome) + '</p>' +
+        '<div class="kb-bolhas" id="bolhas">' + g.historico.map(bolha).join('') + '</div>' +
+        '<div class="kb-chat-linha"><input id="chat-texto" maxlength="500" placeholder="Escreva para o tutor…">' +
+        '<button class="kb-bt" id="chat-enviar">Enviar</button></div></div>';
+    }
+
+    if (e.tipo === 'entrada') {
+      corpo += '<div class="kb-card kb-form" style="margin-top:14px">' +
+        '<label>' + esc(e.entrada.rotulo) + '</label>' +
+        (e.entrada.multilinha
+          ? '<textarea id="et-entrada" rows="6" placeholder="' + esc(e.entrada.dica) + '"></textarea>'
+          : '<input id="et-entrada" placeholder="' + esc(e.entrada.dica) + '">') +
+        '<div class="kb-erro" id="et-erro"></div>' +
+        '<button class="kb-bt" id="et-avancar">Próxima etapa ▸</button></div>';
+    } else if (e.tipo === 'avancar') {
+      corpo += '<div class="kb-erro" id="et-erro"></div>' +
+        '<p style="margin-top:14px"><button class="kb-bt" id="et-avancar">Continuar ▸</button></p>';
+    } else if (e.tipo === 'concluir') {
+      corpo += '<div class="kb-card kb-form kb-criacao" style="margin-top:14px"><h3>Prévia da sua criação</h3>' +
+        '<pre>' + esc(g.previa.conteudo) + '</pre>' +
+        '<label>Título da criação</label><input id="cc-titulo" maxlength="140" value="' + esc(g.previa.titulo_sugerido) + '">' +
+        '<div class="kb-erro" id="et-erro"></div>' +
+        '<button class="kb-bt" id="cc-concluir">Guardar no portfólio 🏆</button></div>';
+    }
+
+    el(topo() + corpo);
+    ligarNavegacao();
+    var bolhas = document.getElementById('bolhas');
+    if (bolhas) bolhas.scrollTop = bolhas.scrollHeight;
+
+    var bcEnviar = document.getElementById('chat-enviar');
+    if (bcEnviar) {
+      var enviar = async function () {
+        var inp = document.getElementById('chat-texto');
+        var txt = inp.value.trim();
+        if (!txt) return;
+        inp.value = ''; inp.disabled = true; bcEnviar.disabled = true;
+        bolhas.insertAdjacentHTML('beforeend', bolha({ de: 'crianca', texto: txt }));
+        bolhas.scrollTop = bolhas.scrollHeight;
+        try {
+          var r = await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/jogo/responder', { texto: txt });
+          bolhas.insertAdjacentHTML('beforeend', bolha({ de: 'tutor', texto: r.resposta }));
+        } catch (err) {
+          bolhas.insertAdjacentHTML('beforeend', bolha({ de: 'tutor', texto: err.message }));
+        }
+        inp.disabled = false; bcEnviar.disabled = false;
+        bolhas.scrollTop = bolhas.scrollHeight;
+        inp.focus();
+      };
+      bcEnviar.addEventListener('click', enviar);
+      document.getElementById('chat-texto').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') enviar(); });
+    }
+
+    var bAv = document.getElementById('et-avancar');
+    if (bAv) bAv.addEventListener('click', async function () {
+      var err = document.getElementById('et-erro'); err.textContent = '';
+      var campo = document.getElementById('et-entrada');
+      try {
+        await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/jogo/avancar', campo ? { entrada: campo.value } : {});
+        vJogo(c, mid);
+      } catch (ex) { err.textContent = ex.message; }
+    });
+
+    var bCc = document.getElementById('cc-concluir');
+    if (bCc) bCc.addEventListener('click', async function () {
+      var err = document.getElementById('et-erro'); err.textContent = '';
+      try {
+        await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/jogo/concluir', { titulo: document.getElementById('cc-titulo').value });
+        irPara('#missoes');
+      } catch (ex) { err.textContent = ex.message; }
     });
   }
 

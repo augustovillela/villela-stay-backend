@@ -247,6 +247,16 @@ const Missoes = {
     });
   },
 
+  // Linha crua do progresso (o motor da missão guiada lê/grava o JSON `dados`).
+  progresso(childId, missionId) {
+    return db.prepare('SELECT * FROM child_missions WHERE child_id = ? AND mission_id = ?')
+      .get(s(childId, 40), s(missionId, 60)) || null;
+  },
+  salvarDados(childId, missionId, dados) {
+    db.prepare('UPDATE child_missions SET dados = ? WHERE child_id = ? AND mission_id = ?')
+      .run(j.str(dados || {}), s(childId, 40), s(missionId, 60));
+  },
+
   iniciar(userId, childId, missionId) {
     const c = Criancas.exigir(userId, childId);
     const etapa = Missoes.trilha(c.id).find((m) => m.id === s(missionId, 60));

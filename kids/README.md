@@ -30,9 +30,15 @@ com produto final, portfólio de criações e — a partir da onda 2 — tutor p
 
 ## Ondas
 
-- **Onda 1 (esta):** fundação — conta, perfis, catálogo, trilha, portfólio, staff, selftest.
-- Onda 2: tutor IA (`ia.js` regras + `ia-llm.js` Claude, padrão closet) e missão 1 guiada.
-- Onda 3: as 8 missões guiadas + progressão por níveis; imagem gated por credencial.
+- **Onda 1 (feita):** fundação — conta, perfis, catálogo, trilha, portfólio, staff, selftest.
+- **Onda 2 (feita):** missão guiada — `roteiros.js` (currículo curado por etapa, com o erro
+  proposital da pegadinha), `ia.js` (motor: máquina de etapas, guarda de dados pessoais, sinais
+  de risco → notificação imediata ao responsável, limite de 6 trocas/etapa, fallback "modo
+  simples") e `ia-llm.js` (Claude com saída estruturada validada + system prompt de segurança
+  infantil; liga sozinho com ANTHROPIC_API_KEY; kill-switch KIDS_IA_MOTOR=off). O LLM só
+  conversa DENTRO da etapa — currículo, avanço e conclusão são determinísticos. Conversas ficam
+  em `child_missions.dados` e entram na exportação LGPD da família.
+- Onda 3: roteiros das outras 7 missões + progressão por níveis; imagem gated por credencial.
 - Onda 4: painel dos pais completo, PWA (`pwa.js`), push só para responsáveis, assets de marca.
 
 ## Rodar
