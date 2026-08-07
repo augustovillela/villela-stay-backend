@@ -855,7 +855,9 @@
       ],
       "titulo": "Fachada (3)",
       "larguras": [
-        1024
+        1024,
+        2048,
+        4096
       ],
       "vistaInicial": {
         "yaw": 0,
@@ -874,7 +876,9 @@
       ],
       "titulo": "Fachada (4)",
       "larguras": [
-        1024
+        1024,
+        2048,
+        4096
       ],
       "vistaInicial": {
         "yaw": 0,
@@ -1069,7 +1073,9 @@
       ],
       "titulo": "Fachada (2)",
       "larguras": [
-        1024
+        1024,
+        2048,
+        4096
       ],
       "vistaInicial": {
         "yaw": 0,
