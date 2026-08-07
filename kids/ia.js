@@ -83,6 +83,9 @@ function montarEstado({ c, m, rot, dados }) {
     },
     historico: dados.historico.slice(-16),
     tutor: { nome: ctx.assistente, motor: llm.disponivel() ? 'llm' : 'simples' },
+    // Estúdio com IA (onda 5): o player só mostra o botão de gerar imagem
+    // na missão 3 e quando a credencial existir (gated; modo papel senão).
+    ilustrar: m.id === 'm03-estudio-ilustracao' && require('./imagens').disponivel(),
   };
   if (e.tipo === 'concluir') {
     const previa = rot.montarCriacao(dados.respostas, c);

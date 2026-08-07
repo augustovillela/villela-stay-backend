@@ -87,7 +87,7 @@ ${canonico ? `<link rel="canonical" href="${canonico}">` : ''}
 <main id="conteudo">${conteudo}</main>
 <footer><div class="wrap">
   <p><b>Villela Kids</b> · um produto do Grupo Villela Stay · Brasília-DF</p>
-  <p><a href="/kids/termos">Termos de uso</a> · <a href="/kids/privacidade">Privacidade</a></p>
+  <p><a href="/kids/ajuda">Central de Ajuda</a> · <a href="/kids/termos">Termos de uso</a> · <a href="/kids/privacidade">Privacidade</a></p>
 </div></footer></body></html>`;
 }
 

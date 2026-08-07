@@ -80,9 +80,10 @@ CREATE TABLE IF NOT EXISTS portfolio (
   id TEXT PRIMARY KEY,
   child_id TEXT NOT NULL REFERENCES children(id),
   mission_id TEXT NOT NULL DEFAULT '',
-  tipo TEXT NOT NULL DEFAULT 'texto',              -- texto (onda 1) | imagem | audio-local (futuro)
+  tipo TEXT NOT NULL DEFAULT 'texto',              -- texto (onda 1) | imagem (onda 5, Estúdio)
   titulo TEXT NOT NULL,
   conteudo TEXT NOT NULL DEFAULT '',
+  arquivo TEXT NOT NULL DEFAULT '',                -- nome do PNG em DATA_DIR/kids/ilustracoes/ (tipo imagem)
   criado_em TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_kids_portfolio_child ON portfolio (child_id, criado_em);

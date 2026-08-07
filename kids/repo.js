@@ -7,7 +7,9 @@
 // =====================================================================
 'use strict';
 const bcrypt = require('bcryptjs');
-const { db, transacao, nowISO, novoId, novoToken, j } = require('./db');
+const fs = require('fs');
+const path = require('path');
+const { db, transacao, nowISO, novoId, novoToken, j, MOD_DIR } = require('./db');
 const { MISSOES } = require('./missoes-catalogo');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -187,6 +189,11 @@ const Users = {
     if (!u) throw new Error('Conta não encontrada.');
     transacao(() => {
       for (const c of db.prepare('SELECT id FROM children WHERE user_id = ?').all(id)) {
+        // Imagens do Estúdio: apagar o ARQUIVO junto com a linha — dado de
+        // criança não pode sobreviver órfão no disco (LGPD de verdade).
+        for (const p of db.prepare("SELECT arquivo FROM portfolio WHERE child_id = ? AND arquivo != ''").all(c.id)) {
+          try { fs.unlinkSync(path.join(MOD_DIR, 'ilustracoes', path.basename(p.arquivo))); } catch (_) {}
+        }
         db.prepare('DELETE FROM portfolio WHERE child_id = ?').run(c.id);
         db.prepare('DELETE FROM child_missions WHERE child_id = ?').run(c.id);
       }

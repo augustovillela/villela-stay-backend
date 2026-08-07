@@ -22,6 +22,7 @@ const PRODUTOS = [
   { slug: 'vsm', base: '/gestao', nome: 'Villela Stay Manager', landing: '/gestao' },
   { slug: 'legal-saas', base: '/juridico', nome: 'Villela Legal', landing: '/juridico' },
   { slug: 'livraria', base: '/livros', nome: 'Livraria Villela', landing: '/livros' },
+  { slug: 'kids', base: '/kids', nome: 'Villela Kids', landing: '/kids' },
 ];
 
 const esc = (s) => String(s == null ? '' : s)

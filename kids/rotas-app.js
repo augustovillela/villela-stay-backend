@@ -8,6 +8,7 @@
 const repo = require('./repo');
 const ia = require('./ia');
 const push = require('./push');
+const imagens = require('./imagens');
 const { Criancas, Missoes, Portfolio } = repo;
 
 function registrarRotasApp(app, { requireUsuario }) {
@@ -52,6 +53,20 @@ function registrarRotasApp(app, { requireUsuario }) {
   app.get('/kids/api/criancas/:id/portfolio', requireUsuario, h(async (req, res) => {
     res.json({ portfolio: Portfolio.listar(req.usuario.id, req.params.id) });
   }));
+
+  // ---- Estúdio de Ilustração com IA (onda 5, gated por credencial) ----
+  app.post('/kids/api/criancas/:id/ilustrar', requireUsuario, h(async (req, res) => {
+    res.json({ ok: true, ilustracao: await imagens.ilustrar(req.usuario.id, req.params.id, req.body || {}) });
+  }));
+  app.get('/kids/api/criancas/:id/ilustracoes/:pid', requireUsuario, (req, res) => {
+    // Perfil de outra família cai no exigir() lá dentro — aqui vira 404 igual
+    // ao id inexistente: quem não é dono nem descobre que a imagem existe.
+    let abs = null;
+    try { abs = imagens.caminhoDaImagem(req.usuario.id, req.params.id, req.params.pid); } catch (_) { abs = null; }
+    if (!abs) return res.status(404).json({ erro: 'Imagem não encontrada.' });
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.sendFile(abs);
+  });
 
   // ---- painel dos pais (onda 4): evidências e atividade por criança ----
   app.get('/kids/api/painel', requireUsuario, h(async (req, res) => {

@@ -224,7 +224,8 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
           ? '<textarea id="et-entrada" rows="6" placeholder="' + esc(e.entrada.dica) + '"></textarea>'
           : '<input id="et-entrada" placeholder="' + esc(e.entrada.dica) + '">') +
         '<div class="kb-erro" id="et-erro"></div>' +
-        '<button class="kb-bt" id="et-avancar">Próxima etapa ▸</button></div>';
+        (g.ilustrar ? '<p style="margin:10px 0 0"><button class="kb-bt claro" id="et-ilustrar">🎨 Ver esta descrição desenhada</button></p><div id="et-imagem"></div>' : '') +
+        '<button class="kb-bt" id="et-avancar" style="margin-top:12px">Próxima etapa ▸</button></div>';
     } else if (e.tipo === 'avancar') {
       corpo += '<div class="kb-erro" id="et-erro"></div>' +
         '<p style="margin-top:14px"><button class="kb-bt" id="et-avancar">Continuar ▸</button></p>';
@@ -264,6 +265,21 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       document.getElementById('chat-texto').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') enviar(); });
     }
 
+    var bIl = document.getElementById('et-ilustrar');
+    if (bIl) bIl.addEventListener('click', async function () {
+      var err = document.getElementById('et-erro'); err.textContent = '';
+      var caixa = document.getElementById('et-imagem');
+      var desc = (document.getElementById('et-entrada') || {}).value || '';
+      bIl.disabled = true; bIl.textContent = '🎨 Desenhando…';
+      try {
+        var r = await api('POST', '/criancas/' + c.id + '/ilustrar', { descricao: desc, titulo: 'Cena: ' + e.titulo });
+        caixa.innerHTML = '<p class="kb-ok" style="margin-top:12px">Olha a SUA descrição virando desenho! Guardei no portfólio.' +
+          (r.ilustracao.restantes > 0 ? ' (' + r.ilustracao.restantes + ' restantes)' : ' (última do Estúdio — as próximas são no papel!)') + '</p>' +
+          '<img src="/kids/api/criancas/' + c.id + '/ilustracoes/' + r.ilustracao.id + '" alt="Ilustração gerada" style="max-width:100%;border-radius:14px;border:2px solid #EBE2D4">';
+      } catch (ex) { err.textContent = ex.message; }
+      bIl.disabled = false; bIl.textContent = '🎨 Ver esta descrição desenhada';
+    });
+
     var bAv = document.getElementById('et-avancar');
     if (bAv) bAv.addEventListener('click', async function () {
       var err = document.getElementById('et-erro'); err.textContent = '';
@@ -293,9 +309,12 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
     el(topo() + '<h1 class="kb">🏆 Portfólio de ' + esc(c.apelido) + '</h1><p class="kb-sub">Tudo o que você já criou. Isso vale mais que nota.</p>' +
       (d.portfolio.length === 0 ? '<div class="kb-card">Ainda não há criações — complete a primeira missão!</div>' :
         d.portfolio.map(function (p) {
+          var corpo = p.tipo === 'imagem'
+            ? '<img src="/kids/api/criancas/' + c.id + '/ilustracoes/' + p.id + '" alt="' + esc(p.titulo) + '" style="max-width:100%;border-radius:14px;border:2px solid #EBE2D4;margin-top:8px">' +
+              '<pre>Descrição que virou desenho: ' + esc(p.conteudo) + '</pre>'
+            : '<pre>' + esc(p.conteudo) + '</pre>';
           return '<div class="kb-card kb-criacao" style="margin-bottom:12px"><h3 style="margin:0">' + esc(p.titulo) + '</h3>' +
-            '<small style="color:#6B7280">' + new Date(p.criado_em).toLocaleDateString('pt-BR') + '</small>' +
-            '<pre>' + esc(p.conteudo) + '</pre></div>';
+            '<small style="color:#6B7280">' + new Date(p.criado_em).toLocaleDateString('pt-BR') + '</small>' + corpo + '</div>';
         }).join('')));
     ligarNavegacao();
   }

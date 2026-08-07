@@ -38,6 +38,7 @@ app.use(cookieParser());
 const mod = require('./index');
 mod.montar(app, { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto: async () => {}, jwtSecret: 'seg-teste' });
 require('../pwa').montar(app); // manifest + SW por produto (onda 4)
+require('../ajuda').montar(app); // central de ajuda (onda 5)
 const { db } = require('./db');
 const repo = require('./repo');
 
@@ -439,6 +440,52 @@ async function rodar() {
     }
     const home = (await req('GET', '/kids')).texto;
     assert.ok(home.includes('/kids/manifest.webmanifest') && home.includes('/kids/sw.js'), 'HEAD sem tags de PWA');
+  });
+
+  // ================= onda 5: ajuda, estúdio gated e homologação =================
+  await t('central de ajuda no ar: hub, manual (consentimento parental) e FAQ', async () => {
+    assert.equal((await req('GET', '/kids/ajuda')).st, 200);
+    const man = await req('GET', '/kids/ajuda/manual');
+    assert.equal(man.st, 200);
+    assert.ok(man.texto.includes('consentimento parental'), 'manual sem o consentimento parental');
+    const faq = await req('GET', '/kids/ajuda/faq');
+    assert.ok(faq.texto.includes('beta fechado'), 'FAQ sem beta fechado');
+    assert.ok((await req('GET', '/kids')).texto.includes('/kids/ajuda'), 'landing sem link da ajuda');
+  });
+  await t('Estúdio com IA é gated: sem credencial se declara indisponível e não gera', async () => {
+    const r1 = await req('POST', `/kids/api/criancas/${nina.id}/ilustrar`, { como: 'bia', corpo: { descricao: 'Uma feira colorida de manhã, estilo desenho animado, com a avó no centro.' } });
+    assert.equal(r1.st, 400); // m03 nem foi iniciada
+    await req('POST', `/kids/api/criancas/${nina.id}/missoes/m03-estudio-ilustracao/iniciar`, { como: 'bia' });
+    const g = (await req('GET', J('m03-estudio-ilustracao'), { como: 'bia' })).json.jogo;
+    assert.equal(g.ilustrar, false, 'sem credencial o player não pode oferecer o botão');
+    const r2 = await req('POST', `/kids/api/criancas/${nina.id}/ilustrar`, { como: 'bia', corpo: { descricao: 'Uma feira colorida de manhã, estilo desenho animado, com a avó no centro.' } });
+    assert.equal(r2.st, 400);
+    assert.ok(/papel/i.test(r2.json.erro), 'erro sem o fallback honesto do papel');
+  });
+  await t('Estúdio com IA (fake): guardas, geração, porção da família e teto de 6', async () => {
+    const imagens = require('./imagens');
+    imagens._injetarParaTeste(() => Buffer.from('PNG-FAKE-' + Math.random()));
+    const g = (await req('GET', J('m03-estudio-ilustracao'), { como: 'bia' })).json.jogo;
+    assert.equal(g.ilustrar, true);
+    assert.equal((await req('POST', `/kids/api/criancas/${nina.id}/ilustrar`, { como: 'bia', corpo: { descricao: 'curta' } })).st, 400);
+    assert.equal((await req('POST', `/kids/api/criancas/${nina.id}/ilustrar`, { como: 'bia', corpo: { descricao: 'Cena com o telefone 61999998888 escrito no muro da feira da cidade' } })).st, 400);
+    const ok1 = (await req('POST', `/kids/api/criancas/${nina.id}/ilustrar`, { como: 'bia', corpo: { descricao: 'A avó na feira de manhã cedo, barracas coloridas, sol amarelo, estilo desenho alegre.', titulo: 'A capa' } })).json;
+    assert.ok(ok1.ok && ok1.ilustracao.id, 'não gerou');
+    assert.equal(ok1.ilustracao.restantes, 5);
+    const pf = (await req('GET', `/kids/api/criancas/${nina.id}/portfolio`, { como: 'bia' })).json.portfolio;
+    const img = pf.find((x) => x.tipo === 'imagem');
+    assert.ok(img && img.arquivo, 'imagem fora do portfólio');
+    const rImg = await fetch(BASE + `/kids/api/criancas/${nina.id}/ilustracoes/${img.id}`, { headers: { Cookie: Object.entries(jars['bia']).map(([k, v]) => `${k}=${v}`).join('; ') } });
+    assert.equal(rImg.status, 200, 'família dona não conseguiu ver a imagem');
+    const rAlheia = await req('GET', `/kids/api/criancas/${nina.id}/ilustracoes/${img.id}`, { como: 'ana' });
+    assert.ok(rAlheia.st === 400 || rAlheia.st === 404, 'outra família acessou a imagem');
+    for (let i = 0; i < 5; i++) {
+      await req('POST', `/kids/api/criancas/${nina.id}/ilustrar`, { como: 'bia', corpo: { descricao: 'Mais uma cena colorida da feira para o livrinho, bem detalhada e alegre, número ' + 'abcde'[i] } });
+    }
+    const teto = await req('POST', `/kids/api/criancas/${nina.id}/ilustrar`, { como: 'bia', corpo: { descricao: 'Uma cena extra depois do limite do estúdio, ainda colorida e alegre.' } });
+    assert.equal(teto.st, 400);
+    assert.ok(/papel|rende/i.test(teto.json.erro));
+    imagens._injetarParaTeste(null);
   });
 
   await t('isolamento também vale para o jogo: outra família não joga a missão de Nina', async () => {
