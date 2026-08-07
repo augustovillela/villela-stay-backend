@@ -58,6 +58,18 @@ const T = {
       texto: `Olá, ${nome}! 📕 Seu download de "${titulo}" está pronto: ${downloadUrl} (link pessoal, expira em ${validadeHoras}h). — Villela Stay`,
     };
   },
+  // 2b) Bônus de compra (livro extra grátis por ter comprado outro título)
+  bonusEntregue(order, { downloadUrl, titulo, tituloComprado, validadeHoras, maxDownloads }) {
+    const nome = primeiroNome(order.cliente && order.cliente.nome);
+    const corpo = `<p>Olá, <strong>${esc(nome)}</strong>! Você ganhou um presente. 🎁</p>
+      <p>Pela compra de <strong>${esc(tituloComprado)}</strong>, o e-book <strong>${esc(titulo)}</strong> é seu, por nossa conta.</p>
+      <p style="font-size:13px;color:#5a6b72">O link é pessoal e expira em ${validadeHoras}h, com até ${maxDownloads} downloads. Salve o arquivo no seu dispositivo.</p>`;
+    return {
+      assunto: `🎁 Seu bônus: ${titulo} — Livraria Villela`,
+      html: wrap('Bônus liberado', corpo, { url: downloadUrl, texto: 'Baixar o bônus (PDF)' }),
+      texto: `Olá, ${nome}! 🎁 Pela compra de "${tituloComprado}", você ganhou o e-book "${titulo}". Baixe aqui: ${downloadUrl} (link pessoal, expira em ${validadeHoras}h). — Villela Stay`,
+    };
+  },
   // 3) Reenvio de link
   linkReenviado(order, { downloadUrl, titulo, validadeHoras }) {
     const nome = primeiroNome(order.cliente && order.cliente.nome);

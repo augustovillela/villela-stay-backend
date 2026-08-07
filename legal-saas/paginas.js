@@ -6,6 +6,7 @@
 'use strict';
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 const repo = require('./repo');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -211,7 +212,7 @@ function landingHTML() {
     <style>${CSS}</style></head><body class="vx" data-vertical="legal">
     <header class="top"><div class="wrap">
       <a class="brand" href="/juridico"><img src="${BRAND_DIR}/logo-negativo.svg" alt="Villela Legal"><span><span class="bnome">Villela</span><span class="bdesc">LEGAL</span></span></a>
-      <nav><a class="esconde" href="/juridico#recursos">Recursos</a><a class="esconde" href="/juridico#livro">Do livro ao sistema</a><a class="esconde" href="/juridico#planos">Planos</a><a href="/juridico/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--vx-gold);color:#3F3208" href="/juridico/assinar?plano=trial">Teste grátis</a></nav>
+      <nav><a class="esconde" href="/juridico#recursos">Recursos</a><a class="esconde" href="/juridico#livro">Do livro ao sistema</a><a class="esconde" href="/juridico#guia">Guia grátis</a><a class="esconde" href="/juridico#planos">Planos</a><a href="/juridico/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--vx-gold);color:#3F3208" href="/juridico/assinar?plano=trial">Teste grátis</a></nav>
     </div></header>
     <div class="hero"><div class="wrap">
       <span class="badge">Software jurídico completo</span>
@@ -244,6 +245,24 @@ function landingHTML() {
       <b>minuta pronta para adaptar e aprovar</b>.</p>
       <p style="margin-top:22px"><a class="btn" href="/juridico/assinar?plano=trial">Testar o sistema do livro por 14 dias</a>
       &nbsp;<a class="btn btn-ghost" href="https://livros.villelastay.com.br/livros/claude-ai-na-pratica-juridica" target="_blank" rel="noopener">Conhecer o livro</a></p>
+    </div></div>
+    <div class="sec" id="guia" style="background:var(--vx-navy)"><div class="wrap" style="text-align:center">
+      <p class="eyebrow" style="color:var(--vx-gold)">Comece grátis</p>
+      <h2 style="color:#fff">Domine o Claude na Advocacia — guia visual em 7 dias</h2>
+      <p class="sub" style="color:#D9DEE9;max-width:640px;margin-left:auto;margin-right:auto">Um guia ilustrado e direto:
+      uma lição por dia sobre o que a IA pode (e não pode) fazer no seu escritório — prompts jurídicos, análise de autos,
+      controle de qualidade, sigilo e automação. <b style="color:#fff">Gratuito, em troca do seu e-mail.</b></p>
+      <form class="form" id="guia-form" style="max-width:560px;margin:18px auto 0">
+        <input id="g-nome" placeholder="Seu nome" autocomplete="name">
+        <input id="g-email" type="email" placeholder="Seu melhor e-mail" required autocomplete="email">
+        <button class="btn" type="submit" style="background:var(--vx-gold);color:#3F3208">Quero o guia grátis</button>
+        <p id="g-msg" class="sub" style="margin:10px 0 0;color:#D9DEE9"></p>
+      </form>
+      <script>document.getElementById('guia-form').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('g-msg');m.textContent='Enviando…';
+        try{const r=await fetch('/juridico/api/guia-visual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:g_nome.value,email:g_email.value})});
+        const d=await r.json();if(!r.ok)throw new Error(d.erro||'erro');
+        m.innerHTML='✅ Link enviado para o seu e-mail. Ou <a href="'+d.url+'" style="color:var(--vx-gold);font-weight:600">baixe agora</a>.';}
+        catch(err){m.textContent='Não foi possível enviar: '+err.message;}};</script>
     </div></div>
     <div class="sec" id="confianca"><div class="wrap"><p class="eyebrow">Confiança</p><h2>Tecnologia testada na vida real</h2>
       <p class="sub">Nossa missão é tirar prazos e intimações do improviso — com IA que trabalha como um estagiário sênior e <b>nunca assina sozinha</b>. Antes de chegar a você, o Villela Legal roda todos os dias no escritório do próprio Grupo Villela Stay.</p>
@@ -462,6 +481,42 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
     if (notificar) notificar(`📩 Villela Legal SaaS: novo lead — ${s((req.body || {}).nome, 60)} (${s((req.body || {}).escritorio, 60)}).`).catch(() => {});
     res.json({ ok: true, id });
   }));
+
+  // isca: guia visual gratuito (7 dias) em troca do e-mail — vira lead + link tokenizado
+  app.post('/juridico/api/guia-visual', h(async (req, res) => {
+    const d = req.body || {};
+    const email = s(d.email, 120).toLowerCase();
+    if (!email || !email.includes('@')) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+    repo.Leads.criar({ nome: d.nome, email, plano: 'guia-visual', mensagem: 'Baixou o guia visual gratuito (Domine o Claude na Advocacia em 7 dias)' });
+    const token = jwt.sign({ tipo: 'legalsaas-guia' }, jwtSecret, { expiresIn: '7d' });
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const url = `${proto}://${req.get('host')}/juridico/guia-visual.pdf?t=${token}`;
+    if (enviarEmail) {
+      enviarEmail(email, 'Seu guia gratuito — Domine o Claude na Advocacia',
+        `<p>Olá${d.nome ? ', <b>' + esc(s(d.nome, 60)) + '</b>' : ''}! Aqui está o seu guia visual gratuito <b>Domine o Claude na Advocacia em 7 dias</b>.</p>
+         <p><a href="${url}">Baixar o guia (PDF)</a> — o link vale por 7 dias.</p>
+         <p>Quando quiser ver o método funcionando de verdade, teste o Villela Legal grátis por 14 dias: <a href="${proto}://${req.get('host')}/juridico">${req.get('host')}/juridico</a>.</p>`).catch(() => {});
+    }
+    if (notificar) notificar(`📘 Villela Legal SaaS: lead do guia visual — ${s(d.nome, 60)} (${email}).`).catch(() => {});
+    res.json({ ok: true, url });
+  }));
+
+  // download do guia gratuito (token de 7 dias; PDF pequeno vive no próprio módulo, fora do estático)
+  app.get('/juridico/guia-visual.pdf', (req, res) => {
+    try {
+      const p = jwt.verify(String(req.query.t || ''), jwtSecret);
+      if (p.tipo !== 'legalsaas-guia') throw new Error('tipo');
+    } catch (_) {
+      return res.status(403).send('Link inválido ou expirado. Peça um novo em https://juridico.villelastay.com.br/juridico#guia');
+    }
+    const arq = path.join(__dirname, 'guia-visual-7-dias.pdf');
+    if (!fs.existsSync(arq)) return res.status(404).send('Guia indisponível no momento.');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="domine-o-claude-na-advocacia-guia-7-dias.pdf"');
+    res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    fs.createReadStream(arq).on('error', () => { if (!res.headersSent) res.status(500).end(); }).pipe(res);
+  });
 
   // signup (cria tenant trial + usuário admin + link de definição de senha)
   app.post('/juridico/api/signup', h(async (req, res) => {

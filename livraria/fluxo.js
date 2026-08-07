@@ -34,6 +34,29 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
     }
   }
 
+  // Bônus por compra: quem compra o livro-chave (qualquer formato) ganha o livro-bônus em PDF.
+  // Mapa slug comprado → slug do bônus. Idempotente via guarda status==='pago' do confirmarPagamento.
+  const BONUS_LIVROS = { 'claude-ai-na-pratica-juridica': 'domine-o-claude-na-advocacia' };
+
+  async function entregarBonus(order) {
+    const jaTem = new Set((order.itens || []).map(it => it.book_id));
+    for (const it of (order.itens || [])) {
+      const comprado = repo.Books.obter(it.book_id);
+      const bonusSlug = comprado && BONUS_LIVROS[comprado.slug];
+      if (!bonusSlug) continue;
+      const bonus = repo.Books.porSlug(bonusSlug);
+      if (!bonus || jaTem.has(bonus.id)) continue; // comprou o bônus junto → não duplica entrega
+      jaTem.add(bonus.id);
+      const tk = repo.Tokens.gerar(order.id, bonus.id, { horas: TOKEN_HORAS, max: TOKEN_MAX });
+      const url = urls.download(tk.id);
+      const tmpl = emails.bonusEntregue(order, {
+        downloadUrl: url, titulo: bonus.titulo, tituloComprado: it.titulo_snapshot,
+        validadeHoras: TOKEN_HORAS, maxDownloads: TOKEN_MAX,
+      });
+      await notificar(order, tmpl);
+    }
+  }
+
   // Cria print jobs para itens impressos/combo e notifica logística + comprador.
   async function abrirImpressos(order) {
     const impressos = (order.itens || []).filter(it => it.tipo === 'impresso' || it.tipo === 'combo');
@@ -70,6 +93,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       // Rotina 1 (PDF) + Rotina 2 (impresso)
       if (order.tem_pdf) await entregarPDFs(order);
       if (order.tem_impresso) await abrirImpressos(order);
+      await entregarBonus(order);
       alertaAugusto(`💰 Venda na Livraria: ${(order.cliente || {}).nome || 'cliente'} — ${repo.brl(order.valor_total)} (${(order.itens || []).map(i => i.titulo_snapshot + '/' + i.tipo).join(', ')}).`).catch(() => {});
       return repo.Orders.obter(orderId);
     },
