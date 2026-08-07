@@ -170,7 +170,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       '<h3>Novo inventor / nova inventora</h3>' +
       '<label>Apelido (como a criança quer ser chamada)</label><input id="np-apelido" maxlength="40">' +
       '<label>Idade</label><select id="np-faixa"><option value="7-8">7 a 8 anos</option><option value="9-12" selected>9 a 12 anos</option></select>' +
-      '<label>Avatar</label><select id="np-avatar">' + ['🦖', '🦄', '🤖', '🐱', '🦊', '🐼', '🦁', '🐸', '👾', '🌟'].map(function (e) { return '<option>' + e + '</option>'; }).join('') + '</select>' +
+      '<label>Avatar</label><select id="np-avatar">' + AVATARES.map(function (e) { return '<option>' + e + '</option>'; }).join('') + '</select>' +
       '<div class="kb-erro" id="np-erro"></div>' +
       '<button class="kb-bt" id="np-criar">Criar perfil</button></div>');
     ligarNavegacao();
@@ -385,6 +385,11 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
   }
 
   function dataBr(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'; }
+  var AVATARES = ['🦖', '🦄', '🤖', '🐱', '🦊', '🐼', '🦁', '🐸', '👾', '🌟'];
+  function opcoesAvatar(atual) {
+    var lista = AVATARES.indexOf(atual) === -1 && atual ? [atual].concat(AVATARES) : AVATARES;
+    return lista.map(function (e) { return '<option' + (e === atual ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('');
+  }
 
   async function vPais() {
     var d = await api('GET', '/notificacoes');
@@ -403,7 +408,17 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
           p.criacoes.map(function (cr) { return esc((cr.emoji ? cr.emoji + ' ' : '') + '"' + cr.titulo + '"'); }).join(' · ')) + '</p>' +
         '<p class="kb-sub" style="margin:8px 0 0">Última atividade: ' + dataBr(p.atividade.ultima) +
         ' · ' + p.atividade.dias_ativos + ' dia(s) de atividade · ' + p.atividade.conversas_com_tutor + ' conversa(s) com o tutor</p>' +
-        '</div>';
+        '<p style="margin:10px 0 0"><button class="kb-bt claro kb-abrir-edicao" data-eid="' + esc(p.crianca.id) + '">✏️ Editar perfil</button></p>' +
+        '<div class="kb-form" id="ed-' + esc(p.crianca.id) + '" style="display:none;border-top:2px solid #E3E6F5;margin-top:12px;padding-top:4px">' +
+        '<label>Apelido (só o apelido — nada de nome completo)</label><input class="ed-apelido" maxlength="40" value="' + esc(p.crianca.apelido) + '">' +
+        '<label>Idade</label><select class="ed-faixa">' +
+        '<option value="7-8"' + (p.crianca.faixa === '7-8' ? ' selected' : '') + '>7 a 8 anos</option>' +
+        '<option value="9-12"' + (p.crianca.faixa !== '7-8' ? ' selected' : '') + '>9 a 12 anos</option></select>' +
+        '<label>Avatar</label><select class="ed-avatar">' + opcoesAvatar(p.crianca.avatar) + '</select>' +
+        '<div class="kb-erro ed-erro"></div>' +
+        '<p style="margin:12px 0 0"><button class="kb-bt ed-salvar" data-eid="' + esc(p.crianca.id) + '">Salvar</button> ' +
+        '<button class="kb-bt claro ed-arquivar" data-eid="' + esc(p.crianca.id) + '" style="border-color:#B91C1C;color:#B91C1C">Arquivar perfil</button></p>' +
+        '</div></div>';
     }).join('');
     el(topo() + '<h1 class="kb">Área dos pais</h1><p class="kb-sub">Conta de ' + esc(EST.me.usuario.nome) + ' (' + esc(EST.me.usuario.email) + ')' +
       (EST.me.usuario.email_verificado ? '' : ' · e-mail ainda não verificado') + '</p>' +
@@ -425,6 +440,45 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       '<p style="margin-top:18px"><button class="kb-lk" id="sair">Sair da conta</button></p>');
     ligarNavegacao();
     api('POST', '/notificacoes/lidas').then(function () { EST.me.nao_lidas = 0; }).catch(function () {});
+
+    // Edição de perfil (controle de adulto — camada dos pais, como manda o book)
+    raiz.querySelectorAll('.kb-abrir-edicao').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var f = document.getElementById('ed-' + b.getAttribute('data-eid'));
+        f.style.display = f.style.display === 'none' ? '' : 'none';
+      });
+    });
+    raiz.querySelectorAll('.ed-salvar').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        var id = b.getAttribute('data-eid');
+        var f = document.getElementById('ed-' + id);
+        var err = f.querySelector('.ed-erro'); err.textContent = '';
+        try {
+          await api('PATCH', '/criancas/' + id, {
+            apelido: f.querySelector('.ed-apelido').value,
+            faixa: f.querySelector('.ed-faixa').value,
+            avatar: f.querySelector('.ed-avatar').value,
+          });
+          EST.me = await api('GET', '/me');
+          vPais();
+        } catch (ex) { err.textContent = ex.message; }
+      });
+    });
+    raiz.querySelectorAll('.ed-arquivar').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        var id = b.getAttribute('data-eid');
+        var f = document.getElementById('ed-' + id);
+        var err = f.querySelector('.ed-erro'); err.textContent = '';
+        if (!confirm('Arquivar este perfil tira a criança do clube (o progresso fica guardado, mas o perfil some da lista). Confirmar?')) return;
+        try {
+          await api('DELETE', '/criancas/' + id);
+          if (localStorage.getItem('kids_crianca') === id) localStorage.removeItem('kids_crianca');
+          EST.me = await api('GET', '/me');
+          vPais();
+        } catch (ex) { err.textContent = ex.message; }
+      });
+    });
+
     document.getElementById('push-ativar').addEventListener('click', async function () {
       var msg = document.getElementById('push-msg');
       msg.style.color = '';

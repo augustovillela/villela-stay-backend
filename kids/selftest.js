@@ -453,6 +453,14 @@ async function rodar() {
     await req('DELETE', '/kids/api/criancas/' + r.crianca.id, { como: 'bia' });
     await req('DELETE', '/kids/api/criancas/' + r2.crianca.id, { como: 'bia' });
   });
+  await t('editar perfil: a própria família atualiza apelido, faixa e avatar', async () => {
+    const r = (await req('PATCH', `/kids/api/criancas/${nina.id}`, { como: 'bia', corpo: { apelido: 'Nina Star', faixa: '7-8', avatar: '🌟' } })).json;
+    assert.equal(r.crianca.apelido, 'Nina Star');
+    assert.equal(r.crianca.avatar, '🌟');
+    const volta = (await req('PATCH', `/kids/api/criancas/${nina.id}`, { como: 'bia', corpo: { apelido: 'Nina' } })).json;
+    assert.equal(volta.crianca.apelido, 'Nina');
+    assert.equal(volta.crianca.faixa, '7-8', 'faixa não deveria mudar sem ser enviada');
+  });
   await t('certificado de conquista sai para missão concluída, só para a família', async () => {
     const r = await req('GET', `/kids/api/criancas/${nina.id}/missoes/m01-meu-assistente/certificado`, { como: 'bia' });
     assert.equal(r.st, 200);
