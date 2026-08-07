@@ -4381,6 +4381,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('academia.') || host.startsWith('academy.') || host.startsWith('cursos.')) return res.redirect(302, '/academy'); // Villela Academy Marketplace (domínio oficial: academia.)
   if (host.startsWith('crm.')) return res.redirect(302, '/crm'); // landing de vendas do Villela CRM
   if (host.startsWith('closet.')) return res.redirect(302, '/closet'); // vitrine do Closet Club
+  if (host.startsWith('vitrine.')) return res.redirect(302, '/vitrine'); // Vitrine (marketplace de novos e usados)
   if (host.startsWith('altavista.') || host.startsWith('alta-vista.')) return res.redirect(302, '/alta-vista'); // Villela Alta Vista 360 (estúdio visual)
   return res.redirect(302, '/hospede');
 });
@@ -4532,6 +4533,21 @@ try {
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[closet] falha ao montar módulo:', e.message); }
+
+// =========================== Vitrine (marketplace de produtos novos e usados) ===========================
+// 10º produto do grupo: marketplace de VENDA (não aluguel — Closet Club é outro
+// produto) entre pessoas. Loja pública em /vitrine, painel do usuário em
+// /vitrine/app (sessão própria 'vitrine_sess'), administração na aba 🛒 do
+// Portal Staff (/staff/api/vitrine/*). SQLite próprio em DATA_DIR/vitrine/.
+// Pagamento e frete SIMULADOS no MVP (MP Split e Melhor Envio entram na fase 6
+// pela mesma camada de provedores). Comissão configurável (padrão 5%).
+try {
+  require('./vitrine').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[vitrine] falha ao montar módulo:', e.message); }
 
 // =========================== Villela Growth OS (plataforma de receita) ===========================
 // Evolução do Villela CRM (ADR-0002): MESMO banco DATA_DIR/crm/crm.db, tabelas

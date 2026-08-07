@@ -16,6 +16,7 @@
     "test:closet": "node closet/selftest.js",
     "test:alta-vista": "node alta-vista/selftest.js",
     "test:growth": "node growth/selftest.js",
+    "test:vitrine": "node vitrine/selftest.js",
     "verificar:closet": "node closet/verificar-producao.js",
     "test:nucleo": "node selftest-nucleo.js"
   },
