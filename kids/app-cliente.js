@@ -300,23 +300,68 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
     ligarNavegacao();
   }
 
+  function dataBr(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'; }
+
   async function vPais() {
     var d = await api('GET', '/notificacoes');
+    var painel = (await api('GET', '/painel')).painel;
+    var cartoes = painel.map(function (p) {
+      var pct = p.progresso.total ? Math.round((p.progresso.concluidas / p.progresso.total) * 100) : 0;
+      return '<div class="kb-card" style="margin-bottom:12px">' +
+        '<h3 style="margin:0 0 4px">' + esc(p.crianca.avatar) + ' ' + esc(p.crianca.apelido) +
+        ' <span class="kb-nivel">' + esc(p.nivel.emoji + ' ' + p.nivel.nome) + '</span></h3>' +
+        '<p class="kb-sub" style="margin:0 0 8px">' + p.progresso.concluidas + ' de ' + p.progresso.total + ' missões concluídas</p>' +
+        '<div style="background:#F3F4F6;border-radius:999px;height:12px;overflow:hidden"><div style="width:' + pct + '%;background:#0F766E;height:12px"></div></div>' +
+        (p.progresso.atual ? '<p style="margin:10px 0 0"><b>Missão ' + (p.progresso.atual.status === 'em_andamento' ? 'em andamento' : 'à espera') + ':</b> ' +
+          esc(p.progresso.atual.emoji + ' ' + p.progresso.atual.titulo) + '<br><small style="color:#6B7280">👨‍👩‍👧 Momento família: ' + esc(p.progresso.atual.momento_familia) + '</small></p>'
+          : '<p style="margin:10px 0 0"><b>🎓 Trilha completa!</b> As 8 missões foram concluídas.</p>') +
+        '<p style="margin:10px 0 0"><b>Evidências recentes:</b> ' + (p.criacoes.length === 0 ? 'ainda nenhuma criação' :
+          p.criacoes.map(function (cr) { return esc((cr.emoji ? cr.emoji + ' ' : '') + '"' + cr.titulo + '"'); }).join(' · ')) + '</p>' +
+        '<p class="kb-sub" style="margin:8px 0 0">Última atividade: ' + dataBr(p.atividade.ultima) +
+        ' · ' + p.atividade.dias_ativos + ' dia(s) de atividade · ' + p.atividade.conversas_com_tutor + ' conversa(s) com o tutor</p>' +
+        '</div>';
+    }).join('');
     el(topo() + '<h1 class="kb">Área dos pais</h1><p class="kb-sub">Conta de ' + esc(EST.me.usuario.nome) + ' (' + esc(EST.me.usuario.email) + ')' +
       (EST.me.usuario.email_verificado ? '' : ' · e-mail ainda não verificado') + '</p>' +
-      '<div class="kb-card"><h3 style="margin-top:0">Últimas novidades</h3>' +
+      (cartoes || '<div class="kb-card">Crie o primeiro perfil para acompanhar por aqui.</div>') +
+      '<div class="kb-card" style="margin-top:14px"><h3 style="margin-top:0">🔔 Avisos no celular</h3>' +
+      '<p class="kb-sub">Receba no seu celular quando uma missão for concluída, quando houver nível novo — e os alertas que merecem a sua escuta. Só para você; a criança não recebe nada.</p>' +
+      '<p><button class="kb-bt claro" id="push-ativar">Ativar avisos neste aparelho</button></p>' +
+      '<div class="kb-erro" id="push-msg"></div></div>' +
+      '<div class="kb-card" style="margin-top:14px"><h3 style="margin-top:0">Últimas novidades</h3>' +
       (d.notificacoes.length === 0 ? '<p class="kb-sub">Nada por aqui ainda.</p>' :
         d.notificacoes.map(function (n) {
           return '<p' + (n.lida_em ? ' style="opacity:.6"' : '') + '><b>' + esc(n.titulo) + '</b><br><small>' + esc(n.texto) + '</small></p>';
         }).join('')) + '</div>' +
       '<div class="kb-card" style="margin-top:14px"><h3 style="margin-top:0">Seus dados (LGPD)</h3>' +
-      '<p class="kb-sub">Você pode levar ou apagar tudo, a qualquer momento.</p>' +
+      '<p class="kb-sub">Você pode levar ou apagar tudo, a qualquer momento — inclusive as conversas das crianças com o tutor, que vão na exportação.</p>' +
       '<p><a class="kb-bt claro" href="/kids/api/meus-dados">Exportar os dados da família</a> ' +
       '<button class="kb-bt claro" id="excluir" style="border-color:#B91C1C;color:#B91C1C">Excluir a conta</button></p>' +
       '<div class="kb-erro" id="pais-erro"></div></div>' +
       '<p style="margin-top:18px"><button class="kb-lk" id="sair">Sair da conta</button></p>');
     ligarNavegacao();
     api('POST', '/notificacoes/lidas').then(function () { EST.me.nao_lidas = 0; }).catch(function () {});
+    document.getElementById('push-ativar').addEventListener('click', async function () {
+      var msg = document.getElementById('push-msg');
+      msg.style.color = '';
+      msg.textContent = '';
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Este navegador não suporta avisos. Instale o app pelo menu do navegador e tente por lá.');
+        var ch = await api('GET', '/push/chave');
+        if (!ch.disponivel) throw new Error('Os avisos ainda não estão configurados no servidor.');
+        var perm = await Notification.requestPermission();
+        if (perm !== 'granted') throw new Error('Permissão de aviso não concedida no navegador.');
+        var reg = await navigator.serviceWorker.ready;
+        var b64 = ch.chave.replace(/-/g, '+').replace(/_/g, '/');
+        var bin = atob(b64 + '='.repeat((4 - b64.length % 4) % 4));
+        var chave = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) chave[i] = bin.charCodeAt(i);
+        var sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chave });
+        await api('POST', '/push/inscrever', { assinatura: sub.toJSON() });
+        msg.style.color = '#065F46';
+        msg.textContent = '✅ Avisos ativados neste aparelho!';
+      } catch (err) { msg.textContent = err.message; }
+    });
     document.getElementById('sair').addEventListener('click', async function () {
       await api('POST', '/logout'); localStorage.removeItem('kids_crianca'); location.href = '/kids';
     });

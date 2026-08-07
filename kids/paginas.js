@@ -72,7 +72,12 @@ function layout({ titulo, descricao, conteudo, semIndex = false, canonico = '' }
 ${semIndex ? '<meta name="robots" content="noindex">' : ''}
 ${canonico ? `<link rel="canonical" href="${canonico}">` : ''}
 <meta name="theme-color" content="#0F766E">
-<link rel="icon" href="/assets/brand/grupo/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/brand/villela-kids/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/brand/villela-kids/apple-touch-icon.png">
+<meta property="og:title" content="${titulo ? titulo + ' · ' : ''}Villela Kids">
+<meta property="og:image" content="https://kids.villelastay.com.br/assets/brand/villela-kids/og-image.png">
+<link rel="manifest" href="/kids/manifest.webmanifest">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/kids/sw.js').catch(function(){})})}</script>
 <style>${CSS}</style></head>
 <body><a class="skip" href="#conteudo">Ir para o conteúdo</a>
 <header class="topo"><div class="wrap">

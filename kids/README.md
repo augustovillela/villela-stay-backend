@@ -38,8 +38,15 @@ com produto final, portfólio de criações e — a partir da onda 2 — tutor p
   infantil; liga sozinho com ANTHROPIC_API_KEY; kill-switch KIDS_IA_MOTOR=off). O LLM só
   conversa DENTRO da etapa — currículo, avanço e conclusão são determinísticos. Conversas ficam
   em `child_missions.dados` e entram na exportação LGPD da família.
-- Onda 3: roteiros das outras 7 missões + progressão por níveis; imagem gated por credencial.
-- Onda 4: painel dos pais completo, PWA (`pwa.js`), push só para responsáveis, assets de marca.
+- **Onda 3 (feita):** roteiros guiados das 8 missões (`roteiros.js`), níveis Explorador→Visionário
+  calculados das missões concluídas (`repo.nivelDe`), continuidade do nome do assistente
+  (`ia.nomeAssistente`). Estúdio de Ilustração SEM gerador de imagem: o produto é o roteiro de
+  cenas; o desenho sai no papel (IA de imagem entra depois, gated, sem mudar o roteiro).
+- **Onda 4 (feita):** painel dos pais (`GET /kids/api/painel` — nível, progresso, momento
+  família, evidências e atividade DERIVADA do que já existe, sem rastreio novo), Web Push só
+  para responsáveis (`push.js` + rotas `/kids/api/push/*`; enviado best-effort por
+  `Notificacoes.criar`; sem VAPID é no-op), entrada no `pwa.js` (manifest + SW com push) e marca
+  própria em `assets/brand/villela-kids/` (foguete teal, gerada por script).
 
 ## Rodar
 
@@ -48,7 +55,8 @@ npm run test:kids      # suíte completa com banco descartável
 KIDS_SEED=on           # semeia a família demo (só com banco vazio; senha via KIDS_DEMO_SENHA)
 ```
 
-## Pendências conhecidas da onda 1
+## Pendências (pós-fase 1)
 
-`verificar-producao.js`, entrada no `pwa.js`, assets `assets/brand/villela-kids/`, card em
-`PRODUTOS_GRUPO` (site), central de ajuda e favicon próprio (usa o do grupo por enquanto).
+`verificar-producao.js` · card em `PRODUTOS_GRUPO` (site) — adiado DE PROPÓSITO para o
+lançamento comercial: anunciar produto infantil na home pública só depois do parecer do
+advogado (LGPD art. 14) · central de ajuda (`ajuda/index.js`) · CNAME `kids.villelastay.com.br`.

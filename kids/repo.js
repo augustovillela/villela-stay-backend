@@ -85,6 +85,12 @@ const Notificacoes = {
     const id = novoId();
     db.prepare('INSERT INTO notifications (id, user_id, titulo, texto, url, tipo, criado_em) VALUES (?,?,?,?,?,?,?)')
       .run(id, s(userId, 40), s(titulo, 140), s(texto, 600), s(url, 300), s(tipo, 30) || 'info', nowISO());
+    // Web Push best-effort para o responsável (onda 4). require tardio para
+    // não criar ciclo repo↔push; sem VAPID/assinatura, é um no-op silencioso.
+    try {
+      require('./push').notificarUsuario(userId, { title: s(titulo, 140), body: s(texto, 300), url: s(url, 300) || '/kids/app#pais' })
+        .catch(() => {});
+    } catch (_) { /* push indisponível não pode derrubar a notificação */ }
     return id;
   },
   listar(userId, { naoLidas = false } = {}) {
@@ -346,6 +352,51 @@ const Portfolio = {
 };
 
 // ---------------------------------------------------------------------
+// Painel dos pais (onda 4): evidências de aprendizagem e atividade por
+// criança — TUDO derivado do que já existe (portfólio, progresso e o
+// histórico de conversa dentro de child_missions.dados). Nenhum rastreio
+// novo foi criado para isso: minimização LGPD também vale para métrica.
+// ---------------------------------------------------------------------
+function painelDosPais(userId) {
+  return Criancas.listar(userId).map((c) => {
+    const trilha = Missoes.trilha(c.id);
+    const atual = trilha.find((m) => m.status === 'em_andamento') || trilha.find((m) => m.status === 'disponivel') || null;
+    const criacoes = db.prepare(`SELECT p.id, p.titulo, p.criado_em, m.titulo AS missao, m.emoji
+      FROM portfolio p LEFT JOIN missions m ON m.id = p.mission_id
+      WHERE p.child_id = ? ORDER BY p.criado_em DESC LIMIT 3`).all(c.id);
+
+    const momentos = [];
+    let conversas = 0;
+    for (const p of db.prepare('SELECT iniciado_em, concluido_em, dados FROM child_missions WHERE child_id = ?').all(c.id)) {
+      if (p.iniciado_em) momentos.push(p.iniciado_em);
+      if (p.concluido_em) momentos.push(p.concluido_em);
+      const d = j.parse(p.dados, {});
+      const hist = Array.isArray(d.historico) ? d.historico : [];
+      conversas += hist.filter((h) => h.de === 'crianca').length;
+      for (const h of hist) if (h.em) momentos.push(h.em);
+    }
+    for (const p of criacoes) momentos.push(p.criado_em);
+    momentos.sort();
+
+    return {
+      crianca: { id: c.id, apelido: c.apelido, avatar: c.avatar, faixa: c.faixa },
+      nivel: nivelDaCrianca(c.id),
+      progresso: {
+        concluidas: trilha.filter((m) => m.status === 'concluida').length,
+        total: trilha.length,
+        atual: atual ? { id: atual.id, emoji: atual.emoji, titulo: atual.titulo, status: atual.status, momento_familia: atual.momento_familia } : null,
+      },
+      criacoes,
+      atividade: {
+        ultima: momentos[momentos.length - 1] || '',
+        conversas_com_tutor: conversas,
+        dias_ativos: new Set(momentos.map((x) => String(x).slice(0, 10))).size,
+      },
+    };
+  });
+}
+
+// ---------------------------------------------------------------------
 // Semeadura de boot: config + catálogo de missões (upsert, nunca apaga
 // progresso — remover missão do ar é `ativa = 0`, não DELETE).
 // ---------------------------------------------------------------------
@@ -365,4 +416,4 @@ function semear() {
   }
 }
 
-module.exports = { Config, Auditoria, Notificacoes, Users, Criancas, Missoes, Portfolio, semear, evento, s, n, inteiro, FAIXAS, NIVEIS, nivelDe, nivelDaCrianca };
+module.exports = { Config, Auditoria, Notificacoes, Users, Criancas, Missoes, Portfolio, semear, evento, s, n, inteiro, FAIXAS, NIVEIS, nivelDe, nivelDaCrianca, painelDosPais };

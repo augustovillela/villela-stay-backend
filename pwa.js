@@ -57,6 +57,12 @@ const PRODUTOS = [
     desc: 'Drone, vídeos com IA e experiências 360° para hospedagens e imóveis.',
     tema: '#071A2B', fundo: '#F7F6F2',
   },
+  {
+    slug: 'kids', base: '/kids', inicio: '/kids/app', escopo: '/kids/',
+    nome: 'Villela Kids', curto: 'Villela Kids', marca: 'villela-kids',
+    desc: 'Clube de missões onde crianças aprendem criando — com portfólio e painel dos pais.',
+    tema: '#0F766E', fundo: '#FFF9F0',
+  },
 ];
 
 function manifestDe(p) {

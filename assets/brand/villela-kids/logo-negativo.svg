@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Villela Kids">
+  <!-- Versão negativa (fundo escuro/colorido): foguete sem a caixa teal. -->
+  <ellipse cx="50" cy="28" rx="16" ry="19" fill="#FFFFFF"/>
+  <rect x="34" y="26" width="32" height="35" rx="6" fill="#FFFFFF"/>
+  <circle cx="50" cy="37" r="8.2" fill="#0F766E"/>
+  <circle cx="50" cy="37" r="5.4" fill="#E6F4F2"/>
+  <polygon points="34,47 21,68 34,63" fill="#F59E0B"/>
+  <polygon points="66,47 79,68 66,63" fill="#F59E0B"/>
+  <polygon points="42,61 50,83 58,61" fill="#F59E0B"/>
+  <polygon points="46,61 50,74 54,61" fill="#FDE68A"/>
+</svg>

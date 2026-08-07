@@ -7,6 +7,7 @@
 'use strict';
 const repo = require('./repo');
 const ia = require('./ia');
+const push = require('./push');
 const { Criancas, Missoes, Portfolio } = repo;
 
 function registrarRotasApp(app, { requireUsuario }) {
@@ -50,6 +51,25 @@ function registrarRotasApp(app, { requireUsuario }) {
   // ---- portfólio (as criações — visíveis só à própria família) ----
   app.get('/kids/api/criancas/:id/portfolio', requireUsuario, h(async (req, res) => {
     res.json({ portfolio: Portfolio.listar(req.usuario.id, req.params.id) });
+  }));
+
+  // ---- painel dos pais (onda 4): evidências e atividade por criança ----
+  app.get('/kids/api/painel', requireUsuario, h(async (req, res) => {
+    res.json({ painel: repo.painelDosPais(req.usuario.id) });
+  }));
+
+  // ---- Web Push do responsável (onda 4) ----
+  app.get('/kids/api/push/chave', h(async (req, res) => {
+    const chave = push.chavePublica();
+    res.json({ disponivel: !!chave, chave: chave || '' });
+  }));
+  app.post('/kids/api/push/inscrever', requireUsuario, h(async (req, res) => {
+    push.salvar(req.usuario.id, (req.body || {}).assinatura || req.body);
+    res.json({ ok: true });
+  }));
+  app.post('/kids/api/push/remover', requireUsuario, h(async (req, res) => {
+    push.remover((req.body || {}).endpoint);
+    res.json({ ok: true });
   }));
 }
 

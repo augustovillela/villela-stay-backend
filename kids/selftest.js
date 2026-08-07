@@ -37,6 +37,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 const mod = require('./index');
 mod.montar(app, { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto: async () => {}, jwtSecret: 'seg-teste' });
+require('../pwa').montar(app); // manifest + SW por produto (onda 4)
 const { db } = require('./db');
 const repo = require('./repo');
 
@@ -396,6 +397,50 @@ async function rodar() {
     assert.equal(n.nivel.nome, 'Criador');
     assert.equal(n.nivel.concluidas, 2);
   });
+  // ================= onda 4: painel dos pais, push e PWA =================
+  await t('painel dos pais consolida nível, progresso, evidências e atividade', async () => {
+    const painel = (await req('GET', '/kids/api/painel', { como: 'bia' })).json.painel;
+    const p = painel.find((x) => x.crianca.apelido === 'Nina');
+    assert.ok(p, 'Nina fora do painel');
+    assert.equal(p.nivel.nome, 'Criador');
+    assert.equal(p.progresso.concluidas, 2);
+    assert.equal(p.progresso.total, 8);
+    assert.equal(p.progresso.atual.id, 'm03-estudio-ilustracao');
+    assert.ok(p.progresso.atual.momento_familia.length > 10, 'sem momento família');
+    assert.equal(p.criacoes.length, 2);
+    assert.ok(p.atividade.conversas_com_tutor > 0, 'conversas não contadas');
+    assert.ok(p.atividade.dias_ativos >= 1 && p.atividade.ultima, 'atividade vazia');
+    const campos = Object.keys(p.crianca);
+    assert.deepEqual(campos.sort(), ['apelido', 'avatar', 'faixa', 'id'], 'painel expôs mais que o mínimo da criança');
+  });
+  await t('push: sem VAPID a chave se declara indisponível; inscrever/remover funcionam e nada quebra', async () => {
+    const ch = (await req('GET', '/kids/api/push/chave')).json;
+    assert.equal(ch.disponivel, false);
+    const r = await req('POST', '/kids/api/push/inscrever', { como: 'bia', corpo: { assinatura: { endpoint: 'https://push.exemplo/e1', keys: {} } } });
+    assert.equal(r.st, 200);
+    assert.equal(db.prepare('SELECT COUNT(*) AS c FROM push_subs').get().c, 1);
+    // uma notificação com assinatura registrada e sem VAPID não pode explodir
+    repo.Notificacoes.criar(repo.Users.porEmail('bia@t.com').id, { titulo: 'Teste push', texto: 'best-effort' });
+    assert.equal((await req('POST', '/kids/api/push/remover', { como: 'bia', corpo: { endpoint: 'https://push.exemplo/e1' } })).st, 200);
+    assert.equal(db.prepare('SELECT COUNT(*) AS c FROM push_subs').get().c, 0);
+  });
+  await t('PWA: manifest e service worker do /kids saem com a marca própria; assets existem', async () => {
+    const m = (await req('GET', '/kids/manifest.webmanifest')).json;
+    assert.equal(m.name, 'Villela Kids');
+    assert.equal(m.theme_color, '#0F766E');
+    assert.equal(m.start_url, '/kids/app');
+    assert.ok(m.icons.every((i) => i.src.includes('villela-kids')));
+    const sw = (await req('GET', '/kids/sw.js')).texto;
+    assert.ok(sw.includes("addEventListener('push'") && sw.includes('villela-kids'), 'SW sem push/marca');
+    const fs = require('fs');
+    const path = require('path');
+    for (const a of ['favicon.svg', 'simbolo.svg', 'logo-negativo.svg', 'logo-horizontal.svg', 'favicon-192.png', 'icon-pwa.png', 'apple-touch-icon.png', 'og-image.png']) {
+      assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'brand', 'villela-kids', a)), 'asset ausente: ' + a);
+    }
+    const home = (await req('GET', '/kids')).texto;
+    assert.ok(home.includes('/kids/manifest.webmanifest') && home.includes('/kids/sw.js'), 'HEAD sem tags de PWA');
+  });
+
   await t('isolamento também vale para o jogo: outra família não joga a missão de Nina', async () => {
     const r = await req('GET', `/kids/api/criancas/${nina.id}/missoes/m01-meu-assistente/jogo`, { como: 'ana' });
     assert.equal(r.st, 400);
