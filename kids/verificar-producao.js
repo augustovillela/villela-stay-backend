@@ -120,6 +120,9 @@ async function rodar() {
     const d = JSON.parse(ch.texto || '{}');
     if (d.disponivel) ok('push configurado (VAPID presente)');
     else aviso('push indisponível — VAPID_PUBLIC/PRIVATE_KEY ausentes no ambiente do servidor');
+    const est = JSON.parse((await pegar('/kids/api/estudio/estado')).texto || '{}');
+    if (est.disponivel) ok('Estúdio de Ilustração com IA ligado no servidor');
+    else aviso('Estúdio de Ilustração em modo papel — KIDS_IMAGENS_CHAVE ausente no servidor');
   } catch (e) { bloqueio('falha na API: ' + e.message); }
 
   // ---- 7. configuração de ambiente (informativo) ----

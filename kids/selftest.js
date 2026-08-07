@@ -474,6 +474,7 @@ async function rodar() {
     assert.ok((await req('GET', '/kids')).texto.includes('/kids/ajuda'), 'landing sem link da ajuda');
   });
   await t('Estúdio com IA é gated: sem credencial se declara indisponível e não gera', async () => {
+    assert.equal((await req('GET', '/kids/api/estudio/estado')).json.disponivel, false, 'estado público mentiu');
     const r1 = await req('POST', `/kids/api/criancas/${nina.id}/ilustrar`, { como: 'bia', corpo: { descricao: 'Uma feira colorida de manhã, estilo desenho animado, com a avó no centro.' } });
     assert.equal(r1.st, 400); // m03 nem foi iniciada
     await req('POST', `/kids/api/criancas/${nina.id}/missoes/m03-estudio-ilustracao/iniciar`, { como: 'bia' });

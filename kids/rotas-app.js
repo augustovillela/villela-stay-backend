@@ -93,6 +93,11 @@ h1{font-family:'Nunito Sans',sans-serif;font-size:15px;letter-spacing:3px;color:
   }));
 
   // ---- Estúdio de Ilustração com IA (onda 5, gated por credencial) ----
+  // Estado público (só um booleano): deixa o verificar-producao homologar de
+  // fora se o Estúdio está ligado, sem expor nada além disso.
+  app.get('/kids/api/estudio/estado', h(async (req, res) => {
+    res.json({ disponivel: imagens.disponivel() });
+  }));
   app.post('/kids/api/criancas/:id/ilustrar', requireUsuario, h(async (req, res) => {
     res.json({ ok: true, ilustracao: await imagens.ilustrar(req.usuario.id, req.params.id, req.body || {}) });
   }));
