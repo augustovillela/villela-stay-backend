@@ -151,10 +151,10 @@ function registrarRotasConta(app, { jwtSecret }) {
     } catch (_) { return null; }
   };
   // O caminho do callback é CURTO de propósito: o campo "URLs de
-  // redirecionamento" do painel do MP tem limite de tamanho e a URL longa
-  // (/vitrine/oauth/mercadopago/callback) não cabia. A registrada no MP é:
-  //   https://vitrine.villelastay.com.br/vitrine/oauth/mp
-  const CALLBACK_MP = '/vitrine/oauth/mp';
+  // redirecionamento" do painel do MP aceita só 50 caracteres (medido na
+  // prática: /vitrine/oauth/mp dava 51 e o painel cortou o "p"). A URL
+  // registrada no MP é:  https://vitrine.villelastay.com.br/vitrine/mp  (45)
+  const CALLBACK_MP = '/vitrine/mp';
   app.get('/vitrine/oauth/mercadopago', (req, res) => {
     const u = usuarioDeCookie(req);
     if (!u) return res.redirect(302, '/vitrine/entrar?voltar=' + encodeURIComponent('/vitrine/oauth/mercadopago'));
@@ -164,7 +164,7 @@ function registrarRotasConta(app, { jwtSecret }) {
     const redirectUri = baseUrl(req) + CALLBACK_MP;
     res.redirect(302, pagamentos.OAuth.url(state, redirectUri));
   });
-  app.get([CALLBACK_MP, '/vitrine/oauth/mercadopago/callback'], h(async (req, res) => {
+  app.get([CALLBACK_MP, '/vitrine/oauth/mp', '/vitrine/oauth/mercadopago/callback'], h(async (req, res) => {
     let dec;
     try { dec = jwt.verify(s(String(req.query.state || ''), 4000), jwtSecret); } catch (_) { return res.redirect(302, '/vitrine/app#loja?mp=estado-invalido'); }
     if (dec.tipo !== 'vitrine-mp') return res.redirect(302, '/vitrine/app#loja?mp=estado-invalido');

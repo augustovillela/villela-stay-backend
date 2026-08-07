@@ -77,8 +77,8 @@ interface diz qual fluxo está em uso.
   2. Configurar o webhook `https://vitrine.villelastay.com.br/vitrine/webhooks/mercadopago`
      no dashboard e copiar a assinatura secreta para `VITRINE_MP_WEBHOOK_SECRET`
      (sem ela o webhook rejeita tudo — de propósito).
-  3. Cadastrar a URL de redirecionamento na aplicação do MP (campo com limite de
-     tamanho — por isso o caminho é curto): `https://vitrine.villelastay.com.br/vitrine/oauth/mp`
+  3. Cadastrar a URL de redirecionamento na aplicação do MP (o campo aceita só
+     50 caracteres — por isso o caminho é curto): `https://vitrine.villelastay.com.br/vitrine/mp`
   4. O vendedor conecta a própria conta em `/vitrine/app#loja` → "Conectar Mercado
      Pago" (OAuth; tokens ficam só no servidor, com refresh automático).
   5. A partir daí o checkout desse vendedor cria uma preference do Checkout Pro
