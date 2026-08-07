@@ -1,6 +1,7 @@
-# Manual do Villela Kids (para pais e responsáveis)
+# Manual do Invente (para pais e responsáveis)
 
-O Villela Kids é um **clube de missões** onde crianças de 7 a 11 anos aprendem criando:
+O **Invente** é a plataforma de aprendizagem criativa da Villela Kids, onde crianças de 7 a 12
+anos aprendem criando por meio de **missões**:
 histórias, jogos, quadrinhos, um podcast, uma "empresa" — com um tutor de inteligência
 artificial que acompanha cada missão. Este manual é para você, responsável. A criança não
 precisa de manual: o clube ensina jogando.
@@ -50,7 +51,7 @@ houver nível novo e se o tutor sinalizar algo que merece a sua escuta.
 ## 5. Instalar como aplicativo
 
 No celular, abra o clube e use o menu do navegador → **"Adicionar à tela inicial"** (ou
-"Instalar app"). O Villela Kids vira um app com ícone próprio, tela cheia e avisos.
+"Instalar app"). O Invente vira um app com ícone próprio, tela cheia e avisos.
 
 ## 6. Beta fechado
 

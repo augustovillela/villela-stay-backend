@@ -231,7 +231,7 @@ function construirItensMenu() {
   if (tem('ti') || tem('ceo') || tem('vendas')) itens.push({ grupo: 'Closet Club (marketplace)' }, { id: 'closet', rot: '👗 Closet Club' });
   if (tem('ti') || tem('ceo') || tem('vendas')) itens.push({ grupo: 'Vitrine (marketplace de usados)' }, { id: 'vitrine', rot: '🛒 Vitrine' });
   if (tem('ti') || tem('ceo') || tem('vendas') || tem('marketing')) itens.push({ grupo: 'Alta Vista 360 (estúdio visual)' }, { id: 'alta-vista', rot: '🚁 Alta Vista 360' });
-  if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Villela Kids (clube de missões)' }, { id: 'kids', rot: '🧒 Villela Kids' });
+  if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Invente (Villela Kids)' }, { id: 'kids', rot: '🧒 Invente' });
   itens.push({ grupo: 'Operação' });
   itens.push({ id: 'limpezas', rot: '🧹 Limpezas de hoje' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });

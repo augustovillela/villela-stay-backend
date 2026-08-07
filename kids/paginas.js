@@ -12,17 +12,22 @@ const fs = require('fs');
 const path = require('path');
 const repo = require('./repo');
 
+// Tokens do brand book "Portal Invente" (ed. 1.0, ago/2026): Branco Quente,
+// Tinta, Azul Portal (estrutura), Violeta Invente (ação/criatividade) e os
+// acentos dos ambientes. Raio de card 24px, botão pill — direto do design-tokens.json.
 const CSS = `
-:root{--fundo:#FFF9F0;--tinta:#27303F;--suave:#6B7280;--card:#FFFFFF;--tema:#0F766E;--tema-2:#0B5A54;
---sol:#F59E0B;--uva:#7C3AED;--rosa:#DB2777;--borda:#EBE2D4;--raio:18px}
+:root{--fundo:#F7F8FF;--tinta:#111A3A;--suave:#5B6478;--card:#FFFFFF;--navy:#14265C;
+--tema:#6C4DFF;--tema-2:#14265C;--sol:#FF8A34;--ciano:#23C7E8;--magenta:#F05AA6;--lima:#A9E34B;
+--borda:#E3E6F5;--raio:24px}
 *{box-sizing:border-box}
-body{margin:0;background:var(--fundo);color:var(--tinta);font:16px/1.6 system-ui,'Segoe UI',Roboto,sans-serif}
+body{margin:0;background:var(--fundo);color:var(--tinta);font:16px/1.6 Inter,system-ui,'Segoe UI',Roboto,sans-serif}
+h1,h2,h3,.logo{font-family:'Nunito Sans',Inter,system-ui,'Segoe UI',sans-serif}
 a{color:var(--tema)}
 .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
 header.topo{background:var(--fundo);border-bottom:2px solid var(--borda)}
 .topo .wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
-.logo{display:flex;gap:10px;align-items:center;font-weight:800;font-size:20px;color:var(--tinta);text-decoration:none}
-.logo .bola{width:38px;height:38px;border-radius:12px;background:var(--tema);color:#fff;display:grid;place-items:center;font-size:20px}
+.logo{display:flex;gap:10px;align-items:center;text-decoration:none}
+.logo img{height:44px;display:block}
 .topo nav{display:flex;gap:8px;align-items:center}
 .btn{display:inline-block;background:var(--tema);color:#fff;border:0;border-radius:999px;padding:12px 22px;font-weight:700;font-size:16px;text-decoration:none;cursor:pointer}
 .btn:hover{background:var(--tema-2)}
@@ -67,26 +72,28 @@ footer a{color:var(--suave)}
 function layout({ titulo, descricao, conteudo, semIndex = false, canonico = '' } = {}) {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${titulo ? titulo + ' · ' : ''}Villela Kids</title>
-<meta name="description" content="${descricao || 'Villela Kids — o clube de missões onde crianças aprendem criando: IA, histórias, jogos e projetos de verdade.'}">
+<title>${titulo ? titulo + ' · ' : ''}Invente · Villela Kids</title>
+<meta name="description" content="${descricao || 'Invente — a plataforma de aprendizagem criativa da Villela Kids: missões que transformam conhecimento em projetos, colaboração e autoria. Aprenda criando.'}">
 ${semIndex ? '<meta name="robots" content="noindex">' : ''}
 ${canonico ? `<link rel="canonical" href="${canonico}">` : ''}
-<meta name="theme-color" content="#0F766E">
+<meta name="theme-color" content="#14265C">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@700;800;900&family=Inter:wght@400;600;700&display=swap">
 <link rel="icon" href="/assets/brand/villela-kids/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/brand/villela-kids/apple-touch-icon.png">
-<meta property="og:title" content="${titulo ? titulo + ' · ' : ''}Villela Kids">
+<meta property="og:title" content="${titulo ? titulo + ' · ' : ''}Invente">
 <meta property="og:image" content="https://kids.villelastay.com.br/assets/brand/villela-kids/og-image.png">
 <link rel="manifest" href="/kids/manifest.webmanifest">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/kids/sw.js').catch(function(){})})}</script>
 <style>${CSS}</style></head>
 <body><a class="skip" href="#conteudo">Ir para o conteúdo</a>
 <header class="topo"><div class="wrap">
-  <a class="logo" href="/kids"><span class="bola">🚀</span> Villela Kids</a>
-  <nav><a class="btn claro" href="/kids/entrar">Entrar</a><a class="btn" href="/kids/entrar#criar">Começar</a></nav>
+  <a class="logo" href="/kids"><img src="/assets/brand/villela-kids/invente/logos/invente.svg" alt="Invente — aprenda criando"></a>
+  <nav><a class="btn claro" href="/kids/entrar">Entrar</a><a class="btn" href="/kids/entrar#criar">Começar a inventar</a></nav>
 </div></header>
 <main id="conteudo">${conteudo}</main>
 <footer><div class="wrap">
-  <p><b>Villela Kids</b> · um produto do Grupo Villela Stay · Brasília-DF</p>
+  <p><b>Invente</b> · uma plataforma Villela Kids · Grupo Villela Stay · Brasília-DF</p>
   <p><a href="/kids/ajuda">Central de Ajuda</a> · <a href="/kids/termos">Termos de uso</a> · <a href="/kids/privacidade">Privacidade</a></p>
 </div></footer></body></html>`;
 }
@@ -105,10 +112,12 @@ function home() {
     conteudo: `
 <section class="hero wrap">
   <span class="selo">🔒 Beta fechado — entrada por convite às famílias</span>
-  <h1>Brincando hoje,<br><em>criando o amanhã</em>.</h1>
-  <p class="sub">Um clube de missões onde crianças de 7 a 11 anos aprendem o que a escola quase nunca ensina:
+  <h1>Sua próxima grande ideia<br><em>começa com uma missão</em>.</h1>
+  <p class="sub">Crie, teste, compartilhe e evolua. O Invente é a plataforma de aprendizagem criativa da Villela Kids,
+  onde crianças de 7 a 12 anos aprendem o que a escola quase nunca ensina:
   usar inteligência artificial, criar coisas de verdade e — no final — saber quando <b>não</b> confiar na tela.</p>
-  <a class="btn grande" href="/kids/entrar#criar">Criar a conta da família</a>
+  <a class="btn grande" href="/kids/entrar#criar">Começar a inventar</a>
+  <p class="sub" style="font-size:15px;margin-top:14px">Para as famílias: potencial se desenvolve quando a criança cria.</p>
 </section>
 <section class="wrap">
   <h2 class="titulo">Os 4 superpoderes</h2>
@@ -199,7 +208,7 @@ const TARJA = `<p class="minuta">⚠️ MINUTA — este texto ainda será valida
 
 function termos() {
   return layout({ titulo: 'Termos de uso', conteudo: `<div class="juridico wrap"><h1>Termos de uso</h1>${TARJA}
-<p>O <b>Villela Kids</b> é um serviço do Grupo Villela Stay (Augusto Villela Ltda, CNPJ 56.776.526/0001-12) em fase de <b>beta fechado</b>.</p>
+<p>O <b>Invente</b> é a plataforma de aprendizagem criativa da vertical <b>Villela Kids</b>, do Grupo Villela Stay (Augusto Villela Ltda, CNPJ 56.776.526/0001-12), em fase de <b>beta fechado</b>.</p>
 <ol>
 <li><b>Conta do responsável.</b> Só maiores de 18 anos criam conta. Os perfis de criança pertencem à conta do responsável, que responde pelo uso.</li>
 <li><b>Uso educacional.</b> O serviço oferece missões educativas com apoio de inteligência artificial. Não substitui a escola.</li>
@@ -240,8 +249,8 @@ function registrarPaginas(app) {
   const APP_JS = path.join(__dirname, 'app-cliente.js');
   let APP_V = '1'; try { APP_V = String(Math.trunc(fs.statSync(APP_JS).mtimeMs)); } catch (_) {}
   g('/kids/app', () => layout({
-    titulo: 'Clube de Missões', semIndex: true,
-    conteudo: `<div class="wrap" id="kids-app"><p style="text-align:center;padding:50px 0">Carregando o clube…</p></div>
+    titulo: 'Minhas missões', semIndex: true,
+    conteudo: `<div class="wrap" id="kids-app"><p style="text-align:center;padding:50px 0">Abrindo o portal…</p></div>
 <script src="/kids/app.js?v=${APP_V}"></script>`,
   }));
   app.get('/kids/app.js', (req, res) => {

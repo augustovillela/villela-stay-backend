@@ -38,40 +38,40 @@
 .kb-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 0;flex-wrap:wrap}\
 .kb-topo .quem{display:flex;gap:8px;align-items:center;font-weight:800;font-size:18px}\
 .kb-topo .acoes{display:flex;gap:8px;flex-wrap:wrap}\
-.kb-lk{background:none;border:0;color:#0F766E;font-weight:700;cursor:pointer;font-size:15px;text-decoration:underline}\
+.kb-lk{background:none;border:0;color:#6C4DFF;font-weight:700;cursor:pointer;font-size:15px;text-decoration:underline}\
 .kb-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin:10px 0 30px}\
-.kb-card{background:#fff;border:2px solid #EBE2D4;border-radius:18px;padding:20px;text-align:left}\
-.kb-perfil{cursor:pointer;text-align:center;font-size:18px;font-weight:800;border:0;background:#fff;box-shadow:0 2px 0 #EBE2D4;border:2px solid #EBE2D4;border-radius:18px;padding:26px 20px}\
+.kb-card{background:#fff;border:2px solid #E3E6F5;border-radius:24px;padding:20px;text-align:left}\
+.kb-perfil{cursor:pointer;text-align:center;font-size:18px;font-weight:800;border:0;background:#fff;box-shadow:0 2px 0 #E3E6F5;border:2px solid #E3E6F5;border-radius:24px;padding:26px 20px}\
 .kb-perfil .av{font-size:44px;display:block;margin-bottom:8px}\
-.kb-missao{display:flex;gap:14px;align-items:flex-start;background:#fff;border:2px solid #EBE2D4;border-radius:18px;padding:18px;margin-bottom:12px}\
-.kb-missao.bloqueada{opacity:.55;background:#FAF6EE}\
+.kb-missao{display:flex;gap:14px;align-items:flex-start;background:#fff;border:2px solid #E3E6F5;border-radius:24px;padding:18px;margin-bottom:12px}\
+.kb-missao.bloqueada{opacity:.55;background:#EEF0FC}\
 .kb-missao .em{font-size:34px}\
 .kb-missao h3{margin:0 0 4px;font-size:18px}\
 .kb-missao p{margin:0;color:#6B7280;font-size:14px}\
 .kb-tag{display:inline-block;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:800;margin-top:8px}\
 .kb-tag.disponivel{background:#ECFDF5;color:#065F46}.kb-tag.em_andamento{background:#FEF3C7;color:#92400E}\
 .kb-tag.concluida{background:#EDE9FE;color:#5B21B6}.kb-tag.bloqueada{background:#F3F4F6;color:#6B7280}\
-.kb-bt{display:inline-block;background:#0F766E;color:#fff;border:0;border-radius:999px;padding:12px 22px;font-weight:800;font-size:16px;cursor:pointer;text-decoration:none}\
-.kb-bt.claro{background:#fff;color:#0F766E;border:2px solid #0F766E}\
+.kb-bt{display:inline-block;background:#6C4DFF;color:#fff;border:0;border-radius:999px;padding:12px 22px;font-weight:800;font-size:16px;cursor:pointer;text-decoration:none}\
+.kb-bt.claro{background:#fff;color:#6C4DFF;border:2px solid #6C4DFF}\
 .kb-bt[disabled]{opacity:.5;cursor:default}\
 .kb-form label{display:block;font-weight:700;margin:12px 0 4px}\
-.kb-form input,.kb-form textarea,.kb-form select{width:100%;padding:12px;border:2px solid #EBE2D4;border-radius:10px;font-size:16px;font-family:inherit}\
+.kb-form input,.kb-form textarea,.kb-form select{width:100%;padding:12px;border:2px solid #E3E6F5;border-radius:10px;font-size:16px;font-family:inherit}\
 .kb-erro{color:#B91C1C;font-weight:700;margin-top:10px;min-height:20px}\
 .kb-ok{background:#ECFDF5;border:2px solid #A7F3D0;border-radius:14px;padding:14px 18px;margin:12px 0;color:#065F46;font-weight:600}\
 .kb-sub{color:#6B7280;margin:0 0 16px}\
 h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
-.kb-criacao pre{white-space:pre-wrap;font-family:inherit;background:#FAF6EE;border-radius:12px;padding:14px;margin:8px 0 0}\
+.kb-criacao pre{white-space:pre-wrap;font-family:inherit;background:#EEF0FC;border-radius:12px;padding:14px;margin:8px 0 0}\
 .kb-etapa-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}\
 .kb-passos{color:#6B7280;font-weight:700;font-size:14px}\
-.kb-texto{background:#fff;border:2px solid #EBE2D4;border-radius:18px;padding:20px;font-size:17px;white-space:pre-wrap}\
-.kb-chat{background:#FAF6EE;border:2px dashed #EBE2D4;border-radius:18px;padding:14px;margin-top:14px}\
+.kb-texto{background:#fff;border:2px solid #E3E6F5;border-radius:24px;padding:20px;font-size:17px;white-space:pre-wrap}\
+.kb-chat{background:#EEF0FC;border:2px dashed #E3E6F5;border-radius:24px;padding:14px;margin-top:14px}\
 .kb-chat .titulo-chat{font-weight:800;margin:0 0 8px;font-size:15px}\
 .kb-bolhas{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}\
 .kb-bolha{max-width:85%;padding:10px 14px;border-radius:16px;font-size:15px;white-space:pre-wrap}\
-.kb-bolha.crianca{align-self:flex-end;background:#0F766E;color:#fff;border-bottom-right-radius:4px}\
-.kb-bolha.tutor{align-self:flex-start;background:#fff;border:2px solid #EBE2D4;border-bottom-left-radius:4px}\
+.kb-bolha.crianca{align-self:flex-end;background:#6C4DFF;color:#fff;border-bottom-right-radius:4px}\
+.kb-bolha.tutor{align-self:flex-start;background:#fff;border:2px solid #E3E6F5;border-bottom-left-radius:4px}\
 .kb-chat-linha{display:flex;gap:8px}\
-.kb-chat-linha input{flex:1;padding:11px;border:2px solid #EBE2D4;border-radius:999px;font-size:15px}\
+.kb-chat-linha input{flex:1;padding:11px;border:2px solid #E3E6F5;border-radius:999px;font-size:15px}\
 .kb-modo{color:#92400E;background:#FEF3C7;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:700}\
 .kb-nivel{background:#EDE9FE;color:#5B21B6;border-radius:999px;padding:3px 12px;font-size:13px;font-weight:800;white-space:nowrap}';
   (function () { var s = document.createElement('style'); s.textContent = CSS_EXTRA; document.head.appendChild(s); })();
@@ -80,9 +80,9 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
     var c = criancaAtiva();
     return '<div class="kb-topo">' +
       '<div class="quem">' + (c ? '<span style="font-size:30px">' + esc(c.avatar) + '</span> ' + esc(c.apelido) +
-        (c.nivel ? ' <span class="kb-nivel">' + esc(c.nivel.emoji + ' ' + c.nivel.nome) + '</span>' : '') : '🚀 Clube de Missões') + '</div>' +
+        (c.nivel ? ' <span class="kb-nivel">' + esc(c.nivel.emoji + ' ' + c.nivel.nome) + '</span>' : '') : '✨ Invente') + '</div>' +
       '<div class="acoes">' +
-      (c ? '<button class="kb-lk" data-ir="#missoes">Missões</button><button class="kb-lk" data-ir="#portfolio">Portfólio</button>' : '') +
+      (c ? '<button class="kb-lk" data-ir="#missoes">Missões</button><button class="kb-lk" data-ir="#portfolio">Conquistas</button>' : '') +
       '<button class="kb-lk" data-ir="#perfis">Trocar perfil</button>' +
       '<button class="kb-lk" data-ir="#pais">Área dos pais' + (EST.me && EST.me.nao_lidas ? ' (' + EST.me.nao_lidas + ')' : '') + '</button>' +
       '</div></div>';
@@ -94,7 +94,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
   // ---------- telas ----------
   function vPerfis() {
     var cs = (EST.me.criancas || []);
-    el(topo() + '<h1 class="kb">Quem vai brincar hoje?</h1><p class="kb-sub">Escolha o perfil — ou crie um novo (só apelido, nada de dados da criança).</p>' +
+    el(topo() + '<h1 class="kb">Quem vai inventar hoje?</h1><p class="kb-sub">Escolha o perfil — ou crie um novo (só apelido, nada de dados da criança).</p>' +
       '<div class="kb-grade">' +
       cs.map(function (c) {
         return '<button class="kb-perfil" data-cid="' + esc(c.id) + '"><span class="av">' + esc(c.avatar) + '</span>' + esc(c.apelido) +
@@ -173,7 +173,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         '<div class="kb-erro" id="cr-erro"></div>' +
         '<button class="kb-bt" id="concluir">Guardar no portfólio e concluir</button></div>';
     } else if (m.status === 'concluida') {
-      corpo += '<div class="kb-ok">🏆 Missão concluída! A criação está no seu <button class="kb-lk" data-ir="#portfolio">portfólio</button>.</div>';
+      corpo += '<div class="kb-ok">🏆 Missão concluída! A criação está nas suas <button class="kb-lk" data-ir="#portfolio">conquistas</button>.</div>';
     }
     el(topo() + corpo);
     ligarNavegacao();
@@ -275,7 +275,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         var r = await api('POST', '/criancas/' + c.id + '/ilustrar', { descricao: desc, titulo: 'Cena: ' + e.titulo });
         caixa.innerHTML = '<p class="kb-ok" style="margin-top:12px">Olha a SUA descrição virando desenho! Guardei no portfólio.' +
           (r.ilustracao.restantes > 0 ? ' (' + r.ilustracao.restantes + ' restantes)' : ' (última do Estúdio — as próximas são no papel!)') + '</p>' +
-          '<img src="/kids/api/criancas/' + c.id + '/ilustracoes/' + r.ilustracao.id + '" alt="Ilustração gerada" style="max-width:100%;border-radius:14px;border:2px solid #EBE2D4">';
+          '<img src="/kids/api/criancas/' + c.id + '/ilustracoes/' + r.ilustracao.id + '" alt="Ilustração gerada" style="max-width:100%;border-radius:14px;border:2px solid #E3E6F5">';
       } catch (ex) { err.textContent = ex.message; }
       bIl.disabled = false; bIl.textContent = '🎨 Ver esta descrição desenhada';
     });
@@ -306,11 +306,11 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
     var c = criancaAtiva();
     if (!c) return irPara('#perfis');
     var d = await api('GET', '/criancas/' + c.id + '/portfolio');
-    el(topo() + '<h1 class="kb">🏆 Portfólio de ' + esc(c.apelido) + '</h1><p class="kb-sub">Tudo o que você já criou. Isso vale mais que nota.</p>' +
+    el(topo() + '<h1 class="kb">🏆 Conquistas de ' + esc(c.apelido) + '</h1><p class="kb-sub">Tudo o que você já criou. Isso vale mais que nota.</p>' +
       (d.portfolio.length === 0 ? '<div class="kb-card">Ainda não há criações — complete a primeira missão!</div>' :
         d.portfolio.map(function (p) {
           var corpo = p.tipo === 'imagem'
-            ? '<img src="/kids/api/criancas/' + c.id + '/ilustracoes/' + p.id + '" alt="' + esc(p.titulo) + '" style="max-width:100%;border-radius:14px;border:2px solid #EBE2D4;margin-top:8px">' +
+            ? '<img src="/kids/api/criancas/' + c.id + '/ilustracoes/' + p.id + '" alt="' + esc(p.titulo) + '" style="max-width:100%;border-radius:14px;border:2px solid #E3E6F5;margin-top:8px">' +
               '<pre>Descrição que virou desenho: ' + esc(p.conteudo) + '</pre>'
             : '<pre>' + esc(p.conteudo) + '</pre>';
           return '<div class="kb-card kb-criacao" style="margin-bottom:12px"><h3 style="margin:0">' + esc(p.titulo) + '</h3>' +
@@ -330,7 +330,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         '<h3 style="margin:0 0 4px">' + esc(p.crianca.avatar) + ' ' + esc(p.crianca.apelido) +
         ' <span class="kb-nivel">' + esc(p.nivel.emoji + ' ' + p.nivel.nome) + '</span></h3>' +
         '<p class="kb-sub" style="margin:0 0 8px">' + p.progresso.concluidas + ' de ' + p.progresso.total + ' missões concluídas</p>' +
-        '<div style="background:#F3F4F6;border-radius:999px;height:12px;overflow:hidden"><div style="width:' + pct + '%;background:#0F766E;height:12px"></div></div>' +
+        '<div style="background:#F3F4F6;border-radius:999px;height:12px;overflow:hidden"><div style="width:' + pct + '%;background:#6C4DFF;height:12px"></div></div>' +
         (p.progresso.atual ? '<p style="margin:10px 0 0"><b>Missão ' + (p.progresso.atual.status === 'em_andamento' ? 'em andamento' : 'à espera') + ':</b> ' +
           esc(p.progresso.atual.emoji + ' ' + p.progresso.atual.titulo) + '<br><small style="color:#6B7280">👨‍👩‍👧 Momento família: ' + esc(p.progresso.atual.momento_familia) + '</small></p>'
           : '<p style="margin:10px 0 0"><b>🎓 Trilha completa!</b> As 8 missões foram concluídas.</p>') +

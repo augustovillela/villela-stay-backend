@@ -87,9 +87,10 @@ async function rodar() {
       assert.equal((await req('GET', p)).st, 200, p);
     }
   });
-  await t('landing traz os 4 eixos, o aviso de beta fechado e o bloco de segurança dos pais', async () => {
+  await t('landing traz a marca Invente, os 4 eixos, o beta fechado e o bloco dos pais', async () => {
     const r = await req('GET', '/kids');
-    for (const trecho of ['Pensar', 'Criar', 'Comunicar', 'Realizar', 'Beta fechado', 'Para os pais', 'LGPD']) {
+    for (const trecho of ['Invente', 'começa com uma missão', 'Pensar', 'Criar', 'Comunicar', 'Realizar',
+      'Beta fechado', 'Para os pais', 'LGPD', 'uma plataforma Villela Kids']) {
       assert.ok(r.texto.includes(trecho), 'faltou: ' + trecho);
     }
   });
@@ -425,10 +426,11 @@ async function rodar() {
     assert.equal((await req('POST', '/kids/api/push/remover', { como: 'bia', corpo: { endpoint: 'https://push.exemplo/e1' } })).st, 200);
     assert.equal(db.prepare('SELECT COUNT(*) AS c FROM push_subs').get().c, 0);
   });
-  await t('PWA: manifest e service worker do /kids saem com a marca própria; assets existem', async () => {
+  await t('PWA: manifest e service worker do /kids saem com a marca Invente; assets existem', async () => {
     const m = (await req('GET', '/kids/manifest.webmanifest')).json;
-    assert.equal(m.name, 'Villela Kids');
-    assert.equal(m.theme_color, '#0F766E');
+    assert.equal(m.name, 'Invente · Villela Kids');
+    assert.equal(m.short_name, 'Invente');
+    assert.equal(m.theme_color, '#14265C');
     assert.equal(m.start_url, '/kids/app');
     assert.ok(m.icons.every((i) => i.src.includes('villela-kids')));
     const sw = (await req('GET', '/kids/sw.js')).texto;

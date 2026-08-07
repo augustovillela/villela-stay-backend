@@ -11,8 +11,8 @@ const kdCard = (rot, n, sub) => `<div class="card"><div class="n">${n}</div><div
 let KD_VISAO = 'funil';
 
 async function renderKids() {
-  conteudo().innerHTML = cabecalho('🧒 Villela Kids — plataforma',
-    'Clube de missões para crianças (7–11): beta fechado da fase 1. Aqui: famílias, funil das missões e criações. O app da família é /kids/app.')
+  conteudo().innerHTML = cabecalho('🧒 Invente · Villela Kids — plataforma',
+    'Plataforma de aprendizagem criativa (7–12): beta fechado da fase 1. Aqui: famílias, funil das missões e criações. O app da família é /kids/app.')
     + `<div class="barra">
         <a class="btn secund" href="/kids" target="_blank" rel="noopener">🌐 Landing /kids</a>
         <a class="btn secund" href="/kids/app" target="_blank" rel="noopener">🖥️ App da família</a>

@@ -1,9 +1,9 @@
-# Perguntas frequentes — Villela Kids
+# Perguntas frequentes — Invente (Villela Kids)
 
 ## Para que idade é?
 
-A faixa de calibragem é **7 a 11 anos** (a criança precisa ler e escrever). O tutor ajusta a
-linguagem conforme a faixa escolhida no perfil (7–8 ou 9–11).
+A faixa é **7 a 12 anos** (a criança precisa ler e escrever). O tutor ajusta a
+linguagem conforme a faixa escolhida no perfil.
 
 ## Meu filho vai conversar com uma IA. Isso é seguro?
 
@@ -38,7 +38,7 @@ conta da família — você pode exportar ou apagar tudo em Área dos pais → S
 
 ## A criança pode falar com outras crianças?
 
-Não. O Villela Kids não tem chat entre famílias, comentários nem qualquer rede social. É um
+Não. O Invente não tem chat entre famílias, comentários nem qualquer rede social. É um
 clube de criação, não de conversa com estranhos.
 
 ## O que acontece se meu filho contar algo preocupante ao tutor?

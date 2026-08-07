@@ -59,9 +59,9 @@ const PRODUTOS = [
   },
   {
     slug: 'kids', base: '/kids', inicio: '/kids/app', escopo: '/kids/',
-    nome: 'Villela Kids', curto: 'Villela Kids', marca: 'villela-kids',
-    desc: 'Clube de missões onde crianças aprendem criando — com portfólio e painel dos pais.',
-    tema: '#0F766E', fundo: '#FFF9F0',
+    nome: 'Invente · Villela Kids', curto: 'Invente', marca: 'villela-kids',
+    desc: 'Missões que transformam conhecimento em projetos, colaboração e autoria. Aprenda criando.',
+    tema: '#14265C', fundo: '#F7F8FF',
   },
 ];
 

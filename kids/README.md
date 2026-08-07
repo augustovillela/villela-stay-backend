@@ -55,8 +55,13 @@ npm run test:kids      # suíte completa com banco descartável
 KIDS_SEED=on           # semeia a família demo (só com banco vazio; senha via KIDS_DEMO_SENHA)
 ```
 
+- **Onda 5 (feita):** acabamento — Central de Ajuda (`/kids/ajuda`, manual e FAQ para os pais
+  em `ajuda/conteudo/kids-*.md`), homologação externa (`npm run verificar:kids`, 3 níveis;
+  tarja MINUTA conferida como PRESENTE na fase beta) e Estúdio de Ilustração com IA **gated**
+  (`imagens.js`: KIDS_IMAGENS_CHAVE/GEMINI_API_KEY; sem chave = modo papel; molde infantil
+  fixo, teto de 6, imagem só da família, apagada na exclusão LGPD).
+
 ## Pendências (pós-fase 1)
 
-`verificar-producao.js` · card em `PRODUTOS_GRUPO` (site) — adiado DE PROPÓSITO para o
-lançamento comercial: anunciar produto infantil na home pública só depois do parecer do
-advogado (LGPD art. 14) · central de ajuda (`ajuda/index.js`) · CNAME `kids.villelastay.com.br`.
+Card em `PRODUTOS_GRUPO` (site) — adiado DE PROPÓSITO até o parecer do advogado (LGPD
+art. 14) · nome definitivo da marca · credencial de imagem com cota para ligar o Estúdio IA.

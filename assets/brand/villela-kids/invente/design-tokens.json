@@ -1,0 +1,73 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "brand": {
+    "navy": {
+      "$value": "#14265C",
+      "$type": "color"
+    },
+    "violet": {
+      "$value": "#6C4DFF",
+      "$type": "color"
+    },
+    "cyan": {
+      "$value": "#23C7E8",
+      "$type": "color"
+    },
+    "orange": {
+      "$value": "#FF8A34",
+      "$type": "color"
+    },
+    "magenta": {
+      "$value": "#F05AA6",
+      "$type": "color"
+    },
+    "lime": {
+      "$value": "#A9E34B",
+      "$type": "color"
+    },
+    "warmWhite": {
+      "$value": "#F7F8FF",
+      "$type": "color"
+    },
+    "ink": {
+      "$value": "#111A3A",
+      "$type": "color"
+    }
+  },
+  "radius": {
+    "card": {
+      "$value": "24px",
+      "$type": "dimension"
+    },
+    "button": {
+      "$value": "999px",
+      "$type": "dimension"
+    }
+  },
+  "motion": {
+    "fast": {
+      "$value": "180ms",
+      "$type": "duration"
+    },
+    "portal": {
+      "$value": "320ms",
+      "$type": "duration"
+    }
+  },
+  "space": {
+    "unit": {
+      "$value": "4px",
+      "$type": "dimension"
+    }
+  },
+  "type": {
+    "display": {
+      "$value": "Nunito Sans",
+      "$type": "fontFamily"
+    },
+    "ui": {
+      "$value": "Inter",
+      "$type": "fontFamily"
+    }
+  }
+}
