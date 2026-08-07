@@ -36,7 +36,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
 
   // Bônus por compra: quem compra o livro-chave (qualquer formato) ganha o livro-bônus em PDF.
   // Mapa slug comprado → slug do bônus. Idempotente via guarda status==='pago' do confirmarPagamento.
-  const BONUS_LIVROS = { 'claude-ai-na-pratica-juridica': 'domine-o-claude-na-advocacia' };
+  const BONUS_LIVROS = { 'claude-ai-na-pratica-juridica': 'claude-ai-para-advogados-guia-visual' };
 
   async function entregarBonus(order) {
     const jaTem = new Set((order.itens || []).map(it => it.book_id));

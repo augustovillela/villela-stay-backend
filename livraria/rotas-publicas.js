@@ -20,7 +20,10 @@ function registrarRotasPublicas(app, deps) {
     res.type('html').send(atualizacoes.atualizacoes());
   });
   // Slugs antigos que já circularam publicamente → 301 para o slug atual (não quebra link já dado).
-  const SLUGS_LEGADOS = { 'claude-ai-na-pratcia': 'claude-ai-na-pratica' };
+  const SLUGS_LEGADOS = {
+    'claude-ai-na-pratcia': 'claude-ai-na-pratica',
+    'domine-o-claude-na-advocacia': 'claude-ai-para-advogados-guia-visual',
+  };
 
   app.get('/livros/:slug', (req, res) => {
     const legado = SLUGS_LEGADOS[req.params.slug];

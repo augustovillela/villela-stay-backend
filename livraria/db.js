@@ -64,6 +64,22 @@ try {
     WHERE slug = 'claude-ai-na-pratica'`).run();
 } catch (e) { console.error('[livraria] fix capa claude:', e.message); }
 
+// Rename definitivo (idempotente): o livro visual nasceu como 'domine-o-claude-na-advocacia'
+// (07/08/2026, circulou por poucas horas) e virou "Claude AI para Advogados – Guia Visual".
+// O slug antigo responde 301 em rotas-publicas.js; a migração fica aqui — e não só na chamada
+// de API que a aplicou — para sobreviver à restauração de um snapshot antigo do banco.
+try {
+  db.prepare(`UPDATE books SET slug = 'claude-ai-para-advogados-guia-visual'
+    WHERE slug = 'domine-o-claude-na-advocacia'
+      AND NOT EXISTS (SELECT 1 FROM books WHERE slug = 'claude-ai-para-advogados-guia-visual')`).run();
+  db.prepare(`UPDATE books SET
+      titulo = 'Claude AI para Advogados – Guia Visual',
+      capa_url = '/assets/livros/claude-ai-para-advogados-guia-visual.jpg',
+      og_image = 'https://livros.villelastay.com.br/assets/livros/claude-ai-para-advogados-guia-visual.jpg'
+    WHERE slug = 'claude-ai-para-advogados-guia-visual'
+      AND capa_url = '/assets/livros/domine-o-claude-na-advocacia.jpg'`).run();
+} catch (e) { console.error('[livraria] rename guia visual:', e.message); }
+
 // ---- helpers ----
 const nowISO = () => new Date().toISOString();
 // ID curto, opaco e url-safe (mesmo estilo do server.js: base64url).

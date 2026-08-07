@@ -248,10 +248,10 @@ function landingHTML() {
     </div></div>
     <div class="sec" id="guia" style="background:var(--vx-navy)"><div class="wrap" style="text-align:center">
       <p class="eyebrow" style="color:var(--vx-gold)">Comece grátis</p>
-      <h2 style="color:#fff">Domine o Claude na Advocacia — guia visual em 7 dias</h2>
-      <p class="sub" style="color:#D9DEE9;max-width:640px;margin-left:auto;margin-right:auto">Um guia ilustrado e direto:
-      uma lição por dia sobre o que a IA pode (e não pode) fazer no seu escritório — prompts jurídicos, análise de autos,
-      controle de qualidade, sigilo e automação. <b style="color:#fff">Gratuito, em troca do seu e-mail.</b></p>
+      <h2 style="color:#fff">Claude AI para Advogados – Guia Visual</h2>
+      <p class="sub" style="color:#D9DEE9;max-width:640px;margin-left:auto;margin-right:auto">Aprenda em 7 dias com
+      ilustrações, fluxogramas, exemplos reais e prompts prontos: uma lição por dia sobre o que a IA pode (e não pode)
+      fazer no seu escritório. <b style="color:#fff">Gratuito, em troca do seu e-mail.</b></p>
       <form class="form" id="guia-form" style="max-width:560px;margin:18px auto 0">
         <input id="g-nome" placeholder="Seu nome" autocomplete="name">
         <input id="g-email" type="email" placeholder="Seu melhor e-mail" required autocomplete="email">
@@ -487,13 +487,13 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
     const d = req.body || {};
     const email = s(d.email, 120).toLowerCase();
     if (!email || !email.includes('@')) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
-    repo.Leads.criar({ nome: d.nome, email, plano: 'guia-visual', mensagem: 'Baixou o guia visual gratuito (Domine o Claude na Advocacia em 7 dias)' });
+    repo.Leads.criar({ nome: d.nome, email, plano: 'guia-visual', mensagem: 'Baixou o guia visual gratuito (Claude AI para Advogados – Guia Visual, 7 dias)' });
     const token = jwt.sign({ tipo: 'legalsaas-guia' }, jwtSecret, { expiresIn: '7d' });
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
     const url = `${proto}://${req.get('host')}/juridico/guia-visual.pdf?t=${token}`;
     if (enviarEmail) {
-      enviarEmail(email, 'Seu guia gratuito — Domine o Claude na Advocacia',
-        `<p>Olá${d.nome ? ', <b>' + esc(s(d.nome, 60)) + '</b>' : ''}! Aqui está o seu guia visual gratuito <b>Domine o Claude na Advocacia em 7 dias</b>.</p>
+      enviarEmail(email, 'Seu guia gratuito — Claude AI para Advogados',
+        `<p>Olá${d.nome ? ', <b>' + esc(s(d.nome, 60)) + '</b>' : ''}! Aqui está o seu guia gratuito <b>Claude AI para Advogados – Guia Visual</b> (7 dias).</p>
          <p><a href="${url}">Baixar o guia (PDF)</a> — o link vale por 7 dias.</p>
          <p>Quando quiser ver o método funcionando de verdade, teste o Villela Legal grátis por 14 dias: <a href="${proto}://${req.get('host')}/juridico">${req.get('host')}/juridico</a>.</p>`).catch(() => {});
     }
@@ -512,7 +512,7 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
     const arq = path.join(__dirname, 'guia-visual-7-dias.pdf');
     if (!fs.existsSync(arq)) return res.status(404).send('Guia indisponível no momento.');
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="domine-o-claude-na-advocacia-guia-7-dias.pdf"');
+    res.setHeader('Content-Disposition', 'attachment; filename="claude-ai-para-advogados-guia-visual-7-dias.pdf"');
     res.setHeader('Cache-Control', 'no-store, private, max-age=0');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     fs.createReadStream(arq).on('error', () => { if (!res.headersSent) res.status(500).end(); }).pipe(res);
