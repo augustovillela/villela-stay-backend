@@ -86,11 +86,11 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
 .kb-prog .barra div{background:#A9E34B;height:14px;border-radius:999px}\
 .kb-ambs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}\
 .kb-amb{border:0;border-radius:24px;padding:18px 14px;color:#fff;font-weight:800;font-size:16px;cursor:pointer;text-align:center;font-family:inherit}\
-.kb-amb img{width:44px;height:44px;display:block;margin:0 auto 8px;filter:brightness(0) invert(1)}\
+.kb-amb img{width:48px;height:48px;display:block;margin:0 auto 8px;border-radius:12px}\
 .kb-amb small{display:block;font-weight:600;font-size:12px;opacity:.9;margin-top:2px}\
-.kb-amb.lab{background:#23C7E8;color:#14265C}.kb-amb.lab img{filter:none}\
-.kb-amb.arena{background:#FF8A34}.kb-amb.studio{background:#F05AA6}.kb-amb.expo{background:#A9E34B;color:#14265C}.kb-amb.expo img{filter:none}\
-.kb-amb[disabled]{opacity:.55;cursor:default}';
+.kb-amb.lab{background:#23C7E8;color:#14265C}\
+.kb-amb.arena{background:#FF8A34}.kb-amb.studio{background:#F05AA6}.kb-amb.expo{background:#A9E34B;color:#14265C}\
+.kb-amb[disabled]{opacity:.75;cursor:default}';
 
   // Lumi — a centelha-guia do Invente (versão leve do brand book: sem
   // animação/voz antes da validação com crianças; só boas-vindas e contexto).
@@ -147,7 +147,9 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       concl + ' de ' + d.missoes.length + ' missões · nível ' + esc((nivel.emoji || '') + ' ' + (nivel.nome || '')) + '</div>' +
       '<div class="kb-ambs">' +
       '<button class="kb-amb lab" data-ir="#missoes"><img src="/assets/brand/villela-kids/invente/icons/lab.svg" alt="">Invente Lab<small>Teste ideias. Descubra possibilidades.</small></button>' +
-      '<button class="kb-amb studio" ' + (m03 && m03.status !== 'bloqueada' ? 'data-ir="#missao?m=m03-estudio-ilustracao"' : 'disabled title="Abre com a missão 3"') + '><img src="/assets/brand/villela-kids/invente/icons/studio.svg" alt="">Invente Studio<small>Dê forma e voz às suas ideias.</small></button>' +
+      ((m03 && m03.status !== 'bloqueada')
+        ? '<button class="kb-amb studio" data-ir="#missao?m=m03-estudio-ilustracao"><img src="/assets/brand/villela-kids/invente/icons/studio.svg" alt="">Invente Studio<small>Dê forma e voz às suas ideias.</small></button>'
+        : '<button class="kb-amb studio" disabled><img src="/assets/brand/villela-kids/invente/icons/studio.svg" alt="">Invente Studio<small>🔒 Abre com a missão 3</small></button>') +
       '<button class="kb-amb expo" data-ir="#portfolio"><img src="/assets/brand/villela-kids/invente/icons/expo.svg" alt="">Invente Expo<small>Mostre o que você criou.</small></button>' +
       '<button class="kb-amb arena" disabled title="Em preparação"><img src="/assets/brand/villela-kids/invente/icons/arena.svg" alt="">Invente Arena<small>Desafios em preparação!</small></button>' +
       '</div>');
