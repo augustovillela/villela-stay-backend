@@ -428,11 +428,16 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       msg.style.color = '';
       msg.textContent = '';
       try {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Este navegador não suporta avisos. Instale o app pelo menu do navegador e tente por lá.');
+        if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+          throw new Error('Este navegador não suporta avisos em aba. No iPhone: Compartilhar → "Adicionar à Tela de Início", abra pelo ícone e ative por lá.');
+        }
+        // O pedido de permissão vem PRIMEIRO, ainda dentro do toque — Safari
+        // invalida o gesto se houver uma chamada de rede antes.
+        var perm = await Notification.requestPermission();
+        if (perm === 'denied') throw new Error('Os avisos estão bloqueados para este site no navegador. Toque no cadeado ao lado do endereço → Permissões → Notificações → Permitir, e tente de novo.');
+        if (perm !== 'granted') throw new Error('O pedido foi fechado sem escolher. Toque de novo e escolha "Permitir".');
         var ch = await api('GET', '/push/chave');
         if (!ch.disponivel) throw new Error('Os avisos ainda não estão configurados no servidor.');
-        var perm = await Notification.requestPermission();
-        if (perm !== 'granted') throw new Error('Permissão de aviso não concedida no navegador.');
         var reg = await navigator.serviceWorker.ready;
         var b64 = ch.chave.replace(/-/g, '+').replace(/_/g, '/');
         var bin = atob(b64 + '='.repeat((4 - b64.length % 4) % 4));
