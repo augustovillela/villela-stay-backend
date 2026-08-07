@@ -217,6 +217,8 @@ CREATE TABLE IF NOT EXISTS payments (
   status TEXT NOT NULL DEFAULT 'pendente',         -- pendente | em_analise | aprovado | recusado | reembolsado
   valor_centavos INTEGER NOT NULL DEFAULT 0,
   tarifa_centavos INTEGER NOT NULL DEFAULT 0,
+  checkout_url TEXT NOT NULL DEFAULT '',           -- init_point do Checkout Pro (mp-split)
+  dados TEXT NOT NULL DEFAULT '',                  -- JSON do provedor (preference id, mp payment id…)
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL DEFAULT ''
 );
@@ -351,6 +353,19 @@ CREATE TABLE IF NOT EXISTS auditoria (
   detalhe TEXT NOT NULL DEFAULT '',
   ip TEXT NOT NULL DEFAULT '',
   quando TEXT NOT NULL
+);
+
+-- Tokens OAuth do Mercado Pago por vendedor (Split Payments, fase 6).
+-- O pagamento é criado com o token do VENDEDOR + marketplace_fee da plataforma.
+CREATE TABLE IF NOT EXISTS seller_mp_tokens (
+  user_id TEXT PRIMARY KEY REFERENCES users(id),
+  mp_user_id TEXT NOT NULL DEFAULT '',
+  access_token TEXT NOT NULL DEFAULT '',
+  refresh_token TEXT NOT NULL DEFAULT '',
+  public_key TEXT NOT NULL DEFAULT '',
+  live_mode INTEGER NOT NULL DEFAULT 0,
+  expira_em TEXT NOT NULL DEFAULT '',
+  atualizado_em TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS platform_events (

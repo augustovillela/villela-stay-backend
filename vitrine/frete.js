@@ -17,6 +17,16 @@ const crypto = require('crypto');
 const { db, nowISO, novoId } = require('./db');
 const { s, cent, inteiro } = require('./repo');
 
+// fetch injetável: o selftest troca por um mock sem tocar na rede
+let _fetch = (...a) => globalThis.fetch(...a);
+function setFetch(fn) { _fetch = fn || ((...a) => globalThis.fetch(...a)); }
+
+// decimal "12.34" (string da API) → 1234 centavos, sem float
+function decimalParaCentavos(v) {
+  const [int, dec] = String(v == null ? '0' : v).replace(',', '.').split('.');
+  return Math.max(0, (parseInt(int, 10) || 0) * 100 + parseInt(String(dec || '0').padEnd(2, '0').slice(0, 2), 10));
+}
+
 // peso cobrável = maior entre o real e o cubado (regra de mercado: 6000 cm³/kg)
 function pesoCobravel(pesoGramas, comp, larg, alt) {
   const cubado = Math.round((Math.max(1, comp) * Math.max(1, larg) * Math.max(1, alt)) / 6);
@@ -59,10 +69,49 @@ const Provedores = {
     gerarCodigo() { return 'VT' + crypto.randomBytes(4).toString('hex').toUpperCase() + 'BR'; },
     urlRastreio(codigo) { return '/vitrine/rastreio/' + codigo; }, // simulado: a linha do tempo é a nossa
   },
+  // FASE 6 — cotação REAL pela API do Melhor Envio. Sem token
+  // (VITRINE_MELHOR_ENVIO_TOKEN) fica indisponível; com VITRINE_MELHOR_ENVIO_SANDBOX=on
+  // usa o ambiente de testes (sandbox.melhorenvio.com.br). A compra de etiqueta
+  // e o rastreio automático ficam para depois da homologação — postagem e
+  // código continuam manuais, e a interface diz isso.
   'melhor-envio': {
-    nome: 'Melhor Envio',
+    nome: 'Melhor Envio' + (String(process.env.VITRINE_MELHOR_ENVIO_SANDBOX || 'on') === 'on' ? ' (sandbox)' : ''),
     disponivel: () => !!process.env.VITRINE_MELHOR_ENVIO_TOKEN,
-    cotar() { throw new Error('Melhor Envio ainda não está configurado nesta instalação (fase 6). Use o frete simulado.'); },
+    base() {
+      return String(process.env.VITRINE_MELHOR_ENVIO_SANDBOX || 'on') === 'on'
+        ? 'https://sandbox.melhorenvio.com.br' : 'https://melhorenvio.com.br';
+    },
+    async cotar({ cepDestino, cepOrigem, pesoGramas = 500, dim = {} }) {
+      const destino = String(cepDestino || '').replace(/\D/g, '');
+      if (destino.length !== 8) throw new Error('Informe um CEP de destino válido (8 dígitos).');
+      const r = await _fetch(this.base() + '/api/v2/me/shipment/calculate', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + process.env.VITRINE_MELHOR_ENVIO_TOKEN,
+          'Content-Type': 'application/json', Accept: 'application/json',
+          'User-Agent': 'Vitrine (villelastay.com.br)',
+        },
+        body: JSON.stringify({
+          from: { postal_code: String(cepOrigem || '').replace(/\D/g, '') },
+          to: { postal_code: destino },
+          package: {
+            weight: Math.max(0.05, Math.max(1, pesoGramas) / 1000), // kg
+            width: Math.max(1, dim.larg_cm || 20), height: Math.max(1, dim.alt_cm || 10), length: Math.max(1, dim.comp_cm || 20),
+          },
+        }),
+      });
+      const texto = await r.text();
+      let lista = null; try { lista = JSON.parse(texto); } catch (_) {}
+      if (!r.ok || !Array.isArray(lista)) throw new Error(`Melhor Envio: HTTP ${r.status} ${String(texto).slice(0, 150)}`);
+      return lista
+        .filter((sv) => sv && sv.price && !sv.error)
+        .map((sv) => ({
+          tipo: 'me-' + sv.id,
+          nome: `${(sv.company && sv.company.name) || ''} ${sv.name} (Melhor Envio)`.trim(),
+          valor_centavos: decimalParaCentavos(sv.price),
+          prazo_dias: inteiro(sv.delivery_time && sv.delivery_time.days != null ? sv.delivery_time.days : sv.delivery_time, 5),
+        }));
+    },
   },
 };
 
@@ -73,7 +122,21 @@ function provedorAtivo() {
   return { nome, impl: p };
 }
 
-function cotar(params) { return provedorAtivo().impl.cotar(params); }
+// Cotação SEMPRE assíncrona. Melhor Envio fora do ar não pode derrubar o
+// checkout: cai no simulado com o rótulo dizendo que a cotação é simulada.
+async function cotar(params) {
+  const { nome, impl } = provedorAtivo();
+  if (nome === 'melhor-envio') {
+    try {
+      const opcoes = await impl.cotar(params);
+      if (opcoes.length) {
+        if (params.retiradaOk) opcoes.push({ tipo: 'retirada', nome: 'Retirada em mãos (combinar com o vendedor)', valor_centavos: 0, prazo_dias: 0 });
+        return opcoes;
+      }
+    } catch (e) { console.error('[vitrine] Melhor Envio indisponível, usando cotação simulada:', e.message); }
+  }
+  return Provedores.simulado.cotar(params);
+}
 
 const Envios = {
   obter(id) { return db.prepare('SELECT * FROM shipments WHERE id = ?').get(s(id, 40)) || null; },
@@ -139,4 +202,4 @@ const Envios = {
   },
 };
 
-module.exports = { Provedores, provedorAtivo, cotar, Envios, ETAPAS, pesoCobravel, zonaEntre };
+module.exports = { Provedores, provedorAtivo, cotar, Envios, ETAPAS, pesoCobravel, zonaEntre, setFetch, decimalParaCentavos };

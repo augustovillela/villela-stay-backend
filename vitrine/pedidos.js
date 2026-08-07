@@ -80,7 +80,7 @@ const Pedidos = {
   // -------------------------------------------------------------------
   // CHECKOUT: transforma o grupo de UM vendedor do carrinho em pedido.
   // -------------------------------------------------------------------
-  checkout(buyerId, { sellerId, addressId = '', freteTipo = 'economica' } = {}) {
+  async checkout(buyerId, { sellerId, addressId = '', freteTipo = 'economica' } = {}) {
     const buyer = Users.obter(buyerId);
     if (!buyer || buyer.status !== 'ativo') throw new Error('Conta inválida.');
     if (!buyer.email_verificado) throw new Error('Verifique seu e-mail antes de comprar.');
@@ -105,7 +105,7 @@ const Pedidos = {
       if (!end) throw new Error('Escolha um endereço de entrega.');
       const peso = grupo.itens.reduce((t, i) => t + i.peso_gramas * i.quantidade, 0);
       const maior = grupo.itens.reduce((m, i) => (i.comp_cm * i.larg_cm * i.alt_cm > m.comp_cm * m.larg_cm * m.alt_cm ? i : m), grupo.itens[0]);
-      const opcoes = frete.cotar({
+      const opcoes = await frete.cotar({
         cepDestino: end.cep, cepOrigem: grupo.itens[0].cep_origem || vendedor.cep_origem,
         pesoGramas: peso, dim: maior, retiradaOk: false,
       });
@@ -145,7 +145,7 @@ const Pedidos = {
       db.prepare('INSERT INTO order_status_history (id, order_id, de, para, quem, papel, detalhe, quando) VALUES (?,?,?,?,?,?,?,?)')
         .run(novoId(), id, '', 'aguardando_pagamento', buyer.email, 'comprador', 'Pedido criado', agora);
       Carrinho.limparVendedor(buyerId, sellerId);
-      pagamento = pagamentos.criarPagamento({ id, total_centavos: total });
+      pagamento = pagamentos.criarPagamento({ id, seller_id: sellerId, total_centavos: total });
     });
     Notificacoes.criar(sellerId, { titulo: 'Novo pedido recebido', texto: `Pedido de ${grupo.itens.length} item(ns) aguardando pagamento.`, url: '/vitrine/app#vendas' });
     evento(buyerId, 'pedido.criar', id, { total_centavos: total });
@@ -383,7 +383,7 @@ const Pedidos = {
       pedido: { ...o, endereco: j.parse(o.endereco_json, null), status_rotulo: STATUS_PEDIDO[o.status] || o.status },
       itens: Pedidos.itens(orderId),
       historico: Pedidos.historico(orderId),
-      pagamento: pay ? { id: pay.id, provedor: pay.provedor, ref: pay.provedor_ref, status: pay.status, valor_centavos: pay.valor_centavos } : null,
+      pagamento: pay ? { id: pay.id, provedor: pay.provedor, ref: pay.provedor_ref, status: pay.status, valor_centavos: pay.valor_centavos, checkout_url: pay.checkout_url || '' } : null,
       envio: sh ? { ...sh, eventos: frete.Envios.eventos(sh.id) } : null,
       disputa: db.prepare('SELECT * FROM disputes WHERE order_id = ?').get(orderId) || null,
       avaliacoes: db.prepare('SELECT order_item_id FROM reviews WHERE order_id = ?').all(orderId).map((r) => r.order_item_id),

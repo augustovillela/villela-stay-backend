@@ -48,15 +48,24 @@ function registrarRotasApp(app, { requireUsuario }) {
     const retiradaOk = grupo.itens.every((i) => i.entrega_retirada);
     const envioOk = grupo.itens.every((i) => i.entrega_envio);
     const opcoes = envioOk
-      ? frete.cotar({ cepDestino: cep, cepOrigem: grupo.itens[0].cep_origem, pesoGramas: peso, dim: maior, retiradaOk })
+      ? await frete.cotar({ cepDestino: cep, cepOrigem: grupo.itens[0].cep_origem, pesoGramas: peso, dim: maior, retiradaOk })
       : (retiradaOk ? [{ tipo: 'retirada', nome: 'Retirada em mãos (combinar com o vendedor)', valor_centavos: 0, prazo_dias: 0 }] : []);
     res.json({ opcoes, subtotal_centavos: grupo.subtotal_centavos });
   }));
 
-  // checkout: cria UM pedido do vendedor informado (regra 1 pedido = 1 vendedor)
+  // checkout: cria UM pedido do vendedor informado (regra 1 pedido = 1 vendedor).
+  // Com MP Split ativo p/ o vendedor, a cobrança externa nasce DEPOIS do commit
+  // (rede fora de transação); falha ali não derruba o pedido.
   app.post('/vitrine/api/checkout', requireUsuario, h(async (req, res) => {
     const d = req.body || {};
-    const r = Pedidos.checkout(req.usuario.id, { sellerId: s(d.seller_id, 40), addressId: s(d.address_id, 40), freteTipo: s(d.frete_tipo, 20) });
+    const r = await Pedidos.checkout(req.usuario.id, { sellerId: s(d.seller_id, 40), addressId: s(d.address_id, 40), freteTipo: s(d.frete_tipo, 20) });
+    if (r.pagamento && r.pagamento.provedor === 'mercadopago-split') {
+      const base = `${req.headers['x-forwarded-proto'] || req.protocol || 'https'}://${req.get('host')}`;
+      try {
+        const cb = await pagamentos.iniciarCobranca(r.pagamento.id, base);
+        if (cb && cb.checkout_url) r.pagamento.checkout_url = cb.checkout_url;
+      } catch (e) { r.pagamento.erro_cobranca = e.message; }
+    }
     res.json({ ok: true, ...r });
   }));
 
@@ -169,6 +178,21 @@ function registrarRotasApp(app, { requireUsuario }) {
     const ev = frete.Envios.avancar(sh.id);
     if (ev) Pedidos.aoRastreioAvancar(o.id, ev.status);
     res.json({ ok: true, evento: ev, pedido: Pedidos.obter(o.id) });
+  }));
+
+  // ---- Mercado Pago Split (fase 6): status e desconexão ----
+  app.get('/vitrine/api/vendedor/mp-status', requireUsuario, requireVendedor, h(async (req, res) => {
+    const tk = pagamentos.MPTokens.obter(req.usuario.id);
+    res.json({
+      plataforma_configurada: pagamentos.OAuth.configurado(),
+      conectado: !!tk,
+      live_mode: tk ? !!tk.live_mode : false,
+      mp_user_id: tk ? tk.mp_user_id : '',
+    });
+  }));
+  app.post('/vitrine/api/vendedor/mp-desconectar', requireUsuario, requireVendedor, h(async (req, res) => {
+    pagamentos.MPTokens.remover(req.usuario.id);
+    res.json({ ok: true });
   }));
 
   // perguntas e avaliações do vendedor

@@ -28,6 +28,19 @@ for (const m of MIGRACOES) {
   db.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
 }
 
+// Coluna nova em tabela que já existe: `CREATE TABLE IF NOT EXISTS` não aplica
+// ALTER, e um ALTER cru quebraria em banco novo (coluna duplicada). A coluna
+// também fica no CREATE do schema.sql — aqui só entra quem já tem banco.
+function garantirColuna(tabela, coluna, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${tabela})`).all();
+  if (cols.some((c) => c.name === coluna)) return false;
+  db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${ddl}`);
+  return true;
+}
+// fase 6 (06/08/2026): Checkout Pro do MP Split
+garantirColuna('payments', 'checkout_url', "TEXT NOT NULL DEFAULT ''");
+garantirColuna('payments', 'dados', "TEXT NOT NULL DEFAULT ''");
+
 const nowISO = () => new Date().toISOString();
 const hojeISO = () => new Date().toISOString().slice(0, 10);
 const novoId = () => crypto.randomBytes(9).toString('base64url');

@@ -56,11 +56,20 @@ function montar(app, injected = {}) {
     } catch (e) { res.status(400).json({ erro: e.message }); }
   });
 
+  // Webhook do Mercado Pago (Split, fase 6): responde 200 rápido (exigência do
+  // MP) e processa em seguida — validação x-signature + núcleo idempotente.
+  app.post('/vitrine/webhooks/mercadopago', express.json({ type: () => true }), (req, res) => {
+    res.sendStatus(200);
+    pagamentos.processarWebhookMP(req.body || {}, req.query || {}, req.headers || {})
+      .catch((e) => console.error('[vitrine] webhook MP:', e.message));
+  });
+
   iniciarRotinas(alertaAugusto);
   const prov = pagamentos.provedorAtivo();
   console.log(`[vitrine] Vitrine montada. Loja: /vitrine · painel: /vitrine/app · staff: /staff/api/vitrine`
     + ` · comissão: ${repo.Config.num('marketplace_commission_percent', 5)}%`
-    + ` · pagamento: ${prov.nome} · frete: ${frete.provedorAtivo().nome} · e-mail: ${emails.ativo() ? 'ligado' : 'desligado'}`);
+    + ` · pagamento: ${prov.nome === 'mercadopago-split' ? 'MP Split (por vendedor conectado; simulado como reserva)' : prov.nome}`
+    + ` · frete: ${frete.provedorAtivo().nome} · e-mail: ${emails.ativo() ? 'ligado' : 'desligado'}`);
   return { repo, pedidos, pagamentos, frete, emails, seed };
 }
 

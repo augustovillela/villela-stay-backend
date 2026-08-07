@@ -492,6 +492,147 @@ async function rodar() {
     assert.equal(repo.Products.obter(anuncio.id).quantidade, antes + 1);
   });
 
+  // ================= FASE 6: Mercado Pago Split (sandbox, fetch mockado) =================
+  await t('sem credenciais, MP Split e Melhor Envio se declaram indisponíveis (contrato honesto)', async () => {
+    assert.equal(pagamentos.OAuth.configurado(), false);
+    assert.equal(pagamentos.Provedores['mercadopago-split'].disponivel(), false);
+    assert.equal(require('./frete').Provedores['melhor-envio'].disponivel(), false);
+    const r = await req('GET', '/vitrine/oauth/mercadopago', { como: 'vera' });
+    assert.equal(r.st, 302, 'rota OAuth deveria redirecionar');
+  });
+
+  let pedidoMP, mpChamadasMock = [], reembolsosMP = [];
+  await t('OAuth do vendedor: callback troca o código e grava os tokens (mock)', async () => {
+    process.env.VITRINE_MP_APP_ID = 'APP-TESTE';
+    process.env.VITRINE_MP_SECRET = 'SECRET-TESTE';
+    process.env.VITRINE_MP_WEBHOOK_SECRET = 'WHK-TESTE';
+    pagamentos.setFetch(async (url, opts = {}) => {
+      let corpoReq = null; try { corpoReq = opts.body ? JSON.parse(opts.body) : null; } catch (_) {}
+      mpChamadasMock.push({ url, metodo: opts.method || 'GET', corpo: corpoReq });
+      const responder = (obj, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(obj) });
+      if (url.endsWith('/oauth/token')) {
+        return responder({ access_token: 'TK-VERA', refresh_token: 'RF-VERA', user_id: 987654, public_key: 'PK-VERA', live_mode: false, expires_in: 15552000 });
+      }
+      if (url.endsWith('/checkout/preferences')) {
+        const corpo = JSON.parse(opts.body);
+        return responder({ id: 'PREF-1', sandbox_init_point: 'https://sandbox.mp.test/checkout/PREF-1', _corpo: corpo });
+      }
+      if (/\/v1\/payments\/MPPAY1\/refunds$/.test(url)) { reembolsosMP.push(JSON.parse(opts.body || '{}')); return responder({ id: 'REF-1', status: 'approved' }); }
+      if (/\/v1\/payments\/MPPAY1$/.test(url)) {
+        return responder({ id: 'MPPAY1', status: 'approved', external_reference: pedidoMP, fee_details: [{ amount: '4.99' }] });
+      }
+      return responder({ erro: 'rota não mockada: ' + url }, 500);
+    });
+    const jwt = require('jsonwebtoken');
+    const state = jwt.sign({ tipo: 'vitrine-mp', uid: vera.id }, 'seg-teste', { expiresIn: '30m' });
+    const cb = await req('GET', `/vitrine/oauth/mercadopago/callback?code=CODE-1&state=${state}`, { como: 'vera' });
+    assert.equal(cb.st, 302);
+    const st = (await req('GET', '/vitrine/api/vendedor/mp-status', { como: 'vera' })).json;
+    assert.equal(st.plataforma_configurada, true);
+    assert.equal(st.conectado, true);
+    assert.equal(st.live_mode, false, 'mock é sandbox');
+  });
+
+  await t('checkout com vendedor conectado usa MP Split: preferência com marketplace_fee = comissão', async () => {
+    await req('POST', '/vitrine/api/carrinho', { como: 'caio', corpo: { product_id: anuncio.id, quantidade: 1 } });
+    const end = (await req('GET', '/vitrine/api/enderecos', { como: 'caio' })).json.enderecos[0];
+    const r = await req('POST', '/vitrine/api/checkout', { como: 'caio', corpo: { seller_id: anuncio.seller_id, address_id: end.id, frete_tipo: 'economica' } });
+    assert.equal(r.st, 200, JSON.stringify(r.json));
+    pedidoMP = r.json.pedido.id;
+    assert.equal(r.json.pagamento.provedor, 'mercadopago-split');
+    assert.equal(r.json.pagamento.checkout_url, 'https://sandbox.mp.test/checkout/PREF-1');
+    const pref = mpChamadasMock.find((c) => c.url.endsWith('/checkout/preferences'));
+    assert.ok(pref && pref.corpo, 'preferência não criada');
+    const o = db.prepare('SELECT * FROM orders WHERE id = ?').get(pedidoMP);
+    assert.equal(pref.corpo.marketplace_fee, pagamentos.centavosDecimal(o.comissao_centavos), 'marketplace_fee ≠ comissão do pedido');
+    assert.equal(pref.corpo.external_reference, pedidoMP);
+    assert.ok(pref.corpo.notification_url.endsWith('/vitrine/webhooks/mercadopago'));
+    const somaItens = pref.corpo.items.reduce((t2, i) => t2 + Math.round(i.unit_price * 100) * i.quantity, 0);
+    assert.equal(somaItens, o.total_centavos, 'itens da preferência ≠ total do pedido');
+  });
+
+  const assinaturaMP = (mpId, rid, ts) => {
+    const manifesto = `id:${String(mpId).toLowerCase()};request-id:${rid};ts:${ts};`;
+    return `ts=${ts},v1=` + require('crypto').createHmac('sha256', 'WHK-TESTE').update(manifesto).digest('hex');
+  };
+  await t('webhook MP: assinatura inválida não aplica; assinatura válida aprova com a tarifa REAL (fee_details)', async () => {
+    // inválida
+    await req('POST', '/vitrine/webhooks/mercadopago', {
+      corpo: { type: 'payment', data: { id: 'MPPAY1' } },
+      headers: { 'x-signature': 'ts=1,v1=deadbeef', 'x-request-id': 'r1' },
+    });
+    await new Promise((r) => setTimeout(r, 200));
+    assert.equal(db.prepare('SELECT status FROM orders WHERE id = ?').get(pedidoMP).status, 'aguardando_pagamento', 'assinatura inválida aplicou!');
+    // válida
+    const ts = String(Date.now());
+    await req('POST', '/vitrine/webhooks/mercadopago', {
+      corpo: { type: 'payment', data: { id: 'MPPAY1' } },
+      headers: { 'x-signature': assinaturaMP('MPPAY1', 'r2', ts), 'x-request-id': 'r2' },
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    const o = db.prepare('SELECT * FROM orders WHERE id = ?').get(pedidoMP);
+    assert.equal(o.status, 'pago');
+    assert.equal(o.tarifa_processador_centavos, 499, 'tarifa real do fee_details não registrada');
+    const pay = db.prepare('SELECT * FROM payments WHERE order_id = ?').get(pedidoMP);
+    assert.ok(String(pay.dados).includes('MPPAY1'), 'mp_payment_id não vinculado');
+  });
+  await t('webhook MP repetido é idempotente (mesmo status não aplica de novo)', async () => {
+    const antes = db.prepare("SELECT COUNT(*) AS c FROM order_status_history WHERE order_id = ? AND para = 'pago'").get(pedidoMP).c;
+    const ts = String(Date.now());
+    await req('POST', '/vitrine/webhooks/mercadopago', {
+      corpo: { type: 'payment', data: { id: 'MPPAY1' } },
+      headers: { 'x-signature': assinaturaMP('MPPAY1', 'r3', ts), 'x-request-id': 'r3' },
+    });
+    await new Promise((r) => setTimeout(r, 200));
+    assert.equal(db.prepare("SELECT COUNT(*) AS c FROM order_status_history WHERE order_id = ? AND para = 'pago'").get(pedidoMP).c, antes);
+  });
+  await t('cancelamento de pedido MP pago reembolsa pela API do MP (mock registra o refund)', async () => {
+    const r = await req('POST', `/vitrine/api/pedidos/${pedidoMP}/cancelar`, { como: 'caio', corpo: { motivo: 'teste MP' } });
+    assert.equal(r.st, 200, JSON.stringify(r.json));
+    assert.equal(db.prepare('SELECT status FROM orders WHERE id = ?').get(pedidoMP).status, 'reembolsado');
+    assert.equal(reembolsosMP.length, 1, 'refund não chamou a API do MP');
+    assert.equal(db.prepare('SELECT status FROM payments WHERE order_id = ?').get(pedidoMP).status, 'reembolsado');
+  });
+  await t('desconectar o MP volta o vendedor ao fluxo simulado', async () => {
+    await req('POST', '/vitrine/api/vendedor/mp-desconectar', { como: 'vera' });
+    await req('POST', '/vitrine/api/carrinho', { como: 'caio', corpo: { product_id: anuncio.id, quantidade: 1 } });
+    const end = (await req('GET', '/vitrine/api/enderecos', { como: 'caio' })).json.enderecos[0];
+    const r = await req('POST', '/vitrine/api/checkout', { como: 'caio', corpo: { seller_id: anuncio.seller_id, address_id: end.id, frete_tipo: 'economica' } });
+    assert.equal(r.json.pagamento.provedor, 'simulado');
+    await req('POST', `/vitrine/api/pedidos/${r.json.pedido.id}/cancelar`, { como: 'caio', corpo: {} });
+    delete process.env.VITRINE_MP_APP_ID; delete process.env.VITRINE_MP_SECRET; delete process.env.VITRINE_MP_WEBHOOK_SECRET;
+    pagamentos.setFetch(null);
+  });
+
+  // ================= FASE 6: Melhor Envio (sandbox, fetch mockado) =================
+  await t('cotação Melhor Envio mapeia serviços reais p/ centavos inteiros; sem token cai no simulado', async () => {
+    const frete = require('./frete');
+    process.env.VITRINE_FRETE_PROVEDOR = 'melhor-envio';
+    process.env.VITRINE_MELHOR_ENVIO_TOKEN = 'ME-TOKEN-TESTE';
+    frete.setFetch(async (url, opts) => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify([
+        { id: 1, name: 'PAC', company: { name: 'Correios' }, price: '23.45', delivery_time: { days: 7 } },
+        { id: 2, name: 'SEDEX', company: { name: 'Correios' }, price: '41.90', delivery_time: 3 },
+        { id: 99, name: 'Indisponível', error: 'sem cobertura' },
+      ]),
+    }));
+    const opcoes = await frete.cotar({ cepDestino: '70864530', cepOrigem: '70200001', pesoGramas: 1800, dim: { comp_cm: 30, larg_cm: 25, alt_cm: 10 }, retiradaOk: true });
+    const pac = opcoes.find((o) => o.tipo === 'me-1');
+    assert.ok(pac, 'PAC não mapeado');
+    assert.equal(pac.valor_centavos, 2345);
+    assert.equal(pac.prazo_dias, 7);
+    assert.equal(opcoes.find((o) => o.tipo === 'me-2').valor_centavos, 4190);
+    assert.ok(!opcoes.some((o) => o.tipo === 'me-99'), 'serviço com erro entrou na lista');
+    assert.ok(opcoes.some((o) => o.tipo === 'retirada'), 'retirada sumiu na cotação real');
+    // API fora do ar → fallback simulado, checkout não morre
+    frete.setFetch(async () => ({ ok: false, status: 500, text: async () => 'boom' }));
+    const fallback = await frete.cotar({ cepDestino: '70864530', cepOrigem: '70200001', pesoGramas: 500, dim: {} });
+    assert.ok(fallback.some((o) => o.tipo === 'economica'), 'fallback simulado não veio');
+    delete process.env.VITRINE_FRETE_PROVEDOR; delete process.env.VITRINE_MELHOR_ENVIO_TOKEN;
+    frete.setFetch(null);
+  });
+
   // ================= fim =================
   srv.close();
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);

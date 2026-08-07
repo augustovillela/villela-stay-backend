@@ -138,6 +138,44 @@ function registrarRotasConta(app, { jwtSecret }) {
   app.get('/vitrine/api/notificacoes', requireUsuario, h(async (req, res) => res.json({ notificacoes: Notificacoes.listar(req.usuario.id) })));
   app.post('/vitrine/api/notificacoes/lidas', requireUsuario, h(async (req, res) => { Notificacoes.marcarLidas(req.usuario.id); res.json({ ok: true }); }));
 
+  // ---- OAuth Mercado Pago (Split, fase 6): fluxo de navegador ----
+  // O vendedor conecta a PRÓPRIA conta MP; o token fica no servidor e nunca
+  // aparece no navegador. Sem VITRINE_MP_APP_ID/SECRET as rotas explicam que
+  // a plataforma ainda não está configurada — nada é inventado.
+  const pagamentos = require('./pagamentos');
+  const usuarioDeCookie = (req) => {
+    try {
+      const { uid } = jwt.verify(req.cookies && req.cookies[COOKIE], jwtSecret);
+      const u = Users.obter(uid);
+      return (u && u.status === 'ativo') ? u : null;
+    } catch (_) { return null; }
+  };
+  app.get('/vitrine/oauth/mercadopago', (req, res) => {
+    const u = usuarioDeCookie(req);
+    if (!u) return res.redirect(302, '/vitrine/entrar?voltar=' + encodeURIComponent('/vitrine/oauth/mercadopago'));
+    if (!repo.Vendedores.obter(u.id)) return res.redirect(302, '/vitrine/app#vender');
+    if (!pagamentos.OAuth.configurado()) return res.redirect(302, '/vitrine/app#loja?mp=nao-configurado');
+    const state = jwt.sign({ tipo: 'vitrine-mp', uid: u.id }, jwtSecret, { expiresIn: '30m' });
+    const redirectUri = `${baseUrl(req)}/vitrine/oauth/mercadopago/callback`;
+    res.redirect(302, pagamentos.OAuth.url(state, redirectUri));
+  });
+  app.get('/vitrine/oauth/mercadopago/callback', h(async (req, res) => {
+    let dec;
+    try { dec = jwt.verify(s(String(req.query.state || ''), 4000), jwtSecret); } catch (_) { return res.redirect(302, '/vitrine/app#loja?mp=estado-invalido'); }
+    if (dec.tipo !== 'vitrine-mp') return res.redirect(302, '/vitrine/app#loja?mp=estado-invalido');
+    if (req.query.error) return res.redirect(302, '/vitrine/app#loja?mp=recusado');
+    try {
+      const redirectUri = `${baseUrl(req)}/vitrine/oauth/mercadopago/callback`;
+      const tokens = await pagamentos.OAuth.trocarCodigo(String(req.query.code || ''), redirectUri);
+      pagamentos.MPTokens.salvar(dec.uid, tokens);
+      Auditoria.registrar({ quem: dec.uid, acao: 'mp.conectar', entidade: 'seller_mp_tokens', entidade_id: dec.uid, detalhe: 'live_mode=' + (tokens.live_mode ? '1' : '0') });
+      res.redirect(302, '/vitrine/app#loja?mp=conectado');
+    } catch (e) {
+      console.error('[vitrine] OAuth MP falhou:', e.message);
+      res.redirect(302, '/vitrine/app#loja?mp=erro');
+    }
+  }));
+
   // ---- LGPD: portabilidade e exclusão pelo titular ----
   app.get('/vitrine/api/meus-dados', requireUsuario, h(async (req, res) => {
     Auditoria.registrar({ quem: req.usuario.email, acao: 'lgpd.exportar', entidade: 'users', entidade_id: req.usuario.id, ip: ipDe(req) });

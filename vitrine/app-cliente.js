@@ -118,6 +118,9 @@
       acoes.push(`<button class="btn acao" data-acao="pagar-ok">✅ Simular pagamento aprovado</button>`);
       acoes.push(`<button class="btn secund" data-acao="pagar-nao">Simular pagamento recusado</button>`);
     }
+    if (p.status === 'aguardando_pagamento' && d.pagamento && d.pagamento.provedor === 'mercadopago-split' && d.pagamento.checkout_url) {
+      acoes.push(`<a class="btn acao" href="${esc(d.pagamento.checkout_url)}" rel="noopener">💳 Pagar no Mercado Pago</a>`);
+    }
     if (['aguardando_pagamento', 'pagamento_em_analise', 'pago', 'preparando_envio'].includes(p.status)) acoes.push(`<button class="btn secund" data-acao="cancelar">Cancelar pedido</button>`);
     if (['enviado', 'em_transito'].includes(p.status) || (p.frete_tipo === 'retirada' && ['pago', 'preparando_envio'].includes(p.status))) acoes.push(`<button class="btn acao" data-acao="recebi">📬 Recebi o produto</button>`);
     if (p.status === 'entregue') {
@@ -464,6 +467,7 @@
 
   async function rLoja() {
     const d = await api('GET', '/vitrine/api/vendedor/resumo');
+    const mp = await api('GET', '/vitrine/api/vendedor/mp-status').catch(() => ({ plataforma_configurada: false, conectado: false }));
     const vd = d.vendedor;
     moldura('loja', `<h1>Minha loja</h1>
       <div class="caixa"><div class="filtros" style="border:none;padding:0">
@@ -476,8 +480,21 @@
         <label for="lj-pix">Chave Pix dos repasses</label><input id="lj-pix" value="${esc(vd.pix_chave)}">
         <button class="btn acao" style="margin-top:12px" id="lj-salvar">Salvar</button>
       </div></div>
-      <div class="caixa" style="margin-top:12px"><h2 style="margin-top:0">Pagamentos (fase 6)</h2>
-        <p class="meta">A conexão da sua conta ao provedor de pagamentos (Mercado Pago, via OAuth) será habilitada quando a plataforma sair do modo simulado. Hoje os repasses são registrados na fila da administração e pagos via Pix.</p></div>`);
+      <div class="caixa" style="margin-top:12px"><h2 style="margin-top:0">Recebimento — Mercado Pago</h2>
+        ${mp.plataforma_configurada
+          ? (mp.conectado
+            ? `<p>✅ Conta Mercado Pago conectada${mp.live_mode ? '' : ' <b>(modo de teste — nenhum valor real circula)</b>'}. Suas vendas geram o pagamento direto na sua conta, com a comissão da plataforma descontada automaticamente.</p>
+               <p><button class="btn secund" id="lj-mp-desc">Desconectar</button></p>`
+            : `<p>Conecte sua conta Mercado Pago para receber direto por lá (Split Payments). Sem conexão, suas vendas usam o fluxo padrão com repasse via Pix pela plataforma.</p>
+               <p><a class="btn acao" href="/vitrine/oauth/mercadopago">Conectar Mercado Pago</a></p>`)
+          : '<p class="meta">A integração com o Mercado Pago (Split, via OAuth) está implementada, mas a plataforma ainda não tem as credenciais configuradas. Enquanto isso, os repasses são registrados na fila da administração e pagos via Pix.</p>'}
+      </div>`);
+    const mpDesc = document.getElementById('lj-mp-desc');
+    if (mpDesc) mpDesc.onclick = async () => {
+      if (!confirm('Desconectar sua conta Mercado Pago? Vendas futuras voltam ao fluxo padrão (repasse via Pix).')) return;
+      await api('POST', '/vitrine/api/vendedor/mp-desconectar');
+      rLoja();
+    };
     document.getElementById('lj-salvar').onclick = async () => {
       try {
         await api('PATCH', '/vitrine/api/vendedor', { loja_nome: v('lj-nome'), descricao: v('lj-desc'), cep_origem: v('lj-cep'), cidade: v('lj-cid'), uf: v('lj-uf'), retirada_habilitada: document.getElementById('lj-ret').checked, pix_chave: v('lj-pix') });

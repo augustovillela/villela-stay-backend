@@ -65,16 +65,35 @@ npm run test:vitrine   # 45 testes: comissão/centavos, máquina de estados, ide
                        # 1 pedido por vendedor, moderação, LGPD, rotina
 ```
 
-## Ativar as integrações reais (fase 6 — só com autorização)
+## Fase 6 — integrações reais (IMPLEMENTADAS, aguardando credenciais)
 
-- **Pagamento**: implementar `Provedores['mercadopago-split']` em `pagamentos.js`
-  (OAuth por vendedor + split; credenciais `VITRINE_MP_APP_ID`/`VITRINE_MP_SECRET`) e
-  setar `VITRINE_PAGAMENTO_PROVEDOR=mercadopago-split`. O restante do sistema não muda:
-  o webhook real entra pelo mesmo `processarEvento()` idempotente.
-- **Frete**: implementar `Provedores['melhor-envio']` em `frete.js`
-  (`VITRINE_MELHOR_ENVIO_TOKEN`) e setar `VITRINE_FRETE_PROVEDOR=melhor-envio`.
-- **Fotos reais**: trocar o placeholder por upload binário validado por bytes via
-  `backend/storage-s3.js` (mesmo padrão do Closet Club, bucket R2 próprio).
-- **Antes do lançamento**: revisão dos textos jurídicos por advogado(a) OAB (hoje são
-  MINUTA), definição do encarregado LGPD e domínio `vitrine.villelastay.com.br`
-  (CNAME + Custom Domain no Render + o redirect por host já está no `server.js`).
+O código dos provedores reais está pronto e testado com mocks; cada um só ativa
+quando as credenciais existirem no ambiente — sem elas, tudo cai no simulado e a
+interface diz qual fluxo está em uso.
+
+- **Mercado Pago Split Payments** (`pagamentos.js`):
+  1. Criar a aplicação marketplace no dashboard do MP e preencher
+     `VITRINE_MP_APP_ID` + `VITRINE_MP_SECRET` (credenciais de TESTE = sandbox).
+  2. Configurar o webhook `https://vitrine.villelastay.com.br/vitrine/webhooks/mercadopago`
+     no dashboard e copiar a assinatura secreta para `VITRINE_MP_WEBHOOK_SECRET`
+     (sem ela o webhook rejeita tudo — de propósito).
+  3. O vendedor conecta a própria conta em `/vitrine/app#loja` → "Conectar Mercado
+     Pago" (OAuth; tokens ficam só no servidor, com refresh automático).
+  4. A partir daí o checkout desse vendedor cria uma preference do Checkout Pro
+     **na conta dele** com `marketplace_fee` = comissão da plataforma; a tarifa
+     REAL do MP (fee_details) substitui a simulada no extrato. Reembolso e
+     idempotência passam pelo mesmo núcleo de sempre.
+- **Melhor Envio** (`frete.js`): token em `VITRINE_MELHOR_ENVIO_TOKEN` +
+  `VITRINE_FRETE_PROVEDOR=melhor-envio` (`VITRINE_MELHOR_ENVIO_SANDBOX=on` por
+  padrão). A cotação vira real (serviços/preços/prazos da API); se a API falhar,
+  o checkout cai na cotação simulada em vez de morrer. Compra de etiqueta e
+  rastreio automático ficam para depois da homologação — postagem continua manual.
+- **Homologação**: `npm run verificar:vitrine -- <url>` confere de fora páginas,
+  SEO, API, webhooks fechados e redirect de host.
+
+## Ainda fora da fase 6 (decisões de lançamento)
+
+- **Fotos reais**: upload binário validado por bytes via `backend/storage-s3.js`
+  (padrão Closet, bucket R2 próprio).
+- Revisão dos textos jurídicos por advogado(a) OAB (hoje são MINUTA) e encarregado
+  LGPD; nome definitivo da marca.
