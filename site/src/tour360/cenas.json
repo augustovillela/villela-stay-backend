@@ -847,6 +847,44 @@
       "hotspots": []
     },
     {
+      "id": "catetinho-fachada-3",
+      "arquivo": "catetinho-fachada-3",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Fachada (3)",
+      "larguras": [
+        1024
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
+      "id": "catetinho-fachada-4",
+      "arquivo": "catetinho-fachada-4",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Fachada (4)",
+      "larguras": [
+        1024
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
+    },
+    {
       "id": "casa-villela-lounge",
       "arquivo": "casa-villela-lounge",
       "casa": "Casa Villela",
@@ -1020,6 +1058,26 @@
         "fov": 75
       },
       "hotspots": []
+    },
+    {
+      "id": "casa-villela-fachada-2",
+      "arquivo": "casa-villela-fachada-2",
+      "casa": "Casa Villela",
+      "imovel": [
+        "GI01I",
+        "YV01I"
+      ],
+      "titulo": "Fachada (2)",
+      "larguras": [
+        1024
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false
     },
     {
       "id": "gran-villela-estacionamento",
