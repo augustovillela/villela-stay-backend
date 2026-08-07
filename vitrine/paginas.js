@@ -29,9 +29,9 @@ a:hover{text-decoration:underline}
 .container{max-width:1180px;margin:0 auto;padding:0 16px}
 header.topo{background:var(--petro);color:#fff;padding:10px 0}
 .topo-linha{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.logo{font-size:1.5rem;font-weight:800;letter-spacing:-.5px;color:#fff;display:flex;align-items:center;gap:8px}
+.logo{font-size:1.5rem;font-weight:800;letter-spacing:-.5px;color:#fff;display:flex;align-items:center;gap:10px}
 .logo:hover{text-decoration:none}
-.logo .v5{background:var(--acao);color:#fff;border-radius:8px;padding:0 8px;font-size:1.1rem}
+.logo svg{display:block}
 .busca{flex:1;min-width:220px;display:flex}
 .busca input{flex:1;border:none;border-radius:10px 0 0 10px;padding:11px 14px;font-size:1rem}
 .busca button{border:none;background:var(--acao);color:#fff;border-radius:0 10px 10px 0;padding:0 18px;font-size:1rem;cursor:pointer}
@@ -108,6 +108,22 @@ footer .legal{border-top:1px solid #14554C;padding-top:14px;color:#8FB3AD}
 .skip:focus{left:8px}
 `;
 
+// Símbolo da marca em variante CLARA (o cabeçalho é azul-petróleo): loja com
+// toldo, corpo branco e porta laranja. A variante oficial sobre fundo claro
+// vive em /assets/brand/vitrine/simbolo.svg (usada no card da home do grupo
+// e como favicon).
+const LOGO_CLARO = `<svg viewBox="0 0 120 120" width="30" height="30" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<path fill="#FFFFFF" d="M28 52h64v34a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6V52z"/>
+<rect fill="#E8641B" x="50" y="62" width="20" height="30" rx="3"/>
+<rect fill="#0C5A52" x="35" y="62" width="10" height="14" rx="2"/>
+<rect fill="#0C5A52" x="75" y="62" width="10" height="14" rx="2"/>
+<path fill="#FFFFFF" d="M24 30h72a4 4 0 0 1 4 4v10H20V34a4 4 0 0 1 4-4z"/>
+<path fill="#E8641B" d="M20 44h20a10 10 0 0 1-20 0z"/>
+<path fill="#9FC3BD" d="M40 44h20a10 10 0 0 1-20 0z"/>
+<path fill="#E8641B" d="M60 44h20a10 10 0 0 1-20 0z"/>
+<path fill="#9FC3BD" d="M80 44h20a10 10 0 0 1-20 0z"/>
+</svg>`;
+
 function layout({ titulo, descricao = '', conteudo, jsonld = null, semIndex = false, canonico = '' }) {
   const cats = Categorias.listar({ arvore: true });
   return `<!DOCTYPE html>
@@ -119,6 +135,8 @@ function layout({ titulo, descricao = '', conteudo, jsonld = null, semIndex = fa
 <meta name="description" content="${esc(descricao || 'Vitrine: marketplace brasileiro para comprar e vender produtos novos e usados com pagamento protegido e rastreamento.')}">
 ${semIndex ? '<meta name="robots" content="noindex,nofollow">' : ''}
 ${canonico ? `<link rel="canonical" href="${esc(canonico)}">` : ''}
+<link rel="icon" type="image/svg+xml" href="/assets/brand/vitrine/simbolo.svg">
+<meta name="theme-color" content="#0C5A52">
 ${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld)}</script>` : ''}
 <style>${CSS}</style>
 </head>
@@ -126,7 +144,7 @@ ${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld)}</script
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
 <header class="topo">
   <div class="container topo-linha">
-    <a class="logo" href="/vitrine" aria-label="Vitrine — página inicial">Vitrine <span class="v5">5%</span></a>
+    <a class="logo" href="/vitrine" aria-label="Vitrine — página inicial">${LOGO_CLARO}Vitrine</a>
     <form class="busca" action="/vitrine/busca" method="get" role="search">
       <input type="search" name="q" placeholder="Buscar produtos novos e usados…" aria-label="Buscar produtos">
       <button type="submit" aria-label="Buscar">🔍</button>

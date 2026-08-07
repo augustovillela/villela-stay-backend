@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Vitrine">
+  <!-- Vitrine de loja com toldo: o símbolo do marketplace Vitrine. A marca
+       NÃO usa o V-Portal do grupo — é marketplace com identidade própria
+       (azul-petróleo #0C5A52 + laranja #E8641B). Fundo transparente: o
+       card do site põe o dele. -->
+  <!-- corpo da loja -->
+  <path fill="#0C5A52" d="M28 52h64v34a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6V52z"/>
+  <!-- porta -->
+  <rect fill="#E8641B" x="50" y="62" width="20" height="30" rx="3"/>
+  <!-- vitrines laterais -->
+  <rect fill="#EAF2F0" x="35" y="62" width="10" height="14" rx="2"/>
+  <rect fill="#EAF2F0" x="75" y="62" width="10" height="14" rx="2"/>
+  <!-- toldo: faixa + babados alternados -->
+  <path fill="#0C5A52" d="M24 30h72a4 4 0 0 1 4 4v10H20V34a4 4 0 0 1 4-4z"/>
+  <path fill="#E8641B" d="M20 44h20a10 10 0 0 1-20 0z"/>
+  <path fill="#EAF2F0" d="M40 44h20a10 10 0 0 1-20 0z"/>
+  <path fill="#E8641B" d="M60 44h20a10 10 0 0 1-20 0z"/>
+  <path fill="#EAF2F0" d="M80 44h20a10 10 0 0 1-20 0z"/>
+</svg>

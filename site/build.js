@@ -527,7 +527,10 @@ const PRODUTOS_GRUPO = [
     frase: ['Marketplace de aluguel de roupas e acessórios: alugue a peça certa para a ocasião, ou faça a sua render quando estiver parada.', 'A marketplace for renting clothes and accessories: rent the right piece for the occasion, or earn from yours while it sits idle.', 'Marketplace de alquiler de ropa y accesorios: alquila la pieza justa para la ocasión, o haz que la tuya rinda mientras está parada.'] },
   { nome: 'Villela Alta Vista 360°', pasta: 'villela-alta-vista', simbolo: 'simbolo.png', cor: '#176B87', url: 'https://altavista.villelastay.com.br',
     tag: ['Veja de cima. Explore por inteiro.', 'See it from above. Explore it fully.', 'Míralo desde arriba. Explóralo por completo.'],
-    frase: ['Estúdio visual: filmagens com drones, vídeos com IA, fotos 360° e tours virtuais que valorizam imóveis, hospedagens e empresas.', 'A visual studio: drone footage, AI-made videos, 360° photos and virtual tours that elevate properties, stays and businesses.', 'Estudio visual: filmaciones con drones, vídeos con IA, fotos 360° y tours virtuales que valorizan inmuebles, alojamientos y empresas.'] }
+    frase: ['Estúdio visual: filmagens com drones, vídeos com IA, fotos 360° e tours virtuais que valorizam imóveis, hospedagens e empresas.', 'A visual studio: drone footage, AI-made videos, 360° photos and virtual tours that elevate properties, stays and businesses.', 'Estudio visual: filmaciones con drones, vídeos con IA, fotos 360° y tours virtuales que valorizan inmuebles, alojamientos y empresas.'] },
+  { nome: 'Vitrine', pasta: 'vitrine', simbolo: 'simbolo.svg', cor: '#0C5A52', url: 'https://vitrine.villelastay.com.br',
+    tag: ['Compre bem. Venda melhor.', 'Buy well. Sell better.', 'Compra bien. Vende mejor.'],
+    frase: ['Marketplace de produtos novos e usados: pagamento protegido até a entrega, rastreamento do envio e vendedores com reputação de verdade.', 'A marketplace for new and pre-owned goods: payment protected until delivery, shipment tracking and sellers with real reputations.', 'Marketplace de productos nuevos y usados: pago protegido hasta la entrega, seguimiento del envío y vendedores con reputación real.'] }
 ];
 const grupoSecao = () => `
 <section id="grupo" class="grupo-wrap">
