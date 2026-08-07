@@ -478,6 +478,8 @@ a.vx-kpi:hover, button.vx-kpi:hover { box-shadow: var(--vx-shadow-2); transform:
 .vx[data-vertical="manager"]   { --vx-accent: #0E7490; --vx-accent-2: #0A5666; --vx-accent-soft: #E6F1F4; }
 /* CRM = Rosa Magenta oficial (identidade-visual.md); 6,7:1 sobre branco */
 .vx[data-vertical="crm"]       { --vx-accent: #B0185A; --vx-accent-2: #8E1349; --vx-accent-soft: #FBE9F1; }
+/* Kids = teal proprio (7,2:1 sobre branco); o produto de consumo tem identidade ludica propria, este acento e so do staff. */
+.vx[data-vertical="kids"]      { --vx-accent: #0F766E; --vx-accent-2: #0B5A54; --vx-accent-soft: #E6F4F2; }
 /* Neutro (Inicio, Operacao, Gestao, Relatorios...): o navy do grupo e o acento. */
 .vx[data-vertical="grupo"]     { --vx-accent: #24365C; --vx-accent-2: #1B2A4A; --vx-accent-soft: #ECEFF5; }
 

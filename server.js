@@ -4383,6 +4383,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('closet.')) return res.redirect(302, '/closet'); // vitrine do Closet Club
   if (host.startsWith('vitrine.')) return res.redirect(302, '/vitrine'); // Vitrine (marketplace de novos e usados)
   if (host.startsWith('altavista.') || host.startsWith('alta-vista.')) return res.redirect(302, '/alta-vista'); // Villela Alta Vista 360 (estúdio visual)
+  if (host.startsWith('kids.')) return res.redirect(302, '/kids'); // Villela Kids (clube de missões)
   return res.redirect(302, '/hospede');
 });
 
@@ -4581,6 +4582,21 @@ try {
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[alta-vista] falha ao montar módulo:', e.message); }
+
+// =========================== Villela Kids (clube de missões) ===========================
+// 11º produto do grupo: desenvolvimento humano para crianças de 7–11 anos —
+// missões semanais com produto final, portfólio de criações e (onda 2) tutor
+// por IA. Landing em /kids, app da família em /kids/app (sessão própria
+// 'kids_sess'; a conta é SEMPRE do responsável — LGPD art. 14), administração
+// na aba 🧒 do Portal Staff (/staff/api/kids/*). SQLite próprio em
+// DATA_DIR/kids/. Escopo: docs/PROMPT_MASTER_VILLELA_KIDS.md (repo-pai).
+try {
+  require('./kids').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[kids] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));

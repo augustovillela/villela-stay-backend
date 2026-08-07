@@ -1,0 +1,234 @@
+// =====================================================================
+// Villela Kids — SPA vanilla do app da família (servida em /kids/app.js).
+// Rota por hash (#perfis, #missoes, #missao, #portfolio, #pais), sem
+// framework — padrão dos outros produtos do grupo. O perfil de criança
+// ativo fica em localStorage; o SERVIDOR revalida a posse em toda chamada.
+// Onda 1: trilha + registrar criação; o tutor IA entra na onda 2.
+// =====================================================================
+'use strict';
+(function () {
+  var raiz = document.getElementById('kids-app');
+  var EST = { me: null, crianca: null };
+
+  // ---------- utilitários ----------
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  async function api(metodo, caminho, corpo) {
+    var r = await fetch('/kids/api' + caminho, {
+      method: metodo, headers: { 'Content-Type': 'application/json' },
+      body: corpo ? JSON.stringify(corpo) : undefined,
+    });
+    var d = null; try { d = await r.json(); } catch (_) {}
+    if (r.status === 401) { location.href = '/kids/entrar'; throw new Error('sessão'); }
+    if (!r.ok) throw new Error((d && d.erro) || 'Algo deu errado. Tente de novo.');
+    return d;
+  }
+  function el(html) { raiz.innerHTML = html; }
+  function irPara(hash) { location.hash = hash; }
+  function rotaAtual() { return (location.hash || '#perfis').replace(/^#/, '').split('?')[0]; }
+  function paramDaRota(nome) {
+    var q = (location.hash.split('?')[1] || '');
+    var m = q.split('&').map(function (p) { return p.split('='); }).find(function (p) { return p[0] === nome; });
+    return m ? decodeURIComponent(m[1] || '') : '';
+  }
+  function criancaAtiva() {
+    var id = localStorage.getItem('kids_crianca');
+    return (EST.me && EST.me.criancas || []).find(function (c) { return c.id === id; }) || null;
+  }
+  var CSS_EXTRA = '\
+.kb-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 0;flex-wrap:wrap}\
+.kb-topo .quem{display:flex;gap:8px;align-items:center;font-weight:800;font-size:18px}\
+.kb-topo .acoes{display:flex;gap:8px;flex-wrap:wrap}\
+.kb-lk{background:none;border:0;color:#0F766E;font-weight:700;cursor:pointer;font-size:15px;text-decoration:underline}\
+.kb-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin:10px 0 30px}\
+.kb-card{background:#fff;border:2px solid #EBE2D4;border-radius:18px;padding:20px;text-align:left}\
+.kb-perfil{cursor:pointer;text-align:center;font-size:18px;font-weight:800;border:0;background:#fff;box-shadow:0 2px 0 #EBE2D4;border:2px solid #EBE2D4;border-radius:18px;padding:26px 20px}\
+.kb-perfil .av{font-size:44px;display:block;margin-bottom:8px}\
+.kb-missao{display:flex;gap:14px;align-items:flex-start;background:#fff;border:2px solid #EBE2D4;border-radius:18px;padding:18px;margin-bottom:12px}\
+.kb-missao.bloqueada{opacity:.55;background:#FAF6EE}\
+.kb-missao .em{font-size:34px}\
+.kb-missao h3{margin:0 0 4px;font-size:18px}\
+.kb-missao p{margin:0;color:#6B7280;font-size:14px}\
+.kb-tag{display:inline-block;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:800;margin-top:8px}\
+.kb-tag.disponivel{background:#ECFDF5;color:#065F46}.kb-tag.em_andamento{background:#FEF3C7;color:#92400E}\
+.kb-tag.concluida{background:#EDE9FE;color:#5B21B6}.kb-tag.bloqueada{background:#F3F4F6;color:#6B7280}\
+.kb-bt{display:inline-block;background:#0F766E;color:#fff;border:0;border-radius:999px;padding:12px 22px;font-weight:800;font-size:16px;cursor:pointer;text-decoration:none}\
+.kb-bt.claro{background:#fff;color:#0F766E;border:2px solid #0F766E}\
+.kb-bt[disabled]{opacity:.5;cursor:default}\
+.kb-form label{display:block;font-weight:700;margin:12px 0 4px}\
+.kb-form input,.kb-form textarea,.kb-form select{width:100%;padding:12px;border:2px solid #EBE2D4;border-radius:10px;font-size:16px;font-family:inherit}\
+.kb-erro{color:#B91C1C;font-weight:700;margin-top:10px;min-height:20px}\
+.kb-ok{background:#ECFDF5;border:2px solid #A7F3D0;border-radius:14px;padding:14px 18px;margin:12px 0;color:#065F46;font-weight:600}\
+.kb-sub{color:#6B7280;margin:0 0 16px}\
+h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
+.kb-criacao pre{white-space:pre-wrap;font-family:inherit;background:#FAF6EE;border-radius:12px;padding:14px;margin:8px 0 0}';
+  (function () { var s = document.createElement('style'); s.textContent = CSS_EXTRA; document.head.appendChild(s); })();
+
+  function topo(ativo) {
+    var c = criancaAtiva();
+    return '<div class="kb-topo">' +
+      '<div class="quem">' + (c ? '<span style="font-size:30px">' + esc(c.avatar) + '</span> ' + esc(c.apelido) : '🚀 Clube de Missões') + '</div>' +
+      '<div class="acoes">' +
+      (c ? '<button class="kb-lk" data-ir="#missoes">Missões</button><button class="kb-lk" data-ir="#portfolio">Portfólio</button>' : '') +
+      '<button class="kb-lk" data-ir="#perfis">Trocar perfil</button>' +
+      '<button class="kb-lk" data-ir="#pais">Área dos pais' + (EST.me && EST.me.nao_lidas ? ' (' + EST.me.nao_lidas + ')' : '') + '</button>' +
+      '</div></div>';
+  }
+  function ligarNavegacao() {
+    raiz.querySelectorAll('[data-ir]').forEach(function (b) { b.addEventListener('click', function () { irPara(b.getAttribute('data-ir')); }); });
+  }
+
+  // ---------- telas ----------
+  function vPerfis() {
+    var cs = (EST.me.criancas || []);
+    el(topo() + '<h1 class="kb">Quem vai brincar hoje?</h1><p class="kb-sub">Escolha o perfil — ou crie um novo (só apelido, nada de dados da criança).</p>' +
+      '<div class="kb-grade">' +
+      cs.map(function (c) {
+        return '<button class="kb-perfil" data-cid="' + esc(c.id) + '"><span class="av">' + esc(c.avatar) + '</span>' + esc(c.apelido) + '<br><small style="color:#6B7280;font-weight:400">' + esc(c.faixa) + ' anos</small></button>';
+      }).join('') +
+      '<button class="kb-perfil" id="novo"><span class="av">➕</span>Novo perfil</button></div>' +
+      '<div id="form-novo" style="display:none" class="kb-card kb-form">' +
+      '<h3>Novo explorador</h3>' +
+      '<label>Apelido (como a criança quer ser chamada)</label><input id="np-apelido" maxlength="40">' +
+      '<label>Idade</label><select id="np-faixa"><option value="7-8">7 a 8 anos</option><option value="9-11" selected>9 a 11 anos</option></select>' +
+      '<label>Avatar</label><select id="np-avatar">' + ['🦖', '🦄', '🤖', '🐱', '🦊', '🐼', '🦁', '🐸', '👾', '🌟'].map(function (e) { return '<option>' + e + '</option>'; }).join('') + '</select>' +
+      '<div class="kb-erro" id="np-erro"></div>' +
+      '<button class="kb-bt" id="np-criar">Criar perfil</button></div>');
+    ligarNavegacao();
+    raiz.querySelectorAll('[data-cid]').forEach(function (b) {
+      b.addEventListener('click', function () { localStorage.setItem('kids_crianca', b.getAttribute('data-cid')); irPara('#missoes'); });
+    });
+    document.getElementById('novo').addEventListener('click', function () { document.getElementById('form-novo').style.display = ''; });
+    document.getElementById('np-criar').addEventListener('click', async function () {
+      var e = document.getElementById('np-erro'); e.textContent = '';
+      try {
+        var d = await api('POST', '/criancas', {
+          apelido: document.getElementById('np-apelido').value,
+          faixa: document.getElementById('np-faixa').value,
+          avatar: document.getElementById('np-avatar').value,
+        });
+        EST.me.criancas.push(d.crianca);
+        localStorage.setItem('kids_crianca', d.crianca.id);
+        irPara('#missoes');
+      } catch (err) { e.textContent = err.message; }
+    });
+  }
+
+  async function vMissoes() {
+    var c = criancaAtiva();
+    if (!c) return irPara('#perfis');
+    var d = await api('GET', '/criancas/' + c.id + '/missoes');
+    el(topo('missoes') + '<h1 class="kb">Sua trilha de missões</h1><p class="kb-sub">Complete uma missão para abrir a próxima. Cada uma termina com uma criação sua!</p>' +
+      d.missoes.map(function (m) {
+        var podeAbrir = m.status !== 'bloqueada';
+        return '<div class="kb-missao ' + m.status + '">' +
+          '<div class="em">' + (m.status === 'concluida' ? '🏆' : m.status === 'bloqueada' ? '🔒' : esc(m.emoji)) + '</div>' +
+          '<div style="flex:1"><h3>Missão ' + m.ordem + ' · ' + esc(m.titulo) + '</h3><p>' + esc(m.resumo) + '</p>' +
+          '<span class="kb-tag ' + m.status + '">' + { disponivel: 'Pronta para começar', em_andamento: 'Em andamento', concluida: 'Concluída', bloqueada: 'Bloqueada' }[m.status] + '</span></div>' +
+          (podeAbrir ? '<button class="kb-bt claro" data-mid="' + esc(m.id) + '">Abrir</button>' : '') +
+          '</div>';
+      }).join(''));
+    ligarNavegacao();
+    raiz.querySelectorAll('[data-mid]').forEach(function (b) {
+      b.addEventListener('click', function () { irPara('#missao?m=' + b.getAttribute('data-mid')); });
+    });
+  }
+
+  async function vMissao() {
+    var c = criancaAtiva();
+    if (!c) return irPara('#perfis');
+    var mid = paramDaRota('m');
+    var d = await api('GET', '/criancas/' + c.id + '/missoes');
+    var m = d.missoes.find(function (x) { return x.id === mid; });
+    if (!m) return irPara('#missoes');
+    var corpo = '<h1 class="kb">' + esc(m.emoji) + ' ' + esc(m.titulo) + '</h1>' +
+      '<p class="kb-sub">Missão ' + m.ordem + ' · eixo ' + esc(m.eixo).toUpperCase() + '</p>' +
+      '<div class="kb-card"><p style="font-size:17px">' + esc(m.resumo) + '</p>' +
+      '<p><b>🎁 O que você vai criar:</b> ' + esc(m.produto_final) + '</p>' +
+      '<p><b>👨‍👩‍👧 Momento família:</b> ' + esc(m.momento_familia) + '</p></div>';
+    if (m.status === 'disponivel') {
+      corpo += '<p style="margin-top:16px"><button class="kb-bt" id="iniciar">Começar a missão!</button></p>';
+    } else if (m.status === 'em_andamento') {
+      corpo += '<div class="kb-card kb-form" style="margin-top:16px"><h3>Terminou? Registre a sua criação 🏆</h3>' +
+        '<p class="kb-sub">O tutor por IA chega na próxima atualização — por enquanto, faça a missão do seu jeito e cole aqui o resultado.</p>' +
+        '<label>Nome da criação</label><input id="cr-titulo" maxlength="140" placeholder="Ex.: O Manual do Robi">' +
+        '<label>A criação (texto)</label><textarea id="cr-texto" rows="8" placeholder="Cole ou escreva aqui o que você criou…"></textarea>' +
+        '<div class="kb-erro" id="cr-erro"></div>' +
+        '<button class="kb-bt" id="concluir">Guardar no portfólio e concluir</button></div>';
+    } else if (m.status === 'concluida') {
+      corpo += '<div class="kb-ok">🏆 Missão concluída! A criação está no seu <button class="kb-lk" data-ir="#portfolio">portfólio</button>.</div>';
+    }
+    el(topo() + corpo);
+    ligarNavegacao();
+    var bi = document.getElementById('iniciar');
+    if (bi) bi.addEventListener('click', async function () {
+      await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/iniciar');
+      vMissao();
+    });
+    var bc = document.getElementById('concluir');
+    if (bc) bc.addEventListener('click', async function () {
+      var e = document.getElementById('cr-erro'); e.textContent = '';
+      try {
+        await api('POST', '/criancas/' + c.id + '/missoes/' + mid + '/concluir', {
+          titulo: document.getElementById('cr-titulo').value,
+          conteudo: document.getElementById('cr-texto').value,
+        });
+        irPara('#missoes');
+      } catch (err) { e.textContent = err.message; }
+    });
+  }
+
+  async function vPortfolio() {
+    var c = criancaAtiva();
+    if (!c) return irPara('#perfis');
+    var d = await api('GET', '/criancas/' + c.id + '/portfolio');
+    el(topo() + '<h1 class="kb">🏆 Portfólio de ' + esc(c.apelido) + '</h1><p class="kb-sub">Tudo o que você já criou. Isso vale mais que nota.</p>' +
+      (d.portfolio.length === 0 ? '<div class="kb-card">Ainda não há criações — complete a primeira missão!</div>' :
+        d.portfolio.map(function (p) {
+          return '<div class="kb-card kb-criacao" style="margin-bottom:12px"><h3 style="margin:0">' + esc(p.titulo) + '</h3>' +
+            '<small style="color:#6B7280">' + new Date(p.criado_em).toLocaleDateString('pt-BR') + '</small>' +
+            '<pre>' + esc(p.conteudo) + '</pre></div>';
+        }).join('')));
+    ligarNavegacao();
+  }
+
+  async function vPais() {
+    var d = await api('GET', '/notificacoes');
+    el(topo() + '<h1 class="kb">Área dos pais</h1><p class="kb-sub">Conta de ' + esc(EST.me.usuario.nome) + ' (' + esc(EST.me.usuario.email) + ')' +
+      (EST.me.usuario.email_verificado ? '' : ' · e-mail ainda não verificado') + '</p>' +
+      '<div class="kb-card"><h3 style="margin-top:0">Últimas novidades</h3>' +
+      (d.notificacoes.length === 0 ? '<p class="kb-sub">Nada por aqui ainda.</p>' :
+        d.notificacoes.map(function (n) {
+          return '<p' + (n.lida_em ? ' style="opacity:.6"' : '') + '><b>' + esc(n.titulo) + '</b><br><small>' + esc(n.texto) + '</small></p>';
+        }).join('')) + '</div>' +
+      '<div class="kb-card" style="margin-top:14px"><h3 style="margin-top:0">Seus dados (LGPD)</h3>' +
+      '<p class="kb-sub">Você pode levar ou apagar tudo, a qualquer momento.</p>' +
+      '<p><a class="kb-bt claro" href="/kids/api/meus-dados">Exportar os dados da família</a> ' +
+      '<button class="kb-bt claro" id="excluir" style="border-color:#B91C1C;color:#B91C1C">Excluir a conta</button></p>' +
+      '<div class="kb-erro" id="pais-erro"></div></div>' +
+      '<p style="margin-top:18px"><button class="kb-lk" id="sair">Sair da conta</button></p>');
+    ligarNavegacao();
+    api('POST', '/notificacoes/lidas').then(function () { EST.me.nao_lidas = 0; }).catch(function () {});
+    document.getElementById('sair').addEventListener('click', async function () {
+      await api('POST', '/logout'); localStorage.removeItem('kids_crianca'); location.href = '/kids';
+    });
+    document.getElementById('excluir').addEventListener('click', async function () {
+      if (!confirm('Excluir a conta apaga EM DEFINITIVO os perfis, o progresso e todas as criações das crianças. Confirmar?')) return;
+      try { await api('POST', '/excluir-conta'); location.href = '/kids'; }
+      catch (err) { document.getElementById('pais-erro').textContent = err.message; }
+    });
+  }
+
+  // ---------- roteador ----------
+  var ROTAS = { perfis: vPerfis, missoes: vMissoes, missao: vMissao, portfolio: vPortfolio, pais: vPais };
+  async function navegar() {
+    try { (ROTAS[rotaAtual()] || vPerfis)(); }
+    catch (e) { el('<div class="kb-erro">' + esc(e.message) + '</div>'); }
+  }
+  window.addEventListener('hashchange', navegar);
+
+  (async function () {
+    try { EST.me = await api('GET', '/me'); }
+    catch (_) { return; } // 401 já redirecionou para /kids/entrar
+    navegar();
+  })();
+})();
