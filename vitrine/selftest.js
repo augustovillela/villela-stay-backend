@@ -492,6 +492,23 @@ async function rodar() {
     assert.equal(repo.Products.obter(anuncio.id).quantidade, antes + 1);
   });
 
+  // ================= painel do vendedor: resumo e loja =================
+  await t('resumo do vendedor consolida receita, comissões, saldo e reputação (rota do painel "Minha loja")', async () => {
+    const r = await req('GET', '/vitrine/api/vendedor/resumo', { como: 'vera' });
+    assert.equal(r.st, 200, JSON.stringify(r.json));
+    assert.ok(r.json.resumo.receita_bruta_centavos > 0, 'receita zerada com venda concluída');
+    assert.ok(r.json.resumo.comissoes_centavos > 0);
+    assert.equal(r.json.resumo.vendas_concluidas, 1);
+    for (const c of Object.values(r.json.resumo)) assert.ok(Number.isInteger(c), 'resumo com valor não inteiro');
+    assert.ok(r.json.reputacao.nota_media > 0);
+    const st = await req('GET', '/vitrine/api/vendedor/mp-status', { como: 'vera' });
+    assert.equal(st.st, 200);
+    assert.equal(st.json.plataforma_configurada, false); // sem env neste ponto da suíte
+    const loja = await req('GET', '/vitrine/api/loja/loja-da-vera');
+    assert.equal(loja.st, 200);
+    assert.ok(loja.json.vendedor.vendas_concluidas >= 1);
+  });
+
   // ================= FASE 6: Mercado Pago Split (sandbox, fetch mockado) =================
   await t('sem credenciais, MP Split e Melhor Envio se declaram indisponíveis (contrato honesto)', async () => {
     assert.equal(pagamentos.OAuth.configurado(), false);
