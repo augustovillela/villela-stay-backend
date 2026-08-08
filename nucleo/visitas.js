@@ -41,6 +41,7 @@ const JANELA_SESSAO_MIN = 30;                 // padrão de mercado
 // casar com o caminho vence (por isso /alta-vista vem antes de /a...).
 // ---------------------------------------------------------------------
 const PRODUTOS = [
+  { id: 'origena', nome: 'Origena', emoji: '🌳', prefixos: ['/origena'] },
   { id: 'kids', nome: 'Invente (Kids)', emoji: '🧒', prefixos: ['/kids'] },
   { id: 'closet', nome: 'Closet Club', emoji: '👗', prefixos: ['/closet'] },
   { id: 'vitrine', nome: 'Vitrine', emoji: '🛒', prefixos: ['/vitrine'] },

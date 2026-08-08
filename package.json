@@ -18,6 +18,8 @@
     "test:growth": "node growth/selftest.js",
     "test:vitrine": "node vitrine/selftest.js",
     "test:kids": "node kids/selftest.js",
+    "test:origena": "node --env-file-if-exists=.env origena/selftest.js",
+    "origena:worker": "node --env-file-if-exists=.env origena/worker.js",
     "verificar:closet": "node closet/verificar-producao.js",
     "verificar:vitrine": "node vitrine/verificar-producao.js",
     "verificar:kids": "node kids/verificar-producao.js",
@@ -36,7 +38,8 @@
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^9.0.1",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^6.1.200",
+    "pdfjs-dist": "^6.2.108",
+    "pg": "^8.22.0",
     "qrcode": "^1.5.4",
     "web-push": "^3.6.7"
   }

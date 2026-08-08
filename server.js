@@ -379,6 +379,7 @@ const AREAS = [
   { id: 'contador', nome: 'Contábil / Fiscal' },
   { id: 'ti', nome: 'TI / Site' },
   { id: 'livros', nome: 'Livraria' },
+  { id: 'origena', nome: 'Origena / Memória Familiar' },
 ];
 const AREA_IDS = new Set(AREAS.map(a => a.id));
 
@@ -4678,6 +4679,21 @@ try {
     jwtSecret: JWT_SECRET,
   });
 } catch (e) { console.error('[kids] falha ao montar módulo:', e.message); }
+
+// ORIGENA — plataforma de memória, história e legado familiar (12º produto).
+// Landing /origena, app da família /origena/app, staff em /staff/api/origena/*.
+// Difere dos outros 11 de propósito: PostgreSQL próprio (ORIGENA_DATABASE_URL),
+// todo binário no R2 (ORIGENA_S3_*) e worker SEPARADO para mídia — os porquês
+// estão em docs/origena/DECISIONS/ (repo-pai). Sem as envs, só a landing sobe.
+// `montar` é async (roda migração): as rotas são registradas de forma síncrona
+// ANTES do await, então nenhuma requisição chega a uma rota inexistente.
+try {
+  require('./origena').montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  }).catch((e) => console.error('[origena] falha ao montar módulo:', e.message));
+} catch (e) { console.error('[origena] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));

@@ -38,3 +38,47 @@ services:
       # Gerar: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
       - key: GROWTH_SECRET_KEY
         sync: false
+      # ORIGENA (12o produto). Unico com banco PROPRIO (PostgreSQL) e todo
+      # binario no R2 — os porquês estao em docs/origena/DECISIONS/ (repo-pai).
+      # Sem estas envs a landing sobe e o resto fica desligado, com log claro.
+      - key: ORIGENA_DATABASE_URL   # URL INTERNA do origena-db (mesma regiao)
+        sync: false
+      - key: ORIGENA_S3_ENDPOINT    # https://<accountid>.r2.cloudflarestorage.com
+        sync: false
+      - key: ORIGENA_S3_BUCKET
+        value: villela-origena
+      - key: ORIGENA_S3_KEY
+        sync: false
+      - key: ORIGENA_S3_SECRET
+        sync: false
+      - key: ORIGENA_S3_REGION
+        value: auto
+
+  # ---------------------------------------------------------------------
+  # Worker da Origena (ADR-0005): processa midia e IA FORA do processo web.
+  # O web tem 2 GB para 12 produtos; transcodificar video la derruba o
+  # grupo inteiro. Nao e caminho critico de leitura: se cair, a familia
+  # continua navegando o acervo e so o processamento novo fica em espera.
+  # NAO recebe segredo de pagamento — so banco, R2 e provedores de IA.
+  # ---------------------------------------------------------------------
+  - type: worker
+    name: origena-worker
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: node origena/worker.js
+    envVars:
+      - key: ORIGENA_DATABASE_URL
+        sync: false
+      - key: ORIGENA_S3_ENDPOINT
+        sync: false
+      - key: ORIGENA_S3_BUCKET
+        value: villela-origena
+      - key: ORIGENA_S3_KEY
+        sync: false
+      - key: ORIGENA_S3_SECRET
+        sync: false
+      - key: ORIGENA_S3_REGION
+        value: auto
+      - key: ANTHROPIC_API_KEY
+        sync: false
