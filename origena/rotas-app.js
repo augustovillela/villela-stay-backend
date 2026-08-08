@@ -21,6 +21,9 @@ const privacidade = require('./privacidade');
 const arvore = require('./arvore');
 const { Persons, Relationships } = require('./repo-pessoas');
 const prov = require('./proveniencia');
+const midia = require('./midia');
+const storage = require('./storage');
+const fila = require('./fila');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -323,6 +326,172 @@ function registrarRotasApp(app) {
           WHERE d.sujeito_tipo = 'person' AND p.deleted_at IS NULL
           ORDER BY p.nome_exibicao, d.predicado LIMIT 200`));
       res.json({ divergencias: lista });
+    }));
+
+  // --------------------------------------------------------------- mídia
+  // O binário nunca passa por aqui: o web assina a URL e o navegador
+  // fala direto com o R2 (ARCHITECTURE.md §4).
+
+  app.get(decl('GET', `${R}/familias/:familyId/midias`), ...naFamilia, h(async (req, res) => {
+    const lista = await tenancy.noEscopoDe(req, (t) => midia.listar(t, req.familia.id, {
+      tipo: ['FOTO', 'VIDEO', 'AUDIO', 'DOCUMENTO'].includes(req.query.tipo) ? req.query.tipo : null,
+      limite: Number(req.query.limite) || 60,
+      antesDe: req.query.antes_de || null,
+      pessoaId: tenancy.UUID.test(String(req.query.pessoa || '')) ? req.query.pessoa : null }));
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    const visiveis = lista.filter((m) => privacidade.podeVer({ ...m, created_by: m.created_by }, quem).pode);
+    res.json({
+      midias: visiveis,
+      ocultas: lista.length - visiveis.length,
+      proximo_cursor: visiveis.length ? visiveis[visiveis.length - 1].created_at : null,
+    });
+  }));
+
+  /** Passo 1: peço para enviar. Duplicata morre aqui, antes do byte subir. */
+  app.post(decl('POST', `${R}/familias/:familyId/midias/preparar`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const d = req.body || {};
+      const r = await tenancy.noEscopoDe(req, (t) => midia.preparar(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        nome: d.nome, bytes: d.bytes, sha256: d.sha256,
+        mimeDeclarado: d.mime, tipoSugerido: d.tipo }));
+      res.status(r.duplicado ? 200 : 201).json(r);
+    }));
+
+  /** Passo 2: terminei o PUT. O worker assume daqui. */
+  app.post(decl('POST', `${R}/familias/:familyId/midias/:mediaId/confirmar`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const m = await tenancy.noEscopoDe(req, (t) => midia.confirmar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, mediaId: req.params.mediaId, fila }));
+      res.status(202).json({ midia: m, estado: 'PROCESSANDO' });
+    }));
+
+  /** Miniatura: derivado gerado no navegador (midia.js explica o porquê). */
+  app.post(decl('POST', `${R}/familias/:familyId/midias/:mediaId/derivados`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const d = req.body || {};
+      if (!['THUMB', 'PREVIEW'].includes(d.papel)) throw erro('erro.derivado_papel_invalido', 400);
+      const r = await tenancy.noEscopoDe(req, (t) => midia.registrarDerivado(t, {
+        familyId: req.familia.id, userId: req.usuario.id, originalId: req.params.mediaId,
+        papel: d.papel, sha256: d.sha256, bytes: d.bytes, mime: d.mime,
+        largura: d.largura, altura: d.altura }));
+      res.status(201).json({ derivado: r.derivado, url_envio: r.url_envio });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/midias/:mediaId`), ...naFamilia, h(async (req, res) => {
+    const r = await tenancy.noEscopoDe(req, async (t) => {
+      const m = await midia.obter(t, req.params.mediaId);
+      if (!m) throw erro('erro.midia_nao_encontrada', 404);
+      return {
+        midia: m,
+        pessoas: await midia.pessoasDe(t, m.id),
+        contribuicoes: await prov.contribuicoesDe(t, 'media', m.id),
+        derivados: await t.todas(
+          `SELECT id, papel, ai_class, largura, altura, bytes FROM media
+            WHERE derivado_de = $1 AND deleted_at IS NULL ORDER BY bytes`, [m.id]),
+      };
+    });
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    if (!privacidade.podeVer(r.midia, quem).pode) throw erro('erro.midia_nao_encontrada', 404);
+    res.json(r);
+  }));
+
+  /**
+   * A URL de leitura. É AQUI que a privacidade decide — nunca no R2, que
+   * não sabe quem é quem. Documento exige a permissão própria (§11).
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/midias/:mediaId/url`), ...naFamilia,
+    h(async (req, res) => {
+      const m = await tenancy.noEscopoDe(req, (t) => midia.obter(t, req.params.mediaId));
+      if (!m) throw erro('erro.midia_nao_encontrada', 404);
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      const veredito = m.tipo === 'DOCUMENTO'
+        ? privacidade.podeVerDocumento(m, quem) : privacidade.podeVer(m, quem);
+      if (!veredito.pode) throw erro('erro.midia_nao_encontrada', 404);
+      // Acesso de terceiro a item privado, e download de documento
+      // sensível, ficam registrados (§65).
+      if (veredito.auditar || m.tipo === 'DOCUMENTO') {
+        await auditar({ familyId: req.familia.id, atorUserId: req.usuario.id,
+          acao: 'midia.baixada', alvoTipo: 'media', alvoId: m.id,
+          motivo: veredito.motivo, req });
+      }
+      res.json({ url: storage.urlDeLeitura(m.storage_key), expira_em_seg: 600 });
+    }));
+
+  app.patch(decl('PATCH', `${R}/familias/:familyId/midias/:mediaId`), ...naFamilia,
+    rbac.exigir('editar'), h(async (req, res) => {
+      const d = req.body || {};
+      const m = await tenancy.noEscopoDe(req, (t) => t.uma(
+        `UPDATE media SET titulo = COALESCE($2, titulo), descricao = COALESCE($3, descricao),
+                privacidade = COALESCE($4, privacidade), updated_at = now()
+          WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
+        [req.params.mediaId, d.titulo != null ? s(d.titulo, 200) : null,
+          d.descricao != null ? s(d.descricao, 2000) : null,
+          ['PUBLIC', 'FAMILY', 'GROUP', 'PRIVATE'].includes(d.privacidade) ? d.privacidade : null]));
+      if (!m) throw erro('erro.midia_nao_encontrada', 404);
+      res.json({ midia: m });
+    }));
+
+  app.delete(decl('DELETE', `${R}/familias/:familyId/midias/:mediaId`), ...naFamilia,
+    rbac.exigir('excluir'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => midia.arquivar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, mediaId: req.params.mediaId }));
+      res.json({ ok: true, aviso: req.t('mensagem.midia_arquivada') });
+    }));
+
+  /** "CONTE A HISTÓRIA DESTA FOTO" (§23). */
+  app.post(decl('POST', `${R}/familias/:familyId/midias/:mediaId/historia`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => midia.contarHistoria(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        mediaId: req.params.mediaId, respostas: req.body || {} }));
+      res.status(201).json({ registrado: r });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/midias/:mediaId/pessoas`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => midia.identificar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, mediaId: req.params.mediaId,
+        personId: (req.body || {}).person_id, origem: 'MANUAL' }));
+      res.status(201).json({ identificacao: r });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/identificacoes/:idId/confirmar`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => midia.confirmarIdentificacao(t, {
+        familyId: req.familia.id, userId: req.usuario.id, id: req.params.idId }));
+      res.json({ identificacao: r });
+    }));
+
+  // --------------------------------------------------------------- álbuns
+  app.get(decl('GET', `${R}/familias/:familyId/albuns`), ...naFamilia, h(async (req, res) => {
+    const lista = await tenancy.noEscopoDe(req, (t) => t.todas(
+      `SELECT a.*, (SELECT count(*)::int FROM album_items i WHERE i.album_id = a.id) AS itens
+         FROM albums a WHERE a.deleted_at IS NULL ORDER BY a.created_at DESC`));
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    res.json({ albuns: privacidade.filtrar(lista, quem) });
+  }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/albuns`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const titulo = s((req.body || {}).titulo, 200);
+      if (titulo.length < 2) throw erro('erro.album_sem_titulo', 400);
+      const a = await tenancy.noEscopoDe(req, (t) => t.uma(
+        `INSERT INTO albums (family_id, titulo, descricao, created_by)
+         VALUES ($1,$2,$3,$4) RETURNING *`,
+        [req.familia.id, titulo, s((req.body || {}).descricao, 1000), req.usuario.id]));
+      res.status(201).json({ album: a });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/albuns/:albumId/itens`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      // Álbum REFERENCIA a mídia; não duplica byte nenhum.
+      const r = await tenancy.noEscopoDe(req, (t) => t.uma(
+        `INSERT INTO album_items (family_id, album_id, media_id, ordem)
+         VALUES ($1,$2,$3,COALESCE((SELECT max(ordem)+1 FROM album_items WHERE album_id=$2),0))
+         ON CONFLICT (album_id, media_id) DO NOTHING RETURNING *`,
+        [req.familia.id, req.params.albumId, (req.body || {}).media_id]));
+      res.status(r ? 201 : 200).json({ item: r, ja_estava: !r });
     }));
 
   // -------------------------------------------------------------- árvore

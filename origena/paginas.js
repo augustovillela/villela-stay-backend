@@ -127,6 +127,13 @@ border-radius:999px;padding:3px 10px}
 .erro{background:#FDECEC;border:1px solid #F5C2C2;color:#8A2020;padding:11px 14px;border-radius:10px;margin:12px 0}
 .ok{background:#E9F5EC;border:1px solid #BFE0C8;color:#1F5C33;padding:11px 14px;border-radius:10px;margin:12px 0}
 .sub{color:var(--suave);font-size:14px}
+/* Grade da galeria. A proporcao fixa evita o salto de layout enquanto
+   cada miniatura ainda esta pedindo a propria URL assinada. */
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin:18px 0}
+.cel{margin:0;cursor:pointer}
+.cel .ph{aspect-ratio:1;border-radius:12px;background:var(--borda) center/cover no-repeat}
+.cel figcaption{font-size:13px;color:var(--suave);margin-top:6px;line-height:1.35}
+img{max-width:100%;height:auto}
 @media(prefers-color-scheme:dark){.papel{background:#3A2E22;color:#D9BC93}
 .erro{background:#3A1E1E;border-color:#5C2C2C;color:#F0B4B4}.ok{background:#1C3324;border-color:#2C5C3A;color:#A8DDB8}}
 `;
@@ -255,6 +262,7 @@ async function abrir(id) {
           ' · ' + esc(t('familia.aguardando')) + '</span></div>').join(''))
       : '') +
     '<p style="margin-top:26px"><a href="#" onclick="pessoas();return false"><strong>' + esc(t('pessoa.titulo')) + '</strong></a>' +
+      ' · <a href="#" onclick="memorias();return false"><strong>' + esc(t('familia.memorias')) + '</strong></a>' +
       ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a></p>' +
     (pode('auditoria.ver') ? '<p><a href="#" onclick="auditoria();return false">' +
       esc(t('familia.ver_historico')) + '</a></p>' : ''));
@@ -610,6 +618,191 @@ function svgArvore(dados) {
     linhasSvg + nosSvg + '</svg>';
 }
 let MODO = 'ambos', GERACOES = 4;
+
+// ------------------------------------------------------------------ mídia
+// O arquivo vai do navegador DIRETO para o storage. O servidor assina a
+// URL e guarda o metadado; o byte nunca passa por ele.
+const MIDIA_CACHE = {};
+
+async function hashDoArquivo(file) {
+  const buf = await file.arrayBuffer();
+  const d = await crypto.subtle.digest('SHA-256', buf);
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Miniatura feita aqui, no canvas. O servidor não processa imagem (o
+ * grupo não usa dependência nativa) e o navegador já tem o arquivo
+ * aberto. O ORIGINAL sobe intacto e tem o hash conferido no worker.
+ */
+function miniatura(file, lado) {
+  return new Promise((resolve) => {
+    if (!/^image\\//.test(file.type)) return resolve(null);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, lado / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * escala));
+      c.height = Math.max(1, Math.round(img.height * escala));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => resolve(b ? { blob: b, largura: c.width, altura: c.height } : null), 'image/jpeg', 0.82);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+const tipoDoArquivo = (f) => /^image\\//.test(f.type) ? 'FOTO'
+  : /^video\\//.test(f.type) ? 'VIDEO' : /^audio\\//.test(f.type) ? 'AUDIO' : 'DOCUMENTO';
+
+async function enviarArquivos(lista) {
+  const arqs = [...lista];
+  const painel = document.getElementById('envio');
+  let enviados = 0, duplicadas = 0;
+  for (const file of arqs) {
+    painel.textContent = t('midia.enviando', { n: enviados + 1, total: arqs.length });
+    try {
+      const sha = await hashDoArquivo(file);
+      const prep = await api('POST', '/familias/' + FAM.id + '/midias/preparar', {
+        nome: file.name, bytes: file.size, sha256: sha, mime: file.type, tipo: tipoDoArquivo(file) });
+      if (prep.status >= 400) { painel.innerHTML = aviso(prep.erro); continue; }
+      if (prep.duplicado) { duplicadas++; enviados++; continue; }
+
+      const put = await fetch(prep.url_envio, { method: 'PUT', body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+      if (!put.ok) { painel.innerHTML = aviso(t('erro.generico')); continue; }
+      await api('POST', '/familias/' + FAM.id + '/midias/' + prep.media_id + '/confirmar');
+
+      // miniatura: derivado, não original
+      const mini = await miniatura(file, 512);
+      if (mini) {
+        const mBuf = await mini.blob.arrayBuffer();
+        const mHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', mBuf))]
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+        const d = await api('POST', '/familias/' + FAM.id + '/midias/' + prep.media_id + '/derivados', {
+          papel: 'THUMB', sha256: mHash, bytes: mini.blob.size, mime: 'image/jpeg',
+          largura: mini.largura, altura: mini.altura });
+        if (d.url_envio) await fetch(d.url_envio, { method: 'PUT', body: mini.blob,
+          headers: { 'Content-Type': 'image/jpeg' } });
+      }
+      enviados++;
+    } catch (_) { painel.innerHTML = aviso(t('erro.generico')); }
+  }
+  painel.textContent = duplicadas ? t('midia.duplicada') : '';
+  memorias();
+}
+
+async function urlDe(id) {
+  if (MIDIA_CACHE[id]) return MIDIA_CACHE[id];
+  const r = await api('GET', '/familias/' + FAM.id + '/midias/' + id + '/url');
+  if (r.status >= 400) return null;
+  MIDIA_CACHE[id] = r.url;
+  return r.url;
+}
+
+async function memorias(cursor) {
+  const r = await api('GET', '/familias/' + FAM.id + '/midias?limite=60' +
+    (cursor ? '&antes_de=' + encodeURIComponent(cursor) : ''));
+  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+    '<h2>' + esc(t('midia.titulo')) + '</h2>' +
+    (r.ocultas ? '<p class="sub">' + esc(t('midia.ocultas', { n: r.ocultas })) + '</p>' : '') +
+    (pode('contribuir')
+      ? '<p><input type="file" id="arqs" multiple accept="image/*,video/*,audio/*,.pdf"> ' +
+        '<button class="btn" onclick="enviarArquivos(document.getElementById(\\'arqs\\').files)">' +
+        esc(t('midia.enviar')) + '</button></p><p class="sub" id="envio"></p>' : '<p id="envio"></p>') +
+    ((r.midias || []).length
+      ? '<div class="grade">' + r.midias.map(m =>
+          '<figure class="cel" onclick="verMidia(\\'' + m.id + '\\')" data-thumb="' + (m.thumb_id || m.id) + '">' +
+          '<div class="ph"></div><figcaption>' + esc(m.titulo || '') +
+          (m.status !== 'pronta' ? '<br><span class="papel">' + esc(t('midia.' +
+            (m.status === 'quarentena' ? 'quarentena' : m.status === 'falhou' ? 'falhou' : 'processando'))) +
+            '</span>' : '') +
+          (m.pessoas ? '<br><span class="sub">' + m.pessoas + ' 👤</span>' : '') +
+          '</figcaption></figure>').join('') + '</div>' +
+        (r.proximo_cursor && r.midias.length >= 60
+          ? '<p><button class="btn claro" onclick="memorias(\\'' + r.proximo_cursor + '\\')">' +
+            esc(t('midia.carregar_mais')) + '</button></p>' : '')
+      : '<p class="sub">' + esc(t('midia.sem_midias')) + '</p>'));
+  // As imagens carregam DEPOIS da grade: a tela aparece na hora e cada
+  // miniatura pede a própria URL assinada (§119).
+  for (const cel of document.querySelectorAll('.cel')) {
+    urlDe(cel.dataset.thumb).then(u => { if (u) cel.querySelector('.ph').style.backgroundImage = 'url(' + u + ')'; });
+  }
+}
+
+async function verMidia(id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/midias/' + id);
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const m = r.midia;
+  const u = await urlDe((r.derivados.find(d => d.papel === 'THUMB') || {}).id || id);
+  $(topo() + '<p class="sub"><a href="#" onclick="memorias();return false">← ' + esc(t('midia.titulo')) + '</a></p>' +
+    (u ? '<img src="' + u + '" alt="' + esc(m.titulo || '') + '" style="max-width:100%;border-radius:14px">' : '') +
+    '<h2>' + esc(m.titulo || t('midia.titulo')) + '</h2>' +
+    '<p class="sub">' + [m.capturada_valor, m.local_texto].filter(Boolean).map(esc).join(' · ') + '</p>' +
+    (m.descricao ? '<p>' + esc(m.descricao) + '</p>' : '') +
+    '<h3>' + esc(t('midia.quem_aparece')) + '</h3>' +
+    ((r.pessoas || []).length
+      ? r.pessoas.map(x => '<div class="linha"><span>' +
+          (x.origem === 'IA_SUGERIDA'
+            ? esc(t('midia.possivelmente', { nome: x.nome_exibicao, pct: x.confianca || '?' }))
+            : '<a href="#" onclick="dossie(\\'' + x.person_id + '\\');return false">' + esc(x.nome_exibicao) + '</a>') +
+          (x.confirmado_em ? ' <span class="sub">' + esc(t('midia.confirmada_por',
+            { nome: x.confirmado_por_nome || '', data: new Date(x.confirmado_em).toLocaleDateString(IDIOMA) })) + '</span>' : '') +
+          '</span>' + (x.origem === 'IA_SUGERIDA' && pode('contribuir')
+            ? '<button class="btn mini" onclick="confirmarPessoa(\\'' + x.id + '\\',\\'' + id + '\\')">' +
+              esc(t('midia.confirmar')) + '</button>' : '') + '</div>').join('')
+      : '<p class="sub">' + esc(t('midia.sem_pessoas')) + '</p>') +
+    ((r.contribuicoes || []).length
+      ? '<h3>' + esc(t('contribuicao.titulo')) + '</h3>' + r.contribuicoes.map(c =>
+          '<div class="card" style="padding:16px"><p style="margin:0 0 6px">' + esc(c.corpo) + '</p>' +
+          '<p class="sub" style="margin:0">' + esc(t('contribuicao.por')) + ' <strong>' +
+          esc(c.autor_nome || '') + '</strong> · ' + esc(new Date(c.created_at).toLocaleDateString(IDIOMA)) +
+          '</p></div>').join('')
+      : '') +
+    (pode('contribuir') ? formHistoria(id) : '') +
+    '<p class="sub" style="margin-top:20px">' + esc(t('midia.original_intacto')) + '</p>');
+  if (pode('contribuir')) {
+    const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
+    const sel = document.getElementById('hq');
+    if (sel) sel.innerHTML = (l.pessoas || []).map(x =>
+      '<option value="' + x.id + '">' + esc(x.nome_exibicao) + '</option>').join('');
+  }
+}
+
+function formHistoria(id) {
+  const campo = (chave, idc, dica) => '<label>' + esc(t('historia.' + chave)) + '</label>' +
+    '<input id="' + idc + '"' + (dica ? ' placeholder="' + esc(dica) + '"' : '') + '>';
+  return '<h3 style="margin-top:26px">' + esc(t('historia.titulo')) + '</h3>' +
+    '<p class="sub">' + esc(t('historia.intro')) + '</p>' +
+    '<label>' + esc(t('historia.quem')) + '</label><select id="hq" multiple size="4"></select>' +
+    campo('quando', 'hw', t('pessoa.ajuda_data')) +
+    campo('onde', 'ho') +
+    campo('titulo_curto', 'ht') +
+    campo('ocasiao', 'hc') +
+    campo('aconteceu', 'ha') +
+    campo('porque_importa', 'hp') +
+    '<p><button class="btn" onclick="guardarHistoria(\\'' + id + '\\')">' + esc(t('historia.guardar')) + '</button></p>';
+}
+
+async function guardarHistoria(id) {
+  const sel = document.getElementById('hq');
+  const r = await api('POST', '/familias/' + FAM.id + '/midias/' + id + '/historia', {
+    pessoas: [...sel.selectedOptions].map(o => o.value),
+    quando: document.getElementById('hw').value, onde: document.getElementById('ho').value,
+    titulo: document.getElementById('ht').value, ocasiao: document.getElementById('hc').value,
+    aconteceu: document.getElementById('ha').value,
+    porque_importa: document.getElementById('hp').value });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verMidia(id);
+}
+
+async function confirmarPessoa(idId, mediaId) {
+  const r = await api('POST', '/familias/' + FAM.id + '/identificacoes/' + idId + '/confirmar');
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verMidia(mediaId);
+}
 
 // ------------------------------------------------- links vindos do e-mail
 async function rotaDoHash() {

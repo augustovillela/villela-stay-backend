@@ -1,5 +1,5 @@
 // =====================================================================
-// ORIGENA — suíte de testes (Fases 0 a 3).   npm run test:origena
+// ORIGENA — suíte de testes (Fases 0 a 4).   npm run test:origena
 //
 // Sobe o Express real com auth de staff injetada, num SCHEMA DESCARTÁVEL
 // do Postgres (o equivalente ao os.tmpdir() que os produtos SQLite usam)
@@ -13,6 +13,8 @@
 // Fase 2: datas imprecisas, pessoas, parentesco e árvore.
 // Fase 3: PROVENIÊNCIA — o cenário do §4 inteiro, do relato divergente à
 //         resolução que NÃO apaga as versões perdedoras.
+// Fase 4: mídia — upload REAL no R2, worker de verdade, quarentena,
+//         imutabilidade do original e "conte a história desta foto".
 // =====================================================================
 'use strict';
 const crypto = require('crypto');
@@ -1127,6 +1129,371 @@ async function principal() {
     }
   });
 
+  // =================================================================== FASE 4
+  const midiaMod = require('./midia');
+  const arquivos = require('./arquivos');
+  const zlib = require('zlib');
+
+  // Um PNG de verdade, gerado aqui: hash real, dimensões reais, bytes reais.
+  function pngReal(largura, altura, cor = [122, 92, 62]) {
+    const crcTab = [];
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; crcTab[n] = c >>> 0; }
+    const crc = (b) => { let c = 0xffffffff; for (const x of b) c = crcTab[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+    const chunk = (tipo, dados) => {
+      const len = Buffer.alloc(4); len.writeUInt32BE(dados.length);
+      const corpo = Buffer.concat([Buffer.from(tipo, 'ascii'), dados]);
+      const c = Buffer.alloc(4); c.writeUInt32BE(crc(corpo));
+      return Buffer.concat([len, corpo, c]);
+    };
+    const linhas = [];
+    for (let y = 0; y < altura; y++) {
+      const l = Buffer.alloc(1 + largura * 3);
+      for (let x = 0; x < largura; x++) { l[1 + x * 3] = cor[0]; l[2 + x * 3] = cor[1]; l[3 + x * 3] = cor[2]; }
+      linhas.push(l);
+    }
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(largura, 0); ihdr.writeUInt32BE(altura, 4);
+    ihdr[8] = 8; ihdr[9] = 2;
+    return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(Buffer.concat(linhas))), chunk('IEND', Buffer.alloc(0))]);
+  }
+
+  /** JPEG mínimo com EXIF de verdade — para provar o leitor de EXIF. */
+  function jpegComExif(dataISO = '1985:07:12 14:30:00') {
+    const tiff = [];
+    const push16 = (a, v) => { const b = Buffer.alloc(2); b.writeUInt16BE(v); a.push(b); };
+    const push32 = (a, v) => { const b = Buffer.alloc(4); b.writeUInt32BE(v); a.push(b); };
+    push16(tiff, 0x4d4d); push16(tiff, 42); push32(tiff, 8);      // MM, 42, offset IFD0
+    const entradas = [];
+    // IFD0 com um ponteiro para o IFD Exif
+    push16(entradas, 1);                                            // 1 entrada
+    push16(entradas, 0x8769); push16(entradas, 4); push32(entradas, 1); push32(entradas, 8 + 2 + 12 + 4);
+    push32(entradas, 0);                                            // fim do IFD0
+    const data = Buffer.from(dataISO + '\0', 'ascii');
+    const exifIfd = [];
+    push16(exifIfd, 1);
+    push16(exifIfd, 0x9003); push16(exifIfd, 2); push32(exifIfd, data.length);
+    push32(exifIfd, 8 + 2 + 12 + 4 + 2 + 12 + 4);                   // offset do texto
+    push32(exifIfd, 0);
+    const corpoTiff = Buffer.concat([...tiff, ...entradas, ...exifIfd, data]);
+    const app1 = Buffer.concat([Buffer.from('Exif\0\0', 'ascii'), corpoTiff]);
+    const tamanho = Buffer.alloc(2); tamanho.writeUInt16BE(app1.length + 2);
+    const sof0 = Buffer.from([0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0x64, 0x00, 0xc8,
+      0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01]);  // 200x100
+    return Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.from([0xff, 0xe1]), tamanho, app1,
+      sof0, Buffer.from([0xff, 0xd9])]);
+  }
+
+  const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+
+  /** Sobe um arquivo pelo caminho REAL: preparar → PUT no R2 → confirmar. */
+  async function enviar(buf, nome, { sessao = ana, tipo = 'FOTO' } = {}) {
+    const prep = await req('POST', F('/midias/preparar'), { sessao,
+      corpo: { nome, bytes: buf.length, sha256: sha(buf), mime: 'image/png', tipo } });
+    if (prep.json && prep.json.duplicado) return { duplicado: true, media_id: prep.json.media_id };
+    assert.strictEqual(prep.status, 201, 'preparar falhou: ' + prep.texto);
+    const put = await fetch(prep.json.url_envio, { method: 'PUT', body: buf,
+      headers: { 'Content-Type': 'application/octet-stream' } });
+    assert(put.ok, 'o R2 recusou o PUT: ' + put.status);
+    const conf = await req('POST', F(`/midias/${prep.json.media_id}/confirmar`), { sessao });
+    assert.strictEqual(conf.status, 202, 'confirmar falhou: ' + conf.texto);
+    return { media_id: prep.json.media_id, chave: prep.json.chave };
+  }
+
+  console.log('\nleitura de arquivo (bytes, não o que o cliente disse)');
+  await teste('descobre o tipo REAL pelos primeiros bytes', async () => {
+    assert.strictEqual(arquivos.tipoReal(pngReal(4, 4)).mime, 'image/png');
+    assert.strictEqual(arquivos.tipoReal(jpegComExif()).mime, 'image/jpeg');
+    assert.strictEqual(arquivos.tipoReal(Buffer.from('%PDF-1.7')).mime, 'application/pdf');
+    // O que não reconhecemos não entra: lista de permissão, não de bloqueio.
+    assert.strictEqual(arquivos.tipoReal(Buffer.from('qualquer coisa')), null);
+  });
+
+  await teste('SVG e HTML nunca entram como imagem (vetor de XSS)', async () => {
+    for (const m of ['image/svg+xml', 'text/html', 'application/xhtml+xml']) {
+      assert(arquivos.ehProibido(m), `${m} não está na lista de proibidos`);
+    }
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    assert.strictEqual(arquivos.tipoReal(svg), null, 'SVG passou pelos magic bytes');
+  });
+
+  await teste('lê dimensões e EXIF sem decodificar a imagem', async () => {
+    const d = arquivos.dimensoes(pngReal(120, 80));
+    assert.deepStrictEqual([d.largura, d.altura], [120, 80]);
+    const j = jpegComExif('1985:07:12 14:30:00');
+    assert.deepStrictEqual([arquivos.dimensoes(j).largura, arquivos.dimensoes(j).altura], [200, 100]);
+    const exif = arquivos.lerExif(j);
+    assert.match(exif.data_original || '', /^1985:07:12/, 'não leu a data do EXIF: ' + JSON.stringify(exif));
+    assert.strictEqual(arquivos.dataDoExif(exif), '12/07/1985');
+  });
+
+  await teste('EXIF corrompido não impede guardar a foto', async () => {
+    const quebrado = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x20]),
+      Buffer.from('Exif\0\0'), crypto.randomBytes(20)]);
+    assert.deepStrictEqual(arquivos.lerExif(quebrado), {}, 'EXIF quebrado derrubou o leitor');
+  });
+
+  console.log('\nmídia — o caminho completo');
+  let foto1;
+  await teste('preparar → PUT direto no R2 → confirmar → worker → pronta', async () => {
+    const buf = pngReal(60, 40);
+    const r = await enviar(buf, 'vovo-na-varanda.png');
+    foto1 = r.media_id;
+
+    const antes = await req('GET', F(`/midias/${foto1}`), { sessao: ana });
+    assert.strictEqual(antes.json.midia.status, 'recebida', 'não ficou aguardando o worker');
+
+    // o worker de verdade, pela fila de verdade
+    fila.limparHandlers();
+    require('./worker').registrarHandlers();
+    const lote = await fila.processarLote(10, 'rapida');
+    assert(lote.ok >= 1, 'o worker não processou: ' + JSON.stringify(lote));
+
+    const depois = await req('GET', F(`/midias/${foto1}`), { sessao: ana });
+    assert.strictEqual(depois.json.midia.status, 'pronta', 'status: ' + depois.json.midia.erro);
+    assert.strictEqual(depois.json.midia.mime_real, 'image/png');
+    assert.strictEqual(depois.json.midia.largura, 60);
+    assert.strictEqual(depois.json.midia.altura, 40);
+  });
+
+  await teste('a data da câmera vira FATO COM FONTE, não verdade absoluta', async () => {
+    const buf = jpegComExif('1985:07:12 10:00:00');
+    const prep = await req('POST', F('/midias/preparar'), { sessao: ana,
+      corpo: { nome: 'festa-1985.jpg', bytes: buf.length, sha256: sha(buf), mime: 'image/jpeg', tipo: 'FOTO' } });
+    await fetch(prep.json.url_envio, { method: 'PUT', body: buf });
+    await req('POST', F(`/midias/${prep.json.media_id}/confirmar`), { sessao: ana });
+    await fila.processarLote(10, 'rapida');
+
+    const m = await req('GET', F(`/midias/${prep.json.media_id}`), { sessao: ana });
+    assert.strictEqual(m.json.midia.capturada_valor, '12/07/1985', 'não gravou a data do EXIF');
+    const claim = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT c.status, s.tipo AS fonte FROM claims c
+         LEFT JOIN evidence e ON e.claim_id = c.id LEFT JOIN sources s ON s.id = e.source_id
+        WHERE c.sujeito_tipo='media' AND c.sujeito_id=$1 AND c.predicado='data_captura'`,
+      [prep.json.media_id]));
+    assert(claim, 'a data do EXIF não virou fato com proveniência');
+    assert.strictEqual(claim.status, 'DOCUMENTED');
+  });
+
+  await teste('a mesma foto mandada de novo é reconhecida ANTES de subir o byte', async () => {
+    const buf = pngReal(60, 40);   // idêntico ao da foto1
+    const r = await req('POST', F('/midias/preparar'), { sessao: bruno,
+      corpo: { nome: 'copia.png', bytes: buf.length, sha256: sha(buf), mime: 'image/png', tipo: 'FOTO' } });
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.json.duplicado, true, 'não detectou a duplicata');
+    assert.strictEqual(r.json.media_id, foto1, 'apontou para outra mídia');
+    assert(!r.json.url_envio, 'ofereceu URL de envio para uma duplicata');
+  });
+
+  await teste('arquivo que chega diferente do prometido vai para quarentena', async () => {
+    const prometido = pngReal(10, 10);
+    const enviado = pngReal(11, 11);        // hash diferente
+    const prep = await req('POST', F('/midias/preparar'), { sessao: ana,
+      corpo: { nome: 'troca.png', bytes: prometido.length, sha256: sha(prometido), mime: 'image/png', tipo: 'FOTO' } });
+    await fetch(prep.json.url_envio, { method: 'PUT', body: enviado });
+    await req('POST', F(`/midias/${prep.json.media_id}/confirmar`), { sessao: ana });
+    await fila.processarLote(10, 'rapida');
+    const m = await req('GET', F(`/midias/${prep.json.media_id}`), { sessao: ana });
+    assert.strictEqual(m.json.midia.status, 'quarentena', 'aceitou arquivo trocado');
+    assert.strictEqual(m.json.midia.erro, 'erro.midia_hash_diferente');
+  });
+
+  await teste('arquivo de tipo não reconhecido não entra no acervo', async () => {
+    const lixo = Buffer.from('isto não é imagem nenhuma, é texto disfarçado');
+    const prep = await req('POST', F('/midias/preparar'), { sessao: ana,
+      corpo: { nome: 'foto.png', bytes: lixo.length, sha256: sha(lixo), mime: 'image/png', tipo: 'FOTO' } });
+    await fetch(prep.json.url_envio, { method: 'PUT', body: lixo });
+    await req('POST', F(`/midias/${prep.json.media_id}/confirmar`), { sessao: ana });
+    await fila.processarLote(10, 'rapida');
+    const m = await req('GET', F(`/midias/${prep.json.media_id}`), { sessao: ana });
+    assert.strictEqual(m.json.midia.status, 'quarentena', 'aceitou arquivo com extensão mentirosa');
+  });
+
+  await teste('reprocessar a mesma mídia é inofensivo (fila entrega ≥1 vez)', async () => {
+    const r = await tenancy.comEscopo(famA, (t) =>
+      midiaMod.ingerir(t, { mediaId: foto1, familyId: famA, userId: ana.id }));
+    assert(r.ignorado, 'reprocessou uma mídia já pronta: ' + JSON.stringify(r));
+  });
+
+  console.log('\nmídia — o original é imutável (§7)');
+  await teste('o BANCO recusa trocar o arquivo de um original pronto', async () => {
+    await assert.rejects(tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE media SET storage_key = 'outro/lugar.png' WHERE id = $1`, [foto1])),
+    /imutável/i, 'foi possível apontar o original para outro arquivo');
+    await assert.rejects(tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE media SET sha256 = $2 WHERE id = $1`, [foto1, sha(Buffer.from('x'))])),
+    /imutável/i, 'foi possível trocar o hash do original');
+  });
+
+  await teste('o CONTEXTO continua editável — imutável é o byte, não a memória', async () => {
+    const r = await req('PATCH', F(`/midias/${foto1}`), { sessao: ana,
+      corpo: { titulo: 'Vovó na varanda', descricao: 'Casa da rua das Palmeiras.' } });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert.strictEqual(r.json.midia.titulo, 'Vovó na varanda');
+  });
+
+  await teste('miniatura é DERIVADO, e o original não é tocado', async () => {
+    const thumb = pngReal(16, 16, [200, 200, 200]);
+    const r = await req('POST', F(`/midias/${foto1}/derivados`), { sessao: ana,
+      corpo: { papel: 'THUMB', sha256: sha(thumb), bytes: thumb.length,
+        mime: 'image/png', largura: 16, altura: 16 } });
+    assert.strictEqual(r.status, 201, r.texto);
+    assert.strictEqual(r.json.derivado.derivado_de, foto1);
+    assert.strictEqual(r.json.derivado.ai_class, 'ORIGINAL', 'miniatura marcada como conteúdo de IA');
+    assert(r.json.url_envio, 'não devolveu onde subir a miniatura');
+    const orig = await req('GET', F(`/midias/${foto1}`), { sessao: ana });
+    assert.strictEqual(orig.json.midia.status, 'pronta');
+    assert.strictEqual(orig.json.derivados.length, 1);
+    assert.strictEqual(orig.json.derivados[0].papel, 'THUMB');
+  });
+
+  await teste('não se deriva de um derivado', async () => {
+    const orig = await req('GET', F(`/midias/${foto1}`), { sessao: ana });
+    const thumbId = orig.json.derivados[0].id;
+    const r = await req('POST', F(`/midias/${thumbId}/derivados`), { sessao: ana,
+      corpo: { papel: 'THUMB', sha256: sha(Buffer.from('y')), bytes: 1, mime: 'image/png' } });
+    assert.strictEqual(r.status, 400);
+    assert.strictEqual(r.json.codigo, 'erro.derivado_de_derivado');
+  });
+
+  console.log('\n"conte a história desta foto" (§23)');
+  await teste('as respostas viram identificação, fato com fonte e contribuição', async () => {
+    const r = await req('POST', F(`/midias/${foto1}/historia`), { sessao: ana, corpo: {
+      pessoas: [P.joao.id, P.maria.id],
+      quando: 'anos 40',
+      onde: 'Fazenda do avô, em Pirapora',
+      titulo: 'O aniversário na fazenda',
+      ocasiao: 'Aniversário de 60 anos do bisavô.',
+      aconteceu: 'Choveu a tarde toda e todo mundo ficou na varanda cantando.',
+      porque_importa: 'É a única foto em que os quatro irmãos aparecem juntos.' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    assert.strictEqual(r.json.registrado.pessoas, 2, 'não marcou as duas pessoas');
+    assert(r.json.registrado.contribuicao, 'a história não virou contribuição');
+
+    const m = await req('GET', F(`/midias/${foto1}`), { sessao: ana });
+    // 'anos 40' é canonicalizado para 'anos 1940': o século é resolvido na
+    // entrada, e não fica ambiguidade guardada no acervo.
+    assert.strictEqual(m.json.midia.capturada_valor, 'anos 1940', 'não guardou a data imprecisa');
+    assert.strictEqual(m.json.midia.capturada_precisao, 'DECADA');
+    assert.match(m.json.midia.local_texto, /Pirapora/);
+    assert.strictEqual(m.json.pessoas.length, 2);
+    assert(m.json.pessoas.every((x) => x.origem === 'CONFIRMADA'), 'identificação humana não ficou confirmada');
+    assert(m.json.contribuicoes.length >= 1, 'a história não ficou consultável');
+    assert.match(m.json.contribuicoes[0].corpo, /varanda cantando/);
+    assert.strictEqual(m.json.contribuicoes[0].autor_nome, 'Ana Villela', 'perdeu a autoria');
+  });
+
+  await teste('a foto entra na galeria filtrada por pessoa', async () => {
+    const r = await req('GET', F(`/midias?pessoa=${P.joao.id}`), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.midias.some((m) => m.id === foto1), 'a foto não apareceu no filtro por pessoa');
+    const item = r.json.midias.find((m) => m.id === foto1);
+    assert.strictEqual(item.pessoas, 2);
+    assert(item.thumb_id, 'a galeria não trouxe a miniatura');
+  });
+
+  await teste('data errada na história é recusada com mensagem útil', async () => {
+    const r = await req('POST', F(`/midias/${foto1}/historia`), { sessao: ana,
+      corpo: { quando: '31/02/1940' } });
+    assert.strictEqual(r.status, 400);
+    assert.strictEqual(r.json.codigo, 'erro.data_invalida');
+  });
+
+  console.log('\nmídia — privacidade e acesso');
+  await teste('foto PRIVATE some para quem não pode ver, em TODA listagem', async () => {
+    const buf = pngReal(30, 30, [10, 10, 10]);
+    const r = await enviar(buf, 'carta-particular.png');
+    await fila.processarLote(10, 'rapida');
+    await req('PATCH', F(`/midias/${r.media_id}`), { sessao: ana, corpo: { privacidade: 'PRIVATE' } });
+
+    const lista = await req('GET', F('/midias'), { sessao: bruno });   // CONTRIBUTOR
+    assert(!lista.json.midias.find((m) => m.id === r.media_id), 'foto privada apareceu na galeria');
+    assert(lista.json.ocultas >= 1, 'não avisou que há itens ocultos');
+    const direto = await req('GET', F(`/midias/${r.media_id}`), { sessao: bruno });
+    assert.strictEqual(direto.status, 404, 'devolveu 403 e confirmou a existência');
+    const url = await req('GET', F(`/midias/${r.media_id}/url`), { sessao: bruno });
+    assert.strictEqual(url.status, 404, 'entregou a URL do arquivo privado');
+    P.privada = r.media_id;
+  });
+
+  await teste('quem administra abre o privado, e o acesso fica AUDITADO', async () => {
+    const url = await req('GET', F(`/midias/${P.privada}/url`), { sessao: carla });   // ADMIN
+    assert.strictEqual(url.status, 200, url.texto);
+    assert.match(url.json.url, /X-Amz-Signature/, 'não devolveu URL assinada');
+    const log = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT count(*)::int n FROM audit_log WHERE acao = 'midia.baixada' AND alvo_id = $1`, [P.privada]));
+    assert(log.n >= 1, 'acesso de terceiro a item privado não foi auditado');
+  });
+
+  await teste('o autor sempre abre o que é dele', async () => {
+    const url = await req('GET', F(`/midias/${P.privada}/url`), { sessao: ana });
+    assert.strictEqual(url.status, 200, 'o autor não conseguiu abrir o próprio arquivo');
+  });
+
+  await teste('a URL de leitura é assinada e temporária — o bucket não é público', async () => {
+    const url = await req('GET', F(`/midias/${foto1}/url`), { sessao: ana });
+    assert(url.json.expira_em_seg <= 900, 'URL sem prazo curto');
+    const r = await fetch(url.json.url);
+    assert(r.ok, 'a URL assinada não abriu o arquivo');
+    const semAssinatura = url.json.url.split('?')[0];
+    const publico = await fetch(semAssinatura);
+    assert(!publico.ok, 'o arquivo abriu SEM assinatura — o bucket está público');
+  });
+
+  await teste('galeria pagina por cursor, não por OFFSET', async () => {
+    const r = await req('GET', F('/midias?limite=2'), { sessao: ana });
+    assert(r.json.midias.length <= 2);
+    assert(r.json.proximo_cursor, 'não devolveu cursor');
+    const seg = await req('GET', F(`/midias?limite=2&antes_de=${encodeURIComponent(r.json.proximo_cursor)}`), { sessao: ana });
+    const idsA = r.json.midias.map((m) => m.id), idsB = seg.json.midias.map((m) => m.id);
+    assert(!idsB.some((id) => idsA.includes(id)), 'a segunda página repetiu itens da primeira');
+  });
+
+  await teste('álbum REFERENCIA a mídia, não duplica', async () => {
+    const a = await req('POST', F('/albuns'), { sessao: ana, corpo: { titulo: 'Fazenda' } });
+    assert.strictEqual(a.status, 201, a.texto);
+    const i1 = await req('POST', F(`/albuns/${a.json.album.id}/itens`), { sessao: ana, corpo: { media_id: foto1 } });
+    assert.strictEqual(i1.status, 201);
+    const i2 = await req('POST', F(`/albuns/${a.json.album.id}/itens`), { sessao: ana, corpo: { media_id: foto1 } });
+    assert.strictEqual(i2.json.ja_estava, true, 'aceitou o mesmo item duas vezes no álbum');
+    const n = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT count(*)::int c FROM media WHERE id = $1 OR derivado_de = $1`, [foto1]));
+    assert.strictEqual(n.c, 2, 'o álbum duplicou a mídia (esperado: original + miniatura)');
+  });
+
+  await teste('GUEST não vê documento nem consegue a URL dele', async () => {
+    const buf = Buffer.from('%PDF-1.7\n' + 'x'.repeat(400));
+    const prep = await req('POST', F('/midias/preparar'), { sessao: ana,
+      corpo: { nome: 'certidao.pdf', bytes: buf.length, sha256: sha(buf),
+        mime: 'application/pdf', tipo: 'DOCUMENTO' } });
+    await fetch(prep.json.url_envio, { method: 'PUT', body: buf });
+    await req('POST', F(`/midias/${prep.json.media_id}/confirmar`), { sessao: ana });
+    await fila.processarLote(10, 'rapida');
+    const m = await tenancy.comEscopo(famA, (t) => t.uma('SELECT tipo, status FROM media WHERE id=$1', [prep.json.media_id]));
+    assert.strictEqual(m.tipo, 'DOCUMENTO');
+    assert.strictEqual(m.status, 'pronta');
+
+    // convidado de verdade
+    const visita = await novaConta('Visita Guest', 'guest-midia@teste.origena');
+    const c = await req('POST', F('/convites'), { sessao: ana, corpo: { email: visita.email, papel: 'GUEST' } });
+    const tk = tokenDoUltimoEmail(visita.email, '/origena/convite');
+    await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk)}/aceitar`, { sessao: visita });
+    assert(c.status === 201);
+    const url = await req('GET', F(`/midias/${prep.json.media_id}/url`), { sessao: visita });
+    assert.strictEqual(url.status, 404, 'GUEST abriu um documento da família');
+  });
+
+  await teste('arquivar mídia é soft delete: some da galeria, fica no banco', async () => {
+    const r = await enviar(pngReal(22, 22, [1, 2, 3]), 'some.png');
+    await fila.processarLote(10, 'rapida');
+    await req('DELETE', F(`/midias/${r.media_id}`), { sessao: ana });
+    const lista = await req('GET', F('/midias'), { sessao: ana });
+    assert(!lista.json.midias.find((m) => m.id === r.media_id), 'continuou na galeria');
+    const linha = await tenancy.comEscopo(famA, (t) =>
+      t.uma('SELECT deleted_at FROM media WHERE id = $1', [r.media_id]));
+    assert(linha && linha.deleted_at, 'a linha foi APAGADA em vez de arquivada');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
@@ -1178,7 +1545,8 @@ async function principal() {
         .replace(':userId', bruno.id)
         .replace(':pessoaId', uuidFalso).replace(':relId', uuidFalso)
         .replace(':predicado', 'data_nascimento').replace(':claimId', uuidFalso)
-        .replace(':contribId', uuidFalso).replace(':id', uuidFalso);
+        .replace(':contribId', uuidFalso).replace(':mediaId', uuidFalso)
+        .replace(':albumId', uuidFalso).replace(':idId', uuidFalso).replace(':id', uuidFalso);
       const r = await req(rota.metodo, caminho, { sessao: ana, corpo: rota.metodo === 'GET' ? undefined : { nome: 'invasao', papel: 'GUEST' } });
       // 404 e NUNCA 403: 403 confirmaria que a família existe (T2).
       if (r.status !== 404) falhas94.push(`${rota.metodo} ${rota.caminho} → ${r.status}`);
@@ -1192,7 +1560,8 @@ async function principal() {
       const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
         .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO)
         .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
-        .replace(':contribId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
+        .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, { sessao: silva, corpo: rota.metodo === 'GET' ? undefined : { nome: 'x', papel: 'GUEST' } });
       assert.strictEqual(r.status, 404, `${rota.metodo} ${rota.caminho} devolveu ${r.status}`);
     }
@@ -1203,7 +1572,8 @@ async function principal() {
       const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
         .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO)
         .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
-        .replace(':contribId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
+        .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, {});
       assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
     }
@@ -1237,7 +1607,7 @@ async function principal() {
     falhas.forEach((f) => console.log(`  • ${f.nome}: ${f.erro}`));
     process.exit(1);
   }
-  console.log('ORIGENA Fases 0 a 3: verde.\n');
+  console.log('ORIGENA Fases 0 a 4: verde.\n');
 }
 
 principal().catch(async (e) => {

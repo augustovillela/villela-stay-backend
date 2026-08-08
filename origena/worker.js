@@ -37,6 +37,19 @@ let parar = false;
 // ---------------------------------------------------------------------
 function registrarHandlers() {
   fila.registrar('smoke', async (payload) => ({ eco: payload, em: db.nowISO() }));
+
+  // Ingestão de mídia (Fase 4). Roda DENTRO do escopo da família: as
+  // tabelas têm RLS, e sem `app.family_id` posto o worker não enxerga
+  // linha nenhuma — nem a que ele mesmo veio processar.
+  //
+  // Idempotente por construção: `ingerir` sai cedo se a mídia já está
+  // `pronta`. A fila entrega no mínimo uma vez, então isso não é zelo,
+  // é requisito.
+  fila.registrar('midia.ingerir', async (payload) => {
+    const tenancy = require('./tenancy');
+    const midia = require('./midia');
+    return tenancy.comEscopo(payload.familyId, (t) => midia.ingerir(t, payload));
+  });
 }
 
 async function ciclo(n) {

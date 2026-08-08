@@ -75,7 +75,8 @@
     "imprimir": "Imprimir",
     "geracoes": "Gerações",
     "divergencias": "Divergências",
-    "ver_divergencias": "Ver as divergências da família"
+    "ver_divergencias": "Ver as divergências da família",
+    "memorias": "Memórias"
   },
   "papel": {
     "OWNER": "Responsável",
@@ -155,7 +156,21 @@
     "claim_nao_e_inferencia": "Essa versão não foi sugerida pela IA.",
     "evidencia_repetida": "Essa fonte já está ligada a esta versão.",
     "resolucao_sem_motivo": "Explique por que a família aceitou esta versão. Daqui a 30 anos, alguém vai querer saber.",
-    "status_invalido": "Situação inválida."
+    "status_invalido": "Situação inválida.",
+    "midia_sem_hash": "Não consegui identificar o arquivo. Tente enviar de novo.",
+    "midia_vazia": "O arquivo está vazio.",
+    "midia_grande_demais": "Esse arquivo é maior do que o limite.",
+    "midia_tipo_proibido": "Esse tipo de arquivo não pode ser enviado.",
+    "midia_tipo_nao_reconhecido": "Não reconheci esse arquivo. Ele ficou separado, sem entrar no acervo.",
+    "midia_hash_diferente": "O arquivo que chegou é diferente do que foi anunciado. Ficou separado por segurança.",
+    "midia_tamanho_diferente": "O tamanho do arquivo não confere. Ficou separado por segurança.",
+    "midia_nao_encontrada": "Arquivo não encontrado.",
+    "derivado_de_derivado": "Não dá para derivar de um derivado.",
+    "derivado_papel_invalido": "Tipo de derivado inválido.",
+    "identificacao_origem_invalida": "Origem de identificação inválida.",
+    "identificacao_repetida": "Essa pessoa já está marcada nesta foto.",
+    "identificacao_nao_encontrada": "Marcação não encontrada.",
+    "album_sem_titulo": "Dê um nome ao álbum."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -169,7 +184,9 @@
     "acesso_revogado": "O acesso foi revogado. O que esta pessoa contribuiu continua no acervo.",
     "pessoa_arquivada": "A pessoa foi arquivada. Nada foi apagado — dá para restaurar.",
     "divergencia_preservada": "Versão aceita. As outras continuam guardadas e podem ser consultadas a qualquer momento.",
-    "revisao_preserva": "Guardamos a nova versão. A anterior continua no histórico."
+    "revisao_preserva": "Guardamos a nova versão. A anterior continua no histórico.",
+    "midia_arquivada": "O arquivo foi arquivado. Nada foi apagado — dá para restaurar.",
+    "historia_guardada": "Guardado. Quem contou e quando ficam registrados junto."
   },
   "email": {
     "verificacao_assunto": "Confirme seu e-mail — Origena",
@@ -222,7 +239,13 @@
     "claim.afirmado": "Informação registrada",
     "evidencia.anexada": "Fonte acrescentada",
     "divergencia.resolvida": "Divergência resolvida",
-    "inferencia.confirmada": "Sugestão da IA confirmada"
+    "inferencia.confirmada": "Sugestão da IA confirmada",
+    "midia.enviada": "Arquivo enviado",
+    "midia.arquivada": "Arquivo arquivado",
+    "midia.baixada": "Arquivo aberto",
+    "midia.pessoa_identificada": "Pessoa marcada na foto",
+    "midia.identificacao_confirmada": "Marcação confirmada",
+    "midia.historia_contada": "História da foto contada"
   },
   "pessoa": {
     "titulo": "Pessoas",
@@ -328,6 +351,54 @@
     "data_nascimento": "Data de nascimento",
     "data_falecimento": "Data de falecimento",
     "local_nascimento": "Onde nasceu",
-    "profissao": "Profissão"
+    "profissao": "Profissão",
+    "data_captura": "Quando a foto foi feita"
+  },
+  "midia": {
+    "titulo": "Memórias",
+    "fotos": "Fotos",
+    "enviar": "Enviar arquivos",
+    "enviando": "Enviando {n} de {total}…",
+    "processando": "PROCESSANDO",
+    "concluido": "CONCLUÍDO",
+    "falhou": "FALHOU",
+    "tentar": "Tentar de novo",
+    "quarentena": "Separado por segurança",
+    "duplicada": "Essa foto já está no acervo.",
+    "sem_midias": "Nenhuma memória guardada ainda. Comece por uma foto que a família goste.",
+    "ocultas": "{n} arquivo(s) não aparecem para o seu papel.",
+    "carregar_mais": "Carregar mais",
+    "abrir_original": "Abrir o original",
+    "sem_pessoas": "Ninguém marcado nesta foto ainda.",
+    "quem_aparece": "Quem aparece aqui",
+    "marcar": "Marcar alguém",
+    "possivelmente": "Possivelmente {nome} — {pct}%",
+    "confirmar": "Sim, é essa pessoa",
+    "confirmada_por": "Confirmado por {nome} em {data}",
+    "arquivar": "Arquivar",
+    "confirmar_arquivar": "Arquivar este arquivo? Nada é apagado — dá para restaurar depois.",
+    "original_intacto": "O original nunca é alterado. O que você vê aqui é uma cópia menor."
+  },
+  "historia": {
+    "titulo": "Conte a história desta foto",
+    "intro": "Cada resposta vira uma memória guardada com o seu nome e a data de hoje.",
+    "quem": "Quem aparece?",
+    "onde": "Onde foi?",
+    "quando": "Quando foi, mais ou menos?",
+    "ocasiao": "Qual era a ocasião?",
+    "aconteceu": "O que aconteceu nesse dia?",
+    "porque_importa": "Por que esta foto é importante?",
+    "titulo_curto": "Um nome para esta foto",
+    "guardar": "Guardar",
+    "pular": "Depois",
+    "obrigado": "Guardado. Quem contou e quando ficam registrados junto."
+  },
+  "album": {
+    "titulo": "Álbuns",
+    "novo": "Criar álbum",
+    "nome": "Nome do álbum",
+    "sem_albuns": "Nenhum álbum ainda.",
+    "itens": "{n} item(ns)",
+    "acrescentar": "Acrescentar a um álbum"
   }
 }

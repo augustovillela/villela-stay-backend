@@ -36,7 +36,11 @@ async function enfileirar({
   chaveIdem = null, familyId = null, rodarApos = null, maxTentativas = 5,
 } = {}, cliente = null) {
   if (!tipo) throw new Error('fila.enfileirar: tipo é obrigatório.');
-  const exec = cliente ? (t, v) => cliente.query(t, v) : (t, v) => db.q(t, v);
+  // Aceita tanto o cliente cru do `pg` (.query) quanto o wrapper de
+  // transação do db.js (.q). Exigir um dos dois seria um foot-gun: quem
+  // chama tem `t` em mãos e passaria `t`, não `t.cliente`.
+  const exec = !cliente ? (q, v) => db.q(q, v)
+    : (typeof cliente.query === 'function' ? (q, v) => cliente.query(q, v) : (q, v) => cliente.q(q, v));
   const r = await exec(
     `INSERT INTO jobs (tipo, payload, fila, prioridade, chave_idem, family_id, rodar_apos, max_tentativas)
      VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, now()), $8)
