@@ -254,7 +254,8 @@ async function abrir(id) {
           '<div class="linha"><span class="sub">' + esc(c.email) + ' · ' + esc(papelNome(c.papel)) +
           ' · ' + esc(t('familia.aguardando')) + '</span></div>').join(''))
       : '') +
-    '<p style="margin-top:26px"><a href="#" onclick="pessoas();return false"><strong>' + esc(t('pessoa.titulo')) + '</strong></a></p>' +
+    '<p style="margin-top:26px"><a href="#" onclick="pessoas();return false"><strong>' + esc(t('pessoa.titulo')) + '</strong></a>' +
+      ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a></p>' +
     (pode('auditoria.ver') ? '<p><a href="#" onclick="auditoria();return false">' +
       esc(t('familia.ver_historico')) + '</a></p>' : ''));
 }
@@ -325,6 +326,8 @@ async function dossie(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id);
   if (r.status >= 400) return $(topo() + aviso(r.erro));
   const p = r.pessoa, f = r.familia;
+  const fatos = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/fatos');
+  const contribs = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/contribuicoes');
   const grupo = (titulo, lista, extra) => lista.length
     ? '<h3 style="margin-top:22px">' + esc(titulo) + '</h3>' + lista.map(x =>
         '<div class="linha"><span><a href="#" onclick="dossie(\\'' + x.id + '\\');return false">' +
@@ -346,6 +349,32 @@ async function dossie(id) {
     grupo(t('familia.filhos'), f.filhos, selo) +
     (f.pais.length + f.filhos.length + f.unioes.length + f.irmaos.length === 0
       ? '<p class="sub">' + esc(t('familia.sem_parentes')) + '</p>' : '') +
+
+    // O que sabemos — cada fato com o selo e o caminho de volta (§5).
+    '<h3 style="margin-top:26px">' + esc(t('fato.titulo')) + '</h3>' +
+    ((fatos.fatos || []).length
+      ? (fatos.fatos || []).map(x => linhaFato(x, p.id)).join('')
+      : '<p class="sub">' + esc(t('fato.sem_fatos')) + '</p>') +
+    (pode('claims.criar') ? formFato(p.id) : '') +
+
+    // O que a família contou — cru, com autor e data, nunca apagado (§15).
+    '<h3 style="margin-top:26px">' + esc(t('contribuicao.titulo')) + '</h3>' +
+    ((contribs.contribuicoes || []).length
+      ? (contribs.contribuicoes || []).map(c =>
+          '<div class="card" style="padding:16px' + (c.status === 'revisada' ? ';opacity:.65' : '') + '">' +
+            '<p style="margin:0 0 6px">' + esc(c.corpo) + '</p>' +
+            '<p class="sub" style="margin:0">' + esc(t('contribuicao.por')) + ' <strong>' +
+              esc(c.autor_nome || t('auditoria.sistema')) + '</strong> · ' +
+              esc(new Date(c.created_at).toLocaleDateString(IDIOMA)) +
+              (c.status === 'revisada' ? ' · ' + esc(t('contribuicao.revisada')) : '') + '</p>' +
+          '</div>').join('')
+      : '<p class="sub">' + esc(t('contribuicao.sem_contribuicoes')) + '</p>') +
+    (pode('contribuir')
+      ? '<label>' + esc(t('contribuicao.nova')) + '</label>' +
+        '<input id="cc" placeholder="' + esc(t('contribuicao.placeholder')) + '">' +
+        '<p><button class="btn" onclick="contar(\\'' + p.id + '\\')">' + esc(t('acao.salvar')) + '</button></p>'
+      : '') +
+
     (pode('parentesco.editar') ? formParentesco(p.id) : ''));
   if (pode('parentesco.editar')) preencherPessoas(p.id);
 }
@@ -386,6 +415,121 @@ async function ligar(id, confirmando) {
   }
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   dossie(id);
+}
+
+/** A fila do historiador: onde a família ainda não concorda (§17). */
+async function divergencias() {
+  const r = await api('GET', '/familias/' + FAM.id + '/divergencias');
+  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+    '<h2>' + esc(t('familia.divergencias')) + '</h2>' +
+    ((r.divergencias || []).length
+      ? (r.divergencias || []).map(d =>
+          '<div class="linha"><span><strong>' + esc(d.nome_exibicao) + '</strong> · ' +
+          esc(t('predicado.' + d.predicado)) + '<br><span class="sub">' +
+          esc((d.valores || []).join('  \u00d7  ')) + '</span></span>' +
+          '<button class="btn mini claro" onclick="deOndeVeio(\\'' + d.sujeito_id + '\\',\\'' + d.predicado +
+          '\\')">' + esc(t('fato.comparar')) + '</button></div>').join('')
+      : '<p class="sub">\u2014</p>'));
+}
+
+// ------------------------------------------------------------ proveniência
+// A palavra "claim" não aparece em lugar nenhum daqui para baixo (§82):
+// o usuário responde "o que você sabe" e "como você sabe disso".
+const selo = (st) => t('status.selo_' + st) + ' ' + t('status.' + st);
+
+function linhaFato(f, pessoaId) {
+  const rotulo = t('predicado.' + f.predicado);
+  return '<div class="linha"><span><strong>' + esc(rotulo) + ':</strong> ' + esc(f.valor) +
+    ' <span class="papel" title="' + esc(t('status.' + f.status)) + '">' + esc(selo(f.status)) + '</span>' +
+    (f.em_divergencia ? ' <span class="papel" style="background:#FBE3C7;color:#8A4B12">' +
+      esc(t('status.selo_DISPUTED') + ' ' + t('fato.divergencia')) + '</span>' : '') +
+    '</span><button class="btn mini claro" onclick="deOndeVeio(\\'' + pessoaId + '\\',\\'' +
+      f.predicado + '\\')">' + esc(t('fato.de_onde_veio')) + '</button></div>';
+}
+
+/**
+ * A tela que o §44 pede: "Quem informou que Antônio nasceu em 1921?"
+ * Mostra TODAS as versões — inclusive as que a família não aceitou.
+ */
+async function deOndeVeio(pessoaId, predicado) {
+  const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + pessoaId + '/fatos/' + predicado);
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const podeResolver = pode('claims.resolver');
+  $(topo() + '<p class="sub"><a href="#" onclick="dossie(\\'' + pessoaId + '\\');return false">← ' +
+      esc(t('acao.voltar_familias')) + '</a></p>' +
+    '<h2>' + esc(t('predicado.' + predicado)) + '</h2>' +
+    '<p class="sub">' + esc(t('fato.versoes')) + '</p>' +
+    (r.versoes || []).map(v =>
+      '<div class="card" style="padding:18px">' +
+        '<p style="margin:0 0 6px"><strong style="font-size:19px">' + esc(v.valor) + '</strong> ' +
+          '<span class="papel">' + esc(selo(v.status)) + '</span>' +
+          (v.aceito ? ' <span class="papel" style="background:#DCEFE0;color:#1F5C33">' +
+            esc(t('fato.aceita')) + '</span>' : '') + '</p>' +
+        '<p class="sub" style="margin:0 0 10px">' + esc(t('fato.informado_por')) + ' <strong>' +
+          esc(v.informado_por || t('auditoria.sistema')) + '</strong> ' + esc(t('fato.em')) + ' ' +
+          esc(new Date(v.created_at).toLocaleDateString(IDIOMA)) + '</p>' +
+        ((v.evidencias || []).length
+          ? '<p class="sub" style="margin:0">' + esc(t('fato.fontes')) + ': ' +
+            v.evidencias.map(e => (e.posicao === 'CONTRADIZ' ? '⚠ ' + esc(t('fato.contradiz')) + ' — ' : '') +
+              esc(t('fonte.' + e.fonte_tipo)) + (e.fonte_titulo ? ': ' + esc(e.fonte_titulo) : '') +
+              (e.fonte_referencia ? ' <em>(' + esc(e.fonte_referencia) + ')</em>' : '') +
+              (e.trecho ? '<br><span style="border-left:3px solid var(--borda);padding-left:10px;display:inline-block;margin-top:6px">“' +
+                esc(e.trecho) + '”</span>' : '')).join('<br>') + '</p>'
+          : '<p class="sub" style="margin:0">' + esc(t('fato.nenhuma_fonte')) + '</p>') +
+        (v.created_by_kind === 'ai' && podeResolver
+          ? '<p style="margin:12px 0 0"><button class="btn mini" onclick="confirmarIA(\\'' + v.id + '\\',\\'' +
+            pessoaId + '\\',\\'' + predicado + '\\')">' + esc(t('fato.confirmar_ia')) + '</button></p>' : '') +
+        (podeResolver && !v.aceito && v.created_by_kind !== 'ai'
+          ? '<p style="margin:12px 0 0"><button class="btn mini claro" onclick="aceitarVersao(\\'' + v.id +
+            '\\',\\'' + pessoaId + '\\',\\'' + predicado + '\\')">' + esc(t('fato.aceitar')) + '</button></p>' : '') +
+      '</div>').join('') +
+    '<p class="sub">' + esc(t('fato.preservadas')) + '</p>');
+}
+
+async function aceitarVersao(claimId, pessoaId, predicado) {
+  const motivo = prompt(t('fato.motivo'));
+  if (!motivo) return;
+  const r = await api('POST', '/familias/' + FAM.id + '/pessoas/' + pessoaId +
+    '/fatos/' + predicado + '/resolver', { claim_id: claimId, motivo });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  deOndeVeio(pessoaId, predicado);
+}
+
+async function confirmarIA(claimId, pessoaId, predicado) {
+  const r = await api('POST', '/familias/' + FAM.id + '/fatos/' + claimId + '/confirmar', {});
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  deOndeVeio(pessoaId, predicado);
+}
+
+function formFato(pessoaId) {
+  const preds = ['nome','data_nascimento','data_falecimento','local_nascimento','profissao'];
+  const fontes = ['RELATO','DOCUMENTO','REGISTRO_OFICIAL','MIDIA','PUBLICACAO'];
+  return '<h3 style="margin-top:26px">' + esc(t('fato.acrescentar')) + '</h3>' +
+    '<label>' + esc(t('fato.campo')) + '</label><select id="fp">' +
+      preds.map(x => '<option value="' + x + '">' + esc(t('predicado.' + x)) + '</option>').join('') + '</select>' +
+    '<label>' + esc(t('fato.valor')) + '</label><input id="fv">' +
+    '<label>' + esc(t('fato.como_sabe')) + '</label><select id="ft">' +
+      fontes.map(x => '<option value="' + x + '">' + esc(t('fonte.' + x)) + '</option>').join('') + '</select>' +
+    '<label>' + esc(t('fato.fonte_titulo')) + '</label><input id="fq">' +
+    '<label>' + esc(t('fato.fonte_referencia')) + '</label><input id="fr">' +
+    '<p><button class="btn" onclick="guardarFato(\\'' + pessoaId + '\\')">' + esc(t('acao.salvar')) + '</button></p>';
+}
+
+async function guardarFato(pessoaId) {
+  const r = await api('POST', '/familias/' + FAM.id + '/pessoas/' + pessoaId + '/fatos', {
+    predicado: document.getElementById('fp').value, valor: document.getElementById('fv').value,
+    fonte_tipo: document.getElementById('ft').value,
+    fonte_titulo: document.getElementById('fq').value,
+    fonte_referencia: document.getElementById('fr').value });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  dossie(pessoaId);
+}
+
+async function contar(pessoaId) {
+  const corpo = document.getElementById('cc').value;
+  const r = await api('POST', '/familias/' + FAM.id + '/pessoas/' + pessoaId + '/contribuicoes', { corpo });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  dossie(pessoaId);
 }
 
 // ------------------------------------------------------------------ árvore

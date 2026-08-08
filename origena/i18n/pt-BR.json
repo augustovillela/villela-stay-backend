@@ -73,7 +73,9 @@
     "modo_descendentes": "Descendentes",
     "modo_ambos": "Ambos",
     "imprimir": "Imprimir",
-    "geracoes": "Gerações"
+    "geracoes": "Gerações",
+    "divergencias": "Divergências",
+    "ver_divergencias": "Ver as divergências da família"
   },
   "papel": {
     "OWNER": "Responsável",
@@ -141,7 +143,19 @@
     "parentesco_nao_encontrado": "Parentesco não encontrado.",
     "filiacao_jovem_demais": "As datas dizem que essa pessoa teria menos de 12 anos quando a outra nasceu. Confira as datas — ou confirme, se estiverem certas.",
     "filiacao_velho_demais": "As datas dizem que essa pessoa teria mais de 70 anos quando a outra nasceu. Confira as datas — ou confirme, se estiverem certas.",
-    "filiacao_apos_morte": "As datas dizem que essa pessoa já havia falecido quando a outra nasceu. Confira as datas — ou confirme, se estiverem certas."
+    "filiacao_apos_morte": "As datas dizem que essa pessoa já havia falecido quando a outra nasceu. Confira as datas — ou confirme, se estiverem certas.",
+    "fonte_tipo_invalido": "Tipo de fonte inválido.",
+    "contribuicao_vazia": "Escreva alguma coisa antes de guardar.",
+    "contribuicao_nao_encontrada": "Contribuição não encontrada.",
+    "predicado_desconhecido": "Esse campo ainda não é registrado com fontes.",
+    "claim_sem_valor": "Diga qual é a informação.",
+    "claim_sem_fonte": "Toda informação precisa dizer de onde veio.",
+    "claim_repetido": "Você já registrou essa mesma informação.",
+    "claim_nao_encontrado": "Versão não encontrada.",
+    "claim_nao_e_inferencia": "Essa versão não foi sugerida pela IA.",
+    "evidencia_repetida": "Essa fonte já está ligada a esta versão.",
+    "resolucao_sem_motivo": "Explique por que a família aceitou esta versão. Daqui a 30 anos, alguém vai querer saber.",
+    "status_invalido": "Situação inválida."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -153,7 +167,9 @@
     "cadastro_talvez": "Se este e-mail estiver livre, enviamos um link de confirmação.",
     "recuperacao_enviada": "Se houver uma conta com este e-mail, enviamos as instruções.",
     "acesso_revogado": "O acesso foi revogado. O que esta pessoa contribuiu continua no acervo.",
-    "pessoa_arquivada": "A pessoa foi arquivada. Nada foi apagado — dá para restaurar."
+    "pessoa_arquivada": "A pessoa foi arquivada. Nada foi apagado — dá para restaurar.",
+    "divergencia_preservada": "Versão aceita. As outras continuam guardadas e podem ser consultadas a qualquer momento.",
+    "revisao_preserva": "Guardamos a nova versão. A anterior continua no histórico."
   },
   "email": {
     "verificacao_assunto": "Confirme seu e-mail — Origena",
@@ -200,7 +216,13 @@
     "pessoa.editada": "Pessoa editada",
     "pessoa.arquivada": "Pessoa arquivada",
     "parentesco.criado": "Parentesco registrado",
-    "parentesco.removido": "Parentesco removido"
+    "parentesco.removido": "Parentesco removido",
+    "contribuicao.registrada": "Contribuição registrada",
+    "contribuicao.revisada": "Contribuição revisada",
+    "claim.afirmado": "Informação registrada",
+    "evidencia.anexada": "Fonte acrescentada",
+    "divergencia.resolvida": "Divergência resolvida",
+    "inferencia.confirmada": "Sugestão da IA confirmada"
   },
   "pessoa": {
     "titulo": "Pessoas",
@@ -241,5 +263,71 @@
     "enteado": "enteado",
     "desconhecido": "não sabemos",
     "confirmo": "As datas estão certas mesmo assim"
+  },
+  "fato": {
+    "titulo": "O que sabemos",
+    "de_onde_veio": "De onde veio isto?",
+    "acrescentar": "Acrescentar informação",
+    "campo": "O que você sabe",
+    "valor": "A informação",
+    "como_sabe": "Como você sabe disso?",
+    "fonte_titulo": "Qual documento ou lembrança",
+    "fonte_referencia": "Onde está (cartório, livro, página…)",
+    "trecho": "O que está escrito, exatamente",
+    "sem_fatos": "Nada registrado com fonte ainda. Comece contando o que a família sabe.",
+    "versoes": "Versões desta informação",
+    "informado_por": "Informado por",
+    "em": "em",
+    "aceita": "aceita pela família",
+    "aceitar": "Aceitar esta versão",
+    "motivo": "Por que esta?",
+    "divergencia": "A família não concorda sobre isto",
+    "comparar": "Comparar as versões",
+    "confirmar_ia": "Confirmar esta sugestão",
+    "fontes": "Fontes",
+    "contradiz": "contradiz",
+    "acrescentar_fonte": "Acrescentar outra fonte",
+    "nenhuma_fonte": "sem fonte registrada",
+    "preservadas": "As versões que não foram aceitas continuam guardadas — nada é apagado."
+  },
+  "status": {
+    "DOCUMENTED": "Documentado",
+    "FAMILY_REPORTED": "Relato familiar",
+    "AI_INFERRED": "Sugerido pela IA",
+    "PROBABLE": "Provável",
+    "DISPUTED": "Divergente",
+    "UNCONFIRMED": "Não confirmado",
+    "selo_DOCUMENTED": "🟢",
+    "selo_FAMILY_REPORTED": "🔵",
+    "selo_AI_INFERRED": "🟡",
+    "selo_PROBABLE": "🟡",
+    "selo_DISPUTED": "🟠",
+    "selo_UNCONFIRMED": "⚪"
+  },
+  "fonte": {
+    "DOCUMENTO": "Documento",
+    "RELATO": "Alguém contou",
+    "ENTREVISTA": "Entrevista",
+    "MIDIA": "Foto ou vídeo",
+    "REGISTRO_OFICIAL": "Registro oficial (cartório)",
+    "PUBLICACAO": "Publicação",
+    "IMPORTACAO": "Importação",
+    "IA": "IA"
+  },
+  "contribuicao": {
+    "titulo": "O que a família contou",
+    "nova": "Contar alguma coisa",
+    "placeholder": "Ele nasceu na fazenda do avô, e minha mãe dizia que…",
+    "sem_contribuicoes": "Ninguém contou nada sobre esta pessoa ainda.",
+    "revisada": "versão anterior",
+    "editar": "Corrigir",
+    "por": "por"
+  },
+  "predicado": {
+    "nome": "Nome",
+    "data_nascimento": "Data de nascimento",
+    "data_falecimento": "Data de falecimento",
+    "local_nascimento": "Onde nasceu",
+    "profissao": "Profissão"
   }
 }

@@ -20,6 +20,7 @@ const { erro } = require('./erros');
 const privacidade = require('./privacidade');
 const arvore = require('./arvore');
 const { Persons, Relationships } = require('./repo-pessoas');
+const prov = require('./proveniencia');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -202,6 +203,126 @@ function registrarRotasApp(app) {
       await tenancy.noEscopoDe(req, (t) => Relationships.remover(t, {
         familyId: req.familia.id, userId: req.usuario.id, id: req.params.relId }));
       res.json({ ok: true });
+    }));
+
+  // --------------------------------------------------------- proveniência
+  // A tela nunca diz "claim" nem "evidência" (§82): o usuário responde
+  // "Quando ele nasceu?" e "Como você sabe disso?". O modelo fica aqui.
+
+  app.get(decl('GET', `${R}/familias/:familyId/pessoas/:pessoaId/fatos`), ...naFamilia,
+    h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, async (t) => ({
+        fatos: await prov.fatosDe(t, req.params.pessoaId),
+        divergencias: await prov.divergenciasDe(t, req.params.pessoaId),
+      }));
+      res.json(r);
+    }));
+
+  /** "De onde veio isto?" — todas as versões, com autor, data e fonte. */
+  app.get(decl('GET', `${R}/familias/:familyId/pessoas/:pessoaId/fatos/:predicado`), ...naFamilia,
+    h(async (req, res) => {
+      if (!prov.PREDICADOS[req.params.predicado]) throw erro('erro.predicado_desconhecido', 400);
+      const versoes = await tenancy.noEscopoDe(req, (t) =>
+        prov.versoesDe(t, req.params.pessoaId, req.params.predicado));
+      res.json({ predicado: req.params.predicado, versoes });
+    }));
+
+  /** Afirmar um fato COM a fonte. Não existe caminho sem fonte. */
+  app.post(decl('POST', `${R}/familias/:familyId/pessoas/:pessoaId/fatos`), ...naFamilia,
+    rbac.exigir('claims.criar'), h(async (req, res) => {
+      const d = req.body || {};
+      const r = await tenancy.noEscopoDe(req, async (t) => {
+        // A "fonte" que o usuário informa em linguagem humana: um
+        // documento que ele tem, ou a memória dele mesmo.
+        const fonte = await prov.criarFonte(t, {
+          familyId: req.familia.id, userId: req.usuario.id,
+          tipo: s(d.fonte_tipo, 30) || 'RELATO',
+          titulo: s(d.fonte_titulo, 200),
+          referenciaExterna: s(d.fonte_referencia, 300) });
+        return prov.afirmar(t, {
+          familyId: req.familia.id, userId: req.usuario.id,
+          sujeitoId: req.params.pessoaId, predicado: s(d.predicado, 40),
+          valor: d.valor, fonte, trecho: s(d.trecho, 2000) });
+      });
+      res.status(201).json({ fato: r });
+    }));
+
+  /** Acrescentar outra fonte a uma versão — inclusive CONTRADIZENDO. */
+  app.post(decl('POST', `${R}/familias/:familyId/fatos/:claimId/fontes`), ...naFamilia,
+    rbac.exigir('fontes.gerenciar'), h(async (req, res) => {
+      const d = req.body || {};
+      const ev = await tenancy.noEscopoDe(req, async (t) => {
+        const fonte = await prov.criarFonte(t, {
+          familyId: req.familia.id, userId: req.usuario.id,
+          tipo: s(d.fonte_tipo, 30) || 'RELATO', titulo: s(d.fonte_titulo, 200),
+          referenciaExterna: s(d.fonte_referencia, 300) });
+        return prov.anexarEvidencia(t, {
+          familyId: req.familia.id, userId: req.usuario.id, claimId: req.params.claimId,
+          fonte, posicao: d.posicao === 'CONTRADIZ' ? 'CONTRADIZ' : 'SUPORTA',
+          forca: ['forte', 'media', 'fraca'].includes(d.forca) ? d.forca : 'media',
+          trecho: s(d.trecho, 2000), nota: s(d.nota, 500) });
+      });
+      res.status(201).json({ evidencia: ev });
+    }));
+
+  /** A família escolhe uma versão. As outras CONTINUAM ali. */
+  app.post(decl('POST', `${R}/familias/:familyId/pessoas/:pessoaId/fatos/:predicado/resolver`),
+    ...naFamilia, rbac.exigir('claims.resolver'), h(async (req, res) => {
+      const d = req.body || {};
+      const r = await tenancy.noEscopoDe(req, (t) => prov.resolver(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        sujeitoId: req.params.pessoaId, predicado: req.params.predicado,
+        claimAceitoId: d.claim_id, motivo: s(d.motivo, 500) }));
+      res.json({ resolucao: r, aviso: req.t('mensagem.divergencia_preservada') });
+    }));
+
+  /** Sugestão da IA vira fato só por ato humano registrado (§6). */
+  app.post(decl('POST', `${R}/familias/:familyId/fatos/:claimId/confirmar`), ...naFamilia,
+    rbac.exigir('claims.resolver'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => prov.confirmarInferencia(t, {
+        familyId: req.familia.id, userId: req.usuario.id, claimId: req.params.claimId,
+        novoStatus: s((req.body || {}).status, 20) || 'FAMILY_REPORTED' }));
+      res.status(201).json({ fato: r });
+    }));
+
+  // ------------------------------------------------------- contribuições
+  app.get(decl('GET', `${R}/familias/:familyId/pessoas/:pessoaId/contribuicoes`), ...naFamilia,
+    h(async (req, res) => {
+      const lista = await tenancy.noEscopoDe(req, (t) =>
+        prov.contribuicoesDe(t, 'person', req.params.pessoaId));
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      res.json({ contribuicoes: privacidade.filtrar(lista, quem) });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/pessoas/:pessoaId/contribuicoes`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const d = req.body || {};
+      const c = await tenancy.noEscopoDe(req, (t) => prov.contribuir(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        alvoTipo: 'person', alvoId: req.params.pessoaId,
+        corpo: d.corpo, tipo: s(d.tipo, 20) || 'relato',
+        privacidade: ['PUBLIC', 'FAMILY', 'GROUP', 'PRIVATE'].includes(d.privacidade) ? d.privacidade : 'FAMILY' }));
+      res.status(201).json({ contribuicao: c });
+    }));
+
+  /** Editar NÃO sobrescreve: cria revisão e a original continua (§15). */
+  app.patch(decl('PATCH', `${R}/familias/:familyId/contribuicoes/:contribId`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const nova = await tenancy.noEscopoDe(req, (t) => prov.revisarContribuicao(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        id: req.params.contribId, corpo: (req.body || {}).corpo }));
+      res.json({ contribuicao: nova, aviso: req.t('mensagem.revisao_preserva') });
+    }));
+
+  /** Painel de divergências da família inteira — a fila do historiador. */
+  app.get(decl('GET', `${R}/familias/:familyId/divergencias`), ...naFamilia,
+    h(async (req, res) => {
+      const lista = await tenancy.noEscopoDe(req, (t) => t.todas(
+        `SELECT d.*, p.nome_exibicao FROM v_divergencias d
+           JOIN persons p ON p.id = d.sujeito_id
+          WHERE d.sujeito_tipo = 'person' AND p.deleted_at IS NULL
+          ORDER BY p.nome_exibicao, d.predicado LIMIT 200`));
+      res.json({ divergencias: lista });
     }));
 
   // -------------------------------------------------------------- árvore

@@ -1,5 +1,5 @@
 // =====================================================================
-// ORIGENA — suíte de testes (Fases 0 e 1).   npm run test:origena
+// ORIGENA — suíte de testes (Fases 0 a 3).   npm run test:origena
 //
 // Sobe o Express real com auth de staff injetada, num SCHEMA DESCARTÁVEL
 // do Postgres (o equivalente ao os.tmpdir() que os produtos SQLite usam)
@@ -10,6 +10,9 @@
 //         ISOLAMENTO ENTRE FAMÍLIAS (§94) — este último é gerado a partir
 //         da tabela de rotas escopadas, então rota nova nasce coberta e a
 //         suíte quebra se alguém esquecer.
+// Fase 2: datas imprecisas, pessoas, parentesco e árvore.
+// Fase 3: PROVENIÊNCIA — o cenário do §4 inteiro, do relato divergente à
+//         resolução que NÃO apaga as versões perdedoras.
 // =====================================================================
 'use strict';
 const crypto = require('crypto');
@@ -883,6 +886,247 @@ async function principal() {
     assert(noBanco && noBanco.deleted_at, 'a linha foi APAGADA do banco em vez de arquivada');
   });
 
+  // =================================================================== FASE 3
+  const prov = require('./proveniencia');
+  console.log('\nproveniência — o cenário do §4');
+
+  const F = (caminho) => `/origena/api/v1/familias/${famA}${caminho}`;
+  const afirmar = (pessoaId, corpo, sessao = ana) =>
+    req('POST', F(`/pessoas/${pessoaId}/fatos`), { sessao, corpo });
+
+  let antonio;
+  await teste('Maria diz 1921, Carlos diz 1922, a certidão diz 1921', async () => {
+    antonio = await criarPessoa({ nome: 'Antônio Villela' });
+
+    // Ana no papel da Maria: relato de família.
+    const r1 = await afirmar(antonio.id, { predicado: 'data_nascimento', valor: '1921',
+      fonte_tipo: 'RELATO', fonte_titulo: 'Maria contou no almoço de domingo' }, ana);
+    assert.strictEqual(r1.status, 201, r1.texto);
+    assert.strictEqual(r1.json.fato.status, 'FAMILY_REPORTED', 'relato virou documento');
+
+    // Bruno no papel do Carlos: outro relato, valor diferente.
+    const r2 = await afirmar(antonio.id, { predicado: 'data_nascimento', valor: '1922',
+      fonte_tipo: 'RELATO', fonte_titulo: 'Carlos lembra de 1922' }, bruno);
+    assert.strictEqual(r2.status, 201, r2.texto);
+
+    // A certidão: fonte documental.
+    const r3 = await afirmar(antonio.id, { predicado: 'data_nascimento', valor: '1921',
+      fonte_tipo: 'REGISTRO_OFICIAL', fonte_titulo: 'Certidão de nascimento',
+      fonte_referencia: 'Cartório de Pirapora, livro 12, fl. 44',
+      trecho: 'Antônio Villela, nascido aos quinze dias de março de mil novecentos e vinte e um' }, carla);
+    assert.strictEqual(r3.status, 201, r3.texto);
+    assert.strictEqual(r3.json.fato.status, 'DOCUMENTED', 'certidão não virou documento');
+  });
+
+  await teste('a Origena NÃO resolve sozinha: fica em DIVERGÊNCIA', async () => {
+    const r = await req('GET', F(`/pessoas/${antonio.id}/fatos`), { sessao: ana });
+    const nasc = r.json.fatos.find((f) => f.predicado === 'data_nascimento');
+    assert(nasc, 'o fato não apareceu');
+    assert.strictEqual(nasc.em_divergencia, true, 'não detectou a divergência');
+    assert.strictEqual(nasc.resolvido, false);
+    assert.strictEqual(r.json.divergencias.length, 1);
+    assert.strictEqual(r.json.divergencias[0].valores_distintos, 2);
+  });
+
+  await teste('"de onde veio isto?" devolve as TRÊS versões com autor e fonte', async () => {
+    const r = await req('GET', F(`/pessoas/${antonio.id}/fatos/data_nascimento`), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert.strictEqual(r.json.versoes.length, 3, 'perdeu alguma versão');
+    const autores = r.json.versoes.map((v) => v.informado_por).sort();
+    assert.deepStrictEqual(autores, ['Ana Villela', 'Bruno Villela', 'Carla Villela']);
+    // A certidão vem primeiro: melhor evidência.
+    assert.strictEqual(r.json.versoes[0].status, 'DOCUMENTED');
+    const doc = r.json.versoes[0];
+    assert.strictEqual(doc.evidencias.length, 1);
+    assert.strictEqual(doc.evidencias[0].fonte_tipo, 'REGISTRO_OFICIAL');
+    assert.match(doc.evidencias[0].fonte_referencia, /Pirapora/);
+    assert.match(doc.evidencias[0].trecho, /mil novecentos e vinte e um/);
+  });
+
+  await teste('o valor EXIBIDO é o de melhor evidência, com o selo de divergência', async () => {
+    const p = await req('GET', F(`/pessoas/${antonio.id}`), { sessao: ana });
+    assert.strictEqual(p.json.pessoa.nascimento_valor, '1921', 'exibiu o valor de pior evidência');
+    // e a projeção aponta o claim de origem — é o caminho de volta.
+    assert(p.json.pessoa.nascimento_claim_id, 'a projeção não guardou de qual versão veio');
+    const fatos = await req('GET', F(`/pessoas/${antonio.id}/fatos`), { sessao: ana });
+    const nasc = fatos.json.fatos.find((f) => f.predicado === 'data_nascimento');
+    assert.strictEqual(nasc.claim_id, p.json.pessoa.nascimento_claim_id, 'projeção e fato divergiram');
+  });
+
+  await teste('a família resolve — e as versões perdedoras CONTINUAM ali (§4)', async () => {
+    const versoes = await req('GET', F(`/pessoas/${antonio.id}/fatos/data_nascimento`), { sessao: ana });
+    const doc = versoes.json.versoes.find((v) => v.status === 'DOCUMENTED');
+
+    const semMotivo = await req('POST', F(`/pessoas/${antonio.id}/fatos/data_nascimento/resolver`),
+      { sessao: carla, corpo: { claim_id: doc.id } });
+    assert.strictEqual(semMotivo.status, 400, 'aceitou resolver sem explicar por quê');
+
+    const r = await req('POST', F(`/pessoas/${antonio.id}/fatos/data_nascimento/resolver`),
+      { sessao: carla, corpo: { claim_id: doc.id, motivo: 'A certidão de nascimento é a fonte mais forte.' } });
+    assert.strictEqual(r.status, 200, r.texto);
+
+    const depois = await req('GET', F(`/pessoas/${antonio.id}/fatos/data_nascimento`), { sessao: ana });
+    assert.strictEqual(depois.json.versoes.length, 3, 'RESOLVER APAGOU VERSÕES — é o que o §4 proíbe');
+    assert.strictEqual(depois.json.versoes.filter((v) => v.aceito).length, 1);
+    assert(depois.json.versoes.find((v) => v.valor === '1922'), 'o relato do Carlos sumiu');
+    // a divergência continua registrada; ela foi decidida, não apagada
+    const fatos = await req('GET', F(`/pessoas/${antonio.id}/fatos`), { sessao: ana });
+    const nasc = fatos.json.fatos.find((f) => f.predicado === 'data_nascimento');
+    assert.strictEqual(nasc.resolvido, true);
+    assert.strictEqual(nasc.em_divergencia, true, 'a divergência foi apagada em vez de decidida');
+  });
+
+  await teste('reverter a decisão é um registro NOVO, nunca um DELETE', async () => {
+    const versoes = await req('GET', F(`/pessoas/${antonio.id}/fatos/data_nascimento`), { sessao: ana });
+    const doCarlos = versoes.json.versoes.find((v) => v.valor === '1922');
+    await req('POST', F(`/pessoas/${antonio.id}/fatos/data_nascimento/resolver`),
+      { sessao: carla, corpo: { claim_id: doCarlos.id, motivo: 'Apareceu um registro de batismo de 1922.' } });
+    const n = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT count(*)::int c FROM claim_resolutions WHERE sujeito_id = $1 AND predicado = 'data_nascimento'`,
+      [antonio.id]));
+    assert.strictEqual(n.c, 2, 'a resolução anterior foi sobrescrita em vez de somada');
+    const p = await req('GET', F(`/pessoas/${antonio.id}`), { sessao: ana });
+    assert.strictEqual(p.json.pessoa.nascimento_valor, '1922', 'a projeção não seguiu a nova decisão');
+    // volta para a certidão, para não deixar o teste com estado esquisito
+    const doc = versoes.json.versoes.find((v) => v.status === 'DOCUMENTED');
+    await req('POST', F(`/pessoas/${antonio.id}/fatos/data_nascimento/resolver`),
+      { sessao: carla, corpo: { claim_id: doc.id, motivo: 'A certidão prevalece.' } });
+  });
+
+  console.log('\nproveniência — travas');
+  await teste('não existe caminho para afirmar sem dizer de onde veio', async () => {
+    const semFonte = await tenancy.comEscopo(famA, async (t) => {
+      try {
+        await prov.afirmar(t, { familyId: famA, userId: ana.id, sujeitoId: antonio.id,
+          predicado: 'profissao', valor: 'lavrador', fonte: null });
+        return 'passou';
+      } catch (e) { return e.chave; }
+    });
+    assert.strictEqual(semFonte, 'erro.claim_sem_fonte');
+  });
+
+  await teste('a IA só escreve AI_INFERRED — e a trava é do BANCO', async () => {
+    await assert.rejects(tenancy.comEscopo(famA, (t) => t.q(
+      `INSERT INTO claims (family_id, sujeito_tipo, sujeito_id, predicado, valor, valor_norm,
+         status, created_by_kind) VALUES ($1,'person',$2,'profissao','doutor','doutor',
+         'DOCUMENTED','ai')`, [famA, antonio.id])),
+    /ia_so_infere/, 'o banco aceitou a IA criando fato DOCUMENTADO');
+
+    const ok = await tenancy.comEscopo(famA, (t) => t.uma(
+      `INSERT INTO claims (family_id, sujeito_tipo, sujeito_id, predicado, valor, valor_norm,
+         status, created_by_kind) VALUES ($1,'person',$2,'profissao','lavrador','lavrador',
+         'AI_INFERRED','ai') RETURNING *`, [famA, antonio.id]));
+    assert.strictEqual(ok.status, 'AI_INFERRED');
+    P.claimIA = ok.id;
+  });
+
+  await teste('sugestão da IA nunca vira fato sozinha — precisa de ato humano registrado', async () => {
+    const r = await req('POST', F(`/fatos/${P.claimIA}/confirmar`),
+      { sessao: carla, corpo: { status: 'FAMILY_REPORTED' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    assert.strictEqual(r.json.fato.created_by_kind, 'user', 'a confirmação saiu como se fosse da IA');
+    assert.strictEqual(r.json.fato.status, 'FAMILY_REPORTED');
+    // o claim da IA CONTINUA existindo como sugestão — o histórico mostra
+    // que a IA sugeriu e quem confirmou
+    const ainda = await tenancy.comEscopo(famA, (t) =>
+      t.uma('SELECT status FROM claims WHERE id = $1', [P.claimIA]));
+    assert.strictEqual(ainda.status, 'AI_INFERRED', 'a sugestão da IA foi sobrescrita');
+  });
+
+  await teste('grafias diferentes do MESMO fato não viram divergência falsa', async () => {
+    const pessoa = await criarPessoa({ nome: 'Teste Normalização' });
+    await afirmar(pessoa.id, { predicado: 'data_nascimento', valor: '1930',
+      fonte_tipo: 'RELATO', fonte_titulo: 'Relato A' }, ana);
+    await afirmar(pessoa.id, { predicado: 'data_nascimento', valor: ' 1930 ',
+      fonte_tipo: 'RELATO', fonte_titulo: 'Relato B' }, bruno);
+    const r = await req('GET', F(`/pessoas/${pessoa.id}/fatos`), { sessao: ana });
+    const nasc = r.json.fatos.find((f) => f.predicado === 'data_nascimento');
+    assert.strictEqual(nasc.em_divergencia, false, 'inventou divergência entre "1930" e " 1930 "');
+    // e "c. 1930" É diferente de "1930": precisão diferente, fato diferente
+    await afirmar(pessoa.id, { predicado: 'data_nascimento', valor: 'c. 1930',
+      fonte_tipo: 'RELATO', fonte_titulo: 'Relato C' }, carla);
+    const r2 = await req('GET', F(`/pessoas/${pessoa.id}/fatos`), { sessao: ana });
+    assert.strictEqual(r2.json.fatos.find((f) => f.predicado === 'data_nascimento').em_divergencia, true,
+      'tratou "c. 1930" como igual a "1930"');
+  });
+
+  await teste('fonte documental que chega depois PROMOVE a versão', async () => {
+    const pessoa = await criarPessoa({ nome: 'Teste Promoção' });
+    const r = await afirmar(pessoa.id, { predicado: 'profissao', valor: 'professora',
+      fonte_tipo: 'RELATO', fonte_titulo: 'A tia contou' }, ana);
+    assert.strictEqual(r.json.fato.status, 'FAMILY_REPORTED');
+    const ev = await req('POST', F(`/fatos/${r.json.fato.id}/fontes`), { sessao: carla,
+      corpo: { fonte_tipo: 'DOCUMENTO', fonte_titulo: 'Diploma de magistério', posicao: 'SUPORTA' } });
+    assert.strictEqual(ev.status, 201, ev.texto);
+    const versoes = await req('GET', F(`/pessoas/${pessoa.id}/fatos/profissao`), { sessao: ana });
+    assert.strictEqual(versoes.json.versoes[0].status, 'DOCUMENTED', 'o documento não promoveu a versão');
+    assert.strictEqual(versoes.json.versoes[0].evidencias.length, 2);
+  });
+
+  await teste('fonte pode CONTRADIZER — e isso fica registrado', async () => {
+    const versoes = await req('GET', F(`/pessoas/${antonio.id}/fatos/data_nascimento`), { sessao: ana });
+    const doCarlos = versoes.json.versoes.find((v) => v.valor === '1922');
+    const r = await req('POST', F(`/fatos/${doCarlos.id}/fontes`), { sessao: carla,
+      corpo: { fonte_tipo: 'REGISTRO_OFICIAL', fonte_titulo: 'Certidão de nascimento',
+        posicao: 'CONTRADIZ', nota: 'A certidão diz 1921.' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    const depois = await req('GET', F(`/pessoas/${antonio.id}/fatos/data_nascimento`), { sessao: ana });
+    const carlos = depois.json.versoes.find((v) => v.valor === '1922');
+    assert(carlos.evidencias.some((e) => e.posicao === 'CONTRADIZ'), 'não registrou a contradição');
+    assert.notStrictEqual(carlos.status, 'DOCUMENTED', 'fonte que CONTRADIZ promoveu a versão');
+  });
+
+  console.log('\ncontribuições');
+  await teste('o que a família contou fica guardado com autor e data', async () => {
+    const r = await req('POST', F(`/pessoas/${antonio.id}/contribuicoes`), { sessao: bruno,
+      corpo: { corpo: 'Ele trabalhava na roça e tocava sanfona nas festas de junho.' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    const lista = await req('GET', F(`/pessoas/${antonio.id}/contribuicoes`), { sessao: ana });
+    assert(lista.json.contribuicoes.some((c) => c.autor_nome === 'Bruno Villela'), 'perdeu o autor');
+    P.contrib = r.json.contribuicao.id;
+  });
+
+  await teste('corrigir uma contribuição NÃO apaga a original (§15)', async () => {
+    const r = await req('PATCH', F(`/contribuicoes/${P.contrib}`), { sessao: bruno,
+      corpo: { corpo: 'Ele trabalhava na roça e tocava sanfona nas festas de junho e de agosto.' } });
+    assert.strictEqual(r.status, 200, r.texto);
+    const lista = await req('GET', F(`/pessoas/${antonio.id}/contribuicoes`), { sessao: ana });
+    const original = lista.json.contribuicoes.find((c) => c.id === P.contrib);
+    assert(original, 'a contribuição original SUMIU');
+    assert.strictEqual(original.status, 'revisada');
+    assert.match(original.corpo, /festas de junho\.$/, 'o texto original foi alterado');
+    const nova = lista.json.contribuicoes.find((c) => c.revisao_de === P.contrib);
+    assert(nova && /agosto/.test(nova.corpo), 'a revisão não foi guardada');
+  });
+
+  await teste('contribuição não tem rota de exclusão — nem por acidente', async () => {
+    const rotas = montado.ROTAS_ESCOPADAS.filter((r) => /contribuicoes/.test(r.caminho));
+    assert(!rotas.some((r) => r.metodo === 'DELETE'),
+      'existe rota que apaga contribuição: ' + JSON.stringify(rotas));
+  });
+
+  await teste('painel de divergências da família lista o que precisa de decisão', async () => {
+    const r = await req('GET', F('/divergencias'), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.divergencias.some((d) => d.nome_exibicao === 'Antônio Villela'
+      && d.predicado === 'data_nascimento'), 'não listou a divergência do Antônio');
+  });
+
+  await teste('CONTRIBUTOR contribui e afirma, mas NÃO resolve divergência', async () => {
+    const r = await req('POST', F(`/pessoas/${antonio.id}/fatos/data_nascimento/resolver`),
+      { sessao: bruno, corpo: { claim_id: P.claimIA, motivo: 'porque sim' } });
+    assert.strictEqual(r.status, 403, 'CONTRIBUTOR resolveu divergência da família');
+  });
+
+  await teste('todo fato exibido tem selo — nenhum aparece "pelado"', async () => {
+    const r = await req('GET', F(`/pessoas/${antonio.id}/fatos`), { sessao: ana });
+    for (const f of r.json.fatos) {
+      assert(prov.STATUS.includes(f.status), `fato ${f.predicado} sem status válido: ${f.status}`);
+      assert(i18n.t('pt-BR', 'status.selo_' + f.status) !== 'status.selo_' + f.status,
+        `status ${f.status} não tem selo`);
+    }
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
@@ -933,7 +1177,8 @@ async function principal() {
         .replace(':familyId', famB)
         .replace(':userId', bruno.id)
         .replace(':pessoaId', uuidFalso).replace(':relId', uuidFalso)
-        .replace(':id', uuidFalso);
+        .replace(':predicado', 'data_nascimento').replace(':claimId', uuidFalso)
+        .replace(':contribId', uuidFalso).replace(':id', uuidFalso);
       const r = await req(rota.metodo, caminho, { sessao: ana, corpo: rota.metodo === 'GET' ? undefined : { nome: 'invasao', papel: 'GUEST' } });
       // 404 e NUNCA 403: 403 confirmaria que a família existe (T2).
       if (r.status !== 404) falhas94.push(`${rota.metodo} ${rota.caminho} → ${r.status}`);
@@ -945,7 +1190,9 @@ async function principal() {
   await teste('o outro lado também: usuário de B não alcança A', async () => {
     for (const rota of montado.ROTAS_ESCOPADAS) {
       const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
-        .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO)
+        .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
+        .replace(':contribId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, { sessao: silva, corpo: rota.metodo === 'GET' ? undefined : { nome: 'x', papel: 'GUEST' } });
       assert.strictEqual(r.status, 404, `${rota.metodo} ${rota.caminho} devolveu ${r.status}`);
     }
@@ -954,7 +1201,9 @@ async function principal() {
   await teste('sem sessão nenhuma, tudo é 401 (nunca 200)', async () => {
     for (const rota of montado.ROTAS_ESCOPADAS) {
       const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
-        .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO)
+        .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
+        .replace(':contribId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, {});
       assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
     }
@@ -988,7 +1237,7 @@ async function principal() {
     falhas.forEach((f) => console.log(`  • ${f.nome}: ${f.erro}`));
     process.exit(1);
   }
-  console.log('ORIGENA Fases 0, 1 e 2: verde.\n');
+  console.log('ORIGENA Fases 0 a 3: verde.\n');
 }
 
 principal().catch(async (e) => {
