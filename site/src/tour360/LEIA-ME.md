@@ -120,8 +120,6 @@ O `<script>` do visualizador leva `?v=<hash do arquivo>`, gerado no build. **Nã
 isso, quem já visitou continua rodando a versão antiga depois do deploy. Aconteceu ao desenvolver
 a anticolisão e custou uma investigação inteira até perceber que o código no ar estava certo e o
 navegador é que estava velho.
-Para achar o ângulo: abra o tour, posicione a vista e leia `?cena=` — ou vá por
-tentativa em passos de 15°, é rápido.
 
 ## 3. Publicar
 
