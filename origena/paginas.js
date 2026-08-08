@@ -92,13 +92,19 @@ const APP = pagina('Origena', `
 .wrap{max-width:720px}
 .topo{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--borda)}
 .marca{font-family:Lora,Georgia,serif;font-size:22px;font-weight:600}
-input,select{width:100%;padding:11px 13px;border:1px solid var(--borda);border-radius:10px;
-font:15px Inter,system-ui,sans-serif;background:var(--card);color:var(--tinta);margin:6px 0 14px}
-label{font-size:14px;font-weight:600;display:block;margin-top:6px}
-.btn{background:var(--tema);color:#fff;border:0;border-radius:999px;padding:11px 22px;
-font-weight:600;font-size:15px;cursor:pointer}
+/* §85: alvo de toque de 44px e texto de 16px+. A Origena vai ser usada
+   por avós no celular — controle apertado aqui não é detalhe estético.
+   16px no input também evita o zoom automático do iOS ao focar. */
+input,select{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--borda);
+border-radius:10px;font:16px Inter,system-ui,sans-serif;background:var(--card);
+color:var(--tinta);margin:6px 0 14px}
+input[type=checkbox]{min-height:22px;width:22px;height:22px;vertical-align:-4px}
+label{font-size:15px;font-weight:600;display:block;margin-top:6px}
+.btn{background:var(--tema);color:#fff;border:0;border-radius:999px;padding:13px 26px;
+min-height:48px;font-weight:600;font-size:16px;cursor:pointer}
 .btn.claro{background:transparent;color:var(--tema);border:1px solid var(--tema)}
-.btn.mini{padding:6px 13px;font-size:13px}
+.btn.mini{min-height:40px;padding:9px 16px;font-size:14px}
+a{text-decoration-thickness:1px;text-underline-offset:3px}
 .btn:disabled{opacity:.5;cursor:wait}
 .linha{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;
 border-bottom:1px solid var(--borda);flex-wrap:wrap}
