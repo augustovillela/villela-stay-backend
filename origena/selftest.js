@@ -677,8 +677,216 @@ async function principal() {
     }
   });
 
+  // =================================================================== FASE 2
+  const datasMod = require('./datas');
+  console.log('\ndatas imprecisas');
+  await teste('lê os formatos que a família realmente escreve', async () => {
+    const casos = [
+      ['1921', 'ANO', '1921-01-01', '1921-12-31'],
+      ['15/03/1921', 'DIA', '1921-03-15', '1921-03-15'],
+      ['03/1921', 'MES', '1921-03-01', '1921-03-31'],
+      ['c. 1890', 'CIRCA', '1885-01-01', '1895-12-31'],
+      ['por volta de 1890', 'CIRCA', '1885-01-01', '1895-12-31'],
+      ['anos 40', 'DECADA', '1940-01-01', '1949-12-31'],
+      ['década de 1890', 'DECADA', '1890-01-01', '1899-12-31'],
+      ['antes de 1920', 'ANTES_DE', null, '1920-12-31'],
+      ['depois de 1950', 'DEPOIS_DE', '1950-01-01', null],
+      ['entre 1910 e 1920', 'ENTRE', '1910-01-01', '1920-12-31'],
+    ];
+    for (const [texto, precisao, ini, fim] of casos) {
+      const r = datasMod.interpretar(texto);
+      assert(!r.erro, `"${texto}" não foi entendida: ${r.erro}`);
+      assert.strictEqual(r.precisao, precisao, `"${texto}" virou ${r.precisao}`);
+      if (ini) assert.strictEqual(r.ini, ini, `"${texto}" início ${r.ini}`);
+      if (fim) assert.strictEqual(r.fim, fim, `"${texto}" fim ${r.fim}`);
+    }
+  });
+
+  await teste('recusa data impossível sem inventar precisão', async () => {
+    for (const ruim of ['31/02/1921', 'abacaxi', '13/13/1900', '1920-1910']) {
+      assert(datasMod.interpretar(ruim).erro, `aceitou "${ruim}"`);
+    }
+  });
+
+  await teste('comparação de datas imprecisas admite não saber', async () => {
+    const a = datasMod.interpretar('1900'), b = datasMod.interpretar('1950');
+    const c = datasMod.interpretar('c. 1890'), d = datasMod.interpretar('anos 1890');
+    assert.strictEqual(datasMod.comparar(a, b), 'antes');
+    assert.strictEqual(datasMod.comparar(b, a), 'depois');
+    assert.strictEqual(datasMod.comparar(c, d), 'sobrepoe', 'afirmou ordem que os dados não sustentam');
+  });
+
+  console.log('\npessoas e parentesco');
+  const P = {};
+  const criarPessoa = async (dados, sessao = ana) => {
+    const r = await req('POST', `/origena/api/v1/familias/${famA}/pessoas`, { sessao, corpo: dados });
+    assert.strictEqual(r.status, 201, 'criar pessoa falhou: ' + r.texto);
+    return r.json.pessoa;
+  };
+  const ligar = (corpo, sessao = ana) =>
+    req('POST', `/origena/api/v1/familias/${famA}/parentescos`, { sessao, corpo });
+
+  await teste('cria pessoa com data imprecisa e deduz a vitalidade', async () => {
+    P.joao = await criarPessoa({ nome: 'João Villela', nascimento: 'c. 1890', falecimento: '1958' });
+    assert.strictEqual(P.joao.nascimento_precisao, 'CIRCA');
+    assert.strictEqual(P.joao.nascimento_valor, 'c. 1890');
+    assert.strictEqual(P.joao.vitalidade, 'falecida', 'não deduziu falecimento pela data');
+    const viva = await criarPessoa({ nome: 'Alguém Vivo', nascimento: '1990' });
+    assert.strictEqual(viva.vitalidade, 'desconhecido');
+  });
+
+  await teste('pessoa sem nome e data impossível são recusadas com mensagem útil', async () => {
+    const semNome = await req('POST', `/origena/api/v1/familias/${famA}/pessoas`, { sessao: ana, corpo: { nome: '' } });
+    assert.strictEqual(semNome.status, 400);
+    assert.strictEqual(semNome.json.codigo, 'erro.pessoa_sem_nome');
+    const dataRuim = await req('POST', `/origena/api/v1/familias/${famA}/pessoas`,
+      { sessao: ana, corpo: { nome: 'Teste Data', nascimento: '31/02/1900' } });
+    assert.strictEqual(dataRuim.status, 400);
+    assert.strictEqual(dataRuim.json.codigo, 'erro.data_invalida');
+  });
+
+  await teste('monta 4 gerações com casamento, adoção e alguém sem pais', async () => {
+    P.maria = await criarPessoa({ nome: 'Maria Villela', nascimento: '1895', falecimento: '1970' });
+    P.pedro = await criarPessoa({ nome: 'Pedro Villela', nascimento: '1920' });
+    P.paula = await criarPessoa({ nome: 'Paula Villela', nascimento: '1924' });
+    P.neto = await criarPessoa({ nome: 'Neto Villela', nascimento: '1950' });
+    P.bisneto = await criarPessoa({ nome: 'Bisneto Villela', nascimento: '1980' });
+    P.adotado = await criarPessoa({ nome: 'Filho Adotivo', nascimento: '1952' });
+    P.avulso = await criarPessoa({ nome: 'Sem Pais Conhecidos', nascimento: 'anos 30' });
+
+    assert.strictEqual((await ligar({ person_a: P.joao.id, person_b: P.pedro.id, tipo: 'PARENT_OF' })).status, 201);
+    assert.strictEqual((await ligar({ person_a: P.maria.id, person_b: P.pedro.id, tipo: 'PARENT_OF' })).status, 201);
+    assert.strictEqual((await ligar({ person_a: P.joao.id, person_b: P.paula.id, tipo: 'PARENT_OF' })).status, 201);
+    assert.strictEqual((await ligar({ person_a: P.maria.id, person_b: P.paula.id, tipo: 'PARENT_OF' })).status, 201);
+    assert.strictEqual((await ligar({ person_a: P.joao.id, person_b: P.maria.id, tipo: 'SPOUSE_OF', inicio: '1918' })).status, 201);
+    assert.strictEqual((await ligar({ person_a: P.pedro.id, person_b: P.neto.id, tipo: 'PARENT_OF' })).status, 201);
+    assert.strictEqual((await ligar({ person_a: P.neto.id, person_b: P.bisneto.id, tipo: 'PARENT_OF' })).status, 201);
+    assert.strictEqual((await ligar({ person_a: P.pedro.id, person_b: P.adotado.id, tipo: 'PARENT_OF', natureza: 'adotivo' })).status, 201);
+  });
+
+  await teste('adoção NÃO substitui filiação: as duas coexistem', async () => {
+    // O Pedro é pai biológico do Neto e adotivo do Filho Adotivo; o
+    // registro de uma não some por causa da outra.
+    const r = await ligar({ person_a: P.joao.id, person_b: P.pedro.id, tipo: 'PARENT_OF', natureza: 'adotivo' });
+    assert.strictEqual(r.status, 201, 'não aceitou registrar a segunda natureza');
+    const dossie = await req('GET', `/origena/api/v1/familias/${famA}/pessoas/${P.pedro.id}`, { sessao: ana });
+    const doJoao = dossie.json.familia.pais.filter((x) => x.id === P.joao.id);
+    assert.strictEqual(doJoao.length, 2, 'as duas naturezas não coexistiram');
+    assert.deepStrictEqual(doJoao.map((x) => x.natureza).sort(), ['adotivo', 'biologico']);
+  });
+
+  await teste('irmãos são DERIVADOS do ascendente comum, sem aresta declarada', async () => {
+    const d = await req('GET', `/origena/api/v1/familias/${famA}/pessoas/${P.pedro.id}`, { sessao: ana });
+    const nomes = d.json.familia.irmaos.map((x) => x.nome_exibicao);
+    assert(nomes.includes('Paula Villela'), 'não derivou a irmã dos pais comuns: ' + nomes.join(', '));
+    const paula = d.json.familia.irmaos.find((x) => x.nome_exibicao === 'Paula Villela');
+    assert.strictEqual(paula.meio, false, 'marcou como meio-irmã quem tem os dois pais em comum');
+  });
+
+  await teste('meio-irmão é marcado como meio-irmão', async () => {
+    const outraMae = await criarPessoa({ nome: 'Outra Mãe', nascimento: '1900' });
+    const meio = await criarPessoa({ nome: 'Meio Irmão', nascimento: '1930' });
+    await ligar({ person_a: P.joao.id, person_b: meio.id, tipo: 'PARENT_OF' });
+    await ligar({ person_a: outraMae.id, person_b: meio.id, tipo: 'PARENT_OF' });
+    const d = await req('GET', `/origena/api/v1/familias/${famA}/pessoas/${P.pedro.id}`, { sessao: ana });
+    const m = d.json.familia.irmaos.find((x) => x.nome_exibicao === 'Meio Irmão');
+    assert(m, 'não trouxe o meio-irmão');
+    assert.strictEqual(m.meio, true, 'não marcou como meio-irmão');
+  });
+
+  await teste('ciclo de ancestralidade é impossível', async () => {
+    const r = await ligar({ person_a: P.bisneto.id, person_b: P.joao.id, tipo: 'PARENT_OF' });
+    assert.strictEqual(r.status, 409, 'aceitou fechar um laço na árvore');
+    assert.strictEqual(r.json.codigo, 'erro.parentesco_ciclo');
+    const consigo = await ligar({ person_a: P.joao.id, person_b: P.joao.id, tipo: 'PARENT_OF' });
+    assert.strictEqual(consigo.status, 400);
+  });
+
+  await teste('sanidade de idade avisa, mas deixa a família confirmar', async () => {
+    const bebe = await criarPessoa({ nome: 'Bebê Impossível', nascimento: '1899' });
+    const r = await ligar({ person_a: P.maria.id, person_b: bebe.id, tipo: 'PARENT_OF' });
+    assert.strictEqual(r.status, 422, 'não avisou sobre a idade impossível');
+    assert.strictEqual(r.json.codigo, 'erro.filiacao_jovem_demais');
+    // A família tem a última palavra sobre a própria história.
+    const insistindo = await ligar({ person_a: P.maria.id, person_b: bebe.id, tipo: 'PARENT_OF', confirmo_mesmo_assim: true });
+    assert.strictEqual(insistindo.status, 201, 'não deixou confirmar');
+  });
+
+  await teste('data imprecisa NÃO gera acusação falsa de idade', async () => {
+    const vago = await criarPessoa({ nome: 'Sem Data', nascimento: '' });
+    const r = await ligar({ person_a: vago.id, person_b: P.neto.id, tipo: 'PARENT_OF' });
+    assert.strictEqual(r.status, 201, 'reclamou de idade sem ter data para reclamar');
+  });
+
+  await teste('casamento é guardado UMA vez, não duas', async () => {
+    const dupla = await ligar({ person_a: P.maria.id, person_b: P.joao.id, tipo: 'SPOUSE_OF' });
+    assert.strictEqual(dupla.status, 409, 'guardou o mesmo casamento invertido como novo');
+    const n = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT count(*)::int c FROM relationships WHERE tipo='SPOUSE_OF' AND deleted_at IS NULL
+        AND $1 IN (person_a, person_b) AND $2 IN (person_a, person_b)`, [P.joao.id, P.maria.id]));
+    assert.strictEqual(n.c, 1);
+  });
+
+  await teste('a árvore renderiza 4 gerações com as arestas certas', async () => {
+    const r = await req('GET', `/origena/api/v1/familias/${famA}/arvore/${P.pedro.id}?geracoes=4`, { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    const ger = (nome) => (r.json.nos.find((n) => n.nome_exibicao === nome) || {}).geracao;
+    assert.strictEqual(ger('Pedro Villela'), 0);
+    assert.strictEqual(ger('João Villela'), -1, 'pai não ficou uma geração acima');
+    assert.strictEqual(ger('Neto Villela'), 1);
+    assert.strictEqual(ger('Bisneto Villela'), 2);
+    assert(r.json.nos.find((n) => n.nome_exibicao === 'Maria Villela'), 'cônjuge do pai não entrou na árvore');
+    assert(r.json.arestas.length >= 5, 'faltaram arestas');
+    assert(r.json.nos.every((n) => n.ano_nascimento === null || typeof n.ano_nascimento === 'number'));
+  });
+
+  await teste('modo ancestral não traz descendentes, e vice-versa', async () => {
+    const sobe = await req('GET', `/origena/api/v1/familias/${famA}/arvore/${P.pedro.id}?modo=ancestral`, { sessao: ana });
+    assert(!sobe.json.nos.find((n) => n.nome_exibicao === 'Bisneto Villela'), 'modo ancestral trouxe descendente');
+    const desce = await req('GET', `/origena/api/v1/familias/${famA}/arvore/${P.pedro.id}?modo=descendentes`, { sessao: ana });
+    assert(!desce.json.nos.find((n) => n.nome_exibicao === 'João Villela'), 'modo descendentes trouxe ascendente');
+  });
+
+  await teste('perfil de menor nasce PRIVATE e some para quem não pode ver', async () => {
+    const crianca = await criarPessoa({ nome: 'Criança da Família', nascimento: '2018', eh_menor: true });
+    assert.strictEqual(crianca.privacidade, 'PRIVATE', 'menor não nasceu privado');
+    assert.strictEqual(crianca.eh_menor, true);
+    // bruno é CONTRIBUTOR nesta família: não tem `ver.privado`.
+    const lista = await req('GET', `/origena/api/v1/familias/${famA}/pessoas`, { sessao: bruno });
+    assert(!lista.json.pessoas.find((p) => p.id === crianca.id), 'CONTRIBUTOR viu o perfil do menor');
+    assert(lista.json.ocultas >= 1, 'não informou que há pessoas ocultas');
+    const direto = await req('GET', `/origena/api/v1/familias/${famA}/pessoas/${crianca.id}`, { sessao: bruno });
+    assert.strictEqual(direto.status, 404, 'devolveu 403 e confirmou a existência do registro');
+  });
+
+  await teste('CONTRIBUTOR cria pessoa mas não mexe em parentesco nem arquiva', async () => {
+    const cria = await req('POST', `/origena/api/v1/familias/${famA}/pessoas`,
+      { sessao: bruno, corpo: { nome: 'Trazido pelo Bruno' } });
+    assert.strictEqual(cria.status, 201, 'CONTRIBUTOR não conseguiu contribuir');
+    const liga = await ligar({ person_a: P.joao.id, person_b: cria.json.pessoa.id, tipo: 'PARENT_OF' }, bruno);
+    assert.strictEqual(liga.status, 403, 'CONTRIBUTOR mexeu na árvore');
+    const apaga = await req('DELETE', `/origena/api/v1/familias/${famA}/pessoas/${cria.json.pessoa.id}`, { sessao: bruno });
+    assert.strictEqual(apaga.status, 403, 'CONTRIBUTOR apagou pessoa');
+  });
+
+  await teste('arquivar é soft delete: some da lista, some da árvore, não do banco', async () => {
+    const some = await criarPessoa({ nome: 'Vai Sumir', nascimento: '1970' });
+    await ligar({ person_a: P.pedro.id, person_b: some.id, tipo: 'PARENT_OF' });
+    const r = await req('DELETE', `/origena/api/v1/familias/${famA}/pessoas/${some.id}`, { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    const lista = await req('GET', `/origena/api/v1/familias/${famA}/pessoas`, { sessao: ana });
+    assert(!lista.json.pessoas.find((p) => p.id === some.id), 'continuou na lista');
+    const arv = await req('GET', `/origena/api/v1/familias/${famA}/arvore/${P.pedro.id}`, { sessao: ana });
+    assert(!arv.json.nos.find((n) => n.id === some.id), 'continuou na árvore');
+    const noBanco = await tenancy.comEscopo(famA, (t) =>
+      t.uma('SELECT deleted_at FROM persons WHERE id = $1', [some.id]));
+    assert(noBanco && noBanco.deleted_at, 'a linha foi APAGADA do banco em vez de arquivada');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
+
+  const ALVO_FALSO = '00000000-0000-4000-8000-000000000000';
 
   await teste('sem SET app.family_id, tabela de conteúdo devolve ZERO linhas', async () => {
     const dentro = await tenancy.comEscopo(famA, (t) =>
@@ -724,6 +932,7 @@ async function principal() {
       const caminho = rota.caminho
         .replace(':familyId', famB)
         .replace(':userId', bruno.id)
+        .replace(':pessoaId', uuidFalso).replace(':relId', uuidFalso)
         .replace(':id', uuidFalso);
       const r = await req(rota.metodo, caminho, { sessao: ana, corpo: rota.metodo === 'GET' ? undefined : { nome: 'invasao', papel: 'GUEST' } });
       // 404 e NUNCA 403: 403 confirmaria que a família existe (T2).
@@ -736,7 +945,7 @@ async function principal() {
   await teste('o outro lado também: usuário de B não alcança A', async () => {
     for (const rota of montado.ROTAS_ESCOPADAS) {
       const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
-        .replace(':id', '00000000-0000-4000-8000-000000000000');
+        .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, { sessao: silva, corpo: rota.metodo === 'GET' ? undefined : { nome: 'x', papel: 'GUEST' } });
       assert.strictEqual(r.status, 404, `${rota.metodo} ${rota.caminho} devolveu ${r.status}`);
     }
@@ -745,7 +954,7 @@ async function principal() {
   await teste('sem sessão nenhuma, tudo é 401 (nunca 200)', async () => {
     for (const rota of montado.ROTAS_ESCOPADAS) {
       const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
-        .replace(':id', '00000000-0000-4000-8000-000000000000');
+        .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, {});
       assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
     }
@@ -779,7 +988,7 @@ async function principal() {
     falhas.forEach((f) => console.log(`  • ${f.nome}: ${f.erro}`));
     process.exit(1);
   }
-  console.log('ORIGENA Fases 0 e 1: verde.\n');
+  console.log('ORIGENA Fases 0, 1 e 2: verde.\n');
 }
 
 principal().catch(async (e) => {

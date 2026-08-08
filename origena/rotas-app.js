@@ -17,6 +17,9 @@ const rbac = require('./rbac');
 const repo = require('./repo');
 const emails = require('./emails');
 const { erro } = require('./erros');
+const privacidade = require('./privacidade');
+const arvore = require('./arvore');
+const { Persons, Relationships } = require('./repo-pessoas');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -138,6 +141,75 @@ function registrarRotasApp(app) {
     const r = await Invites.aceitar({ token: s(req.params.token, 200),
       userId: req.usuario.id, emailDoUsuario: req.usuario.email });
     res.json({ ok: true, ...r });
+  }));
+
+  // ------------------------------------------------------------- pessoas
+  // Escopo de família em TODA consulta: `tenancy.noEscopoDe` abre a
+  // transação com `app.family_id` posto, e o RLS faz o resto.
+  app.get(decl('GET', `${R}/familias/:familyId/pessoas`), ...naFamilia, h(async (req, res) => {
+    const pessoas = await tenancy.noEscopoDe(req, (t) => Persons.listar(t, req.familia.id, {
+      busca: req.query.busca || '', limite: Number(req.query.limite) || 200 }));
+    // Menor de idade não aparece para quem não é da família (§73).
+    const visiveis = pessoas.filter((p) => privacidade.podeVer(p,
+      { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra }).pode);
+    res.json({ pessoas: visiveis, ocultas: pessoas.length - visiveis.length });
+  }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/pessoas`), ...naFamilia,
+    rbac.exigir('pessoas.criar'), h(async (req, res) => {
+      const p = await tenancy.noEscopoDe(req, (t) => Persons.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: req.body || {} }));
+      res.status(201).json({ pessoa: p });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/pessoas/:pessoaId`), ...naFamilia, h(async (req, res) => {
+    const dossie = await tenancy.noEscopoDe(req, async (t) => {
+      const p = await Persons.obter(t, req.params.pessoaId);
+      if (!p) throw erro('erro.pessoa_nao_encontrada', 404);
+      return { pessoa: p, familia: await arvore.familiaDe(t, p.id) };
+    });
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    const podeVer = privacidade.podeVer(dossie.pessoa, quem);
+    if (!podeVer.pode) throw erro('erro.pessoa_nao_encontrada', 404);   // 404, nunca 403 (T2)
+    res.json({ ...dossie, pode_editar: rbac.pode(req.papel, 'pessoas.editar', req.permissoesExtra) });
+  }));
+
+  app.patch(decl('PATCH', `${R}/familias/:familyId/pessoas/:pessoaId`), ...naFamilia,
+    rbac.exigir('pessoas.editar'), h(async (req, res) => {
+      const p = await tenancy.noEscopoDe(req, (t) => Persons.atualizar(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        id: req.params.pessoaId, dados: req.body || {} }));
+      res.json({ pessoa: p });
+    }));
+
+  app.delete(decl('DELETE', `${R}/familias/:familyId/pessoas/:pessoaId`), ...naFamilia,
+    rbac.exigir('excluir'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => Persons.arquivar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, id: req.params.pessoaId }));
+      res.json({ ok: true, aviso: req.t('mensagem.pessoa_arquivada') });
+    }));
+
+  // ---------------------------------------------------------- parentesco
+  app.post(decl('POST', `${R}/familias/:familyId/parentescos`), ...naFamilia,
+    rbac.exigir('parentesco.editar'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => Relationships.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: req.body || {} }));
+      res.status(201).json({ parentesco: r });
+    }));
+
+  app.delete(decl('DELETE', `${R}/familias/:familyId/parentescos/:relId`), ...naFamilia,
+    rbac.exigir('parentesco.editar'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => Relationships.remover(t, {
+        familyId: req.familia.id, userId: req.usuario.id, id: req.params.relId }));
+      res.json({ ok: true });
+    }));
+
+  // -------------------------------------------------------------- árvore
+  app.get(decl('GET', `${R}/familias/:familyId/arvore/:pessoaId`), ...naFamilia, h(async (req, res) => {
+    const modo = ['ancestral', 'descendentes', 'ambos'].includes(req.query.modo) ? req.query.modo : 'ambos';
+    const geracoes = Math.min(Math.max(Number(req.query.geracoes) || 4, 1), 8);
+    const dados = await tenancy.noEscopoDe(req, (t) => arvore.montar(t, req.params.pessoaId, { modo, geracoes }));
+    res.json(dados);
   }));
 
   // ------------------------------------------------------------ auditoria
