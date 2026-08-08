@@ -65,6 +65,12 @@ services:
     name: origena-worker
     runtime: node
     plan: starter
+    # REGIAO OBRIGATORIA e igual a do banco: a rede interna do Render NAO
+    # cruza regiao. Criado em oregon com o banco em virginia, o worker sobe
+    # "live" e morre em loop com ENOTFOUND no host interno do Postgres.
+    # (Pela API o campo vai dentro de serviceDetails; no topo ele e ignorado
+    #  em silencio e o servico cai no padrao oregon.)
+    region: virginia
     buildCommand: npm install
     startCommand: node origena/worker.js
     envVars:
