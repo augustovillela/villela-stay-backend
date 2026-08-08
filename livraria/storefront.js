@@ -50,8 +50,26 @@ header.top a{color:var(--creme)}
 .btn-ouro{background:var(--dourado);color:#3a2c07}.btn-ouro:hover{background:var(--dourado2)}
 .btn-wa{background:#25d366;color:#0a2e17}.btn-wa:hover{background:#1eb955}
 .btn-ghost{background:transparent;border:1.5px solid var(--cinza2);color:var(--petroleo)}
-.btn-folhear{background:transparent;border:1.5px solid rgba(248,249,250,.55);color:var(--creme)}
-.btn-folhear:hover{background:rgba(248,249,250,.12);border-color:var(--creme)}
+/* Hero da página do livro: capa + texto. Em tela estreita empilha (antes a
+   coluna de 280px fixos espremia o título e os botões num filete). */
+.hero-livro{display:grid;grid-template-columns:280px 1fr;gap:34px;align-items:center}
+@media(max-width:760px){
+  .hero-livro{grid-template-columns:1fr;gap:22px;justify-items:center;text-align:center}
+  .hero-livro .capa{width:min(260px,72vw)}
+  .hero-livro .hero-ctas{justify-content:center}
+}
+/* CTAs do hero: mesmo tamanho e borda branca fina, para não se misturarem.
+   Seletor com 2 classes de propósito: villela-saas.css carrega DEPOIS deste
+   <style> e sobrescreveria .btn (zera borda e força o fundo). */
+.hero-ctas{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0 0}
+.hero-ctas .hero-cta{width:232px;max-width:100%;padding:13px 18px;border:1.5px solid #fff;
+  box-sizing:border-box;line-height:1.25;text-align:center;border-radius:9px}
+.hero-ctas .btn-ouro{background:var(--dourado);color:#3a2c07}
+.hero-ctas .btn-ouro:hover{background:var(--dourado2)}
+.hero-ctas .btn-folhear{background:transparent;color:#fff}
+.hero-ctas .btn-folhear:hover{background:rgba(255,255,255,.16)}
+.hero-cta-nota{margin:9px 0 0;font-size:13px;opacity:.85}
+@media(max-width:660px){.hero-ctas .hero-cta{width:100%}}
 /* leitor de amostra ("Folhear") */
 .fo-barra{position:sticky;top:0;z-index:5;background:var(--petroleo);color:var(--creme);padding:10px 0}
 .fo-barra .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
@@ -353,15 +371,17 @@ function paginaLivro(b) {
   const sumario = b.sumario ? `<div style="white-space:pre-wrap">${esc(b.sumario)}</div>` : '';
 
   const body = `
-  <section class="hero"><div class="wrap" style="display:grid;grid-template-columns:280px 1fr;gap:34px;align-items:center">
+  <section class="hero"><div class="wrap hero-livro">
     <div class="capa" style="aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#14203A;display:flex;align-items:center;justify-content:center;font-size:60px">${b.capa_url ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}" style="width:100%;height:100%;object-fit:cover">` : '📕'}</div>
     <div>
       <p class="eyebrow">${esc(b.categoria || 'Livro')}</p>
       <h1>${esc(b.titulo)}</h1>
       <p class="sub">${esc(b.subtitulo || b.descricao_curta || '')}</p>
-      <p><a class="btn btn-ouro" href="#comprar">Quero este livro</a></p>
-      ${b.tem_amostra ? `<p style="margin-top:-6px"><a class="btn btn-folhear" href="/livros/${esc(b.slug)}/folhear">📖 Folhear</a>
-        <span style="display:block;margin-top:7px;font-size:13px;opacity:.85">Leia as primeiras páginas, como numa livraria.</span></p>` : ''}
+      <div class="hero-ctas">
+        <a class="btn btn-ouro hero-cta" href="#comprar">Quero este livro</a>
+        ${b.tem_amostra ? `<a class="btn btn-folhear hero-cta" href="/livros/${esc(b.slug)}/folhear">📖 Folhear</a>` : ''}
+      </div>
+      ${b.tem_amostra ? '<p class="hero-cta-nota">Leia as primeiras páginas, como numa livraria.</p>' : ''}
     </div>
   </div></section>
   ${b.publico_alvo ? `<section><div class="wrap sec-narrow"><h2>Para quem é este livro</h2><p>${esc(b.publico_alvo)}</p></div></section>` : ''}
