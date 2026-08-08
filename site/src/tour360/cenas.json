@@ -529,6 +529,28 @@
       "destaque": false
     },
     {
+      "id": "catetinho-fachada-3",
+      "arquivo": "catetinho-fachada-3",
+      "casa": "Villa Catetinho",
+      "imovel": [
+        "PL02I"
+      ],
+      "titulo": "Fachada (3)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false,
+      "hub": true
+    },
+    {
       "id": "catetinho-rooftop",
       "arquivo": "catetinho-rooftop",
       "casa": "Villa Catetinho",
@@ -547,8 +569,7 @@
         "fov": 75
       },
       "hotspots": [],
-      "destaque": false,
-      "hub": true
+      "destaque": false
     },
     {
       "id": "catetinho-rooftop-2",
@@ -847,27 +868,6 @@
       "hotspots": []
     },
     {
-      "id": "catetinho-fachada-3",
-      "arquivo": "catetinho-fachada-3",
-      "casa": "Villa Catetinho",
-      "imovel": [
-        "PL02I"
-      ],
-      "titulo": "Fachada (3)",
-      "larguras": [
-        1024,
-        2048,
-        4096
-      ],
-      "vistaInicial": {
-        "yaw": 0,
-        "pitch": 0,
-        "fov": 75
-      },
-      "hotspots": [],
-      "destaque": false
-    },
-    {
       "id": "catetinho-fachada-4",
       "arquivo": "catetinho-fachada-4",
       "casa": "Villa Catetinho",
@@ -889,6 +889,29 @@
       "destaque": false
     },
     {
+      "id": "casa-villela-fachada-2",
+      "arquivo": "casa-villela-fachada-2",
+      "casa": "Casa Villela",
+      "imovel": [
+        "GI01I",
+        "YV01I"
+      ],
+      "titulo": "Fachada (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false,
+      "hub": true
+    },
+    {
       "id": "casa-villela-lounge",
       "arquivo": "casa-villela-lounge",
       "casa": "Casa Villela",
@@ -908,8 +931,7 @@
         "fov": 75
       },
       "hotspots": [],
-      "destaque": false,
-      "hub": true
+      "destaque": false
     },
     {
       "id": "casa-villela-lounge-da-cozinha",
@@ -1064,49 +1086,6 @@
       "hotspots": []
     },
     {
-      "id": "casa-villela-fachada-2",
-      "arquivo": "casa-villela-fachada-2",
-      "casa": "Casa Villela",
-      "imovel": [
-        "GI01I",
-        "YV01I"
-      ],
-      "titulo": "Fachada (2)",
-      "larguras": [
-        1024,
-        2048,
-        4096
-      ],
-      "vistaInicial": {
-        "yaw": 0,
-        "pitch": 0,
-        "fov": 75
-      },
-      "hotspots": [],
-      "destaque": false
-    },
-    {
-      "id": "gran-villela-estacionamento",
-      "arquivo": "gran-villela-estacionamento",
-      "casa": "Gran Villela Home Stay",
-      "imovel": [
-        "GD03H"
-      ],
-      "titulo": "Estacionamento",
-      "larguras": [
-        1024,
-        2048,
-        4096
-      ],
-      "vistaInicial": {
-        "yaw": 0,
-        "pitch": 0,
-        "fov": 75
-      },
-      "hotspots": [],
-      "destaque": false
-    },
-    {
       "id": "area-verde-churrasqueira",
       "arquivo": "area-verde-churrasqueira",
       "casa": "Área Verde",
@@ -1123,7 +1102,8 @@
         "fov": 75
       },
       "hotspots": [],
-      "destaque": false
+      "destaque": false,
+      "hub": true
     },
     {
       "id": "area-verde-campo-society",
@@ -1240,6 +1220,28 @@
       "destaque": false
     },
     {
+      "id": "modernista-fachada-2",
+      "arquivo": "modernista-fachada-2",
+      "casa": "Casa Modernista",
+      "imovel": [
+        "GD01H"
+      ],
+      "titulo": "Fachada (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false,
+      "hub": true
+    },
+    {
       "id": "modernista-piscina",
       "arquivo": "modernista-piscina",
       "casa": "Casa Modernista",
@@ -1258,8 +1260,7 @@
         "fov": 75
       },
       "hotspots": [],
-      "destaque": false,
-      "hub": true
+      "destaque": false
     },
     {
       "id": "modernista-area-externa-piscina",
@@ -2056,27 +2057,6 @@
       "destaque": false
     },
     {
-      "id": "modernista-fachada-2",
-      "arquivo": "modernista-fachada-2",
-      "casa": "Casa Modernista",
-      "imovel": [
-        "GD01H"
-      ],
-      "titulo": "Fachada (2)",
-      "larguras": [
-        1024,
-        2048,
-        4096
-      ],
-      "vistaInicial": {
-        "yaw": 0,
-        "pitch": 0,
-        "fov": 75
-      },
-      "hotspots": [],
-      "destaque": false
-    },
-    {
       "id": "modernista-fachada-3",
       "arquivo": "modernista-fachada-3",
       "casa": "Casa Modernista",
@@ -2117,6 +2097,28 @@
       },
       "hotspots": [],
       "destaque": false
+    },
+    {
+      "id": "gran-villela-estacionamento",
+      "arquivo": "gran-villela-estacionamento",
+      "casa": "Gran Villela Home Stay",
+      "imovel": [
+        "GD03H"
+      ],
+      "titulo": "Estacionamento",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": [],
+      "destaque": false,
+      "hub": true
     }
   ]
 }

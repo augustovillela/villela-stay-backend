@@ -341,13 +341,18 @@
     // Saída: de onde o visitante VEIO, se entrou por um portal; senão a vista geral da casa.
     // Voltar para a origem é o que importa quando o portal atravessa casas (o pátio da
     // Kubitschek abre flats da Catetinho — o hub da Catetinho seria o lugar errado).
+    var capa = this.hubs[cena.casa] || null;
     this.origem = (origem && origem !== id) ? origem : null;
-    this.alvoVoltar = this.origem || this.hubs[cena.casa] || null;
+    this.alvoVoltar = this.origem || capa;
     if (this.alvoVoltar === id) this.alvoVoltar = null;
     if (this.btnVoltar) {
       this.btnVoltar.hidden = !this.alvoVoltar;
       if (this.alvoVoltar && this.porId[this.alvoVoltar]) {
-        this.btnVoltar.textContent = '← ' + (this.txt.voltarPara || 'Voltar para') + ' ' + this.porId[this.alvoVoltar].titulo;
+        // Voltar para a capa da casa é "a vista geral"; voltar para a cena de onde se veio
+        // nomeia a cena. Chamar a capa pelo título ("Voltar para Fachada (3)") não diz nada.
+        this.btnVoltar.textContent = (this.alvoVoltar === capa)
+          ? '← ' + (this.txt.voltar || 'Voltar à vista geral')
+          : '← ' + (this.txt.voltarPara || 'Voltar para') + ' ' + this.porId[this.alvoVoltar].titulo;
       }
     }
     this.marcarCenaAtiva(id);

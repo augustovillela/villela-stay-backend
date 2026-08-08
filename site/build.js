@@ -1036,6 +1036,7 @@ if (TEM_TOUR) {
     gravar: t('Gravar o passeio em vídeo', 'Record the tour as video', 'Grabar el recorrido en vídeo'),
     giroscopio: t('Mover o celular para olhar', 'Move your phone to look around', 'Mueve el móvil para mirar'),
     telaCheia: t('Tela cheia', 'Fullscreen', 'Pantalla completa'),
+    voltar: t('Voltar à vista geral', 'Back to the overview', 'Volver a la vista general'),
     voltarPara: t('Voltar para', 'Back to', 'Volver a'),
     ariaCanvas: t('Panorama 360 graus. Arraste para olhar em volta; use as setas do teclado e + / − para aproximar.',
       'A 360-degree panorama. Drag to look around; use the arrow keys and + / − to zoom.',
