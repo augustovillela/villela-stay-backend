@@ -52,7 +52,35 @@ function registrarHandlers() {
   });
 }
 
+/**
+ * Batida do worker no banco.
+ *
+ * O `/origena/health` respondia "ok" sabendo do banco e do storage e NADA
+ * do worker — e em 08/08/2026 o worker passou horas rodando um commit
+ * velho, sem o handler de mídia, com a saúde verde o tempo todo. É
+ * exatamente a armadilha do `heartbeat-verde-fonte-caida`: rotina verde
+ * com a fonte caída é pior que rotina vermelha.
+ *
+ * Agora ele registra QUEM é (commit) e O QUE sabe fazer (handlers), e o
+ * health denuncia batida velha ou handler faltando.
+ */
+async function bater() {
+  const estado = {
+    em: db.nowISO(),
+    commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
+    handlers: fila.tiposRegistrados(),
+    fila: CLASSE || 'rapida+cara',
+    pid: process.pid,
+  };
+  await db.q(
+    `INSERT INTO config (chave, valor, descricao, atualizado_em)
+     VALUES ('worker_heartbeat', $1, 'Última batida do origena-worker', now())
+     ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = now()`,
+    [JSON.stringify(estado)]);
+}
+
 async function ciclo(n) {
+  if (n % 10 === 0) await bater().catch((e) => console.error('[origena/worker] batida falhou:', e.message));
   if (n % DESTRAVAR_A_CADA === 0) await fila.destravarPresos(15);
   const r = await fila.processarLote(LOTE, CLASSE);
   if (r.pegos) {
@@ -69,6 +97,7 @@ async function principal() {
   }
   await db.migrar({ silencioso: true });
   registrarHandlers();
+  await bater().catch(() => {});
   rodando = true;
   console.log(`[origena/worker] no ar · schema ${db.SCHEMA} · fila ${CLASSE || 'rapida+cara'}`
     + ` · lote ${LOTE} a cada ${INTERVALO_MS}ms · handlers: ${fila.tiposRegistrados().join(', ') || 'nenhum'}`);

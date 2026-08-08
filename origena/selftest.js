@@ -297,9 +297,41 @@ async function principal() {
 
   await teste('GET /origena/health responde com o estado do banco', async () => {
     const r = await req('GET', '/origena/health');
-    assert.strictEqual(r.status, 200);
     assert.strictEqual(r.json.produto, 'origena');
     assert(r.json.banco && r.json.banco.ok, 'health não confirmou o banco');
+  });
+
+  await teste('a saúde denuncia worker calado ou sem o handler que importa', async () => {
+    // sem batida nenhuma: não pode dizer que está tudo bem
+    const semWorker = await req('GET', '/origena/health');
+    assert.strictEqual(semWorker.status, 503, 'disse "ok" sem worker nenhum ter batido');
+    assert.strictEqual(semWorker.json.worker.ok, false);
+
+    // batida antiga, mesmo com handler certo, é worker morto
+    const velha = JSON.stringify({ em: new Date(Date.now() - 3.6e6).toISOString(),
+      commit: 'abc1234', handlers: ['midia.ingerir', 'smoke'] });
+    await db.q(`INSERT INTO config (chave, valor, atualizado_em)
+                VALUES ('worker_heartbeat', $1, now() - interval '1 hour')
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor,
+                       atualizado_em = now() - interval '1 hour'`, [velha]);
+    const calado = await req('GET', '/origena/health');
+    assert.strictEqual(calado.status, 503, 'batida de 1 hora atrás passou por saudável');
+    assert.strictEqual(calado.json.worker.motivo, 'worker calado');
+
+    // batida fresca, mas rodando código velho (sem o handler de mídia):
+    // é EXATAMENTE o que aconteceu em produção em 08/08/2026
+    const velhoCodigo = JSON.stringify({ em: new Date().toISOString(), commit: '088454c', handlers: ['smoke'] });
+    await db.q(`UPDATE config SET valor = $1, atualizado_em = now() WHERE chave = 'worker_heartbeat'`, [velhoCodigo]);
+    const desatualizado = await req('GET', '/origena/health');
+    assert.strictEqual(desatualizado.status, 503, 'worker sem o handler de mídia passou por saudável');
+    assert.deepStrictEqual(desatualizado.json.worker.faltando, ['midia.ingerir']);
+
+    // worker em dia
+    const bom = JSON.stringify({ em: new Date().toISOString(), commit: 'deadbee', handlers: ['midia.ingerir', 'smoke'] });
+    await db.q(`UPDATE config SET valor = $1, atualizado_em = now() WHERE chave = 'worker_heartbeat'`, [bom]);
+    const ok = await req('GET', '/origena/health');
+    assert.strictEqual(ok.status, 200, ok.texto);
+    assert.strictEqual(ok.json.worker.commit, 'deadbee');
   });
 
   await teste('saúde completa exige admin do staff', async () => {

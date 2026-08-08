@@ -42,13 +42,40 @@ const pronto = () => _pronto;
  * faz PUT/GET/DELETE real) — a lição `heartbeat-verde-fonte-caida` é que
  * rotina verde com a fonte caída é pior que rotina vermelha.
  */
+// Handlers que o worker PRECISA ter registrados. Faltando um, a saúde
+// fica vermelha: job daquele tipo iria direto para a DLQ.
+const HANDLERS_ESPERADOS = ['midia.ingerir'];
+const BATIDA_MAX_SEG = 300;
+
+/**
+ * Saúde do worker, lida do banco. Ele não fala HTTP; a batida dele é a
+ * única evidência de que está vivo E de que está rodando o código certo.
+ */
+async function saudeDoWorker() {
+  const r = await db.uma(`SELECT valor, atualizado_em FROM config WHERE chave = 'worker_heartbeat'`);
+  if (!r) return { ok: false, motivo: 'o worker nunca bateu' };
+  let e = {};
+  try { e = JSON.parse(r.valor); } catch (_) {}
+  const idade = Math.round((Date.now() - new Date(r.atualizado_em).getTime()) / 1000);
+  const faltando = HANDLERS_ESPERADOS.filter((h) => !(e.handlers || []).includes(h));
+  return {
+    ok: idade <= BATIDA_MAX_SEG && faltando.length === 0,
+    idade_seg: idade,
+    commit: e.commit,
+    handlers: e.handlers || [],
+    faltando,
+    motivo: idade > BATIDA_MAX_SEG ? 'worker calado' : (faltando.length ? 'worker sem handler' : undefined),
+  };
+}
+
 async function saude({ comStorage = true } = {}) {
-  const r = { produto: 'origena', pronto: _pronto, banco: null, fila: null, storage: null };
+  const r = { produto: 'origena', pronto: _pronto, banco: null, fila: null, storage: null, worker: null };
   try { r.banco = await db.saude(); } catch (e) { r.banco = { ok: false, erro: e.message }; }
   try { r.fila = await fila.saude(); } catch (e) { r.fila = { erro: e.message }; }
+  try { r.worker = await saudeDoWorker(); } catch (e) { r.worker = { ok: false, erro: e.message }; }
   if (comStorage) r.storage = await storage.saude();
   else r.storage = { ok: storage.configurado(), pulado: true };
-  r.ok = !!(r.banco && r.banco.ok) && !!(r.storage && r.storage.ok);
+  r.ok = !!(r.banco && r.banco.ok) && !!(r.storage && r.storage.ok) && !!(r.worker && r.worker.ok);
   return r;
 }
 
@@ -57,7 +84,10 @@ function registrarRotas(app, { requireAuth, requireAdmin }) {
   app.get('/origena/health', async (req, res) => {
     try {
       const s = await saude({ comStorage: false });
-      res.status(s.banco && s.banco.ok ? 200 : 503).json(s);
+      // 503 quando o banco cai OU o worker está calado/desatualizado: um
+      // produto que aceita foto e não a processa não está saudável.
+      const bom = s.banco && s.banco.ok && s.worker && s.worker.ok;
+      res.status(bom ? 200 : 503).json(s);
     } catch (e) {
       res.status(503).json({ produto: 'origena', ok: false, erro: e.message });
     }
