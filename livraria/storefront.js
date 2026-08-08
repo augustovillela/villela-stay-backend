@@ -50,6 +50,31 @@ header.top a{color:var(--creme)}
 .btn-ouro{background:var(--dourado);color:#3a2c07}.btn-ouro:hover{background:var(--dourado2)}
 .btn-wa{background:#25d366;color:#0a2e17}.btn-wa:hover{background:#1eb955}
 .btn-ghost{background:transparent;border:1.5px solid var(--cinza2);color:var(--petroleo)}
+.btn-folhear{background:transparent;border:1.5px solid rgba(248,249,250,.55);color:var(--creme)}
+.btn-folhear:hover{background:rgba(248,249,250,.12);border-color:var(--creme)}
+/* leitor de amostra ("Folhear") */
+.fo-barra{position:sticky;top:0;z-index:5;background:var(--petroleo);color:var(--creme);padding:10px 0}
+.fo-barra .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.fo-barra b{font-family:'Lora',Georgia,serif;font-weight:600}
+.fo-nav{display:flex;align-items:center;gap:10px;margin-left:auto}
+.fo-btn{background:rgba(248,249,250,.12);border:1px solid rgba(248,249,250,.35);color:var(--creme);border-radius:8px;padding:7px 14px;font-size:15px;font-weight:600;cursor:pointer}
+.fo-btn:disabled{opacity:.35;cursor:default}
+.fo-btn:not(:disabled):hover{background:rgba(248,249,250,.22)}
+.fo-palco{background:#33404f;padding:22px 0 30px;min-height:60vh}
+.fo-folha{margin:0 auto;max-width:820px;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.28);border-radius:4px;overflow:hidden}
+.fo-folha canvas{display:block;width:100%;height:auto}
+.fo-fim{max-width:820px;margin:26px auto 0;background:var(--creme);border:1px solid var(--cinza2);border-radius:12px;padding:26px;text-align:center}
+.fo-carregando{color:var(--creme);text-align:center;padding:40px 0;font-size:15px}
+@media(max-width:660px){
+  .fo-barra{padding:8px 0}
+  .fo-barra .wrap{gap:8px}
+  .fo-barra .fo-titulo{font-size:14px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fo-nav{margin-left:0;width:100%;justify-content:space-between;gap:6px}
+  .fo-btn{padding:8px 10px;font-size:14px}
+  .fo-palco{padding:14px 0 22px}
+  .fo-folha{max-width:100%;border-radius:0}
+  .fo-fim{margin-left:12px;margin-right:12px;padding:20px}
+}
 .hero{background:linear-gradient(160deg,var(--petroleo),var(--petroleo2));color:var(--creme);padding:56px 0}
 .hero h1{color:#fff}.hero p.sub{font-size:19px;color:#dbe6ea;max-width:640px}
 .eyebrow{text-transform:uppercase;letter-spacing:1.5px;font-size:12px;color:var(--dourado);font-weight:700}
@@ -335,6 +360,8 @@ function paginaLivro(b) {
       <h1>${esc(b.titulo)}</h1>
       <p class="sub">${esc(b.subtitulo || b.descricao_curta || '')}</p>
       <p><a class="btn btn-ouro" href="#comprar">Quero este livro</a></p>
+      ${b.tem_amostra ? `<p style="margin-top:-6px"><a class="btn btn-folhear" href="/livros/${esc(b.slug)}/folhear">📖 Folhear</a>
+        <span style="display:block;margin-top:7px;font-size:13px;opacity:.85">Leia as primeiras páginas, como numa livraria.</span></p>` : ''}
     </div>
   </div></section>
   ${b.publico_alvo ? `<section><div class="wrap sec-narrow"><h2>Para quem é este livro</h2><p>${esc(b.publico_alvo)}</p></div></section>` : ''}
@@ -534,4 +561,83 @@ function suporte() {
   return pagina({ title: 'Suporte — Livraria Villela', description: 'Atendimento ao comprador.', path: '/suporte-livros', body });
 }
 
-module.exports = { pagina, vitrine, paginaLivro, checkout, obrigado, biblioteca, suporte, SITE, waLink, esc };
+// ------------------------------------------------- folhear (amostra do livro)
+// Leitor página a página, como quem folheia na livraria: pdf.js desenha em
+// canvas (o arquivo não fica exposto como link de download) e o fim da amostra
+// já convida a comprar. Funciona sem instalar nada: a lib é servida pelo backend.
+function folhear(b) {
+  const preco = precoMenor(b);
+  const body = `
+  <div class="fo-barra"><div class="wrap">
+    <div class="fo-titulo"><b>${esc(b.titulo)}</b> <span style="opacity:.75;font-size:14px">· amostra</span></div>
+    <div class="fo-nav">
+      <button class="fo-btn" id="fo-ant" disabled aria-label="Página anterior">‹ Anterior</button>
+      <span id="fo-pos" style="font-size:14px;min-width:76px;text-align:center;white-space:nowrap">página 1</span>
+      <button class="fo-btn" id="fo-prox" aria-label="Próxima página">Próxima ›</button>
+      <a class="fo-btn" href="/livros/${esc(b.slug)}#comprar" style="text-decoration:none">Comprar</a>
+    </div>
+  </div></div>
+  <div class="fo-palco">
+    <div id="fo-erro" class="fo-carregando" hidden>Não foi possível abrir a amostra agora.
+      <a href="/livros/${esc(b.slug)}" style="color:#fff;text-decoration:underline">Voltar ao livro</a>.</div>
+    <div id="fo-load" class="fo-carregando">Abrindo o livro…</div>
+    <div class="fo-folha" id="fo-folha" hidden><canvas id="fo-canvas"></canvas></div>
+    <div class="fo-fim" id="fo-fim" hidden>
+      <h2 style="margin-top:0">Fim da amostra</h2>
+      <p style="color:var(--suave)">Você leu as primeiras páginas de <strong>${esc(b.titulo)}</strong>.
+      O livro completo continua desta página em diante.</p>
+      <p><a class="btn btn-ouro" href="/livros/${esc(b.slug)}#comprar">Quero este livro${preco ? ' — ' + esc(preco) : ''}</a></p>
+      <p style="font-size:13px;color:var(--suave);margin-bottom:0">Garantia de 7 dias · Entrega imediata do PDF</p>
+    </div>
+  </div>
+  <script type="module">
+    const url = '/livros/${esc(b.slug)}/amostra.pdf';
+    const cv = document.getElementById('fo-canvas'), ctx = cv.getContext('2d');
+    const elPos = document.getElementById('fo-pos'), elAnt = document.getElementById('fo-ant'), elProx = document.getElementById('fo-prox');
+    const elFim = document.getElementById('fo-fim'), elLoad = document.getElementById('fo-load'), elFolha = document.getElementById('fo-folha');
+    let doc = null, pag = 1, desenhando = false;
+    try {
+      const pdfjs = await import('/livros/pdfjs/pdf.mjs');
+      pdfjs.GlobalWorkerOptions.workerSrc = '/livros/pdfjs/pdf.worker.mjs';
+      // disableAutoFetch + range: abre a 1ª página sem baixar a amostra inteira
+      doc = await pdfjs.getDocument({ url, disableAutoFetch: true, disableStream: false, rangeChunkSize: 262144 }).promise;
+      elLoad.hidden = true; elFolha.hidden = false;
+      await desenhar(1);
+    } catch (e) {
+      elLoad.hidden = true; document.getElementById('fo-erro').hidden = false;
+    }
+    async function desenhar(n) {
+      if (!doc || desenhando || n < 1 || n > doc.numPages) return;
+      desenhando = true;
+      const page = await doc.getPage(n);
+      const larguraAlvo = Math.min(1240, Math.max(560, Math.floor(elFolha.clientWidth * (window.devicePixelRatio || 1))));
+      const base = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: larguraAlvo / base.width });
+      cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      pag = n; desenhando = false;
+      elPos.textContent = innerWidth < 660 ? n + ' / ' + doc.numPages : 'página ' + n + ' de ' + doc.numPages;
+      elAnt.disabled = n <= 1; elProx.disabled = n >= doc.numPages;
+      elFim.hidden = n < doc.numPages;
+      if (n >= doc.numPages) elFim.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    elAnt.onclick = () => desenhar(pag - 1);
+    elProx.onclick = () => desenhar(pag + 1);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') desenhar(pag - 1);
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') desenhar(pag + 1);
+    });
+    let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => desenhar(pag), 220); });
+  </script>`;
+  return pagina({
+    title: `Folhear: ${b.titulo} — Livraria Villela`,
+    description: `Leia gratuitamente as primeiras páginas de ${b.titulo}.`,
+    path: `/livros/${b.slug}/folhear`,
+    ogImage: b.capa_url ? SITE + b.capa_url : undefined,
+    body,
+    // amostra não é conteúdo próprio para indexar: o robô fica com a página do livro
+    extraHead: '<meta name="robots" content="noindex,follow">',
+  });
+}
+
+module.exports = { pagina, vitrine, paginaLivro, folhear, checkout, obrigado, biblioteca, suporte, SITE, waLink, esc };

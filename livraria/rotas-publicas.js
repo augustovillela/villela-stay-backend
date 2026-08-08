@@ -5,6 +5,9 @@
 
 function registrarRotasPublicas(app, deps) {
   const { repo, pagamentos, eventos, fluxo, storefront, legais, atualizacoes, downloads, urls } = deps;
+  const fs = require('fs');
+  const path = require('path');
+  const amostra = require('./amostra');
 
   // Nunca cachear as APIs da loja.
   app.use('/livraria/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -25,12 +28,58 @@ function registrarRotasPublicas(app, deps) {
     'domine-o-claude-na-advocacia': 'claude-ai-para-advogados-guia-visual',
   };
 
+  // ---- Folhear (amostra): leitor + arquivo. Vêm ANTES de /livros/:slug por clareza.
+  // A lib do leitor é servida do próprio backend (nada de CDN): 1 arquivo + worker.
+  const PDFJS_DIR = path.join(path.dirname(require.resolve('pdfjs-dist/package.json')), 'build');
+  app.get('/livros/pdfjs/:arquivo(pdf.mjs|pdf.worker.mjs)', (req, res) => {
+    res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.sendFile(path.join(PDFJS_DIR, req.params.arquivo));
+  });
+
+  const livroPublico = (slug) => {
+    const b = repo.Books.porSlug(String(slug || ''));
+    return b && b.ativo ? b : null;
+  };
+
+  app.get('/livros/:slug/folhear', (req, res) => {
+    const legado = SLUGS_LEGADOS[req.params.slug];
+    if (legado) return res.redirect(301, `/livros/${legado}/folhear`);
+    const b = livroPublico(req.params.slug);
+    if (!b || !amostra.temAmostra(repo, b)) return res.redirect(302, '/livros/' + (b ? b.slug : ''));
+    res.type('html').send(storefront.folhear(b));
+  });
+
+  // O PDF da amostra: gerado sob demanda e cacheado em disco. Inline (o leitor
+  // desenha em canvas), nunca indexável, e sem substituir o download do comprador.
+  app.get('/livros/:slug/amostra.pdf', async (req, res) => {
+    const b = livroPublico(req.params.slug);
+    if (!b) return res.status(404).end();
+    try {
+      const am = await amostra.obterAmostra(repo, b);
+      if (!am) return res.status(404).end();
+      // sendFile responde Range: o leitor busca só os trechos de que precisa e a
+      // 1ª página aparece sem baixar a amostra inteira (livro ilustrado é pesado).
+      res.sendFile(am.caminho, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `inline; filename="${repo.slugify(b.titulo)}-amostra.pdf"`,
+          'Cache-Control': 'public, max-age=3600',
+          'X-Robots-Tag': 'noindex, nofollow',
+        },
+      }, (err) => { if (err && !res.headersSent) res.status(500).end(); });
+    } catch (e) {
+      console.error('[livraria] amostra:', e.message);
+      res.status(500).end();
+    }
+  });
+
   app.get('/livros/:slug', (req, res) => {
     const legado = SLUGS_LEGADOS[req.params.slug];
     if (legado) return res.redirect(301, '/livros/' + legado);
     const b = repo.Books.porSlug(req.params.slug);
     if (!b || !b.ativo) return res.status(404).type('html').send(storefront.vitrine(repo.Books.listarPublico()));
-    res.type('html').send(storefront.paginaLivro(b));
+    res.type('html').send(storefront.paginaLivro({ ...b, tem_amostra: amostra.temAmostra(repo, b) }));
   });
   app.get('/checkout', (req, res) => {
     const b = req.query.livro ? repo.Books.porSlug(String(req.query.livro)) : null;
