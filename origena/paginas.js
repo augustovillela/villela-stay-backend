@@ -73,6 +73,214 @@ function registrarPaginas(app) {
   app.get('/origena/robots.txt', (req, res) => {
     res.type('text/plain').send('User-agent: *\nDisallow: /origena\n');
   });
+
+  // App da família. Página única, JS clássico, sem build — padrão da casa.
+  // A autorização é TODA do servidor: esta tela só esconde botão que a API
+  // já negaria (§92). O que ela mostra vem de `permissoes` do backend.
+  app.get('/origena/app', (req, res) => res.type('html').send(APP));
+
+  // Aterrissagem dos links de e-mail. Entregam o token ao app.
+  for (const rota of ['/origena/verificar', '/origena/convite', '/origena/nova-senha']) {
+    app.get(rota, (req, res) => res.redirect(302,
+      `/origena/app#${rota.split('/').pop()}?token=${encodeURIComponent(req.query.token || '')}`));
+  }
 }
+
+const APP = pagina('Origena', `
+<div class="wrap" id="app"><p class="carregando">Carregando…</p></div>
+<style>
+.wrap{max-width:720px}
+.topo{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--borda)}
+.marca{font-family:Lora,Georgia,serif;font-size:22px;font-weight:600}
+input,select{width:100%;padding:11px 13px;border:1px solid var(--borda);border-radius:10px;
+font:15px Inter,system-ui,sans-serif;background:var(--card);color:var(--tinta);margin:6px 0 14px}
+label{font-size:14px;font-weight:600;display:block;margin-top:6px}
+.btn{background:var(--tema);color:#fff;border:0;border-radius:999px;padding:11px 22px;
+font-weight:600;font-size:15px;cursor:pointer}
+.btn.claro{background:transparent;color:var(--tema);border:1px solid var(--tema)}
+.btn.mini{padding:6px 13px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:wait}
+.linha{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;
+border-bottom:1px solid var(--borda);flex-wrap:wrap}
+.papel{font-size:12px;font-weight:700;letter-spacing:.04em;background:#EFE7DC;color:#7A5C3E;
+border-radius:999px;padding:3px 10px}
+.erro{background:#FDECEC;border:1px solid #F5C2C2;color:#8A2020;padding:11px 14px;border-radius:10px;margin:12px 0}
+.ok{background:#E9F5EC;border:1px solid #BFE0C8;color:#1F5C33;padding:11px 14px;border-radius:10px;margin:12px 0}
+.sub{color:var(--suave);font-size:14px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break:break-all}
+@media(prefers-color-scheme:dark){.papel{background:#3A2E22;color:#D9BC93}
+.erro{background:#3A1E1E;border-color:#5C2C2C;color:#F0B4B4}.ok{background:#1C3324;border-color:#2C5C3A;color:#A8DDB8}}
+</style>
+<script>
+const API = '/origena/api/v1';
+let EU = null, FAM = null, PERM = [];
+const $ = (h) => { document.getElementById('app').innerHTML = h; };
+const esc = (t) => String(t==null?'':t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pode = (p) => PERM.includes(p);
+
+async function api(metodo, caminho, corpo) {
+  const r = await fetch(API + caminho, {
+    method: metodo,
+    headers: corpo ? { 'Content-Type': 'application/json' } : {},
+    body: corpo ? JSON.stringify(corpo) : undefined,
+  });
+  let j = null; try { j = await r.json(); } catch (_) {}
+  return { status: r.status, ...(j || {}) };
+}
+// Erro nunca vira "500 Internal Server Error" na cara do usuário (§118).
+const aviso = (m, tipo) => '<div class="' + (tipo||'erro') + '">' + esc(m) + '</div>';
+
+const topo = () => '<div class="topo"><span class="marca">Origena</span>' +
+  (EU ? '<span class="sub">' + esc(EU.nome) + ' · <a href="#" onclick="sair();return false">sair</a></span>' : '') +
+  '</div>';
+
+// ------------------------------------------------------------------ entrar
+function telaEntrar(msg) {
+  $(topo() + '<h2>Entrar</h2>' + (msg ? aviso(msg) : '') + \`
+    <label>E-mail</label><input id="e" type="email" autocomplete="email">
+    <label>Senha</label><input id="s" type="password" autocomplete="current-password">
+    <div id="mfa" style="display:none"><label>Código de verificação</label>
+      <input id="c" inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></div>
+    <button class="btn" onclick="entrar()">Entrar</button>
+    <p class="sub" style="margin-top:20px">Ainda não tem conta?
+      <a href="#" onclick="telaCadastrar();return false">Criar conta</a></p>\`);
+}
+async function entrar() {
+  const r = await api('POST', '/conta/entrar', {
+    email: document.getElementById('e').value, senha: document.getElementById('s').value,
+    codigo: (document.getElementById('c')||{}).value });
+  if (r.mfa_necessario && r.status === 200) { document.getElementById('mfa').style.display = 'block'; return; }
+  if (r.status !== 200) return telaEntrar(r.erro || 'Não consegui entrar.');
+  inicio();
+}
+function telaCadastrar(msg) {
+  $(topo() + '<h2>Criar conta</h2>' + (msg ? aviso(msg) : '') + \`
+    <label>Seu nome</label><input id="n">
+    <label>E-mail</label><input id="e" type="email">
+    <label>Senha</label><input id="s" type="password" autocomplete="new-password">
+    <p class="sub"><label style="display:inline"><input type="checkbox" id="t" style="width:auto"> Aceito os termos de uso</label></p>
+    <button class="btn" onclick="cadastrar()">Criar conta</button>
+    <p class="sub" style="margin-top:20px"><a href="#" onclick="telaEntrar();return false">Já tenho conta</a></p>\`);
+}
+async function cadastrar() {
+  const r = await api('POST', '/conta/cadastrar', {
+    nome: document.getElementById('n').value, email: document.getElementById('e').value,
+    senha: document.getElementById('s').value, aceito_termos: document.getElementById('t').checked });
+  if (r.status >= 400) return telaCadastrar(r.erro);
+  $(topo() + '<h2>Confirme seu e-mail</h2>' + aviso(r.mensagem, 'ok') +
+    '<p class="sub">Abra o link que enviamos para confirmar e entrar.</p>');
+}
+const sair = async () => { await api('POST', '/conta/sair'); EU = null; telaEntrar(); };
+
+// ------------------------------------------------------------------ famílias
+async function inicio() {
+  const eu = await api('GET', '/conta/eu');
+  if (eu.status !== 200) return telaEntrar();
+  EU = eu.usuario;
+  const fams = eu.familias || [];
+  $(topo() + '<h2>Nossa família</h2>' +
+    (fams.length ? fams.map(f =>
+      '<div class="linha"><span><strong>' + esc(f.nome) + '</strong> <span class="papel">' + esc(f.papel) + '</span></span>' +
+      '<button class="btn mini" onclick="abrir(\\'' + f.id + '\\')">Abrir</button></div>').join('')
+      : '<p class="sub">Você ainda não faz parte de nenhuma família. Crie a sua.</p>') +
+    \`<h3 style="margin-top:28px">Criar uma família</h3>
+     <label>Nome da família</label><input id="nf" placeholder="Família Villela">
+     <button class="btn" onclick="criarFamilia()">Criar</button>\`);
+}
+async function criarFamilia() {
+  const r = await api('POST', '/familias', { nome: document.getElementById('nf').value });
+  if (r.status >= 400) { $(document.getElementById('app').innerHTML + aviso(r.erro)); return; }
+  abrir(r.familia.id);
+}
+
+async function abrir(id) {
+  const f = await api('GET', '/familias/' + id);
+  if (f.status !== 200) return inicio();
+  FAM = f.familia; PERM = f.permissoes || [];
+  const m = await api('GET', '/familias/' + id + '/membros');
+  const convites = pode('membros.convidar') ? await api('GET', '/familias/' + id + '/convites') : { convites: [] };
+  $(topo() + '<p class="sub"><a href="#" onclick="inicio();return false">← todas as famílias</a></p>' +
+    '<h2>' + esc(FAM.nome) + '</h2><p class="sub">Você é <strong>' + esc(f.papel) + '</strong> aqui.</p>' +
+    '<h3 style="margin-top:26px">Pessoas com acesso</h3>' +
+    (m.membros || []).map(x =>
+      '<div class="linha"><span>' + esc(x.nome) + (x.email ? ' <span class="sub">' + esc(x.email) + '</span>' : '') +
+      ' <span class="papel">' + esc(x.papel) + '</span></span>' +
+      (pode('membros.gerenciar') && x.papel !== 'OWNER'
+        ? '<button class="btn mini claro" onclick="remover(\\'' + x.user_id + '\\')">Remover</button>' : '') +
+      '</div>').join('') +
+    (pode('membros.convidar') ? \`
+      <h3 style="margin-top:26px">Convidar alguém da família</h3>
+      <label>E-mail</label><input id="ce" type="email">
+      <label>Papel</label><select id="cp">
+        <option value="CONTRIBUTOR">Contribuir (envia fotos e histórias)</option>
+        <option value="FAMILY_MEMBER">Ver e contribuir</option>
+        <option value="EDITOR">Editar o acervo</option>
+        <option value="HISTORIAN">Cuidar das fontes e divergências</option>
+        <option value="ADMIN">Administrar a família</option>
+        <option value="GUEST">Só visitar</option>
+      </select>
+      <button class="btn" onclick="convidar()">Enviar convite</button>\` +
+      ((convites.convites || []).filter(c => !c.aceito_em && !c.revogado_em).map(c =>
+        '<div class="linha"><span class="sub">' + esc(c.email) + ' · ' + esc(c.papel) + ' · aguardando</span></div>').join(''))
+      : '') +
+    (pode('auditoria.ver') ? '<p style="margin-top:26px"><a href="#" onclick="auditoria();return false">Ver o histórico de mudanças</a></p>' : ''));
+}
+async function convidar() {
+  const r = await api('POST', '/familias/' + FAM.id + '/convites',
+    { email: document.getElementById('ce').value, papel: document.getElementById('cp').value });
+  if (r.status === 428) return $(document.getElementById('app').innerHTML +
+    aviso('Para convidar, ative antes a verificação em duas etapas — esta ação pode expor o acervo da família.'));
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  abrir(FAM.id);
+}
+async function remover(userId) {
+  if (!confirm('Remover o acesso desta pessoa? O que ela contribuiu continua no acervo.')) return;
+  const r = await api('DELETE', '/familias/' + FAM.id + '/membros/' + userId);
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  abrir(FAM.id);
+}
+async function auditoria() {
+  const r = await api('GET', '/familias/' + FAM.id + '/auditoria');
+  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+    '<h2>Histórico de mudanças</h2>' +
+    (r.eventos || []).map(e => '<div class="linha"><span>' + esc(e.acao) +
+      '<br><span class="sub">' + esc(e.ator_nome || 'sistema') + ' · ' +
+      new Date(e.created_at).toLocaleString('pt-BR') + '</span></span></div>').join(''));
+}
+
+// ------------------------------------------------- links vindos do e-mail
+async function rotaDoHash() {
+  const h = location.hash.slice(1);
+  const [qual, q] = h.split('?');
+  const token = new URLSearchParams(q || '').get('token');
+  if (qual === 'verificar' && token) {
+    const r = await api('GET', '/conta/verificar?token=' + encodeURIComponent(token));
+    history.replaceState(null, '', '/origena/app');
+    return r.status === 200 ? inicio() : telaEntrar(r.erro);
+  }
+  if (qual === 'convite' && token) {
+    const c = await api('GET', '/convites/' + encodeURIComponent(token));
+    if (c.status >= 400) { history.replaceState(null, '', '/origena/app'); return telaEntrar(c.erro); }
+    const eu = await api('GET', '/conta/eu');
+    if (eu.status !== 200) return telaEntrar('Entre com o e-mail ' + c.convite.email + ' para aceitar o convite.');
+    const a = await api('POST', '/convites/' + encodeURIComponent(token) + '/aceitar');
+    history.replaceState(null, '', '/origena/app');
+    return a.status === 200 ? abrir(a.familyId) : (EU = eu.usuario, $(topo() + aviso(a.erro)));
+  }
+  if (qual === 'nova-senha' && token) {
+    return $(topo() + '<h2>Escolher nova senha</h2><label>Nova senha</label>' +
+      '<input id="s" type="password" autocomplete="new-password">' +
+      '<button class="btn" onclick="salvarSenha(\\'' + esc(token) + '\\')">Salvar</button>');
+  }
+  inicio();
+}
+async function salvarSenha(token) {
+  const r = await api('POST', '/conta/nova-senha', { token, senha: document.getElementById('s').value });
+  history.replaceState(null, '', '/origena/app');
+  telaEntrar(r.status === 200 ? 'Senha alterada. Entre de novo.' : r.erro);
+}
+
+rotaDoHash();
+</script>`);
 
 module.exports = { registrarPaginas, pagina, CSS };

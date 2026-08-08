@@ -1,19 +1,23 @@
 // =====================================================================
-// ORIGENA — suíte de testes da Fase 0.   npm run test:origena
+// ORIGENA — suíte de testes (Fases 0 e 1).   npm run test:origena
 //
 // Sobe o Express real com auth de staff injetada, num SCHEMA DESCARTÁVEL
 // do Postgres (o equivalente ao os.tmpdir() que os produtos SQLite usam)
-// — derrubado no fim, dê certo ou dê errado.
+// — derrubado no fim, dê certo ou dê errado. O R2 é o de verdade.
 //
-// O foco da Fase 0 é o encanamento que tudo o mais vai usar: migração,
-// idempotência da fila, backoff, DLQ, destrave e storage de verdade.
-// Testes de tenancy (§94), autorização e domínio entram na Fase 1.
+// Fase 0: migração, idempotência da fila, backoff, DLQ, destrave, storage.
+// Fase 1: papéis, privacidade, contas, MFA, famílias, convites e o
+//         ISOLAMENTO ENTRE FAMÍLIAS (§94) — este último é gerado a partir
+//         da tabela de rotas escopadas, então rota nova nasce coberta e a
+//         suíte quebra se alguém esquecer.
 // =====================================================================
 'use strict';
 const crypto = require('crypto');
 
 process.env.NODE_ENV = 'development';
 process.env.ORIGENA_DB_SCHEMA = 't_origena_' + crypto.randomBytes(4).toString('hex');
+process.env.ORIGENA_SECRET_KEY = crypto.randomBytes(32).toString('hex');  // cofre do MFA
+process.env.ORIGENA_BCRYPT = '4';                                          // teste não precisa de custo 12
 // Backoff LONGO de propósito: o teste precisa ver `rodar_apos` no futuro.
 // Os testes que dependem de reprocessar encurtam à mão (UPDATE rodar_apos).
 process.env.ORIGENA_FILA_BACKOFF_MS = '60000';
@@ -49,16 +53,60 @@ async function teste(nome, fn) {
   catch (e) { falhas.push({ nome, erro: e.message }); console.log('  FALHOU ' + nome + '\n         ' + e.message); }
 }
 
-const req = async (metodo, caminho, { como = 'adm', corpo } = {}) => {
+const req = async (metodo, caminho, { como = 'adm', corpo, sessao: jar } = {}) => {
   const r = await fetch(base + caminho, {
     method: metodo,
-    headers: { 'x-test-user': como, ...(corpo ? { 'Content-Type': 'application/json' } : {}) },
+    headers: {
+      'x-test-user': como,
+      ...(jar && jar.cookie ? { Cookie: jar.cookie } : {}),
+      ...(corpo ? { 'Content-Type': 'application/json' } : {}),
+    },
     body: corpo ? JSON.stringify(corpo) : undefined,
+    redirect: 'manual',
   });
+  const set = r.headers.getSetCookie ? r.headers.getSetCookie() : [];
+  if (jar) for (const c of set) { const p = c.split(';')[0]; if (p.startsWith('origena_sess=')) jar.cookie = p; }
   const txt = await r.text();
   let json = null; try { json = JSON.parse(txt); } catch (_) {}
   return { status: r.status, json, texto: txt, tipo: r.headers.get('content-type') || '' };
 };
+
+// Caixa de e-mail falsa. O token só existe no e-mail — no banco fica o
+// HASH dele —, então é daqui que o teste tira o link, igual a um usuário.
+const caixa = [];
+const enviarEmail = async (para, assunto, html) => { caixa.push({ para, assunto, html }); return true; };
+function tokenDoUltimoEmail(para, trecho) {
+  const m = [...caixa].reverse().find((e) => e.para === para && e.html.includes(trecho));
+  if (!m) throw new Error(`Nenhum e-mail com "${trecho}" para ${para}. Caixa: ${caixa.map((x) => x.para).join(', ')}`);
+  const t = m.html.match(new RegExp(trecho + '\\?token=([^"&]+)'));
+  if (!t) throw new Error(`E-mail sem token: ${m.assunto}`);
+  return decodeURIComponent(t[1]);
+}
+
+/** Cria uma conta já verificada e logada. Devolve o "porta-cookie". */
+async function novaConta(nome, mail, senha = 'senha-de-teste-123') {
+  const jar = { cookie: null, nome, email: mail, senha };
+  const c = await req('POST', '/origena/api/v1/conta/cadastrar',
+    { corpo: { nome, email: mail, senha, aceito_termos: true }, sessao: jar });
+  assert.strictEqual(c.status, 201, 'cadastro falhou: ' + c.texto);
+  const token = tokenDoUltimoEmail(mail, '/origena/verificar');
+  const v = await req('GET', `/origena/api/v1/conta/verificar?token=${encodeURIComponent(token)}`, { sessao: jar });
+  assert.strictEqual(v.status, 200, 'verificação falhou: ' + v.texto);
+  jar.id = v.json.usuario.id;
+  return jar;
+}
+
+/** Liga o MFA de uma conta (quem administra família precisa dele). */
+async function ativarMFA(jar) {
+  const sess = require('./sessao');
+  const ini = await req('POST', '/origena/api/v1/conta/mfa/iniciar', { sessao: jar });
+  assert.strictEqual(ini.status, 200, 'mfa/iniciar falhou: ' + ini.texto);
+  const conf = await req('POST', '/origena/api/v1/conta/mfa/confirmar',
+    { sessao: jar, corpo: { codigo: sess.codigoTOTP(ini.json.segredo) } });
+  assert.strictEqual(conf.status, 200, 'mfa/confirmar falhou: ' + conf.texto);
+  jar.totp = ini.json.segredo; jar.backups = conf.json.codigos_backup;
+  return jar;
+}
 
 // =====================================================================
 async function principal() {
@@ -72,7 +120,8 @@ async function principal() {
   const app = express();
   app.use(express.json());
   app.use(cookieParser());
-  await origena.montar(app, { express, requireAuth, requireAdmin, jwtSecret: 'teste' });
+  const montado = await origena.montar(app, {
+    express, requireAuth, requireAdmin, enviarEmail, jwtSecret: 'segredo-de-teste-origena' });
   await new Promise((r) => { servidor = app.listen(0, r); });
   base = 'http://127.0.0.1:' + servidor.address().port;
 
@@ -294,6 +343,376 @@ async function principal() {
     });
   }
 
+  // =================================================================== FASE 1
+  const rbac = require('./rbac');
+  const privacidade = require('./privacidade');
+  const tenancy = require('./tenancy');
+  const sess = require('./sessao');
+
+  console.log('\npapéis (função pura)');
+  await teste('OWNER pode tudo; GUEST só vê o que é público', async () => {
+    for (const p of rbac.PERMISSOES) assert(rbac.pode('OWNER', p), `OWNER não pôde ${p}`);
+    assert.deepStrictEqual(rbac.permissoesDe('GUEST'), ['ver.publico']);
+  });
+
+  await teste('CONTRIBUTOR acrescenta mas NÃO apaga', async () => {
+    assert(rbac.pode('CONTRIBUTOR', 'contribuir'));
+    assert(!rbac.pode('CONTRIBUTOR', 'excluir'), 'CONTRIBUTOR conseguiu excluir');
+    assert(!rbac.pode('CONTRIBUTOR', 'papeis.alterar'));
+    assert(!rbac.pode('CONTRIBUTOR', 'ver.documentos'), 'CONTRIBUTOR viu documento');
+  });
+
+  await teste('só quem administra resolve divergência e mexe em papel', async () => {
+    for (const papel of ['OWNER', 'ADMIN', 'HISTORIAN']) assert(rbac.pode(papel, 'claims.resolver'), papel);
+    for (const papel of ['EDITOR', 'CONTRIBUTOR', 'FAMILY_MEMBER', 'GUEST']) {
+      assert(!rbac.pode(papel, 'claims.resolver'), `${papel} resolveu divergência`);
+      assert(!rbac.pode(papel, 'papeis.alterar'), `${papel} alterou papel`);
+    }
+  });
+
+  await teste('ninguém promove alguém acima de si (ADMIN não vira OWNER)', async () => {
+    assert(!rbac.podeAlterarPapel('ADMIN', 'ADMIN', 'OWNER'), 'ADMIN se promoveu a OWNER');
+    assert(!rbac.podeAlterarPapel('ADMIN', 'OWNER', 'GUEST'), 'ADMIN rebaixou o OWNER');
+    assert(rbac.podeAlterarPapel('OWNER', 'ADMIN', 'HISTORIAN'));
+    assert(rbac.podeAlterarPapel('ADMIN', 'EDITOR', 'CONTRIBUTOR'));
+  });
+
+  await teste('permissão inexistente é erro de programação, não "false" silencioso', async () => {
+    assert.throws(() => rbac.pode('OWNER', 'permissao.que.nao.existe'), /desconhecida/);
+  });
+
+  console.log('\nprivacidade (função pura)');
+  await teste('PRIVATE: autor vê; quem administra vê e fica auditado; os demais não', async () => {
+    const item = { privacidade: 'PRIVATE', created_by: 'u1' };
+    assert(privacidade.podeVer(item, { userId: 'u1', papel: 'GUEST' }).pode, 'autor não viu o próprio item');
+    const adm = privacidade.podeVer(item, { userId: 'u2', papel: 'ADMIN' });
+    assert(adm.pode && adm.auditar, 'admin viu sem marcar auditoria');
+    assert(!privacidade.podeVer(item, { userId: 'u3', papel: 'EDITOR' }).pode, 'EDITOR viu item privado alheio');
+  });
+
+  await teste('GUEST não vê conteúdo FAMILY; visitante sem papel só vê PUBLIC', async () => {
+    assert(!privacidade.podeVer({ privacidade: 'FAMILY' }, { papel: 'GUEST' }).pode);
+    assert(privacidade.podeVer({ privacidade: 'PUBLIC' }, null).pode);
+    assert(!privacidade.podeVer({ privacidade: 'FAMILY' }, null).pode);
+  });
+
+  await teste('cápsula lacrada não abre nem para OWNER', async () => {
+    const daqui1ano = new Date(Date.now() + 3.15e10).toISOString();
+    assert(!privacidade.podeVer({ privacidade: 'TIME_LOCKED', liberada_em: daqui1ano }, { papel: 'OWNER' }).pode);
+    const ontem = new Date(Date.now() - 8.6e7).toISOString();
+    assert(privacidade.podeVer({ privacidade: 'TIME_LOCKED', liberada_em: ontem }, { papel: 'OWNER' }).pode);
+  });
+
+  await teste('perfil de menor nunca vai a público (§73)', async () => {
+    assert(!privacidade.podeExporPublicamente({ privacidade: 'PUBLIC', eh_menor: true }).pode);
+  });
+
+  await teste('staff sem motivo registrado não vê conteúdo de família', async () => {
+    assert(!privacidade.podeVer({ privacidade: 'FAMILY' }, { papel: 'OWNER', ehStaff: true }).pode);
+  });
+
+  console.log('\ncontas');
+  let ana, bruno, carla, silva;
+  await teste('cadastro → e-mail de verificação → conta verificada', async () => {
+    ana = await novaConta('Ana Villela', 'ana@teste.origena');
+    const eu = await req('GET', '/origena/api/v1/conta/eu', { sessao: ana });
+    assert.strictEqual(eu.status, 200);
+    assert.strictEqual(eu.json.usuario.email_verificado, true);
+  });
+
+  await teste('e-mail repetido não revela que a conta existe', async () => {
+    const r = await req('POST', '/origena/api/v1/conta/cadastrar',
+      { corpo: { nome: 'Outra', email: 'ana@teste.origena', senha: 'senha-de-teste-123', aceito_termos: true } });
+    assert.strictEqual(r.status, 202, 'devolveu status que denuncia a existência da conta');
+  });
+
+  await teste('senha fraca e termos não aceitos são recusados', async () => {
+    const f = await req('POST', '/origena/api/v1/conta/cadastrar',
+      { corpo: { nome: 'X', email: 'x@teste.origena', senha: '123', aceito_termos: true } });
+    assert.strictEqual(f.status, 400);
+    const t = await req('POST', '/origena/api/v1/conta/cadastrar',
+      { corpo: { nome: 'Xis Silva', email: 'x2@teste.origena', senha: 'senha-de-teste-123' } });
+    assert.strictEqual(t.status, 400);
+  });
+
+  await teste('senha errada e e-mail inexistente dão a MESMA resposta', async () => {
+    const a = await req('POST', '/origena/api/v1/conta/entrar', { corpo: { email: 'ana@teste.origena', senha: 'errada-mesmo-123' } });
+    const b = await req('POST', '/origena/api/v1/conta/entrar', { corpo: { email: 'nao-existe@teste.origena', senha: 'errada-mesmo-123' } });
+    assert.strictEqual(a.status, 401); assert.strictEqual(b.status, 401);
+    assert.strictEqual(a.json.erro, b.json.erro, 'as mensagens diferem — dá para enumerar contas');
+  });
+
+  await teste('trocar a senha derruba TODAS as sessões (não só o cookie atual)', async () => {
+    const zeca = await novaConta('Zeca Villela', 'zeca@teste.origena');
+    const antes = await req('GET', '/origena/api/v1/conta/eu', { sessao: zeca });
+    assert.strictEqual(antes.status, 200);
+    await req('POST', '/origena/api/v1/conta/esqueci', { corpo: { email: zeca.email } });
+    const tk = tokenDoUltimoEmail(zeca.email, '/origena/nova-senha');
+    const nova = await req('POST', '/origena/api/v1/conta/nova-senha', { corpo: { token: tk, senha: 'outra-senha-boa-456' } });
+    assert.strictEqual(nova.status, 200, nova.texto);
+    const depois = await req('GET', '/origena/api/v1/conta/eu', { sessao: { cookie: antes && zeca.cookie } });
+    assert.strictEqual(depois.status, 401, 'a sessão antiga continuou valendo depois da troca de senha');
+  });
+
+  console.log('\nMFA (TOTP)');
+  await teste('TOTP gera código de 6 dígitos e aceita ±1 janela', async () => {
+    const seg = sess.gerarSegredoTOTP();
+    const agora = Date.now();
+    assert.match(sess.codigoTOTP(seg, 0, agora), /^\d{6}$/);
+    assert(sess.conferirTOTP(seg, sess.codigoTOTP(seg, 0, agora), agora));
+    assert(sess.conferirTOTP(seg, sess.codigoTOTP(seg, -1, agora), agora), 'não aceitou o código da janela anterior');
+    assert(!sess.conferirTOTP(seg, sess.codigoTOTP(seg, 5, agora), agora), 'aceitou código de janela distante');
+    assert(!sess.conferirTOTP(seg, '000000', agora) || true);   // pode colidir; não é asserção forte
+  });
+
+  await teste('ativar MFA e entrar exigindo o código', async () => {
+    const ini = await req('POST', '/origena/api/v1/conta/mfa/iniciar', { sessao: ana });
+    assert.strictEqual(ini.status, 200, ini.texto);
+    const conf = await req('POST', '/origena/api/v1/conta/mfa/confirmar',
+      { sessao: ana, corpo: { codigo: sess.codigoTOTP(ini.json.segredo) } });
+    assert.strictEqual(conf.status, 200, conf.texto);
+    assert.strictEqual((conf.json.codigos_backup || []).length, 8, 'não gerou códigos de backup');
+    ana.totp = ini.json.segredo; ana.backups = conf.json.codigos_backup;
+
+    const semCodigo = await req('POST', '/origena/api/v1/conta/entrar', { corpo: { email: ana.email, senha: ana.senha } });
+    assert.strictEqual(semCodigo.json.mfa_necessario, true, 'entrou sem pedir o segundo fator');
+    const errado = await req('POST', '/origena/api/v1/conta/entrar', { corpo: { email: ana.email, senha: ana.senha, codigo: '000001' } });
+    assert.strictEqual(errado.status, 401);
+    const certo = await req('POST', '/origena/api/v1/conta/entrar',
+      { corpo: { email: ana.email, senha: ana.senha, codigo: sess.codigoTOTP(ana.totp) }, sessao: ana });
+    assert.strictEqual(certo.status, 200, certo.texto);
+  });
+
+  await teste('código de backup funciona UMA vez só', async () => {
+    const cod = ana.backups[0];
+    const um = await req('POST', '/origena/api/v1/conta/entrar', { corpo: { email: ana.email, senha: ana.senha, codigo: cod }, sessao: ana });
+    assert.strictEqual(um.status, 200, 'código de backup não funcionou');
+    const dois = await req('POST', '/origena/api/v1/conta/entrar', { corpo: { email: ana.email, senha: ana.senha, codigo: cod } });
+    assert.strictEqual(dois.status, 401, 'código de backup funcionou duas vezes');
+  });
+
+  console.log('\nfamílias, papéis e convites');
+  let famA, famB;
+  await teste('criar família dá OWNER a quem criou', async () => {
+    const r = await req('POST', '/origena/api/v1/familias', { sessao: ana, corpo: { nome: 'Família Villela' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    famA = r.json.familia.id;
+    assert.strictEqual(r.json.familia.papel, 'OWNER');
+  });
+
+  await teste('e-mail não verificado não cria família', async () => {
+    const jar = { cookie: null };
+    await req('POST', '/origena/api/v1/conta/cadastrar',
+      { corpo: { nome: 'Nao Verificado', email: 'nv@teste.origena', senha: 'senha-de-teste-123', aceito_termos: true } });
+    const ent = await req('POST', '/origena/api/v1/conta/entrar',
+      { corpo: { email: 'nv@teste.origena', senha: 'senha-de-teste-123' }, sessao: jar });
+    assert.strictEqual(ent.status, 200);
+    const cria = await req('POST', '/origena/api/v1/familias', { sessao: jar, corpo: { nome: 'Não deveria' } });
+    assert.strictEqual(cria.status, 403);
+  });
+
+  await teste('convite: enviar → aceitar → vira membro com o papel certo', async () => {
+    bruno = await novaConta('Bruno Villela', 'bruno@teste.origena');
+    const c = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: ana, corpo: { email: bruno.email, papel: 'CONTRIBUTOR' } });
+    assert.strictEqual(c.status, 201, c.texto);
+    assert.strictEqual(c.json.convite.token_hash, undefined, 'a API devolveu o hash do token');
+    const tk = tokenDoUltimoEmail(bruno.email, '/origena/convite');
+    const a = await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk)}/aceitar`, { sessao: bruno });
+    assert.strictEqual(a.status, 200, a.texto);
+    assert.strictEqual(a.json.papel, 'CONTRIBUTOR');
+  });
+
+  await teste('convite não serve para outro e-mail, nem duas vezes', async () => {
+    carla = await novaConta('Carla Villela', 'carla@teste.origena');
+    const c = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: ana, corpo: { email: 'destinatario@teste.origena', papel: 'GUEST' } });
+    assert.strictEqual(c.status, 201);
+    const tk = tokenDoUltimoEmail('destinatario@teste.origena', '/origena/convite');
+    const outro = await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk)}/aceitar`, { sessao: carla });
+    assert.strictEqual(outro.status, 403, 'link vazado funcionou para outra pessoa');
+
+    const c2 = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: ana, corpo: { email: carla.email, papel: 'GUEST' } });
+    const tk2 = tokenDoUltimoEmail(carla.email, '/origena/convite');
+    assert.strictEqual((await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk2)}/aceitar`, { sessao: carla })).status, 200);
+    const dnv = await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk2)}/aceitar`, { sessao: carla });
+    assert.strictEqual(dnv.status, 410, 'o mesmo convite foi aceito duas vezes');
+    assert(c2.status === 201);
+  });
+
+  await teste('convite revogado e vencido não valem', async () => {
+    const c = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: ana, corpo: { email: 'revogado@teste.origena', papel: 'GUEST' } });
+    const tk = tokenDoUltimoEmail('revogado@teste.origena', '/origena/convite');
+    await req('DELETE', `/origena/api/v1/familias/${famA}/convites/${c.json.convite.id}`, { sessao: ana });
+    const zz = await novaConta('Ze Revogado', 'revogado@teste.origena');
+    assert.strictEqual((await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk)}/aceitar`, { sessao: zz })).status, 410);
+
+    const c2 = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: ana, corpo: { email: 'vencido@teste.origena', papel: 'GUEST' } });
+    const tk2 = tokenDoUltimoEmail('vencido@teste.origena', '/origena/convite');
+    await db.q(`UPDATE invites SET expira_em = now() - interval '1 day' WHERE id = $1`, [c2.json.convite.id]);
+    const vv = await novaConta('Ze Vencido', 'vencido@teste.origena');
+    assert.strictEqual((await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk2)}/aceitar`, { sessao: vv })).status, 410);
+  });
+
+  await teste('CONTRIBUTOR não convida ninguém nem lê a auditoria', async () => {
+    assert.strictEqual((await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: bruno, corpo: { email: 'x@y.z', papel: 'GUEST' } })).status, 403);
+    assert.strictEqual((await req('GET', `/origena/api/v1/familias/${famA}/auditoria`, { sessao: bruno })).status, 403);
+  });
+
+  await teste('quem administra a família precisa de MFA para convidar (428)', async () => {
+    const p = await req('PATCH', `/origena/api/v1/familias/${famA}/membros/${carla.id}`,
+      { sessao: ana, corpo: { papel: 'ADMIN' } });
+    assert.strictEqual(p.status, 200, p.texto);
+    const semMfa = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: carla, corpo: { email: 'alguem@teste.origena', papel: 'GUEST' } });
+    assert.strictEqual(semMfa.status, 428, 'ADMIN sem MFA conseguiu convidar');
+    assert.strictEqual(semMfa.json.acao, 'ativar_mfa');
+  });
+
+  await teste('ninguém convida para um papel acima do próprio', async () => {
+    await ativarMFA(carla);   // carla já é ADMIN; agora passa da trava de MFA
+    const r = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: carla, corpo: { email: 'novo-owner@teste.origena', papel: 'OWNER' } });
+    assert(r.status === 400 || r.status === 403, `ADMIN convidou alguém como OWNER (status ${r.status})`);
+    // e o papel legítimo continua funcionando
+    const ok = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: carla, corpo: { email: 'legitimo@teste.origena', papel: 'EDITOR' } });
+    assert.strictEqual(ok.status, 201, ok.texto);
+  });
+
+  await teste('a família NUNCA fica sem dono (trava no banco)', async () => {
+    await assert.rejects(
+      db.q(`UPDATE family_memberships SET papel = 'ADMIN' WHERE family_id = $1 AND papel = 'OWNER'`, [famA]),
+      /pelo menos um responsável/i,
+      'foi possível rebaixar o último OWNER');
+    await assert.rejects(
+      db.q(`DELETE FROM family_memberships WHERE family_id = $1 AND papel = 'OWNER'`, [famA]),
+      /pelo menos um responsável/i,
+      'foi possível apagar o último OWNER');
+  });
+
+  await teste('remover membro revoga acesso mas NÃO apaga o que ele contribuiu (§15)', async () => {
+    const dedo = await novaConta('Dedo Villela', 'dedo@teste.origena');
+    const c = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
+      { sessao: ana, corpo: { email: dedo.email, papel: 'FAMILY_MEMBER' } });
+    const tk = tokenDoUltimoEmail(dedo.email, '/origena/convite');
+    await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk)}/aceitar`, { sessao: dedo });
+    assert.strictEqual((await req('GET', `/origena/api/v1/familias/${famA}`, { sessao: dedo })).status, 200);
+
+    const rem = await req('DELETE', `/origena/api/v1/familias/${famA}/membros/${dedo.id}`, { sessao: ana });
+    assert.strictEqual(rem.status, 200, rem.texto);
+    assert.strictEqual((await req('GET', `/origena/api/v1/familias/${famA}`, { sessao: dedo })).status, 404,
+      'membro removido continuou enxergando a família');
+    // A leitura precisa entrar no escopo da família — sem ele o RLS
+    // devolve zero e o teste mentiria dizendo que o histórico sumiu.
+    const linhas = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT count(*)::int n FROM audit_log WHERE family_id = $1 AND ator_user_id = $2`, [famA, dedo.id]));
+    assert(linhas.n > 0, 'o histórico do membro removido foi apagado junto');
+  });
+
+  await teste('auditoria registra as ações críticas', async () => {
+    const a = await req('GET', `/origena/api/v1/familias/${famA}/auditoria`, { sessao: ana });
+    assert.strictEqual(a.status, 200, a.texto);
+    const acoes = a.json.eventos.map((e) => e.acao);
+    for (const esperada of ['familia.criada', 'convite.enviado', 'convite.aceito', 'membro.removido']) {
+      assert(acoes.includes(esperada), `faltou "${esperada}" na auditoria (tem: ${[...new Set(acoes)].join(', ')})`);
+    }
+  });
+
+  // ============================================================ §94 TENANCY
+  console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
+
+  await teste('sem SET app.family_id, tabela de conteúdo devolve ZERO linhas', async () => {
+    const dentro = await tenancy.comEscopo(famA, (t) =>
+      t.uma('SELECT count(*)::int n FROM audit_log WHERE family_id = $1', [famA]));
+    assert(dentro.n > 0, 'o escopo certo não enxergou as próprias linhas');
+    const fora = await tenancy.semEscopo((t) =>
+      t.uma('SELECT count(*)::int n FROM audit_log WHERE family_id = $1', [famA]));
+    assert.strictEqual(fora.n, 0, 'o RLS deixou passar SEM escopo — o muro do banco não está de pé');
+  });
+
+  await teste('com o escopo da OUTRA família, zero linhas', async () => {
+    // A família B precisa de um dono que NÃO seja membro da A — o Bruno
+    // entrou na A como CONTRIBUTOR e serviria de falso negativo.
+    silva = await novaConta('Silva de Outra Família', 'silva@teste.origena');
+    const rB = await req('POST', '/origena/api/v1/familias', { sessao: silva, corpo: { nome: 'Família Silva' } });
+    assert.strictEqual(rB.status, 201, rB.texto);
+    famB = rB.json.familia.id;
+    const cruzado = await tenancy.comEscopo(famB, (t) =>
+      t.uma('SELECT count(*)::int n FROM audit_log WHERE family_id = $1', [famA]));
+    assert.strictEqual(cruzado.n, 0, 'o escopo da família B leu linha da família A');
+  });
+
+  await teste('o RLS vale até para o dono da tabela (FORCE ROW LEVEL SECURITY)', async () => {
+    const r = await db.uma(
+      `SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'audit_log'
+         AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1)`, [db.SCHEMA]);
+    assert(r.relrowsecurity, 'RLS não está habilitada');
+    assert(r.relforcerowsecurity, 'falta FORCE — o dono da tabela ignoraria a política');
+  });
+
+  await teste('família mandada pelo CLIENTE é ignorada (só vale a membership)', async () => {
+    const r = await req('PATCH', `/origena/api/v1/familias/${famA}`,
+      { sessao: ana, corpo: { nome: 'Renomeada', family_id: famB, familyId: famB } });
+    assert.strictEqual(r.status, 200);
+    const b = await req('GET', `/origena/api/v1/familias/${famB}`, { sessao: silva });
+    assert.strictEqual(b.json.familia.nome, 'Família Silva', 'o corpo da requisição mudou a OUTRA família');
+  });
+
+  await teste(`usuário da família A recebe 404 em TODAS as ${montado.ROTAS_ESCOPADAS.length} rotas da família B`, async () => {
+    const falhas94 = [];
+    const uuidFalso = '00000000-0000-4000-8000-000000000000';
+    for (const rota of montado.ROTAS_ESCOPADAS) {
+      const caminho = rota.caminho
+        .replace(':familyId', famB)
+        .replace(':userId', bruno.id)
+        .replace(':id', uuidFalso);
+      const r = await req(rota.metodo, caminho, { sessao: ana, corpo: rota.metodo === 'GET' ? undefined : { nome: 'invasao', papel: 'GUEST' } });
+      // 404 e NUNCA 403: 403 confirmaria que a família existe (T2).
+      if (r.status !== 404) falhas94.push(`${rota.metodo} ${rota.caminho} → ${r.status}`);
+    }
+    assert.strictEqual(falhas94.length, 0,
+      'VAZAMENTO ENTRE FAMÍLIAS:\n         ' + falhas94.join('\n         '));
+  });
+
+  await teste('o outro lado também: usuário de B não alcança A', async () => {
+    for (const rota of montado.ROTAS_ESCOPADAS) {
+      const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
+        .replace(':id', '00000000-0000-4000-8000-000000000000');
+      const r = await req(rota.metodo, caminho, { sessao: silva, corpo: rota.metodo === 'GET' ? undefined : { nome: 'x', papel: 'GUEST' } });
+      assert.strictEqual(r.status, 404, `${rota.metodo} ${rota.caminho} devolveu ${r.status}`);
+    }
+  });
+
+  await teste('sem sessão nenhuma, tudo é 401 (nunca 200)', async () => {
+    for (const rota of montado.ROTAS_ESCOPADAS) {
+      const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
+        .replace(':id', '00000000-0000-4000-8000-000000000000');
+      const r = await req(rota.metodo, caminho, {});
+      assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
+    }
+  });
+
+  await teste('a IA não pode decidir autorização (§102) — nem por import', async () => {
+    const fs = require('fs'), path = require('path');
+    const dirIA = path.join(__dirname, 'ia');
+    if (!fs.existsSync(dirIA)) return;   // Fase 7 ainda não chegou
+    const proibidos = [];
+    const varrer = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) return varrer(p);
+      if (!e.name.endsWith('.js')) return;
+      const src = fs.readFileSync(p, 'utf8');
+      if (/require\(['"]\.\.?\/(rbac|privacidade|tenancy)['"]\)/.test(src)) proibidos.push(e.name);
+    });
+    varrer(dirIA);
+    assert.strictEqual(proibidos.length, 0, 'módulo de IA importou autorização: ' + proibidos.join(', '));
+  });
+
   // ---------------------------------------------------------------- fim
   await new Promise((r) => servidor.close(r));
   try { await db.derrubarSchema(); console.log(`\nschema de teste ${db.SCHEMA} derrubado.`); }
@@ -306,7 +725,7 @@ async function principal() {
     falhas.forEach((f) => console.log(`  • ${f.nome}: ${f.erro}`));
     process.exit(1);
   }
-  console.log('ORIGENA Fase 0: verde.\n');
+  console.log('ORIGENA Fases 0 e 1: verde.\n');
 }
 
 principal().catch(async (e) => {

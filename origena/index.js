@@ -22,6 +22,14 @@
 const db = require('./db');
 const fila = require('./fila');
 const storage = require('./storage');
+const sessao = require('./sessao');
+const tenancy = require('./tenancy');
+const rbac = require('./rbac');
+const privacidade = require('./privacidade');
+const repo = require('./repo');
+const emails = require('./emails');
+const { registrarRotasConta } = require('./rotas-conta');
+const { registrarRotasApp } = require('./rotas-app');
 const { registrarPaginas } = require('./paginas');
 
 let _pronto = false;
@@ -66,9 +74,11 @@ function registrarRotas(app, { requireAuth, requireAdmin }) {
  * configurado, a landing sobe e o resto fica desligado, com log claro.
  */
 async function montar(app, injected = {}) {
-  const { requireAuth, requireAdmin } = injected;
+  const { requireAuth, requireAdmin, enviarEmail, jwtSecret } = injected;
   if (!requireAuth || !requireAdmin) throw new Error('origena.montar: faltam deps (requireAuth, requireAdmin).');
+  if (!jwtSecret) throw new Error('origena.montar: falta jwtSecret.');
 
+  emails.configurar({ enviarEmail });
   registrarPaginas(app);
   registrarRotas(app, { requireAuth, requireAdmin });
 
@@ -77,19 +87,31 @@ async function montar(app, injected = {}) {
     return { db, fila, storage, pronto };
   }
 
+  // Ordem importa: migrar ANTES de abrir rotas que leem tabela.
+  let aplicadas = [];
   try {
-    const aplicadas = await db.migrar();
+    aplicadas = await db.migrar();
     _pronto = true;
-    console.log(`[origena] Origena montada. Landing: /origena · saúde: /origena/health`
-      + ` · schema: ${db.SCHEMA}`
-      + ` · migrações novas: ${aplicadas.length}`
-      + ` · storage: ${storage.configurado() ? process.env.ORIGENA_S3_BUCKET : 'NÃO configurado'}`
-      + ` · handlers de fila: ${fila.tiposRegistrados().length}`);
   } catch (e) {
     console.error('[origena] falha ao migrar — produto sobe SEM banco:', e.message);
+    return { db, fila, storage, saude, pronto };
   }
 
-  return { db, fila, storage, saude, pronto };
+  registrarRotasConta(app, { jwtSecret });
+  const { ROTAS_ESCOPADAS } = registrarRotasApp(app);
+
+  console.log(`[origena] Origena montada. Landing: /origena · app: /origena/app · saúde: /origena/health`
+    + ` · schema: ${db.SCHEMA}`
+    + ` · migrações novas: ${aplicadas.length}`
+    + ` · storage: ${storage.configurado() ? process.env.ORIGENA_S3_BUCKET : 'NÃO configurado'}`
+    + ` · rotas escopadas por família: ${ROTAS_ESCOPADAS.length}`
+    + ` · MFA: ${sessao.mfaDisponivel() ? 'disponível' : 'SEM ORIGENA_SECRET_KEY'}`
+    + ` · e-mail: ${emails.ativo() ? 'ligado' : 'desligado'}`);
+
+  return { db, fila, storage, saude, pronto, ROTAS_ESCOPADAS };
 }
 
-module.exports = { montar, saude, pronto, db, fila, storage };
+module.exports = {
+  montar, saude, pronto,
+  db, fila, storage, sessao, tenancy, rbac, privacidade, repo, emails,
+};
