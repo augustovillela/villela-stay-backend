@@ -20,6 +20,16 @@ fs.mkdirSync(AMOSTRA_DIR, { recursive: true });
 
 // Quantas páginas o visitante folheia (decisão comercial do Augusto: 15).
 const PAGINAS_PADRAO = Number(process.env.LIVRARIA_AMOSTRA_PAGINAS || 15);
+
+// Livros que NÃO têm amostra pública, por slug. A amostra abre as primeiras
+// páginas a qualquer visitante — em obra pessoal isso publica conteúdo que
+// antes só o comprador via. Publicar dado pessoal exige decisão do autor.
+// `o-homem-essencial`: página de rosto e prólogo trazem os nomes dos filhos.
+// Ajustável sem deploy pela env LIVRARIA_SEM_AMOSTRA (slugs por vírgula).
+const SEM_AMOSTRA = new Set(
+  String(process.env.LIVRARIA_SEM_AMOSTRA || 'o-homem-essencial')
+    .split(',').map(s => s.trim()).filter(Boolean)
+);
 // Trava para livro curto: a amostra nunca passa de 25% da obra — senão um
 // título de 40 páginas entregaria quase metade de graça.
 const TETO_PROPORCAO = 0.25;
@@ -33,6 +43,7 @@ function quantasPaginas(total, desejadas = PAGINAS_PADRAO) {
 // Gera (ou reaproveita do cache) a amostra do livro. Devolve null quando o
 // livro não tem PDF ativo. Assíncrona: pdf-lib parseia o documento inteiro.
 async function obterAmostra(repo, book, desejadas = PAGINAS_PADRAO) {
+  if (SEM_AMOSTRA.has(book.slug)) return null;
   const file = repo.Files.ativo(book.id);
   if (!file) return null;
   const origem = caminhoPDF(file.filename);
@@ -81,7 +92,8 @@ function paginasPrevistas(repo, book, desejadas = PAGINAS_PADRAO) {
 }
 
 function temAmostra(repo, book) {
+  if (SEM_AMOSTRA.has(book.slug)) return false;
   return !!repo.Files.ativo(book.id);
 }
 
-module.exports = { obterAmostra, temAmostra, paginasPrevistas, PAGINAS_PADRAO, AMOSTRA_DIR };
+module.exports = { obterAmostra, temAmostra, paginasPrevistas, PAGINAS_PADRAO, AMOSTRA_DIR, SEM_AMOSTRA };
