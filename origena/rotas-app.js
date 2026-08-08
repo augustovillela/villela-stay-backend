@@ -16,6 +16,7 @@ const tenancy = require('./tenancy');
 const rbac = require('./rbac');
 const repo = require('./repo');
 const emails = require('./emails');
+const { erro } = require('./erros');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -38,9 +39,9 @@ function registrarRotasApp(app) {
 
   app.post(`${R}/familias`, logado, h(async (req, res) => {
     const nome = s((req.body || {}).nome, 120);
-    if (nome.length < 2) return res.status(400).json({ erro: 'Dê um nome à família.' });
+    if (nome.length < 2) return res.status(400).json({ erro: req.t('erro.de_nome_familia'), codigo: 'erro.de_nome_familia' });
     if (!req.usuario.email_verificado) {
-      return res.status(403).json({ erro: 'Confirme seu e-mail antes de criar uma família.' });
+      throw erro('erro.verifique_email_antes', 403);
     }
     const f = await Families.criar({ nome, userId: req.usuario.id, sobrenomes: (req.body || {}).sobrenomes });
     res.status(201).json({ familia: { ...f, papel: 'OWNER' } });
@@ -57,7 +58,7 @@ function registrarRotasApp(app) {
   app.patch(decl('PATCH', `${R}/familias/:familyId`), ...naFamilia, rbac.exigir('familia.editar'),
     h(async (req, res) => {
       const nome = s((req.body || {}).nome, 120);
-      if (nome.length < 2) return res.status(400).json({ erro: 'Nome inválido.' });
+      if (nome.length < 2) return res.status(400).json({ erro: req.t('erro.nome_invalido'), codigo: 'erro.nome_invalido' });
       const antes = req.familia.nome;
       const f = await Families.renomear(req.familia.id, nome);
       await auditar({ familyId: req.familia.id, atorUserId: req.usuario.id, acao: 'familia.renomeada',
@@ -76,25 +77,20 @@ function registrarRotasApp(app) {
   app.patch(decl('PATCH', `${R}/familias/:familyId/membros/:userId`), ...naFamilia,
     rbac.exigir('papeis.alterar'), sessao.exigirMFAparaAdmin, h(async (req, res) => {
       const papelNovo = s((req.body || {}).papel, 20);
-      if (!rbac.papelValido(papelNovo)) return res.status(400).json({ erro: 'Papel inválido.' });
-      try {
-        const m = await Memberships.alterarPapel({
-          familyId: req.familia.id, alvoUserId: req.params.userId, papelNovo,
-          quemUserId: req.usuario.id, papelDeQuem: req.papel });
-        res.json({ membro: m });
-      } catch (e) {
-        // O trigger do banco protege o último OWNER — a mensagem dele é boa.
-        res.status(e.status || 400).json({ erro: e.message });
-      }
+      if (!rbac.papelValido(papelNovo)) throw erro('erro.papel_invalido', 400);
+      // Erro daqui (inclusive o trigger do último OWNER) cai no tratador
+      // central de erros.js, que traduz pela chave.
+      const m = await Memberships.alterarPapel({
+        familyId: req.familia.id, alvoUserId: req.params.userId, papelNovo,
+        quemUserId: req.usuario.id, papelDeQuem: req.papel });
+      res.json({ membro: m });
     }));
 
   app.delete(decl('DELETE', `${R}/familias/:familyId/membros/:userId`), ...naFamilia,
     rbac.exigir('membros.gerenciar'), sessao.exigirMFAparaAdmin, h(async (req, res) => {
-      try {
-        await Memberships.remover({ familyId: req.familia.id, alvoUserId: req.params.userId,
-          quemUserId: req.usuario.id, papelDeQuem: req.papel });
-        res.json({ ok: true, aviso: 'O acesso foi revogado. O que esta pessoa contribuiu continua no acervo.' });
-      } catch (e) { res.status(e.status || 400).json({ erro: e.message }); }
+      await Memberships.remover({ familyId: req.familia.id, alvoUserId: req.params.userId,
+        quemUserId: req.usuario.id, papelDeQuem: req.papel });
+      res.json({ ok: true, aviso: req.t('mensagem.acesso_revogado') });
     }));
 
   // ------------------------------------------------------------- convites
@@ -107,25 +103,23 @@ function registrarRotasApp(app) {
     rbac.exigir('membros.convidar'), sessao.exigirMFAparaAdmin, h(async (req, res) => {
       const d = req.body || {};
       const mail = repo.email(d.email);
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) return res.status(400).json({ erro: 'E-mail inválido.' });
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) return res.status(400).json({ erro: req.t('erro.email_invalido'), codigo: 'erro.email_invalido' });
       const papel = s(d.papel, 20) || 'CONTRIBUTOR';
       // Ninguém convida para um papel acima do seu.
       if ((rbac.NIVEL[papel] || 0) > (rbac.NIVEL[req.papel] || 0)) {
-        return res.status(403).json({ erro: 'Você não pode convidar alguém para um papel acima do seu.' });
+        throw erro('erro.nao_convida_acima', 403);
       }
-      try {
-        const { convite, token } = await Invites.criar({ familyId: req.familia.id, emailBruto: mail,
-          papel, quemUserId: req.usuario.id, mensagem: s(d.mensagem, 500) });
-        await emails.convite(mail, { familia: req.familia.nome, quem: req.usuario.nome, papel, token,
-          mensagem: convite.mensagem });
-        res.status(201).json({ convite: { ...convite, token_hash: undefined } });
-      } catch (e) { res.status(400).json({ erro: e.message }); }
+      const { convite, token } = await Invites.criar({ familyId: req.familia.id, emailBruto: mail,
+        papel, quemUserId: req.usuario.id, mensagem: s(d.mensagem, 500) });
+      await emails.convite(mail, { familia: req.familia.nome, quem: req.usuario.nome, papel, token,
+        mensagem: convite.mensagem }, req.idioma);
+      res.status(201).json({ convite: { ...convite, token_hash: undefined } });
     }));
 
   app.delete(decl('DELETE', `${R}/familias/:familyId/convites/:id`), ...naFamilia,
     rbac.exigir('membros.convidar'), h(async (req, res) => {
       const c = await Invites.revogar(req.familia.id, req.params.id, req.usuario.id);
-      if (!c) return res.status(404).json({ erro: 'Convite não encontrado.' });
+      if (!c) throw erro('erro.convite_nao_encontrado', 404);
       res.json({ ok: true });
     }));
 
@@ -133,7 +127,7 @@ function registrarRotasApp(app) {
   app.get(`${R}/convites/:token`, sessao.usuarioOpcional, h(async (req, res) => {
     const c = await Invites.porToken(s(req.params.token, 200));
     if (!c || c.revogado_em || c.aceito_em || new Date(c.expira_em) <= new Date()) {
-      return res.status(404).json({ erro: 'Convite inválido, já usado ou vencido.' });
+      throw erro('erro.convite_invalido', 404);
     }
     // Mostra o mínimo: nome da família e papel. Nada do acervo.
     res.json({ convite: { familia: c.familia_nome, papel: c.papel, email: c.email },
@@ -141,11 +135,9 @@ function registrarRotasApp(app) {
   }));
 
   app.post(`${R}/convites/:token/aceitar`, logado, h(async (req, res) => {
-    try {
-      const r = await Invites.aceitar({ token: s(req.params.token, 200),
-        userId: req.usuario.id, emailDoUsuario: req.usuario.email });
-      res.json({ ok: true, ...r });
-    } catch (e) { res.status(e.status || 400).json({ erro: e.message }); }
+    const r = await Invites.aceitar({ token: s(req.params.token, 200),
+      userId: req.usuario.id, emailDoUsuario: req.usuario.email });
+    res.json({ ok: true, ...r });
   }));
 
   // ------------------------------------------------------------ auditoria

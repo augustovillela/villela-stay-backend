@@ -33,12 +33,13 @@ function segredo() {
 const hashSenha = (senha) => bcrypt.hash(String(senha), CUSTO_BCRYPT);
 const conferirSenha = (senha, hash) => bcrypt.compare(String(senha || ''), String(hash || ''));
 
-/** Regras mínimas. Comprimento vale mais que zoológico de símbolos. */
+/** Regras mínimas. Devolve a CHAVE i18n do problema, ou null (comprimento
+ *  vale mais que zoológico de símbolos). */
 function senhaFraca(senha) {
   const s = String(senha || '');
-  if (s.length < 10) return 'A senha precisa de pelo menos 10 caracteres.';
-  if (/^(\d+|[a-z]+|[A-Z]+)$/.test(s)) return 'Misture letras e números.';
-  if (['senha12345', '1234567890', 'origena123'].includes(s.toLowerCase())) return 'Essa senha é fácil demais.';
+  if (s.length < 10) return 'erro.senha_curta';
+  if (/^(\d+|[a-z]+|[A-Z]+)$/.test(s)) return 'erro.senha_simples';
+  if (['senha12345', '1234567890', 'origena123'].includes(s.toLowerCase())) return 'erro.senha_obvia';
   return null;
 }
 
@@ -148,7 +149,7 @@ async function carregarUsuario(req) {
 
 function requireUsuario(req, res, next) {
   carregarUsuario(req).then((u) => {
-    if (!u) return res.status(401).json({ erro: 'Faça login para continuar.' });
+    if (!u) return res.status(401).json({ erro: req.t('erro.faca_login'), codigo: 'erro.faca_login' });
     req.usuario = u;
     next();
   }).catch(next);
@@ -170,8 +171,8 @@ function exigirMFAparaAdmin(req, res, next) {
   if (!administra || !ligado || !mfaDisponivel()) return next();
   if (req.usuario && req.usuario.mfa_ativo) return next();
   return res.status(428).json({
-    erro: 'Ative a verificação em duas etapas para fazer isto.',
-    acao: 'ativar_mfa', porque: 'Esta ação pode expor ou transferir o acervo da família.',
+    erro: req.t('mfa.exigido'), codigo: 'mfa.exigido',
+    acao: 'ativar_mfa', porque: req.t('mfa.porque'),
   });
 }
 

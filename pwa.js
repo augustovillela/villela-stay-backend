@@ -63,6 +63,13 @@ const PRODUTOS = [
     desc: 'Missões que transformam conhecimento em projetos, colaboração e autoria. Aprenda criando.',
     tema: '#14265C', fundo: '#F7F8FF',
   },
+  {
+    slug: 'origena', base: '/origena', inicio: '/origena/app', escopo: '/origena/',
+    nome: 'Origena', curto: 'Origena', marca: 'villela-origena',
+    desc: 'A memória da sua família guardada com quem contou, quando e de onde veio.',
+    // Marca PROVISÓRIA — ver assets/brand/villela-origena/LEIA-ME.md.
+    tema: '#7A5C3E', fundo: '#FBF9F6',
+  },
 ];
 
 function manifestDe(p) {

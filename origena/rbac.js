@@ -114,9 +114,9 @@ function permissoesDe(papel, extras = null) {
 /** Middleware. Usar SEMPRE depois de `tenancy.requireFamilia`. */
 function exigir(permissao) {
   return (req, res, next) => {
-    if (!req.papel) return res.status(401).json({ erro: 'Faça login para continuar.' });
+    if (!req.papel) return res.status(401).json({ erro: req.t('erro.faca_login'), codigo: 'erro.faca_login' });
     if (!pode(req.papel, permissao, req.permissoesExtra)) {
-      return res.status(403).json({ erro: 'Seu papel nesta família não permite esta ação.' });
+      return res.status(403).json({ erro: req.t('erro.sem_permissao'), codigo: 'erro.sem_permissao' });
     }
     next();
   };

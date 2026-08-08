@@ -28,6 +28,8 @@ const rbac = require('./rbac');
 const privacidade = require('./privacidade');
 const repo = require('./repo');
 const emails = require('./emails');
+const i18n = require('./i18n');
+const erros = require('./erros');
 const { registrarRotasConta } = require('./rotas-conta');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarPaginas } = require('./paginas');
@@ -79,6 +81,13 @@ async function montar(app, injected = {}) {
   if (!jwtSecret) throw new Error('origena.montar: falta jwtSecret.');
 
   emails.configurar({ enviarEmail });
+
+  // i18n ANTES de qualquer rota da Origena: daqui para baixo `req.t`
+  // existe, e nenhuma mensagem precisa nascer em português no código.
+  // Restrito ao prefixo do produto para não tocar os outros 11.
+  app.use('/origena', i18n.middleware);
+  app.use('/staff/api/origena', i18n.middleware);
+
   registrarPaginas(app);
   registrarRotas(app, { requireAuth, requireAdmin });
 
@@ -100,13 +109,21 @@ async function montar(app, injected = {}) {
   registrarRotasConta(app, { jwtSecret });
   const { ROTAS_ESCOPADAS } = registrarRotasApp(app);
 
+  // Tratador central de erros: por ÚLTIMO e restrito a /origena, para não
+  // sequestrar o tratamento dos outros 11 produtos do mesmo processo.
+  app.use('/origena', erros.tratador);
+  app.use('/staff/api/origena', erros.tratador);
+
+  const cob = i18n.cobertura();
   console.log(`[origena] Origena montada. Landing: /origena · app: /origena/app · saúde: /origena/health`
     + ` · schema: ${db.SCHEMA}`
     + ` · migrações novas: ${aplicadas.length}`
     + ` · storage: ${storage.configurado() ? process.env.ORIGENA_S3_BUCKET : 'NÃO configurado'}`
     + ` · rotas escopadas por família: ${ROTAS_ESCOPADAS.length}`
     + ` · MFA: ${sessao.mfaDisponivel() ? 'disponível' : 'SEM ORIGENA_SECRET_KEY'}`
-    + ` · e-mail: ${emails.ativo() ? 'ligado' : 'desligado'}`);
+    + ` · e-mail: ${emails.ativo() ? 'ligado' : 'desligado'}`
+    + ` · i18n: ${i18n.chaves().length} chaves, `
+    + i18n.IDIOMAS.map((l) => `${l} ${Math.round(100 * cob[l].traduzidas / cob[l].total)}%`).join(' · '));
 
   return { db, fila, storage, saude, pronto, ROTAS_ESCOPADAS };
 }

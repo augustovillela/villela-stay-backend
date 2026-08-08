@@ -349,6 +349,60 @@ async function principal() {
   const tenancy = require('./tenancy');
   const sess = require('./sessao');
 
+  const i18n = require('./i18n');
+  console.log('\ni18n');
+  await teste('nenhuma string de tela mora no código (§86)', async () => {
+    const fs = require('fs');
+    const suspeitos = [];
+    for (const arquivo of ['rotas-conta.js', 'rotas-app.js', 'tenancy.js', 'rbac.js', 'paginas.js']) {
+      const src = fs.readFileSync(require('path').join(__dirname, arquivo), 'utf8');
+      // frase em português dentro de resposta JSON ou de HTML é o que
+      // queremos extinguir; comentário e chave i18n podem ficar.
+      const linhas = src.split('\n');
+      linhas.forEach((l, n) => {
+        if (/^\s*(\/\/|\*|\/\*)/.test(l)) return;
+        if (/erro:\s*'[^']*[çãõáéíóúâêô][^']*'/i.test(l)) suspeitos.push(`${arquivo}:${n + 1}`);
+      });
+    }
+    assert.strictEqual(suspeitos.length, 0, 'mensagem em português no código: ' + suspeitos.join(', '));
+  });
+
+  await teste('idioma sem tradução cai no pt-BR, nunca mostra a chave crua', async () => {
+    assert.strictEqual(i18n.t('en-US', 'erro.credenciais'), i18n.t('pt-BR', 'erro.credenciais'));
+    assert.strictEqual(i18n.t('pt-BR', 'chave.que.nao.existe'), 'chave.que.nao.existe');
+  });
+
+  await teste('normaliza pt, en-GB e lixo para um idioma que existe', async () => {
+    assert.strictEqual(i18n.normalizar('pt'), 'pt-BR');
+    assert.strictEqual(i18n.normalizar('en-GB'), 'en-US');
+    assert.strictEqual(i18n.normalizar('klingon'), 'pt-BR');
+    assert.strictEqual(i18n.normalizar(''), 'pt-BR');
+  });
+
+  await teste('interpolação e formatação por locale', async () => {
+    assert.match(i18n.t('pt-BR', 'conta.entre_com_email', { email: 'a@b.c' }), /a@b\.c/);
+    // 3 de dezembro: en-US inverte dia e mês, pt-BR não.
+    assert.strictEqual(i18n.data('2026-12-03T12:00:00Z', 'pt-BR'), '03/12/2026');
+    assert.strictEqual(i18n.data('2026-12-03T12:00:00Z', 'en-US'), '12/03/2026');
+  });
+
+  await teste('todo papel e toda ação auditada têm rótulo traduzível', async () => {
+    const rbacMod = require('./rbac');
+    for (const p of rbacMod.PAPEIS) {
+      assert.notStrictEqual(i18n.t('pt-BR', 'papel.' + p), 'papel.' + p, `falta rótulo do papel ${p}`);
+    }
+    for (const acao of ['familia.criada', 'convite.enviado', 'convite.aceito', 'membro.removido',
+      'membro.papel_alterado', 'conta.criada', 'conta.entrou']) {
+      assert.notStrictEqual(i18n.t('pt-BR', 'auditoria.' + acao), 'auditoria.' + acao, `falta rótulo de ${acao}`);
+    }
+  });
+
+  await teste('erro devolve CÓDIGO estável além da mensagem (cliente não faz parse de texto)', async () => {
+    const r = await req('POST', '/origena/api/v1/conta/entrar', { corpo: { email: 'x@y.z', senha: 'errada-mesmo-1' } });
+    assert.strictEqual(r.status, 401);
+    assert.strictEqual(r.json.codigo, 'erro.credenciais');
+  });
+
   console.log('\npapéis (função pura)');
   await teste('OWNER pode tudo; GUEST só vê o que é público', async () => {
     for (const p of rbac.PERMISSOES) assert(rbac.pode('OWNER', p), `OWNER não pôde ${p}`);

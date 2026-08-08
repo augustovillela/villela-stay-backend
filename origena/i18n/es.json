@@ -1,0 +1,7 @@
+{
+  "_meta": {
+    "estado": "PREPARADO, NAO TRADUZIDO",
+    "porque": "Traducao parcial deixa a tela em duas linguas, o que e pior que uma so. Enquanto nao houver traducao revisada por gente, TODA chave cai no pt-BR pelo fallback do i18n.js — a interface fica integra em portugues.",
+    "como_traduzir": "Copie a estrutura de pt-BR.json e va preenchendo. O que faltar continua caindo no pt-BR; 'npm run test:origena' mostra a cobertura de cada idioma."
+  }
+}

@@ -59,8 +59,8 @@ async function semEscopo(fn) {
  */
 function requireFamilia(req, res, next) {
   const alvo = req.params.familyId || req.familiaSolicitada;
-  if (!req.usuario) return res.status(401).json({ erro: 'Faça login para continuar.' });
-  if (!UUID.test(String(alvo || ''))) return res.status(404).json({ erro: 'Família não encontrada.' });
+  if (!req.usuario) return res.status(401).json({ erro: req.t('erro.faca_login'), codigo: 'erro.faca_login' });
+  if (!UUID.test(String(alvo || ''))) return res.status(404).json({ erro: req.t('erro.familia_nao_encontrada'), codigo: 'erro.familia_nao_encontrada' });
 
   db.uma(
     `SELECT m.id, m.papel, m.status, f.nome, f.slug, f.status AS familia_status
@@ -68,7 +68,7 @@ function requireFamilia(req, res, next) {
       WHERE m.family_id = $1 AND m.user_id = $2 AND m.status = 'ativo' AND f.deleted_at IS NULL`,
     [alvo, req.usuario.id],
   ).then((m) => {
-    if (!m) return res.status(404).json({ erro: 'Família não encontrada.' });
+    if (!m) return res.status(404).json({ erro: req.t('erro.familia_nao_encontrada'), codigo: 'erro.familia_nao_encontrada' });
     req.familia = { id: alvo, nome: m.nome, slug: m.slug, status: m.familia_status };
     req.papel = m.papel;
     next();

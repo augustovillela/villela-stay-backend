@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const tenancy = require('./tenancy');
 const rbac = require('./rbac');
+const { erro } = require('./erros');
 
 const s = (v, max = 300) => String(v == null ? '' : v).trim().slice(0, max);
 const email = (v) => s(v, 200).toLowerCase();
@@ -156,10 +157,9 @@ const Memberships = {
   /** O trigger do banco é quem impede deixar a família sem OWNER. */
   async alterarPapel({ familyId, alvoUserId, papelNovo, quemUserId, papelDeQuem }) {
     const atual = await Memberships.de(familyId, alvoUserId);
-    if (!atual) throw new Error('Esta pessoa não é membro desta família.');
+    if (!atual) throw erro('erro.nao_e_membro', 404);
     if (!rbac.podeAlterarPapel(papelDeQuem, atual.papel, papelNovo)) {
-      const e = new Error('Você não pode conceder ou retirar um papel igual ou acima do seu.');
-      e.status = 403; throw e;
+      throw erro('erro.nao_promove_acima', 403);
     }
     return db.transacao(async (t) => {
       const m = await t.uma(
@@ -179,10 +179,9 @@ const Memberships = {
    */
   async remover({ familyId, alvoUserId, quemUserId, papelDeQuem }) {
     const atual = await Memberships.de(familyId, alvoUserId);
-    if (!atual) throw new Error('Esta pessoa não é membro desta família.');
+    if (!atual) throw erro('erro.nao_e_membro', 404);
     if (!rbac.podeAlterarPapel(papelDeQuem, atual.papel, 'GUEST')) {
-      const e = new Error('Você não pode remover alguém com papel igual ou acima do seu.');
-      e.status = 403; throw e;
+      throw erro('erro.nao_remove_acima', 403);
     }
     return db.transacao(async (t) => {
       await t.q(`UPDATE family_memberships SET status = 'removido', updated_at = now()
@@ -201,7 +200,7 @@ const Invites = {
   /** Reenviar revoga o convite aberto anterior (índice único garante). */
   async criar({ familyId, emailBruto, papel, quemUserId, mensagem = '' }) {
     if (!['ADMIN', 'HISTORIAN', 'EDITOR', 'CONTRIBUTOR', 'FAMILY_MEMBER', 'GUEST'].includes(papel)) {
-      throw new Error('Papel inválido para convite.');
+      throw erro('erro.papel_invalido_convite', 400);
     }
     const token = novoToken();
     return db.transacao(async (t) => {
@@ -246,12 +245,12 @@ const Invites = {
    */
   async aceitar({ token, userId, emailDoUsuario }) {
     const c = await Invites.porToken(token);
-    if (!c) { const e = new Error('Convite não encontrado.'); e.status = 404; throw e; }
-    if (c.revogado_em) { const e = new Error('Este convite foi cancelado.'); e.status = 410; throw e; }
-    if (c.aceito_em) { const e = new Error('Este convite já foi usado.'); e.status = 410; throw e; }
-    if (new Date(c.expira_em) <= new Date()) { const e = new Error('Este convite expirou.'); e.status = 410; throw e; }
+    if (!c) throw erro('erro.convite_nao_encontrado', 404);
+    if (c.revogado_em) throw erro('erro.convite_cancelado', 410);
+    if (c.aceito_em) throw erro('erro.convite_usado', 410);
+    if (new Date(c.expira_em) <= new Date()) throw erro('erro.convite_vencido', 410);
     if (email(c.email) !== email(emailDoUsuario)) {
-      const e = new Error('Este convite foi enviado para outro e-mail.'); e.status = 403; throw e;
+      throw erro('erro.convite_outro_email', 403);
     }
     return db.transacao(async (t) => {
       await t.q(
