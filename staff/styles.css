@@ -434,3 +434,83 @@ tr:last-child td { border-bottom: none; }
 .mural-acoes { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .mural-form-resp { display: flex; gap: 8px; margin-top: 8px; }
 .mural-form-resp input { flex: 1; }
+
+/* ---------- Visitas dos sites (analytics próprio) ---------- */
+.vs-controles { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin: 4px 0 18px; }
+.vs-controles label { font-size: .8rem; font-weight: 600; color: var(--concreto-claro); }
+.vs-controles select { min-width: 150px; }
+.vs-controles .vs-check { display: flex; flex-direction: row; align-items: center; gap: 6px; padding-bottom: 10px; }
+.vs-controles .vs-check input { width: auto; }
+.vs-caixa { background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 16px 18px; margin-bottom: 20px; }
+.vs-h2 { font-size: 1.05rem; margin: 26px 0 10px; }
+.vs-h3 { font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; color: var(--concreto-claro); margin: 0 0 10px; font-family: inherit; }
+.vs-h3 + .vs-barras + .vs-h3 { margin-top: 20px; }
+.vs-nota { font-size: .78rem; color: var(--concreto-claro); margin: 10px 0 0; }
+.vs-nota.rodape { margin-top: 18px; }
+
+/* variação contra o período anterior */
+.vs-delta { display: inline-block; font-size: .74rem; font-weight: 800; border-radius: 20px; padding: 1px 8px; margin-top: 4px; }
+.vs-delta.sobe { background: #e8f5e9; color: var(--ok); }
+.vs-delta.desce { background: #fdecea; color: var(--alerta); }
+.vs-delta.neutro { background: #eef1f5; color: var(--concreto-claro); }
+.cards .card .rot abbr { cursor: help; border: 1px solid var(--borda); border-radius: 50%; padding: 0 4px; font-size: .68rem; text-decoration: none; }
+
+/* gráfico de linha */
+.vs-svg { width: 100%; height: auto; display: block; }
+.vs-grade { stroke: var(--borda); stroke-width: 1; }
+.vs-eixo { font-size: 10px; fill: var(--concreto-claro); }
+.vs-eixo.forte { font-weight: 800; fill: var(--lago-escuro); }
+.vs-area { fill: var(--lago); opacity: .10; }
+.vs-linha { fill: none; stroke: var(--lago); stroke-width: 2.5; stroke-linejoin: round; }
+.vs-linha2 { fill: none; stroke: var(--cerrado); stroke-width: 2; stroke-dasharray: 4 3; }
+.vs-pico { fill: var(--lago-escuro); }
+.vs-legenda { font-size: .78rem; color: var(--concreto-claro); text-align: right; margin-top: 4px; }
+.vs-key { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin: 0 4px 0 12px; }
+.vs-key.vs-k1 { background: var(--lago); }
+.vs-key.vs-k2 { background: var(--cerrado); }
+.vs-spark { width: 90px; height: 24px; }
+.vs-spark path { fill: none; stroke: var(--lago); stroke-width: 1.6; }
+
+/* tabelas da tela — rolam dentro da própria caixa em vez de esticar a página */
+.vs-rolagem { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.vs-tabela { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.vs-tabela th { text-align: left; font-size: .74rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--concreto-claro); border-bottom: 1px solid var(--borda); padding: 6px 8px; font-weight: 700; }
+.vs-tabela td { padding: 8px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+.vs-tabela tr:last-child td { border-bottom: none; }
+.vs-tabela .num { text-align: right; white-space: nowrap; }
+.vs-tabela .suave { color: var(--concreto-claro); }
+.vs-linha-site { cursor: pointer; }
+.vs-linha-site:hover { background: #f4f8fa; }
+
+/* rankings em barra */
+.vs-barras { display: flex; flex-direction: column; gap: 7px; }
+.vs-barra { display: grid; grid-template-columns: minmax(90px, 1.2fr) 2fr auto; gap: 10px; align-items: center; font-size: .85rem; }
+.vs-barra-rot { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-barra-trilho { background: #eef1f5; border-radius: 6px; height: 10px; overflow: hidden; }
+.vs-barra-preenche { display: block; height: 100%; background: var(--lago); border-radius: 6px; }
+.vs-barra-n { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.vs-barra-n em { font-style: normal; font-weight: 500; color: var(--concreto-claro); font-size: .78rem; }
+
+/* abas */
+.vs-abas { display: flex; gap: 8px; flex-wrap: wrap; margin: 26px 0 12px; }
+.vs-abas button { background: #fff; border: 1px solid var(--borda); color: var(--concreto); border-radius: 22px;
+  padding: 7px 15px; cursor: pointer; font-size: .86rem; font-weight: 600; }
+.vs-abas button:hover { border-color: var(--lago); color: var(--lago); }
+.vs-abas button.ativa { background: var(--lago); border-color: var(--lago); color: #fff; }
+.vs-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.vs-tres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+/* mapa de calor hora × dia */
+.vs-heat { font-size: .78rem; }
+.vs-heat-horas { display: grid; grid-template-columns: 42px repeat(24, 1fr); color: var(--concreto-claro); margin-bottom: 3px; }
+.vs-heat-linha { display: grid; grid-template-columns: 42px repeat(24, 1fr); gap: 2px; margin-bottom: 2px; align-items: center; }
+.vs-heat-dia { color: var(--concreto-claro); }
+.vs-heat-linha i { display: block; height: 15px; border-radius: 3px; background: var(--lago); outline: 1px solid var(--borda); outline-offset: -1px; }
+
+@media (max-width: 860px) {
+  .vs-duas, .vs-tres { grid-template-columns: 1fr; gap: 20px; }
+  .vs-controles { gap: 10px; }
+  .vs-tabela { font-size: .82rem; }
+  .vs-spark { width: 60px; }
+}

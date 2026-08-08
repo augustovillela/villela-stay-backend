@@ -202,6 +202,72 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.ok(fs.readFileSync(path.join(DATA_DIR, 'leads.jsonl'), 'utf8').includes('Fulano Lead'), 'lead gravado em leads.jsonl');
   });
 
+  // ---------- Visitas (analytics de todos os sites do grupo) ----------
+  await t('visitas: classificação de produto, canal, robô e prefixo de IP', async () => {
+    const v = require('./nucleo/visitas');
+    assert.equal(v.produtoDe('/kids/app', ''), 'kids');
+    assert.equal(v.produtoDe('/livros/ver/1', ''), 'livraria');
+    assert.equal(v.produtoDe('/', 'closet.villelastay.com.br'), 'closet', 'cai para o host quando o caminho é a raiz');
+    assert.equal(v.produtoDe('/nada', ''), 'outro');
+    assert.equal(v.canalDe('https://www.google.com/search?q=x', null), 'Busca Google');
+    assert.equal(v.canalDe('https://chatgpt.com/', null), 'Busca com IA', 'buscador de IA é canal próprio');
+    assert.equal(v.canalDe('', { s: 'instagram' }), 'Instagram', 'utm_source sem domínio também classifica');
+    assert.equal(v.canalDe('', null), 'Direto');
+    assert.equal(v.uaInfo('Mozilla/5.0 (compatible; GPTBot/1.0)').bot, 1);
+    assert.equal(v.uaInfo('Mozilla/5.0 (Linux; Android 13) Chrome/120 Mobile Safari/537.36').dispositivo, 'celular');
+    // LGPD: o IP nunca é gravado — só o prefixo de rede, e só para consultar a localidade.
+    assert.equal(v.prefixoIp('189.6.1.44'), '189.6.1.0/24');
+    assert.equal(v.prefixoIp('::ffff:189.6.1.44'), '189.6.1.0/24', 'IPv4 embrulhado em IPv6');
+    assert.equal(v.prefixoIp('2804:14c:65:9a::1'), '2804:14c:65::/48');
+  });
+
+  await t('visitas: /api/hit grava linha rica e NUNCA o IP do visitante', async () => {
+    await req('GET', '/api/hit?p=/eventos.html&r=' + encodeURIComponent('https://l.instagram.com/') + '&q=' + encodeURIComponent('?utm_source=instagram&utm_campaign=verao') + '&l=pt-BR',
+      { headers: Object.assign({ 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1' }, comIp('189.6.1.44')) });
+    const linhas = fs.readFileSync(path.join(DATA_DIR, 'hits.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    const h = linhas.find(x => x.pagina === '/eventos.html');
+    assert.ok(h, 'visita gravada');
+    assert.equal(h.produto, 'site');
+    assert.equal(h.canal, 'Instagram');
+    assert.equal(h.utm.c, 'verao');
+    assert.equal(h.disp, 'celular');
+    assert.equal(h.idioma, 'pt');
+    const cru = JSON.stringify(h);
+    assert.ok(!cru.includes('189.6.1.44'), 'o IP não pode aparecer na linha gravada');
+    assert.ok(h.vid && h.vid.length === 12, 'visitante anônimo por hash com sal do dia');
+  });
+
+  await t('visitas: relatório exige área (marketing/ti/ceo) e agrega o período', async () => {
+    assert.equal((await req('GET', '/staff/api/visitas?dias=30')).status, 401, 'anônimo não vê');
+    const r = await req('GET', '/staff/api/visitas?dias=30', { cookie: adminCookie });
+    assert.equal(r.status, 200);
+    assert.ok(r.json.resumo && typeof r.json.resumo.visitas === 'number');
+    assert.ok(Array.isArray(r.json.serie) && r.json.serie.length === 30, 'série com um ponto por dia');
+    assert.ok(Array.isArray(r.json.sites));
+    assert.ok(Array.isArray(r.json.canais));
+  });
+
+  await t('visitas: CSV com BOM, funil por canal e resumo por PUBLISH_KEY', async () => {
+    const csv = await req('GET', '/staff/api/visitas.csv?dias=7', { cookie: adminCookie });
+    assert.equal(csv.status, 200);
+    assert.ok(csv.text.startsWith('﻿'), 'BOM para o Excel abrir com acento certo');
+    assert.ok(csv.text.includes('pais;uf;cidade'), 'colunas de localidade');
+    const fun = await req('GET', '/staff/api/visitas-funil?dias=30', { cookie: adminCookie });
+    assert.equal(fun.status, 200); assert.ok(Array.isArray(fun.json.linhas));
+    const md = await req('GET', '/staff/api/visitas-resumo?dias=7', { headers: { 'x-publish-key': 'pk-test' } });
+    assert.equal(md.status, 200, 'PUBLISH_KEY libera o resumo p/ a rotina semanal');
+    assert.ok(md.text.includes('Visitas dos sites'), 'resumo em markdown');
+    assert.equal((await req('GET', '/staff/api/visitas-resumo?dias=7')).status, 401);
+  });
+
+  await t('visitas: lead grava o canal de origem (para o funil chegar à reserva)', async () => {
+    const r = await req('POST', '/api/leads', { json: { nome: 'Lead Com Canal', contato: '61988887777', origem: 'site', ref: 'https://www.google.com/' } });
+    assert.equal(r.status, 200);
+    const leads = fs.readFileSync(path.join(DATA_DIR, 'leads.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    const l = leads.find(x => x.nome === 'Lead Com Canal');
+    assert.equal(l.canal, 'Busca Google');
+  });
+
   // ---------- Backup do DATA_DIR ----------
   await t('backup: lista admin=200/anônimo=401; arquivo bloqueia path traversal, serve válido', async () => {
     const l = await req('GET', '/staff/api/backup/lista', { cookie: adminCookie });

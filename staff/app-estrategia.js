@@ -315,19 +315,9 @@ async function renderPainel(painel, titulo) {
   } catch (e) { conteudo().innerHTML += `<p class="erro">${esc(e.message)}</p>`; }
 }
 
-async function renderEstatisticas() {
-  conteudo().innerHTML = cabecalho('Visitas do site', 'Acessos às páginas públicas (analytics próprio, sem cookies).');
-  try {
-    const s = await api('GET', '/estatisticas-portal');
-    const topo = Object.entries(s.porPagina).sort((a, b) => b[1] - a[1]).slice(0, 20);
-    const dias = Object.entries(s.porDia).sort((a, b) => a[0].localeCompare(b[0])).slice(-14);
-    conteudo().innerHTML += `<div class="cards"><div class="card"><div class="n">${s.totalVisitas}</div><div class="rot">Visitas totais</div></div></div>
-      <h2 class="titulo" style="font-size:1.1rem">Páginas mais vistas</h2>
-      <table><thead><tr><th>Página</th><th>Visitas</th></tr></thead><tbody>${topo.map(([p, n]) => `<tr><td>${esc(p)}</td><td>${n}</td></tr>`).join('')}</tbody></table>
-      <h2 class="titulo" style="font-size:1.1rem;margin-top:22px">Últimos dias</h2>
-      <table><thead><tr><th>Dia</th><th>Visitas</th></tr></thead><tbody>${dias.map(([d, n]) => `<tr><td>${esc(d)}</td><td>${n}</td></tr>`).join('')}</tbody></table>`;
-  } catch (e) { conteudo().innerHTML += `<p class="erro">${esc(e.message)}</p>`; }
-}
+// A tela "Visitas do site" mora em app-visitas.js (renderEstatisticas) — ela
+// cobre todos os sites do grupo, origem, localidade e funil, e ficou grande
+// demais para conviver aqui.
 
 // --------- Usuários (admin) ---------
 async function renderUsuarios() {

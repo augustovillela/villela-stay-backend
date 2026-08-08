@@ -312,7 +312,18 @@ ${corpo}
   <div class="creditos">${t('Fotos dos pontos turísticos', 'Landmark photos', 'Fotos de los puntos turísticos')}: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida ${t('e', 'and', 'y')} Rose Ramalho, via Wikimedia Commons (${t('licenças', 'licenses', 'licencias')} CC BY / CC BY-SA).</div>
 </footer>
 <a class="wa-flutuante" href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" aria-label="${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}">💬</a>
-<script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer), { keepalive: true }); } catch (e) {} });</script>
+<script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer) + '&q=' + encodeURIComponent(location.search) + '&l=' + encodeURIComponent(navigator.language || ''), { keepalive: true }); } catch (e) {} });
+/* Origem da visita guardada no início da sessão: o referrer e os utm_* só
+   existem na primeira página. Sem isto, um lead preenchido na terceira página
+   chegaria como "Direto" e a conta de qual canal traz cliente ficaria errada. */
+(function(){ try {
+  if (!sessionStorage.getItem('vs_org')) {
+    var q = new URLSearchParams(location.search), u = {};
+    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','gclid','fbclid'].forEach(function(k){ if (q.get(k)) u[k] = q.get(k); });
+    sessionStorage.setItem('vs_org', JSON.stringify({ ref: document.referrer || '', utm: u }));
+  }
+} catch (e) {} })();
+window.vsLead = function(d){ try { var o = JSON.parse(sessionStorage.getItem('vs_org') || '{}'); d.ref = o.ref || ''; d.utm = o.utm || {}; } catch (e) {} return JSON.stringify(d); };</script>
 <script>
 document.addEventListener('click', function(e){
   var a = e.target.closest && e.target.closest('a[href*="wa.me"]');
@@ -976,7 +987,7 @@ for (const l of listings) {
     var de = sec.querySelector('.disp-in').value, ate = sec.querySelector('.disp-out').value;
     fetch('${BACKEND}/api/leads', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: vsLead({
         nome: fl.nome.value, contato: fl.contato.value,
         mensagem: 'Cotação ${l.id} - ${l.titulo}' + (de && ate ? (' | datas: ' + de + ' a ' + ate) : ''),
         origem: 'site-${l.id}'
@@ -1237,7 +1248,7 @@ document.getElementById('form-evento').addEventListener('submit', function(e){
   st.hidden = false; st.textContent = ${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
   fetch('${BACKEND}/api/leads', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nome: f.nome.value, contato: f.contato.value, mensagem: f.mensagem.value, origem: 'site-eventos' })
+    body: vsLead({ nome: f.nome.value, contato: f.contato.value, mensagem: f.mensagem.value, origem: 'site-eventos' })
   }).then(function(r){
     st.textContent = r.ok ? ${JSON.stringify(t('✅ Recebido! Retornaremos em breve.', '✅ Received! We\'ll get back to you shortly.', '✅ ¡Recibido! Te responderemos pronto.'))} : ${JSON.stringify(t('Erro ao enviar — fale conosco pelo WhatsApp.', 'Error sending — contact us on WhatsApp.', 'Error al enviar — contáctanos por WhatsApp.'))};
     if (r.ok) f.reset();
@@ -2053,7 +2064,7 @@ document.querySelector('.form-landing').addEventListener('submit', function(e){
   st.hidden = false; st.textContent = ${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
   fetch('${BACKEND}/api/leads', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nome: f.nome.value, contato: f.contato.value, mensagem: f.mensagem.value, origem: '${lp.origem}' })
+    body: vsLead({ nome: f.nome.value, contato: f.contato.value, mensagem: f.mensagem.value, origem: '${lp.origem}' })
   }).then(function(r){
     st.textContent = r.ok ? ${JSON.stringify(t('✅ Recebido! Retornaremos em breve.', '✅ Received! We\'ll get back to you shortly.', '✅ ¡Recibido! Te responderemos pronto.'))} : ${JSON.stringify(t('Erro — chame no WhatsApp.', 'Error — message us on WhatsApp.', 'Error — escríbenos por WhatsApp.'))};
     if (r.ok) f.reset();
@@ -2213,7 +2224,7 @@ document.querySelectorAll('.form-blog').forEach(function(f){
     var extra=[]; ['datas','pessoas','interesse','mensagem'].forEach(function(n){var v=g(n); if(v) extra.push(n+': '+v);});
     var msg=(f.getAttribute('data-contexto')||'')+(extra.length?' — '+extra.join(' | '):'');
     fetch('${BACKEND}/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({nome:g('nome'),contato:g('contato'),mensagem:msg,origem:f.getAttribute('data-origem')})})
+      body:vsLead({nome:g('nome'),contato:g('contato'),mensagem:msg,origem:f.getAttribute('data-origem')})})
     .then(function(r){
       if(r.ok){ var arq=f.getAttribute('data-arquivo');
         if(arq){ st.innerHTML=${JSON.stringify(t('✅ Pronto! Seu material: ', '✅ Done! Your resource: ', '✅ ¡Listo! Tu material: '))}+'<a href="'+arq+'" target="_blank" rel="noopener" download><b>'+${JSON.stringify(t('baixar agora →', 'download now →', 'descargar ahora →'))}+'</b></a>'; try{window.open(arq,'_blank');}catch(e){} }

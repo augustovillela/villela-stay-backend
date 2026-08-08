@@ -56,6 +56,17 @@ app.use((req, res, next) => {
   next();
 });
 app.use(compression()); // gzip nas respostas (JSON/HTML/JS) — o web service do Render não comprime por você
+
+// Visitas: conta TODA página pública que este backend renderiza (Kids, Closet,
+// Vitrine, Alta Vista, Academy, CRM, Jurídico, Docs, Projetos, Gestão, Livraria,
+// Área do Hóspede). Montado aqui, antes das rotas dos produtos, para que produto
+// novo já nasça medido sem precisar de pixel. Portal Staff e APIs ficam de fora.
+// Nunca grava IP — ver nucleo/visitas.js. Falha aqui não pode derrubar o site.
+let visitasColetor = { registrar: () => {} };
+try {
+  visitasColetor = require('./nucleo/visitas').criarColetor(DATA_DIR);
+  app.use(visitasColetor.middleware);
+} catch (e) { console.error('[visitas] coletor não montado:', e.message); }
 // Cabeçalhos de segurança (equivalente leve ao helmet, sem dependência nova)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -463,6 +474,7 @@ function upsertContato(dados) {
     if (!c.email && email) c.email = email;
     if (!c.staysClientId && dados.staysClientId) c.staysClientId = dados.staysClientId;
     if (!c.imovelInteresse && dados.imovelInteresse) c.imovelInteresse = dados.imovelInteresse;
+    if (!c.canal && dados.canal) c.canal = dados.canal; // origem real (Google, Instagram...) p/ o funil de visitas
     c.atualizadoEm = agora;
     salvarContatos(contatos);
     if (dados.mensagem) addAtividade(c.id, 'mensagem-recebida', dados.mensagem, dados.origem || '', 'sistema');
@@ -471,7 +483,7 @@ function upsertContato(dados) {
 
   c = {
     id: novoId(), nome: dados.nome || '', telefone: tel, email,
-    origem: dados.origem || 'manual', estagio: 'novo', dono: 'Augusto',
+    origem: dados.origem || 'manual', canal: dados.canal || '', estagio: 'novo', dono: 'Augusto',
     proximaAcao: { descricao: 'Responder primeiro contato', data: hojeISO() },
     valorEstimado: dados.valorEstimado != null ? Number(dados.valorEstimado) : null,
     imovelInteresse: dados.imovelInteresse || '',
@@ -813,6 +825,74 @@ app.get('/staff/api/estatisticas-portal', requireAuth, (req, res) => {
   for (const l of linhas) { try { const h = JSON.parse(l); porPagina[h.pagina] = (porPagina[h.pagina] || 0) + 1; const dia = (h._recebido || '').slice(0, 10); porDia[dia] = (porDia[dia] || 0) + 1; } catch {} }
   res.json({ totalVisitas: linhas.length, porPagina, porDia });
 });
+// Casas mais vistas no site × ocupação real do MESMO período (marketing/ti/ceo).
+// Mora aqui, e não em nucleo/visitas.js, porque a ocupação depende do espelhamento
+// das interligações (FILHOS_OCUP / expandirBloqueados) — que é definido neste arquivo
+// e precisa continuar tendo UMA implementação só (regra 5 do CLAUDE.md).
+app.get('/staff/api/visitas-casas', requireAuth, async (req, res) => {
+  if (!['marketing', 'ti', 'ceo'].some(a => podeArea(req.user, a))) return res.status(403).json({ erro: 'Sem acesso.' });
+  const dias = Math.min(400, Math.max(1, parseInt(req.query.dias, 10) || 30));
+  const hoje = new Date().toISOString().slice(0, 10);
+  const de = new Date(Date.parse(hoje) - (dias - 1) * 86400000).toISOString().slice(0, 10);
+  try {
+    // 1) Visitas às páginas de anúncio, em qualquer idioma: /hospedagem/GD03H.html, /en/hospedagem/...
+    const visitas = {};
+    const f = path.join(DATA_DIR, 'hits.jsonl');
+    if (fs.existsSync(f)) {
+      for (const l of fs.readFileSync(f, 'utf8').split('\n')) {
+        if (!l.trim()) continue;
+        try {
+          const h = JSON.parse(l);
+          if (h.bot) continue;
+          if (String(h._recebido || '').slice(0, 10) < de) continue;
+          const m = /\/hospedagem\/([A-Z0-9]+)/i.exec(h.pagina || '');
+          if (m) visitas[m[1].toUpperCase()] = (visitas[m[1].toUpperCase()] || 0) + 1;
+        } catch {}
+      }
+    }
+
+    // 2) Ocupação por anúncio no mesmo período, noite a noite, com o espelhamento aplicado.
+    const listings = await staysPaginado('/content/listings', {});
+    const ativos = listings.filter(l => l.status === 'active');
+    const universo = new Set(ativos.map(l => l.id));
+    const codPorId = {}; const nomePorCod = {};
+    for (const l of ativos) { codPorId[l._id] = l.id; nomePorCod[l.id] = l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id; }
+
+    const reservas = (await staysPaginado('/booking/reservations', { from: de, to: hoje, dateType: 'included' }))
+      .filter(r => r.type !== 'canceled');
+    const noitesOcup = {};
+    for (let i = 0; i < dias; i++) {
+      const noite = new Date(Date.parse(de) + i * 86400000).toISOString().slice(0, 10);
+      const ocupados = new Set();
+      for (const r of reservas) {
+        if (r.checkInDate <= noite && noite < r.checkOutDate) { const c = codPorId[r._idlisting]; if (c) ocupados.add(c); }
+      }
+      expandirBloqueados(ocupados, universo);
+      for (const c of ocupados) noitesOcup[c] = (noitesOcup[c] || 0) + 1;
+    }
+
+    // 3) Leitura de negócio: o cruzamento só serve se disser o que fazer com ele.
+    const codigos = Array.from(new Set([...Object.keys(visitas), ...Object.keys(noitesOcup)])).filter(c => universo.has(c));
+    const vals = codigos.map(c => visitas[c] || 0);
+    const mediaVis = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    const linhas = codigos.map(c => {
+      const v = visitas[c] || 0;
+      const ocup = Math.round(1000 * (noitesOcup[c] || 0) / dias) / 10;
+      let leitura = '';
+      if (v >= mediaVis * 1.3 && ocup < 40) leitura = 'Muito vista e pouco ocupada — olhar preço, fotos e disponibilidade.';
+      else if (v > 0 && v <= mediaVis * 0.5 && ocup >= 70) leitura = 'Ocupada mesmo com pouca visita — candidata a subir preço.';
+      else if (v === 0) leitura = 'Sem visita à página no período.';
+      return { codigo: c, nome: nomePorCod[c] || '', visitas: v, ocupacaoPct: ocup, leitura };
+    }).sort((a, b) => b.visitas - a.visitas || b.ocupacaoPct - a.ocupacaoPct);
+
+    res.set('Cache-Control', 'no-store');
+    res.json({ de, ate: hoje, linhas, aviso: 'Ocupação calculada noite a noite no mesmo período, já com o espelhamento das interligações (espaço inteiro ocupa seus componentes e vice-versa).' });
+  } catch (e) {
+    console.error('[visitas-casas]', e.message);
+    res.status(502).json({ erro: 'Falha ao consultar a Stays para cruzar com a ocupação.' });
+  }
+});
+
 // Resumo para a tela inicial
 app.get('/staff/api/visao-geral', requireAuth, (req, res) => {
   const minhas = areasDoUsuario(req.user);
@@ -4358,8 +4438,9 @@ app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '7d'
 // Manifest + service worker por produto (pwa.js). Registrado ANTES dos módulos
 // para que /livros/manifest.webmanifest vença a rota /livros/:slug da Livraria.
 // Núcleo modularizado (Projeto 2): analytics + captura de leads; backup do DATA_DIR; proxy da Stays
-try { require('./nucleo/analytics').montar(app, { DATA_DIR, tokensIguais, limiteTaxa, appendJsonl, upsertContato }); } catch (e) { console.error('[nucleo/analytics] falha ao montar:', e.message); }
+try { require('./nucleo/analytics').montar(app, { DATA_DIR, tokensIguais, limiteTaxa, appendJsonl, upsertContato, registrarVisita: (d) => visitasColetor.registrar(d) }); } catch (e) { console.error('[nucleo/analytics] falha ao montar:', e.message); }
 try { require('./nucleo/backup').montar(app, { DATA_DIR, requireAdminOuChave }); } catch (e) { console.error('[nucleo/backup] falha ao montar:', e.message); }
+try { require('./nucleo/visitas').montarRotas(app, { DATA_DIR, requireAuth, podeArea, requirePublishOrAdmin, lerContatos }); } catch (e) { console.error('[nucleo/visitas] falha ao montar rotas:', e.message); }
 try { require('./nucleo/stays-proxy').montar(app, { stays, staysPaginado, staysPost, getStaysClientes, getListingMap, resolverClientes, invalidarStaysClientes, nomeCliente, normalizarPlataforma, semAcento, CAL_STATUS, registrarAuditoria, requireAuth, requireAdmin }); } catch (e) { console.error('[nucleo/stays-proxy] falha ao montar:', e.message); }
 try { require('./nucleo/crm-legado').montar(app, { requirePublishOrSession, podeCRM, lerContatos, salvarContatos, semAcento, ESTAGIOS, hojeISO, upsertContato, lerAtividades, addAtividade, stays, getListingMap, DATA_DIR }); } catch (e) { console.error('[nucleo/crm-legado] falha ao montar:', e.message); }
 try { require('./nucleo/hospede-financeiro').montar(app, { requireHospede, requireAuth, requirePublishOrAdmin, resumoConta, mpFetch, AREA_HOSPEDE_URL, lerAvaliacoes, lerIndicacoes, lerFidConfig, motorFidelidade, lerLancamentos, salvarLancamentos, lerHospedes, novoId, alertaAugusto }); } catch (e) { console.error('[nucleo/hospede-financeiro] falha ao montar:', e.message); }
