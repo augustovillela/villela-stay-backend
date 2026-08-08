@@ -4466,6 +4466,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('vitrine.')) return res.redirect(302, '/vitrine'); // Vitrine (marketplace de novos e usados)
   if (host.startsWith('altavista.') || host.startsWith('alta-vista.')) return res.redirect(302, '/alta-vista'); // Villela Alta Vista 360 (estúdio visual)
   if (host.startsWith('kids.')) return res.redirect(302, '/kids'); // Villela Kids (clube de missões)
+  if (host.startsWith('origena.')) return res.redirect(302, '/origena'); // Origena (memória e legado familiar)
   return res.redirect(302, '/hospede');
 });
 
