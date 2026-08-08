@@ -74,10 +74,25 @@ deixa só o ícone e mostra o rótulo do portal mais próximo do centro da vista
 o pátio da Kubitschek, onde 6 portas cabem num arco de 60°. Ainda assim, "Suíte do Chef" cabe
 melhor que "Suíte do Chef — entrada pela sala".
 
-### Vista geral da casa (`hub`)
+### Capa da casa (`hub`) — a "primeira página"
 
-`"hub": true` marca a cena de vista geral de uma casa; sem isso o visitante fica preso no quarto.
-Uma cena por `casa`. Hoje: `kubitschek-patio`, `catetinho-rooftop`, `casa-villela-lounge`.
+`"hub": true` marca a **capa** da casa: a cena de entrada, normalmente a fachada mais ampla.
+É a "primeira página" daquela casa e concentra três papéis:
+
+- é onde se **marcam os portais** (`/tour.html?editor=1`) para os demais ambientes;
+- é onde o **modo cinema** começa o passeio (e portanto onde a gravação em vídeo começa);
+- é para onde o **botão de saída** leva quem está num cômodo.
+
+Uma cena por `casa`, e ela deve ser a **primeira do grupo** no manifesto — é essa posição que
+define em que cena o botão "Tour 360°" do anúncio abre.
+
+Capas de hoje: `kubitschek-patio` (a Kubitschek não tem foto de fachada; o pátio é a vista mais
+ampla dela), `catetinho-fachada-3`, `casa-villela-fachada-2`, `modernista-fachada-2`,
+`gran-villela-estacionamento`, `area-verde-churrasqueira`.
+
+**Trocar a capa de uma casa** = mover a cena para o início do grupo e passar o `hub` para ela.
+Isso muda a cena que o anúncio abre — confira o antes/depois contra o site no ar, não contra o
+que você acha que estava lá.
 
 O botão de saída volta para **a cena de onde o visitante veio**, caindo no hub da casa só quando
 ele chegou por outro caminho (miniatura, link direto). Isso importa porque portal atravessa casa:
