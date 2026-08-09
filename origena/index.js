@@ -44,7 +44,7 @@ const pronto = () => _pronto;
  */
 // Handlers que o worker PRECISA ter registrados. Faltando um, a saúde
 // fica vermelha: job daquele tipo iria direto para a DLQ.
-const HANDLERS_ESPERADOS = ['midia.ingerir'];
+const HANDLERS_ESPERADOS = ['midia.ingerir', 'documento.extrair'];
 const BATIDA_MAX_SEG = 300;
 
 /**

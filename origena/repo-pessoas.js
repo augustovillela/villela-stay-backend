@@ -10,6 +10,7 @@
 const { erro } = require('./erros');
 const datas = require('./datas');
 const arvore = require('./arvore');
+const busca = require('./busca');
 const { auditar } = require('./repo');
 
 const s = (v, max = 300) => String(v == null ? '' : v).trim().slice(0, max);
@@ -25,6 +26,15 @@ function campoData(bruto, prefixo) {
   return { [`${prefixo}_valor`]: d.valor, [`${prefixo}_precisao`]: d.precisao,
     [`${prefixo}_ini`]: d.ini, [`${prefixo}_fim`]: d.fim };
 }
+
+/** A pessoa entra na busca com o que se sabe dela — nome, apelido, ofício, lugar. */
+const indexar = (t, familyId, p) => busca.indexar(t, {
+  familyId, refTipo: 'person', refId: p.id,
+  titulo: [p.nome_exibicao, p.apelido].filter(Boolean).join(' · '),
+  corpo: [p.resumo, p.profissao, p.local_nascimento].filter(Boolean).join('\n'),
+  pessoas: [p.id], dataIni: p.nascimento_ini, dataFim: p.falecimento_fim || p.nascimento_fim,
+  localTexto: p.local_nascimento, privacidade: p.privacidade, criadoPor: p.created_by,
+});
 
 const Persons = {
   listar: (t, familyId, { busca = '', limite = 200, offset = 0 } = {}) => t.todas(
@@ -65,6 +75,7 @@ const Persons = {
         dados.eh_menor ? 'PRIVATE' : (['PUBLIC', 'FAMILY', 'GROUP', 'PRIVATE'].includes(dados.privacidade) ? dados.privacidade : 'FAMILY'),
         !!dados.eh_menor, userId]);
 
+    await indexar(t, familyId, p);
     await auditar({ familyId, atorUserId: userId, acao: 'pessoa.criada',
       alvoTipo: 'person', alvoId: p.id, depois: { nome } }, t);
     return p;
@@ -102,6 +113,7 @@ const Persons = {
         dados.resumo !== undefined ? s(dados.resumo, 2000) : null,
         dados.privacidade && ['PUBLIC', 'FAMILY', 'GROUP', 'PRIVATE'].includes(dados.privacidade) ? dados.privacidade : null]);
 
+    await indexar(t, familyId, p);
     await auditar({ familyId, atorUserId: userId, acao: 'pessoa.editada',
       alvoTipo: 'person', alvoId: id,
       antes: { nome: antes.nome_exibicao, nascimento: antes.nascimento_valor },
@@ -116,6 +128,7 @@ const Persons = {
     await t.q(`UPDATE persons SET deleted_at = now() WHERE id = $1`, [id]);
     await t.q(`UPDATE relationships SET deleted_at = now()
                 WHERE deleted_at IS NULL AND (person_a = $1 OR person_b = $1)`, [id]);
+    await busca.remover(t, 'person', id);
     await auditar({ familyId, atorUserId: userId, acao: 'pessoa.arquivada',
       alvoTipo: 'person', alvoId: id, antes: { nome: p.nome_exibicao } }, t);
     return true;

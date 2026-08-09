@@ -76,7 +76,9 @@
     "geracoes": "Gerações",
     "divergencias": "Divergências",
     "ver_divergencias": "Ver as divergências da família",
-    "memorias": "Memórias"
+    "memorias": "Memórias",
+    "historias": "Histórias",
+    "procurar": "Procurar"
   },
   "papel": {
     "OWNER": "Responsável",
@@ -170,7 +172,11 @@
     "identificacao_origem_invalida": "Origem de identificação inválida.",
     "identificacao_repetida": "Essa pessoa já está marcada nesta foto.",
     "identificacao_nao_encontrada": "Marcação não encontrada.",
-    "album_sem_titulo": "Dê um nome ao álbum."
+    "album_sem_titulo": "Dê um nome ao álbum.",
+    "historia_sem_titulo": "Dê um título à história.",
+    "historia_vazia": "Escreva a história antes de guardar.",
+    "historia_nao_encontrada": "História não encontrada.",
+    "documento_ocr_pendente": "Este documento é uma imagem. Ainda não conseguimos ler o texto dele."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -186,7 +192,8 @@
     "divergencia_preservada": "Versão aceita. As outras continuam guardadas e podem ser consultadas a qualquer momento.",
     "revisao_preserva": "Guardamos a nova versão. A anterior continua no histórico.",
     "midia_arquivada": "O arquivo foi arquivado. Nada foi apagado — dá para restaurar.",
-    "historia_guardada": "Guardado. Quem contou e quando ficam registrados junto."
+    "historia_guardada": "Guardado. Quem contou e quando ficam registrados junto.",
+    "versao_preservada": "Guardamos a nova versão. A anterior continua consultável."
   },
   "email": {
     "verificacao_assunto": "Confirme seu e-mail — Origena",
@@ -245,7 +252,10 @@
     "midia.baixada": "Arquivo aberto",
     "midia.pessoa_identificada": "Pessoa marcada na foto",
     "midia.identificacao_confirmada": "Marcação confirmada",
-    "midia.historia_contada": "História da foto contada"
+    "midia.historia_contada": "História da foto contada",
+    "historia.criada": "História guardada",
+    "historia.editada": "História revisada",
+    "documento.extraido": "Texto do documento lido"
   },
   "pessoa": {
     "titulo": "Pessoas",
@@ -400,5 +410,55 @@
     "sem_albuns": "Nenhum álbum ainda.",
     "itens": "{n} item(ns)",
     "acrescentar": "Acrescentar a um álbum"
+  },
+  "historia_mod": {
+    "titulo": "Histórias",
+    "nova": "Contar uma história",
+    "nome": "Título",
+    "corpo": "A história",
+    "contada_por": "Quem contou",
+    "ocorrido": "Quando aconteceu",
+    "local": "Onde",
+    "menciona": "Quem aparece nesta história",
+    "sem_historias": "Nenhuma história ainda. Comece por aquela que a família sempre repete.",
+    "placeholder": "Meu avô dizia que...",
+    "versao": "versão {n}",
+    "versoes": "Versões",
+    "editar": "Corrigir",
+    "editada_por": "revisada por {nome} em {data}",
+    "preservadas": "Todas as versões anteriores continuam guardadas.",
+    "por": "por",
+    "guardar": "Guardar"
+  },
+  "busca": {
+    "titulo": "Procurar",
+    "campo": "O que você procura?",
+    "placeholder": "vovó Pirapora, casamento, certidão…",
+    "filtros": "Refinar",
+    "tipo": "Tipo",
+    "pessoa": "Pessoa",
+    "autor": "Quem registrou",
+    "de": "De",
+    "ate": "Até",
+    "local": "Lugar",
+    "nada": "Nada encontrado. Tente outra palavra, ou procure só pelos filtros.",
+    "ocultos": "{n} resultado(s) não aparecem para o seu papel.",
+    "resultados": "{n} resultado(s)",
+    "limpar": "Limpar",
+    "tipo_person": "Pessoas",
+    "tipo_media": "Fotos e vídeos",
+    "tipo_document": "Documentos",
+    "tipo_story": "Histórias",
+    "tipo_contribution": "O que a família contou"
+  },
+  "documento": {
+    "texto": "Texto do documento",
+    "metodo": "lido de {metodo}",
+    "paginas": "{n} página(s)",
+    "ocr_pendente": "Este documento é uma imagem. Ainda não conseguimos ler o texto dele — por isso ele não aparece na busca por palavra.",
+    "sem_texto": "Não havia texto neste arquivo.",
+    "falhou": "Não consegui ler este arquivo.",
+    "pendentes": "Documentos ainda não buscáveis",
+    "nada_pendente": "Todos os documentos já estão buscáveis."
   }
 }

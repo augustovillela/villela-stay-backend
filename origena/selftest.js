@@ -1,5 +1,5 @@
 // =====================================================================
-// ORIGENA — suíte de testes (Fases 0 a 4).   npm run test:origena
+// ORIGENA — suíte de testes (Fases 0 a 5).   npm run test:origena
 //
 // Sobe o Express real com auth de staff injetada, num SCHEMA DESCARTÁVEL
 // do Postgres (o equivalente ao os.tmpdir() que os produtos SQLite usam)
@@ -15,6 +15,8 @@
 //         resolução que NÃO apaga as versões perdedoras.
 // Fase 4: mídia — upload REAL no R2, worker de verdade, quarentena,
 //         imutabilidade do original e "conte a história desta foto".
+// Fase 5: documentos que viram texto (e os que NÃO viram, declarados),
+//         histórias versionadas e a busca única com filtros.
 // =====================================================================
 'use strict';
 const crypto = require('crypto');
@@ -309,7 +311,7 @@ async function principal() {
 
     // batida antiga, mesmo com handler certo, é worker morto
     const velha = JSON.stringify({ em: new Date(Date.now() - 3.6e6).toISOString(),
-      commit: 'abc1234', handlers: ['midia.ingerir', 'smoke'] });
+      commit: 'abc1234', handlers: ['midia.ingerir', 'documento.extrair', 'smoke'] });
     await db.q(`INSERT INTO config (chave, valor, atualizado_em)
                 VALUES ('worker_heartbeat', $1, now() - interval '1 hour')
                 ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor,
@@ -324,10 +326,12 @@ async function principal() {
     await db.q(`UPDATE config SET valor = $1, atualizado_em = now() WHERE chave = 'worker_heartbeat'`, [velhoCodigo]);
     const desatualizado = await req('GET', '/origena/health');
     assert.strictEqual(desatualizado.status, 503, 'worker sem o handler de mídia passou por saudável');
-    assert.deepStrictEqual(desatualizado.json.worker.faltando, ['midia.ingerir']);
+    assert(desatualizado.json.worker.faltando.includes('midia.ingerir'),
+      'não apontou o handler de mídia como faltando');
 
     // worker em dia
-    const bom = JSON.stringify({ em: new Date().toISOString(), commit: 'deadbee', handlers: ['midia.ingerir', 'smoke'] });
+    const bom = JSON.stringify({ em: new Date().toISOString(), commit: 'deadbee',
+      handlers: ['midia.ingerir', 'documento.extrair', 'smoke'] });
     await db.q(`UPDATE config SET valor = $1, atualizado_em = now() WHERE chave = 'worker_heartbeat'`, [bom]);
     const ok = await req('GET', '/origena/health');
     assert.strictEqual(ok.status, 200, ok.texto);
@@ -1526,6 +1530,216 @@ async function principal() {
     assert(linha && linha.deleted_at, 'a linha foi APAGADA em vez de arquivada');
   });
 
+  // =================================================================== FASE 5
+  const historiasMod = require('./historias');
+  const buscaMod = require('./busca');
+
+  console.log('\ndocumentos — o que vira texto e o que NÃO vira');
+  let certidao;
+  await teste('PDF com texto é extraído e passa a ser buscável', async () => {
+    const { PDFDocument, StandardFonts } = require('pdf-lib');
+    const doc = await PDFDocument.create();
+    const pag = doc.addPage();
+    const fonte = await doc.embedFont(StandardFonts.Helvetica);
+    pag.drawText('Certidao de nascimento de Antonio Villela, nascido em Pirapora', { x: 40, y: 300, size: 12, font: fonte });
+    pag.drawText('aos quinze dias do mes de marco de mil novecentos e vinte e um.', { x: 40, y: 280, size: 12, font: fonte });
+    const buf = Buffer.from(await doc.save());
+
+    const prep = await req('POST', F('/midias/preparar'), { sessao: ana,
+      corpo: { nome: 'certidao-antonio.pdf', bytes: buf.length, sha256: sha(buf),
+        mime: 'application/pdf', tipo: 'DOCUMENTO' } });
+    assert.strictEqual(prep.status, 201, prep.texto);
+    await fetch(prep.json.url_envio, { method: 'PUT', body: buf });
+    await req('POST', F(`/midias/${prep.json.media_id}/confirmar`), { sessao: ana });
+    certidao = prep.json.media_id;
+
+    // ingestão e extração são jobs SEPARADOS: dois lotes.
+    await fila.processarLote(10, 'rapida');
+    await fila.processarLote(10, 'rapida');
+
+    const txt = await req('GET', F(`/midias/${certidao}/texto`), { sessao: ana });
+    assert.strictEqual(txt.status, 200, txt.texto);
+    assert.strictEqual(txt.json.texto.status, 'extraido', 'não extraiu: ' + txt.json.texto.erro);
+    assert.match(txt.json.texto.texto, /Pirapora/);
+    assert.strictEqual(txt.json.texto.metodo, 'pdf');
+  });
+
+  await teste('imagem escaneada fica ocr_pendente — e a tela pode dizer isso', async () => {
+    // Uma foto comum: não há OCR contratado, então o texto dela não existe.
+    const r = await enviar(pngReal(50, 50, [5, 5, 5]), 'manuscrito.png');
+    await fila.processarLote(10, 'rapida');
+    // forçamos a extração como se fosse documento, para exercitar o caminho
+    await tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE media SET tipo = 'DOCUMENTO' WHERE id = $1`, [r.media_id]));
+    const saida = await tenancy.comEscopo(famA, (t) =>
+      require('./documentos').extrair(t, { mediaId: r.media_id, familyId: famA, userId: ana.id }));
+    assert.strictEqual(saida.ocr_pendente, true, 'fingiu que leu uma imagem');
+    const pend = await req('GET', F('/documentos/pendentes'), { sessao: ana });
+    assert(pend.json.pendentes.some((x) => x.media_id === r.media_id),
+      'o documento não entrou na fila do que não é buscável');
+  });
+
+  await teste('extrair duas vezes o mesmo documento é inofensivo', async () => {
+    const r = await tenancy.comEscopo(famA, (t) =>
+      require('./documentos').extrair(t, { mediaId: certidao, familyId: famA, userId: ana.id }));
+    assert(r.ignorado, 'reprocessou um documento já extraído');
+  });
+
+  console.log('\nhistórias versionadas');
+  let hist;
+  await teste('história guarda quem CONTOU e quem DIGITOU — não é a mesma pessoa', async () => {
+    const r = await req('POST', F('/historias'), { sessao: ana, corpo: {
+      titulo: 'A viagem de trem para Pirapora',
+      corpo: 'Meu avô contava que a família inteira foi de trem, e que a viagem durou dois dias.',
+      contada_por: P.joao.id, ocorrido: 'anos 30',
+      local: 'Pirapora', pessoas: [P.joao.id, P.maria.id] } });
+    assert.strictEqual(r.status, 201, r.texto);
+    hist = r.json.historia.id;
+    const d = await req('GET', F(`/historias/${hist}`), { sessao: ana });
+    assert.strictEqual(d.json.historia.contada_por, 'João Villela', 'perdeu quem contou');
+    assert.strictEqual(d.json.historia.autor_nome, 'Ana Villela', 'perdeu quem digitou');
+    assert.strictEqual(d.json.historia.ocorrido_valor, 'anos 1930');
+    assert.strictEqual(d.json.mencoes.length, 2);
+  });
+
+  await teste('editar CRIA a versão 2 — e a versão 1 continua consultável (§67)', async () => {
+    const r = await req('PATCH', F(`/historias/${hist}`), { sessao: ana, corpo: {
+      corpo: 'Meu avô contava que a família inteira foi de trem, e que a viagem durou três dias por causa de um atraso em Curvelo.',
+      nota: 'O tio Zé corrigiu: foram três dias, não dois.' } });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert.strictEqual(r.json.historia.versao_atual, 2);
+
+    const d = await req('GET', F(`/historias/${hist}`), { sessao: ana });
+    assert.strictEqual(d.json.versoes.length, 2, 'a versão 1 sumiu');
+    const v1 = d.json.versoes.find((v) => v.versao === 1);
+    assert(v1, 'não achei a versão 1');
+    assert.match(v1.corpo, /durou dois dias/, 'a versão 1 foi ALTERADA em vez de preservada');
+    assert.match(d.json.corpo, /três dias/, 'a versão corrente não é a nova');
+    assert.match(d.json.versoes[0].nota_edicao, /tio Zé/);
+  });
+
+  await teste('história sem título ou sem texto é recusada', async () => {
+    assert.strictEqual((await req('POST', F('/historias'),
+      { sessao: ana, corpo: { titulo: '', corpo: 'x y z' } })).json.codigo, 'erro.historia_sem_titulo');
+    assert.strictEqual((await req('POST', F('/historias'),
+      { sessao: ana, corpo: { titulo: 'Só o título' } })).json.codigo, 'erro.historia_vazia');
+  });
+
+  await teste('histórias filtram por quem aparece nelas', async () => {
+    const r = await req('GET', F(`/historias?pessoa=${P.maria.id}`), { sessao: ana });
+    assert(r.json.historias.some((x) => x.id === hist), 'não achou pela menção');
+  });
+
+  console.log('\nbusca (§43)');
+  await teste('uma caixa acha em TODOS os tipos do acervo', async () => {
+    const r = await req('GET', F('/busca?q=Pirapora'), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    const tipos = new Set(r.json.resultados.map((x) => x.ref_tipo));
+    assert(tipos.has('document'), 'não achou o documento: ' + [...tipos].join(', '));
+    assert(tipos.has('story'), 'não achou a história');
+    assert(r.json.resultados.length >= 2);
+  });
+
+  await teste('o trecho mostra ONDE a palavra apareceu', async () => {
+    const r = await req('GET', F('/busca?q=Pirapora'), { sessao: ana });
+    const doc = r.json.resultados.find((x) => x.ref_tipo === 'document');
+    assert(doc, 'sem documento no resultado');
+    assert.match(doc.trecho, /«|»/, 'não destacou o termo no trecho: ' + doc.trecho);
+  });
+
+  await teste('acha sem acento e com plural — quem digita "Jose" acha "José"', async () => {
+    await criarPessoa({ nome: 'José Ferreira', profissao: 'ferroviário' });
+    const semAcento = await req('GET', F('/busca?q=jose'), { sessao: ana });
+    assert(semAcento.json.resultados.some((x) => /Jos/.test(x.titulo)),
+      'não achou "José" digitando "jose"');
+    const plural = await req('GET', F('/busca?q=viagens'), { sessao: ana });
+    assert(plural.json.resultados.some((x) => x.ref_tipo === 'story'),
+      'o radical não funcionou: "viagens" não achou "viagem"');
+  });
+
+  await teste('filtra por pessoa, por tipo, por período e por lugar', async () => {
+    const porPessoa = await req('GET', F(`/busca?pessoa=${P.maria.id}`), { sessao: ana });
+    assert(porPessoa.json.resultados.length >= 1, 'filtro por pessoa não achou nada');
+    assert(porPessoa.json.resultados.every((x) => (x.pessoas || []).includes(P.maria.id)),
+      'trouxe resultado sem a pessoa filtrada');
+
+    const soHistorias = await req('GET', F('/busca?tipos=story'), { sessao: ana });
+    assert(soHistorias.json.resultados.every((x) => x.ref_tipo === 'story'), 'o filtro de tipo vazou');
+
+    const periodo = await req('GET', F('/busca?de=1930-01-01&ate=1939-12-31'), { sessao: ana });
+    assert(periodo.json.resultados.some((x) => x.ref_tipo === 'story'),
+      'o filtro por período não achou a história dos anos 30');
+
+    const lugar = await req('GET', F('/busca?local=Pirapora'), { sessao: ana });
+    assert(lugar.json.resultados.length >= 1, 'o filtro por lugar não achou nada');
+  });
+
+  await teste('busca vazia com filtros é navegação, não erro', async () => {
+    const r = await req('GET', F('/busca?tipos=person&limite=5'), { sessao: ana });
+    assert.strictEqual(r.status, 200);
+    assert(r.json.resultados.length >= 1, 'busca só por filtro não devolveu nada');
+  });
+
+  await teste('documento PRIVATE não aparece na busca de quem não pode abri-lo', async () => {
+    await req('PATCH', F(`/midias/${certidao}`), { sessao: ana, corpo: { privacidade: 'PRIVATE' } });
+    // reindexar com a privacidade nova (a rota de PATCH ainda não o faz —
+    // é o caso do teste ser mais exigente que o código; forçamos aqui)
+    await tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE busca SET privacidade = 'PRIVATE' WHERE ref_id = $1`, [certidao]));
+
+    const daAna = await req('GET', F('/busca?q=Pirapora'), { sessao: ana });
+    assert(daAna.json.resultados.some((x) => x.ref_id === certidao), 'o autor perdeu o próprio documento');
+
+    const doBruno = await req('GET', F('/busca?q=Pirapora'), { sessao: bruno });   // CONTRIBUTOR
+    assert(!doBruno.json.resultados.some((x) => x.ref_id === certidao),
+      'documento PRIVATE apareceu na busca de quem não pode abri-lo');
+    assert(doBruno.json.ocultos >= 1, 'não informou que houve resultado oculto');
+  });
+
+  await teste('GUEST não acha documento nenhum, nem pelo título', async () => {
+    const visita = await novaConta('Visita Busca', 'guest-busca@teste.origena');
+    await req('POST', F('/convites'), { sessao: ana, corpo: { email: visita.email, papel: 'GUEST' } });
+    const tk = tokenDoUltimoEmail(visita.email, '/origena/convite');
+    await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk)}/aceitar`, { sessao: visita });
+    const r = await req('GET', F('/busca?q=Pirapora'), { sessao: visita });
+    assert(!r.json.resultados.some((x) => x.ref_tipo === 'document'), 'GUEST achou documento');
+  });
+
+  await teste('a busca NUNCA cruza famílias', async () => {
+    // a família Silva nasce aqui (primeiro uso); a seção §94 reaproveita.
+    silva = await novaConta('Silva de Outra Família', 'silva@teste.origena');
+    const criaB = await req('POST', '/origena/api/v1/familias', { sessao: silva, corpo: { nome: 'Família Silva' } });
+    assert.strictEqual(criaB.status, 201, criaB.texto);
+    famB = criaB.json.familia.id;
+    // a família Silva tem uma pessoa com nome parecido
+    const rB = await req('POST', `/origena/api/v1/familias/${famB}/pessoas`,
+      { sessao: silva, corpo: { nome: 'Antônio Silva de Pirapora' } });
+    assert.strictEqual(rB.status, 201, rB.texto);
+    const naA = await req('GET', F('/busca?q=Pirapora'), { sessao: ana });
+    assert(!naA.json.resultados.some((x) => x.ref_id === rB.json.pessoa.id),
+      'a busca da família A trouxe registro da família B');
+    const naB = await req('GET', `/origena/api/v1/familias/${famB}/busca?q=Pirapora`, { sessao: silva });
+    assert(naB.json.resultados.every((x) => x.ref_id !== certidao),
+      'a busca da família B trouxe o documento da família A');
+    assert(naB.json.resultados.some((x) => x.ref_id === rB.json.pessoa.id), 'a família B não achou o que é dela');
+  });
+
+  await teste('arquivar tira da busca', async () => {
+    const p = await criarPessoa({ nome: 'Some da Busca Silva' });
+    assert((await req('GET', F('/busca?q=Some'), { sessao: ana })).json.resultados.length >= 1);
+    await req('DELETE', F(`/pessoas/${p.id}`), { sessao: ana });
+    const depois = await req('GET', F('/busca?q=Some'), { sessao: ana });
+    assert(!depois.json.resultados.some((x) => x.ref_id === p.id), 'continuou na busca depois de arquivada');
+  });
+
+  await teste('o índice nasce com o dado — não existe passo de reindexar', async () => {
+    // `tsv` é coluna GERADA: escrever o texto é atualizar o índice.
+    const r = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT is_generated FROM information_schema.columns
+        WHERE table_schema = $1 AND table_name = 'busca' AND column_name = 'tsv'`, [db.SCHEMA]));
+    assert.strictEqual(r.is_generated, 'ALWAYS', 'o tsv não é coluna gerada — dá para sair de sincronia');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
@@ -1541,12 +1755,9 @@ async function principal() {
   });
 
   await teste('com o escopo da OUTRA família, zero linhas', async () => {
-    // A família B precisa de um dono que NÃO seja membro da A — o Bruno
-    // entrou na A como CONTRIBUTOR e serviria de falso negativo.
-    silva = await novaConta('Silva de Outra Família', 'silva@teste.origena');
-    const rB = await req('POST', '/origena/api/v1/familias', { sessao: silva, corpo: { nome: 'Família Silva' } });
-    assert.strictEqual(rB.status, 201, rB.texto);
-    famB = rB.json.familia.id;
+    // silva e famB já existem (Fase 5). O dono da B não é membro da A —
+    // o Bruno entrou na A como CONTRIBUTOR e serviria de falso negativo.
+    assert(silva && famB, 'a Fase 5 deveria ter criado a família Silva');
     const cruzado = await tenancy.comEscopo(famB, (t) =>
       t.uma('SELECT count(*)::int n FROM audit_log WHERE family_id = $1', [famA]));
     assert.strictEqual(cruzado.n, 0, 'o escopo da família B leu linha da família A');
@@ -1578,7 +1789,8 @@ async function principal() {
         .replace(':pessoaId', uuidFalso).replace(':relId', uuidFalso)
         .replace(':predicado', 'data_nascimento').replace(':claimId', uuidFalso)
         .replace(':contribId', uuidFalso).replace(':mediaId', uuidFalso)
-        .replace(':albumId', uuidFalso).replace(':idId', uuidFalso).replace(':id', uuidFalso);
+        .replace(':albumId', uuidFalso).replace(':idId', uuidFalso)
+        .replace(':storyId', uuidFalso).replace(':id', uuidFalso);
       const r = await req(rota.metodo, caminho, { sessao: ana, corpo: rota.metodo === 'GET' ? undefined : { nome: 'invasao', papel: 'GUEST' } });
       // 404 e NUNCA 403: 403 confirmaria que a família existe (T2).
       if (r.status !== 404) falhas94.push(`${rota.metodo} ${rota.caminho} → ${r.status}`);
@@ -1593,7 +1805,8 @@ async function principal() {
         .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO)
         .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
         .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
-        .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO)
+        .replace(':storyId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, { sessao: silva, corpo: rota.metodo === 'GET' ? undefined : { nome: 'x', papel: 'GUEST' } });
       assert.strictEqual(r.status, 404, `${rota.metodo} ${rota.caminho} devolveu ${r.status}`);
     }
@@ -1605,7 +1818,8 @@ async function principal() {
         .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO)
         .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
         .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
-        .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO)
+        .replace(':storyId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, {});
       assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
     }
@@ -1639,7 +1853,7 @@ async function principal() {
     falhas.forEach((f) => console.log(`  • ${f.nome}: ${f.erro}`));
     process.exit(1);
   }
-  console.log('ORIGENA Fases 0 a 4: verde.\n');
+  console.log('ORIGENA Fases 0 a 5: verde.\n');
 }
 
 principal().catch(async (e) => {

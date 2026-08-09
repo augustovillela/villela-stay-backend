@@ -48,7 +48,24 @@ function registrarHandlers() {
   fila.registrar('midia.ingerir', async (payload) => {
     const tenancy = require('./tenancy');
     const midia = require('./midia');
-    return tenancy.comEscopo(payload.familyId, (t) => midia.ingerir(t, payload));
+    return tenancy.comEscopo(payload.familyId, async (t) => {
+      const r = await midia.ingerir(t, payload);
+      // Documento vira texto num job SEPARADO: extrair um PDF de 300
+      // páginas não pode segurar a ingestão das outras fotos do lote.
+      if (r && r.documento) {
+        await fila.enfileirar({ tipo: 'documento.extrair', fila: 'rapida',
+          familyId: payload.familyId, payload,
+          chaveIdem: 'extrair:' + payload.mediaId }, t);
+      }
+      return r;
+    });
+  });
+
+  // Extração de texto (Fase 5). Reaproveita o extrator do Villela Docs.
+  fila.registrar('documento.extrair', async (payload) => {
+    const tenancy = require('./tenancy');
+    const documentos = require('./documentos');
+    return tenancy.comEscopo(payload.familyId, (t) => documentos.extrair(t, payload));
   });
 }
 

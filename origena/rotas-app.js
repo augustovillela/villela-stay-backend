@@ -24,6 +24,9 @@ const prov = require('./proveniencia');
 const midia = require('./midia');
 const storage = require('./storage');
 const fila = require('./fila');
+const documentos = require('./documentos');
+const historias = require('./historias');
+const busca = require('./busca');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -493,6 +496,84 @@ function registrarRotasApp(app) {
         [req.familia.id, req.params.albumId, (req.body || {}).media_id]));
       res.status(r ? 201 : 200).json({ item: r, ja_estava: !r });
     }));
+
+  // ---------------------------------------------------------- documentos
+  app.get(decl('GET', `${R}/familias/:familyId/midias/:mediaId/texto`), ...naFamilia,
+    h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, async (t) => {
+        const m = await midia.obter(t, req.params.mediaId);
+        if (!m) throw erro('erro.midia_nao_encontrada', 404);
+        return { m, texto: await documentos.textoDe(t, m.id) };
+      });
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      if (!privacidade.podeVerDocumento(r.m, quem).pode) throw erro('erro.midia_nao_encontrada', 404);
+      res.json({ texto: r.texto || { status: 'pendente' } });
+    }));
+
+  /** O que ainda NÃO é buscável. A família precisa saber disso. */
+  app.get(decl('GET', `${R}/familias/:familyId/documentos/pendentes`), ...naFamilia,
+    rbac.exigir('ver.documentos'), h(async (req, res) => {
+      res.json({ pendentes: await tenancy.noEscopoDe(req, (t) => documentos.pendentes(t, req.familia.id)) });
+    }));
+
+  // ----------------------------------------------------------- histórias
+  app.get(decl('GET', `${R}/familias/:familyId/historias`), ...naFamilia, h(async (req, res) => {
+    const lista = await tenancy.noEscopoDe(req, (t) => historias.listar(t, req.familia.id, {
+      pessoaId: tenancy.UUID.test(String(req.query.pessoa || '')) ? req.query.pessoa : null,
+      limite: Number(req.query.limite) || 50 }));
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    res.json({ historias: lista.filter((x) => privacidade.podeVer(
+      { privacidade: x.privacidade, created_by: x.created_by }, quem).pode) });
+  }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/historias`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const x = await tenancy.noEscopoDe(req, (t) => historias.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: req.body || {} }));
+      res.status(201).json({ historia: x });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/historias/:storyId`), ...naFamilia,
+    h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => historias.obter(t, req.params.storyId));
+      if (!r) throw erro('erro.historia_nao_encontrada', 404);
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      if (!privacidade.podeVer(
+        { privacidade: r.historia.privacidade, created_by: r.historia.created_by }, quem).pode) {
+        throw erro('erro.historia_nao_encontrada', 404);
+      }
+      res.json(r);
+    }));
+
+  /** Editar CRIA a versão seguinte; a anterior fica consultável (§67). */
+  app.patch(decl('PATCH', `${R}/familias/:familyId/historias/:storyId`), ...naFamilia,
+    rbac.exigir('editar'), h(async (req, res) => {
+      const x = await tenancy.noEscopoDe(req, (t) => historias.editar(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        storyId: req.params.storyId, dados: req.body || {} }));
+      res.json({ historia: x, aviso: req.t('mensagem.versao_preservada') });
+    }));
+
+  // --------------------------------------------------------------- busca
+  /**
+   * Uma caixa para todo o acervo (§43). O resultado passa por `podeVer`
+   * ANTES de sair: documento privado não aparece nem como título.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/busca`), ...naFamilia, h(async (req, res) => {
+    const q = req.query || {};
+    const tipos = s(q.tipos, 200) ? s(q.tipos, 200).split(',').filter(Boolean) : null;
+    const linhas = await tenancy.noEscopoDe(req, (t) => busca.procurar(t, req.familia.id, {
+      termo: s(q.q, 200),
+      tipos,
+      pessoaId: tenancy.UUID.test(String(q.pessoa || '')) ? q.pessoa : null,
+      autorId: tenancy.UUID.test(String(q.autor || '')) ? q.autor : null,
+      de: s(q.de, 12) || null, ate: s(q.ate, 12) || null,
+      local: s(q.local, 100),
+      limite: Number(q.limite) || 40, offset: Number(q.offset) || 0 }));
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    const visiveis = busca.filtrar(linhas, quem);
+    res.json({ resultados: visiveis, ocultos: linhas.length - visiveis.length });
+  }));
 
   // -------------------------------------------------------------- árvore
   app.get(decl('GET', `${R}/familias/:familyId/arvore/:pessoaId`), ...naFamilia, h(async (req, res) => {

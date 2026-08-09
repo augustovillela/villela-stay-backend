@@ -28,6 +28,7 @@ const storage = require('./storage');
 const arquivos = require('./arquivos');
 const datas = require('./datas');
 const prov = require('./proveniencia');
+const busca = require('./busca');
 const { auditar } = require('./repo');
 
 const s = (v, max = 300) => String(v == null ? '' : v).trim().slice(0, max);
@@ -164,7 +165,17 @@ async function ingerir(t, { mediaId, familyId, userId }) {
         `${d.ini || ''}..${d.fim || ''}`, userId]);
   }
 
-  return { ok: true, tipo: real.tipo, mime: real.mime, largura, altura, exif: Object.keys(exif).length };
+  // A mídia entra na busca já na ingestão: título, lugar e data. O texto
+  // do documento chega depois, no job de extração, e faz upsert por cima.
+  await busca.indexar(t, {
+    familyId, refTipo: real.tipo === 'DOCUMENTO' ? 'document' : 'media', refId: mediaId,
+    titulo: m.titulo || m.nome_original, corpo: m.descricao || '',
+    dataIni: m.capturada_ini, dataFim: m.capturada_fim, localTexto: m.local_texto,
+    privacidade: m.privacidade, criadoPor: m.created_by,
+  });
+
+  return { ok: true, tipo: real.tipo, mime: real.mime, largura, altura,
+    exif: Object.keys(exif).length, documento: real.tipo === 'DOCUMENTO' };
 }
 
 async function quarentena(t, mediaId, chaveErro) {
@@ -326,6 +337,17 @@ async function contarHistoria(t, { familyId, userId, mediaId, respostas }) {
       familyId, userId, alvoTipo: 'media', alvoId: mediaId, corpo: texto, tipo: 'relato' });
   }
 
+  // O contexto novo muda o que a busca encontra — reindexar aqui é o que
+  // faz "aniversário na fazenda" achar esta foto.
+  const atual = await obter(t, mediaId);
+  await busca.indexar(t, {
+    familyId, refTipo: atual.tipo === 'DOCUMENTO' ? 'document' : 'media', refId: mediaId,
+    titulo: atual.titulo || atual.nome_original,
+    corpo: [atual.descricao, texto].filter(Boolean).join('\n'),
+    pessoas: (respostas.pessoas || []).filter(Boolean),
+    dataIni: atual.capturada_ini, dataFim: atual.capturada_fim,
+    localTexto: atual.local_texto, privacidade: atual.privacidade, criadoPor: atual.created_by,
+  });
   await auditar({ familyId, atorUserId: userId, acao: 'midia.historia_contada',
     alvoTipo: 'media', alvoId: mediaId, depois: feito }, t);
   if (fonte) feito.fonte_id = fonte.id;
@@ -337,6 +359,8 @@ async function arquivar(t, { familyId, userId, mediaId }) {
   const m = await obter(t, mediaId);
   if (!m) throw erro('erro.midia_nao_encontrada', 404);
   await t.q(`UPDATE media SET deleted_at = now() WHERE id = $1 OR derivado_de = $1`, [mediaId]);
+  await busca.remover(t, 'media', mediaId);
+  await busca.remover(t, 'document', mediaId);
   await auditar({ familyId, atorUserId: userId, acao: 'midia.arquivada',
     alvoTipo: 'media', alvoId: mediaId }, t);
   return true;

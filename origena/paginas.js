@@ -263,6 +263,8 @@ async function abrir(id) {
       : '') +
     '<p style="margin-top:26px"><a href="#" onclick="pessoas();return false"><strong>' + esc(t('pessoa.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="memorias();return false"><strong>' + esc(t('familia.memorias')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaHistorias();return false"><strong>' + esc(t('familia.historias')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
       ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a></p>' +
     (pode('auditoria.ver') ? '<p><a href="#" onclick="auditoria();return false">' +
       esc(t('familia.ver_historico')) + '</a></p>' : ''));
@@ -802,6 +804,139 @@ async function confirmarPessoa(idId, mediaId) {
   const r = await api('POST', '/familias/' + FAM.id + '/identificacoes/' + idId + '/confirmar');
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verMidia(mediaId);
+}
+
+// ------------------------------------------------------------------ busca
+// Uma caixa para o acervo inteiro (§43). O servidor decide o que aparece;
+// esta tela só apresenta.
+async function telaBusca(offset) {
+  const q = document.getElementById('bq') ? document.getElementById('bq').value : '';
+  const tipo = document.getElementById('bt') ? document.getElementById('bt').value : '';
+  const r = q !== '' || tipo !== ''
+    ? await api('GET', '/familias/' + FAM.id + '/busca?q=' + encodeURIComponent(q) +
+        (tipo ? '&tipos=' + tipo : '') + (offset ? '&offset=' + offset : ''))
+    : { resultados: null };
+  const tipos = ['', 'person', 'media', 'document', 'story', 'contribution'];
+  const abrirDe = (x) => x.ref_tipo === 'person' ? "dossie('" + x.ref_id + "')"
+    : x.ref_tipo === 'story' ? "verHistoria('" + x.ref_id + "')"
+    : "verMidia('" + x.ref_id + "')";
+  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+    '<h2>' + esc(t('busca.titulo')) + '</h2>' +
+    '<label>' + esc(t('busca.campo')) + '</label>' +
+    '<input id="bq" value="' + esc(q) + '" placeholder="' + esc(t('busca.placeholder')) + '"' +
+      ' onkeydown="if(event.key===\\'Enter\\')telaBusca()">' +
+    '<label>' + esc(t('busca.tipo')) + '</label><select id="bt">' +
+      tipos.map(x => '<option value="' + x + '"' + (x === tipo ? ' selected' : '') + '>' +
+        esc(x ? t('busca.tipo_' + x) : '—') + '</option>').join('') + '</select>' +
+    '<p><button class="btn" onclick="telaBusca()">' + esc(t('busca.titulo')) + '</button></p>' +
+    (r.resultados === null ? '' :
+      (r.resultados.length
+        ? '<p class="sub">' + esc(t('busca.resultados', { n: r.resultados.length })) +
+          (r.ocultos ? ' · ' + esc(t('busca.ocultos', { n: r.ocultos })) : '') + '</p>' +
+          r.resultados.map(x =>
+            '<div class="card" style="padding:16px;cursor:pointer" onclick="' + abrirDe(x) + '">' +
+            '<p style="margin:0 0 4px"><span class="papel">' + esc(t('busca.tipo_' + x.ref_tipo)) + '</span> ' +
+            '<strong>' + esc(x.titulo || '') + '</strong></p>' +
+            (x.trecho ? '<p class="sub" style="margin:0">' +
+              esc(x.trecho).replace(/«/g, '<mark>').replace(/»/g, '</mark>') + '</p>' : '') +
+            '</div>').join('')
+        : '<p class="sub">' + esc(t('busca.nada')) + '</p>')));
+  const campo = document.getElementById('bq');
+  if (campo && !offset) campo.focus();
+}
+
+// --------------------------------------------------------------- histórias
+async function telaHistorias() {
+  const r = await api('GET', '/familias/' + FAM.id + '/historias');
+  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+    '<h2>' + esc(t('historia_mod.titulo')) + '</h2>' +
+    ((r.historias || []).length
+      ? r.historias.map(x =>
+          '<div class="card" style="padding:18px;cursor:pointer" onclick="verHistoria(\\'' + x.id + '\\')">' +
+          '<p style="margin:0 0 4px"><strong>' + esc(x.titulo) + '</strong>' +
+          (x.ocorrido_valor ? ' <span class="sub">· ' + esc(x.ocorrido_valor) + '</span>' : '') + '</p>' +
+          '<p class="sub" style="margin:0">' + esc(x.resumo || '') + '</p>' +
+          (x.contada_por ? '<p class="sub" style="margin:6px 0 0">' + esc(t('historia_mod.por')) + ' ' +
+            esc(x.contada_por) + '</p>' : '') +
+          '</div>').join('')
+      : '<p class="sub">' + esc(t('historia_mod.sem_historias')) + '</p>') +
+    (pode('contribuir') ? formHistoriaNova() : ''));
+  if (pode('contribuir')) preencherSelPessoas('hn_quem');
+}
+
+function formHistoriaNova() {
+  return '<h3 style="margin-top:26px">' + esc(t('historia_mod.nova')) + '</h3>' +
+    '<label>' + esc(t('historia_mod.nome')) + '</label><input id="hn_t">' +
+    '<label>' + esc(t('historia_mod.corpo')) + '</label>' +
+    '<textarea id="hn_c" rows="5" style="width:100%;min-height:120px;padding:12px 14px;' +
+      'border:1px solid var(--borda);border-radius:10px;font:16px Inter,system-ui,sans-serif;' +
+      'background:var(--card);color:var(--tinta)" placeholder="' + esc(t('historia_mod.placeholder')) + '"></textarea>' +
+    '<label>' + esc(t('historia_mod.contada_por')) + '</label><select id="hn_quem"><option value=""></option></select>' +
+    '<label>' + esc(t('historia_mod.ocorrido')) + '</label><input id="hn_q" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
+    '<label>' + esc(t('historia_mod.local')) + '</label><input id="hn_l">' +
+    '<p><button class="btn" onclick="criarHistoria()">' + esc(t('historia_mod.guardar')) + '</button></p>';
+}
+
+async function preencherSelPessoas(idSel) {
+  const sel = document.getElementById(idSel);
+  if (!sel) return;
+  const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
+  sel.innerHTML += (l.pessoas || []).map(x =>
+    '<option value="' + x.id + '">' + esc(x.nome_exibicao) + '</option>').join('');
+}
+
+async function criarHistoria() {
+  const quem = document.getElementById('hn_quem').value;
+  const r = await api('POST', '/familias/' + FAM.id + '/historias', {
+    titulo: document.getElementById('hn_t').value,
+    corpo: document.getElementById('hn_c').value,
+    contada_por: quem || null, pessoas: quem ? [quem] : [],
+    ocorrido: document.getElementById('hn_q').value,
+    local: document.getElementById('hn_l').value });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verHistoria(r.historia.id);
+}
+
+async function verHistoria(id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/historias/' + id);
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const h = r.historia;
+  $(topo() + '<p class="sub"><a href="#" onclick="telaHistorias();return false">← ' +
+      esc(t('historia_mod.titulo')) + '</a></p>' +
+    '<h2>' + esc(h.titulo) + '</h2>' +
+    '<p class="sub">' + [h.contada_por ? t('historia_mod.por') + ' ' + h.contada_por : '',
+      h.ocorrido_valor, h.local_texto].filter(Boolean).map(esc).join(' · ') + '</p>' +
+    '<div class="card"><p style="margin:0;white-space:pre-wrap">' + esc(r.corpo) + '</p></div>' +
+    ((r.mencoes || []).filter(m => m.person_id).length
+      ? '<p class="sub">' + esc(t('historia_mod.menciona')) + ': ' +
+        r.mencoes.filter(m => m.person_id).map(m =>
+          '<a href="#" onclick="dossie(\\'' + m.person_id + '\\');return false">' +
+          esc(m.nome_exibicao) + '</a>').join(', ') + '</p>' : '') +
+    (pode('editar')
+      ? '<h3>' + esc(t('historia_mod.editar')) + '</h3>' +
+        '<textarea id="he_c" rows="5" style="width:100%;min-height:120px;padding:12px 14px;' +
+        'border:1px solid var(--borda);border-radius:10px;font:16px Inter,system-ui,sans-serif;' +
+        'background:var(--card);color:var(--tinta)">' + esc(r.corpo) + '</textarea>' +
+        '<p><button class="btn" onclick="editarHistoria(\\'' + id + '\\')">' +
+        esc(t('historia_mod.guardar')) + '</button></p>' : '') +
+    ((r.versoes || []).length > 1
+      ? '<h3>' + esc(t('historia_mod.versoes')) + '</h3>' +
+        r.versoes.slice(1).map(v =>
+          '<div class="card" style="padding:14px;opacity:.7">' +
+          '<p class="sub" style="margin:0 0 6px">' + esc(t('historia_mod.versao', { n: v.versao })) +
+          (v.editado_por_nome ? ' · ' + esc(t('historia_mod.editada_por',
+            { nome: v.editado_por_nome, data: new Date(v.created_at).toLocaleDateString(IDIOMA) })) : '') +
+          (v.nota_edicao ? ' · ' + esc(v.nota_edicao) : '') + '</p>' +
+          '<p style="margin:0;white-space:pre-wrap">' + esc(v.corpo) + '</p></div>').join('') +
+        '<p class="sub">' + esc(t('historia_mod.preservadas')) + '</p>'
+      : ''));
+}
+
+async function editarHistoria(id) {
+  const r = await api('PATCH', '/familias/' + FAM.id + '/historias/' + id,
+    { corpo: document.getElementById('he_c').value });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verHistoria(id);
 }
 
 // ------------------------------------------------- links vindos do e-mail

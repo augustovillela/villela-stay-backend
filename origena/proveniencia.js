@@ -19,6 +19,7 @@
 'use strict';
 const { erro } = require('./erros');
 const datas = require('./datas');
+const busca = require('./busca');
 const { auditar } = require('./repo');
 
 const s = (v, max = 2000) => String(v == null ? '' : v).trim().slice(0, max);
@@ -88,6 +89,14 @@ async function contribuir(t, { familyId, userId, alvoTipo, alvoId, corpo, tipo =
        tipo, corpo, privacidade)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
     [familyId, userId, autorPersonId, alvoTipo, alvoId, tipo, s(corpo, 20000), privacidade]);
+  // O que a família contou precisa ser encontrável — senão vira texto
+  // guardado que ninguém acha.
+  await busca.indexar(t, {
+    familyId, refTipo: 'contribution', refId: c.id,
+    titulo: '', corpo: c.corpo,
+    pessoas: alvoTipo === 'person' ? [alvoId] : [],
+    autorId: userId, privacidade: c.privacidade, criadoPor: userId,
+  });
   await auditar({ familyId, atorUserId: userId, acao: 'contribuicao.registrada',
     alvoTipo: 'contribution', alvoId: c.id, depois: { alvo: alvoTipo, tipo } }, t);
   return c;
