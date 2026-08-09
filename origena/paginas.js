@@ -1456,11 +1456,17 @@ const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString(IDIOMA, { minim
 async function telaPlanos() {
   const r = await api('GET', '/familias/' + FAM.id + '/planos');
   if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const podeComprar = r.pagamento === 'mercadopago' && pode('creditos.comprar');
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('plano.titulo')) + '</h2>' +
     '<p class="sub">' + esc(t('plano.intro')) + '</p>' +
     '<p class="sub">' + esc(r.assinatura ? t('plano.atual', { nome: r.assinatura.nome })
       : t('plano.sem_assinatura')) + ' · ' + esc(t('plano.saldo', { n: r.saldo })) + '</p>' +
+    (r.assinatura && r.assinatura.status === 'ativa'
+      ? '<p class="sub">' + esc(t('plano.renova_em', { data: r.assinatura.proximo_ciclo || '—' })) +
+        ' · <a href="#" onclick="cancelarAssinatura();return false">' +
+        esc(t('plano.cancelar')) + '</a></p>' : '') +
+
     (r.planos || []).map(p =>
       '<div class="card" style="padding:18px">' +
       '<p style="margin:0 0 6px"><strong style="font-size:18px">' + esc(p.nome) + '</strong> ' +
@@ -1474,16 +1480,66 @@ async function telaPlanos() {
         esc(t('plano.storage', { n: p.storage_gb })) + ' · ' +
         (p.creditos_mes ? esc(t('plano.creditos_mes', { n: p.creditos_mes })) + ' · ' : '') +
         esc(p.familias > 1 ? t('plano.familias_n', { n: p.familias }) : t('plano.familias_1')) +
-        ' · ' + esc(t('plano.membros')) + '</p></div>').join('') +
+        ' · ' + esc(t('plano.membros')) + '</p>' +
+      // O botão só existe quando há gateway ligado E o plano é pago: sem
+      // isso, botão de "assinar" que não cobra é promessa falsa.
+      (podeComprar && p.preco_centavos ?
+        '<p style="margin:10px 0 0">' +
+        '<button class="btn" onclick="assinar(\'' + esc(p.codigo) + '\',\'mensal\')">' +
+          esc(t('plano.assinar_mes')) + '</button>' +
+        (p.preco_anual_centavos ? ' <button class="btn sec" onclick="assinar(\'' + esc(p.codigo) +
+          '\',\'anual\')">' + esc(t('plano.assinar_ano')) + '</button>' : '') +
+        '</p>' : '') +
+      '</div>').join('') +
 
     '<h3 style="margin-top:26px">' + esc(t('plano.pacotes')) + '</h3>' +
     '<p class="sub">' + esc(t('plano.creditos_explica')) + '</p>' +
     (r.pacotes || []).map(p => '<div class="linha"><span>' +
-      esc(t('plano.pacote', { n: p.creditos, valor: brl(p.preco_centavos) })) +
-      '</span></div>').join('') +
+      esc(t('plano.pacote', { n: p.creditos, valor: brl(p.preco_centavos) })) + '</span>' +
+      (podeComprar ? '<span><button class="btn sec" onclick="comprarCreditos(\'' +
+        esc(p.codigo) + '\')">' + esc(t('plano.comprar')) + '</button></span>' : '') +
+      '</div>').join('') +
 
-    '<h3 style="margin-top:26px">' + esc(t('plano.manual_titulo')) + '</h3>' +
-    '<p class="sub">' + esc(t('plano.manual')) + '</p>');
+    (podeComprar ? '' : '<h3 style="margin-top:26px">' + esc(t('plano.manual_titulo')) + '</h3>' +
+      '<p class="sub">' + esc(t('plano.manual')) + '</p>') +
+
+    ((r.pedidos || []).length ? '<h3 style="margin-top:26px">' + esc(t('plano.compras')) + '</h3>' +
+      r.pedidos.map(p => '<div class="linha"><span>' + esc(p.descricao) +
+        ' <span class="sub">' + esc(p.codigo) + '</span></span><span class="sub">' +
+        esc(brl(p.total_centavos)) + ' · ' + esc(t('plano.st_' + p.status)) +
+        '</span></div>').join('') : ''));
+}
+
+/**
+ * Comprar leva ao gateway, não credita nada aqui: quem credita é o webhook
+ * depois que o Mercado Pago confirmar (billing.js). A aba nova é de
+ * propósito — voltar para o acervo não pode custar o pagamento em curso.
+ */
+async function comprarCreditos(pacote) {
+  const r = await api('POST', '/familias/' + FAM.id + '/pedidos', { pacote });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  irPagar(r.pagamento);
+}
+
+async function assinar(plano, ciclo) {
+  const r = await api('POST', '/familias/' + FAM.id + '/assinatura', { plano, ciclo });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  irPagar(r.pagamento);
+}
+
+function irPagar(pag) {
+  if (pag && pag.link) {
+    window.open(pag.link, '_blank', 'noopener');
+    return $(document.getElementById('app').innerHTML + aviso(t('plano.pagando'), 'ok'));
+  }
+  $(document.getElementById('app').innerHTML + aviso(t('plano.manual'), 'ok'));
+}
+
+async function cancelarAssinatura() {
+  if (!confirm(t('plano.cancelar_confirma'))) return;
+  const r = await api('DELETE', '/familias/' + FAM.id + '/assinatura');
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  telaPlanos();
 }
 
 // ------------------------------------------------------ avisos (§87)

@@ -118,6 +118,54 @@ async function ativarMFA(jar) {
 }
 
 // =====================================================================
+// MERCADO PAGO DE MENTIRA. O gateway de verdade só responde com dinheiro
+// de verdade, então o que se testa aqui é o NOSSO lado do contrato: que o
+// crédito só entra depois de perguntar ao provedor, que o mesmo pagamento
+// não entra duas vezes, e que valor menor não libera pedido maior.
+// `__mock` é o que faz `billing.ativo()` ligar sem MP_ACCESS_TOKEN.
+// =====================================================================
+const MP = { chamadas: [], pagamentos: {}, assinaturas: {}, seq: 0 };
+
+async function mpFake(caminho, opts = {}) {
+  const metodo = (opts.method || 'GET').toUpperCase();
+  const corpo = opts.body ? JSON.parse(opts.body) : null;
+  MP.chamadas.push({ caminho, metodo, corpo, headers: opts.headers || {} });
+
+  if (caminho === '/checkout/preferences' && metodo === 'POST') {
+    const id = 'pref' + (++MP.seq);
+    MP.ultimaPreferencia = corpo;
+    return { id, init_point: 'https://mp.teste/checkout/' + id };
+  }
+  if (caminho === '/preapproval' && metodo === 'POST') {
+    const id = 'pre' + (++MP.seq);
+    MP.assinaturas[id] = { id, status: 'pending', external_reference: corpo.external_reference,
+      auto_recurring: corpo.auto_recurring };
+    return { ...MP.assinaturas[id], init_point: 'https://mp.teste/assinar/' + id };
+  }
+  if (caminho.startsWith('/preapproval/')) {
+    const id = caminho.split('/')[2];
+    const a = MP.assinaturas[id];
+    if (!a) throw new Error('Mercado Pago 404: preapproval ' + id);
+    if (metodo === 'PUT') { a.status = corpo.status; }
+    return a;
+  }
+  if (caminho.startsWith('/v1/payments/')) {
+    const p = MP.pagamentos[caminho.split('/')[3]];
+    if (!p) throw new Error('Mercado Pago 404: payment');
+    return p;
+  }
+  throw new Error('mpFake: rota não simulada ' + metodo + ' ' + caminho);
+}
+mpFake.__mock = true;
+
+/** Cria um pagamento aprovado no MP de mentira e devolve o id dele. */
+function mpPagar(externalRef, reais, status = 'approved') {
+  const id = 'pay' + (++MP.seq);
+  MP.pagamentos[id] = { id, status, external_reference: externalRef, transaction_amount: reais };
+  return id;
+}
+
+// =====================================================================
 async function principal() {
   if (!db.configurado()) {
     console.error('\nORIGENA_DATABASE_URL não definida — o selftest precisa de um Postgres.');
@@ -134,7 +182,8 @@ async function principal() {
   app.use(express.json({ limit: '15mb' }));
   app.use(cookieParser());
   const montado = await origena.montar(app, {
-    express, requireAuth, requireAdmin, enviarEmail, jwtSecret: 'segredo-de-teste-origena' });
+    express, requireAuth, requireAdmin, enviarEmail, mpFetch: mpFake,
+    jwtSecret: 'segredo-de-teste-origena' });
   await new Promise((r) => { servidor = app.listen(0, r); });
   base = 'http://127.0.0.1:' + servidor.address().port;
 
@@ -2630,7 +2679,7 @@ async function principal() {
     assert(r.json.planos.length >= 3);
     assert(r.json.planos.every((p) => p.preco_centavos != null));
     assert(r.json.pacotes.length >= 1, 'sem pacote de créditos');
-    assert.strictEqual(r.json.pagamento, 'manual', 'a tela precisa dizer que a compra ainda é manual');
+    assert.strictEqual(r.json.pagamento, 'mercadopago', 'a tela precisa dizer qual pagamento existe');
     const texto = JSON.stringify(r.json);
     for (const vazamento of ['piso', 'margem', 'custo']) {
       assert(!texto.includes(vazamento), `o app da família recebeu "${vazamento}" — isso é do staff`);
@@ -2661,6 +2710,183 @@ async function principal() {
     const texto = await req('PATCH', '/staff/api/origena/config/fx_usd_brl',
       { corpo: { valor: 'de graça' } });
     assert.strictEqual(texto.status, 400, 'aceitou texto onde precisa de número');
+  });
+
+  // ============================================================== L7 — PAGAR
+  console.log('\ncobrança (L7) — quem credita é o webhook, nunca o clique');
+  const billing = require('./billing');
+  const saldoDe = () => tenancy.comEscopo(famA, (t) =>
+    t.uma('SELECT saldo FROM credit_wallets WHERE family_id = $1', [famA])).then((w) => (w ? w.saldo : 0));
+  const avisar = (corpo) => req('POST', '/origena/webhook/mercadopago', { corpo });
+  const FAMILIA_FALSA = '00000000-0000-4000-8000-0000000000f7';
+
+  await teste('o gateway está ligado nos testes (senão o resto não prova nada)', async () => {
+    assert.strictEqual(billing.ativo(), true, 'billing desligado — o mpFake não chegou no montar');
+  });
+
+  let pedidoCred = null;
+  await teste('comprar crédito cria pedido AGUARDANDO e não credita nada ainda', async () => {
+    const antes = await saldoDe();
+    const r = await req('POST', F('/pedidos'), { sessao: ana, corpo: { pacote: 'creditos_100' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    assert.strictEqual(r.json.pagamento.modo, 'checkout');
+    assert(/^https:\/\/mp\.teste\//.test(r.json.pagamento.link), 'sem link de pagamento');
+    assert.strictEqual(await saldoDe(), antes, 'creditou antes de o dinheiro entrar');
+    pedidoCred = { id: r.json.pedido.id, ref: MP.ultimaPreferencia.external_reference,
+      total: r.json.pedido.total_centavos, creditos: r.json.pedido.creditos, antes };
+    // idempotência do lado do MP: pedido repetido não vira cobrança dobrada
+    const chave = MP.chamadas[MP.chamadas.length - 1].headers['X-Idempotency-Key'];
+    assert.strictEqual(chave, 'origena-' + pedidoCred.id, 'preferência sem chave de idempotência');
+  });
+
+  await teste('só quem pode comprar compra — CONTRIBUTOR leva 403', async () => {
+    const r = await req('POST', F('/pedidos'), { sessao: bruno, corpo: { pacote: 'creditos_100' } });
+    assert.strictEqual(r.status, 403, 'quem não cuida do dinheiro conseguiu comprar');
+  });
+
+  await teste('webhook credita depois de PERGUNTAR ao Mercado Pago', async () => {
+    const id = mpPagar(pedidoCred.ref, pedidoCred.total / 100);
+    const r = await avisar({ type: 'payment', data: { id } });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.pedido, 'o webhook não aplicou o pedido: ' + JSON.stringify(r.json));
+    assert.strictEqual(await saldoDe(), pedidoCred.antes + pedidoCred.creditos);
+    // o valor veio da consulta ao MP, não do corpo da requisição
+    assert(MP.chamadas.some((c) => c.caminho === '/v1/payments/' + id),
+      'confiou no corpo do webhook em vez de consultar o provedor');
+  });
+
+  await teste('webhook repetido não credita de novo (é o índice que garante)', async () => {
+    const saldo = await saldoDe();
+    const id = Object.keys(MP.pagamentos).pop();
+    for (let i = 0; i < 3; i++) await avisar({ type: 'payment', data: { id } });
+    assert.strictEqual(await saldoDe(), saldo, 'o mesmo pagamento creditou duas vezes');
+  });
+
+  await teste('pagamento menor que o pedido NÃO libera o pedido', async () => {
+    const p = await req('POST', F('/pedidos'), { sessao: ana, corpo: { pacote: 'creditos_1000' } });
+    const ref = MP.ultimaPreferencia.external_reference;
+    const saldo = await saldoDe();
+    const r = await avisar({ type: 'payment', data: { id: mpPagar(ref, 1) } });
+    assert.strictEqual(r.json.ok, false, 'aceitou R$ 1,00 por um pacote de R$ 169,90');
+    assert.strictEqual(await saldoDe(), saldo);
+    const lista = await req('GET', F('/pedidos'), { sessao: ana });
+    const meu = lista.json.pedidos.find((x) => x.id === p.json.pedido.id);
+    assert.strictEqual(meu.status, 'aguardando_pagamento', 'o pedido subpago virou pago');
+  });
+
+  await teste('pagamento pendente e referência de fora não mexem em nada', async () => {
+    const saldo = await saldoDe();
+    const pend = await avisar({ type: 'payment', data: { id: mpPagar(pedidoCred.ref, 24.9, 'pending') } });
+    assert(pend.json.ignorado, 'aplicou pagamento que ainda não foi aprovado');
+    const fora = await avisar({ type: 'payment', data: { id: mpPagar('closet:123', 24.9) } });
+    assert(fora.json.ignorado, 'aplicou pagamento de outro produto do grupo');
+    // referência com família inventada: a rota é pública, isto é hostil de verdade
+    const falsa = `origena-pedido:${pedidoCred.id}:${FAMILIA_FALSA}`;
+    const inv = await avisar({ type: 'payment', data: { id: mpPagar(falsa, 24.9) } });
+    assert(inv.json.ignorado, 'achou pedido no escopo de uma família que não é a dona');
+    assert.strictEqual(await saldoDe(), saldo);
+    assert(!billing.lerReferencia('origena-pedido:nada'), 'aceitou referência quebrada');
+  });
+
+  let assinatura = null;
+  await teste('assinar plano abre recorrência no gateway e não liga nada antes de pagar', async () => {
+    const r = await req('POST', F('/assinatura'), { sessao: ana, corpo: { plano: 'familia', ciclo: 'mensal' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    assert.strictEqual(r.json.pagamento.modo, 'assinatura');
+    const pre = Object.values(MP.assinaturas).pop();
+    assert.strictEqual(pre.auto_recurring.frequency_type, 'months');
+    const planos = await req('GET', F('/planos'), { sessao: ana });
+    assert(!planos.json.assinatura || planos.json.assinatura.status !== 'ativa',
+      'o plano ficou ativo sem pagamento');
+    assinatura = { preId: pre.id, pedido: r.json.pedido.id };
+  });
+
+  await teste('autorizada no MP: plano ativo e créditos do ciclo entregues UMA vez', async () => {
+    MP.assinaturas[assinatura.preId].status = 'authorized';
+    const antes = await saldoDe();
+    const r = await avisar({ type: 'subscription_preapproval', data: { id: assinatura.preId } });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.pedido, 'o webhook não ativou a assinatura: ' + JSON.stringify(r.json));
+    const planos = await req('GET', F('/planos'), { sessao: ana });
+    assert.strictEqual(planos.json.assinatura.status, 'ativa');
+    assert.strictEqual(planos.json.assinatura.codigo, 'familia');
+    const plano = planos.json.planos.find((p) => p.codigo === 'familia');
+    assert.strictEqual(await saldoDe(), antes + plano.creditos_mes, 'créditos do plano não entraram');
+    // abrir a tela de novo NÃO entrega o mês outra vez (idempotente por competência)
+    await req('GET', F('/planos'), { sessao: ana });
+    await req('GET', F('/planos'), { sessao: ana });
+    assert.strictEqual(await saldoDe(), antes + plano.creditos_mes, 'a visita à tela virou dinheiro');
+    // e o aviso repetido do MP também não
+    await avisar({ type: 'subscription_preapproval', data: { id: assinatura.preId } });
+    assert.strictEqual(await saldoDe(), antes + plano.creditos_mes);
+  });
+
+  await teste('cobrança recorrente do mesmo mês não entrega o ciclo em dobro', async () => {
+    // O plano entrega `creditos_mes` uma vez por COMPETÊNCIA. A adesão já
+    // entregou este mês; a cobrança que chega agora não pode entregar de novo
+    // (chavear pelo id do pagamento daria crédito dobrado no mês da adesão).
+    const antes = await saldoDe();
+    const ref = MP.assinaturas[assinatura.preId].external_reference;
+    const r = await avisar({ type: 'payment', data: { id: mpPagar(ref, 39.9) } });
+    assert.strictEqual(r.json.ok, true, r.texto);
+    assert.strictEqual(await saldoDe(), antes, 'a cobrança do mês já entregue creditou de novo');
+
+    // e a competência é mesmo a chave: uma única linha no ledger para o mês
+    const sub = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT id FROM subscriptions WHERE family_id = $1 AND status = 'ativa'`, [famA]));
+    const mes = new Date().toISOString().slice(0, 7);
+    const linhas = await tenancy.comEscopo(famA, (t) => t.todas(
+      `SELECT id FROM credit_transactions WHERE family_id = $1 AND ref_tipo = 'assinatura' AND ref_id = $2`,
+      [famA, `${sub.id}:${mes}`]));
+    assert.strictEqual(linhas.length, 1, 'o mês foi creditado ' + linhas.length + ' vez(es)');
+  });
+
+  await teste('cancelar avisa o gateway e vale até o fim do ciclo pago', async () => {
+    const r = await req('DELETE', F('/assinatura'), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.vale_ate, 'cancelou sem dizer até quando vale');
+    assert.strictEqual(MP.assinaturas[assinatura.preId].status, 'cancelled',
+      'cancelou aqui e deixou a cobrança viva no Mercado Pago');
+    const planos = await req('GET', F('/planos'), { sessao: ana });
+    assert.strictEqual(planos.json.assinatura.status, 'cancelada');
+    assert.strictEqual((await req('DELETE', F('/assinatura'), { sessao: ana })).status, 404);
+  });
+
+  await teste('crédito repetido não envenena a transação de quem chamou', async () => {
+    // O 23505 esperado ABORTA a transação no Postgres se não houver savepoint.
+    // Sem esta trava, "creditar de novo" devolve null e faz a PRÓXIMA query
+    // do mesmo request morrer — falha que aparece longe da causa.
+    const ref = 'regressao-savepoint-' + Date.now();
+    await tenancy.comEscopo(famA, async (t) => {
+      const um = await require('./creditos').lancar(t, { familyId: famA, tipo: 'bonus', delta: 1,
+        refTipo: 'teste', refId: ref, motivo: 'regressão' });
+      assert(um, 'o primeiro crédito não entrou');
+      const dois = await require('./creditos').lancar(t, { familyId: famA, tipo: 'bonus', delta: 1,
+        refTipo: 'teste', refId: ref, motivo: 'regressão' });
+      assert.strictEqual(dois, null, 'creditou a mesma referência duas vezes');
+      const depois = await t.uma('SELECT saldo FROM credit_wallets WHERE family_id = $1', [famA]);
+      assert(depois, 'a transação morreu depois do crédito repetido');
+    });
+  });
+
+  await teste('staff destrava pedido que o webhook não confirmou — pelo MESMO caminho', async () => {
+    const p = await req('POST', F('/pedidos'), { sessao: ana, corpo: { pacote: 'creditos_300' } });
+    const lista = await req('GET', '/staff/api/origena/pedidos?status=aguardando_pagamento');
+    assert.strictEqual(lista.status, 200, lista.texto);
+    const meu = lista.json.pedidos.find((x) => x.id === p.json.pedido.id);
+    assert(meu, 'o pedido aberto não apareceu no staff');
+    assert(!JSON.stringify(lista.json).includes('pessoas'), 'a tela de dinheiro trouxe acervo junto');
+
+    const antes = await saldoDe();
+    const pg = await req('POST', `/staff/api/origena/pedidos/${p.json.pedido.id}/pagar`,
+      { corpo: { familyId: famA, referencia: 'pix-na-mao-123' } });
+    assert.strictEqual(pg.status, 200, pg.texto);
+    assert.strictEqual(pg.json.pago, true);
+    assert.strictEqual(await saldoDe(), antes + 300);
+    const dnv = await req('POST', `/staff/api/origena/pedidos/${p.json.pedido.id}/pagar`,
+      { corpo: { familyId: famA, referencia: 'pix-na-mao-123' } });
+    assert.strictEqual(dnv.json.pago, false, 'confirmar de novo creditou de novo');
+    assert.strictEqual(await saldoDe(), antes + 300);
   });
 
   // ============================================================ §94 TENANCY

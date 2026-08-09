@@ -216,7 +216,13 @@
     "missao_resposta_vazia": "Escreva a resposta.",
     "missao_sem_alvo": "Esta pergunta é da família inteira: responda registrando o que faltava.",
     "notificacao_evento": "Aviso desconhecido.",
-    "notificacao_frequencia": "Frequência desconhecida."
+    "notificacao_frequencia": "Frequência desconhecida.",
+    "pagamento_indisponivel": "O pagamento automático está indisponível agora. Tente de novo em alguns minutos.",
+    "produto_nao_encontrado": "Esse pacote de créditos não existe mais.",
+    "plano_nao_encontrado": "Esse plano não existe mais.",
+    "plano_sem_preco": "Esse plano não tem preço para o ciclo escolhido.",
+    "email_obrigatorio": "Confirme seu e-mail antes de assinar.",
+    "assinatura_nao_encontrada": "Não há assinatura ativa para cancelar."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -767,6 +773,18 @@
     "pacote": "{n} créditos por {valor}",
     "manual_titulo": "Como assinar durante o beta",
     "manual": "O pagamento automático ainda não está ligado. Fale com o Augusto: a assinatura e os créditos são lançados à mão, e o acervo continua seu de qualquer forma — dá para exportar tudo a qualquer momento.",
-    "creditos_explica": "Crédito é só para o que custa de verdade: gerar uma biografia, perguntar à Origena, ler um documento. Guardar foto, história e tradição não gasta crédito nenhum."
+    "creditos_explica": "Crédito é só para o que custa de verdade: gerar uma biografia, perguntar à Origena, ler um documento. Guardar foto, história e tradição não gasta crédito nenhum.",
+    "assinar_mes": "Assinar por mês",
+    "assinar_ano": "Assinar por ano",
+    "comprar": "Comprar",
+    "cancelar": "cancelar assinatura",
+    "cancelar_confirma": "Cancelar a assinatura? Ela continua valendo até o fim do período já pago, e o acervo continua seu.",
+    "renova_em": "Renova em {data}.",
+    "compras": "Suas compras",
+    "st_aguardando_pagamento": "aguardando pagamento",
+    "st_pago": "pago",
+    "st_cancelado": "cancelado",
+    "st_reembolsado": "reembolsado",
+    "pagando": "Abrimos o pagamento em outra aba. Assim que o Mercado Pago confirmar, o crédito entra sozinho."
   }
 }

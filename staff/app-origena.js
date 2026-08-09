@@ -10,7 +10,7 @@
 // onde clicar que leve a uma.
 //
 // A operação real que sobra é: ver se está de pé, ver se a família está
-// crescendo, creditar uma compra enquanto o gateway não existe, ligar/desligar
+// crescendo, destravar um pedido que o gateway não confirmou, ligar/desligar
 // um provedor de IA e, no fim do contrato, purgar.
 // Compartilha o escopo global com app-core.js (scripts clássicos).
 // ============================================================================
@@ -30,8 +30,9 @@ async function renderOrigena() {
        <div id="og-alertas"></div>
        <div id="og-cards" class="cards"></div>
        <div class="barra" style="margin-top:12px">
-         ${['familias', 'precos', 'saude', 'ia'].map((v) => `<button class="btn secund og-nav" data-v="${v}">${{
-    familias: '👪 Famílias', precos: '💳 Preços', saude: '🩺 Saúde', ia: '🤖 Provedores de IA',
+         ${['familias', 'pedidos', 'precos', 'saude', 'ia'].map((v) => `<button class="btn secund og-nav" data-v="${v}">${{
+    familias: '👪 Famílias', pedidos: '🧾 Pedidos', precos: '💳 Preços',
+    saude: '🩺 Saúde', ia: '🤖 Provedores de IA',
   }[v]}</button>`).join('')}
        </div>
        <div id="og-corpo"><p class="vazio">Carregando…</p></div>`;
@@ -79,6 +80,7 @@ function ogCorpo() {
   document.querySelectorAll('.og-nav').forEach((b) => b.classList.toggle('ativo', b.dataset.v === OG_VISAO));
   try {
     if (OG_VISAO === 'familias') return ogFamilias(cx);
+    if (OG_VISAO === 'pedidos') return ogPedidos(cx);
     if (OG_VISAO === 'precos') return ogPrecos(cx);
     if (OG_VISAO === 'saude') return ogSaude(cx);
     if (OG_VISAO === 'ia') return ogIA(cx);
@@ -113,9 +115,9 @@ function ogFamilias(cx) {
 }
 
 /**
- * Crédito manual — o gateway do Mercado Pago só entra depois que o Augusto
- * definir os preços (Q7). A REFERÊNCIA é obrigatória e torna a operação
- * idempotente: confirmar duas vezes não credita duas vezes.
+ * Crédito manual — cortesia, correção, beta. Compra de verdade entra por
+ * "Pedidos". A REFERÊNCIA é obrigatória e torna a operação idempotente:
+ * confirmar duas vezes não credita duas vezes.
  */
 async function ogCreditar(id, nome) {
   const q = prompt(`Quantos créditos lançar para "${nome}"?`);
@@ -145,6 +147,47 @@ async function ogPurgar(id, nome) {
       .map(([t, n]) => `${t}: ${n}`).join('\n');
     alert(`Família purgada.\n\nBinários apagados: ${r.purgado.binarios}\n\n${linhas}`);
     ogCarregar();
+  } catch (e) { alert(e.message); }
+}
+
+// ----------------------------------------------------------------- pedidos
+// A cobrança normal é automática: o Mercado Pago confirma, o webhook credita.
+// Esta tela existe para o que sai do trilho — o cliente que pagou por fora, o
+// webhook que não chegou. Confirmar aqui passa pelo MESMO caminho do webhook.
+let OG_PED_ST = 'aguardando_pagamento';
+
+async function ogPedidos(cx) {
+  cx.innerHTML = '<p class="vazio">Carregando…</p>';
+  const d = await api('GET', `/origena/pedidos?status=${encodeURIComponent(OG_PED_ST)}`);
+  const filtro = [['aguardando_pagamento', 'Aguardando'], ['pago', 'Pagos'], ['cancelado', 'Cancelados']]
+    .map(([v, r]) => `<button class="btn secund${v === OG_PED_ST ? ' ativo' : ''}" onclick="OG_PED_ST='${v}';ogPedidos($('#og-corpo'))">${r}</button>`).join('');
+
+  cx.innerHTML = `<h2>Pedidos</h2>
+    <p class="vazio" style="text-align:left">Gateway: <b>${d.gateway ? 'Mercado Pago ligado' : 'DESLIGADO — cobrança só manual'}</b>.
+      Confirmar um pedido à mão credita a família e liga o plano exatamente como o webhook faria.</p>
+    <div class="barra">${filtro}</div>`
+    + (d.pedidos.length ? d.pedidos.map((p) => `<div class="card" style="text-align:left;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+          <div style="flex:1;min-width:240px">
+            <b>${esc(p.descricao)}</b> <span class="tag">${esc(p.codigo)}</span><br>
+            <small>${esc(p.familia)} · ${ogBrl(p.total_centavos)}${p.creditos ? ` · ${p.creditos} crédito(s)` : ''}
+              · ${esc(p.gateway)} · ${new Date(p.created_at).toLocaleString('pt-BR')}</small>
+          </div>
+          ${p.status === 'aguardando_pagamento'
+    ? `<button class="btn" onclick="ogPagar('${p.id}','${p.family_id}','${esc(p.codigo)}')">✅ Confirmar pagamento</button>`
+    : `<small>${p.pago_em ? 'pago em ' + new Date(p.pago_em).toLocaleString('pt-BR') : esc(p.status)}</small>`}
+        </div></div>`).join('')
+      : '<p class="vazio">Nenhum pedido neste estado.</p>');
+}
+
+async function ogPagar(id, familyId, codigo) {
+  if (!confirm(`Confirmar o pagamento do pedido ${codigo}?\n\nIsto credita a família (ou liga o plano) na hora. Só faça com o comprovante na mão.`)) return;
+  const ref = prompt('Referência do pagamento (comprovante, id do Pix, "cortesia"). É ela que fica no registro:');
+  if (!ref) return;
+  try {
+    const r = await api('POST', `/origena/pedidos/${id}/pagar`, { familyId, referencia: ref });
+    alert(r.pago ? 'Pedido pago e efeito aplicado.' : 'Este pedido já não estava aguardando pagamento — nada mudou.');
+    ogPedidos($('#og-corpo'));
   } catch (e) { alert(e.message); }
 }
 

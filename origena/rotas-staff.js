@@ -14,6 +14,7 @@ const db = require('./db');
 const tenancy = require('./tenancy');
 const creditos = require('./creditos');
 const fila = require('./fila');
+const billing = require('./billing');
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -248,6 +249,46 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
         refTipo: 'manual', refId: String(d.referencia).slice(0, 80),
         motivo: String(d.motivo || 'crédito manual').slice(0, 200) }));
     res.status(linha ? 201 : 200).json({ creditado: !!linha, ja_estava: !linha });
+  }));
+
+  /**
+   * Pedidos abertos, de todas as famílias. É a tela que resolve o caso
+   * chato: o cliente pagou por fora (Pix na mão, transferência) ou o
+   * webhook não chegou. Sem conteúdo de acervo — só dinheiro.
+   */
+  app.get(`${R}/pedidos`, requireAuth, requireAdmin, h(async (req, res) => {
+    const status = ['aguardando_pagamento', 'pago', 'cancelado'].includes(req.query.status)
+      ? req.query.status : 'aguardando_pagamento';
+    // Uma família por vez: `orders` tem RLS forçada, como todo o resto.
+    const familias = await db.todas(
+      `SELECT id, nome FROM families WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 300`);
+    const pedidos = [];
+    for (const f of familias) {
+      const linhas = await tenancy.comEscopo(f.id, (t) => t.todas(
+        `SELECT id, codigo, tipo, descricao, total_centavos, creditos, status, gateway,
+                created_at, pago_em
+           FROM orders WHERE family_id = $1 AND status = $2
+          ORDER BY created_at DESC LIMIT 20`, [f.id, status]));
+      for (const l of linhas) pedidos.push({ ...l, familia: f.nome, family_id: f.id });
+    }
+    pedidos.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    res.json({ status, pedidos: pedidos.slice(0, 200), gateway: billing.ativo() });
+  }));
+
+  /**
+   * Confirmar pagamento à mão — a rede de segurança do §6 do BILLING.
+   * Passa pelo MESMO `aplicarPagamento` do webhook: o efeito de um
+   * pagamento é um só, venha ele do gateway ou do Augusto.
+   */
+  app.post(`${R}/pedidos/:id/pagar`, requireAuth, requireAdmin, h(async (req, res) => {
+    const familyId = (req.body || {}).familyId;
+    if (!tenancy.UUID.test(String(familyId || ''))) {
+      return res.status(400).json({ erro: 'familyId obrigatório' });
+    }
+    const r = await tenancy.comEscopo(familyId, (t) => billing.aplicarPagamento(t, {
+      orderId: req.params.id, gateway: 'manual',
+      gatewayRef: String((req.body || {}).referencia || '').slice(0, 80) }));
+    res.json({ pago: !!r.pedido, ja_estava: !r.pedido });
   }));
 
   /**

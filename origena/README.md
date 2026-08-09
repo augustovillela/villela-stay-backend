@@ -42,6 +42,7 @@ e cada uma tem um ADR explicando o que se perde ao reverter.
 | `tradicoes.js` | Tradições, receitas, saberes e relíquias. A custódia é histórico, não campo |
 | `historiador.js` | Lacunas do acervo e índice de memória. **É SQL, não IA** — custo zero, sem provedor |
 | `missoes.js` | Lacuna → pergunta endereçada, idempotente pela chave; notificação **opt-in** |
+| `billing.js` | Única fronteira com o Mercado Pago. O webhook **consulta o provedor**, não confia no corpo; sem `MP_ACCESS_TOKEN` a cobrança fica manual e o produto continua inteiro |
 | `selftest.js` | `npm run test:origena` — schema descartável, R2 real |
 
 ## Rodar local
@@ -67,6 +68,8 @@ allowlist do `origena-db` pela API do Render. Produção não depende disso (usa
 | `ORIGENA_DB_SCHEMA` | Só o selftest usa (`t_*`). Produção fica em `origena` |
 | `ORIGENA_WORKER_LOTE` / `_MS` / `_FILA` | Ajuste do worker (`rapida`, `cara` ou as duas) |
 | `ORIGENA_FILA_BACKOFF_MS` | Base do backoff exponencial (padrão 2000) |
+| `MP_ACCESS_TOKEN` | Mercado Pago (a mesma dos outros produtos). **Sem ela a cobrança é manual**, pela aba 🌳 → Pedidos |
+| `ORIGENA_URL` | Base pública do `notification_url` e das voltas do checkout (padrão `https://origena.villelastay.com.br`) |
 
 ## Regras que o código já impõe (não são convenção — são trava)
 

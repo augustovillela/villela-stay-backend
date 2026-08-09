@@ -98,6 +98,15 @@ function registrarRotas(app, { requireAuth, requireAdmin }) {
     try { res.json(await saude({ comStorage: true })); }
     catch (e) { res.status(500).json({ erro: e.message }); }
   });
+
+  // Webhook do Mercado Pago: PÚBLICO e anônimo por definição do provedor.
+  // Por isso ele não confia no corpo — só usa o id para PERGUNTAR ao MP o
+  // que aconteceu (billing.js, regra 2). Responde 200 mesmo em falha
+  // conhecida: 500 faz o MP reenviar em laço sem que nada mude.
+  app.post('/origena/webhook/mercadopago', async (req, res) => {
+    try { res.json(await require('./billing').webhook(req.body || {}, req.query || {})); }
+    catch (e) { res.json({ ok: false, erro: e.message }); }
+  });
 }
 
 /**
@@ -106,11 +115,14 @@ function registrarRotas(app, { requireAuth, requireAdmin }) {
  * configurado, a landing sobe e o resto fica desligado, com log claro.
  */
 async function montar(app, injected = {}) {
-  const { requireAuth, requireAdmin, enviarEmail, jwtSecret } = injected;
+  const { requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret } = injected;
   if (!requireAuth || !requireAdmin) throw new Error('origena.montar: faltam deps (requireAuth, requireAdmin).');
   if (!jwtSecret) throw new Error('origena.montar: falta jwtSecret.');
 
   emails.configurar({ enviarEmail });
+  // Sem `mpFetch` (ou sem MP_ACCESS_TOKEN) a cobrança fica em modo manual —
+  // o produto continua inteiro, só o botão de pagar some.
+  require('./billing').configurar({ mpFetch, alertaAugusto });
 
   // i18n ANTES de qualquer rota da Origena: daqui para baixo `req.t`
   // existe, e nenhuma mensagem precisa nascer em português no código.
@@ -153,6 +165,7 @@ async function montar(app, injected = {}) {
     + ` · rotas escopadas por família: ${ROTAS_ESCOPADAS.length}`
     + ` · MFA: ${sessao.mfaDisponivel() ? 'disponível' : 'SEM ORIGENA_SECRET_KEY'}`
     + ` · e-mail: ${emails.ativo() ? 'ligado' : 'desligado'}`
+    + ` · pagamento: ${require('./billing').ativo() ? 'Mercado Pago' : 'manual'}`
     + ` · i18n: ${i18n.chaves().length} chaves, `
     + i18n.IDIOMAS.map((l) => `${l} ${Math.round(100 * cob[l].traduzidas / cob[l].total)}%`).join(' · '));
 

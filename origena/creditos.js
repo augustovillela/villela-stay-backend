@@ -37,16 +37,26 @@ async function lancar(t, { familyId, tipo, delta, refTipo = '', refId = '', moti
   const w = await carteira(t, familyId);
   const novoSaldo = w.saldo + delta;
   if (novoSaldo < 0) throw erro('erro.creditos_insuficientes', 402);
+  // SAVEPOINT porque o `23505` esperado é ESPERADO, mas não é inofensivo:
+  // no Postgres qualquer statement que falha ABORTA a transação inteira, e
+  // capturar o erro em JavaScript não desfaz isso. Sem o savepoint, quem
+  // chamasse `lancar` no meio de uma transação maior veria a chamada
+  // "funcionar" (null) e a próxima query morrer com "transaction is
+  // aborted" — que foi exatamente o que a tela de planos fez ao entregar
+  // os créditos do mês pela segunda vez.
   let linha;
+  await t.q('SAVEPOINT credito_idem');
   try {
     linha = await t.uma(
       `INSERT INTO credit_transactions (family_id, tipo, delta, saldo_depois, ref_tipo, ref_id, motivo, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [familyId, tipo, delta, novoSaldo, refTipo, String(refId || ''), motivo, userId]);
   } catch (e) {
+    await t.q('ROLLBACK TO SAVEPOINT credito_idem');
     if (e.code === '23505') return null;    // referência já creditada — idempotência
     throw e;
   }
+  await t.q('RELEASE SAVEPOINT credito_idem');
   await t.q(`UPDATE credit_wallets SET saldo = $2, atualizado_em = now() WHERE family_id = $1`,
     [familyId, novoSaldo]);
   return linha;

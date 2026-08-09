@@ -36,6 +36,7 @@ const purga = require('./purga');
 const tradicoes = require('./tradicoes');
 const historiador = require('./historiador');
 const missoes = require('./missoes');
+const billing = require('./billing');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -892,8 +893,8 @@ function registrarRotasApp(app) {
 
   /**
    * Planos e pacotes de crédito (§48/§50). A família vê PREÇO, nunca custo
-   * nem margem — esses são do staff. Enquanto o gateway não existe, a tela
-   * diz que a compra é manual em vez de fingir um botão de pagamento.
+   * nem margem — esses são do staff. `pagamento` diz se há gateway ligado:
+   * sem ele a tela pede contato em vez de fingir um botão que não cobra.
    */
   app.get(decl('GET', `${R}/familias/:familyId/planos`), ...naFamilia, h(async (req, res) => {
     const db = require('./db');
@@ -903,12 +904,62 @@ function registrarRotasApp(app) {
     const pacotes = await db.todas(
       `SELECT codigo, nome, preco_centavos, creditos FROM products
         WHERE ativo AND categoria = 'creditos' ORDER BY ordem, preco_centavos`);
-    const assinatura = await tenancy.noEscopoDe(req, (t) => t.uma(
-      `SELECT s.status, p.codigo, p.nome FROM subscriptions s JOIN plans p ON p.id = s.plan_id
-        WHERE s.family_id = $1 ORDER BY s.inicio DESC LIMIT 1`, [req.familia.id]));
-    const saldo = await tenancy.noEscopoDe(req, (t) => creditos.carteira(t, req.familia.id));
-    res.json({ planos, pacotes, assinatura, saldo: saldo.saldo, pagamento: 'manual' });
+    const dados = await tenancy.noEscopoDe(req, async (t) => {
+      // Créditos do ciclo entram aqui, na visita — o produto ainda não tem
+      // agendador próprio, e a chamada é idempotente pela competência.
+      await billing.renovarCiclo(t, req.familia.id);
+      const assinatura = await t.uma(
+        `SELECT s.status, s.ciclo, s.proximo_ciclo, s.preco_centavos, p.codigo, p.nome
+           FROM subscriptions s JOIN plans p ON p.id = s.plan_id
+          WHERE s.family_id = $1 ORDER BY s.inicio DESC LIMIT 1`, [req.familia.id]);
+      const saldo = await creditos.carteira(t, req.familia.id);
+      return { assinatura, saldo: saldo.saldo, pedidos: await billing.pedidosDe(t, req.familia.id, 10) };
+    });
+    res.json({ planos, pacotes, ...dados, pagamento: billing.ativo() ? 'mercadopago' : 'manual' });
   }));
+
+  /**
+   * Comprar créditos (§50). Devolve o LINK do gateway; o crédito só entra
+   * quando o webhook confirmar o pagamento com o Mercado Pago — nunca aqui.
+   */
+  app.post(decl('POST', `${R}/familias/:familyId/pedidos`), ...naFamilia,
+    rbac.exigir('creditos.comprar'), h(async (req, res) => {
+      const pedido = await tenancy.noEscopoDe(req, (t) => billing.pedirCreditos(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        produtoCodigo: (req.body || {}).pacote }));
+      const pag = await billing.linkDePagamento(pedido,
+        { email: req.usuario.email, nome: req.usuario.nome });
+      res.status(201).json({ pedido: { id: pedido.id, codigo: pedido.codigo,
+        total_centavos: pedido.total_centavos, creditos: pedido.creditos }, pagamento: pag });
+    }));
+
+  /** Histórico de compras da família — o que pagou, quando e por quanto. */
+  app.get(decl('GET', `${R}/familias/:familyId/pedidos`), ...naFamilia,
+    rbac.exigir('creditos.comprar'), h(async (req, res) => {
+      res.json({ pedidos: await tenancy.noEscopoDe(req,
+        (t) => billing.pedidosDe(t, req.familia.id, Number(req.query.limite) || 30)) });
+    }));
+
+  /** Assinar (ou trocar de) plano — recorrência no gateway, uma por família. */
+  app.post(decl('POST', `${R}/familias/:familyId/assinatura`), ...naFamilia,
+    rbac.exigir('creditos.comprar'), h(async (req, res) => {
+      const b = req.body || {};
+      const pedido = await tenancy.noEscopoDe(req, (t) => billing.pedirAssinatura(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        planoCodigo: b.plano, ciclo: b.ciclo === 'anual' ? 'anual' : 'mensal' }));
+      const pag = await billing.linkDePagamento(pedido,
+        { email: req.usuario.email, nome: req.usuario.nome });
+      res.status(201).json({ pedido: { id: pedido.id, codigo: pedido.codigo,
+        total_centavos: pedido.total_centavos }, pagamento: pag });
+    }));
+
+  /** Cancelar: vale até o fim do ciclo já pago. */
+  app.delete(decl('DELETE', `${R}/familias/:familyId/assinatura`), ...naFamilia,
+    rbac.exigir('creditos.comprar'), h(async (req, res) => {
+      const sub = await tenancy.noEscopoDe(req, (t) => billing.cancelarAssinatura(t, {
+        familyId: req.familia.id, userId: req.usuario.id }));
+      res.json({ ok: true, vale_ate: sub.proximo_ciclo });
+    }));
 
   /** O que a IA sabe fazer HOJE — a UI só mostra botão do que existe (ADR-0004). */
   app.get(decl('GET', `${R}/familias/:familyId/ia/capacidades`), ...naFamilia, h(async (req, res) => {
