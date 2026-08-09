@@ -86,7 +86,8 @@
     "reliquias": "Objetos de família",
     "missoes": "Perguntas da família",
     "indice_memoria": "O que falta lembrar",
-    "notificacoes": "Avisos"
+    "notificacoes": "Avisos",
+    "planos": "Planos e créditos"
   },
   "papel": {
     "OWNER": "Responsável",
@@ -747,5 +748,25 @@
     "nunca": "Não avisar",
     "imediato": "Avisar por e-mail",
     "salvo": "Preferência guardada."
+  },
+  "plano": {
+    "titulo": "Planos e créditos",
+    "intro": "O que se cobra é o acervo guardado com proveniência — não o disco. Convidar parentes é de graça em todos os planos: o limite é de espaço e de operações de IA, nunca de gente.",
+    "saldo": "Você tem {n} crédito(s).",
+    "atual": "Seu plano hoje: {nome}",
+    "sem_assinatura": "Você está no plano gratuito.",
+    "por_mes": "/mês",
+    "por_ano": "ou {valor} por ano",
+    "gratis": "Grátis",
+    "storage": "{n} GB de espaço",
+    "creditos_mes": "{n} créditos de IA por mês",
+    "familias_1": "1 família",
+    "familias_n": "até {n} famílias",
+    "membros": "parentes ilimitados",
+    "pacotes": "Créditos avulsos",
+    "pacote": "{n} créditos por {valor}",
+    "manual_titulo": "Como assinar durante o beta",
+    "manual": "O pagamento automático ainda não está ligado. Fale com o Augusto: a assinatura e os créditos são lançados à mão, e o acervo continua seu de qualquer forma — dá para exportar tudo a qualquer momento.",
+    "creditos_explica": "Crédito é só para o que custa de verdade: gerar uma biografia, perguntar à Origena, ler um documento. Guardar foto, história e tradição não gasta crédito nenhum."
   }
 }

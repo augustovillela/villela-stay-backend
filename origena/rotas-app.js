@@ -890,6 +890,26 @@ function registrarRotasApp(app) {
     res.json({ saldo: r.carteira.saldo, extrato: r.extrato });
   }));
 
+  /**
+   * Planos e pacotes de crédito (§48/§50). A família vê PREÇO, nunca custo
+   * nem margem — esses são do staff. Enquanto o gateway não existe, a tela
+   * diz que a compra é manual em vez de fingir um botão de pagamento.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/planos`), ...naFamilia, h(async (req, res) => {
+    const db = require('./db');
+    const planos = await db.todas(
+      `SELECT codigo, nome, preco_centavos, preco_anual_centavos, storage_gb,
+              creditos_mes, familias FROM plans WHERE ativo ORDER BY ordem, preco_centavos`);
+    const pacotes = await db.todas(
+      `SELECT codigo, nome, preco_centavos, creditos FROM products
+        WHERE ativo AND categoria = 'creditos' ORDER BY ordem, preco_centavos`);
+    const assinatura = await tenancy.noEscopoDe(req, (t) => t.uma(
+      `SELECT s.status, p.codigo, p.nome FROM subscriptions s JOIN plans p ON p.id = s.plan_id
+        WHERE s.family_id = $1 ORDER BY s.inicio DESC LIMIT 1`, [req.familia.id]));
+    const saldo = await tenancy.noEscopoDe(req, (t) => creditos.carteira(t, req.familia.id));
+    res.json({ planos, pacotes, assinatura, saldo: saldo.saldo, pagamento: 'manual' });
+  }));
+
   /** O que a IA sabe fazer HOJE — a UI só mostra botão do que existe (ADR-0004). */
   app.get(decl('GET', `${R}/familias/:familyId/ia/capacidades`), ...naFamilia, h(async (req, res) => {
     const caps = {};

@@ -272,7 +272,8 @@ async function abrir(id) {
       ' · <a href="#" onclick="telaReliquias();return false"><strong>' + esc(t('familia.reliquias')) + '</strong></a>' +
       ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a></p>' +
+      ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaPlanos();return false">' + esc(t('familia.planos')) + '</a></p>' +
     (pode('contribuir')
       ? '<p><a href="#" onclick="telaMissoes();return false"><strong>' + esc(t('familia.missoes')) + '</strong></a>' +
         ' · <a href="#" onclick="telaHistoriador();return false">' + esc(t('historiador.titulo')) + '</a>' +
@@ -1446,6 +1447,43 @@ async function telaIndice() {
         : esc(t('indice.nada_falta'))) + '</span></span>' +
       '<span>' + barra(p.score) + ' <span class="sub">' +
         esc(t('indice.score', { n: p.score })) + '</span></span></div>').join(''));
+}
+
+// ------------------------------------------------- planos e créditos (§50)
+// A família vê PREÇO. Custo e margem são do staff e não passam por aqui.
+const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString(IDIOMA, { minimumFractionDigits: 2 });
+
+async function telaPlanos() {
+  const r = await api('GET', '/familias/' + FAM.id + '/planos');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('plano.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('plano.intro')) + '</p>' +
+    '<p class="sub">' + esc(r.assinatura ? t('plano.atual', { nome: r.assinatura.nome })
+      : t('plano.sem_assinatura')) + ' · ' + esc(t('plano.saldo', { n: r.saldo })) + '</p>' +
+    (r.planos || []).map(p =>
+      '<div class="card" style="padding:18px">' +
+      '<p style="margin:0 0 6px"><strong style="font-size:18px">' + esc(p.nome) + '</strong> ' +
+        (p.preco_centavos ? '<span class="sub">' + esc(brl(p.preco_centavos)) +
+          esc(t('plano.por_mes')) + '</span>' : '<span class="papel">' + esc(t('plano.gratis')) + '</span>') +
+        '</p>' +
+      (p.preco_anual_centavos
+        ? '<p class="sub" style="margin:0 0 6px">' +
+          esc(t('plano.por_ano', { valor: brl(p.preco_anual_centavos) })) + '</p>' : '') +
+      '<p class="sub" style="margin:0">' +
+        esc(t('plano.storage', { n: p.storage_gb })) + ' · ' +
+        (p.creditos_mes ? esc(t('plano.creditos_mes', { n: p.creditos_mes })) + ' · ' : '') +
+        esc(p.familias > 1 ? t('plano.familias_n', { n: p.familias }) : t('plano.familias_1')) +
+        ' · ' + esc(t('plano.membros')) + '</p></div>').join('') +
+
+    '<h3 style="margin-top:26px">' + esc(t('plano.pacotes')) + '</h3>' +
+    '<p class="sub">' + esc(t('plano.creditos_explica')) + '</p>' +
+    (r.pacotes || []).map(p => '<div class="linha"><span>' +
+      esc(t('plano.pacote', { n: p.creditos, valor: brl(p.preco_centavos) })) +
+      '</span></div>').join('') +
+
+    '<h3 style="margin-top:26px">' + esc(t('plano.manual_titulo')) + '</h3>' +
+    '<p class="sub">' + esc(t('plano.manual')) + '</p>');
 }
 
 // ------------------------------------------------------ avisos (§87)

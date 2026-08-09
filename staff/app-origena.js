@@ -30,8 +30,8 @@ async function renderOrigena() {
        <div id="og-alertas"></div>
        <div id="og-cards" class="cards"></div>
        <div class="barra" style="margin-top:12px">
-         ${['familias', 'saude', 'ia'].map((v) => `<button class="btn secund og-nav" data-v="${v}">${{
-    familias: '👪 Famílias', saude: '🩺 Saúde', ia: '🤖 Provedores de IA',
+         ${['familias', 'precos', 'saude', 'ia'].map((v) => `<button class="btn secund og-nav" data-v="${v}">${{
+    familias: '👪 Famílias', precos: '💳 Preços', saude: '🩺 Saúde', ia: '🤖 Provedores de IA',
   }[v]}</button>`).join('')}
        </div>
        <div id="og-corpo"><p class="vazio">Carregando…</p></div>`;
@@ -79,6 +79,7 @@ function ogCorpo() {
   document.querySelectorAll('.og-nav').forEach((b) => b.classList.toggle('ativo', b.dataset.v === OG_VISAO));
   try {
     if (OG_VISAO === 'familias') return ogFamilias(cx);
+    if (OG_VISAO === 'precos') return ogPrecos(cx);
     if (OG_VISAO === 'saude') return ogSaude(cx);
     if (OG_VISAO === 'ia') return ogIA(cx);
   } catch (e) { cx.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
@@ -144,6 +145,95 @@ async function ogPurgar(id, nome) {
       .map(([t, n]) => `${t}: ${n}`).join('\n');
     alert(`Família purgada.\n\nBinários apagados: ${r.purgado.binarios}\n\n${linhas}`);
     ogCarregar();
+  } catch (e) { alert(e.message); }
+}
+
+// ------------------------------------------------------------------ preços
+// O preço não mora em código (§97) — mora no banco e se edita aqui. Ao lado
+// de cada plano aparece o PISO DE CUSTO com o plano CHEIO: um plano só é
+// sustentável se o preço cobre o cliente que usa tudo, não o cliente médio.
+const ogPct = (bp) => (bp == null ? '—' : (bp / 100).toFixed(0) + '%');
+
+async function ogPrecos(cx) {
+  cx.innerHTML = '<p class="vazio">Carregando…</p>';
+  const d = await api('GET', '/origena/precos');
+  window._ogPrecos = d;
+  const cfg = (chave) => (d.config[chave] || {}).valor || '—';
+
+  cx.innerHTML = `<h2>Preços</h2>
+    <p class="vazio" style="text-align:left">Definidos em 09/08/2026 como <b>ponto de partida</b>:
+      no patamar da concorrência (MyHeritage começa em R$&nbsp;389/ano no Brasil; Storyworth
+      US$&nbsp;59–199/ano; Remento US$&nbsp;99) e acima do piso de custo com o plano cheio.
+      Mudança aqui vale para as PRÓXIMAS cobranças — assinatura em curso mantém o preço contratado.</p>
+
+    <h3>Planos</h3>
+    ${d.planos.map((p) => `<div class="card" style="text-align:left;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:1;min-width:230px">
+          <b>${esc(p.nome)}</b> ${p.ativo ? '' : '<span class="tag">desligado</span>'}<br>
+          <small>${p.storage_gb} GB · ${p.creditos_mes} crédito(s)/mês · ${p.familias} família(s)</small><br>
+          <small>Piso de custo com o plano CHEIO: <b>${ogBrl(p.piso_centavos)}</b>
+            (${ogBrl(p.custo_storage_centavos)} de storage + ${ogBrl(p.custo_creditos_centavos)} de IA)
+            · margem <b>${ogPct(p.margem_bp)}</b>${p.margem_bp != null && p.margem_bp < 0 ? ' ⚠️ NO PREJUÍZO' : ''}</small>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:.8rem">mês R$<input id="og-pm-${p.id}" value="${(p.preco_centavos / 100).toFixed(2)}" style="width:80px"></label>
+          <label style="font-size:.8rem">ano R$<input id="og-pa-${p.id}" value="${(p.preco_anual_centavos / 100).toFixed(2)}" style="width:90px"></label>
+          <label style="font-size:.8rem">GB<input id="og-gb-${p.id}" value="${p.storage_gb}" style="width:70px"></label>
+          <label style="font-size:.8rem">créd.<input id="og-cr-p-${p.id}" value="${p.creditos_mes}" style="width:70px"></label>
+          <button class="btn secund" onclick="ogSalvarPlano('${p.id}')">Salvar</button>
+        </div>
+      </div></div>`).join('')}
+
+    <h3 style="margin-top:22px">Pacotes de crédito</h3>
+    ${d.produtos.map((p) => `<div class="card" style="text-align:left;margin-bottom:6px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><b>${esc(p.nome)}</b><br><small>${ogBrl(p.preco_centavos)} · ${(p.centavos_por_credito / 100).toFixed(3).replace('.', ',')} por crédito</small></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <label style="font-size:.8rem">R$<input id="og-pp-${p.id}" value="${(p.preco_centavos / 100).toFixed(2)}" style="width:90px"></label>
+        <button class="btn secund" onclick="ogSalvarProduto('${p.id}')">Salvar</button>
+      </div></div>`).join('')}
+
+    <h3 style="margin-top:22px">Custo por operação de IA</h3>
+    <p class="vazio" style="text-align:left">A estimativa é hipótese; o <b>medido</b> vem do ledger de custo.
+      Quando os dois divergem, é o provedor que mudou de preço — e é isso que este quadro existe para pegar.</p>
+    ${tabela(['Capacidade', 'Modelo', 'Cobra', 'Receita', 'Custo est.', 'Margem'],
+    d.capacidades.map((c) => [esc(c.capability), `<code>${esc(c.model)}</code>`,
+      c.creditos + ' cr', ogBrl(c.receita_centavos), ogBrl(c.custo_estimado_centavos),
+      ogPct(c.margem_bp) + (c.ativo ? '' : ' <span class="tag">off</span>')]))}
+    <p class="sub">Medido: ${d.medido.operacoes} operação(ões) · custo ${ogBrl(d.medido.custo_centavos)} ·
+      margem média ${ogPct(d.medido.margem_bp_media)}</p>
+
+    <h3 style="margin-top:22px">Parâmetros</h3>
+    ${Object.entries(d.config).map(([chave, c]) => `<div class="card" style="text-align:left;margin-bottom:6px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div style="flex:1;min-width:220px"><b>${esc(chave)}</b><br><small>${esc(c.descricao)}</small></div>
+      <div><input id="og-cfg-${esc(chave)}" value="${esc(c.valor)}" style="width:110px">
+        <button class="btn secund" onclick="ogSalvarConfig('${esc(chave)}')">Salvar</button></div>
+    </div>`).join('')}
+    <p class="sub">O dólar está em <b>${esc(cfg('fx_usd_brl'))}</b> nesta conta. Quando ele mudar,
+      atualize aqui — senão a margem que aparece acima é ficção.</p>`;
+}
+
+const ogCent = (id) => Math.round(parseFloat(String(($('#' + id) || {}).value).replace(',', '.')) * 100);
+const ogInt = (id) => parseInt(($('#' + id) || {}).value, 10);
+
+async function ogSalvarPlano(id) {
+  try {
+    await api('PATCH', `/origena/planos/${id}`, {
+      preco_centavos: ogCent('og-pm-' + id), preco_anual_centavos: ogCent('og-pa-' + id),
+      storage_gb: ogInt('og-gb-' + id), creditos_mes: ogInt('og-cr-p-' + id) });
+    ogPrecos($('#og-corpo'));
+  } catch (e) { alert(e.message); }
+}
+async function ogSalvarProduto(id) {
+  try {
+    await api('PATCH', `/origena/produtos/${id}`, { preco_centavos: ogCent('og-pp-' + id) });
+    ogPrecos($('#og-corpo'));
+  } catch (e) { alert(e.message); }
+}
+async function ogSalvarConfig(chave) {
+  try {
+    await api('PATCH', `/origena/config/${chave}`, { valor: $('#og-cfg-' + chave).value });
+    ogPrecos($('#og-corpo'));
   } catch (e) { alert(e.message); }
 }
 

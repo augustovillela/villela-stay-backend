@@ -308,7 +308,7 @@ async function principal() {
     assert.strictEqual(r.status, 200);
     // o app é uma página só: se o template quebrar, some tudo de uma vez
     for (const tela of ['telaTradicoes', 'verTradicao', 'telaReliquias', 'verReliquia',
-      'telaMissoes', 'telaHistoriador', 'telaIndice', 'telaAvisos']) {
+      'telaMissoes', 'telaHistoriador', 'telaIndice', 'telaAvisos', 'telaPlanos']) {
       assert(r.texto.includes('function ' + tela) || r.texto.includes(tela + ' ='),
         `a tela ${tela} não foi para o HTML`);
     }
@@ -2234,9 +2234,14 @@ async function principal() {
         : { resposta: 'x', fontes: [] },
       tokens_in: 1000, tokens_out: 300, custo_centavos: 12 }));
 
+    // O preço vem do REGISTRY, não de um número escrito aqui: quando o
+    // Augusto muda a tarifa da capability, este teste continua valendo.
+    const tarifa = (await db.uma(
+      `SELECT creditos FROM provider_registry WHERE capability = 'gerar_biografia' AND ativo
+        ORDER BY prioridade LIMIT 1`)).creditos;
     const cot = await req('POST', F(`/pessoas/${antonio.id}/biografia`), { sessao: ana, corpo: {} });
     assert.strictEqual(cot.status, 200, cot.texto);
-    assert.strictEqual(cot.json.cotacao.creditos, 10, 'a cotação não veio do registry');
+    assert.strictEqual(cot.json.cotacao.creditos, tarifa, 'a cotação não veio do registry');
     assert(!cot.json.biografia, 'GEROU sem confirmação — é a cobrança surpresa que o §53 proíbe');
 
     const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
@@ -2247,7 +2252,7 @@ async function principal() {
     assert.strictEqual(ger.json.fontes_descartadas, 1, 'o id INVENTADO pela IA não foi descartado');
 
     const depois = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
-    assert.strictEqual(depois, antes - 10, 'não debitou os 10 créditos da cotação');
+    assert.strictEqual(depois, antes - tarifa, 'não debitou exatamente o que a cotação prometeu');
     const bio = await req('GET', F(`/pessoas/${antonio.id}/biografia`), { sessao: ana });
     assert.strictEqual(bio.json.biografia.versao_atual, 1);
     assert.match(bio.json.biografia.corpo, /certidão/);
@@ -2334,7 +2339,11 @@ async function principal() {
       `SELECT capability, tokens_in, custo_centavos, creditos_cobrados FROM ai_cost_ledger`));
     assert(linhas.length >= 3, 'faltam linhas no ledger de custo');
     const bio = linhas.find((l) => l.capability === 'gerar_biografia');
-    assert(bio && bio.tokens_in > 0 && bio.creditos_cobrados === 10);
+    const tarifaBio = (await db.uma(
+      `SELECT creditos FROM provider_registry WHERE capability = 'gerar_biografia' AND ativo
+        ORDER BY prioridade LIMIT 1`)).creditos;
+    assert(bio && bio.tokens_in > 0 && bio.creditos_cobrados === tarifaBio,
+      'o ledger não registrou o que a cotação do registry cobrou');
   });
 
   console.log('\naba do staff (§79)');
@@ -2585,6 +2594,73 @@ async function principal() {
       'mídia sem o binário voltou como "pronta" — seria uma foto que não abre');
     const tr = await req('GET', `/origena/api/v1/familias/${fMid}/tradicoes`, { sessao: ana });
     assert(tr.json.tradicoes.some((x) => /Bolo de fubá/.test(x.titulo)), 'a receita não viajou');
+  });
+
+  console.log('\npreços — o preço cobre o cliente BEM-SUCEDIDO (§50/§58)');
+  await teste('todo plano pago cobre o próprio piso de custo com o plano CHEIO', async () => {
+    const r = await req('GET', '/staff/api/origena/precos');
+    assert.strictEqual(r.status, 200, r.texto);
+    const pagos = r.json.planos.filter((p) => p.preco_centavos > 0);
+    assert(pagos.length >= 3, 'faltam planos pagos');
+    for (const p of pagos) {
+      assert(p.preco_centavos > p.piso_centavos,
+        `${p.nome} custa ${p.piso_centavos} cheio e é vendido por ${p.preco_centavos} — prejuízo no cliente que usa tudo`);
+      assert(p.margem_bp >= 2000, `${p.nome} tem margem de só ${p.margem_bp / 100}% no plano cheio`);
+    }
+    // o piso é a soma real: storage + IA, não um número solto
+    for (const p of pagos) {
+      assert.strictEqual(p.piso_centavos, p.custo_storage_centavos + p.custo_creditos_centavos);
+    }
+  });
+
+  await teste('cada operação de IA é cobrada acima do que ela custa', async () => {
+    const r = await req('GET', '/staff/api/origena/precos');
+    const ativas = r.json.capacidades.filter((c) => c.ativo);
+    assert(ativas.length >= 3, 'o registry perdeu capacidades');
+    for (const c of ativas) {
+      assert(c.receita_centavos > c.custo_estimado_centavos,
+        `${c.capability} cobra ${c.receita_centavos} e custa ${c.custo_estimado_centavos}`);
+      assert(c.margem_bp >= 3000, `${c.capability} com margem de ${c.margem_bp / 100}%`);
+    }
+  });
+
+  await teste('a família vê PREÇO; custo e margem não saem do staff', async () => {
+    const r = await req('GET', F('/planos'), { sessao: bruno });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.planos.length >= 3);
+    assert(r.json.planos.every((p) => p.preco_centavos != null));
+    assert(r.json.pacotes.length >= 1, 'sem pacote de créditos');
+    assert.strictEqual(r.json.pagamento, 'manual', 'a tela precisa dizer que a compra ainda é manual');
+    const texto = JSON.stringify(r.json);
+    for (const vazamento of ['piso', 'margem', 'custo']) {
+      assert(!texto.includes(vazamento), `o app da família recebeu "${vazamento}" — isso é do staff`);
+    }
+  });
+
+  await teste('preço se ajusta sem deploy — e só as chaves de preço (§97)', async () => {
+    const antes = (await req('GET', '/staff/api/origena/precos')).json;
+    const familia = antes.planos.find((p) => p.codigo === 'familia');
+    const novo = familia.preco_centavos + 1000;
+    const up = await req('PATCH', `/staff/api/origena/planos/${familia.id}`,
+      { corpo: { preco_centavos: novo } });
+    assert.strictEqual(up.status, 200, up.texto);
+    const depois = (await req('GET', '/staff/api/origena/precos')).json;
+    const agora = depois.planos.find((p) => p.codigo === 'familia');
+    assert.strictEqual(agora.preco_centavos, novo);
+    assert(agora.margem_bp > familia.margem_bp, 'a margem não recalculou com o preço novo');
+    await req('PATCH', `/staff/api/origena/planos/${familia.id}`,
+      { corpo: { preco_centavos: familia.preco_centavos } });
+
+    // a cotação do dólar é editável: sem isso a margem exibida vira ficção
+    const fx = await req('PATCH', '/staff/api/origena/config/fx_usd_brl', { corpo: { valor: '5.60' } });
+    assert.strictEqual(fx.status, 200, fx.texto);
+    // o heartbeat do worker também mora em `config` e NÃO pode ser editado por aqui
+    const proibido = await req('PATCH', '/staff/api/origena/config/worker_heartbeat',
+      { corpo: { valor: '1' } });
+    assert.strictEqual(proibido.status, 400, 'deixou editar uma chave que não é de preço');
+    const texto = await req('PATCH', '/staff/api/origena/config/fx_usd_brl',
+      { corpo: { valor: 'de graça' } });
+    assert.strictEqual(texto.status, 400, 'aceitou texto onde precisa de número');
   });
 
   // ============================================================ §94 TENANCY

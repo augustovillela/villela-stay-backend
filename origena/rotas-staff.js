@@ -108,6 +108,107 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
     });
   }));
 
+  // ------------------------------------------------------------- preços
+  // Preço NÃO mora em código (§97). Estas rotas existem para o Augusto
+  // ajustar sem deploy — e para a tela mostrar, ao lado de cada plano, o
+  // PISO DE CUSTO com o plano CHEIO. Um plano só é sustentável se o preço
+  // cobre o cliente bem-sucedido, não o cliente médio.
+  const CONFIG_EDITAVEL = new Set(['creditos_preco_centavos', 'storage_excedente_centavos_gb',
+    'fx_usd_brl', 'custo_r2_usd_gb_mes', 'trial_dias', 'creditos_bonus_inicial']);
+
+  app.get(`${R}/precos`, requireAuth, requireAdmin, h(async (req, res) => {
+    const planos = await db.todas(`SELECT * FROM plans ORDER BY ordem, preco_centavos`);
+    const produtos = await db.todas(
+      `SELECT * FROM products WHERE categoria = 'creditos' ORDER BY ordem, preco_centavos`);
+    const cfg = Object.fromEntries((await db.todas(
+      `SELECT chave, valor, descricao FROM config WHERE chave = ANY($1)`,
+      [[...CONFIG_EDITAVEL]])).map((c) => [c.chave, c]));
+    const registry = await db.todas(
+      `SELECT capability, provider, model, creditos, custo_estimado_centavos, ativo
+         FROM provider_registry ORDER BY capability`);
+
+    const num = (chave, padrao) => Number((cfg[chave] || {}).valor) || padrao;
+    const fx = num('fx_usd_brl', 5.4);
+    const r2 = num('custo_r2_usd_gb_mes', 0.015);
+    const precoCredito = num('creditos_preco_centavos', 20);
+    // O pior caso é a capability com a PIOR relação custo/crédito — é ela
+    // que define se o plano aguenta a família que usa tudo o que comprou.
+    const piorPorCredito = registry.filter((l) => l.ativo && l.creditos > 0)
+      .reduce((pior, l) => Math.max(pior, l.custo_estimado_centavos / l.creditos), 0);
+
+    res.json({
+      planos: planos.map((p) => {
+        const custoStorage = Math.round(p.storage_gb * r2 * fx * 100);
+        const custoCreditos = Math.round(p.creditos_mes * piorPorCredito);
+        const piso = custoStorage + custoCreditos;
+        return { ...p, piso_centavos: piso, custo_storage_centavos: custoStorage,
+          custo_creditos_centavos: custoCreditos,
+          margem_bp: p.preco_centavos > 0
+            ? Math.round(10000 * (p.preco_centavos - piso) / p.preco_centavos) : null };
+      }),
+      produtos: produtos.map((p) => ({ ...p,
+        centavos_por_credito: p.creditos ? +(p.preco_centavos / p.creditos).toFixed(2) : null })),
+      capacidades: registry.map((l) => ({ ...l,
+        receita_centavos: l.creditos * precoCredito,
+        margem_bp: l.creditos * precoCredito > 0
+          ? Math.round(10000 * (l.creditos * precoCredito - l.custo_estimado_centavos)
+            / (l.creditos * precoCredito)) : null })),
+      config: cfg,
+      // margem MEDIDA, do ledger — a estimativa acima é hipótese; isto é fato
+      medido: await db.uma(
+        `SELECT count(*)::int operacoes, COALESCE(sum(custo_centavos),0)::int custo_centavos,
+                COALESCE(round(avg(margem_bp)),0)::int margem_bp_media
+           FROM ai_cost_ledger`),
+    });
+  }));
+
+  app.patch(`${R}/planos/:id`, requireAuth, requireAdmin, h(async (req, res) => {
+    const d = req.body || {};
+    const inteiro = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+    const p = await db.uma(
+      `UPDATE plans SET
+         preco_centavos = COALESCE($2, preco_centavos),
+         preco_anual_centavos = COALESCE($3, preco_anual_centavos),
+         storage_gb = COALESCE($4, storage_gb), creditos_mes = COALESCE($5, creditos_mes),
+         familias = COALESCE($6, familias), ativo = COALESCE($7, ativo)
+       WHERE id = $1 RETURNING *`,
+      [req.params.id, inteiro(d.preco_centavos), inteiro(d.preco_anual_centavos),
+        inteiro(d.storage_gb), inteiro(d.creditos_mes), inteiro(d.familias),
+        typeof d.ativo === 'boolean' ? d.ativo : null]);
+    if (!p) return res.status(404).json({ erro: 'plano não encontrado' });
+    res.json({ plano: p });
+  }));
+
+  app.patch(`${R}/produtos/:id`, requireAuth, requireAdmin, h(async (req, res) => {
+    const d = req.body || {};
+    const inteiro = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+    const p = await db.uma(
+      `UPDATE products SET preco_centavos = COALESCE($2, preco_centavos),
+              creditos = COALESCE($3, creditos), ativo = COALESCE($4, ativo),
+              updated_at = now()
+        WHERE id = $1 RETURNING *`,
+      [req.params.id, inteiro(d.preco_centavos), inteiro(d.creditos),
+        typeof d.ativo === 'boolean' ? d.ativo : null]);
+    if (!p) return res.status(404).json({ erro: 'produto não encontrado' });
+    res.json({ produto: p });
+  }));
+
+  /** Só as chaves de preço: `config` também guarda o heartbeat do worker. */
+  app.patch(`${R}/config/:chave`, requireAuth, requireAdmin, h(async (req, res) => {
+    if (!CONFIG_EDITAVEL.has(req.params.chave)) {
+      return res.status(400).json({ erro: 'esta chave não é editável por aqui' });
+    }
+    const valor = String((req.body || {}).valor == null ? '' : (req.body || {}).valor).slice(0, 80);
+    if (!/^[0-9]+(\.[0-9]+)?$/.test(valor)) {
+      return res.status(400).json({ erro: 'valor deve ser um número' });
+    }
+    const c = await db.uma(
+      `UPDATE config SET valor = $2, atualizado_em = now() WHERE chave = $1 RETURNING *`,
+      [req.params.chave, valor]);
+    if (!c) return res.status(404).json({ erro: 'chave não encontrada' });
+    res.json({ config: c });
+  }));
+
   /** Registry de provedores: trocar modelo é UPDATE, não deploy (§56). */
   app.get(`${R}/registry`, requireAuth, requireAdmin, h(async (req, res) => {
     res.json({ registry: await db.todas(`SELECT * FROM provider_registry ORDER BY capability, prioridade`) });
