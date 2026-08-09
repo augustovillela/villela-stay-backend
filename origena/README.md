@@ -7,10 +7,15 @@ Landing `/origena` · app da família `/origena/app` (Fase 1) · staff `/staff/a
 > os 8 ADRs) fica no **repo-pai**: `docs\origena\`. Aqui está só o que um dev precisa para mexer
 > neste diretório.
 
-## Estado: Fase 0 (encanamento) — 08/08/2026
+## Estado: 1.0 completo + fases 2.1 e 2.2 — 09/08/2026
 
-Existe: banco + migrações, fila durável, storage no R2, saúde, landing.
-Não existe ainda: pessoas, proveniência, mídia, IA, billing. Isso é a Fase 1 em diante.
+Existe: contas, famílias e papéis · proveniência · pessoas, parentesco e árvore · mídia no R2 com
+worker · documentos, histórias e busca · lugares, eventos e linha do tempo · créditos, IA e admin ·
+exportação, lixeira e integridade · **tradições, receitas, saberes e relíquias com linha de
+custódia** · **Historiador, missões e índice de memória**.
+
+Não existe ainda: OCR, entrevistas e busca semântica (dependem de provedor contratado), Studio,
+cápsula do tempo e apps nativos. A ordem está em `docs\origena\ROADMAP.md`.
 
 ## O que torna a Origena diferente dos outros 11 produtos
 
@@ -34,6 +39,9 @@ e cada uma tem um ADR explicando o que se perde ao reverter.
 | `storage.js` | R2 por URL assinada. **Nenhum byte passa pelo processo web** |
 | `worker.js` | Consome a fila. Roda como serviço próprio no Render |
 | `paginas.js` | HTML server-rendered. Identidade **provisória** (brand book pendente) |
+| `tradicoes.js` | Tradições, receitas, saberes e relíquias. A custódia é histórico, não campo |
+| `historiador.js` | Lacunas do acervo e índice de memória. **É SQL, não IA** — custo zero, sem provedor |
+| `missoes.js` | Lacuna → pergunta endereçada, idempotente pela chave; notificação **opt-in** |
 | `selftest.js` | `npm run test:origena` — schema descartável, R2 real |
 
 ## Rodar local
@@ -69,6 +77,10 @@ allowlist do `origena-db` pela API do Render. Produção não depende disso (usa
 4. **Job morre para a DLQ, nunca some.** A remoção de `jobs` e a inserção em `jobs_dlq` estão na
    mesma transação.
 5. **Chave de storage não aceita `.`**, logo é impossível montar `..`.
+6. **Uma posse aberta por relíquia**, por índice único parcial: o objeto não fica em duas mãos ao
+   mesmo tempo nem se alguém escrever direto no banco.
+7. **Missão dispensada não renasce**: a `chave` continua ocupada. Recusar uma pergunta é decisão da
+   família, e decisão da família não se apaga sozinha na varredura seguinte.
 
 ## Ao acrescentar funcionalidade
 

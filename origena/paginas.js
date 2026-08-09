@@ -268,10 +268,18 @@ async function abrir(id) {
     '<p style="margin-top:26px"><a href="#" onclick="pessoas();return false"><strong>' + esc(t('pessoa.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="memorias();return false"><strong>' + esc(t('familia.memorias')) + '</strong></a>' +
       ' · <a href="#" onclick="telaHistorias();return false"><strong>' + esc(t('familia.historias')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaTradicoes();return false"><strong>' + esc(t('familia.tradicoes')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaReliquias();return false"><strong>' + esc(t('familia.reliquias')) + '</strong></a>' +
       ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a>' +
-      ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a></p>' +
+      ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a></p>' +
+    (pode('contribuir')
+      ? '<p><a href="#" onclick="telaMissoes();return false"><strong>' + esc(t('familia.missoes')) + '</strong></a>' +
+        ' · <a href="#" onclick="telaHistoriador();return false">' + esc(t('historiador.titulo')) + '</a>' +
+        ' · <a href="#" onclick="telaIndice();return false">' + esc(t('familia.indice_memoria')) + '</a>' +
+        ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a>' +
+        ' · <a href="#" onclick="telaAvisos();return false">' + esc(t('familia.notificacoes')) + '</a></p>'
+      : '') +
     (pode('auditoria.ver') ? '<p><a href="#" onclick="auditoria();return false">' +
       esc(t('familia.ver_historico')) + '</a></p>' : ''));
 }
@@ -360,6 +368,22 @@ async function dossie(id) {
     r.biografia_html = '<p style="margin-top:20px"><button class="btn mini claro" ' +
       'onclick="gerarBiografia(\\'' + id + '\\')">' + esc(t('ia.gerar_biografia')) + '</button></p>';
   }
+  // O que já se preservou desta pessoa e — o que importa — o que falta.
+  // Sem comparação com ninguém: é o retrato dela, não um placar (§31).
+  const idx = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/indice-memoria');
+  r.indice_html = idx.indice
+    ? '<h3 style="margin-top:26px">' + esc(t('indice.titulo')) + '</h3>' +
+      '<p>' + barra(idx.indice.score) + ' <span class="sub">' +
+        esc(t('indice.score', { n: idx.indice.score })) + '</span></p>' +
+      '<p class="sub">' + ((idx.indice.lacunas || []).length
+        ? esc(t('indice.falta')) + ': ' + idx.indice.lacunas.map(l => esc(t('indice.dim_' + l))).join(', ')
+        : esc(t('indice.nada_falta'))) + '</p>' +
+      ((idx.quem_sabe || []).length
+        ? '<p class="sub"><strong>' + esc(t('indice.quem_sabe')) + ':</strong> ' +
+          idx.quem_sabe.map(q => esc(q.nome)).join(', ') + '<br>' +
+          esc(t('indice.quem_sabe_intro')) + '</p>'
+        : '')
+    : '';
   const grupo = (titulo, lista, extra) => lista.length
     ? '<h3 style="margin-top:22px">' + esc(titulo) + '</h3>' + lista.map(x =>
         '<div class="linha"><span><a href="#" onclick="dossie(\\'' + x.id + '\\');return false">' +
@@ -385,6 +409,7 @@ async function dossie(id) {
     // Biografia viva (§18): versão atual + selo de IA + quantas
     // contribuições chegaram desde que ela foi escrita.
     (r.biografia_html || '') +
+    (r.indice_html || '') +
     // O que sabemos — cada fato com o selo e o caminho de volta (§5).
     '<h3 style="margin-top:26px">' + esc(t('fato.titulo')) + '</h3>' +
     ((fatos.fatos || []).length
@@ -841,9 +866,12 @@ async function telaBusca(offset) {
     ? await api('GET', '/familias/' + FAM.id + '/busca?q=' + encodeURIComponent(q) +
         (tipo ? '&tipos=' + tipo : '') + (offset ? '&offset=' + offset : ''))
     : { resultados: null };
-  const tipos = ['', 'person', 'media', 'document', 'story', 'contribution'];
+  const tipos = ['', 'person', 'media', 'document', 'story', 'contribution',
+    'tradition', 'recipe', 'heirloom'];
   const abrirDe = (x) => x.ref_tipo === 'person' ? "dossie('" + x.ref_id + "')"
     : x.ref_tipo === 'story' ? "verHistoria('" + x.ref_id + "')"
+    : (x.ref_tipo === 'tradition' || x.ref_tipo === 'recipe') ? "verTradicao('" + x.ref_id + "')"
+    : x.ref_tipo === 'heirloom' ? "verReliquia('" + x.ref_id + "')"
     : "verMidia('" + x.ref_id + "')";
   $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
     '<h2>' + esc(t('busca.titulo')) + '</h2>' +
@@ -976,9 +1004,11 @@ async function telaTimeline(pessoaId) {
   if (r.status >= 400) return $(topo() + aviso(r.erro));
   const abrirDe = (i) => i.ref_tipo === 'person' ? "dossie(\\'" + i.ref_id + "\\')"
     : i.ref_tipo === 'story' ? "verHistoria(\\'" + i.ref_id + "\\')"
-    : i.ref_tipo === 'media' ? "verMidia(\\'" + i.ref_id + "\\')" : '';
+    : i.ref_tipo === 'media' ? "verMidia(\\'" + i.ref_id + "\\')"
+    : i.ref_tipo === 'tradition' ? "verTradicao(\\'" + i.ref_id + "\\')"
+    : i.ref_tipo === 'heirloom' ? "verReliquia(\\'" + i.ref_id + "\\')" : '';
   const ICONES = { nascimento: '🌱', falecimento: '🕯', casamento: '💍',
-    evento: '📌', foto: '📷', historia: '📖' };
+    evento: '📌', foto: '📷', historia: '📖', tradicao: '🍲', reliquia: '💍' };
   const comData = (r.itens || []).filter(i => i.data_ini);
   const semData = (r.itens || []).filter(i => !i.data_ini);
   let anoAnterior = null;
@@ -1080,6 +1110,364 @@ async function telaPerguntar(confirmando, pergunta) {
     '<input id="pq" value="' + esc(q || '') + '" placeholder="' + esc(t('ia.perguntar_placeholder')) + '">' +
     '<p><button class="btn" onclick="telaPerguntar()">' + esc(t('ia.perguntar_titulo')) + '</button></p>' +
     corpo);
+}
+
+// ------------------------------------------------ tradições (Fase 2.1)
+// A receita, a reza, a música e o ofício moram na mesma tela — o que muda
+// é a categoria. A receita ganha ingredientes e preparo; e o manuscrito
+// da avó continua sendo o original, com a transcrição do lado.
+let CAT = '';
+const CATS = ['RECEITA','CELEBRACAO','MUSICA','EXPRESSAO','SABER','RELIQUIA','LUGAR','HISTORIA'];
+const voltarFamilia = () => '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' +
+  esc(FAM.nome) + '</a></p>';
+const area = (id, valor, dica) => '<textarea id="' + id + '" rows="4" style="width:100%;' +
+  'min-height:96px;padding:12px 14px;border:1px solid var(--borda);border-radius:10px;' +
+  'font:16px Inter,system-ui,sans-serif;background:var(--card);color:var(--tinta)"' +
+  (dica ? ' placeholder="' + esc(dica) + '"' : '') + '>' + esc(valor || '') + '</textarea>';
+
+async function telaTradicoes(cat) {
+  if (cat !== undefined) CAT = cat;
+  const r = await api('GET', '/familias/' + FAM.id + '/tradicoes' + (CAT ? '?categoria=' + CAT : ''));
+  const filtro = (c, rot) => '<button class="btn mini ' + (CAT === c ? '' : 'claro') +
+    '" onclick="telaTradicoes(\\'' + c + '\\')">' + esc(rot) + '</button> ';
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('tradicao.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('tradicao.intro')) + '</p>' +
+    '<p>' + filtro('', t('tradicao.filtro_todas')) +
+      CATS.map(c => filtro(c, t('tradicao.cat_' + c))).join('') + '</p>' +
+    ((r.tradicoes || []).length
+      ? r.tradicoes.map(x =>
+          '<div class="card" style="padding:18px;cursor:pointer" onclick="verTradicao(\\'' + x.id + '\\')">' +
+          '<p style="margin:0 0 4px"><span class="papel">' + esc(t('tradicao.cat_' + x.categoria)) +
+            '</span> <strong>' + esc(x.titulo) + '</strong>' +
+            (x.desde_valor ? ' <span class="sub">· ' + esc(x.desde_valor) + '</span>' : '') + '</p>' +
+          (x.de_quem ? '<p class="sub" style="margin:0">' + esc(t('tradicao.de_quem')) + ': ' +
+            esc(x.de_quem) + '</p>' : '') +
+          (x.aprendizes ? '<p class="sub" style="margin:4px 0 0">' +
+            esc(t('tradicao.aprendizes_n', { n: x.aprendizes })) + '</p>' : '') +
+          '</div>').join('')
+      : '<p class="sub">' + esc(t('tradicao.sem_tradicoes')) + '</p>') +
+    (pode('contribuir') ? formTradicao() : ''));
+  if (pode('contribuir')) { preencherSelPessoas('tr_quem'); alternarReceita(); }
+}
+
+function formTradicao() {
+  return '<h3 style="margin-top:28px">' + esc(t('tradicao.nova')) + '</h3>' +
+    '<label>' + esc(t('tradicao.categoria')) + '</label>' +
+    '<select id="tr_cat" onchange="alternarReceita()">' +
+      CATS.map(c => '<option value="' + c + '">' + esc(t('tradicao.cat_' + c)) + '</option>').join('') +
+    '</select>' +
+    '<label>' + esc(t('tradicao.nome')) + '</label><input id="tr_t">' +
+    '<label>' + esc(t('tradicao.corpo')) + '</label>' + area('tr_c', '') +
+    '<label>' + esc(t('tradicao.de_quem')) + '</label>' +
+      '<select id="tr_quem"><option value=""></option></select>' +
+    '<label>' + esc(t('tradicao.origem')) + '</label><input id="tr_o">' +
+    '<label>' + esc(t('tradicao.ocasioes')) + '</label><input id="tr_oc">' +
+    '<label>' + esc(t('tradicao.desde')) + '</label>' +
+      '<input id="tr_d" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
+    '<label>' + esc(t('tradicao.local')) + '</label><input id="tr_l">' +
+    '<div id="tr_receita">' +
+      '<label>' + esc(t('tradicao.ingredientes')) + '</label>' + area('tr_i', '') +
+      '<label>' + esc(t('tradicao.preparo')) + '</label>' + area('tr_p', '') +
+      '<label>' + esc(t('tradicao.rendimento')) + '</label><input id="tr_r">' +
+      '<label>' + esc(t('tradicao.tempo')) + '</label><input id="tr_tp">' +
+    '</div>' +
+    '<p><button class="btn" onclick="criarTradicao()">' + esc(t('tradicao.guardar')) + '</button></p>';
+}
+
+function alternarReceita() {
+  const sel = document.getElementById('tr_cat'), bloco = document.getElementById('tr_receita');
+  if (sel && bloco) bloco.style.display = sel.value === 'RECEITA' ? 'block' : 'none';
+}
+
+const val = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+
+async function criarTradicao() {
+  const r = await api('POST', '/familias/' + FAM.id + '/tradicoes', {
+    categoria: val('tr_cat'), titulo: val('tr_t'), corpo: val('tr_c'),
+    person_id: val('tr_quem') || null, origem: val('tr_o'), ocasioes: val('tr_oc'),
+    desde: val('tr_d'), local: val('tr_l'),
+    ingredientes: val('tr_i'), preparo: val('tr_p'),
+    rendimento: val('tr_r'), tempo: val('tr_tp') });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verTradicao(r.tradicao.id);
+}
+
+async function verTradicao(id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/tradicoes/' + id);
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const x = r.tradicao, rec = x.receita;
+  $(topo() + '<p class="sub"><a href="#" onclick="telaTradicoes();return false">← ' +
+      esc(t('tradicao.titulo')) + '</a></p>' +
+    '<h2>' + esc(x.titulo) + '</h2>' +
+    '<p class="sub"><span class="papel">' + esc(t('tradicao.cat_' + x.categoria)) + '</span> ' +
+      [x.de_quem, x.desde_valor, x.local_texto].filter(Boolean).map(esc).join(' · ') + '</p>' +
+    (x.corpo ? '<div class="card"><p style="margin:0;white-space:pre-wrap">' + esc(x.corpo) + '</p></div>' : '') +
+    (x.origem ? '<p class="sub"><strong>' + esc(t('tradicao.origem')) + ':</strong> ' + esc(x.origem) + '</p>' : '') +
+    ((x.ocasioes || []).length ? '<p class="sub"><strong>' + esc(t('tradicao.ocasioes')) +
+      ':</strong> ' + esc(x.ocasioes.join(', ')) + '</p>' : '') +
+    (rec
+      ? '<h3>' + esc(t('tradicao.ingredientes')) + '</h3><ul>' +
+        (rec.ingredientes || []).map(i => '<li>' + esc(i.item) + '</li>').join('') + '</ul>' +
+        (rec.preparo ? '<h3>' + esc(t('tradicao.preparo')) + '</h3>' +
+          '<p style="white-space:pre-wrap">' + esc(rec.preparo) + '</p>' : '') +
+        '<p class="sub">' + [rec.rendimento, rec.tempo].filter(Boolean).map(esc).join(' · ') + '</p>' +
+        (rec.manuscrito_media_id
+          ? '<p><a href="#" onclick="verMidia(\\'' + rec.manuscrito_media_id + '\\');return false">' +
+            esc(t('tradicao.manuscrito')) + '</a><br><span class="sub">' +
+            esc(t('tradicao.manuscrito_nota')) + '</span></p>' : '')
+      : '') +
+
+    // quem sabe fazer — a lacuna que o Historiador cobra
+    (rec ? '<h3>' + esc(t('tradicao.aprendizes')) + '</h3>' +
+      ((x.aprendizes || []).length
+        ? x.aprendizes.map(a => '<div class="linha"><span><a href="#" onclick="dossie(\\'' +
+            a.person_id + '\\');return false">' + esc(a.nome_exibicao) + '</a>' +
+            (a.aprendeu_valor ? ' <span class="sub">· ' + esc(a.aprendeu_valor) + '</span>' : '') +
+            '</span></div>').join('')
+        : '<p class="sub">' + esc(t('tradicao.sem_aprendizes')) + '</p>') +
+      (pode('contribuir')
+        ? '<label>' + esc(t('tradicao.quem_aprendeu')) + '</label><select id="ap_quem"></select>' +
+          '<label>' + esc(t('tradicao.aprendeu_quando')) + '</label><input id="ap_q">' +
+          '<p><button class="btn mini" onclick="registrarAprendiz(\\'' + id + '\\')">' +
+          esc(t('acao.salvar')) + '</button></p>' : '') : '') +
+
+    // a corrente do saber
+    '<h3>' + esc(t('tradicao.transmissoes')) + '</h3>' +
+    ((x.transmissoes || []).length
+      ? x.transmissoes.map(tr => '<div class="linha"><span>' + esc(tr.de_nome) + ' → ' +
+          esc(tr.para_nome) + (tr.quando_valor ? ' <span class="sub">· ' + esc(tr.quando_valor) +
+          '</span>' : '') + '</span></div>').join('')
+      : '<p class="sub">' + esc(t('tradicao.sem_transmissoes')) + '</p>') +
+    (pode('contribuir')
+      ? '<label>' + esc(t('tradicao.ensinou')) + '</label><select id="tm_de"></select>' +
+        '<label>' + esc(t('tradicao.aprendeu')) + '</label><select id="tm_para"></select>' +
+        '<label>' + esc(t('tradicao.aprendeu_quando')) + '</label><input id="tm_q">' +
+        '<p><button class="btn mini" onclick="registrarTransmissao(\\'' + id + '\\')">' +
+        esc(t('tradicao.registrar_transmissao')) + '</button></p>' : ''));
+  if (pode('contribuir')) {
+    for (const s of ['ap_quem', 'tm_de', 'tm_para']) preencherSelPessoas(s);
+  }
+}
+
+async function registrarAprendiz(id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/tradicoes/' + id + '/aprendizes',
+    { person_id: val('ap_quem'), quando: val('ap_q') });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verTradicao(id);
+}
+
+async function registrarTransmissao(id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/tradicoes/' + id + '/transmissoes',
+    { de_person_id: val('tm_de'), para_person_id: val('tm_para'), quando: val('tm_q') });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verTradicao(id);
+}
+
+// ------------------------------------------------ relíquias (Fase 2.1)
+// O valor do objeto está em por quantas mãos passou. A tela mostra a
+// corrente inteira, e transferir NUNCA apaga o dono anterior.
+async function telaReliquias() {
+  const r = await api('GET', '/familias/' + FAM.id + '/reliquias');
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('reliquia.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('reliquia.intro')) + '</p>' +
+    ((r.reliquias || []).length
+      ? r.reliquias.map(x =>
+          '<div class="card" style="padding:18px;cursor:pointer" onclick="verReliquia(\\'' + x.id + '\\')">' +
+          '<p style="margin:0 0 4px"><strong>' + esc(x.nome) + '</strong></p>' +
+          '<p class="sub" style="margin:0">' +
+            (x.com_quem ? esc(t('reliquia.ainda_com', { nome: x.com_quem })) +
+              (x.desde ? ' · ' + esc(x.desde) : '')
+              : esc(t('reliquia.sem_custodia'))) +
+            (x.maos ? ' · ' + esc(t('reliquia.maos', { n: x.maos })) : '') + '</p>' +
+          '</div>').join('')
+      : '<p class="sub">' + esc(t('reliquia.sem_reliquias')) + '</p>') +
+    (pode('contribuir')
+      ? '<h3 style="margin-top:28px">' + esc(t('reliquia.nova')) + '</h3>' +
+        '<label>' + esc(t('reliquia.nome')) + '</label><input id="rl_n">' +
+        '<label>' + esc(t('reliquia.descricao')) + '</label>' + area('rl_d', '') +
+        '<label>' + esc(t('reliquia.origem')) + '</label><input id="rl_o">' +
+        '<label>' + esc(t('reliquia.local')) + '</label><input id="rl_l">' +
+        '<label>' + esc(t('reliquia.com_quem')) + '</label>' +
+          '<select id="rl_q"><option value=""></option></select>' +
+        '<label>' + esc(t('reliquia.desde')) + '</label>' +
+          '<input id="rl_s" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
+        '<p><button class="btn" onclick="criarReliquia()">' + esc(t('reliquia.guardar')) + '</button></p>'
+      : ''));
+  if (pode('contribuir')) preencherSelPessoas('rl_q');
+}
+
+async function criarReliquia() {
+  const r = await api('POST', '/familias/' + FAM.id + '/reliquias', {
+    nome: val('rl_n'), descricao: val('rl_d'), origem: val('rl_o'), local: val('rl_l'),
+    com_quem: val('rl_q') || null, desde: val('rl_s') });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verReliquia(r.reliquia.id);
+}
+
+async function verReliquia(id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/reliquias/' + id);
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const h = r.reliquia;
+  const fontes = ['RELATO','DOCUMENTO','REGISTRO_OFICIAL','MIDIA','PUBLICACAO'];
+  $(topo() + '<p class="sub"><a href="#" onclick="telaReliquias();return false">← ' +
+      esc(t('reliquia.titulo')) + '</a></p>' +
+    '<h2>' + esc(h.nome) + '</h2>' +
+    '<p class="sub">' + [h.local_texto, h.origem].filter(Boolean).map(esc).join(' · ') + '</p>' +
+    (h.descricao ? '<div class="card"><p style="margin:0;white-space:pre-wrap">' +
+      esc(h.descricao) + '</p></div>' : '') +
+    '<h3>' + esc(t('reliquia.linha_de_posse')) + '</h3>' +
+    ((h.custodia || []).length
+      ? '<div class="tl">' + h.custodia.map(c =>
+          '<div class="tl-item"><span class="tl-ico">🤲</span><span>' +
+          '<a href="#" onclick="dossie(\\'' + c.person_id + '\\');return false"><strong>' +
+            esc(c.nome_exibicao) + '</strong></a>' +
+          '<br><span class="sub">' + esc(c.de_valor || '?') + ' — ' +
+            esc(c.ate_valor || t('reliquia.ainda_com', { nome: c.nome_exibicao })) +
+            (c.fonte_tipo ? ' · ' + esc(t('fonte.' + c.fonte_tipo)) +
+              (c.fonte_titulo ? ': ' + esc(c.fonte_titulo) : '') : '') +
+            (c.nota ? '<br>' + esc(c.nota) : '') + '</span></span></div>').join('') + '</div>'
+      : '<p class="sub">' + esc(t('reliquia.sem_custodia')) + '</p>') +
+    (pode('contribuir')
+      ? '<h3 style="margin-top:26px">' + esc(t('reliquia.transferir')) + '</h3>' +
+        '<label>' + esc(t('reliquia.passou_para')) + '</label><select id="cu_q"></select>' +
+        '<label>' + esc(t('reliquia.quando')) + '</label>' +
+          '<input id="cu_d" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
+        '<label>' + esc(t('reliquia.nota')) + '</label><input id="cu_n">' +
+        '<label>' + esc(t('reliquia.como_sabe')) + '</label><select id="cu_ft">' +
+          fontes.map(f => '<option value="' + f + '">' + esc(t('fonte.' + f)) + '</option>').join('') +
+        '</select>' +
+        '<label>' + esc(t('reliquia.fonte_titulo')) + '</label><input id="cu_fq">' +
+        '<p><button class="btn" onclick="transferirReliquia(\\'' + id + '\\')">' +
+        esc(t('reliquia.guardar')) + '</button></p>' : ''));
+  if (pode('contribuir')) preencherSelPessoas('cu_q');
+}
+
+async function transferirReliquia(id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/reliquias/' + id + '/custodia', {
+    person_id: val('cu_q'), de: val('cu_d'), nota: val('cu_n'),
+    fonte_tipo: val('cu_ft'), fonte_titulo: val('cu_fq') });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verReliquia(id);
+}
+
+// --------------------------------------- historiador e missões (Fase 2.2)
+async function telaHistoriador() {
+  const r = await api('GET', '/familias/' + FAM.id + '/historiador');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const tipos = Object.keys(r.por_tipo || {});
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('historiador.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('historiador.intro')) + '</p>' +
+    (tipos.length
+      ? tipos.map(x => '<div class="linha"><span>' + esc(t('historiador.tipo_' + x)) +
+          '</span><span class="papel">' + r.por_tipo[x] +
+          ((r.alem_do_teto || {})[x] ? ' +' + r.alem_do_teto[x] : '') + '</span></div>').join('')
+      : '<p class="sub">' + esc(t('historiador.sem_lacunas')) + '</p>') +
+    '<p style="margin-top:22px"><button class="btn" onclick="telaMissoes(null,true)">' +
+      esc(t('missao.sincronizar')) + '</button></p>');
+}
+
+async function telaMissoes(status, sincronizar) {
+  let cab = '';
+  if (sincronizar) {
+    const s = await api('POST', '/familias/' + FAM.id + '/missoes/sincronizar', {});
+    if (s.status < 400) {
+      cab = aviso(t('missao.sincronizado', { criadas: s.criadas, resolvidas: s.resolvidas }), 'ok');
+    }
+  }
+  const st = status || 'aberta';
+  const r = await api('GET', '/familias/' + FAM.id + '/missoes?status=' + st);
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const c = r.contagem || {};
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('missao.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('missao.intro')) + '</p>' + cab +
+    '<p class="sub">' + esc(t('missao.contagem', { abertas: c.abertas || 0,
+      respondidas: c.respondidas || 0, resolvidas: c.resolvidas || 0 })) + '</p>' +
+    '<p><button class="btn mini" onclick="telaMissoes(null,true)">' + esc(t('missao.sincronizar')) +
+      '</button> <button class="btn mini claro" onclick="telaMissoes(\\'' +
+      (st === 'aberta' ? 'respondida' : 'aberta') + '\\')">' +
+      esc(st === 'aberta' ? t('missao.ver_respondidas') : t('missao.ver_abertas')) + '</button></p>' +
+    ((r.missoes || []).length
+      ? r.missoes.map(m =>
+          '<div class="card" style="padding:18px">' +
+          '<p style="margin:0 0 8px"><strong>' + esc(m.pergunta) + '</strong></p>' +
+          '<p class="sub" style="margin:0">' + esc(t('historiador.tipo_' + m.tipo)) +
+            (m.respondida_por_nome ? ' · ' + esc(t('missao.respondida_por',
+              { nome: m.respondida_por_nome })) : '') + '</p>' +
+          (m.status === 'aberta'
+            ? '<p style="margin:12px 0 0"><button class="btn mini" onclick="responderMissao(\\'' +
+              m.id + '\\')">' + esc(t('missao.responder')) + '</button> ' +
+              (pode('editar') ? '<button class="btn mini claro" onclick="dispensarMissao(\\'' +
+                m.id + '\\')">' + esc(t('missao.dispensar')) + '</button>' : '') + '</p>'
+            : '') +
+          '</div>').join('')
+      : '<p class="sub">' + esc(t('missao.nenhuma')) + '</p>'));
+}
+
+async function responderMissao(id) {
+  const corpo = prompt(t('missao.resposta_placeholder'));
+  if (!corpo) return;
+  const r = await api('POST', '/familias/' + FAM.id + '/missoes/' + id + '/responder', { corpo });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  telaMissoes();
+}
+
+async function dispensarMissao(id) {
+  const motivo = prompt(t('missao.motivo'));
+  if (motivo === null) return;
+  const r = await api('POST', '/familias/' + FAM.id + '/missoes/' + id + '/dispensar', { motivo });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  telaMissoes();
+}
+
+// Índice de memória (§31): a lista sai POR NOME. Não existe placar entre
+// familiares — o número serve para achar lacuna, não para comparar.
+function barra(score) {
+  return '<span style="display:inline-block;width:90px;height:8px;border-radius:4px;' +
+    'background:var(--borda);vertical-align:middle"><span style="display:block;height:8px;' +
+    'border-radius:4px;background:var(--tema);width:' + Math.max(2, score) + '%"></span></span>';
+}
+
+async function telaIndice() {
+  const r = await api('GET', '/familias/' + FAM.id + '/indice-memoria');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('indice.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('indice.intro')) + '</p>' +
+    '<p class="sub">' + esc(t('indice.sem_ranking')) + '</p>' +
+    (r.pessoas || []).map(p =>
+      '<div class="linha"><span><a href="#" onclick="dossie(\\'' + p.person_id + '\\');return false">' +
+      '<strong>' + esc(p.nome_exibicao) + '</strong></a><br><span class="sub">' +
+      ((p.lacunas || []).length
+        ? esc(t('indice.falta')) + ': ' + p.lacunas.map(l => esc(t('indice.dim_' + l))).join(', ')
+        : esc(t('indice.nada_falta'))) + '</span></span>' +
+      '<span>' + barra(p.score) + ' <span class="sub">' +
+        esc(t('indice.score', { n: p.score })) + '</span></span></div>').join(''));
+}
+
+// ------------------------------------------------------ avisos (§87)
+async function telaAvisos() {
+  const r = await api('GET', '/familias/' + FAM.id + '/notificacoes');
+  const atual = (r.preferencias || []).find(p => p.evento === 'missoes');
+  const freq = atual ? atual.frequencia : 'nunca';
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('notificacao.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('notificacao.intro')) + '</p>' +
+    '<label>' + esc(t('notificacao.missoes')) + '</label>' +
+    '<select id="nt_f">' +
+      ['nunca', 'imediato'].map(f => '<option value="' + f + '"' + (f === freq ? ' selected' : '') +
+        '>' + esc(t('notificacao.' + f)) + '</option>').join('') + '</select>' +
+    '<p><button class="btn" onclick="salvarAviso()">' + esc(t('acao.salvar')) + '</button></p>');
+}
+
+async function salvarAviso() {
+  const r = await api('PATCH', '/familias/' + FAM.id + '/notificacoes',
+    { evento: 'missoes', frequencia: val('nt_f') });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  $(document.getElementById('app').innerHTML + aviso(t('notificacao.salvo'), 'ok'));
 }
 
 // ------------------------------------------------- links vindos do e-mail

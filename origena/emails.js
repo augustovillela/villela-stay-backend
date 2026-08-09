@@ -70,6 +70,20 @@ function recuperacao(para, nome, token, idioma) {
       <p style="color:#6B655C;font-size:13px">${esc(t('email.recuperacao_validade'))}</p>`));
 }
 
+/**
+ * Missões novas (§30/§87). O e-mail diz QUANTAS, nunca QUAIS: a pergunta
+ * carrega nome de parente, e nome de parente é dado pessoal de terceiro
+ * (PRIVACY.md §7). O conteúdo mora atrás do login.
+ */
+function missoes(para, { familia, n }, idioma) {
+  const t = (c, v) => i18n.t(idioma, c, v);
+  return mandar(para, t('email.missoes_assunto'),
+    molde(idioma, t('email.missoes_titulo'), `
+      <p>${esc(t('email.missoes_p', { familia, n }))}</p>
+      ${botao(`${BASE}/origena/app`, t('email.missoes_botao'))}
+      <p style="color:#6B655C;font-size:13px">${esc(t('email.missoes_optout'))}</p>`));
+}
+
 /** `chaveDoQue` é a CHAVE i18n do que mudou, não o texto pronto. */
 function avisoSeguranca(para, nome, chaveDoQue, idioma) {
   const t = (c, v) => i18n.t(idioma, c, v);
@@ -80,4 +94,4 @@ function avisoSeguranca(para, nome, chaveDoQue, idioma) {
       <p>${esc(t('email.seguranca_p'))}</p>`));
 }
 
-module.exports = { configurar, ativo, verificacao, convite, recuperacao, avisoSeguranca };
+module.exports = { configurar, ativo, verificacao, convite, recuperacao, avisoSeguranca, missoes };

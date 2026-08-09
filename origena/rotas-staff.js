@@ -38,14 +38,53 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
         claims: (await t.uma(`SELECT count(*)::int n FROM claims`)).n,
         saldo: (await creditos.carteira(t, f.id)).saldo,
         reconciliacao: await creditos.reconciliar(t, f.id),
-        // §80 — a métrica norte: itens com pessoa+data+contexto+fonte
-        mpc: (await t.uma(
-          `SELECT count(*)::int n FROM media m
-            WHERE m.deleted_at IS NULL AND m.derivado_de IS NULL
-              AND m.capturada_valor IS NOT NULL
-              AND (m.local_texto <> '' OR EXISTS (SELECT 1 FROM claims c WHERE c.sujeito_id = m.id))
-              AND EXISTS (SELECT 1 FROM media_persons mp WHERE mp.media_id = m.id
-                            AND mp.origem IN ('MANUAL','CONFIRMADA'))`)).n,
+        // §80 — a MÉTRICA NORTE, agora na definição inteira do
+        // DOMAIN_MODEL: item (mídia, história OU tradição) com, ao mesmo
+        // tempo, ≥1 pessoa identificada por humano, data de qualquer
+        // precisão, lugar ou ocasião, autoria e ≥1 fonte. Subir 5.000
+        // fotos sem contexto não move este número — é o comportamento que
+        // o produto quer premiar. Cada tipo cumpre as pernas do seu jeito:
+        //   fonte  = claim/fonte/contribuição (mídia) · quem contou
+        //            (história) · origem, manuscrito ou contribuição (tradição)
+        //   pessoa = identificação confirmada · menção · "de quem é"
+        mpc_por_tipo: await t.uma(
+          `SELECT
+             (SELECT count(*) FROM media m
+               WHERE m.deleted_at IS NULL AND m.derivado_de IS NULL
+                 AND m.capturada_valor IS NOT NULL AND m.created_by IS NOT NULL
+                 AND m.local_texto <> ''
+                 AND EXISTS (SELECT 1 FROM media_persons mp WHERE mp.media_id = m.id
+                               AND mp.origem IN ('MANUAL','CONFIRMADA'))
+                 AND (EXISTS (SELECT 1 FROM claims c WHERE c.sujeito_id = m.id)
+                      OR EXISTS (SELECT 1 FROM sources s WHERE s.media_id = m.id)
+                      OR EXISTS (SELECT 1 FROM contributions ct
+                                  WHERE ct.alvo_tipo = 'media' AND ct.alvo_id = m.id
+                                    AND ct.status = 'ativa'))
+             )::int AS midia,
+             (SELECT count(*) FROM stories st
+               WHERE st.deleted_at IS NULL AND st.ocorrido_valor IS NOT NULL
+                 AND st.created_by IS NOT NULL AND st.local_texto <> ''
+                 AND st.contada_por_person_id IS NOT NULL
+                 AND EXISTS (SELECT 1 FROM story_mentions sm
+                              WHERE sm.story_id = st.id AND sm.person_id IS NOT NULL)
+             )::int AS historia,
+             (SELECT count(*) FROM traditions tr
+               WHERE tr.deleted_at IS NULL AND tr.desde_valor IS NOT NULL
+                 AND tr.created_by IS NOT NULL AND tr.person_id IS NOT NULL
+                 AND (tr.local_texto <> '' OR tr.ocasioes <> '{}')
+                 AND (tr.origem <> ''
+                      OR EXISTS (SELECT 1 FROM recipes r
+                                  WHERE r.tradition_id = tr.id AND r.manuscrito_media_id IS NOT NULL)
+                      OR EXISTS (SELECT 1 FROM contributions ct2
+                                  WHERE ct2.alvo_tipo = 'tradition' AND ct2.alvo_id = tr.id
+                                    AND ct2.status = 'ativa'))
+             )::int AS tradicao`),
+        // as lacunas abertas do Historiador (§29): quanto a família ainda
+        // não contou, em número
+        missoes: await t.uma(
+          `SELECT count(*) FILTER (WHERE status = 'aberta')::int abertas,
+                  count(*) FILTER (WHERE status IN ('respondida','resolvida'))::int fechadas
+             FROM missions`),
         ia: await t.uma(
           `SELECT count(*)::int jobs,
                   count(*) FILTER (WHERE status = 'executando')::int presos,
@@ -54,7 +93,9 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
         custo_ia_centavos: Number((await t.uma(
           `SELECT COALESCE(sum(custo_centavos),0) s FROM ai_cost_ledger`)).s),
       }));
-      porFamilia.push({ id: f.id, nome: f.nome, ...agg });
+      const m = agg.mpc_por_tipo;
+      porFamilia.push({ id: f.id, nome: f.nome, ...agg,
+        mpc: m.midia + m.historia + m.tradicao });
     }
 
     res.json({

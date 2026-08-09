@@ -28,11 +28,18 @@ async function lixeira(t, familyId) {
   const hist = await t.todas(
     `SELECT id, titulo, deleted_at FROM stories
       WHERE family_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 100`, [familyId]);
-  return { pessoas, midias, historias: hist };
+  const trad = await t.todas(
+    `SELECT id, titulo, categoria, deleted_at FROM traditions
+      WHERE family_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 100`, [familyId]);
+  const rel = await t.todas(
+    `SELECT id, nome AS titulo, deleted_at FROM heirlooms
+      WHERE family_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 100`, [familyId]);
+  return { pessoas, midias, historias: hist, tradicoes: trad, reliquias: rel };
 }
 
 async function restaurar(t, { familyId, userId, tipo, id }) {
-  const tabela = { pessoa: 'persons', midia: 'media', historia: 'stories' }[tipo];
+  const tabela = { pessoa: 'persons', midia: 'media', historia: 'stories',
+    tradicao: 'traditions', reliquia: 'heirlooms' }[tipo];
   if (!tabela) throw erro('erro.lixeira_tipo', 400);
   const r = await t.uma(
     `UPDATE ${tabela} SET deleted_at = NULL WHERE id = $1 AND deleted_at IS NOT NULL RETURNING id`, [id]);
@@ -45,6 +52,10 @@ async function restaurar(t, { familyId, userId, tipo, id }) {
     await t.q(`UPDATE relationships SET deleted_at = NULL
                 WHERE (person_a = $1 OR person_b = $1) AND deleted_at IS NOT NULL`, [id]);
   }
+  // Arquivar tirou da busca; restaurar devolve — item restaurado que não
+  // se acha é item perdido com outro nome.
+  if (tipo === 'tradicao') await require('./tradicoes').indexar(t, familyId, id);
+  if (tipo === 'reliquia') await require('./tradicoes').indexarReliquia(t, familyId, id);
   await auditar({ familyId, atorUserId: userId, acao: 'lixeira.restaurado',
     alvoTipo: tipo, alvoId: id }, t);
   return true;
@@ -54,7 +65,9 @@ async function restaurar(t, { familyId, userId, tipo, id }) {
 // Ordem de desmonte: filhos antes de pais (FKs), binários antes das
 // linhas que os apontam — se a purga morrer no meio, sobra registro
 // apontando byte apagado (visível), nunca byte órfão pago para sempre.
-const ORDEM = ['evidence', 'claim_resolutions', 'claims', 'sources', 'contributions',
+const ORDEM = ['heirloom_custody', 'heirlooms', 'recipe_learners', 'tradition_transmissions',
+  'recipes', 'traditions', 'missions', 'memory_index', 'notification_prefs',
+  'evidence', 'claim_resolutions', 'claims', 'sources', 'contributions',
   'story_mentions', 'story_versions', 'stories', 'event_participants', 'events',
   'timeline_entries', 'album_items', 'albums', 'media_persons', 'document_texts', 'busca',
   'biography_versions', 'biographies', 'exports', 'ai_cost_ledger', 'ai_jobs',

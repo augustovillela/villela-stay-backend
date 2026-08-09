@@ -127,7 +127,11 @@ async function principal() {
   console.log(`\nORIGENA — selftest (Fase 0)   schema descartável: ${db.SCHEMA}\n`);
 
   const app = express();
-  app.use(express.json());
+  // MESMO limite do server.js real: com o padrão (100 kB) o teste diria
+  // que a importação de um acervo com fotos quebra, quando o que quebra é
+  // o servidor de mentira. Harness que não espelha produção mente nos dois
+  // sentidos.
+  app.use(express.json({ limit: '15mb' }));
   app.use(cookieParser());
   const montado = await origena.montar(app, {
     express, requireAuth, requireAdmin, enviarEmail, jwtSecret: 'segredo-de-teste-origena' });
@@ -299,6 +303,19 @@ async function principal() {
     assert.match(r.texto, /name="robots" content="noindex/);
   });
 
+  await teste('o app da família serve as telas novas, com o catálogo injetado', async () => {
+    const r = await req('GET', '/origena/app');
+    assert.strictEqual(r.status, 200);
+    // o app é uma página só: se o template quebrar, some tudo de uma vez
+    for (const tela of ['telaTradicoes', 'verTradicao', 'telaReliquias', 'verReliquia',
+      'telaMissoes', 'telaHistoriador', 'telaIndice', 'telaAvisos']) {
+      assert(r.texto.includes('function ' + tela) || r.texto.includes(tela + ' ='),
+        `a tela ${tela} não foi para o HTML`);
+    }
+    assert(r.texto.includes('Bolo') === false, 'o HTML do app não pode trazer conteúdo de família');
+    assert(r.texto.includes('linha_de_posse'), 'o catálogo da relíquia não foi injetado');
+  });
+
   await teste('GET /origena/health responde com o estado do banco', async () => {
     const r = await req('GET', '/origena/health');
     assert.strictEqual(r.json.produto, 'origena');
@@ -438,6 +455,49 @@ async function principal() {
       'membro.papel_alterado', 'conta.criada', 'conta.entrou']) {
       assert.notStrictEqual(i18n.t('pt-BR', 'auditoria.' + acao), 'auditoria.' + acao, `falta rótulo de ${acao}`);
     }
+  });
+
+  await teste('toda chave que a TELA pede existe no catálogo', async () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    const faltando = new Set();
+    // t('chave') no JS do navegador e i18n.t(idioma, 'chave') no servidor
+    for (const m of src.matchAll(/\bt\((?:idioma,\s*)?'([a-z_]+(?:\.[a-z_0-9]+)+)'/gi)) {
+      // literal terminado em `_` ou `.` é PREFIXO de chave montada
+      // ('tradicao.cat_' + categoria); essas o teste seguinte confere uma
+      // a uma, porque aqui só dá para ver metade da chave.
+      if (/[._]$/.test(m[1])) continue;
+      if (i18n.t('pt-BR', m[1]) === m[1]) faltando.add(m[1]);
+    }
+    assert.strictEqual(faltando.size, 0, 'a tela pede chave que não existe: ' + [...faltando].join(', '));
+  });
+
+  await teste('as chaves MONTADAS em tempo de execução também existem', async () => {
+    // O teste acima só enxerga chave literal. Estas são construídas
+    // ('tradicao.cat_' + categoria) e é justamente onde uma chave crua
+    // chegaria na tela do usuário sem ninguém ver.
+    const historiadorMod = require('./historiador');
+    const tradicoesMod = require('./tradicoes');
+    const missoesMod = require('./missoes');
+    const faltando = [];
+    const conferir = (chave) => { if (i18n.t('pt-BR', chave) === chave) faltando.push(chave); };
+    for (const tipo of Object.keys(historiadorMod.PESOS)) {
+      conferir('historiador.tipo_' + tipo);
+      conferir(missoesMod.PERGUNTA[tipo]);
+    }
+    for (const c of tradicoesMod.CATEGORIAS) conferir('tradicao.cat_' + c);
+    for (const d of historiadorMod.DIMENSOES) conferir('indice.dim_' + d);
+    // OWNER fica de fora: não se convida ninguém para dono da família,
+    // então a descrição dele nunca aparece na tela de convite.
+    for (const p of ['CONTRIBUTOR', 'FAMILY_MEMBER', 'EDITOR', 'HISTORIAN', 'ADMIN', 'GUEST']) {
+      conferir('papel.desc_' + p);
+    }
+    for (const st of require('./proveniencia').STATUS) conferir('status.selo_' + st);
+    for (const x of ['person', 'media', 'story', 'contribution', 'document', 'recipe',
+      'heirloom', 'event', 'tradition']) conferir('busca.tipo_' + x);
+    for (const x of ['nascimento', 'falecimento', 'casamento', 'evento', 'foto', 'historia',
+      'tradicao', 'reliquia']) conferir('tempo.tipo_' + x);
+    assert.strictEqual(faltando.length, 0, 'chave montada sem tradução: ' + faltando.join(', '));
   });
 
   await teste('erro devolve CÓDIGO estável além da mensagem (cliente não faz parse de texto)', async () => {
@@ -1833,6 +1893,294 @@ async function principal() {
       'entrou item de antes do recorte');
   });
 
+  // ================================================================= FASE 2.1
+  // Tradições, receitas, saberes e relíquias. O que a família conta na
+  // mesa — e a linha de posse do objeto, que é o valor dele.
+  console.log('\ntradições e receitas (§35–37)');
+  let receita, saber, semAprendiz;
+  await teste('a receita entra com ingredientes, preparo e data imprecisa', async () => {
+    const r = await req('POST', F('/tradicoes'), { sessao: ana, corpo: {
+      categoria: 'RECEITA', titulo: 'Bolo de fubá da Maria',
+      corpo: 'O bolo que ela fazia toda festa junina.',
+      person_id: P.maria.id, origem: 'Veio da mãe dela, em Pirapora',
+      ocasioes: 'festa junina, aniversário', desde: 'anos 1940', local: 'Pirapora',
+      ingredientes: '2 xícaras de fubá\n1 litro de leite\nerva-doce a gosto',
+      preparo: 'Bate tudo e leva ao forno.', rendimento: '12 fatias', tempo: '50 min' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    receita = r.json.tradicao;
+    assert.strictEqual(receita.desde_precisao, 'DECADA', 'a data imprecisa não virou década');
+    assert.strictEqual(receita.receita.ingredientes.length, 3, 'perdeu ingrediente');
+    assert.strictEqual(receita.receita.ingredientes[0].item, '2 xícaras de fubá');
+    assert.deepStrictEqual(receita.ocasioes, ['festa junina', 'aniversário']);
+  });
+
+  await teste('a receita é encontrável pelo ingrediente, na busca única', async () => {
+    const b = await req('GET', F('/busca?q=fubá'), { sessao: ana });
+    assert(b.json.resultados.some((x) => x.ref_tipo === 'recipe' && x.ref_id === receita.id),
+      'a receita não entrou no índice: ' + JSON.stringify(b.json.resultados.map((x) => x.ref_tipo)));
+  });
+
+  await teste('quem aprendeu a fazer fica registrado, e repetir não duplica', async () => {
+    const um = await req('POST', F(`/tradicoes/${receita.id}/aprendizes`),
+      { sessao: ana, corpo: { person_id: P.paula.id, quando: '1958' } });
+    assert.strictEqual(um.status, 201, um.texto);
+    const dois = await req('POST', F(`/tradicoes/${receita.id}/aprendizes`),
+      { sessao: ana, corpo: { person_id: P.paula.id, quando: '1958' } });
+    assert.strictEqual(dois.status, 201, 'a segunda vez deveria ser absorvida, não recusada');
+    const tr = await req('GET', F(`/tradicoes/${receita.id}`), { sessao: ana });
+    assert.strictEqual(tr.json.tradicao.aprendizes.length, 1, 'duplicou o aprendiz');
+    assert.strictEqual(tr.json.tradicao.aprendizes[0].nome_exibicao, 'Paula Villela');
+  });
+
+  await teste('o saber vira CORRENTE: quem ensinou → quem aprendeu (§37)', async () => {
+    const r = await req('POST', F('/tradicoes'), { sessao: ana, corpo: {
+      categoria: 'SABER', titulo: 'Afiar faca na pedra', person_id: P.joao.id,
+      corpo: 'Sempre no mesmo ângulo, molhando a pedra.' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    saber = r.json.tradicao;
+    const a = await req('POST', F(`/tradicoes/${saber.id}/transmissoes`), { sessao: ana,
+      corpo: { de_person_id: P.joao.id, para_person_id: P.pedro.id, quando: '1935' } });
+    assert.strictEqual(a.status, 201, a.texto);
+    await req('POST', F(`/tradicoes/${saber.id}/transmissoes`), { sessao: ana,
+      corpo: { de_person_id: P.pedro.id, para_person_id: P.neto.id, quando: '1968' } });
+    const tr = await req('GET', F(`/tradicoes/${saber.id}`), { sessao: ana });
+    assert.strictEqual(tr.json.tradicao.transmissoes.length, 2, 'a corrente se perdeu');
+    assert.strictEqual(tr.json.tradicao.transmissoes[0].de_nome, 'João Villela');
+    // ninguém ensina a si mesmo
+    const eu = await req('POST', F(`/tradicoes/${saber.id}/transmissoes`), { sessao: ana,
+      corpo: { de_person_id: P.pedro.id, para_person_id: P.pedro.id } });
+    assert.strictEqual(eu.status, 400);
+    assert.strictEqual(eu.json.codigo, 'erro.transmissao_reflexiva');
+  });
+
+  await teste('tradição sem nome é recusada com mensagem útil', async () => {
+    const r = await req('POST', F('/tradicoes'), { sessao: ana, corpo: { categoria: 'MUSICA' } });
+    assert.strictEqual(r.status, 400);
+    assert.strictEqual(r.json.codigo, 'erro.tradicao_sem_titulo');
+  });
+
+  console.log('\nrelíquias — a linha de posse (§38)');
+  let anel;
+  await teste('o objeto nasce com dono, e a posse já começa como HISTÓRICO', async () => {
+    const r = await req('POST', F('/reliquias'), { sessao: ana, corpo: {
+      nome: 'Anel de casamento da Maria', descricao: 'Ouro, com as iniciais gravadas.',
+      origem: 'Comprado em Pirapora', local: 'Gaveta da sala',
+      com_quem: P.maria.id, desde: '1912' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    anel = r.json.reliquia;
+    assert.strictEqual(anel.custodia.length, 1);
+    assert.strictEqual(anel.com_quem.person_id, P.maria.id);
+    assert.strictEqual(anel.com_quem.ate_valor, null, 'a custódia nasceu já fechada');
+  });
+
+  await teste('passar de mão FECHA a anterior e ABRE a nova — ninguém é apagado', async () => {
+    const r = await req('POST', F(`/reliquias/${anel.id}/custodia`), { sessao: ana, corpo: {
+      person_id: P.paula.id, de: '1970', nota: 'Passou na partilha.',
+      fonte_tipo: 'RELATO', fonte_titulo: 'A tia lembra da partilha' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    const h = (await req('GET', F(`/reliquias/${anel.id}`), { sessao: ana })).json.reliquia;
+    assert.strictEqual(h.custodia.length, 2, 'a dona anterior sumiu da linha de posse');
+    const antiga = h.custodia.find((c) => c.person_id === P.maria.id);
+    assert.strictEqual(antiga.ate_valor, '1970', 'a saída da anterior não ficou registrada');
+    assert.strictEqual(h.com_quem.person_id, P.paula.id);
+    assert.strictEqual(h.custodia.filter((c) => !c.ate_valor).length, 1,
+      'o objeto ficou em duas mãos ao mesmo tempo');
+    // a resposta a "como você sabe?" ficou junto, como fonte
+    assert.strictEqual(h.com_quem.fonte_tipo, 'RELATO');
+  });
+
+  await teste('o BANCO recusa duas posses abertas para o mesmo objeto', async () => {
+    await assert.rejects(tenancy.comEscopo(famA, (t) => t.q(
+      `INSERT INTO heirloom_custody (family_id, heirloom_id, person_id, de_valor)
+       VALUES ($1,$2,$3,'1999')`, [famA, anel.id, P.pedro.id])),
+    (e) => e.code === '23505',
+    'o índice único não segurou: o objeto poderia estar em duas mãos');
+  });
+
+  await teste('passar para quem já está com o objeto é recusado', async () => {
+    const r = await req('POST', F(`/reliquias/${anel.id}/custodia`),
+      { sessao: ana, corpo: { person_id: P.paula.id, de: '1980' } });
+    assert.strictEqual(r.status, 409);
+    assert.strictEqual(r.json.codigo, 'erro.custodia_ja_e_dele');
+  });
+
+  await teste('tradição e relíquia entram na linha do tempo com a data que têm', async () => {
+    const r = await req('GET', F('/timeline'), { sessao: ana });
+    const tipos = new Set(r.json.itens.map((i) => i.tipo));
+    assert(tipos.has('tradicao'), 'a receita dos anos 40 não entrou na linha do tempo');
+    assert(tipos.has('reliquia'), 'a passagem do anel não entrou na linha do tempo');
+    const passagem = r.json.itens.find((i) => i.tipo === 'reliquia' && i.data_valor === '1970');
+    assert(passagem && /Paula/.test(passagem.titulo), 'a passagem de 1970 saiu errada');
+  });
+
+  // ================================================================= FASE 2.2
+  console.log('\nhistoriador — as lacunas que existem, sem inventar as que não existem (§29)');
+  let orfa;
+  await teste('o historiador nomeia a lacuna certa para a pessoa certa', async () => {
+    orfa = await criarPessoa({ nome: 'Sem Nada Registrado' });
+    const r = await req('GET', F('/historiador'), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    const dela = r.json.lacunas.filter((l) => l.alvo_id === orfa.id).map((l) => l.tipo);
+    for (const esperada of ['pessoa_sem_nascimento', 'pessoa_sem_foto', 'pessoa_sem_historia']) {
+      assert(dela.includes(esperada), `faltou a lacuna ${esperada} (tem: ${dela.join(', ')})`);
+    }
+    // e NÃO cobra o que já existe: a Maria tem a receita como narrativa
+    const daMaria = r.json.lacunas.filter((l) => l.alvo_id === P.maria.id).map((l) => l.tipo);
+    assert(!daMaria.includes('pessoa_sem_historia'),
+      'cobrou história de quem já tem uma tradição registrada');
+    // receita sem ninguém que saiba fazer é lacuna — a que mata a receita
+    const semQuemFaca = await req('POST', F('/tradicoes'), { sessao: ana, corpo: {
+      categoria: 'RECEITA', titulo: 'Doce de leite queimado', person_id: P.joao.id } });
+    semAprendiz = semQuemFaca.json.tradicao;
+    const r2 = await req('GET', F('/historiador'), { sessao: ana });
+    assert(r2.json.lacunas.some((l) => l.tipo === 'receita_sem_aprendiz'
+      && l.alvo_id === semAprendiz.id), 'não viu a receita que ninguém aprendeu');
+  });
+
+  await teste('o que ficou além do teto é declarado, não engolido', async () => {
+    const r = await req('GET', F('/historiador'), { sessao: ana });
+    assert.strictEqual(typeof r.json.teto, 'number');
+    assert.strictEqual(typeof r.json.alem_do_teto, 'object',
+      'a varredura corta e não diz o que cortou — viraria "não falta nada"');
+  });
+
+  console.log('\nmissões — a lacuna vira pergunta endereçada (§30)');
+  let missaoFoto;
+  await teste('sincronizar cria a pergunta; sincronizar de novo NÃO duplica', async () => {
+    const um = await req('POST', F('/missoes/sincronizar'), { sessao: ana });
+    assert.strictEqual(um.status, 200, um.texto);
+    assert(um.json.criadas > 0, 'não criou pergunta nenhuma');
+    const dois = await req('POST', F('/missoes/sincronizar'), { sessao: ana });
+    assert.strictEqual(dois.json.criadas, 0, 'duplicou as perguntas na segunda varredura');
+  });
+
+  await teste('a pergunta chega em português, com o nome da pessoa dentro (§86)', async () => {
+    const r = await req('GET', F('/missoes'), { sessao: ana });
+    missaoFoto = r.json.missoes.find((m) => m.tipo === 'pessoa_sem_foto' && m.alvo_id === orfa.id);
+    assert(missaoFoto, 'a pergunta da foto não foi criada');
+    assert.strictEqual(missaoFoto.pergunta, 'Você tem alguma fotografia de Sem Nada Registrado?');
+    // nenhuma pergunta sai como chave crua na cara do usuário
+    assert(!r.json.missoes.some((m) => /^missao\./.test(m.pergunta)),
+      'alguma pergunta saiu como chave de catálogo');
+  });
+
+  await teste('responder guarda a resposta como CONTRIBUIÇÃO, com autor e data', async () => {
+    const r = await req('POST', F(`/missoes/${missaoFoto.id}/responder`), { sessao: bruno,
+      corpo: { corpo: 'Tenho uma foto dela no álbum azul da minha mãe.' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    const c = await req('GET', F(`/pessoas/${orfa.id}/contribuicoes`), { sessao: ana });
+    assert(c.json.contribuicoes.some((x) => /álbum azul/.test(x.corpo)),
+      'a resposta não virou memória do acervo');
+    const lista = await req('GET', F('/missoes?status=respondida'), { sessao: ana });
+    assert(lista.json.missoes.some((m) => m.id === missaoFoto.id), 'a missão não fechou');
+  });
+
+  await teste('lacuna preenchida fecha a pergunta sozinha', async () => {
+    const missoesAntes = (await req('GET', F('/missoes'), { sessao: ana })).json.missoes;
+    const daData = missoesAntes.find((m) => m.tipo === 'pessoa_sem_nascimento' && m.alvo_id === orfa.id);
+    assert(daData, 'não havia a pergunta da data de nascimento');
+    await req('PATCH', F(`/pessoas/${orfa.id}`), { sessao: ana, corpo: { nascimento: '1948' } });
+    await req('POST', F('/missoes/sincronizar'), { sessao: ana });
+    const depois = await req('GET', F('/missoes?status=todas'), { sessao: ana });
+    const agora = depois.json.missoes.find((m) => m.id === daData.id);
+    assert.strictEqual(agora.status, 'resolvida',
+      'a pergunta continuou aberta depois de a lacuna sumir');
+  });
+
+  await teste('pergunta dispensada NÃO renasce na varredura seguinte', async () => {
+    const abertas = (await req('GET', F('/missoes'), { sessao: ana })).json.missoes;
+    const alvo = abertas.find((m) => m.tipo === 'pessoa_sem_parentesco');
+    assert(alvo, 'não havia pergunta de parentesco para dispensar');
+    // quem só contribui não dispensa pergunta da família
+    const negado = await req('POST', F(`/missoes/${alvo.id}/dispensar`),
+      { sessao: bruno, corpo: { motivo: 'não quero' } });
+    assert.strictEqual(negado.status, 403, 'CONTRIBUTOR dispensou pergunta da família');
+
+    const r = await req('POST', F(`/missoes/${alvo.id}/dispensar`),
+      { sessao: ana, corpo: { motivo: 'Ninguém da família fala sobre isso.' } });
+    assert.strictEqual(r.status, 200, r.texto);
+    await req('POST', F('/missoes/sincronizar'), { sessao: ana });
+    const todas = (await req('GET', F('/missoes?status=todas'), { sessao: ana })).json.missoes;
+    const mesmas = todas.filter((m) => m.tipo === alvo.tipo && m.alvo_id === alvo.alvo_id);
+    assert.strictEqual(mesmas.length, 1, 'a pergunta dispensada renasceu com outro id');
+    assert.strictEqual(mesmas[0].status, 'dispensada');
+  });
+
+  await teste('lacuna que ficou ALÉM DO TETO não é dada como resolvida', async () => {
+    // Com teto 1, quase todo tipo é truncado. A lacuna 2 continua
+    // existindo — e a missão dela NÃO pode virar "resolvida" só porque
+    // não coube na lista da varredura.
+    const missoesMod = require('./missoes');
+    const r = await tenancy.comEscopo(famA, (t) =>
+      missoesMod.sincronizar(t, { familyId: famA, userId: ana.id, teto: 1 }));
+    assert(Object.keys(r.cortados).length > 0, 'o cenário não chegou a truncar nada');
+    assert.strictEqual(r.resolvidas, 0,
+      'deu como resolvida uma pergunta que só ficou fora do corte da varredura');
+  });
+
+  console.log('\navisos — opt-in de verdade, e sem acervo no e-mail (§87)');
+  await teste('ninguém recebe e-mail sem ter pedido', async () => {
+    await criarPessoa({ nome: 'Gera Lacuna Um' });
+    const antes = caixa.length;
+    const r = await req('POST', F('/missoes/sincronizar'), { sessao: ana });
+    assert(r.json.criadas > 0, 'o cenário não gerou pergunta nova');
+    assert.strictEqual(r.json.avisados, 0, 'avisou alguém que não pediu');
+    assert.strictEqual(caixa.length, antes, 'saiu e-mail sem opt-in');
+  });
+
+  await teste('quem pediu recebe a CONTAGEM — nunca o nome de quem está no acervo', async () => {
+    const pref = await req('PATCH', F('/notificacoes'),
+      { sessao: ana, corpo: { evento: 'missoes', frequencia: 'imediato' } });
+    assert.strictEqual(pref.status, 200, pref.texto);
+    await criarPessoa({ nome: 'Segredo de Familia' });
+    const antes = caixa.length;
+    const r = await req('POST', F('/missoes/sincronizar'), { sessao: ana });
+    assert(r.json.avisados >= 1, 'quem pediu não foi avisado');
+    assert(caixa.length > antes, 'o e-mail não saiu');
+    const ultimo = caixa[caixa.length - 1];
+    assert(!/Segredo de Familia/.test(ultimo.html),
+      'O E-MAIL LEVOU O NOME DE UMA PESSOA DO ACERVO para fora do login');
+    assert(/perguntas/i.test(ultimo.html), 'o e-mail não diz do que se trata');
+  });
+
+  console.log('\níndice de memória — lacuna nomeada, sem placar (§31/§32)');
+  await teste('o índice diz a porcentagem E o que falta, por nome', async () => {
+    const r = await req('GET', F(`/pessoas/${orfa.id}/indice-memoria`), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert.strictEqual(r.json.dimensoes.length, 10, 'as dez dimensões do §31 mudaram de número');
+    assert(r.json.indice.lacunas.includes('fotos'), 'não apontou a falta de fotos');
+    assert(r.json.indice.score < 100);
+    const maria = await req('GET', F(`/pessoas/${P.maria.id}/indice-memoria`), { sessao: ana });
+    assert(maria.json.indice.score > r.json.indice.score,
+      'quem tem acervo devia pontuar mais que quem não tem nada');
+  });
+
+  await teste('a lista da família sai por NOME, nunca por pontuação (§31)', async () => {
+    const r = await req('GET', F('/indice-memoria'), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    const nomes = r.json.pessoas.map((p) => p.nome_exibicao);
+    assert.deepStrictEqual(nomes, [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+      'a lista veio ordenada por outra coisa que não o nome — vira ranking');
+    const scores = r.json.pessoas.map((p) => p.score);
+    assert(scores.some((s) => s !== scores[0]), 'todos com o mesmo score: o cálculo não está rodando');
+  });
+
+  await teste('apagar o índice e recalcular dá o MESMO resultado (projeção)', async () => {
+    const antes = (await req('GET', F('/indice-memoria'), { sessao: ana })).json.pessoas;
+    await tenancy.comEscopo(famA, (t) => t.q(`DELETE FROM memory_index WHERE family_id = $1`, [famA]));
+    const depois = (await req('GET', F('/indice-memoria'), { sessao: ana })).json.pessoas;
+    const chave = (p) => `${p.person_id}|${p.score}|${(p.lacunas || []).join(',')}`;
+    assert.deepStrictEqual(depois.map(chave), antes.map(chave),
+      'o índice não é derivável do acervo — então não é projeção, é dado solto');
+  });
+
+  await teste('"quem provavelmente sabe" aponta quem já contribuiu (§32)', async () => {
+    const r = await req('GET', F(`/pessoas/${orfa.id}/indice-memoria`), { sessao: ana });
+    assert(r.json.quem_sabe.some((q) => q.nome === 'Bruno Villela' || q.user_id === bruno.id),
+      'quem respondeu sobre ela não aparece como quem sabe: ' + JSON.stringify(r.json.quem_sabe));
+    assert(r.json.quem_sabe.length <= 3, 'virou lista longa — é sugestão, não placar');
+  });
+
   // =================================================================== FASE 7
   const creditosMod = require('./creditos');
   const routerIA = require('./ia/router');
@@ -1997,6 +2345,13 @@ async function principal() {
     const fam = r.json.por_familia.find((f) => f.id === famA);
     assert(fam.pessoas > 0 && fam.midias > 0);
     assert.strictEqual(typeof fam.mpc, 'number', 'sem a métrica norte (§80)');
+    // §80: a MPC conta mídia, história E tradição — não só foto
+    assert(fam.mpc_por_tipo, 'a métrica norte não está aberta por tipo');
+    assert(fam.mpc_por_tipo.tradicao >= 1,
+      'tradição com pessoa, data, ocasião, autoria e origem não entrou na MPC');
+    assert.strictEqual(fam.mpc,
+      fam.mpc_por_tipo.midia + fam.mpc_por_tipo.historia + fam.mpc_por_tipo.tradicao);
+    assert(fam.missoes && typeof fam.missoes.abertas === 'number', 'sem as lacunas abertas (§29)');
     assert(fam.reconciliacao.ok, 'ledger desbalanceado no resumo');
     // T12: o resumo não carrega conteúdo de família
     const texto = JSON.stringify(r.json);
@@ -2141,6 +2496,15 @@ async function principal() {
     await req('POST', FE('/historias'), { sessao: dona, corpo: {
       titulo: 'O causo do café', corpo: 'Dizem que ele trocou um saco de café por um violão.',
       contada_por: pe.id, ocorrido: 'anos 30' } });
+    // e um objeto que já passou por duas mãos: a linha de posse é o que
+    // dá valor à relíquia, e tem de sobreviver à viagem inteira
+    const neta = (await req('POST', FE('/pessoas'), { sessao: dona,
+      corpo: { nome: 'Neta E2E', nascimento: '1975' } })).json.pessoa;
+    const relogio = (await req('POST', FE('/reliquias'), { sessao: dona, corpo: {
+      nome: 'Relógio de bolso', origem: 'Comprado em 1930',
+      com_quem: pe.id, desde: '1930' } })).json.reliquia;
+    await req('POST', FE(`/reliquias/${relogio.id}/custodia`), { sessao: dona,
+      corpo: { person_id: neta.id, de: '1995', nota: 'Ganhou na formatura.' } });
 
     // 2. exporta
     const dados = await tenancy.comEscopo(fE2E, (t) => exportarMod.dadosDaFamilia(t, fE2E));
@@ -2190,12 +2554,62 @@ async function principal() {
       'a autoria não sobreviveu nem como texto');
     const hist = await req('GET', FN('/historias'), { sessao: dona });
     assert(hist.json.historias.some((h) => h.titulo === 'O causo do café'), 'a história se perdeu');
+
+    // 6. a LINHA DE POSSE voltou inteira, e ainda aponta as pessoas certas
+    const rels = await req('GET', FN('/reliquias'), { sessao: dona });
+    const relNovo = rels.json.reliquias.find((x) => x.nome === 'Relógio de bolso');
+    assert(relNovo, 'a relíquia não renasceu');
+    const relCheio = (await req('GET', FN(`/reliquias/${relNovo.id}`), { sessao: dona })).json.reliquia;
+    assert.strictEqual(relCheio.custodia.length, 2, 'a linha de posse encolheu na viagem');
+    assert.strictEqual(relCheio.custodia[0].de_valor, '1930');
+    assert.strictEqual(relCheio.com_quem.nome_exibicao, 'Neta E2E',
+      'o objeto voltou na mão errada');
+  });
+
+  await teste('importar um acervo COM mídia também funciona (regressão)', async () => {
+    // O E2E acima importa uma família sem foto, e por isso não pegava
+    // este caminho: a importação mandava para `media` uma coluna que não
+    // existe, e QUALQUER acervo com fotografia quebrava na volta.
+    const fMid = (await req('POST', '/origena/api/v1/familias',
+      { sessao: ana, corpo: { nome: 'Família Com Mídia' } })).json.familia.id;
+    const dados = await tenancy.comEscopo(famA, (t) => exportarMod.dadosDaFamilia(t, famA));
+    assert(dados.tabelas.media.length > 0, 'a família A deveria ter mídia para este teste valer');
+    assert(dados.tabelas.traditions.length > 0, 'as tradições não saem no export');
+    assert(dados.tabelas.heirloom_custody.length >= 2, 'a linha de posse não sai no export');
+    const r = await req('POST', `/origena/api/v1/familias/${fMid}/importar`,
+      { sessao: ana, corpo: { dados } });
+    assert.strictEqual(r.status, 201, r.texto);
+    const g = await req('GET', `/origena/api/v1/familias/${fMid}/midias`, { sessao: ana });
+    assert(g.json.midias.length > 0, 'a mídia não chegou do outro lado');
+    assert(g.json.midias.every((m) => m.status !== 'pronta'),
+      'mídia sem o binário voltou como "pronta" — seria uma foto que não abre');
+    const tr = await req('GET', `/origena/api/v1/familias/${fMid}/tradicoes`, { sessao: ana });
+    assert(tr.json.tradicoes.some((x) => /Bolo de fubá/.test(x.titulo)), 'a receita não viajou');
   });
 
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
   const ALVO_FALSO = '00000000-0000-4000-8000-000000000000';
+
+  /**
+   * Monta o caminho de teste de uma rota escopada. Cada `:param` novo
+   * PRECISA entrar aqui — é o preço (barato) de a suíte de isolamento ser
+   * gerada da tabela de rotas: rota nova sem parâmetro conhecido quebra a
+   * suíte em vez de passar despercebida.
+   */
+  const caminhoDeTeste = (rota, familia, userId) => {
+    let c = rota.caminho.replace(':familyId', familia).replace(':userId', userId)
+      .replace(':predicado', 'data_nascimento').replace(':tipo', 'pessoa');
+    for (const p of [':pessoaId', ':relId', ':claimId', ':contribId', ':mediaId', ':albumId',
+      ':idId', ':storyId', ':lugarId', ':eventoId', ':exportId', ':tradicaoId', ':reliquiaId',
+      ':missaoId', ':itemId', ':id']) {
+      c = c.replace(p, ALVO_FALSO);
+    }
+    const sobrou = c.match(/\/:(\w+)/);
+    assert(!sobrou, `a rota ${rota.caminho} tem o parâmetro ${sobrou && sobrou[1]} sem substituto no teste §94`);
+    return c;
+  };
 
   await teste('sem SET app.family_id, tabela de conteúdo devolve ZERO linhas', async () => {
     const dentro = await tenancy.comEscopo(famA, (t) =>
@@ -2233,18 +2647,8 @@ async function principal() {
 
   await teste(`usuário da família A recebe 404 em TODAS as ${montado.ROTAS_ESCOPADAS.length} rotas da família B`, async () => {
     const falhas94 = [];
-    const uuidFalso = '00000000-0000-4000-8000-000000000000';
     for (const rota of montado.ROTAS_ESCOPADAS) {
-      const caminho = rota.caminho
-        .replace(':familyId', famB)
-        .replace(':userId', bruno.id)
-        .replace(':pessoaId', uuidFalso).replace(':relId', uuidFalso)
-        .replace(':predicado', 'data_nascimento').replace(':claimId', uuidFalso)
-        .replace(':contribId', uuidFalso).replace(':mediaId', uuidFalso)
-        .replace(':albumId', uuidFalso).replace(':idId', uuidFalso)
-        .replace(':storyId', uuidFalso).replace(':lugarId', uuidFalso)
-        .replace(':eventoId', uuidFalso).replace(':exportId', uuidFalso)
-        .replace(':tipo', 'pessoa').replace(':itemId', uuidFalso).replace(':id', uuidFalso);
+      const caminho = caminhoDeTeste(rota, famB, bruno.id);
       const r = await req(rota.metodo, caminho, { sessao: ana, corpo: rota.metodo === 'GET' ? undefined : { nome: 'invasao', papel: 'GUEST' } });
       // 404 e NUNCA 403: 403 confirmaria que a família existe (T2).
       if (r.status !== 404) falhas94.push(`${rota.metodo} ${rota.caminho} → ${r.status}`);
@@ -2255,14 +2659,7 @@ async function principal() {
 
   await teste('o outro lado também: usuário de B não alcança A', async () => {
     for (const rota of montado.ROTAS_ESCOPADAS) {
-      const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
-        .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO)
-        .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
-        .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
-        .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO)
-        .replace(':storyId', ALVO_FALSO).replace(':lugarId', ALVO_FALSO)
-        .replace(':eventoId', ALVO_FALSO).replace(':exportId', ALVO_FALSO)
-        .replace(':tipo', 'pessoa').replace(':itemId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+      const caminho = caminhoDeTeste(rota, famA, ana.id);
       const r = await req(rota.metodo, caminho, { sessao: silva, corpo: rota.metodo === 'GET' ? undefined : { nome: 'x', papel: 'GUEST' } });
       assert.strictEqual(r.status, 404, `${rota.metodo} ${rota.caminho} devolveu ${r.status}`);
     }
@@ -2270,15 +2667,7 @@ async function principal() {
 
   await teste('sem sessão nenhuma, tudo é 401 (nunca 200)', async () => {
     for (const rota of montado.ROTAS_ESCOPADAS) {
-      const caminho = rota.caminho.replace(':familyId', famA).replace(':userId', ana.id)
-        .replace(':pessoaId', ALVO_FALSO).replace(':relId', ALVO_FALSO)
-        .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
-        .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
-        .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO)
-        .replace(':storyId', ALVO_FALSO).replace(':lugarId', ALVO_FALSO)
-        .replace(':eventoId', ALVO_FALSO).replace(':exportId', ALVO_FALSO)
-        .replace(':tipo', 'pessoa').replace(':itemId', ALVO_FALSO).replace(':id', ALVO_FALSO);
-      const r = await req(rota.metodo, caminho, {});
+      const r = await req(rota.metodo, caminhoDeTeste(rota, famA, ana.id), {});
       assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
     }
   });

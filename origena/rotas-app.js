@@ -33,6 +33,9 @@ const router = require('./ia/router');
 const conhecimento = require('./conhecimento');
 const exportar = require('./exportar');
 const purga = require('./purga');
+const tradicoes = require('./tradicoes');
+const historiador = require('./historiador');
+const missoes = require('./missoes');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -558,6 +561,245 @@ function registrarRotasApp(app) {
         familyId: req.familia.id, userId: req.usuario.id,
         storyId: req.params.storyId, dados: req.body || {} }));
       res.json({ historia: x, aviso: req.t('mensagem.versao_preservada') });
+    }));
+
+  // ----------------------------------------------------- tradições (§35–37)
+  // Receita, celebração, música, expressão e saber moram na MESMA
+  // entidade; a receita ganha ingredientes e preparo. O manuscrito da
+  // vovó é `media` — a transcrição não o substitui.
+  app.get(decl('GET', `${R}/familias/:familyId/tradicoes`), ...naFamilia, h(async (req, res) => {
+    const lista = await tenancy.noEscopoDe(req, (t) => tradicoes.Tradicoes.listar(t, req.familia.id, {
+      categoria: tradicoes.CATEGORIAS.includes(req.query.categoria) ? req.query.categoria : null,
+      pessoaId: tenancy.UUID.test(String(req.query.pessoa || '')) ? req.query.pessoa : null }));
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    const visiveis = lista.filter((x) =>
+      privacidade.podeVer({ privacidade: x.privacidade, created_by: x.created_by }, quem).pode);
+    res.json({ tradicoes: visiveis, ocultas: lista.length - visiveis.length,
+      categorias: tradicoes.CATEGORIAS });
+  }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/tradicoes`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const tr = await tenancy.noEscopoDe(req, (t) => tradicoes.Tradicoes.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: req.body || {} }));
+      res.status(201).json({ tradicao: tr });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/tradicoes/:tradicaoId`), ...naFamilia,
+    h(async (req, res) => {
+      const tr = await tenancy.noEscopoDe(req, (t) =>
+        tradicoes.Tradicoes.obter(t, req.params.tradicaoId));
+      if (!tr) throw erro('erro.tradicao_nao_encontrada', 404);
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      if (!privacidade.podeVer(tr, quem).pode) throw erro('erro.tradicao_nao_encontrada', 404);
+      res.json({ tradicao: tr });
+    }));
+
+  app.patch(decl('PATCH', `${R}/familias/:familyId/tradicoes/:tradicaoId`), ...naFamilia,
+    rbac.exigir('editar'), h(async (req, res) => {
+      const tr = await tenancy.noEscopoDe(req, (t) => tradicoes.Tradicoes.atualizar(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        id: req.params.tradicaoId, dados: req.body || {} }));
+      res.json({ tradicao: tr });
+    }));
+
+  app.delete(decl('DELETE', `${R}/familias/:familyId/tradicoes/:tradicaoId`), ...naFamilia,
+    rbac.exigir('excluir'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => tradicoes.Tradicoes.arquivar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, id: req.params.tradicaoId }));
+      res.json({ ok: true, aviso: req.t('mensagem.tradicao_arquivada') });
+    }));
+
+  /** "Quem aprendeu a fazer" — o que impede a receita de morrer (§36). */
+  app.post(decl('POST', `${R}/familias/:familyId/tradicoes/:tradicaoId/aprendizes`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const d = req.body || {};
+      const l = await tenancy.noEscopoDe(req, (t) => tradicoes.Tradicoes.aprendeu(t, {
+        familyId: req.familia.id, userId: req.usuario.id, tradicaoId: req.params.tradicaoId,
+        personId: d.person_id, quando: d.quando, nota: d.nota }));
+      res.status(201).json({ aprendiz: l });
+    }));
+
+  /** A corrente do saber: quem ensinou → quem aprendeu (§37). */
+  app.post(decl('POST', `${R}/familias/:familyId/tradicoes/:tradicaoId/transmissoes`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const d = req.body || {};
+      const x = await tenancy.noEscopoDe(req, (t) => tradicoes.Tradicoes.transmitir(t, {
+        familyId: req.familia.id, userId: req.usuario.id, tradicaoId: req.params.tradicaoId,
+        dePersonId: d.de_person_id, paraPersonId: d.para_person_id,
+        quando: d.quando, nota: d.nota }));
+      res.status(201).json({ transmissao: x });
+    }));
+
+  // ------------------------------------------------------ relíquias (§38)
+  app.get(decl('GET', `${R}/familias/:familyId/reliquias`), ...naFamilia, h(async (req, res) => {
+    const lista = await tenancy.noEscopoDe(req, (t) => tradicoes.Reliquias.listar(t, req.familia.id, {
+      pessoaId: tenancy.UUID.test(String(req.query.pessoa || '')) ? req.query.pessoa : null }));
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    const visiveis = lista.filter((x) =>
+      privacidade.podeVer({ privacidade: x.privacidade, created_by: x.created_by }, quem).pode);
+    res.json({ reliquias: visiveis, ocultas: lista.length - visiveis.length });
+  }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/reliquias`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => tradicoes.Reliquias.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: req.body || {} }));
+      res.status(201).json({ reliquia: r });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/reliquias/:reliquiaId`), ...naFamilia,
+    h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) =>
+        tradicoes.Reliquias.obter(t, req.params.reliquiaId));
+      if (!r) throw erro('erro.reliquia_nao_encontrada', 404);
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      if (!privacidade.podeVer(r, quem).pode) throw erro('erro.reliquia_nao_encontrada', 404);
+      res.json({ reliquia: r });
+    }));
+
+  app.delete(decl('DELETE', `${R}/familias/:familyId/reliquias/:reliquiaId`), ...naFamilia,
+    rbac.exigir('excluir'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => tradicoes.Reliquias.arquivar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, id: req.params.reliquiaId }));
+      res.json({ ok: true, aviso: req.t('mensagem.reliquia_arquivada') });
+    }));
+
+  /**
+   * Passar o objeto de mão. FECHA a custódia anterior e ABRE a nova — a
+   * corrente inteira continua legível, e a resposta a "como você sabe?"
+   * entra como FONTE, igual ao resto do sistema.
+   */
+  app.post(decl('POST', `${R}/familias/:familyId/reliquias/:reliquiaId/custodia`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const d = req.body || {};
+      const c = await tenancy.noEscopoDe(req, async (t) => {
+        let fonte = null;
+        if (d.fonte_titulo || d.fonte_referencia || d.fonte_tipo) {
+          fonte = await prov.criarFonte(t, {
+            familyId: req.familia.id, userId: req.usuario.id,
+            tipo: s(d.fonte_tipo, 30) || 'RELATO', titulo: s(d.fonte_titulo, 200),
+            referenciaExterna: s(d.fonte_referencia, 300) });
+        }
+        return tradicoes.Reliquias.transferir(t, {
+          familyId: req.familia.id, userId: req.usuario.id, heirloomId: req.params.reliquiaId,
+          personId: d.person_id, de: d.de, ate: d.ate, nota: s(d.nota, 500),
+          sourceId: fonte && fonte.id });
+      });
+      res.status(201).json({ custodia: c });
+    }));
+
+  // ------------------------------------------ historiador e missões (§29–32)
+  /**
+   * O que FALTA no acervo. É consulta, não IA: custa zero crédito, não
+   * depende de provedor e não inventa lacuna que não existe.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/historiador`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => historiador.lacunas(t, req.familia.id));
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      const visiveis = r.lacunas.filter((l) =>
+        privacidade.podeVer({ privacidade: l.privacidade, created_by: l.criado_por }, quem).pode);
+      const porTipo = {};
+      for (const l of visiveis) porTipo[l.tipo] = (porTipo[l.tipo] || 0) + 1;
+      res.json({ lacunas: visiveis, por_tipo: porTipo,
+        ocultas: r.lacunas.length - visiveis.length,
+        // o que a varredura CORTOU aparece: silêncio aqui viraria
+        // "não falta mais nada" quando ainda falta
+        alem_do_teto: r.cortados, teto: historiador.TETO });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/missoes`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const status = ['aberta', 'respondida', 'resolvida', 'dispensada', 'todas']
+        .includes(req.query.status) ? req.query.status : 'aberta';
+      const r = await tenancy.noEscopoDe(req, async (t) => ({
+        missoes: await missoes.listar(t, req.familia.id, { status }),
+        contagem: await missoes.contar(t, req.familia.id),
+      }));
+      // A pergunta chega traduzida para o idioma de QUEM lê (§86) — e o
+      // nome do campo divergente também ("data_nascimento" não é frase).
+      res.json({ ...r, missoes: r.missoes.map((m) => {
+        const vars = { ...(m.pergunta_vars || {}) };
+        if (vars.campo) vars.campo = req.t('predicado.' + vars.campo);
+        return { ...m, pergunta: req.t(m.pergunta_chave, vars) };
+      }) });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/missoes/sincronizar`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => missoes.sincronizar(t, {
+        familyId: req.familia.id, userId: req.usuario.id }));
+      // E-mail FORA da transação, e só para quem pediu — com a contagem,
+      // nunca com as perguntas (PRIVACY.md §7).
+      for (const u of r.avisar) {
+        await emails.missoes(u.email, { familia: req.familia.nome, n: r.criadas }, u.idioma);
+      }
+      res.json({ criadas: r.criadas, resolvidas: r.resolvidas, lacunas: r.lacunas,
+        alem_do_teto: r.cortados, avisados: r.avisar.length });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/missoes/:missaoId/responder`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => missoes.responder(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        missionId: req.params.missaoId, corpo: (req.body || {}).corpo }));
+      res.status(201).json(r);
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/missoes/:missaoId/dispensar`), ...naFamilia,
+    rbac.exigir('editar'), h(async (req, res) => {
+      const m = await tenancy.noEscopoDe(req, (t) => missoes.dispensar(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        missionId: req.params.missaoId, motivo: (req.body || {}).motivo }));
+      res.json({ missao: m, aviso: req.t('mensagem.missao_nao_volta') });
+    }));
+
+  /**
+   * Índice de memória (§31). SEM RANKING: sai em ordem de NOME, e o que
+   * a tela mostra é a LACUNA nomeada, não a posição.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/indice-memoria`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const lista = await tenancy.noEscopoDe(req, (t) =>
+        historiador.indiceDaFamilia(t, req.familia.id));
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      const visiveis = lista.filter((p) =>
+        privacidade.podeVer({ privacidade: p.privacidade, created_by: p.criado_por }, quem).pode);
+      res.json({ pessoas: visiveis, dimensoes: historiador.DIMENSOES,
+        ocultas: lista.length - visiveis.length, ordenado_por: 'nome' });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/pessoas/:pessoaId/indice-memoria`), ...naFamilia,
+    h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, async (t) => {
+        const p = await Persons.obter(t, req.params.pessoaId);
+        if (!p) return null;
+        return { pessoa: p, indice: await historiador.indiceDaPessoa(t, req.params.pessoaId),
+          quem_sabe: await historiador.quemSabe(t, req.params.pessoaId) };
+      });
+      if (!r) throw erro('erro.pessoa_nao_encontrada', 404);
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      if (!privacidade.podeVer(r.pessoa, quem).pode) throw erro('erro.pessoa_nao_encontrada', 404);
+      res.json({ indice: r.indice, quem_sabe: r.quem_sabe, dimensoes: historiador.DIMENSOES });
+    }));
+
+  // ------------------------------------------------- notificações (§87)
+  // OPT-IN: sem linha na tabela, ninguém recebe nada.
+  app.get(decl('GET', `${R}/familias/:familyId/notificacoes`), ...naFamilia, h(async (req, res) => {
+    const prefs = await tenancy.noEscopoDe(req, (t) =>
+      missoes.prefsDe(t, req.familia.id, req.usuario.id));
+    res.json({ preferencias: prefs, eventos: missoes.EVENTOS,
+      frequencias: missoes.FREQUENCIAS, padrao: 'nunca' });
+  }));
+
+  app.patch(decl('PATCH', `${R}/familias/:familyId/notificacoes`), ...naFamilia,
+    h(async (req, res) => {
+      const d = req.body || {};
+      const p = await tenancy.noEscopoDe(req, (t) => missoes.definirPref(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        evento: s(d.evento, 40) || 'missoes', frequencia: s(d.frequencia, 20) }));
+      res.json({ preferencia: p });
     }));
 
   // --------------------------------------------------------------- busca

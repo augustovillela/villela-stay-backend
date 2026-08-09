@@ -196,6 +196,33 @@ async function reconstruir(t, familyId) {
       WHERE st.family_id = $1 AND st.deleted_at IS NULL AND st.ocorrido_valor IS NOT NULL`,
     [familyId]);
 
+  // 6. tradições com "desde quando" (Fase 2.1) — a receita que existe
+  //    "desde os anos 40" é um marco da família como qualquer outro
+  await t.q(
+    `INSERT INTO timeline_entries (family_id, tipo, titulo, data_valor, precisao, data_ini,
+       data_fim, pessoas, ref_tipo, ref_id, local_texto, privacidade, criado_por)
+     SELECT tr.family_id, 'tradicao', tr.titulo, tr.desde_valor, tr.desde_precisao,
+            tr.desde_ini, tr.desde_fim,
+            CASE WHEN tr.person_id IS NULL THEN '{}'::uuid[] ELSE ARRAY[tr.person_id] END,
+            'tradition', tr.id, tr.local_texto, tr.privacidade, tr.created_by
+       FROM traditions tr
+      WHERE tr.family_id = $1 AND tr.deleted_at IS NULL AND tr.desde_valor IS NOT NULL`,
+    [familyId]);
+
+  // 7. cada passagem de mão de uma relíquia é um acontecimento datado —
+  //    é a linha de custódia (§38) aparecendo na régua da família
+  await t.q(
+    `INSERT INTO timeline_entries (family_id, tipo, titulo, data_valor, precisao, data_ini,
+       data_fim, pessoas, ref_tipo, ref_id, local_texto, privacidade, criado_por)
+     SELECT c.family_id, 'reliquia', h.nome || ' → ' || p.nome_exibicao,
+            c.de_valor, c.de_precisao, c.de_ini, c.de_fim, ARRAY[c.person_id],
+            'heirloom', h.id, h.local_texto, h.privacidade, c.created_by
+       FROM heirloom_custody c
+       JOIN heirlooms h ON h.id = c.heirloom_id
+       JOIN persons p ON p.id = c.person_id
+      WHERE c.family_id = $1 AND h.deleted_at IS NULL AND p.deleted_at IS NULL
+        AND c.de_valor IS NOT NULL`, [familyId]);
+
   const n = await t.uma(`SELECT count(*)::int c FROM timeline_entries WHERE family_id = $1`, [familyId]);
   return n.c;
 }

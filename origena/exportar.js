@@ -69,10 +69,14 @@ function zipar(arquivos) {                    // [{nome, dados(Buffer)}]
 }
 
 // ------------------------------------------------------------ dados.json
+// `memory_index` e `timeline_entries` NÃO entram: são projeções que se
+// refazem sozinhas. `missions` entra — dispensar uma pergunta é decisão da
+// família, e decisão da família viaja com o acervo.
 const TABELAS = ['persons', 'relationships', 'contributions', 'sources', 'claims', 'evidence',
   'claim_resolutions', 'stories', 'story_versions', 'story_mentions', 'places', 'events',
   'event_participants', 'albums', 'album_items', 'media', 'media_persons', 'document_texts',
-  'biographies', 'biography_versions'];
+  'biographies', 'biography_versions', 'traditions', 'recipes', 'recipe_learners',
+  'tradition_transmissions', 'heirlooms', 'heirloom_custody', 'missions'];
 
 async function dadosDaFamilia(t, familyId) {
   const dados = { formato: 'origena/v1', exportado_em: new Date().toISOString(), tabelas: {} };
@@ -218,17 +222,18 @@ async function importarDados(t, { familyId, userId, dados }) {
   // Ordem respeita as FKs. Colunas de usuário NÃO migram (a conta pode
   // não existir aqui): created_by vira o importador; o nome original
   // sobrevive como texto na fonte/nota.
-  const inserir = async (tabela, linhas, transformar) => {
-    contagem[tabela] = 0;
+  const inserir = async (tabela, linhas, transformar, { ignorarConflito = false } = {}) => {
+    contagem[tabela] = contagem[tabela] || 0;   // a mesma tabela pode entrar em duas passadas
     for (const l of linhas || []) {
       const v = transformar(l);
       if (!v) continue;
       // valor  = "tire esta coluna" (ex.: campo que não migra)
       const cols = Object.keys(v).filter((c) => v[c] !== undefined);
-      await t.q(`INSERT INTO ${tabela} (${cols.join(',')})
-                 VALUES (${cols.map((_, i) => '$' + (i + 1)).join(',')})`,
-        cols.map((c) => v[c]));
-      contagem[tabela]++;
+      const r = await t.q(`INSERT INTO ${tabela} (${cols.join(',')})
+                 VALUES (${cols.map((_, i) => '$' + (i + 1)).join(',')})`
+                 + (ignorarConflito ? ' ON CONFLICT DO NOTHING' : ''),
+      cols.map((c) => v[c]));
+      contagem[tabela] += r.rowCount || 0;
     }
   };
   const base = (l, extra = {}) => ({ id: novo(l.id), family_id: familyId, ...extra });
@@ -240,21 +245,35 @@ async function importarDados(t, { familyId, userId, dados }) {
     falecimento_claim_id: novo(l.falecimento_claim_id), capa_media_id: null,
     created_by: userId, exif: undefined }));
   await inserir('places', T.places, (l) => ({ ...l, ...base(l), created_by: userId }));
-  await inserir('media', T.media, (l) => ({ ...l, ...base(l),
+  // MÍDIA EM DUAS PASSADAS: a miniatura aponta o original (`derivado_de`),
+  // e `SELECT *` não garante que o pai venha antes do filho — importar na
+  // ordem crua estourava a FK em qualquer acervo com foto.
+  //
+  // `media` também não tem place_id (o lugar da foto ainda é `local_texto`);
+  // mandar a coluna aqui quebrava a mesma importação por outro motivo.
+  const midia = (l) => ({ ...l, ...base(l),
     derivado_de: novo(l.derivado_de), capturada_claim_id: novo(l.capturada_claim_id),
-    place_id: novo(l.place_id), ai_job_id: null, created_by: userId,
+    ai_job_id: null, created_by: userId,
     exif: j(l.exif), derivacao: j(l.derivacao),
     // o binário não veio no zip: o registro fica AGUARDANDO reenvio, e a
     // tela diz isso — nunca um "pronta" mentiroso.
-    status: l.derivado_de ? l.status : 'aguardando' }));
+    status: l.derivado_de ? l.status : 'aguardando' });
+  await inserir('media', (T.media || []).filter((l) => !l.derivado_de), midia);
+  await inserir('media', (T.media || []).filter((l) => l.derivado_de), midia);
   await inserir('relationships', T.relationships, (l) => ({ ...l, ...base(l),
     person_a: novo(l.person_a), person_b: novo(l.person_b), claim_id: novo(l.claim_id),
     created_by: userId }));
-  await inserir('contributions', T.contributions, (l) => ({ ...l, ...base(l),
+  // Contribuição também aponta para si mesma (`revisao_de`): duas
+  // passadas, original antes da revisão. Só `contributions` e `media` têm
+  // auto-referência no schema — tabela nova com FK para si mesma precisa
+  // entrar aqui do mesmo jeito.
+  const contribuicao = (l) => ({ ...l, ...base(l),
     autor_user_id: null, autor_person_id: novo(l.autor_person_id),
     alvo_id: novo(l.alvo_id), revisao_de: novo(l.revisao_de),
     corpo: l.corpo + (autores[l.autor_user_id]
-      ? `\n\n[importado — contado originalmente por ${autores[l.autor_user_id]}]` : '') }));
+      ? `\n\n[importado — contado originalmente por ${autores[l.autor_user_id]}]` : '') });
+  await inserir('contributions', (T.contributions || []).filter((l) => !l.revisao_de), contribuicao);
+  await inserir('contributions', (T.contributions || []).filter((l) => l.revisao_de), contribuicao);
   await inserir('sources', T.sources, (l) => ({ ...l, ...base(l),
     contribution_id: novo(l.contribution_id), media_id: novo(l.media_id),
     interview_id: null, created_by: userId }));
@@ -280,12 +299,53 @@ async function importarDados(t, { familyId, userId, dados }) {
     media_id: novo(l.media_id), person_id: novo(l.person_id),
     bbox: j(l.bbox), confirmado_por: l.confirmado_por ? userId : null }));
 
-  // Reindexa a busca do que chegou (pessoas, histórias e contribuições).
+  // Tradições, receitas, saberes e relíquias (Fase 2.1). A LINHA DE
+  // CUSTÓDIA viaja inteira: sem ela, a relíquia importada vira um objeto
+  // sem história, que é o mesmo que um objeto qualquer.
+  await inserir('traditions', T.traditions, (l) => ({ ...l, ...base(l),
+    person_id: novo(l.person_id), capa_media_id: novo(l.capa_media_id), created_by: userId }));
+  await inserir('recipes', T.recipes, (l) => ({ ...l, ...base(l),
+    tradition_id: novo(l.tradition_id), manuscrito_media_id: novo(l.manuscrito_media_id),
+    ingredientes: j(l.ingredientes) }));
+  await inserir('recipe_learners', T.recipe_learners, (l) => ({ ...l, ...base(l),
+    recipe_id: novo(l.recipe_id), person_id: novo(l.person_id), created_by: userId }));
+  await inserir('tradition_transmissions', T.tradition_transmissions, (l) => ({ ...l, ...base(l),
+    tradition_id: novo(l.tradition_id), de_person_id: novo(l.de_person_id),
+    para_person_id: novo(l.para_person_id), created_by: userId }));
+  await inserir('heirlooms', T.heirlooms, (l) => ({ ...l, ...base(l),
+    capa_media_id: novo(l.capa_media_id), created_by: userId }));
+  await inserir('heirloom_custody', T.heirloom_custody, (l) => ({ ...l, ...base(l),
+    heirloom_id: novo(l.heirloom_id), person_id: novo(l.person_id),
+    source_id: novo(l.source_id), created_by: userId }));
+  // A missão aponta para o alvo REMAPEADO, e a chave de idempotência
+  // acompanha — senão a mesma pergunta nasceria de novo na primeira
+  // sincronização, inclusive as que a família já tinha dispensado.
+  // Chave que já exista na família de destino é a MESMA pergunta: pular.
+  const chaveRemapeada = (l) => {
+    const p = String(l.chave || '').split(':');
+    if (l.alvo_id && p.length > 1) p[1] = novo(l.alvo_id);
+    return p.join(':');
+  };
+  await inserir('missions', T.missions, (l) => ({ ...l, ...base(l),
+    alvo_id: novo(l.alvo_id), resposta_id: novo(l.resposta_id), chave: chaveRemapeada(l),
+    sugerido_para_user_id: null, respondida_por: l.respondida_por ? userId : null,
+    pergunta_vars: j(l.pergunta_vars) }), { ignorarConflito: true });
+
+  // Reindexa a busca do que chegou (pessoas, tradições e relíquias).
   const buscaMod = require('./busca');
   for (const p of await t.todas(`SELECT * FROM persons WHERE family_id = $1`, [familyId])) {
     await buscaMod.indexar(t, { familyId, refTipo: 'person', refId: p.id,
       titulo: p.nome_exibicao, corpo: [p.resumo, p.profissao].filter(Boolean).join('\n'),
       pessoas: [p.id], privacidade: p.privacidade, criadoPor: userId });
+  }
+  const trad = require('./tradicoes');
+  for (const x of await t.todas(
+    `SELECT id FROM traditions WHERE family_id = $1 AND deleted_at IS NULL`, [familyId])) {
+    await trad.indexar(t, familyId, x.id);
+  }
+  for (const x of await t.todas(
+    `SELECT id FROM heirlooms WHERE family_id = $1 AND deleted_at IS NULL`, [familyId])) {
+    await trad.indexarReliquia(t, familyId, x.id);
   }
   await auditar({ familyId, atorUserId: userId, acao: 'acervo.importado',
     depois: contagem }, t);
