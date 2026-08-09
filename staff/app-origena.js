@@ -103,6 +103,8 @@ function ogFamilias(cx) {
             <small>${f.pessoas} pessoa(s) · ${f.midias} mídia(s) (${ogGB(f.bytes)}) · ${f.historias} história(s) · ${f.claims} fato(s)</small><br>
             <small><b>MPC ${f.mpc}</b> = ${m.midia || 0} mídia + ${m.historia || 0} história + ${m.tradicao || 0} tradição
               · ${mi.abertas || 0} pergunta(s) aberta(s), ${mi.fechadas || 0} fechada(s)</small><br>
+            <small>Documentos lidos: ${(f.achados || {}).aceitos || 0} sugestão(ões) viraram fato,
+              ${(f.achados || {}).sugeridos || 0} esperando decisão</small><br>
             <small>Créditos: <b>${f.saldo}</b> · IA: ${(f.ia || {}).jobs || 0} job(s), ${(f.ia || {}).presos || 0} preso(s), custo ${ogBrl(f.custo_ia_centavos)}</small>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px">

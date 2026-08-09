@@ -86,6 +86,12 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
           `SELECT count(*) FILTER (WHERE status = 'aberta')::int abertas,
                   count(*) FILTER (WHERE status IN ('respondida','resolvida'))::int fechadas
              FROM missions`),
+        // Leitura de documento (2.3): sugestão parada é trabalho que a
+        // família ainda não fez — e aceita é documento que virou fato.
+        achados: await t.uma(
+          `SELECT count(*) FILTER (WHERE status = 'sugerido')::int sugeridos,
+                  count(*) FILTER (WHERE status = 'aceito')::int aceitos
+             FROM document_findings`),
         ia: await t.uma(
           `SELECT count(*)::int jobs,
                   count(*) FILTER (WHERE status = 'executando')::int presos,

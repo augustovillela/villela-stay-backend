@@ -814,8 +814,10 @@ async function verMidia(id) {
           esc(c.autor_nome || '') + '</strong> · ' + esc(new Date(c.created_at).toLocaleDateString(IDIOMA)) +
           '</p></div>').join('')
       : '') +
+    (m.tipo === 'DOCUMENTO' ? '<div id="doc-ia"></div>' : '') +
     (pode('contribuir') ? formHistoria(id) : '') +
     '<p class="sub" style="margin-top:20px">' + esc(t('midia.original_intacto')) + '</p>');
+  if (m.tipo === 'DOCUMENTO') carregarAchados(id);
   if (pode('contribuir')) {
     const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
     const sel = document.getElementById('hq');
@@ -849,6 +851,77 @@ async function guardarHistoria(id) {
     porque_importa: document.getElementById('hp').value });
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verMidia(id);
+}
+
+// ------------------------------------------- o que a IA leu no documento
+// A tela inteira existe para deixar UMA coisa clara: isto é sugestão, não
+// fato. Cada achado só vira fato da família quando alguém apontar de quem
+// o papel fala — e o trecho citado fica à vista para conferir (§24).
+async function carregarAchados(mediaId) {
+  const alvo = document.getElementById('doc-ia');
+  if (!alvo) return;
+  const r = await api('GET', '/familias/' + FAM.id + '/midias/' + mediaId + '/achados');
+  const achados = r.achados || [];
+  const sugeridos = achados.filter(a => a.status === 'sugerido');
+  alvo.innerHTML = '<h3 style="margin-top:26px">' + esc(t('documento.leitura_titulo')) + '</h3>' +
+    '<p class="sub">' + esc(t('documento.leitura_intro')) + '</p>' +
+    (pode('ia.usar') ? '<p><button class="btn" id="doc-ler" onclick="lerDocumento(\\'' + mediaId + '\\')">' +
+      esc(t(achados.length ? 'documento.reler' : 'documento.ler')) + '</button></p>' : '') +
+    (achados.length ? achados.map(a => '<div class="card" style="padding:16px;text-align:left">' +
+      '<p style="margin:0 0 4px"><strong>' + esc(t('predicado.' + a.predicado) || a.predicado) +
+        '</strong>: ' + esc(a.valor) +
+        (a.pessoa_texto ? ' <span class="sub">— ' + esc(a.pessoa_texto) + '</span>' : '') + '</p>' +
+      (a.trecho ? '<p class="sub" style="margin:0 0 8px">' +
+        esc(t('documento.trecho', { trecho: a.trecho })) + '</p>' : '') +
+      (a.status === 'sugerido' && pode('claims.criar')
+        ? '<div class="linha"><span class="sub">' + esc(t('documento.achado_de')) + '</span>' +
+          '<span><select id="ap_' + a.id + '" class="ap-pessoa"></select> ' +
+          '<button class="btn mini" onclick="aceitarAchado(\\'' + a.id + '\\',\\'' + mediaId + '\\')">' +
+            esc(t('documento.aceitar')) + '</button> ' +
+          '<button class="btn mini sec" onclick="descartarAchado(\\'' + a.id + '\\',\\'' + mediaId + '\\')">' +
+            esc(t('documento.descartar')) + '</button></span></div>'
+        : '<p class="sub" style="margin:0">' + esc(a.status === 'aceito'
+          ? t('documento.aceito', { nome: a.pessoa_nome || '' })
+          : t('documento.descartado', { nome: a.decidido_por_nome || '' })) + '</p>') +
+      '</div>').join('')
+      : '<p class="sub">' + esc(t('documento.sem_achados')) + '</p>');
+
+  if (sugeridos.length && pode('claims.criar')) {
+    const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
+    const opcoes = (l.pessoas || []).map(x =>
+      '<option value="' + x.id + '">' + esc(x.nome_exibicao) + '</option>').join('');
+    document.querySelectorAll('.ap-pessoa').forEach(s => { s.innerHTML = '<option value=""></option>' + opcoes; });
+  }
+}
+
+async function lerDocumento(mediaId, confirmando) {
+  const b = document.getElementById('doc-ler');
+  if (b && confirmando) { b.disabled = true; b.textContent = t('documento.lendo'); }
+  const r = await api('POST', '/familias/' + FAM.id + '/midias/' + mediaId + '/analisar',
+    confirmando ? { confirmar: true } : {});
+  if (r.status === 503) return alert(t('ia.indisponivel'));
+  if (r.status >= 400) { carregarAchados(mediaId); return alert(r.erro); }
+  if (r.cotacao && !confirmando) {
+    if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return lerDocumento(mediaId, true);
+    return;
+  }
+  await carregarAchados(mediaId);
+  if (!(r.achados || []).length) alert(t('documento.nada_encontrado'));
+}
+
+async function aceitarAchado(achadoId, mediaId) {
+  const sel = document.getElementById('ap_' + achadoId);
+  if (!sel || !sel.value) return alert(t('documento.escolha_pessoa'));
+  const r = await api('POST', '/familias/' + FAM.id + '/achados/' + achadoId + '/aceitar',
+    { pessoa: sel.value });
+  if (r.status >= 400) return alert(r.erro);
+  carregarAchados(mediaId);
+}
+
+async function descartarAchado(achadoId, mediaId) {
+  const r = await api('POST', '/familias/' + FAM.id + '/achados/' + achadoId + '/descartar');
+  if (r.status >= 400) return alert(r.erro);
+  carregarAchados(mediaId);
 }
 
 async function confirmarPessoa(idId, mediaId) {

@@ -6,15 +6,19 @@
 // dependência nativa. Reescrever isso aqui seria duplicar 150 linhas
 // testadas por 234 testes do Villela Docs.
 //
-// O QUE NÃO TEMOS, E DIZEMOS: imagem escaneada e manuscrito NÃO viram
-// texto. Não existe OCR contratado no grupo. Em vez de fingir, o
-// documento fica `ocr_pendente` e a tela avisa — a família precisa saber
-// que aquela certidão ainda não é buscável.
+// ESTE MÓDULO SÓ LÊ TEXTO QUE JÁ EXISTE dentro do arquivo. Imagem
+// escaneada e manuscrito continuam saindo daqui como `ocr_pendente` — e
+// isso deixou de ser um beco sem saída em 09/08/2026: quem lê o
+// escaneado é `documentos-ia.js` (fase 2.3), com o modelo de linguagem
+// que a família aciona quando quiser, pagando créditos.
+//
+// A ordem importa: tentamos primeiro o texto real do arquivo, que é
+// exato e de graça. Visão é para o que não tem texto nenhum.
 //
 // Pipeline (§24): OCR → transcrição → entidades → datas → lugares →
-// pessoas → possíveis claims → CONFIRMAÇÃO HUMANA. Desta fase entram os
-// dois primeiros passos; a sugestão de claims é da Fase 7 (IA), e nada
-// dela vira fato sem confirmação.
+// pessoas → possíveis claims → CONFIRMAÇÃO HUMANA. Daqui saem os dois
+// primeiros passos no caso digital; o resto é da 2.3, e nada de lá vira
+// fato sem confirmação.
 // =====================================================================
 'use strict';
 const { erro } = require('./erros');

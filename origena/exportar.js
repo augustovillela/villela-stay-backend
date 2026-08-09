@@ -76,7 +76,7 @@ const TABELAS = ['persons', 'relationships', 'contributions', 'sources', 'claims
   'claim_resolutions', 'stories', 'story_versions', 'story_mentions', 'places', 'events',
   'event_participants', 'albums', 'album_items', 'media', 'media_persons', 'document_texts',
   'biographies', 'biography_versions', 'traditions', 'recipes', 'recipe_learners',
-  'tradition_transmissions', 'heirlooms', 'heirloom_custody', 'missions'];
+  'tradition_transmissions', 'heirlooms', 'heirloom_custody', 'missions', 'document_findings'];
 
 async function dadosDaFamilia(t, familyId) {
   const dados = { formato: 'origena/v1', exportado_em: new Date().toISOString(), tabelas: {} };
@@ -330,6 +330,13 @@ async function importarDados(t, { familyId, userId, dados }) {
     alvo_id: novo(l.alvo_id), resposta_id: novo(l.resposta_id), chave: chaveRemapeada(l),
     sugerido_para_user_id: null, respondida_por: l.respondida_por ? userId : null,
     pergunta_vars: j(l.pergunta_vars) }), { ignorarConflito: true });
+
+  // Achados da leitura de documento (2.3): sugestão e decisão viajam
+  // junto — o que a família já descartou continua descartado do outro
+  // lado, e o que virou fato continua apontando o claim certo.
+  await inserir('document_findings', T.document_findings, (l) => ({ ...l, ...base(l),
+    media_id: novo(l.media_id), person_id: novo(l.person_id), claim_id: novo(l.claim_id),
+    ai_job_id: null, decidido_por: l.decidido_por ? userId : null }), { ignorarConflito: true });
 
   // Reindexa a busca do que chegou (pessoas, tradições e relíquias).
   const buscaMod = require('./busca');

@@ -25,6 +25,7 @@ const midia = require('./midia');
 const storage = require('./storage');
 const fila = require('./fila');
 const documentos = require('./documentos');
+const documentosIA = require('./documentos-ia');
 const historias = require('./historias');
 const busca = require('./busca');
 const tempo = require('./tempo');
@@ -524,6 +525,47 @@ function registrarRotasApp(app) {
   app.get(decl('GET', `${R}/familias/:familyId/documentos/pendentes`), ...naFamilia,
     rbac.exigir('ver.documentos'), h(async (req, res) => {
       res.json({ pendentes: await tenancy.noEscopoDe(req, (t) => documentos.pendentes(t, req.familia.id)) });
+    }));
+
+  /**
+   * Ler o documento com IA (§24, fase 2.3). Sem `confirmar`, devolve a
+   * COTAÇÃO. Com, transcreve e guarda SUGESTÕES — que não são fatos até
+   * alguém dizer de quem o papel fala.
+   */
+  app.post(decl('POST', `${R}/familias/:familyId/midias/:mediaId/analisar`), ...naFamilia,
+    rbac.exigir('ia.usar'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      res.json(await documentosIA.analisar({ familyId: req.familia.id, userId: req.usuario.id,
+        mediaId: req.params.mediaId, quem, confirmar: !!(req.body || {}).confirmar }));
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/midias/:mediaId/achados`), ...naFamilia,
+    rbac.exigir('ver.documentos'), h(async (req, res) => {
+      res.json({ achados: await tenancy.noEscopoDe(req,
+        (t) => documentosIA.achadosDe(t, req.params.mediaId)) });
+    }));
+
+  /** Fila da família: tudo que a IA leu e ninguém decidiu ainda. */
+  app.get(decl('GET', `${R}/familias/:familyId/achados`), ...naFamilia,
+    rbac.exigir('ver.documentos'), h(async (req, res) => {
+      res.json({ achados: await tenancy.noEscopoDe(req,
+        (t) => documentosIA.pendentesDaFamilia(t, req.familia.id, req.query.limite)) });
+    }));
+
+  /** Aceitar: a pessoa aponta de quem o documento fala, e o fato nasce. */
+  app.post(decl('POST', `${R}/familias/:familyId/achados/:achadoId/aceitar`), ...naFamilia,
+    rbac.exigir('claims.criar'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => documentosIA.aceitar(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        achadoId: req.params.achadoId, personId: (req.body || {}).pessoa }));
+      res.status(201).json({ claim: r.claim });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/achados/:achadoId/descartar`), ...naFamilia,
+    rbac.exigir('claims.criar'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => documentosIA.descartar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, achadoId: req.params.achadoId }));
+      res.json({ ok: true });
     }));
 
   // ----------------------------------------------------------- histórias

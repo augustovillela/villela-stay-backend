@@ -2383,6 +2383,133 @@ async function principal() {
     await req('PATCH', F(`/membros/${bruno.id}`), { sessao: ana, corpo: { papel: 'CONTRIBUTOR' } });
   });
 
+  // ================================================== 2.3 LER O DOCUMENTO
+  console.log('\nler documento com IA (2.3, §24) — achado NÃO é fato');
+
+  const docIA = require('./documentos-ia');
+  let escaneado = null, achadoData = null;
+
+  // Uma imagem sem texto nenhum: é o caso que o produto declarava não
+  // saber ler ("imagem escaneada e manuscrito NÃO viram texto").
+  const lerFalso = (saida) => routerIA.injetarParaTeste('anthropic', async ({ capability, entrada }) => {
+    if (capability !== 'analisar_documento') throw new Error('capability errada: ' + capability);
+    ultimaEntradaDoc = entrada;
+    return { saida, tokens_in: 2000, tokens_out: 900, custo_centavos: 30 };
+  });
+  let ultimaEntradaDoc = null;
+
+  await teste('o escaneado vai como ARQUIVO ao modelo — é o buraco que a 2.3 fecha', async () => {
+    const r = await enviar(pngReal(60, 60, [9, 9, 9]), 'certidao-escaneada.png');
+    await fila.processarLote(10, 'rapida');
+    await tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE media SET tipo = 'DOCUMENTO', titulo = 'Certidão da Anna' WHERE id = $1`, [r.media_id]));
+    escaneado = r.media_id;
+
+    lerFalso({ tipo_documento: 'certidão de nascimento',
+      transcricao: 'Aos quinze dias do mez de março de mil novecentos e vinte e um nasceu Anna Villela, '
+        + 'na cidade de Pirapora, filha de [ilegível].',
+      achados: [
+        { predicado: 'nome', valor: 'Anna Villela', pessoa: 'Anna Villela', trecho: 'nasceu Anna Villela' },
+        { predicado: 'data_nascimento', valor: '15/03/1921', pessoa: 'Anna Villela',
+          trecho: 'aos quinze dias do mez de março de mil novecentos e vinte e um' },
+        { predicado: 'local_nascimento', valor: 'Pirapora', pessoa: 'Anna Villela', trecho: 'na cidade de Pirapora' },
+        { predicado: 'signo', valor: 'peixes', trecho: 'inventado' },   // predicado que o produto não tem
+      ] });
+
+    const cot = await req('POST', F(`/midias/${escaneado}/analisar`), { sessao: ana, corpo: {} });
+    assert.strictEqual(cot.status, 200, cot.texto);
+    assert(cot.json.cotacao, 'leu sem cotar antes (§53)');
+    assert(!cot.json.achados, 'ANALISOU sem confirmação');
+
+    const r2 = await req('POST', F(`/midias/${escaneado}/analisar`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(r2.status, 200, r2.texto);
+    assert(ultimaEntradaDoc.arquivo, 'mandou só texto para um escaneado — não teria o que ler');
+    assert.strictEqual(ultimaEntradaDoc.arquivo.mime, 'image/png');
+    assert(ultimaEntradaDoc.arquivo.base64.length > 100, 'o arquivo foi vazio');
+  });
+
+  await teste('a transcrição torna o escaneado BUSCÁVEL — e diz que é leitura de máquina', async () => {
+    const txt = await req('GET', F(`/midias/${escaneado}/texto`), { sessao: ana });
+    assert.strictEqual(txt.json.texto.status, 'extraido', 'continuou sem texto');
+    assert.match(txt.json.texto.texto, /Pirapora/);
+    assert.match(txt.json.texto.metodo, /^ia:/, 'não marcou que o texto veio de IA');
+    // era exatamente isto que faltava: achar a certidão pela palavra dela
+    const b = await req('GET', F('/busca?q=Pirapora'), { sessao: ana });
+    assert(b.json.resultados.some((x) => x.ref_id === escaneado),
+      'o documento transcrito não apareceu na busca');
+  });
+
+  await teste('achado NÃO é fato: nada foi projetado na pessoa', async () => {
+    const lista = await req('GET', F(`/midias/${escaneado}/achados`), { sessao: ana });
+    assert.strictEqual(lista.status, 200, lista.texto);
+    const preds = lista.json.achados.map((a) => a.predicado);
+    assert(preds.includes('data_nascimento'), 'perdeu um achado legítimo');
+    assert(!preds.includes('signo'), 'aceitou predicado que o produto não conhece');
+    assert(lista.json.achados.every((a) => a.status === 'sugerido' && !a.claim_id),
+      'a leitura da IA virou fato sozinha (§24)');
+    achadoData = lista.json.achados.find((a) => a.predicado === 'data_nascimento');
+    assert(achadoData.trecho, 'achado sem o trecho que o sustenta');
+  });
+
+  await teste('reler o documento não duplica sugestão nem ressuscita descarte', async () => {
+    const antes = (await req('GET', F(`/midias/${escaneado}/achados`), { sessao: ana })).json.achados;
+    const alvo = antes.find((a) => a.predicado === 'local_nascimento');
+    const desc = await req('POST', F(`/achados/${alvo.id}/descartar`), { sessao: ana });
+    assert.strictEqual(desc.status, 200, desc.texto);
+
+    await req('POST', F(`/midias/${escaneado}/analisar`), { sessao: ana, corpo: { confirmar: true } });
+    const depois = (await req('GET', F(`/midias/${escaneado}/achados`), { sessao: ana })).json.achados;
+    assert.strictEqual(depois.length, antes.length, 'a segunda leitura duplicou sugestões');
+    assert.strictEqual(depois.find((a) => a.id === alvo.id).status, 'descartado',
+      'o que a família descartou voltou na releitura');
+  });
+
+  await teste('aceitar cria fato DOCUMENTADO — a IA leu, a pessoa conferiu', async () => {
+    const anna = await criarPessoa({ nome: 'Anna Villela' });
+    const r = await req('POST', F(`/achados/${achadoData.id}/aceitar`),
+      { sessao: ana, corpo: { pessoa: anna.id } });
+    assert.strictEqual(r.status, 201, r.texto);
+    assert.strictEqual(r.json.claim.status, 'DOCUMENTED',
+      'o fato saiu como inferência da IA — a fonte é o DOCUMENTO, não o modelo');
+    assert.strictEqual(r.json.claim.created_by_kind, 'user', 'atribuiu à IA o que um humano decidiu');
+
+    // o fato aparece na pessoa, com o caminho de volta até o documento
+    const fatos = await req('GET', F(`/pessoas/${anna.id}/fatos`), { sessao: ana });
+    const nasc = (fatos.json.fatos || []).find((f) => f.predicado === 'data_nascimento');
+    assert(nasc, 'o fato aceito não chegou à pessoa');
+    const versoes = await req('GET', F(`/pessoas/${anna.id}/fatos/data_nascimento`), { sessao: ana });
+    assert(JSON.stringify(versoes.json).includes('Certidão da Anna'),
+      'o fato não aponta de volta para o documento que o sustenta');
+    // aceitar duas vezes não cria dois fatos
+    const dnv = await req('POST', F(`/achados/${achadoData.id}/aceitar`),
+      { sessao: ana, corpo: { pessoa: anna.id } });
+    assert.strictEqual(dnv.status, 409, 'aceitou a mesma sugestão duas vezes');
+  });
+
+  await teste('ler documento cobra pelo registry e deixa rastro no job', async () => {
+    const tarifa = (await db.uma(
+      `SELECT creditos FROM provider_registry WHERE capability = 'analisar_documento' AND ativo
+        ORDER BY prioridade LIMIT 1`)).creditos;
+    const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    lerFalso({ tipo_documento: 'carta', transcricao: 'Querida Anna, escrevo de longe.', achados: [] });
+    const r = await req('POST', F(`/midias/${escaneado}/analisar`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(r.status, 200, r.texto);
+    const depois = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    assert.strictEqual(depois, antes - tarifa, 'cobrou diferente da tarifa do registry');
+    const linhas = await tenancy.comEscopo(famA, (t) => t.todas(
+      `SELECT capability FROM ai_cost_ledger WHERE capability = 'analisar_documento'`));
+    assert(linhas.length >= 1, 'a leitura não entrou no ledger de custo');
+  });
+
+  await teste('documento que a família não pode ver não é lido nem por engano', async () => {
+    // GUEST não tem ia.usar; EDITOR tem, mas não vê documento PRIVADO
+    const r = await req('POST', F(`/midias/${escaneado}/analisar`),
+      { sessao: bruno, corpo: { confirmar: true } });
+    assert.strictEqual(r.status, 403, 'CONTRIBUTOR mandou a IA ler um documento');
+  });
+
   await teste('o custo real fica no ledger de IA, com créditos e margem (§57)', async () => {
     const linhas = await tenancy.comEscopo(famA, (t) => t.todas(
       `SELECT capability, tokens_in, custo_centavos, creditos_cobrados FROM ai_cost_ledger`));
@@ -2905,7 +3032,7 @@ async function principal() {
       .replace(':predicado', 'data_nascimento').replace(':tipo', 'pessoa');
     for (const p of [':pessoaId', ':relId', ':claimId', ':contribId', ':mediaId', ':albumId',
       ':idId', ':storyId', ':lugarId', ':eventoId', ':exportId', ':tradicaoId', ':reliquiaId',
-      ':missaoId', ':itemId', ':id']) {
+      ':missaoId', ':achadoId', ':itemId', ':id']) {
       c = c.replace(p, ALVO_FALSO);
     }
     const sobrou = c.match(/\/:(\w+)/);
@@ -2972,6 +3099,31 @@ async function principal() {
       const r = await req(rota.metodo, caminhoDeTeste(rota, famA, ana.id), {});
       assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
     }
+  });
+
+  await teste('toda tabela de família entra na PURGA — ou está declarada fora', async () => {
+    // Tabela nova com `family_id` que ninguém lembrou de purgar é uma
+    // promessa de LGPD quebrada em silêncio: o Augusto clica "purgar", a
+    // tela diz que apagou, e as linhas continuam lá. Aqui a lista sai do
+    // BANCO, não da memória de quem escreveu o módulo — foi assim que
+    // `orders` (do gateway) apareceu faltando.
+    const FORA = new Set([
+      'audit_log',            // o registro da purga não pode se apagar
+      'consents',             // prova de base legal (LGPD art. 37)
+      'family_memberships', 'invites',  // apagadas fora da ORDEM, no fim
+      'feature_flags',        // configuração, não conteúdo
+      'jobs', 'jobs_dlq',     // fila operacional, some por retenção
+    ]);
+    const comFamilia = (await db.todas(
+      `SELECT c.table_name FROM information_schema.columns c
+         JOIN information_schema.tables t
+           ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+        WHERE c.table_schema = $1 AND c.column_name = 'family_id'
+          AND t.table_type = 'BASE TABLE'`, [db.SCHEMA])).map((x) => x.table_name);
+    const ordem = new Set(require('./purga').ORDEM);
+    const esquecidas = comFamilia.filter((n) => !ordem.has(n) && !FORA.has(n));
+    assert.strictEqual(esquecidas.length, 0,
+      'tabela com family_id fora da purga: ' + esquecidas.join(', '));
   });
 
   await teste('a IA não pode decidir autorização (§102) — nem por import', async () => {

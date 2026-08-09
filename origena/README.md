@@ -42,6 +42,7 @@ e cada uma tem um ADR explicando o que se perde ao reverter.
 | `tradicoes.js` | Tradições, receitas, saberes e relíquias. A custódia é histórico, não campo |
 | `historiador.js` | Lacunas do acervo e índice de memória. **É SQL, não IA** — custo zero, sem provedor |
 | `missoes.js` | Lacuna → pergunta endereçada, idempotente pela chave; notificação **opt-in** |
+| `documentos-ia.js` | Lê o escaneado por VISÃO (fase 2.3): transcrição vai para a busca, achados ficam como SUGESTÃO até alguém dizer de quem o papel fala |
 | `billing.js` | Única fronteira com o Mercado Pago. O webhook **consulta o provedor**, não confia no corpo; sem `MP_ACCESS_TOKEN` a cobrança fica manual e o produto continua inteiro |
 | `selftest.js` | `npm run test:origena` — schema descartável, R2 real |
 

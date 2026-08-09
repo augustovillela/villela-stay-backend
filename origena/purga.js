@@ -65,13 +65,13 @@ async function restaurar(t, { familyId, userId, tipo, id }) {
 // Ordem de desmonte: filhos antes de pais (FKs), binários antes das
 // linhas que os apontam — se a purga morrer no meio, sobra registro
 // apontando byte apagado (visível), nunca byte órfão pago para sempre.
-const ORDEM = ['heirloom_custody', 'heirlooms', 'recipe_learners', 'tradition_transmissions',
+const ORDEM = ['document_findings', 'heirloom_custody', 'heirlooms', 'recipe_learners', 'tradition_transmissions',
   'recipes', 'traditions', 'missions', 'memory_index', 'notification_prefs',
   'evidence', 'claim_resolutions', 'claims', 'sources', 'contributions',
   'story_mentions', 'story_versions', 'stories', 'event_participants', 'events',
   'timeline_entries', 'album_items', 'albums', 'media_persons', 'document_texts', 'busca',
   'biography_versions', 'biographies', 'exports', 'ai_cost_ledger', 'ai_jobs',
-  'credit_transactions', 'credit_wallets', 'subscriptions', 'media', 'person_user_links',
+  'credit_transactions', 'credit_wallets', 'orders', 'subscriptions', 'media', 'person_user_links',
   'relationships', 'persons', 'places'];
 
 async function purgarFamilia(t, { familyId, confirmarNome, atorUserId }) {
@@ -115,4 +115,4 @@ async function purgarFamilia(t, { familyId, confirmarNome, atorUserId }) {
   return { binarios: apagados, linhas };
 }
 
-module.exports = { lixeira, restaurar, purgarFamilia };
+module.exports = { lixeira, restaurar, purgarFamilia, ORDEM };

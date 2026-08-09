@@ -222,7 +222,11 @@
     "plano_nao_encontrado": "Esse plano não existe mais.",
     "plano_sem_preco": "Esse plano não tem preço para o ciclo escolhido.",
     "email_obrigatorio": "Confirme seu e-mail antes de assinar.",
-    "assinatura_nao_encontrada": "Não há assinatura ativa para cancelar."
+    "assinatura_nao_encontrada": "Não há assinatura ativa para cancelar.",
+    "documento_formato_nao_lido": "Só consigo ler imagem (JPG, PNG, WEBP) ou PDF.",
+    "documento_grande_demais": "Este arquivo é grande demais para ler de uma vez. Envie uma página por vez.",
+    "achado_nao_encontrado": "Essa sugestão não existe mais.",
+    "achado_ja_decidido": "Essa sugestão já foi decidida."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -532,11 +536,27 @@
     "texto": "Texto do documento",
     "metodo": "lido de {metodo}",
     "paginas": "{n} página(s)",
-    "ocr_pendente": "Este documento é uma imagem. Ainda não conseguimos ler o texto dele — por isso ele não aparece na busca por palavra.",
+    "ocr_pendente": "Este documento é uma imagem. O texto dele ainda não foi lido — por isso ele não aparece na busca por palavra. Você pode pedir à Origena para ler.",
     "sem_texto": "Não havia texto neste arquivo.",
     "falhou": "Não consegui ler este arquivo.",
     "pendentes": "Documentos ainda não buscáveis",
-    "nada_pendente": "Todos os documentos já estão buscáveis."
+    "nada_pendente": "Todos os documentos já estão buscáveis.",
+    "leitura_titulo": "O que este papel diz",
+    "leitura_intro": "A Origena pode ler o documento — inclusive manuscrito — e transcrever o que está escrito. O que ela achar fica como SUGESTÃO: vira fato da família só quando você disser de quem o papel fala.",
+    "ler": "Ler este documento",
+    "reler": "Ler de novo",
+    "lendo": "Lendo o documento…",
+    "transcrito": "Transcrito por leitura automática em {n} caracteres — confira antes de confiar.",
+    "sem_achados": "Nada foi lido ainda neste documento.",
+    "nada_encontrado": "A leitura não encontrou nenhum dado de pessoa neste documento. A transcrição continua guardada e o documento já aparece na busca.",
+    "achado_de": "de quem é este dado?",
+    "aceitar": "É isto",
+    "descartar": "Não é",
+    "aceito": "virou fato de {nome}",
+    "descartado": "descartado por {nome}",
+    "escolha_pessoa": "Escolha a pessoa antes de aceitar.",
+    "trecho": "no documento: “{trecho}”",
+    "fila_titulo": "Sugestões de documentos"
   },
   "tempo": {
     "titulo": "Linha do tempo",
