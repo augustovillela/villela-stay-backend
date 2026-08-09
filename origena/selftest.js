@@ -1,5 +1,5 @@
 // =====================================================================
-// ORIGENA — suíte de testes (Fases 0 a 5).   npm run test:origena
+// ORIGENA — suíte de testes (Fases 0 a 6).   npm run test:origena
 //
 // Sobe o Express real com auth de staff injetada, num SCHEMA DESCARTÁVEL
 // do Postgres (o equivalente ao os.tmpdir() que os produtos SQLite usam)
@@ -17,6 +17,8 @@
 //         imutabilidade do original e "conte a história desta foto".
 // Fase 5: documentos que viram texto (e os que NÃO viram, declarados),
 //         histórias versionadas e a busca única com filtros.
+// Fase 6: lugares com nome histórico, eventos e a linha do tempo como
+//         PROJEÇÃO reconstruível — nunca fonte de verdade.
 // =====================================================================
 'use strict';
 const crypto = require('crypto');
@@ -1740,6 +1742,97 @@ async function principal() {
     assert.strictEqual(r.is_generated, 'ALWAYS', 'o tsv não é coluna gerada — dá para sair de sincronia');
   });
 
+  // =================================================================== FASE 6
+  console.log('\nlugares — o nome antigo não se perde');
+  let fazenda;
+  await teste('renomear um lugar PRESERVA o nome histórico', async () => {
+    const r = await req('POST', F('/lugares'), { sessao: ana,
+      corpo: { nome: 'Fazenda do Meio', municipio: 'Pirapora', uf: 'MG' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    fazenda = r.json.lugar.id;
+    const ren = await req('PATCH', F(`/lugares/${fazenda}`), { sessao: ana,
+      corpo: { nome: 'Sítio Santa Rita' } });
+    assert.strictEqual(ren.status, 200, ren.texto);
+    assert.strictEqual(ren.json.lugar.nome, 'Sítio Santa Rita');
+    assert(ren.json.lugar.nomes_historicos.includes('Fazenda do Meio'),
+      'o nome antigo SUMIU — é o que está no verso das fotos');
+    // renomear de novo acumula, não substitui
+    await req('PATCH', F(`/lugares/${fazenda}`), { sessao: ana, corpo: { nome: 'Chácara Rita' } });
+    const lista = await req('GET', F('/lugares'), { sessao: ana });
+    const l = lista.json.lugares.find((x) => x.id === fazenda);
+    assert.deepStrictEqual(l.nomes_historicos.sort(),
+      ['Fazenda do Meio', 'Sítio Santa Rita'], 'perdeu um dos nomes anteriores');
+  });
+
+  console.log('\neventos');
+  await teste('evento com participantes, data imprecisa e lugar', async () => {
+    const r = await req('POST', F('/eventos'), { sessao: ana, corpo: {
+      tipo: 'reuniao', titulo: 'Almoço dos 80 anos da Maria',
+      data: '03/1975', local: 'Pirapora',
+      participantes: [P.joao.id, P.maria.id, P.pedro.id],
+      descricao: 'A família inteira na fazenda.' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    const ev = await req('GET', F(`/eventos/${r.json.evento.id}`), { sessao: ana });
+    assert.strictEqual(ev.json.evento.data_precisao, 'MES');
+    assert.strictEqual(ev.json.evento.participantes.length, 3);
+    // e entra na busca como tudo o mais
+    const b = await req('GET', F('/busca?q=almoço'), { sessao: ana });
+    assert(b.json.resultados.some((x) => x.ref_tipo === 'event'), 'o evento não ficou buscável');
+  });
+
+  console.log('\nlinha do tempo (§33)');
+  await teste('a timeline junta nascimento, casamento, evento, foto e história em ordem', async () => {
+    const r = await req('GET', F('/timeline'), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    const tipos = new Set(r.json.itens.map((i) => i.tipo));
+    for (const esperado of ['nascimento', 'casamento', 'evento', 'foto', 'historia']) {
+      assert(tipos.has(esperado), `faltou "${esperado}" na timeline (tem: ${[...tipos].join(', ')})`);
+    }
+    // ordem defensável: datas conhecidas em ordem crescente
+    const comData = r.json.itens.filter((i) => i.data_ini);
+    for (let i = 1; i < comData.length; i++) {
+      assert(comData[i].data_ini >= comData[i - 1].data_ini,
+        `fora de ordem: ${comData[i - 1].titulo} (${comData[i - 1].data_ini}) antes de ${comData[i].titulo} (${comData[i].data_ini})`);
+    }
+    // a IMPRECISÃO viaja junto — a tela mostra "anos 40", não uma data inventada
+    const foto = r.json.itens.find((i) => i.tipo === 'foto' && i.precisao === 'DECADA');
+    assert(foto, 'a foto dos anos 40 não veio com a precisão');
+    assert.strictEqual(foto.data_valor, 'anos 1940');
+  });
+
+  await teste('timeline individual: só o que toca a pessoa (§33)', async () => {
+    const r = await req('GET', F(`/timeline?pessoa=${P.maria.id}`), { sessao: ana });
+    assert(r.json.itens.length >= 3, 'a timeline da Maria veio vazia demais');
+    assert(r.json.itens.every((i) => (i.pessoas || []).includes(P.maria.id)),
+      'entrou item que não menciona a Maria');
+    assert(r.json.itens.some((i) => i.tipo === 'casamento'), 'o casamento dela não apareceu');
+  });
+
+  await teste('reconstruir do zero dá o MESMO resultado (projeção, não verdade)', async () => {
+    const antes = await req('GET', F('/timeline'), { sessao: ana });
+    // apaga a projeção na mão — se ela fosse fonte de verdade, isto perderia dados
+    await tenancy.comEscopo(famA, (t) => t.q(`DELETE FROM timeline_entries WHERE family_id = $1`, [famA]));
+    const depois = await req('GET', F('/timeline'), { sessao: ana });
+    const chave = (i) => `${i.tipo}|${i.titulo}|${i.data_ini}|${i.ref_id}`;
+    assert.deepStrictEqual(
+      depois.json.itens.map(chave).sort(), antes.json.itens.map(chave).sort(),
+      'a reconstrução não reproduziu a projeção — ela NÃO é derivável das fontes');
+  });
+
+  await teste('item privado some da timeline de quem não pode ver', async () => {
+    const r = await req('GET', F('/timeline'), { sessao: bruno });   // CONTRIBUTOR
+    assert(!r.json.itens.some((i) => i.ref_id === P.privada), 'a foto privada apareceu na timeline');
+    const daAna = await req('GET', F('/timeline'), { sessao: ana });
+    assert(daAna.json.itens.length >= r.json.itens.length);
+  });
+
+  await teste('filtro por período corta a timeline', async () => {
+    const r = await req('GET', F('/timeline?de=1970-01-01&ate=1979-12-31'), { sessao: ana });
+    assert(r.json.itens.some((i) => i.tipo === 'evento'), 'o almoço de 1975 não apareceu no recorte');
+    assert(!r.json.itens.some((i) => i.data_fim && i.data_fim < '1970-01-01'),
+      'entrou item de antes do recorte');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
@@ -1790,7 +1883,8 @@ async function principal() {
         .replace(':predicado', 'data_nascimento').replace(':claimId', uuidFalso)
         .replace(':contribId', uuidFalso).replace(':mediaId', uuidFalso)
         .replace(':albumId', uuidFalso).replace(':idId', uuidFalso)
-        .replace(':storyId', uuidFalso).replace(':id', uuidFalso);
+        .replace(':storyId', uuidFalso).replace(':lugarId', uuidFalso)
+        .replace(':eventoId', uuidFalso).replace(':id', uuidFalso);
       const r = await req(rota.metodo, caminho, { sessao: ana, corpo: rota.metodo === 'GET' ? undefined : { nome: 'invasao', papel: 'GUEST' } });
       // 404 e NUNCA 403: 403 confirmaria que a família existe (T2).
       if (r.status !== 404) falhas94.push(`${rota.metodo} ${rota.caminho} → ${r.status}`);
@@ -1806,7 +1900,8 @@ async function principal() {
         .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
         .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
         .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO)
-        .replace(':storyId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':storyId', ALVO_FALSO).replace(':lugarId', ALVO_FALSO)
+        .replace(':eventoId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, { sessao: silva, corpo: rota.metodo === 'GET' ? undefined : { nome: 'x', papel: 'GUEST' } });
       assert.strictEqual(r.status, 404, `${rota.metodo} ${rota.caminho} devolveu ${r.status}`);
     }
@@ -1819,7 +1914,8 @@ async function principal() {
         .replace(':predicado', 'data_nascimento').replace(':claimId', ALVO_FALSO)
         .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
         .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO)
-        .replace(':storyId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':storyId', ALVO_FALSO).replace(':lugarId', ALVO_FALSO)
+        .replace(':eventoId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, {});
       assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
     }
@@ -1853,7 +1949,7 @@ async function principal() {
     falhas.forEach((f) => console.log(`  • ${f.nome}: ${f.erro}`));
     process.exit(1);
   }
-  console.log('ORIGENA Fases 0 a 5: verde.\n');
+  console.log('ORIGENA Fases 0 a 6: verde.\n');
 }
 
 principal().catch(async (e) => {

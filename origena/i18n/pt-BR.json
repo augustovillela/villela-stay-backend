@@ -78,7 +78,8 @@
     "ver_divergencias": "Ver as divergências da família",
     "memorias": "Memórias",
     "historias": "Histórias",
-    "procurar": "Procurar"
+    "procurar": "Procurar",
+    "linha_do_tempo": "Linha do tempo"
   },
   "papel": {
     "OWNER": "Responsável",
@@ -176,7 +177,11 @@
     "historia_sem_titulo": "Dê um título à história.",
     "historia_vazia": "Escreva a história antes de guardar.",
     "historia_nao_encontrada": "História não encontrada.",
-    "documento_ocr_pendente": "Este documento é uma imagem. Ainda não conseguimos ler o texto dele."
+    "documento_ocr_pendente": "Este documento é uma imagem. Ainda não conseguimos ler o texto dele.",
+    "lugar_sem_nome": "Dê um nome ao lugar.",
+    "lugar_nao_encontrado": "Lugar não encontrado.",
+    "evento_sem_titulo": "Dê um nome ao acontecimento.",
+    "evento_nao_encontrado": "Acontecimento não encontrado."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -193,7 +198,8 @@
     "revisao_preserva": "Guardamos a nova versão. A anterior continua no histórico.",
     "midia_arquivada": "O arquivo foi arquivado. Nada foi apagado — dá para restaurar.",
     "historia_guardada": "Guardado. Quem contou e quando ficam registrados junto.",
-    "versao_preservada": "Guardamos a nova versão. A anterior continua consultável."
+    "versao_preservada": "Guardamos a nova versão. A anterior continua consultável.",
+    "nome_historico_preservado": "Nome atualizado. O nome antigo continua guardado e encontrável."
   },
   "email": {
     "verificacao_assunto": "Confirme seu e-mail — Origena",
@@ -255,7 +261,10 @@
     "midia.historia_contada": "História da foto contada",
     "historia.criada": "História guardada",
     "historia.editada": "História revisada",
-    "documento.extraido": "Texto do documento lido"
+    "documento.extraido": "Texto do documento lido",
+    "lugar.criado": "Lugar registrado",
+    "lugar.renomeado": "Lugar renomeado",
+    "evento.criado": "Acontecimento registrado"
   },
   "pessoa": {
     "titulo": "Pessoas",
@@ -449,7 +458,8 @@
     "tipo_media": "Fotos e vídeos",
     "tipo_document": "Documentos",
     "tipo_story": "Histórias",
-    "tipo_contribution": "O que a família contou"
+    "tipo_contribution": "O que a família contou",
+    "tipo_event": "Acontecimentos"
   },
   "documento": {
     "texto": "Texto do documento",
@@ -460,5 +470,47 @@
     "falhou": "Não consegui ler este arquivo.",
     "pendentes": "Documentos ainda não buscáveis",
     "nada_pendente": "Todos os documentos já estão buscáveis."
+  },
+  "tempo": {
+    "titulo": "Linha do tempo",
+    "de_pessoa": "Linha do tempo de {nome}",
+    "sem_itens": "Nada com data ainda. As datas de nascimento, fotos e histórias aparecem aqui sozinhas.",
+    "sem_data": "Sem data conhecida",
+    "ocultos": "{n} item(ns) não aparecem para o seu papel.",
+    "tipo_nascimento": "Nascimento",
+    "tipo_falecimento": "Falecimento",
+    "tipo_casamento": "Casamento",
+    "tipo_evento": "Acontecimento",
+    "tipo_foto": "Foto",
+    "tipo_historia": "História"
+  },
+  "evento": {
+    "novo": "Registrar um acontecimento",
+    "nome": "O que aconteceu",
+    "tipo": "Tipo",
+    "quando": "Quando",
+    "onde": "Onde",
+    "quem": "Quem participou",
+    "descricao": "Como foi",
+    "nascimento": "Nascimento",
+    "casamento": "Casamento",
+    "mudanca": "Mudança",
+    "viagem": "Viagem",
+    "formatura": "Formatura",
+    "trabalho": "Trabalho",
+    "reuniao": "Reunião de família",
+    "falecimento": "Falecimento",
+    "outro": "Outro"
+  },
+  "lugar": {
+    "titulo": "Lugares",
+    "novo": "Registrar um lugar",
+    "nome": "Nome do lugar",
+    "municipio": "Município",
+    "uf": "UF",
+    "nota": "O que este lugar é para a família",
+    "renomear": "Renomear",
+    "nomes_antigos": "Também já se chamou",
+    "sem_lugares": "Nenhum lugar registrado ainda."
   }
 }

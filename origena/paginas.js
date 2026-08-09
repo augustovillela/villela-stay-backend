@@ -134,6 +134,10 @@ border-radius:999px;padding:3px 10px}
 .cel .ph{aspect-ratio:1;border-radius:12px;background:var(--borda) center/cover no-repeat}
 .cel figcaption{font-size:13px;color:var(--suave);margin-top:6px;line-height:1.35}
 img{max-width:100%;height:auto}
+.tl{border-left:2px solid var(--borda);padding-left:18px;margin:14px 0}
+.tl-ano{font-family:Lora,Georgia,serif;font-size:17px;margin:20px 0 6px;color:var(--tema)}
+.tl-item{display:flex;gap:10px;padding:8px 0;align-items:flex-start}
+.tl-ico{flex:0 0 auto}
 @media(prefers-color-scheme:dark){.papel{background:#3A2E22;color:#D9BC93}
 .erro{background:#3A1E1E;border-color:#5C2C2C;color:#F0B4B4}.ok{background:#1C3324;border-color:#2C5C3A;color:#A8DDB8}}
 `;
@@ -264,6 +268,7 @@ async function abrir(id) {
     '<p style="margin-top:26px"><a href="#" onclick="pessoas();return false"><strong>' + esc(t('pessoa.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="memorias();return false"><strong>' + esc(t('familia.memorias')) + '</strong></a>' +
       ' · <a href="#" onclick="telaHistorias();return false"><strong>' + esc(t('familia.historias')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
       ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a></p>' +
     (pode('auditoria.ver') ? '<p><a href="#" onclick="auditoria();return false">' +
@@ -881,8 +886,10 @@ async function preencherSelPessoas(idSel) {
   const sel = document.getElementById(idSel);
   if (!sel) return;
   const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
-  sel.innerHTML += (l.pessoas || []).map(x =>
+  const opcoes = (l.pessoas || []).map(x =>
     '<option value="' + x.id + '">' + esc(x.nome_exibicao) + '</option>').join('');
+  // mantém a opção vazia quando o select a tiver (contada_por é opcional)
+  sel.innerHTML = (sel.innerHTML.indexOf('value=""') >= 0 ? '<option value=""></option>' : '') + opcoes;
 }
 
 async function criarHistoria() {
@@ -937,6 +944,75 @@ async function editarHistoria(id) {
     { corpo: document.getElementById('he_c').value });
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verHistoria(id);
+}
+
+// --------------------------------------------------------------- timeline
+// A régua vertical da família (§33). A IMPRECISÃO aparece como foi dita
+// ("anos 1940", "c. 1890") — a tela nunca inventa um dia exato. Item sem
+// data vai para o fim, rotulado: presença sem afirmação de ordem.
+async function telaTimeline(pessoaId) {
+  const r = await api('GET', '/familias/' + FAM.id + '/timeline' +
+    (pessoaId ? '?pessoa=' + pessoaId : ''));
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const abrirDe = (i) => i.ref_tipo === 'person' ? "dossie(\\'" + i.ref_id + "\\')"
+    : i.ref_tipo === 'story' ? "verHistoria(\\'" + i.ref_id + "\\')"
+    : i.ref_tipo === 'media' ? "verMidia(\\'" + i.ref_id + "\\')" : '';
+  const ICONES = { nascimento: '🌱', falecimento: '🕯', casamento: '💍',
+    evento: '📌', foto: '📷', historia: '📖' };
+  const comData = (r.itens || []).filter(i => i.data_ini);
+  const semData = (r.itens || []).filter(i => !i.data_ini);
+  let anoAnterior = null;
+  const linha = (i) => {
+    const ano = i.data_ini ? String(i.data_ini).slice(0, 4) : null;
+    const cab = ano && ano !== anoAnterior
+      ? '<h3 class="tl-ano">' + esc(ano) + '</h3>' : '';
+    anoAnterior = ano;
+    const onclick = abrirDe(i);
+    return cab + '<div class="tl-item"' + (onclick ? ' style="cursor:pointer" onclick="' + onclick + '"' : '') + '>' +
+      '<span class="tl-ico">' + (ICONES[i.tipo] || '·') + '</span>' +
+      '<span><strong>' + esc(i.titulo) + '</strong>' +
+      '<br><span class="sub">' + esc(t('tempo.tipo_' + i.tipo)) +
+      (i.data_valor ? ' · ' + esc(i.data_valor) : '') +
+      (i.local_texto ? ' · ' + esc(i.local_texto) : '') + '</span></span></div>';
+  };
+  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+    '<h2>' + esc(pessoaId ? t('tempo.titulo') : t('tempo.titulo')) + '</h2>' +
+    (r.ocultos ? '<p class="sub">' + esc(t('tempo.ocultos', { n: r.ocultos })) + '</p>' : '') +
+    (comData.length || semData.length
+      ? '<div class="tl">' + comData.map(linha).join('') +
+        (semData.length
+          ? '<h3 class="tl-ano">' + esc(t('tempo.sem_data')) + '</h3>' +
+            semData.map(i => { anoAnterior = 'x'; return linha(i); }).join('')
+          : '') + '</div>'
+      : '<p class="sub">' + esc(t('tempo.sem_itens')) + '</p>') +
+    (pode('contribuir') ? formEvento() : ''));
+  if (pode('contribuir')) preencherSelPessoas('ev_quem');
+}
+
+function formEvento() {
+  const tipos = ['reuniao','casamento','mudanca','viagem','formatura','trabalho','outro'];
+  return '<h3 style="margin-top:26px">' + esc(t('evento.novo')) + '</h3>' +
+    '<label>' + esc(t('evento.nome')) + '</label><input id="ev_t">' +
+    '<label>' + esc(t('evento.tipo')) + '</label><select id="ev_tipo">' +
+      tipos.map(x => '<option value="' + x + '">' + esc(t('evento.' + x)) + '</option>').join('') + '</select>' +
+    '<label>' + esc(t('evento.quando')) + '</label><input id="ev_q" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
+    '<label>' + esc(t('evento.onde')) + '</label><input id="ev_l">' +
+    '<label>' + esc(t('evento.quem')) + '</label><select id="ev_quem" multiple size="4"></select>' +
+    '<label>' + esc(t('evento.descricao')) + '</label><input id="ev_d">' +
+    '<p><button class="btn" onclick="criarEvento()">' + esc(t('acao.salvar')) + '</button></p>';
+}
+
+async function criarEvento() {
+  const sel = document.getElementById('ev_quem');
+  const r = await api('POST', '/familias/' + FAM.id + '/eventos', {
+    titulo: document.getElementById('ev_t').value,
+    tipo: document.getElementById('ev_tipo').value,
+    data: document.getElementById('ev_q').value,
+    local: document.getElementById('ev_l').value,
+    descricao: document.getElementById('ev_d').value,
+    participantes: [...sel.selectedOptions].map(o => o.value) });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  telaTimeline();
 }
 
 // ------------------------------------------------- links vindos do e-mail

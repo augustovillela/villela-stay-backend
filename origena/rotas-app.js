@@ -27,6 +27,7 @@ const fila = require('./fila');
 const documentos = require('./documentos');
 const historias = require('./historias');
 const busca = require('./busca');
+const tempo = require('./tempo');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -573,6 +574,64 @@ function registrarRotasApp(app) {
     const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
     const visiveis = busca.filtrar(linhas, quem);
     res.json({ resultados: visiveis, ocultos: linhas.length - visiveis.length });
+  }));
+
+  // -------------------------------------------------------------- lugares
+  app.get(decl('GET', `${R}/familias/:familyId/lugares`), ...naFamilia, h(async (req, res) => {
+    res.json({ lugares: await tenancy.noEscopoDe(req, (t) => tempo.Places.listar(t, req.familia.id)) });
+  }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/lugares`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const p = await tenancy.noEscopoDe(req, (t) => tempo.Places.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: req.body || {} }));
+      res.status(201).json({ lugar: p });
+    }));
+
+  /** Renomear PRESERVA o nome antigo — é o que está no verso das fotos. */
+  app.patch(decl('PATCH', `${R}/familias/:familyId/lugares/:lugarId`), ...naFamilia,
+    rbac.exigir('editar'), h(async (req, res) => {
+      const p = await tenancy.noEscopoDe(req, (t) => tempo.Places.renomear(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        id: req.params.lugarId, nome: (req.body || {}).nome }));
+      res.json({ lugar: p, aviso: req.t('mensagem.nome_historico_preservado') });
+    }));
+
+  // -------------------------------------------------------------- eventos
+  app.post(decl('POST', `${R}/familias/:familyId/eventos`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const ev = await tenancy.noEscopoDe(req, (t) => tempo.Events.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: req.body || {} }));
+      res.status(201).json({ evento: ev });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/eventos/:eventoId`), ...naFamilia,
+    h(async (req, res) => {
+      const ev = await tenancy.noEscopoDe(req, (t) => tempo.Events.obter(t, req.params.eventoId));
+      if (!ev) throw erro('erro.evento_nao_encontrado', 404);
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      if (!privacidade.podeVer({ privacidade: ev.privacidade, created_by: ev.created_by }, quem).pode) {
+        throw erro('erro.evento_nao_encontrado', 404);
+      }
+      res.json({ evento: ev });
+    }));
+
+  // ------------------------------------------------------------- timeline
+  /**
+   * §33: individual (?pessoa=) e familiar. A projeção é reconstruída a
+   * cada consulta — não existe estado velho (tempo.js explica o custo).
+   * O resultado passa por podeVer, como tudo o que sai da API.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/timeline`), ...naFamilia, h(async (req, res) => {
+    const q = req.query || {};
+    const linhas = await tenancy.noEscopoDe(req, (t) => tempo.listar(t, req.familia.id, {
+      pessoaId: tenancy.UUID.test(String(q.pessoa || '')) ? q.pessoa : null,
+      de: s(q.de, 12) || null, ate: s(q.ate, 12) || null,
+      limite: Number(q.limite) || 300 }));
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    const visiveis = linhas.filter((l) =>
+      privacidade.podeVer({ privacidade: l.privacidade, created_by: l.criado_por }, quem).pode);
+    res.json({ itens: visiveis, ocultos: linhas.length - visiveis.length });
   }));
 
   // -------------------------------------------------------------- árvore
