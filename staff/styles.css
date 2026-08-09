@@ -52,6 +52,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .btn-menu { display: none; background: none; border: 1px solid rgba(242,236,216,.4); color: var(--creme);
   border-radius: 10px; font-size: 1.2rem; line-height: 1; padding: 4px 11px; cursor: pointer; }
 .topo-dir { display: flex; align-items: center; gap: 14px; color: var(--creme); font-size: .9rem; }
+/* nome longo encolhe com reticências em vez de empurrar o cabeçalho para fora da tela */
+.topo-quem { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link-sair { background: none; border: 1px solid var(--creme); color: var(--creme); border-radius: 18px; padding: 5px 14px; cursor: pointer; font-size: .85rem; }
 .btn-inicio { background: rgba(242,236,216,.12); border: 1px solid var(--creme); color: var(--creme); border-radius: 18px; padding: 5px 12px; cursor: pointer; font-size: .85rem; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .btn-inicio:hover { background: rgba(242,236,216,.24); }
@@ -232,7 +234,11 @@ tr:last-child td { border-bottom: none; }
   .corpo { flex-direction: column; }
   .btn-menu { display: inline-flex; align-items: center; }
   .rot-inicio { display: none; } /* no celular mostra só o 🏠 para poupar espaço no cabeçalho */
-  .topo-dir { gap: 9px; }
+  /* Cabeçalho em duas linhas no celular: marca em cima, botões embaixo alinhados à direita.
+     Sem isso o .topo-dir (nome + Início/Site/Sair) estoura os 375px e rola a página inteira. */
+  .topo { flex-wrap: wrap; row-gap: 8px; }
+  .marca { min-width: 0; font-size: 1.1rem; }
+  .topo-dir { gap: 9px; flex-basis: 100%; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
   /* No celular o menu vira gaveta: escondido por padrão, aberto pelo botão ☰.
      A home mostra o lançador de ícones (estilo app); o menu serve para navegar fora dela. */
   .menu { width: 100%; position: static; max-height: none; display: none; flex-wrap: wrap; gap: 4px; padding: 10px; }
@@ -242,6 +248,14 @@ tr:last-child td { border-bottom: none; }
   .menu .grupo { flex-basis: 100%; display: block; color: var(--cerrado); padding: 8px 6px 2px; }
   .ficha { flex-direction: column; }
   .lc-itens { grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); }
+}
+
+/* Telas bem estreitas: cabeçalho mais compacto para caber numa linha só de botões. */
+@media (max-width: 480px) {
+  .topo { gap: 8px; padding: 10px 12px; }
+  .rot-site { display: none; } /* só o 🌐 — o title do link explica */
+  .topo-dir { gap: 7px; font-size: .85rem; }
+  .btn-inicio, .link-site, .link-sair { padding: 5px 10px; }
 }
 
 /* ---- listas (compras / manutenção / pendências) e agenda ---- */

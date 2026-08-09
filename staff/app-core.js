@@ -142,6 +142,7 @@ async function abrirApp() {
   $('#tela-trocar').classList.add('hidden');
   $('#app').classList.remove('hidden');
   $('#quem').textContent = ESTADO.me.nome + (ESTADO.me.papel === 'admin' ? ' (admin)' : '');
+  $('#quem').title = $('#quem').textContent; // no celular o nome pode vir cortado com reticências
   // visão geral traz quais painéis o usuário pode ver
   try { const vg = await api('GET', '/visao-geral'); ESTADO.painelDisp = vg.painelDisponivel || {}; } catch {}
   ESTADO.podeEstat = ['marketing', 'ti', 'ceo'].some(a => ESTADO.areas.includes(a));
