@@ -1833,6 +1833,202 @@ async function principal() {
       'entrou item de antes do recorte');
   });
 
+  // =================================================================== FASE 7
+  const creditosMod = require('./creditos');
+  const routerIA = require('./ia/router');
+
+  console.log('\ncréditos — ledger, nunca um campo (§52)');
+  await teste('a carteira nasce com o bônus configurado, registrado no ledger', async () => {
+    const r = await req('GET', F('/creditos'), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.saldo >= 20, 'sem bônus de boas-vindas: ' + r.json.saldo);
+    assert(r.json.extrato.some((l) => l.tipo === 'bonus'), 'o bônus não está no ledger');
+  });
+
+  await teste('crédito manual do staff é idempotente pela referência', async () => {
+    const um = await req('POST', `/staff/api/origena/familias/${famA}/creditos`,
+      { corpo: { creditos: 50, referencia: 'pix-0001' } });
+    assert.strictEqual(um.status, 201, um.texto);
+    const dois = await req('POST', `/staff/api/origena/familias/${famA}/creditos`,
+      { corpo: { creditos: 50, referencia: 'pix-0001' } });
+    assert.strictEqual(dois.status, 200);
+    assert.strictEqual(dois.json.ja_estava, true, 'A MESMA compra creditou DUAS vezes');
+    const semRef = await req('POST', `/staff/api/origena/familias/${famA}/creditos`,
+      { corpo: { creditos: 10 } });
+    assert.strictEqual(semRef.status, 400, 'aceitou crédito sem referência');
+  });
+
+  await teste('o saldo do cache é SEMPRE a soma do ledger', async () => {
+    const r = await tenancy.comEscopo(famA, (t) => creditosMod.reconciliar(t, famA));
+    assert.strictEqual(r.ok, true, `saldo ${r.saldo} ≠ ledger ${r.ledger}`);
+  });
+
+  console.log('\nIA — router, cotação e o ciclo de créditos (§53)');
+  await teste('sem provedor utilizável, a capability NÃO aparece (ADR-0004)', async () => {
+    // sem ANTHROPIC_API_KEY e sem injeção: registry ativo, adapter mudo
+    routerIA.injetarParaTeste('anthropic', null);
+    const caps = await req('GET', F('/ia/capacidades'), { sessao: ana });
+    assert.strictEqual(caps.json.capacidades.gerar_biografia.disponivel, !!process.env.ANTHROPIC_API_KEY,
+      'capability apareceu sem adapter pronto');
+    if (!process.env.ANTHROPIC_API_KEY) {
+      const r = await req('POST', F(`/pessoas/${antonio.id}/biografia`), { sessao: ana, corpo: {} });
+      assert.strictEqual(r.status, 503);
+      assert.strictEqual(r.json.codigo, 'erro.ia_indisponivel');
+    }
+  });
+
+  await teste('cotação primeiro, geração só com confirmação — e a V1 guarda as fontes', async () => {
+    // adapter falso: devolve texto citando TODAS as fontes + uma INVENTADA
+    routerIA.injetarParaTeste('anthropic', async ({ capability, entrada }) => ({
+      saida: capability === 'gerar_biografia'
+        ? { texto: 'Antônio Villela nasceu, segundo a certidão, em 1921; a família também conta 1922.',
+            fontes_usadas: [...entrada.contexto.map((i) => i.id), 'claim:id-inventado-pela-ia'] }
+        : { resposta: 'x', fontes: [] },
+      tokens_in: 1000, tokens_out: 300, custo_centavos: 12 }));
+
+    const cot = await req('POST', F(`/pessoas/${antonio.id}/biografia`), { sessao: ana, corpo: {} });
+    assert.strictEqual(cot.status, 200, cot.texto);
+    assert.strictEqual(cot.json.cotacao.creditos, 10, 'a cotação não veio do registry');
+    assert(!cot.json.biografia, 'GEROU sem confirmação — é a cobrança surpresa que o §53 proíbe');
+
+    const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    const ger = await req('POST', F(`/pessoas/${antonio.id}/biografia`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(ger.status, 201, ger.texto);
+    assert(ger.json.fontes_validas >= 3, 'a biografia não guardou as fontes');
+    assert.strictEqual(ger.json.fontes_descartadas, 1, 'o id INVENTADO pela IA não foi descartado');
+
+    const depois = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    assert.strictEqual(depois, antes - 10, 'não debitou os 10 créditos da cotação');
+    const bio = await req('GET', F(`/pessoas/${antonio.id}/biografia`), { sessao: ana });
+    assert.strictEqual(bio.json.biografia.versao_atual, 1);
+    assert.match(bio.json.biografia.corpo, /certidão/);
+  });
+
+  await teste('gerar de novo cria a V2 — e a V1 continua no banco (§18)', async () => {
+    const r = await req('POST', F(`/pessoas/${antonio.id}/biografia`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(r.status, 201);
+    const versoes = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT count(*)::int n FROM biography_versions v
+        JOIN biographies b ON b.id = v.biography_id WHERE b.person_id = $1`, [antonio.id]));
+    assert.strictEqual(versoes.n, 2, 'a V1 sumiu ao gerar a V2');
+  });
+
+  await teste('falha do provedor ESTORNA automaticamente (§53)', async () => {
+    routerIA.injetarParaTeste('anthropic', async () => { throw new Error('provedor caiu'); });
+    const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    const r = await req('POST', F(`/pessoas/${antonio.id}/biografia`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(r.status, 502);
+    assert.strictEqual(r.json.codigo, 'erro.ia_falhou');
+    const depois = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    assert.strictEqual(depois, antes, 'a falha COBROU o usuário');
+    const rec = await tenancy.comEscopo(famA, (t) => creditosMod.reconciliar(t, famA));
+    assert(rec.ok, 'o estorno desbalanceou o ledger');
+  });
+
+  await teste('saldo insuficiente NÃO executa nada', async () => {
+    routerIA.injetarParaTeste('anthropic', async () => {
+      throw new Error('NUNCA deveria ter sido chamado');
+    });
+    // zera o saldo por ajuste (com motivo — ajuste sem motivo não existe)
+    await tenancy.comEscopo(famA, async (t) => {
+      const w = await creditosMod.carteira(t, famA);
+      if (w.saldo > 0) await creditosMod.lancar(t, { familyId: famA, tipo: 'ajuste',
+        delta: -w.saldo, motivo: 'teste de saldo insuficiente' });
+    });
+    const r = await req('POST', F(`/pessoas/${antonio.id}/biografia`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(r.status, 402, 'executou sem saldo: ' + r.status);
+    assert.strictEqual(r.json.codigo, 'erro.creditos_insuficientes');
+    // devolve os créditos para os testes seguintes
+    await req('POST', `/staff/api/origena/familias/${famA}/creditos`,
+      { corpo: { creditos: 100, referencia: 'reposicao-teste' } });
+  });
+
+  console.log('\n"Pergunte à Origena" (§44/§45)');
+  await teste('a resposta cita só fontes que ESTAVAM no contexto permitido', async () => {
+    routerIA.injetarParaTeste('anthropic', async ({ entrada }) => ({
+      saida: { resposta: 'Segundo a certidão, Antônio nasceu em 1921; Carlos lembra 1922.',
+        fontes: [...entrada.contexto.slice(0, 2).map((i) => i.id), 'document:id-de-outra-familia'],
+        incerteza: '' },
+      tokens_in: 500, tokens_out: 100, custo_centavos: 3 }));
+    const r = await req('POST', F('/perguntar'),
+      { sessao: ana, corpo: { pergunta: 'Quando nasceu o Antônio?', confirmar: true } });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert.match(r.json.resposta, /1921/);
+    assert(r.json.fontes.length >= 1, 'resposta sem fontes');
+    assert.strictEqual(r.json.fontes_descartadas, 1, 'a fonte de fora do contexto não foi descartada');
+    assert(!r.json.fontes.some((f) => f.ref_id === 'id-de-outra-familia'));
+  });
+
+  await teste('o contexto do RAG exclui o que quem pergunta não pode ver', async () => {
+    // EDITOR tem ia.usar mas NÃO tem ver.privado — é o papel certo para
+    // provar o filtro. (CONTRIBUTOR nem chega aqui: sem ia.usar, 403.)
+    await req('PATCH', F(`/membros/${bruno.id}`), { sessao: ana, corpo: { papel: 'EDITOR' } });
+    let contextoVisto = null;
+    routerIA.injetarParaTeste('anthropic', async ({ entrada }) => {
+      contextoVisto = entrada.contexto;
+      return { saida: { resposta: 'ok', fontes: [] }, tokens_in: 1, tokens_out: 1, custo_centavos: 0 };
+    });
+    const r = await req('POST', F('/perguntar'),
+      { sessao: bruno, corpo: { pergunta: 'carta particular Pirapora', confirmar: true } });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(contextoVisto, 'o mock não foi chamado');
+    assert(!contextoVisto.some((i) => i.id.includes(P.privada)),
+      'O DOCUMENTO PRIVADO ENTROU NO CONTEXTO DO RAG DE QUEM NÃO PODE VÊ-LO (§45)');
+    await req('PATCH', F(`/membros/${bruno.id}`), { sessao: ana, corpo: { papel: 'CONTRIBUTOR' } });
+  });
+
+  await teste('o custo real fica no ledger de IA, com créditos e margem (§57)', async () => {
+    const linhas = await tenancy.comEscopo(famA, (t) => t.todas(
+      `SELECT capability, tokens_in, custo_centavos, creditos_cobrados FROM ai_cost_ledger`));
+    assert(linhas.length >= 3, 'faltam linhas no ledger de custo');
+    const bio = linhas.find((l) => l.capability === 'gerar_biografia');
+    assert(bio && bio.tokens_in > 0 && bio.creditos_cobrados === 10);
+  });
+
+  console.log('\naba do staff (§79)');
+  await teste('o resumo traz agregados e a métrica norte — nunca conteúdo', async () => {
+    const r = await req('GET', '/staff/api/origena/resumo');
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.familias >= 2);
+    const fam = r.json.por_familia.find((f) => f.id === famA);
+    assert(fam.pessoas > 0 && fam.midias > 0);
+    assert.strictEqual(typeof fam.mpc, 'number', 'sem a métrica norte (§80)');
+    assert(fam.reconciliacao.ok, 'ledger desbalanceado no resumo');
+    // T12: o resumo não carrega conteúdo de família
+    const texto = JSON.stringify(r.json);
+    assert(!texto.includes('varanda cantando'), 'o resumo VAZOU conteúdo de contribuição');
+    const naoAdmin = await req('GET', '/staff/api/origena/resumo', { como: 'op' });
+    assert.strictEqual(naoAdmin.status, 403);
+  });
+
+  await teste('trocar o modelo é UPDATE no registry, não deploy (§56)', async () => {
+    const reg = await req('GET', '/staff/api/origena/registry');
+    const linha = reg.json.registry.find((l) => l.capability === 'gerar_biografia');
+    const r = await req('PATCH', `/staff/api/origena/registry/${linha.id}`,
+      { corpo: { creditos: 12 } });
+    assert.strictEqual(r.status, 200);
+    routerIA.injetarParaTeste('anthropic', async () => ({ saida: { texto: 'x', fontes_usadas: [] },
+      tokens_in: 1, tokens_out: 1, custo_centavos: 0 }));
+    const cot = await req('POST', F(`/pessoas/${antonio.id}/biografia`), { sessao: ana, corpo: {} });
+    assert.strictEqual(cot.json.cotacao.creditos, 12, 'a cotação não seguiu o registry');
+    await req('PATCH', `/staff/api/origena/registry/${linha.id}`, { corpo: { creditos: 10 } });
+  });
+
+  await teste('GUEST não usa IA (ia.usar é permissão, não enfeite)', async () => {
+    const visita = { cookie: null };
+    await req('POST', '/origena/api/v1/conta/entrar',
+      { corpo: { email: 'guest-busca@teste.origena', senha: 'senha-de-teste-123' }, sessao: visita });
+    const r = await req('POST', F('/perguntar'),
+      { sessao: visita, corpo: { pergunta: 'qualquer coisa', confirmar: true } });
+    assert.strictEqual(r.status, 403, 'GUEST usou IA');
+  });
+
+  routerIA.injetarParaTeste('anthropic', null);   // limpa para o §94
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 

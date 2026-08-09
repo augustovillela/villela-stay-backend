@@ -181,7 +181,12 @@
     "lugar_sem_nome": "Dê um nome ao lugar.",
     "lugar_nao_encontrado": "Lugar não encontrado.",
     "evento_sem_titulo": "Dê um nome ao acontecimento.",
-    "evento_nao_encontrado": "Acontecimento não encontrado."
+    "evento_nao_encontrado": "Acontecimento não encontrado.",
+    "creditos_insuficientes": "Créditos insuficientes para esta operação.",
+    "ia_indisponivel": "Este recurso ainda não está disponível.",
+    "ia_falhou": "Não consegui concluir agora. Seus créditos foram devolvidos.",
+    "biografia_sem_material": "Ainda não há material sobre esta pessoa. Conte histórias e registre fatos primeiro.",
+    "pergunta_vazia": "Escreva a pergunta."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -512,5 +517,23 @@
     "renomear": "Renomear",
     "nomes_antigos": "Também já se chamou",
     "sem_lugares": "Nenhum lugar registrado ainda."
+  },
+  "ia": {
+    "custara": "Esta operação custará {n} crédito(s).",
+    "confirmar": "Confirmar e gerar",
+    "saldo": "Você tem {n} crédito(s).",
+    "gerar_biografia": "Escrever a biografia",
+    "atualizar_biografia": "Atualizar a biografia",
+    "contribuicoes_desde": "{n} contribuição(ões) novas desde esta versão.",
+    "biografia_titulo": "Biografia",
+    "gerada_em": "escrita em {data}, a partir de {n} fonte(s)",
+    "selo_ia": "✨ Texto escrito com ajuda de IA, a partir das fontes da família",
+    "perguntar_titulo": "Pergunte à Origena",
+    "perguntar_campo": "O que você quer saber?",
+    "perguntar_placeholder": "Quem foi meu bisavô? Quais receitas eram da vovó?",
+    "fontes_resposta": "De onde veio esta resposta",
+    "incerteza": "O que ajudaria a responder melhor",
+    "sem_resposta": "A família ainda não registrou nada sobre isso.",
+    "indisponivel": "Este recurso ainda não está disponível."
   }
 }

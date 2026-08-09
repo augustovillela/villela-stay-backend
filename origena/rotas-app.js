@@ -28,6 +28,9 @@ const documentos = require('./documentos');
 const historias = require('./historias');
 const busca = require('./busca');
 const tempo = require('./tempo');
+const creditos = require('./creditos');
+const router = require('./ia/router');
+const conhecimento = require('./conhecimento');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -633,6 +636,57 @@ function registrarRotasApp(app) {
       privacidade.podeVer({ privacidade: l.privacidade, created_by: l.criado_por }, quem).pode);
     res.json({ itens: visiveis, ocultos: linhas.length - visiveis.length });
   }));
+
+  // ------------------------------------------------------- créditos e IA
+  app.get(decl('GET', `${R}/familias/:familyId/creditos`), ...naFamilia, h(async (req, res) => {
+    const r = await tenancy.noEscopoDe(req, async (t) => ({
+      carteira: await creditos.carteira(t, req.familia.id),
+      extrato: await creditos.extrato(t, req.familia.id, 50),
+    }));
+    res.json({ saldo: r.carteira.saldo, extrato: r.extrato });
+  }));
+
+  /** O que a IA sabe fazer HOJE — a UI só mostra botão do que existe (ADR-0004). */
+  app.get(decl('GET', `${R}/familias/:familyId/ia/capacidades`), ...naFamilia, h(async (req, res) => {
+    const caps = {};
+    await tenancy.noEscopoDe(req, async (t) => {
+      for (const c of ['gerar_biografia', 'responder_familia', 'analisar_documento']) {
+        const cot = await router.cotar(t, c);
+        caps[c] = cot ? { disponivel: true, creditos: cot.creditos } : { disponivel: false };
+      }
+    });
+    res.json({ capacidades: caps });
+  }));
+
+  /**
+   * Biografia (§18/§19). Sem `confirmar`: devolve a COTAÇÃO ("custará X
+   * créditos"). Com `confirmar`: reserva → gera → versão nova com fontes.
+   */
+  app.post(decl('POST', `${R}/familias/:familyId/pessoas/:pessoaId/biografia`), ...naFamilia,
+    rbac.exigir('ia.usar'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      const r = await conhecimento.gerarBiografia({
+        familyId: req.familia.id, userId: req.usuario.id,
+        personId: req.params.pessoaId, quem, confirmar: !!(req.body || {}).confirmar });
+      res.status(r.cotacao ? 200 : 201).json(r);
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/pessoas/:pessoaId/biografia`), ...naFamilia,
+    h(async (req, res) => {
+      const bio = await tenancy.noEscopoDe(req, (t) =>
+        conhecimento.biografiaDe(t, req.params.pessoaId));
+      res.json({ biografia: bio });
+    }));
+
+  /** "Pergunte à Origena" (§44). */
+  app.post(decl('POST', `${R}/familias/:familyId/perguntar`), ...naFamilia,
+    rbac.exigir('ia.usar'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      const r = await conhecimento.perguntar({
+        familyId: req.familia.id, userId: req.usuario.id,
+        pergunta: (req.body || {}).pergunta, quem, confirmar: !!(req.body || {}).confirmar });
+      res.json(r);
+    }));
 
   // -------------------------------------------------------------- árvore
   app.get(decl('GET', `${R}/familias/:familyId/arvore/:pessoaId`), ...naFamilia, h(async (req, res) => {

@@ -138,6 +138,7 @@ async function montar(app, injected = {}) {
 
   registrarRotasConta(app, { jwtSecret });
   const { ROTAS_ESCOPADAS } = registrarRotasApp(app);
+  require('./rotas-staff').registrarRotasStaff(app, { requireAuth, requireAdmin });
 
   // Tratador central de erros: por ÚLTIMO e restrito a /origena, para não
   // sequestrar o tratamento dos outros 11 produtos do mesmo processo.

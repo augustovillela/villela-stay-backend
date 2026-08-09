@@ -270,6 +270,7 @@ async function abrir(id) {
       ' · <a href="#" onclick="telaHistorias();return false"><strong>' + esc(t('familia.historias')) + '</strong></a>' +
       ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a></p>' +
     (pode('auditoria.ver') ? '<p><a href="#" onclick="auditoria();return false">' +
       esc(t('familia.ver_historico')) + '</a></p>' : ''));
@@ -343,6 +344,22 @@ async function dossie(id) {
   const p = r.pessoa, f = r.familia;
   const fatos = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/fatos');
   const contribs = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/contribuicoes');
+  const bio = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/biografia');
+  r.biografia_html = '';
+  if (bio.biografia) {
+    r.biografia_html = '<h3 style="margin-top:26px">' + esc(t('ia.biografia_titulo')) + '</h3>' +
+      '<div class="card"><p style="margin:0;white-space:pre-wrap">' + esc(bio.biografia.corpo) + '</p></div>' +
+      '<p class="sub">' + esc(t('ia.selo_ia')) + ' · ' +
+      esc(t('ia.gerada_em', { data: new Date(bio.biografia.created_at).toLocaleDateString(IDIOMA),
+        n: (bio.biografia.fontes || []).length })) +
+      (bio.biografia.contribuicoes_desde
+        ? '<br>' + esc(t('ia.contribuicoes_desde', { n: bio.biografia.contribuicoes_desde })) : '') + '</p>' +
+      (pode('ia.usar') ? '<p><button class="btn mini claro" onclick="gerarBiografia(\\'' + id + '\\')">' +
+        esc(t('ia.atualizar_biografia')) + '</button></p>' : '');
+  } else if (pode('ia.usar')) {
+    r.biografia_html = '<p style="margin-top:20px"><button class="btn mini claro" ' +
+      'onclick="gerarBiografia(\\'' + id + '\\')">' + esc(t('ia.gerar_biografia')) + '</button></p>';
+  }
   const grupo = (titulo, lista, extra) => lista.length
     ? '<h3 style="margin-top:22px">' + esc(titulo) + '</h3>' + lista.map(x =>
         '<div class="linha"><span><a href="#" onclick="dossie(\\'' + x.id + '\\');return false">' +
@@ -365,6 +382,9 @@ async function dossie(id) {
     (f.pais.length + f.filhos.length + f.unioes.length + f.irmaos.length === 0
       ? '<p class="sub">' + esc(t('familia.sem_parentes')) + '</p>' : '') +
 
+    // Biografia viva (§18): versão atual + selo de IA + quantas
+    // contribuições chegaram desde que ela foi escrita.
+    (r.biografia_html || '') +
     // O que sabemos — cada fato com o selo e o caminho de volta (§5).
     '<h3 style="margin-top:26px">' + esc(t('fato.titulo')) + '</h3>' +
     ((fatos.fatos || []).length
@@ -1013,6 +1033,53 @@ async function criarEvento() {
     participantes: [...sel.selectedOptions].map(o => o.value) });
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   telaTimeline();
+}
+
+// ----------------------------------------------------------- IA (Fase 7)
+// O preço aparece ANTES (§53), o selo de IA aparece SEMPRE (§88), e a
+// resposta traz as fontes — sem fonte, não é memória, é ficção.
+async function gerarBiografia(pessoaId, confirmando) {
+  const r = await api('POST', '/familias/' + FAM.id + '/pessoas/' + pessoaId + '/biografia',
+    confirmando ? { confirmar: true } : {});
+  if (r.status === 503) return alert(t('ia.indisponivel'));
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (r.cotacao && !confirmando) {
+    if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return gerarBiografia(pessoaId, true);
+    return;
+  }
+  dossie(pessoaId);
+}
+
+async function telaPerguntar(confirmando, pergunta) {
+  const q = pergunta || (document.getElementById('pq') ? document.getElementById('pq').value : '');
+  let corpo = '';
+  if (q && confirmando) {
+    const r = await api('POST', '/familias/' + FAM.id + '/perguntar', { pergunta: q, confirmar: true });
+    if (r.status === 503) corpo = aviso(t('ia.indisponivel'));
+    else if (r.status >= 400) corpo = aviso(r.erro);
+    else {
+      corpo = '<div class="card"><p style="margin:0;white-space:pre-wrap">' + esc(r.resposta) + '</p></div>' +
+        '<p class="sub">' + esc(t('ia.selo_ia')) + '</p>' +
+        ((r.fontes || []).length
+          ? '<p class="sub"><strong>' + esc(t('ia.fontes_resposta')) + ':</strong> ' +
+            r.fontes.map(f => esc(t('busca.tipo_' + f.tipo) || f.tipo)).join(', ') + '</p>' : '') +
+        (r.incerteza ? '<p class="sub"><strong>' + esc(t('ia.incerteza')) + ':</strong> ' +
+          esc(r.incerteza) + '</p>' : '');
+    }
+  } else if (q && !confirmando) {
+    const cot = await api('POST', '/familias/' + FAM.id + '/perguntar', { pergunta: q });
+    if (cot.status === 503) corpo = aviso(t('ia.indisponivel'));
+    else if (cot.cotacao && confirm(t('ia.custara', { n: cot.cotacao.creditos })))
+      return telaPerguntar(true, q);
+  }
+  const cred = await api('GET', '/familias/' + FAM.id + '/creditos');
+  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+    '<h2>' + esc(t('ia.perguntar_titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('ia.saldo', { n: cred.saldo != null ? cred.saldo : '?' })) + '</p>' +
+    '<label>' + esc(t('ia.perguntar_campo')) + '</label>' +
+    '<input id="pq" value="' + esc(q || '') + '" placeholder="' + esc(t('ia.perguntar_placeholder')) + '">' +
+    '<p><button class="btn" onclick="telaPerguntar()">' + esc(t('ia.perguntar_titulo')) + '</button></p>' +
+    corpo);
 }
 
 // ------------------------------------------------- links vindos do e-mail

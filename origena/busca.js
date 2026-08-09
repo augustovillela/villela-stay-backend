@@ -51,9 +51,17 @@ const remover = (t, refTipo, refId) =>
  *   viagens→viagem · aviões→avião · pães→pão · animais→animal · papéis→papel
  * Cada palavra vira (original | variantes), e as palavras se combinam com E.
  */
-function montarTsquery(termo) {
-  const palavras = String(termo).toLowerCase()
+// Palavras de PERGUNTA não são termo de busca: "quando nasceu o Antônio?"
+// procura por "nasceu" e "antônio", não por "quando".
+const IGNORAR = new Set(['quando', 'quem', 'onde', 'como', 'qual', 'quais', 'que', 'por',
+  'porque', 'foi', 'era', 'sao', 'são', 'uma', 'uns', 'umas', 'com', 'para', 'dos', 'das',
+  'the', 'ele', 'ela', 'eles', 'elas', 'meu', 'minha', 'seu', 'sua', 'nos', 'nas']);
+
+function montarTsquery(termo, { ou = false } = {}) {
+  let palavras = String(termo).toLowerCase()
     .replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter((p) => p.length >= 2);
+  const uteis = palavras.filter((p) => !IGNORAR.has(p));
+  if (uteis.length) palavras = uteis;      // se SÓ há stopwords, usa o que veio
   if (!palavras.length) return '';
   const grupos = palavras.map((p) => {
     const v = new Set([p]);
@@ -66,7 +74,8 @@ function montarTsquery(termo) {
     if (/s$/.test(p) && p.length > 3) v.add(p.slice(0, -1));
     return '(' + [...v].join(' | ') + ')';
   });
-  return grupos.join(' & ');
+  // E para a caixa de busca (precisão); OU para o RAG (cobertura).
+  return grupos.join(ou ? ' | ' : ' & ');
 }
 
 /**
@@ -78,8 +87,9 @@ function montarTsquery(termo) {
  * termo — e todos os parâmetros existem sempre, com tipo definido.
  */
 async function procurar(t, familyId, { termo = '', tipos = null, pessoaId = null,
-  autorId = null, de = null, ate = null, local = '', limite = 40, offset = 0 } = {}) {
-  const tsq = montarTsquery(s(termo, 200));
+  autorId = null, de = null, ate = null, local = '', limite = 40, offset = 0,
+  modoOu = false } = {}) {
+  const tsq = montarTsquery(s(termo, 200), { ou: modoOu });
 
   const linhas = await t.todas(
     `SELECT b.ref_tipo, b.ref_id, b.titulo, b.local_texto, b.privacidade, b.criado_por,
