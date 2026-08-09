@@ -107,6 +107,21 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
         motivo: String(d.motivo || 'crédito manual').slice(0, 200) }));
     res.status(linha ? 201 : 200).json({ creditado: !!linha, ja_estava: !linha });
   }));
+
+  /**
+   * PURGA de família (§66, LGPD). Staff-only até o fluxo jurídico do
+   * titular existir (PRIVACY.md §10): apaga LINHAS e BINÁRIOS, de
+   * verdade, e exige o nome da família por extenso. O registro da purga
+   * (quem, quando, contagens — sem conteúdo) fica no audit global.
+   */
+  app.post(`${R}/familias/:familyId/purgar`, requireAuth, requireAdmin, h(async (req, res) => {
+    const purga = require('./purga');
+    const r = await tenancy.comEscopo(req.params.familyId, (t) =>
+      purga.purgarFamilia(t, { familyId: req.params.familyId,
+        confirmarNome: (req.body || {}).confirmar_nome,
+        atorUserId: null }));
+    res.json({ purgado: r });
+  }));
 }
 
 module.exports = { registrarRotasStaff };

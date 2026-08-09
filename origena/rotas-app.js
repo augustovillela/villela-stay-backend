@@ -31,6 +31,8 @@ const tempo = require('./tempo');
 const creditos = require('./creditos');
 const router = require('./ia/router');
 const conhecimento = require('./conhecimento');
+const exportar = require('./exportar');
+const purga = require('./purga');
 const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -686,6 +688,72 @@ function registrarRotasApp(app) {
         familyId: req.familia.id, userId: req.usuario.id,
         pergunta: (req.body || {}).pergunta, quem, confirmar: !!(req.body || {}).confirmar });
       res.json(r);
+    }));
+
+  // --------------------------------------------------- exportação (§68)
+  app.post(decl('POST', `${R}/familias/:familyId/exportacoes`), ...naFamilia,
+    rbac.exigir('exportar'), h(async (req, res) => {
+      const exp = await tenancy.noEscopoDe(req, async (t) => {
+        const e = await t.uma(
+          `INSERT INTO exports (family_id, created_by) VALUES ($1,$2) RETURNING *`,
+          [req.familia.id, req.usuario.id]);
+        await fila.enfileirar({ tipo: 'export.gerar', fila: 'cara',
+          familyId: req.familia.id,
+          payload: { exportId: e.id, familyId: req.familia.id },
+          chaveIdem: 'export:' + e.id }, t);
+        await auditar({ familyId: req.familia.id, atorUserId: req.usuario.id,
+          acao: 'exportacao.pedida', alvoTipo: 'export', alvoId: e.id }, t);
+        return e;
+      });
+      res.status(202).json({ exportacao: exp, estado: 'PROCESSANDO' });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/exportacoes/:exportId`), ...naFamilia,
+    rbac.exigir('exportar'), h(async (req, res) => {
+      const e = await tenancy.noEscopoDe(req, (t) =>
+        t.uma(`SELECT * FROM exports WHERE id = $1`, [req.params.exportId]));
+      if (!e) throw erro('erro.export_nao_encontrado', 404);
+      res.json({
+        exportacao: { id: e.id, status: e.status, bytes: Number(e.bytes), itens: e.itens },
+        url: e.status === 'pronto' ? storage.urlDeLeitura(e.storage_key, { segundos: 3600 }) : null,
+      });
+    }));
+
+  /** GEDCOM direto (texto): rápido, sem job — é só a árvore (§70). */
+  app.get(decl('GET', `${R}/familias/:familyId/gedcom`), ...naFamilia,
+    rbac.exigir('exportar'), h(async (req, res) => {
+      const ged = await tenancy.noEscopoDe(req, (t) =>
+        exportar.gedcomDe(t, req.familia.id, req.familia.nome));
+      res.type('text/plain; charset=utf-8').send(ged);
+    }));
+
+  // -------------------------------------------------- importação (§69/70)
+  app.post(decl('POST', `${R}/familias/:familyId/importar`), ...naFamilia,
+    rbac.exigir('familia.editar'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => exportar.importarDados(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: (req.body || {}).dados }));
+      res.status(201).json({ importado: r });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/importar-gedcom`), ...naFamilia,
+    rbac.exigir('familia.editar'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => exportar.importarGedcom(t, {
+        familyId: req.familia.id, userId: req.usuario.id, texto: (req.body || {}).texto }));
+      res.status(201).json({ importado: r });
+    }));
+
+  // ------------------------------------------------------- lixeira (§66)
+  app.get(decl('GET', `${R}/familias/:familyId/lixeira`), ...naFamilia,
+    rbac.exigir('restaurar'), h(async (req, res) => {
+      res.json(await tenancy.noEscopoDe(req, (t) => purga.lixeira(t, req.familia.id)));
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/lixeira/:tipo/:itemId/restaurar`), ...naFamilia,
+    rbac.exigir('restaurar'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => purga.restaurar(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        tipo: req.params.tipo, id: req.params.itemId }));
+      res.json({ ok: true });
     }));
 
   // -------------------------------------------------------------- árvore

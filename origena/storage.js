@@ -67,9 +67,11 @@ async function baixar(chave) {
  * ORIGINAL não se apaga por operação normal (ADR-0008): derivado é
  * regenerável, original não é.
  */
-async function apagar(chave) {
+async function apagar(chave, { purga = false } = {}) {
   exigirConfig();
-  if (/\/orig\//.test(chave) && process.env.ORIGENA_PERMITIR_APAGAR_ORIGINAL !== 'sim') {
+  // Original só cai na PURGA (fim do contrato/LGPD) — nunca por operação
+  // normal. O flag é explícito no código chamador, não uma env global.
+  if (/\/orig\//.test(chave) && !purga) {
     throw new Error('Recusado: original é imutável. Apagar só pelo fluxo de purga (LGPD).');
   }
   const r = await fetch(presignS3(cfg, 'DELETE', chave, 120), { method: 'DELETE' });

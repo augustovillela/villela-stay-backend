@@ -2029,6 +2029,169 @@ async function principal() {
 
   routerIA.injetarParaTeste('anthropic', null);   // limpa para o §94
 
+  // =================================================================== FASE 8
+  const exportarMod = require('./exportar');
+  const integridadeMod = require('./integridade');
+
+  console.log('\nlixeira — nada some com um clique (§66)');
+  await teste('arquivado aparece na lixeira e RESTAURAR traz de volta, com as arestas', async () => {
+    const p = await criarPessoa({ nome: 'Volta da Lixeira', nascimento: '1960' });
+    await ligar({ person_a: P.pedro.id, person_b: p.id, tipo: 'PARENT_OF', confirmo_mesmo_assim: true });
+    await req('DELETE', F(`/pessoas/${p.id}`), { sessao: ana });
+    const lix = await req('GET', F('/lixeira'), { sessao: ana });
+    assert(lix.json.pessoas.some((x) => x.id === p.id), 'não apareceu na lixeira');
+    const r = await req('POST', F(`/lixeira/pessoa/${p.id}/restaurar`), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    const dossieR = await req('GET', F(`/pessoas/${p.id}`), { sessao: ana });
+    assert.strictEqual(dossieR.status, 200, 'não voltou');
+    assert(dossieR.json.familia.pais.some((x) => x.id === P.pedro.id),
+      'voltou SEM o parentesco — seria outra pessoa');
+  });
+
+  console.log('\nexportação (§68/§70)');
+  let zipExport;
+  await teste('o zip sai com dados.json, GEDCOM e manifesto — via worker e R2', async () => {
+    const ped = await req('POST', F('/exportacoes'), { sessao: ana });
+    assert.strictEqual(ped.status, 202, ped.texto);
+    await fila.processarLote(10, 'cara');
+    const st = await req('GET', F(`/exportacoes/${ped.json.exportacao.id}`), { sessao: ana });
+    assert.strictEqual(st.json.exportacao.status, 'pronto', JSON.stringify(st.json));
+    assert(st.json.url, 'sem URL de download');
+    const resp = await fetch(st.json.url);
+    assert(resp.ok, 'a URL assinada não baixou');
+    zipExport = Buffer.from(await resp.arrayBuffer());
+    assert(zipExport.length === st.json.exportacao.bytes);
+    // o zip abre com o leitor do vdocs — formatos abertos de verdade (§77)
+    const { lerZip } = require('../vdocs/extrair');
+    const z = lerZip(zipExport);
+    const dados = JSON.parse(z.arquivo('dados.json').toString('utf8'));
+    assert.strictEqual(dados.formato, 'origena/v1');
+    assert(dados.tabelas.claims.length >= 5, 'o export perdeu os claims');
+    assert(dados.tabelas.evidence.length >= 5, 'o export perdeu as evidências');
+    const ged = z.arquivo('familia.ged').toString('utf8');
+    assert.match(ged, /0 @I\d+@ INDI/);
+  });
+
+  await teste('o GEDCOM leva as datas imprecisas como o padrão manda', async () => {
+    const ged = (await req('GET', F('/gedcom'), { sessao: ana })).texto;
+    assert.match(ged, /ABT 1890/, 'c. 1890 não virou ABT');           // João
+    assert.match(ged, /1 NAME Antônio Villela/);
+    assert.match(ged, /2 DATE 1921/, 'o ano exato não saiu');
+    assert.match(ged, /1 HUSB @I\d+@/, 'o casamento não virou FAM');
+    assert.match(ged, /1 CHIL @I\d+@/, 'a filiação não virou CHIL');
+  });
+
+  await teste('GEDCOM de fora entra com fonte IMPORTACAO e proveniência', async () => {
+    const ged = ['0 HEAD', '0 @I1@ INDI', '1 NAME Rosa /Externa/', '1 BIRT', '2 DATE 1902',
+      '0 @I2@ INDI', '1 NAME Bento /Externo/', '0 @I3@ INDI', '1 NAME Filho /Externo/',
+      '0 @F1@ FAM', '1 HUSB @I2@', '1 WIFE @I1@', '1 CHIL @I3@', '0 TRLR'].join('\n');
+    const r = await req('POST', F('/importar-gedcom'), { sessao: ana, corpo: { texto: ged } });
+    assert.strictEqual(r.status, 201, r.texto);
+    assert.strictEqual(r.json.importado.pessoas, 3);
+    assert.strictEqual(r.json.importado.casamentos, 1);
+    const rosa = (await req('GET', F('/pessoas?busca=Rosa'), { sessao: ana })).json.pessoas[0];
+    assert(rosa, 'a Rosa não entrou');
+    const versoes = await req('GET', F(`/pessoas/${rosa.id}/fatos/nome`), { sessao: ana });
+    assert(versoes.json.versoes[0].evidencias.some((e) => e.fonte_tipo === 'IMPORTACAO'),
+      'o dado importado entrou sem dizer de onde veio');
+  });
+
+  console.log('\nintegridade (§77, ADR-0008)');
+  await teste('a amostra confere os hashes — e byte trocado por fora é PEGO', async () => {
+    const ok1 = await tenancy.comEscopo(famA, (t) =>
+      integridadeMod.verificar(t, { familyId: famA, amostra: 50 }));
+    assert.strictEqual(ok1.divergentes.length, 0, 'acusou divergência onde não há');
+    assert(ok1.verificados >= 2);
+
+    // o ataque que a integridade existe para pegar: trocar o byte DIRETO
+    // no R2, por fora do sistema (o trigger do banco não vê isso)
+    const alvo = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT id, storage_key FROM media WHERE family_id = $1 AND derivado_de IS NULL
+        AND status = 'pronta' AND deleted_at IS NULL LIMIT 1`, [famA]));
+    await storage.enviar(alvo.storage_key, Buffer.from('bytes trocados por fora'), 'text/plain');
+    // zera o rodízio para a amostra pegá-lo de novo
+    await tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE media SET exif = exif - '_verificado_em' WHERE id = $1`, [alvo.id]));
+    const ok2 = await tenancy.comEscopo(famA, (t) =>
+      integridadeMod.verificar(t, { familyId: famA, amostra: 50 }));
+    assert(ok2.divergentes.some((d) => d.id === alvo.id),
+      'O BYTE FOI TROCADO E A INTEGRIDADE NÃO VIU — a promessa de décadas caiu');
+  });
+
+  console.log('\nE2E — exportar → apagar → importar → proveniência intacta');
+  await teste('a promessa inteira do produto, de ponta a ponta', async () => {
+    // 1. uma família com o cenário do §4 completo
+    const dona = await novaConta('Dona E2E', 'e2e@teste.origena');
+    const fE2E = (await req('POST', '/origena/api/v1/familias',
+      { sessao: dona, corpo: { nome: 'Família E2E' } })).json.familia.id;
+    const FE = (c) => `/origena/api/v1/familias/${fE2E}${c}`;
+    const pe = (await req('POST', FE('/pessoas'), { sessao: dona,
+      corpo: { nome: 'Bisavô E2E' } })).json.pessoa;
+    await req('POST', FE(`/pessoas/${pe.id}/fatos`), { sessao: dona, corpo: {
+      predicado: 'data_nascimento', valor: '1921', fonte_tipo: 'REGISTRO_OFICIAL',
+      fonte_titulo: 'Certidão E2E', fonte_referencia: 'Cartório E2E, livro 1' } });
+    await req('POST', FE(`/pessoas/${pe.id}/fatos`), { sessao: dona, corpo: {
+      predicado: 'data_nascimento', valor: '1922', fonte_tipo: 'RELATO',
+      fonte_titulo: 'Tia lembra 1922' } });
+    const vs = (await req('GET', FE(`/pessoas/${pe.id}/fatos/data_nascimento`), { sessao: dona })).json.versoes;
+    await req('POST', FE(`/pessoas/${pe.id}/fatos/data_nascimento/resolver`), { sessao: dona,
+      corpo: { claim_id: vs.find((v) => v.status === 'DOCUMENTED').id, motivo: 'A certidão manda.' } });
+    await req('POST', FE(`/pessoas/${pe.id}/contribuicoes`), { sessao: dona,
+      corpo: { corpo: 'Ele plantava café e contava causos na varanda.' } });
+    await req('POST', FE('/historias'), { sessao: dona, corpo: {
+      titulo: 'O causo do café', corpo: 'Dizem que ele trocou um saco de café por um violão.',
+      contada_por: pe.id, ocorrido: 'anos 30' } });
+
+    // 2. exporta
+    const dados = await tenancy.comEscopo(fE2E, (t) => exportarMod.dadosDaFamilia(t, fE2E));
+    // 2 claims (1921 e 1922) + 1 resolução + 1 contribuição + 1 história
+    assert(dados.tabelas.claims.length >= 2, 'claims: ' + dados.tabelas.claims.length);
+    assert(dados.tabelas.claim_resolutions.length >= 1, 'a resolução não saiu no export');
+    assert(dados.tabelas.contributions.length >= 1);
+    assert(dados.tabelas.stories.length >= 1);
+
+    // 3. APAGA de verdade (purga staff, nome por extenso)
+    const semNome = await req('POST', `/staff/api/origena/familias/${fE2E}/purgar`,
+      { corpo: { confirmar_nome: 'errado' } });
+    assert.strictEqual(semNome.status, 400, 'purgou sem o nome certo');
+    const pur = await req('POST', `/staff/api/origena/familias/${fE2E}/purgar`,
+      { corpo: { confirmar_nome: 'Família E2E' } });
+    assert.strictEqual(pur.status, 200, pur.texto);
+    assert((await req('GET', '/origena/api/v1/conta/eu', { sessao: dona })).json.familias.length === 0,
+      'a família purgada continuou aparecendo para a dona');
+    const sobrou = await tenancy.comEscopo(fE2E, (t) =>
+      t.uma(`SELECT count(*)::int n FROM claims WHERE family_id = $1`, [fE2E]));
+    assert.strictEqual(sobrou.n, 0, 'a purga deixou claims para trás');
+
+    // 4. importa numa família NOVA
+    const fNova = (await req('POST', '/origena/api/v1/familias',
+      { sessao: dona, corpo: { nome: 'Família E2E Renascida' } })).json.familia.id;
+    const FN = (c) => `/origena/api/v1/familias/${fNova}${c}`;
+    const imp = await req('POST', FN('/importar'), { sessao: dona, corpo: { dados } });
+    assert.strictEqual(imp.status, 201, imp.texto);
+
+    // 5. a proveniência VOLTOU INTACTA
+    const pNovo = (await req('GET', FN('/pessoas?busca=Bisav'), { sessao: dona })).json.pessoas[0];
+    assert(pNovo, 'o bisavô não renasceu');
+    const fatos = await req('GET', FN(`/pessoas/${pNovo.id}/fatos`), { sessao: dona });
+    const nasc = fatos.json.fatos.find((f) => f.predicado === 'data_nascimento');
+    assert.strictEqual(nasc.valor, '1921', 'o valor aceito mudou');
+    assert.strictEqual(nasc.em_divergencia, true, 'A DIVERGÊNCIA SUMIU na viagem');
+    assert.strictEqual(nasc.resolvido, true, 'a resolução da família sumiu');
+    const versoes = await req('GET', FN(`/pessoas/${pNovo.id}/fatos/data_nascimento`), { sessao: dona });
+    assert.strictEqual(versoes.json.versoes.length, 2, 'uma das versões se perdeu');
+    const doc = versoes.json.versoes.find((v) => v.status === 'DOCUMENTED');
+    assert(doc.evidencias.some((e) => /Cartório E2E/.test(e.fonte_referencia || '')),
+      'a referência da certidão se perdeu');
+    const contribs = await req('GET', FN(`/pessoas/${pNovo.id}/contribuicoes`), { sessao: dona });
+    assert(contribs.json.contribuicoes.some((c) => /causos na varanda/.test(c.corpo)),
+      'a contribuição se perdeu');
+    assert(contribs.json.contribuicoes.some((c) => /originalmente por Dona E2E/.test(c.corpo)),
+      'a autoria não sobreviveu nem como texto');
+    const hist = await req('GET', FN('/historias'), { sessao: dona });
+    assert(hist.json.historias.some((h) => h.titulo === 'O causo do café'), 'a história se perdeu');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
@@ -2080,7 +2243,8 @@ async function principal() {
         .replace(':contribId', uuidFalso).replace(':mediaId', uuidFalso)
         .replace(':albumId', uuidFalso).replace(':idId', uuidFalso)
         .replace(':storyId', uuidFalso).replace(':lugarId', uuidFalso)
-        .replace(':eventoId', uuidFalso).replace(':id', uuidFalso);
+        .replace(':eventoId', uuidFalso).replace(':exportId', uuidFalso)
+        .replace(':tipo', 'pessoa').replace(':itemId', uuidFalso).replace(':id', uuidFalso);
       const r = await req(rota.metodo, caminho, { sessao: ana, corpo: rota.metodo === 'GET' ? undefined : { nome: 'invasao', papel: 'GUEST' } });
       // 404 e NUNCA 403: 403 confirmaria que a família existe (T2).
       if (r.status !== 404) falhas94.push(`${rota.metodo} ${rota.caminho} → ${r.status}`);
@@ -2097,7 +2261,8 @@ async function principal() {
         .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
         .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO)
         .replace(':storyId', ALVO_FALSO).replace(':lugarId', ALVO_FALSO)
-        .replace(':eventoId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':eventoId', ALVO_FALSO).replace(':exportId', ALVO_FALSO)
+        .replace(':tipo', 'pessoa').replace(':itemId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, { sessao: silva, corpo: rota.metodo === 'GET' ? undefined : { nome: 'x', papel: 'GUEST' } });
       assert.strictEqual(r.status, 404, `${rota.metodo} ${rota.caminho} devolveu ${r.status}`);
     }
@@ -2111,7 +2276,8 @@ async function principal() {
         .replace(':contribId', ALVO_FALSO).replace(':mediaId', ALVO_FALSO)
         .replace(':albumId', ALVO_FALSO).replace(':idId', ALVO_FALSO)
         .replace(':storyId', ALVO_FALSO).replace(':lugarId', ALVO_FALSO)
-        .replace(':eventoId', ALVO_FALSO).replace(':id', ALVO_FALSO);
+        .replace(':eventoId', ALVO_FALSO).replace(':exportId', ALVO_FALSO)
+        .replace(':tipo', 'pessoa').replace(':itemId', ALVO_FALSO).replace(':id', ALVO_FALSO);
       const r = await req(rota.metodo, caminho, {});
       assert.strictEqual(r.status, 401, `${rota.metodo} ${rota.caminho} respondeu ${r.status} sem sessão`);
     }
@@ -2145,7 +2311,7 @@ async function principal() {
     falhas.forEach((f) => console.log(`  • ${f.nome}: ${f.erro}`));
     process.exit(1);
   }
-  console.log('ORIGENA Fases 0 a 6: verde.\n');
+  console.log('ORIGENA 1.0: Fases 0 a 8 verdes.\n');
 }
 
 principal().catch(async (e) => {

@@ -79,7 +79,9 @@
     "memorias": "Memórias",
     "historias": "Histórias",
     "procurar": "Procurar",
-    "linha_do_tempo": "Linha do tempo"
+    "linha_do_tempo": "Linha do tempo",
+    "exportar": "Levar o acervo",
+    "lixeira": "Lixeira"
   },
   "papel": {
     "OWNER": "Responsável",
@@ -186,7 +188,14 @@
     "ia_indisponivel": "Este recurso ainda não está disponível.",
     "ia_falhou": "Não consegui concluir agora. Seus créditos foram devolvidos.",
     "biografia_sem_material": "Ainda não há material sobre esta pessoa. Conte histórias e registre fatos primeiro.",
-    "pergunta_vazia": "Escreva a pergunta."
+    "pergunta_vazia": "Escreva a pergunta.",
+    "import_formato": "Este arquivo não é uma exportação da Origena.",
+    "import_gedcom_vazio": "Não encontrei pessoas neste arquivo GEDCOM.",
+    "lixeira_tipo": "Tipo inválido.",
+    "lixeira_nao_encontrado": "Não está na lixeira.",
+    "purga_nome_diferente": "Para encerrar, escreva o nome da família exatamente como ele é.",
+    "export_nao_encontrado": "Exportação não encontrada.",
+    "export_nao_pronto": "A exportação ainda está sendo preparada."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -269,7 +278,11 @@
     "documento.extraido": "Texto do documento lido",
     "lugar.criado": "Lugar registrado",
     "lugar.renomeado": "Lugar renomeado",
-    "evento.criado": "Acontecimento registrado"
+    "evento.criado": "Acontecimento registrado",
+    "lixeira.restaurado": "Restaurado da lixeira",
+    "acervo.importado": "Acervo importado",
+    "acervo.importado_gedcom": "Árvore importada de GEDCOM",
+    "familia.purgada": "Família encerrada e apagada"
   },
   "pessoa": {
     "titulo": "Pessoas",
@@ -535,5 +548,20 @@
     "incerteza": "O que ajudaria a responder melhor",
     "sem_resposta": "A família ainda não registrou nada sobre isso.",
     "indisponivel": "Este recurso ainda não está disponível."
+  },
+  "exportacao": {
+    "titulo": "Levar o acervo",
+    "explica": "Você recebe um arquivo com tudo: pessoas, fatos com as fontes, histórias com as versões, e a árvore em formato aberto (GEDCOM). O acervo é da família — sempre.",
+    "gerar": "Preparar o arquivo",
+    "preparando": "Preparando…",
+    "baixar": "Baixar ({mb} MB)",
+    "validade": "O link vale por 7 dias.",
+    "nota_midias": "As fotos e vídeos continuam baixáveis um a um; os dados e o histórico vão completos no arquivo."
+  },
+  "lixeira": {
+    "titulo": "Lixeira",
+    "vazia": "Nada na lixeira.",
+    "restaurar": "Restaurar",
+    "explica": "O que foi arquivado fica aqui e pode voltar. Nada some com um clique."
   }
 }

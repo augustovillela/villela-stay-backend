@@ -67,6 +67,20 @@ function registrarHandlers() {
     const documentos = require('./documentos');
     return tenancy.comEscopo(payload.familyId, (t) => documentos.extrair(t, payload));
   });
+
+  // Exportação (Fase 8): zip com dados.json + GEDCOM, no R2 com validade.
+  fila.registrar('export.gerar', async (payload) => {
+    const tenancy = require('./tenancy');
+    const exportar = require('./exportar');
+    return tenancy.comEscopo(payload.familyId, (t) => exportar.gerar(t, payload));
+  });
+
+  // Integridade (ADR-0008): amostra de originais reconferida por rodízio.
+  fila.registrar('integridade.verificar', async (payload) => {
+    const tenancy = require('./tenancy');
+    const integridade = require('./integridade');
+    return tenancy.comEscopo(payload.familyId, (t) => integridade.verificar(t, payload));
+  });
 }
 
 /**
