@@ -123,9 +123,10 @@ header.top a{color:var(--creme)}
 }
 .card{background:#fff;border:1px solid var(--cinza2);border-radius:14px;overflow:hidden;transition:.15s;display:flex;flex-direction:column}
 .card:hover{box-shadow:0 10px 30px rgba(27,42,74,.12);transform:translateY(-2px)}
-/* Moldura da capa: 2/3 é a proporção real dos arquivos (ex. 1024x1536). Com 3/4 + cover
-   a capa aparecia cortada em cima e embaixo. `contain` garante que NENHUMA capa seja
-   cortada, mesmo as poucas fora do 2/3 (1200x1718, 1200x1700, 800x1132). */
+/* Moldura da capa: 2/3 e a proporcao real dos arquivos (ex. 1024x1536). Com 3/4 + cover
+   a capa aparecia cortada em cima e embaixo. O contain garante que NENHUMA capa seja
+   cortada, mesmo as poucas fora do 2/3 (1200x1718, 1200x1700, 800x1132).
+   ATENCAO: este CSS vive DENTRO de um template literal - nada de crase no comentario. */
 .card .capa{aspect-ratio:2/3;background:var(--cinza);display:flex;align-items:center;justify-content:center;color:var(--suave);overflow:hidden}
 .card .capa img{width:100%;height:100%;object-fit:contain}
 .card .corpo{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1}
