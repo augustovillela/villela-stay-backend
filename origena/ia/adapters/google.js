@@ -1,6 +1,6 @@
 // =====================================================================
-// ORIGENA — adapter Google (Gemini). Existe por UMA capability:
-// `transcrever_audio` (fase 2.4).
+// ORIGENA — adapter Google (Gemini). Duas capabilities:
+// `transcrever_audio` (2.4) e `embedding` (2.5).
 //
 // POR QUE ESTE PROVEDOR. A chave já é paga pelo grupo (é a mesma do
 // Estúdio de Ilustração do Invente) e o modelo recebe áudio direto, sem
@@ -14,10 +14,12 @@
 // transcrição automática, para conferir. Entrevista com quatro pessoas
 // falando por cima continua exigindo o provedor dedicado.
 //
-// A LINHA DO REGISTRY NASCE DESLIGADA (schema 015). Ligar exige duas
-// coisas fora do código: conta PAGA (no tier gratuito o conteúdo pode ser
-// usado para melhoria de produto) e o parecer da Q4 — aqui se grava a voz
-// de gente VIVA falando de terceiros que nunca souberam da Origena.
+// LIGADO EM 10/08/2026, por decisão do Augusto. A conta foi CONFERIDA
+// como paga (no tier gratuito o modelo de imagem tem limite zero, e ele
+// respondeu 200), e o parecer jurídico ficou explicitamente para depois
+// **enquanto o uso está restrito à família dele** — está registrado como
+// pendência com gatilho, não esquecido. Sair da família reabre a questão:
+// aqui se grava a voz de gente VIVA falando de terceiros.
 // =====================================================================
 'use strict';
 
@@ -54,6 +56,7 @@ const SCHEMA = {
 
 /** entrada = { arquivo: {mime, base64} } */
 async function executar({ model, capability, entrada }) {
+  if (capability === 'embedding') return embutir({ model, entrada });
   if (capability !== 'transcrever_audio') throw new Error('capability não suportada: ' + capability);
   if (!pronto()) throw new Error('sem GEMINI_API_KEY');
   const arq = entrada && entrada.arquivo;
@@ -94,6 +97,48 @@ async function executar({ model, capability, entrada }) {
     // provedor for plugada; por ora vale o estimado do registry
     custo_centavos: 0,
   };
+}
+
+/**
+ * Embeddings (2.5). Vetor por trecho, para a busca semântica.
+ *
+ * 768 DIMENSÕES, não as 3072 do padrão: o índice cabe num banco pequeno, a
+ * consulta é mais rápida e a perda de qualidade é marginal para acervo de
+ * família. A dimensão vive em `config` — mudá-la exige reconstruir o
+ * índice inteiro, e o código recusa misturar vetores de tamanhos
+ * diferentes em vez de comparar coisa com coisa que não é.
+ *
+ * `taskType` importa: o Google gera vetores DIFERENTES para quem guarda
+ * (`RETRIEVAL_DOCUMENT`) e para quem pergunta (`RETRIEVAL_QUERY`). Usar o
+ * mesmo para os dois piora a busca em silêncio.
+ */
+async function embutir({ model, entrada }) {
+  if (!pronto()) throw new Error('sem GEMINI_API_KEY');
+  const texto = String((entrada || {}).texto || '').trim();
+  if (!texto) throw new Error('embedding exige texto');
+  const dim = Number((entrada || {}).dimensoes) || 768;
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch(`${BASE}/${model}:embedContent?key=${chave()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        content: { parts: [{ text: texto.slice(0, 8000) }] },
+        outputDimensionality: dim,
+        taskType: entrada.consulta ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT',
+      }),
+    });
+  } finally { clearTimeout(t); }
+
+  if (!r.ok) throw new Error('Google ' + r.status + ': ' + (await r.text()).slice(0, 200));
+  const d = await r.json();
+  const vetor = ((d.embedding || {}).values) || [];
+  if (vetor.length !== dim) throw new Error(`embedding veio com ${vetor.length} dimensões, esperava ${dim}`);
+  return { saida: { vetor }, tokens_in: 0, tokens_out: 0, custo_centavos: 0 };
 }
 
 module.exports = { pronto, executar };

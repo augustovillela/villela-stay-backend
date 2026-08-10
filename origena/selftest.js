@@ -1600,6 +1600,15 @@ async function principal() {
     const url = await req('GET', F(`/midias/${r.media_id}/url`), { sessao: bruno });
     assert.strictEqual(url.status, 404, 'entregou a URL do arquivo privado');
     P.privada = r.media_id;
+
+    // O ÍNDICE TAMBÉM TEM DE SABER. Marcar como privada depois de indexada
+    // atualizava só a tabela `media`: a busca continuava com a privacidade
+    // antiga e devolvia a foto para quem não podia abri-la. Achado em
+    // 10/08/2026 por um teste da busca por SENTIDO — o furo era da textual.
+    const naBusca = await req('GET', F('/busca?q=' + encodeURIComponent('carta-particular')),
+      { sessao: bruno });
+    assert(!(naBusca.json.resultados || []).some((x) => x.ref_id === P.privada),
+      'a foto marcada como PRIVADA continuou aparecendo na busca de quem não pode vê-la');
   });
 
   await teste('quem administra abre o privado, e o acesso fica AUDITADO', async () => {
@@ -2989,6 +2998,15 @@ async function principal() {
     const ativas = r.json.capacidades.filter((c) => c.ativo);
     assert(ativas.length >= 3, 'o registry perdeu capacidades');
     for (const c of ativas) {
+      // Capability com tarifa ZERO é RECURSO DO PLANO, não operação vendida
+      // (a busca semântica é assim de propósito). A regra que vale para ela
+      // é outra, e mais dura: se é de graça para a família, tem de custar
+      // ~nada para nós — senão vira prejuízo silencioso por uso.
+      if (c.creditos === 0) {
+        assert(c.custo_estimado_centavos <= 1,
+          `${c.capability} é gratuita para a família mas custa ${c.custo_estimado_centavos} centavos por uso`);
+        continue;
+      }
       assert(c.receita_centavos > c.custo_estimado_centavos,
         `${c.capability} cobra ${c.receita_centavos} e custa ${c.custo_estimado_centavos}`);
       assert(c.margem_bp >= 3000, `${c.capability} com margem de ${c.margem_bp / 100}%`);
@@ -3309,6 +3327,114 @@ async function principal() {
     assert(pirapora.eventos > 0,
       'o texto escrito à mão não se ligou ao lugar cadastrado: ' +
       JSON.stringify({ pirapora, nao_reconhecidos: r.json.nao_reconhecidos.slice(0, 6) }));
+  });
+
+  // ================================ 2.5 BUSCA SEMÂNTICA (o fim da fase 2)
+  console.log('\nbusca por sentido (2.5) — ao lado da palavra, nunca no lugar dela');
+
+  const semantica = require('./semantica');
+
+  await teste('o texto é cortado onde a frase termina, não no meio da palavra', async () => {
+    const longo = ('Era uma vez uma casa de porta e janela na rua do meio. ').repeat(60);
+    const partes = semantica.trechos(longo, 300);
+    assert(partes.length > 1, 'não cortou um texto de 3 mil caracteres');
+    assert(partes.every((p) => p.length <= 300), 'trecho passou do teto');
+    // corta na frase: todos os pedaços terminam em pontuação
+    assert.strictEqual(partes.filter((x) => /[.!?;]$/.test(x)).length, partes.length,
+      'cortou no meio da frase — o trecho perde o sentido que estamos indexando');
+    assert.deepStrictEqual(semantica.trechos('curto'), ['curto']);
+    assert.deepStrictEqual(semantica.trechos('   '), [], 'texto vazio virou trecho');
+  });
+
+  await teste('sem provedor de embedding, a busca por sentido some — e a textual fica', async () => {
+    routerIA.injetarParaTeste('google', null);
+    await db.q(`UPDATE provider_registry SET ativo = false WHERE capability = 'embedding'`);
+    const est = await req('GET', F('/semantica'), { sessao: ana });
+    assert.strictEqual(est.json.disponivel, false, 'anunciou busca por sentido sem provedor');
+    const b = await req('GET', F('/busca?q=Pirapora'), { sessao: ana });
+    assert.strictEqual(b.status, 200, b.texto);
+    assert(b.json.resultados.length > 0, 'a busca POR PALAVRA parou junto — ela não depende disto');
+    assert.deepStrictEqual(b.json.por_sentido, [], 'inventou achado por sentido sem provedor');
+  });
+
+  await teste('indexar guarda um vetor por trecho, e reindexar não duplica', async () => {
+    await db.q(`UPDATE provider_registry SET ativo = true WHERE capability = 'embedding'`);
+    // Vetor FALSO determinístico: mesmo texto → mesmo vetor. Não testa
+    // qualidade semântica (nenhum teste offline testa), testa o que é
+    // nosso: cortar, guardar, filtrar e não cobrar.
+    const vetorDe = (texto) => {
+      const v = new Array(768).fill(0);
+      for (let i = 0; i < texto.length; i++) v[texto.charCodeAt(i) % 768] += 1;
+      const n = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
+      return v.map((x) => x / n);
+    };
+    routerIA.injetarParaTeste('google', async ({ capability, entrada }) => {
+      assert.strictEqual(capability, 'embedding');
+      return { saida: { vetor: vetorDe(entrada.texto) }, tokens_in: 0, tokens_out: 0, custo_centavos: 0 };
+    });
+
+    const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    const r1 = await req('POST', F('/semantica/indexar'), { sessao: ana, corpo: { limite: 10 } });
+    assert.strictEqual(r1.status, 200, r1.texto);
+    assert(r1.json.itens > 0, 'não indexou nada');
+
+    // esvazia a fila (o acervo de teste tem mais itens que o lote) e SÓ ENTÃO
+    // afirma que passar de novo não repete — indexar em lotes é o desenho,
+    // não um defeito
+    for (let i = 0; i < 20; i++) {
+      const r = await req('POST', F('/semantica/indexar'), { sessao: ana, corpo: { limite: 25 } });
+      if (r.json.itens === 0) break;
+    }
+    const n1 = await tenancy.comEscopo(famA, (t) => t.uma(`SELECT count(*)::int n FROM search_chunks`));
+    const r2 = await req('POST', F('/semantica/indexar'), { sessao: ana, corpo: { limite: 25 } });
+    assert.strictEqual(r2.json.itens, 0, 'reindexou o que já estava em dia');
+    const n2 = await tenancy.comEscopo(famA, (t) => t.uma(`SELECT count(*)::int n FROM search_chunks`));
+    assert.strictEqual(n2.n, n1.n, 'a segunda indexação duplicou trechos');
+
+    // e NÃO cobra crédito: é recurso do plano, não operação vendida
+    assert.strictEqual((await req('GET', F('/creditos'), { sessao: ana })).json.saldo, antes,
+      'a busca por sentido cobrou crédito da família');
+  });
+
+  await teste('a busca por sentido respeita quem pode ver — antes de devolver', async () => {
+    // indexa TUDO, inclusive o documento PRIVATE do dono
+    for (let i = 0; i < 12; i++) {
+      const r = await req('POST', F('/semantica/indexar'), { sessao: ana, corpo: { limite: 25 } });
+      if (r.json.itens === 0) break;
+    }
+    const doDono = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT texto FROM search_chunks WHERE ref_id = $1 AND ordem = 0`, [P.privada]));
+    if (doDono) {
+      const busca = await req('GET', F('/busca?q=' + encodeURIComponent(doDono.texto.slice(0, 60))),
+        { sessao: bruno });
+      assert.strictEqual(busca.status, 200, busca.texto);
+      const achou = (busca.json.por_sentido || []).some((x) => x.ref_id === P.privada);
+      assert(!achou, 'O ITEM PRIVADO APARECEU NA BUSCA POR SENTIDO DE QUEM NÃO PODE VÊ-LO');
+    }
+  });
+
+  await teste('o mesmo texto acha o item — e o trecho volta para conferir', async () => {
+    const alvo = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT ref_tipo, ref_id, texto FROM search_chunks
+        WHERE privacidade = 'FAMILY' AND length(texto) > 40 ORDER BY atualizado_em DESC LIMIT 1`));
+    assert(alvo, 'nada foi indexado para procurar');
+    const r = await tenancy.comEscopo(famA, (t) => semantica.procurar(t, famA, {
+      termo: alvo.texto.slice(0, 120), quem: { userId: ana.id, papel: 'OWNER' }, limite: 5 }));
+    assert(r.length > 0, 'não achou nem o próprio texto');
+    assert(r.some((x) => x.ref_id === alvo.ref_id), 'o item exato não veio entre os primeiros');
+    assert(r[0].trecho && r[0].origem === 'sentido', 'resultado sem trecho ou sem origem declarada');
+  });
+
+  await teste('vetor com dimensão errada é RECUSADO, não guardado torto', async () => {
+    routerIA.injetarParaTeste('google', async () => ({
+      saida: { vetor: new Array(10).fill(0.1) }, tokens_in: 0, tokens_out: 0, custo_centavos: 0 }));
+    await tenancy.comEscopo(famA, async (t) => {
+      const alvo = await t.uma(`SELECT ref_tipo, ref_id FROM busca LIMIT 1`);
+      await assert.rejects(
+        semantica.indexarItem(t, { familyId: famA, refTipo: alvo.ref_tipo, refId: alvo.ref_id }),
+        /dimension|vector|dimensões/i,
+        'guardou vetor de tamanho errado — a comparação viraria lixo silencioso');
+    });
   });
 
   // ============================================================ §94 TENANCY

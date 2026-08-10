@@ -1381,9 +1381,46 @@ async function telaBusca(offset) {
             (x.trecho ? '<p class="sub" style="margin:0">' +
               esc(x.trecho).replace(/«/g, '<mark>').replace(/»/g, '</mark>') + '</p>' : '') +
             '</div>').join('')
-        : '<p class="sub">' + esc(t('busca.nada')) + '</p>')));
+        : '<p class="sub">' + esc(t('busca.nada')) + '</p>')) +
+    // Por SENTIDO: o que a palavra exata não trouxe. Vem separado e
+    // rotulado — misturar com o resultado exato esconderia de onde veio.
+    ((r.por_sentido || []).length
+      ? '<h3 style="margin-top:22px">' + esc(t('busca.por_sentido')) + '</h3>' +
+        '<p class="sub">' + esc(t('busca.por_sentido_intro')) + '</p>' +
+        r.por_sentido.map(x =>
+          '<div class="card" style="padding:16px;cursor:pointer" onclick="' + abrirDe(x) + '">' +
+          '<p style="margin:0 0 4px"><span class="papel">' + esc(t('busca.tipo_' + x.ref_tipo)) + '</span> ' +
+          '<strong>' + esc(x.titulo || '') + '</strong></p>' +
+          '<p class="sub" style="margin:0">' + esc(x.trecho) + '</p></div>').join('')
+      : '') +
+    '<div id="sem_estado"></div>');
   const campo = document.getElementById('bq');
   if (campo && !offset) campo.focus();
+  estadoSemantica();
+}
+
+/**
+ * Estado da indexação por sentido. Aparece só quando há o que indexar —
+ * quem não indexar continua com a busca por palavra inteira, e a tela diz
+ * isso em vez de deixar a impressão de que falta alguma coisa.
+ */
+async function estadoSemantica() {
+  const alvo = document.getElementById('sem_estado');
+  if (!alvo) return;
+  const r = await api('GET', '/familias/' + FAM.id + '/semantica');
+  if (r.status >= 400 || !r.disponivel || !r.pendentes) return;
+  alvo.innerHTML = '<p class="sub" style="margin-top:18px">' +
+    esc(t('busca.a_indexar', { n: r.pendentes })) +
+    (pode('editar') ? ' <button class="btn mini sec" onclick="indexarSentido()">' +
+      esc(t('busca.indexar')) + '</button>' : '') + '</p>';
+}
+
+async function indexarSentido() {
+  const alvo = document.getElementById('sem_estado');
+  if (alvo) alvo.innerHTML = '<p class="sub">' + esc(t('busca.indexando')) + '</p>';
+  const r = await api('POST', '/familias/' + FAM.id + '/semantica/indexar', { limite: 25 });
+  if (r.status >= 400) { if (alvo) alvo.innerHTML = aviso(r.erro); return; }
+  estadoSemantica();
 }
 
 // --------------------------------------------------------------- histórias

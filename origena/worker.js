@@ -75,6 +75,22 @@ function registrarHandlers() {
     return tenancy.comEscopo(payload.familyId, (t) => exportar.gerar(t, payload));
   });
 
+  // Busca semântica (2.5): embutir o que entrou ou mudou. Vai em LOTE
+  // porque acervo grande não cabe numa chamada — e o job se reagenda
+  // sozinho enquanto sobrar coisa, em vez de fingir que terminou.
+  fila.registrar('semantica.indexar', async (payload) => {
+    const tenancy = require('./tenancy');
+    const semantica = require('./semantica');
+    const r = await tenancy.comEscopo(payload.familyId,
+      (t) => semantica.indexarPendentes(t, payload.familyId, payload.limite || 25));
+    if (r.itens > 0) {
+      await fila.enfileirar({ tipo: 'semantica.indexar', fila: 'cara',
+        familyId: payload.familyId,
+        payload: { familyId: payload.familyId, limite: payload.limite || 25 } });
+    }
+    return r;
+  });
+
   // Integridade (ADR-0008): amostra de originais reconferida por rodízio.
   fila.registrar('integridade.verificar', async (payload) => {
     const tenancy = require('./tenancy');

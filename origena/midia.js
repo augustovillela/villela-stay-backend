@@ -178,6 +178,34 @@ async function ingerir(t, { mediaId, familyId, userId }) {
     exif: Object.keys(exif).length, documento: real.tipo === 'DOCUMENTO' };
 }
 
+/**
+ * Reindexa UMA mídia na busca. Existe porque editar título, descrição ou
+ * PRIVACIDADE mudava só a tabela `media` — o índice continuava com o valor
+ * antigo, e uma foto marcada como privada seguia aparecendo na busca de
+ * quem não podia vê-la. O índice guarda a privacidade para não precisar de
+ * join a cada consulta; o preço disso é ter de reindexar quando ela muda.
+ *
+ * Efeito colateral desejado: `busca.atualizado_em` avança, e com isso os
+ * trechos da busca semântica entram na fila de reindexação sozinhos.
+ */
+async function reindexar(t, familyId, mediaId) {
+  const m = await t.uma(
+    `SELECT id, tipo, titulo, nome_original, descricao, capturada_ini, capturada_fim,
+            local_texto, privacidade, created_by
+       FROM media WHERE id = $1 AND deleted_at IS NULL`, [mediaId]);
+  if (!m) return null;
+  // o texto extraído do documento continua no índice: ele é upsert por cima
+  const doc = m.tipo === 'DOCUMENTO'
+    ? await t.uma(`SELECT texto FROM document_texts WHERE media_id = $1`, [mediaId]) : null;
+  return busca.indexar(t, {
+    familyId, refTipo: m.tipo === 'DOCUMENTO' ? 'document' : 'media', refId: mediaId,
+    titulo: m.titulo || m.nome_original,
+    corpo: [m.descricao, doc && doc.texto].filter(Boolean).join(' '),
+    dataIni: m.capturada_ini, dataFim: m.capturada_fim, localTexto: m.local_texto,
+    privacidade: m.privacidade, criadoPor: m.created_by,
+  });
+}
+
 async function quarentena(t, mediaId, chaveErro) {
   await t.q(`UPDATE media SET status = 'quarentena', erro = $2, updated_at = now() WHERE id = $1`,
     [mediaId, chaveErro]);
@@ -367,6 +395,7 @@ async function arquivar(t, { familyId, userId, mediaId }) {
 }
 
 module.exports = {
+  reindexar,
   LIMITES, TIPOS, preparar, confirmar, ingerir, registrarDerivado,
   listar, obter, pessoasDe, identificar, confirmarIdentificacao,
   contarHistoria, arquivar, quarentena,

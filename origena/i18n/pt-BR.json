@@ -235,7 +235,8 @@
     "resposta_sem_transcricao": "Escreva ou transcreva a resposta antes de procurar nomes e datas.",
     "audio_grande_demais": "Este áudio é longo demais para transcrever de uma vez. Grave em partes menores.",
     "grafo_tipo_invalido": "Esse tipo de registro não entra no grafo.",
-    "grafo_no_nao_encontrado": "Esse registro não existe mais."
+    "grafo_no_nao_encontrado": "Esse registro não existe mais.",
+    "embedding_indisponivel": "A busca por sentido não está ligada."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -539,7 +540,12 @@
     "tipo_event": "Acontecimentos",
     "tipo_tradition": "Tradições",
     "tipo_recipe": "Receitas",
-    "tipo_heirloom": "Objetos de família"
+    "tipo_heirloom": "Objetos de família",
+    "por_sentido": "Talvez seja isto",
+    "por_sentido_intro": "Achados por SENTIDO, não pela palavra exata — a Origena procurou o que parece com o que você escreveu. Confira o trecho antes de confiar.",
+    "a_indexar": "{n} item(ns) do acervo ainda não entraram na busca por sentido.",
+    "indexar": "Indexar agora",
+    "indexando": "Indexando…"
   },
   "documento": {
     "texto": "Texto do documento",

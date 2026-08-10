@@ -29,6 +29,7 @@ const documentosIA = require('./documentos-ia');
 const entrevistas = require('./entrevistas');
 const grafo = require('./grafo');
 const mapa = require('./mapa');
+const semantica = require('./semantica');
 const historias = require('./historias');
 const busca = require('./busca');
 const tempo = require('./tempo');
@@ -446,6 +447,10 @@ function registrarRotasApp(app) {
           d.descricao != null ? s(d.descricao, 2000) : null,
           ['PUBLIC', 'FAMILY', 'GROUP', 'PRIVATE'].includes(d.privacidade) ? d.privacidade : null]));
       if (!m) throw erro('erro.midia_nao_encontrada', 404);
+      // Reindexa: mudar a PRIVACIDADE sem isto deixava o índice dizendo o
+      // valor antigo, e a foto marcada como privada continuava aparecendo
+      // na busca de quem não podia vê-la.
+      await tenancy.noEscopoDe(req, (t) => midia.reindexar(t, req.familia.id, m.id));
       res.json({ midia: m });
     }));
 
@@ -971,7 +976,42 @@ function registrarRotasApp(app) {
       limite: Number(q.limite) || 40, offset: Number(q.offset) || 0 }));
     const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
     const visiveis = busca.filtrar(linhas, quem);
-    res.json({ resultados: visiveis, ocultos: linhas.length - visiveis.length });
+
+    // Semântica ENTRA AO LADO, não no lugar (2.5): a busca por palavra é
+    // exata e de graça, e continua sendo a primeira. O vetor serve para
+    // quando a família não lembra o termo — e o que ele acrescenta vem
+    // marcado com `origem: 'sentido'`, para o resultado ser conferível.
+    let porSentido = [];
+    if (s(q.q, 200).length >= 3 && q.sentido !== '0') {
+      const jaTem = new Set(visiveis.map((x) => x.ref_tipo + ':' + x.ref_id));
+      porSentido = (await tenancy.noEscopoDe(req, (t) => semantica.procurar(t, req.familia.id, {
+        termo: s(q.q, 200), quem, limite: 12 })).catch(() => []))
+        .filter((x) => !jaTem.has(x.ref_tipo + ':' + x.ref_id));
+    }
+    res.json({ resultados: visiveis, ocultos: linhas.length - visiveis.length,
+      por_sentido: porSentido });
+  }));
+
+  /**
+   * Indexação semântica: roda em LOTE e sob demanda. Acervo grande não
+   * pode virar uma chamada só, e indexar não é obrigação da família —
+   * quem não indexar continua com a busca textual inteira.
+   */
+  app.post(decl('POST', `${R}/familias/:familyId/semantica/indexar`), ...naFamilia,
+    rbac.exigir('editar'), h(async (req, res) => {
+      res.json(await tenancy.noEscopoDe(req, (t) => semantica.indexarPendentes(t, req.familia.id,
+        Number((req.body || {}).limite) || 25)));
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/semantica`), ...naFamilia, h(async (req, res) => {
+    const dados = await tenancy.noEscopoDe(req, async (t) => ({
+      disponivel: await semantica.disponivel(t),
+      pendentes: (await semantica.pendentes(t, req.familia.id, 200)).length,
+      indexados: Number((await t.uma(
+        `SELECT count(DISTINCT ref_id)::int n FROM search_chunks WHERE family_id = $1`,
+        [req.familia.id])).n),
+    }));
+    res.json(dados);
   }));
 
   // -------------------------------------------------------------- lugares
