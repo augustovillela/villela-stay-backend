@@ -238,7 +238,10 @@
     "grafo_no_nao_encontrado": "Esse registro não existe mais.",
     "embedding_indisponivel": "A busca por sentido não está ligada.",
     "estudio_operacao_invalida": "Essa operação não existe no Estúdio.",
-    "estudio_so_foto": "O Estúdio trabalha com fotografias."
+    "estudio_so_foto": "O Estúdio trabalha com fotografias.",
+    "livro_tipo_invalido": "Esse tipo de livro não existe.",
+    "livro_sem_pessoa": "Diga de quem é o livro.",
+    "livro_nao_encontrado": "Esse livro não existe mais."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -1020,5 +1023,21 @@
     "indisponivel": "O Estúdio ainda não está ligado.",
     "so_foto": "O Estúdio trabalha com fotografias.",
     "nada_ainda": "Nenhuma versão feita ainda."
+  },
+  "livro": {
+    "titulo": "Livro da família",
+    "intro": "O acervo vira um PDF para imprimir e guardar numa gaveta. Papel não tem senha, não depende de provedor e não expira — é a forma mais antiga de um legado atravessar gerações.",
+    "recorte": "O livro mostra o que VOCÊ pode ver. Outra pessoa da família, com outro papel, receberia um livro diferente.",
+    "gerar": "Fazer o livro da família",
+    "gerar_pessoa": "Fazer o livro desta pessoa",
+    "na_fila": "Montando o livro — leva um instante. Ele aparece aqui quando ficar pronto.",
+    "gerando": "Montando…",
+    "pronto": "{n} página(s) · {kb} KB",
+    "baixar": "Baixar o PDF",
+    "falhou": "Não deu certo: {motivo}",
+    "expira": "O link vale até {data} — o livro se refaz quando quiser.",
+    "conteudo": "{pessoas} pessoa(s), {historias} história(s), {tradicoes} tradição(ões), {fotos} foto(s)",
+    "nenhum": "Nenhum livro feito ainda.",
+    "pedido_por": "pedido por {nome}"
   }
 }

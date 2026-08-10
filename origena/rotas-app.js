@@ -31,6 +31,7 @@ const grafo = require('./grafo');
 const mapa = require('./mapa');
 const semantica = require('./semantica');
 const estudio = require('./estudio');
+const livro = require('./livro');
 const historias = require('./historias');
 const busca = require('./busca');
 const tempo = require('./tempo');
@@ -1295,6 +1296,38 @@ function registrarRotasApp(app) {
     const dados = await tenancy.noEscopoDe(req, (t) => arvore.montar(t, req.params.pessoaId, { modo, geracoes }));
     res.json(dados);
   }));
+
+  // ------------------------------------------------ Origena Criar (3.2)
+  /**
+   * O livro da família em PDF. O papel de QUEM PEDE fica gravado: o worker
+   * compõe com essa permissão, e não com a dele — que alcança tudo.
+   */
+  app.post(decl('POST', `${R}/familias/:familyId/livros`), ...naFamilia,
+    rbac.exigir('exportar'), h(async (req, res) => {
+      const b = req.body || {};
+      const l = await tenancy.noEscopoDe(req, (t) => livro.pedir(t, {
+        familyId: req.familia.id, userId: req.usuario.id, papel: req.papel,
+        tipo: s(b.tipo, 20) || 'familia',
+        personId: tenancy.UUID.test(String(b.pessoa || '')) ? b.pessoa : null }));
+      res.status(202).json({ livro: { id: l.id, status: l.status, tipo: l.tipo } });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/livros`), ...naFamilia,
+    rbac.exigir('exportar'), h(async (req, res) => {
+      res.json({ livros: await tenancy.noEscopoDe(req, (t) => livro.listar(t, req.familia.id)) });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/livros/:livroId`), ...naFamilia,
+    rbac.exigir('exportar'), h(async (req, res) => {
+      const dados = await tenancy.noEscopoDe(req, async (t) => {
+        const l = await t.uma(
+          `SELECT id, tipo, status, paginas, bytes, conteudo, erro, expira_em
+             FROM books WHERE id = $1`, [req.params.livroId]);
+        if (!l) throw erro('erro.livro_nao_encontrado', 404);
+        return { livro: l, url: await livro.url(t, l.id) };
+      });
+      res.json(dados);
+    }));
 
   // ---------------------------------------------------- grafo e mapa (2.5)
   /**

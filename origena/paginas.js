@@ -273,6 +273,7 @@ async function abrir(id) {
       ' · <a href="#" onclick="telaEntrevistas();return false"><strong>' + esc(t('entrevista.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaMapa();return false"><strong>' + esc(t('mapa.titulo')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaLivros();return false"><strong>' + esc(t('livro.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
       ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaPlanos();return false">' + esc(t('familia.planos')) + '</a></p>' +
@@ -857,6 +858,50 @@ async function guardarHistoria(id) {
     porque_importa: document.getElementById('hp').value });
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verMidia(id);
+}
+
+// ------------------------------------------------ Origena Criar (3.2)
+// O livro é um RECORTE do acervo, feito por alguém. A tela diz isso antes
+// de o primeiro PDF existir — senão a família conclui que o livro é "tudo".
+async function telaLivros() {
+  const r = await api('GET', '/familias/' + FAM.id + '/livros');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('livro.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('livro.intro')) + '</p>' +
+    '<p class="sub">' + esc(t('livro.recorte')) + '</p>' +
+    (pode('exportar')
+      ? '<p><button class="btn" onclick="pedirLivro()">' + esc(t('livro.gerar')) + '</button></p>'
+      : '') +
+    ((r.livros || []).length
+      ? r.livros.map(l => '<div class="linha"><span>' +
+          '<strong>' + esc(l.status === 'pronto'
+            ? t('livro.pronto', { n: l.paginas, kb: Math.round(l.bytes / 1024) })
+            : l.status === 'falhou' ? t('livro.falhou', { motivo: l.erro || '' })
+              : t('livro.gerando')) + '</strong><br>' +
+          '<span class="sub">' + esc(t('livro.conteudo', {
+            pessoas: (l.conteudo || {}).pessoas || 0, historias: (l.conteudo || {}).historias || 0,
+            tradicoes: (l.conteudo || {}).tradicoes || 0, fotos: (l.conteudo || {}).fotos || 0 })) +
+            ' · ' + esc(t('livro.pedido_por', { nome: l.pedido_por || '' })) + '</span></span>' +
+          (l.status === 'pronto'
+            ? '<span><button class="btn mini" onclick="baixarLivro('' + l.id + '')">' +
+              esc(t('livro.baixar')) + '</button></span>' : '<span></span>') +
+          '</div>').join('')
+      : '<p class="sub">' + esc(t('livro.nenhum')) + '</p>'));
+}
+
+async function pedirLivro(pessoaId) {
+  const r = await api('POST', '/familias/' + FAM.id + '/livros',
+    pessoaId ? { tipo: 'pessoa', pessoa: pessoaId } : { tipo: 'familia' });
+  if (r.status >= 400) return alert(r.erro);
+  alert(t('livro.na_fila'));
+  telaLivros();
+}
+
+async function baixarLivro(id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/livros/' + id);
+  if (r.status >= 400 || !r.url) return alert(t('livro.gerando'));
+  window.open(r.url, '_blank', 'noopener');
 }
 
 // ------------------------------------------------------ grafo e mapa (2.5)

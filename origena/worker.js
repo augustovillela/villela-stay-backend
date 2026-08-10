@@ -98,6 +98,9 @@ function registrarHandlers() {
     return estudio.gerar(payload);
   });
 
+  // Livro da família (3.2): compõe o PDF com a permissão de QUEM PEDIU.
+  fila.registrar('livro.gerar', async (payload) => require('./livro').gerar(payload));
+
   // Integridade (ADR-0008): amostra de originais reconferida por rodízio.
   fila.registrar('integridade.verificar', async (payload) => {
     const tenancy = require('./tenancy');

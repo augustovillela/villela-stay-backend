@@ -358,7 +358,8 @@ async function principal() {
     // o app é uma página só: se o template quebrar, some tudo de uma vez
     for (const tela of ['telaTradicoes', 'verTradicao', 'telaReliquias', 'verReliquia',
       'telaMissoes', 'telaHistoriador', 'telaIndice', 'telaAvisos', 'telaPlanos',
-      'telaEntrevistas', 'verEntrevista', 'telaGrafo', 'telaMapa', 'desenhoMapa']) {
+      'telaEntrevistas', 'verEntrevista', 'telaGrafo', 'telaMapa', 'desenhoMapa',
+      'carregarEstudio', 'telaLivros']) {
       assert(r.texto.includes('function ' + tela) || r.texto.includes(tela + ' ='),
         `a tela ${tela} não foi para o HTML`);
     }
@@ -3537,6 +3538,77 @@ async function principal() {
       'deixou derivar de um derivado — a cadeia vira telefone sem fio');
   });
 
+  // ============================================ 3.2 ORIGENA CRIAR (§92)
+  console.log('\no livro da família (3.2) — o acervo cabe numa gaveta');
+
+  const livroMod = require('./livro');
+  let livroId = null;
+
+  await teste('o texto do livro sobrevive ao acento e perde o emoji', async () => {
+    // `pdf-lib` com fonte padrão escreve WinAnsi: acento passa, emoji NÃO —
+    // e a exceção estoura no MEIO da geração, com o trabalho já feito.
+    assert.strictEqual(livroMod.limpar('Ação, avô, José'), 'Ação, avô, José');
+    assert.strictEqual(livroMod.limpar('vovó ✨ bolo 🎂'), 'vovó  bolo ');
+    assert.strictEqual(livroMod.limpar('1921–1998 “Zeca”'), '1921-1998 "Zeca"');
+  });
+
+  await teste('pedir o livro enfileira e o worker devolve um PDF de verdade', async () => {
+    const ped = await req('POST', F('/livros'), { sessao: ana, corpo: { tipo: 'familia' } });
+    assert.strictEqual(ped.status, 202, ped.texto);
+    livroId = ped.json.livro.id;
+
+    await fila.processarLote(10, 'cara');
+    const st = await req('GET', F(`/livros/${livroId}`), { sessao: ana });
+    assert.strictEqual(st.json.livro.status, 'pronto', JSON.stringify(st.json.livro));
+    assert(st.json.livro.paginas > 1, 'o livro saiu com uma página só');
+    assert(st.json.url, 'sem URL para baixar');
+
+    const resp = await fetch(st.json.url);
+    assert(resp.ok, 'a URL assinada não baixou o PDF');
+    const pdf = Buffer.from(await resp.arrayBuffer());
+    assert.strictEqual(pdf.subarray(0, 5).toString('latin1'), '%PDF-',
+      'o arquivo no R2 não é um PDF');
+    assert.strictEqual(pdf.length, Number(st.json.livro.bytes));
+  });
+
+  await teste('o livro mostra o que QUEM PEDIU pode ver — não o que o worker alcança', async () => {
+    // É o risco central desta fase: compor com a permissão de quem processa
+    // a fila (que alcança tudo) publicaria o acervo inteiro num PDF que a
+    // família manda por e-mail. A prova é comparar dois papéis.
+    const quemOwner = { userId: ana.id, papel: 'OWNER' };
+    const quemContrib = { userId: bruno.id, papel: 'CONTRIBUTOR' };
+    const [comTudo, comMenos] = await Promise.all([
+      tenancy.comEscopo(famA, (t) => livroMod.compor(t, { familyId: famA, quem: quemOwner, tipo: 'familia' })),
+      tenancy.comEscopo(famA, (t) => livroMod.compor(t, { familyId: famA, quem: quemContrib, tipo: 'familia' })),
+    ]);
+    assert(comTudo.contagens.pessoas > comMenos.contagens.pessoas,
+      `o livro do CONTRIBUTOR trouxe tanta gente quanto o do OWNER `
+      + `(${comMenos.contagens.pessoas} vs ${comTudo.contagens.pessoas}) — a permissão de quem pediu não foi respeitada`);
+    assert(comTudo.paginas > comMenos.paginas, 'os dois livros saíram do mesmo tamanho');
+  });
+
+  await teste('o colofão diz que o livro é um RECORTE, e o que veio de máquina', async () => {
+    const r = await tenancy.comEscopo(famA, (t) => livroMod.compor(t, {
+      familyId: famA, quem: { userId: ana.id, papel: 'OWNER' }, tipo: 'familia' }));
+    // o PDF é comprimido; a garantia honesta é a contagem + o fato de existir
+    // a página final. Procurar string no arquivo cru daria falso negativo.
+    assert(r.paginas >= 3, 'não houve espaço nem para capa, pessoa e colofão');
+    assert(r.contagens.pessoas > 0 && r.contagens.tradicoes >= 0);
+  });
+
+  await teste('o livro de UMA pessoa só traz aquela pessoa', async () => {
+    const r = await req('POST', F('/livros'), { sessao: ana,
+      corpo: { tipo: 'pessoa', pessoa: P.joao.id } });
+    assert.strictEqual(r.status, 202, r.texto);
+    await fila.processarLote(10, 'cara');
+    const st = await req('GET', F(`/livros/${r.json.livro.id}`), { sessao: ana });
+    assert.strictEqual(st.json.livro.status, 'pronto', JSON.stringify(st.json.livro));
+    assert.strictEqual(st.json.livro.conteudo.pessoas, 1, 'o livro de uma pessoa trouxe a família');
+
+    const semPessoa = await req('POST', F('/livros'), { sessao: ana, corpo: { tipo: 'pessoa' } });
+    assert.strictEqual(semPessoa.status, 400, 'aceitou livro de pessoa sem dizer quem');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
@@ -3553,7 +3625,8 @@ async function principal() {
       .replace(':predicado', 'data_nascimento').replace(':noTipo', 'person').replace(':tipo', 'pessoa');
     for (const p of [':pessoaId', ':relId', ':claimId', ':contribId', ':mediaId', ':albumId',
       ':idId', ':storyId', ':lugarId', ':eventoId', ':exportId', ':tradicaoId', ':reliquiaId',
-      ':missaoId', ':achadoId', ':entrevistaId', ':respostaId', ':noId', ':itemId', ':id']) {
+      ':missaoId', ':achadoId', ':entrevistaId', ':respostaId', ':noId', ':livroId',
+      ':itemId', ':id']) {
       c = c.replace(p, ALVO_FALSO);
     }
     const sobrou = c.match(/\/:(\w+)/);

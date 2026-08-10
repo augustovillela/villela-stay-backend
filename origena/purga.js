@@ -65,7 +65,7 @@ async function restaurar(t, { familyId, userId, tipo, id }) {
 // Ordem de desmonte: filhos antes de pais (FKs), binários antes das
 // linhas que os apontam — se a purga morrer no meio, sobra registro
 // apontando byte apagado (visível), nunca byte órfão pago para sempre.
-const ORDEM = ['search_chunks', 'document_findings', 'interview_answers', 'interviews', 'heirloom_custody', 'heirlooms', 'recipe_learners', 'tradition_transmissions',
+const ORDEM = ['books', 'search_chunks', 'document_findings', 'interview_answers', 'interviews', 'heirloom_custody', 'heirlooms', 'recipe_learners', 'tradition_transmissions',
   'recipes', 'traditions', 'missions', 'memory_index', 'notification_prefs',
   'evidence', 'claim_resolutions', 'claims', 'sources', 'contributions',
   'story_mentions', 'story_versions', 'stories', 'event_participants', 'events',
