@@ -3702,6 +3702,347 @@ async function principal() {
     }
   });
 
+  // ========================================== 3.3 CÁPSULA DO TEMPO (§39)
+  console.log('\ncápsula do tempo (3.3) — lacrada é lacrada, inclusive para o dono');
+
+  let capsulaId = null;
+
+  await teste('cápsula lacrada não devolve o conteúdo por rota nenhuma', async () => {
+    const daqui = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
+    const cr = await req('POST', F('/capsulas'), { sessao: ana, corpo: {
+      titulo: 'Para quando a casa for de vocês', recado: 'abrir só depois',
+      corpo: 'O segredo do bolo é a erva-doce, e a escritura está na gaveta de cima.',
+      condicao: 'DATA', abre_em: daqui } });
+    assert.strictEqual(cr.status, 201, cr.texto);
+    capsulaId = cr.json.capsula.id;
+    assert(!JSON.stringify(cr.json).includes('erva-doce'), 'a criação devolveu o conteúdo');
+
+    // a LISTA mostra que existe, nunca o que tem dentro
+    const lista = await req('GET', F('/capsulas'), { sessao: ana });
+    const c = lista.json.capsulas.find((x) => x.id === capsulaId);
+    assert(c && c.titulo, 'a cápsula sumiu da lista — existência é pública');
+    assert.strictEqual(c.pode_abrir, false);
+    assert(!JSON.stringify(lista.json).match(/erva-doce|corpo_cifrado/),
+      'a lista vazou conteúdo ou o campo cifrado');
+
+    // nem o OWNER abre antes da hora
+    const cedo = await req('POST', F(`/capsulas/${capsulaId}/abrir`), { sessao: ana });
+    assert.strictEqual(cedo.status, 409, `o OWNER abriu a cápsula antes da hora: ${cedo.texto}`);
+    assert(!cedo.texto.includes('erva-doce'), 'o erro vazou o conteúdo');
+  });
+
+  await teste('no banco, o corpo da cápsula não está em texto puro', async () => {
+    // A promessa é essa: quem levar um dump do banco não leva as cartas.
+    const linha = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT corpo_cifrado FROM time_capsules WHERE id = $1`, [capsulaId]));
+    assert(!/erva-doce|escritura/i.test(linha.corpo_cifrado),
+      'o conteúdo da cápsula está legível no banco');
+    assert.strictEqual(linha.corpo_cifrado.split('.').length, 3, 'não é o pacote iv.tag.dados');
+  });
+
+  await teste('a foto lacrada some da galeria E da busca — não só de uma delas', async () => {
+    // Mudar privacidade sem reindexar deixa o item invisível na galeria e
+    // visível na BUSCA: o pior dos dois mundos, porque parece protegido.
+    const { media_id: mid } = await enviar(pngReal(40, 30, [9, 44, 91]), 'guardada.png');
+    await fila.processarLote(10, 'rapida');
+    await req('PATCH', F(`/midias/${mid}`), { sessao: ana,
+      corpo: { titulo: 'Retrato lacrado ipiranga' } });
+
+    const achaAntes = await req('GET', F('/busca?q=ipiranga'), { sessao: ana });
+    assert(JSON.stringify(achaAntes.json).includes(mid),
+      `a foto nem entrou na busca antes de ser lacrada: ${achaAntes.texto}`);
+
+    const daqui = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
+    const cr = await req('POST', F('/capsulas'), { sessao: ana, corpo: {
+      titulo: 'Um retrato para depois', corpo: 'olhe a foto',
+      condicao: 'DATA', abre_em: daqui, midias: [mid] } });
+    assert.strictEqual(cr.status, 201, cr.texto);
+
+    const naGaleria = await req('GET', F(`/midias/${mid}`), { sessao: ana });
+    assert(naGaleria.status >= 400, 'a foto lacrada continuou abrindo na galeria');
+    const achaDepois = await req('GET', F('/busca?q=ipiranga'), { sessao: ana });
+    assert(!JSON.stringify(achaDepois.json).includes(mid),
+      'a foto sumiu da galeria mas continuou na BUSCA — índice com a permissão velha');
+
+    // abrir devolve a foto à privacidade que ela TINHA, não a uma pública
+    await tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE time_capsules SET abre_em = now() - interval '1 day' WHERE id = $1`,
+      [cr.json.capsula.id]));
+    const ab = await req('POST', F(`/capsulas/${cr.json.capsula.id}/abrir`), { sessao: ana });
+    assert.strictEqual(ab.status, 200, ab.texto);
+    const volta = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT privacidade FROM media WHERE id = $1`, [mid]));
+    assert.strictEqual(volta.privacidade, 'FAMILY', 'a foto voltou com outra privacidade');
+  });
+
+  await teste('a cápsula não serve para esconder o acervo dos outros', async () => {
+    // Lacrar some com a coisa aos olhos da família inteira. Se valesse
+    // para a foto que o outro enviou, seria a ferramenta perfeita para
+    // sequestrar o acervo alheio com cara de recurso legítimo.
+    const daqui = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const dono = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT id FROM media WHERE family_id = $1 AND created_by <> $2 AND deleted_at IS NULL LIMIT 1`,
+      [famA, ana.id]));
+    if (!dono) return;                    // a suíte não tem mídia de outro autor
+    const r = await req('POST', F('/capsulas'), { sessao: ana, corpo: {
+      titulo: 'Tentando lacrar o que não é meu', corpo: 'x',
+      condicao: 'DATA', abre_em: daqui, midias: [dono.id] } });
+    assert.strictEqual(r.status, 403, 'lacrou na cápsula uma foto de outra pessoa');
+    const intacta = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT privacidade FROM media WHERE id = $1`, [dono.id]));
+    assert.notStrictEqual(intacta.privacidade, 'TIME_LOCKED',
+      'a tentativa recusada ainda lacrou a foto — faltou transação');
+  });
+
+  await teste('cápsula por IDADE sem data de nascimento não abre, e diz por quê', async () => {
+    // A alternativa seria chutar. Chutar aqui significa abrir cedo a carta
+    // que alguém escreveu para o neto de 18 anos.
+    const semData = await tenancy.comEscopo(famA, (t) => t.uma(
+      `INSERT INTO persons (family_id, nome_exibicao, privacidade, created_by)
+       VALUES ($1,'Neto sem data','FAMILY',$2) RETURNING id`, [famA, ana.id]));
+    const cr = await req('POST', F('/capsulas'), { sessao: ana, corpo: {
+      titulo: 'Para o dia em que você fizer 18', corpo: 'parabéns',
+      condicao: 'IDADE', abre_na_idade: 18, destino: 'PESSOA', pessoa: semData.id } });
+    assert.strictEqual(cr.status, 201, cr.texto);
+
+    const lista = await req('GET', F('/capsulas'), { sessao: ana });
+    const c = lista.json.capsulas.find((x) => x.id === cr.json.capsula.id);
+    assert.strictEqual(c.pode_abrir, false);
+    assert.strictEqual(c.motivo, 'capsula_sem_nascimento', JSON.stringify(c));
+    const ab = await req('POST', F(`/capsulas/${cr.json.capsula.id}/abrir`), { sessao: ana });
+    assert.strictEqual(ab.status, 409, 'abriu cápsula de idade sem saber a idade');
+  });
+
+  await teste('data no passado é recusada — cápsula não nasce aberta', async () => {
+    const r = await req('POST', F('/capsulas'), { sessao: ana, corpo: {
+      titulo: 'Ontem', corpo: 'x', condicao: 'DATA', abre_em: '2020-01-01' } });
+    assert.strictEqual(r.status, 400, r.texto);
+    const vazia = await req('POST', F('/capsulas'), { sessao: ana, corpo: {
+      titulo: 'Nada dentro', condicao: 'DATA',
+      abre_em: new Date(Date.now() + 86400000).toISOString().slice(0, 10) } });
+    assert.strictEqual(vazia.status, 400, 'aceitou cápsula sem conteúdo nenhum');
+  });
+
+  await teste('GUEST não vê cápsula nenhuma, nem que ela existe', async () => {
+    const visita = await novaConta('Visita Capsula', 'guest-capsula@teste.origena');
+    await req('POST', F('/convites'), { sessao: ana,
+      corpo: { email: visita.email, papel: 'GUEST' } });
+    const tk = tokenDoUltimoEmail(visita.email, '/origena/convite');
+    await req('POST', `/origena/api/v1/convites/${encodeURIComponent(tk)}/aceitar`,
+      { sessao: visita });
+    const r = await req('GET', F('/capsulas'), { sessao: visita });
+    assert(r.status >= 400, `GUEST leu a lista de cápsulas da família: ${r.status}`);
+  });
+
+  // ====================================== 3.3b GUARDIÕES DO LEGADO (§40)
+  console.log('\nguardiões do legado (3.3b) — sucessão nenhuma acontece sozinha');
+
+  const guardioesMod = require('./guardioes');
+  // FAMÍLIA PRÓPRIA. Efetivar sucessão promove gente a OWNER — fazer isso
+  // na família A envenenaria todo teste posterior que conta com bruno
+  // CONTRIBUTOR. Fixture compartilhada é ótima até o primeiro teste que
+  // MUDA papel.
+  let famS = null;
+  let dono = null;
+  let gA = null;
+  let gB = null;
+  let g1 = null;
+  let g2 = null;
+  let pedidoSucessao = null;
+
+  /** Documento de óbito NA FAMÍLIA CERTA — `enviar()` sobe para a família A. */
+  const docDeObito = async (marca) => (await tenancy.comEscopo(famS, (t) => t.uma(
+    `INSERT INTO media (family_id, tipo, storage_key, sha256, mime_real, bytes,
+        nome_original, status, created_by)
+     VALUES ($1,'DOCUMENTO',$2,$3,'application/pdf',900,'certidao.pdf','pronta',$4)
+     RETURNING id`,
+    [famS, `fam/${famS}/doc/${marca}.pdf`, 'sha-' + marca, gA.id]))).id;
+  const S = (caminho) => `/origena/api/v1/familias/${famS}${caminho}`;
+
+  await teste('guardião só existe depois que a PESSOA aceita, na conta dela', async () => {
+    dono = await novaConta('Dono do Legado', 'dono-legado@teste.origena');
+    gA = await novaConta('Guardião Um', 'guardiao1@teste.origena');
+    gB = await novaConta('Guardiã Dois', 'guardiao2@teste.origena');
+    const cria = await req('POST', '/origena/api/v1/familias',
+      { sessao: dono, corpo: { nome: 'Família do Legado' } });
+    assert.strictEqual(cria.status, 201, cria.texto);
+    famS = cria.json.familia.id;
+
+    const ind = await req('POST', S('/guardioes'), { sessao: dono,
+      corpo: { email: gA.email, nome: 'Guardião Um' } });
+    assert.strictEqual(ind.status, 201, ind.texto);
+    g1 = ind.json.guardiao.id;
+    assert.strictEqual(ind.json.guardiao.status, 'convidado', 'nasceu ativo sem ninguém aceitar');
+
+    const ind2 = await req('POST', S('/guardioes'), { sessao: dono,
+      corpo: { email: gB.email, nome: 'Guardiã Dois' } });
+    g2 = ind2.json.guardiao.id;
+
+    // Estranho nem chega à porta: 404, sem confirmar que a família existe.
+    const estranho = await req('POST', S(`/guardioes/${g1}/aceitar`), { sessao: silva });
+    assert.strictEqual(estranho.status, 404, 'estranho alcançou o convite de guardião');
+
+    // Guardião LEGÍTIMO aceitando o convite de OUTRO: este é o furo que
+    // transformaria a sucessão em teatro — ele passa da porta e mesmo
+    // assim não pode.
+    const trocado = await req('POST', S(`/guardioes/${g1}/aceitar`), { sessao: gB });
+    assert.strictEqual(trocado.status, 403,
+      `um guardião aceitou o convite do outro: ${trocado.texto}`);
+
+    const ok = await req('POST', S(`/guardioes/${g1}/aceitar`), { sessao: gA });
+    assert.strictEqual(ok.status, 200, ok.texto);
+    assert.strictEqual(ok.json.guardiao.status, 'ativo');
+    await req('POST', S(`/guardioes/${g2}/aceitar`), { sessao: gB });
+
+    const dup = await req('POST', S('/guardioes'), { sessao: dono,
+      corpo: { email: gA.email } });
+    assert.strictEqual(dup.status, 409, 'indicou o mesmo guardião duas vezes');
+
+    // Guardião não escolhe guardião: quem decide quem herda é o titular.
+    const semPapel = await req('POST', S('/guardioes'), { sessao: gA,
+      corpo: { email: 'x@teste.origena' } });
+    assert(semPapel.status === 403 || semPapel.status === 404,
+      `quem não é OWNER indicou guardião: ${semPapel.status}`);
+  });
+
+  await teste('sem documento, o pedido nem nasce — e o que vale é o parâmetro', async () => {
+    // `sucessao.exige_documento` está em `config` porque QUEM decide o que
+    // serve de prova de óbito é advogado, não este arquivo. O teste prova
+    // que o parâmetro manda de verdade, e não que existe uma constante.
+    const sem = await req('POST', S('/sucessoes'), { sessao: gA,
+      corpo: { sobre: dono.id, motivo: 'FALECIMENTO' } });
+    assert.strictEqual(sem.status, 400, 'abriu sucessão sem documento nenhum');
+    const p = await tenancy.comEscopo(famS, (t) => guardioesMod.parametros(t));
+    assert.strictEqual(p.exigeDocumento, true);
+    assert(p.diasContestacao >= 1 && p.quorumMinimo >= 1, JSON.stringify(p));
+  });
+
+  await teste('um único "contesta" derruba o pedido — não é maioria', async () => {
+    // Maioria decide gosto. Não decide se alguém está viva: se um guardião
+    // diz "ela está aqui", nenhuma contagem pode vencer isso.
+    const doc = await docDeObito('obito');
+    const ab = await req('POST', S('/sucessoes'), { sessao: gA, corpo: {
+      sobre: dono.id, motivo: 'FALECIMENTO', documento: doc } });
+    assert.strictEqual(ab.status, 201, ab.texto);
+    assert.strictEqual(ab.json.status, 'aguardando_quorum', JSON.stringify(ab.json));
+
+    const pedido = await tenancy.comEscopo(famS, (t) => t.uma(
+      `SELECT id FROM succession_requests WHERE sobre_user_id = $1
+        ORDER BY created_at DESC LIMIT 1`, [dono.id]));
+    const contra = await req('POST', S(`/sucessoes/${pedido.id}/votar`), { sessao: gB,
+      corpo: { voto: 'contesta', nota: 'falei com ela hoje' } });
+    assert.strictEqual(contra.json.status, 'contestada',
+      `o voto contrário não derrubou o pedido: ${JSON.stringify(contra.json)}`);
+
+    const st = await tenancy.comEscopo(famS, (t) => t.uma(
+      `SELECT status FROM succession_requests WHERE id = $1`, [pedido.id]));
+    assert.strictEqual(st.status, 'contestada');
+  });
+
+  await teste('quórum não transfere nada — só leva o pedido a um humano', async () => {
+    const doc = await docDeObito('obito2');
+    // o pedido anterior foi contestado, então a trava de "um por vez" libera
+    const ab = await req('POST', S('/sucessoes'), { sessao: gA, corpo: {
+      sobre: dono.id, motivo: 'FALECIMENTO', documento: doc } });
+    assert.strictEqual(ab.status, 201, ab.texto);
+    const pid = await tenancy.comEscopo(famS, (t) => t.uma(
+      `SELECT id FROM succession_requests WHERE sobre_user_id = $1 AND status <> 'contestada'
+        ORDER BY created_at DESC LIMIT 1`, [dono.id]));
+
+    const dois = await req('POST', S(`/sucessoes/${pid.id}/votar`), { sessao: gB,
+      corpo: { voto: 'confirma' } });
+    assert.strictEqual(dois.json.status, 'aguardando_revisao',
+      `com quórum o pedido não parou na revisão: ${JSON.stringify(dois.json)}`);
+
+    // NADA mudou de papel. Este é o teste que importa: quórum é opinião da
+    // família, não execução. O guardião é de FORA — com o quórum fechado
+    // ele continua sem participação nenhuma na família.
+    const papel = await db.uma(
+      `SELECT papel FROM family_memberships WHERE family_id = $1 AND user_id = $2`,
+      [famS, gA.id]);
+    assert(!papel, `o quórum sozinho já deu participação ao guardião: ${JSON.stringify(papel)}`);
+
+    // e efetivar antes da revisão é recusado
+    const cedo = await req('POST', S(`/sucessoes/${pid.id}/efetivar`), { sessao: gA });
+    assert.strictEqual(cedo.status, 409, 'efetivou sem revisão humana');
+    pedidoSucessao = pid.id;
+  });
+
+  await teste('a pessoa declarada morta derruba o pedido mesmo já aprovado', async () => {
+    // É o cenário que a barreira existe para cobrir: alguém falsifica a
+    // morte de quem está vivo. Quem está vivo lê e-mail — e a revisão da
+    // plataforma não vale mais que a pessoa dizendo "estou aqui".
+    const rev = await tenancy.comEscopo(famS, (t) => guardioesMod.revisar(t, {
+      familyId: famS, staffUserId: null, pedidoId: pedidoSucessao, aprovar: true,
+      nota: 'certidão conferida' }));
+    assert.strictEqual(rev.status, 'em_contestacao', JSON.stringify(rev));
+    assert(rev.contesta_ate, 'aprovou sem abrir janela de contestação');
+
+    const semMotivo = await tenancy.comEscopo(famS, (t) => guardioesMod.revisar(t, {
+      familyId: famS, staffUserId: null, pedidoId: pedidoSucessao, aprovar: true, nota: '' })
+    ).then(() => null, (e) => e);
+    assert(semMotivo, 'revisou de novo, fora de fase');
+
+    const ela = await req('POST', S(`/sucessoes/${pedidoSucessao}/contestar`), { sessao: dono,
+      corpo: { nota: 'estou viva' } });
+    assert.strictEqual(ela.status, 200, ela.texto);
+    assert.strictEqual(ela.json.status, 'contestada');
+
+    const dep = await req('POST', S(`/sucessoes/${pedidoSucessao}/efetivar`), { sessao: gA });
+    assert.strictEqual(dep.status, 409, 'efetivou um pedido que a própria pessoa derrubou');
+  });
+
+  await teste('efetivar é ADITIVO: guardiões viram OWNER e ninguém perde nada', async () => {
+    const doc = await docDeObito('obito3');
+    const ab = await req('POST', S('/sucessoes'), { sessao: gA, corpo: {
+      sobre: dono.id, motivo: 'FALECIMENTO', documento: doc } });
+    assert.strictEqual(ab.status, 201, ab.texto);
+    const pid = await tenancy.comEscopo(famS, (t) => t.uma(
+      `SELECT id FROM succession_requests WHERE sobre_user_id = $1
+          AND status = 'aguardando_quorum' ORDER BY created_at DESC LIMIT 1`, [dono.id]));
+    await req('POST', S(`/sucessoes/${pid.id}/votar`), { sessao: gB, corpo: { voto: 'confirma' } });
+    await tenancy.comEscopo(famS, (t) => guardioesMod.revisar(t, { familyId: famS,
+      staffUserId: null, pedidoId: pid.id, aprovar: true, nota: 'documentos em ordem' }));
+
+    // dentro do prazo, ninguém efetiva
+    const cedo = await req('POST', S(`/sucessoes/${pid.id}/efetivar`), { sessao: gA });
+    assert.strictEqual(cedo.status, 409, 'efetivou antes de a janela de contestação fechar');
+
+    // O caso MAIS COMUM de verdade: o guardião que também é da família
+    // (o filho que contribui e também herda). É nele que um ON CONFLICT
+    // sem o predicado do índice parcial estoura — e só nele.
+    await db.q(`INSERT INTO family_memberships (family_id, user_id, papel, status)
+                VALUES ($1,$2,'CONTRIBUTOR','ativo')`, [famS, gB.id]);
+
+    await tenancy.comEscopo(famS, (t) => t.q(
+      `UPDATE succession_requests SET contesta_ate = now() - interval '1 hour' WHERE id = $1`,
+      [pid.id]));
+    const ok = await req('POST', S(`/sucessoes/${pid.id}/efetivar`), { sessao: gA });
+    assert.strictEqual(ok.status, 200, ok.texto);
+
+    const papeis = await db.todas(
+      `SELECT user_id, papel, status FROM family_memberships WHERE family_id = $1`, [famS]);
+    const deFora = papeis.find((p) => p.user_id === gA.id);
+    const jaEraMembro = papeis.find((p) => p.user_id === gB.id);
+    const titular = papeis.find((p) => p.user_id === dono.id);
+    assert.strictEqual(deFora.papel, 'OWNER', 'o guardião de fora não virou OWNER');
+    assert.strictEqual(jaEraMembro.papel, 'OWNER',
+      'o guardião que já era membro não foi promovido — ON CONFLICT sem o predicado do índice');
+    assert.strictEqual(titular.papel, 'OWNER', 'o titular perdeu o papel — sucessão tem de ser aditiva');
+    assert.strictEqual(titular.status, 'ativo', 'o titular foi desativado');
+    assert.strictEqual(papeis.filter((p) => p.user_id === gB.id).length, 1,
+      'a promoção duplicou a linha de participação');
+  });
+
+  await teste('sucessão só é para guardião, e ninguém abre sobre si mesmo', async () => {
+    const semSer = await req('POST', S('/sucessoes'), { sessao: silva,
+      corpo: { sobre: dono.id, motivo: 'FALECIMENTO' } });
+    assert(semSer.status >= 400, 'estranho abriu pedido de sucessão');
+    const sobreSi = await req('POST', S('/sucessoes'), { sessao: gA,
+      corpo: { sobre: gA.id, motivo: 'FALECIMENTO' } });
+    assert.strictEqual(sobreSi.status, 400, 'abriu pedido de sucessão sobre si mesmo');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
@@ -3719,7 +4060,7 @@ async function principal() {
     for (const p of [':pessoaId', ':relId', ':claimId', ':contribId', ':mediaId', ':albumId',
       ':idId', ':storyId', ':lugarId', ':eventoId', ':exportId', ':tradicaoId', ':reliquiaId',
       ':missaoId', ':achadoId', ':entrevistaId', ':respostaId', ':noId', ':livroId',
-      ':itemId', ':id']) {
+      ':capsulaId', ':guardiaoId', ':pedidoId', ':itemId', ':id']) {
       c = c.replace(p, ALVO_FALSO);
     }
     const sobrou = c.match(/\/:(\w+)/);

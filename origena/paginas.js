@@ -274,6 +274,10 @@ async function abrir(id) {
       ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaMapa();return false"><strong>' + esc(t('mapa.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaLivros();return false"><strong>' + esc(t('livro.titulo')) + '</strong></a>' +
+      (pode('capsulas.ver')
+        ? ' · <a href="#" onclick="telaCapsulas();return false"><strong>' + esc(t('capsula.titulo')) + '</strong></a>' +
+          ' · <a href="#" onclick="telaGuardioes();return false">' + esc(t('guardiao.titulo')) + '</a>'
+        : '') +
       ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
       ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaPlanos();return false">' + esc(t('familia.planos')) + '</a></p>' +
@@ -858,6 +862,143 @@ async function guardarHistoria(id) {
     porque_importa: document.getElementById('hp').value });
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verMidia(id);
+}
+
+// ------------------------------------------ Guardiões do legado (3.3b)
+// A tela explica as barreiras ANTES de o primeiro guardião existir. Quem
+// não entende que nada acontece sozinho ou não indica ninguém (e o acervo
+// fica sem sucessão) ou indica com medo do que não vai acontecer.
+async function telaGuardioes() {
+  const r = await api('GET', '/familias/' + FAM.id + '/guardioes');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const dt = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('guardiao.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('guardiao.intro')) + '</p>' +
+    '<p class="sub"><strong>' + esc(t('guardiao.nada_automatico')) + '</strong></p>' +
+    '<p class="sub">' + esc(t('guardiao.voce_e_avisado')) + '</p>' +
+    (pode('guardioes.gerenciar')
+      ? '<p><button class="btn" onclick="novoGuardiao()">' + esc(t('guardiao.novo')) + '</button></p>'
+      : '') +
+    ((r.guardioes || []).length
+      ? r.guardioes.map(g => '<div class="linha"><span>' +
+          '<strong>' + esc(g.nome_conta || g.nome || g.email) + '</strong><br>' +
+          '<span class="sub">' + esc(g.email) + ' · ' +
+            esc(t('guardiao.' + (g.status === 'ativo' ? 'ativo' : 'convidado'))) + '</span></span>' +
+          '<span>' +
+            (g.status === 'convidado'
+              ? '<button class="btn mini" onclick="aceitarGuardiao(\'' + g.id + '\')">' +
+                esc(t('guardiao.aceitar')) + '</button> ' : '') +
+            (pode('guardioes.gerenciar')
+              ? '<button class="btn mini" onclick="removerGuardiao(\'' + g.id + '\')">' +
+                esc(t('guardiao.remover')) + '</button>' : '') +
+          '</span></div>').join('')
+      : '<p class="sub">' + esc(t('guardiao.nenhum')) + '</p>') +
+    '<h3>' + esc(t('guardiao.pedidos')) + '</h3>' +
+    ((r.pedidos || []).length
+      ? r.pedidos.map(p => '<div class="linha"><span>' +
+          '<strong>' + esc(t('guardiao.st_' + p.status) || p.status) + '</strong> ' +
+          '<span class="sub">' + esc(t('guardiao.sobre', { nome: p.sobre_nome || '' })) + '</span><br>' +
+          '<span class="sub">' +
+            esc(t('guardiao.confirmam', { n: p.confirmam, quorum: p.quorum_necessario })) +
+            (p.contesta_ate ? ' · ' + esc(t('guardiao.prazo', { data: dt(p.contesta_ate) })) : '') +
+          '</span></span>' +
+          (['aguardando_quorum', 'aguardando_revisao', 'em_contestacao'].includes(p.status)
+            ? '<span><button class="btn mini" onclick="derrubarSucessao(\'' + p.id + '\')">' +
+              esc(t('guardiao.derrubar')) + '</button></span>' : '<span></span>') +
+          '</div>').join('')
+      : '<p class="sub">' + esc(t('guardiao.nenhum_pedido')) + '</p>'));
+}
+
+async function novoGuardiao() {
+  const email = prompt(t('guardiao.email'));
+  if (!email) return;
+  const r = await api('POST', '/familias/' + FAM.id + '/guardioes', { email });
+  if (r.status >= 400) return alert(r.erro);
+  telaGuardioes();
+}
+
+async function aceitarGuardiao(id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/guardioes/' + id + '/aceitar');
+  if (r.status >= 400) return alert(r.erro);
+  telaGuardioes();
+}
+
+async function removerGuardiao(id) {
+  const r = await api('DELETE', '/familias/' + FAM.id + '/guardioes/' + id);
+  if (r.status >= 400) return alert(r.erro);
+  telaGuardioes();
+}
+
+async function derrubarSucessao(id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/sucessoes/' + id + '/contestar', {});
+  if (r.status >= 400) return alert(r.erro);
+  telaGuardioes();
+}
+
+// --------------------------------------------- Cápsula do tempo (3.3)
+// A tela diz o que a cápsula É antes de existir a primeira: quem não
+// entende que ninguém pode ler antes da hora escreve a carta errada.
+async function telaCapsulas() {
+  const r = await api('GET', '/familias/' + FAM.id + '/capsulas');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const dt = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('capsula.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('capsula.intro')) + '</p>' +
+    '<p class="sub"><strong>' + esc(t('capsula.lacre')) + '</strong> ' + esc(t('capsula.chave')) + '</p>' +
+    (pode('capsulas.criar')
+      ? '<p><button class="btn" onclick="novaCapsula()">' + esc(t('capsula.nova')) + '</button></p>'
+      : '') +
+    ((r.capsulas || []).length
+      ? r.capsulas.map(c => '<div class="linha"><span>' +
+          '<strong>' + esc(c.titulo) + '</strong> ' +
+          '<span class="sub">' + esc(t('capsula.de', { autor: c.autor || '' })) + '</span><br>' +
+          '<span class="sub">' + esc(c.recado || '') + (c.recado ? ' · ' : '') +
+            esc(c.status === 'aberta' ? t('capsula.aberta', { data: dt(c.aberta_em) })
+              : c.motivo ? t('erro.' + c.motivo)
+                : c.condicao === 'IDADE'
+                  ? t('capsula.abre_idade', { pessoa: c.para || '', idade: c.abre_na_idade })
+                  : t('capsula.abre_em', { data: dt(c.abre_em) })) + '</span></span>' +
+          '<span>' +
+            (c.pode_abrir || c.status === 'aberta'
+              ? '<button class="btn mini" onclick="abrirCapsula(\'' + c.id + '\')">' +
+                esc(t('capsula.abrir')) + '</button> ' : '') +
+            (c.status === 'lacrada'
+              ? '<button class="btn mini" onclick="cancelarCapsula(\'' + c.id + '\')">' +
+                esc(t('capsula.cancelar')) + '</button>' : '') +
+          '</span></div>').join('')
+      : '<p class="sub">' + esc(t('capsula.nenhuma')) + '</p>'));
+}
+
+async function novaCapsula() {
+  const titulo = prompt(t('capsula.campo_titulo'));
+  if (!titulo) return;
+  const corpo = prompt(t('capsula.campo_corpo'));
+  if (!corpo) return;
+  const data = prompt(t('capsula.quando') + ' — ' + t('capsula.por_data') + ' (AAAA-MM-DD)');
+  if (!data) return;
+  const r = await api('POST', '/familias/' + FAM.id + '/capsulas',
+    { titulo, corpo, condicao: 'DATA', abre_em: data, recado: '' });
+  if (r.status >= 400) return alert(r.erro);
+  telaCapsulas();
+}
+
+async function abrirCapsula(id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/capsulas/' + id + '/abrir');
+  if (r.status >= 400) return alert(r.erro);
+  $(topo() + '<p><a href="#" onclick="telaCapsulas();return false">&larr; ' +
+    esc(t('capsula.titulo')) + '</a></p>' +
+    '<h2>' + esc(r.titulo) + '</h2>' +
+    (r.recado ? '<p class="sub">' + esc(r.recado) + '</p>' : '') +
+    '<p>' + esc(r.corpo).replace(/\n/g, '<br>') + '</p>');
+}
+
+async function cancelarCapsula(id) {
+  if (!confirm(t('capsula.confirmar_cancelar'))) return;
+  const r = await api('DELETE', '/familias/' + FAM.id + '/capsulas/' + id);
+  if (r.status >= 400) return alert(r.erro);
+  telaCapsulas();
 }
 
 // ------------------------------------------------ Origena Criar (3.2)

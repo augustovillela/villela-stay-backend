@@ -75,7 +75,60 @@ function requireFamilia(req, res, next) {
   }).catch(next);
 }
 
+/**
+ * Guarda das rotas de sucessão (§40). GUARDIÃO NÃO É MEMBRO DA FAMÍLIA —
+ * é justamente alguém de fora, e é essa a razão de existir. Exigir
+ * participação aqui tornaria impossível aceitar o convite e acionar a
+ * sucessão: o guardião tomaria 404 em todas as portas que foram feitas
+ * para ele.
+ *
+ * Passa quem for uma destas três coisas:
+ *   • membro ativo (o titular administrando os próprios guardiões);
+ *   • guardião ativo, ou convidado cujo E-MAIL bate com o da conta;
+ *   • a PRÓPRIA pessoa sobre quem existe um pedido em curso — que pode
+ *     ter sido tirada da família justamente por quem abriu o pedido, e
+ *     precisa da porta aberta para derrubá-lo.
+ *
+ * Quem não é nada disso leva 404, igual ao `requireFamilia`: 403 aqui
+ * confirmaria que a família existe. O escopo é ligado ANTES da decisão
+ * porque as tabelas de guardião têm RLS — mas nada sai daqui para o
+ * chamador antes de ele provar que é uma das três coisas.
+ */
+function requireFamiliaOuGuardiao(req, res, next) {
+  const alvo = req.params.familyId || req.familiaSolicitada;
+  const nao404 = () => res.status(404).json(
+    { erro: req.t('erro.familia_nao_encontrada'), codigo: 'erro.familia_nao_encontrada' });
+  if (!req.usuario) return res.status(401).json({ erro: req.t('erro.faca_login'), codigo: 'erro.faca_login' });
+  if (!UUID.test(String(alvo || ''))) return nao404();
+
+  (async () => {
+    const f = await db.uma(
+      `SELECT id, nome, slug, status FROM families WHERE id = $1 AND deleted_at IS NULL`, [alvo]);
+    if (!f) return nao404();
+    const m = await db.uma(
+      `SELECT papel FROM family_memberships
+        WHERE family_id = $1 AND user_id = $2 AND status = 'ativo'`, [alvo, req.usuario.id]);
+    const extra = await comEscopo(alvo, async (t) => ({
+      guardiao: await t.uma(
+        `SELECT id, status FROM legacy_guardians
+          WHERE deleted_at IS NULL AND status IN ('convidado','ativo')
+            AND (user_id = $1 OR lower(email) = lower($2))`, [req.usuario.id, req.usuario.email]),
+      alvoDe: await t.uma(
+        `SELECT id FROM succession_requests WHERE sobre_user_id = $1
+            AND status IN ('aguardando_quorum','aguardando_revisao','em_contestacao') LIMIT 1`,
+        [req.usuario.id]),
+    }));
+    if (!m && !extra.guardiao && !extra.alvoDe) return nao404();
+
+    req.familia = { id: alvo, nome: f.nome, slug: f.slug, status: f.status };
+    req.papel = m ? m.papel : 'GUEST';
+    req.ehGuardiao = !!(extra.guardiao && extra.guardiao.status === 'ativo');
+    next();
+  })().catch(next);
+}
+
 /** Açúcar: roda `fn` no escopo da família já resolvida pelo middleware. */
 const noEscopoDe = (req, fn) => comEscopo(req.familia.id, fn);
 
-module.exports = { comEscopo, semEscopo, requireFamilia, noEscopoDe, UUID };
+module.exports = { comEscopo, semEscopo, requireFamilia, requireFamiliaOuGuardiao,
+  noEscopoDe, UUID };

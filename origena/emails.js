@@ -84,6 +84,23 @@ function missoes(para, { familia, n }, idioma) {
       <p style="color:#6B655C;font-size:13px">${esc(t('email.missoes_optout'))}</p>`));
 }
 
+/**
+ * Sucessão digital (§40). Este e-mail existe para UM cenário: alguém
+ * declarar morto quem está vivo. Quem está vivo lê e-mail — então a
+ * mensagem tem de ser inequívoca e trazer o caminho para derrubar o
+ * pedido, não um resumo educado. Não leva conteúdo do acervo.
+ */
+function sucessao(para, nome, { familia, quando, prazo }, idioma) {
+  const t = (c, v) => i18n.t(idioma, c, v);
+  const chave = quando === 'aprovado' ? 'aprovada' : 'aberta';
+  return mandar(para, t('email.sucessao_assunto'),
+    molde(idioma, t('email.sucessao_titulo'), `
+      <p>${esc(t('email.verificacao_ola', { nome }))}</p>
+      <p><strong>${esc(t('email.sucessao_' + chave, { familia, prazo }))}</strong></p>
+      <p>${esc(t('email.sucessao_se_vivo'))}</p>
+      ${botao(`${BASE}/origena/app`, t('email.sucessao_botao'))}`));
+}
+
 /** `chaveDoQue` é a CHAVE i18n do que mudou, não o texto pronto. */
 function avisoSeguranca(para, nome, chaveDoQue, idioma) {
   const t = (c, v) => i18n.t(idioma, c, v);
@@ -94,4 +111,5 @@ function avisoSeguranca(para, nome, chaveDoQue, idioma) {
       <p>${esc(t('email.seguranca_p'))}</p>`));
 }
 
-module.exports = { configurar, ativo, verificacao, convite, recuperacao, avisoSeguranca, missoes };
+module.exports = { configurar, ativo, verificacao, convite, recuperacao, avisoSeguranca,
+  missoes, sucessao };

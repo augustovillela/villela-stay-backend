@@ -311,6 +311,44 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
         atorUserId: null }));
     res.json({ purgado: r });
   }));
+
+  /**
+   * SUCESSÃO DIGITAL — a revisão humana (§40, terceira barreira).
+   *
+   * Mora aqui de propósito: a família não se aprova a si mesma. O quórum
+   * dos guardiões só faz o pedido CHEGAR a uma pessoa da plataforma —
+   * quem decide é gente, com motivo escrito que fica no registro para
+   * sempre. Aprovar aqui ainda não transfere nada: abre a janela de
+   * contestação e manda o segundo aviso para a pessoa sobre quem é o
+   * pedido. Se ela estiver viva, derruba tudo com um clique.
+   *
+   * ⚖️ O QUE FALTA NÃO É CÓDIGO: falta um advogado dizer o que serve de
+   * prova de óbito no Brasil e qual prazo é razoável. Estão em `config`
+   * (`sucessao.*`) justamente para serem trocados sem tocar em nada.
+   */
+  app.get(`${R}/sucessoes`, requireAuth, requireAdmin, h(async (req, res) => {
+    const linhas = await db.todas(
+      `SELECT r.id, r.family_id, r.motivo, r.status, r.quorum_necessario, r.created_at,
+              r.contesta_ate, f.nome AS familia, u.nome AS sobre
+         FROM succession_requests r
+         LEFT JOIN families f ON f.id = r.family_id
+         LEFT JOIN users    u ON u.id = r.sobre_user_id
+        WHERE r.status IN ('aguardando_revisao','em_contestacao')
+        ORDER BY r.created_at`);
+    res.json({ sucessoes: linhas });
+  }));
+
+  app.post(`${R}/sucessoes/:id/revisar`, requireAuth, requireAdmin, h(async (req, res) => {
+    const guardioes = require('./guardioes');
+    const d = req.body || {};
+    const fam = await db.uma(`SELECT family_id FROM succession_requests WHERE id = $1`,
+      [req.params.id]);
+    if (!fam) return res.status(404).json({ erro: 'pedido não encontrado' });
+    const r = await tenancy.comEscopo(fam.family_id, (t) => guardioes.revisar(t, {
+      familyId: fam.family_id, staffUserId: null, pedidoId: req.params.id,
+      aprovar: d.aprovar === true, nota: d.nota }));
+    res.json(r);
+  }));
 }
 
 module.exports = { registrarRotasStaff };

@@ -32,6 +32,8 @@ const mapa = require('./mapa');
 const semantica = require('./semantica');
 const estudio = require('./estudio');
 const livro = require('./livro');
+const capsulas = require('./capsulas');
+const guardioes = require('./guardioes');
 const historias = require('./historias');
 const busca = require('./busca');
 const tempo = require('./tempo');
@@ -58,6 +60,8 @@ function registrarRotasApp(app) {
   const R = '/origena/api/v1';
   const logado = sessao.requireUsuario;
   const naFamilia = [sessao.requireUsuario, tenancy.requireFamilia];
+  // Sucessão (§40): guardião é de FORA da família — ver requireFamiliaOuGuardiao.
+  const comoGuardiao = [sessao.requireUsuario, tenancy.requireFamiliaOuGuardiao];
 
   // ------------------------------------------------------------ famílias
   app.get(`${R}/familias`, logado, h(async (req, res) => {
@@ -1329,6 +1333,104 @@ function registrarRotasApp(app) {
         return { livro: l, url: await livro.url(t, l.id) };
       });
       res.json(dados);
+    }));
+
+  // ------------------------------------------- Cápsula do Tempo (3.3, §39)
+  /**
+   * A lista mostra que a cápsula EXISTE, quando abre e de quem é — nunca o
+   * conteúdo. `abrir` é a única porta, e ela confere a condição antes de
+   * decifrar. Não há rota que devolva `corpo_cifrado`.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/capsulas`), ...naFamilia,
+    rbac.exigir('capsulas.ver'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      res.json({ capsulas: await tenancy.noEscopoDe(req, (t) =>
+        capsulas.listar(t, req.familia.id, quem)) });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/capsulas`), ...naFamilia,
+    rbac.exigir('capsulas.criar'), h(async (req, res) => {
+      const c = await tenancy.noEscopoDe(req, (t) => capsulas.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, papel: req.papel,
+        dados: req.body || {} }));
+      res.status(201).json({ capsula: c });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/capsulas/:capsulaId/abrir`), ...naFamilia,
+    rbac.exigir('capsulas.ver'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      res.json(await tenancy.noEscopoDe(req, (t) => capsulas.abrir(t, {
+        familyId: req.familia.id, capsulaId: req.params.capsulaId, quem })));
+    }));
+
+  app.delete(decl('DELETE', `${R}/familias/:familyId/capsulas/:capsulaId`), ...naFamilia,
+    rbac.exigir('capsulas.ver'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel };
+      res.json(await tenancy.noEscopoDe(req, (t) => capsulas.cancelar(t, {
+        familyId: req.familia.id, capsulaId: req.params.capsulaId, quem })));
+    }));
+
+  // ------------------------------------- Guardiões do Legado (3.3b, §40)
+  /**
+   * Sucessão digital. Não existe rota que efetive nada sozinha: cada
+   * etapa é um ato de gente. `revisar` mora no staff de propósito — a
+   * família não se aprova a si mesma.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/guardioes`), ...comoGuardiao, h(async (req, res) => {
+      res.json(await tenancy.noEscopoDe(req, async (t) => ({
+        guardioes: await guardioes.listar(t, req.familia.id),
+        pedidos: await guardioes.listarPedidos(t, req.familia.id),
+        parametros: await guardioes.parametros(t),
+      })));
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/guardioes`), ...naFamilia,
+    rbac.exigir('guardioes.gerenciar'), h(async (req, res) => {
+      const g = await tenancy.noEscopoDe(req, (t) => guardioes.indicar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, dados: req.body || {} }));
+      res.status(201).json({ guardiao: { id: g.id, email: g.email, status: g.status } });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/guardioes/:guardiaoId/aceitar`), ...comoGuardiao,
+    h(async (req, res) => {
+      res.json({ guardiao: await tenancy.noEscopoDe(req, (t) => guardioes.aceitar(t, {
+        familyId: req.familia.id, guardianId: req.params.guardiaoId, usuario: req.usuario })) });
+    }));
+
+  app.delete(decl('DELETE', `${R}/familias/:familyId/guardioes/:guardiaoId`), ...naFamilia,
+    rbac.exigir('guardioes.gerenciar'), h(async (req, res) => {
+      res.json(await tenancy.noEscopoDe(req, (t) => guardioes.remover(t, {
+        familyId: req.familia.id, userId: req.usuario.id, guardianId: req.params.guardiaoId })));
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/sucessoes`), ...comoGuardiao,
+    h(async (req, res) => {
+      res.status(201).json(await tenancy.noEscopoDe(req, (t) => guardioes.abrirPedido(t, {
+        familyId: req.familia.id, usuario: req.usuario, dados: req.body || {} })));
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/sucessoes/:pedidoId/votar`), ...comoGuardiao,
+    h(async (req, res) => {
+      const b = req.body || {};
+      res.json(await tenancy.noEscopoDe(req, (t) => guardioes.votar(t, {
+        familyId: req.familia.id, usuario: req.usuario, pedidoId: req.params.pedidoId,
+        voto: s(b.voto, 20), nota: s(b.nota, 500) })));
+    }));
+
+  // Derrubar não exige papel nenhum: quem mais precisa desta rota é a
+  // pessoa declarada morta, e ela pode nem ser membro ativo aos olhos de
+  // quem abriu o pedido. A checagem de quem pode é do módulo.
+  app.post(decl('POST', `${R}/familias/:familyId/sucessoes/:pedidoId/contestar`), ...comoGuardiao,
+    h(async (req, res) => {
+      res.json(await tenancy.noEscopoDe(req, (t) => guardioes.contestar(t, {
+        familyId: req.familia.id, usuario: req.usuario, pedidoId: req.params.pedidoId,
+        nota: s((req.body || {}).nota, 500) })));
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/sucessoes/:pedidoId/efetivar`), ...comoGuardiao,
+    h(async (req, res) => {
+      res.json(await tenancy.noEscopoDe(req, (t) => guardioes.efetivar(t, {
+        familyId: req.familia.id, usuario: req.usuario, pedidoId: req.params.pedidoId })));
     }));
 
   // ---------------------------------------------------- grafo e mapa (2.5)
