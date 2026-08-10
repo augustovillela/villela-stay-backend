@@ -236,7 +236,9 @@
     "audio_grande_demais": "Este áudio é longo demais para transcrever de uma vez. Grave em partes menores.",
     "grafo_tipo_invalido": "Esse tipo de registro não entra no grafo.",
     "grafo_no_nao_encontrado": "Esse registro não existe mais.",
-    "embedding_indisponivel": "A busca por sentido não está ligada."
+    "embedding_indisponivel": "A busca por sentido não está ligada.",
+    "estudio_operacao_invalida": "Essa operação não existe no Estúdio.",
+    "estudio_so_foto": "O Estúdio trabalha com fotografias."
   },
   "mfa": {
     "exigido": "Ative a verificação em duas etapas para fazer isto.",
@@ -997,5 +999,26 @@
     "ev_falecimento": "faleceu",
     "ev_outro": "esteve",
     "escala": "{n} km"
+  },
+  "estudio": {
+    "titulo": "Estúdio",
+    "intro": "A Origena pode restaurar, colorizar e ampliar esta foto. O ORIGINAL nunca é alterado: cada resultado entra como uma versão nova, ao lado, marcada como feita por IA.",
+    "restaurar_foto": "Restaurar",
+    "restaurar_desc": "Tira riscos, manchas e ruído, corrige o contraste. Não muda rosto, roupa nem cenário — onde a foto se perdeu, fica como está.",
+    "colorizar_foto": "Colorizar",
+    "colorizar_desc": "Dá cor a uma foto em preto e branco. A cor é PALPITE: ninguém registrou a cor daquele vestido, e a Origena não vai fingir que sim.",
+    "ampliar_foto": "Ampliar",
+    "ampliar_desc": "Mais definição, sem inventar detalhe — principalmente em rosto, onde um olho reconstruído muda a pessoa.",
+    "gerar": "Fazer",
+    "na_fila": "Na fila — o resultado aparece aqui quando ficar pronto.",
+    "processando": "Trabalhando na foto…",
+    "falhou": "Não deu certo: {motivo}. O crédito foi devolvido.",
+    "resultados": "Versões feitas com IA",
+    "selo": "✨ Feita com IA a partir da original",
+    "selo_cor": "✨ Cor interpretada por IA — não é registro da época",
+    "ver_original": "Ver a original",
+    "indisponivel": "O Estúdio ainda não está ligado.",
+    "so_foto": "O Estúdio trabalha com fotografias.",
+    "nada_ainda": "Nenhuma versão feita ainda."
   }
 }

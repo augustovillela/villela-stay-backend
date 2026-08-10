@@ -7,17 +7,18 @@ Landing `/origena` · app da família `/origena/app` (Fase 1) · staff `/staff/a
 > os 9 ADRs) fica no **repo-pai**: `docs\origena\`. Aqui está só o que um dev precisa para mexer
 > neste diretório.
 
-## Estado: 1.0 completo + fases 2.1 a 2.4 — 09/08/2026
+## Estado: 1.0 completo + fase 2 INTEIRA + Studio (3.1) — 10/08/2026
 
 Existe: contas, famílias e papéis · proveniência · pessoas, parentesco e árvore · mídia no R2 com
 worker · documentos, histórias e busca · lugares, eventos e linha do tempo · créditos, IA e admin ·
 exportação, lixeira e integridade · **tradições, receitas, saberes e relíquias com linha de
 custódia** · **Historiador, missões e índice de memória** · **cobrança pelo Mercado Pago** ·
-**leitura de documento escaneado por visão** · **Entrevistas Origena**.
+**leitura de documento escaneado por visão** · **Entrevistas Origena** · **grafo e mapa da família** ·
+**busca por sentido** · **Estúdio: restaurar, colorizar e ampliar foto**.
 
-Não existe ainda: busca semântica (o resto da 2.5), Studio, cápsula do tempo e apps nativos. A transcrição
-automática das entrevistas está escrita mas **desligada** — depende de conta paga e do parecer
-jurídico. A ordem está em `docs\origena\ROADMAP.md`.
+Não existe ainda: animação de foto (3.1b — Veo declarado e desligado até a conta por segundo ser
+feita), Origena Criar (3.2), cápsula do tempo (3.3) e apps nativos. A ordem está em
+`docs\origena\ROADMAP.md`.
 
 ## O que torna a Origena diferente dos outros 11 produtos
 
@@ -48,6 +49,8 @@ e cada uma tem um ADR explicando o que se perde ao reverter.
 | `entrevistas.js` | Entrevistas Origena (2.4): 10 roteiros, áudio original preservado, transcrição corrigível e cada resposta virando contribuição de quem contou |
 | `grafo.js` | O grafo da família (2.5) — DERIVADO das tabelas, nunca materializado; toda aresta traz o motivo e passa por `podeVer` |
 | `mapa.js` | Mapa da família (§34): liga lugar escrito à mão ao lugar cadastrado (inclusive nome histórico) e monta as migrações |
+| `semantica.js` | Busca por sentido (2.5): trechos + vetores, projeção que se refaz; filtra com `busca.filtrar`, nunca com cópia da regra |
+| `estudio.js` | Studio (3.1): restaurar/colorizar/ampliar. Reserva o crédito na rota, trabalha no worker, e a saída é sempre DERIVADA com selo |
 | `billing.js` | Única fronteira com o Mercado Pago. O webhook **consulta o provedor**, não confia no corpo; sem `MP_ACCESS_TOKEN` a cobrança fica manual e o produto continua inteiro |
 | `selftest.js` | `npm run test:origena` — schema descartável, R2 real |
 

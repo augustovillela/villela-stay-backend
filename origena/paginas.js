@@ -819,9 +819,11 @@ async function verMidia(id) {
           '</p></div>').join('')
       : '') +
     (m.tipo === 'DOCUMENTO' ? '<div id="doc-ia"></div>' : '') +
+    (m.tipo === 'FOTO' && !m.derivado_de ? '<div id="estudio"></div>' : '') +
     (pode('contribuir') ? formHistoria(id) : '') +
     '<p class="sub" style="margin-top:20px">' + esc(t('midia.original_intacto')) + '</p>');
   if (m.tipo === 'DOCUMENTO') carregarAchados(id);
+  if (m.tipo === 'FOTO' && !m.derivado_de) carregarEstudio(id);
   if (pode('contribuir')) {
     const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
     const sel = document.getElementById('hq');
@@ -1256,6 +1258,60 @@ async function concluirEntrevista(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/entrevistas/' + id + '/concluir');
   if (r.status >= 400) return alert(r.erro);
   verEntrevista(id);
+}
+
+// ------------------------------------------------------- Estúdio (3.1)
+// A tela inteira insiste numa coisa: o que sai daqui é uma VERSÃO NOVA, ao
+// lado da original, marcada. Restauração sem selo vira, duas gerações
+// adiante, "a foto do bisavô" — e o produto existe para isso não acontecer.
+async function carregarEstudio(mediaId) {
+  const alvo = document.getElementById('estudio');
+  if (!alvo) return;
+  const r = await api('GET', '/familias/' + FAM.id + '/midias/' + mediaId + '/estudio');
+  if (r.status >= 400) return;
+  const caps = r.capacidades || {};
+  const ligadas = Object.keys(caps).filter(k => caps[k].disponivel);
+  const naFila = (r.jobs || []).filter(j => j.status === 'pendente' || j.status === 'executando');
+  const falhou = (r.jobs || []).find(j => j.status === 'falhou');
+
+  alvo.innerHTML = '<h3 style="margin-top:26px">' + esc(t('estudio.titulo')) + '</h3>' +
+    '<p class="sub">' + esc(t('estudio.intro')) + '</p>' +
+    (!ligadas.length ? '<p class="sub">' + esc(t('estudio.indisponivel')) + '</p>' :
+      (pode('ia.usar') ? ligadas.map(op => '<div class="linha"><span><strong>' +
+        esc(t('estudio.' + op)) + '</strong><br><span class="sub">' +
+        esc(t('estudio.' + op.replace('_foto', '') + '_desc')) + '</span></span>' +
+        '<span><button class="btn mini" onclick="estudioFazer('' + mediaId + '','' + op + '')">' +
+        esc(t('estudio.gerar')) + ' · ' + caps[op].creditos + '</button></span></div>').join('') : '')) +
+    (naFila.length ? '<p class="sub">' + esc(t('estudio.na_fila')) + '</p>' : '') +
+    (falhou ? '<p class="sub">' + esc(t('estudio.falhou', { motivo: falhou.erro || '' })) + '</p>' : '') +
+    ((r.derivados || []).length
+      ? '<h4 style="margin-top:18px">' + esc(t('estudio.resultados')) + '</h4>' +
+        '<div id="est_lista"></div>'
+      : '<p class="sub">' + esc(t('estudio.nada_ainda')) + '</p>');
+
+  const lista = document.getElementById('est_lista');
+  if (!lista) return;
+  for (const d of r.derivados || []) {
+    const u = await urlDe(d.id);
+    const selo = d.ai_class === 'AI_ENHANCED' ? t('estudio.selo_cor') : t('estudio.selo');
+    lista.innerHTML += '<div class="card" style="padding:12px">' +
+      (u ? '<img src="' + u + '" style="max-width:100%;border-radius:10px">' : '') +
+      '<p class="sub" style="margin:8px 0 0">' + esc(selo) + ' · ' +
+      esc(t('estudio.' + ((d.derivacao || {}).operacao || 'titulo'))) + '</p></div>';
+  }
+}
+
+async function estudioFazer(mediaId, operacao, confirmando) {
+  const r = await api('POST', '/familias/' + FAM.id + '/midias/' + mediaId + '/estudio',
+    confirmando ? { operacao, confirmar: true } : { operacao });
+  if (r.status === 503) return alert(t('estudio.indisponivel'));
+  if (r.status >= 400) return alert(r.erro);
+  if (r.cotacao && !confirmando) {
+    if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return estudioFazer(mediaId, operacao, true);
+    return;
+  }
+  alert(t('estudio.na_fila'));
+  carregarEstudio(mediaId);
 }
 
 // ------------------------------------------- o que a IA leu no documento

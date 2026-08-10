@@ -30,6 +30,7 @@ const entrevistas = require('./entrevistas');
 const grafo = require('./grafo');
 const mapa = require('./mapa');
 const semantica = require('./semantica');
+const estudio = require('./estudio');
 const historias = require('./historias');
 const busca = require('./busca');
 const tempo = require('./tempo');
@@ -1149,6 +1150,34 @@ function registrarRotasApp(app) {
       const sub = await tenancy.noEscopoDe(req, (t) => billing.cancelarAssinatura(t, {
         familyId: req.familia.id, userId: req.usuario.id }));
       res.json({ ok: true, vale_ate: sub.proximo_ciclo });
+    }));
+
+  // ---------------------------------------------------------- Studio (3.1)
+  /**
+   * Restaurar, colorizar, ampliar. Sem `confirmar`, devolve a COTAÇÃO; com
+   * ela, reserva o crédito e enfileira — o trabalho pesado é do worker.
+   * O resultado nasce DERIVADO, com selo: o original nunca é tocado.
+   */
+  app.post(decl('POST', `${R}/familias/:familyId/midias/:mediaId/estudio`), ...naFamilia,
+    rbac.exigir('ia.usar'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      res.json(await estudio.pedir({ familyId: req.familia.id, userId: req.usuario.id,
+        mediaId: req.params.mediaId, operacao: s((req.body || {}).operacao, 40),
+        quem, confirmar: !!(req.body || {}).confirmar }));
+    }));
+
+  /** O que o Studio já fez com esta foto, e o que ele sabe fazer hoje. */
+  app.get(decl('GET', `${R}/familias/:familyId/midias/:mediaId/estudio`), ...naFamilia,
+    h(async (req, res) => {
+      const dados = await tenancy.noEscopoDe(req, async (t) => ({
+        capacidades: await estudio.capacidades(t),
+        derivados: await estudio.derivadosDe(t, req.params.mediaId),
+        jobs: await t.todas(
+          `SELECT id, capability, status, erro, resultado_media_id, created_at
+             FROM ai_jobs WHERE family_id = $1 AND entrada->>'media_id' = $2
+             ORDER BY created_at DESC LIMIT 10`, [req.familia.id, req.params.mediaId]),
+      }));
+      res.json(dados);
     }));
 
   /** O que a IA sabe fazer HOJE — a UI só mostra botão do que existe (ADR-0004). */

@@ -3437,6 +3437,106 @@ async function principal() {
     });
   });
 
+  // ====================================================== 3.1 STUDIO (§21)
+  console.log('\nStudio (3.1) — o original não se toca, e o selo não é enfeite');
+
+  const estudioMod = require('./estudio');
+  let fotoStudio = null;
+
+  await teste('as três operações aparecem com preço — e só as que têm provedor', async () => {
+    const r = await enviar(pngReal(80, 80, [40, 40, 40]), 'retrato-antigo.png');
+    await fila.processarLote(10, 'rapida');
+    fotoStudio = r.media_id;
+
+    const g = await req('GET', F(`/midias/${fotoStudio}/estudio`), { sessao: ana });
+    assert.strictEqual(g.status, 200, g.texto);
+    for (const op of ['restaurar_foto', 'colorizar_foto', 'ampliar_foto']) {
+      assert(g.json.capacidades[op], 'faltou a operação ' + op);
+      assert(g.json.capacidades[op].creditos > 0, op + ' apareceu de graça');
+    }
+    // animar continua declarada e desligada: vídeo custa por segundo
+    const animar = await db.uma(
+      `SELECT ativo FROM provider_registry WHERE capability = 'animar_foto'`);
+    assert.strictEqual(animar.ativo, false, 'a animação foi ligada sem a conta feita');
+  });
+
+  await teste('cotação primeiro; confirmar RESERVA o crédito e enfileira', async () => {
+    const cot = await req('POST', F(`/midias/${fotoStudio}/estudio`),
+      { sessao: ana, corpo: { operacao: 'restaurar_foto' } });
+    assert.strictEqual(cot.status, 200, cot.texto);
+    assert(cot.json.cotacao.creditos > 0, 'cotou de graça');
+    assert(!cot.json.job, 'ENFILEIROU sem confirmação — é a cobrança surpresa do §53');
+
+    const tarifa = cot.json.cotacao.creditos;
+    const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    const ok = await req('POST', F(`/midias/${fotoStudio}/estudio`),
+      { sessao: ana, corpo: { operacao: 'restaurar_foto', confirmar: true } });
+    assert.strictEqual(ok.status, 200, ok.texto);
+    assert(ok.json.job && ok.json.job.id, 'confirmou e não criou job');
+    // o crédito sai na RESERVA, antes de a fila andar
+    assert.strictEqual((await req('GET', F('/creditos'), { sessao: ana })).json.saldo, antes - tarifa,
+      'a reserva não travou o valor');
+  });
+
+  await teste('o worker gera um DERIVADO com selo — e não encosta no original', async () => {
+    const antesOriginal = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT sha256, storage_key, ai_class, bytes FROM media WHERE id = $1`, [fotoStudio]));
+
+    // modelo falso: devolve um PNG diferente do original
+    routerIA.injetarParaTeste('google', async ({ capability, entrada }) => {
+      assert(capability.endsWith('_foto'), 'capability errada: ' + capability);
+      assert(entrada.arquivo && entrada.arquivo.base64, 'mandou editar sem a imagem');
+      return { saida: { mime: 'image/png', base64: pngReal(80, 80, [200, 180, 120]).toString('base64') },
+        tokens_in: 10, tokens_out: 10, custo_centavos: 22 };
+    });
+    await fila.processarLote(10, 'cara');
+
+    const dep = await req('GET', F(`/midias/${fotoStudio}/estudio`), { sessao: ana });
+    assert.strictEqual(dep.json.derivados.length, 1, 'o Studio não produziu o derivado');
+    const d = dep.json.derivados[0];
+    assert.strictEqual(d.ai_class, 'AI_RESTORED', 'saiu sem o selo de IA (§88)');
+    assert.strictEqual(d.derivacao.operacao, 'restaurar_foto');
+    assert(d.derivacao.model, 'não guardou qual modelo fez');
+
+    // O ORIGINAL CONTINUA IGUAL — é a promessa do produto inteiro
+    const depoisOriginal = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT sha256, storage_key, ai_class, bytes FROM media WHERE id = $1`, [fotoStudio]));
+    assert.deepStrictEqual(depoisOriginal, antesOriginal, 'O STUDIO ALTEROU A FOTO ORIGINAL');
+
+    // e o byte do derivado está mesmo no R2
+    const url = await req('GET', F(`/midias/${d.id}/url`), { sessao: ana });
+    assert.strictEqual(url.status, 200, 'o derivado não tem arquivo: ' + url.texto);
+  });
+
+  await teste('recusa do modelo ESTORNA — ninguém paga por foto que não veio', async () => {
+    routerIA.injetarParaTeste('google', async () => {
+      throw new Error('o modelo não devolveu imagem: recusado');
+    });
+    const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    const ped = await req('POST', F(`/midias/${fotoStudio}/estudio`),
+      { sessao: ana, corpo: { operacao: 'colorizar_foto', confirmar: true } });
+    assert.strictEqual(ped.status, 200, ped.texto);
+    await fila.processarLote(10, 'cara');
+
+    const depois = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    assert.strictEqual(depois, antes, 'a família pagou por um resultado que não recebeu');
+    const rec = await tenancy.comEscopo(famA, (t) => creditosMod.reconciliar(t, famA));
+    assert(rec.ok, 'o estorno desbalanceou o ledger');
+  });
+
+  await teste('o Studio não roda em documento, nem em derivado de derivado', async () => {
+    const doc = await req('POST', F(`/midias/${certidao}/estudio`),
+      { sessao: ana, corpo: { operacao: 'restaurar_foto', confirmar: true } });
+    assert.strictEqual(doc.status, 400, 'aceitou restaurar um PDF');
+
+    const derivado = (await req('GET', F(`/midias/${fotoStudio}/estudio`), { sessao: ana }))
+      .json.derivados[0];
+    const neto = await req('POST', F(`/midias/${derivado.id}/estudio`),
+      { sessao: ana, corpo: { operacao: 'ampliar_foto', confirmar: true } });
+    assert.strictEqual(neto.status, 400,
+      'deixou derivar de um derivado — a cadeia vira telefone sem fio');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 

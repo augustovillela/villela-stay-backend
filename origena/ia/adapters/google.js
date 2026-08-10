@@ -1,6 +1,7 @@
 // =====================================================================
-// ORIGENA — adapter Google (Gemini). Duas capabilities:
-// `transcrever_audio` (2.4) e `embedding` (2.5).
+// ORIGENA — adapter Google (Gemini). Três frentes:
+// `transcrever_audio` (2.4), `embedding` (2.5) e as edições de imagem do
+// Studio (3.1): restaurar, colorizar e ampliar.
 //
 // POR QUE ESTE PROVEDOR. A chave já é paga pelo grupo (é a mesma do
 // Estúdio de Ilustração do Invente) e o modelo recebe áudio direto, sem
@@ -57,6 +58,7 @@ const SCHEMA = {
 /** entrada = { arquivo: {mime, base64} } */
 async function executar({ model, capability, entrada }) {
   if (capability === 'embedding') return embutir({ model, entrada });
+  if (EDICOES[capability]) return editarImagem({ model, capability, entrada });
   if (capability !== 'transcrever_audio') throw new Error('capability não suportada: ' + capability);
   if (!pronto()) throw new Error('sem GEMINI_API_KEY');
   const arq = entrada && entrada.arquivo;
@@ -141,4 +143,75 @@ async function embutir({ model, entrada }) {
   return { saida: { vetor }, tokens_in: 0, tokens_out: 0, custo_centavos: 0 };
 }
 
-module.exports = { pronto, executar };
+// ---------------------------------------------------------- Studio (3.1)
+/**
+ * As três edições de imagem. A instrução é do PRODUTO, não do usuário:
+ * quem envia texto livre para um modelo de imagem acaba pedindo que ele
+ * "melhore" o bisavô — e aí a foto deixa de ser dele. Cada modo diz o que
+ * pode e, principalmente, o que NÃO pode inventar.
+ */
+const EDICOES = {
+  restaurar_foto: `Restaure esta fotografia antiga preservando a identidade da imagem.
+PODE: remover riscos, manchas, dobras e ruído; corrigir contraste e exposição; recompor bordas
+danificadas quando o padrão ao redor for evidente.
+NÃO PODE, EM HIPÓTESE NENHUMA: alterar traços de rosto, expressão, idade aparente, corpo, roupa,
+objetos ou cenário; acrescentar pessoas, elementos ou detalhes que não estejam visíveis; "melhorar"
+a aparência de quem quer que seja. Onde a informação foi destruída, deixe como está — falta de
+informação é melhor que informação inventada.
+Devolva apenas a imagem restaurada, no mesmo enquadramento.`,
+
+  colorizar_foto: `Colorize esta fotografia em preto e branco de forma plausível e sóbria.
+PODE: atribuir cores naturais a pele, cabelo, vegetação, céu, madeira e tecidos comuns.
+NÃO PODE: mudar o desenho da imagem, os traços de rosto, o enquadramento ou qualquer elemento;
+saturar como cartão-postal; inventar cor de roupa ou objeto com cor culturalmente significativa
+(uniforme, bandeira, hábito religioso) — nesses casos use tons neutros.
+Cor é PALPITE: o resultado é uma interpretação, não um registro. Devolva apenas a imagem.`,
+
+  ampliar_foto: `Amplie esta fotografia com mais definição, mantendo-a fiel ao original.
+PODE: aumentar a resolução e recuperar nitidez de bordas e texturas já presentes.
+NÃO PODE: inventar detalhe que não exista no original — sobretudo em rostos, onde um olho ou uma
+boca "reconstruídos" mudam a pessoa. Prefira suave e fiel a nítido e diferente.
+Devolva apenas a imagem ampliada, no mesmo enquadramento.`,
+};
+
+async function editarImagem({ model, capability, entrada }) {
+  if (!pronto()) throw new Error('sem GEMINI_API_KEY');
+  const arq = entrada && entrada.arquivo;
+  if (!arq || !arq.base64) throw new Error(capability + ' exige a imagem original');
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch(`${BASE}/${model}:generateContent?key=${chave()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        contents: [{ parts: [
+          { inline_data: { mime_type: arq.mime || 'image/jpeg', data: arq.base64 } },
+          { text: EDICOES[capability] },
+        ] }],
+      }),
+    });
+  } finally { clearTimeout(t); }
+
+  if (!r.ok) throw new Error('Google ' + r.status + ': ' + (await r.text()).slice(0, 200));
+  const d = await r.json();
+  const partes = (((d.candidates || [])[0] || {}).content || {}).parts || [];
+  const img = partes.find((p) => p.inlineData && String(p.inlineData.mimeType || '').startsWith('image/'));
+  // Recusa do modelo é resposta legítima (foto com pessoa, conteúdo sensível):
+  // devolver erro claro é melhor que devolver o original fingindo trabalho.
+  if (!img) throw new Error('o modelo não devolveu imagem: ' +
+    (partes.map((p) => p.text || '').join(' ').slice(0, 160) || 'sem motivo declarado'));
+
+  const uso = d.usageMetadata || {};
+  return {
+    saida: { mime: img.inlineData.mimeType, base64: img.inlineData.data },
+    tokens_in: uso.promptTokenCount || 0,
+    tokens_out: uso.candidatesTokenCount || 0,
+    custo_centavos: 0,
+  };
+}
+
+module.exports = { pronto, executar, EDICOES };

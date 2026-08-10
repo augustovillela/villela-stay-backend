@@ -91,6 +91,13 @@ function registrarHandlers() {
     return r;
   });
 
+  // Studio (3.1): editar imagem leva dezenas de segundos e move megabytes.
+  // O crédito já foi RESERVADO na rota; aqui se consome ou se estorna.
+  fila.registrar('estudio.gerar', async (payload) => {
+    const estudio = require('./estudio');
+    return estudio.gerar(payload);
+  });
+
   // Integridade (ADR-0008): amostra de originais reconferida por rodízio.
   fila.registrar('integridade.verificar', async (payload) => {
     const tenancy = require('./tenancy');
