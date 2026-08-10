@@ -272,6 +272,7 @@ async function abrir(id) {
       ' · <a href="#" onclick="telaReliquias();return false"><strong>' + esc(t('familia.reliquias')) + '</strong></a>' +
       ' · <a href="#" onclick="telaEntrevistas();return false"><strong>' + esc(t('entrevista.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaMapa();return false"><strong>' + esc(t('mapa.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
       ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaPlanos();return false">' + esc(t('familia.planos')) + '</a></p>' +
@@ -400,7 +401,9 @@ async function dossie(id) {
     '<h2>' + esc(p.nome_exibicao) + '</h2>' +
     '<p class="sub">' + esc(anos(p)) + (p.local_nascimento ? ' · ' + esc(p.local_nascimento) : '') +
       (p.profissao ? ' · ' + esc(p.profissao) : '') + '</p>' +
-    '<p><button class="btn mini" onclick="verArvore(\\'' + p.id + '\\')">' + esc(t('familia.ver_arvore')) + '</button></p>' +
+    '<p><button class="btn mini" onclick="verArvore(\\'' + p.id + '\\')">' + esc(t('familia.ver_arvore')) + '</button> ' +
+      '<button class="btn mini sec" onclick="telaGrafo(\\'person\\',\\'' + p.id + '\\')">' +
+      esc(t('grafo.titulo')) + '</button></p>' +
     grupo(t('familia.pais'), f.pais, selo) +
     grupo(t('familia.unioes'), f.unioes, selo) +
     grupo(t('familia.irmaos'), f.irmaos, selo) +
@@ -852,6 +855,151 @@ async function guardarHistoria(id) {
     porque_importa: document.getElementById('hp').value });
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verMidia(id);
+}
+
+// ------------------------------------------------------ grafo e mapa (2.5)
+// O grafo se explica sozinho porque toda aresta traz o MOTIVO: "aparece
+// na" foto tal, "aprendeu" a receita tal. Uma bolinha ligada a outra sem
+// dizer por quê seria adivinhação com cara de dado.
+const noRotulo = (n) => (t('grafo.t_' + n.tipo) || n.tipo) + ' · ' + (n.rotulo || '');
+
+async function telaGrafo(tipo, id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/grafo/' + tipo + '/' + id);
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('grafo.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(r.centro.rotulo) + ' — ' + esc(t('grafo.intro')) + '</p>' +
+    ((r.vizinhos || []).length
+      ? '<h3>' + esc(t('grafo.vizinhos')) + '</h3>' + r.vizinhos.map(v =>
+          '<div class="linha"><span><span class="papel">' +
+            esc(t('grafo.' + v.motivo.replace('grafo.', '')) || '') + '</span> ' +
+            '<a href="#" onclick="abrirNo(\\'' + v.tipo + '\\',\\'' + v.id + '\\');return false">' +
+            esc(v.rotulo) + '</a></span>' +
+          '<span class="sub">' + esc(t('grafo.t_' + v.tipo) || v.tipo) + '</span></div>').join('')
+      : '<p class="sub">' + esc(t('grafo.sem_vizinhos')) + '</p>') +
+    '<h3 style="margin-top:26px">' + esc(t('grafo.caminho_titulo')) + '</h3>' +
+    '<p class="sub">' + esc(t('grafo.caminho_de')) + ': ' + esc(r.centro.rotulo) + '</p>' +
+    '<label>' + esc(t('grafo.caminho_para')) + '</label><select id="gf_alvo"></select>' +
+    '<p><button class="btn" onclick="acharCaminho(\\'' + tipo + '\\',\\'' + id + '\\')">' +
+      esc(t('grafo.procurar_caminho')) + '</button></p><div id="gf_res"></div>');
+  const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
+  const sel = document.getElementById('gf_alvo');
+  if (sel) sel.innerHTML = (l.pessoas || []).map(x =>
+    '<option value="person:' + x.id + '">' + esc(x.nome_exibicao) + '</option>').join('');
+}
+
+const abrirNo = (tipo, id) => tipo === 'person' ? dossie(id)
+  : tipo === 'media' ? verMidia(id)
+    : tipo === 'tradition' ? verTradicao(id)
+      : tipo === 'heirloom' ? verReliquia(id)
+        : tipo === 'interview' ? verEntrevista(id)
+          : telaGrafo(tipo, id);
+
+async function acharCaminho(tipo, id) {
+  const alvo = val('gf_alvo');
+  const r = await api('GET', '/familias/' + FAM.id + '/caminho?de=' +
+    encodeURIComponent(tipo + ':' + id) + '&para=' + encodeURIComponent(alvo));
+  const cx = document.getElementById('gf_res');
+  if (r.status >= 400) { cx.innerHTML = aviso(r.erro); return; }
+  if (!r.passos || !r.passos.length) {
+    cx.innerHTML = '<p class="sub">' + esc(t('grafo.sem_caminho', { n: 4 })) + '</p>';
+    return;
+  }
+  cx.innerHTML = '<p class="sub">' + esc(t('grafo.saltos', { n: r.saltos })) + '</p>' +
+    r.passos.map((p, i) => '<div class="linha"><span>' +
+      (i ? '<span class="papel">' + esc(t('grafo.' + p.motivo.replace('grafo.', '')) || '') +
+        '</span> ' : '') +
+      '<a href="#" onclick="abrirNo(\\'' + p.tipo + '\\',\\'' + p.id + '\\');return false">' +
+      esc(p.rotulo) + '</a></span><span class="sub">' +
+      esc(t('grafo.t_' + p.tipo) || p.tipo) + '</span></div>').join('');
+}
+
+// ---------------------------------------------------------------- mapa
+// Sem tile de terceiro (a CSP não deixa, e não precisa): projeção simples
+// dos lugares da própria família, com grade e escala. O que interessa é a
+// relação entre os pontos — de onde vieram, para onde foram.
+async function telaMapa() {
+  const r = await api('GET', '/familias/' + FAM.id + '/mapa');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const comCoord = (r.lugares || []).filter(l => l.lat != null && l.lon != null);
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('mapa.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('mapa.intro')) + '</p>' +
+    (comCoord.length ? desenhoMapa(comCoord, r.migracoes || [])
+      : '<p class="sub">' + esc(t('mapa.sem_lugares')) + '</p>') +
+    (comCoord.length
+      ? comCoord.map(l => '<div class="linha"><span><strong>' + esc(l.nome) + '</strong>' +
+          (l.uf ? ' <span class="sub">' + esc(l.uf) + '</span>' : '') + '</span>' +
+          '<span class="sub">' + esc(t('mapa.no_lugar', { pessoas: l.pessoas.join(', ') || '—',
+            eventos: l.eventos, midias: l.midias })) + '</span></div>').join('')
+      : '') +
+    ((r.migracoes || []).length
+      ? '<h3 style="margin-top:26px">' + esc(t('mapa.migracoes')) + '</h3>' +
+        r.migracoes.map(m => '<p class="sub" style="margin:4px 0">' +
+          esc(t('mapa.migracao_de', { nome: m.nome, caminho: m.passos.map(p =>
+            (nomeDoLugar(r.lugares, p.lugar_id)) + (p.quando ? ' (' + p.quando + ')' : ''))
+            .join(' → ') })) + '</p>').join('')
+      : '') +
+    ((r.sem_coordenada || []).length
+      ? '<h3 style="margin-top:26px">' + esc(t('mapa.sem_coordenada_titulo')) + '</h3>' +
+        '<p class="sub">' + esc(t('mapa.sem_coordenada', { lista: r.sem_coordenada.join(', ') })) + '</p>'
+      : '') +
+    ((r.nao_reconhecidos || []).length
+      ? '<h3 style="margin-top:26px">' + esc(t('mapa.nao_reconhecidos_titulo')) + '</h3>' +
+        '<p class="sub">' + esc(t('mapa.nao_reconhecidos')) + '</p>' +
+        r.nao_reconhecidos.map(x => '<div class="linha"><span>' + esc(x.texto) + '</span>' +
+          '<span class="sub">' + esc(t('mapa.citado', { n: x.n })) + '</span></div>').join('')
+      : ''));
+}
+
+const nomeDoLugar = (lugares, id) => (lugares.find(l => l.id === id) || {}).nome || '?';
+
+function desenhoMapa(lugares, migracoes) {
+  const L = 720, A = 420, M = 40;
+  const lats = lugares.map(l => l.lat), lons = lugares.map(l => l.lon);
+  const minLa = Math.min(...lats), maxLa = Math.max(...lats);
+  const minLo = Math.min(...lons), maxLo = Math.max(...lons);
+  // margem mínima para o caso de um lugar só (ou todos na mesma cidade)
+  const dLa = Math.max(maxLa - minLa, 0.5), dLo = Math.max(maxLo - minLo, 0.5);
+  const x = (lon) => M + ((lon - (minLo + maxLo) / 2) / dLo + 0.5) * (L - 2 * M);
+  const y = (lat) => M + (0.5 - (lat - (minLa + maxLa) / 2) / dLa) * (A - 2 * M);
+  const posicao = {};
+  lugares.forEach(l => { posicao[l.id] = { x: x(l.lon), y: y(l.lat) }; });
+
+  const linhas = migracoes.slice(0, 24).map((m, i) => m.passos.slice(1).map((p, k) => {
+    const a = posicao[m.passos[k].lugar_id], b = posicao[p.lugar_id];
+    if (!a || !b) return '';
+    return '<line x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) +
+      '" y2="' + b.y.toFixed(1) + '" stroke="var(--tema)" stroke-width="1.5" opacity="0.45" ' +
+      'marker-end="url(#seta)"><title>' + esc(m.nome) + '</title></line>';
+  }).join('')).join('');
+
+  const pontos = lugares.map(l => {
+    const p = posicao[l.id];
+    const peso = Math.min(4 + (l.eventos + l.midias + l.pessoas.length), 14);
+    return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + peso +
+      '" fill="var(--tema)" opacity="0.75"><title>' + esc(l.nome) + '</title></circle>' +
+      '<text x="' + (p.x + peso + 4).toFixed(1) + '" y="' + (p.y + 4).toFixed(1) +
+      '" font-size="12" fill="var(--tinta)">' + esc(l.nome) + '</text>';
+  }).join('');
+
+  // grade: uma referência honesta de escala, sem fingir cartografia
+  const grade = [0.25, 0.5, 0.75].map(f =>
+    '<line x1="' + (M + f * (L - 2 * M)) + '" y1="' + M + '" x2="' + (M + f * (L - 2 * M)) +
+      '" y2="' + (A - M) + '" stroke="var(--borda)" stroke-width="1"/>' +
+    '<line x1="' + M + '" y1="' + (M + f * (A - 2 * M)) + '" x2="' + (L - M) +
+      '" y2="' + (M + f * (A - 2 * M)) + '" stroke="var(--borda)" stroke-width="1"/>').join('');
+
+  const kmPorGrau = 111;
+  return '<div class="card" style="padding:10px;overflow-x:auto">' +
+    '<svg viewBox="0 0 ' + L + ' ' + A + '" width="100%" role="img" aria-label="' +
+      esc(t('mapa.titulo')) + '">' +
+    '<defs><marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" ' +
+      'markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--tema)"/></marker></defs>' +
+    grade + linhas + pontos +
+    '<text x="' + M + '" y="' + (A - 10) + '" font-size="11" fill="var(--suave)">' +
+      esc(t('mapa.escala', { n: Math.round(dLa * kmPorGrau) })) + '</text>' +
+    '</svg></div>';
 }
 
 // ---------------------------------------------------------- entrevistas

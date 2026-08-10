@@ -357,7 +357,8 @@ async function principal() {
     assert.strictEqual(r.status, 200);
     // o app é uma página só: se o template quebrar, some tudo de uma vez
     for (const tela of ['telaTradicoes', 'verTradicao', 'telaReliquias', 'verReliquia',
-      'telaMissoes', 'telaHistoriador', 'telaIndice', 'telaAvisos', 'telaPlanos']) {
+      'telaMissoes', 'telaHistoriador', 'telaIndice', 'telaAvisos', 'telaPlanos',
+      'telaEntrevistas', 'verEntrevista', 'telaGrafo', 'telaMapa', 'desenhoMapa']) {
       assert(r.texto.includes('function ' + tela) || r.texto.includes(tela + ' ='),
         `a tela ${tela} não foi para o HTML`);
     }
@@ -3210,6 +3211,106 @@ async function principal() {
     assert.strictEqual(await saldoDe(), antes + 300);
   });
 
+  // ============================================== 2.5 GRAFO E MAPA (§20/§34)
+  console.log('\ngrafo e mapa (2.5) — a mesma verdade, vista de lado');
+
+  await teste('toda ligação do grafo diz POR QUE existe', async () => {
+    const r = await req('GET', F(`/grafo/person/${P.joao.id}`), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.vizinhos.length > 0, 'pessoa do cenário do §4 saiu sem nenhuma ligação');
+    for (const v of r.json.vizinhos) {
+      assert(v.motivo && v.motivo.startsWith('grafo.m_'),
+        'aresta sem motivo: ' + JSON.stringify(v));
+      assert(v.tipo && v.id, 'aresta sem destino');
+    }
+    // e o motivo tem texto — ligação que a tela não sabe nomear não serve
+    const i18nPt = require('./i18n/pt-BR.json');
+    for (const v of r.json.vizinhos) {
+      assert(i18nPt.grafo[v.motivo.replace('grafo.', '')], 'motivo sem texto: ' + v.motivo);
+    }
+  });
+
+  await teste('o grafo não é atalho para ver o que o papel não pode ver', async () => {
+    // `P.privada` é o documento PRIVATE do dono; bruno (CONTRIBUTOR) não o vê
+    // na busca — e também não pode encontrá-lo como vizinho de ninguém.
+    const meu = await req('GET', F(`/grafo/person/${P.joao.id}`), { sessao: bruno });
+    assert.strictEqual(meu.status, 200, meu.texto);
+    const texto = JSON.stringify(meu.json);
+    assert(!texto.includes(P.privada), 'O ITEM PRIVADO APARECEU COMO VIZINHO PARA QUEM NÃO PODE VÊ-LO');
+  });
+
+  await teste('"como Ana se liga a isto?" devolve o CAMINHO, não um número', async () => {
+    // dois parentes ligados por parentesco: caminho curto e explicável
+    const r = await req('GET', F('/caminho') + `?de=person:${P.joao.id}&para=person:${P.pedro.id}`,
+      { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.passos && r.json.passos.length >= 2, 'não achou caminho entre dois parentes');
+    assert.strictEqual(r.json.passos[0].id, P.joao.id, 'o caminho não começa na origem');
+    assert.strictEqual(r.json.passos[r.json.passos.length - 1].id, P.pedro.id,
+      'o caminho não termina no destino');
+    assert.strictEqual(r.json.passos[0].motivo, '', 'a origem não pode ter motivo');
+    for (const p of r.json.passos.slice(1)) assert(p.motivo, 'elo do caminho sem motivo');
+  });
+
+  await teste('sem ligação, o grafo diz que não sabe — não inventa proximidade', async () => {
+    const solto = await criarPessoa({ nome: 'Parente Sem Ligação Nenhuma' });
+    const r = await req('GET', F('/caminho') + `?de=person:${P.joao.id}&para=person:${solto.id}`,
+      { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert.strictEqual(r.json.passos, null, 'inventou caminho para quem não tem ligação');
+  });
+
+  await teste('o mapa liga o texto ao lugar — inclusive pelo nome HISTÓRICO', async () => {
+    const mapaMod = require('./mapa');
+    const ix = mapaMod.indiceDeLugares([
+      { id: 'l1', nome: 'Ouro Preto', municipio: 'Ouro Preto', nomes_historicos: ['Vila Rica'] },
+      { id: 'l2', nome: 'Pirapora', municipio: 'Pirapora', nomes_historicos: [] },
+      // a fazenda FICA EM Pirapora; não se chama Pirapora
+      { id: 'l3', nome: 'Fazenda do Meio', municipio: 'Pirapora', nomes_historicos: [] },
+    ]);
+    assert.strictEqual(mapaMod.resolver(ix, 'vila rica').id, 'l1', 'nome histórico não resolveu');
+    assert.strictEqual(mapaMod.resolver(ix, 'OURO  PRETO').id, 'l1', 'espaço/caixa quebraram o match');
+    // acento é erro de digitação comum e casa de propósito (igual à busca)
+    assert.strictEqual(mapaMod.resolver(ix, 'Piraporã').id, 'l2', 'o acento quebrou o match');
+    // mas nome PARECIDO é outro lugar: "Pirapora do Bom Jesus" fica em SP,
+    // e ligar as duas coisas seria mudar a família de estado sem avisar
+    assert.strictEqual(mapaMod.resolver(ix, 'Pirapora do Bom Jesus'), null,
+      'casou lugares diferentes só porque o nome começa igual');
+    assert.strictEqual(mapaMod.resolver(ix, ''), null, 'texto vazio virou lugar');
+    // município é continência, não identidade: "Pirapora" é a cidade, e não
+    // a fazenda que fica nela — senão a família inteira nasce numa fazenda
+    // que não é a dela
+    assert.strictEqual(mapaMod.resolver(ix, 'Pirapora').id, 'l2',
+      'o município virou apelido do lugar');
+    assert.strictEqual(mapaMod.resolver(ix, 'Fazenda do Meio').id, 'l3');
+  });
+
+  await teste('o mapa mostra o que sabe e DECLARA o que não conseguiu pousar', async () => {
+    // um lugar com coordenada e um sem: os dois aparecem, com destinos diferentes
+    const comCoord = await req('POST', F('/lugares'), { sessao: ana,
+      corpo: { nome: 'Pirapora', uf: 'MG', lat: -17.345, lon: -44.941 } });
+    assert.strictEqual(comCoord.status, 201, comCoord.texto);
+    await req('POST', F('/lugares'), { sessao: ana, corpo: { nome: 'Lugar Sem Coordenada' } });
+
+    // um evento com o lugar escrito à MÃO, e com acento trocado de propósito:
+    // é assim que o acervo real está, e é isso que o mapa tem de resolver
+    const ev = await req('POST', F('/eventos'), { sessao: ana, corpo: {
+      tipo: 'mudanca', titulo: 'Mudança para a cidade', data: '1955',
+      local: 'Piraporã', participantes: [P.joao.id] } });
+    assert.strictEqual(ev.status, 201, ev.texto);
+
+    const r = await req('GET', F('/mapa'), { sessao: ana });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert(r.json.com_coordenada >= 1, 'nenhum lugar entrou no desenho');
+    assert(r.json.sem_coordenada.includes('Lugar Sem Coordenada'),
+      'o lugar sem coordenada sumiu em vez de ser declarado');
+    const pirapora = r.json.lugares.find((l) => l.nome === 'Pirapora');
+    assert(pirapora, 'o lugar cadastrado não voltou no mapa');
+    assert(pirapora.eventos > 0,
+      'o texto escrito à mão não se ligou ao lugar cadastrado: ' +
+      JSON.stringify({ pirapora, nao_reconhecidos: r.json.nao_reconhecidos.slice(0, 6) }));
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
@@ -3223,10 +3324,10 @@ async function principal() {
    */
   const caminhoDeTeste = (rota, familia, userId) => {
     let c = rota.caminho.replace(':familyId', familia).replace(':userId', userId)
-      .replace(':predicado', 'data_nascimento').replace(':tipo', 'pessoa');
+      .replace(':predicado', 'data_nascimento').replace(':noTipo', 'person').replace(':tipo', 'pessoa');
     for (const p of [':pessoaId', ':relId', ':claimId', ':contribId', ':mediaId', ':albumId',
       ':idId', ':storyId', ':lugarId', ':eventoId', ':exportId', ':tradicaoId', ':reliquiaId',
-      ':missaoId', ':achadoId', ':entrevistaId', ':respostaId', ':itemId', ':id']) {
+      ':missaoId', ':achadoId', ':entrevistaId', ':respostaId', ':noId', ':itemId', ':id']) {
       c = c.replace(p, ALVO_FALSO);
     }
     const sobrou = c.match(/\/:(\w+)/);

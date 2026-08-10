@@ -27,6 +27,8 @@ const fila = require('./fila');
 const documentos = require('./documentos');
 const documentosIA = require('./documentos-ia');
 const entrevistas = require('./entrevistas');
+const grafo = require('./grafo');
+const mapa = require('./mapa');
 const historias = require('./historias');
 const busca = require('./busca');
 const tempo = require('./tempo');
@@ -1223,6 +1225,41 @@ function registrarRotasApp(app) {
     const geracoes = Math.min(Math.max(Number(req.query.geracoes) || 4, 1), 8);
     const dados = await tenancy.noEscopoDe(req, (t) => arvore.montar(t, req.params.pessoaId, { modo, geracoes }));
     res.json(dados);
+  }));
+
+  // ---------------------------------------------------- grafo e mapa (2.5)
+  /**
+   * Vizinhos de um nó, com o MOTIVO de cada ligação. É a mesma verdade das
+   * tabelas, vista de lado (§20) — nada é materializado.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/grafo/:noTipo/:noId`), ...naFamilia,
+    h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      const dados = await tenancy.noEscopoDe(req, async (t) => {
+        const centro = await grafo.no(t, req.params.noTipo, req.params.noId);
+        if (!centro || !privacidade.podeVer(centro, quem).pode) {
+          throw erro('erro.grafo_no_nao_encontrado', 404);
+        }
+        return { centro: { tipo: centro.tipo, id: centro.id, rotulo: centro.rotulo },
+          vizinhos: await grafo.vizinhos(t, { tipo: centro.tipo, id: centro.id, quem }) };
+      });
+      res.json(dados);
+    }));
+
+  /** "Como Ana se liga a esta fotografia?" — o caminho, com os motivos. */
+  app.get(decl('GET', `${R}/familias/:familyId/caminho`), ...naFamilia, h(async (req, res) => {
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    const parse = (v) => { const [tipo, id] = String(v || '').split(':'); return { tipo, id }; };
+    const r = await tenancy.noEscopoDe(req, (t) => grafo.caminho(t, {
+      de: parse(req.query.de), para: parse(req.query.para), quem,
+      maxSaltos: Math.min(Math.max(Number(req.query.saltos) || 4, 1), 6) }));
+    res.json(r || { passos: null, saltos: null });
+  }));
+
+  /** Mapa da família (§34): lugares, migrações e o que ficou de fora. */
+  app.get(decl('GET', `${R}/familias/:familyId/mapa`), ...naFamilia, h(async (req, res) => {
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    res.json(await tenancy.noEscopoDe(req, (t) => mapa.montar(t, req.familia.id, quem)));
   }));
 
   // ------------------------------------------------------------ auditoria
