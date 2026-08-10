@@ -270,6 +270,7 @@ async function abrir(id) {
       ' · <a href="#" onclick="telaHistorias();return false"><strong>' + esc(t('familia.historias')) + '</strong></a>' +
       ' · <a href="#" onclick="telaTradicoes();return false"><strong>' + esc(t('familia.tradicoes')) + '</strong></a>' +
       ' · <a href="#" onclick="telaReliquias();return false"><strong>' + esc(t('familia.reliquias')) + '</strong></a>' +
+      ' · <a href="#" onclick="telaEntrevistas();return false"><strong>' + esc(t('entrevista.titulo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
       ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
       ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a>' +
@@ -853,6 +854,262 @@ async function guardarHistoria(id) {
   verMidia(id);
 }
 
+// ---------------------------------------------------------- entrevistas
+// A tela é um roteiro que anda com quem conta: uma pergunta por vez, o
+// botão de gravar do lado, e nada que obrigue a terminar hoje. O ÁUDIO é
+// o que importa — a transcrição vem depois, e é corrigível.
+let ENTREVISTA = null, GRAVADOR = null, GRAVANDO = null, CRONO = null;
+
+async function telaEntrevistas() {
+  const r = await api('GET', '/familias/' + FAM.id + '/entrevistas');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const roteiros = r.roteiros || [];
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('entrevista.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('entrevista.intro')) + '</p>' +
+    (r.transcricao_disponivel ? '' :
+      '<p class="sub">' + esc(t('entrevista.sem_transcricao_provedor')) + '</p>') +
+    ((r.entrevistas || []).length
+      ? r.entrevistas.map(e => '<div class="linha"><span>' +
+          '<a href="#" onclick="verEntrevista(\\'' + e.id + '\\');return false"><strong>' +
+            esc(t('entrevista.r_' + e.roteiro) || e.roteiro) + '</strong></a> — ' +
+            esc(e.pessoa_nome) + '</span>' +
+          '<span class="sub">' + esc(t('entrevista.progresso',
+            { n: e.respondidas, total: e.total })) + '</span></div>').join('')
+      : '<p class="sub">' + esc(t('entrevista.sem_entrevistas')) + '</p>') +
+    (pode('contribuir')
+      ? '<h3 style="margin-top:26px">' + esc(t('entrevista.nova')) + '</h3>' +
+        '<label>' + esc(t('entrevista.escolha_pessoa')) + '</label><select id="ev_p"></select>' +
+        '<label>' + esc(t('entrevista.escolha_roteiro')) + '</label><select id="ev_r">' +
+          roteiros.map(x => '<option value="' + x.chave + '">' +
+            esc(t('entrevista.r_' + x.chave)) + ' — ' + esc(t('entrevista.d_' + x.chave)) +
+            '</option>').join('') + '</select>' +
+        '<p><button class="btn" onclick="criarEntrevista()">' + esc(t('entrevista.comecar')) +
+        '</button></p>'
+      : ''));
+  if (pode('contribuir')) {
+    const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
+    const sel = document.getElementById('ev_p');
+    if (sel) sel.innerHTML = (l.pessoas || []).map(x =>
+      '<option value="' + x.id + '">' + esc(x.nome_exibicao) + '</option>').join('');
+  }
+}
+
+async function criarEntrevista() {
+  const r = await api('POST', '/familias/' + FAM.id + '/entrevistas',
+    { pessoa: val('ev_p'), roteiro: val('ev_r') });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verEntrevista(r.entrevista.id);
+}
+
+const rotuloPergunta = (x) => x.pergunta_chave === 'livre'
+  ? x.pergunta_livre : (t('entrevista.' + x.pergunta_chave) || x.pergunta_chave);
+
+async function verEntrevista(id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/entrevistas/' + id);
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const e = r.entrevista;
+  ENTREVISTA = { id, transcricao: r.transcricao_disponivel };
+  const feitas = e.respostas.filter(x => x.status === 'transcrita' || x.status === 'gravada').length;
+
+  $(topo() + '<p class="sub"><a href="#" onclick="telaEntrevistas();return false">← ' +
+      esc(t('entrevista.titulo')) + '</a></p>' +
+    '<h2>' + esc(t('entrevista.de', { nome: e.pessoa_nome })) + '</h2>' +
+    '<p class="sub">' + esc(t('entrevista.r_' + e.roteiro) || e.roteiro) + ' · ' +
+      esc(t('entrevista.progresso', { n: feitas, total: e.respostas.length })) +
+      (e.status === 'concluida'
+        ? ' · ' + esc(t('entrevista.concluida', { data: new Date(e.concluida_em).toLocaleDateString(IDIOMA) }))
+        : ' · ' + esc(t('entrevista.em_andamento'))) + '</p>' +
+    '<p class="sub">' + esc(t('entrevista.audio_preservado')) + '</p>' +
+    e.respostas.map(x => cardResposta(x, id)).join('') +
+    (pode('contribuir')
+      ? '<h3 style="margin-top:26px">' + esc(t('entrevista.acrescentar')) + '</h3>' +
+        '<input id="ev_nova" placeholder="' + esc(t('entrevista.pergunta_nova')) + '">' +
+        '<p><button class="btn sec" onclick="novaPergunta(\\'' + id + '\\')">' +
+          esc(t('entrevista.acrescentar')) + '</button>' +
+        (e.status === 'em_andamento'
+          ? ' <button class="btn" onclick="concluirEntrevista(\\'' + id + '\\')">' +
+            esc(t('entrevista.concluir')) + '</button>' : '') + '</p>'
+      : ''));
+  for (const x of e.respostas) if (x.media_id) tocarAudio(x.id, x.media_id);
+  await opcoesDePessoa();
+}
+
+function cardResposta(x, entrevistaId) {
+  const podeEditar = pode('contribuir');
+  const selo = x.transcricao_origem === 'ia' ? t('entrevista.transcricao_ia')
+    : x.transcricao_origem === 'ia_corrigida' ? t('entrevista.transcricao_ia_corrigida')
+      : x.transcricao_origem === 'humana' ? t('entrevista.transcricao_humana') : '';
+  return '<div class="card" style="padding:18px;text-align:left" id="rp_' + x.id + '">' +
+    '<p style="margin:0 0 10px"><strong>' + esc(rotuloPergunta(x)) + '</strong>' +
+      (x.status === 'pulada' ? ' <span class="papel">' + esc(t('entrevista.pulada')) + '</span>' : '') +
+    '</p>' +
+    '<div id="au_' + x.id + '"></div>' +
+    (podeEditar
+      ? '<p style="margin:8px 0">' +
+        '<button class="btn mini" id="gv_' + x.id + '" onclick="alternarGravacao(\\'' + x.id + '\\')">' +
+          esc(x.media_id ? t('entrevista.regravar') : t('entrevista.gravar')) + '</button> ' +
+        '<label class="btn mini sec" style="cursor:pointer">' + esc(t('entrevista.enviar_arquivo')) +
+          '<input type="file" accept="audio/*" style="display:none" ' +
+          'onchange="audioDoArquivo(\\'' + x.id + '\\', this.files[0])"></label> ' +
+        (x.status === 'pendente'
+          ? '<button class="btn mini sec" onclick="pularPergunta(\\'' + x.id + '\\')">' +
+            esc(t('entrevista.pular')) + '</button>' : '') +
+        '</p>' : '') +
+    (podeEditar
+      ? area('tx_' + x.id, x.transcricao, t('entrevista.escrever')) +
+        '<p style="margin:8px 0 0">' +
+        '<button class="btn mini" onclick="salvarResposta(\\'' + x.id + '\\')">' +
+          esc(t('entrevista.salvar_texto')) + '</button>' +
+        (x.media_id && ENTREVISTA && ENTREVISTA.transcricao
+          ? ' <button class="btn mini sec" onclick="transcreverResposta(\\'' + x.id + '\\')">' +
+            esc(t('entrevista.transcrever')) + '</button>' : '') +
+        (x.transcricao && pode('ia.usar')
+          ? ' <button class="btn mini sec" onclick="entidadesDaResposta(\\'' + x.id + '\\')">' +
+            esc(t('entrevista.entidades')) + '</button>' : '') +
+        '</p>'
+      : (x.transcricao ? '<p>' + esc(x.transcricao) + '</p>' : '')) +
+    (selo ? '<p class="sub" style="margin:6px 0 0">' + esc(selo) + '</p>' : '') +
+    ((x.achados || []).length
+      ? '<div style="margin-top:10px">' + x.achados.map(a => linhaAchado(a, entrevistaId)).join('') + '</div>'
+      : '');
+}
+
+/** Uma linha de sugestão, igual à do documento — o mesmo fluxo, outra fonte. */
+function linhaAchado(a, entrevistaId) {
+  if (a.status !== 'sugerido') {
+    return '<p class="sub" style="margin:2px 0">' + esc(t('predicado.' + a.predicado) || a.predicado) +
+      ': ' + esc(a.valor) + ' — ' + esc(a.status === 'aceito'
+        ? t('documento.aceito', { nome: a.pessoa_nome || '' })
+        : t('documento.descartado', { nome: a.decidido_por_nome || '' })) + '</p>';
+  }
+  return '<div class="linha"><span>' + esc(t('predicado.' + a.predicado) || a.predicado) +
+    ': <strong>' + esc(a.valor) + '</strong>' +
+    (a.pessoa_texto ? ' <span class="sub">— ' + esc(a.pessoa_texto) + '</span>' : '') + '</span>' +
+    '<span><select id="ap_' + a.id + '" class="ap-pessoa"></select> ' +
+    '<button class="btn mini" onclick="aceitarAchado(\\'' + a.id + '\\',\\'entrevista\\',\\'' + entrevistaId + '\\')">' +
+      esc(t('documento.aceitar')) + '</button> ' +
+    '<button class="btn mini sec" onclick="descartarAchado(\\'' + a.id + '\\',\\'entrevista\\',\\'' + entrevistaId + '\\')">' +
+      esc(t('documento.descartar')) + '</button></span></div>';
+}
+
+async function tocarAudio(respostaId, mediaId) {
+  const u = await urlDe(mediaId);
+  const alvo = document.getElementById('au_' + respostaId);
+  if (u && alvo) alvo.innerHTML = '<audio controls preload="none" src="' + u + '" style="width:100%"></audio>';
+}
+
+/**
+ * Gravação no próprio navegador. O arquivo sai daqui para o R2 pelo mesmo
+ * caminho de qualquer mídia (URL assinada), então o áudio da avó tem o
+ * mesmo tratamento de uma foto: hash conferido, original imutável.
+ */
+async function alternarGravacao(respostaId) {
+  const b = document.getElementById('gv_' + respostaId);
+  if (GRAVANDO === respostaId) {
+    GRAVADOR.stop();
+    return;
+  }
+  if (GRAVANDO) return;
+  if (!navigator.mediaDevices || !window.MediaRecorder) return alert(t('entrevista.microfone_indisponivel'));
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (_) { return alert(t('entrevista.microfone_negado')); }
+
+  const pedacos = [];
+  GRAVADOR = new MediaRecorder(stream);
+  GRAVANDO = respostaId;
+  const inicio = Date.now();
+  CRONO = setInterval(() => {
+    b.textContent = t('entrevista.gravando', { seg: Math.round((Date.now() - inicio) / 1000) });
+  }, 1000);
+  GRAVADOR.ondataavailable = (ev) => { if (ev.data && ev.data.size) pedacos.push(ev.data); };
+  GRAVADOR.onstop = async () => {
+    clearInterval(CRONO); GRAVANDO = null;
+    stream.getTracks().forEach(tr => tr.stop());
+    b.textContent = t('entrevista.enviando');
+    const blob = new Blob(pedacos, { type: GRAVADOR.mimeType || 'audio/webm' });
+    await enviarAudioDaResposta(respostaId, blob, 'resposta.webm',
+      Math.round((Date.now() - inicio) / 1000));
+  };
+  GRAVADOR.start();
+  b.textContent = t('entrevista.parar');
+}
+
+const audioDoArquivo = (respostaId, file) => file
+  && enviarAudioDaResposta(respostaId, file, file.name, null);
+
+async function enviarAudioDaResposta(respostaId, blob, nome, duracao) {
+  try {
+    const buf = await blob.arrayBuffer();
+    const sha = [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))]
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    const prep = await api('POST', '/familias/' + FAM.id + '/midias/preparar', {
+      nome, bytes: blob.size, sha256: sha, mime: blob.type || 'audio/webm', tipo: 'AUDIO' });
+    if (prep.status >= 400) return alert(prep.erro);
+    if (!prep.duplicado) {
+      const put = await fetch(prep.url_envio, { method: 'PUT', body: blob,
+        headers: { 'Content-Type': blob.type || 'application/octet-stream' } });
+      if (!put.ok) return alert(t('erro.generico'));
+      await api('POST', '/familias/' + FAM.id + '/midias/' + prep.media_id + '/confirmar');
+    }
+    const r = await api('POST', '/familias/' + FAM.id + '/respostas/' + respostaId + '/audio',
+      { midia: prep.media_id, duracao_seg: duracao });
+    if (r.status >= 400) return alert(r.erro);
+    verEntrevista(ENTREVISTA.id);
+  } catch (_) { alert(t('erro.generico')); }
+}
+
+async function salvarResposta(respostaId) {
+  const r = await api('PATCH', '/familias/' + FAM.id + '/respostas/' + respostaId,
+    { transcricao: val('tx_' + respostaId) });
+  if (r.status >= 400) return alert(r.erro);
+  verEntrevista(ENTREVISTA.id);
+}
+
+async function pularPergunta(respostaId) {
+  await api('PATCH', '/familias/' + FAM.id + '/respostas/' + respostaId, { pular: true });
+  verEntrevista(ENTREVISTA.id);
+}
+
+async function transcreverResposta(respostaId, confirmando) {
+  const r = await api('POST', '/familias/' + FAM.id + '/respostas/' + respostaId + '/transcrever',
+    confirmando ? { confirmar: true } : {});
+  if (r.status === 503) return alert(t('ia.indisponivel'));
+  if (r.status >= 400) return alert(r.erro);
+  if (r.cotacao && !confirmando) {
+    if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return transcreverResposta(respostaId, true);
+    return;
+  }
+  verEntrevista(ENTREVISTA.id);
+}
+
+async function entidadesDaResposta(respostaId, confirmando) {
+  const r = await api('POST', '/familias/' + FAM.id + '/respostas/' + respostaId + '/entidades',
+    confirmando ? { confirmar: true } : {});
+  if (r.status === 503) return alert(t('ia.indisponivel'));
+  if (r.status >= 400) return alert(r.erro);
+  if (r.cotacao && !confirmando) {
+    if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return entidadesDaResposta(respostaId, true);
+    return;
+  }
+  await verEntrevista(ENTREVISTA.id);
+  if (!(r.achados || []).length) alert(t('documento.nada_encontrado'));
+}
+
+async function novaPergunta(id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/entrevistas/' + id + '/perguntas',
+    { texto: val('ev_nova') });
+  if (r.status >= 400) return alert(r.erro);
+  verEntrevista(id);
+}
+
+async function concluirEntrevista(id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/entrevistas/' + id + '/concluir');
+  if (r.status >= 400) return alert(r.erro);
+  verEntrevista(id);
+}
+
 // ------------------------------------------- o que a IA leu no documento
 // A tela inteira existe para deixar UMA coisa clara: isto é sugestão, não
 // fato. Cada achado só vira fato da família quando alguém apontar de quem
@@ -876,9 +1133,9 @@ async function carregarAchados(mediaId) {
       (a.status === 'sugerido' && pode('claims.criar')
         ? '<div class="linha"><span class="sub">' + esc(t('documento.achado_de')) + '</span>' +
           '<span><select id="ap_' + a.id + '" class="ap-pessoa"></select> ' +
-          '<button class="btn mini" onclick="aceitarAchado(\\'' + a.id + '\\',\\'' + mediaId + '\\')">' +
+          '<button class="btn mini" onclick="aceitarAchado(\\'' + a.id + '\\',\\'midia\\',\\'' + mediaId + '\\')">' +
             esc(t('documento.aceitar')) + '</button> ' +
-          '<button class="btn mini sec" onclick="descartarAchado(\\'' + a.id + '\\',\\'' + mediaId + '\\')">' +
+          '<button class="btn mini sec" onclick="descartarAchado(\\'' + a.id + '\\',\\'midia\\',\\'' + mediaId + '\\')">' +
             esc(t('documento.descartar')) + '</button></span></div>'
         : '<p class="sub" style="margin:0">' + esc(a.status === 'aceito'
           ? t('documento.aceito', { nome: a.pessoa_nome || '' })
@@ -886,12 +1143,7 @@ async function carregarAchados(mediaId) {
       '</div>').join('')
       : '<p class="sub">' + esc(t('documento.sem_achados')) + '</p>');
 
-  if (sugeridos.length && pode('claims.criar')) {
-    const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
-    const opcoes = (l.pessoas || []).map(x =>
-      '<option value="' + x.id + '">' + esc(x.nome_exibicao) + '</option>').join('');
-    document.querySelectorAll('.ap-pessoa').forEach(s => { s.innerHTML = '<option value=""></option>' + opcoes; });
-  }
+  if (sugeridos.length && pode('claims.criar')) await opcoesDePessoa();
 }
 
 async function lerDocumento(mediaId, confirmando) {
@@ -909,19 +1161,33 @@ async function lerDocumento(mediaId, confirmando) {
   if (!(r.achados || []).length) alert(t('documento.nada_encontrado'));
 }
 
-async function aceitarAchado(achadoId, mediaId) {
+// O mesmo par de botões serve ao papel e à fala: muda só para onde a tela
+// volta depois de decidir.
+const recarregarAchados = (alvo, id) => alvo === 'entrevista' ? verEntrevista(id) : carregarAchados(id);
+
+async function aceitarAchado(achadoId, alvo, id) {
   const sel = document.getElementById('ap_' + achadoId);
   if (!sel || !sel.value) return alert(t('documento.escolha_pessoa'));
   const r = await api('POST', '/familias/' + FAM.id + '/achados/' + achadoId + '/aceitar',
     { pessoa: sel.value });
   if (r.status >= 400) return alert(r.erro);
-  carregarAchados(mediaId);
+  recarregarAchados(alvo, id);
 }
 
-async function descartarAchado(achadoId, mediaId) {
+async function descartarAchado(achadoId, alvo, id) {
   const r = await api('POST', '/familias/' + FAM.id + '/achados/' + achadoId + '/descartar');
   if (r.status >= 400) return alert(r.erro);
-  carregarAchados(mediaId);
+  recarregarAchados(alvo, id);
+}
+
+/** Preenche os seletores de pessoa das sugestões visíveis na tela. */
+async function opcoesDePessoa() {
+  const campos = document.querySelectorAll('.ap-pessoa');
+  if (!campos.length) return;
+  const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
+  const opcoes = (l.pessoas || []).map(x =>
+    '<option value="' + x.id + '">' + esc(x.nome_exibicao) + '</option>').join('');
+  campos.forEach(s => { s.innerHTML = '<option value=""></option>' + opcoes; });
 }
 
 async function confirmarPessoa(idId, mediaId) {

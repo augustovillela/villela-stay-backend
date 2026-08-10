@@ -128,38 +128,49 @@ async function guardarTranscricao(t, { m, familyId, userId, transcricao, modelo 
  * em silêncio — o modelo pode inventar categoria, e não é papel dele
  * ampliar o vocabulário do domínio.
  */
-async function guardarAchado(t, { familyId, mediaId, aiJobId, achado }) {
+async function guardarAchado(t, { familyId, mediaId = null, respostaId = null, aiJobId, achado }) {
   const pred = s(achado.predicado, 40);
   const def = prov.PREDICADOS[pred];
   if (!def) return null;
   const valor = s(achado.valor, 300);
   if (!valor) return null;
-  // Reler o documento não pode ressuscitar o que a família já descartou:
-  // o índice único faz a segunda leitura esbarrar na primeira.
+  // Reler (documento ou transcrição) não pode ressuscitar o que a família
+  // já descartou: o índice único faz a segunda leitura esbarrar na
+  // primeira. São dois índices parciais porque a sugestão vem de duas
+  // origens — o papel e a fala.
+  const conflito = mediaId ? '(media_id, predicado, valor_norm) WHERE media_id IS NOT NULL'
+    : '(interview_answer_id, predicado, valor_norm) WHERE interview_answer_id IS NOT NULL';
   return t.uma(
-    `INSERT INTO document_findings (family_id, media_id, ai_job_id, predicado, valor,
-       valor_norm, pessoa_texto, trecho)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-     ON CONFLICT (media_id, predicado, valor_norm) DO NOTHING
+    `INSERT INTO document_findings (family_id, media_id, interview_answer_id, ai_job_id,
+       predicado, valor, valor_norm, pessoa_texto, trecho)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     ON CONFLICT ${conflito} DO NOTHING
      RETURNING *`,
-    [familyId, mediaId, aiJobId, pred, valor, prov.normalizar(valor, def.tipo),
+    [familyId, mediaId, respostaId, aiJobId, pred, valor, prov.normalizar(valor, def.tipo),
       s(achado.pessoa, 200), s(achado.trecho, 600)]);
 }
 
+const COLUNAS_ACHADO = `f.id, f.predicado, f.valor, f.pessoa_texto, f.trecho, f.status,
+  f.claim_id, f.person_id, p.nome_exibicao AS pessoa_nome, u.nome AS decidido_por_nome,
+  f.decidido_em`;
+const DE_ACHADO = `FROM document_findings f
+  LEFT JOIN persons p ON p.id = f.person_id
+  LEFT JOIN users u ON u.id = f.decidido_por`;
+
 const achadosDe = (t, mediaId) => t.todas(
-  `SELECT f.id, f.predicado, f.valor, f.pessoa_texto, f.trecho, f.status, f.claim_id,
-          f.person_id, p.nome_exibicao AS pessoa_nome, u.nome AS decidido_por_nome, f.decidido_em
-     FROM document_findings f
-     LEFT JOIN persons p ON p.id = f.person_id
-     LEFT JOIN users u ON u.id = f.decidido_por
+  `SELECT ${COLUNAS_ACHADO} ${DE_ACHADO}
     WHERE f.media_id = $1 ORDER BY f.status, f.created_at`, [mediaId]);
 
-/** Fila da família: o que a IA leu e ninguém decidiu ainda. */
+const achadosDaResposta = (t, respostaId) => t.todas(
+  `SELECT ${COLUNAS_ACHADO} ${DE_ACHADO}
+    WHERE f.interview_answer_id = $1 ORDER BY f.status, f.created_at`, [respostaId]);
+
+/** Fila da família: o que a IA leu (no papel ou na fala) e ninguém decidiu. */
 const pendentesDaFamilia = (t, familyId, limite = 100) => t.todas(
-  `SELECT f.id, f.media_id, f.predicado, f.valor, f.pessoa_texto, f.trecho,
-          m.titulo, m.nome_original
-     FROM document_findings f JOIN media m ON m.id = f.media_id
-    WHERE f.family_id = $1 AND f.status = 'sugerido' AND m.deleted_at IS NULL
+  `SELECT f.id, f.media_id, f.interview_answer_id, f.predicado, f.valor, f.pessoa_texto,
+          f.trecho, COALESCE(m.titulo, '') AS titulo, COALESCE(m.nome_original, '') AS nome_original
+     FROM document_findings f LEFT JOIN media m ON m.id = f.media_id
+    WHERE f.family_id = $1 AND f.status = 'sugerido' AND (m.id IS NULL OR m.deleted_at IS NULL)
     ORDER BY f.created_at DESC LIMIT $2`, [familyId, Math.min(Number(limite) || 100, 200)]);
 
 /**
@@ -176,10 +187,19 @@ async function aceitar(t, { familyId, userId, achadoId, personId }) {
   const p = await t.uma(`SELECT id FROM persons WHERE id = $1 AND deleted_at IS NULL`, [personId]);
   if (!p) throw erro('erro.pessoa_nao_encontrada', 404);
 
-  const m = await t.uma(`SELECT titulo, nome_original FROM media WHERE id = $1`, [f.media_id]);
-  const fonte = await prov.criarFonte(t, { familyId, userId, tipo: 'DOCUMENTO',
-    titulo: (m && (m.titulo || m.nome_original)) || 'Documento da família',
-    referenciaExterna: 'media:' + f.media_id, confiabilidade: 'alta' });
+  // O TIPO DA FONTE MUDA O STATUS DO FATO, e é assim que tem de ser: papel
+  // é DOCUMENTO (vira `DOCUMENTED`), gravação de entrevista é ENTREVISTA
+  // (vira `FAMILY_REPORTED`). "A certidão registra" e "a vovó contou" não
+  // podem terminar com o mesmo selo (§4).
+  const m = f.media_id
+    ? await t.uma(`SELECT titulo, nome_original, tipo FROM media WHERE id = $1`, [f.media_id])
+    : null;
+  const ehFala = !!f.interview_answer_id || (m && (m.tipo === 'AUDIO' || m.tipo === 'VIDEO'));
+  const fonte = await prov.criarFonte(t, { familyId, userId,
+    tipo: ehFala ? 'ENTREVISTA' : 'DOCUMENTO',
+    titulo: (m && (m.titulo || m.nome_original)) || (ehFala ? 'Entrevista da família' : 'Documento da família'),
+    referenciaExterna: f.media_id ? 'media:' + f.media_id : 'resposta:' + f.interview_answer_id,
+    confiabilidade: ehFala ? 'media' : 'alta' });
 
   const claim = await prov.afirmar(t, { familyId, userId, sujeitoTipo: 'person', sujeitoId: personId,
     predicado: f.predicado, valor: f.valor, fonte, aiJobId: f.ai_job_id, trecho: f.trecho });
@@ -204,5 +224,5 @@ async function descartar(t, { familyId, userId, achadoId }) {
   return f;
 }
 
-module.exports = { analisar, achadosDe, pendentesDaFamilia, aceitar, descartar,
-  MAX_BYTES_VISAO, IMAGENS };
+module.exports = { analisar, achadosDe, achadosDaResposta, pendentesDaFamilia, aceitar, descartar,
+  guardarAchado, MAX_BYTES_VISAO, IMAGENS };

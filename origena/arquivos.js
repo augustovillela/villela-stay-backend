@@ -41,6 +41,21 @@ function tipoReal(buf) {
     if (bateEm(buf, [0x57, 0x45, 0x42, 0x50], 8)) return { mime: 'image/webp', ext: 'webp', tipo: 'FOTO' };
     if (bateEm(buf, [0x41, 0x56, 0x49, 0x20], 8)) return { mime: 'video/x-msvideo', ext: 'avi', tipo: 'VIDEO' };
   }
+  // EBML — WebM e Matroska. É o que o NAVEGADOR grava (`MediaRecorder`),
+  // então sem isto a entrevista gravada na hora cairia em quarentena como
+  // "tipo não reconhecido". O contêiner é o mesmo para som e vídeo; quem
+  // separa são os CodecID em texto puro na área de Tracks. Heurística
+  // declarada: se aparece codec de áudio e nenhum de vídeo nos primeiros
+  // 8 KB, é áudio; na dúvida, VÍDEO (o limite de tamanho é maior, e o
+  // caminho de vídeo não presume que dá para transcrever direto).
+  if (bateEm(buf, [0x1a, 0x45, 0xdf, 0xa3])) {
+    const cabeca = buf.toString('latin1', 0, Math.min(buf.length, 8192));
+    const audio = /A_(OPUS|VORBIS|AAC|MPEG|PCM)/.test(cabeca);
+    const video = /V_(VP8|VP9|AV1|MPEG|THEORA)/.test(cabeca);
+    return audio && !video
+      ? { mime: 'audio/webm', ext: 'webm', tipo: 'AUDIO' }
+      : { mime: 'video/webm', ext: 'webm', tipo: 'VIDEO' };
+  }
   if (bateEm(buf, [0x66, 0x74, 0x79, 0x70], 4)) {
     const marca = buf.toString('ascii', 8, 12);
     if (/^(qt|M4A)/.test(marca)) {

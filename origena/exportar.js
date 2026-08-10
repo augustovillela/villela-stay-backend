@@ -76,7 +76,7 @@ const TABELAS = ['persons', 'relationships', 'contributions', 'sources', 'claims
   'claim_resolutions', 'stories', 'story_versions', 'story_mentions', 'places', 'events',
   'event_participants', 'albums', 'album_items', 'media', 'media_persons', 'document_texts',
   'biographies', 'biography_versions', 'traditions', 'recipes', 'recipe_learners',
-  'tradition_transmissions', 'heirlooms', 'heirloom_custody', 'missions', 'document_findings'];
+  'tradition_transmissions', 'heirlooms', 'heirloom_custody', 'missions', 'interviews', 'interview_answers', 'document_findings'];
 
 async function dadosDaFamilia(t, familyId) {
   const dados = { formato: 'origena/v1', exportado_em: new Date().toISOString(), tabelas: {} };
@@ -263,17 +263,36 @@ async function importarDados(t, { familyId, userId, dados }) {
   await inserir('relationships', T.relationships, (l) => ({ ...l, ...base(l),
     person_a: novo(l.person_a), person_b: novo(l.person_b), claim_id: novo(l.claim_id),
     created_by: userId }));
-  // Contribuição também aponta para si mesma (`revisao_de`): duas
-  // passadas, original antes da revisão. Só `contributions` e `media` têm
-  // auto-referência no schema — tabela nova com FK para si mesma precisa
-  // entrar aqui do mesmo jeito.
+  // Contribuição aponta para si mesma (`revisao_de`), e a CORRENTE pode ter
+  // qualquer comprimento: quem corrige o mesmo texto três vezes deixa
+  // R3 → R2 → R1 → original. Duas passadas resolviam só um nível — a
+  // segunda passada inseria R3 antes de R2 e a FK estourava. Aqui vai por
+  // camadas: só entra quem já tem o pai dentro.
   const contribuicao = (l) => ({ ...l, ...base(l),
     autor_user_id: null, autor_person_id: novo(l.autor_person_id),
     alvo_id: novo(l.alvo_id), revisao_de: novo(l.revisao_de),
     corpo: l.corpo + (autores[l.autor_user_id]
       ? `\n\n[importado — contado originalmente por ${autores[l.autor_user_id]}]` : '') });
-  await inserir('contributions', (T.contributions || []).filter((l) => !l.revisao_de), contribuicao);
-  await inserir('contributions', (T.contributions || []).filter((l) => l.revisao_de), contribuicao);
+  {
+    const dentro = new Set();
+    const raizes = (T.contributions || []).filter((l) => !l.revisao_de);
+    await inserir('contributions', raizes, contribuicao);
+    raizes.forEach((l) => dentro.add(l.id));
+    let restantes = (T.contributions || []).filter((l) => l.revisao_de);
+    while (restantes.length) {
+      const prontas = restantes.filter((l) => dentro.has(l.revisao_de));
+      if (!prontas.length) {
+        // revisão órfã (o original não veio no arquivo): entra sem o elo, em
+        // vez de derrubar a importação inteira por causa dela.
+        console.warn('[origena/import] %d revisão(ões) sem original no arquivo', restantes.length);
+        await inserir('contributions', restantes.map((l) => ({ ...l, revisao_de: null })), contribuicao);
+        break;
+      }
+      await inserir('contributions', prontas, contribuicao);
+      prontas.forEach((l) => dentro.add(l.id));
+      restantes = restantes.filter((l) => !dentro.has(l.id));
+    }
+  }
   await inserir('sources', T.sources, (l) => ({ ...l, ...base(l),
     contribution_id: novo(l.contribution_id), media_id: novo(l.media_id),
     interview_id: null, created_by: userId }));
@@ -331,11 +350,22 @@ async function importarDados(t, { familyId, userId, dados }) {
     sugerido_para_user_id: null, respondida_por: l.respondida_por ? userId : null,
     pergunta_vars: j(l.pergunta_vars) }), { ignorarConflito: true });
 
-  // Achados da leitura de documento (2.3): sugestão e decisão viajam
-  // junto — o que a família já descartou continua descartado do outro
-  // lado, e o que virou fato continua apontando o claim certo.
+  // Entrevistas (2.4). O ÁUDIO segue a regra de toda mídia — o binário não
+  // vem no zip e a `media` volta como `aguardando` reenvio —, mas a
+  // pergunta, a transcrição e a autoria viajam inteiras: é o texto que
+  // sustenta a proveniência do outro lado.
+  await inserir('interviews', T.interviews, (l) => ({ ...l, ...base(l),
+    person_id: novo(l.person_id), created_by: userId }));
+  await inserir('interview_answers', T.interview_answers, (l) => ({ ...l, ...base(l),
+    interview_id: novo(l.interview_id), media_id: novo(l.media_id),
+    contribution_id: novo(l.contribution_id), ai_job_id: null, created_by: userId }));
+
+  // Achados da leitura de documento (2.3) e da transcrição (2.4): sugestão
+  // e decisão viajam junto — o que a família já descartou continua
+  // descartado do outro lado, e o que virou fato aponta o claim certo.
   await inserir('document_findings', T.document_findings, (l) => ({ ...l, ...base(l),
-    media_id: novo(l.media_id), person_id: novo(l.person_id), claim_id: novo(l.claim_id),
+    media_id: novo(l.media_id), interview_answer_id: novo(l.interview_answer_id),
+    person_id: novo(l.person_id), claim_id: novo(l.claim_id),
     ai_job_id: null, decidido_por: l.decidido_por ? userId : null }), { ignorarConflito: true });
 
   // Reindexa a busca do que chegou (pessoas, tradições e relíquias).
@@ -344,6 +374,10 @@ async function importarDados(t, { familyId, userId, dados }) {
     await buscaMod.indexar(t, { familyId, refTipo: 'person', refId: p.id,
       titulo: p.nome_exibicao, corpo: [p.resumo, p.profissao].filter(Boolean).join('\n'),
       pessoas: [p.id], privacidade: p.privacidade, criadoPor: userId });
+  }
+  for (const e of await t.todas(
+    `SELECT id FROM interviews WHERE family_id = $1 AND deleted_at IS NULL`, [familyId])) {
+    await require('./entrevistas').indexar(t, familyId, e.id);
   }
   const trad = require('./tradicoes');
   for (const x of await t.todas(

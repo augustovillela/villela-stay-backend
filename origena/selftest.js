@@ -801,6 +801,36 @@ async function principal() {
       'foi possível apagar o último OWNER');
   });
 
+  await teste('a trava do dono vale em LOTE — dois donos apagados de uma vez', async () => {
+    // O gatilho de LINHA conta os outros donos e, com dois saindo na mesma
+    // instrução, cada um vê o outro ainda vivo: as duas linhas passavam e a
+    // família ficava sem dono. Foi um teste INTERMITENTE que denunciou.
+    const fam = await db.uma(
+      `INSERT INTO families (nome, slug, created_by) VALUES ('Família Dois Donos', $1, $2)
+       RETURNING id`, ['dois-donos-' + Date.now(), ana.id]);
+    for (const u of [ana.id, bruno.id]) {
+      await db.q(
+        `INSERT INTO family_memberships (family_id, user_id, papel, status)
+         VALUES ($1,$2,'OWNER','ativo')`, [fam.id, u]);
+    }
+    await assert.rejects(
+      db.q(`DELETE FROM family_memberships WHERE family_id = $1 AND papel = 'OWNER'`, [fam.id]),
+      /pelo menos um responsável/i,
+      'DOIS donos saíram na mesma instrução e a família ficou órfã');
+    const sobraram = await db.todas(
+      `SELECT id FROM family_memberships WHERE family_id = $1 AND papel = 'OWNER'`, [fam.id]);
+    assert.strictEqual(sobraram.length, 2, 'o rollback não devolveu os donos');
+    // e o mesmo em UPDATE, que é como se rebaixa alguém
+    await assert.rejects(
+      db.q(`UPDATE family_memberships SET papel = 'ADMIN' WHERE family_id = $1 AND papel = 'OWNER'`,
+        [fam.id]), /pelo menos um responsável/i, 'rebaixou os dois donos de uma vez');
+    // Limpeza — e de quebra a prova de que a isenção da purga continua de pé:
+    // família `encerrada` PODE ficar sem dono, porque está sendo desmontada.
+    await db.q(`UPDATE families SET status = 'encerrada' WHERE id = $1`, [fam.id]);
+    await db.q(`DELETE FROM family_memberships WHERE family_id = $1`, [fam.id]);
+    await db.q(`DELETE FROM families WHERE id = $1`, [fam.id]);
+  });
+
   await teste('remover membro revoga acesso mas NÃO apaga o que ele contribuiu (§15)', async () => {
     const dedo = await novaConta('Dedo Villela', 'dedo@teste.origena');
     const c = await req('POST', `/origena/api/v1/familias/${famA}/convites`,
@@ -1334,9 +1364,17 @@ async function principal() {
   const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
 
   /** Sobe um arquivo pelo caminho REAL: preparar → PUT no R2 → confirmar. */
-  async function enviar(buf, nome, { sessao = ana, tipo = 'FOTO' } = {}) {
+  /** OGG mínimo: só o que o detector de tipo REAL precisa ver ('OggS'). */
+  function oggFalso() {
+    const cab = Buffer.alloc(64);
+    cab.write('OggS', 0, 'ascii');
+    cab.write('entrevista-de-teste', 32, 'ascii');
+    return cab;
+  }
+
+  async function enviar(buf, nome, { sessao = ana, tipo = 'FOTO', mime = 'image/png' } = {}) {
     const prep = await req('POST', F('/midias/preparar'), { sessao,
-      corpo: { nome, bytes: buf.length, sha256: sha(buf), mime: 'image/png', tipo } });
+      corpo: { nome, bytes: buf.length, sha256: sha(buf), mime, tipo } });
     if (prep.json && prep.json.duplicado) return { duplicado: true, media_id: prep.json.media_id };
     assert.strictEqual(prep.status, 201, 'preparar falhou: ' + prep.texto);
     const put = await fetch(prep.json.url_envio, { method: 'PUT', body: buf,
@@ -2510,6 +2548,162 @@ async function principal() {
     assert.strictEqual(r.status, 403, 'CONTRIBUTOR mandou a IA ler um documento');
   });
 
+  // ================================================== 2.4 ENTREVISTAS
+  console.log('\nentrevistas (2.4, §27/§28) — a voz é o ativo, o texto é derivado');
+
+  const entrevistasMod = require('./entrevistas');
+  let entrevista = null, resp1 = null;
+
+  await teste('os 10 roteiros do §27 existem, e toda pergunta tem texto', async () => {
+    assert.strictEqual(entrevistasMod.ROTEIROS.length, 10, 'faltou roteiro do §27');
+    const i18nPt = require('./i18n/pt-BR.json');
+    for (const r of entrevistasMod.ROTEIROS) {
+      assert(i18nPt.entrevista['r_' + r.chave], 'roteiro sem título: ' + r.chave);
+      for (const p of entrevistasMod.perguntasDe(r.chave)) {
+        assert(i18nPt.entrevista[p], 'pergunta sem texto: ' + p);
+      }
+    }
+  });
+
+  await teste('abrir a entrevista já enfileira as perguntas do roteiro', async () => {
+    const r = await req('POST', F('/entrevistas'),
+      { sessao: ana, corpo: { pessoa: P.joao.id, roteiro: 'infancia' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    entrevista = r.json.entrevista.id;
+    const g = await req('GET', F(`/entrevistas/${entrevista}`), { sessao: ana });
+    assert.strictEqual(g.json.entrevista.respostas.length, 7, 'as perguntas não vieram prontas');
+    assert(g.json.entrevista.respostas.every((x) => x.status === 'pendente'));
+    // a pergunta viaja por CHAVE — texto guardado envelheceria com o roteiro
+    assert.match(g.json.entrevista.respostas[0].pergunta_chave, /^p_infancia_/);
+    assert.strictEqual(g.json.entrevista.respostas[0].transcricao, '');
+    resp1 = g.json.entrevista.respostas[0].id;
+  });
+
+  await teste('sem provedor, a entrevista continua valendo: escrever à mão', async () => {
+    routerIA.injetarParaTeste('google', null);
+    const lista = await req('GET', F('/entrevistas'), { sessao: ana });
+    assert.strictEqual(lista.json.transcricao_disponivel, false,
+      'anunciou transcrição sem provedor ligado (ADR-0004)');
+
+    const r = await req('PATCH', F(`/respostas/${resp1}`), { sessao: ana,
+      corpo: { transcricao: 'Nasci em Pirapora, numa casa de porta e janela na rua do meio.' } });
+    assert.strictEqual(r.status, 200, r.texto);
+    assert.strictEqual(r.json.resposta.transcricao_origem, 'humana');
+
+    // vira CONTRIBUIÇÃO da pessoa entrevistada — é assim que entra na proveniência
+    const contrib = await req('GET', F(`/pessoas/${P.joao.id}/contribuicoes`), { sessao: ana });
+    assert(contrib.json.contribuicoes.some((c) => /Pirapora/.test(c.corpo)),
+      'a resposta não virou contribuição de quem contou');
+    // e é encontrável
+    const b = await req('GET', F('/busca?q=Pirapora'), { sessao: ana });
+    assert(b.json.resultados.some((x) => x.ref_id === entrevista),
+      'a entrevista não apareceu na busca');
+  });
+
+  await teste('transcrever pede provedor — e cobra pelo registry quando existe', async () => {
+    // sem áudio nenhum, nem começa: pedir transcrição do nada é erro de uso
+    const semAudio = await req('POST', F(`/respostas/${resp1}/transcrever`),
+      { sessao: ana, corpo: {} });
+    assert.strictEqual(semAudio.status, 400, 'aceitou transcrever pergunta sem gravação');
+
+    // grava um "áudio" e liga à pergunta
+    const audio = await enviar(oggFalso(), 'resposta-1.ogg', { tipo: 'AUDIO', mime: 'audio/ogg' });
+    await fila.processarLote(10, 'rapida');
+    const liga = await req('POST', F(`/respostas/${resp1}/audio`),
+      { sessao: ana, corpo: { midia: audio.media_id, duracao_seg: 12 } });
+    assert.strictEqual(liga.status, 200, liga.texto);
+
+    // com áudio e SEM provedor ligado: 503, e nada é cobrado
+    const semProvedor = await req('POST', F(`/respostas/${resp1}/transcrever`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(semProvedor.status, 503, 'transcreveu sem provedor: ' + semProvedor.texto);
+
+    // liga o provedor no registry (é UPDATE, não deploy) e pluga um falso
+    await db.q(`UPDATE provider_registry SET ativo = true WHERE capability = 'transcrever_audio'`);
+    routerIA.injetarParaTeste('google', async ({ capability, entrada }) => {
+      assert.strictEqual(capability, 'transcrever_audio');
+      assert(entrada.arquivo && entrada.arquivo.base64, 'mandou transcrever sem áudio');
+      return { saida: { transcricao: 'A vovó Anna fazia bolo de fubá todo domingo em Pirapora.',
+        idioma: 'pt-BR', vozes: 1 }, tokens_in: 900, tokens_out: 200, custo_centavos: 40 };
+    });
+
+    const tarifa = (await db.uma(
+      `SELECT creditos FROM provider_registry WHERE capability = 'transcrever_audio' AND ativo
+        ORDER BY prioridade LIMIT 1`)).creditos;
+    const cot = await req('POST', F(`/respostas/${resp1}/transcrever`), { sessao: ana, corpo: {} });
+    assert.strictEqual(cot.json.cotacao.creditos, tarifa, 'a cotação não veio do registry');
+
+    const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    const tr = await req('POST', F(`/respostas/${resp1}/transcrever`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(tr.status, 200, tr.texto);
+    assert.match(tr.json.resposta.transcricao, /bolo de fubá/);
+    assert.strictEqual(tr.json.resposta.transcricao_origem, 'ia',
+      'não marcou que o texto foi a máquina que ouviu');
+    assert.strictEqual((await req('GET', F('/creditos'), { sessao: ana })).json.saldo, antes - tarifa);
+  });
+
+  await teste('o ÁUDIO é o ativo: corrigir o texto não toca na gravação', async () => {
+    const antes = await req('GET', F(`/entrevistas/${entrevista}`), { sessao: ana });
+    const r0 = antes.json.entrevista.respostas.find((x) => x.id === resp1);
+    const c = await req('PATCH', F(`/respostas/${resp1}`), { sessao: ana,
+      corpo: { transcricao: 'A vovó Ana fazia bolo de fubá todo domingo em Pirapora.' } });
+    assert.strictEqual(c.status, 200, c.texto);
+    assert.strictEqual(c.json.resposta.transcricao_origem, 'ia_corrigida',
+      'a correção apagou a origem: ninguém saberia que a máquina ouviu primeiro');
+    const depois = await req('GET', F(`/entrevistas/${entrevista}`), { sessao: ana });
+    const r1 = depois.json.entrevista.respostas.find((x) => x.id === resp1);
+    assert.strictEqual(r1.media_id, r0.media_id, 'a correção mexeu no áudio');
+    assert.match(r1.transcricao, /vovó Ana/);
+    // a contribuição foi REVISADA, não duplicada (§15)
+    const contrib = await req('GET', F(`/pessoas/${P.joao.id}/contribuicoes`), { sessao: ana });
+    const ativas = contrib.json.contribuicoes.filter((x) => /bolo de fubá/.test(x.corpo) && x.status === 'ativa');
+    assert.strictEqual(ativas.length, 1, 'a correção criou uma contribuição paralela');
+  });
+
+  await teste('o que sai da FALA é relato, não documento (§4)', async () => {
+    routerIA.injetarParaTeste('anthropic', async ({ capability }) => {
+      assert.strictEqual(capability, 'analisar_documento');
+      return { saida: { tipo_documento: 'entrevista', transcricao: '',
+        achados: [{ predicado: 'local_nascimento', valor: 'Pirapora', pessoa: 'João',
+          trecho: 'em Pirapora' }] },
+      tokens_in: 300, tokens_out: 80, custo_centavos: 5 };
+    });
+    const r = await req('POST', F(`/respostas/${resp1}/entidades`),
+      { sessao: ana, corpo: { confirmar: true } });
+    assert.strictEqual(r.status, 200, r.texto);
+    const achado = (r.json.achados || []).find((a) => a.predicado === 'local_nascimento');
+    assert(achado && achado.status === 'sugerido', 'a transcrição virou fato sozinha (§28)');
+
+    const ac = await req('POST', F(`/achados/${achado.id}/aceitar`),
+      { sessao: ana, corpo: { pessoa: P.joao.id } });
+    assert.strictEqual(ac.status, 201, ac.texto);
+    assert.strictEqual(ac.json.claim.status, 'FAMILY_REPORTED',
+      'o que a vovó contou saiu com o mesmo selo de uma certidão');
+  });
+
+  await teste('WebM do navegador é reconhecido como ÁUDIO — senão a gravação some', async () => {
+    const arquivos = require('./arquivos');
+    const ebml = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]),
+      Buffer.from('webmB\x82\x84webm'), Buffer.from('...A_OPUS...')]);
+    const r = arquivos.tipoReal(ebml);
+    assert(r && r.tipo === 'AUDIO' && r.mime === 'audio/webm',
+      'a gravação do navegador cairia em quarentena: ' + JSON.stringify(r));
+    const comVideo = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]),
+      Buffer.from('webm ... V_VP9 ... A_OPUS')]);
+    assert.strictEqual(arquivos.tipoReal(comVideo).tipo, 'VIDEO', 'vídeo virou áudio');
+  });
+
+  await teste('a pergunta que a família inventa entra no fim da fila', async () => {
+    const r = await req('POST', F(`/entrevistas/${entrevista}/perguntas`),
+      { sessao: ana, corpo: { texto: 'Quem era o dono do armazém da esquina?' } });
+    assert.strictEqual(r.status, 201, r.texto);
+    const g = await req('GET', F(`/entrevistas/${entrevista}`), { sessao: ana });
+    const ultima = g.json.entrevista.respostas[g.json.entrevista.respostas.length - 1];
+    assert.strictEqual(ultima.pergunta_chave, 'livre');
+    assert.match(ultima.pergunta_livre, /armazém/);
+  });
+
   await teste('o custo real fica no ledger de IA, com créditos e margem (§57)', async () => {
     const linhas = await tenancy.comEscopo(famA, (t) => t.todas(
       `SELECT capability, tokens_in, custo_centavos, creditos_cobrados FROM ai_cost_ledger`));
@@ -3032,7 +3226,7 @@ async function principal() {
       .replace(':predicado', 'data_nascimento').replace(':tipo', 'pessoa');
     for (const p of [':pessoaId', ':relId', ':claimId', ':contribId', ':mediaId', ':albumId',
       ':idId', ':storyId', ':lugarId', ':eventoId', ':exportId', ':tradicaoId', ':reliquiaId',
-      ':missaoId', ':achadoId', ':itemId', ':id']) {
+      ':missaoId', ':achadoId', ':entrevistaId', ':respostaId', ':itemId', ':id']) {
       c = c.replace(p, ALVO_FALSO);
     }
     const sobrou = c.match(/\/:(\w+)/);

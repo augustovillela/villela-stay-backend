@@ -26,6 +26,7 @@ const storage = require('./storage');
 const fila = require('./fila');
 const documentos = require('./documentos');
 const documentosIA = require('./documentos-ia');
+const entrevistas = require('./entrevistas');
 const historias = require('./historias');
 const busca = require('./busca');
 const tempo = require('./tempo');
@@ -566,6 +567,111 @@ function registrarRotasApp(app) {
       await tenancy.noEscopoDe(req, (t) => documentosIA.descartar(t, {
         familyId: req.familia.id, userId: req.usuario.id, achadoId: req.params.achadoId }));
       res.json({ ok: true });
+    }));
+
+  // --------------------------------------------------------- entrevistas
+  /**
+   * Entrevistas Origena (§27/§28). O roteiro só existe para quem conduz
+   * não travar na primeira pergunta — a família pode acrescentar as suas.
+   */
+  app.get(decl('GET', `${R}/familias/:familyId/entrevistas`), ...naFamilia, h(async (req, res) => {
+    const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+    const dados = await tenancy.noEscopoDe(req, async (t) => ({
+      lista: await entrevistas.listar(t, req.familia.id, {
+        pessoaId: tenancy.UUID.test(String(req.query.pessoa || '')) ? req.query.pessoa : null,
+        limite: req.query.limite }),
+      transcricao_disponivel: await entrevistas.transcricaoDisponivel(t),
+    }));
+    res.json({
+      entrevistas: privacidade.filtrar(dados.lista, quem),
+      transcricao_disponivel: dados.transcricao_disponivel,
+      roteiros: entrevistas.ROTEIROS.map((r) => ({ chave: r.chave,
+        perguntas: entrevistas.perguntasDe(r.chave) })),
+    });
+  }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/entrevistas`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const b = req.body || {};
+      const e = await tenancy.noEscopoDe(req, (t) => entrevistas.criar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, personId: b.pessoa,
+        roteiro: b.roteiro, privacidade: b.privacidade }));
+      res.status(201).json({ entrevista: e });
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/entrevistas/:entrevistaId`), ...naFamilia,
+    h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      const dados = await tenancy.noEscopoDe(req, async (t) => {
+        const e = await entrevistas.obter(t, req.params.entrevistaId);
+        if (!privacidade.podeVer(e, quem).pode) throw erro('erro.entrevista_nao_encontrada', 404);
+        for (const r of e.respostas) r.achados = await documentosIA.achadosDaResposta(t, r.id);
+        return { entrevista: e, transcricao_disponivel: await entrevistas.transcricaoDisponivel(t) };
+      });
+      res.json(dados);
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/entrevistas/:entrevistaId/perguntas`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const r = await tenancy.noEscopoDe(req, (t) => entrevistas.acrescentarPergunta(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        interviewId: req.params.entrevistaId, texto: (req.body || {}).texto }));
+      res.status(201).json({ resposta: r });
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/entrevistas/:entrevistaId/concluir`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      res.json({ entrevista: await tenancy.noEscopoDe(req, (t) => entrevistas.concluir(t, {
+        familyId: req.familia.id, userId: req.usuario.id, interviewId: req.params.entrevistaId })) });
+    }));
+
+  app.delete(decl('DELETE', `${R}/familias/:familyId/entrevistas/:entrevistaId`), ...naFamilia,
+    rbac.exigir('excluir'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => entrevistas.arquivar(t, {
+        familyId: req.familia.id, userId: req.usuario.id, interviewId: req.params.entrevistaId }));
+      res.json({ ok: true });
+    }));
+
+  /** Liga o áudio JÁ enviado (fluxo normal de mídia) à pergunta. */
+  app.post(decl('POST', `${R}/familias/:familyId/respostas/:respostaId/audio`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const b = req.body || {};
+      const r = await tenancy.noEscopoDe(req, (t) => entrevistas.registrarAudio(t, {
+        familyId: req.familia.id, userId: req.usuario.id, respostaId: req.params.respostaId,
+        mediaId: b.midia, duracaoSeg: b.duracao_seg }));
+      res.json({ resposta: { id: r.id, status: r.status } });
+    }));
+
+  /** Escrever/corrigir à mão — o que mantém a entrevista viva sem provedor. */
+  app.patch(decl('PATCH', `${R}/familias/:familyId/respostas/:respostaId`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const b = req.body || {};
+      if (b.pular) {
+        await tenancy.noEscopoDe(req, (t) => entrevistas.pular(t, req.params.respostaId));
+        return res.json({ ok: true });
+      }
+      const r = await tenancy.noEscopoDe(req, (t) => entrevistas.corrigir(t, {
+        familyId: req.familia.id, userId: req.usuario.id,
+        respostaId: req.params.respostaId, texto: b.transcricao }));
+      res.json({ resposta: { id: r.id, transcricao: r.transcricao,
+        transcricao_origem: r.transcricao_origem } });
+    }));
+
+  /** Transcrever (cota antes; 503 quando não há provedor ligado). */
+  app.post(decl('POST', `${R}/familias/:familyId/respostas/:respostaId/transcrever`), ...naFamilia,
+    rbac.exigir('ia.usar'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      res.json(await entrevistas.transcrever({ familyId: req.familia.id, userId: req.usuario.id,
+        respostaId: req.params.respostaId, quem, confirmar: !!(req.body || {}).confirmar }));
+    }));
+
+  /** Pessoas, datas e lugares da transcrição — como SUGESTÃO (§28). */
+  app.post(decl('POST', `${R}/familias/:familyId/respostas/:respostaId/entidades`), ...naFamilia,
+    rbac.exigir('ia.usar'), h(async (req, res) => {
+      const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
+      res.json(await entrevistas.extrairEntidades({ familyId: req.familia.id,
+        userId: req.usuario.id, respostaId: req.params.respostaId, quem,
+        confirmar: !!(req.body || {}).confirmar }));
     }));
 
   // ----------------------------------------------------------- histórias

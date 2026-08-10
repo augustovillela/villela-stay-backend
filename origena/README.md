@@ -4,18 +4,20 @@
 Landing `/origena` · app da família `/origena/app` (Fase 1) · staff `/staff/api/origena/*`.
 
 > Documentação completa (visão, arquitetura, banco, segurança, privacidade, IA, billing, roadmap e
-> os 8 ADRs) fica no **repo-pai**: `docs\origena\`. Aqui está só o que um dev precisa para mexer
+> os 9 ADRs) fica no **repo-pai**: `docs\origena\`. Aqui está só o que um dev precisa para mexer
 > neste diretório.
 
-## Estado: 1.0 completo + fases 2.1 e 2.2 — 09/08/2026
+## Estado: 1.0 completo + fases 2.1 a 2.4 — 09/08/2026
 
 Existe: contas, famílias e papéis · proveniência · pessoas, parentesco e árvore · mídia no R2 com
 worker · documentos, histórias e busca · lugares, eventos e linha do tempo · créditos, IA e admin ·
 exportação, lixeira e integridade · **tradições, receitas, saberes e relíquias com linha de
-custódia** · **Historiador, missões e índice de memória**.
+custódia** · **Historiador, missões e índice de memória** · **cobrança pelo Mercado Pago** ·
+**leitura de documento escaneado por visão** · **Entrevistas Origena**.
 
-Não existe ainda: OCR, entrevistas e busca semântica (dependem de provedor contratado), Studio,
-cápsula do tempo e apps nativos. A ordem está em `docs\origena\ROADMAP.md`.
+Não existe ainda: busca semântica (2.5), Studio, cápsula do tempo e apps nativos. A transcrição
+automática das entrevistas está escrita mas **desligada** — depende de conta paga e do parecer
+jurídico. A ordem está em `docs\origena\ROADMAP.md`.
 
 ## O que torna a Origena diferente dos outros 11 produtos
 
@@ -43,6 +45,7 @@ e cada uma tem um ADR explicando o que se perde ao reverter.
 | `historiador.js` | Lacunas do acervo e índice de memória. **É SQL, não IA** — custo zero, sem provedor |
 | `missoes.js` | Lacuna → pergunta endereçada, idempotente pela chave; notificação **opt-in** |
 | `documentos-ia.js` | Lê o escaneado por VISÃO (fase 2.3): transcrição vai para a busca, achados ficam como SUGESTÃO até alguém dizer de quem o papel fala |
+| `entrevistas.js` | Entrevistas Origena (2.4): 10 roteiros, áudio original preservado, transcrição corrigível e cada resposta virando contribuição de quem contou |
 | `billing.js` | Única fronteira com o Mercado Pago. O webhook **consulta o provedor**, não confia no corpo; sem `MP_ACCESS_TOKEN` a cobrança fica manual e o produto continua inteiro |
 | `selftest.js` | `npm run test:origena` — schema descartável, R2 real |
 

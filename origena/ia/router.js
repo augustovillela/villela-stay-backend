@@ -12,7 +12,10 @@
 // funciona e nunca simula resultado.
 // =====================================================================
 'use strict';
-const ADAPTERS = { anthropic: require('./adapters/anthropic') };
+const ADAPTERS = {
+  anthropic: require('./adapters/anthropic'),
+  google: require('./adapters/google'),      // só `transcrever_audio` (2.4)
+};
 
 // Injeção para teste: o selftest pluga um executor falso por provider.
 const injetados = new Map();
