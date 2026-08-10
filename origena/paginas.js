@@ -871,10 +871,15 @@ async function telaLivros() {
     '<p class="sub">' + esc(t('livro.intro')) + '</p>' +
     '<p class="sub">' + esc(t('livro.recorte')) + '</p>' +
     (pode('exportar')
-      ? '<p><button class="btn" onclick="pedirLivro()">' + esc(t('livro.gerar')) + '</button></p>'
+      ? '<p><button class="btn" onclick="pedirLivro()">' + esc(t('livro.gerar')) + '</button> ' +
+        '<button class="btn" onclick="pedirScrapbook()">' + esc(t('livro.gerar_album')) + '</button> ' +
+        '<button class="btn" onclick="pedirRetrospectiva()">' + esc(t('livro.gerar_ano')) + '</button></p>' +
+        '<p class="sub">' + esc(t('livro.so_com_data')) + '</p>'
       : '') +
     ((r.livros || []).length
       ? r.livros.map(l => '<div class="linha"><span>' +
+          '<span class="sub">' + esc(t('livro.t_' + l.tipo,
+            { album: l.album || '', ano: l.ano || '' }) || l.tipo) + '</span><br>' +
           '<strong>' + esc(l.status === 'pronto'
             ? t('livro.pronto', { n: l.paginas, kb: Math.round(l.bytes / 1024) })
             : l.status === 'falhou' ? t('livro.falhou', { motivo: l.erro || '' })
@@ -891,8 +896,30 @@ async function telaLivros() {
 }
 
 async function pedirLivro(pessoaId) {
-  const r = await api('POST', '/familias/' + FAM.id + '/livros',
-    pessoaId ? { tipo: 'pessoa', pessoa: pessoaId } : { tipo: 'familia' });
+  return novoLivro(pessoaId ? { tipo: 'pessoa', pessoa: pessoaId } : { tipo: 'familia' });
+}
+
+// O scrapbook é de UM álbum: sem álbum montado não há o que imprimir, e
+// dizer isso é melhor que abrir uma lista vazia.
+async function pedirScrapbook() {
+  const r = await api('GET', '/familias/' + FAM.id + '/albuns');
+  const albuns = (r.albuns || []).filter(a => a.itens > 0);
+  if (!albuns.length) return alert(t('livro.sem_album'));
+  const escolha = prompt(t('livro.escolher_album') + '\n\n' +
+    albuns.map((a, i) => (i + 1) + ') ' + a.titulo + ' (' + a.itens + ')').join('\n'));
+  const i = Number(escolha) - 1;
+  if (!albuns[i]) return;
+  return novoLivro({ tipo: 'album', album: albuns[i].id });
+}
+
+async function pedirRetrospectiva() {
+  const ano = prompt(t('livro.escolher_ano'), String(new Date().getFullYear()));
+  if (!ano) return;
+  return novoLivro({ tipo: 'retrospectiva', ano: Number(ano) });
+}
+
+async function novoLivro(corpo) {
+  const r = await api('POST', '/familias/' + FAM.id + '/livros', corpo);
   if (r.status >= 400) return alert(r.erro);
   alert(t('livro.na_fila'));
   telaLivros();

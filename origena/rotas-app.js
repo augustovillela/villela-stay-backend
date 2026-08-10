@@ -1308,7 +1308,9 @@ function registrarRotasApp(app) {
       const l = await tenancy.noEscopoDe(req, (t) => livro.pedir(t, {
         familyId: req.familia.id, userId: req.usuario.id, papel: req.papel,
         tipo: s(b.tipo, 20) || 'familia',
-        personId: tenancy.UUID.test(String(b.pessoa || '')) ? b.pessoa : null }));
+        personId: tenancy.UUID.test(String(b.pessoa || '')) ? b.pessoa : null,
+        albumId: tenancy.UUID.test(String(b.album || '')) ? b.album : null,
+        ano: b.ano }));
       res.status(202).json({ livro: { id: l.id, status: l.status, tipo: l.tipo } });
     }));
 
@@ -1321,7 +1323,7 @@ function registrarRotasApp(app) {
     rbac.exigir('exportar'), h(async (req, res) => {
       const dados = await tenancy.noEscopoDe(req, async (t) => {
         const l = await t.uma(
-          `SELECT id, tipo, status, paginas, bytes, conteudo, erro, expira_em
+          `SELECT id, tipo, ano, status, paginas, bytes, conteudo, erro, expira_em
              FROM books WHERE id = $1`, [req.params.livroId]);
         if (!l) throw erro('erro.livro_nao_encontrado', 404);
         return { livro: l, url: await livro.url(t, l.id) };

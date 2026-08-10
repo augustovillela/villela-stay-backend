@@ -3609,6 +3609,99 @@ async function principal() {
     assert.strictEqual(semPessoa.status, 400, 'aceitou livro de pessoa sem dizer quem');
   });
 
+  let albumLivro = null;
+
+  await teste('o scrapbook é de UM álbum — e álbum que você não vê não existe', async () => {
+    const a = await req('POST', F('/albuns'), { sessao: ana, corpo: { titulo: 'Fazenda 1953' } });
+    albumLivro = a.json.album.id;
+    await req('POST', F(`/albuns/${albumLivro}/itens`), { sessao: ana, corpo: { media_id: foto1 } });
+
+    const ped = await req('POST', F('/livros'), { sessao: ana,
+      corpo: { tipo: 'album', album: albumLivro } });
+    assert.strictEqual(ped.status, 202, ped.texto);
+    await fila.processarLote(10, 'cara');
+    const st = await req('GET', F(`/livros/${ped.json.livro.id}`), { sessao: ana });
+    assert.strictEqual(st.json.livro.status, 'pronto', JSON.stringify(st.json.livro));
+    assert.strictEqual(st.json.livro.conteudo.fotos, 1, 'o scrapbook não trouxe a foto do álbum');
+    assert.strictEqual(st.json.livro.conteudo.pessoas, 0, 'o scrapbook trouxe capítulo de pessoa');
+
+    const semAlbum = await req('POST', F('/livros'), { sessao: ana, corpo: { tipo: 'album' } });
+    assert.strictEqual(semAlbum.status, 400, 'aceitou scrapbook sem dizer de qual álbum');
+    // Álbum inexistente e álbum invisível têm de responder A MESMA coisa —
+    // 404 que diferencia os dois vira sonda de existência.
+    const fantasma = await req('POST', F('/livros'), { sessao: ana,
+      corpo: { tipo: 'album', album: '00000000-0000-4000-8000-000000000000' } });
+    assert.strictEqual(fantasma.status, 404, 'aceitou scrapbook de álbum que não existe');
+  });
+
+  await teste('no papel, foto restaurada por IA não se passa por original', async () => {
+    // Na tela há selo, cor, painel de detalhes. No PDF não há nada disso: se
+    // a página não disser que a imagem foi tratada, ninguém mais vai dizer —
+    // e em uma geração a versão restaurada vira "a foto do bisavô".
+    const derivada = await tenancy.comEscopo(famA, async (t) => {
+      const o = await t.uma(`SELECT storage_key, sha256, mime_real, bytes FROM media WHERE id = $1`, [foto1]);
+      return t.uma(
+        `INSERT INTO media (family_id, tipo, storage_key, sha256, mime_real, bytes, papel,
+                            ai_class, derivado_de, titulo, status, created_by)
+         VALUES ($1,'FOTO',$2,$3,$4,$5,'DERIVADO','AI_RESTORED',$6,'Vovô restaurado','pronta',$7)
+         RETURNING id`,
+        [famA, o.storage_key, o.sha256, o.mime_real, o.bytes, foto1, ana.id]);
+    });
+    await req('POST', F(`/albuns/${albumLivro}/itens`), { sessao: ana,
+      corpo: { media_id: derivada.id } });
+
+    const r = await tenancy.comEscopo(famA, (t) => livroMod.compor(t, {
+      familyId: famA, quem: { userId: ana.id, papel: 'OWNER' }, tipo: 'album', albumId: albumLivro }));
+    assert.strictEqual(r.contagens.fotos, 2, 'a foto derivada não entrou no scrapbook');
+    assert(r.contagens.ia.includes('imagens tratadas por IA'),
+      `o livro não declarou a imagem tratada por IA: ${JSON.stringify(r.contagens.ia)}`);
+  });
+
+  await teste('a retrospectiva só alcança o que tem data — e diz quanto ficou de fora', async () => {
+    // Uma retrospectiva é um filtro por data. O que a família guardou sem
+    // data simplesmente não existe para ela — e isso precisa estar escrito,
+    // senão o livro vazio parece "não aconteceu nada neste ano".
+    const alvo = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT extract(year from data_ini)::int AS ano, count(*)::int AS n
+         FROM timeline_entries WHERE family_id = $1 AND data_ini IS NOT NULL
+        GROUP BY 1 ORDER BY 2 DESC LIMIT 1`, [famA]));
+    assert(alvo && alvo.ano, 'a timeline da suíte não tem nenhum ano datado');
+
+    const ped = await req('POST', F('/livros'), { sessao: ana,
+      corpo: { tipo: 'retrospectiva', ano: alvo.ano } });
+    assert.strictEqual(ped.status, 202, ped.texto);
+    await fila.processarLote(10, 'cara');
+    const st = await req('GET', F(`/livros/${ped.json.livro.id}`), { sessao: ana });
+    assert.strictEqual(st.json.livro.status, 'pronto', JSON.stringify(st.json.livro));
+    assert(st.json.livro.conteudo.momentos > 0,
+      `a retrospectiva de ${alvo.ano} saiu sem momento nenhum`);
+    assert.strictEqual(st.json.livro.ano, alvo.ano);
+
+    // o teto e o que sobrou de fora se DIZEM: nota no colofão, não silêncio
+    const semData = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT count(*)::int n FROM media
+        WHERE family_id = $1 AND tipo = 'FOTO' AND deleted_at IS NULL AND capturada_ini IS NULL`,
+      [famA]));
+    if (semData.n > 0) {
+      assert(st.json.livro.conteudo.notas.some((x) => /sem data/.test(x)),
+        `há ${semData.n} foto(s) sem data e o livro não avisou: `
+        + JSON.stringify(st.json.livro.conteudo.notas));
+    }
+
+    // ano de que o acervo não sabe nada: o livro sai, e sai dizendo isso
+    const vazio = await tenancy.comEscopo(famA, (t) => livroMod.compor(t, {
+      familyId: famA, quem: { userId: ana.id, papel: 'OWNER' },
+      tipo: 'retrospectiva', ano: 1804 }));
+    assert(vazio.paginas >= 2, 'a retrospectiva vazia não gerou nem capa e colofão');
+    assert(!vazio.contagens.momentos, 'inventou momento em ano sem nada');
+
+    for (const ano of [null, 'ontem', 3000]) {
+      const r = await req('POST', F('/livros'), { sessao: ana,
+        corpo: { tipo: 'retrospectiva', ano } });
+      assert.strictEqual(r.status, 400, `aceitou retrospectiva do ano ${JSON.stringify(ano)}`);
+    }
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 
