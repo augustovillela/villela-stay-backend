@@ -123,8 +123,11 @@ header.top a{color:var(--creme)}
 }
 .card{background:#fff;border:1px solid var(--cinza2);border-radius:14px;overflow:hidden;transition:.15s;display:flex;flex-direction:column}
 .card:hover{box-shadow:0 10px 30px rgba(27,42,74,.12);transform:translateY(-2px)}
-.card .capa{aspect-ratio:3/4;background:var(--cinza);display:flex;align-items:center;justify-content:center;color:var(--suave);overflow:hidden}
-.card .capa img{width:100%;height:100%;object-fit:cover}
+/* Moldura da capa: 2/3 é a proporção real dos arquivos (ex. 1024x1536). Com 3/4 + cover
+   a capa aparecia cortada em cima e embaixo. `contain` garante que NENHUMA capa seja
+   cortada, mesmo as poucas fora do 2/3 (1200x1718, 1200x1700, 800x1132). */
+.card .capa{aspect-ratio:2/3;background:var(--cinza);display:flex;align-items:center;justify-content:center;color:var(--suave);overflow:hidden}
+.card .capa img{width:100%;height:100%;object-fit:contain}
 .card .corpo{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1}
 .card h3{margin:0;font-size:18px}.card .preco{color:var(--teal);font-weight:700}
 .badge{display:inline-block;background:var(--dourado);color:#3a2c07;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
@@ -372,7 +375,7 @@ function paginaLivro(b) {
 
   const body = `
   <section class="hero"><div class="wrap hero-livro">
-    <div class="capa" style="aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#14203A;display:flex;align-items:center;justify-content:center;font-size:60px">${b.capa_url ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}" style="width:100%;height:100%;object-fit:cover">` : '📕'}</div>
+    <div class="capa" style="aspect-ratio:2/3;border-radius:12px;overflow:hidden;background:#14203A;display:flex;align-items:center;justify-content:center;font-size:60px">${b.capa_url ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}" style="width:100%;height:100%;object-fit:contain">` : '📕'}</div>
     <div>
       <p class="eyebrow">${esc(b.categoria || 'Livro')}</p>
       <h1>${esc(b.titulo)}</h1>
