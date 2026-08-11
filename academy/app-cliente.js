@@ -13,6 +13,23 @@
   function centavos(v) { return Math.round(Number(String(v).replace(',', '.') || 0) * 100); }
   function el(id) { return document.getElementById(id); }
   function val(id) { var e = el(id); return e ? e.value : ''; }
+  // erro de ação: escreve na caixa .erro E rola até ela — a mensagem que explica
+  // por que o botão não fez nada (ex.: falta aula para enviar à revisão) costumava
+  // ficar fora da tela e o produtor achava que o sistema estava quebrado.
+  function falha(id, e) {
+    var alvo = el(id);
+    if (!alvo) return alert(e.message);
+    alvo.classList.remove('ok');
+    alvo.textContent = e.message;
+    if (alvo.scrollIntoView) alvo.scrollIntoView({ block: 'center' });
+  }
+  // mesmo elemento .erro reusado para confirmar sucesso (fica verde, não vermelho)
+  function okMsg(id, texto) {
+    var alvo = el(id);
+    if (!alvo) return;
+    alvo.classList.add('ok');
+    alvo.textContent = texto;
+  }
 
   // SEQ cresce a cada troca de aba: leitura que volta depois de o usuário já
   // ter mudado de aba não pinta por cima da aba nova.
@@ -305,7 +322,11 @@
       }
       html += '<div class="card"><h3>🎓 Minha biblioteca</h3>';
       if (!d.cursos.length) {
-        html += '<div class="aviso">Você ainda não tem cursos. O marketplace público abre na FASE 3 — enquanto isso, um produtor pode liberar acesso de cortesia para o seu e-mail.</div>';
+        html += '<div class="aviso">Você ainda não tem cursos aqui. Esta é a sua biblioteca de <b>aluno</b> — ela mostra o que você comprou ou recebeu de cortesia. ' +
+          '<a href="/academy/marketplace">Ver os cursos disponíveis →</a>' +
+          (ME.papeis_ativos && ME.papeis_ativos.indexOf('produtor') >= 0
+            ? '<br>Curso que <b>você criou</b> não aparece aqui: ele fica em <b>🎬 Produtor → Meus produtos</b>.'
+            : '') + '</div>';
       } else {
         html += d.cursos.map(function (c) {
           return '<div class="lin"><b>' + esc(c.titulo) + '</b> <span class="chip">' + (TIPOS_PROD[c.tipo] || esc(c.tipo)) + '</span>' +
@@ -401,7 +422,7 @@
       };
       if (el('b-avaliar')) el('b-avaliar').onclick = function () {
         api('POST', '/aluno/cursos/' + pid + '/avaliar', { nota: val('av-nota'), texto: val('av-texto') })
-          .then(function () { el('av-msg').textContent = '✅ obrigado!'; }).catch(function (e) { el('av-msg').textContent = e.message; });
+          .then(function () { okMsg('av-msg', '✅ obrigado!'); }).catch(function (e) { falha('av-msg', e); });
       };
       el('b-denunciar').onclick = function (e) {
         e.preventDefault();
@@ -517,7 +538,7 @@
       setView(html);
       el('b-np').onclick = function () {
         api('POST', '/produtor/produtos', { titulo: val('np-titulo'), tipo: val('np-tipo') })
-          .then(function (r) { vProduto(r.produto.id); }).catch(function (e) { el('np-msg').textContent = e.message; });
+          .then(function (r) { vProduto(r.produto.id); }).catch(function (e) { falha('np-msg', e); });
       };
       Array.prototype.forEach.call(document.querySelectorAll('[data-abre]'), function (b) {
         b.onclick = function () { vProduto(b.getAttribute('data-abre')); };
@@ -626,17 +647,17 @@
       el('b-volta').onclick = function (e) { e.preventDefault(); vProdutor(); };
       el('b-salvar').onclick = function () {
         api('PATCH', '/produtor/produtos/' + pid, { titulo: val('e-titulo'), subtitulo: val('e-sub'), descricao_curta: val('e-curta'), descricao_longa: val('e-longa'), preco_centavos: centavos(val('e-preco')), afiliado_pct: val('e-afpct') })
-          .then(function () { vProduto(pid); }).catch(function (e) { el('e-msg').textContent = e.message; });
+          .then(function () { vProduto(pid); }).catch(function (e) { falha('e-msg', e); });
       };
       Array.prototype.forEach.call(document.querySelectorAll('[data-st]'), function (b) {
         b.onclick = function () {
           api('POST', '/produtor/produtos/' + pid + '/status', { status: b.getAttribute('data-st') })
-            .then(function () { vProduto(pid); }).catch(function (e) { el('e-msg').textContent = e.message; });
+            .then(function () { vProduto(pid); }).catch(function (e) { falha('e-msg', e); });
         };
       });
       el('b-addmod').onclick = function () {
         api('POST', '/produtor/produtos/' + pid + '/modulos', { titulo: val('nm-titulo') })
-          .then(function () { vProduto(pid); }).catch(function (e) { el('bl-msg').textContent = e.message; });
+          .then(function () { vProduto(pid); }).catch(function (e) { falha('bl-msg', e); });
       };
       Array.prototype.forEach.call(document.querySelectorAll('[data-delmod]'), function (b) {
         b.onclick = function () { if (confirm('Remover módulo e suas aulas?')) api('DELETE', '/produtor/produtos/' + pid + '/modulos/' + b.getAttribute('data-delmod')).then(function () { vProduto(pid); }).catch(function (e) { alert(e.message); }); };
@@ -654,7 +675,7 @@
             ? upload(fileEl).then(function (mediaId) { corpo.media_id = mediaId; })
             : Promise.resolve();
           fluxo.then(function () { return api('POST', '/produtor/produtos/' + pid + '/modulos/' + mid + '/aulas', corpo); })
-            .then(function () { vProduto(pid); }).catch(function (e) { el('bl-msg').textContent = e.message; });
+            .then(function () { vProduto(pid); }).catch(function (e) { falha('bl-msg', e); });
         };
       });
       api('GET', '/produtor/produtos/' + pid + '/alunos').then(function (da) {
@@ -669,12 +690,12 @@
       });
       el('b-mt').onclick = function () {
         api('POST', '/produtor/produtos/' + pid + '/matricular', { email: val('mt-email') })
-          .then(function () { vProduto(pid); }).catch(function (e) { el('mt-msg').textContent = e.message; });
+          .then(function () { vProduto(pid); }).catch(function (e) { falha('mt-msg', e); });
       };
       el('b-capa').onclick = function () {
         upload(el('capa-file')).then(function (mediaId) {
           return api('PATCH', '/produtor/produtos/' + pid, { capa_media_id: mediaId });
-        }).then(function () { vProduto(pid); }).catch(function (e) { el('capa-msg').textContent = e.message; });
+        }).then(function () { vProduto(pid); }).catch(function (e) { falha('capa-msg', e); });
       };
       editorPaginaVenda(pid);
       if (p.tipo === 'clube') gestorClube(pid);
@@ -702,7 +723,7 @@
             .then(function (r) { alert(r.modulos + ' módulo(s) e ' + r.aulas + ' aula(s) criados.'); vProduto(pid); })
             .catch(function (er) { alert(er.message); });
         };
-      }).catch(function (e) { ocupado(false); el('ia-msg').textContent = e.message; });
+      }).catch(function (e) { ocupado(false); falha('ia-msg', e); });
     };
     el('ia-copy').onclick = function () {
       ocupado(true);
@@ -718,7 +739,7 @@
             .then(function () { alert('Página de venda atualizada — revise no editor abaixo.'); vProduto(pid); })
             .catch(function (er) { alert(er.message); });
         };
-      }).catch(function (e) { ocupado(false); el('ia-msg').textContent = e.message; });
+      }).catch(function (e) { ocupado(false); falha('ia-msg', e); });
     };
     el('ia-ped').onclick = function () {
       ocupado(true);
@@ -729,7 +750,7 @@
           ((d.quiz || []).length ? '<br><b>Quiz sugerido:</b>' + d.quiz.map(function (q, i) {
             return '<br>' + (i + 1) + '. ' + esc(q.pergunta) + ' <span class="chip">' + esc(q.aula || '') + '</span>';
           }).join('') : '') + '</div>');
-      }).catch(function (e) { ocupado(false); el('ia-msg').textContent = e.message; });
+      }).catch(function (e) { ocupado(false); falha('ia-msg', e); });
     };
   }
 
@@ -747,7 +768,7 @@
         '<p class="sub" style="text-align:left">Assinantes ativos têm acesso a tudo que está incluído + ao conteúdo próprio do clube.</p>';
       if (el('b-cladd')) el('b-cladd').onclick = function () {
         api('POST', '/produtor/produtos/' + pid + '/clube/itens', { product_id: val('cl-add') })
-          .then(function () { gestorClube(pid); }).catch(function (e) { el('cl-msg').textContent = e.message; });
+          .then(function () { gestorClube(pid); }).catch(function (e) { falha('cl-msg', e); });
       };
       Array.prototype.forEach.call(document.querySelectorAll('[data-clrm]'), function (b) {
         b.onclick = function () {
@@ -792,7 +813,7 @@
           headline: val('pv-head'), subheadline: val('pv-sub'), video_url: val('pv-video'), promessa: val('pv-prom'),
           beneficios: deLinhas('pv-benef'), para_quem: deLinhas('pv-quem'), aprender: deLinhas('pv-apr'), bonus: deLinhas('pv-bonus'),
           depoimentos: dePares('pv-dep', 'nome', 'texto'), faq: dePares('pv-faq', 'p', 'r'), garantia_texto: val('pv-gar'),
-        }).then(function () { el('pv-msg').textContent = '✅ salvo'; }).catch(function (e) { el('pv-msg').textContent = e.message; });
+        }).then(function () { okMsg('pv-msg', '✅ salvo'); }).catch(function (e) { falha('pv-msg', e); });
       };
     }).catch(function (e) { el('pv-box').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
   }

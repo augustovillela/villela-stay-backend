@@ -4702,6 +4702,41 @@ app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
 app.use('/hospede', express.static(path.join(__dirname, 'hospede')));
 
+// ---- Subdomínio de produto: caminho solto → mesmo caminho sob o prefixo do produto ----
+// O redirect da raiz (app.get('/')) só cobre "/". Sem isto,
+// academia.villelastay.com.br/marketplace dava 404 em vez de abrir
+// /academy/marketplace — o mesmo valia para todo subdomínio do grupo.
+// Registrado por ÚLTIMO, de propósito: só chega aqui o que NÃO casou com
+// nenhuma rota real, então nunca sombreia nada que já funcione.
+const PREFIXO_POR_SUBDOMINIO = [
+  [['staff.'], '/staff'],
+  [['livros.', 'livraria.'], '/livros'],
+  [['docs.'], '/vdocs'],
+  [['juridico.'], '/juridico'],
+  [['projetos.', 'projects.'], '/vpe'],
+  [['manager.', 'gestao.'], '/gestao'],
+  [['academia.', 'academy.', 'cursos.'], '/academy'],
+  [['crm.'], '/crm'],
+  [['closet.'], '/closet'],
+  [['vitrine.'], '/vitrine'],
+  [['altavista.', 'alta-vista.'], '/alta-vista'],
+  [['kids.'], '/kids'],
+  [['origena.'], '/origena'],
+];
+// Arquivos que vivem na raiz do domínio por convenção — 404 honesto é melhor que redirect.
+const RAIZ_SEM_REDIRECT = /^\/(robots\.txt|sitemap\.xml|favicon\.ico|\.well-known(\/|$))/;
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  const host = (req.hostname || '').toLowerCase();
+  const par = PREFIXO_POR_SUBDOMINIO.find(([subs]) => subs.some((s) => host.startsWith(s)));
+  if (!par) return next();
+  const prefixo = par[1], caminho = req.path;
+  // já está sob o prefixo (404 de verdade) ou é arquivo de raiz → não redireciona (anti-loop)
+  if (caminho === prefixo || caminho.startsWith(prefixo + '/') || RAIZ_SEM_REDIRECT.test(caminho)) return next();
+  const i = req.originalUrl.indexOf('?');
+  return res.redirect(302, prefixo + caminho + (i >= 0 ? req.originalUrl.slice(i) : ''));
+});
+
 // Manutenção diária do DATA_DIR: snapshots consistentes (backup restaurável off-site) +
 // purga de eventos antigos (>90d nas tabelas de log de alto volume) + alarme de disco.
 // MANUTENCAO_OFF=1 desliga tudo; SNAPSHOTS_OFF/SNAPSHOTS_MANTER/PURGA_DIAS/DISK_LIMIT_MB ajustam.

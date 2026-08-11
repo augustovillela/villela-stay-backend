@@ -140,6 +140,9 @@ function appHTML() {
     label{font-size:.85rem;font-weight:600;display:block}
     table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #f0ece2}
     th{color:#5B6472;font-weight:600}.chip{display:inline-block;background:var(--ambar-claro);color:var(--villela-navy);border-radius:12px;padding:2px 9px;font-size:.78rem}
+    /* erro de ação (ex.: "enviar para revisão" barrado): precisa ser visto, não sussurrado */
+    .erro:not(:empty){display:block;margin:8px 0 0;background:#fdecef;border:1px solid #f3b7c2;border-radius:9px;padding:9px 13px;font-size:.9rem;font-weight:600}
+    .erro.ok{background:#eaf7ef;border-color:#b7e0c4;color:#14532d} /* mesmo elemento reusado p/ confirmação */
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
