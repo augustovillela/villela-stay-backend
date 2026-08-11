@@ -246,7 +246,10 @@ const Midia = {
     return { id, upload_url: storage.presignS3(storage.s3cfg(), 'PUT', rel, 3600), expira_seg: 3600 };
   },
   async confirmarUploadGrande(id, ownerUserId) {
-    const m = this.obter(id);
+    // obterMesmoPendente, NUNCA obter: o registro nasce confirmado=0 e obter() filtra
+    // confirmado=1 — usá-lo aqui fazia toda confirmação de vídeo morrer em "Upload não
+    // encontrado", com o arquivo já no bucket. Quem confirma é justamente o pendente.
+    const m = this.obterMesmoPendente(id);
     if (!m || m.owner_user_id !== ownerUserId) throw new Error('Upload não encontrado.');
     if (m.confirmado) return m;
     const obj = await storage.s3Existe(m.file_path);

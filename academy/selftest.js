@@ -784,6 +784,49 @@ async function main() {
     const g = await req('POST', '/academy/api/produtor/upload-grande', { jar: 'maria', corpo: { nome: 'aula.mp4', mime: 'video/mp4', tamanho: 1000 } });
     assert.equal(g.st, 400); assert.ok(g.json.erro.includes('S3/R2'));
   });
+  // REGRESSÃO (11/08/2026): com S3 ligado, confirmar o upload de vídeo respondia
+  // sempre "Upload não encontrado" — o registro nasce confirmado=0 e a confirmação
+  // procurava por obter(), que filtra confirmado=1. O arquivo chegava ao bucket e a
+  // aula nunca era criada. A suíte rodava sem S3, então este trecho nunca executava.
+  await t('upload grande de vídeo: iniciar → PUT → confirmar → vira aula (S3 ligado)', async () => {
+    const real = { s3Ativo: storage.s3Ativo, presignS3: storage.presignS3, s3Existe: storage.s3Existe };
+    const bucketFalso = new Map();
+    let modVideoId = null; // removido no fim: senão o curso ganha aula a mais e o teste de certificado (100%) quebra
+    storage.s3Ativo = () => true;
+    storage.presignS3 = (cfg, met, key) => `https://fake.r2/${encodeURIComponent(key)}?met=${met}`;
+    storage.s3Existe = async (key) => (bucketFalso.has(key) ? { tamanho: bucketFalso.get(key) } : null);
+    try {
+      const ini = await req('POST', '/academy/api/produtor/upload-grande', { jar: 'maria', corpo: { nome: 'aula.mp4', mime: 'video/mp4', tamanho: 4096 } });
+      assert.equal(ini.st, 200, 'iniciar upload grande');
+      assert.ok(ini.json.upload_url, 'devolve URL presignada');
+
+      // antes do arquivo chegar ao bucket, confirmar precisa falhar POR ISSO — e dizer isso
+      const cedo = await req('POST', `/academy/api/produtor/upload-grande/${ini.json.id}/confirmar`, { jar: 'maria' });
+      assert.equal(cedo.st, 400);
+      assert.ok(/ainda não chegou/i.test(cedo.json.erro), `erro deve explicar que falta o arquivo, veio: ${cedo.json.erro}`);
+
+      bucketFalso.set(ini.json.id + '.mp4', 4096); // o navegador fez o PUT
+      const ok = await req('POST', `/academy/api/produtor/upload-grande/${ini.json.id}/confirmar`, { jar: 'maria' });
+      assert.equal(ok.st, 200, `confirmar após o PUT deve funcionar, veio: ${JSON.stringify(ok.json)}`);
+
+      const idem = await req('POST', `/academy/api/produtor/upload-grande/${ini.json.id}/confirmar`, { jar: 'maria' });
+      assert.equal(idem.st, 200, 'confirmar de novo é idempotente');
+
+      const mod = await req('POST', `/academy/api/produtor/produtos/${prodId}/modulos`, { jar: 'maria', corpo: { titulo: 'Mód. vídeo' } });
+      modVideoId = mod.json.id;
+      const aula = await req('POST', `/academy/api/produtor/produtos/${prodId}/modulos/${mod.json.id}/aulas`, {
+        jar: 'maria', corpo: { titulo: 'Aula em vídeo', tipo: 'video', media_id: ini.json.id },
+      });
+      assert.equal(aula.st, 200, 'a aula com o vídeo confirmado é criada');
+
+      // upload de outro produtor não pode ser confirmado por quem não é dono
+      const alheio = await req('POST', `/academy/api/produtor/upload-grande/${ini.json.id}/confirmar`, { jar: 'bruno' });
+      assert.ok(alheio.st >= 400, 'só o dono confirma o próprio upload');
+    } finally {
+      Object.assign(storage, real);
+      if (modVideoId) await req('DELETE', `/academy/api/produtor/produtos/${prodId}/modulos/${modVideoId}`, { jar: 'maria' });
+    }
+  });
   await t('presign SigV4 (S3/R2) gera URLs válidas em formato', async () => {
     const cfg = { endpoint: 'https://conta.r2.cloudflarestorage.com', bucket: 'academy', key: 'AKIATESTE', secret: 'segredo', region: 'auto' };
     for (const met of ['GET', 'PUT', 'HEAD']) {
