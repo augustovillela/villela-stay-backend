@@ -192,7 +192,7 @@ function cardProduto(p) {
 function marketplaceHTML({ q, categoria }) {
   const itens = ct.Marketplace.listar({ q, categoria });
   const cats = ct.CATEGORIAS.map(c =>
-    `<a class="btn peq ${c === categoria ? '' : 'secund'}" href="/academy/marketplace?categoria=${c}" style="margin:3px">${esc(c.replace(/-/g, ' '))}</a>`).join('');
+    `<a class="btn peq ${c === categoria ? '' : 'secund'}" href="/academy/marketplace?categoria=${c}" style="margin:3px">${esc(ct.catRotulo(c))}</a>`).join('');
   const corpo = `<div class="sec"><div class="wrap"><h2>Marketplace</h2>
     <p class="sub">Cursos e produtos digitais dos produtores da Villela Academy.</p>
     <form method="get" action="/academy/marketplace" style="max-width:480px;margin:0 auto 18px;display:flex;gap:8px">
@@ -201,7 +201,7 @@ function marketplaceHTML({ q, categoria }) {
     ${itens.length ? `<div class="grid">${itens.map(cardProduto).join('')}</div>`
       : '<p class="sub">Nenhum produto encontrado' + (q || categoria ? ' com esse filtro.' : ' ainda — os primeiros produtores estão chegando.') + '</p>'}
   </div></div>`;
-  return shellPublico({ titulo: 'Marketplace' + (categoria ? ` · ${categoria}` : ''), descricao: 'Cursos online, e-books e produtos digitais na Villela Academy.', corpo });
+  return shellPublico({ titulo: 'Marketplace' + (categoria ? ` · ${ct.catRotulo(categoria)}` : ''), descricao: 'Cursos online, e-books e produtos digitais na Villela Academy.', corpo });
 }
 
 function embedDe(url) {

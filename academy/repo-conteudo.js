@@ -18,9 +18,19 @@ const ARQUIVOS_DIR = storage.ARQUIVOS_DIR; // privado; NUNCA servido estático
 
 const TIPOS_PRODUTO = ['curso', 'ebook', 'pdf', 'audio', 'pacote', 'mentoria', 'clube'];
 const TIPOS_AULA = ['video', 'texto', 'pdf', 'audio', 'arquivo', 'link'];
+// o slug é a chave (URL, banco, filtro) e NÃO muda; CAT_ROT é só o rótulo de tela, com acento
 const CATEGORIAS = ['negocios', 'marketing', 'vendas', 'tecnologia', 'inteligencia-artificial',
   'direito', 'gestao-documental', 'aluguel-temporada', 'hospedagem', 'gastronomia', 'eventos',
   'construcao', 'financas', 'produtividade', 'desenvolvimento-pessoal'];
+const CAT_ROT = {
+  negocios: 'Negócios', marketing: 'Marketing', vendas: 'Vendas', tecnologia: 'Tecnologia',
+  'inteligencia-artificial': 'Inteligência Artificial', direito: 'Direito',
+  'gestao-documental': 'Gestão Documental', 'aluguel-temporada': 'Aluguel por Temporada',
+  hospedagem: 'Hospedagem', gastronomia: 'Gastronomia', eventos: 'Eventos',
+  construcao: 'Construção', financas: 'Finanças', produtividade: 'Produtividade',
+  'desenvolvimento-pessoal': 'Desenvolvimento Pessoal',
+};
+const catRotulo = (c) => CAT_ROT[c] || String(c || '').replace(/-/g, ' ');
 
 // upload: 10 MB (o body JSON global aguenta 15 MB em base64); vídeo = URL externa até a F7
 const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
@@ -597,7 +607,7 @@ const Denuncias = {
 };
 
 module.exports = {
-  TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
+  TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, CAT_ROT, catRotulo, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
   Produtos, Conteudo, Midia, Matriculas, Cortesia, Progresso, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube,
