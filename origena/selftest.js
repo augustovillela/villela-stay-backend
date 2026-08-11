@@ -399,9 +399,12 @@ async function principal() {
     assert(desatualizado.json.worker.faltando.includes('midia.ingerir'),
       'não apontou o handler de mídia como faltando');
 
-    // worker em dia
+    // worker em dia. A lista sai de HANDLERS_ESPERADOS em vez de ser
+    // copiada à mão: handler novo que entra na exigência não pode fazer
+    // este teste falhar por desatualização de fixture — ele existe para
+    // provar o MECANISMO, não para guardar a lista de um dia.
     const bom = JSON.stringify({ em: new Date().toISOString(), commit: 'deadbee',
-      handlers: ['midia.ingerir', 'documento.extrair', 'smoke'] });
+      handlers: [...origena.HANDLERS_ESPERADOS, 'smoke'] });
     await db.q(`UPDATE config SET valor = $1, atualizado_em = now() WHERE chave = 'worker_heartbeat'`, [bom]);
     const ok = await req('GET', '/origena/health');
     assert.strictEqual(ok.status, 200, ok.texto);
@@ -3053,6 +3056,136 @@ async function principal() {
     assert.strictEqual(texto.status, 400, 'aceitou texto onde precisa de número');
   });
 
+  await teste('a volta do acervo passa pelo R2, não pelo corpo da requisição', async () => {
+    // O DEFEITO QUE ISTO FECHA: a Origena exportava um acervo que ela
+    // mesma não conseguia reimportar. A importação chegava no corpo JSON
+    // e o servidor aceita 15 MB — o `dados.json` de uma família real
+    // passa disso, e o dono só descobriria no dia em que precisasse.
+    const dono = await novaConta('Dono Volta', 'volta@teste.origena');
+    const fV = (await req('POST', '/origena/api/v1/familias',
+      { sessao: dono, corpo: { nome: 'Família da Volta' } })).json.familia.id;
+    const FV = (c) => `/origena/api/v1/familias/${fV}${c}`;
+    await req('POST', FV('/pessoas'), { sessao: dono, corpo: { nome: 'Avó da Volta' } });
+
+    // uma FOTO de verdade: é o que a família mais teme perder, e era
+    // justamente o que o zip não levava
+    const foto = pngReal(50, 40, [7, 90, 60]);
+    const prepM = await req('POST', FV('/midias/preparar'), { sessao: dono, corpo: {
+      nome: 'avo.png', bytes: foto.length, sha256: sha(foto), mime: 'image/png', tipo: 'FOTO' } });
+    assert.strictEqual(prepM.status, 201, prepM.texto);
+    await fetch(prepM.json.url_envio, { method: 'PUT', body: foto,
+      headers: { 'Content-Type': 'application/octet-stream' } });
+    await req('POST', FV(`/midias/${prepM.json.media_id}/confirmar`), { sessao: dono });
+    await fila.processarLote(10, 'rapida');
+
+    // exporta de verdade, pelo caminho real
+    const exp = await req('POST', FV('/exportacoes'), { sessao: dono });
+    assert.strictEqual(exp.status, 202, exp.texto);
+    await fila.processarLote(10, 'cara');
+    const pronto = await req('GET', FV(`/exportacoes/${exp.json.exportacao.id}`), { sessao: dono });
+    assert.strictEqual(pronto.json.exportacao.status, 'pronto', pronto.texto);
+    const zip = Buffer.from(await (await fetch(pronto.json.url)).arrayBuffer());
+
+    // ...e traz de volta numa família nova, pelo caminho de arquivo
+    const fN = (await req('POST', '/origena/api/v1/familias',
+      { sessao: dono, corpo: { nome: 'Família Restaurada' } })).json.familia.id;
+    const FN = (c) => `/origena/api/v1/familias/${fN}${c}`;
+    const prep = await req('POST', FN('/importacoes'), { sessao: dono });
+    assert.strictEqual(prep.status, 201, prep.texto);
+    assert(prep.json.url_envio, 'não devolveu URL para o arquivo subir direto ao R2');
+
+    const put = await fetch(prep.json.url_envio, { method: 'PUT', body: zip,
+      headers: { 'Content-Type': 'application/octet-stream' } });
+    assert(put.ok, 'o R2 recusou o zip: ' + put.status);
+    const conf = await req('POST', FN(`/importacoes/${prep.json.id}/confirmar`), { sessao: dono });
+    assert.strictEqual(conf.status, 202, conf.texto);
+    await fila.processarLote(10, 'cara');
+
+    const lista = await req('GET', FN('/importacoes'), { sessao: dono });
+    const imp = lista.json.importacoes[0];
+    assert.strictEqual(imp.status, 'pronto', `a importação falhou: ${imp.erro}`);
+    assert(imp.bytes > 0, 'não registrou o tamanho do que voltou');
+
+    const gente = await req('GET', FN('/pessoas'), { sessao: dono });
+    assert(gente.json.pessoas.some((p) => /Avó da Volta/.test(p.nome_exibicao)),
+      'o acervo não voltou: a pessoa exportada não está na família nova');
+
+    // A FOTO TAMBÉM VOLTOU — e voltou o arquivo, não só a linha. Recuperar
+    // a história e perder as fotos seria cumprir metade da promessa e
+    // chamar de cumprida.
+    assert(imp.resultado.midias_restauradas >= 1,
+      `nenhum binário voltou: ${JSON.stringify(imp.resultado)}`);
+    const galeria = await req('GET', FN('/midias'), { sessao: dono });
+    const nova = (galeria.json.midias || []).find((m) => m.tipo === 'FOTO');
+    assert(nova, 'a mídia não apareceu na galeria da família restaurada');
+    const st = await tenancy.comEscopo(fN, (t) => t.uma(
+      `SELECT status FROM media WHERE id = $1`, [nova.id]));
+    assert.strictEqual(st.status, 'pronta',
+      `a mídia ficou ${st.status}: só vira "pronta" DEPOIS de o arquivo subir`);
+    const urlNova = await req('GET', FN(`/midias/${nova.id}/url`), { sessao: dono });
+    assert.strictEqual(urlNova.status, 200, `a foto voltou sem arquivo: ${urlNova.texto}`);
+    const baixada = Buffer.from(await (await fetch(urlNova.json.url)).arrayBuffer());
+    assert.strictEqual(baixada.length, foto.length,
+      'o arquivo que voltou não é o mesmo que foi');
+  });
+
+  await teste('zip que a família guardou volta mesmo COMPRIMIDO por fora', async () => {
+    // O zip sai daqui em STORE, mas passa pelo computador da família: um
+    // descompactador do sistema o reescreve em DEFLATE. Ler só STORE
+    // faria a volta falhar justamente para quem mexeu no arquivo — que é
+    // a maioria de quem guarda backup a sério.
+    const dados = Buffer.from(JSON.stringify({ origena: 'export/v1', tabelas: {} }));
+    const cru = require("zlib").deflateRawSync(dados);
+    const nome = Buffer.from('dados.json', 'utf8');
+    const crc = exportarMod.crc32(dados);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(8, 8);                       // DEFLATE
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(cru.length, 18); local.writeUInt32LE(dados.length, 22);
+    local.writeUInt16LE(nome.length, 26);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6); central.writeUInt16LE(8, 10);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(cru.length, 20); central.writeUInt32LE(dados.length, 24);
+    central.writeUInt16LE(nome.length, 28);
+    central.writeUInt32LE(0, 42);
+    const off = 30 + nome.length + cru.length;
+    const fim = Buffer.alloc(22);
+    fim.writeUInt32LE(0x06054b50, 0);
+    fim.writeUInt16LE(1, 8); fim.writeUInt16LE(1, 10);
+    fim.writeUInt32LE(46 + nome.length, 12); fim.writeUInt32LE(off, 16);
+
+    const zipDeflate = Buffer.concat([local, nome, cru, central, nome, fim]);
+    const lido = exportarMod.deszipar(zipDeflate);
+    assert.deepStrictEqual(JSON.parse(lido['dados.json'].toString('utf8')),
+      { origena: 'export/v1', tabelas: {} }, 'não leu a entrada comprimida');
+  });
+
+  await teste('arquivo que não é export da Origena falha com motivo, sem tocar no acervo', async () => {
+    const dono = await novaConta('Dono Lixo', 'lixo-import@teste.origena');
+    const fL = (await req('POST', '/origena/api/v1/familias',
+      { sessao: dono, corpo: { nome: 'Família do Lixo' } })).json.familia.id;
+    const FL = (c) => `/origena/api/v1/familias/${fL}${c}`;
+    const antes = (await req('GET', FL('/pessoas'), { sessao: dono })).json.pessoas.length;
+
+    const prep = await req('POST', FL('/importacoes'), { sessao: dono });
+    // um zip legítimo, mas SEM dados.json — o engano mais provável de quem
+    // manda "aquele zip de fotos" achando que é o backup
+    const zip = exportarMod.zipar([{ nome: 'foto.jpg', dados: Buffer.from('nao sou json') }]);
+    await fetch(prep.json.url_envio, { method: 'PUT', body: zip,
+      headers: { 'Content-Type': 'application/octet-stream' } });
+    await req('POST', FL(`/importacoes/${prep.json.id}/confirmar`), { sessao: dono });
+    await fila.processarLote(10, 'cara').catch(() => {});
+
+    const imp = (await req('GET', FL('/importacoes'), { sessao: dono })).json.importacoes[0];
+    assert.strictEqual(imp.status, 'falhou', 'aceitou um zip que não é export da Origena');
+    assert.match(imp.erro, /dados\.json/, `o motivo não ajuda quem errou: ${imp.erro}`);
+    assert.strictEqual((await req('GET', FL('/pessoas'), { sessao: dono })).json.pessoas.length,
+      antes, 'a importação inválida mexeu no acervo');
+  });
+
   // ============================================================== L7 — PAGAR
   console.log('\ncobrança (L7) — quem credita é o webhook, nunca o clique');
   const billing = require('./billing');
@@ -4164,7 +4297,7 @@ async function principal() {
     for (const p of [':pessoaId', ':relId', ':claimId', ':contribId', ':mediaId', ':albumId',
       ':idId', ':storyId', ':lugarId', ':eventoId', ':exportId', ':tradicaoId', ':reliquiaId',
       ':missaoId', ':achadoId', ':entrevistaId', ':respostaId', ':noId', ':livroId',
-      ':capsulaId', ':guardiaoId', ':pedidoId', ':itemId', ':id']) {
+      ':capsulaId', ':guardiaoId', ':pedidoId', ':importId', ':itemId', ':id']) {
       c = c.replace(p, ALVO_FALSO);
     }
     const sobrou = c.match(/\/:(\w+)/);

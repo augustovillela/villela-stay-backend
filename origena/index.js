@@ -44,7 +44,11 @@ const pronto = () => _pronto;
  */
 // Handlers que o worker PRECISA ter registrados. Faltando um, a saúde
 // fica vermelha: job daquele tipo iria direto para a DLQ.
-const HANDLERS_ESPERADOS = ['midia.ingerir', 'documento.extrair'];
+// `importar.processar` entra aqui porque é a VOLTA do acervo: se o worker
+// subir sem ele, a família que tentar trazer o backup de volta fica com o
+// pedido parado na fila, sem erro nenhum na tela. Saúde verde com a porta
+// de recuperação fechada é o pior tipo de verde.
+const HANDLERS_ESPERADOS = ['midia.ingerir', 'documento.extrair', 'importar.processar'];
 const BATIDA_MAX_SEG = 300;
 
 /**
@@ -173,6 +177,6 @@ async function montar(app, injected = {}) {
 }
 
 module.exports = {
-  montar, saude, pronto,
+  montar, saude, pronto, HANDLERS_ESPERADOS,
   db, fila, storage, sessao, tenancy, rbac, privacidade, repo, emails,
 };

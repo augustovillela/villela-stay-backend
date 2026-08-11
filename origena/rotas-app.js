@@ -1273,6 +1273,31 @@ function registrarRotasApp(app) {
       res.status(201).json({ importado: r });
     }));
 
+  /**
+   * A volta do acervo por ARQUIVO (026). O zip sobe DIRETO ao R2 por URL
+   * assinada e quem lê é o worker — a rota de `importar` acima passa pelo
+   * corpo JSON e só serve para acervo pequeno, porque o servidor aceita
+   * 15 MB. Um `dados.json` de família real passa disso.
+   */
+  app.post(decl('POST', `${R}/familias/:familyId/importacoes`), ...naFamilia,
+    rbac.exigir('familia.editar'), h(async (req, res) => {
+      res.status(201).json(await tenancy.noEscopoDe(req, (t) =>
+        exportar.prepararImportacao(t, { familyId: req.familia.id, userId: req.usuario.id })));
+    }));
+
+  app.post(decl('POST', `${R}/familias/:familyId/importacoes/:importId/confirmar`), ...naFamilia,
+    rbac.exigir('familia.editar'), h(async (req, res) => {
+      res.status(202).json(await tenancy.noEscopoDe(req, (t) =>
+        exportar.confirmarImportacao(t, { familyId: req.familia.id, userId: req.usuario.id,
+          importId: req.params.importId })));
+    }));
+
+  app.get(decl('GET', `${R}/familias/:familyId/importacoes`), ...naFamilia,
+    rbac.exigir('familia.editar'), h(async (req, res) => {
+      res.json({ importacoes: await tenancy.noEscopoDe(req, (t) =>
+        exportar.listarImportacoes(t, req.familia.id)) });
+    }));
+
   app.post(decl('POST', `${R}/familias/:familyId/importar-gedcom`), ...naFamilia,
     rbac.exigir('familia.editar'), h(async (req, res) => {
       const r = await tenancy.noEscopoDe(req, (t) => exportar.importarGedcom(t, {

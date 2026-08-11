@@ -260,6 +260,7 @@
     "capsula_cancelada": "Essa cápsula foi cancelada por quem a escreveu.",
     "capsula_ja_aberta": "Cápsula aberta já faz parte do acervo — não dá para cancelar.",
     "capsula_nao_e_sua": "Só quem escreveu a cápsula pode cancelá-la.",
+    "importacao_nao_encontrada": "Essa importação não existe ou já foi processada.",
     "guardiao_ja_indicado": "Essa pessoa já é guardiã do legado desta família.",
     "guardiao_nao_encontrado": "Esse guardião não existe.",
     "guardiao_nao_e_voce": "Este convite de guardião é de outra pessoa.",

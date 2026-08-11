@@ -26,6 +26,8 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 const { erro } = require('./erros');
 const storage = require('./storage');
+const tenancy = require('./tenancy');
+const fila = require('./fila');
 const { auditar } = require('./repo');
 
 // ------------------------------------------------------------- zip (store)
@@ -66,6 +68,48 @@ function zipar(arquivos) {                    // [{nome, dados(Buffer)}]
   fim.writeUInt16LE(arquivos.length, 8); fim.writeUInt16LE(arquivos.length, 10);
   fim.writeUInt32LE(dirTam, 12); fim.writeUInt32LE(offset, 16);
   return Buffer.concat([...locais, ...centrais, fim]);
+}
+
+/**
+ * Lê um zip. Existe porque a volta do acervo tem de aceitar o arquivo que
+ * a família guardou — que pode ter passado por um descompactador do
+ * sistema dela e voltado DEFLATE, mesmo tendo saído daqui como STORE.
+ * Ler pelo diretório central (e não varrendo cabeçalhos locais) é o que
+ * torna isso confiável: é o índice que o formato garante.
+ */
+function deszipar(buf) {
+  // Fim do diretório central: assinatura no fim, com comentário opcional.
+  let fim = -1;
+  for (let i = buf.length - 22; i >= 0 && i > buf.length - 22 - 65536; i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) { fim = i; break; }
+  }
+  if (fim < 0) throw new Error('não parece um zip (sem diretório central)');
+  const n = buf.readUInt16LE(fim + 10);
+  let p = buf.readUInt32LE(fim + 16);
+
+  const arquivos = {};
+  for (let i = 0; i < n; i++) {
+    if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error('diretório do zip corrompido');
+    const metodo = buf.readUInt16LE(p + 10);
+    const compTam = buf.readUInt32LE(p + 20);
+    const nomeTam = buf.readUInt16LE(p + 28);
+    const extraTam = buf.readUInt16LE(p + 30);
+    const comentTam = buf.readUInt16LE(p + 32);
+    const desloc = buf.readUInt32LE(p + 42);
+    const nome = buf.toString('utf8', p + 46, p + 46 + nomeTam);
+
+    // no cabeçalho LOCAL os tamanhos de nome/extra podem diferir do central
+    const nomeTamL = buf.readUInt16LE(desloc + 26);
+    const extraTamL = buf.readUInt16LE(desloc + 28);
+    const ini = desloc + 30 + nomeTamL + extraTamL;
+    const cru = buf.subarray(ini, ini + compTam);
+    if (metodo === 0) arquivos[nome] = Buffer.from(cru);
+    else if (metodo === 8) arquivos[nome] = zlib.inflateRawSync(cru);
+    else throw new Error(`método de compressão ${metodo} não suportado em ${nome}`);
+
+    p += 46 + nomeTam + extraTam + comentTam;
+  }
+  return arquivos;
 }
 
 // ------------------------------------------------------------ dados.json
@@ -179,6 +223,49 @@ async function gedcomDe(t, familyId, nomeFamilia) {
 
 // ------------------------------------------------------------- exportação
 /** Roda no WORKER: monta o zip e o guarda no R2 com validade curta. */
+// Teto do que vai dentro do zip. O worker monta o arquivo em MEMÓRIA, e
+// o processo tem 512 MB — não é conservadorismo, é o que cabe. Acima
+// disso o export falharia no meio, que é pior que um zip declaradamente
+// parcial. O que ficou de fora é DITO no manifesto.
+const MAX_BINARIOS = 150 * 1024 * 1024;
+
+/**
+ * Os binários que viajam com o acervo. Ordem deliberada:
+ *
+ *   1. ORIGINAIS primeiro — é o que não se refaz. Se o teto cortar, corta
+ *      o resto, nunca o original.
+ *   2. DERIVADOS de IA depois — refazer custa crédito de verdade, então
+ *      vale levar; mas perder é caro, não é perder para sempre.
+ *   3. MINIATURAS nunca — o sistema as regenera do original de graça.
+ */
+async function binariosDaFamilia(t, familyId) {
+  const linhas = await t.todas(
+    `SELECT id, storage_key, extensao, mime_real, bytes, papel
+       FROM media
+      WHERE family_id = $1 AND deleted_at IS NULL AND status = 'pronta'
+        AND papel IN ('ORIGINAL','DERIVADO')
+      ORDER BY CASE papel WHEN 'ORIGINAL' THEN 0 ELSE 1 END, created_at`, [familyId]);
+
+  const arquivos = [];
+  let bytes = 0;
+  let ficaram = 0;
+  for (const m of linhas) {
+    if (bytes + Number(m.bytes || 0) > MAX_BINARIOS) { ficaram += 1; continue; }
+    try {
+      const buf = await storage.baixar(m.storage_key);
+      const ext = m.extensao || (m.mime_real || '').split('/')[1] || 'bin';
+      arquivos.push({ nome: `midias/${m.id}.${ext}`, dados: buf });
+      bytes += buf.length;
+    } catch (_) {
+      // Arquivo que não abre no R2 não derruba a exportação inteira: o
+      // resto do acervo da família vale mais que a falha de um item, e o
+      // manifesto já declara a diferença entre o que há e o que entrou.
+      ficaram += 1;
+    }
+  }
+  return { arquivos, entraram: arquivos.length, ficaram, bytes };
+}
+
 async function gerar(t, { exportId, familyId }) {
   const exp = await t.uma(`SELECT * FROM exports WHERE id = $1`, [exportId]);
   if (!exp) return { ignorado: 'export sumiu' };
@@ -188,16 +275,26 @@ async function gerar(t, { exportId, familyId }) {
   const familia = await t.uma(`SELECT nome FROM families WHERE id = $1`, [familyId]);
   const dados = await dadosDaFamilia(t, familyId);
   const ged = await gedcomDe(t, familyId, familia.nome);
+  const { arquivos: midias, entraram, ficaram, bytes: bytesMidia } =
+    await binariosDaFamilia(t, familyId);
+
   const manifesto = {
     origena: 'export/v1', familia: familia.nome, gerado_em: new Date().toISOString(),
     conteudo: Object.fromEntries(Object.entries(dados.tabelas).map(([k, v]) => [k, v.length])),
-    nota_midias: 'Os binários das mídias não vão no zip (tamanho); os metadados e sha256 estão em dados.json.',
+    midias: { no_zip: entraram, de_fora: ficaram, bytes: bytesMidia,
+      pasta: 'midias/<id-da-midia>.<ext>' },
+    nota_midias: ficaram
+      ? `Os arquivos entram na pasta midias/ até ${Math.round(MAX_BINARIOS / 1048576)} MB. `
+        + `${ficaram} arquivo(s) ficaram de fora por tamanho e continuam baixáveis um a um no site. `
+        + 'Originais entram primeiro; miniaturas nunca entram (refazem-se sozinhas).'
+      : 'Todos os arquivos da família estão na pasta midias/.',
     nota_gedcom: 'GEDCOM não comporta proveniência; ela está completa em dados.json.',
   };
   const zip = zipar([
     { nome: 'manifesto.json', dados: Buffer.from(JSON.stringify(manifesto, null, 2)) },
     { nome: 'dados.json', dados: Buffer.from(JSON.stringify(dados)) },
     { nome: 'familia.ged', dados: Buffer.from(ged, 'utf8') },
+    ...midias,
   ]);
   const chave = storage.chaveExport(familyId, exportId);
   await storage.enviar(chave, zip, 'application/zip');
@@ -390,6 +487,11 @@ async function importarDados(t, { familyId, userId, dados }) {
   }
   await auditar({ familyId, atorUserId: userId, acao: 'acervo.importado',
     depois: contagem }, t);
+  // O mapa de ids viaja junto, mas NÃO ENUMERÁVEL: sem ele, quem importa
+  // os binários não saberia a qual mídia nova pertence cada arquivo do
+  // zip (todos os ids foram trocados) — e enumerável ele cairia no
+  // `JSON.stringify` que grava `imports.resultado`, onde um Map vira `{}`.
+  Object.defineProperty(contagem, 'mapaDeIds', { value: mapa, enumerable: false });
   return contagem;
 }
 
@@ -446,4 +548,119 @@ async function importarGedcom(t, { familyId, userId, texto }) {
   return { pessoas: idPor.size, casamentos, filiacoes };
 }
 
-module.exports = { zipar, crc32, dadosDaFamilia, gedcomDe, gerar, importarDados, importarGedcom };
+// ------------------------------------- importação por ARQUIVO (026)
+const MAX_ZIP = 300 * 1024 * 1024;
+
+/**
+ * Abre a porta: cria a linha e devolve a URL assinada para a família
+ * mandar o zip DIRETO ao R2. O arquivo nunca passa pelo processo web —
+ * era exatamente isso que limitava a volta do acervo a 15 MB.
+ */
+async function prepararImportacao(t, { familyId, userId }) {
+  const imp = await t.uma(
+    `INSERT INTO imports (family_id, created_by) VALUES ($1,$2) RETURNING *`,
+    [familyId, userId]);
+  const chave = `fam/${familyId}/importacoes/${imp.id}.zip`;
+  await t.q(`UPDATE imports SET storage_key = $2 WHERE id = $1`, [imp.id, chave]);
+  await auditar({ familyId, atorUserId: userId, acao: 'importacao.preparada',
+    alvoTipo: 'import', alvoId: imp.id }, t);
+  return { id: imp.id, url_envio: storage.urlDeEnvio(chave), chave };
+}
+
+/** A família avisa que subiu; daí em diante é do worker. */
+async function confirmarImportacao(t, { familyId, userId, importId }) {
+  const imp = await t.uma(
+    `UPDATE imports SET status = 'na_fila', updated_at = now()
+      WHERE id = $1 AND status = 'aguardando' RETURNING *`, [importId]);
+  if (!imp) throw erro('erro.importacao_nao_encontrada', 404);
+  await fila.enfileirar({ tipo: 'importar.processar', fila: 'cara', familyId,
+    payload: { familyId, userId, importId }, chaveIdem: 'import:' + importId }, t);
+  return { id: imp.id, status: imp.status };
+}
+
+/**
+ * Roda no WORKER. Baixa o zip, lê o `dados.json` de dentro e importa.
+ *
+ * O zip é conferido ANTES de qualquer escrita: arquivo que não é zip, que
+ * não traz `dados.json` ou que veio grande demais falha aqui, com motivo,
+ * em vez de derrubar a importação no meio e deixar o acervo pela metade.
+ */
+async function processarImportacao({ familyId, userId, importId }) {
+  const imp = await tenancy.comEscopo(familyId, (t) => t.uma(
+    `UPDATE imports SET status = 'importando', updated_at = now()
+      WHERE id = $1 AND status IN ('na_fila','falhou') RETURNING *`, [importId]));
+  if (!imp) return { ignorado: 'importação já processada' };
+
+  try {
+    const buf = await storage.baixar(imp.storage_key);
+    if (buf.length > MAX_ZIP) throw new Error(`o arquivo tem ${Math.round(buf.length / 1048576)} MB`);
+    const dentro = deszipar(buf);
+    const bruto = dentro['dados.json'];
+    if (!bruto) throw new Error('o zip não tem dados.json — não é um export da Origena');
+
+    let dados;
+    try { dados = JSON.parse(bruto.toString('utf8')); }
+    catch (_) { throw new Error('o dados.json de dentro do zip está corrompido'); }
+
+    const r = await tenancy.comEscopo(familyId, (t) =>
+      importarDados(t, { familyId, userId, dados }));
+
+    // Os BINÁRIOS, quando o zip os traz. Sem isto a família recuperava a
+    // história e perdia as fotos — que é o que ela mais teme perder.
+    r.midias_restauradas = await restaurarBinarios({
+      familyId, dentro, mapa: r.mapaDeIds });
+
+    await tenancy.comEscopo(familyId, async (t) => {
+      await t.q(`UPDATE imports SET status = 'pronto', bytes = $2, resultado = $3,
+                   updated_at = now() WHERE id = $1`,
+      [importId, buf.length, JSON.stringify(r)]);
+      await auditar({ familyId, atorUserId: userId, atorKind: 'system',
+        acao: 'importacao.concluida', alvoTipo: 'import', alvoId: importId, depois: r }, t);
+    });
+    return r;
+  } catch (e) {
+    await tenancy.comEscopo(familyId, (t) => t.q(
+      `UPDATE imports SET status = 'falhou', erro = $2, updated_at = now() WHERE id = $1`,
+      [importId, String(e.message || e).slice(0, 400)])).catch(() => {});
+    throw e;
+  }
+}
+
+/**
+ * Devolve ao R2 os arquivos que vieram na pasta `midias/`, e só então
+ * marca a mídia como `pronta`.
+ *
+ * A ORDEM IMPORTA: o arquivo sobe ANTES do `UPDATE`. Marcar como pronta
+ * e depois subir deixaria, em caso de falha, uma mídia que o sistema jura
+ * ter e não tem — o tipo de mentira que só aparece no dia em que a
+ * família for olhar a foto. Mídia sem arquivo continua `aguardando`, que
+ * é a verdade e permite reenviar.
+ */
+async function restaurarBinarios({ familyId, dentro, mapa }) {
+  if (!mapa) return 0;
+  let n = 0;
+  for (const [nome, buf] of Object.entries(dentro)) {
+    const m = /^midias\/([0-9a-f-]{36})\.([a-z0-9]+)$/i.exec(nome);
+    if (!m) continue;
+    const novoId = mapa.get(m[1]);
+    if (!novoId) continue;                 // arquivo sem dono no dados.json
+    try {
+      const linha = await tenancy.comEscopo(familyId, (t) => t.uma(
+        `SELECT storage_key FROM media WHERE id = $1`, [novoId]));
+      if (!linha || !linha.storage_key) continue;
+      await storage.enviar(linha.storage_key, buf, 'application/octet-stream');
+      await tenancy.comEscopo(familyId, (t) => t.q(
+        `UPDATE media SET status = 'pronta', updated_at = now() WHERE id = $1`, [novoId]));
+      n += 1;
+    } catch (_) { /* segue: uma foto que não sobe não derruba a volta inteira */ }
+  }
+  return n;
+}
+
+const listarImportacoes = (t, familyId) => t.todas(
+  `SELECT id, status, bytes, resultado, erro, created_at FROM imports
+    WHERE family_id = $1 ORDER BY created_at DESC LIMIT 10`, [familyId]);
+
+module.exports = { zipar, deszipar, crc32, dadosDaFamilia, gedcomDe, gerar,
+  importarDados, importarGedcom, prepararImportacao, confirmarImportacao,
+  processarImportacao, listarImportacoes, MAX_ZIP };

@@ -75,6 +75,14 @@ function registrarHandlers() {
     return tenancy.comEscopo(payload.familyId, (t) => exportar.gerar(t, payload));
   });
 
+  // A VOLTA do acervo (026). Sem isto a importação passava pelo corpo
+  // JSON, e o servidor aceita 15 MB — a Origena exportava um acervo que
+  // ela mesma não conseguia reimportar.
+  fila.registrar('importar.processar', async (payload) => {
+    const exportar = require('./exportar');
+    return exportar.processarImportacao(payload);
+  });
+
   // Busca semântica (2.5): embutir o que entrou ou mudou. Vai em LOTE
   // porque acervo grande não cabe numa chamada — e o job se reagenda
   // sozinho enquanto sobrar coisa, em vez de fingir que terminou.
