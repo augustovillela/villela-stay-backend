@@ -2844,6 +2844,130 @@ async function principal() {
       'o dado importado entrou sem dizer de onde veio');
   });
 
+  console.log('\nbackup do banco (§76) — backup não existe até ser RESTAURADO');
+
+  const backupMod = require('./backup');
+
+  await teste('nenhuma tabela fica de fora do dump por esquecimento', async () => {
+    // O PERIGO DESTE MÓDULO É ELE MESMO: um dump escrito à mão erra por
+    // OMISSÃO — alguém cria uma tabela, esquece de listá-la, e o backup
+    // segue verde por meses até o dia do desastre. Por isso a lista sai
+    // do `information_schema`, e este teste é a trava.
+    const noDump = new Set(await backupMod.tabelas());
+    const noBanco = await db.todas(
+      `SELECT table_name FROM information_schema.tables
+        WHERE table_schema = $1 AND table_type = 'BASE TABLE'`, [db.SCHEMA]);
+    const esquecidas = noBanco.map((t) => t.table_name)
+      .filter((t) => t !== 'schema_migrations' && !noDump.has(t) && !backupMod.FORA[t]);
+    assert.deepStrictEqual(esquecidas, [],
+      `tabela fora do backup sem motivo declarado: ${esquecidas.join(', ')}`);
+
+    // e toda exceção tem de ter motivo ESCRITO — a lista de fora não pode
+    // virar esconderijo
+    for (const [t, motivo] of Object.entries(backupMod.FORA)) {
+      assert(motivo && motivo.length > 15, `a exceção "${t}" não explica por quê`);
+    }
+  });
+
+  await teste('o dump sai CIFRADO — acervo de todas as famílias num arquivo só', async () => {
+    const d = await backupMod.gerar();
+    assert(d.resumo.persons > 0, 'o dump saiu sem pessoa nenhuma — backup vazio passa despercebido');
+    assert(d.bytes > 0 && d.sha256.length === 64);
+    // o texto do acervo NÃO pode aparecer no arquivo
+    const cru = d.cifrado.toString('latin1');
+    assert(!/varanda|Pirapora|Villela/i.test(cru),
+      'O DUMP ESTÁ LEGÍVEL: o acervo inteiro de todas as famílias em claro no R2');
+    // e abre de volta
+    const aberto = backupMod.abrir(d.cifrado);
+    assert.strictEqual(aberto.origena, 'backup/v1');
+    assert.strictEqual(aberto.tabelas.persons.length, d.resumo.persons);
+  });
+
+  await teste('RESTORE EXECUTADO: o dump volta e confere linha a linha', async () => {
+    // É o teste que dá sentido ao módulo inteiro. Backup que ninguém
+    // restaurou é uma promessa, não um backup — e a promessa costuma
+    // quebrar no único dia em que importa.
+    const d = await backupMod.gerar();
+    const conteudo = backupMod.abrir(d.cifrado);
+
+    const destino = 't_restore_' + crypto.randomBytes(4).toString('hex');
+    await db.q(`CREATE SCHEMA "${destino}"`);
+    try {
+      // O schema de destino nasce das MIGRAÇÕES — a estrutura mora no git,
+      // o dump carrega só os dados. Roda numa transação com `SET LOCAL
+      // search_path` porque é o que garante a MESMA conexão: com o pool,
+      // um `SET` avulso pode cair numa conexão e a query seguinte, noutra.
+      const fsN = require('fs');
+      const pathN = require('path');
+      const dirSql = pathN.join(__dirname, 'schema');
+      await db.transacao(async (t) => {
+        await t.q(`SET LOCAL search_path = "${destino}", public`);
+        for (const f of fsN.readdirSync(dirSql).filter((x) => x.endsWith('.sql')).sort()) {
+          await t.q(fsN.readFileSync(pathN.join(dirSql, f), 'utf8'));
+        }
+      });
+
+      const feito = await backupMod.restaurar(conteudo, { schemaDestino: destino });
+      assert(!feito._nao_entraram,
+        `${feito._nao_entraram} linha(s) nunca entraram em ${(feito._tabelas_presas || []).join(', ')}`
+        + ` — motivo: ${(feito._motivos || []).join(' | ')}`);
+
+      const conf = await backupMod.conferir(conteudo, { schemaDestino: destino });
+      assert(conf.ok, `o restore não bate com o dump: ${JSON.stringify(conf.diferencas)}`);
+
+      // E o CONTEÚDO é o mesmo, não só a contagem. A leitura vai dentro do
+      // escopo da família: conferir fora dele devolveria zero pelo RLS e
+      // acusaria perda onde não houve — foi assim que este teste falhou
+      // uma vez, com o restore inteiro correto por baixo.
+      const modelo = conteudo.tabelas.persons[0];
+      assert(modelo, 'o dump não tinha pessoa nenhuma para conferir');
+      const volta = await tenancy.comEscopo(modelo.family_id, (t) => t.uma(
+        `SELECT nome_exibicao FROM "${destino}".persons WHERE id = $1`, [modelo.id]));
+      assert(volta && volta.nome_exibicao === modelo.nome_exibicao,
+        `a pessoa voltou diferente: "${volta && volta.nome_exibicao}" ≠ "${modelo.nome_exibicao}"`);
+    } finally {
+      await db.q(`DROP SCHEMA IF EXISTS "${destino}" CASCADE`);
+    }
+  });
+
+  await teste('guardar sobe ao R2, registra o dia e apaga o que venceu', async () => {
+    // A validade é por NOME de chave, não por listagem (o storage aqui não
+    // expõe listar). Este teste prova que o arquivo antigo some de verdade
+    // — senão a retenção seria só um comentário.
+    const hoje = '2026-08-11';
+    const velho = '2026-07-12';                       // hoje − 30 dias
+    await storage.enviar(`backups/origena-${velho}.dump`, Buffer.from('dump velho'),
+      'application/octet-stream');
+    assert(await storage.existe(`backups/origena-${velho}.dump`), 'o velho nem subiu');
+
+    const b = await backupMod.guardar({ dias: 30, hoje });
+    try {
+      assert.strictEqual(b.chave, `backups/origena-${hoje}.dump`);
+      assert(await storage.existe(b.chave), 'o backup do dia não chegou ao R2');
+      assert(!await storage.existe(`backups/origena-${velho}.dump`),
+        'o backup vencido continuou lá — a validade não vale nada');
+
+      // e o banco registra o dia, que é a trava da rotina diária
+      const cfg = await db.uma(`SELECT valor FROM config WHERE chave = 'backup_ultimo'`);
+      const reg = JSON.parse(cfg.valor);
+      assert.strictEqual(reg.dia, hoje);
+      assert(reg.resumo.persons > 0, 'registrou um backup vazio como se fosse bom');
+      assert.strictEqual(reg.sha256.length, 64);
+    } finally {
+      await storage.apagar(b.chave).catch(() => {});
+    }
+  });
+
+  await teste('restaurar RECUSA escrever no schema de produção', async () => {
+    // Um restore que alcança produção é um botão de apagar o acervo com
+    // nome de botão de salvar.
+    await assert.rejects(
+      () => backupMod.restaurar({ tabelas: {} }, { schemaDestino: 'origena' }),
+      /schema de teste/, 'aceitou restaurar por cima da produção');
+    await assert.rejects(
+      () => backupMod.restaurar({ tabelas: {} }, { schemaDestino: 'public' }), /schema de teste/);
+  });
+
   console.log('\nintegridade (§77, ADR-0008)');
   await teste('a amostra confere os hashes — e byte trocado por fora é PEGO', async () => {
     const ok1 = await tenancy.comEscopo(famA, (t) =>

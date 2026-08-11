@@ -23,7 +23,8 @@ const fila = require('./fila');
 const LOTE = Number(process.env.ORIGENA_WORKER_LOTE || 5);
 const INTERVALO_MS = Number(process.env.ORIGENA_WORKER_MS || 3000);
 const CLASSE = process.env.ORIGENA_WORKER_FILA || null;   // 'rapida' | 'cara' | null = as duas
-const DESTRAVAR_A_CADA = 20;                              // ciclos
+const DESTRAVAR_A_CADA = 20;
+const CICLOS_BACKUP = Math.max(1, Math.round(3600000 / INTERVALO_MS));   // ~1 hora
 
 let rodando = false;
 let parar = false;
@@ -144,9 +145,32 @@ async function bater() {
     [JSON.stringify(estado)]);
 }
 
+/**
+ * Backup diário do banco (§76). Sem cron e sem tarefa externa: o worker
+ * já roda sempre, e a decisão é do BANCO — "o último backup é de hoje?".
+ * Isso torna a rotina auto-corretiva: worker reiniciado, deploy no meio
+ * do dia ou queda de algumas horas não pulam o dia, porque a pergunta é
+ * sobre o estado, não sobre o relógio ter batido no instante certo.
+ */
+async function talvezBackup() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const r = await db.uma(`SELECT valor FROM config WHERE chave = 'backup_ultimo'`);
+  let ultimo = null;
+  try { ultimo = r ? JSON.parse(r.valor).dia : null; } catch (_) {}
+  if (ultimo === hoje) return;
+  const b = await require('./backup').guardar({ hoje });
+  console.log(`[origena/worker] backup do dia: ${b.chave} · ${Math.round(b.bytes / 1024)} KB`);
+}
+
 async function ciclo(n) {
   if (n % 10 === 0) await bater().catch((e) => console.error('[origena/worker] batida falhou:', e.message));
   if (n % DESTRAVAR_A_CADA === 0) await fila.destravarPresos(15);
+  // Uma tentativa por hora basta — a trava real é a data no banco. O
+  // número de ciclos sai do INTERVALO, não de uma constante que envelhece
+  // em silêncio quando alguém muda o ritmo do worker.
+  if (n % CICLOS_BACKUP === 0) {
+    await talvezBackup().catch((e) => console.error('[origena/worker] backup falhou:', e.message));
+  }
   const r = await fila.processarLote(LOTE, CLASSE);
   if (r.pegos) {
     console.log(`[origena/worker] lote: ${r.pegos} pegos · ${r.ok} ok · ${r.falhas} falhas`
