@@ -99,7 +99,15 @@ const Persons = {
          falecimento_ini = COALESCE($11, falecimento_ini), falecimento_fim = COALESCE($12, falecimento_fim),
          vitalidade = COALESCE($13, vitalidade), genero = COALESCE($14, genero),
          local_nascimento = COALESCE($15, local_nascimento), profissao = COALESCE($16, profissao),
-         resumo = COALESCE($17, resumo), privacidade = COALESCE($18, privacidade),
+         resumo = COALESCE($17, resumo),
+         eh_menor = COALESCE($19, eh_menor),
+         -- MARCAR COMO MENOR APERTA SOZINHO; DESMARCAR NUNCA AFROUXA.
+         -- Quem esqueceu de marcar o filho na criação (acontece, e foi
+         -- assim que isto apareceu) precisa que a correção proteja na
+         -- hora. O caminho inverso é decisão consciente: desmarcar não
+         -- pode tornar público um perfil que estava fechado.
+         privacidade = CASE WHEN $19 IS TRUE THEN 'PRIVATE'
+                            ELSE COALESCE($18, privacidade) END,
          updated_at = now()
        WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
       [id, dados.nome_exibicao ? s(dados.nome_exibicao, 120) : null,
@@ -111,7 +119,8 @@ const Persons = {
         dados.local_nascimento !== undefined ? s(dados.local_nascimento, 160) : null,
         dados.profissao !== undefined ? s(dados.profissao, 120) : null,
         dados.resumo !== undefined ? s(dados.resumo, 2000) : null,
-        dados.privacidade && ['PUBLIC', 'FAMILY', 'GROUP', 'PRIVATE'].includes(dados.privacidade) ? dados.privacidade : null]);
+        dados.privacidade && ['PUBLIC', 'FAMILY', 'GROUP', 'PRIVATE'].includes(dados.privacidade) ? dados.privacidade : null,
+        dados.eh_menor === undefined ? null : !!dados.eh_menor]);
 
     await indexar(t, familyId, p);
     await auditar({ familyId, atorUserId: userId, acao: 'pessoa.editada',
@@ -138,10 +147,20 @@ const Persons = {
 const TIPOS = ['PARENT_OF', 'SPOUSE_OF', 'PARTNER_OF', 'SIBLING_OF', 'GUARDIAN_OF'];
 const NATUREZAS = ['biologico', 'adotivo', 'socioafetivo', 'enteado', 'desconhecido'];
 
+// Filiação é UMA aresta lida dos dois lados, e quem está preenchendo a
+// própria ficha pensa "o Pedro é meu filho", não "eu sou pai do Pedro".
+// Aceitamos o verbo invertido na ENTRADA e guardamos sempre a aresta
+// canônica — ascendente em person_a. Duas arestas para o mesmo fato
+// fariam a árvore divergir conforme o lado por onde se olha.
+const INVERSOS = { CHILD_OF: 'PARENT_OF', WARD_OF: 'GUARDIAN_OF' };
+
 const Relationships = {
   async criar(t, { familyId, userId, dados }) {
-    const { person_a, person_b } = dados;
-    const tipo = s(dados.tipo, 20);
+    const pedido = s(dados.tipo, 20);
+    const inverte = !!INVERSOS[pedido];
+    const person_a = inverte ? dados.person_b : dados.person_a;
+    const person_b = inverte ? dados.person_a : dados.person_b;
+    const tipo = INVERSOS[pedido] || pedido;
     const natureza = NATUREZAS.includes(dados.natureza) ? dados.natureza : 'biologico';
     if (!TIPOS.includes(tipo)) throw erro('erro.parentesco_tipo_invalido', 400);
     if (person_a === person_b) throw erro('erro.parentesco_consigo', 400);
@@ -196,4 +215,4 @@ const Relationships = {
   },
 };
 
-module.exports = { Persons, Relationships, campoData, TIPOS, NATUREZAS };
+module.exports = { Persons, Relationships, campoData, TIPOS, NATUREZAS, INVERSOS };

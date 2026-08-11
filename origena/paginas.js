@@ -107,6 +107,7 @@ function registrarPaginas(app) {
 
     res.type('html').send(pagina(idioma, `${t('ajuda.titulo')} — ${t('produto.nome')}`, `
 <div class="wrap">
+  <p class="sub"><a href="/origena">&larr; ${t('ajuda.voltar')}</a></p>
   <div class="hero">
     <h1>${t('ajuda.titulo')}</h1>
     <p class="assinatura">${t('ajuda.intro')}</p>
@@ -152,6 +153,10 @@ const CSS_PUBLICO = `
 .btn{display:inline-block;background:var(--tema);color:#fff;border-radius:999px;
 padding:13px 26px;font-weight:600;text-decoration:none;line-height:22px}
 .card a{color:var(--tema)}
+/* A regra ".card a" tem especificidade MAIOR que ".btn" e vinha depois:
+   o texto do botão virava marrom sobre marrom — botão invisível. Precisa
+   vencer explicitamente, não por ordem. */
+.card a.btn{color:#fff}
 nav.card p{margin:0;line-height:2.1}
 `;
 
@@ -225,8 +230,13 @@ async function api(metodo, caminho, corpo) {
 const aviso = (m, tipo) => '<div class="' + (tipo||'erro') + '">' + esc(m || t('erro.generico')) + '</div>';
 const papelNome = (p) => t('papel.' + p) || p;
 
+// A AJUDA MORA NO TOPO, EM TODA TELA. Ela existia e não tinha link em
+// lugar nenhum: só chegava quem soubesse o endereço de cor — que é o
+// mesmo que não existir.
 const topo = () => '<div class="topo"><span class="marca">' + esc(t('produto.nome')) + '</span>' +
-  (EU ? '<span class="sub">' + esc(EU.nome) + ' · <a href="#" onclick="sair();return false">' + esc(t('acao.sair')) + '</a></span>' : '') +
+  '<span class="sub">' +
+  (EU ? esc(EU.nome) + ' · <a href="#" onclick="sair();return false">' + esc(t('acao.sair')) + '</a> · ' : '') +
+  '<a href="/origena/ajuda" target="_blank" rel="noopener">' + esc(t('ajuda.titulo')) + '</a></span>' +
   '</div>';
 
 // ------------------------------------------------------------------ entrar
@@ -372,8 +382,49 @@ const anos = (p) => {
   return b ? a + ' – ' + b : (p.vitalidade === 'falecida' ? a + ' – ?' : a);
 };
 
+// Corrigir a ficha de alguém. Só manda o que MUDOU: o servidor usa
+// COALESCE, então campo vazio significaria "apaga" se fosse enviado.
+async function editarPessoa(id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id);
+  if (r.status >= 400) return alert(r.erro);
+  const p = r.pessoa;
+  const corpo = {};
+  const nome = prompt(t('pessoa.nome'), p.nome_exibicao || '');
+  if (nome === null) return;
+  if (nome && nome !== p.nome_exibicao) corpo.nome_exibicao = nome;
+  const nasc = prompt(t('pessoa.nascimento'), p.nascimento_valor || '');
+  if (nasc !== null && nasc !== (p.nascimento_valor || '')) corpo.nascimento = nasc;
+  const local = prompt(t('pessoa.local_nascimento'), p.local_nascimento || '');
+  if (local !== null && local !== (p.local_nascimento || '')) corpo.local_nascimento = local;
+  if (confirm(t('pessoa.menor_explica'))) corpo.eh_menor = true;
+
+  if (!Object.keys(corpo).length) return;
+  const s = await api('PATCH', '/familias/' + FAM.id + '/pessoas/' + id, corpo);
+  if (s.status >= 400) return alert(s.erro);
+  alert(corpo.eh_menor ? t('pessoa.menor_ligado') : t('pessoa.salvo'));
+  dossie(id);
+}
+
+// Arquivar é SOFT DELETE (§66): some da lista e da árvore, continua no
+// banco e na Lixeira. O texto do aviso diz isso — quem clica precisa
+// saber que não está apagando o que a pessoa contribuiu.
+async function arquivarPessoa(id) {
+  const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id);
+  if (r.status >= 400) return alert(r.erro);
+  if (!confirm(t('pessoa.arquivar_confirmar', { nome: r.pessoa.nome_exibicao }))) return;
+  const d = await api('DELETE', '/familias/' + FAM.id + '/pessoas/' + id);
+  if (d.status >= 400) return alert(d.erro);
+  alert(t('pessoa.arquivada'));
+  pessoas();
+}
+
 async function pessoas() {
   const r = await api('GET', '/familias/' + FAM.id + '/pessoas');
+  // ERRO NÃO PODE PARECER LISTA VAZIA. Sem esta checagem, uma falha na
+  // requisição caía no mesmo texto de "nenhuma pessoa ainda" — e quem
+  // tinha sete parentes cadastrados via a família em branco e concluía
+  // que o acervo havia sido apagado. Aconteceu (11/08/2026).
+  if (r.status >= 400) return $(topo() + aviso(r.erro || r.status));
   $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
     '<h2>' + esc(t('pessoa.titulo')) + '</h2>' +
     (r.ocultas ? '<p class="sub">' + esc(t('pessoa.ocultas', { n: r.ocultas })) + '</p>' : '') +
@@ -451,9 +502,17 @@ async function dossie(id) {
         esc(x.nome_exibicao) + '</a> <span class="sub">' + esc(anos(x)) + '</span>' +
         (extra ? extra(x) : '') + '</span></div>').join('')
     : '';
+  // Vinculo errado precisa ter saida pela tela: sem isto, quem registrou
+  // o lado trocado ficava com o pai listado como filho e nada a fazer.
+  // Irmao DERIVADO nao tem aresta propria (rel_id nulo) — desfaz-se
+  // desligando o ascendente comum.
+  const desfazer = (x) => pode('parentesco.editar') && x.rel_id
+    ? ' <button class="btn mini claro" onclick="desligar(\\'' + x.rel_id + '\\',\\'' + p.id +
+      '\\')">' + esc(t('familia.desligar')) + '</button>' : '';
   const selo = (x) => (x.natureza && x.natureza !== 'biologico'
       ? ' <span class="papel">' + esc(t('parentesco.' + x.natureza)) + '</span>' : '')
-    + (x.meio ? ' <span class="papel">' + esc(t('familia.meio_irmao')) + '</span>' : '');
+    + (x.meio ? ' <span class="papel">' + esc(t('familia.meio_irmao')) + '</span>' : '')
+    + desfazer(x);
 
   $(topo() + '<p class="sub"><a href="#" onclick="pessoas();return false">← ' + esc(t('pessoa.titulo')) + '</a></p>' +
     '<h2>' + esc(p.nome_exibicao) + '</h2>' +
@@ -461,7 +520,17 @@ async function dossie(id) {
       (p.profissao ? ' · ' + esc(p.profissao) : '') + '</p>' +
     '<p><button class="btn mini" onclick="verArvore(\\'' + p.id + '\\')">' + esc(t('familia.ver_arvore')) + '</button> ' +
       '<button class="btn mini sec" onclick="telaGrafo(\\'person\\',\\'' + p.id + '\\')">' +
-      esc(t('grafo.titulo')) + '</button></p>' +
+      esc(t('grafo.titulo')) + '</button>' +
+      // EDITAR E ARQUIVAR existiam na API e não existiam na TELA: quem
+      // errava um nome ou esquecia de marcar o filho como menor não tinha
+      // caminho nenhum. Recurso sem porta é recurso que não existe.
+      (pode('pessoas.editar')
+        ? ' <button class="btn mini sec" onclick="editarPessoa(\\'' + p.id + '\\')">' +
+          esc(t('acao.editar')) + '</button>' : '') +
+      (pode('excluir')
+        ? ' <button class="btn mini sec" onclick="arquivarPessoa(\\'' + p.id + '\\')">' +
+          esc(t('pessoa.arquivar')) + '</button>' : '') +
+      '</p>' +
     grupo(t('familia.pais'), f.pais, selo) +
     grupo(t('familia.unioes'), f.unioes, selo) +
     grupo(t('familia.irmaos'), f.irmaos, selo) +
@@ -502,6 +571,10 @@ async function dossie(id) {
   if (pode('parentesco.editar')) preencherPessoas(p.id);
 }
 
+// Filiacao e UMA aresta lida dos dois lados. Sem o lado de ca so da para
+// registrar o filho a partir da ficha do pai — e quem esta na propria
+// ficha acaba virando pai de quem queria chamar de filho. Mandamos o
+// verbo escolhido como veio; quem normaliza a aresta e o servidor.
 function formParentesco(id) {
   // Sem <script> no innerHTML: navegador nenhum executa script inserido
   // assim. O select e preenchido depois, por preencherPessoas().
@@ -509,7 +582,8 @@ function formParentesco(id) {
     '<option value="' + x + '">' + esc(t('parentesco.' + x)) + '</option>').join('');
   return '<h3 style="margin-top:26px">' + esc(t('familia.ligar')) + '</h3>' +
     '<label>' + esc(t('parentesco.tipo')) + '</label><select id="rt">' +
-      opcoes(['PARENT_OF','SPOUSE_OF','PARTNER_OF','SIBLING_OF','GUARDIAN_OF']) + '</select>' +
+      opcoes(['PARENT_OF','CHILD_OF','SPOUSE_OF','PARTNER_OF','SIBLING_OF',
+        'GUARDIAN_OF','WARD_OF']) + '</select>' +
     '<label>' + esc(t('parentesco.natureza')) + '</label><select id="rn">' +
       opcoes(['biologico','adotivo','socioafetivo','enteado','desconhecido']) + '</select>' +
     '<label>' + esc(t('parentesco.pessoa')) + '</label><select id="rp"></select>' +
@@ -526,8 +600,10 @@ async function preencherPessoas(exceto) {
 
 async function ligar(id, confirmando) {
   const alvo = document.getElementById('rp').value;
-  const tipo = document.getElementById('rt').value;
-  const corpo = { person_a: tipo === 'PARENT_OF' ? id : id, person_b: alvo, tipo,
+  // person_a e sempre quem esta na tela: a frase e "esta pessoa e <tipo>
+  // de <alvo>". Em "filho(a) de" o servidor inverte para guardar a
+  // aresta canonica, com o ascendente em person_a.
+  const corpo = { person_a: id, person_b: alvo, tipo: document.getElementById('rt').value,
     natureza: document.getElementById('rn').value, confirmo_mesmo_assim: !!confirmando };
   const r = await api('POST', '/familias/' + FAM.id + '/parentescos', corpo);
   // 422 = aviso de sanidade: a família tem a última palavra sobre a
@@ -538,6 +614,13 @@ async function ligar(id, confirmando) {
   }
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   dossie(id);
+}
+
+async function desligar(relId, pessoaId) {
+  if (!confirm(t('familia.confirmar_desligar'))) return;
+  const r = await api('DELETE', '/familias/' + FAM.id + '/parentescos/' + relId);
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  dossie(pessoaId);
 }
 
 /** A fila do historiador: onde a família ainda não concorda (§17). */

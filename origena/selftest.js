@@ -565,6 +565,11 @@ async function principal() {
       conferir(missoesMod.PERGUNTA[tipo]);
     }
     for (const c of tradicoesMod.CATEGORIAS) conferir('tradicao.cat_' + c);
+    // Tipos de vínculo (inclusive o lado invertido que só existe na tela)
+    // e naturezas: o select do parentesco monta 'parentesco.' + chave.
+    const pessoasMod = require('./repo-pessoas');
+    for (const x of [...pessoasMod.TIPOS, ...Object.keys(pessoasMod.INVERSOS),
+      ...pessoasMod.NATUREZAS]) conferir('parentesco.' + x);
     for (const d of historiadorMod.DIMENSOES) conferir('indice.dim_' + d);
     // OWNER fica de fora: não se convida ninguém para dono da família,
     // então a descrição dele nunca aparece na tela de convite.
@@ -985,6 +990,20 @@ async function principal() {
     const doJoao = dossie.json.familia.pais.filter((x) => x.id === P.joao.id);
     assert.strictEqual(doJoao.length, 2, 'as duas naturezas não coexistiram');
     assert.deepStrictEqual(doJoao.map((x) => x.natureza).sort(), ['adotivo', 'biologico']);
+  });
+
+  await teste('"filho(a) de" guarda a MESMA aresta, sem trocar quem é o pai', async () => {
+    // Quem preenche a própria ficha pensa "o Pedro é meu filho", não "eu
+    // sou pai do Pedro". Sem o lado invertido, a tela só oferecia
+    // PARENT_OF e o autor virava pai de quem queria chamar de filho.
+    const caculo = await criarPessoa({ nome: 'Caçula Villela', nascimento: '1958' });
+    const r = await ligar({ person_a: caculo.id, person_b: P.pedro.id, tipo: 'CHILD_OF' });
+    assert.strictEqual(r.status, 201, 'recusou o lado invertido: ' + r.texto);
+    assert.strictEqual(r.json.parentesco.tipo, 'PARENT_OF', 'guardou tipo que o banco não conhece');
+    assert.strictEqual(r.json.parentesco.person_a, P.pedro.id, 'gravou o filho como ascendente');
+    const d = await req('GET', `/origena/api/v1/familias/${famA}/pessoas/${caculo.id}`, { sessao: ana });
+    assert(d.json.familia.pais.some((x) => x.id === P.pedro.id), 'o pai não apareceu como pai');
+    assert.strictEqual(d.json.familia.filhos.length, 0, 'o pai entrou como filho');
   });
 
   await teste('irmãos são DERIVADOS do ascendente comum, sem aresta declarada', async () => {
@@ -4094,6 +4113,35 @@ async function principal() {
         corpo: { tipo: 'retrospectiva', ano } });
       assert.strictEqual(r.status, 400, `aceitou retrospectiva do ano ${JSON.stringify(ano)}`);
     }
+  });
+
+  await teste('dá para CORRIGIR a ficha depois — inclusive marcar como menor', async () => {
+    // Achado no primeiro uso real (11/08/2026): o Augusto criou o filho,
+    // esqueceu de marcar menor de idade e não tinha caminho nenhum para
+    // corrigir. `eh_menor` só existia na CRIAÇÃO — nem pela API dava.
+    const r = await req('POST', F('/pessoas'), { sessao: ana,
+      corpo: { nome: 'Filho Sem Marca' } });
+    const id = r.json.pessoa.id;
+    assert.strictEqual(r.json.pessoa.eh_menor, false);
+
+    const nome = await req('PATCH', F(`/pessoas/${id}`), { sessao: ana,
+      corpo: { nome_exibicao: 'Filho Com Nome Certo' } });
+    assert.strictEqual(nome.status, 200, nome.texto);
+    assert.strictEqual(nome.json.pessoa.nome_exibicao, 'Filho Com Nome Certo');
+
+    // marcar como menor APERTA sozinho: vira PRIVATE na mesma operação
+    const menor = await req('PATCH', F(`/pessoas/${id}`), { sessao: ana,
+      corpo: { eh_menor: true } });
+    assert.strictEqual(menor.json.pessoa.eh_menor, true);
+    assert.strictEqual(menor.json.pessoa.privacidade, 'PRIVATE',
+      'marcou como menor e o perfil continuou aberto (§73)');
+
+    // desmarcar NUNCA afrouxa: a privacidade fica onde está
+    const volta = await req('PATCH', F(`/pessoas/${id}`), { sessao: ana,
+      corpo: { eh_menor: false } });
+    assert.strictEqual(volta.json.pessoa.eh_menor, false);
+    assert.strictEqual(volta.json.pessoa.privacidade, 'PRIVATE',
+      'desmarcar menor reabriu o perfil sozinho — ninguém pediu isso');
   });
 
   // ========================================== 3.3 CÁPSULA DO TEMPO (§39)
