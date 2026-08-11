@@ -827,6 +827,53 @@ async function main() {
       if (modVideoId) await req('DELETE', `/academy/api/produtor/produtos/${prodId}/modulos/${modVideoId}`, { jar: 'maria' });
     }
   });
+  // REGRESSÃO (11/08/2026): com o storage no R2, a capa PÚBLICA ia buscar o arquivo no
+  // DISCO (sendFile) e dava ENOENT. Em produção o card do marketplace virava imagem
+  // quebrada esticada e o "ver" do produtor respondia Not Found — com o upload intacto
+  // no bucket. A suíte roda com driver local, então este caminho nunca executava: aqui
+  // só a REDE é falsa (bucket em memória); SigV4, escolha de driver e rota são os reais.
+  await t('capa pública sai do bucket quando o storage é S3/R2 (não do disco)', async () => {
+    const ENVS = ['ACADEMY_S3_ENDPOINT', 'ACADEMY_S3_BUCKET', 'ACADEMY_S3_KEY', 'ACADEMY_S3_SECRET'];
+    const envAntes = ENVS.map((k) => process.env[k]);
+    const capaAntes = dbx.prepare('SELECT capa_media_id FROM products WHERE id = ?').get(prodId).capa_media_id;
+    const bucket = new Map();
+    const fetchReal = globalThis.fetch;
+    process.env.ACADEMY_S3_ENDPOINT = 'https://conta-teste.r2.cloudflarestorage.com';
+    process.env.ACADEMY_S3_BUCKET = 'academy-teste';
+    process.env.ACADEMY_S3_KEY = 'AKIATESTE';
+    process.env.ACADEMY_S3_SECRET = 'segredo-teste';
+    globalThis.fetch = async (url, opc) => {
+      const u = String(url && url.url ? url.url : url);
+      if (!u.includes('r2.cloudflarestorage.com')) return fetchReal(url, opc); // tráfego da própria suíte
+      const chave = decodeURIComponent(new URL(u).pathname.split('/').slice(2).join('/'));
+      const met = (opc && opc.method) || 'GET';
+      if (met === 'PUT') { bucket.set(chave, Buffer.from(opc.body)); return new Response('', { status: 200 }); }
+      if (!bucket.has(chave)) return new Response('', { status: 404 });
+      if (met === 'HEAD') return new Response('', { status: 200, headers: { 'content-length': String(bucket.get(chave).length) } });
+      return new Response(bucket.get(chave), { status: 200 });
+    };
+    try {
+      const png = Buffer.from('PNGfake-que-so-existe-no-bucket');
+      const up = await req('POST', '/academy/api/produtor/upload', { jar: 'maria', corpo: { nome: 'capa-r2.png', mime: 'image/png', conteudo_base64: png.toString('base64') } });
+      assert.equal(up.st, 200, 'upload da capa com R2 ligado');
+      assert.equal(dbx.prepare('SELECT storage FROM media_files WHERE id = ?').get(up.json.id).storage, 's3', 'a capa foi para o bucket, não para o disco');
+      assert.equal((await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { capa_media_id: up.json.id } })).st, 200);
+
+      const r = await fetchReal(`${BASE}/academy/capa/${prodId}`);
+      assert.equal(r.status, 200, 'capa no bucket tem de ser servida (antes: 404 do sendFile no disco)');
+      assert.ok((r.headers.get('content-type') || '').includes('image/png'));
+      assert.equal(Buffer.from(await r.arrayBuffer()).toString(), png.toString(), 'os bytes vêm do bucket');
+
+      // e o produtor vê a própria capa mesmo com o produto FORA do ar (rota privada)
+      const priv = await req('GET', `/academy/api/media/${up.json.id}`, { jar: 'maria', redirect: 'manual' });
+      assert.ok(priv.st === 200 || priv.st === 302, `dono enxerga a capa, veio ${priv.st}`);
+    } finally {
+      globalThis.fetch = fetchReal;
+      ENVS.forEach((k, i) => { if (envAntes[i] == null) delete process.env[k]; else process.env[k] = envAntes[i]; });
+      // devolve a capa local: senão os testes seguintes leem um arquivo que só existia no bucket falso
+      if (capaAntes) await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { capa_media_id: capaAntes } });
+    }
+  });
   await t('presign SigV4 (S3/R2) gera URLs válidas em formato', async () => {
     const cfg = { endpoint: 'https://conta.r2.cloudflarestorage.com', bucket: 'academy', key: 'AKIATESTE', secret: 'segredo', region: 'auto' };
     for (const met of ['GET', 'PUT', 'HEAD']) {

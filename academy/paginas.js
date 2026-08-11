@@ -472,13 +472,27 @@ function registrarPaginas(app, { notificar }) {
     res.send(html);
   });
   // capa pública: SÓ de produto publicado (sem sessão; único arquivo exposto sem login)
-  app.get('/academy/capa/:productId', (req, res) => {
+  app.get('/academy/capa/:productId', async (req, res) => {
     const p = ct.Produtos.obter(s(req.params.productId, 40));
     if (!p || p.status !== 'publicado' || !p.capa_media_id) return res.sendStatus(404);
     const m = ct.Midia.obter(p.capa_media_id);
     if (!m || !m.mime.startsWith('image/')) return res.sendStatus(404);
     res.setHeader('Content-Type', m.mime);
     res.setHeader('Cache-Control', 'public, max-age=3600');
+    // Com o storage no R2 o arquivo NÃO está no disco: esta rota mandava
+    // sendFile no caminho local, dava ENOENT e o card do marketplace virava
+    // imagem quebrada esticada. Aqui os bytes passam pelo servidor DE PROPÓSITO
+    // (a rota privada pode redirecionar; esta não): ela é o og:image do produto
+    // e precisa de URL estável — URL presignada expira e quebra o compartilhamento.
+    if (m.storage === 's3') {
+      try {
+        const u = ct.Midia.urlTemporaria(m, '', 300).url;
+        if (!/^https?:/.test(u)) return res.sendStatus(404); // media no bucket e bucket desligado
+        const r = await fetch(u);
+        if (!r.ok) return res.sendStatus(404);
+        return res.end(Buffer.from(await r.arrayBuffer()));
+      } catch (_) { return res.sendStatus(404); }
+    }
     res.sendFile(ct.Midia.caminhoAbsoluto(m));
   });
   // interesse de compra (pré-checkout): vira lead + alerta

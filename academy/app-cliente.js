@@ -805,7 +805,13 @@
 
       // capa + página de venda (FASE 3)
       html += '<div class="card"><h3>🖼️ Capa</h3>' +
-        (p.capa_media_id ? '<p class="sub" style="text-align:left">Capa atual definida.' + (p.status === 'publicado' ? ' <a href="/academy/capa/' + p.id + '" target="_blank">ver</a>' : '') + '</p>' : '<p class="sub" style="text-align:left">Sem capa — imagens 16:9 (jpg/png/webp) até 10 MB.</p>') +
+        // a capa se VÊ pela rota privada (/api/media), que serve disco e bucket e não
+        // exige produto publicado — a pública só existe depois de publicar, e era ela
+        // que o "ver" abria: quem acabou de enviar a capa levava um Not Found.
+        (p.capa_media_id
+          ? '<p class="sub" style="text-align:left">Capa atual — <a href="/academy/api/media/' + p.capa_media_id + '" target="_blank">abrir em tamanho real</a></p>'
+            + '<img src="/academy/api/media/' + p.capa_media_id + '" alt="Capa do produto" style="width:100%;max-width:320px;aspect-ratio:16/9;object-fit:cover;border-radius:10px;display:block;margin-bottom:10px">'
+          : '<p class="sub" style="text-align:left">Sem capa — imagens 16:9 (jpg/png/webp) até 10 MB.</p>') +
         '<input id="capa-file" type="file" accept="image/*" style="max-width:280px"> <button class="btn peq" id="b-capa">Enviar capa</button> <span id="capa-msg" class="erro"></span></div>';
       html += '<div class="card"><h3>🛍️ Página de venda</h3><div id="pv-box"><p class="sub">Carregando…</p></div></div>';
 
