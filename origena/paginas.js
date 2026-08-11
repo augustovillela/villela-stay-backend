@@ -887,10 +887,10 @@ async function telaGuardioes() {
             esc(t('guardiao.' + (g.status === 'ativo' ? 'ativo' : 'convidado'))) + '</span></span>' +
           '<span>' +
             (g.status === 'convidado'
-              ? '<button class="btn mini" onclick="aceitarGuardiao(\'' + g.id + '\')">' +
+              ? '<button class="btn mini" onclick="aceitarGuardiao(\\'' + g.id + '\\')">' +
                 esc(t('guardiao.aceitar')) + '</button> ' : '') +
             (pode('guardioes.gerenciar')
-              ? '<button class="btn mini" onclick="removerGuardiao(\'' + g.id + '\')">' +
+              ? '<button class="btn mini" onclick="removerGuardiao(\\'' + g.id + '\\')">' +
                 esc(t('guardiao.remover')) + '</button>' : '') +
           '</span></div>').join('')
       : '<p class="sub">' + esc(t('guardiao.nenhum')) + '</p>') +
@@ -904,7 +904,7 @@ async function telaGuardioes() {
             (p.contesta_ate ? ' · ' + esc(t('guardiao.prazo', { data: dt(p.contesta_ate) })) : '') +
           '</span></span>' +
           (['aguardando_quorum', 'aguardando_revisao', 'em_contestacao'].includes(p.status)
-            ? '<span><button class="btn mini" onclick="derrubarSucessao(\'' + p.id + '\')">' +
+            ? '<span><button class="btn mini" onclick="derrubarSucessao(\\'' + p.id + '\\')">' +
               esc(t('guardiao.derrubar')) + '</button></span>' : '<span></span>') +
           '</div>').join('')
       : '<p class="sub">' + esc(t('guardiao.nenhum_pedido')) + '</p>'));
@@ -962,10 +962,10 @@ async function telaCapsulas() {
                   : t('capsula.abre_em', { data: dt(c.abre_em) })) + '</span></span>' +
           '<span>' +
             (c.pode_abrir || c.status === 'aberta'
-              ? '<button class="btn mini" onclick="abrirCapsula(\'' + c.id + '\')">' +
+              ? '<button class="btn mini" onclick="abrirCapsula(\\'' + c.id + '\\')">' +
                 esc(t('capsula.abrir')) + '</button> ' : '') +
             (c.status === 'lacrada'
-              ? '<button class="btn mini" onclick="cancelarCapsula(\'' + c.id + '\')">' +
+              ? '<button class="btn mini" onclick="cancelarCapsula(\\'' + c.id + '\\')">' +
                 esc(t('capsula.cancelar')) + '</button>' : '') +
           '</span></div>').join('')
       : '<p class="sub">' + esc(t('capsula.nenhuma')) + '</p>'));
@@ -991,7 +991,7 @@ async function abrirCapsula(id) {
     esc(t('capsula.titulo')) + '</a></p>' +
     '<h2>' + esc(r.titulo) + '</h2>' +
     (r.recado ? '<p class="sub">' + esc(r.recado) + '</p>' : '') +
-    '<p>' + esc(r.corpo).replace(/\n/g, '<br>') + '</p>');
+    '<p>' + esc(r.corpo).replace(/\\n/g, '<br>') + '</p>');
 }
 
 async function cancelarCapsula(id) {
@@ -1030,7 +1030,7 @@ async function telaLivros() {
             tradicoes: (l.conteudo || {}).tradicoes || 0, fotos: (l.conteudo || {}).fotos || 0 })) +
             ' · ' + esc(t('livro.pedido_por', { nome: l.pedido_por || '' })) + '</span></span>' +
           (l.status === 'pronto'
-            ? '<span><button class="btn mini" onclick="baixarLivro('' + l.id + '')">' +
+            ? '<span><button class="btn mini" onclick="baixarLivro(\\'' + l.id + '\\')">' +
               esc(t('livro.baixar')) + '</button></span>' : '<span></span>') +
           '</div>').join('')
       : '<p class="sub">' + esc(t('livro.nenhum')) + '</p>'));
@@ -1046,8 +1046,8 @@ async function pedirScrapbook() {
   const r = await api('GET', '/familias/' + FAM.id + '/albuns');
   const albuns = (r.albuns || []).filter(a => a.itens > 0);
   if (!albuns.length) return alert(t('livro.sem_album'));
-  const escolha = prompt(t('livro.escolher_album') + '\n\n' +
-    albuns.map((a, i) => (i + 1) + ') ' + a.titulo + ' (' + a.itens + ')').join('\n'));
+  const escolha = prompt(t('livro.escolher_album') + '\\n\\n' +
+    albuns.map((a, i) => (i + 1) + ') ' + a.titulo + ' (' + a.itens + ')').join('\\n'));
   const i = Number(escolha) - 1;
   if (!albuns[i]) return;
   return novoLivro({ tipo: 'album', album: albuns[i].id });
@@ -1493,7 +1493,7 @@ async function carregarEstudio(mediaId) {
       (pode('ia.usar') ? ligadas.map(op => '<div class="linha"><span><strong>' +
         esc(t('estudio.' + op)) + '</strong><br><span class="sub">' +
         esc(t('estudio.' + op.replace('_foto', '') + '_desc')) + '</span></span>' +
-        '<span><button class="btn mini" onclick="estudioFazer('' + mediaId + '','' + op + '')">' +
+        '<span><button class="btn mini" onclick="estudioFazer(\\'' + mediaId + '\\',\\'' + op + '\\')">' +
         esc(t('estudio.gerar')) + ' · ' + caps[op].creditos + '</button></span></div>').join('') : '')) +
     (naFila.length ? '<p class="sub">' + esc(t('estudio.na_fila')) + '</p>' : '') +
     (falhou ? '<p class="sub">' + esc(t('estudio.falhou', { motivo: falhou.erro || '' })) + '</p>' : '') +
@@ -2278,10 +2278,10 @@ async function telaPlanos() {
       // isso, botão de "assinar" que não cobra é promessa falsa.
       (podeComprar && p.preco_centavos ?
         '<p style="margin:10px 0 0">' +
-        '<button class="btn" onclick="assinar(\'' + esc(p.codigo) + '\',\'mensal\')">' +
+        '<button class="btn" onclick="assinar(\\'' + esc(p.codigo) + '\\',\\'mensal\\')">' +
           esc(t('plano.assinar_mes')) + '</button>' +
-        (p.preco_anual_centavos ? ' <button class="btn sec" onclick="assinar(\'' + esc(p.codigo) +
-          '\',\'anual\')">' + esc(t('plano.assinar_ano')) + '</button>' : '') +
+        (p.preco_anual_centavos ? ' <button class="btn sec" onclick="assinar(\\'' + esc(p.codigo) +
+          '\\',\\'anual\\')">' + esc(t('plano.assinar_ano')) + '</button>' : '') +
         '</p>' : '') +
       '</div>').join('') +
 
@@ -2289,8 +2289,8 @@ async function telaPlanos() {
     '<p class="sub">' + esc(t('plano.creditos_explica')) + '</p>' +
     (r.pacotes || []).map(p => '<div class="linha"><span>' +
       esc(t('plano.pacote', { n: p.creditos, valor: brl(p.preco_centavos) })) + '</span>' +
-      (podeComprar ? '<span><button class="btn sec" onclick="comprarCreditos(\'' +
-        esc(p.codigo) + '\')">' + esc(t('plano.comprar')) + '</button></span>' : '') +
+      (podeComprar ? '<span><button class="btn sec" onclick="comprarCreditos(\\'' +
+        esc(p.codigo) + '\\')">' + esc(t('plano.comprar')) + '</button></span>' : '') +
       '</div>').join('') +
 
     (podeComprar ? '' : '<h3 style="margin-top:26px">' + esc(t('plano.manual_titulo')) + '</h3>' +

@@ -465,6 +465,31 @@ async function principal() {
 
   const i18n = require('./i18n');
   console.log('\ni18n');
+  await teste('o JavaScript do app da família PARSEIA — não basta servir a página', async () => {
+    // A LIÇÃO MAIS CARA DESTA SUÍTE. Existia teste de que o app é SERVIDO,
+    // e nenhum de que ele RODA: bastava um erro de sintaxe para a página
+    // chegar 200, bonita, e ficar em branco. Foi o que aconteceu — o app
+    // ficou inutilizável em produção por dias, com a saúde toda verde,
+    // porque o script inteiro deixava de ser avaliado.
+    //
+    // A causa é traiçoeira: o app vive dentro de um TEMPLATE LITERAL, que
+    // come uma barra. `\'` no fonte vira `'` no script (aspas soltas), e
+    // `\n` vira quebra de linha de verdade (regex e string partidas). O
+    // correto é `\\'` e `\\n` — e é impossível ver isso lendo o fonte.
+    const r = await req('GET', '/origena/app');
+    assert.strictEqual(r.status, 200);
+    const script = (r.texto.match(/<script>([\s\S]*?)<\/script>/) || [])[1];
+    assert(script && script.length > 5000, 'o app não trouxe o script');
+    try {
+      // eslint-disable-next-line no-new-func
+      new Function(script);            // só COMPILA; não executa nada
+    } catch (e) {
+      const linha = script.split('\n').find((l) => /\(''|,''/.test(l)) || '';
+      assert.fail(`o app da família não compila (${e.message})`
+        + (linha ? ` — suspeita: ${linha.trim().slice(0, 120)}` : ''));
+    }
+  });
+
   await teste('nenhuma string de tela mora no código (§86)', async () => {
     const fs = require('fs');
     const suspeitos = [];
