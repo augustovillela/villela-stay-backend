@@ -59,6 +59,12 @@ const SCHEMA = {
 async function executar({ model, capability, entrada }) {
   if (capability === 'embedding') return embutir({ model, entrada });
   if (EDICOES[capability]) return editarImagem({ model, capability, entrada });
+  // `aoIniciar` viaja dentro de `entrada` porque o router não conhece
+  // capability assíncrona — o adaptador é que sabe que Veo devolve
+  // operação, e é ele que precisa avisar antes de esperar.
+  if (capability === 'animar_foto') {
+    return animar({ model, entrada, aoIniciar: entrada && entrada.aoIniciar });
+  }
   if (capability !== 'transcrever_audio') throw new Error('capability não suportada: ' + capability);
   if (!pronto()) throw new Error('sem GEMINI_API_KEY');
   const arq = entrada && entrada.arquivo;
@@ -214,4 +220,84 @@ async function editarImagem({ model, capability, entrada }) {
   };
 }
 
-module.exports = { pronto, executar, EDICOES };
+// ------------------------------------------------ animar (3.1b, Veo)
+/**
+ * A instrução da animação é a mais RESTRITIVA das quatro, e por um motivo
+ * que não vale para as outras: aqui tudo o que se move é invenção. A foto
+ * é registro; o movimento não é. Se o modelo puder mexer no rosto, a
+ * família não vai ver "um efeito sobre a foto do avô" — vai ver o avô.
+ */
+const ANIMACAO = `Anime esta fotografia com movimento MÍNIMO e sóbrio, como um retrato vivo.
+PODE: movimento leve de câmera (respiração/parallax muito sutil), variação delicada de luz, e
+movimento natural de elementos de fundo que já estejam na cena (folhas, cortina, água).
+NÃO PODE, EM HIPÓTESE NENHUMA: mudar traços de rosto, expressão ou idade aparente; fazer a pessoa
+falar, sorrir, piscar de forma marcada, virar a cabeça ou gesticular; acrescentar pessoas, objetos
+ou cenário; mover a câmera a ponto de revelar o que a foto não mostra.
+Nada do que se move aqui aconteceu. Prefira quase parado a convincente.`;
+
+/**
+ * Veo é ASSÍNCRONO: a chamada devolve uma operação e o vídeo fica pronto
+ * minutos depois. Quem chama passa `aoIniciar` para guardar o nome da
+ * operação ANTES da espera — sem isso, um worker que morre no meio perde
+ * o rastro de um vídeo que já foi pago ao provedor.
+ */
+async function animar({ model, entrada, aoIniciar }) {
+  if (!pronto()) throw new Error('sem GEMINI_API_KEY');
+  const arq = entrada && entrada.arquivo;
+  if (!arq || !arq.base64) throw new Error('animar_foto exige a imagem original');
+  const segundos = Math.max(1, Math.min(10, Number(entrada.segundos) || 8));
+
+  const inicio = await fetch(`${BASE}/${model}:predictLongRunning?key=${chave()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      instances: [{ prompt: ANIMACAO,
+        image: { bytesBase64Encoded: arq.base64, mimeType: arq.mime || 'image/jpeg' } }],
+      // Áudio DESLIGADO por decisão de produto: voz inventada para uma
+      // pessoa morta é pior que movimento inventado — a família reconhece
+      // movimento como efeito e reconheceria a voz como a voz dela.
+      parameters: { durationSeconds: segundos, generateAudio: false, resolution: '1080p' },
+    }),
+  });
+  if (!inicio.ok) throw new Error('Google ' + inicio.status + ': ' + (await inicio.text()).slice(0, 200));
+  const op = await inicio.json();
+  if (!op.name) throw new Error('o Veo não devolveu operação');
+  if (aoIniciar) await aoIniciar({ operacao: op.name, segundos });
+
+  const pronto_ = await esperarOperacao(op.name);
+  const vid = acharVideo(pronto_);
+  if (!vid) throw new Error('o modelo não devolveu vídeo: ' +
+    (JSON.stringify(pronto_.error || pronto_.response || {}).slice(0, 200) || 'sem motivo'));
+
+  const bytes = vid.bytesBase64Encoded
+    ? Buffer.from(vid.bytesBase64Encoded, 'base64')
+    : Buffer.from(await (await fetch(`${vid.uri}${vid.uri.includes('?') ? '&' : '?'}key=${chave()}`)).arrayBuffer());
+
+  return {
+    saida: { mime: vid.mimeType || 'video/mp4', base64: bytes.toString('base64') },
+    segundos, tokens_in: 0, tokens_out: 0, custo_centavos: 0,
+  };
+}
+
+/** Espera a operação terminar, com teto — não fica preso para sempre. */
+async function esperarOperacao(nome, { tetoMs = 10 * 60 * 1000, intervaloMs = 10000 } = {}) {
+  const ate = Date.now() + tetoMs;
+  for (;;) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/${nome}?key=${chave()}`);
+    if (r.ok) {
+      const d = await r.json();
+      if (d.done) return d;
+    }
+    if (Date.now() > ate) throw new Error('o Veo não terminou dentro do tempo');
+    await new Promise((ok) => setTimeout(ok, intervaloMs));
+  }
+}
+
+const acharVideo = (d) => {
+  const r = d.response || {};
+  const lista = r.generatedVideos || r.videos || (r.generateVideoResponse || {}).generatedSamples || [];
+  const primeiro = lista[0] || {};
+  return primeiro.video || (primeiro.uri || primeiro.bytesBase64Encoded ? primeiro : null);
+};
+
+module.exports = { pronto, executar, animar, esperarOperacao, EDICOES, ANIMACAO };

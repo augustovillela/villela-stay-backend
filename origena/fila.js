@@ -138,12 +138,18 @@ async function processarLote(limite = 5, fila = null) {
  * Job que ficou `processando` além do limite (worker morreu no meio)
  * volta para a fila. Sem isso ele fica preso para sempre.
  */
-async function destravarPresos(minutos = 15) {
+async function destravarPresos(minutos = 15, minutosCara = 40) {
+  // A FILA CARA PRECISA DE PRAZO MAIOR. Geração de vídeo é assíncrona no
+  // provedor e leva minutos: com o prazo curto, um job que estava só
+  // DEMORANDO volta para a fila e é executado de novo — e vídeo já pago
+  // seria pago duas vezes. Prazo apertado aqui não é zelo, é cobrança
+  // em duplicidade.
   const r = await db.q(
     `UPDATE jobs SET status='na_fila', travado_por=NULL, travado_em=NULL, updated_at=now()
-     WHERE status='processando' AND travado_em < now() - ($1 || ' minutes')::interval
+     WHERE status='processando'
+       AND travado_em < now() - (CASE WHEN fila = 'cara' THEN $2 ELSE $1 END || ' minutes')::interval
      RETURNING id`,
-    [String(minutos)],
+    [String(minutos), String(minutosCara)],
   );
   if (r.rowCount) console.warn(`[origena/fila] ${r.rowCount} job(s) presos foram destravados.`);
   return r.rowCount;

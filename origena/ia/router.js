@@ -38,7 +38,10 @@ async function cotar(t, capability) {
   const lista = await ativos(t, capability);
   if (!lista.length) return null;
   const p = lista[0];
-  return { capability, creditos: p.creditos, provider: p.provider, model: p.model };
+  // `custo_estimado_centavos` sai junto porque quem cota precisa poder
+  // aplicar teto de gasto (3.1b: vídeo se cobra por segundo).
+  return { capability, creditos: p.creditos, provider: p.provider, model: p.model,
+    custo_estimado_centavos: p.custo_estimado_centavos };
 }
 
 /**

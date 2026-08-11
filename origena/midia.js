@@ -215,8 +215,14 @@ async function quarentena(t, mediaId, chaveErro) {
  * Registra um DERIVADO (miniatura agora; restauração por IA na 3.0).
  * O original não é tocado — nunca (§7).
  */
+/**
+ * `tipo` normalmente vem do pai — miniatura de foto é foto. A exceção é a
+ * animação (3.1b): um VÍDEO derivado de uma FOTO. Sem esta troca ele
+ * entraria no acervo marcado como foto e apareceria quebrado na galeria
+ * e no livro.
+ */
 async function registrarDerivado(t, { familyId, userId, originalId, papel, aiClass = 'ORIGINAL',
-  sha256, bytes, mime, largura, altura, derivacao = {} }) {
+  sha256, bytes, mime, largura, altura, derivacao = {}, tipo = null }) {
   const pai = await t.uma(`SELECT * FROM media WHERE id = $1`, [originalId]);
   if (!pai) throw erro('erro.midia_nao_encontrada', 404);
   if (pai.derivado_de) throw erro('erro.derivado_de_derivado', 400);
@@ -229,7 +235,7 @@ async function registrarDerivado(t, { familyId, userId, originalId, papel, aiCla
        derivado_de, papel, ai_class, derivacao, largura, altura, status,
        privacidade, created_by, created_by_kind)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pronta',$14,$15,$16) RETURNING *`,
-    [id, familyId, pai.tipo, chave, String(sha256 || '').toLowerCase(), Number(bytes) || 0,
+    [id, familyId, tipo || pai.tipo, chave, String(sha256 || '').toLowerCase(), Number(bytes) || 0,
       s(mime, 100), originalId, papel, aiClass, JSON.stringify(derivacao),
       largura || null, altura || null, pai.privacidade, userId,
       aiClass === 'ORIGINAL' ? 'user' : 'ai']);

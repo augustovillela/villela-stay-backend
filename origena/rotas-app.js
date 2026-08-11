@@ -1168,6 +1168,7 @@ function registrarRotasApp(app) {
       const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
       res.json(await estudio.pedir({ familyId: req.familia.id, userId: req.usuario.id,
         mediaId: req.params.mediaId, operacao: s((req.body || {}).operacao, 40),
+        segundos: (req.body || {}).segundos,
         quem, confirmar: !!(req.body || {}).confirmar }));
     }));
 

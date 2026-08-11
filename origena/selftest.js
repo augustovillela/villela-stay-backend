@@ -3455,10 +3455,17 @@ async function principal() {
       assert(g.json.capacidades[op], 'faltou a operação ' + op);
       assert(g.json.capacidades[op].creditos > 0, op + ' apareceu de graça');
     }
-    // animar continua declarada e desligada: vídeo custa por segundo
+    // Animar foi LIGADA em 10/08/2026, depois de a conta ser feita com
+    // preço real (Veo 3.1 Fast 1080p, US$ 0,12/s) e o Augusto fixar teto
+    // e duração. O que este teste guarda agora não é "está desligada", e
+    // sim que ela não pode ser ligada de graça nem sem teto.
     const animar = await db.uma(
-      `SELECT ativo FROM provider_registry WHERE capability = 'animar_foto'`);
-    assert.strictEqual(animar.ativo, false, 'a animação foi ligada sem a conta feita');
+      `SELECT ativo, creditos, custo_estimado_centavos FROM provider_registry
+        WHERE capability = 'animar_foto'`);
+    assert.strictEqual(animar.ativo, true, 'a animação voltou a ficar desligada');
+    assert(animar.custo_estimado_centavos > 0, 'animação ligada sem custo declarado');
+    assert(animar.creditos > g.json.capacidades.restaurar_foto.creditos * 5,
+      `vídeo cobrando quase o preço de uma foto (${animar.creditos} créditos) — a conta se perdeu`);
   });
 
   await teste('cotação primeiro; confirmar RESERVA o crédito e enfileira', async () => {
@@ -3536,6 +3543,103 @@ async function principal() {
       { sessao: ana, corpo: { operacao: 'ampliar_foto', confirmar: true } });
     assert.strictEqual(neto.status, 400,
       'deixou derivar de um derivado — a cadeia vira telefone sem fio');
+  });
+
+  await teste('o teto de gasto do vídeo recusa ANTES de o crédito sair', async () => {
+    // Vídeo se cobra POR SEGUNDO — é a diferença de fundo entre animar e
+    // as outras três. O teto (`config`, decidido pelo Augusto) tem de
+    // valer na COTAÇÃO: recusar depois de reservar já seria estorno.
+    const antes = (await req('GET', F('/creditos'), { sessao: ana })).json.saldo;
+    await tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE config SET valor = '100' WHERE chave = 'estudio.video_teto_centavos'`));
+    const caro = await req('POST', F(`/midias/${fotoStudio}/estudio`),
+      { sessao: ana, corpo: { operacao: 'animar_foto', segundos: 10, confirmar: true } });
+    assert.strictEqual(caro.status, 409, `passou do teto: ${caro.texto}`);
+    assert.strictEqual((await req('GET', F('/creditos'), { sessao: ana })).json.saldo, antes,
+      'recusou pelo teto mas mexeu no saldo');
+
+    await tenancy.comEscopo(famA, (t) => t.q(
+      `UPDATE config SET valor = '3500' WHERE chave = 'estudio.video_teto_centavos'`));
+    for (const seg of [0, 11, 99]) {
+      const r = await req('POST', F(`/midias/${fotoStudio}/estudio`),
+        { sessao: ana, corpo: { operacao: 'animar_foto', segundos: seg, confirmar: true } });
+      assert.strictEqual(r.status, 400, `aceitou vídeo de ${seg} segundos`);
+    }
+  });
+
+  let videoId = null;
+
+  await teste('o vídeo entra como VÍDEO e AI_GENERATED — nunca como foto', async () => {
+    // `registrarDerivado` copiava o tipo do pai. Sem a troca, um vídeo
+    // gerado a partir de uma foto entraria no acervo marcado como FOTO e
+    // apareceria quebrado na galeria e no livro.
+    let avisou = null;
+    routerIA.injetarParaTeste('google', async ({ capability, entrada }) => {
+      assert.strictEqual(capability, 'animar_foto');
+      assert.strictEqual(entrada.segundos, 6, 'a duração pedida não chegou ao provedor');
+      if (entrada.aoIniciar) await entrada.aoIniciar({ operacao: 'models/veo/operations/xyz' });
+      avisou = true;
+      return { saida: { mime: 'video/mp4', base64: Buffer.from('\0\0\0 ftypisom fake').toString('base64') },
+        segundos: 6, tokens_in: 0, tokens_out: 0, custo_centavos: 366 };
+    });
+
+    const ped = await req('POST', F(`/midias/${fotoStudio}/estudio`),
+      { sessao: ana, corpo: { operacao: 'animar_foto', segundos: 6, confirmar: true } });
+    assert.strictEqual(ped.status, 200, ped.texto);
+    assert.strictEqual(ped.json.job.segundos, 6);
+    await fila.processarLote(10, 'cara');
+    assert(avisou, 'o provedor de teste nem foi chamado');
+
+    const d = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT id, tipo, ai_class, papel, derivado_de, mime_real, derivacao
+         FROM media WHERE derivado_de = $1 AND ai_class = 'AI_GENERATED'`, [fotoStudio]));
+    assert(d, 'a animação não virou mídia');
+    videoId = d.id;
+    assert.strictEqual(d.tipo, 'VIDEO', `o vídeo entrou como ${d.tipo} — vai quebrar galeria e livro`);
+    assert.strictEqual(d.mime_real, 'video/mp4');
+    assert.strictEqual(d.derivado_de, fotoStudio, 'perdeu o vínculo com a foto de origem');
+    assert.strictEqual(d.derivacao.audio, false, 'não registrou que o vídeo é mudo');
+    assert.strictEqual(d.derivacao.segundos, 6);
+
+    // o nome da operação do provedor foi guardado ANTES da espera: sem
+    // isso, worker morto no meio perde o rastro de um vídeo já pago
+    const job = await tenancy.comEscopo(famA, (t) => t.uma(
+      `SELECT entrada FROM ai_jobs WHERE resultado_media_id = $1`, [d.id]));
+    assert(job && job.entrada.operacao_provedor,
+      'não guardou a operação do provedor — retomada só saberia cobrar de novo');
+  });
+
+  await teste('o vídeo de IA não entra no livro nem no álbum como registro', async () => {
+    // É a mitigação que o produto prometeu. Um vídeo inventado dentro do
+    // livro da família seria exatamente o que a Origena existe para
+    // impedir: palpite com aparência de registro.
+    const a = await req('POST', F('/albuns'), { sessao: ana, corpo: { titulo: 'Com vídeo dentro' } });
+    const add = await req('POST', F(`/albuns/${a.json.album.id}/itens`), { sessao: ana,
+      corpo: { media_id: videoId } });
+    assert(add.status < 500, add.texto);
+
+    const r = await tenancy.comEscopo(famA, (t) => require('./livro').compor(t, {
+      familyId: famA, quem: { userId: ana.id, papel: 'OWNER' },
+      tipo: 'album', albumId: a.json.album.id }));
+    assert.strictEqual(r.contagens.fotos, 0,
+      'o vídeo criado por IA entrou no scrapbook como se fosse fotografia');
+  });
+
+  await teste('a fila cara tem prazo maior — vídeo lento não é cobrado duas vezes', async () => {
+    // Prazo curto aqui não é zelo: é reexecutar um vídeo que estava só
+    // demorando, e pagar ao provedor de novo.
+    const j = await fila.enfileirar({ tipo: 'smoke', fila: 'cara', familyId: famA,
+      payload: {}, chaveIdem: 'lease-cara-' + Date.now() });
+    await db.q(`UPDATE jobs SET status = 'processando', travado_por = 'w', travado_em = now() - interval '20 minutes' WHERE id = $1`, [j.id]);
+    await fila.destravarPresos(15, 40);
+    const dep = await db.uma(`SELECT status FROM jobs WHERE id = $1`, [j.id]);
+    assert.strictEqual(dep.status, 'processando',
+      'a fila cara foi destravada em 20 min — vídeo lento seria gerado e cobrado de novo');
+
+    await db.q(`UPDATE jobs SET travado_em = now() - interval '45 minutes' WHERE id = $1`, [j.id]);
+    await fila.destravarPresos(15, 40);
+    assert.strictEqual((await db.uma(`SELECT status FROM jobs WHERE id = $1`, [j.id])).status,
+      'na_fila', 'job realmente preso na fila cara nunca voltaria');
   });
 
   // ============================================ 3.2 ORIGENA CRIAR (§92)

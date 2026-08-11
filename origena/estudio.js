@@ -37,13 +37,33 @@ const { auditar } = require('./repo');
 
 // Cada operação e o que ela produz. `AI_RESTORED` é para o que recupera o
 // que está lá; `AI_ENHANCED` para o que INTERPRETA — colorir é palpite.
+// Animar é a ÚNICA que inventa: as outras três trabalham sobre o que está
+// na foto, e ela cria movimento que nunca existiu. Daí `AI_GENERATED` (a
+// classe mais forte), o tipo VIDEO e a saída muda.
 const OPERACOES = {
   restaurar_foto: { aiClass: 'AI_RESTORED' },
   colorizar_foto: { aiClass: 'AI_ENHANCED' },
   ampliar_foto: { aiClass: 'AI_RESTORED' },
+  animar_foto: { aiClass: 'AI_GENERATED', tipo: 'VIDEO', video: true },
 };
 
 const MAX_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Teto e duração do vídeo são do Augusto (`config`, migração 025), não
+ * constantes minhas. O teto é backstop: pega aumento de preço do provedor
+ * e pega duração maior, sem depender de alguém reparar a tempo.
+ */
+async function limitesDeVideo(t) {
+  const l = await t.todas(
+    `SELECT chave, valor FROM config WHERE chave IN
+       ('estudio.video_teto_centavos','estudio.video_segundos_max')`);
+  const m = Object.fromEntries(l.map((x) => [x.chave, Number(x.valor)]));
+  return {
+    tetoCentavos: m['estudio.video_teto_centavos'] || 3500,
+    segundosMax: m['estudio.video_segundos_max'] || 10,
+  };
+}
 
 const capacidades = async (t) => {
   const saida = {};
@@ -58,7 +78,7 @@ const capacidades = async (t) => {
  * Cota, reserva e enfileira. Sem `confirmar`, devolve só o preço — a
  * família decide antes de qualquer crédito sair da carteira (§53).
  */
-async function pedir({ familyId, userId, mediaId, operacao, quem, confirmar }) {
+async function pedir({ familyId, userId, mediaId, operacao, quem, confirmar, segundos }) {
   if (!OPERACOES[operacao]) throw erro('erro.estudio_operacao_invalida', 400);
 
   const m = await tenancy.comEscopo(familyId, (t) => t.uma(
@@ -71,7 +91,29 @@ async function pedir({ familyId, userId, mediaId, operacao, quem, confirmar }) {
 
   const cotacao = await tenancy.comEscopo(familyId, (t) => router.cotar(t, operacao));
   if (!cotacao) throw erro('erro.ia_indisponivel', 503);
-  if (!confirmar) return { cotacao };
+
+  // VÍDEO SE COBRA POR SEGUNDO — é a diferença de fundo entre esta
+  // operação e as outras três, e é o que o teto existe para pegar.
+  let seg = null;
+  if (OPERACOES[operacao].video) {
+    const lim = await tenancy.comEscopo(familyId, limitesDeVideo);
+    // `Number(x) || padrão` ENGOLE o zero, porque 0 é falsy — e o padrão
+    // aqui é a duração MÁXIMA. Pedir 0 segundos entregaria (e cobraria) o
+    // vídeo mais caro em silêncio. Ausência e zero são coisas diferentes.
+    const veioVazio = segundos === undefined || segundos === null || segundos === '';
+    seg = veioVazio ? lim.segundosMax : Math.round(Number(segundos));
+    if (!Number.isInteger(seg) || seg < 1 || seg > lim.segundosMax) {
+      throw erro('erro.video_duracao_invalida', 400);
+    }
+    // O custo estimado no registry é do vídeo CHEIO (duração máxima); a
+    // regra de três dá o custo desta duração. Recusar aqui é o ponto: a
+    // trava tem de valer ANTES de o crédito sair da carteira.
+    const custo = Math.ceil(
+      (cotacao.custo_estimado_centavos || 0) * (seg / lim.segundosMax));
+    if (custo > lim.tetoCentavos) throw erro('erro.video_acima_do_teto', 409);
+  }
+
+  if (!confirmar) return { cotacao: { ...cotacao, segundos: seg } };
 
   const job = await tenancy.comEscopo(familyId, async (t) => {
     await creditos.carteira(t, familyId);
@@ -84,10 +126,11 @@ async function pedir({ familyId, userId, mediaId, operacao, quem, confirmar }) {
   });
 
   await fila.enfileirar({ tipo: 'estudio.gerar', fila: 'cara', familyId,
-    payload: { familyId, userId, mediaId, operacao, aiJobId: job.id },
+    payload: { familyId, userId, mediaId, operacao, aiJobId: job.id, segundos: seg },
     chaveIdem: `estudio:${job.id}` });
 
-  return { job: { id: job.id, operacao, creditos: cotacao.creditos, status: 'na_fila' } };
+  return { job: { id: job.id, operacao, creditos: cotacao.creditos, segundos: seg,
+    status: 'na_fila' } };
 }
 
 /**
@@ -95,7 +138,7 @@ async function pedir({ familyId, userId, mediaId, operacao, quem, confirmar }) {
  * Falhou? Estorna e deixa o motivo no job — a família não paga por um
  * resultado que não recebeu.
  */
-async function gerar({ familyId, userId, mediaId, operacao, aiJobId }) {
+async function gerar({ familyId, userId, mediaId, operacao, aiJobId, segundos }) {
   const op = OPERACOES[operacao];
   if (!op) throw new Error('operação desconhecida: ' + operacao);
 
@@ -108,7 +151,19 @@ async function gerar({ familyId, userId, mediaId, operacao, aiJobId }) {
     const buf = await storage.baixar(m.storage_key);
     const r = await tenancy.comEscopo(familyId, (t) => router.executar(t, {
       capability: operacao,
-      entrada: { arquivo: { mime: m.mime_real || m.mime_declarado, base64: buf.toString('base64') } },
+      entrada: {
+        arquivo: { mime: m.mime_real || m.mime_declarado, base64: buf.toString('base64') },
+        segundos,
+        // O Veo é assíncrono e leva minutos. Guardar o nome da operação
+        // ANTES de esperar é o que impede que um worker morto no meio
+        // perca o rastro de um vídeo JÁ PAGO ao provedor — sem isso, a
+        // retomada só saberia recomeçar, e cobrar de novo.
+        aoIniciar: op.video
+          ? ({ operacao: nomeOp }) => tenancy.comEscopo(familyId, (t) => t.q(
+            `UPDATE ai_jobs SET entrada = entrada || $2::jsonb WHERE id = $1`,
+            [aiJobId, JSON.stringify({ operacao_provedor: nomeOp })]))
+          : undefined,
+      },
     }));
 
     const saida = Buffer.from(r.saida.base64, 'base64');
@@ -117,8 +172,10 @@ async function gerar({ familyId, userId, mediaId, operacao, aiJobId }) {
     const { derivado, chave } = await tenancy.comEscopo(familyId, (t) =>
       midia.registrarDerivado(t, { familyId, userId, originalId: mediaId,
         papel: 'DERIVADO', aiClass: op.aiClass, sha256: sha, bytes: saida.length,
-        mime: r.saida.mime || 'image/png',
+        mime: r.saida.mime || (op.video ? 'video/mp4' : 'image/png'),
+        tipo: op.tipo || null,
         derivacao: { operacao, provider: r.provider, model: r.model, ai_job_id: aiJobId,
+          segundos: r.segundos || segundos || null, audio: op.video ? false : undefined,
           em: new Date().toISOString() } }));
 
     // o byte vai do worker direto para o R2 — nunca pelo processo web
