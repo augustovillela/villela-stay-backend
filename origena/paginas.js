@@ -77,9 +77,52 @@ function registrarPaginas(app) {
   <div class="card">
     <h2>${t('landing.fechado_titulo')}</h2>
     <p>${t('landing.fechado_p')}</p>
+    <!-- A PORTA. Esta página dizia "em construção" e não oferecia caminho
+         nenhum para entrar: quem já tinha conta chegava aqui e não achava
+         como usar o próprio acervo. Beta fechado é sobre QUEM pode entrar,
+         não sobre esconder a porta de quem pode. -->
+    <p><a class="btn" href="/origena/app">${t('acao.entrar')}</a>
+       &nbsp; <a href="/origena/ajuda">${t('ajuda.titulo')}</a></p>
   </div>
   <footer>${t('produto.grupo')}</footer>
-</div>`));
+</div>`, { css: CSS_PUBLICO }));
+  });
+
+  // ------------------------------------------------- central de ajuda
+  // O MANUAL DA CASA. A Origena toma decisões que surpreendem quem chega:
+  // o dado que não se apaga, a divergência que não se resolve sozinha, a
+  // cápsula que nem o dono abre. Sem um lugar que explique isso, cada
+  // dúvida vira uma pergunta ao Augusto — e o beta passa a medir a
+  // paciência dele em vez de medir o produto.
+  //
+  // O texto mora no CATÁLOGO (§86), não aqui: fica traduzível e sai do
+  // código junto com o resto das mensagens.
+  app.get('/origena/ajuda', (req, res) => {
+    const idioma = req.idioma || i18n.PADRAO;
+    const t = (c) => i18n.t(idioma, c);
+    const artigos = ['acervo', 'selo', 'divergencia', 'privacidade', 'fotos', 'datas',
+      'capsula', 'guardioes', 'livros', 'creditos', 'erro'];
+    const paragrafos = (a) => String(t(`ajuda.${a}_c`) || '')
+      .split('\n\n').map((p) => `<p>${p.split('\n').join('<br>')}</p>`).join('');
+
+    res.type('html').send(pagina(idioma, `${t('ajuda.titulo')} — ${t('produto.nome')}`, `
+<div class="wrap">
+  <div class="hero">
+    <h1>${t('ajuda.titulo')}</h1>
+    <p class="assinatura">${t('ajuda.intro')}</p>
+  </div>
+  <nav class="card"><p>${artigos
+    .map((a) => `<a href="#${a}">${t(`ajuda.${a}_t`)}</a>`).join(' · ')}</p></nav>
+  ${artigos.map((a) => `<div class="card" id="${a}">
+    <h2>${t(`ajuda.${a}_t`)}</h2>
+    ${paragrafos(a)}
+  </div>`).join('')}
+  <div class="card">
+    <p>${t('ajuda.duvida')}</p>
+    <p><a class="btn" href="/origena/app">${t('acao.entrar')}</a></p>
+  </div>
+  <footer>${t('produto.grupo')}</footer>
+</div>`, { css: CSS_PUBLICO }));
   });
 
   app.get('/origena/robots.txt', (req, res) => {
@@ -101,6 +144,16 @@ function registrarPaginas(app) {
       `/origena/app#${rota.split('/').pop()}?token=${encodeURIComponent(req.query.token || '')}`));
   }
 }
+
+// A landing e a ajuda não carregam o CSS do app. Sem isto o botão de
+// entrar vira texto solto no meio do cartão — que foi exatamente como a
+// porta deixou de existir para quem chegava.
+const CSS_PUBLICO = `
+.btn{display:inline-block;background:var(--tema);color:#fff;border-radius:999px;
+padding:13px 26px;font-weight:600;text-decoration:none;line-height:22px}
+.card a{color:var(--tema)}
+nav.card p{margin:0;line-height:2.1}
+`;
 
 const CSS_APP = `
 .wrap{max-width:720px}

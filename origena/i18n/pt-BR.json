@@ -12,6 +12,45 @@
     "fechado_titulo": "Ainda não estamos abertos",
     "fechado_p": "A plataforma está em desenvolvimento e roda hoje em beta fechado, com uma família só."
   },
+  "ajuda": {
+    "titulo": "Como funciona a Origena",
+    "intro": "Este é o manual da casa. Ele explica as decisões que fazem a Origena diferente de uma pasta de fotos — e principalmente o que ela <strong>não</strong> faz, que costuma ser a parte que surpreende.",
+    "voltar": "Voltar",
+    "duvida": "Ficou faltando alguma coisa aqui? Pergunte ao Augusto — esta página existe para ser corrigida.",
+
+    "acervo_t": "O acervo é da família, não da plataforma",
+    "acervo_c": "Tudo o que entra aqui continua sendo seu. A qualquer momento você exporta o acervo inteiro num arquivo — dados, árvore em formato GEDCOM e as fotos — e leva embora.\n\nEsse mesmo arquivo volta: dá para importá-lo numa família nova, e as fotos voltam junto. Isso não é promessa de marketing; é testado toda vez que o sistema é atualizado.",
+
+    "selo_t": "Cada informação carrega de onde veio",
+    "selo_c": "Este é o coração do produto. Nenhum dado aparece solto: cada um vem com um selo dizendo a origem.\n\n<strong>A certidão registra</strong> — existe documento.\n<strong>A família conta</strong> — alguém lembra, e o nome de quem lembrou fica junto.\n<strong>Sugerido por IA, sem confirmação</strong> — a máquina propôs e nenhum humano confirmou.\n\nSão coisas diferentes, e a Origena nunca as mistura. Uma sugestão de IA jamais vira fato sozinha: precisa de alguém da família aceitar, e esse aceite fica registrado com nome e data.",
+
+    "divergencia_t": "Quando dois parentes lembram diferente",
+    "divergencia_c": "A tia diz que o avô nasceu em 1921; o primo diz 1922. A Origena <strong>não escolhe sozinha</strong> e não apaga nenhuma das duas.\n\nO fato fica marcado como em divergência, as duas versões continuam visíveis com quem disse cada uma, e a família decide — escrevendo o motivo. Se depois aparecer a certidão, ela promove a versão documentada, e a decisão anterior continua no histórico.\n\nCorrigir aqui nunca é apagar: é acrescentar uma versão nova por cima.",
+
+    "privacidade_t": "Quem vê o quê",
+    "privacidade_c": "Cada pessoa da família entra com um papel. Quem contribui acrescenta, mas não apaga — conflito em família é situação esperada, não exceção.\n\nItens marcados como privados só aparecem para quem os criou e para quem administra (e, nesse caso, o acesso fica registrado). Perfil de criança nasce privado e nunca vai a público.\n\nConvidado vê só o que a família marcou como público: nada de documento, nada de privado, nada de cápsula.",
+
+    "fotos_t": "O que a IA faz com as fotos — e o que ela nunca faz",
+    "fotos_c": "A foto que você enviou <strong>nunca é alterada</strong>. Cada tratamento cria uma versão nova, ao lado, marcada.\n\n<strong>Restaurar</strong> tira riscos, manchas e ruído. Não muda rosto, roupa nem cenário: onde a foto se perdeu, fica como está — falta de informação é melhor que informação inventada.\n<strong>Colorizar</strong> dá cor a uma foto em preto e branco. A cor é palpite: ninguém registrou a cor daquele vestido, e o selo diz isso.\n<strong>Ampliar</strong> aumenta a definição sem inventar detalhe, sobretudo em rosto — um olho reconstruído muda a pessoa.\n<strong>Animar</strong> é a única que inventa: transforma a foto num vídeo curto e mudo. Aquele movimento não aconteceu. Por isso o vídeo sai marcado como criado por IA e não entra no livro nem no álbum como se fosse registro.\n\nO vídeo não tem som de propósito: uma voz inventada para quem já se foi seria pior que um movimento inventado.",
+
+    "datas_t": "Datas que ninguém sabe direito",
+    "datas_c": "\"Nos anos 40\", \"por volta de 1890\", \"antes da mudança para Brasília\". A Origena aceita data imprecisa e <strong>guarda a imprecisão</strong>, em vez de chutar um dia exato.\n\nA linha do tempo ordena pelo que sabe e mostra a precisão junto. O que não tem data nenhuma vai para o fim, rotulado — nunca fingindo uma ordem que os dados não sustentam.",
+
+    "capsula_t": "A cápsula do tempo",
+    "capsula_c": "Quase tudo aqui olha para trás. A cápsula anda para o outro lado: você escreve hoje para ser lido daqui a muitos anos.\n\n<strong>Enquanto estiver lacrada, ninguém lê</strong> — nem você, nem o dono da conta. O que a família vê é que ela existe, quem escreveu e quando abre. O conteúdo fica cifrado com uma chave que não mora no banco de dados.\n\nFoto anexada some da galeria e da busca até a abertura, e volta exatamente à privacidade que tinha antes. Só dá para lacrar fotos que você mesmo enviou: a cápsula não serve para esconder o acervo dos outros.",
+
+    "guardioes_t": "Guardiões do legado",
+    "guardioes_c": "São as pessoas que poderão assumir o acervo se você faltar. <strong>Nada acontece sozinho</strong> — não existe no sistema nenhum caminho automático de transferência.\n\nUm pedido precisa de: quórum entre os guardiões; nenhum voto contrário (um único guardião que discorde derruba o pedido, porque não existe placar que responda \"essa pessoa está viva?\"); revisão de uma pessoa da plataforma, com motivo escrito; e um prazo de contestação antes de valer.\n\nSe alguém abrir um pedido sobre você, <strong>você recebe e-mail na hora</strong> e pode derrubá-lo a qualquer momento — inclusive depois de aprovado. E quando a sucessão vale, ninguém perde nada: os guardiões passam a ser donos junto, e nada é apagado.",
+
+    "livros_t": "Livros, álbuns e retrospectivas",
+    "livros_c": "O acervo vira PDF para imprimir: o livro da família, o livro de uma pessoa, o scrapbook de um álbum e a retrospectiva de um ano.\n\n<strong>O livro é um recorte de quem pediu.</strong> Dois parentes pedem o mesmo livro e recebem livros diferentes, porque cada um enxerga uma parte do acervo — e o próprio livro avisa isso na última página.\n\nCada fato sai com a origem, e a última página lista o que foi feito por máquina naquele livro. A retrospectiva só alcança o que tem data, e diz quantas fotos ficaram de fora por não terem — datar cada uma é o que as traz para dentro.",
+
+    "creditos_t": "O que custa e o que não custa",
+    "creditos_c": "Operações de IA consomem créditos: restaurar, colorizar, ampliar e animar uma foto, transcrever uma entrevista, escrever uma biografia.\n\n<strong>O preço aparece antes.</strong> Você vê quanto custa, confirma, e só então o valor sai da carteira. Se o modelo recusar o trabalho — o que acontece e é resposta legítima —, o crédito volta automaticamente.\n\nNão custa crédito: guardar, buscar (inclusive a busca por sentido), a árvore, a linha do tempo, os livros em PDF e exportar o acervo. Isso é acervo da própria família, não operação de máquina.",
+
+    "erro_t": "Quando alguma coisa dá errado",
+    "erro_c": "Foto que não abre, importação que falha, trabalho parado: o sistema prefere dizer que travou a fingir que deu certo. Se um arquivo não subiu, a mídia continua marcada como pendente em vez de aparecer como pronta e vazia.\n\nO que a família vê como erro tem sempre um motivo escrito em português. Se o motivo não ajudar a entender o que fazer, isso é um defeito do sistema — vale avisar."
+  },
   "acao": {
     "entrar": "Entrar",
     "sair": "sair",

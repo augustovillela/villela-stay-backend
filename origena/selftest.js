@@ -3002,9 +3002,17 @@ async function principal() {
 
     // o ataque que a integridade existe para pegar: trocar o byte DIRETO
     // no R2, por fora do sistema (o trigger do banco não vê isso)
+    // FOTO DESCARTÁVEL, criada só para ser corrompida. Antes este teste
+    // pegava uma mídia qualquer (`LIMIT 1`, sem ordenação) e trocava os
+    // bytes dela no R2 — deixando o arquivo destruído para os testes
+    // seguintes. Quando o sorteio calhava na foto que o livro usa, o
+    // scrapbook quebrava com "The input is not a PNG file!", longe da
+    // causa. Teste que estraga fixture alheia é fonte de falha
+    // intermitente, e falha intermitente ensina a equipe a ignorar vermelho.
+    const vitima = await enviar(pngReal(24, 24, [3, 9, 27]), 'para-corromper.png');
+    await fila.processarLote(10, 'rapida');
     const alvo = await tenancy.comEscopo(famA, (t) => t.uma(
-      `SELECT id, storage_key FROM media WHERE family_id = $1 AND derivado_de IS NULL
-        AND status = 'pronta' AND deleted_at IS NULL LIMIT 1`, [famA]));
+      `SELECT id, storage_key FROM media WHERE id = $1`, [vitima.media_id]));
     await storage.enviar(alvo.storage_key, Buffer.from('bytes trocados por fora'), 'text/plain');
     // zera o rodízio para a amostra pegá-lo de novo
     await tenancy.comEscopo(famA, (t) => t.q(
