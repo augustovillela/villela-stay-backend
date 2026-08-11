@@ -583,22 +583,173 @@
       .then(function () { return mediaId; });
   }
 
+  // ============ envio de vídeos em lote (1 arquivo = 1 aula) ============
+  // Regra que rege tudo aqui: NADA do que já foi feito se perde por causa de um
+  // erro depois. O media_id de um vídeo que já subiu fica guardado no item da
+  // fila, então "tentar de novo" retoma da etapa que falhou — não reenvia 80 MB.
+  // E um arquivo que falha não derruba os outros da fila.
+  var FILA = [];
+  var FILA_RODANDO = false;
+  var FILA_PID = '';
+
+  function tituloDeArquivo(nome) {
+    return String(nome).replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ')
+      .replace(/\b1080p\b|\bcaptions?\b|\bwith captions\b/gi, '')
+      .replace(/\s{2,}/g, ' ').replace(/[\s—–_-]+$/, '').trim() || 'Aula';
+  }
+  function tamanhoMB(b) { return (b / 1048576).toFixed(1).replace('.', ',') + ' MB'; }
+
+  function putComProgresso(url, arquivo, aoProgredir) {
+    return new Promise(function (ok, err) {
+      var x = new XMLHttpRequest();
+      x.open('PUT', url);
+      x.setRequestHeader('Content-Type', arquivo.type || 'video/mp4');
+      x.upload.onprogress = function (e) { if (e.lengthComputable) aoProgredir(Math.round(e.loaded / e.total * 100)); };
+      x.onload = function () {
+        if (x.status >= 200 && x.status < 300) return ok();
+        err(new Error('o storage recusou o arquivo (HTTP ' + x.status + '). O envio pode ser repetido.'));
+      };
+      x.onerror = function () { err(new Error('a conexão caiu durante o envio — clique em “tentar de novo”.')); };
+      x.onabort = function () { err(new Error('envio cancelado.')); };
+      x.send(arquivo);
+    });
+  }
+
+  function pintarFila() {
+    var box = el('fv-lista');
+    if (!box) return;
+    if (!FILA.length) { box.innerHTML = '<p class="sub" style="text-align:left;margin:6px 0 0">Nenhum vídeo na fila.</p>'; return; }
+    var rot = { aguardando: '⏳ na fila', enviando: '⬆️ enviando', criando: '🧱 criando a aula', pronto: '✅ aula criada', erro: '⚠️ falhou' };
+    box.innerHTML = FILA.map(function (it, i) {
+      return '<div class="lin" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+        '<span style="flex:1;min-width:220px">' +
+          '<input class="fv-titulo" data-i="' + i + '" value="' + esc(it.titulo) + '" ' + (it.status === 'pronto' ? 'disabled' : '') + ' style="margin:0">' +
+          '<span class="sub" style="text-align:left;margin:2px 0 0;display:block">' + esc(it.arquivo.name) + ' · ' + tamanhoMB(it.arquivo.size) +
+          (it.media_id ? ' · <b>vídeo já enviado</b>' : '') + '</span>' +
+        '</span>' +
+        '<span style="min-width:150px">' + (it.status === 'enviando' ? barra(it.pct) + '<span class="sub" style="text-align:left;margin:0">' + it.pct + '%</span>' : (rot[it.status] || it.status)) + '</span>' +
+        '<label style="display:inline;font-weight:400;white-space:nowrap"><input type="checkbox" class="fv-gratis" data-i="' + i + '" ' + (it.gratis ? 'checked' : '') + ' ' + (it.status === 'pronto' ? 'disabled' : '') + ' style="width:auto"> degustação</label> ' +
+        (it.status === 'erro' ? '<button class="btn peq" data-fvretry="' + i + '">↻ tentar de novo</button> ' : '') +
+        (it.status === 'pronto' || FILA_RODANDO ? '' : '<button class="btn peq secund" data-fvrm="' + i + '">🗑️</button>') +
+        (it.erro ? '<div class="erro" style="flex-basis:100%">' + esc(it.erro) + '</div>' : '') +
+      '</div>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.fv-titulo'), function (inp) {
+      inp.oninput = function () { FILA[+inp.getAttribute('data-i')].titulo = inp.value; };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('.fv-gratis'), function (c) {
+      c.onchange = function () { FILA[+c.getAttribute('data-i')].gratis = c.checked; };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-fvrm]'), function (b) {
+      b.onclick = function () { FILA.splice(+b.getAttribute('data-fvrm'), 1); pintarFila(); };
+    });
+    // retry ligado aqui (e não num listener no document) para não empilhar
+    // um handler novo a cada re-render da tela do produto
+    Array.prototype.forEach.call(box.querySelectorAll('[data-fvretry]'), function (b) {
+      b.onclick = function () {
+        if (FILA_RODANDO) return;
+        var it = FILA[+b.getAttribute('data-fvretry')], sel = el('fv-modulo');
+        if (!it) return;
+        if (!sel || !sel.value) return falha('fv-msg', new Error('Escolha o módulo antes de tentar de novo.'));
+        FILA_RODANDO = true; pintarFila();
+        enviarItem(it, FILA_PID, sel.value).then(function () { FILA_RODANDO = false; pintarFila(); });
+      };
+    });
+  }
+
+  function enviarItem(it, pid, modId) {
+    it.erro = '';
+    var etapa = Promise.resolve();
+    if (!it.media_id) { // ainda não subiu: faz iniciar → PUT → confirmar
+      it.status = 'enviando'; it.pct = 0; pintarFila();
+      var pendente;
+      etapa = api('POST', '/produtor/upload-grande', { nome: it.arquivo.name, mime: it.arquivo.type || 'video/mp4', tamanho: it.arquivo.size })
+        .then(function (r) {
+          pendente = r.id;
+          return putComProgresso(r.upload_url, it.arquivo, function (p) { it.pct = p; pintarFila(); });
+        })
+        .then(function () { return api('POST', '/produtor/upload-grande/' + pendente + '/confirmar'); })
+        .then(function () { it.media_id = pendente; it.pct = 100; }); // guardado: retry não reenvia
+    }
+    return etapa
+      .then(function () {
+        it.status = 'criando'; pintarFila();
+        return api('POST', '/produtor/produtos/' + pid + '/modulos/' + modId + '/aulas',
+          { titulo: it.titulo || tituloDeArquivo(it.arquivo.name), tipo: 'video', media_id: it.media_id, gratuita: it.gratis });
+      })
+      .then(function () { it.status = 'pronto'; pintarFila(); })
+      .catch(function (e) { it.status = 'erro'; it.erro = e.message; pintarFila(); });
+  }
+
+  function processarFila(pid) {
+    if (FILA_RODANDO) return;
+    var sel = el('fv-modulo');
+    var modId = sel ? sel.value : '';
+    if (!modId) return falha('fv-msg', new Error('Escolha (ou crie) o módulo que vai receber as aulas.'));
+    var pendentes = FILA.filter(function (i) { return i.status !== 'pronto'; });
+    if (!pendentes.length) return falha('fv-msg', new Error('Nada na fila para enviar.'));
+    FILA_RODANDO = true; el('fv-msg').textContent = ''; el('fv-enviar').disabled = true; pintarFila();
+    var seq = Promise.resolve();
+    pendentes.forEach(function (it) { seq = seq.then(function () { return enviarItem(it, pid, modId); }); });
+    seq.then(function () {
+      FILA_RODANDO = false; el('fv-enviar').disabled = false;
+      var falhou = FILA.filter(function (i) { return i.status === 'erro'; }).length;
+      var ok = FILA.filter(function (i) { return i.status === 'pronto'; }).length;
+      pintarFila();
+      if (!falhou) { FILA = []; vProduto(pid); return; } // tudo certo: recarrega já com as aulas
+      // com falha, a tela FICA como está — a fila e os vídeos já enviados continuam ali
+      falha('fv-msg', new Error(ok + ' aula(s) criada(s), ' + falhou + ' com falha. Nada do que já subiu foi perdido — “tentar de novo” retoma da etapa que falhou, sem reenviar o vídeo.'));
+    });
+  }
+
+  function addArquivos(lista) {
+    var recusados = [];
+    Array.prototype.forEach.call(lista, function (f) {
+      if (String(f.type).indexOf('video/') !== 0) { recusados.push(f.name); return; }
+      FILA.push({ arquivo: f, titulo: tituloDeArquivo(f.name), gratis: false, status: 'aguardando', pct: 0, media_id: '', erro: '' });
+    });
+    pintarFila();
+    if (recusados.length) falha('fv-msg', new Error('Fora da fila (não são vídeo): ' + recusados.join(', ') + '. PDF, imagem e áudio entram pelo “+ Aula” do módulo.'));
+  }
+
+  // O que ainda falta para o botão "enviar para revisão" funcionar — dito ANTES do
+  // clique, com as mesmas regras do servidor (repo-conteudo: 1 aula; clube: preço + itens).
+  function checklistRevisao(p, estrutura) {
+    if (['rascunho', 'rejeitado'].indexOf(p.status) < 0) return '';
+    var aulas = (estrutura || []).reduce(function (n, m) { return n + m.aulas.length; }, 0);
+    var itens = [
+      [!!p.titulo, 'Título preenchido'],
+      [p.tipo === 'clube' ? (p.preco_centavos > 0) : true, p.tipo === 'clube' ? 'Mensalidade maior que zero' : null],
+      [aulas > 0, 'Pelo menos 1 aula publicada em um módulo' + (aulas ? ' (você tem ' + aulas + ')' : ' — hoje: nenhuma')],
+    ].filter(function (i) { return i[1]; });
+    var faltam = itens.filter(function (i) { return !i[0]; }).length;
+    return '<div class="aviso" style="' + (faltam ? '' : 'background:#eaf7ef;border-color:#b7e0c4') + '">' +
+      '<b>' + (faltam ? '📋 Falta para enviar à revisão:' : '✅ Pronto para enviar à revisão') + '</b>' +
+      '<div style="margin-top:6px">' + itens.map(function (i) {
+        return '<div>' + (i[0] ? '✅' : '⬜') + ' ' + esc(i[1]) + '</div>';
+      }).join('') + '</div>' +
+      (faltam ? '' : '<div style="margin-top:6px">Depois de enviar, a plataforma aprova e aí você publica.</div>') + '</div>';
+  }
+
   function vProduto(pid) {
+    if (FILA_PID !== pid) { FILA = []; FILA_PID = pid; } // trocou de produto: fila não viaja junto
     api('GET', '/produtor/produtos/' + pid).then(function (d) {
       var p = d.produto;
       var acoes = { rascunho: [['em_revisao', '📤 Enviar para revisão']], rejeitado: [['em_revisao', '📤 Reenviar para revisão']], aprovado: [['publicado', '🟢 Publicar']], publicado: [['pausado', '⏸️ Pausar']], pausado: [['publicado', '🟢 Republicar']] }[p.status] || [];
       var html = '<div class="card"><p><a href="#" id="b-volta">← meus produtos</a></p>' +
         '<h3>' + esc(p.titulo) + ' <span class="chip">' + (TIPOS_PROD[p.tipo] || esc(p.tipo)) + '</span> ' + (STATUS_PRODUTO[p.status] || esc(p.status)) + '</h3>' +
         (p.status === 'rejeitado' && p.motivo_status ? '<div class="aviso">Motivo da rejeição: ' + esc(p.motivo_status) + '</div>' : '') +
-        '<label>Título</label><input id="e-titulo" value="' + esc(p.titulo) + '">' +
+        '<p class="sub" style="text-align:left;margin:0 0 10px"><b>*</b> = obrigatório para enviar à revisão. O resto pode ficar para depois.</p>' +
+        '<label>Título <b title="obrigatório">*</b></label><input id="e-titulo" value="' + esc(p.titulo) + '">' +
         '<label>Subtítulo</label><input id="e-sub" value="' + esc(p.subtitulo) + '">' +
-        '<label>Descrição curta (vitrine)</label><input id="e-curta" value="' + esc(p.descricao_curta) + '">' +
+        '<label>Descrição curta (aparece na vitrine)</label><input id="e-curta" value="' + esc(p.descricao_curta) + '">' +
         '<label>Descrição longa</label><textarea id="e-longa" rows="4">' + esc(p.descricao_longa) + '</textarea>' +
-        '<label>Preço (R$)</label><input id="e-preco" value="' + (p.preco_centavos / 100).toFixed(2).replace('.', ',') + '" style="max-width:140px">' +
+        '<label>Preço (R$)' + (p.tipo === 'clube' ? ' <b title="obrigatório">*</b> — mensalidade do clube' : ' — 0,00 publica como gratuito') + '</label>' +
+        '<input id="e-preco" value="' + (p.preco_centavos / 100).toFixed(2).replace('.', ',') + '" style="max-width:140px">' +
         '<label>Comissão do afiliado % (vazio = padrão da plataforma; 0 = sem afiliados)</label><input id="e-afpct" value="' + (p.afiliado_pct == null ? '' : p.afiliado_pct) + '" style="max-width:140px">' +
         '<p><button class="btn peq" id="b-salvar">💾 Salvar</button> ' +
         acoes.map(function (a) { return '<button class="btn peq secund" data-st="' + a[0] + '">' + a[1] + '</button>'; }).join(' ') +
-        ' <span id="e-msg" class="erro"></span></p></div>';
+        ' <span id="e-msg" class="erro"></span></p>' + checklistRevisao(p, d.estrutura) + '</div>';
 
       // builder
       html += '<div class="card"><h3>🧱 Conteúdo</h3><div id="builder">' + d.estrutura.map(function (mo) {
@@ -618,6 +769,26 @@
       }).join('') + '</div>' +
         '<p style="margin-top:10px"><input id="nm-titulo" placeholder="Título do novo módulo" style="max-width:300px"> ' +
         '<button class="btn peq" id="b-addmod">+ Módulo</button> <span id="bl-msg" class="erro"></span></p></div>';
+
+      // ---- envio de vídeos em lote: arrasta vários, cada um vira uma aula ----
+      html += '<div class="card"><h3>🎬 Enviar vídeos (cada arquivo vira uma aula)</h3>' +
+        '<label>Módulo que vai receber as aulas <b title="obrigatório">*</b></label>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<select id="fv-modulo" style="max-width:320px;margin:0">' +
+          (d.estrutura.length ? d.estrutura.map(function (mo) { return '<option value="' + mo.id + '">' + esc(mo.titulo) + '</option>'; }).join('')
+                              : '<option value="">— crie um módulo primeiro —</option>') +
+        '</select>' +
+        '<input id="fv-novomod" placeholder="ou digite o nome de um módulo novo" style="max-width:280px;margin:0"> ' +
+        '<button class="btn peq secund" id="fv-criamod">+ criar módulo</button></div>' +
+        '<div id="fv-drop" style="margin-top:12px;border:2px dashed #d9c9a8;border-radius:14px;padding:26px;text-align:center;background:#fffdf7;cursor:pointer">' +
+          '<div style="font-size:2rem">🎬</div>' +
+          '<b>Arraste os vídeos aqui</b><div class="sub" style="margin:4px auto 0">ou clique para escolher — pode selecionar vários de uma vez.<br>' +
+          'MP4 ou WebM, até 2 GB cada. O título de cada aula vem do nome do arquivo e você pode editar antes de enviar.</div>' +
+          '<input id="fv-file" type="file" accept="video/mp4,video/webm" multiple style="display:none"></div>' +
+        '<div id="fv-lista" style="margin-top:10px"></div>' +
+        '<p style="margin-top:10px"><button class="btn peq" id="fv-enviar">⬆️ Enviar os vídeos da fila</button> ' +
+        '<span class="sub" style="text-align:left;margin:0">Pode fechar o aviso de erro e tentar de novo: vídeo já enviado não sobe duas vezes.</span></p>' +
+        '<span id="fv-msg" class="erro"></span></div>';
 
       // clube (FASE 6): produtos incluídos na assinatura
       if (p.tipo === 'clube') {
@@ -659,6 +830,32 @@
         api('POST', '/produtor/produtos/' + pid + '/modulos', { titulo: val('nm-titulo') })
           .then(function () { vProduto(pid); }).catch(function (e) { falha('bl-msg', e); });
       };
+
+      // ---- fiação do envio em lote ----
+      pintarFila();
+      var drop = el('fv-drop'), inputArq = el('fv-file');
+      drop.onclick = function () { inputArq.click(); };
+      inputArq.onchange = function () { addArquivos(inputArq.files); inputArq.value = ''; };
+      ['dragenter', 'dragover'].forEach(function (ev) {
+        drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.background = '#fdf3dd'; drop.style.borderColor = '#B45309'; });
+      });
+      ['dragleave', 'drop'].forEach(function (ev) {
+        drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.background = '#fffdf7'; drop.style.borderColor = '#d9c9a8'; });
+      });
+      drop.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files) addArquivos(e.dataTransfer.files); });
+      // criar módulo SEM recarregar a tela — recarregar aqui apagaria a fila montada
+      el('fv-criamod').onclick = function () {
+        var t = val('fv-novomod');
+        if (!t) return falha('fv-msg', new Error('Digite o nome do módulo novo.'));
+        api('POST', '/produtor/produtos/' + pid + '/modulos', { titulo: t }).then(function (r) {
+          var sel = el('fv-modulo'), o = document.createElement('option');
+          o.value = r.id; o.textContent = t;
+          if (sel.options.length === 1 && !sel.options[0].value) sel.innerHTML = '';
+          sel.appendChild(o); sel.value = r.id;
+          el('fv-novomod').value = ''; okMsg('fv-msg', '✅ módulo “' + t + '” criado e selecionado.');
+        }).catch(function (e) { falha('fv-msg', e); });
+      };
+      el('fv-enviar').onclick = function () { processarFila(pid); };
       Array.prototype.forEach.call(document.querySelectorAll('[data-delmod]'), function (b) {
         b.onclick = function () { if (confirm('Remover módulo e suas aulas?')) api('DELETE', '/produtor/produtos/' + pid + '/modulos/' + b.getAttribute('data-delmod')).then(function () { vProduto(pid); }).catch(function (e) { alert(e.message); }); };
       });
