@@ -1,0 +1,647 @@
+{
+  "_leia-me": "Copy da seção 'Sobre a hospedagem' por unidade. manchete = frase de abertura (aceita <strong>); paragrafos = corpo; destaques = cards com ícone (máx. 4 exibidos); idealPara = etiquetas de público. Unidade sem entrada aqui cai no bloco gerado pelo build a partir dos dados do anúncio. Números comerciais saem de regras/regras-negocio.md; capacidade sai da API da Stays. Em quarto/flat, área comum é mediante taxa — não prometer como incluída.",
+
+  "GD01H": {
+    "manchete": {
+      "pt": "Uma casa modernista de <strong>400 m²</strong> só para o seu grupo: cinco suítes independentes, piscina aquecida e um quintal onde as crianças brincam à vista de todo mundo.",
+      "en": "A <strong>400 m²</strong> modernist house just for your group: five independent suites, a heated pool and a garden where the kids play in plain sight.",
+      "es": "Una casa modernista de <strong>400 m²</strong> solo para tu grupo: cinco suites independientes, piscina climatizada y un jardín donde los niños juegan a la vista de todos."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Casa Modernista foi feita para a viagem em que ninguém quer se separar. As cinco suítes têm banheiro próprio e porta independente — cabem até quatro famílias sem que uma atrapalhe a outra — e todas desembocam no mesmo pátio, na mesma cozinha e na mesma mesa grande.",
+        "O dia costuma terminar do lado de fora: churrasqueira acesa, piscina aquecida iluminada, rede no lounge coberto e sinuca quando o vento esfria. Você reserva direto com quem cuida da casa, e é a mesma pessoa que responde no WhatsApp durante a estadia."
+      ],
+      "en": [
+        "Casa Modernista was built for the kind of trip where nobody wants to split up. The five suites have their own bathroom and their own door — up to four families fit without getting in each other's way — and they all open onto the same courtyard, the same kitchen and the same long table.",
+        "The day tends to end outdoors: the grill lit, the heated pool glowing, a hammock in the covered lounge and a game of pool when the wind cools down. You book directly with the people who look after the house, and the same person answers on WhatsApp during your stay."
+      ],
+      "es": [
+        "La Casa Modernista fue pensada para el viaje en el que nadie quiere separarse. Las cinco suites tienen baño propio y puerta independiente — caben hasta cuatro familias sin estorbarse — y todas dan al mismo patio, la misma cocina y la misma mesa grande.",
+        "El día suele terminar afuera: la parrilla encendida, la piscina climatizada iluminada, una hamaca en el lounge cubierto y billar cuando refresca. Reservas directo con quienes cuidan la casa, y es la misma persona que responde por WhatsApp durante la estancia."
+      ]
+    },
+    "destaques": [
+      { "icone": "🏊", "titulo": { "pt": "Piscina aquecida e iluminada", "en": "Heated, lit pool", "es": "Piscina climatizada e iluminada" }, "texto": { "pt": "Banho de noite no inverno seco de Brasília sem ninguém tremendo na borda.", "en": "A night swim in Brasília's dry winter with nobody shivering at the edge.", "es": "Un baño de noche en el invierno seco de Brasilia sin que nadie tiemble en el borde." } },
+      { "icone": "🛏️", "titulo": { "pt": "Cinco suítes independentes", "en": "Five independent suites", "es": "Cinco suites independientes" }, "texto": { "pt": "Cada família com seu banheiro e sua porta: conviver vira escolha, não obrigação.", "en": "Each family with its own bathroom and door: togetherness becomes a choice.", "es": "Cada familia con su baño y su puerta: convivir es una elección, no una obligación." } },
+      { "icone": "🔥", "titulo": { "pt": "Cozinha industrial e churrasqueira", "en": "Industrial kitchen and barbecue", "es": "Cocina industrial y parrilla" }, "texto": { "pt": "Dá para cozinhar para 22 pessoas sem revezar panela nem sair para jantar.", "en": "You can cook for 22 without taking turns with the pans or eating out.", "es": "Se puede cocinar para 22 personas sin turnarse las ollas ni salir a cenar." } },
+      { "icone": "🧒", "titulo": { "pt": "Parquinho, pula-pula e redário", "en": "Playground, trampoline and hammocks", "es": "Parque, cama elástica y hamacas" }, "texto": { "pt": "As crianças gastam energia no quintal enquanto os adultos ficam à mesa.", "en": "The kids burn energy in the garden while the grown-ups stay at the table.", "es": "Los niños gastan energía en el jardín mientras los adultos siguen en la mesa." } }
+    ],
+    "idealPara": {
+      "pt": ["Famílias grandes", "Grupos de amigos", "Confraternizações", "Comitivas a trabalho"],
+      "en": ["Large families", "Groups of friends", "Get-togethers", "Work delegations"],
+      "es": ["Familias grandes", "Grupos de amigos", "Celebraciones", "Comitivas de trabajo"]
+    }
+  },
+
+  "GD03H": {
+    "manchete": {
+      "pt": "A maior das nossas casas: <strong>34 hóspedes</strong> em uma casa de campo no cerrado, a dois quilômetros da Ponte JK.",
+      "en": "Our largest house: <strong>34 guests</strong> in a country home in the cerrado, two kilometres from the JK Bridge.",
+      "es": "La mayor de nuestras casas: <strong>34 huéspedes</strong> en una casa de campo en el cerrado, a dos kilómetros del Puente JK."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Gran Villela Home Stay junta duas casas do compound em um só espaço, com sete quartos e oito banheiros. É a opção para quando o grupo é grande de verdade: casamento na família, retiro de equipe, turma que viaja junta há anos.",
+        "O terreno é de chácara, com fauna e flora do cerrado à vista, mas a cidade está logo ali — três centros comerciais na região, com mercado, farmácia, padaria e banco, e os restaurantes da beira do lago a poucos minutos."
+      ],
+      "en": [
+        "Gran Villela Home Stay joins two houses of the compound into a single space, with seven bedrooms and eight bathrooms. It is the choice for when the group is genuinely large: a family wedding, a team retreat, the crowd that has travelled together for years.",
+        "The grounds are a country plot, with the cerrado's wildlife and plants in view, yet the city is right there — three shopping centres nearby with a supermarket, pharmacy, bakery and bank, and the lakeside restaurants minutes away."
+      ],
+      "es": [
+        "La Gran Villela Home Stay une dos casas del complejo en un solo espacio, con siete habitaciones y ocho baños. Es la opción cuando el grupo es realmente grande: una boda familiar, un retiro de equipo, la pandilla que viaja junta desde hace años.",
+        "El terreno es de chacra, con la fauna y la flora del cerrado a la vista, pero la ciudad está ahí al lado — tres centros comerciales en la zona, con supermercado, farmacia, panadería y banco, y los restaurantes de la orilla del lago a pocos minutos."
+      ]
+    },
+    "destaques": [
+      { "icone": "👨‍👩‍👧‍👦", "titulo": { "pt": "Espaço para 34 pessoas", "en": "Room for 34 people", "es": "Espacio para 34 personas" }, "texto": { "pt": "Sete quartos e oito banheiros: ninguém dorme no sofá por falta de lugar.", "en": "Seven bedrooms and eight bathrooms: nobody ends up on the sofa.", "es": "Siete habitaciones y ocho baños: nadie duerme en el sofá por falta de sitio." } },
+      { "icone": "🌳", "titulo": { "pt": "Casa de campo no cerrado", "en": "A country house in the cerrado", "es": "Casa de campo en el cerrado" }, "texto": { "pt": "Área de chácara em bairro nobre — silêncio de sítio a 11 km do Congresso.", "en": "A country plot in a prime neighbourhood — farm quiet, 11 km from Congress.", "es": "Terreno de chacra en barrio noble — silencio de campo a 11 km del Congreso." } },
+      { "icone": "🍳", "titulo": { "pt": "Cozinha ampla e equipada", "en": "Large, well-equipped kitchen", "es": "Cocina amplia y equipada" }, "texto": { "pt": "Feita para cozinhar em grupo, não para esquentar marmita.", "en": "Built for cooking together, not for reheating takeaway.", "es": "Hecha para cocinar en grupo, no para recalentar comida." } },
+      { "icone": "🚗", "titulo": { "pt": "A 2 km da Ponte JK", "en": "2 km from the JK Bridge", "es": "A 2 km del Puente JK" }, "texto": { "pt": "Restaurantes à beira do lago e o Plano Piloto sem enfrentar trânsito.", "en": "Lakeside restaurants and the Plano Piloto without the traffic.", "es": "Restaurantes junto al lago y el Plano Piloto sin enfrentar el tráfico." } }
+    ],
+    "idealPara": {
+      "pt": ["Grupos grandes", "Casamentos e formaturas", "Retiros de equipe", "Reuniões de família"],
+      "en": ["Large groups", "Weddings and graduations", "Team retreats", "Family reunions"],
+      "es": ["Grupos grandes", "Bodas y graduaciones", "Retiros de equipo", "Reuniones familiares"]
+    }
+  },
+
+  "GG04I": {
+    "manchete": {
+      "pt": "Quatro suítes, piscina aquecida, jacuzzi e mesa de sinuca profissional — o espaço é <strong>privativo</strong>, não se divide com outros hóspedes.",
+      "en": "Four suites, a heated pool, a hot tub and a professional pool table — the space is <strong>private</strong>, never shared with other guests.",
+      "es": "Cuatro suites, piscina climatizada, jacuzzi y mesa de billar profesional — el espacio es <strong>privado</strong>, no se comparte con otros huéspedes."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Villa Kubitschek ocupa uma casa inteira dentro de uma chácara no Lago Sul. Outras casas do terreno podem estar alugadas, mas o que é seu é seu: as quatro suítes, o pátio, a cozinha, a piscina, a jacuzzi e as churrasqueiras não são compartilhados.",
+        "É a casa dos dias que não têm hora para acabar — ping-pong e sinuca dentro, churrasco a gás ou a carvão fora, parquinho e pula-pula para as crianças, e estacionamento amplo para o grupo que chega em vários carros."
+      ],
+      "en": [
+        "Villa Kubitschek takes up an entire house inside a country plot in Lago Sul. Other houses on the grounds may be rented out, but what is yours stays yours: the four suites, the courtyard, the kitchen, the pool, the hot tub and the grills are not shared.",
+        "This is the house for days with no closing time — ping-pong and pool indoors, gas or charcoal barbecue outdoors, a playground and trampoline for the children, and plenty of parking for a group arriving in several cars."
+      ],
+      "es": [
+        "La Villa Kubitschek ocupa una casa entera dentro de una chacra en Lago Sul. Otras casas del terreno pueden estar alquiladas, pero lo tuyo es tuyo: las cuatro suites, el patio, la cocina, la piscina, el jacuzzi y las parrillas no se comparten.",
+        "Es la casa de los días que no tienen hora de acabar — ping-pong y billar adentro, asado a gas o a carbón afuera, parque y cama elástica para los niños, y amplio estacionamiento para el grupo que llega en varios coches."
+      ]
+    },
+    "destaques": [
+      { "icone": "🔒", "titulo": { "pt": "Área de lazer privativa", "en": "Private leisure area", "es": "Zona de ocio privada" }, "texto": { "pt": "Piscina, jacuzzi, cozinha e churrasqueiras só do seu grupo.", "en": "Pool, hot tub, kitchen and grills for your group alone.", "es": "Piscina, jacuzzi, cocina y parrillas solo para tu grupo." } },
+      { "icone": "🛁", "titulo": { "pt": "Piscina aquecida e jacuzzi", "en": "Heated pool and hot tub", "es": "Piscina climatizada y jacuzzi" }, "texto": { "pt": "O fim de tarde que faz esquecer que existe segunda-feira.", "en": "The late afternoon that makes you forget Monday exists.", "es": "El atardecer que hace olvidar que existe el lunes." } },
+      { "icone": "🎱", "titulo": { "pt": "Sinuca profissional e ping-pong", "en": "Pro pool table and ping-pong", "es": "Billar profesional y ping-pong" }, "texto": { "pt": "Entretenimento dentro de casa quando a chuva do Planalto chega.", "en": "Something to do indoors when the Planalto rain arrives.", "es": "Entretenimiento bajo techo cuando llega la lluvia del Planalto." } },
+      { "icone": "🧒", "titulo": { "pt": "Parquinho e pula-pula", "en": "Playground and trampoline", "es": "Parque y cama elástica" }, "texto": { "pt": "Praça externa para as crianças correrem sem sair do terreno.", "en": "An outdoor square where children can run without leaving the grounds.", "es": "Plaza exterior para que los niños corran sin salir del terreno." } }
+    ],
+    "idealPara": {
+      "pt": ["Famílias", "Grupos de amigos", "Confraternizações", "Fim de semana longo"],
+      "en": ["Families", "Groups of friends", "Get-togethers", "Long weekends"],
+      "es": ["Familias", "Grupos de amigos", "Celebraciones", "Fin de semana largo"]
+    }
+  },
+
+  "PL02I": {
+    "manchete": {
+      "pt": "Três flats e uma casa no mesmo terreno: <strong>21 hóspedes</strong> juntos, cada núcleo com sua porta.",
+      "en": "Three flats and a house on the same grounds: <strong>21 guests</strong> together, each group with its own door.",
+      "es": "Tres flats y una casa en el mismo terreno: <strong>21 huéspedes</strong> juntos, cada núcleo con su puerta."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Villa Catetinho resolve o problema clássico da viagem em grupo: gente que quer estar junta o dia todo, mas dormir separada. São três flats de 30 m² e a Casa Villela, com duas suítes e uma sala de sofás-cama, somando 150 m² e dois banheiros coletivos para quando há evento.",
+        "A área de lazer é privativa e reúne todo mundo: cozinha completa, churrasqueira, piscina e 50 m² de área coberta para o caso de chuva. O Lago Sul tem microclima mais ameno que o resto de Brasília — o lago por perto e a altitude tiram o peso da seca."
+      ],
+      "en": [
+        "Villa Catetinho solves the classic group-trip problem: people who want to be together all day but sleep apart. There are three 30 m² flats plus Casa Villela, with two suites and a living room of sofa beds, totalling 150 m² and two shared bathrooms for event days.",
+        "The leisure area is private and brings everyone together: a full kitchen, a barbecue, a pool and 50 m² of covered space in case of rain. Lago Sul has a milder microclimate than the rest of Brasília — the nearby lake and the altitude take the edge off the dry season."
+      ],
+      "es": [
+        "La Villa Catetinho resuelve el problema clásico del viaje en grupo: gente que quiere estar junta todo el día, pero dormir por separado. Son tres flats de 30 m² y la Casa Villela, con dos suites y una sala con sofás-cama, sumando 150 m² y dos baños colectivos para cuando hay evento.",
+        "La zona de ocio es privada y reúne a todos: cocina completa, parrilla, piscina y 50 m² de área cubierta por si llueve. Lago Sul tiene un microclima más suave que el resto de Brasilia — el lago cerca y la altitud le quitan peso a la sequía."
+      ]
+    },
+    "destaques": [
+      { "icone": "🚪", "titulo": { "pt": "Quatro unidades independentes", "en": "Four independent units", "es": "Cuatro unidades independientes" }, "texto": { "pt": "Cada família ou casal com sua chave, todos no mesmo quintal.", "en": "Each family or couple with their own key, all in the same garden.", "es": "Cada familia o pareja con su llave, todos en el mismo jardín." } },
+      { "icone": "🏊", "titulo": { "pt": "Lazer privativo do grupo", "en": "Leisure area for your group only", "es": "Ocio privado del grupo" }, "texto": { "pt": "Piscina, churrasqueira e cozinha completa sem dividir com terceiros.", "en": "Pool, barbecue and full kitchen with no outsiders.", "es": "Piscina, parrilla y cocina completa sin compartir con terceros." } },
+      { "icone": "☂️", "titulo": { "pt": "50 m² de área coberta", "en": "50 m² of covered area", "es": "50 m² de área cubierta" }, "texto": { "pt": "A festa continua quando a chuva de dezembro resolve aparecer.", "en": "The party carries on when the December rain shows up.", "es": "La fiesta sigue cuando aparece la lluvia de diciembre." } },
+      { "icone": "🎉", "titulo": { "pt": "Estrutura para eventos", "en": "Set up for events", "es": "Estructura para eventos" }, "texto": { "pt": "Banheiros coletivos e espaço pensados para receber convidados.", "en": "Shared bathrooms and space designed to host guests.", "es": "Baños colectivos y espacio pensados para recibir invitados." } }
+    ],
+    "idealPara": {
+      "pt": ["Grupos grandes", "Famílias com filhos adultos", "Eventos e confraternizações", "Formaturas"],
+      "en": ["Large groups", "Families with grown children", "Events and get-togethers", "Graduations"],
+      "es": ["Grupos grandes", "Familias con hijos adultos", "Eventos y celebraciones", "Graduaciones"]
+    }
+  },
+
+  "YV01I": {
+    "manchete": {
+      "pt": "Uma casa inteira de <strong>120 m² para duas pessoas</strong> — o Jardim dos Sentidos existe para casais que não querem dividir nada com ninguém.",
+      "en": "An entire <strong>120 m² house for two</strong> — Jardim dos Sentidos exists for couples who would rather share nothing with anyone.",
+      "es": "Una casa entera de <strong>120 m² para dos personas</strong> — el Jardim dos Sentidos existe para parejas que no quieren compartir nada con nadie."
+    },
+    "paragrafos": {
+      "pt": [
+        "É a nossa hospedagem mais incomum: uma casa de 120 metros quadrados dedicada a um casal só. Sem vizinho de quarto, sem barulho de grupo, sem hora de acordar. Serve para o aniversário de casamento, para o pedido, para o fim de semana que estava sendo adiado há meses.",
+        "O jantar harmonizado preparado pelo nosso chef pode ser combinado antes da chegada — é o tipo de coisa que fica melhor quando já está tudo pronto quando vocês chegam. Fale com a gente pelo WhatsApp que montamos a noite com você."
+      ],
+      "en": [
+        "This is our most unusual stay: a 120-square-metre house dedicated to one couple. No neighbour on the other side of the wall, no group noise, no set time to wake up. It works for the anniversary, for the proposal, for the weekend that has been postponed for months.",
+        "The paired dinner prepared by our chef can be arranged before you arrive — the sort of thing that is better when everything is ready the moment you walk in. Message us on WhatsApp and we will plan the evening with you."
+      ],
+      "es": [
+        "Es nuestro alojamiento más singular: una casa de 120 metros cuadrados dedicada a una sola pareja. Sin vecino de habitación, sin ruido de grupo, sin hora para despertar. Sirve para el aniversario, para la pedida de mano, para el fin de semana que llevaba meses aplazado.",
+        "La cena maridada preparada por nuestro chef puede acordarse antes de la llegada — es de esas cosas que salen mejor cuando ya está todo listo al entrar. Escríbenos por WhatsApp y armamos la noche contigo."
+      ]
+    },
+    "destaques": [
+      { "icone": "💛", "titulo": { "pt": "Casa inteira para duas pessoas", "en": "A whole house for two", "es": "Casa entera para dos" }, "texto": { "pt": "120 m² sem dividir com ninguém — privacidade de verdade, não de folheto.", "en": "120 m² shared with no one — real privacy, not a brochure promise.", "es": "120 m² sin compartir con nadie — privacidad real, no de folleto." } },
+      { "icone": "👨‍🍳", "titulo": { "pt": "Jantar harmonizado com chef", "en": "Paired dinner with a chef", "es": "Cena maridada con chef" }, "texto": { "pt": "Combinado antes da chegada, servido na casa, sob consulta.", "en": "Arranged before arrival and served in the house, on request.", "es": "Acordada antes de llegar y servida en la casa, bajo consulta." } },
+      { "icone": "🌿", "titulo": { "pt": "Lago Sul, bucólico e discreto", "en": "Lago Sul, quiet and discreet", "es": "Lago Sul, bucólico y discreto" }, "texto": { "pt": "Bairro só de casas, com o silêncio que hotel no centro não tem.", "en": "A neighbourhood of houses only, with a quiet no downtown hotel has.", "es": "Un barrio solo de casas, con un silencio que ningún hotel del centro tiene." } }
+    ],
+    "idealPara": {
+      "pt": ["Casais", "Lua de mel", "Aniversário de casamento", "Pedido de casamento"],
+      "en": ["Couples", "Honeymoon", "Anniversaries", "Proposals"],
+      "es": ["Parejas", "Luna de miel", "Aniversarios", "Pedidas de mano"]
+    }
+  },
+
+  "GI01I": {
+    "manchete": {
+      "pt": "Casa de <strong>120 m² para até 15 pessoas</strong>, com piscina e churrasqueira, em região tranquila a poucos minutos da Ponte JK.",
+      "en": "A <strong>120 m² house for up to 15 people</strong>, with a pool and a barbecue, in a quiet area minutes from the JK Bridge.",
+      "es": "Casa de <strong>120 m² para hasta 15 personas</strong>, con piscina y parrilla, en una zona tranquila a pocos minutos del Puente JK."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Casa Villela é a casa do meio-termo: grande o bastante para o grupo caber com folga, pequena o bastante para todo mundo se ouvir da cozinha. Duas suítes, três banheiros, cozinha completa e uma área de lazer que é o centro de gravidade da estadia.",
+        "Fica no SMDB Conjunto 29, com saída rápida para a Esplanada, a Asa Sul e a Asa Norte, e mercados, farmácias e padarias na volta. É cerrado de verdade em volta — dá para ver a fauna e a flora sem abrir mão de estar a minutos do centro."
+      ],
+      "en": [
+        "Casa Villela is the middle ground: big enough for the group to spread out, small enough for everyone to hear each other from the kitchen. Two suites, three bathrooms, a full kitchen and a leisure area that becomes the centre of gravity of the stay.",
+        "It sits in SMDB Conjunto 29, with quick access to the Esplanada and both wings of the Plano Piloto, and supermarkets, pharmacies and bakeries close by. The cerrado is genuinely all around — you can watch the wildlife without giving up being minutes from the centre."
+      ],
+      "es": [
+        "La Casa Villela es el término medio: lo bastante grande para que el grupo quepa con holgura, lo bastante pequeña para que todos se oigan desde la cocina. Dos suites, tres baños, cocina completa y una zona de ocio que se vuelve el centro de gravedad de la estancia.",
+        "Está en el SMDB Conjunto 29, con salida rápida hacia la Explanada, el Ala Sur y el Ala Norte, y supermercados, farmacias y panaderías a la vuelta. Alrededor hay cerrado de verdad — se ve la fauna y la flora sin renunciar a estar a minutos del centro."
+      ]
+    },
+    "destaques": [
+      { "icone": "🏊", "titulo": { "pt": "Área de lazer com piscina", "en": "Leisure area with pool", "es": "Zona de ocio con piscina" }, "texto": { "pt": "O quintal onde a estadia inteira acaba acontecendo.", "en": "The garden where the whole stay ends up happening.", "es": "El jardín donde termina ocurriendo toda la estancia." } },
+      { "icone": "🔥", "titulo": { "pt": "Churrasqueira e cozinha completa", "en": "Barbecue and full kitchen", "es": "Parrilla y cocina completa" }, "texto": { "pt": "Grupo grande come melhor e gasta menos cozinhando em casa.", "en": "A big group eats better and spends less cooking at home.", "es": "Un grupo grande come mejor y gasta menos cocinando en casa." } },
+      { "icone": "🚗", "titulo": { "pt": "Saída rápida para o Plano Piloto", "en": "Quick access to the Plano Piloto", "es": "Salida rápida al Plano Piloto" }, "texto": { "pt": "Esplanada, Asa Sul e Asa Norte sem depender de horário.", "en": "Esplanada and both wings without watching the clock.", "es": "Explanada, Ala Sur y Ala Norte sin depender del horario." } }
+    ],
+    "idealPara": {
+      "pt": ["Famílias", "Grupos de amigos", "Fim de semana", "Comitivas a trabalho"],
+      "en": ["Families", "Groups of friends", "Weekends", "Work delegations"],
+      "es": ["Familias", "Grupos de amigos", "Fin de semana", "Comitivas de trabajo"]
+    }
+  },
+
+  "VH01H": {
+    "manchete": {
+      "pt": "Apartamento privativo de <strong>60 m²</strong> com duas suítes e sala — a família inteira em um só andar, com porta que fecha.",
+      "en": "A private <strong>60 m²</strong> flat with two suites and a living room — the whole family on one floor, behind its own door.",
+      "es": "Apartamento privado de <strong>60 m²</strong> con dos suites y sala — toda la familia en un solo piso, con puerta propia."
+    },
+    "paragrafos": {
+      "pt": [
+        "O Flat da Família tem duas suítes, dois banheiros e uma sala, com cama king, camas de solteiro e sofás-cama. É a unidade para quem viaja com filhos e não quer negociar quem dorme onde: tem cama para todo mundo sem improviso.",
+        "Fica dentro da Villela Home Stay, no SMDB do Lago Sul, perto da Ponte JK. A área de lazer da casa — piscina, churrasqueira, spa e cozinha completa — pode ser liberada mediante taxa; combine com a gente antes da chegada."
+      ],
+      "en": [
+        "Flat da Família has two suites, two bathrooms and a living room, with a king bed, single beds and sofa beds. It is the unit for those travelling with children who would rather not negotiate who sleeps where: there is a bed for everyone, no improvising.",
+        "It sits inside Villela Home Stay, in SMDB, Lago Sul, near the JK Bridge. The house's leisure area — pool, barbecue, spa and full kitchen — can be released for a fee; arrange it with us before you arrive."
+      ],
+      "es": [
+        "El Flat da Família tiene dos suites, dos baños y una sala, con cama king, camas individuales y sofás-cama. Es la unidad para quien viaja con hijos y no quiere negociar quién duerme dónde: hay cama para todos sin improvisar.",
+        "Está dentro de la Villela Home Stay, en el SMDB de Lago Sul, cerca del Puente JK. La zona de ocio de la casa — piscina, parrilla, spa y cocina completa — puede liberarse mediante tarifa; acuérdalo con nosotros antes de llegar."
+      ]
+    },
+    "destaques": [
+      { "icone": "🛏️", "titulo": { "pt": "Duas suítes e uma sala", "en": "Two suites and a living room", "es": "Dos suites y una sala" }, "texto": { "pt": "Cama para todo mundo, com dois banheiros para a manhã render.", "en": "A bed for everyone and two bathrooms so mornings actually work.", "es": "Cama para todos y dos baños para que la mañana cunda." } },
+      { "icone": "🚪", "titulo": { "pt": "Apartamento privativo", "en": "Private flat", "es": "Apartamento privado" }, "texto": { "pt": "Entrada e espaço só da sua família, dentro da casa maior.", "en": "Your family's own entrance and space inside the larger house.", "es": "Entrada y espacio solo de tu familia, dentro de la casa mayor." } },
+      { "icone": "🏊", "titulo": { "pt": "Área de lazer mediante taxa", "en": "Leisure area for a fee", "es": "Zona de ocio con tarifa" }, "texto": { "pt": "Piscina, spa e churrasqueira liberados sob combinação prévia.", "en": "Pool, spa and barbecue released by prior arrangement.", "es": "Piscina, spa y parrilla liberados con acuerdo previo." } }
+    ],
+    "idealPara": {
+      "pt": ["Famílias com crianças", "Estadias longas", "Duas famílias", "Viagem a trabalho"],
+      "en": ["Families with children", "Long stays", "Two families", "Business trips"],
+      "es": ["Familias con niños", "Estancias largas", "Dos familias", "Viajes de trabajo"]
+    }
+  },
+
+  "VH02H": {
+    "manchete": {
+      "pt": "Duas suítes, dois banheiros e sala em <strong>60 m² privativos</strong> — feito para a turma que viaja junta e divide a conta.",
+      "en": "Two suites, two bathrooms and a living room in <strong>60 private m²</strong> — made for the crowd that travels together and splits the bill.",
+      "es": "Dos suites, dos baños y sala en <strong>60 m² privados</strong> — hecho para el grupo que viaja junto y divide la cuenta."
+    },
+    "paragrafos": {
+      "pt": [
+        "O Flat dos Amigos é montado com camas de casal e sofás-cama, o que costuma resolver bem a viagem de quatro ou cinco casais. Cada suíte tem seu banheiro, e a sala vira ponto de encontro no fim da noite.",
+        "Está dentro da Villela Home Stay, no SMDB do Lago Sul, a poucos minutos da Ponte JK e dos restaurantes da orla. A área de lazer da casa — piscina, churrasqueira, spa e cozinha — é liberada mediante taxa."
+      ],
+      "en": [
+        "Flat dos Amigos is set up with double beds and sofa beds, which usually suits a trip of four or five couples. Each suite has its own bathroom, and the living room becomes the meeting point at the end of the night.",
+        "It is inside Villela Home Stay, in SMDB, Lago Sul, minutes from the JK Bridge and the lakeside restaurants. The house's leisure area — pool, barbecue, spa and kitchen — is released for a fee."
+      ],
+      "es": [
+        "El Flat dos Amigos está montado con camas de matrimonio y sofás-cama, lo que suele resolver bien el viaje de cuatro o cinco parejas. Cada suite tiene su baño, y la sala se vuelve el punto de encuentro al final de la noche.",
+        "Está dentro de la Villela Home Stay, en el SMDB de Lago Sul, a pocos minutos del Puente JK y de los restaurantes de la orilla. La zona de ocio de la casa — piscina, parrilla, spa y cocina — se libera mediante tarifa."
+      ]
+    },
+    "destaques": [
+      { "icone": "👥", "titulo": { "pt": "Camas de casal para o grupo", "en": "Double beds for the group", "es": "Camas dobles para el grupo" }, "texto": { "pt": "Resolve a viagem de vários casais sem ninguém no colchão do chão.", "en": "Sorts a trip of several couples with nobody on a floor mattress.", "es": "Resuelve el viaje de varias parejas sin nadie en un colchón en el suelo." } },
+      { "icone": "🚪", "titulo": { "pt": "Espaço privativo", "en": "Private space", "es": "Espacio privado" }, "texto": { "pt": "Duas suítes com banheiro próprio e sala só de vocês.", "en": "Two en-suite rooms and a living room that is yours alone.", "es": "Dos suites con baño propio y una sala solo para ustedes." } },
+      { "icone": "🌉", "titulo": { "pt": "Minutos da Ponte JK", "en": "Minutes from the JK Bridge", "es": "A minutos del Puente JK" }, "texto": { "pt": "Bons restaurantes na orla e o Plano Piloto logo adiante.", "en": "Good lakeside restaurants and the Plano Piloto just ahead.", "es": "Buenos restaurantes en la orilla y el Plano Piloto ahí al lado." } }
+    ],
+    "idealPara": {
+      "pt": ["Grupos de amigos", "Vários casais", "Fim de semana", "Formaturas"],
+      "en": ["Groups of friends", "Several couples", "Weekends", "Graduations"],
+      "es": ["Grupos de amigos", "Varias parejas", "Fin de semana", "Graduaciones"]
+    }
+  },
+
+  "UF07H": {
+    "manchete": {
+      "pt": "Flat de <strong>30 m²</strong> com banheiro externo privativo, mesa de trabalho e estante de livros — pensado para quem fica alguns dias.",
+      "en": "A <strong>30 m²</strong> flat with its own external bathroom, a work desk and a bookshelf — made for stays of a few days.",
+      "es": "Flat de <strong>30 m²</strong> con baño externo privado, escritorio y estantería — pensado para quien se queda algunos días."
+    },
+    "paragrafos": {
+      "pt": [
+        "O Flat do Oscar tem cama de casal, sofá-cama, frigobar, ar-condicionado e uma mesa de trabalho de verdade — não a escrivaninha simbólica que hotel costuma oferecer. Fica na casa de campo da Villela Home Stay, no SMDB do Lago Sul.",
+        "É a escolha de quem vem a trabalho e não quer passar a semana em quarto de hotel, ou de quem quer base tranquila para explorar Brasília. Área de lazer da casa disponível mediante taxa."
+      ],
+      "en": [
+        "Flat do Oscar has a double bed, a sofa bed, a minibar, air conditioning and a real work desk — not the token table hotels tend to offer. It is in the Villela Home Stay country house, in SMDB, Lago Sul.",
+        "It is the choice for those here on business who would rather not spend the week in a hotel room, or for anyone wanting a quiet base to explore Brasília. The house's leisure area is available for a fee."
+      ],
+      "es": [
+        "El Flat do Oscar tiene cama de matrimonio, sofá-cama, frigobar, aire acondicionado y un escritorio de verdad — no la mesita simbólica que suelen ofrecer los hoteles. Está en la casa de campo de la Villela Home Stay, en el SMDB de Lago Sul.",
+        "Es la opción de quien viene por trabajo y no quiere pasar la semana en una habitación de hotel, o de quien busca una base tranquila para recorrer Brasilia. Zona de ocio de la casa disponible mediante tarifa."
+      ]
+    },
+    "destaques": [
+      { "icone": "💻", "titulo": { "pt": "Mesa de trabalho e wi-fi", "en": "Work desk and Wi-Fi", "es": "Escritorio y wifi" }, "texto": { "pt": "Dá para trabalhar o dia inteiro sem sair da cadeira errada.", "en": "You can work all day without ending up in the wrong chair.", "es": "Se puede trabajar todo el día sin acabar en la silla equivocada." } },
+      { "icone": "🚿", "titulo": { "pt": "Banheiro externo privativo", "en": "Private external bathroom", "es": "Baño externo privado" }, "texto": { "pt": "Só seu, ainda que fora do quarto.", "en": "Yours alone, even though it is outside the room.", "es": "Solo tuyo, aunque esté fuera de la habitación." } },
+      { "icone": "🌳", "titulo": { "pt": "Casa de campo no Lago Sul", "en": "A country house in Lago Sul", "es": "Casa de campo en Lago Sul" }, "texto": { "pt": "Silêncio para dormir e cidade a minutos de carro.", "en": "Quiet enough to sleep, with the city minutes away.", "es": "Silencio para dormir y la ciudad a minutos en coche." } }
+    ],
+    "idealPara": {
+      "pt": ["Viagem a trabalho", "Casais", "Estadias longas", "Quem viaja sozinho"],
+      "en": ["Business trips", "Couples", "Long stays", "Solo travellers"],
+      "es": ["Viajes de trabajo", "Parejas", "Estancias largas", "Quien viaja solo"]
+    }
+  },
+
+  "UF01H": {
+    "manchete": {
+      "pt": "Flat de <strong>33 m²</strong> com banheiro privativo, cama de casal, beliche e mesa de trabalho — espaço para a família pequena que fica a semana toda.",
+      "en": "A <strong>33 m²</strong> flat with a private bathroom, a double bed, a bunk and a work desk — room for a small family staying the whole week.",
+      "es": "Flat de <strong>33 m²</strong> con baño privado, cama de matrimonio, litera y escritorio — espacio para la familia pequeña que se queda toda la semana."
+    },
+    "paragrafos": {
+      "pt": [
+        "O Flat do Burle Marx combina cama de casal, sofá-cama e beliche com cama auxiliar, o que costuma acomodar bem pais com dois ou três filhos. Tem banheiro interno privativo, ar-condicionado, TV smart, frigobar e estante de livros.",
+        "Fica na Villela Home Stay, no SMDB do Lago Sul, com a área de lazer da casa disponível mediante taxa — piscina, churrasqueira, spa e cozinha completa."
+      ],
+      "en": [
+        "Flat do Burle Marx combines a double bed, a sofa bed and a bunk with an extra bed, which usually suits parents with two or three children. It has a private internal bathroom, air conditioning, a smart TV, a minibar and a bookshelf.",
+        "It is in Villela Home Stay, SMDB, Lago Sul, with the house's leisure area available for a fee — pool, barbecue, spa and full kitchen."
+      ],
+      "es": [
+        "El Flat do Burle Marx combina cama de matrimonio, sofá-cama y litera con cama auxiliar, lo que suele acomodar bien a padres con dos o tres hijos. Tiene baño interno privado, aire acondicionado, TV smart, frigobar y estantería.",
+        "Está en la Villela Home Stay, en el SMDB de Lago Sul, con la zona de ocio de la casa disponible mediante tarifa — piscina, parrilla, spa y cocina completa."
+      ]
+    },
+    "destaques": [
+      { "icone": "🛏️", "titulo": { "pt": "Cama de casal, sofá-cama e beliche", "en": "Double bed, sofa bed and bunk", "es": "Cama doble, sofá-cama y litera" }, "texto": { "pt": "Arranjo que resolve pais e filhos no mesmo quarto sem aperto.", "en": "An arrangement that fits parents and children without a squeeze.", "es": "Una distribución que acomoda a padres e hijos sin apreturas." } },
+      { "icone": "💻", "titulo": { "pt": "Mesa de trabalho", "en": "Work desk", "es": "Escritorio" }, "texto": { "pt": "Para o dia em que a viagem vira meio dia de trabalho.", "en": "For the day the trip turns into half a workday.", "es": "Para el día en que el viaje se vuelve media jornada de trabajo." } },
+      { "icone": "🏊", "titulo": { "pt": "Área de lazer mediante taxa", "en": "Leisure area for a fee", "es": "Zona de ocio con tarifa" }, "texto": { "pt": "Piscina, spa e churrasqueira combinados antes da chegada.", "en": "Pool, spa and barbecue arranged before arrival.", "es": "Piscina, spa y parrilla acordados antes de llegar." } }
+    ],
+    "idealPara": {
+      "pt": ["Famílias pequenas", "Estadias longas", "Viagem a trabalho", "Casais"],
+      "en": ["Small families", "Long stays", "Business trips", "Couples"],
+      "es": ["Familias pequeñas", "Estancias largas", "Viajes de trabajo", "Parejas"]
+    }
+  },
+
+  "UF08H": {
+    "manchete": {
+      "pt": "Flat de <strong>30 m²</strong> com banheiro privativo e camas para a família toda, no bairro mais tranquilo de Brasília.",
+      "en": "A <strong>30 m²</strong> flat with a private bathroom and beds for the whole family, in Brasília's quietest neighbourhood.",
+      "es": "Flat de <strong>30 m²</strong> con baño privado y camas para toda la familia, en el barrio más tranquilo de Brasilia."
+    },
+    "paragrafos": {
+      "pt": [
+        "O Flat da Cassia Eller tem cama de casal, sofá-cama e beliche com cama auxiliar, além de banheiro interno privativo, ar-condicionado, TV smart, frigobar, estante de livros e mesa de trabalho.",
+        "É unidade independente dentro da Villela Home Stay, no SMDB do Lago Sul. A área de lazer da casa — piscina, churrasqueira, spa e cozinha — pode ser liberada mediante taxa."
+      ],
+      "en": [
+        "Flat da Cassia Eller has a double bed, a sofa bed and a bunk with an extra bed, plus a private internal bathroom, air conditioning, a smart TV, a minibar, a bookshelf and a work desk.",
+        "It is an independent unit inside Villela Home Stay, SMDB, Lago Sul. The house's leisure area — pool, barbecue, spa and kitchen — can be released for a fee."
+      ],
+      "es": [
+        "El Flat da Cassia Eller tiene cama de matrimonio, sofá-cama y litera con cama auxiliar, además de baño interno privado, aire acondicionado, TV smart, frigobar, estantería y escritorio.",
+        "Es una unidad independiente dentro de la Villela Home Stay, en el SMDB de Lago Sul. La zona de ocio de la casa — piscina, parrilla, spa y cocina — puede liberarse mediante tarifa."
+      ]
+    },
+    "destaques": [
+      { "icone": "🚪", "titulo": { "pt": "Unidade independente", "en": "Independent unit", "es": "Unidad independiente" }, "texto": { "pt": "Sua porta, seu banheiro, seu horário.", "en": "Your own door, bathroom and schedule.", "es": "Tu puerta, tu baño, tu horario." } },
+      { "icone": "🛏️", "titulo": { "pt": "Camas para todos", "en": "Beds for everyone", "es": "Camas para todos" }, "texto": { "pt": "Casal, sofá-cama e beliche — sem colchão extra no chão.", "en": "Double, sofa bed and bunk — no extra mattress on the floor.", "es": "Matrimonio, sofá-cama y litera — sin colchón extra en el suelo." } },
+      { "icone": "📍", "titulo": { "pt": "Lago Sul, perto de tudo", "en": "Lago Sul, close to everything", "es": "Lago Sul, cerca de todo" }, "texto": { "pt": "Mercado, farmácia e padaria na volta; Plano Piloto em minutos.", "en": "Supermarket, pharmacy and bakery nearby; Plano Piloto in minutes.", "es": "Supermercado, farmacia y panadería cerca; Plano Piloto en minutos." } }
+    ],
+    "idealPara": {
+      "pt": ["Famílias pequenas", "Casais", "Estadias longas", "Viagem a trabalho"],
+      "en": ["Small families", "Couples", "Long stays", "Business trips"],
+      "es": ["Familias pequeñas", "Parejas", "Estancias largas", "Viajes de trabajo"]
+    }
+  },
+
+  "UD03H": {
+    "manchete": {
+      "pt": "Suíte com <strong>triliches</strong>, sala anexa privativa e banheiro próprio — a solução para o grupo que viaja apertado no orçamento, não no espaço.",
+      "en": "A suite with <strong>triple bunks</strong>, a private adjoining living room and its own bathroom — for the group on a tight budget, not a tight space.",
+      "es": "Suite con <strong>literas triples</strong>, sala anexa privada y baño propio — la solución para el grupo con presupuesto ajustado, no con espacio ajustado."
+    },
+    "paragrafos": {
+      "pt": [
+        "O Flat dos Solteiros tem dois triliches — beliches com cama auxiliar — mais uma sala anexa privativa, TV smart, aquecedor, arara para roupas e mesinhas dobráveis para notebook. É a unidade mais prática para turma de amigos ou equipe em viagem.",
+        "Fica na Villela Home Stay, no SMDB do Lago Sul. A área de lazer da casa é liberada mediante taxa, combinada antes da chegada."
+      ],
+      "en": [
+        "Flat dos Solteiros has two triple bunks plus a private adjoining living room, a smart TV, a heater, a clothes rail and folding desks for laptops. It is the most practical unit for a group of friends or a team on the road.",
+        "It is in Villela Home Stay, SMDB, Lago Sul. The house's leisure area is released for a fee, arranged before arrival."
+      ],
+      "es": [
+        "El Flat dos Solteiros tiene dos literas triples más una sala anexa privada, TV smart, calefactor, perchero y mesitas plegables para portátil. Es la unidad más práctica para un grupo de amigos o un equipo de viaje.",
+        "Está en la Villela Home Stay, en el SMDB de Lago Sul. La zona de ocio de la casa se libera mediante tarifa, acordada antes de llegar."
+      ]
+    },
+    "destaques": [
+      { "icone": "🛏️", "titulo": { "pt": "Dois triliches", "en": "Two triple bunks", "es": "Dos literas triples" }, "texto": { "pt": "Cama para o grupo inteiro sem alugar duas unidades.", "en": "A bed for the whole group without renting two units.", "es": "Cama para todo el grupo sin alquilar dos unidades." } },
+      { "icone": "🛋️", "titulo": { "pt": "Sala anexa privativa", "en": "Private adjoining room", "es": "Sala anexa privada" }, "texto": { "pt": "Espaço para conversar sem acordar quem já foi dormir.", "en": "Somewhere to talk without waking whoever went to bed.", "es": "Espacio para conversar sin despertar a quien ya se acostó." } },
+      { "icone": "💻", "titulo": { "pt": "Mesinhas para notebook", "en": "Folding laptop desks", "es": "Mesitas para portátil" }, "texto": { "pt": "Detalhe que salva a viagem de equipe com prazo para entregar.", "en": "The detail that saves a team trip with a deadline.", "es": "El detalle que salva el viaje de equipo con entrega pendiente." } }
+    ],
+    "idealPara": {
+      "pt": ["Grupos de amigos", "Equipes a trabalho", "Estudantes", "Estadias longas"],
+      "en": ["Groups of friends", "Work teams", "Students", "Long stays"],
+      "es": ["Grupos de amigos", "Equipos de trabajo", "Estudiantes", "Estancias largas"]
+    }
+  },
+
+  "UF06H": {
+    "manchete": {
+      "pt": "Cama king, <strong>banheiro com hidromassagem e chuveiro duplo</strong> — a Suíte do Amor foi montada para casal, e só.",
+      "en": "A king bed and a <strong>bathroom with a whirlpool tub and a double shower</strong> — Suíte do Amor was made for two, and only two.",
+      "es": "Cama king, <strong>baño con hidromasaje y ducha doble</strong> — la Suíte do Amor fue montada para pareja, y nada más."
+    },
+    "paragrafos": {
+      "pt": [
+        "É a suíte que se escolhe por causa do banheiro: amplo, com hidromassagem e chuveiro duplo. Tem ainda cama king, sofá-cama de casal, TV smart e aquecedor. Fica na Villela Home Stay, no Lago Sul, perto da Ponte JK e dos bons restaurantes da orla.",
+        "A área de lazer compartilhada da casa, com piscina e cozinha, é liberada mediante taxa — combine antes e a gente deixa tudo pronto."
+      ],
+      "en": [
+        "This is the suite you choose because of the bathroom: spacious, with a whirlpool tub and a double shower. It also has a king bed, a double sofa bed, a smart TV and a heater. It is in Villela Home Stay, Lago Sul, near the JK Bridge and the good lakeside restaurants.",
+        "The house's shared leisure area, with a pool and kitchen, is released for a fee — arrange it in advance and we will have it ready."
+      ],
+      "es": [
+        "Es la suite que se elige por el baño: amplio, con hidromasaje y ducha doble. Tiene además cama king, sofá-cama de matrimonio, TV smart y calefactor. Está en la Villela Home Stay, en Lago Sul, cerca del Puente JK y de los buenos restaurantes de la orilla.",
+        "La zona de ocio compartida de la casa, con piscina y cocina, se libera mediante tarifa — acuérdalo antes y lo dejamos todo listo."
+      ]
+    },
+    "destaques": [
+      { "icone": "🛁", "titulo": { "pt": "Hidromassagem e chuveiro duplo", "en": "Whirlpool tub and double shower", "es": "Hidromasaje y ducha doble" }, "texto": { "pt": "O banheiro é o motivo da reserva, não um detalhe dela.", "en": "The bathroom is the reason for the booking, not a footnote.", "es": "El baño es el motivo de la reserva, no un detalle." } },
+      { "icone": "👑", "titulo": { "pt": "Cama king", "en": "King bed", "es": "Cama king" }, "texto": { "pt": "Espaço de sobra para dormir bem depois do dia inteiro fora.", "en": "Plenty of room to sleep well after a long day out.", "es": "Espacio de sobra para dormir bien tras el día entero fuera." } },
+      { "icone": "🌉", "titulo": { "pt": "Perto da Ponte JK", "en": "Near the JK Bridge", "es": "Cerca del Puente JK" }, "texto": { "pt": "Jantar na orla e voltar em poucos minutos.", "en": "Dinner by the lake and back in minutes.", "es": "Cenar en la orilla y volver en pocos minutos." } }
+    ],
+    "idealPara": {
+      "pt": ["Casais", "Comemorações", "Fim de semana a dois"],
+      "en": ["Couples", "Celebrations", "Weekend for two"],
+      "es": ["Parejas", "Celebraciones", "Fin de semana en pareja"]
+    }
+  },
+
+  "UF05H": {
+    "manchete": {
+      "pt": "Suíte com beliche de <strong>duas camas de casal</strong> — arranjo raro, que acomoda dois casais ou uma família sem apertar.",
+      "en": "A suite with a bunk of <strong>two double beds</strong> — a rare layout that fits two couples or a family without squeezing.",
+      "es": "Suite con litera de <strong>dos camas de matrimonio</strong> — una distribución poco común, que acomoda a dos parejas o a una familia sin apreturas."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Suíte do Chef tem banheiro próprio, TV smart e aquecedor, e o beliche com duas camas de casal resolve o que quarto comum não resolve: dois casais na mesma diária, ou pais e filhos maiores com conforto.",
+        "Fica na casa de campo da Villela Home Stay, no SMDB do Lago Sul, com piscina e cozinha na área compartilhada, liberadas mediante taxa."
+      ],
+      "en": [
+        "Suíte do Chef has its own bathroom, a smart TV and a heater, and the bunk with two double beds solves what an ordinary room cannot: two couples on the same nightly rate, or parents with older children in comfort.",
+        "It is in the Villela Home Stay country house, SMDB, Lago Sul, with a pool and kitchen in the shared area, released for a fee."
+      ],
+      "es": [
+        "La Suíte do Chef tiene baño propio, TV smart y calefactor, y la litera con dos camas de matrimonio resuelve lo que una habitación común no resuelve: dos parejas en la misma tarifa, o padres con hijos mayores con comodidad.",
+        "Está en la casa de campo de la Villela Home Stay, en el SMDB de Lago Sul, con piscina y cocina en la zona compartida, liberadas mediante tarifa."
+      ]
+    },
+    "destaques": [
+      { "icone": "🛏️", "titulo": { "pt": "Beliche com duas camas de casal", "en": "Bunk with two double beds", "es": "Litera con dos camas dobles" }, "texto": { "pt": "Dois casais dividem a diária sem dividir a cama.", "en": "Two couples split the rate without sharing a bed.", "es": "Dos parejas comparten la tarifa sin compartir la cama." } },
+      { "icone": "🚿", "titulo": { "pt": "Banheiro privativo", "en": "Private bathroom", "es": "Baño privado" }, "texto": { "pt": "Sem fila e sem dividir com hóspede de outro quarto.", "en": "No queue and no sharing with guests from other rooms.", "es": "Sin cola y sin compartir con huéspedes de otra habitación." } },
+      { "icone": "🌳", "titulo": { "pt": "Casa de campo no Lago Sul", "en": "Country house in Lago Sul", "es": "Casa de campo en Lago Sul" }, "texto": { "pt": "Dormir no silêncio do cerrado, acordar a minutos da cidade.", "en": "Sleep in the quiet of the cerrado, wake minutes from the city.", "es": "Dormir en el silencio del cerrado, despertar a minutos de la ciudad." } }
+    ],
+    "idealPara": {
+      "pt": ["Dois casais", "Famílias pequenas", "Fim de semana", "Viagem a trabalho"],
+      "en": ["Two couples", "Small families", "Weekends", "Business trips"],
+      "es": ["Dos parejas", "Familias pequeñas", "Fin de semana", "Viajes de trabajo"]
+    }
+  },
+
+  "UD09H": {
+    "manchete": {
+      "pt": "Suíte privativa com beliche de <strong>duas camas de casal</strong> e banheiro interno, na casa de campo do Lago Sul.",
+      "en": "A private suite with a bunk of <strong>two double beds</strong> and an internal bathroom, in the Lago Sul country house.",
+      "es": "Suite privada con litera de <strong>dos camas de matrimonio</strong> y baño interno, en la casa de campo de Lago Sul."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Suíte do Renato Russo tem banheiro interno privativo, TV smart e aquecedor. O beliche com duas camas de casal acomoda mais gente do que um quarto do mesmo tamanho normalmente acomodaria.",
+        "Está na Villela Home Stay, no SMDB do Lago Sul, próxima da Ponte JK. A área compartilhada tem piscina e cozinha completa, liberadas mediante taxa."
+      ],
+      "en": [
+        "Suíte do Renato Russo has a private internal bathroom, a smart TV and a heater. The bunk with two double beds sleeps more people than a room of that size normally would.",
+        "It is in Villela Home Stay, SMDB, Lago Sul, near the JK Bridge. The shared area has a pool and a full kitchen, released for a fee."
+      ],
+      "es": [
+        "La Suíte do Renato Russo tiene baño interno privado, TV smart y calefactor. La litera con dos camas de matrimonio acomoda a más gente de la que normalmente cabría en una habitación de ese tamaño.",
+        "Está en la Villela Home Stay, en el SMDB de Lago Sul, cerca del Puente JK. La zona compartida tiene piscina y cocina completa, liberadas mediante tarifa."
+      ]
+    },
+    "destaques": [
+      { "icone": "🛏️", "titulo": { "pt": "Duas camas de casal", "en": "Two double beds", "es": "Dos camas de matrimonio" }, "texto": { "pt": "Mais gente na mesma diária, com conforto de cama de verdade.", "en": "More people on one rate, on proper beds.", "es": "Más gente en la misma tarifa, en camas de verdad." } },
+      { "icone": "🚿", "titulo": { "pt": "Banheiro interno privativo", "en": "Private internal bathroom", "es": "Baño interno privado" }, "texto": { "pt": "Dentro do quarto, sem atravessar a casa de madrugada.", "en": "Inside the room, no crossing the house at night.", "es": "Dentro de la habitación, sin cruzar la casa de madrugada." } },
+      { "icone": "🌉", "titulo": { "pt": "Próxima da Ponte JK", "en": "Near the JK Bridge", "es": "Cerca del Puente JK" }, "texto": { "pt": "Restaurantes da orla e Plano Piloto a poucos minutos.", "en": "Lakeside restaurants and Plano Piloto minutes away.", "es": "Restaurantes de la orilla y Plano Piloto a pocos minutos." } }
+    ],
+    "idealPara": {
+      "pt": ["Dois casais", "Famílias pequenas", "Viagem a trabalho", "Fim de semana"],
+      "en": ["Two couples", "Small families", "Business trips", "Weekends"],
+      "es": ["Dos parejas", "Familias pequeñas", "Viajes de trabajo", "Fin de semana"]
+    }
+  },
+
+  "UH05H": {
+    "manchete": {
+      "pt": "A maior suíte da Casa Modernista, com <strong>cama king</strong> e banheiro privativo — silêncio de casa de família, conforto de hotel bom.",
+      "en": "The largest suite in Casa Modernista, with a <strong>king bed</strong> and a private bathroom — the quiet of a family home, the comfort of a good hotel.",
+      "es": "La suite más grande de la Casa Modernista, con <strong>cama king</strong> y baño privado — silencio de casa de familia, confort de buen hotel."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Suíte Master fica na Casa Modernista, na QI 7 do Lago Sul, e tem porta independente, banheiro privativo, ar-condicionado e TV smart. É o quarto de quem quer dormir bem e não abrir mão de privacidade.",
+        "A casa é a 500 m do shopping Gilberto Salomão, do mercado, da farmácia e do hospital. Piscina, churrasqueira e demais áreas comuns são liberadas mediante taxa — é só combinar antes."
+      ],
+      "en": [
+        "Suíte Master is in Casa Modernista, on QI 7 in Lago Sul, with its own door, a private bathroom, air conditioning and a smart TV. It is the room for someone who wants to sleep well without giving up privacy.",
+        "The house is 500 m from the Gilberto Salomão mall, the supermarket, the pharmacy and the hospital. Pool, barbecue and other shared areas are released for a fee — just arrange it in advance."
+      ],
+      "es": [
+        "La Suíte Master está en la Casa Modernista, en la QI 7 de Lago Sul, y tiene puerta independiente, baño privado, aire acondicionado y TV smart. Es la habitación de quien quiere dormir bien sin renunciar a la privacidad.",
+        "La casa está a 500 m del centro comercial Gilberto Salomão, del supermercado, la farmacia y el hospital. Piscina, parrilla y demás zonas comunes se liberan mediante tarifa — basta acordarlo antes."
+      ]
+    },
+    "destaques": [
+      { "icone": "👑", "titulo": { "pt": "Cama king e banheiro privativo", "en": "King bed and private bathroom", "es": "Cama king y baño privado" }, "texto": { "pt": "A maior suíte da casa, com porta só sua.", "en": "The largest suite in the house, with a door of your own.", "es": "La suite más grande de la casa, con puerta propia." } },
+      { "icone": "🏪", "titulo": { "pt": "Tudo a 500 metros", "en": "Everything 500 m away", "es": "Todo a 500 metros" }, "texto": { "pt": "Shopping, mercado, farmácia e hospital a uma caminhada.", "en": "Mall, supermarket, pharmacy and hospital within a walk.", "es": "Centro comercial, supermercado, farmacia y hospital a un paseo." } },
+      { "icone": "🏊", "titulo": { "pt": "Áreas comuns mediante taxa", "en": "Shared areas for a fee", "es": "Zonas comunes con tarifa" }, "texto": { "pt": "Piscina aquecida e churrasqueira liberadas sob combinação.", "en": "Heated pool and barbecue released by arrangement.", "es": "Piscina climatizada y parrilla liberadas por acuerdo." } }
+    ],
+    "idealPara": {
+      "pt": ["Casais", "Viagem a trabalho", "Quem viaja sozinho"],
+      "en": ["Couples", "Business trips", "Solo travellers"],
+      "es": ["Parejas", "Viajes de trabajo", "Quien viaja solo"]
+    }
+  },
+
+  "UH01H": {
+    "manchete": {
+      "pt": "Suíte privativa na Casa Modernista para até <strong>4 hóspedes</strong>, com banheiro próprio e porta independente.",
+      "en": "A private suite in Casa Modernista for up to <strong>4 guests</strong>, with its own bathroom and door.",
+      "es": "Suite privada en la Casa Modernista para hasta <strong>4 huéspedes</strong>, con baño propio y puerta independiente."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Suíte do Felipe fica na Casa Modernista, na QI 7 do Lago Sul: 400 m², cinco suítes, ar-condicionado e TV smart em todos os quartos. Você reserva só o seu quarto e mantém a privacidade de um flat, com a estrutura de uma casa grande em volta.",
+        "Mercado, farmácia, shopping e hospital ficam a cerca de 500 m. As áreas comuns — piscina aquecida, churrasqueira, cozinha — são liberadas mediante taxa, combinada antes da chegada."
+      ],
+      "en": [
+        "Suíte do Felipe is in Casa Modernista, on QI 7 in Lago Sul: 400 m², five suites, air conditioning and a smart TV in every room. You book only your room and keep the privacy of a flat, with a large house's facilities around you.",
+        "Supermarket, pharmacy, mall and hospital are about 500 m away. The shared areas — heated pool, barbecue, kitchen — are released for a fee, arranged before arrival."
+      ],
+      "es": [
+        "La Suíte do Felipe está en la Casa Modernista, en la QI 7 de Lago Sul: 400 m², cinco suites, aire acondicionado y TV smart en todas las habitaciones. Reservas solo tu habitación y mantienes la privacidad de un flat, con la estructura de una casa grande alrededor.",
+        "Supermercado, farmacia, centro comercial y hospital están a unos 500 m. Las zonas comunes — piscina climatizada, parrilla, cocina — se liberan mediante tarifa, acordada antes de llegar."
+      ]
+    },
+    "destaques": [
+      { "icone": "🚪", "titulo": { "pt": "Porta e banheiro só seus", "en": "Your own door and bathroom", "es": "Puerta y baño solo tuyos" }, "texto": { "pt": "Privacidade de flat dentro de uma casa de 400 m².", "en": "The privacy of a flat inside a 400 m² house.", "es": "Privacidad de flat dentro de una casa de 400 m²." } },
+      { "icone": "🏪", "titulo": { "pt": "Tudo a 500 metros", "en": "Everything 500 m away", "es": "Todo a 500 metros" }, "texto": { "pt": "Shopping, mercado, farmácia e hospital a uma caminhada.", "en": "Mall, supermarket, pharmacy and hospital within a walk.", "es": "Centro comercial, supermercado, farmacia y hospital a un paseo." } },
+      { "icone": "🏊", "titulo": { "pt": "Áreas comuns mediante taxa", "en": "Shared areas for a fee", "es": "Zonas comunes con tarifa" }, "texto": { "pt": "Piscina aquecida e churrasqueira sob combinação prévia.", "en": "Heated pool and barbecue by prior arrangement.", "es": "Piscina climatizada y parrilla con acuerdo previo." } }
+    ],
+    "idealPara": {
+      "pt": ["Casais", "Famílias pequenas", "Viagem a trabalho"],
+      "en": ["Couples", "Small families", "Business trips"],
+      "es": ["Parejas", "Familias pequeñas", "Viajes de trabajo"]
+    }
+  },
+
+  "UH03H": {
+    "manchete": {
+      "pt": "Suíte da Casa Modernista para até <strong>5 hóspedes</strong> — a opção de quem viaja com os filhos e quer todo mundo no mesmo quarto.",
+      "en": "A Casa Modernista suite for up to <strong>5 guests</strong> — for those travelling with children who want everyone in one room.",
+      "es": "Suite de la Casa Modernista para hasta <strong>5 huéspedes</strong> — la opción de quien viaja con los hijos y quiere a todos en la misma habitación."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Suíte da Família tem banheiro privativo, ar-condicionado e TV smart, e acomoda cinco pessoas. Fica na Casa Modernista, na QI 7 do Lago Sul — casa de 400 m² com pátio interno, onde as crianças circulam com segurança.",
+        "Shopping, mercado, farmácia e hospital ficam a cerca de 500 m. As áreas comuns da casa, incluindo a piscina aquecida e o parquinho, são liberadas mediante taxa."
+      ],
+      "en": [
+        "Suíte da Família has a private bathroom, air conditioning and a smart TV, and sleeps five. It is in Casa Modernista, on QI 7 in Lago Sul — a 400 m² house with an inner courtyard where children can move around safely.",
+        "Mall, supermarket, pharmacy and hospital are about 500 m away. The house's shared areas, including the heated pool and the playground, are released for a fee."
+      ],
+      "es": [
+        "La Suíte da Família tiene baño privado, aire acondicionado y TV smart, y acomoda a cinco personas. Está en la Casa Modernista, en la QI 7 de Lago Sul — una casa de 400 m² con patio interno, donde los niños circulan con seguridad.",
+        "Centro comercial, supermercado, farmacia y hospital están a unos 500 m. Las zonas comunes de la casa, incluidas la piscina climatizada y el parque, se liberan mediante tarifa."
+      ]
+    },
+    "destaques": [
+      { "icone": "👨‍👩‍👧", "titulo": { "pt": "Cinco pessoas no mesmo quarto", "en": "Five people in one room", "es": "Cinco personas en la misma habitación" }, "texto": { "pt": "Sem separar a família em duas reservas.", "en": "No splitting the family across two bookings.", "es": "Sin separar a la familia en dos reservas." } },
+      { "icone": "🏡", "titulo": { "pt": "Pátio interno da casa", "en": "The house's inner courtyard", "es": "Patio interno de la casa" }, "texto": { "pt": "As crianças circulam sem sair para a rua.", "en": "Children can roam without going out to the street.", "es": "Los niños circulan sin salir a la calle." } },
+      { "icone": "🏊", "titulo": { "pt": "Áreas comuns mediante taxa", "en": "Shared areas for a fee", "es": "Zonas comunes con tarifa" }, "texto": { "pt": "Piscina aquecida, parquinho e churrasqueira sob combinação.", "en": "Heated pool, playground and barbecue by arrangement.", "es": "Piscina climatizada, parque y parrilla por acuerdo." } }
+    ],
+    "idealPara": {
+      "pt": ["Famílias com crianças", "Casais", "Fim de semana"],
+      "en": ["Families with children", "Couples", "Weekends"],
+      "es": ["Familias con niños", "Parejas", "Fin de semana"]
+    }
+  },
+
+  "UH04H": {
+    "manchete": {
+      "pt": "Suíte da Casa Modernista para até <strong>4 hóspedes</strong>, com banheiro privativo e vista para o pátio interno.",
+      "en": "A Casa Modernista suite for up to <strong>4 guests</strong>, with a private bathroom facing the inner courtyard.",
+      "es": "Suite de la Casa Modernista para hasta <strong>4 huéspedes</strong>, con baño privado y vista al patio interno."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Suíte da Sofia tem banheiro próprio, ar-condicionado e TV smart, dentro da casa de 400 m² da QI 7. Reservando o quarto, você tem privacidade e ainda conta com a estrutura da casa por perto.",
+        "A localização resolve o dia a dia: shopping, mercado, farmácia, bancos e hospital a cerca de 500 m, e a Esplanada a dez minutos. Áreas comuns liberadas mediante taxa."
+      ],
+      "en": [
+        "Suíte da Sofia has its own bathroom, air conditioning and a smart TV, inside the 400 m² house on QI 7. Booking the room gives you privacy while keeping the house's facilities close by.",
+        "The location handles daily life: mall, supermarket, pharmacy, banks and hospital about 500 m away, and the Esplanada ten minutes out. Shared areas released for a fee."
+      ],
+      "es": [
+        "La Suíte da Sofia tiene baño propio, aire acondicionado y TV smart, dentro de la casa de 400 m² de la QI 7. Al reservar la habitación tienes privacidad y además cuentas con la estructura de la casa cerca.",
+        "La ubicación resuelve el día a día: centro comercial, supermercado, farmacia, bancos y hospital a unos 500 m, y la Explanada a diez minutos. Zonas comunes liberadas mediante tarifa."
+      ]
+    },
+    "destaques": [
+      { "icone": "🚪", "titulo": { "pt": "Suíte privativa", "en": "Private suite", "es": "Suite privada" }, "texto": { "pt": "Banheiro próprio e porta independente na casa de 400 m².", "en": "Own bathroom and door inside the 400 m² house.", "es": "Baño propio y puerta independiente en la casa de 400 m²." } },
+      { "icone": "🏪", "titulo": { "pt": "Tudo a 500 metros", "en": "Everything 500 m away", "es": "Todo a 500 metros" }, "texto": { "pt": "Shopping, mercado, farmácia, bancos e hospital por perto.", "en": "Mall, supermarket, pharmacy, banks and hospital nearby.", "es": "Centro comercial, supermercado, farmacia, bancos y hospital cerca." } },
+      { "icone": "🏛️", "titulo": { "pt": "10 minutos da Esplanada", "en": "10 minutes from the Esplanada", "es": "A 10 minutos de la Explanada" }, "texto": { "pt": "Reunião de manhã sem acordar de madrugada.", "en": "A morning meeting without a dawn alarm.", "es": "Reunión por la mañana sin madrugar." } }
+    ],
+    "idealPara": {
+      "pt": ["Casais", "Famílias pequenas", "Viagem a trabalho"],
+      "en": ["Couples", "Small families", "Business trips"],
+      "es": ["Parejas", "Familias pequeñas", "Viajes de trabajo"]
+    }
+  },
+
+  "UH06H": {
+    "manchete": {
+      "pt": "Suíte da Casa Modernista para até <strong>4 hóspedes</strong> — quarto privativo com a casa inteira em volta.",
+      "en": "A Casa Modernista suite for up to <strong>4 guests</strong> — a private room with the whole house around it.",
+      "es": "Suite de la Casa Modernista para hasta <strong>4 huéspedes</strong> — habitación privada con toda la casa alrededor."
+    },
+    "paragrafos": {
+      "pt": [
+        "A Suíte do Pedro tem banheiro privativo, ar-condicionado e TV smart. Fica na Casa Modernista, na QI 7 do Lago Sul, casa de 400 m² com cinco suítes, pátio interno e área de lazer.",
+        "É a hospedagem de quem quer o conforto de uma casa boa pagando por um quarto. As áreas comuns — piscina aquecida, churrasqueira, cozinha, parquinho — são liberadas mediante taxa."
+      ],
+      "en": [
+        "Suíte do Pedro has a private bathroom, air conditioning and a smart TV. It is in Casa Modernista, on QI 7 in Lago Sul, a 400 m² house with five suites, an inner courtyard and a leisure area.",
+        "It is the stay for someone who wants the comfort of a good house while paying for a room. The shared areas — heated pool, barbecue, kitchen, playground — are released for a fee."
+      ],
+      "es": [
+        "La Suíte do Pedro tiene baño privado, aire acondicionado y TV smart. Está en la Casa Modernista, en la QI 7 de Lago Sul, una casa de 400 m² con cinco suites, patio interno y zona de ocio.",
+        "Es el alojamiento de quien quiere el confort de una buena casa pagando por una habitación. Las zonas comunes — piscina climatizada, parrilla, cocina, parque — se liberan mediante tarifa."
+      ]
+    },
+    "destaques": [
+      { "icone": "🚪", "titulo": { "pt": "Quarto privativo", "en": "Private room", "es": "Habitación privada" }, "texto": { "pt": "Banheiro próprio e porta independente.", "en": "Own bathroom and independent door.", "es": "Baño propio y puerta independiente." } },
+      { "icone": "🏡", "titulo": { "pt": "Casa de 400 m² em volta", "en": "A 400 m² house around you", "es": "Casa de 400 m² alrededor" }, "texto": { "pt": "Estrutura de casa grande pelo preço de um quarto.", "en": "A large house's facilities at the price of a room.", "es": "Estructura de casa grande por el precio de una habitación." } },
+      { "icone": "🏊", "titulo": { "pt": "Áreas comuns mediante taxa", "en": "Shared areas for a fee", "es": "Zonas comunes con tarifa" }, "texto": { "pt": "Piscina aquecida e churrasqueira sob combinação prévia.", "en": "Heated pool and barbecue by prior arrangement.", "es": "Piscina climatizada y parrilla con acuerdo previo." } }
+    ],
+    "idealPara": {
+      "pt": ["Casais", "Famílias pequenas", "Viagem a trabalho"],
+      "en": ["Couples", "Small families", "Business trips"],
+      "es": ["Parejas", "Familias pequeñas", "Viajes de trabajo"]
+    }
+  }
+}

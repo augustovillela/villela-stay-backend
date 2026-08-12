@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v6'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v7'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -30,6 +30,12 @@ const DIST = path.join(__dirname, 'dist');
 fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(path.join(DIST, 'hospedagem'), { recursive: true });
 fs.copyFileSync(path.join(__dirname, 'src', 'style.css'), path.join(DIST, 'style.css'));
+// Hash do CSS = cache-buster do <link>. Sem ele, o service worker (stale-while-revalidate para
+// estáticos) entrega o HTML novo com o CSS velho na primeira visita depois de cada deploy, e a
+// página aparece quebrada para quem já conhece o site. Mesmo padrão do visualizador.js do tour.
+const CSS_VER = require('crypto')
+  .createHash('sha1').update(fs.readFileSync(path.join(__dirname, 'src', 'style.css'))).digest('hex').slice(0, 8);
+const CSS_HREF = `/style.css?v=${CSS_VER}`;
 
 // Logo antigo (foto): ainda copiado por compatibilidade de links externos que apontem p/ /logo.png
 const TEM_LOGO = fs.existsSync(path.join(__dirname, 'src', 'logo.png'));
@@ -245,7 +251,7 @@ ${hreflangTags(caminho)}
 <meta name="twitter:image" content="${esc(ogImage)}">
 ${orgLd}
 ${extraHead}
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="${CSS_HREF}">
 </head>
 <body>
 <header class="topo">
@@ -710,6 +716,12 @@ for (const [id, cfg] of Object.entries(FOTOS_PROPRIAS)) {
   for (const f of cfg.fotos) fs.copyFileSync(path.join(__dirname, 'src', 'fotos', cfg.pasta, f.arquivo), path.join(destino, f.arquivo));
 }
 
+// Copy do "Sobre a hospedagem" (data/copy-hospedagem.json): manchete, parágrafos, destaques e
+// público de cada unidade, nos 3 idiomas. Unidade sem entrada cai no bloco montado a partir dos
+// dados reais do anúncio (ver mancheteGerada/destaquesGerados), nunca em texto vazio.
+const COPY_SOBRE = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'copy-hospedagem.json'), 'utf8'));
+const tr = o => (o == null ? '' : (o[LANG] != null ? o[LANG] : (o.pt != null ? o.pt : '')));
+
 // Vídeos publicitários — id do anúncio -> arquivo
 const VIDEOS = { GD01H: 'casa-modernista.mp4', GI01I: 'casa-villela.mp4', GD03H: 'gran-villela.mp4', PL02I: 'villa-catetinho.mp4', GG04I: 'villa-kubitschek.mp4' };
 fs.mkdirSync(path.join(DIST, 'videos'), { recursive: true });
@@ -804,6 +816,43 @@ const COMODIDADES_COMPARTILHADAS = {
     FLEX.piscina, FLEX.churrasqueira, FLEX.cozinha, FLEX.lavanderia, { icon: '🌇', label: 'Rooftop' }
   ]
 };
+// ---- "Sobre a hospedagem" sem copy escrita à mão: monta o bloco com o que o anúncio já afirma.
+// Nunca inventa atributo — só usa o que está na descrição/resumo da própria unidade.
+function sinaisDe(l) { return semAcento([l.descricao, l.resumo, l.titulo].join(' ')); }
+function mancheteGerada(l) {
+  const cat = categoriaDe(l);
+  const cap = l.hospedes;
+  const tamanho = l.m2 ? t(`${l.m2} m² `, `${l.m2} m² `, `${l.m2} m² `) : '';
+  if (cat === 'casa') return t(
+    `Casa inteira de ${tamanho}para até <strong>${cap} hóspedes</strong> no Lago Sul — a família ou o grupo inteiro sob o mesmo teto, sem dividir com estranhos.`,
+    `An entire ${tamanho}house for up to <strong>${cap} guests</strong> in Lago Sul — your whole family or group under one roof, shared with no one else.`,
+    `Casa entera de ${tamanho}para hasta <strong>${cap} huéspedes</strong> en Lago Sul — toda la familia o el grupo bajo el mismo techo, sin compartir con desconocidos.`);
+  if (cat === 'flat') return t(
+    `Flat independente para até <strong>${cap} hóspedes</strong> no bairro mais nobre de Brasília, com entrada própria e a estrutura da casa a poucos passos.`,
+    `A self-contained flat for up to <strong>${cap} guests</strong> in Brasília's finest neighbourhood, with its own entrance and the house's facilities steps away.`,
+    `Un flat independiente para hasta <strong>${cap} huéspedes</strong> en el barrio más exclusivo de Brasilia, con entrada propia y la estructura de la casa a pocos pasos.`);
+  return t(
+    `Suíte privativa para até <strong>${cap} hóspedes</strong> no Lago Sul — conforto de hotel boutique com o silêncio de uma casa de família.`,
+    `A private suite for up to <strong>${cap} guests</strong> in Lago Sul — boutique-hotel comfort with the quiet of a family home.`,
+    `Una suite privada para hasta <strong>${cap} huéspedes</strong> en Lago Sul — confort de hotel boutique con el silencio de una casa de familia.`);
+}
+function destaquesGerados(l) {
+  const hay = sinaisDe(l), d = [];
+  if (/piscina aquecida/.test(hay)) d.push({ icone: '🏊', titulo: t('Piscina aquecida', 'Heated pool', 'Piscina climatizada'), texto: t('Água boa o ano inteiro, inclusive nas noites secas do inverno de Brasília.', 'Comfortable water all year, even on dry Brasília winter nights.', 'Agua agradable todo el año, incluso en las noches secas del invierno de Brasilia.') });
+  else if (/piscina/.test(hay)) d.push({ icone: '🏊', titulo: t('Piscina', 'Pool', 'Piscina'), texto: t('Área de lazer com piscina para os dias de sol do Planalto.', 'A pool area for the Planalto sunny days.', 'Zona de piscina para los días de sol del Planalto.') });
+  if (/jacuzzi|hidromassagem|\bspa\b/.test(hay)) d.push({ icone: '🛁', titulo: t('Spa com hidromassagem', 'Spa with hot tub', 'Spa con hidromasaje'), texto: t('O fim de tarde que transforma a viagem de trabalho em descanso.', 'The late afternoon that turns a work trip into a rest.', 'El atardecer que convierte el viaje de trabajo en descanso.') });
+  if (/churrasqueira|churrasco/.test(hay)) d.push({ icone: '🔥', titulo: t('Churrasqueira e espaço gourmet', 'Barbecue and gourmet area', 'Parrilla y espacio gourmet'), texto: t('Jantar reunindo todo mundo sem sair de casa nem pagar restaurante.', 'Dinner with everyone together, no restaurant bill.', 'Cenar con todos juntos, sin salir ni pagar restaurante.') });
+  if (/parquinho|pula pula|playground/.test(hay)) d.push({ icone: '🛝', titulo: t('Parquinho para as crianças', 'Playground for the kids', 'Parque para los niños'), texto: t('As crianças brincam à vista enquanto os adultos conversam.', 'Kids play in plain sight while the grown-ups talk.', 'Los niños juegan a la vista mientras los adultos conversan.') });
+  d.push({ icone: '📍', titulo: t('Lago Sul, a 10 min da Esplanada', 'Lago Sul, 10 min from the Esplanada', 'Lago Sul, a 10 min de la Explanada'), texto: t('Shopping, mercado, farmácia e hospital a cerca de 500 m.', 'Mall, supermarket, pharmacy and hospital about 500 m away.', 'Centro comercial, supermercado, farmacia y hospital a unos 500 m.') });
+  return d;
+}
+function idealGerado(l) {
+  const cat = categoriaDe(l);
+  if (cat === 'casa') return [t('Famílias', 'Families', 'Familias'), t('Grupos', 'Groups', 'Grupos'), t('Confraternizações', 'Get-togethers', 'Celebraciones'), t('Comitivas a trabalho', 'Work delegations', 'Comitivas de trabajo')];
+  if (cat === 'flat') return [t('Casais', 'Couples', 'Parejas'), t('Viagem a trabalho', 'Business trips', 'Viajes de trabajo'), t('Estadias longas', 'Long stays', 'Estancias largas')];
+  return [t('Casais', 'Couples', 'Parejas'), t('Viagem a trabalho', 'Business trips', 'Viajes de trabajo'), t('Quem viaja sozinho', 'Solo travellers', 'Quien viaja solo')];
+}
+
 function comodidadesDe(l) {
   const cat = categoriaDe(l);
   const hay = semAcento([l.descricao, l.resumo, l.titulo].join(' '));
@@ -949,7 +998,24 @@ for (const l of listings) {
       <p class="form-status" hidden></p>
     </form>
   </section>
-  <section class="descricao"><h2 class="secao-titulo">${t('Sobre a hospedagem', 'About this stay', 'Sobre el alojamiento')}</h2>${(descricaoImovel(l) || '').replace(/,\s*academias\b/gi, '')}</section>
+  ${(() => {
+    const c = COPY_SOBRE[l.id];
+    const manchete = c && c.manchete ? tr(c.manchete) : mancheteGerada(l);
+    const paragrafos = c && c.paragrafos ? tr(c.paragrafos) : [];
+    const destaques = (c && c.destaques
+      ? c.destaques.map(d => ({ icone: d.icone, titulo: tr(d.titulo), texto: tr(d.texto) }))
+      : destaquesGerados(l)).slice(0, 4);
+    const ideal = c && c.idealPara ? tr(c.idealPara) : idealGerado(l);
+    const completa = (descricaoImovel(l) || '').replace(/,\s*academias\b/gi, '');
+    return `<section class="descricao sobre">
+    <h2 class="secao-titulo">${t('Sobre a hospedagem', 'About this stay', 'Sobre el alojamiento')}</h2>
+    <p class="sobre-manchete">${manchete}</p>
+    ${paragrafos.length ? `<div class="sobre-texto">${paragrafos.map(p => `<p>${p}</p>`).join('')}</div>` : ''}
+    ${destaques.length ? `<ul class="sobre-destaques">${destaques.map(d => `<li><span class="sobre-icone" aria-hidden="true">${d.icone}</span><div><strong>${d.titulo}</strong>${d.texto}</div></li>`).join('')}</ul>` : ''}
+    ${ideal.length ? `<p class="sobre-ideal"><strong>${t('Ideal para', 'Great for', 'Ideal para')}:</strong> ${ideal.map(x => `<span class="tag-ideal">${esc(x)}</span>`).join(' ')}</p>` : ''}
+    ${completa ? `<details class="sobre-completo"><summary>${t('Ver a descrição completa e as regras da casa', 'See the full description and house rules', 'Ver la descripción completa y las normas de la casa')}</summary><div class="sobre-completo-txt">${completa}</div></details>` : ''}
+  </section>`;
+  })()}
   ${blocoDepoimentos}
   ${PLANTAS[l.id] ? (() => {
     const daCasa = PLANTA_DA_CASA.has(l.id);
@@ -2783,7 +2849,7 @@ fs.writeFileSync(path.join(DIST, 'offline.html'), offline);
 // Estratégia: network-first para navegação/HTML (nunca servir página velha); stale-while-revalidate
 // para estáticos (CSS/imagens/ícones). NUNCA cacheia chamadas ao backend/API (sempre rede).
 const PRECACHE_URLS = [
-  '/', '/index.html', '/style.css', '/offline.html', '/manifest.webmanifest',
+  '/', '/index.html', CSS_HREF, '/offline.html', '/manifest.webmanifest',
   ...(TEM_LOGO ? ['/logo.png'] : []),
   ...ICON_FILES.map(f => `/assets/icons/${f}`),
   ...['favicon.svg', 'favicon-192.png', 'icon-pwa.png', 'apple-touch-icon.png'].map(f => `/assets/brand/villela-stay/${f}`),
