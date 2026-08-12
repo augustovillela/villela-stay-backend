@@ -182,8 +182,46 @@ a { color: var(--lago); text-decoration: none; }
 .planta h2 { margin-bottom: 12px; }
 .planta img { width: 100%; border-radius: 12px; border: 1px solid #e5e1d8; background: #fff; }
 .planta-dica { font-size: .85rem; color: var(--concreto-claro); margin-top: 6px; }
-.galeria-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-.galeria-grid img { height: 170px; width: 100%; object-fit: cover; border-radius: 10px; }
+.galeria-dica { font-size: .85rem; color: var(--concreto-claro); margin: -4px 0 12px; }
+.galeria-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px 12px; }
+.galeria-grid img { height: 170px; width: 100%; object-fit: cover; border-radius: 10px; display: block; }
+.galeria-item { margin: 0; }
+.galeria-item figcaption { font-size: .82rem; line-height: 1.35; color: var(--concreto-claro); margin-top: 6px; }
+.galeria-zoom { display: block; position: relative; cursor: zoom-in; border-radius: 10px; }
+/* lupa no canto: some no touch (onde não há hover) para não cobrir a foto */
+.galeria-zoom::after {
+  content: '⤢'; position: absolute; right: 8px; bottom: 8px; width: 28px; height: 28px;
+  display: grid; place-items: center; border-radius: 8px; background: rgba(0, 0, 0, .55);
+  color: #fff; font-size: .95rem; opacity: 0; transition: opacity .15s;
+}
+.galeria-zoom:hover::after, .galeria-zoom:focus-visible::after { opacity: 1; }
+
+/* ---------- lightbox (fotos ampliadas) ---------- */
+.lightbox {
+  position: fixed; inset: 0; z-index: 999; background: rgba(18, 18, 18, .95);
+  display: flex; align-items: center; justify-content: center; gap: 10px; padding: 60px 12px 16px;
+}
+.lightbox[hidden] { display: none; }   /* sem isto o display:flex venceria o atributo hidden */
+.lb-conteudo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: 0; }
+.lb-conteudo img {
+  max-width: min(1100px, 86vw); max-height: 72vh; width: auto; height: auto;
+  object-fit: contain; border-radius: 10px; background: #000;
+}
+.lb-legenda { color: #f0efec; font-size: .95rem; line-height: 1.4; text-align: center; max-width: 720px; }
+.lb-legenda[hidden] { display: none; }
+.lb-contador { position: absolute; top: 20px; left: 18px; margin: 0; color: #b9b6b0; font-size: .85rem; }
+.lb-fechar, .lb-nav {
+  flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; cursor: pointer;
+  background: rgba(255, 255, 255, .14); color: #fff; font-size: 1.6rem; line-height: 1;
+}
+.lb-fechar { position: absolute; top: 14px; right: 16px; font-size: 1.8rem; }
+.lb-fechar:hover, .lb-nav:hover { background: rgba(255, 255, 255, .28); }
+.lb-fechar:focus-visible, .lb-nav:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 640px) {
+  .lightbox { gap: 4px; padding: 56px 6px 12px; }
+  .lb-conteudo img { max-width: 94vw; max-height: 64vh; }
+  .lb-nav { width: 36px; height: 36px; font-size: 1.3rem; }
+}
 
 /* ---------- disponibilidade ---------- */
 .disponibilidade {

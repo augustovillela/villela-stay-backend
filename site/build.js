@@ -843,11 +843,18 @@ function depoimentosUnidade(l, idx) {
 
 for (const l of listings) {
   const cfgFotos = FOTOS_PROPRIAS[l.id];
+  // Item da galeria: miniatura + legenda visível, dentro de um link para a versão grande. Sem JS
+  // o link abre a foto; com JS o lightbox intercepta o clique (ver script no fim da página).
+  const itemGaleria = (src, grande, legenda) => `<figure class="galeria-item">
+      <a class="galeria-zoom" href="${esc(grande)}" data-legenda="${esc(legenda)}" aria-label="${esc(t('Ampliar', 'Enlarge', 'Ampliar'))}${legenda ? ': ' + esc(legenda) : ''}">${
+        img(src, { alt: legenda || l.titulo, width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })
+      }</a>${legenda ? `<figcaption>${esc(legenda)}</figcaption>` : ''}</figure>`;
   const galeria = [
-    ...(l.fotos || []).slice(1, 9).map(f =>
-      img(f.url, { alt: f.nome || l.titulo, title: f.nome || '', width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })),
-    ...(cfgFotos ? cfgFotos.fotos.map(f =>
-      img(`/fotos/${cfgFotos.pasta}/${f.arquivo}`, { alt: f.alt, title: f.alt, width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })) : []),
+    ...(l.fotos || []).slice(1, 9).map(f => itemGaleria(f.url, cdnUrl(f.url, 1600), f.nome || '')),
+    ...(cfgFotos ? cfgFotos.fotos.map(f => {
+      const caminho = `/fotos/${cfgFotos.pasta}/${f.arquivo}`;
+      return itemGaleria(caminho, caminho, f.alt);
+    }) : []),
   ].join('\n');
 
   const idx = listings.indexOf(l);
@@ -959,7 +966,20 @@ for (const l of listings) {
     <p class="planta-dica">${dica}</p>
   </section>`;
   })() : ''}
-  <section class="galeria"><h2>${t('Fotos', 'Photos', 'Fotos')}</h2><div class="galeria-grid">${galeria}</div></section>
+  <section class="galeria"><h2>${t('Fotos', 'Photos', 'Fotos')}</h2>
+    <p class="galeria-dica">${t('Clique em uma foto para ampliar.', 'Click a photo to enlarge.', 'Haz clic en una foto para ampliar.')}</p>
+    <div class="galeria-grid">${galeria}</div>
+  </section>
+  <div class="lightbox" hidden role="dialog" aria-modal="true" aria-label="${esc(t('Foto ampliada', 'Enlarged photo', 'Foto ampliada'))}">
+    <p class="lb-contador"></p>
+    <button class="lb-fechar" type="button" aria-label="${esc(t('Fechar', 'Close', 'Cerrar'))}">&times;</button>
+    <button class="lb-nav lb-anterior" type="button" aria-label="${esc(t('Foto anterior', 'Previous photo', 'Foto anterior'))}">&lsaquo;</button>
+    <figure class="lb-conteudo">
+      <img alt="">
+      <figcaption class="lb-legenda"></figcaption>
+    </figure>
+    <button class="lb-nav lb-proxima" type="button" aria-label="${esc(t('Próxima foto', 'Next photo', 'Foto siguiente'))}">&rsaquo;</button>
+  </div>
   ${EBOOKS[l.id] ? `<section class="ebook-box">
     📖 <a href="/ebooks/${EBOOKS[l.id]}" target="_blank" rel="noopener"><strong>${t('Baixe o Manual do Hóspede (e-book em PDF)', 'Download the Guest Manual (PDF e-book)', 'Descarga el Manual del Huésped (e-book en PDF)')}</strong></a> — ${t('o funcionamento da casa, as regras e o guia de turismo e gastronomia de Brasília do anfitrião.', "how the house works, the rules and the host's Brasília tourism and food guide.", 'cómo funciona la casa, las normas y la guía de turismo y gastronomía de Brasília del anfitrión.')}
   </section>` : ''}
@@ -1028,6 +1048,64 @@ for (const l of listings) {
       if (r.ok) fl.reset();
     }).catch(function(){ st.textContent = ${JSON.stringify(t('Erro ao enviar — fale conosco pelo WhatsApp.', 'Error sending — contact us on WhatsApp.', 'Error al enviar — contáctanos por WhatsApp.'))}; });
   });
+})();
+
+// Lightbox da galeria: amplia a foto clicada e mostra a legenda. Sem JS o link da miniatura
+// continua abrindo a foto grande sozinho — por isso o clique só é interceptado aqui.
+(function(){
+  var lb = document.querySelector('.lightbox');
+  var links = [].slice.call(document.querySelectorAll('.galeria-zoom'));
+  if (!lb || !links.length) return;
+  var foto = lb.querySelector('img'), legenda = lb.querySelector('.lb-legenda'), contador = lb.querySelector('.lb-contador');
+  var btnFechar = lb.querySelector('.lb-fechar'), btnAnt = lb.querySelector('.lb-anterior'), btnProx = lb.querySelector('.lb-proxima');
+  var atual = 0, focoAnterior = null;
+  if (links.length < 2) { btnAnt.hidden = true; btnProx.hidden = true; }
+  function mostrar(i){
+    atual = (i + links.length) % links.length;
+    var a = links[atual], txt = a.getAttribute('data-legenda') || '';
+    foto.src = a.getAttribute('href');
+    foto.alt = txt;
+    legenda.textContent = txt;
+    legenda.hidden = !txt;
+    contador.textContent = (atual + 1) + ' / ' + links.length;
+  }
+  function abrir(i){
+    focoAnterior = document.activeElement;
+    mostrar(i);
+    lb.hidden = false;
+    document.body.style.overflow = 'hidden';
+    btnFechar.focus();
+  }
+  function fechar(){
+    lb.hidden = true;
+    document.body.style.overflow = '';
+    if (focoAnterior && focoAnterior.focus) focoAnterior.focus();
+  }
+  links.forEach(function(a, i){ a.addEventListener('click', function(e){ e.preventDefault(); abrir(i); }); });
+  btnFechar.addEventListener('click', fechar);
+  btnAnt.addEventListener('click', function(){ mostrar(atual - 1); });
+  btnProx.addEventListener('click', function(){ mostrar(atual + 1); });
+  lb.addEventListener('click', function(e){ if (e.target === lb) fechar(); });
+  document.addEventListener('keydown', function(e){
+    if (lb.hidden) return;
+    if (e.key === 'Escape') fechar();
+    else if (e.key === 'ArrowLeft') mostrar(atual - 1);
+    else if (e.key === 'ArrowRight') mostrar(atual + 1);
+    else if (e.key === 'Tab') {   // prende o foco nos botões enquanto o diálogo está aberto
+      var alvos = [btnFechar, btnAnt, btnProx].filter(function(b){ return !b.hidden; });
+      var pos = alvos.indexOf(document.activeElement);
+      e.preventDefault();
+      alvos[(pos + (e.shiftKey ? -1 : 1) + alvos.length) % alvos.length].focus();
+    }
+  });
+  var toqueX = null;   // arrastar o dedo troca de foto no celular
+  lb.addEventListener('touchstart', function(e){ toqueX = e.changedTouches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', function(e){
+    if (toqueX === null) return;
+    var d = e.changedTouches[0].clientX - toqueX;
+    toqueX = null;
+    if (Math.abs(d) > 50) mostrar(atual + (d < 0 ? 1 : -1));
+  }, { passive: true });
 })();
 </script>`,
     {
