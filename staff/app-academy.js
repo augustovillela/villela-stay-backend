@@ -151,8 +151,10 @@ const ACAD = {
 
   // -------------------------------------------------------- MODERAÇÃO
   async vModeracao() {
-    const [{ denuncias }, { avaliacoes }] = await Promise.all([ACAD.api('GET', '/denuncias'), ACAD.api('GET', '/avaliacoes?n=50')]);
-    ACAD.body().innerHTML = `<div class="card"><h3>🚩 Denúncias abertas</h3>
+    const [{ denuncias }, { avaliacoes }, cats] = await Promise.all([
+      ACAD.api('GET', '/denuncias'), ACAD.api('GET', '/avaliacoes?n=50'), ACAD.vCategorias(),
+    ]);
+    ACAD.body().innerHTML = cats + `<div class="card"><h3>🚩 Denúncias abertas</h3>
       ${denuncias.length ? tabela(['Produto', 'Motivo', 'Descrição', ''], denuncias.map(d => [
         esc(d.produto_titulo), ACAD.chip(d.motivo), esc(d.texto || ''),
         `<button class="btn peq" onclick="ACAD.resolverDenuncia('${d.id}','resolvida')">Resolver</button>
@@ -163,6 +165,31 @@ const ACAD = {
         esc(a.produto_titulo), esc(a.nome), a.nota + '★', esc(a.texto || ''), ACAD.chip(a.status),
         `<button class="btn secund peq" onclick="ACAD.moderarAvaliacao('${a.id}','${a.status === 'publicada' ? 'oculta' : 'publicada'}')">${a.status === 'publicada' ? 'Ocultar' : 'Republicar'}</button>`,
       ])) : '<p class="vazio">Nenhuma avaliação.</p>'}</div>`;
+  },
+  async vCategorias() {
+    const { categorias } = await ACAD.api('GET', '/categorias');
+    const linhas = categorias.map(c => [
+      esc(c.rotulo), `<code>${esc(c.slug)}</code>`, ACAD.chip(c.origem),
+      esc(c.criador_nome || (c.origem === 'sistema' ? '—' : '')),
+      `${c.produtos} (${c.publicados} publicado${c.publicados === 1 ? '' : 's'})`,
+      `<button class="btn secund peq" onclick="ACAD.renomearCategoria('${c.slug}','${esc(c.rotulo).replace(/'/g, "\\'")}')">Renomear</button>` +
+      (c.origem === 'produtor' && !c.produtos
+        ? ` <button class="btn secund peq" onclick="ACAD.removerCategoria('${c.slug}')">Remover</button>` : ''),
+    ]);
+    return `<div class="card"><h3>🏷️ Categorias do marketplace</h3>
+      <p class="sub">Renomear muda só o rótulo — o endereço e os produtos já classificados continuam valendo.
+      Só dá para remover categoria criada por produtor que ninguém está usando; se estiver em uso, renomeie.
+      Categoria de produtor só aparece no filtro público quando tem produto publicado.</p>
+      ${tabela(['Rótulo', 'Endereço', 'Origem', 'Criada por', 'Produtos', ''], linhas)}</div>`;
+  },
+  async renomearCategoria(slug, atual) {
+    const rotulo = prompt('Novo rótulo da categoria (o endereço não muda):', atual);
+    if (!rotulo || rotulo === atual) return;
+    try { await ACAD.api('PATCH', `/categorias/${encodeURIComponent(slug)}`, { rotulo }); ACAD.vModeracao(); } catch (e) { alert(e.message); }
+  },
+  async removerCategoria(slug) {
+    if (!confirm(`Remover a categoria "${slug}"? Só funciona se nenhum produto a estiver usando.`)) return;
+    try { await ACAD.api('DELETE', `/categorias/${encodeURIComponent(slug)}`); ACAD.vModeracao(); } catch (e) { alert(e.message); }
   },
   async resolverDenuncia(id, status) {
     const resolucao = prompt('Resolução (fica registrada):') || '';

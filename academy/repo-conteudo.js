@@ -53,6 +53,40 @@ const Categorias = {
       ORDER BY c.ordem, c.rotulo`).all();
   },
 
+  // Visão do staff: toda categoria + quantos produtos a usam (por status), para
+  // o admin saber o que quebra antes de renomear ou remover.
+  listarAdmin() {
+    return db.prepare(`SELECT c.*,
+        (SELECT COUNT(*) FROM products p WHERE p.categoria = c.slug) AS produtos,
+        (SELECT COUNT(*) FROM products p WHERE p.categoria = c.slug AND p.status = 'publicado') AS publicados,
+        (SELECT u.nome FROM users u WHERE u.id = c.criado_por) AS criador_nome
+      FROM categories c ORDER BY c.origem DESC, c.ordem, c.rotulo`).all();
+  },
+
+  // Renomear é a ferramenta para nome infeliz: muda só o RÓTULO, nunca o slug —
+  // então links, filtros e produtos já classificados continuam valendo.
+  renomear(slug, rotulo) {
+    const c = db.prepare('SELECT * FROM categories WHERE slug = ?').get(String(slug || ''));
+    if (!c) throw new Error('Categoria não encontrada.');
+    const nome = s(rotulo, 40).replace(/\s+/g, ' ');
+    if (nome.length < 3) throw new Error('O nome precisa de pelo menos 3 letras.');
+    db.prepare('UPDATE categories SET rotulo = ? WHERE slug = ?').run(nome, c.slug);
+    return db.prepare('SELECT * FROM categories WHERE slug = ?').get(c.slug);
+  },
+
+  // Remover só o que é de produtor e não está em uso: apagar categoria com
+  // produto dentro deixaria o produto apontando para o nada, em silêncio.
+  // Nome ruim EM USO se conserta renomeando, que não quebra link nenhum.
+  remover(slug) {
+    const c = db.prepare('SELECT * FROM categories WHERE slug = ?').get(String(slug || ''));
+    if (!c) throw new Error('Categoria não encontrada.');
+    if (c.origem === 'sistema') throw new Error('Categoria do sistema não pode ser removida — renomeie se o rótulo não serve.');
+    const n = db.prepare('SELECT COUNT(*) n FROM products WHERE categoria = ?').get(c.slug).n;
+    if (n) throw new Error(`${n} produto(s) ainda usam esta categoria. Renomeie, ou mude a categoria deles antes de remover.`);
+    db.prepare('DELETE FROM categories WHERE slug = ?').run(c.slug);
+    return { removida: c.slug };
+  },
+
   // Cria a categoria do produtor. Nome equivalente NÃO duplica: "Marketing",
   // "marketing" e "MARKETING " caem no mesmo slug e reaproveitam a que existe.
   criar(rotulo, userId) {

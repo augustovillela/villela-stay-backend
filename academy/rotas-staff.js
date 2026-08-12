@@ -78,6 +78,22 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
     res.json({ ok: true });
   }));
 
+  // categorias: o produtor pode criar a sua, então a plataforma precisa poder
+  // arrumar. Renomear muda só o rótulo (slug e links sobrevivem); remover é só
+  // para categoria de produtor que ninguém está usando.
+  const ct2 = require('./repo-conteudo');
+  app.get('/staff/api/academy/categorias', ...A, h((req, res) => res.json({ categorias: ct2.Categorias.listarAdmin() })));
+  app.patch('/staff/api/academy/categorias/:slug', ...A, h((req, res) => {
+    const c = ct2.Categorias.renomear(req.params.slug, (req.body || {}).rotulo);
+    aud(req, 'categoria.renomear', 'categories', c.slug, c.rotulo);
+    res.json({ ok: true, categoria: c });
+  }));
+  app.delete('/staff/api/academy/categorias/:slug', ...A, h((req, res) => {
+    const r = ct2.Categorias.remover(req.params.slug);
+    aud(req, 'categoria.remover', 'categories', r.removida, '');
+    res.json({ ok: true, ...r });
+  }));
+
   // produtos (moderação da plataforma) e matrícula cortesia
   const ct = require('./repo-conteudo');
   app.get('/staff/api/academy/produtos', ...A, h((req, res) => res.json({ produtos: ct.Produtos.listarAdmin(req.query) })));

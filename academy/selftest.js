@@ -961,6 +961,41 @@ async function main() {
     assert.ok(!/<a[^>]*>\s*<a/.test(html.texto), 'card não aninha âncora dentro de âncora');
     dbC.prepare("UPDATE products SET categoria = '' WHERE id = ?").run(prodId); // devolve o fixture
   });
+  await t('staff governa categorias: renomeia sem quebrar link, e só remove o que não está em uso', async () => {
+    const dbS = require('./db').db;
+    // o staff enxerga tudo, com quantos produtos usam cada uma
+    const lista = (await req('GET', '/staff/api/academy/categorias')).json.categorias;
+    const ia = lista.find(c => c.slug === 'inteligencia-artificial');
+    assert.equal(ia.origem, 'sistema');
+    assert.ok('produtos' in ia && 'publicados' in ia, 'traz o uso de cada categoria');
+
+    // renomear muda o RÓTULO e preserva o slug (links e produtos continuam válidos)
+    await req('POST', '/academy/api/produtor/categorias', { jar: 'maria', corpo: { rotulo: 'Nome Infeliz' } });
+    dbS.prepare("UPDATE products SET categoria = 'nome-infeliz' WHERE id = ?").run(prodId);
+    const ren = await req('PATCH', '/staff/api/academy/categorias/nome-infeliz', { corpo: { rotulo: 'Nome Decente' } });
+    assert.equal(ren.st, 200);
+    assert.equal(ren.json.categoria.slug, 'nome-infeliz', 'slug NÃO muda ao renomear');
+    assert.equal(ren.json.categoria.rotulo, 'Nome Decente');
+    assert.equal(dbS.prepare('SELECT categoria FROM products WHERE id = ?').get(prodId).categoria, 'nome-infeliz', 'produto segue classificado');
+    assert.ok((await req('GET', '/academy/marketplace')).texto.includes('Nome Decente'), 'vitrine mostra o rótulo novo');
+
+    // em uso não se remove (senão o produto aponta para o nada, em silêncio)
+    const emUso = await req('DELETE', '/staff/api/academy/categorias/nome-infeliz');
+    assert.equal(emUso.st, 400); assert.ok(/produto\(s\) ainda usam/.test(emUso.json.erro), emUso.json.erro);
+    // do sistema nunca se remove
+    const sis = await req('DELETE', '/staff/api/academy/categorias/inteligencia-artificial');
+    assert.equal(sis.st, 400); assert.ok(/sistema/.test(sis.json.erro));
+    assert.ok(require('./repo-conteudo').Categorias.existe('inteligencia-artificial'), 'continua lá');
+
+    // liberando o uso, remove
+    dbS.prepare("UPDATE products SET categoria = '' WHERE id = ?").run(prodId);
+    assert.equal((await req('DELETE', '/staff/api/academy/categorias/nome-infeliz')).st, 200);
+    assert.ok(!require('./repo-conteudo').Categorias.existe('nome-infeliz'), 'sumiu');
+    // renomear o que não existe dá erro claro
+    assert.equal((await req('PATCH', '/staff/api/academy/categorias/nao-existe', { corpo: { rotulo: 'X Y Z' } })).st, 400);
+    // e o guarda de admin vale aqui também
+    assert.equal((await req('GET', '/staff/api/academy/categorias', { user: 'op' })).st, 403);
+  });
   await t('presign SigV4 (S3/R2) gera URLs válidas em formato', async () => {
     const cfg = { endpoint: 'https://conta.r2.cloudflarestorage.com', bucket: 'academy', key: 'AKIATESTE', secret: 'segredo', region: 'auto' };
     for (const met of ['GET', 'PUT', 'HEAD']) {
