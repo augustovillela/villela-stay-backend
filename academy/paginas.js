@@ -241,7 +241,10 @@ function cursoHTML(slug) {
           : `<a class="btn" href="#comprar">Quero este ${(TIPOS_ROT[p.tipo] || 'produto').toLowerCase()}</a>`}
         &nbsp;<a class="btn o" href="/academy/app">Já sou aluno</a></p>
     </div></div>
-    ${emb ? `<div class="sec" style="padding:26px 0"><div class="wrap"><iframe src="${esc(emb)}" style="width:100%;max-width:760px;aspect-ratio:16/9;border:0;border-radius:12px;display:block;margin:0 auto" allowfullscreen></iframe></div></div>` : ''}
+    ${emb ? `<div class="sec" style="padding:26px 0"><div class="wrap"><iframe src="${esc(emb)}" style="width:100%;max-width:760px;aspect-ratio:16/9;border:0;border-radius:12px;display:block;margin:0 auto" allowfullscreen></iframe></div></div>`
+      // sem vídeo de vendas, a CAPA ocupa o mesmo lugar 16:9. Antes ela só existia como
+      // og:image: quem abria a página do curso nunca via a capa que o produtor subiu.
+      : (p.capa_media_id ? `<div class="sec" style="padding:26px 0"><div class="wrap"><img src="/academy/capa/${esc(p.id)}?v=${esc(p.capa_media_id)}" alt="${esc(p.titulo)}" style="width:100%;max-width:760px;aspect-ratio:16/9;object-fit:cover;border-radius:12px;display:block;margin:0 auto"></div></div>` : '')}
     ${bloco('O que você vai conquistar', sp.promessa ? `<p>${esc(sp.promessa)}</p>` : '')}
     ${bloco('Benefícios', li(sp.beneficios, '✅'))}
     ${bloco('Para quem é', li(sp.para_quem, '🎯'))}

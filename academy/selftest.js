@@ -413,6 +413,21 @@ async function main() {
     assert.equal((await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { capa_media_id: up.json.id } })).st, 200);
     const r = await req('GET', `/academy/capa/${prodId}`);
     assert.equal(r.st, 200); assert.ok(r.ct.includes('image/png'));
+    // a capa também APARECE na página do curso quando não há vídeo de vendas — antes
+    // ela só era og:image e o comprador nunca via a capa na página do produto
+    const pg = await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica');
+    assert.ok(pg.texto.includes(`<img src="/academy/capa/${prodId}?v=${up.json.id}"`), 'capa visível na página de venda sem vídeo');
+    // com vídeo, quem manda é o vídeo (a capa não duplica o espaço 16:9).
+    // PUT da página de venda SUBSTITUI as seções: guardo e devolvo o conteúdo,
+    // senão o fixture segue sem headline/benefícios para os testes seguintes.
+    const secoes = require('./repo-conteudo').SalesPages.obter(prodId);
+    await req('PUT', `/academy/api/produtor/produtos/${prodId}/pagina`, { jar: 'maria', corpo: { ...secoes, video_url: 'https://youtu.be/abc123xyz' } });
+    const comVideo = await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica');
+    assert.ok(comVideo.texto.includes('youtube.com/embed/abc123xyz'), 'vídeo embutido');
+    assert.ok(!comVideo.texto.includes(`<img src="/academy/capa/${prodId}`), 'sem capa duplicando o espaço do vídeo');
+    await req('PUT', `/academy/api/produtor/produtos/${prodId}/pagina`, { jar: 'maria', corpo: secoes });
+    const restaurada = await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica');
+    assert.ok(restaurada.texto.includes('Calendário sem overbooking'), 'página de venda devolvida ao estado anterior');
   });
   await t('interesse de compra vira lead e alerta', async () => {
     const antes = alertas.length;
