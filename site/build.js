@@ -701,10 +701,18 @@ const PLANTAS = {
   UH05H: 'casa-modernista.jpg', UH06H: 'casa-modernista.jpg',
   // idem para os 3 flats da Villa Catetinho (Cássia Eller, Burle Marx e Oscar)
   UF08H: 'villa-catetinho.jpg', UF01H: 'villa-catetinho.jpg', UF07H: 'villa-catetinho.jpg',
+  // e para as unidades da Villa Kubitschek (Amor, Solteiros, Chef, Renato Russo, Família e Amigos)
+  UF06H: 'villa-kubitschek.jpg', UD03H: 'villa-kubitschek.jpg',
+  UF05H: 'villa-kubitschek.jpg', UD09H: 'villa-kubitschek.jpg',
+  VH01H: 'villa-kubitschek.jpg', VH02H: 'villa-kubitschek.jpg',
 };
 // Anúncios de quarto/flat que exibem a planta da casa inteira: a legenda muda para não dar a
 // entender que a planta é só da unidade reservada.
-const PLANTA_DA_CASA = new Set(['UH01H', 'UH03H', 'UH04H', 'UH05H', 'UH06H', 'UF08H', 'UF01H', 'UF07H']);
+const PLANTA_DA_CASA = new Set([
+  'UH01H', 'UH03H', 'UH04H', 'UH05H', 'UH06H',   // Casa Modernista
+  'UF08H', 'UF01H', 'UF07H',                     // Villa Catetinho
+  'UF06H', 'UD03H', 'UF05H', 'UD09H', 'VH01H', 'VH02H',   // Villa Kubitschek
+]);
 fs.mkdirSync(path.join(DIST, 'plantas'), { recursive: true });
 for (const p of new Set(Object.values(PLANTAS))) fs.copyFileSync(path.join(__dirname, 'src', 'plantas', p), path.join(DIST, 'plantas', p));
 
