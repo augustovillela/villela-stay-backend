@@ -13,27 +13,42 @@
 'use strict';
 const i18n = require('./i18n');
 
+// PALETA E TIPOGRAFIA (12/08/2026). Os nomes dos tokens são os de sempre
+// (--fundo, --tema, --borda…) para que nenhuma regra existente precise ser
+// reescrita; o que mudou foram os VALORES, mais os quatro tokens novos de
+// cor com significado. Vocabulário: Papel, Tinta, Floresta, Argila,
+// Madeira, Ouro velho — ver docs\frontend\migration-plan.md.
 const CSS = `
-:root{--fundo:#FBF9F6;--tinta:#1C1A17;--suave:#6B655C;--card:#fff;--borda:#E8E2D9;
---tema:#7A5C3E;--raio:18px}
+:root{--fundo:#FAF7F1;--tinta:#292724;--suave:#6B655C;--card:#FFFDFC;--borda:#DED7CC;
+--tema:#234238;--tema-suave:#E8EEE9;--acento:#A65F45;--heranca:#826247;--destaque:#C39A58;
+--raio:16px;--raio-ctrl:12px;--sombra:0 4px 18px rgb(41 39 36 / 7%);--transicao:180ms ease;
+--foco:#2C6E9B}
 *{box-sizing:border-box}
 body{margin:0;background:var(--fundo);color:var(--tinta);
 font:16px/1.65 Inter,system-ui,'Segoe UI',Roboto,sans-serif}
-h1,h2{font-family:Lora,Georgia,'Times New Roman',serif;font-weight:600;letter-spacing:-.01em}
+h1,h2,h3{font-family:Newsreader,Lora,Georgia,'Times New Roman',serif;font-weight:600;letter-spacing:-.01em}
+/* Foco visível em tudo o que recebe teclado (WCAG 2.2 AA). O anel é de
+   cor própria: contorno que depende da cor do tema some no botão do tema. */
+:focus-visible{outline:3px solid var(--foco);outline-offset:2px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .wrap{max-width:820px;margin:0 auto;padding:0 22px}
 .hero{padding:72px 0 44px;text-align:center}
 .hero h1{font-size:clamp(34px,6vw,54px);margin:0 0 10px}
 .assinatura{color:var(--suave);font-size:18px;margin:0 0 30px}
-.selo{display:inline-block;background:#FDF3D7;border:1px solid #EBD9A6;color:#7A5B12;
+.selo{display:inline-block;background:#F6EEDD;border:1px solid #E4D2AE;color:#6E5417;
 border-radius:999px;padding:6px 15px;font-weight:600;font-size:14px;margin-bottom:22px}
 .card{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio);
-padding:26px;margin:18px 0;text-align:left}
+padding:26px;margin:18px 0;text-align:left;box-shadow:var(--sombra)}
 .card h2{font-size:20px;margin:0 0 10px}
 .card p{margin:0 0 10px;color:var(--suave)}
 .card p:last-child{margin-bottom:0}
 footer{color:var(--suave);font-size:14px;text-align:center;padding:34px 0 50px}
+/* Escuro: mesma família de cores, não uma paleta paralela — o verde clareia
+   para ter contraste sobre fundo escuro, e o papel vira noite quente. */
 @media(prefers-color-scheme:dark){
-:root{--fundo:#17150F;--tinta:#F2EDE4;--suave:#A69E90;--card:#221E17;--borda:#332C22;--tema:#C9A87C}
+:root{--fundo:#161816;--tinta:#EDEAE3;--suave:#A8A196;--card:#1E211E;--borda:#31352F;
+--tema:#8FC0A9;--tema-suave:#24312A;--acento:#E0937A;--heranca:#C4A184;--destaque:#DDBB7C;
+--sombra:0 4px 18px rgb(0 0 0 / 28%);--foco:#8FC5E8}
 .selo{background:#332A12;border-color:#5A4A20;color:#E8D08A}}
 `;
 
@@ -45,8 +60,10 @@ function pagina(idioma, titulo, corpo, { pwa = false, css = '' } = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#7A5C3E">
+<meta name="theme-color" content="#234238">
 <title>${titulo}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 ${pwa ? '<link rel="manifest" href="/origena/manifest.webmanifest">'
       + '<link rel="apple-touch-icon" href="/assets/brand/villela-origena/apple-touch-icon.png">' : ''}
 <link rel="icon" href="/assets/brand/villela-origena/favicon.svg" type="image/svg+xml">
@@ -161,9 +178,51 @@ nav.card p{margin:0;line-height:2.1}
 `;
 
 const CSS_APP = `
-.wrap{max-width:720px}
-.topo{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--borda)}
-.marca{font-family:Lora,Georgia,serif;font-size:22px;font-weight:600}
+.wrap{max-width:760px;padding-bottom:84px}
+.topo{display:flex;justify-content:space-between;align-items:center;gap:14px;
+padding:14px 0;border-bottom:1px solid var(--borda);flex-wrap:wrap}
+.marca{font-family:Newsreader,Lora,Georgia,serif;font-size:22px;font-weight:600;
+color:var(--tinta);text-decoration:none;display:inline-flex;align-items:center;gap:9px}
+/* O anel do marcador de marca, desenhado em SVG inline: um caractere não
+   diria "camadas de memória", e imagem externa atrasaria o primeiro
+   desenho da tela. Marca DEFINITIVA continua esperando o brand book. */
+.marca svg{flex:0 0 auto}
+.topo-dir{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--suave);flex-wrap:wrap}
+.topo-dir a{color:var(--suave)}
+.familia-atual{font-weight:600;color:var(--tema);text-decoration:none}
+
+/* NAVEGAÇÃO AGRUPADA (Acervo · Explorar · Criar · Cuidar do legado).
+   Eram ~20 links numa fileira separada por "·": tudo no mesmo nível, nada
+   encontrável. Cada grupo é um <details>, que abre e fecha sem uma linha
+   de JavaScript e funciona no teclado de graça. */
+.nav{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--borda)}
+.nav details{position:relative}
+.nav summary{list-style:none;cursor:pointer;padding:9px 14px;border-radius:999px;
+font-size:14px;font-weight:600;color:var(--tinta);background:transparent;
+border:1px solid transparent;transition:var(--transicao);min-height:40px;
+display:inline-flex;align-items:center;gap:6px}
+.nav summary::-webkit-details-marker{display:none}
+.nav summary:hover{background:var(--tema-suave)}
+.nav details[open] summary{background:var(--tema-suave);border-color:var(--borda);color:var(--tema)}
+.nav .itens{position:absolute;z-index:30;top:calc(100% + 6px);left:0;min-width:212px;
+background:var(--card);border:1px solid var(--borda);border-radius:var(--raio);
+box-shadow:var(--sombra);padding:8px;display:flex;flex-direction:column}
+.nav .itens a{padding:11px 13px;border-radius:var(--raio-ctrl);color:var(--tinta);
+text-decoration:none;font-size:15px;min-height:44px;display:flex;align-items:center}
+.nav .itens a:hover{background:var(--tema-suave);color:var(--tema)}
+@media(max-width:640px){.nav .itens{position:static;box-shadow:none;border:0;padding:6px 0 2px}}
+
+/* Barra de baixo no celular: as cinco portas que o plano define. Vive
+   FORA de #app, então sobrevive a cada redesenho de tela. */
+.barra{position:fixed;left:0;right:0;bottom:0;z-index:40;display:none;
+background:var(--card);border-top:1px solid var(--borda);
+padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.barra a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+padding:6px 2px;min-height:52px;justify-content:center;
+font-size:11px;color:var(--suave);text-decoration:none;border-radius:var(--raio-ctrl)}
+.barra a b{font-size:19px;line-height:1}
+.barra a.ativo{color:var(--tema);background:var(--tema-suave)}
+@media(max-width:640px){.barra.ver{display:flex}}
 /* §85: alvo de toque de 48px e texto de 16px+. A Origena vai ser usada
    por avós no celular — controle apertado aqui não é detalhe estético.
    16px no input também evita o zoom automático do iOS ao focar. */
@@ -172,16 +231,30 @@ border-radius:10px;font:16px Inter,system-ui,sans-serif;background:var(--card);
 color:var(--tinta);margin:6px 0 14px}
 input[type=checkbox]{min-height:22px;width:22px;height:22px;vertical-align:-4px}
 label{font-size:15px;font-weight:600;display:block;margin-top:6px}
+/* Hierarquia de botões: primário = Floresta; claro = secundário; e o
+   "emocional" = Argila, reservado para contar, gravar e convidar — a cor
+   que pede uma ação afetiva não pode ser a mesma de "Salvar". */
 .btn{background:var(--tema);color:#fff;border:0;border-radius:999px;padding:13px 26px;
-min-height:48px;font-weight:600;font-size:16px;cursor:pointer}
+min-height:48px;font-weight:600;font-size:16px;cursor:pointer;transition:var(--transicao)}
+.btn:hover{filter:brightness(1.08)}
 .btn.claro{background:transparent;color:var(--tema);border:1px solid var(--tema)}
+.btn.claro:hover{background:var(--tema-suave)}
+.btn.emocional{background:var(--acento)}
 .btn.mini{min-height:40px;padding:9px 16px;font-size:14px}
-a{text-decoration-thickness:1px;text-underline-offset:3px}
+a{text-decoration-thickness:1px;text-underline-offset:3px;color:var(--tema)}
 .btn:disabled{opacity:.5;cursor:wait}
 .linha{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;
 border-bottom:1px solid var(--borda);flex-wrap:wrap}
-.papel{font-size:12px;font-weight:700;letter-spacing:.04em;background:#EFE7DC;color:#7A5C3E;
-border-radius:999px;padding:3px 10px}
+.papel{font-size:12px;font-weight:700;letter-spacing:.04em;background:var(--tema-suave);
+color:var(--tema);border-radius:999px;padding:3px 10px}
+/* Cartões de entrada da tela inicial da família. */
+.portas{display:grid;grid-template-columns:repeat(auto-fit,minmax(216px,1fr));gap:14px;margin:18px 0}
+.porta{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio);
+padding:18px;text-decoration:none;color:var(--tinta);display:block;transition:var(--transicao)}
+.porta:hover{box-shadow:var(--sombra);border-color:var(--tema)}
+.porta b{display:block;font-family:Newsreader,Georgia,serif;font-size:18px;margin-bottom:4px}
+.porta span{color:var(--suave);font-size:14px;line-height:1.45}
+.porta .abre{margin-top:10px;display:block;font-size:14px;color:var(--tema);font-weight:600}
 .erro{background:#FDECEC;border:1px solid #F5C2C2;color:#8A2020;padding:11px 14px;border-radius:10px;margin:12px 0}
 .ok{background:#E9F5EC;border:1px solid #BFE0C8;color:#1F5C33;padding:11px 14px;border-radius:10px;margin:12px 0}
 .sub{color:var(--suave);font-size:14px}
@@ -193,7 +266,7 @@ border-radius:999px;padding:3px 10px}
 .cel figcaption{font-size:13px;color:var(--suave);margin-top:6px;line-height:1.35}
 img{max-width:100%;height:auto}
 .tl{border-left:2px solid var(--borda);padding-left:18px;margin:14px 0}
-.tl-ano{font-family:Lora,Georgia,serif;font-size:17px;margin:20px 0 6px;color:var(--tema)}
+.tl-ano{font-family:Newsreader,Lora,Georgia,serif;font-size:17px;margin:20px 0 6px;color:var(--tema)}
 .tl-item{display:flex;gap:10px;padding:8px 0;align-items:flex-start}
 .tl-ico{flex:0 0 auto}
 @media(prefers-color-scheme:dark){.papel{background:#3A2E22;color:#D9BC93}
@@ -205,7 +278,9 @@ const CORPO_APP = `
 <script>const T=__CATALOGO__, IDIOMA=__IDIOMA__;
 const API = '/origena/api/v1';
 let EU = null, FAM = null, PERM = [];
-const $ = (h) => { document.getElementById('app').innerHTML = h; };
+// Desenhar a tela e reavaliar a barra de baixo: ela vive fora de #app, e
+// depende de haver sessão e família abertas.
+const $ = (h) => { document.getElementById('app').innerHTML = h; montarBarra(); };
 const esc = (t) => String(t==null?'':t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pode = (p) => PERM.includes(p);
 // Toda string da tela vem do catálogo: nenhuma frase mora aqui (§86).
@@ -233,12 +308,88 @@ const papelNome = (p) => t('papel.' + p) || p;
 // A AJUDA MORA NO TOPO, EM TODA TELA. Ela existia e não tinha link em
 // lugar nenhum: só chegava quem soubesse o endereço de cor — que é o
 // mesmo que não existir.
-const topo = () => '<div class="topo"><span class="marca">' + esc(t('produto.nome')) + '</span>' +
-  '<span class="sub">' +
+// Anel concêntrico com uma abertura: camadas de memória e uma história que
+// não se fechou. MARCADOR DE LUGAR — a marca definitiva espera o brand book
+// do grupo e a busca do INPI (assets\brand\villela-origena\LEIA-ME.md).
+const ANEL = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
+  '<circle cx="13" cy="13" r="10.2" stroke-dasharray="56 8"></circle>' +
+  '<circle cx="13" cy="13" r="6.4" stroke-dasharray="34 6"></circle>' +
+  '<circle cx="13" cy="13" r="2.6"></circle></svg>';
+
+const topo = () => '<div class="topo">' +
+  '<a class="marca" href="#" onclick="' + (EU ? 'inicio()' : 'telaEntrar()') + ';return false">' +
+    ANEL + esc(t('produto.nome')) + '</a>' +
+  '<span class="topo-dir">' +
+  (FAM ? '<a class="familia-atual" href="#" onclick="abrir(FAM.id);return false">' + esc(FAM.nome) + '</a>' : '') +
   (EU ? '<a href="#" onclick="telaConta();return false">' + esc(EU.nome) + '</a>' +
-        ' · <a href="#" onclick="sair();return false">' + esc(t('acao.sair')) + '</a> · ' : '') +
+        '<a href="#" onclick="sair();return false">' + esc(t('acao.sair')) + '</a>' : '') +
   '<a href="/origena/ajuda" target="_blank" rel="noopener">' + esc(t('ajuda.titulo')) + '</a></span>' +
-  '</div>';
+  '</div>' + navPrincipal();
+
+// A NAVEGAÇÃO É A MESMA EM TODA TELA. Antes ela existia só na tela da
+// família, como uma fileira de ~20 links separados por "·" — para ir de
+// Memórias a Histórias era preciso voltar ao começo, e nada dizia que o
+// resto existia. Como todas as telas chamam topo(), basta esta função.
+const NAV = [
+  ['nav.acervo', [
+    ['pessoa.titulo', 'pessoas()'], ['familia.memorias', 'memorias()'],
+    ['familia.historias', 'telaHistorias()'], ['familia.tradicoes', 'telaTradicoes()'],
+    ['familia.reliquias', 'telaReliquias()'], ['entrevista.titulo', 'telaEntrevistas()'],
+  ]],
+  ['nav.explorar', [
+    ['familia.linha_do_tempo', 'telaTimeline()'], ['mapa.titulo', 'telaMapa()'],
+    ['familia.procurar', 'telaBusca()'], ['ia.perguntar_titulo', 'telaPerguntar()'],
+  ]],
+  ['nav.criar', [
+    ['livro.titulo', 'telaLivros()'], ['capsula.titulo', 'telaCapsulas()', 'capsulas.ver'],
+  ]],
+  ['nav.legado', [
+    ['familia.missoes', 'telaMissoes()', 'contribuir'],
+    ['historiador.titulo', 'telaHistoriador()', 'contribuir'],
+    ['familia.indice_memoria', 'telaIndice()', 'contribuir'],
+    ['familia.ver_divergencias', 'divergencias()', 'contribuir'],
+    ['guardiao.titulo', 'telaGuardioes()', 'capsulas.ver'],
+    ['familia.pessoas', 'abrir(FAM.id)'],
+    ['familia.ver_historico', 'auditoria()', 'auditoria.ver'],
+    ['lixeira.titulo', 'telaLixeira()', 'restaurar'],
+    ['familia.notificacoes', 'telaAvisos()', 'contribuir'],
+    ['familia.planos', 'telaPlanos()'],
+  ]],
+];
+
+function navPrincipal() {
+  if (!EU || !FAM) return '';
+  return '<nav class="nav">' + NAV.map(g => {
+    const itens = g[1].filter(i => !i[2] || pode(i[2]));
+    if (!itens.length) return '';
+    return '<details><summary>' + esc(t(g[0])) + ' ▾</summary><div class="itens">' +
+      itens.map(i => '<a href="#" onclick="' + i[1] + ';return false">' + esc(t(i[0])) + '</a>').join('') +
+      '</div></details>';
+  }).join('') + '</nav>';
+}
+
+// Barra de baixo do celular. Mora FORA de #app justamente para não ser
+// varrida a cada redesenho — é o único pedaço de tela que persiste.
+const BARRA = [
+  ['🏠', 'nav.inicio', 'inicio()'],
+  ['🖼', 'familia.memorias', 'memorias()'],
+  ['✚', 'nav.adicionar', 'telaAdicionar()'],
+  ['🧭', 'nav.explorar', 'telaBusca()'],
+  ['👪', 'nav.familia', 'abrir(FAM.id)'],
+];
+function montarBarra() {
+  let b = document.getElementById('barra');
+  if (!b) {
+    b = document.createElement('nav');
+    b.id = 'barra'; b.className = 'barra';
+    document.body.appendChild(b);
+  }
+  if (!EU || !FAM) { b.className = 'barra'; b.innerHTML = ''; return; }
+  b.className = 'barra ver';
+  b.innerHTML = BARRA.map(i => '<a href="#" onclick="' + i[2] + ';return false">' +
+    '<b aria-hidden="true">' + i[0] + '</b>' + esc(t(i[1])) + '</a>').join('');
+}
 
 // ------------------------------------------------------------------ entrar
 function telaEntrar(msg, tipo) {
@@ -389,8 +540,22 @@ async function abrir(id) {
   const m = await api('GET', '/familias/' + id + '/membros');
   const convites = pode('membros.convidar') ? await api('GET', '/familias/' + id + '/convites') : { convites: [] };
   const papeisConvidaveis = ['CONTRIBUTOR','FAMILY_MEMBER','EDITOR','HISTORIAN','ADMIN','GUEST'];
+  // AS QUATRO PORTAS. A tela da família era uma fileira de ~20 links
+  // separados por "·" — tudo no mesmo peso, nada dizendo o que fazer
+  // primeiro. Agora cada seção se apresenta, e a lista completa continua
+  // a um clique no menu do topo.
+  const portas = [
+    ['nav.acervo', 'nav.acervo_d', 'memorias()'],
+    ['nav.explorar', 'nav.explorar_d', 'telaTimeline()'],
+    ['nav.criar', 'nav.criar_d', 'telaLivros()'],
+    ['nav.legado', 'nav.legado_d', pode('contribuir') ? 'telaMissoes()' : 'telaGuardioes()'],
+  ];
   $(topo() + '<p class="sub"><a href="#" onclick="inicio();return false">' + esc(t('acao.voltar_familias')) + '</a></p>' +
     '<h2>' + esc(FAM.nome) + '</h2><p class="sub">' + t('familia.voce_e', { papel: esc(papelNome(f.papel)) }) + '</p>' +
+    '<div class="portas">' + portas.map(p =>
+      '<a class="porta" href="#" onclick="' + p[2] + ';return false"><b>' + esc(t(p[0])) + '</b>' +
+      '<span>' + esc(t(p[1])) + '</span><span class="abre">' + esc(t('nav.entrar')) + '</span></a>').join('') +
+    '</div>' +
     '<h3 style="margin-top:26px">' + esc(t('familia.pessoas')) + '</h3>' +
     (m.membros || []).map(x =>
       '<div class="linha"><span>' + esc(x.nome) + (x.email ? ' <span class="sub">' + esc(x.email) + '</span>' : '') +
@@ -416,37 +581,9 @@ async function abrir(id) {
           '<div class="linha"><span class="sub">' + esc(c.email) + ' · ' + esc(papelNome(c.papel)) +
           ' · ' + esc(t('familia.aguardando')) + '</span></div>').join(''))
       : '') +
-    '<p style="margin-top:26px"><a href="#" onclick="pessoas();return false"><strong>' + esc(t('pessoa.titulo')) + '</strong></a>' +
-      ' · <a href="#" onclick="memorias();return false"><strong>' + esc(t('familia.memorias')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaHistorias();return false"><strong>' + esc(t('familia.historias')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaTradicoes();return false"><strong>' + esc(t('familia.tradicoes')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaReliquias();return false"><strong>' + esc(t('familia.reliquias')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaEntrevistas();return false"><strong>' + esc(t('entrevista.titulo')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaTimeline();return false"><strong>' + esc(t('familia.linha_do_tempo')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaMapa();return false"><strong>' + esc(t('mapa.titulo')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaLivros();return false"><strong>' + esc(t('livro.titulo')) + '</strong></a>' +
-      (pode('capsulas.ver')
-        ? ' · <a href="#" onclick="telaCapsulas();return false"><strong>' + esc(t('capsula.titulo')) + '</strong></a>' +
-          ' · <a href="#" onclick="telaGuardioes();return false">' + esc(t('guardiao.titulo')) + '</a>'
-        : '') +
-      ' · <a href="#" onclick="telaBusca();return false"><strong>' + esc(t('familia.procurar')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaPerguntar();return false"><strong>' + esc(t('ia.perguntar_titulo')) + '</strong></a>' +
-      ' · <a href="#" onclick="telaPlanos();return false">' + esc(t('familia.planos')) + '</a></p>' +
     (pode('contribuir')
-      ? '<p><a href="#" onclick="telaMissoes();return false"><strong>' + esc(t('familia.missoes')) + '</strong></a>' +
-        ' · <a href="#" onclick="telaHistoriador();return false">' + esc(t('historiador.titulo')) + '</a>' +
-        ' · <a href="#" onclick="telaIndice();return false">' + esc(t('familia.indice_memoria')) + '</a>' +
-        ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a>' +
-        ' · <a href="#" onclick="telaAvisos();return false">' + esc(t('familia.notificacoes')) + '</a></p>'
-      : '') +
-    ((pode('auditoria.ver') || pode('restaurar'))
-      ? '<p>' +
-        (pode('auditoria.ver') ? '<a href="#" onclick="auditoria();return false">' +
-          esc(t('familia.ver_historico')) + '</a>' : '') +
-        (pode('auditoria.ver') && pode('restaurar') ? ' · ' : '') +
-        (pode('restaurar') ? '<a href="#" onclick="telaLixeira();return false">' +
-          esc(t('lixeira.titulo')) + '</a>' : '') +
-        '</p>' : ''));
+      ? '<p style="margin-top:26px"><button class="btn emocional" onclick="telaAdicionar()">' +
+        esc(t('nav.adicionar_algo')) + '</button></p>' : ''));
 }
 async function convidar() {
   const r = await api('POST', '/familias/' + FAM.id + '/convites',
@@ -465,6 +602,27 @@ async function remover(userId) {
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   abrir(FAM.id);
 }
+// "Adicionar" existia espalhado: cada formulário morava no fim da lista do
+// próprio tipo, e quem chegava com uma foto na mão precisava adivinhar por
+// onde começar. Esta tela é uma porta só, que leva a cada caminho.
+function telaAdicionar() {
+  const tipos = [
+    ['🖼', 'midia.enviar', 'nav.add_memoria_d', 'memorias()', 'contribuir'],
+    ['👤', 'pessoa.nova', 'nav.add_pessoa_d', 'pessoas()', 'pessoas.criar'],
+    ['📖', 'familia.historias', 'nav.add_historia_d', 'telaHistorias()', 'contribuir'],
+    ['🎙', 'entrevista.nova', 'nav.add_entrevista_d', 'telaEntrevistas()', 'contribuir'],
+    ['🍲', 'tradicao.nova', 'nav.add_tradicao_d', 'telaTradicoes()', 'contribuir'],
+    ['🏺', 'reliquia.nova', 'nav.add_reliquia_d', 'telaReliquias()', 'contribuir'],
+  ].filter(x => pode(x[4]));
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('nav.adicionar_titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('nav.adicionar_intro')) + '</p>' +
+    '<div class="portas">' + tipos.map(x =>
+      '<a class="porta" href="#" onclick="' + x[3] + ';return false">' +
+      '<b>' + x[0] + ' ' + esc(t(x[1])) + '</b><span>' + esc(t(x[2])) + '</span></a>').join('') +
+    '</div>');
+}
+
 async function auditoria() {
   const r = await api('GET', '/familias/' + FAM.id + '/auditoria');
   $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
@@ -1044,22 +1202,36 @@ async function urlDe(id) {
   return r.url;
 }
 
+// "Carregar mais" TROCAVA a página em vez de acrescentar: quem clicava via
+// as 60 primeiras sumirem e não tinha caminho de volta — a galeria não
+// tinha começo nem fim, só um pedaço. Agora a lista ACUMULA: o que já
+// estava na tela continua lá, e a página cresce.
+let ACERVO = { itens: [], cursor: null };
+
 async function memorias(cursor) {
   const r = await api('GET', '/familias/' + FAM.id + '/midias?limite=60' +
     (cursor ? '&antes_de=' + encodeURIComponent(cursor) : ''));
+  // ERRO NÃO PODE PARECER GALERIA VAZIA (a mesma lição da lista de pessoas).
+  if (r.status >= 400) return $(topo() + aviso(r.erro || r.status));
+  ACERVO = {
+    itens: (cursor ? ACERVO.itens : []).concat(r.midias || []),
+    cursor: r.proximo_cursor || null,
+  };
+  const itens = ACERVO.itens;
   $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
     '<h2>' + esc(t('midia.titulo')) + '</h2>' +
+    (itens.length ? '<p class="sub">' + esc(t('midia.contagem', { n: itens.length })) + '</p>' : '') +
     (r.ocultas ? '<p class="sub">' + esc(t('midia.ocultas', { n: r.ocultas })) + '</p>' : '') +
     (pode('contribuir')
       ? '<p><input type="file" id="arqs" multiple accept="image/*,video/*,audio/*,.pdf"> ' +
         '<button class="btn" onclick="enviarArquivos(document.getElementById(\\'arqs\\').files)">' +
         esc(t('midia.enviar')) + '</button></p><p class="sub" id="envio"></p>' : '<p id="envio"></p>') +
-    ((r.midias || []).some(m => m.status === 'aguardando')
+    (itens.some(m => m.status === 'aguardando')
       ? '<p class="sub">' + esc(t('midia.aguardando_explica')) + '</p>' : '') +
     (pode('restaurar')
       ? '<p class="sub"><a href="#" onclick="telaLixeira();return false">' + esc(t('lixeira.titulo')) + '</a></p>' : '') +
-    ((r.midias || []).length
-      ? '<div class="grade">' + r.midias.map(m =>
+    (itens.length
+      ? '<div class="grade">' + itens.map(m =>
           '<figure class="cel" onclick="verMidia(\\'' + m.id + '\\')" data-thumb="' + (m.thumb_id || m.id) + '">' +
           '<div class="ph"></div><figcaption>' + esc(m.titulo || '') +
           // "processando" para tudo escondia o caso mais comum: o arquivo
@@ -1071,9 +1243,10 @@ async function memorias(cursor) {
             '</span>' : '') +
           (m.pessoas ? '<br><span class="sub">' + m.pessoas + ' 👤</span>' : '') +
           '</figcaption></figure>').join('') + '</div>' +
-        (r.proximo_cursor && r.midias.length >= 60
-          ? '<p><button class="btn claro" onclick="memorias(\\'' + r.proximo_cursor + '\\')">' +
-            esc(t('midia.carregar_mais')) + '</button></p>' : '')
+        (ACERVO.cursor && (r.midias || []).length >= 60
+          ? '<p><button class="btn claro" onclick="memorias(\\'' + ACERVO.cursor + '\\')">' +
+            esc(t('midia.carregar_mais')) + '</button></p>'
+          : '<p class="sub">' + esc(t('midia.fim_da_lista')) + '</p>')
       : '<p class="sub">' + esc(t('midia.sem_midias')) + '</p>'));
   // As imagens carregam DEPOIS da grade: a tela aparece na hora e cada
   // miniatura pede a própria URL assinada (§119).
@@ -2695,6 +2868,7 @@ const TELAS = {
   pessoas: ['pessoas', 0], pessoa: ['dossie', 1], arvore: ['verArvore', 1],
   divergencias: ['divergencias', 0], auditoria: ['auditoria', 0],
   memorias: ['memorias', 0], midia: ['verMidia', 1], lixeira: ['telaLixeira', 0],
+  adicionar: ['telaAdicionar', 0],
   historias: ['telaHistorias', 0], historia: ['verHistoria', 1],
   tradicoes: ['telaTradicoes', 1], tradicao: ['verTradicao', 1],
   reliquias: ['telaReliquias', 0], reliquia: ['verReliquia', 1],

@@ -544,6 +544,52 @@ async function principal() {
     assert.strictEqual(suspeitos.length, 0, 'mensagem em português no código: ' + suspeitos.join(', '));
   });
 
+  await teste('a NAVEGAÇÃO só oferece tela que existe, com texto que existe', async () => {
+    // O menu, a barra do celular, as portas da tela da família e a tela
+    // "Adicionar" são TABELAS de literais. Chave errada ali não quebra
+    // nada: aparece a chave crua no meio do menu, e tela nenhuma some —
+    // é o tipo de defeito que só o olho pega. Aqui o teste pega.
+    const fs = require('fs');
+    const src = fs.readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    // Varredura de colchetes equilibrados: a tabela do menu tem listas
+    // dentro de listas, e regex preguiçosa corta no primeiro `]`.
+    // A tabela das portas consulta permissão para escolher o destino; aqui
+    // interessa a tabela, não o papel de quem olha.
+    const pode = () => true;
+    const tabela = (nome) => {
+      assert(typeof pode === 'function');
+      const ini = src.indexOf('const ' + nome + ' = [');
+      assert(ini >= 0, 'não achei a tabela ' + nome);
+      let i = src.indexOf('[', ini), nivel = 0, aspas = false;
+      for (let j = i; j < src.length; j++) {
+        const c = src[j];
+        if (aspas) { if (c === '\\') j++; else if (c === "'") aspas = false; continue; }
+        if (c === "'") aspas = true;
+        else if (c === '[') nivel++;
+        else if (c === ']' && --nivel === 0) {
+          // eslint-disable-next-line no-eval
+          return eval(src.slice(i, j + 1));
+        }
+      }
+      assert.fail('tabela ' + nome + ' não fecha');
+    };
+    const chaves = [], chamadas = [];
+    for (const [rotulo, itens] of tabela('NAV')) {
+      chaves.push(rotulo);
+      for (const i of itens) { chaves.push(i[0]); chamadas.push(i[1]); }
+    }
+    for (const i of tabela('BARRA')) { chaves.push(i[1]); chamadas.push(i[2]); }
+    for (const i of tabela('portas')) { chaves.push(i[0], i[1]); }
+    for (const i of tabela('tipos')) { chaves.push(i[1], i[2]); chamadas.push(i[3]); }
+
+    const semTexto = [...new Set(chaves)].filter((k) => i18n.t('pt-BR', k) === k);
+    assert.strictEqual(semTexto.length, 0, 'item de navegação sem texto no catálogo: ' + semTexto.join(', '));
+    const semTela = [...new Set(chamadas)]
+      .map((c) => c.replace(/\(.*$/, ''))
+      .filter((fn) => !new RegExp('function ' + fn + '\\s*\\(').test(src));
+    assert.strictEqual(semTela.length, 0, 'navegação aponta para função inexistente: ' + semTela.join(', '));
+  });
+
   await teste('o catálogo não tem chave REPETIDA (a última vence, em silêncio)', async () => {
     // JSON aceita chave duplicada sem reclamar e fica com a ÚLTIMA. Foi
     // assim que um botão novo nasceu com o texto velho: `midia.arquivar`
