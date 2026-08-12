@@ -687,9 +687,18 @@ fs.writeFileSync(path.join(od, 'index.html'), home);
 
 // ------------------------------------------------- página por unidade
 // Plantas humanizadas (feitas pelo Augusto) — id do anúncio -> arquivo
-const PLANTAS = { GI01I: 'casa-villela.jpg', GD03H: 'gran-villela.jpg', GG04I: 'villa-kubitschek.jpg' };
+const PLANTAS = {
+  GI01I: 'casa-villela.jpg', GD03H: 'gran-villela.jpg', GG04I: 'villa-kubitschek.jpg',
+  GD01H: 'casa-modernista.jpg',
+  // as 5 suítes da Casa Modernista mostram a planta da casa inteira, onde cada uma é nomeada
+  UH01H: 'casa-modernista.jpg', UH03H: 'casa-modernista.jpg', UH04H: 'casa-modernista.jpg',
+  UH05H: 'casa-modernista.jpg', UH06H: 'casa-modernista.jpg',
+};
+// Anúncios de quarto que exibem a planta da casa inteira: a legenda muda para não dar a
+// entender que a planta é só da suíte.
+const PLANTA_DA_CASA = new Set(['UH01H', 'UH03H', 'UH04H', 'UH05H', 'UH06H']);
 fs.mkdirSync(path.join(DIST, 'plantas'), { recursive: true });
-for (const p of Object.values(PLANTAS)) fs.copyFileSync(path.join(__dirname, 'src', 'plantas', p), path.join(DIST, 'plantas', p));
+for (const p of new Set(Object.values(PLANTAS))) fs.copyFileSync(path.join(__dirname, 'src', 'plantas', p), path.join(DIST, 'plantas', p));
 
 // Vídeos publicitários — id do anúncio -> arquivo
 const VIDEOS = { GD01H: 'casa-modernista.mp4', GI01I: 'casa-villela.mp4', GD03H: 'gran-villela.mp4', PL02I: 'villa-catetinho.mp4', GG04I: 'villa-kubitschek.mp4' };
@@ -920,14 +929,21 @@ for (const l of listings) {
   </section>
   <section class="descricao"><h2 class="secao-titulo">${t('Sobre a hospedagem', 'About this stay', 'Sobre el alojamiento')}</h2>${(descricaoImovel(l) || '').replace(/,\s*academias\b/gi, '')}</section>
   ${blocoDepoimentos}
-  ${PLANTAS[l.id] ? `<section class="planta">
-    <h2>${t('Planta do espaço', 'Floor plan', 'Plano del espacio')}</h2>
-    <a href="/plantas/${PLANTAS[l.id]}" target="_blank" rel="noopener">${(() => {
-      const d = dimensoesArquivo(path.join(__dirname, 'src', 'plantas', PLANTAS[l.id]));
-      return img(`/plantas/${PLANTAS[l.id]}`, { alt: `${t('Planta do espaço', 'Floor plan', 'Plano del espacio')} — ${l.titulo}`, sizes: '(max-width: 980px) 100vw, 980px', width: d ? d.w : undefined, height: d ? d.h : undefined });
-    })()}</a>
-    <p class="planta-dica">${t('Clique na planta para ampliar.', 'Click the plan to enlarge.', 'Haz clic en el plano para ampliar.')}</p>
-  </section>` : ''}
+  ${PLANTAS[l.id] ? (() => {
+    const daCasa = PLANTA_DA_CASA.has(l.id);
+    const tituloPlanta = daCasa
+      ? t('Planta da casa', 'House floor plan', 'Plano de la casa')
+      : t('Planta do espaço', 'Floor plan', 'Plano del espacio');
+    const dica = daCasa
+      ? t('A planta mostra a casa inteira, com o nome de cada suíte. Clique para ampliar.', 'The plan shows the whole house, with each suite named. Click to enlarge.', 'El plano muestra la casa entera, con el nombre de cada suite. Haz clic para ampliar.')
+      : t('Clique na planta para ampliar.', 'Click the plan to enlarge.', 'Haz clic en el plano para ampliar.');
+    const d = dimensoesArquivo(path.join(__dirname, 'src', 'plantas', PLANTAS[l.id]));
+    return `<section class="planta">
+    <h2>${tituloPlanta}</h2>
+    <a href="/plantas/${PLANTAS[l.id]}" target="_blank" rel="noopener">${img(`/plantas/${PLANTAS[l.id]}`, { alt: `${tituloPlanta} — ${l.titulo}`, sizes: '(max-width: 980px) 100vw, 980px', width: d ? d.w : undefined, height: d ? d.h : undefined })}</a>
+    <p class="planta-dica">${dica}</p>
+  </section>`;
+  })() : ''}
   <section class="galeria"><h2>${t('Fotos', 'Photos', 'Fotos')}</h2><div class="galeria-grid">${galeria}</div></section>
   ${EBOOKS[l.id] ? `<section class="ebook-box">
     📖 <a href="/ebooks/${EBOOKS[l.id]}" target="_blank" rel="noopener"><strong>${t('Baixe o Manual do Hóspede (e-book em PDF)', 'Download the Guest Manual (PDF e-book)', 'Descarga el Manual del Huésped (e-book en PDF)')}</strong></a> — ${t('o funcionamento da casa, as regras e o guia de turismo e gastronomia de Brasília do anfitrião.', "how the house works, the rules and the host's Brasília tourism and food guide.", 'cómo funciona la casa, las normas y la guía de turismo y gastronomía de Brasília del anfitrión.')}
