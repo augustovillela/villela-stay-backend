@@ -1,0 +1,32 @@
+{
+  "_leia-me": "Fotos próprias do anfitrião (arquivos em site/src/fotos/<pasta>), exibidas na galeria da página da unidade DEPOIS das fotos que vêm da Stays. Ordem = ordem de exibição. Acrescentar foto: colocar o .jpg em src/fotos/<pasta>/ e uma entrada aqui.",
+  "GD01H": {
+    "pasta": "casa-modernista",
+    "fotos": [
+      { "arquivo": "piscina-area-envidracada.jpg", "alt": "Piscina com a área de lazer envidraçada ao fundo" },
+      { "arquivo": "cozinha-industrial.jpg", "alt": "Cozinha industrial equipada, com bancada de granito e fogões" },
+      { "arquivo": "sala-de-estar.jpg", "alt": "Sala de estar com sofá em L e instrumentos na parede" },
+      { "arquivo": "spa-jacuzzi.jpg", "alt": "Spa com jacuzzi para 8 pessoas ao lado do aquário" },
+      { "arquivo": "sala-de-sinuca.jpg", "alt": "Sala de sinuca com mural grafitado" },
+      { "arquivo": "lounge-externo-redario.jpg", "alt": "Lounge externo coberto com redário e poltronas" },
+      { "arquivo": "jardim-balancos-redes.jpg", "alt": "Jardim com balanços, redes e cadeiras de madeira" },
+      { "arquivo": "pergolado-balanco.jpg", "alt": "Pergolado com poltronas e balanço suspenso no jardim" },
+      { "arquivo": "parquinho.jpg", "alt": "Parquinho com parede de escalada, balanços e cama elástica" },
+      { "arquivo": "churrasqueiras.jpg", "alt": "Churrasqueira de alvenaria e churrasqueira a gás" },
+      { "arquivo": "deck-piscina-guarda-sol.jpg", "alt": "Deck da piscina com guarda-sol e espreguiçadeiras" },
+      { "arquivo": "piscina-deck-jardim.jpg", "alt": "Piscina, deck e jardim com cerca viva florida" },
+      { "arquivo": "jardim-de-inverno.jpg", "alt": "Jardim de inverno com plantas e parede de tijolo aparente" },
+      { "arquivo": "suite-master.jpg", "alt": "Suíte master com cama king" },
+      { "arquivo": "suite-cama-king.jpg", "alt": "Suíte com cama king, cama extra e TV" },
+      { "arquivo": "suite-casal-solteiro.jpg", "alt": "Suíte com cama de casal, cama de solteiro e ar-condicionado" },
+      { "arquivo": "quarto-beliches.jpg", "alt": "Quarto com beliches" },
+      { "arquivo": "banheiro-suite.jpg", "alt": "Banheiro de suíte com box e revestimento amadeirado" },
+      { "arquivo": "banheiro-box-vidro.jpg", "alt": "Banheiro com box de vidro" },
+      { "arquivo": "lavabo.jpg", "alt": "Lavabo" },
+      { "arquivo": "pergolado-deck-madeira.jpg", "alt": "Pergolado de madeira com deck, mesa e sofás" },
+      { "arquivo": "fachada.jpg", "alt": "Fachada da Casa Modernista" },
+      { "arquivo": "fachada-entrada.jpg", "alt": "Fachada e entrada da casa" },
+      { "arquivo": "porteiro-eletronico.jpg", "alt": "Porteiro eletrônico com câmera na entrada" }
+    ]
+  }
+}

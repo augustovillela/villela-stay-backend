@@ -700,6 +700,16 @@ const PLANTA_DA_CASA = new Set(['UH01H', 'UH03H', 'UH04H', 'UH05H', 'UH06H']);
 fs.mkdirSync(path.join(DIST, 'plantas'), { recursive: true });
 for (const p of new Set(Object.values(PLANTAS))) fs.copyFileSync(path.join(__dirname, 'src', 'plantas', p), path.join(DIST, 'plantas', p));
 
+// Fotos próprias do anfitrião (data/fotos-proprias.json) — entram na galeria da unidade depois
+// das que vêm da Stays. Só copia o que está catalogado: arquivo solto em src/fotos/ não vai ao ar.
+const FOTOS_PROPRIAS = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'fotos-proprias.json'), 'utf8'));
+for (const [id, cfg] of Object.entries(FOTOS_PROPRIAS)) {
+  if (id.startsWith('_')) continue;
+  const destino = path.join(DIST, 'fotos', cfg.pasta);
+  fs.mkdirSync(destino, { recursive: true });
+  for (const f of cfg.fotos) fs.copyFileSync(path.join(__dirname, 'src', 'fotos', cfg.pasta, f.arquivo), path.join(destino, f.arquivo));
+}
+
 // Vídeos publicitários — id do anúncio -> arquivo
 const VIDEOS = { GD01H: 'casa-modernista.mp4', GI01I: 'casa-villela.mp4', GD03H: 'gran-villela.mp4', PL02I: 'villa-catetinho.mp4', GG04I: 'villa-kubitschek.mp4' };
 fs.mkdirSync(path.join(DIST, 'videos'), { recursive: true });
@@ -832,8 +842,13 @@ function depoimentosUnidade(l, idx) {
 }
 
 for (const l of listings) {
-  const galeria = (l.fotos || []).slice(1, 9).map(f =>
-    img(f.url, { alt: f.nome || l.titulo, title: f.nome || '', width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })).join('\n');
+  const cfgFotos = FOTOS_PROPRIAS[l.id];
+  const galeria = [
+    ...(l.fotos || []).slice(1, 9).map(f =>
+      img(f.url, { alt: f.nome || l.titulo, title: f.nome || '', width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })),
+    ...(cfgFotos ? cfgFotos.fotos.map(f =>
+      img(`/fotos/${cfgFotos.pasta}/${f.arquivo}`, { alt: f.alt, title: f.alt, width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })) : []),
+  ].join('\n');
 
   const idx = listings.indexOf(l);
   const comods = comodidadesDe(l);
