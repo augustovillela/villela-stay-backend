@@ -194,8 +194,9 @@ function cardProduto(p) {
 
 function marketplaceHTML({ q, categoria }) {
   const itens = ct.Marketplace.listar({ q, categoria });
-  const cats = ct.CATEGORIAS.map(c =>
-    `<a class="btn peq ${c === categoria ? '' : 'secund'}" href="/academy/marketplace?categoria=${c}" style="margin:3px">${esc(ct.catRotulo(c))}</a>`).join('');
+  // do sistema sempre; as de produtor só depois de terem produto publicado
+  const cats = ct.Categorias.visiveis().map(({ slug }) =>
+    `<a class="btn peq ${slug === categoria ? '' : 'secund'}" href="/academy/marketplace?categoria=${slug}" style="margin:3px">${esc(ct.catRotulo(slug))}</a>`).join('');
   const corpo = `<div class="sec"><div class="wrap"><h2>Marketplace</h2>
     <p class="sub">Cursos e produtos digitais dos produtores da Villela Academy.</p>
     <form method="get" action="/academy/marketplace" style="max-width:480px;margin:0 auto 18px;display:flex;gap:8px">

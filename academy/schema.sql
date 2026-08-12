@@ -494,3 +494,17 @@ CREATE TABLE IF NOT EXISTS push_subs (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subs(user_id);
+
+-- Categorias do marketplace. As de origem 'sistema' vêm semeadas na migração e
+-- não somem; o produtor pode criar as suas quando nenhuma serve. Categoria de
+-- produtor só aparece no filtro público quando tem produto PUBLICADO (e produto
+-- só é publicado depois de a plataforma aprovar) — é esse o freio contra lixo.
+CREATE TABLE IF NOT EXISTS categories (
+  slug       TEXT PRIMARY KEY,
+  rotulo     TEXT NOT NULL,
+  origem     TEXT DEFAULT 'produtor',   -- sistema|produtor
+  criado_por TEXT DEFAULT '',
+  ordem      INTEGER DEFAULT 999,
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_categories_origem ON categories(origem);

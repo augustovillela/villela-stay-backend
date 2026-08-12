@@ -917,6 +917,45 @@ async function main() {
       if (capaAntes) await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { capa_media_id: capaAntes } });
     }
   });
+  await t('categorias: escolher uma do sistema, criar a sua, e o filtro público só mostra a usada', async () => {
+    const dbC = require('./db').db;
+    const cats = (await req('GET', '/academy/api/produtor/produtos', { jar: 'maria' })).json.categorias;
+    assert.ok(cats.length >= 15, 'as 15 do sistema vieram da migração');
+    assert.ok(cats.every(c => c.slug && c.rotulo), 'cada categoria tem slug e rótulo');
+    assert.ok(cats.find(c => c.slug === 'inteligencia-artificial').rotulo === 'Inteligência Artificial', 'rótulo com acento');
+
+    // escolher uma existente
+    assert.equal((await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { categoria: 'marketing' } })).st, 200);
+    assert.equal(dbC.prepare('SELECT categoria FROM products WHERE id = ?').get(prodId).categoria, 'marketing');
+    // categoria inexistente não entra (vira vazio, não quebra)
+    await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { categoria: 'nao-existe-isso' } });
+    assert.equal(dbC.prepare('SELECT categoria FROM products WHERE id = ?').get(prodId).categoria, '', 'slug inválido não é aceito');
+
+    // criar uma nova
+    const nova = await req('POST', '/academy/api/produtor/categorias', { jar: 'maria', corpo: { rotulo: 'Fotografia Aérea' } });
+    assert.equal(nova.st, 200);
+    assert.equal(nova.json.categoria.slug, 'fotografia-aerea', 'slug sem acento');
+    assert.equal(nova.json.categoria.origem, 'produtor');
+    // nome equivalente NÃO duplica — reusa a mesma
+    const igual = await req('POST', '/academy/api/produtor/categorias', { jar: 'maria', corpo: { rotulo: '  fotografia   AÉREA ' } });
+    assert.equal(igual.json.categoria.slug, 'fotografia-aerea');
+    assert.equal(dbC.prepare("SELECT COUNT(*) n FROM categories WHERE slug = 'fotografia-aerea'").get().n, 1, 'sem categoria irmã');
+    // nome que colide com a do sistema devolve a do sistema, sem virar de produtor
+    assert.equal((await req('POST', '/academy/api/produtor/categorias', { jar: 'maria', corpo: { rotulo: 'Marketing' } })).json.categoria.origem, 'sistema');
+    // nome curto demais é recusado com motivo
+    const curta = await req('POST', '/academy/api/produtor/categorias', { jar: 'maria', corpo: { rotulo: 'ab' } });
+    assert.equal(curta.st, 400); assert.ok(/3 letras/.test(curta.json.erro));
+
+    // filtro público: a nova só aparece quando tiver produto PUBLICADO nela
+    const ctC = require('./repo-conteudo');
+    assert.ok(!ctC.Categorias.visiveis().some(c => c.slug === 'fotografia-aerea'), 'categoria nova e vazia fica fora da vitrine');
+    assert.ok(ctC.Categorias.visiveis().some(c => c.slug === 'marketing'), 'a do sistema aparece sempre');
+    dbC.prepare("UPDATE products SET categoria = 'fotografia-aerea' WHERE id = ?").run(prodId); // prodId está publicado
+    assert.ok(ctC.Categorias.visiveis().some(c => c.slug === 'fotografia-aerea'), 'com produto publicado, entra na vitrine');
+    const html = await req('GET', '/academy/marketplace');
+    assert.ok(html.texto.includes('Fotografia Aérea'), 'e o marketplace lista o rótulo');
+    dbC.prepare("UPDATE products SET categoria = '' WHERE id = ?").run(prodId); // devolve o fixture
+  });
   await t('presign SigV4 (S3/R2) gera URLs válidas em formato', async () => {
     const cfg = { endpoint: 'https://conta.r2.cloudflarestorage.com', bucket: 'academy', key: 'AKIATESTE', secret: 'segredo', region: 'auto' };
     for (const met of ['GET', 'PUT', 'HEAD']) {

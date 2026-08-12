@@ -30,7 +30,46 @@ const CAT_ROT = {
   construcao: 'Construção', financas: 'Finanças', produtividade: 'Produtividade',
   'desenvolvimento-pessoal': 'Desenvolvimento Pessoal',
 };
-const catRotulo = (c) => CAT_ROT[c] || String(c || '').replace(/-/g, ' ');
+// A tabela `categories` é a fonte da verdade (migração categorias-tabela-2026-08-11
+// semeia as 15 do sistema). CATEGORIAS/CAT_ROT ficam como semente e fallback.
+const catRotulo = (c) => {
+  const r = db.prepare('SELECT rotulo FROM categories WHERE slug = ?').get(String(c || ''));
+  return r ? r.rotulo : (CAT_ROT[c] || String(c || '').replace(/-/g, ' '));
+};
+
+const Categorias = {
+  listar() { return db.prepare('SELECT * FROM categories ORDER BY ordem, rotulo').all(); },
+  existe(slug) { return !!db.prepare('SELECT 1 FROM categories WHERE slug = ?').get(String(slug || '')); },
+  rotulo: catRotulo,
+
+  // Filtro público: as do sistema sempre; as criadas por produtor só depois de
+  // terem produto PUBLICADO. Categoria criada e nunca usada não polui a vitrine,
+  // e como publicar exige aprovação da plataforma, nenhuma categoria nova estreia
+  // no site sem um humano ter passado por ela — sem precisar de fila própria.
+  visiveis() {
+    return db.prepare(`SELECT c.* FROM categories c
+      WHERE c.origem = 'sistema'
+         OR EXISTS (SELECT 1 FROM products p WHERE p.categoria = c.slug AND p.status = 'publicado')
+      ORDER BY c.ordem, c.rotulo`).all();
+  },
+
+  // Cria a categoria do produtor. Nome equivalente NÃO duplica: "Marketing",
+  // "marketing" e "MARKETING " caem no mesmo slug e reaproveitam a que existe.
+  criar(rotulo, userId) {
+    const nome = s(rotulo, 40).replace(/\s+/g, ' ');
+    if (nome.length < 3) throw new Error('O nome da categoria precisa de pelo menos 3 letras.');
+    const slug = nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    if (!slug) throw new Error('Dê à categoria um nome com letras ou números.');
+    const ja = db.prepare('SELECT * FROM categories WHERE slug = ?').get(slug);
+    if (ja) return ja; // já existe (do sistema ou de alguém): reusa em vez de clonar
+    const n = db.prepare("SELECT COUNT(*) n FROM categories WHERE origem = 'produtor' AND criado_por = ?").get(s(userId, 40)).n;
+    if (n >= 10) throw new Error('Você já criou 10 categorias. Reaproveite uma delas.');
+    db.prepare('INSERT INTO categories (slug, rotulo, origem, criado_por, ordem, criado_em) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(slug, nome, 'produtor', s(userId, 40), 500, nowISO());
+    return db.prepare('SELECT * FROM categories WHERE slug = ?').get(slug);
+  },
+};
 
 // upload: 10 MB (o body JSON global aguenta 15 MB em base64); vídeo = URL externa até a F7
 const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
@@ -76,7 +115,7 @@ const Produtos = {
     db.prepare(`INSERT INTO products (id, producer_id, tipo, titulo, subtitulo, slug, categoria, descricao_curta,
       descricao_longa, preco_centavos, garantia_dias, status, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'rascunho', ?)`)
       .run(id, producerId, tipo, titulo, s(d.subtitulo, 200), slugDe(titulo, 'products'),
-        CATEGORIAS.includes(d.categoria) ? d.categoria : '', s(d.descricao_curta, 300),
+        Categorias.existe(d.categoria) ? d.categoria : '', s(d.descricao_curta, 300),
         s(d.descricao_longa, 10000), Math.max(0, parseInt(d.preco_centavos, 10) || 0),
         Math.max(0, parseInt(d.garantia_dias, 10) || 7), nowISO());
     return this.obter(id);
@@ -90,7 +129,7 @@ const Produtos = {
       preco_centavos = ?, preco_promo_centavos = ?, garantia_dias = ?, capa_media_id = ?, tags = ?, atualizado_em = ? WHERE id = ?`)
       .run(d.titulo != null ? (s(d.titulo, 160) || p.titulo) : p.titulo,
         d.subtitulo != null ? s(d.subtitulo, 200) : p.subtitulo,
-        d.categoria != null ? (CATEGORIAS.includes(d.categoria) ? d.categoria : '') : p.categoria,
+        d.categoria != null ? (Categorias.existe(d.categoria) ? d.categoria : '') : p.categoria,
         d.descricao_curta != null ? s(d.descricao_curta, 300) : p.descricao_curta,
         d.descricao_longa != null ? s(d.descricao_longa, 10000) : p.descricao_longa,
         num(d.preco_centavos, p.preco_centavos), num(d.preco_promo_centavos, p.preco_promo_centavos),
@@ -624,7 +663,7 @@ const Denuncias = {
 };
 
 module.exports = {
-  TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, CAT_ROT, catRotulo, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
+  TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
   Produtos, Conteudo, Midia, Matriculas, Cortesia, Progresso, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube,

@@ -68,6 +68,21 @@ const MIGRACOES = [
     nome: 'users-cortesia-2026-07-21',
     sql: 'ALTER TABLE users ADD COLUMN cortesia INTEGER DEFAULT 0',
   },
+  { // categorias saem de const no código para tabela: o produtor escolhe uma das
+    // do sistema ou cria a sua quando nenhuma serve. Estas 15 são as que já
+    // existiam em repo-conteudo.CATEGORIAS, na mesma ordem.
+    nome: 'categorias-tabela-2026-08-11',
+    sql: [
+      ['negocios', 'Negócios'], ['marketing', 'Marketing'], ['vendas', 'Vendas'],
+      ['tecnologia', 'Tecnologia'], ['inteligencia-artificial', 'Inteligência Artificial'],
+      ['direito', 'Direito'], ['gestao-documental', 'Gestão Documental'],
+      ['aluguel-temporada', 'Aluguel por Temporada'], ['hospedagem', 'Hospedagem'],
+      ['gastronomia', 'Gastronomia'], ['eventos', 'Eventos'], ['construcao', 'Construção'],
+      ['financas', 'Finanças'], ['produtividade', 'Produtividade'],
+      ['desenvolvimento-pessoal', 'Desenvolvimento Pessoal'],
+    ].map(([slug, rot], i) => `INSERT OR IGNORE INTO categories (slug, rotulo, origem, ordem, criado_em)
+        VALUES ('${slug}', '${rot.replace(/'/g, "''")}', 'sistema', ${i}, '2026-08-11T00:00:00.000Z');`).join('\n'),
+  },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

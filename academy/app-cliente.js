@@ -743,6 +743,18 @@
         '<p class="sub" style="text-align:left;margin:0 0 10px"><b>*</b> = obrigatório para enviar à revisão. O resto pode ficar para depois.</p>' +
         '<label>Título <b title="obrigatório">*</b></label><input id="e-titulo" value="' + esc(p.titulo) + '">' +
         '<label>Subtítulo</label><input id="e-sub" value="' + esc(p.subtitulo) + '">' +
+        '<label>Categoria (é por ela que te acham no marketplace)</label>' +
+        '<select id="e-cat">' +
+          '<option value=""' + (p.categoria ? '' : ' selected') + '>— sem categoria —</option>' +
+          (d.categorias || []).map(function (c) {
+            return '<option value="' + esc(c.slug) + '"' + (c.slug === p.categoria ? ' selected' : '') + '>' + esc(c.rotulo) + '</option>';
+          }).join('') +
+          '<option value="__nova">➕ criar uma categoria nova…</option>' +
+        '</select>' +
+        '<div id="e-cat-nova-box" style="display:none">' +
+          '<input id="e-cat-nova" placeholder="Nome da categoria nova (ex.: Fotografia)" maxlength="40">' +
+          '<p class="sub" style="text-align:left;margin:-6px 0 12px">Ela vale já no seu produto. No filtro público do marketplace ela aparece quando tiver um produto publicado.</p>' +
+        '</div>' +
         '<label>Descrição curta (aparece na vitrine)</label><input id="e-curta" value="' + esc(p.descricao_curta) + '">' +
         '<label>Descrição longa</label><textarea id="e-longa" rows="4">' + esc(p.descricao_longa) + '</textarea>' +
         '<label>Preço (R$)' + (p.tipo === 'clube' ? ' <b title="obrigatório">*</b> — mensalidade do clube' : ' — 0,00 publica como gratuito') + '</label>' +
@@ -823,9 +835,24 @@
 
       setView(html);
       el('b-volta').onclick = function (e) { e.preventDefault(); vProdutor(); };
+      // categoria: mostra o campo de nome só quando a opção "criar nova" é escolhida
+      el('e-cat').onchange = function () {
+        el('e-cat-nova-box').style.display = el('e-cat').value === '__nova' ? '' : 'none';
+        if (el('e-cat').value === '__nova') el('e-cat-nova').focus();
+      };
       el('b-salvar').onclick = function () {
-        api('PATCH', '/produtor/produtos/' + pid, { titulo: val('e-titulo'), subtitulo: val('e-sub'), descricao_curta: val('e-curta'), descricao_longa: val('e-longa'), preco_centavos: centavos(val('e-preco')), afiliado_pct: val('e-afpct') })
-          .then(function () { vProduto(pid); }).catch(function (e) { falha('e-msg', e); });
+        // se pediu categoria nova, ela é criada ANTES de salvar o produto — e o
+        // slug que volta é o que vai no PATCH (nome repetido devolve a existente)
+        var antes = el('e-cat').value === '__nova'
+          ? api('POST', '/produtor/categorias', { rotulo: val('e-cat-nova') }).then(function (r) { return r.categoria.slug; })
+          : Promise.resolve(el('e-cat').value);
+        antes.then(function (cat) {
+          return api('PATCH', '/produtor/produtos/' + pid, {
+            titulo: val('e-titulo'), subtitulo: val('e-sub'), categoria: cat,
+            descricao_curta: val('e-curta'), descricao_longa: val('e-longa'),
+            preco_centavos: centavos(val('e-preco')), afiliado_pct: val('e-afpct'),
+          });
+        }).then(function () { vProduto(pid); }).catch(function (e) { falha('e-msg', e); });
       };
       Array.prototype.forEach.call(document.querySelectorAll('[data-st]'), function (b) {
         b.onclick = function () {

@@ -25,7 +25,7 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
 
   // ============================ PRODUTOR ============================
   app.get('/academy/api/produtor/produtos', ...P, h((req, res) => {
-    res.json({ produtos: ct.Produtos.doProdutor(req.usuario.id), categorias: ct.CATEGORIAS, tipos: ct.TIPOS_PRODUTO });
+    res.json({ produtos: ct.Produtos.doProdutor(req.usuario.id), categorias: ct.Categorias.listar(), tipos: ct.TIPOS_PRODUTO });
   }));
   app.post('/academy/api/produtor/produtos', ...P, h((req, res) => {
     const p = ct.Produtos.criar(req.usuario.id, req.body || {});
@@ -34,13 +34,22 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
   }));
   app.get('/academy/api/produtor/produtos/:id', ...P, h((req, res) => {
     const p = ct.Produtos.obterDoDono(req.params.id, req.usuario.id);
-    res.json({ produto: p, estrutura: ct.Produtos.estrutura(p.id), tipos_aula: ct.TIPOS_AULA });
+    res.json({ produto: p, estrutura: ct.Produtos.estrutura(p.id), tipos_aula: ct.TIPOS_AULA, categorias: ct.Categorias.listar() });
   }));
   app.patch('/academy/api/produtor/produtos/:id', ...P, h((req, res) => {
     const p = ct.Produtos.editar(req.params.id, req.usuario.id, req.body || {});
     aud(req, 'produto.editar', 'products', p.id, '');
     res.json({ ok: true, produto: p });
   }));
+  // categoria nova quando nenhuma das existentes serve. Nome equivalente não
+  // duplica: devolve a que já existe. Só entra no filtro público do marketplace
+  // quando tiver produto publicado (Categorias.visiveis).
+  app.post('/academy/api/produtor/categorias', ...P, h((req, res) => {
+    const c = ct.Categorias.criar((req.body || {}).rotulo, req.usuario.id);
+    aud(req, 'categoria.criar', 'categories', c.slug, c.rotulo);
+    res.json({ ok: true, categoria: c, categorias: ct.Categorias.listar() });
+  }));
+
   // fluxo editorial do produtor: enviar p/ revisão, publicar, pausar, reenviar
   app.post('/academy/api/produtor/produtos/:id/status', ...P, h((req, res) => {
     const p = ct.Produtos.transicionar(req.params.id, s((req.body || {}).status, 20), { comoPapel: 'produtor', producerId: req.usuario.id });
