@@ -350,6 +350,11 @@
     "sucessao_nao_pode_contestar": "Só a própria pessoa ou um guardião do legado pode derrubar o pedido.",
     "sucessao_prazo_aberto": "O prazo de contestação ainda não terminou."
   },
+  "acesso": {
+    "pular": "Pular para o conteúdo",
+    "nav_principal": "Áreas da família",
+    "nova_aba": "(abre em outra aba)"
+  },
   "estado": {
     "falhou": "Não consegui carregar",
     "falhou_p": "Alguma coisa deu errado do nosso lado. Nada foi perdido — é só tentar de novo.",
@@ -1262,10 +1267,16 @@
     "titulo": "Livro da família",
     "intro": "O acervo vira um PDF para imprimir e guardar numa gaveta. Papel não tem senha, não depende de provedor e não expira — é a forma mais antiga de um legado atravessar gerações.",
     "recorte": "O livro mostra o que VOCÊ pode ver. Outra pessoa da família, com outro papel, receberia um livro diferente.",
-    "gerar": "Fazer o livro da família",
+    "gerar": "Fazer este livro",
+    "d_familia_t": "Livro da família",
+    "d_familia": "Um capítulo por pessoa, com os fatos, a origem de cada um, as histórias e as tradições.",
+    "d_album_t": "Scrapbook de um álbum",
+    "d_album": "Um álbum em papel: uma foto por página, com quem aparece e de onde a imagem veio.",
+    "d_ano_t": "Retrospectiva de um ano",
+    "d_ano": "O que aconteceu num ano e o ano em fotografias. Alcança o que tem data — o resto fica declarado.",
     "gerar_pessoa": "Fazer o livro desta pessoa",
-    "gerar_album": "Fazer o scrapbook de um álbum",
-    "gerar_ano": "Fazer a retrospectiva de um ano",
+    "gerar_album": "Fazer este álbum",
+    "gerar_ano": "Fazer esta retrospectiva",
     "escolher_album": "De qual álbum?",
     "escolher_ano": "De que ano é a retrospectiva?",
     "sem_album": "Você ainda não tem álbum nenhum para virar scrapbook.",
@@ -1281,7 +1292,8 @@
     "falhou": "Não deu certo: {motivo}",
     "expira": "O link vale até {data} — o livro se refaz quando quiser.",
     "conteudo": "{pessoas} pessoa(s), {historias} história(s), {tradicoes} tradição(ões), {fotos} foto(s)",
-    "nenhum": "Nenhum livro feito ainda.",
+    "nenhum": "Nenhum livro feito ainda",
+    "nenhum_p": "O livro se monta a partir do que já está guardado: nada de digitar de novo. Escolha um formato acima quando quiser ver como ficou.",
     "pedido_por": "pedido por {nome}"
   }
 }

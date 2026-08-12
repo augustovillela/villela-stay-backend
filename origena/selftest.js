@@ -544,6 +544,29 @@ async function principal() {
     assert.strictEqual(suspeitos.length, 0, 'mensagem em português no código: ' + suspeitos.join(', '));
   });
 
+  await teste('a estrutura de acessibilidade do app está de pé (WCAG 2.2 AA)', async () => {
+    // Estas são as peças que, uma vez removidas, ninguém percebe olhando:
+    // o app continua bonito e fica inutilizável para quem depende de
+    // teclado ou de leitor de tela.
+    const fs = require('fs');
+    const src = fs.readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    const exigir = (trecho, porque) => assert(src.includes(trecho), porque);
+    exigir('class="pular"', 'sumiu o link "pular para o conteúdo"');
+    exigir('id="anuncio"', 'sumiu a região que anuncia a tela nova para o leitor de tela');
+    exigir('aria-live="polite"', 'a região de anúncio parou de ser anunciada');
+    exigir('<main id="conteudo"', 'sumiu o landmark de conteúdo');
+    exigir('<header class="topo">', 'o cabeçalho deixou de ser landmark');
+    exigir('aria-label="' + "' + esc(t('acesso.nav_principal')) + '", 'a navegação ficou sem nome');
+    exigir('prefers-reduced-motion', 'sumiu o respeito a quem pede menos movimento');
+    exigir(':focus-visible', 'sumiu o foco visível');
+    exigir('.so-leitor', 'sumiu a classe de texto só para leitor de tela');
+
+    // Todo rótulo de formulário precisa apontar para o campo: `<label>`
+    // solto é anunciado como "campo de edição" sem dizer de quê.
+    const soltos = (src.match(/'<label>'/g) || []).length;
+    assert.strictEqual(soltos, 0, soltos + ' rótulo(s) de formulário sem `for` apontando para o campo');
+  });
+
   await teste('toda tela que busca dados TRATA a falha (erro não pode virar lista vazia)', async () => {
     // A pior falha da Origena até hoje foi esta: a lista de pessoas mostrava
     // erro com o mesmo texto de "nenhuma pessoa ainda", e o Augusto concluiu

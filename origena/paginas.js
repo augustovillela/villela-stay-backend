@@ -31,6 +31,16 @@ h1,h2,h3{font-family:Newsreader,Lora,Georgia,'Times New Roman',serif;font-weight
    cor própria: contorno que depende da cor do tema some no botão do tema. */
 :focus-visible{outline:3px solid var(--foco);outline-offset:2px;border-radius:6px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Só para leitor de tela: texto que existe para ser ouvido, nunca visto.
+   Recorte em vez de display:none — o que some da tela some do leitor. */
+.so-leitor{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+clip-path:inset(50%);white-space:nowrap;border:0}
+/* Pular para o conteúdo: primeiro item do Tab, invisível até receber foco.
+   Sem ele, quem navega por teclado atravessa o menu inteiro em cada tela. */
+.pular{position:absolute;left:8px;top:-60px;z-index:60;background:var(--tema);color:#fff;
+padding:12px 18px;border-radius:0 0 12px 12px;text-decoration:none;transition:var(--transicao)}
+.pular:focus{top:0}
+main:focus{outline:none}
 .wrap{max-width:820px;margin:0 auto;padding:0 22px}
 .hero{padding:64px 0 40px;text-align:center}
 .hero h1{font-size:clamp(38px,7vw,62px);margin:0 0 10px;letter-spacing:-.02em}
@@ -168,7 +178,11 @@ function registrarPaginas(app) {
     const idioma = req.idioma || i18n.PADRAO;
     const corpo = CORPO_APP
       .replace('__CATALOGO__', JSON.stringify(i18n.catalogo(idioma)))
-      .replace('__IDIOMA__', JSON.stringify(idioma));
+      .replace('__IDIOMA__', JSON.stringify(idioma))
+      // O link de pular é o PRIMEIRO foco da página e precisa existir já no
+      // HTML servido: quem navega por teclado não pode depender de o
+      // script ter rodado para conseguir sair do menu.
+      .replace('__PULAR__', i18n.t(idioma, 'acesso.pular'));
     res.type('html').send(pagina(idioma, i18n.t(idioma, 'produto.nome'), corpo, { pwa: true, css: CSS_APP }));
   });
 
@@ -183,8 +197,8 @@ function registrarPaginas(app) {
 // entrar vira texto solto no meio do cartão — que foi exatamente como a
 // porta deixou de existir para quem chegava.
 const CSS_PUBLICO = `
-.btn{display:inline-block;background:var(--tema);color:#fff;border-radius:999px;
-padding:13px 26px;font-weight:600;text-decoration:none;line-height:22px}
+.btn{display:inline-block;background:var(--tema);color:#fff;border-radius:12px;
+padding:12px 20px;font-weight:600;text-decoration:none;line-height:22px}
 .card a{color:var(--tema)}
 /* A regra ".card a" tem especificidade MAIOR que ".btn" e vinha depois:
    o texto do botão virava marrom sobre marrom — botão invisível. Precisa
@@ -204,7 +218,11 @@ color:var(--tinta);text-decoration:none;display:inline-flex;align-items:center;g
    desenho da tela. Marca DEFINITIVA continua esperando o brand book. */
 .marca svg{flex:0 0 auto}
 .topo-dir{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--suave);flex-wrap:wrap}
-.topo-dir a{color:var(--suave)}
+/* Alvo de toque: link de NAVEGAÇÃO não é link no meio de um parágrafo, e
+   não vale a exceção de alvo pequeno da WCAG 2.2 (2.5.8). Um respiro
+   vertical resolve sem mudar o desenho. */
+.topo-dir a{color:var(--suave);padding:4px 2px;display:inline-block}
+p.sub a{padding:4px 0;display:inline-block}
 .familia-atual{font-weight:600;color:var(--tema);text-decoration:none}
 
 /* NAVEGAÇÃO AGRUPADA (Acervo · Explorar · Criar · Cuidar do legado).
@@ -250,9 +268,19 @@ label{font-size:15px;font-weight:600;display:block;margin-top:6px}
 /* Hierarquia de botões: primário = Floresta; claro = secundário; e o
    "emocional" = Argila, reservado para contar, gravar e convidar — a cor
    que pede uma ação afetiva não pode ser a mesma de "Salvar". */
-.btn{background:var(--tema);color:#fff;border:0;border-radius:999px;padding:13px 26px;
-min-height:48px;font-weight:600;font-size:16px;cursor:pointer;transition:var(--transicao)}
-.btn:hover{filter:brightness(1.08)}
+/* BOTÕES. Eram pílulas de 48 px de altura, 26 px de folga e peso 600 —
+   volume de anúncio, não de ferramenta —, e sem margem nenhuma: três
+   deles numa linha (Livro da família) encostavam um no outro. Agora:
+   canto de 12 px como o resto do sistema, altura confortável mas sem
+   inchaço, e margem própria, para que qualquer par tenha respiro mesmo
+   fora de um grupo. */
+.btn{background:var(--tema);color:#fff;border:1px solid transparent;border-radius:var(--raio-ctrl);
+padding:10px 18px;min-height:44px;font-weight:600;font-size:15px;line-height:1.25;cursor:pointer;
+display:inline-flex;align-items:center;justify-content:center;gap:8px;
+margin:0 8px 8px 0;transition:var(--transicao);text-align:center}
+.btn:hover{filter:brightness(1.06)}
+.btn:active{transform:translateY(1px)}
+.acoes .btn,.linha .btn{margin:0}
 .btn.claro{background:transparent;color:var(--tema);border:1px solid var(--tema)}
 .btn.claro:hover{background:var(--tema-suave)}
 /* A classe "sec" era usada em 13 botões e NÃO EXISTIA no CSS: todos
@@ -261,8 +289,10 @@ min-height:48px;font-weight:600;font-size:16px;cursor:pointer;transition:var(--t
 .btn.sec{background:var(--card);color:var(--tinta);border:1px solid var(--borda);font-weight:500}
 .btn.sec:hover{background:var(--tema-suave);border-color:var(--tema);color:var(--tema);filter:none}
 .btn.emocional{background:var(--acento)}
-.btn.mini{min-height:40px;padding:9px 16px;font-size:14px}
-.acoes{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.btn.mini{min-height:36px;padding:7px 13px;font-size:14px;font-weight:500;border-radius:10px}
+/* Grupo de ações: uma linha que quebra sozinha, com respiro igual entre
+   os itens — o lugar certo para duas ou mais ações vizinhas. */
+.acoes{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 6px;align-items:center}
 a{text-decoration-thickness:1px;text-underline-offset:3px;color:var(--tema)}
 .btn:disabled{opacity:.5;cursor:wait}
 .linha{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;
@@ -322,13 +352,35 @@ img{max-width:100%;height:auto}
 `;
 
 const CORPO_APP = `
+<a class="pular" href="#conteudo">__PULAR__</a>
 <div class="wrap" id="app"></div>
+<div id="anuncio" class="so-leitor" role="status" aria-live="polite"></div>
 <script>const T=__CATALOGO__, IDIOMA=__IDIOMA__;
 const API = '/origena/api/v1';
 let EU = null, FAM = null, PERM = [];
-// Desenhar a tela e reavaliar a barra de baixo: ela vive fora de #app, e
-// depende de haver sessão e família abertas.
-const $ = (h) => { document.getElementById('app').innerHTML = h; montarBarra(); };
+// Desenhar a tela, reavaliar a barra de baixo (ela vive fora de #app) e
+// fazer o que um site de várias páginas faz de graça e um app de uma página
+// só precisa fazer à mão: mudar o TÍTULO da aba, ANUNCIAR a tela nova para
+// quem usa leitor de tela, e levar o FOCO para o conteúdo — senão o teclado
+// continua parado no menu e o leitor não diz que a página mudou.
+let NAVEGOU = false;
+const $ = (h) => {
+  document.getElementById('app').innerHTML = h;
+  montarBarra();
+  const titulo = document.querySelector('#app h2');
+  const nome = titulo ? titulo.textContent.trim() : '';
+  document.title = (nome ? nome + ' · ' : '') + t('produto.nome');
+  const anuncio = document.getElementById('anuncio');
+  if (anuncio && nome) anuncio.textContent = nome;
+  // O esqueleto NÃO consome a navegação: mandar o foco para ele e redesenhar
+  // logo depois joga o foco de volta ao body, e o teclado fica sem lugar —
+  // que é pior do que não ter movido o foco nenhuma vez.
+  if (NAVEGOU && !document.querySelector('#app .esqueleto')) {
+    NAVEGOU = false;
+    const alvo = document.getElementById('conteudo');
+    if (alvo) alvo.focus({ preventScroll: true });
+  }
+};
 const esc = (t) => String(t==null?'':t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pode = (p) => PERM.includes(p);
 // Toda string da tela vem do catálogo: nenhuma frase mora aqui (§86).
@@ -414,15 +466,20 @@ const ANEL = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"
   '<circle cx="13" cy="13" r="6.4" stroke-dasharray="34 6"></circle>' +
   '<circle cx="13" cy="13" r="2.6"></circle></svg>';
 
-const topo = () => '<div class="topo">' +
+// A marca main abre aqui e o navegador fecha sozinha no fim do fragmento: como
+// toda tela começa por topo(), isso dá landmark de conteúdo a TODAS elas
+// sem tocar em nenhuma. O tabindex negativo existe para o link "pular" e
+// para o foco ir ao conteúdo a cada troca de tela.
+const topo = () => '<header class="topo">' +
   '<a class="marca" href="#" onclick="' + (EU ? 'inicio()' : 'telaEntrar()') + ';return false">' +
     ANEL + esc(t('produto.nome')) + '</a>' +
   '<span class="topo-dir">' +
   (FAM ? '<a class="familia-atual" href="#" onclick="abrir(FAM.id);return false">' + esc(FAM.nome) + '</a>' : '') +
   (EU ? '<a href="#" onclick="telaConta();return false">' + esc(EU.nome) + '</a>' +
         '<a href="#" onclick="sair();return false">' + esc(t('acao.sair')) + '</a>' : '') +
-  '<a href="/origena/ajuda" target="_blank" rel="noopener">' + esc(t('ajuda.titulo')) + '</a></span>' +
-  '</div>' + navPrincipal();
+  '<a href="/origena/ajuda" target="_blank" rel="noopener">' + esc(t('ajuda.titulo')) +
+    ' <span class="so-leitor">' + esc(t('acesso.nova_aba')) + '</span></a></span>' +
+  '</header>' + navPrincipal() + '<main id="conteudo" tabindex="-1">';
 
 // A NAVEGAÇÃO É A MESMA EM TODA TELA. Antes ela existia só na tela da
 // família, como uma fileira de ~20 links separados por "·" — para ir de
@@ -457,7 +514,7 @@ const NAV = [
 
 function navPrincipal() {
   if (!EU || !FAM) return '';
-  return '<nav class="nav">' + NAV.map(g => {
+  return '<nav class="nav" aria-label="' + esc(t('acesso.nav_principal')) + '">' + NAV.map(g => {
     const itens = g[1].filter(i => !i[2] || pode(i[2]));
     if (!itens.length) return '';
     return '<details><summary>' + esc(t(g[0])) + ' ▾</summary><div class="itens">' +
@@ -491,8 +548,8 @@ function montarBarra() {
 // ------------------------------------------------------------------ entrar
 function telaEntrar(msg, tipo) {
   $(topo() + '<h2>' + esc(t('conta.entrar_titulo')) + '</h2>' + (msg ? aviso(msg, tipo) : '') +
-    '<label>' + esc(t('campo.email')) + '</label><input id="e" type="email" autocomplete="email">' +
-    '<label>' + esc(t('campo.senha')) + '</label><input id="s" type="password" autocomplete="current-password">' +
+    '<label for="e">' + esc(t('campo.email')) + '</label><input id="e" type="email" autocomplete="email">' +
+    '<label for="s">' + esc(t('campo.senha')) + '</label><input id="s" type="password" autocomplete="current-password">' +
     '<div id="mfa" style="display:none"><label>' + esc(t('campo.codigo')) + '</label>' +
       '<input id="c" inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></div>' +
     '<button class="btn" onclick="entrar()">' + esc(t('acao.entrar')) + '</button>' +
@@ -511,9 +568,9 @@ async function entrar() {
 }
 function telaCadastrar(msg) {
   $(topo() + '<h2>' + esc(t('conta.criar_titulo')) + '</h2>' + (msg ? aviso(msg) : '') +
-    '<label>' + esc(t('campo.seu_nome')) + '</label><input id="n">' +
-    '<label>' + esc(t('campo.email')) + '</label><input id="e" type="email">' +
-    '<label>' + esc(t('campo.senha')) + '</label><input id="s" type="password" autocomplete="new-password">' +
+    '<label for="n">' + esc(t('campo.seu_nome')) + '</label><input id="n">' +
+    '<label for="e">' + esc(t('campo.email')) + '</label><input id="e" type="email">' +
+    '<label for="s">' + esc(t('campo.senha')) + '</label><input id="s" type="password" autocomplete="new-password">' +
     '<p class="sub"><label style="display:inline"><input type="checkbox" id="t" style="width:auto"> ' +
       esc(t('campo.aceito_termos')) + '</label></p>' +
     '<button class="btn" onclick="cadastrar()">' + esc(t('acao.criar_conta')) + '</button>' +
@@ -573,7 +630,7 @@ async function mfaIniciar() {
     (r.qr_svg ? '<div style="max-width:220px;background:#fff;padding:10px;border-radius:12px;margin:14px 0">' + r.qr_svg + '</div>' : '') +
     '<p class="sub">' + esc(t('conta.mfa_passo2')) + '</p>' +
     '<p style="font-family:ui-monospace,Menlo,monospace;font-size:18px;word-break:break-all">' + esc(r.segredo) + '</p>' +
-    '<label>' + esc(t('conta.mfa_passo3')) + '</label>' +
+    '<label for="mfc">' + esc(t('conta.mfa_passo3')) + '</label>' +
     '<input id="mfc" inputmode="numeric" autocomplete="one-time-code" placeholder="000000">' +
     '<p><button class="btn" onclick="mfaConfirmar()">' + esc(t('acao.confirmar')) + '</button></p>');
 }
@@ -620,7 +677,7 @@ async function inicio() {
       '<button class="btn mini" onclick="abrir(\\'' + f.id + '\\')">' + esc(t('acao.abrir')) + '</button></div>').join('')
       : '<p class="sub">' + esc(t('familia.nenhuma')) + '</p>') +
     '<h3 style="margin-top:28px">' + esc(t('familia.criar_titulo')) + '</h3>' +
-    '<label>' + esc(t('campo.nome_familia')) + '</label>' +
+    '<label for="nf">' + esc(t('campo.nome_familia')) + '</label>' +
     '<input id="nf" placeholder="' + esc(t('familia.placeholder_nome')) + '">' +
     '<button class="btn" onclick="criarFamilia()">' + esc(t('acao.criar')) + '</button>');
 }
@@ -669,8 +726,8 @@ async function abrir(id) {
           ? '<div class="erro">' + esc(t('mfa.exigido_convite')) +
             ' <a href="#" onclick="telaConta();return false">' + esc(t('acao.ativar_agora')) + '</a></div>'
           : '') +
-        '<label>' + esc(t('campo.email')) + '</label><input id="ce" type="email">' +
-        '<label>' + esc(t('campo.papel')) + '</label><select id="cp">' +
+        '<label for="ce">' + esc(t('campo.email')) + '</label><input id="ce" type="email">' +
+        '<label for="cp">' + esc(t('campo.papel')) + '</label><select id="cp">' +
         papeisConvidaveis.map(p => '<option value="' + p + '">' + esc(t('papel.desc_' + p)) + '</option>').join('') +
         '</select>' +
         '<button class="btn" onclick="convidar()">' + esc(t('acao.enviar_convite')) + '</button>' +
@@ -803,9 +860,9 @@ const semPermissaoParaCriar = () =>
 
 const formPessoa = () =>
   '<h3 style="margin-top:28px">' + esc(t('pessoa.nova')) + '</h3>' +
-  '<label>' + esc(t('pessoa.nome')) + '</label><input id="pn">' +
-  '<label>' + esc(t('pessoa.nascimento')) + '</label><input id="pnasc" placeholder="1921">' +
-  '<label>' + esc(t('pessoa.falecimento')) + '</label><input id="pfal">' +
+  '<label for="pn">' + esc(t('pessoa.nome')) + '</label><input id="pn">' +
+  '<label for="pnasc">' + esc(t('pessoa.nascimento')) + '</label><input id="pnasc" placeholder="1921">' +
+  '<label for="pfal">' + esc(t('pessoa.falecimento')) + '</label><input id="pfal">' +
   '<p class="sub">' + esc(t('pessoa.ajuda_data')) + '</p>' +
   '<label style="font-weight:400"><input type="checkbox" id="pmenor" style="width:auto"> ' +
     esc(t('pessoa.eh_menor')) + '</label>' +
@@ -931,8 +988,8 @@ async function dossie(id) {
           '</div>').join('')
       : vazio(t('contribuicao.sem_contribuicoes'), t('contribuicao.sem_contribuicoes_p'))) +
     (pode('contribuir')
-      ? '<label>' + esc(t('contribuicao.nova')) + '</label>' +
-        '<input id="cc" placeholder="' + esc(t('contribuicao.placeholder')) + '">' +
+      ? '<label for="cc">' + esc(t('contribuicao.nova')) + '</label>' +
+    '<input id="cc" placeholder="' + esc(t('contribuicao.placeholder')) + '">' +
         '<p><button class="btn" onclick="contar(\\'' + p.id + '\\')">' + esc(t('acao.salvar')) + '</button></p>'
       : '') +
 
@@ -950,12 +1007,12 @@ function formParentesco(id) {
   const opcoes = (chaves) => chaves.map(x =>
     '<option value="' + x + '">' + esc(t('parentesco.' + x)) + '</option>').join('');
   return '<h3 style="margin-top:26px">' + esc(t('familia.ligar')) + '</h3>' +
-    '<label>' + esc(t('parentesco.tipo')) + '</label><select id="rt">' +
+    '<label for="rt">' + esc(t('parentesco.tipo')) + '</label><select id="rt">' +
       opcoes(['PARENT_OF','CHILD_OF','SPOUSE_OF','PARTNER_OF','SIBLING_OF',
         'GUARDIAN_OF','WARD_OF']) + '</select>' +
-    '<label>' + esc(t('parentesco.natureza')) + '</label><select id="rn">' +
+    '<label for="rn">' + esc(t('parentesco.natureza')) + '</label><select id="rn">' +
       opcoes(['biologico','adotivo','socioafetivo','enteado','desconhecido']) + '</select>' +
-    '<label>' + esc(t('parentesco.pessoa')) + '</label><select id="rp"></select>' +
+    '<label for="rp">' + esc(t('parentesco.pessoa')) + '</label><select id="rp"></select>' +
     '<p><button class="btn" onclick="ligar(\\'' + id + '\\')">' + esc(t('familia.ligar')) + '</button></p>';
 }
 
@@ -1084,13 +1141,13 @@ function formFato(pessoaId) {
   const preds = ['nome','data_nascimento','data_falecimento','local_nascimento','profissao'];
   const fontes = ['RELATO','DOCUMENTO','REGISTRO_OFICIAL','MIDIA','PUBLICACAO'];
   return '<h3 style="margin-top:26px">' + esc(t('fato.acrescentar')) + '</h3>' +
-    '<label>' + esc(t('fato.campo')) + '</label><select id="fp">' +
+    '<label for="fp">' + esc(t('fato.campo')) + '</label><select id="fp">' +
       preds.map(x => '<option value="' + x + '">' + esc(t('predicado.' + x)) + '</option>').join('') + '</select>' +
-    '<label>' + esc(t('fato.valor')) + '</label><input id="fv">' +
-    '<label>' + esc(t('fato.como_sabe')) + '</label><select id="ft">' +
+    '<label for="fv">' + esc(t('fato.valor')) + '</label><input id="fv">' +
+    '<label for="ft">' + esc(t('fato.como_sabe')) + '</label><select id="ft">' +
       fontes.map(x => '<option value="' + x + '">' + esc(t('fonte.' + x)) + '</option>').join('') + '</select>' +
-    '<label>' + esc(t('fato.fonte_titulo')) + '</label><input id="fq">' +
-    '<label>' + esc(t('fato.fonte_referencia')) + '</label><input id="fr">' +
+    '<label for="fq">' + esc(t('fato.fonte_titulo')) + '</label><input id="fq">' +
+    '<label for="fr">' + esc(t('fato.fonte_referencia')) + '</label><input id="fr">' +
     '<p><button class="btn" onclick="guardarFato(\\'' + pessoaId + '\\')">' + esc(t('acao.salvar')) + '</button></p>';
 }
 
@@ -1429,11 +1486,11 @@ async function verMidia(id) {
 }
 
 function formHistoria(id) {
-  const campo = (chave, idc, dica) => '<label>' + esc(t('historia.' + chave)) + '</label>' +
+  const campo = (chave, idc, dica) => '<label for="' + idc + '">' + esc(t('historia.' + chave)) + '</label>' +
     '<input id="' + idc + '"' + (dica ? ' placeholder="' + esc(dica) + '"' : '') + '>';
   return '<h3 style="margin-top:26px">' + esc(t('historia.titulo')) + '</h3>' +
     '<p class="sub">' + esc(t('historia.intro')) + '</p>' +
-    '<label>' + esc(t('historia.quem')) + '</label><select id="hq" multiple size="4"></select>' +
+    '<label for="hq">' + esc(t('historia.quem')) + '</label><select id="hq" multiple size="4"></select>' +
     campo('quando', 'hw', t('pessoa.ajuda_data')) +
     campo('onde', 'ho') +
     campo('titulo_curto', 'ht') +
@@ -1605,10 +1662,17 @@ async function telaLivros() {
     '<h2>' + esc(t('livro.titulo')) + '</h2>' +
     '<p class="sub">' + esc(t('livro.intro')) + '</p>' +
     '<p class="sub">' + esc(t('livro.recorte')) + '</p>' +
+    // Três formatos DIFERENTES, não três ações do mesmo peso: cada um é
+    // uma escolha, e a escolha se apresenta antes de o botão aparecer.
     (pode('exportar')
-      ? '<p><button class="btn" onclick="pedirLivro()">' + esc(t('livro.gerar')) + '</button> ' +
-        '<button class="btn" onclick="pedirScrapbook()">' + esc(t('livro.gerar_album')) + '</button> ' +
-        '<button class="btn" onclick="pedirRetrospectiva()">' + esc(t('livro.gerar_ano')) + '</button></p>' +
+      ? '<div class="portas">' +
+        [['livro.gerar', 'livro.d_familia', 'pedirLivro()'],
+          ['livro.gerar_album', 'livro.d_album', 'pedirScrapbook()'],
+          ['livro.gerar_ano', 'livro.d_ano', 'pedirRetrospectiva()']].map(x =>
+          '<div class="porta"><b>' + esc(t(x[1] + '_t')) + '</b><span>' + esc(t(x[1])) + '</span>' +
+          '<div class="acoes"><button class="btn mini" onclick="' + x[2] + '">' +
+          esc(t(x[0])) + '</button></div></div>').join('') +
+        '</div>' +
         '<p class="sub">' + esc(t('livro.so_com_data')) + '</p>'
       : '') +
     ((r.livros || []).length
@@ -1627,7 +1691,7 @@ async function telaLivros() {
             ? '<span><button class="btn mini" onclick="baixarLivro(\\'' + l.id + '\\')">' +
               esc(t('livro.baixar')) + '</button></span>' : '<span></span>') +
           '</div>').join('')
-      : '<p class="sub">' + esc(t('livro.nenhum')) + '</p>'));
+      : vazio(t('livro.nenhum'), t('livro.nenhum_p'))));
 }
 
 async function pedirLivro(pessoaId) {
@@ -1688,7 +1752,7 @@ async function telaGrafo(tipo, id) {
       : '<p class="sub">' + esc(t('grafo.sem_vizinhos')) + '</p>') +
     '<h3 style="margin-top:26px">' + esc(t('grafo.caminho_titulo')) + '</h3>' +
     '<p class="sub">' + esc(t('grafo.caminho_de')) + ': ' + esc(r.centro.rotulo) + '</p>' +
-    '<label>' + esc(t('grafo.caminho_para')) + '</label><select id="gf_alvo"></select>' +
+    '<label for="gf_alvo">' + esc(t('grafo.caminho_para')) + '</label><select id="gf_alvo"></select>' +
     '<p><button class="btn" onclick="acharCaminho(\\'' + tipo + '\\',\\'' + id + '\\')">' +
       esc(t('grafo.procurar_caminho')) + '</button></p><div id="gf_res"></div>');
   const l = await api('GET', '/familias/' + FAM.id + '/pessoas');
@@ -1837,8 +1901,8 @@ async function telaEntrevistas() {
       : '<p class="sub">' + esc(t('entrevista.sem_entrevistas')) + '</p>') +
     (pode('contribuir')
       ? '<h3 style="margin-top:26px">' + esc(t('entrevista.nova')) + '</h3>' +
-        '<label>' + esc(t('entrevista.escolha_pessoa')) + '</label><select id="ev_p"></select>' +
-        '<label>' + esc(t('entrevista.escolha_roteiro')) + '</label><select id="ev_r">' +
+        '<label for="ev_p">' + esc(t('entrevista.escolha_pessoa')) + '</label><select id="ev_p"></select>' +
+        '<label for="ev_r">' + esc(t('entrevista.escolha_roteiro')) + '</label><select id="ev_r">' +
           roteiros.map(x => '<option value="' + x.chave + '">' +
             esc(t('entrevista.r_' + x.chave)) + ' — ' + esc(t('entrevista.d_' + x.chave)) +
             '</option>').join('') + '</select>' +
@@ -1907,7 +1971,7 @@ function cardResposta(x, entrevistaId) {
       ? '<p style="margin:8px 0">' +
         '<button class="btn mini" id="gv_' + x.id + '" onclick="alternarGravacao(\\'' + x.id + '\\')">' +
           esc(x.media_id ? t('entrevista.regravar') : t('entrevista.gravar')) + '</button> ' +
-        '<label class="btn mini sec" style="cursor:pointer">' + esc(t('entrevista.enviar_arquivo')) +
+        '<label class="btn mini sec" style="cursor:pointer" for="tx_">' + esc(t('entrevista.enviar_arquivo')) +
           '<input type="file" accept="audio/*" style="display:none" ' +
           'onchange="audioDoArquivo(\\'' + x.id + '\\', this.files[0])"></label> ' +
         (x.status === 'pendente'
@@ -2228,10 +2292,10 @@ async function telaBusca(offset) {
   if (deuErro(r)) return $(colecao(t('busca.titulo'), falhou(r, 'telaBusca()')));
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('busca.titulo')) + '</h2>' +
-    '<label>' + esc(t('busca.campo')) + '</label>' +
+    '<label for="bq">' + esc(t('busca.campo')) + '</label>' +
     '<input id="bq" value="' + esc(q) + '" placeholder="' + esc(t('busca.placeholder')) + '"' +
       ' onkeydown="if(event.key===\\'Enter\\')telaBusca()">' +
-    '<label>' + esc(t('busca.tipo')) + '</label><select id="bt">' +
+    '<label for="bt">' + esc(t('busca.tipo')) + '</label><select id="bt">' +
       tipos.map(x => '<option value="' + x + '"' + (x === tipo ? ' selected' : '') + '>' +
         esc(x ? t('busca.tipo_' + x) : '—') + '</option>').join('') + '</select>' +
     '<p><button class="btn" onclick="telaBusca()">' + esc(t('busca.titulo')) + '</button></p>' +
@@ -2310,14 +2374,14 @@ async function telaHistorias() {
 
 function formHistoriaNova() {
   return '<h3 style="margin-top:26px">' + esc(t('historia_mod.nova')) + '</h3>' +
-    '<label>' + esc(t('historia_mod.nome')) + '</label><input id="hn_t">' +
-    '<label>' + esc(t('historia_mod.corpo')) + '</label>' +
+    '<label for="hn_t">' + esc(t('historia_mod.nome')) + '</label><input id="hn_t">' +
+    '<label for="hn_c">' + esc(t('historia_mod.corpo')) + '</label>' +
     '<textarea id="hn_c" rows="5" style="width:100%;min-height:120px;padding:12px 14px;' +
       'border:1px solid var(--borda);border-radius:10px;font:16px Inter,system-ui,sans-serif;' +
       'background:var(--card);color:var(--tinta)" placeholder="' + esc(t('historia_mod.placeholder')) + '"></textarea>' +
-    '<label>' + esc(t('historia_mod.contada_por')) + '</label><select id="hn_quem"><option value=""></option></select>' +
-    '<label>' + esc(t('historia_mod.ocorrido')) + '</label><input id="hn_q" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
-    '<label>' + esc(t('historia_mod.local')) + '</label><input id="hn_l">' +
+    '<label for="hn_quem">' + esc(t('historia_mod.contada_por')) + '</label><select id="hn_quem"><option value=""></option></select>' +
+    '<label for="hn_q">' + esc(t('historia_mod.ocorrido')) + '</label><input id="hn_q" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
+    '<label for="hn_l">' + esc(t('historia_mod.local')) + '</label><input id="hn_l">' +
     '<p><button class="btn" onclick="criarHistoria()">' + esc(t('historia_mod.guardar')) + '</button></p>';
 }
 
@@ -2437,13 +2501,13 @@ async function telaTimeline(pessoaId) {
 function formEvento() {
   const tipos = ['reuniao','casamento','mudanca','viagem','formatura','trabalho','outro'];
   return '<h3 style="margin-top:26px">' + esc(t('evento.novo')) + '</h3>' +
-    '<label>' + esc(t('evento.nome')) + '</label><input id="ev_t">' +
-    '<label>' + esc(t('evento.tipo')) + '</label><select id="ev_tipo">' +
+    '<label for="ev_t">' + esc(t('evento.nome')) + '</label><input id="ev_t">' +
+    '<label for="ev_tipo">' + esc(t('evento.tipo')) + '</label><select id="ev_tipo">' +
       tipos.map(x => '<option value="' + x + '">' + esc(t('evento.' + x)) + '</option>').join('') + '</select>' +
-    '<label>' + esc(t('evento.quando')) + '</label><input id="ev_q" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
-    '<label>' + esc(t('evento.onde')) + '</label><input id="ev_l">' +
-    '<label>' + esc(t('evento.quem')) + '</label><select id="ev_quem" multiple size="4"></select>' +
-    '<label>' + esc(t('evento.descricao')) + '</label><input id="ev_d">' +
+    '<label for="ev_q">' + esc(t('evento.quando')) + '</label><input id="ev_q" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
+    '<label for="ev_l">' + esc(t('evento.onde')) + '</label><input id="ev_l">' +
+    '<label for="ev_quem">' + esc(t('evento.quem')) + '</label><select id="ev_quem" multiple size="4"></select>' +
+    '<label for="ev_d">' + esc(t('evento.descricao')) + '</label><input id="ev_d">' +
     '<p><button class="btn" onclick="criarEvento()">' + esc(t('acao.salvar')) + '</button></p>';
 }
 
@@ -2501,7 +2565,7 @@ async function telaPerguntar(confirmando, pergunta) {
   $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
     '<h2>' + esc(t('ia.perguntar_titulo')) + '</h2>' +
     '<p class="sub">' + esc(t('ia.saldo', { n: cred.saldo != null ? cred.saldo : '?' })) + '</p>' +
-    '<label>' + esc(t('ia.perguntar_campo')) + '</label>' +
+    '<label for="pq">' + esc(t('ia.perguntar_campo')) + '</label>' +
     '<input id="pq" value="' + esc(q || '') + '" placeholder="' + esc(t('ia.perguntar_placeholder')) + '">' +
     '<p><button class="btn" onclick="telaPerguntar()">' + esc(t('ia.perguntar_titulo')) + '</button></p>' +
     corpo);
@@ -2549,24 +2613,24 @@ async function telaTradicoes(cat) {
 
 function formTradicao() {
   return '<h3 style="margin-top:28px">' + esc(t('tradicao.nova')) + '</h3>' +
-    '<label>' + esc(t('tradicao.categoria')) + '</label>' +
+    '<label for="tr_cat">' + esc(t('tradicao.categoria')) + '</label>' +
     '<select id="tr_cat" onchange="alternarReceita()">' +
       CATS.map(c => '<option value="' + c + '">' + esc(t('tradicao.cat_' + c)) + '</option>').join('') +
     '</select>' +
-    '<label>' + esc(t('tradicao.nome')) + '</label><input id="tr_t">' +
-    '<label>' + esc(t('tradicao.corpo')) + '</label>' + area('tr_c', '') +
-    '<label>' + esc(t('tradicao.de_quem')) + '</label>' +
+    '<label for="tr_t">' + esc(t('tradicao.nome')) + '</label><input id="tr_t">' +
+    '<label for="tr_c">' + esc(t('tradicao.corpo')) + '</label>' + area('tr_c', '') +
+    '<label for="tr_quem">' + esc(t('tradicao.de_quem')) + '</label>' +
       '<select id="tr_quem"><option value=""></option></select>' +
-    '<label>' + esc(t('tradicao.origem')) + '</label><input id="tr_o">' +
-    '<label>' + esc(t('tradicao.ocasioes')) + '</label><input id="tr_oc">' +
-    '<label>' + esc(t('tradicao.desde')) + '</label>' +
+    '<label for="tr_o">' + esc(t('tradicao.origem')) + '</label><input id="tr_o">' +
+    '<label for="tr_oc">' + esc(t('tradicao.ocasioes')) + '</label><input id="tr_oc">' +
+    '<label for="tr_d">' + esc(t('tradicao.desde')) + '</label>' +
       '<input id="tr_d" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
-    '<label>' + esc(t('tradicao.local')) + '</label><input id="tr_l">' +
+    '<label for="tr_l">' + esc(t('tradicao.local')) + '</label><input id="tr_l">' +
     '<div id="tr_receita">' +
-      '<label>' + esc(t('tradicao.ingredientes')) + '</label>' + area('tr_i', '') +
-      '<label>' + esc(t('tradicao.preparo')) + '</label>' + area('tr_p', '') +
-      '<label>' + esc(t('tradicao.rendimento')) + '</label><input id="tr_r">' +
-      '<label>' + esc(t('tradicao.tempo')) + '</label><input id="tr_tp">' +
+      '<label for="tr_i">' + esc(t('tradicao.ingredientes')) + '</label>' + area('tr_i', '') +
+      '<label for="tr_p">' + esc(t('tradicao.preparo')) + '</label>' + area('tr_p', '') +
+      '<label for="tr_r">' + esc(t('tradicao.rendimento')) + '</label><input id="tr_r">' +
+      '<label for="tr_tp">' + esc(t('tradicao.tempo')) + '</label><input id="tr_tp">' +
     '</div>' +
     '<p><button class="btn" onclick="criarTradicao()">' + esc(t('tradicao.guardar')) + '</button></p>';
 }
@@ -2623,8 +2687,8 @@ async function verTradicao(id) {
             '</span></div>').join('')
         : '<p class="sub">' + esc(t('tradicao.sem_aprendizes')) + '</p>') +
       (pode('contribuir')
-        ? '<label>' + esc(t('tradicao.quem_aprendeu')) + '</label><select id="ap_quem"></select>' +
-          '<label>' + esc(t('tradicao.aprendeu_quando')) + '</label><input id="ap_q">' +
+        ? '<label for="ap_quem">' + esc(t('tradicao.quem_aprendeu')) + '</label><select id="ap_quem"></select>' +
+          '<label for="ap_q">' + esc(t('tradicao.aprendeu_quando')) + '</label><input id="ap_q">' +
           '<p><button class="btn mini" onclick="registrarAprendiz(\\'' + id + '\\')">' +
           esc(t('acao.salvar')) + '</button></p>' : '') : '') +
 
@@ -2636,9 +2700,9 @@ async function verTradicao(id) {
           '</span>' : '') + '</span></div>').join('')
       : '<p class="sub">' + esc(t('tradicao.sem_transmissoes')) + '</p>') +
     (pode('contribuir')
-      ? '<label>' + esc(t('tradicao.ensinou')) + '</label><select id="tm_de"></select>' +
-        '<label>' + esc(t('tradicao.aprendeu')) + '</label><select id="tm_para"></select>' +
-        '<label>' + esc(t('tradicao.aprendeu_quando')) + '</label><input id="tm_q">' +
+      ? '<label for="tm_de">' + esc(t('tradicao.ensinou')) + '</label><select id="tm_de"></select>' +
+        '<label for="tm_para">' + esc(t('tradicao.aprendeu')) + '</label><select id="tm_para"></select>' +
+        '<label for="tm_q">' + esc(t('tradicao.aprendeu_quando')) + '</label><input id="tm_q">' +
         '<p><button class="btn mini" onclick="registrarTransmissao(\\'' + id + '\\')">' +
         esc(t('tradicao.registrar_transmissao')) + '</button></p>' : ''));
   if (pode('contribuir')) {
@@ -2681,14 +2745,14 @@ async function telaReliquias() {
       : vazio(t('reliquia.sem_reliquias'), t('reliquia.sem_reliquias_p'))) +
     (pode('contribuir')
       ? '<h3 style="margin-top:28px">' + esc(t('reliquia.nova')) + '</h3>' +
-        '<label>' + esc(t('reliquia.nome')) + '</label><input id="rl_n">' +
-        '<label>' + esc(t('reliquia.descricao')) + '</label>' + area('rl_d', '') +
-        '<label>' + esc(t('reliquia.origem')) + '</label><input id="rl_o">' +
-        '<label>' + esc(t('reliquia.local')) + '</label><input id="rl_l">' +
-        '<label>' + esc(t('reliquia.com_quem')) + '</label>' +
-          '<select id="rl_q"><option value=""></option></select>' +
-        '<label>' + esc(t('reliquia.desde')) + '</label>' +
-          '<input id="rl_s" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
+        '<label for="rl_n">' + esc(t('reliquia.nome')) + '</label><input id="rl_n">' +
+        '<label for="rl_d">' + esc(t('reliquia.descricao')) + '</label>' + area('rl_d', '') +
+        '<label for="rl_o">' + esc(t('reliquia.origem')) + '</label><input id="rl_o">' +
+        '<label for="rl_l">' + esc(t('reliquia.local')) + '</label><input id="rl_l">' +
+        '<label for="rl_q">' + esc(t('reliquia.com_quem')) + '</label>' +
+    '<select id="rl_q"><option value=""></option></select>' +
+        '<label for="rl_s">' + esc(t('reliquia.desde')) + '</label>' +
+    '<input id="rl_s" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
         '<p><button class="btn" onclick="criarReliquia()">' + esc(t('reliquia.guardar')) + '</button></p>'
       : ''),
     { intro: t('reliquia.intro') }));
@@ -2728,14 +2792,14 @@ async function verReliquia(id) {
       : '<p class="sub">' + esc(t('reliquia.sem_custodia')) + '</p>') +
     (pode('contribuir')
       ? '<h3 style="margin-top:26px">' + esc(t('reliquia.transferir')) + '</h3>' +
-        '<label>' + esc(t('reliquia.passou_para')) + '</label><select id="cu_q"></select>' +
-        '<label>' + esc(t('reliquia.quando')) + '</label>' +
+        '<label for="cu_q">' + esc(t('reliquia.passou_para')) + '</label><select id="cu_q"></select>' +
+        '<label for="cu_d">' + esc(t('reliquia.quando')) + '</label>' +
           '<input id="cu_d" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
-        '<label>' + esc(t('reliquia.nota')) + '</label><input id="cu_n">' +
-        '<label>' + esc(t('reliquia.como_sabe')) + '</label><select id="cu_ft">' +
+        '<label for="cu_n">' + esc(t('reliquia.nota')) + '</label><input id="cu_n">' +
+        '<label for="cu_ft">' + esc(t('reliquia.como_sabe')) + '</label><select id="cu_ft">' +
           fontes.map(f => '<option value="' + f + '">' + esc(t('fonte.' + f)) + '</option>').join('') +
         '</select>' +
-        '<label>' + esc(t('reliquia.fonte_titulo')) + '</label><input id="cu_fq">' +
+        '<label for="cu_fq">' + esc(t('reliquia.fonte_titulo')) + '</label><input id="cu_fq">' +
         '<p><button class="btn" onclick="transferirReliquia(\\'' + id + '\\')">' +
         esc(t('reliquia.guardar')) + '</button></p>' : ''));
   if (pode('contribuir')) preencherSelPessoas('cu_q');
@@ -2950,7 +3014,7 @@ async function telaAvisos() {
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('notificacao.titulo')) + '</h2>' +
     '<p class="sub">' + esc(t('notificacao.intro')) + '</p>' +
-    '<label>' + esc(t('notificacao.missoes')) + '</label>' +
+    '<label for="nt_f">' + esc(t('notificacao.missoes')) + '</label>' +
     '<select id="nt_f">' +
       ['nunca', 'imediato'].map(f => '<option value="' + f + '"' + (f === freq ? ' selected' : '') +
         '>' + esc(t('notificacao.' + f)) + '</option>').join('') + '</select>' +
@@ -3037,6 +3101,7 @@ for (const rota in TELAS) {
     const endereco = '#/' + [familia || '-', rota]
       .concat(rota === 'familia' ? [] : args.map(encodeURIComponent)).join('/');
     if (location.hash !== endereco) history.pushState(null, '', endereco);
+    NAVEGOU = true;   // trocou de tela: o foco vai para o conteúdo
     return original.apply(this, arguments);
   };
 }
