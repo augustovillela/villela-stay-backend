@@ -544,6 +544,29 @@ async function principal() {
     assert.strictEqual(suspeitos.length, 0, 'mensagem em português no código: ' + suspeitos.join(', '));
   });
 
+  await teste('o catálogo não tem chave REPETIDA (a última vence, em silêncio)', async () => {
+    // JSON aceita chave duplicada sem reclamar e fica com a ÚLTIMA. Foi
+    // assim que um botão novo nasceu com o texto velho: `midia.arquivar`
+    // existia duas vezes no mesmo bloco, e o texto certo, escrito antes,
+    // simplesmente não valia. Nenhum teste de "a chave existe?" pega isso,
+    // porque a chave existe — só não é a que se escreveu.
+    const fs = require('fs');
+    const bruto = fs.readFileSync(require('path').join(__dirname, 'i18n', 'pt-BR.json'), 'utf8');
+    const vistas = new Map();          // "prefixo.chave" → quantas vezes
+    const pilha = [];
+    for (const linha of bruto.split('\n')) {
+      const m = linha.match(/^(\s*)"([^"]+)":/);
+      if (!m) continue;
+      const nivel = m[1].length / 2;
+      pilha.length = Math.max(0, nivel - 1);
+      const caminho = [...pilha, m[2]].join('.');
+      if (/\{\s*$/.test(linha)) pilha[nivel - 1] = m[2];
+      else vistas.set(caminho, (vistas.get(caminho) || 0) + 1);
+    }
+    const repetidas = [...vistas].filter(([, n]) => n > 1).map(([k]) => k);
+    assert.strictEqual(repetidas.length, 0, 'chave repetida no catálogo: ' + repetidas.join(', '));
+  });
+
   await teste('idioma sem tradução cai no pt-BR, nunca mostra a chave crua', async () => {
     assert.strictEqual(i18n.t('en-US', 'erro.credenciais'), i18n.t('pt-BR', 'erro.credenciais'));
     assert.strictEqual(i18n.t('pt-BR', 'chave.que.nao.existe'), 'chave.que.nao.existe');

@@ -58,7 +58,6 @@
     "criar_conta": "Criar conta",
     "ja_tenho_conta": "Já tenho conta",
     "salvar": "Salvar",
-    "editar": "Corrigir",
     "abrir": "Abrir",
     "criar": "Criar",
     "remover": "Remover",
@@ -481,9 +480,7 @@
     "ocultas": "{n} pessoa(s) não aparecem para o seu papel.",
     "viva": "viva",
     "falecida": "falecida",
-    "desconhecido": "não sabemos",
-    "arquivar": "Arquivar",
-    "confirmar_arquivar": "Arquivar esta pessoa? Nada é apagado — dá para restaurar depois."
+    "desconhecido": "não sabemos"
   },
   "parentesco": {
     "PARENT_OF": "pai/mãe de",
@@ -578,9 +575,6 @@
     "enviar": "Enviar arquivos",
     "enviando": "Enviando {n} de {total}…",
     "processando": "PROCESSANDO",
-    "arquivar": "Excluir esta memória",
-    "arquivar_confirmar": "Excluir esta memória? Ela sai da galeria e da busca na hora e vai para a Lixeira, de onde dá para trazer de volta inteira. O que a família escreveu sobre ela continua guardado.",
-    "arquivada": "Pronto. A memória saiu da galeria e está na Lixeira.",
     "aguardando": "ENVIO NÃO CONCLUÍDO",
     "aguardando_explica": "Estas ficaram pela metade: o arquivo não chegou. Escolha o mesmo arquivo e envie de novo — a memória continua no lugar dela, com o mesmo endereço.",
     "envio_falhou": "Não consegui enviar {nome}: o arquivo não chegou ao servidor. Nada foi perdido — escolha o arquivo e tente de novo.",
@@ -600,8 +594,9 @@
     "possivelmente": "Possivelmente {nome} — {pct}%",
     "confirmar": "Sim, é essa pessoa",
     "confirmada_por": "Confirmado por {nome} em {data}",
-    "arquivar": "Arquivar",
-    "confirmar_arquivar": "Arquivar este arquivo? Nada é apagado — dá para restaurar depois.",
+    "arquivar": "Excluir esta memória",
+    "arquivar_confirmar": "Excluir esta memória? Ela sai da galeria e da busca na hora e vai para a Lixeira, de onde dá para trazer de volta inteira. O que a família escreveu sobre ela continua guardado.",
+    "arquivada": "Pronto. A memória saiu da galeria e está na Lixeira.",
     "original_intacto": "O original nunca é alterado. O que você vê aqui é uma cópia menor."
   },
   "historia": {
