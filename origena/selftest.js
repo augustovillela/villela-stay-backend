@@ -563,7 +563,10 @@ async function principal() {
 
     // Todo rótulo de formulário precisa apontar para o campo: `<label>`
     // solto é anunciado como "campo de edição" sem dizer de quê.
-    const soltos = (src.match(/'<label>'/g) || []).length;
+    // `<label>` em QUALQUER lugar do fonte, não só como literal isolado: o
+    // rótulo do código de MFA escapou da primeira varredura por estar
+    // colado num pedaço maior de HTML, e só apareceu olhando a tela real.
+    const soltos = (src.match(/<label>/g) || []).length;
     assert.strictEqual(soltos, 0, soltos + ' rótulo(s) de formulário sem `for` apontando para o campo');
   });
 

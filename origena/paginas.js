@@ -550,7 +550,7 @@ function telaEntrar(msg, tipo) {
   $(topo() + '<h2>' + esc(t('conta.entrar_titulo')) + '</h2>' + (msg ? aviso(msg, tipo) : '') +
     '<label for="e">' + esc(t('campo.email')) + '</label><input id="e" type="email" autocomplete="email">' +
     '<label for="s">' + esc(t('campo.senha')) + '</label><input id="s" type="password" autocomplete="current-password">' +
-    '<div id="mfa" style="display:none"><label>' + esc(t('campo.codigo')) + '</label>' +
+    '<div id="mfa" style="display:none"><label for="c">' + esc(t('campo.codigo')) + '</label>' +
       '<input id="c" inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></div>' +
     '<button class="btn" onclick="entrar()">' + esc(t('acao.entrar')) + '</button>' +
     '<p class="sub" style="margin-top:20px">' + esc(t('conta.sem_conta')) +
@@ -3048,7 +3048,7 @@ async function rotaDoHash() {
     return a.status === 200 ? abrir(a.familyId) : (EU = eu.usuario, $(topo() + aviso(a.erro)));
   }
   if (qual === 'nova-senha' && token) {
-    return $(topo() + '<h2>' + esc(t('conta.nova_senha_titulo')) + '</h2><label>' + esc(t('campo.nova_senha')) + '</label>' +
+    return $(topo() + '<h2>' + esc(t('conta.nova_senha_titulo')) + '</h2><label for="s">' + esc(t('campo.nova_senha')) + '</label>' +
       '<input id="s" type="password" autocomplete="new-password">' +
       '<button class="btn" onclick="salvarSenha(\\'' + esc(token) + '\\')">' + esc(t('acao.salvar')) + '</button>');
   }
