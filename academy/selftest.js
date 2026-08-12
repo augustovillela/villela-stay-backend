@@ -863,6 +863,10 @@ async function main() {
       assert.equal(r.status, 200, 'capa no bucket tem de ser servida (antes: 404 do sendFile no disco)');
       assert.ok((r.headers.get('content-type') || '').includes('image/png'));
       assert.equal(Buffer.from(await r.arrayBuffer()).toString(), png.toString(), 'os bytes vêm do bucket');
+      // o card manda ?v=<media_id>: sem isso, trocar a capa deixa a antiga 1h no navegador
+      assert.equal((await fetchReal(`${BASE}/academy/capa/${prodId}?v=${up.json.id}`)).status, 200, 'a chave de cache não pode atrapalhar a entrega');
+      const mk = await fetchReal(`${BASE}/academy/marketplace`);
+      assert.ok((await mk.text()).includes(`/academy/capa/${prodId}?v=${up.json.id}`), 'o card do marketplace versiona a capa');
 
       // e o produtor vê a própria capa mesmo com o produto FORA do ar (rota privada)
       const priv = await req('GET', `/academy/api/media/${up.json.id}`, { jar: 'maria', redirect: 'manual' });
@@ -871,6 +875,30 @@ async function main() {
       globalThis.fetch = fetchReal;
       ENVS.forEach((k, i) => { if (envAntes[i] == null) delete process.env[k]; else process.env[k] = envAntes[i]; });
       // devolve a capa local: senão os testes seguintes leem um arquivo que só existia no bucket falso
+      if (capaAntes) await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { capa_media_id: capaAntes } });
+    }
+  });
+  // REGRESSÃO (11/08/2026): o 404 da capa saía CACHEÁVEL. `Cache-Control` era setado
+  // antes do sendFile e o finalhandler do Express limpa só os Content-*, então o erro
+  // ia com `public, max-age=3600`: quem viu a capa quebrada guardou o 404 por 1 HORA e a
+  // correção do bucket pareceu não ter funcionado até o cache vencer sozinho.
+  await t('capa que falta responde 404 SEM cache (senão o erro gruda no navegador)', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const capaAntes = dbx.prepare('SELECT capa_media_id FROM products WHERE id = ?').get(prodId).capa_media_id;
+    const up = await req('POST', '/academy/api/produtor/upload', { jar: 'maria', corpo: { nome: 'capa-some.png', mime: 'image/png', conteudo_base64: Buffer.from('PNGfake').toString('base64') } });
+    await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { capa_media_id: up.json.id } });
+    try {
+      const ok = await fetch(`${BASE}/academy/capa/${prodId}`);
+      assert.equal(ok.status, 200, 'com o arquivo no lugar, entrega normal');
+      assert.ok((ok.headers.get('cache-control') || '').includes('max-age'), 'o SUCESSO continua cacheável');
+
+      const rel = dbx.prepare('SELECT file_path FROM media_files WHERE id = ?').get(up.json.id).file_path;
+      fs.unlinkSync(path.join(storage.ARQUIVOS_DIR, rel)); // arquivo some (migração p/ bucket, disco novo…)
+      const r = await fetch(`${BASE}/academy/capa/${prodId}`);
+      assert.equal(r.status, 404);
+      assert.ok(!r.headers.get('cache-control'), `404 não pode ser cacheado, veio: ${r.headers.get('cache-control')}`);
+    } finally {
       if (capaAntes) await req('PATCH', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria', corpo: { capa_media_id: capaAntes } });
     }
   });

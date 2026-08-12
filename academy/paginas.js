@@ -6,6 +6,7 @@
 // =====================================================================
 'use strict';
 const path = require('path');
+const fs = require('fs');
 const repo = require('./repo');
 const ct = require('./repo-conteudo');
 const billing = require('./billing');
@@ -179,7 +180,9 @@ function shellPublico({ titulo, descricao, url, corpo, imagem }) {
 }
 
 function cardProduto(p) {
-  const capa = p.capa_media_id ? `<img src="/academy/capa/${esc(p.id)}" alt="" style="width:100%;border-radius:10px;aspect-ratio:16/9;object-fit:cover;margin-bottom:10px">` : '';
+  // ?v = id da mídia: a URL da capa é estável (og:image), então sem esta chave o
+  // navegador serviria a capa ANTIGA por até 1h depois de o produtor trocá-la.
+  const capa = p.capa_media_id ? `<img src="/academy/capa/${esc(p.id)}?v=${esc(p.capa_media_id)}" alt="" style="width:100%;border-radius:10px;aspect-ratio:16/9;object-fit:cover;margin-bottom:10px">` : '';
   const preco = p.preco_promo_centavos
     ? `<span class="preco"><s>${brl(p.preco_centavos)}</s> ${brl(p.preco_promo_centavos)}${sufixoMes(p)}</span>`
     : `<span class="preco">${p.preco_centavos ? brl(p.preco_centavos) + sufixoMes(p) : 'Grátis'}</span>`;
@@ -266,7 +269,7 @@ function cursoHTML(slug) {
   return shellPublico({
     titulo: p.titulo, descricao: p.descricao_curta || sp.headline || p.subtitulo || p.titulo, url: `/academy/cursos/${p.slug}`, corpo,
     // capa do curso como og:image quando existe (melhor); og da marca é o fallback do shell
-    imagem: p.capa_media_id ? `${BASE_URL()}/academy/capa/${p.id}` : null,
+    imagem: p.capa_media_id ? `${BASE_URL()}/academy/capa/${p.id}?v=${p.capa_media_id}` : null,
   });
 }
 
@@ -477,23 +480,33 @@ function registrarPaginas(app, { notificar }) {
     if (!p || p.status !== 'publicado' || !p.capa_media_id) return res.sendStatus(404);
     const m = ct.Midia.obter(p.capa_media_id);
     if (!m || !m.mime.startsWith('image/')) return res.sendStatus(404);
-    res.setHeader('Content-Type', m.mime);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    // Com o storage no R2 o arquivo NÃO está no disco: esta rota mandava
-    // sendFile no caminho local, dava ENOENT e o card do marketplace virava
-    // imagem quebrada esticada. Aqui os bytes passam pelo servidor DE PROPÓSITO
-    // (a rota privada pode redirecionar; esta não): ela é o og:image do produto
-    // e precisa de URL estável — URL presignada expira e quebra o compartilhamento.
+    // Cache-Control SÓ quando os bytes existem. Setado antes, ele grudava no 404 do
+    // sendFile (o finalhandler do Express limpa Content-*, não Cache-Control) e o
+    // navegador guardava a capa quebrada por 1 HORA — foi por isso que a correção do
+    // R2 pareceu não funcionar até o cache vencer sozinho.
+    const entregar = () => {
+      res.setHeader('Content-Type', m.mime);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    };
+    // Com o storage no R2 o arquivo NÃO está no disco: esta rota mandava sendFile no
+    // caminho local e dava ENOENT. Aqui os bytes passam pelo servidor DE PROPÓSITO (a
+    // rota privada pode redirecionar; esta não): ela é o og:image do produto e precisa
+    // de URL estável — URL presignada expira e quebra o compartilhamento.
     if (m.storage === 's3') {
       try {
         const u = ct.Midia.urlTemporaria(m, '', 300).url;
         if (!/^https?:/.test(u)) return res.sendStatus(404); // media no bucket e bucket desligado
         const r = await fetch(u);
         if (!r.ok) return res.sendStatus(404);
-        return res.end(Buffer.from(await r.arrayBuffer()));
+        const bytes = Buffer.from(await r.arrayBuffer());
+        entregar();
+        return res.end(bytes);
       } catch (_) { return res.sendStatus(404); }
     }
-    res.sendFile(ct.Midia.caminhoAbsoluto(m));
+    const caminho = ct.Midia.caminhoAbsoluto(m);
+    if (!fs.existsSync(caminho)) return res.sendStatus(404); // 404 sem cache, nunca via sendFile
+    entregar();
+    res.sendFile(caminho);
   });
   // interesse de compra (pré-checkout): vira lead + alerta
   app.post('/academy/api/cursos/:id/interesse', h(async (req, res) => {
