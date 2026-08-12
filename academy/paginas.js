@@ -186,8 +186,13 @@ function cardProduto(p) {
   const preco = p.preco_promo_centavos
     ? `<span class="preco"><s>${brl(p.preco_centavos)}</s> ${brl(p.preco_promo_centavos)}${sufixoMes(p)}</span>`
     : `<span class="preco">${p.preco_centavos ? brl(p.preco_centavos) + sufixoMes(p) : 'Grátis'}</span>`;
+  // categoria como etiqueta ao lado do tipo. Aqui é SPAN, não link: o card
+  // inteiro já é um <a>, e âncora dentro de âncora é HTML inválido.
+  const cat = p.categoria
+    ? ` <span class="tag" style="background:#EEF2F8;color:#5B6472">${esc(ct.catRotulo(p.categoria))}</span>`
+    : '';
   return `<a class="cardp" href="/academy/cursos/${esc(p.slug)}" style="text-decoration:none;color:inherit">${capa}
-    <span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span><b style="margin:6px 0">${esc(p.titulo)}</b>
+    <span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>${cat}<b style="margin:6px 0">${esc(p.titulo)}</b>
     <span class="sub" style="text-align:left;margin:0;flex:1">${esc(p.descricao_curta || p.subtitulo)}</span>
     <span class="sub" style="text-align:left;margin:6px 0 8px">por ${esc(p.produtor_nome || '')}</span>${preco}</a>`;
 }
@@ -233,6 +238,8 @@ function cursoHTML(slug) {
   const corpo = `
     <div class="hero" style="padding:44px 0"><div class="wrap">
       <span class="badge">${TIPOS_ROT[p.tipo] || esc(p.tipo)}${nota.media ? ` · ★ ${nota.media} (${nota.total})` : ''}</span>
+      ${p.categoria ? `<a class="badge" href="/academy/marketplace?categoria=${encodeURIComponent(p.categoria)}"
+        style="margin-left:6px;text-decoration:none;color:var(--villela-navy)">${esc(ct.catRotulo(p.categoria))}</a>` : ''}
       <h1>${esc(sp.headline || p.titulo)}</h1>
       <p>${esc(sp.subheadline || p.subtitulo || p.descricao_curta)}</p>
       <p class="sub" style="text-align:left;margin:6px 0;color:#C7D0E0">por <a href="/academy/produtores/${esc(p.produtor_slug)}" style="color:var(--villela-gold)">${esc(p.produtor_nome)}</a></p>

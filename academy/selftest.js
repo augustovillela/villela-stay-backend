@@ -954,6 +954,11 @@ async function main() {
     assert.ok(ctC.Categorias.visiveis().some(c => c.slug === 'fotografia-aerea'), 'com produto publicado, entra na vitrine');
     const html = await req('GET', '/academy/marketplace');
     assert.ok(html.texto.includes('Fotografia Aérea'), 'e o marketplace lista o rótulo');
+    // o rótulo também aparece NO CARD e na página do curso (etiqueta + link p/ o filtro)
+    const slugPub = dbC.prepare('SELECT slug FROM products WHERE id = ?').get(prodId).slug;
+    const pag = await req('GET', `/academy/cursos/${slugPub}`);
+    assert.ok(pag.texto.includes('marketplace?categoria=fotografia-aerea'), 'página do curso linka a categoria');
+    assert.ok(!/<a[^>]*>\s*<a/.test(html.texto), 'card não aninha âncora dentro de âncora');
     dbC.prepare("UPDATE products SET categoria = '' WHERE id = ?").run(prodId); // devolve o fixture
   });
   await t('presign SigV4 (S3/R2) gera URLs válidas em formato', async () => {
