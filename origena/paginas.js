@@ -220,7 +220,11 @@ function registrarPaginas(app) {
   app.get('/origena/ajuda', (req, res) => {
     const idioma = req.idioma || i18n.PADRAO;
     const t = (c) => i18n.t(idioma, c);
-    const artigos = ['acervo', 'selo', 'divergencia', 'privacidade', 'fotos', 'datas',
+    // Ordem em que a dúvida APARECE, não ordem de importância conceitual:
+    // quem abre a ajuda quer primeiro saber como andar pelo app, e só
+    // depois por que a Origena guarda a origem de cada informação.
+    const artigos = ['navegar', 'acervo', 'selo', 'divergencia', 'privacidade', 'conta',
+      'enviar', 'album', 'excluir', 'fotos', 'datas', 'entrevistas',
       'capsula', 'guardioes', 'livros', 'creditos', 'erro'];
     const paragrafos = (a) => String(t(`ajuda.${a}_c`) || '')
       .split('\n\n').map((p) => `<p>${p.split('\n').join('<br>')}</p>`).join('');
