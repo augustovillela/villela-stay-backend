@@ -724,8 +724,12 @@ async function principal() {
   });
 
   await teste('idioma sem tradução cai no pt-BR, nunca mostra a chave crua', async () => {
-    assert.strictEqual(i18n.t('en-US', 'erro.credenciais'), i18n.t('pt-BR', 'erro.credenciais'));
+    // `es` e `fr` continuam em stub: é ali que o fallback se prova.
+    assert.strictEqual(i18n.t('es', 'erro.credenciais'), i18n.t('pt-BR', 'erro.credenciais'));
     assert.strictEqual(i18n.t('pt-BR', 'chave.que.nao.existe'), 'chave.que.nao.existe');
+    // ...e o en-US, agora completo, NÃO pode cair no português.
+    assert.notStrictEqual(i18n.t('en-US', 'erro.credenciais'), i18n.t('pt-BR', 'erro.credenciais'));
+    assert.match(i18n.t('en-US', 'erro.credenciais'), /password/i);
   });
 
   await teste('normaliza pt, en-GB e lixo para um idioma que existe', async () => {
