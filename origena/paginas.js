@@ -12,6 +12,13 @@
 // =====================================================================
 'use strict';
 const i18n = require('./i18n');
+const db = require('./db');
+
+// Página pública nunca pode cair por causa de uma consulta: o `catch` de
+// cada rota assíncrona vive aqui.
+const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+const escHtml = (s) => String(s == null ? '' : s)
+  .replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // PALETA E TIPOGRAFIA (12/08/2026). Os nomes dos tokens são os de sempre
 // (--fundo, --tema, --borda…) para que nenhuma regra existente precise ser
@@ -98,25 +105,95 @@ ${pwa ? `<script>if('serviceWorker' in navigator)navigator.serviceWorker.registe
 }
 
 function registrarPaginas(app) {
-  // ------------------------------------------------------------- landing
-  app.get('/origena', (req, res) => {
+  // ------------------------------------------------ SITE INSTITUCIONAL
+  // Uma página só, com seções ancoradas: quem chega precisa entender em um
+  // minuto o que é, como funciona, o que custa e por que ainda não pode
+  // entrar. Sem marca definitiva (ela espera o brand book e o INPI) — o
+  // que existe aqui é ESTRUTURA e TEXTO, que não dependem do logotipo.
+  //
+  // Os PREÇOS saem do banco, do mesmo lugar que a cobrança usa: preço na
+  // vitrine diferente do preço cobrado é o defeito mais caro que uma
+  // página dessas pode ter. Se o banco não responder, a seção de planos
+  // some — a página nunca quebra por causa dela.
+  app.get('/origena', h(async (req, res) => {
     const idioma = req.idioma || i18n.PADRAO;
-    const t = (c) => i18n.t(idioma, c);
+    const t = (c, v) => i18n.t(idioma, c, v);
+    const brl = (centavos) => 'R$ ' + (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    let planos = [];
+    try {
+      planos = await db.todas(
+        `SELECT codigo, nome, preco_centavos, preco_anual_centavos, storage_gb, creditos_mes
+           FROM plans WHERE ativo ORDER BY ordem, preco_centavos`);
+    } catch (_) { planos = []; }
+
+    const secao = (id, titulo, corpo) =>
+      `<section id="${id}" class="secao"><h2>${t(titulo)}</h2>${corpo}</section>`;
+    const passos = ['guardar', 'contar', 'ligar', 'criar'].map((p, i) =>
+      `<div class="passo"><b>${i + 1}. ${t('site.passo_' + p + '_t')}</b>
+        <p>${t('site.passo_' + p)}</p></div>`).join('');
+    const recursos = ['proveniencia', 'midia', 'entrevistas', 'tradicoes', 'busca', 'capsula',
+      'guardioes', 'livro', 'privacidade', 'saida'].map((r) =>
+      `<div class="recurso"><b>${t('site.rec_' + r + '_t')}</b><p>${t('site.rec_' + r)}</p></div>`).join('');
+
     res.type('html').send(pagina(idioma,
       `${t('produto.nome')} — ${t('produto.assinatura')}`, `
 <div class="wrap">
+  <nav class="menu-site" aria-label="${t('site.nav')}">
+    <a href="#como">${t('site.como_t')}</a>
+    <a href="#recursos">${t('site.recursos_t')}</a>
+    <a href="#familia">${t('site.familia_t')}</a>
+    <a href="#criacoes">${t('site.criacoes_t')}</a>
+    ${planos.length ? `<a href="#planos">${t('site.planos_t')}</a>` : ''}
+    <a class="btn mini" href="/origena/app">${t('acao.entrar')}</a>
+  </nav>
+
   <div class="hero">
     <div class="selo">${t('landing.selo')}</div>
     <div class="anel">${ANEL_GRANDE}</div>
     <h1>${t('produto.nome')}</h1>
     <p class="assinatura">${t('produto.assinatura')}</p>
     <p class="promessa">${t('landing.promessa')}</p>
+    <p><a class="btn" href="/origena/app">${t('acao.entrar')}</a></p>
   </div>
+
   <div class="card">
     <h2>${t('landing.titulo')}</h2>
     <p>${t('landing.p1')}</p>
     <p>${t('landing.p2')}</p>
   </div>
+
+  ${secao('como', 'site.como_t', `<p class="sub">${t('site.como_p')}</p>
+    <div class="passos">${passos}</div>`)}
+
+  ${secao('recursos', 'site.recursos_t', `<p class="sub">${t('site.recursos_p')}</p>
+    <div class="recursos">${recursos}</div>`)}
+
+  ${secao('familia', 'site.familia_t', `<p>${t('site.familia_p1')}</p>
+    <p>${t('site.familia_p2')}</p>
+    <p class="sub">${t('site.familia_p3')}</p>`)}
+
+  ${secao('criacoes', 'site.criacoes_t', `<p>${t('site.criacoes_p')}</p>
+    <ul class="lista">
+      <li>${t('site.criacao_livro')}</li>
+      <li>${t('site.criacao_pessoa')}</li>
+      <li>${t('site.criacao_album')}</li>
+      <li>${t('site.criacao_ano')}</li>
+      <li>${t('site.criacao_capsula')}</li>
+    </ul>
+    <p class="sub">${t('site.criacoes_nota')}</p>`)}
+
+  ${planos.length ? secao('planos', 'site.planos_t', `<p class="sub">${t('site.planos_p')}</p>
+    <div class="planos">${planos.map((p) => `<div class="plano">
+      <b>${escHtml(p.nome)}</b>
+      <p class="preco">${p.preco_centavos ? brl(p.preco_centavos) + t('site.por_mes') : t('site.gratis')}</p>
+      <p class="sub">${t('site.plano_linha', {
+        gb: p.storage_gb,
+        creditos: p.creditos_mes ? t('site.creditos_mes', { n: p.creditos_mes }) : t('site.sem_creditos'),
+      })}</p>
+      ${p.preco_anual_centavos ? `<p class="sub">${t('site.ou_ano', { valor: brl(p.preco_anual_centavos) })}</p>` : ''}
+    </div>`).join('')}</div>
+    <p class="sub">${t('site.planos_nota')}</p>`) : ''}
+
   <div class="card">
     <h2>${t('landing.fechado_titulo')}</h2>
     <p>${t('landing.fechado_p')}</p>
@@ -129,7 +206,7 @@ function registrarPaginas(app) {
   </div>
   <footer>${t('produto.grupo')}</footer>
 </div>`, { css: CSS_PUBLICO }));
-  });
+  }));
 
   // ------------------------------------------------- central de ajuda
   // O MANUAL DA CASA. A Origena toma decisões que surpreendem quem chega:
@@ -205,6 +282,26 @@ padding:12px 20px;font-weight:600;text-decoration:none;line-height:22px}
    vencer explicitamente, não por ordem. */
 .card a.btn{color:#fff}
 nav.card p{margin:0;line-height:2.1}
+/* Site institucional: barra de âncoras, seções e as grades de conteúdo. */
+.menu-site{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center;
+padding:16px 0;border-bottom:1px solid var(--borda);font-size:15px}
+.menu-site a{color:var(--tinta);text-decoration:none;padding:6px 2px}
+.menu-site a:hover{color:var(--tema);text-decoration:underline}
+.menu-site a.btn{color:#fff;text-decoration:none;padding:8px 16px;font-size:14px}
+.secao{padding:40px 0 8px;border-top:1px solid var(--borda);margin-top:8px}
+.secao h2{font-size:clamp(24px,4vw,32px);margin:0 0 8px}
+.passos,.recursos,.planos{display:grid;gap:16px;margin:22px 0}
+.passos{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.recursos{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.planos{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.passo,.recurso,.plano{background:var(--card);border:1px solid var(--borda);
+border-radius:var(--raio);padding:18px}
+.passo b,.recurso b,.plano b{font-family:Newsreader,Georgia,serif;font-size:18px;display:block;margin-bottom:6px}
+.passo p,.recurso p{margin:0;color:var(--suave);font-size:15px;line-height:1.55}
+.plano .preco{font-family:Newsreader,Georgia,serif;font-size:26px;margin:2px 0 6px;color:var(--tema)}
+.lista{padding-left:20px;line-height:1.9;color:var(--suave)}
+.lista li{margin:0}
+@media(prefers-color-scheme:dark){.menu-site a{color:var(--tinta)}}
 `;
 
 const CSS_APP = `
@@ -299,6 +396,13 @@ a{text-decoration-thickness:1px;text-underline-offset:3px;color:var(--tema)}
 border-bottom:1px solid var(--borda);flex-wrap:wrap}
 .papel{font-size:12px;font-weight:700;letter-spacing:.04em;background:var(--tema-suave);
 color:var(--tema);border-radius:999px;padding:3px 10px}
+/* Painel de envio: uma linha por arquivo, com barra de progresso real. */
+.envio-item{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;
+padding:7px 0;border-bottom:1px solid var(--borda);font-size:14px}
+.envio-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.envio-estado{color:var(--suave);font-size:13px}
+.envio-barra{grid-column:1/-1;height:5px;border-radius:999px;background:var(--borda);overflow:hidden}
+.envio-barra i{display:block;height:100%;background:var(--tema);transition:width 120ms linear}
 /* Estados de tela. O esqueleto pulsa devagar de propósito: em rede lenta
    ele fica visível por segundos, e piscar rápido cansa. */
 .esqueleto i{display:block;height:15px;border-radius:8px;background:var(--borda);
@@ -327,7 +431,9 @@ padding:18px;text-decoration:none;color:var(--tinta);display:block;transition:va
 /* Grade da galeria. A proporcao fixa evita o salto de layout enquanto
    cada miniatura ainda esta pedindo a propria URL assinada. */
 .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:16px;margin:20px 0}
-.cel{margin:0;cursor:pointer}
+/* O navegador não desenha o que está fora da tela; o tamanho reservado
+   impede a barra de rolagem de pular quando ele desenha. */
+.cel{margin:0;cursor:pointer;content-visibility:auto;contain-intrinsic-size:auto 210px}
 .cel .ph{aspect-ratio:1;border-radius:var(--raio-ctrl);background:var(--borda) center/cover no-repeat;
 box-shadow:var(--sombra);transition:var(--transicao)}
 .cel:hover .ph{transform:translateY(-2px)}
@@ -1286,28 +1392,97 @@ function miniatura(file, lado) {
 const tipoDoArquivo = (f) => /^image\\//.test(f.type) ? 'FOTO'
   : /^video\\//.test(f.type) ? 'VIDEO' : /^audio\\//.test(f.type) ? 'AUDIO' : 'DOCUMENTO';
 
-async function enviarArquivos(lista) {
-  const arqs = [...lista];
+// ------------------------------------------------------------ ENVIO (§15)
+// O envio era uma caixa-preta: "enviando 3 de 12", nenhuma barra, nada de
+// cancelar, e um erro no fim sem dizer o que sobrou. Numa foto de celular
+// (5–10 MB) em rede ruim, isso é meio minuto de tela parada por arquivo.
+//
+// Aqui: progresso REAL por arquivo (fetch não reporta progresso de envio —
+// só XMLHttpRequest reporta), cancelar a qualquer momento, e retomar o que
+// falhou sem escolher os arquivos de novo. "Retomar" é reenviar o arquivo
+// inteiro: a URL assinada do R2 é um PUT único, não aceita continuar do
+// meio. O que não se repete é o REGISTRO — a linha da mídia é a mesma, e
+// por isso reenviar não cria memória duplicada.
+let ENVIO = { itens: [], xhr: null, cancelado: false, rodando: false };
+
+function envioPut(url, corpo, mime, aoProgresso) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    ENVIO.xhr = x;
+    x.open('PUT', url, true);
+    x.setRequestHeader('Content-Type', mime || 'application/octet-stream');
+    x.upload.onprogress = (e) => { if (e.lengthComputable && aoProgresso) aoProgresso(e.loaded / e.total); };
+    x.onload = () => (x.status >= 200 && x.status < 300)
+      ? resolve() : reject(new Error('HTTP ' + x.status));
+    x.onerror = () => reject(new Error('rede'));
+    x.onabort = () => reject(Object.assign(new Error('cancelado'), { cancelado: true }));
+    x.send(corpo);
+  });
+}
+
+function pintarEnvio() {
   const painel = document.getElementById('envio');
-  let enviados = 0, duplicadas = 0;
-  for (const file of arqs) {
-    painel.textContent = t('midia.enviando', { n: enviados + 1, total: arqs.length });
+  if (!painel) return;
+  const itens = ENVIO.itens;
+  if (!itens.length) { painel.innerHTML = ''; return; }
+  const prontos = itens.filter(i => i.estado === 'pronto' || i.estado === 'duplicado').length;
+  const falhos = itens.filter(i => i.estado === 'falhou').length;
+  painel.innerHTML =
+    '<p class="sub" style="margin:0 0 6px">' +
+      esc(t('midia.enviando_n', { prontos, total: itens.length })) +
+      (falhos ? ' · ' + esc(t('midia.falharam', { n: falhos })) : '') + '</p>' +
+    itens.map(i =>
+      '<div class="envio-item"><span class="envio-nome">' + esc(i.nome) + '</span>' +
+      '<span class="envio-estado">' + esc(t('midia.est_' + i.estado)) + '</span>' +
+      '<span class="envio-barra"><i style="width:' + Math.round((i.pct || 0) * 100) + '%"></i></span></div>').join('') +
+    '<p class="acoes">' +
+      (ENVIO.rodando
+        ? '<button class="btn mini sec" onclick="cancelarEnvio()">' + esc(t('midia.cancelar')) + '</button>'
+        : (falhos
+            ? '<button class="btn mini" onclick="retomarEnvio()">' +
+              esc(t('midia.retomar', { n: falhos })) + '</button>' : '')) +
+    '</p>';
+}
+
+function cancelarEnvio() {
+  ENVIO.cancelado = true;
+  if (ENVIO.xhr) { try { ENVIO.xhr.abort(); } catch (_) {} }
+}
+
+const retomarEnvio = () => enviarArquivos(null, true);
+
+/**
+ * lista: arquivos escolhidos (vazio quando é retomada).
+ * retomando: reaproveita os que falharam, sem escolher de novo.
+ */
+async function enviarArquivos(lista, retomando) {
+  if (!retomando) {
+    ENVIO.itens = [...(lista || [])].map(f => ({ arquivo: f, nome: f.name, estado: 'esperando', pct: 0 }));
+  } else {
+    for (const i of ENVIO.itens) if (i.estado === 'falhou') { i.estado = 'esperando'; i.pct = 0; }
+  }
+  if (!ENVIO.itens.length) return;
+  ENVIO.cancelado = false; ENVIO.rodando = true;
+  pintarEnvio();
+
+  let duplicadas = 0;
+  for (const item of ENVIO.itens) {
+    if (ENVIO.cancelado) { if (item.estado === 'esperando') item.estado = 'cancelado'; continue; }
+    if (item.estado !== 'esperando') continue;
+    const file = item.arquivo;
+    item.estado = 'enviando'; pintarEnvio();
     try {
       const sha = await hashDoArquivo(file);
       const prep = await api('POST', '/familias/' + FAM.id + '/midias/preparar', {
         nome: file.name, bytes: file.size, sha256: sha, mime: file.type, tipo: tipoDoArquivo(file) });
-      if (deuErro(prep)) { painel.innerHTML = aviso(prep.erro); continue; }
-      if (prep.duplicado) { duplicadas++; enviados++; continue; }
+      if (deuErro(prep)) { item.estado = 'falhou'; item.erro = prep.erro; pintarEnvio(); continue; }
+      if (prep.duplicado) { item.estado = 'duplicado'; item.pct = 1; duplicadas++; pintarEnvio(); continue; }
 
       // Este PUT sai do NAVEGADOR direto para o bucket — é o único trecho
       // do envio que não passa pelo nosso servidor, e por isso o único que
-      // depende do CORS do bucket. Quando ele falha, quem está enviando
-      // precisa saber QUAL arquivo ficou pela metade.
-      const put = await fetch(prep.url_envio, { method: 'PUT', body: file,
-        headers: { 'Content-Type': file.type || 'application/octet-stream' } });
-      if (!put.ok) { painel.innerHTML = aviso(t('midia.envio_falhou', { nome: esc(file.name) })); continue; }
+      // depende do CORS do bucket.
+      await envioPut(prep.url_envio, file, file.type, (p) => { item.pct = p * 0.9; pintarEnvio(); });
       await api('POST', '/familias/' + FAM.id + '/midias/' + prep.media_id + '/confirmar');
-      if (prep.reenvio) painel.innerHTML = aviso(t('midia.reenviada'), 'ok');
 
       // miniatura: derivado, não original
       const mini = await miniatura(file, 512);
@@ -1318,14 +1493,28 @@ async function enviarArquivos(lista) {
         const d = await api('POST', '/familias/' + FAM.id + '/midias/' + prep.media_id + '/derivados', {
           papel: 'THUMB', sha256: mHash, bytes: mini.blob.size, mime: 'image/jpeg',
           largura: mini.largura, altura: mini.altura });
-        if (d.url_envio) await fetch(d.url_envio, { method: 'PUT', body: mini.blob,
-          headers: { 'Content-Type': 'image/jpeg' } });
+        if (d.url_envio) await envioPut(d.url_envio, mini.blob, 'image/jpeg');
       }
-      enviados++;
-    } catch (_) { painel.innerHTML = aviso(t('midia.envio_falhou', { nome: esc(file.name) })); }
+      item.estado = 'pronto'; item.pct = 1; pintarEnvio();
+    } catch (e) {
+      item.estado = (e && e.cancelado) ? 'cancelado' : 'falhou';
+      item.erro = e && e.message;
+      pintarEnvio();
+    }
   }
-  painel.textContent = duplicadas ? t('midia.duplicada') : '';
-  memorias();
+  ENVIO.rodando = false; ENVIO.xhr = null;
+  const falhos = ENVIO.itens.filter(i => i.estado === 'falhou').length;
+  const cancelados = ENVIO.itens.filter(i => i.estado === 'cancelado').length;
+  const pendentes = ENVIO.itens.filter(i => i.estado === 'falhou' || i.estado === 'cancelado');
+  // A galeria se refaz, mas o painel do envio SOBREVIVE: é onde está o
+  // "retomar", e quem teve arquivo falhando não pode perder a lista.
+  await memorias();
+  ENVIO.itens = pendentes.map(i => ({ ...i, estado: 'falhou' }));
+  pintarEnvio();
+  if (!falhos && !cancelados && duplicadas) {
+    const p = document.getElementById('envio');
+    if (p) p.innerHTML = aviso(t('midia.duplicada'), 'ok');
+  }
 }
 
 // Arquivar é SOFT DELETE: sai da galeria e da busca, continua na Lixeira
@@ -1433,9 +1622,7 @@ async function verAlbum(id) {
     (itens.length && pode('exportar')
       ? '<button class="btn" onclick="novoLivro({tipo:\\'album\\',album:\\'' + id + '\\'})">' +
         esc(t('livro.gerar_album')) + '</button>' : '') + '</div>');
-  for (const cel of document.querySelectorAll('.cel')) {
-    urlDe(cel.dataset.thumb).then(u => { if (u) cel.querySelector('.ph').style.backgroundImage = 'url(' + u + ')'; });
-  }
+  carregarMiniaturasVisiveis();
 }
 
 async function tirarDoAlbum(albumId, mediaId) {
@@ -1518,11 +1705,73 @@ async function memorias(cursor) {
           pode('contribuir')
             ? '<p><button class="btn emocional" onclick="document.getElementById(\\'arqs\\').click()">' +
               esc(t('midia.enviar')) + '</button></p>' : '')));
-  // As imagens carregam DEPOIS da grade: a tela aparece na hora e cada
-  // miniatura pede a própria URL assinada (§119).
-  for (const cel of document.querySelectorAll('.cel')) {
-    urlDe(cel.dataset.thumb).then(u => { if (u) cel.querySelector('.ph').style.backgroundImage = 'url(' + u + ')'; });
+  carregarMiniaturasVisiveis();
+}
+
+// VIRTUALIZAÇÃO DA GALERIA. Antes, cada célula desenhada pedia a PRÓPRIA
+// URL assinada assim que a grade aparecia: 300 fotos = 300 requisições e
+// 300 imagens baixadas de uma vez, a maioria fora da tela. Com o acervo de
+// uma família inteira isso trava o celular.
+//
+// Duas medidas nativas, sem biblioteca nenhuma:
+//   1. content-visibility no CSS: o navegador PULA a renderização do que
+//      está fora da tela (o tamanho reservado evita a barra de rolagem
+//      pulando);
+//   2. este observador: a URL assinada e a imagem só são pedidas quando a
+//      célula chega perto da janela — e cada célula é observada uma vez só.
+// TRÊS CAMINHOS DE PROPÓSITO. O observador é o eficiente, mas ele depende
+// do navegador estar desenhando quadros — e há situações em que não está.
+// Uma galeria que aposta só nele mostra a grade INTEIRA em cinza se ele
+// não disparar, e isso é pior do que baixar demais. Então: as primeiras
+// células pintam sempre, o observador cuida do resto, e a rolagem serve de
+// rede — nenhuma delas sozinha decide se a foto aparece.
+let OBSERVADOR = null, ROLAGEM_LIGADA = false;
+const PRIMEIRAS = 30;
+
+function carregarMiniaturasVisiveis() {
+  if (OBSERVADOR) { OBSERVADOR.disconnect(); OBSERVADOR = null; }
+  const celulas = [...document.querySelectorAll('.cel[data-thumb]')];
+  if (!celulas.length) return;
+
+  celulas.slice(0, PRIMEIRAS).forEach(pintarMiniatura);          // 1. o que cabe na tela
+  const resto = celulas.slice(PRIMEIRAS);
+  if (!resto.length) return;
+
+  if ('IntersectionObserver' in window) {                        // 2. o eficiente
+    OBSERVADOR = new IntersectionObserver((entradas, obs) => {
+      for (const e of entradas) {
+        if (!e.isIntersecting) continue;
+        obs.unobserve(e.target);
+        pintarMiniatura(e.target);
+      }
+    }, { rootMargin: '500px' });
+    for (const cel of resto) OBSERVADOR.observe(cel);
   }
+
+  if (!ROLAGEM_LIGADA) {                                         // 3. a rede
+    ROLAGEM_LIGADA = true;
+    let agendado = false;
+    addEventListener('scroll', () => {
+      if (agendado) return;
+      agendado = true;
+      setTimeout(() => {
+        agendado = false;
+        for (const cel of document.querySelectorAll('.cel[data-thumb]:not([data-pintada])')) {
+          const r = cel.getBoundingClientRect();
+          if (r.top < innerHeight + 500 && r.bottom > -500) pintarMiniatura(cel);
+        }
+      }, 150);
+    }, { passive: true });
+  }
+}
+
+function pintarMiniatura(cel) {
+  if (cel.dataset.pintada) return;
+  cel.dataset.pintada = '1';
+  urlDe(cel.dataset.thumb).then(u => {
+    const ph = cel.querySelector('.ph');
+    if (u && ph) ph.style.backgroundImage = 'url(' + u + ')';
+  });
 }
 
 async function verMidia(id) {

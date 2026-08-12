@@ -544,6 +544,33 @@ async function principal() {
     assert.strictEqual(suspeitos.length, 0, 'mensagem em português no código: ' + suspeitos.join(', '));
   });
 
+  await teste('nenhuma CRASE solta dentro dos blocos de template do paginas.js', async () => {
+    // Cinco vezes num dia só: uma crase num COMENTÁRIO — CSS ou JavaScript —
+    // fecha o template literal no meio do arquivo e derruba o módulo
+    // inteiro. O erro aparece longe do lugar ("Unexpected identifier"), e a
+    // única defesa era lembrar. Agora é teste.
+    const fs = require('fs');
+    const src = fs.readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    const ruins = [];
+    for (const bloco of ['const CSS = `', 'const CSS_PUBLICO = `', 'const CSS_APP = `', 'const CORPO_APP = `']) {
+      const ini = src.indexOf(bloco);
+      if (ini < 0) continue;
+      const corpo = src.slice(ini + bloco.length);
+      const fim = corpo.indexOf('`');            // a primeira crase FECHA o bloco
+      const trecho = corpo.slice(0, fim);
+      // Se o bloco fechar antes do fim esperado, alguma crase de comentário
+      // entrou no meio. O sinal: o texto que sobra não termina como deveria.
+      const esperado = { 'const CORPO_APP = `': '</script>', 'const CSS = `': '\n' };
+      const marca = esperado[bloco];
+      if (marca && !trecho.trimEnd().endsWith(marca.trim()) && bloco === 'const CORPO_APP = `') {
+        ruins.push(bloco + ' fecha cedo — há crase perdida em algum comentário');
+      }
+      const linhaComCrase = trecho.split('\n').find((l) => /^\s*(\/\/|\*|\/\*)/.test(l) && l.includes('`'));
+      if (linhaComCrase) ruins.push(bloco + ' → ' + linhaComCrase.trim().slice(0, 70));
+    }
+    assert.strictEqual(ruins.length, 0, 'crase dentro de template: ' + ruins.join(' | '));
+  });
+
   await teste('a estrutura de acessibilidade do app está de pé (WCAG 2.2 AA)', async () => {
     // Estas são as peças que, uma vez removidas, ninguém percebe olhando:
     // o app continua bonito e fica inutilizável para quem depende de
