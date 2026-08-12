@@ -490,6 +490,44 @@ async function principal() {
     }
   });
 
+  await teste('toda tela tem PORTA: nenhuma função de tela fica sem link', async () => {
+    // Três vezes num dia só o mesmo erro: recurso pronto no motor, sem
+    // caminho na tela (MFA, editar pessoa, Central de Ajuda). Recurso sem
+    // porta é recurso que não existe — e é invisível para teste de rota.
+    const fs = require('fs');
+    const src = fs.readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    const orfas = [...src.matchAll(/function (tela[A-Za-z0-9]*)\s*\(/g)].map((m) => m[1])
+      .filter((nome) => [...src.matchAll(new RegExp('\\b' + nome + '\\(', 'g'))].length < 2);
+    assert.strictEqual(orfas.length, 0, 'tela sem link em lugar nenhum: ' + orfas.join(', '));
+  });
+
+  await teste('a área de conta oferece o MFA inteiro (ligar, confirmar, guardar, desligar)', async () => {
+    // As três rotas de MFA existiam e eram testadas desde o 1.0, e o app
+    // não tinha tela nenhuma para elas: convidar ficava impossível.
+    const fs = require('fs');
+    const src = fs.readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    for (const pedaco of ['/conta/mfa/iniciar', '/conta/mfa/confirmar', '/conta/mfa/desativar',
+      'codigos_backup', 'qr_svg', 'telaConta']) {
+      assert(src.includes(pedaco), 'a tela de conta não usa ' + pedaco);
+    }
+  });
+
+  await teste('todo endereço do app aponta para uma tela que existe', async () => {
+    // O roteamento por hash (#/<familia>/<tela>) é o que faz o F5 continuar
+    // na mesma tela. Uma entrada apontando para função inexistente cairia
+    // no início em silêncio.
+    const fs = require('fs');
+    const src = fs.readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    const tabela = (src.match(/const TELAS = \{([\s\S]*?)\n\};/) || [])[1];
+    assert(tabela, 'não achei a tabela de endereços');
+    const rotas = [...tabela.matchAll(/([a-z]+):\s*\['([A-Za-z0-9]+)',\s*(\d)\]/g)];
+    assert(rotas.length >= 20, 'a tabela de endereços encolheu: ' + rotas.length);
+    for (const [, rota, fn] of rotas) {
+      assert(new RegExp('function ' + fn + '\\s*\\(').test(src),
+        `o endereço /${rota} chama ${fn}(), que não existe`);
+    }
+  });
+
   await teste('nenhuma string de tela mora no código (§86)', async () => {
     const fs = require('fs');
     const suspeitos = [];
@@ -709,6 +747,10 @@ async function principal() {
   await teste('ativar MFA e entrar exigindo o código', async () => {
     const ini = await req('POST', '/origena/api/v1/conta/mfa/iniciar', { sessao: ana });
     assert.strictEqual(ini.status, 200, ini.texto);
+    // O QR sai desenhado do nosso servidor: quem liga o MFA aponta a câmera
+    // e pronto. Sem ele sobra digitar 32 caracteres à mão no celular.
+    assert(String(ini.json.qr_svg || '').startsWith('<svg'), 'mfa/iniciar não desenhou o QR');
+    assert(ini.json.qr_svg.includes('path'), 'o QR veio vazio');
     const conf = await req('POST', '/origena/api/v1/conta/mfa/confirmar',
       { sessao: ana, corpo: { codigo: sess.codigoTOTP(ini.json.segredo) } });
     assert.strictEqual(conf.status, 200, conf.texto);
@@ -1517,6 +1559,34 @@ async function principal() {
     assert.strictEqual(r.json.duplicado, true, 'não detectou a duplicata');
     assert.strictEqual(r.json.media_id, foto1, 'apontou para outra mídia');
     assert(!r.json.url_envio, 'ofereceu URL de envio para uma duplicata');
+  });
+
+  await teste('envio que nunca chegou NÃO é duplicata — a mesma foto pode ser reenviada', async () => {
+    // O bug que isto tranca: a linha nasce `aguardando` e o PUT falha (rede,
+    // navegador fechado, CORS do bucket). Na segunda tentativa, o servidor
+    // via o mesmo sha256 e respondia "duplicado" SEM url_envio — a foto
+    // ficava presa em "processando" para sempre e o único conserto que o
+    // usuário tinha (mandar de novo) era exatamente o caminho recusado.
+    const buf = pngReal(23, 17);
+    const corpo = { nome: 'ficou-pela-metade.png', bytes: buf.length, sha256: sha(buf), mime: 'image/png', tipo: 'FOTO' };
+    const um = await req('POST', F('/midias/preparar'), { sessao: ana, corpo });
+    assert.strictEqual(um.status, 201, um.texto);
+    // ...e ninguém envia byte nenhum: fica em `aguardando`.
+
+    const dois = await req('POST', F('/midias/preparar'), { sessao: ana, corpo });
+    assert.strictEqual(dois.json.duplicado, false, 'tratou envio incompleto como duplicata');
+    assert.strictEqual(dois.json.reenvio, true, 'não avisou que era reenvio');
+    assert.strictEqual(dois.json.media_id, um.json.media_id, 'criou uma linha nova em vez de reaproveitar');
+    assert(dois.json.url_envio, 'reenvio sem URL de envio: a foto continuaria presa');
+
+    // O reenvio completa o caminho até o fim.
+    const put = await fetch(dois.json.url_envio, { method: 'PUT', body: buf });
+    assert(put.ok, 'o R2 recusou o reenvio: ' + put.status);
+    const conf = await req('POST', F(`/midias/${dois.json.media_id}/confirmar`), { sessao: ana });
+    assert.strictEqual(conf.status, 202, conf.texto);
+    await fila.processarLote(10, 'rapida');
+    const m = await req('GET', F(`/midias/${dois.json.media_id}`), { sessao: ana });
+    assert.strictEqual(m.json.midia.status, 'pronta', 'o reenvio não ficou pronto');
   });
 
   await teste('arquivo que chega diferente do prometido vai para quarentena', async () => {

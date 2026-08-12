@@ -235,13 +235,14 @@ const papelNome = (p) => t('papel.' + p) || p;
 // mesmo que não existir.
 const topo = () => '<div class="topo"><span class="marca">' + esc(t('produto.nome')) + '</span>' +
   '<span class="sub">' +
-  (EU ? esc(EU.nome) + ' · <a href="#" onclick="sair();return false">' + esc(t('acao.sair')) + '</a> · ' : '') +
+  (EU ? '<a href="#" onclick="telaConta();return false">' + esc(EU.nome) + '</a>' +
+        ' · <a href="#" onclick="sair();return false">' + esc(t('acao.sair')) + '</a> · ' : '') +
   '<a href="/origena/ajuda" target="_blank" rel="noopener">' + esc(t('ajuda.titulo')) + '</a></span>' +
   '</div>';
 
 // ------------------------------------------------------------------ entrar
-function telaEntrar(msg) {
-  $(topo() + '<h2>' + esc(t('conta.entrar_titulo')) + '</h2>' + (msg ? aviso(msg) : '') +
+function telaEntrar(msg, tipo) {
+  $(topo() + '<h2>' + esc(t('conta.entrar_titulo')) + '</h2>' + (msg ? aviso(msg, tipo) : '') +
     '<label>' + esc(t('campo.email')) + '</label><input id="e" type="email" autocomplete="email">' +
     '<label>' + esc(t('campo.senha')) + '</label><input id="s" type="password" autocomplete="current-password">' +
     '<div id="mfa" style="display:none"><label>' + esc(t('campo.codigo')) + '</label>' +
@@ -256,7 +257,9 @@ async function entrar() {
     codigo: (document.getElementById('c')||{}).value });
   if (r.mfa_necessario && r.status === 200) { document.getElementById('mfa').style.display = 'block'; return; }
   if (r.status !== 200) return telaEntrar(r.erro || t('erro.nao_entrei'));
-  inicio();
+  // Volta para o endereço que a pessoa pediu antes de entrar — inclusive o
+  // convite que veio por e-mail, que antes se perdia no login.
+  rotaDoHash();
 }
 function telaCadastrar(msg) {
   $(topo() + '<h2>' + esc(t('conta.criar_titulo')) + '</h2>' + (msg ? aviso(msg) : '') +
@@ -277,7 +280,85 @@ async function cadastrar() {
   $(topo() + '<h2>' + esc(t('conta.confirme_titulo')) + '</h2>' + aviso(r.mensagem, 'ok') +
     '<p class="sub">' + esc(t('conta.confirme_p')) + '</p>');
 }
-const sair = async () => { await api('POST', '/conta/sair'); EU = null; telaEntrar(); };
+const sair = async () => {
+  await api('POST', '/conta/sair');
+  EU = null; FAM = null; PERM = [];
+  history.replaceState(null, '', '/origena/app');   // o endereço não sobrevive à saída
+  telaEntrar();
+};
+
+// ------------------------------------------------------------- sua conta
+// A ÁREA DE CONTA EXISTIA SÓ NO MOTOR. As rotas de MFA estavam prontas e
+// testadas desde o 1.0 e não havia tela nenhuma: o nome no topo era texto.
+// Como convidar exige MFA (428), o dono da família travava na primeira
+// coisa que queria fazer — chamar a família. Recurso pronto no motor sem
+// porta na tela é recurso que não existe.
+async function telaConta(msg, tipo) {
+  const eu = await api('GET', '/conta/eu');
+  if (eu.status !== 200) return telaEntrar();
+  EU = eu.usuario;
+  const ativa = !!EU.mfa_ativo;
+  $(topo() + '<p class="sub"><a href="#" onclick="inicio();return false">' + esc(t('acao.voltar_familias')) + '</a></p>' +
+    '<h2>' + esc(t('conta.titulo')) + '</h2>' +
+    (msg ? aviso(msg, tipo || 'ok') : '') +
+    '<div class="linha"><span><strong>' + esc(EU.nome) + '</strong><br><span class="sub">' + esc(EU.email) + '</span></span>' +
+      '<span class="papel">' + esc(t(ativa ? 'conta.mfa_selo_on' : 'conta.mfa_selo_off')) + '</span></div>' +
+    '<h3 style="margin-top:26px">' + esc(t('conta.seguranca')) + '</h3>' +
+    (eu.mfa_disponivel === false
+      ? '<p class="sub">' + esc(t('erro.mfa_indisponivel')) + '</p>'
+      : '<p>' + esc(t(ativa ? 'conta.mfa_ativa' : 'conta.mfa_inativa')) + '</p>' +
+        '<p><button class="btn' + (ativa ? ' claro' : '') + '" onclick="' + (ativa ? 'mfaDesligar' : 'mfaIniciar') + '()">' +
+          esc(t(ativa ? 'acao.desativar_mfa' : 'acao.ativar_mfa')) + '</button></p>') +
+    '<h3 style="margin-top:26px">' + esc(t('conta.sessoes_titulo')) + '</h3>' +
+    '<p class="sub">' + esc(t('conta.sessoes_p')) + '</p>' +
+    '<p><button class="btn claro" onclick="sairDeTodos()">' + esc(t('acao.sair_de_todos')) + '</button></p>');
+}
+
+async function mfaIniciar() {
+  const r = await api('POST', '/conta/mfa/iniciar');
+  if (r.status >= 400) return telaConta(r.erro, 'erro');
+  // O QR vem desenhado do servidor; se não vier, o segredo digitado à mão
+  // resolve — nenhum dos dois caminhos depende de rede de fora.
+  $(topo() + '<p class="sub"><a href="#" onclick="telaConta();return false">← ' + esc(t('conta.titulo')) + '</a></p>' +
+    '<h2>' + esc(t('conta.mfa_ligar_titulo')) + '</h2>' +
+    '<p>' + esc(t('conta.mfa_passo1')) + '</p>' +
+    (r.qr_svg ? '<div style="max-width:220px;background:#fff;padding:10px;border-radius:12px;margin:14px 0">' + r.qr_svg + '</div>' : '') +
+    '<p class="sub">' + esc(t('conta.mfa_passo2')) + '</p>' +
+    '<p style="font-family:ui-monospace,Menlo,monospace;font-size:18px;word-break:break-all">' + esc(r.segredo) + '</p>' +
+    '<label>' + esc(t('conta.mfa_passo3')) + '</label>' +
+    '<input id="mfc" inputmode="numeric" autocomplete="one-time-code" placeholder="000000">' +
+    '<p><button class="btn" onclick="mfaConfirmar()">' + esc(t('acao.confirmar')) + '</button></p>');
+}
+
+async function mfaConfirmar() {
+  const r = await api('POST', '/conta/mfa/confirmar', { codigo: val('mfc') });
+  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  // Os códigos de backup aparecem UMA vez: o banco guarda só o hash. Por
+  // isso esta tela não tem "voltar" — tem "guardei".
+  $(topo() + '<h2>' + esc(t('conta.mfa_backup_titulo')) + '</h2>' +
+    '<p>' + esc(t('conta.mfa_backup_p')) + '</p>' +
+    '<p style="font-family:ui-monospace,Menlo,monospace;font-size:18px;line-height:2.1">' +
+      (r.codigos_backup || []).map(esc).join('<br>') + '</p>' +
+    '<p><button class="btn" onclick="telaConta(t(\\'conta.mfa_ligada\\'))">' +
+      esc(t('acao.guardei_codigos')) + '</button></p>');
+}
+
+async function mfaDesligar() {
+  if (!confirm(t('conta.mfa_confirmar_desligar'))) return;
+  const senha = prompt(t('conta.mfa_desligar_p'));
+  if (!senha) return;
+  const r = await api('POST', '/conta/mfa/desativar', { senha });
+  if (r.status >= 400) return telaConta(r.erro, 'erro');
+  telaConta(t('conta.mfa_desligada'));
+}
+
+async function sairDeTodos() {
+  if (!confirm(t('conta.sessoes_confirmar'))) return;
+  await api('POST', '/conta/sair-de-todos');
+  EU = null; FAM = null; PERM = [];
+  history.replaceState(null, '', '/origena/app');
+  telaEntrar(t('conta.sessoes_encerradas'), 'ok');
+}
 
 // ------------------------------------------------------------------ famílias
 async function inicio() {
@@ -319,6 +400,13 @@ async function abrir(id) {
       '</div>').join('') +
     (pode('membros.convidar')
       ? '<h3 style="margin-top:26px">' + esc(t('familia.convidar_titulo')) + '</h3>' +
+        // O 428 chegava DEPOIS do clique, e sem dizer para onde ir. O aviso
+        // vem antes, com o link — quem administra descobre a trava lendo, e
+        // não tentando.
+        (EU && !EU.mfa_ativo
+          ? '<div class="erro">' + esc(t('mfa.exigido_convite')) +
+            ' <a href="#" onclick="telaConta();return false">' + esc(t('acao.ativar_agora')) + '</a></div>'
+          : '') +
         '<label>' + esc(t('campo.email')) + '</label><input id="ce" type="email">' +
         '<label>' + esc(t('campo.papel')) + '</label><select id="cp">' +
         papeisConvidaveis.map(p => '<option value="' + p + '">' + esc(t('papel.desc_' + p)) + '</option>').join('') +
@@ -357,7 +445,11 @@ async function abrir(id) {
 async function convidar() {
   const r = await api('POST', '/familias/' + FAM.id + '/convites',
     { email: document.getElementById('ce').value, papel: document.getElementById('cp').value });
-  if (r.status === 428) return $(document.getElementById('app').innerHTML + aviso(t('mfa.exigido_convite')));
+  if (r.status === 428) {
+    return $(document.getElementById('app').innerHTML +
+      '<div class="erro">' + esc(t('mfa.exigido_convite')) +
+      ' <a href="#" onclick="telaConta();return false">' + esc(t('acao.ativar_agora')) + '</a></div>');
+  }
   if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   abrir(FAM.id);
 }
@@ -868,10 +960,15 @@ async function enviarArquivos(lista) {
       if (prep.status >= 400) { painel.innerHTML = aviso(prep.erro); continue; }
       if (prep.duplicado) { duplicadas++; enviados++; continue; }
 
+      // Este PUT sai do NAVEGADOR direto para o bucket — é o único trecho
+      // do envio que não passa pelo nosso servidor, e por isso o único que
+      // depende do CORS do bucket. Quando ele falha, quem está enviando
+      // precisa saber QUAL arquivo ficou pela metade.
       const put = await fetch(prep.url_envio, { method: 'PUT', body: file,
         headers: { 'Content-Type': file.type || 'application/octet-stream' } });
-      if (!put.ok) { painel.innerHTML = aviso(t('erro.generico')); continue; }
+      if (!put.ok) { painel.innerHTML = aviso(t('midia.envio_falhou', { nome: esc(file.name) })); continue; }
       await api('POST', '/familias/' + FAM.id + '/midias/' + prep.media_id + '/confirmar');
+      if (prep.reenvio) painel.innerHTML = aviso(t('midia.reenviada'), 'ok');
 
       // miniatura: derivado, não original
       const mini = await miniatura(file, 512);
@@ -886,7 +983,7 @@ async function enviarArquivos(lista) {
           headers: { 'Content-Type': 'image/jpeg' } });
       }
       enviados++;
-    } catch (_) { painel.innerHTML = aviso(t('erro.generico')); }
+    } catch (_) { painel.innerHTML = aviso(t('midia.envio_falhou', { nome: esc(file.name) })); }
   }
   painel.textContent = duplicadas ? t('midia.duplicada') : '';
   memorias();
@@ -910,12 +1007,18 @@ async function memorias(cursor) {
       ? '<p><input type="file" id="arqs" multiple accept="image/*,video/*,audio/*,.pdf"> ' +
         '<button class="btn" onclick="enviarArquivos(document.getElementById(\\'arqs\\').files)">' +
         esc(t('midia.enviar')) + '</button></p><p class="sub" id="envio"></p>' : '<p id="envio"></p>') +
+    ((r.midias || []).some(m => m.status === 'aguardando')
+      ? '<p class="sub">' + esc(t('midia.aguardando_explica')) + '</p>' : '') +
     ((r.midias || []).length
       ? '<div class="grade">' + r.midias.map(m =>
           '<figure class="cel" onclick="verMidia(\\'' + m.id + '\\')" data-thumb="' + (m.thumb_id || m.id) + '">' +
           '<div class="ph"></div><figcaption>' + esc(m.titulo || '') +
+          // "processando" para tudo escondia o caso mais comum: o arquivo
+          // que NUNCA chegou. Quem via isso esperava por um trabalho que
+          // não estava acontecendo.
           (m.status !== 'pronta' ? '<br><span class="papel">' + esc(t('midia.' +
-            (m.status === 'quarentena' ? 'quarentena' : m.status === 'falhou' ? 'falhou' : 'processando'))) +
+            (m.status === 'quarentena' ? 'quarentena' : m.status === 'falhou' ? 'falhou'
+              : m.status === 'aguardando' ? 'aguardando' : 'processando'))) +
             '</span>' : '') +
           (m.pessoas ? '<br><span class="sub">' + m.pessoas + ' 👤</span>' : '') +
           '</figcaption></figure>').join('') + '</div>' +
@@ -2517,7 +2620,75 @@ async function rotaDoHash() {
       '<input id="s" type="password" autocomplete="new-password">' +
       '<button class="btn" onclick="salvarSenha(\\'' + esc(token) + '\\')">' + esc(t('acao.salvar')) + '</button>');
   }
+  if (qual.charAt(0) === '/') return abrirEndereco(qual);
   inicio();
+}
+
+// ------------------------------------------------- cada tela tem endereço
+// F5 dentro do acervo caía no começo, e o que a pessoa estava vendo se
+// perdia. Agora toda tela escreve o próprio endereço
+// (#/<familia>/<tela>/<id>), e o endereço sabe reabrir a tela: atualizar a
+// página, voltar no navegador e mandar o link para alguém da família
+// passam a funcionar.
+//
+// A lista abaixo diz quantos argumentos entram no ENDEREÇO — não quantos
+// a função aceita. telaMissoes(status, sincronizar) entra com zero de
+// propósito: recarregar a página não pode disparar de novo a varredura.
+// (Sem crase nestes comentários: o app inteiro mora dentro de um template
+// literal, e uma crase solta encerraria o literal no meio do arquivo.)
+const TELAS = {
+  inicio: ['inicio', 0], conta: ['telaConta', 0], familia: ['abrir', 1],
+  pessoas: ['pessoas', 0], pessoa: ['dossie', 1], arvore: ['verArvore', 1],
+  divergencias: ['divergencias', 0], auditoria: ['auditoria', 0],
+  memorias: ['memorias', 0], midia: ['verMidia', 1],
+  historias: ['telaHistorias', 0], historia: ['verHistoria', 1],
+  tradicoes: ['telaTradicoes', 1], tradicao: ['verTradicao', 1],
+  reliquias: ['telaReliquias', 0], reliquia: ['verReliquia', 1],
+  entrevistas: ['telaEntrevistas', 0], entrevista: ['verEntrevista', 1],
+  capsulas: ['telaCapsulas', 0], capsula: ['abrirCapsula', 1],
+  guardioes: ['telaGuardioes', 0], livros: ['telaLivros', 0],
+  timeline: ['telaTimeline', 1], mapa: ['telaMapa', 0], grafo: ['telaGrafo', 2],
+  busca: ['telaBusca', 0], perguntar: ['telaPerguntar', 0],
+  missoes: ['telaMissoes', 0], historiador: ['telaHistoriador', 0],
+  indice: ['telaIndice', 0], planos: ['telaPlanos', 0], avisos: ['telaAvisos', 0],
+};
+const ORIGINAL = {};
+
+for (const rota in TELAS) {
+  const nome = TELAS[rota][0], nArgs = TELAS[rota][1];
+  const original = window[nome];
+  if (typeof original !== 'function') continue;
+  ORIGINAL[rota] = original;
+  // Troca a função GLOBAL: todo onclick que já existia passa a anotar o
+  // endereço antes de desenhar, sem precisar mexer em nenhuma chamada.
+  window[nome] = function () {
+    const args = [].slice.call(arguments, 0, nArgs)
+      .filter((a) => typeof a === 'string' || typeof a === 'number');
+    const familia = rota === 'familia' ? args[0] : (FAM ? FAM.id : '-');
+    const endereco = '#/' + [familia || '-', rota]
+      .concat(rota === 'familia' ? [] : args.map(encodeURIComponent)).join('/');
+    if (location.hash !== endereco) history.pushState(null, '', endereco);
+    return original.apply(this, arguments);
+  };
+}
+// Voltar e avançar no navegador redesenham a tela do endereço.
+window.addEventListener('popstate', () => { rotaDoHash(); });
+
+async function abrirEndereco(caminho) {
+  const partes = caminho.split('/').filter((x) => x !== '');
+  const fam = partes[0], alvo = TELAS[partes[1]];
+  if (!alvo || !ORIGINAL[partes[1]]) return inicio();
+  const eu = await api('GET', '/conta/eu');
+  if (eu.status !== 200) return telaEntrar();   // sessão vencida: o endereço espera
+  EU = eu.usuario;
+  if (fam && fam !== '-' && (!FAM || FAM.id !== fam)) {
+    const f = await api('GET', '/familias/' + fam);
+    if (f.status >= 400) return inicio();
+    FAM = f.familia; PERM = f.permissoes || [];
+  }
+  const args = partes.slice(2).map(decodeURIComponent).slice(0, alvo[1]);
+  // Chama a função ORIGINAL: o endereço já é este, não há o que anotar.
+  return ORIGINAL[partes[1]].apply(null, partes[1] === 'familia' ? [fam] : args);
 }
 async function salvarSenha(token) {
   const r = await api('POST', '/conta/nova-senha', { token, senha: document.getElementById('s').value });

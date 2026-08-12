@@ -57,10 +57,22 @@ async function preparar(t, { familyId, userId, nome, bytes, sha256, mimeDeclarad
   const tipo = TIPOS.includes(tipoSugerido) ? tipoSugerido : 'FOTO';
   if (tamanho > LIMITES[tipo]) throw erro('erro.midia_grande_demais', 413);
 
+  const extensao = (nomeArq) => (s(nomeArq, 200).split('.').pop() || '').slice(0, 5);
   const jaTem = await t.uma(
-    `SELECT id, status, titulo FROM media
+    `SELECT id, status, titulo, storage_key, nome_original FROM media
       WHERE family_id = $1 AND sha256 = $2 AND derivado_de IS NULL AND deleted_at IS NULL`,
     [familyId, String(sha256).toLowerCase()]);
+  // `aguardando` NÃO é duplicata: é envio que nunca chegou (rede caiu,
+  // navegador fechou, bucket recusou a origem). Tratar como duplicata
+  // prendia a linha em "processando" para sempre E recusava o reenvio da
+  // MESMA foto — que é justamente o conserto que a pessoa tem em mãos.
+  // Aqui a linha é reaproveitada com uma URL de envio nova.
+  if (jaTem && jaTem.status === 'aguardando') {
+    const chaveVelha = jaTem.storage_key
+      || storage.chaveOriginal(familyId, jaTem.id, sha256, extensao(jaTem.nome_original || nome));
+    if (!jaTem.storage_key) await t.q(`UPDATE media SET storage_key = $2 WHERE id = $1`, [jaTem.id, chaveVelha]);
+    return { duplicado: false, reenvio: true, media_id: jaTem.id, url_envio: storage.urlDeEnvio(chaveVelha), chave: chaveVelha };
+  }
   if (jaTem) return { duplicado: true, media_id: jaTem.id, status: jaTem.status };
 
   const m = await t.uma(
@@ -72,7 +84,7 @@ async function preparar(t, { familyId, userId, nome, bytes, sha256, mimeDeclarad
 
   // A chave carrega o hash: dois arquivos diferentes nunca colidem, e o
   // caminho por si já denuncia troca de conteúdo (ADR-0008).
-  const chave = storage.chaveOriginal(familyId, m.id, sha256, (s(nome, 200).split('.').pop() || '').slice(0, 5));
+  const chave = storage.chaveOriginal(familyId, m.id, sha256, extensao(nome));
   await t.q(`UPDATE media SET storage_key = $2 WHERE id = $1`, [m.id, chave]);
 
   return {

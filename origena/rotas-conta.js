@@ -105,7 +105,14 @@ function registrarRotasConta(app, { jwtSecret }) {
   }));
 
   app.get(`${R}/eu`, sessao.requireUsuario, h(async (req, res) => {
-    res.json({ usuario: publico(req.usuario), familias: await repo.Families.doUsuario(req.usuario.id) });
+    // `mfa_disponivel` vai junto para a tela de conta poder DIZER que a
+    // instalação está sem cofre, em vez de oferecer um botão que só
+    // responde 503 depois do clique.
+    res.json({
+      usuario: publico(req.usuario),
+      mfa_disponivel: sessao.mfaDisponivel(),
+      familias: await repo.Families.doUsuario(req.usuario.id),
+    });
   }));
 
   // ------------------------------------------------------------- senha
@@ -146,7 +153,14 @@ function registrarRotasConta(app, { jwtSecret }) {
     // Guardado cifrado e ainda INATIVO: só liga depois de o usuário provar
     // que o aplicativo dele gera o código certo.
     await db.q('UPDATE users SET mfa_segredo_cif = $2 WHERE id = $1', [req.usuario.id, sessao.cifrar(segredo)]);
-    res.json({ segredo, otpauth: sessao.urlOtpauth(req.usuario.email, segredo) });
+    const otpauth = sessao.urlOtpauth(req.usuario.email, segredo);
+    // QR desenhado AQUI (pacote `qrcode`, já no backend): a tela não busca
+    // nada de fora e o segredo não passeia por serviço de terceiro. Se o
+    // desenho falhar, a tela ainda mostra o segredo para digitar à mão —
+    // por isso o catch silencioso.
+    let qr_svg = '';
+    try { qr_svg = await require('qrcode').toString(otpauth, { type: 'svg', margin: 1, width: 220 }); } catch (_) {}
+    res.json({ segredo, otpauth, qr_svg });
   }));
 
   app.post(`${R}/mfa/confirmar`, sessao.requireUsuario, h(async (req, res) => {

@@ -17,8 +17,20 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-const URL_BANCO = process.env.ORIGENA_DATABASE_URL || '';
 const SCHEMA = process.env.ORIGENA_DB_SCHEMA || 'origena';
+
+// BANCO LOCAL PARA TESTE, quando existir. O `origena-db` fica na Virgínia
+// e daqui cada consulta custa ~143 ms de ida e volta — com milhares de
+// consultas, a suíte levava 20 minutos de PURA ESPERA DE REDE. Contra um
+// Postgres na própria máquina a mesma consulta custa ~1 ms.
+//
+// A troca é amarrada ao SCHEMA DE TESTE (prefixo `t_`), não a uma flag
+// solta: é impossível a suíte apontar para produção por engano, e é
+// impossível produção cair no banco local — o schema de produção se chama
+// `origena` e nunca casa com o prefixo.
+const EH_TESTE = /^t_/.test(SCHEMA);
+const URL_BANCO = (EH_TESTE && process.env.ORIGENA_TEST_DATABASE_URL)
+  || process.env.ORIGENA_DATABASE_URL || '';
 const DIR_SCHEMA = path.join(__dirname, 'schema');
 
 // O schema vira identificador SQL cru (não dá para parametrizar DDL).
@@ -36,8 +48,15 @@ const configurado = () => !!URL_BANCO;
 // Host com ponto = externo (dev, via internet) → TLS obrigatório e o
 // certificado do Render valida contra a CA do sistema (conferido).
 // Host sem ponto = rede interna do Render → sem TLS, sem custo.
+const LOCAIS = ['localhost', '127.0.0.1', '::1', '[::1]'];
 function precisaTLS(url) {
-  try { return new URL(url).hostname.includes('.'); } catch (_) { return false; }
+  // O critério era "tem ponto no hostname" — e `127.0.0.1` tem três.
+  // Banco na própria máquina não fala TLS, e a conexão morria com
+  // "The server does not support SSL connections".
+  try {
+    const h = new URL(url).hostname;
+    return !LOCAIS.includes(h) && h.includes('.');
+  } catch (_) { return false; }
 }
 
 let _pool = null;
