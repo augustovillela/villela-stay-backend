@@ -68,7 +68,10 @@ const PRODUTOS = [
     nome: 'Origena', curto: 'Origena', marca: 'villela-origena',
     desc: 'A memória da sua família guardada com quem contou, quando e de onde veio.',
     // Marca PROVISÓRIA — ver assets/brand/villela-origena/LEIA-ME.md.
-    tema: '#7A5C3E', fundo: '#FBF9F6',
+    // Cores alinhadas ao app em 12/08/2026: Floresta sobre Papel. O ícone
+    // sépia antigo fazia a tela de abertura do app instalado contradizer o
+    // produto que abria em seguida.
+    tema: '#234238', fundo: '#FAF7F1',
   },
 ];
 

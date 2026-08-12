@@ -7,14 +7,14 @@
 //
 // IDENTIDADE PROVISÓRIA, DE PROPÓSITO: a marca da Origena depende do
 // brand book do grupo, ainda em preparação (memória
-// `brand-book-em-preparacao`), e da busca INPI. Nada aqui é decisão de
+// "brand-book-em-preparacao"), e da busca INPI. Nada aqui é decisão de
 // marca — os tokens estão num bloco só, para trocar de uma vez.
 // =====================================================================
 'use strict';
 const i18n = require('./i18n');
 const db = require('./db');
 
-// Página pública nunca pode cair por causa de uma consulta: o `catch` de
+// Página pública nunca pode cair por causa de uma consulta: o "catch" de
 // cada rota assíncrona vive aqui.
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const escHtml = (s) => String(s == null ? '' : s)
@@ -83,7 +83,7 @@ const ANEL_GRANDE = '<svg width="72" height="72" viewBox="0 0 26 26" aria-hidden
   '<circle cx="13" cy="13" r="5.2" stroke-dasharray="28 6"></circle>' +
   '<circle cx="13" cy="13" r="2.2"></circle></svg>';
 
-// Cabeça compartilhada. `pwa` liga manifest + service worker (o módulo
+// Cabeça compartilhada. "pwa" liga manifest + service worker (o módulo
 // central pwa.js serve os dois em /origena/manifest.webmanifest e /origena/sw.js).
 function pagina(idioma, titulo, corpo, { pwa = false, css = '' } = {}) {
   return `<!doctype html>
@@ -335,6 +335,8 @@ display:inline-flex;align-items:center;gap:6px}
 .nav summary::-webkit-details-marker{display:none}
 .nav summary:hover{background:var(--tema-suave)}
 .nav details[open] summary{background:var(--tema-suave);border-color:var(--borda);color:var(--tema)}
+.nav details.aqui summary{color:var(--tema);box-shadow:inset 0 -2px 0 var(--tema)}
+.nav .itens a.aqui{background:var(--tema-suave);color:var(--tema);font-weight:600}
 .nav .itens{position:absolute;z-index:30;top:calc(100% + 6px);left:0;min-width:212px;
 background:var(--card);border:1px solid var(--borda);border-radius:var(--raio);
 box-shadow:var(--sombra);padding:8px;display:flex;flex-direction:column}
@@ -351,8 +353,8 @@ padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
 .barra a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
 padding:6px 2px;min-height:52px;justify-content:center;
 font-size:11px;color:var(--suave);text-decoration:none;border-radius:var(--raio-ctrl)}
-.barra a b{font-size:19px;line-height:1}
-.barra a.ativo{color:var(--tema);background:var(--tema-suave)}
+.barra a svg{flex:0 0 auto}
+.barra a.ativo{color:var(--tema);background:var(--tema-suave);font-weight:600}
 @media(max-width:640px){.barra.ver{display:flex}}
 /* §85: alvo de toque de 48px e texto de 16px+. A Origena vai ser usada
    por avós no celular — controle apertado aqui não é detalhe estético.
@@ -378,13 +380,13 @@ margin:0 8px 8px 0;transition:var(--transicao);text-align:center}
 .btn:hover{filter:brightness(1.06)}
 .btn:active{transform:translateY(1px)}
 .acoes .btn,.linha .btn{margin:0}
-.btn.claro{background:transparent;color:var(--tema);border:1px solid var(--tema)}
-.btn.claro:hover{background:var(--tema-suave)}
 /* A classe "sec" era usada em 13 botões e NÃO EXISTIA no CSS: todos
    apareciam como primário, e telas com quatro ações viravam quatro botões
-   verdes gritando juntos. É a ação de apoio — presente, sem disputar. */
-.btn.sec{background:var(--card);color:var(--tinta);border:1px solid var(--borda);font-weight:500}
-.btn.sec:hover{background:var(--tema-suave);border-color:var(--tema);color:var(--tema);filter:none}
+   verdes gritando juntos. É a ação de apoio — presente, sem disputar.
+   "claro" era o secundário antigo; fica como apelido para não quebrar
+   nada que ainda o use. */
+.btn.sec,.btn.claro{background:var(--card);color:var(--tinta);border:1px solid var(--borda);font-weight:500}
+.btn.sec:hover,.btn.claro:hover{background:var(--tema-suave);border-color:var(--tema);color:var(--tema);filter:none}
 .btn.emocional{background:var(--acento)}
 .btn.mini{min-height:36px;padding:7px 13px;font-size:14px;font-weight:500;border-radius:10px}
 /* Grupo de ações: uma linha que quebra sozinha, com respiro igual entre
@@ -621,23 +623,49 @@ const NAV = [
 
 function navPrincipal() {
   if (!EU || !FAM) return '';
+  // A tela em que se está fica marcada no grupo a que ela pertence — para
+  // o leitor de tela ("aria-current") e para quem enxerga (grifo).
+  const aqui = location.hash.split('/')[2] || '';
   return '<nav class="nav" aria-label="' + esc(t('acesso.nav_principal')) + '">' + NAV.map(g => {
     const itens = g[1].filter(i => !i[2] || pode(i[2]));
     if (!itens.length) return '';
-    return '<details><summary>' + esc(t(g[0])) + ' ▾</summary><div class="itens">' +
-      itens.map(i => '<a href="#" onclick="' + i[1] + ';return false">' + esc(t(i[0])) + '</a>').join('') +
+    const noGrupo = itens.some(i => (TELAS[aqui] || [''])[0] + '()' === i[1]);
+    return '<details' + (noGrupo ? ' class="aqui"' : '') + '><summary' +
+      (noGrupo ? ' aria-current="true"' : '') + '>' + esc(t(g[0])) + ' ▾</summary><div class="itens">' +
+      itens.map(i => {
+        const ehAqui = (TELAS[aqui] || [''])[0] + '()' === i[1];
+        return '<a href="#"' + (ehAqui ? ' aria-current="page" class="aqui"' : '') +
+          ' onclick="' + i[1] + ';return false">' + esc(t(i[0])) + '</a>';
+      }).join('') +
       '</div></details>';
   }).join('') + '</nav>';
 }
 
+// ÍCONES PRÓPRIOS, não emoji. Emoji muda de desenho em cada aparelho — o
+// mesmo app fica com outra cara no iPhone, no Android e no computador, e
+// nenhum deles combina com o resto da tela. Estes são traçados no mesmo
+// peso do anel da marca e herdam a cor do link (currentColor), então
+// acendem junto com o item ativo.
+const ico = (d) => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true" ' +
+  'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+const ICONES = {
+  casa: ico('<path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10.5V19h11v-8.5"/><path d="M10 19v-4.5h4V19"/>'),
+  foto: ico('<rect x="3.2" y="5.2" width="17.6" height="13.6" rx="2.4"/><circle cx="9" cy="10" r="1.6"/>' +
+    '<path d="M4 16.5l4.2-3.6 3.4 2.7 3-2.4 5.4 4.2"/>'),
+  mais: ico('<circle cx="12" cy="12" r="8.4"/><path d="M12 8.4v7.2M8.4 12h7.2"/>'),
+  bussola: ico('<circle cx="12" cy="12" r="8.4"/><path d="M14.8 9.2 13.4 13.4 9.2 14.8l1.4-4.2z"/>'),
+  familia: ico('<circle cx="8.6" cy="9" r="2.6"/><circle cx="16" cy="9.6" r="2"/>' +
+    '<path d="M3.8 18.4c0-2.6 2.1-4.4 4.8-4.4s4.8 1.8 4.8 4.4"/><path d="M15 14.2c2.4 0 4.2 1.6 4.2 3.9"/>'),
+};
+
 // Barra de baixo do celular. Mora FORA de #app justamente para não ser
 // varrida a cada redesenho — é o único pedaço de tela que persiste.
 const BARRA = [
-  ['🏠', 'nav.inicio', 'inicio()'],
-  ['🖼', 'familia.memorias', 'memorias()'],
-  ['✚', 'nav.adicionar', 'telaAdicionar()'],
-  ['🧭', 'nav.explorar', 'telaBusca()'],
-  ['👪', 'nav.familia', 'abrir(FAM.id)'],
+  ['casa', 'nav.inicio', 'inicio()', 'inicio'],
+  ['foto', 'familia.memorias', 'memorias()', 'memorias'],
+  ['mais', 'nav.adicionar', 'telaAdicionar()', 'adicionar'],
+  ['bussola', 'nav.explorar', 'telaBusca()', 'busca'],
+  ['familia', 'nav.familia', 'abrir(FAM.id)', 'familia'],
 ];
 function montarBarra() {
   let b = document.getElementById('barra');
@@ -648,8 +676,15 @@ function montarBarra() {
   }
   if (!EU || !FAM) { b.className = 'barra'; b.innerHTML = ''; return; }
   b.className = 'barra ver';
-  b.innerHTML = BARRA.map(i => '<a href="#" onclick="' + i[2] + ';return false">' +
-    '<b aria-hidden="true">' + i[0] + '</b>' + esc(t(i[1])) + '</a>').join('');
+  // "aria-current" marca onde se está: sem isso, o leitor de tela lê cinco
+  // links iguais e quem enxerga depende só de uma diferença de cor.
+  const aqui = (location.hash.split('/')[2] || 'inicio');
+  b.innerHTML = BARRA.map(i => {
+    const ativo = i[3] === aqui;
+    return '<a href="#" class="' + (ativo ? 'ativo' : '') + '"' +
+      (ativo ? ' aria-current="page"' : '') + ' onclick="' + i[2] + ';return false">' +
+      ICONES[i[0]] + esc(t(i[1])) + '</a>';
+  }).join('');
 }
 
 // ------------------------------------------------------------------ entrar
@@ -723,7 +758,7 @@ async function telaConta(msg, tipo) {
           esc(t(ativa ? 'acao.desativar_mfa' : 'acao.ativar_mfa')) + '</button></p>') +
     '<h3 style="margin-top:26px">' + esc(t('conta.sessoes_titulo')) + '</h3>' +
     '<p class="sub">' + esc(t('conta.sessoes_p')) + '</p>' +
-    '<p><button class="btn claro" onclick="sairDeTodos()">' + esc(t('acao.sair_de_todos')) + '</button></p>');
+    '<p><button class="btn sec" onclick="sairDeTodos()">' + esc(t('acao.sair_de_todos')) + '</button></p>');
 }
 
 async function mfaIniciar() {
@@ -1698,7 +1733,7 @@ async function memorias(cursor) {
           (m.pessoas ? '<br><span class="sub">' + m.pessoas + ' 👤</span>' : '') +
           '</figcaption></figure>').join('') + '</div>' +
         (ACERVO.cursor && (r.midias || []).length >= 60
-          ? '<p><button class="btn claro" onclick="memorias(\\'' + ACERVO.cursor + '\\')">' +
+          ? '<p><button class="btn sec" onclick="memorias(\\'' + ACERVO.cursor + '\\')">' +
             esc(t('midia.carregar_mais')) + '</button></p>'
           : '<p class="sub">' + esc(t('midia.fim_da_lista')) + '</p>')
       : vazio(t('midia.sem_midias'), t('midia.sem_midias_p'),
