@@ -32,9 +32,14 @@ h1,h2,h3{font-family:Newsreader,Lora,Georgia,'Times New Roman',serif;font-weight
 :focus-visible{outline:3px solid var(--foco);outline-offset:2px;border-radius:6px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .wrap{max-width:820px;margin:0 auto;padding:0 22px}
-.hero{padding:72px 0 44px;text-align:center}
-.hero h1{font-size:clamp(34px,6vw,54px);margin:0 0 10px}
-.assinatura{color:var(--suave);font-size:18px;margin:0 0 30px}
+.hero{padding:64px 0 40px;text-align:center}
+.hero h1{font-size:clamp(38px,7vw,62px);margin:0 0 10px;letter-spacing:-.02em}
+.hero .anel{color:var(--tema);line-height:0;margin:6px 0 18px}
+.assinatura{color:var(--suave);font-size:19px;margin:0 0 14px}
+/* A promessa em serifa, tamanho de leitura: é a frase que explica por que
+   o produto existe, não uma linha de apoio. */
+.promessa{font-family:Newsreader,Georgia,serif;font-size:clamp(19px,2.6vw,24px);
+line-height:1.5;color:var(--tinta);max-width:30ch;margin:0 auto 8px}
 .selo{display:inline-block;background:#F6EEDD;border:1px solid #E4D2AE;color:#6E5417;
 border-radius:999px;padding:6px 15px;font-weight:600;font-size:14px;margin-bottom:22px}
 .card{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio);
@@ -51,6 +56,15 @@ footer{color:var(--suave);font-size:14px;text-align:center;padding:34px 0 50px}
 --sombra:0 4px 18px rgb(0 0 0 / 28%);--foco:#8FC5E8}
 .selo{background:#332A12;border-color:#5A4A20;color:#E8D08A}}
 `;
+
+// O mesmo anel do app, maior, para a página pública. Marcador de lugar —
+// a marca definitiva espera o brand book e o INPI.
+const ANEL_GRANDE = '<svg width="72" height="72" viewBox="0 0 26 26" aria-hidden="true" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.1" stroke-linecap="round">' +
+  '<circle cx="13" cy="13" r="11.2" stroke-dasharray="62 9"></circle>' +
+  '<circle cx="13" cy="13" r="8.2" stroke-dasharray="44 8"></circle>' +
+  '<circle cx="13" cy="13" r="5.2" stroke-dasharray="28 6"></circle>' +
+  '<circle cx="13" cy="13" r="2.2"></circle></svg>';
 
 // Cabeça compartilhada. `pwa` liga manifest + service worker (o módulo
 // central pwa.js serve os dois em /origena/manifest.webmanifest e /origena/sw.js).
@@ -83,8 +97,10 @@ function registrarPaginas(app) {
 <div class="wrap">
   <div class="hero">
     <div class="selo">${t('landing.selo')}</div>
+    <div class="anel">${ANEL_GRANDE}</div>
     <h1>${t('produto.nome')}</h1>
     <p class="assinatura">${t('produto.assinatura')}</p>
+    <p class="promessa">${t('landing.promessa')}</p>
   </div>
   <div class="card">
     <h2>${t('landing.titulo')}</h2>
@@ -239,8 +255,14 @@ min-height:48px;font-weight:600;font-size:16px;cursor:pointer;transition:var(--t
 .btn:hover{filter:brightness(1.08)}
 .btn.claro{background:transparent;color:var(--tema);border:1px solid var(--tema)}
 .btn.claro:hover{background:var(--tema-suave)}
+/* A classe "sec" era usada em 13 botões e NÃO EXISTIA no CSS: todos
+   apareciam como primário, e telas com quatro ações viravam quatro botões
+   verdes gritando juntos. É a ação de apoio — presente, sem disputar. */
+.btn.sec{background:var(--card);color:var(--tinta);border:1px solid var(--borda);font-weight:500}
+.btn.sec:hover{background:var(--tema-suave);border-color:var(--tema);color:var(--tema);filter:none}
 .btn.emocional{background:var(--acento)}
 .btn.mini{min-height:40px;padding:9px 16px;font-size:14px}
+.acoes{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
 a{text-decoration-thickness:1px;text-underline-offset:3px;color:var(--tema)}
 .btn:disabled{opacity:.5;cursor:wait}
 .linha{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;
@@ -274,17 +296,29 @@ padding:18px;text-decoration:none;color:var(--tinta);display:block;transition:va
 .sub{color:var(--suave);font-size:14px}
 /* Grade da galeria. A proporcao fixa evita o salto de layout enquanto
    cada miniatura ainda esta pedindo a propria URL assinada. */
-.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin:18px 0}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:16px;margin:20px 0}
 .cel{margin:0;cursor:pointer}
-.cel .ph{aspect-ratio:1;border-radius:12px;background:var(--borda) center/cover no-repeat}
-.cel figcaption{font-size:13px;color:var(--suave);margin-top:6px;line-height:1.35}
+.cel .ph{aspect-ratio:1;border-radius:var(--raio-ctrl);background:var(--borda) center/cover no-repeat;
+box-shadow:var(--sombra);transition:var(--transicao)}
+.cel:hover .ph{transform:translateY(-2px)}
+.cel figcaption{font-size:13px;color:var(--suave);margin-top:8px;line-height:1.4}
+/* A foto é o assunto da própria página: sem moldura, sobre fundo neutro
+   que não some com margem clara de foto antiga. */
+.foto{margin:16px 0 0;background:#1C1A17;border-radius:var(--raio);padding:10px;text-align:center}
+.foto img{border-radius:8px;max-height:70vh;width:auto}
+.foto figcaption{color:#CFC8BC;font-size:14px;padding:10px 6px 4px;text-align:left}
 img{max-width:100%;height:auto}
 .tl{border-left:2px solid var(--borda);padding-left:18px;margin:14px 0}
 .tl-ano{font-family:Newsreader,Lora,Georgia,serif;font-size:17px;margin:20px 0 6px;color:var(--tema)}
 .tl-item{display:flex;gap:10px;padding:8px 0;align-items:flex-start}
 .tl-ico{flex:0 0 auto}
-@media(prefers-color-scheme:dark){.papel{background:#3A2E22;color:#D9BC93}
-.erro{background:#3A1E1E;border-color:#5C2C2C;color:#F0B4B4}.ok{background:#1C3324;border-color:#2C5C3A;color:#A8DDB8}}
+/* No escuro o tema CLAREIA para ter contraste com o fundo — e aí texto
+   branco sobre ele fica ilegível (medido: 2,04:1, contra os 4,5 exigidos).
+   O botão preenchido passa a ter tinta escura. */
+@media(prefers-color-scheme:dark){.papel{background:var(--tema-suave);color:var(--tema)}
+.btn{color:#12201A}.btn.emocional{color:#2A140C}
+.erro{background:#3A1E1E;border-color:#5C2C2C;color:#F0B4B4}.ok{background:#1C3324;border-color:#2C5C3A;color:#A8DDB8}
+.foto{background:#0F0E0C}}
 `;
 
 const CORPO_APP = `
@@ -789,15 +823,17 @@ async function criarPessoa() {
 
 async function dossie(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id);
-  if (deuErro(r)) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('pessoa.titulo'), falhou(r, 'pessoas()')));
   const p = r.pessoa, f = r.familia;
   const fatos = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/fatos');
   const contribs = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/contribuicoes');
   const bio = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/biografia');
   r.biografia_html = '';
   if (bio.biografia) {
+    // A biografia é o texto mais longo do dossiê: entra em leitura
+    // editorial, não em cartão de lista.
     r.biografia_html = '<h3 style="margin-top:26px">' + esc(t('ia.biografia_titulo')) + '</h3>' +
-      '<div class="card"><p style="margin:0;white-space:pre-wrap">' + esc(bio.biografia.corpo) + '</p></div>' +
+      '<div class="editorial"><p style="white-space:pre-wrap">' + esc(bio.biografia.corpo) + '</p></div>' +
       '<p class="sub">' + esc(t('ia.selo_ia')) + ' · ' +
       esc(t('ia.gerada_em', { data: new Date(bio.biografia.created_at).toLocaleDateString(IDIOMA),
         n: (bio.biografia.fontes || []).length })) +
@@ -843,29 +879,33 @@ async function dossie(id) {
     + (x.meio ? ' <span class="papel">' + esc(t('familia.meio_irmao')) + '</span>' : '')
     + desfazer(x);
 
+  // FICHA EDITORIAL: o nome grande, a vida em uma linha, e as ações logo
+  // abaixo — em vez de quatro botões primários disputando a atenção com o
+  // nome da pessoa.
   $(topo() + '<p class="sub"><a href="#" onclick="pessoas();return false">← ' + esc(t('pessoa.titulo')) + '</a></p>' +
-    '<h2>' + esc(p.nome_exibicao) + '</h2>' +
-    '<p class="sub">' + esc(anos(p)) + (p.local_nascimento ? ' · ' + esc(p.local_nascimento) : '') +
-      (p.profissao ? ' · ' + esc(p.profissao) : '') + '</p>' +
-    '<p><button class="btn mini" onclick="verArvore(\\'' + p.id + '\\')">' + esc(t('familia.ver_arvore')) + '</button> ' +
+    '<h2 style="font-size:clamp(26px,5vw,34px);margin:0 0 6px">' + esc(p.nome_exibicao) + '</h2>' +
+    '<p class="sub" style="margin:0">' + esc(anos(p)) + (p.local_nascimento ? ' · ' + esc(p.local_nascimento) : '') +
+      (p.profissao ? ' · ' + esc(p.profissao) : '') +
+      (p.eh_menor ? ' · <span class="papel">' + esc(t('pessoa.eh_menor')) + '</span>' : '') + '</p>' +
+    '<div class="acoes"><button class="btn mini sec" onclick="verArvore(\\'' + p.id + '\\')">' + esc(t('familia.ver_arvore')) + '</button>' +
       '<button class="btn mini sec" onclick="telaGrafo(\\'person\\',\\'' + p.id + '\\')">' +
       esc(t('grafo.titulo')) + '</button>' +
       // EDITAR E ARQUIVAR existiam na API e não existiam na TELA: quem
       // errava um nome ou esquecia de marcar o filho como menor não tinha
       // caminho nenhum. Recurso sem porta é recurso que não existe.
       (pode('pessoas.editar')
-        ? ' <button class="btn mini sec" onclick="editarPessoa(\\'' + p.id + '\\')">' +
+        ? '<button class="btn mini sec" onclick="editarPessoa(\\'' + p.id + '\\')">' +
           esc(t('acao.editar')) + '</button>' : '') +
       (pode('excluir')
-        ? ' <button class="btn mini sec" onclick="arquivarPessoa(\\'' + p.id + '\\')">' +
+        ? '<button class="btn mini sec" onclick="arquivarPessoa(\\'' + p.id + '\\')">' +
           esc(t('pessoa.arquivar')) + '</button>' : '') +
-      '</p>' +
+      '</div>' +
     grupo(t('familia.pais'), f.pais, selo) +
     grupo(t('familia.unioes'), f.unioes, selo) +
     grupo(t('familia.irmaos'), f.irmaos, selo) +
     grupo(t('familia.filhos'), f.filhos, selo) +
     (f.pais.length + f.filhos.length + f.unioes.length + f.irmaos.length === 0
-      ? '<p class="sub">' + esc(t('familia.sem_parentes')) + '</p>' : '') +
+      ? vazio(t('familia.sem_parentes'), t('familia.sem_parentes_p')) : '') +
 
     // Biografia viva (§18): versão atual + selo de IA + quantas
     // contribuições chegaram desde que ela foi escrita.
@@ -875,7 +915,7 @@ async function dossie(id) {
     '<h3 style="margin-top:26px">' + esc(t('fato.titulo')) + '</h3>' +
     ((fatos.fatos || []).length
       ? (fatos.fatos || []).map(x => linhaFato(x, p.id)).join('')
-      : '<p class="sub">' + esc(t('fato.sem_fatos')) + '</p>') +
+      : vazio(t('fato.sem_fatos'), t('fato.sem_fatos_p'))) +
     (pode('claims.criar') ? formFato(p.id) : '') +
 
     // O que a família contou — cru, com autor e data, nunca apagado (§15).
@@ -889,7 +929,7 @@ async function dossie(id) {
               esc(new Date(c.created_at).toLocaleDateString(IDIOMA)) +
               (c.status === 'revisada' ? ' · ' + esc(t('contribuicao.revisada')) : '') + '</p>' +
           '</div>').join('')
-      : '<p class="sub">' + esc(t('contribuicao.sem_contribuicoes')) + '</p>') +
+      : vazio(t('contribuicao.sem_contribuicoes'), t('contribuicao.sem_contribuicoes_p'))) +
     (pode('contribuir')
       ? '<label>' + esc(t('contribuicao.nova')) + '</label>' +
         '<input id="cc" placeholder="' + esc(t('contribuicao.placeholder')) + '">' +
@@ -1341,11 +1381,15 @@ async function verMidia(id) {
   if (deuErro(r)) return $(colecao(t('midia.titulo'), falhou(r, 'memorias()')));
   const m = r.midia;
   const u = await urlDe((r.derivados.find(d => d.papel === 'THUMB') || {}).id || id);
+  // A FOTO É O ASSUNTO da página: ela vem primeiro, sem moldura pesada, e
+  // a legenda embaixo como numa página de álbum. Fundo escuro atrás porque
+  // foto antiga costuma ter margem clara e some no papel.
   $(topo() + '<p class="sub"><a href="#" onclick="memorias();return false">← ' + esc(t('midia.titulo')) + '</a></p>' +
-    (u ? '<img src="' + u + '" alt="' + esc(m.titulo || '') + '" style="max-width:100%;border-radius:14px">' : '') +
-    '<h2>' + esc(m.titulo || t('midia.titulo')) + '</h2>' +
-    '<p class="sub">' + [m.capturada_valor, m.local_texto].filter(Boolean).map(esc).join(' · ') + '</p>' +
-    (m.descricao ? '<p>' + esc(m.descricao) + '</p>' : '') +
+    (u ? '<figure class="foto"><img src="' + u + '" alt="' + esc(m.titulo || t('midia.sem_legenda')) + '">' +
+      (m.descricao ? '<figcaption>' + esc(m.descricao) + '</figcaption>' : '') + '</figure>' : '') +
+    '<h2 style="margin:18px 0 4px">' + esc(m.titulo || t('midia.titulo')) + '</h2>' +
+    '<p class="sub" style="margin:0 0 6px">' +
+      [m.capturada_valor, m.local_texto].filter(Boolean).map(esc).join(' · ') + '</p>' +
     '<h3>' + esc(t('midia.quem_aparece')) + '</h3>' +
     ((r.pessoas || []).length
       ? r.pessoas.map(x => '<div class="linha"><span>' +
@@ -1357,7 +1401,7 @@ async function verMidia(id) {
           '</span>' + (x.origem === 'IA_SUGERIDA' && pode('contribuir')
             ? '<button class="btn mini" onclick="confirmarPessoa(\\'' + x.id + '\\',\\'' + id + '\\')">' +
               esc(t('midia.confirmar')) + '</button>' : '') + '</div>').join('')
-      : '<p class="sub">' + esc(t('midia.sem_pessoas')) + '</p>') +
+      : vazio(t('midia.sem_pessoas'), t('midia.sem_pessoas_p'))) +
     ((r.contribuicoes || []).length
       ? '<h3>' + esc(t('contribuicao.titulo')) + '</h3>' + r.contribuicoes.map(c =>
           '<div class="card" style="padding:16px"><p style="margin:0 0 6px">' + esc(c.corpo) + '</p>' +
