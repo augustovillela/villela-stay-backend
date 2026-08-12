@@ -247,6 +247,20 @@ a{text-decoration-thickness:1px;text-underline-offset:3px;color:var(--tema)}
 border-bottom:1px solid var(--borda);flex-wrap:wrap}
 .papel{font-size:12px;font-weight:700;letter-spacing:.04em;background:var(--tema-suave);
 color:var(--tema);border-radius:999px;padding:3px 10px}
+/* Estados de tela. O esqueleto pulsa devagar de propósito: em rede lenta
+   ele fica visível por segundos, e piscar rápido cansa. */
+.esqueleto i{display:block;height:15px;border-radius:8px;background:var(--borda);
+margin:14px 0;animation:pulso 1.6s ease-in-out infinite}
+.esqueleto i:nth-child(2){width:78%}.esqueleto i:nth-child(3){width:56%}
+@keyframes pulso{0%,100%{opacity:.35}50%{opacity:.75}}
+.vazio{border:1px dashed var(--borda);border-radius:var(--raio);background:var(--card);
+padding:26px 22px;margin:18px 0;text-align:center}
+.vazio p{margin:0 0 8px}
+.vazio p:last-child{margin-bottom:0}
+/* Leitura: medida de linha curta e corpo maior. Dossiê, história e memória
+   são para LER, não para operar. */
+.editorial{max-width:64ch}
+.editorial p{font-size:17px;line-height:1.78}
 /* Cartões de entrada da tela inicial da família. */
 .portas{display:grid;grid-template-columns:repeat(auto-fit,minmax(216px,1fr));gap:14px;margin:18px 0}
 .porta{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio);
@@ -304,6 +318,55 @@ async function api(metodo, caminho, corpo) {
 }
 const aviso = (m, tipo) => '<div class="' + (tipo||'erro') + '">' + esc(m || t('erro.generico')) + '</div>';
 const papelNome = (p) => t('papel.' + p) || p;
+
+// ------------------------------------------------- os estados de uma tela
+// Toda lista termina de cinco jeitos, e o app só desenhava dois: "tem
+// conteúdo" e "não tem". ERRO virava lista vazia — foi assim que o Augusto
+// achou que tinha perdido sete parentes (11/08/2026) — e SEM PERMISSÃO
+// virava vazio também, o que faz o parente novo concluir que a família não
+// guardou nada. Aqui cada um tem forma própria e diz o que fazer.
+// FALHA DE REDE NÃO É 400. O api() devolve status ZERO quando o fetch nem
+// completa (celular sem sinal, wi-fi caindo, servidor fora do ar), e testar
+// só por 400 ou mais deixa esse caso passar direto para "lista vazia" — que
+// é exatamente o defeito que estes estados existem para matar. Nas telas de
+// GRAVAR era pior: sem rede, o app dizia que tinha guardado. Pego no
+// navegador, derrubando a rede de propósito; nenhum teste de Node veria.
+const deuErro = (r) => !r || r.status === 0 || r.status >= 400;
+
+const carregando = () => '<div class="esqueleto" aria-busy="true"><i></i><i></i><i></i></div>';
+
+const vazio = (titulo, convite, acao) =>
+  '<div class="vazio"><p><strong>' + esc(titulo) + '</strong></p>' +
+  (convite ? '<p class="sub">' + esc(convite) + '</p>' : '') + (acao || '') + '</div>';
+
+const semPermissao = () => vazio(t('estado.sem_permissao'), t('estado.sem_permissao_p'));
+
+// Status zero é o que o api() devolve quando a rede caiu: mensagem de
+// conexão, não de defeito — e sempre com caminho de volta.
+const falhou = (r, retomar) => {
+  const semRede = (r && r.status === 0) || !navigator.onLine;
+  return '<div class="erro"><p style="margin:0 0 6px"><strong>' +
+    esc(t(semRede ? 'estado.offline' : 'estado.falhou')) + '</strong></p>' +
+  '<p style="margin:0 0 10px;font-size:14px">' +
+    esc(semRede ? t('estado.offline_p') : ((r && r.erro) || t('estado.falhou_p'))) + '</p>' +
+  (retomar ? '<button class="btn mini claro" onclick="' + retomar + '">' +
+    esc(t('estado.tentar')) + '</button>' : '') + '</div>';
+};
+
+// Esqueleto imediato enquanto a resposta não chega. Em rede de celular
+// lenta, a alternativa é a tela anterior congelada — que parece travada.
+const aguarde = (titulo) => $(topo() + voltarFamilia() + '<h2>' + esc(titulo) + '</h2>' + carregando());
+
+// TEMPLATE DE COLEÇÃO: voltar + título + intro + ação + corpo. É o mesmo
+// esqueleto de Pessoas, Memórias, Histórias, Tradições, Objetos e
+// Entrevistas — antes cada uma montava o seu à mão, e nenhuma igual.
+const colecao = (titulo, corpo, opc) => {
+  const o = opc || {};
+  return topo() + (o.voltar || voltarFamilia()) +
+    '<h2>' + esc(titulo) + '</h2>' +
+    (o.intro ? '<p class="sub">' + esc(o.intro) + '</p>' : '') +
+    (o.filtros || '') + (o.acao || '') + corpo;
+};
 
 // A AJUDA MORA NO TOPO, EM TODA TELA. Ela existia e não tinha link em
 // lugar nenhum: só chegava quem soubesse o endereço de cor — que é o
@@ -427,7 +490,7 @@ async function cadastrar() {
   const r = await api('POST', '/conta/cadastrar', {
     nome: document.getElementById('n').value, email: document.getElementById('e').value,
     senha: document.getElementById('s').value, aceito_termos: document.getElementById('t').checked });
-  if (r.status >= 400) return telaCadastrar(r.erro);
+  if (deuErro(r)) return telaCadastrar(r.erro);
   $(topo() + '<h2>' + esc(t('conta.confirme_titulo')) + '</h2>' + aviso(r.mensagem, 'ok') +
     '<p class="sub">' + esc(t('conta.confirme_p')) + '</p>');
 }
@@ -467,7 +530,7 @@ async function telaConta(msg, tipo) {
 
 async function mfaIniciar() {
   const r = await api('POST', '/conta/mfa/iniciar');
-  if (r.status >= 400) return telaConta(r.erro, 'erro');
+  if (deuErro(r)) return telaConta(r.erro, 'erro');
   // O QR vem desenhado do servidor; se não vier, o segredo digitado à mão
   // resolve — nenhum dos dois caminhos depende de rede de fora.
   $(topo() + '<p class="sub"><a href="#" onclick="telaConta();return false">← ' + esc(t('conta.titulo')) + '</a></p>' +
@@ -483,7 +546,7 @@ async function mfaIniciar() {
 
 async function mfaConfirmar() {
   const r = await api('POST', '/conta/mfa/confirmar', { codigo: val('mfc') });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   // Os códigos de backup aparecem UMA vez: o banco guarda só o hash. Por
   // isso esta tela não tem "voltar" — tem "guardei".
   $(topo() + '<h2>' + esc(t('conta.mfa_backup_titulo')) + '</h2>' +
@@ -499,7 +562,7 @@ async function mfaDesligar() {
   const senha = prompt(t('conta.mfa_desligar_p'));
   if (!senha) return;
   const r = await api('POST', '/conta/mfa/desativar', { senha });
-  if (r.status >= 400) return telaConta(r.erro, 'erro');
+  if (deuErro(r)) return telaConta(r.erro, 'erro');
   telaConta(t('conta.mfa_desligada'));
 }
 
@@ -529,7 +592,7 @@ async function inicio() {
 }
 async function criarFamilia() {
   const r = await api('POST', '/familias', { nome: document.getElementById('nf').value });
-  if (r.status >= 400) { $(document.getElementById('app').innerHTML + aviso(r.erro)); return; }
+  if (deuErro(r)) { $(document.getElementById('app').innerHTML + aviso(r.erro)); return; }
   abrir(r.familia.id);
 }
 
@@ -593,13 +656,13 @@ async function convidar() {
       '<div class="erro">' + esc(t('mfa.exigido_convite')) +
       ' <a href="#" onclick="telaConta();return false">' + esc(t('acao.ativar_agora')) + '</a></div>');
   }
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   abrir(FAM.id);
 }
 async function remover(userId) {
   if (!confirm(t('familia.confirmar_remocao'))) return;
   const r = await api('DELETE', '/familias/' + FAM.id + '/membros/' + userId);
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   abrir(FAM.id);
 }
 // "Adicionar" existia espalhado: cada formulário morava no fim da lista do
@@ -624,12 +687,16 @@ function telaAdicionar() {
 }
 
 async function auditoria() {
+  if (!pode('auditoria.ver')) return $(colecao(t('familia.historico_titulo'), semPermissao()));
+  aguarde(t('familia.historico_titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/auditoria');
-  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
-    '<h2>' + esc(t('familia.historico_titulo')) + '</h2>' +
-    (r.eventos || []).map(e => '<div class="linha"><span>' + esc(t('auditoria.' + e.acao) || e.acao) +
-      '<br><span class="sub">' + esc(e.ator_nome || t('auditoria.sistema')) + ' · ' +
-      dataHora(e.created_at) + '</span></span></div>').join(''));
+  if (deuErro(r)) return $(colecao(t('familia.historico_titulo'), falhou(r, 'auditoria()')));
+  $(colecao(t('familia.historico_titulo'),
+    (r.eventos || []).length
+      ? (r.eventos || []).map(e => '<div class="linha"><span>' + esc(t('auditoria.' + e.acao) || e.acao) +
+          '<br><span class="sub">' + esc(e.ator_nome || t('auditoria.sistema')) + ' · ' +
+          dataHora(e.created_at) + '</span></span></div>').join('')
+      : vazio(t('familia.historico_vazio'), t('familia.historico_vazio_p'))));
 }
 
 // ------------------------------------------------------------------ pessoas
@@ -642,7 +709,7 @@ const anos = (p) => {
 // COALESCE, então campo vazio significaria "apaga" se fosse enviado.
 async function editarPessoa(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id);
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   const p = r.pessoa;
   const corpo = {};
   const nome = prompt(t('pessoa.nome'), p.nome_exibicao || '');
@@ -656,7 +723,7 @@ async function editarPessoa(id) {
 
   if (!Object.keys(corpo).length) return;
   const s = await api('PATCH', '/familias/' + FAM.id + '/pessoas/' + id, corpo);
-  if (s.status >= 400) return alert(s.erro);
+  if (deuErro(s)) return alert(s.erro);
   alert(corpo.eh_menor ? t('pessoa.menor_ligado') : t('pessoa.salvo'));
   dossie(id);
 }
@@ -666,23 +733,23 @@ async function editarPessoa(id) {
 // saber que não está apagando o que a pessoa contribuiu.
 async function arquivarPessoa(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id);
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   if (!confirm(t('pessoa.arquivar_confirmar', { nome: r.pessoa.nome_exibicao }))) return;
   const d = await api('DELETE', '/familias/' + FAM.id + '/pessoas/' + id);
-  if (d.status >= 400) return alert(d.erro);
+  if (deuErro(d)) return alert(d.erro);
   alert(t('pessoa.arquivada'));
   pessoas();
 }
 
 async function pessoas() {
+  aguarde(t('pessoa.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/pessoas');
   // ERRO NÃO PODE PARECER LISTA VAZIA. Sem esta checagem, uma falha na
   // requisição caía no mesmo texto de "nenhuma pessoa ainda" — e quem
   // tinha sete parentes cadastrados via a família em branco e concluía
   // que o acervo havia sido apagado. Aconteceu (11/08/2026).
-  if (r.status >= 400) return $(topo() + aviso(r.erro || r.status));
-  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
-    '<h2>' + esc(t('pessoa.titulo')) + '</h2>' +
+  if (deuErro(r)) return $(colecao(t('pessoa.titulo'), falhou(r, 'pessoas()')));
+  $(colecao(t('pessoa.titulo'),
     (r.ocultas ? '<p class="sub">' + esc(t('pessoa.ocultas', { n: r.ocultas })) + '</p>' : '') +
     ((r.pessoas || []).length
       ? (r.pessoas || []).map(p =>
@@ -690,9 +757,15 @@ async function pessoas() {
           esc(p.nome_exibicao) + '</strong></a> <span class="sub">' + esc(anos(p)) + '</span>' +
           (p.eh_menor ? ' <span class="papel">' + esc(t('pessoa.eh_menor')) + '</span>' : '') + '</span>' +
           '<button class="btn mini claro" onclick="verArvore(\\'' + p.id + '\\')">' + esc(t('familia.arvore')) + '</button></div>').join('')
-      : '<p class="sub">' + esc(t('pessoa.sem_pessoas')) + '</p>') +
-    (pode('pessoas.criar') ? formPessoa() : ''));
+      : vazio(t('pessoa.sem_pessoas'), t('pessoa.sem_pessoas_p'))) +
+    (pode('pessoas.criar') ? formPessoa() : semPermissaoParaCriar())));
 }
+
+// Quem não pode acrescentar precisa saber POR QUE o formulário não está
+// ali — senão a tela parece quebrada, e a pessoa acha que o sistema é que
+// não deixa ninguém contribuir.
+const semPermissaoParaCriar = () =>
+  '<p class="sub" style="margin-top:22px">' + esc(t('estado.so_leitura')) + '</p>';
 
 const formPessoa = () =>
   '<h3 style="margin-top:28px">' + esc(t('pessoa.nova')) + '</h3>' +
@@ -710,13 +783,13 @@ async function criarPessoa() {
     nascimento: document.getElementById('pnasc').value,
     falecimento: document.getElementById('pfal').value,
     eh_menor: document.getElementById('pmenor').checked });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   pessoas();
 }
 
 async function dossie(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const p = r.pessoa, f = r.familia;
   const fatos = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/fatos');
   const contribs = await api('GET', '/familias/' + FAM.id + '/pessoas/' + id + '/contribuicoes');
@@ -868,22 +941,23 @@ async function ligar(id, confirmando) {
     if (confirm(r.erro + '\\n\\n' + t('parentesco.confirmo'))) return ligar(id, true);
     return;
   }
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   dossie(id);
 }
 
 async function desligar(relId, pessoaId) {
   if (!confirm(t('familia.confirmar_desligar'))) return;
   const r = await api('DELETE', '/familias/' + FAM.id + '/parentescos/' + relId);
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   dossie(pessoaId);
 }
 
 /** A fila do historiador: onde a família ainda não concorda (§17). */
 async function divergencias() {
+  aguarde(t('familia.divergencias'));
   const r = await api('GET', '/familias/' + FAM.id + '/divergencias');
-  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
-    '<h2>' + esc(t('familia.divergencias')) + '</h2>' +
+  if (deuErro(r)) return $(colecao(t('familia.divergencias'), falhou(r, 'divergencias()')));
+  $(colecao(t('familia.divergencias'),
     ((r.divergencias || []).length
       ? (r.divergencias || []).map(d =>
           '<div class="linha"><span><strong>' + esc(d.nome_exibicao) + '</strong> · ' +
@@ -891,7 +965,10 @@ async function divergencias() {
           esc((d.valores || []).join('  \u00d7  ')) + '</span></span>' +
           '<button class="btn mini claro" onclick="deOndeVeio(\\'' + d.sujeito_id + '\\',\\'' + d.predicado +
           '\\')">' + esc(t('fato.comparar')) + '</button></div>').join('')
-      : '<p class="sub">\u2014</p>'));
+      // "\u2014" era tudo o que aparecia quando n\u00e3o havia diverg\u00eancia: quem abria
+      // n\u00e3o sabia se estava tudo certo ou se a tela tinha falhado.
+      : vazio(t('familia.divergencias_vazio'), t('familia.divergencias_vazio_p'))),
+    { intro: t('familia.divergencias_intro') }));
 }
 
 // ------------------------------------------------------------ proveniência
@@ -915,7 +992,7 @@ function linhaFato(f, pessoaId) {
  */
 async function deOndeVeio(pessoaId, predicado) {
   const r = await api('GET', '/familias/' + FAM.id + '/pessoas/' + pessoaId + '/fatos/' + predicado);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const podeResolver = pode('claims.resolver');
   $(topo() + '<p class="sub"><a href="#" onclick="dossie(\\'' + pessoaId + '\\');return false">← ' +
       esc(t('acao.voltar_familias')) + '</a></p>' +
@@ -953,13 +1030,13 @@ async function aceitarVersao(claimId, pessoaId, predicado) {
   if (!motivo) return;
   const r = await api('POST', '/familias/' + FAM.id + '/pessoas/' + pessoaId +
     '/fatos/' + predicado + '/resolver', { claim_id: claimId, motivo });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   deOndeVeio(pessoaId, predicado);
 }
 
 async function confirmarIA(claimId, pessoaId, predicado) {
   const r = await api('POST', '/familias/' + FAM.id + '/fatos/' + claimId + '/confirmar', {});
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   deOndeVeio(pessoaId, predicado);
 }
 
@@ -983,14 +1060,14 @@ async function guardarFato(pessoaId) {
     fonte_tipo: document.getElementById('ft').value,
     fonte_titulo: document.getElementById('fq').value,
     fonte_referencia: document.getElementById('fr').value });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   dossie(pessoaId);
 }
 
 async function contar(pessoaId) {
   const corpo = document.getElementById('cc').value;
   const r = await api('POST', '/familias/' + FAM.id + '/pessoas/' + pessoaId + '/contribuicoes', { corpo });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   dossie(pessoaId);
 }
 
@@ -998,7 +1075,7 @@ async function contar(pessoaId) {
 async function verArvore(id, modo, geracoes) {
   MODO = modo || MODO || 'ambos'; GERACOES = geracoes || GERACOES || 4;
   const r = await api('GET', '/familias/' + FAM.id + '/arvore/' + id + '?modo=' + MODO + '&geracoes=' + GERACOES);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const botao = (m, rot) => '<button class="btn mini ' + (MODO === m ? '' : 'claro') +
     '" onclick="verArvore(\\'' + id + '\\',\\'' + m + '\\')">' + esc(rot) + '</button> ';
   $(topo() + '<p class="sub"><a href="#" onclick="dossie(\\'' + id + '\\');return false">← ' +
@@ -1121,7 +1198,7 @@ async function enviarArquivos(lista) {
       const sha = await hashDoArquivo(file);
       const prep = await api('POST', '/familias/' + FAM.id + '/midias/preparar', {
         nome: file.name, bytes: file.size, sha256: sha, mime: file.type, tipo: tipoDoArquivo(file) });
-      if (prep.status >= 400) { painel.innerHTML = aviso(prep.erro); continue; }
+      if (deuErro(prep)) { painel.innerHTML = aviso(prep.erro); continue; }
       if (prep.duplicado) { duplicadas++; enviados++; continue; }
 
       // Este PUT sai do NAVEGADOR direto para o bucket — é o único trecho
@@ -1159,7 +1236,7 @@ async function enviarArquivos(lista) {
 async function arquivarMidia(id) {
   if (!confirm(t('midia.arquivar_confirmar'))) return;
   const r = await api('DELETE', '/familias/' + FAM.id + '/midias/' + id);
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   alert(r.aviso || t('midia.arquivada'));
   memorias();
 }
@@ -1169,7 +1246,7 @@ async function arquivarMidia(id) {
 // não é lixeira, é destruição.
 async function telaLixeira() {
   const r = await api('GET', '/familias/' + FAM.id + '/lixeira');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const grupos = [['pessoa', r.pessoas], ['midia', r.midias], ['historia', r.historias],
     ['tradicao', r.tradicoes], ['reliquia', r.reliquias]];
   const vazia = grupos.every(g => !(g[1] || []).length);
@@ -1190,14 +1267,14 @@ async function telaLixeira() {
 
 async function restaurarItem(tipo, id) {
   const r = await api('POST', '/familias/' + FAM.id + '/lixeira/' + tipo + '/' + id + '/restaurar');
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   telaLixeira();
 }
 
 async function urlDe(id) {
   if (MIDIA_CACHE[id]) return MIDIA_CACHE[id];
   const r = await api('GET', '/familias/' + FAM.id + '/midias/' + id + '/url');
-  if (r.status >= 400) return null;
+  if (deuErro(r)) return null;
   MIDIA_CACHE[id] = r.url;
   return r.url;
 }
@@ -1209,10 +1286,11 @@ async function urlDe(id) {
 let ACERVO = { itens: [], cursor: null };
 
 async function memorias(cursor) {
+  if (!cursor) aguarde(t('midia.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/midias?limite=60' +
     (cursor ? '&antes_de=' + encodeURIComponent(cursor) : ''));
   // ERRO NÃO PODE PARECER GALERIA VAZIA (a mesma lição da lista de pessoas).
-  if (r.status >= 400) return $(topo() + aviso(r.erro || r.status));
+  if (deuErro(r)) return $(colecao(t('midia.titulo'), falhou(r, 'memorias()')));
   ACERVO = {
     itens: (cursor ? ACERVO.itens : []).concat(r.midias || []),
     cursor: r.proximo_cursor || null,
@@ -1247,7 +1325,10 @@ async function memorias(cursor) {
           ? '<p><button class="btn claro" onclick="memorias(\\'' + ACERVO.cursor + '\\')">' +
             esc(t('midia.carregar_mais')) + '</button></p>'
           : '<p class="sub">' + esc(t('midia.fim_da_lista')) + '</p>')
-      : '<p class="sub">' + esc(t('midia.sem_midias')) + '</p>'));
+      : vazio(t('midia.sem_midias'), t('midia.sem_midias_p'),
+          pode('contribuir')
+            ? '<p><button class="btn emocional" onclick="document.getElementById(\\'arqs\\').click()">' +
+              esc(t('midia.enviar')) + '</button></p>' : '')));
   // As imagens carregam DEPOIS da grade: a tela aparece na hora e cada
   // miniatura pede a própria URL assinada (§119).
   for (const cel of document.querySelectorAll('.cel')) {
@@ -1257,7 +1338,7 @@ async function memorias(cursor) {
 
 async function verMidia(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/midias/' + id);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('midia.titulo'), falhou(r, 'memorias()')));
   const m = r.midia;
   const u = await urlDe((r.derivados.find(d => d.papel === 'THUMB') || {}).id || id);
   $(topo() + '<p class="sub"><a href="#" onclick="memorias();return false">← ' + esc(t('midia.titulo')) + '</a></p>' +
@@ -1326,7 +1407,7 @@ async function guardarHistoria(id) {
     titulo: document.getElementById('ht').value, ocasiao: document.getElementById('hc').value,
     aconteceu: document.getElementById('ha').value,
     porque_importa: document.getElementById('hp').value });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verMidia(id);
 }
 
@@ -1335,8 +1416,9 @@ async function guardarHistoria(id) {
 // não entende que nada acontece sozinho ou não indica ninguém (e o acervo
 // fica sem sucessão) ou indica com medo do que não vai acontecer.
 async function telaGuardioes() {
+  aguarde(t('guardiao.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/guardioes');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('guardiao.titulo'), falhou(r, 'telaGuardioes()')));
   const dt = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('guardiao.titulo')) + '</h2>' +
@@ -1380,25 +1462,25 @@ async function novoGuardiao() {
   const email = prompt(t('guardiao.email'));
   if (!email) return;
   const r = await api('POST', '/familias/' + FAM.id + '/guardioes', { email });
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   telaGuardioes();
 }
 
 async function aceitarGuardiao(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/guardioes/' + id + '/aceitar');
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   telaGuardioes();
 }
 
 async function removerGuardiao(id) {
   const r = await api('DELETE', '/familias/' + FAM.id + '/guardioes/' + id);
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   telaGuardioes();
 }
 
 async function derrubarSucessao(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/sucessoes/' + id + '/contestar', {});
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   telaGuardioes();
 }
 
@@ -1406,8 +1488,9 @@ async function derrubarSucessao(id) {
 // A tela diz o que a cápsula É antes de existir a primeira: quem não
 // entende que ninguém pode ler antes da hora escreve a carta errada.
 async function telaCapsulas() {
+  aguarde(t('capsula.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/capsulas');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('capsula.titulo'), falhou(r, 'telaCapsulas()')));
   const dt = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('capsula.titulo')) + '</h2>' +
@@ -1446,13 +1529,13 @@ async function novaCapsula() {
   if (!data) return;
   const r = await api('POST', '/familias/' + FAM.id + '/capsulas',
     { titulo, corpo, condicao: 'DATA', abre_em: data, recado: '' });
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   telaCapsulas();
 }
 
 async function abrirCapsula(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/capsulas/' + id + '/abrir');
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   $(topo() + '<p><a href="#" onclick="telaCapsulas();return false">&larr; ' +
     esc(t('capsula.titulo')) + '</a></p>' +
     '<h2>' + esc(r.titulo) + '</h2>' +
@@ -1463,7 +1546,7 @@ async function abrirCapsula(id) {
 async function cancelarCapsula(id) {
   if (!confirm(t('capsula.confirmar_cancelar'))) return;
   const r = await api('DELETE', '/familias/' + FAM.id + '/capsulas/' + id);
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   telaCapsulas();
 }
 
@@ -1471,8 +1554,9 @@ async function cancelarCapsula(id) {
 // O livro é um RECORTE do acervo, feito por alguém. A tela diz isso antes
 // de o primeiro PDF existir — senão a família conclui que o livro é "tudo".
 async function telaLivros() {
+  aguarde(t('livro.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/livros');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('livro.titulo'), falhou(r, 'telaLivros()')));
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('livro.titulo')) + '</h2>' +
     '<p class="sub">' + esc(t('livro.intro')) + '</p>' +
@@ -1527,14 +1611,14 @@ async function pedirRetrospectiva() {
 
 async function novoLivro(corpo) {
   const r = await api('POST', '/familias/' + FAM.id + '/livros', corpo);
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   alert(t('livro.na_fila'));
   telaLivros();
 }
 
 async function baixarLivro(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/livros/' + id);
-  if (r.status >= 400 || !r.url) return alert(t('livro.gerando'));
+  if (deuErro(r) || !r.url) return alert(t('livro.gerando'));
   window.open(r.url, '_blank', 'noopener');
 }
 
@@ -1546,7 +1630,7 @@ const noRotulo = (n) => (t('grafo.t_' + n.tipo) || n.tipo) + ' · ' + (n.rotulo 
 
 async function telaGrafo(tipo, id) {
   const r = await api('GET', '/familias/' + FAM.id + '/grafo/' + tipo + '/' + id);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('grafo.titulo')) + '</h2>' +
     '<p class="sub">' + esc(r.centro.rotulo) + ' — ' + esc(t('grafo.intro')) + '</p>' +
@@ -1581,7 +1665,7 @@ async function acharCaminho(tipo, id) {
   const r = await api('GET', '/familias/' + FAM.id + '/caminho?de=' +
     encodeURIComponent(tipo + ':' + id) + '&para=' + encodeURIComponent(alvo));
   const cx = document.getElementById('gf_res');
-  if (r.status >= 400) { cx.innerHTML = aviso(r.erro); return; }
+  if (deuErro(r)) { cx.innerHTML = aviso(r.erro); return; }
   if (!r.passos || !r.passos.length) {
     cx.innerHTML = '<p class="sub">' + esc(t('grafo.sem_caminho', { n: 4 })) + '</p>';
     return;
@@ -1601,7 +1685,7 @@ async function acharCaminho(tipo, id) {
 // relação entre os pontos — de onde vieram, para onde foram.
 async function telaMapa() {
   const r = await api('GET', '/familias/' + FAM.id + '/mapa');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const comCoord = (r.lugares || []).filter(l => l.lat != null && l.lon != null);
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('mapa.titulo')) + '</h2>' +
@@ -1690,8 +1774,9 @@ function desenhoMapa(lugares, migracoes) {
 let ENTREVISTA = null, GRAVADOR = null, GRAVANDO = null, CRONO = null;
 
 async function telaEntrevistas() {
+  aguarde(t('entrevista.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/entrevistas');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('entrevista.titulo'), falhou(r, 'telaEntrevistas()')));
   const roteiros = r.roteiros || [];
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('entrevista.titulo')) + '</h2>' +
@@ -1727,7 +1812,7 @@ async function telaEntrevistas() {
 async function criarEntrevista() {
   const r = await api('POST', '/familias/' + FAM.id + '/entrevistas',
     { pessoa: val('ev_p'), roteiro: val('ev_r') });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verEntrevista(r.entrevista.id);
 }
 
@@ -1736,7 +1821,7 @@ const rotuloPergunta = (x) => x.pergunta_chave === 'livre'
 
 async function verEntrevista(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/entrevistas/' + id);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const e = r.entrevista;
   ENTREVISTA = { id, transcricao: r.transcricao_disponivel };
   const feitas = e.respostas.filter(x => x.status === 'transcrita' || x.status === 'gravada').length;
@@ -1875,7 +1960,7 @@ async function enviarAudioDaResposta(respostaId, blob, nome, duracao) {
       .map(b => b.toString(16).padStart(2, '0')).join('');
     const prep = await api('POST', '/familias/' + FAM.id + '/midias/preparar', {
       nome, bytes: blob.size, sha256: sha, mime: blob.type || 'audio/webm', tipo: 'AUDIO' });
-    if (prep.status >= 400) return alert(prep.erro);
+    if (deuErro(prep)) return alert(prep.erro);
     if (!prep.duplicado) {
       const put = await fetch(prep.url_envio, { method: 'PUT', body: blob,
         headers: { 'Content-Type': blob.type || 'application/octet-stream' } });
@@ -1884,7 +1969,7 @@ async function enviarAudioDaResposta(respostaId, blob, nome, duracao) {
     }
     const r = await api('POST', '/familias/' + FAM.id + '/respostas/' + respostaId + '/audio',
       { midia: prep.media_id, duracao_seg: duracao });
-    if (r.status >= 400) return alert(r.erro);
+    if (deuErro(r)) return alert(r.erro);
     verEntrevista(ENTREVISTA.id);
   } catch (_) { alert(t('erro.generico')); }
 }
@@ -1892,7 +1977,7 @@ async function enviarAudioDaResposta(respostaId, blob, nome, duracao) {
 async function salvarResposta(respostaId) {
   const r = await api('PATCH', '/familias/' + FAM.id + '/respostas/' + respostaId,
     { transcricao: val('tx_' + respostaId) });
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   verEntrevista(ENTREVISTA.id);
 }
 
@@ -1905,7 +1990,7 @@ async function transcreverResposta(respostaId, confirmando) {
   const r = await api('POST', '/familias/' + FAM.id + '/respostas/' + respostaId + '/transcrever',
     confirmando ? { confirmar: true } : {});
   if (r.status === 503) return alert(t('ia.indisponivel'));
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   if (r.cotacao && !confirmando) {
     if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return transcreverResposta(respostaId, true);
     return;
@@ -1917,7 +2002,7 @@ async function entidadesDaResposta(respostaId, confirmando) {
   const r = await api('POST', '/familias/' + FAM.id + '/respostas/' + respostaId + '/entidades',
     confirmando ? { confirmar: true } : {});
   if (r.status === 503) return alert(t('ia.indisponivel'));
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   if (r.cotacao && !confirmando) {
     if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return entidadesDaResposta(respostaId, true);
     return;
@@ -1929,13 +2014,13 @@ async function entidadesDaResposta(respostaId, confirmando) {
 async function novaPergunta(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/entrevistas/' + id + '/perguntas',
     { texto: val('ev_nova') });
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   verEntrevista(id);
 }
 
 async function concluirEntrevista(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/entrevistas/' + id + '/concluir');
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   verEntrevista(id);
 }
 
@@ -1947,7 +2032,7 @@ async function carregarEstudio(mediaId) {
   const alvo = document.getElementById('estudio');
   if (!alvo) return;
   const r = await api('GET', '/familias/' + FAM.id + '/midias/' + mediaId + '/estudio');
-  if (r.status >= 400) return;
+  if (deuErro(r)) return;
   const caps = r.capacidades || {};
   const ligadas = Object.keys(caps).filter(k => caps[k].disponivel);
   const naFila = (r.jobs || []).filter(j => j.status === 'pendente' || j.status === 'executando');
@@ -1984,7 +2069,7 @@ async function estudioFazer(mediaId, operacao, confirmando) {
   const r = await api('POST', '/familias/' + FAM.id + '/midias/' + mediaId + '/estudio',
     confirmando ? { operacao, confirmar: true } : { operacao });
   if (r.status === 503) return alert(t('estudio.indisponivel'));
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   if (r.cotacao && !confirmando) {
     if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return estudioFazer(mediaId, operacao, true);
     return;
@@ -2035,7 +2120,7 @@ async function lerDocumento(mediaId, confirmando) {
   const r = await api('POST', '/familias/' + FAM.id + '/midias/' + mediaId + '/analisar',
     confirmando ? { confirmar: true } : {});
   if (r.status === 503) return alert(t('ia.indisponivel'));
-  if (r.status >= 400) { carregarAchados(mediaId); return alert(r.erro); }
+  if (deuErro(r)) { carregarAchados(mediaId); return alert(r.erro); }
   if (r.cotacao && !confirmando) {
     if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return lerDocumento(mediaId, true);
     return;
@@ -2053,13 +2138,13 @@ async function aceitarAchado(achadoId, alvo, id) {
   if (!sel || !sel.value) return alert(t('documento.escolha_pessoa'));
   const r = await api('POST', '/familias/' + FAM.id + '/achados/' + achadoId + '/aceitar',
     { pessoa: sel.value });
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   recarregarAchados(alvo, id);
 }
 
 async function descartarAchado(achadoId, alvo, id) {
   const r = await api('POST', '/familias/' + FAM.id + '/achados/' + achadoId + '/descartar');
-  if (r.status >= 400) return alert(r.erro);
+  if (deuErro(r)) return alert(r.erro);
   recarregarAchados(alvo, id);
 }
 
@@ -2075,7 +2160,7 @@ async function opcoesDePessoa() {
 
 async function confirmarPessoa(idId, mediaId) {
   const r = await api('POST', '/familias/' + FAM.id + '/identificacoes/' + idId + '/confirmar');
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verMidia(mediaId);
 }
 
@@ -2096,7 +2181,8 @@ async function telaBusca(offset) {
     : (x.ref_tipo === 'tradition' || x.ref_tipo === 'recipe') ? "verTradicao('" + x.ref_id + "')"
     : x.ref_tipo === 'heirloom' ? "verReliquia('" + x.ref_id + "')"
     : "verMidia('" + x.ref_id + "')";
-  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+  if (deuErro(r)) return $(colecao(t('busca.titulo'), falhou(r, 'telaBusca()')));
+  $(topo() + voltarFamilia() +
     '<h2>' + esc(t('busca.titulo')) + '</h2>' +
     '<label>' + esc(t('busca.campo')) + '</label>' +
     '<input id="bq" value="' + esc(q) + '" placeholder="' + esc(t('busca.placeholder')) + '"' +
@@ -2116,7 +2202,7 @@ async function telaBusca(offset) {
             (x.trecho ? '<p class="sub" style="margin:0">' +
               esc(x.trecho).replace(/«/g, '<mark>').replace(/»/g, '</mark>') + '</p>' : '') +
             '</div>').join('')
-        : '<p class="sub">' + esc(t('busca.nada')) + '</p>')) +
+        : vazio(t('busca.nada'), t('busca.nada_p')))) +
     // Por SENTIDO: o que a palavra exata não trouxe. Vem separado e
     // rotulado — misturar com o resultado exato esconderia de onde veio.
     ((r.por_sentido || []).length
@@ -2143,7 +2229,7 @@ async function estadoSemantica() {
   const alvo = document.getElementById('sem_estado');
   if (!alvo) return;
   const r = await api('GET', '/familias/' + FAM.id + '/semantica');
-  if (r.status >= 400 || !r.disponivel || !r.pendentes) return;
+  if (deuErro(r) || !r.disponivel || !r.pendentes) return;
   alvo.innerHTML = '<p class="sub" style="margin-top:18px">' +
     esc(t('busca.a_indexar', { n: r.pendentes })) +
     (pode('editar') ? ' <button class="btn mini sec" onclick="indexarSentido()">' +
@@ -2154,15 +2240,16 @@ async function indexarSentido() {
   const alvo = document.getElementById('sem_estado');
   if (alvo) alvo.innerHTML = '<p class="sub">' + esc(t('busca.indexando')) + '</p>';
   const r = await api('POST', '/familias/' + FAM.id + '/semantica/indexar', { limite: 25 });
-  if (r.status >= 400) { if (alvo) alvo.innerHTML = aviso(r.erro); return; }
+  if (deuErro(r)) { if (alvo) alvo.innerHTML = aviso(r.erro); return; }
   estadoSemantica();
 }
 
 // --------------------------------------------------------------- histórias
 async function telaHistorias() {
+  aguarde(t('historia_mod.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/historias');
-  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
-    '<h2>' + esc(t('historia_mod.titulo')) + '</h2>' +
+  if (deuErro(r)) return $(colecao(t('historia_mod.titulo'), falhou(r, 'telaHistorias()')));
+  $(colecao(t('historia_mod.titulo'),
     ((r.historias || []).length
       ? r.historias.map(x =>
           '<div class="card" style="padding:18px;cursor:pointer" onclick="verHistoria(\\'' + x.id + '\\')">' +
@@ -2172,8 +2259,8 @@ async function telaHistorias() {
           (x.contada_por ? '<p class="sub" style="margin:6px 0 0">' + esc(t('historia_mod.por')) + ' ' +
             esc(x.contada_por) + '</p>' : '') +
           '</div>').join('')
-      : '<p class="sub">' + esc(t('historia_mod.sem_historias')) + '</p>') +
-    (pode('contribuir') ? formHistoriaNova() : ''));
+      : vazio(t('historia_mod.sem_historias'), t('historia_mod.sem_historias_p'))) +
+    (pode('contribuir') ? formHistoriaNova() : '')));
   if (pode('contribuir')) preencherSelPessoas('hn_quem');
 }
 
@@ -2208,20 +2295,24 @@ async function criarHistoria() {
     contada_por: quem || null, pessoas: quem ? [quem] : [],
     ocorrido: document.getElementById('hn_q').value,
     local: document.getElementById('hn_l').value });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verHistoria(r.historia.id);
 }
 
 async function verHistoria(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/historias/' + id);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('historia_mod.titulo'), falhou(r, 'telaHistorias()')));
   const h = r.historia;
+  // DETALHE EDITORIAL: história é para LER. Medida de linha curta, corpo
+  // maior e o texto sem moldura de cartão — o cartão serve para item de
+  // lista, não para a leitura em si.
   $(topo() + '<p class="sub"><a href="#" onclick="telaHistorias();return false">← ' +
       esc(t('historia_mod.titulo')) + '</a></p>' +
+    '<div class="editorial">' +
     '<h2>' + esc(h.titulo) + '</h2>' +
     '<p class="sub">' + [h.contada_por ? t('historia_mod.por') + ' ' + h.contada_por : '',
       h.ocorrido_valor, h.local_texto].filter(Boolean).map(esc).join(' · ') + '</p>' +
-    '<div class="card"><p style="margin:0;white-space:pre-wrap">' + esc(r.corpo) + '</p></div>' +
+    '<p style="white-space:pre-wrap">' + esc(r.corpo) + '</p>' +
     ((r.mencoes || []).filter(m => m.person_id).length
       ? '<p class="sub">' + esc(t('historia_mod.menciona')) + ': ' +
         r.mencoes.filter(m => m.person_id).map(m =>
@@ -2244,13 +2335,13 @@ async function verHistoria(id) {
           (v.nota_edicao ? ' · ' + esc(v.nota_edicao) : '') + '</p>' +
           '<p style="margin:0;white-space:pre-wrap">' + esc(v.corpo) + '</p></div>').join('') +
         '<p class="sub">' + esc(t('historia_mod.preservadas')) + '</p>'
-      : ''));
+      : '') + '</div>');
 }
 
 async function editarHistoria(id) {
   const r = await api('PATCH', '/familias/' + FAM.id + '/historias/' + id,
     { corpo: document.getElementById('he_c').value });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verHistoria(id);
 }
 
@@ -2261,7 +2352,7 @@ async function editarHistoria(id) {
 async function telaTimeline(pessoaId) {
   const r = await api('GET', '/familias/' + FAM.id + '/timeline' +
     (pessoaId ? '?pessoa=' + pessoaId : ''));
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const abrirDe = (i) => i.ref_tipo === 'person' ? "dossie(\\'" + i.ref_id + "\\')"
     : i.ref_tipo === 'story' ? "verHistoria(\\'" + i.ref_id + "\\')"
     : i.ref_tipo === 'media' ? "verMidia(\\'" + i.ref_id + "\\')"
@@ -2321,7 +2412,7 @@ async function criarEvento() {
     local: document.getElementById('ev_l').value,
     descricao: document.getElementById('ev_d').value,
     participantes: [...sel.selectedOptions].map(o => o.value) });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   telaTimeline();
 }
 
@@ -2332,7 +2423,7 @@ async function gerarBiografia(pessoaId, confirmando) {
   const r = await api('POST', '/familias/' + FAM.id + '/pessoas/' + pessoaId + '/biografia',
     confirmando ? { confirmar: true } : {});
   if (r.status === 503) return alert(t('ia.indisponivel'));
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   if (r.cotacao && !confirmando) {
     if (confirm(t('ia.custara', { n: r.cotacao.creditos }))) return gerarBiografia(pessoaId, true);
     return;
@@ -2346,7 +2437,7 @@ async function telaPerguntar(confirmando, pergunta) {
   if (q && confirmando) {
     const r = await api('POST', '/familias/' + FAM.id + '/perguntar', { pergunta: q, confirmar: true });
     if (r.status === 503) corpo = aviso(t('ia.indisponivel'));
-    else if (r.status >= 400) corpo = aviso(r.erro);
+    else if (deuErro(r)) corpo = aviso(r.erro);
     else {
       corpo = '<div class="card"><p style="margin:0;white-space:pre-wrap">' + esc(r.resposta) + '</p></div>' +
         '<p class="sub">' + esc(t('ia.selo_ia')) + '</p>' +
@@ -2387,14 +2478,12 @@ const area = (id, valor, dica) => '<textarea id="' + id + '" rows="4" style="wid
 
 async function telaTradicoes(cat) {
   if (cat !== undefined) CAT = cat;
+  aguarde(t('tradicao.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/tradicoes' + (CAT ? '?categoria=' + CAT : ''));
+  if (deuErro(r)) return $(colecao(t('tradicao.titulo'), falhou(r, 'telaTradicoes()')));
   const filtro = (c, rot) => '<button class="btn mini ' + (CAT === c ? '' : 'claro') +
     '" onclick="telaTradicoes(\\'' + c + '\\')">' + esc(rot) + '</button> ';
-  $(topo() + voltarFamilia() +
-    '<h2>' + esc(t('tradicao.titulo')) + '</h2>' +
-    '<p class="sub">' + esc(t('tradicao.intro')) + '</p>' +
-    '<p>' + filtro('', t('tradicao.filtro_todas')) +
-      CATS.map(c => filtro(c, t('tradicao.cat_' + c))).join('') + '</p>' +
+  $(colecao(t('tradicao.titulo'),
     ((r.tradicoes || []).length
       ? r.tradicoes.map(x =>
           '<div class="card" style="padding:18px;cursor:pointer" onclick="verTradicao(\\'' + x.id + '\\')">' +
@@ -2406,8 +2495,11 @@ async function telaTradicoes(cat) {
           (x.aprendizes ? '<p class="sub" style="margin:4px 0 0">' +
             esc(t('tradicao.aprendizes_n', { n: x.aprendizes })) + '</p>' : '') +
           '</div>').join('')
-      : '<p class="sub">' + esc(t('tradicao.sem_tradicoes')) + '</p>') +
-    (pode('contribuir') ? formTradicao() : ''));
+      : vazio(t('tradicao.sem_tradicoes'), t('tradicao.sem_tradicoes_p'))) +
+    (pode('contribuir') ? formTradicao() : ''),
+    { intro: t('tradicao.intro'),
+      filtros: '<p>' + filtro('', t('tradicao.filtro_todas')) +
+        CATS.map(c => filtro(c, t('tradicao.cat_' + c))).join('') + '</p>' }));
   if (pode('contribuir')) { preencherSelPessoas('tr_quem'); alternarReceita(); }
 }
 
@@ -2449,13 +2541,13 @@ async function criarTradicao() {
     desde: val('tr_d'), local: val('tr_l'),
     ingredientes: val('tr_i'), preparo: val('tr_p'),
     rendimento: val('tr_r'), tempo: val('tr_tp') });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verTradicao(r.tradicao.id);
 }
 
 async function verTradicao(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/tradicoes/' + id);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const x = r.tradicao, rec = x.receita;
   $(topo() + '<p class="sub"><a href="#" onclick="telaTradicoes();return false">← ' +
       esc(t('tradicao.titulo')) + '</a></p>' +
@@ -2513,14 +2605,14 @@ async function verTradicao(id) {
 async function registrarAprendiz(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/tradicoes/' + id + '/aprendizes',
     { person_id: val('ap_quem'), quando: val('ap_q') });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verTradicao(id);
 }
 
 async function registrarTransmissao(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/tradicoes/' + id + '/transmissoes',
     { de_person_id: val('tm_de'), para_person_id: val('tm_para'), quando: val('tm_q') });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verTradicao(id);
 }
 
@@ -2528,10 +2620,10 @@ async function registrarTransmissao(id) {
 // O valor do objeto está em por quantas mãos passou. A tela mostra a
 // corrente inteira, e transferir NUNCA apaga o dono anterior.
 async function telaReliquias() {
+  aguarde(t('reliquia.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/reliquias');
-  $(topo() + voltarFamilia() +
-    '<h2>' + esc(t('reliquia.titulo')) + '</h2>' +
-    '<p class="sub">' + esc(t('reliquia.intro')) + '</p>' +
+  if (deuErro(r)) return $(colecao(t('reliquia.titulo'), falhou(r, 'telaReliquias()')));
+  $(colecao(t('reliquia.titulo'),
     ((r.reliquias || []).length
       ? r.reliquias.map(x =>
           '<div class="card" style="padding:18px;cursor:pointer" onclick="verReliquia(\\'' + x.id + '\\')">' +
@@ -2542,7 +2634,7 @@ async function telaReliquias() {
               : esc(t('reliquia.sem_custodia'))) +
             (x.maos ? ' · ' + esc(t('reliquia.maos', { n: x.maos })) : '') + '</p>' +
           '</div>').join('')
-      : '<p class="sub">' + esc(t('reliquia.sem_reliquias')) + '</p>') +
+      : vazio(t('reliquia.sem_reliquias'), t('reliquia.sem_reliquias_p'))) +
     (pode('contribuir')
       ? '<h3 style="margin-top:28px">' + esc(t('reliquia.nova')) + '</h3>' +
         '<label>' + esc(t('reliquia.nome')) + '</label><input id="rl_n">' +
@@ -2554,7 +2646,8 @@ async function telaReliquias() {
         '<label>' + esc(t('reliquia.desde')) + '</label>' +
           '<input id="rl_s" placeholder="' + esc(t('pessoa.ajuda_data')) + '">' +
         '<p><button class="btn" onclick="criarReliquia()">' + esc(t('reliquia.guardar')) + '</button></p>'
-      : ''));
+      : ''),
+    { intro: t('reliquia.intro') }));
   if (pode('contribuir')) preencherSelPessoas('rl_q');
 }
 
@@ -2562,13 +2655,13 @@ async function criarReliquia() {
   const r = await api('POST', '/familias/' + FAM.id + '/reliquias', {
     nome: val('rl_n'), descricao: val('rl_d'), origem: val('rl_o'), local: val('rl_l'),
     com_quem: val('rl_q') || null, desde: val('rl_s') });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verReliquia(r.reliquia.id);
 }
 
 async function verReliquia(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/reliquias/' + id);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(topo() + aviso(r.erro));
   const h = r.reliquia;
   const fontes = ['RELATO','DOCUMENTO','REGISTRO_OFICIAL','MIDIA','PUBLICACAO'];
   $(topo() + '<p class="sub"><a href="#" onclick="telaReliquias();return false">← ' +
@@ -2608,14 +2701,15 @@ async function transferirReliquia(id) {
   const r = await api('POST', '/familias/' + FAM.id + '/reliquias/' + id + '/custodia', {
     person_id: val('cu_q'), de: val('cu_d'), nota: val('cu_n'),
     fonte_tipo: val('cu_ft'), fonte_titulo: val('cu_fq') });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   verReliquia(id);
 }
 
 // --------------------------------------- historiador e missões (Fase 2.2)
 async function telaHistoriador() {
+  aguarde(t('historiador.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/historiador');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('historiador.titulo'), falhou(r, 'telaHistoriador()')));
   const tipos = Object.keys(r.por_tipo || {});
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('historiador.titulo')) + '</h2>' +
@@ -2639,7 +2733,7 @@ async function telaMissoes(status, sincronizar) {
   }
   const st = status || 'aberta';
   const r = await api('GET', '/familias/' + FAM.id + '/missoes?status=' + st);
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('missao.titulo'), falhou(r)));
   const c = r.contagem || {};
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('missao.titulo')) + '</h2>' +
@@ -2671,7 +2765,7 @@ async function responderMissao(id) {
   const corpo = prompt(t('missao.resposta_placeholder'));
   if (!corpo) return;
   const r = await api('POST', '/familias/' + FAM.id + '/missoes/' + id + '/responder', { corpo });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   telaMissoes();
 }
 
@@ -2679,7 +2773,7 @@ async function dispensarMissao(id) {
   const motivo = prompt(t('missao.motivo'));
   if (motivo === null) return;
   const r = await api('POST', '/familias/' + FAM.id + '/missoes/' + id + '/dispensar', { motivo });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   telaMissoes();
 }
 
@@ -2692,8 +2786,9 @@ function barra(score) {
 }
 
 async function telaIndice() {
+  aguarde(t('indice.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/indice-memoria');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('indice.titulo'), falhou(r, 'telaIndice()')));
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('indice.titulo')) + '</h2>' +
     '<p class="sub">' + esc(t('indice.intro')) + '</p>' +
@@ -2713,8 +2808,9 @@ async function telaIndice() {
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString(IDIOMA, { minimumFractionDigits: 2 });
 
 async function telaPlanos() {
+  aguarde(t('plano.titulo'));
   const r = await api('GET', '/familias/' + FAM.id + '/planos');
-  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('plano.titulo'), falhou(r, 'telaPlanos()')));
   const podeComprar = r.pagamento === 'mercadopago' && pode('creditos.comprar');
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('plano.titulo')) + '</h2>' +
@@ -2776,13 +2872,13 @@ async function telaPlanos() {
  */
 async function comprarCreditos(pacote) {
   const r = await api('POST', '/familias/' + FAM.id + '/pedidos', { pacote });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   irPagar(r.pagamento);
 }
 
 async function assinar(plano, ciclo) {
   const r = await api('POST', '/familias/' + FAM.id + '/assinatura', { plano, ciclo });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   irPagar(r.pagamento);
 }
 
@@ -2797,13 +2893,14 @@ function irPagar(pag) {
 async function cancelarAssinatura() {
   if (!confirm(t('plano.cancelar_confirma'))) return;
   const r = await api('DELETE', '/familias/' + FAM.id + '/assinatura');
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   telaPlanos();
 }
 
 // ------------------------------------------------------ avisos (§87)
 async function telaAvisos() {
   const r = await api('GET', '/familias/' + FAM.id + '/notificacoes');
+  if (deuErro(r)) return $(colecao(t('notificacao.titulo'), falhou(r, 'telaAvisos()')));
   const atual = (r.preferencias || []).find(p => p.evento === 'missoes');
   const freq = atual ? atual.frequencia : 'nunca';
   $(topo() + voltarFamilia() +
@@ -2819,7 +2916,7 @@ async function telaAvisos() {
 async function salvarAviso() {
   const r = await api('PATCH', '/familias/' + FAM.id + '/notificacoes',
     { evento: 'missoes', frequencia: val('nt_f') });
-  if (r.status >= 400) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
   $(document.getElementById('app').innerHTML + aviso(t('notificacao.salvo'), 'ok'));
 }
 
@@ -2835,7 +2932,7 @@ async function rotaDoHash() {
   }
   if (qual === 'convite' && token) {
     const c = await api('GET', '/convites/' + encodeURIComponent(token));
-    if (c.status >= 400) { history.replaceState(null, '', '/origena/app'); return telaEntrar(c.erro); }
+    if (deuErro(c)) { history.replaceState(null, '', '/origena/app'); return telaEntrar(c.erro); }
     const eu = await api('GET', '/conta/eu');
     if (eu.status !== 200) return telaEntrar(t('conta.entre_com_email', { email: c.convite.email }));
     const a = await api('POST', '/convites/' + encodeURIComponent(token) + '/aceitar');
@@ -2911,7 +3008,7 @@ async function abrirEndereco(caminho) {
   EU = eu.usuario;
   if (fam && fam !== '-' && (!FAM || FAM.id !== fam)) {
     const f = await api('GET', '/familias/' + fam);
-    if (f.status >= 400) return inicio();
+    if (deuErro(f)) return inicio();
     FAM = f.familia; PERM = f.permissoes || [];
   }
   const args = partes.slice(2).map(decodeURIComponent).slice(0, alvo[1]);

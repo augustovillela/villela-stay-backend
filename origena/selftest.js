@@ -544,6 +544,40 @@ async function principal() {
     assert.strictEqual(suspeitos.length, 0, 'mensagem em português no código: ' + suspeitos.join(', '));
   });
 
+  await teste('toda tela que busca dados TRATA a falha (erro não pode virar lista vazia)', async () => {
+    // A pior falha da Origena até hoje foi esta: a lista de pessoas mostrava
+    // erro com o mesmo texto de "nenhuma pessoa ainda", e o Augusto concluiu
+    // que tinha perdido sete parentes (11/08/2026). Corrigir uma tela não
+    // resolve — em 12/08 ainda havia SETE telas sem tratamento nenhum.
+    const fs = require('fs');
+    const src = fs.readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    const linhas = src.split('\n');
+    const funcoes = [];
+    let atual = null, corpo = [];
+    for (const l of linhas) {
+      const m = l.match(/^(?:async )?function ([A-Za-z0-9_]+)\s*\(/);
+      if (m) { if (atual) funcoes.push([atual, corpo.join('\n')]); atual = m[1]; corpo = []; }
+      else if (atual) corpo.push(l);
+    }
+    if (atual) funcoes.push([atual, corpo.join('\n')]);
+
+    const semTratamento = funcoes
+      .filter(([, c]) => /await api\('GET'/.test(c) && /\$\(/.test(c))
+      .filter(([, c]) => !/deuErro\(|status !== 200/.test(c))
+      .map(([n]) => n);
+    assert.strictEqual(semTratamento.length, 0,
+      'tela que busca dados sem tratar falha: ' + semTratamento.join(', '));
+
+    // E o tratamento tem que cobrir REDE CAÍDA, não só resposta de erro:
+    // o api() devolve status ZERO quando o fetch nem completa, e testar por
+    // `>= 400` sozinho manda o caso offline direto para "lista vazia".
+    const soPor400 = funcoes
+      .filter(([, c]) => /await api\(/.test(c) && /status >= 400/.test(c) && !/deuErro\(/.test(c))
+      .map(([n]) => n);
+    assert.strictEqual(soPor400.length, 0,
+      'tela que ignora rede caída (use deuErro): ' + soPor400.join(', '));
+  });
+
   await teste('a NAVEGAÇÃO só oferece tela que existe, com texto que existe', async () => {
     // O menu, a barra do celular, as portas da tela da família e a tela
     // "Adicionar" são TABELAS de literais. Chave errada ali não quebra
