@@ -158,8 +158,12 @@ function registrarRotasConta(app, { jwtSecret }) {
     // nada de fora e o segredo não passeia por serviço de terceiro. Se o
     // desenho falhar, a tela ainda mostra o segredo para digitar à mão —
     // por isso o catch silencioso.
+    // `margin: 4` é a ZONA DE SILÊNCIO que a norma do QR exige (4 módulos
+    // brancos em volta). Com margem 1 o código lê no computador e falha na
+    // câmera do celular — foi o que aconteceu em 12/08/2026. Tamanho maior
+    // pelo mesmo motivo: quem escaneia está a meio metro da tela.
     let qr_svg = '';
-    try { qr_svg = await require('qrcode').toString(otpauth, { type: 'svg', margin: 1, width: 220 }); } catch (_) {}
+    try { qr_svg = await require('qrcode').toString(otpauth, { type: 'svg', margin: 4, width: 280 }); } catch (_) {}
     res.json({ segredo, otpauth, qr_svg });
   }));
 

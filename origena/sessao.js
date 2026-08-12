@@ -73,7 +73,12 @@ const mfaDisponivel = () => !!chaveCofre();
 
 // ------------------------------------------------------------------ TOTP
 const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-const gerarSegredoTOTP = () => Array.from(crypto.randomBytes(20)).map((b) => B32[b % 32]).join('');
+// 32 caracteres = 160 bits = 20 bytes REDONDOS. Era 20 caracteres (96
+// bits): base32 válido, mas abaixo do recomendado pela RFC 4226 e fora do
+// que os aplicativos esperam ver — há leitor que recusa segredo cujo
+// tamanho não é múltiplo de 8 caracteres. (`% 32` não enviesa: 256 é
+// divisível por 32.)
+const gerarSegredoTOTP = () => Array.from(crypto.randomBytes(32)).map((b) => B32[b % 32]).join('');
 
 function base32Decode(s) {
   let bits = '';
@@ -110,8 +115,16 @@ function conferirTOTP(segredoB32, codigo, agoraMs = Date.now()) {
   return false;
 }
 
+/**
+ * URI do padrão Key URI Format (otpauth://). O rótulo é
+ * `Emissor:conta` com **dois-pontos LITERAL** — o encode do rótulo
+ * inteiro (`Origena%3A...`) é aceito pela especificação e recusado na
+ * prática por leitor de celular. Só a conta vai codificada.
+ * `algorithm` explícito porque nem todo aplicativo assume SHA1.
+ */
 const urlOtpauth = (email, segredoB32) =>
-  `otpauth://totp/${encodeURIComponent('Origena:' + email)}?secret=${segredoB32}&issuer=Origena&digits=6&period=30`;
+  `otpauth://totp/Origena:${encodeURIComponent(email)}`
+  + `?secret=${segredoB32}&issuer=Origena&algorithm=SHA1&digits=6&period=30`;
 
 const gerarCodigosBackup = () =>
   Array.from({ length: 8 }, () => crypto.randomBytes(5).toString('hex').toUpperCase().match(/.{1,5}/g).join('-'));

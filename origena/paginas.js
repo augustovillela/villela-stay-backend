@@ -439,8 +439,14 @@ async function abrir(id) {
         ' · <a href="#" onclick="divergencias();return false">' + esc(t('familia.ver_divergencias')) + '</a>' +
         ' · <a href="#" onclick="telaAvisos();return false">' + esc(t('familia.notificacoes')) + '</a></p>'
       : '') +
-    (pode('auditoria.ver') ? '<p><a href="#" onclick="auditoria();return false">' +
-      esc(t('familia.ver_historico')) + '</a></p>' : ''));
+    ((pode('auditoria.ver') || pode('restaurar'))
+      ? '<p>' +
+        (pode('auditoria.ver') ? '<a href="#" onclick="auditoria();return false">' +
+          esc(t('familia.ver_historico')) + '</a>' : '') +
+        (pode('auditoria.ver') && pode('restaurar') ? ' · ' : '') +
+        (pode('restaurar') ? '<a href="#" onclick="telaLixeira();return false">' +
+          esc(t('lixeira.titulo')) + '</a>' : '') +
+        '</p>' : ''));
 }
 async function convidar() {
   const r = await api('POST', '/familias/' + FAM.id + '/convites',
@@ -989,6 +995,47 @@ async function enviarArquivos(lista) {
   memorias();
 }
 
+// Arquivar é SOFT DELETE: sai da galeria e da busca, continua na Lixeira
+// e pode voltar inteira. O texto do aviso diz isso — quem clica precisa
+// saber o que está fazendo, e que dá para desfazer.
+async function arquivarMidia(id) {
+  if (!confirm(t('midia.arquivar_confirmar'))) return;
+  const r = await api('DELETE', '/familias/' + FAM.id + '/midias/' + id);
+  if (r.status >= 400) return alert(r.erro);
+  alert(r.aviso || t('midia.arquivada'));
+  memorias();
+}
+
+// ---------------------------------------------------------------- lixeira
+// Contraparte obrigatória do arquivar: excluir sem lugar para onde voltar
+// não é lixeira, é destruição.
+async function telaLixeira() {
+  const r = await api('GET', '/familias/' + FAM.id + '/lixeira');
+  if (r.status >= 400) return $(topo() + aviso(r.erro));
+  const grupos = [['pessoa', r.pessoas], ['midia', r.midias], ['historia', r.historias],
+    ['tradicao', r.tradicoes], ['reliquia', r.reliquias]];
+  const vazia = grupos.every(g => !(g[1] || []).length);
+  $(topo() + voltarFamilia() +
+    '<h2>' + esc(t('lixeira.titulo')) + '</h2>' +
+    '<p class="sub">' + esc(t('lixeira.intro')) + '</p>' +
+    (vazia ? '<p class="sub">' + esc(t('lixeira.vazia')) + '</p>'
+      : grupos.filter(g => (g[1] || []).length).map(g =>
+        '<h3 style="margin-top:24px">' + esc(t('lixeira.tipo_' + g[0])) + '</h3>' +
+        g[1].map(x => '<div class="linha"><span>' + esc(x.titulo || t('lixeira.sem_titulo')) +
+          '<br><span class="sub">' + esc(t('lixeira.arquivado_em', { data: new Date(x.deleted_at).toLocaleDateString(IDIOMA) })) +
+          '</span></span>' +
+          (pode('restaurar')
+            ? '<button class="btn mini" onclick="restaurarItem(\\'' + g[0] + '\\',\\'' + x.id + '\\')">' +
+              esc(t('lixeira.restaurar')) + '</button>' : '') +
+          '</div>').join('')).join('')));
+}
+
+async function restaurarItem(tipo, id) {
+  const r = await api('POST', '/familias/' + FAM.id + '/lixeira/' + tipo + '/' + id + '/restaurar');
+  if (r.status >= 400) return alert(r.erro);
+  telaLixeira();
+}
+
 async function urlDe(id) {
   if (MIDIA_CACHE[id]) return MIDIA_CACHE[id];
   const r = await api('GET', '/familias/' + FAM.id + '/midias/' + id + '/url');
@@ -1009,6 +1056,8 @@ async function memorias(cursor) {
         esc(t('midia.enviar')) + '</button></p><p class="sub" id="envio"></p>' : '<p id="envio"></p>') +
     ((r.midias || []).some(m => m.status === 'aguardando')
       ? '<p class="sub">' + esc(t('midia.aguardando_explica')) + '</p>' : '') +
+    (pode('restaurar')
+      ? '<p class="sub"><a href="#" onclick="telaLixeira();return false">' + esc(t('lixeira.titulo')) + '</a></p>' : '') +
     ((r.midias || []).length
       ? '<div class="grade">' + r.midias.map(m =>
           '<figure class="cel" onclick="verMidia(\\'' + m.id + '\\')" data-thumb="' + (m.thumb_id || m.id) + '">' +
@@ -1065,7 +1114,12 @@ async function verMidia(id) {
     (m.tipo === 'DOCUMENTO' ? '<div id="doc-ia"></div>' : '') +
     (m.tipo === 'FOTO' && !m.derivado_de ? '<div id="estudio"></div>' : '') +
     (pode('contribuir') ? formHistoria(id) : '') +
-    '<p class="sub" style="margin-top:20px">' + esc(t('midia.original_intacto')) + '</p>');
+    '<p class="sub" style="margin-top:20px">' + esc(t('midia.original_intacto')) + '</p>' +
+    // ARREPENDIMENTO É CASO NORMAL. A rota de arquivar existe desde o 1.0
+    // e nenhuma tela chamava: quem mandou a foto errada não tinha saída.
+    (pode('excluir')
+      ? '<p><button class="btn claro" onclick="arquivarMidia(\\'' + id + '\\')">' +
+        esc(t('midia.arquivar')) + '</button></p>' : ''));
   if (m.tipo === 'DOCUMENTO') carregarAchados(id);
   if (m.tipo === 'FOTO' && !m.derivado_de) carregarEstudio(id);
   if (pode('contribuir')) {
@@ -2640,7 +2694,7 @@ const TELAS = {
   inicio: ['inicio', 0], conta: ['telaConta', 0], familia: ['abrir', 1],
   pessoas: ['pessoas', 0], pessoa: ['dossie', 1], arvore: ['verArvore', 1],
   divergencias: ['divergencias', 0], auditoria: ['auditoria', 0],
-  memorias: ['memorias', 0], midia: ['verMidia', 1],
+  memorias: ['memorias', 0], midia: ['verMidia', 1], lixeira: ['telaLixeira', 0],
   historias: ['telaHistorias', 0], historia: ['verHistoria', 1],
   tradicoes: ['telaTradicoes', 1], tradicao: ['verTradicao', 1],
   reliquias: ['telaReliquias', 0], reliquia: ['verReliquia', 1],

@@ -744,6 +744,43 @@ async function principal() {
     assert(!sess.conferirTOTP(seg, '000000', agora) || true);   // pode colidir; não é asserção forte
   });
 
+  await teste('o TOTP bate com os vetores oficiais da RFC 6238', async () => {
+    // O teste de cima confere a nossa implementação CONTRA ELA MESMA: passa
+    // igual se o algoritmo inteiro estiver errado. Estes são os valores
+    // publicados na RFC (apêndice B), segredo ASCII '12345678901234567890'.
+    const b32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+    for (const [t, esperado] of [[59, '287082'], [1111111109, '081804'],
+      [1111111111, '050471'], [1234567890, '005924'], [2000000000, '279037']]) {
+      assert.strictEqual(sess.codigoTOTP(b32, 0, t * 1000), esperado, `RFC 6238 em t=${t}`);
+    }
+  });
+
+  await teste('o segredo do MFA fecha em BYTES INTEIROS (senão o app do celular diverge)', async () => {
+    // O defeito de 12/08/2026: 20 caracteres base32 = 100 bits = 12 bytes e
+    // MEIO. Nós descartávamos os 4 bits sobrando; o Google Authenticator os
+    // completa com zero. Chaves diferentes, código que nunca bate — nem
+    // lendo o QR, nem digitando. Base32 sem sobra elimina a ambiguidade.
+    for (let i = 0; i < 5; i++) {
+      const seg = sess.gerarSegredoTOTP();
+      assert.strictEqual((seg.length * 5) % 8, 0,
+        `segredo de ${seg.length} caracteres deixa ${(seg.length * 5) % 8} bits soltos`);
+      assert(seg.length * 5 >= 128, 'segredo abaixo dos 128 bits recomendados pela RFC 4226');
+      assert(/^[A-Z2-7]+$/.test(seg), 'segredo fora do alfabeto base32');
+    }
+  });
+
+  await teste('o otpauth:// sai no formato que o aplicativo do celular espera', async () => {
+    const uri = sess.urlOtpauth('alguem@teste.origena', 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ');
+    // Dois-pontos LITERAL entre emissor e conta: rótulo inteiro codificado
+    // (`Origena%3A...`) é aceito pela especificação e recusado por leitor
+    // de celular.
+    assert(uri.startsWith('otpauth://totp/Origena:'), 'rótulo fora do padrão Emissor:conta: ' + uri);
+    assert(!uri.includes('%3A'), 'os dois-pontos do rótulo vieram codificados');
+    for (const p of ['issuer=Origena', 'algorithm=SHA1', 'digits=6', 'period=30']) {
+      assert(uri.includes(p), 'faltou ' + p);
+    }
+  });
+
   await teste('ativar MFA e entrar exigindo o código', async () => {
     const ini = await req('POST', '/origena/api/v1/conta/mfa/iniciar', { sessao: ana });
     assert.strictEqual(ini.status, 200, ini.texto);
@@ -2908,6 +2945,36 @@ async function principal() {
     assert.strictEqual(dossieR.status, 200, 'não voltou');
     assert(dossieR.json.familia.pais.some((x) => x.id === P.pedro.id),
       'voltou SEM o parentesco — seria outra pessoa');
+  });
+
+  await teste('foto de que a pessoa se arrependeu: sai da galeria e VOLTA da lixeira', async () => {
+    // Arrependimento é caso normal — mandou a foto errada, quer tirar. A
+    // rota existia desde o 1.0 e nenhuma tela chamava (12/08/2026).
+    const buf = pngReal(31, 29);
+    const { media_id } = await enviar(buf, 'arrependimento.png');
+    await fila.processarLote(10, 'rapida');
+
+    const d = await req('DELETE', F(`/midias/${media_id}`), { sessao: ana });
+    assert.strictEqual(d.status, 200, d.texto);
+    const galeria = await req('GET', F('/midias?limite=100'), { sessao: ana });
+    assert(!(galeria.json.midias || []).some((m) => m.id === media_id), 'a foto excluída continuou na galeria');
+
+    const lix = await req('GET', F('/lixeira'), { sessao: ana });
+    assert(lix.json.midias.some((x) => x.id === media_id), 'a foto excluída não apareceu na lixeira');
+    const volta = await req('POST', F(`/lixeira/midia/${media_id}/restaurar`), { sessao: ana });
+    assert.strictEqual(volta.status, 200, volta.texto);
+    const dpois = await req('GET', F(`/midias/${media_id}`), { sessao: ana });
+    assert.strictEqual(dpois.status, 200, 'não voltou da lixeira');
+    assert.strictEqual(dpois.json.midia.status, 'pronta', 'voltou em outro estado');
+  });
+
+  await teste('quem só contribui NÃO apaga o que os outros mandaram', async () => {
+    // A lixeira devolve, mas o estrago intermediário é real: foto some da
+    // galeria da família inteira. Por isso apagar é OWNER/ADMIN.
+    const buf = pngReal(19, 23);
+    const { media_id } = await enviar(buf, 'nao-e-sua.png');
+    const d = await req('DELETE', F(`/midias/${media_id}`), { sessao: bruno });
+    assert.strictEqual(d.status, 403, 'contribuidor conseguiu apagar mídia da família');
   });
 
   console.log('\nexportação (§68/§70)');
