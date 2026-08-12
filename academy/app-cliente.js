@@ -330,6 +330,7 @@
       } else {
         html += d.cursos.map(function (c) {
           return '<div class="lin"><b>' + esc(c.titulo) + '</b> <span class="chip">' + (TIPOS_PROD[c.tipo] || esc(c.tipo)) + '</span>' +
+            (c.origem === 'cortesia' ? ' <span class="chip">🎁 cortesia</span>' : '') +
             '<div style="max-width:340px;margin:6px 0">' + barra(c.progresso.pct) + '</div>' +
             '<span class="sub" style="text-align:left;margin:0">' + c.progresso.concluidas + '/' + c.progresso.total_aulas + ' aulas (' + c.progresso.pct + '%)</span> ' +
             '<button class="btn peq" data-curso="' + c.product_id + '">' + (c.progresso.pct > 0 ? 'Continuar' : 'Começar') + '</button></div>';

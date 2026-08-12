@@ -360,6 +360,23 @@ const Matriculas = {
       WHERE e.user_id = ? AND e.status = 'ativa' AND p.status NOT IN ('suspenso','removido')
       ORDER BY e.criado_em DESC`).all(userId);
   },
+
+  // A biblioteca precisa mostrar o acesso REAL, não só as linhas de matrícula.
+  // Quem tem cortesia total (users.cortesia = 1) passa em temAcesso() para todo
+  // o catálogo, mas não tem enrollment nenhum — via a biblioteca vazia e não
+  // tinha por onde entrar no curso, mesmo com o checkout dizendo "você já tem
+  // acesso". Aqui as duas visões voltam a bater.
+  doAlunoComAcesso(userId) {
+    const matriculas = this.doAluno(userId);
+    const u = db.prepare('SELECT cortesia FROM users WHERE id = ?').get(userId);
+    if (!u || u.cortesia !== 1) return matriculas;
+    const ja = new Set(matriculas.map(e => e.product_id));
+    const extras = db.prepare(`SELECT id AS product_id, titulo, tipo, slug, capa_media_id, status AS product_status
+      FROM products WHERE status = 'publicado' ORDER BY criado_em DESC`).all()
+      .filter(p => !ja.has(p.product_id))
+      .map(p => ({ ...p, id: '', user_id: userId, status: 'ativa', origem: 'cortesia', criado_em: '' }));
+    return matriculas.concat(extras);
+  },
 };
 
 // ---- ACESSO DE CORTESIA / BETA (acesso vitalício a TUDO, sem pagamento,

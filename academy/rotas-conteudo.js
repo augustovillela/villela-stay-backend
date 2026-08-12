@@ -133,7 +133,7 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
   // ============================ ALUNO ============================
   // biblioteca real (substitui o dashboard placeholder da FASE 1)
   app.get('/academy/api/aluno/biblioteca', requireUsuario, requirePapel('aluno'), h((req, res) => {
-    const cursos = ct.Matriculas.doAluno(req.usuario.id)
+    const cursos = ct.Matriculas.doAlunoComAcesso(req.usuario.id)
       .map(e => ({ ...e, progresso: ct.Progresso.doProduto(req.usuario.id, e.product_id) }));
     const assinaturas = require('./billing').Assinaturas.doUsuario(req.usuario.id);
     res.json({ cursos, assinaturas, continuar: ct.Progresso.continuar(req.usuario.id) });

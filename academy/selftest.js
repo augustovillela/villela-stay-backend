@@ -1170,6 +1170,13 @@ async function main() {
     const tok = decodeURIComponent(c.json.acesso.definir_senha_url.split('token=')[1]);
     assert.equal((await req('POST', '/academy/api/senha/redefinir', { corpo: { token: tok, senha: 'senha-cortesia-1' } })).st, 200);
     assert.equal((await req('POST', '/academy/api/login', { corpo: { email, senha: 'senha-cortesia-1' }, jar: 'convidado' })).st, 200);
+    // REGRESSÃO (11/08/2026): a biblioteca tem que MOSTRAR o que a cortesia libera.
+    // Ela listava só enrollments, então quem recebia acesso pela FLAG via "0 cursos"
+    // — com o checkout dizendo "você já tem acesso" e nenhuma porta de entrada.
+    const bib = await req('GET', '/academy/api/aluno/biblioteca', { jar: 'convidado' });
+    assert.ok(bib.json.cursos.some(c => c.product_id === futuroId), 'produto liberado só pela flag aparece na biblioteca');
+    assert.ok(bib.json.cursos.some(c => c.origem === 'cortesia'), 'e vem marcado como cortesia');
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${futuroId}`, { jar: 'convidado' })).json.matriculado, true, 'e o player abre');
     // idempotente: conceder de novo não duplica matrícula
     assert.equal((await req('POST', '/staff/api/academy/cortesia', { corpo: { nome: 'Convidado Beta', email } })).st, 200);
     assert.equal(dbT.prepare('SELECT COUNT(*) n FROM enrollments WHERE user_id = ? AND product_id = ?').get(uid, pagoId).n, 1, 'sem matrícula duplicada');
@@ -1178,6 +1185,8 @@ async function main() {
     assert.equal(dbT.prepare('SELECT cortesia FROM users WHERE id = ?').get(uid).cortesia, 0, 'flag cortesia = 0 após revogar');
     assert.equal(ct.temAcesso(uid, pagoId), false, 'DEPOIS de revogar: sem acesso ao produto pago');
     assert.equal(ct.temAcesso(uid, futuroId), false, 'DEPOIS de revogar: sem acesso ao produto futuro');
+    assert.equal(((await req('GET', '/academy/api/aluno/biblioteca', { jar: 'convidado' })).json.cursos || [])
+      .filter(c => c.origem === 'cortesia').length, 0, 'revogado: some da biblioteca também');
     assert.equal((await req('GET', '/staff/api/academy/cortesia')).json.acessos.find(a => a.id === uid).ativo, false, 'listado como inativo');
     // reativar volta a conceder
     assert.equal((await req('POST', `/staff/api/academy/cortesia/${uid}/reativar`)).st, 200);
