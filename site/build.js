@@ -695,14 +695,16 @@ fs.writeFileSync(path.join(od, 'index.html'), home);
 // Plantas humanizadas (feitas pelo Augusto) — id do anúncio -> arquivo
 const PLANTAS = {
   GI01I: 'casa-villela.jpg', GD03H: 'gran-villela.jpg', GG04I: 'villa-kubitschek.jpg',
-  GD01H: 'casa-modernista.jpg',
+  GD01H: 'casa-modernista.jpg', PL02I: 'villa-catetinho.jpg',
   // as 5 suítes da Casa Modernista mostram a planta da casa inteira, onde cada uma é nomeada
   UH01H: 'casa-modernista.jpg', UH03H: 'casa-modernista.jpg', UH04H: 'casa-modernista.jpg',
   UH05H: 'casa-modernista.jpg', UH06H: 'casa-modernista.jpg',
+  // idem para os 3 flats da Villa Catetinho (Cássia Eller, Burle Marx e Oscar)
+  UF08H: 'villa-catetinho.jpg', UF01H: 'villa-catetinho.jpg', UF07H: 'villa-catetinho.jpg',
 };
-// Anúncios de quarto que exibem a planta da casa inteira: a legenda muda para não dar a
-// entender que a planta é só da suíte.
-const PLANTA_DA_CASA = new Set(['UH01H', 'UH03H', 'UH04H', 'UH05H', 'UH06H']);
+// Anúncios de quarto/flat que exibem a planta da casa inteira: a legenda muda para não dar a
+// entender que a planta é só da unidade reservada.
+const PLANTA_DA_CASA = new Set(['UH01H', 'UH03H', 'UH04H', 'UH05H', 'UH06H', 'UF08H', 'UF01H', 'UF07H']);
 fs.mkdirSync(path.join(DIST, 'plantas'), { recursive: true });
 for (const p of new Set(Object.values(PLANTAS))) fs.copyFileSync(path.join(__dirname, 'src', 'plantas', p), path.join(DIST, 'plantas', p));
 
@@ -1036,7 +1038,7 @@ for (const l of listings) {
       ? t('Planta da casa', 'House floor plan', 'Plano de la casa')
       : t('Planta do espaço', 'Floor plan', 'Plano del espacio');
     const dica = daCasa
-      ? t('A planta mostra a casa inteira, com o nome de cada suíte. Clique para ampliar.', 'The plan shows the whole house, with each suite named. Click to enlarge.', 'El plano muestra la casa entera, con el nombre de cada suite. Haz clic para ampliar.')
+      ? t('A planta mostra a casa inteira, com cada unidade nomeada. Clique para ampliar.', 'The plan shows the whole house, with each unit named. Click to enlarge.', 'El plano muestra la casa entera, con cada unidad nombrada. Haz clic para ampliar.')
       : t('Clique na planta para ampliar.', 'Click the plan to enlarge.', 'Haz clic en el plano para ampliar.');
     const d = dimensoesArquivo(path.join(__dirname, 'src', 'plantas', PLANTAS[l.id]));
     return `<section class="planta">
