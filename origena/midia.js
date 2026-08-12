@@ -263,7 +263,8 @@ const COLS = `id, tipo, titulo, descricao, capturada_valor, capturada_precisao, 
     WHERE mp.media_id = m.id AND mp.origem IN ('MANUAL','CONFIRMADA')) AS pessoas`;
 
 /** Paginação por cursor: acervo grande não se navega por OFFSET (§119). */
-const listar = (t, familyId, { tipo = null, limite = 60, antesDe = null, pessoaId = null } = {}) => t.todas(
+const listar = (t, familyId, { tipo = null, limite = 60, antesDe = null, pessoaId = null,
+  albumId = null } = {}) => t.todas(
   `SELECT ${COLS} FROM media m
     WHERE m.family_id = $1 AND m.derivado_de IS NULL AND m.deleted_at IS NULL
       AND ($2::text IS NULL OR m.tipo = $2)
@@ -271,8 +272,10 @@ const listar = (t, familyId, { tipo = null, limite = 60, antesDe = null, pessoaI
       AND ($4::uuid IS NULL OR EXISTS (
             SELECT 1 FROM media_persons mp WHERE mp.media_id = m.id AND mp.person_id = $4
               AND mp.origem IN ('MANUAL','CONFIRMADA')))
+      AND ($6::uuid IS NULL OR EXISTS (
+            SELECT 1 FROM album_items ai WHERE ai.media_id = m.id AND ai.album_id = $6))
     ORDER BY m.created_at DESC
-    LIMIT $5`, [familyId, tipo, antesDe, pessoaId, Math.min(limite, 200)]);
+    LIMIT $5`, [familyId, tipo, antesDe, pessoaId, Math.min(limite, 200), albumId]);
 
 const obter = (t, id) => t.uma(
   `SELECT * FROM media WHERE id = $1 AND deleted_at IS NULL`, [id]);

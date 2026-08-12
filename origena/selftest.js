@@ -1755,6 +1755,40 @@ async function principal() {
     assert.strictEqual(m.json.midia.status, 'pronta', 'o reenvio não ficou pronto');
   });
 
+  await teste('álbum: criar, guardar foto, ver só as dele e tirar sem apagar nada', async () => {
+    // O scrapbook (um dos produtos do Origena Criar) PEDE um álbum, e não
+    // havia como montar um: a API existia desde o 1.0 e nenhuma tela
+    // chamava. Faltava ainda poder VER o que há dentro — sem filtro por
+    // álbum, o álbum era uma lista invisível.
+    const a = await req('POST', F('/albuns'), { sessao: ana, corpo: { titulo: 'Natal na casa da avó' } });
+    assert.strictEqual(a.status, 201, a.texto);
+    const album = a.json.album.id;
+
+    const { media_id } = await enviar(pngReal(12, 12), 'natal.png');
+    const dentro = await req('POST', F(`/albuns/${album}/itens`), { sessao: ana, corpo: { media_id } });
+    assert.strictEqual(dentro.status, 201, dentro.texto);
+    const denovo = await req('POST', F(`/albuns/${album}/itens`), { sessao: ana, corpo: { media_id } });
+    assert.strictEqual(denovo.json.ja_estava, true, 'a mesma foto entrou duas vezes no álbum');
+
+    const so = await req('GET', F(`/midias?album=${album}`), { sessao: ana });
+    assert.strictEqual(so.status, 200, so.texto);
+    assert.deepStrictEqual((so.json.midias || []).map((m) => m.id), [media_id],
+      'o filtro por álbum trouxe o acervo inteiro em vez do álbum');
+
+    const fora = await req('DELETE', F(`/albuns/${album}/itens/${media_id}`), { sessao: ana });
+    assert.strictEqual(fora.status, 200, fora.texto);
+    const vazio = await req('GET', F(`/midias?album=${album}`), { sessao: ana });
+    assert.strictEqual((vazio.json.midias || []).length, 0, 'não saiu do álbum');
+    // ...e a foto continua no acervo: tirar do álbum não é apagar.
+    const ainda = await req('GET', F(`/midias/${media_id}`), { sessao: ana });
+    assert.strictEqual(ainda.status, 200, 'tirar do álbum apagou a foto');
+
+    // Limpeza: foto sem pessoa marcada é LACUNA, e lacuna vira missão. Sem
+    // isto, este teste muda o resultado do teste de missões lá na frente —
+    // suíte que compartilha uma família só precisa devolver o que pegou.
+    await req('DELETE', F(`/midias/${media_id}`), { sessao: ana });
+  });
+
   await teste('arquivo que chega diferente do prometido vai para quarentena', async () => {
     const prometido = pngReal(10, 10);
     const enviado = pngReal(11, 11);        // hash diferente

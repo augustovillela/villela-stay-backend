@@ -361,7 +361,10 @@ function registrarRotasApp(app) {
       tipo: ['FOTO', 'VIDEO', 'AUDIO', 'DOCUMENTO'].includes(req.query.tipo) ? req.query.tipo : null,
       limite: Number(req.query.limite) || 60,
       antesDe: req.query.antes_de || null,
-      pessoaId: tenancy.UUID.test(String(req.query.pessoa || '')) ? req.query.pessoa : null }));
+      pessoaId: tenancy.UUID.test(String(req.query.pessoa || '')) ? req.query.pessoa : null,
+      // Filtrar por álbum é o que faz o álbum EXISTIR na tela: sem isto,
+      // dava para criar um pela API e nunca ver o que havia dentro.
+      albumId: tenancy.UUID.test(String(req.query.album || '')) ? req.query.album : null }));
     const quem = { userId: req.usuario.id, papel: req.papel, permissoesExtra: req.permissoesExtra };
     const visiveis = lista.filter((m) => privacidade.podeVer({ ...m, created_by: m.created_by }, quem).pode);
     res.json({
@@ -520,6 +523,15 @@ function registrarRotasApp(app) {
          ON CONFLICT (album_id, media_id) DO NOTHING RETURNING *`,
         [req.familia.id, req.params.albumId, (req.body || {}).media_id]));
       res.status(r ? 201 : 200).json({ item: r, ja_estava: !r });
+    }));
+
+  /** Tirar do álbum não apaga a foto: ela continua no acervo. */
+  app.delete(decl('DELETE', `${R}/familias/:familyId/albuns/:albumId/itens/:mediaId`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      await tenancy.noEscopoDe(req, (t) => t.q(
+        `DELETE FROM album_items WHERE album_id = $1 AND media_id = $2`,
+        [req.params.albumId, req.params.mediaId]));
+      res.json({ ok: true });
     }));
 
   // ---------------------------------------------------------- documentos

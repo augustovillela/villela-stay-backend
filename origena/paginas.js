@@ -490,6 +490,7 @@ const NAV = [
     ['pessoa.titulo', 'pessoas()'], ['familia.memorias', 'memorias()'],
     ['familia.historias', 'telaHistorias()'], ['familia.tradicoes', 'telaTradicoes()'],
     ['familia.reliquias', 'telaReliquias()'], ['entrevista.titulo', 'telaEntrevistas()'],
+    ['album.titulo', 'telaAlbuns()'],
   ]],
   ['nav.explorar', [
     ['familia.linha_do_tempo', 'telaTimeline()'], ['mapa.titulo', 'telaMapa()'],
@@ -1368,6 +1369,97 @@ async function restaurarItem(tipo, id) {
   telaLixeira();
 }
 
+// ----------------------------------------------------------------- álbuns
+// Álbuns existiam na API desde o 1.0 — criar, listar e pôr foto dentro — e
+// nenhuma tela chamava. Resultado: o scrapbook, que é UM DOS PRODUTOS do
+// Origena Criar, pedia um álbum que era impossível montar. Motor pronto sem
+// porta é motor que não existe.
+async function telaAlbuns() {
+  aguarde(t('album.titulo'));
+  const r = await api('GET', '/familias/' + FAM.id + '/albuns');
+  if (deuErro(r)) return $(colecao(t('album.titulo'), falhou(r, 'telaAlbuns()')));
+  const lista = r.albuns || [];
+  $(colecao(t('album.titulo'),
+    (lista.length
+      ? lista.map(a => '<div class="linha"><span>' +
+          '<a href="#" onclick="verAlbum(\\'' + a.id + '\\');return false"><strong>' + esc(a.titulo) + '</strong></a>' +
+          '<br><span class="sub">' + esc(t('album.n_fotos', { n: a.itens || 0 })) +
+          (a.descricao ? ' · ' + esc(a.descricao) : '') + '</span></span>' +
+          '<button class="btn mini sec" onclick="verAlbum(\\'' + a.id + '\\')">' + esc(t('acao.abrir')) + '</button>' +
+          '</div>').join('')
+      : vazio(t('album.nenhum'), t('album.nenhum_p'))) +
+    (pode('contribuir')
+      ? '<h3 style="margin-top:26px">' + esc(t('album.novo')) + '</h3>' +
+        '<label for="al_t">' + esc(t('album.nome')) + '</label>' +
+        '<input id="al_t" placeholder="' + esc(t('album.placeholder')) + '">' +
+        '<label for="al_d">' + esc(t('album.descricao')) + '</label><input id="al_d">' +
+        '<p><button class="btn" onclick="criarAlbum()">' + esc(t('acao.criar')) + '</button></p>'
+      : semPermissaoParaCriar()),
+    { intro: t('album.intro') }));
+}
+
+async function criarAlbum() {
+  const r = await api('POST', '/familias/' + FAM.id + '/albuns',
+    { titulo: val('al_t'), descricao: val('al_d') });
+  if (deuErro(r)) return $(document.getElementById('app').innerHTML + aviso(r.erro));
+  verAlbum(r.album.id);
+}
+
+async function verAlbum(id) {
+  aguarde(t('album.titulo'));
+  const [alb, fotos] = await Promise.all([
+    api('GET', '/familias/' + FAM.id + '/albuns'),
+    api('GET', '/familias/' + FAM.id + '/midias?limite=200&album=' + encodeURIComponent(id)),
+  ]);
+  if (deuErro(alb) || deuErro(fotos)) return $(colecao(t('album.titulo'), falhou(fotos, 'telaAlbuns()')));
+  const a = (alb.albuns || []).find(x => x.id === id);
+  if (!a) return telaAlbuns();
+  const itens = fotos.midias || [];
+  $(topo() + '<p class="sub"><a href="#" onclick="telaAlbuns();return false">← ' + esc(t('album.titulo')) + '</a></p>' +
+    '<h2>' + esc(a.titulo) + '</h2>' +
+    (a.descricao ? '<p class="sub">' + esc(a.descricao) + '</p>' : '') +
+    (itens.length
+      ? '<div class="grade">' + itens.map(m =>
+          '<figure class="cel" data-thumb="' + (m.thumb_id || m.id) + '">' +
+          '<div class="ph" onclick="verMidia(\\'' + m.id + '\\')"></div>' +
+          '<figcaption>' + esc(m.titulo || '') +
+          (pode('contribuir')
+            ? '<br><a href="#" onclick="tirarDoAlbum(\\'' + id + '\\',\\'' + m.id + '\\');return false">' +
+              esc(t('album.tirar')) + '</a>' : '') +
+          '</figcaption></figure>').join('') + '</div>'
+      : vazio(t('album.vazio'), t('album.vazio_p'))) +
+    '<p class="sub">' + esc(t('album.como_por')) + '</p>' +
+    '<div class="acoes"><button class="btn sec" onclick="memorias()">' + esc(t('familia.memorias')) + '</button>' +
+    (itens.length && pode('exportar')
+      ? '<button class="btn" onclick="novoLivro({tipo:\\'album\\',album:\\'' + id + '\\'})">' +
+        esc(t('livro.gerar_album')) + '</button>' : '') + '</div>');
+  for (const cel of document.querySelectorAll('.cel')) {
+    urlDe(cel.dataset.thumb).then(u => { if (u) cel.querySelector('.ph').style.backgroundImage = 'url(' + u + ')'; });
+  }
+}
+
+async function tirarDoAlbum(albumId, mediaId) {
+  const r = await api('DELETE', '/familias/' + FAM.id + '/albuns/' + albumId + '/itens/' + mediaId);
+  if (deuErro(r)) return alert(r.erro);
+  verAlbum(albumId);
+}
+
+// Pôr no álbum a partir da PRÓPRIA FOTO: é onde a pessoa está quando tem a
+// ideia, e evita uma tela de seleção múltipla que ninguém pediu.
+async function porNoAlbum(mediaId) {
+  const r = await api('GET', '/familias/' + FAM.id + '/albuns');
+  if (deuErro(r)) return alert(r.erro);
+  const lista = r.albuns || [];
+  if (!lista.length) { if (confirm(t('album.nenhum_criar'))) telaAlbuns(); return; }
+  const escolha = prompt(t('album.escolher') + '\\n\\n' +
+    lista.map((a, i) => (i + 1) + ') ' + a.titulo + ' (' + (a.itens || 0) + ')').join('\\n'));
+  const i = parseInt(escolha, 10) - 1;
+  if (!lista[i]) return;
+  const p = await api('POST', '/familias/' + FAM.id + '/albuns/' + lista[i].id + '/itens', { media_id: mediaId });
+  if (deuErro(p)) return alert(p.erro);
+  alert(p.ja_estava ? t('album.ja_estava') : t('album.guardada', { album: lista[i].titulo }));
+}
+
 async function urlDe(id) {
   if (MIDIA_CACHE[id]) return MIDIA_CACHE[id];
   const r = await api('GET', '/familias/' + FAM.id + '/midias/' + id + '/url');
@@ -1472,9 +1564,13 @@ async function verMidia(id) {
     '<p class="sub" style="margin-top:20px">' + esc(t('midia.original_intacto')) + '</p>' +
     // ARREPENDIMENTO É CASO NORMAL. A rota de arquivar existe desde o 1.0
     // e nenhuma tela chamava: quem mandou a foto errada não tinha saída.
+    '<div class="acoes">' +
+    (pode('contribuir')
+      ? '<button class="btn sec" onclick="porNoAlbum(\\'' + id + '\\')">' +
+        esc(t('album.por_nesta')) + '</button>' : '') +
     (pode('excluir')
-      ? '<p><button class="btn claro" onclick="arquivarMidia(\\'' + id + '\\')">' +
-        esc(t('midia.arquivar')) + '</button></p>' : ''));
+      ? '<button class="btn sec" onclick="arquivarMidia(\\'' + id + '\\')">' +
+        esc(t('midia.arquivar')) + '</button>' : '') + '</div>');
   if (m.tipo === 'DOCUMENTO') carregarAchados(id);
   if (m.tipo === 'FOTO' && !m.derivado_de) carregarEstudio(id);
   if (pode('contribuir')) {
@@ -1703,7 +1799,9 @@ async function pedirLivro(pessoaId) {
 async function pedirScrapbook() {
   const r = await api('GET', '/familias/' + FAM.id + '/albuns');
   const albuns = (r.albuns || []).filter(a => a.itens > 0);
-  if (!albuns.length) return alert(t('livro.sem_album'));
+  // Beco sem saída vira caminho: quem não tem álbum precisa ir MONTAR um,
+  // não receber um aviso e ficar parado na mesma tela.
+  if (!albuns.length) { if (confirm(t('livro.sem_album'))) telaAlbuns(); return; }
   const escolha = prompt(t('livro.escolher_album') + '\\n\\n' +
     albuns.map((a, i) => (i + 1) + ') ' + a.titulo + ' (' + a.itens + ')').join('\\n'));
   const i = Number(escolha) - 1;
@@ -3074,6 +3172,7 @@ const TELAS = {
   divergencias: ['divergencias', 0], auditoria: ['auditoria', 0],
   memorias: ['memorias', 0], midia: ['verMidia', 1], lixeira: ['telaLixeira', 0],
   adicionar: ['telaAdicionar', 0],
+  albuns: ['telaAlbuns', 0], album: ['verAlbum', 1],
   historias: ['telaHistorias', 0], historia: ['verHistoria', 1],
   tradicoes: ['telaTradicoes', 1], tradicao: ['verTradicao', 1],
   reliquias: ['telaReliquias', 0], reliquia: ['verReliquia', 1],
