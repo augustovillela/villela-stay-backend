@@ -534,6 +534,38 @@ function registrarRotasApp(app) {
       res.json({ ok: true });
     }));
 
+  /**
+   * ORDEM dentro do álbum — troca de lugar com o vizinho. Um álbum em papel
+   * é sobre a sequência: a foto da chegada vem antes da foto da festa, e
+   * isso não se deduz da data em que alguém digitalizou.
+   *
+   * Trocar com o vizinho (em vez de "arraste para a posição") é de
+   * propósito: funciona no dedo, no teclado e no leitor de tela, sem
+   * biblioteca de arrastar nenhuma.
+   */
+  app.patch(decl('PATCH', `${R}/familias/:familyId/albuns/:albumId/itens/:mediaId`), ...naFamilia,
+    rbac.exigir('contribuir'), h(async (req, res) => {
+      const paraCima = (req.body || {}).direcao !== 'descer';
+      const trocou = await tenancy.noEscopoDe(req, async (t) => {
+        const eu = await t.uma(
+          `SELECT media_id, ordem FROM album_items WHERE album_id = $1 AND media_id = $2`,
+          [req.params.albumId, req.params.mediaId]);
+        if (!eu) throw erro('erro.midia_nao_encontrada', 404);
+        const vizinho = await t.uma(
+          `SELECT media_id, ordem FROM album_items
+            WHERE album_id = $1 AND ordem ${paraCima ? '<' : '>'} $2
+            ORDER BY ordem ${paraCima ? 'DESC' : 'ASC'} LIMIT 1`,
+          [req.params.albumId, eu.ordem]);
+        if (!vizinho) return false;              // já é a primeira ou a última
+        await t.q(`UPDATE album_items SET ordem = $3 WHERE album_id = $1 AND media_id = $2`,
+          [req.params.albumId, eu.media_id, vizinho.ordem]);
+        await t.q(`UPDATE album_items SET ordem = $3 WHERE album_id = $1 AND media_id = $2`,
+          [req.params.albumId, vizinho.media_id, eu.ordem]);
+        return true;
+      });
+      res.json({ ok: true, trocou });
+    }));
+
   // ---------------------------------------------------------- documentos
   app.get(decl('GET', `${R}/familias/:familyId/midias/:mediaId/texto`), ...naFamilia,
     h(async (req, res) => {

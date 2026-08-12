@@ -3187,6 +3187,36 @@ async function principal() {
     assert.strictEqual(dpois.json.midia.status, 'pronta', 'voltou em outro estado');
   });
 
+  await teste('a ordem das fotos no álbum é da família, não a data de envio', async () => {
+    // Um álbum em papel é sobre a SEQUÊNCIA: a foto da chegada vem antes da
+    // foto da festa, e isso não se deduz de quando alguém digitalizou.
+    const alb = await req('POST', F('/albuns'), { sessao: ana, corpo: { titulo: 'Viagem de 1979' } });
+    const album = alb.json.album.id;
+    const ids = [];
+    for (const px of [31, 32, 33]) {
+      const { media_id } = await enviar(pngReal(px, px), `viagem-${px}.png`);
+      await req('POST', F(`/albuns/${album}/itens`), { sessao: ana, corpo: { media_id } });
+      ids.push(media_id);
+    }
+    const ordem = async () => (await req('GET', F(`/midias?album=${album}`), { sessao: ana }))
+      .json.midias.map((m) => m.id);
+    // entra na ordem em que foi guardada — não na ordem de envio invertida
+    assert.deepStrictEqual(await ordem(), ids, 'o álbum não respeitou a ordem de entrada');
+
+    // a última sobe uma posição
+    const sobe = await req('PATCH', F(`/albuns/${album}/itens/${ids[2]}`), { sessao: ana, corpo: { direcao: 'subir' } });
+    assert.strictEqual(sobe.json.trocou, true, sobe.texto);
+    assert.deepStrictEqual(await ordem(), [ids[0], ids[2], ids[1]], 'não trocou de lugar com o vizinho');
+
+    // a primeira não tem para onde subir — e isso não é erro
+    const teto = await req('PATCH', F(`/albuns/${album}/itens/${ids[0]}`), { sessao: ana, corpo: { direcao: 'subir' } });
+    assert.strictEqual(teto.status, 200, teto.texto);
+    assert.strictEqual(teto.json.trocou, false, 'fingiu que trocou a primeira de lugar');
+    assert.deepStrictEqual(await ordem(), [ids[0], ids[2], ids[1]], 'mexeu na ordem sem precisar');
+
+    for (const id of ids) await req('DELETE', F(`/midias/${id}`), { sessao: ana });   // devolve o que pegou
+  });
+
   await teste('quem só contribui NÃO apaga o que os outros mandaram', async () => {
     // A lixeira devolve, mas o estrago intermediário é real: foto some da
     // galeria da família inteira. Por isso apagar é OWNER/ADMIN.

@@ -428,7 +428,8 @@ padding:26px 22px;margin:18px 0;text-align:center}
 .porta{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio);
 padding:18px;text-decoration:none;color:var(--tinta);display:block;transition:var(--transicao)}
 .porta:hover{box-shadow:var(--sombra);border-color:var(--tema)}
-.porta b{display:block;font-family:Newsreader,Georgia,serif;font-size:18px;margin-bottom:4px}
+.porta b{display:flex;align-items:center;gap:9px;font-family:Newsreader,Georgia,serif;font-size:18px;margin-bottom:4px}
+.porta .ico{color:var(--tema);line-height:0;flex:0 0 auto}
 .porta span{color:var(--suave);font-size:14px;line-height:1.45}
 .porta .abre{margin-top:10px;display:block;font-size:14px;color:var(--tema);font-weight:600}
 .erro{background:#FDECEC;border:1px solid #F5C2C2;color:#8A2020;padding:11px 14px;border-radius:10px;margin:12px 0}
@@ -444,6 +445,9 @@ padding:18px;text-decoration:none;color:var(--tinta);display:block;transition:va
 box-shadow:var(--sombra);transition:var(--transicao)}
 .cel:hover .ph{transform:translateY(-2px)}
 .cel figcaption{font-size:13px;color:var(--suave);margin-top:8px;line-height:1.4}
+.cel .ordem{display:inline-flex;gap:6px;align-items:center;margin-top:6px}
+.cel .ordem .btn{margin:0;min-width:36px;padding:5px 9px}
+.cel .ordem .btn:disabled{opacity:.35}
 /* A foto é o assunto da própria página: sem moldura, sobre fundo neutro
    que não some com margem clara de foto antiga. */
 .foto{margin:16px 0 0;background:#1C1A17;border-radius:var(--raio);padding:10px;text-align:center}
@@ -660,6 +664,13 @@ const ICONES = {
   bussola: ico('<circle cx="12" cy="12" r="8.4"/><path d="M14.8 9.2 13.4 13.4 9.2 14.8l1.4-4.2z"/>'),
   familia: ico('<circle cx="8.6" cy="9" r="2.6"/><circle cx="16" cy="9.6" r="2"/>' +
     '<path d="M3.8 18.4c0-2.6 2.1-4.4 4.8-4.4s4.8 1.8 4.8 4.4"/><path d="M15 14.2c2.4 0 4.2 1.6 4.2 3.9"/>'),
+  livro: ico('<path d="M4 5.4h5.6c1.4 0 2.4.9 2.4 2v11c0-1-1-1.8-2.4-1.8H4z"/>' +
+    '<path d="M20 5.4h-5.6c-1.4 0-2.4.9-2.4 2v11c0-1 1-1.8 2.4-1.8H20z"/>'),
+  microfone: ico('<rect x="9.4" y="3.4" width="5.2" height="10.4" rx="2.6"/>' +
+    '<path d="M6 11.6a6 6 0 0 0 12 0"/><path d="M12 17.6V20.4"/>'),
+  panela: ico('<path d="M4.6 10h14.8v3.4a5.4 5.4 0 0 1-5.4 5.4h-4a5.4 5.4 0 0 1-5.4-5.4z"/>' +
+    '<path d="M3 10h18"/><path d="M9 6.6c0-1 1.2-1.4 1.2-2.6"/><path d="M14 6.6c0-1 1.2-1.4 1.2-2.6"/>'),
+  objeto: ico('<path d="M12 3.6 20 8v8L12 20.4 4 16V8z"/><path d="M4 8l8 4.4L20 8"/><path d="M12 12.4v8"/>'),
 };
 
 // Barra de baixo do celular. Mora FORA de #app justamente para não ser
@@ -821,7 +832,7 @@ async function inicio() {
     (fams.length ? fams.map(f =>
       '<div class="linha"><span><strong>' + esc(f.nome) + '</strong> <span class="papel">' + esc(papelNome(f.papel)) + '</span></span>' +
       '<button class="btn mini" onclick="abrir(\\'' + f.id + '\\')">' + esc(t('acao.abrir')) + '</button></div>').join('')
-      : '<p class="sub">' + esc(t('familia.nenhuma')) + '</p>') +
+      : vazio(t('familia.nenhuma'), t('familia.nenhuma_p'))) +
     '<h3 style="margin-top:28px">' + esc(t('familia.criar_titulo')) + '</h3>' +
     '<label for="nf">' + esc(t('campo.nome_familia')) + '</label>' +
     '<input id="nf" placeholder="' + esc(t('familia.placeholder_nome')) + '">' +
@@ -906,21 +917,23 @@ async function remover(userId) {
 // próprio tipo, e quem chegava com uma foto na mão precisava adivinhar por
 // onde começar. Esta tela é uma porta só, que leva a cada caminho.
 function telaAdicionar() {
+  // Os mesmos traços da barra do celular, não emoji: o desenho de "foto" e
+  // de "pessoa" tem que ser o mesmo aqui e lá embaixo.
   const tipos = [
-    ['🖼', 'midia.enviar', 'nav.add_memoria_d', 'memorias()', 'contribuir'],
-    ['👤', 'pessoa.nova', 'nav.add_pessoa_d', 'pessoas()', 'pessoas.criar'],
-    ['📖', 'familia.historias', 'nav.add_historia_d', 'telaHistorias()', 'contribuir'],
-    ['🎙', 'entrevista.nova', 'nav.add_entrevista_d', 'telaEntrevistas()', 'contribuir'],
-    ['🍲', 'tradicao.nova', 'nav.add_tradicao_d', 'telaTradicoes()', 'contribuir'],
-    ['🏺', 'reliquia.nova', 'nav.add_reliquia_d', 'telaReliquias()', 'contribuir'],
+    ['foto', 'midia.enviar', 'nav.add_memoria_d', 'memorias()', 'contribuir'],
+    ['familia', 'pessoa.nova', 'nav.add_pessoa_d', 'pessoas()', 'pessoas.criar'],
+    ['livro', 'familia.historias', 'nav.add_historia_d', 'telaHistorias()', 'contribuir'],
+    ['microfone', 'entrevista.nova', 'nav.add_entrevista_d', 'telaEntrevistas()', 'contribuir'],
+    ['panela', 'tradicao.nova', 'nav.add_tradicao_d', 'telaTradicoes()', 'contribuir'],
+    ['objeto', 'reliquia.nova', 'nav.add_reliquia_d', 'telaReliquias()', 'contribuir'],
   ].filter(x => pode(x[4]));
-  $(topo() + voltarFamilia() +
-    '<h2>' + esc(t('nav.adicionar_titulo')) + '</h2>' +
-    '<p class="sub">' + esc(t('nav.adicionar_intro')) + '</p>' +
+  $(colecao(t('nav.adicionar_titulo'),
     '<div class="portas">' + tipos.map(x =>
       '<a class="porta" href="#" onclick="' + x[3] + ';return false">' +
-      '<b>' + x[0] + ' ' + esc(t(x[1])) + '</b><span>' + esc(t(x[2])) + '</span></a>').join('') +
-    '</div>');
+      '<b><span class="ico">' + (ICONES[x[0]] || '') + '</span> ' + esc(t(x[1])) + '</b>' +
+      '<span>' + esc(t(x[2])) + '</span></a>').join('') +
+    '</div>',
+    { intro: t('nav.adicionar_intro') }));
 }
 
 async function auditoria() {
@@ -1572,14 +1585,14 @@ async function arquivarMidia(id) {
 // não é lixeira, é destruição.
 async function telaLixeira() {
   const r = await api('GET', '/familias/' + FAM.id + '/lixeira');
-  if (deuErro(r)) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('lixeira.titulo'), falhou(r, 'telaLixeira()')));
   const grupos = [['pessoa', r.pessoas], ['midia', r.midias], ['historia', r.historias],
     ['tradicao', r.tradicoes], ['reliquia', r.reliquias]];
   const vazia = grupos.every(g => !(g[1] || []).length);
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('lixeira.titulo')) + '</h2>' +
     '<p class="sub">' + esc(t('lixeira.intro')) + '</p>' +
-    (vazia ? '<p class="sub">' + esc(t('lixeira.vazia')) + '</p>'
+    (vazia ? vazio(t('lixeira.vazia'), t('lixeira.vazia_p'))
       : grupos.filter(g => (g[1] || []).length).map(g =>
         '<h3 style="margin-top:24px">' + esc(t('lixeira.tipo_' + g[0])) + '</h3>' +
         g[1].map(x => '<div class="linha"><span>' + esc(x.titulo || t('lixeira.sem_titulo')) +
@@ -1647,14 +1660,25 @@ async function verAlbum(id) {
     '<h2>' + esc(a.titulo) + '</h2>' +
     (a.descricao ? '<p class="sub">' + esc(a.descricao) + '</p>' : '') +
     (itens.length
-      ? '<div class="grade">' + itens.map(m =>
+      ? '<div class="grade">' + itens.map((m, i) =>
           '<figure class="cel" data-thumb="' + (m.thumb_id || m.id) + '">' +
           '<div class="ph" onclick="verMidia(\\'' + m.id + '\\')"></div>' +
-          '<figcaption>' + esc(m.titulo || '') +
+          '<figcaption>' + esc(t('album.pagina', { n: i + 1 })) +
+          (m.titulo ? ' · ' + esc(m.titulo) : '') +
           (pode('contribuir')
-            ? '<br><a href="#" onclick="tirarDoAlbum(\\'' + id + '\\',\\'' + m.id + '\\');return false">' +
-              esc(t('album.tirar')) + '</a>' : '') +
-          '</figcaption></figure>').join('') + '</div>'
+            // Trocar de lugar com o vizinho, não arrastar: funciona no dedo,
+            // no teclado e no leitor de tela, sem biblioteca nenhuma.
+            ? '<br><span class="ordem">' +
+              '<button class="btn mini sec" ' + (i === 0 ? 'disabled ' : '') +
+                'aria-label="' + esc(t('album.subir')) + '" ' +
+                'onclick="moverNoAlbum(\\'' + id + '\\',\\'' + m.id + '\\',\\'subir\\')">↑</button>' +
+              '<button class="btn mini sec" ' + (i === itens.length - 1 ? 'disabled ' : '') +
+                'aria-label="' + esc(t('album.descer')) + '" ' +
+                'onclick="moverNoAlbum(\\'' + id + '\\',\\'' + m.id + '\\',\\'descer\\')">↓</button>' +
+              '<a href="#" onclick="tirarDoAlbum(\\'' + id + '\\',\\'' + m.id + '\\');return false">' +
+              esc(t('album.tirar')) + '</a></span>' : '') +
+          '</figcaption></figure>').join('') + '</div>' +
+        (pode('contribuir') ? '<p class="sub">' + esc(t('album.ordem_explica')) + '</p>' : '')
       : vazio(t('album.vazio'), t('album.vazio_p'))) +
     '<p class="sub">' + esc(t('album.como_por')) + '</p>' +
     '<div class="acoes"><button class="btn sec" onclick="memorias()">' + esc(t('familia.memorias')) + '</button>' +
@@ -1670,20 +1694,47 @@ async function tirarDoAlbum(albumId, mediaId) {
   verAlbum(albumId);
 }
 
-// Pôr no álbum a partir da PRÓPRIA FOTO: é onde a pessoa está quando tem a
-// ideia, e evita uma tela de seleção múltipla que ninguém pediu.
-async function porNoAlbum(mediaId) {
-  const r = await api('GET', '/familias/' + FAM.id + '/albuns');
+async function moverNoAlbum(albumId, mediaId, direcao) {
+  const r = await api('PATCH', '/familias/' + FAM.id + '/albuns/' + albumId + '/itens/' + mediaId, { direcao });
   if (deuErro(r)) return alert(r.erro);
-  const lista = r.albuns || [];
-  if (!lista.length) { if (confirm(t('album.nenhum_criar'))) telaAlbuns(); return; }
-  const escolha = prompt(t('album.escolher') + '\\n\\n' +
-    lista.map((a, i) => (i + 1) + ') ' + a.titulo + ' (' + (a.itens || 0) + ')').join('\\n'));
-  const i = parseInt(escolha, 10) - 1;
-  if (!lista[i]) return;
-  const p = await api('POST', '/familias/' + FAM.id + '/albuns/' + lista[i].id + '/itens', { media_id: mediaId });
+  verAlbum(albumId);
+}
+
+// ESCOLHER ÁLBUM SEM CAIXA NUMERADA. Era uma caixa do navegador pedindo "digite o
+// número": funciona e é o oposto de refinado — some no celular, não dá para
+// ler com o dedo, e obriga a decorar uma lista para digitar um algarismo.
+// Agora é uma tela com os álbuns em botões, e a saída de criar um novo.
+async function telaEscolherAlbum(paraQue, mediaId) {
+  aguarde(t('album.titulo'));
+  const r = await api('GET', '/familias/' + FAM.id + '/albuns');
+  if (deuErro(r)) return $(colecao(t('album.titulo'), falhou(r, 'telaAlbuns()')));
+  // Para o scrapbook só serve álbum COM foto dentro — um álbum vazio não
+  // vira livro nenhum, e oferecê-lo seria oferecer um beco.
+  const lista = (r.albuns || []).filter(a => paraQue !== 'livro' || a.itens > 0);
+  $(colecao(t(paraQue === 'livro' ? 'album.escolher_livro' : 'album.escolher'),
+    (lista.length
+      ? lista.map(a => '<div class="linha"><span><strong>' + esc(a.titulo) + '</strong>' +
+          '<br><span class="sub">' + esc(t('album.n_fotos', { n: a.itens || 0 })) + '</span></span>' +
+          '<button class="btn mini" onclick="' +
+            (paraQue === 'livro'
+              ? 'novoLivro({tipo:\\'album\\',album:\\'' + a.id + '\\'})'
+              : 'guardarNoAlbum(\\'' + a.id + '\\',\\'' + mediaId + '\\')') +
+          '">' + esc(t(paraQue === 'livro' ? 'livro.gerar_album' : 'album.guardar_aqui')) + '</button>' +
+          '</div>').join('')
+      : vazio(t('album.nenhum'), t(paraQue === 'livro' ? 'album.nenhum_com_foto_p' : 'album.nenhum_p'))) +
+    '<div class="acoes"><button class="btn sec" onclick="telaAlbuns()">' +
+      esc(t('album.novo')) + '</button></div>',
+    { voltar: '<p class="sub"><a href="#" onclick="' +
+      (mediaId ? 'verMidia(\\'' + mediaId + '\\')' : 'telaLivros()') +
+      ';return false">' + esc(t('acao.voltar')) + '</a></p>' }));
+}
+
+const porNoAlbum = (mediaId) => telaEscolherAlbum('foto', mediaId);
+
+async function guardarNoAlbum(albumId, mediaId) {
+  const p = await api('POST', '/familias/' + FAM.id + '/albuns/' + albumId + '/itens', { media_id: mediaId });
   if (deuErro(p)) return alert(p.erro);
-  alert(p.ja_estava ? t('album.ja_estava') : t('album.guardada', { album: lista[i].titulo }));
+  verAlbum(albumId);
 }
 
 async function urlDe(id) {
@@ -1926,7 +1977,7 @@ async function telaGuardioes() {
               ? '<button class="btn mini" onclick="removerGuardiao(\\'' + g.id + '\\')">' +
                 esc(t('guardiao.remover')) + '</button>' : '') +
           '</span></div>').join('')
-      : '<p class="sub">' + esc(t('guardiao.nenhum')) + '</p>') +
+      : vazio(t('guardiao.nenhum'), t('guardiao.nenhum_p'))) +
     '<h3>' + esc(t('guardiao.pedidos')) + '</h3>' +
     ((r.pedidos || []).length
       ? r.pedidos.map(p => '<div class="linha"><span>' +
@@ -1940,7 +1991,7 @@ async function telaGuardioes() {
             ? '<span><button class="btn mini" onclick="derrubarSucessao(\\'' + p.id + '\\')">' +
               esc(t('guardiao.derrubar')) + '</button></span>' : '<span></span>') +
           '</div>').join('')
-      : '<p class="sub">' + esc(t('guardiao.nenhum_pedido')) + '</p>'));
+      : vazio(t('guardiao.nenhum_pedido'), t('guardiao.nenhum_pedido_p'))));
 }
 
 async function novoGuardiao() {
@@ -2002,7 +2053,7 @@ async function telaCapsulas() {
               ? '<button class="btn mini" onclick="cancelarCapsula(\\'' + c.id + '\\')">' +
                 esc(t('capsula.cancelar')) + '</button>' : '') +
           '</span></div>').join('')
-      : '<p class="sub">' + esc(t('capsula.nenhuma')) + '</p>'));
+      : vazio(t('capsula.nenhuma'), t('capsula.nenhuma_p'))));
 }
 
 async function novaCapsula() {
@@ -2084,18 +2135,9 @@ async function pedirLivro(pessoaId) {
 
 // O scrapbook é de UM álbum: sem álbum montado não há o que imprimir, e
 // dizer isso é melhor que abrir uma lista vazia.
-async function pedirScrapbook() {
-  const r = await api('GET', '/familias/' + FAM.id + '/albuns');
-  const albuns = (r.albuns || []).filter(a => a.itens > 0);
-  // Beco sem saída vira caminho: quem não tem álbum precisa ir MONTAR um,
-  // não receber um aviso e ficar parado na mesma tela.
-  if (!albuns.length) { if (confirm(t('livro.sem_album'))) telaAlbuns(); return; }
-  const escolha = prompt(t('livro.escolher_album') + '\\n\\n' +
-    albuns.map((a, i) => (i + 1) + ') ' + a.titulo + ' (' + a.itens + ')').join('\\n'));
-  const i = Number(escolha) - 1;
-  if (!albuns[i]) return;
-  return novoLivro({ tipo: 'album', album: albuns[i].id });
-}
+// Escolher o álbum do scrapbook é a MESMA pergunta de "em qual álbum guardo
+// esta foto", vista do outro lado — e por isso usa a mesma tela.
+const pedirScrapbook = () => telaEscolherAlbum('livro');
 
 async function pedirRetrospectiva() {
   const ano = prompt(t('livro.escolher_ano'), String(new Date().getFullYear()));
@@ -2124,7 +2166,7 @@ const noRotulo = (n) => (t('grafo.t_' + n.tipo) || n.tipo) + ' · ' + (n.rotulo 
 
 async function telaGrafo(tipo, id) {
   const r = await api('GET', '/familias/' + FAM.id + '/grafo/' + tipo + '/' + id);
-  if (deuErro(r)) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('grafo.titulo'), falhou(r)));
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('grafo.titulo')) + '</h2>' +
     '<p class="sub">' + esc(r.centro.rotulo) + ' — ' + esc(t('grafo.intro')) + '</p>' +
@@ -2135,7 +2177,7 @@ async function telaGrafo(tipo, id) {
             '<a href="#" onclick="abrirNo(\\'' + v.tipo + '\\',\\'' + v.id + '\\');return false">' +
             esc(v.rotulo) + '</a></span>' +
           '<span class="sub">' + esc(t('grafo.t_' + v.tipo) || v.tipo) + '</span></div>').join('')
-      : '<p class="sub">' + esc(t('grafo.sem_vizinhos')) + '</p>') +
+      : vazio(t('grafo.sem_vizinhos'), t('grafo.sem_vizinhos_p'))) +
     '<h3 style="margin-top:26px">' + esc(t('grafo.caminho_titulo')) + '</h3>' +
     '<p class="sub">' + esc(t('grafo.caminho_de')) + ': ' + esc(r.centro.rotulo) + '</p>' +
     '<label for="gf_alvo">' + esc(t('grafo.caminho_para')) + '</label><select id="gf_alvo"></select>' +
@@ -2161,7 +2203,7 @@ async function acharCaminho(tipo, id) {
   const cx = document.getElementById('gf_res');
   if (deuErro(r)) { cx.innerHTML = aviso(r.erro); return; }
   if (!r.passos || !r.passos.length) {
-    cx.innerHTML = '<p class="sub">' + esc(t('grafo.sem_caminho', { n: 4 })) + '</p>';
+    cx.innerHTML = vazio(t('grafo.sem_caminho', { n: 4 }), t('grafo.sem_caminho_p'));
     return;
   }
   cx.innerHTML = '<p class="sub">' + esc(t('grafo.saltos', { n: r.saltos })) + '</p>' +
@@ -2179,13 +2221,13 @@ async function acharCaminho(tipo, id) {
 // relação entre os pontos — de onde vieram, para onde foram.
 async function telaMapa() {
   const r = await api('GET', '/familias/' + FAM.id + '/mapa');
-  if (deuErro(r)) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('mapa.titulo'), falhou(r, 'telaMapa()')));
   const comCoord = (r.lugares || []).filter(l => l.lat != null && l.lon != null);
   $(topo() + voltarFamilia() +
     '<h2>' + esc(t('mapa.titulo')) + '</h2>' +
     '<p class="sub">' + esc(t('mapa.intro')) + '</p>' +
     (comCoord.length ? desenhoMapa(comCoord, r.migracoes || [])
-      : '<p class="sub">' + esc(t('mapa.sem_lugares')) + '</p>') +
+      : vazio(t('mapa.sem_lugares'), t('mapa.sem_lugares_p'))) +
     (comCoord.length
       ? comCoord.map(l => '<div class="linha"><span><strong>' + esc(l.nome) + '</strong>' +
           (l.uf ? ' <span class="sub">' + esc(l.uf) + '</span>' : '') + '</span>' +
@@ -2284,7 +2326,7 @@ async function telaEntrevistas() {
             esc(e.pessoa_nome) + '</span>' +
           '<span class="sub">' + esc(t('entrevista.progresso',
             { n: e.respondidas, total: e.total })) + '</span></div>').join('')
-      : '<p class="sub">' + esc(t('entrevista.sem_entrevistas')) + '</p>') +
+      : vazio(t('entrevista.sem_entrevistas'), t('entrevista.sem_entrevistas_p'))) +
     (pode('contribuir')
       ? '<h3 style="margin-top:26px">' + esc(t('entrevista.nova')) + '</h3>' +
         '<label for="ev_p">' + esc(t('entrevista.escolha_pessoa')) + '</label><select id="ev_p"></select>' +
@@ -2315,7 +2357,7 @@ const rotuloPergunta = (x) => x.pergunta_chave === 'livre'
 
 async function verEntrevista(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/entrevistas/' + id);
-  if (deuErro(r)) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('entrevista.titulo'), falhou(r, 'telaEntrevistas()')));
   const e = r.entrevista;
   ENTREVISTA = { id, transcricao: r.transcricao_disponivel };
   const feitas = e.respostas.filter(x => x.status === 'transcrita' || x.status === 'gravada').length;
@@ -2545,7 +2587,7 @@ async function carregarEstudio(mediaId) {
     ((r.derivados || []).length
       ? '<h4 style="margin-top:18px">' + esc(t('estudio.resultados')) + '</h4>' +
         '<div id="est_lista"></div>'
-      : '<p class="sub">' + esc(t('estudio.nada_ainda')) + '</p>');
+      : vazio(t('estudio.nada_ainda'), t('estudio.nada_ainda_p')));
 
   const lista = document.getElementById('est_lista');
   if (!lista) return;
@@ -2603,7 +2645,7 @@ async function carregarAchados(mediaId) {
           ? t('documento.aceito', { nome: a.pessoa_nome || '' })
           : t('documento.descartado', { nome: a.decidido_por_nome || '' })) + '</p>') +
       '</div>').join('')
-      : '<p class="sub">' + esc(t('documento.sem_achados')) + '</p>');
+      : vazio(t('documento.sem_achados'), t('documento.sem_achados_p')));
 
   if (sugeridos.length && pode('claims.criar')) await opcoesDePessoa();
 }
@@ -2846,7 +2888,7 @@ async function editarHistoria(id) {
 async function telaTimeline(pessoaId) {
   const r = await api('GET', '/familias/' + FAM.id + '/timeline' +
     (pessoaId ? '?pessoa=' + pessoaId : ''));
-  if (deuErro(r)) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('tempo.titulo'), falhou(r, 'telaTimeline()')));
   const abrirDe = (i) => i.ref_tipo === 'person' ? "dossie(\\'" + i.ref_id + "\\')"
     : i.ref_tipo === 'story' ? "verHistoria(\\'" + i.ref_id + "\\')"
     : i.ref_tipo === 'media' ? "verMidia(\\'" + i.ref_id + "\\')"
@@ -2879,7 +2921,7 @@ async function telaTimeline(pessoaId) {
           ? '<h3 class="tl-ano">' + esc(t('tempo.sem_data')) + '</h3>' +
             semData.map(i => { anoAnterior = 'x'; return linha(i); }).join('')
           : '') + '</div>'
-      : '<p class="sub">' + esc(t('tempo.sem_itens')) + '</p>') +
+      : vazio(t('tempo.sem_itens'), t('tempo.sem_itens_p'))) +
     (pode('contribuir') ? formEvento() : ''));
   if (pode('contribuir')) preencherSelPessoas('ev_quem');
 }
@@ -2948,13 +2990,13 @@ async function telaPerguntar(confirmando, pergunta) {
       return telaPerguntar(true, q);
   }
   const cred = await api('GET', '/familias/' + FAM.id + '/creditos');
-  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
-    '<h2>' + esc(t('ia.perguntar_titulo')) + '</h2>' +
-    '<p class="sub">' + esc(t('ia.saldo', { n: cred.saldo != null ? cred.saldo : '?' })) + '</p>' +
+  $(colecao(t('ia.perguntar_titulo'),
     '<label for="pq">' + esc(t('ia.perguntar_campo')) + '</label>' +
     '<input id="pq" value="' + esc(q || '') + '" placeholder="' + esc(t('ia.perguntar_placeholder')) + '">' +
     '<p><button class="btn" onclick="telaPerguntar()">' + esc(t('ia.perguntar_titulo')) + '</button></p>' +
-    corpo);
+    corpo,
+    { intro: t('ia.perguntar_intro'),
+      filtros: '<p class="sub">' + esc(t('ia.saldo', { n: cred.saldo != null ? cred.saldo : '?' })) + '</p>' }));
 }
 
 // ------------------------------------------------ tradições (Fase 2.1)
@@ -3041,7 +3083,7 @@ async function criarTradicao() {
 
 async function verTradicao(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/tradicoes/' + id);
-  if (deuErro(r)) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('tradicao.titulo'), falhou(r, 'telaTradicoes()')));
   const x = r.tradicao, rec = x.receita;
   $(topo() + '<p class="sub"><a href="#" onclick="telaTradicoes();return false">← ' +
       esc(t('tradicao.titulo')) + '</a></p>' +
@@ -3071,7 +3113,7 @@ async function verTradicao(id) {
             a.person_id + '\\');return false">' + esc(a.nome_exibicao) + '</a>' +
             (a.aprendeu_valor ? ' <span class="sub">· ' + esc(a.aprendeu_valor) + '</span>' : '') +
             '</span></div>').join('')
-        : '<p class="sub">' + esc(t('tradicao.sem_aprendizes')) + '</p>') +
+        : vazio(t('tradicao.sem_aprendizes'), t('tradicao.sem_aprendizes_p'))) +
       (pode('contribuir')
         ? '<label for="ap_quem">' + esc(t('tradicao.quem_aprendeu')) + '</label><select id="ap_quem"></select>' +
           '<label for="ap_q">' + esc(t('tradicao.aprendeu_quando')) + '</label><input id="ap_q">' +
@@ -3084,7 +3126,7 @@ async function verTradicao(id) {
       ? x.transmissoes.map(tr => '<div class="linha"><span>' + esc(tr.de_nome) + ' → ' +
           esc(tr.para_nome) + (tr.quando_valor ? ' <span class="sub">· ' + esc(tr.quando_valor) +
           '</span>' : '') + '</span></div>').join('')
-      : '<p class="sub">' + esc(t('tradicao.sem_transmissoes')) + '</p>') +
+      : vazio(t('tradicao.sem_transmissoes'), t('tradicao.sem_transmissoes_p'))) +
     (pode('contribuir')
       ? '<label for="tm_de">' + esc(t('tradicao.ensinou')) + '</label><select id="tm_de"></select>' +
         '<label for="tm_para">' + esc(t('tradicao.aprendeu')) + '</label><select id="tm_para"></select>' +
@@ -3155,7 +3197,7 @@ async function criarReliquia() {
 
 async function verReliquia(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/reliquias/' + id);
-  if (deuErro(r)) return $(topo() + aviso(r.erro));
+  if (deuErro(r)) return $(colecao(t('reliquia.titulo'), falhou(r, 'telaReliquias()')));
   const h = r.reliquia;
   const fontes = ['RELATO','DOCUMENTO','REGISTRO_OFICIAL','MIDIA','PUBLICACAO'];
   $(topo() + '<p class="sub"><a href="#" onclick="telaReliquias();return false">← ' +
@@ -3175,7 +3217,7 @@ async function verReliquia(id) {
             (c.fonte_tipo ? ' · ' + esc(t('fonte.' + c.fonte_tipo)) +
               (c.fonte_titulo ? ': ' + esc(c.fonte_titulo) : '') : '') +
             (c.nota ? '<br>' + esc(c.nota) : '') + '</span></span></div>').join('') + '</div>'
-      : '<p class="sub">' + esc(t('reliquia.sem_custodia')) + '</p>') +
+      : vazio(t('reliquia.sem_custodia'), t('reliquia.sem_custodia_p'))) +
     (pode('contribuir')
       ? '<h3 style="margin-top:26px">' + esc(t('reliquia.transferir')) + '</h3>' +
         '<label for="cu_q">' + esc(t('reliquia.passou_para')) + '</label><select id="cu_q"></select>' +
@@ -3212,7 +3254,7 @@ async function telaHistoriador() {
       ? tipos.map(x => '<div class="linha"><span>' + esc(t('historiador.tipo_' + x)) +
           '</span><span class="papel">' + r.por_tipo[x] +
           ((r.alem_do_teto || {})[x] ? ' +' + r.alem_do_teto[x] : '') + '</span></div>').join('')
-      : '<p class="sub">' + esc(t('historiador.sem_lacunas')) + '</p>') +
+      : vazio(t('historiador.sem_lacunas'), t('historiador.sem_lacunas_p'))) +
     '<p style="margin-top:22px"><button class="btn" onclick="telaMissoes(null,true)">' +
       esc(t('missao.sincronizar')) + '</button></p>');
 }
@@ -3252,7 +3294,7 @@ async function telaMissoes(status, sincronizar) {
                 m.id + '\\')">' + esc(t('missao.dispensar')) + '</button>' : '') + '</p>'
             : '') +
           '</div>').join('')
-      : '<p class="sub">' + esc(t('missao.nenhuma')) + '</p>'));
+      : vazio(t('missao.nenhuma'), t('missao.nenhuma_p'))));
 }
 
 async function responderMissao(id) {

@@ -274,7 +274,12 @@ const listar = (t, familyId, { tipo = null, limite = 60, antesDe = null, pessoaI
               AND mp.origem IN ('MANUAL','CONFIRMADA')))
       AND ($6::uuid IS NULL OR EXISTS (
             SELECT 1 FROM album_items ai WHERE ai.media_id = m.id AND ai.album_id = $6))
-    ORDER BY m.created_at DESC
+    -- Dentro de um ÁLBUM manda a ordem escolhida pela família, não a data
+    -- de envio: um álbum em papel é sobre a sequência. Fora dele, a galeria
+    -- continua da mais nova para a mais antiga.
+    ORDER BY (SELECT ai.ordem FROM album_items ai
+               WHERE ai.media_id = m.id AND ai.album_id = $6) ASC NULLS LAST,
+             m.created_at DESC
     LIMIT $5`, [familyId, tipo, antesDe, pessoaId, Math.min(limite, 200), albumId]);
 
 const obter = (t, id) => t.uma(

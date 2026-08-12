@@ -36,7 +36,8 @@
     "ativar_agora": "Activar ahora",
     "guardei_codigos": "Guardé los códigos",
     "sair_de_todos": "Salir en todos los dispositivos",
-    "voltar_familias": "← todas las familias"
+    "voltar_familias": "← todas las familias",
+    "voltar": "← Volver"
   },
   "campo": {
     "email": "Correo electrónico",
@@ -182,7 +183,8 @@
     "imprimir": "Imprimir",
     "geracoes": "Generaciones",
     "exportar": "Llevarte el archivo",
-    "lixeira": "Papelera"
+    "lixeira": "Papelera",
+    "nenhuma_p": "Crear la familia toma un minuto y es el primer paso: todo lo demás — personas, fotos, historias — vive dentro de ella."
   },
   "papel": {
     "OWNER": "Responsable",
@@ -364,7 +366,8 @@
     "tipo_tradicao": "Tradiciones",
     "tipo_reliquia": "Objetos",
     "tradicoes": "Tradiciones",
-    "reliquias": "Objetos"
+    "reliquias": "Objetos",
+    "vazia_p": "Nada se ha eliminado por aquí. Cuando algo se elimine, quedará en esta pantalla hasta que alguien lo restaure o pida la eliminación definitiva."
   },
   "exportacao": {
     "titulo": "Llevarte todo",
@@ -670,7 +673,8 @@
     "p_conselhos_3": "¿Qué error no te gustaría ver repetir a tus nietos?",
     "p_conselhos_4": "¿Cómo te gustaría ser recordado?",
     "p_conselhos_5": "¿Qué quieres decirle a alguien de la familia que todavía va a nacer?",
-    "livre": "Pregunta de la familia"
+    "livre": "Pregunta de la familia",
+    "sem_entrevistas_p": "Una tarde con la grabadora encendida guarda más que meses de escritura. Elige un guion y empieza por la persona más mayor de la casa."
   },
   "auditoria": {
     "familia.criada": "Familia creada",
@@ -825,11 +829,18 @@
     "vazio_p": "Abre una memoria en la galería y usa \"Guardar en un álbum\" para traerla aquí.",
     "como_por": "Para agregar: abre la foto en la galería y elige \"Guardar en un álbum\".",
     "por_nesta": "Guardar en un álbum",
-    "escolher": "¿En qué álbum? Escribe el número:",
+    "escolher": "¿En qué álbum?",
     "guardada": "Guardada en {album}.",
     "ja_estava": "Esa foto ya estaba en ese álbum.",
     "tirar": "quitar del álbum",
-    "acrescentar": "Agregar a un álbum"
+    "acrescentar": "Agregar a un álbum",
+    "pagina": "página {n}",
+    "subir": "Mover un lugar antes",
+    "descer": "Mover un lugar después",
+    "ordem_explica": "Este es el orden en que las fotos aparecerán en el scrapbook — una por página. Usa las flechas para intercambiarlas.",
+    "guardar_aqui": "Guardar aquí",
+    "escolher_livro": "¿De qué álbum es el scrapbook?",
+    "nenhum_com_foto_p": "Un álbum vacío no se convierte en libro. Guarda algunas fotos en un álbum y aparecerá aquí."
   },
   "busca": {
     "titulo": "Buscar",
@@ -886,7 +897,8 @@
     "aceito": "se volvió un hecho de {nome}",
     "escolha_pessoa": "Elige la persona antes de aceptar.",
     "trecho": "en el documento: \"{trecho}\"",
-    "fila_titulo": "Sugerencias de documentos"
+    "fila_titulo": "Sugerencias de documentos",
+    "sem_achados_p": "La lectura no encontró nombre, fecha ni lugar que sugerir. La transcripción sigue guardada, y el documento ya aparece en la búsqueda."
   },
   "tempo": {
     "titulo": "Línea del tiempo",
@@ -901,7 +913,8 @@
     "sem_data": "{n} elemento(s) sin fecha",
     "de_pessoa": "Línea del tiempo de {nome}",
     "sem_itens": "Nada con fecha todavía. Las fechas de nacimiento, fotos e historias aparecen aquí solas.",
-    "ocultos": "{n} elemento(s) no aparecen para tu rol."
+    "ocultos": "{n} elemento(s) no aparecen para tu rol.",
+    "sem_itens_p": "Una fecha de nacimiento, una foto con año, una historia con \"eso fue en el 72\" — cualquiera de ellas pone la primera marca en esta línea."
   },
   "evento": {
     "novo": "Registrar un acontecimiento",
@@ -971,7 +984,9 @@
     "registrar_transmissao": "Registrar el traspaso",
     "sem_transmissoes": "Nadie registró todavía quién enseñó a quién.",
     "guardar": "Guardar",
-    "aprendizes_n": "{n} sabe(n) hacerla"
+    "aprendizes_n": "{n} sabe(n) hacerla",
+    "sem_aprendizes_p": "Registrar quién sabe hacerla es lo que impide que la receta muera con quien la inventó. Puedes ser tú mismo.",
+    "sem_transmissoes_p": "¿De quién lo aprendiste? ¿A quién se lo has enseñado? Esa cadena es lo que convierte una receta en una herencia."
   },
   "reliquia": {
     "titulo": "Objetos de familia",
@@ -997,7 +1012,8 @@
     "ainda_com": "Está con {nome}",
     "ate_transferencia": "hasta el traspaso",
     "maos": "{n} mano(s)",
-    "guardar": "Guardar"
+    "guardar": "Guardar",
+    "sem_custodia_p": "Preguntar \"¿quién tiene esto hoy?\" en el grupo de la familia suele resolverse en una tarde — y es el dato que más se pierde."
   },
   "livro": {
     "titulo": "Libro de la familia",
@@ -1089,7 +1105,8 @@
     "pergunta_receita_sem_aprendiz": "¿Quién en la familia sabe hacer {titulo}?",
     "pergunta_reliquia_sem_custodia": "¿Con quién está {titulo} hoy?",
     "pergunta_periodo_pouco_documentado": "Los años {decada} casi no aparecen en el archivo. ¿Qué vivió la familia en esa época?",
-    "pergunta_generica": "Hay un vacío en el archivo esperando respuesta."
+    "pergunta_generica": "Hay un vacío en el archivo esperando respuesta.",
+    "nenhuma_p": "Las preguntas nacen de los vacíos del archivo. Toca \"Buscar vacíos\" para una nueva revisión."
   },
   "indice": {
     "titulo": "Lo que falta recordar",
@@ -1127,7 +1144,8 @@
     "tipo_divergencia_aberta": "Donde la familia no coincide",
     "tipo_receita_sem_aprendiz": "Recetas que nadie aprendió",
     "tipo_reliquia_sem_custodia": "Objetos sin dueño conocido",
-    "tipo_periodo_pouco_documentado": "Épocas casi sin registro"
+    "tipo_periodo_pouco_documentado": "Épocas casi sin registro",
+    "sem_lacunas_p": "Nada falta entre lo que Origena alcanza a ver. Agrega personas y fotos y volverá a señalar lo que falta."
   },
   "ia": {
     "custara": "Esta operación costará {n} crédito(s).",
@@ -1145,7 +1163,8 @@
     "fontes_resposta": "De dónde salió esta respuesta",
     "incerteza": "Qué ayudaría a responder mejor",
     "sem_resposta": "La familia todavía no registró nada sobre esto.",
-    "indisponivel": "Esta función todavía no está disponible."
+    "indisponivel": "Esta función todavía no está disponible.",
+    "perguntar_intro": "Pregunta sobre tu familia. La respuesta solo usa lo que está en el archivo y lo que tu rol puede ver — y siempre dice de dónde salió cada parte."
   },
   "grafo": {
     "titulo": "Cómo se conecta",
@@ -1178,7 +1197,9 @@
     "t_place": "lugar",
     "t_tradition": "tradición",
     "t_heirloom": "objeto",
-    "t_interview": "entrevista"
+    "t_interview": "entrevista",
+    "sem_vizinhos_p": "Los enlaces nacen del uso: marcar a quien aparece en una foto, mencionar a alguien en una historia, registrar un parentesco. El primero ya cambia esta pantalla.",
+    "sem_caminho_p": "Tal vez falte un eslabón en el medio — una foto sin nadie marcado, un parentesco que nadie registró. Encontrar ese eslabón suele conectar a los dos de una vez."
   },
   "estudio": {
     "titulo": "Estudio",
@@ -1205,7 +1226,8 @@
     "ver_original": "Ver la original",
     "indisponivel": "El Estudio todavía no está activado.",
     "so_foto": "El Estudio trabaja con fotografías.",
-    "nada_ainda": "Ninguna versión hecha todavía."
+    "nada_ainda": "Ninguna versión hecha todavía.",
+    "nada_ainda_p": "Restaurar, colorear o ampliar crea una versión nueva al lado de esta — la original queda exactamente como está."
   },
   "guardiao": {
     "titulo": "Guardianes del legado",
@@ -1232,7 +1254,9 @@
     "st_efetivada": "sucesión efectuada",
     "st_recusada": "rechazada en la revisión",
     "st_contestada": "frenada",
-    "st_cancelada": "cancelada"
+    "st_cancelada": "cancelada",
+    "nenhum_p": "Sin guardián, el archivo no tiene sucesión prevista: si tú faltas, nadie tiene camino para asumirlo. Nombrar a alguien es una invitación — la persona tiene que aceptarla en su propia cuenta.",
+    "nenhum_pedido_p": "Una solicitud de sucesión solo aparece aquí si alguien alega que el dueño del archivo faltó. Ninguna ahora es exactamente lo que se espera."
   },
   "mapa": {
     "titulo": "Mapa de la familia",
@@ -1257,7 +1281,8 @@
     "ev_reuniao": "se reunió",
     "ev_falecimento": "falleció",
     "ev_outro": "estuvo",
-    "escala": "{n} km"
+    "escala": "{n} km",
+    "sem_lugares_p": "Empieza por los lugares que la familia repite: la ciudad donde alguien nació, la finca, el barrio de siempre. Con dos o tres ya se ve el camino."
   },
   "capsula": {
     "titulo": "Cápsula del tiempo",
@@ -1280,7 +1305,8 @@
     "confirmar_cancelar": "Cancelar borra la cápsula y lo que hay dentro, para siempre. ¿Estás seguro?",
     "de": "escrita por {autor}",
     "nenhuma": "Ninguna cápsula todavía.",
-    "so_minhas_fotos": "Solo puedes sellar fotos que tú mismo enviaste — la cápsula no sirve para esconder el archivo de los demás."
+    "so_minhas_fotos": "Solo puedes sellar fotos que tú mismo enviaste — la cápsula no sirve para esconder el archivo de los demás.",
+    "nenhuma_p": "Una carta para dentro de veinte años, un mensaje para quien todavía va a nacer, el porqué de un apellido. Se escribe hoy, se lee después."
   },
   "ajuda": {
     "titulo": "Cómo funciona Origena",

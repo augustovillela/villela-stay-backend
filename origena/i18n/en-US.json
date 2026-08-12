@@ -36,7 +36,8 @@
     "ativar_agora": "Turn on now",
     "guardei_codigos": "I saved the codes",
     "sair_de_todos": "Sign out on every device",
-    "voltar_familias": "← all families"
+    "voltar_familias": "← all families",
+    "voltar": "← Back"
   },
   "campo": {
     "email": "E-mail",
@@ -182,7 +183,8 @@
     "imprimir": "Print",
     "geracoes": "Generations",
     "exportar": "Take the archive with you",
-    "lixeira": "Bin"
+    "lixeira": "Bin",
+    "nenhuma_p": "Creating the family takes a minute and it is the first step: everything else — people, photos, stories — lives inside it."
   },
   "papel": {
     "OWNER": "Owner",
@@ -364,7 +366,8 @@
     "tipo_tradicao": "Traditions",
     "tipo_reliquia": "Objects",
     "tradicoes": "Traditions",
-    "reliquias": "Objects"
+    "reliquias": "Objects",
+    "vazia_p": "Nothing has been deleted here. When something is, it stays on this screen until someone restores it or asks for permanent deletion."
   },
   "exportacao": {
     "titulo": "Export everything",
@@ -670,7 +673,8 @@
     "p_conselhos_3": "Which mistake would you not want to see your grandchildren repeat?",
     "p_conselhos_4": "How would you like to be remembered?",
     "p_conselhos_5": "What do you want to say to someone in the family who is not born yet?",
-    "livre": "A family question"
+    "livre": "A family question",
+    "sem_entrevistas_p": "One afternoon with the recorder on keeps more than months of typing. Choose a guide and start with the oldest person in the house."
   },
   "auditoria": {
     "familia.criada": "Family created",
@@ -825,11 +829,18 @@
     "vazio_p": "Open a memory in the gallery and use \"Save to an album\" to bring it here.",
     "como_por": "To add: open the photo in the gallery and choose \"Save to an album\".",
     "por_nesta": "Save to an album",
-    "escolher": "Which album? Type the number:",
+    "escolher": "Which album?",
     "guardada": "Saved to {album}.",
     "ja_estava": "That photo was already in that album.",
     "tirar": "remove from album",
-    "acrescentar": "Add to an album"
+    "acrescentar": "Add to an album",
+    "pagina": "page {n}",
+    "subir": "Move one place earlier",
+    "descer": "Move one place later",
+    "ordem_explica": "This is the order the photos will appear in the scrapbook — one per page. Use the arrows to swap places.",
+    "guardar_aqui": "Save here",
+    "escolher_livro": "Which album is the scrapbook from?",
+    "nenhum_com_foto_p": "An empty album does not become a book. Put some photos in an album and it will show up here."
   },
   "busca": {
     "titulo": "Search",
@@ -886,7 +897,8 @@
     "aceito": "became a fact about {nome}",
     "escolha_pessoa": "Choose the person before accepting.",
     "trecho": "in the document: \"{trecho}\"",
-    "fila_titulo": "Document suggestions"
+    "fila_titulo": "Document suggestions",
+    "sem_achados_p": "The reading found no name, date or place to suggest. The transcript is still kept, and the document already appears in search."
   },
   "tempo": {
     "titulo": "Timeline",
@@ -901,7 +913,8 @@
     "de_pessoa": "{nome}'s timeline",
     "sem_itens": "Nothing dated yet. Birth dates, photos and stories appear here on their own.",
     "ocultos": "{n} item(s) do not appear for your role.",
-    "tipo_reliquia": "Family object"
+    "tipo_reliquia": "Family object",
+    "sem_itens_p": "A date of birth, a photo with a year, a story with \"that was in 72\" — any of them puts the first mark on this line."
   },
   "evento": {
     "novo": "Record an event",
@@ -971,7 +984,9 @@
     "registrar_transmissao": "Record the passing on",
     "sem_transmissoes": "Nobody has recorded who taught whom yet.",
     "guardar": "Save",
-    "aprendizes_n": "{n} know(s) how to make it"
+    "aprendizes_n": "{n} know(s) how to make it",
+    "sem_aprendizes_p": "Recording who knows how to make it is what keeps the recipe from dying with whoever invented it. It can be you.",
+    "sem_transmissoes_p": "Who did you learn it from? Who have you taught? That chain is what turns a recipe into an inheritance."
   },
   "reliquia": {
     "titulo": "Family objects",
@@ -997,7 +1012,8 @@
     "ainda_com": "With {nome}",
     "ate_transferencia": "until it passed on",
     "maos": "{n} hand(s)",
-    "guardar": "Save"
+    "guardar": "Save",
+    "sem_custodia_p": "Asking \"who has this today?\" in the family group usually settles it in an afternoon — and it is the piece of information most often lost."
   },
   "livro": {
     "titulo": "Family book",
@@ -1089,7 +1105,8 @@
     "pergunta_receita_sem_aprendiz": "Who in the family knows how to make {titulo}?",
     "pergunta_reliquia_sem_custodia": "Who has {titulo} today?",
     "pergunta_periodo_pouco_documentado": "The {decada} barely appear in the archive. What did the family live through then?",
-    "pergunta_generica": "There is a gap in the archive waiting for an answer."
+    "pergunta_generica": "There is a gap in the archive waiting for an answer.",
+    "nenhuma_p": "Questions come from the gaps in the archive. Tap \"Look for gaps\" for a fresh sweep."
   },
   "indice": {
     "titulo": "What is still missing",
@@ -1127,7 +1144,8 @@
     "tipo_divergencia_aberta": "Where the family disagrees",
     "tipo_receita_sem_aprendiz": "Recipes nobody learned",
     "tipo_reliquia_sem_custodia": "Objects with no known keeper",
-    "tipo_periodo_pouco_documentado": "Periods with almost no record"
+    "tipo_periodo_pouco_documentado": "Periods with almost no record",
+    "sem_lacunas_p": "Nothing missing among what Origena can see. Add people and photos and it will point out what is missing again."
   },
   "ia": {
     "custara": "This operation will cost {n} credit(s).",
@@ -1145,7 +1163,8 @@
     "fontes_resposta": "Where this answer came from",
     "incerteza": "What would help answer better",
     "sem_resposta": "The family has not recorded anything about this yet.",
-    "indisponivel": "This feature is not available yet."
+    "indisponivel": "This feature is not available yet.",
+    "perguntar_intro": "Ask about your family. The answer only uses what is in the archive and what your role can see — and it always says where each part came from."
   },
   "grafo": {
     "titulo": "How it connects",
@@ -1178,7 +1197,9 @@
     "t_place": "place",
     "t_tradition": "tradition",
     "t_heirloom": "object",
-    "t_interview": "interview"
+    "t_interview": "interview",
+    "sem_vizinhos_p": "Links come from use: tagging who appears in a photo, mentioning someone in a story, recording a family tie. The first one already changes this screen.",
+    "sem_caminho_p": "Perhaps a link is missing in between — a photo with nobody tagged, a family tie nobody recorded. Finding that link usually connects the two at once."
   },
   "estudio": {
     "titulo": "Studio",
@@ -1205,7 +1226,8 @@
     "ver_original": "See the original",
     "indisponivel": "The Studio is not switched on yet.",
     "so_foto": "The Studio works with photographs.",
-    "nada_ainda": "No versions made yet."
+    "nada_ainda": "No versions made yet.",
+    "nada_ainda_p": "Restoring, colourising or enlarging creates a new version beside this one — the original stays exactly as it is."
   },
   "guardiao": {
     "titulo": "Legacy guardians",
@@ -1232,7 +1254,9 @@
     "st_efetivada": "succession completed",
     "st_recusada": "refused at review",
     "st_contestada": "stopped",
-    "st_cancelada": "cancelled"
+    "st_cancelada": "cancelled",
+    "nenhum_p": "With no guardian, the archive has no succession planned: if you are gone, nobody has a way to take it over. Naming someone is an invitation — they have to accept it in their own account.",
+    "nenhum_pedido_p": "A succession request only appears here if someone claims the archive owner is gone. None right now is exactly what you want."
   },
   "mapa": {
     "titulo": "Family map",
@@ -1257,7 +1281,8 @@
     "ev_reuniao": "gathered",
     "ev_falecimento": "died",
     "ev_outro": "was there",
-    "escala": "{n} km"
+    "escala": "{n} km",
+    "sem_lugares_p": "Start with the places the family keeps repeating: the town where someone was born, the farm, the old neighbourhood. Two or three already draw the path."
   },
   "capsula": {
     "titulo": "Time capsule",
@@ -1280,7 +1305,8 @@
     "confirmar_cancelar": "Cancelling deletes the capsule and what is inside it, forever. Are you sure?",
     "de": "written by {autor}",
     "nenhuma": "No capsules yet.",
-    "so_minhas_fotos": "You can only seal photos you sent yourself — a capsule is not for hiding other people's archive."
+    "so_minhas_fotos": "You can only seal photos you sent yourself — a capsule is not for hiding other people's archive.",
+    "nenhuma_p": "A letter for twenty years from now, a message for someone not yet born, the reason behind a family name. Written today, read later."
   },
   "ajuda": {
     "titulo": "How Origena works",
