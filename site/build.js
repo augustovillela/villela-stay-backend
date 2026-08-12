@@ -722,6 +722,19 @@ for (const [id, cfg] of Object.entries(FOTOS_PROPRIAS)) {
 const COPY_SOBRE = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'copy-hospedagem.json'), 'utf8'));
 const tr = o => (o == null ? '' : (o[LANG] != null ? o[LANG] : (o.pt != null ? o.pt : '')));
 
+// Peças de campanha (src/campanhas/<campanha>/*): artes prontas de redes sociais. Ficam públicas
+// só para o agendador (Metricool) conseguir baixá-las por URL — não são linkadas em página nenhuma.
+const DIR_CAMPANHAS = path.join(__dirname, 'src', 'campanhas');
+if (fs.existsSync(DIR_CAMPANHAS)) {
+  for (const campanha of fs.readdirSync(DIR_CAMPANHAS)) {
+    const origem = path.join(DIR_CAMPANHAS, campanha);
+    if (!fs.statSync(origem).isDirectory()) continue;
+    const destino = path.join(DIST, 'campanhas', campanha);
+    fs.mkdirSync(destino, { recursive: true });
+    for (const arq of fs.readdirSync(origem)) fs.copyFileSync(path.join(origem, arq), path.join(destino, arq));
+  }
+}
+
 // Vídeos publicitários — id do anúncio -> arquivo
 const VIDEOS = { GD01H: 'casa-modernista.mp4', GI01I: 'casa-villela.mp4', GD03H: 'gran-villela.mp4', PL02I: 'villa-catetinho.mp4', GG04I: 'villa-kubitschek.mp4' };
 fs.mkdirSync(path.join(DIST, 'videos'), { recursive: true });
