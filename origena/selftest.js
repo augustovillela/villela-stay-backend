@@ -700,6 +700,29 @@ async function principal() {
     assert.strictEqual(repetidas.length, 0, 'chave repetida no catálogo: ' + repetidas.join(', '));
   });
 
+  await teste('idioma é TUDO ou NADA — tradução pela metade deixa a tela em duas línguas', async () => {
+    // O fallback é por CHAVE: um catálogo com 30% traduzido não mostra 30%
+    // em inglês, mostra a tela MISTURADA, frase a frase. Por isso os três
+    // idiomas estão em zero de propósito. Quando um for feito, tem que ser
+    // inteiro — e a partir daí toda string nova precisa nascer nos quatro.
+    const fs = require('fs'), path = require('path');
+    const pt = JSON.parse(fs.readFileSync(path.join(__dirname, 'i18n', 'pt-BR.json'), 'utf8'));
+    const chaves = (o, p = '') => Object.entries(o)
+      .flatMap(([k, v]) => (v && typeof v === 'object' ? chaves(v, p + k + '.') : [p + k]));
+    const doPt = chaves(pt);
+    const pela_metade = [];
+    for (const arq of ['en-US', 'es', 'fr']) {
+      const outro = JSON.parse(fs.readFileSync(path.join(__dirname, 'i18n', arq + '.json'), 'utf8'));
+      const tem = chaves(outro).length;
+      // 3 chaves ou menos = o stub declarado; igual ao pt = completo.
+      if (tem > 3 && tem < doPt.length) {
+        pela_metade.push(`${arq}: ${tem} de ${doPt.length}`);
+      }
+    }
+    assert.strictEqual(pela_metade.length, 0,
+      'catálogo pela metade (traduza tudo ou deixe o stub): ' + pela_metade.join(', '));
+  });
+
   await teste('idioma sem tradução cai no pt-BR, nunca mostra a chave crua', async () => {
     assert.strictEqual(i18n.t('en-US', 'erro.credenciais'), i18n.t('pt-BR', 'erro.credenciais'));
     assert.strictEqual(i18n.t('pt-BR', 'chave.que.nao.existe'), 'chave.que.nao.existe');
