@@ -4903,6 +4903,86 @@ async function principal() {
     assert.strictEqual(sobreSi.status, 400, 'abriu pedido de sucessão sobre si mesmo');
   });
 
+
+  // ============================== COFRE DAS CÁPSULAS (§39, 13/08/2026)
+  console.log('\ncofre das cápsulas — a chave sai do servidor e vai para as pessoas');
+
+  const cofreMod = require('./cofre');
+
+  await teste('três pessoas abrem a MESMA carta, cada uma com a própria senha', async () => {
+    // É a decisão do Augusto de 12/08: a chave é dele, e Renata e Sofia
+    // também a têm, valendo desde já. Elas NÃO estão presentes quando ele
+    // lacra — por isso a parte pública de cada uma fica em claro e o
+    // envelope é endereçado sem ninguém saber a senha de ninguém.
+    const dono = cofreMod.criarChaveDePessoa('senha-do-augusto-1234');
+    const r = cofreMod.criarChaveDePessoa('senha-da-renata-5678');
+    const so = cofreMod.criarChaveDePessoa('senha-da-sofia-9012');
+    const chave = cofreMod.novaChaveDeCapsula();
+    const carta = 'O segredo do bolo é a erva-doce, e a escritura está na gaveta de cima.';
+    const lacrada = cofreMod.lacrar(chave, carta);
+
+    for (const [material, senha] of [[dono, 'senha-do-augusto-1234'],
+      [r, 'senha-da-renata-5678'], [so, 'senha-da-sofia-9012']]) {
+      const env = cofreMod.embrulhar(chave, material);
+      assert.strictEqual(cofreMod.abrir(cofreMod.desembrulhar(env, material, senha), lacrada), carta);
+    }
+  });
+
+  await teste('senha errada não abre, e envelope de um não serve para outro', async () => {
+    const a = cofreMod.criarChaveDePessoa('senha-longa-do-a-1');
+    const b = cofreMod.criarChaveDePessoa('senha-longa-do-b-2');
+    assert(cofreMod.senhaConfere(a, 'senha-longa-do-a-1'));
+    assert(!cofreMod.senhaConfere(a, 'senha-longa-do-b-2'), 'aceitou senha errada');
+
+    const chave = cofreMod.novaChaveDeCapsula();
+    const envA = cofreMod.embrulhar(chave, a);
+    assert.throws(() => cofreMod.desembrulhar(envA, a, 'chute-que-nao-e-a-senha'),
+      'senha errada abriu o envelope');
+    // O envelope do A com a chave do B não pode abrir — senão qualquer
+    // pessoa do cofre leria a carta endereçada a outra.
+    assert.throws(() => cofreMod.desembrulhar(envA, b, 'senha-longa-do-b-2'),
+      'envelope alheio abriu');
+  });
+
+  await teste('o que vai para o banco não tem nada legível — nem a chave', async () => {
+    const m = cofreMod.criarChaveDePessoa('senha-do-cofre-guardada');
+    const chave = cofreMod.novaChaveDeCapsula();
+    const carta = 'Pirapora, 1953: a varanda onde todo mundo sentava.';
+    const guardado = JSON.stringify({
+      material: m, corpo: cofreMod.lacrar(chave, carta), env: cofreMod.embrulhar(chave, m) });
+    assert(!/Pirapora|varanda|senha-do-cofre/i.test(guardado),
+      'O COFRE ESTÁ LEGÍVEL no que seria gravado');
+    // A privada NÃO pode aparecer em claro ao lado da pública.
+    assert(!guardado.includes(m.publica.slice(0, 24) + '"'), 'formato inesperado');
+    assert.strictEqual(m.privada_cifrada.split('.').length, 3, 'privada não está no pacote iv.tag.dados');
+  });
+
+  await teste('cada envelope é único — dois iguais vazariam por comparação', async () => {
+    const m = cofreMod.criarChaveDePessoa('outra-senha-bem-longa');
+    const chave = cofreMod.novaChaveDeCapsula();
+    const e1 = cofreMod.embrulhar(chave, m);
+    const e2 = cofreMod.embrulhar(chave, m);
+    assert.notStrictEqual(e1.pacote, e2.pacote, 'envelopes repetidos');
+    assert.notStrictEqual(e1.efemera, e2.efemera, 'chave efêmera reaproveitada');
+    // ...e os dois abrem a mesma coisa
+    assert(cofreMod.desembrulhar(e1, m, 'outra-senha-bem-longa')
+      .equals(cofreMod.desembrulhar(e2, m, 'outra-senha-bem-longa')));
+  });
+
+  await teste('conteúdo adulterado é RECUSADO, não devolvido torto', async () => {
+    // AES-GCM autentica: um byte trocado no banco tem de dar erro, e não
+    // devolver texto corrompido que a família leria como se fosse a carta.
+    const m = cofreMod.criarChaveDePessoa('senha-para-adulterar-x');
+    const chave = cofreMod.novaChaveDeCapsula();
+    const lacrada = cofreMod.lacrar(chave, 'texto original da carta');
+    const partes = lacrada.split('.');
+    const corpo = Buffer.from(partes[2], 'base64');
+    corpo[0] = corpo[0] ^ 0xff;
+    partes[2] = corpo.toString('base64');
+    assert.throws(() => cofreMod.abrir(chave, partes.join('.')),
+      'aceitou conteúdo adulterado');
+  });
+
   // ============================================================ §94 TENANCY
   console.log('\nisolamento entre famílias (§94) — requisito de primeira classe');
 

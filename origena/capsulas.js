@@ -28,6 +28,7 @@ const { auditar } = require('./repo');
 const privacidade = require('./privacidade');
 const sessao = require('./sessao');
 const midia = require('./midia');
+const cofre = require('./cofre');
 
 const s = (v, max = 4000) => String(v == null ? '' : v).trim().slice(0, max);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -234,4 +235,109 @@ async function cancelar(t, { familyId, capsulaId, quem }) {
 const semCorpo = (c) => ({ id: c.id, titulo: c.titulo, status: c.status,
   condicao: c.condicao, abre_em: c.abre_em, abre_na_idade: c.abre_na_idade });
 
-module.exports = { criar, listar, abrir, cancelar, quandoAbre };
+
+// ==================== COFRE (§39, decisão do Augusto 12/08/2026) ====================
+// Cápsula do cofre é cifrada com chave de PESSOAS: o servidor não
+// consegue ler. Cápsula do servidor (o modo antigo) continua existindo —
+// e as duas prometem coisas DIFERENTES, o que a tela precisa dizer.
+
+/**
+ * A pessoa define a senha do próprio cofre. Só ela digita.
+ *
+ * ⚠️ Perder esta senha é perder as cartas, sem recuperação. O produto não
+ * pode oferecer "esqueci minha senha" aqui: se pudesse redefinir, o
+ * servidor teria como abrir, e o cofre seria teatro.
+ */
+async function definirSenhaDoCofre(t, { userId, senha }) {
+  const s = String(senha || '');
+  if (s.length < 12) throw erro('erro.cofre_senha_curta', 400);
+  const jaTem = await t.uma(`SELECT user_id FROM capsule_keys WHERE user_id = $1`, [userId]);
+  // Trocar a senha exigiria REEMBRULHAR todo envelope da pessoa — e isso
+  // só é possível com a senha ANTIGA em mãos. Enquanto essa troca não
+  // existir, recusar é mais honesto que sobrescrever e perder as cartas.
+  if (jaTem) throw erro('erro.cofre_ja_tem_senha', 409);
+  const m = cofre.criarChaveDePessoa(s);
+  await t.q(
+    `INSERT INTO capsule_keys (user_id, sal, publica, privada_cifrada, verificador)
+     VALUES ($1,$2,$3,$4,$5)`,
+    [userId, m.sal, m.publica, m.privada_cifrada, m.verificador]);
+  return { pronto: true };
+}
+
+const materialDe = (t, userId) => t.uma(
+  `SELECT user_id, sal, publica, privada_cifrada, verificador
+     FROM capsule_keys WHERE user_id = $1`, [userId]);
+
+/**
+ * Quem, nesta família, já tem cofre — logo, pode receber um envelope.
+ * A parte pública basta: ninguém precisa estar presente nem digitar
+ * senha para receber uma cápsula endereçada a si.
+ */
+const podemReceber = (t, familyId) => t.todas(
+  `SELECT u.id, u.nome FROM capsule_keys k
+     JOIN users u ON u.id = k.user_id
+     JOIN family_memberships m ON m.user_id = u.id
+       AND m.family_id = $1 AND m.status = 'ativo'
+    ORDER BY u.nome`, [familyId]);
+
+/**
+ * Lacra no cofre e escreve um envelope por pessoa.
+ *
+ * O AUTOR ENTRA SEMPRE. Uma cápsula que o próprio autor não consegue
+ * reabrir seria uma carta jogada num poço — e o erro seria descoberto
+ * anos depois, por quem não pode mais consertar.
+ */
+async function lacrarNoCofre(t, { familyId, capsulaId, autorUserId, texto, paraUserIds }) {
+  const alvos = [...new Set([autorUserId, ...(paraUserIds || [])])];
+  const materiais = [];
+  for (const id of alvos) {
+    const m = await materialDe(t, id);
+    // Sem cofre configurado não dá para embrulhar: recusar é melhor que
+    // lacrar deixando alguém de fora em silêncio.
+    if (!m) throw erro('erro.cofre_sem_chave_de_alguem', 409);
+    materiais.push(m);
+  }
+
+  const chave = cofre.novaChaveDeCapsula();
+  const corpo = cofre.lacrar(chave, texto);
+  await t.q(`UPDATE time_capsules SET corpo_cifrado = $2, chave_modo = 'cofre' WHERE id = $1`,
+    [capsulaId, corpo]);
+  for (const m of materiais) {
+    const env = cofre.embrulhar(chave, m);
+    await t.q(
+      `INSERT INTO capsule_envelopes (family_id, capsule_id, user_id, efemera, pacote)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (capsule_id, user_id) DO UPDATE SET efemera = $4, pacote = $5`,
+      [familyId, capsulaId, m.user_id, env.efemera, env.pacote]);
+  }
+  chave.fill(0);            // some da memória assim que os envelopes existem
+  return { envelopes: materiais.length };
+}
+
+/** Abre uma cápsula do cofre com a senha de QUEM está pedindo. */
+async function abrirDoCofre(t, { capsulaId, userId, senha }) {
+  const c = await t.uma(
+    `SELECT corpo_cifrado FROM time_capsules WHERE id = $1 AND deleted_at IS NULL`, [capsulaId]);
+  if (!c) throw erro('erro.capsula_nao_encontrada', 404);
+  const env = await t.uma(
+    `SELECT efemera, pacote FROM capsule_envelopes WHERE capsule_id = $1 AND user_id = $2`,
+    [capsulaId, userId]);
+  // Sem envelope, esta pessoa não é destinatária. 404 e não 403: dizer
+  // "existe, mas não é para você" já entrega informação sobre a carta.
+  if (!env) throw erro('erro.capsula_nao_encontrada', 404);
+  const m = await materialDe(t, userId);
+  if (!m) throw erro('erro.cofre_sem_chave', 409);
+  if (!cofre.senhaConfere(m, senha)) throw erro('erro.cofre_senha_errada', 401);
+
+  const chave = cofre.desembrulhar(env, m, senha);
+  try { return cofre.abrir(chave, c.corpo_cifrado); }
+  finally { chave.fill(0); }
+}
+
+/** Quem pode abrir esta cápsula — a tela PRECISA mostrar isto (§39). */
+const quemAbre = (t, capsulaId) => t.todas(
+  `SELECT u.id, u.nome FROM capsule_envelopes e JOIN users u ON u.id = e.user_id
+    WHERE e.capsule_id = $1 ORDER BY u.nome`, [capsulaId]);
+
+module.exports = { criar, listar, abrir, cancelar, quandoAbre,
+  definirSenhaDoCofre, podemReceber, lacrarNoCofre, abrirDoCofre, quemAbre };
