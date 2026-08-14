@@ -82,11 +82,19 @@ function t(idioma, chave, vars = null) {
 /** Catálogo inteiro de um idioma — vai injetado na página para o JS do navegador. */
 const catalogo = (idioma) => ({ ...planos[PADRAO], ...planos[normalizar(idioma)] });
 
+const COOKIE_IDIOMA = 'origena_idioma';
+
 /**
- * Idioma da requisição: o do usuário logado vence o do navegador, porque
- * é uma escolha explícita dele.
+ * Ordem: ESCOLHA EXPLÍCITA > idioma da conta > navegador.
+ *
+ * O cookie vem primeiro porque é o único que existe deslogado — e é o
+ * caso real: mostrar o acervo a um parente que fala outra língua, na sua
+ * própria máquina, sem trocar a configuração do navegador nem entrar na
+ * conta dele. Escolha do usuário tem de vencer palpite do sistema.
  */
 function idiomaDaReq(req) {
+  const escolhido = req && req.cookies && req.cookies[COOKIE_IDIOMA];
+  if (escolhido && IDIOMAS.includes(normalizar(escolhido))) return normalizar(escolhido);
   if (req && req.usuario && req.usuario.idioma) return normalizar(req.usuario.idioma);
   const aceita = (req && req.get && req.get('accept-language')) || '';
   return normalizar(aceita.split(',')[0]);
@@ -117,6 +125,6 @@ function cobertura() {
 }
 
 module.exports = {
-  PADRAO, IDIOMAS, t, catalogo, normalizar, idiomaDaReq, middleware,
+  PADRAO, IDIOMAS, COOKIE_IDIOMA, t, catalogo, normalizar, idiomaDaReq, middleware,
   data, dataHora, numero, cobertura, chaves: () => Object.keys(planos[PADRAO]),
 };

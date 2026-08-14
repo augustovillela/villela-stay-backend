@@ -146,6 +146,7 @@ function registrarPaginas(app) {
     ${planos.length ? `<a href="#planos">${t('site.planos_t')}</a>` : ''}
     <a class="btn mini" href="/origena/app">${t('acao.entrar')}</a>
   </nav>
+  ${seletorIdioma(idioma, '/origena')}
 
   <div class="hero">
     <div class="selo">${t('landing.selo')}</div>
@@ -231,6 +232,7 @@ function registrarPaginas(app) {
 
     res.type('html').send(pagina(idioma, `${t('ajuda.titulo')} — ${t('produto.nome')}`, `
 <div class="wrap">
+  ${seletorIdioma(idioma, '/origena/ajuda')}
   <p class="sub"><a href="/origena">&larr; ${t('ajuda.voltar')}</a></p>
   <div class="hero">
     <h1>${t('ajuda.titulo')}</h1>
@@ -248,6 +250,25 @@ function registrarPaginas(app) {
   </div>
   <footer>${t('produto.grupo')}</footer>
 </div>`, { css: CSS_PUBLICO }));
+  });
+
+  /**
+   * Trocar de idioma. Guarda a ESCOLHA num cookie de um ano e devolve a
+   * pessoa para a mesma página — trocar de língua não pode custar o lugar
+   * onde ela estava.
+   *
+   * `para` é validado como caminho interno: aceitar URL solta aqui seria
+   * um redirecionador aberto de graça, e este é o tipo de rota que ninguém
+   * revisa depois.
+   */
+  app.get('/origena/idioma', (req, res) => {
+    const alvo = i18n.normalizar(req.query.l);
+    res.cookie(i18n.COOKIE_IDIOMA, alvo, {
+      httpOnly: false, sameSite: 'lax', maxAge: 365 * 24 * 3600 * 1000, path: '/',
+    });
+    const bruto = String(req.query.para || '/origena/app');
+    const para = /^\/origena(\/|$)/.test(bruto) && !bruto.startsWith('//') ? bruto : '/origena/app';
+    res.redirect(302, para);
   });
 
   app.get('/origena/robots.txt', (req, res) => {
@@ -277,7 +298,24 @@ function registrarPaginas(app) {
 // A landing e a ajuda não carregam o CSS do app. Sem isto o botão de
 // entrar vira texto solto no meio do cartão — que foi exatamente como a
 // porta deixou de existir para quem chegava.
+/**
+ * Seletor de idioma. Cada língua aparece NO PRÓPRIO NOME — quem só lê
+ * espanhol não encontraria "Espanhol" escrito em português.
+ *
+ * O francês fica de fora de propósito: o catálogo dele está vazio e cair
+ * no português seria oferecer uma porta que não leva a lugar nenhum. Ele
+ * volta à lista no dia em que for traduzido.
+ */
+const IDIOMAS_PRONTOS = [['pt-BR', 'Português'], ['en-US', 'English'], ['es', 'Español']];
+const seletorIdioma = (idiomaAtual, caminho) =>
+  '<p class="idiomas">' + IDIOMAS_PRONTOS.map(([cod, nome]) => (cod === idiomaAtual
+    ? '<strong>' + nome + '</strong>'
+    : '<a href="/origena/idioma?l=' + cod + '&para=' + encodeURIComponent(caminho) + '">' + nome + '</a>'
+  )).join(' · ') + '</p>';
+
 const CSS_PUBLICO = `
+.idiomas{text-align:right;font-size:14px;color:var(--suave);margin:14px 0 0}
+.idiomas strong{color:var(--tinta)}
 .btn{display:inline-block;background:var(--tema);color:#fff;border-radius:12px;
 padding:12px 20px;font-weight:600;text-decoration:none;line-height:22px}
 .card a{color:var(--tema)}
@@ -309,6 +347,13 @@ border-radius:var(--raio);padding:18px}
 `;
 
 const CSS_APP = `
+/* Seletor de idioma no cabecalho: discreto, mas com alvo de toque de 44px
+   (§85) — vai ser usado por avo no celular tanto quanto por neto. */
+.topo .idiomas{display:inline-flex;gap:2px;margin-left:10px}
+.topo .idiomas a,.topo .idiomas strong{min-width:34px;min-height:44px;display:inline-flex;
+align-items:center;justify-content:center;font-size:13px;font-weight:600;letter-spacing:.02em}
+.topo .idiomas strong{color:var(--tema)}
+
 .wrap{max-width:760px;padding-bottom:84px}
 .topo{display:flex;justify-content:space-between;align-items:center;gap:14px;
 padding:14px 0;border-bottom:1px solid var(--borda);flex-wrap:wrap}
@@ -594,7 +639,16 @@ const topo = () => '<header class="topo">' +
   (EU ? '<a href="#" onclick="telaConta();return false">' + esc(EU.nome) + '</a>' +
         '<a href="#" onclick="sair();return false">' + esc(t('acao.sair')) + '</a>' : '') +
   '<a href="/origena/ajuda" target="_blank" rel="noopener">' + esc(t('ajuda.titulo')) +
-    ' <span class="so-leitor">' + esc(t('acesso.nova_aba')) + '</span></a></span>' +
+    ' <span class="so-leitor">' + esc(t('acesso.nova_aba')) + '</span></a>' +
+  // IDIOMA. Cada língua no PRÓPRIO nome — quem só lê espanhol não acha
+  // "Espanhol" escrito em português. O francês fica fora porque o
+  // catálogo dele está vazio: oferecer a porta seria cair em português.
+  // A troca recarrega a página; o estado da tela vive no endereço.
+  '<span class="idiomas">' + ['pt-BR:PT', 'en-US:EN', 'es:ES'].map(function (par) {
+    var cod = par.split(':')[0], rot = par.split(':')[1];
+    return cod === IDIOMA ? '<strong>' + rot + '</strong>'
+      : '<a href="/origena/idioma?l=' + cod + '&para=' + encodeURIComponent('/origena/app' + location.hash) + '">' + rot + '</a>';
+  }).join('') + '</span></span>' +
   '</header>' + navPrincipal() + '<main id="conteudo" tabindex="-1">';
 
 // A NAVEGAÇÃO É A MESMA EM TODA TELA. Antes ela existia só na tela da

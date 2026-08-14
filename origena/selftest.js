@@ -62,13 +62,18 @@ async function teste(nome, fn) {
   catch (e) { falhas.push({ nome, erro: e.message }); console.log('  FALHOU ' + nome + '\n         ' + e.message); }
 }
 
-const req = async (metodo, caminho, { como = 'adm', corpo, sessao: jar } = {}) => {
+// `cabecalhos` existe para testar o que DEPENDE de cabeçalho — idioma do
+// navegador, cookie de escolha. `headers` volta na resposta porque
+// redirecionamento e cookie só se conferem ali: sem isso, um teste de
+// "para onde foi" teria de adivinhar pelo corpo.
+const req = async (metodo, caminho, { como = 'adm', corpo, sessao: jar, cabecalhos } = {}) => {
   const r = await fetch(base + caminho, {
     method: metodo,
     headers: {
       'x-test-user': como,
       ...(jar && jar.cookie ? { Cookie: jar.cookie } : {}),
       ...(corpo ? { 'Content-Type': 'application/json' } : {}),
+      ...(cabecalhos || {}),
     },
     body: corpo ? JSON.stringify(corpo) : undefined,
     redirect: 'manual',
@@ -77,7 +82,8 @@ const req = async (metodo, caminho, { como = 'adm', corpo, sessao: jar } = {}) =
   if (jar) for (const c of set) { const p = c.split(';')[0]; if (p.startsWith('origena_sess=')) jar.cookie = p; }
   const txt = await r.text();
   let json = null; try { json = JSON.parse(txt); } catch (_) {}
-  return { status: r.status, json, texto: txt, tipo: r.headers.get('content-type') || '' };
+  return { status: r.status, json, texto: txt, tipo: r.headers.get('content-type') || '',
+    headers: { location: r.headers.get('location'), 'set-cookie': set.join('; ') } };
 };
 
 // Caixa de e-mail falsa. O token só existe no e-mail — no banco fica o
@@ -732,6 +738,32 @@ async function principal() {
     assert.match(i18n.t('en-US', 'erro.credenciais'), /password/i);
     assert.notStrictEqual(i18n.t('es', 'erro.credenciais'), i18n.t('pt-BR', 'erro.credenciais'));
     assert.match(i18n.t('es', 'erro.credenciais'), /contraseña/i);
+  });
+
+  await teste('trocar de idioma vence o navegador — e não vira redirecionador aberto', async () => {
+    // O caso real: mostrar o acervo a um parente que fala outra língua, na
+    // própria máquina, sem entrar na conta dele nem mexer no navegador.
+    // Escolha explícita tem de vencer palpite do sistema.
+    const troca = await req('GET', '/origena/idioma?l=es&para=' + encodeURIComponent('/origena/ajuda'),
+      { como: 'ninguem' });
+    assert.strictEqual(troca.status, 302, troca.texto);
+    assert.strictEqual(troca.headers.location, '/origena/ajuda', 'não devolveu para onde estava');
+    assert.match(String(troca.headers['set-cookie'] || ''), /origena_idioma=es/, 'não guardou a escolha');
+
+    const pagina = await req('GET', '/origena/ajuda', { como: 'ninguem',
+      cabecalhos: { 'accept-language': 'pt-BR', cookie: 'origena_idioma=es' } });
+    assert.match(pagina.texto, /Dónde envío las fotos/,
+      'o cookie perdeu para o navegador — a escolha do usuário tem de vencer');
+
+    // `para` solto seria um redirecionador aberto de graça — e esta é a
+    // rota que ninguém revisa depois. `//evil.com` é a forma que passa
+    // despercebida, porque parece caminho interno.
+    for (const alvo of ['https://evil.com', '//evil.com', '/staff/api/origena/saude']) {
+      const r = await req('GET', '/origena/idioma?l=es&para=' + encodeURIComponent(alvo),
+        { como: 'ninguem' });
+      assert.strictEqual(r.headers.location, '/origena/app',
+        `aceitou redirecionar para ${alvo}`);
+    }
   });
 
   await teste('normaliza pt, en-GB e lixo para um idioma que existe', async () => {
