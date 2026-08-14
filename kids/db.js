@@ -43,6 +43,23 @@ function garantirColuna(tabela, coluna, ddl) {
 // onda 5 (07/08/2026): Estúdio de Ilustração com IA — PNG da criação
 garantirColuna('portfolio', 'arquivo', "TEXT NOT NULL DEFAULT ''");
 
+// fase C da Arena (07/08/2026): nivelamento por MATÉRIA (PK composta).
+// SQLite não altera PK — banco da fase A é reconstruído preservando os dados.
+const nivCols = db.prepare('PRAGMA table_info(arena_nivelamento)').all();
+if (nivCols.length && !nivCols.some((c) => c.name === 'materia')) {
+  db.exec(`ALTER TABLE arena_nivelamento RENAME TO arena_nivelamento_v1;
+    CREATE TABLE arena_nivelamento (
+      child_id TEXT NOT NULL REFERENCES children(id),
+      materia TEXT NOT NULL DEFAULT 'matematica',
+      dados TEXT NOT NULL DEFAULT '{}',
+      concluido_em TEXT NOT NULL DEFAULT '',
+      atualizado_em TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY (child_id, materia));
+    INSERT INTO arena_nivelamento (child_id, materia, dados, concluido_em, atualizado_em)
+      SELECT child_id, 'matematica', dados, concluido_em, atualizado_em FROM arena_nivelamento_v1;
+    DROP TABLE arena_nivelamento_v1;`);
+}
+
 const nowISO = () => new Date().toISOString();
 const hojeISO = () => new Date().toISOString().slice(0, 10);
 const novoId = () => crypto.randomBytes(9).toString('base64url');

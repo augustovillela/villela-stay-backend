@@ -126,10 +126,12 @@ CREATE TABLE IF NOT EXISTS arena_progresso (
 );
 
 CREATE TABLE IF NOT EXISTS arena_nivelamento (
-  child_id TEXT PRIMARY KEY REFERENCES children(id),
+  child_id TEXT NOT NULL REFERENCES children(id),
+  materia TEXT NOT NULL DEFAULT 'matematica',      -- fase C: uma entrevista por matéria
   dados TEXT NOT NULL DEFAULT '{}',                -- sessão da entrevista (retomável)
   concluido_em TEXT NOT NULL DEFAULT '',
-  atualizado_em TEXT NOT NULL DEFAULT ''
+  atualizado_em TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (child_id, materia)
 );
 
 CREATE TABLE IF NOT EXISTS auditoria (
