@@ -3434,7 +3434,12 @@ async function enviarWhatsApp(to, text) {
   if (!process.env.MAKE_WA_WEBHOOK) return false;
   const num = String(to || '').replace(/\D/g, '');
   if (!num) return false;
-  try { await fetch(process.env.MAKE_WA_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: num, text }) }); return true; }
+  // Texto vazio ENVENENA A FILA do Make: sem `text` o módulo fica sem campo obrigatório, dá
+  // BundleValidationError, e o bundle ruim derruba o cenário 6128257 a cada religada (episódios
+  // de 08 e 11/08/2026). Recusar aqui — o webhook aceita qualquer coisa, quem valida somos nós.
+  const corpo = String(text == null ? '' : text).trim();
+  if (!corpo) { console.error('[wa] envio recusado: texto vazio para', num); return false; }
+  try { await fetch(process.env.MAKE_WA_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: num, text: corpo }) }); return true; }
   catch (e) { console.error('[wa]', e.message); return false; }
 }
 async function enviarCredenciais(conta, senha) {
@@ -3828,10 +3833,15 @@ function sanitizaParam(s) { return String(s == null ? '' : s).replace(/[\r\n\t]+
 // Alerta interno ao Augusto (template alerta_crm, notifica a qualquer hora). Best-effort.
 async function alertaAugusto(resumo) {
   if (!process.env.MAKE_WA_WEBHOOK) return false;
+  // sanitizaParam(undefined) devolve string VAZIA, e variável de template vazia é recusada pela
+  // Meta: o bundle fica preso na fila do Make e derruba o cenário 6128257 a cada religada
+  // (episódios de 08 e 11/08/2026). Alerta sem texto não tem serventia — melhor não enviar.
+  const p2 = sanitizaParam(resumo);
+  if (!p2 || !AUGUSTO_WA) { console.error('[alerta augusto] envio recusado: resumo ou destino vazio'); return false; }
   try {
     await fetch(process.env.MAKE_WA_WEBHOOK, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: AUGUSTO_WA, template: 'alerta_crm::pt_BR', p1: 'Augusto', p2: sanitizaParam(resumo) }),
+      body: JSON.stringify({ to: AUGUSTO_WA, template: 'alerta_crm::pt_BR', p1: 'Augusto', p2 }),
     });
     return true;
   } catch (e) { console.error('[alerta augusto]', e.message); return false; }
