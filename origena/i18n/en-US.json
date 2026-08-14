@@ -37,7 +37,8 @@
     "guardei_codigos": "I saved the codes",
     "sair_de_todos": "Sign out on every device",
     "voltar_familias": "← all families",
-    "voltar": "← Back"
+    "voltar": "← Back",
+    "cancelar": "Cancel"
   },
   "campo": {
     "email": "E-mail",
@@ -810,7 +811,28 @@
     "fotos": "Photos",
     "concluido": "DONE",
     "tentar": "Try again",
-    "abrir_original": "Open the original"
+    "abrir_original": "Open the original",
+    "todas_pessoas": "Everyone",
+    "todos_albuns": "All albums",
+    "todos_tipos": "Everything",
+    "tipo_foto": "Photos",
+    "tipo_video": "Videos",
+    "tipo_audio": "Audio",
+    "tipo_documento": "Documents",
+    "limpar_filtro": "Clear filters",
+    "nada_no_filtro": "Nothing matches this filter",
+    "nada_no_filtro_p": "No memory matches what you picked. Change the filter, or clear it to see the whole archive.",
+    "sem_data": "No date",
+    "escolher": "Select this memory",
+    "escolhidas": "{n} selected",
+    "para_album": "Add to an album",
+    "para_qual_album": "Which album?",
+    "sem_album_ainda": "You do not have any album yet. Create one first, under Albums.",
+    "adicionadas": "{n} memory(ies) went into the album {album}.",
+    "anterior": "Previous",
+    "proxima": "Next",
+    "pagina": "Page {n}",
+    "abrir_arquivo": "Open the file"
   },
   "album": {
     "titulo": "Albums",

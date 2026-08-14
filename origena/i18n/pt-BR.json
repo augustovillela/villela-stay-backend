@@ -24,7 +24,6 @@
     "acervo_c": "Tudo o que entra aqui continua sendo seu. A qualquer momento você exporta o acervo inteiro num arquivo — dados, árvore em formato GEDCOM e as fotos — e leva embora.\n\nEsse mesmo arquivo volta: dá para importá-lo numa família nova, e as fotos voltam junto. Isso não é promessa de marketing; é testado toda vez que o sistema é atualizado.",
     "fluxo_t": "Onde enviar as fotos? E como viram álbum e scrapbook",
     "fluxo_c": "Dúvida comum de quem começa — e a resposta curta é: <strong>envie tudo para Memórias</strong>. São três camadas, e só a primeira é onde as coisas moram.\n\n<strong>Memórias é o acervo.</strong> Toda foto, documento, áudio e vídeo vive ali, uma vez só. É o lugar certo para tudo o que entra.\n\n<strong>Álbum é uma seleção, não uma pasta.</strong> Ele aponta para fotos que já estão em Memórias: a mesma foto pode estar em vários álbuns sem ser duplicada, e apagar o álbum não apaga a foto. Pense em “as fotos da fazenda”, “o casamento”, “a infância da Sofia”.\n\n<strong>Scrapbook não é algo que você cria — é um PDF que você pede a partir de um álbum</strong>, na área de Livros. Sai uma foto por página, com quem aparece, quando, onde, e o selo dizendo se a imagem é original ou foi tratada por IA.\n\nO caminho, então: <strong>enviar para Memórias → agrupar em Álbum → gerar o Scrapbook</strong>.\n\nUm conselho que vale mais que o caminho: o que dá valor à foto não é enviá-la, é o <strong>contexto</strong>. Ao subir, diga quem aparece, quando foi e onde. É isso que faz a foto entrar na linha do tempo, aparecer na página da pessoa, ser encontrada na busca e caber na retrospectiva de um ano. Foto sem data fica de fora das retrospectivas — e o próprio livro avisa quantas ficaram.",
-
     "selo_t": "Cada informação carrega de onde veio",
     "selo_c": "Este é o coração do produto. Nenhum dado aparece solto: cada um vem com um selo dizendo a origem.\n\n<strong>A certidão registra</strong> — existe documento.\n<strong>A família conta</strong> — alguém lembra, e o nome de quem lembrou fica junto.\n<strong>Sugerido por IA, sem confirmação</strong> — a máquina propôs e nenhum humano confirmou.\n\nSão coisas diferentes, e a Origena nunca as mistura. Uma sugestão de IA jamais vira fato sozinha: precisa de alguém da família aceitar, e esse aceite fica registrado com nome e data.",
     "divergencia_t": "Quando dois parentes lembram diferente",
@@ -75,7 +74,8 @@
     "guardei_codigos": "Guardei os códigos",
     "sair_de_todos": "Sair em todos os aparelhos",
     "voltar_familias": "← todas as famílias",
-    "voltar": "← Voltar"
+    "voltar": "← Voltar",
+    "cancelar": "Cancelar"
   },
   "campo": {
     "email": "E-mail",
@@ -666,7 +666,28 @@
     "arquivar": "Excluir esta memória",
     "arquivar_confirmar": "Excluir esta memória? Ela sai da galeria e da busca na hora e vai para a Lixeira, de onde dá para trazer de volta inteira. O que a família escreveu sobre ela continua guardado.",
     "arquivada": "Pronto. A memória saiu da galeria e está na Lixeira.",
-    "original_intacto": "O original nunca é alterado. O que você vê aqui é uma cópia menor."
+    "original_intacto": "O original nunca é alterado. O que você vê aqui é uma cópia menor.",
+    "todas_pessoas": "Todas as pessoas",
+    "todos_albuns": "Todos os álbuns",
+    "todos_tipos": "Tudo",
+    "tipo_foto": "Fotos",
+    "tipo_video": "Vídeos",
+    "tipo_audio": "Áudios",
+    "tipo_documento": "Documentos",
+    "limpar_filtro": "Limpar filtros",
+    "nada_no_filtro": "Nada com esse filtro",
+    "nada_no_filtro_p": "Nenhuma memória combina com o que você escolheu. Troque o filtro ou limpe para ver o acervo inteiro.",
+    "sem_data": "Sem data",
+    "escolher": "Escolher esta memória",
+    "escolhidas": "{n} escolhida(s)",
+    "para_album": "Juntar num álbum",
+    "para_qual_album": "Em qual álbum?",
+    "sem_album_ainda": "Você ainda não tem álbum nenhum. Crie um primeiro, em Álbuns.",
+    "adicionadas": "{n} memória(s) foram para o álbum {album}.",
+    "anterior": "Anterior",
+    "proxima": "Próxima",
+    "pagina": "Página {n}",
+    "abrir_arquivo": "Abrir o arquivo"
   },
   "historia": {
     "titulo": "Conte a história desta foto",

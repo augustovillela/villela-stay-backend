@@ -37,7 +37,8 @@
     "guardei_codigos": "Guardé los códigos",
     "sair_de_todos": "Salir en todos los dispositivos",
     "voltar_familias": "← todas las familias",
-    "voltar": "← Volver"
+    "voltar": "← Volver",
+    "cancelar": "Cancelar"
   },
   "campo": {
     "email": "Correo electrónico",
@@ -810,7 +811,28 @@
     "fotos": "Fotos",
     "concluido": "COMPLETADO",
     "tentar": "Intentar de nuevo",
-    "abrir_original": "Abrir el original"
+    "abrir_original": "Abrir el original",
+    "todas_pessoas": "Todas las personas",
+    "todos_albuns": "Todos los álbumes",
+    "todos_tipos": "Todo",
+    "tipo_foto": "Fotos",
+    "tipo_video": "Videos",
+    "tipo_audio": "Audios",
+    "tipo_documento": "Documentos",
+    "limpar_filtro": "Limpiar filtros",
+    "nada_no_filtro": "Nada con ese filtro",
+    "nada_no_filtro_p": "Ninguna memoria coincide con lo que elegiste. Cambia el filtro o límpialo para ver el acervo entero.",
+    "sem_data": "Sin fecha",
+    "escolher": "Elegir esta memoria",
+    "escolhidas": "{n} elegida(s)",
+    "para_album": "Juntar en un álbum",
+    "para_qual_album": "¿En qué álbum?",
+    "sem_album_ainda": "Todavía no tienes ningún álbum. Crea uno primero, en Álbumes.",
+    "adicionadas": "{n} memoria(s) fueron al álbum {album}.",
+    "anterior": "Anterior",
+    "proxima": "Siguiente",
+    "pagina": "Página {n}",
+    "abrir_arquivo": "Abrir el archivo"
   },
   "album": {
     "titulo": "Álbumes",

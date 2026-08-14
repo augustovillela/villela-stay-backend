@@ -347,6 +347,23 @@ border-radius:var(--raio);padding:18px}
 `;
 
 const CSS_APP = `
+.arquivo-grande{text-align:center;padding:34px 18px}
+.arquivo-grande .icone{font-size:56px;display:block;margin-bottom:14px}
+
+/* Arquivo que nao e foto: icone grande e legivel no lugar da miniatura. */
+.ph.arquivo{display:flex;align-items:center;justify-content:center;background:var(--card)}
+.ph.arquivo .icone{font-size:34px;line-height:1}
+
+/* Filtros, selecao e periodo. Alvo de toque de 44px (§85): a caixa de
+   marcar vai ser usada por avo no celular tanto quanto por neto. */
+.filtros{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.filtros select{min-height:44px;font-size:15px;max-width:46vw}
+.periodo{margin:22px 0 8px;font-size:17px;border-bottom:1px solid var(--borda);padding-bottom:5px}
+.cel{position:relative}
+.marca-sel{position:absolute;top:4px;left:4px;z-index:2;padding:10px;cursor:pointer}
+.marca-sel input{width:22px;height:22px}
+.paginacao{display:flex;align-items:center;gap:12px;justify-content:center;margin:22px 0}
+
 /* Seletor de idioma no cabecalho: discreto, mas com alvo de toque de 44px
    (§85) — vai ser usado por avo no celular tanto quanto por neto. */
 .topo .idiomas{display:inline-flex;gap:2px;margin-left:10px}
@@ -1799,56 +1816,207 @@ async function urlDe(id) {
   return r.url;
 }
 
-// "Carregar mais" TROCAVA a página em vez de acrescentar: quem clicava via
-// as 60 primeiras sumirem e não tinha caminho de volta — a galeria não
-// tinha começo nem fim, só um pedaço. Agora a lista ACUMULA: o que já
-// estava na tela continua lá, e a página cresce.
-let ACERVO = { itens: [], cursor: null };
+// HISTÓRICO DESTA TELA, em duas correções. Primeiro, "carregar mais"
+// TROCAVA a página: as 60 primeiras sumiam e não havia caminho de volta.
+// A correção foi acumular — e ela criou o problema seguinte, apontado no
+// uso: depois de cinco cliques a página ficava enorme e o celular travava
+// de novo. Agora são PÁGINAS: tamanho fixo, com Anterior e Próxima.
+// Filtro corrente e selecao. Ficam FORA de memorias() porque "carregar
+// mais" recarrega a funcao: se morassem dentro, cada pagina nova perderia
+// o filtro e a selecao — que e exatamente o momento em que a pessoa esta
+// juntando fotos para um album.
+let FILTRO = { pessoa: '', album: '', tipo: '' };
+const POR_PAGINA = 60;
+// Pilha de cursores ja visitados. A API pagina por cursor, entao voltar e
+// DESEMPILHAR — nao existe "pular para a pagina 5".
+let PAG = { pilha: [null], n: 1, proximo: null };
+let ESCOLHIDAS = new Set();
+let LISTAS = { pessoas: null, albuns: null };
 
-async function memorias(cursor) {
-  if (!cursor) aguarde(t('midia.titulo'));
-  const r = await api('GET', '/familias/' + FAM.id + '/midias?limite=60' +
+const qsFiltro = () => (FILTRO.pessoa ? '&pessoa=' + FILTRO.pessoa : '') +
+  (FILTRO.album ? '&album=' + FILTRO.album : '') +
+  (FILTRO.tipo ? '&tipo=' + FILTRO.tipo : '');
+
+/** Troca um filtro e recomeca a lista: paginacao velha nao vale para outro recorte. */
+function filtrar(campo, valor) {
+  FILTRO[campo] = valor || '';
+  PAG = { pilha: [null], n: 1, proximo: null };
+  ESCOLHIDAS = new Set();
+  memorias();
+}
+
+function limparFiltro() { FILTRO = { pessoa: '', album: '', tipo: '' }; filtrar('tipo', ''); }
+
+function marcar(id, marcado) {
+  if (marcado) ESCOLHIDAS.add(id); else ESCOLHIDAS.delete(id);
+  const b = document.getElementById('barra-selecao');
+  if (b) b.innerHTML = barraSelecao();
+}
+
+/** ANO da foto, para agrupar. Sem data nao se inventa: vai para o fim, rotulado. */
+function anoDaMidia(m) {
+  const v = m.capturada_ini || m.capturada_valor || '';
+  const a = String(v).match(/\d{4}/);
+  return a ? a[0] : null;
+}
+
+async function adicionarAoAlbum() {
+  if (!ESCOLHIDAS.size) return;
+  if (!LISTAS.albuns) {
+    const r = await api('GET', '/familias/' + FAM.id + '/albuns');
+    LISTAS.albuns = deuErro(r) ? [] : (r.albuns || []);
+  }
+  if (!LISTAS.albuns.length) return alert(t('midia.sem_album_ainda'));
+  const nomes = LISTAS.albuns.map((a, i) => (i + 1) + ') ' + a.titulo).join('\\n');
+  const escolha = prompt(t('midia.para_qual_album') + '\\n\\n' + nomes);
+  const alvo = LISTAS.albuns[Number(escolha) - 1];
+  if (!alvo) return;
+  let ok = 0;
+  for (const id of ESCOLHIDAS) {
+    const r = await api('POST', '/familias/' + FAM.id + '/albuns/' + alvo.id + '/itens',
+      { media_id: id });
+    if (!deuErro(r)) ok += 1;
+  }
+  alert(t('midia.adicionadas', { n: ok, album: alvo.titulo }));
+  ESCOLHIDAS = new Set();
+  memorias();
+}
+
+function barraSelecao() {
+  if (!ESCOLHIDAS.size) return '';
+  return '<span class="sub">' + esc(t('midia.escolhidas', { n: ESCOLHIDAS.size })) + '</span> ' +
+    '<button class="btn mini" onclick="adicionarAoAlbum()">' + esc(t('midia.para_album')) + '</button> ' +
+    '<button class="btn mini sec" onclick="ESCOLHIDAS=new Set();memorias()">' +
+    esc(t('acao.cancelar')) + '</button>';
+}
+
+async function memorias(direcao) {
+  aguarde(t('midia.titulo'));
+  // Listas dos filtros: buscadas UMA vez. São rótulos, não mudam a cada página.
+  if (!LISTAS.pessoas) {
+    const [rp, ra] = await Promise.all([
+      api('GET', '/familias/' + FAM.id + '/pessoas'),
+      api('GET', '/familias/' + FAM.id + '/albuns'),
+    ]);
+    LISTAS.pessoas = deuErro(rp) ? [] : (rp.pessoas || []);
+    LISTAS.albuns = deuErro(ra) ? [] : (ra.albuns || []);
+  }
+
+  // PÁGINAS DE VERDADE, não rolagem infinita. Acumular resolvia o defeito
+  // antigo ("carregar mais" fazia as 60 primeiras sumirem sem caminho de
+  // volta), mas trocava por outro: depois de cinco cliques a página ficava
+  // enorme e o celular travava de novo. Com Anterior/Próxima existe o
+  // caminho de volta E a página fica do mesmo tamanho sempre.
+  //
+  // A API pagina por CURSOR, então "pular para a página 5" não existe: o
+  // que se guarda é a PILHA de cursores já visitados, e voltar é
+  // desempilhar.
+  if (direcao === 'prox' && PAG.proximo) { PAG.pilha.push(PAG.proximo); PAG.n += 1; }
+  else if (direcao === 'ant' && PAG.pilha.length > 1) { PAG.pilha.pop(); PAG.n -= 1; }
+  const cursor = PAG.pilha[PAG.pilha.length - 1];
+
+  const r = await api('GET', '/familias/' + FAM.id + '/midias?limite=' + POR_PAGINA + qsFiltro() +
     (cursor ? '&antes_de=' + encodeURIComponent(cursor) : ''));
   // ERRO NÃO PODE PARECER GALERIA VAZIA (a mesma lição da lista de pessoas).
   if (deuErro(r)) return $(colecao(t('midia.titulo'), falhou(r, 'memorias()')));
-  ACERVO = {
-    itens: (cursor ? ACERVO.itens : []).concat(r.midias || []),
-    cursor: r.proximo_cursor || null,
-  };
-  const itens = ACERVO.itens;
-  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">← ' + esc(FAM.nome) + '</a></p>' +
+  const itens = r.midias || [];
+  PAG.proximo = r.proximo_cursor || null;
+
+  // AGRUPADO POR ANO. Acervo de família não é uma lista: são camadas de
+  // tempo. Quem tem 300 fotos procura "os anos 80", não a foto 147. O que
+  // não tem data vai para o FIM, rotulado — a Origena não inventa data
+  // para caber numa gaveta.
+  const porAno = {};
+  for (const m of itens) { const a = anoDaMidia(m) || ''; (porAno[a] = porAno[a] || []).push(m); }
+  const grupos = Object.entries(porAno).sort(function (x, y) {
+    return x[0] === '' ? 1 : y[0] === '' ? -1 : Number(y[0]) - Number(x[0]); });
+
+  const temFiltro = !!(FILTRO.pessoa || FILTRO.album || FILTRO.tipo);
+  const opcao = function (valor, rotulo, atual) {
+    return '<option value="' + valor + '"' + (atual === valor ? ' selected' : '') + '>' +
+      esc(rotulo) + '</option>'; };
+
+  $(topo() + '<p class="sub"><a href="#" onclick="abrir(FAM.id);return false">&larr; ' + esc(FAM.nome) + '</a></p>' +
     '<h2>' + esc(t('midia.titulo')) + '</h2>' +
-    (itens.length ? '<p class="sub">' + esc(t('midia.contagem', { n: itens.length })) + '</p>' : '') +
+    // FILTROS. A API sabia filtrar por pessoa, álbum e tipo desde a Fase 4;
+    // a tela nunca ofereceu. Sem isto o acervo real vira rolagem infinita,
+    // e montar um álbum fica impraticável.
+    '<p class="filtros">' +
+      '<select onchange="filtrar(\\'pessoa\\', this.value)" aria-label="' + esc(t('midia.todas_pessoas')) + '">' +
+        opcao('', t('midia.todas_pessoas'), FILTRO.pessoa) +
+        (LISTAS.pessoas || []).map(function (p) {
+          return opcao(p.id, p.nome_exibicao, FILTRO.pessoa); }).join('') +
+      '</select> ' +
+      '<select onchange="filtrar(\\'album\\', this.value)" aria-label="' + esc(t('midia.todos_albuns')) + '">' +
+        opcao('', t('midia.todos_albuns'), FILTRO.album) +
+        (LISTAS.albuns || []).map(function (a) {
+          return opcao(a.id, a.titulo, FILTRO.album); }).join('') +
+      '</select> ' +
+      '<select onchange="filtrar(\\'tipo\\', this.value)" aria-label="' + esc(t('midia.todos_tipos')) + '">' +
+        opcao('', t('midia.todos_tipos'), FILTRO.tipo) +
+        ['FOTO', 'VIDEO', 'AUDIO', 'DOCUMENTO'].map(function (x) {
+          return opcao(x, t('midia.tipo_' + x.toLowerCase()), FILTRO.tipo); }).join('') +
+      '</select>' +
+      (temFiltro
+        ? ' <button class="btn mini sec" onclick="limparFiltro()">' + esc(t('midia.limpar_filtro')) + '</button>'
+        : '') +
+    '</p>' +
+    '<p id="barra-selecao" class="sub">' + barraSelecao() + '</p>' +
     (r.ocultas ? '<p class="sub">' + esc(t('midia.ocultas', { n: r.ocultas })) + '</p>' : '') +
     (pode('contribuir')
       ? '<p><input type="file" id="arqs" multiple accept="image/*,video/*,audio/*,.pdf"> ' +
         '<button class="btn" onclick="enviarArquivos(document.getElementById(\\'arqs\\').files)">' +
         esc(t('midia.enviar')) + '</button></p><p class="sub" id="envio"></p>' : '<p id="envio"></p>') +
-    (itens.some(m => m.status === 'aguardando')
+    (itens.some(function (m) { return m.status === 'aguardando'; })
       ? '<p class="sub">' + esc(t('midia.aguardando_explica')) + '</p>' : '') +
     (pode('restaurar')
       ? '<p class="sub"><a href="#" onclick="telaLixeira();return false">' + esc(t('lixeira.titulo')) + '</a></p>' : '') +
     (itens.length
-      ? '<div class="grade">' + itens.map(m =>
-          '<figure class="cel" onclick="verMidia(\\'' + m.id + '\\')" data-thumb="' + (m.thumb_id || m.id) + '">' +
-          '<div class="ph"></div><figcaption>' + esc(m.titulo || '') +
-          // "processando" para tudo escondia o caso mais comum: o arquivo
-          // que NUNCA chegou. Quem via isso esperava por um trabalho que
-          // não estava acontecendo.
-          (m.status !== 'pronta' ? '<br><span class="papel">' + esc(t('midia.' +
-            (m.status === 'quarentena' ? 'quarentena' : m.status === 'falhou' ? 'falhou'
-              : m.status === 'aguardando' ? 'aguardando' : 'processando'))) +
-            '</span>' : '') +
-          (m.pessoas ? '<br><span class="sub">' + m.pessoas + ' 👤</span>' : '') +
-          '</figcaption></figure>').join('') + '</div>' +
-        (ACERVO.cursor && (r.midias || []).length >= 60
-          ? '<p><button class="btn sec" onclick="memorias(\\'' + ACERVO.cursor + '\\')">' +
-            esc(t('midia.carregar_mais')) + '</button></p>'
-          : '<p class="sub">' + esc(t('midia.fim_da_lista')) + '</p>')
-      : vazio(t('midia.sem_midias'), t('midia.sem_midias_p'),
-          pode('contribuir')
-            ? '<p><button class="btn emocional" onclick="document.getElementById(\\'arqs\\').click()">' +
-              esc(t('midia.enviar')) + '</button></p>' : '')));
+      ? grupos.map(function (par) {
+          const ano = par[0], doAno = par[1];
+          return '<h3 class="periodo">' + esc(ano || t('midia.sem_data')) +
+            ' <span class="sub">' + doAno.length + '</span></h3>' +
+            '<div class="grade">' + doAno.map(function (m) {
+              // SO FOTO TEM MINIATURA. Pedir imagem para um PDF ou um
+              // video devolvia uma celula cinza; com o titulo vazio (que e
+              // o normal nesses arquivos), a legenda tambem sumia — e o
+              // item ficava indistinguivel de NADA na tela. Quem enviou
+              // concluiu, com razao, que o envio nao tinha funcionado.
+              const ehFoto = m.tipo === 'FOTO';
+              const icone = m.tipo === 'VIDEO' ? '\u{1F3AC}' : m.tipo === 'AUDIO' ? '\u{1F3B5}'
+                : m.tipo === 'DOCUMENTO' ? '\u{1F4C4}' : '\u{1F5BC}';
+              const rotulo = m.titulo || m.nome_original || t('midia.tipo_' + m.tipo.toLowerCase());
+              return '<figure class="cel"' +
+                (ehFoto ? ' data-thumb="' + (m.thumb_id || m.id) + '"' : '') + '>' +
+                '<label class="marca-sel"><input type="checkbox"' +
+                  (ESCOLHIDAS.has(m.id) ? ' checked' : '') +
+                  ' onchange="marcar(\\'' + m.id + '\\', this.checked)" aria-label="' +
+                  esc(t('midia.escolher')) + '"></label>' +
+                '<div class="ph' + (ehFoto ? '' : ' arquivo') + '" onclick="verMidia(\\'' + m.id + '\\')">' +
+                  (ehFoto ? '' : '<span class="icone">' + icone + '</span>') + '</div>' +
+                '<figcaption>' + esc(rotulo) +
+                (m.status !== 'pronta' ? '<br><span class="papel">' + esc(t('midia.' +
+                  (m.status === 'quarentena' ? 'quarentena' : m.status === 'falhou' ? 'falhou'
+                    : m.status === 'aguardando' ? 'aguardando' : 'processando'))) + '</span>' : '') +
+                (m.pessoas ? '<br><span class="sub">' + m.pessoas + ' 👤</span>' : '') +
+                '</figcaption></figure>'; }).join('') + '</div>'; }).join('') +
+        // Paginação: sempre do mesmo tamanho, sempre com caminho de volta.
+        '<p class="paginacao">' +
+          (PAG.pilha.length > 1
+            ? '<button class="btn sec" onclick="memorias(\\'ant\\')">&larr; ' + esc(t('midia.anterior')) + '</button> '
+            : '') +
+          '<span class="sub">' + esc(t('midia.pagina', { n: PAG.n })) + '</span>' +
+          (PAG.proximo
+            ? ' <button class="btn sec" onclick="memorias(\\'prox\\')">' + esc(t('midia.proxima')) + ' &rarr;</button>'
+            : '') +
+        '</p>'
+      : vazio(t(temFiltro ? 'midia.nada_no_filtro' : 'midia.sem_midias'),
+          t(temFiltro ? 'midia.nada_no_filtro_p' : 'midia.sem_midias_p'),
+          temFiltro
+            ? '<p><button class="btn" onclick="limparFiltro()">' + esc(t('midia.limpar_filtro')) + '</button></p>'
+            : (pode('contribuir')
+              ? '<p><button class="btn emocional" onclick="document.getElementById(\\'arqs\\').click()">' +
+                esc(t('midia.enviar')) + '</button></p>' : ''))));
   carregarMiniaturasVisiveis();
 }
 
@@ -1922,14 +2090,32 @@ async function verMidia(id) {
   const r = await api('GET', '/familias/' + FAM.id + '/midias/' + id);
   if (deuErro(r)) return $(colecao(t('midia.titulo'), falhou(r, 'memorias()')));
   const m = r.midia;
-  const u = await urlDe((r.derivados.find(d => d.papel === 'THUMB') || {}).id || id);
+  // CADA TIPO SE ABRE DO SEU JEITO. Foto pede miniatura; video e audio
+  // pedem o proprio arquivo com controles; documento pede um caminho para
+  // ABRIR. Mandar tudo para uma tag <img> deixava PDF e video invisiveis —
+  // guardados no acervo e inalcancaveis na tela.
+  const ehFoto = m.tipo === 'FOTO';
+  const u = await urlDe(ehFoto
+    ? ((r.derivados.find(d => d.papel === 'THUMB') || {}).id || id)
+    : id);
+  const legenda = m.descricao ? '<figcaption>' + esc(m.descricao) + '</figcaption>' : '';
+  const visor = !u ? ''
+    : ehFoto
+      ? '<figure class="foto"><img src="' + u + '" alt="' + esc(m.titulo || t('midia.sem_legenda')) + '">' + legenda + '</figure>'
+      : m.tipo === 'VIDEO'
+        ? '<figure class="foto"><video src="' + u + '" controls playsinline style="max-width:100%"></video>' + legenda + '</figure>'
+        : m.tipo === 'AUDIO'
+          ? '<figure class="foto"><audio src="' + u + '" controls style="width:100%"></audio>' + legenda + '</figure>'
+          : '<figure class="foto arquivo-grande"><span class="icone">\u{1F4C4}</span>' +
+            '<p><a class="btn" href="' + u + '" target="_blank" rel="noopener">' +
+            esc(t('midia.abrir_arquivo')) + '</a></p>' + legenda + '</figure>';
+
   // A FOTO É O ASSUNTO da página: ela vem primeiro, sem moldura pesada, e
   // a legenda embaixo como numa página de álbum. Fundo escuro atrás porque
   // foto antiga costuma ter margem clara e some no papel.
   $(topo() + '<p class="sub"><a href="#" onclick="memorias();return false">← ' + esc(t('midia.titulo')) + '</a></p>' +
-    (u ? '<figure class="foto"><img src="' + u + '" alt="' + esc(m.titulo || t('midia.sem_legenda')) + '">' +
-      (m.descricao ? '<figcaption>' + esc(m.descricao) + '</figcaption>' : '') + '</figure>' : '') +
-    '<h2 style="margin:18px 0 4px">' + esc(m.titulo || t('midia.titulo')) + '</h2>' +
+    visor +
+    '<h2 style="margin:18px 0 4px">' + esc(m.titulo || m.nome_original || t('midia.titulo')) + '</h2>' +
     '<p class="sub" style="margin:0 0 6px">' +
       [m.capturada_valor, m.local_texto].filter(Boolean).map(esc).join(' · ') + '</p>' +
     '<h3>' + esc(t('midia.quem_aparece')) + '</h3>' +

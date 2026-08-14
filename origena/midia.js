@@ -255,7 +255,11 @@ async function registrarDerivado(t, { familyId, userId, originalId, papel, aiCla
 }
 
 // ------------------------------------------------------------- galeria
-const COLS = `id, tipo, titulo, descricao, capturada_valor, capturada_precisao, capturada_ini,
+// `nome_original` viaja para a galeria porque PDF e vídeo entram SEM
+// título: sem ele a célula fica cinza e sem legenda — indistinguível de
+// nada na tela. Foi o que fez o Augusto concluir que o envio de PDF e de
+// vídeo não funcionava, quando os arquivos estavam guardados e prontos.
+const COLS = `id, tipo, titulo, descricao, nome_original, capturada_valor, capturada_precisao, capturada_ini,
   local_texto, privacidade, status, largura, altura, bytes, created_by, created_at,
   (SELECT d.id FROM media d WHERE d.derivado_de = m.id AND d.papel = 'THUMB'
     ORDER BY d.bytes LIMIT 1) AS thumb_id,
