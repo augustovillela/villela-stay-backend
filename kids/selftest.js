@@ -629,7 +629,7 @@ async function rodar() {
     assert.ok(p.concluido, 'nivelamento de inglês não concluiu');
     const mIng = (await req('GET', JA('?materia=ingles'), { como: 'bia' })).json;
     assert.equal(mIng.nivelamento_feito, true);
-    assert.equal(mIng.fios.length, 6);
+    assert.equal(mIng.fios.length, 7); // 6 fios CEFR + fio BNCC LI (D3)
     const d = (await req('POST', JA('/licao'), { como: 'bia', corpo: { materia: 'ingles', celula: 'EN-PA1-CORES.2' } })).json;
     assert.ok(d.exercicios.every((e) => e.audio), 'lição de inglês sem áudio nos exercícios');
     const certas = d.exercicios.map((e) => ({ seed: e.seed, resposta: mi.exercicio('EN-PA1-CORES.2', e.seed).resposta }));

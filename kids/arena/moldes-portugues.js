@@ -110,6 +110,303 @@ const TITULOS = [['A receita secreta do bolo da vovó', 'uma receita de família
 const CONTEXTO_PALAVRA = [['O explorador ficou EXAUSTO depois de subir a montanha e dormiu na hora.', 'exausto', 'muito cansado', ['muito feliz', 'com fome', 'perdido']], ['A sala ficou em ALVOROÇO quando anunciaram o passeio: todos falavam ao mesmo tempo.', 'alvoroço', 'agitação', ['silêncio', 'tristeza', 'escuridão']], ['O cofre era INVIOLÁVEL: ninguém jamais conseguiu abri-lo.', 'inviolável', 'impossível de abrir', ['fácil de abrir', 'muito antigo', 'transparente']]];
 
 // ---------------------------------------------------------------------
+// BANCOS DO LOTE 2 (fios 4-6, 10, 12 + anos 6º–8º)
+// ---------------------------------------------------------------------
+
+// fio 2 · localizar (6º–8º)
+const NOTICIAS_6 = [
+  ['Um incêndio atingiu o galpão de uma fábrica de móveis na madrugada de ontem. Ninguém se feriu, mas o prejuízo passa de um milhão de reais. Os bombeiros levaram três horas para controlar o fogo.', 'Qual é o FATO CENTRAL da notícia?', 'um incêndio atingiu uma fábrica de móveis', ['os bombeiros trabalharam três horas', 'móveis custam caro', 'ninguém gosta de incêndio']],
+  ['A prefeitura inaugurou neste domingo a nova ciclovia da orla, com oito quilômetros de extensão. Centenas de ciclistas participaram do passeio de estreia, que terminou com um café da manhã coletivo.', 'Qual é o FATO CENTRAL da notícia?', 'a inauguração da nova ciclovia da orla', ['um café da manhã coletivo', 'a compra de bicicletas', 'o tamanho da orla']],
+];
+const GRIFAR = [
+  ['A água doce é um recurso limitado. Rios e lagos representam menos de 1% de toda a água do planeta. Por isso, economizar água em casa não é frescura: é uma atitude que protege um bem raro.', 'Se você pudesse GRIFAR uma frase que carrega o essencial, qual seria?', 'Rios e lagos representam menos de 1% de toda a água do planeta.', ['Economizar não é frescura.', 'A água vem de rios e lagos.', 'Todo mundo tem água em casa.']],
+  ['O sono é o momento em que o cérebro organiza o que aprendeu no dia. Crianças que dormem pouco têm mais dificuldade de concentração na escola. Dormir bem, portanto, é parte do estudo.', 'Qual frase resume o ESSENCIAL do texto?', 'Dormir bem é parte do estudo.', ['Criança gosta de dormir.', 'O cérebro nunca descansa.', 'A escola exige concentração.']],
+];
+const SELECIONAR_INFO = [
+  ['Você vai fazer um trabalho sobre a ALIMENTAÇÃO dos tubarões. Qual trecho da enciclopédia interessa?', 'A maioria dos tubarões se alimenta de peixes, focas e lulas, caçando principalmente à noite.', ['Os tubarões existem há mais de 400 milhões de anos.', 'O tubarão-baleia pode medir 12 metros.', 'Filmes famosos aumentaram o medo de tubarões.']],
+  ['Sua pesquisa é sobre COMO as abelhas produzem mel. Qual trecho serve?', 'As abelhas coletam o néctar das flores e o transformam em mel dentro da colmeia, batendo as asas para secá-lo.', ['O mel é usado desde o antigo Egito.', 'As abelhas-rainhas vivem vários anos.', 'Existem abelhas que não fazem mel.']],
+];
+
+// fio 3 · inferir (6º–8º)
+const IRONIA_HUMOR = [
+  ['Depois de tomar chuva a caminho da prova, Caio olhou para o céu e disse: "Que dia PERFEITO!"', 'Por que a fala de Caio é IRÔNICA?', 'ele diz o contrário do que pensa: o dia foi péssimo', ['ele realmente ama chuva', 'ele acertou a previsão do tempo', 'ele estava elogiando o céu']],
+  ['A mãe abriu o quarto bagunçado e comentou: "Adorei a decoração nova."', 'O que a mãe quis dizer de verdade?', 'que o quarto está uma bagunça', ['que gostou dos móveis novos', 'que quer redecorar a casa', 'que o quarto está bonito']],
+];
+const TESES = [
+  ['O recreio deveria ser mais longo. Estudos mostram que pausas melhoram a concentração, e alunos descansados aprendem mais rápido. Além disso, o recreio é o principal momento de convivência da escola.', 'Qual é a TESE (a opinião central) do texto?', 'o recreio deveria ser mais longo', ['pausas existem em toda escola', 'alunos gostam de conversar', 'estudos são importantes']],
+  ['Animais não deveriam ser vendidos em lojas. Abrigos estão cheios de cães e gatos esperando um lar, e a adoção salva duas vidas: a do animal adotado e a do que ocupa a vaga aberta.', 'Qual é a TESE do texto?', 'animais não deveriam ser vendidos em lojas', ['abrigos estão sempre cheios', 'cães e gatos são bons animais', 'lojas vendem muitos animais']],
+];
+const TESE_IMPLICITA = [
+  ['"Enquanto o estádio novo custou 300 milhões, a escola do bairro segue com goteiras nas salas."', 'Sem dizer com todas as letras, o autor DEFENDE que…', 'o dinheiro público foi mal priorizado', ['estádios não deveriam existir', 'goteiras são fáceis de consertar', 'o estádio custou barato']],
+  ['"Curioso: quando o assunto é videogame, a memória do meu irmão funciona perfeitamente."', 'O que o autor deixa IMPLÍCITO?', 'o irmão finge esquecer o que não lhe interessa', ['o irmão tem memória ruim de verdade', 'videogame melhora a memória', 'o autor não tem irmão']],
+];
+
+// fio 4 · leitura crítica
+const ANUNCIOS = [
+  ['Anúncio: "TODO MUNDO já tem o tênis TurboMax. Só falta VOCÊ!"', 'Qual truque de convencimento o anúncio usa?', 'fazer parecer que todos têm, para você não ficar de fora', ['dar informações técnicas do tênis', 'mostrar o preço baixo', 'explicar como o tênis é feito']],
+  ['Anúncio: "Compre HOJE! Últimas unidades! Amanhã pode ser tarde demais!"', 'Qual é o truque?', 'criar pressa para você não pensar antes de comprar', ['informar o estoque com precisão', 'dar um desconto real', 'elogiar a qualidade do produto']],
+  ['Anúncio: "O suco preferido dos campeões olímpicos!"', 'Qual é o truque?', 'ligar o produto a pessoas admiradas', ['provar que o suco é saudável', 'mostrar a receita do suco', 'comparar preços com o concorrente']],
+];
+const FATO_OPINIAO = [
+  ['O Brasil tem mais de 8 mil quilômetros de litoral.', 'fato'],
+  ['As praias do Brasil são as mais bonitas do mundo.', 'opinião'],
+  ['A água ferve a 100 °C ao nível do mar.', 'fato'],
+  ['Sorvete de chocolate é melhor que o de morango.', 'opinião'],
+  ['A baleia-azul é o maior animal do planeta.', 'fato'],
+  ['Matemática é a matéria mais difícil da escola.', 'opinião'],
+];
+const FATO_OPINIAO_7 = [
+  ['O filme arrecadou 500 milhões em duas semanas.', 'fato'],
+  ['O filme é sem dúvida o melhor do ano.', 'opinião'],
+  ['A pesquisa ouviu 2 mil estudantes de 14 cidades.', 'fato'],
+  ['Esse resultado mostra que os jovens leem pouco demais.', 'opinião'],
+  ['O time venceu por 3 a 1 fora de casa.', 'fato'],
+  ['Foi a vitória mais emocionante da década.', 'opinião'],
+];
+const MIDIAS = [
+  ['O MESMO jogo terminou 1 a 0. Jornal A: "Time joga mal e vence sem brilho". Jornal B: "Time mostra eficiência e garante vitória".', 'O que muda entre os dois jornais?', 'o jeito de contar: cada um escolhe um tom para o mesmo fato', ['o resultado do jogo', 'a data da partida', 'o time que venceu']],
+  ['A MESMA chuva. Site A: "Chuva alaga ruas e causa transtorno". Site B: "Chuva alivia seca e enche reservatórios".', 'Por que as manchetes são tão diferentes?', 'cada site escolheu um lado do mesmo fato para destacar', ['choveu em cidades diferentes', 'um dos sites mentiu sobre a chuva', 'a chuva parou entre uma e outra']],
+];
+const RELATO_NEUTRO = [
+  ['Qual manchete mostra OPINIÃO escondida no meio da notícia?', '"Prefeitura gasta fortuna em obra desnecessária"', ['"Prefeitura inicia obra na avenida central"', '"Obra na avenida começa na segunda-feira"', '"Avenida central recebe obra de drenagem"']],
+  ['Qual manchete tenta parecer neutra mas JULGA?', '"Aluno atrapalha aula com pergunta polêmica"', ['"Aluno faz pergunta durante a aula"', '"Professor responde pergunta de aluno"', '"Aula tem debate entre alunos"']],
+];
+const MEME_CRITICO = [
+  ['Você recebe um post chocante sem fonte, pedindo "compartilhe antes que apaguem!". O que fazer ANTES de repassar?', 'checar se o fato aparece em fontes confiáveis', ['compartilhar rápido, como pede o post', 'repassar só para os amigos próximos', 'copiar o texto e postar como seu']],
+  ['Um meme usa a foto de uma pessoa real para zombar dela. Qual é o problema?', 'espalha constrangimento sobre alguém de verdade', ['memes nunca podem ter fotos', 'a foto está fora de foco', 'faltou colocar mais texto']],
+];
+const PERSUASAO_ARG = [
+  ['"Segundo a pesquisa da universidade, 70% dos alunos melhoram com aulas de música." O argumento se apoia em…', 'dados e fonte de autoridade', ['apelo à emoção', 'ameaça', 'humor']],
+  ['"Imagine seu filho preso num corredor lotado durante um incêndio." O argumento se apoia em…', 'apelo à emoção', ['estatísticas oficiais', 'citação de especialista', 'definição de dicionário']],
+];
+
+// fio 5 · narrativas
+const CONFLITOS = [
+  ['A formiga Rita guardou comida o verão inteiro. Quando o inverno chegou, a despensa desabou e enterrou tudo. Rita então bateu na porta das vizinhas — e cada uma dividiu um pouco do que tinha.', 'Qual era o PROBLEMA da história?', 'a despensa desabou e enterrou a comida', ['Rita não gostava do verão', 'as vizinhas eram más', 'o inverno atrasou']],
+  ['O papagaio Bino sabia mil palavras, mas travava na frente dos outros. No festival de calouros, o amigo tatu subiu no palco junto. De pertinho, Bino soltou a voz — e ganhou o troféu.', 'Como o problema foi RESOLVIDO?', 'o amigo subiu ao palco e deu segurança a Bino', ['Bino desistiu do festival', 'o tatu cantou no lugar dele', 'o troféu foi cancelado']],
+];
+const ELEMENTOS_NARRATIVA = [
+  ['"Numa vila à beira-mar, a pescadora Dora encontrou uma garrafa com um bilhete misterioso", diz o começo do conto.', 'Qual é o CENÁRIO da história?', 'uma vila à beira-mar', ['uma floresta escura', 'a casa de Dora', 'um navio pirata']],
+  ['"Numa vila à beira-mar, a pescadora Dora encontrou uma garrafa com um bilhete misterioso", diz o começo do conto.', 'Quem é a PERSONAGEM principal?', 'a pescadora Dora', ['o bilhete', 'a garrafa', 'o mar']],
+];
+const ENREDO = [
+  ['Na história, PRIMEIRO o balão do festival escapou; DEPOIS as crianças correram atrás dele pelo campo; POR FIM o vento o devolveu na praça, onde todos comemoraram.', 'O que aconteceu POR ÚLTIMO?', 'o vento devolveu o balão na praça', ['o balão escapou', 'as crianças correram pelo campo', 'o festival foi cancelado']],
+  ['No conto, a chave sumiu de manhã; a família procurou o dia todo; à noite, o gato apareceu brincando com ela debaixo do sofá.', 'Qual foi o DESFECHO?', 'o gato apareceu com a chave debaixo do sofá', ['a chave sumiu', 'a família procurou o dia todo', 'compraram uma chave nova']],
+];
+const DISCURSOS = [
+  ['— Vou vencer esta corrida! — gritou Lena.', 'direto'],
+  ['Lena gritou que venceria a corrida.', 'indireto'],
+  ['— Está chovendo de novo? — perguntou o avô.', 'direto'],
+  ['O avô perguntou se estava chovendo de novo.', 'indireto'],
+];
+const FOCO_NARRATIVO = [
+  ['"EU abri a porta devagar e MEU coração disparou."', 'Quem conta a história?', 'um narrador-personagem (1ª pessoa)', ['um narrador de fora (3ª pessoa)', 'o leitor', 'ninguém conta']],
+  ['"Marina abriu a porta devagar e o coração DELA disparou."', 'Quem conta a história?', 'um narrador de fora (3ª pessoa)', ['a própria Marina (1ª pessoa)', 'o coração', 'um repórter']],
+];
+const FOCO_NARRATIVO_7 = [
+  ['"Eu nunca soube o que Pedro pensou naquela hora — só vi seu rosto mudar." O narrador…', 'é personagem e NÃO sabe tudo: só o que viu', ['sabe tudo o que todos pensam', 'está fora da história e sabe tudo', 'é o próprio Pedro']],
+  ['"Enquanto Ana dormia, do outro lado da cidade Bruno tomava sua decisão." O narrador…', 'está fora da história e vê tudo, até o que ninguém viu', ['é a Ana', 'é o Bruno', 'só sabe o que Ana sabe']],
+];
+const EFEITO_DISCURSO = [
+  ['O autor podia resumir, mas escolheu mostrar a fala: "— NUNCA mais entro aqui!". Que efeito isso cria?', 'a cena fica viva: ouvimos a raiva na voz da personagem', ['o texto fica mais curto', 'a história perde emoção', 'o narrador some da história']],
+  ['O autor trocou "— Socorro!" por "ela pediu ajuda baixinho". O que mudou?', 'a cena perdeu força: a fala virou um resumo distante', ['a cena ficou mais emocionante', 'nada mudou no efeito', 'a personagem ficou mais corajosa']],
+];
+
+// fio 6 · poesia e figuras
+const RIMAS = [
+  ['coração', 'balão', ['sapato', 'janela', 'sorvete']],
+  ['janela', 'panela', ['portão', 'telhado', 'parede']],
+  ['flor', 'amor', ['pedra', 'chuva', 'campo']],
+  ['gato', 'sapato', ['cachorro', 'peixe', 'flor']],
+];
+const ESTROFES = [
+  ['"O mar dança sem parar,\nvai e volta na areia,\nquem o vê fica a sonhar,\ncom a lua que o clareia."', 'Quantos VERSOS tem essa estrofe?', '4', ['2', '3', '5']],
+  ['"A estrela acordou cedo,\npintou o céu de anil."', 'Quantos VERSOS tem essa estrofe?', '2', ['1', '3', '4']],
+];
+const METAFORAS = [
+  ['"A lua é uma lâmpada pendurada no céu."', 'O que o poeta quis dizer?', 'que a lua ilumina a noite como uma lâmpada', ['que a lua é elétrica', 'que alguém pendurou a lua', 'que o céu tem tomadas']],
+  ['"Meu avô é uma biblioteca de histórias."', 'O que a frase quer dizer?', 'que o avô conhece muitas histórias', ['que o avô mora numa biblioteca', 'que o avô só lê livros', 'que o avô é feito de papel']],
+];
+const PIADAS = [
+  ['"— Garçom, esse frango está gelado! — Claro, senhor: é frango à passarinho, e passarinho voa em céu frio."', 'A graça da piada está…', 'no duplo sentido criado pela resposta absurda do garçom', ['no preço do frango', 'na fome do cliente', 'no nome do restaurante']],
+  ['"Por que o livro de matemática vive triste? Porque tem muitos problemas."', 'A graça está no duplo sentido de…', '"problemas": exercícios E preocupações', ['"livro": objeto e pessoa', '"triste": alegre e chateado', '"matemática": fácil e difícil']],
+];
+const FIGURAS_6 = [
+  ['"Suas mãos eram gelo quando chegou da rua."', 'metáfora', ['comparação (com COMO)', 'personificação']],
+  ['"O vento sussurrava segredos nas janelas."', 'personificação', ['metáfora', 'comparação (com COMO)']],
+  ['"Ela corre COMO uma gazela."', 'comparação (com COMO)', ['metáfora', 'personificação']],
+  ['"O sol abraçou a cidade logo cedo."', 'personificação', ['comparação (com COMO)', 'metáfora']],
+];
+const FIGURAS_7 = [
+  ['"Já te chamei UM MILHÃO de vezes!"', 'hipérbole (exagero)', ['eufemismo (suavização)', 'metáfora']],
+  ['"Estou morrendo de fome."', 'hipérbole (exagero)', ['personificação', 'eufemismo (suavização)']],
+  ['"Chorou rios de lágrimas no final do filme."', 'hipérbole (exagero)', ['comparação', 'metonímia']],
+];
+const FIGURAS_8 = [
+  ['"Adoro ler Machado de Assis." (o AUTOR pelo LIVRO)', 'metonímia', ['antítese', 'hipérbole']],
+  ['"O ódio e o amor moram no mesmo peito."', 'antítese (opostos lado a lado)', ['metonímia', 'eufemismo']],
+  ['"Aquela notícia tem um CHEIRO estranho." (sentido figurado)', 'conotação', ['sentido literal (denotação)', 'antítese']],
+];
+const IRONIA_EUFEMISMO = [
+  ['"Ele foi CONVIDADO A SE RETIRAR da sala." (em vez de "foi expulso")', 'eufemismo (suavizar algo duro)', ['ironia (dizer o contrário)', 'hipérbole (exagerar)']],
+  ['"Que organização IMPECÁVEL!" (diante da mesa caótica)', 'ironia (dizer o contrário do que pensa)', ['eufemismo (suavizar)', 'metáfora']],
+  ['"Ela nos deixou." (em vez de "ela morreu")', 'eufemismo (suavizar algo doloroso)', ['ironia', 'antítese']],
+];
+
+// fio 7 · ortografia 6º–8º
+ORTO['EF67LP32.6'] = [['mexer', 'mecher'], ['enxergar', 'enchergar'], ['jeito', 'geito'], ['ansioso', 'ancioso'], ['obsessão', 'obcessão'], ['berinjela', 'beringela']];
+ORTO['EF08LP05.8'] = [['guarda-chuva', 'guardachuva'], ['segunda-feira', 'segunda feira (sem hífen)'], ['beija-flor', 'beijaflor'], ['bem-vindo', 'benvindo'], ['micro-ondas', 'microondas'], ['autoescola', 'auto-escola']];
+
+// fio 9 · pontuação 6º–8º
+const PONTUAR_6 = [
+  ['O diretor anunciou o passeio.', 'O diretor, anunciou o passeio.'],
+  ['Ana, venha almoçar!', 'Ana venha almoçar!'],
+  ['Trouxe pão, queijo e suco.', 'Trouxe, pão queijo e suco.'],
+];
+const VIRGULA_ORACOES = [
+  ['Quando a chuva passou, saímos para brincar.', 'Quando a chuva passou saímos para brincar.'],
+  ['Se você quiser, eu espero.', 'Se você quiser eu espero.'],
+  ['Embora estivesse cansado, terminou a lição.', 'Embora estivesse cansado terminou a lição.'],
+];
+const CONECTOR_ORACOES = [
+  ['Estudei bastante, ___ ainda fiquei nervoso.', 'mas', ['e', 'ou']],
+  ['Ela treinou o ano todo ___ venceu a prova.', 'e', ['mas', 'porém']],
+  ['Queria ir à festa, ___ estava doente.', 'porém', ['e', 'ou']],
+];
+const SENTIDO_CONJUNCAO = [
+  ['Na frase "Estava frio, PORTANTO levei casaco", a conjunção indica…', 'conclusão', ['causa', 'oposição', 'alternativa']],
+  ['Em "EMBORA chovesse, fomos ao jogo", a conjunção indica…', 'concessão (um obstáculo que não impediu)', ['conclusão', 'adição', 'alternativa']],
+  ['Em "Faltei PORQUE fiquei doente", a conjunção indica…', 'causa', ['oposição', 'conclusão', 'tempo']],
+];
+
+// fio 10 · classes e sintaxe
+const CLASSE_PALAVRA = [
+  ['Na frase "O cachorro CORREU pelo parque", a palavra CORREU é…', 'verbo', ['substantivo', 'adjetivo']],
+  ['Na frase "A MENINA leu o livro", a palavra MENINA é…', 'substantivo', ['verbo', 'adjetivo']],
+  ['Em "O sol BRILHOU forte", BRILHOU é…', 'verbo', ['substantivo', 'adjetivo']],
+];
+const ACHAR_ADJETIVO = [
+  ['O bolo DELICIOSO acabou em um minuto.', 'delicioso', ['bolo', 'minuto', 'acabou']],
+  ['A casa AMARELA fica na esquina.', 'amarela', ['casa', 'esquina', 'fica']],
+  ['Que dia CHUVOSO!', 'chuvoso', ['dia', 'que']],
+];
+const CONCORDANCIA_V = [
+  ['Os meninos ___ no parque.', 'brincam', ['brinca', 'brincamos']],
+  ['A professora ___ a lição.', 'corrigiu', ['corrigiram', 'corrigimos']],
+  ['Nós ___ cedo amanhã.', 'saímos', ['sai', 'saem']],
+];
+const CONCORDANCIA_N = [
+  ['As casas ___ da rua nova.', 'amarelas', ['amarela', 'amarelos']],
+  ['Os dois ___ irmãos chegaram.', 'queridos', ['querida', 'querido']],
+  ['Aquelas ___ histórias me encantam.', 'velhas', ['velho', 'velha']],
+];
+const TEMPOS_VERBAIS = [
+  ['Ontem eu ___ um bolo inteiro.', 'comi', ['como', 'comerei']],
+  ['Amanhã nós ___ para a praia.', 'viajaremos', ['viajamos ontem', 'viajávamos']],
+  ['Agora ela ___ no quintal.', 'brinca', ['brincou', 'brincará']],
+];
+const FLEXAO_SUJEITO = [
+  ['Nós ___ o filme juntos.', 'assistimos', ['assistiu', 'assistiram']],
+  ['Eles ___ tarde da festa.', 'voltaram', ['voltou', 'voltamos']],
+  ['Tu ___ muito bem!', 'cantas', ['canta', 'cantam']],
+];
+const MODOS_VERBAIS = [
+  ['Espero que você ___ bem na prova.', 'vá', ['vai', 'foi']],
+  ['Se eu ___ rico, viajaria o mundo.', 'fosse', ['era', 'sou']],
+  ['___ a porta, por favor. (pedido)', 'Feche', ['Fechou', 'Fechava']],
+];
+const CONCORDANCIA_6 = [
+  ['Faz dois anos que moro aqui.', 'Fazem dois anos que moro aqui.'],
+  ['Havia muitas pessoas na fila.', 'Haviam muitas pessoas na fila.'],
+  ['Mais de um aluno faltou hoje.', 'Mais de um aluno faltaram hoje.'],
+];
+const SINTAXE_TERMOS = [
+  ['Na frase "O menino comeu a maçã", quem é o SUJEITO?', 'o menino', ['a maçã', 'comeu']],
+  ['Na frase "O menino comeu a maçã", o que é "a maçã"?', 'objeto direto (quem sofre a ação)', ['sujeito', 'verbo']],
+  ['Em "As crianças cantaram lindamente", qual é o PREDICADO?', 'cantaram lindamente', ['as crianças', 'lindamente']],
+];
+const ADVERBIOS = [
+  ['Em "Ela canta LINDAMENTE", o advérbio indica…', 'modo (como canta)', ['tempo (quando)', 'lugar (onde)']],
+  ['Em "Chegamos ONTEM", o advérbio indica…', 'tempo (quando)', ['modo (como)', 'lugar (onde)']],
+  ['Em "Moro AQUI", o advérbio indica…', 'lugar (onde)', ['tempo (quando)', 'modo (como)']],
+];
+const TERMOS_ORACAO_8 = [
+  ['Em "Os alunos entregaram o trabalho AO PROFESSOR", o termo destacado é…', 'objeto indireto', ['objeto direto', 'sujeito', 'adjunto de tempo']],
+  ['Em "A tempestade destruiu O TELHADO", o termo destacado é…', 'objeto direto', ['objeto indireto', 'sujeito', 'predicativo']],
+];
+const REGENCIA = [
+  ['Assisti ___ filme com meus primos.', 'ao', ['o', 'no']],
+  ['Obedeça ___ regras do jogo.', 'às', ['as', 'nas']],
+  ['Cheguei ___ escola mais cedo.', 'à', ['a', 'em']],
+];
+const VOZES = [
+  ['"A bola FOI CHUTADA pelo menino." A frase está na voz…', 'passiva', ['ativa', 'reflexiva']],
+  ['"O menino CHUTOU a bola." A frase está na voz…', 'ativa', ['passiva', 'reflexiva']],
+  ['Qual é a versão na voz ATIVA de "O bolo foi feito pela avó"?', 'A avó fez o bolo.', ['O bolo fez a avó.', 'O bolo foi comido.', 'A avó foi feita pelo bolo.']],
+];
+const COORD_SUBORD = [
+  ['"Cheguei em casa E tomei banho." As orações são…', 'coordenadas (independentes, lado a lado)', ['subordinadas (uma depende da outra)']],
+  ['"QUANDO cheguei em casa, tomei banho." As orações são…', 'subordinadas (uma depende da outra)', ['coordenadas (independentes)']],
+  ['"Estudei muito, MAS a prova foi difícil." As orações são…', 'coordenadas (independentes, lado a lado)', ['subordinadas (uma depende da outra)']],
+];
+
+// fio 11 · vocabulário 6º–8º
+const NUANCES = [
+  ['olhar de um jeito escondido, sem ser visto', 'espiar', ['encarar', 'admirar']],
+  ['a casa vista como lugar de afeto e família', 'lar', ['imóvel', 'construção']],
+  ['rir baixinho, quase sem barulho', 'sorrir', ['gargalhar', 'debochar']],
+  ['pedir com muita força, quase implorando', 'suplicar', ['solicitar', 'perguntar']],
+];
+const DERIVADA_COMPOSTA_7 = [
+  ['passatempo', 'composta (junta duas palavras)', ['derivada (nasce de uma só)']],
+  ['infelizmente', 'derivada (nasce de uma só)', ['composta (junta duas palavras)']],
+  ['pé-de-moleque', 'composta (junta duas palavras)', ['derivada (nasce de uma só)']],
+  ['reflorestamento', 'derivada (nasce de uma só)', ['composta (junta duas palavras)']],
+];
+const AFIXOS = [
+  ['O prefixo RE- em "REfazer" significa…', 'fazer de novo', ['fazer o contrário', 'fazer pela metade']],
+  ['O prefixo DES- em "DESfazer" significa…', 'o contrário da ação', ['fazer de novo', 'fazer rápido']],
+  ['O sufixo -VEL em "lavá-VEL" significa…', 'que pode ser (lavado)', ['que já foi (lavado)', 'quem lava']],
+  ['O sufixo -EIRO em "sapatEIRO" indica…', 'profissão/quem trabalha com', ['lugar distante', 'tamanho grande']],
+];
+
+// fio 12 · coesão
+const REFERENTES = [
+  ['"Ana pegou o livro na estante e O guardou na mochila." A palavra "O" se refere a…', 'o livro', ['a mochila', 'a estante', 'Ana']],
+  ['"O time entrou em campo. ELE estava confiante." "ELE" se refere a…', 'o time', ['o campo', 'o jogo', 'o técnico']],
+];
+const REFERENTES_4 = [
+  ['"Marcos emprestou a bicicleta ao primo, mas pediu que ELA voltasse até sábado." "ELA" é…', 'a bicicleta', ['a semana', 'a casa do primo', 'a mãe de Marcos']],
+  ['"A professora elogiou as alunas e LHES deu parabéns." "LHES" se refere a…', 'as alunas', ['a professora', 'as provas', 'as famílias']],
+];
+const CONECTIVOS_5 = [
+  ['Não fui à festa ___ estava doente.', 'porque', ['mas', 'ou']],
+  ['Quero ir ao cinema, ___ está chovendo muito.', 'mas', ['porque', 'e']],
+  ['Você prefere suco ___ refrigerante?', 'ou', ['mas', 'porque']],
+  ['___ chova, o jogo vai acontecer.', 'Mesmo que', ['Porque', 'Portanto']],
+];
+const COESAO_6 = [
+  ['"Pedro ama futebol. ___, treina todos os dias." Qual conectivo costura as frases?', 'Por isso', ['Porém', 'Ou seja', 'Antes disso']],
+  ['"A cidade cresceu rápido. ___ crescimento trouxe problemas." O que costura?', 'Esse', ['Aquela', 'Nenhum', 'Outro']],
+];
+const ANAFORAS = [
+  ['"O time venceu de virada. A EQUIPE comemorou no gramado." "A equipe" retoma…', 'o time', ['a torcida', 'a virada', 'o gramado']],
+  ['"Comprei um romance ontem. O LIVRO é incrível." "O livro" retoma…', 'o romance', ['a livraria', 'o autor', 'o dia de ontem']],
+];
+const ORGANIZADORES = [
+  ['"PRIMEIRO misture os ovos; DEPOIS acrescente a farinha; POR FIM leve ao forno." Essas palavras organizam o texto por…', 'ordem no tempo (sequência de passos)', ['oposição de ideias', 'causa e efeito', 'comparação']],
+  ['"POR UM LADO, o celular ajuda nos estudos; POR OUTRO, distrai." As expressões organizam…', 'um contraste entre dois lados', ['uma sequência de passos', 'uma lista de compras', 'uma conclusão']],
+];
+const RELATIVOS = [
+  ['"O livro QUE li nas férias era ótimo." O QUE se refere a…', 'o livro', ['as férias', 'quem leu', 'a escola']],
+  ['"A cidade ONDE nasci fica no litoral." O ONDE se refere a…', 'a cidade', ['o litoral', 'quem nasceu', 'a praia']],
+];
+const PROGRESSAO = [
+  ['O parágrafo diz: "A horta da escola começou pequena, com três canteiros de alface." Qual frase CONTINUA bem o assunto?', 'Hoje, já são dez canteiros e até um pomar.', ['O futebol é o esporte mais popular do país.', 'Alface se escreve com CE.', 'A escola fica na rua principal.']],
+  ['O parágrafo diz: "Reciclar virou rotina na nossa rua." Qual frase CONTINUA bem o assunto?', 'Cada casa agora separa papel, vidro e plástico.', ['Meu cachorro late à noite.', 'A rua foi asfaltada em 1990.', 'Plástico deriva do petróleo.']],
+];
+
+// ---------------------------------------------------------------------
 // MOLDES por célula
 // ---------------------------------------------------------------------
 const MOLDES = {
@@ -285,6 +582,253 @@ const MOLDES = {
     const p = de(r, DERIVADAS);
     const pal = p[1] || p[0];
     return { enunciado: `A palavra "${pal}" é…`, tipo: 'escolha', opcoes: escolha(r, p[2], [p[2] === 'derivada' ? 'composta' : 'derivada', 'primitiva']), resposta: p[2], dica: 'Derivada nasce de outra com sufixo; composta junta DUAS palavras.' };
+  } }],
+  // ================= LOTE 2 =================
+  // ---- fio 2 · localizar (6º–8º) ----
+  'EF69LP03.6': [{ id: 'fato-central', gerar(r) {
+    const n = de(r, NOTICIAS_6);
+    return { enunciado: `Notícia: "${n[0]}"\n\n${n[1]}`, tipo: 'escolha', opcoes: escolha(r, n[2], n[3]), resposta: n[2], dica: 'O fato central costuma estar logo na primeira frase da notícia.' };
+  } }],
+  'EF69LP34.7': [{ id: 'grifar', gerar(r) {
+    const t = de(r, GRIFAR);
+    return { enunciado: `Leia:\n\n"${t[0]}"\n\n${t[1]}`, tipo: 'escolha', opcoes: escolha(r, t[2], t[3]), resposta: t[2], dica: 'Grife a frase que, sozinha, ainda conta o principal.' };
+  } }],
+  'EF69LP32.8': [{ id: 'selecionar-info', gerar(r) {
+    const t = de(r, SELECIONAR_INFO);
+    return { enunciado: t[0], tipo: 'escolha', opcoes: escolha(r, t[1], t[2]), resposta: t[1], dica: 'Pesquisar bem é IGNORAR o que não responde à sua pergunta.' };
+  } }],
+  // ---- fio 3 · inferir (6º–8º) ----
+  'EF69LP05.6': [{ id: 'ironia-humor', gerar(r) {
+    const t = de(r, IRONIA_HUMOR);
+    return { enunciado: `${t[0]}\n\n${t[1]}`, tipo: 'escolha', opcoes: escolha(r, t[2], t[3]), resposta: t[2], dica: 'Na ironia, as palavras dizem uma coisa e a intenção diz outra.' };
+  } }],
+  'EF67LP05.7': [{ id: 'tese', gerar(r) {
+    const t = de(r, TESES);
+    return { enunciado: `Leia o texto de opinião:\n\n"${t[0]}"\n\n${t[1]}`, tipo: 'escolha', opcoes: escolha(r, t[2], t[3]), resposta: t[2], dica: 'A tese é o que o autor DEFENDE; o resto são os argumentos que a sustentam.' };
+  } }],
+  'EF89LP04.8': [{ id: 'tese-implicita', gerar(r) {
+    const t = de(r, TESE_IMPLICITA);
+    return { enunciado: `${t[0]}\n\n${t[1]}`, tipo: 'escolha', opcoes: escolha(r, t[2], t[3]), resposta: t[2], dica: 'Compare o que foi dito com o que foi ESCOLHIDO para ficar lado a lado.' };
+  } }],
+  // ---- fio 4 · leitura crítica ----
+  'EF03LP19.3': [{ id: 'anuncio', gerar(r) {
+    const a = de(r, ANUNCIOS);
+    return { enunciado: `${a[0]}\n\n${a[1]}`, tipo: 'escolha', opcoes: escolha(r, a[2], a[3]), resposta: a[2], dica: 'Anúncio quer VENDER — repare no que ele faz você sentir.' };
+  } }],
+  'EF04LP15.4': [{ id: 'fato-opiniao', gerar(r) {
+    const f = de(r, FATO_OPINIAO);
+    return { enunciado: `"${f[0]}"\n\nIsso é um FATO ou uma OPINIÃO?`, tipo: 'escolha', opcoes: escolha(r, f[1], [f[1] === 'fato' ? 'opinião' : 'fato']), resposta: f[1], dica: 'Fato dá para checar; opinião depende de quem fala.' };
+  } }],
+  'EF05LP16.5': [{ id: 'midias', gerar(r) {
+    const m2 = de(r, MIDIAS);
+    return { enunciado: `${m2[0]}\n\n${m2[1]}`, tipo: 'escolha', opcoes: escolha(r, m2[2], m2[3]), resposta: m2[2], dica: 'O fato é um só — a escolha das palavras é que muda o retrato.' };
+  } }],
+  'EF06LP01.6': [{ id: 'relato-neutro', gerar(r) {
+    const m2 = de(r, RELATO_NEUTRO);
+    return { enunciado: m2[0], tipo: 'escolha', opcoes: escolha(r, m2[1], m2[2]), resposta: m2[1], dica: 'Palavras como "fortuna" e "desnecessária" julgam — não apenas informam.' };
+  } }],
+  'EF67LP04.7': [{ id: 'fato-opiniao-7', gerar(r) {
+    const f = de(r, FATO_OPINIAO_7);
+    return { enunciado: `"${f[0]}"\n\nFATO ou OPINIÃO?`, tipo: 'escolha', opcoes: escolha(r, f[1], [f[1] === 'fato' ? 'opinião' : 'fato']), resposta: f[1], dica: 'Números e registros são checáveis; "melhor", "demais" e "emocionante" são julgamentos.' };
+  } }],
+  'EF89LP02.8': [{ id: 'meme-critico', gerar(r) {
+    const m2 = de(r, MEME_CRITICO);
+    return { enunciado: m2[0], tipo: 'escolha', opcoes: escolha(r, m2[1], m2[2]), resposta: m2[1], dica: 'Na internet, quem compartilha também assina — cheque antes.' };
+  } }],
+  'EF89LP06.8': [{ id: 'persuasao-arg', gerar(r) {
+    const m2 = de(r, PERSUASAO_ARG);
+    return { enunciado: m2[0], tipo: 'escolha', opcoes: escolha(r, m2[1], m2[2]), resposta: m2[1], dica: 'Argumento pode convencer por dados, por autoridade ou por emoção — identifique o motor.' };
+  } }],
+  // ---- fio 5 · narrativas ----
+  'EF02LP28.2': [{ id: 'conflito', gerar(r) {
+    const c2 = de(r, CONFLITOS);
+    return { enunciado: `Leia:\n\n"${c2[0]}"\n\n${c2[1]}`, tipo: 'escolha', opcoes: escolha(r, c2[2], c2[3]), resposta: c2[2], dica: 'Toda história tem um problema no meio e um jeito de resolver no fim.' };
+  } }],
+  'EF35LP29.3': [{ id: 'elementos', gerar(r) {
+    const e2 = de(r, ELEMENTOS_NARRATIVA);
+    return { enunciado: `${e2[0]}\n\n${e2[1]}`, tipo: 'escolha', opcoes: escolha(r, e2[2], e2[3]), resposta: e2[2], dica: 'Cenário = onde; personagem = quem; narrador = quem conta.' };
+  } }],
+  'EF35LP26.4': [{ id: 'enredo', gerar(r) {
+    const e2 = de(r, ENREDO);
+    return { enunciado: `${e2[0]}\n\n${e2[1]}`, tipo: 'escolha', opcoes: escolha(r, e2[2], e2[3]), resposta: e2[2], dica: 'Reconte a história na cabeça, na ordem: começo → meio → fim.' };
+  } }],
+  'EF35LP30.5': [{ id: 'discurso', gerar(r) {
+    const d2 = de(r, DISCURSOS);
+    return { enunciado: `"${d2[0]}"\n\nO discurso é DIRETO ou INDIRETO?`, tipo: 'escolha', opcoes: escolha(r, d2[1], [d2[1] === 'direto' ? 'indireto' : 'direto']), resposta: d2[1], dica: 'Travessão e fala ao vivo = direto; "disse que…" = indireto.' };
+  } }],
+  'EF69LP47.6': [{ id: 'foco-6', gerar(r) {
+    const f = de(r, FOCO_NARRATIVO);
+    return { enunciado: `${f[0]}\n\n${f[1]}`, tipo: 'escolha', opcoes: escolha(r, f[2], f[3]), resposta: f[2], dica: 'EU/MEU = narrador dentro da história; ELA/DELA = narrador de fora.' };
+  } }],
+  'EF69LP47.7': [{ id: 'foco-7', gerar(r) {
+    const f = de(r, FOCO_NARRATIVO_7);
+    return { enunciado: `${f[0]}\n\n`, tipo: 'escolha', opcoes: escolha(r, f[1], f[2]), resposta: f[1], dica: 'Pergunte: o narrador sabe TUDO ou só o que uma personagem vê?' };
+  } }],
+  'EF89LP05.8': [{ id: 'efeito-discurso', gerar(r) {
+    const f = de(r, EFEITO_DISCURSO);
+    return { enunciado: f[0], tipo: 'escolha', opcoes: escolha(r, f[1], f[2]), resposta: f[1], dica: 'Mostrar a fala aproxima; resumir a fala afasta. O autor escolhe o efeito.' };
+  } }],
+  // ---- fio 6 · poesia e figuras ----
+  'EF12LP07.2': [{ id: 'rima', gerar(r) {
+    const p = de(r, RIMAS);
+    return { enunciado: `Qual palavra RIMA com "${p[0]}"?`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Rimar é terminar com o mesmo som — fale alto e ouça o final.' };
+  } }],
+  'EF35LP23.3': [{ id: 'versos', gerar(r) {
+    const p = de(r, ESTROFES);
+    return { enunciado: `${p[0]}\n\n${p[1]}`, tipo: 'escolha', opcoes: escolha(r, p[2], p[3]), resposta: p[2], dica: 'Cada linha do poema é um verso; o bloco de versos é a estrofe.' };
+  } }],
+  'EF35LP31.4': [{ id: 'metafora', gerar(r) {
+    const p = de(r, METAFORAS);
+    return { enunciado: `${p[0]}\n\n${p[1]}`, tipo: 'escolha', opcoes: escolha(r, p[2], p[3]), resposta: p[2], dica: 'O poeta compara sem avisar — procure o que as duas coisas têm em comum.' };
+  } }],
+  'EF05LP10.5': [{ id: 'piada', gerar(r) {
+    const p = de(r, PIADAS);
+    return { enunciado: `${p[0]}\n\n${p[1]}`, tipo: 'escolha', opcoes: escolha(r, p[2], p[3]), resposta: p[2], dica: 'Quase toda piada mora numa palavra com dois sentidos.' };
+  } }],
+  'EF67LP38.6': [{ id: 'figuras-6', gerar(r) {
+    const p = de(r, FIGURAS_6);
+    return { enunciado: `${p[0]}\n\nQual figura de linguagem é essa?`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'COMO na frase = comparação; sem COMO = metáfora; coisa agindo como gente = personificação.' };
+  } }],
+  'EF67LP38.7': [{ id: 'figuras-7', gerar(r) {
+    const p = de(r, FIGURAS_7);
+    return { enunciado: `${p[0]}\n\nQual figura de linguagem é essa?`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Exagero proposital para dar força = hipérbole.' };
+  } }],
+  'EF69LP54.8': [{ id: 'figuras-8', gerar(r) {
+    const p = de(r, FIGURAS_8);
+    return { enunciado: `${p[0]}\n\nQual recurso é esse?`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Metonímia troca a coisa por algo ligado a ela (autor pela obra).' };
+  } }],
+  'EF89LP37.8': [{ id: 'ironia-eufemismo', gerar(r) {
+    const p = de(r, IRONIA_EUFEMISMO);
+    return { enunciado: `${p[0]}\n\nQual figura é essa?`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Ironia diz o contrário; eufemismo diz mais suave.' };
+  } }],
+  // ---- fio 7 · ortografia (6º–8º) ----
+  'EF67LP32.6': [{ id: 'orto-6', gerar(r) {
+    const p = de(r, ORTO['EF67LP32.6']);
+    return { enunciado: `Qual está escrita certa?`, tipo: 'escolha', opcoes: escolha(r, p[0], [p[1]]), resposta: p[0], dica: 'X ou CH, G ou J: quando não há regra, vale a memória (e o dicionário).' };
+  } }],
+  'EF08LP05.8': [{ id: 'hifen', gerar(r) {
+    const p = de(r, ORTO['EF08LP05.8']);
+    return { enunciado: `Qual está escrita certa?`, tipo: 'escolha', opcoes: escolha(r, p[0], [p[1]]), resposta: p[0], dica: 'Compostas de bicho e planta mantêm hífen (beija-flor); vogais iguais se separam (micro-ondas).' };
+  } }],
+  // ---- fio 9 · pontuação (6º–8º) ----
+  'EF67LP33.6': [{ id: 'pontuar-6', gerar(r) {
+    const p = de(r, PONTUAR_6);
+    return { enunciado: `Qual está pontuada certa?`, tipo: 'escolha', opcoes: escolha(r, p[0], [p[1]]), resposta: p[0], dica: 'NUNCA se separa sujeito do verbo com vírgula.' };
+  } }],
+  'EF06LP07.6': [{ id: 'virgula-oracoes', gerar(r) {
+    const p = de(r, VIRGULA_ORACOES);
+    return { enunciado: `Qual está pontuada certa?`, tipo: 'escolha', opcoes: escolha(r, p[0], [p[1]]), resposta: p[0], dica: 'Oração que começa com QUANDO/SE/EMBORA pede vírgula ao terminar.' };
+  } }],
+  'EF07LP11.7': [{ id: 'conector-oracoes', gerar(r) {
+    const p = de(r, CONECTOR_ORACOES);
+    return { enunciado: `Complete: "${p[0]}"`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'E soma; MAS e PORÉM viram o jogo; OU oferece escolha.' };
+  } }],
+  'EF08LP13.8': [{ id: 'sentido-conjuncao', gerar(r) {
+    const p = de(r, SENTIDO_CONJUNCAO);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'A conjunção é a placa de trânsito da frase: indica para onde a ideia vira.' };
+  } }],
+  // ---- fio 10 · classes e sintaxe ----
+  'EF03LP08.3': [{ id: 'classe', gerar(r) {
+    const p = de(r, CLASSE_PALAVRA);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Verbo é ação; substantivo dá nome; adjetivo descreve.' };
+  } }],
+  'EF03LP09.3': [{ id: 'achar-adjetivo', gerar(r) {
+    const p = de(r, ACHAR_ADJETIVO);
+    return { enunciado: `"${p[0]}"\n\nQual palavra é o ADJETIVO?`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'O adjetivo responde: COMO é a coisa?' };
+  } }],
+  'EF04LP06.4': [{ id: 'concordancia-v', gerar(r) {
+    const p = de(r, CONCORDANCIA_V);
+    return { enunciado: `Complete: "${p[0]}"`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'O verbo acompanha quem faz: um faz, vários fazem.' };
+  } }],
+  'EF04LP07.4': [{ id: 'concordancia-n', gerar(r) {
+    const p = de(r, CONCORDANCIA_N);
+    return { enunciado: `Complete: "${p[0]}"`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Adjetivo combina com o substantivo em gênero E número.' };
+  } }],
+  'EF05LP05.5': [{ id: 'tempos', gerar(r) {
+    const p = de(r, TEMPOS_VERBAIS);
+    return { enunciado: `Complete: "${p[0]}"`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Ontem = passado; agora = presente; amanhã = futuro.' };
+  } }],
+  'EF05LP06.5': [{ id: 'flexao-sujeito', gerar(r) {
+    const p = de(r, FLEXAO_SUJEITO);
+    return { enunciado: `Complete: "${p[0]}"`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Troque o sujeito em voz alta e ouça qual forma soa certa.' };
+  } }],
+  'EF06LP04.6': [{ id: 'modos', gerar(r) {
+    const p = de(r, MODOS_VERBAIS);
+    return { enunciado: `Complete: "${p[0]}"`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Desejo/dúvida pede subjuntivo (que você VÁ); ordem pede imperativo.' };
+  } }],
+  'EF06LP06.6': [{ id: 'concordancia-6', gerar(r) {
+    const p = de(r, CONCORDANCIA_6);
+    return { enunciado: `Qual está certa?`, tipo: 'escolha', opcoes: escolha(r, p[0], [p[1]]), resposta: p[0], dica: 'FAZER e HAVER no sentido de tempo/existência ficam no singular.' };
+  } }],
+  'EF07LP07.7': [{ id: 'sintaxe', gerar(r) {
+    const p = de(r, SINTAXE_TERMOS);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Sujeito = quem faz; predicado = o que se diz dele; objeto = quem recebe a ação.' };
+  } }],
+  'EF07LP09.7': [{ id: 'adverbios', gerar(r) {
+    const p = de(r, ADVERBIOS);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'O advérbio responde: como? quando? onde?' };
+  } }],
+  'EF08LP06.8': [{ id: 'termos-8', gerar(r) {
+    const p = de(r, TERMOS_ORACAO_8);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Com preposição (ao, para, de) = objeto INDIRETO; sem = direto.' };
+  } }],
+  'EF08LP07.8': [{ id: 'regencia', gerar(r) {
+    const p = de(r, REGENCIA);
+    return { enunciado: `Complete (norma-padrão): "${p[0]}"`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Alguns verbos pedem preposição: assistir A, obedecer A, chegar A.' };
+  } }],
+  'EF08LP08.8': [{ id: 'vozes', gerar(r) {
+    const p = de(r, VOZES);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Voz ativa: sujeito FAZ. Voz passiva: sujeito RECEBE (foi feito por…).' };
+  } }],
+  'EF08LP11.8': [{ id: 'coord-subord', gerar(r) {
+    const p = de(r, COORD_SUBORD);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Se uma oração só faz sentido apoiada na outra, é subordinada.' };
+  } }],
+  // ---- fio 11 · vocabulário (6º–8º) ----
+  'EF06LP03.6': [{ id: 'nuances', gerar(r) {
+    const p = de(r, NUANCES);
+    return { enunciado: `Qual palavra combina melhor com: "${p[0]}"?`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Sinônimos não são gêmeos — cada um carrega um tom diferente.' };
+  } }],
+  'EF67LP35.7': [{ id: 'derivada-composta-7', gerar(r) {
+    const p = de(r, DERIVADA_COMPOSTA_7);
+    return { enunciado: `A palavra "${p[0]}" é…`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Composta junta duas palavras inteiras; derivada cresce com prefixo/sufixo.' };
+  } }],
+  'EF07LP03.7': [{ id: 'afixos', gerar(r) {
+    const p = de(r, AFIXOS);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Prefixo muda o sentido na frente; sufixo transforma no final.' };
+  } }],
+  // ---- fio 12 · coesão ----
+  'EF35LP06.3': [{ id: 'referente', gerar(r) {
+    const p = de(r, REFERENTES);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Volte na frase e pergunte: que palavra ele está substituindo?' };
+  } }],
+  'EF35LP14.4': [{ id: 'referente-4', gerar(r) {
+    const p = de(r, REFERENTES_4);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'O pronome costura o texto para não repetir a mesma palavra.' };
+  } }],
+  'EF05LP07.5': [{ id: 'conectivos-5', gerar(r) {
+    const p = de(r, CONECTIVOS_5);
+    return { enunciado: `Complete: "${p[0]}"`, tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'PORQUE explica; MAS contraria; OU oferece escolha.' };
+  } }],
+  'EF67LP36.6': [{ id: 'coesao-6', gerar(r) {
+    const p = de(r, COESAO_6);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'O conectivo certo faz a segunda frase apontar para a primeira.' };
+  } }],
+  'EF07LP12.7': [{ id: 'anaforas', gerar(r) {
+    const p = de(r, ANAFORAS);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Anáfora = retomar algo já dito com outra palavra.' };
+  } }],
+  'EF69LP31.7': [{ id: 'organizadores', gerar(r) {
+    const p = de(r, ORGANIZADORES);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'Palavras como PRIMEIRO/DEPOIS/POR FIM são o mapa do texto.' };
+  } }],
+  'EF08LP15.8': [{ id: 'relativos', gerar(r) {
+    const p = de(r, RELATIVOS);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'O antecedente é a palavra que vem ANTES e que o relativo retoma.' };
+  } }],
+  'EF89LP29.8': [{ id: 'progressao', gerar(r) {
+    const p = de(r, PROGRESSAO);
+    return { enunciado: p[0], tipo: 'escolha', opcoes: escolha(r, p[1], p[2]), resposta: p[1], dica: 'A frase seguinte deve puxar o fio do MESMO assunto, acrescentando algo.' };
   } }],
 };
 

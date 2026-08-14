@@ -595,6 +595,409 @@ const MOLDES = {
   } }],
 };
 
+// =====================================================================
+// LOTE 3 — as células "visuais" viram texto honesto: malha descrita,
+// trajeto narrado, tabela pequena no enunciado; as células de "fazer
+// pesquisa/projeto" cobram o MÉTODO (o fazer completo vive nas missões).
+// =====================================================================
+function embaralharM(r, lista) {
+  const l = [...lista];
+  for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; }
+  return l;
+}
+// banco fixo: cada item = [enunciado, certa, [erradas]]
+function fixa(id, banco, dica) {
+  return [{ id, gerar(r) {
+    const it = de(r, banco);
+    return { enunciado: it[0], tipo: 'escolha', opcoes: embaralharM(r, [it[1], ...it[2]]), resposta: it[1], dica };
+  } }];
+}
+
+Object.assign(MOLDES, {
+  // ---------- fio 1 ----------
+  EF02MA03: [{ id: 'quem-tem-mais', gerar(r) {
+    const n1 = de(r, NOMES); let n2 = de(r, NOMES); while (n2 === n1) n2 = de(r, NOMES);
+    const a = ent(r, 5, 40); let b = ent(r, 5, 40); if (b === a) b += 1;
+    const coisa = de(r, COISAS);
+    return { enunciado: `${n1} tem ${a} ${coisa} e ${n2} tem ${b}. Quem tem MAIS?`, tipo: 'escolha', opcoes: embaralharM(r, [n1, n2]), resposta: a > b ? n1 : n2, dica: 'Compare os dois números: qual é maior?' };
+  } }],
+  // ---------- fio 4 ----------
+  EF07MA08: fixa('fracao-significados', [
+    ['Em "comi 3/4 da pizza", a fração 3/4 indica…', 'parte de um todo', ['uma razão entre grupos', 'uma multiplicação', 'um número negativo']],
+    ['Em "3 chocolates divididos entre 4 crianças", 3/4 indica…', 'o resultado de uma divisão (quociente)', ['parte de uma pizza', 'uma potência', 'um perímetro']],
+    ['Em "3 meninas para cada 4 meninos", 3/4 é…', 'uma razão (comparação entre grupos)', ['parte de um todo', 'uma subtração', 'um resto']],
+    ['Na reta numérica, 3/4 é…', 'um número entre 0 e 1', ['um número maior que 1', 'um número negativo', 'o mesmo que 4/3']],
+  ], 'A MESMA fração pode ser parte, divisão, razão ou um ponto na reta.'),
+  // ---------- fio 6 ----------
+  EF07MA13: fixa('variavel-incognita', [
+    ['Em A = b × h (área do retângulo), as letras b e h são…', 'variáveis: podem valer qualquer medida', ['incógnitas: um valor escondido a achar', 'erros de escrita', 'sempre iguais a 1']],
+    ['Em x + 5 = 12, o x é…', 'uma incógnita: um valor a descobrir', ['uma variável que vale qualquer número', 'um expoente', 'uma unidade de medida']],
+    ['Em P = 4 × l (perímetro do quadrado), o l é…', 'variável: muda conforme o quadrado', ['incógnita fixa em 4', 'sempre zero', 'um ângulo']],
+  ], 'Incógnita se DESCOBRE; variável VARIA conforme o caso.'),
+  EF08MA09: [{ id: 'eq-x2', gerar(r) {
+    const c = de(r, [[1, 9, '3 e -3'], [1, 25, '5 e -5'], [2, 32, '4 e -4'], [3, 27, '3 e -3'], [2, 50, '5 e -5']]);
+    const raiz = c[2].split(' ')[0];
+    return { enunciado: `Resolva: ${c[0] === 1 ? '' : c[0]}x² = ${c[1]}. Quais são as soluções?`, tipo: 'escolha', opcoes: embaralharM(r, [c[2], `só ${raiz}`, `${raiz} e 0`, String(c[1] / c[0])]), resposta: c[2], dica: 'Isole o x² e lembre: positivo E negativo ao quadrado dão o mesmo resultado.' };
+  } }],
+  // ---------- potências (células de números do 8º) ----------
+  EF08MA01: [{ id: 'potencias', gerar(r) {
+    const p = de(r, [['2⁴', 16], ['3³', 27], ['10³', 1000], ['5²', 25], ['2⁵', 32], ['10⁴', 10000]]);
+    return { enunciado: `Quanto vale ${p[0]}?`, tipo: 'numero', resposta: String(p[1]), dica: 'O expoente diz quantas vezes a base se multiplica por ela mesma.' };
+  } }, { id: 'notacao-cientifica', gerar(r) {
+    const m = ent(r, 2, 9), e = de(r, [3, 4, 5]);
+    return { enunciado: `Escreva por extenso em algarismos: ${m} × 10^${e}`, tipo: 'numero', resposta: String(m * Math.pow(10, e)), dica: `O expoente ${e} empurra a vírgula ${e} casas: acrescente ${e} zeros.` };
+  } }],
+  EF08MA02: [{ id: 'raiz', gerar(r) {
+    const b = ent(r, 2, 12);
+    return { enunciado: `Se ${b}² = ${b * b}, então √${b * b} = ?`, tipo: 'numero', resposta: String(b), dica: 'Raiz quadrada é a pergunta ao contrário: que número ao quadrado dá isso?' };
+  } }],
+  // ---------- fio 8 ----------
+  EF04MA12: [{ id: 'mesmo-resto', gerar(r) {
+    const resto = ent(r, 1, 3), q1 = ent(r, 2, 8), q2 = ent(r, 2, 8);
+    const base = q1 * 5 + resto, certa = q2 * 5 + resto;
+    const erradas = [q2 * 5 + ((resto + 1) % 5), q2 * 5 + ((resto + 2) % 5), q2 * 5];
+    return { enunciado: `A divisão ${base} ÷ 5 deixa resto ${resto}. Qual divisão por 5 deixa o MESMO resto?`, tipo: 'escolha', opcoes: embaralharM(r, [`${certa} ÷ 5`, ...[...new Set(erradas)].filter((x) => x !== certa).slice(0, 3).map((x) => `${x} ÷ 5`)]), resposta: `${certa} ÷ 5`, dica: 'Faça cada divisão e compare só os restos.' };
+  } }],
+  EF06MA04: [{ id: 'algoritmo-passo', gerar(r) {
+    const n = ent(r, 2, 9);
+    const op = de(r, [[`dobre o número e some 1`, (x) => 2 * x + 1], [`some 3 e depois dobre`, (x) => (x + 3) * 2], [`multiplique por 3 e tire 2`, (x) => 3 * x - 2]]);
+    const certa = String(op[1](n));
+    return { enunciado: `Algoritmo: "${op[0]}". Entrando o número ${n}, qual número sai?`, tipo: 'numero', resposta: certa, dica: 'Siga as instruções NA ORDEM, um passo de cada vez.' };
+  } }],
+  EF06MA34: [{ id: 'fluxo-decisao', gerar(r) {
+    const n = ent(r, 3, 12);
+    const certa = n % 2 === 0 ? String(n / 2) : String(n * 3);
+    return { enunciado: `Fluxograma: "O número é PAR? SIM → escreva a metade. NÃO → escreva o triplo." Entrando ${n}, o que sai?`, tipo: 'numero', resposta: certa, dica: 'Primeiro responda a pergunta do losango; depois siga a seta certa.' };
+  } }],
+  EF07MA05: fixa('varios-caminhos', [
+    ['Para calcular 15% de 80, Ana fez 10% + 5% (8 + 4) e Beto fez 0,15 × 80. Quem acertou?', 'os dois: caminhos diferentes, mesmo resultado (12)', ['só Ana', 'só Beto', 'nenhum dos dois']],
+    ['Para 25 × 12, Lia fez 25 × 10 + 25 × 2 e Theo fez 25 × 4 × 3. Quem acertou?', 'os dois: 300 pelos dois caminhos', ['só Lia', 'só Theo', 'nenhum']],
+  ], 'Um bom problema aceita mais de um caminho — o resultado é o juiz.'),
+  EF07MA06: fixa('mesmo-metodo', [
+    ['Qual problema se resolve do MESMO jeito que "3 cadernos custam R$ 12; quanto custam 5"?', '"2 kg de arroz custam R$ 14; quanto custam 7 kg?"', ['"Qual o dobro de 12?"', '"Quantos lados tem o pentágono?"', '"12 − 5 = ?"']],
+    ['Qual problema usa o MESMO método de "dividir 24 balas igualmente entre 6 crianças"?', '"repartir R$ 45 igualmente entre 9 pessoas"', ['"somar 24 + 6"', '"medir um ângulo de 24°"', '"escrever 24 por extenso"']],
+  ], 'Mude os números e o contexto: se a ESTRUTURA é a mesma, o método é o mesmo.'),
+  EF07MA07: fixa('fluxo-resolucao', [
+    ['Qual é a ordem certa para resolver um problema? (1) conferir a resposta (2) entender o que se pede (3) fazer as contas', '2 → 3 → 1', ['1 → 2 → 3', '3 → 2 → 1', '3 → 1 → 2']],
+    ['Depois de fazer as contas de um problema, o passo seguinte é…', 'conferir se a resposta faz sentido', ['apagar tudo', 'trocar o problema', 'começar outro sem conferir']],
+  ], 'Entender → resolver → conferir: o fluxograma de todo problema.'),
+  EF07MA14: fixa('recursiva-ou-nao', [
+    ['"Cada termo é o anterior + 4." Essa regra é…', 'recursiva: depende do termo anterior', ['não recursiva: fórmula direta da posição', 'aleatória', 'impossível']],
+    ['"O termo da posição n vale 3 × n." Essa regra é…', 'não recursiva: calcula direto pela posição', ['recursiva: depende do anterior', 'sem regra', 'só para números pares']],
+  ], 'Recursiva olha para TRÁS (o anterior); a direta olha só para a POSIÇÃO.'),
+  EF07MA15: fixa('regra-algebrica', [
+    ['Sequência 3, 6, 9, 12… O termo da posição n é…', '3n', ['n + 3', '3n + 3', 'n ÷ 3']],
+    ['Sequência 2, 4, 6, 8… O termo da posição n é…', '2n', ['n + 2', 'n²', '2n + 2']],
+    ['Sequência 3, 4, 5, 6… (começa no 3) O termo da posição n é…', 'n + 2', ['3n', '2n + 1', 'n − 2']],
+  ], 'Teste sua fórmula na posição 1 e na 2 — ela tem que acertar as duas.'),
+  EF07MA16: fixa('equivalentes', [
+    ['Qual expressão é EQUIVALENTE a 2(x + 3)?', '2x + 6', ['2x + 3', 'x + 6', '2x × 3']],
+    ['Qual é equivalente a x + x?', '2x', ['x²', '2 + x', 'x']],
+    ['Qual é equivalente a 5y − 2y?', '3y', ['3', '7y', 'y − 3']],
+  ], 'Distribua ou junte os termos iguais — o valor não pode mudar.'),
+  EF08MA10: fixa('expressao-do-termo', [
+    ['Sequência 5, 8, 11, 14… A expressão do termo n é…', '3n + 2', ['3n', 'n + 3', '5n']],
+    ['Sequência 4, 7, 10, 13… A expressão do termo n é…', '3n + 1', ['4n', 'n + 4', '3n − 1']],
+    ['Sequência 7, 12, 17, 22… A expressão do termo n é…', '5n + 2', ['5n', '7n', 'n + 5']],
+  ], 'Veja o salto entre termos (ele vira o ×n) e ajuste com a posição 1.'),
+  EF08MA11: [{ id: 'recursiva-termo', gerar(r) {
+    const s = de(r, [2, 3, 4]);
+    return { enunciado: `Na sequência em que cada termo é o DOBRO do anterior, começando em ${s}, qual é o 4º termo?`, tipo: 'numero', resposta: String(s * 8), dica: 'Vá dobrando: 1º → 2º → 3º → 4º.' };
+  } }],
+  // ---------- fio 9 ----------
+  EF02MA12: fixa('posicao', [
+    ['Na fila do lanche, Ana está ENTRE Bia e Caio. Quem está no meio?', 'Ana', ['Bia', 'Caio', 'ninguém']],
+    ['O gato dorme EM CIMA da mesa e o sapato está EMBAIXO dela. O que está mais alto?', 'o gato', ['o sapato', 'os dois iguais', 'a mesa está deitada']],
+    ['Saindo da sala, Lia virou à DIREITA. Se tivesse virado do outro lado, teria ido para…', 'a esquerda', ['a direita', 'trás', 'cima']],
+  ], 'Em cima/embaixo, direita/esquerda, entre: palavras que dizem ONDE.'),
+  EF02MA13: fixa('roteiro', [
+    ['Roteiro: "siga RETO até a padaria, depois vire à ESQUERDA". Qual é o SEGUNDO passo?', 'virar à esquerda', ['seguir reto', 'voltar para casa', 'virar à direita']],
+    ['No desenho da sala de aula visto DE CIMA (planta), vemos…', 'onde fica cada mesa, como num mapa', ['o rosto dos alunos', 'o teto da escola', 'nada, é impossível']],
+  ], 'Um roteiro é uma lista de passos NA ORDEM; a planta é a sala vista de cima.'),
+  EF03MA12: [{ id: 'trajeto', gerar(r) {
+    const a = ent(r, 2, 5), b = ent(r, 2, 5);
+    return { enunciado: `Para ir de casa ao parque, Theo anda ${a} quarteirões para o NORTE e depois ${b} para o LESTE. Quantos quarteirões ele anda no total?`, tipo: 'numero', resposta: String(a + b), dica: 'Some os dois trechos do caminho.' };
+  } }],
+  EF04MA16: [{ id: 'malha-casinha', gerar(r) {
+    const col = de(r, ['A', 'B', 'C', 'D']), lin = ent(r, 1, 5);
+    const errCol = de(r, ['A', 'B', 'C', 'D'].filter((x) => x !== col));
+    return { enunciado: `No mapa quadriculado, as colunas são A, B, C, D e as linhas 1 a 5. O tesouro está na coluna ${col}, linha ${lin}. Qual é a casinha?`, tipo: 'escolha', opcoes: embaralharM(r, [`${col}${lin}`, `${errCol}${lin}`, `${col}${lin === 5 ? 1 : lin + 1}`, `${errCol}${lin === 5 ? 1 : lin + 1}`]), resposta: `${col}${lin}`, dica: 'Letra da coluna + número da linha, como no jogo de batalha naval.' };
+  } }],
+  EF05MA14: [{ id: 'coordenadas', gerar(r) {
+    const x = ent(r, 1, 7), y = ent(r, 1, 7) === x ? x + 1 : ent(r, 1, 7);
+    const lista = [...new Set([`(${x}, ${y})`, `(${y}, ${x})`, `(${x + 1}, ${y})`, `(${x}, ${y + 1})`])];
+    return { enunciado: `No mapa, cada lugar é um par (direita, cima). O museu fica ${x} para a direita e ${y} para cima. Que par indica o museu?`, tipo: 'escolha', opcoes: embaralharM(r, lista), resposta: `(${x}, ${y})`, dica: 'Primeiro o quanto anda para a DIREITA, depois o quanto sobe.' };
+  } }],
+  EF06MA28: fixa('vistas', [
+    ['Olhando uma lata (cilindro) DE CIMA, vemos…', 'um círculo', ['um retângulo', 'um triângulo', 'um quadrado']],
+    ['Olhando um dado (cubo) DE FRENTE, vemos…', 'um quadrado', ['um círculo', 'um triângulo', 'um hexágono']],
+    ['Olhando uma lata (cilindro) DE LADO, vemos…', 'um retângulo', ['um círculo', 'uma estrela', 'um losango']],
+  ], 'Cada ponto de vista "achata" o sólido numa figura plana diferente.'),
+  EF07MA19: [{ id: 'deslocar-ponto', gerar(r) {
+    const x = ent(r, 1, 6), y = ent(r, 1, 6), dx = ent(r, 2, 5);
+    return { enunciado: `O ponto (${x}, ${y}) foi deslocado ${dx} unidades para a DIREITA. Onde ele parou?`, tipo: 'escolha', opcoes: embaralharM(r, [`(${x + dx}, ${y})`, `(${x}, ${y + dx})`, `(${x - dx}, ${y})`, `(${x + dx}, ${y + dx})`]), resposta: `(${x + dx}, ${y})`, dica: 'Direita mexe no PRIMEIRO número; cima mexe no segundo.' };
+  } }],
+  EF07MA20: [{ id: 'simetrico', gerar(r) {
+    const x = ent(r, 1, 7), y = ent(r, 1, 7);
+    const eixoX = de(r, [true, false]);
+    const certa = eixoX ? `(${x}, -${y})` : `(-${x}, ${y})`;
+    return { enunciado: `Qual é o simétrico do ponto (${x}, ${y}) em relação ao eixo ${eixoX ? 'x (horizontal)' : 'y (vertical)'}?`, tipo: 'escolha', opcoes: embaralharM(r, [certa, `(-${x}, -${y})`, `(${x}, ${y})`, eixoX ? `(-${x}, ${y})` : `(${x}, -${y})`]), resposta: certa, dica: 'Refletir no eixo x troca o sinal do y; no eixo y, troca o do x.' };
+  } }],
+  // ---------- fio 10 ----------
+  EF02MA14: fixa('solidos-basicos', [
+    ['Qual forma tem TODAS as faces quadradas?', 'o cubo', ['a esfera', 'o cone', 'o cilindro']],
+    ['Qual forma é redonda por inteiro e rola para qualquer lado?', 'a esfera', ['o cubo', 'a pirâmide', 'o bloco retangular']],
+    ['Qual forma tem uma ponta e uma base redonda?', 'o cone', ['o cubo', 'a esfera', 'o cilindro']],
+  ], 'Cubo tem quinas; esfera é toda redonda; cone tem ponta.'),
+  EF03MA13: fixa('solidos-objetos', [
+    ['Uma lata de refrigerante lembra qual sólido?', 'o cilindro', ['o cubo', 'a pirâmide', 'a esfera']],
+    ['Um dado de jogar lembra qual sólido?', 'o cubo', ['o cone', 'o cilindro', 'a esfera']],
+    ['Uma casquinha de sorvete lembra qual sólido?', 'o cone', ['o cubo', 'a esfera', 'o prisma']],
+    ['Uma caixa de sapato lembra qual sólido?', 'o bloco retangular (paralelepípedo)', ['a esfera', 'o cone', 'o cilindro']],
+  ], 'Procure o sólido "escondido" nos objetos da casa.'),
+  EF03MA14: fixa('prisma-piramide', [
+    ['Qual sólido tem uma base quadrada e 4 faces triangulares que se encontram numa ponta?', 'a pirâmide de base quadrada', ['o prisma', 'o cilindro', 'o cubo']],
+    ['O prisma tem…', 'duas bases iguais e paralelas', ['uma ponta só', 'nenhuma face plana', 'só faces triangulares']],
+  ], 'Pirâmide afunila para uma ponta; prisma mantém as duas bases.'),
+  EF05MA16: fixa('planificacoes', [
+    ['A planificação com 6 quadrados iguais monta…', 'um cubo', ['uma pirâmide', 'um cilindro', 'um cone']],
+    ['A planificação com 2 círculos e 1 retângulo monta…', 'um cilindro', ['um cone', 'um cubo', 'uma esfera']],
+    ['A planificação com 1 quadrado e 4 triângulos monta…', 'uma pirâmide de base quadrada', ['um cubo', 'um prisma', 'um cilindro']],
+  ], 'Imagine dobrar o desenho: que sólido fecha?'),
+  // ---------- fio 11 ----------
+  EF02MA15: fixa('planas-basicas', [
+    ['Qual figura tem exatamente 3 lados?', 'o triângulo', ['o quadrado', 'o círculo', 'o retângulo']],
+    ['Qual figura tem 4 lados iguais e 4 cantos iguais?', 'o quadrado', ['o triângulo', 'o círculo', 'o pentágono']],
+    ['Qual figura não tem nenhum canto (vértice)?', 'o círculo', ['o quadrado', 'o triângulo', 'o retângulo']],
+  ], 'Conte os lados e os cantos de cada figura.'),
+  EF03MA15: fixa('nomes-poligonos', [
+    ['A figura de 5 lados chama-se…', 'pentágono', ['hexágono', 'octógono', 'quadrilátero']],
+    ['A figura de 6 lados chama-se…', 'hexágono', ['pentágono', 'octógono', 'triângulo']],
+    ['A figura de 8 lados chama-se…', 'octógono', ['hexágono', 'pentágono', 'decágono']],
+  ], 'Penta = 5, hexa = 6, octo = 8 — os prefixos contam os lados.'),
+  EF03MA16: fixa('congruentes', [
+    ['Duas figuras CONGRUENTES têm…', 'a mesma forma e o mesmo tamanho', ['só a mesma cor', 'formas diferentes', 'o mesmo nome, tamanhos diferentes']],
+    ['Na malha, um quadrado de 3×3 quadradinhos é congruente a…', 'outro quadrado de 3×3', ['um quadrado de 2×2', 'um retângulo de 3×4', 'um triângulo qualquer']],
+  ], 'Congruente = encaixa perfeitamente em cima da outra.'),
+  EF04MA19: fixa('simetria-reflexao', [
+    ['Qual letra tem um eixo de simetria vertical (dobra ao meio e os lados coincidem)?', 'A', ['F', 'G', 'J']],
+    ['Dobrando um coração de papel ao meio, as duas metades coincidem. Isso mostra que ele tem…', 'simetria de reflexão', ['perímetro dobrado', 'área zero', 'quatro vértices']],
+    ['Qual palavra fica igual refletida num espelho vertical (letra por letra simétrica)?', 'OVO', ['GATO', 'LUA', 'CASA']],
+  ], 'Eixo de simetria: a linha da dobra onde os lados se espelham.'),
+  EF05MA17: [{ id: 'lados-vertices', gerar(r) {
+    const n = ent(r, 3, 8);
+    const nomes = { 3: 'triângulo', 4: 'quadrilátero', 5: 'pentágono', 6: 'hexágono', 7: 'heptágono', 8: 'octógono' };
+    return { enunciado: `Um ${nomes[n]} tem ${n} lados. Quantos VÉRTICES ele tem?`, tipo: 'numero', resposta: String(n), dica: 'Num polígono, lados e vértices vêm sempre em igual quantidade.' };
+  } }],
+  EF05MA18: [{ id: 'ampliar-malha', gerar(r) {
+    const b = ent(r, 2, 4), h = ent(r, 2, 4), f = de(r, [2, 3]);
+    const lista = [...new Set([`${b * f} × ${h * f}`, `${b + f} × ${h + f}`, `${b * f} × ${h}`, `${b} × ${h * f}`])];
+    return { enunciado: `Na malha, um retângulo tem ${b} quadradinhos de largura e ${h} de altura. Ampliado ${f === 2 ? 'ao DOBRO' : 'ao TRIPLO'}, ele fica com…`, tipo: 'escolha', opcoes: embaralharM(r, lista), resposta: `${b * f} × ${h * f}`, dica: 'Ampliar multiplica TODOS os lados pelo mesmo número.' };
+  } }],
+  EF06MA18: fixa('regular-ou-nao', [
+    ['Um polígono REGULAR tem…', 'todos os lados E todos os ângulos iguais', ['só os lados iguais', 'só os ângulos iguais', 'sempre 4 lados']],
+    ['Um retângulo de lados 2 e 4 é regular?', 'não: os lados não são todos iguais', ['sim: os ângulos são retos', 'sim: tem 4 lados', 'não existe retângulo assim']],
+  ], 'Regular exige as DUAS coisas: lados iguais e ângulos iguais.'),
+  EF06MA21: fixa('semelhanca', [
+    ['Uma foto 3×4 foi ampliada SEM distorcer. Qual tamanho ela pode ter ficado?', '6×8', ['4×4', '3×8', '5×6']],
+    ['Ampliar uma figura mantendo a forma significa…', 'multiplicar todos os lados pelo mesmo fator', ['aumentar só a largura', 'aumentar só a altura', 'mudar os ângulos']],
+  ], 'Semelhantes: mesma forma, tamanhos proporcionais.'),
+  EF06MA22: fixa('paralelas-perpendiculares', [
+    ['Os dois trilhos retos de um trem são retas…', 'paralelas: nunca se encontram', ['perpendiculares', 'curvas', 'iguais a um ponto']],
+    ['Duas retas que se cruzam formando um ângulo reto (90°) são…', 'perpendiculares', ['paralelas', 'coincidentes', 'tortas']],
+  ], 'Paralelas mantêm distância; perpendiculares se cruzam em 90°.'),
+  EF06MA23: fixa('tracar-retas', [
+    ['Retas paralelas mantêm entre si…', 'sempre a mesma distância', ['distância que aumenta', 'um ponto em comum', 'um ângulo de 45°']],
+    ['Para conferir se duas retas são PERPENDICULARES, medimos entre elas um ângulo de…', '90°', ['45°', '180°', '360°']],
+  ], 'Régua e esquadro: a distância constante prova o paralelismo.'),
+  EF06MA25: fixa('angulo-grandeza', [
+    ['Um giro COMPLETO mede…', '360°', ['180°', '90°', '100°']],
+    ['Meia-volta mede…', '180°', ['90°', '360°', '45°']],
+    ['Um quarto de volta mede…', '90°', ['180°', '60°', '30°']],
+  ], 'Volta inteira = 360°; vá dividindo: metade, quarto…'),
+  EF06MA26: fixa('giros-mundo', [
+    ['A porta estava encostada e abriu até formar um canto reto com a parede. Ela girou…', '90°', ['180°', '360°', '45°']],
+    ['O ponteiro grande do relógio saiu do 12 e voltou ao 12. Ele girou…', '360°', ['180°', '90°', '60°']],
+    ['Você estava olhando para o NORTE e virou para trás, para o SUL. Girou…', '180°', ['90°', '360°', '270°']],
+  ], 'Pense no giro como fatia de uma volta completa.'),
+  EF06MA27: fixa('tipos-de-angulo', [
+    ['Um ângulo de exatamente 90° é chamado de…', 'reto', ['agudo', 'obtuso', 'raso']],
+    ['Um ângulo MENOR que 90° é…', 'agudo', ['reto', 'obtuso', 'raso']],
+    ['Um ângulo entre 90° e 180° é…', 'obtuso', ['agudo', 'reto', 'nulo']],
+  ], 'Agudo é "fechadinho"; reto é o canto do caderno; obtuso é "aberto".'),
+  EF07MA21: fixa('transformacoes', [
+    ['Deslizar uma figura sem girar nem espelhar é…', 'translação', ['rotação', 'reflexão', 'ampliação']],
+    ['Girar uma figura em torno de um ponto é…', 'rotação', ['translação', 'reflexão', 'redução']],
+    ['Espelhar uma figura em relação a uma reta é…', 'reflexão', ['rotação', 'translação', 'ampliação']],
+  ], 'Transladar desliza, rotacionar gira, refletir espelha — o tamanho não muda.'),
+  EF07MA22: fixa('circunferencia-lugar', [
+    ['A circunferência é o conjunto dos pontos que…', 'estão todos à MESMA distância do centro', ['estão dentro do círculo', 'formam um quadrado', 'passam pelo centro']],
+    ['O raio da circunferência é…', 'a distância do centro até qualquer ponto dela', ['o dobro do diâmetro', 'a volta completa', 'um ângulo']],
+  ], 'Compasso: uma perna fixa (centro) e a mesma abertura (raio) o tempo todo.'),
+  EF07MA23: fixa('paralelas-transversal', [
+    ['Duas retas paralelas cortadas por uma transversal formam ângulos correspondentes…', 'iguais', ['que somam 90°', 'sempre diferentes', 'sempre retos']],
+    ['Nessa mesma figura, dois ângulos colaterais internos…', 'somam 180°', ['somam 90°', 'são sempre iguais', 'somam 360°']],
+  ], 'A transversal repete o mesmo "X" nas duas paralelas.'),
+  EF07MA25: fixa('rigidez-triangulo', [
+    ['Por que portões e telhados levam uma trave na diagonal, formando triângulos?', 'o triângulo é a única figura que não deforma', ['o triângulo é mais bonito', 'para gastar mais madeira', 'para pesar menos']],
+    ['Um quadrilátero articulado nos cantos…', 'deforma: vira losango se empurrado', ['fica rígido como o triângulo', 'quebra sempre', 'vira um círculo']],
+  ], 'Três lados fixos travam a forma — é a rigidez do triângulo.'),
+  EF07MA26: fixa('desigualdade-triangular', [
+    ['Dá para montar um triângulo com varetas de 2, 3 e 10 cm?', 'não: 2 + 3 é menor que 10, as varetas nem se encontram', ['sim, qualquer trio funciona', 'só se dobrar uma vareta', 'sim, medindo os ângulos']],
+    ['Dá para montar um triângulo com varetas de 3, 4 e 5 cm?', 'sim: cada lado é menor que a soma dos outros dois', ['não: são números diferentes', 'só com lados iguais', 'não: falta o quarto lado']],
+    ['Dá para montar um triângulo com varetas de 1, 2 e 3 cm?', 'não: 1 + 2 é exatamente 3, a figura fica achatada numa linha', ['sim, sobra espaço', 'sim, vira um triângulo reto', 'só se for equilátero']],
+  ], 'Regra: cada lado precisa ser MENOR que a soma dos outros dois.'),
+  EF07MA28: [{ id: 'giro-poligono', gerar(r) {
+    const p = de(r, [['um triângulo equilátero', 3, '120°'], ['um quadrado', 4, '90°'], ['um hexágono regular', 6, '60°']]);
+    return { enunciado: `Para desenhar ${p[0]} andando e girando sempre o mesmo ângulo (como um robô), o giro em cada canto é de…`, tipo: 'escolha', opcoes: embaralharM(r, [p[2], '45°', '100°', '360°'].filter((v, i, l) => l.indexOf(v) === i)), resposta: p[2], dica: 'O robô completa uma volta inteira (360°) dividida pelos cantos.' };
+  } }],
+  EF08MA14: fixa('quadrilateros', [
+    ['Qual quadrilátero tem os 4 lados iguais, mas os ângulos podem não ser retos?', 'o losango', ['o retângulo', 'o trapézio', 'o quadrado']],
+    ['Qual quadrilátero tem 4 lados iguais E 4 ângulos retos?', 'o quadrado', ['o losango', 'o trapézio', 'o paralelogramo']],
+    ['No paralelogramo, os lados opostos são…', 'paralelos e iguais', ['perpendiculares', 'sempre diferentes', 'curvos']],
+  ], 'Quadrado = losango + retângulo ao mesmo tempo.'),
+  EF08MA15: fixa('mediatriz-bissetriz', [
+    ['A MEDIATRIZ de um segmento é a reta que…', 'corta o segmento no meio, formando 90°', ['passa por uma ponta só', 'divide um ângulo ao meio', 'é paralela ao segmento']],
+    ['A BISSETRIZ de um ângulo é a semirreta que…', 'divide o ângulo em dois iguais', ['corta um segmento ao meio', 'mede o perímetro', 'dobra o ângulo']],
+  ], 'MEDIatriz = MEIO do segmento; BIssetriz = ângulo em DOIS.'),
+  EF08MA16: fixa('hexagono', [
+    ['No hexágono REGULAR, cada ângulo interno mede…', '120°', ['90°', '60°', '180°']],
+    ['A soma dos ângulos internos de um hexágono é…', '720°', ['360°', '540°', '180°']],
+    ['Ligando o centro do hexágono regular aos vértices, cada fatia central mede…', '60°', ['120°', '90°', '30°']],
+  ], 'Soma interna = (lados − 2) × 180°; no regular, divida pelos 6 cantos.'),
+  EF08MA17: fixa('lugares-geometricos', [
+    ['O conjunto de TODOS os pontos a 5 cm de um ponto O é…', 'uma circunferência de raio 5 cm e centro O', ['um quadrado de lado 5', 'uma reta', 'um único ponto']],
+    ['O conjunto dos pontos que ficam à mesma distância de DUAS retas paralelas é…', 'uma reta paralela no meio das duas', ['uma circunferência', 'um ponto', 'um triângulo']],
+  ], 'Lugar geométrico: TODOS os pontos que obedecem à mesma regra.'),
+  EF08MA18: fixa('compor-transformacoes', [
+    ['Refletir uma figura DUAS vezes no MESMO eixo devolve…', 'a figura exatamente ao lugar original', ['uma figura maior', 'uma rotação de 90°', 'uma figura deformada']],
+    ['Duas translações seguidas (3 para a direita, depois 2 para a direita) equivalem a…', 'uma translação de 5 para a direita', ['uma rotação', 'uma reflexão', 'uma translação de 1']],
+  ], 'Compor transformações = aplicar uma depois da outra e ver o efeito total.'),
+  // ---------- fio 12 ----------
+  EF03MA17: fixa('unidade-importa', [
+    ['Medindo a MESMA mesa, deu 8 palmos e 120 centímetros. Por que os números são diferentes?', 'porque as unidades de medida são diferentes', ['porque alguém errou', 'porque a mesa cresceu', 'porque palmo não mede nada']],
+    ['Se cada passo de Davi é maior que o de Nina, o MESMO corredor medido em passos dá…', 'menos passos para Davi', ['mais passos para Davi', 'o mesmo número', 'zero passos']],
+  ], 'A medida muda com a unidade — por isso existem unidades-padrão.'),
+  EF03MA18: fixa('instrumento-certo', [
+    ['Para medir a MASSA de uma melancia, uso…', 'uma balança', ['uma régua', 'um relógio', 'um termômetro']],
+    ['Para medir o comprimento do quarto, o melhor é…', 'uma trena (fita métrica)', ['um copo medidor', 'uma balança', 'um cronômetro']],
+    ['Para medir a temperatura, uso…', 'um termômetro', ['uma régua', 'um litro', 'uma balança']],
+  ], 'Cada grandeza tem seu instrumento: massa-balança, comprimento-trena…'),
+  EF03MA19: fixa('unidade-plausivel', [
+    ['Uma caneta mede mais ou menos 15…', 'centímetros', ['metros', 'quilômetros', 'litros']],
+    ['A altura de uma porta é cerca de 2…', 'metros', ['centímetros', 'quilômetros', 'gramas']],
+    ['A distância entre duas cidades se mede em…', 'quilômetros', ['centímetros', 'mililitros', 'graus']],
+  ], 'Imagine o tamanho: cm cabe na mão, m é gente, km é viagem.'),
+  EF03MA20: fixa('rotulos', [
+    ['No rótulo da garrafa está "2 L". Isso informa…', 'a capacidade: quanto líquido cabe', ['a massa da garrafa', 'o preço', 'a temperatura']],
+    ['No pacote de arroz está "5 kg". Isso informa…', 'a massa do arroz', ['a capacidade', 'o comprimento', 'a validade']],
+  ], 'L e mL falam de líquido; kg e g falam de massa.'),
+  EF04MA24: [{ id: 'temperaturas', gerar(r) {
+    const periodos = ['manhã', 'tarde', 'noite'];
+    const quente = Math.floor(r() * 3);
+    const v = periodos.map((_, i) => (i === quente ? ent(r, 27, 34) : ent(r, 15, 24)));
+    if (v[0] === v[1] && quente !== 0) v[0] -= 1;
+    if (v[2] === v[1] && quente !== 2) v[2] -= 2;
+    return { enunciado: `As temperaturas do dia: manhã ${v[0]}°C, tarde ${v[1]}°C, noite ${v[2]}°C. Em que período fez MAIS calor?`, tipo: 'escolha', opcoes: periodos, resposta: periodos[quente], dica: 'Compare os três números e ache o maior.' };
+  } }],
+  EF07MA29: fixa('medida-aproximada', [
+    ['A ponta do lápis fica ENTRE as marcas 7,4 e 7,5 cm da régua. O mais honesto é dizer que ele mede…', 'aproximadamente 7,4 cm — toda medida é aproximada', ['exatamente 7,4 cm', 'exatamente 7,45 cm', 'que a régua está errada']],
+    ['Duas balanças mostram 41,2 kg e 41,3 kg para a mesma mochila. Isso acontece porque…', 'toda medição tem uma pequena incerteza', ['uma balança está quebrada com certeza', 'a mochila mudou de massa', 'kg não serve para mochilas']],
+  ], 'Medir é aproximar: o instrumento sempre tem um limite de precisão.'),
+  // ---------- fio 13 ----------
+  EF03MA21: fixa('comparar-areas', [
+    ['O cartão A cobre o cartão B por inteiro e ainda sobra cartão A. Qual tem MAIOR área?', 'o cartão A', ['o cartão B', 'os dois iguais', 'não dá para saber']],
+    ['Dois adesivos cobrem exatamente o mesmo espaço um do outro. Suas áreas são…', 'iguais', ['diferentes', 'zero', 'impossíveis de comparar']],
+  ], 'Sobrepor é o jeito mais direto de comparar áreas.'),
+  EF07MA31: [{ id: 'area-formula', gerar(r) {
+    const tri = de(r, [true, false]);
+    const b = ent(r, 4, 12), h = de(r, [2, 4, 6, 8, 10]);
+    const certa = tri ? (b * h) / 2 : b * h;
+    return { enunciado: tri ? `Um triângulo tem base ${b} cm e altura ${h} cm. Qual é a área, em cm²?` : `Um retângulo tem base ${b} cm e altura ${h} cm. Qual é a área, em cm²?`, tipo: 'numero', resposta: String(certa), dica: tri ? 'Área do triângulo = base × altura ÷ 2.' : 'Área do retângulo = base × altura.' };
+  } }],
+  EF07MA32: [{ id: 'area-decomposicao', gerar(r) {
+    const b = ent(r, 3, 6), l = ent(r, 2, 4);
+    return { enunciado: `Uma figura em L é formada por um retângulo de ${b} × 2 e um quadrado de ${l} × ${l}, sem sobreposição. Qual é a área total?`, tipo: 'numero', resposta: String(b * 2 + l * l), dica: 'Divida a figura em pedaços conhecidos e some as áreas.' };
+  } }],
+  EF07MA33: fixa('pi', [
+    ['O número π (pi) vale aproximadamente…', '3,14', ['2,14', '3,41', '31,4']],
+    ['O π é a razão entre…', 'o comprimento da circunferência e o seu diâmetro', ['a área e o raio', 'o raio e o centro', 'dois raios']],
+    ['Se o diâmetro de uma roda é 1 m, uma volta completa percorre cerca de…', '3,14 m', ['1 m', '2 m', '6,28 m']],
+  ], 'Qualquer circunferência dividida pelo seu diâmetro dá sempre π.'),
+  // ---------- fio 15 ----------
+  EF07MA34: [{ id: 'frequencia-exp', gerar(r) {
+    const caiu = ent(r, 20, 80);
+    return { enunciado: `Uma tampinha foi lançada 100 vezes e caiu "boca para cima" ${caiu} vezes. A frequência desse resultado foi…`, tipo: 'escolha', opcoes: embaralharM(r, [`${caiu}%`, `${100 - caiu}%`, `${Math.min(99, caiu + 10)}%`, '50%'].filter((v, i, l) => l.indexOf(v) === i)), resposta: `${caiu}%`, dica: 'Frequência = quantas vezes aconteceu ÷ total de tentativas.' };
+  } }],
+  // ---------- fio 16 ----------
+  EF02MA23: [{ id: 'pesquisa-turma', gerar(r) {
+    const a = ent(r, 4, 10), b = ent(r, 4, 12), c = ent(r, 2, 8);
+    return { enunciado: `A turma votou o animal favorito: gato ${a}, cachorro ${b}, peixe ${c}. Quantas crianças votaram no total?`, tipo: 'numero', resposta: String(a + b + c), dica: 'Some os votos das três colunas da tabela.' };
+  } }],
+  EF03MA26: [{ id: 'tabela-diferenca', gerar(r) {
+    const t2 = ent(r, 5, 12), q = ent(r, 13, 22);
+    return { enunciado: `Livros lidos pela turma: terça ${t2}, quarta ${q}. Quantos livros A MAIS na quarta do que na terça?`, tipo: 'numero', resposta: String(q - t2), dica: '"A mais" pede uma subtração.' };
+  } }],
+  EF03MA28: [{ id: 'pesquisa-50', gerar(r) {
+    const total = de(r, [40, 50]), sim = ent(r, 12, 28);
+    return { enunciado: `Na pesquisa com ${total} alunos, ${sim} preferem estudar de manhã. Quantos NÃO preferem?`, tipo: 'numero', resposta: String(total - sim), dica: 'O resto da turma é o total menos os que disseram sim.' };
+  } }],
+  EF04MA27: fixa('conclusao-grafico', [
+    ['O gráfico de visitantes mostra: janeiro 40, fevereiro 55, março 55. Qual conclusão está CERTA?', 'fevereiro e março empataram, acima de janeiro', ['janeiro foi o maior', 'março caiu em relação a fevereiro', 'os três meses empataram']],
+    ['Vendas de picolé: verão 90, outono 40, inverno 15. Qual frase resume bem?', 'as vendas caem conforme esfria', ['o inverno vendeu mais', 'as vendas não mudam nunca', 'o outono foi o campeão']],
+  ], 'Antes de concluir, compare TODOS os números do gráfico.'),
+  EF04MA28: fixa('tipos-de-variavel', [
+    ['Na pesquisa da turma, "cor favorita" é uma variável…', 'categórica (de categorias, não de números)', ['numérica', 'impossível', 'de tempo']],
+    ['"Altura em centímetros" é uma variável…', 'numérica (medida em números)', ['categórica', 'de opinião', 'sem valor']],
+  ], 'Categoria se ESCOLHE (cor, time); número se MEDE ou CONTA.'),
+  EF05MA24: fixa('concluir-dados', [
+    ['Vendas da cantina: segunda 10, terça 20, quarta 40. Qual frase CONCLUI bem os dados?', 'as vendas dobraram a cada dia', ['as vendas caíram na quarta', 'terça foi o pior dia', 'os três dias empataram']],
+    ['Chuva no mês: semana 1 com 8 mm, semana 2 com 2 mm, semana 3 com 0 mm. Conclusão certa:', 'a chuva diminuiu ao longo do mês', ['choveu cada vez mais', 'a semana 3 foi a mais chuvosa', 'choveu igual nas três']],
+  ], 'A conclusão precisa caber nos números — nem mais, nem menos.'),
+  EF05MA25: fixa('metodo-pesquisa', [
+    ['Qual é a ordem certa de uma pesquisa?', 'pergunta → coleta dos dados → organização → conclusão', ['conclusão → pergunta → coleta', 'coleta → pergunta → chute', 'organização → pergunta → nada']],
+    ['Depois de coletar as respostas da turma, o próximo passo é…', 'organizar os dados em tabela ou gráfico', ['jogar as anotações fora', 'inventar números novos', 'concluir sem olhar os dados']],
+  ], 'Pesquisa é um caminho: perguntar, coletar, organizar, concluir.'),
+  EF06MA31: fixa('elementos-grafico', [
+    ['Num gráfico de barras, o eixo de baixo mostra as categorias e as barras mostram…', 'as quantidades (frequências) de cada categoria', ['as cores favoritas do autor', 'a ordem alfabética', 'a data da pesquisa']],
+    ['O TÍTULO de um gráfico serve para…', 'dizer do que os dados tratam', ['enfeitar', 'esconder os dados', 'somar as barras']],
+  ], 'Título, eixos e legenda: a carteira de identidade do gráfico.'),
+  EF06MA32: fixa('grafico-midia', [
+    ['Um gráfico de TV começa o eixo em 90 (e não em 0), e as barras de 92 e 98 parecem MUITO diferentes. Qual é o problema?', 'o corte no eixo exagera visualmente a diferença', ['nenhum, gráfico é sempre neutro', 'as cores estão feias', 'faltou uma terceira barra']],
+    ['Uma pizza de gráfico usa fatias em 3D inclinadas, e a fatia da frente parece maior do que é. Isso…', 'distorce a comparação entre as fatias', ['melhora a leitura', 'não muda nada', 'é obrigatório por lei']],
+  ], 'Gráfico também argumenta — olhe o eixo antes de acreditar.'),
+  EF06MA33: fixa('planilha', [
+    ['Na planilha, para calcular a média das células A1 e A2, a fórmula certa é…', '=(A1+A2)/2', ['=A1+A2/2', '=A1×A2', '=A1-A2']],
+    ['Numa planilha, a célula B3 fica…', 'na coluna B, linha 3', ['na linha B, coluna 3', 'em qualquer lugar', 'fora da planilha']],
+  ], 'Parênteses primeiro: sem eles, a planilha divide só o A2.'),
+  EF07MA36: fixa('pesquisa-social', [
+    ['Para pesquisar o desperdício de água na escola, o dado MAIS útil é…', 'a leitura do hidrômetro em períodos iguais', ['a opinião de um aluno só', 'a cor das torneiras', 'o preço da conta de luz']],
+    ['Numa pesquisa sobre lixo reciclado no bairro, a informação que sustenta conclusões é…', 'a quantidade coletada por semana, registrada', ['um palpite do pesquisador', 'uma foto bonita', 'a rua mais movimentada']],
+  ], 'Tema social também pede dado medido — opinião não substitui registro.'),
+  EF07MA37: fixa('setores', [
+    ['No gráfico de setores (pizza), METADE do círculo representa…', '50%', ['25%', '75%', '100%']],
+    ['Um quarto do círculo representa…', '25%', ['50%', '40%', '10%']],
+    ['Se a fatia "sim" ocupa 3/4 do círculo, o "sim" teve…', '75%', ['25%', '50%', '34%']],
+  ], 'O círculo inteiro é 100% — cada fatia é a sua fração disso.'),
+  EF08MA23: fixa('escolher-grafico', [
+    ['Para mostrar a EVOLUÇÃO da temperatura mês a mês, o melhor gráfico é…', 'de linhas', ['de setores (pizza)', 'de barras separadas', 'nenhum']],
+    ['Para comparar quantos votos cada sabor de pizza recebeu, o melhor é…', 'de barras (colunas)', ['de linhas', 'de dispersão', 'nenhum']],
+    ['Para mostrar as PARTES de um todo (como 100% dividido), o melhor é…', 'de setores (pizza)', ['de linhas', 'de barras empilhadas em datas', 'um cronômetro']],
+  ], 'Linha = tempo; barra = comparação; pizza = partes do todo.'),
+  EF08MA24: fixa('classes', [
+    ['As alturas da turma foram agrupadas em faixas de 10 em 10 cm (140–150, 150–160…). Esse agrupamento se chama…', 'distribuição de frequências em classes', ['moda', 'média aritmética', 'probabilidade']],
+    ['Agrupar dados em classes é útil quando…', 'há muitos valores diferentes para listar um a um', ['há só dois valores', 'não há dados', 'os dados são segredos']],
+  ], 'Classes resumem muitos valores em poucas faixas legíveis.'),
+  EF08MA26: fixa('por-que-amostra', [
+    ['Por que as pesquisas ouvem 2 mil pessoas em vez do país inteiro?', 'uma amostra bem escolhida representa o todo, com custo e tempo menores', ['porque só 2 mil pessoas opinam', 'porque o resto não importa', 'porque é proibido ouvir todos']],
+    ['Para a amostra representar bem a escola, ela deve…', 'incluir alunos sorteados de todas as turmas', ['ter só os amigos do pesquisador', 'ter só uma turma', 'ter só quem quis responder no recreio']],
+  ], 'Amostra boa é um retrato em miniatura do grupo todo.'),
+  EF08MA27: fixa('pesquisa-amostral', [
+    ['Para saber a opinião da escola TODA ouvindo só 50 alunos, o certo é…', 'sortear alunos de todas as turmas e séries', ['ouvir só a sua turma', 'ouvir só quem joga futebol', 'escolher os 50 primeiros da fila do lanche']],
+    ['Ao divulgar uma pesquisa amostral, é honesto informar…', 'quantos foram ouvidos e como foram escolhidos', ['só o resultado que agrada', 'nada além do gráfico', 'apenas o nome do pesquisador']],
+  ], 'O valor da pesquisa está no COMO a amostra foi escolhida.'),
+});
+
 // ---- API ----
 const temMolde = (celula) => Array.isArray(MOLDES[celula]) && MOLDES[celula].length > 0;
 const CELULAS_COM_MOLDE = Object.keys(MOLDES);

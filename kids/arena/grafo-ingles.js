@@ -2,8 +2,12 @@
 // Invente Arena — GRAFO da Arena de Inglês (fase D).
 // Fonte: docs/kids/arena-grafo-ingles.md, APROVADO pelo Augusto em
 // 14/08/2026. Régua: CEFR pré-A1 → A1 (2º–5º; Cambridge Starters/Movers
-// como guia etário) — o MEC não define inglês antes do 6º. O fio BNCC LI
-// (6º–8º) entra no lote D3 com códigos conferidos em fonte.
+// como guia etário) — o MEC não define inglês antes do 6º. Fio 7 (D3):
+// BNCC Língua Inglesa 6º–8º, códigos conferidos no PDF oficial do MEC
+// (basenacionalcomum.mec.gov.br, pesquisa 14/08/2026: 26+23+20 habilidades);
+// a Arena treina os eixos de LEITURA e CONHECIMENTOS LINGUÍSTICOS —
+// oralidade (fala da criança) fica gated pelo parecer, e escrita/dimensão
+// intercultural vivem nas missões, não em múltipla escolha.
 // Travas: voz da criança NUNCA sobe (speaking pós-parecer); listening é
 // o sintetizador do NAVEGADOR (voz PARA a criança, nada gravado).
 // =====================================================================
@@ -51,6 +55,25 @@ const CELULAS = {
   'EN-PA1-APRESENTAR.3': ['C', 'Dizer quem eu sou'],
   'EN-A1-PEDIDOS.4': ['C', 'Pedir com educação'],
   'EN-A1-GOSTOS.5': ['C', 'I like, I don\'t like'],
+  // fio 7 · BNCC: o inglês da escola (6º–8º)
+  'EF06LI08': ['R', 'Descobrir o assunto do texto (cognatos)'],
+  'EF06LI09': ['R', 'Localizar a informação no texto'],
+  'EF06LI17': ['V', 'Vocabulário do dia a dia (escola, rotina, lazer)'],
+  'EF06LI19': ['G', 'To be e rotinas no presente simples'],
+  'EF06LI20': ['G', 'Presente contínuo'],
+  'EF06LI21': ['G', 'Imperativo: comandos e instruções'],
+  'EF06LI22': ['G', 'Genitivo: o \'s de posse'],
+  'EF06LI23': ['G', 'Adjetivos possessivos'],
+  'EF07LI15': ['G', 'Passado: verbos e preposições in/on/at'],
+  'EF07LI18': ['G', 'Passado simples e contínuo'],
+  'EF07LI19': ['G', 'Pronomes: sujeito e objeto'],
+  'EF07LI20': ['G', 'CAN e COULD: habilidades'],
+  'EF07LI07': ['R', 'A informação-chave de cada parágrafo'],
+  'EF08LI14': ['G', 'Futuro: planos e previsões'],
+  'EF08LI15': ['G', 'Comparativos e superlativos'],
+  'EF08LI16': ['G', 'Some, any, many, much'],
+  'EF08LI17': ['G', 'Pronomes relativos (who, which, that)'],
+  'EF08LI05': ['R', 'Inferência: ler o que está implícito'],
 };
 
 const FIOS = [
@@ -60,13 +83,20 @@ const FIOS = [
   { id: 4, nome: 'Frases que funcionam', celulas: ['EN-PA1-TOBE.3', 'EN-PA1-ARTIGOS.3', 'EN-PA1-PLURAL.4', 'EN-PA1-PRONOMES.4', 'EN-A1-PRESENT.4', 'EN-A1-CAN.5', 'EN-A1-CONTINUOUS.5', 'EN-A1-POSSESSIVO.5'] },
   { id: 5, nome: 'Números e horas', celulas: ['EN-PA1-NUM-EXTENSO.3', 'EN-A1-NUM-GRANDES.4', 'EN-A1-HORAS.5', 'EN-A1-DIAS-MESES.5'] },
   { id: 6, nome: 'Conversas do dia a dia', celulas: ['EN-PA1-SAUDACOES.2', 'EN-PA1-APRESENTAR.3', 'EN-A1-PEDIDOS.4', 'EN-A1-GOSTOS.5'] },
+  { id: 7, nome: 'O inglês da escola (BNCC)', celulas: ['EF06LI08', 'EF06LI09', 'EF06LI17', 'EF06LI19', 'EF06LI20', 'EF06LI21', 'EF06LI22', 'EF06LI23', 'EF07LI15', 'EF07LI18', 'EF07LI19', 'EF07LI20', 'EF07LI07', 'EF08LI14', 'EF08LI15', 'EF08LI16', 'EF08LI17', 'EF08LI05'] },
 ];
 
 // Sem dificuldade nacional medida em inglês: prioridade = motivação
 // (vocabulário do mundo da criança e escuta primeiro).
 const ATENCAO = { critica: [], alta: ['EN-PA1-OUVIR-PALAVRA.2', 'EN-PA1-LER-PALAVRA.2', 'EN-PA1-CORES.2', 'EN-PA1-ANIMAIS.2'] };
 
-const ANO_DE = (codigo) => Number(String(codigo).split('.')[1]) || 2;
+const ANO_DE = (codigo) => {
+  const s = String(codigo);
+  const suf = Number(s.split('.')[1]);
+  if (suf) return suf;
+  const m = s.match(/^EF(\d\d)/); // códigos BNCC LI carregam o ano no próprio código
+  return m ? Number(m[1]) : 2;
+};
 
 const _fioPorCelula = {};
 for (const f of FIOS) f.celulas.forEach((c, i) => { _fioPorCelula[c] = { fio: f.id, idx: i }; });
