@@ -2659,6 +2659,22 @@ const LINKTREE_CASAS = [
   { id: 'GD03H', nome: t('Gran Villela (espaço inteiro)', 'Gran Villela (whole house)', 'Gran Villela (casa entera)') },
   { id: 'GD01H', nome: 'Casa Modernista' }
 ].filter(c => porId[c.id]);
+// Wi-Fi das casas — para o hóspede que já está hospedado e chega aqui pelo QR Code.
+// ⚠️ Página PÚBLICA: só entra aqui a rede de visitantes/hóspedes, nunca a rede administrativa.
+const LINKTREE_WIFI = [
+  { casa: 'Casa Modernista', rede: 'villelahomestay', senha: '124365656' },
+  { casa: 'Villela Stay', rede: 'villelahomestay', senha: 'Av124365656' }
+];
+const wifiLinha = (rot, valor) => `<div class="lt-wifi-linha">
+      <span class="lt-wifi-rot">${esc(rot)}</span>
+      <code class="lt-wifi-val">${esc(valor)}</code>
+      <button class="lt-copy" type="button" data-copy="${esc(valor)}">${t('copiar', 'copy', 'copiar')}</button>
+    </div>`;
+const wifiCards = LINKTREE_WIFI.map(w => `<div class="lt-wifi">
+    <strong class="lt-wifi-casa">📶 ${esc(w.casa)}</strong>
+    ${wifiLinha(t('Rede', 'Network', 'Red'), w.rede)}
+    ${wifiLinha(t('Senha', 'Password', 'Contraseña'), w.senha)}
+  </div>`).join('\n  ');
 // Redes sociais REAIS confirmadas no site (não inventar perfis).
 // Os botões de Instagram/Facebook/e-mail foram PROMOVIDOS para botões principais (LINKTREE) para
 // ganhar destaque. Aqui no rodapé fica só o telefone, que não vira botão principal.
@@ -2743,6 +2759,19 @@ ${hreflangTags('/links.html')}
     border:1px solid rgba(242,236,216,.22); border-radius:999px; padding:7px 16px;
     font-size:.85rem; margin:0 auto 22px; transition:opacity .12s, border-color .12s, background .12s; }
   .lt-voltar:hover{ opacity:1; border-color:var(--lt-ouro); background:rgba(255,255,255,.1); }
+  .lt-wifi{ background:rgba(255,255,255,.07); border:1.5px solid rgba(242,236,216,.28);
+    border-radius:16px; padding:14px 16px; margin:0 0 13px; text-align:left; }
+  .lt-wifi-casa{ display:block; font-size:1.02rem; margin-bottom:9px; }
+  .lt-wifi-linha{ display:flex; align-items:center; gap:9px; margin-top:7px; }
+  .lt-wifi-rot{ font-size:.8rem; opacity:.78; flex:0 0 62px; }
+  .lt-wifi-val{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.98rem;
+    letter-spacing:.5px; color:var(--lt-branco); background:rgba(0,0,0,.22); border-radius:8px;
+    padding:5px 10px; flex:1 1 auto; overflow-wrap:anywhere; user-select:all; }
+  .lt-copy{ flex:0 0 auto; font:inherit; font-size:.78rem; cursor:pointer; color:var(--lt-creme);
+    background:rgba(255,255,255,.08); border:1px solid rgba(242,236,216,.28); border-radius:999px;
+    padding:6px 12px; transition:background .12s, border-color .12s; }
+  .lt-copy:hover{ background:rgba(255,255,255,.16); border-color:var(--lt-ouro); }
+  .lt-wifi-nota{ font-size:.78rem; opacity:.68; margin:-4px 0 4px; text-align:left; line-height:1.5; }
   .lt-langs{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:0 0 22px; }
   .lt-lang{ text-decoration:none; color:var(--lt-creme); background:rgba(255,255,255,.06);
     border:1px solid rgba(242,236,216,.22); border-radius:999px; padding:6px 14px; font-size:.84rem;
@@ -2771,6 +2800,10 @@ ${hreflangTags('/links.html')}
     href: `${L(`/hospedagem/${c.id}.html`)}?origem=linktree`
   })).join('\n  ')}
 
+  <div class="lt-sep">${t('Wi-Fi das casas', 'House Wi-Fi', 'Wi-Fi de las casas')}</div>
+  <p class="lt-wifi-nota">${t('Já está hospedado? Conecte-se com os dados abaixo — toque em “copiar”.', 'Already staying with us? Connect using the details below — tap “copy”.', '¿Ya estás alojado? Conéctate con los datos de abajo — toca “copiar”.')}</p>
+  ${wifiCards}
+
   <div class="lt-sep">${t('Telefone &amp; redes', 'Phone &amp; social', 'Teléfono y redes')}</div>
   <div class="lt-redes">
     ${LINKTREE_REDES.map(r => `<a class="lt-rede" href="${r.href}"${/^https?:/.test(r.href) ? ' target="_blank" rel="noopener"' : ''}><span aria-hidden="true">${r.emoji}</span>${esc(r.label)}</a>`).join('\n    ')}
@@ -2785,6 +2818,39 @@ ${hreflangTags('/links.html')}
 document.addEventListener('click', function(e){
   var a = e.target.closest && e.target.closest('a');
   if (a && typeof gtag === 'function') gtag('event', 'clique_linktree', { destino: a.getAttribute('href') });
+});
+// Botão "copiar" dos dados de Wi-Fi. Sem clipboard API (http, navegador antigo) cai no textarea.
+document.addEventListener('click', function(e){
+  var b = e.target.closest && e.target.closest('.lt-copy');
+  if (!b) return;
+  var valor = b.getAttribute('data-copy') || '';
+  var original = b.textContent;
+  function aviso(txt){
+    b.textContent = txt;
+    setTimeout(function(){ b.textContent = original; }, 2000);
+  }
+  function ok(){ aviso(${JSON.stringify(t('copiado!', 'copied!', '¡copiado!'))}); }
+  // Última saída: seleciona o valor na tela para o hóspede copiar no dedo. Nunca deixar sem resposta.
+  function selecionar(){
+    var alvo = b.parentNode.querySelector('.lt-wifi-val');
+    if (alvo && window.getSelection && document.createRange) {
+      var r = document.createRange(); r.selectNodeContents(alvo);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+    aviso(${JSON.stringify(t('selecionado', 'selected', 'seleccionado'))});
+  }
+  function manual(){
+    var ta = document.createElement('textarea');
+    ta.value = valor; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var copiou = false;
+    try { copiou = document.execCommand('copy'); } catch (err) {}
+    document.body.removeChild(ta);
+    if (copiou) ok(); else selecionar();
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(valor).then(ok, manual);
+  else manual();
 });
 </script>
 </body>
