@@ -163,8 +163,12 @@ function receitaPlataforma() {
   const mes = nowISO().slice(0, 7);
   const recebidoMes = db.prepare("SELECT COALESCE(SUM(valor_centavos),0) v FROM payments WHERE status = 'aprovado' AND criado_em LIKE ?").get(mes + '%').v;
   const porMes = db.prepare("SELECT substr(criado_em,1,7) mes, SUM(valor_centavos) v FROM payments WHERE status = 'aprovado' GROUP BY mes ORDER BY mes DESC LIMIT 12").all();
-  const trials7 = db.prepare("SELECT id, nome, trial_expira_em FROM tenants WHERE status = 'trial' AND trial_expira_em != '' AND trial_expira_em <= ? ORDER BY trial_expira_em")
-    .all(new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString());
+  // JANELA FECHADA dos dois lados: "expirando em ate 7 dias" e do HOJE ate hoje+7, nunca o
+  // passado. Sem o piso, trial vencido ha semanas continuava entrando na lista e o Augusto
+  // recebia o mesmo alerta todo dia (Smoke F2, vencido em 21/07, avisando ate 13/08/2026).
+  // Aqui nao ha rotina que aposente trial vencido, entao ele fica 'trial' para sempre.
+  const trials7 = db.prepare("SELECT id, nome, trial_expira_em FROM tenants WHERE status = 'trial' AND trial_expira_em >= ? AND trial_expira_em <= ? ORDER BY trial_expira_em")
+    .all(nowISO(), new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString());
   const custoIA = db.prepare('SELECT tenant_id, SUM(custo_centavos_usd) custo, SUM(input_tokens+output_tokens) tokens, COUNT(*) chamadas FROM ai_runs GROUP BY tenant_id ORDER BY custo DESC LIMIT 20').all()
     .map(r => ({ ...r, nome: (repo.obterTenant(r.tenant_id) || {}).nome || r.tenant_id }));
   const assinaturas = db.prepare(`SELECT sb.tenant_id, sb.status, sb.mp_preapproval_id, p.nome plano, p.preco_centavos FROM subscriptions sb

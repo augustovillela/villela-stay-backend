@@ -423,7 +423,8 @@ const Dashboard = {
       ativos: um("SELECT COUNT(*) n FROM tenants WHERE status = 'ativa'"),
       inadimplentes: um("SELECT COUNT(*) n FROM tenants WHERE status = 'inadimplente'"),
       suspensos: um("SELECT COUNT(*) n FROM tenants WHERE status IN ('suspensa','cancelada')"),
-      trials_expirando_7d: um("SELECT COUNT(*) n FROM tenants WHERE status = 'trial' AND trial_expira_em != '' AND trial_expira_em <= ?", new Date(Date.now() + 7 * 86400000).toISOString()),
+      // Janela FECHADA: de hoje ate hoje+7. Sem o piso, trial ja vencido contava como "expirando".
+      trials_expirando_7d: um("SELECT COUNT(*) n FROM tenants WHERE status = 'trial' AND trial_expira_em >= ? AND trial_expira_em <= ?", new Date().toISOString(), new Date(Date.now() + 7 * 86400000).toISOString()),
       tickets_abertos: um("SELECT COUNT(*) n FROM tickets WHERE status IN ('aberto','em_andamento')"),
       leads_novos: um("SELECT COUNT(*) n FROM saas_leads WHERE status = 'novo'"),
       contatos_total: um('SELECT COUNT(*) n FROM crm_contatos'),
