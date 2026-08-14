@@ -558,6 +558,43 @@ async function rodar() {
     assert.ok(p.arena.criticas_dominadas >= 1, 'célula crítica dominada não celebrada');
   });
 
+  // ================= Arena de Português (fase C) =================
+  await t('Português: grafo íntegro, moldes determinísticos e matérias listadas', async () => {
+    const gp = require('./arena/grafo-portugues');
+    const mp = require('./arena/moldes-portugues');
+    for (const f of gp.FIOS) for (const c of f.celulas) assert.ok(gp.CELULAS[c], 'fio cita célula inexistente: ' + c);
+    assert.equal(gp.ANO_DE('EF35LP04.4'), 4);
+    assert.equal(gp.celula('EF15LP03.3').prereq, 'EF15LP03.2');
+    for (const cel of mp.CELULAS_COM_MOLDE) {
+      for (let s2 = 1; s2 <= 20; s2++) {
+        const a = mp.exercicio(cel, s2), b = mp.exercicio(cel, s2);
+        assert.deepEqual(a, b, cel + ': não determinístico');
+        assert.ok(a.enunciado && a.resposta && a.dica, cel + ': incompleto');
+        if (a.tipo === 'escolha') assert.ok(a.opcoes.includes(a.resposta), cel + ': resposta fora das opções');
+      }
+    }
+    const ms = (await req('GET', '/kids/api/arena/materias', { como: 'bia' })).json.materias;
+    assert.equal(ms.length, 2);
+  });
+  await t('Português: nivelamento e lição independentes da Matemática', async () => {
+    const mp = require('./arena/moldes-portugues');
+    let p = (await req('POST', JA('/nivelamento/iniciar'), { como: 'bia', corpo: { materia: 'portugues' } })).json;
+    let guarda = 0;
+    while (!p.concluido && guarda++ < 120) {
+      p = (await req('POST', JA('/nivelamento/responder'), { como: 'bia', corpo: { materia: 'portugues', resposta: mp.exercicio(p.exercicio.celula, p.exercicio.seed).resposta } })).json;
+    }
+    assert.ok(p.concluido, 'nivelamento de português não concluiu');
+    const mPort = (await req('GET', JA('?materia=portugues'), { como: 'bia' })).json;
+    assert.equal(mPort.nivelamento_feito, true);
+    assert.equal(mPort.fios.length, 12);
+    const d = (await req('POST', JA('/licao'), { como: 'bia', corpo: { materia: 'portugues', celula: 'EF02LP10.2' } })).json;
+    const certas = d.exercicios.map((e) => ({ seed: e.seed, resposta: mp.exercicio('EF02LP10.2', e.seed).resposta }));
+    const r = (await req('POST', JA('/corrigir'), { como: 'bia', corpo: { materia: 'portugues', celula: 'EF02LP10.2', itens: certas } })).json;
+    assert.equal(r.acertos, 5);
+    assert.ok(r.subiu);
+    assert.equal((await req('GET', JA('?materia=quimica'), { como: 'bia' })).st, 400, 'matéria inválida deveria dar 400');
+  });
+
   // ================= onda 5: ajuda, estúdio gated e homologação =================
   await t('central de ajuda no ar: hub, manual (consentimento parental) e FAQ', async () => {
     assert.equal((await req('GET', '/kids/ajuda')).st, 200);

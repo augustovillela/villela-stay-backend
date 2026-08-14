@@ -35,7 +35,7 @@ function fiosSonda(mat) {
     .filter((f) => f.cands.length >= 2);
   return _sondaCache[mat];
 }
-const SONDA_PROFUNDA = [3, 4]; // divisão e frações: o vale nacional (🔥)
+const sondaProfunda = (mat) => registro.materia(mat).sondaProfunda || [];
 
 // ---------------------------------------------------------------------
 // Progresso por célula
@@ -85,7 +85,7 @@ function nivelamentoIniciar(crianca, mat = 'matematica') {
   const fios = fiosSonda(mat).map((f) => {
     let idx = f.cands.findIndex((c) => grafoDe(mat).ANO_DE(c) >= anoAlvo);
     if (idx === -1) idx = f.cands.length - 1;
-    return { id: f.id, nome: f.nome, cands: f.cands, idx, topo: -1, feitas: 0, max: SONDA_PROFUNDA.includes(f.id) ? 4 : 3, fim: false };
+    return { id: f.id, nome: f.nome, cands: f.cands, idx, topo: -1, feitas: 0, max: sondaProfunda(mat).includes(f.id) ? 4 : 3, fim: false };
   });
   const dados = { materia: mat, fios, fioAtual: 0, seed: seedNovo(), perguntas: 0 };
   salvarNivelamento(crianca.id, dados, false);

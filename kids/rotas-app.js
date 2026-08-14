@@ -54,32 +54,35 @@ function registrarRotasApp(app, { requireUsuario }) {
     res.json({ portfolio: Portfolio.listar(req.usuario.id, req.params.id) });
   }));
 
-  // ---- Invente Arena (fase A): prática adaptativa BNCC ----
+  // ---- Invente Arena: prática adaptativa BNCC (multi-matéria desde a fase C) ----
   const arena = require('./arena/motor');
+  const materiaDe = (req) => String((req.query || {}).materia || (req.body || {}).materia || 'matematica');
+  app.get('/kids/api/arena/materias', requireUsuario, h(async (req, res) => res.json({ materias: arena.materias() })));
   app.get('/kids/api/criancas/:id/arena', requireUsuario, h(async (req, res) => {
     const c = Criancas.exigir(req.usuario.id, req.params.id);
-    const m = arena.mapa(c.id);
-    res.json({ ...m, recomendada: m.nivelamento_feito ? arena.recomendada(c.id) : null });
+    const mat = materiaDe(req);
+    const m = arena.mapa(c.id, mat);
+    res.json({ ...m, materias: arena.materias(), recomendada: m.nivelamento_feito ? arena.recomendada(c.id, mat) : null });
   }));
   app.post('/kids/api/criancas/:id/arena/nivelamento/iniciar', requireUsuario, h(async (req, res) => {
     const c = Criancas.exigir(req.usuario.id, req.params.id);
-    res.json(arena.nivelamentoIniciar(c));
+    res.json(arena.nivelamentoIniciar(c, materiaDe(req)));
   }));
   app.post('/kids/api/criancas/:id/arena/nivelamento/responder', requireUsuario, h(async (req, res) => {
     const c = Criancas.exigir(req.usuario.id, req.params.id);
-    res.json(arena.nivelamentoResponder(c, (req.body || {}).resposta));
+    res.json(arena.nivelamentoResponder(c, (req.body || {}).resposta, materiaDe(req)));
   }));
   app.post('/kids/api/criancas/:id/arena/licao', requireUsuario, h(async (req, res) => {
     const c = Criancas.exigir(req.usuario.id, req.params.id);
-    res.json(arena.gerarLicao(c.id, (req.body || {}).celula));
+    res.json(arena.gerarLicao(c.id, (req.body || {}).celula, materiaDe(req)));
   }));
   app.post('/kids/api/criancas/:id/arena/corrigir', requireUsuario, h(async (req, res) => {
     const c = Criancas.exigir(req.usuario.id, req.params.id);
-    res.json(arena.corrigirLicao(c.id, (req.body || {}).celula, (req.body || {}).itens));
+    res.json(arena.corrigirLicao(c.id, (req.body || {}).celula, (req.body || {}).itens, materiaDe(req)));
   }));
   app.post('/kids/api/criancas/:id/arena/pista', requireUsuario, h(async (req, res) => {
     const c = Criancas.exigir(req.usuario.id, req.params.id);
-    res.json(await arena.pista(c, (req.body || {}).celula, (req.body || {}).seed, (req.body || {}).tentativa));
+    res.json(await arena.pista(c, (req.body || {}).celula, (req.body || {}).seed, (req.body || {}).tentativa, materiaDe(req)));
   }));
 
   // ---- Certificado de Conquista (onda 7, pág. 31 do brand book) ----

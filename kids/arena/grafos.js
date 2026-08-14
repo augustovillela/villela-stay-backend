@@ -12,6 +12,7 @@ const MATERIAS = {
     nome: 'Arena de Matemática',
     emoji: '🔢',
     ativa: true,
+    sondaProfunda: [3, 4], // divisão e frações: o vale nacional
     grafo: () => require('./grafo-matematica'),
     moldes: () => require('./moldes'),
   },
@@ -19,9 +20,10 @@ const MATERIAS = {
     id: 'portugues',
     nome: 'Arena de Português',
     emoji: '📖',
-    ativa: false, // liga quando o grafo C0 for aprovado pelo Augusto
-    grafo: () => null,
-    moldes: () => null,
+    ativa: true, // grafo C0 aprovado pelo Augusto em 07/08/2026
+    sondaProfunda: [1, 2, 3], // fluência e leitura: o gargalo da alfabetização
+    grafo: () => require('./grafo-portugues'),
+    moldes: () => require('./moldes-portugues'),
   },
 };
 
