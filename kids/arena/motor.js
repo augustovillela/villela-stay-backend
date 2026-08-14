@@ -103,7 +103,7 @@ function proximaPergunta(childId, dados) {
   return {
     concluido: false,
     progresso: { atual: dados.fioAtual + 1, total: dados.fios.length, fio: f.nome },
-    exercicio: { celula, seed: dados.seed, enunciado: ex.enunciado, tipo: ex.tipo, opcoes: ex.opcoes || null },
+    exercicio: { celula, seed: dados.seed, enunciado: ex.enunciado, tipo: ex.tipo, opcoes: ex.opcoes || null, audio: ex.audio || null },
   };
 }
 
@@ -202,7 +202,7 @@ function gerarLicao(childId, celulaId, mat = 'matematica') {
     if (usados.has(seed)) continue;
     usados.add(seed);
     const ex = mo.exercicio(alvo, seed);
-    exercicios.push({ seed, enunciado: ex.enunciado, tipo: ex.tipo, opcoes: ex.opcoes || null, dica: ex.dica });
+    exercicios.push({ seed, enunciado: ex.enunciado, tipo: ex.tipo, opcoes: ex.opcoes || null, dica: ex.dica, audio: ex.audio || null });
   }
   const p = Progresso.obter(childId, alvo);
   return { celula: { codigo: alvo, resumo: cel.resumo, fioNome: cel.fioNome, atencao: cel.atencao, estado: p.estado, estadoNome: ESTADOS[p.estado] }, exercicios };

@@ -162,7 +162,13 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
   }
 
   function materiaAtual() { return paramDaRota('mat') || 'matematica'; }
-  var NOMES_MATERIA = { matematica: '🔢 Matemática', portugues: '📖 Português' };
+  var NOMES_MATERIA = { matematica: '🔢 Matemática', portugues: '📖 Português', ingles: '🌎 Inglês' };
+  // Listening do inglês: a voz sintetizada do PRÓPRIO navegador fala PARA a
+  // criança — nada é gravado, nada sai do aparelho.
+  function falar(txt) {
+    try { var u = new SpeechSynthesisUtterance(txt); u.lang = 'en-US'; u.rate = 0.85; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  }
+  var CLASSE_MATERIA = { matematica: 'arena', portugues: 'studio', ingles: 'lab' };
 
   async function vArena() {
     var c = criancaAtiva();
@@ -174,7 +180,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       if (ms.length === 1) return irPara('#arena?mat=' + ms[0].id);
       el(topo() + '<h1 class="kb">🏟️ Invente Arena</h1><p class="kb-sub">Escolha o seu treino de hoje:</p>' +
         '<div class="kb-ambs">' + ms.map(function (m) {
-          return '<button class="kb-amb ' + (m.id === 'portugues' ? 'studio' : 'arena') + '" data-ir="#arena?mat=' + esc(m.id) + '"><span style="font-size:40px">' + esc(m.emoji) + '</span>' + esc(m.nome) + '</button>';
+          return '<button class="kb-amb ' + (CLASSE_MATERIA[m.id] || 'arena') + '" data-ir="#arena?mat=' + esc(m.id) + '"><span style="font-size:40px">' + esc(m.emoji) + '</span>' + esc(m.nome) + '</button>';
         }).join('') + '</div>');
       return ligarNavegacao();
     }
@@ -215,7 +221,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       el(topo() + '<h1 class="kb">🔍 Descobrindo superpoderes…</h1>' +
         '<p class="kb-sub">Explorando: <b>' + esc(p.progresso.fio) + '</b> (' + p.progresso.atual + ' de ' + p.progresso.total + ')' +
         (feedback ? ' · ' + feedback : '') + '</p>' +
-        '<div class="kb-texto">' + esc(ex.enunciado) + '</div>' +
+        '<div class="kb-texto">' + esc(ex.enunciado) + (ex.audio ? '<p style="margin:10px 0 0"><button class="kb-bt claro" id="nv-audio">🔊 Ouvir</button></p>' : '') + '</div>' +
         '<div class="kb-card kb-form" style="margin-top:14px">' +
         (ex.opcoes
           ? ex.opcoes.map(function (o) { return '<p><button class="kb-bt claro nv-op" data-v="' + esc(o) + '">' + esc(o) + '</button></p>'; }).join('')
@@ -226,6 +232,8 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         tela(r, r.certo ? '✅ boa!' : '💪 sem problema, seguimos');
       }
       raiz.querySelectorAll('.nv-op').forEach(function (b) { b.addEventListener('click', function () { enviar(b.getAttribute('data-v')); }); });
+      var bna = document.getElementById('nv-audio');
+      if (bna) { bna.addEventListener('click', function () { falar(ex.audio); }); falar(ex.audio); }
       var be = document.getElementById('nv-enviar');
       if (be) be.addEventListener('click', function () { enviar((document.getElementById('nv-resp') || {}).value); });
     }
@@ -242,7 +250,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
       var ex = d.exercicios[i];
       el(topo() + '<h1 class="kb">🏟️ ' + esc(d.celula.resumo) + '</h1>' +
         '<p class="kb-sub">' + esc(d.celula.fioNome || 'Arena') + ' · nível ' + esc(d.celula.estadoNome) + ' · exercício ' + (i + 1) + ' de ' + d.exercicios.length + '</p>' +
-        '<div class="kb-texto">' + esc(ex.enunciado) + '</div>' +
+        '<div class="kb-texto">' + esc(ex.enunciado) + (ex.audio ? '<p style="margin:10px 0 0"><button class="kb-bt claro" id="lc-audio">🔊 Ouvir</button></p>' : '') + '</div>' +
         '<div class="kb-card kb-form" style="margin-top:14px">' +
         (ex.opcoes
           ? ex.opcoes.map(function (o) { return '<p><button class="kb-bt claro lc-op" data-v="' + esc(o) + '">' + esc(o) + '</button></p>'; }).join('')
@@ -254,6 +262,8 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         if (i < d.exercicios.length) telaExercicio(); else corrigir();
       }
       raiz.querySelectorAll('.lc-op').forEach(function (b) { b.addEventListener('click', function () { avancar(b.getAttribute('data-v')); }); });
+      var bla = document.getElementById('lc-audio');
+      if (bla) bla.addEventListener('click', function () { falar(ex.audio); });
       var be = document.getElementById('lc-enviar');
       if (be) be.addEventListener('click', function () { avancar((document.getElementById('lc-resp') || {}).value); });
       document.getElementById('lc-pista').addEventListener('click', async function () {

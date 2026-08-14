@@ -574,7 +574,7 @@ async function rodar() {
       }
     }
     const ms = (await req('GET', '/kids/api/arena/materias', { como: 'bia' })).json.materias;
-    assert.equal(ms.length, 2);
+    assert.equal(ms.length, 3);
   });
   await t('Português: nivelamento e lição independentes da Matemática', async () => {
     const mp = require('./arena/moldes-portugues');
@@ -593,6 +593,49 @@ async function rodar() {
     assert.equal(r.acertos, 5);
     assert.ok(r.subiu);
     assert.equal((await req('GET', JA('?materia=quimica'), { como: 'bia' })).st, 400, 'matéria inválida deveria dar 400');
+  });
+
+  // ================= Arena de Inglês (fase D, lote 1) =================
+  await t('Inglês: grafo íntegro, moldes determinísticos e escuta com áudio', async () => {
+    const gi = require('./arena/grafo-ingles');
+    const mi = require('./arena/moldes-ingles');
+    for (const f of gi.FIOS) for (const c of f.celulas) assert.ok(gi.CELULAS[c], 'fio cita célula inexistente: ' + c);
+    assert.equal(gi.ANO_DE('EN-PA1-COMIDA.3'), 3);
+    assert.equal(gi.celula('EN-PA1-OUVIR-FRASE.3').prereq, 'EN-PA1-OUVIR-PALAVRA.2');
+    for (const cel of mi.CELULAS_COM_MOLDE) {
+      for (let s2 = 1; s2 <= 20; s2++) {
+        const a = mi.exercicio(cel, s2), b = mi.exercicio(cel, s2);
+        assert.deepEqual(a, b, cel + ': não determinístico');
+        assert.ok(a.enunciado && a.resposta && a.dica, cel + ': incompleto');
+        assert.ok(a.audio, cel + ': exercício de inglês sem áudio para o 🔊');
+        if (a.tipo === 'escolha') {
+          assert.ok(a.opcoes.includes(a.resposta), cel + ': resposta fora das opções');
+          assert.equal(new Set(a.opcoes).size, a.opcoes.length, cel + ': opções repetidas');
+        }
+      }
+    }
+    // as células de escuta ouvem a resposta certa (o áudio É o gabarito)
+    const ouvir = mi.exercicio('EN-PA1-OUVIR-PALAVRA.2', 7);
+    assert.equal(ouvir.audio, ouvir.resposta);
+  });
+  await t('Inglês: nivelamento, lição com áudio e progresso separado', async () => {
+    const mi = require('./arena/moldes-ingles');
+    let p = (await req('POST', JA('/nivelamento/iniciar'), { como: 'bia', corpo: { materia: 'ingles' } })).json;
+    let guarda = 0;
+    while (!p.concluido && guarda++ < 120) {
+      assert.ok(p.exercicio.audio, 'pergunta do nivelamento de inglês sem áudio');
+      p = (await req('POST', JA('/nivelamento/responder'), { como: 'bia', corpo: { materia: 'ingles', resposta: mi.exercicio(p.exercicio.celula, p.exercicio.seed).resposta } })).json;
+    }
+    assert.ok(p.concluido, 'nivelamento de inglês não concluiu');
+    const mIng = (await req('GET', JA('?materia=ingles'), { como: 'bia' })).json;
+    assert.equal(mIng.nivelamento_feito, true);
+    assert.equal(mIng.fios.length, 6);
+    const d = (await req('POST', JA('/licao'), { como: 'bia', corpo: { materia: 'ingles', celula: 'EN-PA1-CORES.2' } })).json;
+    assert.ok(d.exercicios.every((e) => e.audio), 'lição de inglês sem áudio nos exercícios');
+    const certas = d.exercicios.map((e) => ({ seed: e.seed, resposta: mi.exercicio('EN-PA1-CORES.2', e.seed).resposta }));
+    const r = (await req('POST', JA('/corrigir'), { como: 'bia', corpo: { materia: 'ingles', celula: 'EN-PA1-CORES.2', itens: certas } })).json;
+    assert.equal(r.acertos, 5);
+    assert.ok(r.subiu);
   });
 
   // ================= onda 5: ajuda, estúdio gated e homologação =================

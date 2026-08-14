@@ -25,6 +25,15 @@ const MATERIAS = {
     grafo: () => require('./grafo-portugues'),
     moldes: () => require('./moldes-portugues'),
   },
+  ingles: {
+    id: 'ingles',
+    nome: 'Arena de Inglês',
+    emoji: '🌎',
+    ativa: true, // grafo D0 aprovado pelo Augusto em 14/08/2026
+    sondaProfunda: [1, 2], // vocabulário e escuta: a porta de entrada
+    grafo: () => require('./grafo-ingles'),
+    moldes: () => require('./moldes-ingles'),
+  },
 };
 
 function materia(id) {
