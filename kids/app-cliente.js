@@ -151,9 +151,120 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
         ? '<button class="kb-amb studio" data-ir="#missao?m=m03-estudio-ilustracao"><img src="/assets/brand/villela-kids/invente/icons/studio.svg" alt="">Invente Studio<small>Dê forma e voz às suas ideias.</small></button>'
         : '<button class="kb-amb studio" disabled><img src="/assets/brand/villela-kids/invente/icons/studio.svg" alt="">Invente Studio<small>🔒 Abre com a missão 3</small></button>') +
       '<button class="kb-amb expo" data-ir="#portfolio"><img src="/assets/brand/villela-kids/invente/icons/expo.svg" alt="">Invente Expo<small>Mostre o que você criou.</small></button>' +
-      '<button class="kb-amb arena" disabled title="Em preparação"><img src="/assets/brand/villela-kids/invente/icons/arena.svg" alt="">Invente Arena<small>Desafios em preparação!</small></button>' +
+      '<button class="kb-amb arena" data-ir="#arena"><img src="/assets/brand/villela-kids/invente/icons/arena.svg" alt="">Invente Arena<small>Entre no desafio. Supere seu melhor.</small></button>' +
       '</div>');
     ligarNavegacao();
+  }
+
+  // ---------- Invente Arena (fase A): prática adaptativa ----------
+  function barraDom(pct) {
+    return '<div style="background:#EEF0FC;border-radius:999px;height:10px;overflow:hidden"><div style="width:' + pct + '%;background:#FF8A34;height:10px"></div></div>';
+  }
+
+  async function vArena() {
+    var c = criancaAtiva();
+    if (!c) return irPara('#perfis');
+    var d = await api('GET', '/criancas/' + c.id + '/arena');
+    if (!d.nivelamento_feito) {
+      el(topo() + '<h1 class="kb">🏟️ Invente Arena</h1>' +
+        '<div class="kb-lumi">' + LUMI_SVG + '<p><b>Vamos descobrir quais superpoderes de matemática você já tem?</b><br>' +
+        'São perguntinhas rápidas — não é prova, ninguém tira nota. Acertou, sobe; errou, tudo bem: é só o mapa se desenhando.</p></div>' +
+        '<p><button class="kb-bt" data-ir="#arena-nivelamento">Descobrir meus superpoderes!</button></p>');
+      return ligarNavegacao();
+    }
+    var rec = d.recomendada || {};
+    var motivoTxt = { revisao: '🔁 Hora de revisar — para nunca esquecer!', aprender: '✨ Novo superpoder chegando', avancar: '🚀 Janela para o futuro', comecar: '🌱 Ponto de partida' }[rec.motivo] || 'Treino de hoje';
+    el(topo() + '<h1 class="kb">🏟️ Invente Arena</h1><p class="kb-sub">Seu mapa de superpoderes de Matemática · ' + d.xp + ' XP</p>' +
+      (rec.celula ? '<div class="kb-dia" style="background:#FF8A34;color:#fff"><span class="rot">' + esc(motivoTxt) + '</span>' +
+        '<h3>' + esc((d.fios.flatMap(function (f) { return f.celulas; }).find(function (x) { return x.codigo === rec.celula; }) || {}).resumo || 'Treino') + '</h3>' +
+        '<button class="kb-bt" data-ir="#arena-licao?c=' + esc(rec.celula) + '">Entrar no desafio</button></div>' : '') +
+      d.fios.map(function (f) {
+        return '<div class="kb-card" style="margin-bottom:10px"><b>' + esc(f.nome) + '</b> <small style="color:#6B7280">' + f.dominio + '%</small>' + barraDom(f.dominio) + '</div>';
+      }).join(''));
+    ligarNavegacao();
+  }
+
+  async function vArenaNivelamento() {
+    var c = criancaAtiva();
+    if (!c) return irPara('#perfis');
+    var passo = await api('POST', '/criancas/' + c.id + '/arena/nivelamento/iniciar');
+    function tela(p, feedback) {
+      if (p.concluido) {
+        el(topo() + '<h1 class="kb">🗺️ Seu mapa está pronto!</h1>' +
+          '<div class="kb-ok">Superpoderes mapeados! Agora a Arena sabe exatamente por onde começar.</div>' +
+          '<p><button class="kb-bt" data-ir="#arena">Ver meu mapa</button></p>');
+        return ligarNavegacao();
+      }
+      var ex = p.exercicio;
+      el(topo() + '<h1 class="kb">🔍 Descobrindo superpoderes…</h1>' +
+        '<p class="kb-sub">Explorando: <b>' + esc(p.progresso.fio) + '</b> (' + p.progresso.atual + ' de ' + p.progresso.total + ')' +
+        (feedback ? ' · ' + feedback : '') + '</p>' +
+        '<div class="kb-texto">' + esc(ex.enunciado) + '</div>' +
+        '<div class="kb-card kb-form" style="margin-top:14px">' +
+        (ex.opcoes
+          ? ex.opcoes.map(function (o) { return '<p><button class="kb-bt claro nv-op" data-v="' + esc(o) + '">' + esc(o) + '</button></p>'; }).join('')
+          : '<label>Sua resposta</label><input id="nv-resp" autocomplete="off"><p style="margin-top:12px"><button class="kb-bt" id="nv-enviar">Responder</button></p>') +
+        '</div>');
+      async function enviar(valor) {
+        var r = await api('POST', '/criancas/' + c.id + '/arena/nivelamento/responder', { resposta: valor });
+        tela(r, r.certo ? '✅ boa!' : '💪 sem problema, seguimos');
+      }
+      raiz.querySelectorAll('.nv-op').forEach(function (b) { b.addEventListener('click', function () { enviar(b.getAttribute('data-v')); }); });
+      var be = document.getElementById('nv-enviar');
+      if (be) be.addEventListener('click', function () { enviar((document.getElementById('nv-resp') || {}).value); });
+    }
+    tela(passo, '');
+  }
+
+  async function vArenaLicao() {
+    var c = criancaAtiva();
+    if (!c) return irPara('#perfis');
+    var d = await api('POST', '/criancas/' + c.id + '/arena/licao', { celula: paramDaRota('c') || undefined });
+    var respostas = [], i = 0;
+    function telaExercicio() {
+      var ex = d.exercicios[i];
+      el(topo() + '<h1 class="kb">🏟️ ' + esc(d.celula.resumo) + '</h1>' +
+        '<p class="kb-sub">' + esc(d.celula.fioNome || 'Arena') + ' · nível ' + esc(d.celula.estadoNome) + ' · exercício ' + (i + 1) + ' de ' + d.exercicios.length + '</p>' +
+        '<div class="kb-texto">' + esc(ex.enunciado) + '</div>' +
+        '<div class="kb-card kb-form" style="margin-top:14px">' +
+        (ex.opcoes
+          ? ex.opcoes.map(function (o) { return '<p><button class="kb-bt claro lc-op" data-v="' + esc(o) + '">' + esc(o) + '</button></p>'; }).join('')
+          : '<label>Sua resposta</label><input id="lc-resp" autocomplete="off"><p style="margin-top:12px"><button class="kb-bt" id="lc-enviar">Responder</button></p>') +
+        '<p style="margin-top:10px"><button class="kb-lk" id="lc-pista">💡 Quero uma pista</button></p><div class="kb-sub" id="lc-dica"></div></div>');
+      function avancar(valor) {
+        respostas.push({ seed: ex.seed, resposta: valor });
+        i++;
+        if (i < d.exercicios.length) telaExercicio(); else corrigir();
+      }
+      raiz.querySelectorAll('.lc-op').forEach(function (b) { b.addEventListener('click', function () { avancar(b.getAttribute('data-v')); }); });
+      var be = document.getElementById('lc-enviar');
+      if (be) be.addEventListener('click', function () { avancar((document.getElementById('lc-resp') || {}).value); });
+      document.getElementById('lc-pista').addEventListener('click', async function () {
+        var caixa = document.getElementById('lc-dica');
+        caixa.textContent = 'pensando…';
+        try {
+          var p = await api('POST', '/criancas/' + c.id + '/arena/pista', { celula: d.celula.codigo, seed: ex.seed, tentativa: (document.getElementById('lc-resp') || {}).value });
+          caixa.textContent = '💡 ' + p.dica;
+        } catch (e2) { caixa.textContent = '💡 ' + (ex.dica || 'Tente de novo com calma!'); }
+      });
+    }
+    async function corrigir() {
+      var r = await api('POST', '/criancas/' + c.id + '/arena/corrigir', { celula: d.celula.codigo, itens: respostas });
+      el(topo() + '<h1 class="kb">' + (r.acertos >= 4 ? '🎉 Mandou muito!' : (r.acertos >= 3 ? '👏 Boa batalha!' : '💪 Treino é assim mesmo!')) + '</h1>' +
+        '<div class="kb-card"><p style="font-size:18px">Você acertou <b>' + r.acertos + ' de ' + r.total + '</b>.</p>' +
+        '<p>Nível nesta habilidade: <span class="kb-nivel">' + r.emoji + ' ' + esc(r.estadoNome) + '</span>' +
+        (r.subiu ? ' — <b>subiu!</b> 🎉' : (r.desceu ? ' — vamos reforçar, sem pressa.' : '')) + '</p>' +
+        r.resultados.map(function (x, k) {
+          return '<p style="opacity:.85">' + (x.certo ? '✅' : '❌') + ' Exercício ' + (k + 1) + (x.certo ? '' : ' — resposta certa: <b>' + esc(x.resposta_certa) + '</b>') + '</p>';
+        }).join('') +
+        (r.lacuna ? '<p class="kb-ok">🔎 A Lumi percebeu que vale revisar antes: <b>' + esc(r.lacuna.resumo) + '</b> — vai estar te esperando na Arena.</p>' : '') +
+        '</div>' +
+        '<p style="margin-top:14px"><button class="kb-bt" data-ir="#arena">Voltar à Arena</button> ' +
+        '<button class="kb-bt claro" id="lc-denovo">Treinar de novo</button></p>');
+      ligarNavegacao();
+      document.getElementById('lc-denovo').addEventListener('click', function () { vArenaLicao(); });
+    }
+    telaExercicio();
   }
 
   function vPerfis() {
@@ -516,7 +627,7 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
   }
 
   // ---------- roteador ----------
-  var ROTAS = { perfis: vPerfis, inicio: vInicio, missoes: vMissoes, missao: vMissao, portfolio: vPortfolio, pais: vPais };
+  var ROTAS = { perfis: vPerfis, inicio: vInicio, missoes: vMissoes, missao: vMissao, portfolio: vPortfolio, pais: vPais, arena: vArena, 'arena-nivelamento': vArenaNivelamento, 'arena-licao': vArenaLicao };
   async function navegar() {
     try { (ROTAS[rotaAtual()] || vPerfis)(); }
     catch (e) { el('<div class="kb-erro">' + esc(e.message) + '</div>'); }

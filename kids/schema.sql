@@ -110,6 +110,28 @@ CREATE TABLE IF NOT EXISTS push_subs (
   criado_em TEXT NOT NULL
 );
 
+-- Invente Arena (fase A): progresso adaptativo por célula BNCC. O currículo
+-- (células, fios, moldes) mora em código curado (kids/arena/*.js) — o banco
+-- guarda só o caminho de cada criança.
+CREATE TABLE IF NOT EXISTS arena_progresso (
+  child_id TEXT NOT NULL REFERENCES children(id),
+  celula TEXT NOT NULL,                            -- código BNCC (EF05MA03…)
+  estado INTEGER NOT NULL DEFAULT 0,               -- 0 Descoberta … 4 Mestre
+  xp INTEGER NOT NULL DEFAULT 0,
+  acertos INTEGER NOT NULL DEFAULT 0,
+  erros INTEGER NOT NULL DEFAULT 0,
+  proxima_revisao TEXT NOT NULL DEFAULT '',        -- repetição espaçada (ISO)
+  atualizado_em TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (child_id, celula)
+);
+
+CREATE TABLE IF NOT EXISTS arena_nivelamento (
+  child_id TEXT PRIMARY KEY REFERENCES children(id),
+  dados TEXT NOT NULL DEFAULT '{}',                -- sessão da entrevista (retomável)
+  concluido_em TEXT NOT NULL DEFAULT '',
+  atualizado_em TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS auditoria (
   id TEXT PRIMARY KEY,
   quem TEXT NOT NULL DEFAULT '',

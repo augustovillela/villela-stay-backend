@@ -54,6 +54,34 @@ function registrarRotasApp(app, { requireUsuario }) {
     res.json({ portfolio: Portfolio.listar(req.usuario.id, req.params.id) });
   }));
 
+  // ---- Invente Arena (fase A): prática adaptativa BNCC ----
+  const arena = require('./arena/motor');
+  app.get('/kids/api/criancas/:id/arena', requireUsuario, h(async (req, res) => {
+    const c = Criancas.exigir(req.usuario.id, req.params.id);
+    const m = arena.mapa(c.id);
+    res.json({ ...m, recomendada: m.nivelamento_feito ? arena.recomendada(c.id) : null });
+  }));
+  app.post('/kids/api/criancas/:id/arena/nivelamento/iniciar', requireUsuario, h(async (req, res) => {
+    const c = Criancas.exigir(req.usuario.id, req.params.id);
+    res.json(arena.nivelamentoIniciar(c));
+  }));
+  app.post('/kids/api/criancas/:id/arena/nivelamento/responder', requireUsuario, h(async (req, res) => {
+    const c = Criancas.exigir(req.usuario.id, req.params.id);
+    res.json(arena.nivelamentoResponder(c, (req.body || {}).resposta));
+  }));
+  app.post('/kids/api/criancas/:id/arena/licao', requireUsuario, h(async (req, res) => {
+    const c = Criancas.exigir(req.usuario.id, req.params.id);
+    res.json(arena.gerarLicao(c.id, (req.body || {}).celula));
+  }));
+  app.post('/kids/api/criancas/:id/arena/corrigir', requireUsuario, h(async (req, res) => {
+    const c = Criancas.exigir(req.usuario.id, req.params.id);
+    res.json(arena.corrigirLicao(c.id, (req.body || {}).celula, (req.body || {}).itens));
+  }));
+  app.post('/kids/api/criancas/:id/arena/pista', requireUsuario, h(async (req, res) => {
+    const c = Criancas.exigir(req.usuario.id, req.params.id);
+    res.json(await arena.pista(c, (req.body || {}).celula, (req.body || {}).seed, (req.body || {}).tentativa));
+  }));
+
   // ---- Certificado de Conquista (onda 7, pág. 31 do brand book) ----
   // Conteúdo mínimo do book: nome preferido, missão, data, ambiente e
   // assinatura do mentor (o responsável). Servido SÓ à família, imprimível.

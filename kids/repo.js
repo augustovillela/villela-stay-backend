@@ -179,6 +179,7 @@ const Users = {
         ...c,
         progresso: db.prepare('SELECT * FROM child_missions WHERE child_id = ?').all(c.id),
         portfolio: db.prepare('SELECT * FROM portfolio WHERE child_id = ?').all(c.id),
+        arena: db.prepare('SELECT * FROM arena_progresso WHERE child_id = ?').all(c.id),
       })),
     };
   },
@@ -196,6 +197,8 @@ const Users = {
         }
         db.prepare('DELETE FROM portfolio WHERE child_id = ?').run(c.id);
         db.prepare('DELETE FROM child_missions WHERE child_id = ?').run(c.id);
+        db.prepare('DELETE FROM arena_progresso WHERE child_id = ?').run(c.id);
+        db.prepare('DELETE FROM arena_nivelamento WHERE child_id = ?').run(c.id);
       }
       db.prepare('DELETE FROM children WHERE user_id = ?').run(id);
       db.prepare('DELETE FROM notifications WHERE user_id = ?').run(id);

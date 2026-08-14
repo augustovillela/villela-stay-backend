@@ -471,6 +471,81 @@ async function rodar() {
     assert.equal((await req('GET', `/kids/api/criancas/${nina.id}/missoes/m01-meu-assistente/certificado`, { como: 'ana' })).st, 400, 'outra família viu certificado');
   });
 
+  // ================= Invente Arena (fase A) =================
+  const grafoA = require('./arena/grafo-matematica');
+  const moldesA = require('./arena/moldes');
+  const respostaDe = (cel, seed) => moldesA.exercicio(cel, seed).resposta;
+  const JA = (rota) => `/kids/api/criancas/${nina.id}/arena${rota}`;
+
+  await t('Arena: grafo íntegro — 202 células, fios consistentes, atenção especial aplicada', async () => {
+    assert.equal(grafoA.TODAS.length, 202);
+    for (const f of grafoA.FIOS) for (const c of f.celulas) assert.ok(grafoA.CELULAS[c], 'fio cita célula inexistente: ' + c);
+    const cel = grafoA.celula('EF05MA04');
+    assert.equal(cel.atencao, 'critica');
+    assert.equal(cel.prereq, 'EF05MA03');
+    assert.equal(grafoA.celula('EF02MA05').prereq, null);
+  });
+  await t('Arena: moldes determinísticos, com resposta e opções coerentes (30 seeds cada)', async () => {
+    for (const cel of moldesA.CELULAS_COM_MOLDE) {
+      for (let s = 1; s <= 30; s++) {
+        const a = moldesA.exercicio(cel, s), b = moldesA.exercicio(cel, s);
+        assert.deepEqual(a, b, cel + ': não determinístico');
+        assert.ok(a.enunciado && a.resposta !== undefined && String(a.resposta).length, cel + ': sem resposta');
+        assert.ok(a.dica, cel + ': sem dica');
+        if (a.tipo === 'escolha') assert.ok(a.opcoes.includes(a.resposta), cel + ': resposta fora das opções (seed ' + s + ')');
+      }
+    }
+  });
+  await t('Arena: nivelamento acertando tudo mapeia estados altos e conclui', async () => {
+    let p = (await req('POST', JA('/nivelamento/iniciar'), { como: 'bia' })).json;
+    let guarda = 0;
+    while (!p.concluido && guarda++ < 120) {
+      const r = await req('POST', JA('/nivelamento/responder'), { como: 'bia', corpo: { resposta: respostaDe(p.exercicio.celula, p.exercicio.seed) } });
+      assert.equal(r.st, 200, JSON.stringify(r.json));
+      assert.equal(r.json.certo, true, 'resposta recalculada deveria estar certa');
+      p = r.json;
+    }
+    assert.ok(p.concluido, 'nivelamento não concluiu');
+    const m = (await req('GET', JA(''), { como: 'bia' })).json;
+    assert.equal(m.nivelamento_feito, true);
+    const fio2 = m.fios.find((f) => f.id === 2);
+    assert.ok(fio2.dominio >= 40, 'acertou tudo e o domínio ficou baixo: ' + fio2.dominio + '%');
+    assert.ok(m.recomendada && m.recomendada.celula, 'sem recomendação após nivelamento');
+  });
+  await t('Arena: lição com 5 acertos sobe de estado; com erros desce e acha a lacuna', async () => {
+    const d = (await req('POST', JA('/licao'), { como: 'bia', corpo: { celula: 'EF05MA04' } })).json;
+    assert.equal(d.exercicios.length, 5);
+    const certas = d.exercicios.map((e) => ({ seed: e.seed, resposta: respostaDe('EF05MA04', e.seed) }));
+    const r1 = (await req('POST', JA('/corrigir'), { como: 'bia', corpo: { celula: 'EF05MA04', itens: certas } })).json;
+    assert.equal(r1.acertos, 5);
+    assert.ok(r1.subiu, 'não subiu de estado com 5/5');
+    assert.ok(r1.estado >= 1);
+    const d2 = (await req('POST', JA('/licao'), { como: 'bia', corpo: { celula: 'EF05MA04' } })).json;
+    const erradas = d2.exercicios.map((e) => ({ seed: e.seed, resposta: 'resposta-errada-de-teste' }));
+    const r2 = (await req('POST', JA('/corrigir'), { como: 'bia', corpo: { celula: 'EF05MA04', itens: erradas } })).json;
+    assert.equal(r2.acertos, 0);
+    assert.ok(r2.desceu, 'não desceu com 0/5');
+    assert.ok(r2.lacuna && r2.lacuna.celula === 'EF05MA03', 'lacuna não apontou o pré-requisito');
+  });
+  await t('Arena: revisão espaçada agenda retorno e a recomendação prioriza revisão vencida', async () => {
+    const prog = db.prepare("SELECT * FROM arena_progresso WHERE child_id = ? AND celula = 'EF05MA04'").get(nina.id);
+    assert.ok(prog.proxima_revisao > new Date().toISOString(), 'revisão não agendada para o futuro');
+    db.prepare("UPDATE arena_progresso SET proxima_revisao = '2020-01-01T00:00:00.000Z' WHERE child_id = ? AND celula = 'EF05MA04'").run(nina.id);
+    const m = (await req('GET', JA(''), { como: 'bia' })).json;
+    assert.equal(m.recomendada.motivo, 'revisao');
+    assert.equal(m.recomendada.celula, 'EF05MA04');
+  });
+  await t('Arena: pista devolve dica do molde no modo simples', async () => {
+    const d = (await req('POST', JA('/licao'), { como: 'bia', corpo: { celula: 'EF07MA18' } })).json;
+    const p = (await req('POST', JA('/pista'), { como: 'bia', corpo: { celula: 'EF07MA18', seed: d.exercicios[0].seed } })).json;
+    assert.ok(p.dica && p.dica.length > 5);
+    assert.equal(p.motor, 'molde');
+  });
+  await t('Arena: isolamento — outra família não acessa a arena de Nina', async () => {
+    assert.equal((await req('GET', JA(''), { como: 'ana' })).st, 400);
+    assert.equal((await req('POST', JA('/licao'), { como: 'ana', corpo: {} })).st, 400);
+  });
+
   // ================= onda 5: ajuda, estúdio gated e homologação =================
   await t('central de ajuda no ar: hub, manual (consentimento parental) e FAQ', async () => {
     assert.equal((await req('GET', '/kids/ajuda')).st, 200);
@@ -538,8 +613,12 @@ async function rodar() {
     const c = (await req('POST', '/kids/api/criancas', { como: 'caio', corpo: { apelido: 'Nino' } })).json.crianca;
     await req('POST', `/kids/api/criancas/${c.id}/missoes/m01-meu-assistente/iniciar`, { como: 'caio' });
     await req('POST', `/kids/api/criancas/${c.id}/missoes/m01-meu-assistente/concluir`, { como: 'caio', corpo: { titulo: 'T', conteudo: 'C' } });
+    // também com dados da Arena (o DELETE precisa limpar as tabelas novas antes do perfil)
+    const dl = (await req('POST', `/kids/api/criancas/${c.id}/arena/licao`, { como: 'caio', corpo: { celula: 'EF02MA05' } })).json;
+    await req('POST', `/kids/api/criancas/${c.id}/arena/corrigir`, { como: 'caio', corpo: { celula: 'EF02MA05', itens: dl.exercicios.map((e) => ({ seed: e.seed, resposta: 'x' })) } });
     const r = await req('POST', '/kids/api/excluir-conta', { como: 'caio' });
-    assert.equal(r.st, 200);
+    assert.equal(r.st, 200, JSON.stringify(r.json));
+    assert.equal(db.prepare('SELECT COUNT(*) AS c FROM arena_progresso WHERE child_id = ?').get(c.id).c, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS c FROM children WHERE id = ?').get(c.id).c, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS c FROM portfolio WHERE child_id = ?').get(c.id).c, 0);
     assert.equal((await req('GET', '/kids/api/me', { como: 'caio' })).st, 401);
