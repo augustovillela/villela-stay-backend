@@ -223,7 +223,7 @@ function registrarPaginas(app) {
     // Ordem em que a dúvida APARECE, não ordem de importância conceitual:
     // quem abre a ajuda quer primeiro saber como andar pelo app, e só
     // depois por que a Origena guarda a origem de cada informação.
-    const artigos = ['navegar', 'acervo', 'selo', 'divergencia', 'privacidade', 'conta',
+    const artigos = ['navegar', 'acervo', 'fluxo', 'selo', 'divergencia', 'privacidade', 'conta',
       'enviar', 'album', 'excluir', 'fotos', 'datas', 'entrevistas',
       'capsula', 'guardioes', 'livros', 'creditos', 'erro'];
     const paragrafos = (a) => String(t(`ajuda.${a}_c`) || '')
