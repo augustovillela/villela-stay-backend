@@ -517,6 +517,11 @@ h1.kb{font-size:clamp(24px,4vw,34px);margin:6px 0 4px;font-weight:900}\
           : '<p style="margin:10px 0 0"><b>🎓 Trilha completa!</b> As 8 missões foram concluídas.</p>') +
         '<p style="margin:10px 0 0"><b>Evidências recentes:</b> ' + (p.criacoes.length === 0 ? 'ainda nenhuma criação' :
           p.criacoes.map(function (cr) { return esc((cr.emoji ? cr.emoji + ' ' : '') + '"' + cr.titulo + '"'); }).join(' · ')) + '</p>' +
+        '<p style="margin:10px 0 0"><b>🏟️ Arena de Matemática:</b> ' +
+        (p.arena && p.arena.nivelamento
+          ? p.arena.dominadas + ' habilidade(s) dominada(s) · ' + p.arena.xp + ' XP' +
+            (p.arena.criticas_dominadas ? '<br><small style="color:#0B7A4B">💪 ' + p.arena.criticas_dominadas + ' delas estão entre as que mais desafiam os alunos do Brasil — e ' + esc(p.crianca.apelido) + ' dominou.</small>' : '')
+          : '<small style="color:#6B7280">superpoderes ainda não mapeados — a entrevista está esperando na Arena</small>') + '</p>' +
         '<p class="kb-sub" style="margin:8px 0 0">Última atividade: ' + dataBr(p.atividade.ultima) +
         ' · ' + p.atividade.dias_ativos + ' dia(s) de atividade · ' + p.atividade.conversas_com_tutor + ' conversa(s) com o tutor</p>' +
         '<p style="margin:10px 0 0"><button class="kb-bt claro kb-abrir-edicao" data-eid="' + esc(p.crianca.id) + '">✏️ Editar perfil</button></p>' +

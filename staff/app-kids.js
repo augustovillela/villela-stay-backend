@@ -37,6 +37,8 @@ async function kidsCarregar() {
       kdCard('Famílias', d.familias, `${d.criancas} criança(s) com perfil`),
       kdCard('Missões concluídas', d.missoes_concluidas, `${d.missoes_iniciadas} iniciada(s)`),
       kdCard('Criações no portfólio', d.criacoes, 'evidência > nota'),
+      kdCard('Arena de Matemática', (d.arena || {}).celulas_dominadas || 0,
+        `${(d.arena || {}).criancas_ativas || 0} criança(s) treinando · ${(d.arena || {}).nivelamentos || 0} nivelamento(s) · ${(d.arena || {}).mestres || 0} célula(s) Mestre`),
     ].join('');
     kidsCorpo();
   } catch (e) { $('#kd-corpo').innerHTML = `<p class="erro">${esc(e.message)}</p>`; }

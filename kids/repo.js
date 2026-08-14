@@ -388,8 +388,27 @@ function painelDosPais(userId) {
     for (const p of criacoes) momentos.push(p.criado_em);
     momentos.sort();
 
+    // Arena (fase B): resumo por criança para o responsável — comparação só
+    // consigo mesma; célula 🔥 dominada vira celebração, nunca cobrança.
+    const arenaAgg = db.prepare(`SELECT COUNT(*) AS tocadas,
+        SUM(CASE WHEN estado >= 2 THEN 1 ELSE 0 END) AS dominadas,
+        COALESCE(SUM(xp), 0) AS xp
+      FROM arena_progresso WHERE child_id = ?`).get(c.id) || { tocadas: 0, dominadas: 0, xp: 0 };
+    const { ATENCAO } = require('./arena/grafo-matematica');
+    const marcadores = ATENCAO.critica.map(() => '?').join(',');
+    const criticas = db.prepare(`SELECT COUNT(*) AS n FROM arena_progresso
+      WHERE child_id = ? AND estado >= 2 AND celula IN (${marcadores})`).get(c.id, ...ATENCAO.critica).n;
+    const nivelou = db.prepare('SELECT concluido_em FROM arena_nivelamento WHERE child_id = ?').get(c.id);
+
     return {
       crianca: { id: c.id, apelido: c.apelido, avatar: c.avatar, faixa: c.faixa },
+      arena: {
+        nivelamento: !!(nivelou && nivelou.concluido_em),
+        xp: arenaAgg.xp || 0,
+        tocadas: arenaAgg.tocadas || 0,
+        dominadas: arenaAgg.dominadas || 0,
+        criticas_dominadas: criticas || 0,
+      },
       nivel: nivelDaCrianca(c.id),
       progresso: {
         concluidas: trilha.filter((m) => m.status === 'concluida').length,

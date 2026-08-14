@@ -509,7 +509,11 @@ async function rodar() {
     const m = (await req('GET', JA(''), { como: 'bia' })).json;
     assert.equal(m.nivelamento_feito, true);
     const fio2 = m.fios.find((f) => f.id === 2);
-    assert.ok(fio2.dominio >= 40, 'acertou tudo e o domínio ficou baixo: ' + fio2.dominio + '%');
+    // Nina tem 7-8: acertando tudo, o mapa marca Competente até ACIMA do ano
+    // dela — o teto honesto de 3 sondas, não o fio inteiro (lição do lote 2:
+    // mais células no fio = mesma sonda cobre menos %).
+    assert.ok(fio2.dominio >= 15, 'acertou tudo e o domínio ficou baixo: ' + fio2.dominio + '%');
+    assert.ok(fio2.celulas.some((c) => c.estado >= 2), 'nenhuma célula Competente após acertar tudo');
     assert.ok(m.recomendada && m.recomendada.celula, 'sem recomendação após nivelamento');
   });
   await t('Arena: lição com 5 acertos sobe de estado; com erros desce e acha a lacuna', async () => {
@@ -544,6 +548,14 @@ async function rodar() {
   await t('Arena: isolamento — outra família não acessa a arena de Nina', async () => {
     assert.equal((await req('GET', JA(''), { como: 'ana' })).st, 400);
     assert.equal((await req('POST', JA('/licao'), { como: 'ana', corpo: {} })).st, 400);
+  });
+  await t('Arena: painel dos pais reflete o mapa (dominadas, XP e as 🔥 celebradas)', async () => {
+    const painel = (await req('GET', '/kids/api/painel', { como: 'bia' })).json.painel;
+    const p = painel.find((x) => x.crianca.apelido === 'Nina');
+    assert.ok(p.arena.nivelamento, 'painel não viu o nivelamento');
+    assert.ok(p.arena.dominadas >= 1, 'painel sem dominadas');
+    assert.ok(p.arena.xp > 0, 'painel sem XP');
+    assert.ok(p.arena.criticas_dominadas >= 1, 'célula crítica dominada não celebrada');
   });
 
   // ================= onda 5: ajuda, estúdio gated e homologação =================
@@ -644,6 +656,7 @@ async function rodar() {
     assert.equal(r.json.funil.length, 8);
     assert.ok(r.json.funil[0].concluidas >= 2);
     assert.ok(r.json.ultimas_criacoes.length >= 2);
+    assert.ok(r.json.arena && r.json.arena.criancas_ativas >= 1 && r.json.arena.nivelamentos >= 1, 'dashboard sem os números da Arena');
   });
   await t('staff: catálogo lista as 8 missões; despublicar exige admin e some da trilha', async () => {
     assert.equal((await req('GET', '/staff/api/kids/missoes')).json.missoes.length, 8);

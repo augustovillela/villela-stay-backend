@@ -32,6 +32,12 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
       ultimas_criacoes: db.prepare(`SELECT p.id, p.titulo, p.criado_em, m.titulo AS missao, c.apelido, c.avatar
         FROM portfolio p LEFT JOIN missions m ON m.id = p.mission_id JOIN children c ON c.id = p.child_id
         ORDER BY p.criado_em DESC LIMIT 12`).all(),
+      arena: {
+        nivelamentos: q1("SELECT COUNT(*) AS c FROM arena_nivelamento WHERE concluido_em != ''").c,
+        criancas_ativas: q1('SELECT COUNT(DISTINCT child_id) AS c FROM arena_progresso').c,
+        celulas_dominadas: q1('SELECT COUNT(*) AS c FROM arena_progresso WHERE estado >= 2').c,
+        mestres: q1('SELECT COUNT(*) AS c FROM arena_progresso WHERE estado = 4').c,
+      },
     });
   }));
 
