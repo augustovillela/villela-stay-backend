@@ -106,9 +106,28 @@ async function consultarDataJud(numeroCNJ) {
   return hits.map(h => h._source);
 }
 
+// Trava contra execuções simultâneas: a rotina diária (~7h) e o botão
+// "consultar agora" da tela de Processos podem coincidir, e duas varreduras
+// ao mesmo tempo dobram a carga na API pública do CNJ — que já tem rate limit
+// agressivo. Por tenant, porque cada escritório tem sua própria varredura.
+const _coletando = new Set();
+function coletaEmAndamento(tenant) { return _coletando.has(String(tenant || '')); }
+
+async function coletarAndamentos({ notificarPorItem = false, consultar = consultarDataJud } = {}) {
+  const tenant = require('./db').tenantAtual();
+  if (_coletando.has(tenant)) {
+    const e = new Error('Já existe uma consulta de andamentos em andamento para este escritório. Aguarde ela terminar.');
+    e.emAndamento = true;
+    throw e;
+  }
+  _coletando.add(tenant);
+  try { return await _coletarAndamentos({ notificarPorItem, consultar }); }
+  finally { _coletando.delete(tenant); }
+}
+
 // `consultar` é uma costura de teste: em produção usa o DataJud real; a suíte
 // injeta um dublê para exercitar o laço de movimentos sem tocar a rede.
-async function coletarAndamentos({ notificarPorItem = false, consultar = consultarDataJud } = {}) {
+async function _coletarAndamentos({ notificarPorItem = false, consultar = consultarDataJud } = {}) {
   const casos = db.prepare("SELECT id, numero_cnj, client_id, sigiloso FROM cases WHERE status = 'ativo' AND numero_cnj != ''").all();
   let novos = 0, erros = 0, processos = 0, i = 0, ignorados = 0;
   for (const c of casos) {
@@ -375,7 +394,7 @@ function iniciarRotinas() {
 }
 
 module.exports = {
-  aliasTribunal, classificarMovimento, consultarDataJud,
+  aliasTribunal, classificarMovimento, consultarDataJud, coletaEmAndamento,
   coletarAndamentos, coletarPublicacoes, digestClientes, processarFila,
   rotinaDiaria, iniciarRotinas, oabsDaEquipe, manutencaoLivro,
 };

@@ -760,6 +760,24 @@ async function rodar() {
     assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.5.10.0001'), 'trt10');
     assert.equal(legal.coleta.aliasTribunal('0000100-15.2026.5.00.0000'), 'tst');
   });
+  await t('coleta: duas consultas simultâneas não passam (trava por escritório)', async () => {
+    // o botão "consultar agora" e a rotina diária podem coincidir; duas
+    // varreduras juntas dobram a carga na API pública, que tem rate limit.
+    let entrou = 0;
+    const lento = async () => { entrou++; await new Promise(r => setTimeout(r, 120)); return []; };
+    const primeira = legal.coleta.coletarAndamentos({ consultar: lento });
+    let barrada = null;
+    try { await legal.coleta.coletarAndamentos({ consultar: lento }); }
+    catch (e) { barrada = e; }
+    assert.ok(barrada, 'a segunda é recusada enquanto a primeira roda');
+    assert.ok(barrada.emAndamento, 'erro identificável (não é falha genérica)');
+    assert.ok(/em andamento/i.test(barrada.message));
+    await primeira;
+    // terminada a primeira, uma nova consulta passa normalmente
+    const depois = await legal.coleta.coletarAndamentos({ consultar: async () => [] });
+    assert.ok(depois && typeof depois.novos === 'number', 'a trava é liberada ao terminar');
+  });
+
   await t('coleta: movimento sem descrição é ignorado sem abortar o resto do processo', async () => {
     // a validação do repo continua valendo para lançamento MANUAL (é guardrail)
     const manual = await req('POST', `/staff/api/legal/processos/${caseId}/andamentos`, {

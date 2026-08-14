@@ -163,7 +163,17 @@ const LG = {
   // -------------------------------------------------------- PROCESSOS
   async vProcessos() {
     const { processos } = await LG.api('GET', '/processos');
-    let h = '';
+    const ativos = processos.filter(p => p.status === 'ativo' && p.numero_cnj).length;
+    // Consulta manual do DataJud para TODOS os processos ativos com CNJ. A
+    // rotina diária já faz isto ~7h; o botão serve para não esperar o dia
+    // seguinte depois de cadastrar processo novo ou receber uma decisão.
+    let h = `<section class="vx-card"><div class="vx-card-head"><div>
+      <h2>🔄 Andamentos</h2><p class="vx-hint vx-mb0">A rotina diária consulta sozinha por volta das 7h.
+      Use o botão para consultar agora — ${ativos} processo(s) ativo(s) com número CNJ serão consultados no DataJud.</p></div></div>
+      ${LG.perm.gerir_publicacoes
+        ? `<div class="acoes"><button class="btn" id="lg-and-btn" onclick="LG.consultarAndamentos()">🔄 Consultar todos os andamentos agora</button></div>
+           <p id="lg-and-msg" class="sub"></p>`
+        : '<p class="vx-hint">Seu perfil não pode disparar coletas.</p>'}</section>`;
     if (LG.perm.criar_processos) h += `<details class="cr-box"><summary class="cr-sum">➕ Novo processo</summary>
       <form class="form" id="lg-proc-form" style="max-width:660px;margin-top:12px">
         <div class="hi-grid">
@@ -198,6 +208,32 @@ const LG = {
       } catch (e) { msg.textContent = e.message; }
     };
   },
+  async consultarAndamentos() {
+    const btn = document.getElementById('lg-and-btn');
+    const msg = document.getElementById('lg-and-msg');
+    if (btn && btn.disabled) return;                    // clique duplo dobra a carga no DataJud
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Consultando…'; }
+    if (msg) msg.textContent = 'Consultando o DataJud processo a processo (há uma pausa entre eles para respeitar o limite da API pública). Pode levar alguns minutos — pode deixar esta aba aberta.';
+    const t0 = Date.now();
+    try {
+      const r = await LG.api('POST', '/integracoes/coletar/andamentos', {});
+      const seg = Math.round((Date.now() - t0) / 1000);
+      if (msg) {
+        msg.textContent = `✅ ${r.novos} andamento(s) novo(s) em ${r.encontrados}/${r.monitorados} processo(s)`
+          + `${r.ignorados ? `, ${r.ignorados} movimento(s) ignorado(s)` : ''}${r.erros ? `, ${r.erros} erro(s)` : ''} — ${seg}s.`;
+      }
+      LGUI.toast(r.novos ? `${r.novos} andamento(s) novo(s).` : 'Nenhum andamento novo.', 'ok');
+      // NÃO repintar: a lista de processos não mostra contagem de andamento, e o
+      // repaint apagaria justamente o resultado que o usuário pediu para ver.
+      // Os andamentos novos aparecem ao abrir o processo.
+    } catch (e) {
+      if (msg) msg.textContent = '❌ ' + e.message;
+      LGUI.toast(e.message, 'erro');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Consultar todos os andamentos agora'; }
+    }
+  },
+
   async verProcesso(id) {
     const { processo: p } = await LG.api('GET', '/processos/' + id);
     LG.body().innerHTML = `<div class="card"><button class="btn secund peq" onclick="LG.pintar()">← Voltar</button>
@@ -1536,7 +1572,8 @@ const LG = {
     ])) : '<p class="vazio">Nada registrado ainda.</p>'}</div>`;
   },
   async coletar(tipo) {
-    const msg = document.getElementById('lg-col-msg');
+    const el = document.getElementById('lg-col-msg');
+    const msg = el || { textContent: '' };   // chamado de outra aba não pode quebrar
     msg.textContent = '⏳ Executando (DataJud/DJEN podem levar até 1 min)…';
     try {
       const rota = tipo === 'rotina' ? '/integracoes/rotina-diaria' : '/integracoes/coletar/' + tipo;
