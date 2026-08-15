@@ -99,6 +99,19 @@ ele chegou por outro caminho (miniatura, link direto). Isso importa porque porta
 três portais do pátio da Kubitschek abrem flats da Villa Catetinho, e mandar o visitante para o
 roof top da Catetinho seria o lugar errado.
 
+### Navegação dentro do visualizador
+
+A tira de miniaturas mostra **só as cenas da casa atual**, começando pela capa, e é redesenhada
+a cada troca de casa. Misturar as casas numa lista só fazia quem estava na capa de uma cair na
+outra ao clicar na miniatura vizinha.
+
+Acima dela há uma **barra de casas** (um chip por `casa`, o atual em destaque) que leva à capa da
+casa escolhida — sem ela, filtrar a tira prenderia o visitante na casa em que entrou.
+
+A miniatura da cena atual é rolada para o campo de visão com `scrollLeft` direto. **Não usar
+`behavior: 'smooth'`**: a rolagem suave depende de um laço de animação e vira no-op onde ele não
+roda, e aí a tira não anda — que é exatamente o defeito que isso conserta.
+
 ### Modo cinema (passeio automático)
 
 Botão ▶ na barra. A câmera passeia sozinha pela casa: em cada ambiente varre ~84° abrindo o
