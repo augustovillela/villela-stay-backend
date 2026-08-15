@@ -466,7 +466,14 @@ const VERTICAL_DA_SECAO = {
 // Seções cujo conteúdo é um quadro largo (kanban do CRM, linha do tempo do calendário): dispensam
 // o teto de 1180px do .conteudo e usam toda a faixa entre o menu e a borda da janela — mais
 // colunas/dias visíveis sem rolar.
-const SECOES_LARGAS = ['crm', 'calendario', 'hospede-pedidos'];
+// LARGURA DA COLUNA — o padrão é USAR A TELA. O portal é ferramenta de
+// trabalho (tabelas, kanban, calendário, painéis); numa tela de 1920px a trava
+// de 1180px deixava 740px vazios em toda seção fora da lista de exceções, e a
+// cada tela nova alguém tinha de lembrar de incluí-la. Invertido: só as telas
+// de LEITURA CORRIDA continuam estreitas, porque linha muito longa cansa de
+// ler (a medida confortável é ~80 caracteres). Formulário NÃO alarga junto:
+// cada um tem seu próprio max-width, de propósito.
+const SECOES_ESTREITAS = ['faq', 'faq-claude', 'manuais', 'instalar'];
 
 // --------- rota na URL (#secao): F5 recarrega o painel aberto, não a Visão geral ---------
 // SPA sem rota volta para a home a cada F5. O hash é a rota mais barata aqui: não exige nada do
@@ -505,7 +512,7 @@ function navegar(secao) {
   if (cont) {
     cont.classList.add('vx');
     cont.setAttribute('data-vertical', VERTICAL_DA_SECAO[secao] || 'stay');
-    cont.classList.toggle('larga', SECOES_LARGAS.indexOf(secao) !== -1);
+    cont.classList.toggle('larga', SECOES_ESTREITAS.indexOf(secao) === -1);
   }
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
