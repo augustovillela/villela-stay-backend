@@ -1,0 +1,641 @@
+// =====================================================================
+// FONTE ÚNICA da landing /sistemas.html — "Sistemas do Grupo Villela Stay"
+// =====================================================================
+// Esta é a página que vende os SaaS do grupo para quem procura um sistema.
+// Ela NÃO repete a home: a home apresenta a marca, aqui a pessoa decide.
+//
+// REGRA DA CASA — SaaS novo entra em DOIS lugares:
+//   1. `PRODUTOS_GRUPO` em build.js   → card na home
+//   2. `SISTEMAS` aqui                → bloco completo nesta landing
+// O build CONFERE isso sozinho (ver `conferirCobertura` no fim do arquivo) e
+// QUEBRA se um produto da home não estiver classificado aqui. Não é lembrete
+// de documentação: é trava. Produto que não é SaaS de assinatura entra em
+// `NAO_SAAS` com o motivo escrito — a exclusão fica explícita, não esquecida.
+//
+// Cada texto é uma tupla [pt, en, es] consumida com t(...) dentro do laço de
+// idiomas do build. Faltando tradução, `t` cai no português (mesmo padrão do
+// resto do site) — mas AQUI isso é dívida visível, não solução: a página é
+// indexada em três idiomas.
+//
+// Preços: copiados dos seeds reais de cada produto (repo.js → preco_centavos)
+// em 15/08/2026. Ao mexer em preço no produto, mexa aqui — a página cita valor.
+// =====================================================================
+'use strict';
+
+// Açúcar sintático: T('pt','en','es') → ['pt','en','es']. Deixa o bloco de cada
+// sistema legível como texto corrido em vez de uma parede de colchetes.
+const T = (pt, en, es) => [pt, en, es];
+
+// ---------------------------------------------------------------------
+// Os SaaS. A ordem é a ordem de exibição na página — mais vendável primeiro.
+// ---------------------------------------------------------------------
+const SISTEMAS = [
+  // ------------------------------------------------------------- CRM
+  {
+    id: 'crm',
+    nome: 'Villela CRM',
+    pasta: 'villela-crm',
+    vertical: 'crm',              // acento do design system .vx (villela-ui.css)
+    cor: '#B0185A',
+    url: 'https://crm.villelastay.com.br/crm',
+    urlTeste: 'https://crm.villelastay.com.br/crm/assinar?plano=trial',
+    tela: 'crm',                  // qual maquete renderizar (sistemas-telas.js)
+    destaque: true,               // ganha a demonstração animada do topo
+    categoria: T('CRM e vendas', 'CRM & sales', 'CRM y ventas'),
+    // Frase de posicionamento — é o <h3> do bloco e o texto do card do índice.
+    promessa: T(
+      'Pare de perder lead. Comece a fechar mais.',
+      'Stop losing leads. Start closing more.',
+      'Deja de perder leads. Empieza a cerrar más.'
+    ),
+    dor: T(
+      'O lead chega no WhatsApp, some numa conversa antiga e ninguém sabe se alguém respondeu. No fim do mês a conta não fecha e ninguém consegue dizer por quê.',
+      'The lead arrives on WhatsApp, disappears into an old thread and nobody knows whether anyone replied. At month end the numbers do not add up and nobody can say why.',
+      'El lead llega por WhatsApp, se pierde en una conversación vieja y nadie sabe si alguien respondió. A fin de mes las cuentas no cierran y nadie sabe por qué.'
+    ),
+    virada: T(
+      'Todo contato entra com origem, campanha e UTM gravados. A caixa "precisa de ação hoje" diz exatamente quem atender, e o follow-up se cobra sozinho.',
+      'Every contact arrives with source, campaign and UTM recorded. The "needs action today" box tells you exactly who to call, and the follow-up chases itself.',
+      'Cada contacto entra con origen, campaña y UTM registrados. La bandeja "necesita acción hoy" dice a quién atender, y el seguimiento se cobra solo.'
+    ),
+    // Por que vale a pena — o argumento econômico, não a lista de recursos.
+    porque: T(
+      'Um lead perdido custa o ticket inteiro. Se o sistema recuperar <b>uma</b> venda por mês, ele se paga muitas vezes.',
+      'A lost lead costs the whole ticket. If the system recovers <b>one</b> sale a month, it pays for itself many times over.',
+      'Un lead perdido cuesta el ticket entero. Si el sistema recupera <b>una</b> venta al mes, se paga muchas veces.'
+    ),
+    recursos: [
+      ['🎯', T('Nenhum lead esquecido', 'No forgotten leads', 'Ningún lead olvidado'),
+        T('Origem, campanha e UTM gravados na entrada. A caixa "precisa de ação hoje" mostra quem atender agora.',
+          'Source, campaign and UTM recorded on arrival. The "needs action today" box shows who to contact now.',
+          'Origen, campaña y UTM registrados al entrar. La bandeja "necesita acción hoy" muestra a quién atender.')],
+      ['📋', T('Kanban de verdade', 'A real Kanban', 'Un Kanban de verdad'),
+        T('Funis configuráveis por vertical, arrastar-e-soltar, valor por etapa e alerta de negócio parado.',
+          'Pipelines configurable per vertical, drag and drop, value per stage and stalled-deal alerts.',
+          'Embudos configurables por vertical, arrastrar y soltar, valor por etapa y alerta de negocio parado.')],
+      ['🔥', T('Lead scoring automático', 'Automatic lead scoring', 'Lead scoring automático'),
+        T('Nota de 0 a 100 pelo comportamento: respondeu, abriu a proposta, veio de indicação. Atenda o quente primeiro.',
+          'A 0–100 score from behaviour: replied, opened the proposal, came from a referral. Work the hot ones first.',
+          'Nota de 0 a 100 por comportamiento: respondió, abrió la propuesta, vino por referencia. Atiende primero al caliente.')],
+      ['📨', T('Multicanal sem fricção', 'Frictionless multichannel', 'Multicanal sin fricción'),
+        T('WhatsApp, e-mail e ligação a um clique da ficha, com modelos e variáveis. Tudo registrado na linha do tempo.',
+          'WhatsApp, email and calls one click from the record, with templates and variables. All logged on the timeline.',
+          'WhatsApp, correo y llamada a un clic de la ficha, con plantillas y variables. Todo registrado en la línea de tiempo.')],
+      ['📄', T('Proposta com link rastreável', 'Proposals with a tracked link', 'Propuesta con enlace rastreable'),
+        T('Você sabe a hora em que o cliente abriu. Ele aceita ou recusa pelo próprio link, e o funil anda sozinho.',
+          'You know the moment the client opened it. They accept or decline right there, and the pipeline moves itself.',
+          'Sabes a qué hora el cliente la abrió. Acepta o rechaza en el propio enlace y el embudo avanza solo.')],
+      ['🤖', T('Agentes de IA com você no controle', 'AI agents, with you in control', 'Agentes de IA contigo al mando'),
+        T('Qualificação, follow-up, reativação e análise de perdas — sempre como sugestão para você aprovar, nunca no automático cego.',
+          'Qualification, follow-up, win-back and loss analysis — always as a suggestion for you to approve, never blind automation.',
+          'Cualificación, seguimiento, reactivación y análisis de pérdidas — siempre como sugerencia para aprobar, nunca automático a ciegas.')]
+    ],
+    paraQuem: [
+      T('Times comerciais', 'Sales teams', 'Equipos comerciales'),
+      T('Prestadores de serviço', 'Service businesses', 'Prestadores de servicios'),
+      T('Agências e consultorias', 'Agencies and consultancies', 'Agencias y consultoras'),
+      T('Quem vende por WhatsApp', 'Anyone selling on WhatsApp', 'Quien vende por WhatsApp')
+    ],
+    prova: T(
+      'É o CRM que atende os leads de hospedagem e de eventos do próprio grupo, todos os dias.',
+      'It is the CRM handling the group’s own accommodation and event leads, every single day.',
+      'Es el CRM que atiende los leads de alojamiento y eventos del propio grupo, todos los días.'
+    ),
+    preco: { valor: 79, modelo: 'assinatura' },
+    faq: [
+      [T('O Villela CRM importa meus contatos atuais?', 'Does Villela CRM import my current contacts?', '¿Villela CRM importa mis contactos actuales?'),
+       T('Sim. Você sobe uma planilha de contatos e escolhe qual coluna é nome, telefone, e-mail e origem. Os 14 dias de teste servem justamente para migrar sem pressa.',
+         'Yes. You upload a contact spreadsheet and map which column is name, phone, email and source. The 14-day trial exists precisely so you can migrate without rushing.',
+         'Sí. Subes una hoja de contactos y eliges qué columna es nombre, teléfono, correo y origen. Los 14 días de prueba existen justamente para migrar sin prisa.')],
+      [T('Qual a diferença entre o Villela CRM e o Villela Growth OS?', 'What is the difference between Villela CRM and Villela Growth OS?', '¿Cuál es la diferencia entre Villela CRM y Villela Growth OS?'),
+       T('O Growth OS é a evolução do CRM, no mesmo sistema e no mesmo login: o CRM cuida do lead até a venda; o Growth OS acrescenta a camada de receita — organizações, metas, previsão e os números que o dono olha.',
+         'Growth OS is the CRM’s evolution, in the same system and the same login: the CRM handles the lead up to the sale; Growth OS adds the revenue layer — organisations, targets, forecast and the numbers the owner looks at.',
+         'Growth OS es la evolución del CRM, en el mismo sistema y el mismo acceso: el CRM cuida del lead hasta la venta; Growth OS añade la capa de ingresos — organizaciones, metas, previsión y los números que mira el dueño.')]
+    ]
+  },
+
+  // ----------------------------------------------------- Stay Manager
+  {
+    id: 'manager',
+    nome: 'Villela Stay Manager',
+    pasta: 'villela-stay-manager',
+    vertical: 'manager',
+    cor: '#0E7490',
+    url: 'https://manager.villelastay.com.br/gestao',
+    urlTeste: 'https://manager.villelastay.com.br/gestao/assinar?plano=trial',
+    tela: 'manager',
+    categoria: T('Gestão de hospedagem', 'Hospitality management', 'Gestión de alojamiento'),
+    promessa: T(
+      'Toda a sua operação de temporada em um só lugar.',
+      'Your entire short-stay operation in one place.',
+      'Toda tu operación de temporada en un solo lugar.'
+    ),
+    dor: T(
+      'Calendário do Airbnb numa aba, Booking noutra, a faxineira no WhatsApp e o financeiro numa planilha que só você entende. Um overbooking apaga o lucro do mês.',
+      'The Airbnb calendar in one tab, Booking in another, the cleaner on WhatsApp and the finances in a spreadsheet only you understand. One overbooking wipes out the month’s profit.',
+      'El calendario de Airbnb en una pestaña, Booking en otra, la limpiadora en WhatsApp y las finanzas en una hoja que solo tú entiendes. Un overbooking borra la ganancia del mes.'
+    ),
+    virada: T(
+      'Um calendário só, alimentado por todos os canais, com bloqueio anti-overbooking. A faxina nasce sozinha do check-out, e o repasse do proprietário sai pronto.',
+      'A single calendar fed by every channel, with anti-overbooking locks. Cleaning schedules itself from the check-out, and the owner payout comes out ready.',
+      'Un solo calendario alimentado por todos los canales, con bloqueo anti-overbooking. La limpieza nace sola del check-out y la liquidación del propietario sale lista.'
+    ),
+    porque: T(
+      'Um único overbooking evitado costuma custar mais caro que um ano de mensalidade. E a hora que você deixa de gastar copiando data entre abas volta como reserva.',
+      'A single avoided overbooking usually costs more than a year of subscription. And the hours you stop spending copying dates between tabs come back as bookings.',
+      'Un solo overbooking evitado suele costar más que un año de suscripción. Y las horas que dejas de gastar copiando fechas vuelven como reservas.'
+    ),
+    recursos: [
+      ['📅', T('Calendário unificado', 'Unified calendar', 'Calendario unificado'),
+        T('Reservas de todas as OTAs e diretas em uma tela, com regras de bloqueio testadas em casas interligadas.',
+          'Bookings from every OTA and direct channel on one screen, with blocking rules tested on interconnected houses.',
+          'Reservas de todas las OTAs y directas en una pantalla, con reglas de bloqueo probadas en casas interconectadas.')],
+      ['🔗', T('Canais e OTAs', 'Channels and OTAs', 'Canales y OTAs'),
+        T('Airbnb, Booking, Vrbo, Decolar e reserva direta sincronizando disponibilidade e preço a partir de um cadastro só.',
+          'Airbnb, Booking, Vrbo, Decolar and direct bookings syncing availability and pricing from a single record.',
+          'Airbnb, Booking, Vrbo, Decolar y reserva directa sincronizando disponibilidad y precio desde un solo registro.')],
+      ['🧹', T('Limpeza que se agenda sozinha', 'Cleaning that schedules itself', 'Limpieza que se agenda sola'),
+        T('A agenda da equipe nasce dos check-ins e check-outs, com checklist padrão hotel boutique e confirmação de cada unidade.',
+          'The team’s schedule is generated from check-ins and check-outs, with a boutique-hotel checklist and per-unit confirmation.',
+          'La agenda del equipo nace de los check-ins y check-outs, con checklist estilo hotel boutique y confirmación por unidad.')],
+      ['💰', T('Financeiro e repasse', 'Finance and owner payouts', 'Finanzas y liquidaciones'),
+        T('Receita por competência, despesas, comissão de canal e prestação de contas do proprietário — sem refazer planilha.',
+          'Accrual revenue, expenses, channel commission and owner statements — no spreadsheet rework.',
+          'Ingresos por devengo, gastos, comisión de canal y rendición de cuentas al propietario — sin rehacer hojas.')],
+      ['☑️', T('Checklist por reserva e estoque', 'Per-booking checklist and stock', 'Checklist por reserva y stock'),
+        T('Cada reserva carrega as etapas da jornada e o sistema lembra o que falta. Estoque com baixa automática e lista de compras.',
+          'Every booking carries its journey steps and the system remembers what is missing. Stock deducted automatically, with a shopping list.',
+          'Cada reserva lleva las etapas de su recorrido y el sistema recuerda lo que falta. Stock con baja automática y lista de compras.')],
+      ['🤖', T('IA, API e webhooks', 'AI, API and webhooks', 'IA, API y webhooks'),
+        T('Assistente que responde hóspede e sugere preço, mais API com token e webhooks para plugar seus próprios scripts.',
+          'An assistant that answers guests and suggests pricing, plus a token API and webhooks to plug in your own scripts.',
+          'Asistente que responde al huésped y sugiere precio, más API con token y webhooks para conectar tus scripts.')]
+    ],
+    paraQuem: [
+      T('Anfitriões independentes', 'Independent hosts', 'Anfitriones independientes'),
+      T('Gestores de temporada', 'Short-stay managers', 'Gestores de temporada'),
+      T('Pousadas e flats', 'Guesthouses and flats', 'Posadas y flats'),
+      T('Quem administra imóvel de terceiro', 'Anyone managing third-party property', 'Quien administra inmueble de terceros')
+    ],
+    prova: T(
+      'As 4 casas e os 20 anúncios da Villela Stay no Lago Sul rodam neste mesmo sistema — inclusive as casas interligadas, onde um furo de calendário custa caro.',
+      'Villela Stay’s 4 houses and 20 listings in Lago Sul run on this very system — including the interconnected houses, where a calendar slip is expensive.',
+      'Las 4 casas y los 20 anuncios de Villela Stay en Lago Sul funcionan en este mismo sistema — incluidas las casas interconectadas, donde un fallo de calendario sale caro.'
+    ),
+    preco: { valor: 129, modelo: 'assinatura' },
+    faq: [
+      [T('O Stay Manager substitui o Airbnb e o Booking?', 'Does Stay Manager replace Airbnb and Booking?', '¿Stay Manager sustituye a Airbnb y Booking?'),
+       T('Não — ele organiza os dois. Você continua vendendo nos canais, e o sistema reúne reservas, calendário e financeiro em um lugar só, evitando overbooking entre eles.',
+         'No — it organises them. You keep selling on the channels, and the system brings bookings, calendar and finances into one place, preventing overbooking between them.',
+         'No — los organiza. Sigues vendiendo en los canales, y el sistema reúne reservas, calendario y finanzas en un solo lugar, evitando overbooking entre ellos.')],
+      [T('Serve para quem tem só um ou dois imóveis?', 'Does it work for someone with just one or two properties?', '¿Sirve para quien tiene solo uno o dos inmuebles?'),
+       T('Serve. O plano de entrada foi dimensionado para o anfitrião independente — a ideia é justamente dar a máquina de gestão dos grandes operadores a quem não tem consultor nem implantação cara.',
+         'It does. The entry plan is sized for the independent host — the whole point is giving the big operators’ management machine to someone with no consultant and no expensive onboarding.',
+         'Sí. El plan de entrada está dimensionado para el anfitrión independiente — la idea es dar la máquina de gestión de los grandes operadores a quien no tiene consultor ni implantación cara.')]
+    ]
+  },
+
+  // ----------------------------------------------------------- Legal
+  {
+    id: 'legal',
+    nome: 'Villela Legal',
+    pasta: 'villela-legal',
+    vertical: 'legal',
+    cor: '#14532D',
+    url: 'https://juridico.villelastay.com.br/juridico',
+    urlTeste: 'https://juridico.villelastay.com.br/juridico',
+    tela: 'legal',
+    categoria: T('Software jurídico', 'Legal software', 'Software jurídico'),
+    promessa: T(
+      'O escritório inteiro em um só lugar — com IA que cita as fontes.',
+      'The whole firm in one place — with AI that cites its sources.',
+      'Todo el despacho en un solo lugar — con IA que cita las fuentes.'
+    ),
+    dor: T(
+      'A publicação sai, ninguém vê, e o prazo corre. O controle de prazo mora na cabeça de uma pessoa, e a IA jurídica da moda inventa precedente que não existe.',
+      'The court notice is published, nobody sees it, and the clock runs. Deadline control lives in one person’s head, and the fashionable legal AI invents precedents that do not exist.',
+      'Sale la publicación, nadie la ve y el plazo corre. El control de plazos vive en la cabeza de una persona, y la IA jurídica de moda inventa precedentes inexistentes.'
+    ),
+    virada: T(
+      'Coleta automática por OAB no DJEN, prazo calculado pelo CPC com validação humana obrigatória e alerta que escala até alguém confirmar a leitura. A IA entrega minuta com a fonte no lado.',
+      'Automatic collection by bar number from the DJEN, deadlines calculated under the Civil Procedure Code with mandatory human validation, and alerts that escalate until someone confirms. The AI delivers a draft with the source alongside.',
+      'Recogida automática por número de colegiado en el DJEN, plazo calculado por el CPC con validación humana obligatoria y alerta que escala hasta que alguien confirme. La IA entrega borrador con la fuente al lado.'
+    ),
+    porque: T(
+      'Prazo perdido é dano ao cliente e risco disciplinar. Aqui o sistema não confia em si mesmo: ele exige que um humano valide o cálculo e avisa quando a coleta vem vazia — porque coleta vazia costuma ser falha, não silêncio.',
+      'A missed deadline harms the client and creates disciplinary risk. Here the system does not trust itself: it requires a human to validate the calculation and warns when a collection comes back empty — because an empty collection is usually a failure, not silence.',
+      'Un plazo perdido daña al cliente y crea riesgo disciplinario. Aquí el sistema no confía en sí mismo: exige que un humano valide el cálculo y avisa cuando la recogida viene vacía — porque una recogida vacía suele ser un fallo, no silencio.'
+    ),
+    recursos: [
+      ['⚖️', T('Processos e prazos', 'Cases and deadlines', 'Procesos y plazos'),
+        T('Andamentos do DataJud, calculadora de prazos do CPC com validação humana, alerta escalonado e confirmação de leitura.',
+          'DataJud case movements, a Civil Procedure Code deadline calculator with human validation, escalating alerts and read receipts.',
+          'Movimientos del DataJud, calculadora de plazos del CPC con validación humana, alerta escalonada y confirmación de lectura.')],
+      ['📰', T('Publicações do DJEN', 'DJEN court publications', 'Publicaciones del DJEN'),
+        T('Coleta automática por OAB, triagem, vínculo ao processo e alerta quando a captura vem vazia.',
+          'Automatic collection by bar number, triage, linking to the case and an alert when the capture comes back empty.',
+          'Recogida automática por colegiado, triaje, vínculo al proceso y alerta cuando la captura viene vacía.')],
+      ['🤖', T('IA jurídica com fonte', 'Legal AI with sources', 'IA jurídica con fuente'),
+        T('Consulta, geração de peça e análise de contrato — sempre carimbadas como MINUTA, com as fontes citadas ao lado.',
+          'Research, drafting and contract analysis — always stamped as a DRAFT, with sources cited alongside.',
+          'Consulta, generación de escritos y análisis de contrato — siempre marcadas como BORRADOR, con las fuentes citadas al lado.')],
+      ['👥', T('Portal do cliente', 'Client portal', 'Portal del cliente'),
+        T('Andamento traduzido em linguagem simples — e só publicado depois que um humano aprova. Evento sensível espera a conversa pessoal.',
+          'Case updates translated into plain language — and only published after a human approves. Sensitive events wait for the personal conversation.',
+          'Novedades traducidas a lenguaje sencillo — y publicadas solo después de que un humano apruebe. El evento sensible espera la conversación personal.')],
+      ['💼', T('Financeiro e horas', 'Finance and time tracking', 'Finanzas y horas'),
+        T('Honorário fixo, mensal, por hora ou de êxito, apontamento de horas, faturamento, fluxo de caixa e cobrança escalonada.',
+          'Fixed, monthly, hourly or success fees, time entries, invoicing, cash flow and escalating collections.',
+          'Honorario fijo, mensual, por hora o de éxito, registro de horas, facturación, flujo de caja y cobro escalonado.')],
+      ['🎛️', T('Controladoria independente', 'Independent controls', 'Controladuría independiente'),
+        T('Conferências diárias que não dependem de quem opera: prazo sem validação, coleta zerada, contrato sem alçada, prazo de LGPD vencido.',
+          'Daily checks independent of whoever operates the system: unvalidated deadlines, zeroed collections, contracts without sign-off, expired data-protection deadlines.',
+          'Verificaciones diarias independientes de quien opera: plazo sin validar, recogida en cero, contrato sin alzada, plazo de protección de datos vencido.')]
+    ],
+    paraQuem: [
+      T('Escritórios de advocacia', 'Law firms', 'Despachos de abogados'),
+      T('Advogado autônomo', 'Solo practitioners', 'Abogado autónomo'),
+      T('Departamento jurídico', 'In-house legal teams', 'Departamento jurídico'),
+      T('Correspondentes', 'Correspondent lawyers', 'Corresponsales')
+    ],
+    prova: T(
+      'É o sistema que controla a rotina processual do próprio escritório do grupo — a coleta do DJEN e o boletim diário de prazos rodam nele todos os dias úteis.',
+      'It is the system running the group’s own litigation routine — DJEN collection and the daily deadline bulletin run on it every business day.',
+      'Es el sistema que controla la rutina procesal del propio despacho del grupo — la recogida del DJEN y el boletín diario de plazos funcionan en él cada día hábil.'
+    ),
+    preco: { valor: 149, modelo: 'assinatura' },
+    faq: [
+      [T('A IA do Villela Legal pode inventar jurisprudência?', 'Can Villela Legal’s AI invent case law?', '¿La IA de Villela Legal puede inventar jurisprudencia?'),
+       T('A pesquisa vem separada em dois blocos: o que foi conferido no inteiro teor e o que ainda é hipótese. Nada sai sem essa separação, e toda peça sai carimbada como MINUTA para revisão de advogado inscrito na OAB.',
+         'Research comes split into two blocks: what was verified in the full text and what is still a hypothesis. Nothing ships without that split, and every draft is stamped as a DRAFT for review by a licensed lawyer.',
+         'La investigación viene separada en dos bloques: lo verificado en el texto íntegro y lo que aún es hipótesis. Nada sale sin esa separación, y todo escrito sale marcado como BORRADOR para revisión de abogado colegiado.')],
+      [T('O sistema calcula prazo processual sozinho?', 'Does the system calculate procedural deadlines on its own?', '¿El sistema calcula el plazo procesal solo?'),
+       T('Ele propõe o cálculo pelas regras do CPC, mas o prazo só passa a valer depois que um humano valida — e a controladoria acusa todo prazo que ficou sem validação.',
+         'It proposes the calculation under the Civil Procedure Code, but the deadline only becomes effective after a human validates it — and the controls flag every deadline left unvalidated.',
+         'Propone el cálculo por las reglas del CPC, pero el plazo solo vale después de que un humano lo valide — y la controladuría señala todo plazo sin validar.')]
+    ]
+  },
+
+  // ------------------------------------------------------------ Docs
+  {
+    id: 'docs',
+    nome: 'Villela Docs Intelligence',
+    pasta: 'villela-docs',
+    vertical: 'docs',
+    cor: '#1D4ED8',
+    url: 'https://docs.villelastay.com.br/vdocs',
+    urlTeste: 'https://docs.villelastay.com.br/vdocs/cadastro',
+    tela: 'docs',
+    categoria: T('Gestão documental', 'Document management', 'Gestión documental'),
+    promessa: T(
+      'Pergunte ao seu arquivo morto. Ele responde citando a página.',
+      'Ask your dead archive. It answers, citing the page.',
+      'Pregúntale a tu archivo muerto. Responde citando la página.'
+    ),
+    dor: T(
+      'O contrato importante está no e-mail de alguém. Existem três versões e ninguém sabe qual vale. A renovação venceu semana passada e você descobriu hoje.',
+      'The important contract is in someone’s inbox. There are three versions and nobody knows which one counts. The renewal expired last week and you found out today.',
+      'El contrato importante está en el correo de alguien. Hay tres versiones y nadie sabe cuál vale. La renovación venció la semana pasada y te enteraste hoy.'
+    ),
+    virada: T(
+      'Um repositório por empresa, com pasta, permissão e versão vigente sempre identificada. Você pergunta em português e a IA responde apontando o documento e o trecho.',
+      'One repository per company, with folders, permissions and the current version always identified. You ask in plain language and the AI answers pointing at the document and the passage.',
+      'Un repositorio por empresa, con carpetas, permisos y versión vigente siempre identificada. Preguntas en lenguaje natural y la IA responde señalando el documento y el pasaje.'
+    ),
+    porque: T(
+      'A diferença entre uma IA útil e uma perigosa é uma só: a fonte. Aqui cada resposta traz o documento e a página de origem, conferíveis em um clique — nada de resposta solta em que você tem de acreditar.',
+      'There is exactly one difference between useful AI and dangerous AI: the source. Here every answer carries the originating document and page, checkable in one click — no free-floating answer you simply have to believe.',
+      'La diferencia entre una IA útil y una peligrosa es una sola: la fuente. Aquí cada respuesta trae el documento y la página de origen, verificables en un clic — nada de respuestas sueltas en las que hay que creer.'
+    ),
+    recursos: [
+      ['🔎', T('Busca que entende o conteúdo', 'Search that understands content', 'Búsqueda que entiende el contenido'),
+        T('Por nome, conteúdo, metadado ou pergunta em linguagem natural. O OCR lê até documento escaneado.',
+          'By name, content, metadata or a natural-language question. OCR reads even scanned documents.',
+          'Por nombre, contenido, metadato o pregunta en lenguaje natural. El OCR lee incluso documentos escaneados.')],
+      ['📎', T('IA que cita a fonte', 'AI that cites the source', 'IA que cita la fuente'),
+        T('Resumo, cláusula, prazo e risco — sempre apontando documento e página. Você confere em um clique.',
+          'Summaries, clauses, deadlines and risks — always pointing at document and page. You verify in one click.',
+          'Resumen, cláusula, plazo y riesgo — siempre señalando documento y página. Lo verificas en un clic.')],
+      ['✅', T('Fluxo de aprovação', 'Approval workflow', 'Flujo de aprobación'),
+        T('Contrato e política passam por etapas, prazos e aprovadores definidos por você, com o histórico de cada decisão.',
+          'Contracts and policies pass through stages, deadlines and approvers you define, with the history of every decision.',
+          'Contrato y política pasan por etapas, plazos y aprobadores definidos por ti, con el histórico de cada decisión.')],
+      ['🗂️', T('Versão vigente sem dúvida', 'No doubt about the current version', 'Versión vigente sin dudas'),
+        T('Toda alteração vira versão. Compare, restaure e saiba sempre qual documento está valendo agora.',
+          'Every change becomes a version. Compare, restore and always know which document is in force.',
+          'Todo cambio se vuelve versión. Compara, restaura y sabe siempre qué documento está vigente.')],
+      ['🔐', T('Segurança corporativa', 'Corporate security', 'Seguridad corporativa'),
+        T('Permissão por papel, pasta e documento. Link de compartilhamento com senha e validade. Nada exposto em URL pública.',
+          'Permissions by role, folder and document. Share links with password and expiry. Nothing exposed on a public URL.',
+          'Permiso por rol, carpeta y documento. Enlace para compartir con contraseña y caducidad. Nada expuesto en URL pública.')],
+      ['📜', T('LGPD e auditoria', 'Data protection and audit trail', 'Protección de datos y auditoría'),
+        T('Trilha completa de acesso, retenção e descarte controlados, exportação e relatório de conformidade.',
+          'A full access trail, controlled retention and disposal, export and compliance reporting.',
+          'Rastro completo de acceso, retención y descarte controlados, exportación e informe de conformidad.')]
+    ],
+    paraQuem: [
+      T('Jurídico e contratos', 'Legal and contracts', 'Jurídico y contratos'),
+      T('Financeiro e contábil', 'Finance and accounting', 'Finanzas y contabilidad'),
+      T('RH e operações', 'HR and operations', 'RR. HH. y operaciones'),
+      T('Empresas com auditoria', 'Audited companies', 'Empresas con auditoría')
+    ],
+    prova: T(
+      'Cada atualização passa por 222 verificações automatizadas antes de chegar ao cliente.',
+      'Every update passes 222 automated checks before it reaches a customer.',
+      'Cada actualización pasa por 222 verificaciones automatizadas antes de llegar al cliente.'
+    ),
+    preco: { valor: 99, modelo: 'assinatura' },
+    faq: [
+      [T('Meus documentos ficam onde?', 'Where are my documents stored?', '¿Dónde quedan mis documentos?'),
+       T('Em repositório isolado por empresa, servido por conexão segura e nunca por URL pública adivinhável. O compartilhamento externo é sempre por link com senha e validade, revogável em um clique.',
+         'In a repository isolated per company, served over a secure connection and never through a guessable public URL. External sharing is always a password-protected link with an expiry date, revocable in one click.',
+         'En un repositorio aislado por empresa, servido por conexión segura y nunca por URL pública adivinable. El compartir externo es siempre enlace con contraseña y caducidad, revocable en un clic.')],
+      [T('A IA lê documento escaneado?', 'Does the AI read scanned documents?', '¿La IA lee documentos escaneados?'),
+       T('Lê. O OCR converte o escaneado em texto pesquisável antes da indexação, então PDF de scanner entra na busca e na resposta com citação igual aos demais.',
+         'It does. OCR converts the scan into searchable text before indexing, so a scanner PDF enters search and cited answers just like any other file.',
+         'Sí. El OCR convierte el escaneado en texto buscable antes de indexar, así que un PDF de escáner entra en la búsqueda y en la respuesta citada igual que los demás.')]
+    ]
+  },
+
+  // -------------------------------------------------------- Projects
+  {
+    id: 'projects',
+    nome: 'Villela Projects & Events',
+    pasta: 'villela-projects',
+    vertical: 'projects',
+    cor: '#6D28D9',
+    url: 'https://projetos.villelastay.com.br/vpe',
+    urlTeste: 'https://projetos.villelastay.com.br/vpe/cadastro',
+    tela: 'projects',
+    categoria: T('Projetos e eventos', 'Projects and events', 'Proyectos y eventos'),
+    promessa: T(
+      'Portfólio antes de tarefa. Decida o que executar — depois execute.',
+      'Portfolio before tasks. Decide what to execute — then execute it.',
+      'Portafolio antes que tarea. Decide qué ejecutar — luego ejecútalo.'
+    ),
+    dor: T(
+      'Doze ideias boas, tempo para três, e nenhum critério para escolher. O gerenciador de tarefas comum sabe organizar o que já foi decidido — mas não ajuda a decidir.',
+      'Twelve good ideas, time for three, and no criterion to choose. The usual task manager organises what has already been decided — but does not help you decide.',
+      'Doce buenas ideas, tiempo para tres y ningún criterio para elegir. El gestor de tareas común organiza lo ya decidido — pero no ayuda a decidir.'
+    ),
+    virada: T(
+      'Cada ideia entra com estágio, horizonte, viabilidade, investimento e receita potencial. O que passa no filtro vira projeto por fases; o que não passa fica registrado, não esquecido.',
+      'Every idea arrives with stage, horizon, feasibility, investment and potential revenue. What clears the filter becomes a phased project; what does not is recorded, not forgotten.',
+      'Cada idea entra con etapa, horizonte, viabilidad, inversión e ingreso potencial. Lo que pasa el filtro se vuelve proyecto por fases; lo que no, queda registrado, no olvidado.'
+    ),
+    porque: T(
+      'A conta que dói não é a do projeto atrasado — é a do projeto errado, executado com capricho. Priorizar com número na frente é mais barato que executar bem a coisa errada.',
+      'The painful cost is not the late project — it is the wrong project, executed beautifully. Prioritising with numbers in front of you is cheaper than executing the wrong thing well.',
+      'El costo que duele no es el del proyecto atrasado — es el del proyecto equivocado, ejecutado con esmero. Priorizar con números delante sale más barato que ejecutar bien lo equivocado.'
+    ),
+    recursos: [
+      ['💡', T('Portfólio de ideias', 'Idea portfolio', 'Portafolio de ideas'),
+        T('Estágio, horizonte, prioridade, viabilidade, investimento e receita potencial — para decidir o que fazer agora, depois ou nunca.',
+          'Stage, horizon, priority, feasibility, investment and potential revenue — to decide what to do now, later or never.',
+          'Etapa, horizonte, prioridad, viabilidad, inversión e ingreso potencial — para decidir qué hacer ahora, después o nunca.')],
+      ['📋', T('Projetos por fases', 'Phased projects', 'Proyectos por fases'),
+        T('Da incubação ao lançamento e à operação: 15 estágios configuráveis, responsáveis, riscos e próximo passo sempre visível.',
+          'From incubation to launch and operation: 15 configurable stages, owners, risks and the next step always visible.',
+          'De la incubación al lanzamiento y la operación: 15 etapas configurables, responsables, riesgos y próximo paso siempre visible.')],
+      ['🎪', T('Eventos de ponta a ponta', 'End-to-end events', 'Eventos de punta a punta'),
+        T('Briefing, proposta, contrato, checklist, equipe, fornecedores e pós-evento — feito por quem recebe casamento e formatura de verdade.',
+          'Briefing, proposal, contract, checklist, crew, suppliers and post-event — built by people who actually host weddings and graduations.',
+          'Briefing, propuesta, contrato, checklist, equipo, proveedores y post-evento — hecho por quien recibe bodas y graduaciones de verdad.')],
+      ['🤖', T('IA como parte do time', 'AI as part of the team', 'IA como parte del equipo'),
+        T('Agentes que geram plano de negócio, cronograma, proposta e relatório — sempre registrando premissa e lacuna, sem inventar dado.',
+          'Agents that generate business plans, schedules, proposals and reports — always recording assumptions and gaps, never inventing data.',
+          'Agentes que generan plan de negocio, cronograma, propuesta e informe — siempre registrando premisa y laguna, sin inventar datos.')],
+      ['💰', T('Previsto × realizado', 'Budget vs. actual', 'Previsto × realizado'),
+        T('Orçamento previsto contra realizado e margem por projeto ou evento, com o comercial e o financeiro na mesma tela.',
+          'Budget against actual and margin per project or event, with sales and finance on the same screen.',
+          'Presupuesto contra realizado y margen por proyecto o evento, con lo comercial y lo financiero en la misma pantalla.')],
+      ['🔐', T('Multiempresa e auditável', 'Multi-company and auditable', 'Multiempresa y auditable'),
+        T('Cada empresa isolada, papéis e permissões, trilha de auditoria completa e adequação à LGPD.',
+          'Each company isolated, roles and permissions, a full audit trail and data-protection compliance.',
+          'Cada empresa aislada, roles y permisos, rastro de auditoría completo y cumplimiento de protección de datos.')]
+    ],
+    paraQuem: [
+      T('Produtoras de eventos', 'Event producers', 'Productoras de eventos'),
+      T('Agências e estúdios', 'Agencies and studios', 'Agencias y estudios'),
+      T('Times de novos negócios', 'New-business teams', 'Equipos de nuevos negocios'),
+      T('Empreendedor com várias frentes', 'Entrepreneurs with many fronts', 'Emprendedor con varios frentes')
+    ],
+    prova: T(
+      'O portfólio do próprio Grupo Villela Stay — 16 projetos entre hospedagem, eventos e expansões — é gerido neste sistema. Cada atualização passa por 197 verificações automatizadas.',
+      'Grupo Villela Stay’s own portfolio — 16 projects across accommodation, events and expansions — is managed in this system. Every update passes 197 automated checks.',
+      'El portafolio del propio Grupo Villela Stay — 16 proyectos entre alojamiento, eventos y expansiones — se gestiona en este sistema. Cada actualización pasa por 197 verificaciones automatizadas.'
+    ),
+    preco: { valor: 149, modelo: 'assinatura' },
+    faq: [
+      [T('Qual a diferença para um Trello ou Asana?', 'How is this different from Trello or Asana?', '¿En qué se diferencia de Trello o Asana?'),
+       T('Aqueles começam na tarefa. Este começa uma camada antes: no portfólio, onde a ideia ganha viabilidade, investimento e receita potencial. Só o que sobrevive a esse filtro vira projeto com tarefa.',
+         'Those start at the task. This starts one layer earlier: at the portfolio, where an idea gets feasibility, investment and potential revenue. Only what survives that filter becomes a project with tasks.',
+         'Aquellos empiezan en la tarea. Este empieza una capa antes: en el portafolio, donde la idea gana viabilidad, inversión e ingreso potencial. Solo lo que sobrevive a ese filtro se vuelve proyecto con tareas.')]
+    ]
+  },
+
+  // --------------------------------------------------------- Academy
+  {
+    id: 'academy',
+    nome: 'Villela Academy',
+    pasta: 'villela-academy',
+    vertical: 'academy',
+    cor: '#B45309',
+    url: 'https://academia.villelastay.com.br/academy',
+    urlTeste: 'https://academia.villelastay.com.br/academy/app#cadastro',
+    tela: 'academy',
+    categoria: T('Cursos e produtos digitais', 'Courses and digital products', 'Cursos y productos digitales'),
+    promessa: T(
+      'Publicar é grátis. Você só paga quando vende.',
+      'Publishing is free. You only pay when you sell.',
+      'Publicar es gratis. Solo pagas cuando vendes.'
+    ),
+    dor: T(
+      'Você tem o conteúdo, mas montar página de venda, checkout, área de membros, controle de acesso e programa de afiliado é um projeto inteiro — e as plataformas cobram antes de você vender a primeira vez.',
+      'You have the content, but building a sales page, checkout, members area, access control and an affiliate programme is a whole project — and the platforms charge before you have sold once.',
+      'Tienes el contenido, pero montar página de venta, checkout, área de miembros, control de acceso y programa de afiliados es un proyecto entero — y las plataformas cobran antes de tu primera venta.'
+    ),
+    virada: T(
+      'Página de venda, checkout com Pix e cartão, área de membros e afiliados já vêm prontos. Sem mensalidade e sem taxa de adesão: 8,9% + R$ 1 por venda aprovada.',
+      'Sales page, checkout with Pix and card, members area and affiliates come ready. No monthly fee and no setup fee: 8.9% + R$1 per approved sale.',
+      'Página de venta, checkout con Pix y tarjeta, área de miembros y afiliados vienen listos. Sin mensualidad ni tarifa de adhesión: 8,9% + R$ 1 por venta aprobada.'
+    ),
+    porque: T(
+      'É o único sistema desta lista em que o risco é todo nosso: se você não vender, não paga nada. O incentivo fica do lado certo do balcão.',
+      'It is the only system on this list where the risk is entirely ours: if you do not sell, you pay nothing. The incentive sits on the right side of the counter.',
+      'Es el único sistema de esta lista donde el riesgo es todo nuestro: si no vendes, no pagas nada. El incentivo queda del lado correcto del mostrador.'
+    ),
+    recursos: [
+      ['🎬', T('Para quem ensina', 'For those who teach', 'Para quien enseña'),
+        T('Curso, e-book, mentoria e assinatura, com página de venda, checkout e área de membros prontos.',
+          'Courses, e-books, mentoring and subscriptions, with sales page, checkout and members area ready to go.',
+          'Curso, e-book, mentoría y suscripción, con página de venta, checkout y área de miembros listos.')],
+      ['🤝', T('Para quem divulga', 'For those who promote', 'Para quien difunde'),
+        T('Programa de afiliados com link rastreável e painel de clique, venda e comissão — transparente dos dois lados.',
+          'An affiliate programme with tracked links and a dashboard of clicks, sales and commissions — transparent on both sides.',
+          'Programa de afiliados con enlace rastreable y panel de clics, ventas y comisiones — transparente por ambos lados.')],
+      ['💳', T('Pagamento nacional', 'Local payments', 'Pago nacional'),
+        T('Pix e cartão pelo Mercado Pago, com liberação do acesso só depois da confirmação na fonte.',
+          'Pix and card through Mercado Pago, with access released only after confirmation at the source.',
+          'Pix y tarjeta por Mercado Pago, con liberación del acceso solo tras la confirmación en la fuente.')],
+      ['🔒', T('Conteúdo protegido', 'Protected content', 'Contenido protegido'),
+        T('Vídeo com streaming seguro, arquivo privado e link temporário — seu conteúdo não circula por aí.',
+          'Secure video streaming, private files and temporary links — your content does not circulate.',
+          'Vídeo con streaming seguro, archivo privado y enlace temporal — tu contenido no circula por ahí.')],
+      ['📜', T('Certificado verificável', 'Verifiable certificates', 'Certificado verificable'),
+        T('Cada certificado tem código que qualquer pessoa confere publicamente — o diploma do seu aluno vale algo.',
+          'Every certificate carries a code anyone can verify publicly — your student’s diploma actually means something.',
+          'Cada certificado lleva un código que cualquiera verifica públicamente — el diploma de tu alumno vale algo.')],
+      ['🤖', T('IA que ajuda a montar', 'AI that helps you build', 'IA que ayuda a montar'),
+        T('Assistentes que estruturam o curso, escrevem a página de venda e dão suporte ao aluno.',
+          'Assistants that structure the course, write the sales page and support the student.',
+          'Asistentes que estructuran el curso, escriben la página de venta y dan soporte al alumno.')]
+    ],
+    paraQuem: [
+      T('Especialistas e autores', 'Experts and authors', 'Especialistas y autores'),
+      T('Mentores e consultores', 'Mentors and consultants', 'Mentores y consultores'),
+      T('Afiliados', 'Affiliates', 'Afiliados'),
+      T('Escolas e cursos livres', 'Schools and short courses', 'Escuelas y cursos libres')
+    ],
+    prova: T(
+      'A taxa é a mesma para todo mundo e está escrita: 8,9% + R$ 1 por venda aprovada, sem mensalidade, sem adesão e sem surpresa no saque.',
+      'The fee is the same for everyone and it is written down: 8.9% + R$1 per approved sale, no monthly fee, no setup fee and no surprise at withdrawal.',
+      'La tarifa es igual para todos y está escrita: 8,9% + R$ 1 por venta aprobada, sin mensualidad, sin adhesión y sin sorpresas al retirar.'
+    ),
+    preco: { modelo: 'comissao', texto: T('8,9% + R$ 1 por venda', '8.9% + R$1 per sale', '8,9% + R$ 1 por venta') },
+    faq: [
+      [T('Quanto custa para publicar um curso?', 'How much does it cost to publish a course?', '¿Cuánto cuesta publicar un curso?'),
+       T('Nada. Não há mensalidade nem taxa de adesão: a plataforma cobra 8,9% mais R$ 1 apenas sobre a venda aprovada. Se você não vender, não paga.',
+         'Nothing. There is no monthly fee and no setup fee: the platform charges 8.9% plus R$1 only on an approved sale. If you do not sell, you do not pay.',
+         'Nada. No hay mensualidad ni tarifa de adhesión: la plataforma cobra 8,9% más R$ 1 solo sobre la venta aprobada. Si no vendes, no pagas.')]
+    ]
+  },
+
+  // ------------------------------------------------------- Alta Vista
+  {
+    id: 'altavista',
+    nome: 'Villela Alta Vista 360°',
+    pasta: 'villela-alta-vista',
+    simbolo: 'simbolo.png',       // identidade própria — não usa o símbolo V
+    vertical: 'stay',             // acento ciano, o mais próximo do azul da marca
+    cor: '#176B87',
+    url: 'https://altavista.villelastay.com.br/alta-vista',
+    urlTeste: 'https://altavista.villelastay.com.br/alta-vista/orcamento',
+    tela: 'altavista',
+    categoria: T('Conteúdo visual e tour 360°', 'Visual content and 360° tours', 'Contenido visual y tour 360°'),
+    promessa: T(
+      'Veja de cima. Explore por inteiro.',
+      'See it from above. Explore it fully.',
+      'Míralo desde arriba. Explóralo por completo.'
+    ),
+    dor: T(
+      'O imóvel é ótimo e as fotos não mostram. Quem procura anúncio decide em segundos, e um espaço fotografado de qualquer jeito perde para um pior, bem fotografado.',
+      'The property is great and the photos do not show it. People browsing listings decide in seconds, and a carelessly photographed space loses to a worse one photographed well.',
+      'El inmueble es excelente y las fotos no lo muestran. Quien busca anuncios decide en segundos, y un espacio mal fotografiado pierde ante uno peor, bien fotografiado.'
+    ),
+    virada: T(
+      'Filmagem com drone, vídeo com IA, foto 360° e tour virtual navegável — entregues com hospedagem do tour, QR Code para material impresso e endereço exato oculto por padrão.',
+      'Drone footage, AI video, 360° photography and a navigable virtual tour — delivered with tour hosting, a QR code for printed materials and the exact address hidden by default.',
+      'Filmación con dron, vídeo con IA, foto 360° y tour virtual navegable — entregados con alojamiento del tour, código QR para material impreso y dirección exacta oculta por defecto.'
+    ),
+    porque: T(
+      'É o único da lista que não é software que você opera: é entrega pronta. Você recebe o material e o tour publicado, medido e no ar.',
+      'It is the only one on this list that is not software you operate: it is finished delivery. You receive the material and the tour published, measured and live.',
+      'Es el único de la lista que no es software que tú operas: es entrega lista. Recibes el material y el tour publicado, medido y en el aire.'
+    ),
+    recursos: [
+      ['🚁', T('Filmagem com drone', 'Drone footage', 'Filmación con dron'),
+        T('O enquadramento que vende o entorno: a rua, a vizinhança, a distância real do que importa.',
+          'The framing that sells the surroundings: the street, the neighbourhood, the real distance to what matters.',
+          'El encuadre que vende el entorno: la calle, el vecindario, la distancia real a lo que importa.')],
+      ['🎞️', T('Vídeo com IA', 'AI video', 'Vídeo con IA'),
+        T('Peças curtas para anúncio e redes, produzidas a partir do material captado.',
+          'Short pieces for listings and social, produced from the captured material.',
+          'Piezas cortas para anuncio y redes, producidas a partir del material captado.')],
+      ['🧭', T('Tour virtual navegável', 'Navigable virtual tour', 'Tour virtual navegable'),
+        T('O visitante entra e caminha pelo espaço sozinho, de qualquer aparelho, sem instalar nada.',
+          'Visitors step in and walk the space themselves, from any device, with nothing to install.',
+          'El visitante entra y recorre el espacio solo, desde cualquier dispositivo, sin instalar nada.')],
+      ['📱', T('QR Code para o impresso', 'QR code for print', 'Código QR para impreso'),
+        T('Placa, folheto e cartão levam direto ao tour — o material impresso deixa de ser beco sem saída.',
+          'Signs, flyers and cards lead straight to the tour — printed material stops being a dead end.',
+          'Cartel, folleto y tarjeta llevan directo al tour — el material impreso deja de ser un callejón sin salida.')],
+      ['🔒', T('Endereço oculto por padrão', 'Address hidden by default', 'Dirección oculta por defecto'),
+        T('O endereço exato do imóvel não aparece a menos que você mande aparecer.',
+          'The exact address does not appear unless you say so.',
+          'La dirección exacta no aparece a menos que tú lo indiques.')],
+      ['📈', T('Publicado, medido e no ar', 'Published, measured and live', 'Publicado, medido y en el aire'),
+        T('Hospedagem do tour incluída na franquia do pacote, com medição de visita e disponibilidade contínua.',
+          'Tour hosting included in the package allowance, with visit measurement and continuous availability.',
+          'Alojamiento del tour incluido en la franquicia del paquete, con medición de visitas y disponibilidad continua.')]
+    ],
+    paraQuem: [
+      T('Anfitriões de temporada', 'Short-stay hosts', 'Anfitriones de temporada'),
+      T('Imobiliárias e corretores', 'Estate agencies and brokers', 'Inmobiliarias y corredores'),
+      T('Hotéis e pousadas', 'Hotels and guesthouses', 'Hoteles y posadas'),
+      T('Proprietários', 'Owners', 'Propietarios')
+    ],
+    prova: T(
+      'O tour virtual 360° do site da Villela Stay foi produzido e publicado por este estúdio — você pode percorrê-lo agora, antes de contratar qualquer coisa.',
+      'The 360° virtual tour on the Villela Stay website was produced and published by this studio — you can walk through it right now, before hiring anything.',
+      'El tour virtual 360° del sitio de Villela Stay fue producido y publicado por este estudio — puedes recorrerlo ahora, antes de contratar nada.'
+    ),
+    preco: { modelo: 'projeto', texto: T('Por projeto, sob orçamento', 'Per project, on quotation', 'Por proyecto, bajo presupuesto') },
+    faq: [
+      [T('O tour virtual fica hospedado onde?', 'Where is the virtual tour hosted?', '¿Dónde queda alojado el tour virtual?'),
+       T('Conosco. Os pacotes incluem franquia de hospedagem de 6 ou 12 meses conforme o combo; depois dela, a manutenção do tour no ar custa R$ 29 por mês ou R$ 290 por ano.',
+         'With us. Packages include a 6- or 12-month hosting allowance depending on the bundle; after that, keeping the tour live costs R$29 a month or R$290 a year.',
+         'Con nosotros. Los paquetes incluyen franquicia de alojamiento de 6 o 12 meses según el combo; después, mantener el tour en el aire cuesta R$ 29 al mes o R$ 290 al año.')]
+    ]
+  }
+];
+
+// ---------------------------------------------------------------------
+// Produtos da home que NÃO entram nesta landing — com o motivo escrito.
+// A trava de cobertura exige que todo produto da home esteja aqui ou em
+// SISTEMAS. Assim, esquecer de classificar um produto novo quebra o build
+// em vez de virar buraco silencioso na página.
+// Chave = `pasta` do PRODUTOS_GRUPO (build.js).
+// ---------------------------------------------------------------------
+const NAO_SAAS = {
+  'villela-stay': 'A hospedagem é o assunto do resto do site — esta página vende software.',
+  'livraria-villela': 'Livraria é e-commerce de livro, não assinatura de sistema.',
+  'closet-club': 'Marketplace de aluguel de roupa: tem locatária e proprietária, não assinante.',
+  'vitrine': 'Marketplace de compra e venda: tem comprador e vendedor, não assinante.',
+  'villela-kids': 'Plataforma para famílias, em beta fechado — e o público não é comprador de software de gestão.'
+};
+
+// ---------------------------------------------------------------------
+// A trava. Chamada pelo build ANTES de gerar a página.
+// Recebe a lista de produtos da home e confere que cada um foi classificado.
+// Falha ruidosa e instrutiva: quem criar o 14º produto lê o que fazer.
+// ---------------------------------------------------------------------
+function conferirCobertura(produtosDaHome) {
+  const cobertos = new Set(SISTEMAS.map(s => s.pasta));
+  const orfaos = produtosDaHome
+    .map(p => p.pasta)
+    .filter(pasta => !cobertos.has(pasta) && !(pasta in NAO_SAAS));
+
+  if (orfaos.length) {
+    throw new Error(
+      `[sistemas] Produto na home sem classificação: ${orfaos.join(', ')}.\n` +
+      `  Todo produto de PRODUTOS_GRUPO precisa aparecer em UM dos dois lugares de\n` +
+      `  content/sistemas.js:\n` +
+      `    · SISTEMAS  — se for SaaS que se vende por assinatura (bloco completo na\n` +
+      `                  landing /sistemas.html: promessa, dor, 6 recursos, prova,\n` +
+      `                  preço, maquete de tela e FAQ nos 3 idiomas);\n` +
+      `    · NAO_SAAS  — se não for, com o motivo escrito.\n` +
+      `  Entrando em SISTEMAS, acrescente também a maquete em content/sistemas-telas.js\n` +
+      `  e revise o SEO/GEO da página (título, descrição, FAQ e llms.txt).`
+    );
+  }
+
+  // Maquete faltando derruba o layout do bloco, então também é trava.
+  const telas = require('./sistemas-telas').TELAS;
+  const semTela = SISTEMAS.filter(s => !telas[s.tela]).map(s => s.id);
+  if (semTela.length) {
+    throw new Error(`[sistemas] Sem maquete de tela em content/sistemas-telas.js: ${semTela.join(', ')}.`);
+  }
+}
+
+module.exports = { SISTEMAS, NAO_SAAS, conferirCobertura };

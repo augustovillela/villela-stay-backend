@@ -49,6 +49,12 @@ a { color: var(--lago); text-decoration: none; }
 .btn-wa-nav { background: var(--wa); color: #fff !important; padding: 8px 18px; border-radius: 24px; }
 .link-staff { font-size: .82rem; opacity: .7; border: 1px solid rgba(248,249,250,.4); padding: 5px 12px; border-radius: 20px; }
 .link-staff:hover { opacity: 1; }
+/* Sistemas: destino comercial, não mais um item do menu. Dourado do cerrado para
+   destacar sem competir com o verde do WhatsApp, que continua sendo a ação principal. */
+.link-sistemas { font-size: .88rem; font-weight: 700 !important; color: var(--cerrado) !important;
+  border: 1px solid rgba(201,162,39,.6); background: rgba(201,162,39,.12);
+  padding: 6px 14px; border-radius: 20px; }
+.link-sistemas:hover { background: var(--cerrado); color: var(--petroleo) !important; border-color: var(--cerrado); }
 .btn-instalar { font: inherit; font-size: .82rem; cursor: pointer; color: var(--creme); background: transparent; border: 1px solid rgba(248,249,250,.55); padding: 6px 14px; border-radius: 20px; line-height: 1; }
 .btn-instalar:hover { background: rgba(248,249,250,.12); }
 .btn-instalar[hidden] { display: none; }
@@ -586,6 +592,10 @@ a { color: var(--lago); text-decoration: none; }
 .grupo-fio { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; font-size: .82rem; color: var(--cerrado); margin: 6px 0 0; }
 .grupo-intro { max-width: 820px; margin: 14px 0 34px; color: var(--concreto-claro); font-size: 1.02rem; }
 .grupo-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; }
+/* Ponte da home para /sistemas.html: o card apresenta o produto, a landing o vende. */
+.grupo-cta { margin: 30px 0 0; font-size: 1.02rem; }
+.grupo-cta a { font-weight: 700; border-bottom: 2px solid rgba(14,116,144,.35); padding-bottom: 2px; }
+.grupo-cta a:hover { border-bottom-color: var(--lago); }
 .produto-card {
   display: flex; flex-direction: column; gap: 8px;
   background: #fff; border-radius: 14px; padding: 22px 20px 20px;

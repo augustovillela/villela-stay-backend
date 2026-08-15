@@ -24,6 +24,13 @@ const PWA = {
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
 const BLOG_I18N = require('./content/blog-i18n'); // traduções EN/ES por slug (fallback por campo p/ PT)
+// Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
+// tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
+// `conferirCobertura` é a trava que impede um produto novo da home de ficar de
+// fora desta página (ver o cabeçalho de content/sistemas.js).
+const { SISTEMAS, conferirCobertura } = require('./content/sistemas');
+const { TELAS } = require('./content/sistemas-telas');
+const SISTEMAS_CSS = require('./content/sistemas-css');
 let LANDINGS;                            // preenchido no corpo; escopo de módulo p/ o sitemap usar após o loop
 
 const DIST = path.join(__dirname, 'dist');
@@ -267,6 +274,12 @@ ${extraHead}
     <a href="${L('/guia.html')}">${t('Guia do Hóspede', 'Guest Guide', 'Guía del Huésped')}</a>
     <a href="${L('/nossa-historia.html')}">${t('Nossa História', 'Our Story', 'Nuestra Historia')}</a>
     <a href="${L('/links.html')}">Linktree</a>
+    <!-- Sistemas fica destacado, e não como mais um item no meio do menu: quem
+         procura software não é o mesmo visitante que procura casa para alugar.
+         Enterrado entre "Blog" e "Regras da Casa" ele passava batido; em pílula
+         dourada, ao lado dos outros destinos (Hóspede/Staff), fica claro que
+         leva para outro assunto. -->
+    <a href="${L('/sistemas.html')}" class="link-sistemas" title="${t('Os sistemas de gestão do Grupo Villela Stay', 'Grupo Villela Stay management software', 'Los sistemas de gestión del Grupo Villela Stay')}">💼 ${t('Sistemas', 'Software', 'Sistemas')}</a>
     ${seletorIdioma(caminho)}
     <a href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" class="btn-wa-nav">WhatsApp</a>
     <a href="https://minha.villelastay.com.br/hospede" class="link-hospede" title="${t('Área exclusiva para hóspedes', 'Exclusive guest area', 'Área exclusiva para huéspedes')}">🔑 ${t('Área do Hóspede', 'Guest Area', 'Área del Huésped')}</a>
@@ -280,6 +293,7 @@ ${corpo}
 <footer class="rodape">
   <div class="rodape-links">
     <strong>${t('Conheça', 'Discover', 'Conoce')}</strong>
+    <a href="${L('/sistemas.html')}">${t('Sistemas do Grupo Villela Stay', 'Grupo Villela Stay Software', 'Sistemas del Grupo Villela Stay')}</a>
     <a href="${L('/blog.html')}">${t('Blog · Diário de Brasília', 'Blog · Brasília Diary', 'Blog · Diario de Brasília')}</a>
     <a href="${L('/nossa-historia.html')}">${t('Nossa História', 'Our Story', 'Nuestra Historia')}</a>
     <a href="${L('/posse-2027.html')}">${t('Posse Presidencial 2027', 'Presidential Inauguration 2027', 'Toma de Posesión Presidencial 2027')}</a>
@@ -570,6 +584,10 @@ const grupoSecao = () => `
         <p>${esc(t(...p.frase))}</p>
       </a>`).join('')}
     </div>
+    <p class="grupo-cta"><a href="${L('/sistemas.html')}">${t(
+      'Conheça os sistemas de gestão do grupo — o que cada um resolve, para quem serve e quanto custa',
+      'Explore the group’s management software — what each one solves, who it is for and what it costs',
+      'Conoce los sistemas de gestión del grupo — qué resuelve cada uno, para quién sirve y cuánto cuesta')} →</a></p>
   </div>
 </section>`;
 
@@ -2274,6 +2292,366 @@ document.querySelector('.form-landing').addEventListener('submit', function(e){
   fs.writeFileSync(path.join(od, lp.arquivo), html);
 }
 
+// ============= /sistemas.html — os SaaS do Grupo Villela Stay =============
+// A home APRESENTA os produtos; esta página os VENDE. Conteúdo, preço e
+// maquete de tela vêm de content/sistemas.js e content/sistemas-telas.js —
+// mexer em produto se faz lá, não aqui.
+//
+// A trava `conferirCobertura` roda antes de gerar: se alguém puser um
+// produto novo em PRODUTOS_GRUPO e esquecer desta página, o build quebra
+// com a instrução do que fazer. É essa trava que garante a regra do
+// Augusto — "SaaS novo entra na home E na landing" — sem depender de
+// memória de ninguém.
+conferirCobertura(PRODUTOS_GRUPO);
+
+{
+  const simboloDe = s => `/assets/brand/${s.pasta}/${s.simbolo || 'simbolo-v.svg'}`;
+  // Preço em uma linha, respeitando o modelo de cada produto: nem tudo é
+  // mensalidade. Dizer "a partir de R$ X/mês" na Academy (comissão por
+  // venda) ou no Alta Vista (por projeto) seria mentira de vitrine.
+  const precoTexto = s => s.preco.modelo === 'assinatura'
+    ? `<b>${real(s.preco.valor)}<small>${t('/mês', '/mo', '/mes')}</small></b><span>${t('por mês, no plano de entrada', 'per month, on the entry plan', 'al mes, en el plan de entrada')}</span>`
+    : `<b>${esc(t(...s.preco.texto))}</b><span>${s.preco.modelo === 'comissao'
+        ? t('sem mensalidade — você paga ao vender', 'no monthly fee — you pay when you sell', 'sin mensualidad — pagas al vender')
+        : t('escopo fechado antes de começar', 'scope agreed before we start', 'alcance cerrado antes de empezar')}</span>`;
+  const temTeste = s => s.preco.modelo === 'assinatura';
+
+  // ---- índice: a pessoa escolhe pela DOR, não pelo nome do produto.
+  // Quem procura sistema não sabe o nome do seu produto — sabe do problema.
+  const indice = SISTEMAS.map(s => `
+    <a class="sx-ind-card" href="#${s.id}" style="--acento:${s.cor}">
+      <span class="sx-ind-dor">${esc(t(...s.promessa))}</span>
+      <span class="sx-ind-quem">${esc(s.paraQuem.slice(0, 3).map(q => t(...q)).join(' · '))}</span>
+      <span class="sx-ind-nome"><img src="${simboloDe(s)}" alt="" width="22" height="22" loading="lazy" decoding="async">${esc(s.nome)} →</span>
+    </a>`).join('');
+
+  // ---- um bloco por sistema
+  const blocos = SISTEMAS.map((s, i) => `
+  <section class="sx-produto${i % 2 ? ' alt' : ''}" id="${s.id}" style="--acento:${s.cor}">
+    <div class="sx-wrap sx-prod-grade">
+      <div>
+        <div class="sx-prod-cabeca">
+          <img src="${simboloDe(s)}" alt="" width="46" height="46" loading="lazy" decoding="async">
+          <div><span class="sx-prod-cat">${esc(t(...s.categoria))}</span>
+            <h3 class="sx-prod-nome">${esc(s.nome)}</h3></div>
+        </div>
+        <p class="sx-promessa">${esc(t(...s.promessa))}</p>
+        <div class="sx-dorvirada">
+          <p>${esc(t(...s.dor))}</p>
+          <p>${esc(t(...s.virada))}</p>
+        </div>
+        <div class="sx-porque">${t(...s.porque)}</div>
+        <ul class="sx-recursos">
+          ${s.recursos.map(([ico, tit, desc]) => `<li><i>${ico}</i><div><b>${esc(t(...tit))}</b><span>${esc(t(...desc))}</span></div></li>`).join('')}
+        </ul>
+        <ul class="sx-quem">${s.paraQuem.map(q => `<li>${esc(t(...q))}</li>`).join('')}</ul>
+        <div class="sx-prova"><i>✅</i><div><b>${t('Prova, não promessa: ', 'Proof, not promise: ', 'Prueba, no promesa: ')}</b>${esc(t(...s.prova))}</div></div>
+        <div class="sx-prod-rodape">
+          <div class="sx-preco">${precoTexto(s)}</div>
+          <a class="sx-btn sx-btn-cheio" href="${s.urlTeste}" target="_blank" rel="noopener"
+             data-sx-cta="${s.id}">${temTeste(s)
+               ? t('Testar 14 dias grátis', 'Start a 14-day free trial', 'Probar 14 días gratis')
+               : (s.preco.modelo === 'comissao' ? t('Criar conta grátis', 'Create a free account', 'Crear cuenta gratis') : t('Pedir orçamento', 'Request a quote', 'Pedir presupuesto'))}</a>
+          <a class="sx-btn sx-btn-vazio" href="${s.url}" target="_blank" rel="noopener">${t('Ver o sistema', 'See the system', 'Ver el sistema')}</a>
+        </div>
+      </div>
+      <div class="mq" data-vertical="${s.vertical}" style="--acento:${s.cor}">${TELAS[s.tela](t)}</div>
+    </div>
+  </section>`).join('');
+
+  // ---- tabela comparativa: quem chega decidindo entre dois quer ver lado a lado
+  const comparativo = `
+  <div class="sx-tabela-rolo"><table class="sx-comp">
+    <thead><tr>
+      <th>${t('Sistema', 'System', 'Sistema')}</th><th>${t('Resolve', 'Solves', 'Resuelve')}</th>
+      <th>${t('Para quem', 'For whom', 'Para quién')}</th><th>${t('A partir de', 'From', 'Desde')}</th><th></th>
+    </tr></thead><tbody>
+      ${SISTEMAS.map(s => `<tr>
+        <td><span class="sx-comp-nome"><img src="${simboloDe(s)}" alt="" width="22" height="22" loading="lazy" decoding="async">${esc(s.nome)}</span></td>
+        <td>${esc(t(...s.categoria))}</td>
+        <td>${esc(t(...s.paraQuem[0]))}, ${esc(String(t(...s.paraQuem[1])).toLowerCase())}</td>
+        <td class="sx-comp-preco">${s.preco.modelo === 'assinatura' ? `${real(s.preco.valor)}${t('/mês', '/mo', '/mes')}` : esc(t(...s.preco.texto))}</td>
+        <td><a href="#${s.id}">${t('Ver', 'See', 'Ver')} →</a></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+
+  // ---- perguntas: as do grupo primeiro, depois as de cada sistema.
+  // Alimentam também o FAQPage do JSON-LD (é o que as IAs de busca leem).
+  const faqGrupo = [
+    [t('O que é o Grupo Villela Stay?', 'What is Grupo Villela Stay?', '¿Qué es el Grupo Villela Stay?'),
+     t('É a empresa brasileira Augusto Villela Ltda (CNPJ 56.776.526/0001-12), de Brasília-DF, que opera hospedagem por temporada no Lago Sul e desenvolve os sistemas de gestão desta página. Cada sistema nasceu para resolver um problema da própria operação antes de ser vendido a terceiros.',
+       'It is the Brazilian company Augusto Villela Ltda (tax ID 56.776.526/0001-12), based in Brasília, Brazil, which runs short-stay accommodation in Lago Sul and develops the management systems on this page. Each system was built to solve a problem in its own operation before being sold to anyone else.',
+       'Es la empresa brasileña Augusto Villela Ltda (CNPJ 56.776.526/0001-12), de Brasília, que opera alojamiento por temporada en Lago Sul y desarrolla los sistemas de gestión de esta página. Cada sistema nació para resolver un problema de la propia operación antes de venderse a terceros.')],
+    [t('Preciso de cartão de crédito para testar?', 'Do I need a credit card to try it?', '¿Necesito tarjeta de crédito para probar?'),
+     t('Não. Os sistemas por assinatura têm 14 dias de teste sem cartão. Você cadastra, usa tudo e decide no fim — se não assinar, nada é cobrado.',
+       'No. The subscription systems come with a 14-day trial and no card required. You sign up, use everything and decide at the end — if you do not subscribe, nothing is charged.',
+       'No. Los sistemas por suscripción tienen 14 días de prueba sin tarjeta. Te registras, usas todo y decides al final — si no te suscribes, no se cobra nada.')],
+    [t('Posso cancelar quando quiser?', 'Can I cancel whenever I want?', '¿Puedo cancelar cuando quiera?'),
+     t('Pode. Não há fidelidade nem multa de cancelamento, e você pode exportar seus dados antes de sair.',
+       'You can. There is no lock-in and no cancellation penalty, and you can export your data before leaving.',
+       'Sí. No hay permanencia ni multa por cancelación, y puedes exportar tus datos antes de irte.')],
+    [t('Meus dados ficam no Brasil? E a LGPD?', 'Is my data kept in Brazil? What about data protection?', '¿Mis datos quedan en Brasil? ¿Y la protección de datos?'),
+     t('Cada assinante tem a base isolada da dos demais, com trilha de auditoria de acesso, permissão por papel e exportação sob demanda — o desenho segue a LGPD. O pagamento é processado pelo Mercado Pago; os dados do cartão não passam pelos nossos sistemas.',
+       'Every subscriber has a database isolated from the others, with an access audit trail, role-based permissions and export on demand — the design follows Brazilian data-protection law. Payment is processed by Mercado Pago; card data never passes through our systems.',
+       'Cada suscriptor tiene la base aislada de las demás, con rastro de auditoría de acceso, permisos por rol y exportación bajo demanda — el diseño sigue la ley brasileña de protección de datos. El pago lo procesa Mercado Pago; los datos de la tarjeta no pasan por nuestros sistemas.')],
+    [t('Os sistemas conversam entre si? Tem login único?', 'Do the systems talk to each other? Is there a single sign-on?', '¿Los sistemas se comunican entre sí? ¿Hay inicio de sesión único?'),
+     t('Hoje não, e preferimos dizer isso antes de você assinar: cada sistema tem o próprio login, a própria base e a própria cobrança. O que eles compartilham é a mesma infraestrutura, o mesmo padrão de interface e a mesma empresa por trás. Integração entre eles é feita por API, disponível nos planos superiores.',
+       'Not today, and we would rather say so before you subscribe: each system has its own login, its own database and its own billing. What they share is the same infrastructure, the same interface standard and the same company behind them. Integration between them is done through the API, available on the higher plans.',
+       'Hoy no, y preferimos decirlo antes de que te suscribas: cada sistema tiene su propio acceso, su propia base y su propia facturación. Lo que comparten es la misma infraestructura, el mismo estándar de interfaz y la misma empresa detrás. La integración entre ellos se hace por API, disponible en los planes superiores.')],
+    [t('Quem dá suporte?', 'Who provides support?', '¿Quién da soporte?'),
+     t('A própria equipe que desenvolve, em português, sem camada de atendimento terceirizado. É uma operação pequena — e essa é justamente a razão de você falar com quem entende o sistema.',
+       'The team that builds it, in Portuguese, with no outsourced support layer. It is a small operation — and that is precisely why you talk to someone who understands the system.',
+       'El propio equipo que desarrolla, en portugués, sin capa de atención tercerizada. Es una operación pequeña — y por eso mismo hablas con quien entiende el sistema.')],
+    [t('As telas mostradas nesta página são reais?', 'Are the screens shown on this page real?', '¿Las pantallas mostradas en esta página son reales?'),
+     t('São reproduções fiéis das telas dos sistemas, desenhadas com a mesma interface e os mesmos módulos — com dados inventados. Painel de verdade contém nome de cliente e de hóspede, e isso não se publica. Para ver o sistema real, use os 14 dias de teste.',
+       'They are faithful reproductions of the systems’ screens, built with the same interface and the same modules — with invented data. A real panel contains client and guest names, and that is not something you publish. To see the real system, use the 14-day trial.',
+       'Son reproducciones fieles de las pantallas de los sistemas, hechas con la misma interfaz y los mismos módulos — con datos inventados. Un panel real contiene nombres de clientes y huéspedes, y eso no se publica. Para ver el sistema real, usa los 14 días de prueba.')]
+  ];
+  const faqTudo = faqGrupo.concat(SISTEMAS.flatMap(s => s.faq.map(([q, a]) => [t(...q), t(...a)])));
+  const faqHtml = faqTudo.map(([q, a]) =>
+    `<details><summary>${esc(q)}</summary><div class="sx-faq-resp">${esc(a)}</div></details>`).join('');
+
+  // ---- dados estruturados: ItemList de SoftwareApplication + FAQPage +
+  // BreadcrumbList. É por aqui que Google e as IAs de busca entendem que a
+  // página é um catálogo de software, com preço, e não um texto qualquer.
+  const urlPagina = `${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}/sistemas.html`;
+  const ld = [
+    { '@context': 'https://schema.org', '@type': 'CollectionPage', '@id': `${urlPagina}#pagina`,
+      url: urlPagina, name: t('Sistemas do Grupo Villela Stay', 'Grupo Villela Stay Systems', 'Sistemas del Grupo Villela Stay'),
+      inLanguage: HTML_LANG[LANG], isPartOf: { '@id': ORG_ID }, publisher: { '@id': ORG_ID },
+      mainEntity: {
+        '@type': 'ItemList', numberOfItems: SISTEMAS.length,
+        itemListElement: SISTEMAS.map((s, i) => ({
+          '@type': 'ListItem', position: i + 1,
+          item: Object.assign({
+            '@type': 'SoftwareApplication', name: s.nome, url: s.url,
+            applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
+            description: t(...s.promessa) + ' ' + t(...s.virada),
+            inLanguage: 'pt-BR', image: `${SITE_URL}${simboloDe(s)}`,
+            provider: { '@id': ORG_ID }, publisher: { '@id': ORG_ID }
+          }, s.preco.modelo === 'assinatura' ? {
+            offers: { '@type': 'Offer', price: String(s.preco.valor), priceCurrency: 'BRL',
+              availability: 'https://schema.org/InStock', url: s.url,
+              priceSpecification: { '@type': 'UnitPriceSpecification', price: String(s.preco.valor),
+                priceCurrency: 'BRL', unitCode: 'MON', billingIncrement: 1 } }
+          } : { offers: { '@type': 'Offer', priceCurrency: 'BRL', availability: 'https://schema.org/InStock', url: s.url } })
+        }))
+      } },
+    { '@context': 'https://schema.org', '@type': 'FAQPage', '@id': `${urlPagina}#faq`,
+      mainEntity: faqTudo.map(([q, a]) => ({ '@type': 'Question', name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a } })) },
+    { '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Villela Stay', item: `${SITE_URL}${LANG === 'pt' ? '/' : '/' + LANG + '/'}` },
+        { '@type': 'ListItem', position: 2, name: t('Sistemas', 'Systems', 'Sistemas'), item: urlPagina }
+      ] }
+  ].map(o => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('\n');
+
+  const paginaSistemas = layout(
+    t('Sistemas de gestão do Grupo Villela Stay — CRM, jurídico, documentos, hospedagem, projetos',
+      'Grupo Villela Stay management software — CRM, legal, documents, hospitality, projects',
+      'Sistemas de gestión del Grupo Villela Stay — CRM, jurídico, documentos, alojamiento, proyectos'),
+    t('Sete sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online e conteúdo visual 360°. A partir de R$ 79 por mês, 14 dias grátis sem cartão.',
+      'Seven Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses and 360° visual content. From R$79 a month, 14 days free, no card required.',
+      'Siete sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online y contenido visual 360°. Desde R$ 79 al mes, 14 días gratis sin tarjeta.'),
+    `
+<section class="sx-hero">
+  <div class="sx-wrap">
+    <span class="sx-selo">${t('Grupo Villela Stay · Brasília-DF', 'Grupo Villela Stay · Brasília, Brazil', 'Grupo Villela Stay · Brasília, Brasil')}</span>
+    <h1>${t('Sistemas de gestão que já rodam <em>um negócio de verdade</em>.',
+             'Management software that already runs <em>a real business</em>.',
+             'Sistemas de gestión que ya operan <em>un negocio de verdad</em>.')}</h1>
+    <p class="sx-lead">${t(
+      'Sete sistemas em nuvem para CRM, jurídico, documentos, hospedagem, projetos, cursos e conteúdo visual. Nenhum deles foi feito para vender: cada um nasceu para resolver um problema da nossa própria operação — e só depois virou produto.',
+      'Seven cloud systems for CRM, legal, documents, hospitality, projects, courses and visual content. None of them was built to be sold: each one was born to solve a problem in our own operation — and only then became a product.',
+      'Siete sistemas en la nube para CRM, jurídico, documentos, alojamiento, proyectos, cursos y contenido visual. Ninguno fue hecho para vender: cada uno nació para resolver un problema de nuestra propia operación — y solo después se volvió producto.')}</p>
+    <div class="sx-hero-ctas">
+      <a class="sx-btn sx-btn-ouro" href="#catalogo">${t('Ver os sistemas', 'See the systems', 'Ver los sistemas')}</a>
+      <a class="sx-btn sx-btn-fantasma" href="#demonstracao">${t('Ver funcionando', 'See it working', 'Verlo funcionando')}</a>
+    </div>
+    <div class="sx-numeros">
+      <div><b>${SISTEMAS.length}</b><span>${t('sistemas em produção', 'systems in production', 'sistemas en producción')}</span></div>
+      <div><b>14</b><span>${t('dias grátis, sem cartão', 'days free, no card', 'días gratis, sin tarjeta')}</span></div>
+      <div><b>${real(Math.min(...SISTEMAS.filter(s => s.preco.modelo === 'assinatura').map(s => s.preco.valor)))}</b><span>${t('por mês, plano de entrada', 'per month, entry plan', 'al mes, plan de entrada')}</span></div>
+      <div><b>100%</b><span>${t('brasileiros, em português', 'Brazilian, in Portuguese', 'brasileños, en portugués')}</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sx-sec escura" id="demonstracao">
+  <div class="sx-wrap">
+    <p class="sx-chapeu">${t('Demonstração', 'Demonstration', 'Demostración')}</p>
+    <h2>${t('Não é imagem parada. É o sistema sendo operado.',
+            'Not a still image. This is the system being operated.',
+            'No es una imagen fija. Es el sistema siendo operado.')}</h2>
+    <p class="sx-sub">${t(
+      'Um negócio de R$ 24.800 é arrastado de "Proposta" para "Ganho" no Villela CRM. Repare no que acontece sozinho: o total do mês sobe, a fila de "precisa de ação hoje" diminui e a tarefa de pós-venda é criada. Trabalho que ninguém precisou lembrar de fazer.',
+      'A R$24,800 deal is dragged from "Proposal" to "Won" in Villela CRM. Watch what happens by itself: the month’s total goes up, the "needs action today" queue shrinks and the after-sales task is created. Work nobody had to remember to do.',
+      'Un negocio de R$ 24.800 se arrastra de "Propuesta" a "Ganado" en Villela CRM. Fíjate en lo que ocurre solo: el total del mes sube, la fila de "necesita acción hoy" baja y se crea la tarea de posventa. Trabajo que nadie tuvo que recordar hacer.')}</p>
+    <div class="sx-demo">
+      <div class="sx-demo-cabeca">
+        <ul class="sx-demo-passos" id="sx-passos">
+          <li data-passo="0" class="on">1 · ${t('Cliente aceitou a proposta', 'Client accepted the proposal', 'El cliente aceptó la propuesta')}</li>
+          <li data-passo="1">2 · ${t('Negócio vai para "Ganho"', 'Deal moves to "Won"', 'El negocio pasa a "Ganado"')}</li>
+          <li data-passo="2">3 · ${t('Painel e tarefas se atualizam', 'Dashboard and tasks update', 'Panel y tareas se actualizan')}</li>
+        </ul>
+        <button type="button" class="sx-play" id="sx-play" aria-pressed="true">⏸ ${t('Pausar', 'Pause', 'Pausar')}</button>
+      </div>
+      <div class="mq mq-demo" id="sx-demo-mq" data-vertical="crm" style="--acento:#B0185A">${TELAS.crm(t)}</div>
+    </div>
+  </div>
+</section>
+
+<section class="sx-sec" id="catalogo">
+  <div class="sx-wrap">
+    <p class="sx-chapeu">${t('Escolha pelo problema', 'Choose by the problem', 'Elige por el problema')}</p>
+    <h2>${t('Qual destes é o seu dia ruim?', 'Which of these is your bad day?', '¿Cuál de estos es tu mal día?')}</h2>
+    <p class="sx-sub">${t('Ninguém procura o nome de um sistema que não conhece — procura a saída de um problema que conhece bem demais.',
+      'Nobody searches for the name of a system they do not know — they search for the way out of a problem they know all too well.',
+      'Nadie busca el nombre de un sistema que no conoce — busca la salida de un problema que conoce demasiado bien.')}</p>
+    <div class="sx-indice">${indice}</div>
+  </div>
+</section>
+
+${blocos}
+
+<section class="sx-sec alt" id="comparar">
+  <div class="sx-wrap">
+    <p class="sx-chapeu">${t('Lado a lado', 'Side by side', 'Lado a lado')}</p>
+    <h2>${t('Os sete, em uma tabela', 'All seven, in one table', 'Los siete, en una tabla')}</h2>
+    ${comparativo}
+  </div>
+</section>
+
+<section class="sx-sec escura" id="confianca">
+  <div class="sx-wrap">
+    <p class="sx-chapeu">${t('Por que confiar', 'Why trust us', 'Por qué confiar')}</p>
+    <h2>${t('Tecnologia testada na vida real.', 'Technology tested in real life.', 'Tecnología probada en la vida real.')}</h2>
+    <p class="sx-sub">${t(
+      'A maior parte dos softwares de gestão é escrita por quem nunca operou o negócio que o software promete organizar. Estes aqui são o contrário: a hospedagem no Lago Sul, o escritório de advocacia, o portfólio de projetos e o funil comercial do próprio grupo rodam nestes sistemas todos os dias. Quando algo não funciona, quem sente primeiro somos nós.',
+      'Most management software is written by people who never ran the business the software promises to organise. These are the opposite: the Lago Sul accommodation, the law practice, the project portfolio and the group’s own sales pipeline run on these systems every day. When something breaks, we are the ones who feel it first.',
+      'La mayoría del software de gestión lo escribe quien nunca operó el negocio que el software promete organizar. Estos son lo contrario: el alojamiento en Lago Sul, el despacho de abogados, el portafolio de proyectos y el embudo comercial del propio grupo funcionan en estos sistemas todos los días. Cuando algo falla, los primeros en sentirlo somos nosotros.')}</p>
+    <ul class="sx-garantias">
+      <li><b>${t('14 dias grátis, sem cartão', '14 days free, no card', '14 días gratis, sin tarjeta')}</b><span>${t('Você usa tudo antes de decidir. Não pedimos cartão para começar o teste.', 'You use everything before deciding. We do not ask for a card to start the trial.', 'Usas todo antes de decidir. No pedimos tarjeta para empezar la prueba.')}</span></li>
+      <li><b>${t('Sem fidelidade', 'No lock-in', 'Sin permanencia')}</b><span>${t('Cancela quando quiser, sem multa, e leva seus dados na exportação.', 'Cancel whenever you like, no penalty, and take your data with you on export.', 'Cancela cuando quieras, sin multa, y llévate tus datos en la exportación.')}</span></li>
+      <li><b>${t('Suporte com quem constrói', 'Support from the people who build it', 'Soporte con quien lo construye')}</b><span>${t('Em português, direto com a equipe que escreve o sistema — sem camada terceirizada.', 'In Portuguese, straight to the team that writes the system — no outsourced layer.', 'En portugués, directo con el equipo que escribe el sistema — sin capa tercerizada.')}</span></li>
+      <li><b>${t('Adequado à LGPD', 'Data-protection compliant', 'Cumple la protección de datos')}</b><span>${t('Base isolada por assinante, permissão por papel, trilha de auditoria e exportação sob demanda.', 'A database isolated per subscriber, role-based permissions, audit trail and export on demand.', 'Base aislada por suscriptor, permisos por rol, rastro de auditoría y exportación bajo demanda.')}</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="sx-sec" id="perguntas">
+  <div class="sx-wrap">
+    <p class="sx-chapeu">${t('Perguntas frequentes', 'Frequently asked questions', 'Preguntas frecuentes')}</p>
+    <h2>${t('O que perguntam antes de assinar', 'What people ask before subscribing', 'Lo que preguntan antes de suscribirse')}</h2>
+    <div class="sx-faq">${faqHtml}</div>
+  </div>
+</section>
+
+<section class="sx-sec alt sx-cta" id="falar">
+  <div class="sx-wrap">
+    <h2 style="margin:0 auto">${t('Não sabe qual serve para você?', 'Not sure which one fits you?', '¿No sabes cuál te sirve?')}</h2>
+    <p class="sx-sub" style="margin:14px auto 0">${t(
+      'Conte em duas linhas o que está travando na sua operação. Respondemos indicando o sistema certo — e dizendo quando nenhum deles é.',
+      'Tell us in two lines what is stuck in your operation. We reply pointing at the right system — and saying when none of them is.',
+      'Cuéntanos en dos líneas qué está trabado en tu operación. Respondemos indicando el sistema correcto — y diciendo cuándo ninguno lo es.')}</p>
+    <form class="form-sistemas" id="form-sistemas">
+      <label>${t('Seu nome*', 'Your name*', 'Tu nombre*')} <input name="nome" required autocomplete="name"></label>
+      <label>${t('WhatsApp ou e-mail*', 'WhatsApp or email*', 'WhatsApp o correo*')} <input name="contato" required></label>
+      <label>${t('Qual sistema te interessa?', 'Which system interests you?', '¿Qué sistema te interesa?')}
+        <select name="sistema">
+          <option value="">${t('Ainda não sei — me ajudem a escolher', 'Not sure yet — help me choose', 'Aún no sé — ayúdenme a elegir')}</option>
+          ${SISTEMAS.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('')}
+        </select></label>
+      <label>${t('O que está travando hoje?', 'What is stuck today?', '¿Qué está trabado hoy?')} <textarea name="mensagem" rows="3"></textarea></label>
+      <button class="sx-btn sx-btn-cheio" type="submit" style="width:100%;--acento:#1B2A4A">${t('Quero uma indicação', 'Send me a recommendation', 'Quiero una recomendación')}</button>
+      <p class="sx-status" hidden role="status"></p>
+    </form>
+    <p style="margin-top:20px">${t('Ou fale agora:', 'Or talk to us now:', 'O habla ahora:')}
+      <a href="${waLink(t('Olá! Vim da página de sistemas do Grupo Villela Stay e quero saber mais.', 'Hi! I came from the Grupo Villela Stay systems page and would like to know more.', '¡Hola! Vengo de la página de sistemas del Grupo Villela Stay y quiero saber más.'))}"><b>WhatsApp (61) 99193-5013</b></a></p>
+  </div>
+</section>
+
+<script>
+(function(){
+  // ---- demonstração: só anima o que está na tela, e nunca contra a
+  // vontade de quem pediu menos movimento no sistema operacional.
+  var mq = document.getElementById('sx-demo-mq');
+  var botao = document.getElementById('sx-play');
+  var passos = [].slice.call(document.querySelectorAll('#sx-passos li'));
+  if (!mq || !botao) return;
+  var CICLO = 7500, marcaPassos = null, quer = true, visivel = false;
+  var menosMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Os rótulos acompanham o mesmo ciclo do CSS. São dois relógios
+  // separados, então eles reiniciam juntos toda vez que a animação
+  // (re)começa — sem isso desencontram depois de algumas voltas.
+  function acenderPasso(i){ passos.forEach(function(p, n){ p.classList.toggle('on', n === i); }); }
+  function comecarPassos(){
+    pararPassos(); acenderPasso(0);
+    var t1 = setTimeout(function(){ acenderPasso(1); }, CICLO * 0.30);
+    var t2 = setTimeout(function(){ acenderPasso(2); }, CICLO * 0.60);
+    var t3 = setInterval(function(){
+      acenderPasso(0);
+      setTimeout(function(){ acenderPasso(1); }, CICLO * 0.30);
+      setTimeout(function(){ acenderPasso(2); }, CICLO * 0.60);
+    }, CICLO);
+    marcaPassos = [t1, t2, t3];
+  }
+  function pararPassos(){
+    if (!marcaPassos) return;
+    clearTimeout(marcaPassos[0]); clearTimeout(marcaPassos[1]); clearInterval(marcaPassos[2]);
+    marcaPassos = null;
+  }
+  function aplicar(){
+    var tocar = quer && visivel && !menosMovimento;
+    mq.classList.toggle('tocando', tocar);
+    if (tocar) { if (!marcaPassos) comecarPassos(); } else { pararPassos(); }
+  }
+  botao.addEventListener('click', function(){
+    quer = !quer;
+    botao.setAttribute('aria-pressed', String(quer));
+    botao.textContent = quer ? ${JSON.stringify('⏸ ' + t('Pausar', 'Pause', 'Pausar'))} : ${JSON.stringify('▶ ' + t('Tocar', 'Play', 'Reproducir'))};
+    aplicar();
+  });
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function(e){ visivel = e[0].isIntersecting; aplicar(); },
+      { threshold: 0.35 }).observe(mq);
+  } else { visivel = true; }
+  if (menosMovimento) { botao.hidden = true; }
+  aplicar();
+
+  // ---- formulário: mesmo endpoint de leads das outras landings, com
+  // origem própria para o CRM saber que este lead veio procurando sistema.
+  var f = document.getElementById('form-sistemas');
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var st = f.querySelector('.sx-status');
+    st.hidden = false; st.textContent = ${JSON.stringify(t('Enviando...', 'Sending...', 'Enviando...'))};
+    fetch('${BACKEND}/api/leads', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: vsLead({ nome: f.nome.value, contato: f.contato.value,
+        mensagem: (f.sistema.value ? '[' + f.sistema.value + '] ' : '') + f.mensagem.value,
+        origem: 'site-sistemas' })
+    }).then(function(r){
+      st.textContent = r.ok ? ${JSON.stringify(t('✅ Recebido! Respondemos com a indicação em breve.', '✅ Received! We will reply with a recommendation shortly.', '✅ ¡Recibido! Responderemos con la recomendación pronto.'))} : ${JSON.stringify(t('Erro — chame no WhatsApp.', 'Error — message us on WhatsApp.', 'Error — escríbenos por WhatsApp.'))};
+      if (r.ok) { f.reset(); if (typeof gtag === 'function') gtag('event', 'lead_sistemas', {}); }
+    }).catch(function(){ st.textContent = ${JSON.stringify(t('Erro — chame no WhatsApp.', 'Error — message us on WhatsApp.', 'Error — escríbenos por WhatsApp.'))}; });
+  });
+
+  // Clique em "testar" é o evento que importa medir nesta página.
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('[data-sx-cta]');
+    if (a && typeof gtag === 'function') gtag('event', 'cta_sistema', { sistema: a.getAttribute('data-sx-cta') });
+  });
+})();
+</script>`,
+    { caminho: '/sistemas.html', extraHead: `<style>${SISTEMAS_CSS}</style>\n${ld}`,
+      ogImage: `${SITE_URL}/assets/brand/grupo-villela/og-image.png` }
+  );
+  fs.writeFileSync(path.join(od, 'sistemas.html'), paginaSistemas);
+}
+
 // ------------------------- artigo: posse 2027 -------------------------
 const cardsPosse = ['GD03H', 'GG04I', 'PL02I', 'GD01H', 'GI01I'].map(id => porId[id]).filter(Boolean).map(l => `
   <a class="card" href="${L(`/hospedagem/${l.id}.html`)}">
@@ -3017,6 +3395,9 @@ const rotas = [
   { loc: '/', changefreq: 'daily', priority: '1.0' },
   { loc: '/eventos.html', changefreq: 'weekly', priority: '0.9' },
   { loc: '/pacotes.html', changefreq: 'weekly', priority: '0.9' },
+  // Catálogo dos SaaS: prioridade alta porque é a porta de entrada de um
+  // público inteiro (quem procura sistema) que não chega pelas outras páginas.
+  { loc: '/sistemas.html', changefreq: 'weekly', priority: '0.9' },
   ...LANDINGS.map(lp => ({ loc: `/${lp.arquivo}`, changefreq: 'weekly', priority: '0.8' })),
   { loc: '/posse-2027.html', changefreq: 'weekly', priority: '0.7' },
   { loc: '/blog.html', changefreq: 'weekly', priority: '0.7' },
@@ -3037,6 +3418,88 @@ const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
-fs.writeFileSync(path.join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 
-console.log(`Site gerado: ${rotas.length} rotas × ${IDIOMAS.length} idiomas + sitemap.xml + robots.txt`);
+// ------------------------- robots.txt -------------------------
+// `User-agent: *` já liberava todo mundo, inclusive os robôs das IAs. As
+// entradas nomeadas não mudam a permissão — mudam o SINAL: alguns desses
+// robôs tratam a menção explícita como consentimento de uso do conteúdo, e
+// deixar a intenção escrita evita que uma mudança de política futura no lado
+// deles nos exclua por omissão. Se um dia o Augusto quiser barrar algum,
+// troque o Allow por Disallow no bloco dele — sem mexer no resto.
+const ROBOS_IA = [
+  'GPTBot',            // OpenAI — treinamento
+  'OAI-SearchBot',     // OpenAI — busca do ChatGPT
+  'ChatGPT-User',      // OpenAI — navegação a pedido do usuário
+  'ClaudeBot',         // Anthropic — treinamento
+  'Claude-User',       // Anthropic — navegação a pedido do usuário
+  'Claude-SearchBot',  // Anthropic — busca
+  'PerplexityBot',     // Perplexity — índice
+  'Perplexity-User',   // Perplexity — navegação a pedido do usuário
+  'Google-Extended',   // Google — Gemini / AI Overviews
+  'Applebot-Extended', // Apple Intelligence
+  'Bingbot',           // Bing — alimenta o Copilot
+  'meta-externalagent',// Meta AI
+  'cohere-ai',
+  'Amazonbot'
+];
+fs.writeFileSync(path.join(DIST, 'robots.txt'),
+  `# Villela Stay — ${SITE_URL}\n` +
+  `# Conteúdo liberado para busca e para assistentes de IA.\n\n` +
+  `User-agent: *\nAllow: /\n\n` +
+  ROBOS_IA.map(r => `User-agent: ${r}\nAllow: /`).join('\n\n') +
+  `\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+
+// ------------------------- llms.txt -------------------------
+// Mapa do site em texto puro para assistentes de IA (proposta llms.txt).
+// Motivo de existir: um modelo que responde "que sistema de gestão brasileiro
+// existe para X?" não vai renderizar HTML nem rodar JavaScript — ele lê. Aqui
+// os fatos ficam em frases curtas, afirmativas e com o número junto, que é o
+// formato que sobrevive à citação. Gerado do MESMO array da página, então
+// nunca desatualiza em relação a ela.
+const linhaSistema = s => {
+  const preco = s.preco.modelo === 'assinatura'
+    ? `a partir de R$ ${s.preco.valor}/mês, 14 dias de teste grátis sem cartão`
+    : s.preco.texto[0];
+  return `- [${s.nome}](${s.url}): ${s.promessa[0]} ${s.virada[0]} Categoria: ${s.categoria[0]}. ` +
+         `Para: ${s.paraQuem.map(q => q[0]).join(', ')}. Preço: ${preco}.`;
+};
+fs.writeFileSync(path.join(DIST, 'llms.txt'), `# Villela Stay / Grupo Villela Stay
+
+> Empresa brasileira (Augusto Villela Ltda, CNPJ 56.776.526/0001-12) sediada em
+> Brasília-DF. Duas frentes: hospedagem por temporada no Lago Sul e uma família de
+> ${SISTEMAS.length} sistemas de gestão em nuvem, em português. ${SISTEMAS.filter(s => s.preco.modelo === 'assinatura').length} deles são
+> vendidos por assinatura mensal; a Villela Academy cobra comissão por venda e a
+> Villela Alta Vista 360° é contratada por projeto. Cada sistema foi construído
+> para a operação própria do grupo antes de ser vendido a terceiros.
+
+## Sistemas de gestão (SaaS)
+
+Catálogo completo, com telas, preços e comparativo: ${SITE_URL}/sistemas.html
+
+${SISTEMAS.map(linhaSistema).join('\n')}
+
+Fatos comuns a todos os sistemas por assinatura: 14 dias de teste sem cartão de
+crédito; sem fidelidade nem multa de cancelamento; base de dados isolada por
+assinante; adequação à LGPD; pagamento pelo Mercado Pago (Pix e cartão); suporte
+em português feito pela própria equipe que desenvolve. Não existe login único
+entre os sistemas — cada um tem conta e cobrança próprias; a integração entre
+eles é feita por API, disponível nos planos superiores.
+
+## Hospedagem por temporada
+
+- [Villela Stay](${SITE_URL}): 20 anúncios em 4 casas no Lago Sul, Brasília-DF —
+  casas inteiras, flats e suítes, com piscina aquecida, para casais e para grupos
+  de até 60 pessoas. Eventos para até 150 pessoas. A 10 minutos do Aeroporto JK e
+  da Esplanada dos Ministérios. Reserva direta com o anfitrião.
+- [Eventos](${SITE_URL}/eventos.html): formaturas, casamentos, festas infantis e
+  eventos corporativos nas casas do Lago Sul.
+- [Perguntas frequentes](${SITE_URL}/faq.html)
+- [Tour virtual 360°](${SITE_URL}/tour.html)
+
+## Contato
+
+WhatsApp +55 61 99193-5013 · villelastay@gmail.com · SMDB Conjunto 29, Lago Sul,
+Brasília-DF, Brasil. Idiomas de atendimento: português, inglês e espanhol.
+`);
+
+console.log(`Site gerado: ${rotas.length} rotas × ${IDIOMAS.length} idiomas + sitemap.xml + robots.txt + llms.txt`);
