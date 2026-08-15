@@ -205,12 +205,66 @@
     });
     r.appendChild(this.btnVoltar);
 
-    // Seletor de cenas (também serve de conteúdo indexável quando o JS falha)
+    // Troca de casa. Sem isto, filtrar a tira de miniaturas por casa deixaria o visitante
+    // preso na casa em que entrou — de dentro do visualizador não haveria como sair dela.
+    var casas = [];
+    for (var ic = 0; ic < this.cenas.length; ic++) {
+      var nc = this.cenas[ic].casa;
+      if (nc && casas.indexOf(nc) === -1) casas.push(nc);
+    }
+    this.casas = casas;
+    if (casas.length > 1) {
+      this.barraCasas = document.createElement('div');
+      this.barraCasas.className = 't360-casas';
+      for (var jc = 0; jc < casas.length; jc++) {
+        (function (nome) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 't360-casa';
+          b.dataset.casa = nome;
+          b.textContent = nome;
+          b.addEventListener('click', function () {
+            self.pararCinema(); self.interagiu();
+            // vai para a capa da casa; se não houver, para a primeira cena dela
+            var alvo = self.hubs[nome];
+            if (!alvo) {
+              for (var k = 0; k < self.cenas.length; k++) if (self.cenas[k].casa === nome) { alvo = self.cenas[k].id; break; }
+            }
+            if (alvo) self.ir(alvo);
+          });
+          self.barraCasas.appendChild(b);
+        })(casas[jc]);
+      }
+      r.appendChild(this.barraCasas);
+    }
+
+    // Tira de miniaturas — preenchida por casa em atualizarMiniaturas(), não de uma vez.
+    // Misturar as 97 cenas numa lista só fazia quem estava na capa de uma casa ver, ao lado,
+    // as miniaturas de outra e cair nela ao clicar.
     if (this.cenas.length > 1) {
       this.miniaturas = document.createElement('div');
       this.miniaturas.className = 't360-cenas';
-      for (var i = 0; i < this.cenas.length; i++) this.miniaturas.appendChild(this.botaoCena(this.cenas[i]));
       r.appendChild(this.miniaturas);
+    }
+  };
+
+  // Redesenha a tira só com as cenas da casa informada (barato: só quando a casa muda).
+  Viewer.prototype.atualizarMiniaturas = function (casa) {
+    if (!this.miniaturas || this.casaNaTira === casa) return;
+    this.casaNaTira = casa;
+    this.miniaturas.innerHTML = '';
+    var n = 0;
+    for (var i = 0; i < this.cenas.length; i++) {
+      if (this.cenas[i].casa === casa) { this.miniaturas.appendChild(this.botaoCena(this.cenas[i])); n++; }
+    }
+    this.miniaturas.hidden = n < 2;
+    if (this.barraCasas) {
+      var bs = this.barraCasas.querySelectorAll('.t360-casa');
+      for (var j = 0; j < bs.length; j++) {
+        var ativo = bs[j].dataset.casa === casa;
+        bs[j].classList.toggle('t360-casa-on', ativo);
+        bs[j].setAttribute('aria-current', ativo ? 'true' : 'false');
+      }
     }
   };
 
@@ -355,6 +409,7 @@
           : '← ' + (this.txt.voltarPara || 'Voltar para') + ' ' + this.porId[this.alvoVoltar].titulo;
       }
     }
+    this.atualizarMiniaturas(cena.casa);
     this.marcarCenaAtiva(id);
     this.desenharHotspots(cena);
     this.carregando.hidden = false;
@@ -411,6 +466,14 @@
       var ativo = bs[i].dataset.cena === id;
       bs[i].classList.toggle('t360-cena-on', ativo);
       bs[i].setAttribute('aria-current', ativo ? 'true' : 'false');
+      // Traz a miniatura da cena atual para o campo de visão: a Casa Modernista tem 41
+      // cenas e a marcação não adianta nada se estiver fora da parte rolada.
+      if (ativo && this.miniaturas.scrollWidth > this.miniaturas.clientWidth) {
+        // scrollLeft direto, não `behavior: 'smooth'`: a rolagem suave depende de um laço de
+        // animação e vira no-op onde ele não roda — aí a tira simplesmente não anda e o
+        // visitante volta a não achar a cena, que é justamente o que isto conserta.
+        this.miniaturas.scrollLeft = Math.max(0, bs[i].offsetLeft - (this.miniaturas.clientWidth - bs[i].offsetWidth) / 2);
+      }
     }
   };
 

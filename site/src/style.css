@@ -812,3 +812,24 @@ a { color: var(--lago); text-decoration: none; }
 }
 @keyframes t360-entra { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .t360-modo-cinema .t360-rotulo { animation: none; } }
+
+/* Troca de casa dentro do visualizador. A tira de miniaturas mostra só a casa atual,
+   então precisa existir um caminho explícito para as outras. */
+.t360-casas {
+  position: absolute; left: 0; right: 0; bottom: 92px; z-index: 3;
+  display: flex; gap: 6px; padding: 0 12px; overflow-x: auto; scrollbar-width: none;
+}
+.t360-casas::-webkit-scrollbar { display: none; }
+.t360-casa {
+  flex: 0 0 auto; font: inherit; font-size: .76rem; font-weight: 600; cursor: pointer;
+  color: #fff; background: rgba(27,42,74,.72); border: 1px solid rgba(255,255,255,.26);
+  padding: 6px 13px; border-radius: 18px; line-height: 1; white-space: nowrap;
+}
+.t360-casa:hover { background: rgba(27,42,74,.95); }
+.t360-casa-on { background: var(--cerrado); border-color: var(--cerrado); color: #1B2A4A; }
+.t360-cenas[hidden] { display: none; }
+.t360-modo-cinema .t360-casas { display: none; }
+@media (max-width: 640px) {
+  .t360-casas { bottom: 84px; padding: 0 8px; }
+  .t360-casa { font-size: .7rem; padding: 5px 10px; }
+}
