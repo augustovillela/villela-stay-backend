@@ -449,6 +449,10 @@ const VERTICAL_DA_SECAO = {
   instalar: 'grupo', usuarios: 'grupo', conta: 'grupo', auditoria: 'grupo', automacoes: 'grupo',
 };
 
+// Seções cujo conteúdo é um quadro largo (kanban): dispensam o teto de 1180px do .conteudo e
+// usam toda a faixa entre o menu e a borda da janela — mais colunas visíveis sem rolar.
+const SECOES_LARGAS = ['crm'];
+
 // --------- rota na URL (#secao): F5 recarrega o painel aberto, não a Visão geral ---------
 // SPA sem rota volta para a home a cada F5. O hash é a rota mais barata aqui: não exige nada do
 // servidor (qualquer #x cai no mesmo index.html), não mexe no menu e sobrevive ao recarregar.
@@ -486,6 +490,7 @@ function navegar(secao) {
   if (cont) {
     cont.classList.add('vx');
     cont.setAttribute('data-vertical', VERTICAL_DA_SECAO[secao] || 'stay');
+    cont.classList.toggle('larga', SECOES_LARGAS.indexOf(secao) !== -1);
   }
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar

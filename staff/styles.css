@@ -83,6 +83,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--lago); bord
 .menu .grupo { font-size: .68rem; text-transform: uppercase; letter-spacing: .8px; color: var(--cerrado); padding: 16px 22px 5px; font-weight: 800; }
 .badge-menu { margin-left: auto; background: var(--cerrado); color: var(--petroleo); font-size: .68rem; font-weight: 800; border-radius: 10px; padding: 1px 7px; }
 .conteudo { flex: 1; padding: 28px 4vw; max-width: 1180px; }
+/* Seções de quadro largo (kanban do CRM): usam toda a faixa disponível, sem o teto de 1180px,
+   para caber mais colunas antes de precisar rolar. navegar() liga/desliga a classe por seção. */
+.conteudo.larga { max-width: none; padding-left: 2vw; padding-right: 2vw; }
 h1.titulo { font-size: 1.5rem; margin: 0 0 4px; color: var(--petroleo); }
 .sub { color: var(--concreto-claro); margin: 0 0 22px; }
 
@@ -180,6 +183,16 @@ tr:last-child td { border-bottom: none; }
 
 /* ---------- CRM / Funil ---------- */
 .kanban { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 14px; align-items: flex-start; }
+/* Barra de rolagem GÊMEA acima das colunas: com muitos cartões a barra de baixo fica longe
+   da tela; esta espelha a rolagem do quadro (o JS sincroniza os dois scrollLeft).
+   Some sozinha quando todas as colunas já cabem na largura disponível. */
+.kanban-topo { overflow-x: auto; overflow-y: hidden; margin-bottom: 8px; scrollbar-width: thin; display: none; }
+.kanban-topo.ativa { display: block; }
+.kanban-topo > div { height: 1px; }
+.kanban-topo::-webkit-scrollbar, .kanban::-webkit-scrollbar { height: 11px; }
+.kanban-topo::-webkit-scrollbar-track, .kanban::-webkit-scrollbar-track { background: var(--areia); border-radius: 6px; }
+.kanban-topo::-webkit-scrollbar-thumb, .kanban::-webkit-scrollbar-thumb { background: #b9c6ca; border-radius: 6px; }
+.kanban-topo::-webkit-scrollbar-thumb:hover, .kanban::-webkit-scrollbar-thumb:hover { background: var(--concreto-claro); }
 .kanban .col { background: var(--areia); border: 1px solid var(--borda); border-radius: 12px; width: 216px; flex-shrink: 0; display: flex; flex-direction: column; }
 .col-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; font-weight: 700; color: var(--petroleo); font-size: .9rem; }
 .col-n { background: var(--lago); color: #fff; border-radius: 12px; padding: 0 8px; font-size: .74rem; }

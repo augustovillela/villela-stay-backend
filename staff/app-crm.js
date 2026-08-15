@@ -13,6 +13,7 @@ const CRM = {
   ],
   origens: ['site', 'whatsapp-business', 'whatsapp-pessoal', 'airbnb', 'booking', 'decolar', 'instagram', 'indicacao', 'manual'],
   cache: [],
+  obsBarraTopo: null,
 };
 const moedaBr = (v) => (v == null || v === '') ? '' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const crmDataCurta = (iso) => { if (!iso) return ''; const [a, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}`; };
@@ -32,6 +33,7 @@ async function renderCRM() {
        <div id="crm-sla"></div>
        <div id="crm-receita"></div>
        <div id="crm-followups"></div>
+       <div id="crm-board-topo" class="kanban-topo" aria-hidden="true"><div></div></div>
        <div id="crm-board" class="kanban"><div class="vazio">Carregando…</div></div>`;
   $('#crm-novo').onclick = () => crmFormContato();
   $('#crm-metricas').onclick = () => renderCRMMetricas();
@@ -157,6 +159,7 @@ function crmRenderBoard(contatos) {
     k.ondragstart = (ev) => { ev.dataTransfer.setData('text/plain', k.dataset.id); k.classList.add('arrastando'); };
     k.ondragend = () => k.classList.remove('arrastando');
   });
+  crmBarraTopo();
   board.querySelectorAll('.col-cards').forEach(col => {
     col.ondragover = (ev) => { ev.preventDefault(); col.classList.add('sobre'); };
     col.ondragleave = () => col.classList.remove('sobre');
@@ -169,6 +172,26 @@ function crmRenderBoard(contatos) {
       catch (e) { alert(e.message); }
     };
   });
+}
+
+// Barra de rolagem gêmea ACIMA das colunas. Com o funil cheio (muitos cartões atrasados) a barra
+// nativa do quadro fica no fim de uma coluna de 2 telas de altura; esta fica ao alcance do
+// cabeçalho. Os dois scrollLeft se espelham; comparar antes de atribuir evita o laço de eventos
+// (atribuir o MESMO valor não dispara scroll, então a sincronia converge em um passo).
+function crmBarraTopo() {
+  const board = $('#crm-board'), topo = $('#crm-board-topo');
+  if (!board || !topo) return;
+  // A largura útil muda ao redimensionar a janela, ao abrir/fechar a gaveta do menu e ao dar zoom:
+  // o observer refaz a conta em qualquer um desses casos (observar o mesmo elemento 2× é inócuo).
+  if (!CRM.obsBarraTopo && typeof ResizeObserver === 'function') CRM.obsBarraTopo = new ResizeObserver(() => crmBarraTopo());
+  if (CRM.obsBarraTopo) CRM.obsBarraTopo.observe(board);
+  const precisa = board.scrollWidth > board.clientWidth + 1;
+  topo.classList.toggle('ativa', precisa);
+  if (!precisa) return;
+  topo.firstElementChild.style.width = board.scrollWidth + 'px';
+  topo.scrollLeft = board.scrollLeft;
+  topo.onscroll = () => { if (board.scrollLeft !== topo.scrollLeft) board.scrollLeft = topo.scrollLeft; };
+  board.onscroll = () => { if (topo.scrollLeft !== board.scrollLeft) topo.scrollLeft = board.scrollLeft; };
 }
 
 async function crmAbrirContato(id) {
