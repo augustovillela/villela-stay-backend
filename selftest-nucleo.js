@@ -331,6 +331,28 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal((await req('GET', '/staff/api/crm/contatos/' + cid, { cookie: adminCookie })).status, 404);
   });
 
+  await t('crm-legado: inbox substitui o Data Store — mensagem entra, é atendida, e volta se o lead reescreve', async () => {
+    const tel = '61955554444';
+    const c1 = await req('POST', '/staff/api/crm/contatos', { json: { nome: 'Lead Inbox', telefone: tel, origem: 'whatsapp-business', mensagem: 'Tem vaga em setembro?' }, cookie: adminCookie });
+    assert.equal(c1.json.novo, true); const cid = c1.json.contato.id;
+    const naFila = () => req('GET', '/staff/api/crm/inbox?horas=24', { cookie: adminCookie })
+      .then(r => r.json.mensagens.filter(m => m.contatoId === cid));
+    let f = await naFila();
+    assert.equal(f.length, 1, 'mensagem de contato novo entra na caixa');
+    assert.equal(f[0].texto, 'Tem vaga em setembro?'); assert.equal(f[0].atendida, false);
+
+    assert.equal((await req('POST', `/staff/api/crm/inbox/${cid}/atendida`, { json: { resposta: 'Temos sim!' }, cookie: adminCookie })).status, 200);
+    assert.equal((await naFila()).length, 0, 'atendida sai da fila');
+    const todas = await req('GET', '/staff/api/crm/inbox?horas=24&todas=1', { cookie: adminCookie });
+    assert.ok(todas.json.mensagens.some(m => m.contatoId === cid && m.atendida === true), 'histórico continua visível com todas=1');
+
+    // O ponto que o Data Store cobria e o CRM não: contato JÁ conhecido que escreve de novo.
+    await req('POST', '/staff/api/crm/contatos', { json: { nome: 'Lead Inbox', telefone: tel, origem: 'whatsapp-business', mensagem: 'Fechou, pode reservar' }, cookie: adminCookie });
+    f = await naFila();
+    assert.equal(f.length, 1, 'lead que volta a escrever REAPARECE na fila');
+    assert.equal(f[0].texto, 'Fechou, pode reservar');
+  });
+
   // ---------- Bloco de Notas (anotações livres — restrito à área CEO) ----------
   await t('notas: RBAC — anônimo 401, membro sem CEO 403, admin 200, PUBLISH_KEY 200', async () => {
     assert.equal((await req('GET', '/staff/api/notas')).status, 401);

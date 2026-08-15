@@ -79,6 +79,54 @@ module.exports.montar = function montar(app, deps) {
     res.json({ followups: lista });
   });
 
+  // Caixa de entrada do WhatsApp business — substitui o Data Store 133469 do Make.
+  // Motivo: gravar cada mensagem no Data Store custava 1 operação do Make por mensagem, e o
+  // texto já vinha para cá pelo mesmo cenário (atividade 'mensagem-recebida'). Era cópia paga.
+  // "Não atendida" é POR MENSAGEM (como era o status="novo" de cada registro do Data Store):
+  // a mensagem que chegou depois do último atendimento do contato (`inboxAtendidoAte`). Marcar
+  // no contato inteiro faria a mensagem velha já respondida ressurgir junto com a nova.
+  app.get('/staff/api/crm/inbox', requirePublishOrSession, podeCRM, (req, res) => {
+    const horas = Math.min(Math.max(parseInt(req.query.horas, 10) || 72, 1), 24 * 365);
+    const todas = req.query.todas === '1';
+    const corte = new Date(Date.now() - horas * 3600 * 1000).toISOString();
+    const f = path.join(DATA_DIR, 'atividades.jsonl');
+    if (!fs.existsSync(f)) return res.json({ mensagens: [], total: 0 });
+    const porId = new Map(lerContatos().map(c => [c.id, c]));
+    const mensagens = fs.readFileSync(f, 'utf8').split('\n').filter(Boolean)
+      .map(l => { try { return JSON.parse(l); } catch { return null; } })
+      .filter(a => a && a.tipo === 'mensagem-recebida' && String(a.data) >= corte)
+      .map(a => {
+        const c = porId.get(a.contatoId);
+        if (!c) return null;
+        return {
+          contatoId: c.id, nome: c.nome, telefone: c.telefone, estagio: c.estagio,
+          texto: a.texto, canal: a.canal, em: a.data,
+          atendida: String(a.data) <= String(c.inboxAtendidoAte || ''),
+        };
+      })
+      .filter(m => m && (todas || !m.atendida))
+      .sort((a, b) => String(a.em).localeCompare(String(b.em))); // mais antiga primeiro: responder na ordem de chegada
+    res.json({ mensagens, total: mensagens.length });
+  });
+
+  // Marcar as mensagens de um contato como atendidas (equivale ao status "respondido" do Data Store).
+  // Opcional: `resposta` grava o que foi respondido na linha do tempo; `proximaAcao` reagenda.
+  app.post('/staff/api/crm/inbox/:id/atendida', requirePublishOrSession, podeCRM, (req, res) => {
+    const contatos = lerContatos();
+    const c = contatos.find(x => x.id === req.params.id);
+    if (!c) return res.status(404).json({ erro: 'Contato não encontrado.' });
+    const d = req.body || {};
+    if (d.resposta) addAtividade(c.id, 'mensagem-enviada', d.resposta, d.canal || 'whatsapp-business', req.viaChave ? 'sistema' : req.user.nome);
+    const agora = new Date().toISOString();
+    c.inboxAtendidoAte = agora; // corta tudo que chegou até aqui; o que vier depois volta à fila
+    c.proximaAcao = (d.proximaAcao && d.proximaAcao.data)
+      ? { descricao: String(d.proximaAcao.descricao || ''), data: String(d.proximaAcao.data) }
+      : { descricao: '', data: '' };
+    c.atualizadoEm = agora;
+    salvarContatos(contatos);
+    res.json({ ok: true, contato: c });
+  });
+
   // Criar contato (dedupe por telefone/e-mail)
   app.post('/staff/api/crm/contatos', requirePublishOrSession, podeCRM, (req, res) => {
     const d = req.body || {};

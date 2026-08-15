@@ -476,6 +476,13 @@ function upsertContato(dados) {
     if (!c.staysClientId && dados.staysClientId) c.staysClientId = dados.staysClientId;
     if (!c.imovelInteresse && dados.imovelInteresse) c.imovelInteresse = dados.imovelInteresse;
     if (!c.canal && dados.canal) c.canal = dados.canal; // origem real (Google, Instagram...) p/ o funil de visitas
+    // Mensagem nova de contato JÁ conhecido também entra na fila de não atendidas. O Data Store do
+    // Make marcava toda mensagem como "novo"; aqui a fila é a proximaAcao — sem isto, o lead que
+    // volta a escrever some da caixa de entrada. Não atropela ação já vencida (essa é mais urgente).
+    if (dados.mensagem && c.estagio !== 'perdido') {
+      const pendente = c.proximaAcao && c.proximaAcao.data;
+      if (!pendente || pendente > hojeISO()) c.proximaAcao = { descricao: 'Responder mensagem recebida', data: hojeISO() };
+    }
     c.atualizadoEm = agora;
     salvarContatos(contatos);
     if (dados.mensagem) addAtividade(c.id, 'mensagem-recebida', dados.mensagem, dados.origem || '', 'sistema');
