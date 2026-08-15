@@ -346,12 +346,12 @@ async function abrirContaHospede(hospedeId) {
 // --------- Minha conta ---------
 function renderConta() {
   conteudo().innerHTML = cabecalho('Minha conta', ESTADO.me.nome + ' · ' + ESTADO.me.email) + `
-  <div class="ficha-bloco" style="max-width:520px;margin-bottom:16px">
+  <div class="ficha-bloco" style="max-width:1100px;margin-bottom:16px">
     <h3>🔔 Notificações no celular</h3>
     <p class="sub" style="margin:0 0 10px">Receba avisos fixados do mural e alertas da equipe direto no aparelho (instale o portal como app antes).</p>
     <div id="push-area"><button class="btn secund peq" id="push-btn">Ativar notificações</button></div>
   </div>
-  <form class="form" id="form-conta">
+  <form class="form form-painel" id="form-conta">
     <label>Senha atual <input id="c-atual" type="password" required autocomplete="current-password"></label>
     <label>Nova senha (mín. 8) <input id="c-nova" type="password" required minlength="8" autocomplete="new-password"></label>
     <label>Confirme <input id="c-conf" type="password" required minlength="8" autocomplete="new-password"></label>

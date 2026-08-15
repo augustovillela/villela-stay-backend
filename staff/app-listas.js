@@ -399,7 +399,7 @@ async function renderAgenda() {
   const c = conteudo();
   c.innerHTML = cabecalho('Agenda — eventos', 'Crie ou peça exclusão de eventos no Google Calendar. A rotina do Claude efetiva no próximo ciclo e marca como feito.');
   c.innerHTML += `
-    <form id="form-ev" class="form" style="max-width:580px">
+    <form id="form-ev" class="form form-painel">
       <label>Ação
         <select id="ev-acao"><option value="criar">➕ Criar evento</option><option value="excluir">🗑️ Excluir evento</option></select>
       </label>

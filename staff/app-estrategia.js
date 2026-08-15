@@ -268,7 +268,7 @@ async function abrirRelatorio(id, fmt) {
 function renderPublicar() {
   const opcoes = ESTADO.areas.map(a => `<option value="${a}">${esc(nomeArea(a))}</option>`).join('');
   conteudo().innerHTML = cabecalho('Publicar entrega', 'Adicione um relatório, produto ou serviço ao portal.') + `
-  <form class="form" id="form-pub">
+  <form class="form form-painel" id="form-pub">
     <label>Área / agente <select id="p-area" required>${opcoes}</select></label>
     <label>Tipo <select id="p-tipo"><option value="relatorio">Relatório</option><option value="produto">Produto</option><option value="servico">Serviço</option></select></label>
     <label>Título <input id="p-titulo" required maxlength="160"></label>

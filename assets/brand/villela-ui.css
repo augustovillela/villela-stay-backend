@@ -627,3 +627,31 @@ a.vx-kpi:hover, button.vx-kpi:hover { box-shadow: var(--vx-shadow-2); transform:
   .vx-card, .vx-tabela-wrap { box-shadow: none !important; border-color: #999 !important; }
   .vx { color: #000; background: #fff; }
 }
+
+/* --------------------------------------------------------------------------
+   Formulário que É a tela (não há lista nem tabela ao lado dele). Nesses casos
+   a coluna larga não adianta nada: o form fica 520px no meio de 1657px e a
+   tela parece que não mudou. Aqui ele usa a largura em COLUNAS — cada campo
+   segue numa medida confortável de ler e preencher; o que muda é caberem dois
+   ou três por linha. Campo esticado a 1600px seria pior, não melhor.
+   -------------------------------------------------------------------------- */
+.vx .form-painel {
+  max-width: 1100px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+}
+/* botão, aviso, título e texto solto ocupam a linha inteira */
+.vx .form-painel > button,
+.vx .form-painel > .erro,
+.vx .form-painel > .sub,
+.vx .form-painel > .aviso,
+.vx .form-painel > h2,
+.vx .form-painel > h3,
+.vx .form-painel > p { grid-column: 1 / -1; }
+/* campo de texto longo também: quebrar em coluna estreita atrapalha escrever */
+.vx .form-painel > label:has(textarea) { grid-column: 1 / -1; }
+/* `.barra` e `.hi-grid` já SÃO uma linha de campos relacionados (data+hora+duração):
+   espremer isso numa coluna faria o grupo quebrar em duas linhas. Ocupa a faixa toda. */
+.vx .form-painel > .barra,
+.vx .form-painel > .hi-grid { grid-column: 1 / -1; }
+@media (max-width: 620px) { .vx .form-painel { grid-template-columns: 1fr; } }
