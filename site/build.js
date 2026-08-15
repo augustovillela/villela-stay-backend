@@ -28,7 +28,7 @@ const BLOG_I18N = require('./content/blog-i18n'); // traduções EN/ES por slug 
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
 // `conferirCobertura` é a trava que impede um produto novo da home de ficar de
 // fora desta página (ver o cabeçalho de content/sistemas.js).
-const { SISTEMAS, conferirCobertura } = require('./content/sistemas');
+const { SISTEMAS, EM_DESENVOLVIMENTO, conferirCobertura } = require('./content/sistemas');
 const { TELAS } = require('./content/sistemas-telas');
 const SISTEMAS_CSS = require('./content/sistemas-css');
 let LANDINGS;                            // preenchido no corpo; escopo de módulo p/ o sitemap usar após o loop
@@ -2402,6 +2402,10 @@ conferirCobertura(PRODUTOS_GRUPO);
      t('A própria equipe que desenvolve, em português, sem camada de atendimento terceirizado. É uma operação pequena — e essa é justamente a razão de você falar com quem entende o sistema.',
        'The team that builds it, in Portuguese, with no outsourced support layer. It is a small operation — and that is precisely why you talk to someone who understands the system.',
        'El propio equipo que desarrolla, en portugués, sin capa de atención tercerizada. Es una operación pequeña — y por eso mismo hablas con quien entiende el sistema.')],
+    [t('O que mais o grupo está construindo?', 'What else is the group building?', '¿Qué más está construyendo el grupo?'),
+     t(`Três plataformas já funcionam em produção e ainda não foram lançadas comercialmente: ${EM_DESENVOLVIMENTO.map(d => `${d.nome} (${d.categoria[0].toLowerCase()})`).join(', ')}. Cada uma tem na página o que ainda falta para o lançamento — em geral revisão jurídica, acervo ou credencial de pagamento, não código.`,
+       `Three platforms already run in production and have not yet launched commercially: ${EM_DESENVOLVIMENTO.map(d => `${d.nome} (${String(d.categoria[1]).toLowerCase()})`).join(', ')}. Each one lists on this page what is still missing before launch — usually legal review, inventory or payment credentials, not code.`,
+       `Tres plataformas ya funcionan en producción y aún no se han lanzado comercialmente: ${EM_DESENVOLVIMENTO.map(d => `${d.nome} (${String(d.categoria[2]).toLowerCase()})`).join(', ')}. Cada una indica en esta página lo que aún falta para el lanzamiento — en general revisión jurídica, acervo o credencial de pago, no código.`)],
     [t('As telas mostradas nesta página são reais?', 'Are the screens shown on this page real?', '¿Las pantallas mostradas en esta página son reales?'),
      t('São reproduções fiéis das telas dos sistemas, desenhadas com a mesma interface e os mesmos módulos — com dados inventados. Painel de verdade contém nome de cliente e de hóspede, e isso não se publica. Para ver o sistema real, use os 14 dias de teste.',
        'They are faithful reproductions of the systems’ screens, built with the same interface and the same modules — with invented data. A real panel contains client and guest names, and that is not something you publish. To see the real system, use the 14-day trial.',
@@ -2451,9 +2455,9 @@ conferirCobertura(PRODUTOS_GRUPO);
     t('Sistemas de gestão do Grupo Villela Stay — CRM, jurídico, documentos, hospedagem, projetos',
       'Grupo Villela Stay management software — CRM, legal, documents, hospitality, projects',
       'Sistemas de gestión del Grupo Villela Stay — CRM, jurídico, documentos, alojamiento, proyectos'),
-    t('Sete sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online e conteúdo visual 360°. A partir de R$ 79 por mês, 14 dias grátis sem cartão.',
-      'Seven Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses and 360° visual content. From R$79 a month, 14 days free, no card required.',
-      'Siete sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online y contenido visual 360°. Desde R$ 79 al mes, 14 días gratis sin tarjeta.'),
+    t(`${SISTEMAS.length} sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online e conteúdo visual 360°. A partir de R$ 79 por mês, 14 dias grátis sem cartão.`,
+      `${SISTEMAS.length} Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses and 360° visual content. From R$79 a month, 14 days free, no card required.`,
+      `${SISTEMAS.length} sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online y contenido visual 360°. Desde R$ 79 al mes, 14 días gratis sin tarjeta.`),
     `
 <section class="sx-hero">
   <div class="sx-wrap">
@@ -2462,15 +2466,16 @@ conferirCobertura(PRODUTOS_GRUPO);
              'Management software that already runs <em>a real business</em>.',
              'Sistemas de gestión que ya operan <em>un negocio de verdad</em>.')}</h1>
     <p class="sx-lead">${t(
-      'Sete sistemas em nuvem para CRM, jurídico, documentos, hospedagem, projetos, cursos e conteúdo visual. Nenhum deles foi feito para vender: cada um nasceu para resolver um problema da nossa própria operação — e só depois virou produto.',
-      'Seven cloud systems for CRM, legal, documents, hospitality, projects, courses and visual content. None of them was built to be sold: each one was born to solve a problem in our own operation — and only then became a product.',
-      'Siete sistemas en la nube para CRM, jurídico, documentos, alojamiento, proyectos, cursos y contenido visual. Ninguno fue hecho para vender: cada uno nació para resolver un problema de nuestra propia operación — y solo después se volvió producto.')}</p>
+      `${SISTEMAS.length} sistemas em nuvem para CRM, jurídico, documentos, hospedagem, projetos, cursos e conteúdo visual — mais ${EM_DESENVOLVIMENTO.length} já no ar, terminando de nascer. Nenhum deles foi feito para vender: cada um resolveu primeiro um problema da nossa própria operação, e só depois virou produto.`,
+      `${SISTEMAS.length} cloud systems for CRM, legal, documents, hospitality, projects, courses and visual content — plus ${EM_DESENVOLVIMENTO.length} already live, still being born. None of them was built to be sold: each one first solved a problem in our own operation, and only then became a product.`,
+      `${SISTEMAS.length} sistemas en la nube para CRM, jurídico, documentos, alojamiento, proyectos, cursos y contenido visual — más ${EM_DESENVOLVIMENTO.length} ya en el aire, terminando de nacer. Ninguno fue hecho para vender: cada uno resolvió primero un problema de nuestra propia operación, y solo después se volvió producto.`)}</p>
     <div class="sx-hero-ctas">
       <a class="sx-btn sx-btn-ouro" href="#catalogo">${t('Ver os sistemas', 'See the systems', 'Ver los sistemas')}</a>
       <a class="sx-btn sx-btn-fantasma" href="#demonstracao">${t('Ver funcionando', 'See it working', 'Verlo funcionando')}</a>
     </div>
     <div class="sx-numeros">
-      <div><b>${SISTEMAS.length}</b><span>${t('sistemas em produção', 'systems in production', 'sistemas en producción')}</span></div>
+      <div><b>${SISTEMAS.length}</b><span>${t('sistemas à venda', 'systems for sale', 'sistemas a la venta')}</span></div>
+      <div><b>${EM_DESENVOLVIMENTO.length}</b><span>${t('no ar, em desenvolvimento', 'live, in development', 'en el aire, en desarrollo')}</span></div>
       <div><b>14</b><span>${t('dias grátis, sem cartão', 'days free, no card', 'días gratis, sin tarjeta')}</span></div>
       <div><b>${real(Math.min(...SISTEMAS.filter(s => s.preco.modelo === 'assinatura').map(s => s.preco.valor)))}</b><span>${t('por mês, plano de entrada', 'per month, entry plan', 'al mes, plan de entrada')}</span></div>
       <div><b>100%</b><span>${t('brasileiros, em português', 'Brazilian, in Portuguese', 'brasileños, en portugués')}</span></div>
@@ -2520,6 +2525,34 @@ ${blocos}
     <p class="sx-chapeu">${t('Lado a lado', 'Side by side', 'Lado a lado')}</p>
     <h2>${t('Os sete, em uma tabela', 'All seven, in one table', 'Los siete, en una tabla')}</h2>
     ${comparativo}
+  </div>
+</section>
+
+<section class="sx-sec" id="em-desenvolvimento">
+  <div class="sx-wrap">
+    <p class="sx-chapeu">${t('Em desenvolvimento', 'In development', 'En desarrollo')}</p>
+    <h2>${t('Três que já estão no ar — e ainda não estão à venda',
+            'Three already live — and not yet for sale',
+            'Tres que ya están en el aire — y aún no están a la venta')}</h2>
+    <p class="sx-sub">${t(
+      'Estes funcionam em produção hoje, com teste automatizado como os outros. O que falta neles não é código: é advogado, acervo e credencial de pagamento. Preferimos mostrar assim, com a pendência escrita, a fingir que não existem — quem procura um fornecedor de software merece saber o que está pronto e o que ainda não está.',
+      'These run in production today, with automated tests like the others. What they are missing is not code: it is legal review, inventory and payment credentials. We would rather show them like this, with the pending item written down, than pretend they do not exist — anyone looking for a software supplier deserves to know what is ready and what is not.',
+      'Estos funcionan en producción hoy, con pruebas automatizadas como los demás. Lo que les falta no es código: es abogado, acervo y credencial de pago. Preferimos mostrarlos así, con el pendiente escrito, a fingir que no existen — quien busca un proveedor de software merece saber qué está listo y qué no.')}</p>
+    <div class="sx-dev">
+      ${EM_DESENVOLVIMENTO.map(d => `
+      <article class="sx-dev-card" style="--acento:${d.cor}">
+        <div class="sx-dev-topo">
+          <img src="/assets/brand/${d.pasta}/${d.simbolo || 'simbolo-v.svg'}" alt="" width="34" height="34" loading="lazy" decoding="async">
+          <div><span class="sx-dev-cat">${esc(t(...d.categoria))}</span>
+            <h3>${esc(d.nome)}</h3></div>
+        </div>
+        <span class="sx-dev-estado">${esc(t(...d.estado))}</span>
+        <p class="sx-dev-promessa">${esc(t(...d.promessa))}</p>
+        <p class="sx-dev-oque">${t(...d.oQueE)}</p>
+        <p class="sx-dev-falta"><b>${t('Falta para lançar:', 'Still needed to launch:', 'Falta para lanzar:')}</b> ${esc(t(...d.falta))}</p>
+        <a class="sx-dev-link" href="${d.url}" target="_blank" rel="noopener" data-sx-cta="dev-${d.id}">${t('Ver como está', 'See how it looks', 'Ver cómo está')} →</a>
+      </article>`).join('')}
+    </div>
   </div>
 </section>
 
@@ -3477,6 +3510,12 @@ fs.writeFileSync(path.join(DIST, 'llms.txt'), `# Villela Stay / Grupo Villela St
 Catálogo completo, com telas, preços e comparativo: ${SITE_URL}/sistemas.html
 
 ${SISTEMAS.map(linhaSistema).join('\n')}
+
+### Em desenvolvimento (no ar em produção, ainda não lançados comercialmente)
+
+${EM_DESENVOLVIMENTO.map(d =>
+  `- [${d.nome}](${d.url}): ${d.promessa[0]} ${d.oQueE[0].replace(/<\/?b>/g, '')} ` +
+  `Categoria: ${d.categoria[0]}. Estado: ${d.estado[0]}. Falta para lançar: ${d.falta[0]}`).join('\n')}
 
 Fatos comuns a todos os sistemas por assinatura: 14 dias de teste sem cartão de
 crédito; sem fidelidade nem multa de cancelamento; base de dados isolada por

@@ -132,6 +132,27 @@ module.exports = `
 .sx-preco b { font-family:'Lora',Georgia,serif; font-size:1.7rem; }
 .sx-preco span { display:block; font-size:.84rem; color:var(--concreto-claro); }
 
+/* ---- em desenvolvimento: cartão, e deliberadamente MENOS peso visual que o
+   bloco de um sistema à venda. Se um "em breve" competisse de igual para igual
+   com o que se pode assinar hoje, a página trabalharia contra si mesma. ---- */
+.sx-dev { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; margin-top:32px; }
+.sx-dev-card { background:#fff; border:1px solid #E2E6EC; border-top:4px solid var(--acento);
+  border-radius:14px; padding:24px; display:flex; flex-direction:column; }
+.sx-dev-topo { display:flex; align-items:center; gap:12px; }
+.sx-dev-topo img { width:34px; height:34px; flex-shrink:0; }
+.sx-dev-topo h3 { font-family:'Lora',Georgia,serif; font-size:1.16rem; line-height:1.15; }
+.sx-dev-cat { font-size:.72rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--acento); }
+.sx-dev-estado { align-self:flex-start; margin-top:14px; background:rgba(201,162,39,.14);
+  border:1px solid rgba(201,162,39,.45); color:#7A5F10; border-radius:999px;
+  padding:4px 13px; font-size:.79rem; font-weight:700; }
+.sx-dev-promessa { font-family:'Lora',Georgia,serif; font-size:1.1rem; margin-top:14px; }
+.sx-dev-oque { margin-top:10px; font-size:.93rem; color:var(--concreto-claro); flex:1; }
+.sx-dev-falta { margin-top:14px; padding-top:14px; border-top:1px dashed #D9DFE7;
+  font-size:.88rem; color:var(--concreto-claro); }
+.sx-dev-falta b { color:var(--concreto); }
+.sx-dev-link { margin-top:16px; font-weight:700; color:var(--acento); align-self:flex-start; }
+.sx-dev-link:hover { text-decoration:underline; }
+
 /* ---- tabela comparativa ---- */
 .sx-tabela-rolo { overflow-x:auto; margin-top:30px; -webkit-overflow-scrolling:touch; }
 .sx-comp { width:100%; min-width:720px; border-collapse:collapse; background:#fff;

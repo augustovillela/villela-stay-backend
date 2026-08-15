@@ -591,18 +591,74 @@ const SISTEMAS = [
 ];
 
 // ---------------------------------------------------------------------
+// EM DESENVOLVIMENTO — no ar e funcionando, mas antes do lançamento
+// comercial. Entram na página numa seção própria, em cartão, sem preço e
+// sem "teste 14 dias": não se vende o que ainda não está à venda.
+//
+// "Em desenvolvimento" aqui é ESTÁGIO COMERCIAL, não técnico — os três
+// respondem 200 em produção e têm suíte de testes. O que falta em cada um
+// está escrito no cartão, de propósito: numa página que argumenta com
+// prova, dizer o que ainda não está pronto vale mais que esconder.
+// Ao lançar um deles, mover para SISTEMAS (com maquete de tela e preço).
+// ---------------------------------------------------------------------
+const EM_DESENVOLVIMENTO = [
+  {
+    id: 'kids', nome: 'Villela Kids · Invente', pasta: 'villela-kids', simbolo: 'simbolo.svg',
+    cor: '#6C4DFF', url: 'https://kids.villelastay.com.br/kids',
+    estado: T('Beta fechado por convite', 'Invite-only closed beta', 'Beta cerrada por invitación'),
+    categoria: T('Aprendizagem criativa para crianças', 'Creative learning for children', 'Aprendizaje creativo para niños'),
+    promessa: T('Aprenda criando.', 'Learn by creating.', 'Aprende creando.'),
+    oQueE: T(
+      'Plataforma para crianças de 7 a 12 anos: missões criativas que viram projetos de verdade, tutor de IA com segurança em primeiro lugar, Arenas de Matemática, Português e Inglês que se adaptam ao nível da criança, e painel para os pais acompanharem. A conta é sempre do responsável.',
+      'A platform for children aged 7 to 12: creative missions that turn into real projects, an AI tutor with safety first, Maths, Portuguese and English Arenas that adapt to the child’s level, and a dashboard for parents. The account always belongs to the guardian.',
+      'Plataforma para niños de 7 a 12 años: misiones creativas que se vuelven proyectos reales, tutor de IA con la seguridad ante todo, Arenas de Matemáticas, Portugués e Inglés que se adaptan al nivel del niño, y panel para los padres. La cuenta es siempre del responsable.'),
+    falta: T(
+      'Parecer do advogado sobre o consentimento dos pais (LGPD, art. 14) e o registro da marca antes de abrir ao público.',
+      'A lawyer’s opinion on parental consent (Brazilian data-protection law, art. 14) and trademark registration before opening to the public.',
+      'Dictamen del abogado sobre el consentimiento de los padres (ley brasileña de protección de datos, art. 14) y el registro de marca antes de abrir al público.')
+  },
+  {
+    id: 'closet', nome: 'Closet Club', pasta: 'closet-club', simbolo: 'simbolo.svg',
+    cor: '#C6A96B', url: 'https://closet.villelastay.com.br/closet',
+    estado: T('No ar, montando o acervo', 'Live, building the collection', 'En el aire, formando el acervo'),
+    categoria: T('Marketplace de aluguel de roupas', 'Clothing rental marketplace', 'Marketplace de alquiler de ropa'),
+    promessa: T('Seu guarda-roupa rende. O dela também.', 'Your wardrobe earns. So does hers.', 'Tu armario rinde. El de ella también.'),
+    oQueE: T(
+      'Aluguel de roupas e acessórios entre pessoas. O diferencial não é listar peça: é alugar o <b>look inteiro</b> — vestido, bolsa, sapato e joia numa reserva só, mesmo vindo de proprietárias diferentes — com pagamento retido até a entrega, QR Code de posse e mediação de disputa.',
+      'Peer-to-peer clothing and accessory rental. The differentiator is not listing items: it is renting the <b>whole look</b> — dress, bag, shoes and jewellery in a single booking, even from different owners — with payment held until delivery, a possession QR code and dispute mediation.',
+      'Alquiler de ropa y accesorios entre personas. El diferencial no es listar prendas: es alquilar el <b>look entero</b> — vestido, bolso, zapato y joya en una sola reserva, incluso de propietarias distintas — con pago retenido hasta la entrega, código QR de posesión y mediación de disputas.'),
+    falta: T(
+      'Revisão jurídica dos termos e cerca de 50 peças no acervo, para a vitrine abrir com escolha de verdade.',
+      'Legal review of the terms and around 50 items in the collection, so the storefront opens with a real choice.',
+      'Revisión jurídica de los términos y unas 50 prendas en el acervo, para que el escaparate abra con opciones reales.')
+  },
+  {
+    id: 'vitrine', nome: 'Vitrine', pasta: 'vitrine', simbolo: 'simbolo.svg',
+    cor: '#0C5A52', url: 'https://vitrine.villelastay.com.br/vitrine',
+    estado: T('No ar, antes do lançamento', 'Live, before launch', 'En el aire, antes del lanzamiento'),
+    categoria: T('Marketplace de compra e venda', 'Buy-and-sell marketplace', 'Marketplace de compra y venta'),
+    promessa: T('Compre bem. Venda melhor.', 'Buy well. Sell better.', 'Compra bien. Vende mejor.'),
+    oQueE: T(
+      'Marketplace de produtos novos, seminovos e usados: o pagamento fica protegido até a entrega, o envio é rastreado e o vendedor carrega reputação de verdade, construída nas vendas anteriores. Comissão de 5%.',
+      'A marketplace for new, nearly-new and pre-owned goods: payment is protected until delivery, shipping is tracked and the seller carries a real reputation built on past sales. 5% commission.',
+      'Marketplace de productos nuevos, seminuevos y usados: el pago queda protegido hasta la entrega, el envío se rastrea y el vendedor lleva una reputación real construida en ventas anteriores. Comisión del 5%.'),
+    falta: T(
+      'Credenciais de pagamento em produção, revisão jurídica dos termos e a definição do nome definitivo.',
+      'Production payment credentials, legal review of the terms and the final name.',
+      'Credenciales de pago en producción, revisión jurídica de los términos y la definición del nombre definitivo.')
+  }
+];
+
+// ---------------------------------------------------------------------
 // Produtos da home que NÃO entram nesta landing — com o motivo escrito.
-// A trava de cobertura exige que todo produto da home esteja aqui ou em
-// SISTEMAS. Assim, esquecer de classificar um produto novo quebra o build
-// em vez de virar buraco silencioso na página.
+// A trava de cobertura exige que todo produto da home esteja aqui, em
+// SISTEMAS ou em EM_DESENVOLVIMENTO. Assim, esquecer de classificar um
+// produto novo quebra o build em vez de virar buraco silencioso na página.
 // Chave = `pasta` do PRODUTOS_GRUPO (build.js).
 // ---------------------------------------------------------------------
 const NAO_SAAS = {
   'villela-stay': 'A hospedagem é o assunto do resto do site — esta página vende software.',
-  'livraria-villela': 'Livraria é e-commerce de livro, não assinatura de sistema.',
-  'closet-club': 'Marketplace de aluguel de roupa: tem locatária e proprietária, não assinante.',
-  'vitrine': 'Marketplace de compra e venda: tem comprador e vendedor, não assinante.',
-  'villela-kids': 'Plataforma para famílias, em beta fechado — e o público não é comprador de software de gestão.'
+  'livraria-villela': 'Livraria é e-commerce de livro, não assinatura de sistema.'
 };
 
 // ---------------------------------------------------------------------
@@ -611,7 +667,7 @@ const NAO_SAAS = {
 // Falha ruidosa e instrutiva: quem criar o 14º produto lê o que fazer.
 // ---------------------------------------------------------------------
 function conferirCobertura(produtosDaHome) {
-  const cobertos = new Set(SISTEMAS.map(s => s.pasta));
+  const cobertos = new Set(SISTEMAS.map(s => s.pasta).concat(EM_DESENVOLVIMENTO.map(s => s.pasta)));
   const orfaos = produtosDaHome
     .map(p => p.pasta)
     .filter(pasta => !cobertos.has(pasta) && !(pasta in NAO_SAAS));
@@ -619,15 +675,24 @@ function conferirCobertura(produtosDaHome) {
   if (orfaos.length) {
     throw new Error(
       `[sistemas] Produto na home sem classificação: ${orfaos.join(', ')}.\n` +
-      `  Todo produto de PRODUTOS_GRUPO precisa aparecer em UM dos dois lugares de\n` +
+      `  Todo produto de PRODUTOS_GRUPO precisa aparecer em UM dos três lugares de\n` +
       `  content/sistemas.js:\n` +
-      `    · SISTEMAS  — se for SaaS que se vende por assinatura (bloco completo na\n` +
-      `                  landing /sistemas.html: promessa, dor, 6 recursos, prova,\n` +
-      `                  preço, maquete de tela e FAQ nos 3 idiomas);\n` +
-      `    · NAO_SAAS  — se não for, com o motivo escrito.\n` +
+      `    · SISTEMAS          — SaaS já à venda (bloco completo na landing: promessa,\n` +
+      `                          dor, 6 recursos, prova, preço, maquete de tela e FAQ\n` +
+      `                          nos 3 idiomas);\n` +
+      `    · EM_DESENVOLVIMENTO — no ar, mas antes do lançamento comercial (cartão, sem\n` +
+      `                          preço, com o que ainda falta escrito);\n` +
+      `    · NAO_SAAS          — não é software vendido, com o motivo escrito.\n` +
       `  Entrando em SISTEMAS, acrescente também a maquete em content/sistemas-telas.js\n` +
       `  e revise o SEO/GEO da página (título, descrição, FAQ e llms.txt).`
     );
+  }
+
+  // Produto não pode estar em dois baldes: sairia duas vezes na página, e a
+  // versão "à venda" e a "em desenvolvimento" se contradiriam na mesma tela.
+  const duplicados = SISTEMAS.map(s => s.pasta).filter(p => EM_DESENVOLVIMENTO.some(d => d.pasta === p));
+  if (duplicados.length) {
+    throw new Error(`[sistemas] Produto em SISTEMAS e em EM_DESENVOLVIMENTO ao mesmo tempo: ${duplicados.join(', ')}. Ao lançar, REMOVA de EM_DESENVOLVIMENTO.`);
   }
 
   // Maquete faltando derruba o layout do bloco, então também é trava.
@@ -638,4 +703,4 @@ function conferirCobertura(produtosDaHome) {
   }
 }
 
-module.exports = { SISTEMAS, NAO_SAAS, conferirCobertura };
+module.exports = { SISTEMAS, EM_DESENVOLVIMENTO, NAO_SAAS, conferirCobertura };
