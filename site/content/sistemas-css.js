@@ -485,6 +485,26 @@ module.exports = `
   97%,100% { opacity:.32; transform:translateY(3px); }
 }
 
+/* Linha/cartão que MUDA DE ESTADO diante do visitante. Existe porque medir
+   revelou que quatro telas mexiam menos de 1,6% da própria área — o Legal
+   trocava um dígito e um selo e mais nada, e lido de longe parecia que a
+   animação tinha falhado. Aqui o elemento inteiro troca de cor (alerta →
+   concluído), e área grande mudando é o que o olho pega sem procurar. */
+.mq.tocando .js-realca { animation:sx-realca 8s ease-in-out infinite; }
+@keyframes sx-realca {
+  0%, 48%   { background-color:var(--mq-warn-soft); }
+  60%, 90%  { background-color:var(--mq-ok-soft); }
+  97%, 100% { background-color:var(--mq-warn-soft); }
+}
+/* No calendário do Manager a barra que chega é colorida por canal, então
+   piscar o fundo não serve: ela ganha um anel dourado ao pousar. */
+.mq.tocando .mq-barra.js-realca { animation:sx-cresce 8s ease-in-out infinite, sx-anel 8s ease-in-out infinite; }
+@keyframes sx-anel {
+  0%, 24%   { box-shadow:none; }
+  34%, 88%  { box-shadow:0 0 0 2px var(--mq-gold); }
+  95%, 100% { box-shadow:none; }
+}
+
 /* ponto que respira (hotspot do tour, alerta) */
 .mq.tocando .js-pulsa { animation:sx-pulsa 2.6s ease-in-out infinite; }
 @keyframes sx-pulsa {
@@ -553,7 +573,8 @@ module.exports = `
   .mq.tocando .js-cursor, .mq.tocando .js-arrasta, .mq.tocando .js-alvo,
   .mq.tocando .js-toast, .mq.tocando .js-troca::after, .mq.tocando .js-surge,
   .mq.tocando .js-cresce-x, .mq.tocando .js-cresce-y, .mq.tocando .js-acende,
-  .mq.tocando .js-pulsa, .mq.tocando .js-antes, .mq.tocando .js-depois { animation:none; }
+  .mq.tocando .js-pulsa, .mq.tocando .js-antes, .mq.tocando .js-depois,
+  .mq.tocando .js-realca, .mq.tocando .mq-barra.js-realca { animation:none; }
   .mq.tocando .js-troca::after { opacity:0; }
   .mq.tocando .js-surge, .mq.tocando .js-acende { opacity:1; transform:none; }
   .mq.tocando .js-cresce-x, .mq.tocando .js-cresce-y { transform:none; }

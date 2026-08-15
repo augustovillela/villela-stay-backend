@@ -39,6 +39,14 @@
 //   js-acende     + animation-delay → etapa de fluxo acende em sequência.
 //   js-pulsa                        → ponto que respira (hotspot, alerta).
 //   js-antes / js-depois            → dois estados trocando de lugar.
+//   js-realca                       → linha/cartão inteiro muda de cor
+//                                    (alerta → concluído). É o gancho de
+//                                    ÁREA GRANDE: use quando a tela só
+//                                    teria mudanças pequenas demais.
+//
+// ⚠️ Medir antes de dar por pronto: quatro telas nasceram mexendo menos de
+// 1,6% da própria área e pareciam quebradas. Some a área dos elementos
+// animados e compare com a área da tela — abaixo de ~5% ninguém vê.
 //
 // Só a demonstração do topo (CRM) usa animação com TRAJETO medido
 // (js-arrasta / js-cursor / js-alvo). O resto anima no lugar de
@@ -164,8 +172,11 @@ function manager(t) {
   ];
   // A 4ª entrada da tupla marca a reserva que ENTRA durante a animação —
   // é ela que faz a ocupação subir e prova o calendário reagindo.
-  const barras = ocupacoes => ocupacoes.map(([ini, dur, canal, rot, nova]) =>
-    `<span class="mq-barra ${canal}${nova ? ' js-cresce-x' : ''}" style="left:${(ini / dias * 100).toFixed(2)}%;width:${(dur / dias * 100).toFixed(2)}%">${esc(rot)}</span>`).join('');
+  // Todas as barras crescem, escalonadas por linha, e a marcada como NOVA
+  // chega por último: o calendário inteiro se monta diante do visitante, em
+  // vez de uma barra sozinha aparecendo num quadro parado.
+  const barras = (ocupacoes, linha) => ocupacoes.map(([ini, dur, canal, rot, nova], i) =>
+    `<span class="mq-barra ${canal} js-cresce-x${nova ? ' js-realca' : ''}" style="left:${(ini / dias * 100).toFixed(2)}%;width:${(dur / dias * 100).toFixed(2)}%;animation-delay:${(nova ? 1.6 : linha * 0.12 + i * 0.06).toFixed(2)}s">${esc(rot)}</span>`).join('');
 
   return chrome('manager.villelastay.com.br/gestao/app', t('Painel do assinante', 'Subscriber panel', 'Panel del suscriptor')) + `
 <div class="mq-corpo">
@@ -188,9 +199,9 @@ function manager(t) {
     ])}
     <div class="mq-cal">
       <div class="mq-cal-regua"><span class="mq-cal-rot"></span><div class="mq-cal-dias">${regua}</div></div>
-      ${linhas.map(([unidade, oc]) => `
+      ${linhas.map(([unidade, oc], li) => `
       <div class="mq-cal-linha"><span class="mq-cal-rot">${esc(unidade)}</span>
-        <div class="mq-cal-faixa">${barras(oc)}</div></div>`).join('')}
+        <div class="mq-cal-faixa">${barras(oc, li)}</div></div>`).join('')}
     </div>
     <div class="mq-legenda">
       <span><i class="p ab"></i>Airbnb</span><span><i class="p bk"></i>Booking</span>
@@ -206,8 +217,8 @@ function manager(t) {
 // obrigatória, então a maquete mostra o prazo AGUARDANDO validação.
 // =====================================================================
 function legal(t) {
-  const linha = (processo, tribunal, ato, prazo, dias, estado) => `
-  <tr class="${estado}">
+  const linha = (processo, tribunal, ato, prazo, dias, estado, extra) => `
+  <tr class="${estado}${extra || ''}">
     <td><b>${esc(processo)}</b><span class="mq-sub">${esc(tribunal)}</span></td>
     <td>${esc(ato)}</td>
     <td><b>${esc(prazo)}</b><span class="mq-sub">${esc(dias)}</span></td>
@@ -234,7 +245,7 @@ function legal(t) {
     ${kpis([
       [t('Prazos nos próximos 7 dias', 'Deadlines in the next 7 days', 'Plazos en los próximos 7 días'), '11', '', ''],
       [t('Sem validação humana', 'Without human validation', 'Sin validación humana'), '<span class="js-troca" data-para="1">2</span>', t('agir', 'act', 'actuar'), 'alerta'],
-      [t('Publicações captadas hoje', 'Publications captured today', 'Publicaciones captadas hoy'), '9', '', '']
+      [t('Publicações captadas hoje', 'Publications captured today', 'Publicaciones captadas hoy'), '<span class="js-troca" data-para="10">9</span>', '', '']
     ])}
     <table class="mq-tabela">
       <thead><tr>
@@ -242,9 +253,17 @@ function legal(t) {
         <th>${esc(t('Prazo (CPC)', 'Deadline (Civil Procedure Code)', 'Plazo (CPC)'))}</th><th>${esc(t('Situação', 'Status', 'Situación'))}</th>
       </tr></thead>
       <tbody>
-        ${linha('0708xxx-21.2026.8.07.0001', 'TJDFT · 3ª Vara Cível', t('Contestação', 'Defence', 'Contestación'), '02/09', t('15 dias úteis', '15 business days', '15 días hábiles'), 'urgente')}
+        ${/* A linha que ENTRA: é a publicação chegando do DJEN e virando prazo.
+             Sem ela a tela do jurídico praticamente não se mexia — só um dígito
+             e um selo trocavam, e o visitante concluía que a animação falhou. */''}
+        <tr class="js-surge">
+          <td><b>0709xxx-53.2026.8.07.0018</b><span class="mq-sub">TJDFT · 5ª Vara Cível</span></td>
+          <td>${esc(t('Impugnação', 'Challenge', 'Impugnación'))}</td>
+          <td><b>05/09</b><span class="mq-sub">${esc(t('15 dias úteis', '15 business days', '15 días hábiles'))}</span></td>
+          <td><span class="mq-chip alerta">📰 ${esc(t('Captada agora no DJEN', 'Just captured from the DJEN', 'Captada ahora en el DJEN'))}</span></td>
+        </tr>
+        ${linha('0708xxx-21.2026.8.07.0001', 'TJDFT · 3ª Vara Cível', t('Contestação', 'Defence', 'Contestación'), '02/09', t('15 dias úteis', '15 business days', '15 días hábiles'), 'urgente', ' js-realca')}
         ${linha('1002xxx-45.2026.4.01.3400', 'TRF1 · 9ª Vara', t('Réplica', 'Reply', 'Réplica'), '28/08', t('10 dias úteis', '10 business days', '10 días hábiles'), '')}
-        ${linha('0711xxx-08.2026.8.07.0007', 'TJDFT · Juizado', t('Recurso inominado', 'Appeal', 'Recurso'), '25/08', t('10 dias úteis', '10 business days', '10 días hábiles'), '')}
       </tbody>
     </table>
     <div class="mq-aviso">
@@ -306,8 +325,11 @@ function docs(t) {
 // Projects — o portfólio, que é a tese do produto: decidir antes de fazer.
 // =====================================================================
 function projects(t) {
-  const ideia = (nome, estagio, viab, inv, rec, classe) => `
-  <div class="mq-ideia ${classe || ''}">
+  // O medidor de viabilidade tem 5 px de altura: sozinho, ele crescendo era
+  // movimento invisível. O CARTÃO inteiro entrando (escalonado) é que faz a
+  // tela do portfólio se ler como "as ideias sendo pesadas uma a uma".
+  const ideia = (nome, estagio, viab, inv, rec, classe, atraso) => `
+  <div class="mq-ideia ${classe || ''} js-surge" style="animation-delay:${atraso || 0}s">
     <div class="mq-ideia-topo"><b>${esc(nome)}</b><span class="mq-chip">${esc(estagio)}</span></div>
     <div class="mq-medidor"><span class="js-cresce-x" style="width:${viab}%"></span></div>
     <span class="mq-sub">${esc(t('Viabilidade', 'Feasibility', 'Viabilidad'))} ${viab}% · ${esc(t('Investimento', 'Investment', 'Inversión'))} ${esc(inv)} · ${esc(t('Receita potencial', 'Potential revenue', 'Ingreso potencial'))} ${esc(rec)}</span>
@@ -332,9 +354,9 @@ function projects(t) {
       [t('Margem média', 'Average margin', 'Margen medio'), '34%', '+6 p.p.', 'up']
     ])}
     <div class="mq-portfolio">
-      ${ideia(t('Expansão — 2 casas no Lago Norte', 'Expansion — 2 houses in Lago Norte', 'Expansión — 2 casas en Lago Norte'), t('Viabilidade', 'Feasibility', 'Viabilidad'), 82, 'R$ 180 mil', 'R$ 46 mil/' + t('mês', 'mo', 'mes'), 'boa')}
-      ${ideia(t('Pacote corporativo de fim de ano', 'Year-end corporate package', 'Paquete corporativo de fin de año'), t('Plano', 'Plan', 'Plan'), 74, 'R$ 12 mil', 'R$ 88 mil', 'boa')}
-      ${ideia(t('Cozinha industrial para eventos', 'Industrial kitchen for events', 'Cocina industrial para eventos'), t('Ideia', 'Idea', 'Idea'), 38, 'R$ 240 mil', t('a estimar', 'to be estimated', 'a estimar'), 'fraca')}
+      ${ideia(t('Expansão — 2 casas no Lago Norte', 'Expansion — 2 houses in Lago Norte', 'Expansión — 2 casas en Lago Norte'), t('Viabilidade', 'Feasibility', 'Viabilidad'), 82, 'R$ 180 mil', 'R$ 46 mil/' + t('mês', 'mo', 'mes'), 'boa', 0)}
+      ${ideia(t('Pacote corporativo de fim de ano', 'Year-end corporate package', 'Paquete corporativo de fin de año'), t('Plano', 'Plan', 'Plan'), 74, 'R$ 12 mil', 'R$ 88 mil', 'boa', 0.35)}
+      ${ideia(t('Cozinha industrial para eventos', 'Industrial kitchen for events', 'Cocina industrial para eventos'), t('Ideia', 'Idea', 'Idea'), 38, 'R$ 240 mil', t('a estimar', 'to be estimated', 'a estimar'), 'fraca', 0.7)}
     </div>
     <div class="mq-aviso">
       <b>💡 ${esc(t('Portfólio antes de tarefa', 'Portfolio before tasks', 'Portafolio antes que tarea'))}</b>
@@ -433,8 +455,8 @@ function altavista(t) {
 // lista de missões: é ver a criança CONCLUIR uma e o progresso reagir.
 // =====================================================================
 function kids(t) {
-  const missao = (titulo, area, prog, classe, extra) => `
-  <div class="mq-missao ${classe || ''}">
+  const missao = (titulo, area, prog, classe, extra, atraso) => `
+  <div class="mq-missao ${classe || ''} js-surge" style="animation-delay:${atraso || 0}s">
     <div class="mq-ideia-topo"><b>${esc(titulo)}</b><span class="mq-chip">${esc(area)}</span></div>
     <div class="mq-medidor"><span class="js-cresce-x" style="width:${prog}%"></span></div>
     <span class="mq-sub">${esc(t('Progresso', 'Progress', 'Progreso'))} ${prog}%</span>
@@ -458,10 +480,10 @@ function kids(t) {
       [t('Arena de Matemática', 'Maths Arena', 'Arena de Matemáticas'), '84%', '+6', 'up']
     ])}
     <div class="mq-portfolio">
-      ${missao(t('Construir uma ponte de papel', 'Build a paper bridge', 'Construir un puente de papel'), t('Engenharia', 'Engineering', 'Ingeniería'), 100, 'feita',
-        `<span class="mq-chip ok js-surge">✓ ${esc(t('Concluída agora', 'Completed just now', 'Completada ahora'))}</span>`)}
-      ${missao(t('Escrever o final da história', 'Write the end of the story', 'Escribir el final de la historia'), t('Português', 'Portuguese', 'Portugués'), 60)}
-      ${missao(t('Desenhar um bairro do futuro', 'Draw a neighbourhood of the future', 'Dibujar un barrio del futuro'), t('Arte', 'Art', 'Arte'), 25)}
+      ${missao(t('Construir uma ponte de papel', 'Build a paper bridge', 'Construir un puente de papel'), t('Engenharia', 'Engineering', 'Ingeniería'), 100, 'feita js-realca',
+        `<span class="mq-chip ok js-surge" style="animation-delay:1.4s">✓ ${esc(t('Concluída agora', 'Completed just now', 'Completada ahora'))}</span>`, 0)}
+      ${missao(t('Escrever o final da história', 'Write the end of the story', 'Escribir el final de la historia'), t('Português', 'Portuguese', 'Portugués'), 60, '', '', 0.35)}
+      ${missao(t('Desenhar um bairro do futuro', 'Draw a neighbourhood of the future', 'Dibujar un barrio del futuro'), t('Arte', 'Art', 'Arte'), 25, '', '', 0.7)}
     </div>
     <div class="mq-aviso">
       <b>🛡️ ${esc(t('A conta é do responsável', 'The account belongs to the guardian', 'La cuenta es del responsable'))}</b>
