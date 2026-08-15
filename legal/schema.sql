@@ -171,10 +171,19 @@ CREATE TABLE IF NOT EXISTS case_movements (
   payload_raw  TEXT DEFAULT '',     -- JSON bruto da coleta (quando permitido)
   hash_dedupe  TEXT DEFAULT '',     -- sha256(case+data+descricao) — evita duplicar na coleta diária
   coletado_em  TEXT NOT NULL,
-  criado_por   TEXT DEFAULT ''
+  criado_por   TEXT DEFAULT '',
+  -- controle de LEITURA: andamento novo nasce não lido e fica em destaque na
+  -- tela até alguém marcar como lido. É o que torna a lista administrável.
+  lido         INTEGER NOT NULL DEFAULT 0,
+  lido_em      TEXT DEFAULT '',
+  lido_por     TEXT DEFAULT ''
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_movements_dedupe ON case_movements(hash_dedupe) WHERE hash_dedupe != '';
 CREATE INDEX IF NOT EXISTS idx_movements_case ON case_movements(case_id, data);
+-- ⚠️ O índice por `lido` NÃO mora aqui: este arquivo roda ANTES das migrações a
+-- cada boot e, em banco que já existia, a coluna só nasce na migração 004 —
+-- um índice sobre coluna inexistente aborta o schema inteiro e derruba o módulo.
+-- Ele é criado dentro da própria migração 004.
 
 -- ---- publicações (DJEN e diários) — status do fluxo de triagem
 CREATE TABLE IF NOT EXISTS case_publications (

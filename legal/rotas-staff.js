@@ -175,7 +175,9 @@ function registrarRotasStaff(app, deps) {
     res.json({ andamentos: repo.Andamentos.listar({ case_id: req.params.id, ...req.query }) });
   }));
   app.post('/staff/api/legal/processos/:id/andamentos', requirePublishOrSession, pode('editar_processos'), h((req, res) => {
-    const r = repo.Andamentos.criar(req.params.id, req.body || {}, req.user && req.user.id);
+    // lançado por PESSOA (sessão) nasce lido — ela acabou de escrever; vindo de
+    // coleta/agente (PUBLISH_KEY) nasce NÃO lido, que é a novidade a tratar.
+    const r = repo.Andamentos.criar(req.params.id, req.body || {}, req.user && req.user.id, { lido: !req.viaChave });
     if (!r.duplicado) {
       auditar(req, 'andamento.criar', 'case_movements', r.id, (req.body || {}).fonte || 'manual');
       // notifica o cliente do processo (best-effort, não bloqueia a resposta)
@@ -190,6 +192,19 @@ function registrarRotasStaff(app, deps) {
       }
     }
     res.json({ ok: true, ...r });
+  }));
+
+  // marcar andamentos como LIDOS: o processo inteiro (padrão) ou um só.
+  app.post('/staff/api/legal/processos/:id/andamentos/lidos', requireAuth, pode('ver_processos'), h((req, res) => {
+    const r = repo.Andamentos.marcarLidos(req.params.id, quemFez(req), { movement_id: (req.body || {}).movement_id });
+    auditar(req, 'andamento.lido', 'case_movements', (req.body || {}).movement_id || req.params.id, `${r.marcados} marcado(s)`);
+    res.json({ ok: true, ...r, andamentos_novos: repo.Andamentos.naoLidos(req.params.id) });
+  }));
+  // desmarcar um andamento (tratei por engano / quero rever)
+  app.delete('/staff/api/legal/processos/:id/andamentos/:mid/lido', requireAuth, pode('ver_processos'), h((req, res) => {
+    const r = repo.Andamentos.marcarNaoLido(req.params.id, req.params.mid);
+    auditar(req, 'andamento.nao-lido', 'case_movements', req.params.mid, '');
+    res.json({ ok: true, ...r, andamentos_novos: repo.Andamentos.naoLidos(req.params.id) });
   }));
 
   // ------------------------------------------------------- PUBLICAÇÕES (ingestão idem)

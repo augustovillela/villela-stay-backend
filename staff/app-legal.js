@@ -188,10 +188,22 @@ const LG = {
         <label>ID do cliente (aba Clientes) <input id="lgp-cli" maxlength="20"></label>
         <button class="btn" type="submit">Cadastrar</button><p id="lgp-msg" class="erro"></p>
       </form></details>`;
-    h += `<div class="card">${processos.length ? tabela(['CNJ', 'Cliente', 'Assunto', 'Núcleo', 'Status', ''], processos.map(p => [
-      esc(p.numero_cnj || '(consultivo)'), esc(p.cliente_nome || '—'), esc((p.assunto || '').slice(0, 60)), esc(p.nucleo || '—'), LG.chip(p.status),
-      `<button class="btn secund peq" onclick="LG.verProcesso('${p.id}')">Abrir</button>`,
-    ])) : '<p class="vazio">Nenhum processo ainda.</p>'}</div>`;
+    // NEGRITO = tem andamento que ninguém leu ainda. Sai quando o processo é
+    // marcado como lido — não some sozinho, senão a novidade desapareceria
+    // sem ninguém ter visto.
+    const novos = processos.reduce((n, p) => n + (p.andamentos_novos || 0), 0);
+    h += `<div class="card">
+      ${novos ? `<p class="vx-hint"><b>${novos} andamento(s) novo(s)</b> em ${processos.filter(p => p.andamentos_novos).length} processo(s) — em negrito abaixo.</p>` : ''}
+      ${processos.length ? tabela(['CNJ', 'Cliente', 'Assunto', 'Núcleo', 'Status', ''], processos.map(p => {
+        const n = p.andamentos_novos || 0;
+        const forte = (txt) => n ? `<b>${txt}</b>` : txt;
+        return [
+          forte(esc(p.numero_cnj || '(consultivo)')) + (n ? ` <span class="chip" title="andamentos não lidos">🔔 ${n}</span>` : ''),
+          forte(esc(p.cliente_nome || '—')), forte(esc((p.assunto || '').slice(0, 60))),
+          esc(p.nucleo || '—'), LG.chip(p.status),
+          `<button class="btn ${n ? '' : 'secund '}peq" onclick="LG.verProcesso('${p.id}')">Abrir</button>`,
+        ];
+      })) : '<p class="vazio">Nenhum processo ainda.</p>'}</div>`;
     LG.body().innerHTML = h;
     const f = document.getElementById('lg-proc-form');
     if (f) f.onsubmit = async (ev) => {
@@ -208,6 +220,21 @@ const LG = {
       } catch (e) { msg.textContent = e.message; }
     };
   },
+  async marcarProcessoLido(id) {
+    try {
+      const r = await LG.api('POST', `/processos/${id}/andamentos/lidos`, {});
+      LGUI.toast(r.marcados ? `${r.marcados} andamento(s) marcado(s) como lido(s).` : 'Nada pendente.', 'ok');
+      LG.verProcesso(id);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+  async marcarAndamento(caseId, mid, lido) {
+    try {
+      if (lido) await LG.api('POST', `/processos/${caseId}/andamentos/lidos`, { movement_id: mid });
+      else await LG.api('DELETE', `/processos/${caseId}/andamentos/${mid}/lido`);
+      LG.verProcesso(caseId);
+    } catch (e) { LGUI.toast(e.message, 'erro'); }
+  },
+
   async consultarAndamentos() {
     const btn = document.getElementById('lg-and-btn');
     const msg = document.getElementById('lg-and-msg');
@@ -218,14 +245,18 @@ const LG = {
     try {
       const r = await LG.api('POST', '/integracoes/coletar/andamentos', {});
       const seg = Math.round((Date.now() - t0) / 1000);
-      if (msg) {
-        msg.textContent = `✅ ${r.novos} andamento(s) novo(s) em ${r.encontrados}/${r.monitorados} processo(s)`
-          + `${r.ignorados ? `, ${r.ignorados} movimento(s) ignorado(s)` : ''}${r.erros ? `, ${r.erros} erro(s)` : ''} — ${seg}s.`;
-      }
+      const texto = `✅ ${r.novos} andamento(s) novo(s) em ${r.encontrados}/${r.monitorados} processo(s)`
+        + `${r.ignorados ? `, ${r.ignorados} movimento(s) ignorado(s)` : ''}${r.erros ? `, ${r.erros} erro(s)` : ''} — ${seg}s.`;
+      if (msg) msg.textContent = texto;
       LGUI.toast(r.novos ? `${r.novos} andamento(s) novo(s).` : 'Nenhum andamento novo.', 'ok');
-      // NÃO repintar: a lista de processos não mostra contagem de andamento, e o
-      // repaint apagaria justamente o resultado que o usuário pediu para ver.
-      // Os andamentos novos aparecem ao abrir o processo.
+      // Com novidade a lista PRECISA repintar (é o negrito dos não lidos), mas o
+      // repaint apaga a mensagem — então ela é reescrita depois. Sem novidade não
+      // repinta: nada mudou e o resultado ficaria piscando à toa.
+      if (r.novos) {
+        await LG.pintar();
+        const m2 = document.getElementById('lg-and-msg');
+        if (m2) m2.textContent = texto;
+      }
     } catch (e) {
       if (msg) msg.textContent = '❌ ' + e.message;
       LGUI.toast(e.message, 'erro');
@@ -243,8 +274,20 @@ const LG = {
       <p>${esc(p.assunto || '')}</p>
       ${p.estrategia && p.estrategia !== '[restrito]' ? `<div class="aviso">🧠 Estratégia (interna): ${esc(p.estrategia)}</div>` : ''}
       ${p.proximas_acoes ? `<p><b>Próximas ações:</b> ${esc(p.proximas_acoes)}</p>` : ''}</div>
-      <div class="card"><h3>📜 Andamentos</h3>
-      ${p.movimentos.length ? tabela(['Data', 'Descrição', 'Classificação', 'Fonte'], p.movimentos.map(m => [LG.dt(m.data), esc((m.descricao || '').slice(0, 100)), LG.chip(m.classificacao || 'informativo'), esc(m.fonte || '—')])) : '<p class="vazio">Nenhum andamento.</p>'}
+      <div class="card"><h3>📜 Andamentos ${p.andamentos_novos ? `<span class="chip">🔔 ${p.andamentos_novos} não lido(s)</span>` : ''}</h3>
+      ${p.andamentos_novos ? `<div class="acoes" style="margin-bottom:8px">
+        <button class="btn peq" onclick="LG.marcarProcessoLido('${p.id}')">✓ Marcar andamentos como lidos</button>
+        <span class="vx-hint">Os não lidos estão em negrito.</span></div>` : ''}
+      ${p.movimentos.length ? tabela(['Data', 'Descrição', 'Classificação', 'Fonte', ''], p.movimentos.map(m => {
+        const forte = (txt) => m.lido ? txt : `<b>${txt}</b>`;
+        return [
+          forte(LG.dt(m.data)), forte(esc((m.descricao || '').slice(0, 100))),
+          LG.chip(m.classificacao || 'informativo'), esc(m.fonte || '—'),
+          m.lido
+            ? `<button class="btn secund peq" title="${esc(m.lido_por ? 'lido por ' + m.lido_por : 'lido')}" onclick="LG.marcarAndamento('${p.id}','${m.id}',false)">↺ não lido</button>`
+            : `<button class="btn secund peq" onclick="LG.marcarAndamento('${p.id}','${m.id}',true)">✓ lido</button>`,
+        ];
+      })) : '<p class="vazio">Nenhum andamento.</p>'}
       ${LG.perm.editar_processos ? `<form class="form" id="lg-mov-form" style="max-width:660px"><div class="hi-grid">
         <label>Data <input id="lgm-data" type="date"></label>
         <label>Classificação ${LG.sel('lgm-cls', (LG.enums.classifMov || []).filter(Boolean), 'informativo')}</label></div>

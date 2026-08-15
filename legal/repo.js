@@ -135,7 +135,11 @@ const Clientes = {
 // =====================================================================
 const Processos = {
   listar({ busca = '', status = '', nucleo = '', client_id = '', limite = 100, pagina = 0 } = {}) {
-    let sql = `SELECT c.*, cl.nome AS cliente_nome FROM cases c LEFT JOIN clients cl ON cl.id = c.client_id`, where = [], args = [];
+    // `andamentos_novos` = o que ainda não foi lido. É o que deixa o processo em
+    // destaque na lista até alguém abrir e marcar como lido.
+    let sql = `SELECT c.*, cl.nome AS cliente_nome,
+      (SELECT COUNT(*) FROM case_movements m WHERE m.case_id = c.id AND m.lido = 0) AS andamentos_novos
+      FROM cases c LEFT JOIN clients cl ON cl.id = c.client_id`, where = [], args = [];
     if (busca) { where.push('(c.numero_cnj LIKE ? OR c.assunto LIKE ? OR cl.nome LIKE ?)'); const b = `%${busca}%`; args.push(b, b, b); }
     if (status) { where.push('c.status = ?'); args.push(status); }
     if (nucleo) { where.push('c.nucleo = ?'); args.push(nucleo); }
@@ -151,7 +155,8 @@ const Processos = {
     if (!comSigilo) { c.estrategia = c.estrategia ? '[restrito]' : ''; } // estratégia só p/ quem tem ver_dados_sensiveis
     c.partes = db.prepare('SELECT * FROM case_parties WHERE case_id = ?').all(id);
     c.advogados = db.prepare('SELECT * FROM case_lawyers WHERE case_id = ?').all(id);
-    c.movimentos = db.prepare('SELECT id, data, descricao, classificacao, resumo, fonte, coletado_em FROM case_movements WHERE case_id = ? ORDER BY data DESC LIMIT 30').all(id);
+    c.movimentos = db.prepare('SELECT id, data, descricao, classificacao, resumo, fonte, coletado_em, lido, lido_em, lido_por FROM case_movements WHERE case_id = ? ORDER BY data DESC LIMIT 30').all(id);
+    c.andamentos_novos = Andamentos.naoLidos(id);   // destaque na tela até serem lidos
     c.prazos = db.prepare('SELECT * FROM deadlines WHERE case_id = ? ORDER BY data_fatal, data_interna').all(id);
     c.tarefas = db.prepare('SELECT * FROM tasks WHERE case_id = ? AND status != ? ORDER BY prazo').all(id, 'cancelada');
     c.documentos = db.prepare('SELECT id, titulo, tipo, sigilo, status, versao_atual, atualizado_em FROM documents WHERE case_id = ? ORDER BY atualizado_em DESC').all(id);
@@ -214,7 +219,9 @@ const Andamentos = {
     sql += ' ORDER BY data DESC LIMIT ?'; args.push(Math.min(Number(limite) || 100, 500));
     return db.prepare(sql).all(...args);
   },
-  criar(caseId, d, autor) {
+  // `lido`: andamento vindo de coleta nasce NÃO lido (é novidade a tratar); o
+  // que o próprio advogado lança à mão nasce lido — ele acabou de escrever.
+  criar(caseId, d, autor, { lido = false } = {}) {
     if (!db.prepare('SELECT id FROM cases WHERE id = ?').get(caseId)) throw new Error('Processo não encontrado.');
     const data = s(d.data, 30) || nowISO().slice(0, 10);
     const descricao = s(d.descricao, 4000);
@@ -222,12 +229,32 @@ const Andamentos = {
     const hash = sha256(caseId + '|' + data + '|' + descricao);
     if (db.prepare('SELECT id FROM case_movements WHERE hash_dedupe = ?').get(hash)) return { duplicado: true };
     const id = novoId();
-    db.prepare(`INSERT INTO case_movements (id, case_id, data, descricao, classificacao, resumo, fonte, payload_raw, hash_dedupe, coletado_em, criado_por)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    db.prepare(`INSERT INTO case_movements (id, case_id, data, descricao, classificacao, resumo, fonte, payload_raw, hash_dedupe, coletado_em, criado_por, lido, lido_em, lido_por)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(id, caseId, data, descricao, valida(d.classificacao || '', E.classifMov, 'classificacao'), s(d.resumo, 2000),
-        s(d.fonte, 30) || 'manual', d.payload_raw ? j.str(d.payload_raw) : '', hash, nowISO(), s(autor, 40));
+        s(d.fonte, 30) || 'manual', d.payload_raw ? j.str(d.payload_raw) : '', hash, nowISO(), s(autor, 40),
+        lido ? 1 : 0, lido ? nowISO() : '', lido ? s(autor, 40) : '');
     db.prepare('UPDATE cases SET atualizado_em = ? WHERE id = ?').run(nowISO(), caseId);
     return { id, duplicado: false };
+  },
+  // Marca como lido o processo inteiro (padrão) ou um andamento específico.
+  // Idempotente: marcar de novo devolve 0 e não mexe em quem já estava lido.
+  marcarLidos(caseId, quem, { movement_id = '' } = {}) {
+    if (!db.prepare('SELECT id FROM cases WHERE id = ?').get(caseId)) throw new Error('Processo não encontrado.');
+    const agora = nowISO(), autor = s(quem, 120);
+    const r = movement_id
+      ? db.prepare('UPDATE case_movements SET lido=1, lido_em=?, lido_por=? WHERE id=? AND case_id=? AND lido=0').run(agora, autor, s(movement_id, 40), caseId)
+      : db.prepare('UPDATE case_movements SET lido=1, lido_em=?, lido_por=? WHERE case_id=? AND lido=0').run(agora, autor, caseId);
+    return { marcados: r.changes || 0 };
+  },
+  // Volta a marcar como NÃO lido (para reabrir a novidade que se tratou por engano).
+  marcarNaoLido(caseId, movementId) {
+    const r = db.prepare("UPDATE case_movements SET lido=0, lido_em='', lido_por='' WHERE id=? AND case_id=?")
+      .run(s(movementId, 40), caseId);
+    return { alterados: r.changes || 0 };
+  },
+  naoLidos(caseId) {
+    return db.prepare('SELECT COUNT(*) n FROM case_movements WHERE case_id = ? AND lido = 0').get(caseId).n;
   },
 };
 

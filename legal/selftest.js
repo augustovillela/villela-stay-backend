@@ -151,6 +151,96 @@ async function rodar() {
     assert.ok(enviados.email.some(e => e.to === 'cli@t.com'), 'e-mail de notificação enviado');
   });
 
+  // 4a. MIGRAÇÃO SOBRE BANCO ANTIGO — o caminho que a suíte nunca exercita.
+  // A suíte roda sempre em DATA_DIR novo, onde o schema.sql já cria tudo; a
+  // produção é o oposto: banco que já existe e só recebe as migrações. Foi
+  // exatamente aí que um índice colocado no schema.sql (sobre uma coluna que
+  // só a migração cria) abortou o schema inteiro e derrubou o módulo.
+  await t('migração: banco ANTIGO recebe as colunas novas sem derrubar o módulo', async () => {
+    const fs = require('fs'), path = require('path');
+    const dbmod = require('./db');
+    const tenant = 'legado-migracao';
+    const dir = dbmod.dirDoTenant(tenant);
+    fs.mkdirSync(dir, { recursive: true });
+    const { DatabaseSync } = require('node:sqlite');
+    const antigo = new DatabaseSync(path.join(dir, 'legal.db'));
+    // shape de PRODUÇÃO: case_movements SEM lido/lido_em/lido_por
+    antigo.exec(`CREATE TABLE migrations (id INTEGER PRIMARY KEY, nome TEXT NOT NULL UNIQUE, aplicada_em TEXT NOT NULL);
+      CREATE TABLE case_movements (id TEXT PRIMARY KEY, case_id TEXT NOT NULL, data TEXT NOT NULL, descricao TEXT NOT NULL,
+        classificacao TEXT DEFAULT '', resumo TEXT DEFAULT '', fonte TEXT DEFAULT '', payload_raw TEXT DEFAULT '',
+        hash_dedupe TEXT DEFAULT '', coletado_em TEXT NOT NULL, criado_por TEXT DEFAULT '');
+      INSERT INTO migrations (nome, aplicada_em) VALUES ('001-documents-legado-id','x'),('002-contract-reviews-analise-json','x'),('003-publications-movement-id','x');
+      INSERT INTO case_movements (id, case_id, data, descricao, coletado_em) VALUES ('velho1','c1','2020-01-01','Andamento antigo','x');`);
+    antigo.close();
+
+    dbmod.garantirTenant(tenant);   // é aqui que schema + migrações rodam
+
+    const dep = new DatabaseSync(path.join(dir, 'legal.db'));
+    const cols = dep.prepare('PRAGMA table_info(case_movements)').all().map(c => c.name);
+    for (const c of ['lido', 'lido_em', 'lido_por']) assert.ok(cols.includes(c), 'coluna ' + c + ' criada no banco antigo');
+    assert.ok(dep.prepare('SELECT 1 FROM migrations WHERE nome = ?').get('004-movements-lido'), 'migração registrada');
+    assert.equal(dep.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='index' AND name='idx_movements_lido'").get().n, 1, 'índice criado pela migração, não pelo schema');
+    // histórico que já existia nasce LIDO: senão o dia 1 seria um muro de falsa novidade
+    assert.equal(dep.prepare('SELECT lido FROM case_movements WHERE id = ?').get('velho1').lido, 1);
+    dep.close();
+    // e o módulo continua operando nesse tenant (é o que falhava: "no such column: lido")
+    const r = await req('GET', '/staff/api/legal/processos', { tenant });
+    assert.equal(r.st, 200, 'módulo monta e responde no banco migrado');
+  });
+
+  // 4b. LEITURA de andamentos: o que é novidade fica em destaque até ser lido
+  await t('andamento: coleta nasce NÃO lido; lançamento manual da pessoa nasce lido', async () => {
+    // o andamento do teste anterior veio por PUBLISH_KEY (agente/coleta)
+    const p = await req('GET', '/staff/api/legal/processos/' + caseId);
+    assert.equal(p.json.processo.andamentos_novos, 1, 'andamento coletado conta como novidade');
+    assert.equal(p.json.processo.movimentos[0].lido, 0);
+    // lançado à mão por uma PESSOA logada: ela acabou de escrever, não é novidade
+    await req('POST', `/staff/api/legal/processos/${caseId}/andamentos`, { corpo: { data: '2026-07-08', descricao: 'Peticao protocolada por mim', fonte: 'manual' } });
+    const p2 = await req('GET', '/staff/api/legal/processos/' + caseId);
+    assert.equal(p2.json.processo.andamentos_novos, 1, 'o manual não aumentou a contagem de novidade');
+    assert.equal(p2.json.processo.movimentos.find(m => m.descricao.includes('por mim')).lido, 1);
+  });
+
+  await t('processo: a lista traz a contagem de não lidos (é o negrito da tela)', async () => {
+    const l = await req('GET', '/staff/api/legal/processos');
+    const meu = l.json.processos.find(x => x.id === caseId);
+    assert.equal(meu.andamentos_novos, 1, 'a lista sabe quantos há para ler');
+  });
+
+  await t('andamento: marcar o processo como lido limpa o destaque e é idempotente', async () => {
+    const r = await req('POST', `/staff/api/legal/processos/${caseId}/andamentos/lidos`, { corpo: {} });
+    assert.equal(r.st, 200);
+    assert.equal(r.json.marcados, 1);
+    assert.equal(r.json.andamentos_novos, 0);
+    const l = await req('GET', '/staff/api/legal/processos');
+    assert.equal(l.json.processos.find(x => x.id === caseId).andamentos_novos, 0, 'sai do negrito na lista');
+    // marcar de novo não mexe em nada nem quebra
+    const r2 = await req('POST', `/staff/api/legal/processos/${caseId}/andamentos/lidos`, { corpo: {} });
+    assert.equal(r2.json.marcados, 0);
+  });
+
+  await t('andamento: dá para desmarcar um só (tratei por engano)', async () => {
+    const p = await req('GET', '/staff/api/legal/processos/' + caseId);
+    const mid = p.json.processo.movimentos[0].id;
+    const volta = await req('DELETE', `/staff/api/legal/processos/${caseId}/andamentos/${mid}/lido`);
+    assert.equal(volta.json.andamentos_novos, 1, 'volta a ser novidade');
+    const um = await req('POST', `/staff/api/legal/processos/${caseId}/andamentos/lidos`, { corpo: { movement_id: mid } });
+    assert.equal(um.json.marcados, 1);
+    assert.equal(um.json.andamentos_novos, 0);
+  });
+
+  await t('andamento: coleta SEM novidade não apaga o que ainda não foi lido', async () => {
+    // regra deliberada: o destaque só sai por LEITURA humana. Se sumisse numa
+    // consulta silenciosa, um andamento novo poderia passar sem ninguém ver.
+    await req('POST', `/staff/api/legal/processos/${caseId}/andamentos`, { chave: true, corpo: { data: '2026-07-30', descricao: 'Decisao nova que ninguem leu', fonte: 'datajud' } });
+    assert.equal((await req('GET', '/staff/api/legal/processos/' + caseId)).json.processo.andamentos_novos, 1);
+    // nova coleta que não traz nada para este processo
+    await legal.coleta.coletarAndamentos({ consultar: async () => [] });
+    const depois = await req('GET', '/staff/api/legal/processos/' + caseId);
+    assert.equal(depois.json.processo.andamentos_novos, 1, 'continua em destaque: ninguém leu ainda');
+    await req('POST', `/staff/api/legal/processos/${caseId}/andamentos/lidos`, { corpo: {} });
+  });
+
   // 5. publicação
   await t('publicação: ingestão + dedupe + triagem', async () => {
     const p = await req('POST', '/staff/api/legal/publicacoes', { chave: true, corpo: { fonte: 'djen', data_publicacao: '2026-07-07', texto: 'Intimação com prazo de 15 dias', tem_prazo: true } });

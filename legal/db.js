@@ -61,7 +61,26 @@ const MIGRACOES = [
   { nome: '001-documents-legado-id', sql: "ALTER TABLE documents ADD COLUMN legado_id TEXT DEFAULT ''" },
   { nome: '002-contract-reviews-analise-json', sql: "ALTER TABLE contract_reviews ADD COLUMN analise_json TEXT DEFAULT ''" },
   { nome: '003-publications-movement-id', sql: "ALTER TABLE case_publications ADD COLUMN movement_id TEXT DEFAULT ''" },
+  // O histórico que já existia entra como LIDO: sem isso, o dia 1 marcaria
+  // todo processo como "novidade" (um caso sozinho tem 192 andamentos) e o
+  // destaque nasceria inútil. Novidade passa a contar a partir daqui.
+  {
+    nome: '004-movements-lido',
+    // `sqls` (plural) = cada comando roda SOZINHO. Num banco novo o schema já
+    // criou as colunas e os ALTERs falham com "duplicate column name" — o que é
+    // esperado e ignorado; num `sql` único isso abortaria o resto (o índice e o
+    // UPDATE) sem ninguém perceber.
+    sqls: [
+      'ALTER TABLE case_movements ADD COLUMN lido INTEGER NOT NULL DEFAULT 0',
+      "ALTER TABLE case_movements ADD COLUMN lido_em TEXT DEFAULT ''",
+      "ALTER TABLE case_movements ADD COLUMN lido_por TEXT DEFAULT ''",
+      'UPDATE case_movements SET lido = 1 WHERE lido = 0',
+      'CREATE INDEX IF NOT EXISTS idx_movements_lido ON case_movements(case_id, lido)',
+    ],
+  },
 ];
+// Erros que são ESPERADOS ao reaplicar (banco novo já nasceu com a coluna).
+const ERRO_BENIGNO = /duplicate column name|already exists/i;
 
 // ---- registro de handles abertos, um por tenant ----
 const _handles = new Map();
@@ -76,8 +95,18 @@ function _abrir(tid) {
   sqlite.exec(schemaSQL);
   for (const m of MIGRACOES) {
     if (sqlite.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
-    try { sqlite.exec(m.sql); } catch (_) { /* coluna já existe em banco novo */ }
-    sqlite.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
+    let falhou = null;
+    for (const sql of (m.sqls || [m.sql])) {
+      try { sqlite.exec(sql); }
+      catch (e) {
+        if (ERRO_BENIGNO.test(e.message)) continue;   // reaplicação em banco novo
+        falhou = e;
+        console.error(`[legal/db] migração ${m.nome} falhou: ${e.message} — comando: ${String(sql).slice(0, 90)}`);
+      }
+    }
+    // NÃO marcar como aplicada quando falhou de verdade: marcar esconderia um
+    // schema quebrado para sempre. Assim ela tenta de novo e o erro aparece.
+    if (!falhou) sqlite.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
   }
   return { sqlite, tid: safeTid(tid), txDepth: 0 };
 }
