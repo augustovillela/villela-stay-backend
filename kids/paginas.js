@@ -27,13 +27,14 @@ a{color:var(--tema)}
 header.topo{background:var(--fundo);border-bottom:2px solid var(--borda)}
 .topo .wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
 .logo{display:flex;gap:10px;align-items:center;text-decoration:none}
-.logo img{height:44px;display:block}
+.logo img{height:58px;display:block}
 .topo nav{display:flex;gap:8px;align-items:center}
 .btn{display:inline-block;background:var(--tema);color:#fff;border:0;border-radius:999px;padding:12px 22px;font-weight:700;font-size:16px;text-decoration:none;cursor:pointer}
 .btn:hover{background:var(--tema-2)}
 .btn.claro{background:#fff;color:var(--tema);border:2px solid var(--tema)}
 .btn.grande{padding:16px 30px;font-size:18px}
-.hero{padding:56px 0 30px;text-align:center}
+.hero{padding:44px 0 30px;text-align:center}
+.hero .marca{display:block;width:min(520px,86vw);margin:0 auto 6px}
 .hero h1{font-size:clamp(30px,5.5vw,52px);line-height:1.15;margin:0 0 14px;font-weight:900}
 .hero h1 em{font-style:normal;color:var(--tema)}
 .hero p.sub{font-size:19px;color:var(--suave);max-width:640px;margin:0 auto 26px}
@@ -66,7 +67,7 @@ footer a{color:var(--suave)}
 .form button{width:100%;margin-top:16px}
 .trocar{text-align:center;margin-top:14px;font-size:14px}
 .skip{position:absolute;left:-9999px}.skip:focus{position:static;display:block;padding:8px}
-@media (max-width:640px){.topo nav .btn{padding:9px 14px;font-size:14px}}
+@media (max-width:640px){.topo nav .btn{padding:9px 14px;font-size:14px}.logo img{height:46px}}
 `;
 
 function layout({ titulo, descricao, conteudo, semIndex = false, canonico = '' } = {}) {
@@ -111,6 +112,7 @@ function home() {
     canonico: 'https://kids.villelastay.com.br/kids',
     conteudo: `
 <section class="hero wrap">
+  <img class="marca" src="/assets/brand/villela-kids/invente/logos/invente.svg" alt="Invente — aprenda criando">
   <span class="selo">🔒 Beta fechado — entrada por convite às famílias</span>
   <h1>Sua próxima grande ideia<br><em>começa com uma missão</em>.</h1>
   <p class="sub">Crie, teste, compartilhe e evolua. O Invente é a plataforma de aprendizagem criativa da Villela Kids,
