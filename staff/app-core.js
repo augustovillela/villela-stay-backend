@@ -346,6 +346,15 @@ function gruposRecolhidos() {
 function salvarRecolhidos(set) {
   try { localStorage.setItem('staff-menu-recolhidos', JSON.stringify([...set])); } catch (_) {}
 }
+// Abre o grupo da seção ao navegar — gravando, e não forçando no desenho.
+// É o que permite ao título continuar sendo um botão que sempre alterna.
+function abrirGrupoDaSecao(secao) {
+  const g = grupoDaSecao(secao);
+  if (!g) return;
+  const s = gruposRecolhidos();
+  if (s.delete(g)) salvarRecolhidos(s);
+}
+
 function alternarGrupo(nome) {
   const s = gruposRecolhidos();
   if (s.has(nome)) s.delete(nome); else s.add(nome);
@@ -367,7 +376,6 @@ function montarMenu() {
   const m = $('#menu'); m.innerHTML = '';
   const itens = construirItensMenu().filter(it => !it.produto);   // produtos vivem no ⚡ Sistemas
   const recolhidos = gruposRecolhidos();
-  const grupoAtivo = grupoDaSecao(ESTADO.secao);
   const filtro = (ESTADO.menuFiltro || '').trim().toLowerCase();
 
   // ---- busca: com 70+ destinos, digitar é o caminho mais curto ----
@@ -392,8 +400,13 @@ function montarMenu() {
     if (it.grupo) {
       fecharGrupo();
       grupoCorrente = it.grupo; casadosNoGrupo = 0;
-      // durante a busca não faz sentido esconder resultado atrás de grupo fechado
-      const aberto = !!filtro || !recolhidos.has(grupoCorrente) || grupoCorrente === grupoAtivo;
+      // Só o estado guardado manda (fora da busca). ANTES havia um
+      // `|| grupo === grupoAtivo` que forçava o grupo da tela atual a ficar
+      // aberto: clicar no título dele gravava o recolhimento e o desenho
+      // reabria na mesma hora, então o clique parecia não fazer nada. A
+      // abertura automática ao navegar agora acontece em navegar(), gravando
+      // de verdade — assim o título SEMPRE abre e fecha.
+      const aberto = !!filtro || !recolhidos.has(grupoCorrente);
       elGrupo = document.createElement('button');
       elGrupo.className = 'grupo grupo-btn' + (aberto ? '' : ' recolhido');
       elGrupo.type = 'button';
@@ -652,6 +665,7 @@ function navegar(secao) {
   //  (2) o filtro da busca ficava grudado depois de escolher o destino, e o
   //      menu permanecia mostrando um item só até alguém limpar à mão.
   ESTADO.menuFiltro = '';
+  if (typeof abrirGrupoDaSecao === 'function') abrirGrupoDaSecao(secao);
   if (typeof montarMenu === 'function') montarMenu();
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
