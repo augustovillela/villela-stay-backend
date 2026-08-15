@@ -76,6 +76,14 @@ footer{color:var(--suave);font-size:14px;text-align:center;padding:34px 0 50px}
 
 // O mesmo anel do app, maior, para a página pública. Marcador de lugar —
 // a marca definitiva espera o brand book e o INPI.
+// Anel pequeno para o cabeçalho das páginas públicas. O `ANEL` que já
+// existia vive DENTRO do app (template literal) e não alcança daqui.
+const ANEL_PEQUENO = '<svg width="30" height="30" viewBox="0 0 26 26" aria-hidden="true" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.4" stroke-linecap="round">' +
+  '<circle cx="13" cy="13" r="10.6" stroke-dasharray="58 8"></circle>' +
+  '<circle cx="13" cy="13" r="6.8" stroke-dasharray="36 6"></circle>' +
+  '<circle cx="13" cy="13" r="2.6"></circle></svg>';
+
 const ANEL_GRANDE = '<svg width="72" height="72" viewBox="0 0 26 26" aria-hidden="true" fill="none" ' +
   'stroke="currentColor" stroke-width="1.1" stroke-linecap="round">' +
   '<circle cx="13" cy="13" r="11.2" stroke-dasharray="62 9"></circle>' +
@@ -137,16 +145,31 @@ function registrarPaginas(app) {
 
     res.type('html').send(pagina(idioma,
       `${t('produto.nome')} — ${t('produto.assinatura')}`, `
-<div class="wrap">
+<header class="faixa-topo">
+ <div class="wrap-largo">
   <nav class="menu-site" aria-label="${t('site.nav')}">
+    <!-- A MARCA NO CABEÇALHO. Ele era só uma fileira de links: quem
+         chegava por um link interno não via de quem era o site até rolar
+         até o hero. O slogan vai logo abaixo do nome, na mesma coluna —
+         é a assinatura da marca, não um item de menu. -->
+    <a class="marca-site" href="/origena">
+      <span class="anel">${ANEL_PEQUENO}</span>
+      <span class="nomes"><b>${t('produto.nome')}</b>
+        <small>${t('produto.assinatura')}</small></span>
+    </a>
+    <span class="links">
     <a href="#como">${t('site.como_t')}</a>
     <a href="#recursos">${t('site.recursos_t')}</a>
     <a href="#familia">${t('site.familia_t')}</a>
     <a href="#criacoes">${t('site.criacoes_t')}</a>
     ${planos.length ? `<a href="#planos">${t('site.planos_t')}</a>` : ''}
     <a class="btn mini" href="/origena/app">${t('acao.entrar')}</a>
+    </span>
   </nav>
   ${seletorIdioma(idioma, '/origena')}
+ </div>
+</header>
+<div class="wrap">
 
   <div class="hero">
     <div class="selo">${t('landing.selo')}</div>
@@ -314,7 +337,7 @@ const seletorIdioma = (idiomaAtual, caminho) =>
   )).join(' · ') + '</p>';
 
 const CSS_PUBLICO = `
-.idiomas{text-align:right;font-size:14px;color:var(--suave);margin:14px 0 0}
+.idiomas{text-align:right;font-size:13px;color:var(--suave);margin:0 0 10px}
 .idiomas strong{color:var(--tinta)}
 .btn{display:inline-block;background:var(--tema);color:#fff;border-radius:12px;
 padding:12px 20px;font-weight:600;text-decoration:none;line-height:22px}
@@ -325,8 +348,32 @@ padding:12px 20px;font-weight:600;text-decoration:none;line-height:22px}
 .card a.btn{color:#fff}
 nav.card p{margin:0;line-height:2.1}
 /* Site institucional: barra de âncoras, seções e as grades de conteúdo. */
-.menu-site{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center;
-padding:16px 0;border-bottom:1px solid var(--borda);font-size:15px}
+/* O cabecalho tem faixa PROPRIA, mais larga que o corpo do texto: marca a
+   esquerda e links a direita cabem numa linha so — inclusive em ingles e
+   espanhol, onde os rotulos sao mais longos. Espremer os dois em 820px
+   funcionava em portugues e quebrava nos outros dois. */
+.faixa-topo{border-bottom:1px solid var(--borda)}
+.wrap-largo{max-width:1120px;margin:0 auto;padding:0 22px}
+.menu-site{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+padding:18px 0;font-size:15px}
+.menu-site .links{display:flex;flex-wrap:wrap;gap:11px;align-items:center;font-size:14px;
+justify-content:flex-end}
+/* A marca: anel + nome, com a assinatura embaixo na mesma coluna. */
+.marca-site{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--tinta)}
+.marca-site .anel{color:var(--tema);display:flex}
+.marca-site .nomes{display:flex;flex-direction:column;line-height:1.15}
+.marca-site b{font-family:Newsreader,Lora,Georgia,serif;font-size:24px;font-weight:600;
+letter-spacing:-.01em}
+.marca-site small{color:var(--suave);font-size:11.5px;letter-spacing:.01em;white-space:nowrap}
+.marca-site:hover b{color:var(--tema)}
+/* No celular a marca fica sozinha na primeira linha e os links embaixo —
+   espremer os dois some com a assinatura, que e justamente o que da
+   identidade ao cabecalho. */
+@media(max-width:620px){
+  .menu-site{justify-content:center}
+  .marca-site{width:100%;justify-content:center}
+  .marca-site .nomes{align-items:center;text-align:center}
+}
 .menu-site a{color:var(--tinta);text-decoration:none;padding:6px 2px}
 .menu-site a:hover{color:var(--tema);text-decoration:underline}
 .menu-site a.btn{color:#fff;text-decoration:none;padding:8px 16px;font-size:14px}
