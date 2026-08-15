@@ -449,9 +449,10 @@ const VERTICAL_DA_SECAO = {
   instalar: 'grupo', usuarios: 'grupo', conta: 'grupo', auditoria: 'grupo', automacoes: 'grupo',
 };
 
-// Seções cujo conteúdo é um quadro largo (kanban): dispensam o teto de 1180px do .conteudo e
-// usam toda a faixa entre o menu e a borda da janela — mais colunas visíveis sem rolar.
-const SECOES_LARGAS = ['crm'];
+// Seções cujo conteúdo é um quadro largo (kanban do CRM, linha do tempo do calendário): dispensam
+// o teto de 1180px do .conteudo e usam toda a faixa entre o menu e a borda da janela — mais
+// colunas/dias visíveis sem rolar.
+const SECOES_LARGAS = ['crm', 'calendario'];
 
 // --------- rota na URL (#secao): F5 recarrega o painel aberto, não a Visão geral ---------
 // SPA sem rota volta para a home a cada F5. O hash é a rota mais barata aqui: não exige nada do
