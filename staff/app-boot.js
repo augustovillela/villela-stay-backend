@@ -24,6 +24,7 @@ $('#btn-sair').onclick = async () => { try { await api('POST', '/logout'); } cat
 if ($('#btn-menu')) $('#btn-menu').onclick = () => { const m = $('#menu'); if (m) m.classList.toggle('aberto'); };
 // Botão 🏠 Início: sempre visível, volta à Visão geral (home do app) de qualquer tela/relatório
 if ($('#btn-inicio')) $('#btn-inicio').onclick = () => navegar('visao');
+if ($('#btn-sistemas')) $('#btn-sistemas').onclick = abrirSistemas;
 
 // PWA: em app INSTALADO (standalone), nenhum link pode "escapar" para o navegador e derrubar o app.
 // A navegação interna do portal é toda por BOTÃO/JS (não por <a href>); logo, qualquer <a> que aponte

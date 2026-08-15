@@ -221,21 +221,30 @@ function construirItensMenu() {
   if (tem('contador') || tem('financeiro') || tem('ceo')) gestao.push({ id: 'fechamento', rot: '📁 Fechamento contábil' });
   if (tem('compras') || tem('financeiro') || tem('ceo')) gestao.push({ id: 'compras-precos', rot: '🛍️ Histórico de preços' });
   if (gestao.length) itens.push({ grupo: 'Gestão' }, ...gestao);
-  if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Academy' }, { id: 'academy', rot: '🎓 Villela Academy' });
-  if (tem('livros')) itens.push({ grupo: 'Livraria' }, { id: 'livraria', rot: '📚 Gestão de Livros' });
-  if (tem('juridico') || tem('ceo')) itens.push({ grupo: 'Legal Intelligence' }, { id: 'legal', rot: '⚖️ Villela Legal' });
-  if (tem('ceo') || tem('ti')) itens.push({ id: 'legal-saas', rot: '⚖️💼 Legal SaaS' });
-  if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Docs Intelligence' }, { id: 'vdocs', rot: '🗂️ Villela Docs' });
-  if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Projects & Events' }, { id: 'vpe', rot: '📋 Villela Projects' });
-  if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Stay Manager' }, { id: 'vsm', rot: '🏨 Stay Manager' });
-  if (tem('ti') || tem('ceo') || tem('vendas')) itens.push({ grupo: 'Villela CRM (SaaS)' }, { id: 'vcrm', rot: '🤝 Villela CRM' });
-  if (tem('ti') || tem('ceo') || tem('vendas')) itens.push({ grupo: 'Closet Club (marketplace)' }, { id: 'closet', rot: '👗 Closet Club' });
-  if (tem('ti') || tem('ceo') || tem('vendas')) itens.push({ grupo: 'Vitrine (marketplace de usados)' }, { id: 'vitrine', rot: '🛒 Vitrine' });
-  if (tem('ti') || tem('ceo') || tem('vendas') || tem('marketing')) itens.push({ grupo: 'Alta Vista 360 (estúdio visual)' }, { id: 'alta-vista', rot: '🚁 Alta Vista 360' });
-  if (tem('ti') || tem('ceo')) itens.push({ grupo: 'Invente (Villela Kids)' }, { id: 'kids', rot: '🧒 Invente' });
+  // ---- PRODUTOS DO GRUPO (13 SaaS/marketplaces) ----------------------------
+  // `produto: true` os tira do menu lateral e os joga no botão ⚡ Sistemas do
+  // topo. Antes cada um tinha CABEÇALHO PRÓPRIO com um único item embaixo:
+  // 13 links custavam 25 linhas e sozinhos respondiam por ~1/3 da altura do
+  // menu. Eles também não são seções da operação de hospedagem — são outros
+  // negócios, e misturá-los com "Limpezas de hoje" é o que tornava a coluna
+  // impossível de varrer com o olho. `sub` é a linha de apoio na grade.
+  const prod = [];
+  if (tem('juridico') || tem('ceo')) prod.push({ id: 'legal', rot: '⚖️ Villela Legal', sub: 'Escritório de advocacia' });
+  if (tem('ceo') || tem('ti')) prod.push({ id: 'legal-saas', rot: '⚖️💼 Legal SaaS', sub: 'Venda do jurídico a escritórios' });
+  if (tem('ti') || tem('ceo')) prod.push({ id: 'vdocs', rot: '🗂️ Villela Docs', sub: 'Gestão documental (B2B)' });
+  if (tem('ti') || tem('ceo')) prod.push({ id: 'vpe', rot: '📋 Villela Projects', sub: 'Projetos e eventos' });
+  if (tem('ti') || tem('ceo')) prod.push({ id: 'vsm', rot: '🏨 Stay Manager', sub: 'Gestão p/ outros anfitriões' });
+  if (tem('ti') || tem('ceo') || tem('vendas')) prod.push({ id: 'vcrm', rot: '🤝 Villela CRM', sub: 'CRM multicanal / Growth OS' });
+  if (tem('ti') || tem('ceo')) prod.push({ id: 'academy', rot: '🎓 Villela Academy', sub: 'Cursos e produtos digitais' });
+  if (tem('livros')) prod.push({ id: 'livraria', rot: '📚 Gestão de Livros', sub: 'Livraria Villela' });
+  if (tem('ti') || tem('ceo') || tem('vendas')) prod.push({ id: 'closet', rot: '👗 Closet Club', sub: 'Aluguel de roupas' });
+  if (tem('ti') || tem('ceo') || tem('vendas')) prod.push({ id: 'vitrine', rot: '🛒 Vitrine', sub: 'Marketplace de venda' });
+  if (tem('ti') || tem('ceo') || tem('vendas') || tem('marketing')) prod.push({ id: 'alta-vista', rot: '🚁 Alta Vista 360', sub: 'Estúdio visual' });
+  if (tem('ti') || tem('ceo')) prod.push({ id: 'kids', rot: '🧒 Invente', sub: 'Aprendizagem criativa' });
   // A API da Origena é admin-only por desenho (o staff não é dono do acervo
   // das famílias, SECURITY.md T12): quem não é admin veria só 403.
-  if (ehAdmin) itens.push({ grupo: 'Origena (memória familiar)' }, { id: 'origena', rot: '🌳 Origena' });
+  if (ehAdmin) prod.push({ id: 'origena', rot: '🌳 Origena', sub: 'Memória e legado familiar' });
+  for (const x of prod) itens.push({ ...x, produto: true });
   itens.push({ grupo: 'Operação' });
   itens.push({ id: 'limpezas', rot: '🧹 Limpezas de hoje' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
@@ -316,22 +325,145 @@ function montarLauncher(alvoSel) {
   alvo.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navegar(b.dataset.nav));
 }
 
+// Grupos recolhidos (lembrados entre sessões). Guardamos os RECOLHIDOS, e não
+// os abertos: assim um grupo NOVO nasce aberto — o contrário esconderia telas
+// novas de quem já usa o portal.
+function gruposRecolhidos() {
+  try {
+    const bruto = localStorage.getItem('staff-menu-recolhidos');
+    if (bruto !== null) return new Set(JSON.parse(bruto));
+  } catch (_) { return new Set(); }
+  // PRIMEIRO USO: recolher tudo menos o grupo da tela atual. Nascer com os 9
+  // grupos abertos deixaria o menu em 2900px — o recurso só ajudaria depois de
+  // o usuário fechar oito grupos à mão, e ninguém faz isso. A partir daqui as
+  // escolhas dele mandam (o que ele abrir sai desta lista e fica aberto).
+  const ativo = grupoDaSecao(ESTADO.secao);
+  const todos = construirItensMenu().filter(i => i.grupo).map(i => i.grupo);
+  const inicial = new Set(todos.filter(g => g !== ativo));
+  salvarRecolhidos(inicial);
+  return inicial;
+}
+function salvarRecolhidos(set) {
+  try { localStorage.setItem('staff-menu-recolhidos', JSON.stringify([...set])); } catch (_) {}
+}
+function alternarGrupo(nome) {
+  const s = gruposRecolhidos();
+  if (s.has(nome)) s.delete(nome); else s.add(nome);
+  salvarRecolhidos(s);
+  montarMenu();
+}
+
+// Grupo a que pertence uma seção — usado para abrir sozinho o grupo da tela atual.
+function grupoDaSecao(secao) {
+  let atual = '';
+  for (const it of construirItensMenu()) {
+    if (it.grupo) { atual = it.grupo; continue; }
+    if (it.id === secao) return atual;
+  }
+  return '';
+}
+
 function montarMenu() {
   const m = $('#menu'); m.innerHTML = '';
-  const itens = construirItensMenu();
+  const itens = construirItensMenu().filter(it => !it.produto);   // produtos vivem no ⚡ Sistemas
+  const recolhidos = gruposRecolhidos();
+  const grupoAtivo = grupoDaSecao(ESTADO.secao);
+  const filtro = (ESTADO.menuFiltro || '').trim().toLowerCase();
+
+  // ---- busca: com 70+ destinos, digitar é o caminho mais curto ----
+  const cx = document.createElement('div'); cx.className = 'menu-busca';
+  const inp = document.createElement('input');
+  inp.type = 'search'; inp.placeholder = '🔎 Buscar no menu…'; inp.value = ESTADO.menuFiltro || '';
+  inp.setAttribute('aria-label', 'Buscar seção do menu');
+  inp.oninput = () => { ESTADO.menuFiltro = inp.value; montarMenu(); const n = $('#menu input'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } };
+  // Enter abre o primeiro resultado — atalho de quem já sabe aonde vai
+  inp.onkeydown = (e) => { if (e.key === 'Enter') { const b = m.querySelector('button[data-id]'); if (b) b.click(); } if (e.key === 'Escape') { ESTADO.menuFiltro = ''; montarMenu(); } };
+  cx.appendChild(inp); m.appendChild(cx);
+
+  const cabe = (it) => !filtro || String(it.rot || '').toLowerCase().includes(filtro);
+  let grupoCorrente = '', casadosNoGrupo = 0, elGrupo = null, envelope = null;
+
+  const fecharGrupo = () => {
+    // grupo que ficou sem nenhum item visível (por causa do filtro) some inteiro
+    if (elGrupo && !casadosNoGrupo) { elGrupo.remove(); if (envelope) envelope.remove(); }
+  };
+
   for (const it of itens) {
-    if (it.grupo) { const g = document.createElement('div'); g.className = 'grupo'; g.textContent = it.grupo; m.appendChild(g); continue; }
+    if (it.grupo) {
+      fecharGrupo();
+      grupoCorrente = it.grupo; casadosNoGrupo = 0;
+      // durante a busca não faz sentido esconder resultado atrás de grupo fechado
+      const aberto = !!filtro || !recolhidos.has(grupoCorrente) || grupoCorrente === grupoAtivo;
+      elGrupo = document.createElement('button');
+      elGrupo.className = 'grupo grupo-btn' + (aberto ? '' : ' recolhido');
+      elGrupo.type = 'button';
+      elGrupo.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+      elGrupo.innerHTML = `<span class="grupo-seta" aria-hidden="true">${aberto ? '▾' : '▸'}</span><span>${it.grupo}</span>`;
+      const nome = grupoCorrente;
+      elGrupo.onclick = () => alternarGrupo(nome);
+      m.appendChild(elGrupo);
+      envelope = document.createElement('div');
+      envelope.className = 'grupo-itens' + (aberto ? '' : ' hidden');
+      m.appendChild(envelope);
+      continue;
+    }
+    if (!cabe(it)) continue;
+    casadosNoGrupo++;
+    const alvo = envelope || m;
     if (it.url) {
       const a = document.createElement('a'); a.textContent = it.rot; a.href = it.url;
       a.target = '_blank'; a.rel = 'noopener noreferrer'; a.className = 'link-externo';
-      m.appendChild(a); continue;
+      alvo.appendChild(a); continue;
     }
     const b = document.createElement('button'); b.textContent = it.rot; b.dataset.id = it.id;
     if (it.badge) { const s = document.createElement('span'); s.className = 'badge-menu hidden'; s.dataset.badge = it.badge; b.appendChild(s); }
     b.onclick = () => navegar(it.id);
-    m.appendChild(b);
+    alvo.appendChild(b);
+  }
+  fecharGrupo();
+  if (filtro && !m.querySelector('button[data-id]')) {
+    const v = document.createElement('p'); v.className = 'menu-vazio'; v.textContent = 'Nada encontrado.';
+    m.appendChild(v);
   }
   atualizarBadgeMural();
+}
+
+// --------- ⚡ Sistemas: os 13 produtos do grupo, fora do menu lateral ---------
+// Eles não são seções da operação de hospedagem: são outros negócios. No menu
+// custavam 25 linhas (13 links + 12 cabeçalhos de um item só) e empurravam a
+// rotina do dia para fora da tela. Aqui ficam a um clique, de qualquer lugar.
+function fecharSistemas() {
+  const p = $('#painel-sistemas'); if (p) p.remove();
+  const b = $('#btn-sistemas'); if (b) b.setAttribute('aria-expanded', 'false');
+  document.removeEventListener('keydown', _escSistemas);
+}
+function _escSistemas(e) { if (e.key === 'Escape') fecharSistemas(); }
+
+function abrirSistemas() {
+  if ($('#painel-sistemas')) { fecharSistemas(); return; }   // o botão alterna
+  const prod = construirItensMenu().filter(i => i.produto);
+  if (!prod.length) return;
+  const cx = document.createElement('div');
+  cx.id = 'painel-sistemas'; cx.className = 'sis-back';
+  cx.innerHTML = `<div class="sis-cx" role="dialog" aria-label="Sistemas do grupo" aria-modal="true">
+      <div class="sis-topo"><b>⚡ Sistemas do Grupo Villela Stay</b>
+        <button class="sis-x" aria-label="Fechar">✕</button></div>
+      <div class="sis-grade">${prod.map(p => {
+        const { ico, txt } = separarIcone(p.rot);
+        return `<button class="sis-item" data-id="${p.id}">
+          <span class="sis-ico" aria-hidden="true">${ico}</span>
+          <span class="sis-nome">${txt}</span>
+          <span class="sis-sub">${p.sub || ''}</span></button>`;
+      }).join('')}</div></div>`;
+  document.body.appendChild(cx);
+  const b = $('#btn-sistemas'); if (b) b.setAttribute('aria-expanded', 'true');
+  cx.onclick = (e) => { if (e.target === cx) fecharSistemas(); };   // clicar fora fecha
+  cx.querySelector('.sis-x').onclick = fecharSistemas;
+  cx.querySelectorAll('.sis-item').forEach(el => {
+    el.onclick = () => { const id = el.dataset.id; fecharSistemas(); navegar(id); };
+  });
+  document.addEventListener('keydown', _escSistemas);
+  const primeiro = cx.querySelector('.sis-item'); if (primeiro) primeiro.focus();
 }
 
 // Atualização ao vivo (leve): a cada 30s atualiza o badge do mural e, se a tela do mural
@@ -514,6 +646,13 @@ function navegar(secao) {
     cont.setAttribute('data-vertical', VERTICAL_DA_SECAO[secao] || 'stay');
     cont.classList.toggle('larga', SECOES_ESTREITAS.indexOf(secao) === -1);
   }
+  // Remonta o menu ao navegar por DOIS motivos concretos, ambos pegos testando:
+  //  (1) o grupo da seção nova precisa abrir sozinho — sem isto você clica em
+  //      algo e o menu continua mostrando o grupo anterior aberto;
+  //  (2) o filtro da busca ficava grudado depois de escolher o destino, e o
+  //      menu permanecia mostrando um item só até alguém limpar à mão.
+  ESTADO.menuFiltro = '';
+  if (typeof montarMenu === 'function') montarMenu();
   document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('ativo', b.dataset.id === secao));
   const menu = $('#menu'); if (menu) menu.classList.remove('aberto'); // fecha a gaveta no mobile ao navegar
   window.scrollTo(0, 0);
