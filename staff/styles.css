@@ -90,11 +90,14 @@ h1.titulo { font-size: 1.5rem; margin: 0 0 4px; color: var(--petroleo); }
 .sub { color: var(--concreto-claro); margin: 0 0 22px; }
 
 /* ---------- Home-lançador (grade de ícones, estilo app) ---------- */
+/* Multicoluna, não uma pilha: cada grupo é um bloco que não se parte (break-inside), e blocos
+   pequenos (Reservas, Comercial, Links) sentam lado a lado em vez de esticar por uma linha
+   inteira. A contagem de colunas sai da largura disponível — 3 em 1180px, 4 em telas maiores. */
 .launcher { background: linear-gradient(160deg, var(--petroleo) 0%, var(--lago-escuro) 100%);
-  border-radius: 16px; padding: 18px 16px 20px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 18px;
+  border-radius: 16px; padding: 18px 16px 6px; margin-bottom: 24px; columns: 320px; column-gap: 22px;
   box-shadow: 0 6px 20px rgba(12,54,68,.16); }
 .launcher:empty { display: none; }
-.lc-grupo { display: flex; flex-direction: column; gap: 10px; }
+.lc-grupo { display: flex; flex-direction: column; gap: 10px; break-inside: avoid; margin-bottom: 16px; }
 .lc-titulo { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: var(--cerrado); padding-left: 2px; }
 .lc-itens { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 14px 6px; }
 .lc-tile { background: none; border: none; padding: 4px 2px; cursor: pointer; display: flex; flex-direction: column;
@@ -165,6 +168,11 @@ tr:last-child td { border-bottom: none; }
 
 /* grade de campos (rótulo em cima, input ocupando a coluna toda) — p/ a tela Área do Hóspede */
 .form-larga { max-width: 720px; }
+/* Pedidos de hóspedes: cada pedido é um formulário; na página larga eles ficam lado a lado em vez
+   de esticar (campo de 1580px afasta o rótulo do valor). Cai para uma coluna no celular. */
+.hp-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 16px; align-items: start; }
+.hp-grade > .form { max-width: none; min-width: 0; }
+@media (max-width: 620px) { .hp-grade { grid-template-columns: 1fr; } }
 .hi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
 .hi-grid input { width: 100%; }
 .hi-grid-3 { grid-template-columns: 1fr 1fr 1fr; }

@@ -274,31 +274,45 @@ function separarIcone(rot) {
   return m ? { ico: m[1], txt: m[2] } : { ico: '•', txt: String(rot || '') };
 }
 
+// Os 13 SaaS do grupo têm um grupo de MENU só para eles (a barra lateral precisa disso para
+// separar os assuntos). Na home isso virava 13 faixas de um ícone, cada uma ocupando uma linha
+// inteira — a home ficava mais vazia do que cheia. Na grade eles viram UM bloco só.
+// Identificado por id, não por título: título é texto de tela e muda; id é rota.
+const LC_PRODUTOS = ['academy', 'livraria', 'legal', 'legal-saas', 'vdocs', 'vpe', 'vsm', 'vcrm',
+  'closet', 'vitrine', 'alta-vista', 'kids', 'origena'];
+const LC_TITULO_PRODUTOS = 'Sistemas do grupo';
+
 // Home-lançador: grade de ícones no estilo do app do hóspede (painel escuro da marca).
+// Os blocos são distribuídos em colunas pelo CSS (multicoluna em .launcher): grupo pequeno fica ao
+// lado do vizinho em vez de esticar sozinho por uma linha inteira.
 function montarLauncher(alvoSel) {
   const alvo = $(alvoSel); if (!alvo) return;
-  const itens = construirItensMenu();
-  let html = '', grupoAberto = false, temItem = false;
-  const fechaGrupo = () => { if (grupoAberto) { html += '</div></div>'; grupoAberto = false; } };
-  for (const it of itens) {
-    if (it.grupo) {
-      fechaGrupo();
-      // pula o grupo "Início" na grade (já estamos na home)
-      if (it.grupo === 'Início') { grupoAberto = false; continue; }
-      html += `<div class="lc-grupo"><div class="lc-titulo">${esc(it.grupo)}</div><div class="lc-itens">`;
-      grupoAberto = true; continue;
-    }
-    if (it.grupo === undefined && !grupoAberto && it.id) continue; // itens do "Início" pulados
-    const { ico, txt } = separarIcone(it.rot);
-    if (it.url) {
-      html += `<a class="lc-tile" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><span class="lc-ico">${ico}</span><span class="lc-rot">${esc(txt)}</span></a>`;
-    } else {
-      html += `<button type="button" class="lc-tile" data-nav="${esc(it.id)}"><span class="lc-ico">${ico}${it.badge ? '<span class="lc-badge hidden" data-badge="mural-lc"></span>' : ''}</span><span class="lc-rot">${esc(txt)}</span></button>`;
-    }
-    temItem = true;
+  // 1) lista linear (grupo, itens…) → blocos { titulo, itens }
+  const blocos = []; let atual = null;
+  for (const it of construirItensMenu()) {
+    if (it.grupo) { atual = { titulo: it.grupo, itens: [] }; blocos.push(atual); continue; }
+    if (atual) atual.itens.push(it);
   }
-  fechaGrupo();
-  alvo.innerHTML = temItem ? html : '';
+  // 2) fora o "Início" (já estamos nele); os blocos que só têm produto viram um bloco só, no lugar
+  //    onde o primeiro deles aparecia (mantém a ordem de leitura do menu).
+  const finais = []; let produtos = null;
+  for (const b of blocos) {
+    if (b.titulo === 'Início' || !b.itens.length) continue;
+    if (b.itens.every(i => LC_PRODUTOS.indexOf(i.id) !== -1)) {
+      if (!produtos) { produtos = { titulo: LC_TITULO_PRODUTOS, itens: [] }; finais.push(produtos); }
+      produtos.itens.push(...b.itens);
+      continue;
+    }
+    finais.push(b);
+  }
+  const tile = (it) => {
+    const { ico, txt } = separarIcone(it.rot);
+    return it.url
+      ? `<a class="lc-tile" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><span class="lc-ico">${ico}</span><span class="lc-rot">${esc(txt)}</span></a>`
+      : `<button type="button" class="lc-tile" data-nav="${esc(it.id)}"><span class="lc-ico">${ico}${it.badge ? '<span class="lc-badge hidden" data-badge="mural-lc"></span>' : ''}</span><span class="lc-rot">${esc(txt)}</span></button>`;
+  };
+  alvo.innerHTML = finais.map(b =>
+    `<div class="lc-grupo"><div class="lc-titulo">${esc(b.titulo)}</div><div class="lc-itens">${b.itens.map(tile).join('')}</div></div>`).join('');
   alvo.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navegar(b.dataset.nav));
 }
 
@@ -452,7 +466,7 @@ const VERTICAL_DA_SECAO = {
 // Seções cujo conteúdo é um quadro largo (kanban do CRM, linha do tempo do calendário): dispensam
 // o teto de 1180px do .conteudo e usam toda a faixa entre o menu e a borda da janela — mais
 // colunas/dias visíveis sem rolar.
-const SECOES_LARGAS = ['crm', 'calendario'];
+const SECOES_LARGAS = ['crm', 'calendario', 'hospede-pedidos'];
 
 // --------- rota na URL (#secao): F5 recarrega o painel aberto, não a Visão geral ---------
 // SPA sem rota volta para a home a cada F5. O hash é a rota mais barata aqui: não exige nada do

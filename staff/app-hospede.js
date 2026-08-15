@@ -204,8 +204,11 @@ async function renderHospedePedidos() {
     return d.join(' · ');
   };
   const tituloPed = (p) => p.tipo === 'evento' ? '🎉 Evento' : p.tipo === 'servico' ? '🛎️ Serviço: ' + esc((p.servico && p.servico.nome) || '') : p.tipo === 'manutencao' ? '🔧 Manutenção' : p.tipo === 'checkin' ? '🚪 Check-in' : '✏️ Alteração';
-  $('#hp-lista').innerHTML = pedidos.map(p => `
-    <div class="form form-larga" style="margin-bottom:16px">
+  // Cartões lado a lado (.hp-grade): um pedido tem forma de formulário, então a largura útil dele
+  // é limitada — esticar até 1580px só afastaria o rótulo do campo. O ganho da página larga vem de
+  // caber 2–3 pedidos por linha em vez de uma fila única de 720px.
+  $('#hp-lista').innerHTML = '<div class="hp-grade">' + pedidos.map(p => `
+    <div class="form form-larga">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
         <strong>${tituloPed(p)} — ${esc(p.hospedeNome || '—')}</strong>
         <span class="tag">${esc(HP_STATUS[p.status] || p.status)}</span>
@@ -220,7 +223,7 @@ async function renderHospedePedidos() {
       <label>Detalhes do orçamento <input type="text" data-f="detalhes" data-id="${p.id}" value="${p.orcamento ? esc(p.orcamento.detalhes || '') : ''}" placeholder="o que está incluído"></label>
       <label>Resposta ao hóspede <textarea data-f="resposta" data-id="${p.id}" rows="2" placeholder="mensagem que o hóspede verá na área dele">${p.respostaAdmin ? esc(p.respostaAdmin) : ''}</textarea></label>
       <div class="acoes"><button class="btn" data-salvar="${p.id}">Salvar e responder</button> <span id="hp-msg-${p.id}" class="ok-msg"></span></div>
-    </div>`).join('');
+    </div>`).join('') + '</div>';
   $('#hp-lista').querySelectorAll('[data-salvar]').forEach(b => b.onclick = async () => {
     const id = b.dataset.salvar;
     const get = (f) => { const el = document.querySelector(`[data-f="${f}"][data-id="${id}"]`); return el ? el.value : ''; };
