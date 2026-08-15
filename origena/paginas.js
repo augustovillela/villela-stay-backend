@@ -145,30 +145,13 @@ function registrarPaginas(app) {
 
     res.type('html').send(pagina(idioma,
       `${t('produto.nome')} — ${t('produto.assinatura')}`, `
-<header class="faixa-topo">
- <div class="wrap-largo">
-  <nav class="menu-site" aria-label="${t('site.nav')}">
-    <!-- A MARCA NO CABEÇALHO. Ele era só uma fileira de links: quem
-         chegava por um link interno não via de quem era o site até rolar
-         até o hero. O slogan vai logo abaixo do nome, na mesma coluna —
-         é a assinatura da marca, não um item de menu. -->
-    <a class="marca-site" href="/origena">
-      <span class="anel">${ANEL_PEQUENO}</span>
-      <span class="nomes"><b>${t('produto.nome')}</b>
-        <small>${t('produto.assinatura')}</small></span>
-    </a>
-    <span class="links">
-    <a href="#como">${t('site.como_t')}</a>
-    <a href="#recursos">${t('site.recursos_t')}</a>
-    <a href="#familia">${t('site.familia_t')}</a>
-    <a href="#criacoes">${t('site.criacoes_t')}</a>
-    ${planos.length ? `<a href="#planos">${t('site.planos_t')}</a>` : ''}
-    <a class="btn mini" href="/origena/app">${t('acao.entrar')}</a>
-    </span>
-  </nav>
-  ${seletorIdioma(idioma, '/origena')}
- </div>
-</header>
+${faixaDeMarca(idioma, '/origena', `${`
+      <a href="#como">${t('site.como_t')}</a>
+      <a href="#recursos">${t('site.recursos_t')}</a>
+      <a href="#familia">${t('site.familia_t')}</a>
+      <a href="#criacoes">${t('site.criacoes_t')}</a>
+      ${planos.length ? `<a href="#planos">${t('site.planos_t')}</a>` : ''}
+      <a class="btn mini" href="/origena/app">${t('acao.entrar')}</a>`}`)}
 <div class="wrap">
 
   <div class="hero">
@@ -254,9 +237,10 @@ function registrarPaginas(app) {
       .split('\n\n').map((p) => `<p>${p.split('\n').join('<br>')}</p>`).join('');
 
     res.type('html').send(pagina(idioma, `${t('ajuda.titulo')} — ${t('produto.nome')}`, `
+${faixaDeMarca(idioma, '/origena/ajuda',
+    `<a href="/origena">&larr; ${t('ajuda.voltar')}</a>
+     <a class="btn mini" href="/origena/app">${t('acao.entrar')}</a>`)}
 <div class="wrap">
-  ${seletorIdioma(idioma, '/origena/ajuda')}
-  <p class="sub"><a href="/origena">&larr; ${t('ajuda.voltar')}</a></p>
   <div class="hero">
     <h1>${t('ajuda.titulo')}</h1>
     <p class="assinatura">${t('ajuda.intro')}</p>
@@ -335,6 +319,32 @@ const seletorIdioma = (idiomaAtual, caminho) =>
     ? '<strong>' + nome + '</strong>'
     : '<a href="/origena/idioma?l=' + cod + '&para=' + encodeURIComponent(caminho) + '">' + nome + '</a>'
   )).join(' · ') + '</p>';
+
+/**
+ * A FAIXA DE MARCA, uma só para todas as páginas públicas. Estava escrita
+ * dentro da inicial: quem chegava pela Ajuda — que é boa parte de quem
+ * chega — via uma página sem dono. Cabeçalho que só existe na home é
+ * identidade que só existe para quem entra pela porta da frente.
+ *
+ * `links` é o miolo variável (o menu na inicial, o voltar na Ajuda); a
+ * marca e a assinatura são sempre as mesmas.
+ */
+const faixaDeMarca = (idioma, caminho, links) => {
+  const t = (c) => i18n.t(idioma, c);
+  return `<header class="faixa-topo">
+ <div class="wrap-largo">
+  <nav class="menu-site" aria-label="${t('site.nav')}">
+    <a class="marca-site" href="/origena">
+      <span class="anel">${ANEL_PEQUENO}</span>
+      <span class="nomes"><b>${t('produto.nome')}</b>
+        <small>${t('produto.assinatura')}</small></span>
+    </a>
+    <span class="links">${links || ''}</span>
+  </nav>
+  ${seletorIdioma(idioma, caminho)}
+ </div>
+</header>`;
+};
 
 const CSS_PUBLICO = `
 .idiomas{text-align:right;font-size:13px;color:var(--suave);margin:0 0 10px}
@@ -423,6 +433,12 @@ align-items:center;justify-content:center;font-size:13px;font-weight:600;letter-
 padding:14px 0;border-bottom:1px solid var(--borda);flex-wrap:wrap}
 .marca{font-family:Newsreader,Lora,Georgia,serif;font-size:22px;font-weight:600;
 color:var(--tinta);text-decoration:none;display:inline-flex;align-items:center;gap:9px}
+.marca .nomes{display:flex;flex-direction:column;line-height:1.12}
+.marca .nomes small{font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:400;
+color:var(--suave);letter-spacing:.01em}
+/* Em tela estreita a assinatura sai: no app o espaço do topo é disputado
+   por família, conta, ajuda e idioma — e ali a marca já está em casa. */
+@media(max-width:520px){ .marca .nomes small{display:none} }
 /* O anel do marcador de marca, desenhado em SVG inline: um caractere não
    diria "camadas de memória", e imagem externa atrasaria o primeiro
    desenho da tela. Marca DEFINITIVA continua esperando o brand book. */
@@ -696,8 +712,11 @@ const ANEL = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"
 // sem tocar em nenhuma. O tabindex negativo existe para o link "pular" e
 // para o foco ir ao conteúdo a cada troca de tela.
 const topo = () => '<header class="topo">' +
+  // A marca do app carrega a MESMA assinatura das páginas públicas: sair
+  // da Ajuda e entrar no app não pode parecer trocar de produto.
   '<a class="marca" href="#" onclick="' + (EU ? 'inicio()' : 'telaEntrar()') + ';return false">' +
-    ANEL + esc(t('produto.nome')) + '</a>' +
+    ANEL + '<span class="nomes"><b>' + esc(t('produto.nome')) + '</b>' +
+    '<small>' + esc(t('produto.assinatura')) + '</small></span></a>' +
   '<span class="topo-dir">' +
   (FAM ? '<a class="familia-atual" href="#" onclick="abrir(FAM.id);return false">' + esc(FAM.nome) + '</a>' : '') +
   (EU ? '<a href="#" onclick="telaConta();return false">' + esc(EU.nome) + '</a>' +
