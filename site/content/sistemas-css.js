@@ -78,16 +78,33 @@ module.exports = `
   font-size:.88rem; font-weight:700; color:var(--acento); }
 .sx-ind-card img { width:22px; height:22px; }
 
-/* ---- demonstração animada ---- */
-.sx-demo { margin-top:34px; }
-.sx-demo-cabeca { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; }
-.sx-demo-passos { display:flex; flex-wrap:wrap; gap:8px; list-style:none; }
-.sx-demo-passos li { font-size:.84rem; color:#B6C2D6; background:rgba(255,255,255,.07);
-  border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:5px 14px; }
-.sx-demo-passos li.on { color:#1B2A4A; background:var(--cerrado); border-color:var(--cerrado); font-weight:700; }
+/* ---- demonstração: passa por TODOS os sistemas, um de cada vez ----
+   Só a tela ativa fica no DOM visível (as outras saem com display:none pelo
+   atributo hidden), então dez maquetes na mesma seção não custam layout nem
+   pintura — e a animação da tela que entra recomeça do zero. */
+.sx-demo { margin-top:30px; }
+.sx-abas { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+.sx-aba { font:inherit; font-size:.84rem; font-weight:600; cursor:pointer; color:#B6C2D6;
+  background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16);
+  border-radius:999px; padding:7px 15px; display:inline-flex; align-items:center; gap:7px;
+  transition:background .16s, color .16s, border-color .16s; }
+.sx-aba img { width:16px; height:16px; }
+.sx-aba:hover { background:rgba(255,255,255,.16); color:#EEF2F8; }
+.sx-aba[aria-selected="true"] { background:var(--cerrado); border-color:var(--cerrado);
+  color:#1B2A4A; font-weight:700; }
+/* Anel de progresso do rodízio: a barra some quando pausado, e é a única
+   pista de que a tela vai trocar sozinha — sem ela a troca parece defeito. */
+.sx-aba[aria-selected="true"]::after { content:''; display:block; width:14px; height:2px;
+  background:rgba(27,42,74,.45); border-radius:2px; }
+.sx-demo-rodape { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:12px 18px; margin-top:16px; }
+.sx-legenda { font-size:.95rem; color:#C9D3E4; max-width:70ch; margin:0; }
+.sx-legenda b { color:#fff; }
 .sx-play { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.28); color:#EEF2F8;
-  border-radius:999px; padding:9px 20px; font:inherit; font-size:.9rem; font-weight:600; cursor:pointer; }
+  border-radius:999px; padding:9px 20px; font:inherit; font-size:.9rem; font-weight:600;
+  cursor:pointer; white-space:nowrap; }
 .sx-play:hover { background:rgba(255,255,255,.2); }
+.sx-palco-tela[hidden] { display:none; }
 
 /* ---- bloco de cada sistema ---- */
 /* A alternância de fundo vem de uma classe, não de :nth-of-type: a página
@@ -132,26 +149,21 @@ module.exports = `
 .sx-preco b { font-family:'Lora',Georgia,serif; font-size:1.7rem; }
 .sx-preco span { display:block; font-size:.84rem; color:var(--concreto-claro); }
 
-/* ---- em desenvolvimento: cartão, e deliberadamente MENOS peso visual que o
-   bloco de um sistema à venda. Se um "em breve" competisse de igual para igual
-   com o que se pode assinar hoje, a página trabalharia contra si mesma. ---- */
-.sx-dev { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; margin-top:32px; }
-.sx-dev-card { background:#fff; border:1px solid #E2E6EC; border-top:4px solid var(--acento);
-  border-radius:14px; padding:24px; display:flex; flex-direction:column; }
-.sx-dev-topo { display:flex; align-items:center; gap:12px; }
-.sx-dev-topo img { width:34px; height:34px; flex-shrink:0; }
-.sx-dev-topo h3 { font-family:'Lora',Georgia,serif; font-size:1.16rem; line-height:1.15; }
-.sx-dev-cat { font-size:.72rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--acento); }
-.sx-dev-estado { align-self:flex-start; margin-top:14px; background:rgba(201,162,39,.14);
+/* ---- em desenvolvimento: MESMO layout dos sistemas à venda (texto + tela
+   grudada), porque o Augusto quis paridade de tratamento. O que separa os dois
+   não é peso visual: é o selo de estado e a linha "falta para lançar", que
+   nenhum bloco à venda tem. Assim ninguém confunde o que dá para assinar hoje
+   com o que ainda não dá — sem esconder nada. ---- */
+.sx-dev-bloco { padding:56px 0; }
+.sx-dev-bloco + .sx-dev-bloco { border-top:1px solid #E7EBF1; }
+.sx-dev-estado { display:inline-block; margin-top:16px; background:rgba(201,162,39,.14);
   border:1px solid rgba(201,162,39,.45); color:#7A5F10; border-radius:999px;
-  padding:4px 13px; font-size:.79rem; font-weight:700; }
-.sx-dev-promessa { font-family:'Lora',Georgia,serif; font-size:1.1rem; margin-top:14px; }
-.sx-dev-oque { margin-top:10px; font-size:.93rem; color:var(--concreto-claro); flex:1; }
-.sx-dev-falta { margin-top:14px; padding-top:14px; border-top:1px dashed #D9DFE7;
-  font-size:.88rem; color:var(--concreto-claro); }
+  padding:5px 15px; font-size:.82rem; font-weight:700; }
+.sx-dev-oque { margin-top:16px; font-size:.98rem; color:var(--concreto-claro); }
+.sx-dev-falta { margin-top:18px; padding-top:16px; border-top:1px dashed #D9DFE7;
+  font-size:.92rem; color:var(--concreto-claro); max-width:52ch; }
 .sx-dev-falta b { color:var(--concreto); }
-.sx-dev-link { margin-top:16px; font-weight:700; color:var(--acento); align-self:flex-start; }
-.sx-dev-link:hover { text-decoration:underline; }
+.sx-dev-bloco .sx-btn { margin-top:22px; }
 
 /* ---- tabela comparativa ---- */
 .sx-tabela-rolo { overflow-x:auto; margin-top:30px; -webkit-overflow-scrolling:touch; }
@@ -194,6 +206,17 @@ module.exports = `
 @media (max-width:900px) {
   .sx-prod-grade { grid-template-columns:1fr; gap:30px; }
   .sx-hero { padding:52px 0 46px; }
+}
+/* No celular as dez abas empilhadas ocupavam 356 px — uma parede de pílulas
+   antes de o visitante ver a primeira tela. Viram uma tira que corre na
+   horizontal: ocupa uma linha, e o JS traz a aba ativa para o centro a cada
+   troca, para o visitante sempre saber em que ponto do rodízio está. */
+@media (max-width:700px) {
+  .sx-abas { flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px;
+    scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin; }
+  .sx-aba { flex:0 0 auto; scroll-snap-align:center; padding:11px 16px; }  /* 44px de alvo de toque */
+  .sx-demo-rodape { flex-direction:column; align-items:flex-start; }
 }
 
 /* ===================== maquete de tela (mq-) ========================= */
@@ -321,6 +344,27 @@ module.exports = `
 .mq-grafico span { flex:1; background:linear-gradient(180deg,var(--acento,#B45309),rgba(180,83,9,.42));
   border-radius:3px 3px 0 0; min-height:4px; }
 
+/* --- missões (Kids) --- */
+.mq-missao { background:#fff; border:1px solid var(--mq-border); border-radius:9px; padding:10px 12px; }
+.mq-missao.feita { border-color:var(--mq-ok); background:var(--mq-ok-soft); }
+.mq-missao .mq-chip.ok { margin-top:6px; display:inline-block; }
+
+/* --- look montado (Closet) --- */
+.mq-pecas { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.mq-peca { background:#fff; border:1px solid var(--mq-border); border-radius:9px; padding:9px;
+  display:flex; flex-direction:column; gap:2px; font-size:11px; }
+.mq-peca-foto { display:block; font-size:26px; line-height:1.2; text-align:center;
+  background:var(--mq-surface-2); border-radius:6px; padding:6px 0; margin-bottom:4px; }
+.mq-total { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  background:#fff; border:1px solid var(--mq-border); border-radius:9px; padding:11px 13px; margin-top:9px; }
+.mq-total-valor { font-family:'Lora',Georgia,serif; font-size:19px; color:var(--mq-navy); }
+
+/* --- jornada do pedido (Vitrine) --- */
+.mq-passos { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.mq-passo { background:#fff; border:1px solid var(--mq-border); border-radius:9px; padding:10px; font-size:11px; }
+.mq-passo.feito { border-color:var(--mq-ok); }
+.mq-passo-ico { display:block; font-size:17px; margin-bottom:5px; }
+
 /* --- entrega (Alta Vista) --- */
 .mq-etapas { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:11px; }
 .mq-etapa { background:#fff; border:1px solid var(--mq-border); border-radius:9px; padding:10px; font-size:11px; }
@@ -344,14 +388,14 @@ module.exports = `
 @container (max-width: 640px) {
   .mq-nav { width:46px; } .mq-nav-item span, .mq-marca { font-size:0; }
   .mq-nav-item { justify-content:center; padding:8px 0; }
-  .mq-kanban, .mq-etapas { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .mq-kanban, .mq-etapas, .mq-pecas, .mq-passos { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .mq-tour { grid-template-columns:1fr; }
   .mq-corpo { min-height:340px; }
   /* O cartão continua andando uma coluna para a direita (o X é % do próprio
      cartão, então o gesto sobrevive ao layout de 2 colunas). O CURSOR não:
      o trajeto dele é % da área de conteúdo e só bate no layout de 4 colunas.
      Cursor apontando para o lugar errado é pior que cursor nenhum. */
-  .mq-demo.tocando .js-cursor { animation:none; opacity:0; }
+  .mq.tocando .js-cursor { animation:none; opacity:0; }
 }
 /* Os três indicadores só empilham quando realmente não cabem. Empilhá-los
    cedo demais custava ~120 px de altura em toda maquete, e altura é o que
@@ -382,10 +426,10 @@ module.exports = `
   box-shadow:0 8px 22px rgba(20,32,56,.3); opacity:0; transform:translateY(10px); z-index:5; }
 .js-alvo { height:0; }
 
-.mq-demo.tocando .js-cursor { animation:sx-cursor 7.5s ease-in-out infinite; }
-.mq-demo.tocando .js-arrasta { animation:sx-arrasta 7.5s ease-in-out infinite; }
-.mq-demo.tocando .js-alvo { animation:sx-abre-vaga 7.5s ease-in-out infinite; }
-.mq-demo.tocando .js-toast { animation:sx-toast 7.5s ease-in-out infinite; }
+.mq.tocando .js-cursor { animation:sx-cursor 8s ease-in-out infinite; }
+.mq.tocando .js-arrasta { animation:sx-arrasta 8s ease-in-out infinite; }
+.mq.tocando .js-alvo { animation:sx-abre-vaga 8s ease-in-out infinite; }
+.mq.tocando .js-toast { animation:sx-toast 8s ease-in-out infinite; }
 
 /* Os números REAGEM ao cartão pousar — é o ponto da demonstração: mostrar
    que o painel se atualiza sem ninguém digitar. O valor "depois" mora em
@@ -393,16 +437,73 @@ module.exports = `
    de 7,5 s. Sem isto, o texto ao lado da maquete prometeria algo que a
    maquete não faz. O fundo do ::after tem de ser o do elemento embaixo,
    senão os dois números aparecem sobrepostos. */
-.mq-demo.tocando .js-mrr, .mq-demo.tocando .js-acao,
-.mq-demo.tocando .js-cont-prop, .mq-demo.tocando .js-cont-ganho { position:relative; display:inline-block; }
-.mq-demo.tocando .js-mrr::after, .mq-demo.tocando .js-acao::after,
-.mq-demo.tocando .js-cont-prop::after, .mq-demo.tocando .js-cont-ganho::after {
+.mq.tocando .js-mrr, .mq.tocando .js-acao,
+.mq.tocando .js-cont-prop, .mq.tocando .js-cont-ganho { position:relative; display:inline-block; }
+.mq.tocando .js-mrr::after, .mq.tocando .js-acao::after,
+.mq.tocando .js-cont-prop::after, .mq.tocando .js-cont-ganho::after {
   content:attr(data-para); position:absolute; left:0; top:0; min-width:100%;
-  background:var(--mq-surface); animation:sx-troca 7.5s ease-in-out infinite; }
-.mq-demo.tocando .js-mrr::after { color:var(--mq-ok); }
-.mq-demo.tocando .js-cont-prop::after { background:#EDF0F5; }
-.mq-demo.tocando .js-cont-ganho::after { background:var(--mq-ok-soft); color:var(--mq-ok); font-weight:700; }
+  background:var(--mq-surface); animation:sx-troca 8s ease-in-out infinite; }
+.mq.tocando .js-mrr::after { color:var(--mq-ok); }
+.mq.tocando .js-cont-prop::after { background:#EDF0F5; }
+.mq.tocando .js-cont-ganho::after { background:var(--mq-ok-soft); color:var(--mq-ok); font-weight:700; }
 @keyframes sx-troca { 0%, 56% { opacity:0; } 62%, 88% { opacity:1; } 92%, 100% { opacity:0; } }
+
+/* ============ vocabulário de animação das DEZ maquetes =============
+   As telas dos blocos não arrastam nada de um lugar para outro: animam no
+   LUGAR. Motivo prático — animação que viaja até outro elemento exige
+   geometria remedida a cada mudança de layout (a demonstração do CRM já
+   custou isso uma vez), e esse preço não se paga dez vezes. Motivo de
+   produto — o que convence não é o gesto, é o painel REAGINDO: número que
+   muda, barra que enche, fonte que aparece, etapa que acende.
+   Todas no mesmo ciclo de 8 s, para telas vizinhas não brigarem. */
+
+/* troca de valor: o "depois" (data-para) entra por cima do "antes" */
+.mq.tocando .js-troca { position:relative; display:inline-block; }
+.mq.tocando .js-troca::after { content:attr(data-para); position:absolute; left:0; top:0;
+  min-width:100%; background:var(--troca-bg,var(--mq-surface)); color:var(--mq-ok);
+  animation:sx-troca 8s ease-in-out infinite; }
+
+/* item que aparece; escalone uma lista com animation-delay no style */
+.mq.tocando .js-surge { animation:sx-surge 8s ease-in-out infinite; }
+@keyframes sx-surge {
+  0%, 24%  { opacity:0; transform:translateY(6px); }
+  34%, 90% { opacity:1; transform:translateY(0); }
+  96%,100% { opacity:0; transform:translateY(6px); }
+}
+
+/* barra/medidor enchendo — escala em vez de largura: não recalcula layout */
+.mq.tocando .js-cresce-x { transform-origin:left center; animation:sx-cresce 8s ease-in-out infinite; }
+.mq.tocando .js-cresce-y { transform-origin:center bottom; animation:sx-cresce-y 8s ease-in-out infinite; }
+@keyframes sx-cresce   { 0%,10% { transform:scaleX(0); } 45%,92% { transform:scaleX(1); } 100% { transform:scaleX(0); } }
+@keyframes sx-cresce-y { 0%,10% { transform:scaleY(0); } 45%,92% { transform:scaleY(1); } 100% { transform:scaleY(0); } }
+
+/* etapa de fluxo acendendo em sequência */
+.mq.tocando .js-acende { animation:sx-acende 8s ease-in-out infinite; }
+@keyframes sx-acende {
+  0%, 12%  { opacity:.32; transform:translateY(3px); }
+  30%, 90% { opacity:1; transform:translateY(0); }
+  97%,100% { opacity:.32; transform:translateY(3px); }
+}
+
+/* ponto que respira (hotspot do tour, alerta) */
+.mq.tocando .js-pulsa { animation:sx-pulsa 2.6s ease-in-out infinite; }
+@keyframes sx-pulsa {
+  0%,100% { transform:scale(1); box-shadow:0 2px 6px rgba(0,0,0,.25); }
+  50%     { transform:scale(1.22); box-shadow:0 0 0 6px rgba(255,255,255,.28); }
+}
+
+/* Dois estados no mesmo lugar: "antes" sai, "depois" entra.
+   Grade de uma célula só, e não posicionamento absoluto: com absoluto o
+   container ficava do tamanho do estado CURTO ("Disponível") e o estado longo
+   ("Reservado · pagamento retido") vazava e era cortado pela moldura no
+   celular. Empilhados na mesma célula, a grade se dimensiona pelo MAIOR. */
+.mq-estados { display:inline-grid; }
+.mq-estados > * { grid-area:1 / 1; align-self:center; justify-self:start; }
+.mq-estados .js-depois { white-space:nowrap; opacity:0; }
+.mq.tocando .js-antes  { animation:sx-antes 8s ease-in-out infinite; }
+.mq.tocando .js-depois { animation:sx-depois 8s ease-in-out infinite; }
+@keyframes sx-antes  { 0%,52% { opacity:1; } 60%,92% { opacity:0; } 97%,100% { opacity:1; } }
+@keyframes sx-depois { 0%,52% { opacity:0; } 60%,92% { opacity:1; } 97%,100% { opacity:0; } }
 
 /* Os números do trajeto NÃO são estimativa: foram medidos no navegador
    sobre a maquete renderizada (posição de repouso do cartão × posição da
@@ -444,14 +545,20 @@ module.exports = `
 /* Quem pediu menos movimento no sistema operacional recebe o RESULTADO em
    vez do gesto: o aviso de pós-venda já visível, sem nada se mexendo. O JS
    também não liga a demonstração nesse caso — isto aqui é a rede de baixo. */
+/* Quem pediu menos movimento no sistema operacional recebe o RESULTADO em vez
+   do gesto: tudo parado, no estado final legível, nada piscando. O JS também
+   nem liga a animação nesse caso — isto aqui é a rede de baixo, para o caso de
+   a classe entrar por outro caminho. */
 @media (prefers-reduced-motion: reduce) {
-  .mq-demo.tocando .js-cursor, .mq-demo.tocando .js-arrasta,
-  .mq-demo.tocando .js-alvo, .mq-demo.tocando .js-toast,
-  .mq-demo.tocando .js-mrr::after, .mq-demo.tocando .js-acao::after,
-  .mq-demo.tocando .js-cont-prop::after, .mq-demo.tocando .js-cont-ganho::after { animation:none; }
-  .mq-demo.tocando .js-mrr::after, .mq-demo.tocando .js-acao::after,
-  .mq-demo.tocando .js-cont-prop::after, .mq-demo.tocando .js-cont-ganho::after { opacity:0; }
-  .mq-demo .js-toast { opacity:1; transform:none; }
+  .mq.tocando .js-cursor, .mq.tocando .js-arrasta, .mq.tocando .js-alvo,
+  .mq.tocando .js-toast, .mq.tocando .js-troca::after, .mq.tocando .js-surge,
+  .mq.tocando .js-cresce-x, .mq.tocando .js-cresce-y, .mq.tocando .js-acende,
+  .mq.tocando .js-pulsa, .mq.tocando .js-antes, .mq.tocando .js-depois { animation:none; }
+  .mq.tocando .js-troca::after { opacity:0; }
+  .mq.tocando .js-surge, .mq.tocando .js-acende { opacity:1; transform:none; }
+  .mq.tocando .js-cresce-x, .mq.tocando .js-cresce-y { transform:none; }
+  .mq.tocando .js-depois { opacity:0; }
+  .mq .js-toast { opacity:1; transform:none; }
   .sx-ind-card:hover { transform:none; }
 }
 `;

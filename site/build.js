@@ -2306,6 +2306,10 @@ conferirCobertura(PRODUTOS_GRUPO);
 
 {
   const simboloDe = s => `/assets/brand/${s.pasta}/${s.simbolo || 'simbolo-v.svg'}`;
+  // A demonstração do topo passa por TODOS — inclusive os que ainda não estão
+  // à venda. Foi pedido do Augusto: quem chega merece ver o grupo inteiro
+  // funcionando, e o que não se vende ainda está rotulado no bloco próprio.
+  const TODOS_DEMO = SISTEMAS.concat(EM_DESENVOLVIMENTO);
   // Preço em uma linha, respeitando o modelo de cada produto: nem tudo é
   // mensalidade. Dizer "a partir de R$ X/mês" na Academy (comissão por
   // venda) ou no Alta Vista (por projeto) seria mentira de vitrine.
@@ -2486,23 +2490,29 @@ conferirCobertura(PRODUTOS_GRUPO);
 <section class="sx-sec escura" id="demonstracao">
   <div class="sx-wrap">
     <p class="sx-chapeu">${t('Demonstração', 'Demonstration', 'Demostración')}</p>
-    <h2>${t('Não é imagem parada. É o sistema sendo operado.',
-            'Not a still image. This is the system being operated.',
-            'No es una imagen fija. Es el sistema siendo operado.')}</h2>
+    <h2>${t('Não é imagem parada. São os sistemas sendo operados.',
+            'Not still images. These are the systems being operated.',
+            'No son imágenes fijas. Son los sistemas siendo operados.')}</h2>
     <p class="sx-sub">${t(
-      'Um negócio de R$ 24.800 é arrastado de "Proposta" para "Ganho" no Villela CRM. Repare no que acontece sozinho: o total do mês sobe, a fila de "precisa de ação hoje" diminui e a tarefa de pós-venda é criada. Trabalho que ninguém precisou lembrar de fazer.',
-      'A R$24,800 deal is dragged from "Proposal" to "Won" in Villela CRM. Watch what happens by itself: the month’s total goes up, the "needs action today" queue shrinks and the after-sales task is created. Work nobody had to remember to do.',
-      'Un negocio de R$ 24.800 se arrastra de "Propuesta" a "Ganado" en Villela CRM. Fíjate en lo que ocurre solo: el total del mes sube, la fila de "necesita acción hoy" baja y se crea la tarea de posventa. Trabajo que nadie tuvo que recordar hacer.')}</p>
+      `Cada tela abaixo mostra um dos ${TODOS_DEMO.length} sistemas fazendo exatamente o que a página promete que ele faz — e o painel reagindo sozinho: número que muda, fila que diminui, fonte que aparece, repasse que libera. Elas passam uma de cada vez; clique num nome para ir direto.`,
+      `Each screen below shows one of the ${TODOS_DEMO.length} systems doing exactly what this page says it does — with the dashboard reacting by itself: numbers changing, queues shrinking, sources appearing, payouts released. They cycle one at a time; click a name to jump straight to it.`,
+      `Cada pantalla abajo muestra uno de los ${TODOS_DEMO.length} sistemas haciendo exactamente lo que esta página promete — y el panel reaccionando solo: número que cambia, fila que baja, fuente que aparece, liquidación que se libera. Pasan de una en una; haz clic en un nombre para ir directo.`)}</p>
     <div class="sx-demo">
-      <div class="sx-demo-cabeca">
-        <ul class="sx-demo-passos" id="sx-passos">
-          <li data-passo="0" class="on">1 · ${t('Cliente aceitou a proposta', 'Client accepted the proposal', 'El cliente aceptó la propuesta')}</li>
-          <li data-passo="1">2 · ${t('Negócio vai para "Ganho"', 'Deal moves to "Won"', 'El negocio pasa a "Ganado"')}</li>
-          <li data-passo="2">3 · ${t('Painel e tarefas se atualizam', 'Dashboard and tasks update', 'Panel y tareas se actualizan')}</li>
-        </ul>
+      <div class="sx-abas" id="sx-abas" role="tablist" aria-label="${t('Sistemas na demonstração', 'Systems in the demonstration', 'Sistemas en la demostración')}">
+        ${TODOS_DEMO.map((s, i) => `<button type="button" class="sx-aba" role="tab" id="sx-aba-${s.id}"
+          aria-controls="sx-tela-${s.id}" aria-selected="${i === 0}" data-i="${i}">
+          <img src="${simboloDe(s)}" alt="" width="16" height="16" loading="lazy" decoding="async">${esc(s.nome)}</button>`).join('')}
+      </div>
+      <div id="sx-palco">
+        ${TODOS_DEMO.map((s, i) => `
+        <div class="sx-palco-tela" id="sx-tela-${s.id}" role="tabpanel" aria-labelledby="sx-aba-${s.id}"${i === 0 ? '' : ' hidden'}>
+          <div class="mq mq-demo" data-vertical="${s.vertical}" style="--acento:${s.cor}">${TELAS[s.tela](t)}</div>
+        </div>`).join('')}
+      </div>
+      <div class="sx-demo-rodape">
+        <p class="sx-legenda" id="sx-legenda"><b>${esc(TODOS_DEMO[0].nome)}:</b> ${esc(t(...TODOS_DEMO[0].demo))}</p>
         <button type="button" class="sx-play" id="sx-play" aria-pressed="true">⏸ ${t('Pausar', 'Pause', 'Pausar')}</button>
       </div>
-      <div class="mq mq-demo" id="sx-demo-mq" data-vertical="crm" style="--acento:#B0185A">${TELAS.crm(t)}</div>
     </div>
   </div>
 </section>
@@ -2538,22 +2548,25 @@ ${blocos}
       'Estes funcionam em produção hoje, com teste automatizado como os outros. O que falta neles não é código: é advogado, acervo e credencial de pagamento. Preferimos mostrar assim, com a pendência escrita, a fingir que não existem — quem procura um fornecedor de software merece saber o que está pronto e o que ainda não está.',
       'These run in production today, with automated tests like the others. What they are missing is not code: it is legal review, inventory and payment credentials. We would rather show them like this, with the pending item written down, than pretend they do not exist — anyone looking for a software supplier deserves to know what is ready and what is not.',
       'Estos funcionan en producción hoy, con pruebas automatizadas como los demás. Lo que les falta no es código: es abogado, acervo y credencial de pago. Preferimos mostrarlos así, con el pendiente escrito, a fingir que no existen — quien busca un proveedor de software merece saber qué está listo y qué no.')}</p>
-    <div class="sx-dev">
-      ${EM_DESENVOLVIMENTO.map(d => `
-      <article class="sx-dev-card" style="--acento:${d.cor}">
-        <div class="sx-dev-topo">
-          <img src="/assets/brand/${d.pasta}/${d.simbolo || 'simbolo-v.svg'}" alt="" width="34" height="34" loading="lazy" decoding="async">
-          <div><span class="sx-dev-cat">${esc(t(...d.categoria))}</span>
-            <h3>${esc(d.nome)}</h3></div>
+  </div>
+  ${EM_DESENVOLVIMENTO.map(d => `
+  <div class="sx-dev-bloco" style="--acento:${d.cor}">
+    <div class="sx-wrap sx-prod-grade">
+      <div>
+        <div class="sx-prod-cabeca">
+          <img src="${simboloDe(d)}" alt="" width="46" height="46" loading="lazy" decoding="async">
+          <div><span class="sx-prod-cat">${esc(t(...d.categoria))}</span>
+            <h3 class="sx-prod-nome">${esc(d.nome)}</h3></div>
         </div>
         <span class="sx-dev-estado">${esc(t(...d.estado))}</span>
-        <p class="sx-dev-promessa">${esc(t(...d.promessa))}</p>
+        <p class="sx-promessa">${esc(t(...d.promessa))}</p>
         <p class="sx-dev-oque">${t(...d.oQueE)}</p>
         <p class="sx-dev-falta"><b>${t('Falta para lançar:', 'Still needed to launch:', 'Falta para lanzar:')}</b> ${esc(t(...d.falta))}</p>
-        <a class="sx-dev-link" href="${d.url}" target="_blank" rel="noopener" data-sx-cta="dev-${d.id}">${t('Ver como está', 'See how it looks', 'Ver cómo está')} →</a>
-      </article>`).join('')}
+        <a class="sx-btn sx-btn-vazio" href="${d.url}" target="_blank" rel="noopener" data-sx-cta="dev-${d.id}">${t('Ver como está hoje', 'See how it looks today', 'Ver cómo está hoy')}</a>
+      </div>
+      <div class="mq" data-vertical="${d.vertical}" style="--acento:${d.cor}">${TELAS[d.tela](t)}</div>
     </div>
-  </div>
+  </div>`).join('')}
 </section>
 
 <section class="sx-sec escura" id="confianca">
@@ -2607,52 +2620,123 @@ ${blocos}
 
 <script>
 (function(){
-  // ---- demonstração: só anima o que está na tela, e nunca contra a
-  // vontade de quem pediu menos movimento no sistema operacional.
-  var mq = document.getElementById('sx-demo-mq');
-  var botao = document.getElementById('sx-play');
-  var passos = [].slice.call(document.querySelectorAll('#sx-passos li'));
-  if (!mq || !botao) return;
-  var CICLO = 7500, marcaPassos = null, quer = true, visivel = false;
   var menosMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var CICLO = 8000;   // igual ao ciclo das animações no CSS
 
-  // Os rótulos acompanham o mesmo ciclo do CSS. São dois relógios
-  // separados, então eles reiniciam juntos toda vez que a animação
-  // (re)começa — sem isso desencontram depois de algumas voltas.
-  function acenderPasso(i){ passos.forEach(function(p, n){ p.classList.toggle('on', n === i); }); }
-  function comecarPassos(){
-    pararPassos(); acenderPasso(0);
-    var t1 = setTimeout(function(){ acenderPasso(1); }, CICLO * 0.30);
-    var t2 = setTimeout(function(){ acenderPasso(2); }, CICLO * 0.60);
-    var t3 = setInterval(function(){
-      acenderPasso(0);
-      setTimeout(function(){ acenderPasso(1); }, CICLO * 0.30);
-      setTimeout(function(){ acenderPasso(2); }, CICLO * 0.60);
-    }, CICLO);
-    marcaPassos = [t1, t2, t3];
+  // ---- 1) as maquetes dos BLOCOS animam quando entram em cena, e param
+  // quando saem. Sem isso, dez painéis animariam ao mesmo tempo fora da
+  // vista, gastando bateria para ninguém ver.
+  var doPalco = document.getElementById('sx-palco');
+  var blocos = [].slice.call(document.querySelectorAll('.mq')).filter(function(m){
+    return !doPalco || !doPalco.contains(m);
+  });
+  if (!menosMovimento && 'IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function(itens){
+      itens.forEach(function(e){ e.target.classList.toggle('tocando', e.isIntersecting); });
+    }, { threshold: 0.25 });
+    blocos.forEach(function(m){ obs.observe(m); });
   }
-  function pararPassos(){
-    if (!marcaPassos) return;
-    clearTimeout(marcaPassos[0]); clearTimeout(marcaPassos[1]); clearInterval(marcaPassos[2]);
-    marcaPassos = null;
+
+  // ---- 2) o palco do topo: um sistema de cada vez, em rodízio.
+  var abas = [].slice.call(document.querySelectorAll('#sx-abas .sx-aba'));
+  var telas = [].slice.call(document.querySelectorAll('#sx-palco .sx-palco-tela'));
+  var legenda = document.getElementById('sx-legenda');
+  var botao = document.getElementById('sx-play');
+  var LEGENDAS = ${JSON.stringify(TODOS_DEMO.map(s => ({ n: s.nome, d: t(...s.demo) })))};
+  if (!telas.length || !botao) return;
+  var atual = 0, relogio = null, quer = true, visivel = false;
+
+  function tocando(){ return quer && visivel && !menosMovimento; }
+
+  // Reserva a altura da MAIOR tela. As dez não têm a mesma altura (a do Kids
+  // é ~100 px mais alta que a do CRM), e sem esta reserva a página inteira
+  // pulava a cada troca — o texto abaixo subia e descia sozinho a cada 8 s,
+  // que é exatamente o tipo de sobressalto que faz o visitante perder a linha.
+  // Medido em tempo de execução, e não fixado no CSS, porque a altura muda com
+  // a largura da janela e com o idioma (o mesmo texto ocupa linhas diferentes).
+  var palco = document.getElementById('sx-palco');
+  function reservarAltura(){
+    var maior = 0;
+    telas.forEach(function(el){
+      var escondida = el.hidden;
+      el.hidden = false;
+      if (el.offsetHeight > maior) maior = el.offsetHeight;
+      el.hidden = escondida;
+    });
+    if (maior) palco.style.minHeight = maior + 'px';
   }
-  function aplicar(){
-    var tocar = quer && visivel && !menosMovimento;
-    mq.classList.toggle('tocando', tocar);
-    if (tocar) { if (!marcaPassos) comecarPassos(); } else { pararPassos(); }
+  var remedir;
+  window.addEventListener('resize', function(){
+    clearTimeout(remedir);
+    remedir = setTimeout(reservarAltura, 200);
+  });
+  // As fontes mudam a altura do texto; medir antes delas dá número menor.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(reservarAltura);
+  window.addEventListener('load', reservarAltura);
+  reservarAltura();
+
+  function mostrar(n){
+    atual = (n + telas.length) % telas.length;
+    telas.forEach(function(el, k){
+      el.hidden = k !== atual;
+      var mq = el.querySelector('.mq');
+      // A tela que sai perde a classe para que a que entra recomece a
+      // animação do zero — senão ela apareceria no meio do ciclo, com o
+      // número já trocado e o gesto pela metade.
+      if (mq) mq.classList.toggle('tocando', k === atual && tocando());
+    });
+    abas.forEach(function(a, k){ a.setAttribute('aria-selected', String(k === atual)); });
+    legenda.innerHTML = '<b>' + LEGENDAS[atual].n + ':</b> ' + LEGENDAS[atual].d;
+    centralizarAba();
   }
+
+  // No celular a tira de abas corre na horizontal, e a aba ativa pode estar
+  // fora da vista — o visitante veria a tela trocar sem pista de onde está no
+  // rodízio. Mexe só no scroll HORIZONTAL da tira (scrollIntoView mexeria
+  // também no scroll vertical da página e roubaria a leitura de quem desceu).
+  function centralizarAba(){
+    var tira = document.getElementById('sx-abas');
+    if (!tira || tira.scrollWidth <= tira.clientWidth) return;
+    var a = abas[atual];
+    tira.scrollTo({ left: a.offsetLeft - (tira.clientWidth - a.offsetWidth) / 2, behavior: menosMovimento ? 'auto' : 'smooth' });
+  }
+
+  function rodar(){
+    parar();
+    if (!tocando()) return;
+    relogio = setInterval(function(){ mostrar(atual + 1); }, CICLO);
+  }
+  function parar(){ if (relogio) { clearInterval(relogio); relogio = null; } }
+
+  abas.forEach(function(a){
+    a.addEventListener('click', function(){
+      mostrar(Number(a.getAttribute('data-i')));
+      rodar();   // reinicia a contagem: quem escolheu quer ver aquela inteira
+      if (typeof gtag === 'function') gtag('event', 'demo_sistema', { sistema: a.id.replace('sx-aba-', '') });
+    });
+  });
+  // Teclado: seta esquerda/direita andam entre as abas, como manda o padrão.
+  document.getElementById('sx-abas').addEventListener('keydown', function(e){
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    var n = atual + (e.key === 'ArrowRight' ? 1 : -1);
+    mostrar(n); rodar(); abas[atual].focus();
+  });
+
   botao.addEventListener('click', function(){
     quer = !quer;
     botao.setAttribute('aria-pressed', String(quer));
     botao.textContent = quer ? ${JSON.stringify('⏸ ' + t('Pausar', 'Pause', 'Pausar'))} : ${JSON.stringify('▶ ' + t('Tocar', 'Play', 'Reproducir'))};
-    aplicar();
+    mostrar(atual); rodar();
   });
+
   if ('IntersectionObserver' in window) {
-    new IntersectionObserver(function(e){ visivel = e[0].isIntersecting; aplicar(); },
-      { threshold: 0.35 }).observe(mq);
+    new IntersectionObserver(function(e){
+      visivel = e[0].isIntersecting; mostrar(atual); rodar();
+    }, { threshold: 0.3 }).observe(document.getElementById('sx-palco'));
   } else { visivel = true; }
   if (menosMovimento) { botao.hidden = true; }
-  aplicar();
+  mostrar(0); rodar();
 
   // ---- formulário: mesmo endpoint de leads das outras landings, com
   // origem própria para o CRM saber que este lead veio procurando sistema.

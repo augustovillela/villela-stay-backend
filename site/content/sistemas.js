@@ -39,7 +39,11 @@ const SISTEMAS = [
     cor: '#B0185A',
     url: 'https://crm.villelastay.com.br/crm',
     urlTeste: 'https://crm.villelastay.com.br/crm/assinar?plano=trial',
-    tela: 'crm',                  // qual maquete renderizar (sistemas-telas.js)
+    tela: 'crm',
+    demo: T(
+      'Um negócio de R$ 24.800 é arrastado de “Proposta” para “Ganho” — e o total do mês, a fila de hoje e a tarefa de pós-venda se atualizam sozinhos.',
+      'A R$24,800 deal is dragged from “Proposal” to “Won” — and the month’s total, today’s queue and the after-sales task update by themselves.',
+      'Un negocio de R$ 24.800 se arrastra de “Propuesta” a “Ganado” — y el total del mes, la fila de hoy y la tarea de posventa se actualizan solos.'),                  // qual maquete renderizar (sistemas-telas.js)
     destaque: true,               // ganha a demonstração animada do topo
     categoria: T('CRM e vendas', 'CRM & sales', 'CRM y ventas'),
     // Frase de posicionamento — é o <h3> do bloco e o texto do card do índice.
@@ -124,6 +128,10 @@ const SISTEMAS = [
     url: 'https://manager.villelastay.com.br/gestao',
     urlTeste: 'https://manager.villelastay.com.br/gestao/assinar?plano=trial',
     tela: 'manager',
+    demo: T(
+      'Uma reserva direta entra no calendário e a ocupação sobe — na mesma régua do Airbnb e do Booking, sem conflito.',
+      'A direct booking lands on the calendar and occupancy rises — on the same track as Airbnb and Booking, with no clash.',
+      'Una reserva directa entra en el calendario y la ocupación sube — en la misma regla que Airbnb y Booking, sin conflicto.'),
     categoria: T('Gestão de hospedagem', 'Hospitality management', 'Gestión de alojamiento'),
     promessa: T(
       'Toda a sua operação de temporada em um só lugar.',
@@ -205,6 +213,10 @@ const SISTEMAS = [
     url: 'https://juridico.villelastay.com.br/juridico',
     urlTeste: 'https://juridico.villelastay.com.br/juridico',
     tela: 'legal',
+    demo: T(
+      'O prazo que aguardava validação é conferido por um humano e passa a valer; a fila de pendências diminui na hora.',
+      'The deadline awaiting validation is checked by a human and takes effect; the pending queue drops immediately.',
+      'El plazo que esperaba validación lo verifica un humano y pasa a valer; la fila de pendientes baja al instante.'),
     categoria: T('Software jurídico', 'Legal software', 'Software jurídico'),
     promessa: T(
       'O escritório inteiro em um só lugar — com IA que cita as fontes.',
@@ -286,6 +298,10 @@ const SISTEMAS = [
     url: 'https://docs.villelastay.com.br/vdocs',
     urlTeste: 'https://docs.villelastay.com.br/vdocs/cadastro',
     tela: 'docs',
+    demo: T(
+      'Uma pergunta em português é respondida — e cada afirmação aparece com o documento e a página de onde saiu.',
+      'A plain-language question is answered — and every statement arrives with the document and page it came from.',
+      'Una pregunta en lenguaje natural es respondida — y cada afirmación aparece con el documento y la página de donde salió.'),
     categoria: T('Gestão documental', 'Document management', 'Gestión documental'),
     promessa: T(
       'Pergunte ao seu arquivo morto. Ele responde citando a página.',
@@ -367,6 +383,10 @@ const SISTEMAS = [
     url: 'https://projetos.villelastay.com.br/vpe',
     urlTeste: 'https://projetos.villelastay.com.br/vpe/cadastro',
     tela: 'projects',
+    demo: T(
+      'As ideias mostram viabilidade lado a lado — e a que não se paga fica registrada com o motivo, não esquecida.',
+      'Ideas show their feasibility side by side — and the one that does not pay off is recorded with the reason, not forgotten.',
+      'Las ideas muestran viabilidad lado a lado — y la que no se paga queda registrada con el motivo, no olvidada.'),
     categoria: T('Projetos e eventos', 'Projects and events', 'Proyectos y eventos'),
     promessa: T(
       'Portfólio antes de tarefa. Decida o que executar — depois execute.',
@@ -444,6 +464,10 @@ const SISTEMAS = [
     url: 'https://academia.villelastay.com.br/academy',
     urlTeste: 'https://academia.villelastay.com.br/academy/app#cadastro',
     tela: 'academy',
+    demo: T(
+      'As vendas do mês entram e a receita do produtor sobe — com a taxa da plataforma sempre à vista.',
+      'The month’s sales come in and the creator’s revenue rises — with the platform fee always in sight.',
+      'Las ventas del mes entran y los ingresos del productor suben — con la tarifa de la plataforma siempre a la vista.'),
     categoria: T('Cursos e produtos digitais', 'Courses and digital products', 'Cursos y productos digitales'),
     promessa: T(
       'Publicar é grátis. Você só paga quando vende.',
@@ -522,6 +546,10 @@ const SISTEMAS = [
     url: 'https://altavista.villelastay.com.br/alta-vista',
     urlTeste: 'https://altavista.villelastay.com.br/alta-vista/orcamento',
     tela: 'altavista',
+    demo: T(
+      'O pacote anda da captação à edição, e o tour já publicado recebe visita enquanto o resto é produzido.',
+      'The package moves from capture to editing, and the already-published tour receives visits while the rest is produced.',
+      'El paquete avanza de la captación a la edición, y el tour ya publicado recibe visitas mientras se produce el resto.'),
     categoria: T('Conteúdo visual e tour 360°', 'Visual content and 360° tours', 'Contenido visual y tour 360°'),
     promessa: T(
       'Veja de cima. Explore por inteiro.',
@@ -604,7 +632,12 @@ const SISTEMAS = [
 const EM_DESENVOLVIMENTO = [
   {
     id: 'kids', nome: 'Villela Kids · Invente', pasta: 'villela-kids', simbolo: 'simbolo.svg',
-    cor: '#6C4DFF', url: 'https://kids.villelastay.com.br/kids',
+    cor: '#6C4DFF', vertical: 'kids', url: 'https://kids.villelastay.com.br/kids',
+    tela: 'kids',
+    demo: T(
+      'Uma missão é concluída, o progresso avança e o painel dos pais registra — tudo na conta do responsável.',
+      'A mission is completed, progress moves forward and the parents dashboard records it — all under the guardian’s account.',
+      'Una misión se completa, el progreso avanza y el panel de los padres lo registra — todo en la cuenta del responsable.'),
     estado: T('Beta fechado por convite', 'Invite-only closed beta', 'Beta cerrada por invitación'),
     categoria: T('Aprendizagem criativa para crianças', 'Creative learning for children', 'Aprendizaje creativo para niños'),
     promessa: T('Aprenda criando.', 'Learn by creating.', 'Aprende creando.'),
@@ -619,7 +652,12 @@ const EM_DESENVOLVIMENTO = [
   },
   {
     id: 'closet', nome: 'Closet Club', pasta: 'closet-club', simbolo: 'simbolo.svg',
-    cor: '#C6A96B', url: 'https://closet.villelastay.com.br/closet',
+    cor: '#C6A96B', vertical: 'grupo', url: 'https://closet.villelastay.com.br/closet',
+    tela: 'closet',
+    demo: T(
+      'Quatro peças de três proprietárias viram um look só — e uma reserva só, com o pagamento retido até a entrega.',
+      'Four items from three owners become a single look — and a single booking, with payment held until delivery.',
+      'Cuatro prendas de tres propietarias se vuelven un solo look — y una sola reserva, con el pago retenido hasta la entrega.'),
     estado: T('No ar, montando o acervo', 'Live, building the collection', 'En el aire, formando el acervo'),
     categoria: T('Marketplace de aluguel de roupas', 'Clothing rental marketplace', 'Marketplace de alquiler de ropa'),
     promessa: T('Seu guarda-roupa rende. O dela também.', 'Your wardrobe earns. So does hers.', 'Tu armario rinde. El de ella también.'),
@@ -634,7 +672,12 @@ const EM_DESENVOLVIMENTO = [
   },
   {
     id: 'vitrine', nome: 'Vitrine', pasta: 'vitrine', simbolo: 'simbolo.svg',
-    cor: '#0C5A52', url: 'https://vitrine.villelastay.com.br/vitrine',
+    cor: '#0C5A52', vertical: 'grupo', url: 'https://vitrine.villelastay.com.br/vitrine',
+    tela: 'vitrine',
+    demo: T(
+      'O dinheiro anda de “pago e protegido” até o repasse do vendedor, passo a passo, sem ninguém pagar no escuro.',
+      'The money moves from “paid and protected” to the seller’s payout, step by step, with nobody paying blind.',
+      'El dinero avanza de “pagado y protegido” hasta la liquidación del vendedor, paso a paso, sin que nadie pague a ciegas.'),
     estado: T('No ar, antes do lançamento', 'Live, before launch', 'En el aire, antes del lanzamiento'),
     categoria: T('Marketplace de compra e venda', 'Buy-and-sell marketplace', 'Marketplace de compra y venta'),
     promessa: T('Compre bem. Venda melhor.', 'Buy well. Sell better.', 'Compra bien. Vende mejor.'),
@@ -695,11 +738,20 @@ function conferirCobertura(produtosDaHome) {
     throw new Error(`[sistemas] Produto em SISTEMAS e em EM_DESENVOLVIMENTO ao mesmo tempo: ${duplicados.join(', ')}. Ao lançar, REMOVA de EM_DESENVOLVIMENTO.`);
   }
 
-  // Maquete faltando derruba o layout do bloco, então também é trava.
+  // Maquete faltando derruba o layout do bloco, então também é trava. Vale
+  // para os dois baldes visíveis: desde que a demonstração do topo passa por
+  // TODOS os sistemas, um sem tela deixaria um buraco no rodízio.
   const telas = require('./sistemas-telas').TELAS;
-  const semTela = SISTEMAS.filter(s => !telas[s.tela]).map(s => s.id);
+  const todos = SISTEMAS.concat(EM_DESENVOLVIMENTO);
+  const semTela = todos.filter(s => !telas[s.tela]).map(s => s.id);
   if (semTela.length) {
     throw new Error(`[sistemas] Sem maquete de tela em content/sistemas-telas.js: ${semTela.join(', ')}.`);
+  }
+  // A legenda é o que explica ao visitante o que ele está vendo acontecer.
+  // Sem ela, a tela troca sozinha e ninguém entende o que mudou.
+  const semDemo = todos.filter(s => !s.demo).map(s => s.id);
+  if (semDemo.length) {
+    throw new Error(`[sistemas] Sem legenda 'demo' (o que a animação mostra): ${semDemo.join(', ')}.`);
   }
 }
 
