@@ -565,7 +565,20 @@ tr:last-child td { border-bottom: none; }
 .menu-busca input:focus { outline: 2px solid #2563EB; outline-offset: 1px; background: rgba(255,255,255,.14); }
 .menu .grupo-btn {
   display: flex; align-items: center; gap: 6px; width: 100%; cursor: pointer;
-  background: none; border: 0; text-align: left; font: inherit;
+  background: none; border: 0; text-align: left;
+  /* ⚠️ NÃO usar `font: inherit` aqui: o atalho zera font-weight e font-size, e
+     foi assim que os títulos PERDERAM o negrito ao virarem botão (o
+     `font-weight: 800` de `.menu .grupo` existia, mas era sobrescrito). Só a
+     família precisa herdar — o botão traz a fonte do sistema por padrão. */
+  font-family: inherit;
+  /* 0.8rem e não 0.68: a 11px, mesmo em 800, o título saía visualmente mais
+     LEVE que os itens abaixo (700 a 14,4px) — peso alto em corpo pequeno não
+     lê como negrito. O peso 800 também precisou entrar no <link> da Inter no
+     index.html: pedir um peso que não foi carregado faz o navegador cair no
+     700, ou seja, no mesmo peso dos itens. */
+  font-size: .8rem;
+  font-weight: 800;
+  letter-spacing: .8px;
 }
 .menu .grupo-seta { font-size: .7rem; opacity: .75; width: 10px; }
 .menu .grupo-itens { display: block; }
