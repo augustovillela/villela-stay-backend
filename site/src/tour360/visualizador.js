@@ -142,9 +142,22 @@
     this.camadaHotspots.className = 't360-hotspots';
     r.appendChild(this.camadaHotspots);
 
+    // Topo em CONTÊINER: rótulo, contador e barra de botões numa linha que se divide
+    // sozinha, e o botão de voltar embaixo. Posicionar cada peça por `top`/`right` fixos
+    // fazia o rótulo longo passar por baixo dos botões no celular.
+    var topo = document.createElement('div');
+    topo.className = 't360-topo';
+    var topoLinha = document.createElement('div');
+    topoLinha.className = 't360-topo-linha';
+    topo.appendChild(topoLinha);
+
     this.rotulo = document.createElement('div');
     this.rotulo.className = 't360-rotulo';
-    r.appendChild(this.rotulo);
+    topoLinha.appendChild(this.rotulo);
+
+    this.contador = document.createElement('div');
+    this.contador.className = 't360-contador';
+    topoLinha.appendChild(this.contador);
 
     this.carregando = document.createElement('div');
     this.carregando.className = 't360-carregando';
@@ -186,7 +199,7 @@
     var querGravar = false;
     try { querGravar = new URLSearchParams(location.search).get('gravar') === '1'; } catch (e) {}
     if (querGravar) botao('&#9679;', this.txt.gravar || 'Gravar o passeio em vídeo', function (b) { self.gravarCinema(b); });
-    r.appendChild(barra);
+    topoLinha.appendChild(barra);
 
     // Barra de progresso do passeio (só aparece no modo cinema).
     this.barraCinema = document.createElement('div');
@@ -203,7 +216,31 @@
       self.interagiu();
       if (self.alvoVoltar) self.ir(self.alvoVoltar);
     });
-    r.appendChild(this.btnVoltar);
+    topo.appendChild(this.btnVoltar);
+
+    // Setas de avançar/retroceder dentro da casa atual. É o caminho óbvio para quem não
+    // pensa em arrastar a tira de miniaturas nem em clicar num portal.
+    function seta(glifo, classe, passo) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 't360-seta ' + classe;
+      b.innerHTML = glifo;
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        self.pararCinema(); self.interagiu();
+        self.irRelativo(passo);
+      });
+      r.appendChild(b);
+      return b;
+    }
+    this.btnAnterior = seta('&#8249;', 't360-seta-esq', -1);
+    this.btnProxima = seta('&#8250;', 't360-seta-dir', 1);
+
+    // Rodapé em PILHA: barra de casas por cima da tira de miniaturas. Antes os dois eram
+    // posicionados por `bottom` fixo e se sobrepunham — o botão de voltar chegava a cobrir
+    // o primeiro chip de casa.
+    var rodape = document.createElement('div');
+    rodape.className = 't360-rodape';
 
     // Troca de casa. Sem isto, filtrar a tira de miniaturas por casa deixaria o visitante
     // preso na casa em que entrou — de dentro do visualizador não haveria como sair dela.
@@ -235,7 +272,7 @@
           self.barraCasas.appendChild(b);
         })(casas[jc]);
       }
-      r.appendChild(this.barraCasas);
+      rodape.appendChild(this.barraCasas);
     }
 
     // Tira de miniaturas — preenchida por casa em atualizarMiniaturas(), não de uma vez.
@@ -244,8 +281,46 @@
     if (this.cenas.length > 1) {
       this.miniaturas = document.createElement('div');
       this.miniaturas.className = 't360-cenas';
-      r.appendChild(this.miniaturas);
+      rodape.appendChild(this.miniaturas);
     }
+    r.appendChild(rodape);
+    r.appendChild(topo);
+  };
+
+  // Cenas da casa, na ordem do roteiro.
+  Viewer.prototype.cenasDaCasa = function (casa) {
+    var l = [];
+    for (var i = 0; i < this.cenas.length; i++) if (this.cenas[i].casa === casa) l.push(this.cenas[i]);
+    return l;
+  };
+
+  // Avança/retrocede dentro da casa atual, dando a volta no fim — para quem clica na seta,
+  // um botão que não faz nada parece defeito; voltar para a capa é um fim de percurso claro.
+  Viewer.prototype.irRelativo = function (passo) {
+    if (!this.cenaAtual) return;
+    var lista = this.cenasDaCasa(this.cenaAtual.casa);
+    if (lista.length < 2) return;
+    var i = lista.indexOf(this.cenaAtual);
+    if (i < 0) return;
+    this.ir(lista[(i + passo + lista.length) % lista.length].id);
+  };
+
+  Viewer.prototype.atualizarSetas = function () {
+    if (!this.btnProxima || !this.cenaAtual) return;
+    var lista = this.cenasDaCasa(this.cenaAtual.casa);
+    var i = lista.indexOf(this.cenaAtual);
+    var some = lista.length < 2 || i < 0;
+    this.btnAnterior.hidden = some;
+    this.btnProxima.hidden = some;
+    if (this.contador) this.contador.hidden = some;
+    if (some) return;
+    var ant = lista[(i - 1 + lista.length) % lista.length];
+    var prox = lista[(i + 1) % lista.length];
+    var rotAnt = (this.txt.anterior || 'Anterior') + ': ' + ant.titulo;
+    var rotProx = (this.txt.proxima || 'Próxima') + ': ' + prox.titulo;
+    this.btnAnterior.title = rotAnt; this.btnAnterior.setAttribute('aria-label', rotAnt);
+    this.btnProxima.title = rotProx; this.btnProxima.setAttribute('aria-label', rotProx);
+    if (this.contador) this.contador.textContent = (i + 1) + ' / ' + lista.length;
   };
 
   // Redesenha a tira só com as cenas da casa informada (barato: só quando a casa muda).
@@ -410,6 +485,7 @@
       }
     }
     this.atualizarMiniaturas(cena.casa);
+    this.atualizarSetas();
     this.marcarCenaAtiva(id);
     this.desenharHotspots(cena);
     this.carregando.hidden = false;

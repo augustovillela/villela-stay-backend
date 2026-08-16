@@ -661,12 +661,12 @@ a { color: var(--lago); text-decoration: none; }
 @media (prefers-reduced-motion: reduce) { .t360-hs { animation: none; } }
 
 .t360-rotulo {
-  position: absolute; top: 14px; left: 14px; max-width: calc(100% - 28px);
+  flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: #fff; font-family: 'Lora', Georgia, serif; font-size: 1.05rem; font-weight: 600;
   background: rgba(27,42,74,.62); padding: 7px 15px; border-radius: 22px;
   text-shadow: 0 1px 3px rgba(0,0,0,.5); pointer-events: none;
 }
-.t360-barra { position: absolute; top: 14px; right: 14px; display: flex; gap: 8px; }
+.t360-barra { flex: 0 0 auto; margin-left: auto; display: flex; gap: 8px; }
 .t360-btn {
   width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer;
   font: inherit; font-size: 1.05rem; color: #fff; background: rgba(27,42,74,.62);
@@ -694,9 +694,7 @@ a { color: var(--lago); text-decoration: none; }
 
 /* Seletor de cenas sobre o palco (o mesmo conteúdo aparece na lista abaixo). */
 .t360-cenas {
-  position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 8px;
-  padding: 12px; overflow-x: auto; scrollbar-width: thin;
-  background: linear-gradient(to top, rgba(0,0,0,.62), transparent);
+  display: flex; gap: 8px; padding: 6px 12px 12px; overflow-x: auto; scrollbar-width: thin;
 }
 .t360-cena {
   flex: 0 0 auto; width: 116px; padding: 0; cursor: pointer; font: inherit;
@@ -750,14 +748,14 @@ a { color: var(--lago); text-decoration: none; }
 
 /* botão de saída para a vista geral da casa (hub) */
 .t360-voltar {
-  position: absolute; left: 14px; bottom: 96px; z-index: 2;
+  align-self: flex-start;
   font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; color: #fff;
   background: rgba(27,42,74,.78); border: 1px solid rgba(255,255,255,.3);
   padding: 8px 16px; border-radius: 22px; line-height: 1;
 }
 .t360-voltar:hover { background: var(--lago-escuro); }
 .t360-voltar[hidden] { display: none; }
-@media (max-width: 640px) { .t360-voltar { left: 10px; bottom: 88px; font-size: .78rem; } }
+@media (max-width: 640px) { .t360-voltar { font-size: .78rem; padding: 7px 13px; } }
 
 /* ---------- editor de portais (só com ?editor=1) ---------- */
 .t360-ed {
@@ -816,8 +814,7 @@ a { color: var(--lago); text-decoration: none; }
 /* Troca de casa dentro do visualizador. A tira de miniaturas mostra só a casa atual,
    então precisa existir um caminho explícito para as outras. */
 .t360-casas {
-  position: absolute; left: 0; right: 0; bottom: 92px; z-index: 3;
-  display: flex; gap: 6px; padding: 0 12px; overflow-x: auto; scrollbar-width: none;
+  display: flex; gap: 6px; padding: 0 12px 6px; overflow-x: auto; scrollbar-width: none;
 }
 .t360-casas::-webkit-scrollbar { display: none; }
 .t360-casa {
@@ -828,8 +825,57 @@ a { color: var(--lago); text-decoration: none; }
 .t360-casa:hover { background: rgba(27,42,74,.95); }
 .t360-casa-on { background: var(--cerrado); border-color: var(--cerrado); color: #1B2A4A; }
 .t360-cenas[hidden] { display: none; }
-.t360-modo-cinema .t360-casas { display: none; }
+.t360-modo-cinema .t360-rodape,
+.t360-modo-cinema .t360-seta,
+.t360-modo-cinema .t360-contador { display: none; }
 @media (max-width: 640px) {
   .t360-casas { bottom: 84px; padding: 0 8px; }
   .t360-casa { font-size: .7rem; padding: 5px 10px; }
 }
+
+/* Rodapé do palco em PILHA (casas em cima da tira). Antes cada peça era ancorada por um
+   `bottom` fixo e elas se sobrepunham — o botão de voltar chegava a cobrir o primeiro chip. */
+.t360-rodape {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+  display: flex; flex-direction: column;
+  background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,.28) 60%, transparent);
+}
+
+/* Setas de avançar/retroceder — o caminho óbvio para quem não pensa em arrastar a tira */
+.t360-seta {
+  position: absolute; top: 44%; transform: translateY(-50%); z-index: 4;
+  width: 46px; height: 46px; display: grid; place-items: center; cursor: pointer;
+  font: inherit; font-size: 1.7rem; line-height: 1; color: #fff;
+  background: rgba(27,42,74,.62); border: 1px solid rgba(255,255,255,.3); border-radius: 50%;
+}
+.t360-seta:hover { background: rgba(27,42,74,.95); }
+.t360-seta[hidden] { display: none; }
+.t360-seta-esq { left: 12px; }
+.t360-seta-dir { right: 12px; }
+
+.t360-contador {
+  flex: 0 0 auto; align-self: center;
+  color: #fff; font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: rgba(0,0,0,.42); padding: 5px 12px; border-radius: 16px; pointer-events: none;
+}
+.t360-contador[hidden] { display: none; }
+
+@media (max-width: 640px) {
+  .t360-seta { width: 40px; height: 40px; font-size: 1.45rem; }
+  .t360-seta-esq { left: 8px; }
+  .t360-seta-dir { right: 8px; }
+  .t360-contador { font-size: .72rem; padding: 4px 9px; }
+}
+
+/* Topo do palco em contêiner: nada de `top`/`right` fixos por peça — no celular o rótulo
+   longo passava por baixo dos botões. A linha se divide sozinha e o rótulo trunca. */
+.t360-topo {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  padding: 14px; pointer-events: none;
+}
+/* wrap: onde a barra de botoes nao couber ao lado do rotulo (celular), ela desce para a
+   propria linha em vez de transbordar o palco. */
+.t360-topo-linha { display: flex; flex-wrap: wrap; width: 100%; gap: 8px; align-items: flex-start; }
+.t360-topo > *, .t360-topo-linha > * { pointer-events: auto; }
+@media (max-width: 640px) { .t360-topo { padding: 10px; gap: 6px; } }

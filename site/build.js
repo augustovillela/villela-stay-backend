@@ -1259,6 +1259,8 @@ if (TEM_TOUR) {
     aproximar: t('Aproximar', 'Zoom in', 'Acercar'),
     afastar: t('Afastar', 'Zoom out', 'Alejar'),
     girar: t('Girar sozinho', 'Auto-rotate', 'Girar solo'),
+    anterior: t('Anterior', 'Previous', 'Anterior'),
+    proxima: t('Próxima', 'Next', 'Siguiente'),
     cinema: t('Modo cinema: passear pela casa sozinho', 'Cinema mode: tour the house on its own', 'Modo cine: recorrer la casa solo'),
     gravar: t('Gravar o passeio em vídeo', 'Record the tour as video', 'Grabar el recorrido en vídeo'),
     giroscopio: t('Mover o celular para olhar', 'Move your phone to look around', 'Mueve el móvil para mirar'),
