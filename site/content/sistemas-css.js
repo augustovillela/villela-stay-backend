@@ -359,6 +359,16 @@ module.exports = `
   background:#fff; border:1px solid var(--mq-border); border-radius:9px; padding:11px 13px; margin-top:9px; }
 .mq-total-valor { font-family:'Lora',Georgia,serif; font-size:19px; color:var(--mq-navy); }
 
+/* --- rendimento (Cozinhe) --- */
+.mq-porcoes { display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--mq-border);
+  border-radius:9px; padding:9px 11px; margin-bottom:9px; font-size:11.5px; }
+.mq-porcoes-txt { flex:1; color:var(--mq-ink-2); }
+.mq-passo-btn { width:26px; height:26px; flex-shrink:0; border-radius:7px; display:grid; place-items:center;
+  background:var(--mq-surface-2); border:1px solid var(--mq-border); font-weight:700; color:var(--mq-ink-2); }
+.mq-passo-btn.mais { background:var(--acento,var(--mq-navy)); border-color:var(--acento,var(--mq-navy)); color:#fff; }
+.mq-qtd { white-space:nowrap; }
+.mq-qtd b { color:var(--mq-navy); }
+
 /* --- jornada do pedido (Vitrine) --- */
 .mq-passos { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 .mq-passo { background:#fff; border:1px solid var(--mq-border); border-radius:9px; padding:10px; font-size:11px; }
@@ -499,6 +509,10 @@ module.exports = `
 /* No calendário do Manager a barra que chega é colorida por canal, então
    piscar o fundo não serve: ela ganha um anel dourado ao pousar. */
 .mq.tocando .mq-barra.js-realca { animation:sx-cresce 8s ease-in-out infinite, sx-anel 8s ease-in-out infinite; }
+/* Mesma razão no botão "+" do Cozinhe: ele já tem o fundo do acento, e
+   trocar essa cor pelo par alerta/concluído faria o botão parecer com
+   defeito. O anel mostra o clique sem mexer na identidade do botão. */
+.mq.tocando .mq-passo-btn.js-realca { animation:sx-anel 8s ease-in-out infinite; }
 @keyframes sx-anel {
   0%, 24%   { box-shadow:none; }
   34%, 88%  { box-shadow:0 0 0 2px var(--mq-gold); }

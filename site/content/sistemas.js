@@ -689,6 +689,31 @@ const EM_DESENVOLVIMENTO = [
       'Credenciais de pagamento em produção, revisão jurídica dos termos e a definição do nome definitivo.',
       'Production payment credentials, legal review of the terms and the final name.',
       'Credenciales de pago en producción, revisión jurídica de los términos y la definición del nombre definitivo.')
+  },
+  {
+    // 13º produto (15/08/2026). ⚠️ Único que NÃO roda no backend compartilhado:
+    // serviço próprio no Render, então a URL não tem prefixo de caminho.
+    id: 'cozinhe', nome: 'Cozinhe', pasta: 'cozinhe',
+    cor: '#A64B32', vertical: 'grupo', url: 'https://cozinhe.villelastay.com.br',
+    tela: 'cozinhe',
+    demo: T(
+      'As porções sobem de 8 para 12 e cada ingrediente escala pela própria regra: o ovo vira unidade inteira, a farinha avisa que agora são dois lotes, o resto acompanha proporcionalmente.',
+      'Servings go from 8 to 12 and each ingredient scales by its own rule: the egg becomes a whole unit, the flour warns it is now two batches, the rest follows proportionally.',
+      'Las porciones suben de 8 a 12 y cada ingrediente escala por su propia regla: el huevo pasa a unidad entera, la harina avisa que ahora son dos tandas, el resto acompaña proporcionalmente.'),
+    estado: T('No ar, em validação editorial', 'Live, in editorial validation', 'En el aire, en validación editorial'),
+    categoria: T('Receitas e técnica de cozinha', 'Recipes and cooking technique', 'Recetas y técnica de cocina'),
+    promessa: T(
+      'Aprenda, planeje e cozinhe com precisão e confiança.',
+      'Learn, plan and cook with precision and confidence.',
+      'Aprende, planifica y cocina con precisión y confianza.'),
+    oQueE: T(
+      'Site de receita comum multiplica tudo por 1,5 e entrega uma receita que não funciona: 4,5 ovos, uma fôrma que transborda, um tempo de forno que já não vale. O <b>Cozinhe</b> escala cada ingrediente pela regra dele — proporcional, unidade inteira ou por lote —, só dentro de uma faixa de rendimento realmente testada, e mantém os alertas de ponto e de segurança em todas as versões da receita.',
+      'The usual recipe site multiplies everything by 1.5 and hands you a recipe that does not work: 4.5 eggs, a tin that overflows, an oven time that no longer applies. <b>Cozinhe</b> scales each ingredient by its own rule — linear, whole units or per batch — only within a genuinely tested yield range, and keeps the doneness and safety warnings across every version of the recipe.',
+      'Un sitio de recetas común multiplica todo por 1,5 y entrega una receta que no funciona: 4,5 huevos, un molde que se desborda, un tiempo de horno que ya no vale. <b>Cozinhe</b> escala cada ingrediente por su propia regla — proporcional, unidad entera o por tanda —, solo dentro de un rango de rendimiento realmente probado, y mantiene las alertas de punto y seguridad en todas las versiones de la receta.'),
+    falta: T(
+      'Revisão culinária humana das receitas antes da publicação — o próprio produto carimba as atuais como demonstrativas — e a definição do modelo comercial.',
+      'Human culinary review of the recipes before publication — the product itself stamps the current ones as demonstrations — and the commercial model.',
+      'Revisión culinaria humana de las recetas antes de la publicación — el propio producto marca las actuales como demostrativas — y la definición del modelo comercial.')
   }
 ];
 

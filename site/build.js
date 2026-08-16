@@ -564,7 +564,12 @@ const PRODUTOS_GRUPO = [
     frase: ['Marketplace de produtos novos e usados: pagamento protegido até a entrega, rastreamento do envio e vendedores com reputação de verdade.', 'A marketplace for new and pre-owned goods: payment protected until delivery, shipment tracking and sellers with real reputations.', 'Marketplace de productos nuevos y usados: pago protegido hasta la entrega, seguimiento del envío y vendedores con reputación real.'] },
   { nome: 'Villela Kids', pasta: 'villela-kids', simbolo: 'simbolo.svg', cor: '#6C4DFF', url: 'https://kids.villelastay.com.br',
     tag: ['Invente — aprenda criando', 'Invente — learn by creating', 'Invente — aprende creando'],
-    frase: ['Plataforma de aprendizagem criativa para crianças de 7 a 12 anos: missões que viram projetos de verdade, tutor de IA com segurança em primeiro lugar e painel para os pais. Em beta fechado por convite.', 'A creative learning platform for kids aged 7–12: missions that become real projects, an AI tutor with safety first and a parents dashboard. In invite-only closed beta.', 'Plataforma de aprendizaje creativo para niños de 7 a 12 años: misiones que se vuelven proyectos reales, tutor de IA con seguridad ante todo y panel para los padres. En beta cerrada por invitación.'] }
+    frase: ['Plataforma de aprendizagem criativa para crianças de 7 a 12 anos: missões que viram projetos de verdade, tutor de IA com segurança em primeiro lugar e painel para os pais. Em beta fechado por convite.', 'A creative learning platform for kids aged 7–12: missions that become real projects, an AI tutor with safety first and a parents dashboard. In invite-only closed beta.', 'Plataforma de aprendizaje creativo para niños de 7 a 12 años: misiones que se vuelven proyectos reales, tutor de IA con seguridad ante todo y panel para los padres. En beta cerrada por invitación.'] },
+  // 13º card (15/08/2026). Primeiro produto do grupo que NÃO roda no backend
+  // compartilhado: serviço próprio no Render, em cozinhe.villelastay.com.br.
+  { nome: 'Cozinhe', pasta: 'cozinhe', cor: '#A64B32', url: 'https://cozinhe.villelastay.com.br',
+    tag: ['Por Villela Table — aprenda, planeje e cozinhe', 'By Villela Table — learn, plan and cook', 'Por Villela Table — aprende, planifica y cocina'],
+    frase: ['Receitas que mudam de rendimento sem quebrar: cada ingrediente escala pela própria regra, dentro de uma faixa testada, e os alertas de ponto e de segurança sobrevivem a todas as versões. Em validação editorial.', 'Recipes that change yield without breaking: each ingredient scales by its own rule, within a tested range, and the doneness and safety warnings survive every version. In editorial validation.', 'Recetas que cambian de rendimiento sin romperse: cada ingrediente escala por su propia regla, dentro de un rango probado, y las alertas de punto y seguridad sobreviven a todas las versiones. En validación editorial.'] }
 ];
 const grupoSecao = () => `
 <section id="grupo" class="grupo-wrap">
@@ -2657,7 +2662,16 @@ ${blocos}
   // Medido em tempo de execução, e não fixado no CSS, porque a altura muda com
   // a largura da janela e com o idioma (o mesmo texto ocupa linhas diferentes).
   var palco = document.getElementById('sx-palco');
+  // No celular a diferença entre a tela mais curta e a mais alta chega a
+  // 500 px (a mesma tabela que cabe numa linha no desktop vira três).
+  // Reservar a maior deixaria meia tela vazia embaixo das curtas — pior que
+  // o salto que a reserva evita. Então em tela estreita a regra é outra: a
+  // altura é natural e o rodízio NÃO anda sozinho. O visitante escolhe pela
+  // tira de abas, e a altura só muda quando ELE pediu, que é quando mudança
+  // de altura não desorienta ninguém.
+  function estreito(){ return window.matchMedia && window.matchMedia('(max-width: 700px)').matches; }
   function reservarAltura(){
+    if (estreito()) { palco.style.minHeight = ''; legenda.style.minHeight = ''; return; }
     var maior = 0;
     telas.forEach(function(el){
       var escondida = el.hidden;
@@ -2666,11 +2680,23 @@ ${blocos}
       el.hidden = escondida;
     });
     if (maior) palco.style.minHeight = maior + 'px';
+    // A LEGENDA também precisa de reserva: as frases têm comprimentos
+    // diferentes e algumas quebram numa linha a mais, o que sozinho ainda
+    // fazia a página andar ~25 px a cada troca. Mede-se o texto de todas,
+    // não se chuta um número de linhas — o mesmo texto ocupa linhas
+    // diferentes em cada idioma e em cada largura.
+    var guardado = legenda.innerHTML, maiorLeg = 0;
+    LEGENDAS.forEach(function(l){
+      legenda.innerHTML = '<b>' + l.n + ':</b> ' + l.d;
+      if (legenda.offsetHeight > maiorLeg) maiorLeg = legenda.offsetHeight;
+    });
+    legenda.innerHTML = guardado;
+    if (maiorLeg) legenda.style.minHeight = maiorLeg + 'px';
   }
   var remedir;
   window.addEventListener('resize', function(){
     clearTimeout(remedir);
-    remedir = setTimeout(reservarAltura, 200);
+    remedir = setTimeout(function(){ reservarAltura(); rodar(); }, 200);
   });
   // As fontes mudam a altura do texto; medir antes delas dá número menor.
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(reservarAltura);
@@ -2705,7 +2731,7 @@ ${blocos}
 
   function rodar(){
     parar();
-    if (!tocando()) return;
+    if (!tocando() || estreito()) return;   // em tela estreita, quem troca é o visitante
     relogio = setInterval(function(){ mostrar(atual + 1); }, CICLO);
   }
   function parar(){ if (relogio) { clearInterval(relogio); relogio = null; } }
@@ -2737,7 +2763,8 @@ ${blocos}
       visivel = e[0].isIntersecting; mostrar(atual); rodar();
     }, { threshold: 0.3 }).observe(document.getElementById('sx-palco'));
   } else { visivel = true; }
-  if (menosMovimento) { botao.hidden = true; }
+  // O botão de pausar só faz sentido quando algo anda sozinho.
+  if (menosMovimento || estreito()) { botao.hidden = true; }
   mostrar(0); rodar();
 
   // ---- formulário: mesmo endpoint de leads das outras landings, com

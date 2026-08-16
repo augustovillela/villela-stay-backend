@@ -580,6 +580,71 @@ function vitrine(t) {
 </div>`;
 }
 
-const TELAS = { crm, manager, legal, docs, projects, academy, altavista, kids, closet, vitrine };
+// =====================================================================
+// Cozinhe (por Villela Table) — a tela do rendimento transparente.
+// A tese do produto cabe num gesto: aumentar as porções e ver cada
+// ingrediente escalar pela PRÓPRIA regra. Ovo não vira 4,5 — vira 5,
+// porque é unidade inteira; farinha "por lote" avisa que agora são dois
+// lotes; o resto é proporcional. Site de receita comum multiplica tudo
+// por 1,5 e entrega uma receita que não funciona.
+//
+// Números tirados da receita-demonstração PÚBLICA do próprio produto
+// (bolo de cenoura, base 8 porções, faixa testada 6–12): 270 g cenoura,
+// 3 ovos, 160 ml óleo, 240 g farinha. Fator 1,5 → 405 g, 5 un, 240 ml,
+// 360 g em 2 lotes. Conferir se mudarem a receita de vitrine.
+// =====================================================================
+function cozinhe(t) {
+  // `classeRegra` marca as linhas que NÃO escalam linearmente — o ovo (unidade
+  // inteira) e a farinha (por lote). São elas que ganham js-realca: a linha
+  // inteira muda de cor quando o sistema resolve o caso que a multiplicação
+  // ingênua estragaria. Sem isso a tela só trocava dígitos e mexia 2,4% da
+  // própria área, abaixo do limiar em que o olho percebe movimento.
+  const ingrediente = (qtd, para, unidade, nome, regra, classeRegra, nota) => `
+  <tr class="${classeRegra ? 'js-realca' : ''}">
+    <td class="mq-qtd"><b><span class="js-troca" data-para="${esc(para)}">${esc(qtd)}</span> ${esc(unidade)}</b></td>
+    <td><b>${esc(nome)}</b>${nota ? `<span class="mq-sub js-surge" style="animation-delay:1.2s">${esc(nota)}</span>` : ''}</td>
+    <td><span class="mq-chip ${classeRegra || ''}">${esc(regra)}</span></td>
+  </tr>`;
+
+  return chrome('cozinhe.villelastay.com.br', t('Receita', 'Recipe', 'Receta')) + `
+<div class="mq-corpo">
+  ${nav('COZINHE', [
+    ['🍲', t('Receitas', 'Recipes', 'Recetas'), true],
+    ['🥕', t('Ingredientes', 'Ingredients', 'Ingredientes')],
+    ['📐', t('Método', 'Method', 'Método')]
+  ])}
+  <div class="mq-tela">
+    ${cabeca(t('Bolo de cenoura com cobertura de chocolate', 'Carrot cake with chocolate topping', 'Bizcocho de zanahoria con cobertura de chocolate'),
+             t('Em validação editorial', 'In editorial validation', 'En validación editorial'))}
+    ${kpis([
+      [t('Tempo total', 'Total time', 'Tiempo total'), '65 min', '', ''],
+      [t('Rendimento', 'Yield', 'Rendimiento'), '<span class="js-troca" data-para="12">8</span> ' + t('porções', 'servings', 'porciones'), '', ''],
+      [t('Faixa testada', 'Tested range', 'Rango probado'), '6 – 12', '', '']
+    ])}
+    <div class="mq-porcoes">
+      <span class="mq-passo-btn">−</span>
+      <span class="mq-porcoes-txt">${esc(t('Receita-base: 8 porções', 'Base recipe: 8 servings', 'Receta base: 8 porciones'))} ·
+        ${esc(t('fator', 'factor', 'factor'))} <b class="js-troca" data-para="1,5 ×">1 ×</b> ·
+        <b class="js-troca" data-para="${esc(t('2 lotes', '2 batches', '2 tandas'))}">${esc(t('1 lote', '1 batch', '1 tanda'))}</b></span>
+      <span class="mq-passo-btn mais js-realca">+</span>
+    </div>
+    <table class="mq-tabela compacta">
+      <tbody>
+        ${ingrediente('270', '405', 'g', t('cenoura em rodelas', 'sliced carrot', 'zanahoria en rodajas'), t('proporcional', 'linear', 'proporcional'))}
+        ${ingrediente('3', '5', t('un', 'ct', 'ud'), t('ovo', 'egg', 'huevo'), t('unidade inteira', 'whole units', 'unidad entera'), 'alerta')}
+        ${ingrediente('160', '240', 'ml', t('óleo vegetal', 'vegetable oil', 'aceite vegetal'), t('proporcional', 'linear', 'proporcional'))}
+        ${ingrediente('240', '360', 'g', t('farinha de trigo', 'wheat flour', 'harina de trigo'), t('por lote', 'per batch', 'por tanda'), 'alerta',
+                      t('→ agora em 2 lotes: distribua o total', '→ now in 2 batches: split the total', '→ ahora en 2 tandas: reparte el total'))}
+      </tbody>
+    </table>
+    <div class="mq-aviso">
+      <b>🎯 ${esc(t('Reconheça o ponto, não só o relógio', 'Recognise doneness, not just the clock', 'Reconoce el punto, no solo el reloj'))}</b>
+      ${esc(t('Fora da faixa testada o sistema avisa em vez de multiplicar — e o alerta de ponto e de segurança segue a receita em todas as versões, mesmo quando o rendimento muda.', 'Outside the tested range the system warns instead of multiplying — and doneness and safety warnings follow the recipe through every version, even when the yield changes.', 'Fuera del rango probado el sistema avisa en vez de multiplicar — y la alerta de punto y seguridad sigue a la receta en todas las versiones, aunque cambie el rendimiento.'))}
+    </div>
+  </div>
+</div>`;
+}
+
+const TELAS = { crm, manager, legal, docs, projects, academy, altavista, kids, closet, vitrine, cozinhe };
 
 module.exports = { TELAS };
