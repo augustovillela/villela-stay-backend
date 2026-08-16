@@ -112,6 +112,16 @@ A miniatura da cena atual é rolada para o campo de visão com `scrollLeft` dire
 `behavior: 'smooth'`**: a rolagem suave depende de um laço de animação e vira no-op onde ele não
 roda, e aí a tira não anda — que é exatamente o defeito que isso conserta.
 
+**Setas ‹ › nas laterais** andam pelas cenas da casa atual, na ordem do roteiro, dando a volta no
+fim. É o caminho de quem não pensa em arrastar a tira nem em clicar num portal. O `title` nomeia
+o destino e o contador (`4 / 9`) diz onde se está.
+
+**Topo e rodapé são contêineres, não peças soltas.** Nunca posicione um elemento novo do palco
+por `top`/`bottom` fixo: coloque-o dentro de `.t360-topo` (linha que quebra: rótulo, contador,
+botões; e o voltar embaixo) ou de `.t360-rodape` (casas sobre a tira). Duas vezes o `bottom` fixo
+já fez uma peça cobrir outra — e nenhuma das duas apareceu em teste de comportamento, só ao
+**medir posição** em 375 px e 1280 px.
+
 ### Modo cinema (passeio automático)
 
 Botão ▶ na barra. A câmera passeia sozinha pela casa: em cada ambiente varre ~84° abrindo o
