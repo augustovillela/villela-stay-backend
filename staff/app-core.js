@@ -244,6 +244,13 @@ function construirItensMenu() {
   // A API da Origena é admin-only por desenho (o staff não é dono do acervo
   // das famílias, SECURITY.md T12): quem não é admin veria só 403.
   if (ehAdmin) prod.push({ id: 'origena', rot: '🌳 Origena', sub: 'Memória e legado familiar' });
+  // O Cozinhe é o único produto do grupo que NÃO roda neste backend: é serviço
+  // próprio no Render. Não existe `/staff/api/cozinhe/*` nem app-cozinhe.js, e
+  // por isso o card ABRE O PRODUTO em vez de navegar para uma seção que não
+  // existe — um card que leva a uma tela vazia seria pior que card nenhum.
+  // Quando ele ganhar API de administração, basta trocar `url` por uma seção:
+  // a marca `produto: true` já o coloca no lugar certo nas duas telas.
+  if (tem('ti') || tem('ceo')) prod.push({ id: 'cozinhe', rot: '🍲 Cozinhe ↗', sub: 'Receitas — Villela Table', url: 'https://cozinhe.villelastay.com.br' });
   for (const x of prod) itens.push({ ...x, produto: true });
   itens.push({ grupo: 'Operação' });
   itens.push({ id: 'limpezas', rot: '🧹 Limpezas de hoje' });
@@ -283,12 +290,17 @@ function separarIcone(rot) {
   return m ? { ico: m[1], txt: m[2] } : { ico: '•', txt: String(rot || '') };
 }
 
-// Os 13 SaaS do grupo têm um grupo de MENU só para eles (a barra lateral precisa disso para
-// separar os assuntos). Na home isso virava 13 faixas de um ícone, cada uma ocupando uma linha
-// inteira — a home ficava mais vazia do que cheia. Na grade eles viram UM bloco só.
-// Identificado por id, não por título: título é texto de tela e muda; id é rota.
-const LC_PRODUTOS = ['academy', 'livraria', 'legal', 'legal-saas', 'vdocs', 'vpe', 'vsm', 'vcrm',
-  'closet', 'vitrine', 'alta-vista', 'kids', 'origena'];
+// Os SaaS do grupo viram UM bloco só na home. Antes eram uma faixa de um ícone
+// cada, e a home ficava mais vazia do que cheia.
+//
+// ⚠️ Isto já foi uma LISTA DE IDS (`LC_PRODUTOS`) e virou código morto quando os
+// produtos deixaram de ter cabeçalho próprio no menu e passaram a carregar a
+// marca `produto: true`: a regra exigia um bloco em que TODOS os itens fossem
+// produtos, e desde então eles moram dentro do bloco "Gestão", junto com DRE,
+// metas e fiscal. Resultado: o grupo "Sistemas do grupo" sumiu da home e os
+// produtos apareciam como se fossem parte da Gestão. Agora a separação é pela
+// própria marca `produto`, que é a mesma que o botão ⚡ Sistemas usa — uma
+// fonte só, impossível de dessincronizar.
 const LC_TITULO_PRODUTOS = 'Sistemas do grupo';
 
 // Home-lançador: grade de ícones no estilo do app do hóspede (painel escuro da marca).
@@ -302,17 +314,19 @@ function montarLauncher(alvoSel) {
     if (it.grupo) { atual = { titulo: it.grupo, itens: [] }; blocos.push(atual); continue; }
     if (atual) atual.itens.push(it);
   }
-  // 2) fora o "Início" (já estamos nele); os blocos que só têm produto viram um bloco só, no lugar
-  //    onde o primeiro deles aparecia (mantém a ordem de leitura do menu).
+  // 2) fora o "Início" (já estamos nele); os produtos são RETIRADOS do bloco em
+  //    que caíram e juntados num bloco só, inserido logo depois desse bloco —
+  //    assim a ordem de leitura da home continua a do menu.
   const finais = []; let produtos = null;
   for (const b of blocos) {
     if (b.titulo === 'Início' || !b.itens.length) continue;
-    if (b.itens.every(i => LC_PRODUTOS.indexOf(i.id) !== -1)) {
+    const proprios = b.itens.filter(i => !i.produto);
+    const dosProdutos = b.itens.filter(i => i.produto);
+    if (proprios.length) finais.push({ titulo: b.titulo, itens: proprios });
+    if (dosProdutos.length) {
       if (!produtos) { produtos = { titulo: LC_TITULO_PRODUTOS, itens: [] }; finais.push(produtos); }
-      produtos.itens.push(...b.itens);
-      continue;
+      produtos.itens.push(...dosProdutos);
     }
-    finais.push(b);
   }
   const tile = (it) => {
     const { ico, txt } = separarIcone(it.rot);
@@ -463,18 +477,28 @@ function abrirSistemas() {
         <button class="sis-x" aria-label="Fechar">✕</button></div>
       <div class="sis-grade">${prod.map(p => {
         const { ico, txt } = separarIcone(p.rot);
-        return `<button class="sis-item" data-id="${p.id}">
-          <span class="sis-ico" aria-hidden="true">${ico}</span>
+        const miolo = `<span class="sis-ico" aria-hidden="true">${ico}</span>
           <span class="sis-nome">${txt}</span>
-          <span class="sis-sub">${p.sub || ''}</span></button>`;
+          <span class="sis-sub">${p.sub || ''}</span>`;
+        // Produto sem painel no staff (roda fora deste backend) abre em outra
+        // aba. É link de verdade, não botão: assim o "abrir em nova aba" do
+        // navegador, o clique do meio e o menu de contexto funcionam.
+        return p.url
+          ? `<a class="sis-item" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${miolo}</a>`
+          : `<button class="sis-item" data-id="${p.id}">${miolo}</button>`;
       }).join('')}</div></div>`;
   document.body.appendChild(cx);
   const b = $('#btn-sistemas'); if (b) b.setAttribute('aria-expanded', 'true');
   cx.onclick = (e) => { if (e.target === cx) fecharSistemas(); };   // clicar fora fecha
   cx.querySelector('.sis-x').onclick = fecharSistemas;
-  cx.querySelectorAll('.sis-item').forEach(el => {
+  // Só os itens COM data-id navegam. O card de produto externo é um <a> e não
+  // tem data-id — pegá-lo aqui chamaria navegar(undefined) e derrubaria a tela.
+  cx.querySelectorAll('.sis-item[data-id]').forEach(el => {
     el.onclick = () => { const id = el.dataset.id; fecharSistemas(); navegar(id); };
   });
+  // O link externo fecha o painel ao ser clicado, mas deixa o navegador abrir
+  // a aba nova sozinho (sem preventDefault).
+  cx.querySelectorAll('a.sis-item').forEach(el => { el.onclick = () => fecharSistemas(); });
   document.addEventListener('keydown', _escSistemas);
   const primeiro = cx.querySelector('.sis-item'); if (primeiro) primeiro.focus();
 }
