@@ -966,7 +966,9 @@ for (const l of listings) {
     ...(l.fotos || []).slice(1, 9).map(f => itemGaleria(f.url, cdnUrl(f.url, 1600), f.nome || '')),
     ...(cfgFotos ? cfgFotos.fotos.map(f => {
       const base = `/fotos/${pastaDaFoto(cfgFotos, f)}`;
-      return itemGaleria(`${base}/${miniatura(f.arquivo)}`, `${base}/${f.arquivo}`, f.alt);
+      // `alt` é {pt,en,es}; string solta ainda vale (e serve os três idiomas).
+      const legenda = typeof f.alt === 'string' ? f.alt : tr(f.alt);
+      return itemGaleria(`${base}/${miniatura(f.arquivo)}`, `${base}/${f.arquivo}`, legenda);
     }) : []),
   ].join('\n');
 
