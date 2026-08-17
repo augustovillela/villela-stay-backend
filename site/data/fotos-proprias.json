@@ -1,5 +1,12 @@
 {
   "_leia-me": "Fotos próprias do anfitrião (arquivos em site/src/fotos/<pasta>), exibidas na galeria da página da unidade DEPOIS das fotos que vêm da Stays. Ordem = ordem de exibição. O texto alternativo é {pt,en,es} — a página de cada idioma usa o seu (uma string solta ainda funciona e vale para os três). Acrescentar foto: colocar o .jpg em src/fotos/<pasta>/ e uma entrada aqui. Cada foto precisa de um par <nome>-m.jpg (miniatura ~600px) na mesma pasta — é ela que a grade carrega; o arquivo grande só abre no lightbox. Uma entrada pode declarar \"pasta\" própria para reaproveitar a foto de outra unidade sem duplicar arquivo: é assim que a Gran Villela (GD03H) mostra também as fotos da Villa Kubitschek e da Villa Catetinho, que são as duas casas que a compõem.",
+  "_ocultar-da-stays": {
+    "_nota": "Fotos que vêm da Stays e NÃO devem aparecer na galeria do site (id do arquivo no CDN). Filtradas antes do corte, então a galeria continua com 8 fotos. O anúncio na Stays continua com elas: para sumirem também do Airbnb, Booking e Decolar, apagar no painel da Stays.",
+    "GD03H": [
+      "62cece07c1eb839f9b74e01a",
+      "62cece31c1eb832ed574e026"
+    ]
+  },
   "GD01H": {
     "pasta": "casa-modernista",
     "fotos": [
@@ -225,12 +232,39 @@
         }
       },
       {
+        "arquivo": "lounge-pergolado.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Lounge sob o pergolado, com sofás e a piscina ao fundo",
+          "en": "Lounge under the pergola, with sofas and the pool behind",
+          "es": "Lounge bajo la pérgola, con sofás y la piscina al fondo"
+        }
+      },
+      {
         "arquivo": "area-lazer-sinuca.jpg",
         "pasta": "villa-kubitschek",
         "alt": {
           "pt": "Área de lazer coberta com mesa de sinuca, redes e pergolado de madeira",
           "en": "Covered leisure area with a pool table, hammocks and a wooden pergola",
           "es": "Zona de ocio cubierta con mesa de billar, hamacas y pérgola de madera"
+        }
+      },
+      {
+        "arquivo": "redario.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Redário sob o pergolado de madeira, com poltronas ao redor",
+          "en": "Hammock area under the wooden pergola, with armchairs around",
+          "es": "Zona de hamacas bajo la pérgola de madera, con sillones alrededor"
+        }
+      },
+      {
+        "arquivo": "cadeira-balanco-piscina.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Cadeira-ovo suspensa e rede junto à piscina, sob o pergolado",
+          "en": "Hanging egg chair and hammock by the pool, under the pergola",
+          "es": "Silla huevo colgante y hamaca junto a la piscina, bajo la pérgola"
         }
       },
       {
@@ -252,12 +286,66 @@
         }
       },
       {
+        "arquivo": "pergolado-flores.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Pergolado com samambaias e flores penduradas ao longo da varanda",
+          "en": "Pergola with ferns and hanging flowers along the veranda",
+          "es": "Pérgola con helechos y flores colgantes a lo largo de la terraza"
+        }
+      },
+      {
+        "arquivo": "coqueiros-fachada.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Coqueiros e céu aberto sobre a fachada, com bancada e banquetas",
+          "en": "Palm trees and open sky above the façade, with counter and stools",
+          "es": "Cocoteros y cielo abierto sobre la fachada, con barra y taburetes"
+        }
+      },
+      {
         "arquivo": "jardim-pergolado.jpg",
         "pasta": "villa-kubitschek",
         "alt": {
           "pt": "Jardim com pergolado de madeira e área de descanso à sombra",
           "en": "Garden with a wooden pergola and a shaded rest area",
           "es": "Jardín con pérgola de madera y zona de descanso a la sombra"
+        }
+      },
+      {
+        "arquivo": "ping-pong.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Mesa de ping-pong na área coberta, com plantas ao redor",
+          "en": "Table tennis in the covered area, with plants around",
+          "es": "Mesa de ping-pong en la zona cubierta, con plantas alrededor"
+        }
+      },
+      {
+        "arquivo": "cozinha-nova.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Cozinha nova com bancada, cooktop e janela para a área externa",
+          "en": "New kitchen with counter, cooktop and a window onto the outdoor area",
+          "es": "Cocina nueva con encimera, placa de cocción y ventana al exterior"
+        }
+      },
+      {
+        "arquivo": "cozinha-bancada-refeicoes.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Armários e bancada de refeições da cozinha nova, com luz natural",
+          "en": "Cabinets and dining counter of the new kitchen, with natural light",
+          "es": "Armarios y barra de comidas de la cocina nueva, con luz natural"
+        }
+      },
+      {
+        "arquivo": "sala-nova.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Sala nova com sofás, televisão e janela para a piscina",
+          "en": "New living room with sofas, television and a window onto the pool",
+          "es": "Sala nueva con sofás, televisión y ventana a la piscina"
         }
       },
       {
@@ -602,11 +690,35 @@
     "pasta": "villa-kubitschek",
     "fotos": [
       {
+        "arquivo": "lounge-pergolado.jpg",
+        "alt": {
+          "pt": "Lounge sob o pergolado, com sofás e a piscina ao fundo",
+          "en": "Lounge under the pergola, with sofas and the pool behind",
+          "es": "Lounge bajo la pérgola, con sofás y la piscina al fondo"
+        }
+      },
+      {
         "arquivo": "area-lazer-sinuca.jpg",
         "alt": {
           "pt": "Área de lazer coberta com mesa de sinuca, redes e pergolado de madeira",
           "en": "Covered leisure area with a pool table, hammocks and a wooden pergola",
           "es": "Zona de ocio cubierta con mesa de billar, hamacas y pérgola de madera"
+        }
+      },
+      {
+        "arquivo": "redario.jpg",
+        "alt": {
+          "pt": "Redário sob o pergolado de madeira, com poltronas ao redor",
+          "en": "Hammock area under the wooden pergola, with armchairs around",
+          "es": "Zona de hamacas bajo la pérgola de madera, con sillones alrededor"
+        }
+      },
+      {
+        "arquivo": "cadeira-balanco-piscina.jpg",
+        "alt": {
+          "pt": "Cadeira-ovo suspensa e rede junto à piscina, sob o pergolado",
+          "en": "Hanging egg chair and hammock by the pool, under the pergola",
+          "es": "Silla huevo colgante y hamaca junto a la piscina, bajo la pérgola"
         }
       },
       {
@@ -626,11 +738,59 @@
         }
       },
       {
+        "arquivo": "pergolado-flores.jpg",
+        "alt": {
+          "pt": "Pergolado com samambaias e flores penduradas ao longo da varanda",
+          "en": "Pergola with ferns and hanging flowers along the veranda",
+          "es": "Pérgola con helechos y flores colgantes a lo largo de la terraza"
+        }
+      },
+      {
+        "arquivo": "coqueiros-fachada.jpg",
+        "alt": {
+          "pt": "Coqueiros e céu aberto sobre a fachada, com bancada e banquetas",
+          "en": "Palm trees and open sky above the façade, with counter and stools",
+          "es": "Cocoteros y cielo abierto sobre la fachada, con barra y taburetes"
+        }
+      },
+      {
         "arquivo": "jardim-pergolado.jpg",
         "alt": {
           "pt": "Jardim com pergolado de madeira e área de descanso à sombra",
           "en": "Garden with a wooden pergola and a shaded rest area",
           "es": "Jardín con pérgola de madera y zona de descanso a la sombra"
+        }
+      },
+      {
+        "arquivo": "ping-pong.jpg",
+        "alt": {
+          "pt": "Mesa de ping-pong na área coberta, com plantas ao redor",
+          "en": "Table tennis in the covered area, with plants around",
+          "es": "Mesa de ping-pong en la zona cubierta, con plantas alrededor"
+        }
+      },
+      {
+        "arquivo": "cozinha-nova.jpg",
+        "alt": {
+          "pt": "Cozinha nova com bancada, cooktop e janela para a área externa",
+          "en": "New kitchen with counter, cooktop and a window onto the outdoor area",
+          "es": "Cocina nueva con encimera, placa de cocción y ventana al exterior"
+        }
+      },
+      {
+        "arquivo": "cozinha-bancada-refeicoes.jpg",
+        "alt": {
+          "pt": "Armários e bancada de refeições da cozinha nova, com luz natural",
+          "en": "Cabinets and dining counter of the new kitchen, with natural light",
+          "es": "Armarios y barra de comidas de la cocina nueva, con luz natural"
+        }
+      },
+      {
+        "arquivo": "sala-nova.jpg",
+        "alt": {
+          "pt": "Sala nova com sofás, televisão e janela para a piscina",
+          "en": "New living room with sofas, television and a window onto the pool",
+          "es": "Sala nueva con sofás, televisión y ventana a la piscina"
         }
       },
       {

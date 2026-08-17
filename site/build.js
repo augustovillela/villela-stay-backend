@@ -746,6 +746,14 @@ const FOTOS_PROPRIAS = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', '
 // arquivo: é assim que a Gran Villela (GD03H) mostra as fotos da Villa
 // Kubitschek e da Villa Catetinho, que são as duas casas que a compõem.
 const pastaDaFoto = (cfg, f) => f.pasta || cfg.pasta;
+// Fotos da Stays que NÃO devem aparecer no site (id do arquivo no CDN). O
+// anúncio na Stays continua com elas — isto só as tira da galeria daqui.
+// Para removê-las de vez (Airbnb, Booking, Decolar…), apagar no painel da Stays.
+const OCULTAR_STAYS = FOTOS_PROPRIAS['_ocultar-da-stays'] || {};
+// Filtra ANTES do slice: assim a galeria continua com 8 fotos, puxando as
+// seguintes, em vez de ficar com um buraco no lugar da foto escondida.
+const fotosDaStays = l => (l.fotos || [])
+  .filter(f => !(OCULTAR_STAYS[l.id] || []).some(id => String(f.url).includes(id)));
 // Miniatura: `<nome>-m.jpg` ao lado do arquivo grande. A grade carrega a
 // miniatura e o lightbox abre a grande. Sem isso o navegador baixava o
 // arquivo de 1600 px para desenhar um quadrado de 260 px — as fotos locais
@@ -811,7 +819,7 @@ function unidadeSchema(l) {
     '@context': 'https://schema.org',
     '@type': inteiro ? 'VacationRental' : 'LodgingBusiness',
     name: tituloImovel(l),
-    image: [l.fotoPrincipal, ...(l.fotos || []).slice(1, 6).map(f => f.url)].filter(Boolean),
+    image: [l.fotoPrincipal, ...fotosDaStays(l).slice(1, 6).map(f => f.url)].filter(Boolean),
     url: `${SITE_URL}${L(`/hospedagem/${l.id}.html`)}`,
     description: desc,
     address: {
@@ -963,7 +971,7 @@ for (const l of listings) {
         img(src, { alt: legenda || l.titulo, width: 400, height: 170, sizes: '(max-width: 640px) 50vw, 260px' })
       }</a>${legenda ? `<figcaption>${esc(legenda)}</figcaption>` : ''}</figure>`;
   const galeria = [
-    ...(l.fotos || []).slice(1, 9).map(f => itemGaleria(f.url, cdnUrl(f.url, 1600), f.nome || '')),
+    ...fotosDaStays(l).slice(1, 9).map(f => itemGaleria(f.url, cdnUrl(f.url, 1600), f.nome || '')),
     ...(cfgFotos ? cfgFotos.fotos.map(f => {
       const base = `/fotos/${pastaDaFoto(cfgFotos, f)}`;
       // `alt` é {pt,en,es}; string solta ainda vale (e serve os três idiomas).
