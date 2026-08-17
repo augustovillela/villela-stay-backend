@@ -201,51 +201,11 @@
     "pasta": "gran-villela",
     "fotos": [
       {
-        "arquivo": "fachada-palmeiras.jpg",
-        "alt": {
-          "pt": "Fachada da Gran Villela entre palmeiras, com o deck coberto no piso superior",
-          "en": "Front of Gran Villela among palm trees, with the covered deck on the upper floor",
-          "es": "Fachada de Gran Villela entre palmeras, con la terraza cubierta en el piso superior"
-        }
-      },
-      {
-        "arquivo": "deck-espreguicadeira.jpg",
-        "alt": {
-          "pt": "Espreguiçadeira dupla no deck de grama sintética, de frente para o jardim",
-          "en": "Double sun lounger on the artificial-grass deck, facing the garden",
-          "es": "Tumbona doble en la terraza de césped artificial, frente al jardín"
-        }
-      },
-      {
-        "arquivo": "deck-superior-lounge.jpg",
-        "alt": {
-          "pt": "Lounge do deck superior com sofás de vime sobre grama sintética",
-          "en": "Upper deck lounge with wicker sofas on artificial grass",
-          "es": "Lounge de la terraza superior con sofás de mimbre sobre césped artificial"
-        }
-      },
-      {
-        "arquivo": "passarela-deck-vista.jpg",
-        "alt": {
-          "pt": "Passarela de madeira do piso superior, com vista para o gramado e as árvores",
-          "en": "Wooden walkway on the upper floor, overlooking the lawn and the trees",
-          "es": "Pasarela de madera del piso superior, con vista al césped y los árboles"
-        }
-      },
-      {
         "arquivo": "lounge-coberto.jpg",
         "alt": {
           "pt": "Área de convivência coberta, com sofás, rede e mesa de apoio",
           "en": "Covered communal area with sofas, a hammock and a side table",
           "es": "Zona común cubierta, con sofás, hamaca y mesa auxiliar"
-        }
-      },
-      {
-        "arquivo": "jardim-pergolado.jpg",
-        "alt": {
-          "pt": "Jardim com pergolado de madeira e área de descanso à sombra",
-          "en": "Garden with a wooden pergola and a shaded rest area",
-          "es": "Jardín con pérgola de madera y zona de descanso a la sombra"
         }
       },
       {
@@ -257,35 +217,47 @@
         }
       },
       {
-        "arquivo": "banheiro-jacuzzi.jpg",
-        "alt": {
-          "pt": "Banheiro com banheira de hidromassagem e box de vidro",
-          "en": "Bathroom with a whirlpool tub and a glass shower box",
-          "es": "Baño con bañera de hidromasaje y ducha de cristal"
-        }
-      },
-      {
-        "arquivo": "suite-cama-casal.jpg",
-        "alt": {
-          "pt": "Suíte com cama de casal, ar-condicionado e parede de vidro para a área externa",
-          "en": "Suite with a double bed, air conditioning and a glass wall onto the outdoor area",
-          "es": "Suite con cama doble, aire acondicionado y pared de cristal hacia el exterior"
-        }
-      },
-      {
-        "arquivo": "suite-sofa-tv.jpg",
-        "alt": {
-          "pt": "Suíte ampla com sofá, televisão e luz natural",
-          "en": "Spacious suite with a sofa, television and natural light",
-          "es": "Suite amplia con sofá, televisión y luz natural"
-        }
-      },
-      {
         "arquivo": "quarto-beliches.jpg",
         "alt": {
           "pt": "Quarto com beliches de madeira, cozinha compacta e área de estar",
           "en": "Room with wooden bunk beds, a compact kitchen and a sitting area",
           "es": "Habitación con literas de madera, cocina compacta y zona de estar"
+        }
+      },
+      {
+        "arquivo": "area-lazer-sinuca.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Área de lazer coberta com mesa de sinuca, redes e pergolado de madeira",
+          "en": "Covered leisure area with a pool table, hammocks and a wooden pergola",
+          "es": "Zona de ocio cubierta con mesa de billar, hamacas y pérgola de madera"
+        }
+      },
+      {
+        "arquivo": "varanda-palmeiras-redes.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Varanda coberta com redes e espreguiçadeiras, entre palmeiras",
+          "en": "Covered veranda with hammocks and sun loungers, among palm trees",
+          "es": "Terraza cubierta con hamacas y tumbonas, entre palmeras"
+        }
+      },
+      {
+        "arquivo": "varanda-bar-plantas.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Varanda com bancada de bar, banquetas altas e plantas suspensas",
+          "en": "Veranda with a bar counter, high stools and hanging plants",
+          "es": "Terraza con barra, taburetes altos y plantas colgantes"
+        }
+      },
+      {
+        "arquivo": "jardim-pergolado.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Jardim com pergolado de madeira e área de descanso à sombra",
+          "en": "Garden with a wooden pergola and a shaded rest area",
+          "es": "Jardín con pérgola de madera y zona de descanso a la sombra"
         }
       },
       {
@@ -295,6 +267,51 @@
           "pt": "Suíte do Amor da Villa Kubitschek, com cama de casal, sofá e área de estar",
           "en": "Suíte do Amor at Villa Kubitschek, with a double bed, sofa and sitting area",
           "es": "Suíte do Amor de Villa Kubitschek, con cama doble, sofá y zona de estar"
+        }
+      },
+      {
+        "arquivo": "suite-cama-casal.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Suíte com cama de casal, ar-condicionado e parede de vidro para a área externa",
+          "en": "Suite with a double bed, air conditioning and a glass wall onto the outdoor area",
+          "es": "Suite con cama doble, aire acondicionado y pared de cristal hacia el exterior"
+        }
+      },
+      {
+        "arquivo": "suite-cama-prateleiras.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Suíte com cama de casal, prateleiras de madeira e porta para a área externa",
+          "en": "Suite with a double bed, wooden shelves and a door onto the outdoor area",
+          "es": "Suite con cama doble, estantes de madera y puerta a la zona exterior"
+        }
+      },
+      {
+        "arquivo": "suite-sofa-tv.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Suíte ampla com sofá, televisão e luz natural",
+          "en": "Spacious suite with a sofa, television and natural light",
+          "es": "Suite amplia con sofá, televisión y luz natural"
+        }
+      },
+      {
+        "arquivo": "banheiro-jacuzzi.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Banheiro com banheira de hidromassagem e box de vidro",
+          "en": "Bathroom with a whirlpool tub and a glass shower box",
+          "es": "Baño con bañera de hidromasaje y ducha de cristal"
+        }
+      },
+      {
+        "arquivo": "banheiro-bancada-pedra.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Banheiro com bancada de pedra, espelho e box de vidro amplo",
+          "en": "Bathroom with a stone counter, mirror and a wide glass shower box",
+          "es": "Baño con encimera de piedra, espejo y amplia ducha de cristal"
         }
       },
       {
@@ -313,6 +330,15 @@
           "pt": "Quarto com dois beliches, para grupos e famílias",
           "en": "Room with two bunk beds, for groups and families",
           "es": "Habitación con dos literas, para grupos y familias"
+        }
+      },
+      {
+        "arquivo": "quarto-beliche-tv.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Quarto com beliches de madeira, televisão e armário",
+          "en": "Room with wooden bunk beds, a television and a wardrobe",
+          "es": "Habitación con literas de madera, televisión y armario"
         }
       },
       {
@@ -349,6 +375,87 @@
           "pt": "Banheiro com box de vidro, bancada e espelho",
           "en": "Bathroom with a glass shower box, counter and mirror",
           "es": "Baño con ducha de cristal, encimera y espejo"
+        }
+      },
+      {
+        "arquivo": "rooftop-lounge-deck.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "Rooftop com sofás sobre o deck de madeira, sob a cobertura metálica",
+          "en": "Rooftop with sofas on the wooden deck, under the metal canopy",
+          "es": "Azotea con sofás sobre la terraza de madera, bajo la cubierta metálica"
+        }
+      },
+      {
+        "arquivo": "rooftop-sofas-sol.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "Sofás de vime no rooftop, sobre grama sintética ao sol",
+          "en": "Wicker sofas on the rooftop, on artificial grass in the sun",
+          "es": "Sofás de mimbre en la azotea, sobre césped artificial al sol"
+        }
+      },
+      {
+        "arquivo": "deck-superior-lounge.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "Lounge do deck superior com sofás de vime sobre grama sintética",
+          "en": "Upper deck lounge with wicker sofas on artificial grass",
+          "es": "Lounge de la terraza superior con sofás de mimbre sobre césped artificial"
+        }
+      },
+      {
+        "arquivo": "deck-espreguicadeira.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "Espreguiçadeira dupla no deck de grama sintética, de frente para o jardim",
+          "en": "Double sun lounger on the artificial-grass deck, facing the garden",
+          "es": "Tumbona doble en la terraza de césped artificial, frente al jardín"
+        }
+      },
+      {
+        "arquivo": "passarela-deck-vista.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "Passarela de madeira do piso superior, com vista para o gramado e as árvores",
+          "en": "Wooden walkway on the upper floor, overlooking the lawn and the trees",
+          "es": "Pasarela de madera del piso superior, con vista al césped y los árboles"
+        }
+      },
+      {
+        "arquivo": "rooftop-passarela-coberta.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "Passarela coberta do rooftop, com vista para o jardim",
+          "en": "Covered rooftop walkway, overlooking the garden",
+          "es": "Pasarela cubierta de la azotea, con vista al jardín"
+        }
+      },
+      {
+        "arquivo": "rooftop-vista-arvores.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "Rooftop com poltronas e vista para as árvores do Lago Sul",
+          "en": "Rooftop with armchairs and a view of the trees of Lago Sul",
+          "es": "Azotea con sillones y vista a los árboles de Lago Sul"
+        }
+      },
+      {
+        "arquivo": "rooftop-visto-do-gramado.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "O rooftop da Villa Catetinho visto do gramado, com o céu aberto",
+          "en": "Villa Catetinho's rooftop seen from the lawn, under open sky",
+          "es": "La azotea de Villa Catetinho vista desde el césped, con cielo despejado"
+        }
+      },
+      {
+        "arquivo": "fachada-palmeiras.jpg",
+        "pasta": "villa-catetinho",
+        "alt": {
+          "pt": "Fachada da Gran Villela entre palmeiras, com o deck coberto no piso superior",
+          "en": "Front of Gran Villela among palm trees, with the covered deck on the upper floor",
+          "es": "Fachada de Gran Villela entre palmeras, con la terraza cubierta en el piso superior"
         }
       },
       {
@@ -495,11 +602,83 @@
     "pasta": "villa-kubitschek",
     "fotos": [
       {
+        "arquivo": "area-lazer-sinuca.jpg",
+        "alt": {
+          "pt": "Área de lazer coberta com mesa de sinuca, redes e pergolado de madeira",
+          "en": "Covered leisure area with a pool table, hammocks and a wooden pergola",
+          "es": "Zona de ocio cubierta con mesa de billar, hamacas y pérgola de madera"
+        }
+      },
+      {
+        "arquivo": "varanda-palmeiras-redes.jpg",
+        "alt": {
+          "pt": "Varanda coberta com redes e espreguiçadeiras, entre palmeiras",
+          "en": "Covered veranda with hammocks and sun loungers, among palm trees",
+          "es": "Terraza cubierta con hamacas y tumbonas, entre palmeras"
+        }
+      },
+      {
+        "arquivo": "varanda-bar-plantas.jpg",
+        "alt": {
+          "pt": "Varanda com bancada de bar, banquetas altas e plantas suspensas",
+          "en": "Veranda with a bar counter, high stools and hanging plants",
+          "es": "Terraza con barra, taburetes altos y plantas colgantes"
+        }
+      },
+      {
+        "arquivo": "jardim-pergolado.jpg",
+        "alt": {
+          "pt": "Jardim com pergolado de madeira e área de descanso à sombra",
+          "en": "Garden with a wooden pergola and a shaded rest area",
+          "es": "Jardín con pérgola de madera y zona de descanso a la sombra"
+        }
+      },
+      {
         "arquivo": "suite-do-amor.jpg",
         "alt": {
           "pt": "Suíte do Amor da Villa Kubitschek, com cama de casal, sofá e área de estar",
           "en": "Suíte do Amor at Villa Kubitschek, with a double bed, sofa and sitting area",
           "es": "Suíte do Amor de Villa Kubitschek, con cama doble, sofá y zona de estar"
+        }
+      },
+      {
+        "arquivo": "suite-cama-casal.jpg",
+        "alt": {
+          "pt": "Suíte com cama de casal, ar-condicionado e parede de vidro para a área externa",
+          "en": "Suite with a double bed, air conditioning and a glass wall onto the outdoor area",
+          "es": "Suite con cama doble, aire acondicionado y pared de cristal hacia el exterior"
+        }
+      },
+      {
+        "arquivo": "suite-cama-prateleiras.jpg",
+        "alt": {
+          "pt": "Suíte com cama de casal, prateleiras de madeira e porta para a área externa",
+          "en": "Suite with a double bed, wooden shelves and a door onto the outdoor area",
+          "es": "Suite con cama doble, estantes de madera y puerta a la zona exterior"
+        }
+      },
+      {
+        "arquivo": "suite-sofa-tv.jpg",
+        "alt": {
+          "pt": "Suíte ampla com sofá, televisão e luz natural",
+          "en": "Spacious suite with a sofa, television and natural light",
+          "es": "Suite amplia con sofá, televisión y luz natural"
+        }
+      },
+      {
+        "arquivo": "banheiro-jacuzzi.jpg",
+        "alt": {
+          "pt": "Banheiro com banheira de hidromassagem e box de vidro",
+          "en": "Bathroom with a whirlpool tub and a glass shower box",
+          "es": "Baño con bañera de hidromasaje y ducha de cristal"
+        }
+      },
+      {
+        "arquivo": "banheiro-bancada-pedra.jpg",
+        "alt": {
+          "pt": "Banheiro com bancada de pedra, espelho e box de vidro amplo",
+          "en": "Bathroom with a stone counter, mirror and a wide glass shower box",
+          "es": "Baño con encimera de piedra, espejo y amplia ducha de cristal"
         }
       },
       {
@@ -516,6 +695,14 @@
           "pt": "Quarto com dois beliches, para grupos e famílias",
           "en": "Room with two bunk beds, for groups and families",
           "es": "Habitación con dos literas, para grupos y familias"
+        }
+      },
+      {
+        "arquivo": "quarto-beliche-tv.jpg",
+        "alt": {
+          "pt": "Quarto com beliches de madeira, televisão e armário",
+          "en": "Room with wooden bunk beds, a television and a wardrobe",
+          "es": "Habitación con literas de madera, televisión y armario"
         }
       },
       {
@@ -555,6 +742,118 @@
   "PL02I": {
     "pasta": "villa-catetinho",
     "fotos": [
+      {
+        "arquivo": "rooftop-lounge-deck.jpg",
+        "alt": {
+          "pt": "Rooftop com sofás sobre o deck de madeira, sob a cobertura metálica",
+          "en": "Rooftop with sofas on the wooden deck, under the metal canopy",
+          "es": "Azotea con sofás sobre la terraza de madera, bajo la cubierta metálica"
+        }
+      },
+      {
+        "arquivo": "rooftop-sofas-sol.jpg",
+        "alt": {
+          "pt": "Sofás de vime no rooftop, sobre grama sintética ao sol",
+          "en": "Wicker sofas on the rooftop, on artificial grass in the sun",
+          "es": "Sofás de mimbre en la azotea, sobre césped artificial al sol"
+        }
+      },
+      {
+        "arquivo": "deck-superior-lounge.jpg",
+        "alt": {
+          "pt": "Lounge do deck superior com sofás de vime sobre grama sintética",
+          "en": "Upper deck lounge with wicker sofas on artificial grass",
+          "es": "Lounge de la terraza superior con sofás de mimbre sobre césped artificial"
+        }
+      },
+      {
+        "arquivo": "deck-espreguicadeira.jpg",
+        "alt": {
+          "pt": "Espreguiçadeira dupla no deck de grama sintética, de frente para o jardim",
+          "en": "Double sun lounger on the artificial-grass deck, facing the garden",
+          "es": "Tumbona doble en la terraza de césped artificial, frente al jardín"
+        }
+      },
+      {
+        "arquivo": "passarela-deck-vista.jpg",
+        "alt": {
+          "pt": "Passarela de madeira do piso superior, com vista para o gramado e as árvores",
+          "en": "Wooden walkway on the upper floor, overlooking the lawn and the trees",
+          "es": "Pasarela de madera del piso superior, con vista al césped y los árboles"
+        }
+      },
+      {
+        "arquivo": "rooftop-passarela-coberta.jpg",
+        "alt": {
+          "pt": "Passarela coberta do rooftop, com vista para o jardim",
+          "en": "Covered rooftop walkway, overlooking the garden",
+          "es": "Pasarela cubierta de la azotea, con vista al jardín"
+        }
+      },
+      {
+        "arquivo": "rooftop-vista-arvores.jpg",
+        "alt": {
+          "pt": "Rooftop com poltronas e vista para as árvores do Lago Sul",
+          "en": "Rooftop with armchairs and a view of the trees of Lago Sul",
+          "es": "Azotea con sillones y vista a los árboles de Lago Sul"
+        }
+      },
+      {
+        "arquivo": "rooftop-visto-do-gramado.jpg",
+        "alt": {
+          "pt": "O rooftop da Villa Catetinho visto do gramado, com o céu aberto",
+          "en": "Villa Catetinho's rooftop seen from the lawn, under open sky",
+          "es": "La azotea de Villa Catetinho vista desde el césped, con cielo despejado"
+        }
+      },
+      {
+        "arquivo": "fachada-palmeiras.jpg",
+        "alt": {
+          "pt": "Fachada da Gran Villela entre palmeiras, com o deck coberto no piso superior",
+          "en": "Front of Gran Villela among palm trees, with the covered deck on the upper floor",
+          "es": "Fachada de Gran Villela entre palmeras, con la terraza cubierta en el piso superior"
+        }
+      },
+      {
+        "arquivo": "quarto-beliche-tv.jpg",
+        "alt": {
+          "pt": "Quarto da Villa Catetinho com cama, beliche e televisão",
+          "en": "Room at Villa Catetinho with a bed, bunk bed and television",
+          "es": "Habitación de Villa Catetinho con cama, litera y televisión"
+        }
+      },
+      {
+        "arquivo": "quarto-beliche-sofa.jpg",
+        "alt": {
+          "pt": "Quarto com beliche, sofá e arara de apoio",
+          "en": "Room with a bunk bed, sofa and clothes rail",
+          "es": "Habitación con litera, sofá y perchero"
+        }
+      },
+      {
+        "arquivo": "estar-sofa-beliches.jpg",
+        "alt": {
+          "pt": "Área de estar com sofá e beliches ao fundo",
+          "en": "Sitting area with a sofa and bunk beds behind",
+          "es": "Zona de estar con sofá y literas al fondo"
+        }
+      },
+      {
+        "arquivo": "estar-sofa-cama.jpg",
+        "alt": {
+          "pt": "Estar com sofá, cama de casal e beliche no mesmo ambiente",
+          "en": "Sitting area with a sofa, double bed and bunk bed in one space",
+          "es": "Estar con sofá, cama doble y litera en el mismo ambiente"
+        }
+      },
+      {
+        "arquivo": "banheiro-box.jpg",
+        "alt": {
+          "pt": "Banheiro com box de vidro e piso de madeira",
+          "en": "Bathroom with a glass shower box and wooden floor",
+          "es": "Baño con ducha de cristal y suelo de madera"
+        }
+      },
       {
         "arquivo": "piscina.jpg",
         "pasta": "casa-villela",
@@ -598,46 +897,6 @@
           "pt": "Varanda com rede, mesa de vidro e poltronas de fibra",
           "en": "Veranda with a hammock, glass table and rattan armchairs",
           "es": "Terraza con hamaca, mesa de cristal y sillones de fibra"
-        }
-      },
-      {
-        "arquivo": "quarto-beliche-tv.jpg",
-        "alt": {
-          "pt": "Quarto da Villa Catetinho com cama, beliche e televisão",
-          "en": "Room at Villa Catetinho with a bed, bunk bed and television",
-          "es": "Habitación de Villa Catetinho con cama, litera y televisión"
-        }
-      },
-      {
-        "arquivo": "quarto-beliche-sofa.jpg",
-        "alt": {
-          "pt": "Quarto com beliche, sofá e arara de apoio",
-          "en": "Room with a bunk bed, sofa and clothes rail",
-          "es": "Habitación con litera, sofá y perchero"
-        }
-      },
-      {
-        "arquivo": "estar-sofa-beliches.jpg",
-        "alt": {
-          "pt": "Área de estar com sofá e beliches ao fundo",
-          "en": "Sitting area with a sofa and bunk beds behind",
-          "es": "Zona de estar con sofá y literas al fondo"
-        }
-      },
-      {
-        "arquivo": "estar-sofa-cama.jpg",
-        "alt": {
-          "pt": "Estar com sofá, cama de casal e beliche no mesmo ambiente",
-          "en": "Sitting area with a sofa, double bed and bunk bed in one space",
-          "es": "Estar con sofá, cama doble y litera en el mismo ambiente"
-        }
-      },
-      {
-        "arquivo": "banheiro-box.jpg",
-        "alt": {
-          "pt": "Banheiro com box de vidro e piso de madeira",
-          "en": "Bathroom with a glass shower box and wooden floor",
-          "es": "Baño con ducha de cristal y suelo de madera"
         }
       }
     ]
