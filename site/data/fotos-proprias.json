@@ -1,32 +1,320 @@
 {
-  "_leia-me": "Fotos próprias do anfitrião (arquivos em site/src/fotos/<pasta>), exibidas na galeria da página da unidade DEPOIS das fotos que vêm da Stays. Ordem = ordem de exibição. Acrescentar foto: colocar o .jpg em src/fotos/<pasta>/ e uma entrada aqui.",
+  "_leia-me": "Fotos próprias do anfitrião (arquivos em site/src/fotos/<pasta>), exibidas na galeria da página da unidade DEPOIS das fotos que vêm da Stays. Ordem = ordem de exibição. Acrescentar foto: colocar o .jpg em src/fotos/<pasta>/ e uma entrada aqui. Cada foto precisa de um par <nome>-m.jpg (miniatura ~600px) na mesma pasta — é ela que a grade carrega; o arquivo grande só abre no lightbox. Uma entrada pode declarar \"pasta\" própria para reaproveitar a foto de outra unidade sem duplicar arquivo: é assim que a Gran Villela (GD03H) mostra também as fotos da Villa Kubitschek e da Villa Catetinho, que são as duas casas que a compõem.",
   "GD01H": {
     "pasta": "casa-modernista",
     "fotos": [
-      { "arquivo": "piscina-area-envidracada.jpg", "alt": "Piscina com a área de lazer envidraçada ao fundo" },
-      { "arquivo": "cozinha-industrial.jpg", "alt": "Cozinha industrial equipada, com bancada de granito e fogões" },
-      { "arquivo": "sala-de-estar.jpg", "alt": "Sala de estar com sofá em L e instrumentos na parede" },
-      { "arquivo": "spa-jacuzzi.jpg", "alt": "Spa com jacuzzi para 8 pessoas ao lado do aquário" },
-      { "arquivo": "sala-de-sinuca.jpg", "alt": "Sala de sinuca com mural grafitado" },
-      { "arquivo": "lounge-externo-redario.jpg", "alt": "Lounge externo coberto com redário e poltronas" },
-      { "arquivo": "jardim-balancos-redes.jpg", "alt": "Jardim com balanços, redes e cadeiras de madeira" },
-      { "arquivo": "pergolado-balanco.jpg", "alt": "Pergolado com poltronas e balanço suspenso no jardim" },
-      { "arquivo": "parquinho.jpg", "alt": "Parquinho com parede de escalada, balanços e cama elástica" },
-      { "arquivo": "churrasqueiras.jpg", "alt": "Churrasqueira de alvenaria e churrasqueira a gás" },
-      { "arquivo": "deck-piscina-guarda-sol.jpg", "alt": "Deck da piscina com guarda-sol e espreguiçadeiras" },
-      { "arquivo": "piscina-deck-jardim.jpg", "alt": "Piscina, deck e jardim com cerca viva florida" },
-      { "arquivo": "jardim-de-inverno.jpg", "alt": "Jardim de inverno com plantas e parede de tijolo aparente" },
-      { "arquivo": "suite-master.jpg", "alt": "Suíte master com cama king" },
-      { "arquivo": "suite-cama-king.jpg", "alt": "Suíte com cama king, cama extra e TV" },
-      { "arquivo": "suite-casal-solteiro.jpg", "alt": "Suíte com cama de casal, cama de solteiro e ar-condicionado" },
-      { "arquivo": "quarto-beliches.jpg", "alt": "Quarto com beliches" },
-      { "arquivo": "banheiro-suite.jpg", "alt": "Banheiro de suíte com box e revestimento amadeirado" },
-      { "arquivo": "banheiro-box-vidro.jpg", "alt": "Banheiro com box de vidro" },
-      { "arquivo": "lavabo.jpg", "alt": "Lavabo" },
-      { "arquivo": "pergolado-deck-madeira.jpg", "alt": "Pergolado de madeira com deck, mesa e sofás" },
-      { "arquivo": "fachada.jpg", "alt": "Fachada da Casa Modernista" },
-      { "arquivo": "fachada-entrada.jpg", "alt": "Fachada e entrada da casa" },
-      { "arquivo": "porteiro-eletronico.jpg", "alt": "Porteiro eletrônico com câmera na entrada" }
+      {
+        "arquivo": "piscina-area-envidracada.jpg",
+        "alt": "Piscina com a área de lazer envidraçada ao fundo"
+      },
+      {
+        "arquivo": "cozinha-industrial.jpg",
+        "alt": "Cozinha industrial equipada, com bancada de granito e fogões"
+      },
+      {
+        "arquivo": "sala-de-estar.jpg",
+        "alt": "Sala de estar com sofá em L e instrumentos na parede"
+      },
+      {
+        "arquivo": "spa-jacuzzi.jpg",
+        "alt": "Spa com jacuzzi para 8 pessoas ao lado do aquário"
+      },
+      {
+        "arquivo": "sala-de-sinuca.jpg",
+        "alt": "Sala de sinuca com mural grafitado"
+      },
+      {
+        "arquivo": "lounge-externo-redario.jpg",
+        "alt": "Lounge externo coberto com redário e poltronas"
+      },
+      {
+        "arquivo": "jardim-balancos-redes.jpg",
+        "alt": "Jardim com balanços, redes e cadeiras de madeira"
+      },
+      {
+        "arquivo": "pergolado-balanco.jpg",
+        "alt": "Pergolado com poltronas e balanço suspenso no jardim"
+      },
+      {
+        "arquivo": "parquinho.jpg",
+        "alt": "Parquinho com parede de escalada, balanços e cama elástica"
+      },
+      {
+        "arquivo": "churrasqueiras.jpg",
+        "alt": "Churrasqueira de alvenaria e churrasqueira a gás"
+      },
+      {
+        "arquivo": "deck-piscina-guarda-sol.jpg",
+        "alt": "Deck da piscina com guarda-sol e espreguiçadeiras"
+      },
+      {
+        "arquivo": "piscina-deck-jardim.jpg",
+        "alt": "Piscina, deck e jardim com cerca viva florida"
+      },
+      {
+        "arquivo": "jardim-de-inverno.jpg",
+        "alt": "Jardim de inverno com plantas e parede de tijolo aparente"
+      },
+      {
+        "arquivo": "suite-master.jpg",
+        "alt": "Suíte master com cama king"
+      },
+      {
+        "arquivo": "suite-cama-king.jpg",
+        "alt": "Suíte com cama king, cama extra e TV"
+      },
+      {
+        "arquivo": "suite-casal-solteiro.jpg",
+        "alt": "Suíte com cama de casal, cama de solteiro e ar-condicionado"
+      },
+      {
+        "arquivo": "quarto-beliches.jpg",
+        "alt": "Quarto com beliches"
+      },
+      {
+        "arquivo": "banheiro-suite.jpg",
+        "alt": "Banheiro de suíte com box e revestimento amadeirado"
+      },
+      {
+        "arquivo": "banheiro-box-vidro.jpg",
+        "alt": "Banheiro com box de vidro"
+      },
+      {
+        "arquivo": "lavabo.jpg",
+        "alt": "Lavabo"
+      },
+      {
+        "arquivo": "pergolado-deck-madeira.jpg",
+        "alt": "Pergolado de madeira com deck, mesa e sofás"
+      },
+      {
+        "arquivo": "fachada.jpg",
+        "alt": "Fachada da Casa Modernista"
+      },
+      {
+        "arquivo": "fachada-entrada.jpg",
+        "alt": "Fachada e entrada da casa"
+      },
+      {
+        "arquivo": "porteiro-eletronico.jpg",
+        "alt": "Porteiro eletrônico com câmera na entrada"
+      }
+    ]
+  },
+  "GD03H": {
+    "pasta": "gran-villela",
+    "fotos": [
+      {
+        "arquivo": "fachada-palmeiras.jpg",
+        "alt": "Fachada da Gran Villela entre palmeiras, com o deck coberto no piso superior"
+      },
+      {
+        "arquivo": "deck-espreguicadeira.jpg",
+        "alt": "Espreguiçadeira dupla no deck de grama sintética, de frente para o jardim"
+      },
+      {
+        "arquivo": "deck-superior-lounge.jpg",
+        "alt": "Lounge do deck superior com sofás de vime sobre grama sintética"
+      },
+      {
+        "arquivo": "passarela-deck-vista.jpg",
+        "alt": "Passarela de madeira do piso superior, com vista para o gramado e as árvores"
+      },
+      {
+        "arquivo": "lounge-coberto.jpg",
+        "alt": "Área de convivência coberta, com sofás, rede e mesa de apoio"
+      },
+      {
+        "arquivo": "jardim-pergolado.jpg",
+        "alt": "Jardim com pergolado de madeira e área de descanso à sombra"
+      },
+      {
+        "arquivo": "varanda-plantas-rede.jpg",
+        "alt": "Varanda com plantas suspensas, bancada alta e rede"
+      },
+      {
+        "arquivo": "banheiro-jacuzzi.jpg",
+        "alt": "Banheiro com banheira de hidromassagem e box de vidro"
+      },
+      {
+        "arquivo": "suite-cama-casal.jpg",
+        "alt": "Suíte com cama de casal, ar-condicionado e parede de vidro para a área externa"
+      },
+      {
+        "arquivo": "suite-sofa-tv.jpg",
+        "alt": "Suíte ampla com sofá, televisão e luz natural"
+      },
+      {
+        "arquivo": "quarto-beliches.jpg",
+        "alt": "Quarto com beliches de madeira, cozinha compacta e área de estar"
+      },
+      {
+        "arquivo": "suite-do-amor.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": "Suíte do Amor da Villa Kubitschek, com cama de casal, sofá e área de estar"
+      },
+      {
+        "arquivo": "quarto-beliche-janela.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": "Quarto com beliche e janela para as palmeiras"
+      },
+      {
+        "arquivo": "quarto-beliche-duplo.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": "Quarto com dois beliches, para grupos e famílias"
+      },
+      {
+        "arquivo": "quarto-beliche-quadro.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": "Quarto com beliche, cadeira de apoio e janela ampla"
+      },
+      {
+        "arquivo": "quarto-beliche-cadeira.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": "Quarto com beliche, cadeira e luz natural"
+      },
+      {
+        "arquivo": "quarto-mesa-trabalho.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": "Quarto com mesa de trabalho ao lado do beliche"
+      },
+      {
+        "arquivo": "banheiro-box.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": "Banheiro com box de vidro, bancada e espelho"
+      },
+      {
+        "arquivo": "quarto-beliche-tv.jpg",
+        "pasta": "villa-catetinho",
+        "alt": "Quarto da Villa Catetinho com cama, beliche e televisão"
+      },
+      {
+        "arquivo": "quarto-beliche-sofa.jpg",
+        "pasta": "villa-catetinho",
+        "alt": "Quarto com beliche, sofá e arara de apoio"
+      },
+      {
+        "arquivo": "estar-sofa-beliches.jpg",
+        "pasta": "villa-catetinho",
+        "alt": "Área de estar com sofá e beliches ao fundo"
+      },
+      {
+        "arquivo": "estar-sofa-cama.jpg",
+        "pasta": "villa-catetinho",
+        "alt": "Estar com sofá, cama de casal e beliche no mesmo ambiente"
+      },
+      {
+        "arquivo": "banheiro-box.jpg",
+        "pasta": "villa-catetinho",
+        "alt": "Banheiro com box de vidro e piso de madeira"
+      }
+    ]
+  },
+  "GI01I": {
+    "pasta": "casa-villela",
+    "fotos": [
+      {
+        "arquivo": "piscina.jpg",
+        "alt": "Piscina da Casa Villela ao ar livre, com espreguiçadeiras e o alojamento ao fundo"
+      },
+      {
+        "arquivo": "gramado-vista-casa.jpg",
+        "alt": "Gramado amplo com vista para a casa, a piscina e as árvores do Lago Sul"
+      },
+      {
+        "arquivo": "area-externa-rede.jpg",
+        "alt": "Área externa com rede armada à sombra e a piscina ao fundo"
+      },
+      {
+        "arquivo": "varanda-cadeiras-ovo.jpg",
+        "alt": "Varanda coberta com cadeiras-ovo suspensas, sofá e mesa de vidro"
+      },
+      {
+        "arquivo": "varanda-rede-mesa.jpg",
+        "alt": "Varanda com rede, mesa de vidro e poltronas de fibra"
+      },
+      {
+        "arquivo": "mesa-comunitaria.jpg",
+        "alt": "Mesa comunitária junto à janela, com vista para o gramado e a piscina"
+      },
+      {
+        "arquivo": "cozinha-vista.jpg",
+        "alt": "Cozinha em linha com fogões profissionais e janelas para a área externa"
+      },
+      {
+        "arquivo": "cozinha-industrial.jpg",
+        "alt": "Cozinha industrial equipada, com bancadas de inox e máquina de lavar"
+      },
+      {
+        "arquivo": "quarto-cama-sofa.jpg",
+        "alt": "Quarto com cama de casal, sofá e janela para o verde"
+      },
+      {
+        "arquivo": "quarto-armario-tv.jpg",
+        "alt": "Quarto com armário embutido, televisão e cama de casal"
+      },
+      {
+        "arquivo": "banheiro-pia-pedra.jpg",
+        "alt": "Banheiro com bancada de pedra, espelho redondo e box de vidro"
+      }
+    ]
+  },
+  "GG04I": {
+    "pasta": "villa-kubitschek",
+    "fotos": [
+      {
+        "arquivo": "suite-do-amor.jpg",
+        "alt": "Suíte do Amor da Villa Kubitschek, com cama de casal, sofá e área de estar"
+      },
+      {
+        "arquivo": "quarto-beliche-janela.jpg",
+        "alt": "Quarto com beliche e janela para as palmeiras"
+      },
+      {
+        "arquivo": "quarto-beliche-duplo.jpg",
+        "alt": "Quarto com dois beliches, para grupos e famílias"
+      },
+      {
+        "arquivo": "quarto-beliche-quadro.jpg",
+        "alt": "Quarto com beliche, cadeira de apoio e janela ampla"
+      },
+      {
+        "arquivo": "quarto-beliche-cadeira.jpg",
+        "alt": "Quarto com beliche, cadeira e luz natural"
+      },
+      {
+        "arquivo": "quarto-mesa-trabalho.jpg",
+        "alt": "Quarto com mesa de trabalho ao lado do beliche"
+      },
+      {
+        "arquivo": "banheiro-box.jpg",
+        "alt": "Banheiro com box de vidro, bancada e espelho"
+      }
+    ]
+  },
+  "PL02I": {
+    "pasta": "villa-catetinho",
+    "fotos": [
+      {
+        "arquivo": "quarto-beliche-tv.jpg",
+        "alt": "Quarto da Villa Catetinho com cama, beliche e televisão"
+      },
+      {
+        "arquivo": "quarto-beliche-sofa.jpg",
+        "alt": "Quarto com beliche, sofá e arara de apoio"
+      },
+      {
+        "arquivo": "estar-sofa-beliches.jpg",
+        "alt": "Área de estar com sofá e beliches ao fundo"
+      },
+      {
+        "arquivo": "estar-sofa-cama.jpg",
+        "alt": "Estar com sofá, cama de casal e beliche no mesmo ambiente"
+      },
+      {
+        "arquivo": "banheiro-box.jpg",
+        "alt": "Banheiro com box de vidro e piso de madeira"
+      }
     ]
   }
 }

@@ -742,11 +742,29 @@ for (const p of new Set(Object.values(PLANTAS))) fs.copyFileSync(path.join(__dir
 // Fotos próprias do anfitrião (data/fotos-proprias.json) — entram na galeria da unidade depois
 // das que vêm da Stays. Só copia o que está catalogado: arquivo solto em src/fotos/ não vai ao ar.
 const FOTOS_PROPRIAS = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'fotos-proprias.json'), 'utf8'));
+// Uma foto pode declarar `pasta` própria e vir de OUTRA unidade, sem duplicar
+// arquivo: é assim que a Gran Villela (GD03H) mostra as fotos da Villa
+// Kubitschek e da Villa Catetinho, que são as duas casas que a compõem.
+const pastaDaFoto = (cfg, f) => f.pasta || cfg.pasta;
+// Miniatura: `<nome>-m.jpg` ao lado do arquivo grande. A grade carrega a
+// miniatura e o lightbox abre a grande. Sem isso o navegador baixava o
+// arquivo de 1600 px para desenhar um quadrado de 260 px — as fotos locais
+// não passam pelo redimensionador do CDN, ao contrário das que vêm da Stays.
+const miniatura = arq => arq.replace(/\.jpg$/i, '-m.jpg');
 for (const [id, cfg] of Object.entries(FOTOS_PROPRIAS)) {
   if (id.startsWith('_')) continue;
-  const destino = path.join(DIST, 'fotos', cfg.pasta);
-  fs.mkdirSync(destino, { recursive: true });
-  for (const f of cfg.fotos) fs.copyFileSync(path.join(__dirname, 'src', 'fotos', cfg.pasta, f.arquivo), path.join(destino, f.arquivo));
+  for (const f of cfg.fotos) {
+    const pasta = pastaDaFoto(cfg, f);
+    const destino = path.join(DIST, 'fotos', pasta);
+    fs.mkdirSync(destino, { recursive: true });
+    for (const nome of [f.arquivo, miniatura(f.arquivo)]) {
+      const origem = path.join(__dirname, 'src', 'fotos', pasta, nome);
+      // A miniatura é obrigatória: sem ela a página serviria o arquivo grande
+      // como thumb e ninguém notaria, a não ser pela lentidão.
+      if (!fs.existsSync(origem)) throw new Error(`[fotos] falta ${pasta}/${nome} (declarada em ${id})`);
+      fs.copyFileSync(origem, path.join(destino, nome));
+    }
+  }
 }
 
 // Copy do "Sobre a hospedagem" (data/copy-hospedagem.json): manchete, parágrafos, destaques e
@@ -947,8 +965,8 @@ for (const l of listings) {
   const galeria = [
     ...(l.fotos || []).slice(1, 9).map(f => itemGaleria(f.url, cdnUrl(f.url, 1600), f.nome || '')),
     ...(cfgFotos ? cfgFotos.fotos.map(f => {
-      const caminho = `/fotos/${cfgFotos.pasta}/${f.arquivo}`;
-      return itemGaleria(caminho, caminho, f.alt);
+      const base = `/fotos/${pastaDaFoto(cfgFotos, f)}`;
+      return itemGaleria(`${base}/${miniatura(f.arquivo)}`, `${base}/${f.arquivo}`, f.alt);
     }) : []),
   ].join('\n');
 
