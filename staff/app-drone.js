@@ -72,6 +72,6 @@ function renderDrone() {
        <ul style="padding-left:18px;margin:0">${pend}</ul>
 
        <p class="obs" style="margin-top:16px">Rodar na própria máquina continua valendo, para desenvolver:
-       <code>node server.js</code> na pasta <code>D:\ClaudeData\Claude\drone-sim</code> abre em <code>localhost:8787</code>.
+       <code>node server.js</code> na pasta <code>D:\\ClaudeData\\Claude\\drone-sim</code> abre em <code>localhost:8787</code>.
        Fora isso a porta fica fechada — é por isso que existe o endereço permanente aqui em cima.</p>`;
 }
