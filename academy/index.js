@@ -24,7 +24,7 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
 function montar(app, injected = {}) {
-  const { express, requireAuth, requireAdmin, alertaAugusto, mpFetch, jwtSecret } = injected;
+  const { express, requireAuth, requireAdmin, requirePublishOrAdmin, alertaAugusto, mpFetch, jwtSecret } = injected;
   if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
     throw new Error('academy.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
@@ -63,7 +63,7 @@ function montar(app, injected = {}) {
     });
   }
 
-  registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret });
+  registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret });
   registrarRotasCheckoutStaff(app, { requireAuth, requireAdmin });
   const cliente = registrarRotasCliente(app, { jwtSecret });
   registrarRotasConteudo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });

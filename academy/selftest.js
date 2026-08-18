@@ -19,6 +19,12 @@ const USUARIOS = [
 ];
 function requireAuth(req, res, next) { const u = USUARIOS.find(x => x.id === (req.headers['x-test-user'] || 'adm')); if (!u) return res.status(401).json({ erro: 'x' }); req.user = u; next(); }
 const requireAdmin = (req, res, next) => (req.user && req.user.papel === 'admin') ? next() : res.status(403).json({ erro: 'admin' });
+// guarda da importação: PUBLISH_KEY (automação local) OU admin do portal
+const PUBLISH_KEY_TESTE = 'chave-de-publicacao-teste';
+function requirePublishOrAdmin(req, res, next) {
+  if (req.headers['x-publish-key'] === PUBLISH_KEY_TESTE) { req.viaChave = true; return next(); }
+  return requireAuth(req, res, () => requireAdmin(req, res, next));
+}
 const alertas = [];
 const alertaAugusto = async (m) => { alertas.push(m); };
 const enviados = [];
@@ -70,14 +76,16 @@ const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 const academy = require('./index');
-academy.montar(app, { express, requireAuth, requireAdmin, alertaAugusto, enviarEmail, mpFetch, jwtSecret: 'seg-teste' });
+academy.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, alertaAugusto, enviarEmail, mpFetch, jwtSecret: 'seg-teste' });
 const espera = (ms) => new Promise(r => setTimeout(r, ms));
 
 let BASE = '', ok = 0, falhas = [];
 // jars de cookie por "pessoa" (cada usuário de teste tem a própria sessão)
 const jars = {};
-async function req(m, p, { corpo, user = 'adm', jar, ip } = {}) {
+async function req(m, p, { corpo, user = 'adm', jar, ip, chave, semUser } = {}) {
   const headers = { 'Content-Type': 'application/json', 'x-test-user': user, 'x-forwarded-for': ip || '10.0.0.1' };
+  if (chave) headers['x-publish-key'] = chave === true ? PUBLISH_KEY_TESTE : chave;
+  if (semUser) headers['x-test-user'] = 'ninguem-logado'; // sem sessão de staff: o mock devolve 401
   if (jar && jars[jar]) headers.Cookie = Object.entries(jars[jar]).map(([k, v]) => `${k}=${v}`).join('; ');
   const r = await fetch(BASE + p, { method: m, headers, body: corpo ? JSON.stringify(corpo) : undefined, redirect: 'manual' });
   if (jar) {
@@ -1275,6 +1283,119 @@ async function main() {
   await t('cortesia exige e-mail e guarda requireAuth+requireAdmin', async () => {
     assert.equal((await req('POST', '/staff/api/academy/cortesia', { corpo: { nome: 'Sem email' } })).st, 400);
     assert.equal((await req('GET', '/staff/api/academy/cortesia', { user: 'op' })).st, 403); // operador não-admin
+  });
+
+  console.log('\n— importação de curso (a grade inteira de uma vez) —');
+  let impId = '';
+  const CURSO = () => ({
+    produtor_email: MARIA.email,
+    produto: { titulo: 'Curso Importado', subtitulo: 'Sub do importado', tipo: 'curso',
+      categoria: 'desenvolvimento-pessoal', descricao_curta: 'Curta', garantia_dias: 7 },
+    modulos: [
+      { titulo: 'Módulo A', aulas: [
+        { titulo: 'Aula A1', tipo: 'video', duracao_min: 10, gratuita: true },
+        { titulo: 'Aula A2', tipo: 'video', duracao_min: 5 },
+      ] },
+      { titulo: 'Módulo B', aulas: [{ titulo: 'Aula B1', tipo: 'texto', conteudo: 'texto da aula' }] },
+    ],
+    pagina_venda: { headline: 'Manchete do importado', beneficios: ['um', 'dois'] },
+  });
+
+  await t('importar cria produto + módulos + aulas, na ordem, em rascunho', async () => {
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: CURSO() });
+    assert.equal(r.st, 200, r.texto);
+    impId = r.json.produto.id;
+    assert.equal(r.json.produto.status, 'rascunho', 'importar NUNCA publica');
+    assert.equal(r.json.criou_produto, true);
+    assert.equal(r.json.resumo.modulos, 2);
+    assert.equal(r.json.resumo.aulas, 3);
+    assert.equal(r.json.resumo.aulas_degustacao, 1);
+    assert.equal(r.json.resumo.duracao_total_min, 15);
+    assert.equal(r.json.resumo.pagina_venda, true);
+    assert.deepEqual(r.json.estrutura.map(m => m.titulo), ['Módulo A', 'Módulo B']);
+    const vis = await req('GET', `/academy/api/produtor/produtos/${impId}`, { jar: 'maria' });
+    assert.equal(vis.st, 200, 'o produto é do produtor informado');
+    assert.deepEqual(vis.json.estrutura[0].aulas.map(a => a.titulo), ['Aula A1', 'Aula A2'], 'ordem das aulas preservada');
+    assert.equal(vis.json.estrutura[0].aulas[0].duracao_seg, 600);
+  });
+
+  await t('importar de novo ATUALIZA e não duplica', async () => {
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: CURSO() });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.criou_produto, false, 'reusa o produto pelo título');
+    assert.equal(r.json.resumo.modulos_criados, 0);
+    assert.equal(r.json.resumo.aulas_criadas, 0);
+    assert.equal(r.json.resumo.aulas_atualizadas, 3);
+    assert.equal(r.json.resumo.modulos, 2, 'continua com 2 módulos');
+    assert.equal(r.json.resumo.aulas, 3, 'continua com 3 aulas');
+  });
+
+  await t('reimportar NÃO apaga a URL de vídeo já preenchida', async () => {
+    const vis = await req('GET', `/academy/api/produtor/produtos/${impId}`, { jar: 'maria' });
+    const a1 = vis.json.estrutura[0].aulas[0];
+    assert.equal((await req('PATCH', `/academy/api/produtor/produtos/${impId}/aulas/${a1.id}`,
+      { jar: 'maria', corpo: { url_externa: 'https://youtu.be/abc123' } })).st, 200);
+    assert.equal((await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: CURSO() })).st, 200);
+    const dep = await req('GET', `/academy/api/produtor/produtos/${impId}`, { jar: 'maria' });
+    assert.equal(dep.json.estrutura[0].aulas[0].url_externa, 'https://youtu.be/abc123');
+  });
+
+  await t('material entra na aula certa e não duplica na reimportação', async () => {
+    const pdf = Buffer.from('%PDF-1.4 material de teste').toString('base64');
+    const corpo = { ...CURSO(), materiais: [{ aula_titulo: 'Aula A1', nome: 'Livro em PDF', mime: 'application/pdf', conteudo_base64: pdf }] };
+    const r1 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo });
+    assert.equal(r1.st, 200, r1.texto);
+    assert.equal(r1.json.resumo.materiais_criados, 1);
+    const r2 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo });
+    assert.equal(r2.json.resumo.materiais_criados, 0);
+    assert.equal(r2.json.resumo.materiais_ja_existentes, 1);
+    const vis = await req('GET', `/academy/api/produtor/produtos/${impId}`, { jar: 'maria' });
+    assert.equal(vis.json.estrutura[0].aulas[0].materiais.length, 1);
+  });
+
+  await t('material apontando para aula inexistente falha com o nome na mensagem', async () => {
+    const corpo = { ...CURSO(), materiais: [{ aula_titulo: 'Aula que não existe', nome: 'X', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF').toString('base64') }] };
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo });
+    assert.equal(r.st, 400);
+    assert.ok(r.json.erro.includes('Aula que não existe'), r.json.erro);
+  });
+
+  await t('sem papel de produtor aprovado, recusa — e garantir_produtor resolve', async () => {
+    const nova = { nome: 'Clara Autora', email: 'clara@t.com', senha: 'senha-forte-9', aceite_termos: true };
+    assert.equal((await req('POST', '/academy/api/signup', { corpo: nova, jar: 'clara' })).st, 200);
+    const base = { ...CURSO(), produtor_email: nova.email, produto: { ...CURSO().produto, titulo: 'Curso da Clara' } };
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: base });
+    assert.equal(r.st, 400);
+    assert.ok(r.json.erro.includes('produtor'), r.json.erro);
+    const r2 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: { ...base, garantir_produtor: true } });
+    assert.equal(r2.st, 200, r2.texto);
+    assert.equal((await req('GET', '/academy/api/produtor/dashboard', { jar: 'clara' })).st, 200, 'papel aprovado de verdade');
+  });
+
+  await t('e-mail sem conta na Academy recusa com a causa', async () => {
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: { ...CURSO(), produtor_email: 'ninguem@t.com' } });
+    assert.equal(r.st, 400);
+    assert.ok(r.json.erro.includes('ninguem@t.com'), r.json.erro);
+  });
+
+  await t('guarda da importação: sem chave e sem admin, 401/403', async () => {
+    assert.equal((await req('POST', '/staff/api/academy/importar-curso', { semUser: true, corpo: CURSO() })).st, 401);
+    assert.equal((await req('POST', '/staff/api/academy/importar-curso', { user: 'op', corpo: CURSO() })).st, 403);
+    assert.equal((await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: 'chave-errada', corpo: CURSO() })).st, 401);
+    assert.equal((await req('GET', '/staff/api/academy/produtores', { user: 'op' })).st, 403);
+    assert.ok((await req('GET', '/staff/api/academy/produtores', { semUser: true, chave: true })).json.produtores.some(p => p.email === MARIA.email));
+  });
+
+  await t('o próprio produtor importa a grade pelo painel', async () => {
+    const r = await req('POST', `/academy/api/produtor/produtos/${impId}/importar`, { jar: 'maria', corpo: {
+      modulos: [...CURSO().modulos, { titulo: 'Módulo C', aulas: [{ titulo: 'Aula C1', tipo: 'video', duracao_min: 7 }] }],
+    } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.resumo.modulos_criados, 1);
+    assert.equal(r.json.resumo.aulas_criadas, 1);
+    assert.equal(r.json.estrutura.length, 3);
+    const outro = await req('POST', `/academy/api/produtor/produtos/${impId}/importar`, { jar: 'clara', corpo: { modulos: CURSO().modulos } });
+    assert.equal(outro.st, 400, 'anti-IDOR');
   });
 
   srv.close();

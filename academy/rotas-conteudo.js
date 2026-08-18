@@ -50,6 +50,16 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
     res.json({ ok: true, categoria: c, categorias: ct.Categorias.listar() });
   }));
 
+  // importar a grade inteira de uma vez (módulos → aulas). Mesma função da rota de
+  // staff: idempotente por título e só toca no campo que veio — reimportar a grade
+  // não apaga as URLs de vídeo que o produtor já colou.
+  app.post('/academy/api/produtor/produtos/:id/importar', ...P, h((req, res) => {
+    const p = ct.Produtos.obterDoDono(req.params.id, req.usuario.id);
+    const resumo = require('./importacao').aplicarEstrutura(p.id, (req.body || {}).modulos || []);
+    aud(req, 'produto.importar', 'products', p.id, `${resumo.aulas_criadas} nova(s), ${resumo.aulas_atualizadas} atualizada(s)`);
+    res.json({ ok: true, resumo, estrutura: ct.Produtos.estrutura(p.id) });
+  }));
+
   // fluxo editorial do produtor: enviar p/ revisão, publicar, pausar, reenviar
   app.post('/academy/api/produtor/produtos/:id/status', ...P, h((req, res) => {
     const p = ct.Produtos.transicionar(req.params.id, s((req.body || {}).status, 20), { comoPapel: 'produtor', producerId: req.usuario.id });

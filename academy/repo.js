@@ -161,6 +161,12 @@ const Perfis = {
     });
   },
 
+  // produtores cadastrados (id, nome, e-mail, status) — leitura de administração
+  listarProdutores() {
+    return db.prepare(`SELECT p.user_id AS id, u.nome, u.email, p.nome_publico, p.slug, p.status, p.criado_em
+      FROM producer_profiles p JOIN users u ON u.id = p.user_id ORDER BY p.criado_em`).all();
+  },
+
   pendentes() {
     return {
       produtores: db.prepare("SELECT p.*, u.nome, u.email FROM producer_profiles p JOIN users u ON u.id = p.user_id WHERE p.status = 'em_analise' ORDER BY p.criado_em").all(),

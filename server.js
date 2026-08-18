@@ -4600,7 +4600,7 @@ try {
 // DATA_DIR/academy/. FASE 1 = fundação; roadmap em academy/ROADMAP.md.
 try {
   require('./academy').montar(app, {
-    express, requireAuth, requireAdmin, enviarEmail,
+    express, requireAuth, requireAdmin, requirePublishOrAdmin, enviarEmail,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
     jwtSecret: JWT_SECRET,

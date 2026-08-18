@@ -8,10 +8,13 @@
 const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 
-function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
+function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret }) {
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || 'plataforma');
+  const quem = (req) => 'staff:' + ((req.user && (req.user.nome || req.user.email)) || (req.viaChave ? 'chave-de-publicacao' : 'plataforma'));
   const A = [requireAuth, requireAdmin];
+  // PA: admin do portal OU PUBLISH_KEY (automação local). Sem a injeção, cai em A —
+  // nunca afrouxa sozinho. Usado só nas rotas de importação/leitura de produtores.
+  const PA = requirePublishOrAdmin ? [requirePublishOrAdmin] : A;
   const h = (fn) => (req, res) => { // captura erro síncrono E assíncrono → 400
     try { Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message })); }
     catch (e) { res.status(400).json({ erro: e.message }); }
@@ -96,6 +99,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
 
   // produtos (moderação da plataforma) e matrícula cortesia
   const ct = require('./repo-conteudo');
+  const imp = require('./importacao');
   app.get('/staff/api/academy/produtos', ...A, h((req, res) => res.json({ produtos: ct.Produtos.listarAdmin(req.query) })));
   app.post('/staff/api/academy/produtos/:id/decidir', ...A, h((req, res) => {
     const p = ct.Produtos.transicionar(req.params.id, String((req.body || {}).status || ''), { comoPapel: 'admin', motivo: (req.body || {}).motivo });
@@ -161,6 +165,21 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, jwtSecret }) {
     ct.Reviews.moderar(req.params.id, String((req.body || {}).status || ''));
     aud(req, 'avaliacao.moderar', 'reviews', req.params.id, String((req.body || {}).status || ''));
     res.json({ ok: true });
+  }));
+
+  // ---- IMPORTAÇÃO de curso (produto + módulos + aulas + materiais + página de venda) ----
+  // Montar dezenas de aulas campo a campo é o maior atrito de quem lança um curso.
+  // Idempotente: rodar de novo atualiza, não duplica. NÃO publica — o produto fica em
+  // rascunho e a publicação segue sendo ato humano (preço + revisão da plataforma).
+  app.get('/staff/api/academy/produtores', ...PA, h((req, res) => {
+    res.json({ produtores: repo.Perfis.listarProdutores() });
+  }));
+  app.post('/staff/api/academy/importar-curso', ...PA, h(async (req, res) => {
+    const b = req.body || {};
+    const r = await imp.importarCurso(b, { garantirProdutor: !!b.garantir_produtor, quem: quem(req) });
+    aud(req, 'curso.importar', 'products', r.produto.id,
+      `${r.produto.titulo} — ${r.resumo.modulos} módulo(s), ${r.resumo.aulas} aula(s)`);
+    res.json({ ok: true, ...r });
   }));
 
   // leads / auditoria
