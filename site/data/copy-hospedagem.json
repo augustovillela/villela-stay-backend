@@ -423,21 +423,21 @@
 
   "UF05H": {
     "manchete": {
-      "pt": "Suíte com beliche de <strong>duas camas de casal</strong> — arranjo raro, que acomoda dois casais ou uma família sem apertar.",
-      "en": "A suite with a bunk of <strong>two double beds</strong> — a rare layout that fits two couples or a family without squeezing.",
-      "es": "Suite con litera de <strong>dos camas de matrimonio</strong> — una distribución poco común, que acomoda a dos parejas o a una familia sin apreturas."
+      "pt": "Flat com beliche de <strong>duas camas de casal</strong> — arranjo raro, que acomoda dois casais ou uma família sem apertar.",
+      "en": "A flat with a bunk of <strong>two double beds</strong> — a rare layout that fits two couples or a family without squeezing.",
+      "es": "Flat con litera de <strong>dos camas de matrimonio</strong> — una distribución poco común, que acomoda a dos parejas o a una familia sin apreturas."
     },
     "paragrafos": {
       "pt": [
-        "A Suíte do Chef tem banheiro próprio, TV smart e aquecedor, e o beliche com duas camas de casal resolve o que quarto comum não resolve: dois casais na mesma diária, ou pais e filhos maiores com conforto.",
+        "O Flat do Chef tem banheiro próprio, TV smart e aquecedor, e o beliche com duas camas de casal resolve o que quarto comum não resolve: dois casais na mesma diária, ou pais e filhos maiores com conforto.",
         "Fica na casa de campo da Villela Home Stay, no SMDB do Lago Sul, com piscina e cozinha na área compartilhada, liberadas mediante taxa."
       ],
       "en": [
-        "Suíte do Chef has its own bathroom, a smart TV and a heater, and the bunk with two double beds solves what an ordinary room cannot: two couples on the same nightly rate, or parents with older children in comfort.",
+        "Flat do Chef has its own bathroom, a smart TV and a heater, and the bunk with two double beds solves what an ordinary room cannot: two couples on the same nightly rate, or parents with older children in comfort.",
         "It is in the Villela Home Stay country house, SMDB, Lago Sul, with a pool and kitchen in the shared area, released for a fee."
       ],
       "es": [
-        "La Suíte do Chef tiene baño propio, TV smart y calefactor, y la litera con dos camas de matrimonio resuelve lo que una habitación común no resuelve: dos parejas en la misma tarifa, o padres con hijos mayores con comodidad.",
+        "El Flat do Chef tiene baño propio, TV smart y calefactor, y la litera con dos camas de matrimonio resuelve lo que una habitación común no resuelve: dos parejas en la misma tarifa, o padres con hijos mayores con comodidad.",
         "Está en la casa de campo de la Villela Home Stay, en el SMDB de Lago Sul, con piscina y cocina en la zona compartida, liberadas mediante tarifa."
       ]
     },
@@ -455,28 +455,28 @@
 
   "UD09H": {
     "manchete": {
-      "pt": "Suíte privativa com beliche de <strong>duas camas de casal</strong> e banheiro interno, na casa de campo do Lago Sul.",
-      "en": "A private suite with a bunk of <strong>two double beds</strong> and an internal bathroom, in the Lago Sul country house.",
-      "es": "Suite privada con litera de <strong>dos camas de matrimonio</strong> y baño interno, en la casa de campo de Lago Sul."
+      "pt": "Flat privativo com beliche de <strong>duas camas de casal</strong> e banheiro interno, na casa de campo do Lago Sul.",
+      "en": "A private flat with a bunk of <strong>two double beds</strong> and an internal bathroom, in the Lago Sul country house.",
+      "es": "Flat privado con litera de <strong>dos camas de matrimonio</strong> y baño interno, en la casa de campo de Lago Sul."
     },
     "paragrafos": {
       "pt": [
-        "A Suíte do Renato Russo tem banheiro interno privativo, TV smart e aquecedor. O beliche com duas camas de casal acomoda mais gente do que um quarto do mesmo tamanho normalmente acomodaria.",
-        "Está na Villela Home Stay, no SMDB do Lago Sul, próxima da Ponte JK. A área compartilhada tem piscina e cozinha completa, liberadas mediante taxa."
+        "O Flat do Renato Russo tem banheiro interno privativo, TV smart e aquecedor. O beliche com duas camas de casal acomoda mais gente do que um quarto do mesmo tamanho normalmente acomodaria.",
+        "Está na Villela Home Stay, no SMDB do Lago Sul, próximo da Ponte JK. A área compartilhada tem piscina e cozinha completa, liberadas mediante taxa."
       ],
       "en": [
-        "Suíte do Renato Russo has a private internal bathroom, a smart TV and a heater. The bunk with two double beds sleeps more people than a room of that size normally would.",
+        "Flat do Renato Russo has a private internal bathroom, a smart TV and a heater. The bunk with two double beds sleeps more people than a room of that size normally would.",
         "It is in Villela Home Stay, SMDB, Lago Sul, near the JK Bridge. The shared area has a pool and a full kitchen, released for a fee."
       ],
       "es": [
-        "La Suíte do Renato Russo tiene baño interno privado, TV smart y calefactor. La litera con dos camas de matrimonio acomoda a más gente de la que normalmente cabría en una habitación de ese tamaño.",
+        "El Flat do Renato Russo tiene baño interno privado, TV smart y calefactor. La litera con dos camas de matrimonio acomoda a más gente de la que normalmente cabría en una habitación de ese tamaño.",
         "Está en la Villela Home Stay, en el SMDB de Lago Sul, cerca del Puente JK. La zona compartida tiene piscina y cocina completa, liberadas mediante tarifa."
       ]
     },
     "destaques": [
       { "icone": "🛏️", "titulo": { "pt": "Duas camas de casal", "en": "Two double beds", "es": "Dos camas de matrimonio" }, "texto": { "pt": "Mais gente na mesma diária, com conforto de cama de verdade.", "en": "More people on one rate, on proper beds.", "es": "Más gente en la misma tarifa, en camas de verdad." } },
       { "icone": "🚿", "titulo": { "pt": "Banheiro interno privativo", "en": "Private internal bathroom", "es": "Baño interno privado" }, "texto": { "pt": "Dentro do quarto, sem atravessar a casa de madrugada.", "en": "Inside the room, no crossing the house at night.", "es": "Dentro de la habitación, sin cruzar la casa de madrugada." } },
-      { "icone": "🌉", "titulo": { "pt": "Próxima da Ponte JK", "en": "Near the JK Bridge", "es": "Cerca del Puente JK" }, "texto": { "pt": "Restaurantes da orla e Plano Piloto a poucos minutos.", "en": "Lakeside restaurants and Plano Piloto minutes away.", "es": "Restaurantes de la orilla y Plano Piloto a pocos minutos." } }
+      { "icone": "🌉", "titulo": { "pt": "Próximo da Ponte JK", "en": "Near the JK Bridge", "es": "Cerca del Puente JK" }, "texto": { "pt": "Restaurantes da orla e Plano Piloto a poucos minutos.", "en": "Lakeside restaurants and Plano Piloto minutes away.", "es": "Restaurantes de la orilla y Plano Piloto a pocos minutos." } }
     ],
     "idealPara": {
       "pt": ["Dois casais", "Famílias pequenas", "Viagem a trabalho", "Fim de semana"],

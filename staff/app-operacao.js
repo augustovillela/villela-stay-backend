@@ -224,7 +224,7 @@ const CH_CASAS = [
   ['GD01H', 'Casa Modernista'], ['GD03H', 'Gran Villela'], ['GG04I', 'Villa Kubitschek'], ['PL02I', 'Villa Catetinho'],
   ['YV01I', 'Jardim dos Sentidos'], ['GI01I', 'Casa Villela'], ['VH01H', 'Flat da Família'], ['VH02H', 'Flat dos Amigos'],
   ['UF07H', 'Flat do Oscar'], ['UD03H', 'Flat dos Solteiros'], ['UF01H', 'Flat do Burle Marx'], ['UF08H', 'Flat da Cassia Eller'],
-  ['UD09H', 'Suíte do Renato Russo'], ['UF05H', 'Suíte do Chef'], ['UF06H', 'Suíte do Amor'], ['UH01H', 'Suíte do Felipe'],
+  ['UD09H', 'Flat do Renato Russo'], ['UF05H', 'Flat do Chef'], ['UF06H', 'Suíte do Amor'], ['UH01H', 'Suíte do Felipe'],
   ['UH03H', 'Suíte da Família'], ['UH04H', 'Suíte da Sofia'], ['UH05H', 'Suíte Master QI 7'], ['UH06H', 'Suíte do Pedro'],
 ];
 let CH_TECNICOS = [];      // cache do cadastro de técnicos

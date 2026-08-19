@@ -1376,7 +1376,7 @@ const FILHOS_OCUP = {
   GD03H: ['GG04I', 'PL02I'],                            // Gran Villela -> Villa Kubitschek, Villa Catetinho
   GG04I: ['VH01H', 'VH02H'],                            // Villa Kubitschek -> Flat da Família, Flat dos Amigos
   VH01H: ['UF06H', 'UD03H'],                            // Flat da Família -> Suíte do Amor, Flat dos Solteiros
-  VH02H: ['UF05H', 'UD09H'],                            // Flat dos Amigos -> Suíte do Chef, Suíte do Renato Russo
+  VH02H: ['UF05H', 'UD09H'],                            // Flat dos Amigos -> Flat do Chef, Flat do Renato Russo
   PL02I: ['UF07H', 'UF01H', 'UF08H'],                   // Villa Catetinho -> Oscar, Burle Marx, Cássia Eller
 };
 const DESC_OCUP = {}; // pai -> Set de descendentes transitivos (bloqueados)

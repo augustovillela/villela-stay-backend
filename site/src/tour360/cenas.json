@@ -50,14 +50,14 @@
           "yaw": 43,
           "pitch": -3,
           "tipo": "cena",
-          "texto": "Suíte do Chef",
+          "texto": "Flat do Chef",
           "destino": "kubitschek-suite-do-chef-sala"
         },
         {
           "yaw": 63,
           "pitch": -4,
           "tipo": "cena",
-          "texto": "Suíte do Renato Russo",
+          "texto": "Flat do Renato Russo",
           "destino": "kubitschek-suite-renato-russo-sala"
         },
         {
@@ -191,7 +191,7 @@
         "GG04I",
         "UD09H"
       ],
-      "titulo": "Suíte do Renato Russo",
+      "titulo": "Flat do Renato Russo",
       "larguras": [
         1024,
         2048,
@@ -213,7 +213,7 @@
         "GG04I",
         "UD09H"
       ],
-      "titulo": "Sala da Suíte do Renato Russo",
+      "titulo": "Sala do Flat do Renato Russo",
       "larguras": [
         1024,
         2048,
@@ -235,7 +235,7 @@
         "GG04I",
         "UD09H"
       ],
-      "titulo": "Banheiro da Suíte do Renato Russo",
+      "titulo": "Banheiro do Flat do Renato Russo",
       "larguras": [
         1024,
         2048,
@@ -257,7 +257,7 @@
         "GG04I",
         "UF05H"
       ],
-      "titulo": "Suíte do Chef",
+      "titulo": "Flat do Chef",
       "larguras": [
         1024,
         2048,
@@ -279,7 +279,7 @@
         "GG04I",
         "UF05H"
       ],
-      "titulo": "Sala da Suíte do Chef",
+      "titulo": "Sala do Flat do Chef",
       "larguras": [
         1024,
         2048,
@@ -301,7 +301,7 @@
         "GG04I",
         "UF05H"
       ],
-      "titulo": "Banheiro da Suíte do Chef",
+      "titulo": "Banheiro do Flat do Chef",
       "larguras": [
         1024,
         2048,

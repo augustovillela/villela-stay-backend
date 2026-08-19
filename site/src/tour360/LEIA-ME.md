@@ -71,8 +71,8 @@ baixado com o parâmetro na URL — visitante comum não paga por ele.
 
 **Rótulo curto compensa.** Quando mais de 3 portais aparecem juntos na tela, o visualizador
 deixa só o ícone e mostra o rótulo do portal mais próximo do centro da vista. Foi a saída para
-o pátio da Kubitschek, onde 6 portas cabem num arco de 60°. Ainda assim, "Suíte do Chef" cabe
-melhor que "Suíte do Chef — entrada pela sala".
+o pátio da Kubitschek, onde 6 portas cabem num arco de 60°. Ainda assim, "Flat do Chef" cabe
+melhor que "Flat do Chef — entrada pela sala".
 
 ### Capa da casa (`hub`) — a "primeira página"
 

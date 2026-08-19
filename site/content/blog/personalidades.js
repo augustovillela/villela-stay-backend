@@ -22,7 +22,7 @@ module.exports = {
   faq: [
     { q: 'Quem foi o responsável por construir Brasília?', a: 'O presidente Juscelino Kubitschek (JK) tomou a decisão política e tocou a obra entre 1956 e 1960. O plano urbanístico é de Lúcio Costa, a arquitetura dos monumentos é de Oscar Niemeyer, o paisagismo de Roberto Burle Marx e a arte integrada de Athos Bulcão. Foi um esforço coletivo erguido em pouco mais de mil dias.' },
     { q: 'Por que Brasília é chamada de "Capital do Rock"?', a: 'Nos anos 1980, a cidade revelou bandas que marcaram o rock nacional — Legião Urbana (de Renato Russo), Capital Inicial, Plebe Rude e Raimundos. Cassia Eller também começou ali. A juventude de classe média, entediada e crítica da cidade planejada, virou uma das cenas musicais mais férteis do país.' },
-    { q: 'Renato Russo era de Brasília?', a: 'Renato Russo nasceu no Rio de Janeiro, mas foi em Brasília que se formou como artista e fundou a Legião Urbana, no início dos anos 1980. A cidade é parte essencial de sua história — e por isso uma das nossas suítes leva o seu nome.' },
+    { q: 'Renato Russo era de Brasília?', a: 'Renato Russo nasceu no Rio de Janeiro, mas foi em Brasília que se formou como artista e fundou a Legião Urbana, no início dos anos 1980. A cidade é parte essencial de sua história — e por isso um dos nossos flats leva o seu nome.' },
   ],
   relacionados: ['arquitetura', 'roteiros', 'paisagismo'],
   corpo: (h) => `
@@ -52,7 +52,7 @@ ${h.fig(2, { legenda: 'Oscar Niemeyer, o arquiteto das curvas que viraram o sím
 ${h.fig(3, { legenda: 'Azulejos de Athos Bulcão: o artista que vestiu a cidade de cor e ritmo.' })}
 
 <h2>A trilha sonora: a Capital do Rock</h2>
-<p>Depois dos fundadores, vieram as vozes. Nos anos 1980, a cidade planejada e silenciosa explodiu em som: <strong>Renato Russo</strong> e a Legião Urbana, Capital Inicial, Plebe Rude, Raimundos e a jovem <strong>Cassia Eller</strong>. A inquietação de uma geração criada entre superquadras virou alguns dos maiores hinos do rock brasileiro. Por isso, na Villela Stay, a <strong>Suíte do Renato Russo</strong> e a <strong>Suíte da Cassia Eller</strong> guardam essa memória.</p>
+<p>Depois dos fundadores, vieram as vozes. Nos anos 1980, a cidade planejada e silenciosa explodiu em som: <strong>Renato Russo</strong> e a Legião Urbana, Capital Inicial, Plebe Rude, Raimundos e a jovem <strong>Cassia Eller</strong>. A inquietação de uma geração criada entre superquadras virou alguns dos maiores hinos do rock brasileiro. Por isso, na Villela Stay, o <strong>Flat do Renato Russo</strong> e a <strong>Suíte da Cassia Eller</strong> guardam essa memória.</p>
 
 <h2>Durma dentro da história</h2>
 <p>Não é coincidência que cada hospedagem nossa leve um desses nomes. É uma forma de homenagem — e de convite. Reunir o seu grupo numa casa que se chama Kubitschek, Catetinho ou Gran Villela é fazer parte, por alguns dias, dessa história que ainda está sendo escrita.</p>

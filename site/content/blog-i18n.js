@@ -397,7 +397,7 @@ ${h.fig(3, { legenda: 'La vegetación del Cerrado: apariencia rústica, biodiver
       faq: [
         { q: 'Who was responsible for building Brasília?', a: 'President Juscelino Kubitschek (JK) made the political decision and ran the project between 1956 and 1960. The urban plan is by Lúcio Costa, the architecture of the monuments by Oscar Niemeyer, the landscaping by Roberto Burle Marx and the integrated art by Athos Bulcão. It was a collective effort raised in little more than a thousand days.' },
         { q: 'Why is Brasília called the "Capital of Rock"?', a: "In the 1980s, the city revealed bands that marked Brazilian rock — Legião Urbana (Renato Russo's), Capital Inicial, Plebe Rude and Raimundos. Cassia Eller also started there. The bored, critical middle-class youth of the planned city became one of the most fertile music scenes in the country." },
-        { q: 'Was Renato Russo from Brasília?', a: "Renato Russo was born in Rio de Janeiro, but it was in Brasília that he came of age as an artist and founded Legião Urbana, in the early 1980s. The city is an essential part of his story — and that's why one of our suites carries his name." },
+        { q: 'Was Renato Russo from Brasília?', a: "Renato Russo was born in Rio de Janeiro, but it was in Brasília that he came of age as an artist and founded Legião Urbana, in the early 1980s. The city is an essential part of his story — and that's why one of our flats carries his name." },
       ],
       corpo: (h) => `
 <p class="artigo-lead">Every city has its heroes. Brasília has hers carved in concrete, in garden, in tile and in song. They are people who bet on an idea that seemed impossible — to raise a capital in the middle of nowhere — and who then gave it a soul. To know them is to know the city from the inside.</p>
@@ -426,7 +426,7 @@ ${h.fig(2, { legenda: 'Oscar Niemeyer, the architect of the curves that became t
 ${h.fig(3, { legenda: 'Athos Bulcão tiles: the artist who dressed the city in colour and rhythm.' })}
 
 <h2>The soundtrack: the Capital of Rock</h2>
-<p>After the founders came the voices. In the 1980s, the planned and silent city exploded in sound: <strong>Renato Russo</strong> and Legião Urbana, Capital Inicial, Plebe Rude, Raimundos and the young <strong>Cassia Eller</strong>. The restlessness of a generation raised among superblocks became some of the greatest anthems of Brazilian rock. That's why, at Villela Stay, the <strong>Suíte do Renato Russo</strong> and the <strong>Suíte da Cassia Eller</strong> keep that memory.</p>
+<p>After the founders came the voices. In the 1980s, the planned and silent city exploded in sound: <strong>Renato Russo</strong> and Legião Urbana, Capital Inicial, Plebe Rude, Raimundos and the young <strong>Cassia Eller</strong>. The restlessness of a generation raised among superblocks became some of the greatest anthems of Brazilian rock. That's why, at Villela Stay, the <strong>Flat do Renato Russo</strong> and the <strong>Suíte da Cassia Eller</strong> keep that memory.</p>
 
 <h2>Sleep inside history</h2>
 <p>It's no coincidence that each of our stays carries one of these names. It's a form of tribute — and of invitation. Gathering your group in a house called Kubitschek, Catetinho or Gran Villela is taking part, for a few days, in this story that is still being written.</p>
@@ -443,7 +443,7 @@ ${h.fig(3, { legenda: 'Athos Bulcão tiles: the artist who dressed the city in c
       faq: [
         { q: '¿Quién fue el responsable de construir Brasília?', a: 'El presidente Juscelino Kubitschek (JK) tomó la decisión política y dirigió la obra entre 1956 y 1960. El plan urbanístico es de Lúcio Costa, la arquitectura de los monumentos de Oscar Niemeyer, el paisajismo de Roberto Burle Marx y el arte integrado de Athos Bulcão. Fue un esfuerzo colectivo levantado en poco más de mil días.' },
         { q: '¿Por qué a Brasília se la llama "Capital del Rock"?', a: 'En los años 1980, la ciudad reveló bandas que marcaron el rock nacional — Legião Urbana (de Renato Russo), Capital Inicial, Plebe Rude y Raimundos. Cassia Eller también empezó allí. La juventud de clase media, aburrida y crítica de la ciudad planificada, se volvió una de las escenas musicales más fértiles del país.' },
-        { q: '¿Renato Russo era de Brasília?', a: 'Renato Russo nació en Río de Janeiro, pero fue en Brasília donde se formó como artista y fundó Legião Urbana, a principios de los años 1980. La ciudad es parte esencial de su historia — y por eso una de nuestras suites lleva su nombre.' },
+        { q: '¿Renato Russo era de Brasília?', a: 'Renato Russo nació en Río de Janeiro, pero fue en Brasília donde se formó como artista y fundó Legião Urbana, a principios de los años 1980. La ciudad es parte esencial de su historia — y por eso uno de nuestros flats lleva su nombre.' },
       ],
       corpo: (h) => `
 <p class="artigo-lead">Toda ciudad tiene héroes. Brasília tiene los suyos grabados en hormigón, en jardín, en azulejo y en canción. Son personas que apostaron por una idea que parecía imposible — levantar una capital en medio de la nada — y que, después, le dieron alma. Conocerlas es conocer la ciudad por dentro.</p>
@@ -472,7 +472,7 @@ ${h.fig(2, { legenda: 'Oscar Niemeyer, el arquitecto de las curvas que se volvie
 ${h.fig(3, { legenda: 'Azulejos de Athos Bulcão: el artista que vistió la ciudad de color y ritmo.' })}
 
 <h2>La banda sonora: la Capital del Rock</h2>
-<p>Después de los fundadores, vinieron las voces. En los años 1980, la ciudad planificada y silenciosa explotó en sonido: <strong>Renato Russo</strong> y Legião Urbana, Capital Inicial, Plebe Rude, Raimundos y la joven <strong>Cassia Eller</strong>. La inquietud de una generación criada entre supercuadras se volvió algunos de los mayores himnos del rock brasileño. Por eso, en Villela Stay, la <strong>Suíte do Renato Russo</strong> y la <strong>Suíte da Cassia Eller</strong> guardan esa memoria.</p>
+<p>Después de los fundadores, vinieron las voces. En los años 1980, la ciudad planificada y silenciosa explotó en sonido: <strong>Renato Russo</strong> y Legião Urbana, Capital Inicial, Plebe Rude, Raimundos y la joven <strong>Cassia Eller</strong>. La inquietud de una generación criada entre supercuadras se volvió algunos de los mayores himnos del rock brasileño. Por eso, en Villela Stay, el <strong>Flat do Renato Russo</strong> y la <strong>Suíte da Cassia Eller</strong> guardan esa memoria.</p>
 
 <h2>Duerme dentro de la historia</h2>
 <p>No es casualidad que cada alojamiento nuestro lleve uno de estos nombres. Es una forma de homenaje — y de invitación. Reunir a tu grupo en una casa que se llama Kubitschek, Catetinho o Gran Villela es formar parte, por unos días, de esa historia que todavía se está escribiendo.</p>
