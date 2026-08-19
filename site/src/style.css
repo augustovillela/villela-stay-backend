@@ -150,6 +150,9 @@ a { color: var(--lago); text-decoration: none; }
 }
 .secao-titulo:first-child { margin-top: 0 !important; }
 .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 28px; }
+/* secao com um card so: auto-fill criaria 2 trilhas vazias e jogaria o card no canto.
+   Uma trilha da largura normal de card, centralizada na linha. */
+.grade--unica { grid-template-columns: minmax(0, 360px); justify-content: center; max-width: 360px; margin-inline: auto; }
 .card {
   border-radius: 16px; overflow: hidden; background: #fff; color: var(--concreto);
   box-shadow: 0 2px 12px rgba(0,0,0,.08); transition: transform .2s, box-shadow .2s;

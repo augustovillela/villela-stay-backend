@@ -503,7 +503,9 @@ const card = l => `
 const cards = SECOES.map(sec => {
   const itens = sec.ids.map(id => porId[id]).filter(Boolean);
   const tit = LANG === 'en' ? sec.tituloEn : (LANG === 'es' ? sec.tituloEs : sec.titulo);
-  return `<h2 class="secao-titulo">${esc(tit)}</h2>\n<div class="grade">${itens.map(card).join('\n')}</div>`;
+  // Seção com um card só: sem o modificador, o auto-fill deixa 2 trilhas vazias e o card no canto.
+  const modificador = itens.length === 1 ? ' grade--unica' : '';
+  return `<h2 class="secao-titulo">${esc(tit)}</h2>\n<div class="grade${modificador}">${itens.map(card).join('\n')}</div>`;
 }).join('\n');
 
 // Fotos do slideshow do hero: capas das casas inteiras intercaladas com pontos turísticos
