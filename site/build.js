@@ -156,7 +156,7 @@ const SECOES = [
   { titulo: 'Reserve O Espaço Inteiro de Uma Casa Bem Equipada', tituloEn: 'Book the Entire Space of a Well-Equipped House', tituloEs: 'Reserva el Espacio Entero de una Casa Bien Equipada', ids: ['GI01I', 'GD01H', 'GG04I', 'PL02I', 'GD03H', 'YV01I'] },
   { titulo: 'Reserve um Flat para até 6 pessoas com cozinha completa e área externa compartilhadas', tituloEn: 'Book a Flat for up to 6 people with a shared full kitchen and outdoor area', tituloEs: 'Reserva un Flat para hasta 6 personas con cocina completa y zona exterior compartidas', ids: ['VH01H', 'VH02H', 'UD03H', 'UF08H', 'UF01H', 'UF07H', 'UF05H', 'UD09H'] },
   { titulo: 'Reserve Uma Suíte Privativa na Casa Modernista com sala e cozinha compartilhadas', tituloEn: 'Book a Private Suite at Casa Modernista with shared living room and kitchen', tituloEs: 'Reserva una Suite Privada en Casa Modernista con sala y cocina compartidas', ids: ['UH01H', 'UH06H', 'UH04H', 'UH05H', 'UH03H'] },
-  { titulo: 'Reserve Uma Suíte na Gran Villela Home Stay com sala e cozinha compartilhadas', tituloEn: 'Book a Suite at Gran Villela Home Stay with shared living room and kitchen', tituloEs: 'Reserva una Suite en Gran Villela Home Stay con sala y cocina compartidas', ids: ['UF06H'] }
+  { titulo: 'Reserve Uma Suíte Privativa na Gran Villela Home Stay com sala e cozinha compartilhadas', tituloEn: 'Book a Private Suite at Gran Villela Home Stay with shared living room and kitchen', tituloEs: 'Reserva una Suite Privada en Gran Villela Home Stay con sala y cocina compartidas', ids: ['UF06H'] }
 ];
 const porId = Object.fromEntries(listings.map(l => [l.id, l]));
 
@@ -503,9 +503,7 @@ const card = l => `
 const cards = SECOES.map(sec => {
   const itens = sec.ids.map(id => porId[id]).filter(Boolean);
   const tit = LANG === 'en' ? sec.tituloEn : (LANG === 'es' ? sec.tituloEs : sec.titulo);
-  // Seção com um card só: sem o modificador, o auto-fill deixa 2 trilhas vazias e o card no canto.
-  const modificador = itens.length === 1 ? ' grade--unica' : '';
-  return `<h2 class="secao-titulo">${esc(tit)}</h2>\n<div class="grade${modificador}">${itens.map(card).join('\n')}</div>`;
+  return `<h2 class="secao-titulo">${esc(tit)}</h2>\n<div class="grade">${itens.map(card).join('\n')}</div>`;
 }).join('\n');
 
 // Fotos do slideshow do hero: capas das casas inteiras intercaladas com pontos turísticos
