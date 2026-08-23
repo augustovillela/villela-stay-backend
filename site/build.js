@@ -202,6 +202,52 @@ const DESC_IMOVEL = require('./content/imoveis-i18n').descricoes;
 function resumoImovel(l) { const m = RESUMO_IMOVEL[l.id]; return (LANG !== 'pt' && m && m[LANG]) ? m[LANG] : l.resumo; }
 function descricaoImovel(l) { const m = DESC_IMOVEL[l.id]; return (LANG !== 'pt' && m && m[LANG]) ? m[LANG] : l.descricao; }
 
+// Ficha da unidade (a linha logo abaixo do H1). O padrão sai do listings.json, mas a exportação
+// da Stays só traz CONTAGEM de camas e não conhece sala — onde o Augusto corrigiu a ficha real,
+// FICHA_OVERRIDE manda. Fica aqui (e não no listings.json) para sobreviver a uma reexportação.
+const FICHA_OVERRIDE = {
+  // Flats do Chef e do Renato Russo: cama King + beliche de casal + sofá-cama = 7 hóspedes.
+  UF05H: FLAT_KING_BELICHE_SOFA(), UD09H: FLAT_KING_BELICHE_SOFA(),
+  // Flat dos Amigos: dois quartos, o dobro de cada cama — 14 hóspedes, sem sala própria.
+  VH02H: {
+    regiao: 'Lago Sul',
+    camas: {
+      pt: '2 Camas King · 2 beliches de casal · 2 sofá-cama',
+      en: '2 king beds · 2 double bunk beds · 2 sofa beds',
+      es: '2 camas King · 2 literas de matrimonio · 2 sofás cama'
+    }
+  }
+};
+function FLAT_KING_BELICHE_SOFA() {
+  return {
+    salas: 1,
+    regiao: 'Lago Sul',
+    camas: {
+      pt: '1 Cama King, 1 beliche de casal, 1 sofá-cama',
+      en: '1 king bed, 1 double bunk bed, 1 sofa bed',
+      es: '1 cama King, 1 litera de matrimonio, 1 sofá cama'
+    }
+  };
+}
+function fichaUnidade(l) {
+  const o = FICHA_OVERRIDE[l.id] || {};
+  const partes = [
+    `${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')}`,
+    t(`${l.quartos} quarto${l.quartos > 1 ? 's' : ''}`, `${l.quartos} room${l.quartos > 1 ? 's' : ''}`, `${l.quartos} ${l.quartos > 1 ? 'habitaciones' : 'habitación'}`)
+  ];
+  if (o.salas) partes.push(t(`${o.salas} sala${o.salas > 1 ? 's' : ''}`, `${o.salas} living room${o.salas > 1 ? 's' : ''}`, `${o.salas} sala${o.salas > 1 ? 's' : ''}`));
+  const banheiros = t(`${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}`, `${l.banheiros} bathroom${l.banheiros > 1 ? 's' : ''}`, `${l.banheiros} baño${l.banheiros > 1 ? 's' : ''}`);
+  const camas = o.camas ? (o.camas[LANG] || o.camas.pt)
+    : t(`${l.camas} cama${l.camas > 1 ? 's' : ''}`, `${l.camas} bed${l.camas > 1 ? 's' : ''}`, `${l.camas} cama${l.camas > 1 ? 's' : ''}`);
+  // Camas descritas por extenso vêm DEPOIS do banheiro, para não partir a sequência
+  // quarto · sala · banheiro; a contagem simples continua no lugar de sempre.
+  partes.push(...(o.camas ? [banheiros, camas] : [camas, banheiros]));
+  if (l.m2) partes.push(`${l.m2} m²`);
+  if (o.regiao) partes.push(o.regiao);
+  partes.push(l.bairro);
+  return partes.map(esc).join(' · ');
+}
+
 function layout(titulo, descricao, corpo, opts = {}) {
   const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/assets/brand/villela-stay/og-image.png`, ogType = 'website', lang = HTML_LANG[LANG] } = opts;
   const ogLocale = lang === 'en' ? 'en_US' : (lang === 'es' ? 'es_ES' : 'pt_BR');
@@ -1027,7 +1073,7 @@ for (const l of listings) {
   <div class="unidade-cab">
     <nav class="breadcrumb"><a href="${L('/')}">${t('Início', 'Home', 'Inicio')}</a> › <a href="${L('/')}#hospedagens">${t('Hospedagens', 'Stays', 'Alojamientos')}</a> › <span>${esc(tituloImovel(l))}</span></nav>
     <h1>${esc(tituloImovel(l))}</h1>
-    <p class="ficha">${l.hospedes} ${t('hóspedes', 'guests', 'huéspedes')} · ${t(`${l.quartos} quarto${l.quartos > 1 ? 's' : ''}`, `${l.quartos} room${l.quartos > 1 ? 's' : ''}`, `${l.quartos} ${l.quartos > 1 ? 'habitaciones' : 'habitación'}`)} · ${t(`${l.camas} cama${l.camas > 1 ? 's' : ''}`, `${l.camas} bed${l.camas > 1 ? 's' : ''}`, `${l.camas} cama${l.camas > 1 ? 's' : ''}`)} · ${t(`${l.banheiros} banheiro${l.banheiros > 1 ? 's' : ''}`, `${l.banheiros} bathroom${l.banheiros > 1 ? 's' : ''}`, `${l.banheiros} baño${l.banheiros > 1 ? 's' : ''}`)}${l.m2 ? ` · ${l.m2} m²` : ''} · ${esc(l.bairro)}</p>
+    <p class="ficha">${fichaUnidade(l)}</p>
   </div>
   ${stripConfianca}
   <section id="reservar" class="disponibilidade" data-listing="${l.mongoId}">
@@ -1549,7 +1595,7 @@ const CASAS_PACOTE = [
     ]
   },
   {
-    id: 'GG04I', nome: 'Villa Kubitschek', hospedes: 21, convidados: 150,
+    id: 'GG04I', nome: 'Villa Kubitschek', hospedes: 24, convidados: 150,
     local: 'SMDB Conjunto 29, Lago Sul', pacote: 13500, limpeza: 900,
     quartos: [
       ['Suíte do Amor (4 pessoas)', '1 cama de casal · 1 cama box de solteiro · 1 sofá-cama'],
