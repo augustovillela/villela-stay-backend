@@ -1605,8 +1605,8 @@ const CASAS_PACOTE = [
     ]
   },
   {
-    id: 'PL02I', nome: 'Villa Catetinho', hospedes: 21, convidados: 150,
-    local: 'SMDB Conjunto 29, Lago Sul', pacote: 13500, limpeza: 900,
+    id: 'PL02I', nome: 'Villa Catetinho', hospedes: 19, convidados: 150,
+    local: 'SMDB Conjunto 29, Lago Sul', pacote: 12300, limpeza: 900,
     quartos: [
       ['Flat do Oscar (7 pessoas)', '1 cama de casal · 1 beliche de solteiro · 1 cama de solteiro auxiliar · 1 sofá-cama de casal · 1 cama box de solteiro'],
       ['Flat do Burle Marx (7 pessoas)', '1 cama de casal · 1 beliche de solteiro · 1 cama de solteiro auxiliar · 1 sofá-cama de casal'],
