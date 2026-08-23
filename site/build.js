@@ -1596,12 +1596,12 @@ const CASAS_PACOTE = [
   },
   {
     id: 'GG04I', nome: 'Villa Kubitschek', hospedes: 24, convidados: 150,
-    local: 'SMDB Conjunto 29, Lago Sul', pacote: 13500, limpeza: 900,
+    local: 'SMDB Conjunto 29, Lago Sul', pacote: 15300, limpeza: 900,
     quartos: [
       ['Suíte do Amor (4 pessoas)', '1 cama de casal · 1 cama box de solteiro · 1 sofá-cama'],
       ['Flat dos Solteiros (7 pessoas)', '2 beliches de solteiro · 2 camas auxiliares · 1 sofá-cama de casal'],
-      ['Flat do Chef (5 pessoas)', '1 beliche de casal · 1 cama auxiliar · 1 sofá-cama de casal'],
-      ['Flat do Renato Russo (5 pessoas)', '1 beliche de casal · 1 cama auxiliar · 1 sofá-cama de casal']
+      ['Flat do Chef (7 pessoas)', '1 cama king · 1 beliche de casal · 1 sofá-cama'],
+      ['Flat do Renato Russo (7 pessoas)', '1 cama king · 1 beliche de casal · 1 sofá-cama']
     ]
   },
   {
