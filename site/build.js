@@ -1575,12 +1575,12 @@ const nPessoas = s => LANG === 'pt' ? s : s.replace(/(\d+) pessoas/g, (m, n) => 
 
 const CASAS_PACOTE = [
   {
-    id: 'GD01H', nome: 'Casa Modernista', hospedes: 24, convidados: 80,
-    local: 'SHIS QI 7, Conjunto 3, Lago Sul', pacote: 15300, limpeza: 900,
+    id: 'GD01H', nome: 'Casa Modernista', hospedes: 22, convidados: 80,
+    local: 'SHIS QI 7, Conjunto 3, Lago Sul', pacote: 14100, limpeza: 900,
     quartos: [
       ['Suíte Master (4 pessoas)', '1 cama king · 1 cama box de solteiro · 1 sofá-cama de casal'],
-      ['Suíte da Sofia (5 pessoas)', '1 cama king · 1 cama box de solteiro · 1 beliche de solteiro'],
-      ['Suíte do Pedro (5 pessoas)', '1 quadriliche com 4 camas tipo solteirão · 1 cama box de solteiro'],
+      ['Suíte da Sofia (4 pessoas)', '1 cama king · 1 cama box de solteiro · 1 beliche de solteiro'],
+      ['Suíte do Pedro (4 pessoas)', '1 quadriliche com 4 camas tipo solteirão · 1 cama box de solteiro'],
       ['Suíte do Felipe (4 pessoas)', '1 cama de casal · 1 beliche de solteiro'],
       ['Suíte da Família (6 pessoas)', '1 cama de casal · 1 cama box de solteiro · 1 beliche de solteiro · 1 sofá-cama de casal']
     ]
@@ -1614,6 +1614,14 @@ const CASAS_PACOTE = [
     ]
   }
 ];
+// A faixa de precos citada na /posse-2027.html sai DAQUI, nao de numeros escritos a mao: a cada
+// ajuste de pacote ou de capacidade o texto acompanha sozinho. Ja divergiu uma vez (dizia
+// 9.800 e 15.400 quando a tabela dizia 9.900 e 15.300).
+const pacoteBarato = CASAS_PACOTE.reduce((a, c) => c.pacote < a.pacote ? c : a);
+const pacoteCaro   = CASAS_PACOTE.reduce((a, c) => c.pacote > a.pacote ? c : a);
+const capMin = Math.min(...CASAS_PACOTE.map(c => c.hospedes));
+const capMax = Math.max(...CASAS_PACOTE.map(c => c.hospedes));
+const realEn = n => 'R$ ' + n.toLocaleString('en-US');
 
 const chipsDatas = DATAS_PACOTE.map(d =>
   `<a class="chip-data" href="${d.emoji === '🇧🇷' ? L('/posse-2027.html') : waLink(t(`Olá! Quero reservar uma casa completa para ${d.nome} (${d.periodo}). Somos um grupo de ___ pessoas.`, `Hi! I'd like to book a whole house for ${d.nome} (${d.periodo}). We're a group of ___ people.`, `¡Hola! Quiero reservar una casa entera para ${d.nome} (${d.periodo}). Somos un grupo de ___ personas.`))}">${d.emoji} <strong>${esc(d.nome)}</strong><span>${esc(d.periodo)}</span></a>`).join('\n');
@@ -2897,7 +2905,7 @@ const posse = layout(
     <p>${t('Nas casas da Villela Stay, o grupo inteiro fica junto, com piscina aquecida, churrasqueira e cozinha completa — e o custo se divide: <strong>R$ 150 por pessoa por dia</strong> no pacote de 4 diárias com a casa lotada. Menos que uma diária de hotel simples em semana de posse.', 'In Villela Stay\'s houses, the whole group stays together, with a heated pool, barbecue and full kitchen — and the cost is split: <strong>R$ 150 per person per day</strong> in the 4-night package with the house at full capacity. Less than a basic hotel night during inauguration week.', 'En las casas de Villela Stay, todo el grupo se queda junto, con piscina climatizada, parrilla y cocina completa — y el costo se reparte: <strong>R$ 150 por persona por día</strong> en el paquete de 4 noches con la casa llena. Menos que una noche de hotel sencillo en semana de toma de posesión.')}</p>
   </section>
   <section class="regra"><h2>${t('O pacote Réveillon + Posse (30/12/2026 a 03/01/2027)', 'The New Year + Inauguration package (30 Dec 2026 to 3 Jan 2027)', 'El paquete Fin de Año + Toma de Posesión (30/12/2026 a 03/01/2027)')}</h2>
-    <p>${t(`Nossas 4 casas recebem de 15 a 24 hóspedes cada. O pacote de 4 diárias vai de <strong>R$ 9.800 (Casa Villela, 15 pessoas)</strong> a <strong>R$ 15.400 (Casa Modernista, 24 pessoas)</strong> — valores fechados, sem surpresa. Veja os detalhes e a composição das camas em <a href="${L('/pacotes.html')}"><strong>Pacotes Especiais</strong></a>.`, `Our 4 houses host 15 to 24 guests each. The 4-night package ranges from <strong>R$ 9,800 (Casa Villela, 15 people)</strong> to <strong>R$ 15,400 (Casa Modernista, 24 people)</strong> — fixed prices, no surprises. See the details and bed layouts in <a href="${L('/pacotes.html')}"><strong>Special Packages</strong></a>.`, `Nuestras 4 casas reciben de 15 a 24 huéspedes cada una. El paquete de 4 noches va de <strong>R$ 9.800 (Casa Villela, 15 personas)</strong> a <strong>R$ 15.400 (Casa Modernista, 24 personas)</strong> — precios cerrados, sin sorpresas. Mira los detalles y la distribución de camas en <a href="${L('/pacotes.html')}"><strong>Paquetes Especiales</strong></a>.`)}</p>
+    <p>${t(`Nossas 4 casas recebem de ${capMin} a ${capMax} hóspedes cada. O pacote de 4 diárias vai de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} pessoas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} pessoas)</strong> — valores fechados, sem surpresa. Veja os detalhes e a composição das camas em <a href="${L('/pacotes.html')}"><strong>Pacotes Especiais</strong></a>.`, `Our 4 houses host ${capMin} to ${capMax} guests each. The 4-night package ranges from <strong>${realEn(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} people)</strong> to <strong>${realEn(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} people)</strong> — fixed prices, no surprises. See the details and bed layouts in <a href="${L('/pacotes.html')}"><strong>Special Packages</strong></a>.`, `Nuestras 4 casas reciben de ${capMin} a ${capMax} huéspedes cada una. El paquete de 4 noches va de <strong>${real(pacoteBarato.pacote)} (${pacoteBarato.nome}, ${pacoteBarato.hospedes} personas)</strong> a <strong>${real(pacoteCaro.pacote)} (${pacoteCaro.nome}, ${pacoteCaro.hospedes} personas)</strong> — precios cerrados, sin sorpresas. Mira los detalles y la distribución de camas en <a href="${L('/pacotes.html')}"><strong>Paquetes Especiales</strong></a>.`)}</p>
     <p>⚠️ ${t('São apenas 4 casas por data, e Réveillon + Posse é a janela mais disputada do calendário. As reservas são confirmadas por ordem de chegada.', 'There are only 4 houses per date, and New Year + Inauguration is the most sought-after window on the calendar. Bookings are confirmed on a first-come, first-served basis.', 'Son solo 4 casas por fecha, y Fin de Año + Toma de Posesión es la ventana más disputada del calendario. Las reservas se confirman por orden de llegada.')}</p>
   </section>
   <section class="regra"><h2>${t('As casas', 'The houses', 'Las casas')}</h2>
