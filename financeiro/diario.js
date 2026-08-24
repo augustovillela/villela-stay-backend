@@ -48,8 +48,9 @@ function lerEstado() {
       meses: bruto.meses || {},
       replicado: bruto.replicado || {},
       total: Number(bruto.total) || 0,
+      ultimaReplica: bruto.ultimaReplica || null,
     };
-  } catch { return { meses: {}, replicado: {}, total: 0 }; }
+  } catch { return { meses: {}, replicado: {}, total: 0, ultimaReplica: null }; }
 }
 function gravarEstado(e) {
   const tmp = ESTADO + '.tmp';
@@ -201,8 +202,17 @@ async function replicar() {
       falhas.push({ mes, erro: e.message });
     }
   }
-  if (enviados.length) gravarEstado(Object.assign({}, estado, { replicado }));
-  return { modo: 'r2', enviados: enviados.length, meses: enviados, falhas };
+  // Grava SEMPRE, mesmo sem envio: uma replicação que só falhou precisa
+  // deixar rastro. Sem isto, a falha só existia no log do Render — e
+  // "entrega que falha sem avisar" é pior do que entrega que não acontece.
+  const resultado = {
+    quando: nowISO(),
+    enviados: enviados.length,
+    meses: enviados,
+    falhas,
+  };
+  gravarEstado(Object.assign({}, estado, { replicado, ultimaReplica: resultado }));
+  return Object.assign({ modo: 'r2' }, resultado);
 }
 
 /** Status para o painel: até onde o diário está replicado. */
@@ -213,12 +223,24 @@ function status() {
     const h = crypto.createHash('sha256').update(fs.readFileSync(arquivoDoMes(m))).digest('hex');
     return (estado.replicado || {})[m] !== h;
   });
+  const ultima = estado.ultimaReplica;
   return {
     configurada: configurada(),
     registros: estado.total,
     meses: lista.length,
     pendentes,
     rpoMinutos: Number(process.env.FINANCE_REPLICA_MIN) || 5,
+    ultimaReplica: ultima,
+    // A frase que decide se o RPO é real ou é promessa.
+    veredito: !configurada()
+      ? 'Réplica DESLIGADA (sem FINANCE_S3_*) — o RPO real é o do snapshot diário.'
+      : !ultima
+        ? 'Réplica configurada, mas ainda não rodou nenhuma vez.'
+        : (ultima.falhas && ultima.falhas.length)
+          ? `Réplica FALHANDO desde ${ultima.quando}: ${ultima.falhas.map(f => `${f.mes} (${f.erro})`).join(' · ')}`
+          : pendentes.length
+            ? `Última réplica em ${ultima.quando} enviou ${ultima.enviados}; ainda pendente(s): ${pendentes.join(', ')}.`
+            : `Tudo replicado (última em ${ultima.quando}).`,
   };
 }
 

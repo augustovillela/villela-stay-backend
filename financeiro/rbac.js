@@ -39,6 +39,7 @@ const ACOES = {
   'transacao.ignorar':        { nivelMinimo: 1, permissao: 'lancar' },
   'regra.criar':              { nivelMinimo: 1, permissao: 'configurar' },
   'contraparte.criar':        { nivelMinimo: 1, permissao: 'cadastrar' },
+  'diario.replicar':          { nivelMinimo: 1, permissao: 'configurar' },
 
   // prévia + aprovação simples
   'lote.contabilizar':        { nivelMinimo: 2, permissao: 'lancar' },

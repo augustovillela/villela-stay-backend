@@ -140,6 +140,16 @@ function registrarRotasAgente(app, { requirePublishOrAdmin, express }) {
   })));
 
   /**
+   * Força a replicação do diário e devolve o resultado — inclusive as
+   * falhas. É o que permite descobrir que o RPO parou de valer sem ter de
+   * abrir o log do servidor.
+   */
+  app.post(`${B}/diario/replicar`, ...rota('diario.replicar', async () => {
+    const r = await require('./diario').replicar();
+    return { replicacao: r, status: require('./diario').status() };
+  }, { json: true }));
+
+  /**
    * Prova viva do teto: a rota existe para que o teste (e quem auditar)
    * confirme que uma ação material é recusada mesmo com a chave certa.
    */
