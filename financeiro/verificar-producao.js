@@ -23,8 +23,22 @@ let ok = 0;
 const falhas = [];
 const avisos = [];
 
+/**
+ * 502/503 do Render é o serviço reiniciando, não achado de segurança. Sem
+ * este aborto, um deploy em andamento devolve trinta linhas dizendo "a
+ * escrita está ABERTA" — a mensagem errada na hora errada faz procurar
+ * buraco onde só há espera.
+ */
+class ServicoIndisponivel extends Error {
+  constructor(caminho, st) {
+    super(`${st} em ${caminho} — o serviço está reiniciando (deploy em andamento?). Espere e rode de novo.`);
+    this.name = 'ServicoIndisponivel';
+  }
+}
+
 async function pega(caminho, opts = {}) {
   const r = await fetch(BASE + caminho, { redirect: 'manual', ...opts });
+  if (r.status === 502 || r.status === 503) throw new ServicoIndisponivel(caminho, r.status);
   const texto = await r.text();
   let json = null;
   try { json = JSON.parse(texto); } catch (_) { /* nem toda rota devolve JSON */ }
@@ -33,7 +47,15 @@ async function pega(caminho, opts = {}) {
 
 async function t(nome, fn) {
   try { await fn(); ok++; console.log('  ✅', nome); }
-  catch (e) { falhas.push(`${nome}: ${e.message}`); console.log('  ❌', nome, '—', e.message); }
+  catch (e) {
+    if (e.name === 'ServicoIndisponivel') {
+      console.log(`
+⏳ ${e.message}
+`);
+      process.exit(2);
+    }
+    falhas.push(`${nome}: ${e.message}`); console.log('  ❌', nome, '—', e.message);
+  }
 }
 const aviso = (texto) => { avisos.push(texto); console.log('  ⚠️ ', texto); };
 
@@ -90,6 +112,25 @@ const json = (corpo) => ({
       assert.ok([401, 403].includes(r.st), `${caminho} devolveu ${r.st}`);
     }
   });
+  await t('cobrança: /staff/api/finance/billing exige login de staff', async () => {
+    for (const [metodo, caminho] of [['GET', '/staff/api/finance/billing'], ['POST', '/staff/api/finance/billing/ciclo']]) {
+      const r = metodo === 'GET' ? await pega(caminho) : await pega(caminho, json({}));
+      assert.notStrictEqual(r.st, 404, `${caminho} não montou`);
+      assert.ok([401, 403].includes(r.st), `${caminho} devolveu ${r.st} — a régua de cobrança está exposta`);
+    }
+  });
+  await t('cobrança: assinar exige sessão do assinante', async () => {
+    const r = await pega('/finance/api/assinatura', json({ plano: 'controle' }));
+    assert.strictEqual(r.st, 401, `criar assinatura sem sessão devolveu ${r.st}`);
+  });
+  await t('webhook do Mercado Pago responde 200 e ignora corpo sem id', async () => {
+    // O MP exige 200 rápido, e a rota é pública por natureza. O que ela NÃO
+    // pode é aceitar corpo arbitrário como se fosse notificação válida — a
+    // conta só é encontrada pela referência que nós mesmos emitimos.
+    const r = await pega('/finance/webhooks/mercadopago', json({ type: 'payment', data: {} }));
+    assert.strictEqual(r.st, 200, `webhook devolveu ${r.st} — o MP re-tentaria em laço`);
+  });
+
   await t('provisionar conta pela administração exige login', async () => {
     const r = await pega('/staff/api/finance/tenants', json({ nome: 'Invasor Ltda' }));
     assert.ok([401, 403].includes(r.st), `criação de conta aberta (${r.st})`);
@@ -126,7 +167,7 @@ const json = (corpo) => ({
   // ------------------------------------------------------- não verificável
   console.log('\n4. O que esta verificação NÃO alcança');
   aviso('isolamento entre contas, razão balanceado e cadeia de auditoria: exigem sessão — ' +
-        'estão cobertos por `npm run test:finance` (185 testes) e pelo painel /staff/api/finance/saude.');
+        'estão cobertos por `npm run test:finance` e pelo painel /staff/api/finance/saude.');
   aviso('réplica do diário no R2: confira em /staff/api/finance/saude (campo `diario.configurada`). ' +
         'Enquanto for `false`, o RPO real é o do snapshot diário, não os 5 minutos.');
   aviso('adaptador Stays: rode a PRÉVIA antes da primeira sincronização real — ' +
