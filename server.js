@@ -4485,6 +4485,7 @@ app.get('/', (req, res) => {
   if (host.startsWith('altavista.') || host.startsWith('alta-vista.')) return res.redirect(302, '/alta-vista'); // Villela Alta Vista 360 (estúdio visual)
   if (host.startsWith('kids.')) return res.redirect(302, '/kids'); // Villela Kids (clube de missões)
   if (host.startsWith('origena.')) return res.redirect(302, '/origena'); // Origena (memória e legado familiar)
+  if (host.startsWith('finance.') || host.startsWith('financas.') || host.startsWith('financeiro.')) return res.redirect(302, '/finance'); // Villela Finance (ERP financeiro)
   return res.redirect(302, '/hospede');
 });
 
@@ -4770,6 +4771,7 @@ const PREFIXO_POR_SUBDOMINIO = [
   [['altavista.', 'alta-vista.'], '/alta-vista'],
   [['kids.'], '/kids'],
   [['origena.'], '/origena'],
+  [['finance.', 'financas.', 'financeiro.'], '/finance'],
 ];
 // Arquivos que vivem na raiz do domínio por convenção — 404 honesto é melhor que redirect.
 const RAIZ_SEM_REDIRECT = /^\/(robots\.txt|sitemap\.xml|favicon\.ico|\.well-known(\/|$))/;
