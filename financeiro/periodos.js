@@ -95,6 +95,18 @@ function checklist(entidadeId, competencia) {
     bloqueia: false,
   });
 
+  // O balanço fechar é diferente do balancete fechar: aqui se confere a
+  // identidade ativo = passivo + PL, que é onde erro de classificação de
+  // conta aparece (despesa cadastrada como ativo, p.ex.).
+  const bp = require('./apuracao').balanco(entidadeId, { ate: fim });
+  itens.push({
+    chave: 'balanco_fecha',
+    titulo: 'Balanço patrimonial fecha',
+    ok: bp.fecha,
+    detalhe: bp.fecha ? 'Ativo = passivo + patrimônio líquido.' : `Diferença de ${dinheiro.formatar(bp.diferencaCents)}.`,
+    bloqueia: true,
+  });
+
   const ant = repo.periodo(entidadeId, anterior(competencia));
   itens.push({
     chave: 'anterior_fechado',

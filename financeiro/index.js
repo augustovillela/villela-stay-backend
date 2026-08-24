@@ -14,6 +14,9 @@
 // Fase 3 — contas a pagar e a receber: títulos com parcelamento e rateio,
 //   liquidação com juros/multa/desconto, aging, inadimplência, detecção de
 //   duplicidade e ordem de pagamento sob aprovação.
+// Fase 4 — gestão e fechamento: balanço patrimonial, fluxo de caixa direto e
+//   indireto (com a conciliação entre os dois), previsão por cenário,
+//   orçamento x realizado, apuração de resultado e consolidação.
 // Fase 5 — hospedagem: adaptador Stays.net reconciliando reserva → receita,
 //   comissão de canal e recebível, por imóvel (centro de custo), com
 //   conferência contra a própria Stays.
@@ -43,6 +46,9 @@ const stays = require('./stays');
 const contrapartes = require('./contrapartes');
 const titulos = require('./titulos');
 const liquidacoes = require('./liquidacoes');
+const apuracao = require('./apuracao');
+const caixa = require('./caixa');
+const orcamento = require('./orcamento');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 
@@ -77,7 +83,7 @@ function montar(app, injected = {}) {
   iniciarWorker(alertaAugusto);
 
   console.log(
-    `[finance] Villela Finance (Fases 1, 2, 3 e 5) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
+    `[finance] Villela Finance (Fases 1 a 5) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
     `planos: ${semeadura.planos.total} · conta interna: ${semeadura.tenantInterno}${semeadura.criada ? ' (criada agora)' : ''} · ` +
     `diário: ${diario.configurada() ? 'replicando para R2' : 'LOCAL (defina FINANCE_S3_* para replicar)'} · ` +
     `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +
@@ -88,7 +94,7 @@ function montar(app, injected = {}) {
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
     periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-    contrapartes, titulos, liquidacoes, tenancy,
+    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, apuracao, caixa, orcamento, tenancy,
   };
 }
 
@@ -124,6 +130,15 @@ function registrarExecutores() {
   // que existe. Só se aplica depois que outra pessoa comparou antes/depois.
   aprovacoes.registrarExecutor('contraparte.dados_bancarios', (payload) =>
     contrapartes.aplicarDadosBancarios(payload));
+
+  // Apuração de resultado reescreve a leitura de um exercício inteiro
+  // (depois dela o DRE do período zera). Por isso é material.
+  aprovacoes.registrarExecutor('resultado.apurar', (payload) => {
+    const r = apuracao.apurar(payload.entidadeId, {
+      competencia: payload.competencia, desde: payload.desde, motivo: payload.motivo,
+    });
+    return { loteId: r.lote.id, resultadoCents: r.resultadoCents, tipo: r.tipo, contasZeradas: r.contasZeradas };
+  });
 
   // Ordem de pagamento aprovada vira LIQUIDAÇÃO — o registro contábil de
   // que o pagamento foi feito. A transferência bancária em si continua

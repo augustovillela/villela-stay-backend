@@ -53,6 +53,7 @@ const ACOES = {
   'contraparte.dados_bancarios': { nivelMinimo: 3, permissao: 'cadastrar' },
   'contraparte.primeiro_pagamento': { nivelMinimo: 3, permissao: 'pagar' },
   'periodo.fechar':           { nivelMinimo: 3, permissao: 'fechar' },
+  'resultado.apurar':         { nivelMinimo: 3, permissao: 'fechar' },
   'periodo.reabrir':          { nivelMinimo: 3, permissao: 'fechar' },
   'lote.estornar':            { nivelMinimo: 3, permissao: 'lancar' },
   'importacao.desfazer':      { nivelMinimo: 3, permissao: 'configurar' },

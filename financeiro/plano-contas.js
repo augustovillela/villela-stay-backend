@@ -141,6 +141,7 @@ const CHAVES = {
   descontosConcedidos: '4.4.1.004',
   descontosObtidos: '3.9.1.003',
   jurosRecebidos: '3.9.1.004',
+  lucrosAcumulados: '2.3.2.001',
   entradaAClassificar: '3.9.9.999',
   saidaAClassificar: '4.9.9.999',
 };

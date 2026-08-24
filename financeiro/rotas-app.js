@@ -36,6 +36,9 @@ const stays = require('./stays');
 const contrapartes = require('./contrapartes');
 const titulos = require('./titulos');
 const liquidacoes = require('./liquidacoes');
+const apuracao = require('./apuracao');
+const caixa = require('./caixa');
+const orcamento = require('./orcamento');
 
 const COOKIE = 'fin_sess';
 const DIAS = 30;
@@ -344,6 +347,60 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     return ledger.balancete(req.entidade.id, { desde, ate });
   }));
 
+  // ------------------------------ gestão e fechamento (fase 4)
+  app.get('/finance/api/balanco', ...rota((req) => apuracao.balanco(req.entidade.id, {
+    ate: String(req.query.ate || '') || undefined,
+  })));
+
+  app.get('/finance/api/fluxo-caixa', ...rota((req) => {
+    const { desde, ate } = relatorios.intervalo(comp(req));
+    return String(req.query.metodo || 'direto') === 'indireto'
+      ? caixa.fluxoIndireto(req.entidade.id, { desde, ate })
+      : caixa.fluxoDireto(req.entidade.id, { desde, ate });
+  }));
+
+  app.get('/finance/api/previsao-caixa', ...rota((req) => caixa.previsao(req.entidade.id, {
+    dias: Math.min(Number(req.query.dias) || 90, 365),
+    referencia: String(req.query.referencia || '') || undefined,
+  })));
+
+  app.get('/finance/api/consolidado', ...rota((req) => apuracao.consolidar({
+    ate: String(req.query.ate || '') || undefined,
+  }), { modulo: '' }));
+
+  // ------------------------------------------------------- orçamento
+  app.get('/finance/api/orcamentos', ...rota((req) => ({
+    orcamentos: orcamento.listar(req.entidade.id, {
+      exercicio: String(req.query.exercicio || ''), status: String(req.query.status || ''),
+    }),
+  })));
+
+  app.get('/finance/api/orcamentos/:id', ...rota((req, res) => {
+    const o = orcamento.buscar(req.params.id);
+    if (!o) return res.status(404).json({ erro: 'Orçamento não encontrado.' });
+    return o;
+  }));
+
+  app.post('/finance/api/orcamentos', ...rota((req) => ({
+    ok: true, orcamento: orcamento.criar({ entidadeId: req.entidade.id, ...(req.body || {}) }),
+  }), { permissao: 'configurar', modulo: 'orcamento', json: true }));
+
+  app.put('/finance/api/orcamentos/:id/linhas', ...rota((req) => ({
+    ok: true,
+    linhas: orcamento.definirLinhas(req.params.id, req.entidade.id, (req.body || {}).linhas || []),
+    orcamento: orcamento.buscar(req.params.id),
+  }), { permissao: 'configurar', modulo: 'orcamento', json: true }));
+
+  app.post('/finance/api/orcamentos/:id/aprovar', ...rota((req) => ({
+    ok: true, orcamento: orcamento.aprovar(req.params.id, { motivo: (req.body || {}).motivo }),
+  }), { permissao: 'configurar', modulo: 'orcamento', json: true }));
+
+  app.get('/finance/api/orcado-realizado', ...rota((req) => orcamento.realizado(req.entidade.id, {
+    orcamentoId: String(req.query.orcamento || '') || undefined,
+    competencia: comp(req),
+    acumulado: req.query.acumulado === '1',
+  }), { modulo: '' }));
+
   // --------------------------------------------------------- fechamento
   app.get('/finance/api/periodos', ...rota((req) => ({ periodos: periodos.listar(req.entidade.id) })));
 
@@ -372,6 +429,28 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       motivo,
     });
     return { ok: true, aprovacao: s };
+  }, { permissao: 'fechar', modulo: 'fechamento', json: true }));
+
+  app.get('/finance/api/apuracao/:competencia', ...rota((req) =>
+    apuracao.previaApuracao(req.entidade.id, { competencia: req.params.competencia })));
+
+  /** Apurar resultado é nível 3: depois dela o DRE do período zera. */
+  app.post('/finance/api/apuracao/:competencia', ...rota((req) => {
+    const previa = apuracao.previaApuracao(req.entidade.id, { competencia: req.params.competencia });
+    const s = aprovacoes.solicitar({
+      acao: 'resultado.apurar', entidadeId: req.entidade.id,
+      objetoTipo: 'apuracao', objetoId: `${req.entidade.id}:${req.params.competencia}`,
+      payload: { entidadeId: req.entidade.id, competencia: req.params.competencia, motivo: (req.body || {}).motivo || '' },
+      previa: {
+        periodo: `${previa.desde} a ${previa.ate}`,
+        contasZeradas: previa.contas.length,
+        resultado: previa.resultado, tipo: previa.tipo,
+        aviso: previa.aviso,
+      },
+      valorCents: Math.abs(previa.resultadoCents),
+      motivo: (req.body || {}).motivo || `apuração de ${req.params.competencia}`,
+    });
+    return { ok: true, aprovacao: s, previa };
   }, { permissao: 'fechar', modulo: 'fechamento', json: true }));
 
   // --------------------------------------------------------- aprovações

@@ -72,6 +72,11 @@ Variáveis: `FINANCE_WORKER=off` (desliga o worker) · `FINANCE_WORKER_MS` · `F
   consultas com `db.prepare` cru vivem em `sessao.js`, são três, e existem porque o login é
   circular por natureza. Se você precisou de `db.prepare` em outro arquivo, quase certamente não
   precisava.
+- **A chave de idempotência da apuração inclui o que está sendo zerado**, não só o período. Com
+  chave só de período, lançamento que chega depois da primeira apuração seria deduplicado e o
+  sistema diria "ok" com o saldo vivo nas contas de resultado.
+- **Balanço fecha porque o resultado do exercício é linha CALCULADA do PL.** Não confie que as
+  contas 3 e 4 estejam zeradas — elas só zeram quando alguém apura.
 - **Conta-chave nova no plano de contas** só chega às empresas ANTIGAS por
   `contas.atualizarPlanosDeConta()`, que roda no boot. Acrescentar ao `PADRAO` sem isso quebraria
   só na primeira operação que usasse a conta.

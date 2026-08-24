@@ -469,6 +469,43 @@ CREATE TABLE IF NOT EXISTS fin_regras_classificacao (
 );
 CREATE INDEX IF NOT EXISTS idx_fin_regras ON fin_regras_classificacao(tenant_id, entidade_id, status, prioridade);
 
+-- ====================== ORÇAMENTO (fase 4) ===========================
+-- Versionado de propósito: "o orçamento aprovado em janeiro" e "a revisão
+-- de julho" são coisas diferentes, e comparar o realizado com a versão
+-- errada é pior do que não comparar.
+
+CREATE TABLE IF NOT EXISTS fin_orcamentos (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  entidade_id   TEXT NOT NULL REFERENCES fin_entidades(id) ON DELETE CASCADE,
+  nome          TEXT NOT NULL,
+  exercicio     TEXT NOT NULL,                   -- AAAA
+  versao        INTEGER NOT NULL DEFAULT 1,
+  cenario       TEXT NOT NULL DEFAULT 'base',    -- base|otimista|pessimista
+  status        TEXT NOT NULL DEFAULT 'rascunho',-- rascunho|aprovado|arquivado
+  aprovado_em   TEXT NOT NULL DEFAULT '',
+  aprovado_por  TEXT NOT NULL DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  criado_por    TEXT DEFAULT '',
+  CHECK (status IN ('rascunho','aprovado','arquivado'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_orc ON fin_orcamentos(tenant_id, entidade_id, exercicio, cenario, versao);
+
+CREATE TABLE IF NOT EXISTS fin_orcamento_linhas (
+  id              TEXT PRIMARY KEY,
+  tenant_id       TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  orcamento_id    TEXT NOT NULL REFERENCES fin_orcamentos(id) ON DELETE CASCADE,
+  conta_id        TEXT NOT NULL REFERENCES fin_contas(id),
+  centro_custo_id TEXT NOT NULL DEFAULT '',
+  competencia     TEXT NOT NULL,                 -- AAAA-MM
+  valor_cents     INTEGER NOT NULL DEFAULT 0,
+  memo            TEXT NOT NULL DEFAULT '',
+  criado_em       TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_orc_linha
+  ON fin_orcamento_linhas(tenant_id, orcamento_id, conta_id, centro_custo_id, competencia);
+CREATE INDEX IF NOT EXISTS idx_fin_orc_linha_comp ON fin_orcamento_linhas(tenant_id, orcamento_id, competencia);
+
 -- ==================== APROVAÇÕES (maker-checker) =====================
 
 CREATE TABLE IF NOT EXISTS fin_aprovacoes (

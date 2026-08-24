@@ -1178,6 +1178,248 @@ teste('fase 3: o razão continua fechando depois de tudo isso', () => {
 });
 
 // =====================================================================
+// 12c. GESTÃO E FECHAMENTO (fase 4)
+// =====================================================================
+const apuracao = require('./apuracao');
+const caixa = require('./caixa');
+const orcamento = require('./orcamento');
+
+teste('balanço: fecha (ativo = passivo + PL) mesmo sem apuração', () => {
+  const b = naA(() => apuracao.balanco(empresaA.id, { ate: '2026-12-31' }));
+  assert.strictEqual(b.fecha, true, `diferença de ${b.diferencaCents}`);
+  assert.notStrictEqual(b.patrimonioLiquido.resultadoDoExercicioCents, 0, 'era para haver resultado no período');
+  assert.ok(/linha calculada/.test(b.origem.observacao),
+    `o balanço não avisa que o resultado ainda não virou lançamento: "${b.origem.observacao}"`);
+});
+
+teste('balanço: a identidade continua valendo em qualquer data de corte', () => {
+  for (const ate of ['2026-08-15', '2026-09-30', '2026-10-31']) {
+    const b = naA(() => apuracao.balanco(empresaA.id, { ate }));
+    assert.strictEqual(b.fecha, true, `${ate}: diferença de ${b.diferencaCents}`);
+  }
+});
+
+teste('fluxo de caixa direto: separa operacional de investimento', () => {
+  const f = naA(() => caixa.fluxoDireto(empresaA.id, { desde: '2026-08-01', ate: '2026-08-31' }));
+  assert.ok(f.movimentos.length > 0, 'nenhum movimento de caixa');
+  const op = f.grupos.find(g => g.grupo === 'operacional');
+  assert.ok(op.entradasCents > 0 || op.saidasCents > 0, 'nada classificado como operacional');
+  assert.strictEqual(f.saldoFinalCents, f.saldoInicialCents + f.entradasCents - f.saidasCents);
+});
+
+teste('fluxo de caixa direto: o saldo final bate com o razão', () => {
+  const f = naA(() => caixa.fluxoDireto(empresaA.id, { desde: '2026-01-01', ate: '2026-12-31' }));
+  const contas = naA(() => caixa.contasDeCaixa(empresaA.id));
+  const pelaConta = contas.reduce((s, id) => s + naA(() => ledger.saldo(id, { ate: '2026-12-31' })).saldoCents, 0);
+  assert.strictEqual(f.saldoFinalCents, pelaConta,
+    'o fluxo direto não reconstrói o saldo das contas de caixa');
+});
+
+teste('fluxo indireto: reconcilia com o direto, ou explica por quê', () => {
+  const f = naA(() => caixa.fluxoIndireto(empresaA.id, { desde: '2026-08-01', ate: '2026-08-31' }));
+  assert.ok(f.explicacao, 'sem explicação da conciliação');
+  if (!f.concilia) {
+    // Não conciliar é legítimo quando há movimento fora dos ajustes —
+    // o que NÃO pode é ficar calado sobre isso.
+    assert.ok(/conta patrimonial fora dos ajustes/.test(f.explicacao), `explicação inútil: ${f.explicacao}`);
+  }
+});
+
+teste('previsão de caixa: três cenários, cada um com a premissa escrita', () => {
+  const p = naA(() => caixa.previsao(empresaA.id, { dias: 120, referencia: '2026-08-25' }));
+  assert.strictEqual(p.cenarios.length, 3);
+  for (const c of p.cenarios) {
+    assert.ok(c.premissa, `cenário ${c.cenario} sem premissa`);
+    assert.ok(c.menorSaldoEm, 'sem a data do menor saldo');
+  }
+  assert.ok(/PREVISÃO, não fato/.test(p.origem.natureza), 'a previsão não se declara previsão');
+  // Otimista nunca pode ficar abaixo do pessimista.
+  const oti = p.cenarios.find(c => c.cenario === 'otimista').saldoFinalCents;
+  const pes = p.cenarios.find(c => c.cenario === 'pessimista').saldoFinalCents;
+  assert.ok(oti >= pes, `otimista (${oti}) abaixo do pessimista (${pes})`);
+});
+
+teste('previsão: sem histórico suficiente, DIZ que usa o padrão', () => {
+  const p = naB(() => caixa.previsao(empresaB.id, { dias: 30, referencia: '2026-08-25' }));
+  assert.strictEqual(p.taxaHistorica.suficiente, false);
+  assert.ok(/insuficiente/.test(p.taxaHistorica.origem), `origem: ${p.taxaHistorica.origem}`);
+});
+
+teste('previsão: parcela vencida entra no primeiro dia, não some', () => {
+  const p = naA(() => caixa.previsao(empresaA.id, { dias: 30, referencia: '2026-12-01' }));
+  // Há recebível vencido de setembro; o cenário otimista tem de somá-lo.
+  const oti = p.cenarios.find(c => c.cenario === 'otimista');
+  assert.ok(oti.saldoFinalCents > p.saldoHojeCents, 'o recebível vencido não entrou na projeção');
+});
+
+let orc;
+teste('orçamento: nasce em rascunho e numera a versão sozinho', () => {
+  orc = naA(() => orcamento.criar({
+    entidadeId: empresaA.id, nome: 'Orçamento 2026', exercicio: '2026', cenario: 'base',
+    linhas: [
+      { contaCodigo: '3.1.1.001', competencia: '2026-08', valorCents: 8000000 },
+      { contaCodigo: '4.1.1.005', competencia: '2026-08', valorCents: 100000 },
+      { contaCodigo: '4.1.1.005', competencia: '2026-09', valorCents: 100000 },
+    ],
+  }));
+  assert.strictEqual(orc.status, 'rascunho');
+  assert.strictEqual(orc.versao, 1);
+  assert.strictEqual(orc.linhas.length, 3);
+});
+
+teste('orçamento: linha repetida é agregada, não duplicada', () => {
+  const o = naA(() => orcamento.criar({
+    entidadeId: empresaA.id, nome: 'teste de agregação', exercicio: '2026',
+    linhas: [
+      { contaCodigo: '4.9.1.001', competencia: '2026-08', valorCents: 1000 },
+      { contaCodigo: '4.9.1.001', competencia: '2026-08', valorCents: 2500 },
+    ],
+  }));
+  assert.strictEqual(o.linhas.length, 1);
+  assert.strictEqual(o.linhas[0].valorCents, 3500);
+});
+
+lanca('orçamento: competência fora do exercício é recusada', () =>
+  naA(() => orcamento.criar({
+    entidadeId: empresaA.id, nome: 'errado', exercicio: '2026',
+    linhas: [{ contaCodigo: '4.9.1.001', competencia: '2027-01', valorCents: 100 }],
+  })), /fora do exercício/);
+
+lanca('orçamento: conta sintética não entra', () =>
+  naA(() => orcamento.criar({
+    entidadeId: empresaA.id, nome: 'errado', exercicio: '2026',
+    linhas: [{ contaCodigo: '4.1', competencia: '2026-08', valorCents: 100 }],
+  })), /sintética/);
+
+lanca('orçamento: comparar sem orçamento aprovado diz o que fazer', () =>
+  naA(() => orcamento.realizado(empresaA.id, { competencia: '2026-08' })),
+  /Crie uma versão e aprove/);
+
+teste('orçamento: aprovar congela e arquiva a versão anterior', () => {
+  const aprovado = naA(() => orcamento.aprovar(orc.id, { motivo: 'orçamento do exercício' }));
+  assert.strictEqual(aprovado.status, 'aprovado');
+  // Rascunho aprovado não aceita mais alteração.
+  assert.throws(() => naA(() => orcamento.definirLinhas(orc.id, empresaA.id, [])), /não aceita alteração/);
+
+  const v2 = naA(() => orcamento.criar({
+    entidadeId: empresaA.id, nome: 'Revisão de agosto', exercicio: '2026', cenario: 'base',
+    linhas: [{ contaCodigo: '3.1.1.001', competencia: '2026-08', valorCents: 9000000 }],
+  }));
+  assert.ok(v2.versao > orc.versao, `a versão nova (${v2.versao}) devia suceder a ${orc.versao}`);
+  naA(() => orcamento.aprovar(v2.id, { motivo: 'revisão' }));
+  assert.strictEqual(naA(() => orcamento.buscar(orc.id)).status, 'arquivado',
+    'a versão anterior devia ir para arquivada — senão "o orçamento" fica ambíguo');
+});
+
+lanca('orçamento: aprovar versão vazia é recusado', () => {
+  const vazio = naA(() => orcamento.criar({ entidadeId: empresaA.id, nome: 'vazio', exercicio: '2026', cenario: 'pessimista', linhas: [] }));
+  return naA(() => orcamento.aprovar(vazio.id, { motivo: 'x' }));
+}, /sem linha nenhuma/);
+
+teste('orçado × realizado: o sinal do desvio segue a natureza da conta', () => {
+  const r = naA(() => orcamento.realizado(empresaA.id, { competencia: '2026-08' }));
+  assert.ok(r.linhas.length > 0, 'comparação vazia');
+
+  const receita = r.linhas.find(l => l.contaCodigo === '3.1.1.001');
+  assert.ok(receita, 'a receita orçada não apareceu');
+  // Receita realizada abaixo do orçado é DESFAVORÁVEL.
+  if (receita.realizadoCents < receita.orcadoCents) {
+    assert.strictEqual(receita.favoravel, false, 'receita abaixo do orçado marcada como favorável');
+  }
+  const despesa = r.linhas.find(l => l.contaCodigo === '4.1.1.005');
+  if (despesa && despesa.realizadoCents < despesa.orcadoCents) {
+    assert.strictEqual(despesa.favoravel, true, 'despesa abaixo do orçado devia ser favorável');
+  }
+  assert.ok(/desvio = realizado − orçado/.test(r.origem.convencao), 'sem a convenção escrita');
+  assert.ok(r.maioresDesvios.length > 0);
+});
+
+teste('orçado × realizado: acumulado soma o exercício até a competência', () => {
+  const mes = naA(() => orcamento.realizado(empresaA.id, { competencia: '2026-09', orcamentoId: orc.id }));
+  const acu = naA(() => orcamento.realizado(empresaA.id, { competencia: '2026-09', orcamentoId: orc.id, acumulado: true }));
+  const energiaMes = mes.linhas.find(l => l.contaCodigo === '4.1.1.005');
+  const energiaAcu = acu.linhas.find(l => l.contaCodigo === '4.1.1.005');
+  assert.strictEqual(energiaMes.orcadoCents, 100000, 'orçado do mês');
+  assert.strictEqual(energiaAcu.orcadoCents, 200000, 'orçado acumulado devia somar agosto + setembro');
+});
+
+let previaApur;
+teste('apuração: a prévia diz quanto seria transferido e avisa do efeito', () => {
+  previaApur = naA(() => apuracao.previaApuracao(empresaA.id, { competencia: '2026-12' }));
+  assert.ok(previaApur.contas.length > 0, 'nada a apurar');
+  assert.strictEqual(previaApur.receitasCents - previaApur.despesasCents, previaApur.resultadoCents);
+  assert.ok(/DRE deste intervalo passa a mostrar R\$ 0,00/.test(previaApur.aviso), 'não avisa que o DRE zera');
+});
+
+lanca('apuração: exige motivo', () =>
+  naA(() => apuracao.apurar(empresaA.id, { competencia: '2026-12' })), /motivo/);
+
+teste('apuração: zera as contas de resultado contra lucros acumulados', () => {
+  const antesPL = naA(() => ledger.saldo(contaDe('2.3.2.001').id, { ate: '2026-12-31' })).saldoCents;
+  const r = naA(() => apuracao.apurar(empresaA.id, {
+    competencia: '2026-12', motivo: 'encerramento do exercício de 2026',
+  }));
+  assert.ok(r.lote, 'não gerou lote de apuração');
+  assert.strictEqual(r.resultadoCents, previaApur.resultadoCents);
+
+  // O DRE do exercício zera...
+  const dreDepois = naA(() => ledger.balancete(empresaA.id, { desde: '2026-01-01', ate: '2026-12-31' })).linhas
+    .filter(l => ['receita', 'despesa'].includes(l.natureza) && l.saldoCents !== 0);
+  assert.strictEqual(dreDepois.length, 0, `sobrou saldo em conta de resultado: ${JSON.stringify(dreDepois.map(l => [l.codigo, l.saldoCents]))}`);
+
+  // ...e o resultado foi para o PL.
+  const depoisPL = naA(() => ledger.saldo(contaDe('2.3.2.001').id, { ate: '2026-12-31' })).saldoCents;
+  assert.strictEqual(depoisPL - antesPL, r.resultadoCents, 'o resultado não chegou aos lucros acumulados');
+});
+
+teste('apuração: o balanço continua fechando depois de apurar', () => {
+  const b = naA(() => apuracao.balanco(empresaA.id, { ate: '2026-12-31' }));
+  assert.strictEqual(b.fecha, true, `diferença de ${b.diferencaCents}`);
+  assert.strictEqual(b.patrimonioLiquido.resultadoDoExercicioCents, 0, 'depois de apurado, o resultado calculado tem de ser zero');
+});
+
+lanca('apuração: rodar de novo sem nada novo diz que não há o que apurar', () =>
+  naA(() => apuracao.apurar(empresaA.id, { competencia: '2026-12', motivo: 'de novo' })),
+  /Não há saldo em conta de resultado/);
+
+teste('apuração: lançamento novo DEPOIS de apurar é apurado no incremento', () => {
+  // O risco real: a segunda apuração ser deduplicada pela chave e devolver
+  // "deu certo" sem zerar nada. Aqui se prova que ela zera o incremento.
+  naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-12-28', memo: 'nota que chegou atrasada',
+    linhas: [
+      { contaCodigo: '4.9.1.001', debitoCents: 33000 },
+      { contaCodigo: '1.1.1.001', creditoCents: 33000 },
+    ],
+  }));
+  const r = naA(() => apuracao.apurar(empresaA.id, { competencia: '2026-12', motivo: 'apuração do complemento' }));
+  assert.strictEqual(r.duplicado, false, 'a apuração do incremento foi deduplicada — o saldo ficaria vivo');
+  assert.strictEqual(r.resultadoCents, -33000, 'o incremento apurado devia ser exatamente a despesa nova');
+
+  const sobra = naA(() => ledger.balancete(empresaA.id, { desde: '2026-01-01', ate: '2026-12-31' })).linhas
+    .filter(l => ['receita', 'despesa'].includes(l.natureza) && l.saldoCents !== 0);
+  assert.strictEqual(sobra.length, 0, 'sobrou saldo em conta de resultado depois da segunda apuração');
+});
+
+teste('consolidado: soma as empresas e avisa que não há eliminação', () => {
+  naA(() => contasSvc.criarEmpresa({ nome: 'Villela Eventos Ltda', regime: 'simples' }));
+  const c = naA(() => apuracao.consolidar({ ate: '2026-12-31' }));
+  assert.ok(c.empresas.length >= 2, 'consolidado com uma empresa só');
+  assert.strictEqual(c.eliminacoes, false);
+  assert.ok(/SEM eliminação/.test(c.aviso), 'não avisa da limitação');
+  assert.strictEqual(c.total.ativoCents, c.empresas.reduce((s, e) => s + e.ativoCents, 0));
+  assert.ok(c.empresas.every(e => e.fecha), 'alguma empresa com balanço que não fecha');
+});
+
+teste('fechamento: o checklist agora exige o balanço fechar', () => {
+  const c = naA(() => periodos.checklist(empresaA.id, '2026-10'));
+  const item = c.itens.find(i => i.chave === 'balanco_fecha');
+  assert.ok(item, 'o item do balanço não entrou no checklist');
+  assert.strictEqual(item.bloqueia, true);
+  assert.strictEqual(item.ok, true);
+});
+
+// =====================================================================
 // 13. ADAPTADOR STAYS (vertical de hospedagem)
 //
 // Stays falsa e mutável: o que importa aqui não é falar HTTP com a Stays,
