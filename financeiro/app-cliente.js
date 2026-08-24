@@ -104,7 +104,7 @@ const F = {
   // -------------------------------------------------------- moldura
   telaApp() {
     const e = F.eu;
-    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['fechamento', 'Fechamento'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
+    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['fechamento', 'Fechamento'], ['cfo', 'CFO'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
     const empresas = e.empresas.length > 1
       ? `<select id="f-empresa" style="width:auto;min-width:200px">${e.empresas.map((x) =>
           `<option value="${F.esc(x.id)}"${x.id === e.empresa.id ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
@@ -159,7 +159,7 @@ const F = {
   },
 
   async pintar() {
-    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, fechamento: F.vFechamento, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
+    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, fechamento: F.vFechamento, cfo: F.vCfo, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
     try { await telas[F.tab](); }
     catch (e) { if (e.message !== 'sessão expirada') F.corpo().innerHTML = `<div class="card"><p class="erro">${F.esc(e.message)}</p></div>`; }
   },
@@ -963,6 +963,67 @@ const F = {
     if (!motivo) return;
     try { await F.api('POST', F.url('/apuracao/' + F.competencia), { motivo }); F.pintar(); }
     catch (e) { alert(e.message); }
+  },
+
+  // -------------------------------------------------------------- CFO
+  // Nenhuma constatação vem de modelo estatístico nem de IA: todas são
+  // determinísticas, a partir do razão. Por isso cada uma mostra os FATOS
+  // que a acionaram e — o que quase nenhum painel faz — o que a INVALIDARIA.
+
+  async vCfo() {
+    const [b, c] = await Promise.all([
+      F.api('GET', F.url('/cfo/briefing', { competencia: F.competencia })),
+      F.api('GET', F.url('/conselho', { competencia: F.competencia })).catch(() => null),
+    ]);
+
+    const cor = { critica: 'var(--vx-danger)', alta: 'var(--vx-warn)', media: 'var(--vx-border-strong)', informativa: 'var(--vx-border)' };
+    const fatos = (o) => Object.entries(o || {})
+      .filter(([, v]) => typeof v !== 'object')
+      .map(([k, v]) => `<div class="sub">${F.esc(k.replace(/([A-Z])/g, ' $1').toLowerCase())}: <b>${F.esc(String(v))}</b></div>`).join('');
+
+    const constatacoes = b.constatacoes.length
+      ? b.constatacoes.map((x) => `
+          <div class="card" style="margin-bottom:10px;border-color:${cor[x.gravidade] || 'var(--vx-border)'}">
+            <div class="sub" style="text-transform:uppercase;letter-spacing:.05em">${F.esc(x.gravidade)} · confiança ${x.confianca}%</div>
+            <h4 style="margin:4px 0 8px">${F.esc(x.titulo)}</h4>
+            ${fatos(x.fatos)}
+            ${x.acao ? `<p style="margin:8px 0 0"><b>Ação sugerida:</b> ${F.esc(x.acao)}</p>` : ''}
+            ${x.invalidaSe ? `<div class="aviso" style="margin:10px 0 0"><b>Isto deixa de valer se:</b> ${F.esc(x.invalidaSe)}</div>` : ''}
+          </div>`).join('')
+      : '<div class="card"><p class="sub" style="margin:0">Nenhuma constatação neste mês. Detector sem fato não inventa achado.</p></div>';
+
+    const falhas = (b.falhasDeDeteccao || []).length
+      ? `<div class="aviso"><b>${b.falhasDeDeteccao.length} detector(es) falharam</b> e por isso este briefing está incompleto:
+          ${F.esc(b.falhasDeDeteccao.map((f) => `${f.detector}: ${f.erro}`).join(' · '))}</div>`
+      : '';
+
+    const conselhos = c && c.conselhos.length
+      ? c.conselhos.map((x) => `
+          <div class="card" style="margin-bottom:10px">
+            <h4 style="margin:0 0 4px">${F.esc(x.autor)} — ${F.esc(x.principio)}</h4>
+            <p style="margin:0"><b>Por que apareceu:</b> ${F.esc(x.contexto)}</p>
+            <p style="margin:6px 0 0"><b>Conselho:</b> ${F.esc(x.conselho)}</p>
+            ${x.acaoSugerida ? `<p style="margin:6px 0 0"><b>Ação:</b> ${F.esc(x.acaoSugerida)}</p>` : ''}
+            <div class="sub" style="margin-top:8px">Origem: ${F.esc(x.dominioDeOrigem)} · conferir em ${F.esc(x.fonte.comoConferir)}</div>
+            <div class="sub"><b>Limites:</b> ${F.esc(x.limitacoes)}</div>
+            ${x.contraArgumento ? `<div class="sub"><b>Contra-argumento:</b> ${F.esc(x.contraArgumento)}</div>` : ''}
+            ${(x.divergencia || []).map((d) => `<div class="aviso" style="margin-top:8px">${F.esc(d.tensao)} — ${F.esc(d.autor)}: ${F.esc(d.principio)}</div>`).join('')}
+          </div>`).join('')
+      : '<div class="card"><p class="sub" style="margin:0">Nenhum princípio acionado. Princípio sem fato não aparece — é o comportamento correto.</p></div>';
+
+    F.corpo().innerHTML = F.seletorMes('F.lerMes();F.pintar()') + `
+      <div class="card" style="margin-bottom:12px">
+        <h3 style="margin:0 0 6px">Resultado de ${F.esc(b.competencia)}</h3>
+        <p style="margin:0">receita líquida ${F.esc(b.resultado.receitaLiquida)} · despesas ${F.esc(b.resultado.despesas)} ·
+          resultado <b>${F.esc(b.resultado.resultado)}</b>${b.resultado.margem == null ? '' : ` · margem ${b.resultado.margem}%`}</p>
+        <p class="sub" style="margin:8px 0 0">${F.esc(b.natureza)}</p>
+      </div>
+      ${falhas}
+      <h3 style="margin:16px 0 8px">Constatações (${b.constatacoes.length})</h3>
+      ${constatacoes}
+      <h3 style="margin:22px 0 4px">Conselho dos Mestres</h3>
+      ${c ? `<p class="sub" style="margin:0 0 10px">${F.esc(c.aviso)}</p>` : ''}
+      ${conselhos}`;
   },
 
   // -------------------------------------------------------------- DRE

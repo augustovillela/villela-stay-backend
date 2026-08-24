@@ -3298,6 +3298,81 @@ testeAsync('app do assinante: a prévia da solicitação de fechamento carrega o
   assert.ok('pode' in fecha.previa, 'a prévia não diz se o checklist passava');
 });
 
+testeAsync('app do assinante: toda constatação do CFO mostra o que a INVALIDARIA', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2026-08';
+  await app.F.vCfo();
+  const html = app.escritos['f-corpo'];
+  semLixoApp(html, 'CFO');
+
+  const b = (await pedir('GET', '/finance/api/cfo/briefing?competencia=2026-08', { cookie: cookieA })).corpo;
+  assert.ok(html.includes(escapeSimples(b.natureza)),
+    'a tela não declara que as constatações são determinísticas, e não de IA');
+  for (const c of b.constatacoes) {
+    assert.ok(html.includes(escapeSimples(c.titulo)), `a constatação "${c.titulo}" não aparece`);
+    if (c.invalidaSe) {
+      assert.ok(html.includes(escapeSimples(c.invalidaSe)),
+        `"${c.titulo}" apareceu sem o que a invalidaria — é o que separa constatação de palpite`);
+    }
+  }
+});
+
+testeAsync('app do assinante: detector que falha aparece como falha, não some', async () => {
+  const b = (await pedir('GET', '/finance/api/cfo/briefing?competencia=2026-08', { cookie: cookieA })).corpo;
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2026-08';
+  await app.F.vCfo();
+  const html = app.escritos['f-corpo'];
+  if ((b.falhasDeDeteccao || []).length) {
+    assert.ok(/detector\(es\) falharam/.test(html),
+      'houve falha de detecção e a tela não avisou — briefing silenciosamente incompleto é pior que briefing vazio');
+  } else {
+    assert.ok(!/detector\(es\) falharam/.test(html), 'a tela inventou falha de detecção');
+  }
+});
+
+testeAsync('app do assinante: o Conselho traz origem, limites e onde conferir', async () => {
+  const c = (await pedir('GET', '/finance/api/conselho?competencia=2026-08', { cookie: cookieA })).corpo;
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2026-08';
+  await app.F.vCfo();
+  const html = app.escritos['f-corpo'];
+
+  assert.ok(html.includes(escapeSimples(c.aviso)),
+    'o Conselho apareceu sem o aviso de que são princípios de finanças pessoais, não norma');
+  for (const x of c.conselhos) {
+    assert.ok(html.includes(escapeSimples(x.principio)), `o princípio de ${x.autor} não aparece`);
+    assert.ok(html.includes(escapeSimples(x.fonte.comoConferir)),
+      `o princípio de ${x.autor} apareceu sem onde conferir no manuscrito`);
+    assert.ok(html.includes(escapeSimples(x.limitacoes)),
+      `o princípio de ${x.autor} apareceu sem os limites — conselho sem limite vira norma`);
+  }
+});
+
+testeAsync('app do assinante: sem fato acionado, o Conselho diz que o silêncio é o certo', async () => {
+  // Competência sem movimento: nenhum princípio deve aparecer, e a tela tem
+  // de explicar que isso é o comportamento correto — não uma tela quebrada.
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2019-01';
+  await app.F.vCfo();
+  const html = app.escritos['f-corpo'];
+  semLixoApp(html, 'CFO de mês vazio');
+  const c = (await pedir('GET', '/finance/api/conselho?competencia=2019-01', { cookie: cookieA })).corpo;
+  if (!c.conselhos.length) {
+    assert.ok(/Princípio sem fato não aparece/.test(html),
+      'mês sem fato deixou a área do Conselho muda — vazio sem explicação parece defeito');
+  }
+  const b = (await pedir('GET', '/finance/api/cfo/briefing?competencia=2019-01', { cookie: cookieA })).corpo;
+  if (!b.constatacoes.length) {
+    assert.ok(/Detector sem fato não inventa achado/.test(html),
+      'mês sem constatação ficou em branco — vazio sem explicação parece defeito');
+  }
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
