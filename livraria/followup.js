@@ -19,6 +19,9 @@
 
 function criarFollowup({ repo, emails, enviarEmail, enviarWhatsApp, urls, alertaAugusto }) {
   const DIAS = Number(process.env.LIVRARIA_FOLLOWUP_DIAS || 7);
+  // Janela máxima: passado disto a mensagem fica fora de contexto ("faz alguns
+  // dias" um mês depois soa mal) e provavelmente é pedido antigo reprocessado.
+  const JANELA = Number(process.env.LIVRARIA_FOLLOWUP_JANELA || 30);
   const CANAL = String(process.env.LIVRARIA_FOLLOWUP_CANAL || 'email').toLowerCase();
   const LIGADO = String(process.env.LIVRARIA_FOLLOWUP || 'on').toLowerCase() !== 'off';
   const HORA = Number(process.env.LIVRARIA_FOLLOWUP_HORA || 10);   // 10h de Brasília
@@ -29,8 +32,9 @@ function criarFollowup({ repo, emails, enviarEmail, enviarWhatsApp, urls, alerta
   // `obter` depois, que hidrata itens, cliente e pagamentos.
   function pendentes(agora = new Date()) {
     const limite = new Date(agora.getTime() - DIAS * 24 * 3600 * 1000).toISOString();
+    const piso = new Date(agora.getTime() - (DIAS + JANELA) * 24 * 3600 * 1000).toISOString();
     return repo.Orders.listar({ status: 'pago', limite: 500 })
-      .filter(o => o.pago_em && o.pago_em <= limite && !o.followup_enviado_em)
+      .filter(o => o.pago_em && o.pago_em <= limite && o.pago_em >= piso && !o.followup_enviado_em)
       .slice(0, TETO)
       .map(o => repo.Orders.obter(o.id))
       .filter(o => o && (o.cliente || {}).email);

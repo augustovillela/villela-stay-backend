@@ -46,6 +46,17 @@ function coluna(tabela, nome, definicao) {
 // Marca do follow-up pós-compra (pedido de avaliação) — ver livraria/followup.js.
 coluna('orders', 'followup_enviado_em', 'TEXT');
 
+// Supressão de backfill (idempotente): quem comprou ANTES de a rotina existir
+// não pode receber "faz alguns dias que você recebeu" semanas depois. Sem isto,
+// ligar a feature varreria o histórico inteiro e escreveria para clientes
+// antigos de uma vez — o pior jeito de estrear uma automação de mensagem.
+try {
+  const r = db.prepare(`UPDATE orders SET followup_enviado_em = 'suprimido: compra anterior à ativação'
+    WHERE status = 'pago' AND followup_enviado_em IS NULL
+      AND COALESCE(pago_em, created_at) < '2026-08-24T00:00:00.000Z'`).run();
+  if (r.changes) console.log(`[livraria] follow-up: ${r.changes} pedido(s) antigo(s) suprimido(s)`);
+} catch (e) { console.error('[livraria] supressão de backfill:', e.message); }
+
 // Correção pontual (idempotente): a capa do 1º livro apontava para um link de
 // VISUALIZAÇÃO do Google Drive, que não renderiza como <img>. Capa oficial agora
 // hospedada no próprio backend em /assets/livros/ (só substitui se ainda for o Drive).
