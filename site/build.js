@@ -613,7 +613,7 @@ const PRODUTOS_GRUPO = [
     frase: ['Plataforma de aprendizagem criativa para crianças de 7 a 12 anos: missões que viram projetos de verdade, tutor de IA com segurança em primeiro lugar e painel para os pais. Em beta fechado por convite.', 'A creative learning platform for kids aged 7–12: missions that become real projects, an AI tutor with safety first and a parents dashboard. In invite-only closed beta.', 'Plataforma de aprendizaje creativo para niños de 7 a 12 años: misiones que se vuelven proyectos reales, tutor de IA con seguridad ante todo y panel para los padres. En beta cerrada por invitación.'] },
   // 14º card (24/08/2026). ERP financeiro: nasce resolvendo a contabilidade
   // da própria Villela Stay (tenant nº 1) e é vendável a PMEs.
-  { nome: 'Villela Finance', pasta: 'villela-finance', cor: '#0F4C81', url: 'https://finance.villelastay.com.br',
+  { nome: 'Villela Finance', pasta: 'villela-finance', cor: '#159A78', url: 'https://finance.villelastay.com.br',
     tag: ['O número que fecha, e explica de onde veio', 'Figures that balance — and say where they came from', 'Números que cuadran y dicen de dónde vienen'],
     frase: ['ERP financeiro com razão de partida dobrada: extrato conciliado, contas a pagar e receber, fechamento e previsão de caixa — cada indicador abre a fórmula e a origem.', 'A financial ERP built on a double-entry ledger: reconciled bank feed, payables and receivables, closing and cash forecast — every indicator opens its formula and origin.', 'ERP financiero con libro mayor por partida doble: extracto conciliado, cuentas por pagar y cobrar, cierre y previsión de caja — cada indicador abre su fórmula y su origen.'] },
   // 13º card (15/08/2026). Primeiro produto do grupo que NÃO roda no backend

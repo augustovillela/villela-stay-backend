@@ -634,7 +634,7 @@ const VERTICAL_DA_SECAO = {
   legal: 'legal', 'legal-saas': 'legal',
   livraria: 'livraria', vdocs: 'docs', vpe: 'projects', vsm: 'manager',
   vcrm: 'crm', academy: 'academy', closet: 'closet', vitrine: 'stay', kids: 'kids',
-  finance: 'grupo',  // sem vertical propria no design system — navy do grupo
+  finance: 'finance', // Jade #159A78 do Brand Book oficial v1.0
   cozinhe: 'grupo',  // sem vertical propria no design system — navy do grupo
   drone: 'grupo',    // projeto, ainda sem marca propria — navy do grupo
   origena: 'livraria', // acento sepia do design system — o mais proximo do marrom provisorio da marca

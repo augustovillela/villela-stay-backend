@@ -3513,6 +3513,35 @@ testeAsync('PWA: o service worker do Finance não cacheia a API', async () => {
     'o SW poderia servir resposta de API a partir do cache');
 });
 
+testeAsync('marca: a landing e o app usam a identidade OFICIAL, não a improvisada', async () => {
+  const paginas = require('./paginas');
+  const landing = paginas.landingHTML();
+  const app = paginas.appHTML();
+
+  // Jade #159A78 é o acento do Brand Book v1.0. O #0F4C81 era um azul que eu
+  // escolhi antes de a marca existir — se ele voltar, alguém regrediu.
+  assert.ok(landing.includes('#159A78'), 'a landing não usa o Jade oficial');
+  assert.ok(!/0F4C81/i.test(landing) && !/0F4C81/i.test(app),
+    'o azul improvisado voltou ao produto — a identidade oficial é o Jade');
+  assert.ok(landing.includes('Finanças sob controle. Decisões com inteligência.'),
+    'a tagline oficial não aparece na landing');
+  assert.ok(app.includes('data-vertical="finance"'), 'o app não declara a vertical do design system');
+
+  // O logo é arquivo em curvas, não texto re-tipografado: redesenhar a
+  // assinatura em CSS cria uma segunda marca sem querer.
+  assert.ok(landing.includes('logo-negativo.svg'), 'a landing não usa o arquivo oficial do logo');
+  for (const arq of ['favicon.svg', 'logo-negativo.svg', 'simbolo-v.svg', 'favicon-192.png', 'icon-pwa.png']) {
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'brand', 'villela-finance', arq)),
+      `falta o arquivo de marca ${arq}`);
+  }
+});
+
+testeAsync('marca: a vertical `finance` existe no design system do grupo', async () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'assets', 'brand', 'villela-ui.css'), 'utf8');
+  assert.ok(/\[data-vertical="finance"\][^}]*#159A78/.test(css),
+    'a vertical finance não está no villela-ui.css com o Jade oficial — o app pediria um acento que não existe');
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================

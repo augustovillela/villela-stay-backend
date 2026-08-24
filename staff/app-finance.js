@@ -14,6 +14,7 @@
 // confiar nos números?" para TODAS as contas de uma vez — razão fechando,
 // cadeia de auditoria íntegra e diário replicado. Um ERP que não mostra
 // isso pede confiança em vez de prová-la.
+// Acento Jade #159A78 (vertical `finance` do design system, Brand Book v1.0).
 // Compartilha o escopo global com app-core.js (scripts clássicos).
 // ============================================================================
 

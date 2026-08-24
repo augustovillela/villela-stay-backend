@@ -481,6 +481,7 @@ a.vx-kpi:hover, button.vx-kpi:hover { box-shadow: var(--vx-shadow-2); transform:
 /* Kids/Invente = Violeta Invente do brand book (ago/2026); -2 e o Azul Portal. Acento so do staff. */
 .vx[data-vertical="kids"]      { --vx-accent: #6C4DFF; --vx-accent-2: #14265C; --vx-accent-soft: #EFECFF; }
 /* Neutro (Inicio, Operacao, Gestao, Relatorios...): o navy do grupo e o acento. */
+.vx[data-vertical="finance"]   { --vx-accent: #159A78; --vx-accent-2: #0F7A5E; --vx-accent-soft: #E6F5F0; }
 .vx[data-vertical="grupo"]     { --vx-accent: #24365C; --vx-accent-2: #1B2A4A; --vx-accent-soft: #ECEFF5; }
 
 /* =====================================================================

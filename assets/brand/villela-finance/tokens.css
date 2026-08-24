@@ -1,0 +1,32 @@
+:root {
+  --vf-navy: #1B2A4A;
+  --vf-gold: #C9A227;
+  --vf-jade: #159A78;
+  --vf-mint: #45D3A2;
+  --vf-ice: #F8F9FA;
+  --vf-graphite: #1F2933;
+  --vf-muted: #536273;
+  --vf-font-brand: "Lora", Georgia, "Times New Roman", serif;
+  --vf-font-ui: "Inter", "Segoe UI", Arial, sans-serif;
+}
+
+.vf-brand-surface {
+  color: var(--vf-ice);
+  background: var(--vf-navy);
+  font-family: var(--vf-font-ui);
+}
+
+.vf-brand-heading {
+  font-family: var(--vf-font-brand);
+  color: var(--vf-navy);
+}
+
+.vf-brand-accent {
+  color: var(--vf-jade);
+}
+
+@media (prefers-color-scheme: dark) {
+  .vf-brand-accent {
+    color: var(--vf-mint);
+  }
+}

@@ -67,16 +67,7 @@ const PRODUTOS = [
     slug: 'finance', base: '/finance', inicio: '/finance/app', escopo: '/finance/',
     nome: 'Villela Finance', curto: 'Finance', marca: 'villela-finance',
     desc: 'ERP financeiro: razão, extrato conciliado, contas a pagar e receber, fechamento e caixa.',
-    tema: '#0F4C81',
-    // Ícone em SVG, e não PNG como os demais: a marca do Finance ainda não
-    // tem raster, e apontar o manifest para um PNG inexistente instalaria o
-    // app com ícone quebrado — sem erro nenhum, só um quadrado vazio na tela
-    // inicial. `sizes: 'any'` é o que o Chrome espera de SVG. Quando houver o
-    // PNG, basta remover este campo e cair no padrão.
-    icones: [
-      { src: '/assets/brand/villela-finance/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-      { src: '/assets/brand/villela-finance/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
-    ],
+    tema: '#1B2A4A',   // navy do grupo na barra do sistema; o acento jade fica na interface
   },
   {
     slug: 'origena', base: '/origena', inicio: '/origena/app', escopo: '/origena/',

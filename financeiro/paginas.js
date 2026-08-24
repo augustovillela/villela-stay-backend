@@ -22,19 +22,18 @@ const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { mini
 const s = (v, max = 400) => String(v == null ? '' : v).trim().slice(0, max);
 
 const BRAND = '/assets/brand/villela-finance';
-const ACENTO = '#0F4C81';
+const ACENTO = '#159A78';   // Finance Jade — Brand Book oficial v1.0
 
-const CSS = `:root{--navy:#1B2A4A;--navy2:#24365C;--gold:#C9A227;--ice:#F8F9FA;--graf:#1F2933;--acento:${ACENTO};--acento2:#0B3A63;--borda:#E2E6EC}
+const CSS = `:root{--navy:#1B2A4A;--navy2:#24365C;--gold:#C9A227;--ice:#F8F9FA;--graf:#1F2933;--acento:${ACENTO};--acento2:#0F7A5E;--jade:#159A78;--mint:#45D3A2;--borda:#E2E6EC}
 *{box-sizing:border-box}body{font-family:'Inter',system-ui,'Segoe UI',Arial,sans-serif;margin:0;color:var(--graf);background:var(--ice);line-height:1.55}
 h1,h2,h3{font-family:'Lora',Georgia,serif;line-height:1.2}
 a{color:var(--acento)}.wrap{max-width:1060px;margin:0 auto;padding:0 18px}
 header.top{background:var(--navy2);color:#fff}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 18px}
 header.top a{color:#E8ECF4;text-decoration:none}header.top nav{display:flex;gap:18px;flex-wrap:wrap}
-.marca{display:inline-flex;align-items:center;gap:12px}.marca img{height:46px}
-.marca .m1{font-family:'Lora',Georgia,serif;font-weight:700;font-size:1.35rem;color:#fff}
-.marca .m2{font-weight:600;font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:#7FB3DE}
+.marca{height:52px;width:auto;display:block}
 .hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#f4f6f9;padding:66px 0 74px}
+.tagline{color:var(--mint);font-weight:600;letter-spacing:.02em;margin:0}
 .hero h1{font-size:2.5rem;margin:.4rem 0;max-width:720px}.hero p{font-size:1.15rem;max-width:620px;color:#cfd8e6}
 .badge{display:inline-block;background:var(--gold);color:var(--navy);font-weight:700;padding:4px 13px;border-radius:20px;font-size:.82rem}
 .btn{display:inline-block;background:var(--acento);color:#fff;font-weight:700;border:0;border-radius:26px;padding:13px 28px;cursor:pointer;font-size:1rem;text-decoration:none}
@@ -78,7 +77,7 @@ const HEAD = (titulo, descricao) => `<!doctype html><html lang="pt-BR"><head>
 <meta name="theme-color" content="#1B2A4A">
 <style>${CSS}</style></head><body>`;
 
-const MARCA = `<span class="marca"><img src="${BRAND}/logo-negativo.svg" alt="Villela Finance"><span><span class="m1">Villela</span> <span class="m2">Finance</span></span></span>`;
+const MARCA = `<img class="marca" src="${BRAND}/logo-negativo.svg" alt="Villela Finance" width="260" height="60">`;
 
 const TOPO = `<header class="top"><div class="wrap">
   <a href="/finance">${MARCA}</a>
@@ -124,6 +123,7 @@ function landingHTML() {
   ) + TOPO + `
 <section class="hero"><div class="wrap">
   <span class="badge">Em produção · antes do lançamento comercial</span>
+  <p class="tagline">Finanças sob controle. Decisões com inteligência.</p>
   <h1>O número que fecha, e explica de onde veio.</h1>
   <p>ERP financeiro construído sobre um razão de partida dobrada. Cada indicador abre a fórmula,
      as contas que o compõem e a linha do extrato que o originou.</p>
@@ -310,7 +310,7 @@ const appHTML = () => `<!doctype html><html lang="pt-BR"><head>
 <link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7">
 <link rel="manifest" href="/finance/manifest.webmanifest">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/finance/sw.js').catch(function(){})})}</script>
-</head><body class="vx"><main id="app"><p style="padding:32px;text-align:center">Carregando…</p></main>
+</head><body class="vx" data-vertical="finance"><main id="app"><p style="padding:32px;text-align:center">Carregando…</p></main>
 <script src="/finance/app.js?v=1"></script></body></html>`;
 
 function registrarPaginas(app, { express }) {
