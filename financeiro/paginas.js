@@ -33,7 +33,7 @@ header.top .wrap{display:flex;align-items:center;justify-content:space-between;g
 header.top a{color:#E8ECF4;text-decoration:none}header.top nav{display:flex;gap:18px;flex-wrap:wrap}
 .marca{height:52px;width:auto;display:block}
 .hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#f4f6f9;padding:66px 0 74px}
-.tagline{color:var(--mint);font-weight:600;letter-spacing:.02em;margin:0}
+.hero p.tagline{color:var(--mint);font-weight:600;letter-spacing:.02em;margin:0;font-size:1rem}
 .hero h1{font-size:2.5rem;margin:.4rem 0;max-width:720px}.hero p{font-size:1.15rem;max-width:620px;color:#cfd8e6}
 .badge{display:inline-block;background:var(--gold);color:var(--navy);font-weight:700;padding:4px 13px;border-radius:20px;font-size:.82rem}
 .btn{display:inline-block;background:var(--acento);color:#fff;font-weight:700;border:0;border-radius:26px;padding:13px 28px;cursor:pointer;font-size:1rem;text-decoration:none}

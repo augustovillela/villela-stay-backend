@@ -3527,6 +3527,11 @@ testeAsync('marca: a landing e o app usam a identidade OFICIAL, não a improvisa
     'a tagline oficial não aparece na landing');
   assert.ok(app.includes('data-vertical="finance"'), 'o app não declara a vertical do design system');
 
+  // A regra da tagline tem de vencer `.hero p` na especificidade: classe pura
+  // perde para classe+elemento, e a tagline saía no azul apagado do herói.
+  assert.ok(/\.hero p\.tagline\{[^}]*var\(--mint\)/.test(landing),
+    'a regra da tagline não é específica o bastante para vencer `.hero p` — ela sai na cor errada');
+
   // O logo é arquivo em curvas, não texto re-tipografado: redesenhar a
   // assinatura em CSS cria uma segunda marca sem querer.
   assert.ok(landing.includes('logo-negativo.svg'), 'a landing não usa o arquivo oficial do logo');
