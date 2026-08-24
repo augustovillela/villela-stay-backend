@@ -126,7 +126,7 @@ const json = (corpo) => ({
   // ------------------------------------------------------- não verificável
   console.log('\n4. O que esta verificação NÃO alcança');
   aviso('isolamento entre contas, razão balanceado e cadeia de auditoria: exigem sessão — ' +
-        'estão cobertos por `npm run test:finance` (145 testes) e pelo painel /staff/api/finance/saude.');
+        'estão cobertos por `npm run test:finance` (185 testes) e pelo painel /staff/api/finance/saude.');
   aviso('réplica do diário no R2: confira em /staff/api/finance/saude (campo `diario.configurada`). ' +
         'Enquanto for `false`, o RPO real é o do snapshot diário, não os 5 minutos.');
   aviso('adaptador Stays: rode a PRÉVIA antes da primeira sincronização real — ' +
