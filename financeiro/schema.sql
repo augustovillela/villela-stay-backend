@@ -289,6 +289,7 @@ CREATE TABLE IF NOT EXISTS fin_contrapartes (
   dados_bancarios TEXT NOT NULL DEFAULT '{}',
   externo_id   TEXT NOT NULL DEFAULT '',
   status       TEXT NOT NULL DEFAULT 'ativo',
+  anonimizado_em TEXT NOT NULL DEFAULT '',
   criado_em    TEXT NOT NULL,
   criado_por   TEXT DEFAULT '',
   atualizado_em TEXT DEFAULT ''
@@ -617,9 +618,22 @@ BEGIN
 END;
 
 -- 3. Linha de lote contabilizado é imutável.
+-- A SUBSTÂNCIA contábil da linha é imutável; o `memo` não é substância —
+-- é texto descritivo, e o gatilho do LOTE já o tratava assim. A exceção
+-- existe porque a anonimização (LGPD art. 18) precisa poder apagar o nome
+-- de uma pessoa de dentro do histórico sem destruir o lançamento.
+-- Valor, conta, centro e contraparte continuam intocáveis.
 CREATE TRIGGER IF NOT EXISTS trg_fin_linha_imutavel
 BEFORE UPDATE ON fin_linhas
-FOR EACH ROW WHEN (SELECT status FROM fin_lotes WHERE id = OLD.lote_id) <> 'rascunho'
+FOR EACH ROW WHEN (SELECT status FROM fin_lotes WHERE id = OLD.lote_id) <> 'rascunho' AND (
+     NEW.lote_id         <> OLD.lote_id
+  OR NEW.conta_id        <> OLD.conta_id
+  OR NEW.debito_cents    <> OLD.debito_cents
+  OR NEW.credito_cents   <> OLD.credito_cents
+  OR NEW.centro_custo_id <> OLD.centro_custo_id
+  OR NEW.contraparte_id  <> OLD.contraparte_id
+  OR NEW.ordem           <> OLD.ordem
+)
 BEGIN
   SELECT RAISE(ABORT, 'linha de lote contabilizado e imutavel');
 END;

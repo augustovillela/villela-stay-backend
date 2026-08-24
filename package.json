@@ -20,6 +20,7 @@
     "test:kids": "node kids/selftest.js",
     "test:origena": "node --env-file-if-exists=.env origena/selftest.js",
     "origena:worker": "node --env-file-if-exists=.env origena/worker.js",
+    "seguranca:finance": "node financeiro/seguranca.js",
     "verificar:finance": "node financeiro/verificar-producao.js",
     "verificar:closet": "node closet/verificar-producao.js",
     "verificar:vitrine": "node vitrine/verificar-producao.js",

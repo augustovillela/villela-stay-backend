@@ -19,7 +19,8 @@
 // =====================================================================
 'use strict';
 const crypto = require('crypto');
-const { db, nowISO } = require('./db');
+const { nowISO } = require('./db');
+const sessao = require('./sessao');
 
 class ErroDeMfa extends Error {
   constructor(msg) { super(msg); this.name = 'ErroDeMfa'; this.status = 400; }
@@ -120,7 +121,8 @@ function conferirCodigo(segredoBase32, codigo, agora) {
 }
 
 // ------------------------------------------------------------- cadastro
-const usuario = (id) => db.prepare('SELECT * FROM tenant_users WHERE id = ?').get(id) || null;
+// Pré-contexto: as consultas vivem em sessao.js, que é a casa delas.
+const usuario = (id) => sessao.mfaDoUsuario(id);
 
 /**
  * Passo 1: gera o segredo e devolve o `otpauth://` para o QR.
@@ -136,8 +138,7 @@ function iniciar(userId) {
   if (u.mfa_ativo === 1) throw new ErroDeMfa('O segundo fator já está ativo nesta conta.');
 
   const segredo = base32(crypto.randomBytes(20));
-  db.prepare('UPDATE tenant_users SET mfa_segredo = ?, mfa_ativo = 0 WHERE id = ?')
-    .run(cifrar(segredo), userId);
+  sessao.gravarMfa(userId, { segredo: cifrar(segredo), ativo: false });
 
   const rotulo = encodeURIComponent(`${EMISSOR}:${u.email}`);
   return {
@@ -157,7 +158,7 @@ function confirmar(userId, codigo) {
   const passo = conferirCodigo(decifrar(u.mfa_segredo), codigo);
   if (passo === null) throw new ErroDeMfa('Código incorreto. Confira o relógio do aparelho e tente o código atual.');
 
-  db.prepare('UPDATE tenant_users SET mfa_ativo = 1, mfa_ativado_em = ? WHERE id = ?').run(nowISO(), userId);
+  sessao.gravarMfa(userId, { ativo: true, ativadoEm: nowISO() });
   registrarUso(userId, passo);
   return { ativo: true, ativadoEm: nowISO() };
 }
@@ -182,7 +183,7 @@ function verificar(userId, codigo) {
 function desativar(userId, codigo) {
   const v = verificar(userId, codigo);
   if (!v.ok) throw new ErroDeMfa('Para desativar o segundo fator é preciso um código válido.');
-  db.prepare("UPDATE tenant_users SET mfa_ativo = 0, mfa_segredo = '', mfa_ativado_em = '' WHERE id = ?").run(userId);
+  sessao.gravarMfa(userId, { segredo: '', ativo: false, ativadoEm: '' });
   return { ativo: false };
 }
 

@@ -193,6 +193,107 @@ function aplicarDadosBancarios({ contraparteId, dados }) {
   });
 }
 
+/**
+ * ANONIMIZAÇÃO (LGPD art. 18, V) — a resposta possível a um pedido de
+ * eliminação quando o dado está preso numa obrigação de escrituração.
+ *
+ * O que sai: nome, documento, e-mail, telefone, dados bancários, e o nome
+ * repetido em título, memo de lote, memo de linha e transação bancária.
+ * O que FICA: valor, data, conta e centro de custo — a substância
+ * contábil, que o art. 16, I manda preservar.
+ *
+ * Duas sutilezas que decidem se isto é anonimização de verdade:
+ *
+ *   1. A AUDITORIA NÃO REGISTRA O NOME ANTIGO. O log é append-only e
+ *      imutável: escrever ali o nome que se está apagando o preservaria
+ *      para sempre — seria o oposto de anonimizar. Registra-se o id, o
+ *      motivo e QUANTOS campos foram limpos.
+ *   2. A operação devolve o que NÃO conseguiu limpar. Anonimização que se
+ *      declara completa sem ser é pior do que anonimização parcial
+ *      declarada.
+ *
+ * É ação de nível 3: irreversível e afeta histórico.
+ */
+function anonimizar(id, { motivo }) {
+  if (!String(motivo || '').trim()) throw new ErroDeContraparte('Anonimizar exige motivo — vai para a auditoria.');
+  const c = repo.contraparte(id);
+  if (!c) throw new ErroDeContraparte('Contraparte não encontrada.');
+  if (c.anonimizado_em) throw new ErroDeContraparte('Esta contraparte já foi anonimizada.');
+
+  const apelido = `Titular anonimizado ${String(id).slice(-6)}`;
+  const nomeAntigo = c.nome;
+  const limpos = [];
+
+  return transacao(() => {
+    repo.exec(
+      `UPDATE fin_contrapartes SET nome = :apelido, documento = '', email = '', telefone = '',
+         dados_bancarios = '{}', externo_id = '', anonimizado_em = :agora, atualizado_em = :agora
+        WHERE tenant_id = :tenant AND id = :id`,
+      { id, apelido, agora: nowISO() });
+    limpos.push('cadastro');
+
+    // O nome também mora, repetido, no texto de outros registros. Trocar
+    // só o cadastro deixaria a pessoa identificável no histórico.
+    const troca = (sql, params) => {
+      const r = repo.exec(sql, Object.assign({ id, apelido, nome: nomeAntigo }, params));
+      return (r && r.changes) || 0;
+    };
+    const emTitulos = troca(
+      `UPDATE fin_titulos SET descricao = replace(descricao, :nome, :apelido)
+        WHERE tenant_id = :tenant AND contraparte_id = :id AND instr(descricao, :nome) > 0`);
+    const emLotes = troca(
+      `UPDATE fin_lotes SET memo = replace(memo, :nome, :apelido)
+        WHERE tenant_id = :tenant AND instr(memo, :nome) > 0
+          AND id IN (SELECT lote_id FROM fin_linhas WHERE tenant_id = :tenant AND contraparte_id = :id)`);
+    // Atenção ao alcance: só a linha do subledger carrega `contraparte_id`.
+    // A linha de despesa do mesmo lote não carrega — e é justamente nela
+    // que o nome costuma aparecer no histórico. O critério certo é "linha
+    // de um lote que envolve esta contraparte", não "linha desta contraparte".
+    const emLinhas = troca(
+      `UPDATE fin_linhas SET memo = replace(memo, :nome, :apelido)
+        WHERE tenant_id = :tenant AND instr(memo, :nome) > 0
+          AND lote_id IN (SELECT lote_id FROM fin_linhas
+                           WHERE tenant_id = :tenant AND contraparte_id = :id)`);
+    const emTransacoes = troca(
+      `UPDATE fin_transacoes_banco SET contraparte_nome = :apelido, bruto = '{}'
+        WHERE tenant_id = :tenant AND contraparte_nome = :nome`);
+
+    if (emTitulos) limpos.push(`${emTitulos} título(s)`);
+    if (emLotes) limpos.push(`${emLotes} histórico(s) de lote`);
+    if (emLinhas) limpos.push(`${emLinhas} histórico(s) de linha`);
+    if (emTransacoes) limpos.push(`${emTransacoes} transação(ões) de extrato`);
+
+    // O que NÃO dá para limpar, dito em voz alta.
+    const restante = [];
+    const noDiario = 'O diário replicado (arquivos JSONL e cópia no R2) é append-only por natureza: ' +
+      'o nome antigo permanece nos registros já gravados e nas cópias de backup até o fim da retenção.';
+    restante.push(noDiario);
+    const emAuditoriaAntiga = repo.q(
+      `SELECT COUNT(*) AS n FROM audit_logs WHERE tenant_id = :tenant AND instr(detalhe, :nome) > 0`,
+      { nome: nomeAntigo })[0].n;
+    if (emAuditoriaAntiga) {
+      restante.push(`${emAuditoriaAntiga} registro(s) de auditoria anteriores citam o nome. ` +
+        'A trilha é imutável por trigger e por cadeia de hash: apagá-la destruiria a prova contábil.');
+    }
+
+    auditoria.registrar('contraparte.anonimizar', {
+      objetoTipo: 'contraparte', objetoId: id, motivo,
+      // NUNCA o nome antigo: o log é imutável e o preservaria para sempre.
+      detalhe: { camposLimpos: limpos, naoLimpos: restante.length, apelido },
+    });
+
+    return {
+      contraparteId: id, apelido,
+      limpos,
+      naoLimpos: restante,
+      completa: false,
+      aviso: 'Anonimização PARCIAL por desenho: o valor, a data e a conta dos lançamentos são ' +
+        'preservados por obrigação de escrituração (LGPD art. 16, I). Os pontos acima também não ' +
+        'foram limpos — informe o titular do que permanece e por quê.',
+    };
+  });
+}
+
 /** Só os últimos dígitos — o resto não precisa aparecer em tela nem log. */
 function mascarar(d = {}) {
   const fim = (v) => { const s = String(v || ''); return s ? '•••' + s.slice(-3) : ''; };
@@ -222,5 +323,5 @@ const buscar = (id) => {
 
 module.exports = {
   ErroDeContraparte, TIPOS, criar, atualizar, listar, buscar,
-  procurarDuplicata, solicitarDadosBancarios, aplicarDadosBancarios, mascarar, normalizar,
+  procurarDuplicata, solicitarDadosBancarios, aplicarDadosBancarios, anonimizar, mascarar, normalizar,
 };

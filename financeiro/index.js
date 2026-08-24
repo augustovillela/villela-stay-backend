@@ -60,6 +60,8 @@ const exportacao = require('./exportacao');
 const paginas = require('./paginas');
 const mfa = require('./mfa');
 const restauracao = require('./restauracao');
+const retencao = require('./retencao');
+const seguranca = require('./seguranca');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -152,6 +154,10 @@ function registrarExecutores() {
   // que existe. Só se aplica depois que outra pessoa comparou antes/depois.
   aprovacoes.registrarExecutor('contraparte.dados_bancarios', (payload) =>
     contrapartes.aplicarDadosBancarios(payload));
+
+  // Anonimização é irreversível e mexe no histórico: nível 3.
+  aprovacoes.registrarExecutor('contraparte.anonimizar', (payload) =>
+    contrapartes.anonimizar(payload.contraparteId, { motivo: payload.motivo }));
 
   // Apuração de resultado reescreve a leitura de um exercício inteiro
   // (depois dela o DRE do período zera). Por isso é material.

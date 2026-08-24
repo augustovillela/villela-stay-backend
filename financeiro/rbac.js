@@ -52,6 +52,7 @@ const ACOES = {
   'pagamento.executar':       { nivelMinimo: 3, permissao: 'pagar' },
   'pagamento.lote':           { nivelMinimo: 3, permissao: 'pagar' },
   'contraparte.dados_bancarios': { nivelMinimo: 3, permissao: 'cadastrar' },
+  'contraparte.anonimizar':   { nivelMinimo: 3, permissao: 'cadastrar' },
   'contraparte.primeiro_pagamento': { nivelMinimo: 3, permissao: 'pagar' },
   'periodo.fechar':           { nivelMinimo: 3, permissao: 'fechar' },
   'resultado.apurar':         { nivelMinimo: 3, permissao: 'fechar' },

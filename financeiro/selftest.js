@@ -2310,6 +2310,92 @@ testeAsync('HTTP: catálogo mostra as ações proibidas com o motivo', async () 
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
+// 13b. ANONIMIZAÇÃO (LGPD art. 18) — apagar a pessoa, preservar o razão
+// =====================================================================
+teste('anonimização: apaga a pessoa e PRESERVA valor, data e conta', () => {
+  const alvo = naA(() => contrapartes.criar({
+    entidadeId: empresaA.id, tipo: 'fornecedor',
+    nome: 'Joana Pereira Silva', documento: '529.982.247-25'.replace(/\D/g, '') === '52998224725' ? '' : '',
+    email: 'joana@exemplo.com', telefone: '61999990000',
+  }));
+  const t = naA(() => titulos.criar({
+    entidadeId: empresaA.id, especie: 'pagar', contraparteId: alvo.id,
+    documento: 'NF-ANON', descricao: 'Serviço prestado por Joana Pereira Silva',
+    valorCents: 45000, competencia: '2026-08', dataFato: '2026-08-07',
+    rateio: [{ contaCodigo: '4.2.1.007', valorCents: 45000, memo: 'reembolso a Joana Pereira Silva' }],
+    parcelas: { quantidade: 1, primeiroVencimento: '2026-08-27' },
+  }));
+  const loteId = t.lote.id;
+  const antesTotal = naA(() => repo.lotePorId(loteId)).total_cents;
+
+  const r = naA(() => contrapartes.anonimizar(alvo.id, { motivo: 'pedido de eliminação do titular' }));
+
+  // 1. o cadastro some
+  const c = naA(() => contrapartes.buscar(alvo.id));
+  assert.ok(/^Titular anonimizado/.test(c.nome), `nome não foi trocado: ${c.nome}`);
+  assert.strictEqual(c.email, '');
+  assert.strictEqual(c.telefone, '');
+  assert.ok(c.anonimizado_em, 'não marcou quando foi anonimizada');
+
+  // 2. o nome some do texto do título e dos históricos
+  const detalhe = naA(() => titulos.buscar(t.titulo.id));
+  assert.ok(!/Joana Pereira Silva/.test(detalhe.descricao), `o nome ficou no título: ${detalhe.descricao}`);
+  const linhas = naA(() => repo.linhasDoLote(loteId));
+  assert.ok(!linhas.some(l => /Joana Pereira Silva/.test(l.memo)), 'o nome ficou no histórico da linha');
+  assert.ok(!/Joana Pereira Silva/.test(naA(() => repo.lotePorId(loteId)).memo), 'o nome ficou no memo do lote');
+
+  // 3. a SUBSTÂNCIA contábil não foi tocada
+  assert.strictEqual(naA(() => repo.lotePorId(loteId)).total_cents, antesTotal, 'o valor do lote mudou');
+  assert.strictEqual(linhas.reduce((s, l) => s + l.debito_cents, 0),
+    linhas.reduce((s, l) => s + l.credito_cents, 0), 'o lote desbalanceou');
+  assert.strictEqual(naA(() => ledger.conferirBalanceamento(empresaA.id)).ok, true);
+
+  // 4. a auditoria NÃO guardou o nome antigo — senão não seria anonimização
+  const log = naA(() => auditoria.listar({ objetoTipo: 'contraparte', objetoId: alvo.id, limite: 10 }));
+  const evento = log.find(l => l.acao === 'contraparte.anonimizar');
+  assert.ok(evento, 'a anonimização não foi auditada');
+  assert.ok(!/Joana Pereira Silva/.test(evento.detalhe),
+    'a auditoria IMUTÁVEL guardou o nome que se queria apagar — isso anula a anonimização');
+
+  // 5. e ela DIZ o que não conseguiu limpar
+  assert.strictEqual(r.completa, false);
+  assert.ok(r.naoLimpos.some(x => /diário/i.test(x)), 'não avisa que o diário replicado mantém o nome');
+  assert.ok(/art\. 16, I/.test(r.aviso), 'não explica por que o lançamento fica');
+});
+
+lanca('anonimização: exige motivo', () => {
+  const c = naA(() => contrapartes.criar({ entidadeId: empresaA.id, nome: 'Sem Motivo Ltda' }));
+  return naA(() => contrapartes.anonimizar(c.id, {}));
+}, /motivo/);
+
+teste('anonimização: não se anonimiza duas vezes', () => {
+  const c = naA(() => contrapartes.criar({ entidadeId: empresaA.id, nome: 'Duas Vezes Ltda' }));
+  naA(() => contrapartes.anonimizar(c.id, { motivo: 'primeiro pedido' }));
+  assert.throws(() => naA(() => contrapartes.anonimizar(c.id, { motivo: 'de novo' })), /já foi anonimizada/);
+});
+
+teste('anonimização: o gatilho continua barrando alteração de SUBSTÂNCIA', () => {
+  const linha = naA(() => repo.q(
+    `SELECT l.id FROM fin_linhas l JOIN fin_lotes b ON b.id = l.lote_id
+      WHERE l.tenant_id = :tenant AND b.status <> 'rascunho' LIMIT 1`, {}))[0];
+  // memo pode (é o que a anonimização precisa)...
+  naA(() => db.prepare('UPDATE fin_linhas SET memo = ? WHERE id = ?').run('memo novo', linha.id));
+  // ...valor NÃO pode.
+  assert.throws(
+    () => db.prepare('UPDATE fin_linhas SET debito_cents = debito_cents + 1 WHERE id = ?').run(linha.id),
+    /imutavel/, 'o gatilho deixou alterar o VALOR de uma linha contabilizada');
+  assert.throws(
+    () => db.prepare('UPDATE fin_linhas SET conta_id = ? WHERE id = ?').run('outra', linha.id),
+    /imutavel/, 'o gatilho deixou trocar a CONTA de uma linha contabilizada');
+});
+
+teste('anonimização: é ação de nível 3', () => {
+  assert.strictEqual(rbac.nivelDe('contraparte.anonimizar'), 3);
+  assert.strictEqual(rbac.nivelDe('contraparte.anonimizar', { 'contraparte.anonimizar': 1 }), 3,
+    'configuração conseguiu rebaixar uma ação irreversível');
+});
+
+// =====================================================================
 // 14a. SEGUNDO FATOR (fase 10) — TOTP de verdade
 // =====================================================================
 const mfa = require('./mfa');
@@ -2511,6 +2597,101 @@ testeAsync('restauração: o exercício completo passa e não toca no banco em u
   assert.ok(/RPO do ADR-0004 é verificável/.test(e.veredito));
   assert.strictEqual(db.prepare("SELECT COUNT(*) AS n FROM fin_lotes").get().n, antes,
     'o exercício alterou o banco em uso — devia ser só leitura');
+});
+
+// =====================================================================
+// 14c. RETENÇÃO E VARREDURA DE SEGURANÇA (fase 10)
+// =====================================================================
+const retencao = require('./retencao');
+const seguranca = require('./seguranca');
+
+teste('retenção: o padrão é SIMULAR — não apaga nada', () => {
+  paginas.registrarInteresse({ email: 'antigo@exemplo.com', nome: 'Antigo' }, '');
+  // Envelhece o registro para além do prazo da regra.
+  db.prepare("UPDATE fin_interessados SET criado_em = ? WHERE email = ?")
+    .run('2020-01-01T00:00:00.000Z', 'antigo@exemplo.com');
+
+  const antes = db.prepare('SELECT COUNT(*) AS n FROM fin_interessados').get().n;
+  const r = naA(() => retencao.executar());
+  assert.strictEqual(r.aplicado, false);
+  assert.ok(/SIMULAÇÃO/.test(r.aviso));
+  const regra = r.regras.find(x => x.id === 'interessados-sem-conversao');
+  assert.strictEqual(regra.elegiveis, 1, 'não identificou o registro vencido');
+  assert.strictEqual(regra.apagados, 0, 'apagou em modo simulação');
+  assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM fin_interessados').get().n, antes,
+    'a simulação apagou registro');
+});
+
+teste('retenção: toda regra diz a base legal e o PORQUÊ', () => {
+  const r = naA(() => retencao.executar());
+  for (const regra of r.regras) {
+    assert.ok(regra.base, `${regra.id} sem base legal`);
+    assert.ok(regra.porque && regra.porque.length > 60, `${regra.id} sem justificativa utilizável`);
+    assert.ok(regra.prazoMeses > 0, `${regra.id} sem prazo`);
+  }
+  assert.strictEqual(r.erros.length, 0, JSON.stringify(r.erros));
+});
+
+teste('retenção: aplicar apaga o acessório e NUNCA o razão', () => {
+  const lotesAntes = naA(() => repo.listarLotes(empresaA.id, { limite: 5000 })).length;
+  const linhasAntes = db.prepare('SELECT COUNT(*) AS n FROM fin_linhas').get().n;
+  const auditAntes = db.prepare('SELECT COUNT(*) AS n FROM audit_logs').get().n;
+
+  const r = naA(() => retencao.executar({ aplicar: true }));
+  assert.strictEqual(r.aplicado, true);
+  assert.strictEqual(r.regras.find(x => x.id === 'interessados-sem-conversao').apagados, 1);
+  assert.strictEqual(db.prepare("SELECT COUNT(*) AS n FROM fin_interessados WHERE email = 'antigo@exemplo.com'").get().n, 0);
+
+  // O que a política jura nunca tocar continua intocado.
+  assert.strictEqual(naA(() => repo.listarLotes(empresaA.id, { limite: 5000 })).length, lotesAntes, 'a retenção apagou lote');
+  assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM fin_linhas').get().n, linhasAntes, 'a retenção apagou linha do razão');
+  assert.ok(db.prepare('SELECT COUNT(*) AS n FROM audit_logs').get().n >= auditAntes, 'a retenção apagou auditoria');
+  assert.strictEqual(naA(() => ledger.conferirBalanceamento(empresaA.id)).ok, true);
+  assert.ok(r.nuncaDescartado.some(n => /razão/i.test(n.o_que)), 'não declara o que nunca descarta');
+});
+
+teste('retenção: o automático fica DESLIGADO por padrão', () => {
+  delete process.env.FINANCE_RETENCAO;
+  assert.strictEqual(retencao.automaticoLigado(), false,
+    'descarte automático ligado por padrão — irreversível não pode ser padrão');
+  process.env.FINANCE_RETENCAO = 'on';
+  assert.strictEqual(retencao.automaticoLigado(), true);
+  delete process.env.FINANCE_RETENCAO;
+});
+
+teste('segurança: a varredura do próprio módulo passa limpa', () => {
+  const r = seguranca.varrer();
+  const graves = r.achados.filter(a => ['critica', 'alta'].includes(a.gravidade));
+  assert.strictEqual(graves.length, 0,
+    'achados graves: ' + graves.map(a => `${a.regra}/${a.arquivo}: ${a.detalhe}`).join(' | '));
+  assert.ok(/NÃO é pentest/.test(r.escopo), 'a varredura não declara seu limite');
+});
+
+teste('segurança: a varredura DETECTA ação material rebaixada', () => {
+  // Rebaixa de propósito e exige que a varredura acuse.
+  const original = rbac.ACOES['pagamento.executar'].nivelMinimo;
+  rbac.ACOES['pagamento.executar'].nivelMinimo = 1;
+  try {
+    const r = seguranca.varrer();
+    assert.ok(r.achados.some(a => a.regra === 'nivel-de-risco' && /pagamento\.executar/.test(a.detalhe)),
+      'a varredura não viu uma ação material rebaixada para nível 1');
+  } finally {
+    rbac.ACOES['pagamento.executar'].nivelMinimo = original;
+  }
+  assert.strictEqual(seguranca.varrer().achados.filter(a => a.gravidade === 'critica').length, 0);
+});
+
+teste('segurança: a varredura DETECTA gatilho ausente', () => {
+  db.exec('DROP TRIGGER IF EXISTS trg_fin_lote_sem_delete');
+  try {
+    const r = seguranca.varrer();
+    assert.ok(r.achados.some(a => a.regra === 'gatilho-ausente' && /sem_delete/.test(a.detalhe)),
+      'a varredura não viu um gatilho de invariante ausente');
+  } finally {
+    db.exec(`CREATE TRIGGER IF NOT EXISTS trg_fin_lote_sem_delete
+      BEFORE DELETE ON fin_lotes FOR EACH ROW WHEN OLD.status IN ('contabilizado','estornado')
+      BEGIN SELECT RAISE(ABORT, 'lote contabilizado nao pode ser excluido'); END`);
+  }
 });
 
 // =====================================================================

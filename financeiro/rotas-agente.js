@@ -158,6 +158,14 @@ function registrarRotasAgente(app, { requirePublishOrAdmin, express }) {
   }, { json: true }));
 
   /**
+   * Política de retenção. Por padrão SIMULA — descarte é irreversível e
+   * o padrão de uma operação irreversível é não fazer. Aplicar exige
+   * `aplicar: true` no corpo, explicitamente.
+   */
+  app.post(`${B}/retencao`, ...rota('diario.replicar', (req) =>
+    require('./retencao').executar({ aplicar: (req.body || {}).aplicar === true }), { json: true }));
+
+  /**
    * Prova viva do teto: a rota existe para que o teste (e quem auditar)
    * confirme que uma ação material é recusada mesmo com a chave certa.
    */

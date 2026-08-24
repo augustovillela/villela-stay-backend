@@ -52,6 +52,33 @@ const MIGRACOES = [
       }
     },
   },
+  {
+    // Anonimização (LGPD art. 18): a contraparte ganha marca de quando foi
+    // anonimizada, e o gatilho da linha passa a permitir alterar SÓ o memo
+    // — a substância contábil segue intocável. Sem isso, o nome de uma
+    // pessoa ficaria preso dentro do histórico para sempre.
+    nome: 'fin-0002-anonimizacao-de-contraparte',
+    aplicar() {
+      if (!temColuna('fin_contrapartes', 'anonimizado_em')) {
+        db.exec("ALTER TABLE fin_contrapartes ADD COLUMN anonimizado_em TEXT NOT NULL DEFAULT ''");
+      }
+      db.exec('DROP TRIGGER IF EXISTS trg_fin_linha_imutavel');
+      db.exec(`CREATE TRIGGER trg_fin_linha_imutavel
+        BEFORE UPDATE ON fin_linhas
+        FOR EACH ROW WHEN (SELECT status FROM fin_lotes WHERE id = OLD.lote_id) <> 'rascunho' AND (
+             NEW.lote_id         <> OLD.lote_id
+          OR NEW.conta_id        <> OLD.conta_id
+          OR NEW.debito_cents    <> OLD.debito_cents
+          OR NEW.credito_cents   <> OLD.credito_cents
+          OR NEW.centro_custo_id <> OLD.centro_custo_id
+          OR NEW.contraparte_id  <> OLD.contraparte_id
+          OR NEW.ordem           <> OLD.ordem
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'linha de lote contabilizado e imutavel');
+        END`);
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

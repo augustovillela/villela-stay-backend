@@ -20,7 +20,7 @@ const tenancy = require('./tenancy');
 const EXIGEM_MOTIVO = new Set([
   'periodo.reabrir', 'lote.estornar', 'titulo.cancelar', 'contraparte.dados_bancarios',
   'aprovacao.recusar', 'usuario.perfil', 'tenant.suspender', 'importacao.desfazer',
-  'resultado.apurar',
+  'resultado.apurar', 'contraparte.anonimizar',
 ]);
 
 function calcularHash(d) {

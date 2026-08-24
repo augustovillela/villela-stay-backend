@@ -40,10 +40,28 @@ const porEmail = (email) => db.prepare(
   "SELECT * FROM tenant_users WHERE email = ? AND status = 'ativo' ORDER BY criado_em LIMIT 1")
   .get(String(email || '').toLowerCase().trim()) || null;
 
+/**
+ * Campos do segundo fator, por id. Também é pré-contexto: o envelope de
+ * rota confere o TOTP ANTES de abrir o contexto de tenant, para decidir
+ * se a ação material pode passar.
+ */
+const mfaDoUsuario = (uid) => db.prepare(
+  'SELECT id, email, mfa_ativo, mfa_segredo, mfa_ativado_em FROM tenant_users WHERE id = ?').get(uid) || null;
+
+/** Grava o estado do segundo fator. Só o mfa.js chama. */
+function gravarMfa(uid, { segredo, ativo, ativadoEm }) {
+  const campos = [], valores = [];
+  if (segredo !== undefined) { campos.push('mfa_segredo = ?'); valores.push(segredo); }
+  if (ativo !== undefined) { campos.push('mfa_ativo = ?'); valores.push(ativo ? 1 : 0); }
+  if (ativadoEm !== undefined) { campos.push('mfa_ativado_em = ?'); valores.push(ativadoEm); }
+  if (!campos.length) return;
+  db.prepare(`UPDATE tenant_users SET ${campos.join(', ')} WHERE id = ?`).run(...valores, uid);
+}
+
 /** Carimba o último acesso. Não devolve nada e nunca derruba o login. */
 function marcarAcesso(uid) {
   try { db.prepare('UPDATE tenant_users SET ultimo_acesso = ? WHERE id = ?').run(nowISO(), uid); }
   catch (_) { /* carimbo de acesso não vale um erro de login */ }
 }
 
-module.exports = { porId, porEmail, marcarAcesso };
+module.exports = { porId, porEmail, marcarAcesso, mfaDoUsuario, gravarMfa };

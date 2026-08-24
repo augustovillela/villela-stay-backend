@@ -1,0 +1,51 @@
+# =====================================================================
+# Villela Finance — portão de qualidade e segurança.
+#
+# Roda no pull request e no push da master, e é o que faz uma regressão
+# aparecer ANTES de ir para o Render — que hoje faz deploy direto da
+# master, sem ninguém entre o push e a produção.
+#
+# Só o módulo financeiro tem portão aqui de propósito: é o único que
+# guarda razão contábil, e o único cujos testes cobrem o suficiente para
+# quebrar o build com justiça.
+# =====================================================================
+name: Villela Finance
+
+on:
+  push:
+    branches: [master]
+    paths: ['financeiro/**', 'server.js', 'package.json', '.github/workflows/finance.yml']
+  pull_request:
+    paths: ['financeiro/**', 'server.js', 'package.json']
+  workflow_dispatch:
+
+jobs:
+  portao:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Suíte do financeiro
+        run: npm run test:finance
+
+      - name: Núcleo (o server.js monta o módulo)
+        run: npm run test:nucleo
+        env:
+          STAYS_CLIENT_ID: ci
+          STAYS_SECRET: ci
+
+      - name: Varredura de segurança do módulo
+        run: npm run seguranca:finance
+
+      - name: Dependências vulneráveis
+        # Informativo: `npm audit` reflete o estado do dia e não deve
+        # derrubar um PR que não mexeu em dependência. A varredura acima
+        # já falha em vulnerabilidade crítica ou alta.
+        run: npm audit --audit-level=critical || true
