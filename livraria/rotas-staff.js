@@ -166,8 +166,7 @@ function registrarRotasStaff(app, deps) {
 
   // ------------------------------------------------------- DOWNLOADS / WEBHOOKS / NOTIF / AUDIT
   app.get('/staff/api/livraria/downloads', ...requireLivraria, pode('pedidos'), (req, res) => {
-    const logs = repo.db.prepare('SELECT * FROM download_logs ORDER BY created_at DESC LIMIT 200').all();
-    res.json({ downloads: logs });
+    res.json({ downloads: repo.Tokens.logs(200) });
   });
   app.get('/staff/api/livraria/webhooks', ...requireLivraria, (req, res) => res.json({ webhooks: repo.Webhooks.listar(100) }));
   app.get('/staff/api/livraria/notificacoes', ...requireLivraria, (req, res) => res.json({ notificacoes: repo.Notif.listar(150) }));
