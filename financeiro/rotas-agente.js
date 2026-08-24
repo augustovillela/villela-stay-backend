@@ -139,6 +139,14 @@ function registrarRotasAgente(app, { requirePublishOrAdmin, express }) {
     cockpit: relatorios.cockpit(ctx.entidade.id, String(req.query.competencia || new Date().toISOString().slice(0, 7))),
   })));
 
+  /** Briefing do CFO — leitura (nível 0), para rotinas e para o staff. */
+  app.get(`${B}/cfo/briefing`, ...rota('relatorio.ver', (req, _res, ctx) =>
+    require('./cfo').briefing(ctx.entidade.id, String(req.query.competencia || new Date().toISOString().slice(0, 7)))));
+
+  /** Conselho dos Mestres — mesma montagem da porta do assinante. */
+  app.get(`${B}/conselho`, ...rota('relatorio.ver', (req, _res, ctx) =>
+    require('./conselho').montarPara(ctx.entidade.id, String(req.query.competencia || new Date().toISOString().slice(0, 7)))));
+
   /**
    * Força a replicação do diário e devolve o resultado — inclusive as
    * falhas. É o que permite descobrir que o RPO parou de valer sem ter de

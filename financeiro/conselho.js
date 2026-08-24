@@ -407,4 +407,52 @@ function coletarFatos(entidadeId, competencia, { dre, aging, agingPagar, previsa
   };
 }
 
-module.exports = { PRINCIPIOS, DOMINIOS, GATILHOS, OBRA, ARQUIVO, avaliar, coletarFatos, porId };
+/**
+ * Monta o conselho de uma entidade a partir dos módulos que calculam cada
+ * número. Fica aqui (e não na rota) porque duas portas usam — a do
+ * assinante e a do agente —, e a montagem tem de ser a MESMA nas duas.
+ *
+ * `seguro()` degrada por parte: se a previsão de caixa falhar, os
+ * princípios que não dependem dela continuam valendo.
+ */
+function montarPara(entidadeId, competencia) {
+  const relatorios = require('./relatorios');
+  const caixa = require('./caixa');
+  const titulos = require('./titulos');
+  const orcamento = require('./orcamento');
+  const aprovacoes = require('./aprovacoes');
+  const ledger = require('./ledger');
+  const planoContas = require('./plano-contas');
+  const cfo = require('./cfo');
+  const seguro = (fn, padrao) => { try { return fn(); } catch (_) { return padrao; } };
+
+  const dre = relatorios.dre(entidadeId, competencia);
+  const jurosPagos = seguro(() => ledger.saldo(planoContas.chave(entidadeId, 'jurosPagos').id, {
+    desde: `${competencia.slice(0, 4)}-01-01`, ate: relatorios.intervalo(competencia).ate,
+  }).saldoCents, 0);
+  const serieResultado = seguro(() => {
+    const out = [];
+    for (let i = 6; i >= 1; i--) out.push(relatorios.dre(entidadeId, cfo.mesAntes(competencia, i)).resumo.resultadoCents);
+    return out;
+  }, []);
+
+  const fatos = coletarFatos(entidadeId, competencia, {
+    dre,
+    porCentro: seguro(() => relatorios.porCentroCusto(entidadeId, competencia), { linhas: [] }),
+    previsao: seguro(() => caixa.previsao(entidadeId, { dias: 90 }), null),
+    aging: seguro(() => titulos.aging(entidadeId, { especie: 'receber' }), null),
+    agingPagar: seguro(() => titulos.aging(entidadeId, { especie: 'pagar' }), null),
+    cfo: seguro(() => cfo.briefing(entidadeId, competencia), { constatacoes: [] }),
+    // `|| false` de propósito: aqui SABEMOS se há orçamento (consultamos).
+    // Ausência de consulta seria `undefined`, e o gatilho ignora undefined.
+    orcamentoAprovado: seguro(
+      () => orcamento.listar(entidadeId, { exercicio: competencia.slice(0, 4), status: 'aprovado' })[0] || false, false),
+    aprovacoesPendentes: seguro(() => aprovacoes.pendentes(50).length, 0),
+    caixaCents: seguro(() => relatorios.posicaoDeCaixa(entidadeId, {}).totalCents, 0),
+    jurosPagosCents: jurosPagos,
+    serieResultado,
+  });
+  return Object.assign({ competencia, fatos }, avaliar(fatos));
+}
+
+module.exports = { PRINCIPIOS, DOMINIOS, GATILHOS, OBRA, ARQUIVO, avaliar, coletarFatos, porId, montarPara };

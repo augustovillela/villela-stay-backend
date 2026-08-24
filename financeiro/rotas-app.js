@@ -613,45 +613,8 @@ function registrarRotasApp(app, { jwtSecret, express }) {
    * e cada um vem com onde conferir no manuscrito, o que o limita e com
    * quem ele diverge.
    */
-  app.get('/finance/api/conselho', ...rota((req) => {
-    const competencia = comp(req);
-    const ent = req.entidade.id;
-    const seguro = (fn, padrao) => { try { return fn(); } catch (_) { return padrao; } };
-
-    const dre = relatorios.dre(ent, competencia);
-    const porCentro = seguro(() => relatorios.porCentroCusto(ent, competencia), { linhas: [] });
-    const previsaoCaixa = seguro(() => caixa.previsao(ent, { dias: 90 }), null);
-    const posicao = seguro(() => relatorios.posicaoDeCaixa(ent, {}), { totalCents: 0 });
-    const agingReceber = seguro(() => titulos.aging(ent, { especie: 'receber' }), null);
-    const agingPagar = seguro(() => titulos.aging(ent, { especie: 'pagar' }), null);
-    const orcamentoAprovado = seguro(
-      () => orcamento.listar(ent, { exercicio: competencia.slice(0, 4), status: 'aprovado' })[0], null);
-    const briefingCfo = seguro(() => cfo.briefing(ent, competencia), { constatacoes: [] });
-
-    // Juros e multas pagos no exercício: o fato que aciona Arcuri.
-    const jurosPagos = seguro(() => {
-      const c = planoContas.chave(ent, 'jurosPagos');
-      return ledger.saldo(c.id, { desde: `${competencia.slice(0, 4)}-01-01`, ate: relatorios.intervalo(competencia).ate }).saldoCents;
-    }, 0);
-    // Série de resultado dos meses anteriores, para "sorte e risco".
-    const serieResultado = seguro(() => {
-      const out = [];
-      for (let i = 6; i >= 1; i--) {
-        const m = cfo.mesAntes(competencia, i);
-        out.push(relatorios.dre(ent, m).resumo.resultadoCents);
-      }
-      return out;
-    }, []);
-
-    const fatos = conselho.coletarFatos(ent, competencia, {
-      dre, aging: agingReceber, agingPagar, previsao: previsaoCaixa, porCentro,
-      cfo: briefingCfo, orcamentoAprovado,
-      aprovacoesPendentes: seguro(() => aprovacoes.pendentes(50).length, 0),
-      caixaCents: posicao.totalCents, jurosPagosCents: jurosPagos, serieResultado,
-    });
-
-    return Object.assign({ competencia, fatos }, conselho.avaliar(fatos));
-  }, { modulo: '' }));
+  app.get('/finance/api/conselho', ...rota(
+    (req) => conselho.montarPara(req.entidade.id, comp(req)), { modulo: '' }));
 
   app.get('/finance/api/conselho/principios', ...rota(() => ({
     principios: conselho.PRINCIPIOS.map(p => ({
