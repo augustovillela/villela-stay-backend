@@ -29,6 +29,12 @@ function pixelEvento(evento, dados) {
 }
 
 const CSS = `
+/* Chamada da secao Pacotes: bordeaux (a mesma --teal do preco e dos botoes —
+   o nome da variavel engana, o valor e #7F1D1D) e corpo maior, para puxar o
+   olho para os combos. clamp() para nao ficar gigante no celular. */
+.lv-cta{color:var(--teal);font-weight:600;font-size:clamp(17px,1.6vw,21px);
+  line-height:1.35;margin:0 0 16px}
+
 /* Carrossel do pacote: as capas dos livros do combo se alternam sozinhas.
    CSS puro, sem JS — cada capa fica visivel em 1/N do ciclo. O atraso positivo
    + animation-fill-mode:both faz as demais comecarem invisiveis, sem piscar. */
@@ -324,7 +330,7 @@ function vitrine(livros, filtro = {}, listaPacotes = []) {
   const faixaPacotes = (listaPacotes || []).length ? `
   <section><div class="wrap">
     <h2 style="margin:0 0 4px">Pacotes</h2>
-    <p class="muted" style="margin:0 0 14px">Leve a coleção completa por menos do que comprando um a um.</p>
+    <p class="lv-cta">Leve a coleção completa por menos do que comprando um a um.</p>
     <div class="grid grid-books">${(listaPacotes || []).map(p => `
       <a class="card" href="/pacotes/${esc(p.slug)}">
         <div class="capa" style="position:relative">${carrosselCapas(p.livros)}</div>
