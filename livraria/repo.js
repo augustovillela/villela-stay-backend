@@ -355,6 +355,7 @@ const Tokens = {
       .run(novoId(), tokenId, orderId || null, bookId || null, ip || '', ua || '', resultado || 'ok', nowISO());
   },
   logsDaOrder(orderId) { return db.prepare('SELECT * FROM download_logs WHERE order_id = ? ORDER BY created_at DESC').all(orderId); },
+  logs(limite = 200) { return db.prepare('SELECT * FROM download_logs ORDER BY created_at DESC LIMIT ?').all(limite); },
 };
 
 // ============================================================ PRINT JOBS
