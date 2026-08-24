@@ -340,6 +340,23 @@ CREATE TABLE IF NOT EXISTS fin_parcelas (
 CREATE INDEX IF NOT EXISTS idx_fin_parcelas ON fin_parcelas(tenant_id, titulo_id, numero);
 CREATE INDEX IF NOT EXISTS idx_fin_parcelas_venc ON fin_parcelas(tenant_id, status, vencimento);
 
+-- Rateio do título: a mesma nota pode se dividir entre contas e centros de
+-- custo (a conta de luz do compound rateada entre as quatro casas). Sem
+-- isto, "resultado por imóvel" seria chute.
+CREATE TABLE IF NOT EXISTS fin_titulo_rateio (
+  id              TEXT PRIMARY KEY,
+  tenant_id       TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  titulo_id       TEXT NOT NULL REFERENCES fin_titulos(id),
+  ordem           INTEGER NOT NULL DEFAULT 0,
+  conta_id        TEXT NOT NULL REFERENCES fin_contas(id),
+  centro_custo_id TEXT NOT NULL DEFAULT '',
+  valor_cents     INTEGER NOT NULL DEFAULT 0,
+  memo            TEXT NOT NULL DEFAULT '',
+  criado_em       TEXT NOT NULL,
+  CHECK (valor_cents >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_fin_rateio ON fin_titulo_rateio(tenant_id, titulo_id, ordem);
+
 -- Pagamento/recebimento efetivo. Gera lote no razão.
 CREATE TABLE IF NOT EXISTS fin_liquidacoes (
   id               TEXT PRIMARY KEY,

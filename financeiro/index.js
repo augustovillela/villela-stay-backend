@@ -11,6 +11,9 @@
 // Fase 2 — primeiro vertical slice: extrato → normalização idempotente →
 //   sugestão explicável → conciliação → lote balanceado → cockpit com
 //   drill-down até a linha do extrato.
+// Fase 3 — contas a pagar e a receber: títulos com parcelamento e rateio,
+//   liquidação com juros/multa/desconto, aging, inadimplência, detecção de
+//   duplicidade e ordem de pagamento sob aprovação.
 // Fase 5 — hospedagem: adaptador Stays.net reconciliando reserva → receita,
 //   comissão de canal e recebível, por imóvel (centro de custo), com
 //   conferência contra a própria Stays.
@@ -37,6 +40,9 @@ const auditoria = require('./auditoria');
 const planoContas = require('./plano-contas');
 const diario = require('./diario');
 const stays = require('./stays');
+const contrapartes = require('./contrapartes');
+const titulos = require('./titulos');
+const liquidacoes = require('./liquidacoes');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 
@@ -57,6 +63,11 @@ function montar(app, injected = {}) {
     resolverClientes: injected.resolverClientes,
   });
   const semeadura = contas.semearPlataforma();
+  // Plano de contas de conta ANTIGA recebe as contas novas que este boot
+  // trouxe (é idempotente: só cria o que falta, nunca renomeia o que o
+  // assinante mudou). Sem isto, o motor referenciaria conta inexistente
+  // numa empresa criada antes da versão que a introduziu.
+  const atualizadas = contas.atualizarPlanosDeConta();
 
   app.use('/finance', tenancy.middlewareCorrelacao);
   app.use('/staff/api/finance', tenancy.middlewareCorrelacao);
@@ -66,16 +77,18 @@ function montar(app, injected = {}) {
   iniciarWorker(alertaAugusto);
 
   console.log(
-    `[finance] Villela Finance (Fases 1, 2 e 5) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
+    `[finance] Villela Finance (Fases 1, 2, 3 e 5) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
     `planos: ${semeadura.planos.total} · conta interna: ${semeadura.tenantInterno}${semeadura.criada ? ' (criada agora)' : ''} · ` +
     `diário: ${diario.configurada() ? 'replicando para R2' : 'LOCAL (defina FINANCE_S3_* para replicar)'} · ` +
     `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +
-    `legado /staff/api/financeiro/* intacto`
+    `legado /staff/api/financeiro/* intacto` +
+    (atualizadas.contasNovas ? ` · plano de contas: +${atualizadas.contasNovas} conta(s) em ${atualizadas.empresas} empresa(s)` : '')
   );
 
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
-    periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays, tenancy,
+    periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
+    contrapartes, titulos, liquidacoes, tenancy,
   };
 }
 
@@ -106,6 +119,21 @@ function registrarExecutores() {
 
   aprovacoes.registrarExecutor('importacao.desfazer', (payload) =>
     bancos.desfazerImportacao(payload.importacaoId, { motivo: payload.motivo }));
+
+  // Mudança de dado bancário do favorecido: o vetor de fraude mais banal
+  // que existe. Só se aplica depois que outra pessoa comparou antes/depois.
+  aprovacoes.registrarExecutor('contraparte.dados_bancarios', (payload) =>
+    contrapartes.aplicarDadosBancarios(payload));
+
+  // Ordem de pagamento aprovada vira LIQUIDAÇÃO — o registro contábil de
+  // que o pagamento foi feito. A transferência bancária em si continua
+  // sendo ato humano: o produto não executa pagamento (ARCHITECTURE §11).
+  aprovacoes.registrarExecutor('pagamento.executar', (payload) => {
+    const r = liquidacoes.liquidar(Object.assign({}, payload, {
+      idempotencia: `ordem:${payload.parcelaId}:${payload.data}:${payload.valorCents}`,
+    }));
+    return { liquidacaoId: r.liquidacaoId, loteId: r.lote.id, movimentadoCents: r.movimentadoCents };
+  });
 }
 
 /**
@@ -212,4 +240,5 @@ module.exports = {
   montar, pararWorker, registrarExecutores, sincronizarStaysDeTodos,
   tenancy, repo, contas, entitlements, rbac, ledger, dinheiro, bancos,
   classificacao, periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
+  contrapartes, titulos, liquidacoes,
 };

@@ -639,8 +639,13 @@ lancaAsync('aprovação: não se aprova duas vezes', () =>
   /já está/);
 
 testeAsync('aprovação: ação sem executor falha explicitamente', async () => {
+  // Tem de ser uma ação de nível 3 que AINDA não tem executor registrado
+  // (`saldo_inicial.definir` entra na fase 4). Se algum dia ela ganhar um,
+  // este teste passa a falhar — e a correção é trocar a ação, não remover
+  // o teste: o comportamento que ele protege é "aprovar sem executor não
+  // pode fingir sucesso".
   const s = tenancy.comTenant({ tenantId: contaA.id, userId: 'op2', perfil: 'operador' }, () =>
-    aprovacoes.solicitar({ acao: 'pagamento.executar', valorCents: 100, motivo: 'teste sem executor' }));
+    aprovacoes.solicitar({ acao: 'saldo_inicial.definir', valorCents: 100, motivo: 'teste sem executor' }));
   let erro = null;
   try {
     await tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
@@ -795,6 +800,381 @@ teste('plano: limite não barra quem ainda tem folga', () => {
   const t = repo.tenantPorId(contaB.id);
   // 'essencial' permite 3 contas bancárias e a conta B não tem nenhuma.
   naB(() => entitlements.exigir(t, 'bancos', { medida: 'contas_bancarias' }));
+});
+
+// =====================================================================
+// 12b. CONTAS A PAGAR E RECEBER (fase 3)
+// =====================================================================
+const documento = require('./documento');
+const contrapartes = require('./contrapartes');
+const titulos = require('./titulos');
+const liquidacoes = require('./liquidacoes');
+
+teste('documento: CPF válido passa e inválido não', () => {
+  assert.strictEqual(documento.validarCPF('529.982.247-25'), true);
+  assert.strictEqual(documento.validarCPF('529.982.247-26'), false);
+  assert.strictEqual(documento.validarCPF('111.111.111-11'), false, 'dígitos repetidos passam na conta e são inválidos');
+});
+teste('documento: CNPJ válido passa e inválido não', () => {
+  assert.strictEqual(documento.validarCNPJ('11.222.333/0001-81'), true);
+  assert.strictEqual(documento.validarCNPJ('11.222.333/0001-82'), false);
+  assert.strictEqual(documento.validarCNPJ('00.000.000/0000-00'), false);
+});
+teste('documento: reconhece o tipo e formata', () => {
+  const a = documento.analisar('11222333000181');
+  assert.strictEqual(a.tipo, 'cnpj');
+  assert.strictEqual(a.formatado, '11.222.333/0001-81');
+});
+lanca('documento: erro diz QUANTOS dígitos vieram', () =>
+  documento.exigir('123456', 'CNPJ do fornecedor'), /6 dígitos/);
+lanca('documento: erro nomeia o dígito verificador', () =>
+  documento.exigir('529.982.247-26'), /dígito verificador/);
+
+let fornecedor, cliente;
+teste('contraparte: cria fornecedor com CNPJ validado', () => {
+  fornecedor = naA(() => contrapartes.criar({
+    entidadeId: empresaA.id, tipo: 'fornecedor', nome: 'Neoenergia Distribuição S.A.',
+    documento: '11.222.333/0001-81',
+  }));
+  assert.ok(fornecedor.id);
+  assert.strictEqual(fornecedor.documento, '11222333000181', 'devia guardar só os dígitos');
+});
+
+lanca('contraparte: CNPJ inválido é recusado na criação', () =>
+  naA(() => contrapartes.criar({ entidadeId: empresaA.id, nome: 'Fantasma', documento: '11.222.333/0001-99' })),
+  /dígito verificador/);
+
+lanca('contraparte: mesmo documento é duplicata CERTA', () =>
+  naA(() => contrapartes.criar({ entidadeId: empresaA.id, nome: 'Neoenergia (outro cadastro)', documento: '11222333000181' })),
+  /Já existe/);
+
+teste('contraparte: duplicata por documento não se força', () => {
+  try {
+    naA(() => contrapartes.criar({ entidadeId: empresaA.id, nome: 'Outro nome', documento: '11222333000181', forcar: true }));
+    throw new Error('deixou forçar duplicata de documento');
+  } catch (e) {
+    assert.ok(/Já existe/.test(e.message));
+    assert.strictEqual(e.detalhe.podeForcar, false, 'documento igual nunca deveria ser forçável');
+  }
+});
+
+teste('contraparte: nome equivalente é SUSPEITA, e pode ser forçada', () => {
+  // "Neoenergia Distribuicao LTDA" normaliza igual ao já cadastrado.
+  let erro = null;
+  try { naA(() => contrapartes.criar({ entidadeId: empresaA.id, nome: 'neoenergia distribuição ltda' })); }
+  catch (e) { erro = e; }
+  assert.ok(erro && /nome equivalente/.test(erro.message), `mensagem: ${erro && erro.message}`);
+  assert.strictEqual(erro.detalhe.podeForcar, true);
+  const forcada = naA(() => contrapartes.criar({ entidadeId: empresaA.id, nome: 'neoenergia distribuição ltda', forcar: true }));
+  assert.ok(forcada.id, 'não deixou forçar duplicata por nome');
+});
+
+teste('contraparte: cria cliente para os títulos a receber', () => {
+  cliente = naA(() => contrapartes.criar({
+    entidadeId: empresaA.id, tipo: 'cliente', nome: 'Embaixada da Noruega', documento: '529.982.247-25',
+  }));
+  assert.ok(cliente.id);
+});
+
+teste('contraparte: dado bancário nunca volta em claro', () => {
+  const mascarado = contrapartes.mascarar({ conta: '123456789', chavePix: 'augusto@exemplo.com', documentoTitular: '11222333000181' });
+  assert.strictEqual(mascarado.conta, '•••789');
+  assert.ok(!/123456/.test(JSON.stringify(mascarado)), 'a conta apareceu em claro');
+});
+
+let solicitacaoBanco;
+teste('contraparte: mudar dado bancário vira solicitação com antes/depois', () => {
+  solicitacaoBanco = tenancy.comTenant({ tenantId: contaA.id, userId: 'operador-financeiro', perfil: 'operador', mfa: true }, () =>
+    tenancy.comEntidade(empresaA.id, () => contrapartes.solicitarDadosBancarios(fornecedor.id, {
+      banco: '001', agencia: '1234', conta: '99887766', titular: 'Neoenergia Distribuição S.A.',
+      motivo: 'fornecedor informou nova conta por e-mail',
+    })));
+  assert.strictEqual(solicitacaoBanco.nivel, 3, 'dado bancário TEM de ser nível 3');
+  assert.strictEqual(solicitacaoBanco.status, 'pendente');
+  const previa = require('./db').j.parse(solicitacaoBanco.previa, {});
+  assert.ok(previa.camposAlterados.includes('conta'), 'a prévia não mostra que a conta mudou');
+  assert.strictEqual(previa.primeiroCadastro, true);
+  assert.ok(/•••/.test(previa.depois.conta), 'a prévia mostrou a conta em claro');
+});
+
+teste('contraparte: o dado bancário NÃO foi aplicado antes da aprovação', () => {
+  const c = naA(() => contrapartes.buscar(fornecedor.id));
+  assert.deepStrictEqual(c.dados_bancarios.conta, '', 'aplicou sem aprovação');
+});
+
+testeAsync('contraparte: aprovada, a mudança se aplica e o log fica mascarado', async () => {
+  await tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+    tenancy.comEntidade(empresaA.id, () => aprovacoes.aprovar(solicitacaoBanco.id, {
+      motivo: 'conferido por telefone com o fornecedor',
+      perfilDecisor: 'proprietario', usuarioDecisor: 'augusto', mfa: true,
+    })));
+  const c = naA(() => contrapartes.buscar(fornecedor.id));
+  assert.strictEqual(c.dados_bancarios.conta, '•••766');
+  const log = naA(() => auditoria.listar({ objetoTipo: 'contraparte', objetoId: fornecedor.id, limite: 10 }));
+  const evento = log.find(l => l.acao === 'contraparte.dados_bancarios');
+  assert.ok(evento, 'a alteração não foi auditada');
+  assert.ok(!/99887766/.test(evento.detalhe), 'a auditoria guardou a conta em claro');
+});
+
+let tituloPagar;
+let ordemParcela = null;
+teste('título: rateio que não fecha é recusado com a diferença', () => {
+  let erro = null;
+  try {
+    naA(() => titulos.criar({
+      entidadeId: empresaA.id, especie: 'pagar', contraparteId: fornecedor.id,
+      documento: 'NF-001', descricao: 'Energia do compound', valorCents: 100000,
+      competencia: '2026-08', vencimento: '2026-08-25',
+      rateio: [{ contaCodigo: '4.1.1.005', valorCents: 60000 }],
+    }));
+  } catch (e) { erro = e; }
+  assert.ok(erro && /rateio soma/.test(erro.message), `mensagem: ${erro && erro.message}`);
+  assert.strictEqual(erro.detalhe.diferenca, 40000);
+});
+
+lanca('título: parcelas que não fecham são recusadas', () => naA(() => titulos.criar({
+  entidadeId: empresaA.id, especie: 'pagar', contraparteId: fornecedor.id,
+  documento: 'NF-002', valorCents: 100000, competencia: '2026-08',
+  rateio: [{ contaCodigo: '4.1.1.005', valorCents: 100000 }],
+  parcelas: [{ vencimento: '2026-08-25', valorCents: 40000 }, { vencimento: '2026-09-25', valorCents: 50000 }],
+})), /parcelas somam/);
+
+teste('título a pagar: rateio por imóvel e provisão pela competência', () => {
+  const centros = naA(() => repo.listarCentrosCusto(empresaA.id));
+  const kubi = centros.find(c => c.codigo === 'GG04I');
+  const r = naA(() => titulos.criar({
+    entidadeId: empresaA.id, especie: 'pagar', contraparteId: fornecedor.id,
+    documento: 'NF-100', descricao: 'Energia elétrica agosto', valorCents: 90000,
+    competencia: '2026-08', dataFato: '2026-08-20',
+    rateio: [
+      { contaCodigo: '4.1.1.005', valorCents: 50000, centroCustoId: kubi ? kubi.id : '' },
+      { contaCodigo: '4.1.1.005', valorCents: 40000 },
+    ],
+    parcelas: { quantidade: 3, primeiroVencimento: '2026-08-25', periodo: 'mensal' },
+  }));
+  tituloPagar = r.titulo;
+  assert.strictEqual(tituloPagar.parcelas.length, 3);
+  assert.strictEqual(tituloPagar.parcelas.reduce((s, p) => s + p.valorCents, 0), 90000, 'as parcelas não somam o título');
+  assert.deepStrictEqual(tituloPagar.parcelas.map(p => p.vencimento), ['2026-08-25', '2026-09-25', '2026-10-25']);
+  // A provisão: débito na despesa, crédito em Fornecedores.
+  assert.ok(r.lote, 'não provisionou');
+  const linhas = naA(() => repo.linhasDoLote(r.lote.id));
+  assert.strictEqual(linhas.filter(l => l.conta_codigo === '4.1.1.005').reduce((s, l) => s + l.debito_cents, 0), 90000);
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '2.1.1.001').credito_cents, 90000);
+});
+
+teste('título: divisão em 3 não perde centavo', () => {
+  const r = naA(() => titulos.criar({
+    entidadeId: empresaA.id, especie: 'pagar', contraparteId: fornecedor.id,
+    documento: 'NF-101', descricao: 'teste de rateio de parcela', valorCents: 10000,
+    competencia: '2026-08', dataFato: '2026-08-20',
+    rateio: [{ contaCodigo: '4.9.1.001', valorCents: 10000 }],
+    parcelas: { quantidade: 3, primeiroVencimento: '2026-08-10' },
+  }));
+  assert.deepStrictEqual(r.titulo.parcelas.map(p => p.valorCents), [3334, 3333, 3333]);
+});
+
+teste('título: vencimento em 31 cai no último dia do mês curto', () => {
+  const p = titulos.prepararParcelas({ quantidade: 3, primeiroVencimento: '2026-01-31' }, 30000, null);
+  assert.deepStrictEqual(p.map(x => x.vencimento), ['2026-01-31', '2026-02-28', '2026-03-31']);
+});
+
+teste('título: documento repetido do mesmo fornecedor é duplicata', () => {
+  let erro = null;
+  try {
+    naA(() => titulos.criar({
+      entidadeId: empresaA.id, especie: 'pagar', contraparteId: fornecedor.id,
+      documento: 'NF-100', valorCents: 90000, competencia: '2026-08',
+      rateio: [{ contaCodigo: '4.1.1.005', valorCents: 90000 }],
+      parcelas: { quantidade: 1, primeiroVencimento: '2026-08-25' },
+    }));
+  } catch (e) { erro = e; }
+  assert.ok(erro && /duplicata/.test(erro.message), `mensagem: ${erro && erro.message}`);
+  assert.strictEqual(erro.detalhe.podeForcar, true, 'complemento legítimo tem de ser possível');
+});
+
+let titReceber;
+teste('título a receber: fatura debita Clientes e credita a receita', () => {
+  const r = naA(() => titulos.criar({
+    entidadeId: empresaA.id, especie: 'receber', contraparteId: cliente.id,
+    documento: 'FAT-001', descricao: 'Evento diplomático', valorCents: 1500000,
+    competencia: '2026-08', dataFato: '2026-08-15',
+    rateio: [{ contaCodigo: '3.1.1.003', valorCents: 1500000 }],
+    parcelas: [
+      { vencimento: '2026-08-01', valorCents: 500000 },
+      { vencimento: '2026-09-01', valorCents: 1000000 },
+    ],
+  }));
+  titReceber = r.titulo;
+  const linhas = naA(() => repo.linhasDoLote(r.lote.id));
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '1.1.2.001').debito_cents, 1500000);
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '3.1.1.003').credito_cents, 1500000);
+});
+
+let liqParcial;
+teste('liquidação: baixa PARCIAL deixa a parcela em `parcial`', () => {
+  const parcela = tituloPagar.parcelas[0];
+  const r = naA(() => liquidacoes.liquidar({
+    parcelaId: parcela.id, data: '2026-08-25', valorCents: 10000,
+    contaBancariaId: banco.id, meio: 'pix',
+  }));
+  liqParcial = r;
+  assert.strictEqual(r.parcela.status, 'parcial');
+  assert.strictEqual(r.parcela.saldoCents, parcela.valorCents - 10000);
+  assert.strictEqual(r.movimentadoCents, 10000);
+});
+
+teste('liquidação: juros e multa vão para conta própria, não incham a despesa', () => {
+  const parcela = tituloPagar.parcelas[1];
+  const r = naA(() => liquidacoes.liquidar({
+    parcelaId: parcela.id, data: '2026-09-30', valorCents: parcela.valorCents,
+    jurosCents: 500, multaCents: 1000, contaBancariaId: banco.id, meio: 'pix',
+  }));
+  const linhas = naA(() => repo.linhasDoLote(r.lote.id));
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '4.4.1.002').debito_cents, 1500, 'juros+multa fora da conta financeira');
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '2.1.1.001').debito_cents, parcela.valorCents);
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '1.1.1.101').credito_cents, parcela.valorCents + 1500);
+  // A despesa de energia NÃO cresceu com o juro.
+  assert.ok(!linhas.some(l => l.conta_codigo === '4.1.1.005'), 'o juro entrou na conta de energia');
+});
+
+teste('liquidação: desconto obtido vira receita, não redução da despesa', () => {
+  const parcela = tituloPagar.parcelas[2];
+  const r = naA(() => liquidacoes.liquidar({
+    parcelaId: parcela.id, data: '2026-10-20', valorCents: parcela.valorCents,
+    descontoCents: 2000, contaBancariaId: banco.id, meio: 'pix',
+  }));
+  const linhas = naA(() => repo.linhasDoLote(r.lote.id));
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '3.9.1.003').credito_cents, 2000);
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '1.1.1.101').credito_cents, parcela.valorCents - 2000, 'saiu do banco o valor errado');
+});
+
+teste('liquidação: o título fecha quando a última parcela é quitada', () => {
+  // A primeira ainda está parcial — o título continua aberto.
+  assert.strictEqual(naA(() => titulos.buscar(tituloPagar.id)).status, 'aberto');
+  const parcela = tituloPagar.parcelas[0];
+  naA(() => liquidacoes.liquidar({
+    parcelaId: parcela.id, data: '2026-08-26', valorCents: parcela.valorCents - 10000,
+    contaBancariaId: banco.id, meio: 'pix',
+  }));
+  const t = naA(() => titulos.buscar(tituloPagar.id));
+  assert.strictEqual(t.status, 'liquidado');
+  assert.strictEqual(t.saldoCents, 0);
+});
+
+lanca('liquidação: pagar acima do saldo é recusado com o excedente', () => {
+  const parcela = naA(() => titulos.buscar(titReceber.id)).parcelas[0];
+  return naA(() => liquidacoes.liquidar({ parcelaId: parcela.id, data: '2026-08-05', valorCents: parcela.valorCents + 1 }));
+}, /passa do saldo/);
+
+teste('liquidação a receber: entra no banco com juros e sai o desconto concedido', () => {
+  const parcela = naA(() => titulos.buscar(titReceber.id)).parcelas[0];
+  const r = naA(() => liquidacoes.liquidar({
+    parcelaId: parcela.id, data: '2026-08-20', valorCents: parcela.valorCents,
+    jurosCents: 3000, descontoCents: 1000, contaBancariaId: banco.id, meio: 'ted',
+  }));
+  const linhas = naA(() => repo.linhasDoLote(r.lote.id));
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '1.1.1.101').debito_cents, parcela.valorCents + 3000 - 1000);
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '3.9.1.004').credito_cents, 3000);
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '4.4.1.004').debito_cents, 1000);
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '1.1.2.001').credito_cents, parcela.valorCents);
+});
+
+teste('liquidação: estorno devolve o saldo e não apaga o histórico', () => {
+  const r = naA(() => liquidacoes.estornar(liqParcial.liquidacaoId, { motivo: 'pagamento não compensou' }));
+  assert.ok(r.estorno, 'não gerou lote de estorno');
+  const t = naA(() => titulos.buscar(tituloPagar.id));
+  assert.strictEqual(t.status, 'aberto', 'o título devia reabrir');
+  assert.strictEqual(t.saldoCents, 10000);
+  const historico = naA(() => liquidacoes.listarDaParcela(tituloPagar.parcelas[0].id));
+  assert.ok(historico.some(l => l.estornada), 'a liquidação estornada sumiu do histórico');
+});
+
+lanca('liquidação: estorno exige motivo', () =>
+  naA(() => liquidacoes.estornar(liqParcial.liquidacaoId, {})), /motivo/);
+
+lanca('título: cancelar com liquidação é recusado', () =>
+  naA(() => titulos.cancelar(titReceber.id, { motivo: 'desistência' })), /já tem/);
+
+teste('título: cancelar sem liquidação estorna a provisão', () => {
+  const r = naA(() => titulos.criar({
+    entidadeId: empresaA.id, especie: 'pagar', contraparteId: fornecedor.id,
+    documento: 'NF-CANCELA', valorCents: 5000, competencia: '2026-08', dataFato: '2026-08-05',
+    rateio: [{ contaCodigo: '4.9.1.001', valorCents: 5000 }],
+    parcelas: { quantidade: 1, primeiroVencimento: '2026-08-30' },
+  }));
+  const c = naA(() => titulos.cancelar(r.titulo.id, { motivo: 'nota emitida em duplicidade pelo fornecedor' }));
+  assert.strictEqual(c.titulo.status, 'cancelado');
+  assert.ok(c.estorno, 'a provisão não foi estornada');
+  assert.strictEqual(c.titulo.parcelas[0].status, 'cancelada');
+});
+
+teste('aging: separa por faixa de atraso e explica a origem', () => {
+  const a = naA(() => titulos.aging(empresaA.id, { especie: 'receber', referencia: '2026-09-15' }));
+  assert.ok(a.totalAbertoCents > 0, 'aging vazio');
+  const faixa = a.faixas.find(f => f.chave === 'd1_15');
+  assert.ok(faixa.totalCents > 0, `a parcela de 01/09 devia estar em 1-15 dias: ${JSON.stringify(a.faixas.map(f => [f.chave, f.totalCents]))}`);
+  assert.ok(a.origem.formula.includes('valor'), 'sem fórmula explicando o número');
+  assert.strictEqual(a.totalVencidoCents + a.faixas.find(f => f.chave === 'a_vencer').totalCents, a.totalAbertoCents);
+});
+
+teste('aging: a mesma parcela muda de faixa conforme a referência', () => {
+  const cedo = naA(() => titulos.aging(empresaA.id, { especie: 'receber', referencia: '2026-08-20' }));
+  assert.strictEqual(cedo.totalVencidoCents, 0, 'em 20/08 nada devia estar vencido');
+  const tarde = naA(() => titulos.aging(empresaA.id, { especie: 'receber', referencia: '2026-12-20' }));
+  assert.ok(tarde.faixas.find(f => f.chave === 'd90_mais').totalCents > 0, 'em dezembro devia haver +90 dias');
+});
+
+teste('inadimplentes: ordena por saldo e diz há quantos dias', () => {
+  const lista = naA(() => titulos.inadimplentes(empresaA.id, { especie: 'receber', referencia: '2026-12-20' }));
+  assert.ok(lista.length >= 1, 'ninguém inadimplente');
+  assert.strictEqual(lista[0].contraparte, 'Embaixada da Noruega');
+  assert.ok(lista[0].diasDaMaisAntiga > 90);
+});
+
+testeAsync('ordem de pagamento: prévia mostra favorecido, conta e total', async () => {
+  const t = naA(() => titulos.criar({
+    entidadeId: empresaA.id, especie: 'pagar', contraparteId: fornecedor.id,
+    documento: 'NF-ORDEM', valorCents: 80000, competencia: '2026-08', dataFato: '2026-08-10',
+    rateio: [{ contaCodigo: '4.1.1.002', valorCents: 80000 }],
+    parcelas: { quantidade: 1, primeiroVencimento: '2026-08-28' },
+  }));
+  const parcela = t.titulo.parcelas[0];
+  const preparada = naA(() => liquidacoes.prepararOrdemDePagamento({
+    parcelaId: parcela.id, data: '2026-08-28', valorCents: 80000,
+    contaBancariaId: banco.id, meio: 'pix',
+  }));
+  assert.strictEqual(preparada.previa.favorecido, 'Neoenergia Distribuição S.A.');
+  assert.strictEqual(preparada.previa.totalASair, 'R$ 800,00');
+  assert.strictEqual(preparada.previa.contaDeSaida, 'C6 PJ');
+  assert.strictEqual(preparada.previa.dadosBancariosDoFavorecido.conta, '•••766',
+    'a prévia tem de mostrar PARA ONDE vai o dinheiro, mascarado');
+  assert.strictEqual(preparada.valorCents, 80000);
+  ordemParcela = parcela;
+});
+
+testeAsync('ordem de pagamento: aprovada, vira liquidação — e NÃO transfere dinheiro', async () => {
+  const s = tenancy.comTenant({ tenantId: contaA.id, userId: 'operador-financeiro', perfil: 'operador', mfa: true }, () =>
+    tenancy.comEntidade(empresaA.id, () => aprovacoes.solicitar({
+      acao: 'pagamento.executar', entidadeId: empresaA.id,
+      objetoTipo: 'parcela', objetoId: ordemParcela.id,
+      payload: { parcelaId: ordemParcela.id, data: '2026-08-28', valorCents: 80000, contaBancariaId: banco.id, meio: 'pix' },
+      previa: { favorecido: 'Neoenergia' }, valorCents: 80000,
+      motivo: 'conta de luz de agosto',
+    })));
+
+  const r = await tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+    tenancy.comEntidade(empresaA.id, () => aprovacoes.aprovar(s.id, {
+      motivo: 'pagamento autorizado', perfilDecisor: 'proprietario', usuarioDecisor: 'augusto', mfa: true,
+    })));
+  assert.ok(r.resultado.liquidacaoId, 'a aprovação não produziu liquidação');
+  const parcela = naA(() => liquidacoes.carregarParcela(ordemParcela.id));
+  assert.strictEqual(parcela.status, 'liquidada');
+});
+
+teste('fase 3: o razão continua fechando depois de tudo isso', () => {
+  const b = naA(() => ledger.conferirBalanceamento(empresaA.id));
+  assert.strictEqual(b.ok, true, `diferença de ${b.diferencaCents}`);
 });
 
 // =====================================================================
@@ -1159,6 +1539,75 @@ testeAsync('HTTP: estorno vira solicitação, não executa direto', async () => 
   assert.strictEqual(r.corpo.aprovacao.status, 'pendente');
   const lote = naA(() => repo.lotePorId(loteDaLuz.id));
   assert.strictEqual(lote.status, 'contabilizado', 'o estorno não podia ter acontecido sem aprovação');
+});
+
+testeAsync('HTTP: contas a pagar ponta a ponta (criar → liquidar → aging)', async () => {
+  const cps = await pedir('GET', '/finance/api/contrapartes?tipo=fornecedor', { cookie: cookieA });
+  assert.strictEqual(cps.status, 200, cps.cru);
+  const forn = cps.corpo.contrapartes.find(c => /Neoenergia Distribuição S/.test(c.nome));
+  assert.ok(forn, 'fornecedor não listado pela API');
+  assert.strictEqual(forn.dadosBancarios.conta, '•••766', 'a API devolveu o dado bancário sem máscara');
+
+  const contas = await pedir('GET', '/finance/api/contas?analiticas=1', { cookie: cookieA });
+  const despesa = contas.corpo.contas.find(c => c.codigo === '4.1.1.012');
+
+  const criado = await pedir('POST', '/finance/api/titulos', {
+    cookie: cookieA,
+    corpo: {
+      especie: 'pagar', contraparteId: forn.id, documento: 'NF-HTTP-1',
+      descricao: 'Manutenção da piscina', valorCents: 60000,
+      competencia: '2026-08', dataFato: '2026-08-12',
+      rateio: [{ contaId: despesa.id, valorCents: 60000 }],
+      parcelas: { quantidade: 2, primeiroVencimento: '2026-08-30' },
+    },
+  });
+  assert.strictEqual(criado.status, 200, criado.cru);
+  assert.strictEqual(criado.corpo.titulo.parcelas.length, 2);
+
+  // Rateio que não fecha tem de voltar 400 com a diferença, pela API.
+  const torto = await pedir('POST', '/finance/api/titulos', {
+    cookie: cookieA,
+    corpo: {
+      especie: 'pagar', contraparteId: forn.id, documento: 'NF-HTTP-2', valorCents: 50000,
+      competencia: '2026-08', rateio: [{ contaId: despesa.id, valorCents: 30000 }],
+      parcelas: { quantidade: 1, primeiroVencimento: '2026-08-30' },
+    },
+  });
+  assert.strictEqual(torto.status, 400);
+  assert.strictEqual(torto.corpo.detalhe.diferenca, 20000);
+
+  const parcela = criado.corpo.titulo.parcelas[0];
+  const bancosR = await pedir('GET', '/finance/api/bancos', { cookie: cookieA });
+  const liq = await pedir('POST', `/finance/api/parcelas/${parcela.id}/liquidar`, {
+    cookie: cookieA,
+    corpo: { data: '2026-08-30', valorCents: parcela.valorCents, contaBancariaId: bancosR.corpo.contas[0].id, meio: 'pix' },
+  });
+  assert.strictEqual(liq.status, 200, liq.cru);
+  assert.strictEqual(liq.corpo.parcela.status, 'liquidada');
+
+  const aging = await pedir('GET', '/finance/api/aging?especie=pagar&referencia=2026-10-01', { cookie: cookieA });
+  assert.strictEqual(aging.status, 200);
+  assert.ok(aging.corpo.totalAbertoCents > 0, 'aging a pagar vazio');
+});
+
+testeAsync('HTTP: ordem de pagamento não paga — abre solicitação', async () => {
+  const titulosR = await pedir('GET', '/finance/api/titulos?especie=pagar&status=aberto', { cookie: cookieA });
+  const alvo = titulosR.corpo.titulos.find(t => t.documento === 'NF-HTTP-1');
+  assert.ok(alvo, 'título não listado');
+  const detalhe = await pedir('GET', `/finance/api/titulos/${alvo.id}`, { cookie: cookieA });
+  const aberta = detalhe.corpo.parcelas.find(p => p.status === 'aberta');
+
+  const r = await pedir('POST', `/finance/api/parcelas/${aberta.id}/ordem-pagamento`, {
+    cookie: cookieA,
+    corpo: { data: '2026-09-30', valorCents: aberta.valorCents, motivo: 'segunda parcela da piscina' },
+  });
+  assert.strictEqual(r.status, 200, r.cru);
+  assert.strictEqual(r.corpo.aprovacao.status, 'pendente');
+  assert.ok(/NÃO executa a transferência/.test(r.corpo.aviso), 'o aviso não diz que o sistema não paga');
+
+  // E a parcela continua aberta: nada foi pago sem aprovação.
+  const depois = await pedir('GET', `/finance/api/titulos/${alvo.id}`, { cookie: cookieA });
+  assert.strictEqual(depois.corpo.parcelas.find(p => p.id === aberta.id).status, 'aberta');
 });
 
 testeAsync('HTTP: admin vê a saúde de todas as contas', async () => {

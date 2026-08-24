@@ -145,6 +145,28 @@ function criarUsuario({ email, nome, senha, perfil = 'operador' }) {
   return { id: u.id, email: u.email, nome: u.nome, perfil: u.perfil, status: u.status };
 };
 
+/**
+ * Top-up do plano de contas em TODAS as empresas já existentes. Roda no
+ * boot, é idempotente e só ACRESCENTA o que falta — nunca renomeia nem
+ * remove o que o assinante personalizou.
+ *
+ * Sem isto, uma versão nova que introduz conta-chave (como "Descontos
+ * obtidos") quebraria em empresa criada antes dela, e o erro apareceria
+ * só na primeira liquidação com desconto.
+ */
+function atualizarPlanosDeConta() {
+  let empresas = 0, contasNovas = 0;
+  for (const t of repo.listarTenants()) {
+    tenancy.comTenant({ tenantId: t.id, userId: 'boot' }, () => {
+      for (const e of repo.listarEntidades()) {
+        const r = planoContas.semear(e.id);
+        if (r.criadas) { empresas++; contasNovas += r.criadas; }
+      }
+    });
+  }
+  return { empresas, contasNovas };
+}
+
 /** Semeadura de boot: planos + a conta interna do grupo. */
 function semearPlataforma() {
   const planos = entitlements.semear();
@@ -161,4 +183,5 @@ function semearPlataforma() {
 module.exports = {
   ErroDeConta, SLUG_INTERNO, provisionar, criarEmpresa, semearRegras,
   criarUsuario, hashSenha, conferirSenha, semearPlataforma, slugificar, primeiraEntidade,
+  atualizarPlanosDeConta,
 };

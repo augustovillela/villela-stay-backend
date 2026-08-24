@@ -80,6 +80,8 @@ const PADRAO = [
   ['3.9', 'Outras receitas', R, CRE, false, '', true],
   ['3.9.1.001', 'Receitas financeiras', R, CRE, true, '', false],
   ['3.9.1.002', 'Outras receitas', R, CRE, true, '', false],
+  ['3.9.1.003', 'Descontos obtidos', R, CRE, true, '', true],
+  ['3.9.1.004', 'Juros e multas recebidos', R, CRE, true, '', true],
   // Conta-espera: entrada de banco sem classificação definida. Existir com
   // nome explícito é melhor do que empurrar para "outras receitas" e
   // esquecer — o painel cobra o saldo dela.
@@ -115,6 +117,7 @@ const PADRAO = [
   ['4.4.1.001', 'Tarifas bancárias', D, DEV, true, '', true],
   ['4.4.1.002', 'Juros e multas pagos', D, DEV, true, '', false],
   ['4.4.1.003', 'IOF e impostos financeiros', D, DEV, true, '', false],
+  ['4.4.1.004', 'Descontos concedidos', D, DEV, true, '', true],
   ['4.9', 'Outras despesas', D, DEV, false, '', true],
   ['4.9.1.001', 'Despesas diversas', D, DEV, true, '', false],
   ['4.9.9.999', 'Saídas a classificar', D, DEV, true, '', true],
@@ -134,6 +137,10 @@ const CHAVES = {
   comissaoCanal: '3.2.1.001',
   taxaPagamento: '3.2.1.002',
   tarifaBancaria: '4.4.1.001',
+  jurosPagos: '4.4.1.002',
+  descontosConcedidos: '4.4.1.004',
+  descontosObtidos: '3.9.1.003',
+  jurosRecebidos: '3.9.1.004',
   entradaAClassificar: '3.9.9.999',
   saidaAClassificar: '4.9.9.999',
 };

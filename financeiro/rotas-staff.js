@@ -11,7 +11,7 @@
 // motivo — e o motivo entra na auditoria.
 // =====================================================================
 'use strict';
-const { db, j } = require('./db');
+const { j } = require('./db');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const contasSvc = require('./contas');
@@ -135,8 +135,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
     // Preço é mexido pelo painel comercial, não por esta rota — evita
     // trocar preço de plano com assinante ativo sem passar pelo fluxo.
     if (d.precoCents != null) {
-      db.prepare('UPDATE plans SET preco_cents = ?, atualizado_em = ? WHERE id = ?')
-        .run(dinheiro.naoNegativo(Number(d.precoCents), 'preço'), new Date().toISOString(), p.id);
+      repo.atualizarPrecoPlano(p.id, dinheiro.naoNegativo(Number(d.precoCents), 'preço'));
     }
     repo.upsertPlano({
       slug: p.slug, nome: d.nome || p.nome,

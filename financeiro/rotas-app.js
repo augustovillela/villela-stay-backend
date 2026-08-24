@@ -15,7 +15,8 @@
 // =====================================================================
 'use strict';
 const jwt = require('jsonwebtoken');
-const { db, j } = require('./db');
+const { j } = require('./db');
+const sessao = require('./sessao');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const contasSvc = require('./contas');
@@ -32,6 +33,9 @@ const planoContas = require('./plano-contas');
 const dinheiro = require('./dinheiro');
 const diario = require('./diario');
 const stays = require('./stays');
+const contrapartes = require('./contrapartes');
+const titulos = require('./titulos');
+const liquidacoes = require('./liquidacoes');
 
 const COOKIE = 'fin_sess';
 const DIAS = 30;
@@ -52,19 +56,12 @@ function registrarRotasApp(app, { jwtSecret, express }) {
   const corpo = express.json({ limit: '8mb' });
 
   /**
-   * Lê a sessão. É o ÚNICO lugar do módulo com SQL fora do repo.js: para
-   * saber o tenant é preciso ler o usuário, e para ler pelo repo já
-   * seria preciso saber o tenant. O guarda de isolamento começa depois
-   * daqui, com o contexto aberto.
+   * Lê a sessão. As consultas pré-contexto vivem todas em `sessao.js` —
+   * ver o cabeçalho de lá para o porquê da exceção.
    */
   function usuarioDaSessao(req) {
-    try {
-      const { uid } = jwt.verify((req.cookies || {})[COOKIE], jwtSecret);
-      return db.prepare(
-        `SELECT u.*, t.slug AS tenant_slug, t.nome AS tenant_nome, t.status AS tenant_status
-           FROM tenant_users u JOIN tenants t ON t.id = u.tenant_id
-          WHERE u.id = ? AND u.status = 'ativo'`).get(uid) || null;
-    } catch (_) { return null; }
+    try { return sessao.porId(jwt.verify((req.cookies || {})[COOKIE], jwtSecret).uid); }
+    catch (_) { return null; }
   }
 
   /**
@@ -124,8 +121,7 @@ function registrarRotasApp(app, { jwtSecret, express }) {
   app.post('/finance/api/login', corpo, (req, res) => {
     const email = String((req.body || {}).email || '').toLowerCase().trim();
     const senha = String((req.body || {}).senha || '');
-    const u = db.prepare(
-      "SELECT * FROM tenant_users WHERE email = ? AND status = 'ativo' ORDER BY criado_em LIMIT 1").get(email);
+    const u = sessao.porEmail(email);
     // Resposta idêntica para e-mail inexistente e senha errada: a tela de
     // login não entrega a lista de quem tem conta.
     if (!u || !u.senha_hash || !contasSvc.conferirSenha(senha, u.senha_hash)) {
@@ -133,7 +129,7 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     }
     const token = jwt.sign({ uid: u.id }, jwtSecret, { expiresIn: `${DIAS}d` });
     res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: DIAS * 86400_000, path: '/finance' });
-    db.prepare('UPDATE tenant_users SET ultimo_acesso = ? WHERE id = ?').run(new Date().toISOString(), u.id);
+    sessao.marcarAcesso(u.id);
     tenancy.comTenant({ tenantId: u.tenant_id, userId: u.id, perfil: u.perfil, ip: req.ip }, () => {
       auditoria.registrar('sessao.entrar', { objetoTipo: 'usuario', objetoId: u.id });
     });
@@ -409,6 +405,100 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       perfilDecisor: req.assinante.perfil, usuarioDecisor: req.assinante.id,
     }),
   }), { permissao: 'aprovar', modulo: 'aprovacoes', json: true }));
+
+  // ------------------------------------------- contrapartes (fase 3)
+  app.get('/finance/api/contrapartes', ...rota((req) => ({
+    contrapartes: contrapartes.listar(req.entidade.id, String(req.query.tipo || '')),
+  })));
+
+  app.post('/finance/api/contrapartes', ...rota((req) => {
+    const d = req.body || {};
+    return { ok: true, contraparte: contrapartes.criar({ entidadeId: req.entidade.id, ...d }) };
+  }, { permissao: 'cadastrar', modulo: 'razao', json: true }));
+
+  app.patch('/finance/api/contrapartes/:id', ...rota((req) => ({
+    ok: true, contraparte: contrapartes.atualizar(req.params.id, req.body || {}),
+  }), { permissao: 'cadastrar', modulo: 'razao', json: true }));
+
+  /** Dado bancário é nível 3: vira solicitação com antes/depois na prévia. */
+  app.post('/finance/api/contrapartes/:id/dados-bancarios', ...rota((req) => ({
+    ok: true,
+    aprovacao: contrapartes.solicitarDadosBancarios(req.params.id, req.body || {}),
+    aviso: 'Mudança de dado bancário é ação material: precisa da aprovação de outra pessoa.',
+  }), { permissao: 'cadastrar', modulo: 'razao', json: true }));
+
+  // ------------------------------------ contas a pagar e receber (fase 3)
+  app.get('/finance/api/titulos', ...rota((req) => ({
+    titulos: titulos.listar(req.entidade.id, {
+      especie: String(req.query.especie || ''),
+      status: String(req.query.status || ''),
+      contraparteId: String(req.query.contraparte || ''),
+      limite: Math.min(Number(req.query.limite) || 200, 500),
+    }),
+  })));
+
+  app.get('/finance/api/titulos/:id', ...rota((req, res) => {
+    const t = titulos.buscar(req.params.id);
+    if (!t) return res.status(404).json({ erro: 'Título não encontrado.' });
+    return Object.assign({}, t, {
+      liquidacoesPorParcela: Object.fromEntries(
+        t.parcelas.map(p => [p.id, liquidacoes.listarDaParcela(p.id)])),
+      auditoria: auditoria.listar({ objetoTipo: 'titulo', objetoId: req.params.id, limite: 20 }),
+    });
+  }));
+
+  app.post('/finance/api/titulos', ...rota((req) => {
+    const r = titulos.criar({ entidadeId: req.entidade.id, ...(req.body || {}) });
+    return { ok: true, ...r };
+  }, { permissao: 'lancar', modulo: 'razao', medida: 'lancamentos_mes', json: true }));
+
+  app.post('/finance/api/titulos/:id/cancelar', ...rota((req) => ({
+    ok: true, ...titulos.cancelar(req.params.id, { motivo: (req.body || {}).motivo }),
+  }), { permissao: 'lancar', modulo: 'razao', json: true }));
+
+  app.get('/finance/api/aging', ...rota((req) => titulos.aging(req.entidade.id, {
+    especie: String(req.query.especie || 'receber'),
+    referencia: String(req.query.referencia || '') || undefined,
+  })));
+
+  app.get('/finance/api/inadimplentes', ...rota((req) => ({
+    especie: String(req.query.especie || 'receber'),
+    inadimplentes: titulos.inadimplentes(req.entidade.id, {
+      especie: String(req.query.especie || 'receber'),
+      limite: Math.min(Number(req.query.limite) || 20, 100),
+    }),
+  })));
+
+  // -------------------------------------------------------- liquidação
+  app.post('/finance/api/parcelas/:id/liquidar', ...rota((req) => ({
+    ok: true, ...liquidacoes.liquidar({ parcelaId: req.params.id, ...(req.body || {}) }),
+  }), { permissao: 'lancar', modulo: 'razao', medida: 'lancamentos_mes', json: true }));
+
+  app.post('/finance/api/liquidacoes/:id/estornar', ...rota((req) => ({
+    ok: true, ...liquidacoes.estornar(req.params.id, { motivo: (req.body || {}).motivo }),
+  }), { permissao: 'lancar', modulo: 'razao', json: true }));
+
+  /**
+   * Ordem de pagamento: nível 3. Registra a ORDEM com aprovação e alçada.
+   * **Não executa transferência bancária** — aprovada, ela vira a
+   * liquidação contábil; quem move o dinheiro é uma pessoa, no banco.
+   */
+  app.post('/finance/api/parcelas/:id/ordem-pagamento', ...rota((req) => {
+    const d = req.body || {};
+    const preparada = liquidacoes.prepararOrdemDePagamento({ parcelaId: req.params.id, ...d });
+    const s = aprovacoes.solicitar({
+      acao: 'pagamento.executar', entidadeId: req.entidade.id,
+      objetoTipo: 'parcela', objetoId: req.params.id,
+      payload: preparada.payload, previa: preparada.previa,
+      valorCents: preparada.valorCents,
+      motivo: d.motivo || `pagamento de ${preparada.previa.favorecido}`,
+    });
+    return {
+      ok: true, aprovacao: s,
+      aviso: 'A ordem foi registrada e aguarda aprovação. O sistema NÃO executa a transferência — ' +
+             'aprovada, ela vira o lançamento de que o pagamento foi feito.',
+    };
+  }, { permissao: 'pagar', modulo: 'pagar', json: true }));
 
   // ------------------------------------------------- hospedagem (Stays)
   app.get('/finance/api/stays/estado', ...rota(() => ({

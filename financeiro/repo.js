@@ -148,6 +148,11 @@ const atualizarTenant = (id, campos) => {
 const listarPlanos = () => db.prepare('SELECT * FROM plans ORDER BY ordem, preco_cents').all();
 const planoPorSlug = (slug) => db.prepare('SELECT * FROM plans WHERE slug = ?').get(slug) || null;
 const planoPorId = (id) => db.prepare('SELECT * FROM plans WHERE id = ?').get(id) || null;
+// `plans` é catálogo global (sem tenant_id): o preço é mexido pelo painel
+// comercial, e por isso tem função própria em vez de entrar no upsert.
+const atualizarPrecoPlano = (id, precoCents) =>
+  db.prepare('UPDATE plans SET preco_cents = ?, atualizado_em = ? WHERE id = ?').run(precoCents, nowISO(), id);
+
 const upsertPlano = (d) => {
   const existente = planoPorSlug(d.slug);
   if (existente) {
@@ -515,7 +520,7 @@ const marcarEvento = (id, status, erro = '') => db.prepare(
 module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
-  listarPlanos, planoPorSlug, planoPorId, upsertPlano,
+  listarPlanos, planoPorSlug, planoPorId, upsertPlano, atualizarPrecoPlano,
   criarUsuario, usuarioPorId, usuarioPorEmail, listarUsuarios,
   criarEntidade, entidadePorId, listarEntidades,
   criarConta, contaPorId, contaPorCodigo, listarContas,

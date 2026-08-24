@@ -66,6 +66,15 @@ Variáveis: `FINANCE_WORKER=off` (desliga o worker) · `FINANCE_WORKER_MS` · `F
   do caminho já trata nova/reprocessada/alterada/cancelada de graça.
 - **Comissão de canal é DEDUÇÃO da receita** (3.2.1.001), não despesa. E em reserva de canal o
   devedor é o CANAL (1.1.2.002), não o hóspede.
+- **Título ≠ parcela ≠ liquidação.** O título provisiona pela competência; a liquidação é o caixa.
+  Juros, multa e desconto vão para contas próprias — juro pago NÃO pode inchar a conta de despesa.
+- **Todo SQL passa por `repo.q/um/exec`** (é ali que o guarda de isolamento age). As únicas
+  consultas com `db.prepare` cru vivem em `sessao.js`, são três, e existem porque o login é
+  circular por natureza. Se você precisou de `db.prepare` em outro arquivo, quase certamente não
+  precisava.
+- **Conta-chave nova no plano de contas** só chega às empresas ANTIGAS por
+  `contas.atualizarPlanosDeConta()`, que roda no boot. Acrescentar ao `PADRAO` sem isso quebraria
+  só na primeira operação que usasse a conta.
 
 ## Ao concluir algo
 
