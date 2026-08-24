@@ -310,10 +310,23 @@ const saldoDaConta = (contaId, { ate = '', desde = '' } = {}) => um(
   { conta: contaId, desde, ate });
 
 /** Balancete: saldo de todas as contas analíticas da entidade no período. */
+/**
+ * Balancete de todas as analíticas, com filtro de período.
+ *
+ * ⚠️ O `CASE WHEN b.id IS NOT NULL` NÃO é enfeite. A conta parte de
+ * `fin_contas` (para trazer também as contas sem movimento), então as duas
+ * junções são LEFT. Com o filtro de data só na junção do lote, a LINHA
+ * continua na saída quando o lote fica de fora do período — e somar
+ * `l.debito_cents` direto incluiria o mês inteiro que se quis excluir.
+ *
+ * Era exatamente esse o bug: o DRE de agosto mostrava junho + julho +
+ * agosto, silenciosamente, porque o filtro de período não tinha efeito
+ * nenhum sobre a soma. Só apareceu quando a produção recebeu três meses.
+ */
 const balancete = (entidadeId, { desde = '', ate = '' } = {}) => q(
   `SELECT c.id, c.codigo, c.nome, c.natureza, c.saldo_normal,
-          COALESCE(SUM(l.debito_cents),0) AS debito,
-          COALESCE(SUM(l.credito_cents),0) AS credito
+          COALESCE(SUM(CASE WHEN b.id IS NOT NULL THEN l.debito_cents  ELSE 0 END), 0) AS debito,
+          COALESCE(SUM(CASE WHEN b.id IS NOT NULL THEN l.credito_cents ELSE 0 END), 0) AS credito
      FROM fin_contas c
      LEFT JOIN fin_linhas l ON l.conta_id = c.id AND l.tenant_id = c.tenant_id
      LEFT JOIN fin_lotes b ON b.id = l.lote_id AND b.status <> 'rascunho'

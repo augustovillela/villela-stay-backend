@@ -299,6 +299,59 @@ teste('razão: saldo sai do razão e respeita a natureza', () => {
   assert.strictEqual(s.saldoFormatado, 'R$ 2.550,00');
 });
 
+teste('razão: o balancete RESPEITA o período (o filtro tem de ter efeito)', () => {
+  // Este teste existe por causa de um bug real: o filtro de data estava na
+  // junção do lote, mas a soma era sobre a linha — que sobrevive à junção
+  // falhada. O DRE de um mês mostrava todos os meses, em silêncio.
+  const marco = naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-03-10', memo: 'movimento de março (fora da janela)',
+    linhas: [
+      { contaCodigo: '1.1.1.001', debitoCents: 777000 },
+      { contaCodigo: '3.9.1.002', creditoCents: 777000 },
+    ],
+  }));
+  assert.ok(marco.lote.id);
+
+  const soAgosto = naA(() => ledger.balancete(empresaA.id, { desde: '2026-08-01', ate: '2026-08-31' }));
+  const outrasReceitas = soAgosto.linhas.find(l => l.codigo === '3.9.1.002');
+  assert.ok(!outrasReceitas || outrasReceitas.creditoCents === 0,
+    `o movimento de março vazou para o balancete de agosto: ${outrasReceitas && outrasReceitas.creditoCents}`);
+
+  // E o inverso: filtrando março, o valor aparece.
+  const soMarco = naA(() => ledger.balancete(empresaA.id, { desde: '2026-03-01', ate: '2026-03-31' }));
+  assert.strictEqual(soMarco.linhas.find(l => l.codigo === '3.9.1.002').creditoCents, 777000,
+    'o filtro de março não achou o próprio movimento de março');
+
+  // Sem filtro, some tudo.
+  const tudo = naA(() => ledger.balancete(empresaA.id, {}));
+  assert.strictEqual(tudo.linhas.find(l => l.codigo === '3.9.1.002').creditoCents, 777000);
+
+  // E o balancete de cada janela continua fechando.
+  for (const janela of [{ desde: '2026-03-01', ate: '2026-03-31' }, { desde: '2026-08-01', ate: '2026-08-31' }, {}]) {
+    assert.strictEqual(naA(() => ledger.balancete(empresaA.id, janela)).fecha, true,
+      `balancete não fecha na janela ${JSON.stringify(janela)}`);
+  }
+
+  // Limpa o movimento de março para não sujar as contas dos testes seguintes.
+  naA(() => ledger.estornar(marco.lote.id, { motivo: 'movimento só para provar o filtro de período', data: '2026-03-10' }));
+});
+
+teste('DRE: o mês não inclui o mês vizinho', () => {
+  const abril = naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-04-15', memo: 'receita de abril',
+    linhas: [
+      { contaCodigo: '1.1.1.001', debitoCents: 123400 },
+      { contaCodigo: '3.1.1.002', creditoCents: 123400 },
+    ],
+  }));
+  const maio = naA(() => relatorios.dre(empresaA.id, '2026-05'));
+  assert.strictEqual(maio.resumo.receitaBrutaCents, 0,
+    `o DRE de maio mostrou ${maio.resumo.receitaBrutaCents} — está somando abril`);
+  const dreAbril = naA(() => relatorios.dre(empresaA.id, '2026-04'));
+  assert.strictEqual(dreAbril.resumo.receitaBrutaCents, 123400);
+  naA(() => ledger.estornar(abril.lote.id, { motivo: 'teste de isolamento entre meses', data: '2026-04-15' }));
+});
+
 teste('razão: balancete fecha em zero', () => {
   const b = naA(() => ledger.balancete(empresaA.id, {}));
   assert.strictEqual(b.fecha, true, `balancete não fecha: diferença ${b.diferencaCents}`);
