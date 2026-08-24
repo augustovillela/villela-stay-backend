@@ -174,6 +174,12 @@ function registrarRotasPublicas(app, deps) {
         customer: d.customer, items: exp.items, cupom: d.cupom, origem: d.origem,
         endereco_entrega: d.endereco_entrega,
         desconto_pacote: exp.desconto, rotulo_pacote: exp.rotulo,
+        // A marca de teste NUNCA vem do corpo da requisição: isto é rota pública, e
+        // um campo `teste` aceito do cliente seria porta aberta para pedido que não
+        // aparece em relatório. Vem do e-mail no domínio reservado (repo.js), que é
+        // como se exercita o caminho REAL da loja — este mesmo código — sem notificar
+        // ninguém. Pagamento continua sendo cobrado pelo Mercado Pago normalmente.
+        teste: repo.ehEmailDeTeste(d.customer.email),
       });
       const prov = pagamentos.provedor('mercadopago');
       const pref = await prov.criarCheckout(order, {

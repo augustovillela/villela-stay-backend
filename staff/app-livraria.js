@@ -211,15 +211,44 @@ const LV = {
   },
 
   // -------------------------------------------------------- PEDIDOS
-  async vPedidos(filtro) {
-    const q = filtro ? '?status=' + filtro : '';
-    const { pedidos } = await LV.api('GET', '/pedidos' + q);
-    const f = (v, t) => `<button class="btn ${filtro === v ? '' : 'secund'} peq" onclick="LV.vPedidos('${v}')">${t}</button>`;
-    let h = `<div class="card"><button class="btn ${!filtro ? '' : 'secund'} peq" onclick="LV.vPedidos()">Todos</button> ${f('pendente', 'Pendentes')} ${f('pago', 'Pagos')} ${f('reembolsado', 'Reembolsados')}</div>`;
+  // `testes`: '' = só venda de verdade (padrão) | 'sim' = só os pedidos de teste.
+  // A lista de venda nunca mistura os dois — é o mesmo critério dos relatórios.
+  async vPedidos(filtro, testes) {
+    LV.testes = testes || '';
+    const qs = [];
+    if (filtro) qs.push('status=' + filtro);
+    if (LV.testes) qs.push('testes=' + LV.testes);
+    const { pedidos } = await LV.api('GET', '/pedidos' + (qs.length ? '?' + qs.join('&') : ''));
+    const sel = (cond) => cond ? '' : 'secund';
+    const f = (v, t) => `<button class="btn ${sel(filtro === v && !LV.testes)} peq" onclick="LV.vPedidos('${v}')">${t}</button>`;
+    let h = `<div class="card"><button class="btn ${sel(!filtro && !LV.testes)} peq" onclick="LV.vPedidos()">Todos</button> ${f('pendente', 'Pendentes')} ${f('pago', 'Pagos')} ${f('reembolsado', 'Reembolsados')}
+      <button class="btn ${sel(!!LV.testes)} peq" onclick="LV.vPedidos('','sim')">🧪 Testes</button>
+      ${LV.perm.config ? `<button class="btn secund peq" onclick="LV.novoTeste()">➕ Novo pedido de teste</button>` : ''}</div>`;
+    if (LV.testes) h += `<div class="card"><p class="sub">🧪 Pedidos de <b>teste</b>: entrega real (token, download, PDF), sem notificar ninguém e fora de todo relatório de venda.</p></div>`;
     h += `<div class="card">${pedidos.length ? tabela(['Data', 'Cliente', 'Total', 'Pagto', 'Entrega', 'Impresso', ''], pedidos.map(p => [
-      dataBr(p.created_at), esc(p.cliente_nome || ''), LV.brl(p.valor_total), badge(p.status), p.entrega_digital, p.impressao_status,
+      dataBr(p.created_at), (p.teste ? '🧪 ' : '') + esc(p.cliente_nome || ''), LV.brl(p.valor_total), badge(p.status), p.entrega_digital, p.impressao_status,
       `<button class="btn secund peq" onclick="LV.verPedido('${p.id}')">Ver</button>`])) : '<p class="sub">Sem pedidos.</p>'}</div>`;
     LV.body().innerHTML = h;
+  },
+  // Cria e entrega um pedido de teste pela MESMA função do webhook do Mercado Pago.
+  // Devolve o link de download para conferir o arquivo servido. Só admin.
+  async novoTeste() {
+    try {
+      const { livros } = await LV.api('GET', '/livros');
+      const ativos = (livros || []).filter(l => l.ativo);
+      if (!ativos.length) return alert('Nenhum livro ativo para testar.');
+      const escolha = prompt('Testar a entrega de qual livro?\n\n' + ativos.map((l, i) => `${i + 1}) ${l.titulo}`).join('\n') + '\n\nDigite o número:');
+      if (!escolha) return;
+      const livro = ativos[Number(escolha) - 1];
+      if (!livro) return alert('Número inválido.');
+      const r = await LV.api('POST', '/pedidos/teste', { livro: livro.slug, tipo: 'pdf' });
+      alert('Pedido de teste criado e entregue — ninguém foi notificado.\n\nLink de download:\n' + (r.links || []).map(l => l.url).join('\n'));
+      LV.vPedidos('', 'sim');
+    } catch (e) { alert(e.message); }
+  },
+  async removerTeste(id) {
+    if (!confirm('Excluir este pedido de TESTE? Somem o pedido, os itens, os pagamentos, os tokens e os logs. Venda de verdade não pode ser excluída por aqui.')) return;
+    try { await LV.api('DELETE', '/pedidos/' + id); LV.vPedidos('', 'sim'); } catch (e) { alert(e.message); }
   },
   async verPedido(id) {
     LV.tab = 'pedidos'; LV.render();
@@ -231,7 +260,8 @@ const LV = {
       ? `${esc([e.logradouro, e.numero].filter(Boolean).join(', '))}${e.complemento ? ' — ' + esc(e.complemento) : ''}${e.bairro ? '<br>' + esc(e.bairro) : ''}<br>${esc(cli.cidade || '')}/${esc(cli.estado || '')}${e.cep ? ' · CEP ' + esc(e.cep) : ''}`
       : `<span style="color:#b3261e">⚠️ Sem endereço de entrega neste pedido — solicite ao comprador pelo WhatsApp.</span>`;
     let h = `<div class="card"><button class="btn secund peq" onclick="LV.ir('pedidos')">← Voltar</button>
-      <h3>Pedido ${p.id.slice(0, 8)} · ${badge(p.status)}</h3>
+      <h3>Pedido ${p.id.slice(0, 8)} · ${badge(p.status)}${p.teste ? ' · 🧪 TESTE' : ''}</h3>
+      ${p.teste ? '<p style="background:#fff4e5;border-radius:8px;padding:.5rem .7rem">🧪 <b>Pedido de teste</b> — a entrega é real (token, download, PDF), mas nada foi notificado e ele não entra em nenhum relatório de venda.</p>' : ''}
       <p><b>${esc(cli.nome)}</b> · ${esc(cli.email)} · ${esc(cli.whatsapp)}<br>${esc(cli.doc)} · ${esc(cli.cidade)}/${esc(cli.estado)}</p>
       <p style="background:#f6f8fa;border-radius:8px;padding:.5rem .7rem"><b>📮 Endereço de entrega</b><br>${linhaEnd}</p>
       ${tabela(['Item', 'Tipo', 'Qtd', 'Preço'], p.itens.map(i => [esc(i.titulo_snapshot), i.tipo, i.quantidade, LV.brl(i.preco_unit)]))}
@@ -245,6 +275,7 @@ const LV = {
       acoes += ` <button class="btn secund peq" onclick="LV.bloquear('${id}',${p.entrega_digital === 'bloqueado'})">${p.entrega_digital === 'bloqueado' ? '🔓 Reativar acesso' : '🔒 Bloquear acesso'}</button>`;
     }
     if (p.status === 'pago') acoes += ` <button class="btn perigo peq" onclick="LV.acaoPedido('${id}','reembolsar')">↩️ Reembolsar</button>`;
+    if (p.teste && LV.perm.config) acoes += ` <button class="btn perigo peq" onclick="LV.removerTeste('${id}')">🗑️ Excluir pedido de teste</button>`;
     h += `<div style="margin-top:.6rem">${acoes}</div></div>`;
     // downloads
     h += `<div class="card"><h3>⬇️ Downloads</h3>${d.downloads.length ? tabela(['Quando', 'Resultado', 'IP'], d.downloads.map(l => [dataBr(l.created_at), l.resultado, esc(l.ip)])) : '<p class="sub">Nenhum download.</p>'}

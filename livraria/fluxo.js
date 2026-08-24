@@ -10,8 +10,41 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
   const TOKEN_HORAS = Number(process.env.LIVRARIA_TOKEN_HORAS || 72);
   const TOKEN_MAX = Number(process.env.LIVRARIA_TOKEN_MAX || 5);
 
+  // ------------------------------------------------------------- MODO TESTE
+  // Pedido com `teste = 1` (coluna criada em db.js) percorre o caminho REAL de
+  // entrega — gera token, libera o download, serve o PDF, abre print job — e não
+  // dispara NADA para fora: e-mail, WhatsApp do comprador, alerta do Augusto,
+  // CRM e webhook do Make ficam suprimidos.
+  //
+  // A guarda mora nas três saídas (notificar / alerta / emitir) e não em cada
+  // rotina de negócio: rotina nova herda a supressão sem ninguém lembrar da regra.
+  // O que teria saído fica em notification_logs com status 'suprimido (teste)' —
+  // o teste continua provando que a mensagem certa foi montada com o link certo,
+  // sem que ela saia da casa.
+  const ehTeste = (order) => !!(order && order.teste);
+
+  // Alerta interno ao Augusto (WhatsApp). Não sai em pedido de teste.
+  async function alerta(order, texto) {
+    if (ehTeste(order)) {
+      repo.Notif.log('whatsapp', { destino: 'augusto', assunto: String(texto).slice(0, 120), order_id: order.id, status: 'suprimido (teste)' });
+      return;
+    }
+    return alertaAugusto(texto).catch(() => {});
+  }
+
+  // Evento para o Make/n8n. Pedido de teste não vira automação lá fora.
+  async function emitir(tipo, order, extra) {
+    if (ehTeste(order)) return false;
+    return eventos.emitirPedido(tipo, order, extra);
+  }
+
   async function notificar(order, tmpl, { assunto, order_id } = {}) {
     const cli = order.cliente || {};
+    if (ehTeste(order)) {
+      if (cli.email) repo.Notif.log('email', { destino: cli.email, assunto: tmpl.assunto, order_id: order.id, status: 'suprimido (teste)' });
+      if (cli.whatsapp && tmpl.texto) repo.Notif.log('whatsapp', { destino: cli.whatsapp, assunto: tmpl.assunto || assunto || '', order_id: order.id, status: 'suprimido (teste)' });
+      return;
+    }
     if (cli.email) {
       const ok = await enviarEmail(cli.email, tmpl.assunto, tmpl.html);
       repo.Notif.log('email', { destino: cli.email, assunto: tmpl.assunto, order_id: order.id, status: ok ? 'enviado' : 'falha' });
@@ -30,7 +63,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       const url = urls.download(tk.id);
       const tmpl = emails.pdfEntregue(order, { downloadUrl: url, titulo: it.titulo_snapshot, validadeHoras: TOKEN_HORAS, maxDownloads: TOKEN_MAX });
       await notificar(order, tmpl);
-      await eventos.emitirPedido(eventos.EVENTOS.PDF_ENTREGUE, repo.Orders.obter(order.id), { book_id: it.book_id, download_url: url });
+      await emitir(eventos.EVENTOS.PDF_ENTREGUE, repo.Orders.obter(order.id), { book_id: it.book_id, download_url: url });
     }
   }
 
@@ -65,6 +98,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
   // Falha aqui NUNCA derruba a entrega do livro — por isso o try/catch.
   function registrarNoCRM(order) {
     if (!crm || !crm.upsertContato) return;
+    if (ehTeste(order)) return;   // comprador de teste não vira contato no funil
     const cli = order.cliente || {};
     try {
       const itens = (order.itens || []).map(i => `${i.titulo_snapshot} (${i.tipo})`).join(', ');
@@ -94,9 +128,9 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       repo.Print.criar(order.id, it.book_id);
       const tmpl = emails.impressoRecebido(order, { titulo: it.titulo_snapshot });
       await notificar(order, tmpl);
-      await eventos.emitirPedido(eventos.EVENTOS.IMPRESSO_CRIADO, repo.Orders.obter(order.id), { book_id: it.book_id });
+      await emitir(eventos.EVENTOS.IMPRESSO_CRIADO, repo.Orders.obter(order.id), { book_id: it.book_id });
     }
-    if (impressos.length) alertaAugusto(`📦 Novo pedido impresso na Livraria: ${(order.cliente || {}).nome || 'cliente'} — ${impressos.map(i => i.titulo_snapshot).join(', ')}.`).catch(() => {});
+    if (impressos.length) alerta(order, `📦 Novo pedido impresso na Livraria: ${(order.cliente || {}).nome || 'cliente'} — ${impressos.map(i => i.titulo_snapshot).join(', ')}.`);
   }
 
   return {
@@ -113,16 +147,18 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
         entrega_digital: order.tem_pdf ? 'liberado' : 'pendente',
         impressao_status: order.tem_impresso ? 'aguardando' : 'nenhum',
       });
-      if (order.cupom_codigo) repo.Coupons.consumir(order.cupom_codigo);
+      // Cupom de teste não gasta uso real: um cupom limitado a N usos não pode
+      // encolher porque alguém validou a entrega.
+      if (order.cupom_codigo && !ehTeste(order)) repo.Coupons.consumir(order.cupom_codigo);
       // Confirmação de compra (visão geral)
       await notificar(order, emails.compraConfirmada(order, { biblioteca: urls.biblioteca(order.id) }));
-      await eventos.emitirPedido(eventos.EVENTOS.VENDA_APROVADA, order);
+      await emitir(eventos.EVENTOS.VENDA_APROVADA, order);
       // Rotina 1 (PDF) + Rotina 2 (impresso)
       if (order.tem_pdf) await entregarPDFs(order);
       if (order.tem_impresso) await abrirImpressos(order);
       await entregarBonus(order);
       registrarNoCRM(order);
-      alertaAugusto(`💰 Venda na Livraria: ${(order.cliente || {}).nome || 'cliente'} — ${repo.brl(order.valor_total)} (${(order.itens || []).map(i => i.titulo_snapshot + '/' + i.tipo).join(', ')}).`).catch(() => {});
+      await alerta(order, `💰 Venda na Livraria: ${(order.cliente || {}).nome || 'cliente'} — ${repo.brl(order.valor_total)} (${(order.itens || []).map(i => i.titulo_snapshot + '/' + i.tipo).join(', ')}).`);
       return repo.Orders.obter(orderId);
     },
 
@@ -133,7 +169,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       repo.Payments.atualizarPorOrder(orderId, { status: 'recusado', provider_payment_id: pag.provider_payment_id || '', raw: JSON.stringify(pag.raw || {}) });
       order = repo.Orders.atualizarCampos(orderId, { status: 'recusado' });
       await notificar(order, emails.pagamentoFalhou(order, { checkoutUrl: urls.checkoutRetry(order) }));
-      await eventos.emitirPedido(eventos.EVENTOS.PAGAMENTO_RECUSADO, order);
+      await emitir(eventos.EVENTOS.PAGAMENTO_RECUSADO, order);
       return order;
     },
 
@@ -171,7 +207,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       repo.Payments.atualizarPorOrder(orderId, { status: 'reembolsado' });
       const upd = repo.Orders.atualizarCampos(orderId, { status: 'reembolsado', entrega_digital: 'bloqueado' });
       await notificar(upd, emails.reembolso(upd, { titulo: (upd.itens[0] || {}).titulo_snapshot }));
-      await eventos.emitirPedido(eventos.EVENTOS.REEMBOLSO, upd);
+      await emitir(eventos.EVENTOS.REEMBOLSO, upd);
       repo.Audit.log(staffUser, 'pedido.reembolsar', { entidade: 'order', entidade_id: orderId, ip });
       return { ok: true };
     },
@@ -192,7 +228,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
         const book = repo.Books.obter(pj.book_id);
         const tmpl = emails.impressoEnviado(order, { titulo: book ? book.titulo : 'seu livro', rastreio: pj.rastreio, transportadora: pj.fornecedor });
         await notificar(order, tmpl);
-        await eventos.emitirPedido(eventos.EVENTOS.IMPRESSO_ENVIADO, repo.Orders.obter(pj.order_id), { rastreio: pj.rastreio });
+        await emitir(eventos.EVENTOS.IMPRESSO_ENVIADO, repo.Orders.obter(pj.order_id), { rastreio: pj.rastreio });
       }
       return { ok: true, print: pj };
     },
