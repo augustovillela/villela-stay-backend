@@ -259,7 +259,11 @@ const Orders = {
   },
   // Cria pedido pendente a partir de um carrinho validado. items: [{book_id,tipo,quantidade}].
   // Calcula preços a partir do BANCO (nunca confia no preço do cliente). Aplica cupom.
-  criar({ customer, items, cupom, origem, endereco_entrega }) {
+  //
+  // desconto_pacote / rotulo_pacote vêm de `pacotes.js`, já expandidos e deduplicados
+  // pela rota de checkout. NÃO acumulam com cupom: se o pedido veio de pacote, o
+  // cupom é ignorado, para não empilhar dois descontos sobre a mesma margem.
+  criar({ customer, items, cupom, origem, endereco_entrega, desconto_pacote = 0, rotulo_pacote = '' }) {
     return transacao(() => {
       const cli = Customers.upsert(customer);
       const linhas = [];
@@ -280,7 +284,10 @@ const Orders = {
       }
       if (!linhas.length) throw new Error('Carrinho vazio.');
       let desconto = 0, cupomCodigo = '';
-      if (cupom) {
+      if (desconto_pacote > 0) {
+        desconto = Math.min(Math.round(desconto_pacote), subtotal);
+        cupomCodigo = ('PACOTE ' + (rotulo_pacote || '')).trim().slice(0, 60);
+      } else if (cupom) {
         const av = Coupons.avaliar(cupom, bookIds, subtotal);
         if (av.ok) { desconto = av.desconto; cupomCodigo = av.cupom.codigo; }
       }

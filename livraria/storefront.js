@@ -29,6 +29,10 @@ function pixelEvento(evento, dados) {
 }
 
 const CSS = `
+.lv-pacote-preco{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;
+  background:#f4f7fb;border:1px solid #dde6f1;border-radius:12px;padding:18px 20px}
+.lv-nota{background:#fdf6e9;border:1px solid #f0dcb4;border-radius:10px;padding:12px 14px;margin:14px 0 0;font-size:14px}
+
 :root{--petroleo:#1B2A4A;--petroleo2:#24365C;--teal:#7F1D1D;--dourado:#C9A227;--dourado2:#B08E1F;--creme:#F8F9FA;--cinza:#F8F9FA;--cinza2:#E2E6EC;--tinta:#1F2933;--suave:#5B6B7A}
 *{box-sizing:border-box}body{margin:0;font-family:'Inter',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--tinta);background:#fff;line-height:1.6}
 h1,h2,h3{font-family:'Lora',Georgia,serif;color:var(--petroleo);line-height:1.2;margin:.2em 0 .5em}
@@ -240,7 +244,7 @@ function textoBusca(b) {
   return semAcento([b.titulo, b.subtitulo, b.autor, b.categoria, b.slug, b.descricao_curta, b.descricao_longa,
     b.publico_alvo, b.sumario, lista(b.tags), lista(b.beneficios)].join(' '));
 }
-function vitrine(livros, filtro = {}) {
+function vitrine(livros, filtro = {}, listaPacotes = []) {
   const q = String(filtro.q || '').trim();
   const termos = semAcento(q).split(/\s+/).filter(Boolean);
   const catPedida = String(filtro.categoria || '').trim();
@@ -281,12 +285,28 @@ function vitrine(livros, filtro = {}) {
       <h2>${esc(c)}</h2><div class="grid grid-books">${doGrupo.map(card).join('')}</div></section>` : '';
   }).join('') + `</div>`;
 
+  const faixaPacotes = (listaPacotes || []).length ? `
+  <section><div class="wrap">
+    <h2 style="margin:0 0 4px">Pacotes</h2>
+    <p class="muted" style="margin:0 0 14px">Leve a coleção completa por menos do que comprando um a um.</p>
+    <div class="grid grid-books">${(listaPacotes || []).map(p => `
+      <a class="card" href="/pacotes/${esc(p.slug)}">
+        <div class="capa">${p.capa_url ? `<img src="${esc(p.capa_url)}" alt="${esc(p.titulo)}" loading="lazy">` : '📚'}</div>
+        <div class="corpo">
+          <span class="badge">${p.livros.length} livros</span>
+          <h3>${esc(p.titulo)}</h3>
+          <p class="muted" style="margin:0;font-size:14px">${esc(p.chamada || '')}</p>
+          <div style="margin-top:auto" class="preco">${brl(p.preco)} <s class="muted" style="font-size:14px;font-weight:400">${brl(p.soma)}</s></div>
+        </div></a>`).join('')}</div>
+  </div></section>` : '';
+
   const body = `
   <section class="hero"><div class="wrap">
     <p class="eyebrow">Livraria Villela</p>
     <h1>Livros para quem quer hospedar, empreender e viver melhor</h1>
     <p class="sub">Conteúdo prático escrito por Augusto Villela. Entrega imediata em PDF e opção de exemplar impresso.</p>
   </div></section>
+  ${faixaPacotes}
   <section><div class="wrap">
     <form class="lv-busca" method="get" action="/livros" role="search">
       ${catAtiva ? `<input type="hidden" name="categoria" value="${esc(catSlug(catAtiva))}">` : ''}
@@ -351,6 +371,55 @@ function vitrine(livros, filtro = {}) {
 function precoMenor(b) {
   const ps = [b.preco_pdf, b.preco_impresso, b.preco_combo].filter(v => v != null);
   return ps.length ? 'a partir de ' + brl(Math.min(...ps)) : 'Em breve';
+}
+
+// ------------------------------------------------ página do pacote /pacotes/:slug
+// Um pacote não é um livro do banco: é a composição declarada em pacotes.js,
+// já resolvida em { livros, soma, desconto, preco } pela rota.
+function pacote(p) {
+  const economia = brl(p.desconto);
+  const itens = p.livros.map(b => `
+    <a class="card" href="/livros/${esc(b.slug)}">
+      <div class="capa">${b.capa_url ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}" loading="lazy">` : '📕'}</div>
+      <div class="corpo">
+        <h3 style="font-size:16px">${esc(b.titulo)}</h3>
+        <p class="muted" style="margin:0;font-size:13px">${esc(b.subtitulo || '')}</p>
+      </div></a>`).join('');
+
+  const body = `
+  <section class="hero"><div class="wrap">
+    <p class="eyebrow">Pacote — ${p.livros.length} livros</p>
+    <h1>${esc(p.titulo)}</h1>
+    <p class="sub">${esc(p.chamada || '')}</p>
+  </div></section>
+  <section><div class="wrap">
+    <div class="lv-pacote-preco">
+      <div>
+        <p class="muted" style="margin:0">Comprados separadamente: <s>${brl(p.soma)}</s></p>
+        <p class="preco" style="font-size:30px;margin:4px 0">${brl(p.preco)}</p>
+        <p class="muted" style="margin:0">Você economiza <strong>${economia}</strong> (${p.desconto_pct}%)</p>
+      </div>
+      <a class="btn btn-lg" href="/checkout?pacote=${esc(p.slug)}">Comprar o pacote</a>
+    </div>
+    <p class="muted" style="margin:14px 0 0">
+      Todos os títulos vão <strong>impressos</strong> e cada um acompanha o <strong>PDF</strong>,
+      liberado assim que o pagamento é confirmado.
+    </p>
+    ${p.nota ? `<p class="lv-nota">${p.nota}</p>` : ''}
+    <h2 style="margin-top:26px">O que vem no pacote</h2>
+    <div class="grid grid-books">${itens}</div>
+  </div></section>`;
+
+  return pagina({
+    title: `${p.titulo} — ${p.livros.length} livros | Livraria Villela`,
+    description: `${p.chamada || p.titulo} Os ${p.livros.length} títulos impressos, com o PDF de cada um, por ${brl(p.preco)}.`,
+    path: `/pacotes/${p.slug}`, body,
+    schema: {
+      '@context': 'https://schema.org', '@type': 'Product', name: p.titulo,
+      description: p.chamada || '', url: SITE + '/pacotes/' + p.slug,
+      offers: { '@type': 'Offer', price: (p.preco / 100).toFixed(2), priceCurrency: 'BRL', availability: 'https://schema.org/InStock' },
+    },
+  });
 }
 
 // ------------------------------------------------ página de venda /livros/:slug
@@ -424,11 +493,17 @@ function paginaLivro(b) {
 }
 
 // ------------------------------------------------------------ checkout
-function checkout(b, tipoInicial) {
+// `pac` (opcional) troca o checkout de livro para PACOTE: uma opcao unica de
+// compra, sem cupom (o desconto do pacote nao acumula — ver Orders.criar).
+function checkout(b, tipoInicial, pac) {
   const opcoes = [];
+  if (pac) {
+    opcoes.push({ tipo: 'pacote', nome: `${pac.livros.length} livros impressos + os PDFs`, preco: pac.preco });
+  } else {
   if (b.preco_pdf != null) opcoes.push({ tipo: 'pdf', nome: 'PDF (download imediato)', preco: b.preco_pdf });
   if (b.preco_impresso != null) opcoes.push({ tipo: 'impresso', nome: 'Impresso (enviado à sua casa)', preco: b.preco_impresso });
   if (b.preco_combo != null) opcoes.push({ tipo: 'combo', nome: 'Combo PDF + Impresso', preco: b.preco_combo });
+  }
   const body = `
   <section><div class="wrap" style="display:grid;grid-template-columns:1fr 340px;gap:30px">
     <div>
@@ -475,7 +550,8 @@ function checkout(b, tipoInicial) {
     </div></div>
   </div></section>
   <script>
-    var LIVRO=${JSON.stringify({ id: b.id, slug: b.slug, titulo: b.titulo, precos: { pdf: b.preco_pdf, impresso: b.preco_impresso, combo: b.preco_combo } })};
+    var LIVRO=${JSON.stringify({ id: b.id, slug: b.slug, titulo: b.titulo, precos: pac ? { pacote: pac.preco } : { pdf: b.preco_pdf, impresso: b.preco_impresso, combo: b.preco_combo } })};
+    var PACOTE=${pac ? JSON.stringify({ slug: pac.slug, titulo: pac.titulo }) : 'null'};
     var descontoAtual=0, cupomAplicado='';
     var q=new URLSearchParams(location.search);
     function tipo(){return document.getElementById('tipo').value}
@@ -499,10 +575,11 @@ function checkout(b, tipoInicial) {
       ev.preventDefault();document.getElementById('erro').style.display='none';
       var btn=document.getElementById('btn');btn.disabled=true;btn.textContent='Redirecionando…';
       var v=id=>document.getElementById(id).value.trim();
-      var body={items:[{book_id:LIVRO.id,tipo:tipo(),quantidade:1}],cupom:cupomAplicado,
+      var body=PACOTE?{pacotes:[PACOTE.slug],items:[]}:{items:[{book_id:LIVRO.id,tipo:tipo(),quantidade:1}],cupom:cupomAplicado};
+      body=Object.assign(body,{
         customer:{nome:v('nome'),email:v('email'),whatsapp:v('whatsapp'),doc:v('doc'),pais:v('pais'),estado:v('estado'),cidade:v('cidade'),consentimentos:{termos:true,em:new Date().toISOString()}},
         endereco_entrega:{cep:v('cep'),logradouro:v('logradouro'),numero:v('numero'),complemento:v('complemento'),bairro:v('bairro')},
-        origem:{utm_source:q.get('utm_source')||'',utm_medium:q.get('utm_medium')||'',utm_campaign:q.get('utm_campaign')||'',ref:document.referrer||''}};
+        origem:{utm_source:q.get('utm_source')||'',utm_medium:q.get('utm_medium')||'',utm_campaign:q.get('utm_campaign')||'',ref:document.referrer||''}});
       try{
         var r=await fetch('/livraria/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         var d=await r.json();
@@ -664,4 +741,4 @@ function folhear(b) {
   });
 }
 
-module.exports = { pagina, vitrine, paginaLivro, folhear, checkout, obrigado, biblioteca, suporte, SITE, waLink, esc };
+module.exports = { pagina, vitrine, pacote, paginaLivro, folhear, checkout, obrigado, biblioteca, suporte, SITE, waLink, esc };
