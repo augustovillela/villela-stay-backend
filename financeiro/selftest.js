@@ -3587,6 +3587,26 @@ testeAsync('API: importar do Mercado Pago é dryRun por PADRÃO', async () => {
   assert.strictEqual(depois, antes, 'a chamada padrão criou transações');
 });
 
+testeAsync('MFA: o QR vem do servidor, e a chave manual continua na tela', async () => {
+  // O `qrcode` já é dependência deste backend (hóspede e alta-vista usam):
+  // não havia dependência nova a justificar, e eu tinha dito que havia.
+  const novo = await pedir('POST', '/finance/api/login',
+    { corpo: { email: 'dono@mercearia.com.br', senha: 'senha-forte-3' } });
+  const cookieQr = (novo.cookies[0] || '').split(';')[0];
+  const r = await pedir('POST', '/finance/api/mfa/iniciar', { cookie: cookieQr, corpo: {} });
+  // Sem `return` silencioso: a suíte define FINANCE_SECRET_KEY, então este
+  // teste TEM de rodar. Teste que se pula sozinho por falta de env é teste
+  // que um dia deixa de existir sem ninguém notar.
+  assert.strictEqual(r.status, 200, `mfa/iniciar devolveu ${r.status}: ${JSON.stringify(r.corpo)}`);
+
+  assert.ok(/^<svg/.test(String(r.corpo.qrSvg || '')), 'o QR não veio como SVG');
+  assert.ok(r.corpo.qrSvg.length > 500, 'o SVG do QR veio vazio demais para conter o segredo');
+  // A chave em texto NÃO some: quem não consegue ler o QR precisa dela, e
+  // perder a ativação do segundo fator por causa de uma imagem seria absurdo.
+  assert.ok(r.corpo.segredo && r.corpo.segredo.length >= 16, 'o segredo em texto sumiu da resposta');
+  assert.ok(/^otpauth:\/\/totp\//.test(r.corpo.uri), 'a URI otpauth sumiu');
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================

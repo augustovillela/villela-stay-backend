@@ -1507,11 +1507,15 @@ const F = {
       // segredo funciona em todos os aplicativos autenticadores.
       F.el('f-mfa-area').innerHTML = `
         <div class="aviso" style="margin-top:12px">
-          <p style="margin:0 0 8px"><b>1.</b> No seu aplicativo autenticador, escolha <i>inserir chave manualmente</i> e use:</p>
+          ${r.qrSvg
+            ? `<p style="margin:0 0 8px"><b>1.</b> Leia o QR no seu aplicativo autenticador:</p>
+               <div style="background:#fff;display:inline-block;padding:8px;border-radius:8px">${r.qrSvg}</div>
+               <p class="sub" style="margin:8px 0 0">Ou insira a chave manualmente:</p>`
+            : `<p style="margin:0 0 8px"><b>1.</b> No seu aplicativo autenticador, escolha <i>inserir chave manualmente</i> e use:</p>`}
           <p style="margin:0 0 4px">Conta: <code>Villela Finance:${F.esc(F.eu.usuario.email)}</code></p>
           <p style="margin:0 0 8px">Chave: <code style="font-size:1.05rem;letter-spacing:.06em">${F.esc(r.segredo)}</code></p>
           <p style="margin:0 0 10px" class="sub">Este segredo não será mostrado de novo. Em celular, este link também funciona:
-            <a href="${F.esc(r.uri)}">abrir no autenticador</a>.</p>
+            <a href="${F.esc(r.uri)}">abrir no autenticador</a>.${r.qrIndisponivel ? ' (o QR não pôde ser gerado desta vez)' : ''}</p>
           <p style="margin:0 0 6px"><b>2.</b> Confirme com o código atual:</p>
           <label style="max-width:220px"><input id="f-mfa-cod" inputmode="numeric" maxlength="6" placeholder="000000"></label>
           <p style="margin:10px 0 0"><button class="btn" onclick="F.confirmarMfa()">Confirmar e ativar</button></p>

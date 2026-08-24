@@ -686,9 +686,18 @@ function registrarRotasApp(app, { jwtSecret, express }) {
   app.get('/finance/api/mfa', ...rota((req) => mfa.estado(req.assinante.id)));
 
   /** Passo 1: gera o QR. O segredo em claro aparece UMA vez, aqui. */
-  app.post('/finance/api/mfa/iniciar', ...rota((req) => {
+  app.post('/finance/api/mfa/iniciar', ...rota(async (req) => {
     const r = mfa.iniciar(req.assinante.id);
     auditoria.registrar('mfa.iniciar', { objetoTipo: 'usuario', objetoId: req.assinante.id });
+    // QR em SVG, gerado aqui. O `qrcode` já é dependência deste backend
+    // (hóspede e alta-vista usam) — não há dependência nova a justificar.
+    // Se falhar, a entrada manual da chave continua na tela: perder a
+    // ativação do segundo fator por causa de uma imagem seria absurdo.
+    try {
+      r.qrSvg = await require('qrcode').toString(r.uri, {
+        type: 'svg', margin: 1, width: 232, color: { dark: '#1B2A4A', light: '#ffffff' },
+      });
+    } catch (e) { r.qrIndisponivel = e.message; }
     return r;
   }, { json: true }));
 
