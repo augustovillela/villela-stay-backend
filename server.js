@@ -4690,6 +4690,9 @@ try {
     // Vertical de hospedagem: o módulo NÃO duplica o cliente da Stays nem
     // as credenciais — recebe o paginador e o cache de nomes daqui.
     staysPaginado, resolverClientes,
+    // Porta estreita para rotinas e agentes (x-publish-key): só a conta
+    // interna do grupo e só ações de nível <= 2. Ver financeiro/rotas-agente.js.
+    requirePublishOrAdmin,
   });
 } catch (e) { console.error('[finance] falha ao montar módulo:', e.message); }
 

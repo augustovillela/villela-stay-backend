@@ -51,6 +51,7 @@ const caixa = require('./caixa');
 const orcamento = require('./orcamento');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
+const { registrarRotasAgente } = require('./rotas-agente');
 
 let _timer = null;
 
@@ -74,11 +75,16 @@ function montar(app, injected = {}) {
   // assinante mudou). Sem isto, o motor referenciaria conta inexistente
   // numa empresa criada antes da versão que a introduziu.
   const atualizadas = contas.atualizarPlanosDeConta();
+  const usuarioInicial = contas.semearUsuarioInicial();
 
   app.use('/finance', tenancy.middlewareCorrelacao);
   app.use('/staff/api/finance', tenancy.middlewareCorrelacao);
   registrarRotasApp(app, { jwtSecret, express });
   registrarRotasStaff(app, { requireAuth, requireAdmin, express });
+  // Porta do agente: existe só se o server injetar a guarda da PUBLISH_KEY.
+  // Sem ela, o módulo sobe sem a porta — e diz isso no log.
+  const portaAgente = !!injected.requirePublishOrAdmin;
+  if (portaAgente) registrarRotasAgente(app, { requirePublishOrAdmin: injected.requirePublishOrAdmin, express });
 
   iniciarWorker(alertaAugusto);
 
@@ -87,6 +93,8 @@ function montar(app, injected = {}) {
     `planos: ${semeadura.planos.total} · conta interna: ${semeadura.tenantInterno}${semeadura.criada ? ' (criada agora)' : ''} · ` +
     `diário: ${diario.configurada() ? 'replicando para R2' : 'LOCAL (defina FINANCE_S3_* para replicar)'} · ` +
     `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +
+    `agente: ${portaAgente ? '/staff/api/finance/agente (so conta interna, nivel <= 2)' : 'INDISPONIVEL'} · ` +
+    `acesso inicial: ${usuarioInicial.criado ? `criado (${usuarioInicial.email})` : usuarioInicial.motivo} · ` +
     `legado /staff/api/financeiro/* intacto` +
     (atualizadas.contasNovas ? ` · plano de contas: +${atualizadas.contasNovas} conta(s) em ${atualizadas.empresas} empresa(s)` : '')
   );

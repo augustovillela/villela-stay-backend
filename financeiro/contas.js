@@ -167,6 +167,37 @@ function atualizarPlanosDeConta() {
   return { empresas, contasNovas };
 }
 
+/**
+ * Primeiro usuário da conta interna, a partir do ambiente. Mesmo padrão do
+ * Portal Staff (`ADMIN_EMAIL` / `ADMIN_INITIAL_PASSWORD`).
+ *
+ * Existe porque provisionamento NÃO inventa senha: quem define a senha
+ * inicial é o dono, no painel do Render. Sem as duas variáveis, a conta
+ * sobe sem usuário e o log diz o que fazer — em vez de criar um acesso
+ * com senha que ninguém escolheu.
+ *
+ * Roda uma vez: se já existe qualquer usuário na conta, não faz nada.
+ */
+function semearUsuarioInicial(slug = SLUG_INTERNO) {
+  const email = String(process.env.FINANCE_ADMIN_EMAIL || '').toLowerCase().trim();
+  const senha = String(process.env.FINANCE_ADMIN_INITIAL_PASSWORD || '');
+  const tenant = repo.tenantPorSlug(slug);
+  if (!tenant) return { criado: false, motivo: 'conta interna ainda nao existe' };
+
+  return tenancy.comTenant({ tenantId: tenant.id, userId: 'boot', perfil: 'proprietario' }, () => {
+    const existentes = repo.listarUsuarios();
+    if (existentes.length) return { criado: false, motivo: 'a conta ja tem usuario' };
+    if (!email || !senha) {
+      return { criado: false, motivo: 'defina FINANCE_ADMIN_EMAIL e FINANCE_ADMIN_INITIAL_PASSWORD para criar o primeiro acesso' };
+    }
+    if (senha.length < 10) {
+      return { criado: false, motivo: 'FINANCE_ADMIN_INITIAL_PASSWORD tem menos de 10 caracteres - recusada' };
+    }
+    const u = criarUsuario({ email, nome: process.env.FINANCE_ADMIN_NOME || 'Administrador', senha, perfil: 'proprietario' });
+    return { criado: true, email: u.email, perfil: u.perfil };
+  });
+}
+
 /** Semeadura de boot: planos + a conta interna do grupo. */
 function semearPlataforma() {
   const planos = entitlements.semear();
@@ -183,5 +214,5 @@ function semearPlataforma() {
 module.exports = {
   ErroDeConta, SLUG_INTERNO, provisionar, criarEmpresa, semearRegras,
   criarUsuario, hashSenha, conferirSenha, semearPlataforma, slugificar, primeiraEntidade,
-  atualizarPlanosDeConta,
+  atualizarPlanosDeConta, semearUsuarioInicial,
 };

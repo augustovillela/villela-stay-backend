@@ -1627,6 +1627,12 @@ testeAsync('stays: a rotina do worker pula quem não tem o módulo', async () =>
 // 14. ROTAS HTTP (ponta a ponta, com sessão real)
 // =====================================================================
 const jwtSecret = 'segredo-de-teste-' + Date.now();
+const CHAVE_AGENTE = 'chave-de-agente-do-teste';
+// Réplica da guarda do server.js: aceita a chave OU sessão de admin.
+const requirePublishOrAdmin = (req, res, next) => {
+  if (req.headers['x-publish-key'] === CHAVE_AGENTE) { req.viaChave = true; return next(); }
+  return res.status(401).json({ erro: 'não autenticado' });
+};
 const app = express();
 app.use(cookieParser());
 app.use(tenancy.middlewareCorrelacao);
@@ -1634,6 +1640,7 @@ const requireAuth = (req, res, next) => { req.user = { email: 'augusto@teste', p
 const requireAdmin = (req, res, next) => next();
 require('./rotas-app').registrarRotasApp(app, { jwtSecret, express });
 require('./rotas-staff').registrarRotasStaff(app, { requireAuth, requireAdmin, express });
+require('./rotas-agente').registrarRotasAgente(app, { requirePublishOrAdmin, express });
 
 let servidor, base;
 const http = require('http');
@@ -1850,6 +1857,109 @@ testeAsync('HTTP: ordem de pagamento não paga — abre solicitação', async ()
   // E a parcela continua aberta: nada foi pago sem aprovação.
   const depois = await pedir('GET', `/finance/api/titulos/${alvo.id}`, { cookie: cookieA });
   assert.strictEqual(depois.corpo.parcelas.find(p => p.id === aberta.id).status, 'aberta');
+});
+
+testeAsync('agente: a chave alcança a conta interna e sincroniza', async () => {
+  const r = await pedir('POST', '/staff/api/finance/agente/stays/sincronizar', {
+    corpo: { competencia: '2026-09' }, cabecalhos: { 'x-publish-key': CHAVE_AGENTE },
+  });
+  assert.strictEqual(r.status, 200, r.cru);
+  assert.ok(r.corpo.resumo, 'sem resumo da sincronização');
+  // Rodar de novo não muda nada (a reconciliação por estado-alvo).
+  assert.strictEqual(r.corpo.resumo.nova, 0, 'a competência já estava sincronizada nos testes anteriores');
+});
+
+testeAsync('agente: a prévia funciona pela chave e não grava', async () => {
+  const antes = naA(() => repo.listarLotes(empresaA.id, { competencia: '2026-09', limite: 200 })).length;
+  const r = await pedir('POST', '/staff/api/finance/agente/stays/previa', {
+    corpo: { competencia: '2026-09' }, cabecalhos: { 'x-publish-key': CHAVE_AGENTE },
+  });
+  assert.strictEqual(r.status, 200, r.cru);
+  assert.strictEqual(r.corpo.dryRun, true);
+  const depois = naA(() => repo.listarLotes(empresaA.id, { competencia: '2026-09', limite: 200 })).length;
+  assert.strictEqual(depois, antes, 'a prévia pela chave GRAVOU');
+});
+
+testeAsync('agente: TRAVA 1 — chave errada não entra', async () => {
+  const r = await pedir('GET', '/staff/api/finance/agente/saude', {
+    cabecalhos: { 'x-publish-key': 'chave-errada' },
+  });
+  assert.ok([401, 403].includes(r.status), `chave errada devolveu ${r.status}`);
+});
+
+testeAsync('agente: TRAVA 2 — não alcança conta de assinante', async () => {
+  const r = await pedir('POST', '/staff/api/finance/agente/stays/sincronizar', {
+    corpo: { competencia: '2026-09', conta: 'pousada-x' },
+    cabecalhos: { 'x-publish-key': CHAVE_AGENTE },
+  });
+  assert.strictEqual(r.status, 403, `esperava 403, veio ${r.status}`);
+  assert.ok(/só alcança a conta interna/.test(r.corpo.erro), `mensagem: ${r.corpo.erro}`);
+});
+
+testeAsync('agente: TRAVA 3 — ação material é recusada mesmo com a chave certa', async () => {
+  const r = await pedir('POST', '/staff/api/finance/agente/teste-de-teto', {
+    corpo: {}, cabecalhos: { 'x-publish-key': CHAVE_AGENTE },
+  });
+  assert.strictEqual(r.status, 403, `pagamento pela chave devolveu ${r.status} — a porta está larga demais`);
+  assert.ok(/exige uma pessoa com alçada/.test(r.corpo.erro), `mensagem: ${r.corpo.erro}`);
+});
+
+teste('agente: o teto lê o catálogo do rbac, não uma lista paralela', () => {
+  const { exigirNivelDeAgente, NIVEL_MAXIMO_AGENTE } = require('./rotas-agente');
+  assert.strictEqual(NIVEL_MAXIMO_AGENTE, 2);
+  // Toda ação de nível 3+ do catálogo tem de ser recusada — inclusive as
+  // que forem acrescentadas depois deste teste ser escrito.
+  for (const [nome, a] of Object.entries(rbac.ACOES)) {
+    if (a.nivelMinimo <= 2) { exigirNivelDeAgente(nome); continue; }
+    assert.throws(() => exigirNivelDeAgente(nome), /alçada|autorizad|regulat|habilita/i,
+      `a ação ${nome} (nível ${a.nivelMinimo}) passou pela porta do agente`);
+  }
+});
+
+teste('bootstrap: sem as env, não cria acesso e DIZ o que fazer', () => {
+  delete process.env.FINANCE_ADMIN_EMAIL;
+  delete process.env.FINANCE_ADMIN_INITIAL_PASSWORD;
+  const r = contasSvc.semearUsuarioInicial();
+  assert.strictEqual(r.criado, false);
+  // A conta A já tem usuário (criado nos testes de HTTP), então o motivo
+  // é esse; o que importa é nunca inventar senha.
+  assert.ok(r.motivo, 'sem motivo explicando por que não criou');
+});
+
+teste('bootstrap: cria o primeiro acesso, recusa senha curta e roda uma vez só', () => {
+  // Conta nova e vazia, para exercitar o caminho de verdade — a interna já
+  // ganhou usuário nos testes de HTTP.
+  const nova = tenancy.semContexto(() => contasSvc.provisionar({
+    nome: 'Conta de bootstrap', slug: 'boot-teste', interno: true,
+  }));
+  const naNova = (fn) => tenancy.comTenant({ tenantId: nova.tenant.id, userId: 't' }, fn);
+  const env = (email, senha) => {
+    if (email) process.env.FINANCE_ADMIN_EMAIL = email; else delete process.env.FINANCE_ADMIN_EMAIL;
+    if (senha) process.env.FINANCE_ADMIN_INITIAL_PASSWORD = senha; else delete process.env.FINANCE_ADMIN_INITIAL_PASSWORD;
+  };
+
+  env('', '');
+  assert.strictEqual(contasSvc.semearUsuarioInicial('boot-teste').criado, false, 'criou sem as variáveis');
+  assert.strictEqual(naNova(() => repo.listarUsuarios()).length, 0);
+
+  env('dono@boot.teste', 'curta');
+  const curta = contasSvc.semearUsuarioInicial('boot-teste');
+  assert.strictEqual(curta.criado, false, 'aceitou senha curta');
+  assert.ok(/10 caracteres/.test(curta.motivo), `motivo: ${curta.motivo}`);
+  assert.strictEqual(naNova(() => repo.listarUsuarios()).length, 0);
+
+  env('dono@boot.teste', 'senha-longa-o-bastante');
+  const ok = contasSvc.semearUsuarioInicial('boot-teste');
+  assert.strictEqual(ok.criado, true, `não criou: ${ok.motivo}`);
+  assert.strictEqual(ok.perfil, 'proprietario');
+  assert.strictEqual(naNova(() => repo.listarUsuarios()).length, 1);
+
+  // Segunda passada não duplica nem troca a senha de quem já entrou.
+  env('outro@boot.teste', 'outra-senha-bem-longa');
+  const denovo = contasSvc.semearUsuarioInicial('boot-teste');
+  assert.strictEqual(denovo.criado, false);
+  assert.strictEqual(naNova(() => repo.listarUsuarios()).length, 1, 'criou um segundo usuário no boot seguinte');
+  env('', '');
 });
 
 testeAsync('HTTP: admin vê a saúde de todas as contas', async () => {
