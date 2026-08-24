@@ -54,6 +54,20 @@ const PACOTES = [
     nota: 'Os guias visuais deste pacote vão <strong>impressos</strong>, coloridos. '
         + 'Quem compra o ChatGPT AI na Prática avulso recebe o guia visual apenas em PDF, como bônus.',
   },
+  {
+    slug: 'combo-desenvolvimento-pessoal',
+    titulo: 'Combo Desenvolvimento Pessoal',
+    chamada: 'Carreira, dinheiro e caráter — os três livros impressos, com o PDF de cada um.',
+    desconto_pct: 15,
+    capa_url: '/assets/livros/o-homem-essencial.jpg',
+    livros: [
+      'conexoes-de-sucesso',
+      'o-homem-essencial',
+      'de-repente-rico',
+    ],
+    // Nenhum destes três aparece nos outros pacotes e nenhum está no BONUS_LIVROS
+    // de fluxo.js — não há sobreposição nem bônus a explicar, então sem `nota`.
+  },
 ];
 
 const porSlug = (slug) => PACOTES.find(p => p.slug === String(slug || '').trim()) || null;
