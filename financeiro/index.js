@@ -17,6 +17,9 @@
 // Fase 4 — gestão e fechamento: balanço patrimonial, fluxo de caixa direto e
 //   indireto (com a conciliação entre os dois), previsão por cenário,
 //   orçamento x realizado, apuração de resultado e consolidação.
+// Fase 6 — CFO inteligente: anomalias determinísticas, cada uma com os fatos
+//   que a acionaram e o que a invalidaria; e o Conselho dos Mestres, com a
+//   localização de cada princípio no manuscrito.
 // Fase 5 — hospedagem: adaptador Stays.net reconciliando reserva → receita,
 //   comissão de canal e recebível, por imóvel (centro de custo), com
 //   conferência contra a própria Stays.
@@ -49,6 +52,8 @@ const liquidacoes = require('./liquidacoes');
 const apuracao = require('./apuracao');
 const caixa = require('./caixa');
 const orcamento = require('./orcamento');
+const cfo = require('./cfo');
+const conselho = require('./conselho');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -89,7 +94,7 @@ function montar(app, injected = {}) {
   iniciarWorker(alertaAugusto);
 
   console.log(
-    `[finance] Villela Finance (Fases 1 a 5) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
+    `[finance] Villela Finance (Fases 1 a 6) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
     `planos: ${semeadura.planos.total} · conta interna: ${semeadura.tenantInterno}${semeadura.criada ? ' (criada agora)' : ''} · ` +
     `diário: ${diario.configurada() ? 'replicando para R2' : 'LOCAL (defina FINANCE_S3_* para replicar)'} · ` +
     `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +
@@ -102,7 +107,7 @@ function montar(app, injected = {}) {
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
     periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, apuracao, caixa, orcamento, tenancy,
+    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, apuracao, caixa, orcamento, tenancy,
   };
 }
 

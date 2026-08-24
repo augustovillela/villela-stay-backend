@@ -1473,6 +1473,188 @@ teste('fechamento: o checklist agora exige o balanço fechar', () => {
 });
 
 // =====================================================================
+// 12d. CFO INTELIGENTE E CONSELHO DOS MESTRES (fase 6)
+// =====================================================================
+const cfo = require('./cfo');
+const conselho = require('./conselho');
+
+teste('CFO: toda constatação diz o que a invalidaria', () => {
+  const b = naA(() => cfo.briefing(empresaA.id, '2026-08'));
+  assert.ok(b.constatacoes.length > 0, 'briefing sem nenhuma constatação');
+  for (const c of b.constatacoes) {
+    assert.ok(c.invalidaSe, `"${c.tipo}" não diz o que a invalidaria`);
+    assert.ok(c.fatos && Object.keys(c.fatos).length, `"${c.tipo}" não traz os fatos que a acionaram`);
+    assert.ok(typeof c.confianca === 'number', `"${c.tipo}" sem confiança`);
+    assert.ok(c.acao, `"${c.tipo}" não diz o que fazer`);
+    assert.ok(c.horizonte, `"${c.tipo}" sem horizonte`);
+  }
+  assert.ok(/determinísticas/.test(b.natureza), 'o briefing não declara sua natureza');
+  assert.strictEqual(b.falhasDeDeteccao.length, 0, `detectores falharam: ${b.falhasDeDeteccao}`);
+});
+
+teste('CFO: detector que falha não derruba o briefing — aparece', () => {
+  const original = cfo.DETECTORES.slice();
+  cfo.DETECTORES.push(() => { throw new Error('detector quebrado de propósito'); });
+  const b = naA(() => cfo.briefing(empresaA.id, '2026-08'));
+  assert.strictEqual(b.falhasDeDeteccao.length, 1, 'a falha do detector foi engolida');
+  assert.ok(/quebrado de propósito/.test(b.falhasDeDeteccao[0]));
+  cfo.DETECTORES.length = 0;
+  cfo.DETECTORES.push(...original);
+});
+
+teste('CFO: saldo em "a classificar" é sempre pendência', () => {
+  const conta = contaDe('4.9.9.999');
+  naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-14', memo: 'saída sem classificação',
+    linhas: [{ contaId: conta.id, debitoCents: 45000 }, { contaCodigo: '1.1.1.001', creditoCents: 45000 }],
+  }));
+  const achados = naA(() => cfo.aClassificarComSaldo(empresaA.id, '2026-08'));
+  assert.ok(achados.length >= 1, 'não acusou o saldo a classificar');
+  assert.strictEqual(achados[0].gravidade, 'alta');
+  assert.strictEqual(achados[0].confianca, 100);
+  assert.ok(/sempre pendência/.test(achados[0].invalidaSe));
+});
+
+teste('CFO: sem histórico suficiente, NÃO declara anomalia de despesa', () => {
+  // A empresa B mal tem lançamento: não pode haver "fora do padrão".
+  const achados = naB(() => cfo.despesaForaDoPadrao(empresaB.id, '2026-08'));
+  assert.strictEqual(achados.length, 0, 'declarou anomalia sem amostra');
+});
+
+teste('CFO: duplicidade provável tem confiança menor quando os documentos diferem', () => {
+  const cps = naA(() => repo.listarContrapartes(empresaA.id, 'fornecedor'));
+  const forn = cps[0];
+  for (const doc of ['DOC-A', 'DOC-B']) {
+    naA(() => titulos.criar({
+      entidadeId: empresaA.id, especie: 'pagar', contraparteId: forn.id, documento: doc,
+      descricao: 'serviço repetido', valorCents: 77700, competencia: '2026-11', dataFato: '2026-11-05',
+      rateio: [{ contaCodigo: '4.9.1.001', valorCents: 77700 }],
+      parcelas: { quantidade: 1, primeiroVencimento: '2026-11-10' },
+    }));
+  }
+  const achados = naA(() => cfo.possivelDuplicidade(empresaA.id, '2026-11'));
+  assert.strictEqual(achados.length, 1, 'não achou o par suspeito');
+  assert.strictEqual(achados[0].fatos.quantidade, 2);
+  assert.ok(achados[0].confianca < 60, `documentos diferentes deviam baixar a confiança, veio ${achados[0].confianca}`);
+  assert.ok(/notas realmente diferentes/.test(achados[0].invalidaSe));
+});
+
+teste('CFO: previsão negativa vira constatação crítica com a data', () => {
+  const achados = naA(() => cfo.insuficienciaDeCaixa(empresaA.id, { dias: 365, referencia: '2026-08-25' }));
+  for (const a of achados) {
+    assert.ok(a.fatos.quando, 'não diz quando o caixa fica negativo');
+    assert.ok(a.premissa, 'sem premissa do cenário');
+    assert.ok(/receita ainda não lançada|recebível vencido|renegociada/.test(a.invalidaSe));
+  }
+});
+
+// ---------------------------------------------------- Conselho dos Mestres
+
+teste('conselho: toda referência aponta para o cabeçalho da seção no manuscrito', () => {
+  const fs_ = require('fs');
+  const caminho = require('path').join('D:', 'ClaudeData', 'Claude', conselho.ARQUIVO.replace(/\//g, require('path').sep));
+  if (!fs_.existsSync(caminho)) { console.log('     (manuscrito ausente nesta máquina — pulei)'); return; }
+  const linhas = fs_.readFileSync(caminho, 'utf8').split('\n');
+  for (const p of conselho.PRINCIPIOS) {
+    const cabecalho = (linhas[p.linhas[0] - 1] || '').trim();
+    assert.ok(/^## \d+\.\d+\./.test(cabecalho),
+      `${p.id}: a linha ${p.linhas[0]} não é o cabeçalho de uma seção — é "${cabecalho.slice(0, 60)}"`);
+    // E o número da seção citada tem de bater com o cabeçalho encontrado.
+    const numero = (p.secao.match(/^(\d+\.\d+)\./) || [])[1];
+    assert.ok(cabecalho.startsWith(`## ${numero}.`),
+      `${p.id}: cita a seção ${numero} mas a linha ${p.linhas[0]} é "${cabecalho.slice(0, 40)}"`);
+  }
+});
+
+teste('conselho: nenhum princípio inventa citação nem simula personalidade', () => {
+  for (const p of conselho.PRINCIPIOS) {
+    const texto = [p.resumo, p.conselho, p.contraArgumento, p.acaoSugerida].join(' ');
+    assert.ok(!/["“”]/.test(texto), `${p.id}: há aspas — risco de citação inventada`);
+    assert.ok(!new RegExp(`${p.autor.split(' ')[0]}\\s+(diria|dizia|afirma que você)`, 'i').test(texto),
+      `${p.id}: está fazendo o autor falar`);
+  }
+});
+
+teste('conselho: todo princípio declara limitação e domínio de origem', () => {
+  for (const p of conselho.PRINCIPIOS) {
+    assert.ok(p.limitacoes && p.limitacoes.length > 40, `${p.id}: limitação vaga ou ausente`);
+    assert.ok(conselho.DOMINIOS.includes(p.dominio), `${p.id}: domínio inválido (${p.dominio})`);
+    assert.ok(p.contraArgumento, `${p.id}: sem contra-argumento`);
+    assert.ok(p.acaoSugerida, `${p.id}: sem ação sugerida`);
+  }
+});
+
+teste('conselho: sem fato, nenhum princípio aparece', () => {
+  const vazio = conselho.avaliar({});
+  assert.strictEqual(vazio.conselhos.length, 0,
+    `princípio apareceu sem fato que o acionasse: ${vazio.conselhos.map(c => c.id).join(', ')}`);
+  assert.strictEqual(vazio.avaliados, conselho.PRINCIPIOS.length);
+});
+
+teste('conselho: o fato aciona, e o conselho carrega tudo o que a tela precisa', () => {
+  const r = conselho.avaliar({
+    resultadoCents: 500000, caixaCents: 10000, despesaMensalMediaCents: 200000,
+    centrosNegativos: ['GG04I'], temOrcamentoAprovado: false,
+    jurosPagosCents: 1500, aprovacoesPendentes: 2,
+    concentracaoMaior: 0.8, caixaFicaNegativo: true, caixaNegativoEm: '2026-10-05',
+    mesesDeHistorico: 4, mesForaDaCurva: true,
+  });
+  assert.ok(r.conselhos.length >= 6, `poucos acionados: ${r.conselhos.length}`);
+  for (const c of r.conselhos) {
+    assert.ok(c.contexto, `${c.id} sem contexto (o fato que acionou)`);
+    assert.ok(c.fonte.comoConferir.includes('linhas'), `${c.id} sem como conferir`);
+    assert.ok(c.limitacoes, `${c.id} sem limitações`);
+    assert.ok(c.contraArgumento, `${c.id} sem contra-argumento`);
+    assert.ok(typeof c.confianca === 'number');
+  }
+  assert.ok(/não substitui|nenhum substitui/.test(r.aviso), 'sem o aviso de que não substitui profissional');
+  assert.ok(/Não simula/.test(r.naoFaz));
+});
+
+teste('conselho: mostra a DIVERGÊNCIA entre mestres, não uma síntese falsa', () => {
+  const r = conselho.avaliar({ caixaFicaNegativo: true, caixaNegativoEm: '2026-10-05', aprovacoesPendentes: 3 });
+  const graham = r.conselhos.find(c => c.id === 'graham-margem-de-seguranca');
+  const hill = r.conselhos.find(c => c.id === 'hill-decisao-rapida');
+  assert.ok(graham && hill, 'os dois princípios em tensão deviam ter sido acionados');
+  assert.ok(graham.divergencia.some(d => d.id === 'hill-decisao-rapida'),
+    'Graham não aponta a tensão com Hill');
+  assert.ok(/escolha é do gestor/.test(graham.divergencia[0].tensao));
+});
+
+teste('conselho: coletarFatos não recalcula número — só transporta', () => {
+  const f = conselho.coletarFatos(empresaA.id, '2026-08', {
+    dre: { resumo: { resultadoCents: 123, despesaTotalCents: 456 } },
+    porCentro: { linhas: [{ codigo: 'A', receitaCents: 800, resultadoCents: -10 }, { codigo: 'B', receitaCents: 200, resultadoCents: 5 }] },
+    previsao: { cenarios: [{ cenario: 'base', faltaCaixa: false }] },
+    caixaCents: 999, serieResultado: [100, 100, 100],
+  });
+  assert.strictEqual(f.resultadoCents, 123);
+  assert.strictEqual(f.caixaCents, 999);
+  assert.strictEqual(f.concentracaoMaior, 0.8);
+  assert.deepStrictEqual(f.centrosNegativos, ['A']);
+  assert.strictEqual(f.caixaFicaNegativo, false);
+  // 123 contra média 100 é 23% de distância: dentro da curva.
+  assert.strictEqual(f.mesForaDaCurva, false);
+
+  const fora = conselho.coletarFatos(empresaA.id, '2026-08', {
+    dre: { resumo: { resultadoCents: 300, despesaTotalCents: 0 } },
+    serieResultado: [100, 100, 100],
+  });
+  assert.strictEqual(fora.mesForaDaCurva, true, '300 contra média 100 devia ser fora da curva');
+});
+
+teste('conselho: ausência de dado não vira conselho', () => {
+  // Sem saber se há orçamento, o princípio de Stanley NÃO pode aparecer
+  // dizendo que não há. `!undefined` é true — foi bug real.
+  const semSaber = conselho.avaliar({ resultadoCents: 100 });
+  assert.ok(!semSaber.conselhos.some(c => c.id === 'stanley-frugalidade'),
+    'apareceu conselho sobre orçamento sem que ninguém tivesse olhado se existe orçamento');
+  const sabendoQueNaoTem = conselho.avaliar({ temOrcamentoAprovado: false });
+  assert.ok(sabendoQueNaoTem.conselhos.some(c => c.id === 'stanley-frugalidade'),
+    'com o fato conhecido, o princípio devia aparecer');
+});
+
+// =====================================================================
 // 13. ADAPTADOR STAYS (vertical de hospedagem)
 //
 // Stays falsa e mutável: o que importa aqui não é falar HTTP com a Stays,
