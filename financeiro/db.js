@@ -40,7 +40,19 @@ function colunas(tabela) {
 const temColuna = (tabela, coluna) => colunas(tabela).includes(coluna);
 
 // ---- migrations (nome único, roda uma vez, NUNCA destrutiva) ----
-const MIGRACOES = [];
+const MIGRACOES = [
+  {
+    // Fase 10: quando o segundo fator foi ativado. Vai por migração porque
+    // `CREATE TABLE IF NOT EXISTS` não acrescenta coluna em tabela que já
+    // existe — banco em produção nunca receberia a do schema.
+    nome: 'fin-0001-tenant-users-mfa-ativado-em',
+    aplicar() {
+      if (!temColuna('tenant_users', 'mfa_ativado_em')) {
+        db.exec("ALTER TABLE tenant_users ADD COLUMN mfa_ativado_em TEXT DEFAULT ''");
+      }
+    },
+  },
+];
 
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

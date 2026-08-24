@@ -2310,6 +2310,210 @@ testeAsync('HTTP: catálogo mostra as ações proibidas com o motivo', async () 
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
+// 14a. SEGUNDO FATOR (fase 10) — TOTP de verdade
+// =====================================================================
+const mfa = require('./mfa');
+
+// Usuário próprio deste bloco: os do teste de HTTP só nascem na cadeia
+// assíncrona, que roda depois de todos os testes síncronos.
+let usuarioMfa = null;
+teste('mfa: usuário de teste criado', () => {
+  usuarioMfa = naA(() => contasSvc.criarUsuario({
+    email: 'mfa@teste.local', nome: 'Teste MFA', senha: 'senha-longa-de-teste', perfil: 'controller',
+  }));
+  assert.ok(usuarioMfa.id);
+});
+
+teste('mfa: base32 vai e volta sem perder byte', () => {
+  const bruto = require('crypto').randomBytes(20);
+  assert.strictEqual(mfa.deBase32(mfa.base32(bruto)).toString('hex'), bruto.toString('hex'));
+});
+
+teste('mfa: gera o código do RFC 6238 (vetor conhecido)', () => {
+  // Vetor do RFC 6238, apêndice B: segredo "12345678901234567890" (ASCII),
+  // SHA-1. Em T=59s o passo é 1 e o código de 6 dígitos é 287082.
+  const segredo = mfa.base32(Buffer.from('12345678901234567890', 'ascii'));
+  assert.strictEqual(mfa.codigoNoPasso(segredo, 1), '287082');
+  assert.strictEqual(mfa.codigoNoPasso(segredo, 37037036), '081804');
+});
+
+teste('mfa: aceita a janela de ±1 passo e recusa fora dela', () => {
+  const segredo = mfa.base32(require('crypto').randomBytes(20));
+  const agora = Date.now();
+  const passo = mfa.passoAgora(agora);
+  assert.strictEqual(mfa.conferirCodigo(segredo, mfa.codigoNoPasso(segredo, passo), agora), passo);
+  assert.strictEqual(mfa.conferirCodigo(segredo, mfa.codigoNoPasso(segredo, passo - 1), agora), passo - 1);
+  assert.strictEqual(mfa.conferirCodigo(segredo, mfa.codigoNoPasso(segredo, passo + 1), agora), passo + 1);
+  // Dois passos atrás já não vale.
+  assert.strictEqual(mfa.conferirCodigo(segredo, mfa.codigoNoPasso(segredo, passo - 2), agora), null);
+  assert.strictEqual(mfa.conferirCodigo(segredo, '000000', agora), null);
+  assert.strictEqual(mfa.conferirCodigo(segredo, '12345', agora), null, 'aceitou código de 5 dígitos');
+});
+
+lanca('mfa: sem FINANCE_SECRET_KEY, RECUSA ativar em vez de gravar em claro', () => {
+  const guardada = process.env.FINANCE_SECRET_KEY;
+  delete process.env.FINANCE_SECRET_KEY;
+  try {
+    assert.strictEqual(mfa.configurado(), false);
+    mfa.iniciar(usuarioMfa.id);
+  } finally {
+    if (guardada) process.env.FINANCE_SECRET_KEY = guardada;
+  }
+}, /FINANCE_SECRET_KEY/);
+
+teste('mfa: ciclo completo — QR, confirmação, uso e recusa de reuso', () => {
+  process.env.FINANCE_SECRET_KEY = require('crypto').randomBytes(32).toString('hex');
+  const u = usuarioMfa;
+  const inicio = mfa.iniciar(u.id);
+  assert.ok(/^otpauth:\/\/totp\//.test(inicio.uri), 'URI do QR malformada');
+  assert.ok(inicio.uri.includes('issuer=Villela%20Finance'));
+  // Ainda NÃO está ativo: só gerar o QR não basta.
+  assert.strictEqual(mfa.estado(u.id).ativo, false, 'ativou sem a pessoa provar que leu o QR');
+  assert.strictEqual(mfa.verificar(u.id, mfa.codigoNoPasso(inicio.segredo, mfa.passoAgora())).ok, false);
+
+  // O segredo está CIFRADO no banco — não em claro.
+  const noBanco = db.prepare('SELECT mfa_segredo FROM tenant_users WHERE id = ?').get(u.id).mfa_segredo;
+  assert.ok(noBanco.startsWith('v1.'), 'segredo não está no formato cifrado');
+  assert.ok(!noBanco.includes(inicio.segredo), 'o segredo do TOTP está EM CLARO no banco');
+  assert.strictEqual(mfa.decifrar(noBanco), inicio.segredo, 'o cofre não devolve o mesmo segredo');
+
+  const codigo = mfa.codigoNoPasso(inicio.segredo, mfa.passoAgora());
+  assert.strictEqual(mfa.confirmar(u.id, codigo).ativo, true);
+  assert.strictEqual(mfa.estado(u.id).ativo, true);
+
+  // O código usado na confirmação NÃO vale de novo na mesma janela.
+  const reuso = mfa.verificar(u.id, codigo);
+  assert.strictEqual(reuso.ok, false, 'aceitou o mesmo código duas vezes');
+  assert.strictEqual(reuso.motivo, 'codigo_reutilizado');
+
+  // O código do passo seguinte vale.
+  const outro = mfa.codigoNoPasso(inicio.segredo, mfa.passoAgora() + 1);
+  assert.strictEqual(mfa.verificar(u.id, outro).ok, true);
+
+  // Desativar exige código válido.
+  assert.throws(() => mfa.desativar(u.id, '000000'), /código válido/);
+  const maisUm = mfa.codigoNoPasso(inicio.segredo, mfa.passoAgora() - 1);
+  assert.strictEqual(mfa.desativar(u.id, maisUm).ativo, false);
+  assert.strictEqual(db.prepare('SELECT mfa_segredo FROM tenant_users WHERE id = ?').get(u.id).mfa_segredo, '',
+    'o segredo continuou guardado depois de desativar');
+});
+
+teste('mfa: usuário sem segundo fator não passa por verificado', () => {
+  const outro = naA(() => contasSvc.criarUsuario({
+    email: 'sem-mfa@teste.local', nome: 'Sem MFA', senha: 'senha-longa-de-teste', perfil: 'leitor',
+  }));
+  const r = mfa.verificar(outro.id, '123456');
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.motivo, 'sem_mfa');
+});
+
+// =====================================================================
+// 14b. RESTAURAÇÃO (fase 10) — a prova de que o RPO não é promessa
+// =====================================================================
+const restauracao = require('./restauracao');
+
+testeAsync('restauração: snapshot + replay do diário devolve o razão inteiro', async () => {
+  const os_ = require('os');
+  const path_ = require('path');
+  const fs_ = require('fs');
+  const dir = path_.join(os_.tmpdir(), 'fin-restaura-' + Date.now());
+  fs_.mkdirSync(dir, { recursive: true });
+
+  // 1. estado no momento do snapshot
+  const antesLotes = db.prepare("SELECT COUNT(*) AS n FROM fin_lotes WHERE status <> 'rascunho'").get().n;
+  const snap = restauracao.snapshot(db, path_.join(dir, 'snap.db'));
+  assert.ok(snap.bytes > 1000, 'snapshot suspeitosamente pequeno');
+
+  // 2. lançamentos DEPOIS do snapshot — é exatamente o que o diário tem
+  //    de recuperar. Sem eles, o teste não provaria nada.
+  const depois = [];
+  for (const [i, valor] of [12345, 67800, 999].entries()) {
+    depois.push(naA(() => ledger.lancar({
+      entidadeId: empresaA.id, data: `2026-11-${String(10 + i).padStart(2, '0')}`,
+      memo: `lançamento pós-snapshot ${i + 1}`,
+      linhas: [
+        { contaCodigo: '1.1.1.001', debitoCents: valor },
+        { contaCodigo: '3.9.1.002', creditoCents: valor },
+      ],
+    })).lote);
+  }
+  const depoisLotes = db.prepare("SELECT COUNT(*) AS n FROM fin_lotes WHERE status <> 'rascunho'").get().n;
+  assert.strictEqual(depoisLotes, antesLotes + 3);
+
+  // 3. restaura a partir do snapshot ANTIGO + diário
+  const destino = path_.join(dir, 'restaurado.db');
+  const r = restauracao.restaurar({ snapshotArquivo: snap.arquivo, destino });
+
+  assert.strictEqual(r.lotesNoSnapshot, antesLotes, 'o snapshot não tinha o que devia');
+  assert.ok(r.lotesRepostos >= 3, `o replay repôs ${r.lotesRepostos} lote(s) — os 3 pós-snapshot deviam estar lá`);
+  assert.strictEqual(r.verificacao.ok, true, `verificação falhou: ${JSON.stringify(r.verificacao.problemas)}`);
+  assert.strictEqual(r.verificacao.lotes, depoisLotes, 'o banco restaurado não tem todos os lotes');
+  assert.strictEqual(r.verificacao.totalDebitoCents, r.verificacao.totalCreditoCents, 'restaurado desbalanceado');
+
+  // 4. os lançamentos pós-snapshot estão lá, com o valor certo
+  const { DatabaseSync } = require('node:sqlite');
+  const rest = new DatabaseSync(destino);
+  for (const lote of depois) {
+    const achado = rest.prepare('SELECT total_cents, memo FROM fin_lotes WHERE id = ?').get(lote.id);
+    assert.ok(achado, `o lote ${lote.numero} não voltou na restauração`);
+    assert.strictEqual(achado.total_cents, lote.total_cents, 'valor divergente no restaurado');
+  }
+  // 5. e o banco restaurado voltou COM as travas
+  const gatilhos = rest.prepare(
+    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='trigger' AND name LIKE 'trg_fin_%'").get().n;
+  assert.ok(gatilhos >= restauracao.GATILHOS.length,
+    `o restaurado ficou com ${gatilhos} gatilhos — sem eles, não é um banco confiável`);
+  rest.close();
+  fs_.rmSync(dir, { recursive: true, force: true });
+});
+
+testeAsync('restauração: rodar de novo é idempotente (não duplica lote)', async () => {
+  const os_ = require('os'); const path_ = require('path'); const fs_ = require('fs');
+  const dir = path_.join(os_.tmpdir(), 'fin-restaura2-' + Date.now());
+  fs_.mkdirSync(dir, { recursive: true });
+  const snap = restauracao.snapshot(db, path_.join(dir, 's.db'));
+  // Snapshot COM tudo: o replay não deve inserir nada.
+  const r = restauracao.restaurar({ snapshotArquivo: snap.arquivo, destino: path_.join(dir, 'r.db') });
+  assert.strictEqual(r.lotesRepostos, 0, 'repôs lote que já estava no snapshot');
+  assert.ok(r.jaExistiam > 0, 'não reconheceu os lotes já presentes');
+  assert.strictEqual(r.verificacao.ok, true);
+  fs_.rmSync(dir, { recursive: true, force: true });
+});
+
+testeAsync('restauração: verificação REJEITA um razão corrompido', async () => {
+  const os_ = require('os'); const path_ = require('path'); const fs_ = require('fs');
+  const { DatabaseSync } = require('node:sqlite');
+  const dir = path_.join(os_.tmpdir(), 'fin-restaura3-' + Date.now());
+  fs_.mkdirSync(dir, { recursive: true });
+  const snap = restauracao.snapshot(db, path_.join(dir, 's.db'));
+
+  // Corrompe o snapshot de propósito: apaga UMA linha de um lote, o que
+  // deixa o lote torto sem deixar o banco obviamente quebrado.
+  const corrompido = new DatabaseSync(snap.arquivo);
+  for (const t of restauracao.GATILHOS) corrompido.exec(`DROP TRIGGER IF EXISTS ${t}`);
+  const alvo = corrompido.prepare(
+    `SELECT l.id FROM fin_linhas l JOIN fin_lotes b ON b.id = l.lote_id
+      WHERE b.status <> 'rascunho' LIMIT 1`).get();
+  corrompido.prepare('DELETE FROM fin_linhas WHERE id = ?').run(alvo.id);
+  const v = restauracao.verificar(corrompido);
+  corrompido.close();
+
+  assert.strictEqual(v.ok, false, 'a verificação aceitou um razão corrompido');
+  assert.ok(v.problemas.some(p => p.tipo === 'lote_torto' || p.tipo === 'razao_desbalanceado'),
+    `não identificou o problema: ${JSON.stringify(v.problemas)}`);
+  fs_.rmSync(dir, { recursive: true, force: true });
+});
+
+testeAsync('restauração: o exercício completo passa e não toca no banco em uso', async () => {
+  const antes = db.prepare("SELECT COUNT(*) AS n FROM fin_lotes").get().n;
+  const e = restauracao.exercicio({ dbProducao: db });
+  assert.strictEqual(e.ok, true, `exercício falhou: ${e.erro} ${JSON.stringify(e.detalhe)}`);
+  assert.ok(/RPO do ADR-0004 é verificável/.test(e.veredito));
+  assert.strictEqual(db.prepare("SELECT COUNT(*) AS n FROM fin_lotes").get().n, antes,
+    'o exercício alterou o banco em uso — devia ser só leitura');
+});
+
+// =====================================================================
 // 15. INTEGRIDADE FINAL
 // =====================================================================
 testeAsync('final: o razão de todas as contas continua fechando', () => {

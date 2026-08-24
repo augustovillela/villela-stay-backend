@@ -42,6 +42,7 @@ const orcamento = require('./orcamento');
 const cfo = require('./cfo');
 const conselho = require('./conselho');
 const exportacao = require('./exportacao');
+const mfa = require('./mfa');
 
 const COOKIE = 'fin_sess';
 const DIAS = 30;
@@ -89,10 +90,11 @@ function registrarRotasApp(app, { jwtSecret, express }) {
         const saida = tenancy.comTenant({
           tenantId: u.tenant_id, userId: u.id, perfil: u.perfil,
           correlationId: req.correlationId, ip: req.ip,
-          // MFA de verdade entra na fase 2 (TOTP). Até lá, o cabeçalho
-          // marca a intenção e o selftest cobre os dois caminhos — o que
-          // NÃO se faz é deixar ação material passar sem exigir nada.
-          mfa: String(req.headers['x-mfa'] || '').length >= 6,
+          // TOTP de verdade (fase 10): o cabeçalho traz o CÓDIGO, e ele é
+          // conferido contra o segredo cifrado do usuário. Código já usado
+          // na mesma janela não vale de novo. Sem MFA ativo, `mfa` é
+          // false e a ação material é recusada com o motivo.
+          mfa: mfa.verificar(u.id, req.headers['x-mfa']).ok,
         }, () => {
           const tenant = repo.tenantPorId(u.tenant_id);
           req.tenant = tenant;
@@ -627,6 +629,35 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     })),
     obra: conselho.OBRA, arquivo: conselho.ARQUIVO,
   }), { modulo: '' }));
+
+  // ------------------------------------- segundo fator (fase 10)
+  app.get('/finance/api/mfa', ...rota((req) => mfa.estado(req.assinante.id)));
+
+  /** Passo 1: gera o QR. O segredo em claro aparece UMA vez, aqui. */
+  app.post('/finance/api/mfa/iniciar', ...rota((req) => {
+    const r = mfa.iniciar(req.assinante.id);
+    auditoria.registrar('mfa.iniciar', { objetoTipo: 'usuario', objetoId: req.assinante.id });
+    return r;
+  }, { json: true }));
+
+  /** Passo 2: prova que leu o QR. Só aqui o segundo fator passa a valer. */
+  app.post('/finance/api/mfa/confirmar', ...rota((req) => {
+    const r = mfa.confirmar(req.assinante.id, (req.body || {}).codigo);
+    auditoria.registrar('mfa.ativar', {
+      objetoTipo: 'usuario', objetoId: req.assinante.id,
+      motivo: 'segundo fator ativado pelo próprio usuário',
+    });
+    return r;
+  }, { json: true }));
+
+  app.post('/finance/api/mfa/desativar', ...rota((req) => {
+    const r = mfa.desativar(req.assinante.id, (req.body || {}).codigo);
+    auditoria.registrar('mfa.desativar', {
+      objetoTipo: 'usuario', objetoId: req.assinante.id,
+      motivo: 'desativado pelo próprio usuário, com código válido',
+    });
+    return r;
+  }, { json: true }));
 
   // --------------------------------- exportação e portabilidade (fase 9)
   // Leitura pura: NÃO passa por entitlements. Conta suspensa continua

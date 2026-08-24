@@ -17,6 +17,8 @@
 // Fase 4 — gestão e fechamento: balanço patrimonial, fluxo de caixa direto e
 //   indireto (com a conciliação entre os dois), previsão por cenário,
 //   orçamento x realizado, apuração de resultado e consolidação.
+// Fase 9 — comercialização: landing /finance, catálogo do grupo, exportação.
+// Fase 10 — resiliência: restauração provada por teste, TOTP real, LGPD e runbooks.
 // Fase 6 — CFO inteligente: anomalias determinísticas, cada uma com os fatos
 //   que a acionaram e o que a invalidaria; e o Conselho dos Mestres, com a
 //   localização de cada princípio no manuscrito.
@@ -56,6 +58,8 @@ const cfo = require('./cfo');
 const conselho = require('./conselho');
 const exportacao = require('./exportacao');
 const paginas = require('./paginas');
+const mfa = require('./mfa');
+const restauracao = require('./restauracao');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -98,12 +102,13 @@ function montar(app, injected = {}) {
   iniciarWorker(alertaAugusto);
 
   console.log(
-    `[finance] Villela Finance (Fases 1 a 6 + 9) montado. Landing: /finance · assinante: /finance/api · admin: /staff/api/finance · ` +
+    `[finance] Villela Finance (Fases 1-6, 9 parcial, 10) montado. Landing: /finance · assinante: /finance/api · admin: /staff/api/finance · ` +
     `planos: ${semeadura.planos.total} · conta interna: ${semeadura.tenantInterno}${semeadura.criada ? ' (criada agora)' : ''} · ` +
     `diário: ${diario.configurada() ? 'replicando para R2' : 'LOCAL (defina FINANCE_S3_* para replicar)'} · ` +
     `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +
     `agente: ${portaAgente ? '/staff/api/finance/agente (so conta interna, nivel <= 2)' : 'INDISPONIVEL'} · ` +
     `acesso inicial: ${usuarioInicial.criado ? `criado (${usuarioInicial.email})` : usuarioInicial.motivo} · ` +
+    `MFA: ${mfa.configurado() ? 'TOTP disponível' : 'INDISPONÍVEL (defina FINANCE_SECRET_KEY)'} · ` +
     `legado /staff/api/financeiro/* intacto` +
     (atualizadas.contasNovas ? ` · plano de contas: +${atualizadas.contasNovas} conta(s) em ${atualizadas.empresas} empresa(s)` : '')
   );

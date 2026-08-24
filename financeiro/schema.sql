@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS tenant_users (
   perfil         TEXT NOT NULL DEFAULT 'operador',  -- ver rbac.js
   status         TEXT NOT NULL DEFAULT 'ativo',     -- ativo|suspenso
   mfa_ativo      INTEGER NOT NULL DEFAULT 0,
-  mfa_segredo    TEXT DEFAULT '',                   -- cifrado; nunca devolvido cru
+  mfa_segredo    TEXT DEFAULT '',                   -- cifrado (AES-256-GCM); nunca devolvido cru
+  mfa_ativado_em TEXT DEFAULT '',
   ultimo_acesso  TEXT DEFAULT '',
   criado_em      TEXT NOT NULL,
   criado_por     TEXT DEFAULT '',
