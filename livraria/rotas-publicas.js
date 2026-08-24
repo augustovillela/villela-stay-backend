@@ -8,6 +8,7 @@ function registrarRotasPublicas(app, deps) {
   const fs = require('fs');
   const path = require('path');
   const amostra = require('./amostra');
+  const pacotes = require('./pacotes');
 
   // Nunca cachear as APIs da loja.
   app.use('/livraria/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -16,7 +17,7 @@ function registrarRotasPublicas(app, deps) {
   app.get('/livros', (req, res) => {
     // ?categoria=<slug> e ?q=<busca> — filtram no servidor (funciona sem JS e é indexável)
     const filtro = { categoria: String(req.query.categoria || '').slice(0, 80), q: String(req.query.q || '').slice(0, 120) };
-    res.type('html').send(storefront.vitrine(repo.Books.listarPublico(), filtro));
+    res.type('html').send(storefront.vitrine(repo.Books.listarPublico(), filtro, pacotes.listar(repo)));
   });
   // atualizações dos livros — endereço impresso na última página; vem ANTES de /livros/:slug
   app.get('/livros/atualizacoes', (req, res) => {
@@ -74,6 +75,16 @@ function registrarRotasPublicas(app, deps) {
     }
   });
 
+  // Pacotes: um combo NAO e um livro do banco, e sim uma composicao de pacotes.js.
+  // Vem antes de /livros/:slug para nao ser capturado pela rota de livro.
+  app.get('/pacotes/:slug', (req, res) => {
+    const p = pacotes.porSlug(req.params.slug);
+    if (!p) return res.redirect(302, '/livros');
+    const r = pacotes.resumo(repo, p);
+    if (r.livros.length < 2) return res.redirect(302, '/livros');
+    res.type('html').send(storefront.pacote(r));
+  });
+
   app.get('/livros/:slug', (req, res) => {
     const legado = SLUGS_LEGADOS[req.params.slug];
     if (legado) return res.redirect(301, '/livros/' + legado);
@@ -82,6 +93,14 @@ function registrarRotasPublicas(app, deps) {
     res.type('html').send(storefront.paginaLivro({ ...b, tem_amostra: amostra.temAmostra(repo, b) }));
   });
   app.get('/checkout', (req, res) => {
+    // ?pacote=<slug> -> checkout do combo; ?livro=<slug> -> checkout de um titulo
+    if (req.query.pacote) {
+      const pc = pacotes.porSlug(String(req.query.pacote));
+      if (!pc) return res.redirect(302, '/livros');
+      const r = pacotes.resumo(repo, pc);
+      if (r.livros.length < 2) return res.redirect(302, '/livros');
+      return res.type('html').send(storefront.checkout(r.livros[0], 'pacote', r));
+    }
     const b = req.query.livro ? repo.Books.porSlug(String(req.query.livro)) : null;
     if (!b || !b.ativo) return res.redirect(302, '/livros');
     const tipo = ['pdf', 'impresso', 'combo'].includes(String(req.query.tipo)) ? String(req.query.tipo) : 'pdf';
@@ -131,7 +150,8 @@ function registrarRotasPublicas(app, deps) {
     try {
       const d = req.body || {};
       if (!d.customer || !d.customer.email || !d.customer.nome) return res.status(400).json({ erro: 'Informe nome e e-mail.' });
-      if (!Array.isArray(d.items) || !d.items.length) return res.status(400).json({ erro: 'Carrinho vazio.' });
+      const temPacote = Array.isArray(d.pacotes) && d.pacotes.length;
+      if (!temPacote && (!Array.isArray(d.items) || !d.items.length)) return res.status(400).json({ erro: 'Carrinho vazio.' });
       if (!d.customer.consentimentos || !d.customer.consentimentos.termos) return res.status(400).json({ erro: 'É preciso aceitar os Termos.' });
       // exige endereço completo em TODO pedido (usado para remessa e cadastro do comprador)
       const end = d.endereco_entrega || {};
@@ -147,7 +167,14 @@ function registrarRotasPublicas(app, deps) {
       // guarda o mesmo endereço também no cadastro do cliente (customer.endereco)
       d.customer.endereco = { cep: clean(end.cep), logradouro: clean(end.logradouro), numero: clean(end.numero), complemento: clean(end.complemento), bairro: clean(end.bairro) };
       if (!pagamentos.disponivel()) return res.status(503).json({ erro: 'Pagamento online em configuração. Fale conosco pelo WhatsApp.' });
-      const order = repo.Orders.criar({ customer: d.customer, items: d.items, cupom: d.cupom, origem: d.origem, endereco_entrega: d.endereco_entrega });
+      // Pacote vira uniao de livros + desconto; itens avulsos ja contidos nele nao
+      // sao cobrados de novo (deduplicacao decidida em 24/08/2026).
+      const exp = pacotes.expandir(repo, { pacotes: d.pacotes, items: d.items });
+      const order = repo.Orders.criar({
+        customer: d.customer, items: exp.items, cupom: d.cupom, origem: d.origem,
+        endereco_entrega: d.endereco_entrega,
+        desconto_pacote: exp.desconto, rotulo_pacote: exp.rotulo,
+      });
       const prov = pagamentos.provedor('mercadopago');
       const pref = await prov.criarCheckout(order, {
         success: urls.obrigado(order.id), pending: urls.obrigado(order.id), failure: urls.obrigado(order.id),
