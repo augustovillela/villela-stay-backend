@@ -28,12 +28,15 @@ const F = {
   tab: 'cockpit',
 
   // -------------------------------------------------------- utilidades
-  async api(metodo, caminho, corpo) {
+  async api(metodo, caminho, corpo, { mfa } = {}) {
     const opt = { method: metodo, credentials: 'same-origin', headers: {} };
     if (corpo !== undefined) {
       opt.headers['Content-Type'] = 'application/json';
       opt.body = JSON.stringify(corpo);
     }
+    // O segundo fator viaja no cabeçalho, por ação — não é estado de sessão.
+    // Sessão que "está com MFA" transforma um código de 30 s em passe do dia.
+    if (mfa) opt.headers['x-mfa'] = String(mfa);
     const r = await fetch('/finance/api' + caminho, opt);
     let dados = null;
     try { dados = await r.json(); } catch (_) { /* nem toda resposta é JSON */ }
@@ -101,7 +104,7 @@ const F = {
   // -------------------------------------------------------- moldura
   telaApp() {
     const e = F.eu;
-    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
+    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
     const empresas = e.empresas.length > 1
       ? `<select id="f-empresa" style="width:auto;min-width:200px">${e.empresas.map((x) =>
           `<option value="${F.esc(x.id)}"${x.id === e.empresa.id ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
@@ -156,7 +159,7 @@ const F = {
   },
 
   async pintar() {
-    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
+    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
     try { await telas[F.tab](); }
     catch (e) { if (e.message !== 'sessão expirada') F.corpo().innerHTML = `<div class="card"><p class="erro">${F.esc(e.message)}</p></div>`; }
   },
@@ -663,6 +666,216 @@ const F = {
     if (!motivo) return;
     try {
       await F.api('POST', F.url(`/titulos/${encodeURIComponent(id)}/cancelar`), { motivo });
+      F.pintar();
+    } catch (e) { alert(e.message); }
+  },
+
+  // ------------------------------------------- LANÇAMENTOS E APROVAÇÕES
+  // Lançar é partida dobrada de verdade: a tela soma débitos e créditos ao
+  // vivo e só libera o botão quando fecham. Corrigir é por ESTORNO — e
+  // estorno é ação material, então vira solicitação, não acontece no clique.
+
+  async vLancamentos() {
+    const [{ lotes }, { aprovacoes }] = await Promise.all([
+      F.api('GET', F.url('/lancamentos', { competencia: F.competencia, limite: 200 })),
+      F.api('GET', F.url('/aprovacoes', { status: 'pendente' })),
+    ]);
+
+    const pend = aprovacoes.length
+      ? `<div class="card" style="margin-bottom:12px;border-color:var(--vx-warn)">
+          <h3 style="margin:0 0 8px">${aprovacoes.length} solicitação(ões) aguardando decisão</h3>
+          ${aprovacoes.map((a) => F.cartaoAprovacao(a)).join('')}
+        </div>`
+      : '';
+
+    const linhas = lotes.map((l) => `<tr>
+      <td>${l.numero}</td>
+      <td>${F.dt(l.data)}</td>
+      <td style="white-space:normal">${F.esc(l.memo || '')}<div class="sub">${F.esc(l.origem || 'manual')} · ${F.esc(l.competencia)}</div></td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(l.total_cents))}</td>
+      <td><span class="sub">${F.esc(l.status)}</span><br>
+        <button class="btn btn-ghost" style="padding:6px 12px;min-height:0;margin-top:4px" onclick="F.abrirLote('${F.esc(l.id)}')">Abrir</button></td>
+    </tr>`).join('');
+
+    F.corpo().innerHTML = F.seletorMes('F.lerMes();F.pintar()') + pend + `
+      <details class="card" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:600">Novo lançamento manual</summary>
+        <div id="f-novo-lote" style="margin-top:12px"><p class="sub">Carregando contas…</p></div>
+      </details>
+      ${lotes.length
+        ? `<div class="tab-wrap"><table>
+             <thead><tr><th>Nº</th><th>Data</th><th>Histórico</th><th style="text-align:right">Total</th><th></th></tr></thead>
+             <tbody>${linhas}</tbody></table></div>`
+        : '<div class="card"><p class="sub" style="margin:0">Nenhum lançamento nesta competência.</p></div>'}
+      <div id="f-lote-det" style="margin-top:16px"></div>`;
+
+    F.montarNovoLote();
+  },
+
+  cartaoAprovacao(a) {
+    const previa = Object.entries(a.previa || {})
+      .map(([k, v]) => `${F.esc(k)}: <b>${F.esc(typeof v === 'object' ? JSON.stringify(v) : String(v))}</b>`).join(' · ');
+    return `<div class="lin">
+      <div><b>${F.esc(a.acao)}</b> · ${F.esc(a.valor)} · pedido por ${F.esc(a.solicitante)} em ${F.dt(a.solicitadoEm)}</div>
+      <div class="sub">${previa || '—'}${a.motivo ? ' · motivo: ' + F.esc(a.motivo) : ''}</div>
+      ${a.posso.pode
+        ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+             <button class="btn" style="padding:6px 12px;min-height:0" onclick="F.aprovar('${F.esc(a.id)}')">Aprovar</button>
+             <button class="btn btn-ghost" style="padding:6px 12px;min-height:0" onclick="F.recusar('${F.esc(a.id)}')">Recusar</button>
+           </div>`
+        // Dizer POR QUE não pode vale mais que esconder o botão: quase sempre
+        // é segregação de funções, e quem pediu precisa saber que é normal.
+        : `<div class="sub" style="margin-top:6px">Você não pode decidir esta: ${F.esc(a.posso.motivo)}</div>`}
+    </div>`;
+  },
+
+  async aprovar(id) {
+    const codigo = prompt('Código do segundo fator (6 dígitos). Ação material exige MFA:', '');
+    if (codigo === null) return;
+    try {
+      const r = await F.api('POST', F.url(`/aprovacoes/${encodeURIComponent(id)}/aprovar`),
+        { motivo: 'aprovado no painel' }, { mfa: codigo });
+      alert(r && r.resultado ? 'Aprovado e executado.' : 'Aprovado.');
+      F.pintar();
+    } catch (e) { alert(e.message); }
+  },
+
+  async recusar(id) {
+    const motivo = prompt('Motivo da recusa (obrigatório, vai para a auditoria):', '');
+    if (!motivo) return;
+    try {
+      await F.api('POST', F.url(`/aprovacoes/${encodeURIComponent(id)}/recusar`), { motivo });
+      F.pintar();
+    } catch (e) { alert(e.message); }
+  },
+
+  async montarNovoLote() {
+    const alvo = F.el('f-novo-lote');
+    if (!alvo) return;
+    const cad = await F.cadastros();
+    F._linhasLote = F._linhasLote || [{}, {}];
+    const opcoes = cad.contas.map((c) => `<option value="${F.esc(c.id)}">${F.esc(c.codigo)} ${F.esc(c.nome)}</option>`).join('');
+    const centros = '<option value="">—</option>' +
+      cad.centros.map((c) => `<option value="${F.esc(c.id)}">${F.esc(c.codigo)}</option>`).join('');
+
+    const linhas = F._linhasLote.map((_, i) => `<tr>
+      <td><select data-ll-conta="${i}" style="min-width:200px"><option value="">escolha…</option>${opcoes}</select></td>
+      <td><select data-ll-centro="${i}" style="min-width:110px">${centros}</select></td>
+      <td><input data-ll-deb="${i}" inputmode="decimal" placeholder="0,00" style="min-width:110px" oninput="F.somarLote()"></td>
+      <td><input data-ll-cred="${i}" inputmode="decimal" placeholder="0,00" style="min-width:110px" oninput="F.somarLote()"></td>
+    </tr>`).join('');
+
+    alvo.innerHTML = `
+      <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+        <label>Data * <input id="f-ll-data" type="date" value="${new Date().toISOString().slice(0, 10)}"></label>
+        <label>Histórico * <input id="f-ll-memo" placeholder="o que este lançamento registra"></label>
+      </div>
+      <div class="tab-wrap" style="margin-top:10px"><table>
+        <thead><tr><th>Conta</th><th>Centro</th><th>Débito</th><th>Crédito</th></tr></thead>
+        <tbody>${linhas}</tbody></table></div>
+      <p style="margin:10px 0 0">
+        <button class="btn btn-ghost" style="padding:6px 12px;min-height:0" onclick="F.maisLinha()">+ linha</button>
+        <span id="f-ll-soma" class="sub" style="margin-left:10px"></span></p>
+      <p style="margin:12px 0 0"><button class="btn" id="f-ll-ok" onclick="F.lancar()" disabled>Contabilizar</button></p>
+      <p id="f-ll-msg" class="erro"></p>`;
+    F.somarLote();
+  },
+
+  maisLinha() { F._linhasLote.push({}); F.montarNovoLote(); },
+
+  /**
+   * Soma ao vivo e só libera o botão quando débito = crédito. A trava do
+   * banco já recusaria, mas descobrir isso depois de preencher tudo é a
+   * diferença entre um aviso e uma irritação.
+   */
+  somarLote() {
+    let deb = 0, cred = 0;
+    for (let i = 0; i < F._linhasLote.length; i++) {
+      const d = document.querySelector(`[data-ll-deb="${i}"]`);
+      const c = document.querySelector(`[data-ll-cred="${i}"]`);
+      deb += F.centavos(d && d.value);
+      cred += F.centavos(c && c.value);
+    }
+    const soma = F.el('f-ll-soma');
+    const ok = F.el('f-ll-ok');
+    const fecha = deb === cred && deb > 0;
+    if (soma) {
+      soma.textContent = `débitos ${F.brl(deb)} · créditos ${F.brl(cred)}` +
+        (fecha ? ' · fecha' : ` · diferença ${F.brl(deb - cred)}`);
+      soma.className = fecha ? 'sub' : 'erro';
+    }
+    if (ok) ok.disabled = !fecha;
+    return { deb, cred, fecha };
+  },
+
+  async lancar() {
+    const msg = F.el('f-ll-msg'); msg.textContent = '';
+    const linhas = [];
+    for (let i = 0; i < F._linhasLote.length; i++) {
+      const conta = document.querySelector(`[data-ll-conta="${i}"]`);
+      if (!conta || !conta.value) continue;
+      const centro = document.querySelector(`[data-ll-centro="${i}"]`);
+      const deb = F.centavos((document.querySelector(`[data-ll-deb="${i}"]`) || {}).value);
+      const cred = F.centavos((document.querySelector(`[data-ll-cred="${i}"]`) || {}).value);
+      if (!deb && !cred) continue;
+      linhas.push({ contaId: conta.value, centroCustoId: (centro && centro.value) || '', debitoCents: deb, creditoCents: cred });
+    }
+    try {
+      await F.api('POST', F.url('/lancamentos'), {
+        data: F.el('f-ll-data').value, memo: F.el('f-ll-memo').value, linhas,
+      });
+      F._linhasLote = [{}, {}];
+      F.pintar();
+    } catch (e) { msg.textContent = e.message; }
+  },
+
+  async abrirLote(id) {
+    const alvo = F.el('f-lote-det');
+    alvo.innerHTML = '<p class="sub">Carregando…</p>';
+    try {
+      const d = await F.api('GET', F.url('/lancamentos/' + encodeURIComponent(id)));
+      const l = d.lote;
+      const linhas = d.linhas.map((x) => `<tr>
+        <td><code>${F.esc(x.conta_codigo)}</code> ${F.esc(x.conta_nome)}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums">${x.debito_cents ? F.esc(F.brl(x.debito_cents)) : ''}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums">${x.credito_cents ? F.esc(F.brl(x.credito_cents)) : ''}</td>
+        <td class="sub" style="white-space:normal">${F.esc(x.memo || '')}</td>
+      </tr>`).join('');
+
+      // Vínculo do estorno nos DOIS sentidos: o original aponta para o
+      // espelho e o espelho aponta para o original.
+      const vinculo = d.estorno
+        ? `<div class="aviso" style="margin-top:10px">Estornado pelo lançamento nº ${d.estorno.numero} de ${F.dt(d.estorno.data)}. O original permanece — estorno compensa, não apaga.</div>`
+        : d.estornoDe
+          ? `<div class="aviso" style="margin-top:10px">Este é o estorno do lançamento nº ${d.estornoDe.numero}.</div>`
+          : '';
+
+      alvo.innerHTML = `<div class="card">
+        <h3 style="margin:0 0 4px">Lançamento nº ${l.numero} · ${F.esc(F.brl(l.total_cents))}</h3>
+        <p class="sub" style="margin:0">${F.dt(l.data)} · competência ${F.esc(l.competencia)} · ${F.esc(l.status)} · origem ${F.esc(l.origem || 'manual')}</p>
+        <p style="margin:8px 0 0">${F.esc(l.memo || '')}</p>
+        ${vinculo}
+        <div class="tab-wrap" style="margin-top:12px"><table>
+          <thead><tr><th>Conta</th><th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th><th>Memo</th></tr></thead>
+          <tbody>${linhas}</tbody></table></div>
+        ${d.origemDetalhe
+          ? `<p class="sub" style="margin-top:10px">Veio do extrato: ${F.dt(d.origemDetalhe.data)} · ${F.esc(d.origemDetalhe.descricao)} · ${F.esc(F.brl(d.origemDetalhe.valor_cents))}</p>`
+          : ''}
+        ${l.status === 'contabilizado' && !d.estorno
+          ? `<p style="margin:14px 0 0"><button class="btn btn-ghost" onclick="F.pedirEstorno('${F.esc(id)}')">Solicitar estorno</button>
+             <span class="sub"> — estorno é ação material: precisa da aprovação de outra pessoa com alçada.</span></p>`
+          : ''}
+      </div>`;
+    } catch (e) {
+      if (e.message !== 'sessão expirada') alvo.innerHTML = `<p class="erro">${F.esc(e.message)}</p>`;
+    }
+  },
+
+  async pedirEstorno(id) {
+    const motivo = prompt('Motivo do estorno (obrigatório, vai para a auditoria):', '');
+    if (!motivo) return;
+    try {
+      const r = await F.api('POST', F.url(`/lancamentos/${encodeURIComponent(id)}/estornar`), { motivo });
+      alert(r.aviso || 'Solicitação registrada.');
       F.pintar();
     } catch (e) { alert(e.message); }
   },

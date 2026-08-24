@@ -3124,6 +3124,108 @@ testeAsync('app do assinante: liquidação estornada continua visível, como his
   assert.strictEqual(depois.pagoCents, 0, 'o estorno não devolveu o saldo da parcela');
 });
 
+testeAsync('app do assinante: a tela de lançar só libera quando débito = crédito', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vLancamentos();
+  await app.F.montarNovoLote();
+
+  // Desbalanceado: o botão continua travado e a tela mostra a diferença.
+  app.elementos['[data-ll-deb="0"]'] = { value: '100,00' };
+  app.elementos['[data-ll-cred="0"]'] = { value: '' };
+  app.elementos['[data-ll-deb="1"]'] = { value: '' };
+  app.elementos['[data-ll-cred="1"]'] = { value: '70,00' };
+  const r1 = app.F.somarLote();
+  assert.strictEqual(r1.fecha, false);
+  assert.strictEqual(app.elementos['f-ll-ok'].disabled, true, 'o botão de contabilizar ficou ativo com o lote desbalanceado');
+  assert.ok(/diferença/.test(app.elementos['f-ll-soma'].textContent), 'a tela não mostra a diferença');
+
+  // Fechando, libera.
+  app.elementos['[data-ll-cred="1"]'] = { value: '100,00' };
+  const r2 = app.F.somarLote();
+  assert.strictEqual(r2.fecha, true);
+  assert.strictEqual(app.elementos['f-ll-ok'].disabled, false, 'o botão continuou travado com o lote fechando');
+});
+
+testeAsync('app do assinante: lançar pela tela grava no razão e ele continua fechando', async () => {
+  const contas = (await pedir('GET', '/finance/api/contas?analiticas=1', { cookie: cookieA })).corpo.contas;
+  const caixa = contas.find((c) => c.codigo === '1.1.1.001');
+  const receita = contas.find((c) => c.codigo.startsWith('3.1'));
+
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vLancamentos();
+  await app.F.montarNovoLote();
+  app.elementos['f-ll-data'] = { value: '2026-08-22' };
+  app.elementos['f-ll-memo'] = { value: 'lançamento feito pela tela' };
+  app.elementos['[data-ll-conta="0"]'] = { value: caixa.id };
+  app.elementos['[data-ll-centro="0"]'] = { value: '' };
+  app.elementos['[data-ll-deb="0"]'] = { value: '250,00' };
+  app.elementos['[data-ll-cred="0"]'] = { value: '' };
+  app.elementos['[data-ll-conta="1"]'] = { value: receita.id };
+  app.elementos['[data-ll-centro="1"]'] = { value: '' };
+  app.elementos['[data-ll-deb="1"]'] = { value: '' };
+  app.elementos['[data-ll-cred="1"]'] = { value: '250,00' };
+  await app.F.lancar();
+
+  const { lotes } = (await pedir('GET', '/finance/api/lancamentos?competencia=2026-08&limite=200', { cookie: cookieA })).corpo;
+  const criado = lotes.find((l) => l.memo === 'lançamento feito pela tela');
+  assert.ok(criado, 'o lançamento não chegou ao razão');
+  assert.strictEqual(criado.total_cents, 25000);
+  const saude = (await pedir('GET', '/finance/api/saude', { cookie: cookieA })).corpo;
+  assert.strictEqual(saude.razao.ok, true, 'o razão parou de fechar depois do lançamento da tela');
+});
+
+testeAsync('app do assinante: estorno vira SOLICITAÇÃO, não acontece no clique', async () => {
+  const { lotes } = (await pedir('GET', '/finance/api/lancamentos?competencia=2026-08&limite=200', { cookie: cookieA })).corpo;
+  const alvo = lotes.find((l) => l.memo === 'lançamento feito pela tela');
+  const antes = (await pedir('GET', '/finance/api/aprovacoes?status=pendente', { cookie: cookieA })).corpo.aprovacoes.length;
+
+  const r = await pedir('POST', `/finance/api/lancamentos/${alvo.id}/estornar`,
+    { cookie: cookieA, corpo: { motivo: 'teste de estorno pela tela' } });
+  assert.strictEqual(r.status, 200);
+  assert.ok(/aprovação/i.test(r.corpo.aviso), 'a resposta não avisa que depende de aprovação');
+
+  const lote = (await pedir('GET', `/finance/api/lancamentos/${alvo.id}`, { cookie: cookieA })).corpo;
+  assert.strictEqual(lote.lote.status, 'contabilizado', 'o lote foi estornado sem aprovação');
+  const depois = (await pedir('GET', '/finance/api/aprovacoes?status=pendente', { cookie: cookieA })).corpo.aprovacoes.length;
+  assert.strictEqual(depois, antes + 1, 'o estorno não gerou solicitação de aprovação');
+});
+
+testeAsync('app do assinante: a fila diz POR QUE você não pode decidir', async () => {
+  // Quem pediu o estorno foi o próprio usuário desta sessão: segregação de
+  // funções tem de aparecer escrita, não como botão sumido.
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vLancamentos();
+  const html = app.escritos['f-corpo'];
+  semLixoApp(html, 'lançamentos');
+
+  const { aprovacoes } = (await pedir('GET', '/finance/api/aprovacoes?status=pendente', { cookie: cookieA })).corpo;
+  const propria = aprovacoes.find((a) => !a.posso.pode);
+  assert.ok(propria, 'nenhuma solicitação bloqueada — o teste não provaria nada');
+  assert.ok(html.includes(escapeSimples(propria.posso.motivo)),
+    'a tela esconde o botão sem dizer o motivo — quem pediu precisa saber que é segregação de funções, não erro');
+  assert.ok(/Segregação de funções/i.test(html), 'o motivo da recusa não é o esperado');
+});
+
+testeAsync('app do assinante: o lançamento abre e mostra as duas pernas', async () => {
+  const { lotes } = (await pedir('GET', '/finance/api/lancamentos?competencia=2026-08&limite=200', { cookie: cookieA })).corpo;
+  const alvo = lotes.find((l) => l.memo === 'lançamento feito pela tela');
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vLancamentos();
+  await app.F.abrirLote(alvo.id);
+  const html = app.escritos['f-lote-det'];
+  semLixoApp(html, 'detalhe do lançamento');
+
+  const d = (await pedir('GET', `/finance/api/lancamentos/${alvo.id}`, { cookie: cookieA })).corpo;
+  for (const linha of d.linhas) {
+    assert.ok(html.includes(linha.conta_codigo), `a perna da conta ${linha.conta_codigo} não aparece`);
+  }
+  assert.ok(html.includes(F_brl(d.lote.total_cents)), 'o total do lote não aparece');
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
