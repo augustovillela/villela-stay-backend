@@ -632,7 +632,7 @@ const SISTEMAS = [
 const EM_DESENVOLVIMENTO = [
   {
     id: 'finance', nome: 'Villela Finance', pasta: 'villela-finance',
-    cor: '#0F4C81', vertical: 'grupo', url: 'https://villela-stay-backend.onrender.com/finance',
+    cor: '#0F4C81', vertical: 'grupo', url: 'https://finance.villelastay.com.br',
     tela: 'finance',
     demo: T(
       'A linha do extrato vira lançamento: a sugestão diz por que sugeriu, e o lançamento fecha em débito = crédito.',
