@@ -31,9 +31,25 @@ fs.mkdirSync(DIR, { recursive: true });
 const ESTADO = path.join(DIR, '_estado.json');
 const arquivoDoMes = (competencia) => path.join(DIR, `${competencia}.jsonl`);
 
+/**
+ * Estado da cadeia. A cadeia é POR MÊS, não global: o arquivo do mês é a
+ * unidade de replicação, então tem de ser também a unidade de verificação.
+ *
+ * Com cadeia global, um lote de setembro gravado no meio de agosto (é o
+ * que acontece quando se sincroniza um mês passado) deixaria o elo do
+ * próximo registro de agosto apontando para um registro que está em outro
+ * arquivo — e conferir agosto sozinho acusaria adulteração que não houve.
+ * Foi exatamente o que o teste de integridade pegou.
+ */
 function lerEstado() {
-  try { return JSON.parse(fs.readFileSync(ESTADO, 'utf8')); }
-  catch { return { seq: 0, hash: '', replicado: {} }; }
+  try {
+    const bruto = JSON.parse(fs.readFileSync(ESTADO, 'utf8'));
+    return {
+      meses: bruto.meses || {},
+      replicado: bruto.replicado || {},
+      total: Number(bruto.total) || 0,
+    };
+  } catch { return { meses: {}, replicado: {}, total: 0 }; }
 }
 function gravarEstado(e) {
   const tmp = ESTADO + '.tmp';
@@ -51,8 +67,9 @@ function gravarEstado(e) {
  */
 function acrescentar(lote, linhas) {
   const estado = lerEstado();
+  const doMes = estado.meses[lote.competencia] || { seq: 0, hash: '' };
   const registro = {
-    seq: estado.seq + 1,
+    seq: doMes.seq + 1,
     gravado_em: nowISO(),
     tenant_id: lote.tenant_id,
     entidade_id: lote.entidade_id,
@@ -68,7 +85,7 @@ function acrescentar(lote, linhas) {
       centro_custo_id: l.centro_custo_id, contraparte_id: l.contraparte_id,
       memo: l.memo, ref_tipo: l.ref_tipo, ref_id: l.ref_id,
     })),
-    hash_anterior: estado.hash,
+    hash_anterior: doMes.hash,
   };
   registro.hash = crypto.createHash('sha256')
     .update(registro.hash_anterior + JSON.stringify(registro.lote) + JSON.stringify(registro.linhas))
@@ -82,7 +99,9 @@ function acrescentar(lote, linhas) {
   } finally {
     fs.closeSync(fd);
   }
-  gravarEstado({ seq: registro.seq, hash: registro.hash, replicado: estado.replicado });
+  estado.meses[lote.competencia] = { seq: registro.seq, hash: registro.hash };
+  estado.total += 1;
+  gravarEstado(estado);
   return registro;
 }
 
@@ -101,17 +120,30 @@ const meses = () => fs.readdirSync(DIR).filter(n => /^\d{4}-\d{2}\.jsonl$/.test(
 /**
  * Confere o diário contra o banco: todo lote do diário existe, está
  * contabilizado e com o mesmo total? Devolve as divergências.
+ *
+ * Duas escalas diferentes, de propósito:
+ *   • a CADEIA é do arquivo — verificada sobre todos os registros, de
+ *     todas as contas, porque adulteração é propriedade do arquivo;
+ *   • a COMPARAÇÃO com o banco é do tenant corrente — só o que é dele.
+ *     Sem esse recorte, conferir a conta A acusaria todo lote da conta B
+ *     como "ausente no banco", e o alarme viraria ruído.
  */
-function conferir(repo, competencia) {
+function conferir(repo, competencia, { tenantId = null } = {}) {
   const registros = ler(competencia);
   const divergencias = [];
+  const alvo = tenantId === null ? tenantAtualOuNulo() : tenantId;
   let anterior = '';
+  let conferidos = 0;
+
   for (const r of registros) {
     if (r.erro) { divergencias.push({ tipo: 'linha_ilegivel', ...r }); continue; }
     if (r.hash_anterior !== anterior) {
       divergencias.push({ tipo: 'cadeia_quebrada', seq: r.seq, lote_id: r.lote.id });
     }
     anterior = r.hash;
+
+    if (alvo && r.tenant_id !== alvo) continue;          // registro de outra conta
+    conferidos++;
     const noBanco = repo.lotePorId(r.lote.id);
     if (!noBanco) { divergencias.push({ tipo: 'ausente_no_banco', seq: r.seq, lote_id: r.lote.id }); continue; }
     if (noBanco.total_cents !== r.lote.total_cents) {
@@ -121,7 +153,13 @@ function conferir(repo, competencia) {
       divergencias.push({ tipo: 'status_divergente', lote_id: r.lote.id, banco: noBanco.status });
     }
   }
-  return { competencia, registros: registros.length, divergencias, ok: divergencias.length === 0 };
+  return { competencia, registros: registros.length, conferidos, divergencias, ok: divergencias.length === 0 };
+}
+
+/** Tenant do contexto, ou null se a chamada é de plataforma/boot. */
+function tenantAtualOuNulo() {
+  try { return require('./tenancy').tenantAtual(); }
+  catch { return null; }
 }
 
 // ------------------------------------------------------------ replicação
@@ -163,7 +201,7 @@ async function replicar() {
       falhas.push({ mes, erro: e.message });
     }
   }
-  if (enviados.length) gravarEstado({ seq: estado.seq, hash: estado.hash, replicado });
+  if (enviados.length) gravarEstado(Object.assign({}, estado, { replicado }));
   return { modo: 'r2', enviados: enviados.length, meses: enviados, falhas };
 }
 
@@ -177,7 +215,7 @@ function status() {
   });
   return {
     configurada: configurada(),
-    registros: estado.seq,
+    registros: estado.total,
     meses: lista.length,
     pendentes,
     rpoMinutos: Number(process.env.FINANCE_REPLICA_MIN) || 5,

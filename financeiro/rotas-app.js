@@ -31,6 +31,7 @@ const auditoria = require('./auditoria');
 const planoContas = require('./plano-contas');
 const dinheiro = require('./dinheiro');
 const diario = require('./diario');
+const stays = require('./stays');
 
 const COOKIE = 'fin_sess';
 const DIAS = 30;
@@ -408,6 +409,27 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       perfilDecisor: req.assinante.perfil, usuarioDecisor: req.assinante.id,
     }),
   }), { permissao: 'aprovar', modulo: 'aprovacoes', json: true }));
+
+  // ------------------------------------------------- hospedagem (Stays)
+  app.get('/finance/api/stays/estado', ...rota(() => ({
+    configurado: stays.configurado(),
+    // Diz o que fazer quando não está ligado, em vez de devolver tela vazia.
+    aviso: stays.configurado() ? '' : 'A integração com a Stays não está configurada neste servidor.',
+    convencao: 'Competência por data de CHECK-IN · receita = price._f_total · líquido = total − comissão do canal.',
+  })));
+
+  app.post('/finance/api/stays/sincronizar', ...rota((req) => stays.sincronizar({
+    entidadeId: req.entidade.id,
+    competencia: String((req.body || {}).competencia || '').trim(),
+    // Prévia: calcula o que mudaria sem gravar nada. É o que permite olhar
+    // antes de deixar o adaptador escrever no razão.
+    dryRun: !!(req.body || {}).dryRun,
+  }), { permissao: 'lancar', modulo: 'hospitalidade', medida: 'lancamentos_mes', json: true }));
+
+  app.get('/finance/api/stays/conferir', ...rota((req) => stays.conferir({
+    entidadeId: req.entidade.id,
+    competencia: String(req.query.competencia || new Date().toISOString().slice(0, 7)),
+  })));
 
   // ---------------------------------------------------------- auditoria
   app.get('/finance/api/auditoria', ...rota((req) => ({

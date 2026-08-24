@@ -31,6 +31,7 @@ node --watch server.js  # subir o backend local
 ```
 
 Variáveis: `FINANCE_WORKER=off` (desliga o worker) · `FINANCE_WORKER_MS` · `FINANCE_REPLICA_MIN` ·
+`FINANCE_STAYS_SYNC_MIN` (sincronização automática da Stays; **0 = desligado**, que é o padrão) ·
 `FINANCE_S3_ENDPOINT/BUCKET/KEY/SECRET/REGION/PREFIXO` (réplica do diário; sem elas o status diz
 `local` e o RPO real é o do snapshot diário).
 
@@ -56,6 +57,15 @@ Variáveis: `FINANCE_WORKER=off` (desliga o worker) · `FINANCE_WORKER_MS` · `F
   reimportar sem duplicar e, ao mesmo tempo, manter duas compras iguais no mesmo dia.
 - **O diário grava DEPOIS do COMMIT.** Falhar ali não desfaz o lançamento — a conferência acusa a
   falta. Perder o fato contábil para salvar a réplica seria pior.
+- **A cadeia de hash do diário é POR MÊS**, não global. O arquivo do mês é a unidade de replicação,
+  então tem de ser a de verificação: com cadeia global, sincronizar um mês passado deixaria o elo do
+  próximo registro apontando para outro arquivo, e conferir o mês sozinho acusaria adulteração que
+  não houve.
+- **O adaptador Stays reconcilia para um ESTADO-ALVO**, não importa uma vez. Se você for
+  acrescentar caso novo (caução, repasse, taxa de gateway), acrescente ao `alvoDaReserva` — o resto
+  do caminho já trata nova/reprocessada/alterada/cancelada de graça.
+- **Comissão de canal é DEDUÇÃO da receita** (3.2.1.001), não despesa. E em reserva de canal o
+  devedor é o CANAL (1.1.2.002), não o hóspede.
 
 ## Ao concluir algo
 

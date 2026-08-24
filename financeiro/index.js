@@ -11,6 +11,9 @@
 // Fase 2 — primeiro vertical slice: extrato → normalização idempotente →
 //   sugestão explicável → conciliação → lote balanceado → cockpit com
 //   drill-down até a linha do extrato.
+// Fase 5 — hospedagem: adaptador Stays.net reconciliando reserva → receita,
+//   comissão de canal e recebível, por imóvel (centro de custo), com
+//   conferência contra a própria Stays.
 //
 // Assinante em /finance/* · administração em /staff/api/finance/*.
 // O módulo LEGADO (`/staff/api/financeiro/*`, em server.js) segue no ar:
@@ -33,6 +36,7 @@ const aprovacoes = require('./aprovacoes');
 const auditoria = require('./auditoria');
 const planoContas = require('./plano-contas');
 const diario = require('./diario');
+const stays = require('./stays');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 
@@ -45,6 +49,13 @@ function montar(app, injected = {}) {
   }
 
   registrarExecutores();
+  // O cliente da Stays vive no server.js (credenciais, paginação, cache de
+  // clientes). Injetamos em vez de duplicar; sem ele o vertical de
+  // hospedagem responde "não configurado" em vez de quebrar.
+  const staysOk = stays.configurar({
+    paginado: injected.staysPaginado,
+    resolverClientes: injected.resolverClientes,
+  });
   const semeadura = contas.semearPlataforma();
 
   app.use('/finance', tenancy.middlewareCorrelacao);
@@ -55,15 +66,16 @@ function montar(app, injected = {}) {
   iniciarWorker(alertaAugusto);
 
   console.log(
-    `[finance] Villela Finance (Fases 1-2) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
+    `[finance] Villela Finance (Fases 1, 2 e 5) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
     `planos: ${semeadura.planos.total} · conta interna: ${semeadura.tenantInterno}${semeadura.criada ? ' (criada agora)' : ''} · ` +
     `diário: ${diario.configurada() ? 'replicando para R2' : 'LOCAL (defina FINANCE_S3_* para replicar)'} · ` +
+    `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +
     `legado /staff/api/financeiro/* intacto`
   );
 
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
-    periodos, relatorios, aprovacoes, auditoria, planoContas, diario, tenancy,
+    periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays, tenancy,
   };
 }
 
@@ -108,8 +120,10 @@ function iniciarWorker(alertaAugusto) {
   }
   const intervalo = Number(process.env.FINANCE_WORKER_MS) || 60_000;
   const minutosReplica = Number(process.env.FINANCE_REPLICA_MIN) || 5;
+  const minutosStays = Number(process.env.FINANCE_STAYS_SYNC_MIN) || 0;   // 0 = desligado
   let ciclos = 0;
   let ultimaReplica = 0;
+  let ultimaStays = 0;
 
   _timer = setInterval(() => {
     ciclos++;
@@ -127,6 +141,14 @@ function iniciarWorker(alertaAugusto) {
         tenancy.comTenant({ tenantId: t.id, userId: 'worker' }, () => aprovacoes.expirarVencidas());
       }
     } catch (e) { console.error('[finance] expirar aprovações:', e.message); }
+
+    // Sincronização automática da Stays: DESLIGADA por padrão. Bater numa
+    // API externa em laço, gravando no razão, é decisão do dono — não
+    // efeito colateral de subir o servidor. Ligue com FINANCE_STAYS_SYNC_MIN.
+    if (minutosStays && stays.configurado() && Date.now() - ultimaStays >= minutosStays * 60_000) {
+      ultimaStays = Date.now();
+      sincronizarStaysDeTodos().catch(e => console.error('[finance] sync Stays:', e.message));
+    }
 
     // A cada ~30 min: o razão continua batendo? Desbalanceamento é
     // incidente crítico — o Augusto tem de saber na hora, não no fechamento.
@@ -151,14 +173,43 @@ function iniciarWorker(alertaAugusto) {
   }, intervalo);
 
   if (_timer.unref) _timer.unref();
-  console.log(`[finance] worker a cada ${intervalo}ms (réplica do diário a cada ${minutosReplica} min).`);
+  console.log(
+    `[finance] worker a cada ${intervalo}ms · réplica do diário a cada ${minutosReplica} min · ` +
+    `sync Stays: ${minutosStays ? `a cada ${minutosStays} min` : 'DESLIGADO (defina FINANCE_STAYS_SYNC_MIN)'}.`);
   return _timer;
+}
+
+/**
+ * Sincroniza a competência corrente de todas as contas que têm o módulo de
+ * hospedagem. Erro numa conta não impede as outras — e nunca fica calado.
+ */
+async function sincronizarStaysDeTodos() {
+  const competencia = new Date().toISOString().slice(0, 7);
+  for (const t of repo.listarTenants()) {
+    if (!entitlements.temModulo(t, 'hospitalidade')) continue;
+    if (entitlements.resolver(t).bloqueiaEscrita) continue;
+    try {
+      const entidades = tenancy.comTenant({ tenantId: t.id, userId: 'worker' }, () => repo.listarEntidades());
+      for (const e of entidades) {
+        const r = await tenancy.comTenant({ tenantId: t.id, userId: 'worker', perfil: 'controller' }, () =>
+          tenancy.comEntidade(e.id, () => stays.sincronizar({ entidadeId: e.id, competencia })));
+        const mudou = r.resumo.nova + r.resumo.ajustada + r.resumo.cancelada;
+        if (mudou || r.erros.length) {
+          console.log(`[finance] Stays ${t.slug}/${e.nome} ${competencia}: ` +
+            `${r.resumo.nova} nova(s), ${r.resumo.ajustada} ajuste(s), ${r.resumo.cancelada} cancelamento(s)` +
+            (r.erros.length ? ` · ${r.erros.length} ERRO(S)` : ''));
+        }
+      }
+    } catch (e) {
+      console.error(`[finance] Stays ${t.slug}:`, e.message);
+    }
+  }
 }
 
 const pararWorker = () => { if (_timer) { clearInterval(_timer); _timer = null; } };
 
 module.exports = {
-  montar, pararWorker, registrarExecutores,
+  montar, pararWorker, registrarExecutores, sincronizarStaysDeTodos,
   tenancy, repo, contas, entitlements, rbac, ledger, dinheiro, bancos,
-  classificacao, periodos, relatorios, aprovacoes, auditoria, planoContas, diario,
+  classificacao, periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
 };

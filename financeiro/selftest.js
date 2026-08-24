@@ -375,8 +375,17 @@ teste('diário: todo lote contabilizado foi replicado', () => {
 
 teste('diário: confere contra o banco sem divergência', () => {
   const c = naA(() => diario.conferir(repo, '2026-08'));
-  const doOutroTenant = c.divergencias.filter(d => d.tipo !== 'ausente_no_banco');
-  assert.strictEqual(doOutroTenant.length, 0, `divergências: ${JSON.stringify(doOutroTenant)}`);
+  assert.strictEqual(c.divergencias.length, 0, `divergências: ${JSON.stringify(c.divergencias)}`);
+  assert.ok(c.conferidos > 0, 'não conferiu nenhum registro da própria conta');
+});
+
+teste('diário: a conferência só cobra o que é da PRÓPRIA conta', () => {
+  // A conta B não tem lote nenhum: os registros do arquivo são todos da
+  // conta A e não podem ser acusados como "ausente no banco".
+  const c = naB(() => diario.conferir(repo, '2026-08'));
+  assert.strictEqual(c.divergencias.length, 0, `acusou o que é de outra conta: ${JSON.stringify(c.divergencias)}`);
+  assert.strictEqual(c.conferidos, 0);
+  assert.ok(c.registros > 0, 'o arquivo do mês devia ter registros');
 });
 
 teste('diário: sem FINANCE_S3_* o status é honesto', () => {
@@ -789,7 +798,211 @@ teste('plano: limite não barra quem ainda tem folga', () => {
 });
 
 // =====================================================================
-// 13. ROTAS HTTP (ponta a ponta, com sessão real)
+// 13. ADAPTADOR STAYS (vertical de hospedagem)
+//
+// Stays falsa e mutável: o que importa aqui não é falar HTTP com a Stays,
+// é provar que reserva nova, reprocessada, alterada e cancelada caem todas
+// no mesmo caminho de reconciliação e deixam o razão fechado.
+// =====================================================================
+const stays = require('./stays');
+
+const LISTINGS_FALSOS = [
+  { _id: 'L-KUBI', id: 'GG04I', internalName: 'Villa Kubitschek' },
+  { _id: 'L-CATE', id: 'PL02I', internalName: 'Villa Catetinho' },
+];
+
+// Estado mutável do "banco de dados" da Stays de mentira.
+const RESERVAS_FALSAS = [
+  { _id: 'R-1', id: 'VS-0001', _idlisting: 'L-KUBI', _idclient: 'C-1', type: 'booked',
+    checkInDate: '2026-09-04', checkOutDate: '2026-09-08',
+    price: { _f_total: 4800 },
+    partner: { name: 'Booking.com', commission: { _mcval: { BRL: 720 } } } },
+  { _id: 'R-2', id: 'VS-0002', _idlisting: 'L-CATE', _idclient: 'C-2', type: 'booked',
+    checkInDate: '2026-09-10', checkOutDate: '2026-09-12',
+    price: { _f_total: 2500 },
+    partner: null },                                    // reserva DIRETA: comissão zero
+  { _id: 'R-3', id: 'VS-0003', _idlisting: 'L-KUBI', _idclient: 'C-3', type: 'canceled',
+    checkInDate: '2026-09-20', checkOutDate: '2026-09-22',
+    price: { _f_total: 3000 }, partner: null },         // já nasce cancelada: não fatura
+];
+
+stays.configurar({
+  paginado: async (caminho, params) => {
+    if (caminho === '/content/listings') return LISTINGS_FALSOS.slice();
+    if (caminho === '/booking/reservations') {
+      return RESERVAS_FALSAS.filter(r => r.checkInDate >= params.from && r.checkInDate <= params.to);
+    }
+    return [];
+  },
+  resolverClientes: async (ids) => Object.fromEntries(ids.map(id => [id, `Hóspede ${id}`])),
+});
+
+const conta = (codigo) => naA(() => repo.contaPorCodigo(empresaA.id, codigo));
+const saldoDe = (codigo) => naA(() => ledger.saldo(conta(codigo).id, { desde: '2026-09-01', ate: '2026-09-30' })).saldoCents;
+
+testeAsync('stays: primeira sincronização lança as reservas que faturam', async () => {
+  const r = await naA(() => stays.sincronizar({ entidadeId: empresaA.id, competencia: '2026-09' }));
+  assert.strictEqual(r.resumo.lidas, 3);
+  assert.strictEqual(r.resumo.nova, 2, `esperava 2 novas, veio ${r.resumo.nova}`);
+  assert.strictEqual(r.resumo.ignorada, 1, 'a cancelada que nunca foi lançada tem de ser ignorada');
+  assert.strictEqual(r.erros.length, 0, JSON.stringify(r.erros));
+});
+
+testeAsync('stays: receita é price._f_total, NUNCA tarifa × noites', async () => {
+  // R-1 = 4.800 (4 noites) e R-2 = 2.500 (2 noites). Total 7.300.
+  // Se alguém multiplicar tarifa por noite, este número infla e o teste cai.
+  assert.strictEqual(saldoDe('3.1.1.001'), 730000, 'receita bruta errada');
+});
+
+testeAsync('stays: comissão do canal entra como DEDUÇÃO da receita', async () => {
+  assert.strictEqual(saldoDe('3.2.1.001'), 72000, 'comissão do Booking não virou dedução');
+});
+
+testeAsync('stays: recebível de canal é líquido e o de reserva direta é cheio', async () => {
+  assert.strictEqual(saldoDe('1.1.2.002'), 408000, 'canal devia dever 4.800 − 720');
+  assert.strictEqual(saldoDe('1.1.2.001'), 250000, 'reserva direta devia gerar recebível cheio');
+});
+
+testeAsync('stays: contraparte do canal é o CANAL, não o hóspede', async () => {
+  const cps = naA(() => repo.listarContrapartes(empresaA.id, 'cliente'));
+  assert.ok(cps.some(c => c.nome === 'Booking.com'), 'o canal não virou contraparte');
+  assert.ok(cps.some(c => /Hóspede C-2/.test(c.nome)), 'o hóspede da reserva direta não virou contraparte');
+});
+
+testeAsync('stays: cada imóvel vira centro de custo pelo código da Stays', async () => {
+  const centros = naA(() => repo.listarCentrosCusto(empresaA.id));
+  const kubi = centros.find(c => c.codigo === 'GG04I');
+  assert.ok(kubi, 'GG04I não virou centro de custo');
+  assert.strictEqual(kubi.externo_id, 'GG04I');
+  assert.strictEqual(kubi.tipo, 'propriedade');
+});
+
+testeAsync('stays: reprocessar a mesma competência NÃO duplica nada', async () => {
+  const antes = saldoDe('3.1.1.001');
+  const r = await naA(() => stays.sincronizar({ entidadeId: empresaA.id, competencia: '2026-09' }));
+  assert.strictEqual(r.resumo.sem_mudanca, 2, `esperava 2 sem mudança, veio ${JSON.stringify(r.resumo)}`);
+  assert.strictEqual(r.resumo.nova, 0);
+  assert.strictEqual(saldoDe('3.1.1.001'), antes, 'a receita mudou ao reprocessar');
+});
+
+testeAsync('stays: valor alterado na Stays lança só o DELTA', async () => {
+  const lotesAntes = naA(() => repo.listarLotes(empresaA.id, { competencia: '2026-09', limite: 100 })).length;
+  RESERVAS_FALSAS[0].price._f_total = 5200;              // hóspede estendeu: +400
+  RESERVAS_FALSAS[0].partner.commission._mcval.BRL = 780; // comissão acompanha: +60
+
+  const r = await naA(() => stays.sincronizar({ entidadeId: empresaA.id, competencia: '2026-09' }));
+  assert.strictEqual(r.resumo.ajustada, 1, `esperava 1 ajuste, veio ${JSON.stringify(r.resumo)}`);
+  assert.strictEqual(saldoDe('3.1.1.001'), 770000, 'receita não acompanhou o novo valor');
+  assert.strictEqual(saldoDe('3.2.1.001'), 78000, 'comissão não acompanhou');
+  assert.strictEqual(saldoDe('1.1.2.002'), 442000, 'recebível do canal não acompanhou');
+
+  const lotesDepois = naA(() => repo.listarLotes(empresaA.id, { competencia: '2026-09', limite: 100 })).length;
+  assert.strictEqual(lotesDepois, lotesAntes + 1, 'o ajuste devia ser UM lote a mais, não um relançamento inteiro');
+  // E o lote do ajuste vale só a diferença.
+  const ajuste = naA(() => repo.listarLotes(empresaA.id, { competencia: '2026-09', limite: 100 }))
+    .find(l => /Ajuste/.test(l.memo));
+  assert.ok(ajuste, 'não achei o lote de ajuste');
+  assert.strictEqual(ajuste.total_cents, 40000, `o ajuste devia valer R$ 400,00, veio ${ajuste.total_cents}`);
+});
+
+testeAsync('stays: cancelamento posterior zera o que estava lançado', async () => {
+  RESERVAS_FALSAS[1].type = 'canceled';                  // a reserva direta caiu
+  const r = await naA(() => stays.sincronizar({ entidadeId: empresaA.id, competencia: '2026-09' }));
+  assert.strictEqual(r.resumo.cancelada, 1, `esperava 1 cancelamento, veio ${JSON.stringify(r.resumo)}`);
+  assert.strictEqual(saldoDe('1.1.2.001'), 0, 'o recebível da reserva cancelada não foi zerado');
+  assert.strictEqual(saldoDe('3.1.1.001'), 520000, 'a receita não caiu com o cancelamento');
+  // E nada foi apagado: o cancelamento é lançamento novo.
+  const lotes = naA(() => repo.listarLotes(empresaA.id, { competencia: '2026-09', limite: 100 }));
+  assert.ok(lotes.some(l => /Cancelamento/.test(l.memo)), 'o cancelamento não virou lançamento');
+});
+
+testeAsync('stays: título a receber acompanha e é cancelado junto', async () => {
+  const titulos = naA(() => repo.q(
+    "SELECT * FROM fin_titulos WHERE tenant_id = :tenant AND origem = 'stays'", {}));
+  assert.strictEqual(titulos.length, 2, `esperava 2 títulos, veio ${titulos.length}`);
+  const doCanal = titulos.find(t => t.origem_ref === 'R-1');
+  assert.strictEqual(doCanal.valor_cents, 442000, 'o título do canal devia valer o líquido atualizado');
+  assert.strictEqual(doCanal.status, 'aberto');
+  const daDireta = titulos.find(t => t.origem_ref === 'R-2');
+  assert.strictEqual(daDireta.status, 'cancelado', 'o título da reserva cancelada continuou aberto');
+});
+
+testeAsync('stays: conferência com o razão fecha em zero', async () => {
+  const c = await naA(() => stays.conferir({ entidadeId: empresaA.id, competencia: '2026-09' }));
+  assert.strictEqual(c.bate, true, `divergiu: ${JSON.stringify(c.divergentes)}`);
+  assert.strictEqual(c.totalDiferencaCents.bruto, 0);
+  assert.ok(/Bate integralmente/.test(c.veredito));
+});
+
+testeAsync('stays: conferência ACUSA divergência quando a Stays muda e ninguém sincroniza', async () => {
+  RESERVAS_FALSAS[0].price._f_total = 6000;              // mudou lá, não sincronizou aqui
+  const c = await naA(() => stays.conferir({ entidadeId: empresaA.id, competencia: '2026-09' }));
+  assert.strictEqual(c.bate, false, 'a conferência não acusou a diferença');
+  assert.strictEqual(c.totalDiferencaCents.bruto, 80000, 'diferença calculada errada');
+  assert.ok(/divergem/.test(c.veredito));
+  // E sincronizar resolve.
+  await naA(() => stays.sincronizar({ entidadeId: empresaA.id, competencia: '2026-09' }));
+  const depois = await naA(() => stays.conferir({ entidadeId: empresaA.id, competencia: '2026-09' }));
+  assert.strictEqual(depois.bate, true, 'sincronizar não fechou a diferença');
+});
+
+testeAsync('stays: prévia (dryRun) não grava nada', async () => {
+  RESERVAS_FALSAS[0].price._f_total = 9999;
+  const antes = saldoDe('3.1.1.001');
+  const r = await naA(() => stays.sincronizar({ entidadeId: empresaA.id, competencia: '2026-09', dryRun: true }));
+  assert.strictEqual(r.dryRun, true);
+  assert.strictEqual(r.resumo.ajustada, 1, 'a prévia devia enxergar a alteração');
+  assert.strictEqual(saldoDe('3.1.1.001'), antes, 'a prévia GRAVOU — não podia');
+  RESERVAS_FALSAS[0].price._f_total = 6000;              // devolve o estado sincronizado
+});
+
+testeAsync('stays: resultado por imóvel sai do razão com o código da Stays', async () => {
+  const r = naA(() => relatorios.porCentroCusto(empresaA.id, '2026-09'));
+  const kubi = r.linhas.find(l => l.codigo === 'GG04I');
+  assert.ok(kubi, 'a Villa Kubitschek não apareceu no resultado por imóvel');
+  // Receita da Kubitschek = bruto 6.000 − comissão do canal 780.
+  assert.strictEqual(kubi.receitaCents, 522000, `receita do imóvel errada: ${kubi.receitaCents}`);
+  assert.strictEqual(kubi.externoId, 'GG04I');
+});
+
+testeAsync('stays: sem configuração, responde "não configurado" em vez de quebrar', async () => {
+  const guardado = { p: null };
+  stays.configurar({});                                   // desliga
+  assert.strictEqual(stays.configurado(), false);
+  let erro = null;
+  try { await naA(() => stays.sincronizar({ entidadeId: empresaA.id, competencia: '2026-09' })); }
+  catch (e) { erro = e; }
+  assert.ok(erro && /não está configurada/.test(erro.message), `mensagem pouco clara: ${erro && erro.message}`);
+  void guardado;
+  // Religa para os testes seguintes.
+  stays.configurar({
+    paginado: async (caminho, params) => {
+      if (caminho === '/content/listings') return LISTINGS_FALSOS.slice();
+      if (caminho === '/booking/reservations') return RESERVAS_FALSAS.filter(r => r.checkInDate >= params.from && r.checkInDate <= params.to);
+      return [];
+    },
+    resolverClientes: async (ids) => Object.fromEntries(ids.map(id => [id, `Hóspede ${id}`])),
+  });
+});
+
+testeAsync('stays: o vertical é gateado pelo plano', async () => {
+  // 'essencial' (conta B) não inclui hospedagem; 'enterprise' (conta A) sim.
+  assert.strictEqual(entitlements.temModulo(repo.tenantPorId(contaB.id), 'hospitalidade'), false);
+  assert.strictEqual(entitlements.temModulo(repo.tenantPorId(contaA.id), 'hospitalidade'), true);
+  assert.throws(() => entitlements.exigir(repo.tenantPorId(contaB.id), 'hospitalidade'), /não está no plano/);
+});
+
+testeAsync('stays: a rotina do worker pula quem não tem o módulo', async () => {
+  // Não deve lançar nem tocar na conta B. A competência corrente não tem
+  // reserva na Stays falsa, então o efeito esperado é nenhum.
+  const antes = naB(() => repo.listarLotes(empresaB.id, { limite: 50 })).length;
+  await financeiro.sincronizarStaysDeTodos();
+  const depois = naB(() => repo.listarLotes(empresaB.id, { limite: 50 })).length;
+  assert.strictEqual(depois, antes, 'a rotina lançou em conta sem o módulo de hospedagem');
+});
+
+// =====================================================================
+// 14. ROTAS HTTP (ponta a ponta, com sessão real)
 // =====================================================================
 const jwtSecret = 'segredo-de-teste-' + Date.now();
 const app = express();
@@ -965,7 +1178,7 @@ testeAsync('HTTP: catálogo mostra as ações proibidas com o motivo', async () 
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
-// 14. INTEGRIDADE FINAL
+// 15. INTEGRIDADE FINAL
 // =====================================================================
 testeAsync('final: o razão de todas as contas continua fechando', () => {
   for (const t of repo.listarTenants()) {
@@ -978,16 +1191,18 @@ testeAsync('final: o razão de todas as contas continua fechando', () => {
   }
 });
 
-testeAsync('final: o diário bate com o banco em todas as contas', () => {
+testeAsync('final: o diário bate com o banco em todas as contas e meses', () => {
+  let conferidos = 0;
   for (const t of repo.listarTenants()) {
     tenancy.comTenant({ tenantId: t.id, userId: 'auditor' }, () => {
       for (const mes of diario.meses()) {
         const c = diario.conferir(repo, mes);
-        const relevantes = c.divergencias.filter(d => d.tipo !== 'ausente_no_banco');
-        assert.strictEqual(relevantes.length, 0, `${t.slug}/${mes}: ${JSON.stringify(relevantes)}`);
+        assert.strictEqual(c.divergencias.length, 0, `${t.slug}/${mes}: ${JSON.stringify(c.divergencias)}`);
+        conferidos += c.conferidos;
       }
     });
   }
+  assert.ok(conferidos > 10, `poucos lotes conferidos contra o diário: ${conferidos}`);
 });
 
 testeAsync('final: nenhum valor monetário está gravado como float', () => {

@@ -4684,6 +4684,9 @@ try {
     express, requireAuth, requireAdmin,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     jwtSecret: JWT_SECRET,
+    // Vertical de hospedagem: o módulo NÃO duplica o cliente da Stays nem
+    // as credenciais — recebe o paginador e o cache de nomes daqui.
+    staysPaginado, resolverClientes,
   });
 } catch (e) { console.error('[finance] falha ao montar módulo:', e.message); }
 
