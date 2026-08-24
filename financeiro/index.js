@@ -63,6 +63,7 @@ const restauracao = require('./restauracao');
 const retencao = require('./retencao');
 const seguranca = require('./seguranca');
 const billing = require('./billing');
+const mercadopago = require('./mercadopago');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -102,6 +103,10 @@ function montar(app, injected = {}) {
   const portaAgente = !!injected.requirePublishOrAdmin;
   if (portaAgente) registrarRotasAgente(app, { requirePublishOrAdmin: injected.requirePublishOrAdmin, express });
 
+  // Extrato do Mercado Pago: mesmo `mpFetch` da cobrança. Sem ele o
+  // adaptador diz "não configurado" em vez de quebrar.
+  const mpOk = mercadopago.configurar({ mpFetch: injected.mpFetch });
+
   // ------------------------------------------------------------ cobrança
   // Recorrência mensal via preapproval do Mercado Pago (mesmo `mpFetch`
   // dos outros produtos). Sem MP configurado o módulo NÃO fica sem
@@ -129,6 +134,7 @@ function montar(app, injected = {}) {
     `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +
     `agente: ${portaAgente ? '/staff/api/finance/agente (so conta interna, nivel <= 2)' : 'INDISPONIVEL'} · ` +
     `cobrança: ${billing.ativo() ? 'Mercado Pago (recorrência)' : 'MANUAL (sem MP_ACCESS_TOKEN)'} · ` +
+    `extrato MP: ${mpOk.disponivel ? 'disponível' : 'indisponível'} · ` +
     `acesso inicial: ${usuarioInicial.criado ? `criado (${usuarioInicial.email})` : usuarioInicial.motivo} · ` +
     `MFA: ${mfa.configurado() ? 'TOTP disponível' : 'INDISPONÍVEL (defina FINANCE_SECRET_KEY)'} · ` +
     `legado /staff/api/financeiro/* intacto` +
@@ -138,7 +144,7 @@ function montar(app, injected = {}) {
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
     periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing,
+    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing, mercadopago,
   };
 }
 
@@ -318,5 +324,5 @@ module.exports = {
   montar, pararWorker, registrarExecutores, sincronizarStaysDeTodos,
   tenancy, repo, contas, entitlements, rbac, ledger, dinheiro, bancos,
   classificacao, periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-  contrapartes, titulos, liquidacoes, billing,
+  contrapartes, titulos, liquidacoes, billing, mercadopago,
 };

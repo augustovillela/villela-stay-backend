@@ -257,8 +257,21 @@ const F = {
           <label>Arquivo <input type="file" id="f-arq" accept=".csv,.txt,.json"></label>
           <label>Origem (para a auditoria) <input id="f-fonte" placeholder="extrato C6 agosto/2026"></label>
         </div>
-        <p style="margin:12px 0 0"><button class="btn" onclick="F.importar()">Importar</button></p>
+        <p style="margin:12px 0 0"><button class="btn" onclick="F.importar()">Importar arquivo</button></p>
         <div id="f-imp-msg" style="margin-top:10px"></div>
+
+        <hr style="margin:18px 0;border:0;border-top:1px solid var(--vx-border)">
+        <h4 style="margin:0 0 6px">Mercado Pago — direto pela API</h4>
+        <p class="sub" style="margin:0 0 10px">Sem arquivo: puxa os pagamentos recebidos no período.
+        Comece pela <b>prévia</b> — ela mostra o que viria sem gravar nada.</p>
+        <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <label>De <input id="f-mp-de" type="date"></label>
+          <label>Até <input id="f-mp-ate" type="date"></label>
+        </div>
+        <p style="margin:12px 0 0">
+          <button class="btn btn-ghost" onclick="F.mercadoPago(true)">Ver prévia</button>
+          <button class="btn" onclick="F.mercadoPago(false)">Importar do Mercado Pago</button></p>
+        <div id="f-mp-msg" style="margin-top:10px"></div>
       </details>
       <div id="f-trans"><p class="sub">Carregando transações…</p></div>`;
 
@@ -407,6 +420,29 @@ const F = {
       alert(`Reprocessado: ${r.sugeridas || 0} transação(ões) ganharam sugestão.`);
       F.pintar();
     } catch (e) { alert(e.message); }
+  },
+
+  async mercadoPago(dryRun) {
+    const msg = F.el('f-mp-msg');
+    const de = F.el('f-mp-de').value, ate = F.el('f-mp-ate').value;
+    if (!de || !ate) { msg.innerHTML = '<p class="erro">Informe o período.</p>'; return; }
+    msg.innerHTML = `<p class="sub">${dryRun ? 'Consultando o Mercado Pago…' : 'Importando…'}</p>`;
+    try {
+      const r = await F.api('POST', F.url(`/bancos/${encodeURIComponent(F.bancoId)}/importar-mercadopago`),
+        { desde: de, ate, dryRun });
+      const res = r.resumoMp || r.resumo || {};
+      const cabeca = r.dryRun
+        ? `<b>Prévia — nada foi gravado.</b> ${r.aprovados} pagamento(s) aprovado(s).`
+        : (r.importado
+            ? `<b>Importado.</b> ${r.resumo.novas} nova(s) · ${r.resumo.duplicadas} já existia(m).`
+            : `<b>${F.esc(r.motivo || 'Nada a importar.')}</b>`);
+      // O aviso de escopo vai SEMPRE junto: sem ele, a diferença que a
+      // conciliação vai acusar pareceria defeito do sistema.
+      msg.innerHTML = `<div class="aviso" style="margin:0">${cabeca}
+        ${res.bruto ? `<div style="margin-top:6px">bruto ${F.esc(res.bruto)} · tarifas ${F.esc(res.tarifas)} · líquido <b>${F.esc(res.liquido)}</b></div>` : ''}
+        <div class="sub" style="margin-top:8px">${F.esc(r.aviso || '')}</div></div>`;
+      if (!r.dryRun) await Promise.all([F.pintarConciliacao(), F.pintarTransacoes()]);
+    } catch (e) { msg.innerHTML = `<p class="erro">${F.esc(e.message)}</p>`; }
   },
 
   async importar() {

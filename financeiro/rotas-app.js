@@ -18,6 +18,7 @@ const jwt = require('jsonwebtoken');
 const { j } = require('./db');
 const sessao = require('./sessao');
 const billing = require('./billing');
+const mercadopago = require('./mercadopago');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const contasSvc = require('./contas');
@@ -231,6 +232,19 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     formato: (req.body || {}).formato || 'csv',
     mapa: (req.body || {}).mapa || {},
   }), { permissao: 'lancar', modulo: 'bancos', medida: 'transacoes_mes', json: true }));
+
+  /**
+   * Extrato do Mercado Pago pela API. `dryRun` é o padrão de fato: a
+   * prévia existe para o primeiro contato com a conta real — olhar o que
+   * ele PRETENDE trazer antes de deixar entrar no razão.
+   */
+  app.post('/finance/api/bancos/:id/importar-mercadopago', ...rota((req) => {
+    const d = req.body || {};
+    return mercadopago.sincronizar({
+      entidadeId: req.entidade.id, contaBancariaId: req.params.id,
+      desde: String(d.desde || ''), ate: String(d.ate || ''), dryRun: d.dryRun !== false,
+    });
+  }, { permissao: 'lancar', modulo: 'bancos', medida: 'transacoes_mes', json: true }));
 
   app.get('/finance/api/transacoes', ...rota((req) => {
     const lista = repo.listarTransacoes(req.entidade.id, {

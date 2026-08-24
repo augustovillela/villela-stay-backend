@@ -3547,6 +3547,36 @@ testeAsync('marca: a vertical `finance` existe no design system do grupo', async
     'a vertical finance não está no villela-ui.css com o Jade oficial — o app pediria um acento que não existe');
 });
 
+testeAsync('app do assinante: a aba Extrato oferece o Mercado Pago com PRÉVIA primeiro', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vExtrato();
+  const html = app.escritos['f-corpo'];
+  assert.ok(/importar-mercadopago|Mercado Pago — direto pela API/.test(html),
+    'a aba Extrato não oferece a importação automática do Mercado Pago');
+  assert.ok(/Ver prévia/.test(html),
+    'não há prévia — o primeiro contato com a conta real tem de ser olhando, não gravando');
+  const iPrevia = html.indexOf('Ver prévia');
+  const iImportar = html.indexOf('Importar do Mercado Pago');
+  assert.ok(iPrevia >= 0 && iPrevia < iImportar, 'o botão de importar vem antes do de prévia');
+});
+
+testeAsync('API: importar do Mercado Pago é dryRun por PADRÃO', async () => {
+  // Corpo sem `dryRun` não pode gravar: o padrão de um caminho que mexe no
+  // razão tem de ser o que não mexe.
+  const mpFalsoExtrato = () => Promise.resolve({ results: [], paging: { total: 0 } });
+  mpFalsoExtrato.__mock = true;
+  require('./mercadopago').configurar({ mpFetch: mpFalsoExtrato });
+  const banco = (await pedir('GET', '/finance/api/bancos', { cookie: cookieA })).corpo.contas[0];
+  const antes = (await pedir('GET', '/finance/api/transacoes?limite=1000', { cookie: cookieA })).corpo.transacoes.length;
+  const r = await pedir('POST', `/finance/api/bancos/${banco.id}/importar-mercadopago`,
+    { cookie: cookieA, corpo: { desde: '2026-08-01', ate: '2026-08-31' } });
+  assert.strictEqual(r.status, 200, `prévia falhou: ${JSON.stringify(r.corpo)}`);
+  assert.strictEqual(r.corpo.dryRun, true, 'sem `dryRun` explícito, a rota GRAVOU');
+  const depois = (await pedir('GET', '/finance/api/transacoes?limite=1000', { cookie: cookieA })).corpo.transacoes.length;
+  assert.strictEqual(depois, antes, 'a chamada padrão criou transações');
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
@@ -3978,6 +4008,135 @@ teste('extrato: CSV do C6 com aspas duplicadas na descrição é lido inteiro', 
   assert.strictEqual(r.linhas[1][1], 'CLIENTE X, LTDA - pgto "reserva"',
     'a descrição com vírgula e aspas foi partida — o fornecedor sairia truncado');
   assert.strictEqual(r.linhas[1].length, 4, 'a linha quebrou em mais colunas do que o cabeçalho');
+});
+
+// ============================================================
+// 14.8 EXTRATO DO MERCADO PAGO (importação automática)
+// ============================================================
+const mercadopago = require('./mercadopago');
+
+// Mercado Pago de mentira, com os casos que importam: aprovado com tarifa,
+// aprovado sem tarifa, recusado, e paginação.
+function mpExtrato(pagamentos) {
+  const f = (caminho) => {
+    const u = new URL('https://x' + caminho);
+    const offset = Number(u.searchParams.get('offset') || 0);
+    const limit = Number(u.searchParams.get('limit') || 50);
+    f.chamadas.push({ offset, limit, begin: u.searchParams.get('begin_date'), range: u.searchParams.get('range') });
+    return Promise.resolve({ results: pagamentos.slice(offset, offset + limit), paging: { total: pagamentos.length } });
+  };
+  f.__mock = true;
+  f.chamadas = [];
+  return f;
+}
+
+const pgto = (o) => Object.assign({
+  id: 1, status: 'approved', date_approved: '2026-08-05T10:00:00.000-03:00',
+  transaction_amount: 1000, operation_type: 'regular_payment', description: 'Reserva',
+  payment_method_id: 'pix', fee_details: [],
+}, o);
+
+teste('extrato MP: bruto entra como crédito e a tarifa sai SEPARADA', () => {
+  const linhas = mercadopago.paraTransacoes([
+    pgto({ id: 'P1', transaction_amount: 1000, fee_details: [{ type: 'mercadopago_fee', amount: 49.9 }] }),
+  ]);
+  assert.strictEqual(linhas.length, 2, 'esperava a entrada e a tarifa como linhas distintas');
+  assert.strictEqual(linhas[0].valorCents, 100000, 'a entrada não é o valor BRUTO');
+  assert.strictEqual(linhas[1].valorCents, -4990, 'a tarifa não saiu como débito');
+  // Importar só o líquido faria a receita encolher sem ninguém ver para onde
+  // foi a diferença — e a tarifa nunca viraria despesa.
+  assert.ok(/Tarifa Mercado Pago/.test(linhas[1].descricao), 'a linha da tarifa não se identifica');
+  assert.notStrictEqual(linhas[0].documento, linhas[1].documento,
+    'entrada e tarifa com o mesmo documento — uma delas seria tomada por duplicata');
+});
+
+teste('extrato MP: pagamento não aprovado NÃO entra no extrato', () => {
+  const linhas = mercadopago.paraTransacoes([
+    pgto({ id: 'P2', status: 'rejected' }),
+    pgto({ id: 'P3', status: 'pending' }),
+    pgto({ id: 'P4', status: 'approved' }),
+  ]);
+  assert.strictEqual(linhas.length, 1, 'pagamento recusado ou pendente virou dinheiro no razão');
+  assert.strictEqual(linhas[0].documento, 'P4');
+});
+
+teste('extrato MP: soma das tarifas cobre mais de uma linha de taxa', () => {
+  const t = mercadopago.tarifaCents(pgto({ fee_details: [{ amount: 10.5 }, { amount: 2.25 }] }));
+  assert.strictEqual(t, 1275);
+  assert.strictEqual(mercadopago.tarifaCents(pgto({ fee_details: [] })), 0);
+});
+
+testeAsync('extrato MP: a prévia não grava nada e declara o que NÃO vê', async () => {
+  mercadopago.configurar({ mpFetch: mpExtrato([
+    pgto({ id: 'A1', transaction_amount: 250, fee_details: [{ amount: 12.4 }] }),
+    pgto({ id: 'A2', transaction_amount: 100 }),
+  ]) });
+  const antes = naA(() => repo.contarTransacoes(empresaA.id).reduce((s, x) => s + x.n, 0));
+  const p = await mercadopago.previa({ desde: '2026-08-01', ate: '2026-08-31' });
+  const depois = naA(() => repo.contarTransacoes(empresaA.id).reduce((s, x) => s + x.n, 0));
+  assert.strictEqual(depois, antes, 'a prévia gravou transação — ela existe justamente para não gravar');
+
+  assert.strictEqual(p.resumo.brutoCents, 35000);
+  assert.strictEqual(p.resumo.tarifasCents, -1240);
+  assert.strictEqual(p.resumo.liquidoCents, 33760);
+  // O aviso é o que impede a conciliação de ser lida como prova de que bate.
+  assert.ok(/Saques para o banco, transferências enviadas/.test(p.aviso),
+    'a prévia não declara que o extrato é PARCIAL — a diferença na conciliação pareceria defeito');
+});
+
+testeAsync('extrato MP: busca usa a data de APROVAÇÃO e pagina até o fim', async () => {
+  const muitos = Array.from({ length: 120 }, (_, i) => pgto({ id: 'X' + i, transaction_amount: 10 }));
+  const f = mpExtrato(muitos);
+  mercadopago.configurar({ mpFetch: f });
+  const r = await mercadopago.buscarPagamentos({ desde: '2026-08-01', ate: '2026-08-31' });
+  assert.strictEqual(r.pagamentos.length, 120, 'parou antes de trazer tudo');
+  assert.strictEqual(r.truncado, false);
+  assert.ok(f.chamadas.length >= 3, 'não paginou');
+  assert.strictEqual(f.chamadas[0].range, 'date_approved',
+    'buscou por data de criação — pagamento criado num mês e aprovado no outro cairia na competência errada');
+  assert.ok(/^2026-08-01T00:00:00/.test(f.chamadas[0].begin), 'o início do intervalo não foi respeitado');
+});
+
+lancaAsync('extrato MP: intervalo inválido é recusado antes de bater na API', async () => {
+  mercadopago.configurar({ mpFetch: mpExtrato([]) });
+  await mercadopago.previa({ desde: '01/08/2026', ate: '2026-08-31' });
+}, /AAAA-MM-DD/);
+
+testeAsync('extrato MP: sincronizar entrega ao MESMO importador — e reimportar não duplica', async () => {
+  mercadopago.configurar({ mpFetch: mpExtrato([
+    pgto({ id: 'S1', transaction_amount: 500, fee_details: [{ amount: 24.9 }] }),
+    pgto({ id: 'S2', transaction_amount: 80 }),
+  ]) });
+  const banco = naA(() => repo.listarContasBancarias(empresaA.id))[0];
+
+  const r1 = await naA(() => mercadopago.sincronizar({
+    entidadeId: empresaA.id, contaBancariaId: banco.id, desde: '2026-08-01', ate: '2026-08-31', dryRun: false,
+  }));
+  assert.strictEqual(r1.importado, true);
+  assert.strictEqual(r1.resumo.novas, 3, `esperava 2 entradas + 1 tarifa, veio ${r1.resumo.novas}`);
+
+  const r2 = await naA(() => mercadopago.sincronizar({
+    entidadeId: empresaA.id, contaBancariaId: banco.id, desde: '2026-08-01', ate: '2026-08-31', dryRun: false,
+  }));
+  assert.strictEqual(r2.resumo.novas, 0, 'reimportar o mesmo período duplicou lançamento');
+
+  // Passou pelo caminho normal: as transações estão na fila de conciliação,
+  // com sugestão, e não viraram lançamento sozinhas.
+  const t = naA(() => repo.listarTransacoes(empresaA.id, { limite: 500 }))
+    .filter(x => String(x.documento).startsWith('S'));
+  assert.ok(t.length >= 3, 'as transações do MP não entraram na fila');
+  assert.ok(t.every(x => x.status !== 'conciliada'),
+    'o adaptador conciliou sozinho — classificar dinheiro de terceiro é decisão de gente');
+});
+
+testeAsync('extrato MP: sem conta bancária escolhida, recusa com a instrução', async () => {
+  mercadopago.configurar({ mpFetch: mpExtrato([]) });
+  try {
+    await mercadopago.sincronizar({ entidadeId: empresaA.id, desde: '2026-08-01', ate: '2026-08-31' });
+    assert.fail('aceitou sincronizar sem conta bancária');
+  } catch (e) {
+    assert.ok(/conta bancária/i.test(e.message), `mensagem pouco útil: ${e.message}`);
+  }
 });
 
 // =====================================================================
