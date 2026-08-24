@@ -101,7 +101,7 @@ const F = {
   // -------------------------------------------------------- moldura
   telaApp() {
     const e = F.eu;
-    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
+    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
     const empresas = e.empresas.length > 1
       ? `<select id="f-empresa" style="width:auto;min-width:200px">${e.empresas.map((x) =>
           `<option value="${F.esc(x.id)}"${x.id === e.empresa.id ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
@@ -156,7 +156,7 @@ const F = {
   },
 
   async pintar() {
-    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
+    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
     try { await telas[F.tab](); }
     catch (e) { if (e.message !== 'sessão expirada') F.corpo().innerHTML = `<div class="card"><p class="erro">${F.esc(e.message)}</p></div>`; }
   },
@@ -425,6 +425,246 @@ const F = {
       </div>`;
       await Promise.all([F.pintarConciliacao(), F.pintarTransacoes()]);
     } catch (e) { msg.innerHTML = `<p class="erro">${F.esc(e.message)}</p>`; }
+  },
+
+  // -------------------------------------------------- CONTAS A PAGAR/RECEBER
+  // Título ≠ parcela ≠ liquidação: o título provisiona pela competência, a
+  // liquidação é o caixa. A tela mantém essa distinção à vista, porque
+  // confundi-las é o que faz o DRE e o extrato divergirem.
+
+  async vTitulos() {
+    const especie = F.especie || 'receber';
+    const [aging, { titulos }] = await Promise.all([
+      F.api('GET', F.url('/aging', { especie })),
+      F.api('GET', F.url('/titulos', { especie, status: F.statusTitulo || '', limite: 300 })),
+    ]);
+
+    const faixas = aging.faixas.filter((f) => f.quantidade).map((f) => `
+      <div class="card" style="flex:1;min-width:150px${f.chave !== 'a_vencer' && f.chave !== 'vence_hoje' && f.totalCents ? ';border-color:var(--vx-warn)' : ''}">
+        <div class="sub">${F.esc(f.rotulo)}</div>
+        <div style="font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums">${F.esc(f.total)}</div>
+        <div class="sub">${f.quantidade} parcela(s)</div>
+      </div>`).join('');
+
+    const filtros = [['', 'todos'], ['aberto', 'em aberto'], ['parcial', 'parciais'], ['liquidado', 'liquidados'], ['cancelado', 'cancelados']];
+
+    const linhas = titulos.map((t) => `<tr>
+      <td>${F.dt(t.proximoVencimento)}</td>
+      <td style="white-space:normal"><b>${F.esc(t.contraparte || '—')}</b>
+        <div class="sub">${F.esc(t.descricao || '')}${t.documento ? ' · doc ' + F.esc(t.documento) : ''} · competência ${F.esc(t.competencia)}</div></td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(t.valorCents))}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums"><b>${F.esc(t.saldo)}</b></td>
+      <td><span class="sub">${F.esc(t.status)}</span><br>
+        <button class="btn btn-ghost" style="padding:6px 12px;min-height:0;margin-top:4px" onclick="F.abrirTitulo('${F.esc(t.id)}')">Abrir</button></td>
+    </tr>`).join('');
+
+    F.corpo().innerHTML = `
+      <div class="menu" style="margin-bottom:12px">
+        <button class="btn ${especie === 'receber' ? '' : 'btn-ghost'}" onclick="F.trocarEspecie('receber')">A receber</button>
+        <button class="btn ${especie === 'pagar' ? '' : 'btn-ghost'}" onclick="F.trocarEspecie('pagar')">A pagar</button>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <h3 style="margin:0 0 4px">Em aberto: ${F.esc(aging.totalAberto)} · vencido: <b>${F.esc(aging.totalVencido)}</b> (${aging.percentualVencido}%)</h3>
+        ${F.origem(aging.origem)}
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px">${faixas || '<p class="sub" style="margin:0">Nada em aberto.</p>'}</div>
+      </div>
+
+      <details class="card" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:600">Novo título a ${F.esc(especie)}</summary>
+        <div id="f-novo-titulo" style="margin-top:12px"><p class="sub">Carregando cadastros…</p></div>
+      </details>
+
+      <div class="menu" style="margin-bottom:10px">${filtros.map(([v, rot]) =>
+        `<button class="btn ${(F.statusTitulo || '') === v ? '' : 'btn-ghost'}" style="padding:7px 14px;min-height:0"
+          onclick="F.filtrarTitulo('${v}')">${rot}</button>`).join('')}</div>
+
+      ${titulos.length
+        ? `<div class="tab-wrap"><table>
+             <thead><tr><th>Vencimento</th><th>${especie === 'pagar' ? 'Fornecedor' : 'Cliente'}</th>
+             <th style="text-align:right">Valor</th><th style="text-align:right">Saldo</th><th></th></tr></thead>
+             <tbody>${linhas}</tbody></table></div>`
+        : '<div class="card"><p class="sub" style="margin:0">Nenhum título neste filtro.</p></div>'}
+      <div id="f-titulo-det" style="margin-top:16px"></div>`;
+
+    F.montarNovoTitulo(especie);
+  },
+
+  trocarEspecie(e) { F.especie = e; F.statusTitulo = ''; F.pintar(); },
+  filtrarTitulo(v) { F.statusTitulo = v; F.pintar(); },
+
+  async montarNovoTitulo(especie) {
+    const alvo = F.el('f-novo-titulo');
+    if (!alvo) return;
+    const [cad, { contrapartes }] = await Promise.all([
+      F.cadastros(),
+      F.api('GET', F.url('/contrapartes', { tipo: especie === 'pagar' ? 'fornecedor' : 'cliente' })),
+    ]);
+    // Natureza esperada do rateio: despesa quando se paga, receita quando se
+    // recebe. O serviço aceita outra e avisa; a tela já oferece a certa.
+    const prefixo = especie === 'pagar' ? '4.' : '3.';
+    const contas = cad.contas.filter((c) => c.codigo.startsWith(prefixo));
+
+    alvo.innerHTML = `<form class="form" id="f-tit-form" style="max-width:100%;padding:0;border:0;box-shadow:none">
+      <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+        <label>${especie === 'pagar' ? 'Fornecedor' : 'Cliente'} *
+          <select id="f-t-cp" required><option value="">escolha…</option>${
+            contrapartes.map((c) => `<option value="${F.esc(c.id)}">${F.esc(c.nome)}</option>`).join('')}</select></label>
+        <label>Documento <input id="f-t-doc" placeholder="NF 1234"></label>
+        <label>Descrição <input id="f-t-desc" placeholder="energia de agosto"></label>
+        <label>Valor (R$) * <input id="f-t-valor" inputmode="decimal" required placeholder="0,00"></label>
+        <label>1º vencimento * <input id="f-t-venc" type="date" required></label>
+        <label>Parcelas <input id="f-t-parc" type="number" min="1" max="360" value="1"></label>
+        <label>Conta contábil * <select id="f-t-conta" required>${
+          contas.map((c) => `<option value="${F.esc(c.id)}">${F.esc(c.codigo)} ${F.esc(c.nome)}</option>`).join('')}</select></label>
+        <label>Centro de custo <select id="f-t-centro"><option value="">— sem centro —</option>${
+          cad.centros.map((c) => `<option value="${F.esc(c.id)}">${F.esc(c.codigo)} ${F.esc(c.nome)}</option>`).join('')}</select></label>
+      </div>
+      <p class="sub" style="margin:10px 0 0">O título provisiona pela <b>competência</b> — o caixa só se move na liquidação.
+      Parcelamento não perde centavo: a sobra vai na primeira parcela.</p>
+      <p style="margin:12px 0 0"><button class="btn" type="submit">Criar título</button></p>
+      <p id="f-t-msg" class="erro"></p></form>`;
+
+    F.el('f-tit-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = F.el('f-t-msg'); msg.className = 'erro'; msg.textContent = '';
+      const valorCents = F.centavos(F.el('f-t-valor').value);
+      try {
+        await F.api('POST', F.url('/titulos'), {
+          especie,
+          contraparteId: F.el('f-t-cp').value,
+          documento: F.el('f-t-doc').value,
+          descricao: F.el('f-t-desc').value,
+          valorCents,
+          vencimento: F.el('f-t-venc').value,
+          parcelas: { quantidade: Number(F.el('f-t-parc').value) || 1 },
+          rateio: [{ contaId: F.el('f-t-conta').value, centroCustoId: F.el('f-t-centro').value, valorCents }],
+        });
+        F.pintar();
+      } catch (e) {
+        // Duplicata devolve `podeForcar`: a tela oferece confirmar, em vez de
+        // travar quem realmente tem duas notas iguais.
+        const d = e.dados && e.dados.detalhe;
+        msg.textContent = e.message + (d && d.podeForcar ? ' — se for mesmo outro título, marque "confirmar duplicata".' : '');
+        if (d && d.podeForcar && !F.el('f-t-forcar')) {
+          msg.insertAdjacentHTML('afterend',
+            '<label style="margin-top:8px"><input type="checkbox" id="f-t-forcar" style="width:auto"> confirmar duplicata e criar assim mesmo</label>');
+        }
+      }
+    };
+  },
+
+  async abrirTitulo(id) {
+    const alvo = F.el('f-titulo-det');
+    alvo.innerHTML = '<p class="sub">Carregando…</p>';
+    try {
+      const t = await F.api('GET', F.url('/titulos/' + encodeURIComponent(id)));
+      const { contas: bancos } = await F.api('GET', F.url('/bancos'));
+
+      const parcelas = t.parcelas.map((p) => {
+        const saldo = p.saldoCents;
+        // Liquidação estornada continua na lista: ela é histórico, não some.
+        const liqs = (t.liquidacoesPorParcela[p.id] || []).map((l) =>
+          `<div class="sub"${l.estornada ? ' style="text-decoration:line-through;opacity:.65"' : ''}>${F.dt(l.data)} · ${F.esc(F.brl(l.valorCents))}${l.meio ? ' · ' + F.esc(l.meio) : ''}
+            ${l.estornada
+              ? '<span> — estornada</span>'
+              : `<button class="btn btn-ghost" style="padding:3px 8px;min-height:0;font-size:.8rem"
+                   onclick="F.estornarLiquidacao('${F.esc(l.id)}','${F.esc(id)}')">estornar</button>`}</div>`).join('');
+        return `<tr>
+          <td>${p.numero}/${t.parcelas.length}</td>
+          <td>${F.dt(p.vencimento)}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(p.valorCents))}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(saldo))}</td>
+          <td style="white-space:normal"><span class="sub">${F.esc(p.status)}</span>${liqs}
+            ${saldo > 0 && t.status !== 'cancelado'
+              ? `<button class="btn" style="padding:6px 12px;min-height:0;margin-top:6px"
+                   onclick="F.formLiquidar('${F.esc(p.id)}','${F.esc(id)}',${saldo})">Liquidar</button>`
+              : ''}</td>
+        </tr>`;
+      }).join('');
+
+      const rateio = (t.rateio || []).map((r) =>
+        `<div class="lin"><code>${F.esc(r.contaCodigo)}</code> ${F.esc(r.contaNome)}
+          ${r.centroCodigo ? `· centro ${F.esc(r.centroCodigo)}` : ''} — ${F.esc(F.brl(r.valorCents))}</div>`).join('');
+
+      F._bancos = bancos;
+      alvo.innerHTML = `
+        <div class="card">
+          <h3 style="margin:0 0 4px">${F.esc(t.contraparte ? t.contraparte.nome : '—')} · ${F.esc(t.valor)}</h3>
+          <p class="sub" style="margin:0">${F.esc(t.descricao || '')}${t.documento ? ' · doc ' + F.esc(t.documento) : ''} ·
+            competência ${F.esc(t.competencia)} · saldo <b>${F.esc(t.saldo)}</b> · ${F.esc(t.status)}
+            ${t.origem ? ' · origem ' + F.esc(t.origem) : ''}</p>
+          ${t.canceladoEm ? `<div class="aviso" style="margin-top:10px">Cancelado em ${F.dt(t.canceladoEm)} — ${F.esc(t.canceladoMotivo || '')}</div>` : ''}
+          <h4 style="margin:14px 0 6px">Parcelas</h4>
+          <div class="tab-wrap"><table>
+            <thead><tr><th>#</th><th>Vencimento</th><th style="text-align:right">Valor</th><th style="text-align:right">Saldo</th><th>Situação</th></tr></thead>
+            <tbody>${parcelas}</tbody></table></div>
+          <h4 style="margin:14px 0 6px">Rateio</h4>${rateio || '<p class="sub">—</p>'}
+          <div id="f-liq-area" style="margin-top:12px"></div>
+          ${t.status !== 'cancelado'
+            ? `<p style="margin:14px 0 0"><button class="btn btn-ghost" onclick="F.cancelarTitulo('${F.esc(id)}')">Cancelar título</button>
+               <span class="sub"> — cancelar estorna a provisão; não apaga nada.</span></p>` : ''}
+        </div>`;
+    } catch (e) {
+      if (e.message !== 'sessão expirada') alvo.innerHTML = `<p class="erro">${F.esc(e.message)}</p>`;
+    }
+  },
+
+  formLiquidar(parcelaId, tituloId, saldoCents) {
+    const bancos = (F._bancos || []).map((b) => `<option value="${F.esc(b.id)}">${F.esc(b.nome)}</option>`).join('');
+    F.el('f-liq-area').innerHTML = `
+      <div class="card" style="background:var(--vx-surface-2)">
+        <h4 style="margin:0 0 8px">Liquidar parcela</h4>
+        <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <label>Data * <input id="f-l-data" type="date" value="${new Date().toISOString().slice(0, 10)}"></label>
+          <label>Valor (R$) * <input id="f-l-valor" inputmode="decimal" value="${(saldoCents / 100).toFixed(2).replace('.', ',')}"></label>
+          <label>Juros (R$) <input id="f-l-juros" inputmode="decimal" placeholder="0,00"></label>
+          <label>Multa (R$) <input id="f-l-multa" inputmode="decimal" placeholder="0,00"></label>
+          <label>Desconto (R$) <input id="f-l-desc" inputmode="decimal" placeholder="0,00"></label>
+          <label>Conta bancária <select id="f-l-banco"><option value="">— não informar —</option>${bancos}</select></label>
+          <label>Meio <input id="f-l-meio" placeholder="pix, boleto, transferência"></label>
+        </div>
+        <p class="sub" style="margin:10px 0 0">Juros, multa e desconto vão para contas próprias — juro pago não incha a conta de despesa.
+        Baixa parcial é permitida; valor acima do saldo é recusado.</p>
+        <p style="margin:12px 0 0">
+          <button class="btn" onclick="F.liquidar('${F.esc(parcelaId)}','${F.esc(tituloId)}')">Confirmar liquidação</button>
+          <button class="btn btn-ghost" onclick="F.el('f-liq-area').innerHTML=''">Cancelar</button></p>
+        <p id="f-l-msg" class="erro"></p>
+      </div>`;
+  },
+
+  async liquidar(parcelaId, tituloId) {
+    const msg = F.el('f-l-msg'); msg.className = 'erro'; msg.textContent = '';
+    try {
+      await F.api('POST', F.url(`/parcelas/${encodeURIComponent(parcelaId)}/liquidar`), {
+        data: F.el('f-l-data').value,
+        valorCents: F.centavos(F.el('f-l-valor').value),
+        jurosCents: F.centavos(F.el('f-l-juros').value),
+        multaCents: F.centavos(F.el('f-l-multa').value),
+        descontoCents: F.centavos(F.el('f-l-desc').value),
+        contaBancariaId: F.el('f-l-banco').value,
+        meio: F.el('f-l-meio').value,
+      });
+      F.el('f-liq-area').innerHTML = '';
+      await F.abrirTitulo(tituloId);
+    } catch (e) { msg.textContent = e.message; }
+  },
+
+  async estornarLiquidacao(liquidacaoId, tituloId) {
+    const motivo = prompt('Motivo do estorno (vai para a auditoria):', '');
+    if (!motivo) return;
+    try {
+      await F.api('POST', F.url(`/liquidacoes/${encodeURIComponent(liquidacaoId)}/estornar`), { motivo });
+      await F.abrirTitulo(tituloId);
+    } catch (e) { alert(e.message); }
+  },
+
+  async cancelarTitulo(id) {
+    const motivo = prompt('Motivo do cancelamento (vai para a auditoria):', '');
+    if (!motivo) return;
+    try {
+      await F.api('POST', F.url(`/titulos/${encodeURIComponent(id)}/cancelar`), { motivo });
+      F.pintar();
+    } catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------------- DRE

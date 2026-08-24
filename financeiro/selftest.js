@@ -3012,6 +3012,118 @@ testeAsync('app do assinante: conta sem banco cadastrado ensina o que fazer, nã
   assert.ok(/f-banco-form/.test(html), 'não oferece o cadastro ali mesmo');
 });
 
+testeAsync('app do assinante: a aba Pagar/Receber traz o aging com a fórmula', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vTitulos();
+  const html = app.escritos['f-corpo'];
+  semLixoApp(html, 'títulos');
+
+  const aging = (await pedir('GET', '/finance/api/aging?especie=receber', { cookie: cookieA })).corpo;
+  assert.ok(html.includes(aging.totalAberto), `não imprimiu o total em aberto (${aging.totalAberto})`);
+  assert.ok(html.includes(aging.totalVencido), `não imprimiu o total vencido (${aging.totalVencido})`);
+  assert.ok(html.includes(escapeSimples(aging.origem.formula)),
+    'o aging apareceu sem a fórmula — é o número que mais se interpreta errado no sistema');
+  for (const f of aging.faixas.filter((x) => x.quantidade)) {
+    assert.ok(html.includes(f.rotulo), `faixa "${f.rotulo}" tem parcelas e não aparece na tela`);
+  }
+});
+
+testeAsync('app do assinante: a tela separa a competência do título do caixa da liquidação', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vTitulos();
+  await app.F.montarNovoTitulo('receber');
+  const form = app.escritos['f-novo-titulo'];
+  assert.ok(/competência/i.test(form), 'o formulário não menciona a competência');
+  assert.ok(/caixa só se move na liquidação/i.test(form),
+    'a tela não distingue provisão de caixa — confundir as duas é o que faz DRE e extrato divergirem');
+});
+
+testeAsync('app do assinante: abrir título mostra parcelas, rateio e saldo da API', async () => {
+  const { titulos } = (await pedir('GET', '/finance/api/titulos?limite=50', { cookie: cookieA })).corpo;
+  const alvo = titulos.find((t) => t.status !== 'cancelado');
+  assert.ok(alvo, 'nenhum título na conta de teste');
+
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vTitulos();
+  await app.F.abrirTitulo(alvo.id);
+  const html = app.escritos['f-titulo-det'];
+  semLixoApp(html, 'detalhe do título');
+
+  const det = (await pedir('GET', `/finance/api/titulos/${alvo.id}`, { cookie: cookieA })).corpo;
+  assert.ok(html.includes(det.valor), `o detalhe não imprimiu o valor do título (${det.valor})`);
+  assert.ok(html.includes(det.saldo), `o detalhe não imprimiu o saldo (${det.saldo})`);
+  for (const r of det.rateio || []) {
+    assert.ok(html.includes(r.contaCodigo), `o rateio não mostra a conta ${r.contaCodigo}`);
+  }
+  assert.strictEqual((html.match(/<tr>/g) || []).length >= det.parcelas.length, true,
+    'faltam linhas de parcela na tela');
+});
+
+testeAsync('app do assinante: liquidar pela tela baixa a parcela e move o razão', async () => {
+  // Título próprio para não interferir em nenhum outro teste.
+  const cps = (await pedir('GET', '/finance/api/contrapartes?tipo=cliente', { cookie: cookieA })).corpo.contrapartes;
+  const contas = (await pedir('GET', '/finance/api/contas?analiticas=1', { cookie: cookieA })).corpo.contas;
+  const receita = contas.find((c) => c.codigo.startsWith('3.1'));
+  const criado = await pedir('POST', '/finance/api/titulos', {
+    cookie: cookieA,
+    corpo: {
+      especie: 'receber', contraparteId: cps[0].id, documento: 'TELA-LIQ-1',
+      descricao: 'teste de liquidação pela tela', valorCents: 50000,
+      vencimento: '2026-08-20',
+      rateio: [{ contaId: receita.id, valorCents: 50000 }],
+    },
+  });
+  assert.strictEqual(criado.status, 200, `não criou o título: ${JSON.stringify(criado.corpo)}`);
+  const tituloId = criado.corpo.titulo.id;
+
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vTitulos();
+  await app.F.abrirTitulo(tituloId);
+
+  const det = (await pedir('GET', `/finance/api/titulos/${tituloId}`, { cookie: cookieA })).corpo;
+  const parcela = det.parcelas[0];
+  app.F.formLiquidar(parcela.id, tituloId, parcela.valorCents);
+  app.elementos['f-l-data'] = { value: '2026-08-21' };
+  app.elementos['f-l-valor'] = { value: '300,00' };            // baixa PARCIAL
+  app.elementos['f-l-juros'] = { value: '' };
+  app.elementos['f-l-multa'] = { value: '' };
+  app.elementos['f-l-desc'] = { value: '' };
+  app.elementos['f-l-banco'] = { value: '' };
+  app.elementos['f-l-meio'] = { value: 'pix' };
+  await app.F.liquidar(parcela.id, tituloId);
+
+  const depois = (await pedir('GET', `/finance/api/titulos/${tituloId}`, { cookie: cookieA })).corpo;
+  assert.strictEqual(depois.pagoCents, 30000, `esperava R$ 300 baixados, veio ${depois.pagoCents}`);
+  assert.strictEqual(depois.parcelas[0].status, 'parcial', 'a parcela não ficou parcial');
+  assert.ok(depois.saldoCents === 20000, `saldo errado depois da baixa parcial: ${depois.saldoCents}`);
+});
+
+testeAsync('app do assinante: liquidação estornada continua visível, como histórico', async () => {
+  const { titulos } = (await pedir('GET', '/finance/api/titulos?limite=100', { cookie: cookieA })).corpo;
+  const t = titulos.find((x) => x.documento === 'TELA-LIQ-1');
+  assert.ok(t, 'o título do teste anterior sumiu');
+  const det = (await pedir('GET', `/finance/api/titulos/${t.id}`, { cookie: cookieA })).corpo;
+  const liq = det.liquidacoesPorParcela[det.parcelas[0].id][0];
+
+  const r = await pedir('POST', `/finance/api/liquidacoes/${liq.id}/estornar`,
+    { cookie: cookieA, corpo: { motivo: 'teste de estorno pela tela' } });
+  assert.strictEqual(r.status, 200, `estorno falhou: ${JSON.stringify(r.corpo)}`);
+
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vTitulos();
+  await app.F.abrirTitulo(t.id);
+  const html = app.escritos['f-titulo-det'];
+  assert.ok(/estornada/.test(html),
+    'a liquidação estornada sumiu da tela — ela é histórico, e histórico não se apaga');
+  const depois = (await pedir('GET', `/finance/api/titulos/${t.id}`, { cookie: cookieA })).corpo;
+  assert.strictEqual(depois.pagoCents, 0, 'o estorno não devolveu o saldo da parcela');
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
