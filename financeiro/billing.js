@@ -40,7 +40,9 @@ const DIAS_ATE_SUSPENDER = Number(process.env.FINANCE_DIAS_SUSPENSAO) || 15;
 
 let _mpFetch = null;
 let _notificar = async () => {};
-let _baseUrl = 'https://villelastay.com.br';
+// O back_url e o notification_url apontam para ESTE backend, não para o
+// site institucional: é aqui que a rota do webhook existe.
+let _baseUrl = 'https://villela-stay-backend.onrender.com';
 
 function configurar({ mpFetch, notificar, baseUrl } = {}) {
   if (mpFetch) _mpFetch = mpFetch;
@@ -116,14 +118,20 @@ async function assinar(tenant, planoSlug, { email = '', baseUrl = '' } = {}) {
     throw new ErroDeCobranca(
       'Já existe uma assinatura ativa. Para trocar de plano, cancele a atual e assine de novo — é limitação da recorrência do Mercado Pago.');
   }
-  const volta = (baseUrl || _baseUrl).replace(/\/+$/, '') + '/finance';
+  // `notification_url` vai NO PREAPPROVAL, e não é detalhe: a configuração de
+  // webhook do painel "Suas integrações" do Mercado Pago **não cobre
+  // assinaturas** — para elas, a URL só existe se for enviada aqui. Sem esta
+  // linha, o MP autorizaria a assinatura e nunca nos avisaria, e a conta
+  // ficaria `pendente` para sempre. Mesmo padrão do vdocs e da livraria.
+  const base = (baseUrl || _baseUrl).replace(/\/+$/, '');
   const pre = await mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
       reason: `Villela Finance — plano ${plano.nome}`,
       external_reference: `finance:${tenant.id}:${plano.slug}`,
       payer_email: email || tenant.contato_email,
-      back_url: volta,
+      back_url: `${base}/finance`,
+      notification_url: `${base}/finance/webhooks/mercadopago`,
       auto_recurring: {
         frequency: 1, frequency_type: 'months',
         transaction_amount: Number((plano.preco_cents / 100).toFixed(2)),
@@ -256,6 +264,30 @@ async function processarWebhook(body = {}, query = {}) {
     return tenancy.comTenant({ tenantId, userId: 'mercadopago', perfil: 'plataforma' }, () => {
       const r = aplicarPreapproval(tenantId, id, pre.status);
       repo.publicarEvento({ tipo: 'webhook.mp.preapproval', payload: { id: String(id), status: pre.status, ...r } });
+      return { ok: true, ...r };
+    });
+  }
+
+  // A cobrança mensal de uma assinatura NÃO chega como `payment`: chega como
+  // `subscription_authorized_payment`, e o recurso se lê em
+  // /authorized_payments/{id}. Tratar só `payment` faria a primeira
+  // autorização funcionar e todas as renovações passarem em branco — a conta
+  // continuaria ativa (o MP cobra), mas sem fatura nenhuma do lado de cá.
+  if (tipo === 'subscription_authorized_payment') {
+    const aut = await mp(`/authorized_payments/${id}`);
+    const tenantId = tenantDoWebhook('', aut.preapproval_id || '');
+    if (!tenantId) return { ok: true, ignorado: 'conta não encontrada' };
+    // `processed` é o estado em que o MP diz que a cobrança do período saiu.
+    // `recycling`/`scheduled` são tentativa e agendamento — não são caixa.
+    const pago = aut.status === 'processed'
+      && (!aut.payment || aut.payment.status === 'approved');
+    if (!pago) {
+      return { ok: true, ignorado: `cobrança recorrente ${aut.status}${aut.payment ? '/' + aut.payment.status : ''}` };
+    }
+    const refPagamento = String((aut.payment && aut.payment.id) || aut.id);
+    return tenancy.comTenant({ tenantId, userId: 'mercadopago', perfil: 'plataforma' }, () => {
+      const r = registrarPagamento(tenantId, refPagamento);
+      repo.publicarEvento({ tipo: 'webhook.mp.recorrencia', payload: { id: String(id), ...r } });
       return { ok: true, ...r };
     });
   }

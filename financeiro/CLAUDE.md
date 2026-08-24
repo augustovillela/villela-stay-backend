@@ -83,6 +83,13 @@ Variáveis: `FINANCE_WORKER=off` (desliga o worker) · `FINANCE_WORKER_MS` · `F
 - **Assinar não ativa.** `billing.assinar` grava `pendente`; quem promove a `ativa` é o webhook do
   Mercado Pago. E o webhook é reenviado: por isso a fatura é idempotente pelo id do pagamento e o
   `authorized` repetido não gera fatura nem alerta de novo.
+- **Assinatura no MP tem duas armadilhas próprias.** (1) O painel *Suas integrações → Webhooks*
+  **não cobre assinatura**: a URL só existe se for no `notification_url` de cada `POST /preapproval`
+  — sem ela o MP autoriza e nunca avisa, e a conta fica `pendente` para sempre. (2) A cobrança
+  mensal chega como `subscription_authorized_payment` (lida em `/authorized_payments/{id}`), **não**
+  como `payment`: tratar só `payment` faz a primeira autorização funcionar e toda renovação passar
+  em branco. Ambas travadas por teste; o `notification_url` aponta para ESTE backend, não para o
+  site institucional.
 - **O painel do staff é testado contra a rota, não contra si mesmo.** `staff/app-finance.js` é
   carregado num sandbox no `selftest` e alimentado com a resposta real da API, comparando os
   VALORES que ela devolveu. `esc(undefined)` devolve string vazia — sem comparar valor, um campo

@@ -2327,6 +2327,7 @@ function mpFalso(caminho, opts = {}) {
   }
   if (/^\/preapproval\//.test(caminho)) return Promise.resolve({ id: caminho.split('/')[2], status: 'authorized', external_reference: mpFalso.ref || '' });
   if (/^\/v1\/payments\//.test(caminho)) return Promise.resolve({ id: caminho.split('/')[3], status: 'approved', external_reference: mpFalso.ref || '' });
+  if (/^\/authorized_payments\//.test(caminho)) return Promise.resolve(mpFalso.recorrencia || {});
   return Promise.resolve({});
 }
 mpFalso.__mock = true;
@@ -2518,6 +2519,41 @@ testeAsync('cobrança: o webhook do MP acha a conta pelo preapproval, sem contex
   const r = await billing.processarWebhook({ type: 'preapproval', data: { id: ref } }, {});
   assert.strictEqual(r.ok, true);
   assert.ok(['ativada', 'ja-ativa'].includes(r.resultado), `resultado inesperado: ${r.resultado}`);
+});
+
+testeAsync('cobrança: o preapproval leva a URL de notificação — o painel do MP não cobre assinatura', async () => {
+  const criada = chamadasMP.find(c => c.caminho === '/preapproval');
+  assert.ok(/\/finance\/webhooks\/mercadopago$/.test(criada.corpo.notification_url),
+    `preapproval sem notification_url: ${criada.corpo.notification_url}`);
+  // A URL tem de apontar para ESTE backend, onde a rota existe — e não para o
+  // site institucional, que devolveria 404 a cada notificação.
+  assert.ok(!/villelastay\.com\.br/.test(criada.corpo.notification_url),
+    'a notificação foi mandada para o site institucional, que não tem a rota');
+  assert.ok(criada.corpo.back_url, 'preapproval sem back_url');
+});
+
+testeAsync('cobrança: a renovação mensal chega como subscription_authorized_payment', async () => {
+  billing.configurar({ mpFetch: mpFalso });
+  const ref = tenancy.comTenant({ tenantId: contaC.id, userId: 'auditor' }, () => repo.assinaturaVigente().externo_ref);
+  const antes = tenancy.comTenant({ tenantId: contaC.id, userId: 'auditor' }, () => repo.listarInvoices(50).length);
+
+  // Tentativa que ainda não virou caixa: não pode gerar fatura.
+  mpFalso.recorrencia = { id: 'AUT-1', preapproval_id: ref, status: 'recycling', payment: { id: 'P-1', status: 'rejected' } };
+  const r1 = await billing.processarWebhook({ type: 'subscription_authorized_payment', data: { id: 'AUT-1' } }, {});
+  assert.ok(r1.ignorado, `cobrança em tentativa virou fatura: ${JSON.stringify(r1)}`);
+
+  // Cobrança do mês efetivada.
+  mpFalso.recorrencia = { id: 'AUT-2', preapproval_id: ref, status: 'processed', payment: { id: 'P-2', status: 'approved' } };
+  const r2 = await billing.processarWebhook({ type: 'subscription_authorized_payment', data: { id: 'AUT-2' } }, {});
+  assert.strictEqual(r2.resultado, 'registrado', `renovação não registrada: ${JSON.stringify(r2)}`);
+
+  // Reenvio do MP: mesma cobrança, uma fatura só.
+  const r3 = await billing.processarWebhook({ type: 'subscription_authorized_payment', data: { id: 'AUT-2' } }, {});
+  assert.strictEqual(r3.resultado, 'ja-registrado', 'a renovação reenviada gerou fatura de novo');
+
+  const depois = tenancy.comTenant({ tenantId: contaC.id, userId: 'auditor' }, () => repo.listarInvoices(50).length);
+  assert.strictEqual(depois, antes + 1, `esperava 1 fatura nova, vieram ${depois - antes}`);
+  mpFalso.recorrencia = null;
 });
 
 lancaAsync('cobrança: sem MP configurado, assinar diz o caminho manual', async () => {
