@@ -54,6 +54,64 @@ function lerCsv(texto) {
   return { linhas: linhas.filter(l => l.some(c => String(c).trim())), delimitador };
 }
 
+/**
+ * OFX — o formato que todo banco brasileiro exporta e que resolve, de
+ * graça, as três ambiguidades do CSV: separador decimal, ordem das colunas
+ * e sinal do valor. Aqui o valor vem com ponto decimal e com o sinal
+ * explícito, e cada lançamento traz o `FITID`, que é o identificador único
+ * do banco.
+ *
+ * O arquivo é SGML (OFX 1.x) na prática — tag sem fechamento, valor até o
+ * fim da linha. Também aceita o XML do OFX 2.x, que fecha as tags: ler até
+ * `<` ou fim de linha cobre os dois sem precisar de parser de XML.
+ *
+ * Não é um parser de OFX completo, e não pretende ser: extrai
+ * `<STMTTRN>` e ignora saldos, cabeçalhos e blocos de investimento. É o
+ * que um extrato precisa.
+ */
+function lerOfx(texto) {
+  const bruto = String(texto).replace(/\r\n?/g, '\n');
+  const blocos = bruto.match(/<STMTTRN>[\s\S]*?<\/STMTTRN>|<STMTTRN>[\s\S]*?(?=<STMTTRN>|<\/BANKTRANLIST>)/gi) || [];
+
+  const campo = (bloco, tag) => {
+    const m = new RegExp(`<${tag}>\\s*([^<\\n]*)`, 'i').exec(bloco);
+    return m ? m[1].trim() : '';
+  };
+
+  const registros = [];
+  for (const b of blocos) {
+    // DTPOSTED vem como AAAAMMDD, às vezes com hora e fuso colados
+    // (20260801120000[-3:BRT]) — os oito primeiros dígitos bastam.
+    const dt = campo(b, 'DTPOSTED').replace(/[^0-9]/g, '').slice(0, 8);
+    if (dt.length !== 8) continue;
+    const data = `${dt.slice(0, 4)}-${dt.slice(4, 6)}-${dt.slice(6, 8)}`;
+
+    const valor = campo(b, 'TRNAMT').replace(/\s/g, '').replace(',', '.');
+    const n = Number(valor);
+    if (!Number.isFinite(n) || n === 0) continue;
+
+    const memo = campo(b, 'MEMO');
+    const nome = campo(b, 'NAME');
+    registros.push({
+      data,
+      // Sinal do OFX é a fonte da verdade: negativo é saída, e não há
+      // coluna de débito/crédito para interpretar errado.
+      valorCents: n < 0 ? -Math.round(Math.abs(n) * 100) : Math.round(n * 100),
+      descricao: (memo || nome || campo(b, 'TRNTYPE') || 'Lançamento').slice(0, 300),
+      documento: (campo(b, 'FITID') || campo(b, 'CHECKNUM') || '').slice(0, 100),
+      contraparteNome: (memo && nome ? nome : '').slice(0, 200),
+      // `idBanco` é o que torna a reimportação EXATA: é o identificador do
+      // próprio banco, não uma impressão digital que nós calculamos.
+      idBanco: campo(b, 'FITID').slice(0, 100),
+      bruto: b.trim().slice(0, 1000),
+    });
+  }
+  return registros;
+}
+
+/** OFX se reconhece pelo conteúdo, não pela extensão nem pelo que o cliente diz. */
+const pareceOfx = (texto) => /<STMTTRN>/i.test(String(texto).slice(0, 200000));
+
 const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 const SINONIMOS = {
@@ -206,7 +264,12 @@ function importar({ entidadeId, contaBancariaId, conteudo, fonte = '', formato =
   }
 
   let registros;
-  if (formato === 'json') {
+  // O formato declarado pelo cliente é palpite: `.ofx` chega como "csv"
+  // quando o usuário só escolhe o arquivo. O conteúdo decide.
+  if (pareceOfx(texto)) {
+    registros = lerOfx(texto);
+    if (!registros.length) throw new ErroDeImportacao('Arquivo OFX sem lançamentos (`<STMTTRN>`).');
+  } else if (formato === 'json') {
     const dados = j.parse(texto, null);
     if (!Array.isArray(dados)) throw new ErroDeImportacao('JSON precisa ser uma lista de transações.');
     registros = dados.map((d, i) => {
@@ -241,6 +304,16 @@ function importar({ entidadeId, contaBancariaId, conteudo, fonte = '', formato =
   // Posição da combinação idêntica dentro deste lote — a chave da dedupe.
   const ocorrencias = new Map();
   for (const t of validos) {
+    // Quando o banco dá um identificador próprio (FITID do OFX), ele vence:
+    // a dedupe passa a ser EXATA, e não depende da posição da linha. Isso
+    // torna a reimportação de um arquivo maior — ou fora de ordem —
+    // idempotente de verdade. Sem FITID, vale a posição da linha idêntica
+    // dentro do lote, que é o que permite duas compras iguais no mesmo dia.
+    if (t.idBanco) {
+      t.fingerprint = crypto.createHash('sha256')
+        .update(['fitid', contaBancariaId, t.idBanco].join('|')).digest('hex').slice(0, 32);
+      continue;
+    }
     const chave = [t.data, t.valorCents, semAcento(t.descricao), semAcento(t.documento)].join('|');
     const n = (ocorrencias.get(chave) || 0) + 1;
     ocorrencias.set(chave, n);
@@ -448,5 +521,5 @@ function painel(entidadeId, contaBancariaId, { ate = hojeISO() } = {}) {
 
 module.exports = {
   ErroDeImportacao, importar, desfazerImportacao, conciliar, ignorar, painel,
-  lerCsv, mapearColunas, normalizarData, normalizarLinha, impressaoDigital, semAcento,
+  lerCsv, lerOfx, pareceOfx, mapearColunas, normalizarData, normalizarLinha, impressaoDigital, semAcento,
 };

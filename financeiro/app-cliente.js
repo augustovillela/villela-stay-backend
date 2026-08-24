@@ -251,10 +251,10 @@ const F = {
       </div>
       <div id="f-concil"></div>
       <details class="card" style="margin:12px 0"><summary style="cursor:pointer;font-weight:600">Importar extrato</summary>
-        <p class="sub" style="margin:10px 0">CSV do banco (o sistema descobre as colunas sozinho) ou JSON.
+        <p class="sub" style="margin:10px 0"><b>OFX</b> (o melhor: traz o sinal e o identificador único de cada lançamento), CSV do banco (o sistema descobre as colunas sozinho) ou JSON.
         Reimportar o mesmo arquivo <b>não duplica</b> — a dedupe é por linha, e duas compras iguais no mesmo dia continuam sendo duas.</p>
         <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-          <label>Arquivo <input type="file" id="f-arq" accept=".csv,.txt,.json"></label>
+          <label>Arquivo <input type="file" id="f-arq" accept=".csv,.txt,.json,.ofx"></label>
           <label>Origem (para a auditoria) <input id="f-fonte" placeholder="extrato C6 agosto/2026"></label>
         </div>
         <p style="margin:12px 0 0"><button class="btn" onclick="F.importar()">Importar arquivo</button></p>
@@ -445,13 +445,30 @@ const F = {
     } catch (e) { msg.innerHTML = `<p class="erro">${F.esc(e.message)}</p>`; }
   },
 
+  /**
+   * Lê o arquivo respeitando a codificação. `File.text()` assume UTF-8, e
+   * OFX de banco brasileiro costuma vir em Windows-1252 — o acento viraria
+   * lixo no nome do fornecedor, e as regras de classificação (que casam em
+   * "neoenergia", "caesb") deixariam de casar. O próprio cabeçalho do OFX
+   * diz o `CHARSET`; a gente obedece.
+   */
+  async lerArquivo(arquivo) {
+    const bytes = new Uint8Array(await arquivo.arrayBuffer());
+    const inicio = new TextDecoder('latin1').decode(bytes.slice(0, 400));
+    const ehOfx = /OFXHEADER|<OFX>/i.test(inicio);
+    const cp1252 = /CHARSET:\s*1252/i.test(inicio) || /ENCODING:\s*USASCII/i.test(inicio);
+    const rotulo = ehOfx && cp1252 ? 'windows-1252' : 'utf-8';
+    try { return new TextDecoder(rotulo).decode(bytes); }
+    catch (_) { return new TextDecoder('utf-8').decode(bytes); }
+  },
+
   async importar() {
     const msg = F.el('f-imp-msg');
     const arq = F.el('f-arq');
     if (!arq.files || !arq.files[0]) { msg.innerHTML = '<p class="erro">Escolha o arquivo do extrato.</p>'; return; }
     msg.innerHTML = '<p class="sub">Lendo o arquivo…</p>';
     try {
-      const conteudo = await arq.files[0].text();
+      const conteudo = await F.lerArquivo(arq.files[0]);
       const formato = /\.json$/i.test(arq.files[0].name) ? 'json' : 'csv';
       const r = await F.api('POST', F.url(`/bancos/${encodeURIComponent(F.bancoId)}/importar`), {
         conteudo, formato, fonte: F.el('f-fonte').value || arq.files[0].name,

@@ -4139,6 +4139,97 @@ testeAsync('extrato MP: sem conta bancária escolhida, recusa com a instrução'
   }
 });
 
+// ------------------------------------------------------------- OFX
+const OFX_EXEMPLO = [
+  'OFXHEADER:100', 'DATA:OFXSGML', 'VERSION:102', 'CHARSET:1252', '',
+  '<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>',
+  '<STMTTRN>',
+  '<TRNTYPE>DEBIT',
+  '<DTPOSTED>20260802120000[-3:BRT]',
+  '<TRNAMT>-438.90',
+  '<FITID>C6-2026080200001',
+  '<NAME>NEOENERGIA BRASILIA',
+  '<MEMO>Pagamento conta de luz',
+  '</STMTTRN>',
+  '<STMTTRN>',
+  '<TRNTYPE>CREDIT',
+  '<DTPOSTED>20260801',
+  '<TRNAMT>1250.00',
+  '<FITID>C6-2026080100007',
+  '<MEMO>PIX RECEBIDO CLIENTE X',
+  '</STMTTRN>',
+  '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>',
+].join('\n');
+
+teste('OFX: lê data, sinal, descrição e o identificador do banco', () => {
+  const r = bancos.lerOfx(OFX_EXEMPLO);
+  assert.strictEqual(r.length, 2, `esperava 2 lançamentos, vieram ${r.length}`);
+
+  const [saida, entrada] = r;
+  assert.strictEqual(saida.data, '2026-08-02', 'a data com hora e fuso colados não foi cortada em 8 dígitos');
+  assert.strictEqual(saida.valorCents, -43890, 'o sinal do OFX não foi respeitado — saída virou entrada');
+  assert.strictEqual(saida.descricao, 'Pagamento conta de luz', 'usou NAME onde havia MEMO');
+  assert.strictEqual(saida.contraparteNome, 'NEOENERGIA BRASILIA', 'perdeu o favorecido');
+  assert.strictEqual(saida.idBanco, 'C6-2026080200001', 'não capturou o FITID');
+
+  assert.strictEqual(entrada.data, '2026-08-01', 'não aceitou DTPOSTED só com a data');
+  assert.strictEqual(entrada.valorCents, 125000);
+});
+
+teste('OFX: é reconhecido pelo CONTEÚDO, não pela extensão', () => {
+  assert.strictEqual(bancos.pareceOfx(OFX_EXEMPLO), true);
+  assert.strictEqual(bancos.pareceOfx('Data,Valor\n01/08/2026,10'), false);
+});
+
+teste('OFX: o formato declarado pelo cliente não atrapalha', () => {
+  // O navegador manda "csv" quando o usuário só escolhe o arquivo.
+  const c = naA(() => repo.listarContasBancarias(empresaA.id))[0];
+  const r = naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: c.id,
+    conteudo: OFX_EXEMPLO, formato: 'csv', fonte: 'ofx declarado como csv',
+  }));
+  assert.strictEqual(r.resumo.novas, 2, `importou ${r.resumo.novas} em vez de 2 — o conteúdo devia mandar`);
+});
+
+teste('OFX: reimportar arquivo MAIOR não duplica o que já entrou (dedupe por FITID)', () => {
+  const c = naA(() => repo.listarContasBancarias(empresaA.id))[0];
+  // Mesmo extrato + um lançamento novo, e em ordem diferente: com dedupe
+  // posicional isso duplicaria tudo; com FITID, entra só o que é novo.
+  const maior = OFX_EXEMPLO.replace('</BANKTRANLIST>', [
+    '<STMTTRN>', '<TRNTYPE>DEBIT', '<DTPOSTED>20260803', '<TRNAMT>-99.00',
+    '<FITID>C6-2026080300012', '<MEMO>TARIFA MENSALIDADE', '</STMTTRN>', '</BANKTRANLIST>',
+  ].join('\n'));
+  const r = naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: c.id,
+    conteudo: maior, formato: 'ofx', fonte: 'ofx ampliado',
+  }));
+  assert.strictEqual(r.resumo.novas, 1, `entraram ${r.resumo.novas} em vez de 1 — a dedupe por FITID não valeu`);
+  assert.strictEqual(r.resumo.duplicadas, 2, 'não reconheceu os dois que já existiam');
+});
+
+teste('OFX: dois lançamentos idênticos com FITID diferente continuam sendo dois', () => {
+  const c = naA(() => repo.listarContasBancarias(empresaA.id))[0];
+  const dois = [
+    'OFXHEADER:100', '<OFX><BANKTRANLIST>',
+    '<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20260805<TRNAMT>-50.00<FITID>AAA1<MEMO>CAFE</STMTTRN>',
+    '<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20260805<TRNAMT>-50.00<FITID>AAA2<MEMO>CAFE</STMTTRN>',
+    '</BANKTRANLIST></OFX>',
+  ].join('\n');
+  const r = naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: c.id, conteudo: dois, formato: 'ofx', fonte: 'dois cafes',
+  }));
+  assert.strictEqual(r.resumo.novas, 2,
+    'duas compras iguais no mesmo dia viraram uma — o extrato passaria a mentir para menos');
+});
+
+lanca('OFX: arquivo sem lançamento é recusado com o motivo', () => {
+  const c = naA(() => repo.listarContasBancarias(empresaA.id))[0];
+  naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: c.id,
+    conteudo: 'OFXHEADER:100\n<OFX><STMTTRN></STMTTRN></OFX>', formato: 'ofx', fonte: 'vazio',
+  }));
+}, /OFX|lançamento|valor/i);
+
 // =====================================================================
 // 15. INTEGRIDADE FINAL
 // =====================================================================
