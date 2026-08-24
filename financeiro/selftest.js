@@ -2429,6 +2429,8 @@ testeAsync('cobrança: conta própria para a régua de inadimplência', () => {
   }));
   contaD = r.tenant; empresaD = r.entidade;
   assert.strictEqual(contaD.status, 'trial');
+  tenancy.comTenant({ tenantId: contaD.id, userId: 'plataforma', perfil: 'proprietario' }, () =>
+    contasSvc.criarUsuario({ email: 'dono@mercearia.com.br', nome: 'Dono', senha: 'senha-forte-3', perfil: 'proprietario' }));
 });
 
 testeAsync('cobrança: trial vence no dia SEGUINTE ao prometido, não no próprio dia', () => {
@@ -2757,6 +2759,165 @@ testeAsync('senha: sem sessão, a rota devolve 401 e não diz se o e-mail existe
     corpo: { senhaAtual: 'x', senhaNova: 'senha-nova-qualquer' },
   });
   assert.strictEqual(r.status, 401);
+});
+
+// =====================================================================
+// 14.7 APLICAÇÃO DO ASSINANTE (financeiro/app-cliente.js) contra a API REAL
+//
+// Mesma técnica do painel do staff: o arquivo real é carregado num sandbox
+// e alimentado com a resposta real das rotas, e as asserções comparam os
+// VALORES que a API devolveu — não a presença de "R$" na tela. `esc()`
+// devolve string vazia para undefined, então campo renomeado na API
+// sumiria em silêncio se o teste só procurasse lixo.
+// =====================================================================
+
+function carregarAppCliente(cookie) {
+  const fonte = fs.readFileSync(path.join(__dirname, 'app-cliente.js'), 'utf8');
+  const escritos = {};
+  const elemento = (id) => ({
+    _id: id, value: '', disabled: false, className: '', textContent: '',
+    set innerHTML(v) { escritos[id] = String(v); },
+    get innerHTML() { return escritos[id] || ''; },
+    scrollIntoView() {},
+    reset() {},
+  });
+  const elementos = { app: elemento('app'), 'f-corpo': elemento('f-corpo'), 'f-razao': elemento('f-razao') };
+
+  const sandbox = {
+    // `fetch` do sandbox fala com o servidor HTTP real da suíte, carregando
+    // o cookie de sessão — é a mesma porta que o navegador usa.
+    fetch: async (caminho, opt = {}) => {
+      const r = await pedir(opt.method || 'GET', caminho, {
+        cookie, corpo: opt.body ? JSON.parse(opt.body) : undefined,
+      });
+      return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.corpo };
+    },
+    document: {
+      getElementById: (id) => elementos[id] || (elementos[id] = elemento(id)),
+      addEventListener: () => {},
+    },
+    URLSearchParams,
+    Date, Number, String, Math, JSON, Object, Array, Promise, encodeURIComponent, console,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(`${fonte}\n;this.F = F;`, sandbox, { filename: 'app-cliente.js' });
+  return { F: sandbox.F, escritos, elementos };
+}
+
+const semLixoApp = (html, tela) => assert.ok(!/undefined|\[object Object\]|NaN/.test(html),
+  `a tela ${tela} imprimiu lixo: ${(html.match(/.{0,60}(undefined|\[object Object\]|NaN).{0,60}/) || [])[0]}`);
+
+testeAsync('app do assinante: sem sessão, cai na tela de login e NÃO vaza dado', async () => {
+  const app = carregarAppCliente('');
+  await app.F.iniciar();
+  const html = app.escritos.app;
+  assert.ok(/f-login/.test(html), 'não caiu na tela de login');
+  assert.ok(/Entrar/.test(html), 'a tela de login não tem botão de entrar');
+  assert.ok(!/Villela Stay|Augusto/.test(html.replace(/Villela Finance/g, '')),
+    'a tela de login mostrou nome de conta antes de autenticar');
+});
+
+testeAsync('app do assinante: o cockpit imprime os valores que a API devolveu', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  assert.ok(app.F.eu, 'não autenticou com o cookie da sessão');
+  await app.F.vCockpit();
+  const html = app.escritos['f-corpo'];
+  semLixoApp(html, 'cockpit');
+
+  const api = (await pedir('GET', `/finance/api/cockpit?competencia=${app.F.competencia}`, { cookie: cookieA })).corpo;
+  for (const k of api.kpis) {
+    assert.ok(html.includes(k.valor), `o cockpit não imprimiu o KPI "${k.rotulo}" (${k.valor})`);
+    assert.ok(html.includes(k.origem.formula),
+      `o KPI "${k.rotulo}" apareceu sem a fórmula de origem — é o contrato do produto`);
+  }
+});
+
+testeAsync('app do assinante: a saúde do razão vem ANTES dos indicadores', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vCockpit();
+  const html = app.escritos['f-corpo'];
+  const posSaude = html.indexOf('Posso confiar nestes números?');
+  const posKpi = html.indexOf('Resultado do mês');
+  assert.ok(posSaude >= 0, 'a tela não mostra o estado do razão');
+  assert.ok(posKpi >= 0 && posSaude < posKpi,
+    'os indicadores aparecem antes da saúde do razão — se o razão não fecha, eles não valem');
+});
+
+testeAsync('app do assinante: o DRE bate linha a linha com a API', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vDre();
+  const html = app.escritos['f-corpo'];
+  semLixoApp(html, 'DRE');
+  const api = (await pedir('GET', `/finance/api/dre?competencia=${app.F.competencia}`, { cookie: cookieA })).corpo;
+  for (const l of api.linhas) {
+    assert.ok(html.includes(l.rotulo), `o DRE não imprimiu a linha "${l.rotulo}"`);
+    assert.ok(html.includes(l.valor), `a linha "${l.rotulo}" saiu com valor diferente do da API (${l.valor})`);
+  }
+});
+
+testeAsync('app do assinante: o razão desce da árvore até o lançamento', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vRazao();
+  const arvore = app.escritos['f-corpo'];
+  semLixoApp(arvore, 'plano de contas');
+  assert.ok(/abrirRazao/.test(arvore), 'nenhuma conta analítica é clicável');
+
+  // Desce numa conta que TEM movimento — árvore bonita e drill vazio é o
+  // defeito clássico desta tela.
+  const contas = (await pedir('GET', '/finance/api/contas', { cookie: cookieA })).corpo.contas;
+  let achou = null;
+  for (const c of contas.filter((x) => x.aceita_lancamento === 1)) {
+    const r = (await pedir('GET', `/finance/api/razao/${c.id}`, { cookie: cookieA })).corpo;
+    if (r.linhas && r.linhas.length) { achou = { conta: c, razao: r }; break; }
+  }
+  assert.ok(achou, 'nenhuma conta com lançamento — o teste não provaria nada');
+
+  await app.F.abrirRazao(achou.conta.id);
+  const html = app.escritos['f-razao'];
+  semLixoApp(html, 'razão');
+  assert.ok(html.includes(achou.conta.codigo), 'o razão não identifica a conta aberta');
+  const primeira = achou.razao.linhas[0];
+  assert.ok(html.includes(primeira.saldoFormatado),
+    `o razão não imprimiu o saldo corrido (${primeira.saldoFormatado})`);
+});
+
+testeAsync('app do assinante: "Minha conta" oferece troca de senha e segundo fator', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vConta();
+  const html = app.escritos['f-corpo'];
+  semLixoApp(html, 'minha conta');
+  assert.ok(/f-senha-form/.test(html), 'não há formulário de troca de senha');
+  assert.ok(/minlength="10"/.test(html), 'o campo de senha nova não exige o mínimo de 10 caracteres');
+  assert.ok(/Segundo fator/.test(html), 'não há bloco de segundo fator');
+});
+
+testeAsync('app do assinante: conta SUSPENSA vê o aviso e continua lendo', async () => {
+  // contaD terminou os testes de cobrança ativa; suspende só para esta prova.
+  const antes = repo.tenantPorId(contaD.id).status;
+  repo.atualizarTenant(contaD.id, { status: 'suspensa' });
+  try {
+    const login = await pedir('POST', '/finance/api/login',
+      { corpo: { email: 'dono@mercearia.com.br', senha: 'senha-forte-3' } });
+    assert.strictEqual(login.status, 200, 'conta suspensa não conseguiu nem entrar');
+    const cookieD = (login.cookies[0] || '').split(';')[0];
+
+    const app = carregarAppCliente(cookieD);
+    await app.F.iniciar();
+    const moldura = app.escritos.app;
+    assert.ok(/suspensa/.test(moldura), 'a tela não diz que a conta está suspensa');
+    assert.ok(/leitura e a exportação continuam liberadas/.test(moldura),
+      'o aviso de conta suspensa não diz o que NÃO se perde — é a promessa do produto');
+
+    await app.F.vDre();
+    semLixoApp(app.escritos['f-corpo'], 'DRE de conta suspensa');
+  } finally {
+    repo.atualizarTenant(contaD.id, { status: antes });
+  }
 });
 
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));

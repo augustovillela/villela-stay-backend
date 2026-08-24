@@ -87,6 +87,7 @@ const TOPO = `<header class="top"><div class="wrap">
     <a href="#nao">O que não faz</a>
     <a href="#planos">Planos</a>
     <a href="#avise">Quero ser avisado</a>
+    <a href="/finance/app">Entrar</a>
   </nav>
 </div></header>`;
 
@@ -291,8 +292,30 @@ function registrarInteresse(d, ip) {
 const listarInteressados = (limite = 200) => db.prepare(
   'SELECT * FROM fin_interessados ORDER BY criado_em DESC LIMIT ?').all(Math.min(limite, 500));
 
+/**
+ * Casca da aplicação do assinante. O corpo inteiro é montado pelo
+ * `app-cliente.js`; aqui só vai o esqueleto e o design system do grupo.
+ * `noindex` porque é área logada — o robots.txt já bloqueia, mas quem
+ * chega por link direto não passa pelo robots.
+ */
+const appHTML = () => `<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Villela Finance — entrar</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg">
+<meta name="theme-color" content="#1B2A4A">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7">
+<link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7">
+</head><body class="vx"><main id="app"><p style="padding:32px;text-align:center">Carregando…</p></main>
+<script src="/finance/app.js?v=1"></script></body></html>`;
+
 function registrarPaginas(app, { express }) {
   app.get('/finance', (_req, res) => res.type('html').send(landingHTML()));
+  app.get('/finance/app', (_req, res) => res.type('html').send(appHTML()));
+  app.get('/finance/app.js', (_req, res) =>
+    res.type('application/javascript; charset=utf-8').sendFile(require('path').join(__dirname, 'app-cliente.js')));
   app.post('/finance/api/interesse', express.json({ limit: '32kb' }), (req, res) => {
     try { res.json(registrarInteresse(req.body || {}, req.ip)); }
     catch (e) { res.status(e.status || 500).json({ erro: e.message }); }
@@ -302,4 +325,4 @@ function registrarPaginas(app, { express }) {
     'User-agent: *\nAllow: /finance\nDisallow: /finance/api\nDisallow: /finance/app\n'));
 }
 
-module.exports = { registrarPaginas, landingHTML, registrarInteresse, listarInteressados };
+module.exports = { registrarPaginas, landingHTML, appHTML, registrarInteresse, listarInteressados };
