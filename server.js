@@ -4502,6 +4502,9 @@ try {
     enviarEmail, enviarWhatsApp,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
+    // CRM legado do Portal Staff (contatos.json): todo comprador vira contato,
+    // com a compra registrada na linha do tempo dele.
+    crm: { upsertContato, addAtividade },
   });
 } catch (e) { console.error('[livraria] falha ao montar módulo:', e.message); }
 

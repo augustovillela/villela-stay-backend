@@ -24,6 +24,7 @@ function montar(app, injected = {}) {
   const {
     express, requireAuth, requireAdmin, lerUsuarios, salvarUsuarios,
     enviarEmail = async () => false, enviarWhatsApp = async () => false, alertaAugusto = async () => {}, mpFetch,
+    crm = null,   // { upsertContato, addAtividade } do CRM legado do staff — opcional
   } = injected;
   if (!express || !requireAuth) throw new Error('livraria.montar: faltam deps (express, requireAuth).');
 
@@ -59,7 +60,11 @@ function montar(app, injected = {}) {
 
   const pagamentos = criarPagamentos({ mpFetch });
   const eventos = criarEventos({ repo });
-  const fluxo = criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alertaAugusto, urls });
+  const fluxo = criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alertaAugusto, urls, crm });
+
+  // Follow-up pós-compra: pede avaliação alguns dias depois da entrega.
+  const followup = require('./followup').criarFollowup({ repo, emails, enviarEmail, enviarWhatsApp, urls, alertaAugusto });
+  followup.agendar();
 
   const deps = {
     repo, pagamentos, eventos, emails, fluxo, downloads, storefront, legais, atualizacoes, urls,

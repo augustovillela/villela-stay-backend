@@ -30,6 +30,22 @@ db.exec('PRAGMA busy_timeout = 4000;');
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 db.exec(schema);
 
+// ---- Migrações de coluna (idempotentes) ----------------------------------
+// O schema.sql roda ANTES daqui e não pode referenciar coluna nova (o CREATE
+// INDEX abortaria o schema inteiro), então toda coluna acrescentada depois
+// entra por aqui, conferindo o PRAGMA antes do ALTER.
+function coluna(tabela, nome, definicao) {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(${tabela})`).all().map(c => c.name);
+    if (!cols.includes(nome)) {
+      db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${nome} ${definicao}`);
+      console.log(`[livraria] migração: ${tabela}.${nome} criada`);
+    }
+  } catch (e) { console.error(`[livraria] migração ${tabela}.${nome}:`, e.message); }
+}
+// Marca do follow-up pós-compra (pedido de avaliação) — ver livraria/followup.js.
+coluna('orders', 'followup_enviado_em', 'TEXT');
+
 // Correção pontual (idempotente): a capa do 1º livro apontava para um link de
 // VISUALIZAÇÃO do Google Drive, que não renderiza como <img>. Capa oficial agora
 // hospedada no próprio backend em /assets/livros/ (só substitui se ainda for o Drive).

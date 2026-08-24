@@ -70,6 +70,28 @@ const T = {
       texto: `Olá, ${nome}! 🎁 Pela compra de "${tituloComprado}", você ganhou o e-book "${titulo}". Baixe aqui: ${downloadUrl} (link pessoal, expira em ${validadeHoras}h). — Villela Stay`,
     };
   },
+  // 2c) Follow-up pós-compra: pede a opinião do leitor alguns dias depois.
+  // Tom de quem quer ouvir, não de quem quer vender: uma pergunta só, resposta
+  // fácil (basta responder o e-mail) e um caminho para quem teve problema.
+  pedidoAvaliacao(order, { titulos = [], suporte, biblioteca }) {
+    const nome = primeiroNome(order.cliente && order.cliente.nome);
+    const lista = titulos.length === 1 ? `<strong>${esc(titulos[0])}</strong>`
+      : titulos.map(t => `<strong>${esc(t)}</strong>`).join(' e ');
+    const corpo = `<p>Olá, <strong>${esc(nome)}</strong>! Faz alguns dias que você recebeu ${lista}.</p>
+      <p>Queria te fazer uma pergunta só: <strong>o livro te ajudou em alguma coisa concreta?</strong>
+      Se puder responder este e-mail em duas linhas, eu leio pessoalmente — o retorno dos leitores
+      é o que orienta as próximas edições.</p>
+      <p style="font-size:13px;color:#5a6b72">Se algo não funcionou — link, arquivo, entrega —
+      me diga que resolvo: <a href="${esc(suporte)}" style="color:#7F1D1D">suporte</a>.
+      Seus downloads continuam em <a href="${esc(biblioteca)}" style="color:#7F1D1D">sua biblioteca</a>.</p>
+      <p>Obrigado por ler.<br>— Augusto Villela</p>`;
+    const t1 = titulos[0] || 'seu livro';
+    return {
+      assunto: `O que você achou de ${t1}?`,
+      html: wrap('Sua opinião', corpo),
+      texto: `Olá, ${nome}! Faz alguns dias que você recebeu "${t1}". O livro te ajudou em alguma coisa concreta? Responda em duas linhas — eu leio pessoalmente. Se algo não funcionou, me diga que resolvo. — Augusto Villela`,
+    };
+  },
   // 3) Reenvio de link
   linkReenviado(order, { downloadUrl, titulo, validadeHoras }) {
     const nome = primeiroNome(order.cliente && order.cliente.nome);

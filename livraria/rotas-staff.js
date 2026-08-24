@@ -194,6 +194,68 @@ function registrarRotasStaff(app, deps) {
     res.send(csv);
   });
 
+  // ------------------------------------------------------- VENDAS (visão planilha)
+  // Uma linha por ITEM vendido (não por pedido): é o formato que se lê como
+  // planilha e se soma por livro/formato. `dias` filtra o período; `status`
+  // permite ver também pendentes e reembolsados.
+  function linhasVendas({ dias = 90, status = 'pago' } = {}) {
+    const desde = new Date(Date.now() - Number(dias) * 24 * 3600 * 1000).toISOString();
+    const pedidos = repo.Orders.listar({ limite: 1000 })
+      .filter(o => (status === 'todos' ? true : o.status === status))
+      .filter(o => (o.pago_em || o.created_at) >= desde);
+    const linhas = [];
+    for (const p of pedidos) {
+      const full = repo.Orders.obter(p.id);
+      if (!full) continue;
+      for (const it of (full.itens || [])) {
+        linhas.push({
+          data: full.pago_em || full.created_at,
+          pedido: full.id,
+          cliente: (full.cliente || {}).nome || '',
+          email: (full.cliente || {}).email || '',
+          uf: (full.cliente || {}).estado || '',
+          livro: it.titulo_snapshot,
+          formato: it.tipo,
+          quantidade: it.quantidade,
+          valor: it.preco_unit * it.quantidade,
+          cupom: full.cupom_codigo || '',
+          status: full.status,
+          entrega: full.entrega_digital,
+          impresso: full.impressao_status,
+          origem: (full.origem && (full.origem.utm_source || full.origem.origem)) || (typeof full.origem === 'string' ? full.origem : '') || 'loja',
+        });
+      }
+    }
+    return linhas.sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  }
+
+  app.get('/staff/api/livraria/vendas', requireAuth, pode('relatorios'), (req, res) => {
+    const linhas = linhasVendas(req.query);
+    const total = linhas.reduce((s, l) => s + (l.status === 'pago' ? l.valor : 0), 0);
+    const porLivro = {};
+    for (const l of linhas.filter(x => x.status === 'pago')) {
+      porLivro[l.livro] = porLivro[l.livro] || { itens: 0, receita: 0 };
+      porLivro[l.livro].itens += l.quantidade;
+      porLivro[l.livro].receita += l.valor;
+    }
+    res.json({ linhas, total, total_fmt: repo.brl(total), por_livro: porLivro });
+  });
+
+  app.get('/staff/api/livraria/vendas.csv', requireAuth, pode('relatorios'), (req, res) => {
+    const linhas = linhasVendas(req.query);
+    const cab = ['Data', 'Pedido', 'Cliente', 'E-mail', 'UF', 'Livro', 'Formato', 'Qtd', 'Valor (R$)', 'Cupom', 'Status', 'Entrega', 'Impresso', 'Origem'];
+    const corpo = linhas.map(l => [
+      String(l.data).slice(0, 10), l.pedido, l.cliente, l.email, l.uf, l.livro, l.formato,
+      l.quantidade, (l.valor / 100).toFixed(2), l.cupom, l.status, l.entrega, l.impresso, l.origem,
+    ]);
+    // BOM + ; = Excel brasileiro abre sem passar pelo assistente de importação
+    const csv = '﻿' + [cab, ...corpo]
+      .map(l => l.map(c => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="vendas-livraria.csv"`);
+    res.send(csv);
+  });
+
   // ------------------------------------------------------- EQUIPE (papéis funcionais) — admin
   app.get('/staff/api/livraria/equipe', requireAuth, requireAdmin, (req, res) => {
     const users = lerUsuarios().map(u => ({ id: u.id, nome: u.nome, email: u.email, papel: u.papel, papelLivraria: u.papelLivraria || (u.papel === 'admin' ? 'admin' : 'suporte'), ativo: u.ativo }));

@@ -25,6 +25,7 @@ const LV = {
     if (LV.perm.clientes) t.push(['clientes', '👥 Clientes']);
     if (LV.perm.cupons) t.push(['cupons', '🎟️ Cupons']);
     if (LV.perm.impressos) t.push(['impressos', '📦 Impressos']);
+    if (LV.perm.relatorios) t.push(['vendas', '💰 Vendas']);
     if (LV.perm.relatorios) t.push(['relatorios', '📈 Relatórios']);
     t.push(['logs', '🔔 Webhooks/Logs']);
     if (LV.perm.auditoria) t.push(['auditoria', '📜 Auditoria']);
@@ -48,6 +49,7 @@ const LV = {
       if (LV.tab === 'clientes') return LV.vClientes();
       if (LV.tab === 'cupons') return LV.vCupons();
       if (LV.tab === 'impressos') return LV.vImpressos();
+      if (LV.tab === 'vendas') return LV.vVendas();
       if (LV.tab === 'relatorios') return LV.vRelatorios();
       if (LV.tab === 'logs') return LV.vLogs();
       if (LV.tab === 'auditoria') return LV.vAuditoria();
@@ -336,6 +338,37 @@ const LV = {
   },
 
   // -------------------------------------------------------- RELATÓRIOS
+  // -------------------------------------------------------- VENDAS (planilha)
+  // Uma linha por item vendido, como numa planilha: dá para ler de cima a baixo,
+  // conferir uma venda específica e exportar para o Excel.
+  async vVendas(dias, status) {
+    LV.vendasDias = dias || LV.vendasDias || 90;
+    LV.vendasStatus = status || LV.vendasStatus || 'pago';
+    const d = await LV.api('GET', `/vendas?dias=${LV.vendasDias}&status=${LV.vendasStatus}`);
+    const bt = (v, t, cur, fn) => `<button class="btn ${cur === v ? '' : 'secund'} peq" onclick="${fn}">${t}</button>`;
+    let h = `<div class="card" style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
+      <b>Período:</b> ${[30, 90, 365, 3650].map(n => bt(n, n === 3650 ? 'Tudo' : n + ' dias', LV.vendasDias, `LV.vVendas(${n})`)).join(' ')}
+      &nbsp;<b>Status:</b> ${['pago', 'todos'].map(s => bt(s, s === 'pago' ? 'Pagas' : 'Todas', LV.vendasStatus, `LV.vVendas(null,'${s}')`)).join(' ')}
+      <span style="flex:1"></span>
+      <a class="btn peq" href="/staff/api/livraria/vendas.csv?dias=${LV.vendasDias}&status=${LV.vendasStatus}" target="_blank">📥 Exportar CSV</a>
+    </div>`;
+    const porLivro = Object.entries(d.por_livro || {}).sort((a, b) => b[1].receita - a[1].receita);
+    h += `<div class="card"><h3>Resumo do período</h3>
+      <p><b>${d.linhas.length}</b> item(ns) · receita paga <b>${esc(d.total_fmt)}</b></p>
+      ${porLivro.length ? tabela(['Livro', 'Itens', 'Receita'],
+        porLivro.map(([t, v]) => [esc(t), v.itens, 'R$ ' + (v.receita / 100).toFixed(2).replace('.', ',')])) : ''}</div>`;
+    h += `<div class="card"><h3>💰 Vendas (uma linha por item)</h3>${d.linhas.length ? tabela(
+      ['Data', 'Cliente', 'Livro', 'Formato', 'Qtd', 'Valor', 'Cupom', 'Status', 'Origem'],
+      d.linhas.map(l => [
+        dataBr(l.data), `<a href="#" onclick="LV.verPedido('${l.pedido}');return false">${esc(l.cliente || l.email)}</a>`,
+        esc(l.livro), l.formato, l.quantidade,
+        'R$ ' + (l.valor / 100).toFixed(2).replace('.', ','), esc(l.cupom || '—'),
+        l.status === 'pago' ? '✅ pago' : (l.status === 'reembolsado' ? '↩️ reembolsado' : l.status),
+        esc(l.origem),
+      ])) : '<p class="sub">Nenhuma venda no período.</p>'}</div>`;
+    LV.body().innerHTML = h;
+  },
+
   async vRelatorios() {
     LV.body().innerHTML = `<div class="card"><h3>📈 Relatórios (CSV)</h3>
       <p class="sub">Exporta vendas, receita, ticket médio e mais vendidos.</p>

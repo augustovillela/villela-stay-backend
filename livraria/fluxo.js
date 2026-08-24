@@ -6,7 +6,7 @@
 // =====================================================================
 'use strict';
 
-function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alertaAugusto, urls }) {
+function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alertaAugusto, urls, crm = null }) {
   const TOKEN_HORAS = Number(process.env.LIVRARIA_TOKEN_HORAS || 72);
   const TOKEN_MAX = Number(process.env.LIVRARIA_TOKEN_MAX || 5);
 
@@ -60,6 +60,30 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
     }
   }
 
+  // Todo comprador entra no CRM legado do staff (contatos.json) com a compra na
+  // linha do tempo. Origem 'livraria' separa do lead de hospedagem no funil.
+  // Falha aqui NUNCA derruba a entrega do livro — por isso o try/catch.
+  function registrarNoCRM(order) {
+    if (!crm || !crm.upsertContato) return;
+    const cli = order.cliente || {};
+    try {
+      const itens = (order.itens || []).map(i => `${i.titulo_snapshot} (${i.tipo})`).join(', ');
+      const { contato, novo } = crm.upsertContato({
+        nome: cli.nome, email: cli.email, telefone: cli.whatsapp || '',
+        origem: 'livraria', canal: 'livraria',
+        estagio: 'posvenda',            // comprou: já entra como cliente, não como lead
+      }) || {};
+      if (contato && crm.addAtividade) {
+        crm.addAtividade(contato.id, 'compra',
+          `Compra na Livraria: ${itens} — ${repo.brl(order.valor_total)} (pedido ${order.id}).`,
+          'livraria', 'sistema');
+      }
+      if (novo) console.log('[livraria] novo contato no CRM:', cli.email);
+    } catch (e) {
+      console.error('[livraria] CRM:', e.message);
+    }
+  }
+
   // Cria print jobs para itens impressos/combo e notifica logística + comprador.
   async function abrirImpressos(order) {
     const impressos = (order.itens || []).filter(it => it.tipo === 'impresso' || it.tipo === 'combo');
@@ -97,6 +121,7 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       if (order.tem_pdf) await entregarPDFs(order);
       if (order.tem_impresso) await abrirImpressos(order);
       await entregarBonus(order);
+      registrarNoCRM(order);
       alertaAugusto(`💰 Venda na Livraria: ${(order.cliente || {}).nome || 'cliente'} — ${repo.brl(order.valor_total)} (${(order.itens || []).map(i => i.titulo_snapshot + '/' + i.tipo).join(', ')}).`).catch(() => {});
       return repo.Orders.obter(orderId);
     },
