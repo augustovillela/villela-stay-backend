@@ -4669,6 +4669,24 @@ try {
   });
 } catch (e) { console.error('[growth] falha ao montar módulo:', e.message); }
 
+// =========================== Villela Finance (ERP financeiro) ===========================
+// 14º produto do grupo: razão de partida dobrada, extrato/conciliação, contas
+// a pagar e receber, fechamento e CFO inteligente — multiempresa e multi-tenant,
+// vendável a PMEs brasileiras. SQLite próprio em DATA_DIR/financeiro/ + diário
+// append-only replicado (RPO de minutos, FINANCE_S3_*).
+//
+// ⚠️ Caminho: /finance/* (assinante) e /staff/api/finance/* (admin). O módulo
+// LEGADO deste servidor continua em /staff/api/financeiro/* e NÃO foi tocado —
+// a substituição é por feature flag, módulo a módulo, com reconciliação
+// (docs/financeiro/MIGRACAO.md no repo-pai). FINANCE_WORKER=off desliga o worker.
+try {
+  require('./financeiro').montar(app, {
+    express, requireAuth, requireAdmin,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[finance] falha ao montar módulo:', e.message); }
+
 // =========================== Villela Alta Vista 360 (estúdio visual) ===========================
 // Drone, vídeos com IA, fotografia 360° e tours virtuais para hospedagens e
 // imóveis: site público em /alta-vista, administração na aba 🚁 do Portal

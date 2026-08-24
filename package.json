@@ -23,6 +23,7 @@
     "verificar:closet": "node closet/verificar-producao.js",
     "verificar:vitrine": "node vitrine/verificar-producao.js",
     "verificar:kids": "node kids/verificar-producao.js",
+    "test:finance": "node financeiro/selftest.js",
     "test:nucleo": "node selftest-nucleo.js"
   },
   "engines": {

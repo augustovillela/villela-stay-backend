@@ -1,0 +1,1022 @@
+// =====================================================================
+// Villela Finance — suíte das Fases 1 e 2.   npm run test:finance
+//
+// Banco descartável, worker desligado, Express real para as rotas.
+//
+// Os três blocos que importam mais:
+//   • ANTI-VAZAMENTO — tenta ler e escrever dados de outra conta por
+//     quatro caminhos e exige que os quatro falhem;
+//   • INVARIANTES DO RAZÃO — tenta desbalancear, alterar lote fechado,
+//     apagar lançamento e lançar em período fechado; os triggers do
+//     banco têm de recusar, não o código;
+//   • DINHEIRO — property-based: 500 rateios aleatórios não podem criar
+//     nem perder um centavo.
+// =====================================================================
+'use strict';
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+
+process.env.DATA_DIR = path.join(os.tmpdir(), 'finance-selftest-' + Date.now());
+process.env.NODE_ENV = 'development';
+process.env.FINANCE_WORKER = 'off';
+fs.mkdirSync(process.env.DATA_DIR, { recursive: true });
+
+const assert = require('assert');
+const express = require('express');
+const cookieParser = require('cookie-parser');
+
+const { db } = require('./db');
+const tenancy = require('./tenancy');
+const repo = require('./repo');
+const dinheiro = require('./dinheiro');
+const ledger = require('./ledger');
+const bancos = require('./bancos');
+const classificacao = require('./classificacao');
+const periodos = require('./periodos');
+const relatorios = require('./relatorios');
+const aprovacoes = require('./aprovacoes');
+const auditoria = require('./auditoria');
+const planoContas = require('./plano-contas');
+const contasSvc = require('./contas');
+const entitlements = require('./entitlements');
+const rbac = require('./rbac');
+const diario = require('./diario');
+const financeiro = require('./index');
+
+let ok = 0;
+const falhas = [];
+function teste(nome, fn) {
+  try { fn(); ok++; }
+  catch (e) { falhas.push(`${nome}: ${(e && e.message) || e}`); }
+}
+function lanca(nome, fn, padrao) {
+  try {
+    fn();
+    falhas.push(`${nome}: era para lançar erro e NÃO lançou`);
+  } catch (e) {
+    if (padrao && !padrao.test(String(e.message))) falhas.push(`${nome}: lançou "${e.message}", esperava ${padrao}`);
+    else ok++;
+  }
+}
+let cadeia = Promise.resolve();
+function testeAsync(nome, fn) {
+  cadeia = cadeia.then(async () => {
+    try { await fn(); ok++; }
+    catch (e) { falhas.push(`${nome}: ${(e && e.message) || e}`); }
+  });
+}
+function lancaAsync(nome, fn, padrao) {
+  cadeia = cadeia.then(async () => {
+    try { await fn(); falhas.push(`${nome}: era para lançar erro e NÃO lançou`); }
+    catch (e) {
+      if (padrao && !padrao.test(String(e.message))) falhas.push(`${nome}: lançou "${e.message}", esperava ${padrao}`);
+      else ok++;
+    }
+  });
+}
+
+// =====================================================================
+// 1. DINHEIRO
+// =====================================================================
+teste('dinheiro: pt-BR com milhar', () => assert.strictEqual(dinheiro.paraCentavos('1.234,56'), 123456));
+teste('dinheiro: en com milhar', () => assert.strictEqual(dinheiro.paraCentavos('1,234.56'), 123456));
+teste('dinheiro: com símbolo', () => assert.strictEqual(dinheiro.paraCentavos('R$ 89,90'), 8990));
+teste('dinheiro: negativo por parênteses', () => assert.strictEqual(dinheiro.paraCentavos('(1.234,56)'), -123456));
+teste('dinheiro: negativo com sinal ao fim', () => assert.strictEqual(dinheiro.paraCentavos('250,00-'), -25000));
+teste('dinheiro: negativo com sinal na frente', () => assert.strictEqual(dinheiro.paraCentavos('-250,00'), -25000));
+teste('dinheiro: regra dos três dígitos (milhar)', () => assert.strictEqual(dinheiro.paraCentavos('1.234'), 123400));
+teste('dinheiro: duas casas é centavo', () => assert.strictEqual(dinheiro.paraCentavos('1,23'), 123));
+teste('dinheiro: número em reais', () => assert.strictEqual(dinheiro.paraCentavos(12.34), 1234));
+teste('dinheiro: arredonda casas extras', () => assert.strictEqual(dinheiro.paraCentavos('10,0050'), 1001));
+teste('dinheiro: sobe o real ao arredondar', () => assert.strictEqual(dinheiro.paraCentavos('99,9990'), 10000));
+// A ambiguidade "1.234" (mil ou um e vinte e três?) é resolvida pela regra
+// dos três dígitos — e a exceção do grupo iniciado por zero salva o centavo.
+teste('dinheiro: três dígitos após vírgula também é milhar', () => assert.strictEqual(dinheiro.paraCentavos('10,005'), 1000500));
+teste('dinheiro: grupo que começa com zero é decimal, não milhar', () => assert.strictEqual(dinheiro.paraCentavos('0,750'), 75));
+teste('dinheiro: formata pt-BR', () => assert.strictEqual(dinheiro.formatar(123456789), 'R$ 1.234.567,89'));
+teste('dinheiro: formata negativo', () => assert.strictEqual(dinheiro.formatar(-8990), '-R$ 89,90'));
+lanca('dinheiro: recusa float como centavos', () => dinheiro.centavos(12.5), /inteiro em centavos/);
+lanca('dinheiro: recusa texto inválido', () => dinheiro.paraCentavos('abc'), /inválido/);
+lanca('dinheiro: recusa negativo onde não pode', () => dinheiro.naoNegativo(-1), /negativo/);
+teste('dinheiro: percentual em bps não usa float', () => assert.strictEqual(dinheiro.percentual(10000, 1550), 1550));
+teste('dinheiro: 0,1 + 0,2 fecha em centavos', () =>
+  assert.strictEqual(dinheiro.somar(dinheiro.paraCentavos('0,10'), dinheiro.paraCentavos('0,20')), dinheiro.paraCentavos('0,30')));
+
+teste('dinheiro: rateio de 100,00 em 3 não perde centavo', () => {
+  const p = dinheiro.dividir(10000, 3);
+  assert.deepStrictEqual(p, [3334, 3333, 3333]);
+  assert.strictEqual(p.reduce((a, b) => a + b, 0), 10000);
+});
+teste('dinheiro: 500 rateios aleatórios somam exatamente o total', () => {
+  for (let i = 0; i < 500; i++) {
+    const total = Math.floor(Math.random() * 100_000_000) - 50_000_000;
+    const n = 1 + Math.floor(Math.random() * 12);
+    const pesos = Array.from({ length: n }, () => Math.random() * 100);
+    const partes = dinheiro.ratear(total, pesos);
+    const soma = partes.reduce((a, b) => a + b, 0);
+    assert.strictEqual(soma, total, `rateio de ${total} em ${n} partes deu ${soma}`);
+    for (const p of partes) assert.ok(Number.isInteger(p), 'parte não inteira');
+  }
+});
+
+// =====================================================================
+// 2. PROVISIONAMENTO
+// =====================================================================
+entitlements.semear();
+financeiro.registrarExecutores();
+
+let contaA, empresaA, contaB, empresaB;
+teste('provisionar: conta nasce com plano de contas e período', () => {
+  const r = tenancy.semContexto(() => contasSvc.provisionar({
+    nome: 'Villela Stay', slug: 'villela-stay', planoSlug: 'enterprise', interno: true,
+    empresa: { nome: 'Augusto Villela Ltda', documento: '56.776.526/0001-12' },
+  }));
+  contaA = r.tenant; empresaA = r.entidade;
+  assert.ok(contaA && empresaA, 'conta ou empresa não criada');
+  tenancy.comTenant({ tenantId: contaA.id, userId: 'teste' }, () => {
+    const contas = repo.listarContas(empresaA.id);
+    assert.ok(contas.length > 60, `plano de contas raso: ${contas.length} contas`);
+    assert.ok(repo.contaPorCodigo(empresaA.id, '3.1.1.001'), 'falta a conta de diárias');
+    assert.ok(repo.listarRegras(empresaA.id).length > 5, 'regras iniciais não semeadas');
+  });
+});
+
+teste('provisionar: é idempotente pelo slug', () => {
+  const r = tenancy.semContexto(() => contasSvc.provisionar({ nome: 'Villela Stay', slug: 'villela-stay' }));
+  assert.strictEqual(r.criada, false);
+  assert.strictEqual(r.tenant.id, contaA.id);
+});
+
+teste('provisionar: segunda conta, isolada', () => {
+  const r = tenancy.semContexto(() => contasSvc.provisionar({
+    nome: 'Pousada Concorrente', slug: 'pousada-x', planoSlug: 'essencial',
+  }));
+  contaB = r.tenant; empresaB = r.entidade;
+  assert.notStrictEqual(contaB.id, contaA.id);
+});
+
+// atalhos
+const naA = (fn) => tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+  tenancy.comEntidade(empresaA.id, fn));
+const naB = (fn) => tenancy.comTenant({ tenantId: contaB.id, userId: 'outro', perfil: 'proprietario', mfa: true }, () =>
+  tenancy.comEntidade(empresaB.id, fn));
+const contaDe = (codigo) => naA(() => repo.contaPorCodigo(empresaA.id, codigo));
+
+// =====================================================================
+// 3. ANTI-VAZAMENTO (o bloco que não pode falhar nunca)
+// =====================================================================
+lanca('isolamento: repo sem contexto recusa', () => repo.listarEntidades(), /sem tenant no contexto/);
+
+lanca('isolamento: SQL sem filtro de tenant recusa', () =>
+  naA(() => repo.q('SELECT * FROM fin_lotes', {})), /sem filtro de tenant/);
+
+lanca('isolamento: parâmetro posicional recusado', () =>
+  naA(() => repo.q('SELECT * FROM fin_lotes WHERE tenant_id = ?', [contaB.id])), /posicional/);
+
+lanca('isolamento: tenant do parâmetro difere do contexto', () =>
+  naA(() => repo.q('SELECT * FROM fin_contas WHERE tenant_id = :tenant', { tenant: contaB.id })), /difere do contexto/);
+
+teste('isolamento: A não enxerga a empresa de B', () => {
+  const vistas = naA(() => repo.listarEntidades().map(e => e.id));
+  assert.ok(!vistas.includes(empresaB.id), 'a conta A enxergou empresa da conta B');
+});
+
+teste('isolamento: buscar id de outra conta devolve nada', () => {
+  assert.strictEqual(naA(() => repo.entidadePorId(empresaB.id)), null);
+});
+
+lanca('isolamento: leitura de plataforma exige comoPlataforma', () =>
+  naA(() => repo.qPlataforma('SELECT * FROM fin_lotes WHERE tenant_id <> :tenant', {})), /comoPlataforma/);
+
+lanca('isolamento: comoPlataforma exige motivo', () =>
+  tenancy.comoPlataforma({ userId: 'x' }, () => 1), /motivo/);
+
+teste('isolamento: toda tabela com tenant_id está sob o guarda', () => {
+  const { TABELAS_TENANT, TABELAS_CATALOGO, TABELAS_MISTAS } = require('./db');
+  const semGuarda = [...TABELAS_TENANT].filter(t => !TABELAS_CATALOGO.has(t) && !TABELAS_MISTAS.has(t));
+  assert.ok(semGuarda.length >= 15, `poucas tabelas sob guarda (${semGuarda.length}) — o mapeamento quebrou?`);
+  // Prova viva: cada uma recusa SQL sem filtro.
+  for (const t of semGuarda) {
+    assert.throws(() => naA(() => repo.q(`SELECT * FROM ${t}`, {})), /sem filtro de tenant/, `${t} não está protegida`);
+  }
+});
+
+// =====================================================================
+// 4. RAZÃO — invariantes
+// =====================================================================
+let loteBase;
+teste('razão: lançamento balanceado entra', () => {
+  loteBase = naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-05', memo: 'Diária da Villa Kubitschek',
+    linhas: [
+      { contaCodigo: '1.1.1.001', debitoCents: 250000 },
+      { contaCodigo: '3.1.1.001', creditoCents: 250000 },
+    ],
+  }));
+  assert.strictEqual(loteBase.lote.status, 'contabilizado');
+  assert.strictEqual(loteBase.lote.total_cents, 250000);
+  assert.strictEqual(loteBase.linhas.length, 2);
+});
+
+lanca('razão: desbalanceado é recusado com a diferença', () =>
+  naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-05', memo: 'torto',
+    linhas: [
+      { contaCodigo: '1.1.1.001', debitoCents: 100000 },
+      { contaCodigo: '3.1.1.001', creditoCents: 90000 },
+    ],
+  })), /desbalanceado/);
+
+lanca('razão: linha com débito E crédito é recusada', () =>
+  naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-05', memo: 'x',
+    linhas: [
+      { contaCodigo: '1.1.1.001', debitoCents: 100, creditoCents: 100 },
+      { contaCodigo: '3.1.1.001', creditoCents: 100 },
+    ],
+  })), /débito OU crédito/);
+
+lanca('razão: conta sintética não aceita lançamento', () =>
+  naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-05', memo: 'x',
+    linhas: [
+      { contaCodigo: '1.1', debitoCents: 100 },
+      { contaCodigo: '3.1.1.001', creditoCents: 100 },
+    ],
+  })), /sintética/);
+
+lanca('razão: valor zero não é lançamento', () =>
+  naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-05', memo: 'x',
+    linhas: [
+      { contaCodigo: '1.1.1.001', debitoCents: 0 },
+      { contaCodigo: '3.1.1.001', creditoCents: 0 },
+    ],
+  })), /débito OU crédito|zero/);
+
+lanca('razão: conta de outra empresa é recusada', () => {
+  const contaDeB = naB(() => repo.contaPorCodigo(empresaB.id, '1.1.1.001'));
+  return naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-05', memo: 'x',
+    linhas: [
+      { contaId: contaDeB.id, debitoCents: 100 },
+      { contaCodigo: '3.1.1.001', creditoCents: 100 },
+    ],
+  }));
+}, /não existe|outra empresa/);
+
+lanca('razão: TRIGGER recusa alterar lote contabilizado', () =>
+  naA(() => db.prepare('UPDATE fin_lotes SET total_cents = 1 WHERE id = ?').run(loteBase.lote.id)),
+  /imutavel/);
+
+lanca('razão: TRIGGER recusa apagar lote contabilizado', () =>
+  naA(() => db.prepare('DELETE FROM fin_lotes WHERE id = ?').run(loteBase.lote.id)),
+  /nao pode ser excluido/);
+
+lanca('razão: TRIGGER recusa apagar linha de lote contabilizado', () =>
+  naA(() => db.prepare('DELETE FROM fin_linhas WHERE lote_id = ?').run(loteBase.lote.id)),
+  /nao pode ser excluida/);
+
+teste('razão: idempotência devolve o mesmo lote', () => {
+  const chave = 'teste-idem-1';
+  const a = naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-06', memo: 'com chave', idempotencia: chave,
+    linhas: [{ contaCodigo: '1.1.1.001', debitoCents: 5000 }, { contaCodigo: '3.1.1.001', creditoCents: 5000 }],
+  }));
+  const b = naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-06', memo: 'com chave', idempotencia: chave,
+    linhas: [{ contaCodigo: '1.1.1.001', debitoCents: 5000 }, { contaCodigo: '3.1.1.001', creditoCents: 5000 }],
+  }));
+  assert.strictEqual(a.lote.id, b.lote.id);
+  assert.strictEqual(b.duplicado, true);
+});
+
+teste('razão: saldo sai do razão e respeita a natureza', () => {
+  const caixa = contaDe('1.1.1.001');
+  const s = naA(() => ledger.saldo(caixa.id));
+  assert.strictEqual(s.saldoCents, 255000);           // 250.000 + 5.000
+  assert.strictEqual(s.saldoFormatado, 'R$ 2.550,00');
+});
+
+teste('razão: balancete fecha em zero', () => {
+  const b = naA(() => ledger.balancete(empresaA.id, {}));
+  assert.strictEqual(b.fecha, true, `balancete não fecha: diferença ${b.diferencaCents}`);
+});
+
+let estornoR;
+teste('razão: estorno cria lote espelho e amarra os dois lados', () => {
+  estornoR = naA(() => ledger.estornar(loteBase.lote.id, { motivo: 'valor lançado em dobro', data: '2026-08-07' }));
+  assert.strictEqual(estornoR.original.status, 'estornado');
+  assert.strictEqual(estornoR.original.estornado_por, estornoR.estorno.id);
+  assert.strictEqual(estornoR.estorno.estorno_de, loteBase.lote.id);
+  // Lados trocados.
+  const orig = naA(() => repo.linhasDoLote(loteBase.lote.id));
+  const esp = naA(() => repo.linhasDoLote(estornoR.estorno.id));
+  assert.strictEqual(orig[0].debito_cents, esp[0].credito_cents);
+});
+
+lanca('razão: estorno exige motivo', () =>
+  naA(() => ledger.estornar(estornoR.estorno.id, {})), /motivo/);
+
+lanca('razão: não se estorna duas vezes', () =>
+  naA(() => ledger.estornar(loteBase.lote.id, { motivo: 'de novo' })), /já foi estornado/);
+
+teste('razão: depois do estorno o saldo volta', () => {
+  const caixa = contaDe('1.1.1.001');
+  assert.strictEqual(naA(() => ledger.saldo(caixa.id)).saldoCents, 5000);
+});
+
+// =====================================================================
+// 5. AUDITORIA ENCADEADA
+// =====================================================================
+teste('auditoria: a cadeia da conta A está íntegra', () => {
+  const v = auditoria.verificarCadeia(contaA.id);
+  assert.strictEqual(v.ok, true, `cadeia quebrada: ${JSON.stringify(v.quebra)}`);
+  assert.ok(v.total >= 5, `poucos eventos auditados: ${v.total}`);
+});
+
+lanca('auditoria: TRIGGER recusa UPDATE no log', () =>
+  db.prepare("UPDATE audit_logs SET motivo = 'outro' WHERE tenant_id = ?").run(contaA.id), /append-only/);
+
+lanca('auditoria: TRIGGER recusa DELETE no log', () =>
+  db.prepare('DELETE FROM audit_logs WHERE tenant_id = ?').run(contaA.id), /append-only/);
+
+lanca('auditoria: ação material sem motivo é recusada', () =>
+  naA(() => auditoria.registrar('periodo.reabrir', { objetoTipo: 'periodo', objetoId: 'x' })), /exige motivo/);
+
+teste('auditoria: adulteração no arquivo é detectada e a cadeia se restabelece', () => {
+  // Simula quem mexeu no .db por fora do processo: desliga o trigger,
+  // corrompe uma linha, confere a detecção e restaura o valor original.
+  db.exec('DROP TRIGGER trg_fin_audit_sem_update');
+  const alvo = db.prepare('SELECT id, motivo FROM audit_logs WHERE tenant_id = ? ORDER BY seq LIMIT 1 OFFSET 1').get(contaA.id);
+  db.prepare("UPDATE audit_logs SET motivo = 'ADULTERADO' WHERE id = ?").run(alvo.id);
+
+  const v = auditoria.verificarCadeia(contaA.id);
+  assert.strictEqual(v.ok, false, 'a cadeia não acusou a adulteração');
+  assert.ok(v.quebra && v.quebra.seq, 'não apontou onde quebrou');
+  assert.strictEqual(v.quebra.motivo, 'conteúdo alterado');
+
+  db.prepare('UPDATE audit_logs SET motivo = ? WHERE id = ?').run(alvo.motivo, alvo.id);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS trg_fin_audit_sem_update BEFORE UPDATE ON audit_logs
+           BEGIN SELECT RAISE(ABORT, 'auditoria e append-only'); END;`);
+  assert.strictEqual(auditoria.verificarCadeia(contaA.id).ok, true, 'a cadeia não voltou a fechar após restaurar');
+});
+
+// =====================================================================
+// 6. DIÁRIO DURÁVEL (RPO)
+// =====================================================================
+teste('diário: todo lote contabilizado foi replicado', () => {
+  const registros = diario.ler('2026-08');
+  assert.ok(registros.length >= 3, `diário com ${registros.length} registros`);
+  const ids = registros.map(r => r.lote.id);
+  assert.ok(ids.includes(loteBase.lote.id), 'o primeiro lote não está no diário');
+});
+
+teste('diário: confere contra o banco sem divergência', () => {
+  const c = naA(() => diario.conferir(repo, '2026-08'));
+  const doOutroTenant = c.divergencias.filter(d => d.tipo !== 'ausente_no_banco');
+  assert.strictEqual(doOutroTenant.length, 0, `divergências: ${JSON.stringify(doOutroTenant)}`);
+});
+
+teste('diário: sem FINANCE_S3_* o status é honesto', () => {
+  const s = diario.status();
+  assert.strictEqual(s.configurada, false);
+  assert.ok(s.registros > 0);
+});
+
+// =====================================================================
+// 7. EXTRATO: importar, deduplicar, classificar, conciliar
+// =====================================================================
+let banco, extratoCsv;
+teste('banco: conta bancária nasce com conta contábil espelho', () => {
+  banco = naA(() => {
+    const pai = repo.contaPorCodigo(empresaA.id, '1.1.1');
+    const cc = repo.criarConta({
+      entidadeId: empresaA.id, codigo: '1.1.1.101', nome: 'Banco — C6 PJ',
+      natureza: 'ativo', saldoNormal: 'devedora', paiId: pai.id, aceitaLancamento: true, subledger: 'bancos',
+    });
+    return repo.criarContaBancaria({ entidadeId: empresaA.id, nome: 'C6 PJ', banco: 'C6', contaId: cc.id });
+  });
+  assert.ok(banco.conta_id, 'conta bancária sem espelho contábil');
+});
+
+extratoCsv = [
+  'Data;Histórico;Valor;Documento',
+  '05/08/2026;PIX RECEBIDO HOSPEDE MARIA;2.500,00;PIX001',
+  '06/08/2026;NEOENERGIA CONTA DE LUZ;-389,45;BOL221',
+  '07/08/2026;TARIFA PACOTE SERVICOS;-59,90;TAR001',
+  '08/08/2026;UBER VIAGEM;-25,00;',
+  '08/08/2026;UBER VIAGEM;-25,00;',            // duplicata legítima no mesmo dia
+].join('\n');
+
+let importacao1;
+teste('banco: importa CSV com ; e vírgula decimal', () => {
+  importacao1 = naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: banco.id, conteudo: extratoCsv, fonte: 'extrato C6 ago/2026',
+  }));
+  assert.strictEqual(importacao1.resumo.lidas, 5);
+  assert.strictEqual(importacao1.resumo.novas, 5, 'as duas Uber idênticas são movimentos distintos');
+  assert.strictEqual(importacao1.resumo.rejeitadas, 0);
+});
+
+teste('banco: reimportar o mesmo arquivo não duplica nada', () => {
+  const r = naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: banco.id, conteudo: extratoCsv, fonte: 'reenvio',
+  }));
+  assert.strictEqual(r.reimportacao, true);
+  const total = naA(() => repo.listarTransacoes(empresaA.id, { limite: 100 })).length;
+  assert.strictEqual(total, 5, `duplicou: ${total} transações`);
+});
+
+teste('banco: arquivo diferente com as mesmas linhas também deduplica', () => {
+  // Mesmo conteúdo + uma linha nova: o hash do arquivo muda, mas as
+  // impressões digitais das cinco antigas continuam iguais.
+  const maior = extratoCsv + '\n09/08/2026;GOOGLE ADS;-150,00;ADS9';
+  const r = naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: banco.id, conteudo: maior, fonte: 'extrato ampliado',
+  }));
+  assert.strictEqual(r.resumo.duplicadas, 5, `deduplicou ${r.resumo.duplicadas} de 5`);
+  assert.strictEqual(r.resumo.novas, 1);
+});
+
+teste('banco: linha ruim é rejeitada COM motivo, não engolida', () => {
+  const ruim = 'Data;Histórico;Valor\n99/99/9999;LIXO;abc\n10/08/2026;OK;-10,00';
+  const r = naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: banco.id, conteudo: ruim, fonte: 'arquivo com defeito',
+  }));
+  assert.strictEqual(r.resumo.rejeitadas, 1);
+  assert.ok(/data ilegível/.test(r.rejeitos[0]), `motivo pouco útil: ${r.rejeitos[0]}`);
+  assert.strictEqual(r.resumo.novas, 1);
+});
+
+teste('classificação: a regra semeada reconhece a energia elétrica', () => {
+  const t = naA(() => repo.listarTransacoes(empresaA.id, { limite: 100 }))
+    .find(x => /NEOENERGIA/.test(x.descricao));
+  const { j } = require('./db');
+  const s = j.parse(t.sugestao, null);
+  assert.ok(s, 'não sugeriu nada para a energia');
+  assert.strictEqual(s.contaCodigo, '4.1.1.005');
+  assert.ok(s.motivo.includes('neoenergia'), `motivo pouco explicável: ${s.motivo}`);
+  assert.strictEqual(s.alta, true, `confiança baixa demais: ${s.confianca}`);
+});
+
+teste('classificação: tarifa bancária também casa', () => {
+  const t = naA(() => repo.listarTransacoes(empresaA.id, { limite: 100 }))
+    .find(x => /TARIFA/.test(x.descricao));
+  const { j } = require('./db');
+  assert.strictEqual(j.parse(t.sugestao, {}).contaCodigo, '4.4.1.001');
+});
+
+let transacaoLuz, loteDaLuz;
+teste('conciliar: extrato vira lote balanceado no razão', () => {
+  transacaoLuz = naA(() => repo.listarTransacoes(empresaA.id, { limite: 100 }))
+    .find(x => /NEOENERGIA/.test(x.descricao));
+  const r = naA(() => bancos.conciliar(transacaoLuz.id, { contaId: contaDe('4.1.1.005').id }));
+  loteDaLuz = r.lote;
+  assert.strictEqual(r.lote.status, 'contabilizado');
+  assert.strictEqual(r.lote.total_cents, 38945);
+  const linhas = naA(() => repo.linhasDoLote(r.lote.id));
+  const banco_ = linhas.find(l => l.conta_codigo === '1.1.1.101');
+  const despesa = linhas.find(l => l.conta_codigo === '4.1.1.005');
+  assert.strictEqual(banco_.credito_cents, 38945, 'saída tem de CREDITAR o banco');
+  assert.strictEqual(despesa.debito_cents, 38945, 'saída tem de DEBITAR a despesa');
+});
+
+teste('conciliar: entrada debita o banco e credita a receita', () => {
+  const t = naA(() => repo.listarTransacoes(empresaA.id, { limite: 100 })).find(x => /PIX RECEBIDO/.test(x.descricao));
+  const r = naA(() => bancos.conciliar(t.id, { contaId: contaDe('3.1.1.001').id }));
+  const linhas = naA(() => repo.linhasDoLote(r.lote.id));
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '1.1.1.101').debito_cents, 250000);
+  assert.strictEqual(linhas.find(l => l.conta_codigo === '3.1.1.001').credito_cents, 250000);
+});
+
+teste('conciliar: duas vezes devolve o mesmo lote (idempotente)', () => {
+  const r = naA(() => bancos.conciliar(transacaoLuz.id, { contaId: contaDe('4.1.1.005').id }));
+  assert.strictEqual(r.duplicado, true);
+  assert.strictEqual(r.lote.id, loteDaLuz.id);
+});
+
+teste('drill-down: do lote se chega à linha do extrato', () => {
+  const l = naA(() => ledger.lote(loteDaLuz.id));
+  assert.strictEqual(l.lote.origem, 'banco');
+  const origem = naA(() => repo.transacao(l.lote.origem_ref));
+  assert.ok(/NEOENERGIA/.test(origem.descricao), 'não voltou até a transação de origem');
+  const { j } = require('./db');
+  assert.ok(j.parse(origem.bruto, null), 'a linha original do arquivo não foi preservada');
+});
+
+teste('classificação: aprende com a classificação manual', () => {
+  const t = naA(() => repo.listarTransacoes(empresaA.id, { limite: 100 })).find(x => /UBER/.test(x.descricao));
+  const antes = naA(() => repo.listarRegras(empresaA.id)).length;
+  naA(() => classificacao.aprender({
+    entidadeId: empresaA.id, transacao: t, contaId: contaDe('4.2.1.007').id,
+  }));
+  const depois = naA(() => repo.listarRegras(empresaA.id)).length;
+  assert.strictEqual(depois, antes + 1, 'não criou regra a partir da classificação manual');
+  // E a próxima transação igual já vem sugerida.
+  const outra = naA(() => repo.listarTransacoes(empresaA.id, { limite: 100 })).filter(x => /UBER/.test(x.descricao))[1];
+  const s = naA(() => classificacao.sugerirPara(outra));
+  assert.ok(s && s.contaCodigo === '4.2.1.007', 'a regra aprendida não pegou a transação seguinte');
+});
+
+teste('conciliar: painel bate extrato × razão e explica o resto', () => {
+  const p = naA(() => bancos.painel(empresaA.id, banco.id, { ate: '2026-08-31' }));
+  assert.strictEqual(p.conciliado, true, `divergência de ${p.diferencaCents}`);
+  assert.ok(p.pendentesQtd > 0, 'era para haver transações por conciliar');
+  assert.ok(/Faltam/.test(p.explicacao), `explicação pouco clara: ${p.explicacao}`);
+});
+
+lanca('conciliar: ignorar exige motivo', () => {
+  const t = naA(() => repo.listarTransacoes(empresaA.id, { status: 'nova', limite: 10 }))[0]
+    || naA(() => repo.listarTransacoes(empresaA.id, { status: 'sugerida', limite: 10 }))[0];
+  return naA(() => bancos.ignorar(t.id, {}));
+}, /motivo/);
+
+// =====================================================================
+// 8. RBAC E NÍVEIS DE RISCO
+// =====================================================================
+teste('rbac: pagamento não pode ser rebaixado abaixo do nível 3', () => {
+  assert.strictEqual(rbac.nivelDe('pagamento.executar', { 'pagamento.executar': 1 }), 3);
+  assert.strictEqual(rbac.nivelDe('periodo.reabrir', { 'periodo.reabrir': 0 }), 3);
+});
+teste('rbac: configuração consegue SUBIR o nível', () => {
+  assert.strictEqual(rbac.nivelDe('titulo.criar', { 'titulo.criar': 3 }), 3);
+});
+lanca('rbac: ordem de investimento é proibida', () =>
+  rbac.autorizar('investimento.ordem', { perfil: 'proprietario', mfa: true }), /regulat/i);
+lanca('rbac: lance em leilão é proibido', () =>
+  rbac.autorizar('leilao.lance', { perfil: 'proprietario', mfa: true }), /irrevers|autorizad/i);
+lanca('rbac: recomendação individualizada é proibida', () =>
+  rbac.autorizar('investimento.recomendar', { perfil: 'proprietario', mfa: true }), /habilita|regulat/i);
+lanca('rbac: leitor não lança', () =>
+  rbac.autorizar('lote.contabilizar', { perfil: 'leitor' }), /não tem permissão/);
+teste('rbac: ação material sem MFA pede o segundo fator', () => {
+  const r = rbac.autorizar('pagamento.executar', { perfil: 'proprietario', valorCents: 1000, mfa: false });
+  assert.strictEqual(r.exigeMfa, true);
+  assert.ok(/segundo fator/.test(r.motivo));
+});
+teste('rbac: segregação — quem pede não aprova', () => {
+  const r = rbac.podeAprovar({ perfilDecisor: 'proprietario', usuarioDecisor: 'u1', usuarioSolicitante: 'u1', valorCents: 100 });
+  assert.strictEqual(r.pode, false);
+  assert.ok(/Segregação/.test(r.motivo));
+});
+teste('rbac: alçada barra valor acima do teto', () => {
+  const r = rbac.podeAprovar({ perfilDecisor: 'aprovador', usuarioDecisor: 'u2', usuarioSolicitante: 'u1', valorCents: 3000000 });
+  assert.strictEqual(r.pode, false);
+  assert.ok(/alçada/.test(r.motivo));
+});
+teste('rbac: proprietário não tem teto', () => {
+  const r = rbac.podeAprovar({ perfilDecisor: 'proprietario', usuarioDecisor: 'u2', usuarioSolicitante: 'u1', valorCents: 999_999_999 });
+  assert.strictEqual(r.pode, true);
+});
+
+// =====================================================================
+// 9. APROVAÇÕES (maker-checker ponta a ponta)
+// =====================================================================
+let solicitacao;
+teste('aprovação: estorno vira solicitação com prévia', () => {
+  const lote = naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-10', memo: 'lançamento a estornar',
+    linhas: [{ contaCodigo: '1.1.1.001', debitoCents: 12345 }, { contaCodigo: '3.1.1.001', creditoCents: 12345 }],
+  }));
+  solicitacao = tenancy.comTenant({ tenantId: contaA.id, userId: 'operador1', perfil: 'operador', mfa: true }, () =>
+    tenancy.comEntidade(empresaA.id, () => aprovacoes.solicitar({
+      acao: 'lote.estornar', entidadeId: empresaA.id, objetoTipo: 'lote', objetoId: lote.lote.id,
+      payload: { loteId: lote.lote.id, motivo: 'duplicidade' },
+      previa: { numero: lote.lote.numero, total: 'R$ 123,45' },
+      valorCents: 12345, motivo: 'duplicidade',
+    })));
+  assert.strictEqual(solicitacao.status, 'pendente');
+  assert.strictEqual(solicitacao.nivel, 3);
+  assert.strictEqual(solicitacao.solicitante, 'operador1');
+});
+
+lanca('aprovação: solicitar sem motivo é recusado', () =>
+  naA(() => aprovacoes.solicitar({ acao: 'lote.estornar', valorCents: 1, motivo: '' })), /motivo/);
+
+lanca('aprovação: ação de nível baixo não passa por aqui', () =>
+  naA(() => aprovacoes.solicitar({ acao: 'transacao.importar', motivo: 'x' })), /não passa por aprovação/);
+
+lancaAsync('aprovação: o próprio solicitante não aprova', () =>
+  tenancy.comTenant({ tenantId: contaA.id, userId: 'operador1', perfil: 'proprietario', mfa: true }, () =>
+    aprovacoes.aprovar(solicitacao.id, { motivo: 'eu mesmo', perfilDecisor: 'proprietario', usuarioDecisor: 'operador1', mfa: true })),
+  /Segregação/);
+
+lancaAsync('aprovação: sem MFA não aprova', () =>
+  tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario' }, () =>
+    aprovacoes.aprovar(solicitacao.id, { motivo: 'ok', perfilDecisor: 'proprietario', usuarioDecisor: 'augusto', mfa: false })),
+  /segundo fator/);
+
+lancaAsync('aprovação: perfil sem alçada não aprova', () =>
+  tenancy.comTenant({ tenantId: contaA.id, userId: 'zelador', perfil: 'operador', mfa: true }, () =>
+    aprovacoes.aprovar(solicitacao.id, { motivo: 'ok', perfilDecisor: 'operador', usuarioDecisor: 'zelador', mfa: true })),
+  /não aprova/);
+
+testeAsync('aprovação: aprovada executa o estorno de verdade', async () => {
+  const r = await tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+    tenancy.comEntidade(empresaA.id, () => aprovacoes.aprovar(solicitacao.id, {
+      motivo: 'confirmado', perfilDecisor: 'proprietario', usuarioDecisor: 'augusto', mfa: true,
+    })));
+  assert.strictEqual(r.ok, true);
+  assert.ok(r.resultado.loteEstorno, 'não devolveu o lote de estorno');
+  const a = naA(() => repo.aprovacao(solicitacao.id));
+  assert.strictEqual(a.status, 'executada');
+});
+
+lancaAsync('aprovação: não se aprova duas vezes', () =>
+  tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+    aprovacoes.aprovar(solicitacao.id, { motivo: 'de novo', perfilDecisor: 'proprietario', usuarioDecisor: 'augusto', mfa: true })),
+  /já está/);
+
+testeAsync('aprovação: ação sem executor falha explicitamente', async () => {
+  const s = tenancy.comTenant({ tenantId: contaA.id, userId: 'op2', perfil: 'operador' }, () =>
+    aprovacoes.solicitar({ acao: 'pagamento.executar', valorCents: 100, motivo: 'teste sem executor' }));
+  let erro = null;
+  try {
+    await tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+      aprovacoes.aprovar(s.id, { motivo: 'ok', perfilDecisor: 'proprietario', usuarioDecisor: 'augusto', mfa: true }));
+  } catch (e) { erro = e; }
+  assert.ok(erro && /executor/.test(erro.message), 'aprovou sem executor e não avisou');
+  const a = tenancy.comTenant({ tenantId: contaA.id, userId: 'x' }, () => repo.aprovacao(s.id));
+  assert.strictEqual(a.status, 'falhou', 'ficou "aprovada" sem ter feito nada');
+});
+
+// =====================================================================
+// 10. PERÍODOS E FECHAMENTO
+// =====================================================================
+teste('período: checklist aponta o que falta', () => {
+  const c = naA(() => periodos.checklist(empresaA.id, '2026-08'));
+  assert.strictEqual(c.pode, false, 'devia estar bloqueado — há transações por conciliar');
+  assert.ok(c.bloqueadores.some(b => /conciliad/i.test(b)), `bloqueadores: ${c.bloqueadores}`);
+  assert.ok(c.itens.find(i => i.chave === 'razao_balanceado').ok, 'o razão devia estar balanceado');
+});
+
+lanca('período: fechar com pendência é recusado', () =>
+  naA(() => periodos.fechar(empresaA.id, '2026-08', { por: 'augusto' })), /Não dá para fechar/);
+
+teste('período: fecha com justificativa e trava a competência', () => {
+  const p = naA(() => periodos.fechar(empresaA.id, '2026-08', {
+    por: 'augusto', forcar: true, motivo: 'fechamento de teste com pendências conhecidas',
+  }));
+  assert.strictEqual(p.status, 'fechado');
+});
+
+lanca('período: TRIGGER recusa lançar em competência fechada', () =>
+  naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-20', memo: 'tarde demais',
+    linhas: [{ contaCodigo: '1.1.1.001', debitoCents: 100 }, { contaCodigo: '3.1.1.001', creditoCents: 100 }],
+  })), /fechada|fechado/);
+
+lanca('período: reabrir exige motivo', () =>
+  naA(() => periodos.reabrir(empresaA.id, '2026-08', { por: 'augusto' })), /motivo/);
+
+teste('período: reabre e volta a aceitar lançamento', () => {
+  naA(() => periodos.reabrir(empresaA.id, '2026-08', { por: 'augusto', motivo: 'nota do fornecedor chegou depois' }));
+  const r = naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-20', memo: 'lançamento após reabertura',
+    linhas: [{ contaCodigo: '1.1.1.001', debitoCents: 100 }, { contaCodigo: '3.1.1.001', creditoCents: 100 }],
+  }));
+  assert.strictEqual(r.lote.status, 'contabilizado');
+  const p = naA(() => repo.periodo(empresaA.id, '2026-08'));
+  assert.ok(p.reabertura_motivo.includes('fornecedor'), 'o motivo da reabertura não ficou registrado');
+});
+
+// =====================================================================
+// 11. RELATÓRIOS
+// =====================================================================
+teste('DRE: sai do razão e cada bloco explica a fórmula', () => {
+  const d = naA(() => relatorios.dre(empresaA.id, '2026-08'));
+  assert.ok(d.resumo.receitaBrutaCents > 0, 'DRE sem receita');
+  const receita = d.linhas.find(l => l.rotulo === 'Receita bruta');
+  assert.ok(receita.origem.formula.includes('3.1'), 'sem fórmula explicando a origem');
+  assert.ok(receita.contas.length > 0, 'sem as contas que compõem o número');
+  const resultado = d.linhas.find(l => l.rotulo === 'Resultado do período');
+  assert.strictEqual(resultado.valorCents, d.resumo.receitaLiquidaCents - d.resumo.despesaTotalCents);
+});
+
+teste('DRE: despesa conciliada aparece', () => {
+  const d = naA(() => relatorios.dre(empresaA.id, '2026-08'));
+  const props = d.linhas.find(l => l.rotulo === '(−) Despesas das propriedades');
+  assert.strictEqual(props.valorCents, 38945, 'a conta de luz conciliada não entrou no DRE');
+});
+
+teste('resultado por centro: avisa quando falta centro de custo', () => {
+  const r = naA(() => relatorios.porCentroCusto(empresaA.id, '2026-08'));
+  assert.ok(r.aviso, 'era para avisar que há lançamento sem centro de custo');
+});
+
+teste('centro de custo: separa resultado por imóvel', () => {
+  const centro = naA(() => repo.criarCentroCusto({
+    entidadeId: empresaA.id, codigo: 'GG04I', nome: 'Villa Kubitschek', tipo: 'propriedade', externoId: 'GG04I',
+  }));
+  naA(() => ledger.lancar({
+    entidadeId: empresaA.id, data: '2026-08-21', memo: 'diária da Kubitschek',
+    linhas: [
+      { contaCodigo: '1.1.1.001', debitoCents: 400000 },
+      { contaCodigo: '3.1.1.001', creditoCents: 400000, centroCustoId: centro.id },
+    ],
+  }));
+  const r = naA(() => relatorios.porCentroCusto(empresaA.id, '2026-08'));
+  const linha = r.linhas.find(l => l.codigo === 'GG04I');
+  assert.ok(linha, 'o centro de custo não apareceu no resultado');
+  assert.strictEqual(linha.receitaCents, 400000);
+});
+
+teste('cockpit: todo KPI traz origem e caminho de drill-down', () => {
+  const c = naA(() => relatorios.cockpit(empresaA.id, '2026-08'));
+  assert.ok(c.kpis.length >= 5);
+  for (const k of c.kpis) {
+    assert.ok(k.origem && k.origem.formula, `KPI ${k.chave} sem fórmula`);
+    assert.ok(k.drill, `KPI ${k.chave} sem drill-down`);
+  }
+  assert.strictEqual(c.saude.razaoBalanceado, true);
+  assert.ok(c.saude.taxaConciliacao !== null, 'sem taxa de conciliação medida');
+});
+
+teste('caixa: posição sai do razão', () => {
+  const p = naA(() => relatorios.posicaoDeCaixa(empresaA.id, {}));
+  assert.ok(p.linhas.length >= 1);
+  assert.ok(p.linhas.every(l => !l.semContaContabil), 'conta bancária sem espelho contábil');
+});
+
+// =====================================================================
+// 12. PLANOS E LIMITES
+// =====================================================================
+teste('plano: conta interna tem cortesia mais forte que status', () => {
+  const t = repo.tenantPorId(contaA.id);
+  const e = entitlements.resolver(t);
+  assert.strictEqual(e.cortesia, true);
+  repo.atualizarTenant(contaA.id, { status: 'suspensa' });
+  const e2 = entitlements.resolver(repo.tenantPorId(contaA.id));
+  assert.strictEqual(e2.bloqueiaEscrita, false, 'a cortesia devia sobreviver à suspensão');
+  repo.atualizarTenant(contaA.id, { status: 'ativa' });
+});
+
+teste('plano: conta suspensa perde escrita mas mantém leitura', () => {
+  repo.atualizarTenant(contaB.id, { status: 'suspensa' });
+  const t = repo.tenantPorId(contaB.id);
+  assert.throws(() => entitlements.exigir(t, 'razao'), /suspensa/);
+  const e = entitlements.resolver(t);
+  assert.ok(e.modulos.includes('razao'), 'o módulo continua no plano — o que muda é poder escrever');
+  repo.atualizarTenant(contaB.id, { status: 'ativa' });
+});
+
+lanca('plano: módulo fora do plano dá 402 com o nome do módulo', () =>
+  entitlements.exigir(repo.tenantPorId(contaB.id), 'cfo'), /não está no plano/);
+
+teste('plano: limite de volume é conferido', () => {
+  const t = repo.tenantPorId(contaB.id);
+  assert.throws(() => entitlements.exigir(t, 'bancos', { medida: 'contas_bancarias', quantidadeAtual: 99 }), /Limite/);
+});
+
+teste('plano: o limite é CONTADO, não só declarado', () => {
+  // O plano "essencial" da conta B permite 1 empresa. Ela já tem uma.
+  const t = repo.tenantPorId(contaB.id);
+  const usadas = naB(() => entitlements.medir('entidades'));
+  assert.strictEqual(usadas, 1, `contagem errada: ${usadas}`);
+  // Sem passar quantidade à mão: tem de contar sozinho e barrar.
+  assert.throws(() => naB(() => entitlements.exigir(t, 'razao', { medida: 'entidades' })), /Limite/);
+  // E a conta interna (enterprise, limite 0 = sem teto) não é barrada.
+  const interna = repo.tenantPorId(contaA.id);
+  naA(() => entitlements.exigir(interna, 'razao', { medida: 'entidades' }));
+});
+
+teste('plano: limite não barra quem ainda tem folga', () => {
+  const t = repo.tenantPorId(contaB.id);
+  // 'essencial' permite 3 contas bancárias e a conta B não tem nenhuma.
+  naB(() => entitlements.exigir(t, 'bancos', { medida: 'contas_bancarias' }));
+});
+
+// =====================================================================
+// 13. ROTAS HTTP (ponta a ponta, com sessão real)
+// =====================================================================
+const jwtSecret = 'segredo-de-teste-' + Date.now();
+const app = express();
+app.use(cookieParser());
+app.use(tenancy.middlewareCorrelacao);
+const requireAuth = (req, res, next) => { req.user = { email: 'augusto@teste', papel: 'admin' }; next(); };
+const requireAdmin = (req, res, next) => next();
+require('./rotas-app').registrarRotasApp(app, { jwtSecret, express });
+require('./rotas-staff').registrarRotasStaff(app, { requireAuth, requireAdmin, express });
+
+let servidor, base;
+const http = require('http');
+function pedir(metodo, caminho, { corpo, cookie, cabecalhos = {} } = {}) {
+  return new Promise((resolve, reject) => {
+    const dados = corpo ? JSON.stringify(corpo) : null;
+    const req = http.request(base + caminho, {
+      method: metodo,
+      headers: Object.assign({
+        'Content-Type': 'application/json',
+        ...(dados ? { 'Content-Length': Buffer.byteLength(dados) } : {}),
+        ...(cookie ? { Cookie: cookie } : {}),
+      }, cabecalhos),
+    }, (res) => {
+      let b = '';
+      res.on('data', c => { b += c; });
+      res.on('end', () => {
+        let json = null;
+        try { json = JSON.parse(b); } catch (_) { /* resposta não-JSON */ }
+        resolve({ status: res.statusCode, corpo: json, cru: b, cookies: res.headers['set-cookie'] || [] });
+      });
+    });
+    req.on('error', reject);
+    if (dados) req.write(dados);
+    req.end();
+  });
+}
+
+let cookieA = '', cookieB = '';
+testeAsync('HTTP: sobe o servidor', () => new Promise((resolve) => {
+  servidor = app.listen(0, () => { base = `http://127.0.0.1:${servidor.address().port}`; resolve(); });
+}));
+
+testeAsync('HTTP: usuários criados para o teste de sessão', async () => {
+  naA(() => contasSvc.criarUsuario({ email: 'augusto@villelastay.com.br', nome: 'Augusto', senha: 'senha-forte-1', perfil: 'proprietario' }));
+  naB(() => contasSvc.criarUsuario({ email: 'dono@pousada-x.com.br', nome: 'Dono X', senha: 'senha-forte-2', perfil: 'proprietario' }));
+  assert.ok(naA(() => repo.usuarioPorEmail('augusto@villelastay.com.br')));
+});
+
+testeAsync('HTTP: login errado não diz se o e-mail existe', async () => {
+  const inexistente = await pedir('POST', '/finance/api/login', { corpo: { email: 'ninguem@x.com', senha: 'x' } });
+  const senhaErrada = await pedir('POST', '/finance/api/login', { corpo: { email: 'augusto@villelastay.com.br', senha: 'errada' } });
+  assert.strictEqual(inexistente.status, 401);
+  assert.strictEqual(senhaErrada.status, 401);
+  assert.strictEqual(inexistente.corpo.erro, senhaErrada.corpo.erro, 'as mensagens diferem e entregam quem tem conta');
+});
+
+testeAsync('HTTP: login e /eu devolvem plano e perfil', async () => {
+  const r = await pedir('POST', '/finance/api/login', { corpo: { email: 'augusto@villelastay.com.br', senha: 'senha-forte-1' } });
+  assert.strictEqual(r.status, 200);
+  cookieA = r.cookies.map(c => c.split(';')[0]).join('; ');
+  assert.ok(/fin_sess=/.test(cookieA), 'sem cookie de sessão');
+  const eu = await pedir('GET', '/finance/api/eu', { cookie: cookieA });
+  assert.strictEqual(eu.status, 200);
+  assert.strictEqual(eu.corpo.conta.slug, 'villela-stay');
+  assert.strictEqual(eu.corpo.perfil.nome, 'Proprietário');
+  assert.ok(eu.corpo.plano.modulos.includes('razao'));
+});
+
+testeAsync('HTTP: sem sessão é 401, não 500 nem tela vazia', async () => {
+  const r = await pedir('GET', '/finance/api/cockpit');
+  assert.strictEqual(r.status, 401);
+  assert.ok(/Sessão/.test(r.corpo.erro));
+});
+
+testeAsync('HTTP: cockpit responde com os KPIs explicáveis', async () => {
+  const r = await pedir('GET', '/finance/api/cockpit?competencia=2026-08', { cookie: cookieA });
+  assert.strictEqual(r.status, 200);
+  assert.ok(r.corpo.kpis.every(k => k.origem && k.origem.formula));
+});
+
+testeAsync('HTTP: a conta B não alcança dado da conta A', async () => {
+  const login = await pedir('POST', '/finance/api/login', { corpo: { email: 'dono@pousada-x.com.br', senha: 'senha-forte-2' } });
+  cookieB = login.cookies.map(c => c.split(';')[0]).join('; ');
+  // Cabeçalho de empresa apontando para a empresa de A: tem de ser ignorado.
+  const r = await pedir('GET', '/finance/api/eu', { cookie: cookieB, cabecalhos: { 'x-empresa': empresaA.id } });
+  assert.strictEqual(r.status, 200);
+  assert.notStrictEqual(r.corpo.empresa.id, empresaA.id, 'VAZAMENTO: o cabeçalho escolheu empresa de outra conta');
+  assert.strictEqual(r.corpo.conta.slug, 'pousada-x');
+});
+
+testeAsync('HTTP: lançamento pelo id de um lote de outra conta é 404', async () => {
+  const r = await pedir('GET', `/finance/api/lancamentos/${loteDaLuz.id}`, { cookie: cookieB });
+  assert.strictEqual(r.status, 404, `esperava 404, veio ${r.status}`);
+});
+
+testeAsync('HTTP: importar e conciliar ponta a ponta', async () => {
+  const bancos_ = await pedir('GET', '/finance/api/bancos', { cookie: cookieA });
+  const contaBanco = bancos_.corpo.contas[0];
+  const csv = 'Data;Histórico;Valor\n15/08/2026;CAESB CONTA DE AGUA;-210,33';
+  const imp = await pedir('POST', `/finance/api/bancos/${contaBanco.id}/importar`, {
+    cookie: cookieA, corpo: { conteudo: csv, fonte: 'teste http' },
+  });
+  assert.strictEqual(imp.status, 200);
+  assert.strictEqual(imp.corpo.resumo.novas, 1);
+
+  const lista = await pedir('GET', '/finance/api/transacoes?status=sugerida', { cookie: cookieA });
+  const alvo = lista.corpo.transacoes.find(t => /CAESB/.test(t.descricao));
+  assert.ok(alvo, 'a transação da Caesb não foi listada');
+  assert.ok(alvo.sugestao && alvo.sugestao.contaCodigo === '4.1.1.006', 'não sugeriu água e esgoto');
+
+  const conc = await pedir('POST', `/finance/api/transacoes/${alvo.id}/conciliar`, { cookie: cookieA, corpo: {} });
+  assert.strictEqual(conc.status, 200, `conciliar falhou: ${conc.cru}`);
+  assert.strictEqual(conc.corpo.lote.total_cents, 21033);
+
+  const lote = await pedir('GET', `/finance/api/lancamentos/${conc.corpo.lote.id}`, { cookie: cookieA });
+  assert.ok(lote.corpo.origemDetalhe, 'sem drill-down até a origem');
+  assert.ok(lote.corpo.auditoria.length > 0, 'sem trilha de auditoria no lote');
+});
+
+testeAsync('HTTP: sugestão de confiança baixa exige escolha explícita', async () => {
+  const bancos_ = await pedir('GET', '/finance/api/bancos', { cookie: cookieA });
+  const contaBanco = bancos_.corpo.contas[0];
+  // "assinatura" é regra de confiança 70 — abaixo do corte de 85.
+  const csv = 'Data;Histórico;Valor\n16/08/2026;ASSINATURA MENSAL XPTO;-49,90';
+  await pedir('POST', `/finance/api/bancos/${contaBanco.id}/importar`, { cookie: cookieA, corpo: { conteudo: csv, fonte: 'baixa confianca' } });
+  const lista = await pedir('GET', '/finance/api/transacoes?status=sugerida', { cookie: cookieA });
+  const alvo = lista.corpo.transacoes.find(t => /XPTO/.test(t.descricao));
+  assert.ok(alvo, 'transação não listada');
+  const conc = await pedir('POST', `/finance/api/transacoes/${alvo.id}/conciliar`, { cookie: cookieA, corpo: {} });
+  assert.strictEqual(conc.status, 400);
+  assert.ok(/confiança/.test(conc.corpo.erro), `mensagem pouco clara: ${conc.corpo.erro}`);
+});
+
+testeAsync('HTTP: lançamento desbalanceado devolve 400 com a diferença', async () => {
+  const contas = await pedir('GET', '/finance/api/contas?analiticas=1', { cookie: cookieA });
+  const caixa = contas.corpo.contas.find(c => c.codigo === '1.1.1.001');
+  const receita = contas.corpo.contas.find(c => c.codigo === '3.1.1.001');
+  const r = await pedir('POST', '/finance/api/lancamentos', {
+    cookie: cookieA,
+    corpo: { data: '2026-08-25', memo: 'torto', linhas: [
+      { contaId: caixa.id, debitoCents: 1000 }, { contaId: receita.id, creditoCents: 900 },
+    ] },
+  });
+  assert.strictEqual(r.status, 400);
+  assert.ok(/desbalanceado/.test(r.corpo.erro));
+  assert.strictEqual(r.corpo.detalhe.diferenca, 100);
+});
+
+testeAsync('HTTP: estorno vira solicitação, não executa direto', async () => {
+  const r = await pedir('POST', `/finance/api/lancamentos/${loteDaLuz.id}/estornar`, {
+    cookie: cookieA, corpo: { motivo: 'lançado na conta errada' },
+  });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.corpo.aprovacao.status, 'pendente');
+  const lote = naA(() => repo.lotePorId(loteDaLuz.id));
+  assert.strictEqual(lote.status, 'contabilizado', 'o estorno não podia ter acontecido sem aprovação');
+});
+
+testeAsync('HTTP: admin vê a saúde de todas as contas', async () => {
+  const r = await pedir('GET', '/staff/api/finance/saude');
+  assert.strictEqual(r.status, 200);
+  assert.ok(r.corpo.contas.length >= 2);
+  assert.strictEqual(r.corpo.resumo.razaoOk, r.corpo.resumo.total, 'alguma conta com razão desbalanceado');
+});
+
+testeAsync('HTTP: catálogo mostra as ações proibidas com o motivo', async () => {
+  const r = await pedir('GET', '/staff/api/finance/catalogo');
+  const proibidas = r.corpo.acoes.filter(a => a.nivelMinimo === 4);
+  assert.ok(proibidas.length >= 3, 'faltam ações de nível 4 no catálogo');
+  assert.ok(proibidas.every(a => a.motivo), 'ação proibida sem motivo escrito');
+});
+
+testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
+
+// =====================================================================
+// 14. INTEGRIDADE FINAL
+// =====================================================================
+testeAsync('final: o razão de todas as contas continua fechando', () => {
+  for (const t of repo.listarTenants()) {
+    tenancy.comTenant({ tenantId: t.id, userId: 'auditor' }, () => {
+      for (const e of repo.listarEntidades()) {
+        const b = ledger.conferirBalanceamento(e.id);
+        assert.strictEqual(b.ok, true, `${t.slug}/${e.nome}: diferença de ${b.diferencaCents}`);
+      }
+    });
+  }
+});
+
+testeAsync('final: o diário bate com o banco em todas as contas', () => {
+  for (const t of repo.listarTenants()) {
+    tenancy.comTenant({ tenantId: t.id, userId: 'auditor' }, () => {
+      for (const mes of diario.meses()) {
+        const c = diario.conferir(repo, mes);
+        const relevantes = c.divergencias.filter(d => d.tipo !== 'ausente_no_banco');
+        assert.strictEqual(relevantes.length, 0, `${t.slug}/${mes}: ${JSON.stringify(relevantes)}`);
+      }
+    });
+  }
+});
+
+testeAsync('final: nenhum valor monetário está gravado como float', () => {
+  const colunasDinheiro = [];
+  const tabelas = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
+  for (const { name } of tabelas) {
+    for (const c of db.prepare(`PRAGMA table_info(${name})`).all()) {
+      if (/_cents$/.test(c.name)) colunasDinheiro.push([name, c.name]);
+    }
+  }
+  assert.ok(colunasDinheiro.length >= 10, `poucas colunas monetárias encontradas: ${colunasDinheiro.length}`);
+  for (const [tabela, coluna] of colunasDinheiro) {
+    const ruins = db.prepare(
+      `SELECT COUNT(*) AS n FROM ${tabela} WHERE ${coluna} IS NOT NULL AND typeof(${coluna}) <> 'integer'`).get();
+    assert.strictEqual(ruins.n, 0, `${tabela}.${coluna} tem ${ruins.n} valor(es) não-inteiro(s)`);
+  }
+});
+
+// =====================================================================
+cadeia.then(() => {
+  try { fs.rmSync(process.env.DATA_DIR, { recursive: true, force: true }); } catch (_) {}
+  console.log(`\n${'='.repeat(62)}`);
+  if (falhas.length) {
+    console.log(`Villela Finance — ${ok} teste(s) OK, ${falhas.length} FALHA(S):\n`);
+    for (const f of falhas) console.log('  ✗ ' + f);
+    console.log('');
+    process.exit(1);
+  }
+  console.log(`Villela Finance — ${ok}/${ok} testes OK.`);
+  console.log('='.repeat(62) + '\n');
+  process.exit(0);
+});
