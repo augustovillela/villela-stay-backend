@@ -41,6 +41,7 @@ const caixa = require('./caixa');
 const orcamento = require('./orcamento');
 const cfo = require('./cfo');
 const conselho = require('./conselho');
+const exportacao = require('./exportacao');
 
 const COOKIE = 'fin_sess';
 const DIAS = 30;
@@ -626,6 +627,30 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     })),
     obra: conselho.OBRA, arquivo: conselho.ARQUIVO,
   }), { modulo: '' }));
+
+  // --------------------------------- exportação e portabilidade (fase 9)
+  // Leitura pura: NÃO passa por entitlements. Conta suspensa continua
+  // exportando o próprio razão — reter dado contábil de quem deve é
+  // problema jurídico, não alavanca comercial.
+  app.get('/finance/api/exportar', ...rota((req) => exportacao.inventario(req.entidade.id)));
+
+  app.get('/finance/api/exportar/razao.csv', ...rota((req, res) => {
+    const r = exportacao.razaoCsv(req.entidade.id, {
+      desde: String(req.query.desde || ''), ate: String(req.query.ate || ''),
+    });
+    res.type('text/csv; charset=utf-8')
+      .set('Content-Disposition', `attachment; filename="razao-${req.entidade.id}.csv"`)
+      .send(r.csv);
+  }));
+
+  app.get('/finance/api/exportar/completo.json', ...rota((req, res) => {
+    const pacote = exportacao.pacoteCompleto(req.entidade.id, {
+      desde: String(req.query.desde || ''), ate: String(req.query.ate || ''),
+    });
+    res.type('application/json; charset=utf-8')
+      .set('Content-Disposition', `attachment; filename="villela-finance-${req.entidade.id}.json"`)
+      .send(JSON.stringify(pacote, null, 2));
+  }));
 
   // ---------------------------------------------------------- auditoria
   app.get('/finance/api/auditoria', ...rota((req) => ({

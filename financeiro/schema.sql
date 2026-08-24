@@ -469,6 +469,24 @@ CREATE TABLE IF NOT EXISTS fin_regras_classificacao (
 );
 CREATE INDEX IF NOT EXISTS idx_fin_regras ON fin_regras_classificacao(tenant_id, entidade_id, status, prioridade);
 
+-- ================== INTERESSADOS (pré-lançamento) =====================
+-- A landing existe antes da cobrança estar ligada. Prometer "assinar" seria
+-- falso; o que ela capta é interesse, e isso tem de ir para algum lugar
+-- verificável em vez de um mailto que ninguém lê.
+CREATE TABLE IF NOT EXISTS fin_interessados (
+  id          TEXT PRIMARY KEY,
+  nome        TEXT NOT NULL DEFAULT '',
+  email       TEXT NOT NULL,
+  empresa     TEXT NOT NULL DEFAULT '',
+  porte       TEXT NOT NULL DEFAULT '',
+  mensagem    TEXT NOT NULL DEFAULT '',
+  plano       TEXT NOT NULL DEFAULT '',
+  origem      TEXT NOT NULL DEFAULT 'landing',
+  criado_em   TEXT NOT NULL,
+  ip          TEXT NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_interessados ON fin_interessados(email);
+
 -- ====================== ORÇAMENTO (fase 4) ===========================
 -- Versionado de propósito: "o orçamento aprovado em janeiro" e "a revisão
 -- de julho" são coisas diferentes, e comparar o realizado com a versão

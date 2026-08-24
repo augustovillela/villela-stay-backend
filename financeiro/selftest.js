@@ -2197,6 +2197,102 @@ teste('bootstrap: cria o primeiro acesso, recusa senha curta e roda uma vez só'
   env('', '');
 });
 
+// ---------------------------------------- comercialização (fase 9)
+const exportacao = require('./exportacao');
+const paginas = require('./paginas');
+
+teste('exportação: o CSV do razão é autossuficiente e fecha', () => {
+  const r = naA(() => exportacao.razaoCsv(empresaA.id));
+  assert.ok(r.linhas > 20, `poucas linhas exportadas: ${r.linhas}`);
+  assert.strictEqual(r.fecha, true, 'o CSV exportado não fecha em débito = crédito');
+  // Autossuficiência: código E nome da conta em cada linha, não só id.
+  const cabecalho = r.csv.split(String.fromCharCode(13, 10))[0];
+  for (const col of ['conta_codigo', 'conta_nome', 'debito_centavos', 'debito_reais', 'centro_nome', 'contraparte']) {
+    assert.ok(cabecalho.includes(`"${col}"`), `o CSV não traz a coluna ${col} — export sem ela não é autossuficiente`);
+  }
+  assert.ok(r.csv.startsWith('﻿'), 'sem BOM — o Excel em português quebraria os acentos');
+  // Aspas dentro do texto não podem quebrar a coluna.
+  assert.strictEqual(exportacao.celula('diz "isto"'), '"diz ""isto"""');
+});
+
+teste('exportação: o pacote traz como se verificar, sem confiar', () => {
+  const p = naA(() => exportacao.pacoteCompleto(empresaA.id));
+  assert.ok(p.razao.length > 10, 'pacote com poucos lotes');
+  assert.strictEqual(p.conferencia.razaoFecha, true);
+  assert.ok(p.conferencia.comoVerificar.includes('Some'), 'não diz como verificar');
+  // O total declarado tem de bater com a soma das linhas de verdade.
+  const soma = p.razao.reduce((s, l) => s + l.linhas.reduce((x, c) => x + c.debitoCents, 0), 0);
+  assert.strictEqual(soma, p.conferencia.totalDebitoCents, 'o total declarado não bate com as linhas');
+  assert.ok(p.planoDeContas.length > 60, 'plano de contas não exportado');
+  assert.ok(p.extratoImportado.some(t => t.bruto), 'a linha original do arquivo do banco não foi preservada');
+});
+
+teste('exportação: dado bancário de terceiro NÃO vai no pacote', () => {
+  const p = naA(() => exportacao.pacoteCompleto(empresaA.id));
+  const texto = JSON.stringify(p);
+  assert.ok(!/99887766/.test(texto), 'a conta bancária do fornecedor vazou no export');
+  assert.ok(!/dados_bancarios|dadosBancarios/.test(texto), 'campo de dado bancário presente no export');
+  assert.ok(/dado sensível de terceiros/.test(p.formato.observacao), 'não explica por que ficou de fora');
+});
+
+teste('exportação: conta SUSPENSA continua exportando', () => {
+  repo.atualizarTenant(contaB.id, { status: 'suspensa' });
+  // A escrita trava...
+  assert.throws(() => entitlements.exigir(repo.tenantPorId(contaB.id), 'razao'), /suspensa/);
+  // ...e a exportação, não.
+  const inv = naB(() => exportacao.inventario(empresaB.id));
+  assert.ok(typeof inv.lotes === 'number', 'inventário indisponível para conta suspensa');
+  const csv = naB(() => exportacao.razaoCsv(empresaB.id));
+  assert.ok(csv.csv.length > 0, 'CSV vazio para conta suspensa');
+  assert.ok(/sempre disponível/.test(inv.aviso));
+  repo.atualizarTenant(contaB.id, { status: 'ativa' });
+});
+
+teste('landing: registra interesse, normaliza o e-mail e não duplica', () => {
+  const r1 = paginas.registrarInteresse({ nome: 'Fulana', email: '  DONA@Pousada.COM ', empresa: 'Pousada X' }, '1.2.3.4');
+  assert.strictEqual(r1.jaHavia, false);
+  const r2 = paginas.registrarInteresse({ email: 'dona@pousada.com' }, '1.2.3.4');
+  assert.strictEqual(r2.jaHavia, true, 'duplicou o interessado');
+  const lista = paginas.listarInteressados();
+  assert.strictEqual(lista.filter(i => i.email === 'dona@pousada.com').length, 1);
+  assert.strictEqual(lista.find(i => i.email === 'dona@pousada.com').nome, 'Fulana');
+});
+
+lanca('landing: e-mail inválido é recusado', () =>
+  paginas.registrarInteresse({ email: 'sem-arroba' }, ''), /e-mail válido/);
+
+teste('landing: a página cita os planos reais, não texto solto', () => {
+  const html = paginas.landingHTML();
+  for (const p of entitlements.PLANOS_SEMENTE.filter(x => x.publico !== false)) {
+    assert.ok(html.includes(p.nome), `o plano "${p.nome}" não aparece na landing`);
+  }
+  // E não promete o que não existe.
+  assert.ok(!/assinar agora|comprar agora/i.test(html), 'a landing promete assinatura sem cobrança ligada');
+  assert.ok(/não faz/i.test(html), 'a landing não diz o que o sistema NÃO faz');
+  assert.ok(/não substitui contador/i.test(html), 'sem o aviso de que não substitui contador');
+});
+
+testeAsync('HTTP: exportação responde e o CSV vem como anexo', async () => {
+  const inv = await pedir('GET', '/finance/api/exportar', { cookie: cookieA });
+  assert.strictEqual(inv.status, 200, inv.cru);
+  assert.ok(inv.corpo.lotes > 0);
+
+  const csv = await pedir('GET', '/finance/api/exportar/razao.csv', { cookie: cookieA });
+  assert.strictEqual(csv.status, 200);
+  assert.ok(csv.cru.includes('conta_codigo'), 'CSV sem cabeçalho');
+
+  const pacote = await pedir('GET', '/finance/api/exportar/completo.json', { cookie: cookieA });
+  assert.strictEqual(pacote.status, 200);
+  assert.strictEqual(pacote.corpo.conferencia.razaoFecha, true);
+});
+
+testeAsync('HTTP: a conta B não exporta o razão da conta A', async () => {
+  const p = await pedir('GET', '/finance/api/exportar/completo.json', { cookie: cookieB });
+  assert.strictEqual(p.status, 200);
+  assert.notStrictEqual(p.corpo.empresa.id, empresaA.id, 'VAZAMENTO: exportou empresa de outra conta');
+  assert.strictEqual(p.corpo.conta.slug, 'pousada-x');
+});
+
 testeAsync('HTTP: admin vê a saúde de todas as contas', async () => {
   const r = await pedir('GET', '/staff/api/finance/saude');
   assert.strictEqual(r.status, 200);

@@ -54,9 +54,12 @@ const caixa = require('./caixa');
 const orcamento = require('./orcamento');
 const cfo = require('./cfo');
 const conselho = require('./conselho');
+const exportacao = require('./exportacao');
+const paginas = require('./paginas');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
+
 
 let _timer = null;
 
@@ -84,6 +87,7 @@ function montar(app, injected = {}) {
 
   app.use('/finance', tenancy.middlewareCorrelacao);
   app.use('/staff/api/finance', tenancy.middlewareCorrelacao);
+  paginas.registrarPaginas(app, { express });          // landing pública em /finance
   registrarRotasApp(app, { jwtSecret, express });
   registrarRotasStaff(app, { requireAuth, requireAdmin, express });
   // Porta do agente: existe só se o server injetar a guarda da PUBLISH_KEY.
@@ -94,7 +98,7 @@ function montar(app, injected = {}) {
   iniciarWorker(alertaAugusto);
 
   console.log(
-    `[finance] Villela Finance (Fases 1 a 6) montado. Assinante: /finance/api · admin: /staff/api/finance · ` +
+    `[finance] Villela Finance (Fases 1 a 6 + 9) montado. Landing: /finance · assinante: /finance/api · admin: /staff/api/finance · ` +
     `planos: ${semeadura.planos.total} · conta interna: ${semeadura.tenantInterno}${semeadura.criada ? ' (criada agora)' : ''} · ` +
     `diário: ${diario.configurada() ? 'replicando para R2' : 'LOCAL (defina FINANCE_S3_* para replicar)'} · ` +
     `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +

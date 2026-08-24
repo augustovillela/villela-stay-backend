@@ -631,6 +631,26 @@ const SISTEMAS = [
 // ---------------------------------------------------------------------
 const EM_DESENVOLVIMENTO = [
   {
+    id: 'finance', nome: 'Villela Finance', pasta: 'villela-finance',
+    cor: '#0F4C81', vertical: 'grupo', url: 'https://villela-stay-backend.onrender.com/finance',
+    tela: 'finance',
+    demo: T(
+      'A linha do extrato vira lançamento: a sugestão diz por que sugeriu, e o lançamento fecha em débito = crédito.',
+      'A bank line becomes an entry: the suggestion says why it was made, and the entry balances debit = credit.',
+      'La línea del extracto se vuelve asiento: la sugerencia dice por qué, y el asiento cuadra débito = crédito.'),
+    estado: T('Em produção, antes do lançamento comercial', 'In production, before commercial launch', 'En producción, antes del lanzamiento comercial'),
+    categoria: T('ERP financeiro para PMEs', 'Financial ERP for small business', 'ERP financiero para pymes'),
+    promessa: T('O número que fecha, e explica de onde veio.', 'Figures that balance — and say where they came from.', 'Números que cuadran y dicen de dónde vienen.'),
+    oQueE: T(
+      'Razão de partida dobrada como fonte oficial: nenhum painel soma tabela solta. Extrato bancário importado e conciliado com sugestão explicável, contas a pagar e a receber com rateio por imóvel, fechamento com balanço que fecha, previsão de caixa em três cenários e um CFO que só aponta o que os números acionaram — dizendo, em cada constatação, o que a invalidaria. Dinheiro em centavos inteiros, lançamento imutável e ação material com segundo par de olhos.',
+      'A double-entry ledger as the single source of truth: no dashboard sums loose tables. Imported and reconciled bank feed with explainable suggestions, payables and receivables split per property, closing with a balance sheet that balances, three-scenario cash forecast, and a CFO that only flags what the figures triggered — stating, for each finding, what would invalidate it. Money as whole cents, entries immutable, material actions requiring a second pair of eyes.',
+      'Libro mayor por partida doble como fuente oficial: ningún panel suma tablas sueltas. Extracto importado y conciliado con sugerencia explicable, cuentas por pagar y cobrar con reparto por inmueble, cierre con balance que cuadra, previsión de caja en tres escenarios y un CFO que solo señala lo que los números activaron — diciendo, en cada hallazgo, qué lo invalidaría. Dinero en céntimos enteros, asientos inmutables y acción material con segundo par de ojos.'),
+    falta: T(
+      'Cobrança recorrente ligada, revisão jurídica dos termos e do contrato de tratamento de dados, e um exercício de restauração do backup antes de aceitar o primeiro assinante pagante. As análises de mercado e de leilões seguem fora do produto até haver parecer sobre o perímetro da CVM.',
+      'Recurring billing switched on, legal review of the terms and data-processing agreement, and a real backup-restore drill before accepting the first paying subscriber. Market and auction analysis stay out of the product until there is an opinion on the Brazilian securities regulator’s perimeter.',
+      'Cobro recurrente activado, revisión jurídica de los términos y del contrato de tratamiento de datos, y un ejercicio real de restauración de copia antes de aceptar al primer suscriptor de pago. Los análisis de mercado y de subastas siguen fuera del producto hasta que haya dictamen sobre el perímetro del regulador.')
+  },
+  {
     id: 'kids', nome: 'Villela Kids · Invente', pasta: 'villela-kids', simbolo: 'simbolo.svg',
     cor: '#6C4DFF', vertical: 'kids', url: 'https://kids.villelastay.com.br/kids',
     tela: 'kids',

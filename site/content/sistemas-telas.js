@@ -645,6 +645,54 @@ function cozinhe(t) {
 </div>`;
 }
 
-const TELAS = { crm, manager, legal, docs, projects, academy, altavista, kids, closet, vitrine, cozinhe };
+// =====================================================================
+// FINANCE — a conciliação: a linha do extrato virando lançamento
+// balanceado. É o que o produto tem de distinto e o que nenhum
+// concorrente mostra: a sugestão diz POR QUE sugeriu, e o lançamento
+// resultante fecha em débito = crédito, na frente de quem olha.
+// =====================================================================
+function finance(t) {
+  const linha = (conta, nome, debito, credito, classe) => `
+  <tr class="${classe || ''}">
+    <td><b>${esc(conta)}</b><span class="mq-sub">${esc(nome)}</span></td>
+    <td class="mq-qtd">${debito ? `<b>${esc(debito)}</b>` : '<span class="mq-sub">—</span>'}</td>
+    <td class="mq-qtd">${credito ? `<b>${esc(credito)}</b>` : '<span class="mq-sub">—</span>'}</td>
+  </tr>`;
+
+  return chrome('finance.villelastay.com.br', t('Conciliação', 'Reconciliation', 'Conciliación')) + `
+<div class="mq-corpo">
+  ${nav('FINANCE', [
+    ['📊', t('Cockpit', 'Cockpit', 'Cockpit'), true],
+    ['🏦', t('Extrato', 'Bank feed', 'Extracto')],
+    ['📗', t('Razão', 'Ledger', 'Libro mayor')],
+    ['✅', t('Aprovações', 'Approvals', 'Aprobaciones')]
+  ])}
+  <div class="mq-tela">
+    ${cabeca(t('Extrato do C6 · 06/08', 'Bank feed · 6 Aug', 'Extracto · 06/08'),
+             t('Conciliar', 'Reconcile', 'Conciliar'))}
+    ${kpis([
+      [t('Conciliado', 'Reconciled', 'Conciliado'), '<span class="js-troca" data-para="98%">94%</span>', '', ''],
+      [t('Débitos', 'Debits', 'Débitos'), 'R$ 389,45', '', ''],
+      [t('Créditos', 'Credits', 'Créditos'), 'R$ 389,45', t('fecha', 'balanced', 'cuadra'), 'up']
+    ])}
+    <div class="mq-aviso js-surge">
+      <b>💡 ${esc(t('Sugestão: 4.1.1.005 Energia elétrica', 'Suggestion: 4.1.1.005 Electricity', 'Sugerencia: 4.1.1.005 Energía eléctrica'))}</b>
+      ${esc(t('A descrição contém “neoenergia” (regra “Energia elétrica”) · confiança 85%.', 'The description contains “neoenergia” (rule “Electricity”) · confidence 85%.', 'La descripción contiene “neoenergia” (regla “Energía eléctrica”) · confianza 85%.'))}
+    </div>
+    <table class="mq-tabela compacta">
+      <tbody>
+        ${linha('1.1.1.101', t('Banco — C6 PJ', 'Bank — C6', 'Banco — C6'), '', 'R$ 389,45')}
+        ${linha('4.1.1.005', t('Energia elétrica · Villa Kubitschek', 'Electricity · Villa Kubitschek', 'Energía eléctrica · Villa Kubitschek'), 'R$ 389,45', '', 'js-realca')}
+      </tbody>
+    </table>
+    <div class="mq-aviso">
+      <b>🔎 ${esc(t('Todo número abre a origem', 'Every figure opens its origin', 'Todo número abre su origen'))}</b>
+      ${esc(t('Do indicador ao lançamento, do lançamento à linha do extrato, e da linha ao arquivo importado. Lançamento contabilizado não se altera nem se apaga: corrige-se por estorno, e os dois ficam ligados.', 'From the indicator to the entry, from the entry to the bank line, and from the line to the imported file. A posted entry is never edited or deleted: it is corrected by reversal, and both stay linked.', 'Del indicador al asiento, del asiento a la línea del extracto, y de la línea al archivo importado. Un asiento contabilizado no se altera ni se borra: se corrige por reverso, y ambos quedan enlazados.'))}
+    </div>
+  </div>
+</div>`;
+}
+
+const TELAS = { crm, manager, legal, docs, projects, academy, altavista, kids, closet, vitrine, cozinhe, finance };
 
 module.exports = { TELAS };
