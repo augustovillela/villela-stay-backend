@@ -179,6 +179,10 @@ const criarUsuario = (d) => {
 };
 const usuarioPorId = (id) => um('SELECT * FROM tenant_users WHERE tenant_id = :tenant AND id = :id', { id });
 const usuarioPorEmail = (email) => um('SELECT * FROM tenant_users WHERE tenant_id = :tenant AND email = :email', { email: String(email || '').toLowerCase().trim() });
+const trocarSenhaDoUsuario = (id, senhaHash) => exec(
+  `UPDATE tenant_users SET senha_hash = :hash, atualizado_em = :agora
+     WHERE tenant_id = :tenant AND id = :id`,
+  { id, hash: senhaHash, agora: nowISO() });
 const listarUsuarios = () => q('SELECT id, tenant_id, email, nome, perfil, status, mfa_ativo, ultimo_acesso, criado_em FROM tenant_users WHERE tenant_id = :tenant ORDER BY nome', {});
 
 // ------------------------------------------------------------ entidades
@@ -617,7 +621,7 @@ module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
   listarPlanos, planoPorSlug, planoPorId, upsertPlano, atualizarPrecoPlano,
-  criarUsuario, usuarioPorId, usuarioPorEmail, listarUsuarios,
+  criarUsuario, usuarioPorId, usuarioPorEmail, listarUsuarios, trocarSenhaDoUsuario,
   criarEntidade, entidadePorId, listarEntidades,
   criarConta, contaPorId, contaPorCodigo, listarContas,
   criarCentroCusto, centroCustoPorId, centroCustoPorCodigo, listarCentrosCusto,

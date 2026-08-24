@@ -2705,6 +2705,60 @@ testeAsync('painel do staff: mudar status exige motivo e recusa status inventado
   assert.strictEqual(inventado.status, 400, 'aceitou um status que não existe');
 });
 
+// ------------------------------------------------ troca da própria senha
+testeAsync('senha: troca exige a senha ATUAL — sessão roubada não vira posse da conta', async () => {
+  const r = await pedir('POST', '/finance/api/senha', {
+    cookie: cookieA, corpo: { senhaAtual: 'senha-errada-1', senhaNova: 'senha-nova-do-augusto' },
+  });
+  assert.strictEqual(r.status >= 400, true, 'trocou a senha sem saber a atual');
+  assert.ok(/senha atual/i.test(r.corpo.erro), `mensagem inesperada: ${r.corpo.erro}`);
+});
+
+testeAsync('senha: recusa senha curta e senha igual à atual', async () => {
+  const curta = await pedir('POST', '/finance/api/senha', {
+    cookie: cookieA, corpo: { senhaAtual: 'senha-forte-1', senhaNova: 'curta' },
+  });
+  assert.strictEqual(curta.status >= 400, true, 'aceitou senha de 5 caracteres');
+  const igual = await pedir('POST', '/finance/api/senha', {
+    cookie: cookieA, corpo: { senhaAtual: 'senha-forte-1', senhaNova: 'senha-forte-1' },
+  });
+  assert.strictEqual(igual.status >= 400, true, 'aceitou trocar a senha por ela mesma');
+});
+
+testeAsync('senha: troca funciona, a antiga para de valer e a nova entra', async () => {
+  const r = await pedir('POST', '/finance/api/senha', {
+    cookie: cookieA, corpo: { senhaAtual: 'senha-forte-1', senhaNova: 'senha-nova-do-augusto' },
+  });
+  assert.strictEqual(r.status, 200, `troca falhou: ${JSON.stringify(r.corpo)}`);
+
+  const velha = await pedir('POST', '/finance/api/login',
+    { corpo: { email: 'augusto@villelastay.com.br', senha: 'senha-forte-1' } });
+  assert.strictEqual(velha.status, 401, 'a senha antiga continuou entrando');
+
+  const nova = await pedir('POST', '/finance/api/login',
+    { corpo: { email: 'augusto@villelastay.com.br', senha: 'senha-nova-do-augusto' } });
+  assert.strictEqual(nova.status, 200, 'a senha nova não entra');
+  cookieA = (nova.cookies[0] || '').split(';')[0];
+});
+
+testeAsync('senha: a auditoria registra a troca e NUNCA o valor', async () => {
+  const eventos = tenancy.comTenant({ tenantId: contaA.id, userId: 'auditor' }, () =>
+    auditoria.listar({ objetoTipo: 'usuario', limite: 50 }));
+  const troca = eventos.find(e => e.acao === 'usuario.senha');
+  assert.ok(troca, 'troca de senha não deixou rastro na auditoria');
+  const cru = JSON.stringify(troca);
+  for (const segredo of ['senha-forte-1', 'senha-nova-do-augusto']) {
+    assert.ok(!cru.includes(segredo), `a auditoria guardou a senha em claro: ${segredo}`);
+  }
+});
+
+testeAsync('senha: sem sessão, a rota devolve 401 e não diz se o e-mail existe', async () => {
+  const r = await pedir('POST', '/finance/api/senha', {
+    corpo: { senhaAtual: 'x', senhaNova: 'senha-nova-qualquer' },
+  });
+  assert.strictEqual(r.status, 401);
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================

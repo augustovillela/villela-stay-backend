@@ -146,6 +146,33 @@ function criarUsuario({ email, nome, senha, perfil = 'operador' }) {
 };
 
 /**
+ * Troca a senha do PRÓPRIO usuário. Exige a senha atual: sessão roubada não
+ * pode virar posse permanente da conta trocando a senha.
+ *
+ * Existe porque o primeiro acesso nasce de `FINANCE_ADMIN_INITIAL_PASSWORD`,
+ * uma variável de ambiente. Sem esta rota, a senha do dono ficaria para
+ * sempre igual ao valor guardado no painel do Render — e uma senha que só
+ * existe em variável de ambiente é uma senha que não é de ninguém.
+ */
+function trocarSenha(userId, { senhaAtual, senhaNova }) {
+  const u = repo.usuarioPorId(userId);
+  if (!u) throw new ErroDeConta('Usuário não encontrado.');
+  if (!u.senha_hash || !conferirSenha(String(senhaAtual || ''), u.senha_hash)) {
+    throw new ErroDeConta('A senha atual está incorreta.');
+  }
+  const nova = String(senhaNova || '');
+  if (nova.length < 10) throw new ErroDeConta('A senha nova precisa de pelo menos 10 caracteres.');
+  if (nova === String(senhaAtual || '')) throw new ErroDeConta('A senha nova tem de ser diferente da atual.');
+  repo.trocarSenhaDoUsuario(u.id, hashSenha(nova));
+  // A auditoria registra QUE trocou, nunca o valor — nem o antigo, nem o novo.
+  auditoria.registrar('usuario.senha', {
+    objetoTipo: 'usuario', objetoId: u.id,
+    motivo: 'troca de senha pelo próprio usuário',
+  });
+  return { ok: true, trocadaEm: new Date().toISOString() };
+}
+
+/**
  * Top-up do plano de contas em TODAS as empresas já existentes. Roda no
  * boot, é idempotente e só ACRESCENTA o que falta — nunca renomeia nem
  * remove o que o assinante personalizou.
@@ -213,6 +240,6 @@ function semearPlataforma() {
 
 module.exports = {
   ErroDeConta, SLUG_INTERNO, provisionar, criarEmpresa, semearRegras,
-  criarUsuario, hashSenha, conferirSenha, semearPlataforma, slugificar, primeiraEntidade,
+  criarUsuario, hashSenha, conferirSenha, trocarSenha, semearPlataforma, slugificar, primeiraEntidade,
   atualizarPlanosDeConta, semearUsuarioInicial,
 };

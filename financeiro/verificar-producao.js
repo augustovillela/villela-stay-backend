@@ -112,6 +112,12 @@ const json = (corpo) => ({
       assert.ok([401, 403].includes(r.st), `${caminho} devolveu ${r.st}`);
     }
   });
+  await t('troca de senha exige sessão (não dá para trocar a senha alheia de fora)', async () => {
+    const r = await pega('/finance/api/senha', json({ senhaAtual: 'x', senhaNova: 'senha-longa-qualquer' }));
+    assert.notStrictEqual(r.st, 404, 'a rota de troca de senha não montou');
+    assert.strictEqual(r.st, 401, `troca de senha sem sessão devolveu ${r.st}`);
+  });
+
   await t('cobrança: /staff/api/finance/billing exige login de staff', async () => {
     for (const [metodo, caminho] of [['GET', '/staff/api/finance/billing'], ['POST', '/staff/api/finance/billing/ciclo']]) {
       const r = metodo === 'GET' ? await pega(caminho) : await pega(caminho, json({}));

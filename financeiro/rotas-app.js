@@ -684,6 +684,22 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       .send(JSON.stringify(pacote, null, 2));
   }));
 
+  // A troca de senha NÃO passa pelo envelope `rota`: aquele exige empresa
+  // cadastrada, e trocar a própria senha não depende de haver empresa.
+  app.post('/finance/api/senha', corpo, (req, res) => {
+    const u = usuarioDaSessao(req);
+    if (!u) return res.status(401).json({ erro: 'Sessão expirada. Entre de novo.' });
+    try {
+      const saida = tenancy.comTenant(
+        { tenantId: u.tenant_id, userId: u.id, perfil: u.perfil, correlationId: req.correlationId, ip: req.ip },
+        () => contasSvc.trocarSenha(u.id, {
+          senhaAtual: (req.body || {}).senhaAtual,
+          senhaNova: (req.body || {}).senhaNova,
+        }));
+      res.json(saida);
+    } catch (e) { responderErro(res, e); }
+  });
+
   // --------------------------------------------- assinatura (cobrança)
   // Leitura do estado é para qualquer perfil: quem opera precisa saber
   // que a conta vai vencer. Assinar e cancelar são do DONO da conta.
