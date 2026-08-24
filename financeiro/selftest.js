@@ -3934,6 +3934,52 @@ teste('segurança: a varredura DETECTA gatilho ausente', () => {
   }
 });
 
+// -------------------------------------------- layouts reais de extrato
+teste('extrato C6: o cabeçalho real mapeia a DESCRIÇÃO, não o título genérico', () => {
+  // Layout que o Augusto exporta do C6 PJ desde 08/2026.
+  const cab = ['Data Lançamento', 'Data Contábil', 'Título', 'Descrição', 'Entrada', 'Saída', 'Saldo do Dia'];
+  const m = bancos.mapearColunas(cab);
+  assert.strictEqual(m.descricao, 3,
+    'pegou "Título" ("Pix recebido") em vez de "Descrição" (o nome do fornecedor) — as regras de classificação parariam de casar, em silêncio');
+  assert.strictEqual(m.credito, 4, 'não achou a coluna Entrada');
+  assert.strictEqual(m.debito, 5, 'não achou a coluna Saída');
+  assert.strictEqual(m.data, 0);
+  assert.strictEqual(m.documento, -1,
+    'inventou coluna de documento — o sinônimo "id" casava DENTRO de "saída" e apontava para o valor');
+});
+
+teste('extrato: casamento por pedaço respeita limite de palavra', () => {
+  assert.strictEqual(bancos.mapearColunas(['Saída']).documento, -1, '"id" casou dentro de "saida"');
+  assert.strictEqual(bancos.mapearColunas(['Data', 'Documento', 'Valor']).documento, 1, 'deixou de achar o documento de verdade');
+  assert.strictEqual(bancos.mapearColunas(['Data', 'Nr Documento', 'Valor']).documento, 1, 'não achou "Nr Documento"');
+});
+
+teste('extrato: colunas separadas de débito/crédito vencem a coluna única de valor', () => {
+  // `NET_CREDIT_AMOUNT` casa com "valor" (por "amount") e com "crédito" ao
+  // mesmo tempo: se a coluna única vencesse, toda saída viraria entrada.
+  const cab = ['DATE', 'DESCRIPTION', 'NET_CREDIT_AMOUNT', 'NET_DEBIT_AMOUNT'];
+  const m = bancos.mapearColunas(cab);
+  const saida = bancos.normalizarLinha(['2026-08-02', 'pagamento', '', '438,90'], m, 1);
+  assert.ok(!saida.erro, `linha rejeitada: ${saida.erro}`);
+  assert.strictEqual(saida.valorCents, -43890, 'a saída não ficou negativa — o sinal do extrato inverteu');
+  const entrada = bancos.normalizarLinha(['2026-08-01', 'recebimento', '1250,00', ''], m, 2);
+  assert.strictEqual(entrada.valorCents, 125000);
+});
+
+teste('extrato: CSV do C6 com aspas duplicadas na descrição é lido inteiro', () => {
+  // O C6 embrulha a linha inteira em aspas quando há vírgula no texto e
+  // duplica as aspas internas — é RFC 4180, e o parser tem de respeitar.
+  const linhas = [
+    'Data,Descrição,Entrada,Saída',
+    '01/08/2026,"CLIENTE X, LTDA - pgto ""reserva""","1250,00",',
+  ];
+  const r = bancos.lerCsv(linhas.join('\n') + '\n');
+  assert.strictEqual(r.delimitador, ',');
+  assert.strictEqual(r.linhas[1][1], 'CLIENTE X, LTDA - pgto "reserva"',
+    'a descrição com vírgula e aspas foi partida — o fornecedor sairia truncado');
+  assert.strictEqual(r.linhas[1].length, 4, 'a linha quebrou em mais colunas do que o cabeçalho');
+});
+
 // =====================================================================
 // 15. INTEGRIDADE FINAL
 // =====================================================================

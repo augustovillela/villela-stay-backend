@@ -69,12 +69,31 @@ const SINONIMOS = {
 /** Descobre a coluna de cada campo pelo cabeçalho. Mapa explícito vence. */
 function mapearColunas(cabecalho, mapaExplicito = {}) {
   const norm = cabecalho.map(semAcento);
+  // Duas coisas que parecem detalhe e não são, medidas contra o CSV real do
+  // C6 (`Data Lançamento,Data Contábil,Título,Descrição,Entrada,Saída,...`):
+  //
+  //  1. A busca percorre os SINÔNIMOS em ordem, não as COLUNAS. Percorrendo as
+  //     colunas, "Título" (sinônimo fraco, vem antes) vencia "Descrição"
+  //     (sinônimo forte, vem depois) — e a descrição do lançamento virava
+  //     "Pix recebido"/"Pagamento", sem o nome do fornecedor. As regras de
+  //     classificação casam em "neoenergia", "caesb": elas parariam de casar,
+  //     em silêncio, e ninguém ligaria uma coisa à outra.
+  //  2. O casamento por PEDAÇO exige limite de palavra. Sem isso, o sinônimo
+  //     "id" (de documento) casava dentro de "saída" — a coluna de documento
+  //     apontava para o valor de saída.
+  const contem = (cabecalho, alvo) => new RegExp(`(^|[^a-z0-9])${alvo}([^a-z0-9]|$)`).test(cabecalho);
   const achar = (campo) => {
     if (mapaExplicito[campo] != null) return Number(mapaExplicito[campo]);
     const alvos = SINONIMOS[campo] || [];
-    let i = norm.findIndex(c => alvos.includes(c));
-    if (i === -1) i = norm.findIndex(c => alvos.some(a => c.includes(a)));
-    return i;
+    for (const a of alvos) {
+      const i = norm.indexOf(a);
+      if (i !== -1) return i;
+    }
+    for (const a of alvos) {
+      const i = norm.findIndex(c => contem(c, a));
+      if (i !== -1) return i;
+    }
+    return -1;
   };
   return {
     data: achar('data'), valor: achar('valor'), descricao: achar('descricao'),
@@ -117,9 +136,16 @@ function normalizarLinha(colunas, mapa, numero) {
   const data = normalizarData(pegar(mapa.data));
   if (!data) return { erro: `linha ${numero}: data ilegível (${JSON.stringify(pegar(mapa.data))})` };
 
+  // Débito/crédito em COLUNAS SEPARADAS vence a coluna única de valor. Um
+  // extrato que traz as duas colunas é inequívoco sobre o sinal; a coluna
+  // única depende de o banco trazer o menos — e há banco que não traz. Além
+  // disso, cabeçalho como `NET_CREDIT_AMOUNT` casa com "valor" (por "amount")
+  // e com "crédito" ao mesmo tempo: dando preferência ao par, o sinal sai
+  // certo em vez de todo lançamento virar entrada.
   let valorCents = null;
   try {
-    if (mapa.valor >= 0 && pegar(mapa.valor)) {
+    const temPar = (mapa.credito >= 0 && pegar(mapa.credito)) || (mapa.debito >= 0 && pegar(mapa.debito));
+    if (!temPar && mapa.valor >= 0 && pegar(mapa.valor)) {
       valorCents = dinheiro.paraCentavos(pegar(mapa.valor), 'valor');
     } else if (mapa.credito >= 0 || mapa.debito >= 0) {
       const cred = pegar(mapa.credito) ? dinheiro.paraCentavos(pegar(mapa.credito), 'crédito') : 0;
