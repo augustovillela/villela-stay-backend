@@ -104,7 +104,7 @@ const F = {
   // -------------------------------------------------------- moldura
   telaApp() {
     const e = F.eu;
-    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['fechamento', 'Fechamento'], ['cfo', 'CFO'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
+    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['fechamento', 'Fechamento'], ['cfo', 'CFO'], ['dre', 'DRE'], ['relatorios', 'Relatórios'], ['razao', 'Razão'], ['conta', 'Minha conta']];
     const empresas = e.empresas.length > 1
       ? `<select id="f-empresa" style="width:auto;min-width:200px">${e.empresas.map((x) =>
           `<option value="${F.esc(x.id)}"${x.id === e.empresa.id ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
@@ -159,7 +159,7 @@ const F = {
   },
 
   async pintar() {
-    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, fechamento: F.vFechamento, cfo: F.vCfo, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
+    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, fechamento: F.vFechamento, cfo: F.vCfo, dre: F.vDre, relatorios: F.vRelatorios, razao: F.vRazao, conta: F.vConta };
     try { await telas[F.tab](); }
     catch (e) { if (e.message !== 'sessão expirada') F.corpo().innerHTML = `<div class="card"><p class="erro">${F.esc(e.message)}</p></div>`; }
   },
@@ -1024,6 +1024,167 @@ const F = {
       <h3 style="margin:22px 0 4px">Conselho dos Mestres</h3>
       ${c ? `<p class="sub" style="margin:0 0 10px">${F.esc(c.aviso)}</p>` : ''}
       ${conselhos}`;
+  },
+
+  // -------------------------------------------------------- RELATÓRIOS
+  // Balanço, fluxo de caixa, previsão, resultado por imóvel e orçado ×
+  // realizado. Todos já existiam na API e nenhum tinha tela.
+
+  async vRelatorios() {
+    const sub = F.subRelatorio || 'balanco';
+    const abas = [['balanco', 'Balanço'], ['fluxo', 'Fluxo de caixa'], ['previsao', 'Previsão'],
+      ['centros', 'Por imóvel'], ['orcado', 'Orçado × realizado']];
+    F.corpo().innerHTML = F.seletorMes('F.lerMes();F.pintar()') + `
+      <div class="menu" style="margin-bottom:12px">${abas.map(([id, rot]) =>
+        `<button class="btn ${sub === id ? '' : 'btn-ghost'}" style="padding:7px 14px;min-height:0"
+          onclick="F.irRelatorio('${id}')">${rot}</button>`).join('')}</div>
+      <div id="f-rel"><p class="sub">Carregando…</p></div>`;
+    const telas = { balanco: F.rBalanco, fluxo: F.rFluxo, previsao: F.rPrevisao, centros: F.rCentros, orcado: F.rOrcado };
+    try { await telas[sub](); }
+    catch (e) { if (e.message !== 'sessão expirada') F.el('f-rel').innerHTML = `<p class="erro">${F.esc(e.message)}</p>`; }
+  },
+
+  irRelatorio(s) { F.subRelatorio = s; F.pintar(); },
+
+  /** Bloco de contas com total — usado pelos dois lados do balanço. */
+  blocoContas(titulo, g) {
+    const linhas = (g.contas || []).map((c) =>
+      `<div class="lin"><code>${F.esc(c.codigo)}</code> ${F.esc(c.nome)}
+        <span style="float:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(c.valorCents))}</span></div>`).join('');
+    return `<h4 style="margin:12px 0 4px">${F.esc(titulo)} — ${F.esc(F.brl(g.totalCents))}</h4>${linhas || '<p class="sub">—</p>'}`;
+  },
+
+  async rBalanco() {
+    const b = await F.api('GET', F.url('/balanco'));
+    F.el('f-rel').innerHTML = `
+      <div class="card"${b.fecha ? '' : ' style="border-color:var(--vx-danger)"'}>
+        <h3 style="margin:0 0 4px">${b.fecha ? 'Balanço fecha' : 'Balanço NÃO fecha — diferença de ' + F.esc(F.brl(b.diferencaCents))}</h3>
+        <p class="sub" style="margin:0">ativo ${F.esc(b.ativo.total)} = passivo ${F.esc(b.passivo.total)} + PL ${F.esc(b.patrimonioLiquido.total)} · posição em ${F.dt(b.ate)}</p>
+        ${F.origem(b.origem)}
+        ${b.origem.observacao ? `<div class="aviso" style="margin-top:10px">${F.esc(b.origem.observacao)}</div>` : ''}
+      </div>
+      <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:12px">
+        <div class="card"><h3 style="margin:0">Ativo — ${F.esc(b.ativo.total)}</h3>
+          ${F.blocoContas('Circulante', b.ativo.circulante)}${F.blocoContas('Não circulante', b.ativo.naoCirculante)}</div>
+        <div class="card"><h3 style="margin:0">Passivo + PL</h3>
+          ${F.blocoContas('Passivo circulante', b.passivo.circulante)}${F.blocoContas('Passivo não circulante', b.passivo.naoCirculante)}
+          <h4 style="margin:12px 0 4px">Patrimônio líquido — ${F.esc(b.patrimonioLiquido.total)}</h4>
+          ${(b.patrimonioLiquido.contas || []).map((c) => `<div class="lin"><code>${F.esc(c.codigo)}</code> ${F.esc(c.nome)}
+            <span style="float:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(c.valorCents))}</span></div>`).join('')}
+          <div class="lin"><b>Resultado do exercício</b> <span class="sub">(linha calculada)</span>
+            <span style="float:right;font-variant-numeric:tabular-nums"><b>${F.esc(b.patrimonioLiquido.resultadoDoExercicio)}</b></span></div>
+        </div>
+      </div>`;
+  },
+
+  async rFluxo() {
+    const metodo = F.metodoFluxo || 'direto';
+    const f = await F.api('GET', F.url('/fluxo-caixa', { competencia: F.competencia, metodo }));
+    const grupos = (f.grupos || []).map((g) => `<tr>
+      <td>${F.esc(g.grupo)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(g.entradasCents || 0))}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(g.saidasCents || 0))}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums"><b>${F.esc(g.liquido || F.brl(g.liquidoCents))}</b></td>
+    </tr>`).join('');
+    F.el('f-rel').innerHTML = `
+      <div class="menu" style="margin-bottom:10px">
+        <button class="btn ${metodo === 'direto' ? '' : 'btn-ghost'}" style="padding:6px 12px;min-height:0" onclick="F.trocarMetodo('direto')">Direto</button>
+        <button class="btn ${metodo === 'indireto' ? '' : 'btn-ghost'}" style="padding:6px 12px;min-height:0" onclick="F.trocarMetodo('indireto')">Indireto</button>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 4px">Fluxo ${F.esc(f.metodo)} · ${F.dt(f.desde)} a ${F.dt(f.ate)}</h3>
+        ${f.saldoFinal ? `<p style="margin:0">saldo inicial ${F.esc(F.brl(f.saldoInicialCents || 0))} · variação ${F.esc(F.brl(f.variacaoCents || 0))} · <b>saldo final ${F.esc(f.saldoFinal)}</b></p>` : ''}
+        ${F.origem(f.origem)}
+        ${f.conciliacao
+          ? `<div class="aviso" style="margin-top:10px"><b>Conciliação com o método direto:</b> ${F.esc(
+              typeof f.conciliacao === 'string' ? f.conciliacao : JSON.stringify(f.conciliacao))}</div>`
+          : ''}
+        ${grupos ? `<div class="tab-wrap" style="margin-top:12px"><table>
+          <thead><tr><th>Grupo</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Líquido</th></tr></thead>
+          <tbody>${grupos}</tbody></table></div>` : ''}
+        ${(f.linhas || []).length ? `<div class="tab-wrap" style="margin-top:12px"><table>
+          <thead><tr><th>Linha</th><th style="text-align:right">Valor</th></tr></thead>
+          <tbody>${f.linhas.map((l) => `<tr><td>${F.esc(l.rotulo || l.grupo || '')}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(l.valor || F.brl(l.valorCents))}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      </div>`;
+  },
+
+  trocarMetodo(m) { F.metodoFluxo = m; F.pintar(); },
+
+  async rPrevisao() {
+    const p = await F.api('GET', F.url('/previsao-caixa', { dias: 90 }));
+    const cenarios = p.cenarios.map((c) => `
+      <div class="card" style="flex:1;min-width:230px${c.faltaCaixa ? ';border-color:var(--vx-danger)' : ''}">
+        <div class="sub">${F.esc(c.rotulo)}</div>
+        <div style="font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums">${F.esc(c.saldoFinal)}</div>
+        <div class="sub">menor saldo ${F.esc(c.menorSaldo)} em ${F.dt(c.menorSaldoEm)}</div>
+        <div class="sub" style="margin-top:6px">${F.esc(c.premissa)}</div>
+      </div>`).join('');
+    F.el('f-rel').innerHTML = `
+      <div class="card" style="margin-bottom:12px">
+        <h3 style="margin:0 0 4px">${F.esc(p.veredito)}</h3>
+        <p class="sub" style="margin:0">saldo hoje ${F.esc(p.saldoHoje)} · ${p.parcelasConsideradas} parcela(s) na agenda · horizonte de ${p.horizonteDias} dias</p>
+        ${F.origem(p.origem)}
+        <div class="aviso" style="margin-top:10px">${F.esc(p.origem.natureza)}</div>
+        ${(p.alerta || []).map((a) => `<div class="aviso" style="margin-top:8px">${F.esc(a)}</div>`).join('')}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">${cenarios}</div>`;
+  },
+
+  async rCentros() {
+    const r = await F.api('GET', F.url('/resultado-por-centro', { competencia: F.competencia }));
+    const linhas = r.linhas.map((l) => `<tr>
+      <td><code>${F.esc(l.codigo)}</code> ${F.esc(l.nome)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(l.receitaCents))}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(l.despesaCents))}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums"><b>${F.esc(F.brl(l.resultadoCents))}</b></td>
+      <td style="text-align:right">${l.margem == null ? '—' : l.margem + '%'}</td>
+    </tr>`).join('');
+    F.el('f-rel').innerHTML = `<div class="card">
+      <h3 style="margin:0 0 4px">Resultado por imóvel · ${F.esc(r.competencia)}</h3>
+      ${F.origem(r.origem)}
+      ${r.aviso ? `<div class="aviso" style="margin-top:10px">${F.esc(r.aviso)}</div>` : ''}
+      ${r.linhas.length ? `<div class="tab-wrap" style="margin-top:12px"><table>
+        <thead><tr><th>Centro</th><th style="text-align:right">Receita</th><th style="text-align:right">Despesa</th>
+        <th style="text-align:right">Resultado</th><th style="text-align:right">Margem</th></tr></thead>
+        <tbody>${linhas}</tbody>
+        <tfoot><tr><td><b>Total</b></td>
+          <td style="text-align:right"><b>${F.esc(F.brl(r.total.receitaCents))}</b></td>
+          <td style="text-align:right"><b>${F.esc(F.brl(r.total.despesaCents))}</b></td>
+          <td style="text-align:right"><b>${F.esc(F.brl(r.total.resultadoCents))}</b></td><td></td></tr></tfoot>
+        </table></div>` : '<p class="sub" style="margin-top:10px">Nenhum movimento com centro de custo nesta competência.</p>'}
+    </div>`;
+  },
+
+  async rOrcado() {
+    const { orcamentos } = await F.api('GET', F.url('/orcamentos'));
+    if (!orcamentos.length) {
+      F.el('f-rel').innerHTML = `<div class="card"><h3 style="margin:0 0 6px">Nenhum orçamento cadastrado</h3>
+        <p class="sub" style="margin:0">Sem orçamento aprovado não há desvio a medir — e o CFO diz isso em vez de inventar uma meta.</p></div>`;
+      return;
+    }
+    let r;
+    try { r = await F.api('GET', F.url('/orcado-realizado', { competencia: F.competencia })); }
+    catch (e) {
+      F.el('f-rel').innerHTML = `<div class="card"><p class="sub" style="margin:0">${F.esc(e.message)}</p></div>`;
+      return;
+    }
+    const linhas = (r.linhas || []).map((l) => `<tr>
+      <td><code>${F.esc(l.contaCodigo)}</code> ${F.esc(l.contaNome)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(l.orcadoCents))}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(F.brl(l.realizadoCents))}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:${l.favoravel ? 'inherit' : 'var(--vx-danger)'}">
+        ${F.esc(l.desvio || F.brl(l.desvioCents))}${l.percentual == null ? '' : ` (${l.percentual}%)`}</td>
+    </tr>`).join('');
+    F.el('f-rel').innerHTML = `<div class="card">
+      <h3 style="margin:0 0 4px">${F.esc(r.orcamento.nome)} · ${F.esc(r.orcamento.cenario)} · versão ${r.orcamento.versao} <span class="sub">(${F.esc(r.orcamento.status)})</span></h3>
+      <p class="sub" style="margin:0">competência ${F.esc(r.competencia)} · resultado orçado ${F.esc(F.brl(r.resumo.resultadoOrcadoCents))} ·
+        realizado ${F.esc(F.brl(r.resumo.resultadoRealizadoCents))} · desvio <b>${F.esc(F.brl(r.resumo.desvioResultadoCents))}</b></p>
+      ${linhas ? `<div class="tab-wrap" style="margin-top:12px"><table>
+        <thead><tr><th>Conta</th><th style="text-align:right">Orçado</th><th style="text-align:right">Realizado</th><th style="text-align:right">Desvio</th></tr></thead>
+        <tbody>${linhas}</tbody></table></div>` : '<p class="sub" style="margin-top:10px">Sem linhas nesta competência.</p>'}
+      <p class="sub" style="margin-top:10px">O sinal do desvio segue a natureza da conta: gastar menos que o orçado é favorável; receber menos, não.</p>
+    </div>`;
   },
 
   // -------------------------------------------------------------- DRE

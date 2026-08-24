@@ -3373,6 +3373,90 @@ testeAsync('app do assinante: sem fato acionado, o Conselho diz que o silêncio 
   }
 });
 
+testeAsync('app do assinante: o balanço mostra a PROVA (ativo = passivo + PL)', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.subRelatorio = 'balanco';
+  await app.F.vRelatorios();
+  const html = app.escritos['f-rel'];
+  semLixoApp(html, 'balanço');
+
+  const b = (await pedir('GET', '/finance/api/balanco', { cookie: cookieA })).corpo;
+  assert.ok(html.includes(b.ativo.total) && html.includes(b.passivo.total) && html.includes(b.patrimonioLiquido.total),
+    'a tela não confronta ativo, passivo e PL');
+  assert.strictEqual(/Balanço fecha|Balanço NÃO fecha/.test(html), true, 'a tela não diz se o balanço fecha');
+  assert.ok(html.includes(b.patrimonioLiquido.resultadoDoExercicio),
+    'o resultado do exercício não aparece no PL — é linha calculada, e é o que faz o balanço fechar antes da apuração');
+});
+
+testeAsync('app do assinante: a previsão de caixa diz que é PREVISÃO, com a premissa de cada cenário', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.subRelatorio = 'previsao';
+  await app.F.vRelatorios();
+  const html = app.escritos['f-rel'];
+  semLixoApp(html, 'previsão');
+
+  const p = (await pedir('GET', '/finance/api/previsao-caixa?dias=90', { cookie: cookieA })).corpo;
+  assert.ok(html.includes(escapeSimples(p.veredito)), 'a tela não traz o veredito da previsão');
+  assert.ok(html.includes(escapeSimples(p.origem.natureza)),
+    'a tela não avisa que é previsão, e não fato — número projetado lido como realizado é decisão errada garantida');
+  for (const c of p.cenarios) {
+    assert.ok(html.includes(escapeSimples(c.premissa)),
+      `o cenário "${c.rotulo}" apareceu sem a premissa — cenário sem premissa é chute com nome bonito`);
+  }
+});
+
+testeAsync('app do assinante: o resultado por imóvel avisa quando está incompleto', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2026-08';
+  app.F.subRelatorio = 'centros';
+  await app.F.vRelatorios();
+  const html = app.escritos['f-rel'];
+  semLixoApp(html, 'por imóvel');
+
+  const r = (await pedir('GET', '/finance/api/resultado-por-centro?competencia=2026-08', { cookie: cookieA })).corpo;
+  if (r.aviso) {
+    assert.ok(html.includes(escapeSimples(r.aviso)),
+      'há lançamento sem centro de custo e a tela não avisa — o resultado por imóvel estaria mentindo por omissão');
+  }
+  for (const l of r.linhas) {
+    assert.ok(html.includes(escapeSimples(l.nome)), `o centro "${l.nome}" não aparece`);
+  }
+});
+
+testeAsync('app do assinante: fluxo de caixa direto e indireto, ambos com a fórmula', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2026-08';
+  app.F.subRelatorio = 'fluxo';
+  for (const metodo of ['direto', 'indireto']) {
+    app.F.metodoFluxo = metodo;
+    await app.F.vRelatorios();
+    const html = app.escritos['f-rel'];
+    semLixoApp(html, 'fluxo ' + metodo);
+    const f = (await pedir('GET', `/finance/api/fluxo-caixa?competencia=2026-08&metodo=${metodo}`, { cookie: cookieA })).corpo;
+    assert.ok(html.includes(escapeSimples(f.origem.formula)), `o fluxo ${metodo} apareceu sem a fórmula`);
+  }
+});
+
+testeAsync('app do assinante: sem orçamento, a tela explica em vez de mostrar zero', async () => {
+  const { orcamentos } = (await pedir('GET', '/finance/api/orcamentos', { cookie: cookieA })).corpo;
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.subRelatorio = 'orcado';
+  await app.F.vRelatorios();
+  const html = app.escritos['f-rel'];
+  semLixoApp(html, 'orçado × realizado');
+  if (!orcamentos.length) {
+    assert.ok(/Sem orçamento aprovado não há desvio a medir/.test(html),
+      'sem orçamento a tela ficou vazia — zero sem explicação parece resultado, não ausência');
+  } else {
+    assert.ok(/Orçado|orçado/.test(html), 'com orçamento, a comparação não aparece');
+  }
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
