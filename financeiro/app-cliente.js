@@ -104,7 +104,7 @@ const F = {
   // -------------------------------------------------------- moldura
   telaApp() {
     const e = F.eu;
-    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
+    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['fechamento', 'Fechamento'], ['dre', 'DRE'], ['razao', 'Razão'], ['conta', 'Minha conta']];
     const empresas = e.empresas.length > 1
       ? `<select id="f-empresa" style="width:auto;min-width:200px">${e.empresas.map((x) =>
           `<option value="${F.esc(x.id)}"${x.id === e.empresa.id ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
@@ -159,7 +159,7 @@ const F = {
   },
 
   async pintar() {
-    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
+    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, fechamento: F.vFechamento, dre: F.vDre, razao: F.vRazao, conta: F.vConta };
     try { await telas[F.tab](); }
     catch (e) { if (e.message !== 'sessão expirada') F.corpo().innerHTML = `<div class="card"><p class="erro">${F.esc(e.message)}</p></div>`; }
   },
@@ -878,6 +878,91 @@ const F = {
       alert(r.aviso || 'Solicitação registrada.');
       F.pintar();
     } catch (e) { alert(e.message); }
+  },
+
+  // ------------------------------------------------------- FECHAMENTO
+  // O checklist é a tela inteira: cada item diz o que confere, se passou e
+  // o que exatamente falta. Botão de fechar que só diz "não deu" obriga a
+  // adivinhar — aqui o bloqueador vem escrito, com o número.
+
+  async vFechamento() {
+    const [chk, { periodos: lista }, prev] = await Promise.all([
+      F.api('GET', F.url('/fechamento/' + F.competencia)),
+      F.api('GET', F.url('/periodos')),
+      F.api('GET', F.url('/apuracao/' + F.competencia)).catch(() => null),
+    ]);
+
+    const itens = chk.itens.map((i) => `<div class="lin">
+      <b style="color:${i.ok ? 'var(--vx-ok, #1B7F4B)' : (i.bloqueia ? 'var(--vx-danger)' : 'var(--vx-warn)')}">${i.ok ? '✓' : (i.bloqueia ? '✗' : '!')}</b>
+      ${F.esc(i.titulo)}${i.bloqueia ? '' : ' <span class="sub">(não bloqueia)</span>'}
+      <div class="sub">${F.esc(i.detalhe)}</div>
+    </div>`).join('');
+
+    const p = (lista || []).find((x) => x.competencia === F.competencia);
+    const situacao = p && p.status === 'fechado'
+      ? `<div class="aviso"><b>${F.esc(F.competencia)} está FECHADA</b> desde ${F.dt(p.fechado_em)}${p.fechado_por ? ' por ' + F.esc(p.fechado_por) : ''}.
+          Nenhum lançamento entra nesta competência — o gatilho do banco recusa. Reabrir é ação material e exige motivo.
+          <p style="margin:10px 0 0"><button class="btn btn-ghost" onclick="F.pedirReabertura()">Solicitar reabertura</button></p></div>`
+      : `<p style="margin:0 0 12px" class="sub">Competência aberta.</p>`;
+
+    const apur = prev ? `
+      <div class="card" style="margin-top:12px">
+        <h3 style="margin:0 0 6px">Apuração do resultado</h3>
+        <p style="margin:0">${F.esc(prev.tipo)} de <b>${F.esc(prev.resultado)}</b> · ${prev.contas.length} conta(s) de resultado a zerar
+          <span class="sub">(${F.esc(prev.desde)} a ${F.esc(prev.ate)})</span></p>
+        <div class="aviso" style="margin-top:10px">${F.esc(prev.aviso)}</div>
+        <p style="margin:12px 0 0"><button class="btn btn-ghost" onclick="F.pedirApuracao()">Solicitar apuração</button>
+          <span class="sub"> — ação material: precisa de aprovação.</span></p>
+      </div>` : '';
+
+    F.corpo().innerHTML = F.seletorMes('F.lerMes();F.pintar()') + situacao + `
+      <div class="card">
+        <h3 style="margin:0 0 10px">Checklist de ${F.esc(F.competencia)}</h3>
+        ${itens}
+        <p style="margin:14px 0 0">
+          ${chk.pode
+            ? '<button class="btn" onclick="F.pedirFechamento(false)">Solicitar fechamento</button>'
+            : `<button class="btn btn-ghost" onclick="F.pedirFechamento(true)">Solicitar fechamento mesmo assim</button>
+               <span class="sub"> — ${chk.bloqueadores.length} bloqueador(es): ${F.esc(chk.bloqueadores.join(' · '))}</span>`}
+        </p>
+        <p class="sub" style="margin:8px 0 0">Fechar é ação material: vira solicitação e depende da aprovação de outra pessoa com alçada.</p>
+      </div>
+      ${apur}
+      <div class="card" style="margin-top:12px">
+        <h3 style="margin:0 0 8px">Competências</h3>
+        ${(lista || []).length
+          ? `<div class="tab-wrap"><table><thead><tr><th>Competência</th><th>Situação</th><th>Quando</th></tr></thead><tbody>${
+              lista.map((x) => `<tr><td>${F.esc(x.competencia)}</td><td>${F.esc(x.status)}</td>
+                <td class="sub">${x.fechado_em ? 'fechada ' + F.dt(x.fechado_em) : ''}${x.reaberto_em ? ' · reaberta ' + F.dt(x.reaberto_em) : ''}</td></tr>`).join('')
+            }</tbody></table></div>`
+          : '<p class="sub" style="margin:0">Nenhuma competência registrada ainda.</p>'}
+      </div>`;
+  },
+
+  async pedirFechamento(forcar) {
+    const motivo = prompt(forcar
+      ? 'Há bloqueadores. Justifique o fechamento assim mesmo (vai para a auditoria):'
+      : 'Motivo/observação do fechamento (vai para a auditoria):', '');
+    if (motivo === null) return;
+    try {
+      const r = await F.api('POST', F.url('/fechamento/' + F.competencia), { forcar: !!forcar, motivo });
+      alert(`Solicitação registrada${r.checklist && !r.checklist.pode ? ' COM bloqueadores — quem aprovar vai vê-los na prévia.' : '.'}`);
+      F.pintar();
+    } catch (e) { alert(e.message); }
+  },
+
+  async pedirReabertura() {
+    const motivo = prompt('Reabrir permite lançar em competência já reportada. Motivo (obrigatório):', '');
+    if (!motivo) return;
+    try { await F.api('POST', F.url(`/periodos/${F.competencia}/reabrir`), { motivo }); F.pintar(); }
+    catch (e) { alert(e.message); }
+  },
+
+  async pedirApuracao() {
+    const motivo = prompt('Motivo da apuração (vai para a auditoria):', `apuração de ${F.competencia}`);
+    if (!motivo) return;
+    try { await F.api('POST', F.url('/apuracao/' + F.competencia), { motivo }); F.pintar(); }
+    catch (e) { alert(e.message); }
   },
 
   // -------------------------------------------------------------- DRE

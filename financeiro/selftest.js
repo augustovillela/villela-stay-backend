@@ -3226,6 +3226,78 @@ testeAsync('app do assinante: o lançamento abre e mostra as duas pernas', async
   assert.ok(html.includes(F_brl(d.lote.total_cents)), 'o total do lote não aparece');
 });
 
+testeAsync('app do assinante: o fechamento mostra CADA item do checklist com o detalhe', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2026-08';
+  await app.F.vFechamento();
+  const html = app.escritos['f-corpo'];
+  semLixoApp(html, 'fechamento');
+
+  const chk = (await pedir('GET', '/finance/api/fechamento/2026-08', { cookie: cookieA })).corpo;
+  for (const i of chk.itens) {
+    assert.ok(html.includes(escapeSimples(i.titulo)), `o checklist não mostra "${i.titulo}"`);
+    assert.ok(html.includes(escapeSimples(i.detalhe)),
+      `"${i.titulo}" apareceu sem o detalhe — "não deu" sem o número obriga a adivinhar`);
+  }
+});
+
+testeAsync('app do assinante: com bloqueador, a tela NOMEIA o que falta', async () => {
+  const chk = (await pedir('GET', '/finance/api/fechamento/2026-08', { cookie: cookieA })).corpo;
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2026-08';
+  await app.F.vFechamento();
+  const html = app.escritos['f-corpo'];
+
+  if (chk.pode) {
+    assert.ok(/Solicitar fechamento/.test(html), 'sem bloqueadores e sem botão de fechar');
+  } else {
+    for (const b of chk.bloqueadores) {
+      assert.ok(html.includes(escapeSimples(b)), `o bloqueador "${b}" não aparece escrito na tela`);
+    }
+    assert.ok(/mesmo assim/.test(html),
+      'não oferece o caminho de exceção — quem tem justificativa fica sem saída');
+  }
+});
+
+testeAsync('app do assinante: a apuração avisa que o DRE do período vai zerar', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  app.F.competencia = '2026-08';
+  await app.F.vFechamento();
+  const html = app.escritos['f-corpo'];
+
+  const prev = (await pedir('GET', '/finance/api/apuracao/2026-08', { cookie: cookieA })).corpo;
+  assert.ok(html.includes(escapeSimples(prev.aviso)),
+    'a tela não avisa que, depois de apurar, o DRE do período mostra zero — é o efeito que mais surpreende');
+  assert.ok(html.includes(prev.resultado), `não imprimiu o resultado apurável (${prev.resultado})`);
+});
+
+testeAsync('app do assinante: fechar vira SOLICITAÇÃO e o período NÃO fecha sozinho', async () => {
+  const antes = (await pedir('GET', '/finance/api/aprovacoes?status=pendente', { cookie: cookieA })).corpo.aprovacoes.length;
+  const r = await pedir('POST', '/finance/api/fechamento/2026-08',
+    { cookie: cookieA, corpo: { forcar: true, motivo: 'teste de fechamento pela tela' } });
+  assert.strictEqual(r.status, 200);
+
+  const periodos_ = (await pedir('GET', '/finance/api/periodos', { cookie: cookieA })).corpo.periodos;
+  const p = periodos_.find((x) => x.competencia === '2026-08');
+  assert.ok(!p || p.status !== 'fechado', 'a competência fechou sem passar por aprovação');
+  const depois = (await pedir('GET', '/finance/api/aprovacoes?status=pendente', { cookie: cookieA })).corpo.aprovacoes.length;
+  assert.strictEqual(depois, antes + 1, 'o pedido de fechamento não virou solicitação');
+});
+
+testeAsync('app do assinante: a prévia da solicitação de fechamento carrega os bloqueadores', async () => {
+  // Quem vai aprovar precisa ver o que estava errado no momento do pedido —
+  // aprovar às cegas um fechamento forçado é o pior caso desta tela.
+  const { aprovacoes } = (await pedir('GET', '/finance/api/aprovacoes?status=pendente', { cookie: cookieA })).corpo;
+  const fecha = aprovacoes.find((a) => a.acao === 'periodo.fechar');
+  assert.ok(fecha, 'não há solicitação de fechamento pendente');
+  assert.ok(Array.isArray(fecha.previa.checklist) && fecha.previa.checklist.length,
+    'a solicitação de fechamento foi registrada sem o checklist na prévia');
+  assert.ok('pode' in fecha.previa, 'a prévia não diz se o checklist passava');
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================
