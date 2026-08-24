@@ -29,6 +29,42 @@ function pixelEvento(evento, dados) {
 }
 
 const CSS = `
+/* Carrossel do pacote: as capas dos livros do combo se alternam sozinhas.
+   CSS puro, sem JS — cada capa fica visivel em 1/N do ciclo. O atraso positivo
+   + animation-fill-mode:both faz as demais comecarem invisiveis, sem piscar. */
+.lv-carrossel{position:relative}
+.lv-carrossel img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  opacity:0;animation-duration:var(--dur,9s);animation-iteration-count:infinite;animation-fill-mode:both}
+.lv-carrossel.n2 img{animation-name:lvCiclo2}
+.lv-carrossel.n3 img{animation-name:lvCiclo3}
+.lv-carrossel.n4 img{animation-name:lvCiclo4}
+.lv-carrossel.n5 img{animation-name:lvCiclo5}
+/* cada capa some durante o mesmo intervalo em que a proxima surge (cruzamento).
+   Se ela sumisse ANTES, sobrava um instante com a moldura vazia — piscava. */
+@keyframes lvCiclo2{0%{opacity:0}5%{opacity:1}50%{opacity:1}55%{opacity:0}100%{opacity:0}}
+@keyframes lvCiclo3{0%{opacity:0}4%{opacity:1}33.34%{opacity:1}37.34%{opacity:0}100%{opacity:0}}
+@keyframes lvCiclo4{0%{opacity:0}4%{opacity:1}25%{opacity:1}29%{opacity:0}100%{opacity:0}}
+@keyframes lvCiclo5{0%{opacity:0}3%{opacity:1}20%{opacity:1}23%{opacity:0}100%{opacity:0}}
+/* pontinhos que indicam quantas capas estao girando */
+.lv-pontos{position:absolute;left:0;right:0;bottom:6px;display:flex;gap:4px;justify-content:center;z-index:2}
+.lv-pontos i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.45);
+  box-shadow:0 0 0 1px rgba(0,0,0,.25);animation-duration:var(--dur,9s);animation-iteration-count:infinite;animation-fill-mode:both}
+.lv-carrossel.n2 .lv-pontos i{animation-name:lvPonto2}
+.lv-carrossel.n3 .lv-pontos i{animation-name:lvPonto3}
+.lv-carrossel.n4 .lv-pontos i{animation-name:lvPonto4}
+.lv-carrossel.n5 .lv-pontos i{animation-name:lvPonto5}
+@keyframes lvPonto2{0%,50%{background:#fff}50.01%,100%{background:rgba(255,255,255,.45)}}
+@keyframes lvPonto3{0%,33.3%{background:#fff}33.4%,100%{background:rgba(255,255,255,.45)}}
+@keyframes lvPonto4{0%,25%{background:#fff}25.1%,100%{background:rgba(255,255,255,.45)}}
+@keyframes lvPonto5{0%,20%{background:#fff}20.1%,100%{background:rgba(255,255,255,.45)}}
+/* quem pediu menos movimento ve so a primeira capa, parada */
+@media(prefers-reduced-motion:reduce){
+  .lv-carrossel img,.lv-pontos i{animation:none}
+  .lv-carrossel img:first-of-type{opacity:1}
+  .lv-pontos{display:none}
+}
+
+.lv-pacote-capas{position:relative;width:96px;aspect-ratio:2/3;flex:0 0 auto;border-radius:6px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .lv-pacote-preco{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;
   background:#f4f7fb;border:1px solid #dde6f1;border-radius:12px;padding:18px 20px}
 .lv-nota{background:#fdf6e9;border:1px solid #f0dcb4;border-radius:10px;padding:12px 14px;margin:14px 0 0;font-size:14px}
@@ -291,7 +327,7 @@ function vitrine(livros, filtro = {}, listaPacotes = []) {
     <p class="muted" style="margin:0 0 14px">Leve a coleção completa por menos do que comprando um a um.</p>
     <div class="grid grid-books">${(listaPacotes || []).map(p => `
       <a class="card" href="/pacotes/${esc(p.slug)}">
-        <div class="capa">${p.capa_url ? `<img src="${esc(p.capa_url)}" alt="${esc(p.titulo)}" loading="lazy">` : '📚'}</div>
+        <div class="capa" style="position:relative">${carrosselCapas(p.livros)}</div>
         <div class="corpo">
           <span class="badge">${p.livros.length} livros</span>
           <h3>${esc(p.titulo)}</h3>
@@ -368,6 +404,22 @@ function vitrine(livros, filtro = {}, listaPacotes = []) {
     },
   });
 }
+// Carrossel das capas de um pacote. Sem JS: a animação é CSS e cada capa fica
+// visível em 1/N do ciclo. Cai para a capa fixa se o pacote tiver 1 livro só.
+function carrosselCapas(livros, dur = 9) {
+  const capas = (livros || []).filter(b => b && b.capa_url);
+  if (capas.length < 2) {
+    const u = capas[0] && capas[0].capa_url;
+    return u ? `<img src="${esc(u)}" alt="" loading="lazy">` : '📚';
+  }
+  const n = Math.min(capas.length, 5);
+  const passo = dur / capas.length;
+  const imgs = capas.map((b, i) =>
+    `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}" loading="lazy" style="animation-delay:${(i * passo).toFixed(2)}s">`).join('');
+  const pontos = capas.map((_, i) => `<i style="animation-delay:${(i * passo).toFixed(2)}s"></i>`).join('');
+  return `<span class="lv-carrossel n${n}" style="--dur:${dur}s;position:absolute;inset:0">${imgs}<span class="lv-pontos">${pontos}</span></span>`;
+}
+
 function precoMenor(b) {
   const ps = [b.preco_pdf, b.preco_impresso, b.preco_combo].filter(v => v != null);
   return ps.length ? 'a partir de ' + brl(Math.min(...ps)) : 'Em breve';
@@ -394,6 +446,7 @@ function pacote(p) {
   </div></section>
   <section><div class="wrap">
     <div class="lv-pacote-preco">
+      <div class="lv-pacote-capas" aria-hidden="true">${carrosselCapas(p.livros, 7)}</div>
       <div>
         <p class="muted" style="margin:0">Comprados separadamente: <s>${brl(p.soma)}</s></p>
         <p class="preco" style="font-size:30px;margin:4px 0">${brl(p.preco)}</p>
