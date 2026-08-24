@@ -19,6 +19,7 @@ const { j } = require('./db');
 const sessao = require('./sessao');
 const billing = require('./billing');
 const mercadopago = require('./mercadopago');
+const casamento = require('./casamento');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const contasSvc = require('./contas');
@@ -304,6 +305,32 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     }
     return r;
   }, { permissao: 'lancar', modulo: 'bancos', medida: 'lancamentos_mes', json: true }));
+
+  /**
+   * Candidatos a baixa para uma linha do extrato. Leitura: sugere, não faz.
+   */
+  app.get('/finance/api/transacoes/:id/casamentos', ...rota((req, res) => {
+    const t = repo.transacao(req.params.id);
+    if (!t) return res.status(404).json({ erro: 'Transação não encontrada.' });
+    return casamento.candidatos(t, { limite: Math.min(Number(req.query.limite) || 5, 20) });
+  }));
+
+  /**
+   * Baixa o título USANDO esta transação — um lote só, e a transação fica
+   * conciliada apontando para ele. É o que faz o aging parar de acusar
+   * vencido o que já foi recebido.
+   */
+  app.post('/finance/api/transacoes/:id/liquidar', ...rota((req, res) => {
+    const t = repo.transacao(req.params.id);
+    if (!t) return res.status(404).json({ erro: 'Transação não encontrada.' });
+    const d = req.body || {};
+    return casamento.liquidarPelaTransacao(t, {
+      parcelaId: d.parcelaId,
+      valorCents: d.valorCents, jurosCents: d.jurosCents,
+      multaCents: d.multaCents, descontoCents: d.descontoCents,
+      meio: d.meio, observacao: d.observacao,
+    });
+  }, { permissao: 'lancar', modulo: 'razao', medida: 'lancamentos_mes', json: true }));
 
   app.post('/finance/api/transacoes/:id/ignorar', ...rota((req) => ({
     ok: true, transacao: bancos.ignorar(req.params.id, { motivo: (req.body || {}).motivo }),

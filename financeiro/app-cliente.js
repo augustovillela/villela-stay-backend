@@ -363,8 +363,10 @@ const F = {
              <select data-centro="${F.esc(t.id)}" style="min-width:150px;margin-top:4px">${opcoesCentro}</select>
              <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
                <button class="btn" style="padding:6px 12px;min-height:0" onclick="F.conciliar('${F.esc(t.id)}')">Conciliar</button>
+               <button class="btn btn-ghost" style="padding:6px 12px;min-height:0" onclick="F.casar('${F.esc(t.id)}')">Baixar título…</button>
                <button class="btn btn-ghost" style="padding:6px 12px;min-height:0" onclick="F.ignorar('${F.esc(t.id)}')">Ignorar</button>
-             </div>`;
+             </div>
+             <div id="f-casa-${F.esc(t.id)}"></div>`;
       return `<tr>
         <td>${F.dt(t.data)}</td>
         <td style="white-space:normal">${F.esc(t.descricao)}${t.contraparte ? `<div class="sub">${F.esc(t.contraparte)}</div>` : ''}${blocoSug}</td>
@@ -386,6 +388,50 @@ const F = {
   },
 
   filtrarTrans(v) { F.statusTrans = v; F.pintarTransacoes(); },
+
+  /**
+   * Candidatos a baixa. É a ponte que faz o aging parar de acusar vencido
+   * o que já foi recebido — e nenhuma baixa acontece sem alguém clicar.
+   */
+  async casar(id) {
+    const alvo = F.el(`f-casa-${id}`);
+    alvo.innerHTML = '<p class="sub">Procurando títulos em aberto…</p>';
+    try {
+      const r = await F.api('GET', F.url(`/transacoes/${encodeURIComponent(id)}/casamentos`));
+      if (!r.candidatos.length) {
+        alvo.innerHTML = `<p class="sub">Nenhum título em aberto compatível com este movimento
+          (${r.especie === 'receber' ? 'entrada procura contas a receber' : 'saída procura contas a pagar'}).</p>`;
+        return;
+      }
+      alvo.innerHTML = `
+        ${r.aviso ? `<div class="aviso" style="margin:8px 0">${F.esc(r.aviso)}</div>` : ''}
+        ${r.candidatos.map((c) => `
+          <div class="card" style="margin:8px 0;padding:12px${c.alta ? ';border-color:var(--vx-accent)' : ''}">
+            <div><b>${F.esc(c.contraparte || '—')}</b> · parcela ${c.numero} · vence ${F.dt(c.vencimento)} ·
+              saldo <b>${F.esc(c.saldo)}</b> <span class="sub">(${c.pontos}%${c.alta ? ', alta' : ''})</span></div>
+            <div class="sub">${F.esc(c.descricao || '')}${c.documento ? ' · doc ' + F.esc(c.documento) : ''}</div>
+            <ul class="sub" style="margin:6px 0 0;padding-left:18px">${c.motivos.map((m) => `<li>${F.esc(m)}</li>`).join('')}</ul>
+            <p style="margin:8px 0 0"><button class="btn" style="padding:6px 12px;min-height:0"
+              onclick="F.liquidarPeloExtrato('${F.esc(id)}','${F.esc(c.parcelaId)}')">Baixar esta parcela</button></p>
+          </div>`).join('')}
+        <p class="sub">${F.esc(r.natureza)}</p>`;
+    } catch (e) { alvo.innerHTML = `<p class="erro">${F.esc(e.message)}</p>`; }
+  },
+
+  async liquidarPeloExtrato(transacaoId, parcelaId) {
+    const alvo = F.el(`f-casa-${transacaoId}`);
+    try {
+      const r = await F.api('POST', F.url(`/transacoes/${encodeURIComponent(transacaoId)}/liquidar`), { parcelaId });
+      alvo.innerHTML = `<div class="aviso" style="margin:8px 0">Baixado: ${F.esc(F.brl(r.aplicado.valorCents))}${
+        r.aplicado.jurosCents ? ` + ${F.esc(F.brl(r.aplicado.jurosCents))} de juros` : ''} ·
+        saldo da parcela agora ${F.esc(F.brl(r.parcela.saldoNovoCents))}.</div>`;
+      await Promise.all([F.pintarConciliacao(), F.pintarTransacoes()]);
+    } catch (e) {
+      // O erro de invariante (banco ≠ contabilidade) é instrutivo: mostrar
+      // inteiro, porque ele diz exatamente quanto falta ajustar.
+      alvo.innerHTML = `<p class="erro">${F.esc(e.message)}</p>`;
+    }
+  },
 
   async conciliar(id) {
     const msg = F.el('f-tr-msg'); msg.className = 'sub'; msg.textContent = 'Conciliando…';

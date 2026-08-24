@@ -2641,9 +2641,20 @@ function carregarPainel(chamarApi) {
 // legítimo deste painel contém essas palavras.
 const escapeSimples = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+/**
+ * Procura lixo de JavaScript na tela. `NaN` é conferido só no TEXTO entre
+ * tags: os ids são base64url aleatório e um deles pode conter "NaN" por
+ * acaso (aconteceu — `dOEeNaNV22iY`), o que faria o teste falhar sozinho de
+ * tempos em tempos. `undefined` e `[object Object]` valem no HTML inteiro,
+ * inclusive dentro de atributo, onde também são defeito.
+ */
 function semLixo(html, tela) {
-  assert.ok(!/undefined|\[object Object\]|NaN/.test(html),
-    `a tela ${tela} imprimiu lixo: ${(html.match(/.{0,60}(undefined|\[object Object\]|NaN).{0,60}/) || [])[0]}`);
+  const achar = (re) => (html.match(re) || [])[0];
+  const grave = achar(/.{0,60}(undefined|\[object Object\])(.{0,60})/);
+  assert.ok(!grave, `a tela ${tela} imprimiu lixo: ${grave}`);
+  const texto = String(html).replace(/<[^>]*>/g, ' ');
+  const nan = (texto.match(/.{0,60}NaN.{0,60}/) || [])[0];
+  assert.ok(!nan, `a tela ${tela} imprimiu NaN: ${nan}`);
 }
 
 testeAsync('painel do staff: a aba Saúde bate com o que /saude devolve', async () => {
@@ -2811,8 +2822,7 @@ function carregarAppCliente(cookie) {
 
 const F_brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-const semLixoApp = (html, tela) => assert.ok(!/undefined|\[object Object\]|NaN/.test(html),
-  `a tela ${tela} imprimiu lixo: ${(html.match(/.{0,60}(undefined|\[object Object\]|NaN).{0,60}/) || [])[0]}`);
+const semLixoApp = (html, tela) => semLixo(html, tela);
 
 testeAsync('app do assinante: sem sessão, cai na tela de login e NÃO vaza dado', async () => {
   const app = carregarAppCliente('');
@@ -4229,6 +4239,171 @@ lanca('OFX: arquivo sem lançamento é recusado com o motivo', () => {
     conteudo: 'OFXHEADER:100\n<OFX><STMTTRN></STMTTRN></OFX>', formato: 'ofx', fonte: 'vazio',
   }));
 }, /OFX|lançamento|valor/i);
+
+// ============================================================
+// 14.9 CASAR EXTRATO COM PARCELA — a metade que faltava do aging
+// ============================================================
+const casamento = require('./casamento');
+
+/** Título a receber + a linha de extrato correspondente, para os testes. */
+function cenarioCasamento({ valorCents, vencimento, documento, descricaoExtrato, dataExtrato, valorExtrato }) {
+  const cps = naA(() => repo.listarContrapartes(empresaA.id, 'cliente'));
+  const contas = naA(() => repo.listarContas(empresaA.id, { somenteAnaliticas: true }));
+  const receita = contas.find(c => c.codigo.startsWith('3.1'));
+  const t = naA(() => titulos.criar({
+    entidadeId: empresaA.id, especie: 'receber', contraparteId: cps[0].id,
+    documento, descricao: 'aluguel de temporada', valorCents, vencimento,
+    rateio: [{ contaId: receita.id, valorCents }],
+  }));
+  const banco = naA(() => repo.listarContasBancarias(empresaA.id))[0];
+  const imp = naA(() => bancos.importar({
+    entidadeId: empresaA.id, contaBancariaId: banco.id, formato: 'json',
+    conteudo: JSON.stringify([{
+      data: dataExtrato, valorCents: valorExtrato == null ? valorCents : valorExtrato,
+      descricao: descricaoExtrato, documento: 'EXT-' + documento,
+    }]),
+    fonte: 'cenario de casamento ' + documento,
+  }));
+  const trans = naA(() => repo.listarTransacoes(empresaA.id, { limite: 500 }))
+    .find(x => x.documento === 'EXT-' + documento);
+  return { titulo: t, transacao: trans, importacao: imp, contraparte: cps[0] };
+}
+
+teste('casamento: valor idêntico + mesmo dia + nome no extrato = alta confiança', () => {
+  const c = cenarioCasamento({
+    valorCents: 187500, vencimento: '2026-08-14', documento: 'CAS-1',
+    dataExtrato: '2026-08-14', descricaoExtrato: 'PIX RECEBIDO',
+  });
+  const r = naA(() => casamento.candidatos(c.transacao));
+  assert.ok(r.candidatos.length, 'não achou candidato para o caso mais óbvio possível');
+  const top = r.candidatos[0];
+  assert.strictEqual(top.parcelaId, naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0].id);
+  assert.ok(top.alta, `confiança baixa (${top.pontos}) num casamento exato`);
+  // Score sem motivo é palpite com número.
+  assert.ok(top.motivos.some(m => /valor idêntico/.test(m)), 'não explica que o valor bateu');
+  assert.ok(top.motivos.some(m => /vencimento/.test(m)), 'não explica a proximidade da data');
+});
+
+teste('casamento: entrada NÃO oferece conta a pagar (e vice-versa)', () => {
+  const c = cenarioCasamento({
+    valorCents: 44400, vencimento: '2026-08-10', documento: 'CAS-2',
+    dataExtrato: '2026-08-10', descricaoExtrato: 'PIX RECEBIDO',
+  });
+  const r = naA(() => casamento.candidatos(c.transacao));
+  assert.strictEqual(r.especie, 'receber', 'entrada do extrato procurou conta a pagar');
+  assert.ok(r.candidatos.every(x => x.especie === 'receber'),
+    'ofereceu parcela de espécie errada — baixaria um fornecedor com dinheiro que entrou');
+});
+
+teste('casamento: parcela muito maior que o movimento não vira candidata forte', () => {
+  const c = cenarioCasamento({
+    valorCents: 900000, vencimento: '2026-08-12', documento: 'CAS-3',
+    dataExtrato: '2026-08-12', descricaoExtrato: 'PIX RECEBIDO', valorExtrato: 1000,
+  });
+  const r = naA(() => casamento.candidatos(c.transacao));
+  const dele = r.candidatos.find(x => x.documento === 'CAS-3');
+  assert.ok(!dele || !dele.alta, 'R$ 10 baixando uma parcela de R$ 9.000 apareceu como alta confiança');
+});
+
+teste('casamento: o documento do título no texto do extrato pesa', () => {
+  const c = cenarioCasamento({
+    valorCents: 33300, vencimento: '2026-07-02', documento: 'NFSE-99881',
+    dataExtrato: '2026-08-20', descricaoExtrato: 'TED RECEBIDA REF NFSE-99881',
+  });
+  const r = naA(() => casamento.candidatos(c.transacao));
+  const top = r.candidatos[0];
+  assert.strictEqual(top.documento, 'NFSE-99881', 'o documento citado no extrato não puxou o título para o topo');
+  assert.ok(top.motivos.some(m => /documento NFSE-99881/.test(m)), 'não diz que achou o documento');
+});
+
+teste('casamento: baixa pelo extrato zera a parcela E concilia a transação no MESMO lote', () => {
+  const c = cenarioCasamento({
+    valorCents: 250000, vencimento: '2026-08-18', documento: 'CAS-4',
+    dataExtrato: '2026-08-18', descricaoExtrato: 'PIX RECEBIDO',
+  });
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  const r = naA(() => casamento.liquidarPelaTransacao(c.transacao, { parcelaId: parcela.id }));
+
+  assert.strictEqual(r.aplicado.valorCents, 250000);
+  assert.strictEqual(r.parcela.saldoNovoCents, 0, 'a parcela não foi zerada');
+
+  const t2 = naA(() => repo.transacao(c.transacao.id));
+  assert.strictEqual(t2.status, 'conciliada', 'a transação do extrato ficou pendente depois da baixa');
+  assert.strictEqual(t2.lote_id, r.loteId,
+    'a transação apontou para outro lote — dois lançamentos para o mesmo dinheiro');
+
+  const depois = naA(() => titulos.buscar(c.titulo.titulo.id));
+  assert.strictEqual(depois.status, 'liquidado', `título ficou ${depois.status}`);
+});
+
+teste('casamento: dinheiro a MAIS vira juros sozinho, e a conta fecha', () => {
+  const c = cenarioCasamento({
+    valorCents: 100000, vencimento: '2026-07-10', documento: 'CAS-5',
+    dataExtrato: '2026-08-11', descricaoExtrato: 'PIX RECEBIDO', valorExtrato: 105000,
+  });
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  const r = naA(() => casamento.liquidarPelaTransacao(c.transacao, { parcelaId: parcela.id }));
+  assert.strictEqual(r.aplicado.valorCents, 100000, 'não baixou o principal cheio');
+  assert.strictEqual(r.aplicado.jurosCents, 5000, 'a sobra não virou juros');
+  assert.strictEqual(r.movimentadoCents, 105000, 'o movimento não bateu com o extrato');
+});
+
+teste('casamento: dinheiro a MENOS vira baixa parcial', () => {
+  const c = cenarioCasamento({
+    valorCents: 80000, vencimento: '2026-08-19', documento: 'CAS-6',
+    dataExtrato: '2026-08-19', descricaoExtrato: 'PIX RECEBIDO', valorExtrato: 30000,
+  });
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  const r = naA(() => casamento.liquidarPelaTransacao(c.transacao, { parcelaId: parcela.id }));
+  assert.strictEqual(r.aplicado.valorCents, 30000);
+  assert.strictEqual(r.parcela.saldoNovoCents, 50000);
+  const p2 = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  assert.strictEqual(p2.status, 'parcial');
+});
+
+lanca('casamento: o que a contabilidade registra tem de bater com o que o banco moveu', () => {
+  const c = cenarioCasamento({
+    valorCents: 60000, vencimento: '2026-08-21', documento: 'CAS-7',
+    dataExtrato: '2026-08-21', descricaoExtrato: 'PIX RECEBIDO',
+  });
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  // Pede baixa de 500 num movimento de 600: a diferença não existe no banco.
+  naA(() => casamento.liquidarPelaTransacao(c.transacao, { parcelaId: parcela.id, valorCents: 50000, jurosCents: 0 }));
+}, /extrato movimentou|Ajuste valor/);
+
+lanca('casamento: transação já conciliada não baixa nada de novo', () => {
+  const c = cenarioCasamento({
+    valorCents: 12300, vencimento: '2026-08-22', documento: 'CAS-8',
+    dataExtrato: '2026-08-22', descricaoExtrato: 'PIX RECEBIDO',
+  });
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  naA(() => casamento.liquidarPelaTransacao(c.transacao, { parcelaId: parcela.id }));
+  naA(() => casamento.liquidarPelaTransacao(naA(() => repo.transacao(c.transacao.id)), { parcelaId: parcela.id }));
+}, /já está conciliada/);
+
+teste('casamento: o aging DIMINUI depois da baixa pelo extrato', () => {
+  // A prova de que isto resolve o problema real: o vencido cai.
+  const c = cenarioCasamento({
+    valorCents: 400000, vencimento: '2026-06-01', documento: 'CAS-9',
+    dataExtrato: '2026-08-23', descricaoExtrato: 'PIX RECEBIDO',
+  });
+  const antes = naA(() => titulos.aging(empresaA.id, { especie: 'receber', referencia: '2026-08-23' }));
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  naA(() => casamento.liquidarPelaTransacao(c.transacao, { parcelaId: parcela.id }));
+  const depois = naA(() => titulos.aging(empresaA.id, { especie: 'receber', referencia: '2026-08-23' }));
+
+  assert.strictEqual(depois.totalVencidoCents, antes.totalVencidoCents - 400000,
+    'o aging não caiu depois de receber — é exatamente o defeito que isto veio corrigir');
+});
+
+teste('casamento: palavras de ruído do extrato não fazem nome casar', () => {
+  // "Pagamento", "Pix", "Ltda" aparecem em tudo: se contassem como sinal,
+  // todo fornecedor casaria com toda linha do extrato.
+  assert.strictEqual(casamento.nomeBate('Pagamentos Ltda', 'PIX RECEBIDO PAGAMENTO').bate, false,
+    'casou por palavra genérica');
+  assert.strictEqual(casamento.nomeBate('Neoenergia Brasília', 'DEB AUT NEOENERGIA').bate, true,
+    'deixou de casar um nome distintivo');
+});
 
 // =====================================================================
 // 15. INTEGRIDADE FINAL

@@ -519,6 +519,24 @@ const listarAudit = (filtros = {}) => q(
 const auditEmOrdem = (tenantId) => db.prepare(
   'SELECT * FROM audit_logs WHERE tenant_id = ? ORDER BY seq').all(tenantId);
 
+/**
+ * Parcelas em aberto com o que o casamento com o extrato precisa: o saldo,
+ * o vencimento, o documento e o nome da contraparte. Uma consulta só —
+ * casar linha a linha do extrato contra o banco seria N+1.
+ */
+const parcelasAbertasParaCasamento = (entidadeId, especie) => q(
+  `SELECT p.id, p.titulo_id, p.numero, p.vencimento, p.valor_cents, p.pago_cents,
+          t.especie, t.documento, t.descricao, t.competencia,
+          c.nome AS contraparte_nome, c.id AS contraparte_id
+     FROM fin_parcelas p
+     JOIN fin_titulos t ON t.id = p.titulo_id AND t.tenant_id = p.tenant_id
+     LEFT JOIN fin_contrapartes c ON c.id = t.contraparte_id AND c.tenant_id = t.tenant_id
+    WHERE p.tenant_id = :tenant AND t.entidade_id = :ent AND t.especie = :especie
+      AND p.status IN ('aberta','parcial') AND t.status <> 'cancelado'
+    ORDER BY p.vencimento
+    LIMIT 2000`,
+  { ent: entidadeId, especie });
+
 // ----------------------------------------------------- assinatura/cobrança
 // `subscriptions` e `invoices` têm tenant_id — passam pelo guarda como
 // qualquer tabela de domínio. As buscas do WEBHOOK são a exceção: chegam
@@ -634,6 +652,7 @@ module.exports = {
   criarImportacao, importacao, importacaoPorHash, listarImportacoes,
   inserirTransacao, transacao, transacaoPorFingerprint, listarTransacoes, atualizarTransacao, contarTransacoes,
   criarRegra, regra, listarRegras, registrarAcertoRegra,
+  parcelasAbertasParaCasamento,
   criarAprovacao, aprovacao, listarAprovacoes, decidirAprovacao, registrarExecucao, expirarAprovacoesVencidas,
   ultimoAudit, inserirAudit, listarAudit, auditEmOrdem,
   publicarEvento, eventosPendentes, marcarEvento, eventoDePlataforma, ultimoEventoDePlataforma,

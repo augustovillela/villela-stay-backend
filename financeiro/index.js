@@ -64,6 +64,7 @@ const retencao = require('./retencao');
 const seguranca = require('./seguranca');
 const billing = require('./billing');
 const mercadopago = require('./mercadopago');
+const casamento = require('./casamento');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -144,7 +145,7 @@ function montar(app, injected = {}) {
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
     periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing, mercadopago,
+    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing, mercadopago, casamento,
   };
 }
 
@@ -324,5 +325,5 @@ module.exports = {
   montar, pararWorker, registrarExecutores, sincronizarStaysDeTodos,
   tenancy, repo, contas, entitlements, rbac, ledger, dinheiro, bancos,
   classificacao, periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-  contrapartes, titulos, liquidacoes, billing, mercadopago,
+  contrapartes, titulos, liquidacoes, billing, mercadopago, casamento,
 };

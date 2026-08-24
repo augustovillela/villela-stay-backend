@@ -139,7 +139,17 @@ function conferir(repo, competencia, { tenantId = null } = {}) {
   for (const r of registros) {
     if (r.erro) { divergencias.push({ tipo: 'linha_ilegivel', ...r }); continue; }
     if (r.hash_anterior !== anterior) {
-      divergencias.push({ tipo: 'cadeia_quebrada', seq: r.seq, lote_id: r.lote.id });
+      // O diagnóstico vai JUNTO. Uma quebra de cadeia sem o estado ao lado
+      // obriga a reproduzir para entender — e cadeia quebrada é justamente
+      // o tipo de coisa que não se reproduz sob demanda. Com o hash que o
+      // estado guardava, dá para separar na hora "arquivo adulterado" de
+      // "estado e arquivo saíram de sincronia".
+      divergencias.push({
+        tipo: 'cadeia_quebrada', seq: r.seq, lote_id: r.lote.id,
+        esperado: anterior, encontrado: r.hash_anterior,
+        estadoDoMes: (lerEstado().meses || {})[competencia] || null,
+        registrosNoArquivo: registros.length,
+      });
     }
     anterior = r.hash;
 
