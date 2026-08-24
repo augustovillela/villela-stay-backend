@@ -38,6 +38,35 @@ services:
       # Gerar: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
       - key: GROWTH_SECRET_KEY
         sync: false
+      # VILLELA FINANCE (14o produto). Banco SQLite proprio em
+      # DATA_DIR/financeiro/ — nasce sozinho no primeiro boot, nao precisa
+      # de env para funcionar. As de baixo sao OPCIONAIS e cada uma liga uma
+      # capacidade; sem elas o modulo sobe e DIZ no log o que esta faltando.
+      #
+      # Replica do razao no R2 (ADR-0004): sem estas quatro, o diario grava
+      # so no disco e o RPO real e o do snapshot diario (~24h), nao 5 min.
+      # Pode reusar o mesmo bucket/credencial da Origena mudando o prefixo.
+      - key: FINANCE_S3_ENDPOINT    # https://<accountid>.r2.cloudflarestorage.com
+        sync: false
+      - key: FINANCE_S3_BUCKET
+        sync: false
+      - key: FINANCE_S3_KEY
+        sync: false
+      - key: FINANCE_S3_SECRET
+        sync: false
+      - key: FINANCE_S3_REGION
+        value: auto
+      - key: FINANCE_S3_PREFIXO
+        value: financeiro/diario/
+      # Intervalo da replica, em minutos.
+      - key: FINANCE_REPLICA_MIN
+        value: "5"
+      # Sincronizacao automatica da Stays, em minutos. DESLIGADA (ausente ou
+      # 0): o adaptador so roda por chamada de rota. Ligar so DEPOIS de rodar
+      # a previa (dryRun) e conferir o que ele pretende lancar.
+      # - key: FINANCE_STAYS_SYNC_MIN
+      #   value: "60"
+
       # ORIGENA (12o produto). Unico com banco PROPRIO (PostgreSQL) e todo
       # binario no R2 — os porquês estao em docs/origena/DECISIONS/ (repo-pai).
       # Sem estas envs a landing sobe e o resto fica desligado, com log claro.
