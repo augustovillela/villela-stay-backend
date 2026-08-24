@@ -58,6 +58,12 @@ function responderErro(res, e) {
   res.status(status).json(corpo);
 }
 
+/** Sugestão só existe se apontar para uma conta. Ver o comentário em /transacoes. */
+function F_sugestao(bruto) {
+  const s = j.parse(bruto, null);
+  return s && s.contaId ? s : null;
+}
+
 function registrarRotasApp(app, { jwtSecret, express }) {
   if (!jwtSecret || !express) throw new Error('financeiro/rotas-app: faltam deps (jwtSecret, express).');
   const seguro = process.env.NODE_ENV === 'production';
@@ -237,7 +243,11 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       transacoes: lista.map(t => ({
         id: t.id, data: t.data, valorCents: t.valor_cents, valor: dinheiro.formatar(t.valor_cents),
         descricao: t.descricao, documento: t.documento, contraparte: t.contraparte_nome,
-        status: t.status, loteId: t.lote_id, sugestao: j.parse(t.sugestao, null),
+        // A coluna nasce com '{}' (default do schema), então `j.parse` devolve
+        // um objeto VAZIO para transação nunca avaliada. Vazio é verdadeiro em
+        // JS: o cliente exibiria "sugerido: (confiança undefined%)". Ausência
+        // de sugestão tem de ser `null`, não objeto sem conteúdo.
+        status: t.status, loteId: t.lote_id, sugestao: F_sugestao(t.sugestao),
         contaBancariaId: t.conta_bancaria_id,
       })),
       contagem: repo.contarTransacoes(req.entidade.id),

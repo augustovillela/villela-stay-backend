@@ -2794,8 +2794,13 @@ function carregarAppCliente(cookie) {
     },
     document: {
       getElementById: (id) => elementos[id] || (elementos[id] = elemento(id)),
+      // `querySelector` é usado pelos seletores de conta/centro da linha do
+      // extrato; o teste registra o elemento pela própria string do seletor.
+      querySelector: (sel) => elementos[sel] || null,
       addEventListener: () => {},
     },
+    prompt: (_p, padrao) => padrao || 'motivo do teste',
+    alert: () => {},
     URLSearchParams,
     Date, Number, String, Math, JSON, Object, Array, Promise, encodeURIComponent, console,
   };
@@ -2803,6 +2808,8 @@ function carregarAppCliente(cookie) {
   vm.runInContext(`${fonte}\n;this.F = F;`, sandbox, { filename: 'app-cliente.js' });
   return { F: sandbox.F, escritos, elementos };
 }
+
+const F_brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
 const semLixoApp = (html, tela) => assert.ok(!/undefined|\[object Object\]|NaN/.test(html),
   `a tela ${tela} imprimiu lixo: ${(html.match(/.{0,60}(undefined|\[object Object\]|NaN).{0,60}/) || [])[0]}`);
@@ -2918,6 +2925,91 @@ testeAsync('app do assinante: conta SUSPENSA vê o aviso e continua lendo', asyn
   } finally {
     repo.atualizarTenant(contaD.id, { status: antes });
   }
+});
+
+testeAsync('app do assinante: a aba Extrato mostra a conciliação com a explicação da API', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vExtrato();
+  semLixoApp(app.escritos['f-corpo'], 'extrato');
+
+  const bancos = (await pedir('GET', '/finance/api/bancos', { cookie: cookieA })).corpo.contas;
+  assert.ok(bancos.length, 'a conta de teste devia ter conta bancária');
+  const c = (await pedir('GET', `/finance/api/bancos/${app.F.bancoId}/conciliacao`, { cookie: cookieA })).corpo;
+  const painel = app.escritos['f-concil'];
+  assert.ok(painel.includes(c.explicacao),
+    'a tela não repete a EXPLICAÇÃO da conciliação — é a frase que diz se bate ou não');
+  assert.ok(painel.includes(F_brl(c.saldoExtratoCents)) && painel.includes(F_brl(c.saldoRazaoCents)),
+    'a tela não confronta o saldo do extrato com o do razão');
+});
+
+testeAsync('app do assinante: toda sugestão aparece com o MOTIVO e a confiança', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vExtrato();
+  const html = app.escritos['f-trans'];
+  semLixoApp(html, 'transações');
+
+  const { transacoes } = (await pedir('GET', `/finance/api/transacoes?banco=${app.F.bancoId}&limite=300`, { cookie: cookieA })).corpo;
+  const comSugestao = transacoes.filter((t) => t.sugestao);
+  assert.ok(comSugestao.length, 'nenhuma transação com sugestão — o teste não provaria nada');
+  for (const t of comSugestao.slice(0, 5)) {
+    // O motivo carrega aspas ("a descrição contém \"assinatura\""), e a tela
+    // escapa antes de imprimir — comparar com o texto cru daria falso negativo.
+    assert.ok(html.includes(escapeSimples(t.sugestao.motivo)),
+      `a sugestão de "${t.descricao}" apareceu sem o motivo — sugestão sem porquê é palpite`);
+    assert.ok(html.includes(String(t.sugestao.confianca) + '%'),
+      `a sugestão de "${t.descricao}" apareceu sem a confiança`);
+  }
+  const semSugestao = transacoes.filter((t) => !t.sugestao && t.status !== 'conciliada' && t.status !== 'ignorada');
+  if (semSugestao.length) {
+    assert.ok(/Sem sugestão/.test(html),
+      'transação sem sugestão não avisa que a conta precisa ser escolhida — célula vazia parece ausência de dado');
+  }
+});
+
+testeAsync('API: transação sem sugestão devolve null, não objeto vazio', async () => {
+  // A coluna nasce com '{}': se a rota devolvesse isso cru, todo cliente
+  // trataria "sem sugestão" como "tem sugestão" — objeto vazio é verdadeiro.
+  const { transacoes } = (await pedir('GET', '/finance/api/transacoes?limite=500', { cookie: cookieA })).corpo;
+  for (const t of transacoes) {
+    if (t.sugestao !== null) {
+      assert.ok(t.sugestao.contaId, `transação ${t.id} devolveu sugestão sem conta`);
+      assert.ok(t.sugestao.motivo, `transação ${t.id} devolveu sugestão sem motivo`);
+      assert.ok(typeof t.sugestao.confianca === 'number', `transação ${t.id} devolveu sugestão sem confiança`);
+    }
+  }
+});
+
+testeAsync('app do assinante: conciliar pela tela leva a transação para o razão', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vExtrato();
+
+  const { transacoes } = (await pedir('GET', `/finance/api/transacoes?banco=${app.F.bancoId}&limite=300`, { cookie: cookieA })).corpo;
+  const alvo = transacoes.find((t) => t.sugestao && t.sugestao.alta && t.status !== 'conciliada');
+  if (!alvo) return;                     // nada a conciliar nesta rodada
+
+  app.elementos[`[data-conta="${alvo.id}"]`] = { value: '' };
+  app.elementos[`[data-centro="${alvo.id}"]`] = { value: '' };
+  await app.F.conciliar(alvo.id);
+
+  const depois = (await pedir('GET', `/finance/api/transacoes?banco=${app.F.bancoId}&limite=300`, { cookie: cookieA }))
+    .corpo.transacoes.find((t) => t.id === alvo.id);
+  assert.strictEqual(depois.status, 'conciliada', 'a transação não foi conciliada pela tela');
+  assert.ok(depois.loteId, 'conciliou sem gerar lote no razão');
+});
+
+testeAsync('app do assinante: conta sem banco cadastrado ensina o que fazer, não dá tela vazia', async () => {
+  const login = await pedir('POST', '/finance/api/login',
+    { corpo: { email: 'dono@mercearia.com.br', senha: 'senha-forte-3' } });
+  const cookieD = (login.cookies[0] || '').split(';')[0];
+  const app = carregarAppCliente(cookieD);
+  await app.F.iniciar();
+  await app.F.vExtrato();
+  const html = app.escritos['f-corpo'];
+  assert.ok(/Nenhuma conta bancária/.test(html), 'não explica que falta cadastrar a conta');
+  assert.ok(/f-banco-form/.test(html), 'não oferece o cadastro ali mesmo');
 });
 
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
