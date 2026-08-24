@@ -62,6 +62,7 @@ const mfa = require('./mfa');
 const restauracao = require('./restauracao');
 const retencao = require('./retencao');
 const seguranca = require('./seguranca');
+const billing = require('./billing');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -101,6 +102,24 @@ function montar(app, injected = {}) {
   const portaAgente = !!injected.requirePublishOrAdmin;
   if (portaAgente) registrarRotasAgente(app, { requirePublishOrAdmin: injected.requirePublishOrAdmin, express });
 
+  // ------------------------------------------------------------ cobrança
+  // Recorrência mensal via preapproval do Mercado Pago (mesmo `mpFetch`
+  // dos outros produtos). Sem MP configurado o módulo NÃO fica sem
+  // cobrança: o painel do staff registra Pix/boleto à mão, auditado.
+  billing.configurar({
+    mpFetch: injected.mpFetch,
+    notificar: alertaAugusto,
+    baseUrl: process.env.SITE_URL || process.env.BASE_URL || '',
+  });
+  // O MP exige 200 rápido: respondemos antes de processar. Se o
+  // processamento falhar, o MP reenvia — e o reenvio é idempotente
+  // (billing.registrarPagamento confere o id do pagamento).
+  app.post('/finance/webhooks/mercadopago', express.json({ type: () => true }), (req, res) => {
+    res.sendStatus(200);
+    Promise.resolve(billing.processarWebhook(req.body || {}, req.query || {}))
+      .catch(e => console.error('[finance] webhook MP:', e.message));
+  });
+
   iniciarWorker(alertaAugusto);
 
   console.log(
@@ -109,6 +128,7 @@ function montar(app, injected = {}) {
     `diário: ${diario.configurada() ? 'replicando para R2' : 'LOCAL (defina FINANCE_S3_* para replicar)'} · ` +
     `Stays: ${staysOk.disponivel ? (staysOk.resolveNomes ? 'ligada' : 'ligada (sem nome de hóspede)') : 'NAO configurada'} · ` +
     `agente: ${portaAgente ? '/staff/api/finance/agente (so conta interna, nivel <= 2)' : 'INDISPONIVEL'} · ` +
+    `cobrança: ${billing.ativo() ? 'Mercado Pago (recorrência)' : 'MANUAL (sem MP_ACCESS_TOKEN)'} · ` +
     `acesso inicial: ${usuarioInicial.criado ? `criado (${usuarioInicial.email})` : usuarioInicial.motivo} · ` +
     `MFA: ${mfa.configurado() ? 'TOTP disponível' : 'INDISPONÍVEL (defina FINANCE_SECRET_KEY)'} · ` +
     `legado /staff/api/financeiro/* intacto` +
@@ -118,7 +138,7 @@ function montar(app, injected = {}) {
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
     periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, apuracao, caixa, orcamento, tenancy,
+    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing,
   };
 }
 
@@ -213,6 +233,21 @@ function iniciarWorker(alertaAugusto) {
       }
     } catch (e) { console.error('[finance] expirar aprovações:', e.message); }
 
+    // Régua de cobrança: uma vez por dia. O marcador vive no banco (e não
+    // em memória) porque o processo reinicia a cada deploy — e uma régua
+    // que roda de novo a cada reinício notificaria o Augusto sem motivo.
+    try {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const ultimo = repo.ultimoEventoDePlataforma('billing.ciclo');
+      if (!ultimo || String(ultimo.criado_em).slice(0, 10) < hoje) {
+        const r = billing.cicloDeVida();
+        repo.eventoDePlataforma('billing.ciclo', r);
+        if (r.trialsVencidos.length || r.suspensas.length) {
+          console.log(`[finance] cobrança: ${r.trialsVencidos.length} trial(s) vencido(s), ${r.suspensas.length} suspensa(s).`);
+        }
+      }
+    } catch (e) { console.error('[finance] régua de cobrança:', e.message); }
+
     // Sincronização automática da Stays: DESLIGADA por padrão. Bater numa
     // API externa em laço, gravando no razão, é decisão do dono — não
     // efeito colateral de subir o servidor. Ligue com FINANCE_STAYS_SYNC_MIN.
@@ -283,5 +318,5 @@ module.exports = {
   montar, pararWorker, registrarExecutores, sincronizarStaysDeTodos,
   tenancy, repo, contas, entitlements, rbac, ledger, dinheiro, bancos,
   classificacao, periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-  contrapartes, titulos, liquidacoes,
+  contrapartes, titulos, liquidacoes, billing,
 };

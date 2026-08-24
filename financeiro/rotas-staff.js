@@ -21,6 +21,7 @@ const auditoria = require('./auditoria');
 const diario = require('./diario');
 const rbac = require('./rbac');
 const dinheiro = require('./dinheiro');
+const billing = require('./billing');
 const { responderErro } = require('./rotas-app');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
@@ -147,6 +148,45 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
     });
     return { ok: true, plano: repo.planoPorSlug(p.slug) };
   }, { json: true, motivo: 'alterar plano' }));
+
+  // --------------------------------------------------------- cobrança
+  // O painel comercial: MRR, régua de inadimplência e o pagamento fora do
+  // Mercado Pago (Pix/boleto/contrato), que é como um B2B começa.
+  app.get(`${B}/billing`, ...admin(() => ({
+    resumo: billing.resumo(),
+    faturas: billing.faturasDaPlataforma(60),
+  }), { motivo: 'painel de cobrança' }));
+
+  app.post(`${B}/billing/:id/pago`, ...admin((req) => {
+    const d = req.body || {};
+    const t = repo.tenantPorId(req.params.id);
+    if (!t) throw Object.assign(new Error('Conta não encontrada.'), { status: 404 });
+    return tenancy.comTenant({ tenantId: t.id, userId: 'plataforma', perfil: 'plataforma' }, () =>
+      billing.marcarPago(t.id, {
+        competencia: String(d.competencia || ''),
+        valorCents: d.valorCents == null ? null : Number(d.valorCents),
+        motivo: String(d.motivo || ''),
+      }));
+  }, { json: true, motivo: 'registrar pagamento fora do Mercado Pago' }));
+
+  app.post(`${B}/billing/:id/status`, ...admin((req) => {
+    const d = req.body || {};
+    const t = repo.tenantPorId(req.params.id);
+    if (!t) throw Object.assign(new Error('Conta não encontrada.'), { status: 404 });
+    const permitidos = ['ativa', 'inadimplente', 'suspensa', 'cancelada'];
+    if (!permitidos.includes(String(d.status))) {
+      throw Object.assign(new Error(`Status inválido. Use um de: ${permitidos.join(', ')}.`), { status: 400 });
+    }
+    if (!String(d.motivo || '').trim()) {
+      throw Object.assign(new Error('Informe o motivo — ele vai para a auditoria da conta.'), { status: 400 });
+    }
+    return tenancy.comTenant({ tenantId: t.id, userId: 'plataforma', perfil: 'plataforma' }, () => ({
+      ok: true, mudanca: billing.mudarStatusDaConta(t.id, String(d.status), String(d.motivo)),
+    }));
+  }, { json: true, motivo: 'mudar status comercial da conta' }));
+
+  app.post(`${B}/billing/ciclo`, ...admin(() => billing.cicloDeVida(),
+    { motivo: 'rodar a régua de cobrança manualmente' }));
 
   // ------------------------------------------------------------ saúde
   /** O painel que responde "posso confiar nos números?" para TODAS as contas. */

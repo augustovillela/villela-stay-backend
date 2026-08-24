@@ -77,6 +77,16 @@ Variáveis: `FINANCE_WORKER=off` (desliga o worker) · `FINANCE_WORKER_MS` · `F
   sistema diria "ok" com o saldo vivo nas contas de resultado.
 - **Balanço fecha porque o resultado do exercício é linha CALCULADA do PL.** Não confie que as
   contas 3 e 4 estejam zeradas — elas só zeram quando alguém apura.
+- **A régua de cobrança pula `interno = 1`.** É cortesia vitalícia, e a conta do grupo é a que mais
+  se parece com uma inadimplente (sem plano pago, sem fatura). Tirar esse `continue` suspenderia a
+  contabilidade da própria casa na primeira rodada — há teste que encena exatamente isso.
+- **Assinar não ativa.** `billing.assinar` grava `pendente`; quem promove a `ativa` é o webhook do
+  Mercado Pago. E o webhook é reenviado: por isso a fatura é idempotente pelo id do pagamento e o
+  `authorized` repetido não gera fatura nem alerta de novo.
+- **O painel do staff é testado contra a rota, não contra si mesmo.** `staff/app-finance.js` é
+  carregado num sandbox no `selftest` e alimentado com a resposta real da API, comparando os
+  VALORES que ela devolveu. `esc(undefined)` devolve string vazia — sem comparar valor, um campo
+  renomeado sumiria da tela sem quebrar nada.
 - **Conta-chave nova no plano de contas** só chega às empresas ANTIGAS por
   `contas.atualizarPlanosDeConta()`, que roda no boot. Acrescentar ao `PADRAO` sem isso quebraria
   só na primeira operação que usasse a conta.

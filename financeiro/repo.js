@@ -515,6 +515,73 @@ const listarAudit = (filtros = {}) => q(
 const auditEmOrdem = (tenantId) => db.prepare(
   'SELECT * FROM audit_logs WHERE tenant_id = ? ORDER BY seq').all(tenantId);
 
+// ----------------------------------------------------- assinatura/cobrança
+// `subscriptions` e `invoices` têm tenant_id — passam pelo guarda como
+// qualquer tabela de domínio. As buscas do WEBHOOK são a exceção: chegam
+// sem contexto (quem fala é o Mercado Pago, não o assinante), e por isso
+// usam qPlataforma, que exige tenancy.comoPlataforma() com motivo.
+
+const criarAssinatura = (d) => {
+  const id = novoId();
+  exec(`INSERT INTO subscriptions (id, tenant_id, plano_id, status, externo_ref, inicio, criado_em)
+        VALUES (:id, :tenant, :plano, :status, :ref, :inicio, :agora)`,
+    { id, plano: d.planoId, status: d.status || 'ativa', ref: d.externoRef || '', inicio: d.inicio || nowISO(), agora: nowISO() });
+  return assinatura(id);
+};
+const assinatura = (id) => um('SELECT * FROM subscriptions WHERE tenant_id = :tenant AND id = :id', { id });
+const assinaturaVigente = () => um(
+  `SELECT * FROM subscriptions WHERE tenant_id = :tenant
+     AND status IN ('pendente','ativa','inadimplente') ORDER BY criado_em DESC LIMIT 1`, {});
+const listarAssinaturas = (limite = 24) => q(
+  'SELECT * FROM subscriptions WHERE tenant_id = :tenant ORDER BY criado_em DESC LIMIT :limite', { limite });
+const atualizarAssinatura = (id, campos) => {
+  const permitidos = ['status', 'plano_id', 'externo_ref', 'fim'];
+  const sets = Object.keys(campos).filter(k => permitidos.includes(k));
+  if (!sets.length) return assinatura(id);
+  const bind = { id, agora: nowISO() };
+  for (const k of sets) bind[k] = campos[k];
+  exec(`UPDATE subscriptions SET ${sets.map(k => `${k} = :${k}`).join(', ')}, atualizado_em = :agora
+        WHERE tenant_id = :tenant AND id = :id`, bind);
+  return assinatura(id);
+};
+
+/** Webhook: descobre de QUEM é o preapproval. Sem contexto, por natureza. */
+const assinaturaPorRefExterna = (ref) => umPlataforma(
+  "SELECT * FROM subscriptions WHERE externo_ref = :ref AND externo_ref <> '' ORDER BY criado_em DESC LIMIT 1",
+  { ref: String(ref || '') });
+
+const criarInvoice = (d) => {
+  const id = novoId();
+  exec(`INSERT INTO invoices (id, tenant_id, competencia, valor_cents, status, vencimento, pago_em, externo_ref, criado_em)
+        VALUES (:id, :tenant, :comp, :valor, :status, :venc, :pago, :ref, :agora)`,
+    { id, comp: d.competencia, valor: d.valorCents || 0, status: d.status || 'aberta',
+      venc: d.vencimento || '', pago: d.pagoEm || '', ref: d.externoRef || '', agora: nowISO() });
+  return invoice(id);
+};
+const invoice = (id) => um('SELECT * FROM invoices WHERE tenant_id = :tenant AND id = :id', { id });
+const listarInvoices = (limite = 12) => q(
+  'SELECT * FROM invoices WHERE tenant_id = :tenant ORDER BY criado_em DESC LIMIT :limite', { limite });
+const marcarInvoicePaga = (id, ref = '') => {
+  exec(`UPDATE invoices SET status = 'paga', pago_em = :agora, externo_ref = CASE WHEN :ref <> '' THEN :ref ELSE externo_ref END
+        WHERE tenant_id = :tenant AND id = :id`, { id, ref: String(ref || ''), agora: nowISO() });
+  return invoice(id);
+};
+
+/**
+ * Idempotência do pagamento: o Mercado Pago reenvia o mesmo webhook. A
+ * pergunta "já registrei este pagamento?" é feita DENTRO da conta — o
+ * webhook já resolveu de quem é antes de chegar aqui, e responder de
+ * fora do guarda seria abrir uma leitura cruzada sem necessidade.
+ */
+const invoicePorRefExterna = (ref) => um(
+  `SELECT * FROM invoices WHERE tenant_id = :tenant AND externo_ref = :ref AND externo_ref <> '' LIMIT 1`,
+  { ref: String(ref || '') });
+
+/** Faturamento recorrente da plataforma (MRR), conta a conta. */
+const assinaturasAtivasDaPlataforma = () => qPlataforma(
+  `SELECT s.tenant_id, s.status, s.plano_id, s.externo_ref, s.inicio
+     FROM subscriptions s WHERE s.status IN ('ativa','inadimplente')`, {});
+
 // ------------------------------------------------------------- eventos
 const publicarEvento = (d) => {
   const id = novoId();
@@ -523,6 +590,22 @@ const publicarEvento = (d) => {
     { id, tipo: d.tipo, payload: j.str(d.payload || {}), cid: tenancy.correlationId(), agora: nowISO() });
   return id;
 };
+/**
+ * Evento da PLATAFORMA (tenant_id = ''): régua de cobrança, rotinas. A
+ * tabela é mista — o guarda exige o predicado de tenant_id no SQL, não
+ * um contexto, porque quem grava aqui não age em nome de conta nenhuma.
+ */
+const eventoDePlataforma = (tipo, payload = {}) => {
+  const id = novoId();
+  exec(`INSERT INTO fin_eventos (id, tenant_id, tipo, payload, status, criado_em)
+        VALUES (:id, '', :tipo, :payload, 'processado', :agora)`,
+    { id, tipo, payload: j.str(payload || {}), agora: nowISO() });
+  return id;
+};
+const ultimoEventoDePlataforma = (tipo) => um(
+  `SELECT id, criado_em, payload FROM fin_eventos
+     WHERE tenant_id = '' AND tipo = :tipo ORDER BY criado_em DESC LIMIT 1`, { tipo });
+
 const eventosPendentes = (limite = 50) => db.prepare(
   "SELECT * FROM fin_eventos WHERE status = 'pendente' AND (proxima_em = '' OR proxima_em <= ?) ORDER BY criado_em LIMIT ?"
 ).all(nowISO(), limite);
@@ -549,5 +632,8 @@ module.exports = {
   criarRegra, regra, listarRegras, registrarAcertoRegra,
   criarAprovacao, aprovacao, listarAprovacoes, decidirAprovacao, registrarExecucao, expirarAprovacoesVencidas,
   ultimoAudit, inserirAudit, listarAudit, auditEmOrdem,
-  publicarEvento, eventosPendentes, marcarEvento,
+  publicarEvento, eventosPendentes, marcarEvento, eventoDePlataforma, ultimoEventoDePlataforma,
+  criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,
+  assinaturaPorRefExterna, assinaturasAtivasDaPlataforma,
+  criarInvoice, invoice, listarInvoices, marcarInvoicePaga, invoicePorRefExterna,
 };

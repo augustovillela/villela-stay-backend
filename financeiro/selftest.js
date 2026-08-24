@@ -2307,6 +2307,368 @@ testeAsync('HTTP: catálogo mostra as ações proibidas com o motivo', async () 
   assert.ok(proibidas.every(a => a.motivo), 'ação proibida sem motivo escrito');
 });
 
+// =====================================================================
+// 14.5 COBRANÇA E ASSINATURA (fase 9)
+//
+// O bloco existe para travar três coisas que, se quebrarem, quebram calado:
+// a conta do próprio grupo entrando na régua de inadimplência, a fatura
+// duplicada pelo reenvio do webhook e — a mais grave — dado contábil de
+// terceiro virando refém de cobrança.
+// =====================================================================
+const billing = require('./billing');
+
+// Mock do Mercado Pago: registra o que foi chamado e devolve o que a API
+// devolveria. `__mock` é o que faz `billing.ativo()` valer sem token real.
+const chamadasMP = [];
+function mpFalso(caminho, opts = {}) {
+  chamadasMP.push({ caminho, metodo: opts.method || 'GET', corpo: opts.body ? JSON.parse(opts.body) : null });
+  if (caminho === '/preapproval' && opts.method === 'POST') {
+    return Promise.resolve({ id: 'PRE-' + chamadasMP.length, init_point: 'https://mp.exemplo/checkout/1', status: 'pending' });
+  }
+  if (/^\/preapproval\//.test(caminho)) return Promise.resolve({ id: caminho.split('/')[2], status: 'authorized', external_reference: mpFalso.ref || '' });
+  if (/^\/v1\/payments\//.test(caminho)) return Promise.resolve({ id: caminho.split('/')[3], status: 'approved', external_reference: mpFalso.ref || '' });
+  return Promise.resolve({});
+}
+mpFalso.__mock = true;
+
+let contaC, contaD, empresaD;
+testeAsync('cobrança: sem Mercado Pago, o produto NÃO fica sem cobrança', () => {
+  billing.configurar({ mpFetch: null });
+  // `configurar` só sobrescreve o que recebe — zera à mão para o estado "sem MP".
+  assert.ok(typeof billing.ativo() === 'boolean');
+});
+
+testeAsync('cobrança: conta nova para os testes de assinatura', () => {
+  const r = tenancy.semContexto(() => contasSvc.provisionar({
+    nome: 'Padaria do Bairro', slug: 'padaria-teste', planoSlug: 'essencial',
+    contatoEmail: 'financeiro@padaria.exemplo',
+  }));
+  contaC = r.tenant;
+  assert.strictEqual(contaC.status, 'trial', 'conta externa devia nascer em avaliação');
+  assert.ok(contaC.trial_ate, 'trial sem data de fim é trial eterno');
+});
+
+testeAsync('cobrança: o estado diz o que se perde E o que nunca se perde', () => {
+  const e = tenancy.comTenant({ tenantId: contaC.id, userId: 'dono' }, () =>
+    billing.estado(repo.tenantPorId(contaC.id)));
+  assert.strictEqual(e.consequencias.escrita, 'liberada');
+  assert.ok(/sempre liberadas/.test(e.consequencias.leituraEExportacao),
+    'a tela de cobrança não promete que a leitura continua');
+  assert.ok(e.planosDisponiveis.length >= 2, 'nenhum plano ofertável');
+  assert.ok(e.planosDisponiveis.every(p => p.precoCents > 0), 'plano sem preço na vitrine de upgrade');
+});
+
+testeAsync('cobrança: assinar cria PENDENTE, não ativa — quem ativa é o MP', async () => {
+  billing.configurar({ mpFetch: mpFalso });
+  const r = await tenancy.comTenant({ tenantId: contaC.id, userId: 'dono', perfil: 'proprietario' }, () =>
+    billing.assinar(repo.tenantPorId(contaC.id), 'controle', { email: 'dono@padaria.exemplo' }));
+  assert.ok(/^https:/.test(r.link), 'sem link de checkout');
+  const criada = chamadasMP.find(c => c.caminho === '/preapproval');
+  assert.strictEqual(criada.corpo.external_reference, `finance:${contaC.id}:controle`);
+  assert.strictEqual(criada.corpo.auto_recurring.transaction_amount, 349,
+    'o preço enviado ao MP não é o do plano');
+  tenancy.comTenant({ tenantId: contaC.id, userId: 'auditor' }, () => {
+    const sub = repo.assinaturaVigente();
+    assert.strictEqual(sub.status, 'pendente', 'assinatura nasceu ativa antes de o MP autorizar');
+    assert.strictEqual(repo.listarInvoices(5).length, 0, 'gerou fatura antes de haver pagamento');
+  });
+  assert.strictEqual(repo.tenantPorId(contaC.id).status, 'trial',
+    'a conta virou ativa só por ter clicado em assinar');
+});
+
+testeAsync('cobrança: o webhook autorizado ativa a conta e gera UMA fatura', () => {
+  tenancy.comTenant({ tenantId: contaC.id, userId: 'mercadopago', perfil: 'plataforma' }, () => {
+    const sub = repo.assinaturaVigente();
+    const r1 = billing.aplicarPreapproval(contaC.id, sub.externo_ref, 'authorized');
+    assert.strictEqual(r1.resultado, 'ativada');
+    // Reenvio: o MP repete a notificação. Fatura duplicada é erro que o cliente vê.
+    const r2 = billing.aplicarPreapproval(contaC.id, sub.externo_ref, 'authorized');
+    assert.strictEqual(r2.resultado, 'ja-ativa');
+    assert.strictEqual(repo.listarInvoices(10).length, 1,
+      'o reenvio do webhook duplicou a fatura');
+  });
+  assert.strictEqual(repo.tenantPorId(contaC.id).status, 'ativa');
+});
+
+testeAsync('cobrança: pagamento recorrente é idempotente pelo id do MP', () => {
+  tenancy.comTenant({ tenantId: contaC.id, userId: 'mercadopago', perfil: 'plataforma' }, () => {
+    const antes = repo.listarInvoices(20).length;
+    const a = billing.registrarPagamento(contaC.id, 'PAY-777');
+    const b = billing.registrarPagamento(contaC.id, 'PAY-777');
+    assert.strictEqual(a.resultado, 'registrado');
+    assert.strictEqual(b.resultado, 'ja-registrado');
+    assert.strictEqual(repo.listarInvoices(20).length, antes + 1,
+      'o mesmo pagamento do MP gerou duas faturas');
+  });
+});
+
+testeAsync('cobrança: a régua NUNCA toca na conta interna do grupo', () => {
+  // Encena o pior caso: a conta do grupo em trial vencido e inadimplente há meses.
+  const antes = repo.tenantPorId(contaA.id);
+  assert.strictEqual(antes.interno, 1, 'a conta A devia ser a interna');
+  repo.atualizarTenant(contaA.id, { status: 'trial', trial_ate: '2020-01-01' });
+  const r = billing.cicloDeVida();
+  assert.ok(!r.trialsVencidos.includes(contaA.slug), 'a régua encerrou a avaliação da conta do grupo');
+  assert.strictEqual(repo.tenantPorId(contaA.id).status, 'trial',
+    'a régua mexeu no status da conta interna');
+  repo.atualizarTenant(contaA.id, { status: antes.status, trial_ate: antes.trial_ate || '' });
+});
+
+testeAsync('cobrança: mudarStatusDaConta recusa rebaixar a conta interna', () => {
+  const r = billing.mudarStatusDaConta(contaA.id, 'suspensa', 'teste');
+  assert.strictEqual(r.ignorado, true);
+  assert.strictEqual(repo.tenantPorId(contaA.id).status !== 'suspensa', true);
+});
+
+testeAsync('cobrança: conta própria para a régua de inadimplência', () => {
+  // Conta dedicada: a régua muda status, e mudar o status de uma conta que
+  // outro teste usa faria a falha aparecer longe da causa.
+  const r = tenancy.semContexto(() => contasSvc.provisionar({
+    nome: 'Mercearia Teste', slug: 'mercearia-regua', planoSlug: 'essencial',
+  }));
+  contaD = r.tenant; empresaD = r.entidade;
+  assert.strictEqual(contaD.status, 'trial');
+});
+
+testeAsync('cobrança: trial vence no dia SEGUINTE ao prometido, não no próprio dia', () => {
+  const hoje = new Date().toISOString().slice(0, 10);
+  repo.atualizarTenant(contaD.id, { status: 'trial', trial_ate: hoje });
+  billing.cicloDeVida();
+  assert.strictEqual(repo.tenantPorId(contaD.id).status, 'trial',
+    'a avaliação foi encerrada no último dia prometido');
+  repo.atualizarTenant(contaD.id, { trial_ate: '2020-01-01' });
+  const r = billing.cicloDeVida();
+  assert.ok(r.trialsVencidos.includes(contaD.slug), 'trial vencido não foi encerrado');
+  assert.strictEqual(repo.tenantPorId(contaD.id).status, 'inadimplente');
+});
+
+testeAsync('cobrança: inadimplente ainda LANÇA — a suspensão só vem depois do prazo', () => {
+  const t = repo.tenantPorId(contaD.id);
+  assert.strictEqual(t.status, 'inadimplente');
+  const e = entitlements.resolver(t);
+  assert.strictEqual(e.bloqueiaEscrita, false,
+    'inadimplência bloqueou a escrita no primeiro dia — o prazo de tolerância existe por escrito');
+  // Ainda dentro do prazo: a régua não suspende.
+  billing.cicloDeVida();
+  assert.strictEqual(repo.tenantPorId(contaD.id).status, 'inadimplente');
+});
+
+testeAsync('cobrança: passado o prazo, suspende — e a suspensa continua LENDO', () => {
+  const velho = new Date(Date.now() - (billing.DIAS_ATE_SUSPENDER + 1) * 86400000).toISOString();
+  db.prepare('UPDATE tenants SET atualizado_em = ? WHERE id = ?').run(velho, contaD.id);
+  const r = billing.cicloDeVida();
+  assert.ok(r.suspensas.includes(contaD.slug), 'não suspendeu depois do prazo');
+  const t = repo.tenantPorId(contaD.id);
+  assert.strictEqual(t.status, 'suspensa');
+
+  const e = entitlements.resolver(t);
+  assert.strictEqual(e.bloqueiaEscrita, true, 'suspensa continuou lançando');
+  // O que NÃO pode acontecer: perder acesso ao próprio razão.
+  const saida = tenancy.comTenant({ tenantId: contaD.id, userId: 'dono' }, () => ({
+    balancete: ledger.balancete(empresaD.id, {}),
+    pacote: exportacao.inventario(empresaD.id),
+  }));
+  assert.ok(Array.isArray(saida.balancete.linhas), 'conta suspensa perdeu a leitura do razão');
+  assert.ok(saida.pacote, 'conta suspensa perdeu a exportação');
+});
+
+testeAsync('cobrança: pagar reativa a conta suspensa', async () => {
+  const r = tenancy.comTenant({ tenantId: contaD.id, userId: 'plataforma', perfil: 'plataforma' }, () =>
+    billing.marcarPago(contaD.id, { motivo: 'Pix recebido em 24/08 — comprovante no e-mail' }));
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(repo.tenantPorId(contaD.id).status, 'ativa');
+});
+
+lancaAsync('cobrança: pagamento manual sem motivo é recusado', () =>
+  tenancy.comTenant({ tenantId: contaD.id, userId: 'plataforma', perfil: 'plataforma' }, () =>
+    billing.marcarPago(contaD.id, { motivo: '  ' })), /motivo/i);
+
+testeAsync('cobrança: toda mudança de status entra na auditoria encadeada, com motivo', () => {
+  const eventos = tenancy.comTenant({ tenantId: contaD.id, userId: 'auditor' }, () =>
+    auditoria.listar({ objetoTipo: 'tenant', limite: 50 }));
+  const mudanca = eventos.find(e => e.acao === 'tenant.status');
+  assert.ok(mudanca, 'mudança de status comercial não deixou rastro');
+  assert.ok(String(mudanca.motivo).trim().length > 3, 'rastro sem motivo legível');
+  const cadeia = auditoria.verificarCadeia(contaD.id);
+  assert.strictEqual(cadeia.ok, true, 'a cadeia de auditoria quebrou depois da cobrança');
+});
+
+testeAsync('cobrança: o MRR conta só quem paga — trial, cortesia e inadimplente ficam de fora', () => {
+  const r = tenancy.comoPlataforma({ userId: 'teste', motivo: 'conferir MRR' }, () => billing.resumo());
+  const somaPagantes = r.contas.filter(c => c.pagante).reduce((s, c) => s + c.precoCents, 0);
+  assert.strictEqual(r.mrrCents, somaPagantes);
+  for (const c of r.contas) {
+    if (c.interno) assert.strictEqual(c.pagante, false, 'conta de cortesia entrou no MRR');
+    if (c.status !== 'ativa') assert.strictEqual(c.pagante, false, `conta ${c.status} entrou no MRR`);
+  }
+  assert.strictEqual(r.arrCents, r.mrrCents * 12);
+});
+
+testeAsync('cobrança: webhook de conta desconhecida não move conta nenhuma', () => {
+  assert.strictEqual(billing.tenantDoWebhook('finance:nao-existe:controle', ''), '',
+    'aceitou uma referência apontando para conta inexistente');
+  assert.strictEqual(billing.tenantDoWebhook('', ''), '');
+  assert.strictEqual(billing.tenantDoWebhook(`finance:${contaC.id}:controle`, ''), contaC.id);
+});
+
+testeAsync('cobrança: o webhook do MP acha a conta pelo preapproval, sem contexto', async () => {
+  billing.configurar({ mpFetch: mpFalso });
+  const ref = tenancy.comTenant({ tenantId: contaC.id, userId: 'auditor' }, () => repo.assinaturaVigente().externo_ref);
+  mpFalso.ref = '';                              // o MP nem sempre devolve a referência
+  const r = await billing.processarWebhook({ type: 'preapproval', data: { id: ref } }, {});
+  assert.strictEqual(r.ok, true);
+  assert.ok(['ativada', 'ja-ativa'].includes(r.resultado), `resultado inesperado: ${r.resultado}`);
+});
+
+lancaAsync('cobrança: sem MP configurado, assinar diz o caminho manual', async () => {
+  billing.configurar({});
+  const guardado = process.env.MP_ACCESS_TOKEN;
+  delete process.env.MP_ACCESS_TOKEN;
+  const salvo = mpFalso.__mock;
+  delete mpFalso.__mock;
+  try {
+    await tenancy.comTenant({ tenantId: contaC.id, userId: 'dono', perfil: 'proprietario' }, () =>
+      billing.assinar(repo.tenantPorId(contaC.id), 'controle', {}));
+  } finally {
+    mpFalso.__mock = salvo;
+    if (guardado) process.env.MP_ACCESS_TOKEN = guardado;
+    billing.configurar({ mpFetch: mpFalso });
+  }
+}, /Pix ou boleto/);
+
+testeAsync('cobrança: assinatura e faturas de uma conta não vazam para outra', () => {
+  const daC = tenancy.comTenant({ tenantId: contaC.id, userId: 'x' }, () => repo.listarInvoices(50));
+  const daB = tenancy.comTenant({ tenantId: contaD.id, userId: 'y' }, () => repo.listarInvoices(50));
+  const idsC = new Set(daC.map(f => f.id));
+  assert.ok(daB.every(f => !idsC.has(f.id)), 'fatura de uma conta apareceu na outra');
+  assert.ok(daC.every(f => f.tenant_id === contaC.id), 'listagem trouxe fatura de fora da conta');
+});
+
+testeAsync('cobrança: as ações comerciais estão no catálogo de risco, e não são materiais', () => {
+  for (const a of ['assinatura.assinar', 'assinatura.cancelar']) {
+    const acao = rbac.acao(a);
+    assert.ok(acao, `${a} fora do catálogo de risco`);
+    assert.strictEqual(acao.permissao, 'administrar', `${a} não é exclusiva do dono da conta`);
+    assert.ok(acao.nivelMinimo < 3, `${a} virou material — cancelar assinatura não mexe no razão`);
+  }
+});
+
+// // =====================================================================
+// 14.6 PAINEL DO STAFF (staff/app-finance.js) contra a API DE VERDADE
+//
+// O painel é escrito à mão contra o formato que a API devolve, e é aí que
+// ele apodrece calado: a rota muda um campo de string para objeto e a tela
+// passa a escrever "undefined" sem quebrar nada. Aqui o arquivo real do
+// portal é carregado num sandbox e alimentado com a RESPOSTA REAL das
+// rotas — se a forma divergir, aparece aqui e não na tela do Augusto.
+// =====================================================================
+const vm = require('vm');
+
+function carregarPainel(chamarApi) {
+  const fonte = fs.readFileSync(path.join(__dirname, '..', 'staff', 'app-finance.js'), 'utf8');
+  const escritos = {};
+  const elemento = (id) => ({
+    _id: id,
+    set innerHTML(v) { escritos[id] = String(v); },
+    get innerHTML() { return escritos[id] || ''; },
+    value: '',
+  });
+  const elementos = { 'fin-corpo': elemento('fin-corpo'), conteudo: elemento('conteudo') };
+  const escapar = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const sandbox = {
+    api: chamarApi,
+    esc: escapar,
+    conteudo: () => elementos.conteudo,
+    cabecalho: (t, s) => `<h1>${escapar(t)}</h1><p>${escapar(s || '')}</p>`,
+    tabela: (cols, linhas) => `<table><thead>${(cols || []).join('|')}</thead><tbody>` +
+      (linhas || []).map(l => `<tr>${(l || []).map(c => c == null ? '' : c).join('|')}</tr>`).join('') + '</tbody></table>',
+    document: { getElementById: (id) => elementos[id] || null },
+    alert: () => {},
+    prompt: () => null,
+    confirm: () => true,
+    console,
+    Date, Number, String, Math, JSON, Object, Array, Promise,
+  };
+  vm.createContext(sandbox);
+  // `const FIN` no topo de um script é vínculo léxico, não propriedade do
+  // global do contexto — sem esta linha o sandbox devolveria undefined.
+  vm.runInContext(`${fonte}
+;this.FIN = FIN;`, sandbox, { filename: 'app-finance.js' });
+  return { FIN: sandbox.FIN, escritos, elementos };
+}
+
+// "undefined"/"[object Object]" na tela é o sintoma de campo que mudou de
+// forma na API e ninguém percebeu. Vale como asserção porque nenhum texto
+// legítimo deste painel contém essas palavras.
+const escapeSimples = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function semLixo(html, tela) {
+  assert.ok(!/undefined|\[object Object\]|NaN/.test(html),
+    `a tela ${tela} imprimiu lixo: ${(html.match(/.{0,60}(undefined|\[object Object\]|NaN).{0,60}/) || [])[0]}`);
+}
+
+testeAsync('painel do staff: a aba Saúde bate com o que /saude devolve', async () => {
+  const painel = carregarPainel(async (m, c) => (await pedir(m, '/staff/api' + c)).corpo);
+  await painel.FIN.vSaude();
+  const html = painel.escritos['fin-corpo'];
+  semLixo(html, 'Saúde');
+  const api = (await pedir('GET', '/staff/api/finance/saude')).corpo;
+  assert.ok(/Diário append-only/.test(html), 'a aba não mostra o estado do diário (o RPO)');
+  assert.ok(html.includes(api.diario.veredito),
+    'a aba não repete o VEREDITO do diário — é a frase que diz se o RPO é real ou promessa');
+  for (const c of api.contas) {
+    assert.ok(html.includes(escapeSimples(c.nome)), `a aba Saúde não lista a conta ${c.nome}`);
+  }
+  assert.ok(html.includes(`${api.resumo.razaoOk}/${api.resumo.total}`), 'a aba não imprime a contagem de razões que fecham');
+  assert.ok(/contexto \+ guarda no repositório/.test(html), 'a aba não declara o modelo de isolamento');
+});
+
+testeAsync('painel do staff: a aba Cobrança bate com o que /billing devolve', async () => {
+  const painel = carregarPainel(async (m, c) => (await pedir(m, '/staff/api' + c)).corpo);
+  await painel.FIN.vCobranca();
+  const html = painel.escritos['fin-corpo'];
+  semLixo(html, 'Cobrança');
+  // Comparar contra o VALOR que a API devolveu, e não só contra "tem R$ na
+  // tela": `esc(undefined)` devolve string vazia, então campo renomeado na
+  // API sumiria em silêncio — célula vazia parece ausência de dado, não bug.
+  const api = (await pedir('GET', '/staff/api/finance/billing')).corpo;
+  for (const [campo, valor] of [['mrr', api.resumo.mrr], ['arr', api.resumo.arr], ['em risco', api.resumo.emRisco]]) {
+    assert.ok(html.includes(valor), `a aba Cobrança não imprimiu o ${campo} (${valor}) que a API devolveu`);
+  }
+  assert.ok(html.includes(String(api.resumo.por.pagantes)), 'a aba não imprimiu a contagem de pagantes');
+  // A promessa que o produto faz por escrito tem de estar na tela de quem cobra.
+  assert.ok(/continua lendo e exportando/.test(html),
+    'a tela de cobrança não lembra que a conta suspensa continua lendo o próprio razão');
+  assert.ok(/conta do grupo — fora da cobrança/.test(html),
+    'a conta interna aparece cobrável no painel');
+});
+
+testeAsync('painel do staff: as abas Planos, Contas e Diário rendem sem lixo', async () => {
+  const painel = carregarPainel(async (m, c) => (await pedir(m, '/staff/api' + c)).corpo);
+  for (const [nome, fn] of [['Planos', painel.FIN.vPlanos], ['Contas', painel.FIN.vContas], ['Diário', painel.FIN.vDiario]]) {
+    await fn();
+    semLixo(painel.escritos['fin-corpo'], nome);
+  }
+  assert.ok(/Níveis de risco/.test(painel.escritos['fin-corpo']), 'a aba Diário & risco não mostra o catálogo de níveis');
+});
+
+testeAsync('painel do staff: registrar pagamento manual sem motivo é recusado pela ROTA', async () => {
+  const contas = (await pedir('GET', '/staff/api/finance/tenants')).corpo.tenants;
+  const externa = contas.find(t => !t.interno);
+  const r = await pedir('POST', `/staff/api/finance/billing/${externa.id}/pago`, { corpo: { motivo: '' } });
+  assert.strictEqual(r.status >= 400, true, 'a rota aceitou pagamento sem motivo — a auditoria ficaria cega');
+});
+
+testeAsync('painel do staff: mudar status exige motivo e recusa status inventado', async () => {
+  const contas = (await pedir('GET', '/staff/api/finance/tenants')).corpo.tenants;
+  const externa = contas.find(t => !t.interno);
+  const semMotivo = await pedir('POST', `/staff/api/finance/billing/${externa.id}/status`, { corpo: { status: 'ativa' } });
+  assert.strictEqual(semMotivo.status, 400, 'mudou o status comercial sem motivo');
+  const inventado = await pedir('POST', `/staff/api/finance/billing/${externa.id}/status`, { corpo: { status: 'aposentada', motivo: 'x' } });
+  assert.strictEqual(inventado.status, 400, 'aceitou um status que não existe');
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================

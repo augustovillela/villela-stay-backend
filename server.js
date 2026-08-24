@@ -4693,6 +4693,9 @@ try {
     // Porta estreita para rotinas e agentes (x-publish-key): só a conta
     // interna do grupo e só ações de nível <= 2. Ver financeiro/rotas-agente.js.
     requirePublishOrAdmin,
+    // Cobrança recorrente (preapproval do Mercado Pago). Sem ela o módulo
+    // sobe em modo manual — Pix/boleto pelo painel do staff.
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
   });
 } catch (e) { console.error('[finance] falha ao montar módulo:', e.message); }
 

@@ -47,6 +47,10 @@ const ACOES = {
   'titulo.criar':             { nivelMinimo: 2, permissao: 'lancar' },
   'titulo.cancelar':          { nivelMinimo: 2, permissao: 'lancar' },
   'conta.criar':              { nivelMinimo: 2, permissao: 'configurar' },
+  // Comerciais: mexem na assinatura, não no razão. Só o dono da conta —
+  // e cancelar NÃO tira o acesso de leitura (billing.js, regra 1).
+  'assinatura.assinar':       { nivelMinimo: 2, permissao: 'administrar' },
+  'assinatura.cancelar':      { nivelMinimo: 2, permissao: 'administrar' },
 
   // MATERIAIS — piso 3, sem exceção
   'pagamento.executar':       { nivelMinimo: 3, permissao: 'pagar' },

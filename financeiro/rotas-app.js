@@ -17,6 +17,7 @@
 const jwt = require('jsonwebtoken');
 const { j } = require('./db');
 const sessao = require('./sessao');
+const billing = require('./billing');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const contasSvc = require('./contas');
@@ -682,6 +683,21 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       .set('Content-Disposition', `attachment; filename="villela-finance-${req.entidade.id}.json"`)
       .send(JSON.stringify(pacote, null, 2));
   }));
+
+  // --------------------------------------------- assinatura (cobrança)
+  // Leitura do estado é para qualquer perfil: quem opera precisa saber
+  // que a conta vai vencer. Assinar e cancelar são do DONO da conta.
+  app.get('/finance/api/assinatura', ...rota((req) => billing.estado(req.tenant)));
+
+  app.post('/finance/api/assinatura', ...rota((req) => billing.assinar(
+    req.tenant, (req.body || {}).plano, {
+      email: req.assinante.email,
+      baseUrl: `${req.protocol}://${req.get('host')}`,
+    }), { permissao: 'administrar', json: true }));
+
+  app.post('/finance/api/assinatura/cancelar', ...rota((req) => billing.cancelar(req.tenant, {
+    motivo: String((req.body || {}).motivo || 'cancelamento pedido pelo assinante'),
+  }), { permissao: 'administrar', json: true }));
 
   // ---------------------------------------------------------- auditoria
   app.get('/finance/api/auditoria', ...rota((req) => ({
