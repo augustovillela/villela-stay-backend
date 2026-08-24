@@ -1285,11 +1285,15 @@ const F = {
         </form>
       </div>
 
+      <div id="f-assinatura"><p class="sub">Carregando assinatura…</p></div>
+
       <div class="card">
         <h3 style="margin:0 0 6px">Segundo fator (TOTP)</h3>
         ${F.blocoMfa(m)}
         <div id="f-mfa-area"></div>
       </div>`;
+
+    F.blocoAssinatura();
 
     F.el('f-senha-form').onsubmit = async (ev) => {
       ev.preventDefault();
@@ -1300,6 +1304,85 @@ const F = {
         F.el('f-senha-form').reset();
       } catch (err) { msg.className = 'erro'; msg.textContent = err.message; }
     };
+  },
+
+  /** Assinatura e portabilidade, dentro de "Minha conta". */
+  async blocoAssinatura() {
+    const alvo = F.el('f-assinatura');
+    if (!alvo) return;
+    const [a, inv] = await Promise.all([
+      F.api('GET', F.url('/assinatura')),
+      F.api('GET', F.url('/exportar')),
+    ]);
+
+    const faturas = a.faturas.length
+      ? `<div class="tab-wrap" style="margin-top:10px"><table>
+          <thead><tr><th>Competência</th><th style="text-align:right">Valor</th><th>Situação</th></tr></thead>
+          <tbody>${a.faturas.map((f) => `<tr><td>${F.esc(f.competencia)}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums">${F.esc(f.valor)}</td>
+            <td>${F.esc(f.status)}${f.pagoEm ? ' em ' + F.dt(f.pagoEm) : ''}</td></tr>`).join('')}</tbody></table></div>`
+      : '<p class="sub" style="margin:10px 0 0">Nenhuma fatura ainda.</p>';
+
+    const planos = a.planosDisponiveis.map((p) =>
+      `<option value="${F.esc(p.slug)}"${a.plano && p.slug === a.plano.slug ? ' selected' : ''}>${F.esc(p.nome)} — ${F.esc(p.preco)}/mês</option>`).join('');
+
+    const acao = a.conta.cortesia
+      ? '<p class="sub" style="margin:10px 0 0">Conta de cortesia do grupo — sem cobrança.</p>'
+      : a.assinatura && a.assinatura.status === 'ativa'
+        ? `<p style="margin:12px 0 0"><button class="btn btn-ghost" onclick="F.cancelarAssinatura()">Cancelar assinatura</button></p>`
+        : a.pagamentoOnline
+          ? `<p style="margin:12px 0 0">
+              <label style="width:auto;display:inline-block">Plano <select id="f-as-plano" style="width:auto">${planos}</select></label>
+              <button class="btn" onclick="F.assinar()">Assinar</button></p>`
+          : '<div class="aviso" style="margin-top:10px">O pagamento online ainda não está ligado. Fale com o suporte para receber a cobrança por Pix ou boleto.</div>';
+
+    alvo.innerHTML = `
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="margin:0 0 6px">Assinatura</h3>
+        <p style="margin:0">Conta <b>${F.esc(a.conta.status)}</b>${a.plano ? ` · plano ${F.esc(a.plano.nome)} (${F.esc(a.plano.preco)}/mês)` : ''}
+          ${a.assinatura ? ` · assinatura ${F.esc(a.assinatura.status)}${a.assinatura.recorrenciaOnline ? ', recorrente' : ''}` : ''}
+          ${a.conta.trialAte ? ` · avaliação até ${F.dt(a.conta.trialAte)}` : ''}</p>
+        <div class="aviso" style="margin-top:10px">
+          Escrita: <b>${F.esc(a.consequencias.escrita)}</b>. Leitura e exportação: <b>${F.esc(a.consequencias.leituraEExportacao)}</b>.
+          Suspensão só depois de ${F.esc(a.consequencias.prazoAteSuspender)}.
+        </div>
+        ${acao}
+        ${faturas}
+        <p id="f-as-msg" class="sub" style="margin-top:8px"></p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin:0 0 6px">Seus dados, seus</h3>
+        <p class="sub" style="margin:0">${F.esc(inv.aviso)}</p>
+        <p style="margin:8px 0 0">${inv.lotes} lançamento(s) · ${inv.linhas} linha(s) · ${inv.contas} conta(s) ·
+          ${inv.titulos} título(s) · ${inv.transacoesBanco} transação(ões) de extrato · ${inv.periodos} competência(s)</p>
+        <p style="margin:12px 0 0">
+          <a class="btn btn-ghost" href="/finance/api/exportar/razao.csv${F.empresaId ? '?empresa=' + encodeURIComponent(F.empresaId) : ''}">Baixar o razão (CSV)</a>
+          <a class="btn btn-ghost" href="/finance/api/exportar/completo.json${F.empresaId ? '?empresa=' + encodeURIComponent(F.empresaId) : ''}">Baixar tudo (JSON)</a></p>
+        <p class="sub" style="margin:8px 0 0">O pacote JSON traz a <b>conferência embutida</b>: quem recebe soma as linhas e compara,
+        sem precisar confiar em nós. Dado bancário de favorecido não vai junto.</p>
+      </div>`;
+  },
+
+  async assinar() {
+    const msg = F.el('f-as-msg'); msg.className = 'sub'; msg.textContent = 'Falando com o Mercado Pago…';
+    try {
+      const r = await F.api('POST', F.url('/assinatura'), { plano: F.el('f-as-plano').value });
+      msg.innerHTML = `Assinatura criada. <a href="${F.esc(r.link)}">Concluir o pagamento no Mercado Pago</a> —
+        a conta é ativada quando o Mercado Pago confirmar, não ao clicar.`;
+    } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+  },
+
+  async cancelarAssinatura() {
+    const motivo = prompt('Cancelar a assinatura. Motivo (vai para a auditoria):', '');
+    if (!motivo) return;
+    const msg = F.el('f-as-msg'); msg.className = 'sub'; msg.textContent = 'Cancelando…';
+    try {
+      const r = await F.api('POST', F.url('/assinatura/cancelar'), { motivo });
+      msg.textContent = `${r.aviso || 'Assinatura cancelada.'} ${r.leitura}`;
+      F.eu = await F.api('GET', F.url('/eu'));
+      F.vConta();
+    } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
   },
 
   blocoMfa(m) {

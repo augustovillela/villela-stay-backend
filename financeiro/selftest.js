@@ -3457,6 +3457,62 @@ testeAsync('app do assinante: sem orçamento, a tela explica em vez de mostrar z
   }
 });
 
+testeAsync('app do assinante: "Minha conta" mostra assinatura e portabilidade', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vConta();
+  await app.F.blocoAssinatura();
+  const html = app.escritos['f-assinatura'];
+  semLixoApp(html, 'assinatura');
+
+  const a = (await pedir('GET', '/finance/api/assinatura', { cookie: cookieA })).corpo;
+  assert.ok(html.includes(escapeSimples(a.consequencias.leituraEExportacao)),
+    'a tela de assinatura não diz que leitura e exportação continuam liberadas — é a promessa central do produto');
+  const inv = (await pedir('GET', '/finance/api/exportar', { cookie: cookieA })).corpo;
+  assert.ok(html.includes(escapeSimples(inv.aviso)), 'a portabilidade apareceu sem o aviso de que está sempre disponível');
+  assert.ok(html.includes(String(inv.lotes)), 'o inventário não mostra quantos lançamentos serão exportados');
+  assert.ok(/razao\.csv/.test(html) && /completo\.json/.test(html), 'faltam os links de exportação');
+});
+
+testeAsync('app do assinante: conta de cortesia não recebe botão de assinar', async () => {
+  const app = carregarAppCliente(cookieA);
+  await app.F.iniciar();
+  await app.F.vConta();
+  await app.F.blocoAssinatura();
+  const html = app.escritos['f-assinatura'];
+  const a = (await pedir('GET', '/finance/api/assinatura', { cookie: cookieA })).corpo;
+  if (a.conta.cortesia) {
+    assert.ok(/cortesia do grupo/.test(html), 'a conta interna não é identificada como cortesia');
+    assert.ok(!/f-as-plano/.test(html), 'ofereceu assinatura para a conta de cortesia vitalícia do grupo');
+  }
+});
+
+testeAsync('PWA: o Finance está no registro e o manifest não aponta para ícone inexistente', async () => {
+  const pwa = require('../pwa');
+  const p = pwa.PRODUTOS.find((x) => x.slug === 'finance');
+  assert.ok(p, 'o Finance não entrou no registro de PWA');
+  const m = pwa.manifestDe(p);
+  assert.strictEqual(m.start_url, '/finance/app');
+  assert.strictEqual(m.scope, '/finance/');
+  assert.ok(m.icons.length, 'manifest sem ícone');
+  // Ícone que não existe instala o app com quadrado quebrado — e ninguém
+  // percebe, porque o manifest não falha, só some da tela inicial.
+  for (const ic of m.icons) {
+    const caminho = path.join(__dirname, '..', ic.src.replace(/^\//, ''));
+    assert.ok(fs.existsSync(caminho), `o manifest aponta para ${ic.src}, que não existe no disco`);
+  }
+});
+
+testeAsync('PWA: o service worker do Finance não cacheia a API', async () => {
+  const pwa = require('../pwa');
+  const sw = pwa.swDe(pwa.PRODUTOS.find((x) => x.slug === 'finance'));
+  assert.ok(/\/api/.test(sw), 'o SW não trata o caminho de API');
+  assert.ok(/req\.method !== 'GET'/.test(sw), 'o SW não deixa a escrita passar direto pela rede');
+  // Dado contábil servido de cache é dado contábil errado.
+  assert.ok(sw.indexOf("url.pathname.indexOf('/api') !== -1") !== -1,
+    'o SW poderia servir resposta de API a partir do cache');
+});
+
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));
 
 // =====================================================================

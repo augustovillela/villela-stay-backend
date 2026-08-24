@@ -308,6 +308,8 @@ const appHTML = () => `<!doctype html><html lang="pt-BR"><head>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7">
 <link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7">
+<link rel="manifest" href="/finance/manifest.webmanifest">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/finance/sw.js').catch(function(){})})}</script>
 </head><body class="vx"><main id="app"><p style="padding:32px;text-align:center">Carregando…</p></main>
 <script src="/finance/app.js?v=1"></script></body></html>`;
 
