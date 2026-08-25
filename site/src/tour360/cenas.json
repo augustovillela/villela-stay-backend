@@ -228,6 +228,27 @@
       "destaque": false
     },
     {
+      "id": "kubitschek-suite-renato-russo-sala-2",
+      "arquivo": "kubitschek-suite-renato-russo-sala-2",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UD09H"
+      ],
+      "titulo": "Sala do Flat do Renato Russo (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
       "id": "kubitschek-suite-renato-russo-banheiro",
       "arquivo": "kubitschek-suite-renato-russo-banheiro",
       "casa": "Villa Kubitschek",
@@ -272,6 +293,48 @@
       "destaque": false
     },
     {
+      "id": "kubitschek-suite-do-chef-2",
+      "arquivo": "kubitschek-suite-do-chef-2",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UF05H"
+      ],
+      "titulo": "Flat do Chef (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
+      "id": "kubitschek-suite-do-chef-3",
+      "arquivo": "kubitschek-suite-do-chef-3",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UF05H"
+      ],
+      "titulo": "Flat do Chef (3)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
       "id": "kubitschek-suite-do-chef-sala",
       "arquivo": "kubitschek-suite-do-chef-sala",
       "casa": "Villa Kubitschek",
@@ -292,6 +355,27 @@
       },
       "hotspots": [],
       "destaque": false
+    },
+    {
+      "id": "kubitschek-suite-do-chef-sala-2",
+      "arquivo": "kubitschek-suite-do-chef-sala-2",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "UF05H"
+      ],
+      "titulo": "Sala do Flat do Chef (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
     },
     {
       "id": "kubitschek-suite-do-chef-banheiro",
