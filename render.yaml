@@ -67,6 +67,25 @@ services:
       # - key: FINANCE_STAYS_SYNC_MIN
       #   value: "60"
 
+      # MUSIQUE / VILLELA MUSIC (15o produto). Banco SQLite proprio em
+      # DATA_DIR/music/ — nasce sozinho no primeiro boot. A conta e a da
+      # ACADEMIA (ADR-0001): nao ha env de sessao, e o mesmo JWT_SECRET.
+      #
+      # Sem as quatro de baixo o modulo sobe, a landing funciona e o envio
+      # de arquivo fica indisponivel DIZENDO o que falta. Audio nunca vai
+      # para o disco do Render (1 GB para 15 produtos) — vai para o R2.
+      # Pode reusar o bucket/credencial da Origena mudando o prefixo.
+      - key: MUSIC_S3_ENDPOINT    # https://<accountid>.r2.cloudflarestorage.com
+        sync: false
+      - key: MUSIC_S3_BUCKET
+        value: villela-music
+      - key: MUSIC_S3_KEY
+        sync: false
+      - key: MUSIC_S3_SECRET
+        sync: false
+      - key: MUSIC_S3_REGION
+        value: auto
+
       # ORIGENA (12o produto). Unico com banco PROPRIO (PostgreSQL) e todo
       # binario no R2 — os porquês estao em docs/origena/DECISIONS/ (repo-pai).
       # Sem estas envs a landing sobe e o resto fica desligado, com log claro.
@@ -117,3 +136,21 @@ services:
         value: auto
       - key: ANTHROPIC_API_KEY
         sync: false
+
+  # ---------------------------------------------------------------------
+  # NAO existe `music-worker` como servico separado — e nao e esquecimento.
+  #
+  # No Render, "o disco de um servico NAO e acessivel por outro servico"
+  # (https://render.com/docs/disks). O banco da Musique e SQLite no disco
+  # `villela-data`, montado no web. Um worker separado subiria e NAO
+  # enxergaria a tabela `jobs` — ficaria vivo, mudo e inutil.
+  #
+  # O origena-worker existe porque a Origena usa PostgreSQL, que se alcanca
+  # pela rede. A Musique usa SQLite, e o preco disso e este.
+  #
+  # Enquanto nao houver trabalho pesado (Fase 5), a fila e consumida DENTRO
+  # do web, limitada a fila `rapida` — que em Fase 0 sao um HEAD no bucket e
+  # uma remocao de arquivo, nao transcodificacao. A fila `cara` esta
+  # TRAVADA no codigo: enfileirar nela lanca erro em vez de deixar o job
+  # apodrecendo pendente. Ver docs/music/DECISIONS/ADR-0006.
+  # ---------------------------------------------------------------------

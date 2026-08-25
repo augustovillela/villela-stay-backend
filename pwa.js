@@ -31,6 +31,19 @@ const PRODUTOS = [
     desc: 'Gestão documental inteligente: busca, IA com fontes, workflows e compartilhamento.',
   },
   {
+    // Musique: o app instalado importa mais aqui do que nos outros — o
+    // modo palco roda no celular, em pé, com internet ruim. O SERVICE
+    // WORKER guarda a casca; o setlist em si fica no armazenamento local
+    // do navegador, porque o SW não cacheia `/api` (dado vivo) de propósito.
+    //
+    // Ícones: os do GRUPO. A Musique não tem identidade própria
+    // (ADR-0005), e inventar uma para caber num manifest seria decidir
+    // marca por conta própria.
+    slug: 'music', base: '/music', inicio: '/music/app', escopo: '/music/',
+    nome: 'Musique', curto: 'Musique', marca: 'grupo-villela',
+    desc: 'Estudo, biblioteca de cifras e partituras, e modo palco — do primeiro acorde ao show.',
+  },
+  {
     slug: 'academy', base: '/academy', inicio: '/academy/app', escopo: '/academy/',
     nome: 'Villela Academy', curto: 'Academy', marca: 'villela-academy',
     desc: 'Cursos online e produtos digitais: estude, produza e acompanhe suas vendas.',

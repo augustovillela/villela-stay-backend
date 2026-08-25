@@ -693,6 +693,54 @@ function finance(t) {
 </div>`;
 }
 
-const TELAS = { crm, manager, legal, docs, projects, academy, altavista, kids, closet, vitrine, cozinhe, finance };
+
+// =====================================================================
+// MUSIQUE — a biblioteca do músico: a cifra mudando de tom.
+// Mostra as DUAS coisas que distinguem o produto e que nenhum print de
+// concorrente prova: (1) transpor é aritmética exata sobre a cifra
+// estruturada — o tom muda e a letra fica onde estava; (2) a obra que
+// não é do usuário fica MARCADA e privada, em vez de virar acervo
+// público de graça. A segunda é a política Q2 aparecendo na tela.
+// =====================================================================
+function music(t) {
+  const linha = (letra, de, para, largura) => `
+  <tr>
+    <td class="mq-qtd"><b><span class="js-troca" data-para="${esc(para)}">${esc(de)}</span></b></td>
+    <td>${esc(letra)}</td>
+    <td><span class="mq-barra"><i class="js-cresce-x" style="width:${largura}%"></i></span></td>
+  </tr>`;
+
+  return chrome('music.villelastay.com.br', t('Biblioteca', 'Library', 'Biblioteca')) + `
+<div class="mq-corpo">
+  ${nav('MUSIQUE', [
+    ['🎼', t('Biblioteca', 'Library', 'Biblioteca'), true],
+    ['🎓', t('Estudo', 'Study', 'Estudio')],
+    ['🎧', t('Prática', 'Practice', 'Práctica')]
+  ])}
+  <div class="mq-tela">
+    ${cabeca(t('Canção de estrada — arranjo para voz e violão', 'Road song — arrangement for voice and guitar', 'Canción de carretera — arreglo para voz y guitarra'),
+             t('Minha composição', 'My composition', 'Mi composición'))}
+    ${kpis([
+      [t('Tom', 'Key', 'Tono'), '<span class="js-troca" data-para="Ré">Dó</span>', '', ''],
+      [t('Capotraste', 'Capo', 'Cejilla'), '<span class="js-troca" data-para="2ª casa">' + esc(t('sem capo', 'no capo', 'sin cejilla')) + '</span>', '', ''],
+      [t('Andamento', 'Tempo', 'Tempo'), '96 BPM', '', '']
+    ])}
+    <table class="mq-tabela compacta">
+      <tbody>
+        ${linha(t('Vou pela estrada sem pressa nenhuma', 'I take the road with no hurry at all', 'Voy por la carretera sin ninguna prisa'), 'C', 'D', 92)}
+        ${linha(t('o sol na janela, o tempo passou', 'sun on the window, the time slipped away', 'el sol en la ventana, el tiempo pasó'), 'Am', 'Bm', 78)}
+        ${linha(t('e tudo que eu quis cabia num verso', 'and all that I wanted would fit in a verse', 'y todo lo que quise cabía en un verso'), 'F', 'G', 64)}
+        ${linha(t('que eu nunca escrevi', 'that I never wrote down', 'que nunca escribí'), 'G', 'A', 50)}
+      </tbody>
+    </table>
+    <div class="mq-aviso js-realca">
+      <b>🔒 ${esc(t('O acervo é seu, e fica seu', 'Your library stays yours', 'El acervo es tuyo y sigue siéndolo'))}</b>
+      ${esc(t('Obra de outro autor entra marcada como acervo pessoal: não é publicada, não é sugerida a mais ninguém e não vai para serviços de IA. Transposição e reprodução valem em cifra, MusicXML e MIDI — PDF é anexo, e o sistema diz isso em vez de prometer o que não faz.', 'Someone else’s work is tagged as a personal library item: never published, never suggested to anyone else, never sent to AI services. Transposition and playback work on chord charts, MusicXML and MIDI — PDF is an attachment, and the system says so instead of promising what it cannot do.', 'La obra de otro autor entra marcada como acervo personal: no se publica, no se sugiere a nadie más y no va a servicios de IA. La transposición y la reproducción valen en cifrado, MusicXML y MIDI — el PDF es un adjunto, y el sistema lo dice en vez de prometer lo que no hace.'))}
+    </div>
+  </div>
+</div>`;
+}
+
+const TELAS = { crm, manager, legal, docs, projects, academy, altavista, kids, closet, vitrine, cozinhe, finance, music };
 
 module.exports = { TELAS };

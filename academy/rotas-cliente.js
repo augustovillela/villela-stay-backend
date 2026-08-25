@@ -8,8 +8,13 @@
 const jwt = require('jsonwebtoken');
 const repo = require('./repo');
 const com = require('./emails'); // F8
+// ADR-0001 (24/08/2026): a sessão saiu daqui para o núcleo, porque a
+// Musique (/music) reusa a MESMA conta. O comportamento é o mesmo; o que
+// mudou é o escopo do cookie (path /academy → /), com limpeza do escopo
+// antigo em toda emissão. Detalhe e armadilha: nucleo/sessao-academy.js.
+const sessaoAcademy = require('../nucleo/sessao-academy');
 
-const COOKIE = 'academy_sess';
+const COOKIE = sessaoAcademy.COOKIE;
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
 function registrarRotasCliente(app, { jwtSecret }) {
@@ -26,17 +31,14 @@ function registrarRotasCliente(app, { jwtSecret }) {
   const bloqueado = (ip) => { const t = tentativas.get(ip); return !!(t && t.ate && t.ate > Date.now()); };
   const falha = (ip) => { const t = tentativas.get(ip) || { n: 0, ate: 0 }; if (++t.n >= 5) { t.ate = Date.now() + 15 * 60 * 1000; t.n = 0; } tentativas.set(ip, t); };
 
-  // autenticação: JWT válido + sessão não revogada + usuário ativo
-  function requireUsuario(req, res, next) {
-    try {
-      const { uid, jti } = jwt.verify(req.cookies && req.cookies[COOKIE], jwtSecret);
-      if (!repo.Sessoes.valida(jti)) throw new Error('sessão revogada');
-      const u = repo.Usuarios.porId(uid);
-      if (!u || u.status !== 'ativo') throw new Error('conta indisponível');
-      req.usuario = u; req.jti = jti;
-      next();
-    } catch (_) { res.status(401).json({ erro: 'não autenticado' }); }
-  }
+  // autenticação: JWT válido + sessão não revogada + usuário ativo.
+  // Mesma regra de antes — agora no núcleo, para /academy e /music
+  // lerem a MESMA sessão em vez de cada um ter a sua.
+  const { requireUsuario } = sessaoAcademy.criarVerificador({
+    jwtSecret,
+    buscarUsuario: (uid) => repo.Usuarios.porId(uid),
+    sessaoValida: (jti) => repo.Sessoes.valida(jti),
+  });
   // autorização por papel (produtor/afiliado exigem perfil aprovado)
   const requirePapel = (papel) => (req, res, next) => {
     if (!repo.podeAgirComo(req.usuario, papel)) {
@@ -62,7 +64,7 @@ function registrarRotasCliente(app, { jwtSecret }) {
     com.Emails.boasVindas(u, `${proto}://${req.get('host')}/academy/verificar-email?token=${tokVerif}`);
     const jti = repo.Sessoes.criar(u.id, { ip, userAgent: req.headers['user-agent'] });
     const token = jwt.sign({ uid: u.id, jti }, jwtSecret, { expiresIn: '30d' });
-    res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/academy' });
+    sessaoAcademy.emitir(res, token, seguro);
     res.json({ ok: true });
   }));
 
@@ -87,14 +89,14 @@ function registrarRotasCliente(app, { jwtSecret }) {
     const jti = repo.Sessoes.criar(u.id, { ip, userAgent: req.headers['user-agent'] });
     repo.Auditoria.registrar({ quem: u.id, acao: 'auth.login', entidade: 'sessions', entidade_id: jti, ip });
     const token = jwt.sign({ uid: u.id, jti }, jwtSecret, { expiresIn: '30d' });
-    res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/academy' });
+    sessaoAcademy.emitir(res, token, seguro);
     res.json({ ok: true });
   }));
 
   app.post('/academy/api/logout', requireUsuario, h(async (req, res) => {
     repo.Sessoes.revogar(req.jti);
     aud(req, 'auth.logout', 'sessions', req.jti, '');
-    res.clearCookie(COOKIE, { path: '/academy' });
+    sessaoAcademy.limpar(res);
     res.json({ ok: true });
   }));
 
@@ -121,7 +123,7 @@ function registrarRotasCliente(app, { jwtSecret }) {
     repo.Usuarios.trocarSenha(req.usuario.id, (req.body || {}).senha_nova);
     repo.Sessoes.revogarDoUsuario(req.usuario.id); // troca de senha derruba as sessões
     aud(req, 'conta.trocar-senha', 'users', req.usuario.id, '');
-    res.clearCookie(COOKIE, { path: '/academy' });
+    sessaoAcademy.limpar(res);
     res.json({ ok: true, relogin: true });
   }));
 
@@ -197,7 +199,7 @@ function registrarRotasCliente(app, { jwtSecret }) {
     }
     aud(req, 'lgpd.excluir', 'users', req.usuario.id, 'anonimização a pedido do titular');
     repo.Usuarios.anonimizar(req.usuario.id);
-    res.clearCookie(COOKIE, { path: '/academy' });
+    sessaoAcademy.limpar(res);
     res.json({ ok: true });
   }));
 

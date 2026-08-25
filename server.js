@@ -4486,6 +4486,9 @@ app.get('/', (req, res) => {
   if (host.startsWith('kids.')) return res.redirect(302, '/kids'); // Villela Kids (clube de missões)
   if (host.startsWith('origena.')) return res.redirect(302, '/origena'); // Origena (memória e legado familiar)
   if (host.startsWith('finance.') || host.startsWith('financas.') || host.startsWith('financeiro.')) return res.redirect(302, '/finance'); // Villela Finance (ERP financeiro)
+  // Musique (Villela Music). `music.` e o canonico; `musique.` e a marca
+  // (provisoria, ADR-0005) e `musica.` e o erro de digitacao previsivel.
+  if (host.startsWith('music.') || host.startsWith('musique.') || host.startsWith('musica.')) return res.redirect(302, '/music');
   return res.redirect(302, '/hospede');
 });
 
@@ -4746,6 +4749,40 @@ try {
   }).catch((e) => console.error('[origena] falha ao montar módulo:', e.message));
 } catch (e) { console.error('[origena] falha ao montar módulo:', e.message); }
 
+// MUSIQUE — por Villela Music (15º produto). Academia musical, biblioteca
+// de cifras/partituras e sala de prática. Landing /music, app /music/app,
+// staff em /staff/api/music/*. SQLite próprio em DATA_DIR/music/.
+//
+// Difere dos outros 14 num ponto de propósito (ADR-0001): NÃO tem base de
+// contas própria — a conta é a da Academia, e o verificador de sessão vem
+// do núcleo, montado aqui com as funções de leitura da Academia. Sem isso
+// o mesmo professor teria dois logins.
+//
+// Áudio vai para o R2 por upload direto e trabalho pesado vai para a fila,
+// consumida pelo serviço SEPARADO `music-worker` (ADR-0003). Sem as envs
+// MUSIC_S3_*, o módulo sobe e diz no log o que falta.
+try {
+  const academyRepo = require('./academy').repo;
+  const sessaoAcademy = require('./nucleo/sessao-academy').criarVerificador({
+    jwtSecret: JWT_SECRET,
+    buscarUsuario: (uid) => academyRepo.Usuarios.porId(uid),
+    sessaoValida: (jti) => academyRepo.Sessoes.valida(jti),
+  });
+  require('./music').montar(app, {
+    express, requireAuth, requireAdmin,
+    sessaoAcademy,
+    // Quem é PRODUTOR APROVADO na Academia dá aula na Musique. O papel
+    // vem de lá (ADR-0001): duplicar a aprovação de professor aqui criaria
+    // duas verdades sobre a mesma pessoa.
+    ehProfessor: (u) => { try { return academyRepo.podeAgirComo(u, 'produtor'); } catch (_) { return false; } },
+    // O professor atribui tarefa pelo E-MAIL do aluno. A busca é da
+    // Academia, que é dona das contas — a Musique só pergunta.
+    buscarContaPorEmail: (email) => { try { return academyRepo.Usuarios.porEmail(email); } catch (_) { return null; } },
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
+    jwtSecret: JWT_SECRET,
+  });
+} catch (e) { console.error('[music] falha ao montar módulo:', e.message); }
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
@@ -4772,6 +4809,9 @@ const PREFIXO_POR_SUBDOMINIO = [
   [['kids.'], '/kids'],
   [['origena.'], '/origena'],
   [['finance.', 'financas.', 'financeiro.'], '/finance'],
+  // `music.` é o canônico; `musique.` é a MARCA (provisória, ADR-0005) e
+  // `musica.` é o erro de digitação previsível de quem escreve em português.
+  [['music.', 'musique.', 'musica.'], '/music'],
 ];
 // Arquivos que vivem na raiz do domínio por convenção — 404 honesto é melhor que redirect.
 const RAIZ_SEM_REDIRECT = /^\/(robots\.txt|sitemap\.xml|favicon\.ico|\.well-known(\/|$))/;

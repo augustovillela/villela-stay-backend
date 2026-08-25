@@ -631,6 +631,26 @@ const SISTEMAS = [
 // ---------------------------------------------------------------------
 const EM_DESENVOLVIMENTO = [
   {
+    id: 'music', nome: 'Musique', pasta: 'musique',
+    cor: '#1B2A4A', vertical: 'grupo', url: 'https://musique.villelastay.com.br/music',
+    tela: 'music',
+    demo: T(
+      'A cifra muda de tom e a letra fica onde estava — e a obra que não é sua permanece marcada e privada.',
+      'The chord chart changes key while the lyrics stay put — and work that is not yours stays tagged and private.',
+      'El cifrado cambia de tono y la letra se queda donde estaba — y la obra que no es tuya sigue marcada y privada.'),
+    estado: T('Academia, biblioteca e palco prontos, antes do lançamento comercial', 'Academy, library and stage mode ready, before commercial launch', 'Academia, biblioteca y modo escenario listos, antes del lanzamiento comercial'),
+    categoria: T('Academia musical e biblioteca do músico', 'Music academy and musician library', 'Academia musical y biblioteca del músico'),
+    promessa: T('Comece aprendendo. Continue no mesmo lugar.', 'Start by learning. Stay in the same place.', 'Empieza aprendiendo. Sigue en el mismo lugar.'),
+    oQueE: T(
+      'Academia musical com exercícios que medem de verdade — teoria, leitura, percepção, ritmo e afinação —, biblioteca de cifras, partituras, MusicXML e MIDI com transposição exata, capotraste e versões, e sala de prática com metrônomo, afinador e diário de estudo. A conta é a mesma da Academia Villela: quem começa como aluno vira músico sem trocar de sistema. Nota que conta tem revisão do professor, e exercício avaliado por microfone diz o que mede e com que tolerância antes de você tocar.',
+      'A music academy with exercises that actually measure — theory, reading, ear training, rhythm and pitch —, a library of chord charts, scores, MusicXML and MIDI with exact transposition, capo and versions, and a practice room with metronome, tuner and study log. The account is the same as Villela Academy: whoever starts as a student becomes a musician without switching systems. Grades that count are reviewed by the teacher, and any microphone-graded exercise states what it measures and with what tolerance before you play.',
+      'Academia musical con ejercicios que miden de verdad — teoría, lectura, oído, ritmo y afinación —, biblioteca de cifrados, partituras, MusicXML y MIDI con transposición exacta, cejilla y versiones, y sala de práctica con metrónomo, afinador y diario de estudio. La cuenta es la misma de la Academia Villela: quien empieza como alumno se vuelve músico sin cambiar de sistema. La nota que cuenta tiene revisión del profesor, y el ejercicio evaluado por micrófono dice qué mide y con qué tolerancia antes de que toques.'),
+    falta: T(
+      'Escolas e turmas, e a reprodução com timbres de instrumento de verdade (hoje é síntese simples, e a tela diz isso). O acervo é privado por decisão: catálogo público de cifras de terceiros só existiria com licenciamento junto às editoras, e isso é projeto à parte. Geração de música por IA não está no escopo: não há fornecedor com API pública, e prometer prazo que não existe seria vender o que não se entrega.',
+      'Schools and classes, and playback with real instrument samples (today it is simple synthesis, and the screen says so). The library is private by decision: a public catalogue of third-party chord charts would only exist with publisher licensing, and that is a separate project. AI music generation is out of scope: no supplier offers a public API, and promising a date that does not exist would be selling what we cannot deliver.',
+      'Escuelas y clases, y la reproducción con timbres de instrumento reales (hoy es síntesis simple, y la pantalla lo dice). El acervo es privado por decisión: un catálogo público de cifrados de terceros solo existiría con licencia de las editoriales, y eso es un proyecto aparte. La generación de música por IA está fuera del alcance: no hay proveedor con API pública, y prometer una fecha que no existe sería vender lo que no se entrega.')
+  },
+  {
     id: 'finance', nome: 'Villela Finance', pasta: 'villela-finance',
     cor: '#159A78', vertical: 'finance', url: 'https://finance.villelastay.com.br',
     tela: 'finance',

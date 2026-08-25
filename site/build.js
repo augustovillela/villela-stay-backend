@@ -596,6 +596,9 @@ const PRODUTOS_GRUPO = [
   { nome: 'Villela CRM', pasta: 'villela-crm', cor: '#B0185A', url: 'https://crm.villelastay.com.br',
     tag: ['Relacionamento que aproxima. Processos que convertem.', 'Relationships that connect. Processes that convert.', 'Relaciones que acercan. Procesos que convierten.'],
     frase: ['CRM multicanal com funis Kanban, follow-ups automáticos, lead scoring e propostas — do lead ao pós-venda.', 'Multichannel CRM with Kanban pipelines, automatic follow-ups, lead scoring and proposals — from lead to after-sales.', 'CRM multicanal con embudos Kanban, seguimientos automáticos, lead scoring y propuestas — del lead a la posventa.'] },
+  { nome: 'Musique', pasta: 'musique', cor: '#1B2A4A', url: 'https://musique.villelastay.com.br',
+    tag: ['Estude, organize e toque', 'Study, organise and play', 'Estudia, organiza y toca'],
+    frase: ['Academia musical, biblioteca de cifras e partituras e sala de prática — do primeiro acorde ao palco.', 'A music academy, your chord and score library and a practice room — from the first chord to the stage.', 'Academia musical, biblioteca de cifrados y partituras y sala de práctica — del primer acorde al escenario.'] },
   { nome: 'Livraria Villela', pasta: 'livraria-villela', cor: '#7F1D1D', url: 'https://livros.villelastay.com.br',
     tag: ['Livros, ideias e conhecimento aplicado', 'Books, ideas and applied knowledge', 'Libros, ideas y conocimiento aplicado'],
     frase: ['Livros digitais e impressos que levam o conhecimento da prática direto para a sua estante.', 'Digital and printed books that bring hands-on knowledge straight to your shelf.', 'Libros digitales e impresos que llevan el conocimiento práctico directo a tu estantería.'] },
@@ -2397,6 +2400,26 @@ document.querySelector('.form-landing').addEventListener('submit', function(e){
 // Augusto — "SaaS novo entra na home E na landing" — sem depender de
 // memória de ninguém.
 conferirCobertura(PRODUTOS_GRUPO);
+
+// TRAVA DO SÍMBOLO. O site estático NÃO enxerga o backend: ele serve o que
+// estiver em `site/assets/brand/`, copiado no build. Um produto novo cujo
+// símbolo só exista em `backend/assets/brand/` vai ao ar com a imagem
+// quebrada — e card sem imagem parece produto que não existe, que é pior
+// do que card ausente. Já aconteceu com a Musique, e virou trava aqui.
+{
+  const semSimbolo = PRODUTOS_GRUPO
+    .map((p) => ({ nome: p.nome, caminho: path.join(__dirname, 'assets', 'brand', p.pasta, p.simbolo || 'simbolo-v.svg') }))
+    .filter((x) => !fs.existsSync(x.caminho));
+  if (semSimbolo.length) {
+    const lista = semSimbolo.map((x) => '  - ' + x.nome + ' -> ' + path.relative(__dirname, x.caminho)).join('\n');
+    throw new Error([
+      '[build] Produto do grupo sem simbolo em site/assets/brand/:',
+      lista,
+      '  O site e um servico estatico separado e NAO le backend/assets/.',
+      '  Copie o arquivo para site/assets/brand/<pasta>/ (o backend continua precisando da copia dele).',
+    ].join('\n'));
+  }
+}
 
 {
   const simboloDe = s => `/assets/brand/${s.pasta}/${s.simbolo || 'simbolo-v.svg'}`;

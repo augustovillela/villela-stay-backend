@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">Símbolo Villela Finance</title>
+  <desc id="desc">Portal em V marinho e dourado com pictograma jade de razão contábil em movimento.</desc>
+  <polygon points="14,26 60,58 106,26 106,40 60,72 14,40" fill="#C9A227"/>
+  <polygon points="16,46 42,64 42,100 16,112" fill="#1B2A4A"/>
+  <polygon points="104,46 78,64 78,100 104,112" fill="#1B2A4A"/>
+  <g fill="none" stroke="#159A78" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M49 85h12"/>
+    <path d="M49 94h11l10-12"/>
+  </g>
+  <circle cx="70" cy="82" r="4" fill="#159A78"/>
+</svg>
