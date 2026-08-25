@@ -364,6 +364,51 @@ function importar({ entidadeId, contaBancariaId, conteudo, fonte = '', formato =
 }
 
 /**
+ * Lança no razão o saldo inicial de uma conta bancária.
+ *
+ * Sem isto o saldo inicial existia SÓ na tabela da conta bancária: o
+ * painel de conciliação comparava `saldo inicial + extrato` contra o
+ * razão, que nunca tinha recebido a abertura — e a diferença era
+ * permanente, do tamanho exato do saldo inicial. Quem olhasse concluiria
+ * que o extrato não bate, quando o que faltava era a implantação.
+ *
+ * A contrapartida é patrimônio líquido ("saldos iniciais de implantação"),
+ * e não receita: dinheiro que já existia antes do sistema não é ganho do
+ * período — tratá-lo como receita inflaria o primeiro DRE.
+ */
+function abrirSaldoInicial(contaBancariaId, { data } = {}) {
+  const cb = repo.contaBancaria(contaBancariaId);
+  if (!cb) throw new ErroDeImportacao('Conta bancária não encontrada.');
+  if (!cb.conta_id) throw new ErroDeImportacao(`A conta "${cb.nome}" não tem conta contábil ligada.`);
+  const valor = cb.saldo_inicial_cents || 0;
+  if (!valor) return { lancado: false, motivo: 'saldo inicial zero' };
+
+  const quando = data || cb.saldo_inicial_data || hojeISO();
+  const pl = planoContas.chave(cb.entidade_id, 'saldosIniciais');
+  const linhas = valor > 0
+    ? [{ contaId: cb.conta_id, debitoCents: valor, creditoCents: 0 },
+       { contaId: pl.id, debitoCents: 0, creditoCents: valor }]
+    // Saldo inicial negativo (conta no vermelho) existe e não é erro.
+    : [{ contaId: pl.id, debitoCents: -valor, creditoCents: 0 },
+       { contaId: cb.conta_id, debitoCents: 0, creditoCents: -valor }];
+
+  const r = ledger.lancar({
+    entidadeId: cb.entidade_id, data: quando, competencia: quando.slice(0, 7),
+    memo: `Saldo inicial de implantação — ${cb.nome}`,
+    origem: 'implantacao', origemRef: cb.id,
+    // Idempotente pela conta: rodar de novo não duplica a abertura.
+    idempotencia: `saldo-inicial:${cb.id}`,
+    linhas,
+  });
+  auditoria.registrar('saldo_inicial.lancar', {
+    objetoTipo: 'conta_bancaria', objetoId: cb.id,
+    motivo: 'implantação da conta bancária',
+    detalhe: { valorCents: valor, data: quando, loteId: r.lote.id },
+  });
+  return { lancado: true, loteId: r.lote.id, valorCents: valor, data: quando };
+}
+
+/**
  * Desfaz uma importação (nível 3). Só remove transação que ainda NÃO
  * virou lançamento — o que já está no razão se corrige por estorno, nunca
  * apagando. Devolve o que não pôde ser removido, com o motivo.
@@ -501,8 +546,18 @@ function painel(entidadeId, contaBancariaId, { ate = hojeISO() } = {}) {
   const esperado = saldoExtrato - pendentes.total;
   const diferenca = saldoRazao - esperado;
 
+  // A abertura entra no razão como lançamento (`origem: implantacao`). Se
+  // ela faltar, o razão fica menor que o extrato exatamente pelo saldo
+  // inicial — e é isso que a mensagem tem de dizer, em vez de deixar o
+  // usuário procurar um lançamento manual que não existe.
+  const aberturaNoRazao = cb.saldo_inicial_cents
+    ? !!repo.um("SELECT id FROM fin_lotes WHERE tenant_id = :tenant AND origem = 'implantacao' AND origem_ref = :cb LIMIT 1", { cb: cb.id })
+    : true;
+
   return {
     contaBancaria: { id: cb.id, nome: cb.nome, banco: cb.banco },
+    saldoInicialCents: cb.saldo_inicial_cents, saldoInicialData: cb.saldo_inicial_data || '',
+    aberturaNoRazao,
     ate,
     saldoExtratoCents: saldoExtrato,
     saldoRazaoCents: saldoRazao,
@@ -515,11 +570,13 @@ function painel(entidadeId, contaBancariaId, { ate = hojeISO() } = {}) {
     // significa "tudo o que foi conciliado bate; falta conciliar o resto".
     explicacao: diferenca === 0
       ? (pendentes.n ? `Bate. Faltam ${pendentes.n} transação(ões) por conciliar (${dinheiro.formatar(pendentes.total)}).` : 'Bate integralmente.')
-      : `Divergência de ${dinheiro.formatar(diferenca)} entre o razão e o extrato — investigue lançamentos manuais na conta do banco.`,
+      : !aberturaNoRazao
+        ? `Divergência de ${dinheiro.formatar(diferenca)}: o saldo inicial de ${dinheiro.formatar(cb.saldo_inicial_cents)} ainda NÃO está no razão. Lance a implantação antes de procurar outra causa.`
+        : `Divergência de ${dinheiro.formatar(diferenca)} entre o razão e o extrato — investigue lançamentos manuais na conta do banco.`,
   };
 }
 
 module.exports = {
-  ErroDeImportacao, importar, desfazerImportacao, conciliar, ignorar, painel,
+  ErroDeImportacao, importar, desfazerImportacao, conciliar, ignorar, painel, abrirSaldoInicial,
   lerCsv, lerOfx, pareceOfx, mapearColunas, normalizarData, normalizarLinha, impressaoDigital, semAcento,
 };

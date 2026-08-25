@@ -221,7 +221,10 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       objetoTipo: 'conta_bancaria', objetoId: cb.id,
       detalhe: { nome: cb.nome, conta_contabil: contaContabil.codigo },
     });
-    return { ok: true, conta: cb, contaContabil };
+    // A implantação entra no razão AQUI. Saldo inicial que fica só na
+    // tabela da conta bancária vira diferença permanente na conciliação.
+    const abertura = bancos.abrirSaldoInicial(cb.id);
+    return { ok: true, conta: cb, contaContabil, abertura };
   }, { permissao: 'configurar', modulo: 'bancos', medida: 'contas_bancarias', json: true }));
 
   // ------------------------------------------------------------ extrato

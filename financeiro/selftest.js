@@ -4519,6 +4519,78 @@ teste('retenção pelo extrato: a invariante conta a retenção, e a baixa fecha
   assert.strictEqual(t2.status, 'conciliada');
 });
 
+// ------------------------------------------ implantação: saldo inicial
+teste('implantação: o saldo inicial ENTRA no razão, contra patrimônio líquido', () => {
+  const r = naA(() => {
+    const pai = repo.contaPorCodigo(empresaA.id, '1.1.1');
+    const cc = repo.criarConta({
+      entidadeId: empresaA.id, codigo: '1.1.1.900', nome: 'Banco — implantação',
+      natureza: 'ativo', saldoNormal: 'devedora', paiId: pai.id, aceitaLancamento: true, subledger: 'bancos',
+    });
+    const cb = repo.criarContaBancaria({
+      entidadeId: empresaA.id, nome: 'Conta de implantação', contaId: cc.id,
+      saldoInicialCents: 1234500, saldoInicialData: '2026-01-01',
+    });
+    return { cb, cc, abertura: bancos.abrirSaldoInicial(cb.id) };
+  });
+  assert.strictEqual(r.abertura.lancado, true, 'a abertura não foi lançada');
+
+  const saldoBanco = naA(() => ledger.saldo(r.cc.id, {})).saldoCents;
+  assert.strictEqual(saldoBanco, 1234500, 'o razão não recebeu o saldo inicial');
+
+  // Contra PL, não contra receita: dinheiro que já existia antes do
+  // sistema não é ganho do período, e inflaria o primeiro DRE.
+  const pl = naA(() => planoContas.chave(empresaA.id, 'saldosIniciais'));
+  assert.strictEqual(naA(() => ledger.saldo(pl.id, {})).saldoCents, 1234500,
+    'a contrapartida do saldo inicial não foi para patrimônio líquido');
+  const dre = naA(() => relatorios.dre(empresaA.id, '2026-01'));
+  assert.strictEqual(dre.resumo.receitaBrutaCents, 0,
+    'o saldo inicial virou receita — o primeiro DRE mostraria lucro que nunca existiu');
+});
+
+teste('implantação: lançar a abertura duas vezes não duplica', () => {
+  const cb = naA(() => repo.listarContasBancarias(empresaA.id)).find(x => x.nome === 'Conta de implantação');
+  const antes = naA(() => ledger.saldo(cb.conta_id, {})).saldoCents;
+  naA(() => bancos.abrirSaldoInicial(cb.id));
+  assert.strictEqual(naA(() => ledger.saldo(cb.conta_id, {})).saldoCents, antes,
+    'a segunda chamada duplicou o saldo inicial');
+});
+
+teste('implantação: a conciliação DIZ quando a abertura falta, em vez de mandar procurar', () => {
+  const r = naA(() => {
+    const pai = repo.contaPorCodigo(empresaA.id, '1.1.1');
+    const cc = repo.criarConta({
+      entidadeId: empresaA.id, codigo: '1.1.1.901', nome: 'Banco — sem abertura',
+      natureza: 'ativo', saldoNormal: 'devedora', paiId: pai.id, aceitaLancamento: true, subledger: 'bancos',
+    });
+    const cb = repo.criarContaBancaria({
+      entidadeId: empresaA.id, nome: 'Conta sem abertura', contaId: cc.id,
+      saldoInicialCents: 500000, saldoInicialData: '2026-01-01',
+    });
+    return bancos.painel(empresaA.id, cb.id, {});
+  });
+  assert.strictEqual(r.aberturaNoRazao, false);
+  assert.ok(/saldo inicial de .* ainda NÃO está no razão/.test(r.explicacao),
+    `a explicação não aponta a causa real: ${r.explicacao}`);
+});
+
+teste('implantação: saldo inicial NEGATIVO (conta no vermelho) também entra', () => {
+  const r = naA(() => {
+    const pai = repo.contaPorCodigo(empresaA.id, '1.1.1');
+    const cc = repo.criarConta({
+      entidadeId: empresaA.id, codigo: '1.1.1.902', nome: 'Banco — no vermelho',
+      natureza: 'ativo', saldoNormal: 'devedora', paiId: pai.id, aceitaLancamento: true, subledger: 'bancos',
+    });
+    const cb = repo.criarContaBancaria({
+      entidadeId: empresaA.id, nome: 'Conta no vermelho', contaId: cc.id,
+      saldoInicialCents: -80000, saldoInicialData: '2026-01-01',
+    });
+    bancos.abrirSaldoInicial(cb.id);
+    return ledger.saldo(cc.id, {}).saldoCents;
+  });
+  assert.strictEqual(r, -80000, 'saldo inicial negativo não foi lançado — e conta no vermelho existe');
+});
+
 // =====================================================================
 // 15. INTEGRIDADE FINAL
 // =====================================================================
