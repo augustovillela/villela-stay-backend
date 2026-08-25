@@ -4941,6 +4941,64 @@ teste('cobrança: o mesmo passo não entra duas vezes no histórico', () => {
   assert.strictEqual(repetiu, false, 'dois cliques seguidos gravaram duas cobranças');
 });
 
+// -------------------------------------- ensaio do plano de incidente
+const incidente = require('./incidente');
+
+teste('incidente: o ensaio roda, mede o RTO e NÃO toca no banco em uso', () => {
+  const lotesAntes = naA(() => repo.listarLotes(empresaA.id, { limite: 500 })).length;
+  const r = incidente.ensaio();
+  const lotesDepois = naA(() => repo.listarLotes(empresaA.id, { limite: 500 })).length;
+  assert.strictEqual(lotesDepois, lotesAntes, 'o ensaio alterou o banco em uso');
+
+  assert.ok(r.rto.ms > 0, 'não mediu o tempo de restauração');
+  assert.ok(/medido, não estimado/.test(r.rto.texto), 'o RTO aparece como estimativa');
+  assert.strictEqual(r.ok, true, `o ensaio acusou problemas: ${r.problemas.join(' · ')}`);
+  assert.ok(/RPO/i.test(r.rpo) || /réplica/i.test(r.rpo), 'não declara o RPO real');
+});
+
+teste('incidente: o ensaio ACUSA cadeia de auditoria adulterada', () => {
+  // Prova de que o ensaio serve para alguma coisa: se ele passa mesmo com o
+  // banco corrompido, ele não está olhando nada.
+  const alvo = db.prepare("SELECT id, detalhe FROM audit_logs WHERE tenant_id = ? ORDER BY seq LIMIT 1").get(contaA.id);
+  const original = alvo.detalhe;
+  // A auditoria é append-only por gatilho — para simular o adversário que
+  // conseguiu escrever no banco, é preciso derrubar o gatilho, como ele
+  // faria. Recriado no `finally`.
+  db.exec('DROP TRIGGER IF EXISTS trg_fin_audit_sem_update');
+  db.prepare('UPDATE audit_logs SET detalhe = ? WHERE id = ?').run('{"adulterado":true}', alvo.id);
+  try {
+    const r = incidente.ensaio();
+    assert.strictEqual(r.ok, false, 'o ensaio passou com a auditoria adulterada');
+    assert.ok(r.problemas.some(p => /cadeia de auditoria quebrada/.test(p)),
+      `não apontou a cadeia: ${r.problemas.join(' · ')}`);
+  } finally {
+    db.prepare('UPDATE audit_logs SET detalhe = ? WHERE id = ?').run(original, alvo.id);
+    db.exec(`CREATE TRIGGER IF NOT EXISTS trg_fin_audit_sem_update
+      BEFORE UPDATE ON audit_logs FOR EACH ROW
+      BEGIN SELECT RAISE(ABORT, 'auditoria e append-only'); END`);
+  }
+  assert.strictEqual(incidente.ensaio().ok, true, 'não voltou ao normal depois de desfazer');
+});
+
+teste('incidente: o relatório diz o que a ANPD exige e de onde sai', () => {
+  const r = incidente.ensaio();
+  const md = incidente.relatorio(r);
+  assert.ok(/RTO medido/.test(md), 'o relatório não traz o RTO');
+  assert.ok(/Três dias úteis do CONHECIMENTO/.test(md), 'não traz o prazo regulatório');
+  assert.ok(/formulário CIS/.test(md), 'não lembra que a comunicação é por formulário, não e-mail');
+  // O item que hoje NÃO existe tem de aparecer como não existente.
+  assert.ok(/NÃO EXISTE — encarregado não designado/.test(md),
+    'o relatório não denuncia que não há encarregado (DPO) designado');
+});
+
+teste('incidente: o ensaio declara o que NÃO cobre', () => {
+  const r = incidente.ensaio();
+  assert.ok(r.faltaHumano.length >= 4, 'o ensaio se apresenta como o plano inteiro');
+  assert.ok(r.faltaHumano.some(x => /encarregado/.test(x)), 'não lembra do DPO');
+  assert.ok(r.faltaHumano.some(x => /passa por cima do controlador/.test(x)),
+    'não lembra que, como operador, avisar o titular direto atropela o controlador');
+});
+
 // =====================================================================
 // 15. INTEGRIDADE FINAL
 // =====================================================================

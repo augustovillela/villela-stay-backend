@@ -22,6 +22,7 @@ const diario = require('./diario');
 const rbac = require('./rbac');
 const dinheiro = require('./dinheiro');
 const billing = require('./billing');
+const incidente = require('./incidente');
 const { responderErro } = require('./rotas-app');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
@@ -213,6 +214,15 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
       isolamento: { modelo: 'contexto + guarda no repositório', rls: false, testado: 'npm run test:finance' },
     };
   }, { motivo: 'auditoria de saúde da plataforma' }));
+
+  /**
+   * Ensaio do plano de incidente. Não altera nada em produção: a
+   * restauração trabalha sobre uma cópia e a descarta.
+   */
+  app.post(`${B}/incidente/ensaio`, ...admin(() => {
+    const r = incidente.ensaio();
+    return { ...r, relatorio: incidente.relatorio(r) };
+  }, { motivo: 'ensaio do plano de incidente' }));
 
   app.post(`${B}/diario/replicar`, ...admin(() => diario.replicar(), { motivo: 'forçar replicação do diário' }));
 

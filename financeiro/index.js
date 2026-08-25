@@ -67,6 +67,7 @@ const mercadopago = require('./mercadopago');
 const casamento = require('./casamento');
 const ativos = require('./ativos');
 const cobranca = require('./cobranca');
+const incidente = require('./incidente');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -147,7 +148,7 @@ function montar(app, injected = {}) {
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
     periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing, mercadopago, casamento, ativos, cobranca,
+    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing, mercadopago, casamento, ativos, cobranca, incidente,
   };
 }
 
