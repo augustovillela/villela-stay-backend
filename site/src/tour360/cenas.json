@@ -510,6 +510,69 @@
       "destaque": false
     },
     {
+      "id": "kubitschek-flat-da-familia",
+      "arquivo": "kubitschek-flat-da-familia",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "VH01H"
+      ],
+      "titulo": "Flat da Família",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
+      "id": "kubitschek-flat-da-familia-2",
+      "arquivo": "kubitschek-flat-da-familia-2",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "VH01H"
+      ],
+      "titulo": "Flat da Família (2)",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
+      "id": "kubitschek-flat-da-familia-banheiro",
+      "arquivo": "kubitschek-flat-da-familia-banheiro",
+      "casa": "Villa Kubitschek",
+      "imovel": [
+        "GG04I",
+        "VH01H"
+      ],
+      "titulo": "Banheiro do Flat da Família",
+      "larguras": [
+        1024,
+        2048,
+        4096
+      ],
+      "vistaInicial": {
+        "yaw": 0,
+        "pitch": 0,
+        "fov": 75
+      },
+      "hotspots": []
+    },
+    {
       "id": "kubitschek-banheiro-externo",
       "arquivo": "kubitschek-banheiro-externo",
       "casa": "Villa Kubitschek",
