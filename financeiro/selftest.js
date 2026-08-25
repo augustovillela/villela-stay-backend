@@ -4049,8 +4049,11 @@ const mercadopago = require('./mercadopago');
 
 // Mercado Pago de mentira, com os casos que importam: aprovado com tarifa,
 // aprovado sem tarifa, recusado, e paginação.
+const EU_MP = '999';
+
 function mpExtrato(pagamentos) {
   const f = (caminho) => {
+    if (caminho === '/users/me') return Promise.resolve({ id: EU_MP });
     const u = new URL('https://x' + caminho);
     const offset = Number(u.searchParams.get('offset') || 0);
     const limit = Number(u.searchParams.get('limit') || 50);
@@ -4062,16 +4065,19 @@ function mpExtrato(pagamentos) {
   return f;
 }
 
+// Por padrão o pagamento é RECEBIDO por nós: `collector_id` é a conta, o
+// pagador é outra pessoa. Os testes que querem uma saída invertem isso.
 const pgto = (o) => Object.assign({
   id: 1, status: 'approved', date_approved: '2026-08-05T10:00:00.000-03:00',
   transaction_amount: 1000, operation_type: 'regular_payment', description: 'Reserva',
   payment_method_id: 'pix', fee_details: [],
+  collector_id: EU_MP, payer: { id: '111' },
 }, o);
 
 teste('extrato MP: bruto entra como crédito e a tarifa sai SEPARADA', () => {
-  const linhas = mercadopago.paraTransacoes([
+  const { linhas } = mercadopago.paraTransacoes([
     pgto({ id: 'P1', transaction_amount: 1000, fee_details: [{ type: 'mercadopago_fee', amount: 49.9 }] }),
-  ]);
+  ], EU_MP);
   assert.strictEqual(linhas.length, 2, 'esperava a entrada e a tarifa como linhas distintas');
   assert.strictEqual(linhas[0].valorCents, 100000, 'a entrada não é o valor BRUTO');
   assert.strictEqual(linhas[1].valorCents, -4990, 'a tarifa não saiu como débito');
@@ -4083,11 +4089,11 @@ teste('extrato MP: bruto entra como crédito e a tarifa sai SEPARADA', () => {
 });
 
 teste('extrato MP: pagamento não aprovado NÃO entra no extrato', () => {
-  const linhas = mercadopago.paraTransacoes([
+  const { linhas } = mercadopago.paraTransacoes([
     pgto({ id: 'P2', status: 'rejected' }),
     pgto({ id: 'P3', status: 'pending' }),
     pgto({ id: 'P4', status: 'approved' }),
-  ]);
+  ], EU_MP);
   assert.strictEqual(linhas.length, 1, 'pagamento recusado ou pendente virou dinheiro no razão');
   assert.strictEqual(linhas[0].documento, 'P4');
 });
@@ -4096,6 +4102,57 @@ teste('extrato MP: soma das tarifas cobre mais de uma linha de taxa', () => {
   const t = mercadopago.tarifaCents(pgto({ fee_details: [{ amount: 10.5 }, { amount: 2.25 }] }));
   assert.strictEqual(t, 1275);
   assert.strictEqual(mercadopago.tarifaCents(pgto({ fee_details: [] })), 0);
+});
+
+teste('extrato MP: pagamento que NÓS fizemos entra como SAÍDA, não como receita', () => {
+  // Achado ao rodar a prévia contra a conta real em 25/08/2026: de 50
+  // pagamentos de agosto, 16 eram pagamentos FEITOS por ele. Tratar todos
+  // como entrada punha R$ 7 mil de dinheiro que saiu dentro da receita.
+  const { linhas } = mercadopago.paraTransacoes([
+    pgto({ id: 'REC', transaction_amount: 500, collector_id: EU_MP, payer: { id: '111' } }),
+    pgto({ id: 'PAG', transaction_amount: 300, collector_id: '222', payer: { id: EU_MP } }),
+  ], EU_MP);
+  const rec = linhas.find(l => l.documento === 'REC');
+  const pag = linhas.find(l => l.documento === 'PAG');
+  assert.strictEqual(rec.valorCents, 50000, 'o recebimento não entrou como positivo');
+  assert.strictEqual(pag.valorCents, -30000, 'o pagamento que NÓS fizemos entrou como receita');
+});
+
+teste('extrato MP: movimento interno não entra — e não some', () => {
+  // `money_exchange` com a conta dos dois lados (rendimento do saldo,
+  // partição): chutar o sinal seria inventar receita ou despesa.
+  const { linhas, naoClassificados } = mercadopago.paraTransacoes([
+    pgto({ id: 'INT', transaction_amount: 1.25, operation_type: 'money_exchange', collector_id: EU_MP, payer: { id: EU_MP } }),
+    pgto({ id: 'OK', transaction_amount: 10 }),
+  ], EU_MP);
+  assert.strictEqual(linhas.length, 1, 'o movimento interno virou lançamento');
+  assert.strictEqual(linhas[0].documento, 'OK');
+  assert.strictEqual(naoClassificados.length, 1, 'o movimento interno sumiu sem deixar rastro');
+  assert.ok(/dos dois lados/.test(naoClassificados[0].motivo), 'não diz por que não foi classificado');
+});
+
+teste('extrato MP: tarifa só existe em pagamento RECEBIDO', () => {
+  const { linhas } = mercadopago.paraTransacoes([
+    pgto({ id: 'PAGCOMFEE', transaction_amount: 200, collector_id: '222', payer: { id: EU_MP },
+      fee_details: [{ amount: 9.9 }] }),
+  ], EU_MP);
+  assert.strictEqual(linhas.length, 1,
+    'gerou linha de tarifa num pagamento que nós fizemos — a tarifa é de quem recebe, e já está no valor que saiu');
+  assert.strictEqual(linhas[0].valorCents, -20000);
+});
+
+teste('extrato MP: sem o id da conta, RECUSA em vez de adivinhar o sinal', () => {
+  let recusou = false;
+  try { mercadopago.paraTransacoes([pgto({})], ''); } catch (_) { recusou = true; }
+  assert.strictEqual(recusou, true, 'converteu sem saber quem é a conta — o sinal seria chute');
+});
+
+teste('extrato MP: a direção é decidida pelas duas pontas', () => {
+  const eu = '77';
+  assert.strictEqual(mercadopago.direcao({ collector_id: '77', payer: { id: '9' } }, eu), 'entrada');
+  assert.strictEqual(mercadopago.direcao({ collector_id: '9', payer: { id: '77' } }, eu), 'saida');
+  assert.strictEqual(mercadopago.direcao({ collector_id: '77', payer: { id: '77' } }, eu), 'interno');
+  assert.strictEqual(mercadopago.direcao({ collector_id: '1', payer: { id: '2' } }, eu), 'interno');
 });
 
 testeAsync('extrato MP: a prévia não grava nada e declara o que NÃO vê', async () => {
@@ -4108,11 +4165,11 @@ testeAsync('extrato MP: a prévia não grava nada e declara o que NÃO vê', asy
   const depois = naA(() => repo.contarTransacoes(empresaA.id).reduce((s, x) => s + x.n, 0));
   assert.strictEqual(depois, antes, 'a prévia gravou transação — ela existe justamente para não gravar');
 
-  assert.strictEqual(p.resumo.brutoCents, 35000);
+  assert.strictEqual(p.resumo.recebidoCents, 35000);
   assert.strictEqual(p.resumo.tarifasCents, -1240);
   assert.strictEqual(p.resumo.liquidoCents, 33760);
   // O aviso é o que impede a conciliação de ser lida como prova de que bate.
-  assert.ok(/Saques para o banco, transferências enviadas/.test(p.aviso),
+  assert.ok(/Saques para o banco/.test(p.aviso) && /Movimento interno/.test(p.aviso),
     'a prévia não declara que o extrato é PARCIAL — a diferença na conciliação pareceria defeito');
 });
 

@@ -35,10 +35,24 @@ const LIMITE_PAGINA = 50;          // teto da API de busca
 const MAX_PAGINAS = 40;            // 2.000 pagamentos por sincronização
 
 let _mpFetch = null;
+let _idDaConta = null;
 
-function configurar({ mpFetch } = {}) {
+function configurar({ mpFetch, idDaConta } = {}) {
   _mpFetch = typeof mpFetch === 'function' ? mpFetch : null;
+  _idDaConta = idDaConta ? String(idDaConta) : null;
   return { disponivel: configurado() };
+}
+
+/**
+ * Quem somos nós na conta do Mercado Pago. É o que decide o SINAL de cada
+ * pagamento — sem isso, dinheiro que saiu entra como dinheiro que entrou.
+ * Buscado uma vez e guardado.
+ */
+async function idDaConta() {
+  if (_idDaConta) return _idDaConta;
+  const eu = await mp('/users/me');
+  _idDaConta = String(eu && eu.id);
+  return _idDaConta;
 }
 const configurado = () => !!(_mpFetch && (process.env.MP_ACCESS_TOKEN || _mpFetch.__mock));
 
@@ -93,15 +107,49 @@ const so = (v, n) => String(v == null ? '' : v).slice(0, n);
  * receita líquida. Importar só o líquido faria a receita encolher sem que
  * ninguém visse para onde foi a diferença.
  */
-function paraTransacoes(pagamentos) {
+/**
+ * Direção do pagamento, do ponto de vista desta conta.
+ *
+ * `/v1/payments/search` devolve o que a conta RECEBEU **e** o que ela
+ * PAGOU — descobri isso rodando a prévia contra a conta real: dos 50
+ * pagamentos de agosto, 19 eram recebimentos, 16 eram pagamentos feitos
+ * por ele e 15 eram movimento interno. Tratar todos como entrada punha
+ * R$ 7 mil de dinheiro que SAIU dentro da receita.
+ */
+function direcao(p, eu) {
+  const recebedor = String(p.collector_id || '');
+  const pagador = String((p.payer && p.payer.id) || p.payer_id || '');
+  const souRecebedor = recebedor === eu;
+  const souPagador = pagador === eu;
+  if (souRecebedor && !souPagador) return 'entrada';
+  if (souPagador && !souRecebedor) return 'saida';
+  // Conta consigo mesma (`money_exchange`, rendimento de saldo, partição):
+  // não é entrada nem saída de dinheiro do negócio. Chutar o sinal aqui
+  // seria inventar receita ou despesa — melhor devolver e declarar.
+  return 'interno';
+}
+
+function paraTransacoes(pagamentos, eu) {
+  if (!eu) throw new ErroMercadoPago('Sem o id da conta não dá para saber o sinal de cada pagamento.');
   const linhas = [];
+  const naoClassificados = [];
   for (const p of pagamentos) {
     if (p.status !== 'approved') continue;
     const data = so(p.date_approved || p.date_created, 10);
     if (!RE_DATA.test(data)) continue;
 
-    const bruto = Math.round((Number(p.transaction_amount) || 0) * 100);
-    if (!bruto) continue;
+    const valor = Math.round((Number(p.transaction_amount) || 0) * 100);
+    if (!valor) continue;
+
+    const dir = direcao(p, eu);
+    if (dir === 'interno') {
+      naoClassificados.push({
+        id: so(p.id, 40), tipo: so(p.operation_type, 40), valorCents: valor,
+        motivo: 'a conta figura dos dois lados (movimento interno do Mercado Pago) — não é entrada nem saída do negócio',
+      });
+      continue;
+    }
+    const bruto = dir === 'entrada' ? valor : -valor;
 
     const pagador = p.additional_info && p.additional_info.payer
       ? `${p.additional_info.payer.first_name || ''} ${p.additional_info.payer.last_name || ''}`.trim()
@@ -119,7 +167,9 @@ function paraTransacoes(pagamentos) {
       origemMp: { id: p.id, tipo: p.operation_type, status: p.status, referencia: so(p.external_reference, 120) },
     });
 
-    const tarifa = tarifaCents(p);
+    // Tarifa é cobrada de quem recebe. Num pagamento que NÓS fizemos, a
+    // tarifa (se houver) já está embutida no que saiu.
+    const tarifa = dir === 'entrada' ? tarifaCents(p) : 0;
     if (tarifa) {
       linhas.push({
         data, valorCents: -tarifa,
@@ -130,32 +180,39 @@ function paraTransacoes(pagamentos) {
       });
     }
   }
-  return linhas;
+  return { linhas, naoClassificados };
 }
 
 const AVISO_ESCOPO =
-  'Traz apenas PAGAMENTOS RECEBIDOS. Saques para o banco, transferências enviadas e outros ' +
-  'movimentos não entram — a API de relatório de liberações não está habilitada nesta conta. ' +
-  'Por isso a conciliação vai acusar diferença contra o saldo real do Mercado Pago, e isso é o ' +
-  'esperado, não um defeito.';
+  'Traz os pagamentos em que esta conta é a recebedora (entrada) ou a pagadora (saída). ' +
+  'Movimento interno (a conta dos dois lados) NÃO entra e vem listado à parte. Saques para o ' +
+  'banco e outros lançamentos que não sejam pagamento também não entram — a API de relatório de ' +
+  'liberações não está habilitada nesta conta. Por isso a conciliação pode acusar diferença ' +
+  'contra o saldo real do Mercado Pago, e isso é o esperado, não um defeito.';
 
 /**
  * Prévia: mostra o que SERIA importado, sem gravar nada. É o primeiro
  * contato com a conta real — olhar antes de deixar entrar no razão.
  */
 async function previa({ desde, ate }) {
+  const eu = await idDaConta();
   const { pagamentos, total, truncado } = await buscarPagamentos({ desde, ate });
-  const linhas = paraTransacoes(pagamentos);
+  const { linhas, naoClassificados } = paraTransacoes(pagamentos, eu);
   const entradas = linhas.filter(l => l.valorCents > 0);
-  const tarifas = linhas.filter(l => l.valorCents < 0);
+  const saidas = linhas.filter(l => l.valorCents < 0 && !/^Tarifa Mercado Pago/.test(l.descricao));
+  const tarifas = linhas.filter(l => /^Tarifa Mercado Pago/.test(l.descricao));
   const somar = (ls) => ls.reduce((s, l) => s + l.valorCents, 0);
   return {
     periodo: { desde, ate },
     pagamentosEncontrados: total,
-    aprovados: entradas.length,
+    recebimentos: entradas.length,
+    pagamentosFeitos: saidas.length,
     linhas: linhas.slice(0, 200),
+    // Movimento interno não entra e não some: fica listado, com o motivo.
+    naoClassificados,
     resumo: {
-      brutoCents: somar(entradas), bruto: dinheiro.formatar(somar(entradas)),
+      recebidoCents: somar(entradas), recebido: dinheiro.formatar(somar(entradas)),
+      pagoCents: somar(saidas), pago: dinheiro.formatar(somar(saidas)),
       tarifasCents: somar(tarifas), tarifas: dinheiro.formatar(somar(tarifas)),
       liquidoCents: somar(linhas), liquido: dinheiro.formatar(somar(linhas)),
     },
@@ -175,7 +232,7 @@ async function sincronizar({ entidadeId, contaBancariaId, desde, ate, dryRun = f
   if (dryRun) return Object.assign({ dryRun: true }, p);
 
   const { pagamentos } = await buscarPagamentos({ desde, ate });
-  const linhas = paraTransacoes(pagamentos);
+  const { linhas } = paraTransacoes(pagamentos, await idDaConta());
   if (!linhas.length) {
     return { importado: false, motivo: 'Nenhum pagamento aprovado no período.', resumo: p.resumo, aviso: AVISO_ESCOPO };
   }
@@ -189,5 +246,5 @@ async function sincronizar({ entidadeId, contaBancariaId, desde, ate, dryRun = f
 
 module.exports = {
   ErroMercadoPago, AVISO_ESCOPO, LIMITE_PAGINA, MAX_PAGINAS,
-  configurar, configurado, buscarPagamentos, paraTransacoes, tarifaCents, previa, sincronizar,
+  configurar, configurado, idDaConta, buscarPagamentos, paraTransacoes, direcao, tarifaCents, previa, sincronizar,
 };
