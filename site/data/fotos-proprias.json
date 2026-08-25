@@ -4,7 +4,55 @@
     "_nota": "Fotos que vêm da Stays e NÃO devem aparecer na galeria do site (id do arquivo no CDN). Filtradas antes do corte, então a galeria continua com 8 fotos. O anúncio na Stays continua com elas: para sumirem também do Airbnb, Booking e Decolar, apagar no painel da Stays.",
     "GD03H": [
       "62cece07c1eb839f9b74e01a",
-      "62cece31c1eb832ed574e026"
+      "62cece31c1eb832ed574e026",
+      "660c6303c83ae979bd4dea4f"
+    ],
+    "UD03H": [
+      "675ac94cd6559ca30b1a38dc",
+      "675ac957d196ee050f3a43a2",
+      "64ede97f938e4c67fee2cfae"
+    ],
+    "UD09H": [
+      "6759ce6816bb7d298b2e2f90",
+      "6759cd8d16bb7d298b2e2727",
+      "64ede8faf649c93da8ebe7a5"
+    ],
+    "UF01H": [
+      "675acd052189843dc98f6d2e",
+      "675acd1517de7f554098533a",
+      "64ede926fd52b0de38e94dea"
+    ],
+    "UF05H": [
+      "6759cb947e7ea520a98c10a8",
+      "6759cb7f8fcb96fbe62e7cb8",
+      "64ede9ba9211cbff8ff21ae8"
+    ],
+    "UF06H": [
+      "6759c83b635886795cc18c4c",
+      "6759c82e706d4f8d1a0e6e49",
+      "64ede94eebabad59ac67776b",
+      "6759c7f55178af76273c76f1"
+    ],
+    "UF07H": [
+      "675adb11821b671a306c28c4",
+      "675adaff2267c234b1b41c1e"
+    ],
+    "VH01H": [
+      "675ae0048ec7001c898acc6b",
+      "675ae1fa821b671a306f0e13",
+      "64ede7ec7099f92ddbfa77a1",
+      "675ae0219db3e2c53724978d"
+    ],
+    "VH02H": [
+      "675add0640276d240ffc9fbd",
+      "64ede8d8f5cfdec50eb1dd8b"
+    ],
+    "GG04I": [
+      "675c11571f71c9672930e28e"
+    ],
+    "UF08H": [
+      "675ac2322a19a5164e7e50a4",
+      "675ac24bf618118435d73b82"
     ]
   },
   "GD01H": {
@@ -590,6 +638,132 @@
           "en": "Bathroom with a glass shower box and wooden floor",
           "es": "Baño con ducha de cristal y suelo de madera"
         }
+      },
+      {
+        "arquivo": "entrada-pergolado-trepadeiras.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Entrada da Villa Kubitschek sob o pergolado coberto de trepadeiras",
+          "en": "Entrance to Villa Kubitschek under the vine-covered pergola",
+          "es": "Entrada de la Villa Kubitschek bajo la pérgola cubierta de enredaderas"
+        }
+      },
+      {
+        "arquivo": "piscina-palmeiras.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Piscina ao ar livre com palmeiras e céu aberto",
+          "en": "Outdoor pool framed by palm trees and open sky",
+          "es": "Piscina al aire libre con palmeras y cielo abierto"
+        }
+      },
+      {
+        "arquivo": "piscina-deck-espreguicadeiras.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Piscina com deck de madeira e espreguiçadeiras",
+          "en": "Pool with wooden deck and sun loungers",
+          "es": "Piscina con terraza de madera y tumbonas"
+        }
+      },
+      {
+        "arquivo": "piscina-vista-do-patio.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Piscina vista do pátio de lazer coberto",
+          "en": "Pool seen from the covered leisure patio",
+          "es": "Piscina vista desde el patio de ocio cubierto"
+        }
+      },
+      {
+        "arquivo": "ofuro-deck-piscina.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Ofurô no deck de madeira, ao lado da piscina",
+          "en": "Hot tub on the wooden deck beside the pool",
+          "es": "Bañera de hidromasaje en la terraza de madera, junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "mesas-altas-piscina.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Mesas altas e banquetas junto à piscina",
+          "en": "High tables and stools beside the pool",
+          "es": "Mesas altas y taburetes junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "sinuca-cadeiras-suspensas.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Mesa de sinuca e cadeiras-ovo suspensas no pátio coberto",
+          "en": "Pool table and hanging egg chairs in the covered patio",
+          "es": "Mesa de billar y sillas colgantes en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "lounge-mesa-vime.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Mesa de refeições em vime sob o pergolado",
+          "en": "Wicker dining table under the pergola",
+          "es": "Mesa de comedor de mimbre bajo la pérgola"
+        }
+      },
+      {
+        "arquivo": "lounge-sofas-vime.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Lounge com sofás de vime no pátio coberto",
+          "en": "Lounge with wicker sofas in the covered patio",
+          "es": "Salón con sofás de mimbre en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "cadeira-ovo-patio.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Cadeira-ovo suspensa no pátio de lazer",
+          "en": "Hanging egg chair in the leisure patio",
+          "es": "Silla colgante tipo huevo en el patio de ocio"
+        }
+      },
+      {
+        "arquivo": "churrasqueiras-grelhas.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Espaço de churrasqueiras com grelhas e bancada de apoio",
+          "en": "Barbecue area with grills and a prep counter",
+          "es": "Zona de barbacoas con parrillas y encimera de apoyo"
+        }
+      },
+      {
+        "arquivo": "parquinho-torre-madeira.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Parquinho infantil com torre de madeira e escada",
+          "en": "Playground with a wooden tower and ladder",
+          "es": "Parque infantil con torre de madera y escalera"
+        }
+      },
+      {
+        "arquivo": "parquinho-balancos.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Parquinho infantil com balanços no gramado",
+          "en": "Playground with swings on the lawn",
+          "es": "Parque infantil con columpios en el césped"
+        }
+      },
+      {
+        "arquivo": "banheiros-externos.jpg",
+        "pasta": "villa-kubitschek",
+        "alt": {
+          "pt": "Banheiros externos de apoio à área de lazer",
+          "en": "External restrooms serving the leisure area",
+          "es": "Baños externos de apoyo a la zona de ocio"
+        }
       }
     ]
   },
@@ -896,6 +1070,118 @@
           "en": "Bathroom with a glass shower box, counter and mirror",
           "es": "Baño con ducha de cristal, encimera y espejo"
         }
+      },
+      {
+        "arquivo": "entrada-pergolado-trepadeiras.jpg",
+        "alt": {
+          "pt": "Entrada da Villa Kubitschek sob o pergolado coberto de trepadeiras",
+          "en": "Entrance to Villa Kubitschek under the vine-covered pergola",
+          "es": "Entrada de la Villa Kubitschek bajo la pérgola cubierta de enredaderas"
+        }
+      },
+      {
+        "arquivo": "piscina-palmeiras.jpg",
+        "alt": {
+          "pt": "Piscina ao ar livre com palmeiras e céu aberto",
+          "en": "Outdoor pool framed by palm trees and open sky",
+          "es": "Piscina al aire libre con palmeras y cielo abierto"
+        }
+      },
+      {
+        "arquivo": "piscina-deck-espreguicadeiras.jpg",
+        "alt": {
+          "pt": "Piscina com deck de madeira e espreguiçadeiras",
+          "en": "Pool with wooden deck and sun loungers",
+          "es": "Piscina con terraza de madera y tumbonas"
+        }
+      },
+      {
+        "arquivo": "piscina-vista-do-patio.jpg",
+        "alt": {
+          "pt": "Piscina vista do pátio de lazer coberto",
+          "en": "Pool seen from the covered leisure patio",
+          "es": "Piscina vista desde el patio de ocio cubierto"
+        }
+      },
+      {
+        "arquivo": "ofuro-deck-piscina.jpg",
+        "alt": {
+          "pt": "Ofurô no deck de madeira, ao lado da piscina",
+          "en": "Hot tub on the wooden deck beside the pool",
+          "es": "Bañera de hidromasaje en la terraza de madera, junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "mesas-altas-piscina.jpg",
+        "alt": {
+          "pt": "Mesas altas e banquetas junto à piscina",
+          "en": "High tables and stools beside the pool",
+          "es": "Mesas altas y taburetes junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "sinuca-cadeiras-suspensas.jpg",
+        "alt": {
+          "pt": "Mesa de sinuca e cadeiras-ovo suspensas no pátio coberto",
+          "en": "Pool table and hanging egg chairs in the covered patio",
+          "es": "Mesa de billar y sillas colgantes en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "lounge-mesa-vime.jpg",
+        "alt": {
+          "pt": "Mesa de refeições em vime sob o pergolado",
+          "en": "Wicker dining table under the pergola",
+          "es": "Mesa de comedor de mimbre bajo la pérgola"
+        }
+      },
+      {
+        "arquivo": "lounge-sofas-vime.jpg",
+        "alt": {
+          "pt": "Lounge com sofás de vime no pátio coberto",
+          "en": "Lounge with wicker sofas in the covered patio",
+          "es": "Salón con sofás de mimbre en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "cadeira-ovo-patio.jpg",
+        "alt": {
+          "pt": "Cadeira-ovo suspensa no pátio de lazer",
+          "en": "Hanging egg chair in the leisure patio",
+          "es": "Silla colgante tipo huevo en el patio de ocio"
+        }
+      },
+      {
+        "arquivo": "churrasqueiras-grelhas.jpg",
+        "alt": {
+          "pt": "Espaço de churrasqueiras com grelhas e bancada de apoio",
+          "en": "Barbecue area with grills and a prep counter",
+          "es": "Zona de barbacoas con parrillas y encimera de apoyo"
+        }
+      },
+      {
+        "arquivo": "parquinho-torre-madeira.jpg",
+        "alt": {
+          "pt": "Parquinho infantil com torre de madeira e escada",
+          "en": "Playground with a wooden tower and ladder",
+          "es": "Parque infantil con torre de madera y escalera"
+        }
+      },
+      {
+        "arquivo": "parquinho-balancos.jpg",
+        "alt": {
+          "pt": "Parquinho infantil com balanços no gramado",
+          "en": "Playground with swings on the lawn",
+          "es": "Parque infantil con columpios en el césped"
+        }
+      },
+      {
+        "arquivo": "banheiros-externos.jpg",
+        "alt": {
+          "pt": "Banheiros externos de apoio à área de lazer",
+          "en": "External restrooms serving the leisure area",
+          "es": "Baños externos de apoyo a la zona de ocio"
+        }
       }
     ]
   },
@@ -1057,6 +1343,476 @@
           "pt": "Varanda com rede, mesa de vidro e poltronas de fibra",
           "en": "Veranda with a hammock, glass table and rattan armchairs",
           "es": "Terraza con hamaca, mesa de cristal y sillones de fibra"
+        }
+      }
+    ]
+  },
+  "VH01H": {
+    "pasta": "villa-kubitschek",
+    "fotos": [
+      {
+        "arquivo": "flat-familia-fachada-patio.jpg",
+        "alt": {
+          "pt": "Fachada do Flat da Família, aberta para o pátio de lazer",
+          "en": "Facade of Flat da Família, opening onto the leisure patio",
+          "es": "Fachada del Flat da Família, abierta al patio de ocio"
+        }
+      },
+      {
+        "arquivo": "piscina-deck-espreguicadeiras.jpg",
+        "alt": {
+          "pt": "Piscina com deck de madeira e espreguiçadeiras",
+          "en": "Pool with wooden deck and sun loungers",
+          "es": "Piscina con terraza de madera y tumbonas"
+        }
+      },
+      {
+        "arquivo": "ofuro-deck-piscina.jpg",
+        "alt": {
+          "pt": "Ofurô no deck de madeira, ao lado da piscina",
+          "en": "Hot tub on the wooden deck beside the pool",
+          "es": "Bañera de hidromasaje en la terraza de madera, junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "sinuca-cadeiras-suspensas.jpg",
+        "alt": {
+          "pt": "Mesa de sinuca e cadeiras-ovo suspensas no pátio coberto",
+          "en": "Pool table and hanging egg chairs in the covered patio",
+          "es": "Mesa de billar y sillas colgantes en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "lounge-sofas-vime.jpg",
+        "alt": {
+          "pt": "Lounge com sofás de vime no pátio coberto",
+          "en": "Lounge with wicker sofas in the covered patio",
+          "es": "Salón con sofás de mimbre en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "churrasqueiras-grelhas.jpg",
+        "alt": {
+          "pt": "Espaço de churrasqueiras com grelhas e bancada de apoio",
+          "en": "Barbecue area with grills and a prep counter",
+          "es": "Zona de barbacoas con parrillas y encimera de apoyo"
+        }
+      },
+      {
+        "arquivo": "parquinho-balancos.jpg",
+        "alt": {
+          "pt": "Parquinho infantil com balanços no gramado",
+          "en": "Playground with swings on the lawn",
+          "es": "Parque infantil con columpios en el césped"
+        }
+      },
+      {
+        "arquivo": "parquinho-torre-madeira.jpg",
+        "alt": {
+          "pt": "Parquinho infantil com torre de madeira e escada",
+          "en": "Playground with a wooden tower and ladder",
+          "es": "Parque infantil con torre de madera y escalera"
+        }
+      }
+    ]
+  },
+  "VH02H": {
+    "pasta": "villa-kubitschek",
+    "fotos": [
+      {
+        "arquivo": "flat-amigos-fachada-vidro.jpg",
+        "alt": {
+          "pt": "Fachada envidraçada do Flat dos Amigos",
+          "en": "Glass facade of Flat dos Amigos",
+          "es": "Fachada acristalada del Flat dos Amigos"
+        }
+      },
+      {
+        "arquivo": "flat-amigos-varanda-bancada.jpg",
+        "alt": {
+          "pt": "Varanda do Flat dos Amigos com bancada e banquetas",
+          "en": "Flat dos Amigos veranda with counter and stools",
+          "es": "Terraza del Flat dos Amigos con barra y taburetes"
+        }
+      },
+      {
+        "arquivo": "piscina-deck-espreguicadeiras.jpg",
+        "alt": {
+          "pt": "Piscina com deck de madeira e espreguiçadeiras",
+          "en": "Pool with wooden deck and sun loungers",
+          "es": "Piscina con terraza de madera y tumbonas"
+        }
+      },
+      {
+        "arquivo": "ofuro-deck-piscina.jpg",
+        "alt": {
+          "pt": "Ofurô no deck de madeira, ao lado da piscina",
+          "en": "Hot tub on the wooden deck beside the pool",
+          "es": "Bañera de hidromasaje en la terraza de madera, junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "sinuca-cadeiras-suspensas.jpg",
+        "alt": {
+          "pt": "Mesa de sinuca e cadeiras-ovo suspensas no pátio coberto",
+          "en": "Pool table and hanging egg chairs in the covered patio",
+          "es": "Mesa de billar y sillas colgantes en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "lounge-sofas-vime.jpg",
+        "alt": {
+          "pt": "Lounge com sofás de vime no pátio coberto",
+          "en": "Lounge with wicker sofas in the covered patio",
+          "es": "Salón con sofás de mimbre en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "churrasqueiras-grelhas.jpg",
+        "alt": {
+          "pt": "Espaço de churrasqueiras com grelhas e bancada de apoio",
+          "en": "Barbecue area with grills and a prep counter",
+          "es": "Zona de barbacoas con parrillas y encimera de apoyo"
+        }
+      }
+    ]
+  },
+  "UF05H": {
+    "pasta": "villa-kubitschek",
+    "fotos": [
+      {
+        "arquivo": "flat-chef-beliche-escrivaninha.jpg",
+        "alt": {
+          "pt": "Flat do Chef com beliche e escrivaninha de trabalho",
+          "en": "Flat do Chef with bunk bed and work desk",
+          "es": "Flat do Chef con litera y escritorio de trabajo"
+        }
+      },
+      {
+        "arquivo": "flat-chef-estante-livros.jpg",
+        "alt": {
+          "pt": "Estante de livros de gastronomia do Flat do Chef",
+          "en": "Cookbook shelf in Flat do Chef",
+          "es": "Estantería de libros de gastronomía del Flat do Chef"
+        }
+      },
+      {
+        "arquivo": "flat-chef-suite-cama-mesa.jpg",
+        "alt": {
+          "pt": "Suíte do Flat do Chef com cama de casal e mesa",
+          "en": "Flat do Chef suite with double bed and table",
+          "es": "Suite del Flat do Chef con cama de matrimonio y mesa"
+        }
+      },
+      {
+        "arquivo": "flat-chef-suite-estante.jpg",
+        "alt": {
+          "pt": "Suíte do Flat do Chef com estante e acesso ao banheiro",
+          "en": "Flat do Chef suite with shelving and bathroom access",
+          "es": "Suite del Flat do Chef con estantería y acceso al baño"
+        }
+      },
+      {
+        "arquivo": "flat-chef-banheiro.jpg",
+        "alt": {
+          "pt": "Banheiro do Flat do Chef com box de vidro",
+          "en": "Flat do Chef bathroom with a glass shower box",
+          "es": "Baño del Flat do Chef con ducha de vidrio"
+        }
+      },
+      {
+        "arquivo": "piscina-deck-espreguicadeiras.jpg",
+        "alt": {
+          "pt": "Piscina com deck de madeira e espreguiçadeiras",
+          "en": "Pool with wooden deck and sun loungers",
+          "es": "Piscina con terraza de madera y tumbonas"
+        }
+      },
+      {
+        "arquivo": "ofuro-deck-piscina.jpg",
+        "alt": {
+          "pt": "Ofurô no deck de madeira, ao lado da piscina",
+          "en": "Hot tub on the wooden deck beside the pool",
+          "es": "Bañera de hidromasaje en la terraza de madera, junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "sinuca-cadeiras-suspensas.jpg",
+        "alt": {
+          "pt": "Mesa de sinuca e cadeiras-ovo suspensas no pátio coberto",
+          "en": "Pool table and hanging egg chairs in the covered patio",
+          "es": "Mesa de billar y sillas colgantes en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "lounge-sofas-vime.jpg",
+        "alt": {
+          "pt": "Lounge com sofás de vime no pátio coberto",
+          "en": "Lounge with wicker sofas in the covered patio",
+          "es": "Salón con sofás de mimbre en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "churrasqueiras-grelhas.jpg",
+        "alt": {
+          "pt": "Espaço de churrasqueiras com grelhas e bancada de apoio",
+          "en": "Barbecue area with grills and a prep counter",
+          "es": "Zona de barbacoas con parrillas y encimera de apoyo"
+        }
+      }
+    ]
+  },
+  "UD09H": {
+    "pasta": "villa-kubitschek",
+    "fotos": [
+      {
+        "arquivo": "flat-renato-russo-sala-sofa.jpg",
+        "alt": {
+          "pt": "Sala do Flat do Renato Russo com sofá e estante",
+          "en": "Flat do Renato Russo living area with sofa and shelving",
+          "es": "Sala del Flat do Renato Russo con sofá y estantería"
+        }
+      },
+      {
+        "arquivo": "flat-renato-russo-beliche-mesa.jpg",
+        "alt": {
+          "pt": "Flat do Renato Russo com beliche e mesa de apoio",
+          "en": "Flat do Renato Russo with bunk bed and side table",
+          "es": "Flat do Renato Russo con litera y mesa auxiliar"
+        }
+      },
+      {
+        "arquivo": "flat-renato-russo-estar-frigobar.jpg",
+        "alt": {
+          "pt": "Estar do Flat do Renato Russo com sofá e frigobar",
+          "en": "Flat do Renato Russo lounge with sofa and minibar",
+          "es": "Estar del Flat do Renato Russo con sofá y minibar"
+        }
+      },
+      {
+        "arquivo": "flat-renato-russo-suite-cama.jpg",
+        "alt": {
+          "pt": "Suíte do Flat do Renato Russo com cama de casal",
+          "en": "Flat do Renato Russo suite with double bed",
+          "es": "Suite del Flat do Renato Russo con cama de matrimonio"
+        }
+      },
+      {
+        "arquivo": "flat-renato-russo-banheiro.jpg",
+        "alt": {
+          "pt": "Banheiro do Flat do Renato Russo com box de vidro",
+          "en": "Flat do Renato Russo bathroom with a glass shower box",
+          "es": "Baño del Flat do Renato Russo con ducha de vidrio"
+        }
+      },
+      {
+        "arquivo": "piscina-deck-espreguicadeiras.jpg",
+        "alt": {
+          "pt": "Piscina com deck de madeira e espreguiçadeiras",
+          "en": "Pool with wooden deck and sun loungers",
+          "es": "Piscina con terraza de madera y tumbonas"
+        }
+      },
+      {
+        "arquivo": "ofuro-deck-piscina.jpg",
+        "alt": {
+          "pt": "Ofurô no deck de madeira, ao lado da piscina",
+          "en": "Hot tub on the wooden deck beside the pool",
+          "es": "Bañera de hidromasaje en la terraza de madera, junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "sinuca-cadeiras-suspensas.jpg",
+        "alt": {
+          "pt": "Mesa de sinuca e cadeiras-ovo suspensas no pátio coberto",
+          "en": "Pool table and hanging egg chairs in the covered patio",
+          "es": "Mesa de billar y sillas colgantes en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "lounge-sofas-vime.jpg",
+        "alt": {
+          "pt": "Lounge com sofás de vime no pátio coberto",
+          "en": "Lounge with wicker sofas in the covered patio",
+          "es": "Salón con sofás de mimbre en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "churrasqueiras-grelhas.jpg",
+        "alt": {
+          "pt": "Espaço de churrasqueiras com grelhas e bancada de apoio",
+          "en": "Barbecue area with grills and a prep counter",
+          "es": "Zona de barbacoas con parrillas y encimera de apoyo"
+        }
+      }
+    ]
+  },
+  "UD03H": {
+    "pasta": "villa-kubitschek",
+    "fotos": [
+      {
+        "arquivo": "flat-solteiros-beliches.jpg",
+        "alt": {
+          "pt": "Flat dos Solteiros com beliches e cama de casal",
+          "en": "Flat dos Solteiros with bunk beds and a double bed",
+          "es": "Flat dos Solteiros con literas y cama de matrimonio"
+        }
+      },
+      {
+        "arquivo": "flat-solteiros-cama-beliche-tv.jpg",
+        "alt": {
+          "pt": "Flat dos Solteiros com cama de casal, beliche e TV",
+          "en": "Flat dos Solteiros with double bed, bunk bed and TV",
+          "es": "Flat dos Solteiros con cama de matrimonio, litera y TV"
+        }
+      },
+      {
+        "arquivo": "flat-solteiros-cama-casal-beliche.jpg",
+        "alt": {
+          "pt": "Cama de casal e beliche do Flat dos Solteiros",
+          "en": "Double bed and bunk bed in Flat dos Solteiros",
+          "es": "Cama de matrimonio y litera del Flat dos Solteiros"
+        }
+      },
+      {
+        "arquivo": "flat-solteiros-sala-cozinha.jpg",
+        "alt": {
+          "pt": "Sala do Flat dos Solteiros com sofá e cozinha compacta",
+          "en": "Flat dos Solteiros living area with sofa and kitchenette",
+          "es": "Sala del Flat dos Solteiros con sofá y cocina compacta"
+        }
+      },
+      {
+        "arquivo": "flat-solteiros-banheiro.jpg",
+        "alt": {
+          "pt": "Banheiro do Flat dos Solteiros com box de vidro",
+          "en": "Flat dos Solteiros bathroom with a glass shower box",
+          "es": "Baño del Flat dos Solteiros con ducha de vidrio"
+        }
+      },
+      {
+        "arquivo": "piscina-deck-espreguicadeiras.jpg",
+        "alt": {
+          "pt": "Piscina com deck de madeira e espreguiçadeiras",
+          "en": "Pool with wooden deck and sun loungers",
+          "es": "Piscina con terraza de madera y tumbonas"
+        }
+      },
+      {
+        "arquivo": "ofuro-deck-piscina.jpg",
+        "alt": {
+          "pt": "Ofurô no deck de madeira, ao lado da piscina",
+          "en": "Hot tub on the wooden deck beside the pool",
+          "es": "Bañera de hidromasaje en la terraza de madera, junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "sinuca-cadeiras-suspensas.jpg",
+        "alt": {
+          "pt": "Mesa de sinuca e cadeiras-ovo suspensas no pátio coberto",
+          "en": "Pool table and hanging egg chairs in the covered patio",
+          "es": "Mesa de billar y sillas colgantes en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "lounge-sofas-vime.jpg",
+        "alt": {
+          "pt": "Lounge com sofás de vime no pátio coberto",
+          "en": "Lounge with wicker sofas in the covered patio",
+          "es": "Salón con sofás de mimbre en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "churrasqueiras-grelhas.jpg",
+        "alt": {
+          "pt": "Espaço de churrasqueiras com grelhas e bancada de apoio",
+          "en": "Barbecue area with grills and a prep counter",
+          "es": "Zona de barbacoas con parrillas y encimera de apoyo"
+        }
+      }
+    ]
+  },
+  "UF06H": {
+    "pasta": "villa-kubitschek",
+    "fotos": [
+      {
+        "arquivo": "suite-amor-cama-casal.jpg",
+        "alt": {
+          "pt": "Suíte do Amor com cama de casal e saída para o pátio",
+          "en": "Suíte do Amor with double bed and patio access",
+          "es": "Suíte do Amor con cama de matrimonio y salida al patio"
+        }
+      },
+      {
+        "arquivo": "suite-amor-sofa-cama-tv.jpg",
+        "alt": {
+          "pt": "Suíte do Amor com sofá, cama de casal e TV",
+          "en": "Suíte do Amor with sofa, double bed and TV",
+          "es": "Suíte do Amor con sofá, cama de matrimonio y TV"
+        }
+      },
+      {
+        "arquivo": "suite-amor-cama-sofa.jpg",
+        "alt": {
+          "pt": "Suíte do Amor vista da entrada, com sofá e cama de casal",
+          "en": "Suíte do Amor seen from the entrance, with sofa and double bed",
+          "es": "Suíte do Amor vista desde la entrada, con sofá y cama de matrimonio"
+        }
+      },
+      {
+        "arquivo": "suite-amor-banheiro-hidro.jpg",
+        "alt": {
+          "pt": "Banheiro da Suíte do Amor com banheira de hidromassagem",
+          "en": "Suíte do Amor bathroom with a whirlpool tub",
+          "es": "Baño de la Suíte do Amor con bañera de hidromasaje"
+        }
+      },
+      {
+        "arquivo": "suite-amor-hidro-box.jpg",
+        "alt": {
+          "pt": "Banheira de hidromassagem e box de vidro da Suíte do Amor",
+          "en": "Whirlpool tub and glass shower box in Suíte do Amor",
+          "es": "Bañera de hidromasaje y ducha de vidrio de la Suíte do Amor"
+        }
+      },
+      {
+        "arquivo": "piscina-deck-espreguicadeiras.jpg",
+        "alt": {
+          "pt": "Piscina com deck de madeira e espreguiçadeiras",
+          "en": "Pool with wooden deck and sun loungers",
+          "es": "Piscina con terraza de madera y tumbonas"
+        }
+      },
+      {
+        "arquivo": "ofuro-deck-piscina.jpg",
+        "alt": {
+          "pt": "Ofurô no deck de madeira, ao lado da piscina",
+          "en": "Hot tub on the wooden deck beside the pool",
+          "es": "Bañera de hidromasaje en la terraza de madera, junto a la piscina"
+        }
+      },
+      {
+        "arquivo": "sinuca-cadeiras-suspensas.jpg",
+        "alt": {
+          "pt": "Mesa de sinuca e cadeiras-ovo suspensas no pátio coberto",
+          "en": "Pool table and hanging egg chairs in the covered patio",
+          "es": "Mesa de billar y sillas colgantes en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "lounge-sofas-vime.jpg",
+        "alt": {
+          "pt": "Lounge com sofás de vime no pátio coberto",
+          "en": "Lounge with wicker sofas in the covered patio",
+          "es": "Salón con sofás de mimbre en el patio cubierto"
+        }
+      },
+      {
+        "arquivo": "churrasqueiras-grelhas.jpg",
+        "alt": {
+          "pt": "Espaço de churrasqueiras com grelhas e bancada de apoio",
+          "en": "Barbecue area with grills and a prep counter",
+          "es": "Zona de barbacoas con parrillas y encimera de apoyo"
         }
       }
     ]
