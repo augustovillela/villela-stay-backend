@@ -241,18 +241,105 @@ function consolidar({ entidadeIds, ate } = {}) {
   });
 
   const soma = (campo) => empresas.reduce((s, e) => s + e[campo], 0);
+
+  // ---- eliminações intragrupo -------------------------------------------
+  // Só elimina o que ESTÁ MARCADO: contraparte apontando para outra empresa
+  // desta conta. Adivinhar por nome ou CNPJ eliminaria operação com
+  // terceiro homônimo, e um consolidado com receita apagada por engano é
+  // pior do que um consolidado que declara não eliminar nada.
+  const porPar = new Map();
+  for (const id of ids) {
+    for (const r of repo.saldosIntragrupo(id, { ate })) {
+      // Só interessa o par que também está no escopo consolidado: operação
+      // com empresa de fora do recorte não é intragrupo AQUI.
+      if (!ids.includes(r.par)) continue;
+      const chave = [id, r.par].join('>');
+      const alvo = porPar.get(chave) || { de: id, para: r.par, ativoCents: 0, passivoCents: 0, receitaCents: 0, despesaCents: 0 };
+      if (r.natureza === 'ativo') alvo.ativoCents += r.debito - r.credito;
+      else if (r.natureza === 'passivo') alvo.passivoCents += r.credito - r.debito;
+      else if (r.natureza === 'receita') alvo.receitaCents += r.credito - r.debito;
+      else if (r.natureza === 'despesa') alvo.despesaCents += r.debito - r.credito;
+      porPar.set(chave, alvo);
+    }
+  }
+
+  const pares = [...porPar.values()];
+  const positivo = (n) => Math.max(0, n);
+  // O recebível de A contra B tem de espelhar a obrigação de B com A. O
+  // que casa, elimina; a diferença NÃO é escondida — vira descasamento
+  // declarado, porque é problema de conciliação entre as empresas.
+  const somaPar = (campo) => pares.reduce((s, p) => s + positivo(p[campo]), 0);
+  const ativoIntra = somaPar('ativoCents');
+  const passivoIntra = somaPar('passivoCents');
+  const receitaIntra = somaPar('receitaCents');
+  const despesaIntra = somaPar('despesaCents');
+
+  const elimSaldos = Math.min(ativoIntra, passivoIntra);
+  const elimResultado = Math.min(receitaIntra, despesaIntra);
+  const descasamentos = [];
+  if (ativoIntra !== passivoIntra) {
+    descasamentos.push({
+      tipo: 'saldos_reciprocos',
+      ativoCents: ativoIntra, passivoCents: passivoIntra, diferencaCents: ativoIntra - passivoIntra,
+      texto: `O que uma empresa tem a receber da outra (${dinheiro.formatar(ativoIntra)}) não bate com o que a outra reconhece dever (${dinheiro.formatar(passivoIntra)}).`,
+    });
+  }
+  if (receitaIntra !== despesaIntra) {
+    descasamentos.push({
+      tipo: 'resultado_reciproco',
+      receitaCents: receitaIntra, despesaCents: despesaIntra, diferencaCents: receitaIntra - despesaIntra,
+      texto: `A receita entre empresas (${dinheiro.formatar(receitaIntra)}) não bate com a despesa correspondente (${dinheiro.formatar(despesaIntra)}).`,
+    });
+  }
+
+  const bruto = {
+    ativoCents: soma('ativoCents'), passivoCents: soma('passivoCents'),
+    plCents: soma('plCents'), resultadoCents: soma('resultadoCents'),
+  };
+  const consolidado = {
+    ativoCents: bruto.ativoCents - elimSaldos,
+    passivoCents: bruto.passivoCents - elimSaldos,
+    plCents: bruto.plCents,
+    resultadoCents: bruto.resultadoCents,     // receita e despesa iguais se anulam no resultado
+  };
+
   return {
     ate: ate || nowISO().slice(0, 10),
     empresas,
-    total: {
-      ativoCents: soma('ativoCents'), passivoCents: soma('passivoCents'),
-      plCents: soma('plCents'), resultadoCents: soma('resultadoCents'),
-      ativo: dinheiro.formatar(soma('ativoCents')),
-      resultado: dinheiro.formatar(soma('resultadoCents')),
+    // `total` continua sendo a SOMA ARITMÉTICA, para não quebrar quem já lia.
+    total: Object.assign({}, bruto, {
+      ativo: dinheiro.formatar(bruto.ativoCents),
+      resultado: dinheiro.formatar(bruto.resultadoCents),
+    }),
+    consolidado: Object.assign({}, consolidado, {
+      ativo: dinheiro.formatar(consolidado.ativoCents),
+      resultado: dinheiro.formatar(consolidado.resultadoCents),
+    }),
+    eliminacoes: {
+      aplicadas: elimSaldos > 0 || elimResultado > 0,
+      saldosReciprocosCents: elimSaldos,
+      resultadoReciprocoCents: elimResultado,
+      pares: pares.map(p => ({
+        de: p.de, para: p.para,
+        ativoCents: positivo(p.ativoCents), passivoCents: positivo(p.passivoCents),
+        receitaCents: positivo(p.receitaCents), despesaCents: positivo(p.despesaCents),
+      })),
+      descasamentos,
     },
-    eliminacoes: false,
-    aviso: empresas.length > 1
-      ? 'Soma aritmética das empresas, SEM eliminação de operações entre elas. Para consolidado contábil, é preciso marcar as contrapartes intragrupo — ainda não implementado.'
+    origem: {
+      formula: 'soma das empresas menos os saldos recíprocos marcados como intragrupo',
+      fonte: 'razão + contrapartes com empresa do grupo indicada',
+    },
+    // O que este consolidado NÃO faz. Um consolidado que se apresenta como
+    // completo sem sê-lo é pior do que um que declara o próprio limite.
+    naoElimina: [
+      'lucro não realizado em estoque ou em ativo transferido entre as empresas',
+      'investimento de uma empresa no capital da outra contra o PL dela',
+      'operação com empresa do grupo que NÃO esteja marcada na contraparte',
+      'participação de não controladores',
+    ],
+    aviso: empresas.length > 1 && !pares.length
+      ? 'Nenhuma contraparte está marcada como empresa do grupo — o consolidado é soma aritmética. Marque as contrapartes intragrupo para que a eliminação aconteça.'
       : '',
   };
 }

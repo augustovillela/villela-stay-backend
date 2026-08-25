@@ -321,7 +321,35 @@ const buscar = (id) => {
   });
 };
 
+/**
+ * Marca (ou desmarca) a contraparte como sendo OUTRA EMPRESA desta conta.
+ * É o que autoriza o consolidado a eliminar a operação — e é explícito de
+ * propósito: adivinhar por nome ou CNPJ apagaria operação com terceiro
+ * homônimo, e receita sumida por engano é pior que consolidado sem
+ * eliminação.
+ */
+function marcarDoGrupo(contraparteId, entidadeGrupoId) {
+  const cp = repo.contraparte(contraparteId);
+  if (!cp) throw new ErroDeContraparte('Contraparte não encontrada.');
+  const alvo = String(entidadeGrupoId || '');
+  if (alvo) {
+    const e = repo.entidadePorId(alvo);
+    if (!e) throw new ErroDeContraparte('Empresa do grupo não encontrada nesta conta.');
+    if (alvo === cp.entidade_id) {
+      throw new ErroDeContraparte('A contraparte não pode apontar para a própria empresa dela.');
+    }
+  }
+  repo.marcarContraparteDoGrupo(contraparteId, alvo);
+  auditoria.registrar('contraparte.grupo', {
+    objetoTipo: 'contraparte', objetoId: contraparteId,
+    motivo: alvo ? 'marcada como empresa do grupo' : 'desmarcada como empresa do grupo',
+    detalhe: { entidadeGrupoId: alvo },
+  });
+  return repo.contraparte(contraparteId);
+}
+
 module.exports = {
+  marcarDoGrupo,
   ErroDeContraparte, TIPOS, criar, atualizar, listar, buscar,
   procurarDuplicata, solicitarDadosBancarios, aplicarDadosBancarios, anonimizar, mascarar, normalizar,
 };

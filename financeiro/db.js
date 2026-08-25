@@ -98,6 +98,17 @@ const MIGRACOES = [
       db.exec('CREATE INDEX IF NOT EXISTS idx_fin_ativos ON fin_ativos(tenant_id, entidade_id, status)');
     },
   },
+  {
+    // Consolidação com eliminações: a contraparte pode APONTAR para outra
+    // empresa da mesma conta. É o que permite dizer "isto é operação entre
+    // as nossas empresas" sem adivinhar por nome ou CNPJ.
+    nome: 'fin-0004-contraparte-do-grupo',
+    aplicar() {
+      if (!temColuna('fin_contrapartes', 'entidade_grupo_id')) {
+        db.exec("ALTER TABLE fin_contrapartes ADD COLUMN entidade_grupo_id TEXT NOT NULL DEFAULT ''");
+      }
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

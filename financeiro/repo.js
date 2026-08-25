@@ -537,6 +537,30 @@ const parcelasAbertasParaCasamento = (entidadeId, especie) => q(
     LIMIT 2000`,
   { ent: entidadeId, especie });
 
+/**
+ * Saldos por natureza cuja contraparte aponta para outra empresa da mesma
+ * conta — a matéria-prima da eliminação no consolidado. Agrupado por
+ * empresa-par: eliminar em bloco esconderia descasamento entre as duas.
+ */
+const saldosIntragrupo = (entidadeId, { ate = '' } = {}) => q(
+  `SELECT cp.entidade_grupo_id AS par, c.natureza,
+          COALESCE(SUM(l.debito_cents), 0)  AS debito,
+          COALESCE(SUM(l.credito_cents), 0) AS credito
+     FROM fin_linhas l
+     JOIN fin_lotes b ON b.id = l.lote_id AND b.tenant_id = l.tenant_id
+     JOIN fin_contas c ON c.id = l.conta_id AND c.tenant_id = l.tenant_id
+     JOIN fin_contrapartes cp ON cp.id = l.contraparte_id AND cp.tenant_id = l.tenant_id
+    WHERE l.tenant_id = :tenant AND b.entidade_id = :ent AND b.status <> 'rascunho'
+      AND cp.entidade_grupo_id <> ''
+      ${ate ? 'AND b.data <= :ate' : ''}
+    GROUP BY cp.entidade_grupo_id, c.natureza`,
+  { ent: entidadeId, ate });
+
+const marcarContraparteDoGrupo = (id, entidadeGrupoId) => exec(
+  `UPDATE fin_contrapartes SET entidade_grupo_id = :par, atualizado_em = :agora
+     WHERE tenant_id = :tenant AND id = :id`,
+  { id, par: String(entidadeGrupoId || ''), agora: nowISO() });
+
 // ---------------------------------------------------------- ativos fixos
 const criarAtivo = (d) => {
   exec(`INSERT INTO fin_ativos (id, tenant_id, entidade_id, nome, categoria, conta_id, centro_custo_id,
@@ -674,6 +698,7 @@ module.exports = {
   inserirTransacao, transacao, transacaoPorFingerprint, listarTransacoes, atualizarTransacao, contarTransacoes,
   criarRegra, regra, listarRegras, registrarAcertoRegra,
   parcelasAbertasParaCasamento,
+  saldosIntragrupo, marcarContraparteDoGrupo,
   criarAtivo, ativo, listarAtivos, somarDepreciacao, baixarAtivo,
   criarAprovacao, aprovacao, listarAprovacoes, decidirAprovacao, registrarExecucao, expirarAprovacoesVencidas,
   ultimoAudit, inserirAudit, listarAudit, auditEmOrdem,

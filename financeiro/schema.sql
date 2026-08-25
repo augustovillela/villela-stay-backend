@@ -288,6 +288,9 @@ CREATE TABLE IF NOT EXISTS fin_contrapartes (
   -- Dados bancários são alteração de nível 3 (maker-checker) — ver rbac.js
   dados_bancarios TEXT NOT NULL DEFAULT '{}',
   externo_id   TEXT NOT NULL DEFAULT '',
+  -- Aponta para outra empresa DESTA conta: é o que marca a operação como
+  -- intragrupo e permite eliminá-la no consolidado.
+  entidade_grupo_id TEXT NOT NULL DEFAULT '',
   status       TEXT NOT NULL DEFAULT 'ativo',
   anonimizado_em TEXT NOT NULL DEFAULT '',
   criado_em    TEXT NOT NULL,

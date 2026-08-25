@@ -1454,13 +1454,15 @@ teste('apuração: lançamento novo DEPOIS de apurar é apurado no incremento', 
   assert.strictEqual(sobra.length, 0, 'sobrou saldo em conta de resultado depois da segunda apuração');
 });
 
-teste('consolidado: soma as empresas e avisa que não há eliminação', () => {
+teste('consolidado: sem contraparte marcada, é soma aritmética — e diz isso', () => {
   naA(() => contasSvc.criarEmpresa({ nome: 'Villela Eventos Ltda', regime: 'simples' }));
   const c = naA(() => apuracao.consolidar({ ate: '2026-12-31' }));
   assert.ok(c.empresas.length >= 2, 'consolidado com uma empresa só');
-  assert.strictEqual(c.eliminacoes, false);
-  assert.ok(/SEM eliminação/.test(c.aviso), 'não avisa da limitação');
+  assert.strictEqual(c.eliminacoes.aplicadas, false);
+  assert.ok(/Nenhuma contraparte está marcada/.test(c.aviso), 'não avisa que nada foi eliminado');
   assert.strictEqual(c.total.ativoCents, c.empresas.reduce((s, e) => s + e.ativoCents, 0));
+  assert.strictEqual(c.consolidado.ativoCents, c.total.ativoCents, 'eliminou sem nada marcado');
+  assert.ok(c.naoElimina.length >= 3, 'o consolidado não declara os próprios limites');
   assert.ok(c.empresas.every(e => e.fecha), 'alguma empresa com balanço que não fecha');
 });
 
@@ -4699,6 +4701,139 @@ lanca('ativos: baixa sem motivo é recusada', () => {
   const a = naA(() => ativos.listar(empresaA.id, {})).find(x => x.status === 'ativo');
   naA(() => ativos.baixar(a.id, { motivo: '   ' }));
 }, /motivo/i);
+
+let CONSOL = null;
+
+// -------------------------------------- consolidado com eliminações
+teste('consolidado: monta duas empresas com uma operação ENTRE elas', () => {
+  // Empresas dedicadas: usar a empresaA envenenaria os testes que conferem
+  // o saldo de contas a receber dela (a Stays, entre outros).
+  const r = naA(() => {
+    const a = contasSvc.criarEmpresa({ nome: 'Villela Consolida A', regime: 'simples' });
+    const b = contasSvc.criarEmpresa({ nome: 'Villela Consolida B', regime: 'simples' });
+    return { a, b };
+  });
+  const nabA = (fn) => tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true },
+    () => tenancy.comEntidade(r.a.id, fn));
+  const cpEmA = nabA(() => {
+    const cp = contrapartes.criar({ entidadeId: r.a.id, tipo: 'cliente', nome: 'Villela Consolida B' });
+    contrapartes.marcarDoGrupo(cp.id, r.b.id);
+    return cp;
+  });
+  const cpEmB = tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+    tenancy.comEntidade(r.b.id, () => {
+      const cp = contrapartes.criar({ entidadeId: r.b.id, tipo: 'fornecedor', nome: 'Villela Consolida A' });
+      contrapartes.marcarDoGrupo(cp.id, r.a.id);
+      return cp;
+    }));
+  assert.strictEqual(nabA(() => repo.contraparte(cpEmA.id)).entidade_grupo_id, r.b.id,
+    'a contraparte não ficou marcada como empresa do grupo');
+  CONSOL = { a: r.a, b: r.b, cpEmA, cpEmB, nabA };
+});
+
+teste('consolidado: lança a venda em A e a compra em B, pelo mesmo valor', () => {
+  const contasA = CONSOL.nabA(() => repo.listarContas(CONSOL.a.id, { somenteAnaliticas: true }));
+  const clientesA = contasA.find(c => c.codigo === '1.1.2.001');
+  const receitaA = contasA.find(c => c.codigo.startsWith('3.1'));
+  CONSOL.nabA(() => ledger.lancar({
+    entidadeId: CONSOL.a.id, data: '2026-09-10', memo: 'serviço prestado à empresa do grupo',
+    linhas: [
+      { contaId: clientesA.id, debitoCents: 500000, creditoCents: 0, contraparteId: CONSOL.cpEmA.id },
+      { contaId: receitaA.id, debitoCents: 0, creditoCents: 500000, contraparteId: CONSOL.cpEmA.id },
+    ],
+  }));
+
+  tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+    tenancy.comEntidade(CONSOL.b.id, () => {
+      const contasB = repo.listarContas(CONSOL.b.id, { somenteAnaliticas: true });
+      const fornecB = contasB.find(c => c.codigo === '2.1.1.001');
+      const despB = contasB.find(c => c.codigo.startsWith('4.2'));
+      ledger.lancar({
+        entidadeId: CONSOL.b.id, data: '2026-09-10', memo: 'serviço recebido da empresa do grupo',
+        linhas: [
+          { contaId: despB.id, debitoCents: 500000, creditoCents: 0, contraparteId: CONSOL.cpEmB.id },
+          { contaId: fornecB.id, debitoCents: 0, creditoCents: 500000, contraparteId: CONSOL.cpEmB.id },
+        ],
+      });
+    }));
+  assert.ok(true);
+});
+
+teste('consolidado: o recebível de A contra B é ELIMINADO do ativo consolidado', () => {
+  const c = naA(() => apuracao.consolidar({ ate: '2026-12-31', entidadeIds: [CONSOL.a.id, CONSOL.b.id] }));
+  assert.strictEqual(c.eliminacoes.aplicadas, true, 'nada foi eliminado com a operação marcada dos dois lados');
+  assert.strictEqual(c.eliminacoes.saldosReciprocosCents, 500000,
+    `eliminou ${c.eliminacoes.saldosReciprocosCents} em vez dos R$ 5.000 recíprocos`);
+  assert.strictEqual(c.consolidado.ativoCents, c.total.ativoCents - 500000,
+    'o ativo consolidado ainda conta o que uma empresa deve à outra');
+  assert.strictEqual(c.consolidado.passivoCents, c.total.passivoCents - 500000,
+    'o passivo consolidado ainda conta a mesma dívida');
+});
+
+teste('consolidado: a receita entre empresas se anula contra a despesa', () => {
+  const c = naA(() => apuracao.consolidar({ ate: '2026-12-31', entidadeIds: [CONSOL.a.id, CONSOL.b.id] }));
+  assert.strictEqual(c.eliminacoes.resultadoReciprocoCents, 500000,
+    'receita e despesa intragrupo não foram identificadas como par');
+  // Receita e despesa iguais já se anulam na soma dos resultados: o
+  // consolidado não pode subtrair de novo, ou o lucro sumiria duas vezes.
+  assert.strictEqual(c.consolidado.resultadoCents, c.total.resultadoCents,
+    'o resultado consolidado foi ajustado duas vezes pela mesma operação');
+});
+
+teste('consolidado: descasamento entre as duas pontas é DECLARADO, não escondido', () => {
+  // B reconhece R$ 1.000 a mais de dívida do que A tem a receber.
+  tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true }, () =>
+    tenancy.comEntidade(CONSOL.b.id, () => {
+      const contasB = repo.listarContas(CONSOL.b.id, { somenteAnaliticas: true });
+      const fornecB = contasB.find(c => c.codigo === '2.1.1.001');
+      const despB = contasB.find(c => c.codigo.startsWith('4.2'));
+      ledger.lancar({
+        entidadeId: CONSOL.b.id, data: '2026-09-20', memo: 'nota que A ainda não lançou',
+        linhas: [
+          { contaId: despB.id, debitoCents: 100000, creditoCents: 0, contraparteId: CONSOL.cpEmB.id },
+          { contaId: fornecB.id, debitoCents: 0, creditoCents: 100000, contraparteId: CONSOL.cpEmB.id },
+        ],
+      });
+    }));
+
+  const c = naA(() => apuracao.consolidar({ ate: '2026-12-31', entidadeIds: [CONSOL.a.id, CONSOL.b.id] }));
+  const d = c.eliminacoes.descasamentos.find(x => x.tipo === 'saldos_reciprocos');
+  assert.ok(d, 'o descasamento entre as pontas não foi reportado');
+  assert.strictEqual(d.diferencaCents, -100000, `diferença errada: ${d.diferencaCents}`);
+  // Elimina só o que casa: o excedente fica visível, porque é problema de
+  // conciliação entre as empresas, não coisa para o sistema encobrir.
+  assert.strictEqual(c.eliminacoes.saldosReciprocosCents, 500000,
+    'eliminou mais do que casa dos dois lados');
+});
+
+teste('consolidado: contraparte NÃO marcada não é eliminada', () => {
+  const cp = CONSOL.nabA(() => contrapartes.criar({ entidadeId: CONSOL.a.id, tipo: 'cliente', nome: 'Cliente de fora' }));
+  const contasA = CONSOL.nabA(() => repo.listarContas(CONSOL.a.id, { somenteAnaliticas: true }));
+  const clientesA = contasA.find(c => c.codigo === '1.1.2.001');
+  const receitaA = contasA.find(c => c.codigo.startsWith('3.1'));
+  CONSOL.nabA(() => ledger.lancar({
+    entidadeId: CONSOL.a.id, data: '2026-09-25', memo: 'venda a terceiro',
+    linhas: [
+      { contaId: clientesA.id, debitoCents: 700000, creditoCents: 0, contraparteId: cp.id },
+      { contaId: receitaA.id, debitoCents: 0, creditoCents: 700000, contraparteId: cp.id },
+    ],
+  }));
+  const c = naA(() => apuracao.consolidar({ ate: '2026-12-31', entidadeIds: [CONSOL.a.id, CONSOL.b.id] }));
+  assert.strictEqual(c.eliminacoes.saldosReciprocosCents, 500000,
+    'a venda a terceiro foi eliminada — adivinhar intragrupo apaga receita de verdade');
+});
+
+lanca('consolidado: contraparte não pode apontar para a própria empresa', () => {
+  const cp = CONSOL.nabA(() => contrapartes.criar({ entidadeId: CONSOL.a.id, tipo: 'cliente', nome: 'Espelho' }));
+  CONSOL.nabA(() => contrapartes.marcarDoGrupo(cp.id, CONSOL.a.id));
+}, /própria empresa/);
+
+teste('consolidado: declara o que NÃO elimina', () => {
+  const c = naA(() => apuracao.consolidar({ ate: '2026-12-31', entidadeIds: [CONSOL.a.id, CONSOL.b.id] }));
+  assert.ok(c.naoElimina.some(x => /lucro não realizado/.test(x)), 'não declara o limite do lucro não realizado');
+  assert.ok(c.naoElimina.some(x => /NÃO esteja marcada/.test(x)), 'não avisa que só elimina o que está marcado');
+  assert.ok(/soma das empresas menos os saldos recíprocos/.test(c.origem.formula), 'não expõe a fórmula');
+});
 
 // =====================================================================
 // 15. INTEGRIDADE FINAL

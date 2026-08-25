@@ -582,6 +582,11 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     ok: true, contraparte: contrapartes.atualizar(req.params.id, req.body || {}),
   }), { permissao: 'cadastrar', modulo: 'razao', json: true }));
 
+  /** Marca a contraparte como outra empresa desta conta (consolidação). */
+  app.post('/finance/api/contrapartes/:id/grupo', ...rota((req) => ({
+    ok: true, contraparte: contrapartes.marcarDoGrupo(req.params.id, (req.body || {}).entidadeGrupoId),
+  }), { permissao: 'cadastrar', modulo: 'multiempresa', json: true }));
+
   /** Dado bancário é nível 3: vira solicitação com antes/depois na prévia. */
   app.post('/finance/api/contrapartes/:id/dados-bancarios', ...rota((req) => ({
     ok: true,
