@@ -29,6 +29,14 @@ function papelLivrariaDe(user) {
   return (user.papelLivraria && PAPEIS_LIVRARIA[user.papelLivraria]) ? user.papelLivraria : 'suporte';
 }
 
+// ---------------------------------------------------------------- modo teste
+// Domínio reservado para validar a compra de ponta a ponta. `.local` é reservado
+// pela RFC 6762 e não é roteável: nenhum comprador real tem e-mail nele, e um
+// e-mail enviado para lá não chegaria a lugar nenhum de qualquer forma. Pedido
+// criado com um endereço assim nasce com teste=1 — ver livraria/db.js.
+const EMAIL_TESTE_DOMINIO = '@teste.local';
+const ehEmailDeTeste = (email) => String(email || '').toLowerCase().trim().endsWith(EMAIL_TESTE_DOMINIO);
+
 // ---------------------------------------------------------------- money
 const reais = (cents) => (Number(cents || 0) / 100);
 const brl = (cents) => 'R$ ' + reais(cents).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -237,7 +245,7 @@ const Coupons = {
 const PRECO_COL = { pdf: 'preco_pdf', impresso: 'preco_impresso', combo: 'preco_combo' };
 function hidrataOrder(o) {
   if (!o) return null;
-  return { ...o, endereco_entrega: j.parse(o.endereco_entrega, {}), origem: j.parse(o.origem, {}) };
+  return { ...o, endereco_entrega: j.parse(o.endereco_entrega, {}), origem: j.parse(o.origem, {}), teste: !!o.teste };
 }
 const Orders = {
   obter(id) {
@@ -248,11 +256,16 @@ const Orders = {
     o.pagamentos = db.prepare('SELECT * FROM payments WHERE order_id = ? ORDER BY created_at').all(id);
     return o;
   },
+  // Pedido de teste NÃO aparece por padrão: quem lista pedidos está olhando venda.
+  // filtro.testes: 'nao' (padrão) | 'sim' (só os de teste) | 'todos'.
   listar(filtro) {
     let sql = 'SELECT o.*, c.nome cliente_nome, c.email cliente_email FROM orders o JOIN customers c ON c.id = o.customer_id';
     const w = [], p = [];
     if (filtro && filtro.status) { w.push('o.status = ?'); p.push(filtro.status); }
     if (filtro && filtro.impressao) { w.push('o.impressao_status = ?'); p.push(filtro.impressao); }
+    const testes = String((filtro && filtro.testes) || 'nao');
+    if (testes === 'sim') w.push('o.teste = 1');
+    else if (testes !== 'todos') w.push('o.teste = 0');
     if (w.length) sql += ' WHERE ' + w.join(' AND ');
     sql += ' ORDER BY o.created_at DESC LIMIT ' + (filtro && filtro.limite ? Number(filtro.limite) : 300);
     return db.prepare(sql).all(...p).map(hidrataOrder);
@@ -263,7 +276,7 @@ const Orders = {
   // desconto_pacote / rotulo_pacote vêm de `pacotes.js`, já expandidos e deduplicados
   // pela rota de checkout. NÃO acumulam com cupom: se o pedido veio de pacote, o
   // cupom é ignorado, para não empilhar dois descontos sobre a mesma margem.
-  criar({ customer, items, cupom, origem, endereco_entrega, desconto_pacote = 0, rotulo_pacote = '' }) {
+  criar({ customer, items, cupom, origem, endereco_entrega, desconto_pacote = 0, rotulo_pacote = '', teste = false }) {
     return transacao(() => {
       const cli = Customers.upsert(customer);
       const linhas = [];
@@ -295,10 +308,10 @@ const Orders = {
       const id = novoId(), t = nowISO();
       db.prepare(`INSERT INTO orders
         (id,customer_id,status,forma_pagamento,valor_bruto,desconto,valor_total,cupom_codigo,tem_pdf,tem_impresso,
-         entrega_digital,impressao_status,endereco_entrega,origem,created_at,updated_at)
-        VALUES (?,?,'pendente','mercadopago',?,?,?,?,?,?,'pendente',?,?,?,?,?)`).run(
+         entrega_digital,impressao_status,endereco_entrega,origem,teste,created_at,updated_at)
+        VALUES (?,?,'pendente','mercadopago',?,?,?,?,?,?,'pendente',?,?,?,?,?,?)`).run(
         id, cli.id, subtotal, desconto, total, cupomCodigo, temPdf ? 1 : 0, temImpresso ? 1 : 0,
-        temImpresso ? 'aguardando' : 'nenhum', j.str(endereco_entrega || {}), j.str(origem || {}), t, t);
+        temImpresso ? 'aguardando' : 'nenhum', j.str(endereco_entrega || {}), j.str(origem || {}), teste ? 1 : 0, t, t);
       const insItem = db.prepare(`INSERT INTO order_items (id,order_id,book_id,tipo,titulo_snapshot,preco_unit,quantidade,created_at,updated_at)
         VALUES (?,?,?,?,?,?,?,?,?)`);
       for (const l of linhas) insItem.run(novoId(), id, l.book_id, l.tipo, l.titulo_snapshot, l.preco_unit, l.quantidade, t, t);
@@ -310,6 +323,22 @@ const Orders = {
     const cols = Object.keys(set);
     db.prepare(`UPDATE orders SET ${cols.map(c => `${c}=@${c}`).join(', ')} WHERE id=@id`).run({ ...set, id });
     return Orders.obter(id);
+  },
+  // Remove um pedido de TESTE e tudo que pende dele. Recusa qualquer pedido sem a
+  // marca: apagar venda de verdade é mexer em dado financeiro e não pode acontecer
+  // por engano numa rota. order_items, payments, download_tokens e print_jobs saem
+  // por ON DELETE CASCADE (foreign_keys está ON em db.js); download_logs e
+  // notification_logs guardam order_id solto, então saem à mão.
+  removerTeste(id) {
+    const o = db.prepare('SELECT id, teste FROM orders WHERE id = ?').get(id);
+    if (!o) return { erro: 'Pedido não encontrado.' };
+    if (!o.teste) return { erro: 'Este pedido não é de teste — remoção recusada.' };
+    return transacao(() => {
+      db.prepare('DELETE FROM download_logs WHERE order_id = ?').run(id);
+      db.prepare('DELETE FROM notification_logs WHERE order_id = ?').run(id);
+      db.prepare('DELETE FROM orders WHERE id = ?').run(id);
+      return { ok: true };
+    });
   },
 };
 
@@ -435,14 +464,18 @@ function intervalo(desde, ate) {
   if (ate) { w.push("created_at <= ?"); p.push(ate); }
   return { clause: w.length ? ' AND ' + w.join(' AND ') : '', params: p };
 }
+// Todo número de venda ignora pedido de teste. O filtro fica AQUI, na consulta, e
+// não em quem chama: relatório novo nasce limpo sem ninguém lembrar da regra.
+const SEM_TESTE = ' AND teste = 0';
 const Relatorios = {
   // Visão geral do dashboard (opcional intervalo).
   resumo(desde, ate) {
     const { clause, params } = intervalo(desde, ate);
-    const pagos = db.prepare(`SELECT COUNT(*) n, COALESCE(SUM(valor_total),0) receita FROM orders WHERE status='pago'${clause}`).get(...params);
-    const pendentes = db.prepare(`SELECT COUNT(*) n FROM orders WHERE status='pendente'${clause}`).get(...params);
-    const reembolsados = db.prepare(`SELECT COUNT(*) n FROM orders WHERE status='reembolsado'${clause}`).get(...params);
-    const downloads = db.prepare(`SELECT COUNT(*) n FROM download_logs WHERE resultado='ok'${clause}`).get(...params);
+    const pagos = db.prepare(`SELECT COUNT(*) n, COALESCE(SUM(valor_total),0) receita FROM orders WHERE status='pago'${SEM_TESTE}${clause}`).get(...params);
+    const pendentes = db.prepare(`SELECT COUNT(*) n FROM orders WHERE status='pendente'${SEM_TESTE}${clause}`).get(...params);
+    const reembolsados = db.prepare(`SELECT COUNT(*) n FROM orders WHERE status='reembolsado'${SEM_TESTE}${clause}`).get(...params);
+    const downloads = db.prepare(`SELECT COUNT(*) n FROM download_logs dl WHERE resultado='ok'
+      AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.id = dl.order_id AND o.teste = 1)${clause.replace(/created_at/g, 'dl.created_at')}`).get(...params);
     const impressosPend = db.prepare(`SELECT COUNT(*) n FROM print_jobs WHERE status NOT IN ('entregue','cancelado')`).get();
     const ticket = pagos.n ? Math.round(pagos.receita / pagos.n) : 0;
     return {
@@ -457,14 +490,14 @@ const Relatorios = {
     return db.prepare(`
       SELECT b.id, b.titulo, COUNT(oi.id) itens, COALESCE(SUM(oi.preco_unit*oi.quantidade),0) receita
       FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN books b ON b.id = oi.book_id
-      WHERE o.status='pago'${clause.replace(/created_at/g, 'o.created_at')}
+      WHERE o.status='pago' AND o.teste = 0${clause.replace(/created_at/g, 'o.created_at')}
       GROUP BY b.id ORDER BY itens DESC LIMIT ?`).all(...params, limite)
       .map(r => ({ ...r, receita_fmt: brl(r.receita) }));
   },
   cuponsUsados(desde, ate) {
     const { clause, params } = intervalo(desde, ate);
     return db.prepare(`SELECT cupom_codigo codigo, COUNT(*) usos, COALESCE(SUM(desconto),0) desconto
-      FROM orders WHERE status='pago' AND cupom_codigo != ''${clause} GROUP BY cupom_codigo ORDER BY usos DESC`).all(...params)
+      FROM orders WHERE status='pago' AND cupom_codigo != ''${SEM_TESTE}${clause} GROUP BY cupom_codigo ORDER BY usos DESC`).all(...params)
       .map(r => ({ ...r, desconto_fmt: brl(r.desconto) }));
   },
   // Conversão por livro: visitas não são rastreadas no MVP → aproxima por pedidos criados vs pagos.
@@ -475,7 +508,7 @@ const Relatorios = {
         SUM(CASE WHEN o.status='pago' THEN 1 ELSE 0 END) pagos,
         COUNT(DISTINCT o.id) pedidos
       FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN books b ON b.id = oi.book_id
-      WHERE 1=1 ${clause.replace(/created_at/g, 'o.created_at')}
+      WHERE o.teste = 0 ${clause.replace(/created_at/g, 'o.created_at')}
       GROUP BY b.id ORDER BY pagos DESC`).all(...params)
       .map(r => ({ ...r, conversao: r.pedidos ? Math.round(100 * r.pagos / r.pedidos) : 0 }));
   },
@@ -484,9 +517,10 @@ const Relatorios = {
     return db.prepare(`
       SELECT o.id, c.nome cliente, o.status, o.entrega_digital, o.impressao_status, o.valor_total, o.created_at
       FROM orders o JOIN customers c ON c.id = o.customer_id
-      WHERE (o.status='pago' AND o.tem_pdf=1 AND o.entrega_digital='bloqueado')
+      WHERE o.teste = 0 AND (
+            (o.status='pago' AND o.tem_pdf=1 AND o.entrega_digital='bloqueado')
          OR (o.status='pago' AND o.tem_impresso=1 AND o.impressao_status='aguardando' AND o.created_at < ?)
-         OR o.status='reembolsado'
+         OR o.status='reembolsado')
       ORDER BY o.created_at DESC LIMIT 50`).all(new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString())
       .map(hidrataOrder);
   },
@@ -495,4 +529,5 @@ const Relatorios = {
 module.exports = {
   Books, Files, Assets, Customers, Coupons, Orders, Payments, Tokens, Print, Webhooks, Audit, Notif, Relatorios,
   PAPEIS_LIVRARIA, permissoesLivraria, papelLivrariaDe, reais, brl, slugify,
+  EMAIL_TESTE_DOMINIO, ehEmailDeTeste,
 };

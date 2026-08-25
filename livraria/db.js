@@ -46,6 +46,15 @@ function coluna(tabela, nome, definicao) {
 // Marca do follow-up pós-compra (pedido de avaliação) — ver livraria/followup.js.
 coluna('orders', 'followup_enviado_em', 'TEXT');
 
+// MODO TESTE (24/08/2026). Pedido com teste=1 percorre o caminho REAL de entrega
+// (gera token, libera o download, serve o PDF, abre print job) mas não notifica
+// ninguém e não conta como venda. A marca fica no PEDIDO, e não na rota que
+// confirma, de propósito: assim vale para QUALQUER caminho de confirmação —
+// inclusive o webhook do Mercado Pago. Quem lê a marca: livraria/fluxo.js (suprime
+// e-mail, WhatsApp, alerta do Augusto, CRM e webhook do Make), livraria/repo.js
+// (relatórios e listagens) e livraria/followup.js.
+coluna('orders', 'teste', 'INTEGER NOT NULL DEFAULT 0');
+
 // Supressão de backfill (idempotente): quem comprou ANTES de a rotina existir
 // não pode receber "faz alguns dias que você recebeu" semanas depois. Sem isto,
 // ligar a feature varreria o histórico inteiro e escreveria para clientes
@@ -56,6 +65,20 @@ try {
       AND COALESCE(pago_em, created_at) < '2026-08-24T00:00:00.000Z'`).run();
   if (r.changes) console.log(`[livraria] follow-up: ${r.changes} pedido(s) antigo(s) suprimido(s)`);
 } catch (e) { console.error('[livraria] supressão de backfill:', e.message); }
+
+// Marca retroativa (idempotente): os pedidos de validação criados em 24/08/2026,
+// antes de a marca existir. Casa pelo NOME do cliente — escrito à mão só nesse
+// teste ("TESTE - validacao de fluxo (nao e venda)") — porque o e-mail usado foi
+// o do próprio Augusto, que também pode comprar de verdade. Sem isto os três
+// pedidos continuam somando no faturamento, e o que ficou pago dispararia o
+// e-mail de follow-up 7 dias depois da "compra".
+try {
+  const r = db.prepare(`UPDATE orders SET teste = 1,
+      followup_enviado_em = COALESCE(followup_enviado_em, 'suprimido: pedido de teste')
+    WHERE teste = 0 AND customer_id IN (
+      SELECT id FROM customers WHERE nome LIKE 'TESTE - validacao de fluxo%')`).run();
+  if (r.changes) console.log(`[livraria] modo teste: ${r.changes} pedido(s) antigo(s) marcado(s)`);
+} catch (e) { console.error('[livraria] marca retroativa de teste:', e.message); }
 
 // Correção pontual (idempotente): a capa do 1º livro apontava para um link de
 // VISUALIZAÇÃO do Google Drive, que não renderiza como <img>. Capa oficial agora

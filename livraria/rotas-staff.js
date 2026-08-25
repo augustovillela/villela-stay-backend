@@ -6,7 +6,7 @@
 'use strict';
 
 function registrarRotasStaff(app, deps) {
-  const { repo, fluxo, downloads, express, requireAuth, requireAdmin, lerUsuarios, salvarUsuarios } = deps;
+  const { repo, fluxo, downloads, urls, express, requireAuth, requireAdmin, lerUsuarios, salvarUsuarios } = deps;
   const ipDe = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
 
   // guard de permissão funcional (roda depois de requireAuth)
@@ -94,8 +94,9 @@ function registrarRotasStaff(app, deps) {
   app.delete('/staff/api/livraria/assets/:id', requireAuth, pode('livros'), (req, res) => { repo.Assets.remover(req.params.id); res.json({ ok: true }); });
 
   // ------------------------------------------------------- PEDIDOS
+  // ?testes=nao (padrão) | sim | todos — pedido de teste fica fora da lista de venda.
   app.get('/staff/api/livraria/pedidos', ...requireLivraria, pode('pedidos'), (req, res) => {
-    res.json({ pedidos: repo.Orders.listar({ status: req.query.status, impressao: req.query.impressao, limite: req.query.limite }) });
+    res.json({ pedidos: repo.Orders.listar({ status: req.query.status, impressao: req.query.impressao, limite: req.query.limite, testes: req.query.testes }) });
   });
   app.get('/staff/api/livraria/pedidos/:id', ...requireLivraria, pode('pedidos'), (req, res) => {
     const o = repo.Orders.obter(req.params.id); if (!o) return res.status(404).json({ erro: 'Pedido não encontrado.' });
@@ -121,6 +122,61 @@ function registrarRotasStaff(app, deps) {
     const upd = await fluxo.confirmarPagamento(req.params.id, { provider_payment_id: 'manual', metodo: 'manual', raw: { manual: true, por: req.user.nome } });
     repo.Audit.log(req.user, 'pedido.marcar-pago', { entidade: 'order', entidade_id: req.params.id, ip: ipDe(req) });
     res.json({ ok: true, pedido: upd });
+  });
+
+  // ------------------------------------------------------- PEDIDO DE TESTE
+  // Valida a entrega de ponta a ponta sem efeito colateral nenhum: cria o pedido
+  // já marcado como teste, confirma o pagamento pela MESMA função do webhook do
+  // Mercado Pago (fluxo.confirmarPagamento) e devolve os links de download reais.
+  // E-mail, WhatsApp do comprador, alerta do Augusto, CRM e webhook do Make ficam
+  // suprimidos pela marca no pedido — ver livraria/fluxo.js.
+  //
+  // Body: { livro: '<slug|id>', tipo: 'pdf'|'impresso'|'combo', confirmar: true }.
+  // Admin porque isto escreve na base de produção e a limpeza também é admin.
+  app.post('/staff/api/livraria/pedidos/teste', requireAuth, requireAdmin, async (req, res) => {
+    const d = req.body || {};
+    const ref = String(d.livro || '').trim();
+    const livro = ref ? (repo.Books.porSlug(ref) || repo.Books.obter(ref)) : null;
+    if (!livro) return res.status(400).json({ erro: 'Informe o livro (slug ou id) a testar.' });
+    const tipo = ['pdf', 'impresso', 'combo'].includes(d.tipo) ? d.tipo : 'pdf';
+    try {
+      // Cliente fixo: um único cadastro de teste, e não um por validação.
+      let order = repo.Orders.criar({
+        customer: {
+          nome: 'PEDIDO DE TESTE (não é venda)',
+          email: 'teste' + repo.EMAIL_TESTE_DOMINIO,
+          pais: 'BR', estado: 'DF', cidade: 'Brasília',
+          consentimentos: { termos: true, teste: true },
+        },
+        items: [{ book_id: livro.id, tipo, quantidade: 1 }],
+        origem: { origem: 'teste-interno', por: req.user.nome },
+        endereco_entrega: {},
+        teste: true,
+      });
+      if (d.confirmar !== false) {
+        order = await fluxo.confirmarPagamento(order.id, {
+          provider_payment_id: 'teste', metodo: 'teste', raw: { teste: true, por: req.user.nome },
+        });
+      }
+      repo.Audit.log(req.user, 'pedido.teste', { entidade: 'order', entidade_id: order.id, detalhe: `${livro.titulo} (${tipo})`, ip: ipDe(req) });
+      const links = repo.Tokens.daOrder(order.id).map(t => ({ book_id: t.book_id, url: urls.download(t.id), expira_em: t.expires_at }));
+      res.json({ ok: true, pedido: order, links, aviso: 'Pedido de TESTE: nada foi notificado e ele não entra em relatório de venda.' });
+    } catch (e) {
+      console.error('[livraria teste]', e.message);
+      res.status(400).json({ erro: e.message || 'Não foi possível criar o pedido de teste.' });
+    }
+  });
+
+  // Remove um pedido de teste. Recusa qualquer pedido sem a marca — apagar venda
+  // de verdade mexe em dado financeiro e não pode sair por engano de uma rota.
+  // O CLIENTE de teste não é apagado: ele é reaproveitado pela próxima validação.
+  app.delete('/staff/api/livraria/pedidos/:id', requireAuth, requireAdmin, (req, res) => {
+    const o = repo.Orders.obter(req.params.id);
+    if (!o) return res.status(404).json({ erro: 'Pedido não encontrado.' });
+    const r = repo.Orders.removerTeste(req.params.id);
+    if (r.erro) return res.status(400).json(r);
+    repo.Audit.log(req.user, 'pedido.remover-teste', { entidade: 'order', entidade_id: req.params.id, detalhe: `${(o.cliente || {}).email || ''} — ${repo.brl(o.valor_total)}`, ip: ipDe(req) });
+    res.json({ ok: true });
   });
 
   // ------------------------------------------------------- CLIENTES

@@ -33,8 +33,10 @@ function criarFollowup({ repo, emails, enviarEmail, enviarWhatsApp, urls, alerta
   function pendentes(agora = new Date()) {
     const limite = new Date(agora.getTime() - DIAS * 24 * 3600 * 1000).toISOString();
     const piso = new Date(agora.getTime() - (DIAS + JANELA) * 24 * 3600 * 1000).toISOString();
+    // `listar` já exclui pedido de teste por padrão; o `!o.teste` fica explícito
+    // porque este é um envio automático, dias depois — a segunda trava custa uma linha.
     return repo.Orders.listar({ status: 'pago', limite: 500 })
-      .filter(o => o.pago_em && o.pago_em <= limite && o.pago_em >= piso && !o.followup_enviado_em)
+      .filter(o => !o.teste && o.pago_em && o.pago_em <= limite && o.pago_em >= piso && !o.followup_enviado_em)
       .slice(0, TETO)
       .map(o => repo.Orders.obter(o.id))
       .filter(o => o && (o.cliente || {}).email);
