@@ -537,6 +537,27 @@ const parcelasAbertasParaCasamento = (entidadeId, especie) => q(
     LIMIT 2000`,
   { ent: entidadeId, especie });
 
+// ---------------------------------------------------------- ativos fixos
+const criarAtivo = (d) => {
+  exec(`INSERT INTO fin_ativos (id, tenant_id, entidade_id, nome, categoria, conta_id, centro_custo_id,
+          aquisicao, custo_cents, residual_cents, vida_util_meses, inicio_depreciacao, criado_em, criado_por)
+        VALUES (:id, :tenant, :ent, :nome, :cat, :conta, :centro, :aq, :custo, :res, :vida, :ini, :agora, :por)`,
+    { id: d.id, ent: d.entidadeId, nome: d.nome, cat: d.categoria || '', conta: d.contaId || '',
+      centro: d.centroCustoId || '', aq: d.aquisicao, custo: d.custoCents, res: d.residualCents || 0,
+      vida: d.vidaUtilMeses, ini: d.inicioDepreciacao, agora: nowISO(), por: tenancy.userAtual() });
+  return ativo(d.id);
+};
+const ativo = (id) => um('SELECT * FROM fin_ativos WHERE tenant_id = :tenant AND id = :id', { id });
+const listarAtivos = (entidadeId) => q(
+  'SELECT * FROM fin_ativos WHERE tenant_id = :tenant AND entidade_id = :ent ORDER BY aquisicao, nome',
+  { ent: entidadeId });
+const somarDepreciacao = (id, valorCents) => exec(
+  'UPDATE fin_ativos SET depreciado_cents = depreciado_cents + :v WHERE tenant_id = :tenant AND id = :id',
+  { id, v: valorCents });
+const baixarAtivo = (id, { data, motivo }) => exec(
+  `UPDATE fin_ativos SET status = 'baixado', baixa_data = :data, baixa_motivo = :motivo
+     WHERE tenant_id = :tenant AND id = :id`, { id, data, motivo: String(motivo).slice(0, 300) });
+
 // ----------------------------------------------------- assinatura/cobrança
 // `subscriptions` e `invoices` têm tenant_id — passam pelo guarda como
 // qualquer tabela de domínio. As buscas do WEBHOOK são a exceção: chegam
@@ -653,6 +674,7 @@ module.exports = {
   inserirTransacao, transacao, transacaoPorFingerprint, listarTransacoes, atualizarTransacao, contarTransacoes,
   criarRegra, regra, listarRegras, registrarAcertoRegra,
   parcelasAbertasParaCasamento,
+  criarAtivo, ativo, listarAtivos, somarDepreciacao, baixarAtivo,
   criarAprovacao, aprovacao, listarAprovacoes, decidirAprovacao, registrarExecucao, expirarAprovacoesVencidas,
   ultimoAudit, inserirAudit, listarAudit, auditEmOrdem,
   publicarEvento, eventosPendentes, marcarEvento, eventoDePlataforma, ultimoEventoDePlataforma,

@@ -79,6 +79,25 @@ const MIGRACOES = [
         END`);
     },
   },
+  {
+    // Ativos fixos: `CREATE TABLE IF NOT EXISTS` cria em banco novo, mas o
+    // banco de produção já existe — sem a migração, a tabela nunca nasceria
+    // lá. Idempotente: o próprio CREATE já é condicional.
+    nome: 'fin-0003-ativos-fixos',
+    aplicar() {
+      db.exec(`CREATE TABLE IF NOT EXISTS fin_ativos (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, entidade_id TEXT NOT NULL,
+        nome TEXT NOT NULL, categoria TEXT NOT NULL DEFAULT '',
+        conta_id TEXT NOT NULL DEFAULT '', centro_custo_id TEXT NOT NULL DEFAULT '',
+        aquisicao TEXT NOT NULL, custo_cents INTEGER NOT NULL DEFAULT 0,
+        residual_cents INTEGER NOT NULL DEFAULT 0, vida_util_meses INTEGER NOT NULL DEFAULT 0,
+        inicio_depreciacao TEXT NOT NULL DEFAULT '', depreciado_cents INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'ativo', baixa_data TEXT NOT NULL DEFAULT '',
+        baixa_motivo TEXT NOT NULL DEFAULT '', criado_em TEXT NOT NULL,
+        criado_por TEXT NOT NULL DEFAULT '')`);
+      db.exec('CREATE INDEX IF NOT EXISTS idx_fin_ativos ON fin_ativos(tenant_id, entidade_id, status)');
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

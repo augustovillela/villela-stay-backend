@@ -588,6 +588,34 @@ CREATE TABLE IF NOT EXISTS fin_eventos (
 );
 CREATE INDEX IF NOT EXISTS idx_fin_eventos ON fin_eventos(status, proxima_em);
 
+-- ============================ ATIVOS FIXOS ===========================
+-- O imobilizado que envelhece. `depreciado_cents` é acumulador: a
+-- depreciação do mês soma aqui e credita a conta 1.2.1.900 no razão.
+-- Baixa não apaga a linha — muda o status, porque o histórico do bem faz
+-- parte do histórico contábil.
+
+CREATE TABLE IF NOT EXISTS fin_ativos (
+  id                  TEXT PRIMARY KEY,
+  tenant_id           TEXT NOT NULL,
+  entidade_id         TEXT NOT NULL,
+  nome                TEXT NOT NULL,
+  categoria           TEXT NOT NULL DEFAULT '',
+  conta_id            TEXT NOT NULL DEFAULT '',
+  centro_custo_id     TEXT NOT NULL DEFAULT '',
+  aquisicao           TEXT NOT NULL,
+  custo_cents         INTEGER NOT NULL DEFAULT 0,
+  residual_cents      INTEGER NOT NULL DEFAULT 0,
+  vida_util_meses     INTEGER NOT NULL DEFAULT 0,
+  inicio_depreciacao  TEXT NOT NULL DEFAULT '',
+  depreciado_cents    INTEGER NOT NULL DEFAULT 0,
+  status              TEXT NOT NULL DEFAULT 'ativo',   -- ativo|baixado
+  baixa_data          TEXT NOT NULL DEFAULT '',
+  baixa_motivo        TEXT NOT NULL DEFAULT '',
+  criado_em           TEXT NOT NULL,
+  criado_por          TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_fin_ativos ON fin_ativos(tenant_id, entidade_id, status);
+
 -- ======================== TRIGGERS (invariantes) =====================
 -- Isto não é cinto de segurança de código — é do banco. Um bug futuro em
 -- qualquer serviço esbarra aqui antes de corromper o razão.

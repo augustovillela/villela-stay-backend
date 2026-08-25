@@ -4591,6 +4591,115 @@ teste('implantação: saldo inicial NEGATIVO (conta no vermelho) também entra',
   assert.strictEqual(r, -80000, 'saldo inicial negativo não foi lançado — e conta no vermelho existe');
 });
 
+// ------------------------------------------ ativos fixos e depreciação
+const ativos = require('./ativos');
+
+teste('ativos: cadastrar não lança nada — a compra já entrou pelo título ou pelo extrato', () => {
+  const antes = naA(() => ledger.conferirBalanceamento(empresaA.id));
+  const a = naA(() => ativos.registrar({
+    entidadeId: empresaA.id, nome: 'Ar-condicionado da suíte', categoria: 'eletro',
+    aquisicao: '2026-01-15', custoCents: 600000, vidaUtilMeses: 60,
+    inicioDepreciacao: '2026-02',
+  }));
+  assert.ok(a.id, 'ativo não criado');
+  assert.strictEqual(a.depreciado_cents, 0);
+  const depois = naA(() => ledger.conferirBalanceamento(empresaA.id));
+  assert.strictEqual(depois.debitoCents, antes.debitoCents, 'cadastrar o ativo lançou no razão e duplicaria a compra');
+});
+
+teste('ativos: a depreciação mensal é linear e a prévia mostra a fórmula', () => {
+  const p = naA(() => ativos.previa(empresaA.id, '2026-02'));
+  const linha = p.linhas.find(l => /Ar-condicionado/.test(l.nome));
+  assert.ok(linha, 'o ativo não apareceu na prévia do primeiro mês');
+  assert.strictEqual(linha.mensalCents, 10000, 'R$ 6.000 em 60 meses devia dar R$ 100/mês');
+  assert.strictEqual(linha.valorCents, 10000, 'o primeiro mês deveria lançar exatamente uma parcela');
+  assert.ok(/custo − valor residual/.test(p.origem.formula), 'a prévia não expõe a fórmula');
+  assert.ok(/SUGESTÃO/.test(p.aviso), 'a prévia não avisa que a vida útil é sugestão, não norma');
+});
+
+teste('ativos: rodar a depreciação DEPOIS de meses parados recupera o atraso', () => {
+  // Ninguém roda todo mês. Ao lançar em maio, tem de vir fev+mar+abr+mai.
+  const p = naA(() => ativos.previa(empresaA.id, '2026-05'));
+  const linha = p.linhas.find(l => /Ar-condicionado/.test(l.nome));
+  assert.strictEqual(linha.valorCents, 40000,
+    'não recuperou os meses não lançados — o ativo ficaria eternamente subdepreciado');
+});
+
+teste('ativos: depreciar lança um lote só, com despesa por ativo e crédito na acumulada', () => {
+  const acumulada = naA(() => planoContas.chave(empresaA.id, 'depreciacaoAcumulada'));
+  const despesa = naA(() => planoContas.chave(empresaA.id, 'depreciacaoDespesa'));
+  const r = naA(() => ativos.depreciar(empresaA.id, '2026-05'));
+  assert.strictEqual(r.lancado, true, `não lançou: ${r.motivo}`);
+
+  assert.strictEqual(naA(() => ledger.saldo(acumulada.id, {})).saldoCents, r.totalCents,
+    'a depreciação acumulada não recebeu o crédito');
+  assert.strictEqual(naA(() => ledger.saldo(despesa.id, { ate: '2026-05-31' })).saldoCents, r.totalCents,
+    'a despesa de depreciação não recebeu o débito');
+  const b = naA(() => ledger.conferirBalanceamento(empresaA.id));
+  assert.strictEqual(b.ok, true, 'o razão desbalanceou depois da depreciação');
+});
+
+teste('ativos: depreciar a mesma competência de novo não duplica', () => {
+  const acumulada = naA(() => planoContas.chave(empresaA.id, 'depreciacaoAcumulada'));
+  const antes = naA(() => ledger.saldo(acumulada.id, {})).saldoCents;
+  const r = naA(() => ativos.depreciar(empresaA.id, '2026-05'));
+  assert.strictEqual(r.lancado, false, 'lançou de novo o mesmo mês');
+  assert.strictEqual(naA(() => ledger.saldo(acumulada.id, {})).saldoCents, antes);
+});
+
+teste('ativos: a depreciação NUNCA passa do valor depreciável', () => {
+  const a = naA(() => ativos.registrar({
+    entidadeId: empresaA.id, nome: 'Notebook velho', aquisicao: '2020-01-10',
+    custoCents: 300000, residualCents: 50000, vidaUtilMeses: 24, inicioDepreciacao: '2020-02',
+  }));
+  // Muitos anos depois: o acumulado tem de parar em custo − residual.
+  const p = naA(() => ativos.previa(empresaA.id, '2026-08'));
+  const linha = p.linhas.find(l => l.ativoId === a.id);
+  assert.strictEqual(linha.valorCents, 250000,
+    'depreciou mais (ou menos) que custo − residual; passar do custo é erro que só aparece no balanço');
+  naA(() => ativos.depreciar(empresaA.id, '2026-08'));
+  const depois = naA(() => repo.ativo(a.id));
+  assert.strictEqual(depois.depreciado_cents, 250000);
+  const p2 = naA(() => ativos.previa(empresaA.id, '2026-12'));
+  assert.ok(!p2.linhas.find(l => l.ativoId === a.id), 'continuou depreciando um ativo já esgotado');
+});
+
+teste('ativos: terreno (vida útil 0) não deprecia', () => {
+  const a = naA(() => ativos.registrar({
+    entidadeId: empresaA.id, nome: 'Terreno da QI 7', aquisicao: '2019-05-01',
+    custoCents: 50000000, vidaUtilMeses: 0, inicioDepreciacao: '2019-05',
+  }));
+  const p = naA(() => ativos.previa(empresaA.id, '2026-08'));
+  assert.ok(!p.linhas.find(l => l.ativoId === a.id), 'terreno entrou na depreciação');
+  const lista = naA(() => ativos.listar(empresaA.id, { ate: '2026-08' }));
+  assert.strictEqual(lista.find(x => x.id === a.id).naoDeprecia, true);
+});
+
+lanca('ativos: valor residual não pode alcançar o custo', () => {
+  naA(() => ativos.registrar({
+    entidadeId: empresaA.id, nome: 'Coisa', aquisicao: '2026-01-01',
+    custoCents: 100000, residualCents: 100000, vidaUtilMeses: 12,
+  }));
+}, /residual/i);
+
+teste('ativos: baixa não apaga — muda o status e exige motivo', () => {
+  const a = naA(() => ativos.registrar({
+    entidadeId: empresaA.id, nome: 'Geladeira quebrada', aquisicao: '2024-03-01',
+    custoCents: 400000, vidaUtilMeses: 60, inicioDepreciacao: '2024-04',
+  }));
+  const b = naA(() => ativos.baixar(a.id, { motivo: 'quebrou sem conserto', data: '2026-08-20' }));
+  assert.strictEqual(b.status, 'baixado');
+  assert.strictEqual(b.baixa_motivo, 'quebrou sem conserto');
+  assert.ok(naA(() => repo.ativo(a.id)), 'a baixa apagou a linha — o histórico do bem é histórico contábil');
+  const p = naA(() => ativos.previa(empresaA.id, '2026-09'));
+  assert.ok(!p.linhas.find(l => l.ativoId === a.id), 'ativo baixado continuou depreciando');
+});
+
+lanca('ativos: baixa sem motivo é recusada', () => {
+  const a = naA(() => ativos.listar(empresaA.id, {})).find(x => x.status === 'ativo');
+  naA(() => ativos.baixar(a.id, { motivo: '   ' }));
+}, /motivo/i);
+
 // =====================================================================
 // 15. INTEGRIDADE FINAL
 // =====================================================================

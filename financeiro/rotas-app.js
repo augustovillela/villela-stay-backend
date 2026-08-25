@@ -20,6 +20,7 @@ const sessao = require('./sessao');
 const billing = require('./billing');
 const mercadopago = require('./mercadopago');
 const casamento = require('./casamento');
+const ativos = require('./ativos');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const contasSvc = require('./contas');
@@ -460,6 +461,28 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     competencia: comp(req),
     acumulado: req.query.acumulado === '1',
   }), { modulo: '' }));
+
+  // ------------------------------------------------- ativos e depreciação
+  app.get('/finance/api/ativos', ...rota((req) => ({
+    ativos: ativos.listar(req.entidade.id, { ate: comp(req) }),
+    vidasSugeridas: ativos.VIDAS_SUGERIDAS,
+    aviso: 'As vidas úteis são sugestão, não norma — o enquadramento é do contador da empresa.',
+  })));
+
+  app.post('/finance/api/ativos', ...rota((req) => ({
+    ok: true, ativo: ativos.registrar({ entidadeId: req.entidade.id, ...(req.body || {}) }),
+  }), { permissao: 'cadastrar', modulo: 'razao', json: true }));
+
+  app.post('/finance/api/ativos/:id/baixar', ...rota((req) => ({
+    ok: true, ativo: ativos.baixar(req.params.id, req.body || {}),
+  }), { permissao: 'cadastrar', modulo: 'razao', json: true }));
+
+  app.get('/finance/api/depreciacao/:competencia', ...rota((req) =>
+    ativos.previa(req.entidade.id, req.params.competencia)));
+
+  app.post('/finance/api/depreciacao/:competencia', ...rota((req) =>
+    ativos.depreciar(req.entidade.id, req.params.competencia, { motivo: (req.body || {}).motivo }),
+  { permissao: 'lancar', modulo: 'razao', medida: 'lancamentos_mes', json: true }));
 
   // --------------------------------------------------------- fechamento
   app.get('/finance/api/periodos', ...rota((req) => ({ periodos: periodos.listar(req.entidade.id) })));
