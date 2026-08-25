@@ -328,7 +328,7 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       parcelaId: d.parcelaId,
       valorCents: d.valorCents, jurosCents: d.jurosCents,
       multaCents: d.multaCents, descontoCents: d.descontoCents,
-      meio: d.meio, observacao: d.observacao,
+      retencoes: d.retencoes, meio: d.meio, observacao: d.observacao,
     });
   }, { permissao: 'lancar', modulo: 'razao', medida: 'lancamentos_mes', json: true }));
 

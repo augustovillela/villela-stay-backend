@@ -30,6 +30,18 @@ const auditoria = require('./auditoria');
 const planoContas = require('./plano-contas');
 const tenancy = require('./tenancy');
 
+/**
+ * Retenções na fonte aceitas. Cada uma tem DOIS destinos possíveis, e o
+ * lado depende da espécie do título: retido POR nós (a pagar) vira
+ * obrigação; retido DE nós (a receber) vira crédito a recuperar.
+ */
+const RETENCOES = [
+  { chave: 'irrf', rotulo: 'IRRF', recolher: 'irrfRecolher', recuperar: 'irrfRecuperar' },
+  { chave: 'inss', rotulo: 'INSS', recolher: 'inssRecolher', recuperar: 'inssRecuperar' },
+  { chave: 'iss', rotulo: 'ISS', recolher: 'issRecolher', recuperar: 'issRecuperar' },
+  { chave: 'pcc', rotulo: 'PIS/COFINS/CSLL', recolher: 'pccRecolher', recuperar: 'pccRecuperar' },
+];
+
 class ErroDeLiquidacao extends Error {
   constructor(msg, detalhe) { super(msg); this.name = 'ErroDeLiquidacao'; this.status = 400; this.detalhe = detalhe || null; }
 }
@@ -61,6 +73,16 @@ function liquidar(d) {
   const juros = dinheiro.naoNegativo(d.jurosCents || 0, 'juros');
   const multa = dinheiro.naoNegativo(d.multaCents || 0, 'multa');
   const desconto = dinheiro.naoNegativo(d.descontoCents || 0, 'desconto');
+
+  // Retenção na fonte: o principal do título é quitado INTEIRO, mas o
+  // caixa move menos. Confundir as duas coisas é o erro clássico — o
+  // fornecedor deixaria de estar quitado, ou o imposto retido sumiria.
+  const ret = {};
+  let retidoTotal = 0;
+  for (const t of RETENCOES) {
+    const v = dinheiro.naoNegativo((d.retencoes || {})[t.chave] || 0, `retenção de ${t.rotulo}`);
+    if (v) { ret[t.chave] = v; retidoTotal += v; }
+  }
   if (!valor) throw new ErroDeLiquidacao('Liquidação de valor zero não é liquidação.');
 
   const saldo = parcela.valor_cents - parcela.pago_cents;
@@ -85,7 +107,12 @@ function liquidar(d) {
     ? repo.contaPorId(contaBancaria.conta_id)
     : planoContas.chave(entidadeId, 'caixa');
   const contraConta = planoContas.chave(entidadeId, pagar ? 'fornecedores' : 'clientes');
-  const movimentado = valor + juros + multa - desconto;   // o que de fato entra/sai
+  // O que de fato entra/sai da conta: o principal menos o que foi retido.
+  const movimentado = valor + juros + multa - desconto - retidoTotal;
+  if (movimentado < 0) {
+    throw new ErroDeLiquidacao(
+      `As retenções (${dinheiro.formatar(retidoTotal)}) passam do valor liquidado — nada sobraria para movimentar.`);
+  }
 
   const linhas = [];
   const somar = (contaId, deb, cred, extras = {}) => {
@@ -98,8 +125,16 @@ function liquidar(d) {
     somar(planoContas.chave(entidadeId, 'jurosPagos').id, juros + multa, 0);
     somar(contaCaixa.id, 0, movimentado);
     somar(planoContas.chave(entidadeId, 'descontosObtidos').id, 0, desconto);
+    // Nós retivemos do fornecedor: vira obrigação nossa de recolher.
+    for (const t of RETENCOES) {
+      if (ret[t.chave]) somar(planoContas.chave(entidadeId, t.recolher).id, 0, ret[t.chave], { memo: `${t.rotulo} retido na fonte` });
+    }
   } else {
     somar(contaCaixa.id, movimentado, 0);
+    // O cliente reteve de nós: vira crédito tributário, não perda.
+    for (const t of RETENCOES) {
+      if (ret[t.chave]) somar(planoContas.chave(entidadeId, t.recuperar).id, ret[t.chave], 0, { memo: `${t.rotulo} retido pelo cliente` });
+    }
     somar(planoContas.chave(entidadeId, 'descontosConcedidos').id, desconto, 0);
     somar(contraConta.id, 0, valor, { contraparteId: parcela.contraparte_id });
     somar(planoContas.chave(entidadeId, 'jurosRecebidos').id, 0, juros + multa);
@@ -131,7 +166,8 @@ function liquidar(d) {
       motivo: d.observacao || '',
       detalhe: {
         especie: parcela.especie, valor_cents: valor, juros_cents: juros, multa_cents: multa,
-        desconto_cents: desconto, movimentado_cents: movimentado, meio: d.meio || '',
+        desconto_cents: desconto, retencoes: ret, retido_total_cents: retidoTotal,
+        movimentado_cents: movimentado, meio: d.meio || '',
         lote_id: r.lote.id, quitou: pagoNovo >= parcela.valor_cents,
       },
     });
@@ -140,6 +176,7 @@ function liquidar(d) {
       liquidacaoId: id, lote: r.lote,
       parcela: { id: parcela.id, pagoCents: pagoNovo, saldoCents: parcela.valor_cents - pagoNovo, status: statusDaParcela(parcela.valor_cents, pagoNovo) },
       movimentadoCents: movimentado,
+      retencoes: ret, retidoTotalCents: retidoTotal,
     };
   });
 }
@@ -252,6 +289,6 @@ function prepararOrdemDePagamento({ parcelaId, data, valorCents, jurosCents = 0,
 }
 
 module.exports = {
-  ErroDeLiquidacao, MEIOS, liquidar, estornar, listarDaParcela,
+  ErroDeLiquidacao, MEIOS, RETENCOES, liquidar, estornar, listarDaParcela,
   prepararOrdemDePagamento, carregarParcela, statusDaParcela,
 };

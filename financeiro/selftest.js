@@ -4425,6 +4425,100 @@ teste('casamento: palavras de ruído do extrato não fazem nome casar', () => {
     'deixou de casar um nome distintivo');
 });
 
+// ---------------------------------------------- retenções na fonte
+teste('retenção: as contas dos DOIS lados existem no plano', () => {
+  // Retido de nós é ATIVO (compensa tributo nosso); retido por nós é
+  // PASSIVO (temos de recolher). Trocar os dois é o erro clássico.
+  for (const chave of ['irrfRecuperar', 'inssRecuperar', 'issRecuperar', 'pccRecuperar']) {
+    const c = naA(() => planoContas.chave(empresaA.id, chave));
+    assert.ok(c, `falta a conta ${chave}`);
+    assert.strictEqual(c.natureza, 'ativo', `${chave} não é ativo`);
+  }
+  for (const chave of ['irrfRecolher', 'inssRecolher', 'issRecolher', 'pccRecolher']) {
+    const c = naA(() => planoContas.chave(empresaA.id, chave));
+    assert.ok(c, `falta a conta ${chave}`);
+    assert.strictEqual(c.natureza, 'passivo', `${chave} não é passivo`);
+  }
+});
+
+teste('retenção a RECEBER: o cliente retém, o título quita inteiro e vira crédito tributário', () => {
+  const c = cenarioCasamento({
+    valorCents: 100000, vencimento: '2026-08-25', documento: 'RET-1',
+    dataExtrato: '2026-08-25', descricaoExtrato: 'TED RECEBIDA', valorExtrato: 98500,
+  });
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  const irrf = naA(() => planoContas.chave(empresaA.id, 'irrfRecuperar'));
+  const antes = naA(() => ledger.saldo(irrf.id, {})).saldoCents;
+
+  const r = naA(() => liquidacoes.liquidar({
+    parcelaId: parcela.id, data: '2026-08-25', valorCents: 100000,
+    retencoes: { irrf: 1500 },
+    contaBancariaId: c.transacao.conta_bancaria_id, meio: 'ted',
+  }));
+
+  assert.strictEqual(r.movimentadoCents, 98500, 'o caixa moveu o valor cheio — a retenção não foi descontada');
+  assert.strictEqual(r.parcela.saldoCents, 0, 'o título não quitou inteiro; o cliente pagaria de novo os R$ 15');
+  const depois = naA(() => ledger.saldo(irrf.id, {})).saldoCents;
+  assert.strictEqual(depois - antes, 1500, 'o IRRF retido não virou crédito a recuperar');
+});
+
+teste('retenção a PAGAR: nós retemos, o fornecedor quita e nasce a obrigação de recolher', () => {
+  const cps = naA(() => repo.listarContrapartes(empresaA.id, 'fornecedor'));
+  const contas = naA(() => repo.listarContas(empresaA.id, { somenteAnaliticas: true }));
+  const despesa = contas.find(x => x.codigo.startsWith('4.2'));
+  const t = naA(() => titulos.criar({
+    entidadeId: empresaA.id, especie: 'pagar', contraparteId: cps[0].id,
+    documento: 'RET-2', descricao: 'serviço com ISS retido', valorCents: 200000,
+    vencimento: '2026-08-26', rateio: [{ contaId: despesa.id, valorCents: 200000 }],
+  }));
+  const parcela = naA(() => titulos.buscar(t.titulo.id)).parcelas[0];
+  const iss = naA(() => planoContas.chave(empresaA.id, 'issRecolher'));
+  const antes = naA(() => ledger.saldo(iss.id, {})).saldoCents;
+
+  const r = naA(() => liquidacoes.liquidar({
+    parcelaId: parcela.id, data: '2026-08-26', valorCents: 200000,
+    retencoes: { iss: 10000 },
+  }));
+
+  assert.strictEqual(r.movimentadoCents, 190000, 'pagamos o valor cheio tendo retido o ISS');
+  assert.strictEqual(r.parcela.saldoCents, 0, 'o fornecedor continuou como credor do que foi retido');
+  const depois = naA(() => ledger.saldo(iss.id, {})).saldoCents;
+  assert.strictEqual(depois - antes, 10000, 'o ISS retido não virou obrigação a recolher');
+});
+
+teste('retenção: o razão continua fechando depois das duas', () => {
+  const b = naA(() => ledger.conferirBalanceamento(empresaA.id));
+  assert.strictEqual(b.ok, true, `razão desbalanceado em ${b.diferencaCents}`);
+});
+
+lanca('retenção: não pode passar do valor liquidado', () => {
+  const c = cenarioCasamento({
+    valorCents: 50000, vencimento: '2026-08-27', documento: 'RET-3',
+    dataExtrato: '2026-08-27', descricaoExtrato: 'TED RECEBIDA', valorExtrato: 50000,
+  });
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  naA(() => liquidacoes.liquidar({
+    parcelaId: parcela.id, data: '2026-08-27', valorCents: 50000, retencoes: { irrf: 60000 },
+  }));
+}, /passam do valor|nada sobraria/i);
+
+teste('retenção pelo extrato: a invariante conta a retenção, e a baixa fecha', () => {
+  // Sem a retenção na invariante, um recebimento com IRRF seria recusado
+  // por "não fecha" — sendo que fecha, só que com uma perna a mais.
+  const c = cenarioCasamento({
+    valorCents: 300000, vencimento: '2026-08-28', documento: 'RET-4',
+    dataExtrato: '2026-08-28', descricaoExtrato: 'TED RECEBIDA', valorExtrato: 295500,
+  });
+  const parcela = naA(() => titulos.buscar(c.titulo.titulo.id)).parcelas[0];
+  const r = naA(() => casamento.liquidarPelaTransacao(c.transacao, {
+    parcelaId: parcela.id, retencoes: { irrf: 4500 },
+  }));
+  assert.strictEqual(r.aplicado.valorCents, 300000, 'não quitou o principal cheio');
+  assert.strictEqual(r.movimentadoCents, 295500, 'o movimento não bateu com o extrato');
+  const t2 = naA(() => repo.transacao(c.transacao.id));
+  assert.strictEqual(t2.status, 'conciliada');
+});
+
 // =====================================================================
 // 15. INTEGRIDADE FINAL
 // =====================================================================

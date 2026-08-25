@@ -35,6 +35,7 @@ const PONTOS_MINIMOS = 30;      // abaixo disso não vale mostrar
 const ALTA_CONFIANCA = 80;      // acima disso a tela destaca
 
 const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const retidoTotalDe = (r) => Object.values(r || {}).reduce((s, v) => s + (Number(v) || 0), 0);
 const dias = (a, b) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000);
 
 /** Palavras com 4+ letras, sem os ruídos que aparecem em todo extrato. */
@@ -140,7 +141,7 @@ function candidatos(transacao, { limite = 5 } = {}) {
  * fica conciliada apontando para o mesmo lote da liquidação. Um lote só —
  * criar um segundo lançamento pela conciliação duplicaria o dinheiro.
  */
-function liquidarPelaTransacao(transacao, { parcelaId, valorCents, jurosCents, multaCents, descontoCents, meio, observacao } = {}) {
+function liquidarPelaTransacao(transacao, { parcelaId, valorCents, jurosCents, multaCents, descontoCents, retencoes: retencoesInformadas, meio, observacao } = {}) {
   if (!transacao) throw new ErroDeCasamento('Transação não encontrada.');
   if (transacao.status === 'conciliada') throw new ErroDeCasamento('Esta transação já está conciliada.');
   if (!parcelaId) throw new ErroDeCasamento('Escolha a parcela a baixar.');
@@ -161,10 +162,18 @@ function liquidarPelaTransacao(transacao, { parcelaId, valorCents, jurosCents, m
   // baixa parcial. Quem quiser outro arranjo informa os campos.
   let valor = valorCents == null ? Math.min(movimentoBanco, saldo) : Number(valorCents);
   let juros = jurosCents == null ? (movimentoBanco > saldo ? movimentoBanco - saldo : 0) : Number(jurosCents);
+  // Com retenção informada, o padrão do valor muda: o banco moveu menos
+  // justamente porque parte virou imposto retido.
+  if (valorCents == null && retencoesInformadas) valor = Math.min(movimentoBanco + retidoTotalDe(retencoesInformadas), saldo);
   const multa = Number(multaCents || 0);
   const desconto = Number(descontoCents || 0);
+  // Retenção reduz o que o banco move, sem reduzir o que a parcela quita.
+  // Fora da invariante, um recebimento com IRRF retido seria recusado por
+  // "não fecha" — sendo que ele fecha, só que com uma perna a mais.
+  const retencoes = retencoesInformadas || {};
+  const retidoTotal = Object.values(retencoes).reduce((s, v) => s + (Number(v) || 0), 0);
 
-  const movimentado = valor + juros + multa - desconto;
+  const movimentado = valor + juros + multa - desconto - retidoTotal;
   if (movimentado !== movimentoBanco) {
     throw new ErroDeCasamento(
       `A baixa movimenta ${dinheiro.formatar(movimentado)}, mas o extrato movimentou ${dinheiro.formatar(movimentoBanco)}. ` +
@@ -174,7 +183,7 @@ function liquidarPelaTransacao(transacao, { parcelaId, valorCents, jurosCents, m
 
   const r = liquidacoes.liquidar({
     parcelaId, data: transacao.data,
-    valorCents: valor, jurosCents: juros, multaCents: multa, descontoCents: desconto,
+    valorCents: valor, jurosCents: juros, multaCents: multa, descontoCents: desconto, retencoes,
     contaBancariaId: transacao.conta_bancaria_id, meio: meio || '',
     observacao: observacao || 'baixa a partir do extrato',
     idempotencia: `extrato:${transacao.id}:${parcelaId}`,
@@ -189,7 +198,7 @@ function liquidarPelaTransacao(transacao, { parcelaId, valorCents, jurosCents, m
 
   return {
     ok: true, liquidacaoId: r.liquidacaoId, loteId: r.lote.id,
-    aplicado: { valorCents: valor, jurosCents: juros, multaCents: multa, descontoCents: desconto },
+    aplicado: { valorCents: valor, jurosCents: juros, multaCents: multa, descontoCents: desconto, retencoes },
     movimentadoCents: movimentado,
     parcela: { id: parcelaId, saldoAnteriorCents: saldo, saldoNovoCents: saldo - valor },
   };

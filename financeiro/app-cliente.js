@@ -725,6 +725,16 @@ const F = {
           <label>Conta bancária <select id="f-l-banco"><option value="">— não informar —</option>${bancos}</select></label>
           <label>Meio <input id="f-l-meio" placeholder="pix, boleto, transferência"></label>
         </div>
+        <details style="margin-top:10px"><summary style="cursor:pointer" class="sub">Retenções na fonte (IRRF, INSS, ISS, PIS/COFINS/CSLL)</summary>
+          <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-top:8px">
+            <label>IRRF (R$) <input id="f-l-irrf" inputmode="decimal" placeholder="0,00"></label>
+            <label>INSS (R$) <input id="f-l-inss" inputmode="decimal" placeholder="0,00"></label>
+            <label>ISS (R$) <input id="f-l-iss" inputmode="decimal" placeholder="0,00"></label>
+            <label>PIS/COFINS/CSLL (R$) <input id="f-l-pcc" inputmode="decimal" placeholder="0,00"></label>
+          </div>
+          <p class="sub" style="margin:8px 0 0">A retenção quita o título INTEIRO e reduz só o que entra/sai da conta.
+          Retido de nós vira crédito a recuperar; retido por nós, obrigação a recolher.</p>
+        </details>
         <p class="sub" style="margin:10px 0 0">Juros, multa e desconto vão para contas próprias — juro pago não incha a conta de despesa.
         Baixa parcial é permitida; valor acima do saldo é recusado.</p>
         <p style="margin:12px 0 0">
@@ -743,12 +753,22 @@ const F = {
         jurosCents: F.centavos(F.el('f-l-juros').value),
         multaCents: F.centavos(F.el('f-l-multa').value),
         descontoCents: F.centavos(F.el('f-l-desc').value),
+        retencoes: F.retencoesDoForm(),
         contaBancariaId: F.el('f-l-banco').value,
         meio: F.el('f-l-meio').value,
       });
       F.el('f-liq-area').innerHTML = '';
       await F.abrirTitulo(tituloId);
     } catch (e) { msg.textContent = e.message; }
+  },
+
+  retencoesDoForm() {
+    const r = {};
+    for (const [id, chave] of [['f-l-irrf', 'irrf'], ['f-l-inss', 'inss'], ['f-l-iss', 'iss'], ['f-l-pcc', 'pcc']]) {
+      const v = F.centavos((F.el(id) || {}).value);
+      if (v) r[chave] = v;
+    }
+    return r;
   },
 
   async estornarLiquidacao(liquidacaoId, tituloId) {
