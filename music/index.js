@@ -29,11 +29,13 @@ const academia = require('./academia');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasAcademia } = require('./rotas-academia');
 const { registrarRotasBiblioteca } = require('./rotas-biblioteca');
+const { registrarRotasOrganizacoes } = require('./rotas-organizacoes');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
 function montar(app, injected = {}) {
-  const { express, requireAuth, requireAdmin, sessaoAcademy, ehProfessor, buscarContaPorEmail, jwtSecret } = injected;
+  const { express, requireAuth, requireAdmin, sessaoAcademy, ehProfessor, buscarContaPorEmail,
+    buscarContaPorId, jwtSecret } = injected;
   if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
     throw new Error('music.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
@@ -76,6 +78,7 @@ function montar(app, injected = {}) {
   registrarRotasApp(app, { requireUsuario: sessaoDoModulo.requireUsuario });
   registrarRotasAcademia(app, { requireUsuario: sessaoDoModulo.requireUsuario, ehProfessor, buscarContaPorEmail });
   registrarRotasBiblioteca(app, { requireUsuario: sessaoDoModulo.requireUsuario, buscarContaPorEmail });
+  registrarRotasOrganizacoes(app, { requireUsuario: sessaoDoModulo.requireUsuario, buscarContaPorEmail, buscarContaPorId });
   registrarPaginas(app);
 
   // Consumo da fila (ADR-0006). Roda AQUI, no web, e só a fila `rapida`.
@@ -100,7 +103,9 @@ function montar(app, injected = {}) {
     + ` · IA disponível: ${router.disponiveis().length}/${router.CAPABILITIES.length} capabilities`
     + ` · trilhas: ${trilhas.total}`
     + ` · formatos: chordpro, musicxml, midi (+ pdf como anexo)`
-    + ` · professor: ${typeof ehProfessor === 'function' ? 'papel da Academia' : 'NÃO configurado (área de professor fechada)'}`);
+    + ` · professor: ${typeof ehProfessor === 'function' ? 'produtor da Academia' : 'só por escola'}`
+    + ` ou professor de escola`
+    + ` · nomes na chamada/boletim: ${typeof buscarContaPorId === 'function' ? 'sim' : 'NÃO (a tela mostraria id de usuário)'}`);
 
   return { repo, direitos, fila, storage, router, academia, sessao: sessaoDoModulo };
 }

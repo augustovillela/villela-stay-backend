@@ -4778,6 +4778,11 @@ try {
     // O professor atribui tarefa pelo E-MAIL do aluno. A busca é da
     // Academia, que é dona das contas — a Musique só pergunta.
     buscarContaPorEmail: (email) => { try { return academyRepo.Usuarios.porEmail(email); } catch (_) { return null; } },
+    // Lista de chamada e boletim precisam de NOME. Sem isto a tela do
+    // professor mostraria id de usuário, que é ilegível e parece defeito.
+    // Sai só `{ id, nome }` de propósito: a tela não precisa do e-mail
+    // de terceiro para funcionar.
+    buscarContaPorId: (id) => { try { const u = academyRepo.Usuarios.porId(id); return u ? { id: u.id, nome: u.nome } : null; } catch (_) { return null; } },
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     jwtSecret: JWT_SECRET,
   });

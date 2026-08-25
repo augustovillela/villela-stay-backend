@@ -62,6 +62,12 @@ const tokenDe = (chave, jti) => sessaoAcademyNucleo.assinar(CONTAS[chave].id, jt
 // Papel de professor vem da Academia (ADR-0001). No teste, um conjunto.
 const PROFESSORES = new Set(['u-prof']);
 CONTAS.prof = { id: 'u-prof', nome: 'Prof. Clara', email: 'clara@t', status: 'ativo' };
+// Fase 3: uma escola precisa de gente com papéis diferentes.
+CONTAS.sec = { id: 'u-sec', nome: 'Secretaria', email: 'sec@t', status: 'ativo' };
+CONTAS.prof2 = { id: 'u-prof2', nome: 'Dani', email: 'prof2@t', status: 'ativo' };
+CONTAS.menor = { id: 'u-menor', nome: 'Tita (12 anos)', email: 'menor@t', status: 'ativo' };
+CONTAS.resp = { id: 'u-resp', nome: 'Mãe da Tita', email: 'resp@t', status: 'ativo' };
+CONTAS.forasteiro = { id: 'u-forasteiro', nome: 'De outra escola', email: 'forasteiro@t', status: 'ativo' };
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -73,6 +79,7 @@ mod.montar(app, {
   ehProfessor: (u) => PROFESSORES.has(u && u.id),
   // Busca de conta por e-mail (ADR-0001): o professor atribui tarefa e o
   // músico convida a banda pelo e-mail, não pelo id interno.
+  buscarContaPorId: (id) => { const c = Object.values(CONTAS).find((x) => x.id === id); return c ? { id: c.id, nome: c.nome } : null; },
   buscarContaPorEmail: (email) => Object.values(CONTAS)
     .find((c) => c.email.toLowerCase() === String(email || '').trim().toLowerCase()) || null,
 });
@@ -779,6 +786,11 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   // FASE 2 — biblioteca, repertório e palco
   // ===================================================================
   await require('./selftest-fase2').rodar({ t, secao, req, assert });
+
+  // ===================================================================
+  // FASE 3 — escolas, turmas, presença e boletim
+  // ===================================================================
+  await require('./selftest-fase3').rodar({ t, secao, req, assert, PROFESSORES });
 
   // ===================================================================
   srv.close();

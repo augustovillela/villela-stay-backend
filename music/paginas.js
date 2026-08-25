@@ -136,6 +136,7 @@ input[type=search]{border:1px solid var(--borda);border-radius:10px;padding:10px
 .chip-b{background:#fff;border:1px solid var(--borda);border-radius:999px;padding:6px 14px;
   font:600 13px Inter,sans-serif;cursor:pointer;color:var(--suave)}
 .chip-b.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .controles{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;margin:14px 0}
 
 /* CIFRA: o acorde fica ACIMA da silaba onde entra. Cada parte e um
@@ -292,7 +293,8 @@ function registrarPaginas(app) {
 </div>
 <script src="/music/audio.js"></script>
 <script src="/music/app.js"></script>
-<script src="/music/biblioteca.js"></script>`));
+<script src="/music/biblioteca.js"></script>
+<script src="/music/escolas.js"></script>`));
   });
 
   // ---- textos legais (MINUTA até a OAB validar) ----
@@ -340,6 +342,7 @@ function registrarPaginas(app) {
   require('./audio-cliente').registrar(app);
   require('./app-cliente').registrar(app);
   require('./biblioteca-cliente').registrar(app);
+  require('./escolas-cliente').registrar(app);
 
   // ---- saúde do módulo (usado pelo controladoria-ti e pelo selftest) ----
   app.get('/music/saude', (req, res) => {

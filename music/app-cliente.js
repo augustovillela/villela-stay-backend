@@ -87,12 +87,21 @@ const JS = `
   var ABAS = [
     ['estudar', 'Estudar'], ['praticar', 'Praticar'],
     ['biblioteca', 'Biblioteca'], ['repertorios', 'Repertórios'],
-    ['tarefas', 'Tarefas'], ['progresso', 'Meu progresso'], ['professor', 'Professor'],
+    ['tarefas', 'Tarefas'], ['progresso', 'Meu progresso'],
+    ['minhas_turmas', 'Minhas turmas'], ['professor', 'Professor'], ['escola', 'Escola'],
   ];
   function pintarMenu() {
     $('#menu').innerHTML = '';
     ABAS.forEach(function (a) {
+      // Aba que nao serve para a pessoa nao aparece. Mostrar "Escola"
+      // para quem nao trabalha em nenhuma so renderia uma tela vazia.
       if (a[0] === 'professor' && !(estado.eu && estado.eu.sou_professor)) return;
+      // A aba de escola aparece para quem JA tem escola e para quem da
+      // aula: alguem precisa ter por onde criar a primeira. Para o aluno
+      // puro ela nao aparece — abriria vazia, e aba vazia parece defeito.
+      if (a[0] === 'escola' && !(estado.eu
+        && (estado.eu.trabalha_em_escola || estado.eu.sou_professor))) return;
+      if (a[0] === 'minhas_turmas' && !(estado.eu && estado.eu.estuda_em_escola)) return;
       $('#menu').appendChild(el('button', {
         class: 'aba' + (estado.aba === a[0] ? ' on' : ''), txt: a[1],
         'aria-current': estado.aba === a[0] ? 'page' : 'false',
@@ -109,6 +118,9 @@ const JS = `
       // 2 inteira, e caberiam mal num arquivo que já é grande.
       biblioteca: function () { window.MusiqueBiblioteca.verBiblioteca(); },
       repertorios: function () { window.MusiqueBiblioteca.verRepertorios(); },
+      // Escola e turma vivem em /music/escolas.js — a Fase 3 inteira.
+      escola: function () { window.MusiqueEscolas.verEscolas(); },
+      minhas_turmas: function () { window.MusiqueEscolas.verMinhasTurmas(); },
     };
     (telas[aba] || verEstudar)();
   }

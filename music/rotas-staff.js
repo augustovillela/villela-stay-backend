@@ -28,7 +28,18 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
       numeros: {
         usuarios: conta('usuarios_music'), obras: conta('obras'),
         arranjos: conta('arranjos'), partituras: conta('partituras'), midias: conta('midias'),
+        escolas: conta('organizacoes'), turmas: conta('turmas'),
+        matriculas_ativas: (db.prepare("SELECT COUNT(*) AS n FROM matriculas WHERE status = 'ativa'").get() || {}).n || 0,
       },
+      // Assento vendido × assento usado é o número comercial da Fase 3.
+      // Sem ele, "a escola reclamou que não consegue matricular" vira
+      // investigação; com ele, é uma linha da tabela.
+      escolas: db.prepare(
+        `SELECT o.id, o.nome, o.tipo, o.status, o.assentos,
+                (SELECT COUNT(DISTINCT m.aluno) FROM matriculas m
+                  WHERE m.organizacao_id = o.id AND m.status = 'ativa') AS alunos,
+                (SELECT COUNT(*) FROM turmas t WHERE t.organizacao_id = o.id AND t.status = 'ativa') AS turmas
+           FROM organizacoes o ORDER BY o.criado_em DESC LIMIT 100`).all(),
       acervo_por_titularidade: porTitularidade,
       fila: fila.resumo(),
       ia: {

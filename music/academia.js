@@ -329,11 +329,13 @@ const Tarefas = {
     if (!s(d.titulo)) throw new Error('A tarefa precisa de um título.');
     const id = novoId();
     db.prepare(`INSERT INTO tarefas (id, professor, titulo, descricao, instrucoes, exige_audio,
-                nota_maxima, prazo, status, criado_em, atualizado_em)
-                VALUES (?,?,?,?,?,?,?,?, 'ativa', ?, ?)`)
+                nota_maxima, prazo, organizacao_id, turma_id, status, criado_em, atualizado_em)
+                VALUES (?,?,?,?,?,?,?,?,?,?, 'ativa', ?, ?)`)
       .run(id, professor, s(d.titulo, 200), s(d.descricao, 2000), s(d.instrucoes, 4000),
-           d.exige_audio === false ? 0 : 1, Number(d.nota_maxima) || 10, s(d.prazo, 25), nowISO(), nowISO());
-    direitos.registrar({ ator: professor, acao: 'tarefa.criada', alvo: id, detalhe: { titulo: d.titulo } });
+           d.exige_audio === false ? 0 : 1, Number(d.nota_maxima) || 10, s(d.prazo, 25),
+           s(d.organizacao_id, 40), s(d.turma_id, 40), nowISO(), nowISO());
+    direitos.registrar({ ator: professor, acao: 'tarefa.criada', alvo: id,
+      detalhe: { titulo: d.titulo, turma: d.turma_id || null } });
     return Tarefas.porId(id);
   },
 

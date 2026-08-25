@@ -59,9 +59,17 @@ function garantirColuna(tabela, coluna, ddl) {
 // existe entra por aqui, nunca no `schema/` — e o ÍNDICE dela entra por
 // migração, porque o schema roda ANTES e abortaria inteiro.
 garantirColuna('obras', 'pasta_id', "TEXT NOT NULL DEFAULT ''");
+
+// Fase 3: a tarefa pode pertencer a uma TURMA — é assim que a nota entra
+// no boletim. Tarefa sem turma continua existindo (professor particular
+// atribui direto ao aluno), e por isso o padrão é vazio.
+garantirColuna('tarefas', 'turma_id', "TEXT NOT NULL DEFAULT ''");
+
 aplicarMigracoes([
   { nome: '2026-08-25-indice-pasta',
     sql: 'CREATE INDEX IF NOT EXISTS ix_obras_pasta ON obras(dono, pasta_id)' },
+  { nome: '2026-08-25-indice-tarefa-turma',
+    sql: 'CREATE INDEX IF NOT EXISTS ix_tarefas_turma ON tarefas(turma_id, status)' },
 ]);
 
 const nowISO = () => new Date().toISOString();

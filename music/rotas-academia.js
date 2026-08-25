@@ -28,14 +28,22 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
     res.status(400).json({ erro: e.message });
   });
 
-  // Papel de professor vem da ACADEMIA (ADR-0001): quem é produtor
-  // aprovado lá dá aula aqui. Sem a função injetada, ninguém é professor
-  // — e a rota DIZ isso, em vez de devolver 403 mudo.
-  const professorOuNao = typeof ehProfessor === 'function' ? ehProfessor : () => false;
+  // QUEM PODE DAR AULA tem DOIS caminhos, e confundi-los foi um defeito
+  // real: (a) produtor aprovado na Academia — o professor independente,
+  // que vende o próprio curso (ADR-0001); ou (b) professor/gestor de
+  // alguma escola (Fase 3). Exigir (a) de quem é (b) obrigaria todo
+  // professor contratado a passar pela aprovação de produtor do
+  // marketplace, que existe para liberar VENDA, não para liberar aula.
+  const daAcademia = typeof ehProfessor === 'function' ? ehProfessor : () => false;
+  const ehDocente = (u) => {
+    if (daAcademia(u)) return true;
+    try { return require('./organizacoes').Organizacoes.lecionaEmAlguma(u && u.id); } catch (_) { return false; }
+  };
   const requireProfessor = (req, res, next) => {
-    if (!professorOuNao(req.usuario)) {
+    if (!ehDocente(req.usuario)) {
       return res.status(403).json({
-        erro: 'Esta área é de professor. Para dar aula na Musique, ative o perfil de produtor na Academia.',
+        erro: 'Esta área é de professor. Você chega nela de dois jeitos: ativando o perfil de '
+          + 'produtor na Academia, ou entrando como professor de uma escola aqui na Musique.',
         onde: '/academy/app',
       });
     }
@@ -53,7 +61,22 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
       estatisticas: academia.Pratica.estatisticas(u, { dias: 30 }),
       calibracao: academia.Calibracao.estado(u),
       tarefas: academia.Tarefas.doAluno(u).length,
-      sou_professor: professorOuNao(req.usuario),
+      sou_professor: ehDocente(req.usuario),
+      // O menu do app se monta com isto: aba de escola so aparece para
+      // quem tem escola. Sem estes dois campos, o produto teria uma aba
+      // que abre vazia para quase todo mundo.
+      ...(() => {
+        try {
+          const o = require('./organizacoes');
+          return {
+            trabalha_em_escola: o.Organizacoes.lecionaEmAlguma(u)
+              || o.Organizacoes.doUsuario(u).trabalho.length > 0,
+            // Vale também para o responsável pelo menor: ele acompanha,
+            // logo precisa da porta.
+            estuda_em_escola: o.Organizacoes.temTurma(u),
+          };
+        } catch (_) { return { trabalha_em_escola: false, estuda_em_escola: false }; }
+      })(),
     });
   }));
 
