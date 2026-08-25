@@ -1359,6 +1359,30 @@
         }
       },
       {
+        "arquivo": "flat-familia-beliche-estante.jpg",
+        "alt": {
+          "pt": "Quarto do Flat da Família com beliche, estante e cama de casal ao fundo",
+          "en": "Flat da Família bedroom with bunk bed, shelving and a double bed in the background",
+          "es": "Habitación del Flat da Família con litera, estantería y cama de matrimonio al fondo"
+        }
+      },
+      {
+        "arquivo": "flat-familia-cama-casal-beliche-tv.jpg",
+        "alt": {
+          "pt": "Quarto do Flat da Família com cama de casal, beliche e TV",
+          "en": "Flat da Família bedroom with double bed, bunk bed and TV",
+          "es": "Habitación del Flat da Família con cama de matrimonio, litera y TV"
+        }
+      },
+      {
+        "arquivo": "flat-familia-cama-casal-beliche.jpg",
+        "alt": {
+          "pt": "Cama de casal e beliche do Flat da Família",
+          "en": "Double bed and bunk bed in Flat da Família",
+          "es": "Cama de matrimonio y litera del Flat da Família"
+        }
+      },
+      {
         "arquivo": "piscina-deck-espreguicadeiras.jpg",
         "alt": {
           "pt": "Piscina com deck de madeira e espreguiçadeiras",
@@ -1650,30 +1674,6 @@
   "UD03H": {
     "pasta": "villa-kubitschek",
     "fotos": [
-      {
-        "arquivo": "flat-solteiros-beliches.jpg",
-        "alt": {
-          "pt": "Flat dos Solteiros com beliches e cama de casal",
-          "en": "Flat dos Solteiros with bunk beds and a double bed",
-          "es": "Flat dos Solteiros con literas y cama de matrimonio"
-        }
-      },
-      {
-        "arquivo": "flat-solteiros-cama-beliche-tv.jpg",
-        "alt": {
-          "pt": "Flat dos Solteiros com cama de casal, beliche e TV",
-          "en": "Flat dos Solteiros with double bed, bunk bed and TV",
-          "es": "Flat dos Solteiros con cama de matrimonio, litera y TV"
-        }
-      },
-      {
-        "arquivo": "flat-solteiros-cama-casal-beliche.jpg",
-        "alt": {
-          "pt": "Cama de casal e beliche do Flat dos Solteiros",
-          "en": "Double bed and bunk bed in Flat dos Solteiros",
-          "es": "Cama de matrimonio y litera del Flat dos Solteiros"
-        }
-      },
       {
         "arquivo": "flat-solteiros-sala-cozinha.jpg",
         "alt": {
