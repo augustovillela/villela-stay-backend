@@ -4835,6 +4835,112 @@ teste('consolidado: declara o que NÃO elimina', () => {
   assert.ok(/soma das empresas menos os saldos recíprocos/.test(c.origem.formula), 'não expõe a fórmula');
 });
 
+// ---------------------------------------------------- régua de cobrança
+const cobranca = require('./cobranca');
+
+/** Empresa própria: a régua olha TODAS as parcelas a receber da empresa. */
+let COB = null;
+teste('cobrança: empresa e títulos próprios para a régua', () => {
+  const e = naA(() => contasSvc.criarEmpresa({ nome: 'Villela Cobranca', regime: 'simples' }));
+  const nab = (fn) => tenancy.comTenant({ tenantId: contaA.id, userId: 'augusto', perfil: 'proprietario', mfa: true },
+    () => tenancy.comEntidade(e.id, fn));
+  const cli = nab(() => contrapartes.criar({
+    entidadeId: e.id, tipo: 'cliente', nome: 'Hóspede Devedor', email: 'devedor@exemplo.com', telefone: '+5561999990000',
+  }));
+  const semContato = nab(() => contrapartes.criar({ entidadeId: e.id, tipo: 'cliente', nome: 'Sem Contato' }));
+  const receita = nab(() => repo.listarContas(e.id, { somenteAnaliticas: true })).find(c => c.codigo.startsWith('3.1'));
+
+  const cria = (cp, doc, venc, valor) => nab(() => titulos.criar({
+    entidadeId: e.id, especie: 'receber', contraparteId: cp.id, documento: doc,
+    descricao: 'diárias', valorCents: valor, vencimento: venc,
+    rateio: [{ contaId: receita.id, valorCents: valor }],
+  }));
+  COB = {
+    e, nab, cli, semContato,
+    aVencer: cria(cli, 'COB-1', '2026-09-03', 100000),   // -3 dias na referência
+    hoje: cria(cli, 'COB-2', '2026-08-31', 200000),
+    atrasado: cria(cli, 'COB-3', '2026-08-01', 300000),  // 30 dias
+    velho: cria(semContato, 'COB-4', '2026-06-01', 400000), // 91 dias
+  };
+  assert.ok(COB.atrasado.titulo.id);
+});
+
+teste('cobrança: cada parcela cai no passo do seu atraso', () => {
+  const r = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  const por = Object.fromEntries(r.fila.map(x => [x.documento, x]));
+  assert.strictEqual(por['COB-1'].passo, 'lembrete', 'a que vence em 3 dias não caiu no lembrete');
+  assert.strictEqual(por['COB-2'].passo, 'vencimento', 'a que vence hoje não caiu no passo do dia');
+  assert.strictEqual(por['COB-3'].passo, 'atraso_30', `30 dias caiu em ${por['COB-3'].passo}`);
+  assert.strictEqual(por['COB-4'].passo, 'atraso_60', `91 dias caiu em ${por['COB-4'].passo}`);
+});
+
+teste('cobrança: a mensagem é preenchida com os dados reais da parcela', () => {
+  const r = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  const item = r.fila.find(x => x.documento === 'COB-3');
+  assert.ok(item.mensagem.includes('Hóspede Devedor'), 'a mensagem não traz o nome');
+  assert.ok(item.mensagem.includes('COB-3'), 'a mensagem não traz o documento');
+  assert.ok(item.mensagem.includes('R$ 3.000,00'), 'a mensagem não traz o saldo');
+  assert.ok(item.mensagem.includes('30'), 'a mensagem não traz os dias de atraso');
+});
+
+teste('cobrança: quem não tem contato APARECE na fila, marcado', () => {
+  const r = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  const item = r.fila.find(x => x.documento === 'COB-4');
+  assert.strictEqual(item.semContato, true, 'não marcou a falta de contato');
+  assert.ok(r.resumo.semContato >= 1, 'o resumo não conta quantos estão sem contato');
+  // Sumir da lista é o que faz uma dívida ficar anos sem ninguém perceber
+  // que ninguém cobrou.
+  assert.ok(item, 'a parcela sem contato foi escondida da fila');
+});
+
+teste('cobrança: a régua declara, na resposta, que NÃO envia', () => {
+  const r = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  assert.ok(/NÃO ENVIA/.test(r.envio), 'a resposta não deixa claro que o módulo não dispara nada');
+});
+
+teste('cobrança: registrar o envio tira o passo da fila de amanhã', () => {
+  const antes = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  const item = antes.fila.find(x => x.documento === 'COB-3');
+  COB.nab(() => cobranca.registrarEnvio(item.parcelaId, 'atraso_30', { canal: 'whatsapp', observacao: 'falei com ele' }));
+
+  const depois = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  assert.ok(!depois.fila.find(x => x.documento === 'COB-3' && x.passo === 'atraso_30'),
+    'o passo já enviado voltou a aparecer — o cliente receberia a mesma cobrança de novo');
+  const h = COB.nab(() => cobranca.historico(item.parcelaId));
+  assert.strictEqual(h.length, 1);
+  assert.strictEqual(h[0].canal, 'whatsapp');
+});
+
+teste('cobrança: parcela LIQUIDADA sai da régua', () => {
+  const det = COB.nab(() => titulos.buscar(COB.hoje.titulo.id));
+  COB.nab(() => liquidacoes.liquidar({
+    parcelaId: det.parcelas[0].id, data: '2026-08-31', valorCents: det.parcelas[0].valorCents,
+  }));
+  const r = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  assert.ok(!r.fila.find(x => x.documento === 'COB-2'),
+    'cobrou quem já pagou — é o erro que custa mais caro que a própria dívida');
+});
+
+lanca('cobrança: registrar envio sem canal é recusado', () => {
+  const r = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  COB.nab(() => cobranca.registrarEnvio(r.fila[0].parcelaId, r.fila[0].passo, { canal: '  ' }));
+}, /canal/i);
+
+lanca('cobrança: passo inexistente é recusado', () => {
+  const r = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  COB.nab(() => cobranca.registrarEnvio(r.fila[0].parcelaId, 'inventado', { canal: 'email' }));
+}, /Passo desconhecido/);
+
+teste('cobrança: o mesmo passo não entra duas vezes no histórico', () => {
+  const r = COB.nab(() => cobranca.regua(COB.e.id, { referencia: '2026-08-31' }));
+  const item = r.fila.find(x => x.documento === 'COB-1');
+  COB.nab(() => cobranca.registrarEnvio(item.parcelaId, item.passo, { canal: 'email' }));
+  let repetiu = false;
+  try { COB.nab(() => cobranca.registrarEnvio(item.parcelaId, item.passo, { canal: 'email' })); repetiu = true; }
+  catch (_) { /* índice único no banco recusa */ }
+  assert.strictEqual(repetiu, false, 'dois cliques seguidos gravaram duas cobranças');
+});
+
 // =====================================================================
 // 15. INTEGRIDADE FINAL
 // =====================================================================

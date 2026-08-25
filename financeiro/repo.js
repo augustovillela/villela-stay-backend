@@ -561,6 +561,23 @@ const marcarContraparteDoGrupo = (id, entidadeGrupoId) => exec(
      WHERE tenant_id = :tenant AND id = :id`,
   { id, par: String(entidadeGrupoId || ''), agora: nowISO() });
 
+// ------------------------------------------------------------- cobrança
+const registrarPassoDeCobranca = (d) => exec(
+  `INSERT INTO fin_cobrancas (id, tenant_id, entidade_id, parcela_id, passo, canal, observacao, criado_em, criado_por)
+   VALUES (:id, :tenant, :ent, :p, :passo, :canal, :obs, :agora, :por)`,
+  { id: d.id, ent: d.entidadeId, p: d.parcelaId, passo: d.passo, canal: d.canal || '',
+    obs: d.observacao || '', agora: nowISO(), por: tenancy.userAtual() });
+const passosDeCobranca = (entidadeId) => q(
+  'SELECT parcela_id, passo FROM fin_cobrancas WHERE tenant_id = :tenant AND entidade_id = :ent',
+  { ent: entidadeId });
+const passosDaParcela = (parcelaId) => q(
+  'SELECT * FROM fin_cobrancas WHERE tenant_id = :tenant AND parcela_id = :p ORDER BY criado_em',
+  { p: parcelaId });
+const parcela = (id) => um(
+  `SELECT p.*, t.entidade_id, t.especie, t.status AS titulo_status
+     FROM fin_parcelas p JOIN fin_titulos t ON t.id = p.titulo_id AND t.tenant_id = p.tenant_id
+    WHERE p.tenant_id = :tenant AND p.id = :id`, { id });
+
 // ---------------------------------------------------------- ativos fixos
 const criarAtivo = (d) => {
   exec(`INSERT INTO fin_ativos (id, tenant_id, entidade_id, nome, categoria, conta_id, centro_custo_id,
@@ -699,6 +716,7 @@ module.exports = {
   criarRegra, regra, listarRegras, registrarAcertoRegra,
   parcelasAbertasParaCasamento,
   saldosIntragrupo, marcarContraparteDoGrupo,
+  registrarPassoDeCobranca, passosDeCobranca, passosDaParcela, parcela,
   criarAtivo, ativo, listarAtivos, somarDepreciacao, baixarAtivo,
   criarAprovacao, aprovacao, listarAprovacoes, decidirAprovacao, registrarExecucao, expirarAprovacoesVencidas,
   ultimoAudit, inserirAudit, listarAudit, auditEmOrdem,

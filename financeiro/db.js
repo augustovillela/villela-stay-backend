@@ -109,6 +109,21 @@ const MIGRACOES = [
       }
     },
   },
+  {
+    // Régua de cobrança: o índice ÚNICO por (parcela, passo) é a trava que
+    // impede o mesmo passo de ser registrado duas vezes — sem ele, dois
+    // cliques seguidos gerariam duas cobranças no histórico.
+    nome: 'fin-0005-cobrancas',
+    aplicar() {
+      db.exec(`CREATE TABLE IF NOT EXISTS fin_cobrancas (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, entidade_id TEXT NOT NULL,
+        parcela_id TEXT NOT NULL, passo TEXT NOT NULL, canal TEXT NOT NULL DEFAULT '',
+        observacao TEXT NOT NULL DEFAULT '', criado_em TEXT NOT NULL,
+        criado_por TEXT NOT NULL DEFAULT '')`);
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_cobrancas_passo ON fin_cobrancas(tenant_id, parcela_id, passo)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_fin_cobrancas_ent ON fin_cobrancas(tenant_id, entidade_id)');
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

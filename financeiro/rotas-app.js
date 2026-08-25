@@ -21,6 +21,7 @@ const billing = require('./billing');
 const mercadopago = require('./mercadopago');
 const casamento = require('./casamento');
 const ativos = require('./ativos');
+const cobranca = require('./cobranca');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const contasSvc = require('./contas');
@@ -635,6 +636,23 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       limite: Math.min(Number(req.query.limite) || 20, 100),
     }),
   })));
+
+  // ------------------------------------------------- régua de cobrança
+  // Leitura: monta a fila. **Não envia** — ver o cabeçalho de cobranca.js.
+  app.get('/finance/api/cobranca', ...rota((req) => cobranca.regua(req.entidade.id, {
+    referencia: String(req.query.referencia || '') || undefined,
+    limite: Math.min(Number(req.query.limite) || 200, 500),
+  })));
+
+  app.get('/finance/api/cobranca/parcela/:id', ...rota((req) => ({
+    historico: cobranca.historico(req.params.id),
+  })));
+
+  /** Registra que uma PESSOA enviou o passo, pelo canal que ela escolheu. */
+  app.post('/finance/api/cobranca/parcela/:id', ...rota((req) => {
+    const d = req.body || {};
+    return cobranca.registrarEnvio(req.params.id, d.passo, { canal: d.canal, observacao: d.observacao });
+  }, { permissao: 'cadastrar', modulo: 'receber', json: true }));
 
   // -------------------------------------------------------- liquidação
   app.post('/finance/api/parcelas/:id/liquidar', ...rota((req) => ({

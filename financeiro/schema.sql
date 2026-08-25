@@ -591,6 +591,25 @@ CREATE TABLE IF NOT EXISTS fin_eventos (
 );
 CREATE INDEX IF NOT EXISTS idx_fin_eventos ON fin_eventos(status, proxima_em);
 
+-- =========================== COBRANÇA (RÉGUA) ========================
+-- O que já foi cobrado, de quem e por qual canal. Este registro NÃO é
+-- prova de recebimento: é o que impede o mesmo passo de sair duas vezes e
+-- o que mostra, depois, que a cobrança foi tentada.
+
+CREATE TABLE IF NOT EXISTS fin_cobrancas (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  entidade_id TEXT NOT NULL,
+  parcela_id  TEXT NOT NULL,
+  passo       TEXT NOT NULL,
+  canal       TEXT NOT NULL DEFAULT '',
+  observacao  TEXT NOT NULL DEFAULT '',
+  criado_em   TEXT NOT NULL,
+  criado_por  TEXT NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_cobrancas_passo ON fin_cobrancas(tenant_id, parcela_id, passo);
+CREATE INDEX IF NOT EXISTS idx_fin_cobrancas_ent ON fin_cobrancas(tenant_id, entidade_id);
+
 -- ============================ ATIVOS FIXOS ===========================
 -- O imobilizado que envelhece. `depreciado_cents` é acumulador: a
 -- depreciação do mês soma aqui e credita a conta 1.2.1.900 no razão.
