@@ -4834,12 +4834,29 @@ try {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(de || '') || !/^\d{4}-\d{2}-\d{2}$/.test(ate || '') || ate <= de) {
       throw Object.assign(new Error('Datas inválidas — a saída tem de ser depois da entrada.'), { status: 400 });
     }
+    // ⚠️ Data no PASSADO é quase sempre erro de interpretação de data
+    // falada, não pedido de verdade. Recusar aqui evita responder sobre
+    // um período que ninguém quis perguntar.
+    const hojeBr = hojeBrasil();
+    if (ate < hojeBr) {
+      throw Object.assign(
+        new Error(`${de} a ${ate} já passou. Diga o período de novo, com o mês e o ano.`), { status: 400 });
+    }
     const cal = await stays(`/calendar/listing/${idlisting}`, { from: de, to: ate });
     const noites = cal.filter((d) => d.date >= de && d.date < ate)
       .map((d) => ({ date: d.date, avail: d.avail > 0, preco: (d.prices && d.prices[0] && d.prices[0]._mcval.BRL) || 0 }));
+    // ⚠️ CALENDÁRIO VAZIO NÃO É "OCUPADO". Zero noites significa que a
+    // Stays não devolveu nada para o período — e tratar isso como
+    // indisponível responde "não está livre" com a mesma cara de quem
+    // sabe, quando na verdade não se leu nada. Foi o que aconteceu no
+    // primeiro teste de reserva (26/08/2026), com data no ano errado.
+    if (!noites.length) {
+      throw Object.assign(
+        new Error(`Não consegui ler o calendário de ${de} a ${ate}. Confirme as datas.`), { status: 502 });
+    }
     return {
       noites,
-      todasLivres: noites.length > 0 && noites.every((x) => x.avail),
+      todasLivres: noites.every((x) => x.avail),
       totalSugerido: Math.round(noites.reduce((s, x) => s + x.preco, 0)),
     };
   }

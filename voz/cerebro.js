@@ -58,6 +58,15 @@ function sistema() {
       return `  ${a.acao} (nível ${a.nivel}) — ${a.descricao}\n${params || '      (sem parâmetros)'}`;
     }).join('\n');
 
+  // O MODELO NAO SABE QUE DIA E HOJE. Sem isto, "15 de setembro" vira
+  // setembro do ANO PASSADO e "amanha" nao significa nada. Achado no
+  // primeiro teste de reserva (26/08/2026): a data saiu 2025-09-15, e o
+  // calendario vazio de um periodo passado foi lido como "ocupado".
+  // Data errada em reserva e hospede sem casa.
+  const agora = new Date();
+  const hoje = agora.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const diaSemana = agora.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long' });
+
   return [
     'Você é o interpretador de comandos por voz da Villela Stay, empresa de hospedagem por',
     'temporada no Lago Sul, Brasília. O texto que você recebe foi FALADO pelo dono da empresa e',
@@ -80,6 +89,11 @@ function sistema() {
     '4. `confianca` é de 0 a 1 e mede o quanto você tem certeza de que entendeu. Transcrição',
     '   ambígua, nome de pessoa duvidoso ou valor pouco claro devem baixar a confiança.',
     '5. Responda sempre em português do Brasil.',
+    '',
+    `6. HOJE É ${hoje} (${diaSemana}). Resolva TODA data relativa a partir de hoje:`,
+    '   "amanhã", "sexta", "dia 15", "setembro", "semana que vem". Data SEM ano assume o ano',
+    '   corrente — e, se o dia já passou neste ano, o ano seguinte. NUNCA devolva data no',
+    '   passado: ninguém pede reserva para ontem, e data errada em reserva é hóspede sem casa.',
   ].join('\n');
 }
 
@@ -294,6 +308,6 @@ function falaCrua(dados) {
 // Os schemas saem daqui para o selftest poder conferir a FORMA deles sem
 // rede. Foi a falta disso que deixou um 400 passar para producao.
 module.exports = {
-  disponivel, interpretar, narrar, semLLM, limparParametros,
+  disponivel, interpretar, narrar, semLLM, limparParametros, sistema,
   ORCAMENTO_MS, MODELO, SCHEMA_INTERPRETACAO, SCHEMA_FALA,
 };

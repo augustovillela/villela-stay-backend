@@ -183,6 +183,17 @@ const unico = (s) => `${s} ${++n}`;
     assert.equal(acoes.exigeAprovacao('agenda.dia'), false);
   });
 
+  await t('o interpretador SABE que dia é hoje — senão "setembro" vira o ano passado', () => {
+    // Achado no primeiro teste de reserva (26/08/2026): "15 a 18 de
+    // setembro" saiu como 2025-09-15. O modelo nao tem relogio; a data
+    // precisa estar no prompt.
+    const prompt = require('./cerebro').sistema
+      ? require('./cerebro').sistema()
+      : require('fs').readFileSync(require('path').join(__dirname, 'cerebro.js'), 'utf8');
+    assert.ok(/HOJE É/.test(prompt), 'o prompt precisa dizer a data de hoje');
+    assert.ok(/passado/i.test(prompt), 'e proibir data no passado');
+  });
+
   await t('reserva: consultar é nível 1, CRIAR é nível 3', () => {
     // Criar reserva mexe em calendario, dinheiro e na viagem de alguem.
     // Se um dia isso virar nivel 2 "para agilizar", este teste quebra.
