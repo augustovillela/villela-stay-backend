@@ -175,6 +175,37 @@ function registrarRotas(app, { requirePublishOrAdmin, requireAuth, requireAdmin 
     } catch (e) { return responderErro(res, e); }
   });
 
+  /**
+   * O histórico DA PESSOA, para a tela da voz mostrar ao abrir.
+   *
+   * ⚠️ Exige SESSÃO, nunca a chave: a identidade do histórico é o
+   * usuário logado. Com a chave não há usuário — e devolver "tudo"
+   * mostraria a um os pedidos do outro, que carregam nome de hóspede e
+   * texto de e-mail.
+   *
+   * Não existe tabela nova: a conversa JÁ está gravada nos pedidos
+   * (o que foi dito em `texto_original`, o que foi respondido em `fala`).
+   * Guardar de novo criaria uma segunda verdade sobre a mesma conversa.
+   */
+  app.get(`${B}/historico`, requireAuth, (req, res) => {
+    try {
+      const ator = (req.user && (req.user.email || req.user.nome)) || '';
+      if (!ator) return res.json({ turnos: [] });
+      const pedidos = repo.listar({ limite: Math.min(Number(req.query.limite) || 40, 100), ator });
+      // Do mais antigo para o mais novo: é ordem de conversa, não de lista.
+      const turnos = pedidos.reverse().map((p) => ({
+        id: p.id,
+        quando: p.criado_em,
+        dito: p.texto_original,
+        transcrito: !!p.transcrito,
+        resposta: p.fala || '',
+        acao: p.acao || null,
+        status: p.status,
+      }));
+      return res.json({ turnos });
+    } catch (e) { return responderErro(res, e); }
+  });
+
   app.get('/staff/voz', paginas.paginaAutenticada(requireAuth, (req, res) => {
     const pronto = realtime.disponivel();
     res.type('html').send(paginaVoz.pagina({

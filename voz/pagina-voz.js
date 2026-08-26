@@ -1,5 +1,14 @@
 // =====================================================================
-// Voz — FASE 1: a tela do círculo. Servida em /staff/voz (exige sessão).
+// EVA (voz) — FASE 1: a tela do círculo. Servida em /staff/voz (sessão).
+//
+// ⚠️ EXISTEM DUAS EVAS, e confundi-las seria grave:
+//   • Eva do HÓSPEDE (backend/hospede) — responde dúvidas de quem está
+//     hospedado. NÃO escreve nada, e não pode.
+//   • Eva da CASA (esta) — comanda o sistema: escreve em lista, cria
+//     reserva, manda e-mail. Só o staff logado alcança.
+// O nome é o mesmo por decisão do Augusto (26/08/2026); os PODERES não
+// são. Nunca dê `consultar`/`executar` à Eva do hóspede — ela conversa
+// com terceiros, e terceiro não comanda o sistema (trava 5).
 //
 // O celular grava, fala com a OpenAI por WebRTC, e as DUAS ferramentas
 // do modelo batem na NOSSA API — que é onde estão catálogo, níveis,
@@ -64,7 +73,7 @@ const fita = $('#fita'), bola = $('#bola'), estado = $('#estado');
 let pc = null, mic = null, dc = null, audioCtx = null, raf = 0, ligado = false;
 
 const ESTADOS = {
-  parado:   'Toque para falar',
+  parado:   'Toque para falar com a Eva',
   ligando:  'Conectando…',
   ouvindo:  'Estou ouvindo',
   pensando: 'Consultando o sistema…',
@@ -199,7 +208,7 @@ async function ligar() {
     await pc.setRemoteDescription({ type: 'answer', sdp: await resp.text() });
 
     pulsar(mic, $('#halo'));
-    diz('Sessão aberta com ' + s.modelo + '. Pode falar.', 'sis');
+    diz('Eva ouvindo (' + s.modelo + '). Pode falar.', 'sis');
   } catch (e) {
     diz('Não deu para abrir: ' + e.message, 'linha erro');
     setEstado('parado');
@@ -224,14 +233,52 @@ bola.onclick = () => (ligado ? (desligar(), diz('Sessão encerrada.', 'sis')) : 
 // verdade, nao deixar o microfone e a conexao abertos em segundo plano.
 window.addEventListener('pagehide', desligar);
 document.addEventListener('visibilitychange', () => { if (document.hidden && ligado) { desligar(); diz('Fechei a sessão porque a tela saiu de foco — voz custa por minuto.', 'sis'); } });
+
+// ---- histórico: a conversa de antes, ao abrir ----
+//
+// Nao ha tabela nova: a conversa JA esta gravada nos pedidos. A tela so
+// le. Guardar de novo criaria uma segunda verdade sobre a mesma
+// conversa — e a primeira e a que tem auditoria.
+//
+// Cada usuario ve SO o seu: a rota filtra pela sessao.
+async function carregarHistorico() {
+  try {
+    const r = await fetch('/staff/api/voz/historico?limite=40', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const { turnos } = await r.json();
+    if (!turnos || !turnos.length) { diz('Nenhuma conversa anterior.', 'sis'); return; }
+
+    let diaAnterior = '';
+    for (const t of turnos) {
+      const dia = String(t.quando || '').slice(0, 10);
+      // Separador por dia: sem ele, uma conversa de ontem parece
+      // continuacao da de agora.
+      if (dia && dia !== diaAnterior) { diz(rotuloDia(dia), 'sis'); diaAnterior = dia; }
+      if (t.dito) diz(t.dito + (t.transcrito ? ' 🎤' : ''), 'eu');
+      if (t.resposta) diz(t.resposta, 'ele');
+    }
+    diz('— acima, o que ficou de antes —', 'sis');
+  } catch (_) { /* historico e conforto, nao pode impedir de falar */ }
+}
+
+function rotuloDia(iso) {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (iso === hoje) return 'Hoje';
+  if (iso === ontem) return 'Ontem';
+  const partes = iso.split('-');
+  return partes[2] + '/' + partes[1] + '/' + partes[0];
+}
+
 setEstado('parado');
+carregarHistorico();
 `;
 
 function pagina({ disponivel, motivo = '' }) {
   const corpo = disponivel
     ? `<main>
          <div class="palco"><div class="halo" id="halo"></div><button class="bola" id="bola" aria-label="Falar"></button></div>
-         <div class="estado" id="estado">Toque para falar</div>
+         <div class="estado" id="estado">Toque para falar com a Eva</div>
          <div class="dica">Pergunte (“como está a ocupação hoje?”) ou peça (“põe água na lista de compras”).</div>
          <div class="fita" id="fita"></div>
        </main>
@@ -239,7 +286,7 @@ function pagina({ disponivel, motivo = '' }) {
        <script>${JS}</script>`
     : `<main>
          <div class="palco"><div class="halo"></div><div class="bola" style="filter:grayscale(1) brightness(.6)"></div></div>
-         <div class="estado">Voz em tempo real indisponível</div>
+         <div class="estado">A Eva não pode atender agora</div>
          <div class="dica">${motivo}</div>
          <div class="dica">O WhatsApp continua funcionando normalmente.</div>
        </main>`;
@@ -247,9 +294,9 @@ function pagina({ disponivel, motivo = '' }) {
   return `<!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0f1420">
-<title>Voz — Villela Stay</title><style>${CSS}</style></head>
+<title>Eva — Villela Stay</title><style>${CSS}</style></head>
 <body data-estado="parado">
-<header><b>Villela Stay</b><span>Voz</span><a href="/staff/">Portal Staff</a></header>
+<header><b>Eva</b><span>assistente da casa</span><a href="/staff/">Portal Staff</a></header>
 ${corpo}
 </body></html>`;
 }

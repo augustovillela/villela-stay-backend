@@ -9,7 +9,43 @@
   "theme_color": "#1B2A4A",
   "lang": "pt-BR",
   "icons": [
-    { "src": "/assets/brand/grupo-villela/favicon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/assets/brand/grupo-villela/icon-pwa.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/assets/brand/grupo-villela/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/brand/grupo-villela/icon-pwa.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Falar com a Eva",
+      "short_name": "Eva",
+      "description": "Abre a Eva e comeca a ouvir",
+      "url": "/staff/voz",
+      "icons": [
+        {
+          "src": "/assets/brand/grupo-villela/favicon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Eva — pedidos",
+      "short_name": "Pedidos",
+      "description": "Historico dos comandos e o que o sistema nao soube fazer",
+      "url": "/staff/#voz",
+      "icons": [
+        {
+          "src": "/assets/brand/grupo-villela/favicon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }

@@ -705,6 +705,10 @@ const unico = (s) => `${s} ${++n}`;
     assert.ok(/NÃO SABE NADA/i.test(i), 'o modelo precisa saber que não conhece o negócio');
   });
 
+  await t('a assistente se chama EVA — e o nome vem do prompt, não do acaso', () => {
+    assert.ok(/EVA/.test(realtime.instrucoes()), 'a persona precisa se apresentar como Eva');
+  });
+
   await t('as instruções listam o catálogo REAL, não uma lista paralela', () => {
     // Lista paralela é a que ninguém lembra de atualizar.
     const i = realtime.instrucoes();
@@ -743,6 +747,30 @@ const unico = (s) => `${s} ${++n}`;
     assert.equal(semNada.status, 401);
     const naoAdmin = await req('POST', '/staff/api/voz/sessao', { staff: 'op' });
     assert.equal(naoAdmin.status, 403);
+  });
+
+  await t('o histórico é POR USUÁRIO — um não vê a conversa do outro', async () => {
+    // Pedido carrega nome de hospede e texto de e-mail. Devolver "tudo"
+    // para quem abrir a tela seria vazamento entre pessoas da equipe.
+    await req('POST', '/staff/api/voz/consultar', { corpo: { pergunta: unico('qual a agenda') }, staff: 'adm' });
+    const doAdm = await req('GET', '/staff/api/voz/historico', { staff: 'adm' });
+    const doOp = await req('GET', '/staff/api/voz/historico', { staff: 'op' });
+    assert.equal(doAdm.status, 200, JSON.stringify(doAdm.json));
+    assert.ok(doAdm.json.turnos.length >= 1, 'o admin devia ver o proprio turno');
+    assert.equal(doOp.json.turnos.length, 0, 'o operador viu a conversa do admin');
+  });
+
+  await t('a CHAVE não lê histórico — sem sessão não há "seu"', async () => {
+    // Com a chave nao existe usuario; devolver algo seria devolver o de
+    // todo mundo.
+    const r = await req('GET', '/staff/api/voz/historico', { chave: true });
+    assert.equal(r.status, 401, JSON.stringify(r.json));
+  });
+
+  await t('o histórico vem em ordem de CONVERSA, do mais antigo ao mais novo', async () => {
+    const r = await req('GET', '/staff/api/voz/historico', { staff: 'adm' });
+    const datas = r.json.turnos.map((t2) => t2.quando);
+    assert.deepEqual(datas, [...datas].sort(), 'lista invertida vira conversa de tras para a frente');
   });
 
   await t('a página do círculo exige sessão e diz o que falta quando não dá', async () => {

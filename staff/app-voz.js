@@ -46,7 +46,7 @@ function vozLinhaSaude(s) {
 }
 
 async function renderVoz() {
-  conteudo().innerHTML = cabecalho('🎙️ Voz', 'Falar com o sistema — pelo círculo ou pelo WhatsApp')
+  conteudo().innerHTML = cabecalho('🎙️ Eva', 'Falar com o sistema — pelo círculo ou pelo WhatsApp')
     + '<p class="obs">Carregando…</p>';
 
   let saude = null; let pedidos = []; let resumo = {};
@@ -54,7 +54,7 @@ async function renderVoz() {
     const [s, p] = await Promise.all([api('GET', '/voz/saude'), api('GET', '/voz/pedidos?limite=60')]);
     saude = s; pedidos = p.pedidos || []; resumo = p.resumo || {};
   } catch (e) {
-    conteudo().innerHTML = cabecalho('🎙️ Voz')
+    conteudo().innerHTML = cabecalho('🎙️ Eva')
       + `<div class="card"><p>Não consegui ler o módulo de voz: ${esc(e.message)}</p></div>`;
     return;
   }
@@ -74,10 +74,10 @@ async function renderVoz() {
     </tr>`;
   };
 
-  conteudo().innerHTML = cabecalho('🎙️ Voz', 'Falar com o sistema — pelo círculo ou pelo WhatsApp') + `
+  conteudo().innerHTML = cabecalho('🎙️ Eva', 'Falar com o sistema — pelo círculo ou pelo WhatsApp') + `
     <div class="card">
       <p style="margin:0 0 14px">
-        <a class="btn" href="/staff/voz" target="_blank" rel="noopener">🎙️ Abrir o círculo ↗</a>
+        <a class="btn" href="/staff/voz" target="_blank" rel="noopener">🎙️ Falar com a Eva ↗</a>
         <span class="obs" style="margin-left:10px">abre em tela cheia · precisa de microfone</span>
       </p>
       <p class="obs" style="margin:0">${esc(vozLinhaSaude(saude))}</p>
@@ -106,6 +106,6 @@ async function renderVoz() {
         ? `<div style="overflow-x:auto"><table>
              <thead><tr><th>quando</th><th>o que foi dito</th><th>ação</th><th>estado</th><th></th></tr></thead>
              <tbody>${pedidos.map(linha).join('')}</tbody></table></div>`
-        : '<p class="vazio">Nenhum pedido ainda. Toque no círculo ou mande um áudio no WhatsApp.</p>'}
+        : '<p class="vazio">Nenhum pedido ainda. Fale com a Eva ou mande um áudio no WhatsApp.</p>'}
     </div>`;
 }

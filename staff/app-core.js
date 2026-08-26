@@ -269,7 +269,13 @@ function construirItensMenu() {
   // do circulo foi ao ar sem caminho ate ela — so dava para chegar
   // digitando a URL.
   itens.push({ grupo: 'Operação' });
-  if (ehAdmin || tem('ceo') || tem('ti')) itens.push({ id: 'voz', rot: '🎙️ Voz' });
+  // DOIS itens de proposito, e nao um. O que o Augusto faz todo dia e
+  // FALAR — isso tem de ser um toque, do menu ou do ladrilho da home.
+  // O painel e outra coisa: e onde se olha o historico e o que o sistema
+  // nao soube fazer. Juntar os dois custaria um toque a mais justamente
+  // na acao mais frequente.
+  if (ehAdmin || tem('ceo') || tem('ti')) itens.push({ rot: '🗣️ Falar com a Eva', url: '/staff/voz' });
+  if (ehAdmin || tem('ceo') || tem('ti')) itens.push({ id: 'voz', rot: '🎙️ Eva — pedidos' });
   itens.push({ id: 'limpezas', rot: '🧹 Limpezas de hoje' });
   itens.push({ id: 'compras', rot: '🛒 Lista de compras' });
   itens.push({ id: 'manutencao-chamados', rot: '🛠️ Manutenção' });

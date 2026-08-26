@@ -96,12 +96,20 @@ function atualizar(id, campos = {}) {
   return porId(id);
 }
 
-function listar({ limite = 50, status = null } = {}) {
+function listar({ limite = 50, status = null, ator = null } = {}) {
   const lim = Math.min(Number(limite) || 50, 200);
-  const linhas = status
-    ? db.prepare('SELECT * FROM pedidos WHERE status = ? ORDER BY criado_em DESC LIMIT ?').all(status, lim)
-    : db.prepare('SELECT * FROM pedidos ORDER BY criado_em DESC LIMIT ?').all(lim);
-  return linhas.map(hidratar);
+  // `ator` filtra o historico de UMA pessoa. E o que sustenta "cada
+  // usuario tem o seu": sem ele, a tela de um mostraria o que o outro
+  // pediu — e pedido carrega nome de hospede e texto de e-mail.
+  const onde = [];
+  const vals = [];
+  if (status) { onde.push('status = ?'); vals.push(status); }
+  if (ator) { onde.push('ator = ?'); vals.push(ator); }
+  const sql = 'SELECT * FROM pedidos'
+    + (onde.length ? ` WHERE ${onde.join(' AND ')}` : '')
+    + ' ORDER BY criado_em DESC LIMIT ?';
+  vals.push(lim);
+  return db.prepare(sql).all(...vals).map(hidratar);
 }
 
 /** Contagem por status — alimenta o painel e o selftest. */
