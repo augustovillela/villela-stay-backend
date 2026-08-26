@@ -133,6 +133,17 @@ async function executarPedido(pedidoId, { ctx = {} } = {}) {
       pedidoId, atorTipo: 'sistema',
       detalhe: { acao: pedido.acao, erro: String(e && e.message ? e.message : e).slice(0, 300) },
     });
+    // ⚠️ MARCAR o erro como permanente antes de relançar, e não só decidir
+    // aqui o status do pedido.
+    //
+    // Sem isto, a fila não sabe que o motivo não muda com o tempo,
+    // reagenda com backoff, e a segunda tentativa avisa o usuário DE
+    // NOVO do mesmo erro. Foi o que aconteceu no primeiro nível 3 real
+    // (26/08/2026): duas mensagens de falha para uma falha só. Pior: a
+    // retentativa nem chega à ferramenta — o pedido já não está
+    // `aprovado`, então bate no guarda de aprovação e vai para a DLQ
+    // com uma mensagem que não descreve o problema real.
+    if (permanente) e.permanente = true;
     throw e;
   }
 }

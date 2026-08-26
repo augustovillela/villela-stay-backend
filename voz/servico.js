@@ -37,7 +37,20 @@ const FALAS = {
   autorizacao: 'Isso precisa da sua autorização. Mandei o link no WhatsApp.',
   semCodigo: 'Implementar isso eu ainda não consigo sozinho. Anotei o pedido e ele está no painel.',
   demorou: 'Essa resposta vai demorar. Mando no WhatsApp.',
+  jaPendente: 'Esse pedido já está esperando autorização. Use o link que te mandei.',
+  autorizaPeloLink: 'Autorização não se faz por mensagem — é no link, que exige o seu login. Mandei de novo.',
 };
+
+/**
+ * "autorizo", "pode", "sim" — a resposta natural de quem recebe um
+ * pedido de autorização por mensagem.
+ *
+ * Só é tratada como tentativa de autorizar quando existe autorização
+ * ESPERANDO; fora disso, "pode" é uma frase qualquer e segue para o
+ * cérebro. Sem essa guarda, um "sim" solto viraria comando.
+ */
+const TENTATIVA_DE_AUTORIZAR =
+  /^\s*(sim|isso|ok|okay|blz|beleza|claro|confirmo|confirmado|confirma|autorizo|autorizado|autoriza|aprovo|aprovado|aprova|pode|pode ir|pode mandar|manda|t[aá] bom|tudo bem)\b[\s.!,]*$/i;
 
 /**
  * A frase que vai no CORPO da mensagem de resultado (decisão de
@@ -168,6 +181,13 @@ async function executar({ texto, canal = 'voz', ator = '', transcrito = false } 
     return respostaDe(pedido, { repetido: true });
   }
 
+  // "autorizo", "pode", "sim" — a resposta natural de quem recebeu um
+  // pedido de autorizacao por mensagem. Nao autoriza (a decisao continua
+  // sendo o clique em sessao), mas nao pode virar "nao entendi" nem, pior,
+  // um comando novo. Responde o que fazer e reenvia o link.
+  const esperando = TENTATIVA_DE_AUTORIZAR.test(String(texto || '')) ? aprovacoes.algumaPendente() : null;
+  if (esperando) return responderTentativaDeAutorizar(pedido, esperando);
+
   const interp = await cerebro.interpretar(texto);
   if (!interp.acao || interp.confianca < LIMIAR_CONFIANCA) return naoEntendi(pedido, interp);
 
@@ -175,6 +195,22 @@ async function executar({ texto, canal = 'voz', ator = '', transcrito = false } 
     acao: interp.acao, parametros: interp.parametros, nivel: acoes.nivelDe(interp.acao),
   });
   return despachar(repo.porId(pedido.id), interp, { canal });
+}
+
+/** Reenvia o link do pedido que espera, e diz por que a mensagem nao vale. */
+async function responderTentativaDeAutorizar(pedido, esperando) {
+  const alvo = repo.porId(esperando.pedido_id);
+  if (!alvo) return naoEntendi(pedido, { motivo: 'O pedido que esperava autorizacao sumiu.', confianca: 0 });
+  const { token, expiraEm } = aprovacoes.criar(alvo.id);
+  await notificar.pedirAprovacao(alvo, token, { expiraEm });
+  const p = repo.atualizar(pedido.id, {
+    status: 'recusado', fala: FALAS.autorizaPeloLink, concluido_em: nowISO(),
+  });
+  repo.auditar('autorizacao.tentada_por_mensagem', {
+    pedidoId: pedido.id, atorTipo: 'usuario', ator: pedido.ator,
+    detalhe: { alvo: alvo.id, acao: alvo.acao },
+  });
+  return respostaDe(p, { autorizacaoPeloLink: alvo.id });
 }
 
 /** O roteador por nível. Um lugar só — é o que mantém as travas juntas. */
@@ -199,6 +235,26 @@ async function despachar(pedido, interp, { canal = 'voz' } = {}) {
 
   // ---- nível 3: precisa de autorização ----
   if (acoes.exigeAprovacao(pedido.acao)) {
+    // Pedido IDÊNTICO já esperando? Não cria um segundo. Quem responde à
+    // mensagem de autorização repetindo o resumo (o gesto natural, e o
+    // que aconteceu no primeiro uso real) chegaria aqui com a mesma ação
+    // e os mesmos parâmetros — e receberia outro link, outro par de
+    // mensagens e nenhuma autorização.
+    const jaPendente = aprovacoes.pendenteEquivalente(pedido.acao, pedido.parametros);
+    if (jaPendente && jaPendente.pedido_id !== pedido.id) {
+      const p = repo.atualizar(pedido.id, {
+        status: 'recusado', fala: FALAS.jaPendente, concluido_em: nowISO(),
+      });
+      repo.auditar('pedido.duplicado', {
+        pedidoId: pedido.id, atorTipo: 'sistema',
+        detalhe: { acao: pedido.acao, original: jaPendente.pedido_id },
+      });
+      await notificar.enviar(
+        `⏳ Esse pedido já está esperando sua autorização: ${acoes.resumir(pedido.acao, pedido.parametros)}. `
+        + 'Use o link que mandei antes — autorização é por lá, não por mensagem.');
+      return respostaDe(p, { jaPendente: jaPendente.pedido_id });
+    }
+
     const { token, expiraEm } = aprovacoes.criar(pedido.id);
     await notificar.pedirAprovacao(pedido, token, { expiraEm });
     const p = repo.atualizar(pedido.id, { fala: FALAS.autorizacao });

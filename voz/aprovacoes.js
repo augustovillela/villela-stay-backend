@@ -132,4 +132,42 @@ const pendentesDo = (pedidoId) =>
   db.prepare(`SELECT * FROM aprovacoes WHERE pedido_id = ? AND usado_em = '' AND expira_em > ?
               ORDER BY criado_em DESC`).all(pedidoId, nowISO());
 
-module.exports = { criar, consultar, decidir, expirarVencidas, pendentesDo, TTL_MIN };
+/**
+ * Já existe uma autorização pendente para EXATAMENTE este pedido?
+ *
+ * Existe porque o primeiro uso real mostrou o gesto óbvio: o Augusto
+ * RESPONDEU à mensagem de autorização, por áudio, repetindo o resumo. O
+ * sistema tratou como pedido novo, criou uma segunda aprovação e mandou
+ * outro par de mensagens. Não autorizou, e ainda encheu o celular.
+ *
+ * Responder a uma mensagem é o gesto natural de quem recebe uma
+ * mensagem. Quem tem de se adaptar é o sistema.
+ */
+function pendenteEquivalente(acao, parametros) {
+  if (!acao) return null;
+  const alvo = JSON.stringify(parametros || {});
+  const linhas = db.prepare(
+    `SELECT a.*, p.acao AS p_acao, p.parametros AS p_parametros
+       FROM aprovacoes a JOIN pedidos p ON p.id = a.pedido_id
+      WHERE a.usado_em = '' AND a.expira_em > ? AND p.acao = ? AND p.status = 'aguardando_aprovacao'
+      ORDER BY a.criado_em DESC`).all(nowISO(), acao);
+  for (const l of linhas) {
+    // Compara o CONTEÚDO, não o texto falado: "cadastra o cliente X" e
+    // "cadastrar o cliente X na Stays" são o mesmo pedido.
+    try { if (JSON.stringify(JSON.parse(l.p_parametros || '{}')) === alvo) return l; }
+    catch (_) { /* linha corrompida não bloqueia o pedido novo */ }
+  }
+  return null;
+}
+
+/** Existe QUALQUER autorização esperando? Usado para reconhecer uma
+ *  tentativa de autorizar por mensagem e responder o que fazer. */
+const algumaPendente = () =>
+  db.prepare(`SELECT a.*, p.acao AS p_acao FROM aprovacoes a JOIN pedidos p ON p.id = a.pedido_id
+              WHERE a.usado_em = '' AND a.expira_em > ? AND p.status = 'aguardando_aprovacao'
+              ORDER BY a.criado_em DESC LIMIT 1`).get(nowISO()) || null;
+
+module.exports = {
+  criar, consultar, decidir, expirarVencidas,
+  pendentesDo, pendenteEquivalente, algumaPendente, TTL_MIN,
+};

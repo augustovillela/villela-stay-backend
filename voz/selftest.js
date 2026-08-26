@@ -100,6 +100,9 @@ const roteirizar = (texto, r) => roteiro.set(String(texto).trim().toLowerCase(),
 
 roteirizar('cadastra o cliente joao silva', { acao: 'cliente.cadastrar', parametros: { nome: 'João Silva' } });
 roteirizar('manda um email pro pedro', { acao: 'email.enviar', parametros: { para: 'Pedro', corpo: 'oi' } });
+roteirizar('manda um email pro bruno', { acao: 'email.enviar', parametros: { para: 'Bruno', corpo: 'b' } });
+roteirizar('manda um email pra ana', { acao: 'email.enviar', parametros: { para: 'Ana', corpo: 'a' } });
+roteirizar('cadastra o cliente maria souza', { acao: 'cliente.cadastrar', parametros: { nome: 'Maria Souza' } });
 roteirizar('cria uma tela de relatorio de consumo', { acao: 'codigo.implementar', parametros: { pedido: 'tela de relatório de consumo' } });
 roteirizar('poe leite na lista', { acao: 'listas.adicionar', parametros: { nome: 'leite' } });
 roteirizar('quanto foi o faturamento', { acao: 'financeiro.resumo', parametros: {}, confianca: 0.9 });
@@ -254,6 +257,53 @@ const unico = (s) => `${s} ${++n}`;
     await rodarFila();
     assert.equal(chamadas.escrita, escritasAntes + 1, 'não executou depois de autorizado');
     assert.equal(chamadas.ultima[0], 'cliente.cadastrar');
+  });
+
+  // ---- o que o PRIMEIRO nível 3 real (26/08/2026) expôs ----
+
+  await t('responder "autorizo" NÃO autoriza — mas também não vira comando nem "não entendi"', async () => {
+    const escritasAntes = chamadas.escrita;
+    await req('POST', '/staff/api/voz/executar', { corpo: { pedido: unico('manda um email pro bruno') }, chave: true });
+    const r = await req('POST', '/staff/api/voz/executar', { corpo: { pedido: 'autorizo' }, chave: true });
+    assert.ok(r.json.autorizacaoPeloLink, `virou ${r.json.status}/${r.json.acao}: ${JSON.stringify(r.json)}`);
+    assert.ok(/link/i.test(r.json.fala), r.json.fala);
+    await rodarFila();
+    assert.equal(chamadas.escrita, escritasAntes, 'um "autorizo" falado executou a ação');
+  });
+
+  await t('e o link é REENVIADO, para a pessoa não ficar procurando', () => {
+    const links = enviadas.filter((e) => /\/staff\/voz\/aprovar\//.test(e.texto));
+    assert.ok(links.length >= 2, 'devia ter mandado o link de novo');
+  });
+
+  await t('repetir o RESUMO do pedido não cria uma segunda autorização', async () => {
+    // O gesto que aconteceu de verdade: responder ao pedido de
+    // autorização repetindo o que ele dizia. Mesma ação, mesmos
+    // parâmetros → é o mesmo pedido, não um novo.
+    const a = await req('POST', '/staff/api/voz/executar', { corpo: { pedido: unico('cadastra o cliente maria souza') }, chave: true });
+    assert.equal(a.json.status, 'aguardando_aprovacao', JSON.stringify(a.json));
+    const b = await req('POST', '/staff/api/voz/executar', { corpo: { pedido: unico('cadastra o cliente maria souza') }, chave: true });
+    assert.ok(b.json.jaPendente, `criou uma segunda autorização: ${JSON.stringify(b.json)}`);
+    assert.equal(b.json.jaPendente, a.json.pedidoId);
+    assert.notEqual(b.json.status, 'aguardando_aprovacao');
+  });
+
+  await t('falha PERMANENTE avisa uma vez só e não é reprocessada', async () => {
+    // "Ainda não sei fazer" não muda com o tempo. Sem marcar o erro como
+    // permanente, a fila reagenda e o usuário leva dois avisos do mesmo
+    // erro — foi o que aconteceu no primeiro nível 3 real.
+    const antes = enviadas.filter((e) => /Não consegui/i.test(e.texto)).length;
+    const dlqAntes = fila.dlq().length;
+    const r = await req('POST', '/staff/api/voz/executar', { corpo: { pedido: unico('manda um email pra ana') }, chave: true });
+    const link = enviadas.map((e) => e.texto).reverse().find((x) => /\/staff\/voz\/aprovar\//.test(x));
+    const tk = link.match(/\/staff\/voz\/aprovar\/([A-Za-z0-9_-]+)/)[1];
+    await req('POST', `/staff/voz/aprovar/${tk}`, { corpo: { decisao: 'aprovar' }, staff: 'adm' });
+    await rodarFila();
+    await rodarFila();   // a segunda volta é onde a reprocessagem apareceria
+    const depois = enviadas.filter((e) => /Não consegui/i.test(e.texto)).length;
+    assert.equal(depois - antes, 1, `avisou ${depois - antes} vezes o mesmo erro`);
+    assert.equal(repo.porId(r.json.pedidoId).status, 'nao_suportado');
+    assert.equal(fila.dlq().length, dlqAntes + 1, 'falha permanente vai para a DLQ na primeira, não fica reagendando');
   });
 
   await t('a mesma autorização não vale duas vezes', async () => {
