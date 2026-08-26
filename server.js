@@ -4978,6 +4978,26 @@ try {
         return { competencia: mes, reservas: reservas.length, receita: Math.round(receita),
           receitaLiquida: Math.round(receita - comissao), convencao: 'competência por check-in' };
       },
+      // Responde "e ai, deu certo?" — a pergunta natural depois de
+      // qualquer pedido assincrono, e que nao tinha resposta nenhuma.
+      'pedido.status': async ({ quantos } = {}, ctx = {}) => {
+        const vozRepo = require('./voz').repo;
+        const ator = (ctx.pedido && ctx.pedido.ator) || '';
+        const n = Math.min(Math.max(1, parseInt(quantos, 10) || 3), 10);
+        // +1 e descarta o proprio: perguntar pelo status nao pode aparecer
+        // como um dos resultados.
+        const lista = vozRepo.listar({ limite: n + 1, ator })
+          .filter((x) => !ctx.pedido || x.id !== ctx.pedido.id)
+          .slice(0, n);
+        return {
+          total: lista.length,
+          pedidos: lista.map((x) => ({
+            quando: x.criado_em, o_que_pedi: x.texto_original,
+            acao: x.acao || null, status: x.status,
+            deu_errado_porque: x.erro || null,
+          })),
+        };
+      },
       'listas.ver': async ({ tipo } = {}) => {
         const arq = LISTA_ARQ[tipo];
         if (!arq) throw Object.assign(new Error('Lista inválida (compras, manutencao ou pendencias).'), { status: 400 });
@@ -5002,10 +5022,13 @@ try {
           imovel: alvo.titulo, codigo: alvo.codigo, de, ate, noites: n.noites.length,
           livre: n.todasLivres && !conflitos.length,
           precoSugerido: n.totalSugerido,
-          // ⚠️ O motivo do "não livre" importa: "a Stays diz ocupado" e
-          // "o espaço inteiro que contém este está ocupado" pedem
-          // respostas diferentes de quem está vendendo.
-          bloqueadoPor: conflitos.length ? conflitos : (n.todasLivres ? [] : ['calendário da Stays']),
+          // ⚠️ SEPARADOS de proposito. "Este imovel esta reservado" e "o
+          // espaco inteiro que o contem foi vendido" pedem respostas
+          // diferentes de quem esta ao telefone com um cliente — e a
+          // primeira versao juntava os dois num campo so, o que tornava
+          // impossivel saber a causa raiz.
+          calendarioProprio: n.todasLivres ? 'livre' : 'ocupado',
+          bloqueadoPorInterligacao: conflitos,
         };
       },
 
@@ -5024,7 +5047,9 @@ try {
         const conflitos = await vozConflitosInterligados(alvo.codigo, de, ate);
         if (conflitos.length) {
           throw Object.assign(
-            new Error(`Reservar ${alvo.codigo} causaria overbooking: ${conflitos.join(', ')} ocupado no período.`),
+            new Error(`Não dá para reservar ${alvo.titulo}: ${conflitos.length === 1 ? 'o imóvel' : 'os imóveis'} `
+              + `${conflitos.join(', ')} ${conflitos.length === 1 ? 'está ocupado' : 'estão ocupados'} no período, `
+              + 'e eles se bloqueiam entre si. Reservar assim seria overbooking.'),
             { status: 409 });
         }
         const cli = await vozAcharHospede(hospede);

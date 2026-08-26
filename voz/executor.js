@@ -113,7 +113,9 @@ async function executarPedido(pedidoId, { ctx = {} } = {}) {
 
   repo.atualizar(pedidoId, { status: 'executando' });
   try {
-    const resultado = await rodar(pedido.acao, pedido.parametros, { ctx });
+    // O PEDIDO vai no contexto: acoes de leitura sobre o proprio
+    // historico precisam saber QUEM perguntou.
+    const resultado = await rodar(pedido.acao, pedido.parametros, { ctx: { ...ctx, pedido } });
     const atualizado = repo.atualizar(pedidoId, {
       status: 'concluido', resultado, erro: '', concluido_em: nowISO(),
     });
@@ -123,7 +125,12 @@ async function executarPedido(pedidoId, { ctx = {} } = {}) {
     });
     return { pedido: atualizado, resultado };
   } catch (e) {
-    const permanente = e && (e.status === 501 || e.status === 400 || e.permanente);
+    // ⚠️ 409 (conflito) entra como PERMANENTE: overbooking, data ocupada
+    // e duplicidade nao se resolvem nos segundos do backoff. Sem isto a
+    // fila reagenda e o usuario leva DOIS avisos do mesmo erro — foi o
+    // que aconteceu na primeira reserva bloqueada (26/08/2026), e ainda
+    // sujou a DLQ.
+    const permanente = e && (e.status === 501 || e.status === 400 || e.status === 409 || e.permanente);
     repo.atualizar(pedidoId, {
       status: permanente ? 'nao_suportado' : 'falhou',
       erro: String(e && e.message ? e.message : e).slice(0, 500),

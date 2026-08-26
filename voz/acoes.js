@@ -69,6 +69,23 @@ const CATALOGO = {
     exige: ['imovel', 'de', 'ate'],
     resumo: (p) => `Disponibilidade de ${p.imovel} de ${p.de} a ${p.ate}`,
   },
+  // ⚠️ Existe porque o primeiro uso real mostrou o buraco: depois de um
+  // pedido assincrono, a pergunta natural e "e ai, deu certo?" — e nao
+  // havia acao nenhuma que respondesse. Quatro tentativas seguidas
+  // cairam em "nao entendi" (26/08/2026), e a pessoa ficou sem saber o
+  // que tinha acontecido com a propria reserva.
+  //
+  // Todo sistema que responde "te aviso depois" precisa responder
+  // tambem "o que aconteceu com o que eu pedi?".
+  'pedido.status': {
+    nivel: NIVEIS.LEITURA,
+    descricao: 'O que aconteceu com os últimos pedidos feitos por voz: concluído, falhou, '
+      + 'esperando autorização. Use quando perguntarem "deu certo?", "foi concluída?", '
+      + '"o que aconteceu com o meu pedido?".',
+    parametros: { quantos: 'quantos pedidos olhar; ausente = 3' },
+    exige: [],
+    resumo: () => 'Status dos últimos pedidos',
+  },
   'listas.ver': {
     nivel: NIVEIS.LEITURA,
     descricao: 'Mostra o que está na lista de compras ou na lista de pendências.',
