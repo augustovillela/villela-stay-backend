@@ -4788,6 +4788,102 @@ try {
   });
 } catch (e) { console.error('[music] falha ao montar módulo:', e.message); }
 
+// =========================== VOZ (comandos falados) — FASE 0 ===========================
+// Falar com o sistema pelo celular em vez de digitar. Plano e decisões em
+// docs/voz/PLANO-MVP.md (repo-pai). API em /staff/api/voz/*, páginas de
+// autorização em /staff/voz/*. SQLite próprio em DATA_DIR/voz/.
+//
+// O módulo NÃO tem regra de negócio: as `ferramentas` abaixo são a ponte
+// para o que este servidor já sabe fazer. É de propósito — o nível de
+// cada ação e as travas moram no módulo; o conhecimento do negócio, aqui.
+//
+// ⚠️ `agenda.dia`, `ocupacao.periodo` e `financeiro.resumo` passam por
+// `cockpitStays()`, que já aplica o espelhamento bidirecional das
+// interligações. NÃO reimplementar a ocupação aqui: são 3 implementações
+// que precisam ficar em sincronia (ver stays-api.md), e uma quarta seria
+// a que ninguém lembraria de atualizar.
+try {
+  const listaAdicionar = (arquivo, d, origem) => {
+    const itens = lerJSON(arquivo, []);
+    const item = {
+      id: novoId(),
+      quantidade: String(d.quantidade || '').trim(),
+      nome: String(d.nome || '').trim(),
+      obs: String(d.obs || '').trim(),
+      categoria: String(d.categoria || '').trim().slice(0, 40),
+      origem, quem: 'Voz', refId: '',
+      criadoEm: new Date().toISOString(),
+    };
+    itens.push(item);
+    salvarJSON(arquivo, itens);
+    return { ok: true, item };
+  };
+  // Consulta que só sabe de hoje diz isso em voz alta em vez de responder
+  // outro dia como se fosse o pedido. `status: 501` faz o módulo
+  // responder "ainda não sei fazer" — e o pedido fica no painel, que é de
+  // onde sai a lista do que ainda falta.
+  const soHoje = (data) => {
+    const hoje = hojeBrasil();
+    if (data && data !== hoje) {
+      throw Object.assign(new Error(`Por enquanto só sei responder sobre hoje (${hoje}).`), { status: 501 });
+    }
+    return hoje;
+  };
+
+  require('./voz').montar(app, {
+    express, requireAuth, requireAdmin, requirePublishOrAdmin,
+    enviarWhatsApp: (typeof enviarWhatsApp === 'function') ? enviarWhatsApp : undefined,
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : undefined,
+    destino: AUGUSTO_WA,
+    baseUrl: process.env.VOZ_BASE_URL || AREA_HOSPEDE_URL.replace(/\/hospede\/?$/, ''),
+    ferramentas: {
+      // ---- nível 1: leitura ----
+      'agenda.dia': async ({ data } = {}) => {
+        const dia = soHoje(data);
+        const c = await cockpitStays();
+        return { dia, chegadas: c.chegadas, saidas: c.saidas,
+          totais: { chegadas: c.chegadas.length, saidas: c.saidas.length } };
+      },
+      'ocupacao.periodo': async ({ de } = {}) => {
+        const dia = soHoje(de);
+        const c = await cockpitStays();
+        return { dia, ocupadas: c.ocupadas, total: c.totalUnidades, percentual: c.ocupacaoPct };
+      },
+      // Competência por CHECK-IN e faturamento por `price._f_total`
+      // (regra 4 do CLAUDE.md). Não envolve espelhamento — por isso
+      // aceita qualquer mês, ao contrário das duas de cima.
+      'financeiro.resumo': async ({ competencia } = {}) => {
+        const mes = /^\d{4}-\d{2}$/.test(String(competencia || '')) ? competencia : hojeBrasil().slice(0, 7);
+        const [ano, m] = mes.split('-').map(Number);
+        const ini = `${mes}-01`;
+        const fim = `${mes}-${String(new Date(ano, m, 0).getDate()).padStart(2, '0')}`;
+        const reservas = (await staysPaginado('/booking/reservations', { from: ini, to: fim, dateType: 'arrival' }))
+          .filter(r => r.type !== 'canceled' && r.type !== 'blocked' && r.type !== 'maintenance');
+        let receita = 0, comissao = 0;
+        for (const r of reservas) {
+          receita += (r.price && r.price._f_total) || 0;
+          comissao += (r.partner && r.partner.commission && r.partner.commission._mcval && r.partner.commission._mcval.BRL) || 0;
+        }
+        return { competencia: mes, reservas: reservas.length, receita: Math.round(receita),
+          receitaLiquida: Math.round(receita - comissao), convencao: 'competência por check-in' };
+      },
+      'listas.ver': async ({ tipo } = {}) => {
+        const arq = LISTA_ARQ[tipo];
+        if (!arq) throw Object.assign(new Error('Lista inválida (compras, manutencao ou pendencias).'), { status: 400 });
+        const itens = lerJSON(arq, []);
+        return { tipo, total: itens.length,
+          itens: itens.slice(0, 50).map(i => ({ nome: i.nome, quantidade: i.quantidade, obs: i.obs, categoria: i.categoria })) };
+      },
+      // ---- nível 2: escrita interna reversível ----
+      'listas.adicionar': async (p) => listaAdicionar(LISTA_ARQ.compras, p, 'voz'),
+      'tarefa.criar': async (p) => listaAdicionar(LISTA_ARQ.pendencias, p, 'voz'),
+      // Nível 3 e 4 não têm ferramenta na Fase 0 de propósito: o pedido é
+      // reconhecido, exige autorização e responde "ainda não sei fazer".
+      // Melhor que ser encaixado à força numa ação parecida.
+    },
+  });
+} catch (e) { console.error('[voz] falha ao montar módulo:', e.message); }
+
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.

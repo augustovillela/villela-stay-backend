@@ -27,6 +27,7 @@
     "verificar:kids": "node kids/verificar-producao.js",
     "test:finance": "node financeiro/selftest.js",
     "test:music": "node music/selftest.js",
+    "test:voz": "node voz/selftest.js",
     "music:worker": "node music/worker.js",
     "test:nucleo": "node selftest-nucleo.js"
   },
