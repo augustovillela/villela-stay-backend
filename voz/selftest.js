@@ -649,6 +649,96 @@ const unico = (s) => `${s} ${++n}`;
   });
 
   // ===================================================================
+  secao('Fase 1 · voz em tempo real');
+
+  const realtime = require('./realtime');
+
+  await t('as ferramentas do modelo de voz são DUAS, e só duas', () => {
+    assert.deepEqual(realtime.FERRAMENTAS.map((f) => f.name).sort(), ['consultar', 'executar']);
+  });
+
+  await t('o schema das ferramentas segue a MESMA regra que derrubou o cérebro', () => {
+    // Lá a API recusava com 400 e caía no fallback em silêncio; aqui a
+    // sessão simplesmente não abriria. A regra é a mesma, o teste também.
+    const faltando = [];
+    for (const f of realtime.FERRAMENTAS) {
+      percorrer(f.parameters, `$.${f.name}`, (no, caminho) => {
+        if (no.type !== 'object') return;
+        if (no.additionalProperties !== false) faltando.push(`${caminho} (additionalProperties)`);
+        if (!no.properties) faltando.push(`${caminho} (sem properties)`);
+      });
+    }
+    assert.deepEqual(faltando, []);
+  });
+
+  await t('as instruções PROÍBEM inventar e mandam repetir a fala', () => {
+    // Sem isso o modelo preenche a lacuna com algo plausível — e um
+    // número de ocupação inventado é pior que silêncio.
+    const i = realtime.instrucoes();
+    assert.ok(/NUNCA invente/i.test(i), 'falta a regra de não inventar');
+    assert.ok(/`fala`/.test(i), 'falta mandar dizer o texto que a ferramenta devolveu');
+    assert.ok(/NÃO SABE NADA/i.test(i), 'o modelo precisa saber que não conhece o negócio');
+  });
+
+  await t('as instruções listam o catálogo REAL, não uma lista paralela', () => {
+    // Lista paralela é a que ninguém lembra de atualizar.
+    const i = realtime.instrucoes();
+    for (const a of acoes.paraOCerebro()) {
+      assert.ok(i.includes(a.descricao), `faltou no prompt: ${a.acao}`);
+    }
+  });
+
+  await t('sem OPENAI_API_KEY, a sessão recusa com causa — não 500 mudo', async () => {
+    const antes = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      await assert.rejects(() => realtime.criarSessao({ ator: 't' }),
+        (e) => e.status === 503 && /OPENAI_API_KEY/.test(e.message));
+      assert.equal(realtime.disponivel(), false);
+    } finally { if (antes) process.env.OPENAI_API_KEY = antes; }
+  });
+
+  await t('VOZ_REALTIME=off desliga a voz e PRESERVA o resto', async () => {
+    process.env.OPENAI_API_KEY = 'sk-teste';
+    process.env.VOZ_REALTIME = 'off';
+    try {
+      assert.equal(realtime.disponivel(), false);
+      await assert.rejects(() => realtime.criarSessao({}), (e) => e.status === 503);
+      const c = await req('POST', '/staff/api/voz/consultar', { corpo: { pergunta: unico('qual a agenda') }, chave: true });
+      assert.equal(c.json.status, 'concluido', 'o WhatsApp e a consulta não podem cair junto');
+    } finally { delete process.env.VOZ_REALTIME; delete process.env.OPENAI_API_KEY; }
+  });
+
+  await t('a CHAVE não abre sessão de voz — só sessão de admin', async () => {
+    // Chave é do agente, e agente não abre microfone. Além disso cada
+    // sessão custa por minuto: quem gasta tem de ser uma pessoa logada.
+    const comChave = await req('POST', '/staff/api/voz/sessao', { chave: true });
+    assert.equal(comChave.status, 401, 'a PUBLISH_KEY cunhou credencial de voz');
+    const semNada = await req('POST', '/staff/api/voz/sessao', {});
+    assert.equal(semNada.status, 401);
+    const naoAdmin = await req('POST', '/staff/api/voz/sessao', { staff: 'op' });
+    assert.equal(naoAdmin.status, 403);
+  });
+
+  await t('a página do círculo exige sessão e diz o que falta quando não dá', async () => {
+    const semSessao = await req('GET', '/staff/voz', { cru: true });
+    assert.equal(semSessao.status, 401);
+    const comSessao = await req('GET', '/staff/voz', { staff: 'adm', cru: true });
+    assert.equal(comSessao.status, 200);
+    assert.ok(/OPENAI_API_KEY/.test(comSessao.texto), 'sem chave, a tela tem de dizer o que falta');
+    assert.ok(/WhatsApp continua funcionando/.test(comSessao.texto), 'e que o outro canal segue de pé');
+  });
+
+  await t('a página NUNCA embute a chave — só busca o segredo efêmero', async () => {
+    process.env.OPENAI_API_KEY = 'sk-segredo-que-nao-pode-vazar';
+    try {
+      const p = await req('GET', '/staff/voz', { staff: 'adm', cru: true });
+      assert.ok(!p.texto.includes('sk-segredo-que-nao-pode-vazar'), 'a chave permanente foi para o HTML');
+      assert.ok(/\/staff\/api\/voz\/sessao/.test(p.texto), 'a página tem de cunhar pelo servidor');
+    } finally { delete process.env.OPENAI_API_KEY; }
+  });
+
+  // ===================================================================
   secao('Painel e saúde');
 
   await t('a saúde diz o que falta, sem enfeitar', async () => {

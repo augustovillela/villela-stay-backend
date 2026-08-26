@@ -25,6 +25,8 @@ const cerebro = require('./cerebro');
 const aprovacoes = require('./aprovacoes');
 const notificar = require('./notificar');
 const paginas = require('./paginas');
+const realtime = require('./realtime');
+const paginaVoz = require('./pagina-voz');
 
 const B = '/staff/api/voz';
 
@@ -141,6 +143,10 @@ function registrarRotas(app, { requirePublishOrAdmin, requireAuth, requireAdmin 
         cerebro: { llm: cerebro.disponivel(), modelo: cerebro.MODELO },
         transcricao: { pronta: entrada.temTranscricao(), ...transcricao.resumo(), audioMaxKB: Math.round(audio.MAX_BYTES / 1024) },
         whatsapp: notificar.configurado(),
+        tempoReal: { pronto: realtime.disponivel(), modelo: realtime.MODELO(), voz: realtime.VOZ_TIMBRE() },
+        // So os APELIDOS: endereco de terceiro nao sai por API.
+        destinatarios: require('./destinatarios').apelidos(
+          require('./destinatarios').parse(process.env.VOZ_EMAILS || '')),
         executar: String(process.env.VOZ_EXECUTAR || 'on').toLowerCase() !== 'off',
         filaCodigo: fila.codigoLiberado(),
         acoes: { catalogo: acoes.chaves().length, implementadas: require('./executor').implementadas() },
@@ -149,6 +155,35 @@ function registrarRotas(app, { requirePublishOrAdmin, requireAuth, requireAdmin 
       });
     } catch (e) { return responderErro(res, e); }
   });
+
+  // ---- FASE 1: a voz em tempo real ----
+  //
+  // ⚠️ A cunhagem exige SESSAO DE ADMIN, nao a chave. A chave e do
+  // agente, e agente nao abre microfone: quem abre sessao de voz e uma
+  // pessoa logada. E cada sessao custa por minuto, entao ela tambem e
+  // limitada por taxa e auditada.
+  app.post(`${B}/sessao`, requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const ator = (req.user && (req.user.email || req.user.nome)) || 'staff';
+      const s = await realtime.criarSessao({ ator });
+      repo.auditar('voz.sessao_aberta', {
+        atorTipo: 'usuario', ator,
+        detalhe: { modelo: s.modelo, voz: s.voz, expiraEm: s.expiraEm },
+      });
+      // Devolve SO o segredo efemero. A chave permanente nunca sai daqui.
+      return res.json({ segredo: s.valor, expiraEm: s.expiraEm, modelo: s.modelo, voz: s.voz });
+    } catch (e) { return responderErro(res, e); }
+  });
+
+  app.get('/staff/voz', paginas.paginaAutenticada(requireAuth, (req, res) => {
+    const pronto = realtime.disponivel();
+    res.type('html').send(paginaVoz.pagina({
+      disponivel: pronto,
+      motivo: pronto ? '' : (process.env.OPENAI_API_KEY
+        ? 'A voz em tempo real esta desligada (VOZ_REALTIME=off).'
+        : 'Falta a OPENAI_API_KEY no servidor.'),
+    }));
+  }));
 
   // ---- páginas: SESSÃO, nunca chave ----
 
