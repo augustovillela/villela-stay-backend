@@ -445,6 +445,60 @@ const unico = (s) => `${s} ${++n}`;
   });
 
   // ===================================================================
+  secao('Cérebro · a FORMA do schema, sem rede');
+
+  // Estes testes existem porque um 400 passou para produção: o schema de
+  // interpretação usava `additionalProperties: { type: 'string' }`, que a
+  // API recusa, e TODA interpretação caía no determinístico em silêncio.
+  // O selftest não pegou porque apaga a ANTHROPIC_API_KEY — o caminho do
+  // LLM nunca rodava. A regra da API vira invariante local aqui.
+  const percorrer = (no, caminho, visita) => {
+    if (!no || typeof no !== 'object') return;
+    visita(no, caminho);
+    for (const [k, v] of Object.entries(no)) {
+      if (v && typeof v === 'object') percorrer(v, `${caminho}.${k}`, visita);
+    }
+  };
+
+  for (const [nome, schema] of [['interpretação', cerebro.SCHEMA_INTERPRETACAO], ['fala', cerebro.SCHEMA_FALA]]) {
+    await t(`schema de ${nome}: todo objeto fecha com additionalProperties:false`, () => {
+      const faltando = [];
+      percorrer(schema, '$', (no, caminho) => {
+        if (no.type !== 'object') return;
+        if (no.additionalProperties !== false) faltando.push(`${caminho} (additionalProperties=${JSON.stringify(no.additionalProperties)})`);
+        if (!no.properties) faltando.push(`${caminho} (sem properties)`);
+      });
+      assert.deepEqual(faltando, [],
+        'a API recusa com 400 e a interpretação cai no determinístico EM SILÊNCIO');
+    });
+
+    await t(`schema de ${nome}: required só cita propriedade declarada`, () => {
+      const orfas = [];
+      percorrer(schema, '$', (no, caminho) => {
+        if (no.type !== 'object' || !Array.isArray(no.required)) return;
+        for (const r of no.required) if (!no.properties || !(r in no.properties)) orfas.push(`${caminho}.${r}`);
+      });
+      assert.deepEqual(orfas, []);
+    });
+  }
+
+  await t('parâmetro fora do catálogo da ação é DESCARTADO', () => {
+    // Chave inventada pelo modelo chegaria à ferramenta como se a pessoa
+    // a tivesse dito. `nome` existe em listas.adicionar; `rota` não.
+    const r = cerebro.limparParametros(
+      [{ chave: 'nome', valor: 'leite' }, { chave: 'rota', valor: '/etc/passwd' }, { chave: 'obs', valor: '  ' }],
+      'listas.adicionar');
+    assert.deepEqual(r, { nome: 'leite' }, JSON.stringify(r));
+  });
+
+  await t('o formato de LISTA de pares é o que o schema promete', () => {
+    assert.equal(cerebro.SCHEMA_INTERPRETACAO.properties.parametros.type, 'array',
+      'objeto de chaves livres é justamente o que a API recusa');
+    const item = cerebro.SCHEMA_INTERPRETACAO.properties.parametros.items;
+    assert.deepEqual(Object.keys(item.properties).sort(), ['chave', 'valor']);
+  });
+
+  // ===================================================================
   secao('Painel e saúde');
 
   await t('a saúde diz o que falta, sem enfeitar', async () => {

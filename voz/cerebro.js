@@ -83,11 +83,41 @@ function sistema() {
   ].join('\n');
 }
 
+// ⚠️ `parametros` é uma LISTA de pares, não um objeto de chaves livres.
+//
+// A primeira versão era `{ type: 'object', additionalProperties: { type: 'string' } }`
+// — o jeito natural de dizer "um mapa de string para string". A API recusa
+// com 400: *"For 'object' type, 'additionalProperties: object' is not
+// supported. Please set 'additionalProperties' to false"*. Todo objeto do
+// schema tem de declarar as próprias chaves e fechar com
+// `additionalProperties: false`, e `parametros` não tem chaves fixas —
+// elas mudam conforme a ação escolhida.
+//
+// A lista de pares resolve sem enumerar nada, e ainda deixa o portão
+// mais estreito: a chave vem como DADO e é conferida contra o catálogo
+// da ação em `limparParametros`, então o modelo não consegue inventar
+// parâmetro.
+//
+// Isso quebrou em PRODUÇÃO e não no teste porque o selftest apagava a
+// `ANTHROPIC_API_KEY` — o caminho do LLM nunca rodava. Agora há um teste
+// estático que confere a forma do schema sem precisar de rede.
 const SCHEMA_INTERPRETACAO = {
   type: 'object',
   properties: {
     acao: { type: 'string', description: 'chave do catálogo, ou "" quando nada serve' },
-    parametros: { type: 'object', additionalProperties: { type: 'string' } },
+    parametros: {
+      type: 'array',
+      description: 'os parâmetros da ação, um par por item; só os que a pessoa realmente disse',
+      items: {
+        type: 'object',
+        properties: {
+          chave: { type: 'string', description: 'nome do parâmetro, exatamente como no catálogo' },
+          valor: { type: 'string' },
+        },
+        required: ['chave', 'valor'],
+        additionalProperties: false,
+      },
+    },
     confianca: { type: 'number' },
     motivo: { type: 'string', description: 'por que essa ação, ou o que faltou para entender' },
   },
@@ -126,7 +156,7 @@ async function interpretar(texto) {
     const acao = r.acao && acoes.existe(r.acao) ? r.acao : null;
     return {
       acao,
-      parametros: acao ? limparParametros(r.parametros) : {},
+      parametros: acao ? limparParametros(r.parametros, acao) : {},
       confianca: Math.max(0, Math.min(1, Number(r.confianca) || 0)),
       motivo: String(r.motivo || ''),
       motor: 'llm',
@@ -139,13 +169,29 @@ async function interpretar(texto) {
   }
 }
 
-/** Só string, sem vazio, sem chave fora do catálogo da ação. */
-function limparParametros(p) {
+/**
+ * Lista de pares → objeto. Só string, sem vazio, e **só as chaves que a
+ * ação declara no catálogo**.
+ *
+ * Descartar a chave desconhecida é trava, não limpeza: parâmetro
+ * inventado pelo modelo chegaria à ferramenta como se a pessoa o tivesse
+ * dito. Aceita objeto também, para o caso de o modelo devolver o formato
+ * antigo — mas a rota normal é a lista.
+ */
+function limparParametros(p, acao) {
+  const def = acoes.definicao(acao);
+  const permitidas = def ? Object.keys(def.parametros || {}) : null;
+  const pares = Array.isArray(p)
+    ? p.map((i) => [i && i.chave, i && i.valor])
+    : Object.entries(p || {});
+
   const out = {};
-  for (const [k, v] of Object.entries(p || {})) {
-    if (v == null) continue;
+  for (const [k, v] of pares) {
+    if (!k || v == null) continue;
+    const chave = String(k).trim();
+    if (permitidas && !permitidas.includes(chave)) continue;
     const s = String(v).trim();
-    if (s) out[k] = s;
+    if (s) out[chave] = s;
   }
   return out;
 }
@@ -245,4 +291,9 @@ function falaCrua(dados) {
   return 'Consultei. Mando o resultado no WhatsApp.';
 }
 
-module.exports = { disponivel, interpretar, narrar, semLLM, ORCAMENTO_MS, MODELO };
+// Os schemas saem daqui para o selftest poder conferir a FORMA deles sem
+// rede. Foi a falta disso que deixou um 400 passar para producao.
+module.exports = {
+  disponivel, interpretar, narrar, semLLM, limparParametros,
+  ORCAMENTO_MS, MODELO, SCHEMA_INTERPRETACAO, SCHEMA_FALA,
+};
