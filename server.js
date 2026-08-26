@@ -4861,62 +4861,30 @@ try {
     };
   }
 
-  /**
-   * ⚠️ A TRAVA ANTI-OVERBOOKING desta ação.
-   *
-   * A Stays confere a disponibilidade do anúncio pedido — mas o
-   * espelhamento dela tem furos (aviso do CLAUDE.md). Reservar um
-   * componente com o espaço inteiro ocupado, ou vice-versa, é
-   * overbooking que só aparece no dia do check-in.
-   *
-   * Usa os MESMOS mapas do resto do sistema (DESC_OCUP / ANC_OCUP /
-   * ESPELHO_OCUP) — uma quarta implementação do espelhamento seria a que
-   * ninguém lembraria de atualizar.
-   */
-  async function vozConflitosInterligados(codigo, de, ate) {
-    const relacionados = new Set();
-    for (const c of (DESC_OCUP[codigo] || [])) relacionados.add(c);
-    for (const c of (ANC_OCUP[codigo] || [])) relacionados.add(c);
-    for (const c of (ESPELHO_OCUP[codigo] || [])) relacionados.add(c);
-    if (!relacionados.size) return [];
-
-    // ⚠️ SÓ RESERVA DE VERDADE conta como conflito — nunca o calendário.
-    //
-    // A primeira versão lia o calendário (`avail`) dos relacionados, e o
-    // calendário NÃO distingue "tem hóspede" de "foi bloqueado à mão".
-    // Isso produziu um bloqueio falso em 26/08/2026: a Villa Catetinho
-    // foi alugada, o dono bloqueou o espaço inteiro que a contém (correto,
-    // porque o inteiro não pode mais ser vendido) — e esse bloqueio desceu
-    // pelo caminho de cima e travou a casa IRMÃ, que estava livre
-    // (`avail: 1`) e podia ser alugada.
-    //
-    // Bloqueio num relacionado é quase sempre DERIVADO: o dono bloqueia o
-    // conjunto quando vende uma parte. Tratá-lo como ocupação faz irmã
-    // bloquear irmã — exatamente o que a regra da casa proíbe
-    // ("ancestrais, NÃO os irmãos").
-    //
-    // ☠️ E o caso pior, que é o de todo fim de semana: o dono BLOQUEIA os
-    // flats e suítes de propósito, para priorizar o aluguel da casa
-    // INTEIRA (ver `staysloquear-fins-de-semana.ps1`). Lendo o
-    // calendário, esses bloqueios viravam "ocupado" e impediam justamente
-    // a venda que eles existem para favorecer. A trava anti-overbooking
-    // passava a bloquear a receita.
-    //
-    // Reserva `booked` continua bloqueando, e deve: vender a casa inteira
-    // com um flat ocupado, ou um flat com a casa inteira vendida, é
-    // overbooking de verdade.
-    //
-    // Efeito colateral bom: UMA consulta em vez de N.
-    const brutas = await staysPaginado('/booking/reservations', { from: de, to: ate, dateType: 'included' });
-    const mapa = await getListingMap();
-    const comHospede = new Set();
-    for (const r of brutas) {
-      if (r.type !== 'booked') continue;
-      const cod = (mapa[r._idlisting] || {}).codigo;
-      if (cod) comHospede.add(cod);
-    }
-    return [...relacionados].filter((c) => comHospede.has(c));
-  }
+  // ⚠️ NÃO REIMPLEMENTAR A CHECAGEM DE INTERLIGAÇÕES AQUI. Decisão do
+  // Augusto em 26/08/2026, e ela tem dois motivos, os dois bons:
+  //
+  //   1. A Stays já aplica o espelhamento. Uma checagem nossa por cima
+  //      seria a QUARTA implementação da mesma regra (as três em sincronia
+  //      estão em stays-api.md) — e regra duplicada diverge. A nossa
+  //      divergiu no primeiro uso.
+  //
+  //   2. Ela lia o CALENDÁRIO dos imóveis relacionados, e calendário
+  //      carrega DECISÃO, não fato: o Augusto bloqueia flats no fim de
+  //      semana para forçar o aluguel da casa inteira. A trava lia isso
+  //      como ocupação e recusava justamente a venda que ela deveria
+  //      proteger. Uma trava que bloqueia a receita é pior que trava
+  //      nenhuma, porque parece estar funcionando.
+  //
+  // O CLAUDE.md avisa que "o espelhamento da Stays tem furos" — verdade,
+  // e quem os fecha é o Augusto, à mão (foi o que fez com a Gran Villela
+  // quando a Catetinho foi alugada). Confiar na Stays aqui deixa a reserva
+  // por voz com O MESMO risco de reservar pelo painel da Stays: nem
+  // maior, nem menor. Era só a nossa camada que estava mais restritiva
+  // que o próprio painel.
+  //
+  // Se um dia isto voltar, que volte lendo RESERVA (`type === 'booked'`),
+  // nunca `avail` — e com o Augusto sabendo.
 
   /** Hóspede JÁ CADASTRADO, por nome. Criar cliente é irreversível por
    *  API, então reaproveitar é regra, não otimização. Ambíguo = null,
@@ -5039,18 +5007,11 @@ try {
       'reserva.disponibilidade': async ({ imovel, de, ate } = {}) => {
         const alvo = await vozAcharImovel(imovel);
         const n = await vozNoites(alvo.idlisting, de, ate);
-        const conflitos = await vozConflitosInterligados(alvo.codigo, de, ate);
         return {
           imovel: alvo.titulo, codigo: alvo.codigo, de, ate, noites: n.noites.length,
-          livre: n.todasLivres && !conflitos.length,
+          livre: n.todasLivres,
           precoSugerido: n.totalSugerido,
-          // ⚠️ SEPARADOS de proposito. "Este imovel esta reservado" e "o
-          // espaco inteiro que o contem foi vendido" pedem respostas
-          // diferentes de quem esta ao telefone com um cliente — e a
-          // primeira versao juntava os dois num campo so, o que tornava
-          // impossivel saber a causa raiz.
           calendarioProprio: n.todasLivres ? 'livre' : 'ocupado',
-          bloqueadoPorInterligacao: conflitos,
         };
       },
 
@@ -5065,14 +5026,6 @@ try {
         const n = await vozNoites(alvo.idlisting, de, ate);
         if (!n.todasLivres) {
           throw Object.assign(new Error(`${alvo.titulo} não está livre de ${de} a ${ate}.`), { status: 409 });
-        }
-        const conflitos = await vozConflitosInterligados(alvo.codigo, de, ate);
-        if (conflitos.length) {
-          throw Object.assign(
-            new Error(`Não dá para reservar ${alvo.titulo}: ${conflitos.length === 1 ? 'o imóvel' : 'os imóveis'} `
-              + `${conflitos.join(', ')} ${conflitos.length === 1 ? 'está ocupado' : 'estão ocupados'} no período, `
-              + 'e eles se bloqueiam entre si. Reservar assim seria overbooking.'),
-            { status: 409 });
         }
         const cli = await vozAcharHospede(hospede);
         let clienteId = cli ? cli.id : null;
