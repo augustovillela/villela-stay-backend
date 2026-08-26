@@ -201,6 +201,37 @@ function resumir(acao, parametros = {}) {
   catch (_) { return `${acao} (parâmetros ilegíveis)`; }
 }
 
+/**
+ * Nome do parâmetro → como se DIZ em voz alta.
+ *
+ * ⚠️ Sem isto a pergunta sai com as chaves do código: "Faltou imovel e
+ * de e ate e hospede e pessoas" — sem acento, com "e" repetido, e com
+ * "de"/"ate" soltos, que falados são quase ininteligíveis. A chave é boa
+ * para o código; para o ouvido, não.
+ *
+ * Chave desconhecida cai nela mesma: melhor uma palavra técnica do que
+ * um buraco na frase.
+ */
+const ROTULOS = {
+  imovel: 'qual imóvel', de: 'a data de entrada', ate: 'a data de saída',
+  data: 'a data', competencia: 'o mês', tipo: 'qual lista',
+  hospede: 'o nome do hóspede', pessoas: 'quantas pessoas',
+  nome: 'o nome', quantidade: 'a quantidade', obs: 'a observação',
+  categoria: 'a área responsável', responsavel: 'quem é o responsável',
+  para: 'para quem', assunto: 'o assunto', corpo: 'o texto da mensagem',
+  texto: 'a mensagem', telefone: 'o telefone', email: 'o e-mail',
+  reserva: 'qual reserva', mudanca: 'o que muda', pedido: 'o que implementar',
+};
+const rotularParametro = (k) => ROTULOS[k] || String(k || '');
+
+/** "a, b e c" — não "a e b e c", que é como um `join(' e ')` sai. */
+function listarEmPortugues(itens) {
+  const l = (itens || []).filter(Boolean);
+  if (!l.length) return '';
+  if (l.length === 1) return l[0];
+  return `${l.slice(0, -1).join(', ')} e ${l[l.length - 1]}`;
+}
+
 /** Parâmetros obrigatórios que faltaram. Vazio = pode seguir. */
 function faltando(acao, parametros = {}) {
   const d = definicao(acao);
@@ -222,4 +253,5 @@ const paraOCerebro = () => chaves().map((acao) => ({
 module.exports = {
   NIVEIS, CATALOGO,
   existe, definicao, chaves, nivelDe, exigeAprovacao, filaDe, resumir, faltando, paraOCerebro,
+  rotularParametro, listarEmPortugues, ROTULOS,
 };

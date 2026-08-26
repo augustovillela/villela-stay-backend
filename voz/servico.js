@@ -332,7 +332,9 @@ function naoEntendi(pedido, interp) {
 }
 
 function pedirDados(pedido, faltam) {
-  const fala = `Faltou ${faltam.join(' e ')}. Pode dizer?`;
+  // A frase vai ser DITA em voz alta: usa o rotulo falado de cada
+  // parametro, e "a, b e c" em vez de "a e b e c".
+  const fala = `Preciso saber ${acoes.listarEmPortugues(faltam.map(acoes.rotularParametro))}.`;
   const p = repo.atualizar(pedido.id, { status: 'recebido', fala });
   return respostaDe(p, { faltando: faltam });
 }

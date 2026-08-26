@@ -213,7 +213,12 @@ const unico = (s) => `${s} ${++n}`;
     assert.notEqual(r.json.status, 'nao_entendido', `virou nao_entendido: ${JSON.stringify(r.json)}`);
     assert.ok(r.json.faltando, `devia dizer o que falta: ${JSON.stringify(r.json)}`);
     assert.deepEqual(r.json.faltando.sort(), ['ate', 'de', 'hospede', 'imovel', 'pessoas']);
-    assert.ok(/Faltou/.test(r.json.fala), r.json.fala);
+    // A frase vai ser DITA: nada de chave do codigo nem "e" repetido.
+    assert.ok(/Preciso saber/.test(r.json.fala), r.json.fala);
+    assert.ok(/o nome do hóspede/.test(r.json.fala), `sem rotulo falavel: ${r.json.fala}`);
+    assert.ok(!/imovel|ate|hospede/.test(r.json.fala),
+      `a fala saiu com a chave do codigo: ${r.json.fala}`);
+    assert.ok(!/ e .* e /.test(r.json.fala), `"a e b e c" em vez de "a, b e c": ${r.json.fala}`);
     await rodarFila();
     assert.equal(chamadas.escrita, escritasAntes, 'executou com dado faltando');
   });
