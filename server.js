@@ -4880,20 +4880,42 @@ try {
     for (const c of (ESPELHO_OCUP[codigo] || [])) relacionados.add(c);
     if (!relacionados.size) return [];
 
+    // ⚠️ SÓ RESERVA DE VERDADE conta como conflito — nunca o calendário.
+    //
+    // A primeira versão lia o calendário (`avail`) dos relacionados, e o
+    // calendário NÃO distingue "tem hóspede" de "foi bloqueado à mão".
+    // Isso produziu um bloqueio falso em 26/08/2026: a Villa Catetinho
+    // foi alugada, o dono bloqueou o espaço inteiro que a contém (correto,
+    // porque o inteiro não pode mais ser vendido) — e esse bloqueio desceu
+    // pelo caminho de cima e travou a casa IRMÃ, que estava livre
+    // (`avail: 1`) e podia ser alugada.
+    //
+    // Bloqueio num relacionado é quase sempre DERIVADO: o dono bloqueia o
+    // conjunto quando vende uma parte. Tratá-lo como ocupação faz irmã
+    // bloquear irmã — exatamente o que a regra da casa proíbe
+    // ("ancestrais, NÃO os irmãos").
+    //
+    // ☠️ E o caso pior, que é o de todo fim de semana: o dono BLOQUEIA os
+    // flats e suítes de propósito, para priorizar o aluguel da casa
+    // INTEIRA (ver `staysloquear-fins-de-semana.ps1`). Lendo o
+    // calendário, esses bloqueios viravam "ocupado" e impediam justamente
+    // a venda que eles existem para favorecer. A trava anti-overbooking
+    // passava a bloquear a receita.
+    //
+    // Reserva `booked` continua bloqueando, e deve: vender a casa inteira
+    // com um flat ocupado, ou um flat com a casa inteira vendida, é
+    // overbooking de verdade.
+    //
+    // Efeito colateral bom: UMA consulta em vez de N.
+    const brutas = await staysPaginado('/booking/reservations', { from: de, to: ate, dateType: 'included' });
     const mapa = await getListingMap();
-    const porCodigo = {};
-    for (const [id, v] of Object.entries(mapa)) if (v && v.codigo) porCodigo[v.codigo] = id;
-
-    const conflitos = [];
-    for (const cod of relacionados) {
-      const id = porCodigo[cod];
-      if (!id) continue;
-      try {
-        const n = await vozNoites(id, de, ate);
-        if (!n.todasLivres) conflitos.push(cod);
-      } catch (_) { /* imóvel sem calendário não bloqueia o pedido */ }
+    const comHospede = new Set();
+    for (const r of brutas) {
+      if (r.type !== 'booked') continue;
+      const cod = (mapa[r._idlisting] || {}).codigo;
+      if (cod) comHospede.add(cod);
     }
-    return conflitos;
+    return [...relacionados].filter((c) => comHospede.has(c));
   }
 
   /** Hóspede JÁ CADASTRADO, por nome. Criar cliente é irreversível por
