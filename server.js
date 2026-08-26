@@ -4910,7 +4910,7 @@ try {
     } catch (_) { return null; }
   }
 
-  const listaAdicionar = (arquivo, d, origem) => {
+  const listaAdicionar = (arquivo, d, origem, ctx = {}) => {
     const itens = lerJSON(arquivo, []);
     const item = {
       id: novoId(),
@@ -4918,7 +4918,11 @@ try {
       nome: String(d.nome || '').trim(),
       obs: String(d.obs || '').trim(),
       categoria: String(d.categoria || '').trim().slice(0, 40),
-      origem, quem: 'Voz', refId: '',
+      origem,
+      quem: (ctx.usuario && (ctx.usuario.nome || ctx.usuario.email)) || 'Voz',
+      responsavel: String(d.responsavel || '').trim().slice(0, 120),
+      prazo: String(d.prazo || '').trim().slice(0, 30),
+      refId: '',
       criadoEm: new Date().toISOString(),
     };
     itens.push(item);
@@ -4982,8 +4986,8 @@ try {
           itens: itens.slice(0, 50).map(i => ({ nome: i.nome, quantidade: i.quantidade, obs: i.obs, categoria: i.categoria })) };
       },
       // ---- nível 2: escrita interna reversível ----
-      'listas.adicionar': async (p) => listaAdicionar(LISTA_ARQ.compras, p, 'voz'),
-      'tarefa.criar': async (p) => listaAdicionar(LISTA_ARQ.pendencias, p, 'voz'),
+      'listas.adicionar': async (p, ctx) => listaAdicionar(LISTA_ARQ.compras, p, (ctx && ctx.origem) || 'voz', ctx),
+      'tarefa.criar': async (p, ctx) => listaAdicionar(LISTA_ARQ.pendencias, p, (ctx && ctx.origem) || 'voz', ctx),
 
       // ---- reservas ----
       //
@@ -5091,6 +5095,16 @@ try {
       : null),
   });
 } catch (e) { console.error('[voz] falha ao montar módulo:', e.message); }
+
+// Canal remoto para Codex/ChatGPT. Desligado por padrão e limitado às
+// ferramentas registradas em mcp-staff; reutiliza autenticação, RBAC,
+// idempotência, auditoria e aprovação do Portal Staff.
+try {
+  require('./mcp-staff').mount(app, {
+    jwt, jwtSecret: JWT_SECRET, cookieSecure: COOKIE_SECURE,
+    requireAuth, lerUsuarios, podeArea, voz: require('./voz'),
+  });
+} catch (e) { console.error('[mcp-staff] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
 app.use('/staff', express.static(path.join(__dirname, 'staff')));

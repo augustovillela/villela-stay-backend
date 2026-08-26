@@ -28,6 +28,7 @@
     "test:finance": "node financeiro/selftest.js",
     "test:music": "node music/selftest.js",
     "test:voz": "node voz/selftest.js",
+    "test:mcp": "node mcp-staff/selftest.js",
     "music:worker": "node music/worker.js",
     "test:nucleo": "node selftest-nucleo.js"
   },
@@ -36,6 +37,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
+    "@modelcontextprotocol/express": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.6",
@@ -47,6 +51,7 @@
     "pdfjs-dist": "^6.2.108",
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^4.4.3"
   }
 }

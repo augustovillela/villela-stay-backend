@@ -41,6 +41,9 @@ module.exports.montar = function montar(app, deps) {
     const token = jwt.sign({ uid: user.id }, JWT_SECRET, { expiresIn: '30d' });
     res.cookie('staff_token', token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/staff' });
     if (querJson) return res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
+    // Retoma o OAuth do Codex depois que a sessão Staff foi criada.
+    // O cookie guarda uma transação assinada e expira em dez minutos.
+    if (req.cookies && req.cookies.staff_mcp_pending) return res.redirect(303, '/staff/oauth/resume');
     return res.redirect(303, '/staff/');
   });
 
