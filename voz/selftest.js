@@ -202,6 +202,30 @@ const unico = (s) => `${s} ${++n}`;
     assert.equal(acoes.exigeAprovacao('reserva.criar'), true);
   });
 
+  await t('pedido INCOMPLETO pergunta o que falta — não vira "não entendi"', async () => {
+    // Achado no uso real (26/08/2026): "Quero fazer uma reserva" voltava
+    // como nao_entendido, e o Augusto repetia a frase sem nunca saber o
+    // que faltava dizer. O mecanismo de perguntar existia e NUNCA rodava,
+    // porque o cerebro recusava a acao antes de chegar nele.
+    roteirizar('quero fazer uma reserva', { acao: 'reserva.criar', parametros: {}, confianca: 0.9 });
+    const escritasAntes = chamadas.escrita;
+    const r = await req('POST', '/staff/api/voz/executar', { corpo: { pedido: unico('quero fazer uma reserva') }, chave: true });
+    assert.notEqual(r.json.status, 'nao_entendido', `virou nao_entendido: ${JSON.stringify(r.json)}`);
+    assert.ok(r.json.faltando, `devia dizer o que falta: ${JSON.stringify(r.json)}`);
+    assert.deepEqual(r.json.faltando.sort(), ['ate', 'de', 'hospede', 'imovel', 'pessoas']);
+    assert.ok(/Faltou/.test(r.json.fala), r.json.fala);
+    await rodarFila();
+    assert.equal(chamadas.escrita, escritasAntes, 'executou com dado faltando');
+  });
+
+  await t('o prompt PROÍBE recusar por falta de parâmetro', () => {
+    // A trava de verdade e o prompt: o mecanismo so e alcancavel se o
+    // cerebro nomear a acao.
+    const prompt = require('./cerebro').sistema();
+    assert.ok(/FALTAR PARÂMETRO NÃO É MOTIVO PARA RECUSAR/.test(prompt));
+    assert.ok(/Quero fazer uma reserva/.test(prompt), 'o exemplo concreto ajuda mais que a regra');
+  });
+
   await t('reserva.criar exige TODOS os dados — não reserva para 1 pessoa por omissão', () => {
     // Quantidade de hospedes muda o preco. Assumir 1 em silencio seria
     // reservar errado com cara de acerto.
