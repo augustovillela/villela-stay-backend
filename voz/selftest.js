@@ -183,6 +183,31 @@ const unico = (s) => `${s} ${++n}`;
     assert.equal(acoes.exigeAprovacao('agenda.dia'), false);
   });
 
+  await t('reserva: consultar é nível 1, CRIAR é nível 3', () => {
+    // Criar reserva mexe em calendario, dinheiro e na viagem de alguem.
+    // Se um dia isso virar nivel 2 "para agilizar", este teste quebra.
+    assert.equal(acoes.nivelDe('reserva.disponibilidade'), 1);
+    assert.equal(acoes.nivelDe('reserva.criar'), 3);
+    assert.equal(acoes.exigeAprovacao('reserva.criar'), true);
+  });
+
+  await t('reserva.criar exige TODOS os dados — não reserva para 1 pessoa por omissão', () => {
+    // Quantidade de hospedes muda o preco. Assumir 1 em silencio seria
+    // reservar errado com cara de acerto.
+    const faltam = acoes.faltando('reserva.criar', { imovel: 'Kubitschek', de: '2026-09-12' });
+    assert.deepEqual(faltam.sort(), ['ate', 'hospede', 'pessoas']);
+  });
+
+  await t('o resumo da reserva diz TUDO que vai acontecer, em uma linha', () => {
+    // É o texto que a pessoa lê antes de autorizar. Se ele omitir algo,
+    // ela autoriza no escuro.
+    const r = acoes.resumir('reserva.criar',
+      { imovel: 'Villa Kubitschek', de: '2026-09-12', ate: '2026-09-15', hospede: 'João Silva', pessoas: '4' });
+    for (const parte of ['Villa Kubitschek', '2026-09-12', '2026-09-15', 'João Silva', '4 pessoas']) {
+      assert.ok(r.includes(parte), `faltou "${parte}" em: ${r}`);
+    }
+  });
+
   await t('registrar ferramenta fora do catálogo é recusado', () => {
     assert.throws(() => executor.registrar('nao.existe', async () => 1), /catálogo/);
   });

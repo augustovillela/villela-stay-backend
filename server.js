@@ -4804,6 +4804,95 @@ try {
 // a que ninguém lembraria de atualizar.
 try {
   const vozDest = require('./voz/destinatarios');
+
+  // ---- auxiliares das ações de reserva ----
+  const vozNorm = (s) => semAcento(String(s || '')).toLowerCase().replace(/\s+/g, ' ').trim();
+
+  /** "Kubitschek" → o anúncio. Ambíguo NUNCA escolhe: devolve as opções. */
+  async function vozAcharImovel(dito) {
+    const q = vozNorm(dito);
+    if (!q) throw Object.assign(new Error('Faltou dizer o imóvel.'), { status: 400 });
+    const listings = (await staysPaginado('/content/listings', {})).filter((l) => l.status === 'active');
+    const opcoes = listings.map((l) => ({
+      idlisting: l._id, codigo: l.id,
+      titulo: l.internalName || (l._mstitle && l._mstitle.pt_BR) || l.id,
+    }));
+    const exato = opcoes.find((o) => vozNorm(o.codigo) === q || vozNorm(o.titulo) === q);
+    if (exato) return exato;
+    const parciais = opcoes.filter((o) => vozNorm(o.titulo).includes(q) || q.includes(vozNorm(o.codigo)));
+    if (parciais.length === 1) return parciais[0];
+    if (parciais.length > 1) {
+      throw Object.assign(
+        new Error(`"${dito}" pode ser ${parciais.slice(0, 4).map((o) => o.titulo).join(', ')}. Qual deles?`),
+        { status: 400 });
+    }
+    throw Object.assign(new Error(`Não encontrei o imóvel "${dito}".`), { status: 400 });
+  }
+
+  /** Noites do período + preço sugerido, direto do calendário da Stays. */
+  async function vozNoites(idlisting, de, ate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(de || '') || !/^\d{4}-\d{2}-\d{2}$/.test(ate || '') || ate <= de) {
+      throw Object.assign(new Error('Datas inválidas — a saída tem de ser depois da entrada.'), { status: 400 });
+    }
+    const cal = await stays(`/calendar/listing/${idlisting}`, { from: de, to: ate });
+    const noites = cal.filter((d) => d.date >= de && d.date < ate)
+      .map((d) => ({ date: d.date, avail: d.avail > 0, preco: (d.prices && d.prices[0] && d.prices[0]._mcval.BRL) || 0 }));
+    return {
+      noites,
+      todasLivres: noites.length > 0 && noites.every((x) => x.avail),
+      totalSugerido: Math.round(noites.reduce((s, x) => s + x.preco, 0)),
+    };
+  }
+
+  /**
+   * ⚠️ A TRAVA ANTI-OVERBOOKING desta ação.
+   *
+   * A Stays confere a disponibilidade do anúncio pedido — mas o
+   * espelhamento dela tem furos (aviso do CLAUDE.md). Reservar um
+   * componente com o espaço inteiro ocupado, ou vice-versa, é
+   * overbooking que só aparece no dia do check-in.
+   *
+   * Usa os MESMOS mapas do resto do sistema (DESC_OCUP / ANC_OCUP /
+   * ESPELHO_OCUP) — uma quarta implementação do espelhamento seria a que
+   * ninguém lembraria de atualizar.
+   */
+  async function vozConflitosInterligados(codigo, de, ate) {
+    const relacionados = new Set();
+    for (const c of (DESC_OCUP[codigo] || [])) relacionados.add(c);
+    for (const c of (ANC_OCUP[codigo] || [])) relacionados.add(c);
+    for (const c of (ESPELHO_OCUP[codigo] || [])) relacionados.add(c);
+    if (!relacionados.size) return [];
+
+    const mapa = await getListingMap();
+    const porCodigo = {};
+    for (const [id, v] of Object.entries(mapa)) if (v && v.codigo) porCodigo[v.codigo] = id;
+
+    const conflitos = [];
+    for (const cod of relacionados) {
+      const id = porCodigo[cod];
+      if (!id) continue;
+      try {
+        const n = await vozNoites(id, de, ate);
+        if (!n.todasLivres) conflitos.push(cod);
+      } catch (_) { /* imóvel sem calendário não bloqueia o pedido */ }
+    }
+    return conflitos;
+  }
+
+  /** Hóspede JÁ CADASTRADO, por nome. Criar cliente é irreversível por
+   *  API, então reaproveitar é regra, não otimização. Ambíguo = null,
+   *  para o caminho de criação decidir com o nome ditado. */
+  async function vozAcharHospede(nome) {
+    const q = vozNorm(nome);
+    if (!q) return null;
+    try {
+      const lista = await getStaysClientes();
+      const iguais = lista.filter((c) => vozNorm(nomeCliente(c)) === q);
+      if (iguais.length === 1) return { id: iguais[0]._id, nome: nomeCliente(iguais[0]) };
+      return null;
+    } catch (_) { return null; }
+  }
+
   const listaAdicionar = (arquivo, d, origem) => {
     const itens = lerJSON(arquivo, []);
     const item = {
@@ -4879,7 +4968,68 @@ try {
       'listas.adicionar': async (p) => listaAdicionar(LISTA_ARQ.compras, p, 'voz'),
       'tarefa.criar': async (p) => listaAdicionar(LISTA_ARQ.pendencias, p, 'voz'),
 
+      // ---- reservas ----
+      //
+      // Resolver "Kubitschek" → o anúncio. Casamento AMBÍGUO devolve erro
+      // com as opções, nunca escolhe: reservar o imóvel errado é pior que
+      // não reservar. Mesmo princípio dos apelidos de e-mail.
+      'reserva.disponibilidade': async ({ imovel, de, ate } = {}) => {
+        const alvo = await vozAcharImovel(imovel);
+        const n = await vozNoites(alvo.idlisting, de, ate);
+        const conflitos = await vozConflitosInterligados(alvo.codigo, de, ate);
+        return {
+          imovel: alvo.titulo, codigo: alvo.codigo, de, ate, noites: n.noites.length,
+          livre: n.todasLivres && !conflitos.length,
+          precoSugerido: n.totalSugerido,
+          // ⚠️ O motivo do "não livre" importa: "a Stays diz ocupado" e
+          // "o espaço inteiro que contém este está ocupado" pedem
+          // respostas diferentes de quem está vendendo.
+          bloqueadoPor: conflitos.length ? conflitos : (n.todasLivres ? [] : ['calendário da Stays']),
+        };
+      },
+
       // ---- nível 3: toca pessoa real (exige autorização por clique) ----
+      //
+      // ⚠️ A ação de maior risco do catálogo. Três travas além da aprovação:
+      // interligações conferidas, hóspede existente reaproveitado, e a
+      // disponibilidade RECHECADA no momento de criar (entre falar e
+      // autorizar passam minutos — e nesse tempo o canal pode ter vendido).
+      'reserva.criar': async ({ imovel, de, ate, hospede, pessoas } = {}) => {
+        const alvo = await vozAcharImovel(imovel);
+        const n = await vozNoites(alvo.idlisting, de, ate);
+        if (!n.todasLivres) {
+          throw Object.assign(new Error(`${alvo.titulo} não está livre de ${de} a ${ate}.`), { status: 409 });
+        }
+        const conflitos = await vozConflitosInterligados(alvo.codigo, de, ate);
+        if (conflitos.length) {
+          throw Object.assign(
+            new Error(`Reservar ${alvo.codigo} causaria overbooking: ${conflitos.join(', ')} ocupado no período.`),
+            { status: 409 });
+        }
+        const cli = await vozAcharHospede(hospede);
+        let clienteId = cli ? cli.id : null;
+        let clienteNovo = false;
+        if (!clienteId) {
+          // ⚠️ Irreversível por API (DELETE /booking/clients → 405). Por
+          // isso só chega aqui quem NÃO casou com cadastro existente.
+          const partes = String(hospede).trim().split(/\s+/);
+          const novo = await staysPost('/booking/clients', {
+            fName: partes.shift() || 'Hóspede', lName: partes.join(' ') || '-',
+          });
+          clienteId = novo._id; clienteNovo = true;
+          if (typeof invalidarStaysClientes === 'function') invalidarStaysClientes();
+        }
+        const guests = Math.max(1, parseInt(pessoas, 10) || 1);
+        const r = await staysPost('/booking/reservations', {
+          type: 'booked', listingId: alvo.idlisting, checkInDate: de, checkOutDate: ate,
+          _idclient: clienteId, guests,
+        });
+        return {
+          reserva: r.id, imovel: alvo.titulo, codigo: alvo.codigo, de, ate, pessoas: guests,
+          hospede: cli ? cli.nome : hospede, hospedeNovoNaStays: clienteNovo,
+          valorTotal: (r.price && r.price._f_total) || null,
+        };
+      },
       //
       // Lista FECHADA de destinatários, em `VOZ_EMAILS`. É trava, não
       // conveniência: sem ela a voz mandaria e-mail para qualquer

@@ -58,6 +58,17 @@ const CATALOGO = {
     exige: [],
     resumo: (p) => `Resumo financeiro de ${p.competencia || 'este mês'}`,
   },
+  'reserva.disponibilidade': {
+    nivel: NIVEIS.LEITURA,
+    descricao: 'Diz se um imóvel está livre num período e quanto fica. Use antes de reservar.',
+    parametros: {
+      imovel: 'nome ou código do imóvel, como a pessoa falou (ex.: "Kubitschek", "Casa Modernista")',
+      de: 'data de entrada AAAA-MM-DD',
+      ate: 'data de saída AAAA-MM-DD',
+    },
+    exige: ['imovel', 'de', 'ate'],
+    resumo: (p) => `Disponibilidade de ${p.imovel} de ${p.de} a ${p.ate}`,
+  },
   'listas.ver': {
     nivel: NIVEIS.LEITURA,
     descricao: 'Mostra o que está na lista de compras ou na lista de pendências.',
@@ -118,6 +129,30 @@ const CATALOGO = {
     parametros: { para: 'destinatário (nome ou telefone)', texto: 'a mensagem' },
     exige: ['para', 'texto'],
     resumo: (p) => `Enviar WhatsApp para ${p.para}`,
+  },
+  // ⚠️ A ação de MAIOR risco do catálogo: mexe em calendário, dinheiro e
+  // na viagem de uma pessoa. Erro aqui não é um item errado na lista de
+  // compras — é um hóspede sem casa.
+  //
+  // Duas travas específicas dela, além da aprovação (ver server.js):
+  //  1. a disponibilidade é conferida também nos códigos INTERLIGADOS,
+  //     porque o espelhamento da Stays tem furos e reservar um componente
+  //     com o espaço inteiro ocupado é overbooking;
+  //  2. hóspede EXISTENTE é reaproveitado. Criar cliente por API é
+  //     irreversível (`DELETE /booking/clients` → 405), então cada nome
+  //     ditado viraria um cadastro novo que só se apaga no painel.
+  'reserva.criar': {
+    nivel: NIVEIS.EXTERNO,
+    descricao: 'Cria uma reserva de verdade na Stays, com hóspede e datas. Bloqueia o calendário.',
+    parametros: {
+      imovel: 'nome ou código do imóvel, como a pessoa falou',
+      de: 'data de entrada AAAA-MM-DD',
+      ate: 'data de saída AAAA-MM-DD',
+      hospede: 'nome do hóspede',
+      pessoas: 'quantas pessoas vão ficar',
+    },
+    exige: ['imovel', 'de', 'ate', 'hospede', 'pessoas'],
+    resumo: (p) => `Reservar ${p.imovel} de ${p.de} a ${p.ate} para ${p.hospede} (${p.pessoas} pessoa${Number(p.pessoas) === 1 ? '' : 's'})`,
   },
   // Fora do MVP de propósito (decisão de 25/08/2026), mas no catálogo com
   // o nível certo: assim o pedido é RECONHECIDO e recusado com explicação,
