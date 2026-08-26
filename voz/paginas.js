@@ -16,6 +16,29 @@ const repo = require('./repo');
 const acoes = require('./acoes');
 const aprovacoesLib = require('./aprovacoes');
 
+/**
+ * Resolvedor de destino, injetado por quem monta.
+ *
+ * A promessa da pagina e "voce ve exatamente o que vai acontecer antes de
+ * clicar". Sem isto, o pedido de e-mail mostraria `para: contador` e o
+ * endereco real so apareceria DEPOIS do envio — ou seja, voce autorizaria
+ * no escuro, confiando numa configuracao que talvez tenha um erro de
+ * digitacao. Aqui e o unico lugar onde o endereco aparece: a pagina exige
+ * sessao de admin, e a mensagem do WhatsApp continua sem ele.
+ */
+let _resolverDestino = null;
+const configurar = ({ resolverDestino } = {}) => {
+  if (typeof resolverDestino === 'function') _resolverDestino = resolverDestino;
+  return { temResolvedor: !!_resolverDestino };
+};
+
+/** Nunca deixa a pagina cair por causa de um resolvedor que lancou. */
+function destinoDe(pedido) {
+  if (!_resolverDestino || !pedido || !pedido.acao) return null;
+  try { return _resolverDestino(pedido.acao, pedido.parametros || {}) || null; }
+  catch (_) { return null; }
+}
+
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -91,6 +114,7 @@ function linhasParametros(parametros = {}) {
 
 function blocoPedido(pedido) {
   const nivel = pedido.nivel || acoes.nivelDe(pedido.acao);
+  const destino = destinoDe(pedido);
   return `
     <p class="rot">O que foi dito</p>
     <p class="cita">“${esc(pedido.texto_original)}”${pedido.transcrito ? ' <small>(transcrito de áudio)</small>' : ''}</p>
@@ -98,6 +122,7 @@ function blocoPedido(pedido) {
     <table>
       <tr><td>ação</td><td><code>${esc(pedido.acao || '—')}</code></td></tr>
       ${linhasParametros(pedido.parametros)}
+      ${destino ? `<tr><td>destino real</td><td><strong>${esc(destino)}</strong></td></tr>` : ''}
       <tr><td>nível</td><td><span class="nivel n${nivel}">${nivel} — ${esc(NIVEIS_TXT[nivel] || '?')}</span></td></tr>
       <tr><td>canal</td><td>${esc(pedido.canal)}${pedido.ator ? ` · ${esc(pedido.ator)}` : ''}</td></tr>
       <tr><td>recebido em</td><td>${esc(pedido.criado_em)}</td></tr>
@@ -188,4 +213,4 @@ function paginaPedido(id) {
     <p class="pe"><a href="/staff/">Portal Staff</a></p>`);
 }
 
-module.exports = { paginaAutenticada, paginaAprovacao, paginaPedido, moldura, esc };
+module.exports = { configurar, paginaAutenticada, paginaAprovacao, paginaPedido, moldura, esc };

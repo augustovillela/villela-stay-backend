@@ -70,6 +70,7 @@ function montar(app, injected = {}) {
     express, requireAuth, requireAdmin, requirePublishOrAdmin,
     enviarWhatsApp, alertaAugusto, destino, baseUrl,
     transcrever, autorizados, ferramentas = {},
+    resolverDestino,
   } = injected;
 
   if (!express || !requireAuth || !requireAdmin || !requirePublishOrAdmin) {
@@ -92,6 +93,7 @@ function montar(app, injected = {}) {
     autorizados: [].concat(autorizados || []).concat(destino ? [destino] : []),
   });
 
+  require('./paginas').configurar({ resolverDestino });
   const registradas = executor.registrarTodas(ferramentas);
   servico.registrarHandlers();
   registrarRotas(app, { requirePublishOrAdmin, requireAuth, requireAdmin });

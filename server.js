@@ -4803,6 +4803,7 @@ try {
 // que precisam ficar em sincronia (ver stays-api.md), e uma quarta seria
 // a que ninguém lembraria de atualizar.
 try {
+  const vozDest = require('./voz/destinatarios');
   const listaAdicionar = (arquivo, d, origem) => {
     const itens = lerJSON(arquivo, []);
     const item = {
@@ -4877,10 +4878,50 @@ try {
       // ---- nível 2: escrita interna reversível ----
       'listas.adicionar': async (p) => listaAdicionar(LISTA_ARQ.compras, p, 'voz'),
       'tarefa.criar': async (p) => listaAdicionar(LISTA_ARQ.pendencias, p, 'voz'),
-      // Nível 3 e 4 não têm ferramenta na Fase 0 de propósito: o pedido é
-      // reconhecido, exige autorização e responde "ainda não sei fazer".
-      // Melhor que ser encaixado à força numa ação parecida.
+
+      // ---- nível 3: toca pessoa real (exige autorização por clique) ----
+      //
+      // Lista FECHADA de destinatários, em `VOZ_EMAILS`. É trava, não
+      // conveniência: sem ela a voz mandaria e-mail para qualquer
+      // endereço que o modelo produzisse. Os endereços ficam na env
+      // porque são dado pessoal e não entram em commit (regra 5).
+      'email.enviar': async ({ para, assunto, corpo } = {}) => {
+        const mapa = vozDest.parse(process.env.VOZ_EMAILS || '');
+        if (!mapa.size) {
+          throw Object.assign(
+            new Error('Nenhum destinatário cadastrado — falta preencher VOZ_EMAILS.'), { status: 501 });
+        }
+        const destino = vozDest.resolver(mapa, para);
+        if (!destino) {
+          // A mensagem lista os APELIDOS, nunca os endereços: ela pode
+          // acabar num canal onde e-mail de terceiro não deve aparecer.
+          throw Object.assign(
+            new Error(`Não sei para quem é "${para}". Conheço: ${vozDest.apelidos(mapa).join(', ')}.`),
+            { status: 400 });
+        }
+        const texto = String(corpo || '').trim();
+        if (!texto) throw Object.assign(new Error('Mensagem vazia.'), { status: 400 });
+        const titulo = String(assunto || '').trim() || 'Mensagem de Augusto Villela';
+        // O corpo vai como o autor ditou, escapado. NADA é acrescentado:
+        // a página de autorização mostrou exatamente este texto, e o que
+        // foi autorizado tem de ser o que sai.
+        const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2b2d2f">${
+          escHtml(texto).replace(/\n/g, '<br>')}</div>`;
+        const ok = await enviarEmail(destino, titulo, html);
+        if (!ok) throw new Error('O servidor de e-mail recusou o envio.');
+        return { enviado: true, para, destino, assunto: titulo, caracteres: texto.length };
+      },
+      // `whatsapp.enviar` continua SEM ferramenta de propósito: o canal
+      // business só entrega texto livre dentro da janela de 24h da Meta,
+      // e fora dela o erro derruba o cenário 6128257 (quedas de 08 e
+      // 11/08/2026). Precisa de proteção própria antes de existir.
     },
+    // A página de autorização mostra o destino REAL antes do clique —
+    // sem isto, autorizar "e-mail para o contador" seria confiar numa
+    // configuração que talvez tenha um erro de digitação.
+    resolverDestino: (acao, p) => (acao === 'email.enviar'
+      ? vozDest.resolver(vozDest.parse(process.env.VOZ_EMAILS || ''), (p || {}).para)
+      : null),
   });
 } catch (e) { console.error('[voz] falha ao montar módulo:', e.message); }
 

@@ -102,6 +102,7 @@ roteirizar('cadastra o cliente joao silva', { acao: 'cliente.cadastrar', paramet
 roteirizar('manda um email pro pedro', { acao: 'email.enviar', parametros: { para: 'Pedro', corpo: 'oi' } });
 roteirizar('manda um email pro bruno', { acao: 'email.enviar', parametros: { para: 'Bruno', corpo: 'b' } });
 roteirizar('manda um email pra ana', { acao: 'email.enviar', parametros: { para: 'Ana', corpo: 'a' } });
+roteirizar('manda um email pra carla', { acao: 'email.enviar', parametros: { para: 'Carla', corpo: 'c' } });
 roteirizar('cadastra o cliente maria souza', { acao: 'cliente.cadastrar', parametros: { nome: 'Maria Souza' } });
 roteirizar('cria uma tela de relatorio de consumo', { acao: 'codigo.implementar', parametros: { pedido: 'tela de relatório de consumo' } });
 roteirizar('poe leite na lista', { acao: 'listas.adicionar', parametros: { nome: 'leite' } });
@@ -526,6 +527,71 @@ const unico = (s) => `${s} ${++n}`;
     await assert.rejects(
       () => executor.rodar('whatsapp.enviar', { para: 'x', texto: 'y' }),
       (e) => e.status === 501 && /ainda não sei/i.test(e.message));
+  });
+
+  // ===================================================================
+  secao('Destinatários · lista fechada de e-mail');
+
+  const dest = require('./destinatarios');
+
+  await t('parser tolerante: aceita : ou =, ; ou vírgula, e espaço sobrando', () => {
+    const m = dest.parse('  contador : fulano@x.com ;  Meu Advogado = beltrano@y.com , contadora:ana@z.com  ');
+    assert.deepEqual(dest.apelidos(m), ['contador', 'contadora', 'meu advogado']);
+  });
+
+  await t('linha malformada é ignorada sem derrubar o resto da lista', () => {
+    // Uma vírgula a mais não pode desligar a lista inteira.
+    const m = dest.parse('contador: fulano@x.com; isto nao tem email; vazio:; @sem-arroba; ok=b@c.com');
+    assert.deepEqual(dest.apelidos(m), ['contador', 'ok']);
+  });
+
+  await t('resolve por apelido, ignorando acento e caixa', () => {
+    const m = dest.parse('Advogádo: a@x.com');
+    assert.equal(dest.resolver(m, 'ADVOGADO'), 'a@x.com');
+    assert.equal(dest.resolver(m, 'advogado'), 'a@x.com');
+  });
+
+  await t('endereço FORA da lista não passa — é a trava principal', () => {
+    // Sem isto, bastaria o modelo produzir um endereço qualquer.
+    const m = dest.parse('contador: fulano@x.com');
+    assert.equal(dest.resolver(m, 'estranho@dominio.com'), null);
+    assert.equal(dest.resolver(m, 'fulano@x.com'), 'fulano@x.com', 'endereço DA lista pode passar');
+  });
+
+  await t('apelido AMBÍGUO devolve null em vez de escolher um', () => {
+    // Escolher entre dois é como se manda e-mail para a pessoa errada.
+    const m = dest.parse('contador rio: a@x.com; contador df: b@x.com');
+    assert.equal(dest.resolver(m, 'contador'), null);
+    assert.equal(dest.resolver(m, 'contador df'), 'b@x.com');
+  });
+
+  await t('a lista de apelidos NUNCA devolve endereços', () => {
+    // Ela vai em mensagem de erro, que pode sair por canal aberto.
+    const m = dest.parse('contador: sigiloso@x.com');
+    assert.deepEqual(dest.apelidos(m), ['contador']);
+    assert.ok(!JSON.stringify(dest.apelidos(m)).includes('@'));
+  });
+
+  await t('lista vazia resolve para null, nunca para um padrão', () => {
+    assert.equal(dest.resolver(dest.parse(''), 'contador'), null);
+    assert.equal(dest.resolver(null, 'contador'), null);
+  });
+
+  await t('a página de autorização mostra o DESTINO REAL antes do clique', async () => {
+    // Sem isto, autorizar "e-mail para o contador" seria confiar numa
+    // configuração que talvez tenha erro de digitação.
+    require('./paginas').configurar({
+      resolverDestino: (acao, p) => (acao === 'email.enviar' && (p || {}).para === 'Carla' ? 'carla@exemplo.test' : null),
+    });
+    const r = await req('POST', '/staff/api/voz/executar', { corpo: { pedido: unico('manda um email pra carla') }, chave: true });
+    assert.equal(r.json.status, 'aguardando_aprovacao', JSON.stringify(r.json));
+    const link = enviadas.map((e) => e.texto).reverse().find((x) => /\/staff\/voz\/aprovar\//.test(x));
+    const tk = link.match(/\/staff\/voz\/aprovar\/([A-Za-z0-9_-]+)/)[1];
+    const pag = await req('GET', `/staff/voz/aprovar/${tk}`, { staff: 'adm', cru: true });
+    assert.ok(/destino real/.test(pag.texto), 'a página não mostrou para onde vai');
+    assert.ok(/carla@exemplo\.test/.test(pag.texto), pag.texto.slice(0, 200));
+    assert.ok(!enviadas.some((e) => /carla@exemplo\.test/.test(e.texto)),
+      'o endereço vazou para o WhatsApp — ele só pode aparecer na página autenticada');
   });
 
   // ===================================================================
