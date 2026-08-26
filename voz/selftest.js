@@ -300,6 +300,40 @@ const unico = (s) => `${s} ${++n}`;
     assert.ok(!/[\r\n\t]/.test(s), JSON.stringify(s));
   });
 
+  await t('a RESPOSTA vai no corpo da mensagem, não só o link (decisão de 26/08/2026)', async () => {
+    const antes = enviadas.length;
+    const p = repo.criar({ canal: 'voz', ator: 't', texto: unico('quanto de ocupacao'), idem: '' }).pedido;
+    repo.atualizar(p.id, { acao: 'ocupacao.periodo', nivel: 1, status: 'concluido' });
+    await notificar.relatorio(repo.porId(p.id), { fala: 'A ocupação está em 45 por cento, nove de vinte.' });
+    const m = enviadas[enviadas.length - 1].texto;
+    assert.ok(enviadas.length > antes);
+    assert.ok(/45 por cento/.test(m), `link sem resposta não é resposta: ${m}`);
+    assert.ok(/\/staff\/voz\/pedido\//.test(m), 'o link tem de continuar indo, para o detalhe');
+  });
+
+  await t('mas CPF, telefone e e-mail continuam saindo como marcador MESMO dentro da fala', async () => {
+    // O afrouxamento é só para NOME. Identificador continua fechado —
+    // é a parte da regra 5 que não foi negociada.
+    const p = repo.criar({ canal: 'voz', ator: 't', texto: unico('ficha do hospede'), idem: '' }).pedido;
+    repo.atualizar(p.id, { acao: 'agenda.dia', nivel: 1, status: 'concluido' });
+    await notificar.relatorio(repo.porId(p.id), {
+      fala: 'Everson chega hoje, CPF 123.456.789-00, telefone (61) 99999-8888, e-mail e@x.com.',
+    });
+    const m = enviadas[enviadas.length - 1].texto;
+    assert.ok(/Everson/.test(m), 'o nome DEVE passar — foi a decisão');
+    assert.ok(!/123\.456\.789-00/.test(m), m);
+    assert.ok(!/99999-8888/.test(m), m);
+    assert.ok(!/e@x\.com/.test(m), m);
+  });
+
+  await t('sem fala, o relatório cai no formato antigo em vez de não sair', async () => {
+    const p = repo.criar({ canal: 'voz', ator: 't', texto: unico('coisa qualquer'), idem: '' }).pedido;
+    repo.atualizar(p.id, { acao: 'listas.adicionar', parametros: { nome: 'sal' }, nivel: 2 });
+    await notificar.relatorio(repo.porId(p.id), { fala: '' });
+    const m = enviadas[enviadas.length - 1].texto;
+    assert.ok(/lista de compras/.test(m) && /pronto/.test(m), m);
+  });
+
   await t('nenhuma mensagem já enviada carrega quebra de linha', () => {
     const ruins = enviadas.filter((e) => /[\r\n\t]/.test(e.texto));
     assert.equal(ruins.length, 0, JSON.stringify(ruins.slice(0, 2)));

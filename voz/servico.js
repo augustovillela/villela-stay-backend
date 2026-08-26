@@ -39,13 +39,39 @@ const FALAS = {
   demorou: 'Essa resposta vai demorar. Mando no WhatsApp.',
 };
 
+/**
+ * A frase que vai no CORPO da mensagem de resultado (decisão de
+ * 26/08/2026 — ver voz/notificar.js).
+ *
+ * Leitura pedida pelo WhatsApp entra por `executar`, e esse caminho NÃO
+ * passa pela narração do `consultar` — sem narrar aqui, a resposta de
+ * "como está a ocupação" seria um link em vez do número.
+ *
+ * Escrita não é narrada: `acoes.resumir` já diz o que foi feito ("pus
+ * água na lista de compras"), de graça e sem chamar o modelo.
+ *
+ * Falha de narração devolve string vazia de propósito — o relatório cai
+ * no formato antigo (título + link) em vez de não sair.
+ */
+async function falaDoResultado(pedido, resultado) {
+  if (acoes.nivelDe(pedido.acao) !== acoes.NIVEIS.LEITURA) return '';
+  if (resultado == null) return '';
+  try {
+    const n = await cerebro.narrar(pedido.texto_original, resultado);
+    return String(n.fala || '').trim();
+  } catch (e) {
+    console.error('[voz/servico] narração do resultado falhou:', e.message);
+    return '';
+  }
+}
+
 /** Registra o handler da fila. Chamado uma vez, na montagem. */
 function registrarHandlers() {
   fila.registrar(TIPO_JOB, async ({ pedidoId }) => {
     try {
       const { pedido, resultado, repetido, recusado } = await executor.executarPedido(pedidoId);
       if (recusado) return { recusado: true };
-      if (!repetido) await notificar.relatorio(pedido);
+      if (!repetido) await notificar.relatorio(pedido, { fala: await falaDoResultado(pedido, resultado) });
       return { ok: true, resultado: resultado === undefined ? null : resultado };
     } catch (e) {
       const p = repo.porId(pedidoId);
@@ -105,7 +131,11 @@ async function consultar({ texto, canal = 'voz', ator = '', transcrito = false }
       pedidoId: pedido.id, atorTipo: 'voz', ator,
       detalhe: { acao: interp.acao, motor: interp.motor, relatorio: mandarRelatorio },
     });
-    if (mandarRelatorio) await notificar.relatorio(atualizado, { titulo: acoes.resumir(interp.acao, interp.parametros) });
+    if (mandarRelatorio) {
+      await notificar.relatorio(atualizado, {
+        titulo: acoes.resumir(interp.acao, interp.parametros), fala: narracao.fala,
+      });
+    }
     return respostaDe(atualizado, { relatorio: mandarRelatorio });
   } catch (e) {
     const naoImplementada = e && e.status === 501;

@@ -98,11 +98,29 @@ async function enviar(texto) {
 // As quatro mensagens da Fase 0
 // ---------------------------------------------------------------------
 
-/** Caminho B: o pedido foi feito e o documento está pronto. */
-async function relatorio(pedido, { titulo = '' } = {}) {
+/**
+ * Caminho B: o pedido foi feito e o resultado está pronto.
+ *
+ * ⚠️ DECISÃO DO AUGUSTO, 26/08/2026: a RESPOSTA vai no corpo da mensagem,
+ * não só o link. O motivo é de uso — perguntar a ocupação pelo WhatsApp e
+ * receber um link não é resposta, é tarefa. O link continua indo, para o
+ * detalhe.
+ *
+ * O que isso afrouxa, e o que NÃO afrouxa: nome de hóspede passa a
+ * trafegar por mensagem (a fala diz "Everson, na Casa Modernista").
+ * CPF, RG, telefone e e-mail continuam saindo como marcador — o
+ * `higienizar` roda igual dentro de `umaLinha`. A regra 5 do CLAUDE.md
+ * fala de identificadores, e é essa parte que segue fechada.
+ */
+async function relatorio(pedido, { titulo = '', fala = '' } = {}) {
   const t = titulo || acoes.resumir(pedido.acao, pedido.parametros);
-  const ok = await enviar(`✅ ${t} — pronto. Detalhe: ${linkPedido(pedido.id)}`);
-  repo.auditar('notificacao.relatorio', { pedidoId: pedido.id, atorTipo: 'sistema', detalhe: { entregue: ok } });
+  const corpo = String(fala || '').trim();
+  const ok = await enviar(corpo
+    ? `✅ ${corpo} · ${linkPedido(pedido.id)}`
+    : `✅ ${t} — pronto. Detalhe: ${linkPedido(pedido.id)}`);
+  repo.auditar('notificacao.relatorio', {
+    pedidoId: pedido.id, atorTipo: 'sistema', detalhe: { entregue: ok, comFala: !!corpo },
+  });
   return ok;
 }
 
