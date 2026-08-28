@@ -879,3 +879,76 @@ a { color: var(--lago); text-decoration: none; }
 .t360-topo-linha { display: flex; flex-wrap: wrap; width: 100%; gap: 8px; align-items: flex-start; }
 .t360-topo > *, .t360-topo-linha > * { pointer-events: auto; }
 @media (max-width: 640px) { .t360-topo { padding: 10px; gap: 6px; } }
+
+/* ---------- player de vídeo 360° (página do anúncio) ---------- */
+.v360-wrap { margin: 26px 0; }
+.v360-wrap h2 { margin-bottom: 4px; }
+.v360-legenda { color: var(--concreto-claro); font-size: .92rem; margin-bottom: 12px; }
+
+.v360 {
+  position: relative; width: 100%; height: clamp(320px, 58vh, 580px);
+  border-radius: 16px; overflow: hidden; background: #121416;
+  box-shadow: 0 10px 34px rgba(0,0,0,.22); touch-action: none;
+}
+.v360:fullscreen { border-radius: 0; height: 100%; }
+.v360-canvas { display: block; width: 100%; height: 100%; cursor: grab; outline: none; }
+.v360-canvas:focus-visible { outline: 3px solid var(--cerrado); outline-offset: -3px; }
+.v360-arrastando { cursor: grabbing; }
+/* O <video> só alimenta a textura — fica no DOM (fora dele alguns navegadores não
+   decodificam) mas nunca é exibido. */
+.v360-fonte { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: -9999px; }
+
+.v360-play-centro {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 3;
+  width: 76px; height: 76px; display: grid; place-items: center; cursor: pointer;
+  font: inherit; font-size: 2rem; color: #fff; padding-left: 6px;
+  background: rgba(27,42,74,.8); border: 2px solid rgba(255,255,255,.75); border-radius: 50%;
+}
+.v360-play-centro:hover { background: var(--lago-escuro); }
+.v360-tocando .v360-play-centro { display: none; }
+
+.v360-controles {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  background: linear-gradient(to top, rgba(0,0,0,.72), transparent);
+}
+.v360-btn {
+  flex: 0 0 auto; width: 38px; height: 38px; display: grid; place-items: center; cursor: pointer;
+  font: inherit; font-size: .95rem; line-height: 1; color: #fff;
+  background: rgba(27,42,74,.62); border: 1px solid rgba(255,255,255,.28); border-radius: 50%;
+}
+.v360-btn:hover { background: rgba(27,42,74,.95); }
+.v360-btn-off { opacity: .6; }
+.v360-tempo { flex: 0 0 auto; color: #fff; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.v360-trilha { flex: 1 1 auto; min-width: 0; accent-color: var(--cerrado); cursor: pointer; height: 4px; }
+
+.v360-dica {
+  position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%); z-index: 2;
+  color: #fff; font-size: .82rem; background: rgba(0,0,0,.45); padding: 6px 14px;
+  border-radius: 18px; pointer-events: none; text-align: center; max-width: calc(100% - 32px);
+}
+.v360-dica[hidden] { display: none; }
+
+.v360-carregando {
+  position: absolute; inset: 0; display: grid; place-items: center; z-index: 2;
+  background: rgba(18,20,22,.35); pointer-events: none;
+}
+.v360-carregando[hidden] { display: none; }
+.v360-spin {
+  width: 22px; height: 22px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+  border-radius: 50%; animation: v360-gira .8s linear infinite;
+}
+@keyframes v360-gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .v360-spin { animation: none; } }
+
+.v360-plano { width: 100%; border-radius: 14px; background: #000; display: block; }
+.v360-aviso { font-size: .88rem; color: var(--concreto-claro); margin-top: 8px; }
+.v360-erro .v360-play-centro { display: none; }
+
+@media (max-width: 640px) {
+  .v360 { height: clamp(280px, 52vh, 420px); }
+  .v360-play-centro { width: 62px; height: 62px; font-size: 1.6rem; }
+  .v360-controles { gap: 8px; padding: 10px; }
+  .v360-btn { width: 34px; height: 34px; }
+  .v360-dica { bottom: 58px; font-size: .74rem; }
+}

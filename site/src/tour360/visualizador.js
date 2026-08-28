@@ -672,7 +672,9 @@
 
     function iniciar(e) {
       if (self.cinema) self.pararCinema();   // o visitante assumiu a camera
-      c.setPointerCapture && c.setPointerCapture(e.pointerId);
+      // Ver video360.js: sem o try/catch uma excecao aqui aborta o handler antes de
+      // registrar o ponteiro e o arrasto para de funcionar sem erro visivel.
+      try { c.setPointerCapture && c.setPointerCapture(e.pointerId); } catch (err) {}
       ponteiros[e.pointerId] = { x: e.clientX, y: e.clientY };
       var ids = Object.keys(ponteiros);
       if (ids.length === 1) { arrastando = true; ultimoX = e.clientX; ultimoY = e.clientY; self.velYaw = self.velPitch = 0; c.classList.add('t360-arrastando'); }

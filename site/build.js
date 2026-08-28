@@ -665,7 +665,7 @@ const home = layout(
   </div>
   <div class="hero-conteudo">
     <h1>${t('Seu Porto Seguro no Lago Sul em Brasília', 'Your Safe Haven in Lago Sul, Brasília', 'Tu Refugio Seguro en Lago Sul, Brasília')}</h1>
-    <p><strong>${t('Casas muito bem localizadas, confortáveis, bem equipadas, com cozinha completa e piscina aquecida.<br>Excelentes tanto para casais quanto para grupos de 60 pessoas.<br>Reserve diretamente com o anfitrião para um atendimento personalizado.', 'Beautifully located, comfortable, well-equipped houses with a full kitchen and a heated pool.<br>Great for couples and for groups of up to 60.<br>Book directly with the host for personalised service.', 'Casas muy bien ubicadas, cómodas y equipadas, con cocina completa y piscina climatizada.<br>Ideales tanto para parejas como para grupos de hasta 60 personas.<br>Reserva directamente con el anfitrión para una atención personalizada.')}</strong></p>
+    <p><strong>${t('Casas muito bem localizadas, confortáveis, bem equipadas, com cozinha completa e piscina aquecida.<br>Excelentes tanto para casais quanto para grupos de 52 pessoas.<br>Reserve diretamente com o anfitrião para um atendimento personalizado.', 'Beautifully located, comfortable, well-equipped houses with a full kitchen and a heated pool.<br>Great for couples and for groups of up to 52.<br>Book directly with the host for personalised service.', 'Casas muy bien ubicadas, cómodas y equipadas, con cocina completa y piscina climatizada.<br>Ideales tanto para parejas como para grupos de hasta 52 personas.<br>Reserva directamente con el anfitrión para una atención personalizada.')}</strong></p>
     <div class="hero-cta">
       <a class="btn" href="#hospedagens">${t('Ver hospedagens', 'See stays', 'Ver alojamientos')}</a>
       <a class="btn btn-claro" href="${L('/eventos.html')}">${t('Eventos', 'Events', 'Eventos')}</a>
@@ -690,7 +690,7 @@ window.addEventListener('load', function(){
 </script>
 <a class="banner-posse" href="${L('/posse-2027.html')}">🇧🇷 ${t('<strong>Posse Presidencial 2027 + Réveillon:</strong> casas completas no Lago Sul a 10 min da Esplanada — reserve antes que esgotem', '<strong>Presidential Inauguration 2027 + New Year:</strong> whole houses in Lago Sul, 10 min from the Esplanada — book before they sell out', '<strong>Toma de Posesión 2027 + Fin de Año:</strong> casas enteras en Lago Sul a 10 min de la Explanada — reserva antes de que se agoten')} <span>${t('Saiba mais', 'Learn more', 'Saber más')} →</span></a>
 <section class="faixa-confianca">
-  <div>🏆 ${t('Superhost: anfitrião premiado', 'Superhost: award-winning host', 'Superhost: anfitrión premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes: propriedades premiadas', 'Guest Favourite: award-winning properties', 'Favorito de los Huéspedes: propiedades premiadas')}</div><div>📍 ${t('10 min do Aeroporto JK e da Esplanada', '10 min from JK Airport and the Esplanada', '10 min del Aeropuerto JK y de la Explanada')}</div><div>👨‍👩‍👧‍👦 ${t('Hospedagens de grupos de até 60 pessoas', 'Stays for groups of up to 60', 'Alojamientos para grupos de hasta 60 personas')}</div><div>🎉 ${t('Eventos para até 150 pessoas', 'Events for up to 150 people', 'Eventos para hasta 150 personas')}</div>
+  <div>🏆 ${t('Superhost: anfitrião premiado', 'Superhost: award-winning host', 'Superhost: anfitrión premiado')}</div><div>🏅 ${t('Favorito dos Hóspedes: propriedades premiadas', 'Guest Favourite: award-winning properties', 'Favorito de los Huéspedes: propiedades premiadas')}</div><div>📍 ${t('10 min do Aeroporto JK e da Esplanada', '10 min from JK Airport and the Esplanada', '10 min del Aeropuerto JK y de la Explanada')}</div><div>👨‍👩‍👧‍👦 ${t('Hospedagens de grupos de até 52 pessoas', 'Stays for groups of up to 52', 'Alojamientos para grupos de hasta 52 personas')}</div><div>🎉 ${t('Eventos para até 150 pessoas', 'Events for up to 150 people', 'Eventos para hasta 150 personas')}</div>
 </section>
 <section class="depoimentos-wrap">
   <h2 class="secao-titulo">${t('O Que Dizem Nossos Hóspedes', 'What Our Guests Say', 'Lo Que Dicen Nuestros Huéspedes')}</h2>
@@ -852,6 +852,20 @@ if (fs.existsSync(DIR_CAMPANHAS)) {
 const VIDEOS = { GD01H: 'casa-modernista.mp4', GI01I: 'casa-villela.mp4', GD03H: 'gran-villela.mp4', PL02I: 'villa-catetinho.mp4', GG04I: 'villa-kubitschek.mp4' };
 fs.mkdirSync(path.join(DIST, 'videos'), { recursive: true });
 for (const v of Object.values(VIDEOS)) fs.copyFileSync(path.join(__dirname, 'src', 'videos', v), path.join(DIST, 'videos', v));
+
+// Vídeos em 360° (tour em vídeo, panorama equirretangular 2:1) — id do anúncio -> arquivo.
+// Player próprio em src/tour360/video360.js: mesma projeção do visualizador de fotos, com a
+// textura vindo de um <video>. NÃO usar a tag <video> comum: o quadro é equirretangular e
+// sairia esticado e sem navegação.
+const VIDEOS360 = { GD01H: 'casa-modernista-360.mp4' };
+for (const v of Object.values(VIDEOS360)) fs.copyFileSync(path.join(__dirname, 'src', 'videos', v), path.join(DIST, 'videos', v));
+let VIDEO360_VER = '';
+if (Object.keys(VIDEOS360).length) {
+  fs.mkdirSync(path.join(DIST, 'tour360'), { recursive: true });
+  fs.copyFileSync(path.join(TOUR_DIR, 'video360.js'), path.join(DIST, 'tour360', 'video360.js'));
+  VIDEO360_VER = require('crypto').createHash('sha1')
+    .update(fs.readFileSync(path.join(TOUR_DIR, 'video360.js'))).digest('hex').slice(0, 8);
+}
 
 // Manuais do hóspede (e-books) — Villela Stay para as 4 casas do complexo; Modernista próprio
 const EBOOKS = {
@@ -1101,6 +1115,20 @@ for (const l of listings) {
   </section>
   ${blocoBeneficios}
   ${blocoComodidades}
+  ${VIDEOS360[l.id] ? `<section class="v360-wrap">
+    <h2>${t('Tour em vídeo 360°', '360° video tour', 'Tour en vídeo 360°')}</h2>
+    <p class="v360-legenda">${t('Dê play e arraste dentro do vídeo para olhar em volta — como se estivesse caminhando pela casa.',
+      'Press play and drag inside the video to look around — as if you were walking through the house.',
+      'Dale play y arrastra dentro del vídeo para mirar alrededor — como si estuvieras caminando por la casa.')}</p>
+    <div class="v360" data-src="/videos/${VIDEOS360[l.id]}"
+      data-txt-play="${esc(t('Reproduzir', 'Play', 'Reproducir'))}"
+      data-txt-pause="${esc(t('Pausar', 'Pause', 'Pausar'))}"
+      data-txt-som="${esc(t('Som', 'Sound', 'Sonido'))}"
+      data-txt-tela="${esc(t('Tela cheia', 'Fullscreen', 'Pantalla completa'))}"
+      data-txt-dica="${esc(t('Arraste para olhar em volta enquanto o vídeo roda', 'Drag to look around while the video plays', 'Arrastra para mirar alrededor mientras el vídeo se reproduce'))}"
+      data-txt-semwebgl="${esc(t('Seu navegador não suporta a visualização 360° interativa — o vídeo toca achatado.', 'Your browser does not support the interactive 360° view — the video plays flat.', 'Tu navegador no admite la vista 360° interactiva — el vídeo se reproduce plano.'))}"></div>
+    <script src="/tour360/video360.js?v=${VIDEO360_VER}" defer><\/script>
+  </section>` : ''}
   ${VIDEOS[l.id] ? `<section class="video-wrap">
     <h2>${t('Conheça por dentro', 'Take a look inside', 'Conoce por dentro')}</h2>
     <video controls preload="none" playsinline poster="${cdnUrl(l.fotoPrincipal, 800)}">
@@ -3751,7 +3779,7 @@ eles é feita por API, disponível nos planos superiores.
 
 - [Villela Stay](${SITE_URL}): 20 anúncios em 4 casas no Lago Sul, Brasília-DF —
   casas inteiras, flats e suítes, com piscina aquecida, para casais e para grupos
-  de até 60 pessoas. Eventos para até 150 pessoas. A 10 minutos do Aeroporto JK e
+  de até 52 pessoas. Eventos para até 150 pessoas. A 10 minutos do Aeroporto JK e
   da Esplanada dos Ministérios. Reserva direta com o anfitrião.
 - [Eventos](${SITE_URL}/eventos.html): formaturas, casamentos, festas infantis e
   eventos corporativos nas casas do Lago Sul.
