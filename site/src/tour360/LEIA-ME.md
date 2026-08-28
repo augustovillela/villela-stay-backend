@@ -137,6 +137,34 @@ Qualquer toque, scroll ou tecla devolve a câmera ao visitante.
 Com **`?gravar=1`** aparece um botão que grava o passeio em `.webm` (grava o *canvas*, então o
 vídeo sai sem interface — serve para Instagram). Não precisa de ffmpeg nem de nada instalado.
 
+### Vídeo 360° na página do anúncio
+
+Panorama em movimento, não foto. Player separado: `src/tour360/video360.js`, mesma projeção e
+mesma convenção de ângulos do visualizador de fotos, com a textura vindo de um `<video>`.
+
+Para acrescentar: ponha o `.mp4` **equirretangular 2:1** em `src/videos/` e declare em `build.js`:
+
+```js
+const VIDEOS360 = { GD01H: 'casa-modernista-360.mp4' };
+```
+
+A seção sai sozinha na página daquele anúncio, com o script já versionado por hash.
+
+**Nunca sirva um vídeo 360 numa tag `<video>` comum** — o quadro é equirretangular e sai esticado,
+sem navegação. É por isso que existe o player.
+
+Cuidados que já custaram tempo:
+
+- **3840×1920 não é potência de 2.** Em WebGL1 isso proíbe `REPEAT` e a emenda do panorama abre.
+  O player pede WebGL2 (que permite) e, no WebGL1, segura com `fract(u)` no shader.
+- **`texImage2D` uma vez, `texSubImage2D` por quadro.** Realocar 7,4 megapixels a cada quadro
+  derruba o celular.
+- **Trate o estado inicial FORA dos eventos**: com o arquivo em cache, `loadedmetadata`/`loadeddata`
+  já dispararam antes dos listeners existirem, e o player ficaria preto com o spinner girando.
+- **Metadados esféricos**: o arquivo do Shotcut sai sem `sv3d`/`st3d` nem o XML `GSpherical`. Não
+  faz diferença para este player (a projeção é nossa), mas **YouTube, Facebook e Instagram não
+  reconhecem o vídeo como 360 sem eles** — lá ele tocaria achatado e distorcido.
+
 ### Cache do navegador
 
 O `<script>` do visualizador leva `?v=<hash do arquivo>`, gerado no build. **Não remova**: sem
