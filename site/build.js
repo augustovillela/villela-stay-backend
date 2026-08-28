@@ -857,8 +857,10 @@ for (const v of Object.values(VIDEOS)) fs.copyFileSync(path.join(__dirname, 'src
 // Player próprio em src/tour360/video360.js: mesma projeção do visualizador de fotos, com a
 // textura vindo de um <video>. NÃO usar a tag <video> comum: o quadro é equirretangular e
 // sairia esticado e sem navegação.
-const VIDEOS360 = { GD01H: 'casa-modernista-360.mp4' };
-for (const v of Object.values(VIDEOS360)) fs.copyFileSync(path.join(__dirname, 'src', 'videos', v), path.join(DIST, 'videos', v));
+const VIDEOS360 = {
+  GD01H: { arquivo: 'casa-modernista-360.mp4', duracaoISO: 'PT3M28S', publicado: '2026-08-27', cartaz: 'modernista-fachada-2' }
+};
+for (const v of Object.values(VIDEOS360)) fs.copyFileSync(path.join(__dirname, 'src', 'videos', v.arquivo), path.join(DIST, 'videos', v.arquivo));
 let VIDEO360_VER = '';
 if (Object.keys(VIDEOS360).length) {
   fs.mkdirSync(path.join(DIST, 'tour360'), { recursive: true });
@@ -866,6 +868,15 @@ if (Object.keys(VIDEOS360).length) {
   VIDEO360_VER = require('crypto').createHash('sha1')
     .update(fs.readFileSync(path.join(TOUR_DIR, 'video360.js'))).digest('hex').slice(0, 8);
 }
+
+// Markup do player, usado na página do anúncio e na do tour — um lugar só para os textos.
+const blocoV360 = arquivo => `<div class="v360" data-src="/videos/${arquivo}"
+  data-txt-play="${esc(t('Reproduzir', 'Play', 'Reproducir'))}"
+  data-txt-pause="${esc(t('Pausar', 'Pause', 'Pausar'))}"
+  data-txt-som="${esc(t('Som', 'Sound', 'Sonido'))}"
+  data-txt-tela="${esc(t('Tela cheia', 'Fullscreen', 'Pantalla completa'))}"
+  data-txt-dica="${esc(t('Arraste para olhar em volta enquanto o vídeo roda', 'Drag to look around while the video plays', 'Arrastra para mirar alrededor mientras el vídeo se reproduce'))}"
+  data-txt-semwebgl="${esc(t('Seu navegador não suporta a visualização 360° interativa — o vídeo toca achatado.', 'Your browser does not support the interactive 360° view — the video plays flat.', 'Tu navegador no admite la vista 360° interactiva — el vídeo se reproduce plano.'))}"></div>`;
 
 // Manuais do hóspede (e-books) — Villela Stay para as 4 casas do complexo; Modernista próprio
 const EBOOKS = {
@@ -1120,13 +1131,7 @@ for (const l of listings) {
     <p class="v360-legenda">${t('Dê play e arraste dentro do vídeo para olhar em volta — como se estivesse caminhando pela casa.',
       'Press play and drag inside the video to look around — as if you were walking through the house.',
       'Dale play y arrastra dentro del vídeo para mirar alrededor — como si estuvieras caminando por la casa.')}</p>
-    <div class="v360" data-src="/videos/${VIDEOS360[l.id]}"
-      data-txt-play="${esc(t('Reproduzir', 'Play', 'Reproducir'))}"
-      data-txt-pause="${esc(t('Pausar', 'Pause', 'Pausar'))}"
-      data-txt-som="${esc(t('Som', 'Sound', 'Sonido'))}"
-      data-txt-tela="${esc(t('Tela cheia', 'Fullscreen', 'Pantalla completa'))}"
-      data-txt-dica="${esc(t('Arraste para olhar em volta enquanto o vídeo roda', 'Drag to look around while the video plays', 'Arrastra para mirar alrededor mientras el vídeo se reproduce'))}"
-      data-txt-semwebgl="${esc(t('Seu navegador não suporta a visualização 360° interativa — o vídeo toca achatado.', 'Your browser does not support the interactive 360° view — the video plays flat.', 'Tu navegador no admite la vista 360° interactiva — el vídeo se reproduce plano.'))}"></div>
+    ${blocoV360(VIDEOS360[l.id].arquivo)}
     <script src="/tour360/video360.js?v=${VIDEO360_VER}" defer><\/script>
   </section>` : ''}
   ${VIDEOS[l.id] ? `<section class="video-wrap">
@@ -1416,6 +1421,13 @@ if (TEM_TOUR) {
     return `<section class="tour-grupo">
       <h2>${esc(g.casa)}${l ? ` <a class="tour-grupo-link" href="${L(`/hospedagem/${l.id}.html`)}">${t('ver a hospedagem →', 'see the listing →', 'ver el alojamiento →')}</a>` : ''}</h2>
       ${(g.inclui || []).length ? `<p class="tour-grupo-inclui">${t('Aluguel único que inclui', 'A single rental that includes', 'Alquiler único que incluye')}: ${g.inclui.map(esc).join(' · ')}</p>` : ''}
+      ${VIDEOS360[g.codigo] ? `<div class="tour-video360">
+        <h3>${t('Tour em vídeo 360°', '360° video tour', 'Tour en vídeo 360°')}</h3>
+        <p>${t('Outra forma de ver esta casa: um percurso filmado em 360°. Dê play e arraste dentro do vídeo.',
+          'Another way to see this house: a walkthrough filmed in 360°. Press play and drag inside the video.',
+          'Otra forma de ver esta casa: un recorrido filmado en 360°. Dale play y arrastra dentro del vídeo.')}</p>
+        ${blocoV360(VIDEOS360[g.codigo].arquivo)}
+      </div>` : ''}
       <ul class="tour-lista">
         ${g.cenas.map(c => `<li><a href="${L('/tour.html')}?cena=${encodeURIComponent(c.id)}">
           <img src="/tour360/${c.arquivo}-thumb.jpg" alt="${esc(tituloCena(c))} — ${esc(g.casa)}" width="200" height="112" loading="lazy" decoding="async">
@@ -1448,6 +1460,24 @@ if (TEM_TOUR) {
       }
     }))
   };
+  // VideoObject dos tours em vídeo — sem isto o Google não sabe que a página tem vídeo.
+  const videosSchema = porCasa.filter(g => VIDEOS360[g.codigo]).map(g => {
+    const v = VIDEOS360[g.codigo];
+    return {
+      '@context': 'https://schema.org', '@type': 'VideoObject',
+      name: `${t('Tour em vídeo 360°', '360° video tour', 'Tour en vídeo 360°')} — ${g.casa}`,
+      description: t(`Percurso filmado em 360° pela ${g.casa}, no Lago Sul, Brasília.`,
+        `A walkthrough filmed in 360° through ${g.casa}, in Lago Sul, Brasília.`,
+        `Recorrido filmado en 360° por ${g.casa}, en Lago Sul, Brasília.`),
+      thumbnailUrl: `${SITE_URL}/tour360/${v.cartaz}-thumb.jpg`,
+      uploadDate: v.publicado,
+      duration: v.duracaoISO,
+      contentUrl: `${SITE_URL}/videos/${v.arquivo}`,
+      embedUrl: `${SITE_URL}${L('/tour.html')}`,
+      isPartOf: { '@id': ORG_ID }
+    };
+  });
+
   const primeira = TOUR_CENAS.find(c => c.id === TOUR_INICIAL) || TOUR_CENAS[0];
 
   const corpoTour = `
@@ -1477,14 +1507,16 @@ if (TEM_TOUR) {
   </section>
 </article>
 <script>window.TOUR360 = ${jsonSeguro({ base: '/tour360', ver: TOUR_VER, cenas: cenasCliente, inicial: TOUR_INICIAL, textos: textosTour })};</script>
-<script src="/tour360/visualizador.js?v=${TOUR_VER}" defer></script>`;
+<script src="/tour360/visualizador.js?v=${TOUR_VER}" defer></script>
+${porCasa.some(g => VIDEOS360[g.codigo]) ? `<script src="/tour360/video360.js?v=${VIDEO360_VER}" defer></script>` : ''}`;
 
   fs.writeFileSync(path.join(od, 'tour.html'), layout(tituloPag, descPag, corpoTour, {
     caminho: '/tour.html',
     ogImage: `${SITE_URL}/tour360/${primeira.arquivo}-thumb.jpg`,
     // A cena de abertura em 1024 é o LCP da página: vale o preload.
     extraHead: `<link rel="preload" as="image" href="/tour360/${primeira.arquivo}-1024.jpg">` +
-      `<script type="application/ld+json">${jsonSeguro(cenaSchema)}</script>`
+      `<script type="application/ld+json">${jsonSeguro(cenaSchema)}</script>` +
+      videosSchema.map(v => `<script type="application/ld+json">${jsonSeguro(v)}</script>`).join('')
   }));
 }
 

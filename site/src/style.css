@@ -952,3 +952,17 @@ a { color: var(--lago); text-decoration: none; }
   .v360-btn { width: 34px; height: 34px; }
   .v360-dica { bottom: 58px; font-size: .74rem; }
 }
+
+/* Tour em vídeo dentro do grupo da casa, na página do tour: é outra opção de ver a
+   mesma casa, então fica junto da lista de ambientes, não numa seção à parte. */
+.tour-video360 {
+  margin: 0 0 18px; padding: 16px; background: var(--areia);
+  border: 1px solid #e5e1d8; border-radius: 14px;
+}
+.tour-video360 h3 { font-size: 1.05rem; margin-bottom: 2px; }
+.tour-video360 > p { color: var(--concreto-claro); font-size: .88rem; margin-bottom: 12px; }
+.tour-video360 .v360 { height: clamp(280px, 46vh, 460px); }
+@media (max-width: 640px) {
+  .tour-video360 { padding: 12px; }
+  .tour-video360 .v360 { height: clamp(240px, 42vh, 360px); }
+}
