@@ -103,7 +103,11 @@
 
     this.yaw = 0; this.pitch = 0; this.fov = 75;
     this.velYaw = 0; this.velPitch = 0;     // inércia depois de arrastar
-    this.autoRotate = true;                 // para no primeiro toque do visitante
+    // `girarPreferido` e a escolha do visitante no botao; `autoRotate` e o estado agora.
+    // Separar os dois e o que permite RECOMECAR o giro a cada cena sem desrespeitar quem
+    // desligou de proposito.
+    this.girarPreferido = true;
+    this.autoRotate = true;
     this.mix = 0; this.mixAlvo = 0;
     this.rot = new Float32Array(9);
     this.cache = {};                        // url -> {tex, largura}
@@ -185,8 +189,8 @@
     botao('&minus;', this.txt.afastar || 'Afastar', function () { self.zoom(8); });
     this.btnCinema = botao('&#9654;', this.txt.cinema || 'Modo cinema: passear pela casa sozinho', function (b) { self.alternarCinema(b); });
     this.btnAuto = botao('&#10227;', this.txt.girar || 'Girar sozinho', function (b) {
-      self.autoRotate = !self.autoRotate;
-      b.classList.toggle('t360-btn-on', self.autoRotate);
+      self.girarPreferido = !self.girarPreferido;
+      self.definirGiro(self.girarPreferido);
     });
     this.btnAuto.classList.add('t360-btn-on');
     if (window.DeviceOrientationEvent) {
@@ -465,6 +469,9 @@
     this.pitch = (v.pitch || 0) * RAD;
     this.fov = v.fov || 75;
     this.velYaw = this.velPitch = 0;
+    // Toda cena aberta comeca girando, como a de abertura — a nao ser que o visitante
+    // tenha desligado o giro no botao, ou que o modo cinema esteja dirigindo a camera.
+    if (!this.cinema) this.definirGiro(this.girarPreferido);
 
     this.rotulo.textContent = (cena.casa ? cena.casa + ' · ' : '') + cena.titulo;
     // Saída: de onde o visitante VEIO, se entrou por um portal; senão a vista geral da casa.
@@ -653,14 +660,23 @@
 
   // ---- controles ----
   Viewer.prototype.interagiu = function () {
-    if (this.autoRotate) {
-      this.autoRotate = false;
-      if (this.btnAuto) this.btnAuto.classList.remove('t360-btn-on');
-    }
     if (this.dica && !this.dica.hidden) this.dica.hidden = true;
   };
 
+  // Estado do giro num lugar so: quem liga/desliga nao precisa lembrar do botao.
+  Viewer.prototype.definirGiro = function (ligado) {
+    this.autoRotate = !!ligado;
+    if (this.btnAuto) this.btnAuto.classList.toggle('t360-btn-on', !!ligado);
+  };
+
+  // Chamado quando o visitante assume a camera (arrastar, zoom, teclado, giroscopio):
+  // para o giro SEM apagar a preferencia, para que a proxima cena volte a girar.
+  Viewer.prototype.assumiuCamera = function () {
+    this.definirGiro(false);
+  };
+
   Viewer.prototype.zoom = function (delta) {
+    this.assumiuCamera();
     this.fov = Math.max(FOV_MIN, Math.min(FOV_MAX, this.fov + delta));
   };
 
@@ -672,6 +688,7 @@
 
     function iniciar(e) {
       if (self.cinema) self.pararCinema();   // o visitante assumiu a camera
+      self.assumiuCamera();
       // Ver video360.js: sem o try/catch uma excecao aqui aborta o handler antes de
       // registrar o ponteiro e o arrasto para de funcionar sem erro visivel.
       try { c.setPointerCapture && c.setPointerCapture(e.pointerId); } catch (err) {}
@@ -736,7 +753,7 @@
       else if (e.key === '+' || e.key === '=') self.zoom(-5);
       else if (e.key === '-' || e.key === '_') self.zoom(5);
       else tratou = false;
-      if (tratou) { e.preventDefault(); if (self.cinema) self.pararCinema(); self.interagiu(); }
+      if (tratou) { e.preventDefault(); if (self.cinema) self.pararCinema(); self.assumiuCamera(); self.interagiu(); }
     });
 
     // Pausa o loop quando o visualizador sai da tela (economiza bateria no celular).
@@ -778,8 +795,7 @@
       };
       window.addEventListener('deviceorientation', self._onGyro);
       self.gyro = true;
-      self.autoRotate = false;
-      if (self.btnAuto) self.btnAuto.classList.remove('t360-btn-on');
+      self.definirGiro(false);
       botao.classList.add('t360-btn-on');
     };
     // iOS 13+ exige pedir permissão dentro de um gesto do usuário (este clique).
@@ -838,8 +854,7 @@
     var rota = this.rotaCinema(this.cenaAtual && this.cenaAtual.id);
     if (!rota.length) return;
     this.cinema = { rota: rota, i: 0, t: 0, dur: 6.5 };
-    this.autoRotate = false; this.velYaw = 0; this.velPitch = 0;
-    if (this.btnAuto) this.btnAuto.classList.remove('t360-btn-on');
+    this.definirGiro(false); this.velYaw = 0; this.velPitch = 0;
     if (this.dica) this.dica.hidden = true;
     this.raiz.classList.add('t360-modo-cinema');
     if (botao) botao.classList.add('t360-btn-on');
