@@ -209,7 +209,14 @@ Commit + push → o Render publica sozinho.
 
 - **Peso**: cada cena fica em torno de 1,5 MB somando as 3 resoluções. O visualizador
   escolhe a resolução pelo aparelho e carrega a de 1024 primeiro, então o visitante
-  vê a cena na hora. Acima de ~40 cenas, avaliar hospedar as fotos fora do repositório.
+  vê a cena na hora. **Já passamos do limite**: 142 MB de panoramas + 52 MB de vídeo num
+  repositório público. Mover para o R2 está registrado como pendência em
+  `dados	i	our-virtual-360.md`.
+  ⚠️ **Ao mover, o que quebra é CORS**: panorama e vídeo viram textura WebGL (`texImage2D`), e
+  fonte de outra origem sem `Access-Control-Allow-Origin` lança `SecurityError` — o tour para
+  inteiro. O `video360.js` já define `crossOrigin`; o `visualizador.js` **não** (hoje é
+  inofensivo porque é mesma origem). Precisa dos dois lados: atributo no cliente e cabeçalho no
+  bucket. Testar com UMA cena antes de mover as 104.
 - **Privacidade**: panorama pega a casa inteira. Antes de converter, confira se não
   há documento, tela de computador, chave, rosto de hóspede ou de funcionário no quadro.
 - **Repositório público**: `villela-stay-backend` é público. O que entra em
