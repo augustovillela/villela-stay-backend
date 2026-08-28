@@ -122,6 +122,19 @@ botões; e o voltar embaixo) ou de `.t360-rodape` (casas sobre a tira). Duas vez
 já fez uma peça cobrir outra — e nenhuma das duas apareceu em teste de comportamento, só ao
 **medir posição** em 375 px e 1280 px.
 
+### Giro automático
+
+Toda cena aberta começa girando sozinha, devagar (~2°/s) — não só a de abertura. Para no momento
+em que o visitante **assume a câmera**: arrastar, zoom (scroll, `+`/`−`, teclado), setas do
+teclado ou giroscópio. Trocar de cena não é assumir a câmera, então o giro volta.
+
+O estado é deliberadamente **duplo**: `girarPreferido` é a escolha do visitante no botão ⟳ e
+`autoRotate` é o estado agora. Sem essa separação, religar o giro a cada cena atropelaria quem
+desligou de propósito. Se for mexer aqui, mexa em `definirGiro()` / `assumiuCamera()` — nunca
+em `autoRotate` direto, senão o botão fica dizendo uma coisa e o comportamento fazendo outra.
+
+`interagiu()` **não** desliga o giro; só esconde a dica "arraste para olhar em volta".
+
 ### Modo cinema (passeio automático)
 
 Botão ▶ na barra. A câmera passeia sozinha pela casa: em cada ambiente varre ~84° abrindo o
