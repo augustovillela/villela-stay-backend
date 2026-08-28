@@ -4988,6 +4988,52 @@ try {
           })),
         };
       },
+      // Fonte gratuita e sem chave (open-meteo). Tempo e FATO DE HOJE:
+      // o modelo nao sabe, entao ou vem daqui ou a Eva diz que nao sabe.
+      'tempo.previsao': async ({ cidade, dias } = {}) => {
+        const CASA = { nome: 'Brasília', lat: -15.83, lon: -47.87 };
+        let lugar = CASA;
+        const pedida = String(cidade || '').trim();
+        if (pedida && !/bras[ií]lia|lago sul/i.test(pedida)) {
+          const g = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&language=pt&format=json&name='
+            + encodeURIComponent(pedida)).then((r) => r.json()).catch(() => null);
+          const achado = g && g.results && g.results[0];
+          if (!achado) throw Object.assign(new Error(`Não encontrei a cidade "${pedida}".`), { status: 400 });
+          lugar = { nome: achado.name + (achado.admin1 ? `, ${achado.admin1}` : ''), lat: achado.latitude, lon: achado.longitude };
+        }
+        const n = Math.min(Math.max(1, parseInt(dias, 10) || 3), 7);
+        const u = 'https://api.open-meteo.com/v1/forecast'
+          + `?latitude=${lugar.lat}&longitude=${lugar.lon}`
+          + '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m'
+          + '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code'
+          + `&timezone=America%2FSao_Paulo&forecast_days=${n}`;
+        const d = await fetch(u).then((r) => r.json()).catch(() => null);
+        if (!d || !d.current) throw Object.assign(new Error('Não consegui ler a previsão agora.'), { status: 502 });
+        // Codigo WMO -> palavra. Numero cru nao se fala em voz alta.
+        const CEU = {
+          0: 'céu limpo', 1: 'quase limpo', 2: 'parcialmente nublado', 3: 'nublado',
+          45: 'nevoeiro', 48: 'nevoeiro', 51: 'garoa fraca', 53: 'garoa', 55: 'garoa forte',
+          61: 'chuva fraca', 63: 'chuva', 65: 'chuva forte', 80: 'pancadas de chuva',
+          81: 'pancadas de chuva', 82: 'pancadas fortes', 95: 'tempestade', 96: 'tempestade com granizo',
+        };
+        const ceu = (c) => CEU[c] || 'tempo variável';
+        return {
+          lugar: lugar.nome,
+          agora: {
+            temperatura: Math.round(d.current.temperature_2m),
+            umidade: d.current.relative_humidity_2m,
+            vento: Math.round(d.current.wind_speed_10m),
+            ceu: ceu(d.current.weather_code),
+          },
+          proximosDias: (d.daily.time || []).map((dia, i) => ({
+            dia,
+            minima: Math.round(d.daily.temperature_2m_min[i]),
+            maxima: Math.round(d.daily.temperature_2m_max[i]),
+            chanceDeChuva: d.daily.precipitation_probability_max[i],
+            ceu: ceu(d.daily.weather_code[i]),
+          })),
+        };
+      },
       'listas.ver': async ({ tipo } = {}) => {
         const arq = LISTA_ARQ[tipo];
         if (!arq) throw Object.assign(new Error('Lista inválida (compras, manutencao ou pendencias).'), { status: 400 });

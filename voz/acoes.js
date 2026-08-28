@@ -86,6 +86,23 @@ const CATALOGO = {
     exige: [],
     resumo: () => 'Status dos últimos pedidos',
   },
+  // ⚠️ Tempo precisa de FERRAMENTA, e isso nao e obvio: parece
+  // conhecimento geral, mas e FATO DE HOJE — nenhum modelo sabe a
+  // temperatura de agora. Sem esta acao, a Eva so podia recusar (o que
+  // estava certo) ou inventar (o que seria pior).
+  //
+  // Util no negocio de verdade: hospede pergunta, piscina, limpeza,
+  // evento ao ar livre.
+  'tempo.previsao': {
+    nivel: NIVEIS.LEITURA,
+    descricao: 'Tempo agora e previsão dos próximos dias. Sem cidade, é onde ficam as casas.',
+    parametros: {
+      cidade: 'cidade, se a pessoa disser uma; ausente = a cidade das casas',
+      dias: 'quantos dias de previsão; ausente = 3',
+    },
+    exige: [],
+    resumo: (p) => `Tempo em ${p.cidade || 'Brasília'}`,
+  },
   'listas.ver': {
     nivel: NIVEIS.LEITURA,
     descricao: 'Mostra o que está na lista de compras ou na lista de pendências.',

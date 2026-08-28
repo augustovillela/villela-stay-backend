@@ -749,6 +749,25 @@ const unico = (s) => `${s} ${++n}`;
     assert.ok(/EVA/.test(realtime.instrucoes()), 'a persona precisa se apresentar como Eva');
   });
 
+  await t('a Eva PODE conversar — mas a fronteira do negócio é dura', () => {
+    // Um assistente que nao sabe traduzir "toalha" parece quebrado. Mas
+    // soltar a redea sem fronteira faz o modelo responder "quantas casas
+    // voce tem?" de cabeca — e inventar numero e o pior erro possivel.
+    const i = realtime.instrucoes();
+    assert.ok(/PODE CONVERSAR/i.test(i), 'falta permitir conhecimento geral');
+    assert.ok(/ESTE NEGÓCIO/.test(i) && /SEMPRE de ferramenta/.test(i),
+      'falta a fronteira: dado do negócio vem sempre de ferramenta');
+    assert.ok(/FATO DE HOJE/.test(i),
+      'falta dizer que fato de hoje (tempo, câmbio) ele também NÃO sabe');
+  });
+
+  await t('tempo é LEITURA e tem ferramenta — não é conhecimento geral', () => {
+    // Parece conhecimento geral e nao e: nenhum modelo sabe a
+    // temperatura de agora. Sem ferramenta, so restaria inventar.
+    assert.equal(acoes.nivelDe('tempo.previsao'), 1);
+    assert.equal(acoes.faltando('tempo.previsao', {}).length, 0, 'sem cidade deve usar a padrão');
+  });
+
   await t('as instruções listam o catálogo REAL, não uma lista paralela', () => {
     // Lista paralela é a que ninguém lembra de atualizar.
     const i = realtime.instrucoes();
