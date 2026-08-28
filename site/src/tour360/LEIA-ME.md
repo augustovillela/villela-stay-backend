@@ -145,10 +145,20 @@ mesma convenção de ângulos do visualizador de fotos, com a textura vindo de u
 Para acrescentar: ponha o `.mp4` **equirretangular 2:1** em `src/videos/` e declare em `build.js`:
 
 ```js
-const VIDEOS360 = { GD01H: 'casa-modernista-360.mp4' };
+const VIDEOS360 = {
+  GD01H: { arquivo: 'casa-modernista-360.mp4', duracaoISO: 'PT3M28S', publicado: '2026-08-27', cartaz: 'modernista-fachada-2' }
+};
 ```
 
-A seção sai sozinha na página daquele anúncio, com o script já versionado por hash.
+Com isso o vídeo aparece em **dois lugares**, sem mais nada a fazer: na página daquele anúncio e
+dentro do grupo da casa em `/tour.html`, entre o título e a lista de ambientes — é outra forma de
+ver a mesma casa, então fica junto e não numa seção separada. O markup sai do helper `blocoV360()`,
+para os textos traduzidos viverem num lugar só, e o `VideoObject` do JSON-LD sai dos campos
+`duracaoISO`/`publicado`/`cartaz` — sem ele o Google não sabe que a página tem vídeo.
+
+Custo para quem abre `/tour.html` e não dá play: `preload="metadata"`, sem autoplay — o elemento
+reporta ~1% bufferizado (uns 240 KB), não os 21 MB. **Para medir isso use `video.buffered`**: o
+Resource Timing não registra requisição de mídia em todo navegador e devolve zero, o que engana.
 
 **Nunca sirva um vídeo 360 numa tag `<video>` comum** — o quadro é equirretangular e sai esticado,
 sem navegação. É por isso que existe o player.
