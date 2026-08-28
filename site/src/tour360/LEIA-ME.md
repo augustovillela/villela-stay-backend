@@ -195,6 +195,33 @@ isso, quem já visitou continua rodando a versão antiga depois do deploy. Acont
 a anticolisão e custou uma investigação inteira até perceber que o código no ar estava certo e o
 navegador é que estava velho.
 
+### Tour do Marzipano (embutido, separado deste)
+
+Além do nosso visualizador, `/tour.html` traz um **segundo tour**, autoral, feito no
+[marzipano.net](https://www.marzipano.net/tool/) — 48 cenas das casas modulares, seção
+"Tour virtual 360° da Villela Stay", dentro de um `<iframe>`. É um app independente: não
+lê `cenas.json`, não tem portal e não compartilha código com o `visualizador.js`.
+
+- **Casca** em `src/tour-marzipano/` (~370 KB): `index.html`, `index.js`, `style.css`,
+  `data.js`, `vendor/`, `img/`. O `build.js` copia a pasta inteira para `dist/tour-marzipano/`.
+- **As tiles NÃO entram no repositório.** São 6.096 arquivos e 202 MB — mais que todos os
+  panoramas juntos. Ficam no bucket R2 **`villela-tour360`**, servidas por
+  `https://pub-5fbd5872257f4db8b51f6a455b15bf3b.r2.dev/tiles`. O endereço está numa linha só,
+  em `window.MARZIPANO_TILES` no `<head>` do `index.html`; o `index.js` lê dali.
+- **O CORS já está resolvido aqui** — e prova que o caminho do R2 funciona. O
+  `vendor/marzipano.js` marca **toda** tile com `crossOrigin="anonymous"`, então sem o
+  cabeçalho do bucket a textura falharia. A política do bucket libera
+  `https://villelastay.com.br` e `https://www.villelastay.com.br` (GET/HEAD). Verificado com o
+  teste que importa: `texImage2D` com a tile do R2 sem `SecurityError`, `gl.getError()` = 0 e
+  canvas não contaminado.
+- **Para testar em `localhost`** é preciso acrescentar a origem à política do bucket — e
+  **tirar depois**. Pela API v4 do Cloudflare
+  (`PUT /accounts/{id}/r2/buckets/villela-tour360/cors`), com o token de `stays\config-r2.ps1`.
+- **Para refazer o tour no Marzipano**: exporte de novo, substitua a casca, suba as tiles novas
+  para o bucket (prefixo `tiles/`) e confira que os ids das cenas continuam batendo.
+- O Service Worker **ignora outra origem** (`sw.js`, linha do `url.origin !== self.location.origin`),
+  então as tiles do R2 não passam pelo cache do PWA — é o comportamento desejado.
+
 ## 3. Publicar
 
 ```bash

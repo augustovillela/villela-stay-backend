@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<title>Tour virtual 360° da Villela Stay</title>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<!-- Esta página é embutida num <iframe> em /tour.html. Ver src/tour360/LEIA-ME.md. -->
+<script>window.MARZIPANO_TILES = "https://pub-5fbd5872257f4db8b51f6a455b15bf3b.r2.dev/tiles";</script>
+<meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui" />
+<style> @-ms-viewport { width: device-width; } </style>
+<link rel="stylesheet" href="vendor/reset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="multiple-scenes view-control-buttons">
+
+<div id="pano"></div>
+
+<div id="sceneList">
+  <ul class="scenes">
+    
+      <a href="javascript:void(0)" class="scene" data-id="0-rea-externa-da-piscina">
+        <li class="text">área externa da piscina</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="1-banheiro-da-sala">
+        <li class="text">banheiro da sala</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="2-sala-casa-villela">
+        <li class="text">sala casa villela</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="3-sute-do-athos-bulco">
+        <li class="text">suíte do athos bulcão</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="4-sala-casa-villela-2">
+        <li class="text">sala casa villela 2</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="5-varanda-casa-villela">
+        <li class="text">varanda casa villela</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="6-viso-lateral-da-casa-villela-esquerda">
+        <li class="text">visão lateral da casa villela esquerda</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="7-rea-externa-da-churrasqueira">
+        <li class="text">área externa da churrasqueira</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="8-rea-verde-do-fundo-do-terreno">
+        <li class="text">área verde do fundo do terreno</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="9-rea-verde-do-fundo-do-terreno-2">
+        <li class="text">área verde do fundo do terreno 2</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="10-rea-verde-do-fundo-do-terreno-fireplace">
+        <li class="text">área verde do fundo do terreno fireplace</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="11-rea-verde-do-fundo-do-terreno-direita">
+        <li class="text">área verde do fundo do terreno direita</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="12-rea-verde-do-fundo-do-terreno-campo-de-futebol">
+        <li class="text">área verde do fundo do terreno campo de futebol</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="13-rea-verde-do-fundo-do-terreno-campo-de-futebol-2">
+        <li class="text">área verde do fundo do terreno campo de futebol 2</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="14-entrada-da-villa-kubitschek">
+        <li class="text">entrada da villa kubitschek</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="15-passarela-villa-catetinho-esquerda">
+        <li class="text">passarela villa catetinho esquerda</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="16-vista-campo-e-casa-villela-da-villa-catetinho">
+        <li class="text">vista campo e casa villela da Villa catetinho</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="17-vista-casa-villela-da-villa-catetinho">
+        <li class="text">vista casa villela da Villa catetinho</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="18-passarela-villa-catetinho-direita">
+        <li class="text">passarela villa catetinho direita</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="19-vista-do-roof-top-esquerda">
+        <li class="text">vista do roof top esquerda</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="20-vista-do-roof-top-direita">
+        <li class="text">vista do roof top direita</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="21-vista-do-roof-top-esquerda-2">
+        <li class="text">vista do roof top esquerda 2</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="22-entrada-villa-kubitschek-estacionamento">
+        <li class="text">entrada villa kubitschek estacionamento</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="23-ptio-entrada-villa-kubitschek">
+        <li class="text">pátio entrada villa kubitschek</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="24-banheiro-externo-villa-kubitschek">
+        <li class="text">banheiro externo villa kubitschek</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="25-banheiro-externo-villa-kubitschek-2">
+        <li class="text">banheiro externo villa kubitschek 2</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="26-banheiro-renato-russo">
+        <li class="text">banheiro renato russo</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="27-sute-do-renato-russo">
+        <li class="text">suíte do renato russo</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="28-sala-renato-russo">
+        <li class="text">sala renato russo</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="29-banheiro-do-chef">
+        <li class="text">banheiro do chef</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="30-sute-do-chef">
+        <li class="text">suíte do chef</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="31-sala-sute-do-chef">
+        <li class="text">sala suíte do chef</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="32-espao-coberto-da-villa-kubitschek">
+        <li class="text">espaço coberto da villa kubitschek</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="33-banheiro-dos-solteiros">
+        <li class="text">banheiro dos solteiros</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="34-flat-dos-solteiros">
+        <li class="text">flat dos solteiros</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="35-sala-flat-dos-solteiros">
+        <li class="text">sala flat dos solteiros</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="36-banheiro-sute-do-amor">
+        <li class="text">banheiro suíte do amor</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="37-sute-do-amor">
+        <li class="text">suíte do amor</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="38-ptio-villa-kubitschek-2">
+        <li class="text">pátio villa kubitschek 2</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="39-ptio-villa-kubitschek-3">
+        <li class="text">pátio villa kubitschek 3</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="40-ptio-villa-kubitschek-4">
+        <li class="text">pátio villa kubitschek 4</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="41-flat-da-cassia-eller">
+        <li class="text">flat da cassia eller</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="42-flat-da-cassia-eller2">
+        <li class="text">flat da cassia eller2</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="43-vista-da-casa-villela-da-passarela-banheiros">
+        <li class="text">vista da casa villela da passarela banheiros</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="44-banheiro-feminino">
+        <li class="text">banheiro feminino</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="45-flat-do-burle-marx">
+        <li class="text">flat do burle marx</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="46-ptio-villa-kubitschek-5">
+        <li class="text">pátio villa kubitschek 5</li>
+      </a>
+    
+      <a href="javascript:void(0)" class="scene" data-id="47-flat-do-oscar">
+        <li class="text">flat do oscar</li>
+      </a>
+    
+  </ul>
+</div>
+
+<div id="titleBar">
+  <h1 class="sceneName"></h1>
+</div>
+
+<a href="javascript:void(0)" id="autorotateToggle">
+  <img class="icon off" src="img/play.png">
+  <img class="icon on" src="img/pause.png">
+</a>
+
+<a href="javascript:void(0)" id="fullscreenToggle">
+  <img class="icon off" src="img/fullscreen.png">
+  <img class="icon on" src="img/windowed.png">
+</a>
+
+<a href="javascript:void(0)" id="sceneListToggle">
+  <img class="icon off" src="img/expand.png">
+  <img class="icon on" src="img/collapse.png">
+</a>
+
+<a href="javascript:void(0)" id="viewUp" class="viewControlButton viewControlButton-1">
+  <img class="icon" src="img/up.png">
+</a>
+<a href="javascript:void(0)" id="viewDown" class="viewControlButton viewControlButton-2">
+  <img class="icon" src="img/down.png">
+</a>
+<a href="javascript:void(0)" id="viewLeft" class="viewControlButton viewControlButton-3">
+  <img class="icon" src="img/left.png">
+</a>
+<a href="javascript:void(0)" id="viewRight" class="viewControlButton viewControlButton-4">
+  <img class="icon" src="img/right.png">
+</a>
+<a href="javascript:void(0)" id="viewIn" class="viewControlButton viewControlButton-5">
+  <img class="icon" src="img/plus.png">
+</a>
+<a href="javascript:void(0)" id="viewOut" class="viewControlButton viewControlButton-6">
+  <img class="icon" src="img/minus.png">
+</a>
+
+<script src="vendor/screenfull.min.js" ></script>
+<script src="vendor/bowser.min.js" ></script>
+<script src="vendor/marzipano.js" ></script>
+
+<script src="data.js"></script>
+<script src="index.js"></script>
+
+</body>
+</html>

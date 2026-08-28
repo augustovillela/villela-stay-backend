@@ -520,6 +520,18 @@ if (TEM_TOUR) {
   console.log(`[tour360] ${TOUR_CENAS.length} cena(s), ${copiados} arquivo(s) de imagem.`);
 }
 
+// ----------------------------------------------------- tour do Marzipano (iframe)
+// Tour autoral feito no marzipano.net (48 cenas das casas modulares), embutido em
+// /tour.html. Só a CASCA do app mora aqui (~370 KB); as 6.096 tiles (202 MB) ficam no
+// bucket R2 `villela-tour360` — ver src/tour-marzipano/index.html. Opcional: sem a
+// pasta, a página sai exatamente como antes.
+const MARZIPANO_DIR = path.join(__dirname, 'src', 'tour-marzipano');
+const TEM_MARZIPANO = fs.existsSync(path.join(MARZIPANO_DIR, 'index.html'));
+if (TEM_MARZIPANO) {
+  fs.cpSync(MARZIPANO_DIR, path.join(DIST, 'tour-marzipano'), { recursive: true });
+  console.log('[tour360] tour do Marzipano copiado (tiles no R2).');
+}
+
 // Título/legendas da cena no idioma corrente (fallback para PT, como no resto do site).
 const tituloCena = c => (LANG === 'en' && c.tituloEn) ? c.tituloEn : ((LANG === 'es' && c.tituloEs) ? c.tituloEs : (c.titulo || c.id));
 const textoHotspot = h => (LANG === 'en' && h.textoEn) ? h.textoEn : ((LANG === 'es' && h.textoEs) ? h.textoEs : (h.texto || ''));
@@ -1492,6 +1504,18 @@ if (TEM_TOUR) {
   <noscript><p class="tour-noscript">${t('O tour interativo precisa de JavaScript. Abaixo estão todos os ambientes fotografados.',
     'The interactive tour needs JavaScript. All photographed spaces are listed below.',
     'El tour interactivo necesita JavaScript. Abajo están todos los ambientes fotografiados.')}</p></noscript>
+
+  ${TEM_MARZIPANO ? `<section class="tour-marzipano">
+    <h2>${t('Tour virtual 360° da Villela Stay', '360° virtual tour of Villela Stay', 'Tour virtual 360° de Villela Stay')}</h2>
+    <p>${t('Um percurso à parte, com 48 ambientes das casas modulares: escolha o ambiente na lista e arraste para olhar em volta.',
+      'A separate walkthrough, with 48 spaces of the modular houses: pick a space from the list and drag to look around.',
+      'Un recorrido aparte, con 48 ambientes de las casas modulares: elige el ambiente en la lista y arrastra para mirar alrededor.')}</p>
+    <div class="tour-marzipano-moldura">
+      <iframe src="/tour-marzipano/index.html" loading="lazy" allowfullscreen
+        title="${esc(t('Tour virtual 360° da Villela Stay', '360° virtual tour of Villela Stay', 'Tour virtual 360° de Villela Stay'))}"></iframe>
+    </div>
+    <p class="tour-marzipano-abrir"><a href="/tour-marzipano/index.html" target="_blank" rel="noopener">${t('Abrir em tela inteira →', 'Open full screen →', 'Abrir en pantalla completa →')}</a></p>
+  </section>` : ''}
 
   <div class="tour-grupos">${listaCenas}</div>
 
