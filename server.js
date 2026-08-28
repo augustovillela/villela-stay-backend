@@ -4937,6 +4937,30 @@ try {
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : undefined,
     destino: AUGUSTO_WA,
     baseUrl: process.env.VOZ_BASE_URL || AREA_HOSPEDE_URL.replace(/\/hospede\/?$/, ''),
+    // O que o cérebro SABE do negócio: os imóveis vivos da Stays, com os
+    // nomes pelos quais o Augusto os chama. É CONHECIMENTO para entender
+    // a fala ("a Gran", "Kubitschek") — nunca regra de execução: quem
+    // decide se pode reservar continua sendo o calendário do imóvel
+    // pedido (decisão de 26/08/2026, comentário acima).
+    contextoDeNegocio: async () => {
+      const listings = (await staysPaginado('/content/listings', {})).filter((l) => l.status === 'active');
+      const linhas = listings.map((l) => {
+        const interno = l.internalName || '';
+        const titulo = (l._mstitle && l._mstitle.pt_BR) || '';
+        const nomes = [...new Set([interno, titulo].filter(Boolean))].join(' · ');
+        return `- ${l.id}: ${nomes || l.id}`;
+      });
+      return [
+        'Imóveis ativos (código: nomes pelos quais o dono os chama). No parâmetro `imovel`,',
+        'devolva o NOME como está aqui — a transcrição erra ("Vila" por "Villa", "Gran Vilela"):',
+        ...linhas,
+        '',
+        'A Gran Villela Stay (GD03H) é o espaço das casas 2 e 3 juntas — contém a Villa',
+        'Kubitschek (GG04I) e a Villa Catetinho (PL02I). YV01I e GI01I são o mesmo imóvel',
+        'físico (casa 4). Isto serve para entender o que foi dito, não para decidir',
+        'disponibilidade.',
+      ].join('\n');
+    },
     ferramentas: {
       // ---- nível 1: leitura ----
       'agenda.dia': async ({ data } = {}) => {

@@ -231,6 +231,25 @@ const unico = (s) => `${s} ${++n}`;
     assert.ok(/Quero fazer uma reserva/.test(prompt), 'o exemplo concreto ajuda mais que a regra');
   });
 
+  await t('contexto de negócio entra no prompt quando existe — e some quando não', () => {
+    // Sem contexto o modelo nao sabe que imoveis existem e "Vila" acertar
+    // "Villa" e sorte. Mas contexto e CONHECIMENTO, nunca trava: o teste
+    // confere que ele aparece como "o que voce sabe", nao como regra.
+    const c = require('./cerebro');
+    c.definirContexto('');
+    assert.equal(c.temContexto(), false);
+    assert.ok(!/O QUE VOCÊ SABE DESTE NEGÓCIO/.test(c.sistema()),
+      'sem contexto o bloco não pode aparecer — senão o modelo lê um vazio como fato');
+    c.definirContexto('- GG04I: Villa Kubitschek — Lago Sul');
+    assert.equal(c.temContexto(), true);
+    const p = c.sistema();
+    assert.ok(/O QUE VOCÊ SABE DESTE NEGÓCIO/.test(p));
+    assert.ok(/Villa Kubitschek/.test(p), 'o texto injetado tem que chegar inteiro ao prompt');
+    assert.ok(p.indexOf('Villa Kubitschek') < p.indexOf('REGRAS:'),
+      'conhecimento vem ANTES das regras — é dado, não instrução de execução');
+    c.definirContexto('');
+  });
+
   await t('reserva.criar exige TODOS os dados — não reserva para 1 pessoa por omissão', () => {
     // Quantidade de hospedes muda o preco. Assumir 1 em silencio seria
     // reservar errado com cara de acerto.

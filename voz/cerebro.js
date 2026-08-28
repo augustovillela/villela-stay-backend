@@ -48,6 +48,27 @@ function cliente() {
 const disponivel = () => !!cliente();
 
 // ---------------------------------------------------------------------
+// CONTEXTO DE NEGÓCIO — o que o interpretador SABE, não o que ele VERIFICA.
+//
+// Sem isto o modelo recebe só a lista de ações e nenhuma noção do
+// negócio: não sabe que imóveis existem, nem os códigos, nem os apelidos.
+// "Vila Kubitschek" acertar "Villa Kubitschek" vira sorte, e "a Gran"
+// não significa nada.
+//
+// ⚠️ É CONHECIMENTO, NUNCA REGRA DE EXECUÇÃO. Saber que um espaço contém
+// outros ajuda a entender o que foi dito; quem decide se pode reservar
+// continua sendo a fonte (decisão de 26/08/2026 — ver server.js). Um
+// prompt não é lugar de trava: o modelo pode ignorá-lo.
+//
+// Vem de fora por injeção (`contextoDeNegocio`), e o módulo de voz
+// continua sem conhecer o negócio. Fica em cache: `sistema()` é síncrono
+// e não pode esperar rede a cada frase.
+// ---------------------------------------------------------------------
+let _contexto = '';
+const definirContexto = (texto) => { _contexto = String(texto || '').trim(); return _contexto.length; };
+const temContexto = () => !!_contexto;
+
+// ---------------------------------------------------------------------
 // Prompt de sistema — estável entre chamadas, logo cacheável.
 // ---------------------------------------------------------------------
 function sistema() {
@@ -76,6 +97,9 @@ function sistema() {
     '',
     'CATÁLOGO:',
     catalogo,
+    ...(_contexto
+      ? ['', 'O QUE VOCÊ SABE DESTE NEGÓCIO (dados vivos — não invente nada além disto):', _contexto]
+      : []),
     '',
     'REGRAS:',
     '1. Se você não souber QUAL ação é, devolva acao = "" e explique em `motivo`. NUNCA escolha a',
@@ -319,5 +343,6 @@ function falaCrua(dados) {
 // rede. Foi a falta disso que deixou um 400 passar para producao.
 module.exports = {
   disponivel, interpretar, narrar, semLLM, limparParametros, sistema,
+  definirContexto, temContexto,
   ORCAMENTO_MS, MODELO, SCHEMA_INTERPRETACAO, SCHEMA_FALA,
 };

@@ -71,6 +71,7 @@ function montar(app, injected = {}) {
     enviarWhatsApp, alertaAugusto, destino, baseUrl,
     transcrever, autorizados, ferramentas = {},
     resolverDestino,
+    contextoDeNegocio,
   } = injected;
 
   if (!express || !requireAuth || !requireAdmin || !requirePublishOrAdmin) {
@@ -94,6 +95,19 @@ function montar(app, injected = {}) {
   });
 
   require('./paginas').configurar({ resolverDestino });
+  // Contexto de negócio: carrega uma vez e reatualiza de tempos em
+  // tempos. Falha NÃO impede o módulo de subir — sem contexto a Eva fica
+  // pior, não quebrada.
+  if (typeof contextoDeNegocio === 'function') {
+    const carregar = () => Promise.resolve()
+      .then(contextoDeNegocio)
+      .then((t) => { const n = cerebro.definirContexto(t); console.log(`[voz] contexto de negocio: ${n} caracteres`); })
+      .catch((e) => console.error('[voz] contexto de negocio falhou:', e.message));
+    carregar();
+    const tCtx = setInterval(carregar, Number(process.env.VOZ_CONTEXTO_MIN || 360) * 60000);
+    if (tCtx.unref) tCtx.unref();
+  }
+
   const registradas = executor.registrarTodas(ferramentas);
   servico.registrarHandlers();
   registrarRotas(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
