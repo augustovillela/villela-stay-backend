@@ -2427,6 +2427,27 @@ testeAsync('F6 preapproval: o webhook mexe na assinatura DA REFERÊNCIA, não na
   });
 });
 
+teste('F7: a data-fato é a do fuso da casa, não a do servidor', () => {
+  // Das 21h à meia-noite de Brasília, UTC já está no dia seguinte. Na virada
+  // do mês isso jogava o lançamento na competência errada.
+  const db2 = require('./db');
+  const real = Date;
+  try {
+    // 31/01/2026, 23h30 em Brasília = 01/02/2026 02h30 em UTC
+    const congelado = new real('2026-02-01T02:30:00.000Z');
+    global.Date = class extends real {
+      constructor(...a) { return a.length ? new real(...a) : congelado; }
+      static now() { return congelado.getTime(); }
+    };
+    assert.strictEqual(new Date().toISOString().slice(0, 10), '2026-02-01', 'premissa: em UTC já é fevereiro');
+    assert.strictEqual(db2.hojeEm('America/Sao_Paulo'), '2026-01-31', 'a data da casa ainda é 31/01');
+    assert.strictEqual(db2.competenciaEm('America/Sao_Paulo'), '2026-01', 'a competência ainda é janeiro');
+    assert.strictEqual(db2.hojeISO(), '2026-01-31', 'hojeISO tem de seguir o fuso da casa');
+    // e o carimbo de tempo continua sendo instante, em UTC
+    assert.ok(/Z$/.test(db2.nowISO()), 'nowISO é instante: continua UTC');
+  } finally { global.Date = real; }
+});
+
 teste('F5: fatura com a mesma referência externa não entra duas vezes', () => {
   // A idempotência era só de código (consulta antes de inserir). Num processo
   // só isso basta — registrarPagamento é síncrona de ponta a ponta. O índice

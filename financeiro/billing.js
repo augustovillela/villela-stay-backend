@@ -22,7 +22,7 @@
 //      auditar precisa ver quem, quando e por quê.
 // =====================================================================
 'use strict';
-const { nowISO } = require('./db');
+const { nowISO, hojeISO, competenciaEm } = require('./db');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const webhookMP = require('../nucleo/webhook-mp');
@@ -59,7 +59,7 @@ async function mp(caminho, opts) {
   return _mpFetch(caminho, opts);
 }
 
-const competenciaDeHoje = () => new Date().toISOString().slice(0, 7);
+const competenciaDeHoje = () => competenciaEm();   // fuso da casa, não do servidor
 
 // ------------------------------------------------------------- leitura
 
@@ -344,7 +344,7 @@ function gerarFatura(tenantId, { status = 'aberta', externoRef = '', competencia
     competencia: competencia || competenciaDeHoje(),
     valorCents: plano ? plano.preco_cents : 0,
     status,
-    vencimento: vencimento || new Date().toISOString().slice(0, 10),
+    vencimento: vencimento || hojeISO(),
     pagoEm: status === 'paga' ? nowISO() : '',
     externoRef,
   });
@@ -364,7 +364,7 @@ function marcarPago(tenantId, { competencia = '', valorCents = null, motivo = ''
   const fatura = repo.criarInvoice({
     competencia: competencia || competenciaDeHoje(),
     valorCents: valorCents == null ? (plano ? plano.preco_cents : 0) : dinheiro.naoNegativo(Number(valorCents), 'valor'),
-    status: 'paga', vencimento: new Date().toISOString().slice(0, 10), pagoEm: nowISO(),
+    status: 'paga', vencimento: hojeISO(), pagoEm: nowISO(),
   });
   const sub = repo.assinaturaVigente();
   if (sub) repo.atualizarAssinatura(sub.id, { status: 'ativa' });

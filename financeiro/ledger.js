@@ -14,7 +14,7 @@
 //   • comando externo com chave de idempotência nunca gera dois lotes.
 // =====================================================================
 'use strict';
-const { transacao, novoId, competenciaDe } = require('./db');
+const { transacao, novoId, competenciaDe, hojeISO } = require('./db');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
 const dinheiro = require('./dinheiro');
@@ -174,7 +174,7 @@ function estornar(loteId, { motivo, data } = {}) {
   if (original.status !== 'contabilizado') throw new ErroContabil('Só se estorna lote contabilizado.');
 
   const linhas = repo.linhasDoLote(loteId);
-  const dataEstorno = data && RE_DATA.test(data) ? data : new Date().toISOString().slice(0, 10);
+  const dataEstorno = data && RE_DATA.test(data) ? data : hojeISO();
 
   const espelho = linhas.map(l => ({
     contaId: l.conta_id,

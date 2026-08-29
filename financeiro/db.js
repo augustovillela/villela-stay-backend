@@ -183,7 +183,16 @@ const TABELAS_CATALOGO = new Set(['plans', 'migrations']);
 const TABELAS_MISTAS = new Set(['audit_logs', 'fin_eventos']);
 
 const nowISO = () => new Date().toISOString();
-const hojeISO = () => new Date().toISOString().slice(0, 10);
+// A data-FATO (competência, data do lançamento, vencimento) é a do fuso de
+// quem lança, não a do servidor. Com UTC, das 21h à meia-noite de Brasília o
+// sistema já estava no dia seguinte — e na virada do mês, na competência
+// seguinte. `nowISO` continua UTC de propósito: carimbo de tempo é instante,
+// não é dia.
+const FUSO_PADRAO = process.env.FINANCE_TZ || 'America/Sao_Paulo';
+// en-CA dá YYYY-MM-DD, que é o formato que o banco guarda.
+const hojeEm = (tz) => new Date().toLocaleDateString('en-CA', { timeZone: tz || FUSO_PADRAO });
+const competenciaEm = (tz) => hojeEm(tz).slice(0, 7);
+const hojeISO = () => hojeEm(FUSO_PADRAO);
 const novoId = () => crypto.randomBytes(9).toString('base64url');
 const competenciaDe = (data) => String(data || '').slice(0, 7);
 
@@ -203,7 +212,7 @@ const j = {
 };
 
 module.exports = {
-  db, transacao, emTransacao, nowISO, hojeISO, novoId, competenciaDe, j,
+  db, transacao, emTransacao, nowISO, hojeEm, competenciaEm, FUSO_PADRAO, hojeISO, novoId, competenciaDe, j,
   DATA_DIR, SAAS_DIR, DB_PATH,
   colunas, temColuna, TABELAS_TENANT, TABELAS_CATALOGO, TABELAS_MISTAS,
 };
