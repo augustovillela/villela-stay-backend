@@ -169,11 +169,35 @@ async function saude() {
   return { ok: true, banco: r.banco, schema: r.schema, ms: Date.now() - t0 };
 }
 
+/**
+ * O muro do banco esta MESMO de pe? Pergunta empirica, nao promessa de doc.
+ *
+ * Todo o isolamento entre familias assenta em row level security, e RLS nao
+ * vale para papel com SUPERUSER ou BYPASSRLS — que passa por cima sem erro,
+ * sem log, sem nada. Aqui a resposta vem de dois lados: o atributo do papel
+ * (definitivo) e uma sonda sem escopo, que TEM de devolver zero linhas.
+ */
+async function isolamento() {
+  const t0 = Date.now();
+  try {
+    const p = await uma(
+      `SELECT current_user AS papel, rolsuper OR rolbypassrls AS ignora
+         FROM pg_roles WHERE rolname = current_user`);
+    // sem SET app.family_id nenhum: com o muro de pe, o RLS zera o resultado
+    const sonda = await uma('SELECT count(*)::int AS n FROM audit_log');
+    return {
+      ok: !p.ignora && sonda.n === 0,
+      papel: p.papel, ignoraRls: !!p.ignora, linhasSemEscopo: sonda.n,
+      ms: Date.now() - t0,
+    };
+  } catch (e) { return { ok: false, erro: e.message }; }
+}
+
 const fechar = async () => { if (_pool) { await _pool.end(); _pool = null; } };
 
 const nowISO = () => new Date().toISOString();
 
 module.exports = {
   configurado, pool, q, uma, todas, transacao, migrar,
-  podeDerrubar, derrubarSchema, saude, fechar, nowISO, SCHEMA,
+  podeDerrubar, derrubarSchema, saude, isolamento, fechar, nowISO, SCHEMA,
 };

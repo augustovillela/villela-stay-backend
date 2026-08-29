@@ -75,6 +75,8 @@ async function saudeDoWorker() {
 async function saude({ comStorage = true } = {}) {
   const r = { produto: 'origena', pronto: _pronto, banco: null, fila: null, storage: null, worker: null };
   try { r.banco = await db.saude(); } catch (e) { r.banco = { ok: false, erro: e.message }; }
+  // OR3: sem isto, o isolamento pode estar desligado e ninguém saber.
+  try { r.isolamento = await db.isolamento(); } catch (e) { r.isolamento = { ok: false, erro: e.message }; }
   try { r.fila = await fila.saude(); } catch (e) { r.fila = { erro: e.message }; }
   try { r.worker = await saudeDoWorker(); } catch (e) { r.worker = { ok: false, erro: e.message }; }
   if (comStorage) r.storage = await storage.saude();
@@ -147,6 +149,19 @@ async function montar(app, injected = {}) {
   try {
     aplicadas = await db.migrar();
     _pronto = true;
+    // OR3: RLS não vale para papel SUPERUSER/BYPASSRLS, e ele passa por cima
+    // em silêncio. Se o muro caiu, tem de gritar no boot — não adianta estar
+    // certo no schema se o papel que conecta anula tudo.
+    try {
+      const iso = await db.isolamento();
+      if (!iso.ok) {
+        console.error('[origena] *** ISOLAMENTO ENTRE FAMÍLIAS POSSIVELMENTE DESLIGADO ***');
+        console.error('[origena] papel=' + (iso.papel || '?') + ' ignoraRls=' + iso.ignoraRls
+          + ' linhasSemEscopo=' + iso.linhasSemEscopo + (iso.erro ? ' erro=' + iso.erro : ''));
+        console.error('[origena] o papel do banco precisa ser NOSUPERUSER e NOBYPASSRLS;');
+        console.error('[origena] com FORCE ROW LEVEL SECURITY até o dono da tabela obedece.');
+      }
+    } catch (e) { console.error('[origena] não deu para conferir o isolamento:', e.message); }
   } catch (e) {
     console.error('[origena] falha ao migrar — produto sobe SEM banco:', e.message);
     return { db, fila, storage, saude, pronto };

@@ -407,6 +407,18 @@ async function principal() {
     assert(r.texto.includes('linha_de_posse'), 'o catálogo da relíquia não foi injetado');
   });
 
+  await teste('OR3: o produto SABE dizer se o muro do RLS esta de pe', async () => {
+    // RLS nao vale para papel SUPERUSER/BYPASSRLS, e ele passa por cima calado.
+    // Sem esta pergunta, o isolamento podia estar desligado sem ninguem saber.
+    const iso = await db.isolamento();
+    assert.strictEqual(iso.ignoraRls, false, 'o papel do banco IGNORA o RLS — isolamento desligado');
+    assert.strictEqual(iso.linhasSemEscopo, 0, 'sem escopo o banco devolveu linha: o muro nao esta de pe');
+    assert.strictEqual(iso.ok, true);
+    const r = await req('GET', '/origena/health');
+    assert(r.json.isolamento, 'a saude tem de expor o isolamento');
+    assert.strictEqual(r.json.isolamento.ok, true);
+  });
+
   await teste('GET /origena/health responde com o estado do banco', async () => {
     const r = await req('GET', '/origena/health');
     assert.strictEqual(r.json.produto, 'origena');
