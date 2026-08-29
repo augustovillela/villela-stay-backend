@@ -763,6 +763,22 @@ async function rodar() {
 
   // Por último de propósito: o bloqueio vale 15 min para o IP inteiro e
   // derrubaria qualquer login feito por um teste posterior.
+  await t('A4: o link de redefinir senha NÃO vale como cookie de sessão', async () => {
+    // O mesmo segredo assina os dois; sem conferir o propósito, colar o token
+    // do e-mail de redefinição no cookie autenticava.
+    const jwt = require('jsonwebtoken');
+    const email = 'a4-token@t.kids';
+    await req('POST', '/kids/api/cadastrar', { como: 'a4', corpo: {
+      nome: 'A4', email, senha: 'senha-forte-8', aceite_termos: true, consentimento_parental: true } });
+    const eu = await req('GET', '/kids/api/me', { como: 'a4' });
+    assert.strictEqual(eu.st, 200, 'a sessão normal tem de valer');
+    const uid = eu.json.usuario ? eu.json.usuario.id : (eu.json.conta && eu.json.conta.id);
+    assert.ok(uid, 'não achei o id do usuário na resposta');
+    const deReset = jwt.sign({ tipo: 'kids-senha', uid }, 'seg-teste', { expiresIn: '2h' });
+    const r = await req('GET', '/kids/api/me', { headers: { Cookie: 'kids_sess=' + deReset } });
+    assert.strictEqual(r.st, 401, 'token de redefinição não pode abrir sessão');
+  });
+
   await t('A1: trocar a senha mata a sessão antiga e mantém quem trocou', async () => {
     // O cookie de 60 dias só trazia o uid: trocar a senha não derrubava nada.
     const email = 'a1-sessao@t.kids';

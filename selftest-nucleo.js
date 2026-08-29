@@ -592,6 +592,19 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(ruim.status, 401);
   });
 
+  await t('endpoints públicos têm freio: 6º pré-check-in do mesmo IP → 429', async () => {
+    // limiteTaxa existia no server.js e nunca era chamado. O /api/precheckin
+    // ainda dispara WhatsApp ao Augusto: sem freio, era vetor de rajada.
+    let visto429 = false;
+    for (let k = 0; k < 8; k++) {
+      const r = await req('POST', '/api/precheckin', { json: { nome: 'Flood ' + k, email: 'f@t.com' }, headers: comIp('10.6.6.6') });
+      if (r.status === 429) { visto429 = true; break; }
+    }
+    assert.ok(visto429, 'sem 429 o formulário público não tem freio nenhum');
+    const outroIp = await req('POST', '/api/precheckin', { json: { nome: 'Legítimo', email: 'l@t.com' }, headers: comIp('10.6.6.7') });
+    assert.notEqual(outroIp.status, 429, 'o freio é por IP: não pode punir quem não abusou');
+  });
+
   // ---------- A1: sessão que não morria na troca de senha ----------
   // Ficam por último de propósito: trocam as senhas que os testes acima usam.
   await t('A1 staff: trocar a senha mata o cookie antigo e mantém quem trocou', async () => {

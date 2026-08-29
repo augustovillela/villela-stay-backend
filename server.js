@@ -133,6 +133,8 @@ app.get('/health', (req, res) => res.json({
 
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
 app.get('/api/disponibilidade/:listingId', async (req, res) => {
+  // cada chamada gasta a quota da Stays com a credencial da casa
+  if (!limiteTaxa('disp:' + req.ip, 60, 60000)) return res.status(429).json({ erro: 'Muitas requisições. Tente de novo em instantes.' });
   try {
     const { from, to } = req.query;
     if (!from || !to) return res.status(400).json({ erro: 'Parâmetros from e to (yyyy-MM-dd) são obrigatórios' });
@@ -231,6 +233,8 @@ app.post('/webhooks/stays', (req, res) => {
 // Ofertas de última hora: janelas livres nos próximos 15 dias (cache de 6h)
 let cacheUltimaHora = { quando: 0, dados: [] };
 app.get('/api/ultima-hora', async (req, res) => {
+  // idem; tem cache, mas o cache tambem se esvazia
+  if (!limiteTaxa('ulthora:' + req.ip, 60, 60000)) return res.status(429).json({ erro: 'Muitas requisições. Tente de novo em instantes.' });
   try {
     if (Date.now() - cacheUltimaHora.quando < 6 * 3600 * 1000) return res.json(cacheUltimaHora.dados);
     const listings = await stays('/content/listings', { limit: 20 });
@@ -288,6 +292,8 @@ function itensBillaveis(d) {
 
 // Pré-check-in do hóspede (formulário público do site — mesmo destino do check-in do app: precheckins.jsonl).
 app.post('/api/precheckin', async (req, res) => {
+  // flood aqui vira JSONL sem fim E rajada de WhatsApp no telefone do Augusto
+  if (!limiteTaxa('prechk:' + req.ip, 5, 60000)) return res.status(429).json({ erro: 'Muitas requisições. Tente de novo em instantes.' });
   const d = req.body || {};
   if (!d.nome || !d.contato) return res.status(400).json({ erro: 'nome e contato são obrigatórios' });
   appendJsonl('precheckins.jsonl', {
@@ -337,6 +343,8 @@ app.post('/api/precheckin', async (req, res) => {
 
 // Chamado do hóspede durante a estadia (problema/manutenção)
 app.post('/api/chamados', (req, res) => {
+  // formulario publico: sem freio, enche o disco
+  if (!limiteTaxa('chamado:' + req.ip, 5, 60000)) return res.status(429).json({ erro: 'Muitas requisições. Tente de novo em instantes.' });
   const d = req.body || {};
   if (!d.nome || !d.descricao) return res.status(400).json({ erro: 'nome e descricao são obrigatórios' });
   console.log('[chamado]', d.nome, '-', String(d.descricao).slice(0, 100));

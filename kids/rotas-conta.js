@@ -27,13 +27,18 @@ function registrarRotasConta(app, { jwtSecret }) {
   const setSessao = (res, userId) => {
     // A versão vai no token: trocar a senha invalida o que já foi emitido.
     const v = Number((Users.obter(userId) || {}).sessao_versao || 0);
-    const token = jwt.sign({ uid: userId, v }, jwtSecret, { expiresIn: '60d' });
+    const token = jwt.sign({ uid: userId, v, tipo: 'sessao' }, jwtSecret, { expiresIn: '60d' });
     res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 60 * 24 * 3600 * 1000, path: '/kids' });
   };
 
   function requireUsuario(req, res, next) {
     try {
       const dec = jwt.verify(req.cookies && req.cookies[COOKIE], jwtSecret);
+      // A4: o mesmo segredo assina o link de REDEFINIR SENHA (tipo 'kids-senha').
+      // Sem conferir para que o token foi emitido, colar aquele link no cookie
+      // valia como sessao. Token antigo nao tem 'tipo' e segue valendo; qualquer
+      // outro proposito e recusado.
+      if (dec.tipo !== undefined && dec.tipo !== 'sessao') throw new Error('x');
       const u = Users.obter(dec.uid);
       if (!u || u.status !== 'ativo') throw new Error('x');
       if (Number(dec.v || 0) !== Number(u.sessao_versao || 0)) throw new Error('x');
