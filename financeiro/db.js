@@ -124,6 +124,35 @@ const MIGRACOES = [
       db.exec('CREATE INDEX IF NOT EXISTS idx_fin_cobrancas_ent ON fin_cobrancas(tenant_id, entidade_id)');
     },
   },
+  {
+    // F5: a idempotencia do pagamento recorrente era so de codigo (consulta
+    // antes de inserir). Num processo so isso basta, porque registrarPagamento
+    // e sincrona do inicio ao fim e nada interrompe no meio — mas basta o
+    // Render subir uma segunda instancia, ou alguem pos um await ali dentro,
+    // para nascer fatura duplicada, que e erro que o cliente VE. O indice
+    // torna a invariante do banco, nao da rotina.
+    //
+    // Parcial (externo_ref <> '') porque fatura manual nasce sem referencia
+    // externa e sao muitas com string vazia. Atencao ao gotcha da casa: um
+    // UNIQUE parcial NAO e inferido por ON CONFLICT — a consulta previa
+    // continua sendo o caminho normal; o indice e a rede.
+    nome: 'fin-0009-invoices-externo-ref-unico',
+    aplicar() {
+      const dup = db.prepare(
+        `SELECT tenant_id, externo_ref, COUNT(*) n FROM invoices
+          WHERE externo_ref <> '' GROUP BY tenant_id, externo_ref HAVING n > 1`).all();
+      if (dup.length) {
+        // NAO derruba o modulo por dado sujo: avisa alto e deixa o indice para
+        // depois da limpeza. Migracao que aborta aqui tira o Finance do ar.
+        console.error('[finance] fatura duplicada por referencia externa em '
+          + dup.length + ' caso(s) — indice unico NAO criado. Limpe e rode de novo:');
+        dup.slice(0, 5).forEach((d) => console.error('  tenant=' + d.tenant_id + ' ref=' + d.externo_ref + ' x' + d.n));
+        return;
+      }
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_invoices_ref
+                 ON invoices(tenant_id, externo_ref) WHERE externo_ref <> ''`);
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

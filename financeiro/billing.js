@@ -206,8 +206,14 @@ function mudarStatusDaConta(tenantId, status, motivo) {
  * notificação, e fatura duplicada é erro que o cliente vê.
  */
 function aplicarPreapproval(tenantId, ref, statusMP) {
-  const sub = repo.assinaturaVigente()
-    || repo.listarAssinaturas(10).find(s => s.externo_ref === String(ref));
+  // F6: a ordem estava invertida. `assinaturaVigente()` devolve a mais recente
+  // entre pendente/ativa/inadimplente SEM olhar a referencia externa, entao um
+  // preapproval antigo pausado no MP marcava como inadimplente a assinatura
+  // MANUAL que estava ativa — e derrubava a conta. O webhook fala de UMA
+  // assinatura especifica: e ela que manda. A vigente vira so o fallback de
+  // quando a referencia ainda nao foi gravada aqui.
+  const sub = repo.listarAssinaturas(10).find(s => s.externo_ref === String(ref))
+    || repo.assinaturaVigente();
   if (!sub) return { resultado: 'sem-assinatura' };
 
   if (statusMP === 'authorized') {

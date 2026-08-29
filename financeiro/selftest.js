@@ -2405,6 +2405,49 @@ testeAsync('cobrança: o estado diz o que se perde E o que nunca se perde', () =
   assert.ok(e.planosDisponiveis.every(p => p.precoCents > 0), 'plano sem preço na vitrine de upgrade');
 });
 
+testeAsync('F6 preapproval: o webhook mexe na assinatura DA REFERÊNCIA, não na vigente', () => {
+  // A vigente é a mais recente entre pendente/ativa/inadimplente, sem olhar a
+  // referência externa. Com a ordem invertida, um preapproval antigo pausado no
+  // MP marcava como inadimplente a assinatura MANUAL ativa — e derrubava a conta.
+  const propria = tenancy.semContexto(() => contasSvc.provisionar({
+    nome: 'Conta do F6', slug: 'conta-f6', planoSlug: 'essencial',
+    contatoEmail: 'f6@exemplo.test',
+  })).tenant;
+  tenancy.comTenant({ tenantId: propria.id, userId: 'dono', perfil: 'plataforma' }, () => {
+    const plano = repo.planoPorSlug ? repo.planoPorSlug('controle') : null;
+    const planoId = plano ? plano.id : (repo.listarPlanos ? repo.listarPlanos()[0].id : null);
+    const antiga = repo.criarAssinatura({ planoId, status: 'ativa', externoRef: 'pre-ANTIGO' });
+    const manual = repo.criarAssinatura({ planoId, status: 'ativa', externoRef: '' });
+    assert.notStrictEqual(antiga.id, manual.id);
+    billing.aplicarPreapproval(propria.id, 'pre-ANTIGO', 'paused');
+    const depoisAntiga = repo.assinatura(antiga.id);
+    const depoisManual = repo.assinatura(manual.id);
+    assert.notStrictEqual(depoisAntiga.status, 'ativa', 'a assinatura DA REFERÊNCIA tinha de mudar');
+    assert.strictEqual(depoisManual.status, 'ativa', 'a assinatura manual NÃO podia ser tocada');
+  });
+});
+
+teste('F5: fatura com a mesma referência externa não entra duas vezes', () => {
+  // A idempotência era só de código (consulta antes de inserir). Num processo
+  // só isso basta — registrarPagamento é síncrona de ponta a ponta. O índice
+  // torna a invariante do BANCO, que vale com duas instâncias e depois de um
+  // refactor que ponha um await no meio.
+  const idx = db.prepare("SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_fin_invoices_ref'").get();
+  assert.ok(idx, 'o índice único de referência externa não existe');
+  assert.ok(/UNIQUE/i.test(idx.sql), 'o índice tem de ser UNIQUE');
+  assert.ok(/externo_ref/.test(idx.sql) && /tenant_id/.test(idx.sql), 'tem de ser por conta + referência');
+  assert.ok(/WHERE/i.test(idx.sql), 'parcial: fatura manual nasce sem referência e são muitas vazias');
+  // e o banco recusa de verdade
+  naA(() => {
+    const um = repo.criarInvoice({ competencia: '2026-08', valorCents: 100, status: 'paga', externoRef: 'mp-dup-1' });
+    assert.ok(um && um.id);
+    let barrou = false;
+    try { repo.criarInvoice({ competencia: '2026-08', valorCents: 100, status: 'paga', externoRef: 'mp-dup-1' }); }
+    catch (_) { barrou = true; }
+    assert.strictEqual(barrou, true, 'o banco tinha de recusar a segunda fatura com a mesma referência');
+  });
+});
+
 testeAsync('cobrança: assinar cria PENDENTE, não ativa — quem ativa é o MP', async () => {
   billing.configurar({ mpFetch: mpFalso });
   const r = await tenancy.comTenant({ tenantId: contaC.id, userId: 'dono', perfil: 'proprietario' }, () =>
