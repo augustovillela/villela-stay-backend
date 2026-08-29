@@ -70,26 +70,31 @@ app.post('/hospede/api/registrar', async (req, res) => {
   const sobrenome = semAcento((req.body && req.body.sobrenome) || '').trim();
   const checkin = String((req.body && req.body.checkin) || '').trim();
   const senha = String((req.body && req.body.senha) || '');
-  if (!localizador || !sobrenome || senha.length < 8) return res.status(400).json({ erro: 'Informe o localizador, o sobrenome e uma senha de ao menos 8 caracteres.' });
+  if (!localizador || !sobrenome || !checkin || senha.length < 8) return res.status(400).json({ erro: 'Informe o localizador, o sobrenome, a data do check-in e uma senha de ao menos 8 caracteres.' });
+  // Anti-enumeração: o localizador é curto (ex.: LR03J); sem freio, dá para varrer o espaço e tomar contas.
+  const ipReg = 'hr:' + (req.ip || 'ip');
+  if (loginBloqueado(ipReg)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
   const generico = 'Não encontramos uma reserva com esses dados. Confira o localizador, o sobrenome e a data de check-in.';
   try {
     const r = await stays(`/booking/reservations/${encodeURIComponent(localizador)}`).catch(() => null);
-    if (!r || !r._idclient) return res.status(404).json({ erro: generico });
-    if (checkin && r.checkInDate && r.checkInDate !== checkin) return res.status(404).json({ erro: generico });
+    if (!r || !r._idclient) { registraFalha(ipReg); return res.status(404).json({ erro: generico }); }
+    if (!r.checkInDate || r.checkInDate !== checkin) { registraFalha(ipReg); return res.status(404).json({ erro: generico }); }
     const cli = await stays(`/booking/clients/${r._idclient}`).catch(() => null);
-    if (!cli) return res.status(404).json({ erro: generico });
-    const ln = semAcento(cli.lName || cli.name || '');
-    if (!ln || (!ln.includes(sobrenome) && !sobrenome.includes(ln))) return res.status(404).json({ erro: generico });
+    if (!cli) { registraFalha(ipReg); return res.status(404).json({ erro: generico }); }
+    const tokensNome = semAcento(cli.lName || cli.name || '').split(/[^a-z0-9]+/).filter(t => t.length >= 2);
+    if (!tokensNome.length || sobrenome.length < 2 || !tokensNome.includes(sobrenome)) { registraFalha(ipReg); return res.status(404).json({ erro: generico }); }
     const hospedes = lerHospedes();
     let h = hospedes.find(x => x.staysClientId === r._idclient);
     const email = ((cli.emails && cli.emails[0] && (cli.emails[0].address || cli.emails[0])) || cli.email || '').trim().toLowerCase();
     const fone = (cli.phones && cli.phones[0] && (cli.phones[0].iso || cli.phones[0].number)) || '';
     const nome = (cli.fName ? (cli.fName + ' ' + (cli.lName || '')).trim() : (cli.name || '')) || '';
+    if (h && h.senhaHash && !h.precisaTrocarSenha) return res.status(409).json({ erro: 'Já existe uma conta para essa reserva. Entre com a sua senha, ou peça um link de acesso pelo seu e-mail.', usarLinkEmail: true });
     if (h) { h.senhaHash = bcrypt.hashSync(senha, 10); h.precisaTrocarSenha = false; h.ativo = true; h.ultimoLogin = new Date().toISOString(); }
     else { h = { id: novoId(), nome, email, telefone: normFone(fone), senhaHash: bcrypt.hashSync(senha, 10), staysClientId: r._idclient, precisaTrocarSenha: false, ativo: true, criadoEm: new Date().toISOString(), ultimoLogin: new Date().toISOString() }; hospedes.push(h); }
     const codInd = String((req.body && req.body.codigoIndicacao) || '').trim().toUpperCase();
     if (codInd && !h.indicadoPor) { const ind = hospedes.find(x => x.codigoIndicacao === codInd); if (ind && ind.id !== h.id) h.indicadoPor = codInd; }
     salvarHospedes(hospedes);
+    limpaFalhas(ipReg);
     const token = setCookieHospede(res, h);
     res.json({ ok: true, usuario: semSenhaHosp(h), token });
   } catch (e) { console.error('[hospede registrar]', e.message); res.status(502).json({ erro: 'Falha ao validar a reserva. Tente novamente em instantes.' }); }

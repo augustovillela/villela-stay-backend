@@ -66,9 +66,9 @@ global.fetch = async (url, opts) => {
     if (metodo === 'POST' && rel.startsWith('/booking/clients')) return resp({ _id: 'CNEW' });
     if (rel.startsWith('/content/listings')) return resp([{ _id: 'L1', id: 'GD01H', status: 'active', subtype: 'entire_home', internalName: 'Casa Teste', _mstitle: { pt_BR: 'Casa Teste' } }]);
     if ((m = rel.match(/^\/calendar\/listing\/([^/?]+)/))) return resp([{ date: '2026-08-01', avail: fix.dispAvail, prices: [{ _mcval: { BRL: 500 } }] }, { date: '2026-08-02', avail: fix.dispAvail, prices: [{ _mcval: { BRL: 500 } }] }]);
-    if ((m = rel.match(/^\/booking\/reservations\/([^/?]+)/))) return resp({ id: m[1], price: { _f_total: 1000 }, checkInDate: fix.checkin, checkOutDate: fix.checkout }); // reserva individual
+    if ((m = rel.match(/^\/booking\/reservations\/([^/?]+)/))) return resp({ id: m[1], _idclient: m[1] === 'RNOVA' ? 'C9' : 'C1', price: { _f_total: 1000 }, checkInDate: fix.checkin, checkOutDate: fix.checkout }); // reserva individual
     if (rel.startsWith('/booking/reservations')) return resp([{ id: 'R1', type: 'booked', _idclient: 'C1', partner: { name: '' }, price: { _f_total: 1 }, checkInDate: fix.checkin, checkOutDate: fix.checkout }]); // lista
-    if ((m = rel.match(/^\/booking\/clients\/([^/?]+)/))) return resp({ reservations: [] }); // cliente individual
+    if ((m = rel.match(/^\/booking\/clients\/([^/?]+)/))) return resp(m[1] === 'C9' ? { _id: 'C9', fName: 'Ana', lName: 'Souza Lima', reservations: [] } : { _id: m[1], fName: 'Maria', lName: 'Villela Santos', reservations: [] }); // cliente individual
     if (rel.startsWith('/booking/clients')) return resp([{ _id: 'C1', name: 'Cliente Um', clientSource: 'direct', creationDate: '2026-01-01' }]); // lista de clientes
     return resp({});
   }
@@ -538,6 +538,44 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
   });
 
   // ---------- Área do Hóspede (login) ----------
+  // ---------- H1: tomada de conta pelo localizador (auditoria de 28/08/2026) ----------
+  // O localizador e curto (ex.: LR03J) e enumeravel; estes testes travam as 4 defesas.
+  await t('H1 hóspede/registrar: sobrenome frouxo ("a") não casa mais → 404', async () => {
+    const r = await req('POST', '/hospede/api/registrar', { json: { localizador: 'LR03J', sobrenome: 'a', checkin: fix.checkin, senha: 'SenhaNova123' }, headers: comIp('10.9.0.1') });
+    assert.equal(r.status, 404, 'a substring bidirecional deixava "a" casar com quase todo sobrenome');
+  });
+
+  await t('H1 hóspede/registrar: check-in é obrigatório (400) e tem de bater (404)', async () => {
+    const sem = await req('POST', '/hospede/api/registrar', { json: { localizador: 'LR03J', sobrenome: 'santos', senha: 'SenhaNova123' }, headers: comIp('10.9.0.2') });
+    assert.equal(sem.status, 400, 'sem check-in tem de recusar');
+    const errado = await req('POST', '/hospede/api/registrar', { json: { localizador: 'LR03J', sobrenome: 'santos', checkin: '2020-01-01', senha: 'SenhaNova123' }, headers: comIp('10.9.0.3') });
+    assert.equal(errado.status, 404, 'check-in que não bate tem de recusar');
+  });
+
+  await t('H1 hóspede/registrar: conta existente NÃO tem a senha redefinida (409); a antiga continua valendo', async () => {
+    const r = await req('POST', '/hospede/api/registrar', { json: { localizador: 'LR03J', sobrenome: 'santos', checkin: fix.checkin, senha: 'SenhaDoAtacante1' }, headers: comIp('10.9.0.4') });
+    assert.equal(r.status, 409, 'era aqui que a senha do hóspede era sobrescrita sem prova de posse');
+    const antiga = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaHospede1' }, headers: comIp('10.9.0.5') });
+    assert.equal(antiga.status, 200, 'a senha original do hóspede segue válida');
+    const doAtacante = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaDoAtacante1' }, headers: comIp('10.9.0.6') });
+    assert.equal(doAtacante.status, 401, 'a senha escolhida pelo atacante não pode valer');
+  });
+
+  await t('H1 hóspede/registrar: 5 erros do mesmo IP → 429 (corta a enumeração)', async () => {
+    let visto429 = false;
+    for (let i = 0; i < 7; i++) {
+      const r = await req('POST', '/hospede/api/registrar', { json: { localizador: 'LR03J', sobrenome: 'zzznaoexiste', checkin: fix.checkin, senha: 'SenhaNova123' }, headers: comIp('10.9.9.9') });
+      if (r.status === 429) { visto429 = true; break; }
+    }
+    assert.ok(visto429, 'sem freio, dava para varrer o espaço de 5 caracteres do localizador');
+  });
+
+  await t('H1 hóspede/registrar: caminho feliz — sobrenome exato + check-in certo cria a conta', async () => {
+    const r = await req('POST', '/hospede/api/registrar', { json: { localizador: 'RNOVA', sobrenome: 'Lima', checkin: fix.checkin, senha: 'SenhaNova123' }, headers: comIp('10.9.1.1') });
+    assert.equal(r.status, 200, 'o hóspede legítimo continua conseguindo criar a conta');
+    assert.ok(pegaCookie(r.setCookie, 'hospede_token'), 'cookie de sessão setado');
+  });
+
   await t('hóspede: login correto=200+cookie, senha errada=401', async () => {
     const bom = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaHospede1' }, headers: comIp('10.2.2.2') });
     assert.equal(bom.status, 200); assert.ok(pegaCookie(bom.setCookie, 'hospede_token'), 'cookie hospede_token setado');
