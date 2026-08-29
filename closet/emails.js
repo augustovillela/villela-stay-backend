@@ -15,7 +15,7 @@ const { db } = require('./db');
 const { Config, Users, s, n } = repo;
 
 const SITE = (process.env.CLOSET_BASE_URL || 'https://closet.villelastay.com.br').replace(/\/+$/, '');
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const dia = (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '');
 

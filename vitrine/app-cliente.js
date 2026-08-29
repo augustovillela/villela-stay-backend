@@ -8,7 +8,7 @@
 'use strict';
 (function () {
   const raiz = document.getElementById('vt-app');
-  const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   const dia = (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—');
   let ME = null;

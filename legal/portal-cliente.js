@@ -296,7 +296,7 @@ function registrarPortalCliente(app, { jwtSecret }) {
       <p class="sub">Sem acesso? Fale com o escritório para receber o seu link.</p></div></div>`,
       `const app=document.getElementById('app');
       const api=async(m,p,b)=>{const r=await fetch('/cliente-juridico/api'+p,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});const d=await r.json();if(!r.ok)throw new Error(d.erro||'erro');return d};
-      const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       const dt=t=>t?String(t).slice(0,10).split('-').reverse().join('/'):'—';
       const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
       async function entrar(){const m=document.getElementById('msg');m.textContent='';

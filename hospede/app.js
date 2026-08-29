@@ -22,7 +22,7 @@ function mostrar(idTela) {
 
 const fmtData = (iso) => { if (!iso) return '—'; const [a, m, d] = String(iso).split('-'); return `${d}/${m}/${a}`; };
 const fmtMoeda = (v, moeda) => (v == null ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moeda || 'BRL' }).format(v));
-function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 // ---------------- i18n (PT/EN/ES) ----------------
 // Estratégia faseada: chaves curtas p/ o HTML estático (data-i18n) e "texto-PT-como-chave" p/ o menu,

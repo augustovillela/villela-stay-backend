@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   var ME = null;
-  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function brl(c) { return 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
   function dt(t) { return t ? String(t).slice(0, 10).split('-').reverse().join('/') : '—'; }
   function centavos(v) { return Math.round(Number(String(v).replace(',', '.') || 0) * 100); }

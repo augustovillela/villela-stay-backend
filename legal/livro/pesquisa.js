@@ -112,7 +112,7 @@ const Achados = {
   relatorio(project_id) {
     const p = Pesquisas.obter(project_id);
     if (!p) throw new Error('Pesquisa não encontrada.');
-    const esc = (t) => String(t == null ? '' : t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const linha = (f) => `<tr><td>${esc(f.identificacao)}</td><td>${esc(f.orgao)}</td><td>${esc(f.hierarquia)}</td>
       <td>${esc(f.posicao)}</td><td>${esc(f.ratio_decidendi || f.ementa).slice(0, 400)}</td>
       <td>${f.fonte_url ? `<a href="${esc(f.fonte_url)}">fonte</a>` : '—'}</td>

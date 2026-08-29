@@ -239,7 +239,7 @@ function registrarRotasPublicas(app, { express }) {
 // ------------------------------------------------------------ render
 
 const esc = (t) => String(t == null ? '' : t)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 // Blocos permitidos. Não existe bloco "html livre": é assim que se evita
 // que a página de um assinante vire vetor de XSS para os visitantes dele.

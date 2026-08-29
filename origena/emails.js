@@ -15,7 +15,7 @@ const configurar = ({ enviarEmail } = {}) => { if (enviarEmail) _enviar = enviar
 const ativo = () => !!_enviar;
 
 const BASE = (process.env.ORIGENA_URL || 'https://origena.villelastay.com.br').replace(/\/+$/, '');
-const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const molde = (idioma, titulo, corpo) => `
 <div style="font-family:Georgia,'Times New Roman',serif;max-width:520px;margin:0 auto;color:#1C1A17">

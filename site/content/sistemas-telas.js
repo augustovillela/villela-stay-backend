@@ -56,7 +56,7 @@
 'use strict';
 
 const esc = s => String(s == null ? '' : s)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 // --------------------------------------------------------------- peças
 // Barra do navegador. Não é enfeite: ancora a maquete como "isto é uma

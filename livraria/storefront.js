@@ -13,7 +13,7 @@ const WHATSAPP = process.env.LIVRARIA_WHATSAPP || '556191935013';
 const PIXEL_META = process.env.META_PIXEL_ID || '';
 const GADS_ID = process.env.GOOGLE_ADS_ID || '';
 
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const waLink = (msg) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg || 'Olá! Tenho uma dúvida sobre os livros da Villela.')}`;
 
 // ---- pixels de conversão (Google Ads / Meta) — carregam só se as env existirem ----

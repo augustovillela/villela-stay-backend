@@ -17,7 +17,7 @@ const { db, novoId, nowISO } = require('./db');
 const entitlements = require('./entitlements');
 
 const esc = (t) => String(t == null ? '' : t)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 });
 const s = (v, max = 400) => String(v == null ? '' : v).trim().slice(0, max);
 

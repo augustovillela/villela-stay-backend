@@ -622,7 +622,7 @@ const $ = (h) => {
     if (alvo) alvo.focus({ preventScroll: true });
   }
 };
-const esc = (t) => String(t==null?'':t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = (t) => String(t==null?'':t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pode = (p) => PERM.includes(p);
 // Toda string da tela vem do catálogo: nenhuma frase mora aqui (§86).
 const t = (chave, vars) => { let s = T[chave]; if (s == null) return chave;

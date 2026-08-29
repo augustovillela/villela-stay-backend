@@ -18,7 +18,7 @@ function configurar({ enviarEmail } = {}) {
 // base p/ links em e-mails disparados fora de um request (webhook/rotina)
 const base = () => process.env.ACADEMY_BASE_URL || 'https://villela-stay-backend.onrender.com';
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
 function log(canal, destino, template, status, detalhe) {

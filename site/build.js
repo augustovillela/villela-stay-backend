@@ -54,7 +54,7 @@ const MARCA = `<a class="marca" href="/"><img class="logo-v" src="/assets/brand/
 // Função (não const string) para traduzir por idioma — é avaliada dentro do loop, quando t() já existe.
 const TAGLINE = () => `<span class="tagline">${t('Hospedagens Inteligentes<br>para Experiências Inesquecíveis.', 'Smart Stays<br>for Unforgettable Experiences.', 'Alojamientos Inteligentes<br>para Experiencias Inolvidables.')}</span>`;
 
-const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const real = n => 'R$ ' + n.toLocaleString('pt-BR');
 
 // ----------------------------------------------------------------- imagens responsivas

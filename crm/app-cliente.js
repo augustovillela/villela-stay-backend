@@ -9,7 +9,7 @@
 let ME = null, KANBAN_FUNIL = '';
 
 const $ = (q) => document.querySelector(q);
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const dataBr = (iso) => iso ? `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}/${String(iso).slice(0, 4)}` : '—';
 const waLink = (tel, txt) => 'https://wa.me/' + String(tel || '').replace(/\D/g, '') + (txt ? '?text=' + encodeURIComponent(txt) : '');

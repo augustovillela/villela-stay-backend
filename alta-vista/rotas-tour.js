@@ -15,7 +15,7 @@ const { db } = require('./db');
 const repo = require('./repo');
 const { s } = repo;
 
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const DIR_VIEWER = path.join(__dirname, '..', 'site', 'src', 'tour360');
 
 // CSS do viewer: extrai do style.css do site as regras cujo seletor cita .t360

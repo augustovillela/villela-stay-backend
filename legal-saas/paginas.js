@@ -9,7 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const repo = require('./repo');
 
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 });
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
@@ -336,7 +336,7 @@ function appHTML() {
     <p class="sub">Novo por aqui? <a href="/juridico/assinar?plano=trial">Teste grátis</a>.</p></div></div>`,
     `const app=document.getElementById('app');
     const api=async(m,p,b)=>{const r=await fetch('/juridico/api'+p,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});const d=await r.json();if(!r.ok)throw new Error(d.erro||'erro');return d};
-    const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
     const dt=t=>t?String(t).slice(0,10).split('-').reverse().join('/'):'—';
     async function entrar(){const m=document.getElementById('msg');m.textContent='';try{await api('POST','/login',{email:em.value,senha:sn.value});home()}catch(e){m.textContent=e.message}}

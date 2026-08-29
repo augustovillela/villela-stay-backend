@@ -140,7 +140,7 @@ const Pecas = {
     const d = Pecas.obter(id);
     if (!d) throw new Error('Peça não encontrada.');
     if (!d.conteudo) throw new Error('A peça não tem conteúdo.');
-    const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const minuta = d.status !== 'aprovado';
     const html = `<html><head><meta charset="utf-8"><title>${esc(d.tipo_peca)}</title><style>
       body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.6;max-width:19cm;margin:2cm auto;color:#111}

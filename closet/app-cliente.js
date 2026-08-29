@@ -11,7 +11,7 @@ var EU = null, ENT = null, ABA = 'inicio';
 /* ---------------------------------- utilitários --------------------------- */
 function $(sel) { return document.querySelector(sel); }
 function el(id) { return document.getElementById(id); }
-function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function brl(c) { return 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
 function brl0(c) { return 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { maximumFractionDigits: 0 }); }
 function dia(d) { return d ? String(d).slice(0, 10).split('-').reverse().join('/') : ''; }

@@ -154,7 +154,7 @@ function prestacaoContas(clientId) {
 // ---------------------------------------------------------------------
 // EXPORTAÇÕES (HTML imprimível / CSV) — arquivadas em generated_reports
 // ---------------------------------------------------------------------
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 function salvarGerado({ tipo, titulo, parametros, conteudo, formato, quem }) {
   const id = novoId();
   db.prepare('INSERT INTO generated_reports (id, tipo, titulo, parametros, conteudo, formato, criado_por, criado_em) VALUES (?,?,?,?,?,?,?,?)')

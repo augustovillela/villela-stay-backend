@@ -7,7 +7,7 @@
 'use strict';
 const { brl } = require('./repo');
 
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const primeiroNome = (n) => String(n || 'leitor(a)').trim().split(' ')[0];
 
 function wrap(subtitulo, corpo, cta) {

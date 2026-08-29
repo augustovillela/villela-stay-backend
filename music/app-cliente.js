@@ -33,7 +33,7 @@ const JS = `
   var $ = function (s, raiz) { return (raiz || document).querySelector(s); };
   var esc = function (v) {
     return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   };
   var el = function (tag, attrs, dentro) {
     var n = document.createElement(tag);

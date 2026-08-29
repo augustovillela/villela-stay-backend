@@ -20,7 +20,7 @@ const repo = require('./repo');
 const router = require('./ia/router');
 
 const esc = (v) => String(v == null ? '' : v)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 const CSS = `
 :root{--navy:#1B2A4A;--gold:#C9A227;--ice:#F8F9FA;--graphite:#1F2933;

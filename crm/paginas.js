@@ -10,7 +10,7 @@ const path = require('path');
 const repo = require('./repo');
 const appRepo = require('./app-repo');
 
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 });
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
@@ -235,7 +235,7 @@ function propostaHTML(token) {
       if(!r.ok){cx.innerHTML='<p class="erro">Proposta não encontrada ou expirada.</p>';return}
       const {proposta:p}=await r.json();
       const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
-      const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       const itens=(p.itens||[]).map(i=>'<tr><td>'+esc(i.descricao)+'</td><td style="text-align:center">'+i.qtd+'</td><td style="text-align:right">'+brl(i.valor_centavos*i.qtd)+'</td></tr>').join('');
       const liquido=p.valor_centavos-(p.desconto_centavos||0);
       cx.innerHTML='<div class="card"><p class="tag">'+esc(p.empresa)+'</p><h2 style="text-align:left">'+esc(p.titulo)+'</h2>'

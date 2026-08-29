@@ -499,7 +499,7 @@ function vitrineHTML(query = {}) {
   if(q.get('preco_max'))document.getElementById('f-max').value=q.get('preco_max')/100;
   let offset=0;const LIM=24;
   const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{maximumFractionDigits:0});
-  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
   function params(){const p=new URLSearchParams();
     const v=id=>document.getElementById(id).value.trim();
     if(v('f-q'))p.set('q',v('f-q'));if(v('f-ocasiao'))p.set('ocasiao',v('f-ocasiao'));
@@ -814,7 +814,7 @@ function iaHTML() {
   const script = `
   const $=id=>document.getElementById(id);
   const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{maximumFractionDigits:0});
-  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
   document.getElementById('brief').onsubmit=async e=>{e.preventDefault();
     const r=$('resultado');r.innerHTML='<p class="lead" style="text-align:center">Montando…</p>';
     const body={ocasiao:$('b-ocasiao').value,horario:$('b-horario').value,cidade:$('b-cidade').value,clima:$('b-clima').value,
@@ -1018,7 +1018,7 @@ function qrHTML(token) {
     <div id="qr" class="caixa" style="text-align:center"><p class="lead">Verificando…</p></div></div></section>`;
   const script = `
   const T=${JSON.stringify(s(token, 80))};const cx=document.getElementById('qr');
-  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   (async()=>{
     const r=await fetch('/closet/api/qr/'+encodeURIComponent(T));
     if(r.status===401){cx.innerHTML='<h3>Entre para continuar</h3><p class="lead" style="margin:14px auto">Faça login com a conta que participa desta reserva.</p><a class="btn" href="/closet/entrar?voltar='+encodeURIComponent(location.pathname)+'">Entrar</a>';return}
