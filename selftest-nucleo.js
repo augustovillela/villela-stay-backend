@@ -86,7 +86,7 @@ function req(method, pth, { json, cookie, headers } = {}) {
     if (cookie) h['Cookie'] = cookie;
     const r = http.request(BASE + pth, { method, headers: h }, (res) => {
       let data = ''; res.on('data', c => (data += c));
-      res.on('end', () => { let j = null; try { j = JSON.parse(data); } catch {} resolve({ status: res.statusCode, json: j, text: data, setCookie: res.headers['set-cookie'] || [] }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(data); } catch {} resolve({ status: res.statusCode, json: j, text: data, headers: res.headers, setCookie: res.headers['set-cookie'] || [] }); });
     });
     r.on('error', reject);
     if (body) r.write(body);
@@ -622,6 +622,20 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.strictEqual(depois.length, antes.length + 2, 'as duas escritas têm de sobreviver');
     assert.ok(depois.some(l => l.descricao === 'Lento'), 'a primeira sumiu');
     assert.ok(depois.some(l => l.descricao === 'Rapido'), 'a segunda sumiu');
+  });
+
+  await t('HSTS vai em HTTPS e NÃO vai em HTTP', async () => {
+    // O teste fala http com o servidor; o proxy do Render sinaliza o esquema
+    // original no X-Forwarded-Proto, e é por ele que a decisão passa.
+    const comTls = await req('GET', '/health', { headers: { 'X-Forwarded-Proto': 'https' } });
+    const h = comTls.headers && comTls.headers['strict-transport-security'];
+    assert.ok(h, 'sem HSTS em resposta https');
+    assert.ok(Number((String(h).match(/max-age=([0-9]+)/) || [])[1] || 0) >= 15552000, 'max-age curto demais para valer de algo');
+    assert.ok(/includeSubDomains/.test(h), 'os subdomínios ficariam de fora');
+    assert.ok(!/preload/.test(h), 'preload é praticamente irreversível: não entra por commit');
+    const semTls = await req('GET', '/health', { headers: { 'X-Forwarded-Proto': 'http' } });
+    assert.ok(!(semTls.headers && semTls.headers['strict-transport-security']),
+      'HSTS em resposta http não vale nada e só confunde');
   });
 
   // ---------- A1: sessão que não morria na troca de senha ----------

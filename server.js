@@ -72,6 +72,19 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // HSTS: sem ele, o PRIMEIRO acesso de cada navegador ainda pode sair em http
+  // e ser desviado no caminho — o Render força TLS, mas isso só vale depois que
+  // a conexão chegou nele. Só vai em resposta HTTPS (com trust proxy, req.secure
+  // lê o X-Forwarded-Proto); em http o cabeçalho seria ignorado de todo jeito.
+  //
+  // includeSubDomains vale para TODOS os subdomínios e é DIFÍCIL de desfazer: o
+  // navegador guarda pelo max-age inteiro. Conferido antes de ligar que todos
+  // servem HTTPS (site, staff, minha, finance, kids, musique, livros, origena e
+  // o cozinhe, que é serviço separado). Sem `preload` de propósito: entrar na
+  // lista dos navegadores é praticamente irreversível e não se faz por um commit.
+  if (req.secure || String(req.headers['x-forwarded-proto'] || '') === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   next();
 });
 // Comparação de segredos em tempo constante (evita timing attack em chaves/tokens)
