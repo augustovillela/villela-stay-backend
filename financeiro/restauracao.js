@@ -34,6 +34,7 @@ const GATILHOS = [
   'trg_fin_lote_imutavel', 'trg_fin_lote_sem_delete',
   'trg_fin_linha_imutavel', 'trg_fin_linha_sem_delete',
   'trg_fin_periodo_fechado', 'trg_fin_linha_conta_analitica',
+  'trg_fin_lote_transicao', 'trg_fin_linha_sem_insert',
 ];
 
 /**

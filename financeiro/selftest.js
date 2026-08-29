@@ -278,6 +278,24 @@ lanca('razão: TRIGGER recusa apagar linha de lote contabilizado', () =>
   naA(() => db.prepare('DELETE FROM fin_linhas WHERE lote_id = ?').run(loteBase.lote.id)),
   /nao pode ser excluida/);
 
+// As duas frestas que a auditoria de 28/08/2026 achou nos gatilhos: o status do
+// lote nao era protegido (e os outros gatilhos leem justamente ele), e faltava
+// barrar o INSERT de linha em lote ja fechado.
+lanca('razao: TRIGGER recusa rebaixar o status do lote contabilizado', () =>
+  naA(() => db.prepare("UPDATE fin_lotes SET status = 'rascunho' WHERE id = ?").run(loteBase.lote.id)),
+  /transicao de status invalida/);
+
+lanca('razao: TRIGGER recusa pendurar linha nova em lote contabilizado', () =>
+  naA(() => {
+    const base = db.prepare('SELECT tenant_id, conta_id FROM fin_linhas WHERE lote_id = ? LIMIT 1').get(loteBase.lote.id);
+    db.prepare(
+      'INSERT INTO fin_linhas (id, tenant_id, lote_id, ordem, conta_id, debito_cents, credito_cents,' +
+      ' centro_custo_id, contraparte_id, memo, ref_tipo, ref_id, criado_em)' +
+      " VALUES ('fura-razao-1', ?, ?, 99, ?, 12345, 0, '', '', 'desbalanceia', '', '', '2026-08-29T00:00:00.000Z')"
+    ).run(base.tenant_id, loteBase.lote.id, base.conta_id);
+  }),
+  /nao aceita linha nova/);
+
 teste('razão: idempotência devolve o mesmo lote', () => {
   const chave = 'teste-idem-1';
   const a = naA(() => ledger.lancar({

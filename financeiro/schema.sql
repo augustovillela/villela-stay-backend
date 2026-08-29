@@ -659,6 +659,21 @@ BEGIN
   SELECT RAISE(ABORT, 'lote contabilizado e imutavel: corrija por estorno');
 END;
 
+-- 1b. ...e o STATUS nao anda para tras. O gatilho acima protege as colunas de
+-- substancia, mas nao protegia `status` — e os gatilhos 2 e 3 leem justamente o
+-- status para decidir. Um unico UPDATE rebaixando para 'rascunho' desarmava a
+-- trava de DELETE do lote e a de alteracao das linhas. As unicas transicoes que
+-- o servico faz sao rascunho->contabilizado e contabilizado->estornado.
+CREATE TRIGGER IF NOT EXISTS trg_fin_lote_transicao
+BEFORE UPDATE OF status ON fin_lotes
+FOR EACH ROW WHEN NEW.status <> OLD.status AND NOT (
+     (OLD.status = 'rascunho'      AND NEW.status = 'contabilizado')
+  OR (OLD.status = 'contabilizado' AND NEW.status = 'estornado')
+)
+BEGIN
+  SELECT RAISE(ABORT, 'transicao de status invalida: so rascunho->contabilizado e contabilizado->estornado');
+END;
+
 -- 2. Lote contabilizado não se apaga. Nunca.
 CREATE TRIGGER IF NOT EXISTS trg_fin_lote_sem_delete
 BEFORE DELETE ON fin_lotes
@@ -693,6 +708,17 @@ BEFORE DELETE ON fin_linhas
 FOR EACH ROW WHEN (SELECT status FROM fin_lotes WHERE id = OLD.lote_id) <> 'rascunho'
 BEGIN
   SELECT RAISE(ABORT, 'linha de lote contabilizado nao pode ser excluida');
+END;
+
+-- 3b. Lote fechado nao recebe linha NOVA. Os gatilhos de linha cobriam UPDATE e
+-- DELETE; faltava o INSERT — dava para pendurar uma linha em lote ja contabilizado
+-- e deixar o razao desbalanceado (debito <> credito) sem nada acusar ate a
+-- conferencia periodica. O servico so insere linha com o lote em rascunho.
+CREATE TRIGGER IF NOT EXISTS trg_fin_linha_sem_insert
+BEFORE INSERT ON fin_linhas
+FOR EACH ROW WHEN (SELECT status FROM fin_lotes WHERE id = NEW.lote_id) <> 'rascunho'
+BEGIN
+  SELECT RAISE(ABORT, 'lote nao esta em rascunho: nao aceita linha nova');
 END;
 
 -- 4. Período fechado não recebe lançamento novo. A reabertura é
