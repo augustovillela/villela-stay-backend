@@ -115,6 +115,15 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
   console.log('Villela Stay — selftest do núcleo (server.js)\nDATA_DIR:', DATA_DIR, '\n');
 
   // ---------- Auth / sessão ----------
+  await t('/health diz qual commit esta no ar (push nao e o mesmo que estar no ar)', async () => {
+    const r = await req('GET', '/health');
+    assert.equal(r.status, 200);
+    assert.ok(r.json.ok, "o health tem de continuar dizendo ok");
+    assert.equal(typeof r.json.commit, 'string', 'sem o commit nao da para conferir o que ficou live');
+    assert.ok(r.json.commit.length > 0 && r.json.commit.length <= 7, 'commit em forma curta');
+    assert.equal(typeof r.json.branch, 'string', 'a branch denuncia deploy vindo de ref errada');
+  });
+
   await t('login: senha errada → 401', async () => {
     const r = await req('POST', '/staff/api/login', { json: { email: 'adm@t.com', senha: 'errada' }, headers: comIp('10.1.1.1') });
     assert.equal(r.status, 401);

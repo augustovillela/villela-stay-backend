@@ -120,7 +120,16 @@ function semAcento(s) { return String(s == null ? '' : s).normalize('NFD').repla
 // Palavras de uma busca livre (sem acento, minúsculas) — casamento multi-palavra AND.
 function tokensBusca(q) { return semAcento(q || '').trim().split(/\s+/).filter(Boolean); }
 
-app.get('/health', (req, res) => res.json({ ok: true, servico: 'villela-stay-backend' }));
+// O commit vai no /health porque push nao e o mesmo que estar no ar: o Render ja
+// ficou no commit anterior. Assim da para conferir sem abrir o painel, comparando
+// com `git rev-parse --short HEAD`. Mesmo padrao do worker da Origena. O repo e
+// publico, entao o hash nao revela nada. A branch responde a outra armadilha da
+// casa: o backend deploya de master, e push para main cria branch que ninguem ve.
+app.get('/health', (req, res) => res.json({
+  ok: true, servico: 'villela-stay-backend',
+  commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
+  branch: process.env.RENDER_GIT_BRANCH || 'local',
+}));
 
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
 app.get('/api/disponibilidade/:listingId', async (req, res) => {
