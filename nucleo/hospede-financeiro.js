@@ -14,7 +14,7 @@ const webhookMP = require('./webhook-mp');
 module.exports.montar = function montar(app, deps) {
   const { requireHospede, requireAuth, requirePublishOrAdmin, resumoConta, mpFetch, AREA_HOSPEDE_URL,
     lerAvaliacoes, lerIndicacoes, lerFidConfig, motorFidelidade,
-    lerLancamentos, salvarLancamentos, lerHospedes, novoId, alertaAugusto } = deps;
+    lerLancamentos, salvarLancamentos, atualizarJSON, lerHospedes, novoId, alertaAugusto } = deps;
 
   // ---- Conta corrente do hóspede (extrato + saldo) ----
   app.get('/hospede/api/conta', requireHospede, (req, res) => res.json(resumoConta(req.hospede.id)));
@@ -79,8 +79,11 @@ module.exports.montar = function montar(app, deps) {
       if (ls.some(l => l.pagamentoRef === String(payId))) return; // idempotente
       const h = lerHospedes().find(x => x.id === hospedeId);
       if (!h) return;
-      ls.push({ id: novoId(), hospedeId, staysClientId: h.staysClientId || '', tipo: 'pagamento', descricao: 'Pagamento online (Mercado Pago)', valor: Math.abs(Number(pay.transaction_amount) || 0), reservaId: '', validade: '', criadoEm: new Date().toISOString(), criadoPor: 'mercadopago', pagamentoRef: String(payId) });
-      salvarLancamentos(ls);
+      // Sob o lock — o motor de fidelidade grava no mesmo arquivo por fila, e
+      // gravacao direta que caia no meio dele desaparece. Pagamento nao some.
+      await atualizarJSON('lancamentos.json', (prev) => prev.concat([
+        { id: novoId(), hospedeId, staysClientId: h.staysClientId || '', tipo: 'pagamento', descricao: 'Pagamento online (Mercado Pago)', valor: Math.abs(Number(pay.transaction_amount) || 0), reservaId: '', validade: '', criadoEm: new Date().toISOString(), criadoPor: 'mercadopago', pagamentoRef: String(payId) },
+      ]), []);
       console.log('[mp webhook] pagamento baixado p/ hospede', hospedeId, 'R$', pay.transaction_amount);
       alertaAugusto(`Pagamento recebido (Mercado Pago) de ${h.nome || 'hospede'}: R$ ${Number(pay.transaction_amount || 0).toFixed(2)}.`).catch(() => { });
     } catch (e) { console.error('[mp webhook]', e.message); }

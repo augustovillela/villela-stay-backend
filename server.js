@@ -3804,7 +3804,7 @@ async function motorFidelidade(opts) {
     // lock por coleção: relê lancamentos FRESCO e anexa só os novos (não sobrescreve com snapshot velho)
     if (novos.length) await atualizarJSON('lancamentos.json', prev => prev.concat(novos), []);
     salvarJSON('fidelidade-creditado.json', creditado);
-    const exp = expirarCreditos();
+    const exp = await expirarCreditos();   // agora grava sob o lock
     if (n || exp.expirados) console.log('[motor fidelidade] creditou', n, 'estadia(s); expirou', exp.expirados, 'crédito(s)');
     return { rodou: true, creditadas: n, expirados: exp.expirados };
   } catch (e) { console.error('[motor fidelidade]', e.message); return { rodou: false, erro: e.message }; }
@@ -3835,7 +3835,7 @@ function calcularExpiracoes(lancamentos, hoje) {
   }
   return expirados;
 }
-function expirarCreditos() {
+async function expirarCreditos() {
   const hoje = hojeISO();
   const ls = lerLancamentos();
   const porH = {};
@@ -3849,7 +3849,9 @@ function expirarCreditos() {
       jaExpirado.add(e.id); novos++;
     }
   }
-  if (novos) salvarLancamentos(ls);
+  // Sob o lock: o motor e as rotas gravam no MESMO arquivo, e quem grava
+  // fora da fila apaga o que a fila acabou de escrever.
+  if (novos) await atualizarJSON('lancamentos.json', () => ls, []);
   return { expirados: novos };
 }
 
@@ -4424,7 +4426,7 @@ app.get('/staff/api/hospede/conta/:hospedeId', requirePublishOrAdmin, (req, res)
   if (!h) return res.status(404).json({ erro: 'Hóspede não encontrado.' });
   res.json({ hospede: semSenhaHosp(h), conta: resumoConta(h.id) });
 });
-app.post('/staff/api/hospede/conta/:hospedeId/lancamento', requirePublishOrAdmin, (req, res) => {
+app.post('/staff/api/hospede/conta/:hospedeId/lancamento', requirePublishOrAdmin, async (req, res) => {
   const h = lerHospedes().find(x => x.id === req.params.hospedeId);
   if (!h) return res.status(404).json({ erro: 'Hóspede não encontrado.' });
   const d = req.body || {};
@@ -4453,15 +4455,20 @@ app.post('/staff/api/hospede/conta/:hospedeId/lancamento', requirePublishOrAdmin
     reservaId: String(d.reservaId || ''), validade: String(d.validade || ''),
     criadoEm: new Date().toISOString(), criadoPor: req.viaChave ? 'sistema' : ((req.user && req.user.nome) || 'admin'),
   };
-  const ls = lerLancamentos(); ls.push(lanc); salvarLancamentos(ls);
+  await atualizarJSON('lancamentos.json', (prev) => prev.concat([lanc]), []);
   registrarAuditoria(req, 'conta.lancamento', `${h.nome || h.id}: ${d.tipo} ${valor} — ${descricao}`);
   res.json({ ok: true, conta: resumoConta(h.id) });
 });
-app.delete('/staff/api/hospede/conta/:hospedeId/lancamento/:id', requirePublishOrAdmin, (req, res) => {
-  const ls = lerLancamentos();
-  const rest = ls.filter(l => !(l.hospedeId === req.params.hospedeId && l.id === req.params.id));
-  if (rest.length === ls.length) return res.status(404).json({ erro: 'Lançamento não encontrado.' });
-  salvarLancamentos(rest);
+app.delete('/staff/api/hospede/conta/:hospedeId/lancamento/:id', requirePublishOrAdmin, async (req, res) => {
+  // Sob o lock, como as outras: excluir relendo um snapshot velho apagaria o
+  // que a fila gravou entre a leitura e a escrita.
+  let achou = false;
+  await atualizarJSON('lancamentos.json', (prev) => {
+    const rest = prev.filter(l => !(l.hospedeId === req.params.hospedeId && l.id === req.params.id));
+    achou = rest.length !== prev.length;
+    return achou ? rest : undefined;   // undefined = nada a gravar
+  }, []);
+  if (!achou) return res.status(404).json({ erro: 'Lançamento não encontrado.' });
   res.json({ ok: true, conta: resumoConta(req.params.hospedeId) });
 });
 
@@ -4484,7 +4491,7 @@ try { require('./nucleo/visitas').montarRotas(app, { DATA_DIR, requireAuth, pode
 try { require('./nucleo/stays-proxy').montar(app, { stays, staysPaginado, staysPost, getStaysClientes, getListingMap, resolverClientes, invalidarStaysClientes, nomeCliente, normalizarPlataforma, semAcento, CAL_STATUS, registrarAuditoria, requireAuth, requireAdmin }); } catch (e) { console.error('[nucleo/stays-proxy] falha ao montar:', e.message); }
 try { require('./nucleo/cozinhe-proxy').montar(app, { requireAuth, requireAdmin, registrarAuditoria }); } catch (e) { console.error('[nucleo/cozinhe-proxy] falha ao montar:', e.message); }
 try { require('./nucleo/crm-legado').montar(app, { requirePublishOrSession, podeCRM, lerContatos, salvarContatos, semAcento, ESTAGIOS, hojeISO, upsertContato, lerAtividades, addAtividade, stays, getListingMap, DATA_DIR }); } catch (e) { console.error('[nucleo/crm-legado] falha ao montar:', e.message); }
-try { require('./nucleo/hospede-financeiro').montar(app, { requireHospede, requireAuth, requirePublishOrAdmin, resumoConta, mpFetch, AREA_HOSPEDE_URL, lerAvaliacoes, lerIndicacoes, lerFidConfig, motorFidelidade, lerLancamentos, salvarLancamentos, lerHospedes, novoId, alertaAugusto }); } catch (e) { console.error('[nucleo/hospede-financeiro] falha ao montar:', e.message); }
+try { require('./nucleo/hospede-financeiro').montar(app, { requireHospede, requireAuth, requirePublishOrAdmin, resumoConta, mpFetch, AREA_HOSPEDE_URL, lerAvaliacoes, lerIndicacoes, lerFidConfig, motorFidelidade, lerLancamentos, salvarLancamentos, atualizarJSON, lerHospedes, novoId, alertaAugusto }); } catch (e) { console.error('[nucleo/hospede-financeiro] falha ao montar:', e.message); }
 try { require('./nucleo/staff-core').montar(app, { requireAuth, requireAdmin, loginBloqueado, registraFalha, limpaFalhas, lerUsuarios, salvarUsuarios, JWT_SECRET, COOKIE_SECURE, semSenha, areasDoUsuario, AREAS, AREA_IDS, novoId, registrarAuditoria }); } catch (e) { console.error('[nucleo/staff-core] falha ao montar:', e.message); }
 try { require('./nucleo/hospede').montar(app, { loginBloqueado, registraFalha, limpaFalhas, normFone, lerHospedes, salvarHospedes, setCookieHospede, semSenhaHosp, HOSP_COOKIE, requireHospede, stays, semAcento, novoId, getStaysClientes, JWT_SECRET, AREA_HOSPEDE_URL, enviarEmail, escHtml, reservasDoHospede, lerPropInfo, resumoConta, lerConteudo, lerEvaKB, EVA_KB_BUDGET, registrarUsoEva, lerPedidosHosp, salvarPedidosHosp, lerServicos, lerFidConfig, SECOES_CONTEUDO, lerJSON, salvarJSON, alertaAugusto, appendJsonl, itensBillaveis, reciboHtml, lerAvaliacoes, salvarAvaliacoes, hojeISO, codigoDoHospede, lerIndicacoes, salvarIndicacoes, infoPropriedade, RAIZ: __dirname }); } catch (e) { console.error('[nucleo/hospede] falha ao montar:', e.message); }
 

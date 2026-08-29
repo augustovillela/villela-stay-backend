@@ -605,6 +605,25 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.notEqual(outroIp.status, 429, 'o freio é por IP: não pode punir quem não abusou');
   });
 
+  await t('dinheiro do hóspede: toda escrita passa pela fila (nenhuma some)', async () => {
+    // O motor de fidelidade grava por atualizarJSON, que faz `await fn(atual)`:
+    // leitura e escrita PODEM ficar separadas. Quem gravava direto no meio
+    // desaparecia quando a fila commitava — e pagamento sumido não volta.
+    const fsx = require('fs'), pathx = require('path');
+    const arq = pathx.join(DATA_DIR, 'lancamentos.json');
+    const antes = JSON.parse(fsx.readFileSync(arq, 'utf8'));
+    // duas escritas concorrentes: uma lenta (como o motor) e uma rápida
+    const lento = req('POST', '/staff/api/hospede/conta/H1/lancamento', {
+      json: { tipo: 'bonus', descricao: 'Lento', valor: 11 }, cookie: adminCookie });
+    const rapido = req('POST', '/staff/api/hospede/conta/H1/lancamento', {
+      json: { tipo: 'bonus', descricao: 'Rapido', valor: 22 }, cookie: adminCookie });
+    await Promise.all([lento, rapido]);
+    const depois = JSON.parse(fsx.readFileSync(arq, 'utf8'));
+    assert.strictEqual(depois.length, antes.length + 2, 'as duas escritas têm de sobreviver');
+    assert.ok(depois.some(l => l.descricao === 'Lento'), 'a primeira sumiu');
+    assert.ok(depois.some(l => l.descricao === 'Rapido'), 'a segunda sumiu');
+  });
+
   // ---------- A1: sessão que não morria na troca de senha ----------
   // Ficam por último de propósito: trocam as senhas que os testes acima usam.
   await t('A1 staff: trocar a senha mata o cookie antigo e mantém quem trocou', async () => {
