@@ -12,7 +12,8 @@ const repo = require('./repo');
 const frete = require('./frete');
 const { Products, Categorias, Vendedores, Config, s, n } = repo;
 
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const jsonLd = (o) => JSON.stringify(o).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const CONDICAO_ROTULO = { novo: 'Novo', seminovo: 'Seminovo', usado: 'Usado' };
 
@@ -137,7 +138,7 @@ ${semIndex ? '<meta name="robots" content="noindex,nofollow">' : ''}
 ${canonico ? `<link rel="canonical" href="${esc(canonico)}">` : ''}
 <link rel="icon" type="image/svg+xml" href="/assets/brand/vitrine/simbolo.svg">
 <meta name="theme-color" content="#0C5A52">
-${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld)}</script>` : ''}
+${jsonld ? `<script type="application/ld+json">${jsonLd(jsonld)}</script>` : ''}
 <style>${CSS}</style>
 </head>
 <body>

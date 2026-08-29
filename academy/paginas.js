@@ -11,7 +11,7 @@ const repo = require('./repo');
 const ct = require('./repo-conteudo');
 const billing = require('./billing');
 
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
 // Identidade GRUPO VILLELA — Villela Academy (acento âmbar #D97706).

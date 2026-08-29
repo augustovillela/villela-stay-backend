@@ -14,7 +14,8 @@ const { db } = require('./db');
 const { Items, Looks, Users, Config, OCASIOES, s, n } = repo;
 const { Reviews } = require('./bookings');
 
-const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const jsonLd = (o) => JSON.stringify(o).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const brl2 = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -449,7 +450,7 @@ function landingHTML() {
     corpo, {
       script,
       extraHead: `<link rel="canonical" href="${SITE}/closet">
-      <script type="application/ld+json">${JSON.stringify({
+      <script type="application/ld+json">${jsonLd({
         '@context': 'https://schema.org', '@type': 'WebSite', name: 'Closet Club', url: SITE + '/closet',
         description: 'Marketplace de aluguel de roupas e looks completos entre pessoas.',
         publisher: { '@type': 'Organization', name: 'Grupo Villela Stay' },
@@ -671,7 +672,7 @@ function pecaHTML(item) {
       ativo: 'vitrine', script,
       extraHead: `<link rel="canonical" href="${SITE}/closet/peca/${esc(i.slug || i.id)}">
       ${fotoUrl ? `<meta property="og:image" content="${esc(fotoUrl)}">` : ''}
-      <script type="application/ld+json">${JSON.stringify({
+      <script type="application/ld+json">${jsonLd({
         '@context': 'https://schema.org', '@type': 'Product', name: i.titulo, description: (i.descricao || '').slice(0, 500),
         brand: i.marca || undefined, category: i.categoria, image: fotoUrl || undefined,
         offers: { '@type': 'Offer', price: (i.preco_diaria_centavos / 100).toFixed(2), priceCurrency: 'BRL', availability: 'https://schema.org/InStock', url: `${SITE}/closet/peca/${i.slug || i.id}` },
@@ -1164,7 +1165,7 @@ function postHTML(p) {
     extraHead: `<link rel="canonical" href="${SITE}/closet/blog/${esc(p.slug)}">
     ${p.capa ? `<meta property="og:image" content="${esc(p.capa)}">` : ''}
     <meta property="og:type" content="article">
-    <script type="application/ld+json">${JSON.stringify({
+    <script type="application/ld+json">${jsonLd({
       '@context': 'https://schema.org', '@type': 'Article', headline: p.titulo,
       description: p.resumo || '', datePublished: p.publicado_em, dateModified: p.atualizado_em || p.publicado_em,
       author: { '@type': 'Organization', name: p.autor || 'Closet Club' },

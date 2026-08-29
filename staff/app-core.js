@@ -18,7 +18,7 @@ async function api(metodo, caminho, corpo) {
   if (!r.ok) throw Object.assign(new Error((dados && dados.erro) || ('Erro ' + r.status)), { status: r.status, dados });
   return dados;
 }
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Remove marcação markdown para exibir resumos curtos como texto limpo (sem **, >, `, links).
 const limparMd = (s) => String(s == null ? '' : s)
   .replace(/^\s*>\s?/, '')

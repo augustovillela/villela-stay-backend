@@ -82,6 +82,23 @@ async function rodar() {
   console.log('Vitrine — selftest\n');
 
   // ================= páginas públicas =================
+  await t('V1 JSON-LD: título com </script> não escapa do bloco (era XSS armazenado)', async () => {
+    const fonte = require('fs').readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    const ini = fonte.indexOf('const jsonLd =');
+    assert.ok(ini >= 0, 'o helper jsonLd tem de existir em paginas.js');
+    const fimLinha = fonte.indexOf(String.fromCharCode(10), ini);
+    let expr = fonte.slice(ini + ('const jsonLd =').length, fimLinha).trim();
+    if (expr.endsWith(';')) expr = expr.slice(0, -1);
+    const jsonLd = eval('(' + expr + ')');
+    const payload = { name: 'A</script><script>alert(1)</script>', description: 'ok' };
+    const saida = jsonLd(payload);
+    assert.ok(!saida.includes('</script>'), 'JSON.stringify não escapa <: o título fecharia o bloco e injetaria código');
+    assert.ok(!saida.toLowerCase().includes('<script'), 'nem pode abrir um script novo');
+    assert.deepEqual(JSON.parse(saida), payload, 'o JSON-LD tem de continuar válido e equivalente');
+    const sinkCru = 'ld+json">' + String.fromCharCode(36) + '{JSON.stringify(';
+    assert.ok(!fonte.includes(sinkCru), 'nenhum bloco ld+json pode voltar a usar JSON.stringify cru');
+  });
+
   await t('páginas públicas respondem 200 (home, busca, institucionais, entrar)', async () => {
     for (const p of ['/vitrine', '/vitrine/busca', '/vitrine/como-funciona', '/vitrine/venda-conosco', '/vitrine/seguranca',
       '/vitrine/termos', '/vitrine/privacidade', '/vitrine/proibidos', '/vitrine/devolucao', '/vitrine/entrar', '/vitrine/c/eletronicos']) {

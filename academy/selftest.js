@@ -107,6 +107,20 @@ async function main() {
   BASE = `http://127.0.0.1:${srv.address().port}`;
 
   console.log('\n— páginas públicas —');
+  await t('G3 esc(): escapa aspa dupla e simples (o site do produtor ia cru p/ dentro do href)', async () => {
+    const fonte = require('fs').readFileSync(require('path').join(__dirname, 'paginas.js'), 'utf8');
+    const ini = fonte.indexOf('const esc =');
+    assert.ok(ini >= 0, 'o helper esc tem de existir em paginas.js');
+    const fimLinha = fonte.indexOf(String.fromCharCode(10), ini);
+    let expr = fonte.slice(ini + ('const esc =').length, fimLinha).trim();
+    if (expr.endsWith(';')) expr = expr.slice(0, -1);
+    const esc = eval('(' + expr + ')');
+    const saida = esc('" onmouseover="alert(1)');
+    assert.ok(!saida.includes('"'), 'aspa dupla tem de sair escapada, senão quebra o atributo href');
+    assert.ok(!esc("x' onerror='y").includes("'"), 'a aspa simples também');
+    assert.equal(esc('<b>&</b>'), '&lt;b&gt;&amp;&lt;/b&gt;', 'o escape de sempre continua valendo');
+  });
+
   await t('landing /academy responde HTML', async () => {
     const r = await req('GET', '/academy');
     assert.equal(r.st, 200); assert.ok(r.texto.includes('Villela Academy'));
