@@ -24,6 +24,8 @@ const TESTES_POR_PASTA = {
   vdocs: 'test:vdocs', vpe: 'test:vpe', vsm: 'test:vsm', academy: 'test:academy',
   crm: 'test:crm', closet: 'test:closet', 'alta-vista': 'test:alta-vista',
   growth: 'test:growth', vitrine: 'test:vitrine', kids: 'test:kids',
+  financeiro: 'test:finance', music: 'test:music', voz: 'test:voz',
+  'mcp-staff': 'test:mcp',
 };
 // Mexeu aqui, todo mundo é afetado.
 const NUCLEO = ['server.js', 'nucleo/', 'selftest-nucleo.js', 'pwa.js', 'storage-s3.js',
@@ -41,15 +43,24 @@ function instalar() {
   console.log('Hook instalado em .git/hooks/pre-push');
 }
 
+// Diferença contra o que o REMOTO já tem — e o portão diz contra o quê mediu.
+// A ordem importa: o upstream da branch, se houver; senão `origin/master`, que
+// é de onde o Render deploya. Uma branch de trabalho sem upstream caía direto em
+// HEAD~1 e media só o ÚLTIMO commit: um push de 5 commits e 45 arquivos foi
+// conferido por 3. O `stdio` silencia o "fatal: no upstream" no terminal.
 function arquivosDoPush() {
-  // Diferença contra o remoto. Sem upstream (branch nova), usa o último commit.
+  const q = (cmd) => execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  const desde = (base) => q(`git diff --name-only ${base}...HEAD`).split('\n').filter(Boolean);
   try {
-    const up = execSync('git rev-parse --abbrev-ref --symbolic-full-name @{u}', { encoding: 'utf8' }).trim();
-    return execSync(`git diff --name-only ${up}...HEAD`, { encoding: 'utf8' }).split('\n').filter(Boolean);
-  } catch (_) {
-    try { return execSync('git diff --name-only HEAD~1..HEAD', { encoding: 'utf8' }).split('\n').filter(Boolean); }
-    catch (__) { return []; }
-  }
+    const up = q('git rev-parse --abbrev-ref --symbolic-full-name @{u}').trim();
+    return { lista: desde(up), contra: up };
+  } catch (_) { /* branch sem upstream: cai no alvo do deploy */ }
+  try {
+    q('git rev-parse --verify origin/master');
+    return { lista: desde('origin/master'), contra: 'origin/master' };
+  } catch (_) { /* sem origin/master: último recurso */ }
+  try { return { lista: q('git diff --name-only HEAD~1..HEAD').split('\n').filter(Boolean), contra: 'HEAD~1 (ÚLTIMO RECURSO — mede só o último commit)' }; }
+  catch (__) { return { lista: [], contra: 'nada' }; }
 }
 
 function rodar(rotulo, cmd, args) {
@@ -88,7 +99,7 @@ function auditoria() {
 function principal() {
   if (process.argv.includes('--instalar')) return instalar();
 
-  const mudados = arquivosDoPush();
+  const { lista: mudados, contra } = arquivosDoPush();
   const suites = new Set();
   if (mudados.some((f) => NUCLEO.some((n) => f === n || f.startsWith(n)))) suites.add('test:nucleo');
   for (const [pasta, script] of Object.entries(TESTES_POR_PASTA)) {
@@ -96,7 +107,7 @@ function principal() {
   }
   if (!suites.size) suites.add('test:nucleo');   // nada reconhecido: roda o mínimo
 
-  console.log(`\nPortão de qualidade — ${mudados.length} arquivo(s) no push, ${suites.size} suíte(s):\n`);
+  console.log(`\nPortão de qualidade — ${mudados.length} arquivo(s) desde ${contra}, ${suites.size} suíte(s):\n`);
   let verde = auditoria();
   for (const s of [...suites].sort()) verde = rodar(s, 'npm', ['run', s]) && verde;
 
