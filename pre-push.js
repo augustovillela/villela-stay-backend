@@ -26,6 +26,7 @@ const TESTES_POR_PASTA = {
   growth: 'test:growth', vitrine: 'test:vitrine', kids: 'test:kids',
   financeiro: 'test:finance', music: 'test:music', voz: 'test:voz',
   'mcp-staff': 'test:mcp',
+  livraria: 'test:livraria',
 };
 // Mexeu aqui, todo mundo é afetado.
 const NUCLEO = ['server.js', 'nucleo/', 'selftest-nucleo.js', 'pwa.js', 'storage-s3.js',
