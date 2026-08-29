@@ -9,6 +9,7 @@
 //   lerLancamentos, salvarLancamentos, lerHospedes, novoId, alertaAugusto }
 // =====================================================================
 'use strict';
+const webhookMP = require('./webhook-mp');
 
 module.exports.montar = function montar(app, deps) {
   const { requireHospede, requireAuth, requirePublishOrAdmin, resumoConta, mpFetch, AREA_HOSPEDE_URL,
@@ -63,6 +64,12 @@ module.exports.montar = function montar(app, deps) {
       const tipo = b.type || q.type || q.topic || '';
       const payId = (b.data && b.data.id) || q['data.id'] || (tipo === 'payment' ? q.id : null);
       if (!payId || (tipo && !/payment/i.test(String(tipo)))) return;
+      // Confere a assinatura quando ha segredo configurado; o id tambem vai para
+      // dentro da URL da API do MP, entao passa pela mesma guarda do Finance.
+      const confMP = webhookMP.conferir({ headers: req.headers, dataId: payId,
+        segredo: process.env.HOSPEDE_MP_WEBHOOK_SECRET, rotulo: 'hospede' });
+      if (!confMP.ok) return console.warn('[hospede] webhook MP recusado:', confMP.motivo);
+      if (!webhookMP.idSeguro(payId)) return console.warn('[hospede] webhook MP com id inválido');
       const pay = await mpFetch('/v1/payments/' + payId).catch(() => null);
       if (!pay || pay.status !== 'approved') return;
       const ref = String(pay.external_reference || '');

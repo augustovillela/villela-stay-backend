@@ -29,6 +29,7 @@ const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasPublicas } = require('./rotas-publicas');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
+const webhookMP = require('../nucleo/webhook-mp');
 
 let _timer = null;
 
@@ -64,6 +65,13 @@ function montar(app, injected = {}) {
   // webhook do Mercado Pago (Pix da reserva + assinatura Premium)
   app.post('/closet/webhooks/mercadopago', express.json({ type: () => true }), async (req, res) => {
     res.sendStatus(200); // o MP exige 200 rápido
+    // Confere a assinatura quando ha segredo configurado; sem segredo apenas
+    // avisa (a re-busca na API do MP segue sendo a defesa contra payload forjado).
+    const idMP = ((req.body || {}).data || {}).id || (req.query || {})['data.id'] || (req.query || {}).id;
+    const confMP = webhookMP.conferir({ headers: req.headers, dataId: idMP,
+      segredo: process.env.CLOSET_MP_WEBHOOK_SECRET, rotulo: 'closet' });
+    if (!confMP.ok) return console.warn('[closet] webhook MP recusado:', confMP.motivo);
+    if (!webhookMP.idSeguro(idMP)) return console.warn('[closet] webhook MP com id inválido');
     try { await billing.processarWebhook(req.body || {}, req.query || {}); } catch (_) {}
   });
 

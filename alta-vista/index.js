@@ -21,6 +21,7 @@ const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasTour } = require('./rotas-tour');
 const { registrarPaginas, SITE } = require('./paginas');
+const webhookMP = require('../nucleo/webhook-mp');
 
 function montar(app, injected = {}) {
   const { express, requireAuth, requireAdmin, enviarEmail, alertaAugusto, mpFetch, jwtSecret } = injected;
@@ -60,6 +61,13 @@ function montar(app, injected = {}) {
   // webhook do Mercado Pago (Checkout Pro das parcelas). 200 rápido, efeito async.
   app.post('/alta-vista/webhooks/mercadopago', express.json({ type: () => true }), async (req, res) => {
     res.sendStatus(200); // o MP exige 200 rápido
+    // Confere a assinatura quando ha segredo configurado; sem segredo apenas
+    // avisa (a re-busca na API do MP segue sendo a defesa contra payload forjado).
+    const idMP = ((req.body || {}).data || {}).id || (req.query || {})['data.id'] || (req.query || {}).id;
+    const confMP = webhookMP.conferir({ headers: req.headers, dataId: idMP,
+      segredo: process.env.ALTA_VISTA_MP_WEBHOOK_SECRET, rotulo: 'alta-vista' });
+    if (!confMP.ok) return console.warn('[alta-vista] webhook MP recusado:', confMP.motivo);
+    if (!webhookMP.idSeguro(idMP)) return console.warn('[alta-vista] webhook MP com id inválido');
     try { await billing.processarWebhook(req.body || {}, req.query || {}); } catch (_) {}
   });
 

@@ -22,6 +22,7 @@ const { registrarRotasIA, registrarRotasIAStaff } = require('./rotas-ia');
 const { registrarRotasGovernanca, registrarRotasGovernancaStaff } = require('./rotas-governanca');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
+const webhookMP = require('../nucleo/webhook-mp');
 
 function montar(app, injected = {}) {
   const { express, requireAuth, requireAdmin, requirePublishOrAdmin, alertaAugusto, mpFetch, jwtSecret } = injected;
@@ -81,6 +82,13 @@ function montar(app, injected = {}) {
   // webhook do Mercado Pago (200 rápido; processamento assíncrono e idempotente)
   app.post('/academy/webhooks/mercadopago', express.json({ type: () => true }), async (req, res) => {
     res.sendStatus(200);
+    // Confere a assinatura quando ha segredo configurado; sem segredo apenas
+    // avisa (a re-busca na API do MP segue sendo a defesa contra payload forjado).
+    const idMP = ((req.body || {}).data || {}).id || (req.query || {})['data.id'] || (req.query || {}).id;
+    const confMP = webhookMP.conferir({ headers: req.headers, dataId: idMP,
+      segredo: process.env.ACADEMY_MP_WEBHOOK_SECRET, rotulo: 'academy' });
+    if (!confMP.ok) return console.warn('[academy] webhook MP recusado:', confMP.motivo);
+    if (!webhookMP.idSeguro(idMP)) return console.warn('[academy] webhook MP com id inválido');
     try { await billing.processarWebhook(req.body || {}, req.query || {}); } catch (_) {}
   });
 
