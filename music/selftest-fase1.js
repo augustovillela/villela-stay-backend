@@ -782,6 +782,27 @@ async function rodar({ t, secao, req, assert, PROFESSORES }) {
     assert.equal(r.json.feedbacks[0].nota, 8.5);
   });
 
+  await t('M1 CONTESTAÇÃO: só o professor DA TAREFA resolve (nota de aluno alheio)', async () => {
+    // A listagem já amarrava professor↔tarefa; a escrita não. Qualquer docente
+    // com o id da contestação podia fechá-la e REGRAVAR a nota.
+    const c = await req('POST', '/music/api/contestacoes',
+      { como: 'ana', corpo: { submissao_id: submissaoId, motivo: 'Revisão pedida para o teste do M1.' } });
+    assert.equal(c.status, 200, JSON.stringify(c.json));
+    const id = c.json.contestacao.id;
+    let barrou = false;
+    try {
+      academia.Contestacoes.resolver('u-prof2',
+        { id, acolher: true, resposta: 'invadindo', notaNova: 10 });
+    } catch (_) { barrou = true; }
+    assert.ok(barrou, 'u-prof2 é docente de verdade, mas não é o da tarefa: não pode resolver');
+    const ainda = academia.Contestacoes.doAluno('u-ana').find((x) => x.id === id);
+    assert.equal(ainda.status, 'aberta', 'a contestação tem de continuar aberta');
+    // e o professor da tarefa continua conseguindo
+    const ok = academia.Contestacoes.resolver('u-prof',
+      { id, acolher: false, resposta: 'Mantida.', notaNova: null });
+    assert.equal(ok.status, 'mantida', 'o professor da tarefa tem de conseguir');
+  });
+
   await t('CONTESTAÇÃO: o aluno pede revisão e o professor acolhe com nota nova', async () => {
     const c = await req('POST', '/music/api/contestacoes',
       { como: 'ana', corpo: { submissao_id: submissaoId, motivo: 'O metrônomo do exercício estava em 80, não 60.' } });

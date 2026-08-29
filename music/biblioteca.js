@@ -30,6 +30,9 @@ const midi = require('./midi');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const MIDI_MAX_BYTES = 512 * 1024;
+// MusicXML nao tinha teto: o conteudo e reprocessado por regex a cada leitura
+// e a cada transposicao. Partitura de verdade nao chega perto disto.
+const XML_MAX_BYTES = 2 * 1024 * 1024;
 
 // ---------------------------------------------------------------------
 // Pastas
@@ -110,6 +113,9 @@ const Partituras = {
       const doc = chordpro.analisar(conteudo);
       if (!doc.linhas.some((l) => l.tipo === 'letra')) throw new Error('A cifra está vazia.');
     } else if (formato === 'musicxml') {
+      if (Buffer.byteLength(String(conteudo || ''), 'utf8') > XML_MAX_BYTES) {
+        throw new Error('Arquivo MusicXML acima de 2 MB. Isso não parece uma partitura.');
+      }
       if (!musicxml.ehXml(conteudo)) {
         throw new Error('Isto não parece um arquivo MusicXML. Exporte do seu editor como MusicXML (.musicxml ou .xml).');
       }

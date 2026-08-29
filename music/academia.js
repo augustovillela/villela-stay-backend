@@ -532,6 +532,15 @@ const Contestacoes = {
     const c = db.prepare('SELECT * FROM contestacoes WHERE id = ?').get(id);
     if (!c) throw new Error('Contestação não encontrada.');
     if (c.status !== 'aberta') throw new Error('Esta contestação já foi resolvida.');
+    // Quem resolve tem de ser o professor DA TAREFA contestada. A listagem já
+    // amarrava isso no JOIN; sem o mesmo laço aqui, a nota de um aluno podia
+    // ser regravada por um docente de outra escola que só soubesse o id.
+    const dono = c.submissao_id ? db.prepare(
+      `SELECT t.professor AS professor, t.status AS status_tarefa
+         FROM submissoes s JOIN tarefas t ON t.id = s.tarefa_id
+        WHERE s.id = ?`).get(c.submissao_id) : null;
+    if (!dono) throw new Error('Contestação sem tarefa: não há quem a revise.');
+    if (dono.professor !== revisor) throw new Error('Só o professor da tarefa resolve esta contestação.');
     if (acolher && notaNova != null && c.submissao_id) {
       db.prepare(`INSERT INTO feedbacks (id, submissao_id, autor, texto, nota, origem, criado_em)
                   VALUES (?,?,?,?,?, 'revisao', ?)`)

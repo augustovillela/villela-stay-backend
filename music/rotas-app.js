@@ -122,6 +122,17 @@ function registrarRotasApp(app, { requireUsuario }) {
       repo.Midias.estado(m.id, 'falhou', { erro: 'O arquivo não chegou ao armazenamento.' });
       return res.status(409).json({ erro: 'O arquivo não chegou ao armazenamento. Tente enviar de novo.' });
     }
+    // Teto conferido contra o tamanho REAL do objeto: a URL presignada de PUT
+    // nao impoe limite, e o `bytes` que o cliente declarou no pedido nao vale
+    // como prova. Excedeu, o objeto sai do bucket — senao o teto seria so um
+    // aviso e o custo ficaria de pe.
+    const limitesConf = repo.Config.get('limites', {}) || {};
+    const tetoConf = (Number(limitesConf.upload_mb) || 200) * 1024 * 1024;
+    if (Number(obj.bytes) > tetoConf) {
+      await storage.remover(m.chave).catch(() => {});
+      repo.Midias.estado(m.id, 'falhou', { erro: 'Arquivo acima do limite.' });
+      return res.status(413).json({ erro: `Arquivo acima do limite de ${limitesConf.upload_mb || 200} MB.` });
+    }
     const sha = (req.body || {}).sha256 || '';
     repo.Midias.estado(m.id, 'processando', { bytes: obj.bytes, sha256: sha });
     fila.enfileirar({ tipo: 'midia.ingerir', fila: 'rapida', dono: req.usuario.id,
