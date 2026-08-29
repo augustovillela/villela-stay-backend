@@ -2,6 +2,21 @@
 // ORIGENA — suíte de testes (Fases 0 a 6).   npm run test:origena
 //
 // Sobe o Express real com auth de staff injetada, num SCHEMA DESCARTÁVEL
+//
+// O BANCO LOCAL (ORIGENA_TEST_DATABASE_URL, porta 5433 — nunca produção):
+//   docker run -d --name origena-teste -p 127.0.0.1:5433:5432 \
+//     -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=<a do .env> \
+//     -e POSTGRES_DB=origena_teste pgvector/pgvector:pg18
+//   (a migração 017 exige a extensão `vector`: imagem comum do postgres não serve)
+//
+//   E DEPOIS, o pulo do gato: o papel da aplicação NÃO pode ser superusuário —
+//   superusuário ignora row level security, e o §94 acusa na hora ("o muro do
+//   banco não está de pé"). Crie o papel separado, dono do banco:
+//     CREATE ROLE origena LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD '...';
+//     ALTER DATABASE origena_teste OWNER TO origena;
+//     ALTER SCHEMA public OWNER TO origena;
+//     CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+//   Com FORCE ROW LEVEL SECURITY, até o dono da tabela obedece ao RLS.
 // do Postgres (o equivalente ao os.tmpdir() que os produtos SQLite usam)
 // — derrubado no fim, dê certo ou dê errado. O R2 é o de verdade.
 //
@@ -178,6 +193,20 @@ async function principal() {
     console.error('Local: crie backend\\.env com ORIGENA_DATABASE_URL (a URL EXTERNA do Render).\n');
     process.exit(1);
   }
+
+  // Configurada nao e o mesmo que ALCANCAVEL. Sem este ping, o Postgres fora do
+  // ar deixava a suite seguir, o produto subia "SEM banco" e a falha aparecia
+  // ~300 testes depois como TypeError em ROTAS_ESCOPADAS — erro de programacao
+  // escondendo a causa real, que e de ambiente.
+  try {
+    await db.q('SELECT 1');
+  } catch (e) {
+    console.error('\nO Postgres de TESTE nao respondeu: ' + e.message);
+    console.error('A suite usa ORIGENA_TEST_DATABASE_URL (schema t_*) — nunca o banco de producao.');
+    console.error('Suba um Postgres local nessa porta, com a extensao `vector` disponivel');
+    console.error('(imagem pgvector/pgvector), e rode de novo.\n');
+    process.exit(1);
+  }
   console.log(`\nORIGENA — selftest (Fase 0)   schema descartável: ${db.SCHEMA}\n`);
 
   const app = express();
@@ -190,6 +219,11 @@ async function principal() {
   const montado = await origena.montar(app, {
     express, requireAuth, requireAdmin, enviarEmail, mpFetch: mpFake,
     jwtSecret: 'segredo-de-teste-origena' });
+  if (!montado || !Array.isArray(montado.ROTAS_ESCOPADAS)) {
+    console.error('\nO modulo subiu sem a tabela de rotas escopadas — normalmente e o banco.');
+    console.error('Confira a saida do migrar acima; a suite de isolamento (§94) depende dela.\n');
+    process.exit(1);
+  }
   await new Promise((r) => { servidor = app.listen(0, r); });
   base = 'http://127.0.0.1:' + servidor.address().port;
 
