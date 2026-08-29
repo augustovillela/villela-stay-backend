@@ -141,6 +141,19 @@ function criarFluxo({ repo, eventos, emails, enviarEmail, enviarWhatsApp, alerta
       let order = repo.Orders.obter(orderId);
       if (!order) return null;
       if (order.status === 'pago') return order; // já processado — idempotente
+      // NUNCA liberar a entrega por um valor diferente do que foi cobrado. O
+      // Alta Vista já fazia esta conferência; aqui faltava, e a entrega do PDF
+      // é irreversível: uma vez baixado, não volta.
+      // Os dois lados sao CENTAVOS INTEIROS: valor_total do pedido (repo.brl(cents))
+      // e pag.valor, que pagamentos.js ja converte de transaction_amount. Comparar
+      // com tolerancia de float aqui so esconderia um erro de unidade.
+      const cobrado = Number(order.valor_total || 0);
+      const pago = Number(pag.valor || 0);
+      if (cobrado > 0 && pago > 0 && pago !== cobrado) {
+        console.error('[livraria] pagamento com VALOR DIVERGENTE ignorado — pedido ' + orderId
+          + ': cobrado ' + cobrado + ' centavos, veio ' + pago);
+        return null;
+      }
       repo.Payments.atualizarPorOrder(orderId, { status: 'aprovado', provider_payment_id: pag.provider_payment_id || '', metodo: pag.metodo || '', raw: JSON.stringify(pag.raw || {}) });
       order = repo.Orders.atualizarCampos(orderId, {
         status: 'pago', pago_em: new Date().toISOString(),
