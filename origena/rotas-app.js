@@ -50,6 +50,17 @@ const { Families, Memberships, Invites, Auditoria, auditar, s } = repo;
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
+// As quatro permissoes que decidem o que uma pessoa ENXERGA. Valem para as duas
+// portas que entregam conteudo empacotado (exportacao e livro): o arquivo sai
+// pronto, sem passar pelo podeVer de novo, entao quem leva o pacote precisa
+// enxergar tudo o que ele pode conter. So a permissao de exportar nao basta —
+// o EDITOR a tem e nao tem ver.privado.
+const VISIBILIDADE = ['ver.publico', 'ver.familia', 'ver.privado', 'ver.documentos'];
+const exigirVisaoTotal = VISIBILIDADE.map((p) => rbac.exigir(p));
+/** Permissoes de visao que o papel do pacote tinha e quem pede NAO tem. Vazio = pode levar. */
+const cegoPara = (papel, req) =>
+  VISIBILIDADE.filter((p) => rbac.pode(papel, p) && !rbac.pode(req.papel, p, req.permissoesExtra));
+
 // Toda rota escopada é declarada AQUI, e o selftest §94 varre esta lista
 // para gerar o teste de isolamento. Rota nova sem entrada aqui quebra a
 // suíte — de propósito: é assim que rota nova nasce coberta.
@@ -1274,7 +1285,7 @@ function registrarRotasApp(app) {
 
   // --------------------------------------------------- exportação (§68)
   app.post(decl('POST', `${R}/familias/:familyId/exportacoes`), ...naFamilia,
-    rbac.exigir('exportar'), h(async (req, res) => {
+    rbac.exigir('exportar'), ...exigirVisaoTotal, h(async (req, res) => {
       const exp = await tenancy.noEscopoDe(req, async (t) => {
         const e = await t.uma(
           `INSERT INTO exports (family_id, created_by) VALUES ($1,$2) RETURNING *`,
@@ -1397,10 +1408,16 @@ function registrarRotasApp(app) {
     rbac.exigir('exportar'), h(async (req, res) => {
       const dados = await tenancy.noEscopoDe(req, async (t) => {
         const l = await t.uma(
-          `SELECT id, tipo, ano, status, paginas, bytes, conteudo, erro, expira_em
+          `SELECT id, tipo, ano, status, paginas, bytes, conteudo, erro, expira_em,
+                  papel, solicitado_por
              FROM books WHERE id = $1`, [req.params.livroId]);
         if (!l) throw erro('erro.livro_nao_encontrado', 404);
-        return { livro: l, url: await livro.url(t, l.id) };
+        // O PDF foi composto com a permissao de quem PEDIU (livro.gerar), entao pode
+        // conter PRIVATE. Sem esta conferencia, um EDITOR baixava o livro que o OWNER
+        // mandou fazer e levava o que a navegacao nunca lhe mostraria.
+        if (cegoPara(l.papel, req).length) throw erro('erro.sem_permissao', 403);
+        const { papel, solicitado_por: solicitante, ...publico } = l;  // resposta nao muda de forma
+        return { livro: publico, url: await livro.url(t, l.id) };
       });
       res.json(dados);
     }));

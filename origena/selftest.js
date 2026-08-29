@@ -851,6 +851,25 @@ async function principal() {
     assert.deepStrictEqual(rbac.permissoesDe('GUEST'), ['ver.publico']);
   });
 
+  await teste('EDITOR nao leva PRIVATE embora dentro de um pacote (OR1/OR2)', async () => {
+    // Exportacao e livro entregam conteudo JA composto, sem passar pelo podeVer de
+    // novo. Quem leva o pacote precisa enxergar tudo o que ele pode conter.
+    assert(rbac.pode('EDITOR', 'exportar'), 'premissa: o EDITOR exporta');
+    assert(!rbac.pode('EDITOR', 'ver.privado'), 'premissa: o EDITOR nao ve privado');
+    const VISIBILIDADE = ['ver.publico', 'ver.familia', 'ver.privado', 'ver.documentos'];
+    const levaPacote = (papel) => VISIBILIDADE.every((p) => rbac.pode(papel, p));
+    assert(!levaPacote('EDITOR'), 'EDITOR nao pode levar o acervo inteiro num arquivo');
+    for (const papel of ['OWNER', 'ADMIN', 'HISTORIAN']) {
+      assert(levaPacote(papel), papel + ' tem de continuar exportando');
+    }
+  });
+
+  await teste('as duas portas de pacote tem a guarda na rota (OR1/OR2)', async () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'rotas-app.js'), 'utf8');
+    assert(src.includes('...exigirVisaoTotal'), 'a exportacao perdeu a guarda de visao total');
+    assert(src.includes('cegoPara(l.papel, req)'), 'o download do livro nao confere mais quem pede');
+  });
+
   await teste('CONTRIBUTOR acrescenta mas NÃO apaga', async () => {
     assert(rbac.pode('CONTRIBUTOR', 'contribuir'));
     assert(!rbac.pode('CONTRIBUTOR', 'excluir'), 'CONTRIBUTOR conseguiu excluir');
