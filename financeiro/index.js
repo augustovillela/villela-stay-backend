@@ -63,6 +63,7 @@ const restauracao = require('./restauracao');
 const retencao = require('./retencao');
 const seguranca = require('./seguranca');
 const billing = require('./billing');
+const webhookMP = require('../nucleo/webhook-mp');
 const mercadopago = require('./mercadopago');
 const casamento = require('./casamento');
 const ativos = require('./ativos');
@@ -125,6 +126,11 @@ function montar(app, injected = {}) {
   // (billing.registrarPagamento confere o id do pagamento).
   app.post('/finance/webhooks/mercadopago', express.json({ type: () => true }), (req, res) => {
     res.sendStatus(200);
+    // F4: confere a assinatura quando ha segredo configurado (ver nucleo/webhook-mp).
+    const idMP = ((req.body || {}).data || {}).id || (req.query || {})['data.id'] || (req.query || {}).id;
+    const conf = webhookMP.conferir({ headers: req.headers, dataId: idMP,
+      segredo: process.env.FINANCE_MP_WEBHOOK_SECRET, rotulo: 'finance' });
+    if (!conf.ok) return console.warn('[finance] webhook MP recusado:', conf.motivo);
     Promise.resolve(billing.processarWebhook(req.body || {}, req.query || {}))
       .catch(e => console.error('[finance] webhook MP:', e.message));
   });

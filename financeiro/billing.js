@@ -25,6 +25,7 @@
 const { nowISO } = require('./db');
 const repo = require('./repo');
 const tenancy = require('./tenancy');
+const webhookMP = require('../nucleo/webhook-mp');
 const auditoria = require('./auditoria');
 const entitlements = require('./entitlements');
 const dinheiro = require('./dinheiro');
@@ -256,6 +257,9 @@ async function processarWebhook(body = {}, query = {}) {
   const tipo = body.type || query.type || body.topic || query.topic;
   const id = (body.data && body.data.id) || query['data.id'] || query.id;
   if (!id) return { ok: true, ignorado: 'sem id' };
+  // F4: o id vai para dentro da URL da API do MP; sem isto um id com barra
+  // navegava no caminho com a credencial da casa.
+  if (!webhookMP.idSeguro(id)) return { ok: true, ignorado: 'id inválido' };
 
   if (tipo === 'subscription_preapproval' || tipo === 'preapproval') {
     const pre = await mp(`/preapproval/${id}`);

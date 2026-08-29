@@ -281,6 +281,32 @@ lanca('razão: TRIGGER recusa apagar linha de lote contabilizado', () =>
 // As duas frestas que a auditoria de 28/08/2026 achou nos gatilhos: o status do
 // lote nao era protegido (e os outros gatilhos leem justamente ele), e faltava
 // barrar o INSERT de linha em lote ja fechado.
+// F4: o webhook do MP nao conferia assinatura e o id ia cru para dentro da URL
+// da API do MP — com a credencial da casa no caminho.
+teste('webhook MP: assinatura confere quando ha segredo, e recusa a errada', () => {
+  const w = require('../nucleo/webhook-mp');
+  const crypto = require('crypto');
+  const segredo = 'seg-teste', dataId = 'ABC123', reqId = 'r-1', ts = '1700000000';
+  const manifesto = 'id:' + dataId.toLowerCase() + ';request-id:' + reqId + ';ts:' + ts + ';';
+  const v1 = crypto.createHmac('sha256', segredo).update(manifesto).digest('hex');
+  const hOk = { 'x-signature': 'ts=' + ts + ',v1=' + v1, 'x-request-id': reqId };
+  assert.equal(w.conferir({ headers: hOk, dataId, segredo }).ok, true);
+  const hRuim = { 'x-signature': 'ts=' + ts + ',v1=' + '0'.repeat(64), 'x-request-id': reqId };
+  assert.equal(w.conferir({ headers: hRuim, dataId, segredo }).ok, false);
+  // sem segredo NAO recusa (a re-busca na API do MP e a defesa real; recusar
+  // aqui pararia a cobranca em producao se a env nao estivesse setada)
+  assert.equal(w.conferir({ headers: {}, dataId, segredo: '' }).ok, true);
+});
+
+teste('webhook MP: id que navega no caminho da API e recusado', () => {
+  const w = require('../nucleo/webhook-mp');
+  assert.equal(w.idSeguro('123456789'), true);
+  assert.equal(w.idSeguro('pref_abc-DEF_1'), true);
+  assert.equal(w.idSeguro('../v1/payments/999'), false);
+  assert.equal(w.idSeguro('12/34'), false);
+  assert.equal(w.idSeguro(''), false);
+});
+
 lanca('razao: TRIGGER recusa rebaixar o status do lote contabilizado', () =>
   naA(() => db.prepare("UPDATE fin_lotes SET status = 'rascunho' WHERE id = ?").run(loteBase.lote.id)),
   /transicao de status invalida/);
