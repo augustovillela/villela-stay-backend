@@ -183,8 +183,11 @@ async function isolamento() {
     const p = await uma(
       `SELECT current_user AS papel, rolsuper OR rolbypassrls AS ignora
          FROM pg_roles WHERE rolname = current_user`);
-    // sem SET app.family_id nenhum: com o muro de pe, o RLS zera o resultado
-    const sonda = await uma('SELECT count(*)::int AS n FROM audit_log');
+    // Sem SET app.family_id: linha DE FAMILIA nao pode aparecer. O filtro por
+    // `family_id IS NOT NULL` nao e detalhe — a politica do audit_log deixa a
+    // linha GLOBAL visivel de proposito, e contar tudo dava alarme falso.
+    const sonda = await uma(
+      'SELECT count(*)::int AS n FROM audit_log WHERE family_id IS NOT NULL');
     return {
       ok: !p.ignora && sonda.n === 0,
       papel: p.papel, ignoraRls: !!p.ignora, linhasSemEscopo: sonda.n,
