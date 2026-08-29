@@ -15,6 +15,8 @@
 // =====================================================================
 'use strict';
 const crypto = require('crypto');
+const net = require('net');
+const dns = require('dns').promises;
 const { db, nowISO, novoId, sha256, j } = require('./db');
 const repo = require('./repo');
 
@@ -102,18 +104,56 @@ function registrarApiPublica(app, { express }) {
 }
 
 // ------------------------------------------------------------ webhooks de saída
-function validarUrlWebhook(url) {
+/**
+ * Um endereco e interno? Decidido pelo IP, nunca pelo texto do host: dominio
+ * publico pode apontar para 10.x, e foi assim que a lista textual anterior
+ * deixava passar. Cobre IPv4, IPv6 e IPv4 mapeado em IPv6.
+ */
+function ipInterno(ip) {
+  const v = String(ip || '');
+  if (net.isIPv4(v)) {
+    const [a, b] = v.split('.').map(Number);
+    return a === 0 || a === 10 || a === 127
+      || (a === 169 && b === 254)                 // link-local
+      || (a === 172 && b >= 16 && b <= 31)        // 172.16/12 — faltava
+      || (a === 192 && b === 168)
+      || (a === 100 && b >= 64 && b <= 127)       // CGNAT — faltava
+      || a >= 224;                                // multicast/reservado
+  }
+  if (net.isIPv6(v)) {
+    const x = v.toLowerCase();
+    if (x === '::1' || x === '::') return true;   // loopback — faltava
+    if (/^f[cd]/.test(x)) return true;            // fc00::/7 unique-local
+    if (/^fe[89ab]/.test(x)) return true;         // fe80::/10 link-local
+    const m = x.match(/^::ffff:(.+)$/);           // IPv4 mapeado
+    if (m) return ipInterno(m[1]);
+    return false;
+  }
+  return true;   // não é IP reconhecível: recusa, não adivinha
+}
+
+/** Resolve o host e recusa se QUALQUER endereço dele for interno. */
+async function alvoExterno(hostname) {
+  let ends = [];
+  try { ends = await dns.lookup(hostname, { all: true }); }
+  catch { throw new Error('Não foi possível resolver o host do webhook.'); }
+  if (!ends.length || ends.some((e) => ipInterno(e.address))) {
+    throw new Error('Host interno não permitido.');
+  }
+}
+
+async function validarUrlWebhook(url) {
   let u;
   try { u = new URL(String(url || '')); } catch { throw new Error('URL inválida.'); }
   const dev = process.env.NODE_ENV === 'development';
   if (!['https:', 'http:'].includes(u.protocol)) throw new Error('Webhook precisa ser https://');
   if (u.protocol !== 'https:' && !dev) throw new Error('Webhook precisa ser https://');
-  if (!dev && /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|169\.254\.)/.test(u.hostname)) throw new Error('Host interno não permitido.');
+  if (!dev) await alvoExterno(u.hostname);
   return u.toString();
 }
 const EVENTOS = ['documento.criado', 'documento.excluido', 'aprovacao.finalizada'];
-function criarWebhook(tenantId, { url, eventos }, ator, ip) {
-  const alvo = validarUrlWebhook(url);
+async function criarWebhook(tenantId, { url, eventos }, ator, ip) {
+  const alvo = await validarUrlWebhook(url);
   const evs = (Array.isArray(eventos) ? eventos : []).filter(e => EVENTOS.includes(e));
   if (!evs.length) throw new Error(`Escolha os eventos: ${EVENTOS.join(', ')}.`);
   const id = novoId();
@@ -159,6 +199,9 @@ async function processarEntregas(max = 10) {
     const assinatura = crypto.createHmac('sha256', sub.secret).update(corpo).digest('hex');
     let ok = false, resposta = '';
     try {
+      // De novo aqui: validar so na criacao nao impede o dono do dominio de
+      // apontar o A record para dentro depois (DNS rebinding).
+      if (process.env.NODE_ENV !== 'development') await alvoExterno(new URL(sub.url).hostname);
       const r = await fetch(sub.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-VDocs-Event': d.evento, 'X-VDocs-Signature': 'sha256=' + assinatura },
@@ -178,5 +221,5 @@ async function processarEntregas(max = 10) {
 
 module.exports = {
   criarChave, listarChaves, revogarChave, requireApiKey, registrarApiPublica,
-  EVENTOS, criarWebhook, listarWebhooks, excluirWebhook, entregasRecentes, emitir, processarEntregas,
+  EVENTOS, ipInterno, criarWebhook, listarWebhooks, excluirWebhook, entregasRecentes, emitir, processarEntregas,
 };

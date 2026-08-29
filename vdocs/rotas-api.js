@@ -333,7 +333,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
     res.json({ ok: true });
   }));
   r.post('/integracoes/webhooks', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
-    res.json({ ok: true, ...apiPub.criarWebhook(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip) });
+    res.json({ ok: true, ...(await apiPub.criarWebhook(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip)) });
   }));
   r.delete('/integracoes/webhooks/:id', requireTenant, requirePerm('configurar_integracoes'), h(async (req, res) => {
     apiPub.excluirWebhook(req.vd.tenant.id, req.params.id, req.vd.user, req.vd.ip);

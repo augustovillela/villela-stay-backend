@@ -773,6 +773,20 @@ function teste(nome, cond) {
   r = await req('POST', '/vdocs/api/documentos', { body: { arquivo_nome: 'evento.txt', nome: 'Doc do evento', conteudo_base64: B64('conteudo evento webhook') }, jar: 'anaA' });
   const docEvento = r.dados.documento.id;
   await apiPub.processarEntregas(10);
+  {
+    // SSRF: a lista anterior era textual e incompleta. Estas cinco faixas
+    // passavam, e a checagem olhava o NOME do host, nao o IP resolvido.
+    const interno = apiPub.ipInterno;
+    for (const ip of ['10.0.0.1', '127.0.0.1', '192.168.1.1', '169.254.169.254',
+      '172.16.0.1', '172.31.255.254', '100.64.0.1', '::1', 'fc00::1', 'fe80::1',
+      '::ffff:10.0.0.1', 'nao-e-ip']) {
+      teste('SSRF: ' + ip + ' e interno', interno(ip) === true);
+    }
+    for (const ip of ['8.8.8.8', '1.1.1.1', '172.32.0.1', '172.15.0.1', '100.63.0.1',
+      '2001:4860:4860::8888']) {
+      teste('SSRF: ' + ip + ' e externo', interno(ip) === false);
+    }
+  }
   teste('webhook entregue ao receptor', recebidos.some(x => x.evento === 'documento.criado' && x.corpo.dados.document_id === docEvento));
   {
     const ent = recebidos.find(x => x.evento === 'documento.criado');
