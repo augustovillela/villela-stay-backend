@@ -17,6 +17,31 @@ const { db, j } = require('./db');
 const contaPorChave = (k) =>
   db.prepare('SELECT tenant_id FROM crm_config WHERE webhook_token = ?').get(String(k || '').slice(0, 80)) || null;
 
+/**
+ * Resolve o DONO de um slug publico. O slug e unico apenas por conta
+ * (UNIQUE(tenant_id, slug)): duas contas podem ter "demo" ou "reuniao-30min".
+ * Resolver o tenant pelo slug fazia o visitante de uma conta ver a agenda da
+ * outra e ter o seu lead gravado la. Quando o dominio proprio identifica a
+ * conta, e ele que manda; sem dominio, so seguimos se o slug for inequivoco.
+ */
+const tenantPeloHost = (req) => {
+  const host = String(req.hostname || '').toLowerCase();
+  if (!host) return null;
+  const d = db.prepare("SELECT tenant_id FROM gx_dominios WHERE dominio = ? AND status = 'verificado' AND excluido_em = ''").get(host);
+  return d ? d.tenant_id : null;
+};
+
+function acharPorSlug(sql, slug, req) {
+  const linhas = db.prepare(sql).all(String(slug || '').slice(0, 60));
+  const tid = tenantPeloHost(req);
+  if (tid) return linhas.find((l) => l.tenant_id === tid) || null;
+  if (linhas.length > 1) {
+    console.warn('[growth] slug publico ambiguo entre contas, recusado:', slug, linhas.map((l) => l.tenant_id).join(','));
+    return null;                      // recusar e melhor do que servir a conta errada
+  }
+  return linhas[0] || null;
+}
+
 const CORS = (res) => {
   // formulário embutido no site do assinante: precisa ser chamável de fora
   res.set('Access-Control-Allow-Origin', '*');
@@ -190,7 +215,7 @@ function registrarRotasPublicas(app, { express }) {
   // Página pública de marcação: horários livres e confirmação.
   app.get('/growth/r/:slug/livres', (req, res) => {
     CORS(res);
-    const tipo = require('./reunioes').tipoPorSlug(req.params.slug);
+    const tipo = acharPorSlug("SELECT * FROM gx_tipos_reuniao WHERE slug = ? AND ativo = 1 AND excluido_em = ''", req.params.slug, req);
     if (!tipo) return res.status(404).json({ erro: 'Tipo de reunião não encontrado.' });
     tenancy.comTenant({ tenantId: tipo.tenant_id, userId: 'publico' }, () => {
       try {
@@ -204,7 +229,7 @@ function registrarRotasPublicas(app, { express }) {
 
   app.post('/growth/r/:slug', express.json({ limit: '32kb' }), (req, res) => {
     CORS(res);
-    const tipo = require('./reunioes').tipoPorSlug(req.params.slug);
+    const tipo = acharPorSlug("SELECT * FROM gx_tipos_reuniao WHERE slug = ? AND ativo = 1 AND excluido_em = ''", req.params.slug, req);
     if (!tipo) return res.status(404).json({ erro: 'Tipo de reunião não encontrado.' });
     tenancy.comTenant({ tenantId: tipo.tenant_id, userId: 'publico' }, () => {
       try {
@@ -225,9 +250,7 @@ function registrarRotasPublicas(app, { express }) {
 
   // Página de captura publicada. Template controlado, sem HTML livre do usuário.
   app.get('/growth/p/:slug', (req, res) => {
-    const pagina = db.prepare(
-      "SELECT * FROM gx_paginas WHERE slug = ? AND status = 'publicada' AND excluido_em = '' LIMIT 1"
-    ).get(String(req.params.slug || '').slice(0, 60));
+    const pagina = acharPorSlug("SELECT * FROM gx_paginas WHERE slug = ? AND status = 'publicada' AND excluido_em = ''", req.params.slug, req);
     if (!pagina) return res.status(404).type('html').send(paginaSimples('Página não encontrada', 'Esse endereço não está no ar.'));
     db.prepare('UPDATE gx_paginas SET visitas = visitas + 1 WHERE id = ?').run(pagina.id);
     tenancy.comTenant({ tenantId: pagina.tenant_id, userId: 'publico' }, () => {

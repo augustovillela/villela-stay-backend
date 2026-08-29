@@ -2500,6 +2500,23 @@ const servidor = app.listen(0, async () => {
     assert.strictEqual(r.status, 404);
   });
 
+  await t('GX2: slug publicado igual em duas contas nao pode servir a conta errada', async () => {
+    const mesmo = 'promo-verao';
+    tenancy.comTenant({ tenantId: TA, userId: 'staff' }, () => repo.inserir('gx_paginas', {
+      slug: mesmo, titulo: 'Promo da conta A', status: 'publicada', publicado_em: nowISO(),
+      blocos: [{ tipo: 'texto', texto: 'SEGREDO-DA-CONTA-A' }],
+    }));
+    tenancy.comTenant({ tenantId: TB, userId: 'staff' }, () => repo.inserir('gx_paginas', {
+      slug: mesmo, titulo: 'Promo da conta B', status: 'publicada', publicado_em: nowISO(),
+      blocos: [{ tipo: 'texto', texto: 'SEGREDO-DA-CONTA-B' }],
+    }));
+    const r = await fetch(`${BASE}/growth/p/${mesmo}`);
+    const html = await r.text();
+    assert.strictEqual(r.status, 404, 'slug ambiguo tem de ser recusado, nao resolvido para a primeira conta');
+    assert.ok(!html.includes('SEGREDO-DA-CONTA-A'), 'vazou o conteudo da conta A');
+    assert.ok(!html.includes('SEGREDO-DA-CONTA-B'), 'vazou o conteudo da conta B');
+  });
+
   await t('e2e: a conta B não enxerga formulário, resposta nem página da conta A', async () => {
     const f = await req('GET', `/staff/api/growth/contas/${TB}/formularios`);
     assert.strictEqual(f.status, 200);

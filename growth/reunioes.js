@@ -67,8 +67,11 @@ function criarTipo({ nome, slug, descricao = '', duracaoMin = 30, intervaloMin =
 }
 
 const tipos = () => repo.listar('gx_tipos_reuniao', { ordem: 'nome ASC' });
+// O slug e unico so DENTRO da conta (UNIQUE(tenant_id, slug)), entao ele sozinho nao
+// identifica o dono. Aqui dentro sempre ha contexto de tenant, e a busca passa pelo
+// repo guardado; a porta publica resolve o dono ANTES de entrar (ver rotas-publicas).
 const tipoPorSlug = (slug) =>
-  db.prepare("SELECT * FROM gx_tipos_reuniao WHERE slug = ? AND ativo = 1 AND excluido_em = ''").get(String(slug || '')) || null;
+  repo.um("SELECT * FROM gx_tipos_reuniao WHERE tenant_id = :tenant AND slug = :s AND ativo = 1 AND excluido_em = ''", { s: String(slug || '') });
 
 function definirDisponibilidade(tipoId, faixas = []) {
   repo.exec('DELETE FROM gx_disponibilidade WHERE tenant_id = :tenant AND tipo_id = :t', { t: tipoId });
