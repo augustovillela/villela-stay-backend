@@ -43,6 +43,10 @@ function garantirColuna(tabela, coluna, ddl) {
 // onda 5 (07/08/2026): Estúdio de Ilustração com IA — PNG da criação
 garantirColuna('portfolio', 'arquivo', "TEXT NOT NULL DEFAULT ''");
 
+// A1 da auditoria (29/08/2026): sessão de 60 dias que não morria na troca de
+// senha. A versão sobe a cada troca e o token velho para de casar.
+garantirColuna('users', 'sessao_versao', 'INTEGER NOT NULL DEFAULT 0');
+
 // fase C da Arena (07/08/2026): nivelamento por MATÉRIA (PK composta).
 // SQLite não altera PK — banco da fase A é reconstruído preservando os dados.
 const nivCols = db.prepare('PRAGMA table_info(arena_nivelamento)').all();

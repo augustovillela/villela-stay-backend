@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
   consentimento TEXT NOT NULL DEFAULT '',          -- JSON: termos, consentimento parental (art. 14 LGPD), ip
   origem TEXT NOT NULL DEFAULT '',
   criado_em TEXT NOT NULL,
-  atualizado_em TEXT NOT NULL DEFAULT ''
+  atualizado_em TEXT NOT NULL DEFAULT '',
+  sessao_versao INTEGER NOT NULL DEFAULT 0        -- sobe a cada troca de senha: derruba token antigo
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_kids_users_email ON users (lower(email));
 

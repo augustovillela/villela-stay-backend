@@ -38,7 +38,7 @@ module.exports.montar = function montar(app, deps) {
     const u = usuarios.find(x => x.id === user.id);
     u.ultimoLogin = new Date().toISOString();
     salvarUsuarios(usuarios);
-    const token = jwt.sign({ uid: user.id }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ uid: user.id, v: Number(u.sessaoVersao || 0) }, JWT_SECRET, { expiresIn: '30d' });
     res.cookie('staff_token', token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/staff' });
     if (querJson) return res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
     // Retoma o OAuth do Codex depois que a sessão Staff foi criada.
@@ -65,7 +65,11 @@ module.exports.montar = function montar(app, deps) {
     const u = usuarios.find(x => x.id === req.user.id);
     u.senhaHash = bcrypt.hashSync(nova, 10);
     u.precisaTrocarSenha = false;
+    u.sessaoVersao = Number(u.sessaoVersao || 0) + 1;   // derruba as sessões já emitidas
     salvarUsuarios(usuarios);
+    // quem trocou a senha continua dentro: cookie novo, já na versão nova
+    res.cookie('staff_token', jwt.sign({ uid: u.id, v: u.sessaoVersao }, JWT_SECRET, { expiresIn: '30d' }),
+      { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/staff' });
     res.json({ ok: true });
   });
 
@@ -113,6 +117,7 @@ module.exports.montar = function montar(app, deps) {
       if (d.novaSenha.length < 8) return res.status(400).json({ erro: 'Senha com ao menos 8 caracteres.' });
       u.senhaHash = bcrypt.hashSync(d.novaSenha, 10);
       u.precisaTrocarSenha = true;
+      u.sessaoVersao = Number(u.sessaoVersao || 0) + 1;  // senha redefinida por admin também derruba
     }
     salvarUsuarios(usuarios);
     registrarAuditoria(req, 'usuario.editar', `${u.nome} <${u.email}>${typeof d.novaSenha === 'string' && d.novaSenha ? ' (senha redefinida)' : ''}`);
@@ -146,7 +151,7 @@ module.exports.montar = function montar(app, deps) {
       if (!dec || dec.tipo !== 'staff-magic' || !dec.uid) return res.status(401).json({ erro: 'Link inválido ou expirado.' });
       const u = lerUsuarios().find(x => x.id === dec.uid && x.ativo);
       if (!u) return res.status(401).json({ erro: 'Usuário não encontrado.' });
-      const sess = jwt.sign({ uid: u.id }, JWT_SECRET, { expiresIn: '30d' });
+      const sess = jwt.sign({ uid: u.id, v: Number(u.sessaoVersao || 0) }, JWT_SECRET, { expiresIn: '30d' });
       res.cookie('staff_token', sess, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/staff' });
       res.json({ ok: true, usuario: semSenha(u), areas: areasDoUsuario(u), catalogoAreas: AREAS });
     } catch (e) { return res.status(401).json({ erro: 'Link inválido ou expirado.' }); }

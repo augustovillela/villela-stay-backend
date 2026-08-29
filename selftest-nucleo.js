@@ -592,6 +592,32 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(ruim.status, 401);
   });
 
+  // ---------- A1: sessão que não morria na troca de senha ----------
+  // Ficam por último de propósito: trocam as senhas que os testes acima usam.
+  await t('A1 staff: trocar a senha mata o cookie antigo e mantém quem trocou', async () => {
+    const login = await req('POST', '/staff/api/login', { json: { email: 'pw@t.com', senha: 'NovaSenha123' }, headers: comIp('10.7.8.1') });
+    const antigo = pegaCookie(login.setCookie, 'staff_token'); assert.ok(antigo, 'logou');
+    assert.equal((await req('GET', '/staff/api/me', { cookie: antigo })).status, 200, 'o cookie vale antes da troca');
+    const troca = await req('POST', '/staff/api/conta/senha', { json: { atual: 'NovaSenha123', nova: 'TerceiraSenha789' }, cookie: antigo });
+    assert.equal(troca.status, 200);
+    const novoCookie = pegaCookie(troca.setCookie, 'staff_token');
+    assert.ok(novoCookie, 'a troca tem de devolver cookie novo');
+    assert.equal((await req('GET', '/staff/api/me', { cookie: antigo })).status, 401, 'o cookie ANTIGO tem de morrer');
+    assert.equal((await req('GET', '/staff/api/me', { cookie: novoCookie })).status, 200, 'quem trocou segue dentro');
+  });
+
+  await t('A1 hóspede: trocar a senha mata o cookie antigo e mantém quem trocou', async () => {
+    const login = await req('POST', '/hospede/api/login', { json: { email: 'h1@t.com', senha: 'SenhaHospede1' }, headers: comIp('10.7.8.2') });
+    const antigo = pegaCookie(login.setCookie, 'hospede_token'); assert.ok(antigo, 'logou');
+    assert.equal((await req('GET', '/hospede/api/me', { cookie: antigo })).status, 200, 'o cookie vale antes da troca');
+    const troca = await req('POST', '/hospede/api/senha', { json: { atual: 'SenhaHospede1', nova: 'NovaHospede12345' }, cookie: antigo });
+    assert.equal(troca.status, 200);
+    const novoCookie = pegaCookie(troca.setCookie, 'hospede_token');
+    assert.ok(novoCookie, 'a troca tem de devolver cookie novo');
+    assert.equal((await req('GET', '/hospede/api/me', { cookie: antigo })).status, 401, 'o cookie ANTIGO tem de morrer');
+    assert.equal((await req('GET', '/hospede/api/me', { cookie: novoCookie })).status, 200, 'quem trocou segue dentro');
+  });
+
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
   try { fs.rmSync(DATA_DIR, { recursive: true, force: true }); } catch {}
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

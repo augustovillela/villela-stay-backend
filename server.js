@@ -627,9 +627,12 @@ function requireAuth(req, res, next) {
   try {
     const tok = req.cookies && req.cookies.staff_token;
     if (!tok) return res.status(401).json({ erro: 'não autenticado' });
-    const { uid } = jwt.verify(tok, JWT_SECRET);
-    const user = lerUsuarios().find(u => u.id === uid);
+    const dec = jwt.verify(tok, JWT_SECRET);
+    const user = lerUsuarios().find(u => u.id === dec.uid);
     if (!user || !user.ativo) return res.status(401).json({ erro: 'sessão inválida' });
+    // Versão de sessão: trocar a senha invalida os tokens já emitidos. Ausente
+    // dos dois lados vale 0, então token antigo continua válido até a 1ª troca.
+    if (Number(dec.v || 0) !== Number(user.sessaoVersao || 0)) return res.status(401).json({ erro: 'sessão inválida' });
     req.user = user;
     next();
   } catch (e) { return res.status(401).json({ erro: 'sessão inválida' }); }
@@ -4011,12 +4014,14 @@ function requireHospede(req, res, next) {
     if (!dec || dec.tipo !== 'hospede') return res.status(401).json({ erro: 'sessão inválida' });
     const h = lerHospedes().find(x => x.id === dec.hid);
     if (!h || !h.ativo) return res.status(401).json({ erro: 'sessão inválida' });
+    // Versão de sessão: trocar a senha derruba os tokens já emitidos.
+    if (Number(dec.v || 0) !== Number(h.sessaoVersao || 0)) return res.status(401).json({ erro: 'sessão inválida' });
     req.hospede = h;
     next();
   } catch (e) { return res.status(401).json({ erro: 'sessão inválida' }); }
 }
 function setCookieHospede(res, h) {
-  const token = jwt.sign({ hid: h.id, tipo: 'hospede' }, JWT_SECRET, { expiresIn: '30d' });
+  const token = jwt.sign({ hid: h.id, tipo: 'hospede', v: Number(h.sessaoVersao || 0) }, JWT_SECRET, { expiresIn: '30d' });
   res.cookie(HOSP_COOKIE, token, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/hospede' });
   return token; // também devolvido no corpo do login/registro p/ clientes Bearer (app nativo futuro)
 }

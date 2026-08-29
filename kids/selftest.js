@@ -763,6 +763,23 @@ async function rodar() {
 
   // Por último de propósito: o bloqueio vale 15 min para o IP inteiro e
   // derrubaria qualquer login feito por um teste posterior.
+  await t('A1: trocar a senha mata a sessão antiga e mantém quem trocou', async () => {
+    // O cookie de 60 dias só trazia o uid: trocar a senha não derrubava nada.
+    const email = 'a1-sessao@t.kids';
+    const cad = await req('POST', '/kids/api/cadastrar', { como: 'a1', corpo: {
+      nome: 'A1', email, senha: 'senha-forte-8', aceite_termos: true, consentimento_parental: true } });
+    assert.strictEqual(cad.st, 200);
+    const antigo = jars.a1 && jars.a1['kids_sess'];
+    assert.ok(antigo, 'o cadastro tem de abrir sessão');
+    assert.strictEqual((await req('GET', '/kids/api/me', { como: 'a1' })).st, 200, 'a sessão vale antes da troca');
+    const troca = await req('POST', '/kids/api/me/senha', { como: 'a1',
+      corpo: { atual: 'senha-forte-8', nova: 'outra-senha-9' } });
+    assert.strictEqual(troca.st, 200);
+    const comAntigo = await req('GET', '/kids/api/me', { headers: { Cookie: 'kids_sess=' + antigo } });
+    assert.strictEqual(comAntigo.st, 401, 'o cookie ANTIGO tem de morrer');
+    assert.strictEqual((await req('GET', '/kids/api/me', { como: 'a1' })).st, 200, 'quem trocou segue dentro');
+  });
+
   await t('login errado dá 401; 5 erros seguidos bloqueiam por IP (429)', async () => {
     for (let i = 0; i < 5; i++) {
       assert.equal((await req('POST', '/kids/api/login', { corpo: { email: 'ana@t.com', senha: 'errada-123' } })).st, 401);

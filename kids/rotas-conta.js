@@ -25,15 +25,18 @@ function registrarRotasConta(app, { jwtSecret }) {
   const falha = (ip) => { const t = tentativas.get(ip) || { n: 0, ate: 0 }; if (++t.n >= 5) { t.ate = Date.now() + 15 * 60 * 1000; t.n = 0; } tentativas.set(ip, t); };
 
   const setSessao = (res, userId) => {
-    const token = jwt.sign({ uid: userId }, jwtSecret, { expiresIn: '60d' });
+    // A versão vai no token: trocar a senha invalida o que já foi emitido.
+    const v = Number((Users.obter(userId) || {}).sessao_versao || 0);
+    const token = jwt.sign({ uid: userId, v }, jwtSecret, { expiresIn: '60d' });
     res.cookie(COOKIE, token, { httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: 60 * 24 * 3600 * 1000, path: '/kids' });
   };
 
   function requireUsuario(req, res, next) {
     try {
-      const { uid } = jwt.verify(req.cookies && req.cookies[COOKIE], jwtSecret);
-      const u = Users.obter(uid);
+      const dec = jwt.verify(req.cookies && req.cookies[COOKIE], jwtSecret);
+      const u = Users.obter(dec.uid);
       if (!u || u.status !== 'ativo') throw new Error('x');
+      if (Number(dec.v || 0) !== Number(u.sessao_versao || 0)) throw new Error('x');
       req.usuario = u;
       next();
     } catch (_) { res.status(401).json({ erro: 'não autenticado' }); }
@@ -108,6 +111,7 @@ function registrarRotasConta(app, { jwtSecret }) {
   app.post('/kids/api/me/senha', requireUsuario, h(async (req, res) => {
     if (!Users.autenticar(req.usuario.email, (req.body || {}).atual)) return res.status(400).json({ erro: 'Senha atual incorreta.' });
     Users.definirSenha(req.usuario.id, (req.body || {}).nova);
+    setSessao(res, req.usuario.id);   // versao subiu: reemite p/ quem trocou nao cair junto
     res.json({ ok: true });
   }));
 

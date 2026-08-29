@@ -137,7 +137,7 @@ const Users = {
   },
   definirSenha(id, senha) {
     if (String(senha || '').length < 8) throw new Error('A senha precisa de 8+ caracteres.');
-    db.prepare('UPDATE users SET senha_hash = ?, atualizado_em = ? WHERE id = ?').run(bcrypt.hashSync(String(senha), 10), nowISO(), s(id, 40));
+    db.prepare('UPDATE users SET senha_hash = ?, atualizado_em = ?, sessao_versao = sessao_versao + 1 WHERE id = ?').run(bcrypt.hashSync(String(senha), 10), nowISO(), s(id, 40));
   },
   atualizar(id, d) {
     const u = Users.obter(id);

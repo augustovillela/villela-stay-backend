@@ -41,7 +41,10 @@ app.post('/hospede/api/senha', requireHospede, (req, res) => {
   if (nova.length < 8) return res.status(400).json({ erro: 'A nova senha deve ter ao menos 8 caracteres.' });
   if (!bcrypt.compareSync(atual, req.hospede.senhaHash)) return res.status(400).json({ erro: 'Senha atual incorreta.' });
   const hospedes = lerHospedes(); const u = hospedes.find(x => x.id === req.hospede.id);
-  u.senhaHash = bcrypt.hashSync(nova, 10); u.precisaTrocarSenha = false; salvarHospedes(hospedes);
+  u.senhaHash = bcrypt.hashSync(nova, 10); u.precisaTrocarSenha = false;
+  u.sessaoVersao = Number(u.sessaoVersao || 0) + 1;   // derruba as sessões já emitidas
+  salvarHospedes(hospedes);
+  setCookieHospede(res, u);                           // quem trocou continua dentro
   res.json({ ok: true });
 });
 
