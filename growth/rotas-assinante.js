@@ -15,6 +15,7 @@ const tenancy = require('./tenancy');
 const repo = require('./repo');
 const rbac = require('./rbac');
 const entitlements = require('./entitlements');
+const repoCrm = require('../crm/repo');   // standing da conta mora no CRM
 const { j } = require('./db');
 
 function registrarRotasAssinante(app, { requireAssinante }) {
@@ -27,6 +28,15 @@ function registrarRotasAssinante(app, { requireAssinante }) {
    */
   const rota = (fn, { flag = null } = {}) => [requireAssinante, (req, res) => {
     const a = req.assinante;
+    // O requireAssinante confere se o USUARIO esta ativo; nao conferia o
+    // STANDING da conta. Trial vencido ou assinatura suspensa mantinha o painel
+    // inteiro aberto, porque as flags do plano continuam la depois que o status
+    // muda. O CRM ja barrava isso (requireAcesso); o Growth herdou a sessao e
+    // nao herdou a trava.
+    const ent = repoCrm.entitlements(a.tenant_id);
+    if (!ent || !ent.acesso_liberado) {
+      return res.status(403).json({ erro: 'Acesso bloqueado — regularize seu plano para usar o Growth.', bloqueado: true });
+    }
     const slugPerfil = rbac.MAPA_PAPEL_LEGADO[a.papel] || rbac.PERFIL_PADRAO;
     const papel = rbac.papelPorSlug(slugPerfil);
     const permissoes = new Set(papel ? j.parse(papel.permissoes, []) : []);

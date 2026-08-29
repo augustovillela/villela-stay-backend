@@ -2500,6 +2500,21 @@ const servidor = app.listen(0, async () => {
     assert.strictEqual(r.status, 404);
   });
 
+  await t('conta suspensa perde o painel do Growth (as flags do plano continuam la)', async () => {
+    const antes = await req('GET', `/staff/api/growth/contas/${TA}/painel`);
+    const tinha = antes.status;
+    db.prepare("UPDATE tenants SET status = 'suspensa' WHERE id = ?").run(TA);
+    try {
+      const ent = require('../crm/repo').entitlements(TA);
+      assert.strictEqual(!!(ent && ent.acesso_liberado), false, 'suspensa nao pode ter acesso liberado');
+    } finally {
+      db.prepare("UPDATE tenants SET status = 'ativa' WHERE id = ?").run(TA);
+    }
+    const ent2 = require('../crm/repo').entitlements(TA);
+    assert.strictEqual(!!(ent2 && ent2.acesso_liberado), true, 'reativada volta a ter acesso');
+    assert.ok(tinha >= 200);
+  });
+
   await t('GX2: slug publicado igual em duas contas nao pode servir a conta errada', async () => {
     const mesmo = 'promo-verao';
     tenancy.comTenant({ tenantId: TA, userId: 'staff' }, () => repo.inserir('gx_paginas', {
