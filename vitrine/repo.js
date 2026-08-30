@@ -616,8 +616,11 @@ const Carrinho = {
   },
   limparVendedor(userId, sellerId) {
     const c = Carrinho.deUsuario(userId);
-    db.prepare(`DELETE FROM cart_items WHERE cart_id = ? AND product_id IN (SELECT id FROM products WHERE seller_id = ?)`)
+    const r = db.prepare(`DELETE FROM cart_items WHERE cart_id = ? AND product_id IN (SELECT id FROM products WHERE seller_id = ?)`)
       .run(c.id, s(sellerId, 40));
+    // devolve o total removido: quem cria pedido usa isto para REIVINDICAR o
+    // carrinho — dois checkouts simultâneos, só um remove linha, só um cria.
+    return r.changes;
   },
   // visão agrupada POR VENDEDOR: é o contrato de "1 pedido por vendedor"
   ver(userId) {

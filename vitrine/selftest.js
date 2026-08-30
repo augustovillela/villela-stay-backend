@@ -667,6 +667,39 @@ async function rodar() {
     frete.setFetch(null);
   });
 
+  await t('duplo clique no checkout NÃO vira dois pedidos', async () => {
+    // O carrinho é lido ANTES do await da cotação de frete: duas requisições
+    // liam o mesmo grupo, dormiam no await e cada uma criava o seu pedido. A
+    // guarda de estoque não cobre — com estoque > 1 as duas passavam, e é por
+    // isso que este teste força quantidade 5: com 1, ele passaria pelo motivo
+    // errado e não provaria nada.
+    const prod = repo.Products.obter(anuncio.id);
+    db.prepare('UPDATE products SET quantidade = 5, status = ? WHERE id = ?').run('ativo', prod.id);
+    repo.Carrinho.limparVendedor(repo.Users.porEmail('caio@t.com').id, prod.seller_id);
+    await req('POST', '/vitrine/api/carrinho', { como: 'caio', corpo: { product_id: prod.id, quantidade: 1 } });
+    const end2 = (await req('GET', '/vitrine/api/enderecos', { como: 'caio' })).json.enderecos[0];
+    const corpo = { seller_id: prod.seller_id, address_id: end2.id, frete_tipo: 'economica' };
+    const [a, b] = await Promise.all([
+      req('POST', '/vitrine/api/checkout', { como: 'caio', corpo }),
+      req('POST', '/vitrine/api/checkout', { como: 'caio', corpo }),
+    ]);
+    const oks = [a, b].filter((x) => x.st === 200);
+    assert.equal(oks.length, 1, 'só UMA das duas pode virar pedido');
+    assert.equal(repo.Products.obter(prod.id).quantidade, 4, 'o estoque só pode ter baixado uma vez');
+
+    // O Promise.all acima é oportunista: depende de como as duas requisições se
+    // intercalam e, sozinho, passaria mesmo sem a correção. O que PROVA a
+    // correção é o mecanismo — quem cria o pedido reivindica o carrinho, e a
+    // reivindicação é excludente.
+    const compradorId = repo.Users.porEmail('caio@t.com').id;
+    await req('POST', '/vitrine/api/carrinho', { como: 'caio', corpo: { product_id: prod.id, quantidade: 1 } });
+    const primeira = repo.Carrinho.limparVendedor(compradorId, prod.seller_id);
+    assert.equal(typeof primeira, 'number', 'limparVendedor tem de dizer QUANTAS linhas levou');
+    assert.ok(primeira > 0, 'a primeira reivindicação leva as linhas');
+    const segunda = repo.Carrinho.limparVendedor(compradorId, prod.seller_id);
+    assert.equal(segunda, 0, 'a segunda não pode levar nada — é ela que vira o 2º pedido');
+  });
+
   // ================= fim =================
   srv.close();
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);

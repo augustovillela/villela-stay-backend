@@ -128,6 +128,13 @@ const Pedidos = {
     const agora = nowISO();
     let pagamento = null;
     transacao(() => {
+      // Reivindica o carrinho ANTES de gravar qualquer coisa: se outra
+      // requisição já levou estas linhas, esta chegou depois e para aqui —
+      // sem pedido duplicado e sem estoque reservado à toa. A guarda de
+      // estoque não cobre isto: com 2 em estoque, as duas passariam.
+      if (!Carrinho.limparVendedor(buyerId, sellerId)) {
+        throw new Error('Este carrinho já foi finalizado. Confira os seus pedidos.');
+      }
       db.prepare(`INSERT INTO orders (id, codigo, buyer_id, seller_id, status, comissao_pct_bp, subtotal_centavos, frete_centavos,
           desconto_centavos, comissao_centavos, total_centavos, repasse_vendedor_centavos, frete_tipo, frete_prazo_dias,
           endereco_json, criado_em, atualizado_em)
@@ -144,7 +151,6 @@ const Pedidos = {
       }
       db.prepare('INSERT INTO order_status_history (id, order_id, de, para, quem, papel, detalhe, quando) VALUES (?,?,?,?,?,?,?,?)')
         .run(novoId(), id, '', 'aguardando_pagamento', buyer.email, 'comprador', 'Pedido criado', agora);
-      Carrinho.limparVendedor(buyerId, sellerId);
       pagamento = pagamentos.criarPagamento({ id, seller_id: sellerId, total_centavos: total });
     });
     Notificacoes.criar(sellerId, { titulo: 'Novo pedido recebido', texto: `Pedido de ${grupo.itens.length} item(ns) aguardando pagamento.`, url: '/vitrine/app#vendas' });
