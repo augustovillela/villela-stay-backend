@@ -395,17 +395,26 @@ async function rodar() {
     assert.equal(meu.json.etapa, 'retirada');
     assert.equal(meu.json.pode_registrar, true);
   });
-  await t('registro de retirada muda o estado e fica com autor', async () => {
+  await t('o CLIENTE não registra a própria retirada (a peça ainda está com a dona)', async () => {
+    // Decisão do Augusto (30/08): o registro de posse só vale como prova se
+    // quem o faz é a outra parte. O token aparece no app do cliente, então sem
+    // esta trava ele marcava "retirado" com a peça ainda no balcão.
     const r = await req('POST', '/closet/api/qr/' + reserva.token_retirada, { como: 'cliente' });
+    assert.equal(r.st, 400, 'o cliente não pode registrar a própria retirada');
+    assert.ok(/quem entrega/i.test(JSON.stringify(r.json)), 'a mensagem tem de dizer de quem é o gesto');
+  });
+
+  await t('registro de retirada muda o estado e fica com autor', async () => {
+    const r = await req('POST', '/closet/api/qr/' + reserva.token_retirada, { como: 'dona' });
     assert.equal(r.st, 200);
     assert.equal(r.json.status, 'retirado');
     const b = db.prepare('SELECT retirada_por, retirada_em FROM bookings WHERE id = ?').get(reserva.id);
-    assert.equal(b.retirada_por, cliente);
+    assert.equal(b.retirada_por, dona, 'quem ENTREGA a peça é quem registra a entrega');
     assert.ok(b.retirada_em);
   });
   await t('não dá para registrar devolução antes da retirada (ordem do fluxo)', async () => {
     // a reserva já está retirada; usar o QR de retirada de novo é inofensivo
-    const r = await req('POST', '/closet/api/qr/' + reserva.token_retirada, { como: 'cliente' });
+    const r = await req('POST', '/closet/api/qr/' + reserva.token_retirada, { como: 'dona' });
     assert.equal(r.json.ja, true);
   });
   await t('devolução abre a janela de vistoria', async () => {
@@ -496,7 +505,7 @@ async function rodar() {
   });
   await t('conclusão do look gera um repasse para cada dona', async () => {
     const b = (await req('GET', '/closet/api/app/reservas/' + reservaLook.id, { como: 'cliente' })).json.reserva;
-    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'cliente' });
+    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });
     await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });
     await req('POST', '/staff/api/closet/reservas/' + reservaLook.id + '/concluir', { corpo: {} });
     const pays = db.prepare('SELECT * FROM payouts WHERE booking_id = ? ORDER BY valor_centavos').all(reservaLook.id);
@@ -551,7 +560,7 @@ async function rodar() {
     await req('POST', '/staff/api/closet/reservas/' + nova.id + '/marcar-pago', { corpo: {} });
     await req('POST', '/closet/api/app/reservas/' + nova.id + '/confirmar', { como: 'dona' });
     const b = (await req('GET', '/closet/api/app/reservas/' + nova.id, { como: 'cliente' })).json.reserva;
-    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'cliente' });
+    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });
     await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });
     db.prepare('UPDATE bookings SET janela_vistoria = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', nova.id);
     const r = saas.bookings.Bookings.rotina();
@@ -565,7 +574,7 @@ async function rodar() {
     await req('POST', '/staff/api/closet/reservas/' + nova.id + '/marcar-pago', { corpo: {} });
     await req('POST', '/closet/api/app/reservas/' + nova.id + '/confirmar', { como: 'dona' });
     const b = (await req('GET', '/closet/api/app/reservas/' + nova.id, { como: 'cliente' })).json.reserva;
-    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'cliente' });
+    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });
     await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });
     const d = await req('POST', '/closet/api/app/reservas/' + nova.id + '/disputa', { como: 'dona', corpo: { motivo: 'dano', descricao: 'mancha de vinho na barra', valor_pedido_centavos: 15000 } });
     assert.equal(d.st, 200, d.texto.slice(0, 160));
@@ -795,7 +804,7 @@ async function rodar() {
     await req('POST', '/staff/api/closet/reservas/' + nova.id + '/marcar-pago', { corpo: {} });
     await req('POST', '/closet/api/app/reservas/' + nova.id + '/confirmar', { como: 'dona' });
     const b = (await req('GET', '/closet/api/app/reservas/' + nova.id, { como: 'afilhada' })).json.reserva;
-    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'afilhada' });
+    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });   // quem entrega registra
     await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'afilhada' });
     await req('POST', '/staff/api/closet/reservas/' + nova.id + '/concluir', { corpo: {} });
     assert.equal((await req('GET', '/closet/api/app/indicacoes', { como: 'afilhada' })).json.saldo_centavos, 3000);

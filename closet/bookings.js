@@ -313,10 +313,17 @@ const Bookings = {
     return { booking: mapBooking(b, { detalhe: true }), etapa: b.token_retirada === t ? 'retirada' : 'devolucao' };
   },
 
-  registrarRetirada(token, quemId) {
+  registrarRetirada(token, quemId, { admin = false } = {}) {
     const r = Bookings.porToken(token);
     if (!r || r.etapa !== 'retirada') throw new Error('QR Code inválido para retirada.');
     const b = r.booking;
+    // Quem ENTREGA a peca e quem registra a entrega. O podeVer inclui o cliente,
+    // e o token de retirada aparece no app dele — entao ele marcava 'retirado'
+    // sozinho, com a peca ainda na mao do dono. O registro de posse so vale como
+    // prova se quem o faz e a outra parte.
+    if (!admin && !b.donos.includes(quemId)) {
+      throw new Error('A retirada é registrada por quem entrega a peça.');
+    }
     if (b.status === 'retirado') return { ok: true, ja: true, status: 'retirado', codigo: b.codigo };
     if (b.status !== 'confirmado') throw new Error(`Esta reserva está em "${repo.STATUS_BOOKING[b.status] || b.status}" — não é possível registrar a retirada.`);
     const agora = nowISO();

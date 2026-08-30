@@ -164,7 +164,8 @@ function registrarRotasPublicas(app, { requireUsuario, talvezUsuario, notificar 
     if (!r) return res.status(404).json({ erro: 'QR Code inválido.' });
     if (!Bookings.podeVer(r.booking, req.usuario)) return res.status(403).json({ erro: 'Este QR Code não é de uma reserva sua.' });
     const out = r.etapa === 'retirada'
-      ? Bookings.registrarRetirada(req.params.token, req.usuario.id)
+      ? Bookings.registrarRetirada(req.params.token, req.usuario.id,
+        { admin: req.usuario.papel === 'admin' || req.usuario.papel === 'moderador' })
       : Bookings.registrarDevolucao(req.params.token, req.usuario.id);
     repo.Auditoria.registrar({ quem: req.usuario.email, acao: 'posse.' + r.etapa, entidade: 'bookings', entidade_id: r.booking.id, ip: ipDe(req) });
     res.json(out);
