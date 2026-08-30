@@ -154,7 +154,9 @@ app.get('/health', (req, res) => res.json({
   jwt_secret_definido: !!process.env.JWT_SECRET,
   // e diz em que ambiente o processo se enxerga, que e o que arma (ou nao) as
   // guardas de producao espalhadas pelo codigo
-  ambiente: process.env.NODE_ENV || (process.env.RENDER ? 'render-sem-NODE_ENV' : 'local'),
+  ambiente: EM_PRODUCAO ? (process.env.NODE_ENV || 'render') : (process.env.NODE_ENV || 'local'),
+  // a MESMA constante que arma a guarda do boot: uma verdade só
+  guardas_de_producao_armadas: EM_PRODUCAO,
 }));
 
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
@@ -400,12 +402,18 @@ app.get('/api/leads-recebidos', leitorJsonl('leads.jsonl'));
 // Segredos: só por variável de ambiente (este repositório é público).
 // =====================================================================
 
+// "Estou em producao?" nao se pergunta ao NODE_ENV aqui: ele NAO esta declarado
+// no render.yaml, entao uma guarda presa a ele pode nunca disparar justamente no
+// lugar onde deveria. O Render se identifica sozinho (RENDER, RENDER_SERVICE_ID);
+// NODE_ENV fica como sinal adicional, para quem rodar fora do Render.
+const EM_PRODUCAO = !!(process.env.RENDER || process.env.RENDER_SERVICE_ID
+  || process.env.NODE_ENV === 'production');
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 if (!process.env.JWT_SECRET) {
   // Em producao isto nao e aviso, e defeito: o segredo muda a cada reinicio,
   // entao TODA sessao cai sem motivo aparente e, com mais de uma instancia, o
   // token de uma nao vale na outra. Subir assim e prometer login que funciona.
-  if (process.env.NODE_ENV === 'production') {
+  if (EM_PRODUCAO) {
     console.error('[staff] JWT_SECRET nao definido. Defina no Render antes de subir.');
     process.exit(1);
   }

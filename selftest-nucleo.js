@@ -133,6 +133,11 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(typeof r.json.jwt_secret_definido, 'boolean', 'health tem de dizer se há JWT_SECRET');
     assert.equal(r.json.jwt_secret_definido, true, 'o teste define JWT_SECRET, então tem de vir true');
     assert.equal(typeof r.json.ambiente, 'string', 'sem o ambiente não se sabe se as guardas de produção estão armadas');
+    assert.equal(typeof r.json.guardas_de_producao_armadas, 'boolean',
+      'o health tem de dizer se as guardas de produção estão armadas');
+    // No teste rodamos fora do Render e com NODE_ENV=development: têm de estar
+    // DESarmadas, senão a guarda derrubaria a própria suíte.
+    assert.equal(r.json.guardas_de_producao_armadas, false, 'fora do Render não pode se achar produção');
     assert.ok(!JSON.stringify(r.json).includes(process.env.JWT_SECRET), 'o health não pode vazar o JWT_SECRET');
   });
 
@@ -634,6 +639,18 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.strictEqual(depois.length, antes.length + 2, 'as duas escritas têm de sobreviver');
     assert.ok(depois.some(l => l.descricao === 'Lento'), 'a primeira sumiu');
     assert.ok(depois.some(l => l.descricao === 'Rapido'), 'a segunda sumiu');
+  });
+
+  await t('a detecção de produção NÃO depende de NODE_ENV (que não está no render.yaml)', async () => {
+    // A guarda do JWT_SECRET dependia só de NODE_ENV, e NODE_ENV não aparece
+    // uma única vez no render.yaml — podia nunca disparar justamente em produção.
+    const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+    const linha = src.split(String.fromCharCode(10)).find((l) => l.startsWith('const EM_PRODUCAO ='));
+    assert.ok(linha, 'EM_PRODUCAO tem de existir');
+    assert.ok(linha.includes('process.env.RENDER'), 'tem de reconhecer o Render, nao so NODE_ENV');
+    assert.ok(src.includes('if (EM_PRODUCAO) {'), 'a guarda do JWT tem de usar a constante');
+    const yaml = fs.readFileSync(path.join(__dirname, 'render.yaml'), 'utf8');
+    assert.ok(!yaml.includes('NODE_ENV'), 'se NODE_ENV entrar no render.yaml, revisar este raciocinio');
   });
 
   await t('HSTS vai em HTTPS e NÃO vai em HTTP', async () => {
