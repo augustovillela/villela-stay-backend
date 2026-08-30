@@ -298,6 +298,26 @@ teste('webhook MP: assinatura confere quando ha segredo, e recusa a errada', () 
   assert.equal(w.conferir({ headers: {}, dataId, segredo: '' }).ok, true);
 });
 
+teste('webhook MP: UMA variavel serve a todos os produtos (mesma conta do MP)', () => {
+  // Todos usam o mesmo MP_ACCESS_TOKEN, entao ha um segredo so. Sete variaveis
+  // com o mesmo valor seriam sete lugares para errar na rotacao.
+  const fsx = require('fs'), pathx = require('path');
+  const casos = [
+    ['../academy/index.js', 'ACADEMY_MP_WEBHOOK_SECRET'],
+    ['../alta-vista/index.js', 'ALTA_VISTA_MP_WEBHOOK_SECRET'],
+    ['../closet/index.js', 'CLOSET_MP_WEBHOOK_SECRET'],
+    ['../crm/index.js', 'CRM_MP_WEBHOOK_SECRET'],
+    ['./index.js', 'FINANCE_MP_WEBHOOK_SECRET'],
+    ['../legal-saas/index.js', 'LEGAL_SAAS_MP_WEBHOOK_SECRET'],
+    ['../nucleo/hospede-financeiro.js', 'HOSPEDE_MP_WEBHOOK_SECRET'],
+  ];
+  for (const [rel, env] of casos) {
+    const src = fsx.readFileSync(pathx.join(__dirname, rel), 'utf8');
+    assert.ok(src.includes('process.env.' + env + ' || process.env.MP_WEBHOOK_SECRET'),
+      rel + ': nao cai no MP_WEBHOOK_SECRET — exigiria configurar ' + env + ' a parte');
+  }
+});
+
 teste('webhook MP: id que navega no caminho da API e recusado', () => {
   const w = require('../nucleo/webhook-mp');
   assert.equal(w.idSeguro('123456789'), true);

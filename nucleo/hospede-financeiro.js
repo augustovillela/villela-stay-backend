@@ -67,7 +67,7 @@ module.exports.montar = function montar(app, deps) {
       // Confere a assinatura quando ha segredo configurado; o id tambem vai para
       // dentro da URL da API do MP, entao passa pela mesma guarda do Finance.
       const confMP = webhookMP.conferir({ headers: req.headers, dataId: payId,
-        segredo: process.env.HOSPEDE_MP_WEBHOOK_SECRET, rotulo: 'hospede' });
+        segredo: process.env.HOSPEDE_MP_WEBHOOK_SECRET || process.env.MP_WEBHOOK_SECRET, rotulo: 'hospede' });
       if (!confMP.ok) return console.warn('[hospede] webhook MP recusado:', confMP.motivo);
       if (!webhookMP.idSeguro(payId)) return console.warn('[hospede] webhook MP com id inválido');
       const pay = await mpFetch('/v1/payments/' + payId).catch(() => null);

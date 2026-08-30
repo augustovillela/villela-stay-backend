@@ -129,7 +129,7 @@ function montar(app, injected = {}) {
     // F4: confere a assinatura quando ha segredo configurado (ver nucleo/webhook-mp).
     const idMP = ((req.body || {}).data || {}).id || (req.query || {})['data.id'] || (req.query || {}).id;
     const conf = webhookMP.conferir({ headers: req.headers, dataId: idMP,
-      segredo: process.env.FINANCE_MP_WEBHOOK_SECRET, rotulo: 'finance' });
+      segredo: process.env.FINANCE_MP_WEBHOOK_SECRET || process.env.MP_WEBHOOK_SECRET, rotulo: 'finance' });
     if (!conf.ok) return console.warn('[finance] webhook MP recusado:', conf.motivo);
     Promise.resolve(billing.processarWebhook(req.body || {}, req.query || {}))
       .catch(e => console.error('[finance] webhook MP:', e.message));

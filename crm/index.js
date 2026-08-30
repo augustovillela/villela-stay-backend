@@ -44,7 +44,7 @@ function montar(app, injected = {}) {
     // avisa (a re-busca na API do MP segue sendo a defesa contra payload forjado).
     const idMP = ((req.body || {}).data || {}).id || (req.query || {})['data.id'] || (req.query || {}).id;
     const confMP = webhookMP.conferir({ headers: req.headers, dataId: idMP,
-      segredo: process.env.CRM_MP_WEBHOOK_SECRET, rotulo: 'crm' });
+      segredo: process.env.CRM_MP_WEBHOOK_SECRET || process.env.MP_WEBHOOK_SECRET, rotulo: 'crm' });
     if (!confMP.ok) return console.warn('[crm] webhook MP recusado:', confMP.motivo);
     if (!webhookMP.idSeguro(idMP)) return console.warn('[crm] webhook MP com id inválido');
     try { await billing.processarWebhook(req.body || {}, req.query || {}); } catch (_) {}

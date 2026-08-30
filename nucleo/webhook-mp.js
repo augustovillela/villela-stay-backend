@@ -33,6 +33,11 @@ function assinaturaValida(headers, dataId, segredo) {
 const _avisados = new Set();
 
 /**
+ * O segredo vem de `MP_WEBHOOK_SECRET` — um só, porque todos os produtos usam a
+ * MESMA conta do Mercado Pago. O nome por produto (FINANCE_…, ACADEMY_…) existe
+ * como sobrescrita, para o dia em que algum ganhar aplicação própria; configurar
+ * sete variáveis com o mesmo valor seria criar sete lugares para errar na rotação.
+ *
  * @returns {{ok: boolean, motivo: string}} — `ok:false` só quando HÁ segredo
  * configurado e a assinatura não confere.
  */

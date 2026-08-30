@@ -50,7 +50,7 @@ const TARIFA_BP = 349;
 const mpCfg = () => ({
   appId: s(process.env.VITRINE_MP_APP_ID, 80),
   secret: s(process.env.VITRINE_MP_SECRET, 120),
-  webhookSecret: s(process.env.VITRINE_MP_WEBHOOK_SECRET, 120),
+  webhookSecret: s(process.env.VITRINE_MP_WEBHOOK_SECRET || process.env.MP_WEBHOOK_SECRET, 120),
 });
 
 // ---------------------------------------------------------------------
