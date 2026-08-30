@@ -122,6 +122,11 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(typeof r.json.commit, 'string', 'sem o commit nao da para conferir o que ficou live');
     assert.ok(r.json.commit.length > 0 && r.json.commit.length <= 7, 'commit em forma curta');
     assert.equal(typeof r.json.branch, 'string', 'a branch denuncia deploy vindo de ref errada');
+    // Sem isto, saber se a assinatura do MP está armada dependia de esperar um
+    // webhook chegar e procurar um aviso no log — e a ausência do aviso não
+    // provava nada, porque ele só sai quando há pagamento.
+    assert.equal(typeof r.json.webhook_mp_assinado, 'boolean', 'health tem de dizer se a assinatura do MP está armada');
+    assert.ok(!JSON.stringify(r.json).includes('seg-'), 'o health nunca pode devolver o segredo, só o booleano');
   });
 
   await t('login: senha errada → 401', async () => {

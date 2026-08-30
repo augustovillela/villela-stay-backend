@@ -142,6 +142,11 @@ app.get('/health', (req, res) => res.json({
   ok: true, servico: 'villela-stay-backend',
   commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
   branch: process.env.RENDER_GIT_BRANCH || 'local',
+  // Se a conferencia de assinatura do webhook do MP esta ARMADA. Sem isto, a
+  // unica forma de saber era esperar um webhook chegar e procurar um aviso no
+  // log — que so aparece quando ha pagamento, entao a ausencia dele nao provava
+  // nada. Booleano, nunca o segredo.
+  webhook_mp_assinado: !!(process.env.MP_WEBHOOK_SECRET || process.env.FINANCE_MP_WEBHOOK_SECRET),
 }));
 
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
