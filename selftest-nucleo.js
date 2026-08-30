@@ -127,6 +127,13 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     // provava nada, porque ele só sai quando há pagamento.
     assert.equal(typeof r.json.webhook_mp_assinado, 'boolean', 'health tem de dizer se a assinatura do MP está armada');
     assert.ok(!JSON.stringify(r.json).includes('seg-'), 'o health nunca pode devolver o segredo, só o booleano');
+    // A guarda que derruba o boot sem JWT_SECRET depende de NODE_ENV, que NÃO
+    // está no render.yaml — então 'o deploy subiu' não prova que o segredo
+    // existe. O health prova, e diz em que ambiente o processo se enxerga.
+    assert.equal(typeof r.json.jwt_secret_definido, 'boolean', 'health tem de dizer se há JWT_SECRET');
+    assert.equal(r.json.jwt_secret_definido, true, 'o teste define JWT_SECRET, então tem de vir true');
+    assert.equal(typeof r.json.ambiente, 'string', 'sem o ambiente não se sabe se as guardas de produção estão armadas');
+    assert.ok(!JSON.stringify(r.json).includes(process.env.JWT_SECRET), 'o health não pode vazar o JWT_SECRET');
   });
 
   await t('login: senha errada → 401', async () => {

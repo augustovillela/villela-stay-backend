@@ -147,6 +147,14 @@ app.get('/health', (req, res) => res.json({
   // log — que so aparece quando ha pagamento, entao a ausencia dele nao provava
   // nada. Booleano, nunca o segredo.
   webhook_mp_assinado: !!(process.env.MP_WEBHOOK_SECRET || process.env.FINANCE_MP_WEBHOOK_SECRET),
+  // JWT_SECRET ausente = segredo efemero por processo: toda sessao cai a cada
+  // reinicio. A guarda que derruba o boot depende de NODE_ENV, que NAO esta no
+  // render.yaml — entao 'o deploy subiu' nao prova que o segredo existe. Aqui
+  // prova. Booleano, nunca o valor.
+  jwt_secret_definido: !!process.env.JWT_SECRET,
+  // e diz em que ambiente o processo se enxerga, que e o que arma (ou nao) as
+  // guardas de producao espalhadas pelo codigo
+  ambiente: process.env.NODE_ENV || (process.env.RENDER ? 'render-sem-NODE_ENV' : 'local'),
 }));
 
 // Disponibilidade e preços de um anúncio (o site consome este endpoint)
