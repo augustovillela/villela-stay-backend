@@ -67,6 +67,24 @@ try {
   visitasColetor = require('./nucleo/visitas').criarColetor(DATA_DIR);
   app.use(visitasColetor.middleware);
 } catch (e) { console.error('[visitas] coletor não montado:', e.message); }
+// Politica em uma linha so, para nao divergir entre lugares. `data:` cobre as
+// imagens embutidas dos paineis; `blob:` cobre o PDF gerado no cliente; o R2 e
+// o Google Fonts entram por serem os unicos externos que a casa usa.
+const CSP_OFF = process.env.CSP_OFF === "1";
+const CSP_POLITICA = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net",
+  "connect-src 'self' https:",
+  "media-src 'self' blob: https:",
+  "report-uri /csp-report",
+].join("; ");
+
 // Cabeçalhos de segurança (equivalente leve ao helmet, sem dependência nova)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -84,6 +102,17 @@ app.use((req, res, next) => {
   // lista dos navegadores é praticamente irreversível e não se faz por um commit.
   if (req.secure || String(req.headers['x-forwarded-proto'] || '') === 'https') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  // CSP em REPORT-ONLY: nao bloqueia, so relata o que teria bloqueado. O passo
+  // seguinte (mudar para Content-Security-Policy, sem o -Report-Only) so se dá
+  // depois de o relatorio ficar limpo — ligar as cegas quebra tela.
+  //
+  // 'unsafe-inline' esta aqui de proposito e e a divida a pagar: o gtag e os
+  // paineis tem <script> inline. Enquanto ele existir, a CSP nao detem XSS —
+  // detem carregamento de origem estranha, que ja e alguma coisa. Tirar exige
+  // nonce em cada bloco inline, e isso e projeto, nao commit.
+  if (!CSP_OFF) {
+    res.setHeader('Content-Security-Policy-Report-Only', CSP_POLITICA);
   }
   next();
 });
@@ -138,6 +167,25 @@ function tokensBusca(q) { return semAcento(q || '').trim().split(/\s+/).filter(B
 // com `git rev-parse --short HEAD`. Mesmo padrao do worker da Origena. O repo e
 // publico, entao o hash nao revela nada. A branch responde a outra armadilha da
 // casa: o backend deploya de master, e push para main cria branch que ninguem ve.
+// Coletor das violacoes da CSP. Sem ele o Report-Only nao serve de nada: o
+// navegador reporta para o vazio e ninguem nunca ve. Publico por natureza (quem
+// reporta e o navegador do visitante, sem sessao), entao tem teto e limite por
+// IP — endereco publico que grava em disco sem freio e convite.
+app.post('/csp-report', express.json({ type: ['application/csp-report', 'application/json'], limit: '16kb' }), (req, res) => {
+  res.sendStatus(204);   // o navegador nao espera corpo
+  if (!limiteTaxa('csp:' + req.ip, 30, 60000)) return;
+  try {
+    const c = (req.body && (req.body["csp-report"] || req.body)) || {};
+    // so os campos que dizem o que fazer; o resto e ruido que enche o disco
+    appendJsonl("csp-violacoes.jsonl", {
+      diretiva: String(c["violated-directive"] || c.violatedDirective || "").slice(0, 120),
+      bloqueado: String(c["blocked-uri"] || c.blockedURI || "").slice(0, 300),
+      documento: String(c["document-uri"] || c.documentURI || "").slice(0, 300),
+      linha: Number(c["line-number"] || c.lineNumber || 0) || 0,
+    });
+  } catch (e) { /* relatorio malformado nao derruba nada */ }
+});
+
 app.get('/health', (req, res) => res.json({
   ok: true, servico: 'villela-stay-backend',
   commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),

@@ -653,6 +653,46 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.ok(!yaml.includes('NODE_ENV'), 'se NODE_ENV entrar no render.yaml, revisar este raciocinio');
   });
 
+  await t('CSP vai em Report-Only (não bloqueia) e aponta para um coletor que existe', async () => {
+    const r = await req('GET', '/health');
+    const ro = r.headers['content-security-policy-report-only'];
+    assert.ok(ro, 'sem CSP nenhuma');
+    assert.ok(!r.headers['content-security-policy'],
+      'em modo bloqueio quebraria tela: o passo agora é só RELATAR');
+    assert.ok(ro.includes('report-uri /csp-report'), 'relatório sem coletor não serve de nada');
+    assert.ok(ro.includes("default-src 'self'"), 'sem default-src a política não restringe nada');
+    assert.ok(ro.includes("object-src 'none'"), 'object-src é o que barra plugin antigo');
+  });
+
+  await t('o coletor de CSP grava a violação e responde 204', async () => {
+    const antes = (lerData('csp-violacoes.jsonl') === null) ? 0 : 0;
+    const r = await req('POST', '/csp-report', { json: { 'csp-report': {
+      'violated-directive': 'script-src', 'blocked-uri': 'https://exemplo.invalido/x.js',
+      'document-uri': 'https://villelastay.com.br/', 'line-number': 42 } } });
+    assert.equal(r.status, 204, 'o navegador não espera corpo');
+    const fsx = require('fs'), pathx = require('path');
+    const arq = pathx.join(DATA_DIR, 'csp-violacoes.jsonl');
+    const linhas = fsx.readFileSync(arq, 'utf8').trim().split(String.fromCharCode(10));
+    const ultima = JSON.parse(linhas[linhas.length - 1]);
+    assert.equal(ultima.diretiva, 'script-src');
+    assert.ok(ultima.bloqueado.includes('exemplo.invalido'));
+    assert.ok(antes === 0);
+  });
+
+  await t('o coletor de CSP tem freio (endereço público que grava em disco)', async () => {
+    let visto429ouParou = false;
+    const fsx = require('fs'), pathx = require('path');
+    const arq = pathx.join(DATA_DIR, 'csp-violacoes.jsonl');
+    const antes = fsx.readFileSync(arq, 'utf8').trim().split(String.fromCharCode(10)).length;
+    for (let i = 0; i < 40; i++) {
+      await req('POST', '/csp-report', { json: { 'csp-report': { 'violated-directive': 'flood' } },
+        headers: comIp('10.5.5.5') });
+    }
+    const depois = fsx.readFileSync(arq, 'utf8').trim().split(String.fromCharCode(10)).length;
+    visto429ouParou = (depois - antes) < 40;
+    assert.ok(visto429ouParou, 'sem freio, endereço público enche o disco: gravou tudo');
+  });
+
   await t('HSTS vai em HTTPS e NÃO vai em HTTP', async () => {
     // O teste fala http com o servidor; o proxy do Render sinaliza o esquema
     // original no X-Forwarded-Proto, e é por ele que a decisão passa.
