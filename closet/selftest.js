@@ -417,8 +417,23 @@ async function rodar() {
     const r = await req('POST', '/closet/api/qr/' + reserva.token_retirada, { como: 'dona' });
     assert.equal(r.json.ja, true);
   });
+  await t('uma confirmação só NÃO fecha a devolução, e a resposta diz quem falta', async () => {
+    // Decisão do Augusto (30/08): devolução é gesto de duas partes. Sem isto, um
+    // lado marcava "devolvido" sozinho e a vistoria começava com a peça ainda
+    // em trânsito.
+    const so = await req('POST', '/closet/api/qr/' + reserva.token_devolucao, { como: 'cliente' });
+    assert.equal(so.st, 200, 'a confirmação parcial não é erro — ela conta');
+    assert.equal(so.json.parcial, true, 'tem de dizer que ainda falta alguém');
+    assert.equal(so.json.falta, 'proprietário', 'e dizer QUEM falta, senão o usuário fica no escuro');
+    const b = db.prepare('SELECT status, devolucao_cliente_em, devolucao_dono_em FROM bookings WHERE id = ?').get(reserva.id);
+    assert.equal(b.status, 'retirado', 'o estado NÃO pode avançar com metade da confirmação');
+    assert.ok(b.devolucao_cliente_em, 'a confirmação do cliente tem de ficar registrada');
+    assert.ok(!b.devolucao_dono_em, 'a do proprietário ainda não veio');
+  });
+
   await t('devolução abre a janela de vistoria', async () => {
-    const r = await req('POST', '/closet/api/qr/' + reserva.token_devolucao, { como: 'dona' });
+    await req('POST', '/closet/api/qr/' + reserva.token_devolucao, { como: 'dona' });
+    const r = await req('POST', '/closet/api/qr/' + reserva.token_devolucao, { como: 'cliente' });   // a 2ª confirmação é a que fecha
     assert.equal(r.json.status, 'devolvido');
     const b = db.prepare('SELECT janela_vistoria FROM bookings WHERE id = ?').get(reserva.id);
     assert.ok(b.janela_vistoria, 'janela de vistoria não foi aberta');
@@ -507,6 +522,7 @@ async function rodar() {
     const b = (await req('GET', '/closet/api/app/reservas/' + reservaLook.id, { como: 'cliente' })).json.reserva;
     await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });
     await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });
+    await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'dona' });   // devolução precisa dos dois lados
     await req('POST', '/staff/api/closet/reservas/' + reservaLook.id + '/concluir', { corpo: {} });
     const pays = db.prepare('SELECT * FROM payouts WHERE booking_id = ? ORDER BY valor_centavos').all(reservaLook.id);
     assert.equal(pays.length, 2, 'deveria haver um repasse por proprietária');
@@ -555,6 +571,43 @@ async function rodar() {
     const d = await req('GET', `/closet/api/pecas/${vestido}/disponibilidade?de=${dias(90)}&ate=${dias(92)}`);
     assert.equal(d.json.periodo.disponivel, true);
   });
+  await t('rotina fecha a devolução que só um lado confirmou (dinheiro não fica preso)', async () => {
+    // O contrapeso da regra dos dois lados: sem isto, o lado que nunca escaneia
+    // prende a caução do cliente E o repasse da dona para sempre. Fechar não paga
+    // ninguém — abre a vistoria, então a dona ainda tem 24h para contestar.
+    const nova = (await req('POST', '/closet/api/reservas', { como: 'cliente', corpo: { item_ids: [vestido], de: dias(300), ate: dias(302) } })).json.reserva;
+    await req('POST', '/staff/api/closet/reservas/' + nova.id + '/marcar-pago', { corpo: {} });
+    await req('POST', '/closet/api/app/reservas/' + nova.id + '/confirmar', { como: 'dona' });
+    const b = (await req('GET', '/closet/api/app/reservas/' + nova.id, { como: 'cliente' })).json.reserva;
+    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });
+
+    // só o cliente confirma, e a dona some
+    const so = await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });
+    assert.ok(so.json.prazo, 'a confirmação parcial tem de armar um relógio, senão trava para sempre');
+    assert.equal(db.prepare('SELECT status FROM bookings WHERE id = ?').get(nova.id).status, 'retirado');
+
+    db.prepare('UPDATE bookings SET prazo_devolucao = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', nova.id);
+    const r = saas.bookings.Bookings.rotina();
+    assert.ok(r.devolucoes_por_prazo >= 1, 'a rotina não fechou a devolução vencida');
+    const dep = db.prepare('SELECT status, janela_vistoria FROM bookings WHERE id = ?').get(nova.id);
+    assert.equal(dep.status, 'devolvido');
+    assert.ok(dep.janela_vistoria, 'tem de abrir a vistoria — a dona ainda pode contestar');
+  });
+  await t('o relógio da devolução não é adiado por quem já confirmou', async () => {
+    // Se cada escaneada reescrevesse o prazo, um lado insistente empurraria o
+    // fecho indefinidamente — e o travamento voltaria pela porta dos fundos.
+    const nova = (await req('POST', '/closet/api/reservas', { como: 'cliente', corpo: { item_ids: [vestido], de: dias(310), ate: dias(312) } })).json.reserva;
+    await req('POST', '/staff/api/closet/reservas/' + nova.id + '/marcar-pago', { corpo: {} });
+    await req('POST', '/closet/api/app/reservas/' + nova.id + '/confirmar', { como: 'dona' });
+    const b = (await req('GET', '/closet/api/app/reservas/' + nova.id, { como: 'cliente' })).json.reserva;
+    await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });
+    await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });
+    db.prepare('UPDATE bookings SET prazo_devolucao = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', nova.id);
+    await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });   // insiste
+    assert.equal(db.prepare('SELECT prazo_devolucao FROM bookings WHERE id = ?').get(nova.id).prazo_devolucao,
+      '2020-01-01T00:00:00.000Z', 'a 2ª escaneada do MESMO lado não pode adiar o fecho');
+  });
+
   await t('rotina conclui sozinha a vistoria vencida (repasse não fica preso)', async () => {
     const nova = (await req('POST', '/closet/api/reservas', { como: 'cliente', corpo: { item_ids: [vestido], de: dias(100), ate: dias(102) } })).json.reserva;
     await req('POST', '/staff/api/closet/reservas/' + nova.id + '/marcar-pago', { corpo: {} });
@@ -562,6 +615,7 @@ async function rodar() {
     const b = (await req('GET', '/closet/api/app/reservas/' + nova.id, { como: 'cliente' })).json.reserva;
     await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });
     await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });
+    await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'dona' });   // devolução precisa dos dois lados
     db.prepare('UPDATE bookings SET janela_vistoria = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', nova.id);
     const r = saas.bookings.Bookings.rotina();
     assert.ok(r.concluidas >= 1);
@@ -576,6 +630,7 @@ async function rodar() {
     const b = (await req('GET', '/closet/api/app/reservas/' + nova.id, { como: 'cliente' })).json.reserva;
     await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });
     await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'cliente' });
+    await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'dona' });   // devolução precisa dos dois lados
     const d = await req('POST', '/closet/api/app/reservas/' + nova.id + '/disputa', { como: 'dona', corpo: { motivo: 'dano', descricao: 'mancha de vinho na barra', valor_pedido_centavos: 15000 } });
     assert.equal(d.st, 200, d.texto.slice(0, 160));
     assert.equal(db.prepare('SELECT status FROM bookings WHERE id = ?').get(nova.id).status, 'em_disputa');
@@ -806,6 +861,7 @@ async function rodar() {
     const b = (await req('GET', '/closet/api/app/reservas/' + nova.id, { como: 'afilhada' })).json.reserva;
     await req('POST', '/closet/api/qr/' + b.token_retirada, { como: 'dona' });   // quem entrega registra
     await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'afilhada' });
+    await req('POST', '/closet/api/qr/' + b.token_devolucao, { como: 'dona' });   // devolução precisa dos dois lados
     await req('POST', '/staff/api/closet/reservas/' + nova.id + '/concluir', { corpo: {} });
     assert.equal((await req('GET', '/closet/api/app/indicacoes', { como: 'afilhada' })).json.saldo_centavos, 3000);
     assert.equal((await req('GET', '/closet/api/app/indicacoes', { como: 'cliente' })).json.saldo_centavos, 3000);

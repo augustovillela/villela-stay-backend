@@ -218,6 +218,9 @@ CREATE TABLE IF NOT EXISTS bookings (
   retirada_por     TEXT NOT NULL DEFAULT '',
   devolucao_em     TEXT NOT NULL DEFAULT '',
   devolucao_por    TEXT NOT NULL DEFAULT '',
+  devolucao_cliente_em TEXT NOT NULL DEFAULT '',   -- quem devolve confirma
+  devolucao_dono_em    TEXT NOT NULL DEFAULT '',   -- quem recebe confirma
+  prazo_devolucao      TEXT NOT NULL DEFAULT '',   -- 1a confirmacao arma o relogio
   confirmado_em    TEXT NOT NULL DEFAULT '',
   concluido_em     TEXT NOT NULL DEFAULT '',
   cancelado_em     TEXT NOT NULL DEFAULT '',

@@ -335,12 +335,47 @@ const Bookings = {
     return { ok: true, status: 'retirado', codigo: b.codigo };
   },
 
-  registrarDevolucao(token, quemId) {
+  registrarDevolucao(token, quemId, { admin = false } = {}) {
     const r = Bookings.porToken(token);
     if (!r || r.etapa !== 'devolucao') throw new Error('QR Code inválido para devolução.');
     const b = r.booking;
     if (['devolvido', 'concluido', 'em_disputa'].includes(b.status)) return { ok: true, ja: true, status: b.status, codigo: b.codigo };
     if (b.status !== 'retirado') throw new Error('A retirada desta reserva ainda não foi registrada.');
+    const agora = nowISO();
+
+    // Devolução é gesto de DUAS partes: quem entrega de volta e quem recebe.
+    // Uma confirmação só não fecha — mas também não some: fica registrada e a
+    // resposta diz quem falta, senão o usuário escaneia e não acontece nada.
+    const ehDono = b.donos.includes(quemId);
+    const ehCliente = b.cliente_id === quemId;
+    if (!admin && !ehDono && !ehCliente) throw new Error('Esta reserva não é sua.');
+    const linha = db.prepare('SELECT devolucao_cliente_em, devolucao_dono_em, prazo_devolucao FROM bookings WHERE id = ?').get(b.id) || {};
+    const cliente_em = admin || ehCliente ? (linha.devolucao_cliente_em || agora) : (linha.devolucao_cliente_em || '');
+    const dono_em = admin || ehDono ? (linha.devolucao_dono_em || agora) : (linha.devolucao_dono_em || '');
+    db.prepare('UPDATE bookings SET devolucao_cliente_em=?, devolucao_dono_em=?, atualizado_em=? WHERE id=?')
+      .run(cliente_em, dono_em, agora, b.id);
+    if (!cliente_em || !dono_em) {
+      const falta = !cliente_em ? 'cliente' : 'proprietário';
+      const quemFalta = !cliente_em ? [b.cliente_id] : b.donos;
+      // O relógio só é armado uma vez: vale a 1ª confirmação. Reescrevê-lo a cada
+      // escaneada adiaria o fecho para sempre.
+      const horas = Config.num('prazo_devolucao_h', 48);
+      const prazo = linha.prazo_devolucao || horasAdiante(horas);
+      db.prepare('UPDATE bookings SET prazo_devolucao=? WHERE id=?').run(prazo, b.id);
+      for (const p of quemFalta) {
+        avisar(p, '📦 Confirme a devolução', `Reserva ${b.codigo}: a outra parte já confirmou. Sem a sua confirmação em ${horas}h, a devolução vale assim mesmo.`,
+          '/closet/app#reservas');
+      }
+      return { ok: true, parcial: true, falta, prazo, status: b.status, codigo: b.codigo };
+    }
+    return Bookings._fecharDevolucao(b, quemId);
+  },
+
+  // Fecho da devolução, separado porque há DOIS caminhos até aqui: as duas
+  // confirmações, ou o prazo vencido na rotina. Não paga ninguém — abre a
+  // janela de vistoria, então o proprietário ainda pode contestar.
+  _fecharDevolucao(b, quemId) {
+    // `agora` era local de quem chamava; aqui tem de nascer no metodo.
     const agora = nowISO();
     const janela = horasAdiante(Config.num('janela_vistoria_h', 24));
     db.prepare("UPDATE bookings SET status='devolvido', devolucao_em=?, devolucao_por=?, janela_vistoria=?, atualizado_em=? WHERE id=?")
@@ -484,7 +519,7 @@ const Bookings = {
   // -------------------------------------------------------------------
   rotina() {
     const agora = nowISO();
-    let expiradas = 0, naoConfirmadas = 0, concluidas = 0;
+    let expiradas = 0, naoConfirmadas = 0, concluidas = 0, devolucoesPorPrazo = 0;
 
     for (const b of db.prepare("SELECT * FROM bookings WHERE status = 'aguardando_pagamento' AND pix_expira_em != '' AND pix_expira_em < ?").all(agora)) {
       transacao(() => {
@@ -500,8 +535,21 @@ const Bookings = {
     for (const b of db.prepare("SELECT * FROM bookings WHERE status = 'devolvido' AND janela_vistoria != '' AND janela_vistoria < ?").all(agora)) {
       try { Bookings.concluir(b.id, { quem: 'sistema' }); concluidas++; } catch (_) {}
     }
-    evento('', 'rotina.reservas', '', { expiradas, naoConfirmadas, concluidas });
-    return { expiradas, nao_confirmadas: naoConfirmadas, concluidas };
+    // Devolução com UMA confirmação só e prazo vencido: vale sozinha. Sem isto,
+    // o lado que nunca escaneia prende a caução do cliente E o repasse do
+    // proprietário para sempre, sem ninguém a quem recorrer.
+    for (const b of db.prepare("SELECT * FROM bookings WHERE status = 'retirado' AND prazo_devolucao != '' AND prazo_devolucao < ?").all(agora)) {
+      try {
+        const cheia = Bookings.obter(b.id);
+        const quem = b.devolucao_cliente_em ? b.cliente_id : (cheia.donos || [])[0] || 'sistema';
+        db.prepare('UPDATE bookings SET devolucao_cliente_em=?, devolucao_dono_em=? WHERE id=?')
+          .run(b.devolucao_cliente_em || agora, b.devolucao_dono_em || agora, b.id);
+        Bookings._fecharDevolucao(cheia, quem);
+        devolucoesPorPrazo++;
+      } catch (_) {}
+    }
+    evento('', 'rotina.reservas', '', { expiradas, naoConfirmadas, concluidas, devolucoesPorPrazo });
+    return { expiradas, nao_confirmadas: naoConfirmadas, concluidas, devolucoes_por_prazo: devolucoesPorPrazo };
   },
 };
 

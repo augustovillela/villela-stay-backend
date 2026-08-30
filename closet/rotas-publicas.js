@@ -166,7 +166,8 @@ function registrarRotasPublicas(app, { requireUsuario, talvezUsuario, notificar 
     const out = r.etapa === 'retirada'
       ? Bookings.registrarRetirada(req.params.token, req.usuario.id,
         { admin: req.usuario.papel === 'admin' || req.usuario.papel === 'moderador' })
-      : Bookings.registrarDevolucao(req.params.token, req.usuario.id);
+      : Bookings.registrarDevolucao(req.params.token, req.usuario.id,
+        { admin: req.usuario.papel === 'admin' || req.usuario.papel === 'moderador' });
     repo.Auditoria.registrar({ quem: req.usuario.email, acao: 'posse.' + r.etapa, entidade: 'bookings', entidade_id: r.booking.id, ip: ipDe(req) });
     res.json(out);
   }));

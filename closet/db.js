@@ -41,6 +41,13 @@ function garantirColuna(tabela, coluna, ddl) {
 // onda 2 (03/08/2026): indicação, crédito e entrega por zona
 garantirColuna('users', 'codigo_indicacao', "TEXT NOT NULL DEFAULT ''");
 garantirColuna('bookings', 'credito_centavos', 'INTEGER NOT NULL DEFAULT 0');
+// Devolucao confirmada pelos DOIS lados: uma data por parte. Enquanto faltar
+// uma, a reserva NAO passa para 'devolvido' e a vistoria nao comeca.
+garantirColuna('bookings', 'devolucao_cliente_em', "TEXT NOT NULL DEFAULT ''");
+garantirColuna('bookings', 'devolucao_dono_em', "TEXT NOT NULL DEFAULT ''");
+// Relogio da devolucao: a 1a confirmacao o arma. Passado o prazo sem a outra
+// parte, a rotina fecha sozinha — senao o dinheiro dos dois fica preso.
+garantirColuna('bookings', 'prazo_devolucao', "TEXT NOT NULL DEFAULT ''");
 garantirColuna('bookings', 'zona_entrega_id', "TEXT NOT NULL DEFAULT ''");
 garantirColuna('partners', 'slug', "TEXT NOT NULL DEFAULT ''");
 garantirColuna('partners', 'logo_url', "TEXT NOT NULL DEFAULT ''");
