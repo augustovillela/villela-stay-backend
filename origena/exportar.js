@@ -88,6 +88,7 @@ function deszipar(buf) {
   let p = buf.readUInt32LE(fim + 16);
 
   const arquivos = {};
+  let somaDescomprimida = 0;
   for (let i = 0; i < n; i++) {
     if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error('diretório do zip corrompido');
     const metodo = buf.readUInt16LE(p + 10);
@@ -103,8 +104,22 @@ function deszipar(buf) {
     const extraTamL = buf.readUInt16LE(desloc + 28);
     const ini = desloc + 30 + nomeTamL + extraTamL;
     const cru = buf.subarray(ini, ini + compTam);
+    // O MAX_ZIP limita o COMPRIMIDO. Deflate chega a ~1000:1, entao 300 MB
+    // comprimidos viram centenas de GB na memoria e matam o worker no meio —
+    // e a fila reagenda e repete. O teto abaixo e do DESCOMPRIMIDO, somado ao
+    // longo do arquivo: o `maxOutputLength` corta cada entrada e o acumulado
+    // corta o conjunto.
     if (metodo === 0) arquivos[nome] = Buffer.from(cru);
-    else if (metodo === 8) arquivos[nome] = zlib.inflateRawSync(cru);
+    else if (metodo === 8) {
+      const resta = MAX_DESCOMPRIMIDO - somaDescomprimida;
+      if (resta <= 0) throw new Error('o conteúdo descomprimido passa do limite');
+      try { arquivos[nome] = zlib.inflateRawSync(cru, { maxOutputLength: resta }); }
+      catch (e) {
+        throw new Error(`${nome}: o conteúdo descomprimido passa do limite de `
+          + `${Math.round(MAX_DESCOMPRIMIDO / 1048576)} MB`);
+      }
+      somaDescomprimida += arquivos[nome].length;
+    }
     else throw new Error(`método de compressão ${metodo} não suportado em ${nome}`);
 
     p += 46 + nomeTam + extraTam + comentTam;
@@ -550,6 +565,12 @@ async function importarGedcom(t, { familyId, userId, texto }) {
 
 // ------------------------------------- importação por ARQUIVO (026)
 const MAX_ZIP = 300 * 1024 * 1024;
+// Teto do DESCOMPRIMIDO — o de cima so limita o arquivo que CHEGA.
+// Calibrado pela memoria do worker, nao por generosidade: tudo isto fica em
+// Buffer ao mesmo tempo, e um teto maior que a memoria nao protege de nada —
+// o processo morre de OOM antes de alcanca-lo. O acervo legitimo e quase todo
+// midia, que ja vem comprimida e praticamente nao expande.
+const MAX_DESCOMPRIMIDO = (Number(process.env.ORIGENA_MAX_DESCOMPRIMIDO_MB) || 400) * 1024 * 1024;
 
 /**
  * Abre a porta: cria a linha e devolve a URL assinada para a família
