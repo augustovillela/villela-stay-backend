@@ -389,6 +389,13 @@ app.get('/api/leads-recebidos', leitorJsonl('leads.jsonl'));
 
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 if (!process.env.JWT_SECRET) {
+  // Em producao isto nao e aviso, e defeito: o segredo muda a cada reinicio,
+  // entao TODA sessao cai sem motivo aparente e, com mais de uma instancia, o
+  // token de uma nao vale na outra. Subir assim e prometer login que funciona.
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[staff] JWT_SECRET nao definido. Defina no Render antes de subir.');
+    process.exit(1);
+  }
   console.warn('[staff] JWT_SECRET não definido — usando segredo temporário (sessões caem a cada reinício). Defina JWT_SECRET no Render.');
 }
 const COOKIE_SECURE = process.env.NODE_ENV !== 'development'; // Secure em produção (https)

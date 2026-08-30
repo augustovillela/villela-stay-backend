@@ -13,6 +13,10 @@ const WHATSAPP = process.env.LIVRARIA_WHATSAPP || '556191935013';
 const PIXEL_META = process.env.META_PIXEL_ID || '';
 const GADS_ID = process.env.GOOGLE_ADS_ID || '';
 
+// JSON dentro de <script> tem de escapar '<': titulo com </script> fecharia o
+// bloco. Aqui o conteudo e de staff (auto-XSS de editor), mas a mesma linha
+// virou XSS de verdade na Vitrine e no Closet — nao vale manter o padrao.
+const jsonEmScript = (o) => JSON.stringify(o).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const waLink = (msg) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg || 'Olá! Tenho uma dúvida sobre os livros da Villela.')}`;
 
@@ -235,7 +239,7 @@ function pagina({ title, description, path = '/', ogImage, schema, body, extraHe
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description || '')}">
 <meta property="og:url" content="${esc(canonical)}"><meta property="og:image" content="${esc(og)}">
 <meta name="twitter:card" content="summary_large_image">
-${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script>` : ''}
+${schema ? `<script type="application/ld+json">${jsonEmScript(schema)}</script>` : ''}
 <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7">${pixelsHead()}${extraHead}
 </head><body class="vx" data-vertical="livraria">
 <header class="top"><div class="wrap">
@@ -371,7 +375,7 @@ function vitrine(livros, filtro = {}, listaPacotes = []) {
     var grupos=[].slice.call(document.querySelectorAll('#lv-resultados .lv-grupo'));
     var conta=document.getElementById('lv-conta'), vazio=document.getElementById('lv-vazio');
     var semAcento=function(s){return (s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();};
-    var catAtiva=${JSON.stringify(catAtiva ? catSlug(catAtiva) : '')};
+    var catAtiva=${jsonEmScript(catAtiva ? catSlug(catAtiva) : '')};
     function filtrar(){
       var termos=semAcento(campo.value).split(/\\s+/).filter(Boolean), n=0;
       cards.forEach(function(c){
@@ -534,7 +538,7 @@ function paginaLivro(b) {
     <a class="btn btn-ouro" href="#comprar">Comprar</a>
   </div></div>
   <script>
-    var LIVRO=${JSON.stringify({ id: b.id, slug: b.slug, titulo: b.titulo })};
+    var LIVRO=${jsonEmScript({ id: b.id, slug: b.slug, titulo: b.titulo })};
     function comprar(tipo){ location.href='/checkout?livro='+encodeURIComponent(LIVRO.slug)+'&tipo='+tipo; }
   </script>`;
 
@@ -609,7 +613,7 @@ function checkout(b, tipoInicial, pac) {
     </div></div>
   </div></section>
   <script>
-    var LIVRO=${JSON.stringify({ id: b.id, slug: b.slug, titulo: b.titulo, precos: pac ? { pacote: pac.preco } : { pdf: b.preco_pdf, impresso: b.preco_impresso, combo: b.preco_combo } })};
+    var LIVRO=${jsonEmScript({ id: b.id, slug: b.slug, titulo: b.titulo, precos: pac ? { pacote: pac.preco } : { pdf: b.preco_pdf, impresso: b.preco_impresso, combo: b.preco_combo } })};
     var PACOTE=${pac ? JSON.stringify({ slug: pac.slug, titulo: pac.titulo }) : 'null'};
     var descontoAtual=0, cupomAplicado='';
     var q=new URLSearchParams(location.search);
