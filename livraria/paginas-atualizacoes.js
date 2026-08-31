@@ -8,7 +8,7 @@
 'use strict';
 const { pagina, esc, waLink } = require('./storefront');
 
-const REVISADO_EM = '30/07/2026';
+const REVISADO_EM = '31/08/2026';
 const CONTATO = 'augusto.villela@gmail.com';
 
 // Formato de cada item:
@@ -16,6 +16,24 @@ const CONTATO = 'augusto.villela@gmail.com';
 //   edicao: '1ª edição', titulo: 'O que mudou', descricao: 'Detalhe da correção/complemento.' }
 // `slug` e `edicao` são opcionais (slug vira link para a página do livro).
 const ATUALIZACOES = [
+  {
+    data: '31/08/2026', livro: 'Conexões de Sucesso', slug: 'conexoes-de-sucesso',
+    edicao: '1ª edição',
+    titulo: 'Saiu a 2ª edição — e ela contradiz parte do que você leu aqui',
+    descricao: 'Se o seu exemplar diz "Guia Essencial para Jovens de Futuro" na capa, você tem a 1ª '
+      + 'edição, de 2024. A 2ª edição não é uma revisão de exemplos e links: é uma reescrita, e o '
+      + 'primeiro capítulo dela explica por quê. Entre uma edição e outra, as tarefas que serviam de '
+      + 'porta de entrada para quem começava — planilha, texto padrão, primeiro rascunho, triagem — '
+      + 'passaram a ser feitas por software a custo perto de zero. O jovem não está sendo demitido; '
+      + 'está sendo não contratado. O que mudou no livro: saíram os treze capítulos que resumiam obras '
+      + 'de educação financeira (hoje qualquer assistente de IA entrega aquilo em dez segundos) e os '
+      + 'capítulos que listavam cursos, blogs e podcasts (metade dos endereços já mudou de dono ou '
+      + 'deixou de existir). Entraram pensamento crítico com método, uso profissional de inteligência '
+      + 'artificial, leitura de dados, vendas e negociação, reputação, jurídico prático e execução. São '
+      + 'agora 21 capítulos em 6 partes, cada um terminando em Na prática, Erro comum e Leve daqui — 21 '
+      + 'tarefas com consequência real. O conselho central da 1ª edição continua de pé; a lista de '
+      + 'habilidades que o sustentava, não.',
+  },
   {
     data: '30/07/2026', livro: 'Claude AI na Prática Jurídica', slug: 'claude-ai-na-pratica-juridica',
     edicao: '1ª edição',
