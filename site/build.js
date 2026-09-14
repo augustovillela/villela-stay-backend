@@ -3159,6 +3159,7 @@ const BLOG_TEMA_I18N = {
   'Arquitetura modular': { en: 'Modular architecture', es: 'Arquitectura modular' },
   'Domo geodésico': { en: 'Geodesic dome', es: 'Domo geodésico' },
   'Gastronomia': { en: 'Food & dining', es: 'Gastronomía' },
+  'Inclusão': { en: 'Inclusion', es: 'Inclusión' },
   'Hospedagem profissional': { en: 'Professional hosting', es: 'Hospedaje profesional' },
   'Paisagismo': { en: 'Landscaping', es: 'Paisajismo' },
   'Personalidades': { en: 'Notable figures', es: 'Personalidades' },
@@ -3246,25 +3247,9 @@ function renderArtigo(a0) {
 
   const waMsg = t(`Olá! Li o artigo "${a.h1}" no site da Villela Stay e quero saber sobre hospedagem no Lago Sul.`, `Hi! I read the article "${a.h1}" on the Villela Stay website and I'd like to know about staying in Lago Sul.`, `¡Hola! Leí el artículo "${a.h1}" en el sitio de Villela Stay y quiero saber sobre alojamiento en el Lago Sul.`);
 
-  const corpoHtml = `
-<article class="artigo">
-  <header class="artigo-hero tema-${a.slug}">
-    <div class="artigo-hero-motivo" aria-hidden="true">${BLOG_HERO_SVG}</div>
-    <div class="artigo-hero-conteudo">
-      <nav class="breadcrumb"><a href="${L('/')}">${t('Início', 'Home', 'Inicio')}</a> › <a href="${L('/blog.html')}">Blog</a> › <span>${esc(a.tema)}</span></nav>
-      <span class="tema-tag">${a.emoji} ${esc(a.tema)}</span>
-      <h1>${esc(a.h1)}</h1>
-      <p class="artigo-dek">${esc(a.dek)}</p>
-      <div class="artigo-meta"><span>⏱ ${a.leituraMin || 7} ${t('min de leitura', 'min read', 'min de lectura')}</span><span>${t('Atualizado em', 'Updated on', 'Actualizado el')} ${fmtDataBR(a.atualizado)}</span></div>
-    </div>
-  </header>
-  <div class="artigo-corpo">
-    ${a.corpo(h)}
-    ${iscaBox}
-    ${faqBloco}
-  </div>
-</article>
-
+  // Artigo de utilidade publica (semVenda) nao recebe os blocos comerciais: seria
+  // funil de venda embaixo de conteudo que a pessoa esta lendo por necessidade.
+  const blocosVenda = a.semVenda ? '' : `
 <section class="grade-wrap blog-casas">
   <h2 class="secao-titulo">${esc(a.casasTitulo || t('Onde se hospedar', 'Where to stay', 'Dónde alojarse'))}</h2>
   ${a.casasTexto ? `<p class="blog-casas-texto">${esc(a.casasTexto)}</p>` : ''}
@@ -3293,7 +3278,27 @@ function renderArtigo(a0) {
     <button class="btn" type="submit">${t('Pedir proposta', 'Request a proposal', 'Pedir propuesta')}</button>
     <p class="form-status" hidden></p>
   </form>
-</section>
+</section>`;
+
+  const corpoHtml = `
+<article class="artigo">
+  <header class="artigo-hero tema-${a.slug}">
+    <div class="artigo-hero-motivo" aria-hidden="true">${BLOG_HERO_SVG}</div>
+    <div class="artigo-hero-conteudo">
+      <nav class="breadcrumb"><a href="${L('/')}">${t('Início', 'Home', 'Inicio')}</a> › <a href="${L('/blog.html')}">Blog</a> › <span>${esc(a.tema)}</span></nav>
+      <span class="tema-tag">${a.emoji} ${esc(a.tema)}</span>
+      <h1>${esc(a.h1)}</h1>
+      <p class="artigo-dek">${esc(a.dek)}</p>
+      <div class="artigo-meta"><span>⏱ ${a.leituraMin || 7} ${t('min de leitura', 'min read', 'min de lectura')}</span><span>${t('Atualizado em', 'Updated on', 'Actualizado el')} ${fmtDataBR(a.atualizado)}</span></div>
+    </div>
+  </header>
+  <div class="artigo-corpo">
+    ${a.corpo(h)}
+    ${iscaBox}
+    ${faqBloco}
+  </div>
+</article>
+${blocosVenda}
 
 ${relacionadosBloco}
 ${formScriptBlog}`;

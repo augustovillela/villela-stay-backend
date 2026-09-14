@@ -449,6 +449,8 @@ a { color: var(--lago); text-decoration: none; }
 .tema-containers    { --t1:#33383d; --t2:#6b7278; }
 .tema-domo-geodesico{ --t1:#23306b; --t2:#5566c4; }
 .tema-hospedagem-profissional { --t1:#5b1f33; --t2:#9c4a63; }
+.tema-autismo-passo-a-passo { --t1:#0B4557; --t2:#16849E; }
+.tema-autismo-direitos-df   { --t1:#14403A; --t2:#2F7D6B; }
 
 /* ---------- hero do artigo ---------- */
 .artigo-hero {
@@ -475,8 +477,54 @@ a { color: var(--lago); text-decoration: none; }
 }
 .blog-card .tema-tag, .tema-tag.tema-arquitetura, .tema-tag.tema-roteiros, .tema-tag.tema-gastronomia,
 .tema-tag.tema-paisagismo, .tema-tag.tema-personalidades, .tema-tag.tema-containers,
-.tema-tag.tema-domo-geodesico, .tema-tag.tema-hospedagem-profissional {
+.tema-tag.tema-domo-geodesico, .tema-tag.tema-hospedagem-profissional,
+.tema-tag.tema-autismo-passo-a-passo, .tema-tag.tema-autismo-direitos-df {
   background: linear-gradient(135deg, var(--t1), var(--t2)); color: #fff;
+}
+
+/* ---------- artigos de utilidade pública (passos, avisos, minutas) ---------- */
+.tea-aviso {
+  margin: 0 0 1.6em; padding: 20px 22px; background: #eef4f6;
+  border-left: 4px solid var(--lago, #0E7490); border-radius: 0 6px 6px 0;
+}
+.tea-aviso p { margin: 0 0 .7em; font-size: 1rem; line-height: 1.65; }
+.tea-aviso p:last-child { margin-bottom: 0; }
+.tea-aviso-atencao { background: #f7efe0; border-left-color: #9A6512; }
+.tea-aviso-fim { background: #f2f3f2; border-left-color: #8d9694; font-size: .95rem; }
+
+.tea-passo {
+  position: relative; margin: 0 0 1.9em; padding: 22px 24px 8px 24px;
+  background: #fbfbfa; border: 1px solid #e3e5e3; border-radius: 8px;
+}
+.tea-passo .tea-num {
+  display: inline-block; font-size: .78rem; font-weight: 800; letter-spacing: 1.2px;
+  color: #fff; background: linear-gradient(135deg, var(--t1, #0B4557), var(--t2, #16849E));
+  padding: 3px 11px; border-radius: 20px; margin-bottom: 10px;
+}
+.tea-passo h3 { margin: 0 0 .6em; font-size: 1.3rem; line-height: 1.3; }
+.tea-passo p { margin: 0 0 1em; font-size: 1.04rem; line-height: 1.7; }
+
+.tea-fala {
+  margin: 0 0 1em; padding: 15px 18px; background: #fff;
+  border-left: 3px solid var(--t2, #16849E); border-radius: 0 6px 6px 0;
+  font-style: italic; color: #34383a;
+}
+
+.tea-tabela { margin: 0 0 1.8em; overflow-x: auto; border: 1px solid #e3e5e3; border-radius: 8px; }
+.tea-tabela table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: .95rem; }
+.tea-tabela th, .tea-tabela td { text-align: left; padding: 11px 15px; vertical-align: top; border-bottom: 1px solid #e9ebe9; line-height: 1.55; }
+.tea-tabela thead th { font-size: .74rem; letter-spacing: .6px; text-transform: uppercase; color: #6b7472; background: #f4f6f5; }
+.tea-tabela tbody tr:last-child td { border-bottom: none; }
+.tea-tabela small { color: #6b7472; }
+
+.tea-minuta {
+  white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .82rem; line-height: 1.7;
+}
+
+@media (max-width: 560px) {
+  .tea-passo { padding: 18px 16px 4px; }
+  .tea-passo h3 { font-size: 1.15rem; }
 }
 
 /* ---------- corpo editorial do artigo ---------- */
