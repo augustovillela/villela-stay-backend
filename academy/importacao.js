@@ -32,7 +32,9 @@ function aplicarEstrutura(productId, modulos) {
     const titulo = s(mod && mod.titulo, 160);
     if (!titulo) throw new Error('Módulo sem título.');
     ordemM++;
-    const ja = porTitulo.get(chave(titulo));
+    // titulo_anterior: absorve um módulo que já existe com OUTRO nome (ex.: o "Módulo 1"
+    // vazio criado à mão no painel) — renomeia em vez de deixar um módulo órfão para trás.
+    const ja = porTitulo.get(chave(titulo)) || (mod.titulo_anterior ? porTitulo.get(chave(mod.titulo_anterior)) : null);
     let moduleId;
     if (ja) { moduleId = ja.id; r.modulos_atualizados++; } else { moduleId = ct.Conteudo.addModulo(productId, titulo); r.modulos_criados++; }
     ct.Conteudo.editarModulo(moduleId, productId, { titulo, ordem: ordemM });
@@ -144,4 +146,53 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
   };
 }
 
-module.exports = { aplicarEstrutura, anexarMateriais, importarCurso };
+// ---- vídeo/mídia por título (a mesma identidade da importação) -----------------
+// O painel do produtor sobe vídeo em 3 passos (iniciar → PUT direto ao bucket →
+// confirmar) autenticado pelo cookie do produtor. Aqui é o MESMO ciclo, com as mesmas
+// funções do repo, autorizado pela chave de publicação em nome do produtor dono do
+// produto — para a automação local anexar as aulas gravadas sem digitar no painel.
+function produtorDono(dados = {}) {
+  const email = s(dados.produtor_email, 120).toLowerCase();
+  if (!email || !email.includes('@')) throw new Error('Informe o "produtor_email".');
+  const u = repo.Usuarios.porEmail(email);
+  if (!u || u.status !== 'ativo') throw new Error(`Não existe conta ativa na Academy com o e-mail ${email}.`);
+  const pid = s(dados.produto_id, 40);
+  if (!pid) throw new Error('Informe o "produto_id".');
+  const produto = ct.Produtos.obterDoDono(pid, u.id);
+  if (!produto) throw new Error('Produto não encontrado para esse produtor.');
+  return { u, produto };
+}
+function aulaPorTitulo(productId, dados = {}) {
+  const arvore = ct.Produtos.estrutura(productId);
+  const mod = arvore.find(m => chave(m.titulo) === chave(dados.modulo_titulo));
+  if (!mod) throw new Error(`Módulo "${s(dados.modulo_titulo, 160)}" não encontrado.`);
+  const aula = (mod.aulas || []).find(a => chave(a.titulo) === chave(dados.aula_titulo));
+  if (!aula) throw new Error(`Aula "${s(dados.aula_titulo, 160)}" não encontrada no módulo "${mod.titulo}".`);
+  return aula;
+}
+function estruturaDoCurso(dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  return { produtor: { id: u.id, email: u.email }, produto, estrutura: ct.Produtos.estrutura(produto.id), pagina_venda: ct.SalesPages.obter(produto.id) };
+}
+function iniciarVideo(dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  const aula = aulaPorTitulo(produto.id, dados);
+  const r = ct.Midia.iniciarUploadGrande(u.id, { nome: dados.nome, mime: dados.mime, tamanho: dados.tamanho });
+  return { media_id: r.id, upload_url: r.upload_url, expira_seg: r.expira_seg, aula: { id: aula.id, titulo: aula.titulo } };
+}
+// confirma o upload (ou aceita uma mídia já confirmada do mesmo produtor, ex.: PDF que
+// entrou como material) e a vincula à aula. Só toca no que veio: tipo e duração são opcionais.
+async function confirmarVideo(mediaId, dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  const aula = aulaPorTitulo(produto.id, dados);
+  const m = await ct.Midia.confirmarUploadGrande(s(mediaId, 40), u.id);
+  const campos = { media_id: m.id };
+  if (dados.tipo != null && ct.TIPOS_AULA.includes(dados.tipo)) campos.tipo = dados.tipo;
+  if (dados.duracao_seg != null) campos.duracao_seg = Math.max(0, parseInt(dados.duracao_seg, 10) || 0);
+  if (dados.url_externa != null) campos.url_externa = s(dados.url_externa, 500);
+  ct.Conteudo.editarAula(aula.id, produto.id, campos);
+  const depois = aulaPorTitulo(produto.id, dados);
+  return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho, storage: m.storage }, aula: depois };
+}
+
+module.exports = { aplicarEstrutura, anexarMateriais, importarCurso, estruturaDoCurso, iniciarVideo, confirmarVideo };

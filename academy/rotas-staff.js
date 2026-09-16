@@ -182,6 +182,23 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
     res.json({ ok: true, ...r });
   }));
 
+  // ---- VÍDEO/MÍDIA das aulas pela chave (o mesmo ciclo do painel: iniciar → PUT → confirmar) ----
+  // Para a automação local anexar as aulas gravadas ao curso importado. Identidade por
+  // título (módulo + aula), como a importação. Só o produtor dono do produto (via e-mail).
+  app.get('/staff/api/academy/importar-curso/estrutura', ...PA, h((req, res) => {
+    res.json({ ok: true, ...imp.estruturaDoCurso(req.query || {}) });
+  }));
+  app.post('/staff/api/academy/importar-video', ...PA, h((req, res) => {
+    const r = imp.iniciarVideo(req.body || {});
+    aud(req, 'midia.upload-grande.iniciar', 'media_files', r.media_id, `${r.aula.titulo} ← ${String((req.body || {}).nome || '').slice(0, 80)}`);
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/academy/importar-video/:mediaId/confirmar', ...PA, h(async (req, res) => {
+    const r = await imp.confirmarVideo(req.params.mediaId, req.body || {});
+    aud(req, 'midia.upload-grande.confirmar', 'media_files', r.media.id, `${r.aula.titulo} (${r.media.tamanho}b)`);
+    res.json({ ok: true, ...r });
+  }));
+
   // leads / auditoria
   app.get('/staff/api/academy/leads', ...A, h((req, res) => res.json({ leads: repo.Leads.listar(req.query.n) })));
   app.post('/staff/api/academy/leads/:id/status', ...A, h((req, res) => { repo.Leads.status(req.params.id, (req.body || {}).status); res.json({ ok: true }); }));

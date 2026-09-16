@@ -1412,6 +1412,89 @@ async function main() {
     assert.equal(outro.st, 400, 'anti-IDOR');
   });
 
+  console.log('\n— vídeo e mídia das aulas pela chave (o mesmo ciclo do painel) —');
+  const EST = (extra = {}) => ({ produtor_email: MARIA.email, produto_id: impId, ...extra });
+  const estrutura = async () => (await req('GET', `/staff/api/academy/importar-curso/estrutura?produtor_email=${encodeURIComponent(MARIA.email)}&produto_id=${impId}`, { semUser: true, chave: true })).json;
+
+  await t('estrutura pela chave devolve módulos, aulas, mídia e materiais do produto do produtor', async () => {
+    const r = await estrutura();
+    assert.equal(r.ok, true);
+    assert.equal(r.produto.id, impId);
+    assert.deepEqual(r.estrutura.map(m => m.titulo), ['Módulo A', 'Módulo B', 'Módulo C']);
+    assert.equal(r.estrutura[0].aulas[0].materiais.length, 1, 'material do teste anterior aparece');
+    assert.equal(r.pagina_venda.headline, 'Manchete do importado');
+    const alheio = await req('GET', `/staff/api/academy/importar-curso/estrutura?produtor_email=clara@t.com&produto_id=${impId}`, { semUser: true, chave: true });
+    assert.equal(alheio.st, 400, 'produto de outro produtor não aparece');
+  });
+
+  await t('titulo_anterior renomeia um módulo existente em vez de duplicar', async () => {
+    const mods = CURSO().modulos;
+    mods[0] = { ...mods[0], titulo: 'Módulo A renomeado', titulo_anterior: 'Módulo A' };
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: { ...CURSO(), modulos: mods } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.resumo.modulos_criados, 0, 'absorveu o módulo antigo');
+    assert.ok(r.json.estrutura.some(m => m.titulo === 'Módulo A renomeado'));
+    assert.ok(!r.json.estrutura.some(m => m.titulo === 'Módulo A'));
+    const volta = CURSO().modulos; volta[0] = { ...volta[0], titulo_anterior: 'Módulo A renomeado' };
+    const r2 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: { ...CURSO(), modulos: volta } });
+    assert.equal(r2.json.resumo.modulos_criados, 0);
+    assert.ok(r2.json.estrutura.some(m => m.titulo === 'Módulo A'), 'volta ao nome original');
+  });
+
+  await t('vídeo pela chave: iniciar → PUT → confirmar vincula a mídia à aula certa', async () => {
+    const storage = require('./storage');
+    const real = { s3Ativo: storage.s3Ativo, presignS3: storage.presignS3, s3Existe: storage.s3Existe };
+    const bucketFalso = new Map();
+    storage.s3Ativo = () => true;
+    storage.presignS3 = (cfg, met, key) => `https://fake.r2/${encodeURIComponent(key)}?met=${met}`;
+    storage.s3Existe = async (key) => (bucketFalso.has(key) ? { tamanho: bucketFalso.get(key) } : null);
+    try {
+      const errada = await req('POST', '/staff/api/academy/importar-video', { semUser: true, chave: true,
+        corpo: EST({ modulo_titulo: 'Módulo A', aula_titulo: 'Aula que não há', nome: 'a.mp4', mime: 'video/mp4', tamanho: 4096 }) });
+      assert.equal(errada.st, 400); assert.ok(errada.json.erro.includes('Aula que não há'), errada.json.erro);
+
+      const ini = await req('POST', '/staff/api/academy/importar-video', { semUser: true, chave: true,
+        corpo: EST({ modulo_titulo: 'Módulo A', aula_titulo: 'Aula A2', nome: 'aula-a2.mp4', mime: 'video/mp4', tamanho: 4096 }) });
+      assert.equal(ini.st, 200, ini.texto);
+      assert.ok(ini.json.upload_url && ini.json.media_id, 'devolve URL presignada e o id da mídia');
+
+      const cedo = await req('POST', `/staff/api/academy/importar-video/${ini.json.media_id}/confirmar`, { semUser: true, chave: true,
+        corpo: EST({ modulo_titulo: 'Módulo A', aula_titulo: 'Aula A2' }) });
+      assert.equal(cedo.st, 400); assert.ok(/ainda não chegou/i.test(cedo.json.erro), cedo.json.erro);
+
+      bucketFalso.set(ini.json.media_id + '.mp4', 4096); // o PUT local aconteceu
+      const ok = await req('POST', `/staff/api/academy/importar-video/${ini.json.media_id}/confirmar`, { semUser: true, chave: true,
+        corpo: EST({ modulo_titulo: 'Módulo A', aula_titulo: 'Aula A2', duracao_seg: 123 }) });
+      assert.equal(ok.st, 200, ok.texto);
+      assert.equal(ok.json.aula.media_id, ini.json.media_id);
+      assert.equal(ok.json.aula.duracao_seg, 123);
+      assert.equal(ok.json.aula.tipo, 'video');
+
+      const outro = await req('POST', `/staff/api/academy/importar-video/${ini.json.media_id}/confirmar`, { semUser: true, chave: true,
+        corpo: { produtor_email: 'clara@t.com', produto_id: impId, modulo_titulo: 'Módulo A', aula_titulo: 'Aula A2' } });
+      assert.equal(outro.st, 400, 'só o produtor dono do produto');
+
+      const vis = await req('GET', `/academy/api/produtor/produtos/${impId}`, { jar: 'maria' });
+      assert.equal(vis.json.estrutura[0].aulas[1].media_id, ini.json.media_id, 'o painel do produtor vê o vídeo na aula');
+    } finally { Object.assign(storage, real); }
+  });
+
+  await t('mídia já confirmada (o PDF que entrou como material) vira a mídia de uma aula tipo pdf', async () => {
+    const e = await estrutura();
+    const pdfId = e.estrutura[0].aulas[0].materiais[0].media_id;
+    const r = await req('POST', `/staff/api/academy/importar-video/${pdfId}/confirmar`, { semUser: true, chave: true,
+      corpo: EST({ modulo_titulo: 'Módulo B', aula_titulo: 'Aula B1', tipo: 'pdf' }) });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.aula.tipo, 'pdf');
+    assert.equal(r.json.aula.media_id, pdfId);
+    assert.equal(r.json.aula.conteudo, 'texto da aula', 'o texto da aula não foi apagado');
+  });
+
+  await t('guarda das rotas de vídeo: sem chave 401, operador não-admin 403', async () => {
+    assert.equal((await req('POST', '/staff/api/academy/importar-video', { semUser: true, corpo: EST() })).st, 401);
+    assert.equal((await req('POST', '/staff/api/academy/importar-video', { user: 'op', corpo: EST() })).st, 403);
+    assert.equal((await req('GET', `/staff/api/academy/importar-curso/estrutura?produtor_email=${MARIA.email}&produto_id=${impId}`, { user: 'op' })).st, 403);
+  });
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }
