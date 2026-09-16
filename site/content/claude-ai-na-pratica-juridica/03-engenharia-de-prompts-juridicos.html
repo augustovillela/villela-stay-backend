@@ -1,0 +1,70 @@
+<!--META {"arquivo": "03-engenharia-de-prompts-juridicos", "capitulo": 3, "parte": "Parte I", "parte_titulo": "Claude AI e a nova advocacia", "titulo": "Engenharia de prompts jurídicos", "subtitulo": "Claude AI e a nova advocacia — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 6 min</span><span>Parte I · Claude AI e a nova advocacia</span><span>Livro: capítulo 3</span>", "descricao": "Capítulo 3 do livro Claude AI na Prática Jurídica: Engenharia de prompts jurídicos. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Estrutura de um prompt jurídico profissional</li><li>Função, objetivo, contexto, fontes, regras e formato</li><li>Como definir área do Direito, jurisdição e data de corte</li><li>Como exigir fundamentação e identificação das fontes</li><li>Prompts para análise, comparação, revisão e elaboração</li></ul>", "aplicar_html": "<p>Transforme uma solicitação vaga em um prompt com função, objetivo, contexto, fontes, regras e formato de saída.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<blockquote class="citacao"><p>A máquina sugere, o advogado decide e o Direito responsabiliza.</p></blockquote>
+<h2>3.1 Estrutura de um prompt jurídico profissional</h2>
+<p>Um prompt jurídico bem construído tem seis blocos. A ausência de qualquer um deles produz um tipo previsível de defeito.</p>
+<p><strong>Função</strong> — o papel que o modelo deve assumir.</p>
+<p><strong>Objetivo</strong> — o que precisa ser entregue, com precisão.</p>
+<p><strong>Contexto</strong> — fatos, área, jurisdição, fase, cliente.</p>
+<p><strong>Fontes</strong> — o que ele pode usar e o que é proibido.</p>
+<p><strong>Regras</strong> — restrições, o que não fazer, o que sinalizar.</p>
+<p><strong>Formato</strong> — a estrutura exata da resposta.</p>
+<ul><li>Sem função, a resposta vem em tom genérico.</li><li>Sem objetivo, vem longa e desfocada.</li><li>Sem contexto, vem baseada em suposição.</li><li>Sem fontes, vem com citação inventada.</li><li>Sem regras, vem afirmando o que deveria ter sido sinalizado como dúvida.</li><li>Sem formato, vem em prosa corrida e impossível de auditar.</li></ul>
+<h2>3.2 Função, objetivo, contexto, fontes, regras e formato</h2>
+<p>Exemplo aplicado, com os seis blocos identificados:</p>
+<p><strong>Função.</strong> Você atua como advogado sênior de contencioso cível, com prática em Direito do Consumidor.</p>
+<p><strong>Objetivo.</strong> Produzir um relatório de diagnóstico do processo anexo, para subsidiar a decisão sobre recorrer ou não da sentença.</p>
+<p><strong>Contexto.</strong> Processo de conhecimento em fase de sentença, Justiça Estadual, juizado comum. Cliente é o réu, empresa de médio porte. A sentença anexa julgou parcialmente procedente o pedido. Autos completos anexados (412 páginas).</p>
+<p><strong>Fontes.</strong> Use exclusivamente os autos anexados. Não cite legislação, súmula ou precedente que não conste do documento anexado. Se um dispositivo for necessário ao raciocínio e não estiver nos autos, indique-o como "a verificar" em vez de citá-lo.</p>
+<p><strong>Regras.</strong> Separe rigorosamente o que está provado nos autos do que foi apenas alegado. Sinalize toda inferência sua com a marca [inferência]. Não estime probabilidade de êxito em percentual. Aponte contradições entre a sentença e a prova produzida.</p>
+<p><strong>Formato.</strong> (1) Síntese da sentença em até dez linhas. (2) Tabela: pedido / decisão / fundamento / folha. (3) Pontos de possível omissão, contradição ou obscuridade, com folha. (4) Questões que exigiriam prova não produzida. (5) Perguntas que você faria ao advogado responsável antes de opinar.</p>
+<p>O bloco de fontes é o que mais reduz alucinação.</p>
+<p>O bloco de regras é o que mais melhora utilidade.</p>
+<p>O bloco de formato é o que torna a resposta auditável.</p>
+<h2>3.3 Como definir área do Direito, jurisdição e data de corte</h2>
+<p>Três informações que parecem óbvias e cuja ausência estraga a resposta.</p>
+<p><strong>Área.</strong> "Rescisão contratual" significa coisas diferentes no Direito Civil, no Trabalhista e no Administrativo. Diga a área.</p>
+<p><strong>Jurisdição.</strong> Diga o país, o ramo da Justiça, o tribunal e, quando relevante, a comarca. Sem isso, o modelo tende a misturar referências estrangeiras ou aplicar o entendimento de um tribunal a outro. Para o Brasil, explicitar sempre: "legislação brasileira; Justiça Estadual do Distrito Federal; hipótese de competência do TJDFT".</p>
+<p><strong>Data de corte.</strong> Diga a data de hoje e ordene que ele sinalize tudo o que dependa de vigência. Uma frase que resolve grande parte do problema: <em>"Hoje é [data]. Para toda norma ou precedente citado, marque [conferir vigência] ao lado, pois seu conhecimento pode estar desatualizado."</em></p>
+<h2>3.4 Como exigir fundamentação e identificação das fontes</h2>
+<p>Existe uma diferença enorme entre pedir uma resposta e pedir uma resposta rastreável.</p>
+<p>Instruções que funcionam, para colar no seu padrão:</p>
+<p>Para cada afirmação relevante, indique a origem entre colchetes: [autos, fl. X], [documento anexo Y, p. Z], [conhecimento geral — conferir] ou [inferência minha].</p>
+<p>Nunca apresente como transcrição um texto que você não leu no material fornecido. Se não tiver o texto literal, escreva "paráfrase, conferir texto original".</p>
+<p>Ao final, liste separadamente: (a) tudo que está comprovado no material; (b) tudo que depende de verificação externa; (c) tudo que você inferiu.</p>
+<p>Essa lista final é o que transforma a resposta em algo que a controladoria consegue conferir sem refazer o trabalho.</p>
+<h2>3.5 Prompts para análise, comparação, revisão e elaboração</h2>
+<p>Quatro tarefas, quatro desenhos diferentes:</p>
+<p><strong>Análise</strong> — o material vem de você, o modelo estrutura. Peça sempre com âncora de página e separação entre fato e alegação.</p>
+<p><strong>Comparação</strong> — funcione por critérios explícitos. Em vez de "compare estes dois contratos", defina as dimensões: objeto, prazo, preço e reajuste, obrigações de cada parte, rescisão, penalidades, foro, garantias, confidencialidade. Peça saída em tabela com uma coluna de impacto para o cliente. Sem critérios, o modelo compara o que ele achar relevante.</p>
+<p><strong>Revisão</strong> — o pedido tem que ser negativo. "Revise esta petição" produz elogio. "Encontre falhas nesta petição" produz falhas. Melhor ainda: "<em>assuma que você é o advogado da parte contrária e aponte todos os pontos que atacaria nesta peça</em>".</p>
+<p><strong>Elaboração</strong> — nunca em um comando só. O Capítulo 22 detalha, mas a lógica é: diagnóstico primeiro, estrutura depois, redação por seção, revisão por último. Peça pronta em um único prompt sai genérica e com fundamentação inventada.</p>
+<h2>3.6 Prompts para contencioso e consultoria</h2>
+<p>As duas frentes exigem posturas opostas do modelo.</p>
+<p>No <strong>contencioso</strong>, o modelo trabalha a favor de uma tese. Diga de que lado você está e peça explicitamente a antítese: <em>"Represento o réu. Construa a defesa e, em seção separada, os três melhores argumentos do autor contra ela."</em><strong>Simulação de adversário é o uso mais valioso da IA em litígio.</strong></p>
+<p>Na <strong>consultoria</strong>, o modelo tem que ser neutro e cauteloso. Aqui a instrução é o contrário: <em>"Não presuma qual resultado o cliente prefere. Apresente as alternativas com riscos, custos e grau de segurança jurídica de cada uma, incluindo a alternativa de não fazer nada."</em> Consultivo com viés de agradar o cliente é como se produz um parecer que envelhece mal.</p>
+<h2>3.7 Prompts iterativos: diagnóstico, estrutura, elaboração e revisão</h2>
+<p>O trabalho jurídico sério tem quatro tempos, e cada um é um prompt.</p>
+<p><strong>Diagnóstico.</strong> "<em>Leia o material e me diga o que temos, o que falta e quais perguntas você faria antes de opinar</em>." Sem pedir solução.</p>
+<p><strong>Estrutura.</strong> "<em>Com base no diagnóstico, proponha três estruturas possíveis para a peça, com os prós e contras de cada uma</em>." Você escolhe.</p>
+<p><strong>Elaboração.</strong> Seção por seção, com o material específico de cada uma. Fatos com os documentos dos fatos; fundamentação com a pesquisa já verificada.</p>
+<p><strong>Revisão.</strong> Em conversa nova, sem o histórico. "<em>Esta peça foi escrita por outro advogado. Aponte inconsistências, pedidos sem fundamento, fundamentos sem pedido e citações que precisam ser conferidas.</em>" O olhar limpo encontra o que o autor não vê.</p>
+<p>Quatro prompts levam mais tempo que um. Produzem trabalho de outra categoria.</p>
+<h2>3.8 Biblioteca institucional de prompts</h2>
+<p>Prompt bom não pode viver na cabeça de quem o escreveu. No escritório-modelo, cada prompt validado vira um arquivo com estrutura fixa:</p>
+<p><strong>Nome e código</strong> (ex.: CONT-03 — Diagnóstico de sentença)</p>
+<p><strong>Quando usar</strong> e quando não usar</p>
+<p><strong>Entradas obrigatórias</strong> (o que precisa ser anexado)</p>
+<p><strong>Texto do prompt</strong></p>
+<p><strong>Formato de saída esperado</strong></p>
+<p><strong>Riscos conhecidos</strong> e o que sempre precisa ser conferido</p>
+<p><strong>Responsável pela manutenção</strong> e data da última revisão</p>
+<p>A biblioteca fica em pasta compartilhada e versionada, e é a fonte que alimenta as Skills do Capítulo 10 e os agentes da Parte IX. Um escritório de dez pessoas com trinta prompts validados produz mais e com menos variação do que um escritório de trinta pessoas improvisando cada uma o seu.</p>
+<p>O Apêndice A traz uma biblioteca inicial pronta para adaptação.</p>
+<h2>3.9 Quando não utilizar um único prompt para resolver tudo</h2>
+<p>O erro mais comum de quem já domina a técnica é construir o prompt perfeito de mil palavras que faz tudo de uma vez. Ele falha por quatro motivos.</p>
+<p>Primeiro, <strong>não dá para auditar</strong>: quando o resultado sai errado, não se sabe qual etapa falhou.</p>
+<p>Segundo, <strong>mistura camadas de confiança</strong>: análise do documento (confiável) e pesquisa de precedente (não confiável) saem no mesmo texto, com a mesma aparência de certeza.</p>
+<p>Terceiro, <strong>impede correção de rumo</strong>: se o diagnóstico estava errado, tudo o que veio depois está perdido.</p>
+<p>Quarto, <strong>elimina a decisão do advogado</strong>, que passa a validar um produto acabado em vez de escolher o caminho.</p>
+<p>Prompt único serve para tarefa mecânica e fechada. Trabalho jurídico com consequência pede cadeia de etapas, com o humano decidindo entre elas.</p>

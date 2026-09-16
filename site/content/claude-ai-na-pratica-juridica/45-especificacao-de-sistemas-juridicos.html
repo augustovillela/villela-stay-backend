@@ -1,0 +1,49 @@
+<!--META {"arquivo": "45-especificacao-de-sistemas-juridicos", "capitulo": 45, "parte": "Parte IX", "parte_titulo": "Construindo os sistemas com Claude", "titulo": "Especificação de sistemas jurídicos", "subtitulo": "Construindo os sistemas com Claude — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 4 min</span><span>Parte IX · Construindo os sistemas com Claude</span><span>Livro: capítulo 45</span>", "descricao": "Capítulo 45 do livro Claude AI na Prática Jurídica: Especificação de sistemas jurídicos. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Do problema ao requisito</li><li>Usuários e permissões</li><li>Histórias de usuário</li><li>Requisitos funcionais</li><li>Requisitos de segurança:</li></ul>", "aplicar_html": "<p>Escreva a especificação de um sistema pequeno com usuários, problema, dados, regras, telas, exceções e critérios de aceite.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<p>Esta seção parte de um pressuposto que vale enunciar: <strong>você não vai programar, e vai construir sistemas.</strong></p>
+<p>A competência que isso exige não é técnica, é jurídica — definir requisito, prever exceção, estabelecer regra, antecipar o que dá errado.</p>
+<p>E vale a advertência que atravessa o capítulo: <strong>especificação ruim produz sistema ruim</strong>, agora mais rápido. A velocidade que a IA trouxe deslocou o gargalo da construção para a definição. Quem pula a definição constrói três vezes.</p>
+<h2>45.1 Do problema ao requisito</h2>
+<p>Comece pelo problema em uma frase, do jeito que ele dói: "perdemos tempo demais conferindo publicações e vivemos com medo de perder prazo".</p>
+<p>Depois desdobre em requisitos, que são afirmações verificáveis sobre o que o sistema faz:</p>
+<ul><li>O sistema captura as publicações das fontes X e Y, uma vez por dia útil, às 7h;</li><li>O sistema identifica o processo e o cliente de cada publicação;</li><li>O sistema calcula prazo preliminar e o marca como preliminar;</li><li>O sistema não permite que um prazo entre na agenda sem confirmação de um usuário advogado;</li><li>O sistema alerta quando a captura retorna zero publicações.</li></ul>
+<p>Cada requisito é testável: dá para dizer se está cumprido ou não. Requisito que não é testável não é requisito, é desejo — "o sistema deve ser rápido" não serve; "a tela de busca responde em menos de dois segundos" serve.</p>
+<h2>45.2 Usuários e permissões</h2>
+<p>Liste os perfis e, para cada um, o que vê, o que cria, o que altera, o que aprova e o que não pode em hipótese alguma.</p>
+<p>Em sistema jurídico, a permissão é matéria de sigilo antes de ser matéria de usabilidade. Comece pelo mais restrito e abra conforme a necessidade — o caminho inverso nunca é percorrido.</p>
+<h2>45.3 Histórias de usuário</h2>
+<p>Formato que força a clareza e dispensa vocabulário técnico:</p>
+<p><em>Como</em> advogado responsável, <em>quero</em> ver todas as publicações do dia dos meus processos com o prazo preliminar calculado, <em>para</em> confirmar ou corrigir cada um antes das 18h.</p>
+<p><em>Como</em> controlador, <em>quero</em> uma lista de prazos preliminares não confirmados há mais de 24 horas, <em>para</em> cobrar o responsável antes que vire risco.</p>
+<p>Escreva de vinte a quarenta dessas para um sistema. Elas viram a conversa com o Claude Code, viram o roteiro de testes e viram o manual do usuário.</p>
+<h2>45.4 Requisitos funcionais</h2>
+<p>O detalhamento do que o sistema faz, agrupado por módulo:</p>
+<ul><li>cadastros;</li><li>entradas de dados;</li><li>processamentos;</li><li>regras de negócio;</li><li>saídas;</li><li>relatórios;</li><li>integrações; e</li><li>alertas.</li></ul>
+<p>As <strong>regras de negócio</strong> são a parte jurídica e a mais importante:</p>
+<ul><li>como se calcula o prazo;</li><li>o que determina a classificação de risco;</li><li>quando um caso é considerado parado;</li><li>o que caracteriza duplicidade.</li></ul>
+<p>Escreva-as com a precisão de uma cláusula contratual.</p>
+<h2>45.5 Requisitos de segurança:</h2>
+<ul><li>autenticação e segundo fator;</li><li>perfis e permissões;</li><li>registro de acessos e de operações;</li><li>criptografia dos dados;</li><li>cópia de segurança e teste de restauração;</li><li>retenção e eliminação; e</li><li>o comportamento esperado diante de falha.</li></ul>
+<p>Escreva-os junto com os funcionais, não depois.</p>
+<p>Segurança acrescentada ao fim custa mais e funciona pior.</p>
+<h2>45.6 Banco de dados</h2>
+<p>Descreva as entidades e as relações em português:</p>
+<ul><li>cliente;</li><li>contato;</li><li>assunto;</li><li>processo;</li><li>parte;</li><li>documento;</li><li>publicação;</li><li>prazo;</li><li>tarefa;</li><li>honorários;</li><li>lançamento.</li></ul>
+<p>Para cada uma, os campos, quais são obrigatórios, quais têm lista fechada de valores, e qual é a chave que identifica sem ambiguidade. O dicionário de dados do Capítulo 8.7 já é metade disso.</p>
+<p>E defina as relações:</p>
+<ul><li>um cliente tem muitos assuntos;</li><li>um assunto pode ter nenhum, um ou vários processos;</li><li>uma publicação pertence a um processo;</li><li>um prazo pertence a uma publicação e a um responsável.</li></ul>
+<h2>45.7 Telas e fluxos</h2>
+<p>Descreva as telas necessárias e o caminho que o usuário percorre em cada tarefa. Não precisa desenhar:</p>
+<ul><li>descreva o que aparece;</li><li>o que é editável;</li><li>quais são as ações disponíveis; e</li><li>para onde cada uma leva.</li></ul>
+<p>Comece pela tela que a pessoa usa todo dia.</p>
+<p>Sistema com cadastro exemplar e operação diária ruim não é adotado.</p>
+<h2>45.8 Integrações</h2>
+<p>Para cada sistema externo:</p>
+<ul><li>o que se busca ou envia?</li><li>com que frequência?</li><li>o que acontece se estiver indisponível? e</li><li><strong>como se sabe que falhou</strong>? (Capítulo 11.10).</li></ul>
+<p>A última pergunta é a que quase ninguém especifica, e é a que evita o sucesso falso.</p>
+<h2>45.9 Critérios de aceitação</h2>
+<p>Para cada requisito, como se comprova que está funcionando. É o roteiro de teste do Capítulo 48.</p>
+<p>Exemplo: "dada uma publicação de intimação de sentença do processo X, o sistema a vincula ao processo X, classifica como intimação de decisão recorrível, calcula prazo preliminar e o exibe marcado como preliminar, sem inseri-lo na agenda".</p>
+<h2>45.10 Documentação do sistema</h2>
+<p><strong>O que é, o que faz, como funciona, como se opera, o que fazer quando falha, quem mantém.</strong></p>
+<p>Escrita durante a construção e não depois — e essa é uma das áreas em que a IA ajuda mais e é menos usada, porque a documentação pode ser gerada a partir do próprio sistema à medida que ele é construído.</p>

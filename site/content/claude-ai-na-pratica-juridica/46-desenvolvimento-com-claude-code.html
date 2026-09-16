@@ -1,0 +1,41 @@
+<!--META {"arquivo": "46-desenvolvimento-com-claude-code", "capitulo": 46, "parte": "Parte IX", "parte_titulo": "Construindo os sistemas com Claude", "titulo": "Desenvolvimento com Claude Code", "subtitulo": "Construindo os sistemas com Claude — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 4 min</span><span>Parte IX · Construindo os sistemas com Claude</span><span>Livro: capítulo 46</span>", "descricao": "Capítulo 46 do livro Claude AI na Prática Jurídica: Desenvolvimento com Claude Code. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Preparação do ambiente</li><li>Planejamento antes da programação</li><li>Arquivos de contexto do projeto</li><li>Desenvolvimento por módulos</li><li>Banco de dados e autenticação</li></ul>", "aplicar_html": "<p>Construa um protótipo em ambiente de teste, com dados fictícios, controle de versão e validação antes de qualquer uso real.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<h2>46.1 Preparação do ambiente</h2>
+<p>Instale o Claude Code, defina uma pasta para o projeto e mantenha tudo do projeto dentro dela.</p>
+<p>Duas decisões iniciais que valem para sistema jurídico: <strong>onde os dados vão morar</strong> (máquina local do escritório, servidor próprio ou serviço em nuvem, com as consequências do Capítulo 42) e <strong>quem terá acesso ao ambiente de desenvolvimento</strong>.</p>
+<p>Nada de dado real de cliente no ambiente de desenvolvimento (Capítulo 12.3).</p>
+<h2>46.2 Planejamento antes da programação</h2>
+<p>O primeiro pedido ao Claude Code não é "construa". É "leia esta especificação, aponte o que está ambíguo, o que falta e o que você entendeu diferente do que eu quis dizer, e proponha a ordem de construção".</p>
+<p>Essa conversa, de meia hora, economiza dias. Especificação escrita por humano sempre tem lacuna, e a lacuna aparece na construção — melhor que apareça antes.</p>
+<h2>46.3 Arquivos de contexto do projeto</h2>
+<p>Mantenha na pasta do projeto os documentos que o Claude Code lê sempre:</p>
+<ul><li>a especificação;</li><li>o dicionário de dados;</li><li>as regras de negócio;</li><li>as convenções adotadas; e</li><li>as decisões já tomadas com o motivo.</li></ul>
+<p>É o mesmo princípio do Capítulo 4 aplicado à construção: contexto escrito uma vez, aproveitado em todas as sessões. Sem isso, cada sessão recomeça e as decisões se contradizem.</p>
+<h2>46.4 Desenvolvimento por módulos</h2>
+<p>Um módulo por vez, funcionando de ponta a ponta, antes do próximo. Cadastro de clientes e assuntos primeiro, porque tudo depende dele. Depois processos. Depois publicações e prazos. Depois o resto.</p>
+<p>A tentação de construir tudo em paralelo produz um sistema em que nada funciona inteiro. Módulo pronto significa: dados entram, são processados, aparecem na tela, são testados e alguém já consegue usar.</p>
+<h2>46.5 Banco de dados e autenticação</h2>
+<p>Duas fundações que precisam ficar certas cedo, porque mudá-las depois custa caro.</p>
+<p>No banco, importa que a estrutura reflita o modelo do Capítulo 8 — especialmente a separação entre cliente, assunto e processo. Erro de modelagem aqui reaparece em todos os relatórios.</p>
+<p><strong>Na autenticação, o mínimo: senha forte, segundo fator, perfis de permissão e registro de acesso.</strong></p>
+<h2>46.6 APIs e conectores</h2>
+<p>Integrações do Capítulo 11, construídas com três cuidados que se repetem:</p>
+<ul><li>credencial em cofre e fora do código;</li><li>tratamento explícito de falha; e</li><li>alerta quando o resultado sair do padrão esperado.</li></ul>
+<h2>46.7 Testes automatizados</h2>
+<p>Peça ao Claude Code que escreva testes junto com cada módulo, a partir dos critérios de aceitação do Capítulo 45.9.</p>
+<p>O que precisa ter teste em sistema jurídico, sem exceção:</p>
+<ul><li>cálculo de prazo;</li><li>controle de permissão;</li><li>deduplicação;</li><li>vínculo entre publicação e processo; e</li><li>as regras que impedem ação sem aprovação humana.</li></ul>
+<p>Teste automatizado é o que permite mudar o sistema depois sem medo — e sistema que dá medo de mudar é sistema que congela.</p>
+<h2>46.8 Controle de versões com Git</h2>
+<p>Histórico de tudo que muda, com a possibilidade de voltar atrás.</p>
+<p>O Claude Code trabalha naturalmente nesse fluxo, e o benefício aparece no dia em que algo para de funcionar e a pergunta é "o que mudou desde ontem".</p>
+<p class="atencao">Cuidado específico e sério: <strong>credencial nunca entra no repositório</strong>, e material de cliente também não.</p>
+<p>O que entra no histórico é difícil de remover depois.</p>
+<h2>46.9 Publicação em ambiente de produção</h2>
+<p>Passagem do que foi testado para o que a equipe usa, com:</p>
+<ul><li>dados reais migrados e conferidos;</li><li>permissões configuradas;</li><li>cópia de segurança ativa;</li><li>monitoramento ligado; e</li><li>o caminho de volta definido caso algo dê errado.</li></ul>
+<p>Publique em horário de baixo movimento e nunca em véspera de prazo relevante.</p>
+<h2>46.10 Documentação e manutenção</h2>
+<p>Sistema em produção precisa de dono, de rotina de acompanhamento e de orçamento de tempo para manutenção.</p>
+<p>Fonte de dados muda, requisito novo aparece, erro surge.</p>
+<p>Escritório que constrói e não reserva tempo de manutenção terá, em um ano, um sistema que ninguém mexe e que a equipe começa a contornar.</p>

@@ -1,0 +1,60 @@
+<!--META {"arquivo": "04-engenharia-de-contexto-para-atividades-juridicas", "capitulo": 4, "parte": "Parte I", "parte_titulo": "Claude AI e a nova advocacia", "titulo": "Engenharia de contexto para atividades jurídicas", "subtitulo": "Claude AI e a nova advocacia — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 5 min</span><span>Parte I · Claude AI e a nova advocacia</span><span>Livro: capítulo 4</span>", "descricao": "Capítulo 4 do livro Claude AI na Prática Jurídica: Engenharia de contexto para atividades jurídicas. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Contexto geral do escritório</li><li>Contexto específico do cliente</li><li>Contexto do processo ou assunto jurídico</li><li>Instruções permanentes por área de atuação</li><li>Documentos de calibração jurídica</li></ul>", "aplicar_html": "<p>Crie um arquivo de contexto para um único assunto, separando fatos, documentos, argumentos e dúvidas ainda não resolvidas.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<blockquote class="citacao"><p>Um texto convincente não é necessariamente um texto verdadeiro.</p></blockquote>
+<h2>4.1 Contexto geral do escritório</h2>
+<p>Prompt é o que você pede.</p>
+<p>Contexto é o que o sistema já sabe antes de você pedir.</p>
+<p>Um escritório que investe só em prompt refaz explicação toda vez; um escritório que investe em contexto explica uma vez e colhe para sempre.</p>
+<p>O contexto geral é o documento que descreve o escritório e acompanha todo trabalho:</p>
+<p>Áreas de atuação e o que o escritório não faz;</p>
+<p>Jurisdições e tribunais em que atua com frequência;</p>
+<p>Estilo de redação adotado (tratamento, uso de negrito, tamanho de peça, se usa ou não latim);</p>
+<p>Padrões inegociáveis: como citar, como referenciar folhas, como marcar dúvida;</p>
+<p>Regras de sigilo e o que jamais pode sair em documento;</p>
+<p>Quem aprova o quê.</p>
+<p>São duas a quatro páginas. Elas mudam a qualidade de tudo o que o modelo produz, porque eliminam a maior fonte de retrabalho: resposta correta no conteúdo e errada no formato da casa.</p>
+<h2>4.2 Contexto específico do cliente</h2>
+<p>Uma camada abaixo, por cliente:</p>
+<ul><li>quem é (pessoa física ou jurídica, porte, ramo);</li><li>qual a relação com o escritório;</li><li>quais assuntos estão em curso;</li><li>qual o tom de comunicação preferido;</li><li>quem é o interlocutor;</li><li>quais são as sensibilidades conhecidas;</li><li>o que já foi decidido em orientações anteriores.</li></ul>
+<p>Esse documento evita dois erros caros: contradizer uma orientação que o próprio escritório deu há seis meses, e escrever ao cliente em registro inadequado.</p>
+<h2>4.3 Contexto do processo ou assunto jurídico</h2>
+<p>A camada mais específica, e a que exige mais disciplina:</p>
+<ul><li><strong>Ficha do caso</strong> com partes, número, vara, fase, valor, pedidos, objetivo do cliente e estratégia definida.</li><li><strong>Linha do tempo</strong> dos atos relevantes.</li><li><strong>Matriz de fatos</strong> (Capítulo 5.6).</li><li><strong>Decisões estratégicas</strong> já tomadas e o motivo.</li><li><strong>Documentos-chave</strong> com identificação de folha.</li></ul>
+<p>Mantido esse conjunto, qualquer pessoa do escritório (ou qualquer sistema) entra no caso em minutos. Sem ele, o conhecimento do processo vive na cabeça de uma pessoa, que é o maior risco operacional que um escritório pode ter.</p>
+<h2>4.4 Instruções permanentes por área de atuação</h2>
+<p>Cada área tem exigências que não mudam de caso para caso e que devem ser instrução fixa, não depender da lembrança do advogado.</p>
+<p>No Direito Trabalhista, a atenção a prazos e a competência é constante.</p>
+<p>No Direito Tributário, a distinção entre lei complementar, lei ordinária e ato infralegal precisa ser sempre explicitada.</p>
+<p>No Direito do Consumidor, a inversão do ônus da prova entra na análise de todo caso.</p>
+<p>No Direito Empresarial, a diferença entre o que vincula a sociedade e o que vincula o sócio aparece em quase toda consulta.</p>
+<p>Escreva essas exigências uma vez, por área, e anexe-as ao projeto correspondente. É o que faz um sistema "pensar" como o especialista daquela área.</p>
+<h2>4.5 Documentos de calibração jurídica</h2>
+<p>A forma mais rápida de fazer o modelo escrever como o escritório escreve é mostrar, não explicar.</p>
+<p>Selecione, por tipo de peça, dois ou três exemplos que representem o padrão da casa. Anonimize por completo as partes e os processos. Anexe-os ao projeto com a instrução: <em>"Estes são os padrões de redação do escritório. Siga a estrutura, o registro e a forma de citação. Não reaproveite conteúdo, apenas o padrão."</em></p>
+<p>O cuidado central: <strong>modelo de calibração não é modelo de conteúdo</strong>. Peça calibrada com exemplo alheio tende a puxar argumentos que não pertencem ao caso. A instrução precisa ser explícita quanto a isso, e a revisão precisa conferir.</p>
+<h2>4.6 Separação entre fatos, documentos, argumentos e conclusões</h2>
+<p>A causa mais comum de erro grave em análise jurídica assistida por IA é o colapso dessas quatro camadas em um texto só. O modelo lê uma alegação da inicial e a repete como fato; lê um argumento e o apresenta como conclusão.</p>
+<p>A defesa é estrutural. Todo material entregue ao modelo deve vir separado, e toda resposta deve devolver separado:</p>
+<div class="table-wrap"><table>
+<thead><tr><th><strong>Camada</strong></th><th><strong>O que é</strong></th><th><strong>Como identificar</strong></th></tr></thead>
+<tbody>
+<tr><td>Fato provado</td><td>Está demonstrado por documento nos autos</td><td>[fl. X]</td></tr>
+<tr><td>Fato alegado</td><td>Alguém afirmou, sem prova ainda</td><td>[alegado por autor/réu, fl. X]</td></tr>
+<tr><td>Documento</td><td>A prova em si</td><td>[doc. Y]</td></tr>
+<tr><td>Argumento</td><td>Construção jurídica sobre os fatos</td><td>[argumento]</td></tr>
+<tr><td>Conclusão</td><td>Decorrência da análise</td><td>[conclusão]</td></tr>
+</tbody></table></div>
+<p>Instrução permanente que resolve a maior parte do problema: <em>"Nunca converta alegação em fato. Se a única fonte de uma informação for a manifestação de uma das partes, apresente-a sempre como alegação, mesmo que pareça incontroversa."</em></p>
+<h2>4.7 Como impedir que informações de um cliente contaminem outro assunto</h2>
+<p>Isso não é organização, é sigilo profissional. Merece regra rígida.</p>
+<p><strong>Um projeto por cliente ou por caso.</strong> Nunca um projeto "geral" com material de vários clientes.</p>
+<p><strong>Uma conversa por assunto.</strong> Não continuar, para o caso B, o diálogo que analisou o caso A. O modelo enxerga tudo o que está na janela de contexto e vai usar.</p>
+<p><strong>Nada de documento de terceiro como exemplo.</strong> Modelo de calibração sempre anonimizado.</p>
+<p><strong>Verificação antes de anexar.</strong> Conferir se o PDF não traz, em anexo ou metadado, material de outro cliente. Acontece com frequência em dossiês montados às pressas.</p>
+<p><strong>Configuração de retenção e treinamento.</strong> Antes de adotar qualquer plataforma, verificar contratualmente o tratamento dos dados enviados, prazo de retenção e uso para treinamento. O Capítulo 42 detalha.</p>
+<p>Contaminação entre clientes é falha ética antes de ser falha técnica, e é o tipo de coisa que só se descobre quando já apareceu no documento errado.</p>
+<h2>4.8 Resumo e continuidade de trabalhos jurídicos extensos</h2>
+<p>Trabalho longo não cabe em uma conversa. O procedimento que funciona:</p>
+<p>Ao fim de cada etapa, peça um <strong>relatório de estado</strong>: o que foi analisado, o que foi decidido e o porquê, o que ficou pendente, quais documentos foram usados, quais dúvidas restam. Salve na pasta do caso.</p>
+<p>Ao retomar, abra conversa nova e comece pelo relatório de estado. O trabalho continua sem arrastar centenas de mensagens antigas, o custo cai e a qualidade sobe.</p>
+<p>Esse relatório tem uma segunda função, mais importante: é a memória institucional do caso. Se o advogado responsável sair do escritório, o sucessor lê dez páginas em vez de reconstruir tudo.</p>

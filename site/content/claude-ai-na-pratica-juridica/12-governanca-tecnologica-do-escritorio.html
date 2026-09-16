@@ -1,0 +1,43 @@
+<!--META {"arquivo": "12-governanca-tecnologica-do-escritorio", "capitulo": 12, "parte": "Parte II", "parte_titulo": "A arquitetura do escritório inteligente", "titulo": "Governança tecnológica do escritório", "subtitulo": "A arquitetura do escritório inteligente — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 4 min</span><span>Parte II · A arquitetura do escritório inteligente</span><span>Livro: capítulo 12</span>", "descricao": "Capítulo 12 do livro Claude AI na Prática Jurídica: Governança tecnológica do escritório. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Administradores, usuários e níveis de acesso</li><li>Segregação entre clientes e processos</li><li>Ambientes de desenvolvimento, teste e produção</li><li>Controle de versões</li><li>Logs e rastreabilidade</li></ul>", "aplicar_html": "<p>Crie um inventário de ferramentas, responsáveis, acessos, dados tratados, riscos e procedimento de contingência.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<blockquote class="citacao"><p>A IA pode conhecer milhões de textos e ainda desconhecer o detalhe que decide o seu processo.</p></blockquote>
+<h2>12.1 Administradores, usuários e níveis de acesso</h2>
+<p>Defina perfis, não permissões individuais. Perfil de sócio, de advogado, de estagiário, de administrativo, de financeiro, de consultor externo. Cada perfil recebe um conjunto de acessos, e cada pessoa recebe um perfil.</p>
+<p>Duas regras que evitam bagunça em seis meses: <strong>ninguém tem perfil de administrador por conveniência</strong>, e <strong>existe procedimento escrito de entrada e de saída</strong> de pessoa, com a lista do que criar e do que revogar.</p>
+<h2>12.2 Segregação entre clientes e processos</h2>
+<h2>O que o Capítulo 4.7 estabelece para o uso da IA — impedir que informações de um cliente contaminem outro assunto —, precisa existir também na infraestrutura: pastas, bancos, projetos e conectores separados por cliente, com acesso concedido por caso quando houver sensibilidade.</h2>
+<p>Situação que exige atenção redobrada: escritório que atua para partes com interesses opostos em demandas diferentes precisa de barreira efetiva entre as equipes, e essa barreira tem que existir no sistema, não só no combinado verbal.</p>
+<h2>12.3 Ambientes de desenvolvimento, teste e produção</h2>
+<p>Regra curta e inegociável: <strong>não se testa em produção, e não se testa com dado real de cliente.</strong></p>
+<p>Ambiente de desenvolvimento é onde se constrói. Teste é onde se valida, com dados fictícios ou anonimizados. Produção é o que a equipe usa de verdade, e onde nada entra sem ter passado pelos dois anteriores.</p>
+<p>Escritório pequeno costuma achar isso exagero. Custa pouco montar e evita o dia em que um teste disparou trezentas mensagens para clientes reais.</p>
+<h2>12.4 Controle de versões</h2>
+<p>Todo sistema, documento estruturante e biblioteca de prompts precisa de histórico: o que mudou, quando, por quem e por quê.</p>
+<p>Para código e configuração, isso se faz com ferramenta própria de versionamento, e o Claude Code já trabalha integrado a esse fluxo. Para documentos, basta disciplina de nomenclatura e arquivamento das versões anteriores.</p>
+<p>O valor aparece no dia em que algo para de funcionar e a pergunta é "o que mudou ontem".</p>
+<h2>12.5 Logs e rastreabilidade</h2>
+<p>Registre, para cada operação relevante: quem, o quê, quando, sobre qual caso, com qual resultado.</p>
+<p>Em sistema jurídico, isso serve a três finalidades: descobrir a causa de uma falha; demonstrar diligência se a atuação for questionada; e identificar acesso indevido a material de cliente.</p>
+<p>Guarde os logs com prazo definido, protegidos e fora do alcance de edição de quem os gera.</p>
+<h2>12.6 Aprovações obrigatórias</h2>
+<p>Liste as operações que exigem aprovação humana registrada, e faça o sistema exigi-las, em vez de confiar em orientação verbal.</p>
+<p>O mínimo: confirmação de prazo, envio ao cliente ou a terceiro, protocolo, publicação externa, alteração de dado cadastral relevante, exclusão de qualquer coisa, compromisso financeiro, concessão de novo acesso.</p>
+<p>Aprovação registrada quer dizer com nome, data e hora. Aprovação em conversa de corredor não existe para efeito de auditoria.</p>
+<h2>12.7 Gestão de fornecedores</h2>
+<p>Mantenha uma ficha por fornecedor de tecnologia: o que faz, quais dados acessa, onde os armazena, condições contratuais de sigilo e retenção, prazo do contrato, custo, responsável interno, plano de substituição.</p>
+<p>A última coluna é a mais esquecida. Se o fornecedor encerrar a operação amanhã, quanto tempo o escritório leva para sair e como recupera os dados? Fornecedor sem plano de saída é dependência, não parceria.</p>
+<h2>12.8 Inventário de sistemas e automações</h2>
+<p>Documento vivo com todas as automações em funcionamento: nome, o que faz, quando roda, quem é o responsável, quais sistemas toca, quais dados acessa, o que acontece se falhar, e a data da última verificação.</p>
+<p>Escritórios que automatizam sem inventário chegam, em pouco tempo, a um estado em que ninguém sabe quantas rotinas existem nem o que cada uma faz. Quando a pessoa que as criou sai, o escritório fica refém de um sistema que não entende.</p>
+<h2>12.9 Plano de contingência</h2>
+<p>Para cada automação crítica, defina o procedimento manual equivalente e mantenha-o testado.</p>
+<p>Se o sistema de publicações cair por três dias, como o escritório controla prazos nesse período? Se o portal do cliente sair do ar, como os clientes são atendidos? Se o acesso à nuvem falhar, quais documentos estão disponíveis localmente?</p>
+<p>Contingência não testada é contingência inexistente. Uma simulação por semestre resolve.</p>
+<h2>12.10 Comitê interno de IA e segurança</h2>
+<p>Em escritório pequeno, uma pessoa deve ter essa atribuição formal.</p>
+<p>Em escritório maior, um grupo com representação do jurídico, do administrativo e da tecnologia.</p>
+<p>Atribuições:</p>
+<ul><li>aprovar novas ferramentas antes do uso;</li><li>manter a política de IA (Capítulo 6.10) e a de segurança;</li><li>revisar o inventário de automações;</li><li>analisar incidentes;</li><li>decidir sobre casos duvidosos de envio de material a plataformas;</li><li>revisar periodicamente os limites de autonomia dos agentes.</li></ul>
+<p>Reunião trimestral de uma hora, com pauta fixa e ata.</p>
+<p><strong>▸ Como isso traz cliente</strong></p>
+<p>Governança virou item de due diligence. Departamento jurídico de empresa de porte, banco e multinacional passaram a perguntar ao escritório contratado como ele trata dados, que ferramentas de IA usa, se tem política escrita, como controla acesso e o que faz em caso de incidente. Escritório que responde com documentos prontos avança na contratação; escritório que responde "somos cuidadosos" é eliminado na triagem. Os capítulos 12 e 42 produzem, como subproduto, o dossiê que ganha esse tipo de concorrência.</p>

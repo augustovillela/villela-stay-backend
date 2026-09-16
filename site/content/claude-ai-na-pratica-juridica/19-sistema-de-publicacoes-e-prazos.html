@@ -1,0 +1,57 @@
+<!--META {"arquivo": "19-sistema-de-publicacoes-e-prazos", "capitulo": 19, "parte": "Parte IV", "parte_titulo": "Contencioso assistido por IA", "titulo": "Sistema de publicações e prazos", "subtitulo": "Contencioso assistido por IA — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 5 min</span><span>Parte IV · Contencioso assistido por IA</span><span>Livro: capítulo 19</span>", "descricao": "Capítulo 19 do livro Claude AI na Prática Jurídica: Sistema de publicações e prazos. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Captura de publicações oficiais</li><li>Identificação de clientes e processos</li><li>Eliminação de duplicidades</li><li>Classificação da providência necessária</li><li>Contagem preliminar de prazos</li></ul>", "aplicar_html": "<p>Simule o recebimento de uma publicação e confira captura, classificação, cálculo, dupla checagem, atribuição e prova da providência.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<blockquote class="citacao"><p>A tecnologia pode acelerar a decisão, mas somente a prudência pode legitimá-la.</p></blockquote>
+<p>Este é o sistema mais importante do escritório.</p>
+<p>Prazo perdido é a principal fonte de responsabilidade civil do advogado, e o controle de prazos é, ao mesmo tempo, a tarefa mais repetitiva e a de maior consequência.</p>
+<p>É por isso que a automação aqui precisa ser a mais bem construída e a mais desconfiada de si mesma.</p>
+<h2>19.1 Captura de publicações oficiais</h2>
+<p>O escritório recebe comunicações por várias vias ao mesmo tempo: os sistemas de comunicação eletrônica do Judiciário, os diários oficiais, os fornecedores privados de monitoramento, os portais de cada tribunal e o e-mail. Cada via tem cobertura, atraso e formato diferentes.</p>
+<p>Três decisões de projeto a tomar logo no início:</p>
+<p><strong>Quais fontes são obrigatórias e quais são redundância?</strong></p>
+<p>Trabalhar com uma fonte só é economia que sai cara. Duas fontes independentes cobrindo o mesmo universo permitem detectar falha de uma delas.</p>
+<p><strong>Com que frequência capturar?</strong></p>
+<p>Uma vez por dia útil é o mínimo. Em horário fixo, cedo, para que haja o dia inteiro de reação.</p>
+<p class="pratica"><strong>O que fazer quando a captura falha?</strong></p>
+<p>Falha visível, tratada como incidente, com procedimento manual acionado no mesmo dia. Nunca como uma linha de log que ninguém lê.</p>
+<p><strong>▸ No escritório-modelo</strong></p>
+<p>A regra que mais evitou problema não foi sobre o que fazer com as publicações encontradas, e sim sobre o que fazer quando <strong>não se encontra nenhuma</strong>. "Zero publicações hoje" deixou de ser resultado e passou a ser suspeita: dispara conferência manual. Antes dessa regra, três dias de coleta silenciosamente vazia passaram despercebidos, porque um dia sem publicação é comum e ninguém estranha o segundo.</p>
+<h2>19.2 Identificação de clientes e processos</h2>
+<p>Cada publicação precisa ser vinculada ao processo e ao cliente corretos. Parece trivial e não é: os textos variam de formato entre tribunais, nomes aparecem abreviados ou com erro, e há processos com partes homônimas.</p>
+<p><strong>O sistema tenta, nesta ordem: número do processo; número da OAB do advogado; nome das partes com tolerância a variação; e, restando dúvida, classifica como não identificada e manda para análise humana.</strong></p>
+<p>Nunca force o vínculo. Publicação atribuída ao processo errado é pior que publicação não atribuída, porque some do radar com aparência de resolvida.</p>
+<h2>19.3 Eliminação de duplicidades</h2>
+<p>Com múltiplas fontes, a mesma comunicação chega várias vezes, com textos ligeiramente diferentes.</p>
+<p><strong>Critério de deduplicação: mesmo processo, mesma data de disponibilização e mesmo teor essencial</strong>. Ao unificar, o sistema preserva o registro de todas as fontes em que a publicação apareceu — essa informação é o que permite descobrir, mais tarde, que uma das fontes parou de trazer determinada categoria de comunicação.</p>
+<h2>19.4 Classificação da providência necessária</h2>
+<p>A <strong>IA lê o teor e classifica</strong>:</p>
+<ul><li>exige manifestação com prazo;</li><li>é mero expediente sem providência;</li><li>é intimação de decisão que pode comportar recurso;</li><li>designa audiência;</li><li>determina pagamento ou juntada;</li><li>comunica trânsito em julgado.</li></ul>
+<p>A classificação vem sempre com <strong>grau de confiança</strong>, e o que for de confiança baixa vai para análise humana com prioridade. É melhor um sistema que admite dúvida em quinze por cento dos casos do que um que classifica tudo com falsa segurança.</p>
+<h2>19.5 Contagem preliminar de prazos</h2>
+<p>Ponto de máxima atenção do livro inteiro.</p>
+<p>O sistema calcula uma <strong>estimativa</strong>, considerando o tipo de providência, a data de disponibilização, a contagem aplicável ao rito, feriados nacionais, estaduais e locais, suspensões e eventuais causas de dobra. Essa estimativa é sempre exibida como preliminar, com a data-limite sinalizada como sujeita a confirmação.</p>
+<p>Por que preliminar, sempre:</p>
+<ul><li>a contagem depende de variáveis que o sistema não domina com segurança — o rito específico, suspensões locais, feriados forenses da comarca, decisões que alteram prazo no caso concreto, e</li><li>a própria forma de contagem aplicável àquele procedimento.</li></ul>
+<p><strong>Regra absoluta:nenhum prazo entra na agenda como definitivo sem conferência humana no sistema oficial do tribunal. O sistema prepara, organiza e alerta. Quem confirma é advogado, e o registro guarda quem confirmou e quando.</strong></p>
+<h2>19.6 Calendário e responsáveis</h2>
+<p>Cada prazo confirmado gera:</p>
+<ul><li>data-limite,</li><li>data-alvo interna anterior à do limite do prazo,</li><li>responsável pela elaboração,</li><li>responsável pela revisão, e</li><li>responsável pelo protocolo.</li></ul>
+<p>A <strong>data-alvo interna</strong> é o que separa escritório organizado de escritório em pânico. Trabalhar com folga de dias sobre o prazo real absorve imprevisto sem drama, e é a diferença entre revisar bem e protocolar torcendo.</p>
+<h2>19.7 Alertas escalonados</h2>
+<p>Um alerta só não funciona: chega em momento ruim e é esquecido.</p>
+<p>Régua que funciona:</p>
+<ul><li>aviso na entrada do prazo;</li><li>lembrete na data-alvo interna;</li><li>alerta ao responsável faltando poucos dias;</li><li>alerta ao supervisor se não houver movimento;</li><li>alerta ao sócio na véspera se o prazo continuar sem peça pronta.</li></ul>
+<p>O escalonamento é o mecanismo, e ele precisa existir mesmo quando é desconfortável. Prazo perdido com o sócio sabendo é problema; prazo perdido sem ninguém saber é acidente.</p>
+<h2>19.8 Confirmação de leitura</h2>
+<p>Toda publicação percorre estados explícitos: capturada, identificada, classificada, <strong>analisada por humano</strong>, prazo confirmado, tarefa atribuída, providência concluída.</p>
+<p>Nada some do sistema por decurso de tempo. Publicação sem providência necessária é encerrada por alguém, com registro, e não por omissão.</p>
+<h2>19.9 Revisão humana obrigatória</h2>
+<p>Diariamente, um advogado revisa a lista completa do dia:</p>
+<ul><li>as publicações identificadas;</li><li>as não identificadas;</li><li>as de classificação duvidosa e</li><li>os prazos calculados.</li></ul>
+<p>É meia hora por dia em escritório pequeno. É a meia hora mais bem empregada do escritório.</p>
+<h2>19.10 Relatório diário de publicações e pendências</h2>
+<p>Ao fim do processamento, o sistema produz um relatório com:</p>
+<ul><li>publicações do dia por cliente e processo;</li><li>providências identificadas;</li><li>prazos preliminares e sua situação de confirmação;</li><li>itens que exigem decisão;</li><li>prazos vencendo nos próximos dias;</li><li>pendências antigas sem movimento; e</li><li>falhas técnicas ocorridas na captura.</li></ul>
+<p>Esse relatório é o instrumento diário de comando do contencioso.</p>
+<p>Quem o lê todo dia sabe o estado real da operação; quem não o tem descobre os problemas quando já viraram prejuízo.</p>
+<p><strong>▸ Como isso traz cliente</strong></p>
+<p>Este sistema tem uma saída comercial que quase ninguém explora. Como o escritório sabe, no mesmo dia, tudo o que aconteceu em todos os processos, ele pode avisar o cliente antes de o cliente perguntar — inclusive quando não aconteceu nada relevante, o que é a informação que o cliente ansioso mais quer e nunca recebe. O efeito percebido é desproporcional ao custo: o cliente não tem como avaliar a qualidade da sua contestação, mas percebe imediatamente que você o avisou antes de ele precisar cobrar. É disso que nasce indicação.</p>

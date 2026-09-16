@@ -1,0 +1,52 @@
+<!--META {"arquivo": "11-claude-code-apis-mcp-e-integracoes", "capitulo": 11, "parte": "Parte II", "parte_titulo": "A arquitetura do escritório inteligente", "titulo": "Claude Code, APIs, MCP e integrações", "subtitulo": "A arquitetura do escritório inteligente — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 6 min</span><span>Parte II · A arquitetura do escritório inteligente</span><span>Livro: capítulo 11</span>", "descricao": "Capítulo 11 do livro Claude AI na Prática Jurídica: Claude Code, APIs, MCP e integrações. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>O que o advogado precisa compreender sobre programação</li><li>Claude Code como desenvolvedor de sistemas jurídicos</li><li>APIs de tribunais, diários, sistemas internos e fornecedores</li><li>Integração com e-mail, agenda e armazenamento</li><li>Integração com CRM e sistemas processuais</li></ul>", "aplicar_html": "<p>Desenhe uma integração simples entre e-mail, agenda e armazenamento, incluindo permissões, logs e plano de falha.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<blockquote class="citacao"><p>Quanto mais poderosa for a ferramenta, maior deverá ser a disciplina de quem a utiliza.</p></blockquote>
+<h2>11.1 O que o advogado precisa compreender sobre programação</h2>
+<p>Praticamente nada de sintaxe, e bastante de especificação.</p>
+<p>Você não vai escrever código. Vai descrever o que o sistema precisa fazer, com quem conversa, o que guarda, quem acessa e o que acontece quando falha. Essa descrição é a parte difícil, e é exatamente a competência que um advogado tem: definir requisito, prever exceção, estabelecer regra e antecipar o que dá errado. É o mesmo raciocínio de redigir um contrato.</p>
+<p>Quatro conceitos, e só, para acompanhar o resto da Parte IX:</p>
+<p><strong>Banco de dados</strong> é onde a informação fica guardada de forma estruturada, não em arquivos soltos.</p>
+<p><strong>API</strong> é a porta pela qual dois sistemas conversam sem humano no meio.</p>
+<p><strong>Autenticação</strong> é como o sistema sabe quem é você e o que você pode fazer.</p>
+<p><strong>Log</strong> é o registro do que o sistema fez, que é o que permite auditar e descobrir a causa da falha.</p>
+<h2>11.2 Claude Code como desenvolvedor de sistemas jurídicos</h2>
+<p>O Claude Code é a ferramenta que executa: lê e escreve arquivos no seu computador, roda comandos, cria bancos de dados, constrói telas, testa e corrige. Você conversa em português; ele constrói.</p>
+<p>O que muda em relação a contratar desenvolvimento tradicional é o ciclo. Em vez de especificar tudo, esperar meses e receber algo diferente do que você imaginava, você constrói um pedaço, olha, corrige e segue. Para sistema jurídico, isso importa muito, porque as regras do negócio só ficam claras quando alguém vê a tela.</p>
+<p>O que não muda: sistema mal especificado continua saindo ruim, agora mais rápido. O Capítulo 45 trata da especificação, e ela é a etapa que decide o resultado.</p>
+<h2>11.3 APIs de tribunais, diários, sistemas internos e fornecedores</h2>
+<p>O ecossistema jurídico brasileiro oferece fontes públicas de dados processuais e de comunicações oficiais, além dos sistemas próprios de cada tribunal e dos fornecedores privados de monitoramento.</p>
+<p>Três cuidados antes de construir sobre qualquer uma delas.</p>
+<p><strong>Cobertura.</strong> Nenhuma fonte cobre tudo. Há tribunais fora, há atrasos de atualização, há tipos de comunicação que não aparecem. Descubra os buracos antes de confiar, não depois.</p>
+<p><strong>Estabilidade.</strong> Fontes públicas mudam formato e regra de acesso sem aviso. Construa o sistema para falhar de forma visível quando a fonte mudar, nunca de forma silenciosa.</p>
+<p><strong>Restrição de acesso.</strong> Várias fontes limitam volume, exigem identificação ou bloqueiam acesso vindo de servidores de nuvem.</p>
+<p><strong>▸ No escritório-modelo</strong></p>
+<p>A coleta automática das comunicações oficiais rodava em servidor de nuvem e passou a voltar vazia. Não era erro de código: a fonte bloqueia requisições vindas de faixas de endereço de datacenter, e devolvia uma resposta que o sistema interpretava como "nenhuma publicação hoje". Pior falha possível — silenciosa e com aparência de normalidade. A solução foi mover a coleta para uma máquina local do escritório, com tarefa agendada, e criar um alerta específico para "zero publicações", que passou a ser tratado como suspeita, não como resultado.</p>
+<h2>11.4 Integração com e-mail, agenda e armazenamento</h2>
+<p>As três integrações de maior retorno e menor complexidade:</p>
+<ul><li><strong>E-mail</strong> é a porta de entrada real do escritório: intimações de fornecedores de monitoramento, mensagens de clientes, documentos, notificações de tribunais. Um sistema que lê a caixa, classifica e encaminha resolve um problema diário. Regra: ler e classificar, sim; responder e apagar, não.</li><li><strong>Agenda</strong> recebe prazos confirmados, audiências e compromissos, com alertas escalonados. A agenda é espelho do sistema de prazos, nunca a fonte dele.</li><li><strong>Armazenamento</strong> guarda os documentos com a estrutura do Capítulo 8.4, sincronizado e com cópia de segurança.</li></ul>
+<h2>11.5 Integração com CRM e sistemas processuais</h2>
+<p>O CRM (Capítulo 16) e o sistema de gestão de processos (Capítulo 20) precisam conversar, ou o escritório terá duas verdades sobre o mesmo cliente.</p>
+<p>Defina qual sistema é a fonte da verdade de cada informação: dados cadastrais do cliente vêm do CRM; dados do processo vêm do sistema processual; honorários vêm do financeiro. Cada dado tem um dono, e os outros sistemas leem, não editam. É a regra que evita o pior problema de integração, que é o dado sendo sobrescrito em círculo por dois sistemas.</p>
+<h2>11.6 Model Context Protocol — MCP</h2>
+<p>O MCP é o padrão que permite ao Claude conversar com ferramentas e fontes externas de forma uniforme, sem precisar de uma integração feita à mão para cada uma.</p>
+<p class="pratica">Na prática do escritório, é o que permite dizer "veja no calendário se há audiência nesta data", "busque no repositório o contrato deste cliente" ou "consulte o sistema de processos" dentro da própria conversa, com o Claude executando a consulta.</p>
+<p>O que importa juridicamente: cada conector desses é um caminho por onde dados do escritório trafegam. Todos entram no inventário do Capítulo 12.8 e na avaliação de fornecedores do Capítulo 42.6.</p>
+<h2>11.7 Conectores, autenticação e permissões</h2>
+<p>Três regras que evitam a maior parte dos incidentes:</p>
+<ul><li><strong>Menor privilégio.</strong> O conector recebe acesso ao mínimo necessário. Um sistema que só precisa ler a agenda não recebe permissão de apagar eventos.</li><li><strong>Credencial fora do código.</strong> Senhas e chaves ficam em cofre de segredos, nunca escritas dentro dos arquivos do sistema e nunca enviadas junto com o código para repositório.</li><li><strong>Revogação e rotação.</strong> Toda credencial tem prazo, e existe um procedimento para revogar acesso quando alguém sai do escritório ou quando um fornecedor é substituído.</li></ul>
+<h2>11.8 Assinatura eletrônica</h2>
+<p>Integrar assinatura ao fluxo de contratos e procurações elimina a etapa mais lenta da contratação.</p>
+<p>Pontos de atenção jurídica:</p>
+<ul><li>qual o tipo de assinatura utilizada e o nível de segurança correspondente;</li><li>se há exigência específica para o tipo de documento;</li><li>como se preserva a evidência da assinatura — trilha de auditoria, carimbo de tempo, integridade do arquivo; e</li><li>onde o documento assinado é arquivado, com identificação clara de qual versão é a válida.</li></ul>
+<h2>11.9 WhatsApp e canais de atendimento</h2>
+<p>É o canal real de comunicação com cliente no Brasil, e ignorá-lo não faz o problema desaparecer.</p>
+<p class="atencao">Cuidados que a advocacia exige:</p>
+<ul><li>conversa profissional não pode viver no aparelho pessoal do advogado, porque o histórico é do escritório e é prova;</li><li>toda comunicação relevante precisa ser registrada no sistema do caso;</li><li>envio de documentos por esse canal exige o mesmo cuidado de sigilo de qualquer outro; e</li><li>mensagem automática precisa deixar evidente que é automática.</li></ul>
+<p>Distinção operacional importante: canal oficial de mensagens, com registro e regras, é uma coisa; uso improvisado de conta pessoal para atendimento em massa é outra, e traz problema de conformidade e de imagem.</p>
+<h2>11.10 Logs, falhas e monitoramento das integrações</h2>
+<p>A falha mais perigosa de um sistema jurídico não é o erro visível. É o sucesso falso.</p>
+<p>Todo componente automatizado precisa reportar não apenas que rodou, mas <strong>que produziu resultado coerente</strong>. "A rotina executou" não é informação útil. "A rotina executou e capturou 34 publicações, contra média de 28 nos últimos trinta dias" é.</p>
+<p>Desenhe três camadas de monitoramento:</p>
+<ul><li><strong>execução</strong> (rodou ou não),</li><li><strong>volume</strong> (o resultado está dentro do esperado) e</li><li><strong>teste sintético de ponta a ponta</strong> (um caso conhecido que precisa aparecer no resultado; se ele não aparece, o sistema está quebrado, mesmo que tudo diga que está verde).</li></ul>
+<p><strong>▸ No escritório-modelo</strong></p>
+<p>Uma rotina de integração reportou "sucesso" por vários dias enquanto a ferramenta do outro lado estava com a conexão revogada: ela aceitava o envio e não fazia nada com ele. O painel ficava verde e o trabalho não acontecia. A lição virou regra: <strong>auditoria não confia em log de execução, só em teste sintético de ponta a ponta.</strong> Todo dia, um caso conhecido percorre o fluxo inteiro. Se ele não chega ao fim, o alerta dispara, independentemente do que os logs digam.</p>

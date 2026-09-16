@@ -24,8 +24,8 @@ const PWA = {
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
 const BLOG_I18N = require('./content/blog-i18n'); // traduções EN/ES por slug (fallback por campo p/ PT)
-let CAP_PATHS = [];                     // rotas do blog Claude AI na Prática (só PT), preenchidas no loop
-let CAP_LLMS = '';                      // secao do blog Claude no llms.txt (assistentes que leem, nao renderizam)
+let CAP_PATHS = [];                     // rotas das séries Claude (só PT), preenchidas no loop
+let CAP_LLMS = '';                      // seções das séries Claude no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
 // `conferirCobertura` é a trava que impede um produto novo da home de ficar de
@@ -3329,6 +3329,7 @@ BLOG.forEach(renderArtigo);
 const CAP_DIR = path.join(__dirname, 'content', 'claude-ai-na-pratica');
 const capHojeISO = new Date().toISOString().slice(0, 10);
 let capArtigos = [];
+let cjArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
@@ -3628,7 +3629,144 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     { caminho: '/claude/', semIdiomas: true, extraHead: `<style>${capCss}${CAP_CSS_EXTRA}</style>` + hubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
   ));
 
-  CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho)];
+  // ---- Série "Claude AI na Prática Jurídica": 52 capítulos + 3 núcleos ----
+  // Mantém o mesmo padrão editorial e a mesma proteção de leitura por partes da série geral.
+  const CJ_DIR = path.join(__dirname, 'content', 'claude-ai-na-pratica-juridica');
+  const CJ_LIVRO = 'https://livros.villelastay.com.br/livros/claude-ai-na-pratica-juridica?utm_source=villelastay&utm_medium=blog-claude-juridico';
+  const CJ_SISTEMA = 'https://juridico.villelastay.com.br/juridico?utm_source=villelastay&utm_medium=blog-claude-juridico';
+  const cjDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(CJ_DIR)) {
+    cjArtigos = fs.readdirSync(CJ_DIR).filter(f => /\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(CJ_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[claude-juridico] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? cjDestexto(m[1]).replace(/^\d+(?:\.\d+)*\s*/, '') : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `claude-juridico-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: cjDestexto(meta.titulo), subtituloTexto: cjDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: meio.map(s => s.titulo).filter(t => t !== 'Abertura'),
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 7,
+        caminho: `/blog/${slug}.html`,
+      };
+    });
+
+    if (cjArtigos.length !== 52) throw new Error(`[claude-juridico] esperados 52 capítulos; encontrados ${cjArtigos.length}`);
+
+    const cjAnuncio = qual => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro" href="${CJ_LIVRO}" target="_blank" rel="noopener"><span class="cap-ad-icone">⚖️</span><span class="cap-ad-txt"><strong>Livro Claude AI na Prática Jurídica</strong><span>Manual para criar agentes, automações e sistemas inteligentes para advogados e escritórios.</span></span><span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : `<a class="cap-ad cap-ad-curso" href="${CJ_SISTEMA}" target="_blank" rel="noopener"><span class="cap-ad-icone">🏛️</span><span class="cap-ad-txt"><strong>Villela Legal</strong><span>Os sistemas descritos no livro implementados em uma plataforma jurídica com supervisão humana.</span></span><span class="cap-ad-btn">Conhecer o sistema →</span></a>`;
+    const CJ_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cjAnuncio('livro'))},${JSON.stringify(cjAnuncio('sistema'))}];`);
+    const CJ_CSS = `${capCss}${CAP_CSS_EXTRA}
+.cj-parte{max-width:1080px;margin:34px auto 12px;padding:0 20px}.cj-parte h2{font:700 25px/1.25 Lora,Georgia,serif;color:#0f1a2b;margin:0 0 5px}.cj-parte p{color:#675f56;margin:0 0 16px}.cj-recursos{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#eef5f3}.cj-recursos h2{margin-top:0}.cj-recursos .cap-grade{padding:0}`;
+
+    fs.mkdirSync(path.join(od, 'claude-juridico'), { recursive: true });
+    for (const [iArt, a] of cjArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = cjArtigos[iArt - 1], prox = cjArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR', datePublished: '2026-09-16', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie` },
+        articleSection: `Claude AI na Prática Jurídica — ${a.parte_titulo}`, keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Claude AI na Prática Jurídica', author: { '@type': 'Person', name: 'Augusto Villela' }, url: CJ_LIVRO },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Claude AI na Prática Jurídica', item: `${SITE_URL}/claude-juridico/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/claude-juridico/">Claude AI na Prática Jurídica</a> <span aria-hidden="true">›</span> <span>Capítulo ${a.capitulo} de ${cjArtigos.length}</span></nav>
+    <h1>${esc(a.tituloTexto)}</h1><p class="sub">${esc(a.subtituloTexto)}</p><div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('sistema')}</div>
+  <section class="cap-publico">
+    <div class="cap-resumo"><h2>Resumo do capítulo</h2>${a.resumo_html}</div>
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O capítulo é lido por partes. Use os botões abaixo para avançar. Normas e ferramentas mudam: confira sempre as fontes oficiais vigentes.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo precisa de JavaScript. O resumo permanece disponível; o conteúdo completo também está no <a href="${CJ_LIVRO}">livro</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo"><button type="button" id="cap-ant">← Anterior</button><div class="cap-passos" id="cap-passos"></div><button type="button" id="cap-prox" class="prim">Continuar lendo →</button></nav>
+  <div class="cap-faixa">${cjAnuncio('sistema')}${cjAnuncio('livro')}</div>
+  <nav class="cap-irmaos" aria-label="Outros capítulos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Capítulo ${ant.capitulo}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/claude-juridico/"><span class="rot">☰ Índice</span><span class="tit">Os ${cjArtigos.length} capítulos</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Capítulo ${prox.capitulo} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario"><summary>Ir direto para outro capítulo</summary><ol class="cap-sumario-lista">${cjArtigos.map(o => `<li${o.chave === a.chave ? ' class="aqui"' : ''}><a href="${o.caminho}"><b>${o.capitulo}</b> ${esc(o.tituloTexto)}</a></li>`).join('')}</ol></details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do livro e curso <strong>Claude AI na Prática Jurídica</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), layout(
+        `${a.tituloTexto} | Claude AI na Prática Jurídica`, a.descricao, corpo,
+        { caminho: a.caminho, semIdiomas: true, ogType: 'article', extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CJ_CSS}</style>` + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+      ).replace('</body>', `<script>${CJ_JS}</script>\n</body>`));
+    }
+
+    const partes = [...new Map(cjArtigos.map(a => [a.parte, a.parte_titulo])).entries()];
+    const cjPartesHtml = partes.map(([parte, titulo]) => {
+      const itens = cjArtigos.filter(a => a.parte === parte);
+      const cards = itens.map(a => `<a class="cap-card" href="${a.caminho}"><span class="n">Capítulo ${a.capitulo}</span><h3>${esc(a.tituloTexto)}</h3><p>${esc(a.subtituloTexto)}</p><span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span></a>`).join('');
+      return `<section class="cj-parte"><h2>${esc(parte)} — ${esc(titulo)}</h2><p>${itens.length} capítulos</p><div class="cap-grade">${cards}</div></section>`;
+    }).join('');
+    const recursos = [
+      ['01-central-atualizacao-normativa.html', 'Central de atualização normativa', 'Normas, fontes oficiais e datas de verificação.'],
+      ['02-diretorio-pesquisa-juridica.html', 'Diretório de pesquisa jurídica', 'Atalhos para pesquisa legislativa, jurisprudencial e institucional.'],
+      ['03-atualizacoes-tecnologicas.html', 'Atualizações tecnológicas', 'Ferramentas e recursos sujeitos a mudança, reunidos para manutenção.'],
+    ];
+    const recursosOrigem = path.join(CJ_DIR, 'recursos');
+    const recursosDestino = path.join(od, 'claude-juridico', 'recursos');
+    fs.mkdirSync(recursosDestino, { recursive: true });
+    for (const [arq] of recursos) fs.copyFileSync(path.join(recursosOrigem, arq), path.join(recursosDestino, arq));
+    const recursosHtml = recursos.map(([arq, titulo, desc]) => `<a class="cap-card" href="/claude-juridico/recursos/${arq}"><span class="n">Núcleo complementar</span><h3>${esc(titulo)}</h3><p>${esc(desc)}</p><span class="min">Abrir recurso →</span></a>`).join('');
+    const cjHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie`, name: 'Claude AI na Prática Jurídica — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: cjArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática Jurídica — 52 artigos',
+      itemListElement: cjArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'claude-juridico', 'index.html'), layout(
+      'Claude AI na Prática Jurídica — 52 artigos para advogados | Villela Stay',
+      'Os 52 capítulos do livro Claude AI na Prática Jurídica, de Augusto Villela: IA aplicada à advocacia, prompts, ética, contencioso, contratos, pesquisa, gestão, compliance e sistemas.',
+      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 52 capítulos do livro em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('sistema')}</div>${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
+      { caminho: '/claude-juridico/', semIdiomas: true, extraHead: `<style>${CJ_CSS}</style>` + cjHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+  }
+
+  CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
+    ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
   // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
   CAP_LLMS = `## Blog: Claude AI na Prática (22 artigos, em português)
 
@@ -3639,8 +3777,19 @@ assim. Índice da série: ${SITE_URL}/claude/
 Livro completo: ${CAP_LIVRO.split('?')[0]} · Curso on-line: ${CAP_CURSO.split('?')[0]}
 
 ${capArtigos.map(a => `- [${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+
+## Blog: Claude AI na Prática Jurídica (52 artigos, em português)
+
+Série do livro *Claude AI na Prática Jurídica*, de Augusto Villela — uso responsável de
+inteligência artificial na advocacia, do prompt à operação completa do escritório: ética,
+sigilo, pesquisa, contencioso, contratos, gestão, compliance e sistemas. Índice da série:
+${SITE_URL}/claude-juridico/
+Livro completo: ${CJ_LIVRO.split('?')[0]} · Sistema jurídico: ${CJ_SISTEMA.split('?')[0]}
+
+${cjArtigos.map(a => `- [Capítulo ${a.capitulo}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
 `;
   console.log(`Blog Claude AI na Prática: hub + ${capArtigos.length} artigos em /blog/ (+${capArtigos.length} redirecionamentos de /claude/)`);
+  console.log(`Blog Claude AI na Prática Jurídica: hub + ${cjArtigos.length} artigos + 3 núcleos`);
 }
 
 // ---- hub /blog.html ----
@@ -3669,26 +3818,40 @@ const capCardsHub = LANG !== 'pt' || !capArtigos.length ? '' : `
     </div>
   </a>`;
 
+const cjCardsHub = LANG !== 'pt' || !cjArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/claude-juridico/">
+    <div class="blog-card-img"><div class="blog-card-arte tema-claude" aria-hidden="true" style="display:grid;place-items:center;font-size:74px">⚖️</div></div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-claude">⚖️ Série · IA e Direito</span>
+      <h3>Claude AI na Prática Jurídica</h3>
+      <p>Inteligência artificial aplicada à advocacia: ética, sigilo, pesquisa, contencioso, contratos, gestão, compliance e sistemas — em 52 capítulos práticos.</p>
+      <span class="blog-card-leia">Ver os ${cjArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
 const blogLd = {
   '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`,
-  name: t('Blog Villela Stay — Diário de Brasília e Claude AI na Prática', 'Brasília Diary — Villela Stay', 'Diario de Brasília — Villela Stay'), inLanguage: HTML_LANG[LANG], publisher: { '@id': ORG_ID },
+  name: t('Blog Villela Stay — Diário de Brasília e séries Claude AI', 'Brasília Diary — Villela Stay', 'Diario de Brasília — Villela Stay'), inLanguage: HTML_LANG[LANG], publisher: { '@id': ORG_ID },
   blogPost: BLOG.map(a0 => { const a = tradArtigo(a0); return { '@type': 'BlogPosting', headline: a.h1, url: `${SITE_URL}${L(`/blog/${a.slug}.html`)}`, datePublished: a.atualizado, about: a.tema }; }),
   hasPart: LANG === 'pt' && capArtigos.length
-    ? [{ '@type': 'Blog', '@id': `${SITE_URL}/claude/#serie`, name: 'Claude AI na Prática — a série', url: `${SITE_URL}/claude/` }]
+    ? [
+        { '@type': 'Blog', '@id': `${SITE_URL}/claude/#serie`, name: 'Claude AI na Prática — a série', url: `${SITE_URL}/claude/` },
+        { '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie`, name: 'Claude AI na Prática Jurídica — a série', url: `${SITE_URL}/claude-juridico/` },
+      ]
     : undefined,
 };
 
 const blogHub = layout(
-  t('Blog — Diário de Brasília e Claude AI na Prática | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
-  t('Duas séries em um só lugar: o Diário de Brasília (arquitetura, gastronomia, roteiros, paisagismo e história da capital) e Claude AI na Prática (IA aplicada ao trabalho, em 22 artigos). Conteúdo da Villela Stay.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
+  t('Blog — Diário de Brasília e séries Claude AI | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
+  t('Três séries em um só lugar: Diário de Brasília, Claude AI na Prática e Claude AI na Prática Jurídica, com 52 artigos para profissionais do Direito.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
   `
 <section class="hero hero-menor blog-hero-hub">
-  <span class="tema-tag">📖 ${t('Diário de Brasília · Claude AI na Prática', 'Brasília Diary', 'Diario de Brasília')}</span>
-  <h1>${t('Duas séries, uma leitura', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
-  <p><strong>${t('Brasília por quem vive aqui — arquitetura, gastronomia, roteiros e as histórias da capital. E Claude AI na Prática: os 22 artigos de quem opera uma empresa com inteligência artificial.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
+  <span class="tema-tag">📖 ${t('Diário de Brasília · Claude AI · IA Jurídica', 'Brasília Diary', 'Diario de Brasília')}</span>
+  <h1>${t('Três séries, uma leitura', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
+  <p><strong>${t('Brasília por quem vive aqui, Claude AI aplicado ao trabalho e Claude AI na Prática Jurídica: tecnologia, método e Direito em 52 capítulos específicos para profissionais jurídicos.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
 </section>
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -4115,7 +4278,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 

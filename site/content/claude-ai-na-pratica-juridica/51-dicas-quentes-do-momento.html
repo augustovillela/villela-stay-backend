@@ -1,0 +1,213 @@
+<!--META {"arquivo": "51-dicas-quentes-do-momento", "capitulo": 51, "parte": "Parte IX", "parte_titulo": "Construindo os sistemas com Claude", "titulo": "Dicas Quentes do Momento", "subtitulo": "Construindo os sistemas com Claude — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 17 min</span><span>Parte IX · Construindo os sistemas com Claude</span><span>Livro: capítulo 51</span>", "descricao": "Capítulo 51 do livro Claude AI na Prática Jurídica: Dicas Quentes do Momento. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Dicas Quentes do Momento</li><li>Aplicação profissional</li><li>Verificação e responsabilidade humana</li></ul>", "aplicar_html": "<p>Selecione três dicas compatíveis com seu contexto, confirme se ainda são atuais e teste-as em ambiente controlado.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<h3>51.1 Dicas Gerais</h3>
+<h4>1. Converta PDFs em Markdown antes de subir os arquivos no chat, no cowork ou no code:</h4>
+<p>Antes de jogar um documento na IA, transforme o PDF em <em>Markdown</em> (texto limpo e estruturado). Isso economiza <em>tokens</em> (você paga/gasta menos contexto), remove “lixo” de formatação e faz o modelo entender melhor títulos, listas e tabelas.</p>
+<p class="pratica">Na prática: use a skill/ferramenta de PDF do Claude para extrair o texto limpo e só então peça a análise. Documento limpo = resposta melhor e mais barata.</p>
+<h4>2. Os “comandos mágicos” de prompt — o que é real e o que é folclore:</h4>
+<p>Os <em>reels</em> da web vendem uma lista de “códigos secretos”. A verdade técnica: <strong>a maioria não é um botão oficial do Claude</strong> — são apenas instruções em texto que você cola e que enviesam o estilo da resposta.</p>
+<p>Funcionam como atalho mental, não como mágica.</p>
+<p>Tradução honesta de cada um:</p>
+<ul><li><strong>/ghost</strong> ou <strong>#ghost</strong> (antes do prompt): pede um texto mais humano, menos “cara de robô”.</li><li><strong>#L99</strong> (no fim): pede resposta em nível de especialista avançado.</li><li><strong>OODA</strong>: um método de raciocínio (Observar–Orientar–Decidir–Agir) para resolver problemas.</li><li>/<strong>brutal</strong>: pede crítica franca — “pare de me bajular e diga por que minha ideia é fraca”.</li><li>/<strong>steelman</strong>: o Claude vira advogado do diabo e monta o melhor argumento contra você.</li><li>/<strong>eli5</strong>: explique como se eu tivesse 5 anos (simplifica um documento confuso).</li><li>/<strong>what am I missing</strong>: acha os buracos do seu plano.</li><li>/<strong>10x</strong>: pede uma versão 10× melhor da sua ideia.</li><li>/<strong>goal</strong>: peça que ele trabalhe sozinho até atingir a meta que você definir (veja a Dica 17 — “Loop”, que é a versão oficial e séria disso).</li><li>“<strong>god mode</strong>”: aqui mora o exagero. Não existe “modo deus” que destrava poderes ocultos. É só um prefixo que pede um tom mais assertivo. Não acredite na promessa de “liberar” algo proibido.</li><li>/<strong>artifacts</strong>: esse, sim, aponta para um recurso real (os Artifacts) — mas você nem precisa do “comando”: basta pedir um app, site ou dashboard e ele abre o painel.</li></ul>
+<p class="ideia">Resumo: use-os como gírias úteis de pedido, sabendo que o que vale mesmo é a clareza do prompt.</p>
+<h4>3. Duas skills para começar: brainstorming e skill-creator</h4>
+<ul><li><strong>brainstorming-skill</strong> transforma uma ideia crua em um plano através de perguntas certas (ótima para destravar).</li><li><strong>skill-creator</strong> te ajuda a criar suas próprias skills. Juntas, elas ensinam o Claude a pensar com você e a virar especialista no seu assunto.</li></ul>
+<h4>4. Cinco “pacotes” de skills que valem a pena</h4>
+<p><strong>Marketing Skills</strong> (vários agentes de conteúdo num pacote só);</p>
+<p><strong>Awesome</strong> Claude Skills (e-mails, Slack, sites);</p>
+<p><strong>Remotion</strong> (gera vídeo a partir de um comando, programaticamente);</p>
+<p><strong>Banana / Nano Banana Pro</strong> (geração e edição de imagens);</p>
+<p><strong>Context Engineering</strong> (técnicas para gastar menos tokens mantendo qualidade). Pense nelas como apps que você instala conforme a necessidade — não instale tudo de uma vez.</p>
+<h4>5. O “laço agêntico”, sem mito</h4>
+<p>O <strong>agentic loop</strong> é o motor dos agentes: você dá ferramentas, ele decide qual usar a cada volta, seu sistema executa e devolve, e o ciclo repete até concluir. Um agente local (no seu PC) precisa da máquina ligada. O Claude pede; quem executa é o sistema.</p>
+<p>No <em>prompt</em> comum, o Claude para quando te entrega algo (bom ou ruim).</p>
+<p>Com o Loop, ele só para quando bate a meta que você definiu — ele confere o próprio trabalho e corrige sozinho até passar na régua.</p>
+<p>Como usar: descreva a tarefa e o critério de “pronto” (“considere concluído quando…”).</p>
+<h4>6. Ferramenta para “espiar” sites/concorrentes</h4>
+<p>A extensão Ultimate Web Scraper (Chrome Web Store) varre páginas e te entrega o conteúdo estruturado. Útil para coletar dados e estudar concorrência. Use com bom senso e dentro dos termos de cada site — raspagem em excesso pode violar regras de uso.</p>
+<h4>7. Gerir agentes em escala (AWS)</h4>
+<p>Anotação de “investigar”: rodar/gerenciar agentes do Claude em infraestrutura de nuvem (Amazon AWS) para escala e disponibilidade 24/7.</p>
+<p>É terreno técnico/avançado — só faz sentido depois que você tiver agentes maduros e quiser que rodem independentes do seu PC.</p>
+<p>Fica como horizonte, não como primeiro passo.</p>
+<h4>8. Claude comandando o NotebookLM (pesquisa de nível profissional)</h4>
+<p>Combinação poderosa: o NotebookLM (Google) é craque em pesquisar e organizar fontes (até vídeos do YouTube), e o Claude é o assistente que executa. Conectando os dois, você pede a pesquisa e ele faz tudo. A verdade que o reel esconde: isso usa skills da comunidade (não-oficiais) que se apoiam em caminhos internos do Google — funciona hoje, mas pode parar quando o Google mudar algo. A API oficial do NotebookLM existe só no plano Enterprise. Use, mas sabendo do risco.</p>
+<h4>9. Os 5 servidores MCP que valem a pena</h4>
+<p>MCP conecta o Claude a ferramentas externas e dados ao vivo, em vez de trabalhar isolado: - Perplexity MCP — pesquisa a internet em tempo real, sem sair do fluxo; - Playwright — controle total do navegador (preenche formulário, sobe vídeo, testa app); - Firecrawl — varre qualquer site e joga o conteúdo na conversa (ótimo para concorrência); - Glif — conecta a centenas de modelos de imagem/vídeo; - Chrome MCP — já vem no Claude Code e enxerga/interage com o seu Chrome.</p>
+<h4>10. “Sistemas” para turbinar o Claude</h4>
+<p>Um cardápio de add-ons:</p>
+<p>Claude Main (memória “infinita” para agentes),</p>
+<p>UI UX Pro Max (design de páginas/tipografia),</p>
+<p>MCP do n8n (descreve a automação e ele gera o template),</p>
+<p>Lightbreak (organiza projetos grandes e evita o Claude “inventar”).</p>
+<h4>11. Skills favoritas para escrita e produtividade</h4>
+<p><strong>stop-slop</strong> — faz o Claude escrever como gente, não como robô;</p>
+<p><strong>skill_seekers</strong> — ensina tudo o que você sabe ao Claude, virando expert no seu tema;</p>
+<p><strong>caveman</strong> — respostas curtas e baratas (menos tokens);</p>
+<p><strong>ui-ux-pro-max</strong> — constrói sites bonitos do começo ao fim;</p>
+<p><strong>last30days</strong> — só busca tendências recentes, nada velho.</p>
+<h4>12. Humanizar a escrita (skill humanizer)</h4>
+<p>Instale a <strong>skill humanizer</strong> e acione com /humanizer ou pedindo “deixe este texto mais natural, menos cara de IA”. Ela tira os vícios típicos de texto de IA (frases infladas, “rule of three”, jargão vazio). Excelente para posts e e-mails que precisam soar como você.</p>
+<h4>13. Cinco passos para sair do zero</h4>
+<p>O caminho de iniciante, na ordem certa: (1) plano pago + Claude no desktop (faz diferença real), (2) Projetos, (3) Conectores, (4) Skills, (5) Cowork. Não pule etapas — cada uma prepara a seguinte.</p>
+<h4>14. O mapa das “melhores IAs” por tarefa</h4>
+<ul><li><strong>Texto</strong>→ Claude; Imagem → ChatGPT;</li><li><strong>Áudio</strong>→ ElevenLabs (voz) e Suno (música);</li><li><strong>Vídeo</strong>→ Gemini Veo 3;</li><li><strong>Automações</strong>→ Manus.</li></ul>
+<p>Útil como ponto de partida, mas o melhor mesmo é testar no seu caso — as ferramentas mudam rápido.</p>
+<h4>15. Ative a memória e “importe” seu histórico</h4>
+<p><strong>Três passos que personalizam o Claude para você:</strong></p>
+<ol><li><strong>Ligue a memória</strong>: Configurações → Capacidades → ative “Pesquisar e consultar conversas passadas” e “Gerar memória a partir do histórico”. Sem isso, você se reapresenta toda vez.</li><li><strong>Traga seu histórico do ChatGPT</strong>: exporte os dados (gera um conversations.json), suba no Claude e peça que ele aprenda quem você é e atualize a memória.</li><li><strong>Estude com as certificações gratuitas da Anthropic</strong> (anthropic.com/courses): cole o link e peça que ele resuma e instale as skills mais úteis para o seu jeito de trabalhar.</li></ol>
+<h4>16. Repositórios para ir além</h4>
+<p>Bibliotecas da comunidade que valem o marcador:</p>
+<ul><li><strong>awesome-claude-code</strong> (tudo num lugar),</li><li><strong>superpowers</strong> (faz o Claude Code planejar como dev sênior),</li><li><strong>awesome-claude-skills</strong> (skills plug-and-play),</li><li><strong>o índice do Daniel Rosehill</strong> (75+ repositórios) e</li><li><strong>everything-claude-code</strong> (memória, segurança e tokens).</li></ul>
+<p><strong>Truque</strong>: em vez de garimpar na mão, peça ao Claude para achar o melhor repositório para o seu caso.</p>
+<h3>51.2 Dicas Jurídicas</h3>
+<p>⚖️ Aviso que vale para todas: a IA aqui é apoio, não advogado.</p>
+<p>Ela prepara, organiza e alerta — mas você valida.</p>
+<p>Nunca aceite jurisprudência “inventada”.</p>
+<p>Confira sempre na fonte oficial.</p>
+<p>As melhores técnicas abaixo existem justamente para reduzir alucinação das IAs.</p>
+<h4>1. Contestação por etapas (não peça “faça a contestação”)</h4>
+<p>O erro da maioria: subir a petição e escrever “redija uma contestação”.</p>
+<p>A IA começa a escrever antes de entender o caso e devolve uma peça genérica.</p>
+<p>Veja uma sugestão do método certo, em 6 passos para incluir no <em>prompt</em>:</p>
+<p>a) <strong>Analise a petição</strong> (fatos, pedidos, fundamentos, provas);</p>
+<p>b) <strong>Identifique fragilidades</strong> (falta de prova, contradições, pedidos genéricos);</p>
+<p>c) <strong>Mapeie as teses defensivas</strong>, ligando cada uma a fatos e documentos;</p>
+<p>d) <strong>Confronte os documentos do autor com os da defesa</strong> (acha inconsistências e pontos a seu favor);</p>
+<p>e) <strong>Estruture</strong> (preliminares, impugnação dos fatos, fundamentos, pedidos);</p>
+<p>f) <strong>Só então redija, com linguagem técnica e estratégia</strong>. A diferença: quem pede “faça a contestação” recebe texto; quem conduz por etapas recebe estratégia.</p>
+<h4>2. Pesquisa de jurisprudência com NotebookLM (segura)</h4>
+<p><strong>Passo a passo</strong>:</p>
+<p>a) acesse notebooklm.google.com (grátis), crie um notebook do caso, suba os acórdãos (STJ/STF/TRF) e a petição/decisão a contestar.</p>
+<p>b) Depois use o <em>prompt</em>: “Com base exclusivamente nos acórdãos que subi, responda:</p>
+<p>(1) a tese predominante sobre [tema];</p>
+<p>(2) há divergência? qual é mais recente e qual tribunal adota cada entendimento;</p>
+<p>(3) qual argumento é mais aplicável ao meu caso;</p>
+<p>(4) há ponto da petição que os acórdãos enfraquecem?”.</p>
+<p>O diferencial crítico: o NotebookLM só usa o que você subiu — ele não inventa acórdão. É pesquisa jurídica com segurança.</p>
+<h4>3. Claude no PJe (manifestação até a assinatura)</h4>
+<p><strong>Fluxo assistido</strong>:</p>
+<p>O Claude acessa o processo, vai à pasta de documentos, localiza a intimação, lê e te informa o que foi determinado; depois redige a manifestação citando partes e número do processo; por fim insere no sistema, escolhe o tipo de petição, cola o texto e para na etapa de assinatura, avisando que está pronto para conferência e assinatura. Ponto de ouro: ele para antes de assinar — a decisão final é sempre sua.</p>
+<h4>Plugin Legal do Cowork (briefing e contratos)</h4>
+<p>O <em>plugin Legal</em> transforma o Cowork num assistente jurídico: por exemplo, um briefing matinal cruzando e-mails de proprietários/hóspedes, prazos contratuais no Drive e a agenda do dia; ou a análise de um contrato real de administração de imóvel. É o caminho de automatizar a rotina do escritório com pacotes prontos.</p>
+<h4>Requerimento de provas como estratégia</h4>
+<p>Prova não é formalidade, é estratégia.</p>
+<p>Em vez de “gere o requerimento de provas” (que sai genérico), crie um Projeto com inicial, contestação, réplica, documentos e laudos, e conduza por etapas:</p>
+<p>a) Mapeie fatos controvertidos × incontroversos;</p>
+<p>b) Identifique o ônus da prova no caso;</p>
+<p>c) Relacione cada fato controvertido à prova mais adequada;</p>
+<p>d) Selecione as provas que fortalecem a tese e evitam preclusão;</p>
+<p>e) Estruture o requerimento vinculando cada prova ao fato.</p>
+<p>Você sai de um “pedido genérico” para uma lógica probatória.</p>
+<h4>7. Análise de contrato com o plugin Legal</h4>
+<p>No Cowork: + → plugin → Legal → “review contract” → upload do contrato.</p>
+<p>Ele destrincha cláusulas, riscos e pontos de atenção em minutos.</p>
+<p>Perfeito para os seus contratos de hospedagem e de evento — lembrando de revisar como advogado antes de assinar.</p>
+<h4>8. Linha do tempo do processo (com prazos em negrito)</h4>
+<p><em>Prompt</em> para copiar:</p>
+<p>“Com base nos documentos fornecidos, crie uma linha do tempo detalhada de todos os eventos do processo sobre [ASSUNTO].</p>
+<p>Liste data, evento e página de referência. Destaque em negrito quaisquer prazos fatais ou prescricionais.”</p>
+<p>Funciona no NotebookLM/Gemini (crie um notebook, suba o processo, cole o <em>prompt</em>). Transforma centenas de páginas num mapa visual dos riscos.</p>
+<h4>9. Revisar a própria petição: clareza decisória</h4>
+<p>Antes de protocolar, não peça para “melhorar o texto”.</p>
+<p>Peça análise por blocos — fatos, fundamentos, pedidos — com foco em clareza, coerência e encadeamento lógico.</p>
+<p>Faça o teste decisivo:</p>
+<p>“Os pedidos decorrem logicamente dos fatos e fundamentos?”</p>
+<p>Se a resposta sai confusa, há risco real de o juiz não entender.</p>
+<p>Por fim, peça os pontos frágeis. Isso não cria tese nem tira sua autoria — só te ajuda a decidir com mais segurança.</p>
+<h4>10. Prompt mestre para agente, exemplo.</h4>
+<p>Um <em>prompt</em> mestre (ou <em>system prompt</em>) é a instrução-base permanente de um agente — o documento que define quem ele é, o que faz, quais regras segue e onde estão seus limites. É a "constituição" do agente: enquanto cada conversa muda, o <em>prompt</em> mestre fica fixo e governa todo o comportamento dele.</p>
+<p>Exemplo:</p>
+<p># PROMPT MESTRE — AGENTE FINANCEIRO</p>
+<p>Você é o <strong>Agente Financeiro da Villela Stay — Hospedagens Inteligentes</strong>.</p>
+<p>Sua missão é controlar entradas, saídas, reservas, recebimentos, despesas, fluxo de caixa, inadimplências, repasses, custos por imóvel, rentabilidade por casa e alertas financeiros.</p>
+<p>Você deve atuar com precisão, organização, prudência e foco em caixa, lucratividade e previsibilidade.</p>
+<hr>
+<p>## 1. Missão principal</p>
+<ol><li>Controlar receitas.</li><li>Controlar despesas.</li><li>Conciliar reservas com pagamentos.</li><li>Conferir recebimentos de plataformas.</li><li>Controlar pagamentos pendentes.</li><li>Controlar fornecedores.</li><li>Separar despesas por casa.</li><li>Identificar custos excessivos.</li><li>Produzir fluxo de caixa.</li><li>Alertar riscos financeiros.</li><li>Informar rentabilidade por unidade.</li><li>Apoiar decisões do CEO.</li></ol>
+<hr>
+<p>## 2. Fontes que deve consultar</p>
+<ul><li>extratos bancários;</li><li>cartões;</li><li>Pix;</li><li>Airbnb;</li><li>Booking;</li><li>Vrbo;</li><li>Decolar;</li><li>Stays.net;</li><li>planilhas financeiras;</li><li>notas fiscais;</li><li>recibos;</li><li>contratos;</li><li>comprovantes de pagamento;</li><li>e-mails financeiros;</li><li>relatórios de vendas;</li><li>relatórios de compras;</li><li>relatórios de manutenção;</li><li>relatórios de limpeza;</li><li>relatórios contábeis;</li><li>cobranças de fornecedores;</li><li>comprovantes de caução.</li></ul>
+<hr>
+<p>## 3. Categorias financeiras</p>
+<p>Classificar movimentações em:</p>
+<p>## Receitas</p>
+<ul><li>hospedagem;</li><li>eventos;</li><li>hóspedes extras;</li><li>convidados;</li><li>taxa de limpeza;</li><li>churrasqueira;</li><li>piscina;</li><li>jacuzzi;</li><li>early check-in;</li><li>late check-out;</li><li>chef;</li><li>buffet;</li><li>brunch;</li><li>decoração;</li><li>transporte;</li><li>serviços extras;</li><li>caução;</li><li>reembolso de dano.</li></ul>
+<p>## Despesas</p>
+<ul><li>limpeza;</li><li>lavanderia;</li><li>manutenção;</li><li>piscina;</li><li>jardinagem;</li><li>energia;</li><li>água;</li><li>internet;</li><li>gás;</li><li>compras operacionais;</li><li>enxoval;</li><li>móveis;</li><li>decoração;</li><li>obras;</li><li>marketing;</li><li>comissões;</li><li>plataformas;</li><li>impostos;</li><li>contabilidade;</li><li>tecnologia;</li><li>pessoal;</li><li>fornecedores.</li></ul>
+<hr>
+<p>## 4. Tarefa diária financeira</p>
+<p>Todos os dias:</p>
+<ol><li>Conferir entradas do dia anterior.</li><li>Conferir saídas do dia anterior.</li><li>Conciliar reservas com recebimentos.</li><li>Identificar reservas sem pagamento integral.</li><li>Identificar cauções pendentes.</li><li>Identificar pagamentos urgentes.</li><li>Classificar despesas por casa.</li><li>Atualizar fluxo de caixa.</li><li>Apontar valores a receber.</li><li>Apontar valores a pagar.</li><li>Informar saldo previsto.</li><li>Alertar o CEO sobre riscos.</li></ol>
+<hr>
+<p>## 5. Alertas financeiros</p>
+<p>Classificar como:</p>
+<p>### Crítico</p>
+<ul><li>reserva próxima sem pagamento;</li><li>fornecedor essencial em atraso;</li><li>caixa insuficiente para obrigação imediata;</li><li>cobrança duplicada relevante;</li><li>pagamento indevido;</li><li>divergência grande em plataforma;</li><li>chargeback ou disputa.</li></ul>
+<p>### Alto</p>
+<ul><li>despesa inesperada;</li><li>queda de receita;</li><li>custo operacional acima do normal;</li><li>inadimplência;</li><li>repasse de plataforma não localizado.</li></ul>
+<p>### Médio</p>
+<ul><li>divergência pequena;</li><li>pagamento a vencer;</li><li>compra pendente;</li><li>despesa sem nota.</li></ul>
+<p>### Baixo</p>
+<ul><li>registro, conferência ou ajuste contábil sem urgência.</li></ul>
+<hr>
+<p>## 6. Relatório diário financeiro</p>
+<p># Relatório Diário — Financeiro</p>
+<p><strong>Data:</strong> [data]</p>
+<p>## Resumo</p>
+<ul><li>Entradas confirmadas:</li><li>Saídas confirmadas:</li><li>Saldo estimado:</li><li>Valores a receber:</li><li>Valores a pagar:</li><li>Reservas com pendência financeira:</li><li>Despesas fora do padrão:</li><li>Risco financeiro do dia:</li></ul>
+<p>## Entradas</p>
+<p>| Data | Origem | Casa | Cliente | Valor | Status |</p>
+<p>| ---- | ------ | ---- | ------- | ----- | ------ |</p>
+<p>## Saídas</p>
+<p>| Data | Categoria | Casa | Fornecedor | Valor | Status |</p>
+<p>| ---- | --------- | ---- | ---------- | ----- | ------ |</p>
+<p>## Pendências</p>
+<p>| Tipo | Descrição | Valor | Urgência | Providência |</p>
+<p>| ---- | --------- | ----- | -------- | ----------- |</p>
+<p>## Conclusão</p>
+<p>“Conclusão financeira: [resumo]. A principal atenção é [ponto].”</p>
+<p><strong>51.3 Dicas de Marketing</strong></p>
+<h4>1. Planilha de leads por região com o Apify</h4>
+<p>Use o Apify para montar uma planilha de leads por região (empresas, contatos) e abastecer suas campanhas B2B (embaixadas, eventos, formaturas). Você já tem token cadastrado numa conta free (fulado.de.tal), com US$ 5/mês de crédito). Prospecção em escala, sem garimpo manual.</p>
+<h4>2. Reescrever bio e diagnosticar o perfil (rumo aos 5.000)</h4>
+<p>Um trio de prompts para o Instagram: (1) reescreva sua bio em até 150 caracteres deixando claro o que faz, para quem e o que vende (mande o print); (2) analise seus números (seguidores, tempo, frequência) e aponte o que te trava; (3) pegue os Reels que mais viralizaram na concorrência e peça roteiros na sua voz, aproveitando a estrutura sem copiar. Bio clara + estrutura que funciona = crescimento.</p>
+<h4>3. Metricool conectado ao Claude (anotações 7 e 25)</h4>
+<p>Conecte o Metricool (via conector/MCP): o Claude agenda posts, lê o que mais performou (seu e dos concorrentes), e te dá ideias baseadas no que está funcionando. O ponto alto: você pega um vídeo do arquivo e diz “agende este post no Instagram, TikTok e LinkedIn no melhor horário de amanhã” — e ele faz. Um social media que não dorme.</p>
+<h4>4. Foto profissional via JSON (Pinterest → Claude → ChatGPT)</h4>
+<p>A técnica que viralizou: (1) ache uma referência no Pinterest; (2) suba no Claude e peça o JSON da imagem (ele descreve luz, enquadramento, estilo, lente…); (3) cole esse JSON no ChatGPT junto com uma foto sua; (4) ele gera sua foto naquele estilo. Foto pronta para LinkedIn/Instagram em minutos, sem estúdio. É o lema do livro: Claude descreve, gerador de imagem finaliza.</p>
+<h4>5. Sete prompts semanais de conteúdo que engaja</h4>
+<p>Um kit completo:</p>
+<p>(1) dor → gancho (10 maiores frustrações do público, cada uma vira um gancho de ≤10 palavras);</p>
+<p>(2) ideia viral (5 conceitos de alto compartilhamento);</p>
+<p>(3) roteiro de Reel de 30s (abertura que prende + frases curtas + CTA);</p>
+<p>(4) credibilidade na tela (5 frases de prova social);</p>
+<p>(5) carrossel que ninguém ignora (5 dicas de ≤12 palavras);</p>
+<p>(6) multiplicação (de 1 texto saem Reel de 7s + carrossel + post estático);</p>
+<p>(7) CTA que funciona (10 chamadas com gatilho de curiosidade). Guarde como modelo fixo da semana.</p>
+<h4>6. Vídeos a partir de fotos</h4>
+<p>Transforme fotos/imagens em vídeo com ferramentas como o Runway (via ChatGPT/plugins): suba a imagem e descreva a ação desejada. Ótimo para dar movimento a fotos das casas e a artes estáticas.</p>
+<h4>7. Higgsfield MCP: estúdio de vídeo dentro do Claude</h4>
+<p>Com o Higgsfield MCP, o Claude vira um estúdio criativo: conta grátis no Higgsfield → em Conectores, adicione um conector personalizado com a URL do MCP → conecte e logue → peça imagem, vídeo, personagem consistente, foto de produto e conceito de anúncio numa conversa só. Sem chave de API, sem trocar de aba.</p>
+<h4>8. Análise COMPLETA do perfil (Claude + Chrome)</h4>
+<p>Dois prompts longos e excelentes para auditar seu Instagram com o Claude lendo a aba aberta no Chrome: um avalia 6 partes (primeira impressão, bio/link, destaques/feed, ganchos/copy, performance, diagnóstico + plano de ação da semana); o outro é um estrategista de crescimento orgânico que primeiro te faz 5 perguntas, depois dá notas de 1 a 10 por dimensão, 30 temas prontos para gravar, calendário de 2 semanas e roteiro do tema mais viral. Peça crítica honesta — onde estiver ruim, que diga que está ruim. (Os prompts completos estão nas suas anotações 22 e 23.)</p>
+<h4>9. SEO + GEO + AEO num clique (anotação 35)</h4>
+<p>Instale a skill SEO-GEO-AEO: ela audita um site para busca tradicional (SEO), buscadores de IA como Perplexity/ChatGPT/Gemini (GEO) e featured snippets/voz (AEO), analisando meta tags, schema e conteúdo, e entrega relatório em Word + PDF. Começa perguntando se você quer auditoria rápida ou completa. Perfeita para o site da Villela Stay aparecer também nas respostas de IA.</p>
+<h4>10. BestContent: posts completos em segundos</h4>
+<p>Com o pacote BestContent, você gera posts completos — design, legenda e identidade visual — em segundos. É como ter um time de social media 24h no bolso para alimentar o calendário sem travar.</p>
+<h3>51.4 Outras áreas</h3>
+<h4>1. Análise do anúncio do Airbnb — Hospedagem</h4>
+<h4>Use o fluxo do “Hostiaoficial” para analisar o seu anúncio do Airbnb — título, fotos, descrição, preço e pontos de melhoria. Cruza direto com o seu negócio: anúncio melhor = mais reservas diretas e melhor ranqueamento nos canais.</h4>
+<h4>2. Redesenho de ambiente com a Banana Skill (Design/Decoração)</h4>
+<p>Instale a Banana Skill (procure no Google “Banana Skill Claude”, cole o link no Claude Code para instalar), pegue uma chave de API no Google AI Studio e envie a foto de um ambiente para receber um redesign. Excelente para estudar reformas e decoração das casas antes de gastar com obra.</p>
+<h4>3. Cancelar assinaturas e limpar e-mails com o Cowork (Produtividade)</h4>
+<p>Anos acumulando e-mails inúteis? Peça ao Cowork (com o Claude trabalhando na barra lateral do Chrome) para te ajudar a identificar e cancelar assinaturas automaticamente. Higiene digital sem dor de cabeça — confirmando cada cancelamento, claro.</p>
+<h4>4. Imagens ilimitadas no Blinkshot (Imagem)</h4>
+<p>Blinkshot.io cria imagens ilimitadas a partir de um prompt (que você pode até gerar antes no ChatGPT). Útil para volume de artes e testes visuais rápidos.</p>
+<h4>5. “4 prompts que fizeram US$ 15 mil” — o que aproveitar (Negócios)</h4>
+<p>O reel promete que “uma criadora fez US$ 15.000 em 10 dias com 4 prompts”. Encare a cifra como marketing — resultado não é garantido. Mas o framework é genuinamente bom para empreender:</p>
+<p>(1) peça 2 formas de ganhar os primeiros US$ 1.000 em 30 dias com o que você já sabe, sem audiência e vendável em 48h (a IA faz perguntas até 95% de confiança antes de responder);</p>
+<p>(2) pergunte quem é a referência nº 1 a estudar;</p>
+<p>(3) peça um plano de 20 dias “no estilo” dessa pessoa, com aquisição de cliente já no dia 1;</p>
+<p>(bônus) peça 3 perguntas de sim/não para achar o que vai te travar e corte o plano pela metade, mantendo só o que gera caixa. Vale como exercício de foco — não como promessa de dinheiro fácil.</p>
+<h4>6. Quatro lançamentos para ficar de olho (Novidades de IA)</h4>
+<p>Radar de ferramentas citado no reel: HeyGen (dublagem que mantém sua voz e sincronia labial — leve o conteúdo BR para o mercado global); NotebookLM agora cria vídeos a partir de textos/PDFs; ChatGPT ficou mais direto (modelo GPT mais objetivo para copy/roteiros); e Chronicle Muse, agente que vira anotações em apresentações completas. Trate como novidades a testar — o mercado de IA muda toda semana.</p>

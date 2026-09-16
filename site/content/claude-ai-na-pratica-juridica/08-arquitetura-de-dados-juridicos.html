@@ -1,0 +1,45 @@
+<!--META {"arquivo": "08-arquitetura-de-dados-juridicos", "capitulo": 8, "parte": "Parte II", "parte_titulo": "A arquitetura do escritório inteligente", "titulo": "Arquitetura de dados jurídicos", "subtitulo": "A arquitetura do escritório inteligente — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 4 min</span><span>Parte II · A arquitetura do escritório inteligente</span><span>Livro: capítulo 8</span>", "descricao": "Capítulo 8 do livro Claude AI na Prática Jurídica: Arquitetura de dados jurídicos. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Cliente, contato, parte, processo e assunto</li><li>Diferença entre cliente e processo</li><li>Cadastro único e prevenção de duplicidades</li><li>Estrutura de pastas e nomenclatura de arquivos</li><li>Metadados jurídicos</li></ul>", "aplicar_html": "<p>Padronize o nome de pastas e arquivos de um cliente-piloto e registre os metadados mínimos de cada assunto.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<blockquote class="citacao"><p>Um prompt não substitui a prova, e uma resposta provável não substitui a verdade.</p></blockquote>
+<h2>8.1 Cliente, contato, parte, processo e assunto</h2>
+<p>Confundir essas cinco entidades é a origem de metade dos problemas de sistema jurídico.</p>
+<p><strong>Contato</strong> é uma pessoa com quem o escritório fala. Pode não ser cliente nunca.</p>
+<p><strong>Cliente</strong> é quem contratou. Pode ser pessoa física ou jurídica.</p>
+<p><strong>Parte</strong> é quem figura em um processo. Pode ser seu cliente, pode ser o adversário, pode ser um terceiro. O adversário de hoje é o cliente potencial de amanhã, e o sistema precisa saber disso.</p>
+<p><strong>Processo</strong> é um procedimento com número, vara e fase.</p>
+<p><strong>Assunto</strong> (ou caso, ou matéria) é o problema jurídico do cliente. Um assunto pode gerar zero, um ou vários processos, além de trabalho consultivo que não vira processo nenhum.</p>
+<p>A modelagem correta trata assunto como entidade central, não processo.</p>
+<p>Escritórios que modelam tudo em torno do número de processo não conseguem registrar consultivo, não conseguem tratar a fase pré-processual e perdem o histórico quando o caso vira dois processos.</p>
+<h2>8.2 Diferença entre cliente e processo</h2>
+<p>Consequência prática da distinção:</p>
+<ul><li><strong>Cliente</strong>: relatórios, honorários e relacionamento pertencem ao cliente;</li><li><strong>Processo</strong>: prazos, movimentações e peças pertencem ao processo;</li><li><strong>Assunto</strong>: estratégia e história pertencem ao assunto.</li></ul>
+<p>Um cliente com nove processos deve receber um relatório, não nove; um cliente que perdeu um processo e ganhou oito precisa ser lido como carteira, não como caso isolado; a rentabilidade se mede por cliente e por assunto, nunca por processo.</p>
+<h2>8.3 Cadastro único e prevenção de duplicidades</h2>
+<p>O mesmo cliente cadastrado três vezes destrói qualquer sistema silenciosamente: o relatório sai incompleto, a cobrança vai para o cadastro errado, a pesquisa de conflito não encontra o impedimento.</p>
+<p>Regras que evitam:</p>
+<ul><li><strong>Identificador oficial como chave.</strong> CPF ou CNPJ, com validação de dígito no cadastro.</li><li><strong>Busca obrigatória antes de criar.</strong> Por documento, por nome aproximado e por variação degrafia. O sistema deve avisar "existem três cadastros parecidos" antes de aceitar o novo.</li><li><strong>Um responsável pelo cadastro.</strong> Cadastro que qualquer pessoa cria vira lixo em seis meses.</li><li><strong>Rotina de deduplicação.</strong> Mensal, com fusão de registros e preservação do histórico.</li></ul>
+<h2>8.4 Estrutura de pastas e nomenclatura de arquivos</h2>
+<p>A estrutura precisa ser previsível a ponto de qualquer pessoa saber onde salvar sem perguntar.</p>
+<p>Clientes\ &lt;CNPJ ou CPF&gt; — &lt;Nome do cliente&gt;\ 00-cadastro\ (contrato, procuração, documentos de identificação) 01-assuntos\ 2026-001 — &lt;descrição curta do assunto&gt;\ 00-caso\ (ficha, estratégia, matriz de fatos, linha do tempo) 01-documentos\ (documentos do cliente e de terceiros) 02-processo-&lt;nº&gt;\ (autos, peças, decisões, cálculos) 03-producao\ (minutas, pesquisas, pareceres) 04-comunicacao\ (relatórios enviados, e-mails relevantes) 05-financeiro\ (proposta, honorários, custas, prestação de contas)</p>
+<p>Nomenclatura de arquivo com data em formato ordenável na frente:</p>
+<p>2026-07-27<em>Contestacao</em>v03<em>REVISADA.pdf2026-07-14</em>Decisao-saneadora<em>fl-412.pdf2026-06-02</em>Contrato-honorarios_ASSINADO.pdf</p>
+<p>Data no padrão ano-mês-dia ordena sozinha. Versão explícita evita "final<em>final</em>2". Estado em maiúscula (RASCUNHO, REVISADA, ASSINADO, PROTOCOLADA) evita o pior dos acidentes, que é protocolar a versão errada.</p>
+<h2>8.5 Metadados jurídicos</h2>
+<p>Metadado é o dado sobre o documento, e é o que torna um arquivo localizável e um sistema útil. Mínimo para cada documento: cliente, assunto, processo, tipo de documento, data do documento, data de juntada, folha nos autos, autor, versão, estado, sigilo.</p>
+<p>Mínimo para cada assunto: área do Direito, natureza (contencioso ou consultivo), polo, valor envolvido, risco estimado, fase, responsável, data de abertura, situação.</p>
+<p>Sem metadado, a busca depende do nome do arquivo. Com metadado, o sistema responde perguntas que o escritório nunca conseguiu responder: quanto vale a carteira trabalhista, quantos casos em fase recursal, qual advogado está com sobrecarga, quais assuntos estão parados há mais de sessenta dias.</p>
+<h2>8.6 Classificação por área, tribunal, fase e risco</h2>
+<p>Padronize os valores possíveis de cada campo e proíba texto livre onde houver lista. "Trabalhista", "trabalhista", "Trab." e "Justiça do Trabalho" digitados por quatro pessoas produzem quatro categorias e nenhum relatório confiável.</p>
+<p>A classificação de <strong>risco</strong> merece critério escrito: probabilidade de perda (remota, possível, provável) combinada com valor envolvido. É o que permite ao sócio olhar a carteira e enxergar exposição, e é também o que o cliente corporativo pede na auditoria dele.</p>
+<h2>8.7 Dicionário de dados do escritório</h2>
+<p><strong>Documento curto que define cada campo</strong>: nome, o que significa, valores permitidos, quem preenche, quando é obrigatório, exemplo. Duas páginas resolvem.</p>
+<p>Serve para três coisas:</p>
+<ul><li>treinar quem entra;</li><li>evitar que o mesmo campo seja usado com dois sentidos; e</li><li>servir de especificação quando você pedir ao Claude para construir o sistema.</li></ul>
+<p>Um dicionário de dados bem escrito é metade do trabalho da Parte IX.</p>
+<h2>8.8 Política de retenção, arquivamento e eliminação</h2>
+<p>Nem tudo deve ser guardado para sempre, e a LGPD exige que o escritório saiba justificar por quanto tempo mantém cada categoria de dado.</p>
+<p>Defina, por tipo de documento:</p>
+<ul><li>prazo de guarda;</li><li>fundamento do prazo (prazo prescricional, dever legal, exigência do cliente);</li><li>o que acontece ao fim (eliminação segura ou arquivamento definitivo);</li><li>quem autoriza; e</li><li>como se registra a eliminação.</li></ul>
+<p class="atencao">Cuidado prático: originais em papel, cópias digitais e material sigiloso de terceiros recebem tratamentos diferentes. O Capítulo 35.11 detalha a tabela de temporalidade.</p>
+<p><strong>▸ Como isso traz cliente</strong></p>
+<p>Dado organizado é argumento comercial direto com cliente corporativo. Departamento jurídico de empresa avalia escritório por capacidade de reportar: quantos casos, qual exposição, qual evolução, qual previsão de desembolso. Escritório que responde isso em um relatório no mesmo dia entra em concorrências das quais escritório sem dado sequer participa. E, na renovação do contrato, quem mostra número discute valor com muito mais força do que quem mostra dedicação.</p>

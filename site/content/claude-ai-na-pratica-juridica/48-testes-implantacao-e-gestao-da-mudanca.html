@@ -1,0 +1,48 @@
+<!--META {"arquivo": "48-testes-implantacao-e-gestao-da-mudanca", "capitulo": 48, "parte": "Parte IX", "parte_titulo": "Construindo os sistemas com Claude", "titulo": "Testes, implantação e gestão da mudança", "subtitulo": "Construindo os sistemas com Claude — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 5 min</span><span>Parte IX · Construindo os sistemas com Claude</span><span>Livro: capítulo 48</span>", "descricao": "Capítulo 48 do livro Claude AI na Prática Jurídica: Testes, implantação e gestão da mudança. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Prova de conceito</li><li>Projeto-piloto</li><li>Dados de teste e dados reais</li><li>Validação jurídica</li><li>Testes de segurança</li></ul>", "aplicar_html": "<p>Defina casos de teste, responsáveis, treinamento, piloto, métricas e critérios claros para avançar, corrigir ou interromper.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<h2>48.1 Prova de conceito</h2>
+<p>Antes de construir, verifique que o essencial é possível. Uma prova de conceito responde a uma pergunta específica e nada mais:</p>
+<ul><li>a fonte de dados devolve o que precisamos?</li><li>a identificação automática de processo acerta o suficiente?</li><li>o modelo consegue traduzir andamento com qualidade aceitável?</li></ul>
+<p>Dias, não semanas. Se a resposta for não, você economizou o projeto inteiro.</p>
+<h2>48.2 Projeto-piloto</h2>
+<p>Sistema construído, coloque-o para funcionar em escopo reduzido: uma área, um sócio, vinte processos.</p>
+<p>Durante o piloto, o processo manual continua rodando em paralelo. É custo dobrado por algumas semanas e é a única forma de comparar: o que o sistema encontrou, o que a pessoa encontrou, e onde divergiram.</p>
+<p>Em sistema de prazos, o piloto em paralelo não é recomendação, é requisito.</p>
+<h2>48.3 Dados de teste e dados reais</h2>
+<p>Teste com dados fictícios que reproduzam os casos difíceis: publicação com processo inexistente, nome grafado de três formas, duplicidade entre fontes, feriado local, prazo em dobro, arquivo digitalizado ilegível.</p>
+<p>Casos fáceis todo sistema resolve. O que decide a qualidade é o comportamento no caso torto — e a pergunta certa não é se ele acerta, mas se ele <strong>avisa quando não sabe</strong>.</p>
+<h2>48.4 Validação jurídica</h2>
+<p>Antes de entrar em produção, um advogado com competência na matéria valida as regras de negócio: o cálculo de prazo, a classificação de providências, a análise de risco, os textos que saem para o cliente.</p>
+<p>Validação jurídica não é teste de software. É conferência de que o sistema aplica o direito corretamente, e ela precisa ficar registrada.</p>
+<h2>48.5 Testes de segurança</h2>
+<p>Verifique: um usuário consegue ver caso que não é dele? A senha fraca é aceita? O segundo fator funciona? O registro de acesso está gravando? A cópia de segurança restaura de verdade? Credencial apareceu em algum lugar que não devia?</p>
+<p>Esses seis testes pegam a maior parte dos problemas reais.</p>
+<h2>48.6 Treinamento da equipe</h2>
+<p>Treine no fluxo de trabalho, não na ferramenta. A pessoa precisa saber o que mudou no dia dela, o que continua sendo responsabilidade dela e o que fazer quando o sistema errar.</p>
+<p>Insista especialmente em dois pontos: o sistema erra, e apontar o erro é a função de quem opera; e o que exige confirmação humana continua exigindo, mesmo quando o sistema parecer confiável — na verdade, principalmente quando parecer.</p>
+<h2>48.7 Implantação gradual</h2>
+<p>Por módulo e por equipe, com o processo antigo disponível até a estabilização.</p>
+<p>Implantação de tudo para todos no mesmo dia é a forma mais confiável de produzir rejeição, porque qualquer problema atinge o escritório inteiro e a equipe conclui que "o sistema não funciona".</p>
+<h2>48.8 Monitoramento de erros</h2>
+<p>Nas primeiras semanas, acompanhamento diário: o que falhou, o que ficou fora do padrão, o que a equipe reclamou, o que precisou ser feito na mão.</p>
+<p>Canal simples para relatar problema, e resposta rápida a quem relata. Equipe que relata e não vê correção para de relatar, e o escritório perde a informação de que precisa.</p>
+<h2>48.9 Plano de reversão</h2>
+<p>Para cada implantação, o caminho de volta: como se retoma o processo anterior, quem decide reverter e em quanto tempo.</p>
+<p>Saber que dá para voltar é o que permite avançar. Sem plano de reversão, a decisão de implantar vira aposta.</p>
+<h2>48.10 Melhoria contínua</h2>
+<p>Sistema em produção é organismo: fonte muda, requisito aparece, erro surge, o escritório aprende.</p>
+<p>Rotina trimestral de revisão: o que está funcionando, o que a equipe contorna (sinal claro de desenho errado), quais indicadores melhoraram, e o que entra na próxima etapa.</p>
+<h2>Construir, contratar ou os dois</h2>
+<p>Chegamos ao ponto em que o livro precisa ser honesto, e cabe repetir o que a Apresentação já disse: o autor desenvolveu e licencia um sistema como este. Justamente por isso, esta seção traz os critérios, e não uma recomendação disfarçada.</p>
+<p><strong>Construir faz sentido:</strong></p>
+<ul><li>quando o escritório tem alguém — sócio ou colaborador — genuinamente disposto a assumir o sistema como parte do seu trabalho, e não como projeto de fim de semana;</li><li>quando há particularidades de operação que produto pronto não atende;</li><li>quando o custo inicial em tempo é aceitável; e</li><li>quando existe intenção de manter o que foi construído por anos.</li></ul>
+<p>O custo real não é a construção, é a <strong>manutenção</strong>: fonte de dados muda, requisito aparece, erro surge.</p>
+<p>Reserve tempo recorrente para isso ou o sistema apodrece em um ano.</p>
+<p><strong>Contratar pronto faz sentido:</strong></p>
+<ul><li>quando o escritório precisa de resultado em semanas, não em meses;</li><li>quando não há ninguém para assumir a manutenção;</li><li>quando o problema é o comum a todos os escritórios e não uma particularidade sua; e</li><li>quando o custo mensal é menor que o custo do tempo que seria gasto construindo.</li></ul>
+<p>A contrapartida é dependência de fornecedor, e por isso o Capítulo 12.7 insiste no plano de saída: como você recupera seus dados se precisar trocar.</p>
+<p><strong>A combinação é o que mais acontece na prática</strong>, e costuma ser a melhor decisão: contratar o que é padrão e crítico — controle de prazos, gestão de processos, documentos — e construir o que é particular do seu escritório: a Skill de análise da sua área, o painel que só você usa, a integração com o sistema do seu cliente, a base de conhecimento com as suas teses.</p>
+<p>Um critério que resolve boa parte das dúvidas: <strong>construa o que é sua vantagem competitiva, contrate o que é infraestrutura.</strong></p>
+<p>Nenhum cliente contrata o escritório pela qualidade do seu controle de prazos — ele é obrigação, não diferencial.</p>
+<p>Mas a base de teses da sua área, a biblioteca de cláusulas construída em quinze anos de prática e o jeito como você analisa um processo, isso é seu, e é o que vale construir com as próprias mãos.</p>
+<p>Seja qual for o caminho, as Partes I a VIII deste livro continuam valendo integralmente. Elas não tratam de ferramenta; tratam de processo, de dado organizado, de limite de autonomia e de revisão humana. Sem isso, sistema comprado e sistema construído falham exatamente do mesmo jeito.</p>

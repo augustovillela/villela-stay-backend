@@ -1,0 +1,54 @@
+<!--META {"arquivo": "10-skills-workflows-e-agentes-juridicos", "capitulo": 10, "parte": "Parte II", "parte_titulo": "A arquitetura do escritório inteligente", "titulo": "Skills, workflows e agentes jurídicos", "subtitulo": "A arquitetura do escritório inteligente — conteúdo do livro reorganizado para leitura online, com síntese e aplicação prática.", "meta": "<span>Augusto Villela</span><span>Leitura de 6 min</span><span>Parte II · A arquitetura do escritório inteligente</span><span>Livro: capítulo 10</span>", "descricao": "Capítulo 10 do livro Claude AI na Prática Jurídica: Skills, workflows e agentes jurídicos. Método, exemplos e aplicação profissional para advogados e escritórios.", "resumo_html": "<ul><li>Diferença entre prompt, template, Skill, workflow e agente</li><li>Skill de análise processual</li><li>Skill de elaboração de contratos</li><li>Skill de revisão de peças</li><li>Agente de publicações e prazos</li></ul>", "aplicar_html": "<p>Escolha uma tarefa recorrente e descreva entradas, etapas, limites de autonomia e pontos obrigatórios de aprovação humana.</p><p><strong>Critério de conclusão:</strong> registre as fontes utilizadas, a conferência realizada e quem aprovou o resultado antes de incorporá-lo ao trabalho jurídico.</p>"} -->
+<blockquote class="atencao"><p><strong>Atualização e responsabilidade:</strong> confirme legislação, normas profissionais, jurisprudência, requisitos técnicos e condições comerciais nas fontes oficiais vigentes. A decisão e a responsabilidade profissional permanecem humanas.</p></blockquote>
+<blockquote class="citacao"><p>A Inteligência Artificial amplia o profissional que a utiliza: multiplica tanto o método quanto a negligência.</p></blockquote>
+<h2>10.1 Diferença entre prompt, template, Skill, workflow e agente</h2>
+<p>Cinco níveis, do mais simples ao mais complexo. A escolha errada de nível é a causa mais comum de projeto de automação que não sai do lugar.</p>
+<p><strong>Prompt</strong> é uma instrução única, escrita na hora. Vive na conversa e morre com ela.</p>
+<p><strong>Template</strong> é um prompt salvo e reutilizável, com lacunas a preencher. Já é ganho de padronização, mas ainda depende de alguém copiar, colar e completar.</p>
+<p><strong>Skill</strong> é um procedimento empacotado: instruções, critérios, formato de saída e materiais de apoio, que o sistema aciona sozinho quando reconhece a tarefa. Você diz "prepare o diagnóstico deste processo" e ela roda inteira, na ordem certa, com as verificações certas.</p>
+<p><strong>Workflow</strong> é uma sequência de etapas com pontos de decisão, que pode envolver várias Skills, sistemas externos e aprovações humanas. Recebe publicação, identifica processo, calcula prazo, atribui responsável, aguarda confirmação, escala se não houver resposta.</p>
+<p><strong>Agente</strong> é o workflow com autonomia e iniciativa dentro de um escopo: ele decide quando agir, que informação buscar e o que fazer com o resultado, respeitando limites definidos.</p>
+<p class="pratica">Regra prática de escolha:</p>
+<ul><li>tarefa que você faz uma vez, prompt.</li><li>Toda semana, template.</li><li>Toda semana por várias pessoas, Skill.</li><li>Com etapas e sistemas envolvidos, workflow.</li><li>Todo dia sem ninguém mandar, agente.</li></ul>
+<h2>10.2 Skill de análise processual</h2>
+<p>A primeira que todo escritório deveria construir, porque o retorno é imediato.</p>
+<p><strong>Entrada:</strong> autos em PDF pesquisável, polo do cliente, objetivo da análise.</p>
+<p><strong>Etapas:</strong> cronologia com folhas → identificação das peças relevantes → resumo das alegações de cada parte → pedidos e fundamentos → provas produzidas e provas mencionadas, mas ausentes → questões preliminares e prejudiciais → pontos controvertidos → riscos e lacunas → perguntas ao advogado responsável.</p>
+<p><strong>Saída:</strong> relatório estruturado com âncora de folha em toda afirmação, separando fato provado, fato alegado e inferência.</p>
+<p><strong>Verificações obrigatórias:</strong> nenhuma citação de norma ou precedente que não conste dos autos; toda inferência marcada; nenhum prazo afirmado sem conferência no sistema do tribunal.</p>
+<h2>10.3 Skill de elaboração de contratos</h2>
+<p><strong>Entrada:</strong> tipo de contrato, partes, objeto, valores, prazos, particularidades, posição do cliente (quem contrata ou quem é contratado), nível de agressividade desejado.</p>
+<p><strong>Etapas:</strong> conferência de informações faltantes antes de redigir → seleção das cláusulas da biblioteca (Capítulo 9.3) → montagem da minuta → análise de risco da própria minuta → lista de pontos que exigem decisão do cliente.</p>
+<p><strong>Saída:</strong> minuta identificada como MINUTA, mais um memorando de pontos abertos.</p>
+<p><strong>Regra que evita o pior erro:</strong> a Skill não pode inventar cláusula fora da biblioteca sem sinalizar. Cláusula nova entra marcada como "redação nova, requer revisão específica".</p>
+<h2>10.4 Skill de revisão de peças</h2>
+<p>Roda em contexto limpo, sem o histórico da elaboração, com postura adversarial (Capítulo 5.7).</p>
+<p>Confere:</p>
+<ul><li>coerência entre fatos, fundamentos e pedidos;</li><li>pedidos sem fundamentação e fundamentação sem pedido;</li><li>citações que exigem conferência, listadas uma a uma para o revisor humano;</li><li>anexos mencionados e não juntados;</li><li>contradições internas;</li><li>valor da causa;</li><li>requisitos formais do tipo de peça; e, por fim,</li><li>os três melhores ataques que a parte contrária faria.</li></ul>
+<p>Essa Skill sozinha justifica o esforço de implantar todo o resto.</p>
+<h2>10.5 Agente de publicações e prazos</h2>
+<p>O agente de maior valor e maior risco do escritório. Detalhado no Capítulo 19; aqui, o desenho:</p>
+<ul><li>Roda em horário fixo;</li><li>Captura as publicações do dia nas fontes oficiais;</li><li>Identifica a qual processo e cliente cada publicação pertence;</li><li>Elimina duplicidade entre fontes;</li><li>Classifica a providência provável;</li><li>Calcula prazo <strong>preliminar</strong>, sempre identificado como preliminar;</li><li>Atribui responsável;</li><li>Gera o relatório diário;</li><li>Alerta quem precisa saber.</li></ul>
+<p><strong>Limite absoluto:</strong> nenhum prazo entra em agenda como definitivo sem conferência humana no sistema oficial do tribunal. O agente prepara; o humano confirma. Não há exceção que valha o risco.</p>
+<h2>10.6 Agente de pesquisa jurídica</h2>
+<p>Trabalha em duas fases separadas, e essa separação é o que o torna seguro.</p>
+<p>Na fase de <strong>hipótese</strong>, ele formula as teses de pesquisa, as palavras-chave, os tribunais e o período. Nada disso é fonte, é plano de busca.</p>
+<p>Na fase de <strong>coleta</strong>, ele busca nas bases oficiais e traz resultados reais, com número, link e inteiro teor. O que ele não encontrou na base, ele não cita.</p>
+<p>O relatório final separa o que foi efetivamente localizado do que é sugestão a verificar. Agente de pesquisa que mistura as duas coisas é a fábrica de citação falsa.</p>
+<h2>10.7 Agente de atendimento ao cliente</h2>
+<p>Responde ao cliente sobre andamento, documentos pendentes, agenda e informações administrativas.</p>
+<p>A linha que ele não cruza é clara e precisa estar escrita: <strong>informação, sim; orientação jurídica, não</strong>.</p>
+<p>Ele pode dizer que houve uma decisão e que o advogado responsável entrará em contato. Não pode dizer o que a decisão significa para o cliente nem o que fazer a respeito.</p>
+<p>Toda pergunta que peça juízo jurídico é encaminhada a humano, com o registro do que foi perguntado. O Capítulo 18.11 trata dessa fronteira em detalhe.</p>
+<h2>10.8 Agente financeiro e de cobrança</h2>
+<p>Emite faturas conforme o contrato, acompanha vencimentos, envia lembretes de cobrança em régua escalonada, registra pagamentos, controla custas e despesas reembolsáveis, e sinaliza inadimplência ao responsável.</p>
+<p class="atencao">Cuidado específico da advocacia: cobrança é relação com cliente, não é operação de crédito. A régua precisa de tom adequado e, a partir de determinado ponto, de intervenção humana. Cobrança automática agressiva já custou cliente bom a muito escritório.</p>
+<h2>10.9 Agente supervisor e controladoria jurídica</h2>
+<p>O agente que audita os outros. Todo dia confere: publicações capturadas e efetivamente tratadas; prazos sem responsável ou sem confirmação humana; casos parados além do limite; entregas sem registro de revisão; falhas nas integrações; divergências entre o sistema interno e a fonte oficial.</p>
+<p>É o mecanismo que impede o pior cenário da automação: o sistema parar de funcionar e ninguém perceber porque nada reclamou. O Capítulo 40 desenvolve a controladoria.</p>
+<h2>10.10 Limites de autonomia e pontos de aprovação humana</h2>
+<p>Cada automação precisa de uma linha escrita definindo o que ela pode fazer sozinha:</p>
+<ul><li><strong>Sempre livre:</strong> ler, buscar, classificar, resumir, organizar, calcular preliminarmente, gerar rascunho, alertar internamente.</li><li><strong>Sempre com aprovação humana prévia:</strong> qualquer mensagem que saia para cliente, parte contrária, tribunal ou terceiro; qualquer protocolo; qualquer confirmação de prazo em agenda; qualquer compromisso financeiro; qualquer alteração ou exclusão de dado; qualquer publicação externa.</li><li><strong>Nunca automatizado:</strong> assinar, aconselhar, decidir estratégia, aceitar ou recusar acordo.</li></ul>
+<p>Escreva esses três blocos para cada agente e coloque no documento dele. Automação sem limite escrito é automação cujo limite será descoberto no dia do acidente.</p>
+<p><strong>▸ Como isso traz cliente</strong></p>
+<p>A Skill de revisão de peças tem um efeito comercial que ninguém antecipa: ela eleva o piso de qualidade da equipe inteira. O trabalho do advogado com dois anos de casa passa a sair com a conferência que antes só o sócio fazia, e o sócio deixa de ser gargalo. Isso muda o que o escritório consegue aceitar: mais casos, com prazo menor, sem queda de qualidade percebida. Capacidade de entrega é limite comercial antes de ser limite operacional — a maioria dos escritórios pequenos recusa trabalho por não conseguir revisar, não por não conseguir produzir.</p>
