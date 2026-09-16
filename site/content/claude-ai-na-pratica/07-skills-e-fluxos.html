@@ -1,0 +1,103 @@
+<!--META {"arquivo": "07-skills-e-fluxos", "modulo": "07", "titulo": "Construindo Skills e fluxos: do conhecimento na cabeça ao sistema que executa", "subtitulo": "Criar uma Skill não exige formação técnica. Exige saber como você já faz — e ter coragem de escrever onde a máquina para.", "meta": "<span>Augusto Villela</span><span>Leitura de 7 min</span><span>Aula 7 · Skills e fluxos</span><span>Livro: capítulo 10</span>", "descricao": "Criar uma Skill não exige formação técnica. Exige saber como você já faz — e ter coragem de escrever onde a máquina para."} -->
+<p>Agora a gente sai da teoria e vai construir. Este módulo cobre o ciclo completo de uma Skill — criar, aplicar, auditar — e o encanamento que a conecta ao resto da empresa: Make e n8n. E fecha com a única definição de automação que eu considero madura.</p>
+<h2>Criando Skills do zero</h2>
+<p>Skills são funcionalidades voltadas a necessidades específicas. Criar uma do zero exige duas coisas.</p>
+<p><strong>A primeira são instruções detalhadas:</strong> objetivos, limites e critérios de sucesso. Repare no terceiro item, porque é o mais esquecido. Critério de sucesso é você responder à pergunta: <em>como eu vou saber que essa Skill fez um bom trabalho?</em> Se você não sabe responder isso, a Skill vai entregar qualquer coisa e você vai aceitar qualquer coisa.</p>
+<p><strong>A segunda são os metadados</strong>, que contextualizam a finalidade: qual é o público-alvo, com que frequência ela será usada, que tipos de informação ela recebe e qual é o nível de autorização dela.</p>
+<p>Agora a notícia boa, e ela é grande: <strong>criar Skill não exige formação técnica.</strong> Qualquer equipe que domine o processo pode definir os parâmetros; a inteligência artificial executa. Pense no que isso significa dentro de uma empresa: a pessoa que melhor conhece o atendimento é quem escreve a Skill de atendimento. A pessoa do financeiro escreve a do financeiro. Não precisa passar pela área de tecnologia. O conhecimento sai da cabeça de quem faz e vira sistema.</p>
+<blockquote class="">
+<p><strong>Na prática — o método que eu recomendo:</strong> não tente escrever a Skill perfeita de primeira, na base da imaginação. Faça o contrário: execute a tarefa manualmente umas três vezes, anotando cada decisão que você tomou e por quê. Aquilo que você anotou <strong>é</strong> a Skill. Você não está inventando um procedimento. Está capturando o que já existe na sua cabeça.</p>
+</blockquote>
+<h2>Skills por área — e o que sustenta todas elas</h2>
+<p>Onde as Skills geram resultado mais rápido dentro de uma empresa?</p>
+<ul>
+<li><strong>No comercial.</strong> Uma Skill filtra os clientes em potencial qualificados e acelera a conversão. Em vez de olhar cinquenta contatos, você olha os oito que realmente têm chance.</li>
+<li><strong>No atendimento.</strong> Respostas padronizadas com tom personalizado, integrando o histórico do cliente e as políticas da empresa. Padrão sem robotização.</li>
+<li><strong>Na operação.</strong> Monitoramento de estoque e de fluxos, com alerta automático. O sistema avisa antes de faltar, não depois.</li>
+</ul>
+<p>Mas preste atenção nesta frase, porque ela é o coração do módulo:</p>
+<blockquote class="">
+<p><strong>Tudo isso se apoia nas bases de conhecimento.</strong> Resposta consistente vem de dado bem organizado. Não vem do modelo. Não vem do prompt. Vem da qualidade do que você guardou.</p>
+</blockquote>
+<p>É por isso que este curso passou um módulo inteiro falando de Projetos, manuais e checklists antes de chegar aqui. Sem base, uma Skill bem escrita entrega respostas bonitas e erradas — que, aliás, é o pior tipo de erro que existe, porque passa despercebido.</p>
+<p><strong>Por qual área começar?</strong> Um critério só: comece pela tarefa que mais se repete e que mais dói quando é feita mal. Na maioria dos negócios pequenos, isso é o atendimento — é onde o cliente decide se compra ou não, e onde o atraso de resposta custa dinheiro visível. Se você não tem certeza, olhe a sua semana passada e conte quantas vezes respondeu a mesma coisa. Essa é a sua primeira Skill.</p>
+<h2>Auditando Skills: o que ninguém faz e todo mundo deveria</h2>
+<p>Esta parte é curta e desconfortável, porque fala do que ninguém quer fazer.</p>
+<p>Skills precisam de revisão contínua. Senão perdem precisão e perdem conformidade. E olha o problema: <strong>uma Skill não avisa quando começa a errar.</strong> Ela continua respondendo com a mesma segurança de sempre — mesmo tom, mesmo formato, mesma cara de coisa certa. Só que a política mudou, o preço mudou, a lei mudou, e ela não sabe.</p>
+<p>Uma auditoria periódica faz três coisas:</p>
+<ol>
+<li><strong>Analisa o desempenho.</strong> Ela está de fato resolvendo o que deveria resolver?</li>
+<li><strong>Valida as respostas contra fontes confiáveis.</strong> Aquilo que ela afirma ainda é verdade?</li>
+<li><strong>Mapeia as falhas.</strong> Onde ela erra, com que frequência e em qual tipo de situação.</li>
+</ol>
+<p>E uma prática que eu recomendo com convicção: mantenha um <strong>registro auditável de cada modificação</strong> — o quê mudou, quem mudou e por quê. Parece burocracia até o dia em que alguma coisa dá errado e ninguém consegue explicar quando o comportamento mudou. Aí esse registro vale ouro.</p>
+<blockquote class="atencao">
+<p><strong>Atenção:</strong> em áreas críticas como o financeiro, pequenas derivações têm impacto enorme. Um arredondamento errado, uma categoria trocada, uma regra de comissão desatualizada — repetidos por trezentos dias, viram um problema sério. O mesmo vale para o jurídico e para qualquer coisa que envolva prazo.</p>
+</blockquote>
+<p>Meu conselho prático: coloque na agenda uma revisão trimestral das Skills críticas e uma anual das demais. E teste com <strong>casos reais antigos</strong>, não com exemplos inventados: pegue cinco situações que já aconteceram, rode na Skill e compare com o que de fato foi feito.</p>
+<h2>Make e n8n: o encanamento inteligente</h2>
+<p>Você já entendeu que o Claude pensa. Agora falta entender quem executa. E quem executa são as plataformas de automação — as duas principais são o Make e o n8n.</p>
+<p>O <strong>n8n</strong> tem até o nome curioso: lê-se &ldquo;n-eight-n&rdquo;, e vem de <em>nodemation</em> — a junção de <em>node</em> com <em>automation</em>. É uma plataforma que conecta sistemas, aplicativos, APIs e agentes de inteligência artificial em fluxos que rodam sozinhos. Você monta um fluxo ligando blocos chamados nós; cada nó é uma etapa. Um gatilho dispara o fluxo, e os nós seguintes executam as ações em sequência.</p>
+<p>No meu negócio, fica assim:</p>
+<blockquote class="">
+<p>O cliente pergunta no WhatsApp: &ldquo;tem casa para vinte pessoas?&rdquo; <strong>(gatilho)</strong> → a plataforma recebe a mensagem → envia ao Claude → o Claude interpreta e gera a resposta → a plataforma responde ao cliente → registra o contato no CRM → agenda o acompanhamento → atualiza o painel.</p>
+<p>Uma pergunta. Sete ações. Zero intervenção humana.</p>
+</blockquote>
+<p>Make ou n8n?</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Make</th>
+<th>n8n</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Estilo</td>
+<td>Mais visual e simples</td>
+<td>Mais técnico e flexível</td>
+</tr>
+<tr>
+<td>Hospedagem</td>
+<td>Nuvem</td>
+<td>Forte em <em>self-hosting</em> (seu servidor)</td>
+</tr>
+<tr>
+<td>Ideal para</td>
+<td>Começar rápido, PMEs, protótipos</td>
+<td>Automações complexas, mais controle, dados na sua infraestrutura</td>
+</tr>
+</tbody>
+</table>
+<p>A regra prática que eu uso: <strong>Make para começar simples e rápido; n8n quando você quer poder, personalização e os dados na sua casa.</strong> E, para ser transparente: na minha operação, hoje, quem faz esse papel é o Make. O n8n seria o caminho se eu quisesse rodar tudo no meu próprio servidor.</p>
+<h2>Desenhando fluxos automáticos com segurança</h2>
+<p><em>Automação exige uma arquitetura de confiança.</em> Essa frase vale por si só.</p>
+<p>Conectar o Claude a sistemas externos exige autenticação segura, criptografia e controle de permissões. E existe um desenho inteligente que poucos conhecem: usar plataformas como intermediárias, de modo que os dados sensíveis fiquem dentro da empresa e só sejam compartilhados metadados ou resultados já processados. Traduzindo: nem tudo precisa sair de casa. Às vezes basta enviar a pergunta e receber a resposta, sem que o dado bruto viaje.</p>
+<p>Antes de ativar qualquer coisa: mapeie os fluxos, identifique os pontos de exposição e teste continuamente.</p>
+<p>Os quatro princípios de um fluxo seguro:</p>
+<ol>
+<li><strong>Isole os fluxos sensíveis.</strong> O que mexe com dinheiro, com dado pessoal ou com documento jurídico não anda junto com o resto.</li>
+<li><strong>Limite as permissões por função.</strong> Cada agente e cada integração acessa só o que precisa. Nada além.</li>
+<li><strong>Crie pontos de verificação.</strong> Momentos em que a inteligência artificial para e pede confirmação humana antes de prosseguir. São <strong>salvaguardas, não obstáculos</strong>: quem enxerga o ponto de confirmação como perda de tempo descobre o custo real na primeira vez que algo sai errado em escala.</li>
+<li><strong>Projete com modularidade.</strong> De um jeito que você possa ajustar uma parte sem quebrar o todo. E mantenha registro detalhado de cada execução.</li>
+</ol>
+<p>E a definição que eu considero a mais madura do livro inteiro:</p>
+<blockquote class="">
+<p><strong>A automação bem-sucedida não é a que faz mais rápido. É a que faz as coisas certas, com consistência e sem risco.</strong></p>
+</blockquote>
+<p>Guarde isso, porque no próximo módulo a gente vai montar um time inteiro de agentes. E time sem regra vira bagunça em escala.</p>
+<div class="box resumo"><h2>Resumo em cinco linhas</h2>
+<ul>
+<li>Uma Skill nasce de <strong>instruções detalhadas</strong> (objetivo, limites, critério de sucesso) e <strong>metadados</strong> (público, frequência, entradas, autorização). Não exige formação técnica.</li>
+<li>Capture o que você já faz: execute três vezes anotando cada decisão — isso <strong>é</strong> a Skill.</li>
+<li>Resposta consistente vem de <strong>base de conhecimento</strong>, não do prompt. Sem base, a Skill entrega respostas bonitas e erradas.</li>
+<li><strong>Audite</strong>: desempenho, validação contra fontes, mapa de falhas, registro de cada modificação. Trimestral no crítico, anual no resto.</li>
+<li><strong>Make</strong> para começar; <strong>n8n</strong> para poder, personalização e dados em casa. Fluxo seguro: isolar, limitar, verificar, modularizar.</li>
+</ul>
+</div><div class="box aplicar"><h2>Para aplicar hoje</h2>
+<ol>
+<li>Conte quantas vezes você respondeu a mesma coisa na semana passada. A campeã é a sua primeira Skill: escreva objetivo, limites e critério de sucesso.</li>
+<li>Faça a tarefa manualmente três vezes esta semana, anotando cada decisão. Transforme as anotações no fluxo da Skill.</li>
+<li>Marque no calendário a primeira auditoria: daqui a 90 dias, cinco casos reais antigos rodados na Skill e comparados com o que foi feito.</li>
+</ol></div>

@@ -1,0 +1,130 @@
+<!--META {"arquivo": "02-prompts", "modulo": "02", "titulo": "Prompts que funcionam de verdade: os sete blocos, as personas e a engenharia de contexto", "subtitulo": "Prompt profissional não é texto criativo. É arquitetura operacional — e existe uma estrutura que qualquer pessoa consegue seguir.", "meta": "<span>Augusto Villela</span><span>Leitura de 7 min</span><span>Aula 4 · Prompts</span><span>Livro: capítulo 3</span>", "descricao": "Prompt profissional não é texto criativo. É arquitetura operacional — e existe uma estrutura que qualquer pessoa consegue seguir."} -->
+<p>Todo mundo fala em prompt. Poucos explicam o que separa um prompt amador de um prompt profissional.</p>
+<p>Prompt é instrução — isso todo mundo sabe. Mas prompt profissional é outra coisa: é <strong>arquitetura operacional</strong>. A clareza da instrução define o valor da resposta. Ponto. Neste artigo eu mostro a estrutura que uso todos os dias na minha empresa, o atalho mais barato para melhorar qualquer resposta, e o conceito que, na minha opinião, define o futuro dessa profissão.</p>
+<h2>Os sete blocos de um prompt profissional</h2>
+<p>Existe uma estrutura. Sete blocos:</p>
+<p><strong>Função · Objetivo · Contexto · Regras · Estilo · Formato · Tarefa</strong></p>
+<p>Guarde esses sete nomes, porque sem eles a inteligência artificial preenche as lacunas com suposição — e suposição é a origem de quase todo resultado ruim que você já teve.</p>
+<p>Deixa eu montar um exemplo real, do concierge da Villela Stay:</p>
+<table>
+<thead>
+<tr>
+<th>Bloco</th>
+<th>Conteúdo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Função</strong></td>
+<td>Concierge premium de hospedagens de luxo</td>
+</tr>
+<tr>
+<td><strong>Objetivo</strong></td>
+<td>Atender clientes interessados em reservas</td>
+</tr>
+<tr>
+<td><strong>Contexto</strong></td>
+<td>Casas no Lago Sul, em Brasília; público de famílias e grupos; alta temporada em feriados</td>
+</tr>
+<tr>
+<td><strong>Regras</strong></td>
+<td>Nunca inventar disponibilidade. Nunca alterar preço. Sempre pedir as datas e o número de hóspedes</td>
+</tr>
+<tr>
+<td><strong>Estilo</strong></td>
+<td>Elegante, cordial e objetivo</td>
+</tr>
+<tr>
+<td><strong>Formato</strong></td>
+<td>Resposta curta e organizada</td>
+</tr>
+<tr>
+<td><strong>Tarefa</strong></td>
+<td>Responder à mensagem do cliente</td>
+</tr>
+</tbody>
+</table>
+<p>Olha o que aconteceu aqui. Eu não escrevi um texto criativo. <strong>Eu escrevi um cargo.</strong></p>
+<p>Repare especialmente no bloco das regras. &ldquo;Nunca inventar disponibilidade&rdquo; não é uma frase bonita — é uma trava. É o que impede o meu atendimento de prometer uma casa que já está ocupada.</p>
+<blockquote class="ideia">
+<p><strong>Ideia-chave:</strong> num prompt empresarial, as regras valem mais que o pedido. O pedido diz o que você quer. As regras dizem o que não pode acontecer de jeito nenhum. E é o que não pode acontecer que protege o seu negócio.</p>
+</blockquote>
+<p>Uma dica de aplicação: não decore os sete blocos. Cole-os num arquivo, deixe visível e use como checklist toda vez que for montar uma instrução importante. Em pouco tempo isso vira automático, e você vai reparar que começou a escrever prompts que outras pessoas pedem emprestado.</p>
+<blockquote class="">
+<p><strong>Na prática — modelo para copiar:</strong></p>
+<p><code>FUNÇÃO: Você é [cargo/especialidade].
+OBJETIVO: [o resultado que essa função existe para produzir].
+CONTEXTO: [quem somos, para quem, onde, o que já se sabe].
+REGRAS: [o que nunca pode acontecer]; [o que sempre deve ser feito].
+ESTILO: [tom de voz, em 3 adjetivos].
+FORMATO: [tamanho, estrutura, tabela/lista/texto corrido].
+TAREFA: [o pedido concreto desta vez].</code></p>
+</blockquote>
+<h2>Personas: transformar o Claude em especialista</h2>
+<p>Se você quiser aplicar hoje uma única coisa deste módulo e já ver diferença, aplique esta.</p>
+<p>Transformar o Claude em um especialista melhora muito o resultado. E o custo disso é uma linha de texto. Em vez de perguntar como quem pergunta ao acaso, você abre assim: <em>&ldquo;Você é advogado especialista em direito imobiliário.&rdquo;</em> Ou: <em>&ldquo;Você é arquiteto.&rdquo;</em> Ou: <em>&ldquo;Você é SDR&rdquo;</em> — o profissional de prospecção e qualificação de clientes em potencial. Ou copywriter. Ou analista financeiro. Ou gestor operacional. E aí você faz o seu pedido.</p>
+<p>Por que isso funciona tanto? Porque a IA passa a puxar um <strong>repertório específico</strong>: vocabulário, prioridades, estrutura de raciocínio, o que aquele profissional consideraria relevante e o que descartaria.</p>
+<p>É a diferença entre perguntar &ldquo;o que você acha desse contrato?&rdquo; para uma pessoa qualquer na rua e fazer a mesma pergunta para um advogado. A pergunta é idêntica. A resposta muda completamente.</p>
+<blockquote class="">
+<p><strong>Atenção — persona não é diploma.</strong> Dizer &ldquo;você é advogado&rdquo; não transforma a resposta em parecer jurídico, não substitui a responsabilidade profissional e não dispensa a sua conferência. Eu sou advogado e uso persona jurídica todos os dias — e reviso absolutamente tudo antes de qualquer coisa sair da minha mesa. A persona melhora a qualidade do rascunho. Quem responde pelo resultado continua sendo você.</p>
+</blockquote>
+<p>Uma variação poderosa, para quando você quer profundidade: dê a persona <strong>e</strong> mande o Claude pensar antes de responder. Algo como <em>&ldquo;analise riscos, oportunidades e melhores práticas antes de escrever&rdquo;</em>. Isso reduz drasticamente aquela resposta rasa, genérica, que parece que serve para qualquer um e não serve para ninguém.</p>
+<h2>Engenharia de contexto: a mesa de trabalho do Claude</h2>
+<p>Agora a frase que, para mim, resume o futuro dessa profissão:</p>
+<blockquote class="">
+<p><strong>O futuro não pertence a quem cria os prompts mais criativos. Pertence a quem organiza melhor o contexto, o conhecimento, a memória e os fluxos de trabalho.</strong></p>
+</blockquote>
+<p>Isso tem nome: <strong>engenharia de contexto</strong>. E o primeiro passo é entender o que é contexto.</p>
+<p>Contexto é o conjunto de informações que a inteligência artificial tem em mãos para responder melhor a você. Eu gosto de pensar no contexto como a <strong>mesa de trabalho mental do Claude</strong>. O que pode estar em cima dessa mesa?</p>
+<ul>
+<li><strong>A sua pergunta atual.</strong> Por exemplo: &ldquo;faça uma mensagem para um hóspede&rdquo;.</li>
+<li><strong>O histórico da conversa.</strong> Se você disse antes que o hóspede faz check-out às dez, ele usa isso na resposta seguinte.</li>
+<li><strong>Os arquivos que você enviou.</strong> PDF, documento, planilha, contrato, manual.</li>
+<li><strong>As instruções do Projeto.</strong> Projetos são espaços de trabalho com histórico e base de conhecimento próprios (o módulo 4 é inteiro sobre eles).</li>
+<li><strong>As suas preferências e a memória</strong>, quando ativadas. O Claude pode buscar conversas anteriores e personalizar o que responde.</li>
+</ul>
+<p>Tem ainda um recurso importante, com nome técnico: <strong>RAG</strong> (<em>retrieval-augmented generation</em>). Quando há muito material dentro de um Projeto, o Claude não empurra tudo para dentro da conversa. Ele busca só os trechos relevantes dos documentos. É como um assistente que, em vez de carregar a biblioteca inteira, vai lá e traz as três páginas que interessam.</p>
+<h3>A regra de ouro (que é contraintuitiva)</h3>
+<p>A eficácia vem da <strong>exatidão das restrições</strong>, e não do número de palavras. Prompt longo não é prompt bom. Prompt preciso é prompt bom.</p>
+<p>Três hábitos que decorrem disso:</p>
+<ol>
+<li><strong>Declare o óbvio.</strong> O que é óbvio para você não é óbvio para a máquina.</li>
+<li><strong>Defina o critério de sucesso.</strong> Como você vai saber que a resposta ficou boa?</li>
+<li><strong>Antecipe a ambiguidade.</strong> Se uma palavra pode ser lida de dois jeitos, escolha o jeito antes.</li>
+</ol>
+<p>E mais uma, valiosa para empresa: <strong>prefira baixa criatividade</strong>. Menos invenção significa menos retrabalho. Criatividade é ótima para explorar ideias; para tarefa empresarial, o que você quer é previsibilidade.</p>
+<h2>Workflows: o trabalho da IA passo a passo</h2>
+<p>O último conceito do módulo é o que separa quem pede coisas de quem monta processos.</p>
+<p>Workflow, no Claude, é uma sequência organizada de etapas para a inteligência artificial realizar uma tarefa com mais controle, mais qualidade e mais repetibilidade.</p>
+<p>O pedido genérico é assim: <em>&ldquo;crie uma campanha de marketing para a minha hospedagem&rdquo;</em>. Você vai receber alguma coisa. Provavelmente razoável. Provavelmente inútil.</p>
+<p>Agora o workflow — o mesmo objetivo, quebrado em etapas:</p>
+<ol>
+<li>Analisar o público-alvo.</li>
+<li>Criar três ofertas diferentes.</li>
+<li>Escrever as mensagens para WhatsApp.</li>
+<li>Criar os anúncios para Instagram.</li>
+<li>Revisar o tom comercial.</li>
+<li>Gerar uma versão final pronta para envio.</li>
+</ol>
+<p>Percebe o que mudou? Você deixou de pedir um resultado e passou a <strong>desenhar um processo de trabalho</strong>. E processo, diferente de pedido, pode ser repetido. Na semana que vem, você roda o mesmo fluxo com outra oferta. No mês que vem, com outra casa. Você construiu um ativo, não uma resposta.</p>
+<h3>Workflow ou agente?</h3>
+<p>Aqui vale uma distinção que a própria Anthropic faz e que vai voltar muitas vezes neste curso:</p>
+<ul>
+<li><strong>Workflow</strong> segue caminhos mais previsíveis e definidos. Você diz as etapas, ele cumpre as etapas.</li>
+<li><strong>Agente</strong> tem mais autonomia para decidir o caminho conforme a tarefa evolui.</li>
+</ul>
+<p>Os dois são úteis. Mas <strong>comece pelo workflow</strong>. É mais previsível, mais fácil de auditar e é onde você aprende a pensar em processo — exatamente a habilidade de que vai precisar quando chegar nos agentes, no módulo 8.</p>
+<div class="box resumo"><h2>Resumo em cinco linhas</h2>
+<ul>
+<li>Prompt profissional tem <strong>sete blocos</strong>: função, objetivo, contexto, regras, estilo, formato, tarefa. Você escreve um cargo, não um texto.</li>
+<li><strong>Regras valem mais que o pedido</strong>: são elas que protegem o negócio.</li>
+<li><strong>Persona</strong> dá repertório de especialista por uma linha de texto — mas não é diploma; a conferência continua sua.</li>
+<li><strong>Engenharia de contexto</strong>: o que está na mesa do Claude (pergunta, histórico, arquivos, Projeto, memória) decide a qualidade. Restrições exatas valem mais que palavras.</li>
+<li><strong>Workflow</strong> transforma pedido em processo repetível. Comece por ele antes de pensar em agentes.</li>
+</ul>
+</div><div class="box aplicar"><h2>Para aplicar hoje</h2>
+<ol>
+<li>Pegue a tarefa que você descreveu no módulo 1 e preencha os sete blocos com ela. Use o modelo deste artigo.</li>
+<li>Escreva a persona certa para os três pedidos que você mais faz à IA (por exemplo: &ldquo;advogado imobiliarista&rdquo;, &ldquo;copywriter de hospedagem&rdquo;, &ldquo;analista financeiro de pequena empresa&rdquo;).</li>
+<li>Transforme o seu pedido mais frequente em um workflow de quatro a seis etapas. Guarde num arquivo: é a semente da sua primeira Skill.</li>
+</ol></div>

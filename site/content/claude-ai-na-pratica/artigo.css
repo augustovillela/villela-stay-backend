@@ -1,0 +1,55 @@
+.cap{--ink:#1c1a17;--ink2:#4a4640;--muted:#7a746b;--paper:#faf7f1;--card:#ffffff;--line:#e6dfd3;
+--accent:#c8623c;--accent2:#1f5f6b;--gold:#c9963c;--navy:#0f1a2b}
+.cap *{box-sizing:border-box}
+.cap{-webkit-text-size-adjust:100%}
+.cap{margin:0;background:var(--paper);color:var(--ink);font:18px/1.65 "Segoe UI",Inter,system-ui,-apple-system,Roboto,Arial,sans-serif}
+.cap a{color:var(--accent2)}
+.cap-hero{background:var(--navy);color:#f3ede3;padding:64px 24px 56px;position:relative;overflow:hidden}
+.cap-hero:before{content:"";position:absolute;inset:auto -10% -60% auto;width:520px;height:520px;border-radius:50%;
+background:radial-gradient(circle,rgba(200,98,60,.45),transparent 65%);pointer-events:none}
+.cap-hero .in{max-width:760px;margin:0 auto;position:relative}
+.cap .kicker{font:600 13px/1.2 "Segoe UI",system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#e8a184;margin:0 0 18px}
+.cap-hero h1{font:700 44px/1.12 Georgia,"Times New Roman",serif;margin:0 0 16px;letter-spacing:-.01em}
+.cap-hero .sub{font-size:21px;line-height:1.45;color:#d9d2c5;margin:0 0 26px;max-width:640px}
+.cap .meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;color:#aeb7c4}
+.cap .meta span:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin:0 8px 2px 0}
+.cap-corpo{max-width:760px;margin:0 auto;padding:44px 24px 80px}
+.cap-corpo p{margin:0 0 20px}
+.cap-corpo h2{font:700 30px/1.2 Georgia,"Times New Roman",serif;margin:48px 0 16px;color:var(--ink)}
+.cap-corpo h2:first-child{margin-top:0}
+.cap-corpo h3{font:700 21px/1.3 "Segoe UI",system-ui,sans-serif;margin:32px 0 10px;color:var(--accent2)}
+.cap-corpo ul,.cap-corpo ol{padding-left:26px;margin:0 0 22px}
+.cap-corpo li{margin:0 0 8px}
+.cap-corpo li::marker{color:var(--accent);font-weight:700}
+.cap-corpo strong{color:var(--ink)}
+.cap-corpo hr{border:0;border-top:1px solid var(--line);margin:40px 0}
+.cap-corpo blockquote{margin:28px 0;padding:20px 24px 20px 26px;border-left:5px solid var(--accent);background:var(--card);border-radius:0 12px 12px 0;
+box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.cap-corpo blockquote p{margin:0 0 10px}
+.cap-corpo blockquote p:last-child{margin:0}
+.cap-corpo blockquote.atencao{border-color:#b8412c;background:#fff6f3}
+.cap-corpo blockquote.pratica{border-color:var(--accent2);background:#f1f7f8}
+.cap-corpo blockquote.ideia{border-color:var(--gold);background:#fdf8ee}
+.cap-corpo blockquote.citacao{border-color:var(--line);background:transparent;font:italic 22px/1.5 Georgia,serif;color:var(--ink2);padding-left:22px}
+.cap-corpo table{border-collapse:collapse;width:100%;margin:0 0 26px;font-size:16px;background:var(--card);border-radius:12px;overflow:hidden}
+.cap-corpo th,.cap-corpo td{border-bottom:1px solid var(--line);padding:11px 14px;text-align:left;vertical-align:top}
+.cap-corpo th{background:#f2ede4;font-weight:700;color:var(--ink)}
+.cap-corpo tr:last-child td{border-bottom:0}
+.cap-corpo code{font:15px/1.4 Consolas,"Cascadia Mono",Menlo,monospace;background:#efe9df;padding:2px 6px;border-radius:5px}
+.cap-corpo pre{background:#161d2a;color:#e9e4da;padding:18px 20px;border-radius:12px;overflow:auto;margin:0 0 24px}
+.cap-corpo pre code{background:transparent;color:inherit;padding:0;font-size:15px}
+.cap .box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin:34px 0}
+.cap .box h2{margin-top:0;font-size:22px}
+.cap .box.resumo{background:#fdf3ea;border:1px solid #efcfb8;border-left:6px solid var(--accent)}
+.cap .box.resumo h2{color:var(--accent)}
+.cap .box.resumo li::marker{color:var(--accent)}
+.cap .box.aplicar{background:#eef6f7;border:1px solid #cfe2e5;border-left:6px solid var(--accent2)}
+.cap .box.aplicar h2{color:var(--accent2)}
+.cap .box.aplicar li::marker{color:var(--accent2)}
+.cap .box,.cap-corpo blockquote,.cap-corpo table,.cap-corpo th,.cap-corpo pre{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cap-rodape{max-width:760px;margin:0 auto;padding:0 24px 60px;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
+.cap-rodape .in{padding-top:22px;display:flex;flex-wrap:wrap;gap:6px 24px;justify-content:space-between}
+@media (max-width:600px){.cap-hero h1{font-size:34px}
+.cap-hero{padding:44px 20px 40px}
+.cap{font-size:17px}
+.cap-corpo h2{font-size:26px}}

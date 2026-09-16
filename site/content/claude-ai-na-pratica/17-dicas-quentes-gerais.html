@@ -1,0 +1,187 @@
+<!--META {"arquivo": "17-dicas-quentes-gerais", "modulo": "17", "titulo": "Dicas quentes gerais: PDF em Markdown, comandos mágicos, o Loop, MCPs e o caminho de cinco passos", "subtitulo": "O módulo mais prático do curso — e o de prazo de validade mais curto. Dicas testadas, de uso imediato, com a tradução honesta do que é real e do que é folclore.", "meta": "<span>Augusto Villela</span><span>Leitura de 9 min</span><span>Aula 17 · Dicas quentes gerais</span><span>Livro: capítulo 21, parte 1</span>", "descricao": "O módulo mais prático do curso — e o de prazo de validade mais curto. Dicas testadas, de uso imediato, com a tradução honesta do que é real e do que é folclore."} -->
+<p>Este é o módulo mais prático do curso: dicas testadas, de uso imediato. É também o de prazo de validade mais curto, porque cita ferramentas e repositórios que mudam rápido — trate os nomes como ponto de partida e confira o estado atual antes de instalar qualquer coisa.</p>
+<h2>1. Converta o PDF em Markdown antes de subir</h2>
+<p>A dica que mais economiza dinheiro: <strong>antes de jogar um documento na inteligência artificial, transforme o PDF em Markdown</strong> — texto limpo e estruturado. Isso faz três coisas ao mesmo tempo:</p>
+<ul>
+<li><strong>Economiza token</strong> — você gasta menos contexto e paga menos.</li>
+<li><strong>Remove o lixo de formatação</strong> — aquele monte de sujeira invisível que vem junto num PDF.</li>
+<li><strong>Faz o modelo entender melhor</strong> títulos, listas e tabelas.</li>
+</ul>
+<p>Na prática: use a ferramenta de PDF do Claude para extrair o texto limpo, e só então peça a análise. A regra: <strong>documento limpo, resposta melhor e mais barata.</strong> Os dois ao mesmo tempo. É raro, e aqui acontece.</p>
+<p>Por que funciona? Um PDF não é texto. É um desenho de uma página. Quando a IA lê um PDF, precisa reconstruir o que é título, o que é parágrafo, o que é coluna, o que é rodapé, o que é número de página — e às vezes erra essa reconstrução. O Markdown já entrega essa estrutura pronta e explícita. Você economiza não só espaço, mas o esforço de interpretação. (Os três caminhos de conversão — PyMuPDF4LLM, Pandoc e OCRmyPDF — estão no artigo do módulo 3.)</p>
+<blockquote class="atencao">
+<p><strong>Atenção:</strong> se o documento tiver contrato, dado pessoal, informação jurídica ou dado comercial sensível, evite conversores online. Converta local.</p>
+</blockquote>
+<h2>2. Os &ldquo;comandos mágicos&rdquo;: o que é real e o que é folclore</h2>
+<p>Esta dica é uma vacina contra a desinformação. Os vídeos da internet vendem uma lista de códigos secretos do Claude, como se existissem poderes escondidos. A verdade técnica: <strong>a maioria não é botão oficial. São apenas instruções em texto que você cola e que enviesam o estilo da resposta.</strong> Funcionam como atalho mental, não como mágica.</p>
+<table>
+<thead>
+<tr>
+<th>&ldquo;Comando&rdquo;</th>
+<th>O que ele pede, de verdade</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/ghost</code> ou <code>#ghost</code></td>
+<td>Texto mais humano, menos cara de robô</td>
+<td>Atalho de texto</td>
+</tr>
+<tr>
+<td><code>#L99</code></td>
+<td>Resposta em nível de especialista avançado</td>
+<td>Atalho de texto</td>
+</tr>
+<tr>
+<td><code>OODA</code></td>
+<td>Método de raciocínio: observar, orientar, decidir, agir</td>
+<td>Método útil</td>
+</tr>
+<tr>
+<td><code>/brutal</code></td>
+<td>Crítica franca: &ldquo;pare de me bajular e diga por que a minha ideia é fraca&rdquo;</td>
+<td>Atalho de texto</td>
+</tr>
+<tr>
+<td><code>/steelman</code></td>
+<td>O Claude vira advogado do diabo e monta o melhor argumento contra você</td>
+<td>Atalho de texto</td>
+</tr>
+<tr>
+<td><code>/eli5</code></td>
+<td>Explique como se eu tivesse cinco anos</td>
+<td>Atalho de texto</td>
+</tr>
+<tr>
+<td><code>/what am I missing</code></td>
+<td>Acha os buracos do seu plano</td>
+<td>Atalho de texto</td>
+</tr>
+<tr>
+<td><code>/10x</code></td>
+<td>Uma versão dez vezes melhor da sua ideia</td>
+<td>Atalho de texto</td>
+</tr>
+<tr>
+<td><code>/goal</code></td>
+<td>Trabalhar sozinho até atingir a meta</td>
+<td>A versão séria é o Loop (dica 4)</td>
+</tr>
+<tr>
+<td><code>god mode</code></td>
+<td>&ldquo;Destravar poderes ocultos&rdquo;</td>
+<td><strong>Não existe.</strong> É só um prefixo que pede tom assertivo</td>
+</tr>
+<tr>
+<td><code>/artifacts</code></td>
+<td>Aponta para um recurso real — os Artifacts</td>
+<td>Real, mas dispensável: basta pedir um app, site ou painel</td>
+</tr>
+</tbody>
+</table>
+<p>Sobre o &ldquo;modo deus&rdquo;, preciso ser bem direto: não existe modo que destrave poderes ocultos. E, principalmente, não acredite em nenhuma promessa de liberar algo proibido. Quem te vende isso está te vendendo ilusão — ou coisa pior.</p>
+<p>O resumo: use esses termos como gírias úteis de pedido, sabendo que o que vale mesmo é a clareza do prompt.</p>
+<h2>3. Skills para começar e pacotes que valem a pena</h2>
+<p>Se você vai instalar Skills, comece por duas, e elas são estratégicas:</p>
+<ul>
+<li><strong>brainstorming</strong> — transforma uma ideia crua em um plano, por meio das perguntas certas. Excelente para destravar quando você sabe que quer alguma coisa, mas não consegue formular.</li>
+<li><strong>skill-creator</strong> — te ajuda a criar as suas próprias Skills.</li>
+</ul>
+<p>Veja a inteligência dessa dupla: uma ensina o Claude a pensar com você, e a outra o transforma em especialista no seu assunto. Você não está instalando funcionalidades. Está instalando a capacidade de gerar funcionalidades.</p>
+<p>Cinco pacotes que valem a pena conhecer: <strong>Marketing Skills</strong> (vários agentes de conteúdo num pacote), <strong>Awesome Claude Skills</strong> (e-mails, comunicação, sites), <strong>Remotion</strong> (gera vídeo a partir de um comando), <strong>Banana / Nano Banana Pro</strong> (geração e edição de imagens) e <strong>Context Engineering</strong> (técnicas para gastar menos token mantendo qualidade).</p>
+<blockquote class="ideia">
+<p><strong>Ideia-chave:</strong> pense nessas Skills como aplicativos que você instala conforme a necessidade. <strong>Não instale tudo de uma vez.</strong> Quando você instala dez pacotes de uma vez, três coisas acontecem: você não sabe mais qual comportamento veio de onde; não sabe qual pacote está atrapalhando quando algo dá errado; e não usa quase nenhum, porque nem lembra que instalou. Instale um. Use por uma semana de verdade. Só então instale o próximo.</p>
+</blockquote>
+<h2>4. O Loop: quando o Claude só para ao bater a meta</h2>
+<p>A versão séria e oficial daquele &ldquo;goal&rdquo; que a internet vende como comando mágico. Chama-se Loop, e é o motor dos agentes.</p>
+<p>O mecanismo: você dá as ferramentas → ele decide qual usar a cada volta → o seu sistema executa e devolve o resultado → o ciclo repete até concluir.</p>
+<p>A diferença que muda tudo: <strong>num prompt comum, o Claude para quando te entrega alguma coisa, boa ou ruim.</strong> Ele não tem como saber se ficou bom. <strong>Com o Loop, ele só para quando bate a meta que você definiu</strong> — confere o próprio trabalho e corrige sozinho até passar na régua. E a régua é sua.</p>
+<p>Como usar: descreva a tarefa e descreva o critério de pronto.</p>
+<blockquote class="">
+<p><strong>Na prática — critérios verificáveis:</strong></p>
+<ul>
+<li>&ldquo;Considere concluído quando todos os itens da lista tiverem sido verificados e nenhuma inconsistência restar.&rdquo;</li>
+<li>&ldquo;Considere concluído quando o texto couber em duas páginas e nenhuma cláusula tiver sido perdida.&rdquo;</li>
+</ul>
+<p>O segredo: um critério <strong>verificável</strong>. Não &ldquo;quando estiver bom&rdquo;, que é subjetivo, mas algo que ele consiga conferir.</p>
+</blockquote>
+<p>Dois lembretes: um agente local, que roda no seu computador, precisa da máquina ligada (o Claude pede; quem executa é o sistema). E o Loop consome mais token, porque repete o ciclo — use onde a qualidade compensa o custo. Numa conferência de documento importante, compensa muito. Para escrever uma legenda de Instagram, não.</p>
+<h2>5. Os cinco servidores MCP que valem a pena</h2>
+<p>Você já entendeu o que é MCP (módulo 6). Cinco conexões que valem a pena conhecer:</p>
+<table>
+<thead>
+<tr>
+<th>MCP</th>
+<th>O que faz</th>
+<th>Cuidado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Perplexity</strong></td>
+<td>Pesquisa a internet em tempo real sem sair do fluxo</td>
+<td>Resolve o &ldquo;o modelo não sabe o que aconteceu ontem&rdquo;</td>
+</tr>
+<tr>
+<td><strong>Playwright</strong></td>
+<td>Controle total do navegador: preenche formulário, sobe vídeo, testa app</td>
+<td>O mais poderoso e o que exige mais cuidado</td>
+</tr>
+<tr>
+<td><strong>Firecrawl</strong></td>
+<td>Varre qualquer site e traz o conteúdo para a conversa</td>
+<td>Ótimo para estudar concorrência</td>
+</tr>
+<tr>
+<td><strong>Glif</strong></td>
+<td>Conecta a centenas de modelos de imagem e vídeo</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Chrome MCP</strong></td>
+<td>Já vem no Claude Code; enxerga e interage com o seu navegador</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Sobre raspagem de dados (Firecrawl, extensões de <em>web scraping</em>): são úteis para coletar dado e estudar concorrência, mas use com bom senso e dentro dos termos de cada site. Raspagem em excesso pode violar regras de uso e, dependendo do que você coleta, envolver dado pessoal de terceiro. Como advogado, eu recomendo: leia os termos, respeite o volume, e nunca colete o que você não usaria abertamente.</p>
+<p>Sobre o Playwright: comece por tarefas de leitura, não de escrita. Deixar uma automação preencher formulário em sistema real, sem supervisão, é o tipo de coisa que só se faz depois de muito teste.</p>
+<h2>6. Skills de escrita e produtividade</h2>
+<p>O problema mais comum de quem usa IA para escrever: o texto sai com cara de IA. Existe solução.</p>
+<p>A principal chama-se <strong>humanizer</strong>. Você instala e aciona pedindo &ldquo;deixe este texto mais natural, menos com cara de IA&rdquo;. Ela retira os vícios típicos de texto de máquina: frases infladas, a mania de sempre listar três coisas, jargão vazio. Excelente para post e e-mail que precisa soar como você.</p>
+<p>Outras que vale conhecer: <strong>stop-slop</strong> (escrever como gente, não como robô), <strong>skill_seekers</strong> (ensina ao Claude tudo o que você sabe), <strong>caveman</strong> (respostas curtas e baratas — o nome é piada, a economia é real), <strong>ui-ux-pro-max</strong> (sites bonitos do começo ao fim), <strong>last30days</strong> (busca só tendências recentes). E sistemas complementares: memória ampliada para agentes, geradores de automação (como o MCP do n8n, que descreve a automação e gera o template) e organizadores de projetos grandes que ajudam o Claude a não inventar quando o material é extenso.</p>
+<blockquote class="">
+<p><strong>Ideia-chave — ressalva de autor:</strong> nenhuma skill de humanização substitui ter uma voz. Se você não definiu como você fala, no que acredita e o que nunca diria, a skill vai apenas trocar um texto genérico por outro texto genérico — só que mais simpático. A skill é o acabamento. O arquivo de voz (módulo 21) é a matéria-prima.</p>
+</blockquote>
+<h2>7. Cinco passos para sair do zero — e ativar a memória</h2>
+<p>O caminho do iniciante, na ordem certa. O livro é enfático: <strong>não pule etapas. Cada uma prepara a seguinte.</strong></p>
+<ol>
+<li><strong>Plano pago + Claude no computador.</strong> Faz diferença real — é o acesso às superfícies do módulo 16.</li>
+<li><strong>Projetos.</strong></li>
+<li><strong>Conectores.</strong></li>
+<li><strong>Skills.</strong></li>
+<li><strong>Cowork.</strong></li>
+</ol>
+<p>O caminho vai do contexto para a conexão, da conexão para a padronização, e só então para a execução autônoma.</p>
+<p>Junto com esses cinco passos, três ajustes que personalizam o Claude para você:</p>
+<ul>
+<li><strong>Ligue a memória.</strong> Configurações → Capacidades → ative &ldquo;Pesquisar e consultar conversas passadas&rdquo; e &ldquo;Gerar memória a partir do histórico&rdquo;. Sem isso, você se reapresenta toda vez — um funcionário genial com amnésia diária.</li>
+<li><strong>Traga o seu histórico de outra plataforma.</strong> Se você já usou outro assistente, exporte os dados (gera um arquivo <code>conversations.json</code>), suba no Claude e peça que ele aprenda quem você é e atualize a memória. Você importa anos de contexto de uma vez.</li>
+<li><strong>Estude com as certificações gratuitas da Anthropic</strong> (anthropic.com/courses). Cole o link e peça que ele resuma e sugira as skills mais úteis para o seu jeito de trabalhar.</li>
+</ul>
+<p>E, para ir além, existem bibliotecas da comunidade com centenas de recursos reunidos (awesome-claude-code, superpowers, awesome-claude-skills, everything-claude-code). Mas eu prefiro te dar o truque a te dar a lista: <strong>em vez de garimpar na mão, peça ao Claude para achar o melhor repositório para o seu caso.</strong> Ele pesquisa, compara e devolve a recomendação — muito melhor do que copiar uma lista que vai estar desatualizada em três meses.</p>
+<div class="box resumo"><h2>Resumo em cinco linhas</h2>
+<ul>
+<li><strong>PDF → Markdown</strong> antes de subir: menos token, menos lixo, melhor leitura. Local, se o dado for sensível.</li>
+<li>Os <strong>comandos mágicos</strong> são atalhos de texto, não botões. &ldquo;God mode&rdquo; não existe. O que vale é a clareza do prompt.</li>
+<li>Comece por <strong>brainstorming</strong> e <strong>skill-creator</strong>; instale pacotes um por vez.</li>
+<li>O <strong>Loop</strong> só para ao bater um critério verificável. Custa mais token: use onde a qualidade compensa.</li>
+<li><strong>MCPs</strong> que valem: Perplexity, Playwright (com cuidado), Firecrawl, Glif, Chrome. Caminho de cinco passos: plano + desktop → Projetos → Conectores → Skills → Cowork. Ligue a memória hoje.</li>
+</ul>
+</div><div class="box aplicar"><h2>Para aplicar hoje</h2>
+<ol>
+<li>Ligue a memória nas configurações. Se você tem histórico em outra plataforma, exporte e importe.</li>
+<li>Instale <strong>apenas</strong> a skill brainstorming e use-a para destravar um projeto parado: deixe ela fazer as perguntas.</li>
+<li>Escolha uma tarefa de conferência importante e rode com o Loop, escrevendo um critério de pronto verificável. Compare com o resultado de um prompt comum.</li>
+</ol></div>

@@ -1,0 +1,173 @@
+<!--META {"arquivo": "06-mcp-conectores-apis", "modulo": "06", "titulo": "MCP, conectores e APIs: as cinco peças de qualquer automação séria", "subtitulo": "Sem esta peça, o Claude apenas conversa. Com ela, o Claude age. Um guia sem jargão para quem não é programador.", "meta": "<span>Augusto Villela</span><span>Leitura de 7 min</span><span>Aula 6 · MCP, conectores e APIs</span><span>Livro: capítulos 7 e 8</span>", "descricao": "Sem esta peça, o Claude apenas conversa. Com ela, o Claude age. Um guia sem jargão para quem não é programador."} -->
+<p>Sem esta peça, o Claude apenas conversa. Com ela, o Claude age. A peça se chama <strong>MCP</strong> — e este artigo explica, sem jargão, as cinco peças que estão por trás de praticamente toda automação séria que você vai ver por aí: MCP, tool use, Claude Desktop, API e webhook.</p>
+<h2>MCP: o USB-C das inteligências artificiais</h2>
+<p>MCP significa <em>Model Context Protocol</em>, Protocolo de Contexto de Modelo. E a melhor definição que eu conheço é essa: <strong>o MCP é o USB-C das inteligências artificiais.</strong></p>
+<p>Pense no que o USB-C resolveu. Antes, cada aparelho tinha o seu cabo, o seu conector, o seu adaptador. Depois, um padrão só, que serve para tudo. O MCP faz isso com as ferramentas de software: é um protocolo aberto que conecta a inteligência artificial a ferramentas, sistemas e dados externos, de forma padronizada.</p>
+<p>O que ele permite, na prática? Conectar o Claude ao Google Drive, ao Slack, ao GitHub, a bancos de dados, a APIs, a CRMs e a sistemas internos da sua empresa.</p>
+<p>Um exemplo do meu negócio, para sair da abstração: eu ligo o Claude ao sistema da Villela Stay e digo: <em>&ldquo;verifique as reservas de amanhã e gere as mensagens automáticas no WhatsApp&rdquo;</em>. Repare que ele não está me sugerindo o que fazer. Ele está consultando o sistema de verdade e produzindo o resultado.</p>
+<p>Dois termos para alinhar o vocabulário:</p>
+<ul>
+<li><strong>CRM</strong> é como uma central de informações dos seus clientes. Em vez de dado espalhado no WhatsApp, no caderno, na planilha, no e-mail e na sua memória, o CRM organiza tudo num lugar só.</li>
+<li><strong>API</strong> significa interface de programação de aplicações. De forma simples: é uma ponte que permite que um sistema converse com outro. (Voltamos a ela daqui a pouco.)</li>
+</ul>
+<blockquote class="ideia">
+<p><strong>Ideia-chave:</strong> sem MCP, o Claude conversa. Com MCP, ele conversa, executa ações e acessa sistemas.</p>
+</blockquote>
+<h2>Tool use: quando a IA usa ferramentas</h2>
+<p><em>Tool use</em> é a capacidade da inteligência artificial de chamar ferramentas externas. Deixa eu mostrar como isso muda uma resposta.</p>
+<p>Alguém pergunta se tem quarto disponível.</p>
+<ul>
+<li><strong>Sem tool use</strong>, o Claude responde com base no que ele sabe do texto da conversa. Ou seja: chuta educadamente.</li>
+<li><strong>Com tool use</strong>, ele consulta o calendário do sistema, verifica o CRM, busca os preços — e só então responde.</li>
+</ul>
+<p>A pergunta é a mesma. A natureza da resposta é completamente diferente: uma é opinião, a outra é fato. E o MCP é o padrão que organiza essas ferramentas para a inteligência artificial usar <strong>com segurança</strong> — porque uma IA capaz de agir dentro dos seus sistemas é poderosa e é perigosa na mesma medida. O que separa uma coisa da outra é o controle de quais ferramentas ela pode usar, e até onde.</p>
+<blockquote class="">
+<p><strong>Atenção — o detalhe honesto que derruba muito mito da internet:</strong> o Claude não executa nada sozinho. Ele <strong>pede</strong>. Quem roda é o seu sistema, o seu código, a sua infraestrutura. Ele diz &ldquo;quero consultar o calendário&rdquo;, o seu sistema consulta e devolve o resultado, e aí ele continua o raciocínio. Parece detalhe técnico, mas é o que explica por que um agente que roda no seu computador precisa da máquina ligada — e por que a responsabilidade continua sendo sua.</p>
+</blockquote>
+<h2>Claude Desktop: navegador ou aplicativo?</h2>
+<p>Muita gente usa o Claude só pelo navegador e nunca descobre que existe uma versão instalável, que abre portas que a versão do navegador não abre.</p>
+<p>O <strong>Claude Desktop</strong> é o Claude instalado no seu computador, para Windows ou Mac. Serve para o que você já faz — conversar, criar texto, analisar arquivo. Mas a grande vantagem é outra: <strong>ele conecta o Claude às ferramentas locais da sua máquina</strong> — arquivos, pastas, banco de dados local, ferramentas de programação, controle de versão, editores de código, automações locais e servidores MCP.</p>
+<p>Dois exemplos concretos:</p>
+<ul>
+<li><em>&ldquo;Leia os arquivos desta pasta e organize em Markdown.&rdquo;</em> Ele acessa a pasta, lê os arquivos permitidos e organiza.</li>
+<li><em>&ldquo;Veja esse projeto e explique o que foi alterado.&rdquo;</em> Ele usa as ferramentas locais para analisar.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Claude Web</th>
+<th>Claude Desktop</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Onde roda</td>
+<td>No navegador</td>
+<td>Instalado no computador</td>
+</tr>
+<tr>
+<td>Uso</td>
+<td>Mais simples para o dia a dia</td>
+<td>Melhor para integração com ferramenta local</td>
+</tr>
+<tr>
+<td>Bom para</td>
+<td>Texto, arquivo e conversa</td>
+<td>MCP, pastas, código e automação local</td>
+</tr>
+<tr>
+<td>Conexões</td>
+<td>Depende mais de conectores online</td>
+<td>Pode usar extensões que rodam na sua máquina</td>
+</tr>
+</tbody>
+</table>
+<p>Meu conselho é direto: para uso comum, o navegador resolve muita coisa — não instale nada por instalar. Mas, no momento em que você quiser que a inteligência artificial toque nos seus arquivos, nas suas automações e nos seus sistemas, o aplicativo de desktop passa a ser o caminho.</p>
+<p>Consequência prática importante, que volta nos módulos 11 e 13: <strong>rotina agendada que roda na sua máquina exige o computador ligado e o aplicativo aberto no horário.</strong></p>
+<h2>O que é uma API, para quem não é programador</h2>
+<p>Vou explicar API do jeito que eu gostaria que tivessem me explicado.</p>
+<p><strong>A API funciona como um garçom entre softwares.</strong> Você faz um pedido. O garçom leva até a cozinha. A cozinha prepara. E o garçom traz de volta a resposta. Você não precisa entrar na cozinha, não precisa saber onde fica a panela, não precisa conhecer o chef. Só precisa saber fazer o pedido do jeito certo.</p>
+<p>Com API, o Claude busca informação, envia dado, automatiza processo e integra plataforma. É por isso que existe uma frase forte no livro: <strong>as APIs transformam o Claude em infraestrutura empresarial.</strong></p>
+<p>No meu caso, uma API pode conectar o site de reservas, o WhatsApp, o Google Calendar, o Booking, o Airbnb e o sistema financeiro. E aí a regra passa a ser: <em>&ldquo;quando entrar uma reserva no Booking, envie mensagem no WhatsApp e registre no calendário&rdquo;</em>. Isso deixou de ser tarefa de alguém. Virou comportamento do sistema.</p>
+<p>Quatro palavras que você vai ouvir sempre:</p>
+<table>
+<thead>
+<tr>
+<th>Palavra</th>
+<th>O que é</th>
+<th>Na metáfora do garçom</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Endpoint</strong></td>
+<td>O endereço da API</td>
+<td>O balcão onde você faz o pedido</td>
+</tr>
+<tr>
+<td><strong>Request</strong></td>
+<td>O que você envia</td>
+<td>O pedido</td>
+</tr>
+<tr>
+<td><strong>Response</strong></td>
+<td>O que volta</td>
+<td>O prato</td>
+</tr>
+<tr>
+<td><strong>JSON</strong></td>
+<td>A linguagem universal das integrações</td>
+<td>O idioma em que pedido e resposta são escritos</td>
+</tr>
+</tbody>
+</table>
+<p>Endereço, pedido, resposta, idioma. Se você entendeu essas quatro palavras, você entendeu API — e vai conseguir conversar com qualquer desenvolvedor sem se sentir perdido.</p>
+<h2>A estrutura moderna de uma automação</h2>
+<p>Agora a estrutura que está por trás de praticamente toda automação séria hoje. São seis etapas em sequência — e, uma vez que você enxerga isso, não desenxerga mais:</p>
+<ol>
+<li><strong>Cliente.</strong> Alguém faz alguma coisa: manda uma mensagem, preenche um formulário, faz uma reserva.</li>
+<li><strong>Canal.</strong> WhatsApp, ou qualquer canal por onde essa ação chega.</li>
+<li><strong>Webhook.</strong> O aviso em tempo real. O canal grita: &ldquo;aconteceu algo aqui&rdquo;.</li>
+<li><strong>Make ou n8n.</strong> As plataformas de automação. Recebem o aviso e orquestram o que vem depois.</li>
+<li><strong>API do Claude.</strong> Aqui entra a inteligência. A automação envia a situação, e o Claude interpreta, raciocina e decide o que responder.</li>
+<li><strong>Banco de dados.</strong> O registro fica guardado. E, no fim, a resposta automática volta para o cliente.</li>
+</ol>
+<p>Repare numa divisão de papéis que é o coração de tudo:</p>
+<blockquote class="">
+<p><strong>O Claude é a inteligência.</strong> Ele interpreta, raciocina, responde.
+<strong>A plataforma de automação é o executor.</strong> Ela conecta sistemas, move dado, dispara ação.</p>
+</blockquote>
+<p>Confundir esses dois papéis é o erro mais comum de quem começa: gente que tenta fazer a plataforma de automação pensar, e gente que tenta fazer a inteligência artificial executar sozinha. Cada um no seu quadrado, o sistema funciona muito bem.</p>
+<h2>As cinco peças, lado a lado</h2>
+<table>
+<thead>
+<tr>
+<th>Peça</th>
+<th>O que é</th>
+<th>Uma frase para lembrar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MCP</strong></td>
+<td>O padrão que conecta a IA a ferramentas</td>
+<td>O USB-C das IAs</td>
+</tr>
+<tr>
+<td><strong>Tool use</strong></td>
+<td>O ato de usar a ferramenta</td>
+<td>Ele pede; o seu sistema executa</td>
+</tr>
+<tr>
+<td><strong>Claude Desktop</strong></td>
+<td>Onde isso roda com acesso local</td>
+<td>Instale quando a IA precisar tocar nos seus arquivos</td>
+</tr>
+<tr>
+<td><strong>API</strong></td>
+<td>A ponte entre sistemas</td>
+<td>O garçom entre softwares</td>
+</tr>
+<tr>
+<td><strong>Webhook</strong></td>
+<td>O gatilho que dispara em tempo real</td>
+<td>&ldquo;Aconteceu algo aqui!&rdquo;</td>
+</tr>
+</tbody>
+</table>
+<p>É com essas cinco peças que se constrói qualquer automação que você vai ver por aí. No próximo módulo, a gente começa a construir: Skills e fluxos, na prática.</p>
+<div class="box resumo"><h2>Resumo em cinco linhas</h2>
+<ul>
+<li><strong>MCP</strong> é o protocolo aberto que conecta o Claude a ferramentas, sistemas e dados — o USB-C das IAs.</li>
+<li><strong>Tool use</strong> transforma opinião em fato: a IA consulta o calendário antes de responder. E ela pede; quem executa é o seu sistema.</li>
+<li><strong>Claude Desktop</strong> é a versão instalada, necessária quando a IA precisa tocar em arquivos, pastas e automações locais.</li>
+<li><strong>API</strong> é o garçom entre softwares: endpoint, request, response, JSON.</li>
+<li>A estrutura moderna: cliente → canal → webhook → Make/n8n → API do Claude → banco → resposta. <strong>O Claude pensa; a plataforma executa.</strong></li>
+</ul>
+</div><div class="box aplicar"><h2>Para aplicar hoje</h2>
+<ol>
+<li>Desenhe, numa folha, o fluxo de seis etapas para a mensagem mais comum que o seu negócio recebe. Onde entra a inteligência? Onde entra o executor?</li>
+<li>Liste três sistemas que você usa hoje (CRM, agenda, planilha, e-mail) e escreva uma frase de regra para cada um no formato &ldquo;quando X acontecer, faça Y&rdquo;.</li>
+<li>Se ainda usa o Claude só pelo navegador, instale o Claude Desktop e peça: &ldquo;leia os arquivos desta pasta [uma pasta de teste] e resuma o que há nela&rdquo;.</li>
+</ol></div>

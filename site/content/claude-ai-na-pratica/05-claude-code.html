@@ -1,0 +1,140 @@
+<!--META {"arquivo": "05-claude-code", "modulo": "05", "titulo": "Claude Code: quando a inteligência artificial sai da janela de conversa e passa a agir", "subtitulo": "O terminal virou o novo chat. Você descreve o objetivo em português, ele implementa — e um advogado sem formação técnica prova que funciona.", "meta": "<span>Augusto Villela</span><span>Leitura de 8 min</span><span>Aula 5 · Claude Code</span><span>Livro: capítulos 6 e 9</span>", "descricao": "O terminal virou o novo chat. Você descreve o objetivo em português, ele implementa — e um advogado sem formação técnica prova que funciona."} -->
+<p>Até aqui, o Claude respondeu. A partir deste módulo, ele <strong>age</strong>.</p>
+<p>O nome disso é Claude Code. E eu preciso dizer com todas as letras, porque é onde a maioria desiste antes de tentar: <strong>você não precisa saber programar para se beneficiar</strong>. Eu sou advogado, não programador — e é o Claude Code que constrói e mantém o site da minha empresa, o portal da equipe, o CRM, as automações de WhatsApp e os agentes com os seus relatórios.</p>
+<h2>O que é o Claude Code</h2>
+<p>O Claude Code é o Claude programador e operador do computador. Ele lê e escreve código, organiza projetos, cria aplicações e executa tarefas — sempre mostrando antes o que vai fazer.</p>
+<p>Você descreve o objetivo. Ele implementa.</p>
+<h3>O terminal virou o novo chat</h3>
+<p>O terminal é a interface de texto para dar comando ao computador. Aquela tela preta que assusta quem nunca usou. Só que, com o Claude Code, ela deixou de ser assustadora: você não digita comandos técnicos. Você conversa em português.</p>
+<p>E o que ele consegue fazer dali? Ler arquivos, criar e editar código, instalar bibliotecas, rodar testes e usar controle de versão. Se você preferir uma interface visual, existe o VS Code — a oficina onde tudo isso acontece, com a inteligência artificial trabalhando ao seu lado.</p>
+<p>O conceito que amarra tudo é o <strong>fluxo de trabalho</strong>: planejar, criar, programar, testar, corrigir, versionar e publicar. O Claude pode automatizar essa sequência inteira. Eu digo &ldquo;crie um sistema de reservas para a Villela Stay&rdquo;, e isso dispara o fluxo do planejamento até a publicação.</p>
+<h2>Vibe coding: criar software conversando</h2>
+<p>Existe um termo que nasceu nessa nova era e descreve exatamente isso: <strong>vibe coding</strong> — criar software e aplicativo conversando com a inteligência artificial, sem digitar código. Você age como diretor. Descreve os objetivos. A IA cuida da lógica e da interface.</p>
+<p>Isso mudou quem pode criar sistema. Empresário, designer, advogado, médico, gente que nunca abriu um editor de código na vida — todos passaram a construir sistemas reais.</p>
+<p>Mas eu quero ser honesto sobre o que muda e o que não muda.</p>
+<ul>
+<li><strong>O que muda</strong> é a barreira técnica. Você não precisa mais aprender uma linguagem de programação para transformar uma ideia em ferramenta.</li>
+<li><strong>O que não muda</strong> é a necessidade de clareza. A máquina segue instrução. Ela não lê nas entrelinhas. Se você descrever mal o que quer, vai receber exatamente o que descreveu — e não o que imaginou. E a culpa não vai ser da tecnologia.</li>
+</ul>
+<blockquote class="ideia">
+<p><strong>Ideia-chave:</strong> a habilidade que passa a valer ouro não é técnica. É a habilidade de descrever bem: escopo, restrições, o que entra, o que deve sair, as sequências de ação e os pontos de decisão. Ou seja, exatamente o que treinamos nos módulos de prompt e de contexto.</p>
+</blockquote>
+<p>Conselho prático: comece por algo pequeno e que você entenda profundamente. Um formulário. Uma calculadora do seu negócio. Uma página. Não comece pelo sistema que vai salvar a sua empresa. Comece pelo que, se der errado, não custa nada.</p>
+<h2>Git e GitHub: por que versionar salva a sua operação</h2>
+<p>Você tem na sua pasta: <code>contrato_final.docx</code>, <code>contrato_final_2.docx</code>, <code>contrato_final_agora_vai.docx</code>, <code>contrato_final_corrigido.docx</code>. Todo mundo já viveu isso.</p>
+<p>A solução, no mundo da tecnologia, chama-se <strong>Git</strong>: um sistema de controle de versões que guarda o histórico de todas as alterações dos arquivos de um projeto. Em vez daquela bagunça de nomes, você tem um histórico organizado onde dá para ver <strong>quem</strong> alterou, <strong>quando</strong>, <strong>o que</strong> e <strong>por que</strong>. E o <strong>GitHub</strong> é onde esses projetos ficam centralizados e coordenados.</p>
+<p>Por que isso importa para quem tem empresa e não escreve código? Por uma razão só, e ela é enorme:</p>
+<blockquote class="">
+<p><strong>Se uma automação quebra depois de uma alteração, dá para voltar à versão estável.</strong></p>
+</blockquote>
+<p>Pense no que isso significa. O seu atendimento automático parou de responder às três da tarde de uma sexta-feira. Com versionamento, você volta para a versão de ontem em segundos e resolve o problema depois, com calma. Sem versionamento, você entra no fim de semana no escuro.</p>
+<p>Tem ainda os <strong>branches</strong> (ramificações), que permitem testar novidade sem afetar o sistema principal. É como ter uma cópia do seu restaurante para testar o cardápio novo, sem arriscar o restaurante que está cheio de gente jantando.</p>
+<p>E o Claude se integra ao GitHub para revisar código, sugerir melhoria, detectar erro e documentar. A soma é essa: a inteligência artificial acelera o desenvolvimento; o versionamento garante estabilidade e controle. <strong>Velocidade sem freio é só acidente mais rápido.</strong></p>
+<h2>Instalando o Claude Code, passo a passo</h2>
+<p>Esta parte é prática. Faça junto.</p>
+<p><strong>1. Pré-requisito.</strong> Você precisa do Node.js, versão 18 ou superior. Para conferir, abra o PowerShell e digite:</p>
+<pre><code>node --version
+</code></pre>
+<p>Se aparecer um número de versão, está tudo certo. Se não aparecer nada, vá até nodejs.org e instale a versão marcada como LTS (a estável).</p>
+<p><strong>2. Instalação.</strong> Dois caminhos — escolha um:</p>
+<pre><code># a) via npm (o mais comum)
+npm install -g @anthropic-ai/claude-code
+
+# b) instalador nativo do Windows (sem depender do npm)
+irm https://claude.ai/install.ps1 | iex
+</code></pre>
+<p>Os dois funcionam. Se você não tem preferência, use o primeiro.</p>
+<p><strong>3. Primeiro uso e login.</strong> Vá até a pasta do seu projeto e abra o Claude Code:</p>
+<pre><code>cd &quot;D:\MinhaEmpresa\projeto&quot;
+claude
+</code></pre>
+<p>Na primeira vez, ele abre o navegador para você fazer login na sua conta. Se você tem plano pago, o acesso já vem incluído; como alternativa, existe a chave de API pelo Console. E pronto — a partir daí você conversa com ele direto no terminal.</p>
+<blockquote class="atencao">
+<p><strong>Atenção:</strong> as ferramentas de inteligência artificial mudam muito rápido. Os comandos de instalação podem ser atualizados pela Anthropic a qualquer momento. Se algo não funcionar exatamente como descrito aqui, não insista: a fonte oficial é a documentação da Anthropic (docs.anthropic.com), na seção do Claude Code.</p>
+</blockquote>
+<h2>Configuração essencial: comandos, CLAUDE.md e permissões</h2>
+<p>Instalado. Agora o que realmente vale ajustar.</p>
+<h3>Os comandos que você vai usar sempre</h3>
+<table>
+<thead>
+<tr>
+<th>Comando</th>
+<th>O que faz</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/help</code></td>
+<td>Lista todos os comandos disponíveis</td>
+</tr>
+<tr>
+<td><code>/model</code></td>
+<td>Escolhe o modelo — Opus para tarefa complexa, Sonnet para o dia a dia (a economia do módulo 3 acontece aqui)</td>
+</tr>
+<tr>
+<td><code>/login</code> e <code>/logout</code></td>
+<td>Troca de conta</td>
+</tr>
+<tr>
+<td><code>/mcp</code></td>
+<td>Conecta servidores externos (Gmail, Google Calendar, GitHub, plataformas de automação) para ele agir nas suas ferramentas — tem um módulo inteiro sobre isso</td>
+</tr>
+</tbody>
+</table>
+<h3>O arquivo CLAUDE.md — o mais importante de todos</h3>
+<p>É um arquivo que fica na raiz do seu projeto com as <strong>instruções permanentes</strong>: quem é você, quais são as regras, qual é o contexto do negócio. É ele que faz o Claude já saber da sua empresa sem que você repita nada.</p>
+<p>Eu uso isso todos os dias no projeto da Villela Stay. Lá dentro estão as regras da casa, as propriedades, as travas de segurança e o que ele nunca pode fazer sem me perguntar. Se você for guardar uma única configuração deste módulo, guarde essa.</p>
+<blockquote class="">
+<p><strong>Na prática — o esqueleto de um CLAUDE.md:</strong></p>
+<p>```</p>
+<h1>[Nome da empresa] — instruções permanentes</h1>
+<h2>O negócio</h2>
+<p>Quem somos, o que vendemos, para quem, onde.</p>
+<h2>Regras ativas</h2>
+<ol>
+<li>Consultas (leitura) são livres.</li>
+<li>Mensagem a cliente real, alteração de preço, publicação ou gasto:
+   SEMPRE confirmar antes.</li>
+<li>Dados pessoais de terceiros ficam locais — nunca em commit ou resposta.</li>
+</ol>
+<h2>Onde estão as coisas</h2>
+<p>Pastas, scripts, credenciais (referência, nunca o valor).
+```</p>
+</blockquote>
+<h3>Permissões</h3>
+<p>O Claude Code pede autorização antes de ação sensível, e versiona tudo com Git — então dá para voltar atrás. A recomendação é <strong>começar por tarefas reversíveis</strong>: aquilo que, se sair errado, você desfaz sem prejuízo.</p>
+<p>Se você prefere trabalhar com interface visual, existe integração com o VS Code e com as ferramentas da JetBrains. E uma nota tranquilizadora para quem se preocupa com segurança: a instalação não é complexa, tudo é criptografado e a documentação é mantida atualizada, sem depender de plugin externo.</p>
+<h2>Comece pequeno e descreva bem o projeto</h2>
+<p>A regra é: <strong>comece pequeno</strong>. Peça primeiro mudanças pequenas — &ldquo;ajuste este texto do site&rdquo;. Veja funcionar. E vá subindo a régua. No meu caso foi exatamente assim: começou com ajuste de texto; hoje o Claude Code constrói e mantém o site, o portal da equipe, o CRM, as automações e os agentes. Ninguém pula essa escada. E quem tenta pular costuma voltar para o começo com prejuízo.</p>
+<p>A outra metade do método: <strong>descreva bem</strong>. Estruture a descrição em elementos concretos:</p>
+<ul>
+<li><strong>Escopo</strong> — o que está dentro e o que está fora.</li>
+<li><strong>Restrições</strong> — o que não pode mudar, o que não pode ser tocado.</li>
+<li><strong>Entradas</strong> — que informação o sistema recebe.</li>
+<li><strong>Saídas</strong> — o que você espera receber.</li>
+<li><strong>Sequências de ação e pontos de decisão</strong> — como um roteiro. Não basta dizer <em>o que</em> fazer: explique <em>como</em> e <em>por quê</em>.</li>
+</ul>
+<p>Descrição bem organizada reduz drasticamente o retrabalho. E retrabalho, como você já aprendeu, é token queimado.</p>
+<h3>Onde isso chega</h3>
+<p>O poder real aparece quando o Claude deixa de ser um chat e passa a executar tarefas nas suas ferramentas:</p>
+<ul>
+<li><strong>Comunicação:</strong> WhatsApp, Gmail, Instagram.</li>
+<li><strong>Gestão:</strong> CRM, sistema de gestão, calendário, planilha.</li>
+<li><strong>Operação:</strong> banco de dados, painel, sistema financeiro.</li>
+</ul>
+<p>E o fluxo inteligente fica assim: o cliente manda mensagem → a IA identifica a necessidade → consulta a disponibilidade → gera a proposta → atualiza o CRM → agenda o acompanhamento → envia a documentação. Tudo encadeado, sem você tocar.</p>
+<p>Um conceito que vale ouro para chegar lá: <strong>componentes reutilizáveis</strong>. Módulos padronizados permitem escalar automação sem aumentar a complexidade. A peça que conecta o Claude às suas ferramentas — o MCP — é o assunto do próximo módulo.</p>
+<div class="box resumo"><h2>Resumo em cinco linhas</h2>
+<ul>
+<li>O <strong>Claude Code</strong> lê, escreve e executa no seu computador. Você descreve; ele implementa. Não exige saber programar.</li>
+<li><strong>Vibe coding</strong> derrubou a barreira técnica, mas não a necessidade de clareza: a máquina não lê nas entrelinhas.</li>
+<li><strong>Git/GitHub</strong> é o freio que permite voltar à versão estável quando algo quebra. Velocidade sem freio é acidente mais rápido.</li>
+<li>Instalação: Node.js 18+, <code>npm install -g @anthropic-ai/claude-code</code>, <code>claude</code> na pasta do projeto. Fonte oficial se algo mudar: docs.anthropic.com.</li>
+<li>O <strong>CLAUDE.md</strong> é a configuração mais importante. Comece por tarefas pequenas e reversíveis, e descreva escopo, restrições, entradas, saídas e decisões.</li>
+</ul>
+</div><div class="box aplicar"><h2>Para aplicar hoje</h2>
+<ol>
+<li>Instale o Claude Code seguindo os três passos e abra-o numa pasta de teste (não na dos seus originais).</li>
+<li>Escreva um <code>CLAUDE.md</code> de dez linhas com o esqueleto deste artigo — inclua a regra &ldquo;confirmar antes de qualquer ação que saia da minha mesa&rdquo;.</li>
+<li>Peça a primeira tarefa reversível: &ldquo;crie uma página HTML simples com o nome da minha empresa e três serviços&rdquo;. Veja funcionar. Depois peça um ajuste. Você acabou de fazer vibe coding.</li>
+</ol></div>

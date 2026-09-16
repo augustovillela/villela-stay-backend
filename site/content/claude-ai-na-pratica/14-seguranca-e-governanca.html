@@ -1,0 +1,102 @@
+<!--META {"arquivo": "14-seguranca-e-governanca", "modulo": "14", "titulo": "Segurança e governança: os cinco pilares que separam empresas vulneráveis de empresas resilientes", "subtitulo": "Quanto mais integrada a empresa, maior o impacto de uma falha. Governança não é freio — é direção.", "meta": "<span>Augusto Villela</span><span>Leitura de 4 min</span><span>Aula 14 · Segurança e governança</span><span>Livro: capítulo 17</span>", "descricao": "Quanto mais integrada a empresa, maior o impacto de uma falha. Governança não é freio — é direção."} -->
+<p>Esta é a parte que ninguém quer ler e que todo mundo lembra depois que o problema acontece.</p>
+<p>A premissa é simples e dura: <strong>quanto mais integrada a empresa, maior o impacto de uma falha.</strong> Quando tudo estava separado — a planilha aqui, o e-mail ali, o sistema lá — um erro ficava contido. Agora que tudo conversa, um erro viaja.</p>
+<p>Governança é o conjunto de regras e controles que mantém os sistemas dentro de limites seguros e alinhados aos objetivos. Não é freio. É direção. São cinco pilares.</p>
+<h2>Pilar 1: controle de acesso</h2>
+<p>A regra: <strong>nem todo colaborador, e nem todo agente, deve acessar tudo.</strong></p>
+<p>Permissões hierárquicas por função definem três coisas:</p>
+<ul>
+<li>Quem <strong>vê</strong> dados.</li>
+<li>Quem <strong>altera</strong> automações.</li>
+<li>Quais agentes têm acesso <strong>financeiro</strong>.</li>
+</ul>
+<p>Repare que o mesmo raciocínio que você aplica a pessoas se aplica a agentes. Se você não daria a senha do banco a um estagiário no primeiro dia, também não daria a um agente recém-criado.</p>
+<h2>Pilar 2: proteção de dados</h2>
+<p>Cinco medidas concretas:</p>
+<ol>
+<li><strong>Criptografia</strong></li>
+<li><strong>Autenticação em dois fatores</strong></li>
+<li><strong>Backups</strong></li>
+<li><strong>Monitoramento</strong></li>
+<li><strong>Segmentação de acesso</strong></li>
+</ol>
+<p>A segmentação vale especialmente para quatro categorias: dado financeiro, contrato, documento jurídico e informação pessoal.</p>
+<blockquote class="">
+<p><strong>Atenção — do meu ofício de advogado:</strong> dado pessoal de terceiro — do seu cliente, do seu hóspede, do seu funcionário — não é seu. Você é apenas o guardião. A lei brasileira de proteção de dados (LGPD) trata isso com seriedade, e a responsabilidade não desaparece porque quem processou foi uma inteligência artificial. Então: dado sensível fica local, fica restrito e nunca entra em publicação, em repositório aberto ou em conversa desnecessária.</p>
+</blockquote>
+<h2>Pilar 3: auditoria contínua</h2>
+<p>Registrar quais agentes executaram o quê, quais decisões foram tomadas e quais dados foram acessados. <strong>Rastreabilidade completa.</strong></p>
+<p>Por que isso importa mais do que parece? Numa operação com agentes, as coisas acontecem sem você ver. Isso é o objetivo — é para isso que você automatizou. Mas se ninguém registra, você perde a capacidade de responder a uma pergunta simples: <em>quando isso mudou?</em> E, sem essa resposta, um problema pequeno vira uma investigação de dias.</p>
+<h2>Pilar 4: limites de autonomia</h2>
+<p>Quatro mecanismos:</p>
+<ul>
+<li><strong>Aprovações humanas</strong> — a IA prepara; uma pessoa libera.</li>
+<li><strong>Validações automáticas</strong> — regras que barram o que está fora do padrão antes de executar.</li>
+<li><strong>Pontos de verificação</strong> — paradas programadas no meio de um fluxo longo.</li>
+<li><strong>Mecanismos de reversão</strong> para ação crítica — a capacidade de desfazer.</li>
+</ul>
+<p>O último é o mais precioso. Antes de dar autonomia a um agente para qualquer ação, faça uma pergunta:</p>
+<blockquote class="">
+<p><strong>Se ele fizer isso mil vezes por engano, eu consigo desfazer?</strong></p>
+<p>Se a resposta for não, essa ação exige confirmação humana. Sem discussão.</p>
+<p><strong>Na prática — como isso aparece nas minhas instruções globais:</strong> leitura e análise são livres — pode ler tudo, analisar tudo, propor tudo. Mas o que toca uma pessoa real (mensagem a cliente), o que muda um número real (preço, reserva, calendário), o que publica dado ou gasta dinheiro passa por mim antes. Essa distinção me dá velocidade máxima onde não há risco e freio onde há.</p>
+</blockquote>
+<h2>Pilar 5: políticas e conformidade</h2>
+<p>Regras claras de uso e adequação às leis de proteção de dados <strong>desde a concepção</strong>.</p>
+<p>Essa expressão — <em>desde a concepção</em> — é técnica e é importante. Significa que a proteção entra no desenho, e não como remendo depois que o sistema já está rodando. Remendo de privacidade sempre fica pior, sempre fica mais caro e quase sempre fica incompleto.</p>
+<h2>Um checklist de governança para começar</h2>
+<table>
+<thead>
+<tr>
+<th>Pilar</th>
+<th>Pergunta de autoavaliação</th>
+<th>Se a resposta é &ldquo;não&rdquo;</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Acesso</td>
+<td>Cada agente acessa só o que precisa?</td>
+<td>Reduza as permissões hoje</td>
+</tr>
+<tr>
+<td>Dados</td>
+<td>Dado pessoal e financeiro está segmentado e fora de repositório aberto?</td>
+<td>Mova para área restrita</td>
+</tr>
+<tr>
+<td>Auditoria</td>
+<td>Consigo dizer quem mudou o quê e quando?</td>
+<td>Crie o registro de mudanças</td>
+</tr>
+<tr>
+<td>Autonomia</td>
+<td>Toda ação irreversível exige confirmação humana?</td>
+<td>Escreva a lista de ações que passam por você</td>
+</tr>
+<tr>
+<td>Conformidade</td>
+<td>A LGPD foi considerada no desenho, não depois?</td>
+<td>Revise o fluxo com o dado pessoal em mente</td>
+</tr>
+</tbody>
+</table>
+<p>E a frase do livro que é a melhor síntese que eu conheço sobre o assunto:</p>
+<blockquote class="">
+<p><strong>Segurança não é obstáculo à inovação. É a maturidade operacional que separa empresas vulneráveis de empresas resilientes.</strong></p>
+</blockquote>
+<p>Quem trata governança como burocracia normalmente ainda não teve o incidente que ensina. E é muito melhor aprender pelo módulo do que pela experiência.</p>
+<div class="box resumo"><h2>Resumo em cinco linhas</h2>
+<ul>
+<li>Empresa integrada = erro que viaja. <strong>Governança é direção, não freio.</strong></li>
+<li><strong>Acesso:</strong> permissão por função, para pessoas e para agentes. <strong>Dados:</strong> criptografia, 2FA, backup, monitoramento, segmentação — e dado de terceiro não é seu.</li>
+<li><strong>Auditoria:</strong> rastreabilidade completa, para responder &ldquo;quando isso mudou?&rdquo;.</li>
+<li><strong>Autonomia:</strong> aprovações, validações, checkpoints e reversão. Se não dá para desfazer mil vezes, exige confirmação humana.</li>
+<li><strong>Conformidade</strong> desde a concepção. Segurança é maturidade operacional.</li>
+</ul>
+</div><div class="box aplicar"><h2>Para aplicar hoje</h2>
+<ol>
+<li>Liste os agentes e conectores ativos e, para cada um, escreva a que dados ele tem acesso. Corte o que não é necessário.</li>
+<li>Escreva a sua lista de &ldquo;ações que passam por mim&rdquo;: mensagem a pessoa real, alteração de preço/reserva, publicação, gasto. Coloque-a nas instruções globais.</li>
+<li>Crie um arquivo <code>registro-de-mudancas.md</code> e adote a disciplina: toda alteração em Skill, prompt mestre ou automação ganha uma linha com data, o quê e por quê.</li>
+</ol></div>

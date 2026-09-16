@@ -1,0 +1,136 @@
+<!--META {"arquivo": "18-dicas-juridicas", "modulo": "18", "titulo": "Dicas jurídicas: métodos testados para usar IA no direito sem aceitar uma jurisprudência inventada", "subtitulo": "Contestação por etapas, pesquisa segura no NotebookLM, o Claude no PJe até a assinatura e o prompt mestre de um agente — tudo desenhado para fechar as portas por onde o erro entra.", "meta": "<span>Augusto Villela</span><span>Leitura de 9 min</span><span>Aula 18 · Dicas jurídicas</span><span>Livro: capítulo 21, parte 2</span>", "descricao": "Contestação por etapas, pesquisa segura no NotebookLM, o Claude no PJe até a assinatura e o prompt mestre de um agente — tudo desenhado para fechar as portas por onde o erro entra."} -->
+<blockquote class="">
+<p><strong>Atenção — o aviso que vale para todas as dicas deste artigo:</strong> a inteligência artificial, aqui, é <strong>apoio. Não é advogado.</strong> Ela prepara, organiza e alerta. Você valida. Eu digo isso na condição de advogado, inscrito na Ordem, que usa essas ferramentas todos os dias no próprio escritório. Não é modéstia nem receio de tecnologia. É a natureza da profissão.</p>
+</blockquote>
+<p>Existem três regras de que eu não abro mão:</p>
+<ol>
+<li><strong>Nunca aceite jurisprudência inventada.</strong> Esta é a mais perigosa de todas. Uma decisão inventada vem com número de processo, nome de relator, data e ementa — com toda a aparência do verdadeiro. Não é má-fé da máquina: é como ela funciona. Ela completa padrões, e o padrão de uma jurisprudência é fácil de completar.</li>
+<li><strong>Confira sempre na fonte oficial.</strong> O site do tribunal. O inteiro teor. Não o resumo, não a citação de segunda mão.</li>
+<li><strong>Prazo se confere no sistema oficial.</strong> Nenhum cálculo de prazo feito por IA vale como cálculo de prazo. Serve como alerta antecipado; a conferência é no tribunal.</li>
+</ol>
+<p>E o ponto que quero deixar claro sobre este módulo inteiro: <strong>as técnicas a seguir existem justamente para reduzir a alucinação.</strong> Método por etapas em vez de pedido único. Fonte carregada em vez de fonte lembrada. Parada obrigatória antes da assinatura. É engenharia de segurança aplicada ao direito.</p>
+<h2>1. Contestação por etapas</h2>
+<p>O erro da maioria: subir a petição inicial e escrever &ldquo;redija uma contestação&rdquo;. A IA começa a escrever antes de entender o caso e devolve uma peça genérica — tecnicamente correta, estrategicamente inútil.</p>
+<p>O método certo tem seis etapas, que você coloca dentro do prompt:</p>
+<ol>
+<li><strong>Analise a petição.</strong> Fatos, pedidos, fundamentos e provas. Só isso, nesta etapa. Sem escrever nada de defesa ainda.</li>
+<li><strong>Identifique as fragilidades.</strong> Falta de prova, contradições, pedidos genéricos.</li>
+<li><strong>Mapeie as teses defensivas</strong>, ligando cada uma a fatos e a documentos. Tese sem lastro documental não é tese, é opinião.</li>
+<li><strong>Confronte os documentos do autor com os da defesa.</strong> É aqui que aparecem as inconsistências e os pontos a seu favor. Feita à mão, essa etapa consome horas.</li>
+<li><strong>Estruture.</strong> Preliminares, impugnação dos fatos, fundamentos e pedidos.</li>
+<li><strong>Só então redija</strong>, com linguagem técnica e estratégia.</li>
+</ol>
+<blockquote class="ideia">
+<p><strong>Ideia-chave:</strong> quem pede &ldquo;faça a contestação&rdquo; recebe texto. Quem conduz por etapas recebe estratégia.</p>
+</blockquote>
+<p>Por que funciona — e o princípio serve para muito além do direito: quando você pede o produto final direto, a IA precisa decidir tudo ao mesmo tempo, e decide rápido, superficialmente, para poder entregar. Quando você separa análise de redação, cada etapa recebe atenção inteira. E, mais importante, <strong>você lê cada etapa e corrige antes da próxima.</strong> Se a análise da petição saiu errada, você conserta ali, e a peça inteira nasce certa. Esse princípio vale para parecer, proposta comercial, plano de negócio.</p>
+<h2>2. Jurisprudência segura com o NotebookLM</h2>
+<p>Para mim, a dica jurídica mais valiosa do livro, porque resolve o problema da alucinação pela raiz.</p>
+<ol>
+<li>Acesse o NotebookLM, do Google (gratuito). Crie um caderno para aquele caso específico.</li>
+<li>Suba os acórdãos que você já colheu — STJ, STF, tribunais regionais — e a petição ou a decisão que vai contestar.</li>
+<li>Use um prompt com quatro perguntas. E o começo dele é o mais importante:</li>
+</ol>
+<blockquote class="">
+<p><strong>Na prática — prompt para copiar:</strong></p>
+<p>&ldquo;Com base <strong>exclusivamente</strong> nos acórdãos que subi, responda:
+(1) qual é a tese predominante sobre [tema];
+(2) há divergência? Qual é a mais recente e qual tribunal adota cada entendimento;
+(3) qual argumento é mais aplicável ao meu caso;
+(4) há algum ponto da petição que esses acórdãos enfraquecem?&rdquo;</p>
+</blockquote>
+<p>Guarde a palavra: <em>exclusivamente</em>.</p>
+<p>O diferencial crítico: <strong>o NotebookLM só usa o que você subiu. Ele não inventa acórdão.</strong> O problema nunca foi a IA analisar jurisprudência — ela faz isso muito bem. O problema era ela <em>produzir</em> jurisprudência. Quando a fonte é fechada, o risco desaparece. Você continua responsável por ter colhido os acórdãos certos, mas nenhum julgado fantasma entra na sua peça.</p>
+<p>Um uso irmão dessa técnica, que vale ouro — a <strong>linha do tempo do processo</strong>:</p>
+<blockquote class="">
+<p>&ldquo;Com base nos documentos fornecidos, crie uma linha do tempo detalhada de todos os eventos do processo sobre [assunto]. Liste data, evento e página de referência. Destaque em negrito quaisquer prazos fatais ou prescricionais.&rdquo;</p>
+</blockquote>
+<p>Centenas de páginas viram um mapa visual dos riscos.</p>
+<h2>3. Claude no PJe: até a assinatura, nunca depois</h2>
+<p>Um fluxo assistido dentro do sistema processual eletrônico. O Claude acessa o processo → vai até a pasta de documentos → localiza a intimação → lê e informa o que foi determinado → redige a manifestação, citando as partes e o número do processo → insere no sistema, escolhe o tipo de petição, cola o texto&hellip;</p>
+<p><strong>E para.</strong> Na etapa da assinatura. Avisando que está pronto para conferência e assinatura.</p>
+<p>Esse é o ponto de ouro: <strong>ele para antes de assinar. A decisão final é sempre sua.</strong> E o desenho é o certo, não um capricho. A assinatura eletrônica do advogado tem valor jurídico: é o ato pelo qual você assume, pessoalmente, o conteúdo daquela peça perante o Judiciário. Isso não é delegável — não para um estagiário, não para um sócio, e muito menos para um sistema. O desenho não é &ldquo;a IA não consegue assinar&rdquo;. É &ldquo;a IA não <em>deve</em> assinar&rdquo;. São coisas muito diferentes, e é essa distinção que separa uso profissional de uso irresponsável.</p>
+<p>Recomendação que eu adoto: mesmo com o texto pronto no sistema, leia a peça inteira na tela, do começo ao fim, antes de assinar. Não por desconfiança da máquina — por disciplina profissional. No dia em que houver um problema, quem responde ao cliente, ao juiz e à Ordem é você.</p>
+<h2>4. Plugin Legal, contratos e revisão de cláusulas</h2>
+<p>O <strong>plugin Legal</strong> transforma o Cowork num assistente jurídico. Dois exemplos:</p>
+<ul>
+<li>Um <strong>resumo matinal</strong>, cruzando os e-mails de clientes e contrapartes, os prazos contratuais guardados no drive e a agenda do dia. A pior sensação de quem trabalha com direito é a de que existe um prazo que você não está vendo. Esse resumo ataca exatamente isso.</li>
+<li>A <strong>análise de um contrato real</strong>. No Cowork: botão &ldquo;+&rdquo; → plugin → Legal → &ldquo;review contract&rdquo; → upload do contrato. Ele destrincha cláusulas, riscos e pontos de atenção em minutos.</li>
+</ul>
+<p>Para os meus contratos de hospedagem e de evento, funciona muito bem — e melhor ainda quando eu comparo um contrato novo com o modelo que já é o padrão da casa: ele aponta o que mudou e o que foi retirado. Essa comparação é onde mora a maior parte do risco em contrato alheio: não no que está escrito de errado, mas <strong>no que sumiu</strong>.</p>
+<p>A ressalva de sempre, aqui literal: revise como advogado antes de assinar. A máquina não conhece o histórico daquela relação comercial, não sabe o que foi negociado por telefone, não sabe o que você está disposto a ceder. Um uso que poucos exploram: peça a análise <strong>antes</strong> de negociar, não depois. Chegar na mesa sabendo quais são as três cláusulas mais arriscadas muda completamente a conversa.</p>
+<h2>5. Requerimento de provas e revisão da própria petição</h2>
+<p>Duas técnicas, mesmo princípio: conduzir por etapas em vez de pedir o produto pronto.</p>
+<p><strong>Requerimento de provas.</strong> Prova não é formalidade; é estratégia. Se você pedir &ldquo;gere o requerimento de provas&rdquo;, vai receber um pedido genérico — o que o juiz lê na diagonal. O método: crie um Projeto com a inicial, a contestação, a réplica, os documentos e os laudos, e conduza:</p>
+<ol>
+<li>Mapeie os fatos controvertidos e os incontroversos.</li>
+<li>Identifique o ônus da prova no caso concreto.</li>
+<li>Relacione cada fato controvertido à prova mais adequada.</li>
+<li>Selecione as provas que fortalecem a tese e evitam a preclusão.</li>
+<li>Estruture o requerimento vinculando cada prova ao fato.</li>
+</ol>
+<p>Você sai de um pedido genérico para uma lógica probatória.</p>
+<p><strong>Revisar a sua própria petição.</strong> Antes de protocolar, <strong>não peça para &ldquo;melhorar o texto&rdquo;</strong> — melhorar texto é vago, e o que volta é maquiagem. Peça análise por blocos: fatos, fundamentos, pedidos, com foco em clareza, coerência e encadeamento lógico. E faça o teste decisivo:</p>
+<blockquote class="">
+<p><strong>&ldquo;Os pedidos decorrem logicamente dos fatos e dos fundamentos?&rdquo;</strong></p>
+</blockquote>
+<p>Se a resposta vier confusa, há risco real de o juiz não entender. Porque, se uma máquina treinada em milhões de textos jurídicos não conseguiu seguir o seu raciocínio, é muito provável que uma pessoa com trezentos processos na mesa também não consiga. Por fim, peça os pontos frágeis. Isso não cria tese nem tira a sua autoria — só ajuda a decidir com mais segurança.</p>
+<h2>6. O prompt mestre de um agente</h2>
+<p>Vale para qualquer área, não só para o direito. O <strong>prompt mestre</strong> (ou prompt de sistema) é a instrução-base permanente de um agente: o documento que define quem ele é, o que faz, quais regras segue e onde estão os seus limites. A imagem do livro: <strong>é a constituição do agente.</strong> Enquanto cada conversa muda, o prompt mestre fica fixo e governa todo o comportamento.</p>
+<p>A estrutura, usando o agente financeiro do meu negócio como exemplo — seis blocos:</p>
+<table>
+<thead>
+<tr>
+<th>Bloco</th>
+<th>Conteúdo</th>
+<th>No agente financeiro</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Missão principal</strong></td>
+<td>Lista numerada do que ele controla</td>
+<td>Receitas, despesas, conciliação de reservas com pagamentos, fornecedores, custo por unidade, alertas de risco</td>
+</tr>
+<tr>
+<td><strong>2. Fontes que deve consultar</strong></td>
+<td>De onde vem a informação</td>
+<td>Extratos, cartões, Pix, plataformas de reserva, planilhas, notas fiscais, recibos, contratos, comprovantes</td>
+</tr>
+<tr>
+<td><strong>3. Categorias</strong></td>
+<td>Lista fechada, sem improviso</td>
+<td>Receitas: hospedagem, eventos, taxa de limpeza, caução… Despesas: limpeza, manutenção, energia, comissões, impostos…</td>
+</tr>
+<tr>
+<td><strong>4. Tarefa diária</strong></td>
+<td>O que faz todo dia, em ordem</td>
+<td>Conferir entradas e saídas, conciliar, identificar pendências e cauções, atualizar o caixa, alertar</td>
+</tr>
+<tr>
+<td><strong>5. Níveis de alerta</strong></td>
+<td>Crítico, alto, médio, baixo — com exemplos</td>
+<td>Reserva próxima sem pagamento = crítico; despesa sem nota = médio</td>
+</tr>
+<tr>
+<td><strong>6. Formato do relatório</strong></td>
+<td>Tabelas, campos, até a frase de conclusão</td>
+<td>&ldquo;Conclusão financeira: [resumo]. A principal atenção é [ponto].&rdquo;</td>
+</tr>
+</tbody>
+</table>
+<p>Repare no que esses seis blocos fazem juntos: não deixam espaço para o agente inventar como trabalhar. E o quinto bloco é o que eu mais valorizo — <strong>classificar a gravidade</strong>. Um agente que trata tudo como urgente é tão inútil quanto um que não avisa nada. Definir os níveis é o que torna o alerta confiável.</p>
+<div class="box resumo"><h2>Resumo em cinco linhas</h2>
+<ul>
+<li>A IA é <strong>apoio, não advogado</strong>: nunca aceite jurisprudência sem a fonte oficial; prazo se confere no tribunal.</li>
+<li><strong>Contestação por etapas</strong> (analisar → fragilidades → teses → confronto → estrutura → redigir): quem conduz por etapas recebe estratégia, não texto.</li>
+<li><strong>NotebookLM</strong> com a palavra &ldquo;exclusivamente&rdquo;: ele só usa o que você subiu, não inventa acórdão. Peça também a linha do tempo com prazos em negrito.</li>
+<li>No <strong>PJe</strong>, o Claude para na assinatura — porque não <em>deve</em> assinar. <strong>Contratos:</strong> compare com o modelo da casa (o risco está no que sumiu) e analise antes de negociar.</li>
+<li><strong>Prompt mestre</strong> = constituição do agente: missão, fontes, categorias, tarefa diária, níveis de alerta, formato. Classificar a gravidade é o que torna o alerta confiável.</li>
+</ul>
+</div><div class="box aplicar"><h2>Para aplicar hoje</h2>
+<ol>
+<li>Pegue uma petição inicial já respondida e rode o método das seis etapas, comparando com a contestação que você de fato apresentou.</li>
+<li>Crie um caderno no NotebookLM para um caso atual, suba os acórdãos e rode o prompt com &ldquo;exclusivamente&rdquo;. Depois peça a linha do tempo com prazos em negrito.</li>
+<li>Escreva o prompt mestre do seu primeiro agente (jurídico, financeiro ou administrativo) com os seis blocos — inclusive os níveis de alerta com exemplos.</li>
+</ol></div>

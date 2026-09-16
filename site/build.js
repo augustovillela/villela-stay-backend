@@ -24,6 +24,7 @@ const PWA = {
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
 const BLOG_I18N = require('./content/blog-i18n'); // traduções EN/ES por slug (fallback por campo p/ PT)
+let CAP_PATHS = [];                     // rotas do blog Claude AI na Prática (só PT), preenchidas no loop
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
 // `conferirCobertura` é a trava que impede um produto novo da home de ficar de
@@ -182,9 +183,11 @@ function hreflangTags(caminhoPt) {
     `<link rel="alternate" hreflang="x-default" href="${abs('pt', caminhoPt)}">`;
 }
 // Seletor 🌐 do cabeçalho: aponta para o MESMO caminho em cada idioma (PT sem prefixo, EN /en, ES /es).
-function seletorIdioma(caminhoPt) {
+function seletorIdioma(caminhoPt, soPt = false) {
   const itens = IDIOMAS.map(l => {
-    const href = (l === 'pt' ? '' : '/' + l) + caminhoPt;
+    // Página que só existe em português (blog Claude): trocar de idioma leva à home
+    // daquele idioma — o caminho traduzido não existe e responderia 404.
+    const href = (l === 'pt' ? '' : '/' + l) + (soPt && l !== 'pt' ? '/' : caminhoPt);
     return `<a role="menuitem" hreflang="${HTML_LANG[l]}" href="${href}"${l === LANG ? ' aria-current="true"' : ''}>${NOME_IDIOMA[l]}</a>`;
   }).join('');
   return `<div class="lang-switch"><button type="button" class="lang-btn" aria-haspopup="true" aria-expanded="false">🌐 <span>${NOME_IDIOMA[LANG]}</span> ▾</button><div class="lang-menu" role="menu">${itens}</div></div>`;
@@ -249,7 +252,7 @@ function fichaUnidade(l) {
 }
 
 function layout(titulo, descricao, corpo, opts = {}) {
-  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/assets/brand/villela-stay/og-image.png`, ogType = 'website', lang = HTML_LANG[LANG] } = opts;
+  const { extraHead = '', caminho = '/', ogImage = `${SITE_URL}/assets/brand/villela-stay/og-image.png`, ogType = 'website', lang = HTML_LANG[LANG], semIdiomas = false } = opts;
   const ogLocale = lang === 'en' ? 'en_US' : (lang === 'es' ? 'es_ES' : 'pt_BR');
   const urlAtual = `${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}${caminho}`;
   // Organization injetada em toda página (âncora de identidade @id reutilizada nos schemas locais)
@@ -275,7 +278,7 @@ gtag('config', 'G-5L2YQ2BPQW');
 <title>${esc(titulo)}</title>
 <meta name="description" content="${esc(descricao)}">
 <link rel="canonical" href="${urlAtual}">
-${hreflangTags(caminho)}
+${semIdiomas ? '' : hreflangTags(caminho)}
 <link rel="icon" type="image/svg+xml" href="/assets/brand/villela-stay/favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/villela-stay/favicon-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -315,6 +318,7 @@ ${extraHead}
     <a href="${L('/eventos.html')}">${t('Eventos', 'Events', 'Eventos')}</a>
     <a href="${L('/pacotes.html')}">${t('Pacotes Especiais', 'Special Packages', 'Paquetes Especiales')}</a>
     <a href="${L('/blog.html')}">Blog</a>
+    ${LANG === 'pt' ? `<a href="/claude/" title="Blog Claude AI na Prática — artigos sobre IA para empresas">Claude AI</a>` : ''}
     <a href="${L('/regras.html')}">${t('Regras da Casa', 'House Rules', 'Normas de la Casa')}</a>
     <a href="${L('/faq.html')}">FAQ</a>
     <a href="${L('/guia.html')}">${t('Guia do Hóspede', 'Guest Guide', 'Guía del Huésped')}</a>
@@ -326,7 +330,7 @@ ${extraHead}
          dourada, ao lado dos outros destinos (Hóspede/Staff), fica claro que
          leva para outro assunto. -->
     <a href="${L('/sistemas.html')}" class="link-sistemas" title="${t('Os sistemas de gestão do Grupo Villela Stay', 'Grupo Villela Stay management software', 'Los sistemas de gestión del Grupo Villela Stay')}">💼 ${t('Sistemas', 'Software', 'Sistemas')}</a>
-    ${seletorIdioma(caminho)}
+    ${seletorIdioma(caminho, semIdiomas)}
     <a href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" class="btn-wa-nav">WhatsApp</a>
     <a href="https://minha.villelastay.com.br/hospede" class="link-hospede" title="${t('Área exclusiva para hóspedes', 'Exclusive guest area', 'Área exclusiva para huéspedes')}">🔑 ${t('Área do Hóspede', 'Guest Area', 'Área del Huésped')}</a>
     <a href="${BACKEND}/staff" class="link-staff" title="${t('Área restrita da equipe', 'Staff area', 'Área del equipo')}">🔒 Staff</a>
@@ -341,6 +345,7 @@ ${corpo}
     <strong>${t('Conheça', 'Discover', 'Conoce')}</strong>
     <a href="${L('/sistemas.html')}">${t('Sistemas do Grupo Villela Stay', 'Grupo Villela Stay Software', 'Sistemas del Grupo Villela Stay')}</a>
     <a href="${L('/blog.html')}">${t('Blog · Diário de Brasília', 'Blog · Brasília Diary', 'Blog · Diario de Brasília')}</a>
+    ${LANG === 'pt' ? `<a href="/claude/">Blog · Claude AI na Prática</a>` : ''}
     <a href="${L('/nossa-historia.html')}">${t('Nossa História', 'Our Story', 'Nuestra Historia')}</a>
     <a href="${L('/posse-2027.html')}">${t('Posse Presidencial 2027', 'Presidential Inauguration 2027', 'Toma de Posesión Presidencial 2027')}</a>
   </div>
@@ -3352,6 +3357,205 @@ fs.writeFileSync(path.join(od, 'blog.html'), blogHub);
 const BLOG_PATHS = ['/blog.html', ...BLOG.map(a => `/blog/${a.slug}.html`)];
 console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
 
+// ------------------------- Blog "Claude AI na Prática" (/claude/) -------------------------
+// Os 22 artigos do curso, servidos como blog. O TEXTO NÃO VAI NO HTML: entra em base64 e é
+// montado pelo JS uma seção por vez — leitura normal no navegador, mas imprimir, copiar e raspar
+// em massa ficam difíceis de propósito (o Augusto vende o curso e o livro com esse conteúdo).
+// Em toda página: anúncio do livro (livros.villelastay.com.br/livros) e do curso
+// (academia.villelastay.com.br/academy/marketplace). Fonte dos artigos: content/claude-ai-na-pratica/
+// (gerada por dados\cursos\...\_ferramentas\exportar_site.py a partir dos artigos do curso).
+const CAP_DIR = path.join(__dirname, 'content', 'claude-ai-na-pratica');
+if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
+  const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
+  const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
+  const capCss = fs.readFileSync(path.join(CAP_DIR, 'artigo.css'), 'utf8');
+  const capArtigos = fs.readdirSync(CAP_DIR).filter(f => /\.html$/.test(f)).sort().map(f => {
+    const raw = fs.readFileSync(path.join(CAP_DIR, f), 'utf8');
+    const meta = JSON.parse(raw.match(/^<!--META (.*?) -->/)[1]);
+    const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+    // seções: abertura (antes do 1º <h2>), cada <h2>, e as caixas finais (resumo + para aplicar) juntas
+    const partes = corpo.split(/(?=<h2>|<div class="box )/).map(s => s.trim()).filter(Boolean);
+    const secoes = [];
+    for (const p of partes) {
+      if (p.startsWith('<div class="box ')) {
+        const fim = secoes[secoes.length - 1];
+        if (fim && fim.final) fim.html += '\n' + p; else secoes.push({ titulo: 'Resumo e para aplicar hoje', html: p, final: true });
+      } else {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        secoes.push({ titulo: m ? m[1].replace(/<[^>]+>/g, '') : 'Abertura', html: p });
+      }
+    }
+    // Agrupa as seções: um artigo de 18 <h2> viraria 18 cliques. Alvo de ~6 partes, juntando
+    // seções curtas; a caixa final (resumo + para aplicar hoje) fica sempre sozinha, no fim.
+    const capTxt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+    const capFim = secoes.filter(s => s.final);
+    const capMeio = secoes.filter(s => !s.final);
+    const capAlvo = Math.max(1, 6 - capFim.length);
+    const porParte = Math.max(1500, Math.ceil(capMeio.reduce((n, s) => n + capTxt(s), 0) / capAlvo));
+    const grupos = [];
+    for (const s of capMeio) {
+      const ult = grupos[grupos.length - 1];
+      if (ult && capTxt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+      else grupos.push({ titulo: s.titulo, html: s.html });
+    }
+    const partesFinais = [...grupos, ...capFim];
+    const slug = f.replace(/\.html$/, '');
+    const min = parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 7;
+    return { ...meta, slug, secoes: partesFinais, min, caminho: `/claude/${slug}.html` };
+  });
+
+  const capAnuncio = (qual, compacto = false) => qual === 'livro'
+    ? `<a class="cap-ad cap-ad-livro${compacto ? ' cap-ad-min' : ''}" href="${CAP_LIVRO}" target="_blank" rel="noopener">
+        <span class="cap-ad-icone">📘</span>
+        <span class="cap-ad-txt"><strong>Livro Claude AI na Prática</strong><span>Os 25 capítulos completos — manual prático para criar agentes, Skills e sistemas inteligentes. Digital e impresso.</span></span>
+        <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+    : `<a class="cap-ad cap-ad-curso${compacto ? ' cap-ad-min' : ''}" href="${CAP_CURSO}" target="_blank" rel="noopener">
+        <span class="cap-ad-icone">🎓</span>
+        <span class="cap-ad-txt"><strong>Curso on-line Claude AI na Prática</strong><span>22 módulos com aula em vídeo, artigo e apresentação — do primeiro prompt ao time de agentes.</span></span>
+        <span class="cap-ad-btn">Ver na Academy →</span></a>`;
+
+  const CAP_CSS_EXTRA = `
+.cap{--accent:#c8623c;--accent2:#1f5f6b;--navy:#0f1a2b;--paper:#faf7f1;--line:#e6dfd3;background:var(--paper);color:#1c1a17;font:18px/1.65 Inter,"Segoe UI",system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+.cap a{color:var(--accent2)}
+.cap-hero .kicker a{color:#e8a184;text-decoration:none}
+.cap-ad{display:flex;gap:18px;align-items:center;max-width:760px;margin:28px auto;padding:18px 22px;border-radius:14px;text-decoration:none;color:#f3ede3;background:linear-gradient(135deg,#15243a,#0f1a2b);border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 30px rgba(15,26,43,.18)}
+.cap-ad-curso{background:linear-gradient(135deg,#1f5f6b,#143f47)}
+.cap-ad-icone{font-size:34px;flex:0 0 auto}
+.cap-ad-txt{flex:1;display:flex;flex-direction:column;gap:2px;font-size:15px;line-height:1.4;color:#d9d2c5}
+.cap-ad-txt strong{color:#fff;font-size:17px}
+.cap-ad-btn{flex:0 0 auto;padding:10px 16px;border-radius:999px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;white-space:nowrap}
+.cap-ad-curso .cap-ad-btn{background:#e0b15a;color:#1c1a17}
+.cap-ad-min{margin:18px auto;padding:12px 16px}.cap-ad-min .cap-ad-txt span{display:none}
+.cap-faixa{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:1000px;margin:0 auto;padding:18px 24px}
+.cap-faixa .cap-ad{margin:0;flex:1 1 380px}
+.cap-corpo{max-width:760px;margin:0 auto;padding:36px 24px 20px;min-height:40vh}
+.cap-corpo .cap-secao-tit{font:600 13px/1.2 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.cap-nav{max-width:760px;margin:0 auto;padding:10px 24px 46px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.cap-nav button{font:600 15px Inter,sans-serif;padding:12px 18px;border-radius:999px;border:1px solid var(--line);background:#fff;color:#1c1a17;cursor:pointer}
+.cap-nav button.prim{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cap-nav button[disabled]{opacity:.35;cursor:default}
+.cap-passos{display:flex;flex-wrap:wrap;gap:6px}
+.cap-passos button{width:34px;height:34px;padding:0;border-radius:50%;font-size:13px}
+.cap-passos button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.cap-progresso{height:4px;background:var(--line);max-width:760px;margin:0 auto}
+.cap-progresso i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#e0b15a);width:0;transition:width .3s}
+.cap-aviso{max-width:760px;margin:0 auto;padding:8px 24px 0;font-size:13px;color:#7a746b}
+.cap-rodape-art{max-width:760px;margin:0 auto;padding:0 24px 40px;font-size:14px;color:#7a746b;border-top:1px solid var(--line)}
+.cap-rodape-art .in{padding-top:18px;display:flex;flex-wrap:wrap;gap:6px 24px;justify-content:space-between}
+.cap-hub-hero{background:var(--navy);color:#f3ede3;padding:64px 24px 48px;text-align:center}
+.cap-hub-hero h1{font:700 44px/1.1 Lora,Georgia,serif;margin:0 0 14px}
+.cap-hub-hero p{max-width:720px;margin:0 auto;font-size:19px;color:#d9d2c5}
+.cap-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;max-width:1100px;margin:0 auto;padding:36px 24px}
+.cap-card{display:block;background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 22px 18px;text-decoration:none;color:#1c1a17;transition:transform .15s,box-shadow .15s}
+.cap-card:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(15,26,43,.12)}
+.cap-card .n{display:inline-block;font:700 12px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.cap-card h3{font:700 20px/1.25 Lora,Georgia,serif;margin:0 0 8px}
+.cap-card p{font-size:15px;line-height:1.45;color:#4a4640;margin:0 0 10px}
+.cap-card .min{font-size:13px;color:#7a746b}
+noscript .cap-nojs{max-width:760px;margin:20px auto;padding:16px 24px;background:#fff6f3;border-left:5px solid #b8412c}
+@media (max-width:600px){.cap-hub-hero h1{font-size:32px}.cap-ad{flex-wrap:wrap}.cap-ad-btn{width:100%;text-align:center}}
+@media print{body>*{display:none!important}body:after{content:"Este conteúdo é exibido apenas no navegador. Leia em villelastay.com.br/claude — e encontre o texto completo no livro (livros.villelastay.com.br) e no curso (academia.villelastay.com.br).";display:block;padding:40px;font:16px/1.5 sans-serif}}
+`;
+
+  // Proteção de leitura: texto em base64 montado por seção; imprimir, copiar, arrastar, selecionar,
+  // menu de contexto e atalhos (Ctrl/Cmd + P, S, U, A, C) desativados no artigo. Não é DRM — é atrito
+  // deliberado contra "imprimir tudo"; quem quer o conteúdo inteiro tem o livro e o curso.
+  const CAP_JS = `
+(function(){
+  var el=document.getElementById('cap-dados'); if(!el) return;
+  var dados=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(el.textContent.trim()),function(c){return c.charCodeAt(0)})));
+  var S=dados.secoes, n=S.length, i=0;
+  var corpo=document.getElementById('cap-corpo'), passos=document.getElementById('cap-passos'), prog=document.getElementById('cap-prog');
+  var bAnt=document.getElementById('cap-ant'), bProx=document.getElementById('cap-prox');
+  var ads=[${JSON.stringify(capAnuncio('livro', true))},${JSON.stringify(capAnuncio('curso', true))}];
+  function mostrar(k){
+    i=Math.max(0,Math.min(n-1,k));
+    corpo.innerHTML='<p class="cap-secao-tit">Parte '+(i+1)+' de '+n+'</p>'+S[i].h+(i<n-1?ads[i%2]:'');
+    bAnt.disabled=i===0; bProx.textContent=i===n-1?'Fim do artigo':'Continuar lendo →'; bProx.disabled=i===n-1;
+    Array.prototype.forEach.call(passos.children,function(b,j){b.classList.toggle('on',j===i)});
+    prog.style.width=((i+1)/n*100)+'%';
+    history.replaceState(null,'','#p'+(i+1));
+    if(k!==undefined) window.scrollTo({top:corpo.getBoundingClientRect().top+window.scrollY-90,behavior:'smooth'});
+  }
+  S.forEach(function(s,j){var b=document.createElement('button');b.type='button';b.textContent=j+1;b.title=s.t;b.onclick=function(){mostrar(j)};passos.appendChild(b)});
+  bAnt.onclick=function(){mostrar(i-1)}; bProx.onclick=function(){mostrar(i+1)};
+  var h=parseInt((location.hash.match(/#p(\\d+)/)||[])[1],10); mostrar(h?h-1:0); window.scrollTo(0,0);
+  var cap=document.querySelector('.cap');
+  ['contextmenu','copy','cut','dragstart','selectstart'].forEach(function(ev){cap.addEventListener(ev,function(e){e.preventDefault()})});
+  document.addEventListener('keydown',function(e){var k=(e.key||'').toLowerCase(); if((e.ctrlKey||e.metaKey)&&['p','s','u','a','c'].indexOf(k)>=0){e.preventDefault();e.stopPropagation();}});
+  window.addEventListener('beforeprint',function(){document.title='Leia em villelastay.com.br/claude';});
+})();`;
+
+  const capB64 = (obj) => Buffer.from(JSON.stringify(obj), 'utf8').toString('base64');
+  const capCanon = (a) => `${SITE_URL}${a.caminho}`;
+
+  for (const a of capArtigos) {
+    const dados = capB64({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) });
+    const ld = {
+      '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.titulo.replace(/<[^>]+>/g, ''), description: a.descricao,
+      author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID }, inLanguage: 'pt-BR',
+      mainEntityOfPage: capCanon(a), isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/claude/#blog`, name: 'Blog Claude AI na Prática — Villela Stay' },
+      isAccessibleForFree: true, about: 'Claude AI, inteligência artificial para empresas',
+    };
+    const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <p class="kicker"><a href="/claude/">Blog Claude AI na Prática</a> · Módulo ${a.modulo}</p>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${capAnuncio('livro', true)}${capAnuncio('curso', true)}</div>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">Este artigo é lido por partes. Use os botões abaixo para avançar — o texto completo, com os 25 capítulos, está no livro e no curso.</p>
+  <noscript><div class="cap-nojs">Este artigo é exibido no navegador e precisa de JavaScript. Ative o JavaScript ou leia o conteúdo completo no <a href="${CAP_LIVRO}">livro</a> e no <a href="${CAP_CURSO}">curso</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  <div class="cap-faixa">${capAnuncio('curso')}${capAnuncio('livro')}</div>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Claude AI na Prática</strong>, de Augusto Villela.</span><span><a href="/claude/">← Todos os artigos</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+    const html = layout(`${a.titulo.replace(/<[^>]+>/g, '')} | Blog Claude AI na Prática`, a.descricao, corpo, {
+      caminho: a.caminho, semIdiomas: true, ogType: 'article',
+      extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${capCss}${CAP_CSS_EXTRA}</style><script type="application/ld+json">${JSON.stringify(ld)}</script>`,
+    }).replace('</body>', `<script>${CAP_JS}</script>\n</body>`);
+    fs.mkdirSync(path.join(od, 'claude'), { recursive: true });
+    fs.writeFileSync(path.join(od, 'claude', `${a.slug}.html`), html);
+  }
+
+  // hub /claude/
+  const capCards = capArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Módulo ${a.modulo}</span>
+    <h3>${a.titulo}</h3>
+    <p>${a.subtitulo}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+  const hubLd = { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/claude/#blog`, name: 'Blog Claude AI na Prática — Villela Stay', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+    blogPost: capArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.titulo.replace(/<[^>]+>/g, ''), url: capCanon(a) })) };
+  const hub = layout('Blog Claude AI na Prática — 22 artigos sobre IA para empresas | Villela Stay',
+    'Os 22 artigos do curso Claude AI na Prática, de Augusto Villela: prompts, tokens, Claude Code, MCP, Skills, agentes, automações, Cowork, governança e as dicas quentes — com os casos reais de uma empresa operada por IA.',
+    `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Blog Claude AI na Prática</h1>
+    <p>Os 22 artigos do curso, de Augusto Villela — do primeiro prompt ao time de agentes que opera a empresa. Leia por partes aqui; o método inteiro está no livro e no curso.</p>
+  </section>
+  <div class="cap-faixa">${capAnuncio('livro')}${capAnuncio('curso')}</div>
+  <div class="cap-grade">${capCards}</div>
+  <div class="cap-faixa">${capAnuncio('curso')}${capAnuncio('livro')}</div>
+</div>`,
+    { caminho: '/claude/', semIdiomas: true, extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${capCss}${CAP_CSS_EXTRA}</style><script type="application/ld+json">${JSON.stringify(hubLd)}</script>` });
+  fs.writeFileSync(path.join(od, 'claude', 'index.html'), hub);
+  CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho)];
+  console.log(`Blog Claude AI na Prática gerado: hub + ${capArtigos.length} artigos`);
+}
+
+
 // ------------------------- links.html (hub de links / "linktree") -------------------------
 // Página standalone, mobile-first, para abrir pelo QR Code / bio das redes. Usa a identidade
 // da marca (paleta petróleo/creme/cerrado, logo no topo) mas SEM o header/nav do site — foco
@@ -3758,9 +3962,11 @@ const rotas = [
   ...listings.map(l => ({ loc: `/hospedagem/${l.id}.html`, changefreq: 'weekly', priority: '0.8' }))
 ];
 const absLoc = (lang, loc) => `${SITE_URL}${lang === 'pt' ? '' : '/' + lang}${loc}`;
+const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 
