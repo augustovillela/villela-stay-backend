@@ -32,16 +32,32 @@ const TESTES_POR_PASTA = {
 const NUCLEO = ['server.js', 'nucleo/', 'selftest-nucleo.js', 'pwa.js', 'storage-s3.js',
   'push-saas.js', 'snapshots.js', 'manutencao.js', 'package.json'];
 
+// A ÁRVORE QUE ESTÁ SENDO EMPURRADA — não é `__dirname`.
+// O hook vive no .git/hooks do clone principal, e os worktrees COMPARTILHAM esse hook:
+// `__dirname` aponta sempre para o clone principal. Rodando `npm audit` e as suítes lá, o
+// portão media a árvore errada — bloqueou por um advisory que o master já havia corrigido
+// e, pior, deu VERDE rodando o teste de um código que não era o do push.
+// O git executa o hook com o CWD na raiz da árvore de trabalho: é dela que partimos.
+const RAIZ = (() => {
+  try { return execSync('git rev-parse --show-toplevel', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  catch (_) { return __dirname; }
+})();
+
 const cor = (c, s) => `\x1b[${c}m${s}\x1b[0m`;
 const ok = (s) => console.log(cor(32, '  ok  ') + s);
 const erro = (s) => console.log(cor(31, ' FALHA ') + s);
 
 function instalar() {
-  const dirHooks = path.join(__dirname, '.git', 'hooks');
+  // O hook precisa ir para o .git REAL (num worktree, .git é um arquivo apontando para o
+  // diretório comum) — e o .git/hooks é COMPARTILHADO por todos os worktrees.
+  let comum;
+  try { comum = execSync('git rev-parse --git-common-dir', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  catch (_) { comum = path.join(__dirname, '.git'); }
+  const dirHooks = path.resolve(RAIZ, comum, 'hooks');
   if (!fs.existsSync(dirHooks)) { console.error('Não achei .git/hooks aqui.'); process.exit(1); }
   const hook = path.join(dirHooks, 'pre-push');
-  fs.writeFileSync(hook, '#!/bin/sh\nexec node "$(dirname "$0")/../../pre-push.js"\n', { mode: 0o755 });
-  console.log('Hook instalado em .git/hooks/pre-push');
+  fs.writeFileSync(hook, '#!/bin/sh\n# Portao de qualidade (ADR-0007). O .git/hooks e compartilhado por todos os worktrees,\n# entao o script vem da ARVORE empurrada; o do clone principal e so a reserva.\nraiz=$(git rev-parse --show-toplevel 2>/dev/null)\n[ -f "$raiz/pre-push.js" ] && exec node "$raiz/pre-push.js"\nexec node "$(dirname "$0")/../../pre-push.js"\n', { mode: 0o755 });
+  console.log(`Hook instalado em ${hook} (roda o pre-push.js da árvore empurrada)`);
 }
 
 // Diferença contra o que o REMOTO já tem — e o portão diz contra o quê mediu.
@@ -66,7 +82,7 @@ function arquivosDoPush() {
 
 function rodar(rotulo, cmd, args) {
   process.stdout.write(`  … ${rotulo}\r`);
-  const r = spawnSync(cmd, args, { cwd: __dirname, encoding: 'utf8', shell: process.platform === 'win32' });
+  const r = spawnSync(cmd, args, { cwd: RAIZ, encoding: 'utf8', shell: process.platform === 'win32' });
   const saida = (r.stdout || '') + (r.stderr || '');
   if (r.status !== 0) {
     erro(rotulo);
@@ -80,7 +96,7 @@ function rodar(rotulo, cmd, args) {
 /** Falha só em high/critical: low e moderate viram aviso, para o portão não
  *  virar ruído que todo mundo aprende a ignorar com --no-verify. */
 function auditoria() {
-  const r = spawnSync('npm', ['audit', '--omit=dev', '--json'], { cwd: __dirname, encoding: 'utf8', shell: process.platform === 'win32' });
+  const r = spawnSync('npm', ['audit', '--omit=dev', '--json'], { cwd: RAIZ, encoding: 'utf8', shell: process.platform === 'win32' });
   let j; try { j = JSON.parse(r.stdout); } catch (_) { ok('npm audit (não consegui ler — seguindo)'); return true; }
   const v = (j.metadata && j.metadata.vulnerabilities) || {};
   const graves = (v.high || 0) + (v.critical || 0);
@@ -108,7 +124,15 @@ function principal() {
   }
   if (!suites.size) suites.add('test:nucleo');   // nada reconhecido: roda o mínimo
 
-  console.log(`\nPortão de qualidade — ${mudados.length} arquivo(s) desde ${contra}, ${suites.size} suíte(s):\n`);
+  console.log(`\nPortão de qualidade — ${mudados.length} arquivo(s) desde ${contra}, ${suites.size} suíte(s)`);
+  // Dizer em QUAL árvore mediu: sem isso, o portão já mentiu em silêncio uma vez.
+  console.log(`Árvore medida: ${RAIZ}${RAIZ === __dirname ? '' : '  (worktree — hook em ' + __dirname + ')'}\n`);
+  // Sem dependências instaladas não há teste: falhar é melhor do que um verde que não testou nada.
+  if (!fs.existsSync(path.join(RAIZ, 'node_modules'))) {
+    erro(`sem node_modules em ${RAIZ} — rode 'npm ci' nessa árvore (ou aponte um link para o node_modules do clone principal)`);
+    console.log(cor(31, '\nPush BLOQUEADO.') + ' O portão não consegue testar o que está sendo empurrado.\n');
+    process.exit(1);
+  }
   let verde = auditoria();
   for (const s of [...suites].sort()) verde = rodar(s, 'npm', ['run', s]) && verde;
 
