@@ -3395,6 +3395,38 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
         <span class="cap-ad-btn">Ver na Academy →</span></a>`;
 
   const CAP_CSS_EXTRA = `
+.cap-trilha{font-size:14px;letter-spacing:.02em;color:#d9d2c5;margin:0 0 14px}
+.cap-trilha a{color:#f0ad8c;text-decoration:none}
+.cap-trilha a:hover{text-decoration:underline}
+.cap-trilha span[aria-hidden]{opacity:.5;margin:0 4px}
+.cap-trilha-hub{max-width:1080px;margin:0 auto 18px;padding:0 20px;color:#6b6055}
+.cap-trilha-hub a{color:var(--accent2)}
+.cap-irmaos{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;max-width:900px;margin:34px auto 6px;padding:0 20px}
+.cap-irmao{display:flex;flex-direction:column;gap:3px;padding:14px 18px;border:1px solid var(--line);border-radius:14px;background:#fff;text-decoration:none;color:#1c1a17}
+.cap-irmao:hover{border-color:var(--accent);box-shadow:0 6px 18px rgba(15,26,43,.08)}
+.cap-irmao .rot{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.cap-irmao .tit{font-size:15px;line-height:1.35}
+.cap-irmao-prox{text-align:right}
+.cap-irmao-indice{justify-content:center;text-align:center;background:var(--navy);border-color:var(--navy);color:#f3ede3;max-width:220px}
+.cap-irmao-indice .rot{color:#e0b15a}
+.cap-irmao-indice .tit{color:#d9d2c5}
+.cap-irmao-vazio{border:0;background:none}
+.cap-sumario{max-width:900px;margin:10px auto 0;padding:0 20px}
+.cap-sumario summary{cursor:pointer;font-weight:700;color:var(--accent2);padding:10px 0}
+.cap-sumario-lista{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:2px}
+.cap-sumario-lista li{margin:0}
+.cap-sumario-lista a{display:flex;gap:10px;align-items:baseline;padding:8px 10px;border-radius:9px;text-decoration:none;color:#1c1a17;font-size:15px;line-height:1.35}
+.cap-sumario-lista a:hover{background:#f1e9dc}
+.cap-sumario-lista b{flex:0 0 auto;min-width:22px;color:var(--accent);font-variant-numeric:tabular-nums}
+.cap-sumario-lista .aqui a{background:#f1e9dc;font-weight:700;cursor:default}
+.cap-sumario-hub{max-width:1080px;margin:0 auto 26px;padding:22px 24px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.cap-sumario-hub h2{margin:0 0 10px;font-size:20px}
+@media (max-width:720px){
+  .cap-irmaos{grid-template-columns:1fr}
+  .cap-irmao-prox{text-align:left}
+  .cap-irmao-indice{max-width:none}
+  .cap-irmao-vazio{display:none}
+}
 .cap{--accent:#c8623c;--accent2:#1f5f6b;--navy:#0f1a2b;--paper:#faf7f1;--line:#e6dfd3;background:var(--paper);color:#1c1a17;font:18px/1.65 Inter,"Segoe UI",system-ui,sans-serif;user-select:none;-webkit-user-select:none}
 .cap a{color:var(--accent2)}
 .cap-hero .kicker a{color:#e8a184;text-decoration:none}
@@ -3482,8 +3514,9 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   fs.mkdirSync(path.join(od, 'blog'), { recursive: true });
   fs.mkdirSync(path.join(od, 'claude'), { recursive: true });
 
-  for (const a of capArtigos) {
+  for (const [iArt, a] of capArtigos.entries()) {
     const url = `${SITE_URL}${a.caminho}`;
+    const ant = capArtigos[iArt - 1], prox = capArtigos[iArt + 1];
     const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
     const lds = [{
       '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
@@ -3509,7 +3542,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     const corpo = `
 <div class="cap cap-artigo">
   <header class="cap-hero"><div class="in">
-    <p class="kicker"><a href="/claude/">Blog Claude AI na Prática</a> · Módulo ${a.modulo}</p>
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/claude/">Claude AI na Prática</a> <span aria-hidden="true">›</span> <span>Módulo ${a.modulo} de ${capArtigos.length}</span></nav>
     <h1>${a.titulo}</h1>
     <p class="sub">${a.subtitulo}</p>
     <div class="meta">${a.meta}</div>
@@ -3530,7 +3563,16 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   </nav>
   ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
   <div class="cap-faixa">${capAnuncio('curso')}${capAnuncio('livro')}</div>
-  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Claude AI na Prática</strong>, de Augusto Villela.</span><span><a href="/claude/">← Todos os artigos da série</a></span></div></div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Módulo ${ant.modulo}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/claude/"><span class="rot">☰ Índice</span><span class="tit">Os ${capArtigos.length} artigos da série</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Módulo ${prox.modulo} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outro módulo</summary>
+    <ol class="cap-sumario-lista">${capArtigos.map(o => `<li${o.chave === a.chave ? ' class="aqui"' : ''}><a href="${o.caminho}"><b>${o.modulo}</b> ${esc(o.tituloTexto)}</a></li>`).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Claude AI na Prática</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
     const html = layout(`${a.tituloTexto} | Blog Claude AI na Prática`, a.descricao, corpo, {
@@ -3574,7 +3616,12 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     <h1>Claude AI na Prática</h1>
     <p>Os 22 artigos do curso, de Augusto Villela — do primeiro prompt ao time de agentes que opera a empresa. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
   </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática</span></nav>
   <div class="cap-faixa">${capAnuncio('livro')}${capAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <ol class="cap-sumario-lista">${capArtigos.map(o => `<li><a href="${o.caminho}"><b>${o.modulo}</b> ${esc(o.tituloTexto)}</a></li>`).join('')}</ol>
+  </section>
   <div class="cap-grade">${capCards}</div>
   <div class="cap-faixa">${capAnuncio('curso')}${capAnuncio('livro')}</div>
 </div>`,
@@ -3608,23 +3655,27 @@ const blogCardsHub = BLOG.map(a0 => { const a = tradArtigo(a0); return `
     </div>
   </a>`; }).join('\n');
 
-// Os artigos da série Claude AI na Prática entram na MESMA grade do hub (só em PT).
-// Arte de marca no lugar da foto e a etiqueta "Claude AI" para se distinguirem dos de Brasília.
-const capCardsHub = capArtigos.map(a => `
-  <a class="blog-card" href="${a.caminho}">
+// A série Claude AI na Prática entra no hub com UM card (só em PT), não com os 22 artigos:
+// 22 cards afogavam o Diário de Brasília e deixavam a página pesada. O card abre /claude/,
+// que é a página que lista a série inteira. Arte de marca no lugar da foto.
+const capCardsHub = LANG !== 'pt' || !capArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/claude/">
     <div class="blog-card-img"><div class="blog-card-arte tema-claude" aria-hidden="true">${BLOG_HERO_SVG}</div></div>
     <div class="blog-card-info">
-      <span class="tema-tag tema-claude">\u{1F916} Claude AI</span>
-      <h3>${esc(a.tituloTexto)}</h3>
-      <p>${esc(a.subtituloTexto)}</p>
-      <span class="blog-card-leia">${t('Ler artigo', 'Read article', 'Leer artículo')} · ${a.min} min →</span>
+      <span class="tema-tag tema-claude">\u{1F916} Série · Claude AI</span>
+      <h3>Claude AI na Prática</h3>
+      <p>Do primeiro prompt ao time de agentes que opera a empresa: prompts, tokens, Claude Code, MCP, Skills, automações, governança e as dicas quentes — com os casos reais de uma empresa operada por IA.</p>
+      <span class="blog-card-leia">Ver os ${capArtigos.length} artigos →</span>
     </div>
-  </a>`).join('\n');
+  </a>`;
 
 const blogLd = {
   '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`,
   name: t('Blog Villela Stay — Diário de Brasília e Claude AI na Prática', 'Brasília Diary — Villela Stay', 'Diario de Brasília — Villela Stay'), inLanguage: HTML_LANG[LANG], publisher: { '@id': ORG_ID },
-  blogPost: BLOG.map(a0 => { const a = tradArtigo(a0); return { '@type': 'BlogPosting', headline: a.h1, url: `${SITE_URL}${L(`/blog/${a.slug}.html`)}`, datePublished: a.atualizado, about: a.tema }; }).concat(capArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, about: 'Claude AI na Prática' })))
+  blogPost: BLOG.map(a0 => { const a = tradArtigo(a0); return { '@type': 'BlogPosting', headline: a.h1, url: `${SITE_URL}${L(`/blog/${a.slug}.html`)}`, datePublished: a.atualizado, about: a.tema }; }),
+  hasPart: LANG === 'pt' && capArtigos.length
+    ? [{ '@type': 'Blog', '@id': `${SITE_URL}/claude/#serie`, name: 'Claude AI na Prática — a série', url: `${SITE_URL}/claude/` }]
+    : undefined,
 };
 
 const blogHub = layout(
@@ -3637,7 +3688,7 @@ const blogHub = layout(
   <p><strong>${t('Brasília por quem vive aqui — arquitetura, gastronomia, roteiros e as histórias da capital. E Claude AI na Prática: os 22 artigos de quem opera uma empresa com inteligência artificial.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
 </section>
 <section class="grade-wrap">
-  <div class="blog-grade">${blogCardsHub}${capCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
