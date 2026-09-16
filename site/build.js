@@ -381,7 +381,7 @@ ${corpo}
       <a href="https://facebook.com/augusto.villela" target="_blank" rel="noopener">📘 augusto.villela</a>
     </p>
   </div>
-  <div class="creditos">${t('Fotos dos pontos turísticos', 'Landmark photos', 'Fotos de los puntos turísticos')}: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida ${t('e', 'and', 'y')} Rose Ramalho, via Wikimedia Commons (${t('licenças', 'licenses', 'licencias')} CC BY / CC BY-SA).</div>
+  <div class="creditos">${t('Fotos dos pontos turísticos', 'Landmark photos', 'Fotos de los puntos turísticos')}: krishna naudin, Cayambe, Matheusgf, Portal da Copa, Marinelson Almeida ${t('e', 'and', 'y')} Rose Ramalho, via Wikimedia Commons (${t('licenças', 'licenses', 'licencias')} CC BY / CC BY-SA). ${t('Ilustrações do blog: Villela Stay (imagens originais, geradas por IA).', 'Blog illustrations: Villela Stay (original AI-generated images).', 'Ilustraciones del blog: Villela Stay (imágenes originales, generadas por IA).')}</div>
 </footer>
 <a class="wa-flutuante" href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" aria-label="${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}">💬</a>
 <script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer) + '&q=' + encodeURIComponent(location.search) + '&l=' + encodeURIComponent(navigator.language || ''), { keepalive: true }); } catch (e) {} });
@@ -3114,7 +3114,9 @@ function blogFig(slug, n, opts = {}) {
   if (!fs.existsSync(abs)) return '';
   const dim = dimensoesArquivo(abs) || { w: 1600, h: 1067 };
   const legenda = opts.legenda || item.alt || '';
-  const credito = `${t('Foto:', 'Photo:', 'Foto:')} ${esc(item.credito)} (${esc(item.licenca)}) · <a href="${esc(item.fonte)}" target="_blank" rel="noopener nofollow">Wikimedia Commons</a>`;
+  const credito = item.fonte
+    ? `${t('Foto:', 'Photo:', 'Foto:')} ${esc(item.credito)} (${esc(item.licenca)}) · <a href="${esc(item.fonte)}" target="_blank" rel="noopener nofollow">Wikimedia Commons</a>`
+    : `${t('Ilustração:', 'Illustration:', 'Ilustración:')} ${esc(item.credito)} (${esc(item.licenca)})`;
   return `<figure class="artigo-fig${opts.classe ? ' ' + opts.classe : ''}">
 ${img('/blog-img/' + item.file, { alt: legenda || item.alt, width: dim.w, height: dim.h, sizes: '(max-width: 820px) 100vw, 760px' })}
   <figcaption>${legenda ? `<span class="fig-legenda">${esc(legenda)}</span>` : ''}<span class="fig-credito">${credito}</span></figcaption>
@@ -3809,7 +3811,7 @@ const blogCardsHub = BLOG.map(a0 => { const a = tradArtigo(a0); return `
 // que é a página que lista a série inteira. Arte de marca no lugar da foto.
 const capCardsHub = LANG !== 'pt' || !capArtigos.length ? '' : `
   <a class="blog-card blog-card-serie" href="/claude/">
-    <div class="blog-card-img"><div class="blog-card-arte tema-claude" aria-hidden="true">${BLOG_HERO_SVG}</div></div>
+    <div class="blog-card-img">${img('/blog-img/claude-ai-na-pratica-1.jpg', { alt: 'Ilustração: uma mesa de trabalho com documentos se organizando sozinhos em um painel de cartões', width: 1376, height: 768, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
     <div class="blog-card-info">
       <span class="tema-tag tema-claude">\u{1F916} Série · Claude AI</span>
       <h3>Claude AI na Prática</h3>
