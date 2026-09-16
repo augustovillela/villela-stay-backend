@@ -3822,7 +3822,7 @@ const capCardsHub = LANG !== 'pt' || !capArtigos.length ? '' : `
 
 const cjCardsHub = LANG !== 'pt' || !cjArtigos.length ? '' : `
   <a class="blog-card blog-card-serie" href="/claude-juridico/">
-    <div class="blog-card-img"><div class="blog-card-arte tema-claude" aria-hidden="true" style="display:grid;place-items:center;font-size:74px">⚖️</div></div>
+    <div class="blog-card-img">${img('/blog-img/claude-ai-na-pratica-juridica-1.jpg', { alt: 'Ilustração: uma mesa de escritório de advocacia com balança, volumes de lei e documentos se organizando em um painel de cartões', width: 1376, height: 768, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
     <div class="blog-card-info">
       <span class="tema-tag tema-claude">⚖️ Série · IA e Direito</span>
       <h3>Claude AI na Prática Jurídica</h3>
