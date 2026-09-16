@@ -451,6 +451,7 @@ a { color: var(--lago); text-decoration: none; }
 .tema-hospedagem-profissional { --t1:#5b1f33; --t2:#9c4a63; }
 .tema-autismo-passo-a-passo { --t1:#0B4557; --t2:#16849E; }
 .tema-autismo-direitos-df   { --t1:#14403A; --t2:#2F7D6B; }
+.tema-claude        { --t1:#0f1a2b; --t2:#c8623c; }
 
 /* ---------- hero do artigo ---------- */
 .artigo-hero {
@@ -478,6 +479,7 @@ a { color: var(--lago); text-decoration: none; }
 .blog-card .tema-tag, .tema-tag.tema-arquitetura, .tema-tag.tema-roteiros, .tema-tag.tema-gastronomia,
 .tema-tag.tema-paisagismo, .tema-tag.tema-personalidades, .tema-tag.tema-containers,
 .tema-tag.tema-domo-geodesico, .tema-tag.tema-hospedagem-profissional,
+.tema-tag.tema-claude,
 .tema-tag.tema-autismo-passo-a-passo, .tema-tag.tema-autismo-direitos-df {
   background: linear-gradient(135deg, var(--t1), var(--t2)); color: #fff;
 }

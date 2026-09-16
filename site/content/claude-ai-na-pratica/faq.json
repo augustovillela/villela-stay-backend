@@ -1,0 +1,310 @@
+{
+ "01-fundamentos": [
+  [
+   "O que é o Claude AI?",
+   "É a família de modelos de inteligência artificial da Anthropic, empresa fundada por ex-pesquisadores da OpenAI com foco em segurança e uso responsável. Diferente de sistemas pensados para conversar, o Claude foi projetado para trabalhar com contexto: prioriza precisão em vez de eloquência e, quando não sabe, prefere recusar a inventar uma resposta."
+  ],
+  [
+   "Qual a diferença entre Claude Haiku, Sonnet e Opus?",
+   "Haiku é o mais rápido e barato, para automação e tarefas simples. Sonnet equilibra velocidade, custo e raciocínio — é o modelo do dia a dia. Opus é o mais avançado, para estratégia, programação complexa e documentos longos. A diferença de preço entre Opus e Haiku chega a cinco vezes, então usar o modelo errado custa dinheiro nos dois sentidos."
+  ],
+  [
+   "Claude ou ChatGPT: qual é melhor para empresas?",
+   "Depende do propósito. O Claude se sai melhor em contexto longo, análise de documentos e tarefas em que o erro custa caro, porque recusa o incerto em vez de inventar. O ChatGPT tem ecossistema mais amplo e multimodal. A escolha deve seguir o propósito, não a moda — e o profissional moderno costuma combinar os dois."
+  ]
+ ],
+ "02-prompts": [
+  [
+   "Como escrever um prompt profissional?",
+   "Um prompt profissional tem sete blocos: função, objetivo, contexto, regras, estilo, formato e tarefa. Sem eles, a inteligência artificial preenche as lacunas com suposição — e suposição é a origem de quase todo resultado ruim. Na prática, você não escreve um texto: escreve um cargo."
+  ],
+  [
+   "O que é engenharia de contexto?",
+   "É organizar o contexto, o conhecimento, a memória e os fluxos de trabalho em vez de caçar o prompt mais criativo. A eficácia vem da exatidão das restrições, não do número de palavras: declare o óbvio, defina o critério de sucesso e antecipe a ambiguidade."
+  ],
+  [
+   "Qual a diferença entre workflow e agente?",
+   "Workflow segue caminhos previsíveis e definidos: você diz as etapas e a IA cumpre as etapas. Agente tem mais autonomia para decidir o caminho conforme a tarefa evolui. Comece pelo workflow — é mais fácil de auditar e é onde você aprende a pensar em processo."
+  ]
+ ],
+ "03-creditos-e-tokens": [
+  [
+   "O que é token em inteligência artificial?",
+   "Token é a unidade básica com que a IA lê e escreve texto: o modelo quebra tudo em pedacinhos e trabalha em cima deles. Em português, fica em torno de uma palavra por token. É a moeda da IA — define custo, limite de contexto e velocidade da resposta."
+  ],
+  [
+   "Como economizar créditos no Claude?",
+   "A maior economia não é técnica de prompt, é de organização: use Projetos e Skills para não repetir contexto, envie só o trecho necessário em vez do documento inteiro, escolha o modelo certo para cada tarefa e resuma conversas longas em vez de recomeçá-las."
+  ],
+  [
+   "Qual a diferença entre Skill e script?",
+   "Skill é uma instrução em linguagem natural que ensina o Claude a fazer algo — identidade, regras, estilo, fluxo e limites — e pode até conter scripts dentro. Script é código que a máquina executa literalmente, sempre igual. A regra mental: Skill pensa, script executa."
+  ]
+ ],
+ "04-organizacao-do-conhecimento": [
+  [
+   "O que são Projetos no Claude?",
+   "São ambientes onde você reúne documentos, regras, identidade da marca, procedimentos e fluxos. Tudo que você conversa ali já nasce sabendo o contexto, o que reduz repetição, erro e consumo de crédito ao mesmo tempo."
+  ],
+  [
+   "O que é um artefato (Artifact) no Claude?",
+   "É um conteúdo que o Claude cria num painel separado, ao lado da conversa: documento, código, página, aplicativo simples, diagrama ou tabela. A vantagem é poder editar por conversa — 'altere a cláusula terceira', 'acrescente uma tabela' — sem bagunçar o chat."
+  ],
+  [
+   "O que uma boa Skill precisa ter?",
+   "Seis elementos: identidade, regras, estilo, fluxo operacional, limites e padrões de resposta. O bloco mais subestimado é o de limites — é ali que você define o que não é decisão da máquina; quem não escreve os limites descobre que a IA vai até onde foi deixada."
+  ]
+ ],
+ "05-claude-code": [
+  [
+   "O que é o Claude Code?",
+   "É o Claude programador e operador do computador: lê e escreve código, organiza projetos, cria aplicações e executa tarefas, sempre mostrando antes o que vai fazer. Você não precisa saber programar — descreve o objetivo e ele implementa."
+  ],
+  [
+   "O que é vibe coding?",
+   "É criar software conversando com a inteligência artificial, sem digitar código: você age como diretor, descrevendo objetivos, e a IA cuida da lógica e da interface. O que muda é a barreira técnica; o que não muda é a necessidade de clareza, porque a máquina segue instrução e não lê nas entrelinhas."
+  ],
+  [
+   "Como instalar o Claude Code?",
+   "É preciso ter o Node.js 18 ou superior; depois, instalar pelo npm com 'npm install -g @anthropic-ai/claude-code' ou pelo instalador nativo do Windows. Em seguida, abrir a pasta do projeto e digitar 'claude'. Como as ferramentas mudam rápido, confira sempre a documentação oficial da Anthropic."
+  ]
+ ],
+ "06-mcp-conectores-apis": [
+  [
+   "O que é MCP (Model Context Protocol)?",
+   "É um protocolo aberto que conecta a inteligência artificial a ferramentas, sistemas e dados externos de forma padronizada — o 'USB-C das IAs'. Sem MCP, o Claude apenas conversa; com MCP, ele conversa, executa ações e acessa sistemas como Drive, Slack, GitHub, bancos de dados e CRMs."
+  ],
+  [
+   "O que é tool use?",
+   "É a capacidade da IA de chamar ferramentas externas. Sem tool use, a resposta sobre disponibilidade é um chute educado; com tool use, o Claude consulta o calendário e o CRM antes de responder. Uma é opinião, a outra é fato."
+  ],
+  [
+   "O que é uma API, para quem não é programador?",
+   "A API funciona como um garçom entre softwares: você faz o pedido, ela leva ao sistema e traz a resposta. Quatro palavras bastam para entender — endpoint (o endereço), request (o que você envia), response (o que volta) e JSON (o idioma em que os dois são escritos)."
+  ]
+ ],
+ "07-skills-e-fluxos": [
+  [
+   "Como criar uma Skill do zero?",
+   "Não tente escrever a Skill perfeita de imaginação: execute a tarefa manualmente umas três vezes anotando cada decisão e o porquê — aquilo que você anotou é a Skill. Criar Skill não exige formação técnica; quem domina o processo define os parâmetros e a IA executa."
+  ],
+  [
+   "Por que auditar as Skills?",
+   "Porque uma Skill não avisa quando começa a errar: ela continua respondendo com a mesma segurança, mesmo depois que o preço, a política ou a lei mudaram. A auditoria analisa desempenho, valida as respostas contra fontes confiáveis e mapeia falhas — trimestral no que é crítico."
+  ],
+  [
+   "Make ou n8n: qual escolher?",
+   "Make é mais visual e simples, roda na nuvem e é ideal para começar rápido. n8n é mais técnico, de código aberto e pode ser instalado no seu próprio servidor, o que dá mais controle e privacidade. Se o fluxo trafega dado sensível, o argumento da privacidade pesa mais que o da facilidade."
+  ]
+ ],
+ "08-time-de-agentes": [
+  [
+   "O que é um agente empresarial de IA?",
+   "É um sistema que interpreta objetivos, acessa ferramentas e executa processos completos com supervisão humana mínima — consulta o CRM, lê uma conversa, gera um contrato e envia um e-mail num fluxo contínuo. Agentes não substituem pessoas: ampliam a capacidade operacional e não esquecem tarefa."
+  ],
+  [
+   "Quais agentes uma empresa pode ter?",
+   "Comercial, financeiro, administrativo, operacional, marketing, recursos humanos, concierge, jurídico, arquitetura e obras, compras e estoque, inteligência estratégica (CEO) e TI. Cada um com o que faz e, principalmente, com onde para e escala para um humano."
+  ],
+  [
+   "Por qual agente começar?",
+   "Pela ordem de retorno rápido: comercial, atendimento, marketing, financeiro, operações, concierge, RH e jurídico. Os primeiros tocam diretamente a receita; os últimos protegem o que já foi conquistado. E vale a condição que se repete: primeiro organizar, depois automatizar."
+  ]
+ ],
+ "09-automacoes-avancadas": [
+  [
+   "Como automatizar o WhatsApp com inteligência artificial?",
+   "Com a API oficial do WhatsApp Business somada a uma plataforma de automação, o agente interpreta a intenção, qualifica o lead, consulta disponibilidade e gera proposta em segundos. Dois cuidados são condição, não detalhe: usar a API oficial (métodos não autorizados geram bloqueio) e programar em que situações ele para e chama um humano."
+  ],
+  [
+   "Por onde começar a automatizar o e-mail?",
+   "Pela leitura, não pela resposta: deixe a IA ler a caixa de entrada, resumir, classificar prioridade e apontar o que exige ação — sem responder, arquivar nem apagar nada. Isso já devolve cerca de uma hora do dia e é reversível, porque um erro de classificação custa zero."
+  ],
+  [
+   "Automação com IA é arriscada?",
+   "O risco não é a automação em si, é a falta de governança. Se a sua regra de preço está errada, sem automação você erra três cotações por dia; com automação, erra trezentas — todas iguais, rápidas e confiantes. A velocidade não corrige o erro: multiplica. Por isso se testa em volume pequeno antes de liberar."
+  ]
+ ],
+ "10-organizacao-digital": [
+  [
+   "Por que a organização de arquivos afeta o resultado da IA?",
+   "Porque a inteligência artificial depende de contexto e de acesso rápido à informação: documento espalhado, nome inconsistente e versão confusa fazem o agente operar com contexto fragmentado. A IA amplifica tanto a eficiência quanto a desorganização."
+  ],
+  [
+   "Como nomear arquivos para facilitar a busca?",
+   "Use uma convenção com tipo, cliente, data e versão, com a data no formato ano-mês-dia — assim os arquivos se ordenam sozinhos, em qualquer sistema. E o próprio Claude pode renomear, eliminar duplicatas e reorganizar uma pasta inteira no padrão que você definir."
+  ],
+  [
+   "O que é uma base de conhecimento empresarial?",
+   "É o conjunto de contratos-padrão, procedimentos, políticas, checklists, manuais e FAQs que transforma conhecimento informal — preso nas pessoas — em patrimônio estruturado. Conectada ao Claude, ela é consultada antes de responder: não é o modelo lembrando, é o sistema conferindo."
+  ]
+ ],
+ "11-empresa-operada-por-ia": [
+  [
+   "O que é uma empresa operada por IA?",
+   "Não é uma empresa com automações isoladas: é uma empresa com agentes integrados aos processos centrais. A IA assume o repetitivo, o operacional e o analítico; as pessoas ficam com estratégia, criatividade, relacionamento e decisão complexa."
+  ],
+  [
+   "Qual é o ganho real de operar com IA?",
+   "Velocidade operacional. Não é qualidade, que a concorrência também tem, nem preço, em que sempre há alguém mais barato. Num mercado em que o cliente pede orçamento a cinco fornecedores ao mesmo tempo, responder em dois minutos é um jogo diferente de responder em duas horas."
+  ],
+  [
+   "Qual a ordem certa para automatizar uma empresa?",
+   "Organizar processos, estruturar informações, padronizar, construir bases de conhecimento, automatizar gradualmente, integrar agentes e escalar. Quase todo mundo tenta começar na sexta etapa — compra a ferramenta, monta o agente e depois descobre que faltavam as cinco primeiras."
+  ]
+ ],
+ "12-ferramentas-do-ecossistema": [
+  [
+   "O que é o Make e para que serve?",
+   "É uma plataforma visual de automação (o antigo Integromat), no-code, que trabalha com cenários e módulos. No fluxo típico, o cliente manda mensagem, o Make recebe, envia ao Claude, o Claude gera a resposta e o Make responde, salva no CRM e agenda o acompanhamento."
+  ],
+  [
+   "O que é um webhook?",
+   "É o gatilho em tempo real: em vez de você ficar perguntando se há mensagem nova, o sistema avisa assim que algo acontece e já envia os dados. Nova mensagem, nova reserva, pagamento aprovado, formulário enviado, novo lead."
+  ],
+  [
+   "Qual a diferença entre API e webhook?",
+   "Na API, você busca os dados: vai lá e pergunta. No webhook, o sistema envia automaticamente: ele vem até você. As duas convivem — normalmente o webhook avisa que algo aconteceu e a automação usa a API para buscar os detalhes."
+  ]
+ ],
+ "13-claude-cowork": [
+  [
+   "O que é o Claude Cowork?",
+   "É o modo em que o Claude trabalha sozinho com os seus arquivos e ferramentas, no aplicativo de desktop: você autoriza uma pasta, descreve a tarefa em português e ele lê, planeja, executa e entrega. Se o Chat é o consultor que recomenda, o Cowork é o colaborador que faz."
+  ],
+  [
+   "Quando usar Chat, Code ou Cowork?",
+   "Se a tarefa não mexe em arquivos nem serviços, o Chat resolve. Se envolve código, sistema ou infraestrutura, é o Code. Se é trabalho de escritório em vários passos sobre os seus documentos, é o Cowork. A progressão natural é Chat, depois Cowork, só então Code e agentes."
+  ],
+  [
+   "O que é vibe working?",
+   "É produzir entregas profissionais apenas descrevendo o resultado desejado. A habilidade-chave deixa de ser dominar a ferramenta e passa a ser saber o que pedir: clareza sobre o objetivo, precisão na descrição e critério para avaliar o resultado."
+  ]
+ ],
+ "14-seguranca-e-governanca": [
+  [
+   "Por que governança importa numa empresa que usa IA?",
+   "Porque quanto mais integrada a empresa, maior o impacto de uma falha: quando tudo estava separado, um erro ficava contido; agora que tudo conversa, um erro viaja. Governança é o conjunto de regras que mantém os sistemas dentro de limites seguros — não é freio, é direção."
+  ],
+  [
+   "Como decidir o que um agente pode fazer sozinho?",
+   "Com uma pergunta: se ele fizer isso mil vezes por engano, eu consigo desfazer? Se a resposta for não, a ação exige confirmação humana. Leitura e análise podem ser livres; o que toca uma pessoa real, muda um número real ou gasta dinheiro passa por você."
+  ],
+  [
+   "A LGPD se aplica ao uso de inteligência artificial?",
+   "Sim. Dado pessoal de terceiro — cliente, hóspede, funcionário — não é seu: você é apenas o guardião, e a responsabilidade não desaparece porque quem processou foi uma IA. Por isso a proteção entra no desenho, e não como remendo depois que o sistema já está rodando."
+  ]
+ ],
+ "15-setores-e-plataformas": [
+  [
+   "Como a IA é usada na hotelaria?",
+   "No atendimento automático, nas reservas, no concierge, na venda adicional, no suporte em vários idiomas e no check-in digital. O fluxo moderno vai da consulta do cliente ao envio do manual da casa sem que nada se perca no caminho — e libera a equipe para a parte que a tecnologia não resolve: a hospitalidade."
+  ],
+  [
+   "A IA substitui advogados, arquitetos e corretores?",
+   "Não. Ela reduz tempo e organiza o caos em análise contratual, petições-base, memoriais, orçamentos e qualificação de leads — mas não substitui a responsabilidade profissional, a revisão humana nem a interpretação estratégica. Esses setores vivem de documento, prazo e relacionamento: a IA resolve os dois primeiros e devolve tempo para o terceiro."
+  ],
+  [
+   "O que faz um AI Operator?",
+   "Coordena agentes, cria fluxos de trabalho e supervisiona automações. É a profissão que nasce quando a inteligência artificial deixa de só conversar e passa a operar sistemas — e, em toda descrição desse futuro, há uma pessoa no comando."
+  ]
+ ],
+ "16-cinco-superficies": [
+  [
+   "Quais são as cinco superfícies do Claude?",
+   "Chat (a conversa do dia a dia), Cowork (o Claude trabalhando sozinho nos seus arquivos), Code (o Claude programador), Design (telas, imagens e material visual) e Agentes (vários especialistas em equipe, no modo automático). Elas são sequenciais: comece pelo Chat."
+  ],
+  [
+   "Quais recursos do Claude todo iniciante deveria ligar?",
+   "Projetos (pastas de conversa com instruções e arquivos fixos), Memória (para não se reapresentar toda vez), Conectores (Gmail, Drive, Calendar, Canva, GitHub) e Artifacts (o painel ao lado com o resultado pronto). Os quatro já estão na conta, não custam nada a mais e a maioria das pessoas nunca os liga."
+  ],
+  [
+   "O que é o laço agêntico (agentic loop)?",
+   "É o ciclo em que você dá a tarefa e o critério de pronto, e o agente repete decidir–executar–conferir até bater a meta. Num prompt comum, o Claude para quando entrega alguma coisa; com o laço, ele confere o próprio trabalho e corrige até passar na régua que você definiu."
+  ]
+ ],
+ "17-dicas-quentes-gerais": [
+  [
+   "Por que converter PDF em Markdown antes de enviar à IA?",
+   "Porque um PDF não é texto, é o desenho de uma página: a IA precisa reconstruir o que é título, coluna e rodapé, e às vezes erra. O Markdown entrega a estrutura pronta, economiza token e melhora a resposta — mais barato e melhor ao mesmo tempo."
+  ],
+  [
+   "Os 'comandos mágicos' do Claude existem mesmo?",
+   "A maioria não é botão oficial: são apenas instruções em texto que enviesam o estilo da resposta, como pedir um texto mais humano ou uma crítica franca. Funcionam como atalho mental. O tal 'god mode' não existe — e nenhuma promessa de liberar algo proibido é verdadeira."
+  ],
+  [
+   "O que é o Loop e quando usar?",
+   "É o modo em que o Claude só para quando bate a meta que você definiu, conferindo o próprio trabalho. O segredo é escrever um critério verificável de pronto, não 'quando estiver bom'. Como ele repete o ciclo, consome mais token: use onde a qualidade compensa o custo."
+  ]
+ ],
+ "18-dicas-juridicas": [
+  [
+   "É seguro usar inteligência artificial no direito?",
+   "É seguro como apoio, nunca como substituto: a IA prepara, organiza e alerta, e você valida. A regra que não se abre mão é nunca aceitar jurisprudência sem conferir na fonte oficial, porque uma decisão inventada vem com número, relator e ementa — toda a aparência do verdadeiro."
+  ],
+  [
+   "Como fazer a IA escrever uma contestação melhor?",
+   "Não peça 'redija uma contestação'. Conduza por etapas dentro do prompt: analisar a petição, identificar fragilidades, mapear teses ligadas a fatos e documentos, confrontar os documentos, estruturar e só então redigir. Quem pede o produto pronto recebe texto; quem conduz por etapas recebe estratégia."
+  ],
+  [
+   "Como pesquisar jurisprudência sem risco de alucinação?",
+   "Usando uma ferramenta de fonte fechada, como o NotebookLM: você sobe os acórdãos que já colheu e pergunta com a palavra 'exclusivamente' — 'com base exclusivamente nos acórdãos que subi'. Ele analisa o que você forneceu e não inventa julgado."
+  ]
+ ],
+ "19-dicas-de-marketing": [
+  [
+   "Como usar IA no marketing de uma empresa pequena?",
+   "Definindo a voz primeiro e só depois escalando o volume: bio clara, produção em bloco com agendamento, auditoria do perfil e, por último, prospecção. Volume sem voz é ruído — trinta posts por mês sem identidade ficam tecnicamente corretos e completamente esquecíveis."
+  ],
+  [
+   "O que são SEO, GEO e AEO?",
+   "SEO é a otimização para a busca tradicional; GEO é a otimização para buscadores de inteligência artificial como Perplexity, ChatGPT e Gemini; AEO é a otimização para respostas diretas e busca por voz. Quem pergunta a uma IA não vê dez links azuis: vê duas ou três recomendações."
+  ],
+  [
+   "Como criar conteúdo com IA sem parecer robô?",
+   "Comece pelo que dói no público, não pelo que você quer dizer, e multiplique o que já funcionou em vez de produzir do zero todo dia. E escreva com base nos seus arquivos de voz: sem definir como você fala e no que acredita, qualquer ferramenta devolve um texto genérico."
+  ]
+ ],
+ "20-outras-areas": [
+  [
+   "Como melhorar um anúncio de Airbnb com inteligência artificial?",
+   "Peça a análise do anúncio isolado (título, primeira foto, primeiras linhas), depois a comparação com três concorrentes diretos e, principalmente, a leitura pela perspectiva do hóspede. O que derruba conversão é a dúvida não respondida — e a IA é excelente em achar essas lacunas porque lê sem o seu conhecimento prévio."
+  ],
+  [
+   "Dá para simular uma reforma com IA antes de gastar?",
+   "Sim: com uma skill de imagem você envia a foto de um ambiente e recebe o redesenho com outra decoração, outro piso, outra cor. Testar dez versões antes de comprar a primeira lata de tinta economiza dinheiro de verdade — e imagem gerada deve sempre ser identificada como conceito, nunca apresentada como foto real do imóvel."
+  ],
+  [
+   "Como escolher entre tantas ferramentas novas de IA?",
+   "Partindo do problema, não da ferramenta. Escolha um problema real que você tem hoje e procure o que o resolve. Quem parte do problema constrói operação; quem parte da ferramenta coleciona assinaturas que não usa."
+  ]
+ ],
+ "21-arquivos-que-mudam-o-jogo": [
+  [
+   "Quais arquivos fazem a IA trabalhar melhor para você?",
+   "Três, de identidade: um sobre quem você é, um sobre como você fala (o seu perfil de voz) e um sobre o que você nunca faria. O terceiro é o que quase ninguém escreve e o mais poderoso dos três, porque define a fronteira."
+  ],
+  [
+   "O que são instruções globais e para que servem?",
+   "São regras persistentes, definidas uma vez, que valem para qualquer tarefa — é onde entra aquilo que não pode variar. A mais útil separa o que é livre (ler, analisar, propor) do que passa por você: mensagem a cliente, alteração de preço, publicação e gasto de dinheiro."
+  ],
+  [
+   "O que é o prompt de entrevista?",
+   "É pedir que a IA faça perguntas antes de agir: 'quero tal tarefa, para tal objetivo; leia a minha pasta e me faça perguntas de esclarecimento antes de começar'. O problema mais comum não é a IA responder mal, é responder rápido demais com informação insuficiente."
+  ]
+ ],
+ "22-encerramento": [
+  [
+   "Por onde começar a usar inteligência artificial na empresa?",
+   "Por três movimentos: escolher uma superfície (provavelmente o Chat), montar os arquivos de identidade — cerca de quarenta minutos, uma vez na vida — e resolver um problema real por semana. Um, não dez."
+  ],
+  [
+   "Qual é a lição mais importante sobre IA nos negócios?",
+   "O diferencial nunca esteve na tecnologia, e sim em quem aprende a organizá-la. A inteligência artificial amplifica o que encontra, tanto a ordem quanto o caos: antes de automatizar, organize; antes de pedir mais, estruture melhor."
+  ],
+  [
+   "A inteligência artificial vai substituir profissionais?",
+   "A tecnologia não substitui julgamento: os agentes preparam, organizam e alertam, mas as decisões que importam continuam sendo suas. A frase que resume o momento é outra — você não será substituído pela inteligência artificial, mas por quem a usa melhor do que você."
+  ]
+ ]
+}

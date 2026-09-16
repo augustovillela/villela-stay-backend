@@ -25,6 +25,7 @@ const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listin
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
 const BLOG_I18N = require('./content/blog-i18n'); // traduções EN/ES por slug (fallback por campo p/ PT)
 let CAP_PATHS = [];                     // rotas do blog Claude AI na Prática (só PT), preenchidas no loop
+let CAP_LLMS = '';                      // secao do blog Claude no llms.txt (assistentes que leem, nao renderizam)
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
 // `conferirCobertura` é a trava que impede um produto novo da home de ficar de
@@ -3314,102 +3315,81 @@ ${formScriptBlog}`;
 
 BLOG.forEach(renderArtigo);
 
-// ---- hub /blog.html ----
-const blogCardsHub = BLOG.map(a0 => { const a = tradArtigo(a0); return `
-  <a class="blog-card" href="${L(`/blog/${a.slug}.html`)}">
-    <div class="blog-card-img">${blogCardImg(a0)}</div>
-    <div class="blog-card-info">
-      <span class="tema-tag tema-${a.slug}">${a.emoji} ${esc(a.tema)}</span>
-      <h3>${esc(a.h1)}</h3>
-      <p>${esc(a.dek)}</p>
-      <span class="blog-card-leia">${t('Ler artigo', 'Read article', 'Leer artículo')} · ${a.leituraMin || 7} min →</span>
-    </div>
-  </a>`; }).join('\n');
-
-const blogLd = {
-  '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`,
-  name: 'Diário de Brasília — Villela Stay', inLanguage: HTML_LANG[LANG], publisher: { '@id': ORG_ID },
-  blogPost: BLOG.map(a0 => { const a = tradArtigo(a0); return { '@type': 'BlogPosting', headline: a.h1, url: `${SITE_URL}${L(`/blog/${a.slug}.html`)}`, datePublished: a.atualizado, about: a.tema }; })
-};
-
-const blogHub = layout(
-  t('Blog — Diário de Brasília | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
-  t('Arquitetura, gastronomia, roteiros, paisagismo e história de Brasília — o diário do anfitrião para quem ama (ou vai conhecer) a capital. Conteúdo da Villela Stay.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
-  `
-<section class="hero hero-menor blog-hero-hub">
-  <span class="tema-tag">📖 ${t('Diário de Brasília', 'Brasília Diary', 'Diario de Brasília')}</span>
-  <h1>${t('Brasília por quem vive aqui', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
-  <p><strong>${t('Arquitetura, gastronomia, roteiros, paisagismo e as histórias da capital — o diário do anfitrião para você conhecer Brasília antes mesmo de chegar.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
-</section>
-<section class="grade-wrap">
-  <div class="blog-grade">${blogCardsHub}</div>
-</section>
-<section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
-  <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
-  <p>${t('Escolha sua casa no Lago Sul e seja recebido por quem ama a cidade.', 'Choose your house in Lago Sul and be welcomed by people who love the city.', 'Elige tu casa en Lago Sul y serás recibido por quien ama la ciudad.')}</p>
-  <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Vim pelo blog da Villela Stay e quero saber sobre as hospedagens.', 'Hi! I came from the Villela Stay blog and would like to know about the stays.', '¡Hola! Vengo del blog de Villela Stay y quiero saber sobre los alojamientos.'))}">${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}</a>
-  <p style="margin-top:14px"><a href="${L('/')}#hospedagens" style="color:var(--creme);text-decoration:underline">${t('Ver as hospedagens', 'See the stays', 'Ver los alojamientos')} →</a></p>
-</section>`,
-  { caminho: '/blog.html', extraHead: `<script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
-);
-fs.writeFileSync(path.join(od, 'blog.html'), blogHub);
-
-const BLOG_PATHS = ['/blog.html', ...BLOG.map(a => `/blog/${a.slug}.html`)];
-console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
-
-// ------------------------- Blog "Claude AI na Prática" (/claude/) -------------------------
-// Os 22 artigos do curso, servidos como blog. O TEXTO NÃO VAI NO HTML: entra em base64 e é
-// montado pelo JS uma seção por vez — leitura normal no navegador, mas imprimir, copiar e raspar
-// em massa ficam difíceis de propósito (o Augusto vende o curso e o livro com esse conteúdo).
-// Em toda página: anúncio do livro (livros.villelastay.com.br/livros) e do curso
-// (academia.villelastay.com.br/academy/marketplace). Fonte dos artigos: content/claude-ai-na-pratica/
-// (gerada por dados\cursos\...\_ferramentas\exportar_site.py a partir dos artigos do curso).
+// ---- Blog "Claude AI na Prática": os 22 artigos do curso, dentro de /blog/ ----
+// O texto é o mesmo material que o Augusto VENDE (livro + curso), então a página tem
+// DUAS camadas, de propósito:
+//   PÚBLICA  — resumo, índice das partes e FAQ em HTML real e VISÍVEL. É o que alimenta
+//              SEO/GEO: crawler que não roda JavaScript (vários de IA) lê isso.
+//   PROTEGIDA — o desenvolvimento do artigo vai em base64 e é montado pelo JS, uma parte
+//              por vez; imprimir devolve só um aviso e copiar/selecionar está desligado.
+// Nada é escondido do visitante para ser mostrado ao robô (isso é cloaking e é punido):
+// as duas camadas são as mesmas para todo mundo.
+// Fonte: content/claude-ai-na-pratica/ (gerada por _ferramentas/exportar_site.py no repo
+// da camada de inteligência). Em toda página: anúncio do livro e do curso.
 const CAP_DIR = path.join(__dirname, 'content', 'claude-ai-na-pratica');
+const capHojeISO = new Date().toISOString().slice(0, 10);
+let capArtigos = [];
+let capCss = '';
+const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
+const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
+
 if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
-  const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
-  const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
-  const capCss = fs.readFileSync(path.join(CAP_DIR, 'artigo.css'), 'utf8');
-  const capArtigos = fs.readdirSync(CAP_DIR).filter(f => /\.html$/.test(f)).sort().map(f => {
+  capCss = fs.readFileSync(path.join(CAP_DIR, 'artigo.css'), 'utf8');
+  let capFaq = {};
+  try { capFaq = JSON.parse(fs.readFileSync(path.join(CAP_DIR, 'faq.json'), 'utf8').replace(/^﻿/, '')); }
+  catch (e) { console.warn('[claude] sem faq.json — artigos sairão sem o bloco de perguntas'); }
+
+  const ENTS = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ldquo: '“', rdquo: '”', lsquo: '‘', rsquo: '’', mdash: '—', ndash: '–', hellip: '…' };
+  const destexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  capArtigos = fs.readdirSync(CAP_DIR).filter(f => /\.html$/.test(f)).sort().map(f => {
     const raw = fs.readFileSync(path.join(CAP_DIR, f), 'utf8');
     const meta = JSON.parse(raw.match(/^<!--META (.*?) -->/)[1]);
     const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
-    // seções: abertura (antes do 1º <h2>), cada <h2>, e as caixas finais (resumo + para aplicar) juntas
-    const partes = corpo.split(/(?=<h2>|<div class="box )/).map(s => s.trim()).filter(Boolean);
-    const secoes = [];
-    for (const p of partes) {
-      if (p.startsWith('<div class="box ')) {
-        const fim = secoes[secoes.length - 1];
-        if (fim && fim.final) fim.html += '\n' + p; else secoes.push({ titulo: 'Resumo e para aplicar hoje', html: p, final: true });
-      } else {
-        const m = p.match(/^<h2>(.*?)<\/h2>/);
-        secoes.push({ titulo: m ? m[1].replace(/<[^>]+>/g, '') : 'Abertura', html: p });
-      }
-    }
-    // Agrupa as seções: um artigo de 18 <h2> viraria 18 cliques. Alvo de ~6 partes, juntando
-    // seções curtas; a caixa final (resumo + para aplicar hoje) fica sempre sozinha, no fim.
-    const capTxt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
-    const capFim = secoes.filter(s => s.final);
-    const capMeio = secoes.filter(s => !s.final);
-    const capAlvo = Math.max(1, 6 - capFim.length);
-    const porParte = Math.max(1500, Math.ceil(capMeio.reduce((n, s) => n + capTxt(s), 0) / capAlvo));
+    // Seções: a abertura (antes do 1º <h2>) e cada <h2>. As caixas ("Resumo em cinco linhas"
+    // e "Para aplicar hoje") já vêm separadas da exportação — dividir por <h2> aqui as partia
+    // ao meio, porque o <h2> delas mora DENTRO do <div>, e sobrava um <div> órfão.
+    const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+      const m = p.match(/^<h2>(.*?)<\/h2>/);
+      // titulo em TEXTO puro: ele vai para o índice (via esc), para title= e para o JSON-LD.
+      // Sem desentitizar, o &ldquo; do smarty saía na tela como "&ldquo;" (esc escapa o &).
+      return { titulo: m ? destexto(m[1]) : 'Abertura', html: p };
+    });
+    if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+    // Agrupa: um artigo de 18 <h2> viraria 18 cliques. Alvo de ~6 partes.
+    const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+    const fim = secoes.filter(s => s.final);
+    const meio = secoes.filter(s => !s.final);
+    const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
     const grupos = [];
-    for (const s of capMeio) {
+    for (const s of meio) {
       const ult = grupos[grupos.length - 1];
-      if (ult && capTxt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+      if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
       else grupos.push({ titulo: s.titulo, html: s.html });
     }
-    const partesFinais = [...grupos, ...capFim];
-    const slug = f.replace(/\.html$/, '');
-    const min = parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 7;
-    return { ...meta, slug, secoes: partesFinais, min, caminho: `/claude/${slug}.html` };
+    const chave = f.replace(/\.html$/, '');
+    const slug = `claude-${chave}`;
+    return {
+      ...meta, chave, slug,
+      tituloTexto: destexto(meta.titulo),
+      subtituloTexto: destexto(meta.subtitulo),
+      secoes: [...grupos, ...fim],
+      indice: meio.map(s => s.titulo.replace(/^\d+\.\s*/, '')).filter(t => t !== 'Abertura'),
+      faq: capFaq[chave] || [],
+      min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 7,
+      caminho: `/blog/${slug}.html`,
+      antigo: `/claude/${chave}.html`,   // onde os artigos nasceram, em 16/09/2026
+    };
   });
 
-  const capAnuncio = (qual, compacto = false) => qual === 'livro'
-    ? `<a class="cap-ad cap-ad-livro${compacto ? ' cap-ad-min' : ''}" href="${CAP_LIVRO}" target="_blank" rel="noopener">
+  const capAnuncio = (qual, min = false) => qual === 'livro'
+    ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${CAP_LIVRO}" target="_blank" rel="noopener">
         <span class="cap-ad-icone">📘</span>
         <span class="cap-ad-txt"><strong>Livro Claude AI na Prática</strong><span>Os 25 capítulos completos — manual prático para criar agentes, Skills e sistemas inteligentes. Digital e impresso.</span></span>
         <span class="cap-ad-btn">Ver na Livraria →</span></a>`
-    : `<a class="cap-ad cap-ad-curso${compacto ? ' cap-ad-min' : ''}" href="${CAP_CURSO}" target="_blank" rel="noopener">
+    : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${CAP_CURSO}" target="_blank" rel="noopener">
         <span class="cap-ad-icone">🎓</span>
         <span class="cap-ad-txt"><strong>Curso on-line Claude AI na Prática</strong><span>22 módulos com aula em vídeo, artigo e apresentação — do primeiro prompt ao time de agentes.</span></span>
         <span class="cap-ad-btn">Ver na Academy →</span></a>`;
@@ -3428,9 +3408,19 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 .cap-ad-min{margin:18px auto;padding:12px 16px}.cap-ad-min .cap-ad-txt span{display:none}
 .cap-faixa{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:1000px;margin:0 auto;padding:18px 24px}
 .cap-faixa .cap-ad{margin:0;flex:1 1 380px}
-.cap-corpo{max-width:760px;margin:0 auto;padding:36px 24px 20px;min-height:40vh}
+.cap-publico{max-width:760px;margin:0 auto;padding:26px 24px 6px}
+.cap-publico h2{font:700 24px/1.25 Lora,Georgia,serif;margin:0 0 12px;color:var(--navy)}
+.cap-publico .cap-resumo{background:#fdf3ea;border:1px solid #efcfb8;border-left:6px solid var(--accent);border-radius:14px;padding:20px 24px;margin:0 0 22px}
+.cap-publico .cap-resumo h2{color:var(--accent);font-size:21px}
+.cap-publico ul,.cap-publico ol{margin:0;padding-left:24px}
+.cap-publico li{margin:0 0 8px;line-height:1.55}
+.cap-publico li::marker{color:var(--accent);font-weight:700}
+.cap-indice{border:1px solid var(--line);border-radius:14px;padding:18px 24px;background:#fff;margin:0 0 6px}
+.cap-indice h2{font-size:19px}
+.cap-indice ol{font-size:16px;color:#4a4640}
+.cap-corpo{max-width:760px;margin:0 auto;padding:30px 24px 20px;min-height:40vh}
 .cap-corpo .cap-secao-tit{font:600 13px/1.2 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
-.cap-nav{max-width:760px;margin:0 auto;padding:10px 24px 46px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.cap-nav{max-width:760px;margin:0 auto;padding:10px 24px 40px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
 .cap-nav button{font:600 15px Inter,sans-serif;padding:12px 18px;border-radius:999px;border:1px solid var(--line);background:#fff;color:#1c1a17;cursor:pointer}
 .cap-nav button.prim{background:var(--accent);color:#fff;border-color:var(--accent)}
 .cap-nav button[disabled]{opacity:.35;cursor:default}
@@ -3440,6 +3430,10 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 .cap-progresso{height:4px;background:var(--line);max-width:760px;margin:0 auto}
 .cap-progresso i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#e0b15a);width:0;transition:width .3s}
 .cap-aviso{max-width:760px;margin:0 auto;padding:8px 24px 0;font-size:13px;color:#7a746b}
+.cap-faq{max-width:760px;margin:0 auto;padding:10px 24px 30px}
+.cap-faq h2{font:700 26px/1.25 Lora,Georgia,serif;margin:0 0 16px;color:var(--navy)}
+.cap-faq h3{font:700 18px/1.35 Inter,sans-serif;margin:20px 0 6px;color:var(--accent2)}
+.cap-faq p{margin:0;line-height:1.6}
 .cap-rodape-art{max-width:760px;margin:0 auto;padding:0 24px 40px;font-size:14px;color:#7a746b;border-top:1px solid var(--line)}
 .cap-rodape-art .in{padding-top:18px;display:flex;flex-wrap:wrap;gap:6px 24px;justify-content:space-between}
 .cap-hub-hero{background:var(--navy);color:#f3ede3;padding:64px 24px 48px;text-align:center}
@@ -3452,14 +3446,13 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 .cap-card h3{font:700 20px/1.25 Lora,Georgia,serif;margin:0 0 8px}
 .cap-card p{font-size:15px;line-height:1.45;color:#4a4640;margin:0 0 10px}
 .cap-card .min{font-size:13px;color:#7a746b}
-noscript .cap-nojs{max-width:760px;margin:20px auto;padding:16px 24px;background:#fff6f3;border-left:5px solid #b8412c}
+.cap-nojs{max-width:760px;margin:20px auto;padding:16px 24px;background:#fff6f3;border-left:5px solid #b8412c}
 @media (max-width:600px){.cap-hub-hero h1{font-size:32px}.cap-ad{flex-wrap:wrap}.cap-ad-btn{width:100%;text-align:center}}
-@media print{body>*{display:none!important}body:after{content:"Este conteúdo é exibido apenas no navegador. Leia em villelastay.com.br/claude — e encontre o texto completo no livro (livros.villelastay.com.br) e no curso (academia.villelastay.com.br).";display:block;padding:40px;font:16px/1.5 sans-serif}}
+@media print{body>*{display:none!important}body:after{content:"Este conteúdo é exibido apenas no navegador. Leia em villelastay.com.br/blog — e encontre o texto completo no livro (livros.villelastay.com.br) e no curso (academia.villelastay.com.br).";display:block;padding:40px;font:16px/1.5 sans-serif}}
 `;
 
-  // Proteção de leitura: texto em base64 montado por seção; imprimir, copiar, arrastar, selecionar,
-  // menu de contexto e atalhos (Ctrl/Cmd + P, S, U, A, C) desativados no artigo. Não é DRM — é atrito
-  // deliberado contra "imprimir tudo"; quem quer o conteúdo inteiro tem o livro e o curso.
+  // Atrito deliberado contra "imprimir/copiar tudo" — não é DRM, e o resumo, o índice e a
+  // FAQ continuam em HTML aberto para quem (e o que) só lê.
   const CAP_JS = `
 (function(){
   var el=document.getElementById('cap-dados'); if(!el) return;
@@ -3468,35 +3461,51 @@ noscript .cap-nojs{max-width:760px;margin:20px auto;padding:16px 24px;background
   var corpo=document.getElementById('cap-corpo'), passos=document.getElementById('cap-passos'), prog=document.getElementById('cap-prog');
   var bAnt=document.getElementById('cap-ant'), bProx=document.getElementById('cap-prox');
   var ads=[${JSON.stringify(capAnuncio('livro', true))},${JSON.stringify(capAnuncio('curso', true))}];
-  function mostrar(k){
+  function mostrar(k,rolar){
     i=Math.max(0,Math.min(n-1,k));
     corpo.innerHTML='<p class="cap-secao-tit">Parte '+(i+1)+' de '+n+'</p>'+S[i].h+(i<n-1?ads[i%2]:'');
     bAnt.disabled=i===0; bProx.textContent=i===n-1?'Fim do artigo':'Continuar lendo →'; bProx.disabled=i===n-1;
     Array.prototype.forEach.call(passos.children,function(b,j){b.classList.toggle('on',j===i)});
     prog.style.width=((i+1)/n*100)+'%';
     history.replaceState(null,'','#p'+(i+1));
-    if(k!==undefined) window.scrollTo({top:corpo.getBoundingClientRect().top+window.scrollY-90,behavior:'smooth'});
+    if(rolar) window.scrollTo({top:corpo.getBoundingClientRect().top+window.scrollY-90,behavior:'smooth'});
   }
-  S.forEach(function(s,j){var b=document.createElement('button');b.type='button';b.textContent=j+1;b.title=s.t;b.onclick=function(){mostrar(j)};passos.appendChild(b)});
-  bAnt.onclick=function(){mostrar(i-1)}; bProx.onclick=function(){mostrar(i+1)};
-  var h=parseInt((location.hash.match(/#p(\\d+)/)||[])[1],10); mostrar(h?h-1:0); window.scrollTo(0,0);
+  S.forEach(function(s,j){var b=document.createElement('button');b.type='button';b.textContent=j+1;b.title=s.t;b.onclick=function(){mostrar(j,true)};passos.appendChild(b)});
+  bAnt.onclick=function(){mostrar(i-1,true)}; bProx.onclick=function(){mostrar(i+1,true)};
+  var h=parseInt((location.hash.match(/#p(\\d+)/)||[])[1],10); mostrar(h?h-1:0,false);
   var cap=document.querySelector('.cap');
   ['contextmenu','copy','cut','dragstart','selectstart'].forEach(function(ev){cap.addEventListener(ev,function(e){e.preventDefault()})});
   document.addEventListener('keydown',function(e){var k=(e.key||'').toLowerCase(); if((e.ctrlKey||e.metaKey)&&['p','s','u','a','c'].indexOf(k)>=0){e.preventDefault();e.stopPropagation();}});
-  window.addEventListener('beforeprint',function(){document.title='Leia em villelastay.com.br/claude';});
+  window.addEventListener('beforeprint',function(){document.title='Leia em villelastay.com.br/blog';});
 })();`;
 
-  const capB64 = (obj) => Buffer.from(JSON.stringify(obj), 'utf8').toString('base64');
-  const capCanon = (a) => `${SITE_URL}${a.caminho}`;
+  fs.mkdirSync(path.join(od, 'blog'), { recursive: true });
+  fs.mkdirSync(path.join(od, 'claude'), { recursive: true });
 
   for (const a of capArtigos) {
-    const dados = capB64({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) });
-    const ld = {
-      '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.titulo.replace(/<[^>]+>/g, ''), description: a.descricao,
-      author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID }, inLanguage: 'pt-BR',
-      mainEntityOfPage: capCanon(a), isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/claude/#blog`, name: 'Blog Claude AI na Prática — Villela Stay' },
-      isAccessibleForFree: true, about: 'Claude AI, inteligência artificial para empresas',
-    };
+    const url = `${SITE_URL}${a.caminho}`;
+    const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+    const lds = [{
+      '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+      abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR', datePublished: '2026-09-16', dateModified: capHojeISO,
+      author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog` },
+      articleSection: 'Claude AI na Prática', keywords: a.indice.slice(0, 8).join(', '),
+      isBasedOn: { '@type': 'Book', name: 'Claude AI na Prática', author: { '@type': 'Person', name: 'Augusto Villela' }, url: CAP_LIVRO },
+      speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+    }, {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+        { '@type': 'ListItem', position: 3, name: 'Claude AI na Prática', item: `${SITE_URL}/claude/` },
+        { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+      ]
+    }];
+    if (a.faq.length) lds.push({
+      '@context': 'https://schema.org', '@type': 'FAQPage',
+      mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+    });
+
     const corpo = `
 <div class="cap cap-artigo">
   <header class="cap-hero"><div class="in">
@@ -3506,54 +3515,143 @@ noscript .cap-nojs{max-width:760px;margin:20px auto;padding:16px 24px;background
     <div class="meta">${a.meta}</div>
   </div></header>
   <div class="cap-faixa">${capAnuncio('livro', true)}${capAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo em cinco linhas</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
   <div class="cap-progresso"><i id="cap-prog"></i></div>
-  <p class="cap-aviso">Este artigo é lido por partes. Use os botões abaixo para avançar — o texto completo, com os 25 capítulos, está no livro e no curso.</p>
-  <noscript><div class="cap-nojs">Este artigo é exibido no navegador e precisa de JavaScript. Ative o JavaScript ou leia o conteúdo completo no <a href="${CAP_LIVRO}">livro</a> e no <a href="${CAP_CURSO}">curso</a>.</div></noscript>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — o texto completo, com os 25 capítulos, está no livro e no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o texto completo está no <a href="${CAP_LIVRO}">livro</a> e no <a href="${CAP_CURSO}">curso</a>.</div></noscript>
   <div class="cap-corpo" id="cap-corpo"></div>
   <nav class="cap-nav" aria-label="Partes do artigo">
     <button type="button" id="cap-ant">← Anterior</button>
     <div class="cap-passos" id="cap-passos"></div>
     <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
   </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
   <div class="cap-faixa">${capAnuncio('curso')}${capAnuncio('livro')}</div>
-  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Claude AI na Prática</strong>, de Augusto Villela.</span><span><a href="/claude/">← Todos os artigos</a></span></div></div>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>Claude AI na Prática</strong>, de Augusto Villela.</span><span><a href="/claude/">← Todos os artigos da série</a></span></div></div>
   <script type="application/json" id="cap-dados">${dados}</script>
 </div>`;
-    const html = layout(`${a.titulo.replace(/<[^>]+>/g, '')} | Blog Claude AI na Prática`, a.descricao, corpo, {
+    const html = layout(`${a.tituloTexto} | Blog Claude AI na Prática`, a.descricao, corpo, {
       caminho: a.caminho, semIdiomas: true, ogType: 'article',
-      extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${capCss}${CAP_CSS_EXTRA}</style><script type="application/ld+json">${JSON.stringify(ld)}</script>`,
+      extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${capCss}${CAP_CSS_EXTRA}</style>`
+        + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
     }).replace('</body>', `<script>${CAP_JS}</script>\n</body>`);
-    fs.mkdirSync(path.join(od, 'claude'), { recursive: true });
-    fs.writeFileSync(path.join(od, 'claude', `${a.slug}.html`), html);
+    fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+
+    // Os artigos nasceram em /claude/NN-*.html (16/09/2026) e mudaram de casa no mesmo dia.
+    // Site estático não tem 301: stub com canonical + refresh, fora do índice.
+    fs.writeFileSync(path.join(od, 'claude', `${a.chave}.html`), `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(a.tituloTexto)}</title>
+<meta name="robots" content="noindex,follow"><link rel="canonical" href="${url}">
+<meta http-equiv="refresh" content="0; url=${a.caminho}"></head>
+<body><p>Este artigo agora fica em <a href="${a.caminho}">${url}</a>.</p></body></html>`);
   }
 
-  // hub /claude/
+  // hub da série: /claude/ (o item "Claude AI" do menu aponta para cá)
   const capCards = capArtigos.map(a => `
   <a class="cap-card" href="${a.caminho}">
     <span class="n">Módulo ${a.modulo}</span>
-    <h3>${a.titulo}</h3>
-    <p>${a.subtitulo}</p>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
     <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
   </a>`).join('\n');
-  const hubLd = { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/claude/#blog`, name: 'Blog Claude AI na Prática — Villela Stay', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
-    blogPost: capArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.titulo.replace(/<[^>]+>/g, ''), url: capCanon(a) })) };
-  const hub = layout('Blog Claude AI na Prática — 22 artigos sobre IA para empresas | Villela Stay',
+  const hubLd = [{
+    '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/claude/#serie`,
+    name: 'Claude AI na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+    blogPost: capArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+  }, {
+    '@context': 'https://schema.org', '@type': 'ItemList', name: 'Claude AI na Prática — 22 artigos',
+    itemListElement: capArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+  }];
+  fs.writeFileSync(path.join(od, 'claude', 'index.html'), layout(
+    'Claude AI na Prática — 22 artigos sobre IA para empresas | Villela Stay',
     'Os 22 artigos do curso Claude AI na Prática, de Augusto Villela: prompts, tokens, Claude Code, MCP, Skills, agentes, automações, Cowork, governança e as dicas quentes — com os casos reais de uma empresa operada por IA.',
     `
 <div class="cap">
   <section class="cap-hub-hero">
-    <h1>Blog Claude AI na Prática</h1>
-    <p>Os 22 artigos do curso, de Augusto Villela — do primeiro prompt ao time de agentes que opera a empresa. Leia por partes aqui; o método inteiro está no livro e no curso.</p>
+    <h1>Claude AI na Prática</h1>
+    <p>Os 22 artigos do curso, de Augusto Villela — do primeiro prompt ao time de agentes que opera a empresa. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
   </section>
   <div class="cap-faixa">${capAnuncio('livro')}${capAnuncio('curso')}</div>
   <div class="cap-grade">${capCards}</div>
   <div class="cap-faixa">${capAnuncio('curso')}${capAnuncio('livro')}</div>
 </div>`,
-    { caminho: '/claude/', semIdiomas: true, extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${capCss}${CAP_CSS_EXTRA}</style><script type="application/ld+json">${JSON.stringify(hubLd)}</script>` });
-  fs.writeFileSync(path.join(od, 'claude', 'index.html'), hub);
+    { caminho: '/claude/', semIdiomas: true, extraHead: `<style>${capCss}${CAP_CSS_EXTRA}</style>` + hubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+  ));
+
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho)];
-  console.log(`Blog Claude AI na Prática gerado: hub + ${capArtigos.length} artigos`);
+  // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
+  CAP_LLMS = `## Blog: Claude AI na Prática (22 artigos, em português)
+
+Série do livro *Claude AI na Prática*, de Augusto Villela — como usar a IA da Anthropic
+para trabalhar: prompts, custo por token, Projetos e Skills, Claude Code, MCP e APIs,
+agentes por área, automações, Cowork, governança e casos reais de uma empresa que opera
+assim. Índice da série: ${SITE_URL}/claude/
+Livro completo: ${CAP_LIVRO.split('?')[0]} · Curso on-line: ${CAP_CURSO.split('?')[0]}
+
+${capArtigos.map(a => `- [${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+  console.log(`Blog Claude AI na Prática: hub + ${capArtigos.length} artigos em /blog/ (+${capArtigos.length} redirecionamentos de /claude/)`);
 }
+
+// ---- hub /blog.html ----
+const blogCardsHub = BLOG.map(a0 => { const a = tradArtigo(a0); return `
+  <a class="blog-card" href="${L(`/blog/${a.slug}.html`)}">
+    <div class="blog-card-img">${blogCardImg(a0)}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-${a.slug}">${a.emoji} ${esc(a.tema)}</span>
+      <h3>${esc(a.h1)}</h3>
+      <p>${esc(a.dek)}</p>
+      <span class="blog-card-leia">${t('Ler artigo', 'Read article', 'Leer artículo')} · ${a.leituraMin || 7} min →</span>
+    </div>
+  </a>`; }).join('\n');
+
+// Os artigos da série Claude AI na Prática entram na MESMA grade do hub (só em PT).
+// Arte de marca no lugar da foto e a etiqueta "Claude AI" para se distinguirem dos de Brasília.
+const capCardsHub = capArtigos.map(a => `
+  <a class="blog-card" href="${a.caminho}">
+    <div class="blog-card-img"><div class="blog-card-arte tema-claude" aria-hidden="true">${BLOG_HERO_SVG}</div></div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-claude">\u{1F916} Claude AI</span>
+      <h3>${esc(a.tituloTexto)}</h3>
+      <p>${esc(a.subtituloTexto)}</p>
+      <span class="blog-card-leia">${t('Ler artigo', 'Read article', 'Leer artículo')} · ${a.min} min →</span>
+    </div>
+  </a>`).join('\n');
+
+const blogLd = {
+  '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`,
+  name: t('Blog Villela Stay — Diário de Brasília e Claude AI na Prática', 'Brasília Diary — Villela Stay', 'Diario de Brasília — Villela Stay'), inLanguage: HTML_LANG[LANG], publisher: { '@id': ORG_ID },
+  blogPost: BLOG.map(a0 => { const a = tradArtigo(a0); return { '@type': 'BlogPosting', headline: a.h1, url: `${SITE_URL}${L(`/blog/${a.slug}.html`)}`, datePublished: a.atualizado, about: a.tema }; }).concat(capArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, about: 'Claude AI na Prática' })))
+};
+
+const blogHub = layout(
+  t('Blog — Diário de Brasília e Claude AI na Prática | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
+  t('Duas séries em um só lugar: o Diário de Brasília (arquitetura, gastronomia, roteiros, paisagismo e história da capital) e Claude AI na Prática (IA aplicada ao trabalho, em 22 artigos). Conteúdo da Villela Stay.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
+  `
+<section class="hero hero-menor blog-hero-hub">
+  <span class="tema-tag">📖 ${t('Diário de Brasília · Claude AI na Prática', 'Brasília Diary', 'Diario de Brasília')}</span>
+  <h1>${t('Duas séries, uma leitura', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
+  <p><strong>${t('Brasília por quem vive aqui — arquitetura, gastronomia, roteiros e as histórias da capital. E Claude AI na Prática: os 22 artigos de quem opera uma empresa com inteligência artificial.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
+</section>
+<section class="grade-wrap">
+  <div class="blog-grade">${blogCardsHub}${capCardsHub}</div>
+</section>
+<section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
+  <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
+  <p>${t('Escolha sua casa no Lago Sul e seja recebido por quem ama a cidade.', 'Choose your house in Lago Sul and be welcomed by people who love the city.', 'Elige tu casa en Lago Sul y serás recibido por quien ama la ciudad.')}</p>
+  <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Vim pelo blog da Villela Stay e quero saber sobre as hospedagens.', 'Hi! I came from the Villela Stay blog and would like to know about the stays.', '¡Hola! Vengo del blog de Villela Stay y quiero saber sobre los alojamientos.'))}">${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}</a>
+  <p style="margin-top:14px"><a href="${L('/')}#hospedagens" style="color:var(--creme);text-decoration:underline">${t('Ver as hospedagens', 'See the stays', 'Ver los alojamientos')} →</a></p>
+</section>`,
+  { caminho: '/blog.html', extraHead: `<script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
+);
+fs.writeFileSync(path.join(od, 'blog.html'), blogHub);
+
+const BLOG_PATHS = ['/blog.html', ...BLOG.map(a => `/blog/${a.slug}.html`)];
+console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
+
 
 
 // ------------------------- links.html (hub de links / "linktree") -------------------------
@@ -4053,6 +4151,7 @@ eles é feita por API, disponível nos planos superiores.
 - [Perguntas frequentes](${SITE_URL}/faq.html)
 - [Tour virtual 360°](${SITE_URL}/tour.html)
 
+${CAP_LLMS}
 ## Contato
 
 WhatsApp +55 61 99193-5013 · villelastay@gmail.com · SMDB Conjunto 29, Lago Sul,
