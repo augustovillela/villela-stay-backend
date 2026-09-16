@@ -3811,7 +3811,7 @@ const blogCardsHub = BLOG.map(a0 => { const a = tradArtigo(a0); return `
 // que é a página que lista a série inteira. Arte de marca no lugar da foto.
 const capCardsHub = LANG !== 'pt' || !capArtigos.length ? '' : `
   <a class="blog-card blog-card-serie" href="/claude/">
-    <div class="blog-card-img">${img('/blog-img/claude-ai-na-pratica-1.jpg', { alt: 'Ilustração: uma mesa de trabalho com documentos se organizando sozinhos em um painel de cartões', width: 1376, height: 768, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-img">${img('/blog-img/claude-ai-na-pratica-1.jpg', { alt: 'Ilustração: uma pessoa sozinha em uma mesa, e do laptop dela sobe um painel de telas conectadas cuidando de e-mail, vendas, agenda e automações', width: 1920, height: 1072, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
     <div class="blog-card-info">
       <span class="tema-tag tema-claude">\u{1F916} Série · Claude AI</span>
       <h3>Claude AI na Prática</h3>
@@ -3822,7 +3822,7 @@ const capCardsHub = LANG !== 'pt' || !capArtigos.length ? '' : `
 
 const cjCardsHub = LANG !== 'pt' || !cjArtigos.length ? '' : `
   <a class="blog-card blog-card-serie" href="/claude-juridico/">
-    <div class="blog-card-img">${img('/blog-img/claude-ai-na-pratica-juridica-1.jpg', { alt: 'Ilustração: uma mesa de escritório de advocacia com balança, volumes de lei e documentos se organizando em um painel de cartões', width: 1376, height: 768, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-img">${img('/blog-img/claude-ai-na-pratica-juridica-1.jpg', { alt: 'Ilustração: uma balança da justiça no fiel, com uma montanha de processos em papel de um lado e, do outro, uma pequena esfera luminosa ligada a uma constelação de pontos', width: 1920, height: 1072, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
     <div class="blog-card-info">
       <span class="tema-tag tema-claude">⚖️ Série · IA e Direito</span>
       <h3>Claude AI na Prática Jurídica</h3>
