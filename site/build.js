@@ -3168,6 +3168,7 @@ const BLOG_TEMA_I18N = {
   'Domo geodésico': { en: 'Geodesic dome', es: 'Domo geodésico' },
   'Gastronomia': { en: 'Food & dining', es: 'Gastronomía' },
   'Inclusão': { en: 'Inclusion', es: 'Inclusión' },
+  'Inteligência artificial': { en: 'Artificial intelligence', es: 'Inteligencia artificial' },
   'Hospedagem profissional': { en: 'Professional hosting', es: 'Hospedaje profesional' },
   'Paisagismo': { en: 'Landscaping', es: 'Paisajismo' },
   'Personalidades': { en: 'Notable figures', es: 'Personalidades' },
