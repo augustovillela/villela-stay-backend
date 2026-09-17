@@ -455,6 +455,7 @@ a { color: var(--lago); text-decoration: none; }
 /* Porta de entrada da serie Claude AI: parente do tema da serie, um tom mais grave. */
 .tema-ia-nao-substitui-voce { --t1:#131f33; --t2:#b9603a; }
 .tema-os-especialistas-mentem { --t1:#2b1a33; --t2:#8a5a2b; }
+.tema-quantas-vezes-pedir-para-refazer { --t1:#123028; --t2:#9a7b2f; }
 
 /* ---------- hero do artigo ---------- */
 .artigo-hero {
@@ -485,7 +486,8 @@ a { color: var(--lago); text-decoration: none; }
 .tema-tag.tema-claude,
 .tema-tag.tema-autismo-passo-a-passo, .tema-tag.tema-autismo-direitos-df,
 .tema-tag.tema-ia-nao-substitui-voce,
-.tema-tag.tema-os-especialistas-mentem {
+.tema-tag.tema-os-especialistas-mentem,
+.tema-tag.tema-quantas-vezes-pedir-para-refazer {
   background: linear-gradient(135deg, var(--t1), var(--t2)); color: #fff;
 }
 
