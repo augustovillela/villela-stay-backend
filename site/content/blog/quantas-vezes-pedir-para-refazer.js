@@ -35,6 +35,8 @@ module.exports = {
   corpo: (h) => `
 <p class="artigo-lead">Peça a um fotógrafo para refazer o ensaio. Ele refaz. Peça de novo: ele refaz, com um silêncio diferente. Peça uma terceira vez e alguma coisa muda na relação — mesmo que você esteja certo, mesmo que esteja pagando. Na quarta, você já não está pedindo qualidade: está, aos olhos dele, implicando. <strong>Existe um teto para quantas vezes se pode pedir para refazer, e esse teto não tem nada a ver com o trabalho estar bom.</strong> Ele é social. E é caríssimo.</p>
 
+${h.fig(1, { legenda: 'A mesma peça, refeita quantas vezes for preciso — e ninguém se cansa.' })}
+
 <h2>Parte I — O custo que nenhuma planilha mostra</h2>
 
 <h3>1. O teto da refação</h3>

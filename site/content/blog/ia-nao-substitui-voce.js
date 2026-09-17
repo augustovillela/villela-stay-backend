@@ -32,6 +32,8 @@ module.exports = {
   corpo: (h) => `
 <p class="artigo-lead">Há uma pergunta que deixou de fazer sentido: <em>será que a inteligência artificial vai substituir o advogado?</em> A pergunta útil é outra, e é desconfortável — <strong>em quanto tempo o colega que aprendeu a usá-la vai entregar, em dois dias, aquilo que você entrega em duas semanas?</strong> Este texto é sobre por que estudar IA não é aprender mais uma ferramenta, e sim adquirir um multiplicador que incide sobre tudo o que você já sabe fazer.</p>
 
+${h.fig(1, { legenda: 'Um advogado, a estrutura de um escritório inteiro: o que antes exigia equipe agora cabe numa mesa.' })}
+
 <h2>1. IA não é uma ferramenta de uma área — é uma tecnologia de propósito geral</h2>
 <p>Um software jurídico serve para advogar. Um ERP serve para administrar. Toda ferramenta tradicional nasce colada a um uso. A IA não: ela é uma camada que se acopla a qualquer atividade feita de texto, raciocínio, análise, decisão e repetição — e a advocacia é feita quase inteiramente disso.</p>
 <p>A consequência é que estudar IA não acrescenta mais uma matéria à sua formação. Adquire um multiplicador que incide sobre tudo o que você já sabe. Quem estuda tributário fica melhor em tributário. <strong>Quem estuda IA fica melhor em tudo o que faz.</strong></p>

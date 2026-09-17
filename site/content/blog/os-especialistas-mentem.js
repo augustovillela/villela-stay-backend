@@ -35,6 +35,8 @@ module.exports = {
   corpo: (h) => `
 <p class="artigo-lead">Em <em>Freakonomics</em>, Steven Levitt e Stephen Dubner mostraram algo simples e desconfortável: o corretor de imóveis, ao vender a <strong>própria</strong> casa, deixa o anúncio no mercado cerca de dez dias a mais e fecha por cerca de 3% a mais do que quando vende a sua. Ele não é desonesto. Ele apenas sabe algo que você não sabe, e usa isso conforme o interesse dele — que não é idêntico ao seu. Essa frase explica meio século de erros que custaram vidas: <strong>o especialista raramente mente; ele responde a incentivos que você não vê.</strong></p>
 
+${h.fig(1, { legenda: 'O achado que foi publicado, sob o holofote — e, no escuro, os estudos que não foram.' })}
+
 <h2>1. A filosofia chegou primeiro — e por caminhos diferentes</h2>
 <p>A intuição de que o perito engana não nasceu na economia comportamental. Ela tem uma linhagem longa, e cada elo acrescenta um mecanismo.</p>
 <p><strong>Sócrates</strong>, na <em>Apologia</em>, relata ter procurado os artesãos esperando encontrar sabedoria. Encontrou competência real — e, junto dela, o defeito que o impressionou: por dominarem bem o próprio ofício, julgavam-se conhecedores das maiores questões. É a primeira descrição do especialista que extrapola a fronteira da sua competência, que é o erro mais comum de todos.</p>
