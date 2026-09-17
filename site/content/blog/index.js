@@ -2,6 +2,7 @@
 // Para publicar um novo artigo: crie content/blog/<slug>.js (copie um existente)
 // e adicione o require aqui. O build.js gera a página e atualiza hub, sitemap e menu.
 module.exports = [
+  require('./os-especialistas-mentem'),
   require('./ia-nao-substitui-voce'),
   require('./autismo-passo-a-passo'),
   require('./autismo-direitos-df'),
