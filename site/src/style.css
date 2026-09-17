@@ -452,6 +452,8 @@ a { color: var(--lago); text-decoration: none; }
 .tema-autismo-passo-a-passo { --t1:#0B4557; --t2:#16849E; }
 .tema-autismo-direitos-df   { --t1:#14403A; --t2:#2F7D6B; }
 .tema-claude        { --t1:#0f1a2b; --t2:#c8623c; }
+/* Porta de entrada da serie Claude AI: parente do tema da serie, um tom mais grave. */
+.tema-ia-nao-substitui-voce { --t1:#131f33; --t2:#b9603a; }
 
 /* ---------- hero do artigo ---------- */
 .artigo-hero {
@@ -480,7 +482,8 @@ a { color: var(--lago); text-decoration: none; }
 .tema-tag.tema-paisagismo, .tema-tag.tema-personalidades, .tema-tag.tema-containers,
 .tema-tag.tema-domo-geodesico, .tema-tag.tema-hospedagem-profissional,
 .tema-tag.tema-claude,
-.tema-tag.tema-autismo-passo-a-passo, .tema-tag.tema-autismo-direitos-df {
+.tema-tag.tema-autismo-passo-a-passo, .tema-tag.tema-autismo-direitos-df,
+.tema-tag.tema-ia-nao-substitui-voce {
   background: linear-gradient(135deg, var(--t1), var(--t2)); color: #fff;
 }
 
@@ -553,6 +556,40 @@ a { color: var(--lago); text-decoration: none; }
 .fig-legenda { display: block; font-style: italic; }
 .fig-credito { display: block; font-size: .74rem; opacity: .8; }
 .fig-credito a { color: inherit; text-decoration: underline; font-weight: 500; }
+
+/* ---------- nota de sintese e chamada final do artigo (genericas) ---------- */
+.artigo-nota {
+  margin: 2.2em 0; padding: 22px 24px; background: #f6f7f9;
+  border-left: 4px solid var(--t2, #0E7490); border-radius: 0 8px 8px 0;
+}
+.artigo-nota p { margin: 0 0 .7em; font-size: 1.04rem; line-height: 1.7; }
+.artigo-nota p:last-child { margin-bottom: 0; }
+
+.artigo-cta {
+  margin: 2.6em 0 1.4em; padding: 28px 28px 24px; border-radius: 16px; color: #fff;
+  background: linear-gradient(135deg, var(--t1, #1B2A4A), var(--t2, #0E7490));
+}
+.artigo-cta-tag {
+  display: inline-block; font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(255,255,255,.82); border: 1px solid rgba(255,255,255,.35); border-radius: 20px; padding: 4px 12px;
+}
+.artigo-cta h2 {
+  color: #fff; border: none; padding: 0; margin: 14px 0 .4em; font-size: 1.5rem; letter-spacing: -.3px;
+}
+.artigo-cta p { font-size: 1.02rem; line-height: 1.65; color: rgba(255,255,255,.93); margin: 0 0 1em; }
+.artigo-cta-links { display: flex; flex-wrap: wrap; gap: 10px 12px; margin: 18px 0 0 !important; }
+.artigo-cta-links a {
+  display: inline-block; font-weight: 700; font-size: .95rem; text-decoration: none !important;
+  color: #fff !important; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.45);
+  border-radius: 24px; padding: 10px 20px;
+}
+.artigo-cta-links a:first-child { background: #fff; color: var(--t1, #1B2A4A) !important; border-color: #fff; }
+.artigo-cta-links a:hover { background: rgba(255,255,255,.28); }
+.artigo-cta-links a:first-child:hover { background: rgba(255,255,255,.88); }
+@media (max-width: 560px) {
+  .artigo-cta { padding: 22px 18px 20px; }
+  .artigo-cta-links a { width: 100%; text-align: center; }
+}
 
 /* ---------- isca (lead magnet) ---------- */
 .isca-box {
