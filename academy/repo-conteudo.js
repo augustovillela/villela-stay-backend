@@ -614,6 +614,22 @@ const Progresso = {
 
 // ================= FASE 3 — marketplace público, página de venda, avaliações, denúncias =================
 
+// anexa as áreas de cada produto da lista numa consulta só (o cartão mostra até
+// duas). Sem isso o card exibia só a principal, mesmo em produto multi-área.
+function comCategorias(rows) {
+  if (!rows.length) return rows;
+  const ids = rows.map(r => r.id);
+  const pares = db.prepare(`SELECT product_id, slug FROM product_categories
+    WHERE product_id IN (${ids.map(() => '?').join(',')}) ORDER BY principal DESC, slug`).all(...ids);
+  const porProduto = new Map();
+  pares.forEach(x => porProduto.set(x.product_id, [...(porProduto.get(x.product_id) || []), x.slug]));
+  return rows.map(r => {
+    const cats = porProduto.get(r.id) || [];
+    if (r.categoria && !cats.includes(r.categoria)) cats.unshift(r.categoria);
+    return { ...r, categorias: cats };
+  });
+}
+
 // vitrine: SÓ produtos publicados; nunca vaza rascunho/suspenso
 const Marketplace = {
   listar({ q, categoria, n } = {}) {
@@ -629,7 +645,7 @@ const Marketplace = {
       const t = s(q, 80).toLowerCase();
       rows = rows.filter(r => (r.titulo + ' ' + r.subtitulo + ' ' + r.descricao_curta).toLowerCase().includes(t));
     }
-    return rows;
+    return comCategorias(rows);
   },
   porSlug(slug) {
     const p = db.prepare(`SELECT p.*, pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug, pr.bio AS produtor_bio
@@ -662,7 +678,7 @@ const Marketplace = {
       pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug
       FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
       WHERE p.status = 'publicado' ORDER BY p.atualizado_em DESC LIMIT 200`).all();
-    return rows.filter(r => !fora.has(r.id)).map(r => {
+    return comCategorias(rows.filter(r => !fora.has(r.id)).map(r => {
       const minhas = j.parse(r.tags, []).map(x => String(x || '').toLowerCase().trim());
       const emComum = minhas.filter(x => tg.has(x));
       const score = (cat.has(r.categoria) ? 4 : 0) + Math.min(emComum.length, 3) * 2 + (pro.has(r.producer_id) ? 3 : 0);
@@ -670,7 +686,7 @@ const Marketplace = {
         : (pro.has(r.producer_id) ? `Do mesmo autor: ${r.produtor_nome}`
           : (emComum.length ? `Também sobre ${emComum[0]}` : 'Em destaque na Academy'));
       return { ...r, tags: minhas, score, motivo };
-    }).sort((a, b) => b.score - a.score || String(b.atualizado_em || '').localeCompare(String(a.atualizado_em || '')))
+    })).sort((a, b) => b.score - a.score || String(b.atualizado_em || '').localeCompare(String(a.atualizado_em || '')))
       .slice(0, Math.min(parseInt(n, 10) || 6, 24));
   },
 

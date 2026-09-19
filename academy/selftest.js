@@ -1315,6 +1315,11 @@ async function main() {
     assert.ok(ctx.Marketplace.listar({ categoria: 'direito' }).some(x => x.id === prodId));
     assert.ok(ctx.Marketplace.listar({ categoria: 'tecnologia' }).some(x => x.id === prodId), 'a área secundária também filtra');
     assert.ok(!ctx.Marketplace.listar({ categoria: 'eventos' }).some(x => x.id === prodId));
+    const lista = ctx.Marketplace.listar({});
+    assert.deepEqual((lista.find(x => x.id === prodId) || {}).categorias, ['direito', 'tecnologia'],
+      'a vitrine leva as áreas: sem isso o cartão mostra só a principal');
+    const mk = await req('GET', '/academy/marketplace');
+    assert.ok(mk.texto.includes('>Tecnologia<'), 'a segunda área aparece no cartão');
     const pag = await req('GET', `/academy/cursos/${p2.slug}`);
     assert.ok(pag.texto.includes('categoria=direito') && pag.texto.includes('categoria=tecnologia'), 'a página do curso mostra as duas áreas');
     ctx.Produtos.gravarCategorias(prodId, antes.length ? antes : ['hospedagem']); // devolve o fixture
