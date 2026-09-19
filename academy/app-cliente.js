@@ -312,181 +312,40 @@
     }).catch(function (e) { alert(e.message); }).then(pintarBotaoPush);
   }
 
-  // ================= ALUNO: biblioteca + curso + player =================
-  function vAluno() {
-    api('GET', '/aluno/biblioteca').then(function (d) {
-      var html = '';
-      if (d.continuar) {
-        html += '<div class="card"><b>▶️ Continuar de onde parou:</b> ' + esc(d.continuar.produto_titulo) + ' — ' + esc(d.continuar.aula_titulo) +
-          ' <button class="btn peq" data-curso="' + d.continuar.product_id + '">Continuar</button></div>';
-      }
-      html += '<div class="card"><h3>🎓 Minha biblioteca</h3>';
-      if (!d.cursos.length) {
-        html += '<div class="aviso">Você ainda não tem cursos aqui. Esta é a sua biblioteca de <b>aluno</b> — ela mostra o que você comprou ou recebeu de cortesia. ' +
-          '<a href="/academy/marketplace">Ver os cursos disponíveis →</a>' +
-          (ME.papeis_ativos && ME.papeis_ativos.indexOf('produtor') >= 0
-            ? '<br>Curso que <b>você criou</b> não aparece aqui: ele fica em <b>🎬 Produtor → Meus produtos</b>.'
-            : '') + '</div>';
-      } else {
-        html += d.cursos.map(function (c) {
-          return '<div class="lin"><b>' + esc(c.titulo) + '</b> <span class="chip">' + (TIPOS_PROD[c.tipo] || esc(c.tipo)) + '</span>' +
-            (c.origem === 'cortesia' ? ' <span class="chip">🎁 cortesia</span>' : '') +
-            '<div style="max-width:340px;margin:6px 0">' + barra(c.progresso.pct) + '</div>' +
-            '<span class="sub" style="text-align:left;margin:0">' + c.progresso.concluidas + '/' + c.progresso.total_aulas + ' aulas (' + c.progresso.pct + '%)</span> ' +
-            '<button class="btn peq" data-curso="' + c.product_id + '">' + (c.progresso.pct > 0 ? 'Continuar' : 'Começar') + '</button></div>';
-        }).join('');
-      }
-      html += '</div>';
-      if ((d.assinaturas || []).length) {
-        html += '<div class="card"><h3>🔁 Minhas assinaturas</h3>' + d.assinaturas.map(function (a) {
-          return '<div class="lin"><b>' + esc(a.produto_titulo) + '</b> · ' + brl(a.valor_centavos) + '/mês · ' + (STATUS_ASSINATURA[a.status] || esc(a.status)) +
-            (a.status === 'ativa' ? ' <button class="btn peq" data-curso="' + a.product_id + '">Abrir clube</button> <button class="btn peq secund" data-cancsub="' + a.id + '">Cancelar</button>' : '') + '</div>';
-        }).join('') + '</div>';
-      }
-      html += cartaoVireProdutorAfiliado();
-      setView(html);
-      Array.prototype.forEach.call(document.querySelectorAll('[data-curso]'), function (b) {
-        b.onclick = function () { vCurso(b.getAttribute('data-curso')); };
+  // ================= ALUNO: biblioteca + estúdio de aula =================
+  // A experiência do aluno (biblioteca, player, grade do curso, materiais e
+  // recomendações) vive em app-aluno.js — é a tela mais trabalhada do painel e
+  // ficaria ilegível misturada com produtor/afiliado/admin. Aqui ficam só as
+  // dependências que ela recebe e os dois pontos de entrada.
+  var ALUNO = null;
+  function aluno() {
+    if (!ALUNO) {
+      if (!window.AcademyAluno) return null;
+      ALUNO = window.AcademyAluno({
+        api: api, esc: esc, el: el, brl: brl, setView: setView, erroBox: erroBox,
+        okMsg: okMsg, falha: falha, me: function () { return ME; },
+        TIPOS_PROD: TIPOS_PROD, STATUS_ASSINATURA: STATUS_ASSINATURA,
+        // o convite para virar produtor/afiliado é do painel, não da biblioteca:
+        // entra depois que a biblioteca pinta, sem que o módulo do aluno o conheça.
+        aoMontarBiblioteca: function () {
+          var raiz = document.querySelector('.al');
+          if (!raiz) return;
+          var cx = document.createElement('div');
+          cx.style.marginTop = '30px';
+          cx.innerHTML = cartaoVireProdutorAfiliado();
+          raiz.appendChild(cx);
+          ligarOnboarding();
+        },
       });
-      Array.prototype.forEach.call(document.querySelectorAll('[data-cancsub]'), function (b) {
-        b.onclick = function () {
-          if (!confirm('Cancelar a assinatura? O acesso ao clube termina agora.')) return;
-          api('POST', '/assinaturas/' + b.getAttribute('data-cancsub') + '/cancelar').then(vAluno).catch(function (e) { alert(e.message); });
-        };
-      });
-      ligarOnboarding();
-    }).catch(erroBox);
-  }
-
-  function embedDe(url) { // YouTube/Vimeo → iframe; outros → link
-    var m = String(url || '').match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,20})/);
-    if (m) return 'https://www.youtube.com/embed/' + m[1];
-    m = String(url || '').match(/vimeo\.com\/(\d+)/);
-    if (m) return 'https://player.vimeo.com/video/' + m[1];
-    return null;
-  }
-
-  function vCurso(pid) {
-    api('GET', '/aluno/cursos/' + pid).then(function (d) {
-      var pa = d.progresso_aulas || {};
-      var html = '<div class="card"><p><a href="#" id="b-volta">← biblioteca</a></p><h3>' + esc(d.produto.titulo) + '</h3>' +
-        (d.produto.subtitulo ? '<p class="sub" style="text-align:left">' + esc(d.produto.subtitulo) + '</p>' : '') +
-        (d.matriculado ? '<div style="max-width:340px">' + barra(d.progresso.pct) + '</div><p class="sub" style="text-align:left;margin:4px 0 0">' + d.progresso.concluidas + '/' + d.progresso.total_aulas + ' aulas concluídas' +
-          (d.progresso.pct === 100 ? ' · <a href="#" id="b-cert">🎓 Emitir certificado</a>' : '') + '</p>'
-          : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas.</div>') + '</div>';
-      if ((d.incluidos || []).length) {
-        html += '<div class="card"><b>🎁 Incluído na sua assinatura</b>' + d.incluidos.map(function (i) {
-          return '<div class="lin">' + (TIPOS_PROD[i.tipo] || '') + ' <a href="#" data-curso-inc="' + i.product_id + '">' + esc(i.titulo) + '</a></div>';
-        }).join('') + '</div>';
-      }
-      html += d.estrutura.map(function (mo) {
-        return '<div class="card"><b>📚 ' + esc(mo.titulo) + '</b>' + mo.aulas.map(function (a) {
-          var feito = pa[a.id] && pa[a.id].concluida;
-          return '<div class="lin">' + (a.liberada
-            ? '<a href="#" data-aula="' + a.id + '" data-pid="' + pid + '">' + (feito ? '✅' : '▫️') + ' ' + esc(a.titulo) + '</a>' + (a.gratuita ? ' <span class="chip">degustação</span>' : '')
-            : '🔒 <span style="color:#888">' + esc(a.titulo) + '</span>') + '</div>';
-        }).join('') + '</div>';
-      }).join('');
-      if (d.matriculado) {
-        html += '<div class="card"><b>⭐ Avaliar este produto</b><br>' +
-          '<select id="av-nota" style="max-width:90px"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select> ' +
-          '<input id="av-texto" placeholder="Conte como foi (opcional)" style="max-width:380px"> ' +
-          '<button class="btn peq" id="b-avaliar">Enviar</button> <span id="av-msg" class="erro"></span></div>';
-      }
-      if (d.matriculado) {
-        html += '<div class="card"><b>🤖 Tirar dúvida com o tutor IA</b><br>' +
-          '<input id="ia-perg" placeholder="Pergunte algo sobre o conteúdo deste curso" style="max-width:420px"> ' +
-          '<button class="btn peq" id="b-ia-perg">Perguntar</button> <span id="ia-perg-msg" class="erro"></span>' +
-          '<div id="ia-perg-out"></div></div>';
-      }
-      html += '<p class="sub" style="text-align:left"><a href="#" id="b-denunciar">🚩 Denunciar conteúdo irregular</a></p>';
-      html += '<div id="player"></div>';
-      setView(html);
-      el('b-volta').onclick = function (e) { e.preventDefault(); vAluno(); };
-      Array.prototype.forEach.call(document.querySelectorAll('[data-curso-inc]'), function (lk) {
-        lk.onclick = function (e) { e.preventDefault(); vCurso(lk.getAttribute('data-curso-inc')); };
-      });
-      if (el('b-cert')) el('b-cert').onclick = function (e) {
-        e.preventDefault();
-        api('POST', '/aluno/cursos/' + pid + '/certificado').then(function (r) {
-          window.open(r.url, '_blank');
-        }).catch(function (er) { alert(er.message); });
-      };
-      if (el('b-ia-perg')) el('b-ia-perg').onclick = function () {
-        el('ia-perg-msg').textContent = '⏳ pensando…';
-        api('POST', '/ia/aluno/perguntar', { product_id: pid, pergunta: val('ia-perg') }).then(function (d) {
-          el('ia-perg-msg').textContent = '';
-          el('ia-perg-out').innerHTML = '<div class="aviso">' + esc(d.resposta || '') +
-            (d.aula_referencia ? '<br><span class="chip">📚 ' + esc(d.aula_referencia) + '</span>' : '') +
-            (d.nao_encontrado ? '<br><i>Não achei isso no conteúdo — vale perguntar ao produtor.</i>' : '') + '</div>';
-        }).catch(function (e) { el('ia-perg-msg').textContent = e.message; });
-      };
-      if (el('b-avaliar')) el('b-avaliar').onclick = function () {
-        api('POST', '/aluno/cursos/' + pid + '/avaliar', { nota: val('av-nota'), texto: val('av-texto') })
-          .then(function () { okMsg('av-msg', '✅ obrigado!'); }).catch(function (e) { falha('av-msg', e); });
-      };
-      el('b-denunciar').onclick = function (e) {
-        e.preventDefault();
-        var motivo = prompt('Motivo (direitos-autorais, enganoso, ilegal, adulto, outro):', 'outro');
-        if (motivo == null) return;
-        var texto = prompt('Descreva o problema:') || '';
-        api('POST', '/denunciar', { product_id: pid, motivo: motivo, texto: texto })
-          .then(function () { alert('Denúncia registrada. Obrigado.'); }).catch(function (er) { alert(er.message); });
-      };
-      Array.prototype.forEach.call(document.querySelectorAll('[data-aula]'), function (lk) {
-        lk.onclick = function (e) {
-          e.preventDefault();
-          var aula = null;
-          d.estrutura.forEach(function (mo) { mo.aulas.forEach(function (a) { if (a.id === lk.getAttribute('data-aula')) aula = a; }); });
-          abrirAula(pid, aula, pa, d.matriculado);
-        };
-      });
-    }).catch(erroBox);
-  }
-
-  function abrirAula(pid, a, pa, matriculado) {
-    if (!a) return;
-    var corpo = '';
-    var media = a.media_id ? '/academy/api/media/' + a.media_id : '';
-    if (a.tipo === 'video') {
-      if (a.media_id) { // vídeo nativo (F7): player com URL assinada temporária
-        corpo = '<div id="vd-box"><p class="sub">Carregando vídeo…</p></div>';
-        setTimeout(function () {
-          api('GET', '/media/' + a.media_id + '/link').then(function (d) {
-            var vb = el('vd-box');
-            if (vb) vb.innerHTML = '<video controls playsinline style="width:100%;border-radius:10px;background:#000" src="' + esc(d.url) + '"></video>' +
-              '<p class="sub" style="text-align:left">Link do vídeo é temporário e pessoal.</p>';
-          }).catch(function (e) { var vb = el('vd-box'); if (vb) vb.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
-        }, 0);
-      } else {
-        var emb = embedDe(a.url_externa);
-        corpo = emb ? '<iframe src="' + emb + '" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px" allowfullscreen></iframe>'
-          : (a.url_externa ? '<p><a class="btn peq" href="' + esc(a.url_externa) + '" target="_blank" rel="noopener">▶️ Assistir vídeo</a></p>' : '<p class="sub">Vídeo ainda não configurado.</p>');
-      }
-    } else if (a.tipo === 'pdf' && media) {
-      corpo = '<iframe src="' + media + '" style="width:100%;height:70vh;border:1px solid #E2E6EC;border-radius:10px"></iframe>';
-    } else if (a.tipo === 'audio' && media) {
-      corpo = '<audio controls style="width:100%" src="' + media + '"></audio>';
-    } else if (a.tipo === 'arquivo' && media) {
-      corpo = '<p><a class="btn peq" href="' + media + '" target="_blank">⬇️ Abrir arquivo</a></p>';
-    } else if (a.tipo === 'link' && a.url_externa) {
-      corpo = '<p><a class="btn peq" href="' + esc(a.url_externa) + '" target="_blank" rel="noopener">🔗 Abrir link</a></p>';
     }
-    if (a.conteudo) corpo += '<div style="white-space:pre-wrap;margin-top:10px">' + esc(a.conteudo) + '</div>';
-    var mats = (a.materiais || []).map(function (m) {
-      return '<div class="lin">📎 <a href="/academy/api/media/' + m.media_id + '" target="_blank">' + esc(m.nome) + '</a></div>';
-    }).join('');
-    var feito = pa[a.id] && pa[a.id].concluida;
-    el('player').innerHTML = '<div class="card"><h3>' + esc(a.titulo) + '</h3>' + corpo +
-      (mats ? '<p style="margin-top:12px"><b>Materiais</b></p>' + mats : '') +
-      (matriculado || a.gratuita ? '<p style="margin-top:14px"><button class="btn peq ' + (feito ? 'secund' : '') + '" id="b-feito">' +
-        (feito ? '↩️ Desmarcar conclusão' : '✅ Marcar como concluída') + '</button></p>' : '') + '</div>';
-    el('player').scrollIntoView({ behavior: 'smooth' });
-    var bf = el('b-feito');
-    if (bf) bf.onclick = function () {
-      api('POST', '/aluno/aulas/' + a.id + '/progresso', { concluida: !feito }).then(function () { vCurso(pid); }).catch(function (e) { alert(e.message); });
-    };
+    return ALUNO;
   }
+  function vAluno() {
+    var a = aluno();
+    if (a) a.biblioteca();
+    else setView('<div class="aviso">Não consegui carregar a área do aluno. Atualize a página.</div>');
+  }
+  function vCurso(pid, aulaId) { var a = aluno(); if (a) a.curso(pid, aulaId); }
 
   function cartaoVireProdutorAfiliado() {
     var pp = ME.perfil_produtor, pa = ME.perfil_afiliado, h = '';

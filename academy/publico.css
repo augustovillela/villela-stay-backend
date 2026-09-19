@@ -1,0 +1,152 @@
+/* =====================================================================
+ * Villela Academy — páginas públicas (landing, marketplace, curso).
+ * Camada de acabamento sobre o CSS base de paginas.js: tipografia maior,
+ * respiro, capa em destaque, currículo em sanfona e cartão de compra fixo.
+ * Identidade do Grupo Villela Stay (navy/âmbar/ouro, Lora + Inter).
+ * ===================================================================== */
+:root{
+  --pv-tinta:#101828;--pv-tinta2:#475467;--pv-tinta3:#79839A;--pv-borda:#E4E7EC;--pv-borda2:#F0F2F5;
+  --pv-navy:#1B2A4A;--pv-navy2:#24365C;--pv-ambar:#D97706;--pv-ambar2:#B45309;--pv-ambar-luz:#FEF3E7;
+  --pv-ouro:#C9A227;--pv-ok:#12805C;--pv-sombra:0 1px 2px rgba(16,24,40,.04),0 10px 28px rgba(16,24,40,.07);
+  --pv-sombra-f:0 16px 44px rgba(16,24,40,.14);
+}
+.pv{max-width:1180px;margin:0 auto;padding:0 22px}
+.pv-fino{color:var(--pv-tinta3);font-size:.84rem}
+.pv-olho{font:700 .74rem/1.3 'Inter',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--pv-ambar2);margin:0 0 8px}
+
+/* ---------- topo do curso ---------- */
+.pv-hero h1,.pv-hero h2{color:#fff!important}
+.pv-hero{position:relative;overflow:hidden;color:#F8F9FA;padding:34px 0 46px;
+  background:linear-gradient(135deg,#16233E 0%,var(--pv-navy) 45%,var(--pv-navy2) 100%)}
+.pv-hero:before{content:'';position:absolute;width:620px;height:620px;right:-140px;top:-260px;border-radius:50%;
+  background:radial-gradient(circle,rgba(217,119,6,.28),transparent 62%);pointer-events:none}
+.pv-hero .pv{position:relative}
+.pv-trilha{font-size:.82rem;color:#9FB0CB;margin:0 0 20px}
+.pv-trilha a{color:#9FB0CB;text-decoration:none}.pv-trilha a:hover{color:var(--pv-ouro)}
+.pv-hero h1{color:#fff;font-family:'Lora',Georgia,serif;font-size:clamp(1.8rem,3.2vw,2.7rem);line-height:1.14;margin:.3rem 0 .8rem;max-width:22ch}
+.pv-hero .dek{font-size:1.13rem;line-height:1.55;color:#CBD6E8;max-width:62ch;margin:0 0 18px}
+.pv-chips{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 16px}
+.pv-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);
+  color:#E8EDF6;border-radius:99px;padding:5px 13px;font:600 .82rem/1.3 'Inter',sans-serif}
+.pv-chip.ouro{background:var(--pv-ouro);border-color:var(--pv-ouro);color:#1B2A4A}
+.pv-chip.ambar{background:var(--pv-ambar);border-color:var(--pv-ambar);color:#fff}
+.pv-autor{display:flex;align-items:center;gap:11px;color:#CBD6E8;font-size:.95rem;margin:16px 0 0}
+.pv-autor .av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--pv-ouro),var(--pv-ambar));
+  display:grid;place-items:center;font:700 1rem/1 'Inter',sans-serif;color:#1B2A4A}
+.pv-autor a{color:#fff;font-weight:600;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.35)}
+
+/* ---------- corpo: conteúdo + cartão de compra ---------- */
+.pv-corpo{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:40px;align-items:start;padding:44px 0 10px}
+@media(max-width:980px){.pv-corpo{grid-template-columns:1fr;gap:26px;padding-top:28px}}
+.pv-sec{padding:0 0 34px}
+.pv-sec h2{font-family:'Lora',Georgia,serif;font-size:1.55rem;color:var(--pv-navy);margin:0 0 14px;line-height:1.25}
+.pv-sec p{line-height:1.7;margin:0 0 14px;color:#283246}
+.pv-lista{list-style:none;padding:0;margin:0;display:grid;gap:11px}
+.pv-lista.duas{grid-template-columns:1fr 1fr}
+@media(max-width:700px){.pv-lista.duas{grid-template-columns:1fr}}
+.pv-lista li{display:flex;gap:11px;align-items:flex-start;line-height:1.55}
+.pv-lista li svg{flex:0 0 20px;margin-top:2px;color:var(--pv-ok)}
+.pv-lista.alvo li svg{color:var(--pv-ambar)}
+.pv-lista.bonus li svg{color:var(--pv-ouro)}
+
+/* cartão de compra — acompanha a rolagem */
+.pv-compra{position:sticky;top:18px;background:#fff;border:1px solid var(--pv-borda);border-radius:18px;
+  box-shadow:var(--pv-sombra-f);overflow:hidden}
+@media(max-width:980px){.pv-compra{position:static}}
+.pv-compra .capa{width:100%;aspect-ratio:16/9;object-fit:cover;background:#0B1120;display:block}
+.pv-compra .in{padding:20px}
+.pv-preco{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 4px}
+.pv-preco b{font:800 2.1rem/1 'Inter',sans-serif;color:var(--pv-navy)}
+.pv-preco s{color:var(--pv-tinta3);font-size:1rem}
+.pv-preco .mes{font-size:.95rem;color:var(--pv-tinta2);font-weight:600}
+.pv-parcela{color:var(--pv-tinta2);font-size:.88rem;margin:0 0 16px}
+.pv-bt{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border:0;border-radius:12px;
+  background:var(--pv-ambar);color:#fff;font:700 1.02rem/1 'Inter',sans-serif;padding:15px 18px;cursor:pointer;
+  text-decoration:none;transition:background .15s,transform .15s,box-shadow .15s}
+.pv-bt:hover{background:var(--pv-ambar2);color:#fff;transform:translateY(-1px);box-shadow:0 10px 24px rgba(217,119,6,.3)}
+.pv-bt.fan{background:#fff;color:var(--pv-navy);border:1px solid var(--pv-borda);font-weight:600;font-size:.95rem;padding:12px 16px;margin-top:9px}
+.pv-bt.fan:hover{background:var(--pv-ambar-luz);border-color:var(--pv-ambar);box-shadow:none}
+.pv-inclui{list-style:none;padding:16px 0 0;margin:16px 0 0;border-top:1px solid var(--pv-borda2);display:grid;gap:10px}
+.pv-inclui li{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;color:#2C3648;line-height:1.45}
+.pv-inclui li svg{flex:0 0 18px;margin-top:1px;color:var(--pv-ambar2)}
+.pv-garantia{margin-top:14px;background:var(--pv-ambar-luz);border-radius:12px;padding:12px 14px;font-size:.86rem;color:#6B4416;line-height:1.5}
+
+/* ---------- currículo em sanfona ---------- */
+.pv-curr{border:1px solid var(--pv-borda);border-radius:16px;overflow:hidden;background:#fff;box-shadow:var(--pv-sombra)}
+.pv-curr details{border-bottom:1px solid var(--pv-borda2)}
+.pv-curr details:last-child{border-bottom:0}
+.pv-curr summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;padding:15px 18px;
+  font:600 .98rem/1.35 'Inter',sans-serif;color:var(--pv-navy);background:#fff;transition:background .14s}
+.pv-curr summary::-webkit-details-marker{display:none}
+.pv-curr summary:hover{background:var(--pv-borda2)}
+.pv-curr summary .seta{transition:transform .2s;color:var(--pv-tinta3);flex:0 0 auto}
+.pv-curr details[open] summary{background:var(--pv-ambar-luz)}
+.pv-curr details[open] summary .seta{transform:rotate(90deg)}
+.pv-curr summary .qt{margin-left:auto;color:var(--pv-tinta3);font-weight:500;font-size:.82rem;white-space:nowrap}
+.pv-curr .aulas{padding:4px 0 10px}
+.pv-curr .aula{display:flex;align-items:flex-start;gap:11px;padding:8px 18px 8px 44px;font-size:.9rem;color:#2C3648;line-height:1.45}
+.pv-curr .aula svg{flex:0 0 17px;margin-top:2px;color:var(--pv-tinta3)}
+.pv-curr .aula .dur{margin-left:auto;color:var(--pv-tinta3);font-size:.8rem;white-space:nowrap;padding-left:10px}
+.pv-curr .aula .free{background:#E7F5EF;color:var(--pv-ok);border-radius:99px;padding:1px 8px;font-size:.72rem;font-weight:700;margin-left:7px}
+.pv-resumo-curr{display:flex;gap:18px;flex-wrap:wrap;color:var(--pv-tinta2);font-size:.9rem;margin:0 0 14px}
+
+/* ---------- instrutor, depoimentos, faq ---------- */
+.pv-prof{display:flex;gap:18px;align-items:flex-start;background:#fff;border:1px solid var(--pv-borda);
+  border-radius:16px;padding:22px;box-shadow:var(--pv-sombra)}
+.pv-prof .av{width:76px;height:76px;flex:0 0 76px;border-radius:50%;background:linear-gradient(135deg,var(--pv-navy),var(--pv-navy2));
+  color:#fff;display:grid;place-items:center;font:700 1.6rem/1 'Lora',serif}
+.pv-prof h3{font-family:'Lora',serif;color:var(--pv-navy);margin:0 0 3px;font-size:1.18rem}
+.pv-dep{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.pv-dep .d{background:#fff;border:1px solid var(--pv-borda);border-radius:16px;padding:20px;box-shadow:var(--pv-sombra);
+  display:flex;flex-direction:column;gap:10px}
+.pv-dep .est{color:var(--pv-ouro);letter-spacing:2px}
+.pv-dep .t{line-height:1.6;color:#283246;font-style:italic}
+.pv-faq details{background:#fff;border:1px solid var(--pv-borda);border-radius:14px;margin-bottom:10px;box-shadow:var(--pv-sombra)}
+.pv-faq summary{cursor:pointer;list-style:none;padding:15px 18px;font:600 .98rem/1.45 'Inter',sans-serif;color:var(--pv-navy);
+  display:flex;gap:12px;align-items:flex-start}
+.pv-faq summary::-webkit-details-marker{display:none}
+.pv-faq summary .mais{margin-left:auto;color:var(--pv-ambar);font-size:1.3rem;line-height:1;transition:transform .2s;flex:0 0 auto}
+.pv-faq details[open] summary .mais{transform:rotate(45deg)}
+.pv-faq .r{padding:0 18px 16px;line-height:1.65;color:#3A4557}
+
+/* ---------- faixa final e relacionados ---------- */
+.pv-fim{background:linear-gradient(135deg,var(--pv-navy),var(--pv-navy2));color:#fff;padding:52px 0;margin-top:30px;text-align:center}
+.pv-fim h2{font-family:'Lora',serif;font-size:1.9rem;margin:0 0 10px;color:#fff!important}
+.pv-fim p{color:#CBD6E8;max-width:60ch;margin:0 auto 22px;line-height:1.6}
+.pv-fim .pv-bt{display:inline-flex;width:auto;padding:15px 34px}
+.pv-rel{padding:46px 0 56px;background:#F7F8FA}
+.pv-rel h2{font-family:'Lora',serif;color:var(--pv-navy);font-size:1.45rem;margin:0 0 6px}
+
+/* ---------- landing: vitrine e números ---------- */
+.pv-vitrine{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:20px}
+.pv-num{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:18px;text-align:center}
+.pv-num div{background:#fff;border:1px solid var(--pv-borda);border-radius:16px;padding:22px 16px;box-shadow:var(--pv-sombra)}
+.pv-num b{display:block;font:800 1.9rem/1 'Inter',sans-serif;color:var(--pv-navy);margin-bottom:5px}
+.pv-num span{color:var(--pv-tinta2);font-size:.88rem}
+.pv-passos{counter-reset:p;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px}
+.pv-passos div{position:relative;background:#fff;border:1px solid var(--pv-borda);border-radius:16px;padding:26px 20px 20px;box-shadow:var(--pv-sombra)}
+.pv-passos div:before{counter-increment:p;content:counter(p);position:absolute;top:-16px;left:20px;width:34px;height:34px;border-radius:50%;
+  background:var(--pv-ambar);color:#fff;display:grid;place-items:center;font:800 1rem/1 'Inter',sans-serif;box-shadow:0 6px 14px rgba(217,119,6,.32)}
+.pv-passos h3{font-family:'Lora',serif;color:var(--pv-navy);font-size:1.08rem;margin:0 0 6px}
+.pv-passos p{color:var(--pv-tinta2);font-size:.92rem;line-height:1.55;margin:0}
+
+/* ---------- cartão de curso (vitrine, landing e relacionados) ----------
+   Mora aqui, e não no <style> de um shell: a landing tem <head> próprio e
+   mostrava o card sem estilo nenhum. Uma regra, três páginas. */
+.cardp{display:flex;flex-direction:column;gap:7px;background:#fff;border:1px solid var(--pv-borda);
+  border-radius:16px;padding:0 0 16px;overflow:hidden;box-shadow:var(--pv-sombra);
+  transition:transform .18s,box-shadow .18s,border-color .18s;text-decoration:none;color:inherit}
+.cardp:hover{transform:translateY(-3px);box-shadow:var(--pv-sombra-f);border-color:#D6DBE3;color:inherit}
+.cardp img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;margin:0 0 4px!important;border-radius:0!important}
+.cardp>*{margin-left:16px;margin-right:16px;text-align:left}
+.cardp>img{margin-left:0;margin-right:0}
+.cardp .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.cardp .tag{background:var(--pv-ambar-luz);color:var(--pv-ambar2);border-radius:99px;
+  padding:3px 10px;font:600 .74rem/1.4 'Inter',sans-serif}
+.cardp .capa-vazia{display:block;aspect-ratio:16/9;margin:0!important;
+  background:linear-gradient(135deg,#24365C,#1B2A4A 60%,#16233E)}
+.cardp .autor{color:var(--pv-tinta3);font-size:.82rem}
+.cardp b{font-family:'Lora',Georgia,serif;color:var(--pv-navy);font-size:1.08rem;line-height:1.3}
+.cardp .sub{color:var(--pv-tinta2);font-size:.88rem;line-height:1.5;text-align:left;margin:0}
+.cardp .preco{font:800 1.25rem/1 'Inter',sans-serif;color:var(--pv-navy);margin-top:auto;padding-top:6px}
+.cardp .preco s{color:var(--pv-tinta3);font-weight:400;font-size:.9rem;margin-right:5px}

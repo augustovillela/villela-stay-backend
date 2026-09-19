@@ -170,8 +170,16 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
         return liberada ? { ...a, liberada } : { id: a.id, titulo: a.titulo, tipo: a.tipo, gratuita: 0, liberada: false, materiais: [] };
       }),
     }));
+    // o painel do aluno mostra autor e descrição no topo do curso; o produtor sai
+    // do perfil público (nome_publico), não do nome da conta.
+    const perfil = repo.Perfis.produtor(p.producer_id);
     res.json({
-      produto: { id: p.id, titulo: p.titulo, subtitulo: p.subtitulo, tipo: p.tipo, capa_media_id: matriculado ? p.capa_media_id : '' },
+      produto: {
+        id: p.id, titulo: p.titulo, subtitulo: p.subtitulo, tipo: p.tipo, slug: p.slug,
+        descricao_curta: p.descricao_curta, categoria: p.categoria,
+        capa_media_id: matriculado ? p.capa_media_id : '',
+        produtor_nome: (perfil && perfil.nome_publico) || '', produtor_slug: (perfil && perfil.slug) || '',
+      },
       matriculado, estrutura,
       incluidos: (p.tipo === 'clube' && matriculado) ? ct.Clube.itens(p.id).filter(i => i.status === 'publicado') : [],
       progresso: matriculado ? ct.Progresso.doProduto(req.usuario.id, p.id) : null,
@@ -184,6 +192,23 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
   }));
 
   // ============================ FASE 3: página de venda / avaliações / denúncias ============================
+  // Próximos cursos: o que combina com o que o aluno já tem. Com ?product_id=<id>
+  // a recomendação é ancorada NAQUELE curso ("quem fez este, faz depois..."); sem ele,
+  // usa a biblioteca inteira. Nunca recomenda o que ele já tem nem o que ele mesmo produz.
+  app.get('/academy/api/aluno/recomendados', requireUsuario, requirePapel('aluno'), h((req, res) => {
+    const perfil = ct.Marketplace.perfilDoAluno(req.usuario.id);
+    const meus = ct.Produtos.doProdutor(req.usuario.id).map(x => x.id); // não recomenda o próprio produto
+    const ancora = req.query.product_id ? ct.Produtos.obter(String(req.query.product_id)) : null;
+    const base = ancora
+      ? { categorias: [ancora.categoria], tags: ancora.tags || [], produtores: [ancora.producer_id] }
+      : { categorias: perfil.categorias, tags: perfil.tags, produtores: perfil.produtores };
+    res.json({
+      cursos: ct.Marketplace.recomendados({
+        ...base, excluir: [...perfil.ids, ...meus, ancora ? ancora.id : ''], n: req.query.n,
+      }),
+    });
+  }));
+
   app.get('/academy/api/produtor/produtos/:id/pagina', ...P, h((req, res) => {
     const p = doDono(req);
     res.json({ secoes: ct.SalesPages.obter(p.id), url_publica: p.status === 'publicado' ? `/academy/cursos/${p.slug}` : null });

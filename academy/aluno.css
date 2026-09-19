@@ -1,0 +1,191 @@
+/* =====================================================================
+ * Villela Academy — área do aluno (biblioteca + estúdio de aula).
+ * Identidade do Grupo Villela Stay: navy #1B2A4A, âmbar #D97706,
+ * ouro #C9A227, Lora (títulos) + Inter (texto).
+ * Servido em /academy/aluno.css e usado só pelas telas do aluno.
+ * ===================================================================== */
+:root{
+  --al-tinta:#101828;--al-tinta2:#475467;--al-tinta3:#79839A;
+  --al-borda:#E4E7EC;--al-borda2:#F0F2F5;--al-papel:#fff;
+  --al-navy:#1B2A4A;--al-navy2:#24365C;--al-ambar:#D97706;--al-ambar2:#B45309;
+  --al-ambar-luz:#FEF3E7;--al-ouro:#C9A227;--al-ok:#12805C;--al-ok-luz:#E7F5EF;
+  --al-palco:#0B1120;--al-palco2:#141E33;
+  --al-sombra:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+  --al-sombra-f:0 12px 32px rgba(16,24,40,.12);
+}
+/* o estúdio precisa de largura: o painel padrão trava em 1040px */
+body.aluno-amplo .cx{max-width:1460px}
+.al{color:var(--al-tinta)}
+.al h1,.al h2,.al h3,.al h4{font-family:'Lora',Georgia,serif;color:var(--al-navy);margin:0}
+.al-sub{color:var(--al-tinta2);font-size:.92rem;margin:0}
+.al-fino{color:var(--al-tinta3);font-size:.82rem}
+.al-caixa{background:var(--al-papel);border:1px solid var(--al-borda);border-radius:16px;box-shadow:var(--al-sombra)}
+.al-rotulo{font:700 .72rem/1.3 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--al-ambar2)}
+
+/* ---------------- botões ---------------- */
+.al-bt{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;
+  background:var(--al-ambar);color:#fff;font:600 .93rem/1 'Inter',sans-serif;padding:11px 18px;cursor:pointer;
+  text-decoration:none;transition:background .15s,transform .15s,box-shadow .15s}
+.al-bt:hover{background:var(--al-ambar2);color:#fff;transform:translateY(-1px);box-shadow:0 6px 16px rgba(217,119,6,.28)}
+.al-bt:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none}
+.al-bt.fan{background:#fff;color:var(--al-navy);border:1px solid var(--al-borda)}
+.al-bt.fan:hover{background:var(--al-ambar-luz);border-color:var(--al-ambar);color:var(--al-navy)}
+.al-bt.esc{background:rgba(255,255,255,.10);color:#EEF2F8;border:1px solid rgba(255,255,255,.22)}
+.al-bt.esc:hover{background:rgba(255,255,255,.18);color:#fff;box-shadow:none}
+.al-bt.peq{padding:7px 13px;font-size:.84rem;border-radius:9px}
+.al-bt.ok{background:var(--al-ok)}.al-bt.ok:hover{background:#0E6A4D;box-shadow:0 6px 16px rgba(18,128,92,.26)}
+
+/* ---------------- barra de progresso ---------------- */
+.al-barra{height:7px;border-radius:99px;background:var(--al-borda2);overflow:hidden}
+.al-barra i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--al-ambar),var(--al-ouro));transition:width .4s}
+.al-barra.fina{height:5px}
+.al-barra.esc{background:rgba(255,255,255,.16)}
+
+/* ---------------- BIBLIOTECA ---------------- */
+.al-topo{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:6px 0 18px}
+.al-topo h2{font-size:1.75rem;line-height:1.2}
+.al-retomar{display:grid;grid-template-columns:260px 1fr;gap:0;overflow:hidden;border-radius:18px;
+  background:linear-gradient(135deg,var(--al-navy),var(--al-navy2));color:#F8F9FA;box-shadow:var(--al-sombra-f);margin-bottom:26px}
+.al-retomar .capa{background:#0B1120 center/cover no-repeat;min-height:150px;position:relative}
+.al-retomar .capa:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 55%,rgba(27,42,74,.85))}
+.al-retomar .txt{padding:22px 26px}
+.al-retomar h3{color:#fff;font-size:1.32rem;margin:4px 0 2px}
+.al-retomar .aula{color:#C7D0E0;font-size:.95rem;margin:0 0 14px}
+.al-retomar .al-rotulo{color:var(--al-ouro)}
+@media(max-width:700px){.al-retomar{grid-template-columns:1fr}.al-retomar .capa{min-height:120px}.al-retomar .capa:after{background:linear-gradient(180deg,transparent 40%,rgba(27,42,74,.9))}}
+
+.al-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:20px}
+.al-curso{display:flex;flex-direction:column;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s;
+  background:var(--al-papel);border:1px solid var(--al-borda);border-radius:16px;box-shadow:var(--al-sombra)}
+.al-curso:hover{transform:translateY(-3px);box-shadow:var(--al-sombra-f);border-color:#D6DBE3}
+.al-curso .capa{aspect-ratio:16/9;background:linear-gradient(135deg,var(--al-navy),var(--al-navy2)) center/cover no-repeat;position:relative;display:grid;place-items:center}
+.al-curso .capa .selo{position:absolute;top:10px;left:10px;background:rgba(11,17,32,.72);color:#fff;border-radius:8px;
+  padding:4px 9px;font:600 .74rem/1 'Inter',sans-serif;backdrop-filter:blur(3px)}
+.al-curso .capa .vazia{color:rgba(255,255,255,.5);font-size:2rem}
+.al-curso .corpo{padding:15px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.al-curso .corpo h4{font-size:1.04rem;line-height:1.3}
+.al-curso .rod{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:4px}
+.al-pct{font:700 .8rem/1 'Inter',sans-serif;color:var(--al-ambar2);white-space:nowrap}
+
+.al-rec{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.al-rec a{display:flex;flex-direction:column;text-decoration:none;color:inherit;overflow:hidden;
+  background:var(--al-papel);border:1px solid var(--al-borda);border-radius:16px;box-shadow:var(--al-sombra);transition:transform .18s,box-shadow .18s}
+.al-rec a:hover{transform:translateY(-3px);box-shadow:var(--al-sombra-f)}
+.al-rec .capa{aspect-ratio:16/9;background:linear-gradient(135deg,#243B63,#1B2A4A) center/cover no-repeat}
+.al-rec .corpo{padding:14px 15px 16px;display:flex;flex-direction:column;gap:7px;flex:1}
+.al-rec .motivo{display:inline-block;background:var(--al-ambar-luz);color:var(--al-ambar2);border-radius:99px;
+  padding:3px 10px;font:600 .74rem/1.4 'Inter',sans-serif;align-self:flex-start}
+.al-preco{font:800 1.05rem/1 'Inter',sans-serif;color:var(--al-navy);margin-top:auto;padding-top:6px}
+.al-preco s{color:var(--al-tinta3);font-weight:400;font-size:.85rem;margin-right:5px}
+
+/* ---------------- ESTÚDIO (aula) ---------------- */
+.al-volta{display:inline-flex;align-items:center;gap:7px;color:var(--al-tinta2);text-decoration:none;font-size:.9rem;margin-bottom:12px}
+.al-volta:hover{color:var(--al-ambar2)}
+.est{display:grid;grid-template-columns:minmax(0,1fr) 384px;gap:22px 22px;align-items:start}
+.est-palco{grid-column:1;grid-row:1}
+.est-baixo{grid-column:1;grid-row:2}
+.est>.grade{grid-column:2;grid-row:1/span 2}
+/* no celular a grade do curso vem LOGO APÓS o vídeo: trocar de aula não pode
+   depender de rolar a página inteira até o fim. Ela rola por dentro. */
+@media(max-width:1080px){
+  .est{grid-template-columns:1fr}
+  .est-palco,.est-baixo,.est>.grade{grid-column:1;grid-row:auto}
+  .est>.grade{max-height:58vh}
+  .grade-corpo{max-height:none}
+}
+
+.est-cab{margin-bottom:14px}
+.est-cab h2{font-size:1.5rem;line-height:1.25;margin:3px 0 6px}
+.est-cab .meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;color:var(--al-tinta2);font-size:.88rem}
+
+/* palco do vídeo — o conteúdo é o herói da tela */
+.palco{background:linear-gradient(170deg,var(--al-palco),var(--al-palco2));border-radius:18px;padding:12px;box-shadow:var(--al-sombra-f)}
+.palco .quadro{position:relative;border-radius:12px;overflow:hidden;background:#05080F}
+.palco video,.palco iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+.palco .doc{width:100%;height:min(74vh,820px);border:0;background:#fff;display:block}
+.palco .vazio{background:transparent;aspect-ratio:16/9;display:grid;place-items:center;text-align:center;color:#8FA0BC;gap:8px;padding:20px}
+.palco .legenda{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 6px 4px;color:#93A3BE;font-size:.8rem}
+.palco .legenda label{display:inline-flex;align-items:center;gap:7px;color:#C7D0E0;cursor:pointer;font-weight:500}
+.palco .legenda input{width:auto;margin:0}
+
+/* barra de navegação entre aulas */
+.est-nav{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-top:14px}
+@media(max-width:820px){.est-nav{grid-template-columns:1fr;gap:9px}.est-nav .dir{text-align:left}}
+.est-nav .pula{display:flex;align-items:center;gap:10px;background:var(--al-papel);border:1px solid var(--al-borda);
+  border-radius:12px;padding:10px 14px;text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s}
+.est-nav .pula:hover{border-color:var(--al-ambar);box-shadow:0 6px 16px rgba(217,119,6,.10)}
+.est-nav .pula small{display:block;color:var(--al-tinta3);font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+.est-nav .pula b{display:block;font-size:.9rem;font-weight:600;line-height:1.3}
+.est-nav .dir{text-align:right}.est-nav .dir .pula{justify-content:flex-end;text-align:right}
+.est-nav .vazia{visibility:hidden}
+
+/* abas: visão geral · materiais · tutor */
+.est-abas{display:flex;gap:4px;border-bottom:1px solid var(--al-borda);margin:26px 0 0;flex-wrap:wrap}
+.est-abas button{background:none;border:0;border-bottom:3px solid transparent;padding:11px 14px;cursor:pointer;
+  font:600 .93rem/1 'Inter',sans-serif;color:var(--al-tinta2);border-radius:8px 8px 0 0;margin-bottom:-1px}
+.est-abas button:hover{color:var(--al-navy);background:var(--al-borda2)}
+.est-abas button.on{color:var(--al-ambar2);border-bottom-color:var(--al-ambar);background:none}
+.est-abas .cont{display:inline-block;background:var(--al-ambar-luz);color:var(--al-ambar2);border-radius:99px;
+  padding:1px 7px;font-size:.74rem;margin-left:6px;font-weight:700}
+.est-painel{padding:20px 2px 6px;line-height:1.65}
+.est-painel p{margin:0 0 12px}
+
+/* materiais complementares — biblioteca da aula, não um anexo escondido */
+.mats{display:grid;grid-template-columns:repeat(auto-fill,minmax(276px,1fr));gap:14px}
+.mat{display:flex;align-items:center;gap:13px;padding:13px 14px;text-decoration:none;color:inherit;
+  background:var(--al-papel);border:1px solid var(--al-borda);border-radius:14px;box-shadow:var(--al-sombra);transition:transform .16s,box-shadow .16s,border-color .16s}
+.mat:hover{transform:translateY(-2px);border-color:var(--al-ambar);box-shadow:0 10px 24px rgba(217,119,6,.13);color:inherit}
+.mat .ic{width:46px;height:46px;flex:0 0 46px;border-radius:12px;display:grid;place-items:center;background:var(--al-ambar-luz);color:var(--al-ambar2)}
+.mat .ic.pdf{background:#FDECEC;color:#C0362C}.mat .ic.zip{background:#EEF0FB;color:#4B54A8}
+.mat .ic.img{background:#E9F5EF;color:#12805C}.mat .ic.som{background:#F3ECFB;color:#6B42A8}
+.mat .nm{flex:1;min-width:0}
+.mat .nm b{display:block;font-size:.92rem;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.mat .nm span{color:var(--al-tinta3);font-size:.79rem}
+.mat .baixar{color:var(--al-tinta3)}
+.mat:hover .baixar{color:var(--al-ambar)}
+.mats-vazio{border:1px dashed var(--al-borda);border-radius:14px;padding:22px;text-align:center;color:var(--al-tinta3)}
+
+/* ------- grade do curso (navegação lateral) ------- */
+.grade{position:sticky;top:12px;display:flex;flex-direction:column;max-height:calc(100vh - 24px);overflow:hidden;
+  background:var(--al-papel);border:1px solid var(--al-borda);border-radius:16px;box-shadow:var(--al-sombra)}
+@media(max-width:1080px){.grade{position:static}}
+.grade-cab{padding:16px 16px 14px;border-bottom:1px solid var(--al-borda);background:linear-gradient(160deg,var(--al-navy),var(--al-navy2));color:#fff;border-radius:15px 15px 0 0}
+.grade-cab h4{color:#fff;font-size:1rem;line-height:1.3;margin-bottom:9px}
+.grade-cab .nums{display:flex;justify-content:space-between;gap:8px;color:#C7D0E0;font-size:.8rem;margin-top:8px}
+.grade-busca{padding:10px 12px;border-bottom:1px solid var(--al-borda2)}
+.grade-busca input{margin:0;padding:9px 12px;border-radius:9px;border:1px solid var(--al-borda);font-size:.88rem}
+.grade-corpo{overflow-y:auto;padding:8px;flex:1;scrollbar-width:thin}
+.grade-corpo::-webkit-scrollbar{width:9px}.grade-corpo::-webkit-scrollbar-thumb{background:#D8DDE6;border-radius:9px;border:3px solid #fff}
+.mod{margin-bottom:4px}
+.mod-cab{display:flex;align-items:center;gap:9px;width:100%;background:none;border:0;cursor:pointer;text-align:left;
+  padding:10px 10px;border-radius:10px;font:600 .9rem/1.35 'Inter',sans-serif;color:var(--al-navy)}
+.mod-cab:hover{background:var(--al-borda2)}
+.mod-cab .seta{transition:transform .2s;color:var(--al-tinta3);flex:0 0 auto}
+.mod.fechado .seta{transform:rotate(-90deg)}
+.mod.fechado .mod-aulas{display:none}
+.mod-cab .qt{margin-left:auto;color:var(--al-tinta3);font-weight:500;font-size:.78rem;white-space:nowrap}
+.mod-aulas{padding:2px 0 6px}
+.aula{display:flex;align-items:flex-start;gap:10px;width:100%;background:none;border:0;cursor:pointer;text-align:left;
+  padding:9px 11px;border-radius:10px;color:var(--al-tinta);font:500 .875rem/1.4 'Inter',sans-serif;transition:background .13s}
+.aula:hover{background:var(--al-borda2)}
+.aula .ic{flex:0 0 18px;margin-top:1px;color:var(--al-tinta3)}
+.aula.feita .ic{color:var(--al-ok)}
+.aula.ativa{background:var(--al-ambar-luz);box-shadow:inset 3px 0 0 var(--al-ambar)}
+.aula.ativa .tit{color:var(--al-ambar2);font-weight:700}
+.aula.travada{color:var(--al-tinta3);cursor:not-allowed}
+.aula .tit{flex:1;min-width:0}
+.aula .dur{color:var(--al-tinta3);font-size:.76rem;white-space:nowrap;margin-top:1px}
+.aula .marca{display:inline-block;background:var(--al-ok-luz);color:var(--al-ok);border-radius:99px;padding:1px 7px;font-size:.7rem;font-weight:700;margin-left:6px}
+
+/* ------- fim do curso: certificado + próximos passos ------- */
+.al-conquista{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:20px 22px;border-radius:16px;
+  background:linear-gradient(135deg,#F9F5E8,#FDF8EC);border:1px solid #E8DCB8}
+.al-conquista .med{font-size:2.2rem}
+.al-nota{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.al-nota select,.al-nota input{margin:0;width:auto}
+.al-nota input[type=text]{min-width:240px;flex:1}
+.al-dica{display:inline-flex;align-items:center;gap:6px;color:var(--al-tinta3);font-size:.78rem}
+.al-dica kbd{background:#fff;border:1px solid var(--al-borda);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font:600 .72rem/1.5 'Inter',sans-serif;color:var(--al-tinta2)}
+.al-secao{margin:34px 0 14px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.al-secao h3{font-size:1.22rem}
+.al-vazio{border:1px dashed var(--al-borda);border-radius:16px;padding:30px;text-align:center;color:var(--al-tinta2);background:var(--al-papel)}

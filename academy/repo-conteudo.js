@@ -215,7 +215,11 @@ const Produtos = {
   estrutura(productId) {
     const modulos = db.prepare('SELECT * FROM course_modules WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
     const aulas = db.prepare('SELECT * FROM lessons WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
-    const materiais = db.prepare('SELECT m.* FROM lesson_materials m JOIN lessons l ON l.id = m.lesson_id WHERE l.product_id = ?').all(productId);
+    // mime/tamanho vêm junto: a lista de materiais do aluno mostra o tipo e o peso do
+    // arquivo, e sem eles a tela só teria o nome (LEFT JOIN: material órfão não some).
+    const materiais = db.prepare(`SELECT m.*, f.mime, f.tamanho FROM lesson_materials m
+      JOIN lessons l ON l.id = m.lesson_id LEFT JOIN media_files f ON f.id = m.media_id
+      WHERE l.product_id = ?`).all(productId);
     return modulos.map(m => ({
       ...m,
       aulas: aulas.filter(a => a.module_id === m.id).map(a => ({ ...a, materiais: materiais.filter(x => x.lesson_id === a.id) })),
@@ -572,7 +576,8 @@ const Progresso = {
     return map;
   },
   continuar(userId) { // última aula tocada (continuar de onde parou)
-    return db.prepare(`SELECT sp.lesson_id, sp.product_id, sp.atualizado_em, l.titulo AS aula_titulo, p.titulo AS produto_titulo
+    return db.prepare(`SELECT sp.lesson_id, sp.product_id, sp.atualizado_em, l.titulo AS aula_titulo,
+      p.titulo AS produto_titulo, p.capa_media_id
       FROM student_progress sp JOIN lessons l ON l.id = sp.lesson_id JOIN products p ON p.id = sp.product_id
       WHERE sp.user_id = ? ORDER BY sp.atualizado_em DESC LIMIT 1`).get(userId) || null;
   },
@@ -609,12 +614,67 @@ const Marketplace = {
     return pr;
   },
   // aulas de degustação p/ mostrar na vitrine (só títulos + contagem)
+  // Recomendação de próximos cursos. Pontua o catálogo publicado contra o "gosto"
+  // do aluno (categorias, tags e produtores do que ele já tem) e devolve os melhores.
+  // `excluir` são os produtos que ele JÁ tem — recomendar o que já foi comprado é o
+  // erro clássico dessas vitrines. Sem afinidade nenhuma, cai no catálogo recente
+  // (melhor mostrar algo bom do que uma prateleira vazia).
+  recomendados({ excluir = [], categorias = [], tags = [], produtores = [], n = 6 } = {}) {
+    const fora = new Set((excluir || []).filter(Boolean));
+    const cat = new Set((categorias || []).filter(Boolean));
+    const pro = new Set((produtores || []).filter(Boolean));
+    const tg = new Set((tags || []).map(x => String(x || '').toLowerCase().trim()).filter(Boolean));
+    const rows = db.prepare(`SELECT p.id, p.producer_id, p.tipo, p.titulo, p.subtitulo, p.slug, p.categoria,
+      p.descricao_curta, p.tags, p.capa_media_id, p.preco_centavos, p.preco_promo_centavos, p.atualizado_em,
+      pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug
+      FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
+      WHERE p.status = 'publicado' ORDER BY p.atualizado_em DESC LIMIT 200`).all();
+    return rows.filter(r => !fora.has(r.id)).map(r => {
+      const minhas = j.parse(r.tags, []).map(x => String(x || '').toLowerCase().trim());
+      const emComum = minhas.filter(x => tg.has(x));
+      const score = (cat.has(r.categoria) ? 4 : 0) + Math.min(emComum.length, 3) * 2 + (pro.has(r.producer_id) ? 3 : 0);
+      const motivo = cat.has(r.categoria) ? `Mesma área: ${catRotulo(r.categoria)}`
+        : (pro.has(r.producer_id) ? `Do mesmo autor: ${r.produtor_nome}`
+          : (emComum.length ? `Também sobre ${emComum[0]}` : 'Em destaque na Academy'));
+      return { ...r, tags: minhas, score, motivo };
+    }).sort((a, b) => b.score - a.score || String(b.atualizado_em || '').localeCompare(String(a.atualizado_em || '')))
+      .slice(0, Math.min(parseInt(n, 10) || 6, 24));
+  },
+
+  // o "gosto" de um aluno a partir do que ele já tem acesso (matrícula ou clube)
+  perfilDoAluno(userId) {
+    const rows = db.prepare(`SELECT DISTINCT p.id, p.producer_id, p.categoria, p.tags FROM products p
+      WHERE p.id IN (SELECT product_id FROM enrollments WHERE user_id = ? AND status = 'ativa')`).all(userId);
+    return {
+      ids: rows.map(r => r.id),
+      categorias: [...new Set(rows.map(r => r.categoria).filter(Boolean))],
+      produtores: [...new Set(rows.map(r => r.producer_id))],
+      tags: [...new Set(rows.flatMap(r => j.parse(r.tags, []).map(x => String(x || '').toLowerCase().trim())))].filter(Boolean),
+    };
+  },
+
+  // vitrine do conteúdo: a página de venda mostra tipo, duração e quantos
+  // materiais cada aula tem — sem isso o currículo é só uma lista de títulos.
   resumoConteudo(productId) {
     const modulos = db.prepare('SELECT id, titulo FROM course_modules WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
-    const aulas = db.prepare('SELECT module_id, titulo, gratuita FROM lessons WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
+    const aulas = db.prepare('SELECT id, module_id, titulo, tipo, duracao_seg, gratuita FROM lessons WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
+    const mats = db.prepare(`SELECT m.lesson_id, COUNT(*) n FROM lesson_materials m
+      JOIN lessons l ON l.id = m.lesson_id WHERE l.product_id = ? GROUP BY m.lesson_id`).all(productId);
+    const porAula = new Map(mats.map(x => [x.lesson_id, x.n]));
+    const nAula = (a) => ({
+      titulo: a.titulo, tipo: a.tipo, duracao_seg: a.duracao_seg || 0,
+      gratuita: !!a.gratuita, materiais: porAula.get(a.id) || 0,
+    });
     return {
       total_aulas: aulas.length,
-      modulos: modulos.map(m => ({ titulo: m.titulo, aulas: aulas.filter(a => a.module_id === m.id).map(a => ({ titulo: a.titulo, gratuita: !!a.gratuita })) })),
+      total_videos: aulas.filter(a => a.tipo === 'video').length,
+      total_seg: aulas.reduce((n, a) => n + (a.duracao_seg || 0), 0),
+      total_materiais: mats.reduce((n, x) => n + x.n, 0),
+      modulos: modulos.map(m => ({
+        titulo: m.titulo,
+        aulas: aulas.filter(a => a.module_id === m.id).map(nAula),
+        duracao_seg: aulas.filter(a => a.module_id === m.id).reduce((n, a) => n + (a.duracao_seg || 0), 0),
+      })),
     };
   },
 };

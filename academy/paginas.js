@@ -66,6 +66,10 @@ header.top .mnome{font-size:3.2rem}header.top .msub{font-size:1.4rem;letter-spac
 @media(max-width:640px){.hero h1{font-size:1.8rem}header.top .esconde{display:none}header.top .marca img{height:84px!important}header.top .mnome{font-size:2rem}header.top .msub{font-size:.95rem}}`;
 
 function landingHTML() {
+  // a vitrine é o coração de um site comercial: a landing mostrava benefícios da
+  // plataforma e NENHUM curso. Agora ela abre com o catálogo real.
+  const destaques = ct.Marketplace.listar({ n: 6 });
+  const cats = ct.Categorias.visiveis().slice(0, 8);
   const feats = [
     ['🎓', 'Para quem aprende', 'Biblioteca com seus cursos, aulas em vídeo, materiais, progresso e certificados — tudo em um lugar.'],
     ['🎬', 'Para quem ensina', 'Crie cursos, e-books, mentorias e assinaturas. Página de venda, checkout e área de membros prontos.'],
@@ -73,6 +77,11 @@ function landingHTML() {
     ['💳', 'Pagamento nacional', 'Checkout com Pix e cartão via Mercado Pago, liberação automática do acesso após a confirmação.'],
     ['🔒', 'Conteúdo protegido', 'Vídeos com streaming seguro, arquivos privados e links temporários — seu conteúdo não vaza.'],
     ['🤖', 'IA de verdade', 'Assistentes que ajudam a estruturar cursos, escrever páginas de venda e dar suporte ao aluno.'],
+  ];
+  const passos = [
+    ['Escolha a sua formação', 'Cursos com currículo aberto: você vê módulo a módulo, a duração e os materiais antes de comprar.'],
+    ['Estude no seu ritmo', 'Aula em vídeo, artigo em PDF e apresentação da aula, com o seu progresso salvo a cada aula.'],
+    ['Aplique e comprove', 'Materiais para usar no trabalho e certificado com código de validação pública ao concluir.'],
   ];
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela Academy — cursos online e produtos digitais</title>
@@ -84,28 +93,46 @@ function landingHTML() {
     <link rel="canonical" href="${BASE_URL()}/academy">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=1"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
-      <nav><a class="esconde" href="/academy#recursos">Recursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
+      <nav><a class="esconde" href="/academy#cursos">Cursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
     </div></header>
     <div class="hero"><div class="wrap">
-      <h1>Ensine, aprenda e venda conhecimento em um só lugar.</h1>
-      <p><b>Aprenda, aplique e transforme</b> — marketplace de cursos online e produtos digitais: produtores publicam, afiliados divulgam, alunos aprendem, com checkout nacional e área de membros.</p>
-      <p style="margin-top:26px"><a class="btn" href="/academy/marketplace">Explorar o marketplace</a>
+      <span class="badge">Escola online do Grupo Villela Stay</span>
+      <h1>Formação profissional que cabe na sua semana.</h1>
+      <p><b>Aprenda, aplique e transforme</b> — cursos com aula em vídeo, artigo em PDF e material para usar no trabalho. Com certificado de validação pública e acesso vitalício.</p>
+      <p style="margin-top:26px"><a class="btn" href="#cursos">Ver os cursos</a>
       &nbsp;<a class="btn g" href="/academy/app#cadastro">Criar conta grátis</a>
-      &nbsp;<a class="btn o" href="/academy/app">Entrar</a></p>
+      &nbsp;<a class="btn o" href="/academy/app">Já sou aluno</a></p>
     </div></div>
+
+    ${destaques.length ? `<div class="sec" id="cursos"><div class="wrap" style="max-width:1180px">
+      <h2>Cursos em destaque</h2>
+      <p class="sub">Currículo aberto, materiais inclusos e certificado ao final.</p>
+      ${cats.length ? `<p style="text-align:center;margin:0 0 26px">${cats.map(({ slug }) =>
+        `<a class="btn peq secund" href="/academy/marketplace?categoria=${slug}" style="margin:3px">${esc(ct.catRotulo(slug))}</a>`).join('')}</p>` : ''}
+      <div class="pv-vitrine">${destaques.map(cardProduto).join('')}</div>
+      <p style="text-align:center;margin-top:28px"><a class="btn" href="/academy/marketplace">Ver o catálogo completo</a></p>
+    </div></div>` : ''}
+
+    <div class="sec" style="background:#fff"><div class="wrap" style="max-width:1180px">
+      <h2>Como funciona</h2>
+      <p class="sub">Do primeiro clique ao certificado, sem burocracia.</p>
+      <div class="pv-passos">${passos.map(([tit, txt]) => `<div><h3>${esc(tit)}</h3><p>${esc(txt)}</p></div>`).join('')}</div>
+    </div></div>
+
     <div class="sec" id="recursos"><div class="wrap"><h2>Feita para os três lados do balcão</h2>
       <p class="sub">Aluno, produtor e afiliado com painéis próprios — e a plataforma cuidando de pagamento, entrega e segurança.</p>
       <div class="grid">${feats.map(([i, t, d]) => `<div class="card feat"><div class="i">${i}</div><div><b>${esc(t)}</b><br><span class="sub" style="text-align:left;margin:0">${esc(d)}</span></div></div>`).join('')}</div>
     </div></div>
-    <div class="sec" id="confianca"><div class="wrap"><h2>Tecnologia testada na vida real</h2>
+    <div class="sec" id="confianca" style="background:#fff"><div class="wrap" style="max-width:1180px"><h2>Tecnologia testada na vida real</h2>
       <p class="sub">Nossa missão é ser o caminho mais curto do conhecimento à renda: <b>publicar é grátis — você só paga quando vende</b>. A plataforma nasceu dentro do Grupo Villela Stay, com os mesmos padrões de segurança dos nossos outros sistemas.</p>
-      <div class="grid">
-        <div class="card feat"><div class="i">💰</div><div><b>Taxa transparente: 8,9% + R$ 1</b><br><span class="sub" style="text-align:left;margin:0">Por venda aprovada. Sem mensalidade, sem taxa de adesão, sem surpresa no saque.</span></div></div>
-        <div class="card feat"><div class="i">🇧🇷</div><div><b>Pagamento nacional de verdade</b><br><span class="sub" style="text-align:left;margin:0">Pix e cartão via Mercado Pago; o acesso só libera com pagamento confirmado na fonte.</span></div></div>
-        <div class="card feat"><div class="i">📜</div><div><b>Certificado com validação pública</b><br><span class="sub" style="text-align:left;margin:0">Cada certificado tem código verificável por qualquer pessoa — o diploma do seu aluno vale algo.</span></div></div>
+      <div class="pv-num">
+        <div><b>8,9% + R$ 1</b><span>por venda aprovada — sem mensalidade nem taxa de adesão</span></div>
+        <div><b>Pix e cartão</b><span>via Mercado Pago, com liberação automática do acesso</span></div>
+        <div><b>Certificado</b><span>com código verificável por qualquer pessoa</span></div>
+        <div><b>LGPD</b><span>dados tratados conforme a lei, com exportação e exclusão na conta</span></div>
       </div>
       <p class="sub" style="margin-top:26px">🔒 Conexão segura (HTTPS) &nbsp;·&nbsp; 🛡️ Dados tratados conforme a LGPD &nbsp;·&nbsp; 💳 Pagamentos pelo Mercado Pago</p>
     </div></div>
@@ -133,8 +160,8 @@ function landingHTML() {
 
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}
-    .cx{max-width:1040px;margin:20px auto;padding:0 14px}.lin{border-bottom:1px solid #eee;padding:8px 0}
+    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/aluno.css?v=1"><style>${CSS}
+    .cx{max-width:1040px;margin:20px auto;padding:0 14px;transition:max-width .25s}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:120px;display:inline-block;margin:4px}
     .kpi b{display:block;font-size:1.3rem;color:var(--villela-navy)}
@@ -147,7 +174,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/academy/app.js"></script><script>bootAcademy();</script></body></html>`;
+    <script src="/academy/aluno.js?v=1"></script><script src="/academy/app.js?v=8"></script><script>bootAcademy();</script></body></html>`;
 }
 
 // ==================== FASE 3 — vitrine pública (SEO/OG) ====================
@@ -166,9 +193,7 @@ function shellPublico({ titulo, descricao, url, corpo, imagem }) {
     <meta property="og:site_name" content="Villela Academy">
     <meta property="og:image" content="${esc(imagem || `${BASE_URL()}${BRAND}/og-image.png`)}">
     ${HEAD_MARCA}
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
-    .cardp{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:18px;display:flex;flex-direction:column}
-    .cardp .preco{font-size:1.3rem;font-weight:800;color:var(--villela-navy)}.cardp .preco s{color:#8A94A6;font-weight:400;font-size:.95rem}
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=1"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
     .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
@@ -182,7 +207,7 @@ function shellPublico({ titulo, descricao, url, corpo, imagem }) {
 function cardProduto(p) {
   // ?v = id da mídia: a URL da capa é estável (og:image), então sem esta chave o
   // navegador serviria a capa ANTIGA por até 1h depois de o produtor trocá-la.
-  const capa = p.capa_media_id ? `<img src="/academy/capa/${esc(p.id)}?v=${esc(p.capa_media_id)}" alt="" style="width:100%;border-radius:10px;aspect-ratio:16/9;object-fit:cover;margin-bottom:10px">` : '';
+  const capa = p.capa_media_id ? `<img src="/academy/capa/${esc(p.id)}?v=${esc(p.capa_media_id)}" alt="" loading="lazy">` : '';
   const preco = p.preco_promo_centavos
     ? `<span class="preco"><s>${brl(p.preco_centavos)}</s> ${brl(p.preco_promo_centavos)}${sufixoMes(p)}</span>`
     : `<span class="preco">${p.preco_centavos ? brl(p.preco_centavos) + sufixoMes(p) : 'Grátis'}</span>`;
@@ -191,10 +216,11 @@ function cardProduto(p) {
   const cat = p.categoria
     ? ` <span class="tag" style="background:#EEF2F8;color:#5B6472">${esc(ct.catRotulo(p.categoria))}</span>`
     : '';
-  return `<a class="cardp" href="/academy/cursos/${esc(p.slug)}" style="text-decoration:none;color:inherit">${capa}
-    <span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>${cat}<b style="margin:6px 0">${esc(p.titulo)}</b>
-    <span class="sub" style="text-align:left;margin:0;flex:1">${esc(p.descricao_curta || p.subtitulo)}</span>
-    <span class="sub" style="text-align:left;margin:6px 0 8px">por ${esc(p.produtor_nome || '')}</span>${preco}</a>`;
+  return `<a class="cardp" href="/academy/cursos/${esc(p.slug)}">${capa || '<span class="capa-vazia"></span>'}
+    <span class="tags"><span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>${cat}</span>
+    <b>${esc(p.titulo)}</b>
+    <span class="sub">${esc(p.descricao_curta || p.subtitulo)}</span>
+    <span class="autor">por ${esc(p.produtor_nome || '')}</span>${preco}</a>`;
 }
 
 function marketplaceHTML({ q, categoria }) {
@@ -202,12 +228,12 @@ function marketplaceHTML({ q, categoria }) {
   // do sistema sempre; as de produtor só depois de terem produto publicado
   const cats = ct.Categorias.visiveis().map(({ slug }) =>
     `<a class="btn peq ${slug === categoria ? '' : 'secund'}" href="/academy/marketplace?categoria=${slug}" style="margin:3px">${esc(ct.catRotulo(slug))}</a>`).join('');
-  const corpo = `<div class="sec"><div class="wrap"><h2>Marketplace</h2>
-    <p class="sub">Cursos e produtos digitais dos produtores da Villela Academy.</p>
+  const corpo = `<div class="sec"><div class="wrap" style="max-width:1180px"><h2>Marketplace</h2>
+    <p class="sub">Cursos e produtos digitais dos produtores da Villela Academy — currículo aberto, materiais inclusos e certificado.</p>
     <form method="get" action="/academy/marketplace" style="max-width:480px;margin:0 auto 18px;display:flex;gap:8px">
       <input name="q" value="${esc(q || '')}" placeholder="Buscar curso, e-book, mentoria..."><button class="btn peq" type="submit">Buscar</button></form>
     <p style="text-align:center;margin-bottom:22px">${cats}</p>
-    ${itens.length ? `<div class="grid">${itens.map(cardProduto).join('')}</div>`
+    ${itens.length ? `<div class="pv-vitrine">${itens.map(cardProduto).join('')}</div>`
       : '<p class="sub">Nenhum produto encontrado' + (q || categoria ? ' com esse filtro.' : ' ainda — os primeiros produtores estão chegando.') + '</p>'}
   </div></div>`;
   return shellPublico({ titulo: 'Marketplace' + (categoria ? ` · ${ct.catRotulo(categoria)}` : ''), descricao: 'Cursos online, e-books e produtos digitais na Villela Academy.', corpo });
@@ -222,6 +248,36 @@ function embedDe(url) {
 }
 const li = (arr, icone) => arr && arr.length ? `<ul style="list-style:none;padding:0">${arr.map(x => `<li style="padding:5px 0">${icone} ${esc(x)}</li>`).join('')}</ul>` : '';
 
+// ícones da vitrine (SVG inline: nítido, herda a cor, sem dependência externa)
+const D_ICO = {
+  check: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z',
+  play: 'M8 5v14l11-7z',
+  doc: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm2 16H8v-2h8zm0-4H8v-2h8zm-3-5V3.5L18.5 9z',
+  som: 'M12 3v10.55A4 4 0 1 0 14 17V7h4V3z',
+  elo: 'M3.9 12a5 5 0 0 1 5-5h3v-2h-3a7 7 0 0 0 0 14h3v-2h-3a5 5 0 0 1-5-5zm4.1 1h8v-2H8zm5-8v2h3a5 5 0 0 1 0 10h-3v2h3a7 7 0 0 0 0-14z',
+  texto: 'M3 5h18v2H3zm0 6h18v2H3zm0 6h12v2H3z',
+  baixar: 'M5 20h14v-2H5zM19 9h-4V3H9v6H5l7 7z',
+  seta: 'M8.6 16.6 13.2 12 8.6 7.4 10 6l6 6-6 6z',
+  relogio: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.6V7h-2v6.4l5 3 1-1.7z',
+  chapeu: 'M12 3 1 9l11 6 9-4.9V17h2V9zM5 13.2V17c0 1.7 3.1 3 7 3s7-1.3 7-3v-3.8l-7 3.8z',
+  escudo: 'M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11z',
+  estrela: 'm12 17.3 6.2 3.7-1.6-7 5.4-4.7-7.1-.6L12 2 9.1 8.7 2 9.3l5.4 4.7-1.6 7z',
+  alvo: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm0-14a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8z',
+  presente: 'M20 7h-2.2a3 3 0 0 0-4.8-3.4L12 4.4l-1-.8A3 3 0 0 0 6.2 7H4a1 1 0 0 0-1 1v3h9V8h-1a1 1 0 0 1 0-2h1.5L12 5l.5.9H14a1 1 0 0 1 0 2h-1v3h9V8a1 1 0 0 0-1-1zM11 21v-8H4v7a1 1 0 0 0 1 1zm2 0h6a1 1 0 0 0 1-1v-7h-7z',
+};
+const svgI = (n, t = 18) => `<svg viewBox="0 0 24 24" width="${t}" height="${t}" fill="currentColor" aria-hidden="true"><path d="${D_ICO[n]}"/></svg>`;
+const ICO_AULA = { video: 'play', pdf: 'doc', audio: 'som', arquivo: 'baixar', link: 'elo', texto: 'texto' };
+const durSeg = (seg) => {
+  seg = Number(seg || 0); if (!seg) return '';
+  if (seg < 60) return seg + ' s';
+  const m = Math.round(seg / 60);
+  return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ' ' + (m % 60) + ' min' : ''}` : m + ' min';
+};
+const listaPv = (arr, cls, icone) => arr && arr.length
+  ? `<ul class="pv-lista ${cls}">${arr.map(x => `<li>${svgI(icone, 20)}<span>${esc(x)}</span></li>`).join('')}</ul>` : '';
+const secPv = (titulo, html) => html
+  ? `<section class="pv-sec">${titulo ? `<h2>${titulo}</h2>` : ''}${html}</section>` : '';
+
 function cursoHTML(slug) {
   const p = ct.Marketplace.porSlug(slug);
   if (!p) return null;
@@ -229,44 +285,118 @@ function cursoHTML(slug) {
   const nota = ct.Reviews.media(p.id);
   const reviews = ct.Reviews.publicas(p.id);
   const resumo = ct.Marketplace.resumoConteudo(p.id);
+  const relacionados = ct.Marketplace.recomendados({
+    excluir: [p.id], categorias: [p.categoria], tags: p.tags || [], produtores: [p.producer_id], n: 3,
+  });
   const emb = embedDe(sp.video_url);
-  const mes = p.tipo === 'clube' ? '<span style="font-size:1rem">/mês</span>' : '';
-  const preco = p.preco_promo_centavos
-    ? `<s style="color:#8A94A6">${brl(p.preco_centavos)}</s> <span style="font-size:1.9rem;font-weight:800">${brl(p.preco_promo_centavos)}${mes}</span>`
-    : `<span style="font-size:1.9rem;font-weight:800">${p.preco_centavos ? brl(p.preco_centavos) + mes : 'Grátis'}</span>`;
-  const bloco = (titulo, html) => html ? `<div class="sec" style="padding:26px 0"><div class="wrap"><h2 style="text-align:left;font-size:1.3rem">${titulo}</h2>${html}</div></div>` : '';
+  const ehClube = p.tipo === 'clube';
+  const valor = p.preco_promo_centavos || p.preco_centavos;
+  const gratis = !valor;
+  const capaUrl = p.capa_media_id ? `/academy/capa/${esc(p.id)}?v=${esc(p.capa_media_id)}` : '';
+  const cta = ehClube ? 'Assinar agora' : (gratis ? 'Matricular grátis' : 'Comprar agora');
+  const destino = (billing.ativo() || gratis) ? `/academy/checkout/${esc(p.slug)}` : '#comprar';
+  const inicial = esc((p.produtor_nome || 'V').trim().charAt(0).toUpperCase());
+
+  // "o que você leva" sai do conteúdo REAL do curso, não de promessa escrita à mão
+  const inclui = [];
+  if (resumo.total_videos) inclui.push(['play', `${resumo.total_videos} aula${resumo.total_videos > 1 ? 's' : ''} em vídeo${resumo.total_seg ? ` · ${durSeg(resumo.total_seg)}` : ''}`]);
+  const naoVideo = resumo.total_aulas - resumo.total_videos;
+  if (naoVideo > 0) inclui.push(['doc', `${naoVideo} aula${naoVideo > 1 ? 's' : ''} de leitura e prática`]);
+  if (resumo.total_materiais) inclui.push(['baixar', `${resumo.total_materiais} materiais para baixar`]);
+  inclui.push(['chapeu', 'Certificado com validação pública']);
+  inclui.push(['relogio', ehClube ? 'Acesso enquanto a assinatura estiver ativa' : 'Acesso vitalício, no computador e no celular']);
+  if (p.garantia_dias) inclui.push(['escudo', `Garantia de ${p.garantia_dias} dias`]);
+
+  const chips = [
+    `<span class="pv-chip ouro">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>`,
+    p.categoria ? `<a class="pv-chip" href="/academy/marketplace?categoria=${encodeURIComponent(p.categoria)}" style="text-decoration:none">${esc(ct.catRotulo(p.categoria))}</a>` : '',
+    nota.media ? `<span class="pv-chip" style="color:var(--pv-ouro)">★ ${nota.media} <span style="opacity:.8;color:#E8EDF6">(${nota.total} avaliações)</span></span>` : '',
+    resumo.total_aulas ? `<span class="pv-chip">${svgI('texto', 15)} ${resumo.total_aulas} aulas</span>` : '',
+    resumo.total_seg ? `<span class="pv-chip">${svgI('relogio', 15)} ${durSeg(resumo.total_seg)}</span>` : '',
+    resumo.total_materiais ? `<span class="pv-chip">${svgI('baixar', 15)} ${resumo.total_materiais} materiais</span>` : '',
+  ].filter(Boolean).join('');
+
+  const precoHtml = gratis
+    ? '<div class="pv-preco"><b>Grátis</b></div>'
+    : `<div class="pv-preco">${p.preco_promo_centavos ? `<s>${brl(p.preco_centavos)}</s>` : ''}<b>${brl(valor)}</b>${ehClube ? '<span class="mes">/mês</span>' : ''}</div>
+       <p class="pv-parcela">${ehClube ? 'cancele quando quiser, sem multa' : 'Pix com liberação imediata ou cartão'}</p>`;
+
+  const cartao = `<aside class="pv-compra">
+    ${emb ? `<iframe src="${esc(emb)}" style="width:100%;aspect-ratio:16/9;border:0;display:block" allowfullscreen title="Apresentação do curso"></iframe>`
+      : (capaUrl ? `<img class="capa" src="${capaUrl}" alt="Capa do curso ${esc(p.titulo)}">` : '')}
+    <div class="in">
+      ${precoHtml}
+      <a class="pv-bt" href="${destino}">${svgI('play', 19)} ${cta}</a>
+      <a class="pv-bt fan" href="/academy/app">Já sou aluno — entrar</a>
+      <ul class="pv-inclui">${inclui.map(([i, txt]) => `<li>${svgI(i, 18)}<span>${txt}</span></li>`).join('')}</ul>
+      ${sp.garantia_texto || p.garantia_dias
+        ? `<p class="pv-garantia">${svgI('escudo', 15)} ${esc(sp.garantia_texto || `Garantia de ${p.garantia_dias} dias: se o curso não for para você, peça o reembolso dentro do prazo.`)}</p>` : ''}
+    </div></aside>`;
+
+  const curriculo = resumo.modulos.length ? `
+    <div class="pv-resumo-curr">
+      <span>${svgI('texto', 16)} ${resumo.modulos.length} módulos</span>
+      <span>${svgI('play', 16)} ${resumo.total_aulas} aulas</span>
+      ${resumo.total_seg ? `<span>${svgI('relogio', 16)} ${durSeg(resumo.total_seg)} de conteúdo</span>` : ''}
+      ${resumo.total_materiais ? `<span>${svgI('baixar', 16)} ${resumo.total_materiais} materiais</span>` : ''}
+    </div>
+    <div class="pv-curr">${resumo.modulos.map((m, i) => `<details${i < 2 ? ' open' : ''}>
+      <summary>${svgI('seta', 16)}<span>${esc(m.titulo)}</span>
+        <span class="qt">${m.aulas.length} aula${m.aulas.length > 1 ? 's' : ''}${m.duracao_seg ? ' · ' + durSeg(m.duracao_seg) : ''}</span></summary>
+      <div class="aulas">${m.aulas.map(a => `<div class="aula">${svgI(ICO_AULA[a.tipo] || 'doc', 17)}
+        <span>${esc(a.titulo)}${a.materiais ? `<span class="pv-fino"> · ${a.materiais} ${a.materiais > 1 ? 'materiais' : 'material'}</span>` : ''}${a.gratuita ? '<span class="free">degustação grátis</span>' : ''}</span>
+        ${a.duracao_seg ? `<span class="dur">${durSeg(a.duracao_seg)}</span>` : ''}</div>`).join('')}</div>
+    </details>`).join('')}</div>` : '';
+
+  const depoimentos = (sp.depoimentos || []).concat(reviews.map(r => ({ nome: r.nome, texto: r.texto, nota: r.nota })));
+  const sobre = sp.promessa ? `<p>${esc(sp.promessa)}</p>`
+    : (p.descricao_longa ? esc(p.descricao_longa).split('\n\n').map(x => `<p>${x}</p>`).join('') : '');
+
   const corpo = `
-    <div class="hero" style="padding:44px 0"><div class="wrap">
-      <span class="badge">${TIPOS_ROT[p.tipo] || esc(p.tipo)}${nota.media ? ` · ★ ${nota.media} (${nota.total})` : ''}</span>
-      ${p.categoria ? `<a class="badge" href="/academy/marketplace?categoria=${encodeURIComponent(p.categoria)}"
-        style="margin-left:6px;text-decoration:none;color:var(--villela-navy)">${esc(ct.catRotulo(p.categoria))}</a>` : ''}
-      <h1>${esc(sp.headline || p.titulo)}</h1>
-      <p>${esc(sp.subheadline || p.subtitulo || p.descricao_curta)}</p>
-      <p class="sub" style="text-align:left;margin:6px 0;color:#C7D0E0">por <a href="/academy/produtores/${esc(p.produtor_slug)}" style="color:var(--villela-gold)">${esc(p.produtor_nome)}</a></p>
-      <p style="margin-top:18px">${preco}<br><br>
-        ${(billing.ativo() || !(p.preco_promo_centavos || p.preco_centavos))
-          ? `<a class="btn" href="/academy/checkout/${esc(p.slug)}">${p.tipo === 'clube' ? '🔁 Assinar agora' : ((p.preco_promo_centavos || p.preco_centavos) ? '🛒 Comprar agora' : '🎁 Matricular grátis')}</a>`
-          : `<a class="btn" href="#comprar">Quero este ${(TIPOS_ROT[p.tipo] || 'produto').toLowerCase()}</a>`}
-        &nbsp;<a class="btn o" href="/academy/app">Já sou aluno</a></p>
-    </div></div>
-    ${emb ? `<div class="sec" style="padding:26px 0"><div class="wrap"><iframe src="${esc(emb)}" style="width:100%;max-width:760px;aspect-ratio:16/9;border:0;border-radius:12px;display:block;margin:0 auto" allowfullscreen></iframe></div></div>`
-      // sem vídeo de vendas, a CAPA ocupa o mesmo lugar 16:9. Antes ela só existia como
-      // og:image: quem abria a página do curso nunca via a capa que o produtor subiu.
-      : (p.capa_media_id ? `<div class="sec" style="padding:26px 0"><div class="wrap"><img src="/academy/capa/${esc(p.id)}?v=${esc(p.capa_media_id)}" alt="${esc(p.titulo)}" style="width:100%;max-width:760px;aspect-ratio:16/9;object-fit:cover;border-radius:12px;display:block;margin:0 auto"></div></div>` : '')}
-    ${bloco('O que você vai conquistar', sp.promessa ? `<p>${esc(sp.promessa)}</p>` : '')}
-    ${bloco('Benefícios', li(sp.beneficios, '✅'))}
-    ${bloco('Para quem é', li(sp.para_quem, '🎯'))}
-    ${bloco('O que você vai aprender', li(sp.aprender, '📌'))}
-    ${bloco('Conteúdo', resumo.modulos.length ? `<p class="sub" style="text-align:left">${resumo.total_aulas} aula(s)</p>` +
-      resumo.modulos.map(m => `<div class="card" style="margin:8px 0"><b>📚 ${esc(m.titulo)}</b>${m.aulas.map(a =>
-        `<div style="padding:4px 0 0 14px">${a.gratuita ? '🎁' : '▫️'} ${esc(a.titulo)}${a.gratuita ? ' <span class="tag">degustação grátis</span>' : ''}</div>`).join('')}</div>`).join('') : '')}
-    ${bloco('Bônus', li(sp.bonus, '🎁'))}
-    ${bloco('Quem já fez recomenda', (sp.depoimentos || []).concat(reviews.map(r => ({ nome: r.nome, texto: r.texto, nota: r.nota }))).map(d =>
-      `<div class="card" style="margin:8px 0">${d.nota ? '<span class="estrela">' + '★'.repeat(d.nota) + '</span> ' : ''}"${esc(d.texto)}"<br><b>— ${esc(d.nome)}</b></div>`).join('') || '')}
-    ${bloco('Garantia', sp.garantia_texto ? `<p>🛡️ ${esc(sp.garantia_texto)}</p>` : (p.garantia_dias ? `<p>🛡️ Garantia de ${p.garantia_dias} dias.</p>` : ''))}
-    ${bloco('Perguntas frequentes', (sp.faq || []).map(f => `<div class="card" style="margin:8px 0"><b>${esc(f.p)}</b><br>${esc(f.r)}</div>`).join('') || '')}
-    <div class="sec" id="comprar" style="background:var(--ambar-claro)"><div class="wrap" style="max-width:560px">
-      <h2>Garanta o seu acesso</h2>
+  <div class="pv-hero"><div class="pv">
+    <p class="pv-trilha"><a href="/academy">Villela Academy</a> › <a href="/academy/marketplace">Marketplace</a>${p.categoria ? ` › <a href="/academy/marketplace?categoria=${encodeURIComponent(p.categoria)}">${esc(ct.catRotulo(p.categoria))}</a>` : ''}</p>
+    <div class="pv-chips">${chips}</div>
+    <h1>${esc(sp.headline || p.titulo)}</h1>
+    <p class="dek">${esc(sp.subheadline || p.subtitulo || p.descricao_curta)}</p>
+    <div class="pv-autor"><span class="av">${inicial}</span>
+      <span>Com <a href="/academy/produtores/${esc(p.produtor_slug)}">${esc(p.produtor_nome)}</a><br>
+      <span class="pv-fino" style="color:#9FB0CB">${esc(p.titulo)}</span></span></div>
+  </div></div>
+
+  <div class="pv"><div class="pv-corpo">
+    <main>
+      ${secPv('O que você vai conquistar', sobre)}
+      ${secPv('O que está incluído', listaPv(sp.beneficios, '', 'check'))}
+      ${secPv('Conteúdo do curso', curriculo)}
+      ${secPv('O que você vai aprender', listaPv(sp.aprender, 'duas', 'alvo'))}
+      ${secPv('Para quem é este curso', listaPv(sp.para_quem, '', 'alvo'))}
+      ${secPv('Bônus', listaPv(sp.bonus, 'bonus', 'presente'))}
+      ${secPv('Quem ensina', p.produtor_nome ? `<div class="pv-prof"><span class="av">${inicial}</span>
+        <div><h3>${esc(p.produtor_nome)}</h3>
+        <p style="margin:0 0 8px">${esc(p.produtor_bio || 'Produtor na Villela Academy.')}</p>
+        <a href="/academy/produtores/${esc(p.produtor_slug)}" style="font-weight:600">Ver todos os cursos deste autor →</a></div></div>` : '')}
+      ${secPv('Quem já fez recomenda', depoimentos.length ? `<div class="pv-dep">${depoimentos.map(d => `<div class="d">
+        ${d.nota ? `<span class="est">${'★'.repeat(d.nota)}</span>` : ''}
+        <p class="t">"${esc(d.texto)}"</p><b style="color:var(--pv-navy)">— ${esc(d.nome)}</b></div>`).join('')}</div>` : '')}
+      ${secPv('Perguntas frequentes', (sp.faq || []).length ? `<div class="pv-faq">${sp.faq.map(f => `<details>
+        <summary><span>${esc(f.p)}</span><span class="mais">+</span></summary><div class="r">${esc(f.r)}</div></details>`).join('')}</div>` : '')}
+    </main>
+    ${cartao}
+  </div></div>
+
+  <div class="pv-fim"><div class="pv">
+    <h2>${gratis ? 'Comece agora, sem custo' : 'Garanta o seu acesso'}</h2>
+    <p>${esc(p.descricao_curta || sp.subheadline || '')}</p>
+    <a class="pv-bt" href="${destino}">${cta}${gratis ? '' : ' — ' + brl(valor)}</a>
+    ${p.garantia_dias ? `<p class="pv-fino" style="color:#9FB0CB;margin-top:16px">Garantia de ${p.garantia_dias} dias · pagamento pelo Mercado Pago</p>` : ''}
+  </div></div>
+
+  ${relacionados.length ? `<div class="pv-rel"><div class="pv">
+    <h2>Cursos relacionados</h2><p class="pv-fino" style="margin:0 0 20px">De quem estuda o mesmo assunto.</p>
+    <div class="pv-vitrine">${relacionados.map(cardProduto).join('')}</div></div></div>` : ''}
+
+  ${(billing.ativo() || gratis) ? '' : `<div class="sec" id="comprar" style="background:var(--ambar-claro)"><div class="wrap" style="max-width:560px">
+      <h2>Quero ser avisado</h2>
       <p class="sub">O pagamento online chega em breve. Deixe seu contato que avisamos você — ou o produtor libera seu acesso direto.</p>
       <form class="form" id="int">
         <input id="i-nome" placeholder="Seu nome" required><input id="i-email" type="email" placeholder="E-mail" required>
@@ -276,7 +406,8 @@ function cursoHTML(slug) {
         const r=await fetch('/academy/api/cursos/${esc(p.id)}/interesse',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({nome:i_nome.value,email:i_email.value,telefone:i_tel.value})});
         m.textContent=r.ok?'✅ Anotado! Você será avisado.':'Erro ao enviar.';if(r.ok)document.getElementById('int').reset();};</script>
-    </div></div>`;
+    </div></div>`}`;
+
   return shellPublico({
     titulo: p.titulo, descricao: p.descricao_curta || sp.headline || p.subtitulo || p.titulo, url: `/academy/cursos/${p.slug}`, corpo,
     // capa do curso como og:image quando existe (melhor); og da marca é o fallback do shell
@@ -449,6 +580,9 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy', (req, res) => res.send(landingHTML()));
   app.get('/academy/app', (req, res) => res.send(appHTML()));
   app.get('/academy/app.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-cliente.js')));
+  app.get('/academy/aluno.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-aluno.js')));
+  app.get('/academy/aluno.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'aluno.css')));
+  app.get('/academy/publico.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'publico.css')));
   app.get('/academy/termos', (req, res) => res.send(paginaLegal('Termos de Uso', TERMOS)));
   app.get('/academy/privacidade', (req, res) => res.send(paginaLegal('Política de Privacidade', PRIVACIDADE)));
   app.get('/academy/termos-produtor', (req, res) => res.send(paginaLegal('Termos do Produtor', TERMOS_PRODUTOR)));

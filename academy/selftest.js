@@ -438,7 +438,12 @@ async function main() {
     // a capa também APARECE na página do curso quando não há vídeo de vendas — antes
     // ela só era og:image e o comprador nunca via a capa na página do produto
     const pg = await req('GET', '/academy/cursos/gestao-de-temporada-na-pratica');
-    assert.ok(pg.texto.includes(`<img src="/academy/capa/${prodId}?v=${up.json.id}"`), 'capa visível na página de venda sem vídeo');
+    // <img> de verdade (não background-image): a capa precisa ser visível e ter alt.
+    // Checa a URL e, logo antes dela, a abertura da tag — sem depender da ordem dos atributos.
+    const alvoCapa = `src="/academy/capa/${prodId}?v=${up.json.id}"`;
+    const iCapa = pg.texto.indexOf(alvoCapa);
+    assert.ok(iCapa > 0, 'capa visível na página de venda sem vídeo');
+    assert.ok(pg.texto.lastIndexOf('<img', iCapa) > iCapa - 160, 'a capa sai como <img>, não como background-image');
     // com vídeo, quem manda é o vídeo (a capa não duplica o espaço 16:9).
     // PUT da página de venda SUBSTITUI as seções: guardo e devolvo o conteúdo,
     // senão o fixture segue sem headline/benefícios para os testes seguintes.
@@ -1297,6 +1302,78 @@ async function main() {
   await t('cortesia exige e-mail e guarda requireAuth+requireAdmin', async () => {
     assert.equal((await req('POST', '/staff/api/academy/cortesia', { corpo: { nome: 'Sem email' } })).st, 400);
     assert.equal((await req('GET', '/staff/api/academy/cortesia', { user: 'op' })).st, 403); // operador não-admin
+  });
+
+  console.log('\n— área do aluno: estúdio, materiais e recomendação —');
+  await t('assets do estúdio (aluno.js, aluno.css, publico.css) respondem', async () => {
+    const js = await req('GET', '/academy/aluno.js');
+    assert.equal(js.st, 200); assert.ok(js.ct.includes('javascript'));
+    assert.ok(js.texto.includes('window.AcademyAluno'), 'o painel monta o módulo por este nome');
+    for (const css of ['/academy/aluno.css', '/academy/publico.css']) {
+      const r = await req('GET', css);
+      assert.equal(r.st, 200); assert.ok(r.ct.includes('css'));
+    }
+    const app = await req('GET', '/academy/app');
+    assert.ok(app.texto.includes('/academy/aluno.js'), 'o shell carrega o módulo do aluno');
+    assert.ok(app.texto.includes('/academy/aluno.css'), 'e o CSS dele');
+  });
+  await t('curso do aluno traz autor e materiais com tipo e tamanho', async () => {
+    const up = await req('POST', '/academy/api/produtor/upload', {
+      jar: 'maria', corpo: { nome: 'anexo.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 anexo do estudio').toString('base64') },
+    });
+    assert.equal(up.st, 200, up.texto);
+    const aulas = (await req('GET', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria' })).json.estrutura[0].aulas;
+    await req('POST', `/academy/api/produtor/produtos/${prodId}/aulas/${aulas[0].id}/materiais`, {
+      jar: 'maria', corpo: { nome: 'Anexo da aula (PDF)', media_id: up.json.id },
+    });
+    const r = await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'ana' });
+    assert.equal(r.st, 200);
+    assert.ok(r.json.produto.produtor_nome, 'o topo do estúdio mostra quem ensina');
+    assert.ok('slug' in r.json.produto, 'o link para a página pública depende do slug');
+    const mats = r.json.estrutura.flatMap(m => m.aulas).flatMap(a => a.materiais || []);
+    assert.ok(mats.length, 'o curso de teste ganhou um material logo acima');
+    assert.ok(mats.every(m => 'mime' in m && 'tamanho' in m), 'sem mime/tamanho o cartão do material fica sem tipo e sem peso');
+  });
+  await t('continuar-de-onde-parou leva a capa (a biblioteca é visual)', async () => {
+    const b = await req('GET', '/academy/api/aluno/biblioteca', { jar: 'ana' });
+    assert.ok(b.json.continuar, 'ana já tocou uma aula');
+    assert.ok('capa_media_id' in b.json.continuar);
+  });
+  await t('recomendados: não repete o que o aluno já tem e prioriza a mesma área', async () => {
+    const r = await req('GET', '/academy/api/aluno/recomendados', { jar: 'ana' });
+    assert.equal(r.st, 200);
+    assert.ok(Array.isArray(r.json.cursos));
+    assert.ok(!r.json.cursos.some(c => c.id === prodId), 'recomendar o curso já comprado é o erro clássico');
+    assert.ok(r.json.cursos.every(c => c.motivo), 'cada recomendação explica por que apareceu');
+  });
+  await t('recomendados ancorados em um curso não devolvem a própria âncora', async () => {
+    const r = await req('GET', `/academy/api/aluno/recomendados?product_id=${prodId}`, { jar: 'ana' });
+    assert.equal(r.st, 200);
+    assert.ok(!r.json.cursos.some(c => c.id === prodId));
+  });
+  await t('recomendação exige login de aluno', async () => {
+    assert.equal((await req('GET', '/academy/api/aluno/recomendados')).st, 401);
+  });
+  await t('página do curso: currículo com duração/materiais e cartão de compra fixo', async () => {
+    const slugPub = require('./db').db.prepare('SELECT slug FROM products WHERE id = ?').get(prodId).slug;
+    const r = await req('GET', `/academy/cursos/${slugPub}`);
+    assert.equal(r.st, 200);
+    assert.ok(r.texto.includes('pv-compra'), 'cartão de compra');
+    assert.ok(r.texto.includes('pv-curr'), 'currículo em sanfona');
+    assert.ok(r.texto.includes('/academy/publico.css'), 'CSS das páginas públicas');
+    assert.ok(/Certificado com validação pública/.test(r.texto), 'o que o aluno leva');
+  });
+  await t('landing mostra o catálogo (site comercial sem curso na home não vende)', async () => {
+    const r = await req('GET', '/academy');
+    assert.equal(r.st, 200);
+    assert.ok(r.texto.includes('pv-vitrine'), 'vitrine de cursos na home');
+    assert.ok(r.texto.includes('Cursos em destaque'));
+  });
+  await t('resumo do conteúdo conta vídeo, duração e materiais', async () => {
+    const resumo = require('./repo-conteudo').Marketplace.resumoConteudo(prodId);
+    assert.ok(resumo.total_aulas >= 2);
+    assert.ok('total_videos' in resumo && 'total_seg' in resumo && 'total_materiais' in resumo);
+    assert.ok(resumo.modulos[0].aulas.every(a => 'tipo' in a && 'materiais' in a));
   });
 
   console.log('\n— importação de curso (a grade inteira de uma vez) —');
