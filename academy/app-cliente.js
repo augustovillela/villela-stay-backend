@@ -1319,7 +1319,7 @@
   // ================= CONTA (dados, compras, senha, LGPD) =================
   function vConta() {
     var u = ME.usuario;
-    setView('<div class="al">' +
+    setView('<div class="al al-conta">' +
       '<div class="al-topo"><p class="al-sub">Dados, compras, certificados, segurança e privacidade</p>' +
       '<p class="al-sub">' + esc(u.email) + '</p></div>' +
 

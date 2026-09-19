@@ -334,3 +334,10 @@ body[data-vertical="academy"] .vx-alerta{border-radius:14px}
 .al-entrar .form .al-bt{width:100%;margin-top:18px;padding:13px 18px;font-size:1rem}
 .al-entrar .form .troca{margin-top:16px;color:var(--al-tinta2);font-size:.9rem;text-align:center}
 .al-entrar .form .troca a{color:var(--al-ambar2);font-weight:600}
+
+/* Conta e pagamentos: os botões de ação têm a MESMA largura, independentemente
+   do rótulo ("Salvar dados" x "Excluir minha conta"), com o texto centralizado.
+   Fileira de botões de tamanhos diferentes é o que faz uma tela parecer
+   improvisada. No celular eles ocupam a linha inteira. */
+.al-conta .pr-sec .al-bt{min-width:238px;justify-content:center;text-align:center}
+@media(max-width:560px){.al-conta .pr-sec .al-bt{width:100%;min-width:0}}
