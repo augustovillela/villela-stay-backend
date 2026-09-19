@@ -121,6 +121,20 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
     'preco_centavos', 'preco_promo_centavos', 'garantia_dias', 'tags', 'afiliado_pct']) {
     if (p0[k] != null) edicao[k] = p0[k];
   }
+  // capa: a importação não passava por aqui e a capa só entrava pelo painel (cookie). Aceita a
+  // imagem em base64 ("capa": {mime, conteudo_base64, nome?}) — vira mídia do produtor, como no
+  // painel — ou um "capa_media_id" que JÁ seja do produtor. Sem capa no payload, a atual fica.
+  let capa = false;
+  if (p0.capa && typeof p0.capa === 'object') {
+    const mime = s(p0.capa.mime, 100).toLowerCase();
+    if (!/^image\/(png|jpeg|webp)$/.test(mime)) throw new Error('A capa precisa ser imagem (PNG, JPEG ou WebP).');
+    const m = await ct.Midia.salvar(u.id, { nome: s(p0.capa.nome, 200) || `Capa — ${produto.titulo}`, mime, conteudo_base64: p0.capa.conteudo_base64 });
+    edicao.capa_media_id = m.id; capa = true;
+  } else if (p0.capa_media_id != null) {
+    const m = ct.Midia.obter(s(p0.capa_media_id, 40));
+    if (!m || m.owner_user_id !== u.id) throw new Error('capa_media_id não é uma mídia deste produtor.');
+    edicao.capa_media_id = m.id; capa = true;
+  }
   if (Object.keys(edicao).length) produto = ct.Produtos.editar(produto.id, u.id, edicao);
 
   const estrutura = aplicarEstrutura(produto.id, dados.modulos || []);
@@ -135,7 +149,7 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
     produto: final,
     criou_produto: criou,
     resumo: {
-      ...estrutura, ...materiais, pagina_venda,
+      ...estrutura, ...materiais, pagina_venda, capa,
       modulos: arvore.length,
       aulas: arvore.reduce((n, m) => n + m.aulas.length, 0),
       aulas_degustacao: arvore.reduce((n, m) => n + m.aulas.filter(a => a.gratuita).length, 0),

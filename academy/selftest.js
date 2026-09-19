@@ -1367,6 +1367,27 @@ async function main() {
     assert.equal(vis.json.estrutura[0].aulas[0].materiais.length, 1);
   });
 
+  await t('capa entra pela importação (base64 → mídia do produtor) e sobrevive à reimportação sem capa', async () => {
+    const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex').toString('base64');
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true,
+      corpo: { ...CURSO(), produto: { ...CURSO().produto, capa: { mime: 'image/png', conteudo_base64: png } } } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.resumo.capa, true);
+    const capaId = r.json.produto.capa_media_id;
+    assert.ok(capaId, 'produto ficou com capa_media_id');
+    assert.equal(dbx.prepare('SELECT owner_user_id FROM media_files WHERE id = ?').get(capaId).owner_user_id, r.json.produtor.id, 'a mídia é do produtor');
+    const r2 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: CURSO() });
+    assert.equal(r2.json.resumo.capa, false);
+    assert.equal(r2.json.produto.capa_media_id, capaId, 'reimportar sem capa não apaga a capa');
+    const r3 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true,
+      corpo: { ...CURSO(), produto: { ...CURSO().produto, capa: { mime: 'application/pdf', conteudo_base64: png } } } });
+    assert.equal(r3.st, 400, 'capa que não é imagem é recusada');
+    assert.ok(/imagem/.test(r3.texto), r3.texto);
+    const r4 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true,
+      corpo: { ...CURSO(), produto: { ...CURSO().produto, capa_media_id: 'nao-existe' } } });
+    assert.equal(r4.st, 400, 'capa_media_id de mídia alheia/inexistente é recusado');
+  });
+
   await t('material apontando para aula inexistente falha com o nome na mensagem', async () => {
     const corpo = { ...CURSO(), materiais: [{ aula_titulo: 'Aula que não existe', nome: 'X', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF').toString('base64') }] };
     const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo });
