@@ -702,9 +702,16 @@ teste('rbac: proprietário não tem teto', () => {
 // =====================================================================
 let solicitacao;
 teste('aprovação: estorno vira solicitação com prévia', () => {
+  // ⚠️ Contas PRÓPRIAS, de propósito: o estorno é lançado com a data de HOJE
+  // (ledger.estornar usa hojeISO quando não recebe data — e está certo: estorno
+  // acontece no dia em que acontece). Como este lote é datado no passado, as duas
+  // pontas caem em meses diferentes, e qualquer conta que outro teste meça numa
+  // janela fixa fica devendo o valor do estorno. Era o que acontecia com
+  // 3.1.1.001, medida pelos testes da Stays na janela 01–30/09: passava em agosto,
+  // quebrava em setembro e voltaria a passar em outubro.
   const lote = naA(() => ledger.lancar({
     entidadeId: empresaA.id, data: '2026-08-10', memo: 'lançamento a estornar',
-    linhas: [{ contaCodigo: '1.1.1.001', debitoCents: 12345 }, { contaCodigo: '3.1.1.001', creditoCents: 12345 }],
+    linhas: [{ contaCodigo: '4.9.1.001', debitoCents: 12345 }, { contaCodigo: '1.1.1.001', creditoCents: 12345 }],
   }));
   solicitacao = tenancy.comTenant({ tenantId: contaA.id, userId: 'operador1', perfil: 'operador', mfa: true }, () =>
     tenancy.comEntidade(empresaA.id, () => aprovacoes.solicitar({
@@ -1762,6 +1769,20 @@ stays.configurar({
 
 const conta = (codigo) => naA(() => repo.contaPorCodigo(empresaA.id, codigo));
 const saldoDe = (codigo) => naA(() => ledger.saldo(conta(codigo).id, { desde: '2026-09-01', ate: '2026-09-30' })).saldoCents;
+
+// Guarda contra vazamento de fixture: tudo daqui para baixo mede saldo na janela
+// 01–30/09. Se um teste anterior deixar lançamento nessas contas dentro dela, os
+// números abaixo saem errados por um valor "misterioso" — foi assim que um estorno
+// datado em `hoje` tirou 12.345 da receita e ninguém entendeu de onde vinha.
+// testeAsync (não teste): as sincronizações da Stays também são assíncronas e
+// rodam na MESMA fila. Um teste síncrono aqui mediria o saldo antes de a fila
+// começar — passaria mesmo com o vazamento, que é o pior tipo de teste.
+testeAsync('stays: a janela de setembro começa limpa nas contas medidas', () => {
+  for (const codigo of ['3.1.1.001', '3.2.1.001', '1.1.2.001', '1.1.2.002']) {
+    assert.strictEqual(saldoDe(codigo), 0,
+      `a conta ${codigo} já tinha saldo na janela 01–30/09 antes da sincronização — algum teste anterior lançou nela`);
+  }
+});
 
 testeAsync('stays: primeira sincronização lança as reservas que faturam', async () => {
   const r = await naA(() => stays.sincronizar({ entidadeId: empresaA.id, competencia: '2026-09' }));
