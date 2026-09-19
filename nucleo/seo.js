@@ -199,8 +199,33 @@ function llmsTxt(req) {
     'Painel do assinante, API e área logada não são públicos.', ''].join('\n');
 }
 
+// ------------------------------------------------- verificação de propriedade
+// Tokens aceitos no arquivo `/google<token>.html` (Search Console → "arquivo
+// HTML"). O nome do arquivo é o mesmo para a conta em todas as propriedades,
+// então um token só cobre os 15 hosts. Aceita também a env
+// `GOOGLE_SITE_VERIFICATION` (vários separados por vírgula), para quando for
+// preciso acrescentar um sem esperar deploy.
+//
+// ⚠️ Lista FECHADA. Responder a qualquer nome deixaria qualquer pessoa provar
+// posse dos nossos domínios na conta dela — e ver as consultas de busca, os
+// cliques e pedir remoção de URL. O token é público; quem entra na lista não é.
+const VERIFICACOES = [
+  // 'abc123def456...', ← cole aqui o token do arquivo que o Google oferecer
+];
+
+function tokensDeVerificacao() {
+  const daEnv = String(process.env.GOOGLE_SITE_VERIFICATION || '')
+    .split(',').map((x) => x.trim().replace(/^google/, '').replace(/\.html$/, '')).filter(Boolean);
+  return [...new Set([...VERIFICACOES, ...daEnv])];
+}
+
 // ------------------------------------------------------------------ montar
 function montar(app) {
+  app.get('/google:token.html', (req, res, next) => {
+    const token = String(req.params.token || '');
+    if (!tokensDeVerificacao().includes(token)) return next(); // 404 honesto
+    res.type('text/plain; charset=utf-8').send(`google-site-verification: google${token}.html`);
+  });
   app.get('/robots.txt', (req, res) => {
     res.type('text/plain; charset=utf-8').set('Cache-Control', 'public, max-age=3600').send(robotsTxt(req));
   });
@@ -217,4 +242,4 @@ function montar(app) {
   return { produtos: PRODUTOS.length };
 }
 
-module.exports = { montar, registrar, robotsTxt, sitemapXml, llmsTxt, produtoDoHost, PRODUTOS, ROBOS };
+module.exports = { montar, registrar, robotsTxt, sitemapXml, llmsTxt, produtoDoHost, tokensDeVerificacao, PRODUTOS, ROBOS };

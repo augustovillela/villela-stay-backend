@@ -176,6 +176,24 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
       'o sitemap anuncia página que não existe:\n  ' + mortas.join('\n  '));
   });
 
+  await t('verificação do Search Console só responde a token da lista, e em qualquer host', async () => {
+    process.env.GOOGLE_SITE_VERIFICATION = 'googleabc123.html';   // aceita com e sem enfeite
+    // o arquivo vale para a conta, não para o site: tem de responder em TODO host
+    for (const host of ['academia.villelastay.com.br', 'origena.villelastay.com.br', 'villelastay.com.br']) {
+      const r = await req('GET', '/googleabc123.html', { headers: comHost(host) });
+      assert.equal(r.status, 200, 'o arquivo tem de existir em ' + host);
+      assert.equal(r.text.trim(), 'google-site-verification: googleabc123.html');
+    }
+    // ⚠️ o que protege: token fora da lista NÃO pode verificar. Quem verifica um
+    // domínio nosso vê as consultas de busca e pode pedir remoção de URL.
+    // (o que sobra aqui é o redirect de subdomínio, que devolve 302 — o que
+    // importa é NUNCA sair a linha que o Google procura)
+    const intruso = await req('GET', '/googleintruso999.html', { headers: comHost('academia.villelastay.com.br') });
+    assert.ok(!String(intruso.text || '').includes('google-site-verification'),
+      'token de fora da lista não pode ser aceito: veio ' + intruso.status);
+    delete process.env.GOOGLE_SITE_VERIFICATION;
+  });
+
   await t('catálogo dinâmico entra no sitemap e falha nele não derruba o mapa', async () => {
     const seo = require('./nucleo/seo');
     seo.registrar('/crm', () => [{ url: '/crm/teste-dinamico', atualizado: '2026-09-19' }]);
