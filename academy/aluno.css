@@ -189,3 +189,83 @@ body.aluno-amplo .cx{max-width:1460px}
 .al-secao{margin:34px 0 14px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .al-secao h3{font-size:1.22rem}
 .al-vazio{border:1px dashed var(--al-borda);border-radius:16px;padding:30px;text-align:center;color:var(--al-tinta2);background:var(--al-papel)}
+
+
+/* =====================================================================
+ * PRODUTOR — painel de quem vende. Mesma linguagem da área do aluno
+ * (mesmos tokens, mesmos cartões): é o mesmo painel, não outro produto.
+ * ===================================================================== */
+.pr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin:0 0 26px}
+.pr-kpi{background:var(--al-papel);border:1px solid var(--al-borda);border-radius:16px;padding:18px 20px;box-shadow:var(--al-sombra)}
+.pr-kpi .rot{display:flex;align-items:center;gap:8px;color:var(--al-tinta2);font:600 .82rem/1.2 'Inter',sans-serif}
+.pr-kpi .rot svg{color:var(--al-ambar2)}
+.pr-kpi b{display:block;font:800 1.85rem/1.1 'Inter',sans-serif;color:var(--al-navy);margin:10px 0 2px}
+.pr-kpi span.nota{color:var(--al-tinta3);font-size:.8rem}
+.pr-kpi.destaque{background:linear-gradient(140deg,var(--al-navy),var(--al-navy2));border-color:transparent}
+.pr-kpi.destaque .rot,.pr-kpi.destaque .rot svg{color:#C7D0E0}
+.pr-kpi.destaque b{color:#fff}.pr-kpi.destaque span.nota{color:#9FB0CB}
+
+/* cartão de produto do produtor */
+.pr-prod{display:flex;flex-direction:column;overflow:hidden;background:var(--al-papel);border:1px solid var(--al-borda);
+  border-radius:16px;box-shadow:var(--al-sombra);transition:transform .18s,box-shadow .18s,border-color .18s}
+.pr-prod:hover{transform:translateY(-3px);box-shadow:var(--al-sombra-f);border-color:#D6DBE3}
+.pr-prod .capa{aspect-ratio:16/9;background:linear-gradient(135deg,var(--al-navy),var(--al-navy2)) center/cover no-repeat;
+  position:relative;display:grid;place-items:center;color:rgba(255,255,255,.45)}
+.pr-prod .corpo{padding:15px 17px 17px;display:flex;flex-direction:column;gap:9px;flex:1}
+.pr-prod h4{font-size:1.05rem;line-height:1.3}
+.pr-prod .linha{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--al-tinta2);font-size:.85rem}
+.pr-prod .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
+.pr-prod .preco{font:800 1.1rem/1 'Inter',sans-serif;color:var(--al-navy)}
+
+/* etiqueta de status do produto (o produtor precisa ver o estágio de longe) */
+.pr-st{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:3px 11px;
+  font:700 .74rem/1.5 'Inter',sans-serif;background:var(--al-borda2);color:var(--al-tinta2);white-space:nowrap}
+.pr-st:before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+.pr-st.publicado{background:var(--al-ok-luz);color:var(--al-ok)}
+.pr-st.rascunho{background:#F1F3F7;color:#5B6472}
+.pr-st.em_revisao{background:#FFF4E2;color:#9A6212}
+.pr-st.aprovado{background:#EAF2FF;color:#2B57A6}
+.pr-st.rejeitado{background:#FDECEF;color:#B4243C}
+.pr-st.pausado{background:#F3EEFB;color:#6B42A8}
+.pr-st.suspenso,.pr-st.removido{background:#FDECEF;color:#8A1C30}
+
+/* editor em seções */
+.pr-sec{background:var(--al-papel);border:1px solid var(--al-borda);border-radius:16px;box-shadow:var(--al-sombra);margin:0 0 20px;overflow:hidden}
+.pr-sec>header{display:flex;align-items:center;gap:11px;padding:15px 20px;border-bottom:1px solid var(--al-borda2);background:#FCFCFD}
+.pr-sec>header svg{color:var(--al-ambar2);flex:0 0 auto}
+.pr-sec>header h3{font-size:1.06rem;margin:0}
+.pr-sec>header .dica{margin-left:auto;color:var(--al-tinta3);font-size:.8rem;text-align:right}
+.pr-sec .in{padding:20px}
+.pr-campos{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px}
+.pr-campos .largo{grid-column:1/-1}
+@media(max-width:760px){.pr-campos{grid-template-columns:1fr}}
+.pr-sec label{font:600 .84rem/1.4 'Inter',sans-serif;color:var(--al-tinta2);display:block;margin:12px 0 4px}
+.pr-sec input,.pr-sec select,.pr-sec textarea{margin:0 0 4px;border-radius:10px;border:1px solid var(--al-borda);padding:11px 13px}
+.pr-sec input:focus,.pr-sec select:focus,.pr-sec textarea:focus{outline:none;border-color:var(--al-ambar);box-shadow:0 0 0 3px rgba(217,119,6,.13)}
+.pr-ajuda{color:var(--al-tinta3);font-size:.8rem;margin:0 0 8px}
+.pr-rodape{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px;background:#FCFCFD;border-top:1px solid var(--al-borda2)}
+
+/* áreas do produto: um produto pode estar em mais de uma */
+.pr-areas{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 6px}
+.pr-chip{border:1px solid var(--al-borda);background:#fff;color:var(--al-tinta);border-radius:99px;
+  padding:7px 14px;font:600 .85rem/1 'Inter',sans-serif;cursor:pointer;transition:.15s}
+.pr-chip:hover{border-color:var(--al-ambar);color:var(--al-ambar2)}
+.pr-chip.on{background:var(--al-navy);border-color:var(--al-navy);color:#fff}
+.pr-chip.nova{border-style:dashed;color:var(--al-tinta2)}
+
+/* builder de conteúdo */
+.pr-mod{border:1px solid var(--al-borda);border-radius:14px;margin:0 0 12px;overflow:hidden}
+.pr-mod>.cab{display:flex;align-items:center;gap:10px;padding:11px 14px;background:#FCFCFD;border-bottom:1px solid var(--al-borda2);font-weight:600;color:var(--al-navy)}
+.pr-mod>.cab .qt{margin-left:auto;color:var(--al-tinta3);font-weight:500;font-size:.8rem}
+.pr-mod .item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--al-borda2);font-size:.9rem}
+.pr-mod .item:last-of-type{border-bottom:0}
+.pr-mod .item .tipo{color:var(--al-tinta3)}
+.pr-mod .item .dir{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pr-nova-aula{padding:12px 14px;background:#FAFBFC;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pr-nova-aula input,.pr-nova-aula select{margin:0}
+.pr-drop{margin-top:6px;border:2px dashed #E0D3B8;border-radius:14px;padding:26px;text-align:center;background:#FFFDF7;cursor:pointer}
+.pr-drop:hover{border-color:var(--al-ambar);background:var(--al-ambar-luz)}
+.pr-tab{width:100%;border-collapse:collapse;font-size:.88rem}
+.pr-tab th{text-align:left;color:var(--al-tinta2);font-weight:600;padding:9px 12px;border-bottom:1px solid var(--al-borda)}
+.pr-tab td{padding:10px 12px;border-bottom:1px solid var(--al-borda2)}
+.pr-tab tr:last-child td{border-bottom:0}
