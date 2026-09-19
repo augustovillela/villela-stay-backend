@@ -69,7 +69,6 @@ function landingHTML() {
   // a vitrine é o coração de um site comercial: a landing mostrava benefícios da
   // plataforma e NENHUM curso. Agora ela abre com o catálogo real.
   const destaques = ct.Marketplace.listar({ n: 6 });
-  const cats = ct.Categorias.visiveis().slice(0, 8);
   const feats = [
     ['🎓', 'Para quem aprende', 'Biblioteca com seus cursos, aulas em vídeo, materiais, progresso e certificados — tudo em um lugar.'],
     ['🎬', 'Para quem ensina', 'Crie cursos, e-books, mentorias e assinaturas. Página de venda, checkout e área de membros prontos.'],
@@ -110,8 +109,7 @@ function landingHTML() {
     ${destaques.length ? `<div class="sec" id="cursos"><div class="wrap" style="max-width:1180px">
       <h2>Cursos em destaque</h2>
       <p class="sub">Currículo aberto, materiais inclusos e certificado ao final.</p>
-      ${cats.length ? `<p style="text-align:center;margin:0 0 26px">${cats.map(({ slug }) =>
-        `<a class="btn peq secund" href="/academy/marketplace?categoria=${slug}" style="margin:3px">${esc(ct.catRotulo(slug))}</a>`).join('')}</p>` : ''}
+      ${barraDeAreas('')}
       <div class="pv-vitrine">${destaques.map(cardProduto).join('')}</div>
       <p style="text-align:center;margin-top:28px"><a class="btn" href="/academy/marketplace">Ver o catálogo completo</a></p>
     </div></div>` : ''}
@@ -213,9 +211,8 @@ function cardProduto(p) {
     : `<span class="preco">${p.preco_centavos ? brl(p.preco_centavos) + sufixoMes(p) : 'Grátis'}</span>`;
   // categoria como etiqueta ao lado do tipo. Aqui é SPAN, não link: o card
   // inteiro já é um <a>, e âncora dentro de âncora é HTML inválido.
-  const cat = p.categoria
-    ? ` <span class="tag" style="background:#EEF2F8;color:#5B6472">${esc(ct.catRotulo(p.categoria))}</span>`
-    : '';
+  const cat = (p.categorias && p.categorias.length ? p.categorias : [p.categoria]).filter(Boolean).slice(0, 2)
+    .map(c => `<span class="tag area">${esc(ct.catRotulo(c))}</span>`).join('');
   return `<a class="cardp" href="/academy/cursos/${esc(p.slug)}">${capa || '<span class="capa-vazia"></span>'}
     <span class="tags"><span class="tag">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>${cat}</span>
     <b>${esc(p.titulo)}</b>
@@ -223,16 +220,32 @@ function cardProduto(p) {
     <span class="autor">por ${esc(p.produtor_nome || '')}</span>${preco}</a>`;
 }
 
+// barra de áreas: "todas" + uma por categoria visível, com a contagem de
+// publicados e destaque na ativa. Usada no marketplace e na home.
+function barraDeAreas(ativa) {
+  // só áreas COM curso publicado: filtro que leva a "nenhum produto encontrado" é
+  // beco sem saída, e 15 etiquetas vazias fazem a vitrine parecer deserta. A ativa
+  // entra sempre (o aluno tem de ver onde está), mesmo que tenha ficado sem curso.
+  const todas = ct.Categorias.visiveis();
+  const cats = todas.filter(c => c.n > 0 || c.slug === ativa);
+  if (!cats.length) return '';
+  const total = ct.Marketplace.listar({ n: 200 }).length;
+  const chip = (href, rotulo, n, on) =>
+    `<a class="${on ? 'on' : ''}" href="${href}">${esc(rotulo)}${n ? `<span class="n">${n}</span>` : ''}</a>`;
+  return `<nav class="pv-areas" aria-label="Áreas de conhecimento">
+    ${chip('/academy/marketplace', 'Todas as áreas', total, !ativa)}
+    ${cats.map(c => chip(`/academy/marketplace?categoria=${encodeURIComponent(c.slug)}`, ct.catRotulo(c.slug), c.n, c.slug === ativa)).join('')}
+  </nav>`;
+}
+
 function marketplaceHTML({ q, categoria }) {
   const itens = ct.Marketplace.listar({ q, categoria });
-  // do sistema sempre; as de produtor só depois de terem produto publicado
-  const cats = ct.Categorias.visiveis().map(({ slug }) =>
-    `<a class="btn peq ${slug === categoria ? '' : 'secund'}" href="/academy/marketplace?categoria=${slug}" style="margin:3px">${esc(ct.catRotulo(slug))}</a>`).join('');
   const corpo = `<div class="sec"><div class="wrap" style="max-width:1180px"><h2>Marketplace</h2>
     <p class="sub">Cursos e produtos digitais dos produtores da Villela Academy — currículo aberto, materiais inclusos e certificado.</p>
-    <form method="get" action="/academy/marketplace" style="max-width:480px;margin:0 auto 18px;display:flex;gap:8px">
-      <input name="q" value="${esc(q || '')}" placeholder="Buscar curso, e-book, mentoria..."><button class="btn peq" type="submit">Buscar</button></form>
-    <p style="text-align:center;margin-bottom:22px">${cats}</p>
+    <form class="pv-busca" method="get" action="/academy/marketplace">
+      <input name="q" value="${esc(q || '')}" placeholder="Buscar curso, e-book, mentoria..." aria-label="Buscar">
+      <button type="submit">Buscar</button></form>
+    ${barraDeAreas(categoria)}
     ${itens.length ? `<div class="pv-vitrine">${itens.map(cardProduto).join('')}</div>`
       : '<p class="sub">Nenhum produto encontrado' + (q || categoria ? ' com esse filtro.' : ' ainda — os primeiros produtores estão chegando.') + '</p>'}
   </div></div>`;
@@ -309,7 +322,8 @@ function cursoHTML(slug) {
 
   const chips = [
     `<span class="pv-chip ouro">${TIPOS_ROT[p.tipo] || esc(p.tipo)}</span>`,
-    p.categoria ? `<a class="pv-chip" href="/academy/marketplace?categoria=${encodeURIComponent(p.categoria)}" style="text-decoration:none">${esc(ct.catRotulo(p.categoria))}</a>` : '',
+    ...((p.categorias && p.categorias.length ? p.categorias : [p.categoria]).filter(Boolean)
+      .map(c => `<a class="pv-chip" href="/academy/marketplace?categoria=${encodeURIComponent(c)}" style="text-decoration:none">${esc(ct.catRotulo(c))}</a>`)),
     nota.media ? `<span class="pv-chip" style="color:var(--pv-ouro)">★ ${nota.media} <span style="opacity:.8;color:#E8EDF6">(${nota.total} avaliações)</span></span>` : '',
     resumo.total_aulas ? `<span class="pv-chip">${svgI('texto', 15)} ${resumo.total_aulas} aulas</span>` : '',
     resumo.total_seg ? `<span class="pv-chip">${svgI('relogio', 15)} ${durSeg(resumo.total_seg)}</span>` : '',

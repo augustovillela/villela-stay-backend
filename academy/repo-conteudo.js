@@ -46,10 +46,17 @@ const Categorias = {
   // terem produto PUBLICADO. Categoria criada e nunca usada não polui a vitrine,
   // e como publicar exige aprovação da plataforma, nenhuma categoria nova estreia
   // no site sem um humano ter passado por ela — sem precisar de fila própria.
+  // `n` = quantos produtos publicados a categoria tem (o filtro do marketplace
+  // mostra o número, e categoria de produtor sem produto continua escondida).
   visiveis() {
-    return db.prepare(`SELECT c.* FROM categories c
-      WHERE c.origem = 'sistema'
-         OR EXISTS (SELECT 1 FROM products p WHERE p.categoria = c.slug AND p.status = 'publicado')
+    return db.prepare(`SELECT c.*, (
+        SELECT COUNT(*) FROM products p WHERE p.status = 'publicado'
+          AND (p.categoria = c.slug OR EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id = p.id AND pc.slug = c.slug))
+      ) AS n FROM categories c
+      WHERE c.origem = 'sistema' OR (
+        SELECT COUNT(*) FROM products p WHERE p.status = 'publicado'
+          AND (p.categoria = c.slug OR EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id = p.id AND pc.slug = c.slug))
+      ) > 0
       ORDER BY c.ordem, c.rotulo`).all();
   },
 
@@ -130,7 +137,25 @@ function slugDe(texto, tabela) {
 function normProduto(p) { return p ? { ...p, tags: j.parse(p.tags, []), config: j.parse(p.config, {}) } : null; }
 
 const Produtos = {
-  obter(id) { return normProduto(db.prepare('SELECT * FROM products WHERE id = ?').get(id)); },
+  obter(id) {
+    const p = normProduto(db.prepare('SELECT * FROM products WHERE id = ?').get(id));
+    return p ? { ...p, categorias: this.categoriasDe(p.id, p.categoria) } : null;
+  },
+  // todas as categorias do produto, a principal primeiro
+  categoriasDe(id, principal) {
+    const rows = db.prepare('SELECT slug, principal FROM product_categories WHERE product_id = ? ORDER BY principal DESC, slug').all(id);
+    const fora = rows.map(r => r.slug);
+    if (principal && !fora.includes(principal)) fora.unshift(principal);  // produto salvo antes da migração
+    return fora;
+  },
+  // grava o conjunto (a 1ª vira a principal). Ignora slug que não existe.
+  gravarCategorias(id, lista) {
+    const validas = [...new Set((lista || []).map(x => s(x, 40)).filter(x => x && Categorias.existe(x)))];
+    db.prepare('DELETE FROM product_categories WHERE product_id = ?').run(id);
+    validas.forEach((slug, i) => db.prepare('INSERT OR REPLACE INTO product_categories (product_id, slug, principal) VALUES (?, ?, ?)').run(id, slug, i === 0 ? 1 : 0));
+    db.prepare('UPDATE products SET categoria = ? WHERE id = ?').run(validas[0] || '', id);
+    return validas;
+  },
   doProdutor(producerId) {
     return db.prepare("SELECT * FROM products WHERE producer_id = ? AND status != 'removido' ORDER BY criado_em DESC").all(producerId).map(normProduto);
   },
@@ -152,11 +177,15 @@ const Produtos = {
         Categorias.existe(d.categoria) ? d.categoria : '', s(d.descricao_curta, 300),
         s(d.descricao_longa, 10000), Math.max(0, parseInt(d.preco_centavos, 10) || 0),
         Math.max(0, parseInt(d.garantia_dias, 10) || 7), nowISO());
+    this.gravarCategorias(id, Array.isArray(d.categorias) && d.categorias.length ? d.categorias : [d.categoria]);
     return this.obter(id);
   },
 
   editar(id, producerId, d = {}) {
     const p = this.obterDoDono(id, producerId);
+    // `categorias` (lista) manda; `categoria` sozinha continua valendo, como antes
+    if (Array.isArray(d.categorias)) { this.gravarCategorias(id, d.categorias); d = { ...d, categoria: this.obter(id).categoria }; }
+    else if (d.categoria != null) this.gravarCategorias(id, [d.categoria]);
     if (['suspenso', 'removido'].includes(p.status)) throw new Error('Produto suspenso/removido não pode ser editado.');
     const num = (v, atual) => (v == null ? atual : Math.max(0, parseInt(v, 10) || 0));
     db.prepare(`UPDATE products SET titulo = ?, subtitulo = ?, categoria = ?, descricao_curta = ?, descricao_longa = ?,
@@ -592,7 +621,10 @@ const Marketplace = {
       p.capa_media_id, p.preco_centavos, p.preco_promo_centavos, pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug
       FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
       WHERE p.status = 'publicado' ORDER BY p.atualizado_em DESC LIMIT ?`).all(Math.min(parseInt(n, 10) || 60, 200));
-    if (categoria) rows = rows.filter(r => r.categoria === categoria);
+    if (categoria) {
+      const naCat = new Set(db.prepare('SELECT product_id FROM product_categories WHERE slug = ?').all(categoria).map(r => r.product_id));
+      rows = rows.filter(r => r.categoria === categoria || naCat.has(r.id));
+    }
     if (q) {
       const t = s(q, 80).toLowerCase();
       rows = rows.filter(r => (r.titulo + ' ' + r.subtitulo + ' ' + r.descricao_curta).toLowerCase().includes(t));
@@ -603,7 +635,8 @@ const Marketplace = {
     const p = db.prepare(`SELECT p.*, pr.nome_publico AS produtor_nome, pr.slug AS produtor_slug, pr.bio AS produtor_bio
       FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
       WHERE p.slug = ? AND p.status = 'publicado'`).get(String(slug || ''));
-    return normProduto(p);
+    const n = normProduto(p);
+    return n ? { ...n, categorias: Produtos.categoriasDe(n.id, n.categoria) } : null;
   },
   produtorPorSlug(slug) {
     const pr = db.prepare(`SELECT pr.user_id, pr.nome_publico, pr.slug, pr.bio, pr.site

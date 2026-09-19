@@ -83,7 +83,24 @@ const MIGRACOES = [
     ].map(([slug, rot], i) => `INSERT OR IGNORE INTO categories (slug, rotulo, origem, ordem, criado_em)
         VALUES ('${slug}', '${rot.replace(/'/g, "''")}', 'sistema', ${i}, '2026-08-11T00:00:00.000Z');`).join('\n'),
   },
+
+  { // um produto pode estar em MAIS DE UMA categoria (ex.: um curso de IA para
+    // advogados vive em "Inteligência Artificial" e em "Direito"). A coluna
+    // products.categoria continua sendo a PRINCIPAL (trilha, SEO, 1ª etiqueta);
+    // esta tabela guarda TODAS, inclusive a principal, e é quem o filtro consulta.
+    nome: 'product-categorias-multi-2026-09-18',
+    sql: `CREATE TABLE IF NOT EXISTS product_categories (
+            product_id TEXT NOT NULL REFERENCES products(id),
+            slug       TEXT NOT NULL REFERENCES categories(slug),
+            principal  INTEGER DEFAULT 0,
+            PRIMARY KEY (product_id, slug)
+          );
+          CREATE INDEX IF NOT EXISTS idx_prodcat_slug ON product_categories(slug);
+          INSERT OR IGNORE INTO product_categories (product_id, slug, principal)
+            SELECT id, categoria, 1 FROM products WHERE categoria IS NOT NULL AND categoria != '';`,
+  },
 ];
+
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
   db.exec(m.sql);

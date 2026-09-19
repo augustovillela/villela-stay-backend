@@ -117,7 +117,7 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
 
   // edita só o que veio (o repo já ignora undefined); título nunca é apagado
   const edicao = {};
-  for (const k of ['titulo', 'subtitulo', 'categoria', 'descricao_curta', 'descricao_longa',
+  for (const k of ['titulo', 'subtitulo', 'categoria', 'categorias', 'descricao_curta', 'descricao_longa',
     'preco_centavos', 'preco_promo_centavos', 'garantia_dias', 'tags', 'afiliado_pct']) {
     if (p0[k] != null) edicao[k] = p0[k];
   }

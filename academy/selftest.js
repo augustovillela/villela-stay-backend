@@ -1304,6 +1304,37 @@ async function main() {
     assert.equal((await req('GET', '/staff/api/academy/cortesia', { user: 'op' })).st, 403); // operador não-admin
   });
 
+  console.log('\n— categorias: um produto em mais de uma área —');
+  await t('produto em duas áreas aparece nos dois filtros', async () => {
+    const ctx = require('./repo-conteudo');
+    const antes = ctx.Produtos.obter(prodId).categorias;
+    ctx.Produtos.gravarCategorias(prodId, ['direito', 'tecnologia']);
+    const p2 = ctx.Produtos.obter(prodId);
+    assert.deepEqual(p2.categorias, ['direito', 'tecnologia']);
+    assert.equal(p2.categoria, 'direito', 'a primeira é a principal (trilha, SEO, 1ª etiqueta)');
+    assert.ok(ctx.Marketplace.listar({ categoria: 'direito' }).some(x => x.id === prodId));
+    assert.ok(ctx.Marketplace.listar({ categoria: 'tecnologia' }).some(x => x.id === prodId), 'a área secundária também filtra');
+    assert.ok(!ctx.Marketplace.listar({ categoria: 'eventos' }).some(x => x.id === prodId));
+    const pag = await req('GET', `/academy/cursos/${p2.slug}`);
+    assert.ok(pag.texto.includes('categoria=direito') && pag.texto.includes('categoria=tecnologia'), 'a página do curso mostra as duas áreas');
+    ctx.Produtos.gravarCategorias(prodId, antes.length ? antes : ['hospedagem']); // devolve o fixture
+  });
+  await t('slug inexistente é ignorado ao gravar as áreas', () => {
+    const ctx = require('./repo-conteudo');
+    const antes = ctx.Produtos.obter(prodId).categorias;
+    const r = ctx.Produtos.gravarCategorias(prodId, ['nao-existe', antes[0]]);
+    assert.deepEqual(r, [antes[0]], 'categoria inexistente sai, a boa fica');
+  });
+  await t('barra de áreas: só o que tem curso, com contagem e a ativa marcada', async () => {
+    const r = await req('GET', '/academy/marketplace');
+    assert.ok(r.texto.includes('pv-areas'), 'a barra de chips');
+    assert.ok(r.texto.includes('Todas as áreas'));
+    assert.ok(!/categoria=eventos/.test(r.texto), 'área sem curso publicado não vira filtro morto');
+    const cat = require('./repo-conteudo').Produtos.obter(prodId).categoria;
+    const f = await req('GET', `/academy/marketplace?categoria=${cat}`);
+    assert.ok(f.texto.includes(`class="on" href="/academy/marketplace?categoria=${cat}"`), 'a área aberta fica destacada');
+  });
+
   console.log('\n— área do aluno: estúdio, materiais e recomendação —');
   await t('assets do estúdio (aluno.js, aluno.css, publico.css) respondem', async () => {
     const js = await req('GET', '/academy/aluno.js');
