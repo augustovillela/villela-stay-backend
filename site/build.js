@@ -4317,6 +4317,16 @@ fs.writeFileSync(path.join(DIST, 'robots.txt'),
   ROBOS_IA.map(r => `User-agent: ${r}\nAllow: /`).join('\n\n') +
   `\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 
+// ------------------- verificação do Search Console -------------------
+// O arquivo é da CONTA, não do site: o mesmo nome vale para todas as
+// propriedades. Os 15 endereços servidos pelo backend o entregam por rota
+// (nucleo/seo.js) e o Cozinhe por arquivo estático; aqui o site gera o seu,
+// para que villelastay.com.br verifique pelo mesmo método dos outros.
+const VERIFICACOES_GOOGLE = ['googleacfe603a1ce944c9.html'];
+VERIFICACOES_GOOGLE.forEach((nome) => {
+  fs.writeFileSync(path.join(DIST, nome), `google-site-verification: ${nome}`);
+});
+
 // ------------------------- llms.txt -------------------------
 // Mapa do site em texto puro para assistentes de IA (proposta llms.txt).
 // Motivo de existir: um modelo que responde "que sistema de gestão brasileiro
