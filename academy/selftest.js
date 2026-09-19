@@ -1390,6 +1390,16 @@ async function main() {
   await t('recomendação exige login de aluno', async () => {
     assert.equal((await req('GET', '/academy/api/aluno/recomendados')).st, 401);
   });
+  await t('a vitrine conta aula = módulo, conteúdo = item (22 aulas, não 39)', async () => {
+    const ctx = require('./repo-conteudo');
+    const p2 = ctx.Produtos.obter(prodId);
+    const resumo = ctx.Marketplace.resumoConteudo(prodId);
+    assert.ok(resumo.total_aulas > resumo.modulos.length, 'o fixture tem mais de um item por módulo');
+    const r = await req('GET', `/academy/cursos/${p2.slug}`);
+    assert.ok(r.texto.includes(`${resumo.modulos.length} aulas`), 'o número de AULAS é o de módulos');
+    assert.ok(r.texto.includes(`${resumo.total_aulas} conteúdos`), 'os itens aparecem como conteúdos');
+    assert.ok(!r.texto.includes(`${resumo.total_aulas} aulas`), 'item nunca é chamado de aula — foi o que confundiu o autor');
+  });
   await t('página do curso: currículo com duração/materiais e cartão de compra fixo', async () => {
     const slugPub = require('./db').db.prepare('SELECT slug FROM products WHERE id = ?').get(prodId).slug;
     const r = await req('GET', `/academy/cursos/${slugPub}`);

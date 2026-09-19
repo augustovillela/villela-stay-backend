@@ -312,9 +312,10 @@ function cursoHTML(slug) {
 
   // "o que você leva" sai do conteúdo REAL do curso, não de promessa escrita à mão
   const inclui = [];
-  if (resumo.total_videos) inclui.push(['play', `${resumo.total_videos} aula${resumo.total_videos > 1 ? 's' : ''} em vídeo${resumo.total_seg ? ` · ${durSeg(resumo.total_seg)}` : ''}`]);
+  if (resumo.modulos.length) inclui.push(['texto', `${resumo.modulos.length} aula${resumo.modulos.length > 1 ? 's' : ''}, do começo ao fim`]);
+  if (resumo.total_videos) inclui.push(['play', `${resumo.total_videos} vídeo${resumo.total_videos > 1 ? 's' : ''}${resumo.total_seg ? ` · ${durSeg(resumo.total_seg)}` : ''}`]);
   const naoVideo = resumo.total_aulas - resumo.total_videos;
-  if (naoVideo > 0) inclui.push(['doc', `${naoVideo} aula${naoVideo > 1 ? 's' : ''} de leitura e prática`]);
+  if (naoVideo > 0) inclui.push(['doc', `${naoVideo} conteúdo${naoVideo > 1 ? 's' : ''} de leitura e prática`]);
   if (resumo.total_materiais) inclui.push(['baixar', `${resumo.total_materiais} materiais para baixar`]);
   inclui.push(['chapeu', 'Certificado com validação pública']);
   inclui.push(['relogio', ehClube ? 'Acesso enquanto a assinatura estiver ativa' : 'Acesso vitalício, no computador e no celular']);
@@ -325,7 +326,8 @@ function cursoHTML(slug) {
     ...((p.categorias && p.categorias.length ? p.categorias : [p.categoria]).filter(Boolean)
       .map(c => `<a class="pv-chip" href="/academy/marketplace?categoria=${encodeURIComponent(c)}" style="text-decoration:none">${esc(ct.catRotulo(c))}</a>`)),
     nota.media ? `<span class="pv-chip" style="color:var(--pv-ouro)">★ ${nota.media} <span style="opacity:.8;color:#E8EDF6">(${nota.total} avaliações)</span></span>` : '',
-    resumo.total_aulas ? `<span class="pv-chip">${svgI('texto', 15)} ${resumo.total_aulas} aulas</span>` : '',
+    resumo.modulos.length ? `<span class="pv-chip">${svgI('texto', 15)} ${resumo.modulos.length} aulas</span>` : '',
+    resumo.total_aulas > resumo.modulos.length ? `<span class="pv-chip">${svgI('play', 15)} ${resumo.total_aulas} conteúdos</span>` : '',
     resumo.total_seg ? `<span class="pv-chip">${svgI('relogio', 15)} ${durSeg(resumo.total_seg)}</span>` : '',
     resumo.total_materiais ? `<span class="pv-chip">${svgI('baixar', 15)} ${resumo.total_materiais} materiais</span>` : '',
   ].filter(Boolean).join('');
@@ -349,14 +351,14 @@ function cursoHTML(slug) {
 
   const curriculo = resumo.modulos.length ? `
     <div class="pv-resumo-curr">
-      <span>${svgI('texto', 16)} ${resumo.modulos.length} módulos</span>
-      <span>${svgI('play', 16)} ${resumo.total_aulas} aulas</span>
+      <span>${svgI('texto', 16)} ${resumo.modulos.length} aulas</span>
+      <span>${svgI('play', 16)} ${resumo.total_aulas} conteúdos (vídeo, artigo, material)</span>
       ${resumo.total_seg ? `<span>${svgI('relogio', 16)} ${durSeg(resumo.total_seg)} de conteúdo</span>` : ''}
       ${resumo.total_materiais ? `<span>${svgI('baixar', 16)} ${resumo.total_materiais} materiais</span>` : ''}
     </div>
     <div class="pv-curr">${resumo.modulos.map((m, i) => `<details${i < 2 ? ' open' : ''}>
       <summary>${svgI('seta', 16)}<span>${esc(m.titulo)}</span>
-        <span class="qt">${m.aulas.length} aula${m.aulas.length > 1 ? 's' : ''}${m.duracao_seg ? ' · ' + durSeg(m.duracao_seg) : ''}</span></summary>
+        <span class="qt">${m.aulas.length} conteúdo${m.aulas.length > 1 ? 's' : ''}${m.duracao_seg ? ' · ' + durSeg(m.duracao_seg) : ''}</span></summary>
       <div class="aulas">${m.aulas.map(a => `<div class="aula">${svgI(ICO_AULA[a.tipo] || 'doc', 17)}
         <span>${esc(a.titulo)}${a.materiais ? `<span class="pv-fino"> · ${a.materiais} ${a.materiais > 1 ? 'materiais' : 'material'}</span>` : ''}${a.gratuita ? '<span class="free">degustação grátis</span>' : ''}</span>
         ${a.duracao_seg ? `<span class="dur">${durSeg(a.duracao_seg)}</span>` : ''}</div>`).join('')}</div>

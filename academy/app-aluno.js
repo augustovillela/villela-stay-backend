@@ -94,7 +94,7 @@
               '<div class="capa" style="' + capaCss(c) + '">' + (c.capa_media_id ? '' : '<span class="vazia">' + ico('chapeu', 40) + '</span>') +
               (c.origem === 'cortesia' ? '<span class="selo">🎁 cortesia</span>' : (p.pct === 100 ? '<span class="selo">✓ concluído</span>' : '')) + '</div>' +
               '<div class="corpo"><h4>' + esc(c.titulo) + '</h4>' +
-              '<p class="al-fino">' + p.concluidas + ' de ' + p.total_aulas + ' aulas</p>' +
+              '<p class="al-fino">' + p.concluidas + ' de ' + p.total_aulas + ' conteúdos</p>' +
               barra(p.pct, 'fina') +
               '<div class="rod"><span class="al-pct">' + p.pct + '%</span>' +
               '<span class="al-bt peq">' + (p.pct > 0 ? 'Continuar' : 'Começar') + ' ' + ico('dir', 15) + '</span></div></div></div>';
@@ -193,7 +193,8 @@
         '<h2>' + esc(p.titulo) + '</h2>' +
         '<div class="meta">' +
         (p.produtor_nome ? '<span>' + ico('chapeu', 15) + ' ' + esc(p.produtor_nome) + '</span>' : '') +
-        '<span>' + ico('texto', 15) + ' ' + C.aulas.length + ' aulas</span>' +
+        '<span>' + ico('texto', 15) + ' ' + C.d.estrutura.length + ' aulas</span>' +
+        (C.aulas.length > C.d.estrutura.length ? '<span>' + ico('play', 15) + ' ' + C.aulas.length + ' conteúdos</span>' : '') +
         (totalSeg ? '<span>' + ico('relogio', 15) + ' ' + dur(totalSeg) + ' de conteúdo</span>' : '') +
         '</div></div>' +
         (d.matriculado ? '' : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas. ' +
@@ -203,7 +204,7 @@
         '<div class="est-nav" id="al-nav"></div></div>' +
         '<aside class="grade">' +
         '<div class="grade-cab"><h4>' + esc(p.titulo) + '</h4>' + barra(pr.pct, 'esc') +
-        '<div class="nums"><span id="al-prog-txt">' + pr.concluidas + ' de ' + pr.total_aulas + ' aulas</span><b id="al-prog-pct" style="color:#fff">' + pr.pct + '%</b></div></div>' +
+        '<div class="nums"><span id="al-prog-txt">' + pr.concluidas + ' de ' + pr.total_aulas + ' conteúdos</span><b id="al-prog-pct" style="color:#fff">' + pr.pct + '%</b></div></div>' +
         '<div class="grade-busca">' + ico('lupa', 15) + ' <input id="al-busca" placeholder="Buscar aula neste curso" style="display:inline-block;width:calc(100% - 26px);margin-left:4px"></div>' +
         '<div class="grade-corpo" id="al-grade"></div></aside>' +
         '<div class="est-baixo"><div class="est-abas" id="al-abas"></div><div class="est-painel" id="al-painel"></div>' +
@@ -358,7 +359,7 @@
         var pct = C.aulas.length ? Math.round(feitas * 100 / C.aulas.length) : 0;
         C.d.progresso = { concluidas: feitas, total_aulas: C.aulas.length, pct: pct };
         var bt = document.querySelector('.grade-cab .al-barra i'); if (bt) bt.style.width = pct + '%';
-        if (el('al-prog-txt')) el('al-prog-txt').textContent = feitas + ' de ' + C.aulas.length + ' aulas';
+        if (el('al-prog-txt')) el('al-prog-txt').textContent = feitas + ' de ' + C.aulas.length + ' conteúdos';
         if (el('al-prog-pct')) el('al-prog-pct').textContent = pct + '%';
         pintarGrade(el('al-busca') ? el('al-busca').value : '');
         pintarNav(C.i);
@@ -461,7 +462,7 @@
       if (C.d.matriculado && pr.pct === 100) {
         h += '<div class="al-conquista" style="margin-top:26px"><span class="med">🎓</span>' +
           '<div style="flex:1;min-width:200px"><h3 style="font-size:1.15rem">Curso concluído</h3>' +
-          '<p class="al-sub">Você terminou todas as aulas. Emita o seu certificado.</p></div>' +
+          '<p class="al-sub">Você terminou todo o conteúdo. Emita o seu certificado.</p></div>' +
           '<button class="al-bt" id="al-cert">Emitir certificado</button></div>';
       }
       if (C.d.matriculado) {
