@@ -206,6 +206,25 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(r.text.trim(), `google-site-verification: google${tokens[0]}.html`);
   });
 
+  // O .com é espelho do .com.br no MESMO serviço. Quem pergunta pelo espelho tem
+  // de receber o mapa do domínio oficial — senão o sitemap contradiz o canonical
+  // da própria página e o rastreio se divide entre dois endereços do mesmo texto.
+  await t('servido pelo domínio espelho (.com), o mapa aponta o domínio oficial (.com.br)', async () => {
+    const r = await req('GET', '/sitemap.xml', { headers: comHost('academia.villelastay.com') });
+    assert.equal(r.status, 200, 'o espelho continua respondendo o mapa');
+    assert.ok(r.text.includes('//academia.villelastay.com.br/academy'), 'as URLs são as oficiais');
+    assert.ok(!/villelastay\.com\/(?!$)/.test(r.text.replace(/\.com\.br/g, '.oficial')),
+      'nenhuma URL do espelho pode entrar no mapa');
+
+    const rb = await req('GET', '/robots.txt', { headers: comHost('academia.villelastay.com') });
+    assert.ok(/Sitemap: https?:\/\/academia\.villelastay\.com\.br\/sitemap\.xml/.test(rb.text),
+      'o robots do espelho aponta o mapa oficial');
+
+    const l = await req('GET', '/llms.txt', { headers: comHost('livros.villelastay.com') });
+    assert.ok(l.text.includes('//livros.villelastay.com.br/livros'),
+      'o llms.txt do espelho também cita o domínio oficial');
+  });
+
   await t('catálogo dinâmico entra no sitemap e falha nele não derruba o mapa', async () => {
     const seo = require('./nucleo/seo');
     seo.registrar('/crm', () => [{ url: '/crm/teste-dinamico', atualizado: '2026-09-19' }]);

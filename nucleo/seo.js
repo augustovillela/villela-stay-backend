@@ -114,13 +114,29 @@ function registrar(prefixo, fn) {
 }
 
 function produtoDoHost(host) {
-  const h = String(host || '').toLowerCase();
+  const h = hostCanonico(host);
   return PRODUTOS.find((p) => p.subs.some((s) => h.startsWith(s))) || null;
+}
+
+// Domínio oficial do grupo. O `villelastay.com` (internacional) aponta para o
+// MESMO serviço e serve o MESMO conteúdo — é espelho, não site próprio.
+const DOMINIO_OFICIAL = 'villelastay.com.br';
+
+// ⚠️ Host CANÔNICO, não o host que pediu. Servido pelo espelho, o mapa anunciava
+// as URLs do espelho enquanto a página declarava canonical para o .com.br: o
+// sitemap contradizia a própria página. Sitemap e llms.txt são declarações sobre
+// QUAL é o endereço do conteúdo — e essa resposta não pode mudar conforme a porta
+// por onde a pergunta entrou.
+function hostCanonico(host) {
+  const h = String(host || '').toLowerCase().split(':')[0];
+  if (h === 'villelastay.com') return DOMINIO_OFICIAL;
+  if (h.endsWith('.villelastay.com')) return h.slice(0, -'villelastay.com'.length) + DOMINIO_OFICIAL;
+  return h;
 }
 
 function baseDe(req) {
   const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0];
-  return `${proto}://${req.get('host')}`;
+  return `${proto}://${hostCanonico(req.get('host'))}`;
 }
 
 function urlsPublicas(p) {
@@ -242,4 +258,4 @@ function montar(app) {
   return { produtos: PRODUTOS.length };
 }
 
-module.exports = { montar, registrar, robotsTxt, sitemapXml, llmsTxt, produtoDoHost, tokensDeVerificacao, PRODUTOS, ROBOS };
+module.exports = { montar, registrar, robotsTxt, sitemapXml, llmsTxt, produtoDoHost, hostCanonico, tokensDeVerificacao, PRODUTOS, ROBOS };
