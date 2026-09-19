@@ -118,7 +118,12 @@
 .pv-rel h2{font-family:'Lora',serif;color:var(--pv-navy);font-size:1.45rem;margin:0 0 6px}
 
 /* ---------- landing: vitrine e números ---------- */
-.pv-vitrine{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:20px}
+/* auto-FIT (não auto-fill) + teto de 320px + justify-content:center: com poucos
+   cursos a grade fica CENTRADA em vez de pender para a esquerda. `auto-fill`
+   mantém trilhos VAZIOS ocupando a linha — com um cartão só ele continuava
+   encostado à esquerda; `auto-fit` colapsa os vazios. E o teto impede que dois
+   cartões estiquem até virar dois banners. */
+.pv-vitrine{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,320px));gap:20px;justify-content:center}
 .pv-num{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:18px;text-align:center}
 .pv-num div{background:#fff;border:1px solid var(--pv-borda);border-radius:16px;padding:22px 16px;box-shadow:var(--pv-sombra)}
 .pv-num b{display:block;font:800 1.9rem/1 'Inter',sans-serif;color:var(--pv-navy);margin-bottom:5px}
@@ -200,3 +205,8 @@
    título e a vitrine ocupavam a largura toda — desalinhado com o resto da
    página. Aqui ele volta a se centralizar na caixa. */
 .sec>.wrap>.sub{margin-left:auto;margin-right:auto;max-width:70ch;text-wrap:balance}
+
+/* parágrafo/botão centralizado numa seção: o design system limita a largura de
+   `p` e tira o `margin:auto`, então "text-align:center" centraliza dentro de uma
+   caixa que já está encostada à esquerda. Esta classe devolve a caixa inteira. */
+.sec .pv-centro{max-width:none;width:100%;margin-left:auto;margin-right:auto;text-align:center}

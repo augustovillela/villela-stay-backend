@@ -71,16 +71,36 @@
       (location.hash === '#cadastro' ? renderCadastro : renderLogin)();
     });
   }
+  // painel de valor ao lado do formulário: quem abre esta tela pode ser um lead
+  // que ainda não comprou — a entrada é a primeira impressão da escola.
+  function vitrineEntrada() {
+    var itens = [
+      'Aulas em vídeo com material para baixar e usar no trabalho',
+      'Seu progresso salvo, do celular ao computador',
+      'Certificado com código de validação pública',
+      'Acesso vitalício ao que você comprar',
+    ];
+    var tick = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
+    return '<div class="vitrine"><p class="al-rotulo" style="color:var(--al-ouro)">Villela Academy</p>' +
+      '<h3>Formação que cabe na sua semana.</h3>' +
+      '<p>A escola online do Grupo Villela Stay: método, material de trabalho e certificado.</p>' +
+      '<ul>' + itens.map(function (x) { return '<li>' + tick + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>' +
+      '<p style="margin:24px 0 0"><a href="/academy/marketplace" style="color:var(--al-ouro);font-weight:600;text-decoration:none">Ver os cursos disponíveis →</a></p></div>';
+  }
+
   function renderLogin() {
-    root().innerHTML = '<div class="card" style="max-width:420px"><h3 style="margin-bottom:14px">Entrar</h3>' +
-      '<div class="vx-campo"><label for="em">E-mail</label>' +
-      '<input id="em" type="email" autocomplete="username" autocapitalize="off" spellcheck="false"></div>' +
-      '<div class="vx-campo"><label for="sn">Senha</label>' +
-      '<input id="sn" type="password" autocomplete="current-password"></div>' +
-      '<div id="fa-box" style="display:none"><div class="vx-campo"><label for="fa-cod">Código do app autenticador (2FA)</label>' +
-      '<input id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></div></div>' +
-      '<button class="vx-btn" id="b-entrar">Entrar</button><p id="msg" class="erro" role="alert"></p>' +
-      '<p class="sub" style="text-align:left">Novo por aqui? <a href="#cadastro" id="b-cad">Crie sua conta grátis</a> · <a href="#" id="b-esqueci">Esqueci minha senha</a></p></div>';
+    root().innerHTML = '<div class="al"><div class="al-entrar">' + vitrineEntrada() +
+      '<div class="form"><h3>Entrar na sua conta</h3>' +
+      '<p class="al-sub">Seus cursos, o progresso e os materiais continuam exatamente onde você parou.</p>' +
+      '<label for="em">E-mail</label>' +
+      '<input id="em" type="email" autocomplete="username" autocapitalize="off" spellcheck="false">' +
+      '<label for="sn">Senha</label>' +
+      '<input id="sn" type="password" autocomplete="current-password">' +
+      '<div id="fa-box" style="display:none"><label for="fa-cod">Código do app autenticador (2FA)</label>' +
+      '<input id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></div>' +
+      '<button class="al-bt" id="b-entrar">Entrar</button><p id="msg" class="erro" role="alert"></p>' +
+      '<p class="troca">Novo por aqui? <a href="#cadastro" id="b-cad">Crie sua conta grátis</a><br>' +
+      '<a href="#" id="b-esqueci" style="color:var(--al-tinta3)">Esqueci minha senha</a></p></div></div></div>';
     el('b-entrar').onclick = function () {
       el('msg').textContent = '';
       var corpo = { email: val('em'), senha: val('sn') };
@@ -101,13 +121,21 @@
     };
   }
   function renderCadastro() {
-    root().innerHTML = '<div class="card" style="max-width:460px"><h3>Criar conta</h3>' +
-      '<input id="nm" placeholder="Seu nome *"><input id="em" type="email" placeholder="E-mail *">' +
-      '<input id="sn" type="password" placeholder="Senha (8+ caracteres) *"><input id="tl" placeholder="Telefone/WhatsApp (opcional)">' +
-      '<label style="font-weight:400"><input type="checkbox" id="tm" style="width:auto;margin-right:6px">Li e aceito os <a href="/academy/termos" target="_blank">Termos</a> e a <a href="/academy/privacidade" target="_blank">Privacidade</a> *</label>' +
-      '<label style="font-weight:400"><input type="checkbox" id="mk" style="width:auto;margin-right:6px">Quero receber novidades por e-mail/WhatsApp</label>' +
-      '<p style="margin-top:12px"><button class="btn" id="b-criar">Criar conta</button></p><p id="msg" class="erro"></p>' +
-      '<p class="sub" style="text-align:left">Já tem conta? <a href="#" id="b-log">Entrar</a>.</p></div>';
+    var caixa = function (id, txt) {
+      return '<label style="display:flex;gap:9px;align-items:flex-start;margin:14px 0 0;font-weight:400;color:var(--al-tinta2)">' +
+        '<input type="checkbox" id="' + id + '" style="width:auto;margin:3px 0 0"><span>' + txt + '</span></label>';
+    };
+    root().innerHTML = '<div class="al"><div class="al-entrar">' + vitrineEntrada() +
+      '<div class="form"><h3>Criar a sua conta</h3>' +
+      '<p class="al-sub">É grátis: você só paga quando comprar um curso.</p>' +
+      '<label for="nm">Seu nome *</label><input id="nm" autocomplete="name">' +
+      '<label for="em">E-mail *</label><input id="em" type="email" autocomplete="email" autocapitalize="off" spellcheck="false">' +
+      '<label for="sn">Senha * <span class="al-fino">(8 caracteres ou mais)</span></label><input id="sn" type="password" autocomplete="new-password">' +
+      '<label for="tl">Telefone/WhatsApp</label><input id="tl" autocomplete="tel">' +
+      caixa('tm', 'Li e aceito os <a href="/academy/termos" target="_blank">Termos</a> e a <a href="/academy/privacidade" target="_blank">Política de Privacidade</a> *') +
+      caixa('mk', 'Quero receber novidades por e-mail/WhatsApp') +
+      '<button class="al-bt" id="b-criar">Criar conta grátis</button><p id="msg" class="erro" role="alert"></p>' +
+      '<p class="troca">Já tem conta? <a href="#" id="b-log">Entrar</a></p></div></div></div>';
     el('b-criar').onclick = function () {
       el('msg').textContent = '';
       api('POST', '/signup', { nome: val('nm'), email: val('em'), senha: val('sn'), telefone: val('tl'), aceite_termos: el('tm').checked, marketing: el('mk').checked })
@@ -347,22 +375,32 @@
   }
   function vCurso(pid, aulaId) { var a = aluno(); if (a) a.curso(pid, aulaId); }
 
+  // convite para virar produtor/afiliado — aparece no fim da biblioteca do aluno
   function cartaoVireProdutorAfiliado() {
-    var pp = ME.perfil_produtor, pa = ME.perfil_afiliado, h = '';
-    h += '<div class="card"><h3>🎬 Vender na Academy</h3>';
-    if (!pp) {
-      h += '<p class="sub" style="text-align:left">Publique cursos, e-books e mentorias. Cadastre-se como produtor:</p>' +
-        '<input id="pp-nome" placeholder="Nome público / marca *"><input id="pp-doc" placeholder="CPF ou CNPJ">' +
-        '<input id="pp-site" placeholder="Site ou rede social"><textarea id="pp-bio" rows="2" placeholder="O que você ensina?"></textarea>' +
-        '<button class="btn peq" id="b-prod">Quero ser produtor</button><p id="pp-msg" class="erro"></p>';
-    } else h += '<p>Cadastro de produtor: <b>' + (STATUS_PERFIL[pp.status] || esc(pp.status)) + '</b>' + (pp.status === 'aprovado' ? ' — use a aba 🎬 Produtor.' : ' — você será avisado quando a análise terminar.') + '</p>';
-    h += '</div><div class="card"><h3>🤝 Divulgar e ganhar comissão</h3>';
-    if (!pa) {
-      h += '<p class="sub" style="text-align:left">Indique cursos com seus links e receba comissão por venda:</p>' +
-        '<input id="pa-nome" placeholder="Nome público *"><input id="pa-canais" placeholder="Onde divulga? (Instagram, YouTube, lista...)">' +
-        '<button class="btn peq" id="b-afil">Quero ser afiliado</button><p id="pa-msg" class="erro"></p>';
-    } else h += '<p>Cadastro de afiliado: <b>' + (STATUS_PERFIL[pa.status] || esc(pa.status)) + '</b>' + (pa.status === 'aprovado' ? ' — use a aba 🤝 Afiliado.' : ' — você será avisado quando a análise terminar.') + '</p>';
-    return h + '</div>';
+    var pp = ME.perfil_produtor, pa = ME.perfil_afiliado;
+    var estado = function (perfil, aba) {
+      return '<p class="al-sub">Cadastro: <b>' + (STATUS_PERFIL[perfil.status] || esc(perfil.status)) + '</b>' +
+        (perfil.status === 'aprovado' ? ' — use a aba ' + aba + '.' : ' — você será avisado quando a análise terminar.') + '</p>';
+    };
+    var h = '<div class="al-secao"><h3>Também dá para ensinar e indicar</h3></div>';
+    h += secaoHTML('video', 'Vender na Academy', 'publique cursos, e-books e mentorias',
+      pp ? estado(pp, '🎬 Produtor')
+        : '<p class="al-sub" style="margin-bottom:8px">Você cria, a plataforma cuida de página de venda, pagamento e área de membros. ' +
+          'Publicar é grátis: a comissão só existe quando há venda.</p>' +
+          '<div class="pr-campos">' +
+          '<div><label>Nome público / marca *</label><input id="pp-nome"></div>' +
+          '<div><label>CPF ou CNPJ</label><input id="pp-doc"></div>' +
+          '<div><label>Site ou rede social</label><input id="pp-site"></div>' +
+          '<div><label>O que você ensina?</label><input id="pp-bio"></div></div>',
+      pp ? '' : '<button class="al-bt" id="b-prod">Quero ser produtor</button><span id="pp-msg" class="erro"></span>');
+    h += secaoHTML('pessoas', 'Divulgar e ganhar comissão', 'links rastreáveis, comissão por venda',
+      pa ? estado(pa, '🤝 Afiliado')
+        : '<p class="al-sub" style="margin-bottom:8px">Indique os cursos com o seu link e receba por cada venda aprovada.</p>' +
+          '<div class="pr-campos">' +
+          '<div><label>Nome público *</label><input id="pa-nome"></div>' +
+          '<div><label>Onde você divulga?</label><input id="pa-canais" placeholder="Instagram, YouTube, lista..."></div></div>',
+      pa ? '' : '<button class="al-bt" id="b-afil">Quero ser afiliado</button><span id="pa-msg" class="erro"></span>');
+    return h;
   }
   function ligarOnboarding() {
     if (el('b-prod')) el('b-prod').onclick = function () {
@@ -389,10 +427,24 @@
     loja: 'M20 4H4v2h16zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6zM6 18v-4h6v4z',
     robo: 'M20 9V7a2 2 0 0 0-2-2h-3V3h-2v2H9a2 2 0 0 0-2 2v2a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2zm-9 7H9v-2h2zm4 0h-2v-2h2zm-6-7V7h8v2z',
     mais: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z',
+    pessoa: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z',
+    recibo: 'M19 2H5a1 1 0 0 0-1 1v19l3-2 2 2 2-2 2 2 2-2 3 2V3a1 1 0 0 0-1-1zM8 7h8v2H8zm0 4h8v2H8zm0 4h5v2H8z',
+    chapeu2: 'M12 3 1 9l11 6 9-4.9V17h2V9zM5 13.2V17c0 1.7 3.1 3 7 3s7-1.3 7-3v-3.8l-7 3.8z',
+    escudo2: 'M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5zm0 19c-3.7-1.2-7-5.5-7-9V6.3l7-3.1 7 3.1V11c0 3.5-3.3 7.8-7 9z',
+    chave: 'M12.6 10A5.5 5.5 0 1 0 7 15.5c.6 0 1.2-.1 1.7-.3l1.8 1.8H13v2h2v2h4v-4l-6.4-6.4zM6.5 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z',
+    suporte: 'M12 2a9 9 0 0 0-9 9v5a3 3 0 0 0 3 3h2v-8H5v-.2A7 7 0 0 1 19 11v.2h-3v8h2a3 3 0 0 0 3-3v-5a9 9 0 0 0-9-9z',
   };
   function prIco(n, tam) {
     return '<svg viewBox="0 0 24 24" width="' + (tam || 18) + '" height="' + (tam || 18) + '" fill="currentColor" aria-hidden="true"><path d="' + PR_ICO[n] + '"/></svg>';
   }
+  // seção do painel: cabeçalho com ícone, dica opcional e rodapé de ação
+  function secaoHTML(ico, titulo, dica, corpo, rodape) {
+    return '<div class="pr-sec"><header>' + prIco(ico) + '<h3>' + titulo + '</h3>' +
+      (dica ? '<span class="dica">' + dica + '</span>' : '') + '</header>' +
+      '<div class="in">' + corpo + '</div>' +
+      (rodape ? '<div class="pr-rodape">' + rodape + '</div>' : '') + '</div>';
+  }
+
   function prCapa(p) { return p.capa_media_id ? 'background-image:url(/academy/api/media/' + esc(p.capa_media_id) + ')' : ''; }
   function prStatus(p) {
     var rot = { rascunho: 'rascunho', em_revisao: 'em revisão', aprovado: 'aprovado', publicado: 'publicado', pausado: 'pausado', rejeitado: 'rejeitado', suspenso: 'suspenso', removido: 'removido' };
@@ -408,7 +460,7 @@
           '<b>' + valor + '</b><span class="nota">' + nota + '</span></div>';
       };
       var h = '<div class="al">' +
-        '<div class="al-topo"><div><p class="al-rotulo">Área do produtor</p><h2>Seus produtos</h2></div>' +
+        '<div class="al-topo"><p class="al-sub">' + (lp.produtos.length ? lp.produtos.length + ' produto' + (lp.produtos.length > 1 ? 's' : '') + ' no catálogo' : 'comece publicando o primeiro produto') + '</p>' +
         '<button class="al-bt" id="b-novo">' + prIco('mais', 17) + ' Novo produto</button></div>' +
         '<div class="pr-kpis">' +
           kpi('caixa', 'Produtos', db.produtos, db.produtos ? 'no seu catálogo' : 'crie o primeiro') +
@@ -1267,30 +1319,62 @@
   // ================= CONTA (dados, compras, senha, LGPD) =================
   function vConta() {
     var u = ME.usuario;
-    setView('<div class="card"><h3>🧾 Minhas compras</h3><div id="c-compras"><p class="sub">Carregando…</p></div></div>' +
-      '<div class="card"><h3>🎓 Meus certificados</h3><div id="c-certs"><p class="sub">Carregando…</p></div></div>' +
-      '<div class="card"><h3>🎧 Suporte</h3><div id="c-tickets"><p class="sub">Carregando…</p></div>' +
-      '<p><input id="tk-assunto" placeholder="Assunto" style="max-width:260px"> ' +
-      '<select id="tk-cat" style="max-width:140px"><option value="geral">Geral</option><option value="pagamento">Pagamento</option><option value="conteudo">Conteúdo</option><option value="conta">Conta</option></select></p>' +
-      '<textarea id="tk-texto" rows="2" placeholder="Descreva sua dúvida ou problema"></textarea>' +
-      '<button class="btn peq" id="b-ticket">Abrir ticket</button> <span id="tk-msg" class="erro"></span></div>' +
-      '<div class="card"><h3>🔐 Autenticação em 2 fatores (2FA)</h3><div id="c-2fa">' +
-      (u.totp_ativo
-        ? '<p>2FA está <b>ativo</b>. <input id="fa-des" placeholder="Código p/ desativar" style="max-width:180px"> <button class="btn peq secund" id="b-2fa-des">Desativar</button> <span id="fa-msg" class="erro"></span></p>'
-        : '<p class="sub" style="text-align:left">Proteja sua conta exigindo um código do app autenticador no login.</p><button class="btn peq" id="b-2fa-ger">Ativar 2FA</button> <span id="fa-msg" class="erro"></span><div id="fa-setup"></div>') +
-      '</div></div>' +
-      '<div class="card"><h3>👤 Meus dados</h3>' +
-      '<label>Nome</label><input id="c-nome" value="' + esc(u.nome) + '"><label>Telefone</label><input id="c-tel" value="' + esc(u.telefone || '') + '">' +
-      '<button class="btn peq" id="b-salvar">Salvar</button> <span id="c-msg" class="erro"></span></div>' +
-      '<div class="card"><h3>🔑 Trocar senha</h3>' +
-      '<input id="s-atual" type="password" placeholder="Senha atual"><input id="s-nova" type="password" placeholder="Nova senha (8+)">' +
-      '<button class="btn peq" id="b-senha">Trocar senha</button> <span id="s-msg" class="erro"></span>' +
-      '<p class="sub" style="text-align:left">Por segurança, trocar a senha desconecta todos os dispositivos.</p></div>' +
-      '<div class="card"><h3>🛡️ Meus dados (LGPD)</h3>' +
-      '<p><a class="btn peq secund" href="/academy/api/me/exportar">⬇️ Exportar meus dados (JSON)</a></p>' +
-      '<p class="sub" style="text-align:left">Excluir a conta anonimiza seus dados pessoais de forma irreversível.</p>' +
-      '<input id="x-senha" type="password" placeholder="Confirme sua senha para excluir" style="max-width:320px">' +
-      '<button class="btn peq" style="background:#b00020;color:#fff" id="b-excluir">Excluir minha conta</button> <span id="x-msg" class="erro"></span></div>');
+    setView('<div class="al">' +
+      '<div class="al-topo"><p class="al-sub">Dados, compras, certificados, segurança e privacidade</p>' +
+      '<p class="al-sub">' + esc(u.email) + '</p></div>' +
+
+      secaoHTML('pessoa', 'Meus dados', '',
+        '<div class="pr-campos">' +
+        '<div><label>Nome</label><input id="c-nome" value="' + esc(u.nome) + '"></div>' +
+        '<div><label>Telefone / WhatsApp</label><input id="c-tel" value="' + esc(u.telefone || '') + '"></div>' +
+        '<div class="largo"><label>E-mail</label><input value="' + esc(u.email) + '" disabled>' +
+        '<p class="pr-ajuda">O e-mail é a chave da sua conta e dos seus acessos — para trocar, fale com o suporte.</p></div>' +
+        '</div>',
+        '<button class="al-bt" id="b-salvar">Salvar dados</button><span id="c-msg" class="erro"></span>') +
+
+      secaoHTML('recibo', 'Minhas compras', 'pagamentos e reembolsos', '<div id="c-compras"><p class="al-sub">Carregando…</p></div>') +
+
+      secaoHTML('chapeu2', 'Meus certificados', 'emitidos ao concluir 100% de um curso',
+        '<div id="c-certs"><p class="al-sub">Carregando…</p></div>') +
+
+      secaoHTML('chave', 'Segurança', '',
+        '<div class="pr-campos">' +
+        '<div><label>Senha atual</label><input id="s-atual" type="password" autocomplete="current-password"></div>' +
+        '<div><label>Nova senha <span class="al-fino">(8+)</span></label><input id="s-nova" type="password" autocomplete="new-password"></div>' +
+        '<div class="largo"><p class="pr-ajuda">Trocar a senha desconecta todos os aparelhos — inclusive este.</p>' +
+        '<button class="al-bt peq" id="b-senha">Trocar senha</button> <span id="s-msg" class="erro"></span></div>' +
+        '</div>' +
+        '<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--al-borda2)" id="c-2fa">' +
+        '<b style="display:block;margin-bottom:6px">Verificação em duas etapas (2FA)</b>' +
+        (u.totp_ativo
+          ? '<p class="al-sub" style="margin-bottom:10px">Está <b>ativa</b>: além da senha, o login pede o código do seu app autenticador.</p>' +
+            '<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">' +
+            '<input id="fa-des" placeholder="Código para desativar" style="max-width:200px;margin:0"> ' +
+            '<button class="al-bt peq fan" id="b-2fa-des">Desativar</button></div><span id="fa-msg" class="erro"></span>'
+          : '<p class="al-sub" style="margin-bottom:10px">Proteja a conta exigindo um código do app autenticador no login.</p>' +
+            '<button class="al-bt peq" id="b-2fa-ger">Ativar 2FA</button> <span id="fa-msg" class="erro"></span><div id="fa-setup"></div>') +
+        '</div>') +
+
+      secaoHTML('suporte', 'Suporte', 'respondemos por aqui e pelo e-mail da conta',
+        '<div id="c-tickets"><p class="al-sub">Carregando…</p></div>' +
+        '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--al-borda2)">' +
+        '<div class="pr-campos"><div><label>Assunto</label><input id="tk-assunto" placeholder="Ex.: não consigo abrir o material"></div>' +
+        '<div><label>Categoria</label><select id="tk-cat"><option value="geral">Geral</option><option value="pagamento">Pagamento</option>' +
+        '<option value="conteudo">Conteúdo</option><option value="conta">Conta</option></select></div>' +
+        '<div class="largo"><label>Descreva o que aconteceu</label><textarea id="tk-texto" rows="3"></textarea></div></div>' +
+        '<button class="al-bt peq" id="b-ticket">Abrir chamado</button> <span id="tk-msg" class="erro"></span></div>') +
+
+      secaoHTML('escudo2', 'Privacidade e dados (LGPD)', '',
+        '<p class="al-sub">Você pode levar seus dados embora a qualquer momento.</p>' +
+        '<p style="margin:12px 0 0"><a class="al-bt peq fan" href="/academy/api/me/exportar">Exportar meus dados (JSON)</a></p>' +
+        '<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--al-borda2)">' +
+        '<b style="display:block;margin-bottom:4px">Excluir a conta</b>' +
+        '<p class="al-sub" style="margin-bottom:10px">A exclusão anonimiza seus dados pessoais de forma <b>irreversível</b>. ' +
+        'Compras e certificados deixam de ser acessíveis.</p>' +
+        '<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">' +
+        '<input id="x-senha" type="password" placeholder="Confirme sua senha" style="max-width:260px;margin:0"> ' +
+        '<button class="al-bt peq" style="background:#B4243C" id="b-excluir">Excluir minha conta</button></div>' +
+        '<span id="x-msg" class="erro"></span></div>') + '</div>');
     api('GET', '/aluno/certificados').then(function (d) {
       el('c-certs').innerHTML = d.certificados.length
         ? d.certificados.map(function (c) {

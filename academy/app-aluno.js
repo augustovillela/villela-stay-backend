@@ -69,8 +69,10 @@
       api('GET', '/aluno/biblioteca').then(function (d) {
         var cursos = d.cursos || [];
         var h = '<div class="al">';
-        h += '<div class="al-topo"><div><p class="al-rotulo">Área do aluno</p><h2>Meus estudos</h2></div>' +
-          (cursos.length ? '<p class="al-sub">' + cursos.length + ' curso' + (cursos.length > 1 ? 's' : '') + ' na sua biblioteca</p>' : '') + '</div>';
+        // o cabeçalho do painel já diz "Meus cursos": aqui vai só o contexto
+        h += cursos.length
+          ? '<div class="al-topo"><p class="al-sub">' + cursos.length + ' curso' + (cursos.length > 1 ? 's' : '') + ' na sua biblioteca</p></div>'
+          : '';
 
         if (d.continuar) {
           h += '<div class="al-retomar"><div class="capa" style="' + capaCss(d.continuar) + '"></div><div class="txt">' +

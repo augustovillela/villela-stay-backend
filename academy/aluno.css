@@ -269,3 +269,68 @@ body.aluno-amplo .cx{max-width:1460px}
 .pr-tab th{text-align:left;color:var(--al-tinta2);font-weight:600;padding:9px 12px;border-bottom:1px solid var(--al-borda)}
 .pr-tab td{padding:10px 12px;border-bottom:1px solid var(--al-borda2)}
 .pr-tab tr:last-child td{border-bottom:0}
+
+
+/* =====================================================================
+ * PAINEL — menu lateral, cabeçalho e entrada.
+ * Escopado a [data-vertical="academy"]: o mesmo design system veste o
+ * Portal Staff, o CRM e os outros SaaS, e nenhum deles muda por causa daqui.
+ * ===================================================================== */
+body[data-vertical="academy"]{background:#F4F6FA}
+body[data-vertical="academy"] .cx{padding-top:8px}
+
+/* ---- menu lateral: escuro, como a sala de aula ---- */
+body[data-vertical="academy"] .vx-nav{
+  background:linear-gradient(175deg,#16233E 0%,var(--al-navy) 55%,#1E2F52 100%);
+  border:0;border-radius:18px;padding:14px 10px;box-shadow:0 14px 34px rgba(16,24,40,.16);
+  position:sticky;top:12px}
+body[data-vertical="academy"] .vx-nav-grupo{
+  color:#8FA0BC;font:700 .68rem/1.3 'Inter',sans-serif;letter-spacing:.16em;padding:16px 12px 7px}
+body[data-vertical="academy"] .vx-nav-grupo:first-child{padding-top:4px}
+body[data-vertical="academy"] .vx-nav-item{
+  width:100%;border:0;background:none;color:#D7DFEC;border-radius:11px;padding:10px 12px;margin:1px 0;
+  font:600 .92rem/1.3 'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;gap:11px;
+  transition:background .14s,color .14s}
+body[data-vertical="academy"] .vx-nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+body[data-vertical="academy"] .vx-nav-item[aria-current="page"]{
+  background:rgba(217,119,6,.16);color:#fff;box-shadow:inset 3px 0 0 var(--al-ambar)}
+body[data-vertical="academy"] .vx-nav-ico{font-size:1.05rem;width:20px;text-align:center;flex:0 0 20px}
+body[data-vertical="academy"] .vx-sep{border:0;border-top:1px solid rgba(255,255,255,.12);margin:10px 8px!important}
+body[data-vertical="academy"] .vx-nav-toggle{color:#8FA0BC;font-weight:500;font-size:.85rem}
+
+/* ---- cabeçalho da página ---- */
+body[data-vertical="academy"] .vx-page-head{
+  align-items:center;padding:0 2px 14px;margin-bottom:18px;border-bottom:1px solid var(--al-borda)}
+body[data-vertical="academy"] .vx-crumb{color:var(--al-tinta3);font-size:.78rem;letter-spacing:.02em}
+body[data-vertical="academy"] .vx-page-head h1{
+  font-family:'Lora',Georgia,serif;color:var(--al-navy);font-size:1.5rem;line-height:1.2;margin:2px 0 0}
+body[data-vertical="academy"] .vx-acoes{align-items:center}
+body[data-vertical="academy"] .vx-badge{
+  background:var(--al-ambar-luz);color:var(--al-ambar2);border:0;border-radius:99px;
+  padding:4px 11px;font:700 .72rem/1.4 'Inter',sans-serif;letter-spacing:.04em;text-transform:lowercase}
+body[data-vertical="academy"] .vx-hint{color:var(--al-tinta3);font-size:.82rem;margin:-8px 0 16px}
+body[data-vertical="academy"] .vx-alerta{border-radius:14px}
+
+/* ---- entrada (login/cadastro): é a primeira impressão de um lead ---- */
+.al-entrar{display:grid;grid-template-columns:1.05fr .95fr;gap:0;overflow:hidden;border-radius:20px;
+  box-shadow:0 22px 60px rgba(16,24,40,.16);background:var(--al-papel);margin:10px 0 24px}
+@media(max-width:860px){.al-entrar{grid-template-columns:1fr}.al-entrar .vitrine{display:none}}
+.al-entrar .vitrine{position:relative;overflow:hidden;color:#EEF2F8;padding:38px 34px;
+  background:linear-gradient(150deg,#16233E,var(--al-navy) 55%,#24365C)}
+.al-entrar .vitrine:before{content:'';position:absolute;width:420px;height:420px;right:-150px;top:-160px;border-radius:50%;
+  background:radial-gradient(circle,rgba(217,119,6,.32),transparent 62%)}
+.al-entrar .vitrine>*{position:relative}
+.al-entrar .vitrine h3{color:#fff;font-size:1.6rem;line-height:1.25;margin:10px 0 12px;max-width:16ch}
+.al-entrar .vitrine p{color:#C7D0E0;line-height:1.6;margin:0 0 20px;max-width:34ch}
+.al-entrar .vitrine ul{list-style:none;padding:0;margin:0;display:grid;gap:11px}
+.al-entrar .vitrine li{display:flex;gap:10px;align-items:flex-start;color:#DDE4EF;font-size:.93rem;line-height:1.45}
+.al-entrar .vitrine li svg{flex:0 0 18px;margin-top:2px;color:var(--al-ouro)}
+.al-entrar .form{padding:38px 34px}
+.al-entrar .form h3{font-size:1.35rem;margin:0 0 4px}
+.al-entrar .form .al-sub{margin-bottom:18px}
+.al-entrar .form label{font:600 .84rem/1.4 'Inter',sans-serif;color:var(--al-tinta2);display:block;margin:12px 0 5px}
+.al-entrar .form input{margin:0;border-radius:11px;border:1px solid var(--al-borda);padding:12px 14px;width:100%}
+.al-entrar .form input:focus{outline:none;border-color:var(--al-ambar);box-shadow:0 0 0 3px rgba(217,119,6,.14)}
+.al-entrar .form .al-bt{width:100%;margin-top:18px;padding:13px 18px;font-size:1rem}
+.al-entrar .form .troca{margin-top:16px;color:var(--al-tinta2);font-size:.9rem;text-align:center}
+.al-entrar .form .troca a{color:var(--al-ambar2);font-weight:600}

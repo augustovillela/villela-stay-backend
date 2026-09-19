@@ -111,7 +111,7 @@ function landingHTML() {
       <p class="sub">Currículo aberto, materiais inclusos e certificado ao final.</p>
       ${barraDeAreas('')}
       <div class="pv-vitrine">${destaques.map(cardProduto).join('')}</div>
-      <p style="text-align:center;margin-top:28px"><a class="btn" href="/academy/marketplace">Ver o catálogo completo</a></p>
+      <p class="pv-centro" style="margin-top:28px"><a class="btn" href="/academy/marketplace">Ver o catálogo completo</a></p>
     </div></div>` : ''}
 
     <div class="sec" style="background:#fff"><div class="wrap" style="max-width:1180px">
