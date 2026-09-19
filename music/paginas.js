@@ -214,6 +214,12 @@ const layout = (titulo, corpo, { descricao = '', caminho = '/music' } = {}) => `
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="robots" content="index,follow,max-image-preview:large">
+<script type="application/ld+json">${JSON.stringify({
+  '@context': 'https://schema.org', '@type': 'WebSite', inLanguage: 'pt-BR',
+  name: 'Musique', url: HOST_CANONICO + '/music',
+  description: 'Academia musical, biblioteca do músico e sala de prática: exercícios avaliados, cifras e partituras com transposição exata, metrônomo e afinador.',
+  publisher: { '@type': 'Organization', name: 'Grupo Villela Stay', url: 'https://villelastay.com.br' },
+}).replace(/</g, '\\u003c')}</script>
 ${tagsPwa()}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">

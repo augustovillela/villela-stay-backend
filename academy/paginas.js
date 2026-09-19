@@ -249,7 +249,9 @@ function barraDeAreas(ativa) {
 
 function marketplaceHTML({ q, categoria }) {
   const itens = ct.Marketplace.listar({ q, categoria });
-  const corpo = `<div class="sec"><div class="wrap" style="max-width:1180px"><h2>Marketplace</h2>
+  // <h1> de verdade: a vitrine abria com <h2> e ficava SEM h1 — o buscador não
+  // tinha o título da página em lugar nenhum do corpo.
+  const corpo = `<div class="sec"><div class="wrap" style="max-width:1180px"><h1 style="font-family:'Lora',Georgia,serif;font-size:1.7rem;color:var(--villela-navy);text-align:center;margin-bottom:8px">${categoria ? `Cursos de ${esc(ct.catRotulo(categoria))}` : 'Cursos online da Villela Academy'}</h1>
     <p class="sub">Cursos e produtos digitais dos produtores da Villela Academy — currículo aberto, materiais inclusos e certificado.</p>
     <form class="pv-busca" method="get" action="/academy/marketplace">
       <input name="q" value="${esc(q || '')}" placeholder="Buscar curso, e-book, mentoria..." aria-label="Buscar">
@@ -259,7 +261,7 @@ function marketplaceHTML({ q, categoria }) {
       : '<p class="sub">Nenhum produto encontrado' + (q || categoria ? ' com esse filtro.' : ' ainda — os primeiros produtores estão chegando.') + '</p>'}
   </div></div>`;
   return shellPublico({
-    titulo: 'Marketplace' + (categoria ? ` · ${ct.catRotulo(categoria)}` : ''),
+    titulo: categoria ? `Cursos de ${ct.catRotulo(categoria)}` : 'Cursos online, e-books e mentorias',
     descricao: 'Cursos online, e-books e mentorias da Villela Academy: currículo aberto, material para baixar e certificado com validação pública. '
       + (categoria ? `Área: ${ct.catRotulo(categoria)}.` : 'Veja o catálogo completo por área.'),
     url: '/academy/marketplace' + (categoria ? `?categoria=${encodeURIComponent(categoria)}` : ''),

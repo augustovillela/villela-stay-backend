@@ -78,6 +78,14 @@ const HEAD = (titulo, descricao, caminho = '/finance') => `<!doctype html><html 
 <meta property="og:image" content="${SITE_FIN}/assets/brand/villela-finance/og-image.png">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">${JSON.stringify({
+  '@context': 'https://schema.org', '@type': 'SoftwareApplication', inLanguage: 'pt-BR',
+  name: 'Villela Finance', applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
+  url: SITE_FIN + '/finance',
+  description: 'ERP financeiro multiempresa com razão de partida dobrada como fonte oficial: conciliação explicável, contas a pagar e receber com rateio, fechamento e previsão de caixa.',
+  publisher: { '@type': 'Organization', name: 'Grupo Villela Stay', url: 'https://villelastay.com.br' },
+  offers: { '@type': 'Offer', priceCurrency: 'BRL', category: 'Assinatura mensal' },
+}).replace(/</g, '\\u003c')}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg">

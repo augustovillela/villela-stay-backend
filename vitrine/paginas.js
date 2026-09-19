@@ -229,6 +229,18 @@ function registrarPaginas(app) {
     const novos = Products.buscar({ condicao: 'novo', ordem: 'recentes', porPagina: 8 }).itens;
     const cats = Categorias.listar({ arvore: true });
     res.send(layout({
+      canonico: 'https://vitrine.villelastay.com.br/vitrine',
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'WebSite', inLanguage: 'pt-BR',
+        name: 'Vitrine', url: 'https://vitrine.villelastay.com.br/vitrine',
+        description: 'Marketplace brasileiro de produtos novos, seminovos e usados, com pagamento protegido até a entrega e envio rastreado.',
+        publisher: { '@type': 'Organization', name: 'Grupo Villela Stay', url: 'https://villelastay.com.br' },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: { '@type': 'EntryPoint', urlTemplate: 'https://vitrine.villelastay.com.br/vitrine/busca?q={search_term_string}' },
+          'query-input': 'required name=search_term_string',
+        },
+      },
       titulo: 'Compre e venda produtos novos e usados',
       descricao: 'Na Vitrine você compra e vende com pagamento protegido, rastreamento do envio e comissão justa de ' + Config.num('marketplace_commission_percent', 5) + '%. Produtos novos, seminovos e usados com descrição honesta.',
       conteudo: `
@@ -254,7 +266,7 @@ function registrarPaginas(app) {
         <div class="item"><h3>🤝 Dentro da plataforma</h3><p>Negociar e pagar fora da Vitrine cancela toda a proteção. Desconfie de quem pedir Pix por fora.</p></div>
       </div>
       <section class="hero" style="margin-top:34px;padding:32px 36px">
-        <h1 style="font-size:1.6rem">Tem coisa boa parada em casa? Anuncie em minutos.</h1>
+        <h2 style="font-size:1.6rem;color:inherit">Tem coisa boa parada em casa? Anuncie em minutos.</h2>
         <p>Cadastro gratuito, comissão de só ${Config.num('marketplace_commission_percent', 5)}% por venda concluída e repasse direto na sua chave Pix.</p>
         <a class="btn acao" href="/vitrine/venda-conosco">Quero vender</a>
       </section>`,

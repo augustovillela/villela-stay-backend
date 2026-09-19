@@ -88,6 +88,13 @@ ${canonico ? `<link rel="canonical" href="${canonico}">` : ''}
 <meta property="og:type" content="website"><meta property="og:site_name" content="Invente · Villela Kids">
 <meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image">
 <meta property="og:description" content="${descricao || 'Invente — a plataforma de aprendizagem criativa da Villela Kids: missões que transformam conhecimento em projetos, colaboração e autoria.'}">
+<script type="application/ld+json">${JSON.stringify({
+  '@context': 'https://schema.org', '@type': 'WebSite', inLanguage: 'pt-BR',
+  name: 'Invente · Villela Kids', url: 'https://kids.villelastay.com.br/kids',
+  description: 'Plataforma de aprendizagem criativa para crianças de 7 a 12 anos: missões que viram projetos, tutor de IA com segurança em primeiro lugar e painel para os pais.',
+  audience: { '@type': 'EducationalAudience', educationalRole: 'student', audienceType: 'Crianças de 7 a 12 anos' },
+  publisher: { '@type': 'Organization', name: 'Grupo Villela Stay', url: 'https://villelastay.com.br' },
+}).replace(/</g, '\\u003c')}</script>
 <link rel="manifest" href="/kids/manifest.webmanifest">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/kids/sw.js').catch(function(){})})}</script>
 <style>${CSS}</style></head>
