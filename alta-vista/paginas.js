@@ -214,6 +214,11 @@ const HEAD = (titulo, descricao, extraHead = '') => `
 <meta name="description" content="${esc(String(descricao || '').slice(0, 300))}">
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(String(descricao || '').slice(0, 300))}">
 <meta property="og:site_name" content="Villela Alta Vista 360"><meta property="og:locale" content="pt_BR">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://altavista.villelastay.com.br/assets/brand/villela-alta-vista/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+${/noindex/.test(extraHead) ? '' : '<meta name="robots" content="index,follow,max-image-preview:large">'}
 <meta name="theme-color" content="#071A2B">
 <link rel="icon" href="/assets/brand/villela-alta-vista/favicon-192.png">
 ${FONTES}${PWA_TAGS}${GA}

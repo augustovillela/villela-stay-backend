@@ -65,12 +65,19 @@ footer{background:var(--navy);color:#c3cbd9;padding:32px 0;text-align:center;fon
 footer a{color:#9FC5E8}
 @media(max-width:640px){.hero h1{font-size:1.85rem}header.top nav{display:none}}`;
 
-const HEAD = (titulo, descricao) => `<!doctype html><html lang="pt-BR"><head>
+const SITE_FIN = 'https://finance.villelastay.com.br';
+const HEAD = (titulo, descricao, caminho = '/finance') => `<!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title>
 <meta name="description" content="${esc(descricao)}">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="${esc(SITE_FIN + caminho)}">
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
-<meta property="og:type" content="website">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Villela Finance">
+<meta property="og:url" content="${esc(SITE_FIN + caminho)}"><meta property="og:locale" content="pt_BR">
+<meta property="og:image" content="${SITE_FIN}/assets/brand/villela-finance/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg">

@@ -209,6 +209,11 @@ const layout = (titulo, corpo, { descricao = '', caminho = '/music' } = {}) => `
 <meta property="og:title" content="${esc(titulo)}">
 <meta property="og:description" content="${esc(descricao)}">
 <meta property="og:url" content="${esc(HOST_CANONICO + caminho)}">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:image" content="${HOST_CANONICO}/assets/brand/musique/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="index,follow,max-image-preview:large">
 ${tagsPwa()}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">

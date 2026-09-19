@@ -30,6 +30,22 @@ function montar(app, injected = {}) {
     throw new Error('academy.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
   repo.semear(); // config comercial padrão (upsert idempotente)
+
+  // SEO: o sitemap de academia.villelastay.com.br leva cada CURSO publicado e
+  // cada produtor — são as páginas que trazem gente de busca. Sem isto o mapa
+  // teria só a landing e o marketplace, e o Google descobriria o catálogo no
+  // passo a passo dos links (quando descobrisse).
+  try {
+    const ct2 = require('./repo-conteudo');
+    require('../nucleo/seo').registrar('/academy', () => {
+      const cursos = ct2.Marketplace.listar({ n: 200 });
+      const produtores = [...new Set(cursos.map(c => c.produtor_slug).filter(Boolean))];
+      return [
+        ...cursos.map(c => ({ url: `/academy/cursos/${c.slug}`, atualizado: c.atualizado_em })),
+        ...produtores.map(s => ({ url: `/academy/produtores/${s}` })),
+      ];
+    });
+  } catch (e) { /* SEO é acessório: nunca derruba a montagem do módulo */ }
   const notificar = (m) => Promise.resolve((alertaAugusto || (async () => {}))(m)).catch(() => {});
   billing.configurar({ mpFetch, notificar });
   require('./storage').configurar({ segredo: jwtSecret }); // URLs assinadas (F7)

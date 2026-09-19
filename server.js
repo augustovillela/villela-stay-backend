@@ -5299,6 +5299,15 @@ app.use('/staff', express.static(path.join(__dirname, 'staff')));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
 app.use('/hospede', express.static(path.join(__dirname, 'hospede')));
 
+// ---- SEO/GEO por host: robots.txt, sitemap.xml e llms.txt de cada produto ----
+// Precisa vir ANTES do redirect de subdomínio abaixo (que trata esses caminhos
+// como "raiz sem redirect" e os deixaria cair no 404).
+try {
+  const seo = require('./nucleo/seo');
+  seo.montar(app);
+  console.log('[seo] robots/sitemap/llms por host montados');
+} catch (e) { console.error('[seo] falhou (segue sem):', e.message); }
+
 // ---- Subdomínio de produto: caminho solto → mesmo caminho sob o prefixo do produto ----
 // O redirect da raiz (app.get('/')) só cobre "/". Sem isto,
 // academia.villelastay.com.br/marketplace dava 404 em vez de abrir

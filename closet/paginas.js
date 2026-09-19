@@ -200,6 +200,11 @@ const HEAD = (titulo, descricao, extra = '') => `<meta charset="utf-8">
 <meta name="description" content="${esc(descricao)}">
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Closet Club">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:image" content="https://closet.villelastay.com.br/assets/brand/closet-club/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+${/noindex/.test(extra) ? '' : '<meta name="robots" content="index,follow,max-image-preview:large">'}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="${BRAND}/favicon.svg">

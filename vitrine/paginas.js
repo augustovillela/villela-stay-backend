@@ -134,8 +134,14 @@ function layout({ titulo, descricao = '', conteudo, jsonld = null, semIndex = fa
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(titulo)} · Vitrine</title>
 <meta name="description" content="${esc(descricao || 'Vitrine: marketplace brasileiro para comprar e vender produtos novos e usados com pagamento protegido e rastreamento.')}">
-${semIndex ? '<meta name="robots" content="noindex,nofollow">' : ''}
+${semIndex ? '<meta name="robots" content="noindex,nofollow">' : '<meta name="robots" content="index,follow,max-image-preview:large">'}
 ${canonico ? `<link rel="canonical" href="${esc(canonico)}">` : ''}
+<meta property="og:title" content="${esc(titulo)} · Vitrine"><meta property="og:type" content="website">
+<meta property="og:site_name" content="Vitrine"><meta property="og:locale" content="pt_BR">
+<meta property="og:description" content="${esc(descricao || 'Marketplace brasileiro para comprar e vender produtos novos e usados com pagamento protegido e rastreamento.')}">
+<meta property="og:image" content="https://vitrine.villelastay.com.br/assets/brand/vitrine/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/svg+xml" href="/assets/brand/vitrine/simbolo.svg">
 <meta name="theme-color" content="#0C5A52">
 ${jsonld ? `<script type="application/ld+json">${jsonLd(jsonld)}</script>` : ''}

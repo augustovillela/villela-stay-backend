@@ -21,6 +21,14 @@ const { registrarRotasPublicas } = require('./rotas-publicas');
 const { registrarRotasStaff } = require('./rotas-staff');
 
 function montar(app, injected = {}) {
+
+  // SEO: o sitemap de livros.villelastay.com.br leva cada LIVRO publicado — é a
+  // página que vende. Sem isto o mapa teria só a vitrine.
+  try {
+    const repo = require('./repo');
+    require('../nucleo/seo').registrar('/livros', () => (repo.Books.listarPublico() || [])
+      .map((l) => ({ url: `/livros/${l.slug}`, atualizado: l.updated_at })));
+  } catch (e) { /* SEO é acessório */ }
   const {
     express, requireAuth, requireAdmin, lerUsuarios, salvarUsuarios,
     enviarEmail = async () => false, enviarWhatsApp = async () => false, alertaAugusto = async () => {}, mpFetch,

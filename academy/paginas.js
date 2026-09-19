@@ -182,14 +182,23 @@ const sufixoMes = (p) => (p.tipo === 'clube' ? '<small>/mês</small>' : '');
 
 // shell público com SEO/OG; TODO conteúdo de produtor passa por esc()
 // `imagem` (URL absoluta, ex.: capa do curso) tem prioridade; senão og da marca.
-function shellPublico({ titulo, descricao, url, corpo, imagem }) {
+// `url` é o caminho da página (ex.: /academy/marketplace). Vira canonical e og:url
+// ABSOLUTOS: sem canonical, o mesmo conteúdo responde por academia./academy./cursos.
+// e pelo domínio da Render — quatro endereços disputando a mesma página.
+function shellPublico({ titulo, descricao, url, corpo, imagem, jsonld }) {
+  const abs = url ? (String(url).startsWith('http') ? url : BASE_URL() + url) : '';
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>${esc(titulo)} — Villela Academy</title>
     <meta name="description" content="${esc(descricao)}">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    ${abs ? `<link rel="canonical" href="${esc(abs)}">` : ''}
     <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
-    <meta property="og:type" content="website">${url ? `<meta property="og:url" content="${esc(url)}">` : ''}
-    <meta property="og:site_name" content="Villela Academy">
+    <meta property="og:type" content="website">${abs ? `<meta property="og:url" content="${esc(abs)}">` : ''}
+    <meta property="og:site_name" content="Villela Academy"><meta property="og:locale" content="pt_BR">
     <meta property="og:image" content="${esc(imagem || `${BASE_URL()}${BRAND}/og-image.png`)}">
+    <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    ${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld).replace(/</g, '\\u003c')}</script>` : ''}
     ${HEAD_MARCA}
     <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=1"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
     .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
@@ -249,7 +258,28 @@ function marketplaceHTML({ q, categoria }) {
     ${itens.length ? `<div class="pv-vitrine">${itens.map(cardProduto).join('')}</div>`
       : '<p class="sub">Nenhum produto encontrado' + (q || categoria ? ' com esse filtro.' : ' ainda — os primeiros produtores estão chegando.') + '</p>'}
   </div></div>`;
-  return shellPublico({ titulo: 'Marketplace' + (categoria ? ` · ${ct.catRotulo(categoria)}` : ''), descricao: 'Cursos online, e-books e produtos digitais na Villela Academy.', corpo });
+  return shellPublico({
+    titulo: 'Marketplace' + (categoria ? ` · ${ct.catRotulo(categoria)}` : ''),
+    descricao: 'Cursos online, e-books e mentorias da Villela Academy: currículo aberto, material para baixar e certificado com validação pública. '
+      + (categoria ? `Área: ${ct.catRotulo(categoria)}.` : 'Veja o catálogo completo por área.'),
+    url: '/academy/marketplace' + (categoria ? `?categoria=${encodeURIComponent(categoria)}` : ''),
+    corpo,
+    // CollectionPage + ItemList: diz ao buscador (e ao assistente) que esta página
+    // É o catálogo, e quais cursos estão nele — sem isso ela é só "uma página".
+    jsonld: {
+      '@context': 'https://schema.org', '@type': 'CollectionPage',
+      name: 'Marketplace da Villela Academy', inLanguage: 'pt-BR',
+      url: `${BASE_URL()}/academy/marketplace`,
+      isPartOf: { '@type': 'WebSite', name: 'Villela Academy', url: `${BASE_URL()}/academy` },
+      mainEntity: {
+        '@type': 'ItemList', numberOfItems: itens.length,
+        itemListElement: itens.slice(0, 50).map((x, i) => ({
+          '@type': 'ListItem', position: i + 1, name: x.titulo,
+          url: `${BASE_URL()}/academy/cursos/${x.slug}`,
+        })),
+      },
+    },
+  });
 }
 
 function embedDe(url) {
@@ -424,8 +454,43 @@ function cursoHTML(slug) {
         m.textContent=r.ok?'✅ Anotado! Você será avisado.':'Erro ao enviar.';if(r.ok)document.getElementById('int').reset();};</script>
     </div></div>`}`;
 
+  // Course é o schema que faz o curso aparecer com provedor, preço e nota nos
+  // resultados; sem ele a página é só texto para o buscador. `offers` só entra
+  // com preço de verdade, e `aggregateRating` só quando existe avaliação real —
+  // marcação de nota inventada é motivo de penalidade.
+  const ld = {
+    '@context': 'https://schema.org', '@type': 'Course', inLanguage: 'pt-BR',
+    name: p.titulo, description: p.descricao_curta || sp.headline || p.subtitulo || p.titulo,
+    url: `${BASE_URL()}/academy/cursos/${p.slug}`,
+    provider: { '@type': 'Organization', name: 'Villela Academy', url: `${BASE_URL()}/academy` },
+    author: { '@type': 'Person', name: p.produtor_nome || 'Villela Academy' },
+    ...(p.capa_media_id ? { image: `${BASE_URL()}/academy/capa/${p.id}?v=${p.capa_media_id}` } : {}),
+    hasCourseInstance: {
+      '@type': 'CourseInstance', courseMode: 'online',
+      courseWorkload: resumo.total_seg ? `PT${Math.max(1, Math.round(resumo.total_seg / 3600))}H` : undefined,
+      instructor: { '@type': 'Person', name: p.produtor_nome || 'Villela Academy' },
+    },
+    ...(valor ? {
+      offers: {
+        '@type': 'Offer', price: (valor / 100).toFixed(2), priceCurrency: 'BRL',
+        availability: 'https://schema.org/InStock', url: `${BASE_URL()}/academy/cursos/${p.slug}`,
+        category: ehClube ? 'Assinatura' : 'Compra única',
+      },
+    } : { offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL', availability: 'https://schema.org/InStock' } }),
+    ...(nota.media && nota.total ? {
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: String(nota.media), reviewCount: String(nota.total) },
+    } : {}),
+  };
+  const ldFaq = (sp.faq || []).length ? {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: sp.faq.slice(0, 12).map((f) => ({
+      '@type': 'Question', name: f.p,
+      acceptedAnswer: { '@type': 'Answer', text: f.r },
+    })),
+  } : null;
   return shellPublico({
     titulo: p.titulo, descricao: p.descricao_curta || sp.headline || p.subtitulo || p.titulo, url: `/academy/cursos/${p.slug}`, corpo,
+    jsonld: ldFaq ? [ld, ldFaq] : ld,
     // capa do curso como og:image quando existe (melhor); og da marca é o fallback do shell
     imagem: p.capa_media_id ? `${BASE_URL()}/academy/capa/${p.id}?v=${p.capa_media_id}` : null,
   });

@@ -75,7 +75,7 @@ function layout({ titulo, descricao, conteudo, semIndex = false, canonico = '' }
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${titulo ? titulo + ' · ' : ''}Invente · Villela Kids</title>
 <meta name="description" content="${descricao || 'Invente — a plataforma de aprendizagem criativa da Villela Kids: missões que transformam conhecimento em projetos, colaboração e autoria. Aprenda criando.'}">
-${semIndex ? '<meta name="robots" content="noindex">' : ''}
+${semIndex ? '<meta name="robots" content="noindex">' : '<meta name="robots" content="index,follow,max-image-preview:large">'}
 ${canonico ? `<link rel="canonical" href="${canonico}">` : ''}
 <meta name="theme-color" content="#14265C">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,6 +84,10 @@ ${canonico ? `<link rel="canonical" href="${canonico}">` : ''}
 <link rel="apple-touch-icon" href="/assets/brand/villela-kids/apple-touch-icon.png">
 <meta property="og:title" content="${titulo ? titulo + ' · ' : ''}Invente">
 <meta property="og:image" content="https://kids.villelastay.com.br/assets/brand/villela-kids/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Invente · Villela Kids">
+<meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:description" content="${descricao || 'Invente — a plataforma de aprendizagem criativa da Villela Kids: missões que transformam conhecimento em projetos, colaboração e autoria.'}">
 <link rel="manifest" href="/kids/manifest.webmanifest">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/kids/sw.js').catch(function(){})})}</script>
 <style>${CSS}</style></head>

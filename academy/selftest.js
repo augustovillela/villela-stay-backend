@@ -1304,6 +1304,38 @@ async function main() {
     assert.equal((await req('GET', '/staff/api/academy/cortesia', { user: 'op' })).st, 403); // operador não-admin
   });
 
+  console.log('\n— SEO das páginas públicas —');
+  await t('curso publicado: canonical, preview grande, og dimensionado e schema Course', async () => {
+    const ctx = require('./repo-conteudo');
+    const slug = ctx.Produtos.obter(prodId).slug;
+    const r = await req('GET', `/academy/cursos/${slug}`);
+    assert.equal(r.st, 200);
+    assert.ok(r.texto.includes('<link rel="canonical" href="http'), 'canonical absoluto');
+    assert.ok(r.texto.includes(`/academy/cursos/${slug}"`), 'apontando para a própria página');
+    assert.ok(r.texto.includes('name="robots" content="index,follow,max-image-preview:large"'), 'preview grande liberado');
+    assert.ok(r.texto.includes('twitter:card'), 'cartão do Twitter/X');
+    assert.ok(r.texto.includes('og:image:width'), 'dimensão da imagem — sem ela o WhatsApp corta');
+    const bruto = r.texto.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    assert.ok(bruto, 'tem JSON-LD');
+    const dados = JSON.parse(bruto[1]);
+    const curso = Array.isArray(dados) ? dados.find((x) => x['@type'] === 'Course') : dados;
+    assert.equal(curso['@type'], 'Course');
+    assert.ok(curso.provider && curso.provider.name, 'declara o provedor');
+    assert.equal(curso.offers.priceCurrency, 'BRL', 'preço em real');
+    assert.ok(!curso.aggregateRating || Number(curso.aggregateRating.reviewCount) > 0,
+      'nota só entra quando existe avaliação de verdade — marcar nota inventada é penalidade');
+  });
+  await t('marketplace: canonical e CollectionPage listando os cursos', async () => {
+    const r = await req('GET', '/academy/marketplace');
+    assert.ok(r.texto.includes('rel="canonical"'), 'canonical');
+    const bruto = r.texto.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    const ld = JSON.parse(bruto[1]);
+    assert.equal(ld['@type'], 'CollectionPage');
+    assert.equal(ld.mainEntity['@type'], 'ItemList');
+    assert.ok(ld.mainEntity.itemListElement.length >= 1, 'lista os cursos publicados');
+  });
+
+
   console.log('\n— categorias: um produto em mais de uma área —');
   await t('produto em duas áreas aparece nos dois filtros', async () => {
     const ctx = require('./repo-conteudo');

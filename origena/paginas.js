@@ -99,6 +99,13 @@ function pagina(idioma, titulo, corpo, { pwa = false, css = '' } = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<meta name="description" content="Origena — plataforma de memória, história e legado familiar: entrevistas guiadas, linha do tempo, árvore da família e acervo de fotos e documentos, com privacidade por padrão.">
+<meta property="og:title" content="${titulo}"><meta property="og:type" content="website">
+<meta property="og:site_name" content="Origena"><meta property="og:locale" content="pt_BR">
+<meta property="og:description" content="Suas origens. Suas histórias. Seu legado. Guarde a memória da sua família em um lugar só, com privacidade por padrão.">
+<meta property="og:image" content="https://origena.villelastay.com.br/assets/brand/villela-origena/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#234238">
 <title>${titulo}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

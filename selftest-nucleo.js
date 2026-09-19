@@ -113,6 +113,64 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
 (async () => {
   await esperarPorta();
   console.log('Villela Stay — selftest do núcleo (server.js)\nDATA_DIR:', DATA_DIR, '\n');
+  console.log('\n— SEO por host: robots.txt, sitemap.xml e llms.txt —');
+  const comHost = (h) => ({ Host: h });
+  await t('robots de produto: libera o público, barra painel/API e lista os robôs de IA', async () => {
+    const r = await req('GET', '/robots.txt', { headers: comHost('academia.villelastay.com.br') });
+    assert.equal(r.status, 200);
+    assert.ok(/text\/plain/.test(r.headers['content-type'] || ''), 'robots é texto');
+    assert.ok(r.text.includes('Villela Academy'), 'diz de quem é');
+    assert.ok(r.text.includes('Allow: /'), 'público liberado');
+    assert.ok(r.text.includes('Disallow: /academy/app'), 'painel do assinante fora do índice');
+    assert.ok(r.text.includes('Disallow: /staff'), 'portal interno fora');
+    for (const robo of ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended']) {
+      assert.ok(r.text.includes('User-agent: ' + robo), 'robô de IA declarado: ' + robo);
+    }
+    assert.ok(/Sitemap: https?:\/\/academia\.villelastay\.com\.br\/sitemap\.xml/.test(r.text), 'aponta o sitemap DO HOST');
+  });
+  await t('host sem produto (onrender/minha) fica FORA do índice', async () => {
+    const r = await req('GET', '/robots.txt', { headers: comHost('villela-stay-backend.onrender.com') });
+    assert.equal(r.status, 200);
+    assert.ok(r.text.includes('Disallow: /'), 'o domínio da Render não pode duplicar o oficial');
+    assert.ok(!r.text.includes('Allow: /'), 'e não libera nada');
+  });
+  await t('sitemap do host lista as páginas públicas daquele produto, com o host certo', async () => {
+    const r = await req('GET', '/sitemap.xml', { headers: comHost('crm.villelastay.com.br') });
+    assert.equal(r.status, 200);
+    assert.ok(/xml/.test(r.headers['content-type'] || ''));
+    assert.ok(r.text.includes('<urlset'), 'é um sitemap');
+    assert.ok(r.text.includes('http://crm.villelastay.com.br/crm</loc>'.replace('http://', 'http://')) ||
+      r.text.includes('crm.villelastay.com.br/crm</loc>'), 'a landing entra com o host pedido');
+    assert.ok(!r.text.includes('/crm/app'), 'painel não entra no mapa');
+    const outro = await req('GET', '/sitemap.xml', { headers: comHost('livros.villelastay.com.br') });
+    assert.ok(outro.text.includes('/livros'), 'cada host tem o SEU mapa');
+    assert.ok(!outro.text.includes('/crm'), 'e não o do vizinho');
+  });
+  await t('sitemap e llms não existem em host sem produto', async () => {
+    assert.equal((await req('GET', '/sitemap.xml', { headers: comHost('villela-stay-backend.onrender.com') })).status, 404);
+    assert.equal((await req('GET', '/llms.txt', { headers: comHost('villela-stay-backend.onrender.com') })).status, 404);
+  });
+  await t('llms.txt descreve o produto para assistentes, com links e o CNPJ', async () => {
+    const r = await req('GET', '/llms.txt', { headers: comHost('juridico.villelastay.com.br') });
+    assert.equal(r.status, 200);
+    assert.ok(r.text.startsWith('# Villela Legal'), 'começa nomeando o produto');
+    assert.ok(r.text.includes('DJEN'), 'traz o resumo do que ele faz');
+    assert.ok(r.text.includes('56.776.526/0001-12'), 'identifica a empresa (entidade)');
+    assert.ok(r.text.includes('villelastay.com.br/sistemas.html'), 'liga ao catálogo do grupo');
+  });
+  await t('catálogo dinâmico entra no sitemap e falha nele não derruba o mapa', async () => {
+    const seo = require('./nucleo/seo');
+    seo.registrar('/crm', () => [{ url: '/crm/teste-dinamico', atualizado: '2026-09-19' }]);
+    let r = await req('GET', '/sitemap.xml', { headers: comHost('crm.villelastay.com.br') });
+    assert.ok(r.text.includes('/crm/teste-dinamico'), 'a URL do provedor entra');
+    seo.registrar('/crm', () => { throw new Error('provedor quebrado'); });
+    r = await req('GET', '/sitemap.xml', { headers: comHost('crm.villelastay.com.br') });
+    assert.equal(r.status, 200, 'provedor quebrado não pode derrubar o sitemap');
+    assert.ok(r.text.includes('<urlset'), 'e o mapa continua válido');
+    seo.registrar('/crm', () => []);
+  });
+
+
 
   // ---------- Auth / sessão ----------
   await t('/health diz qual commit esta no ar (push nao e o mesmo que estar no ar)', async () => {
