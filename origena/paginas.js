@@ -91,14 +91,45 @@ const ANEL_GRANDE = '<svg width="72" height="72" viewBox="0 0 26 26" aria-hidden
   '<circle cx="13" cy="13" r="5.2" stroke-dasharray="28 6"></circle>' +
   '<circle cx="13" cy="13" r="2.2"></circle></svg>';
 
+// Endereço OFICIAL da Origena. O canonical precisa ser absoluto e apontar
+// sempre para cá: a mesma página responde pelo host da Render e pelo domínio
+// do produto, e sem canonical o Google escolhe sozinho qual dos dois indexa.
+const HOST = 'https://origena.villelastay.com.br';
+
+// Cartão do produto para buscador e assistente de IA. Sem `aggregateRating`:
+// nota inventada é motivo de penalidade manual, e ainda não há avaliação real.
+const JSONLD_PRODUTO = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Origena',
+  applicationCategory: 'LifestyleApplication',
+  operatingSystem: 'Web',
+  url: HOST + '/origena',
+  inLanguage: ['pt-BR', 'en', 'es'],
+  description: 'Plataforma de memória, história e legado familiar: entrevistas guiadas, '
+    + 'linha do tempo, árvore da família e acervo de fotos e documentos, com privacidade por padrão.',
+  publisher: {
+    '@type': 'Organization', name: 'Grupo Villela Stay',
+    url: 'https://villelastay.com.br', taxID: '56.776.526/0001-12',
+    address: { '@type': 'PostalAddress', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
+  },
+});
+
 // Cabeça compartilhada. "pwa" liga manifest + service worker (o módulo
 // central pwa.js serve os dois em /origena/manifest.webmanifest e /origena/sw.js).
-function pagina(idioma, titulo, corpo, { pwa = false, css = '' } = {}) {
+//
+// ⚠️ `publica` decide se a página entra no índice. O app da família e tudo que
+// exige login ficam em `noindex` — o padrão do parâmetro é o lado seguro, para
+// que uma página nova nasça fora da busca até alguém decidir o contrário.
+function pagina(idioma, titulo, corpo, { pwa = false, css = '', publica = false, caminho = '', jsonld = '' } = {}) {
+  const canonica = HOST + (caminho || '/origena');
   return `<!doctype html>
 <html lang="${idioma}"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow">
+<meta name="robots" content="${publica ? 'index,follow,max-image-preview:large' : 'noindex,nofollow'}">
+${publica ? `<link rel="canonical" href="${canonica}">
+<meta property="og:url" content="${canonica}">` : ''}
 <meta name="description" content="Origena — plataforma de memória, história e legado familiar: entrevistas guiadas, linha do tempo, árvore da família e acervo de fotos e documentos, com privacidade por padrão.">
 <meta property="og:title" content="${titulo}"><meta property="og:type" content="website">
 <meta property="og:site_name" content="Origena"><meta property="og:locale" content="pt_BR">
@@ -114,6 +145,7 @@ ${pwa ? '<link rel="manifest" href="/origena/manifest.webmanifest">'
       + '<link rel="apple-touch-icon" href="/assets/brand/villela-origena/apple-touch-icon.png">' : ''}
 <link rel="icon" href="/assets/brand/villela-origena/favicon.svg" type="image/svg+xml">
 <style>${CSS}${css}</style>
+${publica && jsonld ? `<script type="application/ld+json">${jsonld}</script>` : ''}
 </head><body>${corpo}
 ${pwa ? `<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/origena/sw.js',{scope:'/origena/'}).catch(()=>{});</script>` : ''}
 </body></html>`;
@@ -219,7 +251,7 @@ ${faixaDeMarca(idioma, '/origena', `${`
        &nbsp; <a href="/origena/ajuda">${t('ajuda.titulo')}</a></p>
   </div>
   <footer>${t('produto.grupo')}</footer>
-</div>`, { css: CSS_PUBLICO }));
+</div>`, { css: CSS_PUBLICO, publica: true, caminho: '/origena', jsonld: JSONLD_PRODUTO }));
   }));
 
   // ------------------------------------------------- central de ajuda
@@ -263,7 +295,7 @@ ${faixaDeMarca(idioma, '/origena/ajuda',
     <p><a class="btn" href="/origena/app">${t('acao.entrar')}</a></p>
   </div>
   <footer>${t('produto.grupo')}</footer>
-</div>`, { css: CSS_PUBLICO }));
+</div>`, { css: CSS_PUBLICO, publica: true, caminho: '/origena/ajuda' }));
   });
 
   /**
@@ -285,8 +317,14 @@ ${faixaDeMarca(idioma, '/origena/ajuda',
     res.redirect(302, para);
   });
 
+  // ⚠️ Quem manda é o /robots.txt do HOST (nucleo/seo.js) — nenhum robô lê um
+  // robots.txt de subcaminho. Este aqui existe desde a fase 0 e dizia o
+  // CONTRÁRIO do host; agora repete a mesma regra para não virar documentação
+  // errada de novo: público liberado, app e API fora.
   app.get('/origena/robots.txt', (req, res) => {
-    res.type('text/plain').send('User-agent: *\nDisallow: /origena\n');
+    res.type('text/plain').send(['User-agent: *', 'Allow: /origena',
+      'Disallow: /origena/app', 'Disallow: /origena/api',
+      'Sitemap: ' + HOST + '/sitemap.xml', ''].join('\n'));
   });
 
   // ------------------------------------------------------ app da família

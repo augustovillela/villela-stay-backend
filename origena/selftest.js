@@ -387,9 +387,17 @@ async function principal() {
     assert.match(r.texto, /Origena/);
   });
 
-  await teste('a landing nasce com noindex (nada de conteúdo privado no Google)', async () => {
+  await teste('a landing é pública: indexável, com canonical absoluto e JSON-LD', async () => {
     const r = await req('GET', '/origena');
-    assert.match(r.texto, /name="robots" content="noindex/);
+    assert.match(r.texto, /name="robots" content="index,follow/);
+    assert.match(r.texto, /rel="canonical" href="https:\/\/origena\.villelastay\.com\.br\/origena"/);
+    assert.match(r.texto, /"@type":"SoftwareApplication"/);
+  });
+
+  await teste('o app da família continua FORA do índice', async () => {
+    const r = await req('GET', '/origena/app');
+    assert.match(r.texto, /name="robots" content="noindex/,
+      'a área logada da família não pode entrar na busca');
   });
 
   await teste('o app da família serve as telas novas, com o catálogo injetado', async () => {

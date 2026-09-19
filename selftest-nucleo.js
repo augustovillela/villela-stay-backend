@@ -158,6 +158,24 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.ok(r.text.includes('56.776.526/0001-12'), 'identifica a empresa (entidade)');
     assert.ok(r.text.includes('villelastay.com.br/sistemas.html'), 'liga ao catálogo do grupo');
   });
+  // Esta é a trava que faltava quando o catálogo nasceu: as páginas públicas eram
+  // SUPOSIÇÕES ('/termos' e '/precos' em todo produto) e 20 das 65 URLs dos
+  // sitemaps respondiam 404 em produção. Aqui o server.js real está de pé — então
+  // dá para perguntar a ele, host por host, se cada caminho anunciado existe.
+  await t('toda página pública do catálogo existe de verdade (sitemap sem link morto)', async () => {
+    const { PRODUTOS } = require('./nucleo/seo');
+    const mortas = [];
+    for (const p of PRODUTOS) {
+      const host = p.subs[0] + 'villelastay.com.br';
+      for (const caminho of p.publicas) {
+        const r = await req('GET', p.prefixo + caminho, { headers: comHost(host) });
+        if (r.status === 404) mortas.push(`${host}${p.prefixo}${caminho} → 404`);
+      }
+    }
+    assert.equal(mortas.length, 0,
+      'o sitemap anuncia página que não existe:\n  ' + mortas.join('\n  '));
+  });
+
   await t('catálogo dinâmico entra no sitemap e falha nele não derruba o mapa', async () => {
     const seo = require('./nucleo/seo');
     seo.registrar('/crm', () => [{ url: '/crm/teste-dinamico', atualizado: '2026-09-19' }]);

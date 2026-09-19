@@ -24,72 +24,79 @@ const ROBOS = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-U
 // Catálogo dos produtos. `publicas` são caminhos que QUALQUER pessoa abre (viram
 // sitemap); `privadas` são painel/API (viram Disallow). Sem preço aqui: quem manda
 // no número é a landing do produto — duplicar preço em dois lugares envelhece mal.
+//
+// ⚠️ `publicas` é lista de FATO, não de intenção: caminho que não existe vira 404
+// dentro do sitemap, e mapa com link morto queima rastreio e derruba a confiança
+// do buscador no arquivo inteiro. A primeira versão desta lista supôs `/termos` e
+// `/precos` em todo produto — 20 das 65 URLs eram 404. Quem tem catálogo (cursos,
+// livros, imóveis) informa pelo `registrar()`, não à mão aqui. O teste
+// "toda página pública do catálogo existe de verdade" (test:nucleo) é a trava.
 const PRODUTOS = [
   {
     subs: ['academia.', 'academy.', 'cursos.'], prefixo: '/academy', nome: 'Villela Academy',
     resumo: 'Marketplace brasileiro de cursos online e produtos digitais: o produtor publica de graça e paga comissão só quando vende; o aluno estuda com vídeo, material para baixar e certificado com validação pública.',
-    publicas: ['', '/marketplace', '/termos', '/privacidade', '/reembolso', '/termos-produtor', '/termos-afiliado'],
+    publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual', '/marketplace', '/termos', '/privacidade', '/reembolso', '/termos-produtor', '/termos-afiliado'],
     privadas: ['/app', '/api', '/checkout', '/media-s'],
   },
   {
     subs: ['crm.'], prefixo: '/crm', nome: 'Villela CRM',
     resumo: 'CRM inteligente multicanal: todo contato entra com origem, campanha e UTM gravados, a caixa "precisa de ação hoje" diz quem atender e o follow-up se cobra sozinho.',
-    publicas: ['', '/precos', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual'], privadas: ['/app', '/api'],
   },
   {
     subs: ['manager.', 'gestao.'], prefixo: '/gestao', nome: 'Villela Stay Manager',
     resumo: 'Sistema de gestão de hospedagem por temporada: um calendário só alimentado por todos os canais, com bloqueio anti-overbooking, limpeza que nasce do check-out e repasse do proprietário pronto.',
-    publicas: ['', '/precos', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual'], privadas: ['/app', '/api'],
   },
   {
     subs: ['docs.'], prefixo: '/vdocs', nome: 'Villela Docs Intelligence',
     resumo: 'Gestão documental com IA que responde citando a página: repositório por empresa, com pasta, permissão e versão vigente sempre identificada.',
-    publicas: ['', '/precos', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual', '/precos'], privadas: ['/app', '/api'],
   },
   {
     subs: ['juridico.'], prefixo: '/juridico', nome: 'Villela Legal',
     resumo: 'Software jurídico com coleta automática por OAB no DJEN, prazo calculado pelo CPC com validação humana obrigatória e IA que entrega minuta com a fonte ao lado.',
-    publicas: ['', '/precos', '/termos', '/privacidade'], privadas: ['/app', '/api', '/cliente-juridico'],
+    publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual'], privadas: ['/app', '/api', '/cliente-juridico'],
   },
   {
     subs: ['projetos.', 'projects.'], prefixo: '/vpe', nome: 'Villela Projects & Events',
     resumo: 'Gestão de portfólio, projetos e eventos: cada ideia entra com estágio, horizonte, viabilidade, investimento e receita potencial antes de virar tarefa.',
-    publicas: ['', '/precos', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual'], privadas: ['/app', '/api'],
   },
   {
     subs: ['livros.', 'livraria.'], prefixo: '/livros', nome: 'Livraria Villela',
     resumo: 'Livraria digital do autor Augusto Villela: livros em PDF e impressos sobre inteligência artificial aplicada, direito, negócios e desenvolvimento pessoal.',
-    publicas: ['', '/termos', '/privacidade'], privadas: ['/api', '/admin'],
+    publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual', '/atualizacoes'], privadas: ['/api', '/admin'],
   },
   {
     subs: ['closet.'], prefixo: '/closet', nome: 'Closet Club',
     resumo: 'Marketplace de aluguel de roupas e acessórios entre pessoas, com o look inteiro numa reserva só, pagamento retido até a entrega e QR Code de posse.',
-    publicas: ['', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/como-funciona', '/looks', '/vitrine', '/ia', '/anunciar', '/parceiro', '/blog', '/termos', '/privacidade'], privadas: ['/app', '/api'],
   },
   {
     subs: ['vitrine.'], prefixo: '/vitrine', nome: 'Vitrine',
     resumo: 'Marketplace de produtos novos, seminovos e usados, com pagamento protegido até a entrega, envio rastreado e reputação construída nas vendas anteriores.',
-    publicas: ['', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/como-funciona', '/venda-conosco', '/seguranca', '/devolucao', '/proibidos', '/termos', '/privacidade'], privadas: ['/app', '/api'],
   },
   {
     subs: ['altavista.', 'alta-vista.'], prefixo: '/alta-vista', nome: 'Villela Alta Vista 360°',
     resumo: 'Estúdio visual: filmagem com drone, vídeo com IA, foto 360° e tour virtual navegável, com hospedagem do tour e QR Code para material impresso.',
-    publicas: ['', '/portfolio', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/servicos', '/servicos/drone', '/servicos/fotografia-360', '/servicos/tour-virtual-360', '/servicos/video-com-ia', '/para/anfitrioes', '/para/proprietarios', '/para/imobiliarias', '/para/hoteis-e-pousadas', '/portfolio', '/precos', '/como-funciona', '/faq', '/sobre', '/contato', '/orcamento', '/conteudos', '/politica-de-ia', '/termos', '/privacidade'], privadas: ['/app', '/api'],
   },
   {
     subs: ['kids.'], prefixo: '/kids', nome: 'Villela Kids · Invente',
     resumo: 'Plataforma de aprendizagem criativa para crianças de 7 a 12 anos: missões que viram projetos, tutor de IA com segurança em primeiro lugar e painel para os pais. A conta é sempre do responsável.',
-    publicas: ['', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/ajuda', '/ajuda/faq', '/ajuda/manual', '/termos', '/privacidade'], privadas: ['/app', '/api'],
   },
   {
     subs: ['origena.'], prefixo: '/origena', nome: 'Origena',
     resumo: 'Plataforma de memória, história e legado familiar: entrevistas guiadas, linha do tempo, árvore e acervo de fotos e documentos da família, com privacidade por padrão.',
-    publicas: ['', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/ajuda'], privadas: ['/app', '/api'],
   },
   {
     subs: ['finance.', 'financas.', 'financeiro.'], prefixo: '/finance', nome: 'Villela Finance',
     resumo: 'ERP financeiro multiempresa com razão de partida dobrada como fonte oficial: conciliação explicável, contas a pagar e receber com rateio, fechamento que fecha e previsão de caixa em três cenários.',
-    publicas: ['', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: [''], privadas: ['/app', '/api'],
   },
   {
     subs: ['music.', 'musique.', 'musica.'], prefixo: '/music', nome: 'Musique',
