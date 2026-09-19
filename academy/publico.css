@@ -192,3 +192,11 @@
 .pv-busca button{border:0;border-radius:99px;background:var(--pv-navy);color:#fff;font:600 .93rem/1 'Inter',sans-serif;
   padding:0 22px;cursor:pointer;transition:background .15s}
 .pv-busca button:hover{background:var(--pv-ambar)}
+
+/* ---------- subtítulo de seção ----------
+   O CSS base define `.sub{margin:0 auto 34px}`, mas o design system do grupo
+   redefine `.sub` com `margin:0 0 20px` (sem auto) e vence por especificidade:
+   o parágrafo ficava encostado à ESQUERDA numa caixa de ~670px, enquanto o
+   título e a vitrine ocupavam a largura toda — desalinhado com o resto da
+   página. Aqui ele volta a se centralizar na caixa. */
+.sec>.wrap>.sub{margin-left:auto;margin-right:auto;max-width:70ch;text-wrap:balance}
