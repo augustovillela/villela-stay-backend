@@ -194,6 +194,18 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     delete process.env.GOOGLE_SITE_VERIFICATION;
   });
 
+  // Guarda contra o pior caso silencioso: a lista esvaziar. O arquivo pararia de
+  // responder, as propriedades do Search Console perderiam a verificação e nada
+  // no sistema acusaria — as páginas continuam abrindo.
+  await t('a lista de verificação não está vazia, e o token gravado responde', async () => {
+    const { tokensDeVerificacao } = require('./nucleo/seo');
+    const tokens = tokensDeVerificacao();
+    assert.ok(tokens.length > 0, 'sem token não há como provar posse dos domínios no Google');
+    const r = await req('GET', `/google${tokens[0]}.html`, { headers: comHost('livros.villelastay.com.br') });
+    assert.equal(r.status, 200);
+    assert.equal(r.text.trim(), `google-site-verification: google${tokens[0]}.html`);
+  });
+
   await t('catálogo dinâmico entra no sitemap e falha nele não derruba o mapa', async () => {
     const seo = require('./nucleo/seo');
     seo.registrar('/crm', () => [{ url: '/crm/teste-dinamico', atualizado: '2026-09-19' }]);

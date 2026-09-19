@@ -210,7 +210,7 @@ function llmsTxt(req) {
 // posse dos nossos domínios na conta dela — e ver as consultas de busca, os
 // cliques e pedir remoção de URL. O token é público; quem entra na lista não é.
 const VERIFICACOES = [
-  // 'abc123def456...', ← cole aqui o token do arquivo que o Google oferecer
+  'acfe603a1ce944c9',   // conta do Augusto — arquivo oferecido na propriedade livros. (19/09/2026)
 ];
 
 function tokensDeVerificacao() {
