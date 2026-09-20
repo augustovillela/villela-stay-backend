@@ -3782,7 +3782,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   // por partes das séries Claude.
   const CG_DIR = path.join(__dirname, 'content', 'chatgpt-na-pratica');
   const CG_LIVRO = 'https://livros.villelastay.com.br/livros/chatgpt-ai-na-pratica?utm_source=villelastay&utm_medium=blog-chatgpt';
-  const CG_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-chatgpt';
+  const CG_CURSO = 'https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica?utm_source=villelastay&utm_medium=blog-chatgpt';
   const cgDestexto = s => String(s).replace(/<[^>]+>/g, '')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
     .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
@@ -3791,9 +3791,8 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     const cgCss = fs.readFileSync(path.join(CG_DIR, 'artigo.css'), 'utf8');
     const cgLe = n => JSON.parse(fs.readFileSync(path.join(CG_DIR, n), 'utf8').replace(/^﻿/, ''));
     const cgGrade = cgLe('grade.json');
-    let cgFaq = {}, cgApoio = [];
+    let cgFaq = {};
     try { cgFaq = cgLe('faq.json'); } catch (e) { console.warn('[chatgpt] sem faq.json — artigos sairão sem perguntas frequentes'); }
-    try { cgApoio = cgLe('apoio.json'); } catch (e) { console.warn('[chatgpt] sem apoio.json — hub sairá sem material de apoio'); }
 
     cgArtigos = fs.readdirSync(CG_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
       const raw = fs.readFileSync(path.join(CG_DIR, f), 'utf8');
@@ -3846,8 +3845,8 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
           <span class="cap-ad-btn">Ver na Livraria →</span></a>`
       : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${CG_CURSO}" target="_blank" rel="noopener">
           <span class="cap-ad-icone">🎓</span>
-          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>Aula em vídeo, artigo e apresentação de cada módulo — em lançamento na Villela Academy.</span></span>
-          <span class="cap-ad-btn">Ver na Academy →</span></a>`;
+          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>Aula em vídeo, artigo e apresentação de cada módulo. ${cgArtigos.length} de ${cgGrade.total} aulas já no ar; as demais entram ao longo das próximas semanas.</span></span>
+          <span class="cap-ad-btn">Ver o curso →</span></a>`;
     const CG_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cgAnuncio('livro', true))},${JSON.stringify(cgAnuncio('curso', true))}];`);
     const CG_CSS = `${cgCss}${CAP_CSS_EXTRA}
 .cg-estado{display:inline-block;margin-left:8px;font:700 11px/1.5 Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle}
@@ -3858,16 +3857,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 .cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
 .cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Lora,Georgia,serif;color:var(--navy)}
 .cg-apoio>p{color:#675f56;margin:0 0 16px}
-.cg-apoio .cap-grade{padding:0}
-.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
-.cg-doc h2{font:700 26px/1.25 Lora,Georgia,serif;color:var(--navy);margin:34px 0 12px}
-.cg-doc dl{margin:0}
-.cg-doc dt{font-weight:700;color:var(--accent2);margin:18px 0 2px}
-.cg-doc dd{margin:0 0 6px;padding:0}
-.cg-doc blockquote{margin:22px 0;padding:16px 20px;border-left:5px solid var(--gold);background:#fff;border-radius:0 12px 12px 0}
-.cg-doc blockquote p{margin:0 0 6px}
-.cg-doc cite{display:block;font-size:14px;color:var(--muted);font-style:normal}
-.cg-doc .editorial-note{margin:0 0 26px;padding:16px 20px;background:#f2ede4;border-radius:12px;font-size:15px;line-height:1.55}`;
+.cg-apoio .cap-grade{padding:0}`;
 
     const cgTotal = cgGrade.total;
     // <details> e índice do hub: as 22 da grade. Quem já está no ar vira link; o
@@ -3880,7 +3870,6 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     };
 
     fs.mkdirSync(path.join(od, 'chatgpt'), { recursive: true });
-    fs.mkdirSync(path.join(od, 'chatgpt', 'apoio'), { recursive: true });
 
     for (const [iArt, a] of cgArtigos.entries()) {
       const url = `${SITE_URL}${a.caminho}`;
@@ -3952,30 +3941,6 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
       fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
     }
 
-    // Material de apoio do curso: glossário e frases. Vai em HTML aberto — é
-    // material de REFERÊNCIA, não o desenvolvimento da aula (esse continua na
-    // camada protegida). O aviso de atribuição das frases vem do próprio arquivo.
-    for (const doc of cgApoio) {
-      const cam = `/chatgpt/apoio/${doc.chave}.html`;
-      const urlDoc = `${SITE_URL}${cam}`;
-      const ldDoc = {
-        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
-        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/chatgpt/#serie` },
-        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
-      };
-      fs.writeFileSync(path.join(od, 'chatgpt', 'apoio', `${doc.chave}.html`), layout(
-        `${doc.titulo} — ChatGPT AI na Prática | Villela Stay`,
-        `${doc.titulo}: material de apoio aberto da série ChatGPT AI na Prática, de Augusto Villela.`,
-        `<div class="cap">
-  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>ChatGPT AI na Prática</strong>, de Augusto Villela.</p></section>
-  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/chatgpt/">ChatGPT AI na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
-  <div class="cg-doc">${doc.html}</div>
-  <div class="cap-faixa">${cgAnuncio('livro')}${cgAnuncio('curso')}</div>
-</div>`,
-        { caminho: cam, semIdiomas: true, extraHead: `<style>${CG_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
-      ));
-    }
-
     // hub da série: /chatgpt/
     const cgCards = cgArtigos.map(a => `
   <a class="cap-card" href="${a.caminho}">
@@ -3983,12 +3948,6 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     <h3>${esc(a.tituloTexto)}</h3>
     <p>${esc(a.subtituloTexto)}</p>
     <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
-  </a>`).join('\n');
-    const cgApoioCards = cgApoio.map(d => `
-  <a class="cap-card" href="/chatgpt/apoio/${d.chave}.html">
-    <span class="n">Material de apoio</span>
-    <h3>${esc(d.titulo)}</h3>
-    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
   </a>`).join('\n');
     const cgNoAr = cgArtigos.length;
     const cgHubLd = [{
@@ -4020,13 +3979,17 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     <ol class="cap-sumario-lista">${cgGrade.aulas.map(g => cgLinhaGrade(g)).join('')}</ol>
   </section>
   <div class="cap-grade">${cgCards}</div>
-  ${cgApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${cgApoioCards}</div></section>` : ''}
+  <section class="cg-apoio">
+    <h2>O que acompanha o curso</h2>
+    <p>Além da aula em vídeo, cada módulo vem com o artigo e a apresentação. Junto da primeira aula, o aluno recebe ainda o <strong>Glossário do curso</strong> e a seleção <strong>Frases para reflexão</strong>, em PDF. Esse material é entregue dentro do curso, na Villela Academy.</p>
+    <p><a href="${CG_CURSO}" target="_blank" rel="noopener">Ver o curso na Villela Academy →</a></p>
+  </section>
   <div class="cap-faixa">${cgAnuncio('curso')}${cgAnuncio('livro')}</div>
 </div>`,
       { caminho: '/chatgpt/', semIdiomas: true, extraHead: `<style>${CG_CSS}</style>` + cgHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
 
-    CG_PATHS = ['/chatgpt/', ...cgArtigos.map(a => a.caminho), ...cgApoio.map(d => `/chatgpt/apoio/${d.chave}.html`)];
+    CG_PATHS = ['/chatgpt/', ...cgArtigos.map(a => a.caminho)];
     CG_LLMS = `## Blog: ChatGPT AI na Prática (${cgNoAr} de ${cgTotal} artigos no ar, em português)
 
 Série do livro *ChatGPT AI na Prática*, de Augusto Villela — o ecossistema da OpenAI
@@ -4037,9 +4000,8 @@ e cresce a cada aula gravada, então hoje ${cgNoAr === 1 ? 'há 1 artigo publica
 Livro completo: ${CG_LIVRO.split('?')[0]} · Curso on-line: ${CG_CURSO.split('?')[0]}
 
 ${cgArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
-${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoio/${d.chave}.html): material de referência aberto da série.`).join('\n')}
 `;
-    console.log(`Blog ChatGPT AI na Prática: hub + ${cgNoAr} de ${cgTotal} artigos + ${cgApoio.length} material(is) de apoio`);
+    console.log(`Blog ChatGPT AI na Prática: hub + ${cgNoAr} de ${cgTotal} artigos`);
   }
 
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
@@ -4115,7 +4077,7 @@ const cgCardsHub = LANG !== 'pt' || !cgArtigos.length ? '' : `
     <div class="blog-card-img"><div class="blog-card-arte tema-chatgpt" aria-hidden="true">${BLOG_HERO_SVG}</div></div>
     <div class="blog-card-info">
       <span class="tema-tag tema-chatgpt">💬 Série · ChatGPT</span>
-      <h3>ChatGPT na Prática</h3>
+      <h3>ChatGPT AI na Prática</h3>
       <p>O ecossistema da OpenAI aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de contexto, Projetos, agentes e automações — com os casos reais de uma empresa operada por IA.</p>
       <span class="blog-card-leia">${cgArtigos.length === 1 ? 'Ver o artigo no ar' : `Ver os ${cgArtigos.length} artigos no ar`} →</span>
     </div>
@@ -4136,12 +4098,12 @@ const blogLd = {
 
 const blogHub = layout(
   t('Blog — Diário de Brasília e as séries de IA na prática | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
-  t('Quatro séries em um só lugar: Diário de Brasília, Claude AI na Prática, Claude AI na Prática Jurídica e ChatGPT na Prática — Brasília, método e inteligência artificial aplicada ao trabalho.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
+  t('Quatro séries em um só lugar: Diário de Brasília, Claude AI na Prática, Claude AI na Prática Jurídica e ChatGPT AI na Prática — Brasília, método e inteligência artificial aplicada ao trabalho.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
   `
 <section class="hero hero-menor blog-hero-hub">
   <span class="tema-tag">📖 ${t('Diário de Brasília · Claude AI · IA Jurídica · ChatGPT', 'Brasília Diary', 'Diario de Brasília')}</span>
   <h1>${t('Quatro séries, uma leitura', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
-  <p><strong>${t('Brasília por quem vive aqui, Claude AI aplicado ao trabalho, Claude AI na Prática Jurídica e ChatGPT na Prática: cidade, tecnologia, método e Direito.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
+  <p><strong>${t('Brasília por quem vive aqui, Claude AI aplicado ao trabalho, Claude AI na Prática Jurídica e ChatGPT AI na Prática: cidade, tecnologia, método e Direito.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
 </section>
 <section class="grade-wrap">
   <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${blogCardsHub}</div>
