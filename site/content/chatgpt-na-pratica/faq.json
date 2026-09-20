@@ -124,5 +124,33 @@
    "Onde a chave de API não pode ficar?",
    "Em quatro lugares, que são por onde as chaves vazam de verdade: arquivo público (qualquer arquivo que possa sair da sua mão), prompt, print com a chave visível — print com a chave visível é chave vazada — e repositório público, que é varrido por robôs o dia inteiro. A chave mora fora do projeto: numa variável de ambiente, que é o cofre do próprio sistema operacional, onde o programa a lê por um apelido e ela não fica em arquivo, ou num cofre de segredos, com controle de acesso e registro. A regra mental é que uma chave de API é a chave da sua casa, não o seu endereço."
   ]
+ ],
+ "10-agents-md": [
+  [
+   "O que é o AGENTS.md de um projeto?",
+   "É o manual operacional do projeto: um arquivo de texto comum, criado na pasta do projeto, que o Codex lê sozinho quando inicia. O que estiver escrito ali vale como instrução permanente, sem precisar repetir nada a cada conversa. Seis seções dão conta: arquitetura (as partes e como elas conversam), comandos de teste (o que digitar para verificar), padrões da casa (como nomear, em que idioma comentar), limites (o que não pode ser tocado), estrutura de pastas (onde nasce cada arquivo novo) e critérios de conclusão (o que faz \"pronto\" virar fato verificável). Markdown é opcional: português corrente funciona, e dez linhas já mudam o resultado."
+  ],
+  [
+   "Quais comandos do Codex realmente importam?",
+   "Seis, e nenhum deles se decora — a grafia exata aparece na própria tela. Comando começa com barra, e a barra avisa que aquilo é ordem para o programa, não conversa com a inteligência artificial: mesma lógica da barra no WhatsApp ou no Slack. Há o de ajuda (a lista de comandos), o de status (modelo, permissão, pasta e conta da sessão), o de modelo (que escolhe quem responde e quanto esforço de raciocínio ele gasta), o de permissões, o de revisão (ele relê as próprias alterações e procura problemas) e o que mostra os servidores conectados à sessão."
+  ],
+  [
+   "É seguro rodar o Codex num projeto baixado da internet?",
+   "Só depois de ler o que veio dentro dele. Configuração local de projeto vale apenas em repositório confiável, e o motivo é direto: quando você baixa o projeto de outra pessoa, os arquivos de instrução vêm junto — inclusive o AGENTS.md, que pode trazer instrução escrita por um desconhecido e que o Codex vai ler como se fosse sua. É assinar contrato sem ler porque o envelope era bonito. São arquivos de texto: abrir e ler leva um minuto, e esse minuto é a diferença entre usar o projeto de alguém e obedecer a ele. Vale a mesma cautela do nível de permissão, que começa restritivo e só afrouxa depois."
+  ]
+ ],
+ "11-metodo-do-codex": [
+  [
+   "Por que não pedir o sistema inteiro de uma vez ao Codex?",
+   "Porque ele tenta. Produz dezenas de arquivos, com muita coisa certa e alguma errada no meio, e você não acompanhou nenhuma das decisões. Quando quebrar — e vai quebrar —, o difícil não é consertar: é descobrir o que consertar. Mudança grande demais para ser revisada é mudança que ninguém controla, e o que parecia ganho de tempo vira dois dias de investigação. O método é um ciclo de quatro movimentos que gira sempre igual: pedir uma alteração pequena por vez, marcar um ponto de retorno no histórico, ler o que mudou e rodar os testes. Se o pedido não cabe numa frase, não é um pedido: são cinco."
+  ],
+  [
+   "Como ler o diff sem saber programar?",
+   "O diff é a comparação do antes e do depois, linha por linha — o \"controlar alterações\" do documento de texto, aplicado ao projeto inteiro. Não é preciso entender cada linha: basta perceber duas coisas, o tamanho e o alcance da mudança. Se você pediu para ajustar uma cor e a lista mostra quinze arquivos alterados, alguma coisa saiu do rumo — e você descobriu antes de aquilo chegar ao ar. Aceitar tudo sem olhar é exatamente onde se quebra o que já estava funcionando."
+  ],
+  [
+   "Como descobrir que falta uma integração no meu negócio?",
+   "Pelo teste da cena: alguém olhando uma tela e digitando em outra o que acabou de ver. Onde isso aparece, há integração faltando — quase todo trabalho manual repetitivo de escritório é uma integração que nunca foi feita. Os três territórios que mais rendem são comunicação (WhatsApp, e-mail, Instagram, canais internos), gestão (o sistema de clientes, o da operação, calendários e planilhas) e operação (banco de dados, painéis, filas e o financeiro, que merece o cuidado maior). E vale a advertência de gestão: dobrar o número de peças mais do que dobra o número de conexões entre elas. Três hábitos evitam o emaranhado — componentes reutilizáveis, testes e observabilidade. Sistema sem observabilidade não está funcionando: apenas não está reclamando."
+  ]
  ]
 }
