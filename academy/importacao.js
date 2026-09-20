@@ -54,7 +54,11 @@ function aplicarEstrutura(productId, modulos) {
       else if (aula.duracao_min != null) campos.duracao_seg = Math.max(0, Math.round((parseFloat(aula.duracao_min) || 0) * 60));
       if (aula.gratuita != null) campos.gratuita = aula.gratuita ? 1 : 0;
 
-      const jaAula = aulasAtuais.get(chave(tAula));
+      // titulo_anterior também na AULA: sem isto, renomear uma aula cria outra e
+      // deixa a antiga órfã no módulo — foi o que quase aconteceu com as cinco
+      // aulas "(em produção)" do curso jurídico, cujo tema mudou depois de gravado.
+      const jaAula = aulasAtuais.get(chave(tAula))
+        || (aula.titulo_anterior ? aulasAtuais.get(chave(aula.titulo_anterior)) : null);
       if (jaAula) { ct.Conteudo.editarAula(jaAula.id, productId, campos); r.aulas_atualizadas++; }
       else {
         const id = ct.Conteudo.addAula(productId, moduleId, { ...campos, tipo: campos.tipo || 'video' });

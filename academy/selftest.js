@@ -1617,6 +1617,24 @@ async function main() {
     assert.ok(r2.json.estrutura.some(m => m.titulo === 'Módulo A'), 'volta ao nome original');
   });
 
+  // Mesma razão do módulo: sem isto, mudar o nome de uma aula cria OUTRA e deixa
+  // a antiga órfã dentro do módulo — o aluno vê a aula velha logo abaixo da nova.
+  await t('titulo_anterior renomeia uma AULA existente em vez de duplicar', async () => {
+    const mods = CURSO().modulos;
+    const aulaVelha = mods[0].aulas[0].titulo;
+    mods[0] = { ...mods[0], aulas: [{ ...mods[0].aulas[0], titulo: 'Aula A renomeada', titulo_anterior: aulaVelha }, ...mods[0].aulas.slice(1)] };
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: { ...CURSO(), modulos: mods } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.resumo.aulas_criadas, 0, 'absorveu a aula antiga');
+    const m0 = (await estrutura()).estrutura.find(m => m.titulo === mods[0].titulo);
+    assert.ok(m0.aulas.some(a => a.titulo === 'Aula A renomeada'), 'a aula ficou com o nome novo');
+    assert.ok(!m0.aulas.some(a => a.titulo === aulaVelha), 'e a antiga não sobrou no módulo');
+    const volta = CURSO().modulos;
+    volta[0] = { ...volta[0], aulas: [{ ...volta[0].aulas[0], titulo_anterior: 'Aula A renomeada' }, ...volta[0].aulas.slice(1)] };
+    const r2 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: { ...CURSO(), modulos: volta } });
+    assert.equal(r2.json.resumo.aulas_criadas, 0, 'e volta sem duplicar');
+  });
+
   await t('vídeo pela chave: iniciar → PUT → confirmar vincula a mídia à aula certa', async () => {
     const storage = require('./storage');
     const real = { s3Ativo: storage.s3Ativo, presignS3: storage.presignS3, s3Existe: storage.s3Existe };
