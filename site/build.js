@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v11'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v12'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -3687,7 +3687,17 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
       : `<a class="cap-ad cap-ad-curso" href="${CJ_SISTEMA}" target="_blank" rel="noopener"><span class="cap-ad-icone">🏛️</span><span class="cap-ad-txt"><strong>Villela Legal</strong><span>Os sistemas descritos no livro implementados em uma plataforma jurídica com supervisão humana.</span></span><span class="cap-ad-btn">Conhecer o sistema →</span></a>`;
     const CJ_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cjAnuncio('livro'))},${JSON.stringify(cjAnuncio('sistema'))}];`);
     const CJ_CSS = `${capCss}${CAP_CSS_EXTRA}
-.cj-parte{max-width:1080px;margin:34px auto 12px;padding:0 20px}.cj-parte h2{font:700 25px/1.25 Lora,Georgia,serif;color:#0f1a2b;margin:0 0 5px}.cj-parte p{color:#675f56;margin:0 0 16px}.cj-recursos{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#eef5f3}.cj-recursos h2{margin-top:0}.cj-recursos .cap-grade{padding:0}`;
+.cj-parte{max-width:1080px;margin:34px auto 12px;padding:0 20px;scroll-margin-top:90px}.cj-parte h2{font:700 25px/1.25 Lora,Georgia,serif;color:#0f1a2b;margin:0 0 5px}.cj-parte p{color:#675f56;margin:0 0 16px}
+/* Índice da série. O título fica na MESMA linha do número: o min-width zero deixa o texto
+   encolher e quebrar por dentro, em vez de o flex empurrá-lo para a linha de baixo. */
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cj-sumario{margin-bottom:10px}
+.cj-sumario-nota{color:#675f56;margin:0 0 14px;font-size:15px}
+.cj-sumario-parte{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;margin:18px 0 2px;font:700 15px/1.3 Inter,sans-serif;color:#0f1a2b}
+.cj-sumario-parte:first-of-type{margin-top:4px}
+.cj-sumario-parte a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.cj-sumario-parte a:hover{border-bottom-color:var(--accent)}
+.cj-sumario-parte span{font-weight:400;font-size:13px;color:#8b8378}.cj-recursos{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#eef5f3}.cj-recursos h2{margin-top:0}.cj-recursos .cap-grade{padding:0}`;
 
     fs.mkdirSync(path.join(od, 'claude-juridico'), { recursive: true });
     for (const [iArt, a] of cjArtigos.entries()) {
@@ -3743,11 +3753,26 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     }
 
     const partes = [...new Map(cjArtigos.map(a => [a.parte, a.parte_titulo])).entries()];
+    // `parte` já vem como "Parte I" — não prefixar de novo, senão o id vira "parte-parte-i".
+    const cjIdParte = parte => String(parte).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const cjPartesHtml = partes.map(([parte, titulo]) => {
       const itens = cjArtigos.filter(a => a.parte === parte);
       const cards = itens.map(a => `<a class="cap-card" href="${a.caminho}"><span class="n">Capítulo ${a.capitulo}</span><h3>${esc(a.tituloTexto)}</h3><p>${esc(a.subtituloTexto)}</p><span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span></a>`).join('');
-      return `<section class="cj-parte"><h2>${esc(parte)} — ${esc(titulo)}</h2><p>${itens.length} capítulos</p><div class="cap-grade">${cards}</div></section>`;
+      return `<section class="cj-parte" id="${cjIdParte(parte)}"><h2>${esc(parte)} — ${esc(titulo)}</h2><p>${itens.length} capítulos</p><div class="cap-grade">${cards}</div></section>`;
     }).join('');
+    // Índice da série, como em /claude/ e /chatgpt/. Aqui ele é ainda mais necessário: são 52
+    // capítulos, e sem índice a página só oferecia rolagem por oito seções de cards. Mantém o
+    // agrupamento por parte — uma lista corrida de 52 linhas não diz onde o leitor está —, e o
+    // título da parte leva à seção de cards correspondente.
+    const cjSumarioHub = `<section class="cap-sumario-hub cj-sumario">
+      <h2>Índice da série</h2>
+      <p class="cj-sumario-nota">Os ${cjArtigos.length} capítulos, em ${partes.length} partes. Clique no capítulo para abrir; clique na parte para descer até os cards dela.</p>
+      ${partes.map(([parte, titulo]) => {
+        const itens = cjArtigos.filter(a => a.parte === parte);
+        return `<h3 class="cj-sumario-parte"><a href="#${cjIdParte(parte)}">${esc(parte)} — ${esc(titulo)}</a> <span>${itens.length} capítulos</span></h3>
+        <ol class="cap-sumario-lista">${itens.map(o => `<li><a href="${o.caminho}"><b>${o.capitulo}</b> <span class="tx">${esc(o.tituloTexto)}</span></a></li>`).join('')}</ol>`;
+      }).join('')}
+    </section>`;
     const recursos = [
       ['01-central-atualizacao-normativa.html', 'Central de atualização normativa', 'Normas, fontes oficiais e datas de verificação.'],
       ['02-diretorio-pesquisa-juridica.html', 'Diretório de pesquisa jurídica', 'Atalhos para pesquisa legislativa, jurisprudencial e institucional.'],
@@ -3768,7 +3793,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     fs.writeFileSync(path.join(od, 'claude-juridico', 'index.html'), layout(
       'Claude AI na Prática Jurídica — 52 artigos para advogados | Villela Stay',
       'Os 52 capítulos do livro Claude AI na Prática Jurídica, de Augusto Villela: IA aplicada à advocacia, prompts, ética, contencioso, contratos, pesquisa, gestão, compliance e sistemas.',
-      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 52 capítulos do livro em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('sistema')}</div>${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
+      `<div class="cap"><section class="cap-hub-hero"><h1>Claude AI na Prática Jurídica</h1><p>Os 52 capítulos do livro em formato híbrido para leitura online — conteúdo jurídico, síntese editorial e aplicação prática para advogados, gestores e escritórios.</p></section><nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Claude AI na Prática Jurídica</span></nav><div class="cap-faixa">${cjAnuncio('livro')}${cjAnuncio('sistema')}</div>${cjSumarioHub}${cjPartesHtml}<section class="cj-recursos"><h2>Centrais complementares</h2><p>Conteúdo vivo para atualização normativa, pesquisa jurídica e tecnologia.</p><div class="cap-grade">${recursosHtml}</div></section><div class="cap-faixa">${cjAnuncio('sistema')}${cjAnuncio('livro')}</div></div>`,
       { caminho: '/claude-juridico/', semIdiomas: true, extraHead: `<style>${CJ_CSS}</style>` + cjHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
     ));
   }
@@ -3861,14 +3886,19 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 .cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
 .cap-card .cg-estado{margin-left:6px}
 .cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
-/* No índice o selo vai para a PRÓPRIA LINHA: em coluna estreita, o selo ao lado
-   espremia o título em duas ou três palavras por linha. */
+/* O selo vai para a própria linha, mas DENTRO da coluna do título: ao lado, ele espremia
+   o título em duas ou três palavras por linha.
+   ⚠️ Nada de flex-wrap aqui. Com wrap, o flex prefere EMPURRAR o título para a linha de
+   baixo a encolhê-lo — e o número ficava sozinho numa linha só dele, que foi o que deixou
+   este índice feio ao lado do da série Claude. Sem wrap, o min-width zero deixa o título
+   encolher e quebrar por dentro: número e texto na MESMA linha, como em /claude/. */
 .cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
-.cap-sumario-lista a{flex-wrap:wrap}
+.cap-sumario-lista a{flex-wrap:nowrap}
 .cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
 .cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
 .cap-sumario-lista li.falta{color:#7a746b}
-.cap-sumario-lista li.falta span.tit{display:flex;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
 .cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
 .cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
 .cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Lora,Georgia,serif;color:var(--navy)}
@@ -3887,10 +3917,14 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     const cgTotal = cgGrade.total;
     // <details> e índice do hub: as 22 da grade. Quem já está no ar vira link; o
     // resto é texto, com o aviso de que a aula ainda não foi gravada.
+    // O selo só aparece onde ACRESCENTA informação: a videoaula publicada é a exceção, não a
+    // regra. Repetir "videoaula em produção" em nove linhas seguidas virava ruído e escondia o
+    // que o leitor procura, que é o título. Quem ainda não está no ar já se distingue por ser
+    // cinza e não ter link — o aviso vai uma vez só, na nota acima da lista.
     const cgLinhaGrade = (aula, atual) => {
       const art = cgArtigos.find(a => a.n === aula.n);
-      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> ${esc(aula.titulo)}<span class="cg-estado">em produção</span></span></li>`;
-      const selo = aula.gravada ? '' : '<span class="cg-estado">videoaula em produção</span>';
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      const selo = aula.gravada ? '<span class="cg-estado no-ar">com videoaula</span>' : '';
       return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}${selo}</span></a></li>`;
     };
 
@@ -4032,7 +4066,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
   <div class="cap-faixa">${cgAnuncio('livro')}${cgAnuncio('curso')}</div>
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
-    <p>As ${cgTotal} aulas da grade. A aula entra aqui assim que o material dela fica pronto — antes mesmo da videoaula, e nesse caso o selo diz. As demais estão em produção.</p>
+    <p>As ${cgTotal} aulas da grade. Em preto e com link, ${cgNoAr === 1 ? 'a que já está no ar' : `as ${cgNoAr} que já estão no ar`}; o selo marca ${cgComVideo === 1 ? 'a que já tem videoaula publicada' : `as ${cgComVideo} que já têm videoaula publicada`}. Em cinza, as que ainda estão em produção.</p>
     <ol class="cap-sumario-lista">${cgGrade.aulas.map(g => cgLinhaGrade(g)).join('')}</ol>
   </section>
   <div class="cap-grade">${cgCards}</div>
@@ -4125,11 +4159,14 @@ const cjCardsHub = LANG !== 'pt' || !cjArtigos.length ? '' : `
 
 // A série ChatGPT entra com UM card, como as outras. O texto do card diz quantos
 // artigos existem HOJE: a série cresce a cada aula gravada, e anunciar 22 com 2 no ar
-// seria prometer o que ainda não foi gravado. Arte de marca em vez da capa do curso —
-// a capa promete "22 aulas em vídeo", e só duas existem.
+// seria prometer o que ainda não foi gravado.
+// A ilustração é própria da série (não é a capa do curso, que promete "22 aulas em vídeo"):
+// as três superfícies — conversa, documento pronto e código — alimentadas por uma fonte só,
+// que é a espinha do curso. Mesmo desenho, mesma paleta e mesmas medidas das outras duas
+// séries; sem ela o card caía no traço genérico do BLOG_HERO_SVG e destoava dos vizinhos.
 const cgCardsHub = LANG !== 'pt' || !cgArtigos.length ? '' : `
   <a class="blog-card blog-card-serie" href="/chatgpt/">
-    <div class="blog-card-img"><div class="blog-card-arte tema-chatgpt" aria-hidden="true">${BLOG_HERO_SVG}</div></div>
+    <div class="blog-card-img">${img('/blog-img/chatgpt-ai-na-pratica-1.jpg', { alt: 'Ilustração: uma pessoa de pé em um salão escuro e, das mãos dela, três feixes de luz que sobem até três painéis — uma conversa, um documento pronto e uma janela de código', width: 1920, height: 1072, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
     <div class="blog-card-info">
       <span class="tema-tag tema-chatgpt">💬 Série · ChatGPT</span>
       <h3>ChatGPT AI na Prática</h3>
@@ -4137,6 +4174,119 @@ const cgCardsHub = LANG !== 'pt' || !cgArtigos.length ? '' : `
       <span class="blog-card-leia">${cgArtigos.length === 1 ? 'Ver o artigo no ar' : `Ver os ${cgArtigos.length} artigos no ar`} →</span>
     </div>
   </a>`;
+
+// ---- busca do blog ----
+// O hub mostra 16 cards, mas o blog já tem quase cem textos: os 13 do Diário e os das três
+// séries, que moram nos hubs próprios. Procurar só nos cards seria inútil — o índice cobre
+// TUDO o que está no ar. Vai inline como JSON: são poucos KB, evita uma requisição a mais e
+// não depende de o service worker conhecer um arquivo novo.
+const buscaItens = [
+  ...BLOG.map(a0 => { const a = tradArtigo(a0); return { t: a.h1, d: a.dek, s: `${a.emoji} ${a.tema}`, u: L(`/blog/${a.slug}.html`) }; }),
+  ...(LANG === 'pt' ? [
+    ...capArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '🤖 Claude AI na Prática', u: a.caminho, n: a.modulo })),
+    ...cjArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '⚖️ Claude AI na Prática Jurídica', u: a.caminho, n: `Cap. ${a.capitulo}` })),
+    ...cgArtigos.map(a => ({ t: a.tituloTexto, d: a.descricao, s: '💬 ChatGPT AI na Prática', u: a.caminho, n: `Aula ${a.n}` })),
+  ] : []),
+];
+
+const BUSCA_CSS = `
+.blog-busca-wrap{max-width:1180px;margin:0 auto 10px;padding:0 20px}
+.blog-busca{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:10px 16px;box-shadow:0 1px 2px rgba(15,26,43,.04)}
+.blog-busca:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(197,138,57,.15)}
+.blog-busca svg{flex:0 0 auto;width:18px;height:18px;stroke:#8b8378;fill:none;stroke-width:2}
+.blog-busca input{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font:400 16px/1.4 Inter,sans-serif;color:#1c1a17}
+.blog-busca input::-webkit-search-cancel-button{display:none}
+.blog-busca button{flex:0 0 auto;border:0;background:#f1e9dc;color:#6b6358;border-radius:999px;padding:5px 12px;font:600 13px/1 Inter,sans-serif;cursor:pointer}
+.blog-busca button:hover{background:#e7dccb}
+.blog-busca-conta{max-width:1180px;margin:10px auto 0;padding:0 22px;color:#675f56;font-size:15px}
+.blog-busca-res{list-style:none;max-width:1180px;margin:8px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:10px}
+.blog-busca-res a{display:block;height:100%;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;text-decoration:none;color:#1c1a17}
+.blog-busca-res a:hover{border-color:var(--accent);background:#fffdf9}
+.blog-busca-res .s{display:block;font:700 11px/1.4 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8b8378;margin-bottom:4px}
+.blog-busca-res .t{display:block;font:700 17px/1.3 Lora,Georgia,serif;color:#0f1a2b;margin-bottom:5px}
+.blog-busca-res .d{display:block;font-size:14px;line-height:1.45;color:#675f56}
+.blog-busca-res mark{background:#fbeccd;color:inherit;padding:0 1px;border-radius:3px}
+@media (max-width:600px){.blog-busca{padding:9px 14px}.blog-busca input{font-size:16px}}`;
+
+const BUSCA_JS = `(function(){
+  var caixa=document.getElementById('blog-busca-wrap'); if(!caixa) return;
+  var dados=JSON.parse(document.getElementById('blog-busca-dados').textContent);
+  var campo=document.getElementById('blog-busca-campo');
+  var limpar=caixa.querySelector('.blog-busca-limpar');
+  var conta=document.getElementById('blog-busca-conta');
+  var lista=document.getElementById('blog-busca-res');
+  var grade=document.querySelector('.blog-grade');
+  var TETO=24;
+  caixa.hidden=false;
+  function norm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');}
+  var idx=dados.map(function(o){return {o:o, t:norm(o.t), d:norm(o.d), s:norm(o.s)};});
+  function realca(txt,termos){
+    var out=txt, i;
+    for(i=0;i<termos.length;i++){
+      var re=new RegExp('('+termos[i].replace(/[.*+?^\${}()|[\\]\\\\]/g,'\\\\$&')+')','ig');
+      out=out.replace(re,'\\u0001$1\\u0002');
+    }
+    var d=document.createElement('div'); d.textContent=out;
+    return d.innerHTML.replace(/\\u0001/g,'<mark>').replace(/\\u0002/g,'</mark>');
+  }
+  function busca(q){
+    var termos=norm(q).split(/\\s+/).filter(Boolean);
+    if(!termos.length) return null;
+    var achados=[];
+    for(var i=0;i<idx.length;i++){
+      var it=idx[i], nota=0, todos=true;
+      for(var j=0;j<termos.length;j++){
+        var p=0;
+        if(it.t.indexOf(termos[j])>=0) p+=3;
+        if(it.d.indexOf(termos[j])>=0) p+=1;
+        if(it.s.indexOf(termos[j])>=0) p+=1;
+        if(!p){todos=false;break;}
+        nota+=p;
+      }
+      if(todos) achados.push({o:it.o, nota:nota});
+    }
+    achados.sort(function(a,b){return b.nota-a.nota;});
+    return {termos:termos, itens:achados.map(function(a){return a.o;})};
+  }
+  function pinta(q){
+    var r=busca(q);
+    if(!r){ lista.hidden=true; lista.innerHTML=''; conta.textContent=''; grade.hidden=false; limpar.hidden=true; return; }
+    limpar.hidden=false; grade.hidden=true; lista.hidden=false;
+    var itens=r.itens.slice(0,TETO);
+    lista.innerHTML=itens.map(function(o){
+      return '<li><a href="'+o.u+'"><span class="s">'+realca(o.s+(o.n?' \\u00b7 '+o.n:''),[])+'</span>'+
+             '<span class="t">'+realca(o.t,r.termos)+'</span>'+
+             '<span class="d">'+realca(o.d,r.termos)+'</span></a></li>';
+    }).join('');
+    conta.textContent = r.itens.length===0 ? ${JSON.stringify(t('Nada encontrado. Tente outra palavra — ou percorra as séries abaixo.', 'Nothing found. Try another word — or browse the series below.', 'Nada encontrado. Prueba otra palabra — o recorre las series abajo.'))}
+      : r.itens.length===1 ? ${JSON.stringify(t('1 artigo encontrado.', '1 article found.', '1 artículo encontrado.'))}
+      : r.itens.length+${JSON.stringify(t(' artigos encontrados.', ' articles found.', ' artículos encontrados.'))}+(r.itens.length>TETO?${JSON.stringify(t(' Mostrando os 24 mais próximos.', ' Showing the 24 closest.', ' Mostrando los 24 más cercanos.'))}:'');
+    if(r.itens.length===0){ grade.hidden=false; }
+    try{ history.replaceState(null,'',q?('?q='+encodeURIComponent(q)):location.pathname); }catch(e){}
+  }
+  var espera;
+  campo.addEventListener('input',function(){ clearTimeout(espera); espera=setTimeout(function(){pinta(campo.value);},120); });
+  campo.addEventListener('keydown',function(e){ if(e.key==='Escape'){ campo.value=''; pinta(''); } });
+  limpar.addEventListener('click',function(){ campo.value=''; pinta(''); campo.focus(); });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='/' && document.activeElement!==campo && !/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement||{}).tagName||'')){ e.preventDefault(); campo.focus(); }
+  });
+  var inicial=new URLSearchParams(location.search).get('q');
+  if(inicial){ campo.value=inicial; pinta(inicial); }
+})();`;
+
+const buscaHtml = `
+<section class="blog-busca-wrap" id="blog-busca-wrap" hidden>
+  <form class="blog-busca" role="search" onsubmit="return false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <label for="blog-busca-campo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">${t('Buscar nos artigos do blog', 'Search the blog articles', 'Buscar en los artículos del blog')}</label>
+    <input id="blog-busca-campo" type="search" autocomplete="off" spellcheck="false" placeholder="${esc(t(`Buscar nos ${buscaItens.length} artigos: tokens, contrato, Cerrado, agentes…`, `Search ${buscaItens.length} articles: Brasília, architecture, food…`, `Buscar en ${buscaItens.length} artículos: Brasília, arquitectura, comida…`))}">
+    <button type="button" class="blog-busca-limpar" hidden>${t('Limpar', 'Clear', 'Limpiar')}</button>
+  </form>
+  <p class="blog-busca-conta" id="blog-busca-conta" role="status" aria-live="polite"></p>
+  <ol class="blog-busca-res" id="blog-busca-res" hidden></ol>
+  <script type="application/json" id="blog-busca-dados">${JSON.stringify(buscaItens).replace(/</g, '\\u003c')}</script>
+</section>`;
 
 const blogLd = {
   '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`,
@@ -4160,6 +4310,7 @@ const blogHub = layout(
   <h1>${t('Quatro séries, uma leitura', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
   <p><strong>${t('Brasília por quem vive aqui, Claude AI aplicado ao trabalho, Claude AI na Prática Jurídica e ChatGPT AI na Prática: cidade, tecnologia, método e Direito.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
 </section>
+${buscaHtml}
 <section class="grade-wrap">
   <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${blogCardsHub}</div>
 </section>
@@ -4169,9 +4320,12 @@ const blogHub = layout(
   <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Vim pelo blog da Villela Stay e quero saber sobre as hospedagens.', 'Hi! I came from the Villela Stay blog and would like to know about the stays.', '¡Hola! Vengo del blog de Villela Stay y quiero saber sobre los alojamientos.'))}">${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}</a>
   <p style="margin-top:14px"><a href="${L('/')}#hospedagens" style="color:var(--creme);text-decoration:underline">${t('Ver as hospedagens', 'See the stays', 'Ver los alojamientos')} →</a></p>
 </section>`,
-  { caminho: '/blog.html', extraHead: `<script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
+  { caminho: '/blog.html', extraHead: `<style>${BUSCA_CSS}</style><script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
 );
-fs.writeFileSync(path.join(od, 'blog.html'), blogHub);
+// A busca é progressiva: a seção nasce `hidden` e só aparece quando o script roda. Sem JS o
+// leitor não vê uma caixa morta, e a grade de cards — que é o que os buscadores leem — fica
+// intacta no HTML servido.
+fs.writeFileSync(path.join(od, 'blog.html'), blogHub.replace('</body>', `<script>${BUSCA_JS}</script>\n</body>`));
 
 const BLOG_PATHS = ['/blog.html', ...BLOG.map(a => `/blog/${a.slug}.html`)];
 console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
