@@ -19,13 +19,15 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v8'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v9'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
 const BLOG_I18N = require('./content/blog-i18n'); // traduções EN/ES por slug (fallback por campo p/ PT)
 let CAP_PATHS = [];                     // rotas das séries Claude (só PT), preenchidas no loop
 let CAP_LLMS = '';                      // seções das séries Claude no llms.txt
+let CG_PATHS = [];                      // rotas da série ChatGPT (só PT)
+let CG_LLMS = '';                       // seção da série ChatGPT no llms.txt
 // Landing /sistemas.html — catálogo dos SaaS do grupo. Os dados, as maquetes de
 // tela e o CSS moram em content/sistemas*.js; aqui só a montagem da página.
 // `conferirCobertura` é a trava que impede um produto novo da home de ficar de
@@ -3335,6 +3337,7 @@ const CAP_DIR = path.join(__dirname, 'content', 'claude-ai-na-pratica');
 const capHojeISO = new Date().toISOString().slice(0, 10);
 let capArtigos = [];
 let cjArtigos = [];
+let cgArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-claude';
@@ -3770,6 +3773,275 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     ));
   }
 
+
+  // ---- Série "ChatGPT AI na Prática": entra AULA POR AULA, no dia da gravação ----
+  // Decisão do Augusto em 20/09/2026: o blog só publica a aula que JÁ EXISTE em vídeo.
+  // Por isso `grade.json` traz as 22 da grade e diz quais estão no ar: um índice que
+  // listasse as 22 como se fossem artigos prontos mentiria por omissão, e a série
+  // inteira ainda vai mudar. Mesmo padrão editorial e a mesma proteção de leitura
+  // por partes das séries Claude.
+  const CG_DIR = path.join(__dirname, 'content', 'chatgpt-na-pratica');
+  const CG_LIVRO = 'https://livros.villelastay.com.br/livros/chatgpt-ai-na-pratica?utm_source=villelastay&utm_medium=blog-chatgpt';
+  const CG_CURSO = 'https://academia.villelastay.com.br/academy/marketplace?utm_source=villelastay&utm_medium=blog-chatgpt';
+  const cgDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(CG_DIR)) {
+    const cgCss = fs.readFileSync(path.join(CG_DIR, 'artigo.css'), 'utf8');
+    const cgLe = n => JSON.parse(fs.readFileSync(path.join(CG_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const cgGrade = cgLe('grade.json');
+    let cgFaq = {}, cgApoio = [];
+    try { cgFaq = cgLe('faq.json'); } catch (e) { console.warn('[chatgpt] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { cgApoio = cgLe('apoio.json'); } catch (e) { console.warn('[chatgpt] sem apoio.json — hub sairá sem material de apoio'); }
+
+    cgArtigos = fs.readdirSync(CG_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(CG_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[chatgpt] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpo = raw.replace(/^<!--META .*? -->\r?\n?/, '');
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? cgDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `chatgpt-${chave}`;
+      return {
+        ...meta, chave, slug,
+        tituloTexto: cgDestexto(meta.titulo), subtituloTexto: cgDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        // o índice público vem do "Mapa da aula" do próprio artigo, não dos <h2> agrupados
+        indice: (meta.indice || []).map(t => cgDestexto(t)),
+        faq: cgFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: artigo no ar sem aula gravada na grade é exatamente o que a decisão
+    // de 20/09/2026 proíbe. Falhar aqui é melhor que descobrir em produção.
+    const cgGravadas = cgGrade.aulas.filter(a => a.gravada).map(a => a.n);
+    for (const a of cgArtigos) {
+      if (!cgGravadas.includes(a.n)) throw new Error(`[chatgpt] aula ${a.n} tem artigo mas não está marcada como gravada na grade`);
+    }
+    if (cgArtigos.length !== cgGravadas.length) throw new Error(`[chatgpt] ${cgGravadas.length} aulas gravadas, mas ${cgArtigos.length} artigos exportados`);
+
+    const cgAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${CG_LIVRO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">📗</span>
+          <span class="cap-ad-txt"><strong>Livro ChatGPT AI na Prática</strong><span>O manual completo: prompts, Projetos, GPTs, Skills, Codex, agentes e automações. Digital e impresso.</span></span>
+          <span class="cap-ad-btn">Ver na Livraria →</span></a>`
+      : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${CG_CURSO}" target="_blank" rel="noopener">
+          <span class="cap-ad-icone">🎓</span>
+          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>Aula em vídeo, artigo e apresentação de cada módulo — em lançamento na Villela Academy.</span></span>
+          <span class="cap-ad-btn">Ver na Academy →</span></a>`;
+    const CG_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cgAnuncio('livro', true))},${JSON.stringify(cgAnuncio('curso', true))}];`);
+    const CG_CSS = `${cgCss}${CAP_CSS_EXTRA}
+.cg-estado{display:inline-block;margin-left:8px;font:700 11px/1.5 Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Lora,Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Lora,Georgia,serif;color:var(--navy);margin:34px 0 12px}
+.cg-doc dl{margin:0}
+.cg-doc dt{font-weight:700;color:var(--accent2);margin:18px 0 2px}
+.cg-doc dd{margin:0 0 6px;padding:0}
+.cg-doc blockquote{margin:22px 0;padding:16px 20px;border-left:5px solid var(--gold);background:#fff;border-radius:0 12px 12px 0}
+.cg-doc blockquote p{margin:0 0 6px}
+.cg-doc cite{display:block;font-size:14px;color:var(--muted);font-style:normal}
+.cg-doc .editorial-note{margin:0 0 26px;padding:16px 20px;background:#f2ede4;border-radius:12px;font-size:15px;line-height:1.55}`;
+
+    const cgTotal = cgGrade.total;
+    // <details> e índice do hub: as 22 da grade. Quem já está no ar vira link; o
+    // resto é texto, com o aviso de que a aula ainda não foi gravada.
+    const cgLinhaGrade = (aula, atual) => {
+      const art = cgArtigos.find(a => a.n === aula.n);
+      return art
+        ? `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> ${esc(art.tituloTexto)}</a></li>`
+        : `<li class="falta"><span class="tit"><b>${aula.n}</b> ${esc(aula.titulo)}<span class="cg-estado">em produção</span></span></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'chatgpt'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'chatgpt', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of cgArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = cgArtigos[iArt - 1], prox = cgArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao,
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: '2026-09-20', dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/chatgpt/#serie` },
+        articleSection: 'ChatGPT AI na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'ChatGPT AI na Prática', author: { '@type': 'Person', name: 'Augusto Villela' }, url: CG_LIVRO },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'ChatGPT AI na Prática', item: `${SITE_URL}/chatgpt/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/chatgpt/">ChatGPT AI na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${cgTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${cgAnuncio('livro', true)}${cgAnuncio('curso', true)}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar — a aula em vídeo e a apresentação estão no curso, e o método completo, no livro.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o texto completo está no <a href="${CG_LIVRO}">livro</a> e no <a href="${CG_CURSO}">curso</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${cgAnuncio('curso')}${cgAnuncio('livro')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/chatgpt/"><span class="rot">☰ Índice</span><span class="tit">${cgArtigos.length === 1 ? 'O artigo publicado' : `Os ${cgArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${cgGrade.aulas.map(g => cgLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do curso <strong>ChatGPT AI na Prática</strong>, de Augusto Villela.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog ChatGPT AI na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article',
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${CG_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${CG_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio do curso: glossário e frases. Vai em HTML aberto — é
+    // material de REFERÊNCIA, não o desenvolvimento da aula (esse continua na
+    // camada protegida). O aviso de atribuição das frases vem do próprio arquivo.
+    for (const doc of cgApoio) {
+      const cam = `/chatgpt/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/chatgpt/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'chatgpt', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — ChatGPT AI na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série ChatGPT AI na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>ChatGPT AI na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/chatgpt/">ChatGPT AI na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${cgAnuncio('livro')}${cgAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${CG_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /chatgpt/
+    const cgCards = cgArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}<span class="cg-estado no-ar">no ar</span></span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const cgApoioCards = cgApoio.map(d => `
+  <a class="cap-card" href="/chatgpt/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const cgNoAr = cgArtigos.length;
+    const cgHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/chatgpt/#serie`,
+      name: 'ChatGPT AI na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: cgArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      // A lista traz SÓ o que existe: ItemList com 22 itens para 2 artigos no ar
+      // seria prometer ao buscador uma página que ainda não nasceu.
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `ChatGPT AI na Prática — ${cgNoAr} ${cgNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: cgNoAr,
+      itemListElement: cgArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'chatgpt', 'index.html'), layout(
+      'ChatGPT AI na Prática — a série do curso | Villela Stay',
+      `A série ChatGPT AI na Prática, de Augusto Villela: o ecossistema da OpenAI aplicado ao trabalho — modos Chat, Work e Codex, prompts que funcionam, Projetos, agentes e automações. ${cgNoAr} ${cgNoAr === 1 ? 'artigo no ar' : 'artigos no ar'}; a série cresce a cada aula gravada.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>ChatGPT AI na Prática</h1>
+    <p>${esc(cgGrade.subtitulo)}. A série acompanha o curso e cresce a cada aula gravada: hoje ${cgNoAr === 1 ? 'há 1 artigo no ar' : `há ${cgNoAr} artigos no ar`}, dos ${cgTotal} da grade. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>ChatGPT AI na Prática</span></nav>
+  <div class="cap-faixa">${cgAnuncio('livro')}${cgAnuncio('curso')}</div>
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${cgTotal} aulas da grade. As que já foram gravadas têm artigo no ar; as demais estão em produção e entram aqui no dia em que forem gravadas.</p>
+    <ol class="cap-sumario-lista">${cgGrade.aulas.map(g => cgLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${cgCards}</div>
+  ${cgApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${cgApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${cgAnuncio('curso')}${cgAnuncio('livro')}</div>
+</div>`,
+      { caminho: '/chatgpt/', semIdiomas: true, extraHead: `<style>${CG_CSS}</style>` + cgHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    CG_PATHS = ['/chatgpt/', ...cgArtigos.map(a => a.caminho), ...cgApoio.map(d => `/chatgpt/apoio/${d.chave}.html`)];
+    CG_LLMS = `## Blog: ChatGPT AI na Prática (${cgNoAr} de ${cgTotal} artigos no ar, em português)
+
+Série do livro *ChatGPT AI na Prática*, de Augusto Villela — o ecossistema da OpenAI
+aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de
+contexto, Projetos, GPTs, Skills, Codex, agentes e automações. A série acompanha o curso
+e cresce a cada aula gravada, então hoje ${cgNoAr === 1 ? 'há 1 artigo publicado' : `há ${cgNoAr} artigos publicados`} dos ${cgTotal} da grade.
+Índice da série: ${SITE_URL}/chatgpt/
+Livro completo: ${CG_LIVRO.split('?')[0]} · Curso on-line: ${CG_CURSO.split('?')[0]}
+
+${cgArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoio/${d.chave}.html): material de referência aberto da série.`).join('\n')}
+`;
+    console.log(`Blog ChatGPT AI na Prática: hub + ${cgNoAr} de ${cgTotal} artigos + ${cgApoio.length} material(is) de apoio`);
+  }
+
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
   // llms.txt: o assistente que "lê e não renderiza" recebe título + resumo de cada artigo.
@@ -3834,6 +4106,21 @@ const cjCardsHub = LANG !== 'pt' || !cjArtigos.length ? '' : `
     </div>
   </a>`;
 
+// A série ChatGPT entra com UM card, como as outras. O texto do card diz quantos
+// artigos existem HOJE: a série cresce a cada aula gravada, e anunciar 22 com 2 no ar
+// seria prometer o que ainda não foi gravado. Arte de marca em vez da capa do curso —
+// a capa promete "22 aulas em vídeo", e só duas existem.
+const cgCardsHub = LANG !== 'pt' || !cgArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/chatgpt/">
+    <div class="blog-card-img"><div class="blog-card-arte tema-chatgpt" aria-hidden="true">${BLOG_HERO_SVG}</div></div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">💬 Série · ChatGPT</span>
+      <h3>ChatGPT na Prática</h3>
+      <p>O ecossistema da OpenAI aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de contexto, Projetos, agentes e automações — com os casos reais de uma empresa operada por IA.</p>
+      <span class="blog-card-leia">${cgArtigos.length === 1 ? 'Ver o artigo no ar' : `Ver os ${cgArtigos.length} artigos no ar`} →</span>
+    </div>
+  </a>`;
+
 const blogLd = {
   '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/blog.html#blog`,
   name: t('Blog Villela Stay — Diário de Brasília e séries Claude AI', 'Brasília Diary — Villela Stay', 'Diario de Brasília — Villela Stay'), inLanguage: HTML_LANG[LANG], publisher: { '@id': ORG_ID },
@@ -3842,21 +4129,22 @@ const blogLd = {
     ? [
         { '@type': 'Blog', '@id': `${SITE_URL}/claude/#serie`, name: 'Claude AI na Prática — a série', url: `${SITE_URL}/claude/` },
         { '@type': 'Blog', '@id': `${SITE_URL}/claude-juridico/#serie`, name: 'Claude AI na Prática Jurídica — a série', url: `${SITE_URL}/claude-juridico/` },
+        ...(cgArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/chatgpt/#serie`, name: 'ChatGPT AI na Prática — a série', url: `${SITE_URL}/chatgpt/` }] : []),
       ]
     : undefined,
 };
 
 const blogHub = layout(
-  t('Blog — Diário de Brasília e séries Claude AI | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
-  t('Três séries em um só lugar: Diário de Brasília, Claude AI na Prática e Claude AI na Prática Jurídica, com 52 artigos para profissionais do Direito.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
+  t('Blog — Diário de Brasília e as séries de IA na prática | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
+  t('Quatro séries em um só lugar: Diário de Brasília, Claude AI na Prática, Claude AI na Prática Jurídica e ChatGPT na Prática — Brasília, método e inteligência artificial aplicada ao trabalho.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
   `
 <section class="hero hero-menor blog-hero-hub">
-  <span class="tema-tag">📖 ${t('Diário de Brasília · Claude AI · IA Jurídica', 'Brasília Diary', 'Diario de Brasília')}</span>
-  <h1>${t('Três séries, uma leitura', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
-  <p><strong>${t('Brasília por quem vive aqui, Claude AI aplicado ao trabalho e Claude AI na Prática Jurídica: tecnologia, método e Direito em 52 capítulos específicos para profissionais jurídicos.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
+  <span class="tema-tag">📖 ${t('Diário de Brasília · Claude AI · IA Jurídica · ChatGPT', 'Brasília Diary', 'Diario de Brasília')}</span>
+  <h1>${t('Quatro séries, uma leitura', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
+  <p><strong>${t('Brasília por quem vive aqui, Claude AI aplicado ao trabalho, Claude AI na Prática Jurídica e ChatGPT na Prática: cidade, tecnologia, método e Direito.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
 </section>
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -4283,7 +4571,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
 
@@ -4381,6 +4669,7 @@ eles é feita por API, disponível nos planos superiores.
 - [Tour virtual 360°](${SITE_URL}/tour.html)
 
 ${CAP_LLMS}
+${CG_LLMS}
 ## Contato
 
 WhatsApp +55 61 99193-5013 · villelastay@gmail.com · SMDB Conjunto 29, Lago Sul,

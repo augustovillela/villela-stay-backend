@@ -452,6 +452,7 @@ a { color: var(--lago); text-decoration: none; }
 .tema-autismo-passo-a-passo { --t1:#0B4557; --t2:#16849E; }
 .tema-autismo-direitos-df   { --t1:#14403A; --t2:#2F7D6B; }
 .tema-claude        { --t1:#0f1a2b; --t2:#c8623c; }
+.tema-chatgpt       { --t1:#0f1a2b; --t2:#10a37f; }
 /* Porta de entrada da serie Claude AI: parente do tema da serie, um tom mais grave. */
 .tema-ia-nao-substitui-voce { --t1:#131f33; --t2:#b9603a; }
 .tema-os-especialistas-mentem { --t1:#2b1a33; --t2:#8a5a2b; }
@@ -484,6 +485,7 @@ a { color: var(--lago); text-decoration: none; }
 .tema-tag.tema-paisagismo, .tema-tag.tema-personalidades, .tema-tag.tema-containers,
 .tema-tag.tema-domo-geodesico, .tema-tag.tema-hospedagem-profissional,
 .tema-tag.tema-claude,
+.tema-tag.tema-chatgpt,
 .tema-tag.tema-autismo-passo-a-passo, .tema-tag.tema-autismo-direitos-df,
 .tema-tag.tema-ia-nao-substitui-voce,
 .tema-tag.tema-os-especialistas-mentem,

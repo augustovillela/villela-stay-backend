@@ -1,0 +1,30 @@
+{
+ "01-o-ecossistema-do-chatgpt": [
+  [
+   "Qual a diferença entre Chat, Work e Codex no ChatGPT?",
+   "São os três modos em que a experiência está organizada, e cada um resolve um tipo diferente de tarefa. O Chat resolve conversa e tarefa rápida: uma dúvida, um texto curto, uma explicação. O Work executa trabalho mais longo, de várias etapas, e termina entregando um arquivo ou um resultado acabado — o relatório pronto, a planilha montada — em vez de uma resposta na tela para copiar. O Codex é dedicado a software: repositório, terminal, teste e automação técnica. A pergunta certa deixou de ser o que perguntar e passou a ser em qual modo a tarefa deveria estar."
+  ],
+  [
+   "Como escolher o modelo do ChatGPT para cada tarefa?",
+   "Escolher o modelo é, na prática, escolher quanto esforço de raciocínio a tarefa merece: há o nível instantâneo para tarefa rápida, o médio e o alto para análise mais cuidadosa, e o extra alto e o Pro para problema difícil e trabalho longo, conforme o plano. A regra profissional é usar o modelo mais simples que execute bem a tarefa e guardar os mais avançados para decisão, arquitetura, programação complexa e análise crítica. Em vez do nome do modelo, decida por quatro critérios: qualidade (quanto custa o erro), latência (quanto tempo dá para esperar), custo (o consumo do plano, que é finito) e risco (o que acontece se sair errado e ninguém conferir)."
+  ],
+  [
+   "O Modo Voz do ChatGPT é seguro para assunto de trabalho?",
+   "O Modo Voz é uma conversa falada de ida e volta, e vira ferramenta de trabalho porque o conteúdo continua dentro do chat, em texto, para consultar depois. Mas tem limites que precisam ser considerados: os clipes das experiências Live e Avançada ficam associados ao histórico e, segundo a OpenAI, são normalmente retidos por cerca de trinta dias; não são usados para treinamento por padrão, a menos que o compartilhamento seja habilitado explicitamente, e as transcrições podem seguir configurações separadas em Controles de dados. Informação médica, jurídica, financeira, data e qualquer outro dado importante precisam ser confirmados."
+  ]
+ ],
+ "02-prompts-que-funcionam": [
+  [
+   "Quais são os sete blocos de um prompt profissional?",
+   "Função (o papel que o modelo assume), objetivo (o resultado que se quer), contexto (a situação em volta), regras (o que ele nunca pode fazer), estilo (o tom), formato (a forma da saída) e tarefa (o que deve ser feito agora). Quando um desses blocos falta, ele não fica vazio: a inteligência artificial preenche a lacuna com uma suposição, e a suposição dela pode ser exatamente o contrário do que você faria. É por isso que um pedido como \"faça um anúncio\" devolve um anúncio genérico — a ferramenta respondeu exatamente o que foi perguntado."
+  ],
+  [
+   "Prompt longo funciona melhor do que prompt curto?",
+   "Não. A eficácia não vem do número de palavras, e sim da exatidão das restrições: um prompt de três páginas cheio de adjetivo rende menos que dez linhas com função, regras e formato bem definidos. O que decide o resultado é a engenharia de contexto — organizar contexto, conhecimento, memória e workflow —, não a criatividade da frase. Um caso particular é a persona: transformar o ChatGPT em um especialista que existe de verdade no seu trabalho melhora mais o resultado do que reescrever a pergunta, porque persona genérica devolve resposta genérica."
+  ],
+  [
+   "Em que situações a revisão humana é obrigatória?",
+   "A inteligência artificial repete padrão com consistência, mas não responde por nada do que produz. A revisão é obrigatória em dinheiro (valor, preço, cobrança, pagamento, número que vai para relatório), em dados pessoais (errar ali constrange e, no Brasil, tem lei em cima), em contrato (onde uma palavra trocada muda obrigação), em comunicação externa (tudo o que sai com o seu nome: mensagem para cliente, proposta, publicação) e em qualquer decisão que gere consequência, mesmo que pareça pequena. A regra é uma só: a inteligência artificial prepara, a pessoa confere, a pessoa envia."
+  ]
+ ]
+}
