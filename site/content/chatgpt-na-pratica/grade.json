@@ -8,154 +8,176 @@
    "titulo": "O ecossistema do ChatGPT: Chat, Work e Codex",
    "sub": "O que o ChatGPT faz além de conversar, os três modos de trabalho, a escolha pelo esforço de raciocínio e o Modo Voz como interface de comando.",
    "capitulos": "Capítulo 1",
-   "gravada": true
+   "gravada": true,
+   "tem_artigo": true
   },
   {
    "n": 2,
    "titulo": "Prompts que funcionam: função, regras e contexto",
    "sub": "Como o modelo interpreta um pedido, os sete blocos de um prompt profissional, o uso de personas e por que engenharia de contexto vale mais que criatividade.",
    "capitulos": "Capítulos 2 e 3",
-   "gravada": true
+   "gravada": true,
+   "tem_artigo": true
   },
   {
    "n": 3,
    "titulo": "Tokens, janela de contexto e o documento de calibração",
    "sub": "O que é um token, como ele vira custo, limite e velocidade, quando usar cada nível de raciocínio e o documento que deixa as respostas consistentes.",
    "capitulos": "Capítulo 4",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": true
   },
   {
    "n": 4,
    "titulo": "Projetos, Canvas e Skills: o conhecimento organizado",
    "sub": "A diferença entre Projeto, Skill, template, plugin e script, o Canvas como mesa de edição e a arrumação de pastas e bases que sustenta tudo isso.",
    "capitulos": "Capítulos 4, 5 e 13",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": true
   },
   {
    "n": 5,
    "titulo": "MCP, APIs e webhooks: a IA fora da janela de chat",
    "sub": "O protocolo que liga a IA a sistemas, o tool use, os conceitos de endpoint, request, chave e saída estruturada, e o gatilho que avisa em tempo real.",
    "capitulos": "Capítulos 7, 8 e 15",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": true
   },
   {
    "n": 6,
    "titulo": "Make, n8n e a governança das conexões",
    "sub": "Cenários, módulos, gatilhos e nodes, a diferença entre a plataforma visual e a self-hosted, e os controles de acesso, auditoria e limite que toda conexão exige.",
    "capitulos": "Capítulos 10, 15 e 17, e a seção 12.1",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": true
   },
   {
    "n": 7,
    "titulo": "GPTs, Skills e os agentes de cada área da empresa",
    "sub": "Como construir e auditar um GPT, a diferença entre GPT, Skill e agente, e os doze agentes empresariais do comercial ao jurídico coordenados num ecossistema.",
    "capitulos": "Capítulos 10 e 11",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": true
   },
   {
    "n": 8,
    "titulo": "Codex: programar conversando, com Git por baixo",
    "sub": "O agente de desenvolvimento da OpenAI no terminal, no aplicativo e na IDE, o que é vibe coding com especificação e por que o Git vem antes de tudo.",
    "capitulos": "Capítulos 6 e 9",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": true
   },
   {
    "n": 9,
    "titulo": "Instalação do Codex e a chave que não pode vazar",
    "sub": "Pré-requisitos, instalação pela rota npm, a pasta certa para abrir o terminal, login pela assinatura ou por chave de API e o cofre onde a chave mora.",
    "capitulos": "Capítulo 9",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": true
   },
   {
    "n": 10,
    "titulo": "Comandos do Codex e o AGENTS.md do projeto",
    "sub": "Os seis comandos que importam, a escolha de modelo e de permissão, e o arquivo que transforma as regras da casa em instrução permanente do projeto.",
    "capitulos": "Capítulo 9",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 11,
    "titulo": "Mudanças pequenas, diff revisado e integração de sistemas",
    "sub": "O ciclo de pedir pouco, salvar ponto, ler o diff e rodar teste, o pedido em oito partes e as três disciplinas que evitam o emaranhado de integrações.",
    "capitulos": "Capítulo 9",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 12,
    "titulo": "Atendimento por WhatsApp: Cloud API, templates e aprovação humana",
    "sub": "A arquitetura do gateway à fila, os seis cenários do Make, os templates aprovados pela Meta, o consentimento e a lista do que exige decisão de gente.",
    "capitulos": "Capítulo 12",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 13,
    "titulo": "Direct do Instagram: contexto do story e pontuação de leads",
    "sub": "Os eventos que o agente deve receber, o cadastro que liga cada story à propriedade e à oferta, os agentes recomendados e a régua de zero a cem.",
    "capitulos": "Capítulo 12",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 14,
    "titulo": "Instagram no Make: CRM, transferência humana e painel",
    "sub": "Os seis cenários que sustentam o Direct, o pós-venda dentro e fora da janela, os controles contra resposta duplicada e o painel que liga story a receita.",
    "capitulos": "Capítulo 12",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 15,
    "titulo": "ChatGPT Work: do objetivo ao entregável",
    "sub": "O que é um entregável, os quatro movimentos do Work, quando usar Chat, Work ou Codex e como escrever um pedido com os verbos em sequência.",
    "capitulos": "Capítulo 16",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 16,
    "titulo": "Projetos, Skills, Apps e arquivos editáveis no Work",
    "sub": "Instruções permanentes, memória isolada do projeto, a diferença entre Skill, Plugin e App, e por que planilha com fórmula viva muda o resultado.",
    "capitulos": "Capítulo 16",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 17,
    "titulo": "Tarefas agendadas, workspaces e vibe working",
    "sub": "Lembretes, briefings e monitoramentos com critério numérico, o controle de modelos, acesso e retenção em equipe, e as competências que substituem o botão.",
    "capitulos": "Capítulo 16",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 18,
    "titulo": "Empresas operadas por IA: hotelaria, direito, imobiliário e marketing",
    "sub": "Mapear processos antes de automatizar, rotinas diárias, semanais e mensais, coordenação de agentes e o que já funciona em cinco setores.",
    "capitulos": "Capítulos 14 e 18",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 19,
    "titulo": "As Skills que valem instalar e os repositórios confiáveis",
    "sub": "O kit inicial de sete Skills, os repositórios oficiais e comunitários, o que nunca instalar e as sete conferências antes de baixar qualquer pacote.",
    "capitulos": "Capítulo 21",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 20,
    "titulo": "Laço agêntico, coleta de dados e memória do ChatGPT",
    "sub": "O ciclo que só para quando bate o critério de pronto, as extensões de coleta e seus limites, servidores MCP por plano e a memória que personaliza tudo.",
    "capitulos": "Capítulo 21",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 21,
    "titulo": "As plataformas de IA e as cinco superfícies do ChatGPT",
    "sub": "Quem é forte em quê entre ChatGPT, Claude, Gemini, Copilot e os especializados, e a revisão das cinco superfícies com as melhores práticas de cada uma.",
    "capitulos": "Capítulos 19 e 20",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   },
   {
    "n": 22,
    "titulo": "AI Operator e empresas AI-native: o próximo passo",
    "sub": "A profissão que nasce de configurar agentes e supervisionar automações, o líder que constrói sem depender de TI e o plano de um problema real por semana.",
    "capitulos": "Capítulos 18 e 22",
-   "gravada": false
+   "gravada": false,
+   "tem_artigo": false
   }
  ]
 }

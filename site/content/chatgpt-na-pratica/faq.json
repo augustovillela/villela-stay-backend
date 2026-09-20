@@ -26,5 +26,103 @@
    "Em que situações a revisão humana é obrigatória?",
    "A inteligência artificial repete padrão com consistência, mas não responde por nada do que produz. A revisão é obrigatória em dinheiro (valor, preço, cobrança, pagamento, número que vai para relatório), em dados pessoais (errar ali constrange e, no Brasil, tem lei em cima), em contrato (onde uma palavra trocada muda obrigação), em comunicação externa (tudo o que sai com o seu nome: mensagem para cliente, proposta, publicação) e em qualquer decisão que gere consequência, mesmo que pareça pequena. A regra é uma só: a inteligência artificial prepara, a pessoa confere, a pessoa envia."
   ]
+ ],
+ "03-tokens-e-contexto": [
+  [
+   "O que é um token e por que ele importa?",
+   "Token é a unidade básica com que a inteligência artificial lê e escreve texto: o modelo não enxerga palavras como a gente, ele quebra tudo em pedacinhos, e cada pedacinho é um token. Na média, um token equivale a cerca de três quartos de uma palavra — em português, quase uma palavra por token —, e espaço e pontuação também contam. Ele importa porque entra em três coisas ao mesmo tempo: custo (paga-se o token de entrada e o de saída), janela de contexto (o teto do que o modelo considera de uma vez) e velocidade (mais token, resposta mais lenta)."
+  ],
+  [
+   "A janela de contexto é a memória do ChatGPT?",
+   "Não. A janela de contexto é o teto de informação que o modelo consegue considerar de uma vez, e não é memória permanente. Três pontos sobre ela: o limite não é único — muda conforme o modelo, o plano e a ferramenta; conversa enorme perde foco e começa a esquecer; e o jeito de trabalhar com isso é por etapas, pedindo um resumo de continuidade quando a conversa cresce, em vez de arrastar tudo para a frente."
+  ],
+  [
+   "O que é o documento de calibração?",
+   "É um documento único que reúne perfil, regras, formatos, critérios e contexto do negócio, e serve para as respostas pararem de mudar de tom a cada conversa nova. No perfil e nas regras entram idioma, tom, a instrução de não inventar e a de declarar incerteza. Nos formatos e critérios, coisas como tabela, etapas numeradas e exigência de fonte primária. No contexto do negócio, produtos, políticas, limites e quem aprova o quê."
+  ]
+ ],
+ "04-conhecimento-organizado": [
+  [
+   "Qual a diferença entre Skill e script?",
+   "A skill descreve o raciocínio e o fluxo em linguagem natural — identidade, objetivo, regras, estilo, fluxo e limites —, ensinando um procedimento reutilizável. O script executa mecanicamente uma parte desse fluxo: é determinístico e repetível, sem margem de interpretação. Uma skill pode conter um ou vários scripts. É a confusão mais comum entre os dois, e a distinção prática é essa: uma ensina o procedimento, a outra executa a parte previsível dele."
+  ],
+  [
+   "O que vale a pena subir num Projeto do ChatGPT?",
+   "As regras da casa, para deixarem de ser recoladas a cada conversa: regras da empresa, tom de voz, documentos, a descrição dos produtos, os prompts fixos e os templates com estrutura sempre igual, além de uma Skill por área — jurídica, hotelaria, marketing, financeiro. A recomendação é um Projeto por negócio, livro, cliente ou iniciativa, sem misturar material de pessoas ou empresas que devem ficar separadas; para assunto sigiloso, prefira a memória limitada ao projeto."
+  ],
+  [
+   "GPT ou Skill: qual usar?",
+   "Os dois servem a coisas diferentes e se combinam. O GPT dá identidade e experiência próprias — nome, descrição, instruções, conhecimento, capacidades e ações. A Skill padroniza um procedimento: um fluxo reutilizável, com exemplos, recursos e, se for o caso, código. Juntos, formam um especialista que executa vários procedimentos."
+  ]
+ ],
+ "05-mcp-apis-e-webhooks": [
+  [
+   "O que é MCP e para que ele serve?",
+   "MCP é o protocolo de contexto de modelo: um protocolo aberto de conexão da inteligência artificial a ferramentas e dados. Protocolo é acordo — um padrão único no lugar de uma gambiarra por sistema. Sem ele, a inteligência artificial só conversa; com ele, ela também acessa sistemas e executa ações. Dá para ligar armazenamento como o Google Drive, mensageiro como o Slack, repositório de código, bancos de dados, cadastro de clientes e o sistema interno da empresa."
+  ],
+  [
+   "Qual a diferença entre API e webhook?",
+   "A direção. Na API, você busca o dado: pergunta de novo, de tempos em tempos. No webhook — o gatilho em tempo real —, o sistema avisa o outro assim que algo acontece e já manda o dado na hora. Os eventos típicos são mensagem nova, reserva, pagamento, formulário e lead. Buscar é perguntar de novo; ser avisado é receber na hora."
+  ],
+  [
+   "Que cuidado tomar ao conectar a IA aos sistemas da empresa?",
+   "Permissão mínima: toda integração recebe a menor permissão que resolve a tarefa, e nada além disso. Ler o calendário não autoriza apagar evento; consultar um arquivo não é abrir o computador inteiro. O hábito são três perguntas antes de aceitar qualquer conexão — o que essa ferramenta precisa fazer para o meu caso funcionar, o que ela está pedindo além disso, e o que já está concedido e precisa ser revisto. No caminho completo do pedido, ação sensível pede aprovação humana, registro e plano de falha."
+  ]
+ ],
+ "06-make-e-n8n": [
+  [
+   "Make ou n8n: qual escolher?",
+   "A comparação cabe em três linhas. O Make é visual e simples, roda na nuvem e é bom para pequenas e médias empresas e para protótipos — nele a automação inteira é um cenário, cada etapa é um módulo e o primeiro módulo é o gatilho. O n8n é mais técnico e personalizável, com fluxos chamados workflows e etapas chamadas nodes, código aberto e opção de instalar no próprio servidor, o que dá controle, privacidade e custo diferentes. A recomendação é começar na nuvem, com um modelo pronto, e crescer depois."
+  ],
+  [
+   "Qual é a divisão de trabalho entre o ChatGPT e a plataforma de automação?",
+   "O ChatGPT interpreta, raciocina e produz a saída. A plataforma de automação — Make ou n8n — conecta os sistemas, move os dados e dispara as ações. Essa divisão evita a maior parte da confusão: sem a infraestrutura de automação, a inteligência artificial fica presa a conversas isoladas, resolvendo um problema hoje e recomeçando do zero amanhã."
+  ],
+  [
+   "O que toda conexão externa precisa ter?",
+   "São cinco obrigações: autenticação segura, menor privilégio, registro do que foi feito, tratamento de erro e revogação de acesso quando a conexão não serve mais. Além disso, quatro controles sustentam a governança — acesso por função (quem vê dado, quem altera automação, quem toca no financeiro), proteção de dados (criptografia, autenticação multifator, backup, monitoramento e segmentação do que é sensível), auditoria contínua (qual agente executou o quê, quando e com qual dado) e limites de autonomia, com aprovação humana nas ações de consequência e mecanismo de reversão."
+  ]
+ ],
+ "07-agentes-por-area": [
+  [
+   "Qual a diferença entre GPT, Skill e agente?",
+   "São três camadas. O GPT dá identidade, conhecimento e capacidades. A Skill padroniza um procedimento, para sair sempre igual. O agente combina objetivo, ferramentas, memória e regras para executar em várias etapas: ele não conversa sobre o processo, percorre o processo, do gatilho até a entrega. Um chat responde uma pergunta por vez e quem liga uma resposta na outra é você; o agente só rende sobre processo mapeado e informação organizada."
+  ],
+  [
+   "Como auditar um GPT ou uma Skill que já está em uso?",
+   "Auditar não é usar: é provocar de propósito, com seis entradas de teste — entrada comum, caso extremo, informação incompleta, instrução maliciosa, falha de ferramenta e uma ação que não pode rodar sem aprovação de uma pessoa. Junto disso vem o registro de versão: o que mudou, quem alterou e por quê, quais testes passaram depois da mudança e qual foi o resultado em produção, no uso real. Sem esse registro, não se sabe se a mudança melhorou alguma coisa."
+  ],
+  [
+   "Por onde começar a montar os agentes de uma empresa?",
+   "Pelo retorno mais rápido: comercial, marketing, financeiro e operacional; depois concierge, recursos humanos e jurídico. O comercial costuma pagar a conta primeiro, porque trabalha lead por temperatura — frio recebe conteúdo leve e sem pressão, morno recebe prova social, quente recebe link de pagamento — e porque cuida do follow-up: a maioria das vendas fecha entre o segundo e o quarto contato, que é exatamente onde a maioria das empresas desiste."
+  ]
+ ],
+ "08-codex": [
+  [
+   "O que é o Codex?",
+   "É o agente de desenvolvimento da OpenAI: ele lê o projeto, edita arquivos, executa comandos, roda testes, revisa as alterações e implementa tarefas. Não exige sintaxe — exige especificação. Ele aparece em quatro portas de entrada, que são a mesma coisa e não quatro produtos: o aplicativo do ChatGPT, a extensão do editor de código, a nuvem e a linha de comando."
+  ],
+  [
+   "Qual é o fluxo profissional de trabalho com o Codex?",
+   "Seis passos, nessa ordem: planejar, criar o ponto de retorno no histórico, executar, testar, revisar o que mudou e só então aceitar. Aceitar é o último passo, nunca o primeiro. Na revisão, o diff mostra o que mudou — acrescentado em verde, removido em vermelho, e quais arquivos foram criados, modificados ou excluídos —, e a conferência é se está correto, se nada sumiu e se mexeu só no que foi pedido. Depois de olhar há três saídas: manter, desfazer ou selecionar parte das mudanças. E olhar não é testar: inspeção visual não substitui teste."
+  ],
+  [
+   "Para que serve o Git nesse trabalho?",
+   "O Git guarda o histórico das alterações de um projeto: quem alterou, quando, o que foi alterado e por quê — o fim do \"contrato final, final dois, final agora vai\". Na prática ele permite identificar, comparar, auditar, reverter e documentar: se uma automação quebrou, volta-se à versão estável. O branch é a linha paralela onde se testa a novidade sem afetar o sistema principal. O Git registra a alteração no seu computador; o GitHub centraliza e coordena os projetos, que é onde o time se encontra."
+  ]
+ ],
+ "09-instalar-o-codex": [
+  [
+   "O que preciso ter instalado antes do Codex?",
+   "Três peças. A primeira é o sistema — Windows, macOS ou Linux, qualquer máquina de trabalho serve. A segunda é o Git, baixado em git-scm.com, com as opções padrão: é o histórico de versões de uma pasta inteira, e sem ele uma alteração ruim é irreversível. A terceira é o Node.js, baixado em nodejs.org, sempre a versão LTS. As duas últimas são onde as pessoas erram. Antes da rota técnica, vale conferir a documentação oficial: se houver um instalador pronto para o seu sistema, ele é o caminho mais curto e o resultado é o mesmo."
+  ],
+  [
+   "Assinatura do ChatGPT ou chave de API?",
+   "São dois caminhos de identificação, e a diferença prática está no bolso. Pela conta ChatGPT, o uso é coberto pela assinatura, dentro do plano. Pela chave de API, é cobrado por consumo, na conta de desenvolvedor. Na dúvida, use a assinatura. O login abre o navegador numa página oficial da OpenAI — a senha é digitada no site oficial, nunca dentro do terminal — e, feito o login, o terminal reassume já reconhecendo você."
+  ],
+  [
+   "Onde a chave de API não pode ficar?",
+   "Em quatro lugares, que são por onde as chaves vazam de verdade: arquivo público (qualquer arquivo que possa sair da sua mão), prompt, print com a chave visível — print com a chave visível é chave vazada — e repositório público, que é varrido por robôs o dia inteiro. A chave mora fora do projeto: numa variável de ambiente, que é o cofre do próprio sistema operacional, onde o programa a lê por um apelido e ela não fica em arquivo, ou num cofre de segredos, com controle de acesso e registro. A regra mental é que uma chave de API é a chave da sua casa, não o seu endereço."
+  ]
  ]
 }

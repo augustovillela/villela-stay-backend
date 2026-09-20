@@ -19,7 +19,7 @@ const SITE_URL = 'https://villelastay.com.br';
 const PWA = {
   themeColor: '#1B2A4A',       // navy do Grupo Villela Stay (barra do app)
   backgroundColor: '#F8F9FA',  // ice (splash screen)
-  cacheVersion: 'vstay-v9'     // bump para invalidar o cache do Service Worker
+  cacheVersion: 'vstay-v10'     // bump para invalidar o cache do Service Worker
 };
 const listings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'listings.json'), 'utf8').replace(/^﻿/, ''));
 const BLOG = require('./content/blog'); // escopo de módulo (usado no corpo e no sitemap, fora do loop de idiomas)
@@ -3775,11 +3775,12 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 
 
   // ---- Série "ChatGPT AI na Prática": entra AULA POR AULA, no dia da gravação ----
-  // Decisão do Augusto em 20/09/2026: o blog só publica a aula que JÁ EXISTE em vídeo.
-  // Por isso `grade.json` traz as 22 da grade e diz quais estão no ar: um índice que
-  // listasse as 22 como se fossem artigos prontos mentiria por omissão, e a série
-  // inteira ainda vai mudar. Mesmo padrão editorial e a mesma proteção de leitura
-  // por partes das séries Claude.
+  // Decisão do Augusto em 20/09/2026 (revista no mesmo dia): a porta é o MATERIAL,
+  // não o vídeo — o artigo vai ao blog assim que fica pronto, com a videoaula ainda
+  // em produção. São TRÊS estados, e o selo diz qual: artigo + vídeo no ar, artigo no
+  // ar com vídeo em produção, e aula ainda sem material. `grade.json` traz as 22 e o
+  // estado de cada uma: um índice que listasse as 22 como prontas mentiria por
+  // omissão. Mesmo padrão editorial e a mesma proteção de leitura das séries Claude.
   const CG_DIR = path.join(__dirname, 'content', 'chatgpt-na-pratica');
   const CG_LIVRO = 'https://livros.villelastay.com.br/livros/chatgpt-ai-na-pratica?utm_source=villelastay&utm_medium=blog-chatgpt';
   const CG_CURSO = 'https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica?utm_source=villelastay&utm_medium=blog-chatgpt';
@@ -3831,13 +3832,20 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
       };
     });
 
-    // Trava: artigo no ar sem aula gravada na grade é exatamente o que a decisão
-    // de 20/09/2026 proíbe. Falhar aqui é melhor que descobrir em produção.
-    const cgGravadas = cgGrade.aulas.filter(a => a.gravada).map(a => a.n);
+    // Trava: casca vazia não vai ao ar. O que se cobra agora é MATERIAL — corpo,
+    // resumo e índice —, não vídeo. Falhar aqui é melhor que descobrir em produção.
+    const cgComArtigo = cgGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
     for (const a of cgArtigos) {
-      if (!cgGravadas.includes(a.n)) throw new Error(`[chatgpt] aula ${a.n} tem artigo mas não está marcada como gravada na grade`);
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[chatgpt] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!cgComArtigo.includes(a.n)) throw new Error(`[chatgpt] aula ${a.n} tem artigo mas a grade diz que não`);
     }
-    if (cgArtigos.length !== cgGravadas.length) throw new Error(`[chatgpt] ${cgGravadas.length} aulas gravadas, mas ${cgArtigos.length} artigos exportados`);
+    if (cgArtigos.length !== cgComArtigo.length) throw new Error(`[chatgpt] grade diz ${cgComArtigo.length} aulas com artigo, mas há ${cgArtigos.length} artigos exportados`);
+    // FAQ é escrita à mão a cada aula nova. Não derruba o build (resumo e índice
+    // já sustentam a camada pública), mas grita o nome de quem ficou sem.
+    const cgSemFaq = cgArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (cgSemFaq.length) console.warn(`[chatgpt] SEM perguntas frequentes: ${cgSemFaq.join(', ')} — escrever em content/chatgpt-na-pratica/faq.json`);
 
     const cgAnuncio = (qual, min = false) => qual === 'livro'
       ? `<a class="cap-ad cap-ad-livro${min ? ' cap-ad-min' : ''}" href="${CG_LIVRO}" target="_blank" rel="noopener">
@@ -3846,11 +3854,18 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
           <span class="cap-ad-btn">Ver na Livraria →</span></a>`
       : `<a class="cap-ad cap-ad-curso${min ? ' cap-ad-min' : ''}" href="${CG_CURSO}" target="_blank" rel="noopener">
           <span class="cap-ad-icone">🎓</span>
-          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>Aula em vídeo, artigo e apresentação de cada módulo. ${cgArtigos.length} de ${cgGrade.total} aulas já no ar; as demais entram ao longo das próximas semanas.</span></span>
+          <span class="cap-ad-txt"><strong>Curso ChatGPT AI na Prática</strong><span>${cgArtigos.length} dos ${cgGrade.total} módulos já no ar, com artigo e apresentação; ${cgArtigos.filter(a => a.gravada).length} deles com a videoaula publicada e os outros em produção.</span></span>
           <span class="cap-ad-btn">Ver o curso →</span></a>`;
     const CG_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(cgAnuncio('livro', true))},${JSON.stringify(cgAnuncio('curso', true))}];`);
     const CG_CSS = `${cgCss}${CAP_CSS_EXTRA}
-.cg-estado{display:inline-block;margin-left:8px;font:700 11px/1.5 Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+/* No índice o selo vai para a PRÓPRIA LINHA: em coluna estreita, o selo ao lado
+   espremia o título em duas ou três palavras por linha. */
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:wrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
 .cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
 .cap-sumario-lista li.falta{color:#7a746b}
 .cap-sumario-lista li.falta span.tit{display:flex;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
@@ -3874,9 +3889,9 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     // resto é texto, com o aviso de que a aula ainda não foi gravada.
     const cgLinhaGrade = (aula, atual) => {
       const art = cgArtigos.find(a => a.n === aula.n);
-      return art
-        ? `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> ${esc(art.tituloTexto)}</a></li>`
-        : `<li class="falta"><span class="tit"><b>${aula.n}</b> ${esc(aula.titulo)}<span class="cg-estado">em produção</span></span></li>`;
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> ${esc(aula.titulo)}<span class="cg-estado">em produção</span></span></li>`;
+      const selo = aula.gravada ? '' : '<span class="cg-estado">videoaula em produção</span>';
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}${selo}</span></a></li>`;
     };
 
     fs.mkdirSync(path.join(od, 'chatgpt'), { recursive: true });
@@ -3979,7 +3994,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     // hub da série: /chatgpt/
     const cgCards = cgArtigos.map(a => `
   <a class="cap-card" href="${a.caminho}">
-    <span class="n">Aula ${a.n}<span class="cg-estado no-ar">no ar</span></span>
+    <span class="n">Aula ${a.n}${a.gravada ? '<span class="cg-estado no-ar">artigo e vídeo no ar</span>' : '<span class="cg-estado">artigo no ar · videoaula em produção</span>'}</span>
     <h3>${esc(a.tituloTexto)}</h3>
     <p>${esc(a.subtituloTexto)}</p>
     <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
@@ -3991,6 +4006,7 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
   </a>`).join('\n');
     const cgNoAr = cgArtigos.length;
+    const cgComVideo = cgArtigos.filter(a => a.gravada).length;
     const cgHubLd = [{
       '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/chatgpt/#serie`,
       name: 'ChatGPT AI na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
@@ -4005,18 +4021,18 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
     }];
     fs.writeFileSync(path.join(od, 'chatgpt', 'index.html'), layout(
       'ChatGPT AI na Prática — a série do curso | Villela Stay',
-      `A série ChatGPT AI na Prática, de Augusto Villela: o ecossistema da OpenAI aplicado ao trabalho — modos Chat, Work e Codex, prompts que funcionam, Projetos, agentes e automações. ${cgNoAr} ${cgNoAr === 1 ? 'artigo no ar' : 'artigos no ar'}; a série cresce a cada aula gravada.`,
+      `A série ChatGPT AI na Prática, de Augusto Villela: o ecossistema da OpenAI aplicado ao trabalho — modos Chat, Work e Codex, prompts que funcionam, Projetos, MCP, agentes, automações e Codex. ${cgNoAr} ${cgNoAr === 1 ? 'artigo no ar' : 'artigos no ar'} dos ${cgTotal} da grade.`,
       `
 <div class="cap">
   <section class="cap-hub-hero">
     <h1>ChatGPT AI na Prática</h1>
-    <p>${esc(cgGrade.subtitulo)}. A série acompanha o curso e cresce a cada aula gravada: hoje ${cgNoAr === 1 ? 'há 1 artigo no ar' : `há ${cgNoAr} artigos no ar`}, dos ${cgTotal} da grade. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
+    <p>${esc(cgGrade.subtitulo)}. A série acompanha o curso e cresce a cada material pronto: hoje ${cgNoAr === 1 ? 'há 1 artigo no ar' : `há ${cgNoAr} artigos no ar`}, dos ${cgTotal} da grade — ${cgComVideo} com a videoaula publicada e os demais com o vídeo em produção. Cada artigo abre com resumo e perguntas frequentes; o método inteiro está no livro e no curso.</p>
   </section>
   <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>ChatGPT AI na Prática</span></nav>
   <div class="cap-faixa">${cgAnuncio('livro')}${cgAnuncio('curso')}</div>
   <section class="cap-sumario-hub">
     <h2>Índice da série</h2>
-    <p>As ${cgTotal} aulas da grade. As que já foram gravadas têm artigo no ar; as demais estão em produção e entram aqui no dia em que forem gravadas.</p>
+    <p>As ${cgTotal} aulas da grade. A aula entra aqui assim que o material dela fica pronto — antes mesmo da videoaula, e nesse caso o selo diz. As demais estão em produção.</p>
     <ol class="cap-sumario-lista">${cgGrade.aulas.map(g => cgLinhaGrade(g)).join('')}</ol>
   </section>
   <div class="cap-grade">${cgCards}</div>
@@ -4031,15 +4047,16 @@ if (LANG === 'pt' && fs.existsSync(CAP_DIR)) {
 
 Série do livro *ChatGPT AI na Prática*, de Augusto Villela — o ecossistema da OpenAI
 aplicado ao trabalho: os modos Chat, Work e Codex, prompts que funcionam, engenharia de
-contexto, Projetos, GPTs, Skills, Codex, agentes e automações. A série acompanha o curso
-e cresce a cada aula gravada, então hoje ${cgNoAr === 1 ? 'há 1 artigo publicado' : `há ${cgNoAr} artigos publicados`} dos ${cgTotal} da grade.
+contexto, Projetos, GPTs, Skills, MCP, Codex, agentes e automações. A série acompanha o
+curso e cresce a cada material pronto: hoje ${cgNoAr === 1 ? 'há 1 artigo publicado' : `há ${cgNoAr} artigos publicados`} dos ${cgTotal} da grade,
+${cgComVideo} deles com a videoaula já publicada e os demais com o vídeo em produção.
 Índice da série: ${SITE_URL}/chatgpt/
 Livro completo: ${CG_LIVRO.split('?')[0]} · Curso on-line: ${CG_CURSO.split('?')[0]}
 
-${cgArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+${cgArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}${a.gravada ? '' : ' (artigo no ar; videoaula em produção)'}`).join('\n')}
 ${cgApoio.map(d => `- [${d.titulo} (material de apoio)](${SITE_URL}/chatgpt/apoio/${d.chave}.html): material de referência aberto da série.`).join('\n')}
 `;
-    console.log(`Blog ChatGPT AI na Prática: hub + ${cgNoAr} de ${cgTotal} artigos + ${cgApoio.length} material(is) de apoio`);
+    console.log(`Blog ChatGPT AI na Prática: hub + ${cgNoAr} de ${cgTotal} artigos (${cgComVideo} com vídeo) + ${cgApoio.length} material(is) de apoio`);
   }
 
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
