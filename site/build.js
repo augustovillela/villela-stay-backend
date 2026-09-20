@@ -4280,7 +4280,7 @@ const buscaHtml = `
   <form class="blog-busca" role="search" onsubmit="return false">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
     <label for="blog-busca-campo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">${t('Buscar nos artigos do blog', 'Search the blog articles', 'Buscar en los artículos del blog')}</label>
-    <input id="blog-busca-campo" type="search" autocomplete="off" spellcheck="false" placeholder="${esc(t(`Buscar nos ${buscaItens.length} artigos: tokens, contrato, Cerrado, agentes…`, `Search ${buscaItens.length} articles: Brasília, architecture, food…`, `Buscar en ${buscaItens.length} artículos: Brasília, arquitectura, comida…`))}">
+    <input id="blog-busca-campo" type="search" autocomplete="off" spellcheck="false" placeholder="${esc(t('Buscar no blog: tokens, contrato, Cerrado, agentes…', 'Search the blog: Brasília, architecture, food…', 'Buscar en el blog: Brasília, arquitectura, comida…'))}">
     <button type="button" class="blog-busca-limpar" hidden>${t('Limpar', 'Clear', 'Limpiar')}</button>
   </form>
   <p class="blog-busca-conta" id="blog-busca-conta" role="status" aria-live="polite"></p>
@@ -4301,14 +4301,19 @@ const blogLd = {
     : undefined,
 };
 
+// ⚠️ O cabeçalho ANUNCIA o blog e não conta nada. O texto antigo prometia "quatro séries"
+// somando o "Diário de Brasília" às três dos livros — mas o Diário não é série: são artigos
+// avulsos, e parte deles nem é sobre Brasília. Número no cabeçalho envelhece mal e passa a
+// mentir sozinho a cada série ou artigo que entra; quem conta é o card de cada série, que
+// sabe o próprio tamanho. Decisão do Augusto em 20/09/2026: só anunciar, sem número.
 const blogHub = layout(
-  t('Blog — Diário de Brasília e as séries de IA na prática | Villela Stay', 'Blog — Brasília Diary | Villela Stay', 'Blog — Diario de Brasília | Villela Stay'),
-  t('Quatro séries em um só lugar: Diário de Brasília, Claude AI na Prática, Claude AI na Prática Jurídica e ChatGPT AI na Prática — Brasília, método e inteligência artificial aplicada ao trabalho.', "Architecture, food, itineraries, landscaping and the history of Brasília — the host's diary for those who love (or are about to discover) the capital. By Villela Stay.", 'Arquitectura, gastronomía, itinerarios, paisajismo e historia de Brasília — el diario del anfitrión para quien ama (o va a conocer) la capital. Contenido de Villela Stay.'),
+  t('Blog — Brasília, hospedagem e IA na prática | Villela Stay', 'Blog — Brasília, hospitality and AI at work | Villela Stay', 'Blog — Brasília, alojamiento e IA en la práctica | Villela Stay'),
+  t('O blog da Villela Stay: arquitetura, gastronomia, roteiros e paisagismo de Brasília, hospedagem profissional, gestão e inteligência artificial aplicada ao trabalho e ao Direito.', "The Villela Stay blog: architecture, food, itineraries and landscaping in Brasília, professional hospitality, management and artificial intelligence applied to work.", 'El blog de Villela Stay: arquitectura, gastronomía, itinerarios y paisajismo de Brasília, alojamiento profesional, gestión e inteligencia artificial aplicada al trabajo.'),
   `
 <section class="hero hero-menor blog-hero-hub">
-  <span class="tema-tag">📖 ${t('Diário de Brasília · Claude AI · IA Jurídica · ChatGPT', 'Brasília Diary', 'Diario de Brasília')}</span>
-  <h1>${t('Quatro séries, uma leitura', 'Brasília by those who live here', 'Brasília por quien vive aquí')}</h1>
-  <p><strong>${t('Brasília por quem vive aqui, Claude AI aplicado ao trabalho, Claude AI na Prática Jurídica e ChatGPT AI na Prática: cidade, tecnologia, método e Direito.', "Architecture, food, itineraries, landscaping and the stories of the capital — the host's diary to help you get to know Brasília before you even arrive.", 'Arquitectura, gastronomía, itinerarios, paisajismo y las historias de la capital — el diario del anfitrión para que conozcas Brasília antes incluso de llegar.')}</strong></p>
+  <span class="tema-tag">📖 ${t('Brasília · Hospedagem · Gestão · Inteligência artificial · Direito', 'Brasília · Hospitality · Management · Artificial intelligence', 'Brasília · Alojamiento · Gestión · Inteligencia artificial')}</span>
+  <h1>${t('O blog da Villela Stay', 'The Villela Stay blog', 'El blog de Villela Stay')}</h1>
+  <p><strong>${t('Arquitetura, gastronomia, roteiros e paisagismo de Brasília. Hospedagem profissional e as histórias da casa. E inteligência artificial aplicada ao trabalho, ao Direito e à rotina de quem opera uma empresa com ela.', 'Architecture, food, itineraries and landscaping in Brasília. Professional hospitality and the stories of the house. And artificial intelligence applied to work and to the routine of running a company with it.', 'Arquitectura, gastronomía, itinerarios y paisajismo de Brasília. Alojamiento profesional y las historias de la casa. E inteligencia artificial aplicada al trabajo y a la rutina de operar una empresa con ella.')}</strong></p>
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
