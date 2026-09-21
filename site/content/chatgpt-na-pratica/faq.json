@@ -152,5 +152,145 @@
    "Como descobrir que falta uma integração no meu negócio?",
    "Pelo teste da cena: alguém olhando uma tela e digitando em outra o que acabou de ver. Onde isso aparece, há integração faltando — quase todo trabalho manual repetitivo de escritório é uma integração que nunca foi feita. Os três territórios que mais rendem são comunicação (WhatsApp, e-mail, Instagram, canais internos), gestão (o sistema de clientes, o da operação, calendários e planilhas) e operação (banco de dados, painéis, filas e o financeiro, que merece o cuidado maior). E vale a advertência de gestão: dobrar o número de peças mais do que dobra o número de conexões entre elas. Três hábitos evitam o emaranhado — componentes reutilizáveis, testes e observabilidade. Sistema sem observabilidade não está funcionando: apenas não está reclamando."
   ]
+ ],
+ "12-whatsapp": [
+  [
+   "Por que usar a API oficial do WhatsApp Business em vez de uma automação não oficial?",
+   "Porque no Brasil o WhatsApp é o canal de atendimento, e ele só escala pela porta oficial. Método não autorizado leva a bloqueio do número, e aí o problema não é técnico: é comercial. A via oficial tem regras próprias: mensagem fora da conversa aberta exige template criado e aprovado na plataforma da Meta, e cada mensagem enviada é cobrada. O outro cuidado é saber a hora de passar a conversa para uma pessoa responsável, em vez de deixar a automação insistir."
+  ],
+  [
+   "O que é a janela de 24 horas do WhatsApp?",
+   "Quando o cliente manda uma mensagem, abre-se uma janela de atendimento de vinte e quatro horas. Dentro dela você conversa livremente. Fora dela, retomar a conversa exige um template aprovado pela Meta, com categoria definida (utilidade, marketing ou autenticação), nome versionado e variáveis com nome, como {{nome}} e {{codigo}}, nunca {{1}} e {{2}}. Em cada envio, registre o identificador da mensagem e acompanhe se ela foi entregue, lida ou falhou."
+  ],
+  [
+   "O que a inteligência artificial nunca decide sozinha no atendimento?",
+   "Ela redige e recomenda; quem decide é uma pessoa autorizada. Ficam de fora tudo o que envolve dinheiro (cancelar reserva, desconto acima do limite, devolução, cobrança de dano), pessoas e direito (bloquear hóspede, notificação jurídica, dado pessoal, acordo) e acesso (senha e conta bancária). E essa regra mora no backend, que confere se a ferramenta existe, se o agente tem permissão e se a ação exige aprovação humana, e não só no prompt, que o modelo pode interpretar do jeito dele."
+  ]
+ ],
+ "13-instagram": [
+  [
+   "Como o agente sabe a qual story o cliente está respondendo?",
+   "Porque o sistema registra o contexto de cada story no momento em que ele é publicado, antes de qualquer mensagem chegar: qual imóvel ou oferta ele anuncia, o preço de referência (fixo ou \"a partir de\"), a capacidade, a validade e a chamada para ação. Quando chega um \"Qual o preço?\", o agente busca a referência da resposta e já responde nomeando o que a pessoa viu. Sem referência, ele consulta os stories recentes e faz uma pergunta objetiva, uma só, em vez de devolver \"preço de quê?\"."
+  ],
+  [
+   "Como funciona a pontuação de leads de zero a cem?",
+   "São cinco faixas: curiosidade (0 a 20), interesse inicial (21 a 45), lead qualificado (46 a 70), lead quente (71 a 90) e pronto para fechar (91 a 100). Cada sinal da conversa tem um peso combinado antes: perguntar preço soma 15, informar data soma 20, pedir orçamento soma 20, perguntar sobre pagamento soma 25 e dizer que quer reservar soma 30. Parar de responder subtrai 10. É a régua que ordena a fila do atendimento humano."
+  ],
+  [
+   "O que o orquestrador faz no atendimento do Instagram?",
+   "Ele não escreve a resposta: lê a mensagem e devolve uma classificação estruturada, com a intenção, a origem, a campanha, o imóvel, o nível de interesse, a pontuação, a urgência, o que ainda falta perguntar, qual agente deve atender, se exige uma pessoa e a confiança da classificação. A partir daí, o agente comercial coleta o que falta, o de reservas monta o orçamento, e o concierge cuida de quem já é hóspede, que não pode ser tratado como lead."
+  ]
+ ],
+ "14-instagram-no-make": [
+  [
+   "Quais são os seis cenários do Make que sustentam o Direct?",
+   "Receber a mensagem, resolver o contexto, classificar com inteligência artificial, atualizar o cadastro de clientes, responder e transferir para uma pessoa. Cada cenário faz uma coisa só, e isso é de propósito: quando algo quebra, o erro fica visível e o conserto fica barato. Antes de a IA pensar, o sistema monta um pacote de contexto com o histórico da conversa, a origem (story, anúncio ou campanha), o preço anunciado, a etapa do funil e se a pessoa já foi cliente."
+  ],
+  [
+   "Quando o agente deve passar a conversa para um atendente humano?",
+   "São dez situações: confiança abaixo do limite, pedido para falar com uma pessoa, contexto não identificado, reclamação, conflito, informação jurídica ou dado sensível, negociação especial, pedido de desconto, orçamento elevado e cliente pronto para fechar. Só duas delas são falha técnica. Nas outras oito, a máquina até conseguiria responder, e não deve. Quando o humano assume, a automação pausa naquela conversa, para ninguém responder duas vezes nem dois atendentes falarem ao mesmo tempo."
+  ],
+  [
+   "Como impedir que a IA invente preço ou disponibilidade?",
+   "O cenário de resposta só pode dizer número que veio do sistema: o preço do sistema, o da campanha, o da tabela ou uma estimativa dita claramente como estimativa. Disponibilidade nunca sai da memória do modelo, sai do sistema de reservas. A sequência é consultar a base, verificar preço e disponibilidade, redigir, validar, enviar e registrar. E se a classificação da IA vier fora do esquema, o sistema pede uma correção uma vez; se continuar inválida, a conversa vai para a fila humana."
+  ]
+ ],
+ "15-chatgpt-work": [
+  [
+   "Qual a diferença entre o Chat, o Work e o Codex?",
+   "São três modos de trabalhar, e a maior fonte de frustração é usar o modo errado. A regra é olhar para o resultado esperado, não para a pergunta. Se o resultado é uma resposta, use o Chat: pergunta, brainstorm, redação rápida. Se é um arquivo, use o Work: pesquisa, análise e entregáveis de várias etapas. Se é um sistema funcionando, use o Codex: software, terminal, testes, repositórios e automação técnica."
+  ],
+  [
+   "O que é um entregável no ChatGPT Work?",
+   "É a informação já embalada no formato em que ela precisa chegar a alguém: o relatório que vai ao sócio, a planilha que vai ao contador. Resposta na tela do chat não é entregável; arquivo formatado é. O Work recebe um objetivo, não uma pergunta, planeja as etapas, trabalha com os seus arquivos, Projetos e ferramentas autorizadas, e devolve algo revisável: documentos, planilhas, apresentações, relatórios ou sites."
+  ],
+  [
+   "Como fazer um bom pedido ao ChatGPT Work?",
+   "Em três passos, todos ditos na largada. Primeiro, o objetivo: o resultado que você quer ter em mãos no final. Depois, os arquivos e o contexto, como quem entrega a pasta a um assistente. Por fim, o formato de saída, com a estrutura interna e o nível de acabamento, por exemplo um resumo executivo, tabelas e recomendações. Ajuda encadear quatro verbos: analise, consolide, explique as variações e entregue."
+  ]
+ ],
+ "16-work-na-pratica": [
+  [
+   "O que um Projeto guarda e por que usar o Work dentro dele?",
+   "Um Projeto guarda três coisas: os arquivos daquele assunto, as conversas que já aconteceram ali e as instruções permanentes, as regras escritas uma vez que valem para todas as conversas. Quando o Work começa dentro do Projeto, você para de reexplicar o básico e o trabalho de hoje conhece o de ontem: decisões, caminhos descartados e formato aprovado continuam valendo. Para assunto confidencial, ative a memória apenas do projeto, que isola o que acontece ali dentro."
+  ],
+  [
+   "Qual a diferença entre Skill, Plugin e App?",
+   "A Skill é o seu método escrito para a máquina executar, um procedimento operacional padrão: que dado extrair, como calcular, onde salvar. Ela não acrescenta informação, acrescenta o seu jeito de fazer. O Plugin é o livro de receitas com os utensílios inclusos: reúne vários fluxos de trabalho e os recursos de que eles precisam. O App conecta um serviço externo, como agenda ou e-mail. Dê a cada App a permissão mínima e teste uma semana só em leitura antes de liberar ação."
+  ],
+  [
+   "Os arquivos que o Work entrega podem ser editados?",
+   "Sim. O arquivo chega no formato original do programa, aberto para alteração: documento de texto com títulos, tabelas e listas; planilha no formato do Excel com as fórmulas funcionando de verdade; apresentação no formato do PowerPoint com os slides separados. Não é imagem nem PDF travado. O Work também cria sites: páginas e aplicativos leves, como uma calculadora de orçamento ou um painel de números, bons para usar como protótipo antes de encomendar um sistema."
+  ]
+ ],
+ "17-rotinas-e-workspace": [
+  [
+   "Para que servem as tarefas agendadas do ChatGPT?",
+   "Elas invertem a lógica: em vez de você começar, a tarefa age sozinha nos horários definidos e procura você quando há algo a dizer. São três usos. O lembrete garante que você não esqueça. O briefing já chega pronto, com reservas, pendências e prazos do dia. E o monitoramento, o mais valioso e o menos usado, confere por você e só avisa quando há novidade. O critério precisa de número: \"me avise se a ocupação cair abaixo de sessenta por cento\" gera informação; \"me avise sobre problemas\" gera ruído."
+  ],
+  [
+   "Como saber se uma rotina agendada parou de funcionar?",
+   "Uma tarefa que roda todo dia e nunca acusa nada pode estar certa, ou pode ter parado de olhar: a fonte mudou de lugar, de formato ou caiu, e a tela vazia é a mesma nos dois casos. Rodar com sucesso não é a mesma coisa que fazer o trabalho. As duas defesas são baratas: combinar com você mesmo uma conferência mensal das rotinas e pedir que cada uma mande um sinal de vida mesmo no dia em que não há novidade."
+  ],
+  [
+   "O que é um workspace do ChatGPT e o que o administrador controla?",
+   "É a área compartilhada de uma empresa dentro do ChatGPT: contas, Projetos, arquivos e configurações sob uma administração única, como o Google Workspace da empresa. Business e Enterprise são os nomes dos planos corporativos. O administrador controla quais modelos a equipe usa, o que pode ser instalado e conectado, quem entra e quem vê o quê, o que pode ser compartilhado para fora, como a trava contra documento interno virar link público, e por quanto tempo conversas e arquivos ficam guardados."
+  ]
+ ],
+ "18-ia-por-setor": [
+  [
+   "Por onde começar a levar a IA para a operação de uma empresa?",
+   "Pelo mapa do processo, antes de qualquer automação. O mapa tem quatro colunas: quais tarefas existem, quem responde por cada uma, que informações circulam e que regras decidem. É ele que revela gargalos, repetições e dependência de uma pessoa só. A sequência madura tem sete passos, nesta ordem: organizar processos, estruturar informações, padronizar, construir bases de conhecimento, automatizar aos poucos, integrar os agentes entre si e só então escalar."
+  ],
+  [
+   "Como fica um fluxo de hospedagem operado por IA?",
+   "Uma pergunta de hóspede dispara a sequência inteira. A IA responde e consulta o calendário, gera a proposta, atualiza o cadastro de clientes e envia o Pix; depois agenda a limpeza e manda o manual digital da casa. Ela assume atendimento e reserva a qualquer hora e em qualquer idioma, o concierge durante a estadia, a oferta de serviços extras na hora certa e o check-in digital. O humano entra onde precisa decidir."
+  ],
+  [
+   "O que a IA não assume num escritório de advocacia?",
+   "Ela reduz tempo e organiza o trabalho em seis frentes: análise documental, elaboração de minutas, revisão de texto, organização de acervo, prazos e andamentos, pesquisa assistida e construção de sistemas próprios. Mas não assume três coisas: a responsabilidade profissional, que é pessoal e intransferível; a verificação das fontes, uma a uma, no texto original; e a interpretação estratégica do caso. Nos demais setores o desenho se repete: a IA toma o repetitivo e devolve as horas do julgamento."
+  ]
+ ],
+ "19-skills-que-valem": [
+  [
+   "Uma Skill baixada da internet é segura?",
+   "Trate cada Skill como qualquer programa baixado: ela pode incluir scripts executáveis que rodam no seu ambiente, e o risco está no que o texto manda executar. Antes de instalar, leia o SKILL.md inteiro, abra a pasta de scripts e veja se ela pede chave de API, e para quê. Confira quem mantém o repositório, há quanto tempo, a licença e os problemas abertos, e estreie sem documento confidencial. Promessa de remover limite, pedido de senha ou cookie e script sem explicação se descartam."
+  ],
+  [
+   "Onde encontrar Skills confiáveis para o ChatGPT?",
+   "Comece pelo repositório oficial, github.com/openai/plugins, o ponto mais seguro e o que acompanha o padrão atual; o antigo openai/skills foi descontinuado e vale como referência de estudo. Diretórios da comunidade, como o Awesome Agent Skills da VoltAgent, servem para descobrir, não para instalar direto: os projetos listados não são necessariamente auditados. Evite coleções com milhares de Skills: o sistema encurta as descrições, e Skill com descrição encurtada é acionada na hora errada."
+  ],
+  [
+   "Quais Skills instalar primeiro?",
+   "Um kit de sete cobre a maior parte do trabalho de escritório. A primeira é o skill-creator, que cria Skills novas e também revisa as que você baixa. Depois vem o trio do dia a dia: pdf, documento (docx) e planilha (xlsx). Completam o kit a de visualização de dados, a de conversão de documentos e a de planejamento, que transforma pedido vago em plano com etapas. O critério que não envelhece: instale para uma tarefa que você já repete, que você entende e que consegue desinstalar depois."
+  ]
+ ],
+ "20-dicas-quentes": [
+  [
+   "O que é o laço agêntico?",
+   "É o ciclo em que você deixa as ferramentas na mesa, o ChatGPT escolhe qual usar a cada volta, o seu sistema executa e devolve o resultado, e a volta se repete até concluir. No prompt comum, ele para na primeira entrega, boa ou ruim. No laço, ele confere o próprio trabalho e corrige sozinho, e só para quando o resultado passa na régua. Quem segura a régua é você: descreva a tarefa e complete a frase \"considere concluído quando\", com um critério que dê para responder sim ou não."
+  ],
+  [
+   "Quando vale usar uma ferramenta de coleta de dados junto com o ChatGPT?",
+   "O ChatGPT lê páginas sozinho; a ferramenta de coleta serve para transformar muitas páginas em linhas e colunas: centenas de registros, páginas com paginação, tabelas, preços e avaliações. O caminho manual tem cinco passos: abrir a página, extrair, exportar a planilha, enviar ao ChatGPT e pedir a análise, já com a regra de limpar, comparar e concluir. Ela não autoriza nada: nunca use em página com dado bancário, sigiloso ou sistema interno, e respeite os termos do site e a proteção de dados."
+  ],
+  [
+   "Como ativar a memória do ChatGPT e trazer o que eu já construí em outro assistente?",
+   "Em Configurações, depois Capacidades, há dois interruptores: consultar conversas passadas e gerar memória a partir do histórico. Para migrar de outra plataforma, exporte da origem o que ela permitir exportar, suba o arquivo e peça que o ChatGPT aprenda quem é você. A documentação e a Academy da OpenAI são as fontes para revisar limites e recursos de cada plano, que mudam com frequência."
+  ]
+ ],
+ "21-plataformas-de-ia": [
+  [
+   "Por que usar mais de uma plataforma de inteligência artificial?",
+   "Porque cada sistema tem um ponto forte diferente, as plataformas evoluem em ritmos distintos e depender de uma só é risco, não lealdade. O ChatGPT cobre o dia a dia amplo; o Claude serve de segunda opinião para texto longo e análise documental; o Gemini e o Copilot moram dentro do Google Workspace e do Microsoft 365; o Perplexity e o NotebookLM respondem com a fonte à vista. Em mídia, o modelo especializado costuma ganhar do generalista."
+  ],
+  [
+   "Como escolher a plataforma certa sem depender de um ranking?",
+   "O critério sobrevive à lista, que muda a cada poucos meses. Comece pela tarefa, não pela marca. Prefira a ferramenta que já mora onde os seus dados estão, porque isso poupa exportar, subir e conferir de novo. E exija a porta de saída: dados portáveis e padrões abertos. A automação, com Make, n8n, APIs, Plugins e MCP, é a camada que costura as ferramentas soltas num ecossistema coordenado."
+  ],
+  [
+   "Quais são as cinco superfícies do ChatGPT?",
+   "O Chat, para respostas, em que a regra de ouro é contexto, fontes, formato e critério de pronto. O Work, que vai do objetivo ao entregável pronto. O Codex, para desenvolvimento e operação técnica, com mudança reversível, diff revisado e permissão limitada. A superfície de criação visual, com Canvas, análise de dados, imagens e Sites. E a que padroniza e automatiza, com GPTs, Skills, Plugins, agentes e tarefas, em que toda rotina precisa de responsável, registro, limite e caminho de escalonamento."
+  ]
  ]
 }

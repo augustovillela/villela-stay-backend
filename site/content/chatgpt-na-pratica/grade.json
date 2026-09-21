@@ -40,7 +40,7 @@
    "titulo": "MCP, APIs e webhooks: a IA fora da janela de chat",
    "sub": "O protocolo que liga a IA a sistemas, o tool use, os conceitos de endpoint, request, chave e saída estruturada, e o gatilho que avisa em tempo real.",
    "capitulos": "Capítulos 7, 8 e 15",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -97,7 +97,7 @@
    "sub": "A arquitetura do gateway à fila, os seis cenários do Make, os templates aprovados pela Meta, o consentimento e a lista do que exige decisão de gente.",
    "capitulos": "Capítulo 12",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 13,
@@ -105,7 +105,7 @@
    "sub": "Os eventos que o agente deve receber, o cadastro que liga cada story à propriedade e à oferta, os agentes recomendados e a régua de zero a cem.",
    "capitulos": "Capítulo 12",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 14,
@@ -113,7 +113,7 @@
    "sub": "Os seis cenários que sustentam o Direct, o pós-venda dentro e fora da janela, os controles contra resposta duplicada e o painel que liga story a receita.",
    "capitulos": "Capítulo 12",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 15,
@@ -121,7 +121,7 @@
    "sub": "O que é um entregável, os quatro movimentos do Work, quando usar Chat, Work ou Codex e como escrever um pedido com os verbos em sequência.",
    "capitulos": "Capítulo 16",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 16,
@@ -129,7 +129,7 @@
    "sub": "Instruções permanentes, memória isolada do projeto, a diferença entre Skill, Plugin e App, e por que planilha com fórmula viva muda o resultado.",
    "capitulos": "Capítulo 16",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 17,
@@ -137,7 +137,7 @@
    "sub": "Lembretes, briefings e monitoramentos com critério numérico, o controle de modelos, acesso e retenção em equipe, e as competências que substituem o botão.",
    "capitulos": "Capítulo 16",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 18,
@@ -145,7 +145,7 @@
    "sub": "Mapear processos antes de automatizar, rotinas diárias, semanais e mensais, coordenação de agentes e o que já funciona em cinco setores.",
    "capitulos": "Capítulos 14 e 18",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 19,
@@ -153,7 +153,7 @@
    "sub": "O kit inicial de sete Skills, os repositórios oficiais e comunitários, o que nunca instalar e as sete conferências antes de baixar qualquer pacote.",
    "capitulos": "Capítulo 21",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 20,
@@ -161,7 +161,7 @@
    "sub": "O ciclo que só para quando bate o critério de pronto, as extensões de coleta e seus limites, servidores MCP por plano e a memória que personaliza tudo.",
    "capitulos": "Capítulo 21",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 21,
@@ -169,7 +169,7 @@
    "sub": "Quem é forte em quê entre ChatGPT, Claude, Gemini, Copilot e os especializados, e a revisão das cinco superfícies com as melhores práticas de cada uma.",
    "capitulos": "Capítulos 19 e 20",
    "gravada": false,
-   "tem_artigo": false
+   "tem_artigo": true
   },
   {
    "n": 22,
