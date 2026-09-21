@@ -48,7 +48,7 @@
    "titulo": "Make, n8n e a governança das conexões",
    "sub": "Cenários, módulos, gatilhos e nodes, a diferença entre a plataforma visual e a self-hosted, e os controles de acesso, auditoria e limite que toda conexão exige.",
    "capitulos": "Capítulos 10, 15 e 17, e a seção 12.1",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
@@ -56,7 +56,7 @@
    "titulo": "GPTs, Skills e os agentes de cada área da empresa",
    "sub": "Como construir e auditar um GPT, a diferença entre GPT, Skill e agente, e os doze agentes empresariais do comercial ao jurídico coordenados num ecossistema.",
    "capitulos": "Capítulos 10 e 11",
-   "gravada": false,
+   "gravada": true,
    "tem_artigo": true
   },
   {
