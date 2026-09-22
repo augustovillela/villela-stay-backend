@@ -108,6 +108,9 @@
     api('GET', '/api/comunicados').then(function (r) {
       if (!r || r.anonimo) { if (bt) { bt.remove(); bt = null; } if (fx) { fx.remove(); fx = null; } return; }
       estado.itens = r.itens || [];
+      // Sem aviso nenhum, o app fica como sempre foi: o sino só aparece
+      // quando há o que ler (muitos apps já têm um botão "🔔 Avisos" de push).
+      if (!estado.itens.length && !bt) return;
       montarBase(); pintarBotao(); pintarFaixa(); if (estado.aberto) pintarPainel();
     });
   }
