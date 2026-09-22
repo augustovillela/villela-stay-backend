@@ -188,6 +188,15 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
   app.get('/staff/api/academy/importar-curso/estrutura', ...PA, h((req, res) => {
     res.json({ ok: true, ...imp.estruturaDoCurso(req.query || {}) });
   }));
+  // tira um material da aula (o arquivo continua no storage; só sai da lista do aluno).
+  // O id vem da estrutura acima — só o produtor dono do produto.
+  app.post('/staff/api/academy/material/remover', ...PA, h((req, res) => {
+    const b = req.body || {};
+    const { produto } = imp.produtorDono(b);
+    ct.Conteudo.removerMaterial(String(b.material_id || ''), produto.id);
+    aud(req, 'material.remover', 'lesson_materials', String(b.material_id || '').slice(0, 40), produto.id);
+    res.json({ ok: true, estrutura: ct.Produtos.estrutura(produto.id) });
+  }));
   app.post('/staff/api/academy/importar-video', ...PA, h((req, res) => {
     const r = imp.iniciarVideo(req.body || {});
     aud(req, 'midia.upload-grande.iniciar', 'media_files', r.media_id, `${r.aula.titulo} ← ${String((req.body || {}).nome || '').slice(0, 80)}`);

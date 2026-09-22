@@ -1905,6 +1905,24 @@ async function main() {
       assert.ok(ultimo.includes('triagem de publicações'), 'mas a aula de degustação entra');
     } finally { iaM.__mockParaTeste(null); }
   });
+  await t('remover material pela chave: sai da lista do aluno; só o dono; guarda da chave', async () => {
+    const pdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF').toString('base64');
+    const imp = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: { ...CURSO(),
+      materiais: [{ aula_titulo: 'Aula A2', nome: 'Artigo antigo (PDF)', mime: 'application/pdf', conteudo_base64: pdf }] } });
+    assert.equal(imp.st, 200, imp.texto);
+    const a2 = (await estrutura()).estrutura[0].aulas.find(a => a.titulo === 'Aula A2');
+    const mat = a2.materiais.find(m => m.nome === 'Artigo antigo (PDF)');
+    assert.ok(mat, 'material criado para o teste');
+    assert.equal((await req('POST', '/staff/api/academy/material/remover', { semUser: true, corpo: EST({ material_id: mat.id }) })).st, 401);
+    assert.equal((await req('POST', '/staff/api/academy/material/remover', { user: 'op', corpo: EST({ material_id: mat.id }) })).st, 403);
+    const alheio = await req('POST', '/staff/api/academy/material/remover', { semUser: true, chave: true, corpo: { produtor_email: 'clara@t.com', produto_id: impId, material_id: mat.id } });
+    assert.equal(alheio.st, 400, 'só o produtor dono');
+    const r = await req('POST', '/staff/api/academy/material/remover', { semUser: true, chave: true, corpo: EST({ material_id: mat.id }) });
+    assert.equal(r.st, 200, r.texto);
+    const depois = (await estrutura()).estrutura[0].aulas.find(a => a.titulo === 'Aula A2');
+    assert.ok(!depois.materiais.some(m => m.id === mat.id), 'saiu da aula');
+    assert.equal((await req('POST', '/staff/api/academy/material/remover', { semUser: true, chave: true, corpo: EST({ material_id: mat.id }) })).st, 400, 'remover de novo = não encontrado');
+  });
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }
