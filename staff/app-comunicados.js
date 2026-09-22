@@ -16,6 +16,31 @@ const comStatus = {
 };
 const comCanalRot = { app: '🔔 Aviso no app', email: '✉️ E-mail', whatsapp: '💬 WhatsApp' };
 
+// Confirmação em HTML, não no navegador. O Chrome bloqueia confirm()/prompt()
+// quando a pessoa marca "não permitir mais caixas de diálogo" — e o clique em
+// "Enviar agora" virava silêncio, com o comunicado preso em rascunho.
+function comConfirmar(titulo, detalhe, rotuloOk = 'Confirmar') {
+  return new Promise((resolve) => {
+    const fundo = document.createElement('div');
+    fundo.style.cssText = 'position:fixed;inset:0;z-index:2147483600;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+    fundo.innerHTML = `<div role="dialog" aria-modal="true" style="background:#fff;color:#1F2933;max-width:520px;width:100%;border-radius:14px;padding:20px;font:15px/1.5 Inter,system-ui,Arial,sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.35)">
+      <h3 style="margin:0 0 10px;font-size:1.1rem">${esc(titulo)}</h3>
+      <div style="white-space:pre-wrap;margin-bottom:16px">${esc(detalhe)}</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+        <button type="button" data-a="nao" class="btn secund">Cancelar</button>
+        <button type="button" data-a="sim" class="btn">${esc(rotuloOk)}</button>
+      </div></div>`;
+    const fim = (v) => { fundo.remove(); document.removeEventListener('keydown', esc2); resolve(v); };
+    const esc2 = (e) => { if (e.key === 'Escape') fim(false); };
+    document.addEventListener('keydown', esc2);
+    fundo.onclick = (e) => { if (e.target === fundo) fim(false); };
+    document.body.appendChild(fundo);
+    fundo.querySelector('[data-a="sim"]').onclick = () => fim(true);
+    fundo.querySelector('[data-a="nao"]').onclick = () => fim(false);
+    fundo.querySelector('[data-a="sim"]').focus();
+  });
+}
+
 async function renderComunicados() {
   conteudo().innerHTML = cabecalho('📣 Comunicados aos usuários',
     'Avise alunos, assinantes, produtores e clientes de todos os sistemas do grupo — novidades, melhorias, instabilidades, suporte e dicas. '
@@ -180,6 +205,8 @@ async function comPrevia() {
     ${wa}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
       ${p.canais.email || p.canais.whatsapp ? '<button class="btn secund" id="com-teste">🧪 Enviar teste para mim</button>' : ''}
+      ${p.canais.whatsapp ? `<label style="display:flex;gap:6px;align-items:center;margin:0">WhatsApp do teste <input id="com-tel" value="${esc(COM.cfg.minha_conta.telefone || '')}" style="max-width:150px"></label>` : ''}
+      <label style="display:flex;gap:6px;align-items:center;margin:0">Ver no app como <input id="com-emailapp" value="${esc(COM.cfg.minha_conta.email || '')}" placeholder="e-mail da sua conta no sistema" style="max-width:230px"></label>
       <button class="btn" id="com-enviar">📣 Enviar agora</button>
       <label style="display:flex;gap:6px;align-items:center;margin:0">ou agendar <input type="datetime-local" id="com-quando"></label>
       <button class="btn secund" id="com-agendar">🕒 Agendar</button>
@@ -193,9 +220,8 @@ async function comPrevia() {
 async function comTeste() {
   const m = $('#com-msg2') || $('#com-msg'); m.className = 'erro'; m.textContent = '';
   const c = await comSalvar(); if (!c) return;
-  const tel = prompt('WhatsApp para o teste (só números, com DDD):', COM.cfg.minha_conta.telefone || '');
-  if (tel === null) return;
-  const emailApp = prompt('Para VER O AVISO DENTRO DO APP: qual e-mail da SUA conta no sistema escolhido?\n(deixe em branco para pular)', COM.cfg.minha_conta.email || '');
+  const tel = ($('#com-tel') || {}).value || '';
+  const emailApp = ($('#com-emailapp') || {}).value || '';
   try {
     const r = await api('POST', `/comunicados/${c.id}/teste`, { email: COM.cfg.minha_conta.email, telefone: tel, email_no_app: emailApp || '' });
     const { lembrete, ...canais } = r.resultado;
@@ -212,9 +238,9 @@ async function comEnviar(agendarPara) {
   const p = COM.previa; if (!p) return;
   const linhas = Object.entries(p.canais).filter(([, x]) => x).map(([k, x]) => `• ${comCanalRot[k]}: ${x.total}${k === 'whatsapp' ? ` (≈ ${x.operacoes_make} operações do Make)` : ''}`);
   const cat = COM.cfg.categorias[c.categoria];
-  const texto = `${agendarPara ? 'AGENDAR' : 'ENVIAR AGORA'} o comunicado:\n\n${cat.emoji} "${c.titulo}"\n\n${linhas.join('\n')}\n\n${p.pessoas} pessoa(s) em ${c.alvos.length} sistema(s).`
-    + (agendarPara ? `\nQuando: ${dataBr(agendarPara)}` : '') + '\n\nMensagens a clientes reais não têm volta. Confirmar?';
-  if (!confirm(texto)) return;
+  const texto = `${cat.emoji} "${c.titulo}"\n\n${linhas.join('\n')}\n\n${p.pessoas} pessoa(s) em ${c.alvos.length} sistema(s).`
+    + (agendarPara ? `\nQuando: ${dataBr(agendarPara)}` : '') + '\n\nMensagens a clientes reais não têm volta.';
+  if (!await comConfirmar(agendarPara ? 'Agendar este comunicado?' : 'Enviar agora para os clientes?', texto, agendarPara ? 'Agendar' : 'Enviar agora')) return;
   try {
     const r = await api('POST', `/comunicados/${c.id}/enviar`, { confirmar: true, agendar_para: agendarPara });
     comEditor(null); comHistorico();
@@ -272,10 +298,10 @@ async function comHistorico() {
   const acha = (id) => lista.find(x => x.id === id);
   box.querySelectorAll('.com-ed').forEach(b => b.onclick = () => { comEditor(acha(b.dataset.id)); $('#com-editor').scrollIntoView({ behavior: 'smooth' }); });
   box.querySelectorAll('.com-dup').forEach(b => b.onclick = () => { const c = acha(b.dataset.id); comEditor({ ...c, id: null, titulo: c.titulo }); COM.editando = null; $('#com-editor').scrollIntoView({ behavior: 'smooth' }); });
-  box.querySelectorAll('.com-del').forEach(b => b.onclick = async () => { if (!confirm('Excluir este rascunho?')) return; try { await api('DELETE', `/comunicados/${b.dataset.id}`); comHistorico(); } catch (e) { alert(e.message); } });
-  box.querySelectorAll('.com-can').forEach(b => b.onclick = async () => { if (!confirm('Cancelar? O que ainda está na fila não sai mais (o que já saiu, já saiu).')) return; try { await api('POST', `/comunicados/${b.dataset.id}/cancelar`); comHistorico(); } catch (e) { alert(e.message); } });
-  box.querySelectorAll('.com-arq').forEach(b => b.onclick = async () => { if (!confirm('Tirar este aviso do sino dos apps?')) return; try { await api('POST', `/comunicados/${b.dataset.id}/arquivar`); comHistorico(); } catch (e) { alert(e.message); } });
-  box.querySelectorAll('.com-re').forEach(b => b.onclick = async () => { try { const r = await api('POST', `/comunicados/${b.dataset.id}/reenviar-erros`); alert(`${r.reenfileirados} envio(s) de volta à fila.`); comHistorico(); } catch (e) { alert(e.message); } });
+  box.querySelectorAll('.com-del').forEach(b => b.onclick = async () => { if (!await comConfirmar('Excluir este rascunho?', 'Ele some da lista. Não afeta nada que já foi enviado.', 'Excluir')) return; try { await api('DELETE', `/comunicados/${b.dataset.id}`); comHistorico(); } catch (e) { comConfirmar('Não deu certo', e.message, 'Entendi'); } });
+  box.querySelectorAll('.com-can').forEach(b => b.onclick = async () => { if (!await comConfirmar('Cancelar este envio?', 'O que ainda está na fila não sai mais. O que já saiu, já saiu.', 'Cancelar envio')) return; try { await api('POST', `/comunicados/${b.dataset.id}/cancelar`); comHistorico(); } catch (e) { comConfirmar('Não deu certo', e.message, 'Entendi'); } });
+  box.querySelectorAll('.com-arq').forEach(b => b.onclick = async () => { if (!await comConfirmar('Tirar este aviso do app?', 'Ele deixa de aparecer na caixa de avisos dos clientes.', 'Tirar do app')) return; try { await api('POST', `/comunicados/${b.dataset.id}/arquivar`); comHistorico(); } catch (e) { comConfirmar('Não deu certo', e.message, 'Entendi'); } });
+  box.querySelectorAll('.com-re').forEach(b => b.onclick = async () => { try { const r = await api('POST', `/comunicados/${b.dataset.id}/reenviar-erros`); alert(`${r.reenfileirados} envio(s) de volta à fila.`); comHistorico(); } catch (e) { comConfirmar('Não deu certo', e.message, 'Entendi'); } });
   box.querySelectorAll('.com-err').forEach(b => b.onclick = async () => {
     const r = await api('GET', `/comunicados/${b.dataset.id}/entregas?status=erro`);
     $('#com-falhas').innerHTML = `<div class="cr-box" style="margin-top:12px"><b>Falhas</b>` + tabela(['Canal', 'Pessoa', 'Destino', 'Motivo'],
@@ -341,11 +367,11 @@ async function comDicas() {
   box.querySelectorAll('.dc-ed').forEach(b => b.onclick = () => { DICAS.editando = r.dicas.find(x => x.id === b.dataset.id); comDicas(); });
   box.querySelectorAll('.dc-on').forEach(b => b.onclick = async () => {
     const x = r.dicas.find(y => y.id === b.dataset.id);
-    try { await api('PUT', `/comunicados/dicas/${x.id}`, { ativa: !x.ativa }); comDicas(); } catch (e) { alert(e.message); }
+    try { await api('PUT', `/comunicados/dicas/${x.id}`, { ativa: !x.ativa }); comDicas(); } catch (e) { comConfirmar('Não deu certo', e.message, 'Entendi'); }
   });
   box.querySelectorAll('.dc-del').forEach(b => b.onclick = async () => {
-    if (!confirm('Excluir esta dica? Quem ainda não viu deixa de vê-la.')) return;
-    try { await api('DELETE', `/comunicados/dicas/${b.dataset.id}`); comDicas(); } catch (e) { alert(e.message); }
+    if (!await comConfirmar('Excluir esta dica?', 'Quem ainda não viu deixa de vê-la.', 'Excluir')) return;
+    try { await api('DELETE', `/comunicados/dicas/${b.dataset.id}`); comDicas(); } catch (e) { comConfirmar('Não deu certo', e.message, 'Entendi'); }
   });
 }
 
@@ -379,7 +405,7 @@ async function comDescadastros() {
       `<button class="btn peq secund com-rec" data-c="${esc(d.contato)}" data-k="${esc(d.canal)}">desfazer</button>`]))
       : '<p class="vazio">Ninguém pediu para sair.</p>';
     box.querySelectorAll('.com-rec').forEach(b => b.onclick = async () => {
-      if (!confirm('Desfazer o descadastro? Faça isso só se a própria pessoa pediu para voltar a receber.')) return;
+      if (!await comConfirmar('Desfazer o descadastro?', 'Faça isso só se a própria pessoa pediu para voltar a receber.', 'Desfazer')) return;
       await api('POST', '/comunicados/descadastros/remover', { contato: b.dataset.c, canal: b.dataset.k }); comDescadastros();
     });
   } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
