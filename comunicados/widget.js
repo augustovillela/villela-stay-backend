@@ -131,6 +131,7 @@
     bt.className = 'vsc-bt'; bt.type = 'button'; bt.setAttribute('aria-haspopup', 'dialog'); bt.setAttribute('aria-expanded', 'false');
     bt.onclick = function () { E.aberto ? fechar() : abrir(); };
     document.body.appendChild(bt);
+    posicionar(); observarVizinhos();
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && E.aberto) { fechar(); if (bt) bt.focus(); } });
   }
   // Dica de primeira visita: some para sempre depois de vista/fechada. Se o
@@ -138,7 +139,7 @@
   var CHAVE_DICA = 'vs-comunicados-dica';
   function mostrarDica() {
     var ja; try { ja = localStorage.getItem(CHAVE_DICA); } catch (_) { ja = '1'; }
-    if (ja || !bt) return;
+    if (ja || !bt || document.querySelector('.vsc-dica')) return;   // uma dica, uma vez só
     var d = document.createElement('div');
     d.className = 'vsc-dica'; d.setAttribute('role', 'status');
     d.innerHTML = 'Precisa de ajuda ou quer ver os avisos? É por aqui. 👇<br><button type="button">entendi</button>';
@@ -149,11 +150,60 @@
     setTimeout(fechar, 12000);
   }
 
+  // ---------------- empilhar, nunca sobrepor ----------------
+  // Cada app tem os seus botões flutuantes (Tutor Villela na Academy, mini
+  // player do audiobook, etc.). Em vez de disputar o canto, o nosso sobe e
+  // fica ACIMA do que já está lá — e se abrirem um painel que toma a tela
+  // (a gaveta do Tutor), ele some enquanto aquilo estiver aberto.
+  var BASE = 18, reposicionar = null;
+  function vizinhos() {
+    var meus = [bt, pn, fx, document.querySelector('.vsc-dica')], out = [];
+    var filhos = document.body ? document.body.children : [];
+    for (var i = 0; i < filhos.length; i++) {
+      var e = filhos[i];
+      if (meus.indexOf(e) >= 0) continue;
+      var cs;
+      try { cs = getComputedStyle(e); } catch (_) { continue; }
+      if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0' || cs.pointerEvents === 'none') continue;
+      var r = e.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) continue;
+      if (r.bottom < innerHeight - 300) continue;                       // não está no rodapé
+      var meuIni = lado === 'right' ? innerWidth - 280 : 0, meuFim = lado === 'right' ? innerWidth : 280;
+      if (r.right < meuIni || r.left > meuFim) continue;                // não cruza a minha coluna
+      out.push(r);
+    }
+    return out;
+  }
+  function posicionar() {
+    if (!bt) return;
+    var obst = vizinhos(), topo = innerHeight - BASE, tomaTela = false;
+    obst.forEach(function (r) {
+      if (r.height > innerHeight * 0.6 && r.width > innerWidth * 0.2) { tomaTela = true; return; }
+      topo = Math.min(topo, r.top);
+    });
+    bt.style.display = tomaTela ? 'none' : 'flex';
+    var b = Math.max(BASE, Math.round(innerHeight - topo) + 12);
+    bt.style.bottom = b + 'px';
+    var alturaBt = bt.offsetHeight || 48;
+    if (pn) pn.style.bottom = (b + alturaBt + 10) + 'px';
+    var dica = document.querySelector('.vsc-dica');
+    if (dica) dica.style.bottom = (b + alturaBt + 10) + 'px';
+  }
+  function observarVizinhos() {
+    if (reposicionar) return;
+    reposicionar = function () { clearTimeout(reposicionar._t); reposicionar._t = setTimeout(posicionar, 250); };
+    window.addEventListener('resize', reposicionar);
+    try { new MutationObserver(reposicionar).observe(document.body, { childList: true, attributes: true, attributeFilter: ['style', 'class'] }); } catch (_) {}
+    // Botão de outro app que aparece depois (o Tutor só monta dentro da aula).
+    [800, 2500, 6000].forEach(function (ms) { setTimeout(posicionar, ms); });
+  }
+
   function naoLidosAvisos() { return comAvisos ? E.itens.filter(function (x) { return !x.lido; }).length : 0; }
   function pintarBotao() {
     if (!bt) return;
     var n = naoLidosAvisos() + E.suporteNaoLidas;
     // Texto no botão: "Ajuda" é o que a pessoa procura quando precisa de nós.
+    posicionar();
     bt.innerHTML = '<span class="vsc-ico" aria-hidden="true">💬</span><span>Ajuda</span>' +
       (n ? '<span class="vsc-n">' + (n > 9 ? '9+' : n) + '</span>' : '');
     var rot = comAvisos ? 'Ajuda e avisos' : 'Ajuda';
