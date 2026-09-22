@@ -650,6 +650,11 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.equal(fora.status, 400);
     assert.equal((await req('DELETE', `/staff/api/comunicados/dicas/${id}`, { quem: 'adm' })).json.ok, true);
     assert.equal((await req('GET', '/staff/api/comunicados/dicas?produto=vsm', { quem: 'op' })).status, 403);
+    // A chave LÊ (para o carregador não duplicar) e ESCREVE, mas não apaga.
+    assert.equal((await req('GET', '/staff/api/comunicados/dicas?produto=vsm', { chave: true })).status, 200);
+    const pelaChave = await req('POST', '/staff/api/comunicados/dicas', { chave: true, corpo: { produto: 'vsm', titulo: 'Dica pela chave', corpo: 'x' } });
+    assert.equal(pelaChave.status, 201);
+    assert.equal((await req('DELETE', `/staff/api/comunicados/dicas/${pelaChave.json.dica.id}`, { chave: true })).status, 401);
   });
 
   await t('dicas: a rota /dicas não cai na rota de :id do comunicado', async () => {

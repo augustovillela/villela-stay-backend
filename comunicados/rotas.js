@@ -42,7 +42,9 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
   app.get(`${R}/descadastros`, ...admin, (req, res) => res.json({ descadastros: motor.listarDescadastros() }));
   // Dicas do app ("você sabia?"). Escrita aceita a PUBLISH_KEY: um agente pode
   // redigir dicas; mostrar dica não é mandar mensagem para ninguém.
-  app.get(`${R}/dicas`, ...admin, (req, res) => {
+  // Leitura também pela chave: um agente precisa conferir o que já existe
+  // antes de escrever (é o que evita dica duplicada). Dica não é dado pessoal.
+  app.get(`${R}/dicas`, requirePublishOrAdmin, (req, res) => {
     try {
       const produto = req.query.produto || '';
       res.json({ dicas: dicas.comAlcance(produto), cursos: produto ? fontes.cursosDe(produto) : [],
