@@ -5329,7 +5329,14 @@ try {
 } catch (e) { console.error('[mcp-staff] falha ao montar módulo:', e.message); }
 
 // Estáticos do portal (login + app). Registrado DEPOIS das rotas /staff/api/*.
-app.use('/staff', express.static(path.join(__dirname, 'staff')));
+// no-cache + ETag: o navegador revalida a cada carga e recebe 304 quando nada
+// mudou. Com o cache heurístico do Chrome, uma correção no portal podia
+// demorar horas para chegar — e a tela antiga conversando com a API nova é a
+// receita de "cliquei e não aconteceu nada".
+app.use('/staff', express.static(path.join(__dirname, 'staff'), {
+  etag: true,
+  setHeaders: (res, arquivo) => { if (/\.(js|css|html|webmanifest)$/i.test(arquivo)) res.setHeader('Cache-Control', 'no-cache'); },
+}));
 // Estáticos da Área do Hóspede. Registrado DEPOIS das rotas /hospede/api/*.
 app.use('/hospede', express.static(path.join(__dirname, 'hospede')));
 
