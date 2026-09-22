@@ -28,7 +28,13 @@
 const jwt = require('jsonwebtoken');
 
 let _jwtSecret = null;
-function configurar({ jwtSecret } = {}) { if (jwtSecret) _jwtSecret = jwtSecret; }
+// A Área do Hóspede não é um módulo com banco: as contas moram num JSON do
+// server.js. Por isso ela entra por INJEÇÃO, e não por `require`.
+let _hospedes = null;   // { listar(), push(id, payload) }
+function configurar({ jwtSecret, hospedes } = {}) {
+  if (jwtSecret) _jwtSecret = jwtSecret;
+  if (hospedes && typeof hospedes.listar === 'function') _hospedes = hospedes;
+}
 
 const dbDe = (mod) => require(`../${mod}/db`).db;
 // Lê o JWT de um cookie de produto. Só identidade — quem decide se a
@@ -431,6 +437,37 @@ const FONTES = [
     nativo: notificarNativo('kids'),
   },
   {
+    chave: 'hospede', nome: 'Área do Hóspede', emoji: '🔑', cor: '#0E7490',
+    url: 'https://minha.villelastay.com.br/hospede', caminhoApp: '/hospede',
+    aviso: 'Hóspedes das nossas casas (não é SaaS). O telefone vem da reserva.',
+    segmentos: [
+      { id: 'todos', rotulo: 'Todos os hóspedes com acesso' },
+      { id: 'nunca_entraram', rotulo: 'Quem nunca entrou na área' },
+      { id: 'recentes', rotulo: 'Cadastrados nos últimos 90 dias' },
+    ],
+    listar(seg) {
+      if (!_hospedes) throw new Error('Área do Hóspede não foi ligada à central (falta injetar no server.js).');
+      const noventa = new Date(Date.now() - 90 * 864e5).toISOString();
+      return linhas(_hospedes.listar()
+        .filter((h) => h && h.ativo !== false)
+        .filter((h) => seg === 'nunca_entraram' ? !h.ultimoLogin : seg === 'recentes' ? String(h.criadoEm || '') >= noventa : true)
+        .map((h) => ({ ref: h.id, nome: h.nome, email: h.email, telefone: h.telefone, marketing: null })));
+    },
+    // O hóspede entra com cookie próprio (JWT com tipo 'hospede').
+    sessao: (req) => {
+      const d = uidDoCookie(req, 'hospede_token');
+      if (!d || d.tipo !== 'hospede' || !d.hid) return null;
+      if (!_hospedes) return null;
+      const h = _hospedes.listar().find((x) => x.id === d.hid && x.ativo !== false);
+      return h ? h.id : null;
+    },
+    situacao: (refs) => {
+      const vivos = new Set((_hospedes ? _hospedes.listar() : []).map((h) => String(h.id)));
+      return new Map(refs.map((r) => [String(r), vivos.has(String(r)) ? 'ativa' : 'excluida']));
+    },
+    push: (ref, payload) => (_hospedes && _hospedes.push) ? _hospedes.push(ref, payload) : 0,
+  },
+  {
     chave: 'cozinhe', nome: 'Cozinhe', emoji: '🍲', cor: '#8A3B12',
     url: 'https://cozinhe.villelastay.com.br',
     indisponivel: 'O Cozinhe roda em serviço separado e ainda não entrega a lista de usuários para a central (o painel só recebe e-mail mascarado). Falta uma rota no próprio Cozinhe — ver docs/integracoes/comunicados.md.',
@@ -444,10 +481,11 @@ const obter = (chave) => FONTES.find((f) => f.chave === chave) || null;
 // Push no celular: só onde o sistema já guarda inscrições (push_subs) pelo
 // MESMO id de usuário que a central usa. Academy e Kids já disparam push
 // dentro da própria central nativa — aqui só para não duplicar lá.
-const temPush = (f) => !!(f && f.pushMod);
+const temPush = (f) => !!(f && (f.pushMod || f.push));
 async function pushUsuario(chave, ref, payload) {
   const f = obter(chave);
   if (!temPush(f)) return 0;
+  if (f.push) { const url = (() => { try { return new URL(f.url).pathname; } catch (_) { return '/'; } })(); return f.push(String(ref), { url, ...payload }); }
   const url = (() => { try { return new URL(f.url).pathname; } catch (_) { return '/'; } })();
   return require(`../${f.pushMod}/push`).notificarUsuario(String(ref), { url, ...payload });
 }

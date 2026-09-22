@@ -4644,6 +4644,8 @@ try {
     // Mensagem nova no suporte dos sistemas -> push so para admin (area que ninguem mais tem: a tela e so de admin).
     avisarStaff: (payload) => enviarPushStaff(payload, 'suporte-sistemas'),
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : undefined,
+    // Área do Hóspede: as contas ficam num JSON daqui, não num módulo com banco.
+    hospedes: { listar: lerHospedes, push: (id, payload) => enviarPush(id, payload) },
   });
 } catch (e) { console.error('[comunicados] falha ao montar módulo:', e.message); }
 

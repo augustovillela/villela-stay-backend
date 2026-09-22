@@ -51,11 +51,11 @@ function ligarRotinas() {
 const desligarRotinas = () => { if (_timerRotinas) { clearInterval(_timerRotinas); _timerRotinas = null; } };
 
 function montar(app, deps = {}) {
-  const { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria, enviarEmail, enviarWhatsAppTemplate, emailPronto, whatsappPronto, avisarStaff, jwtSecret, baseUrl } = deps;
+  const { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria, enviarEmail, enviarWhatsAppTemplate, emailPronto, whatsappPronto, avisarStaff, hospedes, jwtSecret, baseUrl } = deps;
   if (!express || !requireAuth || !requireAdmin || !requirePublishOrAdmin || !jwtSecret) {
     throw new Error('comunicados.montar: faltam deps (express, requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret).');
   }
-  fontes.configurar({ jwtSecret });
+  fontes.configurar({ jwtSecret, hospedes });
   const disp = motor.configurar({ enviarEmail, enviarWhatsAppTemplate, emailPronto, whatsappPronto, baseUrl, segredo: jwtSecret });
   suporte.configurar({ avisarStaff, enviarEmail: motor.enviarEmailCentral, alertaDono: deps.alertaAugusto });
   registrarRotas(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria });

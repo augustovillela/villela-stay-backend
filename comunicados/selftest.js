@@ -51,6 +51,13 @@ const enviarEmail = async (to, assunto, html) => { if (to === emailFalhaPara) re
 const enviarWhatsAppTemplate = async (to, template, params) => { saidos.whatsapp.push({ to, template, params }); return true; };
 const avisosStaff = [];
 const avisarStaff = async (p) => { avisosStaff.push(p); return 1; };
+// Área do Hóspede: contas num JSON, injetadas (como no server.js).
+const HOSPEDES = [
+  { id: 'h1', nome: 'Hóspede Um', email: 'h1@ex.com', telefone: '61999991111', ativo: true, criadoEm: new Date().toISOString(), ultimoLogin: new Date().toISOString() },
+  { id: 'h2', nome: 'Hóspede Novo', email: 'h2@ex.com', telefone: '', ativo: true, criadoEm: new Date().toISOString(), ultimoLogin: '' },
+  { id: 'h3', nome: 'Hóspede Inativo', email: 'h3@ex.com', telefone: '', ativo: false, criadoEm: new Date().toISOString() },
+];
+const pushHospede = [];
 const alertasDono = [];
 const alertaAugusto = async (r) => { alertasDono.push(r); return true; };
 
@@ -78,7 +85,7 @@ const com = require('./index');
 const app = express();
 app.use(cookieParser());
 process.env.COMUNICADOS_ROTINAS_OFF = '1';   // o teste roda as rotinas à mão
-com.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, enviarEmail, enviarWhatsAppTemplate, avisarStaff, alertaAugusto, jwtSecret: SEGREDO, registrarAuditoria: () => {} });
+com.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, enviarEmail, enviarWhatsAppTemplate, avisarStaff, alertaAugusto, hospedes: { listar: () => HOSPEDES, push: async (id, p) => { pushHospede.push({ id, p }); return 1; } }, jwtSecret: SEGREDO, registrarAuditoria: () => {} });
 const { motor, fontes } = com;
 const { db } = require('./db');
 
@@ -691,6 +698,30 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.equal(vistas[0], 'Boas-vindas', 'dica de prioridade tinha de vir primeiro');
     assert.equal(new Set(vistas).size, vistas.length, 'sorteio repetiu dica');
     assert.equal(com.dicas.proxima('academy', 'a2'), null, 'acabaram as dicas: o post-it para');
+  });
+
+  await t('hóspedes: entram como público, com os segmentos da Área do Hóspede', async () => {
+    const f = fontes.obter('hospede');
+    assert.equal((await f.listar('todos')).length, 2, 'inativo não entra');
+    assert.deepEqual((await f.listar('nunca_entraram')).map((x) => x.ref), ['h2']);
+    const p = await motor.previa({ titulo: 'x', corpo: 'y', categoria: 'instabilidade', alvos: [{ produto: 'hospede', segmento: 'todos' }], canais: ['app', 'email', 'whatsapp'] });
+    assert.equal(p.canais.email.total, 2);
+    assert.equal(p.canais.whatsapp.total, 1, 'só quem tem telefone');
+  });
+
+  await t('hóspedes: a sessão é o cookie do hóspede (tipo hospede) e o push usa o do server.js', async () => {
+    const ck = 'hospede_token=' + jwt.sign({ tipo: 'hospede', hid: 'h1' }, SEGREDO);
+    const r = await req('GET', '/hospede/api/comunicados', { cookie: ck });
+    assert.equal(r.json.produto, 'Área do Hóspede');
+    const errado = await req('GET', '/hospede/api/comunicados', { cookie: 'hospede_token=' + jwt.sign({ tipo: 'staff', hid: 'h1' }, SEGREDO) });
+    assert.equal(errado.json.anonimo, true, 'token de outro tipo não abre a Área do Hóspede');
+    const inativo = await req('GET', '/hospede/api/comunicados', { cookie: 'hospede_token=' + jwt.sign({ tipo: 'hospede', hid: 'h3' }, SEGREDO) });
+    assert.equal(inativo.json.anonimo, true, 'conta inativa não abre');
+    const antes = pushHospede.length;
+    const c = motor.criar({ titulo: 'Aviso aos hóspedes', corpo: 'texto', categoria: 'instabilidade', alvos: [{ produto: 'hospede', segmento: 'todos' }], canais: ['app'] }, 'adm');
+    await motor.disparar(c.id, { autor: 'adm' });
+    await motor.processarLote();
+    assert.ok(pushHospede.length > antes, 'o aviso no app devia disparar o push do hóspede');
   });
 
   await t('staff: rascunho enviado não se edita; excluir só rascunho', async () => {
