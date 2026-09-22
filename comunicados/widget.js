@@ -19,7 +19,10 @@
   if (!eu || !eu.src) return;
   var base = eu.src.replace(/\/comunicados\.js(\?.*)?$/, '');
   var cor = eu.getAttribute('data-cor') || '#1B2A4A';
-  var lado = eu.getAttribute('data-lado') === 'direita' ? 'right' : 'left';
+  // Canto inferior DIREITO por padrão: é onde as pessoas procuram chat. Ficava
+  // à esquerda e o Augusto — dono da plataforma — não achou o botão; aluno
+  // nenhum acharia. data-lado="esquerda" muda, se algum app precisar.
+  var lado = eu.getAttribute('data-lado') === 'esquerda' ? 'left' : 'right';
   var comAvisos = eu.getAttribute('data-sino') !== 'nao';
   var E = { itens: [], suporteNaoLidas: 0, aberto: false, aba: comAvisos ? 'avisos' : 'suporte', conversa: null, produto: '' };
   var timerConversa = null;
@@ -30,7 +33,11 @@
   function linkSeguro(u) { return /^https:\/\//i.test(String(u || '')) ? u : ''; }
 
   var css = '' +
-    '.vsc-bt{position:fixed;bottom:18px;' + lado + ':18px;z-index:2147483000;width:50px;height:50px;border-radius:50%;border:0;background:' + cor + ';color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}' +
+    '.vsc-bt{position:fixed;bottom:18px;' + lado + ':18px;z-index:2147483000;min-height:48px;padding:0 18px 0 14px;border-radius:26px;border:0;background:' + cor + ';color:#fff;font:700 15px/1 Inter,system-ui,Arial,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.28);display:flex;align-items:center;gap:8px}' +
+    '.vsc-bt:hover{filter:brightness(1.08)}.vsc-bt .vsc-ico{font-size:20px}' +
+    '@media (max-width:480px){.vsc-bt{padding:0 16px 0 13px;font-size:14px}}' +
+    '.vsc-dica{position:fixed;bottom:76px;' + lado + ':18px;z-index:2147483000;max-width:min(280px,calc(100vw - 36px));background:#1F2933;color:#fff;border-radius:12px;padding:12px 14px;font:14px/1.45 Inter,system-ui,Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3)}' +
+    '.vsc-dica button{background:none;border:0;color:#F5B301;font-weight:700;cursor:pointer;padding:6px 0 0;font:inherit;text-decoration:underline}' +
     '.vsc-bt:focus-visible,.vsc-pn button:focus-visible,.vsc-pn textarea:focus-visible,.vsc-pn input:focus-visible{outline:3px solid #F5B301;outline-offset:2px}' +
     '.vsc-n{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#D92D20;color:#fff;font:700 12px/20px system-ui,Arial,sans-serif;text-align:center}' +
     '.vsc-pn{position:fixed;bottom:78px;' + lado + ':18px;z-index:2147483000;width:min(390px,calc(100vw - 32px));height:min(72vh,600px);display:flex;flex-direction:column;background:#fff;color:#1F2933;border:1px solid #E2E6EC;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.2);font:14px/1.5 Inter,system-ui,Arial,sans-serif;overflow:hidden}' +
@@ -126,14 +133,32 @@
     document.body.appendChild(bt);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && E.aberto) { fechar(); if (bt) bt.focus(); } });
   }
+  // Dica de primeira visita: some para sempre depois de vista/fechada. Se o
+  // navegador bloquear o armazenamento (aba anônima), a dica só não aparece.
+  var CHAVE_DICA = 'vs-comunicados-dica';
+  function mostrarDica() {
+    var ja; try { ja = localStorage.getItem(CHAVE_DICA); } catch (_) { ja = '1'; }
+    if (ja || !bt) return;
+    var d = document.createElement('div');
+    d.className = 'vsc-dica'; d.setAttribute('role', 'status');
+    d.innerHTML = 'Precisa de ajuda ou quer ver os avisos? É por aqui. 👇<br><button type="button">entendi</button>';
+    document.body.appendChild(d);
+    var fechar = function () { try { localStorage.setItem(CHAVE_DICA, '1'); } catch (_) {} d.remove(); };
+    d.querySelector('button').onclick = fechar;
+    bt.addEventListener('click', fechar, { once: true });
+    setTimeout(fechar, 12000);
+  }
+
   function naoLidosAvisos() { return comAvisos ? E.itens.filter(function (x) { return !x.lido; }).length : 0; }
   function pintarBotao() {
     if (!bt) return;
     var n = naoLidosAvisos() + E.suporteNaoLidas;
-    bt.innerHTML = (comAvisos ? '🔔' : '💬') + (n ? '<span class="vsc-n">' + (n > 9 ? '9+' : n) + '</span>' : '');
-    var rot = comAvisos ? 'Avisos e suporte' : 'Suporte';
+    // Texto no botão: "Ajuda" é o que a pessoa procura quando precisa de nós.
+    bt.innerHTML = '<span class="vsc-ico" aria-hidden="true">💬</span><span>Ajuda</span>' +
+      (n ? '<span class="vsc-n">' + (n > 9 ? '9+' : n) + '</span>' : '');
+    var rot = comAvisos ? 'Ajuda e avisos' : 'Ajuda';
     bt.setAttribute('aria-label', n ? rot + ': ' + n + ' novidade' + (n > 1 ? 's' : '') : rot);
-    bt.title = bt.getAttribute('aria-label');
+    bt.title = comAvisos ? 'Falar com a equipe e ver avisos' : 'Falar com a equipe';
   }
   // Todo aviso não lido aparece como FAIXA no topo, não só o de destaque:
   // depender de a pessoa reparar num sino é depender de sorte. A faixa mostra
@@ -308,7 +333,7 @@
     return silencioso(api('GET', '')).then(function (r) {
       if (!r || r.anonimo) { if (bt) { bt.remove(); bt = null; } if (pn) { pn.remove(); pn = null; E.aberto = false; } if (fx) { fx.remove(); fx = null; } return; }
       E.itens = r.itens || []; E.suporteNaoLidas = Number(r.suporte_nao_lidas || 0); E.produto = r.produto || '';
-      montarBase(); pintarBotao(); pintarFaixa();
+      montarBase(); pintarBotao(); pintarFaixa(); mostrarDica();
     });
   }
   function iniciar() {
