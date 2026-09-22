@@ -72,7 +72,7 @@
 
     // ================= VILLELA EXPRESS e FAÇA COMIGO =================
     var FORMATO = {
-      express: { titulo: 'Villela Express', ico: '⚡', intro: 'Vídeos de 1 a 3 minutos para consultar na hora: como anexar um PDF, criar um projeto, melhorar um prompt. A sua biblioteca de consulta rápida.' },
+      express: { titulo: 'Villela Express', ico: '⚡', intro: 'Vídeos curtos, de até 3 minutos, para consultar na hora: como anexar um PDF, criar um projeto, melhorar um prompt. A sua biblioteca de consulta rápida.' },
       'faca-comigo': { titulo: 'Faça comigo', ico: '🛠️', intro: 'Sessões práticas de tela: eu executo, você executa junto. Cada vídeo tem os passos marcados — clique num passo para ir ao ponto exato.' },
     };
     function formato(f) {
