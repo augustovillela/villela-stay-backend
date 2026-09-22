@@ -344,7 +344,11 @@ function cursoHTML(slug) {
 
   // "o que você leva" sai do conteúdo REAL do curso, não de promessa escrita à mão
   const inclui = [];
-  if (resumo.modulos.length) inclui.push(['texto', `${resumo.modulos.length} aula${resumo.modulos.length > 1 ? 's' : ''}, do começo ao fim`]);
+  // a grade conta só as aulas; o módulo bônus (Villela Express) aparece à parte
+  const nAulas = resumo.modulos.filter(m => !m.extra).length;
+  const bonusExpress = resumo.total_express ? `+ Villela Express: ${resumo.total_express} vídeo${resumo.total_express > 1 ? 's' : ''} curto${resumo.total_express > 1 ? 's' : ''} de consulta rápida` : '';
+  if (nAulas) inclui.push(['texto', `${nAulas} aula${nAulas > 1 ? 's' : ''}, do começo ao fim`]);
+  if (bonusExpress) inclui.push(['play', bonusExpress]);
   if (resumo.total_videos) inclui.push(['play', `${resumo.total_videos} vídeo${resumo.total_videos > 1 ? 's' : ''}${resumo.total_seg ? ` · ${durSeg(resumo.total_seg)}` : ''}`]);
   const naoVideo = resumo.total_aulas - resumo.total_videos;
   if (naoVideo > 0) inclui.push(['doc', `${naoVideo} conteúdo${naoVideo > 1 ? 's' : ''} de leitura e prática`]);
@@ -358,7 +362,7 @@ function cursoHTML(slug) {
     ...((p.categorias && p.categorias.length ? p.categorias : [p.categoria]).filter(Boolean)
       .map(c => `<a class="pv-chip" href="/academy/marketplace?categoria=${encodeURIComponent(c)}" style="text-decoration:none">${esc(ct.catRotulo(c))}</a>`)),
     nota.media ? `<span class="pv-chip" style="color:var(--pv-ouro)">★ ${nota.media} <span style="opacity:.8;color:#E8EDF6">(${nota.total} avaliações)</span></span>` : '',
-    resumo.modulos.length ? `<span class="pv-chip">${svgI('texto', 15)} ${resumo.modulos.length} aulas</span>` : '',
+    nAulas ? `<span class="pv-chip">${svgI('texto', 15)} ${nAulas} aula${nAulas > 1 ? 's' : ''}</span>` : '',
     resumo.total_aulas > resumo.modulos.length ? `<span class="pv-chip">${svgI('play', 15)} ${resumo.total_aulas} conteúdos</span>` : '',
     resumo.total_seg ? `<span class="pv-chip">${svgI('relogio', 15)} ${durSeg(resumo.total_seg)}</span>` : '',
     resumo.total_materiais ? `<span class="pv-chip">${svgI('baixar', 15)} ${resumo.total_materiais} materiais</span>` : '',
@@ -383,7 +387,7 @@ function cursoHTML(slug) {
 
   const curriculo = resumo.modulos.length ? `
     <div class="pv-resumo-curr">
-      <span>${svgI('texto', 16)} ${resumo.modulos.length} aulas</span>
+      <span>${svgI('texto', 16)} ${nAulas} aula${nAulas > 1 ? 's' : ''}${resumo.total_express ? ` + Villela Express (${resumo.total_express} vídeos curtos)` : ''}</span>
       <span>${svgI('play', 16)} ${resumo.total_aulas} conteúdos (vídeo, artigo, material)</span>
       ${resumo.total_seg ? `<span>${svgI('relogio', 16)} ${durSeg(resumo.total_seg)} de conteúdo</span>` : ''}
       ${resumo.total_materiais ? `<span>${svgI('baixar', 16)} ${resumo.total_materiais} materiais</span>` : ''}

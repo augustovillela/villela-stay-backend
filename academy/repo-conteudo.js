@@ -781,7 +781,7 @@ const Marketplace = {
   // materiais cada aula tem — sem isso o currículo é só uma lista de títulos.
   resumoConteudo(productId) {
     const modulos = db.prepare('SELECT id, titulo FROM course_modules WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
-    const aulas = db.prepare('SELECT id, module_id, titulo, tipo, duracao_seg, gratuita FROM lessons WHERE product_id = ? ORDER BY ordem, criado_em').all(productId);
+    const aulas = db.prepare("SELECT id, module_id, titulo, tipo, duracao_seg, gratuita, COALESCE(formato, '') formato FROM lessons WHERE product_id = ? ORDER BY ordem, criado_em").all(productId);
     const mats = db.prepare(`SELECT m.lesson_id, COUNT(*) n FROM lesson_materials m
       JOIN lessons l ON l.id = m.lesson_id WHERE l.product_id = ? GROUP BY m.lesson_id`).all(productId);
     const porAula = new Map(mats.map(x => [x.lesson_id, x.n]));
@@ -798,7 +798,10 @@ const Marketplace = {
         titulo: m.titulo,
         aulas: aulas.filter(a => a.module_id === m.id).map(nAula),
         duracao_seg: aulas.filter(a => a.module_id === m.id).reduce((n, a) => n + (a.duracao_seg || 0), 0),
+        // módulo só de Villela Express é biblioteca bônus, não aula da grade
+        extra: aulas.some(a => a.module_id === m.id) && aulas.filter(a => a.module_id === m.id).every(a => a.formato === 'express'),
       })),
+      total_express: aulas.filter(a => a.formato === 'express').length,
     };
   },
 };

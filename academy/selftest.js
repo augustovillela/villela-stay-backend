@@ -1428,7 +1428,8 @@ async function main() {
     const resumo = ctx.Marketplace.resumoConteudo(prodId);
     assert.ok(resumo.total_aulas > resumo.modulos.length, 'o fixture tem mais de um item por módulo');
     const r = await req('GET', `/academy/cursos/${p2.slug}`);
-    assert.ok(r.texto.includes(`${resumo.modulos.length} aulas`), 'o número de AULAS é o de módulos');
+    const nMod = resumo.modulos.length;
+    assert.ok(r.texto.includes(nMod > 1 ? `${nMod} aulas` : `${nMod} aula`), 'o número de AULAS é o de módulos');
     assert.ok(r.texto.includes(`${resumo.total_aulas} conteúdos`), 'os itens aparecem como conteúdos');
     assert.ok(!r.texto.includes(`${resumo.total_aulas} aulas`), 'item nunca é chamado de aula — foi o que confundiu o autor');
   });
@@ -2176,6 +2177,27 @@ async function main() {
     const antesPct = curso.json.progresso.pct;
     const mk = await req('POST', `/academy/api/aluno/aulas/${exp.id}/progresso`, { jar: 'olga', corpo: { concluida: true } });
     assert.equal(mk.json.progresso.pct, antesPct, 'concluir um Express não mexe no percentual');
+  });
+
+  await t('página de venda: módulo só de Express é bônus, não conta como aula da grade', async () => {
+    const base = CURSO();
+    base.modulos.push({ titulo: 'Villela Express', aulas: [
+      { titulo: 'Como anexar um PDF', tipo: 'video', duracao_seg: 90, formato: 'express' },
+      { titulo: 'Faça comigo: o primeiro projeto', tipo: 'video', duracao_seg: 900, formato: 'faca-comigo' }] });
+    base.modulos.push({ titulo: 'Biblioteca Express', aulas: [{ titulo: 'Dica rápida', tipo: 'video', duracao_seg: 40, formato: 'express' }] });
+    assert.equal((await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: base })).st, 200);
+    const ctx = require('./repo-conteudo');
+    const resumo = ctx.Marketplace.resumoConteudo(impId);
+    assert.equal(resumo.modulos.find(m => m.titulo === 'Biblioteca Express').extra, true);
+    assert.equal(resumo.modulos.find(m => m.titulo === 'Villela Express').extra, false, 'módulo misto continua sendo aula');
+    assert.equal(resumo.total_express, 2);
+    const nAulas = resumo.modulos.filter(m => !m.extra).length;
+    assert.equal(nAulas, resumo.modulos.length - 1);
+    require('./db').db.prepare("UPDATE products SET status = 'publicado' WHERE id = ?").run(impId);
+    const r = await req('GET', `/academy/cursos/${ctx.Produtos.obter(impId).slug}`);
+    assert.ok(r.texto.includes(`${nAulas} aulas + Villela Express (2 vídeos curtos)`), 'resumo do currículo');
+    assert.ok(!r.texto.includes(`${resumo.modulos.length} aulas`), 'o bônus não infla a contagem de aulas');
+    require('./db').db.prepare("UPDATE products SET status = 'rascunho' WHERE id = ?").run(impId);
   });
 
   await t('trilhas: nascem em rascunho, só o dono vê; publicadas mostram progresso e itens "em breve"', async () => {
