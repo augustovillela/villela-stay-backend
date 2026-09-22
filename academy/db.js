@@ -99,6 +99,25 @@ const MIGRACOES = [
           INSERT OR IGNORE INTO product_categories (product_id, slug, principal)
             SELECT id, categoria, 1 FROM products WHERE categoria IS NOT NULL AND categoria != '';`,
   },
+
+  { // AUDIOBOOK do curso: capítulos em áudio, ouvidos no player do site (tela
+    // bloqueada, carro). Não é aula: não entra na grade nem no progresso. A
+    // identidade do capítulo é a ORDEM — reenviar o capítulo 3 troca o áudio
+    // e o título do 3, nunca cria outro. `amostra` = aberto a quem não comprou.
+    nome: 'audiobook-faixas-2026-09-21',
+    sql: `CREATE TABLE IF NOT EXISTS audiobook_faixas (
+            id          TEXT PRIMARY KEY,
+            product_id  TEXT NOT NULL REFERENCES products(id),
+            ordem       INTEGER NOT NULL,
+            titulo      TEXT NOT NULL,
+            media_id    TEXT NOT NULL REFERENCES media_files(id),
+            duracao_seg INTEGER DEFAULT 0,
+            amostra     INTEGER DEFAULT 0,
+            criado_em   TEXT NOT NULL,
+            UNIQUE (product_id, ordem)
+          );
+          CREATE INDEX IF NOT EXISTS idx_abfaixa_media ON audiobook_faixas(media_id);`,
+  },
 ];
 
 for (const m of MIGRACOES) {

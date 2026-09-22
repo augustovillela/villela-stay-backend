@@ -184,7 +184,17 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
       incluidos: (p.tipo === 'clube' && matriculado) ? ct.Clube.itens(p.id).filter(i => i.status === 'publicado') : [],
       progresso: matriculado ? ct.Progresso.doProduto(req.usuario.id, p.id) : null,
       progresso_aulas: matriculado ? ct.Progresso.porAula(req.usuario.id, p.id) : {},
+      audiobook: ct.Audiobook.paraAluno(p.id, req.usuario.id),
     });
+  }));
+  // AUDIOBOOK: URL assinada de UM capítulo, só para quem pode ouvi-lo. É o único
+  // caminho até o arquivo — a rota genérica /api/media não entrega áudio de audiobook.
+  app.get('/academy/api/aluno/audiobook/:faixaId/link', requireUsuario, h((req, res) => {
+    const r = ct.Audiobook.link(req.params.faixaId, req.usuario);
+    if (!r) return res.status(404).json({ erro: 'Capítulo não encontrado ou não liberado para você.' });
+    ct.Midia.logAcesso(req.usuario.id, r.media.id, ipDe(req));
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, url: r.url, expira_epoch: r.expira_epoch });
   }));
   app.post('/academy/api/aluno/aulas/:lessonId/progresso', requireUsuario, requirePapel('aluno'), h((req, res) => {
     const prog = ct.Progresso.marcar(req.usuario.id, req.params.lessonId, req.body || {});

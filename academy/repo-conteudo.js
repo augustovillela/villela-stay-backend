@@ -414,6 +414,72 @@ function temAcesso(userId, productId) {
     WHERE s.user_id = ? AND s.status = 'ativa' AND ci.product_id = ?`).get(userId, productId);
 }
 
+// AUDIOBOOK do curso: capítulos em áudio para ouvir no player do site.
+// De propósito o áudio NÃO entra em Midia.podeAcessar: a rota genérica
+// /api/media/:id não o entrega. O único caminho é Audiobook.link (aluno com
+// acesso, ou capítulo de amostra), que emite URL assinada curta — o arquivo
+// só "vive" dentro do player. Identidade do capítulo = (produto, ordem).
+const MIMES_AUDIO = ['audio/mpeg', 'audio/mp4', 'audio/ogg'];
+const Audiobook = {
+  faixas(productId) {
+    return db.prepare(`SELECT f.id, f.ordem, f.titulo, f.duracao_seg, f.amostra, f.media_id, m.tamanho, m.mime
+      FROM audiobook_faixas f JOIN media_files m ON m.id = f.media_id AND m.confirmado = 1
+      WHERE f.product_id = ? ORDER BY f.ordem`).all(productId);
+  },
+  // o que o aluno vê: título de todos (vitrine), mas só o capítulo liberado é tocável
+  paraAluno(productId, userId) {
+    const acesso = temAcesso(userId, productId);
+    return this.faixas(productId).map(f => ({
+      id: f.id, ordem: f.ordem, titulo: f.titulo, duracao_seg: f.duracao_seg,
+      amostra: f.amostra ? 1 : 0, liberada: acesso || !!f.amostra,
+    }));
+  },
+  // grava/atualiza o capítulo N. Só toca no que veio: reenviar só o título não
+  // troca o áudio, e reenviar o áudio não apaga a amostra.
+  definir(productId, producerId, d = {}) {
+    const ordem = parseInt(d.ordem, 10);
+    if (!(ordem >= 1 && ordem <= 999)) throw new Error('Informe a "ordem" do capítulo (1 a 999).');
+    const ja = db.prepare('SELECT * FROM audiobook_faixas WHERE product_id = ? AND ordem = ?').get(productId, ordem);
+    let mediaId = ja ? ja.media_id : '';
+    if (d.media_id != null) {
+      const m = Midia.obter(s(d.media_id, 40));
+      if (!m || m.owner_user_id !== producerId) throw new Error('O áudio não é uma mídia confirmada deste produtor.');
+      if (!MIMES_AUDIO.includes(m.mime)) throw new Error('O capítulo precisa ser áudio (MP3, M4A ou OGG).');
+      mediaId = m.id;
+    }
+    if (!mediaId) throw new Error('Capítulo novo precisa do áudio ("media_id").');
+    const titulo = d.titulo != null ? s(d.titulo, 160) : (ja ? ja.titulo : '');
+    if (!titulo) throw new Error('Capítulo sem título.');
+    const duracao = d.duracao_seg != null ? Math.max(0, parseInt(d.duracao_seg, 10) || 0) : (ja ? ja.duracao_seg : 0);
+    const amostra = d.amostra != null ? (d.amostra ? 1 : 0) : (ja ? ja.amostra : 0);
+    if (ja) {
+      db.prepare('UPDATE audiobook_faixas SET titulo = ?, media_id = ?, duracao_seg = ?, amostra = ? WHERE id = ?')
+        .run(titulo, mediaId, duracao, amostra, ja.id);
+      return ja.id;
+    }
+    const id = novoId();
+    db.prepare('INSERT INTO audiobook_faixas (id, product_id, ordem, titulo, media_id, duracao_seg, amostra, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, productId, ordem, titulo, mediaId, duracao, amostra, nowISO());
+    return id;
+  },
+  remover(productId, ordem) {
+    return db.prepare('DELETE FROM audiobook_faixas WHERE product_id = ? AND ordem = ?').run(productId, parseInt(ordem, 10) || 0).changes;
+  },
+  // URL assinada do capítulo — só para quem pode ouvir. 30 min cobre o capítulo
+  // mais longo com folga; se vencer numa pausa, o player pede outra sozinho.
+  link(faixaId, usuario) {
+    const f = db.prepare('SELECT * FROM audiobook_faixas WHERE id = ?').get(s(faixaId, 40));
+    if (!f || !usuario) return null;
+    const p = Produtos.obter(f.product_id);
+    if (!p || ['suspenso', 'removido'].includes(p.status)) return null;
+    const dono = p.producer_id === usuario.id || (usuario.papeis || []).includes('admin');
+    if (!dono && !f.amostra && !temAcesso(usuario.id, f.product_id)) return null;
+    const m = Midia.obter(f.media_id);
+    if (!m) return null;
+    return { faixa: f, media: m, ...Midia.urlTemporaria(m, usuario.id, 1800) };
+  },
+};
+
 // itens do clube (sempre produtos do MESMO produtor)
 const Clube = {
   itens(clubProductId) {
@@ -809,5 +875,5 @@ module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
   Produtos, Conteudo, Midia, Matriculas, Cortesia, Progresso, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
-  temAcesso, Clube,
+  temAcesso, Clube, Audiobook,
 };

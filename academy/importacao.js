@@ -190,7 +190,36 @@ function aulaPorTitulo(productId, dados = {}) {
 }
 function estruturaDoCurso(dados = {}) {
   const { u, produto } = produtorDono(dados);
-  return { produtor: { id: u.id, email: u.email }, produto, estrutura: ct.Produtos.estrutura(produto.id), pagina_venda: ct.SalesPages.obter(produto.id) };
+  return {
+    produtor: { id: u.id, email: u.email }, produto, estrutura: ct.Produtos.estrutura(produto.id),
+    pagina_venda: ct.SalesPages.obter(produto.id), audiobook: ct.Audiobook.faixas(produto.id),
+  };
+}
+
+// ---- AUDIOBOOK: capítulo N em áudio (iniciar → PUT direto ao bucket → confirmar) ----
+// Identidade = ordem do capítulo: reenviar o 3 troca o áudio do 3. O arquivo antigo
+// fica no bucket (mídia órfã), como acontece com o vídeo trocado.
+function iniciarAudio(dados = {}) {
+  const { u } = produtorDono(dados);
+  const mime = s(dados.mime, 100).toLowerCase();
+  if (!/^audio\//.test(mime)) throw new Error('O capítulo do audiobook precisa ser áudio (audio/mpeg).');
+  const r = ct.Midia.iniciarUploadGrande(u.id, { nome: dados.nome, mime, tamanho: dados.tamanho });
+  return { media_id: r.id, upload_url: r.upload_url, expira_seg: r.expira_seg };
+}
+async function confirmarAudio(mediaId, dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  const m = await ct.Midia.confirmarUploadGrande(s(mediaId, 40), u.id);
+  ct.Audiobook.definir(produto.id, u.id, {
+    ordem: dados.ordem, titulo: dados.titulo, media_id: m.id, duracao_seg: dados.duracao_seg, amostra: dados.amostra,
+  });
+  return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho }, audiobook: ct.Audiobook.faixas(produto.id) };
+}
+// muda título/amostra de um capítulo sem reenviar o áudio, ou o remove
+function editarCapitulo(dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  if (dados.remover) ct.Audiobook.remover(produto.id, dados.ordem);
+  else ct.Audiobook.definir(produto.id, u.id, { ordem: dados.ordem, titulo: dados.titulo, amostra: dados.amostra, duracao_seg: dados.duracao_seg });
+  return { audiobook: ct.Audiobook.faixas(produto.id) };
 }
 function iniciarVideo(dados = {}) {
   const { u, produto } = produtorDono(dados);
@@ -213,4 +242,7 @@ async function confirmarVideo(mediaId, dados = {}) {
   return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho, storage: m.storage }, aula: depois };
 }
 
-module.exports = { aplicarEstrutura, anexarMateriais, importarCurso, estruturaDoCurso, iniciarVideo, confirmarVideo };
+module.exports = {
+  aplicarEstrutura, anexarMateriais, importarCurso, estruturaDoCurso, iniciarVideo, confirmarVideo,
+  iniciarAudio, confirmarAudio, editarCapitulo,
+};

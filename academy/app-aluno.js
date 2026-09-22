@@ -29,7 +29,11 @@
       chapeu: 'M12 3 1 9l11 6 9-4.9V17h2V9zM5 13.2V17c0 1.7 3.1 3 7 3s7-1.3 7-3v-3.8l-7 3.8z',
       texto: 'M3 5h18v2H3zm0 6h18v2H3zm0 6h12v2H3z', img: 'M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.9 13.1l2 2.4 3-3.9 3.9 5.2H6z',
       zip: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm-2 16h-2v-2h2zm0-4h-2v-2h2zm0-4h-2V8h2zm0-4h-2V4h2z',
-      estrela: 'm12 17.3 6.2 3.7-1.6-7 5.4-4.7-7.1-.6L12 2 9.1 8.7 2 9.3l5.4 4.7-1.6 7z'
+      estrela: 'm12 17.3 6.2 3.7-1.6-7 5.4-4.7-7.1-.6L12 2 9.1 8.7 2 9.3l5.4 4.7-1.6 7z',
+      pausa: 'M6 5h4v14H6zm8 0h4v14h-4z', ant: 'M6 6h2v12H6zm3.5 6 8.5 6V6z', prox: 'M6 18l8.5-6L6 6zm10-12h2v12h-2z',
+      volta: 'M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z', avanca: 'M12 5V1l5 5-5 5V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z',
+      fone: 'M12 3a9 9 0 0 0-9 9v7a2 2 0 0 0 2 2h3v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h3a2 2 0 0 0 2-2v-7a9 9 0 0 0-9-9z',
+      lua: 'M12.3 2a10 10 0 1 0 9.7 12.5A8 8 0 0 1 12.3 2z'
     };
     function ico(n, tam) { // <svg> inline: herda a cor do texto (currentColor)
       return '<svg viewBox="0 0 24 24" width="' + (tam || 18) + '" height="' + (tam || 18) + '" fill="currentColor" aria-hidden="true"><path d="' + P[n] + '"/></svg>';
@@ -155,11 +159,8 @@
     // ================= ESTÚDIO =================
     function abrirCurso(pid, aulaId) {
       api('GET', '/aluno/cursos/' + pid).then(function (d) {
-        var aulas = [];
-        (d.estrutura || []).forEach(function (m) {
-          (m.aulas || []).forEach(function (a) { aulas.push({ a: a, mod: m }); });
-        });
-        C = { pid: pid, d: d, aulas: aulas, pa: d.progresso_aulas || {}, i: -1 };
+        C = estadoDoCurso(pid, d);
+        var aulas = C.aulas;
         document.body.classList.add('aluno-amplo');
         pintarEstudio();
         var alvo = -1;
@@ -175,6 +176,13 @@
       }).catch(erroBox);
     }
 
+    function estadoDoCurso(pid, d) {
+      var aulas = [];
+      (d.estrutura || []).forEach(function (m) {
+        (m.aulas || []).forEach(function (a) { aulas.push({ a: a, mod: m }); });
+      });
+      return { pid: pid, d: d, aulas: aulas, pa: d.progresso_aulas || {}, i: -1 };
+    }
     function indiceDe(id) {
       for (var k = 0; k < C.aulas.length; k++) if (C.aulas[k].a.id === id) return k;
       return -1;
@@ -198,7 +206,7 @@
         '<span>' + ico('texto', 15) + ' ' + C.d.estrutura.length + ' aulas</span>' +
         (C.aulas.length > C.d.estrutura.length ? '<span>' + ico('play', 15) + ' ' + C.aulas.length + ' conteúdos</span>' : '') +
         (totalSeg ? '<span>' + ico('relogio', 15) + ' ' + dur(totalSeg) + ' de conteúdo</span>' : '') +
-        '</div></div>' +
+        '</div>' + botaoAudiobook(d.audiobook) + '</div>' +
         (d.matriculado ? '' : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas. ' +
           '<a href="/academy/cursos/' + esc(p.slug || '') + '">Ver a página do curso →</a></div>') +
         '<div class="est"><div class="est-palco">' +
@@ -213,6 +221,7 @@
         '<div id="al-fim"></div></div></div></div>';
       setView(h);
       el('al-volta').onclick = function (e) { e.preventDefault(); biblioteca(); };
+      if (el('al-ab')) el('al-ab').onclick = function () { abrirAudiobook(); };
       el('al-busca').oninput = function () { pintarGrade(this.value); };
       pintarGrade('');
       ligarTeclado();
@@ -318,6 +327,7 @@
       var chave = 'pos-' + a.id, ultimo = 0, marcou = false;
       var pos = Number(pref(chave) || 0);
       if (pos > 10) v.currentTime = pos;
+      v.addEventListener('play', function () { if (AB.audio && !AB.audio.paused) AB.audio.pause(); }); // um som de cada vez
       v.ontimeupdate = function () {
         if (!v.duration) return;
         if (v.currentTime - ultimo > 5) { ultimo = v.currentTime; pref(chave, v.currentTime < v.duration - 15 ? String(Math.floor(v.currentTime)) : '0'); }
@@ -509,6 +519,326 @@
         else if (e.key === 'c' || e.key === 'C') { if (el('al-feito')) { e.preventDefault(); el('al-feito').click(); } }
       };
       document.addEventListener('keydown', window.__alTeclado);
+    }
+
+    // ================= AUDIOBOOK =================
+    // O curso em áudio, capítulo a capítulo, para ouvir no carro ou com o celular no
+    // bolso. Um <audio> ÚNICO, pendurado no <body> (fora da view): trocar de tela no
+    // painel não interrompe o som, e o mini-player segue embaixo. Os controles do
+    // sistema (tela bloqueada, fone, volante do carro) vêm da Media Session API.
+    // O arquivo só chega por URL assinada de 30 min, pedida capítulo a capítulo —
+    // não há botão de baixar nem rota que entregue o áudio fora do player.
+    var AB = { pid: '', produto: null, faixas: [], i: -1, audio: null, links: {}, sono: null, tentou: 0 };
+    var VELOCIDADES = [0.75, 1, 1.25, 1.5, 1.75, 2];
+
+    function botaoAudiobook(fx) {
+      fx = fx || [];
+      if (!fx.length) return '';
+      var seg = 0; fx.forEach(function (f) { seg += Number(f.duracao_seg || 0); });
+      return '<button class="al-bt ab-abrir" id="al-ab">' + ico('fone', 18) + ' Ouvir como audiobook' +
+        '<span class="ab-abrir-n">' + fx.length + ' capítulos' + (seg ? ' · ' + dur(seg) : '') + '</span></button>';
+    }
+    function mmss(seg) {
+      seg = Math.max(0, Math.floor(Number(seg) || 0));
+      var h = Math.floor(seg / 3600), m = Math.floor((seg % 3600) / 60), s = seg % 60;
+      return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+    function faixa() { return AB.faixas[AB.i] || null; }
+    function proximaFaixa(de, passo) {
+      for (var k = de + passo; k >= 0 && k < AB.faixas.length; k += passo) if (AB.faixas[k].liberada) return k;
+      return -1;
+    }
+    function ouvido(f) { return pref('ab-ok-' + f.id) === '1'; }
+
+    function garantirAudio() {
+      if (AB.audio) return AB.audio;
+      var a = document.createElement('audio');
+      a.id = 'ab-audio'; a.preload = 'metadata';
+      a.setAttribute('controlslist', 'nodownload');
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      AB.audio = a;
+      // qualquer tela do painel pode trocar a view (outra aba, biblioteca…) sem passar
+      // por aqui: sem o mini-player o som seguiria tocando sem controle nenhum.
+      setInterval(function () {
+        if (a.src && !el('ab-lista') && !document.getElementById('ab-mini')) pintarMini();
+      }, 1000);
+      var ultimo = 0;
+      a.addEventListener('timeupdate', function () {
+        var f = faixa(); if (!f || !a.duration) return;
+        if (Math.abs(a.currentTime - ultimo) > 5) {
+          ultimo = a.currentTime;
+          pref('ab-pos-' + f.id, a.currentTime < a.duration - 20 ? String(Math.floor(a.currentTime)) : '0');
+          if (a.currentTime / a.duration > 0.92) pref('ab-ok-' + f.id, '1');
+          posicaoNoSistema();
+        }
+        if (AB.sono && AB.sono.ate && Date.now() >= AB.sono.ate) { AB.sono = null; a.pause(); pintarSono(); }
+        pintarTempo();
+      });
+      a.addEventListener('play', function () { AB.tentou = 0; pintarBotoes(); pintarMini(); if (navigator.mediaSession) navigator.mediaSession.playbackState = 'playing'; });
+      a.addEventListener('pause', function () { pintarBotoes(); pintarMini(); if (navigator.mediaSession) navigator.mediaSession.playbackState = 'paused'; });
+      a.addEventListener('loadedmetadata', function () { pintarTempo(); posicaoNoSistema(); });
+      a.addEventListener('ended', function () {
+        var f = faixa(); if (f) { pref('ab-pos-' + f.id, '0'); pref('ab-ok-' + f.id, '1'); }
+        if (AB.sono && AB.sono.fim) { AB.sono = null; pintarSono(); pintarLista(); return; } // "até o fim do capítulo"
+        var p = proximaFaixa(AB.i, 1);
+        if (p >= 0) tocar(p, true, 0); else pintarLista();
+      });
+      // URL assinada venceu numa pausa longa (carro parado, celular no bolso): pede
+      // outra e continua do mesmo segundo, sem o aluno perceber.
+      a.addEventListener('error', function () {
+        var f = faixa(); if (!f || AB.tentou >= 2) return;
+        AB.tentou++;
+        var pos = a.currentTime || Number(pref('ab-pos-' + f.id) || 0), tocava = !a.paused || AB.querTocar;
+        delete AB.links[f.id];
+        tocar(AB.i, tocava, pos);
+      });
+      if (navigator.mediaSession) {
+        var ms = navigator.mediaSession, acao = function (n, fn) { try { ms.setActionHandler(n, fn); } catch (e) { /* ação não suportada */ } };
+        acao('play', function () { a.play(); });
+        acao('pause', function () { a.pause(); });
+        acao('previoustrack', function () { anterior(); });
+        acao('nexttrack', function () { proxima(); });
+        acao('seekbackward', function (d) { pular(-((d && d.seekOffset) || 15)); });
+        acao('seekforward', function (d) { pular((d && d.seekOffset) || 30); });
+        acao('seekto', function (d) { if (d && d.seekTime != null) { a.currentTime = d.seekTime; posicaoNoSistema(); } });
+      }
+      return a;
+    }
+    function posicaoNoSistema() {
+      var a = AB.audio;
+      if (!a || !navigator.mediaSession || !navigator.mediaSession.setPositionState || !a.duration || !isFinite(a.duration)) return;
+      try { navigator.mediaSession.setPositionState({ duration: a.duration, position: Math.min(a.currentTime, a.duration), playbackRate: a.playbackRate || 1 }); } catch (e) { /* ignora */ }
+    }
+    function metadadosNoSistema(f) {
+      if (!navigator.mediaSession || !window.MediaMetadata) return;
+      var capa = AB.produto && AB.produto.capa_media_id ? location.origin + '/academy/api/media/' + AB.produto.capa_media_id : '';
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Cap. ' + f.ordem + ' — ' + f.titulo,
+        artist: (AB.produto && AB.produto.produtor_nome) || 'Villela Academy',
+        album: (AB.produto && AB.produto.titulo) || 'Audiobook',
+        artwork: capa ? [{ src: capa, sizes: '512x512', type: 'image/jpeg' }] : [{ src: '/assets/brand/villela-academy/icon-pwa.png', sizes: '512x512', type: 'image/png' }],
+      });
+    }
+
+    // link do capítulo: do cache se ainda vale por mais 2 min; senão pede ao servidor
+    function linkDe(f) {
+      var c = AB.links[f.id];
+      if (c && c.expira_epoch * 1000 - Date.now() > 120000) return c;
+      return null;
+    }
+    function buscarLink(f) {
+      return api('GET', '/aluno/audiobook/' + f.id + '/link').then(function (r) { AB.links[f.id] = r; return r; });
+    }
+    function preBuscarProxima() {
+      var p = proximaFaixa(AB.i, 1);
+      if (p >= 0 && !linkDe(AB.faixas[p])) buscarLink(AB.faixas[p]).catch(function () { /* tenta de novo na hora */ });
+    }
+
+    // troca o capítulo. Com o link já em mãos a troca é SÍNCRONA — é o que deixa o
+    // próximo capítulo começar sozinho com a tela bloqueada (o iOS barra play()
+    // que chega depois de uma espera de rede fora de um toque do usuário).
+    function tocar(i, tocarJa, pos) {
+      var f = AB.faixas[i]; if (!f || !f.liberada) return;
+      var a = garantirAudio();
+      AB.i = i; AB.querTocar = !!tocarJa;
+      pref('ab-ult-' + AB.pid, f.id);
+      metadadosNoSistema(f);
+      pintarAtual(); pintarLista(); pintarMini();
+      var inicio = pos != null ? pos : Number(pref('ab-pos-' + f.id) || 0);
+      var aplicar = function (r) {
+        if (AB.faixas[AB.i] !== f) return; // o aluno já escolheu outro capítulo
+        a.src = r.url;
+        a.playbackRate = Number(pref('ab-vel') || 1);
+        if (inicio > 3) {
+          var ir = function () { a.removeEventListener('loadedmetadata', ir); try { a.currentTime = inicio; } catch (e) { /* ignora */ } };
+          a.addEventListener('loadedmetadata', ir);
+        }
+        if (tocarJa) { var pr = a.play(); if (pr && pr.catch) pr.catch(function () { pintarBotoes(); }); }
+        preBuscarProxima();
+      };
+      var c = linkDe(f);
+      if (c) aplicar(c);
+      else buscarLink(f).then(aplicar).catch(function (e) { alert(e.message); });
+    }
+    function tocarPausar() {
+      var a = garantirAudio();
+      if (!a.src) { tocar(AB.i >= 0 ? AB.i : 0, true); return; }
+      if (a.paused) a.play(); else a.pause();
+    }
+    function pular(seg) {
+      var a = AB.audio; if (!a || !a.duration) return;
+      a.currentTime = Math.max(0, Math.min(a.duration - 1, a.currentTime + seg));
+      posicaoNoSistema();
+    }
+    function anterior() {
+      var a = AB.audio;
+      if (a && a.currentTime > 5) { a.currentTime = 0; return; } // 1º toque volta ao início, como em todo player
+      var p = proximaFaixa(AB.i, -1); if (p >= 0) tocar(p, a ? !a.paused : false, 0);
+    }
+    function proxima() {
+      var p = proximaFaixa(AB.i, 1); if (p >= 0) tocar(p, AB.audio ? !AB.audio.paused : false, 0);
+    }
+
+    function abrirAudiobook() {
+      if (!C || !(C.d.audiobook || []).length) return;
+      if (AB.pid !== C.pid) { // outro curso: o que tocava antes para aqui
+        AB.i = -1; AB.links = {};
+        if (AB.audio) { AB.audio.pause(); AB.audio.removeAttribute('src'); AB.audio.load(); }
+      }
+      AB.pid = C.pid; AB.produto = C.d.produto; AB.faixas = C.d.audiobook; AB.matriculado = C.d.matriculado;
+      document.body.classList.remove('aluno-amplo');
+      pintarAudiobook();
+      if (AB.i < 0) { // retoma o último capítulo ouvido; senão, o primeiro liberado
+        var ult = pref('ab-ult-' + AB.pid), alvo = -1;
+        for (var k = 0; k < AB.faixas.length; k++) if (AB.faixas[k].id === ult && AB.faixas[k].liberada) alvo = k;
+        if (alvo < 0) alvo = proximaFaixa(-1, 1);
+        if (alvo >= 0) tocar(alvo, false);
+      } else { pintarAtual(); pintarTempo(); pintarBotoes(); }
+    }
+
+    function pintarAudiobook() {
+      var p = AB.produto, seg = 0, livres = 0;
+      AB.faixas.forEach(function (f) { seg += Number(f.duracao_seg || 0); if (f.liberada) livres++; });
+      var h = '<div class="al ab">' +
+        '<a href="#" class="al-volta" id="ab-volta">' + ico('esq', 16) + ' Voltar ao curso</a>' +
+        '<div class="ab-player">' +
+        '<div class="ab-capa" style="' + capaCss(p) + '">' + (p.capa_media_id ? '' : ico('fone', 56)) + '</div>' +
+        '<div class="ab-corpo">' +
+        '<p class="al-rotulo" style="color:#F4B860">Audiobook · ' + esc(p.titulo) + '</p>' +
+        '<h2 id="ab-titulo">Escolha um capítulo</h2><p class="ab-cap" id="ab-cap"></p>' +
+        '<input type="range" id="ab-barra" min="0" max="1000" value="0" aria-label="Posição no capítulo">' +
+        '<div class="ab-tempos"><span id="ab-t1">0:00</span><span id="ab-t2">0:00</span></div>' +
+        '<div class="ab-ctrl">' +
+        '<button id="ab-ant" aria-label="Capítulo anterior">' + ico('ant', 26) + '</button>' +
+        '<button id="ab-v15" aria-label="Voltar 15 segundos" class="ab-salto">' + ico('volta', 28) + '<i>15</i></button>' +
+        '<button id="ab-play" class="ab-play" aria-label="Tocar">' + ico('play', 34) + '</button>' +
+        '<button id="ab-a30" aria-label="Avançar 30 segundos" class="ab-salto">' + ico('avanca', 28) + '<i>30</i></button>' +
+        '<button id="ab-pro" aria-label="Próximo capítulo">' + ico('prox', 26) + '</button></div>' +
+        '<div class="ab-extras"><button id="ab-vel" class="ab-chip" aria-label="Velocidade">1×</button>' +
+        '<button id="ab-sono" class="ab-chip">' + ico('lua', 15) + ' <span id="ab-sono-txt">Timer</span></button></div>' +
+        '</div></div>' +
+        (AB.matriculado ? '' : '<div class="aviso">Você está ouvindo a amostra. Os outros capítulos ficam liberados para quem é aluno do curso. ' +
+          '<a href="/academy/cursos/' + esc(p.slug || '') + '">Ver a página do curso →</a></div>') +
+        '<div class="al-secao"><h3>Capítulos</h3><span class="al-fino">' + AB.faixas.length + ' capítulos' + (seg ? ' · ' + dur(seg) : '') +
+        (livres < AB.faixas.length ? ' · ' + livres + ' liberado' + (livres > 1 ? 's' : '') : '') + '</span></div>' +
+        '<ol class="ab-lista" id="ab-lista"></ol>' +
+        '<p class="al-fino" style="margin-top:18px">Continua tocando com a tela bloqueada e nos controles do fone e do carro. ' +
+        'O app lembra onde você parou em cada capítulo.</p></div>';
+      setView(h);
+      var raiz = document.querySelector('.ab');
+      raiz.oncontextmenu = function (e) { e.preventDefault(); };
+      el('ab-volta').onclick = function (e) {
+        e.preventDefault();
+        if (C && C.pid === AB.pid) { document.body.classList.add('aluno-amplo'); pintarEstudio(); irParaAula(C.i >= 0 ? C.i : 0, true); }
+        else abrirCurso(AB.pid);
+        pintarMini();
+      };
+      el('ab-play').onclick = tocarPausar;
+      el('ab-ant').onclick = anterior;
+      el('ab-pro').onclick = proxima;
+      el('ab-v15').onclick = function () { pular(-15); };
+      el('ab-a30').onclick = function () { pular(30); };
+      el('ab-barra').oninput = function () {
+        var a = AB.audio; if (!a || !a.duration) return;
+        a.currentTime = a.duration * Number(this.value) / 1000; pintarTempo(); posicaoNoSistema();
+      };
+      el('ab-vel').onclick = function () {
+        var v = Number(pref('ab-vel') || 1), k = VELOCIDADES.indexOf(v);
+        v = VELOCIDADES[(k + 1) % VELOCIDADES.length];
+        pref('ab-vel', String(v));
+        if (AB.audio) AB.audio.playbackRate = v;
+        pintarBotoes(); posicaoNoSistema();
+      };
+      el('ab-sono').onclick = function () {
+        // ciclo: desligado → 15 → 30 → 45 → 60 min → fim do capítulo → desligado
+        var passos = [15, 30, 45, 60, 'fim', null], atual = AB.sono ? (AB.sono.fim ? 'fim' : AB.sono.min) : null;
+        var prox = passos[(passos.indexOf(atual) + 1) % passos.length];
+        AB.sono = prox === null ? null : (prox === 'fim' ? { fim: true } : { min: prox, ate: Date.now() + prox * 60000 });
+        pintarSono();
+      };
+      pintarLista(); pintarBotoes(); pintarSono(); pintarMini();
+    }
+
+    function pintarLista() {
+      var ol = el('ab-lista'); if (!ol) return;
+      ol.innerHTML = AB.faixas.map(function (f, k) {
+        var ativa = k === AB.i, fez = ouvido(f);
+        var pos = Number(pref('ab-pos-' + f.id) || 0), pct = f.duracao_seg && pos ? Math.min(100, Math.round(pos * 100 / f.duracao_seg)) : 0;
+        return '<li><button class="ab-f' + (ativa ? ' ativa' : '') + (fez ? ' feita' : '') + (f.liberada ? '' : ' travada') + '" data-k="' + k + '"' + (f.liberada ? '' : ' aria-disabled="true"') + '>' +
+          '<span class="n">' + (ativa && AB.audio && !AB.audio.paused ? '<span class="ab-eq"><i></i><i></i><i></i></span>' : (f.liberada ? (fez ? ico('check', 16) : f.ordem) : ico('lock', 15))) + '</span>' +
+          '<span class="t"><b>' + esc(f.titulo) + '</b>' +
+          (f.amostra && !AB.matriculado ? '<span class="marca">amostra</span>' : '') +
+          (pct > 2 && !fez ? '<span class="ab-mini-barra"><i style="width:' + pct + '%"></i></span>' : '') + '</span>' +
+          '<span class="d">' + (f.duracao_seg ? mmss(f.duracao_seg) : '') + '</span></button></li>';
+      }).join('');
+      Array.prototype.forEach.call(ol.querySelectorAll('.ab-f'), function (b) {
+        b.onclick = function () {
+          var k = Number(b.getAttribute('data-k')), f = AB.faixas[k];
+          if (!f.liberada) { alert('Este capítulo fica liberado para quem é aluno do curso.'); return; }
+          // "destrava" o <audio> no próprio toque (exigência do iOS) antes de ir à rede
+          var a = garantirAudio();
+          if (k === AB.i && a.src) { tocarPausar(); return; }
+          if (a.src && a.paused) { var pr = a.play(); if (pr && pr.catch) pr.catch(function () {}); }
+          tocar(k, true);
+        };
+      });
+    }
+    function pintarAtual() {
+      var f = faixa(); if (!f || !el('ab-titulo')) return;
+      el('ab-titulo').textContent = f.titulo;
+      el('ab-cap').textContent = 'Capítulo ' + f.ordem + ' de ' + AB.faixas.length;
+    }
+    function pintarTempo() {
+      var a = AB.audio; if (!a || !el('ab-t1')) return;
+      var d = a.duration && isFinite(a.duration) ? a.duration : ((faixa() || {}).duracao_seg || 0);
+      el('ab-t1').textContent = mmss(a.currentTime);
+      el('ab-t2').textContent = '-' + mmss(Math.max(0, d - a.currentTime));
+      if (document.activeElement !== el('ab-barra')) el('ab-barra').value = d ? Math.round(a.currentTime * 1000 / d) : 0;
+      var mb = document.querySelector('#ab-mini .ab-mini-prog i'); if (mb && d) mb.style.width = (a.currentTime * 100 / d) + '%';
+    }
+    function pintarBotoes() {
+      var a = AB.audio, tocando = a && !a.paused;
+      if (el('ab-play')) { el('ab-play').innerHTML = ico(tocando ? 'pausa' : 'play', 34); el('ab-play').setAttribute('aria-label', tocando ? 'Pausar' : 'Tocar'); }
+      if (el('ab-vel')) el('ab-vel').textContent = String(Number(pref('ab-vel') || 1)).replace('.', ',') + '×';
+      if (el('ab-ant')) el('ab-ant').disabled = proximaFaixa(AB.i, -1) < 0 && !(a && a.currentTime > 5);
+      if (el('ab-pro')) el('ab-pro').disabled = proximaFaixa(AB.i, 1) < 0;
+      if (el('ab-lista')) pintarLista();
+    }
+    function pintarSono() {
+      var t = el('ab-sono-txt'); if (!t) return;
+      t.textContent = !AB.sono ? 'Timer' : (AB.sono.fim ? 'Fim do capítulo' : AB.sono.min + ' min');
+      el('ab-sono').classList.toggle('on', !!AB.sono);
+    }
+    // mini-player: aparece quando o aluno sai da tela do audiobook com algo carregado
+    function pintarMini() {
+      var f = faixa(), naTela = !!el('ab-lista');
+      var mini = document.getElementById('ab-mini');
+      if (!f || naTela || !AB.audio || !AB.audio.src) {
+        if (mini) mini.remove();
+        document.body.classList.remove('ab-com-mini');
+        return;
+      }
+      if (!mini) {
+        mini = document.createElement('div'); mini.id = 'ab-mini';
+        document.body.appendChild(mini);
+      }
+      var tocando = !AB.audio.paused;
+      mini.innerHTML = '<div class="ab-mini-prog"><i></i></div>' +
+        '<button class="ab-mini-abrir" id="ab-mini-abrir">' + ico('fone', 18) + '<span><small>Audiobook · cap. ' + f.ordem + '</small><b>' + esc(f.titulo) + '</b></span></button>' +
+        '<button class="ab-mini-bt" id="ab-mini-play" aria-label="' + (tocando ? 'Pausar' : 'Tocar') + '">' + ico(tocando ? 'pausa' : 'play', 24) + '</button>' +
+        '<button class="ab-mini-bt" id="ab-mini-fechar" aria-label="Fechar o audiobook">×</button>';
+      document.body.classList.add('ab-com-mini');
+      document.getElementById('ab-mini-play').onclick = tocarPausar;
+      document.getElementById('ab-mini-abrir').onclick = function () {
+        if (C && C.pid === AB.pid) abrirAudiobook();
+        else api('GET', '/aluno/cursos/' + AB.pid).then(function (d) { C = estadoDoCurso(AB.pid, d); abrirAudiobook(); }).catch(erroBox);
+      };
+      document.getElementById('ab-mini-fechar').onclick = function () {
+        AB.i = -1; // antes de esvaziar: o 'error' do src vazio não pode religar o capítulo
+        AB.audio.pause(); AB.audio.removeAttribute('src'); AB.audio.load(); pintarMini();
+      };
+      pintarTempo();
     }
 
     return { biblioteca: biblioteca, curso: abrirCurso };

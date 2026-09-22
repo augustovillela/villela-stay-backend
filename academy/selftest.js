@@ -1689,6 +1689,89 @@ async function main() {
     assert.equal((await req('POST', '/staff/api/academy/importar-video', { user: 'op', corpo: EST() })).st, 403);
     assert.equal((await req('GET', `/staff/api/academy/importar-curso/estrutura?produtor_email=${MARIA.email}&produto_id=${impId}`, { user: 'op' })).st, 403);
   });
+
+  console.log('\n— audiobook do curso (capítulos em áudio, só no player) —');
+  const OUVINTE = { nome: 'Olga Ouvinte', email: 'olga@t.com', senha: 'senha-forte-9', aceite_termos: true };
+  const CURIOSO = { nome: 'Caio Curioso', email: 'caio@t.com', senha: 'senha-forte-9', aceite_termos: true };
+  const faixasIds = {};
+  await t('capítulo pela chave: iniciar → PUT → confirmar; a ORDEM é a identidade (reenviar troca, não duplica)', async () => {
+    const storage = require('./storage');
+    const real = { s3Ativo: storage.s3Ativo, presignS3: storage.presignS3, s3Existe: storage.s3Existe };
+    const bucketFalso = new Map();
+    storage.s3Ativo = () => true;
+    storage.presignS3 = (cfg, met, key) => `https://fake.r2/${encodeURIComponent(key)}?met=${met}`;
+    storage.s3Existe = async (key) => (bucketFalso.has(key) ? { tamanho: bucketFalso.get(key) } : null);
+    const sobe = async (ordem, titulo, extra = {}) => {
+      const ini = await req('POST', '/staff/api/academy/importar-audio', { semUser: true, chave: true,
+        corpo: EST({ nome: `cap-${ordem}.mp3`, mime: 'audio/mpeg', tamanho: 7000 }) });
+      assert.equal(ini.st, 200, ini.texto);
+      bucketFalso.set(ini.json.media_id + '.mp3', 7000);
+      const ok = await req('POST', `/staff/api/academy/importar-audio/${ini.json.media_id}/confirmar`, { semUser: true, chave: true,
+        corpo: EST({ ordem, titulo, duracao_seg: 600 + ordem, ...extra }) });
+      assert.equal(ok.st, 200, ok.texto);
+      return { media: ini.json.media_id, lista: ok.json.audiobook };
+    };
+    try {
+      const video = await req('POST', '/staff/api/academy/importar-audio', { semUser: true, chave: true,
+        corpo: EST({ nome: 'x.mp4', mime: 'video/mp4', tamanho: 10 }) });
+      assert.equal(video.st, 400, 'só aceita áudio');
+      await sobe(1, 'Apresentação', { amostra: true });
+      await sobe(2, 'Segundo capítulo');
+      const antes = await sobe(3, 'Terceiro');
+      assert.deepEqual(antes.lista.map(f => f.ordem), [1, 2, 3]);
+      const troca = await sobe(3, 'Terceiro (revisto)');
+      assert.equal(troca.lista.length, 3, 'reenviar o capítulo 3 não cria um quarto');
+      assert.equal(troca.lista[2].titulo, 'Terceiro (revisto)');
+      assert.equal(troca.lista[2].media_id, troca.media, 'o áudio do 3 foi trocado');
+      assert.equal(troca.lista[0].amostra, 1, 'a amostra do 1 continua');
+      troca.lista.forEach(f => { faixasIds[f.ordem] = f.id; });
+    } finally { Object.assign(storage, real); }
+    const e = await estrutura();
+    assert.equal(e.audiobook.length, 3, 'a estrutura pela chave mostra o audiobook');
+  });
+
+  await t('editar título sem reenviar o áudio; capítulo novo exige áudio; guarda da chave', async () => {
+    const r = await req('POST', '/staff/api/academy/audiobook/capitulo', { semUser: true, chave: true, corpo: EST({ ordem: 2, titulo: 'Segundo, renomeado' }) });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.audiobook[1].titulo, 'Segundo, renomeado');
+    assert.equal(r.json.audiobook[1].duracao_seg, 602, 'duração não foi apagada');
+    const novo = await req('POST', '/staff/api/academy/audiobook/capitulo', { semUser: true, chave: true, corpo: EST({ ordem: 9, titulo: 'Sem áudio' }) });
+    assert.equal(novo.st, 400, 'capítulo novo sem áudio é recusado');
+    const alheio = await req('POST', '/staff/api/academy/audiobook/capitulo', { semUser: true, chave: true,
+      corpo: { produtor_email: 'clara@t.com', produto_id: impId, ordem: 2, titulo: 'x' } });
+    assert.equal(alheio.st, 400, 'só o produtor dono');
+    assert.equal((await req('POST', '/staff/api/academy/importar-audio', { semUser: true, corpo: EST() })).st, 401);
+    assert.equal((await req('POST', '/staff/api/academy/audiobook/capitulo', { user: 'op', corpo: EST({ ordem: 2 }) })).st, 403);
+  });
+
+  await t('aluno do curso ouve todos os capítulos; quem não comprou só a amostra', async () => {
+    await req('POST', '/academy/api/signup', { corpo: OUVINTE, jar: 'olga' });
+    await req('POST', '/academy/api/signup', { corpo: CURIOSO, jar: 'caio' });
+    const mat = await req('POST', `/academy/api/produtor/produtos/${impId}/matricular`, { jar: 'maria', corpo: { email: OUVINTE.email } });
+    assert.equal(mat.st, 200, mat.texto);
+
+    const curso = await req('GET', `/academy/api/aluno/cursos/${impId}`, { jar: 'olga' });
+    assert.equal(curso.st, 200, curso.texto);
+    assert.deepEqual(curso.json.audiobook.map(f => f.liberada), [true, true, true]);
+    assert.ok(!('media_id' in curso.json.audiobook[0]), 'o aluno não recebe o id da mídia');
+    const link = await req('GET', `/academy/api/aluno/audiobook/${faixasIds[2]}/link`, { jar: 'olga' });
+    assert.equal(link.st, 200, link.texto);
+    assert.ok(link.json.url && link.json.expira_epoch, 'URL assinada com validade');
+
+    const fora = await req('GET', `/academy/api/aluno/cursos/${impId}`, { jar: 'caio' });
+    assert.deepEqual(fora.json.audiobook.map(f => f.liberada), [true, false, false], 'só a amostra liberada');
+    assert.equal(fora.json.audiobook[1].titulo, 'Segundo, renomeado', 'mas vê os títulos (vitrine)');
+    assert.equal((await req('GET', `/academy/api/aluno/audiobook/${faixasIds[1]}/link`, { jar: 'caio' })).st, 200, 'amostra toca');
+    assert.equal((await req('GET', `/academy/api/aluno/audiobook/${faixasIds[2]}/link`, { jar: 'caio' })).st, 404, 'capítulo pago não');
+    assert.equal((await req('GET', `/academy/api/aluno/audiobook/${faixasIds[2]}/link`, { semUser: true })).st, 401, 'sem login não');
+  });
+
+  await t('o áudio do audiobook NÃO sai pela rota genérica de mídia (só pelo player)', async () => {
+    const e = await estrutura();
+    const mid = e.audiobook[1].media_id;
+    assert.equal((await req('GET', `/academy/api/media/${mid}`, { jar: 'olga' })).st, 404, 'nem para o aluno matriculado');
+    assert.equal((await req('GET', `/academy/api/media/${mid}/link`, { jar: 'olga' })).st, 404);
+  });
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

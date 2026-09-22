@@ -199,6 +199,23 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
     res.json({ ok: true, ...r });
   }));
 
+  // ---- AUDIOBOOK do curso: capítulo N (iniciar → PUT → confirmar), mesma guarda ----
+  app.post('/staff/api/academy/importar-audio', ...PA, h((req, res) => {
+    const r = imp.iniciarAudio(req.body || {});
+    aud(req, 'midia.upload-grande.iniciar', 'media_files', r.media_id, `audiobook ← ${String((req.body || {}).nome || '').slice(0, 80)}`);
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/academy/importar-audio/:mediaId/confirmar', ...PA, h(async (req, res) => {
+    const r = await imp.confirmarAudio(req.params.mediaId, req.body || {});
+    aud(req, 'audiobook.capitulo', 'audiobook_faixas', r.media.id, `cap. ${(req.body || {}).ordem} (${r.media.tamanho}b)`);
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/academy/audiobook/capitulo', ...PA, h((req, res) => {
+    const r = imp.editarCapitulo(req.body || {});
+    aud(req, (req.body || {}).remover ? 'audiobook.remover' : 'audiobook.editar', 'audiobook_faixas', String((req.body || {}).produto_id || ''), `cap. ${(req.body || {}).ordem}`);
+    res.json({ ok: true, ...r });
+  }));
+
   // leads / auditoria
   app.get('/staff/api/academy/leads', ...A, h((req, res) => res.json({ leads: repo.Leads.listar(req.query.n) })));
   app.post('/staff/api/academy/leads/:id/status', ...A, h((req, res) => { repo.Leads.status(req.params.id, (req.body || {}).status); res.json({ ok: true }); }));
