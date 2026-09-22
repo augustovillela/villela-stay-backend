@@ -63,7 +63,8 @@ function comEditor(c) {
       <input type="checkbox" style="width:auto;margin:0" class="com-c" value="${k}" ${(v.canais || []).includes(k) && ok ? 'checked' : ''} ${ok ? '' : 'disabled'}> ${comCanalRot[k]}${ok ? '' : ' <span class="obs">(indisponível)</span>'}</label>`;
   };
   const expira = v.expira_em ? new Date(new Date(v.expira_em).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
-  $('#com-editor').innerHTML = `<details class="cr-box" ${c || !COM.jaAbriu ? 'open' : ''} id="com-box"><summary class="cr-sum">${c ? '✏️ Editando rascunho' : '➕ Novo comunicado'}</summary>
+  const editando = !!COM.editando;
+  $('#com-editor').innerHTML = `<details class="cr-box" ${c || !COM.jaAbriu ? 'open' : ''} id="com-box"><summary class="cr-sum">${editando ? '✏️ Editando o rascunho "' + esc(v.titulo || 'sem título') + '"' : (c ? '➕ Novo comunicado (cópia)' : '➕ Novo comunicado')}</summary>
     <form class="form" id="com-form" style="max-width:860px;margin-top:12px">
       <div class="hi-grid">
         <label>Tipo de aviso <select id="com-cat">${cats}</select></label>
@@ -93,7 +94,7 @@ function comEditor(c) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
         <button class="btn secund" type="button" id="com-ver">👥 Ver público e prévia</button>
         <button class="btn secund" type="submit">💾 Salvar rascunho</button>
-        ${c ? '<button class="btn secund" type="button" id="com-novo">Começar outro</button>' : ''}
+        <button class="btn secund" type="button" id="com-novo">🆕 Limpar e começar um novo</button>
       </div>
       <p id="com-msg" class="erro"></p>
     </form>
@@ -113,7 +114,12 @@ function comEditor(c) {
   };
   $('#com-ver').onclick = () => comPrevia();
   $('#com-form').onsubmit = async (ev) => { ev.preventDefault(); await comSalvar(); };
-  if ($('#com-novo')) $('#com-novo').onclick = () => comEditor(null);
+  $('#com-novo').onclick = () => { comEditor(null); $('#com-box').open = true; };
+  // Abrir a caixa "Novo comunicado" tem de LIMPAR o que estava sendo editado:
+  // sem isto, quem acabou de mandar um continua preso nele e leva "já enviado
+  // não se edita" ao salvar.
+  const sum = $('#com-box').querySelector('.cr-sum');
+  sum.addEventListener('click', () => { if (!$('#com-box').open && COM.editando) setTimeout(() => comEditor(null), 0); });
 }
 
 function comLerForm() {
@@ -211,8 +217,9 @@ async function comEnviar(agendarPara) {
   if (!confirm(texto)) return;
   try {
     const r = await api('POST', `/comunicados/${c.id}/enviar`, { confirmar: true, agendar_para: agendarPara });
-    const $m = $('#com-msg2'); if ($m) { $m.className = 'ok'; $m.textContent = r.comunicado.status === 'agendado' ? 'Agendado.' : 'Enviado para a fila — acompanhe no histórico abaixo.'; }
     comEditor(null); comHistorico();
+    const msg = $('#com-msg');
+    if (msg) { msg.className = 'ok'; msg.textContent = r.comunicado.status === 'agendado' ? 'Agendado. O formulário já está limpo para o próximo.' : 'Enviado para a fila — acompanhe no histórico abaixo. O formulário já está limpo para o próximo.'; }
   } catch (e) { const $m = $('#com-msg2'); if ($m) $m.textContent = e.message; else alert(e.message); }
 }
 

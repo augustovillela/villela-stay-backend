@@ -238,7 +238,9 @@ function criar(d, autor) {
 function atualizar(id, d) {
   const atual = obter(id);
   if (!atual) throw Object.assign(new Error('Comunicado não encontrado.'), { status: 404 });
-  if (!['rascunho', 'agendado'].includes(atual.status)) throw Object.assign(new Error('Comunicado já enviado não se edita — publique um novo (ex.: "Resolvido").'), { status: 409 });
+  if (!['rascunho', 'agendado'].includes(atual.status)) {
+    throw Object.assign(new Error('Comunicado já enviado não se edita. No histórico, use "duplicar" para abrir um novo rascunho com o mesmo texto (serve para reenviar por outro canal) ou escreva um aviso novo, por exemplo "Resolvido".'), { status: 409 });
+  }
   const v = validar({ ...atual, ...d });
   db.prepare(`UPDATE comunicados SET titulo=?, corpo=?, categoria=?, alvos=?, canais=?, link_url=?, link_rotulo=?, destaque=?, expira_em=?, atualizado_em=? WHERE id=?`)
     .run(v.titulo, v.corpo, v.categoria, j.str(v.alvos), j.str(v.canais), v.link_url, v.link_rotulo, v.destaque, v.expira_em, nowISO(), id);
