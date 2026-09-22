@@ -24,7 +24,7 @@
   // nenhum acharia. data-lado="esquerda" muda, se algum app precisar.
   var lado = eu.getAttribute('data-lado') === 'esquerda' ? 'left' : 'right';
   var comAvisos = eu.getAttribute('data-sino') !== 'nao';
-  var E = { itens: [], suporteNaoLidas: 0, aberto: false, aba: comAvisos ? 'avisos' : 'suporte', conversa: null, produto: '' };
+  var E = { itens: [], suporteNaoLidas: 0, aberto: false, aba: comAvisos ? 'avisos' : 'suporte', conversa: null, produto: '', dica: null };
   var timerConversa = null;
 
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -36,6 +36,12 @@
     '.vsc-bt{position:fixed;bottom:18px;' + lado + ':18px;z-index:2147483000;min-height:48px;padding:0 18px 0 14px;border-radius:26px;border:0;background:' + cor + ';color:#fff;font:700 15px/1 Inter,system-ui,Arial,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.28);display:flex;align-items:center;gap:8px}' +
     '.vsc-bt:hover{filter:brightness(1.08)}.vsc-bt .vsc-ico{font-size:20px}' +
     '@media (max-width:480px){.vsc-bt{padding:0 16px 0 13px;font-size:14px}}' +
+    '.vsc-post{position:fixed;z-index:2147483000;width:min(330px,calc(100vw - 36px));background:#FFF8D6;color:#3F3A1E;border:1px solid #F2E39B;border-radius:14px;padding:14px 14px 10px;font:14px/1.5 Inter,system-ui,Arial,sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.22)}' +
+    '.vsc-post h4{margin:0 0 6px;font-size:14px;color:#1F2933}.vsc-post p{margin:0 0 8px}' +
+    '.vsc-post ol{margin:0 0 10px;padding-left:20px}.vsc-post li{margin:2px 0}' +
+    '.vsc-post .vsc-acoes{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-top:1px solid #F0E3A6;padding-top:8px}' +
+    '.vsc-post button{background:none;border:0;color:#7A5B00;font:700 13px system-ui,Arial,sans-serif;cursor:pointer;padding:2px 0;text-decoration:underline}' +
+    '.vsc-post .vsc-x{position:absolute;top:6px;right:8px;font-size:18px;text-decoration:none;color:#7A5B00}' +
     '.vsc-dica{position:fixed;bottom:76px;' + lado + ':18px;z-index:2147483000;max-width:min(280px,calc(100vw - 36px));background:#1F2933;color:#fff;border-radius:12px;padding:12px 14px;font:14px/1.45 Inter,system-ui,Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3)}' +
     '.vsc-dica button{background:none;border:0;color:#F5B301;font-weight:700;cursor:pointer;padding:6px 0 0;font:inherit;text-decoration:underline}' +
     '.vsc-bt:focus-visible,.vsc-pn button:focus-visible,.vsc-pn textarea:focus-visible,.vsc-pn input:focus-visible{outline:3px solid #F5B301;outline-offset:2px}' +
@@ -157,7 +163,7 @@
   // (a gaveta do Tutor), ele some enquanto aquilo estiver aberto.
   var BASE = 18, reposicionar = null;
   function vizinhos() {
-    var meus = [bt, pn, fx, document.querySelector('.vsc-dica')], out = [];
+    var meus = [bt, pn, fx, document.querySelector('.vsc-dica'), document.querySelector('.vsc-post')], out = [];
     var filhos = document.body ? document.body.children : [];
     for (var i = 0; i < filhos.length; i++) {
       var e = filhos[i];
@@ -186,8 +192,11 @@
     bt.style.bottom = b + 'px';
     var alturaBt = bt.offsetHeight || 48;
     if (pn) pn.style.bottom = (b + alturaBt + 10) + 'px';
+    var acima = b + alturaBt + 10;
     var dica = document.querySelector('.vsc-dica');
-    if (dica) dica.style.bottom = (b + alturaBt + 10) + 'px';
+    if (dica) dica.style.bottom = acima + 'px';
+    var post = document.querySelector('.vsc-post');
+    if (post) { post.style.bottom = acima + 'px'; post.style[lado] = '18px'; }
   }
   function observarVizinhos() {
     if (reposicionar) return;
@@ -196,6 +205,37 @@
     try { new MutationObserver(reposicionar).observe(document.body, { childList: true, attributes: true, attributeFilter: ['style', 'class'] }); } catch (_) {}
     // Botão de outro app que aparece depois (o Tutor só monta dentro da aula).
     [800, 2500, 6000].forEach(function (ms) { setTimeout(posicionar, ms); });
+  }
+
+  // ---------------- post-it "você sabia?" ----------------
+  // Uma dica por abertura, sempre uma nova. É o manual que ninguém lê,
+  // servido em pedaços — por isso vem com passo a passo, não com teoria.
+  function mostrarPostIt() {
+    if (!bt || document.querySelector('.vsc-post') || document.querySelector('.vsc-dica')) return;
+    silencioso(api('GET', '/dicas/proxima')).then(function (r) {
+      var d = r && r.dica;
+      if (!d) return;
+      E.dica = d;
+      var el = document.createElement('div');
+      el.className = 'vsc-post'; el.setAttribute('role', 'note'); el.style.position = 'fixed';
+      el.innerHTML = '<a href="#" class="vsc-x" aria-label="Fechar dica">×</a>' +
+        '<h4>💡 ' + esc(d.titulo) + '</h4>' +
+        (d.corpo ? '<p>' + esc(d.corpo) + '</p>' : '') +
+        ((d.passos || []).length ? '<ol>' + d.passos.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ol>' : '') +
+        (linkSeguro(d.link_url) ? '<p><a href="' + esc(d.link_url) + '" target="_blank" rel="noopener">' + esc(d.link_rotulo || 'Ver como') + ' →</a></p>' : '') +
+        '<div class="vsc-acoes"><button type="button" data-a="ok">entendi</button>' +
+        '<button type="button" data-a="todas">ver todas as dicas</button>' +
+        '<button type="button" data-a="nunca">não mostrar mais</button></div>';
+      document.body.appendChild(el);
+      posicionar();
+      var fechar = function (ev) { if (ev) ev.preventDefault(); el.remove(); posicionar(); };
+      el.querySelector('.vsc-x').onclick = fechar;
+      el.querySelector('[data-a="ok"]').onclick = fechar;
+      el.querySelector('[data-a="todas"]').onclick = function () { fechar(); E.aba = 'dicas'; abrir(); };
+      el.querySelector('[data-a="nunca"]').onclick = function () {
+        silencioso(api('POST', '/dicas/preferencia', { mostrar: false })); fechar();
+      };
+    });
   }
 
   function naoLidosAvisos() { return comAvisos ? E.itens.filter(function (x) { return !x.lido; }).length : 0; }
@@ -240,7 +280,8 @@
   function fechar() { E.aberto = false; pararConversa(); if (pn) pn.style.display = 'none'; if (bt) bt.setAttribute('aria-expanded', 'false'); }
   function pintarPainel() {
     if (!pn) return;
-    var abas = (comAvisos ? [['avisos', 'Avisos', naoLidosAvisos()]] : []).concat([['suporte', 'Suporte', E.suporteNaoLidas], ['pref', 'Preferências', 0]]);
+    var abas = (comAvisos ? [['avisos', 'Avisos', naoLidosAvisos()]] : [])
+      .concat([['suporte', 'Suporte', E.suporteNaoLidas], ['dicas', 'Dicas', 0], ['pref', 'Preferências', 0]]);
     pn.innerHTML = '<div class="vsc-hd"><span>' + esc(E.produto || 'Central') + '</span><button type="button" data-a="fechar" aria-label="Fechar">✕</button></div>' +
       '<div class="vsc-tabs" role="tablist">' + abas.map(function (a) {
         return '<button type="button" role="tab" class="vsc-tab" data-aba="' + a[0] + '" aria-selected="' + (E.aba === a[0]) + '">' + a[1] + (a[2] ? '<b>' + a[2] + '</b>' : '') + '</button>';
@@ -252,6 +293,7 @@
     var corpo = pn.querySelector('.vsc-corpo');
     if (E.aba === 'avisos') pintarAvisos(corpo);
     else if (E.aba === 'suporte') { if (E.conversa) pintarConversa(corpo); else pintarListaSuporte(corpo); }
+    else if (E.aba === 'dicas') pintarDicas(corpo);
     else pintarPreferencias(corpo);
   }
 
@@ -351,6 +393,23 @@
   }
   function pararConversa() { if (timerConversa) { clearInterval(timerConversa); timerConversa = null; } }
 
+  // ---------------- aba Dicas (o manual, em pedaços) ----------------
+  function pintarDicas(corpo) {
+    corpo.innerHTML = '<div class="vsc-vz">Carregando…</div>';
+    api('GET', '/dicas').then(function (r) {
+      var itens = r.itens || [];
+      corpo.innerHTML = (itens.length ? itens.map(function (d) {
+        return '<div class="vsc-it"><h4>💡 ' + esc(d.titulo) + (d.vista ? '' : ' <span class="vsc-st a">nova</span>') + '</h4>' +
+          (d.corpo ? '<p>' + esc(d.corpo) + '</p>' : '') +
+          ((d.passos || []).length ? '<ol style="margin:0 0 4px;padding-left:20px">' + d.passos.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ol>' : '') +
+          (linkSeguro(d.link_url) ? '<a href="' + esc(d.link_url) + '" target="_blank" rel="noopener">' + esc(d.link_rotulo || 'Ver como') + ' →</a>' : '') + '</div>';
+      }).join('') : '<div class="vsc-vz">Ainda não há dicas por aqui.</div>') +
+        '<label class="vsc-anx" style="padding:12px 14px"><input type="checkbox" data-a="postit"' + (r.mostrar_post_it ? ' checked' : '') + '> Mostrar uma dica quando eu abrir o sistema</label>';
+      var cb = corpo.querySelector('[data-a="postit"]');
+      if (cb) cb.onchange = function () { silencioso(api('POST', '/dicas/preferencia', { mostrar: cb.checked })); };
+    }).catch(function (e) { corpo.innerHTML = '<div class="vsc-vz">' + esc(e.message) + '</div>'; });
+  }
+
   // ---------------- preferências ----------------
   var OPC = [['tudo', 'Tudo: novidades, dicas e avisos importantes'], ['importantes', 'Só avisos importantes (instabilidade, manutenção, suporte)'], ['nada', 'Nada']];
   function pintarPreferencias(corpo) {
@@ -384,6 +443,7 @@
       if (!r || r.anonimo) { if (bt) { bt.remove(); bt = null; } if (pn) { pn.remove(); pn = null; E.aberto = false; } if (fx) { fx.remove(); fx = null; } return; }
       E.itens = r.itens || []; E.suporteNaoLidas = Number(r.suporte_nao_lidas || 0); E.produto = r.produto || '';
       montarBase(); pintarBotao(); pintarFaixa(); mostrarDica();
+      if (!E.viuPostIt) { E.viuPostIt = true; setTimeout(mostrarPostIt, 1200); }
     });
   }
   function iniciar() {

@@ -251,6 +251,7 @@ async function comHistorico() {
     + (lista.length ? tabela(['Comunicado', 'Canais', 'Situação', 'Entregas', ''], linhas) : '<p class="vazio">Nenhum comunicado ainda.</p>')
     + `<div id="com-falhas"></div>
        <details class="cr-box" style="margin-top:16px"><summary class="cr-sum">🚫 Quem pediu para não receber</summary><div id="com-desc"><p class="vazio">Carregando…</p></div></details>
+       <details class="cr-box" style="margin-top:16px"><summary class="cr-sum">💡 Dicas do app ("você sabia?")</summary><div id="com-dicas"><p class="vazio">Carregando…</p></div></details>
        <details class="cr-box" style="margin-top:10px"><summary class="cr-sum">🔒 Privacidade e retenção (LGPD)</summary><div id="com-lgpd"><p class="vazio">Carregando…</p></div></details>
        <details class="cr-box" style="margin-top:10px"><summary class="cr-sum">ℹ️ Como funciona</summary><div class="obs" style="padding:8px 4px;line-height:1.6">
          <p><b>Aviso no app</b>: aparece no sino 🔔 dentro do sistema. "Faixa no topo" mostra o aviso em destaque até a pessoa fechar — use para instabilidade.</p>
@@ -272,6 +273,69 @@ async function comHistorico() {
   });
   comDescadastros();
   comPrivacidade();
+  comDicas();
+}
+
+// Dicas: o manual servido em pedaços. Uma por abertura do app, sem repetir,
+// num post-it acima dos botões flutuantes. Quem quiser ler tudo tem a aba.
+const DICAS = { produto: 'academy', editando: null };
+async function comDicas() {
+  const box = $('#com-dicas'); if (!box) return;
+  let r;
+  try { r = await api('GET', '/comunicados/dicas?produto=' + encodeURIComponent(DICAS.produto)); }
+  catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  const sistemas = r.sistemas || [];
+  const d = DICAS.editando || { titulo: '', corpo: '', passos: [], link_url: '', link_rotulo: '', ordem: (r.dicas.length + 1) * 10, ativa: true };
+  const linhas = r.dicas.map(x => [
+    `<b>${esc(x.titulo)}</b>${x.ativa ? '' : ' <span class="badge">desligada</span>'}${x.origem === 'semente' ? ' <span class="obs">(inicial)</span>' : ''}
+      <br><span class="obs">${esc(x.corpo || '')}</span>${x.passos.length ? `<br><span class="obs">${x.passos.length} passo(s)</span>` : ''}`,
+    `${x.vistas} pessoa(s)`,
+    `<button class="btn peq secund dc-ed" data-id="${esc(x.id)}">editar</button>
+     <button class="btn peq secund dc-on" data-id="${esc(x.id)}">${x.ativa ? 'desligar' : 'ligar'}</button>
+     <button class="btn peq secund dc-del" data-id="${esc(x.id)}">excluir</button>`,
+  ]);
+  box.innerHTML = `<div class="obs" style="padding:6px 4px">Cada vez que a pessoa abre o sistema, aparece <b>uma</b> dica que ela ainda não viu — em post-it, acima dos botões. Escreva o passo a passo: é isso que substitui o manual.</div>
+    <label style="max-width:320px">Sistema <select id="dc-prod">${sistemas.map(p => `<option value="${esc(p.chave)}" ${p.chave === DICAS.produto ? 'selected' : ''}>${p.emoji} ${esc(p.nome)}</option>`).join('')}</select></label>
+    ${r.dicas.length ? tabela(['Dica', 'Já viram', ''], linhas) : '<p class="vazio">Nenhuma dica neste sistema ainda.</p>'}
+    <form class="form" id="dc-form" style="max-width:720px;margin-top:12px">
+      <b>${DICAS.editando ? '✏️ Editando dica' : '➕ Nova dica'}</b>
+      <label>Título * <input id="dc-tit" maxlength="120" value="${esc(d.titulo)}" placeholder="Você sabia que dá para criar um agente de IA personalizado?"></label>
+      <label>Frase de abertura <input id="dc-corpo" maxlength="600" value="${esc(d.corpo || '')}" placeholder="O gerador escreve o prompt master do seu agente."></label>
+      <label>Passo a passo (um por linha) <textarea id="dc-passos" rows="5" placeholder="Abra um curso da sua biblioteca&#10;Role até &quot;Minha jornada&quot;&#10;Toque na aba &quot;Ferramentas&quot;">${esc((d.passos || []).join('\n'))}</textarea></label>
+      <div class="hi-grid">
+        <label>Link (opcional) <input id="dc-link" value="${esc(d.link_url || '')}" placeholder="https://…"></label>
+        <label>Texto do link <input id="dc-lrot" maxlength="40" value="${esc(d.link_rotulo || '')}" placeholder="Ver como"></label>
+      </div>
+      <label style="max-width:160px">Ordem <input id="dc-ordem" type="number" value="${Number(d.ordem) || 100}"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">${DICAS.editando ? 'Salvar' : 'Criar dica'}</button>
+        ${DICAS.editando ? '<button class="btn secund" type="button" id="dc-cancel">cancelar</button>' : ''}</div>
+      <p id="dc-msg" class="erro"></p>
+    </form>`;
+  $('#dc-prod').onchange = () => { DICAS.produto = $('#dc-prod').value; DICAS.editando = null; comDicas(); };
+  $('#dc-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const m = $('#dc-msg'); m.className = 'erro'; m.textContent = '';
+    const corpo = {
+      produto: DICAS.produto, titulo: $('#dc-tit').value, corpo: $('#dc-corpo').value,
+      passos: $('#dc-passos').value.split('\n'), link_url: $('#dc-link').value.trim(),
+      link_rotulo: $('#dc-lrot').value.trim(), ordem: Number($('#dc-ordem').value) || 100,
+    };
+    try {
+      if (DICAS.editando) await api('PUT', `/comunicados/dicas/${DICAS.editando.id}`, corpo);
+      else await api('POST', '/comunicados/dicas', corpo);
+      DICAS.editando = null; comDicas();
+    } catch (e) { m.textContent = e.message; }
+  };
+  if ($('#dc-cancel')) $('#dc-cancel').onclick = () => { DICAS.editando = null; comDicas(); };
+  box.querySelectorAll('.dc-ed').forEach(b => b.onclick = () => { DICAS.editando = r.dicas.find(x => x.id === b.dataset.id); comDicas(); });
+  box.querySelectorAll('.dc-on').forEach(b => b.onclick = async () => {
+    const x = r.dicas.find(y => y.id === b.dataset.id);
+    try { await api('PUT', `/comunicados/dicas/${x.id}`, { ativa: !x.ativa }); comDicas(); } catch (e) { alert(e.message); }
+  });
+  box.querySelectorAll('.dc-del').forEach(b => b.onclick = async () => {
+    if (!confirm('Excluir esta dica? Quem ainda não viu deixa de vê-la.')) return;
+    try { await api('DELETE', `/comunicados/dicas/${b.dataset.id}`); comDicas(); } catch (e) { alert(e.message); }
+  });
 }
 
 // Estado da LGPD: o que a varredura diária fez, por quanto tempo guardamos e

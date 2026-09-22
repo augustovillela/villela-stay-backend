@@ -17,6 +17,7 @@ const fontes = require('./fontes');
 const suporte = require('./suporte');
 const anexosMod = require('./anexos');
 const privacidade = require('./privacidade');
+const dicas = require('./dicas');
 
 const WIDGET_JS = path.join(__dirname, 'widget.js');
 
@@ -39,6 +40,22 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
   });
   app.get(R, ...admin, (req, res) => { try { res.json({ comunicados: motor.listar({ limite: req.query.limite }) }); } catch (e) { erro(res, e); } });
   app.get(`${R}/descadastros`, ...admin, (req, res) => res.json({ descadastros: motor.listarDescadastros() }));
+  // Dicas do app ("você sabia?"). Escrita aceita a PUBLISH_KEY: um agente pode
+  // redigir dicas; mostrar dica não é mandar mensagem para ninguém.
+  app.get(`${R}/dicas`, ...admin, (req, res) => {
+    try { res.json({ dicas: dicas.comAlcance(req.query.produto || ''), sistemas: fontes.catalogo().filter((p) => p.tem_app || p.central_propria) }); }
+    catch (e) { erro(res, e); }
+  });
+  app.post(`${R}/dicas`, requirePublishOrAdmin, json, (req, res) => {
+    try { res.status(201).json({ dica: dicas.criar(req.body || {}) }); } catch (e) { erro(res, e); }
+  });
+  app.put(`${R}/dicas/:id`, requirePublishOrAdmin, json, (req, res) => {
+    try { res.json({ dica: dicas.atualizar(req.params.id, req.body || {}) }); } catch (e) { erro(res, e); }
+  });
+  app.delete(`${R}/dicas/:id`, ...admin, (req, res) => {
+    try { res.json({ ok: dicas.excluir(req.params.id) }); } catch (e) { erro(res, e); }
+  });
+
   app.get(`${R}/privacidade`, ...admin, (req, res) => {
     res.json({
       ultima: privacidade.ultima(), retencao_dias: privacidade.DIAS_RETENCAO,
@@ -243,6 +260,10 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
         await servirAnexo(res, anexo);
       } catch (e) { erro(res, e); }
     });
+    // Uma dica por abertura do app (a dica é marcada como vista ao ser mostrada).
+    app.get(`${A}/dicas/proxima`, doUsuario((ref) => dicas.painelDoUsuario(f.chave, ref)));
+    app.get(`${A}/dicas`, doUsuario((ref) => dicas.doUsuario(f.chave, ref)));
+    app.post(`${A}/dicas/preferencia`, json, doUsuario((ref, req) => ({ mostrar_post_it: dicas.definirPref(f.chave, ref, (req.body || {}).mostrar !== false) })));
     app.get(`${A}/preferencias`, doUsuario(async (ref) => ({ preferencias: await motor.preferencias(f.chave, ref) })));
     app.post(`${A}/preferencias`, json, doUsuario(async (ref, req) => ({ preferencias: await motor.salvarPreferencias(f.chave, ref, req.body || {}) })));
     app.post(`${A}/:id/lido`, doUsuario((ref, req) => ({ marcados: motor.marcarLido(f.chave, ref, req.params.id) })));

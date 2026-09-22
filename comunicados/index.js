@@ -16,6 +16,7 @@ const motor = require('./motor');
 const fontes = require('./fontes');
 const suporte = require('./suporte');
 const privacidade = require('./privacidade');
+const dicas = require('./dicas');
 const { registrarRotas } = require('./rotas');
 
 const INTERVALO_MS = Number(process.env.COMUNICADOS_INTERVALO_MS || 60000);
@@ -60,8 +61,10 @@ function montar(app, deps = {}) {
   registrarRotas(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria });
   ligarFila();
   ligarRotinas();
+  try { const n = dicas.semear(); if (n) console.log(`[comunicados] ${n} dica(s) inicial(is) criada(s)`); }
+  catch (e) { console.error('[comunicados] semear dicas falhou:', e.message); }
   console.log('[comunicados] montado —', `${fontes.todas().length} sistemas`,
     `· e-mail: ${disp.email.ok ? 'ok' : 'NÃO'}`, `· whatsapp: ${disp.whatsapp.ok ? disp.whatsapp.template : 'sem modelo'}`);
 }
 
-module.exports = { montar, motor, fontes, suporte, privacidade, ligarFila, desligarFila, ligarRotinas, desligarRotinas };
+module.exports = { montar, motor, fontes, suporte, privacidade, dicas, ligarFila, desligarFila, ligarRotinas, desligarRotinas };

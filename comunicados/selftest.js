@@ -600,6 +600,64 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.equal((await req('GET', '/staff/api/comunicados/descadastros', { quem: 'adm' })).status, 200);
   });
 
+  // ======================= DICAS ("você sabia?") =======================
+  await t('dicas: as sementes entram uma vez e só no sistema delas', async () => {
+    assert.equal(com.dicas.semear(), 0, 'montar já semeou; a segunda passada não pode duplicar');
+    const academy = com.dicas.listar('academy');
+    assert.ok(academy.length >= 5, 'faltaram as dicas iniciais da Academy');
+    assert.ok(academy.every((d) => d.produto === 'academy'));
+    assert.ok(academy[0].passos.length >= 3, 'dica sem passo a passo não substitui manual');
+    assert.equal(com.dicas.listar('closet').length, 0, 'dica da Academy não pode aparecer em outro sistema');
+  });
+
+  await t('dicas: uma por abertura, sem repetir, e a pessoa não vê dica de outro sistema', async () => {
+    const ck = ckV2();   // Vito, do Stay Manager
+    com.dicas.criar({ produto: 'vsm', titulo: 'Dica A do Manager', corpo: 'a', passos: ['passo 1'], ordem: 1 });
+    com.dicas.criar({ produto: 'vsm', titulo: 'Dica B do Manager', corpo: 'b', passos: ['passo 1'], ordem: 2 });
+    const p1 = (await req('GET', '/gestao/api/comunicados/dicas/proxima', { cookie: ck })).json.dica;
+    const p2 = (await req('GET', '/gestao/api/comunicados/dicas/proxima', { cookie: ck })).json.dica;
+    const p3 = (await req('GET', '/gestao/api/comunicados/dicas/proxima', { cookie: ck })).json;
+    assert.equal(p1.titulo, 'Dica A do Manager');
+    assert.equal(p2.titulo, 'Dica B do Manager', 'devia vir OUTRA dica na segunda abertura');
+    assert.equal(p3.dica, null, 'acabaram as dicas: o post-it para de aparecer');
+    const todas = (await req('GET', '/gestao/api/comunicados/dicas', { cookie: ck })).json;
+    assert.equal(todas.itens.length, 2);
+    assert.ok(todas.itens.every((d) => d.vista), 'o que já apareceu conta como visto');
+    assert.ok(!todas.itens.some((d) => /Academy/i.test(d.titulo)));
+  });
+
+  await t('dicas: quem desliga o post-it para de receber, mas continua com a aba', async () => {
+    // Vito: a Vera foi excluída no teste da LGPD, e conta excluída não tem sessão.
+    const ck = ckV2();
+    com.dicas.criar({ produto: 'vsm', titulo: 'Dica C do Manager', corpo: 'c', passos: ['passo'], ordem: 3 });
+    assert.ok((await req('GET', '/gestao/api/comunicados/dicas/proxima', { cookie: ck })).json.dica, 'devia ter a dica C');
+    await req('POST', '/gestao/api/comunicados/dicas/preferencia', { cookie: ck, corpo: { mostrar: false } });
+    assert.equal((await req('GET', '/gestao/api/comunicados/dicas/proxima', { cookie: ck })).json.dica, null);
+    const todas = (await req('GET', '/gestao/api/comunicados/dicas', { cookie: ck })).json;
+    assert.ok(todas.itens.length >= 3 && todas.mostrar_post_it === false, 'a aba continua listando tudo');
+    await req('POST', '/gestao/api/comunicados/dicas/preferencia', { cookie: ck, corpo: { mostrar: true } });
+  });
+
+  await t('dicas: staff cria, edita, desliga e exclui; dica sem passo nem texto é recusada', async () => {
+    const nova = await req('POST', '/staff/api/comunicados/dicas', { quem: 'adm', corpo: { produto: 'vsm', titulo: 'Dica de teste', passos: ['um', 'dois'], ordem: 90 } });
+    assert.equal(nova.status, 201);
+    const id = nova.json.dica.id;
+    assert.equal((await req('PUT', `/staff/api/comunicados/dicas/${id}`, { quem: 'adm', corpo: { ativa: false } })).json.dica.ativa, false);
+    assert.ok(!com.dicas.listar('vsm', { incluirInativas: false }).some((d) => d.id === id), 'dica desligada não vai para o cliente');
+    const ruim = await req('POST', '/staff/api/comunicados/dicas', { quem: 'adm', corpo: { produto: 'vsm', titulo: 'Só título' } });
+    assert.equal(ruim.status, 400);
+    const fora = await req('POST', '/staff/api/comunicados/dicas', { quem: 'adm', corpo: { produto: 'inexistente', titulo: 'x', corpo: 'y' } });
+    assert.equal(fora.status, 400);
+    assert.equal((await req('DELETE', `/staff/api/comunicados/dicas/${id}`, { quem: 'adm' })).json.ok, true);
+    assert.equal((await req('GET', '/staff/api/comunicados/dicas?produto=vsm', { quem: 'op' })).status, 403);
+  });
+
+  await t('dicas: a rota /dicas não cai na rota de :id do comunicado', async () => {
+    const r = await req('GET', '/staff/api/comunicados/dicas?produto=academy', { quem: 'adm' });
+    assert.equal(r.status, 200);
+    assert.ok(Array.isArray(r.json.dicas) && r.json.sistemas.length >= 5);
+  });
+
   await t('staff: rascunho enviado não se edita; excluir só rascunho', async () => {
     assert.equal((await req('PUT', `/staff/api/comunicados/${id1}`, { quem: 'adm', corpo: { titulo: 'x' } })).status, 409);
     assert.equal((await req('DELETE', `/staff/api/comunicados/${id1}`, { quem: 'adm' })).status, 409);
