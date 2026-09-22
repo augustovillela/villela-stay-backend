@@ -2305,6 +2305,23 @@ async function main() {
     assert.equal((await req('POST', '/academy/api/aluno/comunidade/apagar', { jar: 'olga', corpo: { tipo: 'topico', id: topId } })).st, 200);
     assert.equal((await req('GET', `/academy/api/aluno/comunidade/topicos/${topId}`, { jar: 'maria' })).st, 404, 'apagado pelo autor');
   });
+
+  await t('comunidade: Avisos é só de quem ensina; boas-vindas pela chave sai no nome do produtor, fixado e sem duplicar', async () => {
+    const url = `/academy/api/aluno/comunidade/${MARIA_ID}/topicos`;
+    assert.equal((await req('POST', url, { jar: 'olga', corpo: { area: 'avisos', titulo: 'Aviso de aluno', texto: 'Aluno não publica em Avisos, só quem ensina.' } })).st, 403);
+    const corpo = { produtor_email: MARIA.email, area: 'avisos', fixar: true, titulo: 'Bem-vindo à comunidade', texto: 'Apresente-se aqui embaixo e anonimize os dados antes de postar.' };
+    assert.equal((await req('POST', '/staff/api/academy/comunidade/topico', { semUser: true, corpo })).st, 401, 'sem chave');
+    const r = await req('POST', '/staff/api/academy/comunidade/topico', { semUser: true, chave: true, corpo });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.criado, true);
+    assert.equal(r.json.topico.fixado, true);
+    const de_novo = await req('POST', '/staff/api/academy/comunidade/topico', { semUser: true, chave: true, corpo });
+    assert.equal(de_novo.json.criado, false, 'reenviar não duplica');
+    assert.equal(de_novo.json.topico.id, r.json.topico.id);
+    const lista = await req('GET', `/academy/api/aluno/comunidade/${MARIA_ID}`, { jar: 'ana' });
+    assert.equal(lista.json.topicos[0].id, r.json.topico.id, 'fixado no topo de "Tudo"');
+    assert.ok(/^Maria/.test(lista.json.topicos[0].autor), 'no nome da produtora: ' + lista.json.topicos[0].autor);
+  });
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

@@ -206,7 +206,7 @@
         Array.prototype.forEach.call(document.querySelectorAll('.ec-areas [data-a]'), function (b) { b.onclick = function () { CM.area = b.getAttribute('data-a'); listar(); }; });
         var den = document.querySelector('[data-den]'); if (den) den.onclick = denuncias;
         var tb; el('ec-cbusca').oninput = function () { var v = this.value; clearTimeout(tb); tb = setTimeout(function () { CM.busca = v; listar(); }, 450); };
-        el('ec-novo').onclick = function () { formNovo(r.areas); };
+        el('ec-novo').onclick = function () { formNovo(r.areas.filter(function (a) { return !a.so_moderador || r.moderador; })); };
         Array.prototype.forEach.call(document.querySelectorAll('[data-top]'), function (b) { b.onclick = function () { abrirTopico(b.getAttribute('data-top')); }; });
       }).catch(erroBox);
     }

@@ -112,6 +112,18 @@ function registrarRotasEcossistemaStaff(app, { requirePublishOrAdmin, requireAut
     aud(req, 'lives.salvar', l.id, `${l.titulo} · ${l.inicio_em} · publicada=${l.publicada}`);
     res.json({ ok: true, live: l });
   }));
+  // tópico em nome do produtor (ex.: boas-vindas fixado em Avisos). Idempotente pelo título:
+  // reenviar o mesmo título devolve o tópico que já existe, sem duplicar.
+  app.post('/staff/api/academy/comunidade/topico', ...PA, h((req, res) => {
+    const u = produtor(req.body); const b = req.body || {};
+    const { db } = require('./db');
+    const ja = db.prepare("SELECT id FROM com_topicos WHERE producer_id = ? AND user_id = ? AND titulo = ? AND status != 'removido'").get(u.id, u.id, s(b.titulo, 160));
+    const usuario = { id: u.id, papeis: ['produtor'] };
+    const t = ja ? eco.topico(usuario, ja.id) : eco.criarTopico(usuario, u.id, b);
+    if (b.fixar === true && !t.fixado) eco.moderar(usuario, 'topico', t.id, 'fixar');
+    if (!ja) aud(req, 'comunidade.topico', t.id, s(t.titulo, 100));
+    res.json({ ok: true, criado: !ja, topico: eco.topico(usuario, t.id) });
+  }));
   app.get('/staff/api/academy/lives', ...PA, h((req, res) => {
     const u = produtor(req.query || {});
     res.json({ lives: eco.lives({ id: u.id, papeis: [] }) });

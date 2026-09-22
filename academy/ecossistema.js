@@ -334,6 +334,8 @@ function inscritos(liveId) { return db.prepare('SELECT user_id FROM live_inscric
 // COMUNIDADE
 // ---------------------------------------------------------------------
 const AREAS = [
+  // recados de quem ensina: só o dono da casa (ou admin) abre tópico aqui
+  { id: 'avisos', nome: 'Avisos', icone: '📌', desc: 'Recados de quem ensina.', so_moderador: true },
   { id: 'duvidas', nome: 'Dúvidas', icone: '❓', desc: 'Travou em alguma aula? Pergunte aqui.' },
   { id: 'prompts', nome: 'Prompts', icone: '🧩', desc: 'Compartilhe prompts que funcionaram.' },
   { id: 'projetos', nome: 'Projetos', icone: '🏗️', desc: 'O seu projeto final e os dos colegas.' },
@@ -413,6 +415,7 @@ function criarTopico(usuario, producerId, d = {}) {
   cotaDia(usuario);
   const area = AREAS.find(a => a.id === s(d.area, 30));
   if (!area) throw erro('Escolha a área do tópico.');
+  if (area.so_moderador && !moderador(usuario, producerId)) throw erro('Só quem ensina publica em Avisos.', 403);
   if (area.id === 'novidades' && !/https:\/\//.test(s(d.texto, 6000))) throw erro('Em Novidades de IA, inclua o link da fonte (https://).');
   const titulo = semSegredo(texto(d.titulo, 8, 160, 'Título'));
   const corpo = semSegredo(texto(d.texto, 20, 6000, 'Texto'));
