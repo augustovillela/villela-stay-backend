@@ -49,6 +49,8 @@ const saidos = { email: [], whatsapp: [] };
 let emailFalhaPara = null;
 const enviarEmail = async (to, assunto, html) => { if (to === emailFalhaPara) return false; saidos.email.push({ to, assunto, html }); return true; };
 const enviarWhatsAppTemplate = async (to, template, params) => { saidos.whatsapp.push({ to, template, params }); return true; };
+const avisosStaff = [];
+const avisarStaff = async (p) => { avisosStaff.push(p); return 1; };
 
 // ---- bases dos produtos (schema real, dados mínimos) ----
 const agora = new Date().toISOString();
@@ -73,7 +75,7 @@ insT.run('v3', 't2', 'Xavier Ex', 'xavier@ex.com', 'admin', 1, agora);
 const com = require('./index');
 const app = express();
 app.use(cookieParser());
-com.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, enviarEmail, enviarWhatsAppTemplate, jwtSecret: SEGREDO, registrarAuditoria: () => {} });
+com.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, enviarEmail, enviarWhatsAppTemplate, avisarStaff, jwtSecret: SEGREDO, registrarAuditoria: () => {} });
 const { motor, fontes } = com;
 const { db } = require('./db');
 
@@ -308,6 +310,133 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
       assert.equal(r.status, 200, p);
       assert.ok((await r.text()).includes('__vsComunicados'), p);
     }
+  });
+
+  // ======================= SUPORTE (chat de mão dupla) =======================
+  const ckV1 = () => 'vsm_sess=' + jwt.sign({ uid: 'v1' }, SEGREDO);
+  const ckV2 = () => 'vsm_sess=' + jwt.sign({ uid: 'v2' }, SEGREDO);
+  let conv;
+  await t('suporte: cliente abre conversa; a equipe é avisada; nome e e-mail vêm do sistema, não do cliente', async () => {
+    const r = await req('POST', '/gestao/api/comunicados/suporte', { cookie: ckV1(), corpo: { assunto: 'Não consigo exportar', texto: 'O botão de exportar não faz nada.', nome: 'Forjado', email: 'forjado@x.com' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    conv = r.json.conversa;
+    assert.equal(conv.nome, 'Vera Dona'); assert.equal(conv.email.toLowerCase(), 'ana@ex.com');
+    assert.equal(conv.mensagens.length, 1);
+    assert.ok(avisosStaff.some((a) => /Novo pedido de suporte/.test(a.title)), 'staff não recebeu push');
+  });
+
+  await t('suporte: outro usuário do MESMO sistema não lê nem responde a conversa (id não basta)', async () => {
+    assert.equal((await req('GET', `/gestao/api/comunicados/suporte/${conv.id}`, { cookie: ckV2() })).status, 404);
+    assert.equal((await req('POST', `/gestao/api/comunicados/suporte/${conv.id}`, { cookie: ckV2(), corpo: { texto: 'invasão' } })).status, 404);
+    assert.equal((await req('GET', '/gestao/api/comunicados/suporte', { cookie: ckV2() })).json.conversas.length, 0);
+  });
+
+  await t('suporte: sessão de OUTRO sistema com o mesmo id não abre a conversa', async () => {
+    // Mesmo uid "v1" assinado como cookie do CRM: a conversa é do VSM.
+    const r = await req('GET', `/crm/api/comunicados/suporte/${conv.id}`, { cookie: 'crm_sess=' + jwt.sign({ uid: 'v1' }, SEGREDO) });
+    assert.ok([401, 404].includes(r.status), 'status ' + r.status);
+  });
+
+  await t('suporte: sem sessão é 401; escrita de outra origem é recusada', async () => {
+    assert.equal((await req('POST', '/gestao/api/comunicados/suporte', { corpo: { texto: 'oi' } })).status, 401);
+    const r = await fetch(base + '/gestao/api/comunicados/suporte', { method: 'POST', headers: { 'content-type': 'application/json', cookie: ckV1(), origin: 'https://site-malicioso.example' }, body: JSON.stringify({ texto: 'oi' }) });
+    assert.equal(r.status, 403);
+  });
+
+  await t('suporte: equipe responde → cliente vê a resposta, badge e e-mail', async () => {
+    const antes = saidos.email.length;
+    const r = await req('POST', `/staff/api/suporte-sistemas/${conv.id}/responder`, { quem: 'adm', corpo: { texto: 'Corrigimos, pode tentar de novo.' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.conversa.status, 'respondida');
+    assert.equal(saidos.email.length, antes + 1);
+    assert.ok(/respondemos a sua mensagem/.test(saidos.email[saidos.email.length - 1].assunto));
+    const cx = (await req('GET', '/gestao/api/comunicados', { cookie: ckV1() })).json;
+    assert.equal(cx.suporte_nao_lidas, 1);
+    const aberta = (await req('GET', `/gestao/api/comunicados/suporte/${conv.id}`, { cookie: ckV1() })).json.conversa;
+    assert.equal(aberta.mensagens[1].autor, 'staff');
+    assert.equal((await req('GET', '/gestao/api/comunicados', { cookie: ckV1() })).json.suporte_nao_lidas, 0, 'abrir devia zerar');
+  });
+
+  await t('suporte: cliente escreve numa conversa resolvida e ela reabre', async () => {
+    await req('POST', `/staff/api/suporte-sistemas/${conv.id}/status`, { quem: 'adm', corpo: { status: 'resolvida' } });
+    const r = await req('POST', `/gestao/api/comunicados/suporte/${conv.id}`, { cookie: ckV1(), corpo: { texto: 'Voltou a dar erro.' } });
+    assert.equal(r.json.conversa.status, 'aberta');
+    assert.equal(com.suporte.resumoStaff().aguardando, 1);
+  });
+
+  await t('suporte: staff comum não acessa; texto vazio recusado; limite de conversas por dia', async () => {
+    assert.equal((await req('GET', '/staff/api/suporte-sistemas', { quem: 'op' })).status, 403);
+    assert.equal((await req('POST', '/gestao/api/comunicados/suporte', { cookie: ckV2(), corpo: { texto: '   ' } })).status, 400);
+    for (let i = 0; i < 5; i++) await req('POST', '/gestao/api/comunicados/suporte', { cookie: ckV2(), corpo: { texto: 'msg ' + i } });
+    assert.equal((await req('POST', '/gestao/api/comunicados/suporte', { cookie: ckV2(), corpo: { texto: 'sexta' } })).status, 429);
+  });
+
+  await t('suporte: resposta do staff chega ao celular onde o sistema tem push', async () => {
+    const vsmDb = require('../vsm/db').db;
+    vsmDb.prepare('INSERT INTO push_subs (endpoint, tenant_id, user_id, dados, criado_em) VALUES (?, ?, ?, ?, ?)')
+      .run('https://push.example/v1', 't1', 'v1', JSON.stringify({ endpoint: 'https://push.example/v1', keys: {} }), agora);
+    const r = await req('POST', `/staff/api/suporte-sistemas/${conv.id}/responder`, { quem: 'adm', corpo: { texto: 'Ok, ajustado.' } });
+    assert.equal(r.json.conversa.avisos.push, true);
+    assert.equal(await fontes.pushUsuario('vitrine', 'x', { title: 'x' }), 0, 'Vitrine não tem push: devia ser 0, sem erro');
+  });
+
+  // ======================= PREFERÊNCIAS =======================
+  await t('preferências: o cliente escolhe "só importantes" e sai de novidades, fica em instabilidade', async () => {
+    // Sessão nova da Ana (a anterior foi revogada no teste da Academy).
+    acad.prepare('INSERT INTO sessions (id, user_id, criada_em, expira_em) VALUES (?, ?, ?, ?)').run('jti-a1b', 'a1', agora, new Date(Date.now() + 864e5).toISOString());
+    const ckA = 'academy_sess=' + jwt.sign({ uid: 'a1', jti: 'jti-a1b' }, SEGREDO);
+    const g = (await req('GET', '/academy/api/comunicados/preferencias', { cookie: ckA })).json.preferencias;
+    assert.equal(g.email.valor, 'tudo'); assert.ok(!g.email.contato.includes('ana@'), 'e-mail devia vir mascarado');
+    const s = await req('POST', '/academy/api/comunicados/preferencias', { cookie: ckA, corpo: { email: 'importantes' } });
+    assert.equal(s.json.preferencias.email.valor, 'importantes');
+    assert.equal((await motor.previa(rascunho())).canais.email.total, 0, 'novidade não devia ir para a Ana');
+    // Instabilidade continua indo para ela (o Beto sai porque pediu "tudo" pelo link, num teste anterior).
+    const inst = await motor.previa(rascunho({ categoria: 'instabilidade' }));
+    assert.equal(inst.canais.email.total, 1); assert.ok(inst.canais.email.amostra[0].nome.startsWith('Ana'));
+    await req('POST', '/academy/api/comunicados/preferencias', { cookie: ckA, corpo: { email: 'tudo' } });
+    assert.equal((await motor.previa(rascunho())).canais.email.total, 1);
+    assert.equal((await req('POST', '/academy/api/comunicados/preferencias', { cookie: ckA, corpo: { email: 'qualquer' } })).status, 400);
+  });
+
+  await t('descadastro em um clique (Gmail/Yahoo): POST com o token na query', async () => {
+    const tok = motor.tokenDescadastro('vito@ex.com', 'email');
+    const r = await fetch(base + '/comunicados/descadastro?t=' + encodeURIComponent(tok), { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'List-Unsubscribe=One-Click' });
+    assert.equal(r.status, 200);
+    assert.ok(motor.listarDescadastros().some((d) => d.contato === 'vito@ex.com' && d.escopo === 'tudo' && d.origem === 'um-clique'));
+    motor.recadastrar('vito@ex.com', 'email');
+  });
+
+  // ======================= E-MAIL EM VOLUME (Resend) =======================
+  await t('resend: com a chave, o comunicado sai pelo Resend com cabeçalho de descadastro', async () => {
+    const fetchReal = global.fetch, chamadas = [];
+    global.fetch = async (url, op) => {
+      if (String(url).startsWith('https://api.resend.com')) { chamadas.push(JSON.parse(op.body)); return new Response('{"id":"x"}', { status: 200 }); }
+      return fetchReal(url, op);
+    };
+    process.env.RESEND_API_KEY = 're_teste'; process.env.COMUNICADOS_EMAIL_FROM = 'Villela <avisos@villelastay.com.br>';
+    try {
+      assert.equal(motor.disponibilidade().email.provedor, 'resend');
+      const antesGmail = saidos.email.length;
+      const c = motor.criar(rascunho({ titulo: 'Via Resend', categoria: 'instabilidade', canais: ['email'], alvos: [{ produto: 'vsm', segmento: 'equipe' }] }), 'adm');
+      await motor.disparar(c.id, { autor: 'adm' });
+      await motor.processarLote();
+      assert.equal(chamadas.length, 1, 'não chamou o Resend');
+      assert.equal(saidos.email.length, antesGmail, 'não devia sair pelo Gmail');
+      assert.ok(/comunicados\/descadastro\?t=/.test(chamadas[0].headers['List-Unsubscribe']));
+      assert.equal(chamadas[0].headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click');
+    } finally {
+      global.fetch = fetchReal; delete process.env.RESEND_API_KEY; delete process.env.COMUNICADOS_EMAIL_FROM;
+    }
+    assert.equal(motor.disponibilidade().email.provedor, 'gmail', 'sem a chave volta ao Gmail');
+  });
+
+  await t('push de comunicado: aviso no app do Stay Manager passa pela fila (celular) e fica disponível', async () => {
+    const c = motor.criar(rascunho({ titulo: 'Push VSM', categoria: 'novidade', canais: ['app'], alvos: [{ produto: 'vsm', segmento: 'donos' }] }), 'adm');
+    await motor.disparar(c.id, { autor: 'adm' });
+    assert.equal(db.prepare("SELECT status FROM entregas WHERE comunicado_id = ?").get(c.id).status, 'pendente');
+    await motor.processarLote();
+    assert.equal(db.prepare("SELECT status FROM entregas WHERE comunicado_id = ?").get(c.id).status, 'disponivel');
+    assert.equal(motor.obter(c.id).status, 'enviado');
   });
 
   await t('staff: rascunho enviado não se edita; excluir só rascunho', async () => {

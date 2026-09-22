@@ -14,6 +14,7 @@
 'use strict';
 const motor = require('./motor');
 const fontes = require('./fontes');
+const suporte = require('./suporte');
 const { registrarRotas } = require('./rotas');
 
 const INTERVALO_MS = Number(process.env.COMUNICADOS_INTERVALO_MS || 60000);
@@ -30,16 +31,17 @@ function ligarFila() {
 const desligarFila = () => { if (_timer) { clearInterval(_timer); _timer = null; } };
 
 function montar(app, deps = {}) {
-  const { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria, enviarEmail, enviarWhatsAppTemplate, emailPronto, whatsappPronto, jwtSecret, baseUrl } = deps;
+  const { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria, enviarEmail, enviarWhatsAppTemplate, emailPronto, whatsappPronto, avisarStaff, jwtSecret, baseUrl } = deps;
   if (!express || !requireAuth || !requireAdmin || !requirePublishOrAdmin || !jwtSecret) {
     throw new Error('comunicados.montar: faltam deps (express, requireAuth, requireAdmin, requirePublishOrAdmin, jwtSecret).');
   }
   fontes.configurar({ jwtSecret });
   const disp = motor.configurar({ enviarEmail, enviarWhatsAppTemplate, emailPronto, whatsappPronto, baseUrl, segredo: jwtSecret });
+  suporte.configurar({ avisarStaff, enviarEmail: motor.enviarEmailCentral });
   registrarRotas(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria });
   ligarFila();
   console.log('[comunicados] montado —', `${fontes.todas().length} sistemas`,
     `· e-mail: ${disp.email.ok ? 'ok' : 'NÃO'}`, `· whatsapp: ${disp.whatsapp.ok ? disp.whatsapp.template : 'sem modelo'}`);
 }
 
-module.exports = { montar, motor, fontes, ligarFila, desligarFila };
+module.exports = { montar, motor, fontes, suporte, ligarFila, desligarFila };

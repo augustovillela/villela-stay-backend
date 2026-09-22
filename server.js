@@ -4641,6 +4641,8 @@ try {
     enviarEmail, enviarWhatsAppTemplate, jwtSecret: JWT_SECRET,
     emailPronto: () => !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASS),
     whatsappPronto: () => !!process.env.MAKE_WA_WEBHOOK,
+    // Mensagem nova no suporte dos sistemas -> push so para admin (area que ninguem mais tem: a tela e so de admin).
+    avisarStaff: (payload) => enviarPushStaff(payload, 'suporte-sistemas'),
   });
 } catch (e) { console.error('[comunicados] falha ao montar módulo:', e.message); }
 

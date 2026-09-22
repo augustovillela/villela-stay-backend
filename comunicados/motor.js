@@ -57,11 +57,33 @@ function configurar({ enviarEmail, enviarWhatsAppTemplate, baseUrl, segredo, ema
   return disponibilidade();
 }
 const templateWA = () => s(process.env.COMUNICADOS_WA_TEMPLATE, 80);
+// Provedor de e-mail em volume (Resend). Sem as duas variáveis, tudo sai pelo
+// Gmail do backend, como antes. Com elas, os COMUNICADOS e as respostas do
+// suporte saem pelo Resend, com cabeçalho de descadastro em um clique
+// (Gmail e Yahoo exigem isso de quem manda em volume).
+const resendPronto = () => !!(process.env.RESEND_API_KEY && process.env.COMUNICADOS_EMAIL_FROM);
+async function enviarResend(para, assunto, html, urlSair) {
+  const headers = urlSair ? { 'List-Unsubscribe': `<${urlSair}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: process.env.COMUNICADOS_EMAIL_FROM, to: [para], subject: assunto, html, headers, reply_to: process.env.COMUNICADOS_EMAIL_REPLY_TO || undefined }),
+  });
+  if (!r.ok) { let m = ''; try { m = (await r.json()).message || ''; } catch (_) {} throw new Error(`Resend ${r.status} ${m}`.trim()); }
+  return true;
+}
+// Porta única de e-mail da central (comunicado e suporte).
+async function enviarEmailCentral(para, assunto, html, urlSair) {
+  if (resendPronto()) return enviarResend(para, assunto, html, urlSair);
+  if (!_canais.enviarEmail) return false;
+  return _canais.enviarEmail(para, assunto, html);
+}
+const provedorEmail = () => resendPronto() ? 'resend' : 'gmail';
 function disponibilidade() {
   return {
     app: { ok: true },
-    email: _canais.enviarEmail && _canais.emailPronto()
-      ? { ok: true, teto_dia: tetoDia('email'), enviados_hoje: enviadosHoje('email') }
+    email: resendPronto() || (_canais.enviarEmail && _canais.emailPronto())
+      ? { ok: true, provedor: provedorEmail(), teto_dia: tetoDia('email'), enviados_hoje: enviadosHoje('email') }
       : { ok: false, motivo: 'SMTP não configurado (GMAIL_USER / GMAIL_APP_PASS no Render).' },
     whatsapp: !_canais.enviarWhatsAppTemplate || !_canais.whatsappPronto()
       ? { ok: false, motivo: 'Webhook do WhatsApp business (MAKE_WA_WEBHOOK) não configurado.' }
@@ -73,7 +95,9 @@ function disponibilidade() {
 
 // ---------------- ritmo ----------------
 const numEnv = (nome, padrao) => { const n = Number(process.env[nome]); return Number.isFinite(n) && n > 0 ? n : padrao; };
-const tetoDia = (canal) => canal === 'email' ? numEnv('COMUNICADOS_EMAIL_DIA', 400) : numEnv('COMUNICADOS_WA_DIA', 250);
+// Teto do dia: Gmail comum ~500/dia (400 com folga); Resend grátis = 100/dia —
+// no plano pago, suba COMUNICADOS_EMAIL_DIA no Render.
+const tetoDia = (canal) => canal === 'email' ? numEnv('COMUNICADOS_EMAIL_DIA', resendPronto() ? 100 : 400) : numEnv('COMUNICADOS_WA_DIA', 250);
 const porMinuto = (canal) => canal === 'email' ? numEnv('COMUNICADOS_EMAIL_MIN', 20) : numEnv('COMUNICADOS_WA_MIN', 15);
 // "Hoje" no fuso de Brasília — o teto do Gmail zera por janela de 24 h, e
 // o dia de quem olha o painel é o de Brasília.
@@ -118,6 +142,37 @@ function bloqueado(contato, canal, categoria) {
   if (!r) return false;
   if (r.escopo === 'tudo') return true;
   return !(CATEGORIAS[categoria] && CATEGORIAS[categoria].operacional);
+}
+// Preferência como o CLIENTE a enxerga: tudo | importantes | nada.
+// "importantes" = descadastro de 'avisos'; "nada" = descadastro de 'tudo'.
+function preferenciaDe(contato, canal) {
+  const r = db.prepare('SELECT escopo FROM descadastros WHERE contato = ? AND canal = ?').get(contato, canal);
+  return !r ? 'tudo' : r.escopo === 'tudo' ? 'nada' : 'importantes';
+}
+function definirPreferencia(contato, canal, valor) {
+  if (valor === 'tudo') recadastrar(contato, canal);
+  else if (valor === 'importantes') descadastrar(contato, canal, 'avisos', 'app');
+  else if (valor === 'nada') descadastrar(contato, canal, 'tudo', 'app');
+  else throw Object.assign(new Error('Preferência inválida.'), { status: 400 });
+}
+async function contatosDe(produto, ref) {
+  const p = await fontes.perfil(produto, ref);
+  return p ? { email: normEmail(p.email), tel: normFone(p.telefone) } : null;
+}
+async function preferencias(produto, ref) {
+  const k = await contatosDe(produto, ref);
+  if (!k) return null;
+  return {
+    email: k.email ? { contato: mascEmail(k.email), valor: preferenciaDe(k.email, 'email') } : null,
+    whatsapp: k.tel ? { contato: mascFone(k.tel), valor: preferenciaDe(k.tel, 'whatsapp') } : null,
+  };
+}
+async function salvarPreferencias(produto, ref, { email, whatsapp } = {}) {
+  const k = await contatosDe(produto, ref);
+  if (!k) throw Object.assign(new Error('Conta não encontrada.'), { status: 404 });
+  if (email && k.email) definirPreferencia(k.email, 'email', email);
+  if (whatsapp && k.tel) definirPreferencia(k.tel, 'whatsapp', whatsapp);
+  return preferencias(produto, ref);
 }
 const listarDescadastros = () => db.prepare('SELECT * FROM descadastros ORDER BY criado_em DESC LIMIT 500').all();
 
@@ -316,11 +371,13 @@ async function materializar(c, autor) {
       for (const x of p.listas[canal]) {
         // App: produto com central própria recebe pela fila (entra no sino dele,
         // com o push dele); os outros ficam disponíveis direto para o widget.
-        const st = canal !== 'app' ? 'pendente' : (fontes.obter(x.produto).nativo ? 'pendente' : 'disponivel');
+        const fx = fontes.obter(x.produto);
+        const st = canal !== 'app' ? 'pendente' : ((fx.nativo || fontes.temPush(fx)) ? 'pendente' : 'disponivel');
         ins.run(c.id, canal, x.chave, x.produto, x.usuario_ref, x.nome, x.destino, st, agora);
       }
     }
-    const temFila = p.listas.email.length + p.listas.whatsapp.length + p.listas.app.filter((x) => fontes.obter(x.produto).nativo).length > 0;
+    const temFila = p.listas.email.length + p.listas.whatsapp.length
+      + p.listas.app.filter((x) => { const fx = fontes.obter(x.produto); return fx.nativo || fontes.temPush(fx); }).length > 0;
     db.prepare(`UPDATE comunicados SET status = ?, enviado_por = COALESCE(enviado_por, ?), enviado_em = ?, publico_total = ?, concluido_em = ?, atualizado_em = ? WHERE id = ?`)
       .run(temFila ? 'enviando' : 'enviado', s(autor, 120), agora, p.total, temFila ? null : agora, agora, c.id);
     db.exec('COMMIT');
@@ -332,17 +389,20 @@ async function materializar(c, autor) {
 function paragrafos(t) {
   return String(t || '').split(/\n{2,}/).map((p) => `<p style="margin:0 0 12px;line-height:1.55">${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
 }
+function urlDescadastro(produto, email) {
+  const f = fontes.obter(produto) || {};
+  let origem = _canais.baseUrl;
+  try { if (f.url && !/cozinhe[.]/.test(f.url)) origem = new URL(f.url).origin; } catch (_) {}
+  return `${origem}/comunicados/descadastro?t=${encodeURIComponent(tokenDescadastro(email, 'email'))}`;
+}
 function emailHtml(c, ent) {
   const f = fontes.obter(ent.produto) || { nome: 'Grupo Villela Stay', emoji: '', cor: '#1B2A4A' };
   const cat = CATEGORIAS[c.categoria];
   const primeiro = String(ent.nome || '').split(' ')[0];
   const link = c.link_url || f.url || '';
-  const tok = tokenDescadastro(ent.destino, 'email');
   // O link sai no domínio do PRÓPRIO produto (a rota responde em qualquer host
   // do backend): quem é aluno da Academy não estranha um endereço de outro lugar.
-  let origem = _canais.baseUrl;
-  try { if (f.url && !/cozinhe\./.test(f.url)) origem = new URL(f.url).origin; } catch (_) {}
-  const urlSair = `${origem}/comunicados/descadastro?t=${encodeURIComponent(tok)}`;
+  const urlSair = urlDescadastro(ent.produto, ent.destino);
   return `<div style="font-family:Inter,system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1F2933">
     <div style="background:${f.cor || '#1B2A4A'};border-radius:12px 12px 0 0;padding:16px 24px">
       <span style="color:#fff;font-weight:800;font-size:1.05rem">${f.emoji || ''} ${esc(f.nome)}</span></div>
@@ -374,7 +434,7 @@ async function enviarUma(c, ent) {
   if (ent.canal === 'email') {
     const f = fontes.obter(ent.produto) || { nome: 'Grupo Villela Stay' };
     const cat = CATEGORIAS[c.categoria];
-    return _canais.enviarEmail(ent.destino, `${cat.emoji} ${f.nome}: ${c.titulo}`, emailHtml(c, ent));
+    return enviarEmailCentral(ent.destino, `${cat.emoji} ${f.nome}: ${c.titulo}`, emailHtml(c, ent), urlDescadastro(ent.produto, ent.destino));
   }
   if (ent.canal === 'whatsapp') return _canais.enviarWhatsAppTemplate(ent.destino, templateWA(), whatsappParams(c, ent));
   return false;
@@ -400,8 +460,14 @@ async function processarLote() {
       if (!cacheN.has(ent.comunicado_id)) cacheN.set(ent.comunicado_id, obter(ent.comunicado_id));
       const f = fontes.obter(ent.produto);
       let status = 'disponivel', motivo = null;
-      try { if (f && f.nativo) await f.nativo(ent.usuario_ref, cacheN.get(ent.comunicado_id)); }
+      const c = cacheN.get(ent.comunicado_id);
+      try { if (f && f.nativo) await f.nativo(ent.usuario_ref, c); }
       catch (e) { status = 'erro'; motivo = s(e.message, 200); feito.erros++; }
+      // Push no celular: best-effort (celular sem inscrição não é erro).
+      if (status === 'disponivel' && fontes.temPush(f) && !f.nativoFazPush) {
+        const cat = CATEGORIAS[c.categoria];
+        try { await fontes.pushUsuario(ent.produto, ent.usuario_ref, { title: `${cat.emoji} ${c.titulo}`, body: c.corpo.slice(0, 180), tag: 'comunicado' }); } catch (_) {}
+      }
       db.prepare('UPDATE entregas SET status = ?, motivo = ?, tentativas = tentativas + 1, atualizado_em = ? WHERE id = ?').run(status, motivo, nowISO(), ent.id);
       if (status === 'disponivel') feito.app = (feito.app || 0) + 1;
     }
@@ -508,5 +574,6 @@ module.exports = {
   previa, disparar, processarLote, enviarTeste, entregas, reenviarErros,
   caixa, marcarLido,
   tokenDescadastro, lerTokenDescadastro, descadastrar, recadastrar, listarDescadastros,
+  preferencias, salvarPreferencias, enviarEmailCentral, provedorEmail,
   _int: { normEmail, normFone, emailHtml, whatsappParams, montarPublico, bloqueado },
 };

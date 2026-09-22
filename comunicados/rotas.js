@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const motor = require('./motor');
 const fontes = require('./fontes');
+const suporte = require('./suporte');
 
 const WIDGET_JS = path.join(__dirname, 'widget.js');
 
@@ -113,38 +114,78 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
         <button name="escopo" value="tudo" class="sec">Todos os avisos</button></form>
       <p class="obs">Avisos de instabilidade e manutenção existem para você não ser pego de surpresa quando o sistema estiver fora do ar. E-mails da sua conta (senha, compra, pagamento) continuam chegando.</p>`));
   });
+  // Aceita o formulário da página E o "descadastrar em um clique" do Gmail/Yahoo
+  // (RFC 8058: POST no endereço do cabeçalho, com o token na query).
   app.post('/comunicados/descadastro', express.urlencoded({ extended: false, limit: '4kb' }), (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    const t = motor.lerTokenDescadastro(req.body && req.body.t);
+    const b = req.body || {};
+    const t = motor.lerTokenDescadastro(b.t || req.query.t);
     if (!t) return res.status(400).type('html').send(pagina('Link inválido', '<h1>Link inválido</h1>'));
-    const escopo = req.body.escopo === 'tudo' ? 'tudo' : 'avisos';
-    motor.descadastrar(t.contato, t.canal, escopo, 'link-email');
+    const umClique = b['List-Unsubscribe'] === 'One-Click';
+    const escopo = umClique || b.escopo === 'tudo' ? 'tudo' : 'avisos';
+    motor.descadastrar(t.contato, t.canal, escopo, umClique ? 'um-clique' : 'link-email');
+    if (umClique) return res.status(200).send('ok');
     res.type('html').send(pagina('Pronto', `<h1>Pronto.</h1><p>${escopo === 'tudo' ? 'Você não vai mais receber avisos por e-mail.' : 'Você não vai mais receber novidades e dicas por e-mail. Avisos de instabilidade continuam chegando.'}</p>`));
+  });
+
+  // ---------------- suporte (lado da equipe) ----------------
+  const S = '/staff/api/suporte-sistemas';
+  app.get(S, ...admin, (req, res) => {
+    try { res.json({ resumo: suporte.resumoStaff(), conversas: suporte.listarStaff({ status: req.query.status, produto: req.query.produto, busca: req.query.busca }) }); }
+    catch (e) { erro(res, e); }
+  });
+  app.get(`${S}/:id`, ...admin, (req, res) => { try { res.json({ conversa: suporte.abrirStaff(req.params.id) }); } catch (e) { erro(res, e); } });
+  app.post(`${S}/:id/responder`, ...admin, json, async (req, res) => {
+    try {
+      const b = req.body || {};
+      const nome = String((req.user && req.user.nome) || 'Equipe').split(' ')[0];
+      const c = await suporte.responderStaff(req.params.id, b.texto, `${nome} · Equipe`, { resolver: b.resolver === true });
+      registrarAuditoria(req, 'suporte.responder', `${c.produto} · ${c.assunto}`);
+      res.json({ conversa: c });
+    } catch (e) { erro(res, e); }
+  });
+  app.post(`${S}/:id/status`, ...admin, json, (req, res) => {
+    try { res.json({ conversa: suporte.mudarStatus(req.params.id, (req.body || {}).status) }); } catch (e) { erro(res, e); }
   });
 
   // ---------------- caixa do usuário (dentro de cada app) ----------------
   // Montada sob o caminho de CADA produto, para o cookie de sessão dele
-  // (que pode ter `path` restrito) chegar na requisição.
+  // (que pode ter `path` restrito) chegar na requisição. Fica sob /api porque
+  // o service worker dos apps guarda em cache tudo que NÃO é /api.
   const widget = () => { try { return fs.readFileSync(WIDGET_JS, 'utf8'); } catch (_) { return '/* widget indisponível */'; } };
+  // Escrita só da mesma origem (o cookie já é SameSite=Lax; isto fecha o resto).
+  const mesmaOrigem = (req) => { const o = req.headers.origin; if (!o) return true; try { return new URL(o).host === req.headers.host; } catch (_) { return false; } };
   for (const f of fontes.todas()) {
     if (!f.caminhoApp || typeof f.sessao !== 'function') continue;
-    const base = f.caminhoApp;
+    const base = f.caminhoApp, A = `${base}/api/comunicados`;
     app.get(`${base}/comunicados.js`, (req, res) => {
-      res.setHeader('Cache-Control', 'public, max-age=300');
+      // no-cache + ETag (automático no Express): revalida a cada carga e custa um 304.
+      // Com max-age, a versão antiga ficava presa no aparelho depois do deploy.
+      res.setHeader('Cache-Control', 'no-cache');
       res.type('application/javascript').send(widget());
     });
     const resolver = async (req) => { try { return await f.sessao(req); } catch (_) { return null; } };
-    app.get(`${base}/api/comunicados`, async (req, res) => {
+    // Envelope: exige sessão do PRÓPRIO produto e escreve só da mesma origem.
+    const doUsuario = (fn) => async (req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      if (req.method !== 'GET' && !mesmaOrigem(req)) return res.status(403).json({ erro: 'origem recusada' });
+      const ref = await resolver(req);
+      if (!ref) return res.status(401).json({ erro: 'não autenticado' });
+      try { res.json(await fn(String(ref), req)); } catch (e) { erro(res, e); }
+    };
+    app.get(A, async (req, res) => {
       res.setHeader('Cache-Control', 'no-store');
       const ref = await resolver(req);
       if (!ref) return res.json({ itens: [], nao_lidos: 0, anonimo: true });
-      res.json(motor.caixa(f.chave, String(ref)));
+      res.json({ ...motor.caixa(f.chave, String(ref)), suporte_nao_lidas: suporte.naoLidasDoUsuario(f.chave, String(ref)), produto: f.nome });
     });
-    app.post(`${base}/api/comunicados/:id/lido`, async (req, res) => {
-      const ref = await resolver(req);
-      if (!ref) return res.status(401).json({ erro: 'não autenticado' });
-      res.json({ marcados: motor.marcarLido(f.chave, String(ref), req.params.id) });
-    });
+    app.get(`${A}/suporte`, doUsuario((ref) => ({ conversas: suporte.listarDoUsuario(f.chave, ref) })));
+    app.get(`${A}/suporte/:id`, doUsuario((ref, req) => ({ conversa: suporte.abrirDoUsuario(f.chave, ref, req.params.id) })));
+    app.post(`${A}/suporte`, json, doUsuario(async (ref, req) => ({ conversa: await suporte.abrir(f.chave, ref, req.body || {}) })));
+    app.post(`${A}/suporte/:id`, json, doUsuario((ref, req) => ({ conversa: suporte.responderUsuario(f.chave, ref, req.params.id, (req.body || {}).texto) })));
+    app.get(`${A}/preferencias`, doUsuario(async (ref) => ({ preferencias: await motor.preferencias(f.chave, ref) })));
+    app.post(`${A}/preferencias`, json, doUsuario(async (ref, req) => ({ preferencias: await motor.salvarPreferencias(f.chave, ref, req.body || {}) })));
+    app.post(`${A}/:id/lido`, doUsuario((ref, req) => ({ marcados: motor.marcarLido(f.chave, ref, req.params.id) })));
   }
 }
 

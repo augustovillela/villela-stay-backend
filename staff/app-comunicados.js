@@ -33,7 +33,7 @@ function comPintarCanais() {
   const card = (rot, ok, det) => `<div class="card"><div class="n" style="font-size:1.1rem">${ok ? '✅' : '⛔'}</div><div class="rot">${rot}<br><span class="obs">${esc(det)}</span></div></div>`;
   $('#com-canais').innerHTML =
     card(comCanalRot.app, true, 'sino nos apps')
-    + card(comCanalRot.email, c.email.ok, c.email.ok ? `${c.email.enviados_hoje}/${c.email.teto_dia} hoje` : c.email.motivo)
+    + card(comCanalRot.email, c.email.ok, c.email.ok ? `${c.email.enviados_hoje}/${c.email.teto_dia} hoje · via ${c.email.provedor === 'resend' ? 'Resend' : 'Gmail'}` : c.email.motivo)
     + card(comCanalRot.whatsapp, c.whatsapp.ok, c.whatsapp.ok ? `${c.whatsapp.enviados_hoje}/${c.whatsapp.teto_dia} hoje · modelo ${c.whatsapp.template}` : 'falta o modelo aprovado — ver abaixo');
 }
 

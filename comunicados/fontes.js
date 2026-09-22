@@ -144,15 +144,12 @@ function sessaoUsers(mod, cookie, tabela = 'users', extra = null) {
 const notificarNativo = (mod) => (ref, c) => {
   const url = c.link_url || '';
   require(`../${mod}/repo`).Notificacoes.criar(ref, { titulo: c.titulo, texto: c.corpo.slice(0, 600), url, tipo: 'comunicado' });
-  if (mod === 'closet') {
-    require('../closet/push').notificarUsuario(ref, { title: c.titulo, body: c.corpo.slice(0, 180), url: '/closet/app', tag: 'comunicado' }).catch(() => {});
-  }
 };
 
 // ---------------- catálogo ----------------
 const FONTES = [
   {
-    chave: 'academy', nome: 'Villela Academy', emoji: '🎓', cor: '#1B2A4A',
+    chave: 'academy', pushMod: 'academy', nativoFazPush: true, nome: 'Villela Academy', emoji: '🎓', cor: '#1B2A4A',
     url: 'https://academia.villelastay.com.br/academy/app', caminhoApp: '/academy',
     segmentos: [
       { id: 'todos', rotulo: 'Todos os usuários' },
@@ -216,7 +213,7 @@ const FONTES = [
     },
   },
   {
-    chave: 'vsm', nome: 'Villela Stay Manager', emoji: '🏨', cor: '#0E5A6B',
+    chave: 'vsm', pushMod: 'vsm', nome: 'Villela Stay Manager', emoji: '🏨', cor: '#0E5A6B',
     url: 'https://manager.villelastay.com.br/gestao/app', caminhoApp: '/gestao',
     aviso: 'WhatsApp só para o dono da conta (o telefone é da empresa).',
     segmentos: SEG_SAAS,
@@ -224,7 +221,7 @@ const FONTES = [
     sessao: sessaoTenantUsers('vsm', 'vsm_sess'),
   },
   {
-    chave: 'vdocs', nome: 'Villela Docs', emoji: '🗂️', cor: '#1F3A5F',
+    chave: 'vdocs', pushMod: 'vdocs', nome: 'Villela Docs', emoji: '🗂️', cor: '#1F3A5F',
     url: 'https://docs.villelastay.com.br/vdocs/app', caminhoApp: '/vdocs',
     aviso: 'WhatsApp só para o dono da conta (o telefone é da empresa).',
     segmentos: SEG_SAAS,
@@ -232,7 +229,7 @@ const FONTES = [
     sessao: sessaoGlobal('vdocs', 'vdocs_sess'),
   },
   {
-    chave: 'legal-saas', nome: 'Villela Legal', emoji: '⚖️', cor: '#2B2F4A',
+    chave: 'legal-saas', pushMod: 'legal-saas', nome: 'Villela Legal', emoji: '⚖️', cor: '#2B2F4A',
     url: 'https://juridico.villelastay.com.br/juridico/app', caminhoApp: '/juridico',
     aviso: 'Assinantes (escritórios). Os clientes finais de cada escritório NÃO entram.',
     segmentos: SEG_SAAS,
@@ -240,7 +237,7 @@ const FONTES = [
     sessao: sessaoTenantUsers('legal-saas', 'jur_saas'),
   },
   {
-    chave: 'vpe', nome: 'Villela Projects', emoji: '📋', cor: '#3D2E5C',
+    chave: 'vpe', pushMod: 'vpe', nome: 'Villela Projects', emoji: '📋', cor: '#3D2E5C',
     url: 'https://projetos.villelastay.com.br/vpe/app', caminhoApp: '/vpe',
     aviso: 'WhatsApp só para o dono da conta (o telefone é da empresa).',
     segmentos: SEG_SAAS,
@@ -248,7 +245,7 @@ const FONTES = [
     sessao: sessaoGlobal('vpe', 'vpe_sess'),
   },
   {
-    chave: 'crm', nome: 'Villela CRM', emoji: '🤝', cor: '#1B4A3A',
+    chave: 'crm', pushMod: 'crm', nome: 'Villela CRM', emoji: '🤝', cor: '#1B4A3A',
     url: 'https://crm.villelastay.com.br/crm/app', caminhoApp: '/crm',
     aviso: 'Assinantes do CRM. Os contatos de cada assinante NÃO entram.',
     segmentos: SEG_SAAS,
@@ -296,7 +293,7 @@ const FONTES = [
     },
   },
   {
-    chave: 'closet', nome: 'Closet Club', emoji: '👗', cor: '#6B2E4A',
+    chave: 'closet', pushMod: 'closet', nome: 'Closet Club', emoji: '👗', cor: '#6B2E4A',
     url: 'https://closet.villelastay.com.br/closet/app', caminhoApp: '/closet',
     segmentos: [
       { id: 'todos', rotulo: 'Todos os usuários' },
@@ -362,7 +359,7 @@ const FONTES = [
     sessao: sessaoUsers('alta-vista', 'av_sess', 'clientes'),
   },
   {
-    chave: 'kids', nome: 'Invente (Villela Kids)', emoji: '🧒', cor: '#6C4DFF',
+    chave: 'kids', pushMod: 'kids', nativoFazPush: true, nome: 'Invente (Villela Kids)', emoji: '🧒', cor: '#6C4DFF',
     url: 'https://kids.villelastay.com.br/kids/app', caminhoApp: '/kids',
     aviso: 'Vai SEMPRE para o responsável — nunca para a criança. Sem telefone: app e e-mail.',
     segmentos: [
@@ -388,10 +385,30 @@ const FONTES = [
 ];
 
 const obter = (chave) => FONTES.find((f) => f.chave === chave) || null;
+
+// Push no celular: só onde o sistema já guarda inscrições (push_subs) pelo
+// MESMO id de usuário que a central usa. Academy e Kids já disparam push
+// dentro da própria central nativa — aqui só para não duplicar lá.
+const temPush = (f) => !!(f && f.pushMod);
+async function pushUsuario(chave, ref, payload) {
+  const f = obter(chave);
+  if (!temPush(f)) return 0;
+  const url = (() => { try { return new URL(f.url).pathname; } catch (_) { return '/'; } })();
+  return require(`../${f.pushMod}/push`).notificarUsuario(String(ref), { url, ...payload });
+}
+// Nome/e-mail/telefone de UM usuário, para as preferências e o suporte.
+// Reaproveita a consulta de "todos" do sistema (bases pequenas; uma query a mais
+// é mais barata que 13 consultas próprias para manter em sincronia com o listar).
+async function perfil(chave, ref) {
+  const f = obter(chave);
+  if (!f || f.indisponivel) return null;
+  const lista = await f.listar(f.segmentos[0].id);
+  return lista.find((x) => x.ref === String(ref)) || null;
+}
 const todas = () => FONTES;
 const catalogo = () => FONTES.map((f) => ({
   chave: f.chave, nome: f.nome, emoji: f.emoji, url: f.url, aviso: f.aviso || '', indisponivel: f.indisponivel || '',
-  segmentos: f.segmentos, tem_app: !!(f.caminhoApp && f.sessao), central_propria: !!f.nativo,
+  segmentos: f.segmentos, tem_app: !!(f.caminhoApp && f.sessao), central_propria: !!f.nativo, tem_push: temPush(f),
 }));
 
-module.exports = { configurar, obter, todas, catalogo, _int: { uidDoCookie } };
+module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, _int: { uidDoCookie } };
