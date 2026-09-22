@@ -583,9 +583,16 @@ async function enviarTeste(id, { email, telefone, produto } = {}) {
   }
   if (c.canais.includes('whatsapp')) {
     const t = normFone(telefone);
-    out.whatsapp = !t ? 'sem telefone' : !disp.whatsapp.ok ? disp.whatsapp.motivo
-      : modoWA() === 'pessoal' ? 'no modo pessoal o teste sai junto com a fila, pelo seu número'
-        : (await enviarUma(c, { canal: 'whatsapp', destino: t, nome: 'Augusto', produto: prod })) ? 'enviado para ' + t : 'falhou';
+    if (!t) out.whatsapp = 'sem telefone';
+    else if (!disp.whatsapp.ok) out.whatsapp = disp.whatsapp.motivo;
+    else if (modoWA() === 'pessoal') {
+      // Modo pessoal: quem envia é a ponte local. O teste entra na fila com UM
+      // destinatário (você) e sai na próxima passada da ponte.
+      db.prepare(`INSERT OR IGNORE INTO entregas (comunicado_id, canal, chave, produto, usuario_ref, nome, destino, status, atualizado_em)
+        VALUES (?, 'whatsapp', ?, ?, 'teste', 'Augusto', ?, 'pendente', ?)`).run(id, 'teste:' + t, prod, t, nowISO());
+      db.prepare("UPDATE comunicados SET status = 'enviando', enviado_em = COALESCE(enviado_em, ?), atualizado_em = ? WHERE id = ? AND status = 'rascunho'").run(nowISO(), nowISO(), id);
+      out.whatsapp = 'na fila do seu número — a ponte manda na próxima passada (até 15 min)';
+    } else out.whatsapp = (await enviarUma(c, { canal: 'whatsapp', destino: t, nome: 'Augusto', produto: prod })) ? 'enviado para ' + t : 'falhou';
   }
   if (c.canais.includes('app')) out.app = 'o aviso no app aparece para os usuários depois do envio';
   return out;

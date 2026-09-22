@@ -115,7 +115,7 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
   const P = `${R}/ponte-wa`;
   app.post(`${P}/sinal`, requirePublishOrAdmin, json, (req, res) => {
     const b = req.body || {};
-    motor.registrarPonte({ numero: String(b.numero || '').replace(/\D/g, '').slice(0, 15), conectado: !!b.conectado, teto_dia: Number(b.teto_dia) || 0, enviados_hoje: Number(b.enviados_hoje) || 0, versao: String(b.versao || '').slice(0, 20) });
+    motor.registrarPonte({ numero: String(b.numero || '').split(':')[0].replace(/\D/g, '').slice(0, 13), conectado: !!b.conectado, teto_dia: Number(b.teto_dia) || 0, enviados_hoje: Number(b.enviados_hoje) || 0, versao: String(b.versao || '').slice(0, 20) });
     res.json({ ok: true, modo: motor.modoWA() });
   });
   app.get(`${P}/lote`, requirePublishOrAdmin, (req, res) => {
