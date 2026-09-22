@@ -574,6 +574,22 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     } finally { process.env.COMUNICADOS_WA_TEMPLATE = tmpl; }
   });
 
+  await t('teste no app: o aviso entra SÓ na conta do admin e não aparece no histórico', async () => {
+    const { db: dbc } = require('./db');
+    const c = motor.criar(rascunho({ titulo: 'Teste no app', canais: ['app'], alvos: [{ produto: 'academy', segmento: 'todos' }] }), 'adm');
+    const r = await req('POST', `/staff/api/comunicados/${c.id}/teste`, { quem: 'adm', corpo: { email_no_app: 'ana@ex.com' } });
+    assert.ok(/Villela Academy/.test(r.json.resultado.app), JSON.stringify(r.json.resultado));
+    const entregas = dbc.prepare("SELECT COUNT(*) n FROM entregas WHERE canal = 'app' AND usuario_ref = 'a1' AND comunicado_id <> ?").get(c.id).n;
+    assert.ok(entregas >= 1, 'a cópia de teste devia ter uma entrega para a conta do admin');
+    assert.equal(motor.obter(c.id).status, 'rascunho', 'o comunicado original tem de continuar rascunho');
+    assert.ok(!motor.listar({ limite: 50 }).some((x) => x.teste === 1), 'cópia de teste não pode poluir o histórico');
+    // e a conta de teste vê o aviso na caixa dela
+    assert.ok(motor.caixa('academy', 'a1').itens.some((x) => x.titulo === 'Teste no app'));
+    // conta que não existe no sistema: recusa com frase clara
+    const r2 = await req('POST', `/staff/api/comunicados/${c.id}/teste`, { quem: 'adm', corpo: { email_no_app: 'ninguem@ex.com' } });
+    assert.ok(/não achei a conta/.test(r2.json.resultado.app));
+  });
+
   await t('staff: as telas de privacidade e descadastro não caem na rota de :id', async () => {
     // "/privacidade" e "/descadastros" parecem um id para o roteador: se forem
     // registradas depois de `/:id`, respondem "não encontrado" em silêncio.

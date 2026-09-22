@@ -87,7 +87,7 @@ function comEditor(c) {
           : `<p class="obs" style="margin:6px 0 0">💬 ${esc(cfg.canais.whatsapp.motivo)}</p>`}
       </fieldset>
       <div class="hi-grid">
-        <label style="display:flex;flex-direction:row;gap:8px;align-items:flex-start"><input type="checkbox" id="com-dest" style="width:auto;margin-top:3px" ${v.destaque ? 'checked' : ''}> Faixa no topo do app até o usuário fechar <span class="obs">(para instabilidade)</span></label>
+        <label style="display:flex;flex-direction:row;gap:8px;align-items:flex-start"><input type="checkbox" id="com-dest" style="width:auto;margin-top:3px" ${v.destaque ? 'checked' : ''}> Faixa em destaque (fundo âmbar, para instabilidade) <span class="obs">— todo aviso não lido já aparece como faixa no topo do app; isto só muda a cor e o peso</span></label>
         <label>Sai do app em (opcional) <input type="datetime-local" id="com-exp" value="${expira}"></label>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
@@ -189,8 +189,9 @@ async function comTeste() {
   const c = await comSalvar(); if (!c) return;
   const tel = prompt('WhatsApp para o teste (só números, com DDD):', COM.cfg.minha_conta.telefone || '');
   if (tel === null) return;
+  const emailApp = prompt('Para VER O AVISO DENTRO DO APP: qual e-mail da SUA conta no sistema escolhido?\n(deixe em branco para pular)', COM.cfg.minha_conta.email || '');
   try {
-    const r = await api('POST', `/comunicados/${c.id}/teste`, { email: COM.cfg.minha_conta.email, telefone: tel });
+    const r = await api('POST', `/comunicados/${c.id}/teste`, { email: COM.cfg.minha_conta.email, telefone: tel, email_no_app: emailApp || '' });
     m.className = 'ok'; m.textContent = Object.entries(r.resultado).map(([k, v]) => `${comCanalRot[k]}: ${v}`).join(' · ');
   } catch (e) { m.textContent = e.message; }
 }

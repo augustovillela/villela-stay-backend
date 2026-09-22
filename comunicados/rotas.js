@@ -77,7 +77,7 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
   app.post(`${R}/:id/teste`, ...admin, json, async (req, res) => {
     try {
       const b = req.body || {};
-      res.json({ resultado: await motor.enviarTeste(req.params.id, { email: b.email || (req.user && req.user.email), telefone: b.telefone, produto: b.produto }) });
+      res.json({ resultado: await motor.enviarTeste(req.params.id, { email: b.email || (req.user && req.user.email), telefone: b.telefone, produto: b.produto, emailNoApp: b.email_no_app }) });
     } catch (e) { erro(res, e); }
   });
   // Disparo: sessão de admin + confirmação explícita no corpo (o botão da

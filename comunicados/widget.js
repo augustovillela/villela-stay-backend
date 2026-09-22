@@ -65,6 +65,8 @@
     '.vsc-pref{padding:14px}.vsc-pref fieldset{border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;margin:0 0 12px}.vsc-pref legend{font-weight:700;padding:0 4px}' +
     '.vsc-pref label{display:flex;flex-direction:row;gap:8px;align-items:flex-start;margin:6px 0;cursor:pointer}.vsc-pref input{margin-top:3px;width:auto}' +
     '.vsc-fx{position:relative;z-index:2147483001;background:#FFF4E5;color:#7A3E00;border-bottom:1px solid #F5C27A;padding:10px 44px 10px 16px;font:14px/1.45 Inter,system-ui,Arial,sans-serif}' +
+    '.vsc-fx.info{background:#EEF4FF;color:#1B2A4A;border-bottom-color:#C7D7FE}.vsc-fx.info a,.vsc-fx.info button{color:#1B2A4A}' +
+    '.vsc-fx .vsc-mais{background:none;border:0;text-decoration:underline;font:inherit;cursor:pointer;padding:0 0 0 6px;position:static}' +
     '.vsc-fx b{margin-right:6px}.vsc-fx a{color:#7A3E00;font-weight:700}.vsc-fx button{position:absolute;right:8px;top:6px;background:none;border:0;font-size:20px;cursor:pointer;color:#7A3E00}' +
     // Blindagem: cada app tem CSS próprio para label/input/button, e ele vaza aqui dentro.
     '.vsc-pn,.vsc-pn *{box-sizing:border-box;letter-spacing:normal;text-transform:none}' +
@@ -133,16 +135,23 @@
     bt.setAttribute('aria-label', n ? rot + ': ' + n + ' novidade' + (n > 1 ? 's' : '') : rot);
     bt.title = bt.getAttribute('aria-label');
   }
+  // Todo aviso não lido aparece como FAIXA no topo, não só o de destaque:
+  // depender de a pessoa reparar num sino é depender de sorte. A faixa mostra
+  // um de cada vez (o mais novo) e só sai quando ela fecha — aí vem o próximo.
   function pintarFaixa() {
-    var d = E.itens.filter(function (x) { return x.destaque && !x.lido; })[0];
+    var d = E.itens.filter(function (x) { return !x.lido; })[0];
     if (!d) { if (fx) { fx.remove(); fx = null; } return; }
     garantirEstilo();
     if (!fx) { fx = document.createElement('div'); fx.className = 'vsc-fx'; fx.setAttribute('role', 'status'); document.body.insertBefore(fx, document.body.firstChild); }
     var l = linkSeguro(d.link_url);
+    fx.className = 'vsc-fx' + (d.destaque ? '' : ' info');
     fx.innerHTML = '<b>' + esc(d.emoji + ' ' + d.titulo) + '</b>' + esc(String(d.corpo).split('\n')[0].slice(0, 220)) +
       (l ? ' <a href="' + esc(l) + '" target="_blank" rel="noopener">' + esc(d.link_rotulo || 'Saiba mais') + '</a>' : '') +
-      '<button type="button" aria-label="Fechar aviso">×</button>';
-    fx.querySelector('button').onclick = function () { lido(d.id); };
+      (String(d.corpo).length > 220 ? '<button type="button" class="vsc-mais">ler tudo</button>' : '') +
+      '<button type="button" aria-label="Fechar aviso" title="Fechar">×</button>';
+    var mais = fx.querySelector('.vsc-mais');
+    if (mais) mais.onclick = function () { E.aba = 'avisos'; abrir(); };
+    fx.querySelector('[aria-label="Fechar aviso"]').onclick = function () { lido(d.id); };
   }
 
   // ---------------- painel ----------------
@@ -182,7 +191,10 @@
       }).join('') : '<div class="vsc-vz">Nenhum aviso por enquanto.</div>');
     var t = corpo.querySelector('[data-a="todos"]'); if (t) t.onclick = function () { lido('todos'); };
     // Ver a lista conta como leitura do que está à vista (a faixa só some ao fechar).
-    E.itens.forEach(function (x) { if (!x.lido && !x.destaque) lido(x.id, true); });
+    // Ver a lista conta como leitura só do que NÃO está na faixa (a faixa é
+    // fechada pela pessoa; senão o aviso sumiria antes de ser lido).
+    var naFaixa = E.itens.filter(function (x) { return !x.lido; })[0];
+    E.itens.forEach(function (x) { if (!x.lido && (!naFaixa || x.id !== naFaixa.id)) lido(x.id, true); });
   }
   function lido(id, sil) {
     E.itens.forEach(function (x) { if (id === 'todos' || x.id === id) x.lido = true; });

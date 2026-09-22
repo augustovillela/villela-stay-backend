@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS comunicados (
   enviado_por    TEXT,
   enviado_em     TEXT,
   concluido_em   TEXT,
-  publico_total  INTEGER NOT NULL DEFAULT 0
+  publico_total  INTEGER NOT NULL DEFAULT 0,
+  teste          INTEGER NOT NULL DEFAULT 0   -- 1 = cópia de teste, só para o admin ver
 );
 CREATE INDEX IF NOT EXISTS ix_com_status ON comunicados(status);
 

@@ -36,6 +36,17 @@ function aplicarMigracoes(lista) {
 }
 aplicarMigracoes(MIGRACOES);
 
+/** Coluna nova em tabela que já existe. Também fica no CREATE do schema — por
+ *  isso a checagem: em banco NOVO a coluna já nasce e o ALTER quebraria o boot
+ *  (o schema/ roda ANTES das migrações). */
+function garantirColuna(tabela, coluna, ddl) {
+  if (db.prepare(`PRAGMA table_info(${tabela})`).all().some((c) => c.name === coluna)) return false;
+  db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${ddl}`);
+  return true;
+}
+// Cópia de teste do comunicado (só o admin vê), acrescentada em 22/09/2026.
+garantirColuna('comunicados', 'teste', 'INTEGER NOT NULL DEFAULT 0');
+
 const nowISO = () => new Date().toISOString();
 const novoId = () => crypto.randomBytes(10).toString('hex');
 const j = {
@@ -43,4 +54,4 @@ const j = {
   parse: (s, padrao) => { try { const v = JSON.parse(s); return v == null ? padrao : v; } catch (_) { return padrao; } },
 };
 
-module.exports = { db, DB_PATH, MOD_DIR, nowISO, novoId, j, aplicarMigracoes };
+module.exports = { db, DB_PATH, MOD_DIR, nowISO, novoId, j, aplicarMigracoes, garantirColuna };

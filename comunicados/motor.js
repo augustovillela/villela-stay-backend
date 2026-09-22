@@ -246,7 +246,7 @@ function atualizar(id, d) {
 }
 const obter = (id) => hidratar(db.prepare('SELECT * FROM comunicados WHERE id = ?').get(String(id || '')));
 function listar({ limite = 100 } = {}) {
-  const lista = db.prepare('SELECT * FROM comunicados ORDER BY COALESCE(enviado_em, agendado_para, criado_em) DESC LIMIT ?').all(Math.min(Number(limite) || 100, 300)).map(hidratar);
+  const lista = db.prepare('SELECT * FROM comunicados WHERE teste = 0 ORDER BY COALESCE(enviado_em, agendado_para, criado_em) DESC LIMIT ?').all(Math.min(Number(limite) || 100, 300)).map(hidratar);
   const cont = db.prepare('SELECT canal, status, COUNT(*) n FROM entregas WHERE comunicado_id = ? GROUP BY canal, status');
   for (const c of lista) c.estatisticas = resumoEntregas(cont.all(c.id), c.id);
   return lista;
@@ -570,7 +570,34 @@ async function processarLote() {
 
 // Envio de TESTE: só para o próprio admin, fora da fila e sem registro de
 // entrega — para ver o e-mail e o WhatsApp como o cliente vai ver.
-async function enviarTeste(id, { email, telefone, produto } = {}) {
+// Põe o comunicado NA SUA conta, e só nela: cria uma cópia marcada como teste
+// e uma entrega para o seu usuário naquele sistema (nos sistemas com central
+// própria, entra no sino deles, igualzinho ao do cliente).
+async function testeNoApp(c, emailNoApp) {
+  const alvo = c.alvos.find((a) => { const f = fontes.obter(a.produto); return f && (f.nativo || (f.caminhoApp && f.sessao)); });
+  if (!alvo) return 'nenhum dos sistemas escolhidos tem aviso dentro do app';
+  const f = fontes.obter(alvo.produto);
+  const e = normEmail(emailNoApp);
+  if (!e) return 'informe o e-mail da sua conta no sistema para ver o aviso no app';
+  let eu = null;
+  try { eu = (await f.listar(f.segmentos[0].id)).find((x) => normEmail(x.email) === e); } catch (_) {}
+  if (!eu) return `não achei a conta ${e} no ${f.nome}`;
+  // Uma cópia por comunicado: refazer o teste substitui a anterior.
+  for (const velho of db.prepare("SELECT id FROM comunicados WHERE teste = 1 AND titulo = ?").all(c.titulo)) {
+    db.prepare('DELETE FROM entregas WHERE comunicado_id = ?').run(velho.id);
+    db.prepare('DELETE FROM comunicados WHERE id = ?').run(velho.id);
+  }
+  const copia = novoId(), agora = nowISO();
+  db.prepare(`INSERT INTO comunicados (id, titulo, corpo, categoria, alvos, canais, link_url, link_rotulo, destaque, expira_em, status, criado_por, criado_em, atualizado_em, enviado_em, publico_total, teste)
+    VALUES (?, ?, ?, ?, ?, '["app"]', ?, ?, ?, ?, 'enviado', 'teste', ?, ?, ?, 1, 1)`)
+    .run(copia, c.titulo, c.corpo, c.categoria, j.str([{ produto: alvo.produto, segmento: '__teste' }]), c.link_url, c.link_rotulo, c.destaque ? 1 : 0, c.expira_em, agora, agora, agora);
+  db.prepare(`INSERT INTO entregas (comunicado_id, canal, chave, produto, usuario_ref, nome, destino, status, atualizado_em)
+    VALUES (?, 'app', ?, ?, ?, ?, '', 'disponivel', ?)`).run(copia, `${alvo.produto}:${eu.ref}`, alvo.produto, eu.ref, eu.nome, agora);
+  if (f.nativo) { try { await f.nativo(eu.ref, obter(copia)); } catch (e2) { return 'falhou ao pôr no app: ' + e2.message; } }
+  return `no ${f.nome}, na conta ${e} — abra o app e veja ${f.nativo ? 'no sino do próprio sistema' : 'no botão de avisos'}`;
+}
+
+async function enviarTeste(id, { email, telefone, produto, emailNoApp } = {}) {
   const c = obter(id);
   if (!c) throw Object.assign(new Error('Comunicado não encontrado.'), { status: 404 });
   const prod = produto || (c.alvos[0] && c.alvos[0].produto);
@@ -594,7 +621,7 @@ async function enviarTeste(id, { email, telefone, produto } = {}) {
       out.whatsapp = 'na fila do seu número — a ponte manda na próxima passada (até 15 min)';
     } else out.whatsapp = (await enviarUma(c, { canal: 'whatsapp', destino: t, nome: 'Augusto', produto: prod })) ? 'enviado para ' + t : 'falhou';
   }
-  if (c.canais.includes('app')) out.app = 'o aviso no app aparece para os usuários depois do envio';
+  if (c.canais.includes('app')) out.app = await testeNoApp(c, emailNoApp);
   return out;
 }
 
