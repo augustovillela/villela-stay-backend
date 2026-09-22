@@ -194,6 +194,12 @@ const FONTES = [
       return linhas(dbDe('academy').prepare(q[seg] || q.todos).all());
     },
     sessao: sessaoAcademy,
+    // Dica pode ser de UM curso: estes são os cursos publicados, e estes são
+    // os cursos de cada aluno (matrícula ativa).
+    cursos: () => dbDe('academy').prepare(
+      "SELECT id, titulo FROM products WHERE tipo = 'curso' AND status IN ('publicado','aprovado') ORDER BY titulo").all(),
+    cursosDoUsuario: (ref) => dbDe('academy').prepare(
+      "SELECT product_id id FROM enrollments WHERE user_id = ? AND status = 'ativa'").all(String(ref)).map((r) => r.id),
     // O sino da Academy já existe (e espelha em push): o comunicado entra nele.
     nativo: (ref, c) => require('../academy/emails').Notificacoes.criar(ref, c.titulo, c.corpo.slice(0, 500), c.link_url || '/academy/app'),
   },
@@ -461,9 +467,12 @@ async function perfil(chave, ref) {
   return lista.find((x) => x.ref === String(ref)) || null;
 }
 const todas = () => FONTES;
+const cursosDe = (chave) => { const f = obter(chave); try { return (f && f.cursos) ? f.cursos() : []; } catch (_) { return []; } };
+const cursosDoUsuario = (chave, ref) => { const f = obter(chave); try { return (f && f.cursosDoUsuario) ? f.cursosDoUsuario(ref) : []; } catch (_) { return []; } };
 const catalogo = () => FONTES.map((f) => ({
   chave: f.chave, nome: f.nome, emoji: f.emoji, url: f.url, aviso: f.aviso || '', indisponivel: f.indisponivel || '',
   segmentos: f.segmentos, tem_app: !!(f.caminhoApp && f.sessao), central_propria: !!f.nativo, tem_push: temPush(f),
+  tem_cursos: !!f.cursos,
 }));
 
-module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, situacaoDeVarios, _int: { uidDoCookie } };
+module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, situacaoDeVarios, cursosDe, cursosDoUsuario, _int: { uidDoCookie } };

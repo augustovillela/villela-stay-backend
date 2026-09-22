@@ -290,7 +290,7 @@ async function comDicas() {
   const sistemas = r.sistemas || [];
   const d = DICAS.editando || { titulo: '', corpo: '', passos: [], link_url: '', link_rotulo: '', ordem: (r.dicas.length + 1) * 10, ativa: true };
   const linhas = r.dicas.map(x => [
-    `<b>${esc(x.titulo)}</b>${x.ativa ? '' : ' <span class="badge">desligada</span>'}${x.origem === 'semente' ? ' <span class="obs">(inicial)</span>' : ''}
+    `<b>${esc(x.titulo)}</b>${x.ativa ? '' : ' <span class="badge">desligada</span>'}${x.curso_id ? ` <span class="badge st-andamento">${esc((r.cursos.find(c => String(c.id) === String(x.curso_id)) || {}).titulo || 'curso')}</span>` : ''}${x.origem === 'semente' ? ' <span class="obs">(inicial)</span>' : ''}
       <br><span class="obs">${esc(x.corpo || '')}</span>${x.passos.length ? `<br><span class="obs">${x.passos.length} passo(s)</span>` : ''}`,
     `${x.vistas} pessoa(s)`,
     `<button class="btn peq secund dc-ed" data-id="${esc(x.id)}">editar</button>
@@ -302,6 +302,7 @@ async function comDicas() {
     ${r.dicas.length ? tabela(['Dica', 'Já viram', ''], linhas) : '<p class="vazio">Nenhuma dica neste sistema ainda.</p>'}
     <form class="form" id="dc-form" style="max-width:720px;margin-top:12px">
       <b>${DICAS.editando ? '✏️ Editando dica' : '➕ Nova dica'}</b>
+      ${(r.cursos || []).length ? `<label>Curso (opcional) <select id="dc-curso"><option value="">Todo o sistema — qualquer aluno vê</option>${r.cursos.map(c => `<option value="${esc(c.id)}" ${String(d.curso_id || '') === String(c.id) ? 'selected' : ''}>${esc(c.titulo)}</option>`).join('')}</select><span class="obs">Dica de curso só aparece para quem tem esse curso.</span></label>` : ''}
       <label>Título * <input id="dc-tit" maxlength="120" value="${esc(d.titulo)}" placeholder="Você sabia que dá para criar um agente de IA personalizado?"></label>
       <label>Frase de abertura <input id="dc-corpo" maxlength="600" value="${esc(d.corpo || '')}" placeholder="O gerador escreve o prompt master do seu agente."></label>
       <label>Passo a passo (um por linha) <textarea id="dc-passos" rows="5" placeholder="Abra um curso da sua biblioteca&#10;Role até &quot;Minha jornada&quot;&#10;Toque na aba &quot;Ferramentas&quot;">${esc((d.passos || []).join('\n'))}</textarea></label>
@@ -319,7 +320,7 @@ async function comDicas() {
     ev.preventDefault();
     const m = $('#dc-msg'); m.className = 'erro'; m.textContent = '';
     const corpo = {
-      produto: DICAS.produto, titulo: $('#dc-tit').value, corpo: $('#dc-corpo').value,
+      produto: DICAS.produto, curso_id: ($('#dc-curso') || {}).value || '', titulo: $('#dc-tit').value, corpo: $('#dc-corpo').value,
       passos: $('#dc-passos').value.split('\n'), link_url: $('#dc-link').value.trim(),
       link_rotulo: $('#dc-lrot').value.trim(), ordem: Number($('#dc-ordem').value) || 100,
     };

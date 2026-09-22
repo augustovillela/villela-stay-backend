@@ -43,7 +43,11 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
   // Dicas do app ("você sabia?"). Escrita aceita a PUBLISH_KEY: um agente pode
   // redigir dicas; mostrar dica não é mandar mensagem para ninguém.
   app.get(`${R}/dicas`, ...admin, (req, res) => {
-    try { res.json({ dicas: dicas.comAlcance(req.query.produto || ''), sistemas: fontes.catalogo().filter((p) => p.tem_app || p.central_propria) }); }
+    try {
+      const produto = req.query.produto || '';
+      res.json({ dicas: dicas.comAlcance(produto), cursos: produto ? fontes.cursosDe(produto) : [],
+        sistemas: fontes.catalogo().filter((p) => p.tem_app || p.central_propria) });
+    }
     catch (e) { erro(res, e); }
   });
   app.post(`${R}/dicas`, requirePublishOrAdmin, json, (req, res) => {

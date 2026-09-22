@@ -46,6 +46,8 @@ function garantirColuna(tabela, coluna, ddl) {
 }
 // Cópia de teste do comunicado (só o admin vê), acrescentada em 22/09/2026.
 garantirColuna('comunicados', 'teste', 'INTEGER NOT NULL DEFAULT 0');
+// Dica de UM curso (as funcionalidades mudam conforme o assunto), 22/09/2026.
+garantirColuna('dicas', 'curso_id', "TEXT NOT NULL DEFAULT ''");
 
 const nowISO = () => new Date().toISOString();
 const novoId = () => crypto.randomBytes(10).toString('hex');

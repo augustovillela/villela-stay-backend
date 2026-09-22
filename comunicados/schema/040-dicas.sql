@@ -13,6 +13,7 @@
 CREATE TABLE IF NOT EXISTS dicas (
   id            TEXT PRIMARY KEY,
   produto       TEXT NOT NULL,
+  curso_id      TEXT NOT NULL DEFAULT '',     -- '' = vale para o sistema inteiro; senão, só para quem tem esse curso
   titulo        TEXT NOT NULL,
   corpo         TEXT NOT NULL DEFAULT '',     -- a frase de abertura
   passos        TEXT NOT NULL DEFAULT '[]',   -- JSON: ["Abra o curso", "Toque em…"]

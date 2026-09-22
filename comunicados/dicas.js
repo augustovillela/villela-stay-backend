@@ -6,7 +6,12 @@
 // aparelho não recomeça a sequência.
 //
 // Regras que o código carrega:
-//   • Dica é de UM produto. Nada de dica da Academy aparecendo no Closet.
+//   • Dica é de UM produto, e pode ser de UM CURSO dentro dele: as
+//     funcionalidades mudam conforme o assunto, e dica de curso jurídico não
+//     serve para quem faz o de ChatGPT. Dica sem curso vale para todos.
+//   • A escolha é SORTEADA entre as que a pessoa ainda não viu — com uma
+//     exceção: `ordem` abaixo de 100 é prioridade, e essas saem primeiro, em
+//     ordem (serve para as dicas de boas-vindas).
 //   • A dica é marcada como vista quando é MOSTRADA, não quando é lida —
 //     senão quem ignora o post-it veria a mesma dica para sempre. Quem
 //     quiser reler tem a aba "Dicas", que lista todas.
@@ -33,23 +38,25 @@ function validar(d) {
   if (!corpo && !passos.length) throw erro('Escreva a dica ou pelo menos um passo.');
   let link_url = s(d.link_url, 400);
   if (link_url && !/^https:\/\//i.test(link_url)) throw erro('O link precisa começar com https://');
-  return { produto, titulo, corpo, passos, link_url: link_url || null, link_rotulo: s(d.link_rotulo, 40) || null,
+  const curso_id = s(d.curso_id, 60);
+  if (curso_id && !fontes.cursosDe(produto).some((c) => String(c.id) === curso_id)) throw erro('Curso desconhecido neste sistema.');
+  return { produto, curso_id, titulo, corpo, passos, link_url: link_url || null, link_rotulo: s(d.link_rotulo, 40) || null,
     ordem: Number.isFinite(Number(d.ordem)) ? Number(d.ordem) : 100, ativa: d.ativa === false ? 0 : 1 };
 }
 
 function criar(d, origem = 'staff') {
   const v = validar(d), id = s(d.id, 60) || novoId(), agora = nowISO();
-  db.prepare(`INSERT INTO dicas (id, produto, titulo, corpo, passos, link_url, link_rotulo, ordem, ativa, origem, criado_em, atualizado_em)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, v.produto, v.titulo, v.corpo, j.str(v.passos), v.link_url, v.link_rotulo, v.ordem, v.ativa, origem, agora, agora);
+  db.prepare(`INSERT INTO dicas (id, produto, curso_id, titulo, corpo, passos, link_url, link_rotulo, ordem, ativa, origem, criado_em, atualizado_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, v.produto, v.curso_id, v.titulo, v.corpo, j.str(v.passos), v.link_url, v.link_rotulo, v.ordem, v.ativa, origem, agora, agora);
   return obter(id);
 }
 function atualizar(id, d) {
   const atual = obter(id);
   if (!atual) throw erro('Dica não encontrada.', 404);
   const v = validar({ ...atual, ...d, produto: atual.produto });
-  db.prepare(`UPDATE dicas SET titulo = ?, corpo = ?, passos = ?, link_url = ?, link_rotulo = ?, ordem = ?, ativa = ?, atualizado_em = ? WHERE id = ?`)
-    .run(v.titulo, v.corpo, j.str(v.passos), v.link_url, v.link_rotulo, v.ordem, v.ativa, nowISO(), id);
+  db.prepare(`UPDATE dicas SET curso_id = ?, titulo = ?, corpo = ?, passos = ?, link_url = ?, link_rotulo = ?, ordem = ?, ativa = ?, atualizado_em = ? WHERE id = ?`)
+    .run(v.curso_id, v.titulo, v.corpo, j.str(v.passos), v.link_url, v.link_rotulo, v.ordem, v.ativa, nowISO(), id);
   return obter(id);
 }
 const obter = (id) => hidratar(db.prepare('SELECT * FROM dicas WHERE id = ?').get(String(id || '')));
@@ -81,13 +88,22 @@ function definirPref(produto, ref, mostrar) {
     .run(produto, ref, mostrar ? 1 : 0, nowISO());
   return querPostIt(produto, ref);
 }
-/** A próxima dica que esta pessoa ainda não viu (ou null). */
+/** Dicas que ESTA pessoa pode ver: as do sistema + as dos cursos dela. */
+function escopoSQL(produto, ref) {
+  const cursos = fontes.cursosDoUsuario(produto, ref).map(String);
+  const cond = cursos.length ? `(d.curso_id = '' OR d.curso_id IN (${cursos.map(() => '?').join(',')}))` : "d.curso_id = ''";
+  return { cond, args: cursos };
+}
+/** A próxima dica: sorteada entre as que a pessoa ainda não viu. As de
+ *  `ordem` < 100 são prioridade e saem antes, na ordem. */
 function proxima(produto, ref) {
   if (!querPostIt(produto, ref)) return null;
+  const e = escopoSQL(produto, ref);
   const d = db.prepare(`SELECT d.* FROM dicas d
-    WHERE d.produto = ? AND d.ativa = 1
+    WHERE d.produto = ? AND d.ativa = 1 AND ${e.cond}
       AND NOT EXISTS (SELECT 1 FROM dicas_vistas v WHERE v.dica_id = d.id AND v.produto = d.produto AND v.usuario_ref = ?)
-    ORDER BY d.ordem, d.criado_em LIMIT 1`).get(produto, ref);
+    ORDER BY CASE WHEN d.ordem < 100 THEN 0 ELSE 1 END, CASE WHEN d.ordem < 100 THEN d.ordem ELSE 0 END, RANDOM() LIMIT 1`)
+    .get(produto, ...e.args, ref);
   return hidratar(d);
 }
 function marcarVista(produto, ref, id) {
@@ -98,8 +114,9 @@ function marcarVista(produto, ref, id) {
 /** Todas as dicas do produto, marcando o que a pessoa já viu (aba "Dicas"). */
 function doUsuario(produto, ref) {
   const vistas = new Set(db.prepare('SELECT dica_id FROM dicas_vistas WHERE produto = ? AND usuario_ref = ?').all(produto, ref).map((v) => v.dica_id));
+  const meusCursos = new Set(fontes.cursosDoUsuario(produto, ref).map(String));
   return {
-    itens: listar(produto, { incluirInativas: false }).map((d) => ({ id: d.id, titulo: d.titulo, corpo: d.corpo, passos: d.passos, link_url: d.link_url, link_rotulo: d.link_rotulo, vista: vistas.has(d.id) })),
+    itens: listar(produto, { incluirInativas: false }).filter((d) => !d.curso_id || meusCursos.has(String(d.curso_id))).map((d) => ({ id: d.id, titulo: d.titulo, corpo: d.corpo, passos: d.passos, link_url: d.link_url, link_rotulo: d.link_rotulo, vista: vistas.has(d.id) })),
     mostrar_post_it: querPostIt(produto, ref),
   };
 }

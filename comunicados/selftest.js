@@ -666,6 +666,28 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.ok(/RASCUNHO/.test(r.lembrete));
   });
 
+  await t('dicas por curso: só quem tem o curso vê; sorteio não repete e prioridade sai antes', async () => {
+    // Um curso e uma matrícula de verdade no banco da Academy.
+    acad.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, status, criado_em) VALUES ('p1', 'a1', 'curso', 'Curso de Teste', 'curso-teste', 'publicado', ?)").run(agora);
+    acad.prepare("INSERT INTO enrollments (id, user_id, product_id, status, criado_em) VALUES ('e1', 'a1', 'p1', 'ativa', ?)").run(agora);
+    com.dicas.criar({ produto: 'academy', curso_id: 'p1', titulo: 'Dica do Curso de Teste', corpo: 'x', passos: ['passo'] });
+    assert.throws(() => com.dicas.criar({ produto: 'academy', curso_id: 'nao-existe', titulo: 'x', corpo: 'y' }), /Curso desconhecido/);
+
+    const doAluno = com.dicas.doUsuario('academy', 'a1').itens.map((d) => d.titulo);
+    const deOutro = com.dicas.doUsuario('academy', 'a2').itens.map((d) => d.titulo);
+    assert.ok(doAluno.includes('Dica do Curso de Teste'), 'quem tem o curso devia ver');
+    assert.ok(!deOutro.includes('Dica do Curso de Teste'), 'quem NÃO tem o curso não pode ver');
+    assert.ok(deOutro.length >= 5, 'as dicas do sistema continuam valendo para todos');
+
+    // Sorteio: esgota tudo sem repetir, e a prioridade (ordem < 100) vem antes.
+    com.dicas.criar({ produto: 'academy', titulo: 'Boas-vindas', corpo: 'primeira', ordem: 1 });
+    const vistas = [];
+    for (let i = 0; i < 12; i++) { const d = com.dicas.proxima('academy', 'a2'); if (!d) break; vistas.push(d.titulo); com.dicas.marcarVista('academy', 'a2', d.id); }
+    assert.equal(vistas[0], 'Boas-vindas', 'dica de prioridade tinha de vir primeiro');
+    assert.equal(new Set(vistas).size, vistas.length, 'sorteio repetiu dica');
+    assert.equal(com.dicas.proxima('academy', 'a2'), null, 'acabaram as dicas: o post-it para');
+  });
+
   await t('staff: rascunho enviado não se edita; excluir só rascunho', async () => {
     assert.equal((await req('PUT', `/staff/api/comunicados/${id1}`, { quem: 'adm', corpo: { titulo: 'x' } })).status, 409);
     assert.equal((await req('DELETE', `/staff/api/comunicados/${id1}`, { quem: 'adm' })).status, 409);
