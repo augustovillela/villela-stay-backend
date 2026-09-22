@@ -2168,6 +2168,14 @@ async function main() {
     const b2 = bloq.json.estrutura.flatMap(m => m.aulas).find(x => x.titulo === 'Faça comigo: o primeiro projeto');
     assert.equal(b2.formato, 'faca-comigo', 'aula travada mostra o formato (vitrine)');
     assert.ok(!('passos' in b2), 'mas não os passos');
+    // Villela Express é consulta: não entra no progresso (nem trava o certificado)
+    const todas = curso.json.estrutura.flatMap(m => m.aulas);
+    const naoExpress = todas.filter(x => x.formato !== 'express').length;
+    assert.equal(curso.json.progresso.total_aulas, naoExpress, 'total sem as aulas Express');
+    const exp = todas.find(x => x.formato === 'express');
+    const antesPct = curso.json.progresso.pct;
+    const mk = await req('POST', `/academy/api/aluno/aulas/${exp.id}/progresso`, { jar: 'olga', corpo: { concluida: true } });
+    assert.equal(mk.json.progresso.pct, antesPct, 'concluir um Express não mexe no percentual');
   });
 
   await t('trilhas: nascem em rascunho, só o dono vê; publicadas mostram progresso e itens "em breve"', async () => {

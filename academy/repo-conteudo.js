@@ -668,8 +668,10 @@ const Progresso = {
     return this.doProduto(userId, aula.product_id);
   },
   doProduto(userId, productId) {
-    const total = db.prepare('SELECT COUNT(*) n FROM lessons WHERE product_id = ?').get(productId).n;
-    const feitas = db.prepare('SELECT COUNT(*) n FROM student_progress WHERE user_id = ? AND product_id = ? AND concluida = 1').get(userId, productId).n;
+    // Villela Express é biblioteca de consulta: não entra no progresso nem trava o certificado
+    const total = db.prepare("SELECT COUNT(*) n FROM lessons WHERE product_id = ? AND COALESCE(formato, '') != 'express'").get(productId).n;
+    const feitas = db.prepare(`SELECT COUNT(*) n FROM student_progress sp JOIN lessons l ON l.id = sp.lesson_id
+      WHERE sp.user_id = ? AND sp.product_id = ? AND sp.concluida = 1 AND COALESCE(l.formato, '') != 'express'`).get(userId, productId).n;
     return { total_aulas: total, concluidas: feitas, pct: total ? Math.round(100 * feitas / total) : 0 };
   },
   porAula(userId, productId) {

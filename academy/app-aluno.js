@@ -409,12 +409,12 @@
       api('POST', '/aluno/aulas/' + a.id + '/progresso', { concluida: valor }).then(function () {
         C.pa[a.id] = C.pa[a.id] || {};
         C.pa[a.id].concluida = valor ? 1 : 0;
-        var feitas = 0;
-        C.aulas.forEach(function (x) { if (concluida(x.a)) feitas++; });
-        var pct = C.aulas.length ? Math.round(feitas * 100 / C.aulas.length) : 0;
-        C.d.progresso = { concluidas: feitas, total_aulas: C.aulas.length, pct: pct };
+        var feitas = 0, total = 0; // Express (consulta) não entra na conta, igual ao servidor
+        C.aulas.forEach(function (x) { if (x.a.formato === 'express') return; total++; if (concluida(x.a)) feitas++; });
+        var pct = total ? Math.round(feitas * 100 / total) : 0;
+        C.d.progresso = { concluidas: feitas, total_aulas: total, pct: pct };
         var bt = document.querySelector('.grade-cab .al-barra i'); if (bt) bt.style.width = pct + '%';
-        if (el('al-prog-txt')) el('al-prog-txt').textContent = feitas + ' de ' + C.aulas.length + ' conteúdos';
+        if (el('al-prog-txt')) el('al-prog-txt').textContent = feitas + ' de ' + total + ' conteúdos';
         if (el('al-prog-pct')) el('al-prog-pct').textContent = pct + '%';
         pintarGrade(el('al-busca') ? el('al-busca').value : '');
         pintarNav(C.i);

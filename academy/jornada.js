@@ -499,8 +499,8 @@ function painel(usuario, produto) {
   const ph = c.vis.map(() => '?').join(',');
 
   // aulas
-  const totalAulas = q1('SELECT COUNT(*) n FROM lessons WHERE product_id = ?', pid).n;
-  const aulasFeitas = q1('SELECT COUNT(*) n FROM student_progress WHERE user_id = ? AND product_id = ? AND concluida = 1', uid, pid).n;
+  const prog = ct.Progresso.doProduto(uid, pid); // Express fica fora, como no certificado
+  const totalAulas = prog.total_aulas, aulasFeitas = prog.concluidas;
   // quizzes visíveis e o melhor de cada um
   const quizzes = db.prepare(`SELECT lesson_id FROM aula_quiz WHERE product_id = ? AND status IN (${ph})`).all(pid, ...c.vis).map(x => x.lesson_id);
   const melhor = {};
