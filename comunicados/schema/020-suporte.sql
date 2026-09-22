@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS conversas (
   nao_lidas_usuario  INTEGER NOT NULL DEFAULT 0,
   ultima_origem      TEXT NOT NULL DEFAULT 'usuario',  -- usuario|staff
   criado_em          TEXT NOT NULL,
-  atualizado_em      TEXT NOT NULL
+  atualizado_em      TEXT NOT NULL,
+  alertado_em        TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_conv_usuario ON conversas(produto, usuario_ref, atualizado_em);
 CREATE INDEX IF NOT EXISTS ix_conv_status ON conversas(status, atualizado_em);
@@ -37,3 +38,25 @@ CREATE TABLE IF NOT EXISTS mensagens (
   criado_em    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_msg_conversa ON mensagens(conversa_id, id);
+
+-- (alertado_em fica no CREATE acima: guarda QUANDO avisamos, para não avisar
+-- de novo a cada passada; zera quando o cliente escreve de novo.)
+
+-- Anexos (print, foto, PDF). O binário NÃO fica aqui: `chave` aponta para o
+-- disco (DATA_DIR/comunicados/anexos) ou para o bucket S3/R2, conforme o
+-- driver. Apagar a conversa apaga a linha — quem apaga o binário é
+-- privacidade.js, que lê `driver`+`chave` antes de remover.
+CREATE TABLE IF NOT EXISTS anexos (
+  id           TEXT PRIMARY KEY,
+  conversa_id  TEXT NOT NULL REFERENCES conversas(id) ON DELETE CASCADE,
+  mensagem_id  INTEGER,
+  autor        TEXT NOT NULL,
+  nome         TEXT NOT NULL,
+  mime         TEXT NOT NULL,
+  bytes        INTEGER NOT NULL,
+  driver       TEXT NOT NULL,
+  chave        TEXT NOT NULL,
+  criado_em    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_anexos_conversa ON anexos(conversa_id);
+CREATE INDEX IF NOT EXISTS ix_anexos_mensagem ON anexos(mensagem_id);

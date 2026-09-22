@@ -57,6 +57,29 @@ function configurar({ enviarEmail, enviarWhatsAppTemplate, baseUrl, segredo, ema
   return disponibilidade();
 }
 const templateWA = () => s(process.env.COMUNICADOS_WA_TEMPLATE, 80);
+
+// ---------------- WhatsApp: business (Meta) ou pessoal (ponte local) ----------------
+// O canal business exige modelo aprovado pela Meta. Enquanto ele não existe,
+// o Augusto autorizou (22/09/2026) usar o número PESSOAL — que é Baileys,
+// roda no PC dele e é NÃO-OFICIAL (risco de ban). Por isso:
+//   • quem envia é uma ponte local, não o servidor (o Render não alcança o PC);
+//   • ritmo humano e teto baixo por dia, definidos na ponte;
+//   • o canal só aparece disponível enquanto a ponte dá sinal de vida.
+const PONTE_CHAVE = 'ponte-wa-pessoal';
+const PONTE_VALIDADE_MIN = Number(process.env.COMUNICADOS_WA_PONTE_MIN || 90);
+function registrarPonte(info) {
+  db.prepare(`INSERT INTO estado (chave, valor, em) VALUES (?, ?, ?)
+    ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, em = excluded.em`)
+    .run(PONTE_CHAVE, j.str(info || {}), nowISO());
+}
+function ponte() {
+  const r = db.prepare('SELECT valor, em FROM estado WHERE chave = ?').get(PONTE_CHAVE);
+  if (!r) return { viva: false };
+  const viva = (Date.now() - Date.parse(r.em)) < PONTE_VALIDADE_MIN * 60000;
+  return { viva, em: r.em, ...j.parse(r.valor, {}) };
+}
+// 'business' quando há modelo aprovado; senão 'pessoal' (se a ponte estiver viva).
+const modoWA = () => (templateWA() && _canais.whatsappPronto()) ? 'business' : 'pessoal';
 // Provedor de e-mail em volume (Resend). Sem as duas variáveis, tudo sai pelo
 // Gmail do backend, como antes. Com elas, os COMUNICADOS e as respostas do
 // suporte saem pelo Resend, com cabeçalho de descadastro em um clique
@@ -85,11 +108,11 @@ function disponibilidade() {
     email: resendPronto() || (_canais.enviarEmail && _canais.emailPronto())
       ? { ok: true, provedor: provedorEmail(), teto_dia: tetoDia('email'), enviados_hoje: enviadosHoje('email') }
       : { ok: false, motivo: 'SMTP não configurado (GMAIL_USER / GMAIL_APP_PASS no Render).' },
-    whatsapp: !_canais.enviarWhatsAppTemplate || !_canais.whatsappPronto()
-      ? { ok: false, motivo: 'Webhook do WhatsApp business (MAKE_WA_WEBHOOK) não configurado.' }
-      : !templateWA()
-        ? { ok: false, motivo: 'Falta o modelo aprovado pela Meta. Envio em massa no WhatsApp só sai por modelo (regra das 24 h). Cadastre o modelo e defina COMUNICADOS_WA_TEMPLATE no Render — ver docs/integracoes/comunicados.md.' }
-        : { ok: true, template: templateWA(), teto_dia: tetoDia('whatsapp'), enviados_hoje: enviadosHoje('whatsapp') },
+    whatsapp: modoWA() === 'business'
+      ? { ok: true, modo: 'business', template: templateWA(), teto_dia: tetoDia('whatsapp'), enviados_hoje: enviadosHoje('whatsapp') }
+      : ponte().viva
+        ? { ok: true, modo: 'pessoal', numero: ponte().numero || '', teto_dia: ponte().teto_dia || 0, enviados_hoje: enviadosHoje('whatsapp'), aviso: 'Saindo pelo SEU número pessoal (canal não-oficial, em ritmo lento). Aprove o modelo na Meta para usar o número business.' }
+        : { ok: false, modo: 'pessoal', motivo: 'Sem modelo aprovado na Meta e a ponte do WhatsApp pessoal não deu sinal de vida (ela roda no PC do Augusto, com o PC ligado). Ver docs/integracoes/comunicados.md.' },
   };
 }
 
@@ -430,13 +453,54 @@ function whatsappParams(c, ent) {
   return [primeiro, umaLinha(f.nome, 60), texto];
 }
 
+// Texto do canal PESSOAL: conversa de gente, com quebra de linha e negrito
+// (o business não aceita nada disso dentro de variável de modelo).
+function textoPessoal(c, ent) {
+  const f = fontes.obter(ent.produto) || { nome: 'Grupo Villela Stay' };
+  const cat = CATEGORIAS[c.categoria];
+  const primeiro = String(ent.nome || '').split(' ')[0];
+  const link = c.link_url || f.url || '';
+  return [
+    `${primeiro ? `Olá, ${primeiro}! ` : ''}${cat.emoji} *${f.nome}*`,
+    '', `*${c.titulo}*`, '', c.corpo,
+    link ? `\n${link}` : '',
+    '', `_Para escolher o que recebe, abra o ${f.nome} e toque no botão de avisos._`,
+  ].filter((x) => x !== null).join('\n').trim();
+}
+// Lote para a ponte local. Marca 'enviando' (com prazo) para duas passadas
+// da ponte não mandarem a mesma mensagem duas vezes.
+function pendentesWA(limite = 5) {
+  const lote = db.prepare(`SELECT e.id, e.destino, e.nome, e.produto, e.comunicado_id FROM entregas e
+    JOIN comunicados c ON c.id = e.comunicado_id
+    WHERE e.canal = 'whatsapp' AND e.status = 'pendente' AND c.status = 'enviando' ORDER BY e.id LIMIT ?`)
+    .all(Math.max(1, Math.min(Number(limite) || 5, 20)));
+  const agora = nowISO();
+  return lote.map((ent) => {
+    db.prepare("UPDATE entregas SET status = 'enviando', atualizado_em = ? WHERE id = ?").run(agora, ent.id);
+    const c = obter(ent.comunicado_id);
+    return { id: ent.id, para: ent.destino, nome: ent.nome, texto: textoPessoal(c, ent), titulo: c.titulo };
+  });
+}
+function resultadoWA(id, ok, motivo) {
+  const ent = db.prepare("SELECT * FROM entregas WHERE id = ? AND canal = 'whatsapp'").get(Number(id) || 0);
+  if (!ent) return false;
+  const tent = Number(ent.tentativas || 0) + 1;
+  const status = ok ? 'enviado' : (tent >= 3 ? 'erro' : 'pendente');
+  db.prepare('UPDATE entregas SET status = ?, motivo = ?, tentativas = ?, atualizado_em = ? WHERE id = ?')
+    .run(status, ok ? null : s(motivo, 200), tent, nowISO(), ent.id);
+  return true;
+}
+
 async function enviarUma(c, ent) {
   if (ent.canal === 'email') {
     const f = fontes.obter(ent.produto) || { nome: 'Grupo Villela Stay' };
     const cat = CATEGORIAS[c.categoria];
     return enviarEmailCentral(ent.destino, `${cat.emoji} ${f.nome}: ${c.titulo}`, emailHtml(c, ent), urlDescadastro(ent.produto, ent.destino));
   }
-  if (ent.canal === 'whatsapp') return _canais.enviarWhatsAppTemplate(ent.destino, templateWA(), whatsappParams(c, ent));
+  if (ent.canal === 'whatsapp') {
+    if (modoWA() === 'pessoal') throw Object.assign(new Error('No modo pessoal quem envia é a ponte local.'), { status: 409 });
+    return _canais.enviarWhatsAppTemplate(ent.destino, templateWA(), whatsappParams(c, ent));
+  }
   return false;
 }
 
@@ -474,6 +538,8 @@ async function processarLote() {
     const disp = disponibilidade();
     for (const canal of ['email', 'whatsapp']) {
       if (!disp[canal].ok) continue;
+      // No modo pessoal quem envia é a ponte local (o Render não alcança o PC).
+      if (canal === 'whatsapp' && modoWA() === 'pessoal') continue;
       const cota = Math.min(porMinuto(canal), tetoDia(canal) - enviadosHoje(canal));
       if (cota <= 0) continue;
       const lote = db.prepare(`SELECT e.* FROM entregas e JOIN comunicados c ON c.id = e.comunicado_id
@@ -492,6 +558,8 @@ async function processarLote() {
         if (ok) feito[canal]++; else feito.erros++;
       }
     }
+    db.prepare("UPDATE entregas SET status = 'pendente' WHERE status = 'enviando' AND atualizado_em < ?")
+      .run(new Date(Date.now() - 30 * 60000).toISOString());
     for (const r of db.prepare(`SELECT c.id FROM comunicados c WHERE c.status = 'enviando'
       AND NOT EXISTS (SELECT 1 FROM entregas e WHERE e.comunicado_id = c.id AND e.status = 'pendente')`).all()) {
       db.prepare("UPDATE comunicados SET status = 'enviado', concluido_em = ?, atualizado_em = ? WHERE id = ?").run(nowISO(), nowISO(), r.id);
@@ -516,7 +584,8 @@ async function enviarTeste(id, { email, telefone, produto } = {}) {
   if (c.canais.includes('whatsapp')) {
     const t = normFone(telefone);
     out.whatsapp = !t ? 'sem telefone' : !disp.whatsapp.ok ? disp.whatsapp.motivo
-      : (await enviarUma(c, { canal: 'whatsapp', destino: t, nome: 'Augusto', produto: prod })) ? 'enviado para ' + t : 'falhou';
+      : modoWA() === 'pessoal' ? 'no modo pessoal o teste sai junto com a fila, pelo seu número'
+        : (await enviarUma(c, { canal: 'whatsapp', destino: t, nome: 'Augusto', produto: prod })) ? 'enviado para ' + t : 'falhou';
   }
   if (c.canais.includes('app')) out.app = 'o aviso no app aparece para os usuários depois do envio';
   return out;
@@ -575,5 +644,6 @@ module.exports = {
   caixa, marcarLido,
   tokenDescadastro, lerTokenDescadastro, descadastrar, recadastrar, listarDescadastros,
   preferencias, salvarPreferencias, enviarEmailCentral, provedorEmail,
+  modoWA, ponte, registrarPonte, pendentesWA, resultadoWA, textoPessoal,
   _int: { normEmail, normFone, emailHtml, whatsappParams, montarPublico, bloqueado },
 };

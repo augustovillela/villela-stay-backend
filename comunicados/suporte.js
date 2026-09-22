@@ -14,6 +14,7 @@
 'use strict';
 const { db, nowISO, novoId } = require('./db');
 const fontes = require('./fontes');
+const anexos = require('./anexos');
 
 const MAX_TEXTO = 2000;
 const MAX_CONVERSAS_DIA = 5;
@@ -23,10 +24,11 @@ const s = (v, max) => String(v == null ? '' : v).replace(/\r/g, '').trim().slice
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const erro = (msg, status = 400) => Object.assign(new Error(msg), { status });
 
-let _avisos = { avisarStaff: null, enviarEmail: null };
-function configurar({ avisarStaff, enviarEmail } = {}) {
+let _avisos = { avisarStaff: null, enviarEmail: null, alertaDono: null };
+function configurar({ avisarStaff, enviarEmail, alertaDono } = {}) {
   if (typeof avisarStaff === 'function') _avisos.avisarStaff = avisarStaff;
   if (typeof enviarEmail === 'function') _avisos.enviarEmail = enviarEmail;
+  if (typeof alertaDono === 'function') _avisos.alertaDono = alertaDono;   // WhatsApp do Augusto
 }
 
 function limitar(produto, ref) {
@@ -37,7 +39,8 @@ function limitar(produto, ref) {
   return { conv: Number(conv), msgs: Number(msgs) };
 }
 const hidr = (c) => c ? { ...c } : null;
-const mensagensDe = (id) => db.prepare('SELECT id, autor, autor_nome, texto, criado_em FROM mensagens WHERE conversa_id = ? ORDER BY id').all(id);
+const mensagensDe = (id) => db.prepare('SELECT id, autor, autor_nome, texto, criado_em FROM mensagens WHERE conversa_id = ? ORDER BY id').all(id)
+  .map((m) => ({ ...m, anexos: anexos.daMensagem(m.id) }));
 
 function avisarEquipe(c, texto, nova) {
   if (!_avisos.avisarStaff) return;
@@ -50,7 +53,7 @@ function avisarEquipe(c, texto, nova) {
 }
 
 // ---------------- lado do cliente ----------------
-async function abrir(produto, ref, { assunto, texto, pagina } = {}) {
+async function abrir(produto, ref, { assunto, texto, pagina, anexos: arquivos } = {}) {
   const t = s(texto, MAX_TEXTO), a = s(assunto, 120) || t.slice(0, 60);
   if (!t) throw erro('Escreva a sua mensagem.');
   const lim = limitar(produto, ref);
@@ -62,9 +65,10 @@ async function abrir(produto, ref, { assunto, texto, pagina } = {}) {
   try {
     db.prepare(`INSERT INTO conversas (id, produto, usuario_ref, nome, email, assunto, status, pagina, nao_lidas_staff, ultima_origem, criado_em, atualizado_em)
       VALUES (?, ?, ?, ?, ?, ?, 'aberta', ?, 1, 'usuario', ?, ?)`).run(id, produto, ref, s(p.nome, 120), s(p.email, 160), a, s(pagina, 300), agora, agora);
-    db.prepare("INSERT INTO mensagens (conversa_id, autor, autor_nome, texto, criado_em) VALUES (?, 'usuario', ?, ?, ?)").run(id, s(p.nome, 120), t, agora);
+    const m = db.prepare("INSERT INTO mensagens (conversa_id, autor, autor_nome, texto, criado_em) VALUES (?, 'usuario', ?, ?, ?)").run(id, s(p.nome, 120), t, agora);
     db.exec('COMMIT');
-  } catch (e) { db.exec('ROLLBACK'); throw e; }
+    await anexos.guardar(id, Number(m.lastInsertRowid), 'usuario', arquivos);
+  } catch (e) { try { db.exec('ROLLBACK'); } catch (_) {} throw e; }
   const c = db.prepare('SELECT * FROM conversas WHERE id = ?').get(id);
   avisarEquipe(c, t, true);
   return { ...c, mensagens: mensagensDe(id) };
@@ -74,15 +78,17 @@ function daConta(produto, ref, id) {
   if (!c) throw erro('Conversa não encontrada.', 404);
   return c;
 }
-function responderUsuario(produto, ref, id, texto) {
+async function responderUsuario(produto, ref, id, texto, arquivos) {
   const c = daConta(produto, ref, id);
   const t = s(texto, MAX_TEXTO);
   if (!t) throw erro('Escreva a sua mensagem.');
   if (limitar(produto, ref).msgs >= MAX_MSGS_HORA) throw erro('Muitas mensagens em pouco tempo. Tente de novo daqui a pouco.', 429);
   const agora = nowISO();
-  db.prepare("INSERT INTO mensagens (conversa_id, autor, autor_nome, texto, criado_em) VALUES (?, 'usuario', ?, ?, ?)").run(c.id, c.nome, t, agora);
-  // Cliente que escreve numa conversa resolvida a reabre.
-  db.prepare("UPDATE conversas SET status = 'aberta', nao_lidas_staff = nao_lidas_staff + 1, ultima_origem = 'usuario', atualizado_em = ? WHERE id = ?").run(agora, c.id);
+  const m = db.prepare("INSERT INTO mensagens (conversa_id, autor, autor_nome, texto, criado_em) VALUES (?, 'usuario', ?, ?, ?)").run(c.id, c.nome, t, agora);
+  await anexos.guardar(c.id, Number(m.lastInsertRowid), 'usuario', arquivos);
+  // Cliente que escreve numa conversa resolvida a reabre. `alertado_em` zera:
+  // é mensagem nova, e a contagem das 24 h recomeça.
+  db.prepare("UPDATE conversas SET status = 'aberta', nao_lidas_staff = nao_lidas_staff + 1, ultima_origem = 'usuario', alertado_em = NULL, atualizado_em = ? WHERE id = ?").run(agora, c.id);
   avisarEquipe(c, t, false);
   return abrirDoUsuario(produto, ref, c.id);
 }
@@ -123,14 +129,15 @@ function abrirStaff(id) {
   if (c.nao_lidas_staff) db.prepare('UPDATE conversas SET nao_lidas_staff = 0 WHERE id = ?').run(c.id);
   return { ...c, nao_lidas_staff: 0, mensagens: mensagensDe(c.id) };
 }
-async function responderStaff(id, texto, autorNome, { resolver = false } = {}) {
+async function responderStaff(id, texto, autorNome, { resolver = false, anexos: arquivos } = {}) {
   const c = db.prepare('SELECT * FROM conversas WHERE id = ?').get(String(id || ''));
   if (!c) throw erro('Conversa não encontrada.', 404);
   const t = s(texto, MAX_TEXTO);
   if (!t) throw erro('Escreva a resposta.');
   const agora = nowISO();
-  db.prepare("INSERT INTO mensagens (conversa_id, autor, autor_nome, texto, criado_em) VALUES (?, 'staff', ?, ?, ?)").run(c.id, s(autorNome, 80) || 'Equipe', t, agora);
-  db.prepare("UPDATE conversas SET status = ?, nao_lidas_usuario = nao_lidas_usuario + 1, nao_lidas_staff = 0, ultima_origem = 'staff', atualizado_em = ? WHERE id = ?")
+  const m = db.prepare("INSERT INTO mensagens (conversa_id, autor, autor_nome, texto, criado_em) VALUES (?, 'staff', ?, ?, ?)").run(c.id, s(autorNome, 80) || 'Equipe', t, agora);
+  await anexos.guardar(c.id, Number(m.lastInsertRowid), 'staff', arquivos);
+  db.prepare("UPDATE conversas SET status = ?, nao_lidas_usuario = nao_lidas_usuario + 1, nao_lidas_staff = 0, ultima_origem = 'staff', alertado_em = NULL, atualizado_em = ? WHERE id = ?")
     .run(resolver ? 'resolvida' : 'respondida', agora, c.id);
   const avisos = await avisarCliente(c, t);
   return { ...abrirStaff(c.id), avisos };
@@ -163,8 +170,26 @@ async function avisarCliente(c, texto) {
   return out;
 }
 
+// Conversa do cliente parada há mais de N horas sem resposta: avisa UMA vez
+// (push no Portal Staff + WhatsApp do Augusto, que atravessa qualquer hora).
+// Sem isto, a promessa de "a equipe responde por aqui" depende de alguém
+// lembrar de abrir a tela.
+const HORAS_ALERTA = Number(process.env.COMUNICADOS_SUPORTE_ALERTA_HORAS || 24);
+async function alertarEsquecidas() {
+  const limite = new Date(Date.now() - HORAS_ALERTA * 3600e3).toISOString();
+  const paradas = db.prepare(`SELECT * FROM conversas WHERE status = 'aberta' AND ultima_origem = 'usuario'
+    AND atualizado_em < ? AND alertado_em IS NULL ORDER BY atualizado_em LIMIT 20`).all(limite);
+  if (!paradas.length) return { alertadas: 0 };
+  for (const c of paradas) db.prepare('UPDATE conversas SET alertado_em = ? WHERE id = ?').run(nowISO(), c.id);
+  const lista = paradas.map((c) => `${(fontes.obter(c.produto) || {}).nome || c.produto}: ${c.nome || 'cliente'} — ${c.assunto}`);
+  const resumo = `${paradas.length} conversa(s) de suporte sem resposta ha mais de ${HORAS_ALERTA}h. ${lista.slice(0, 3).join(' | ')}`;
+  if (_avisos.avisarStaff) { try { await _avisos.avisarStaff({ title: `⏰ Suporte parado (${paradas.length})`, body: lista.slice(0, 2).join(' · '), url: '/staff/#suporte-sistemas' }); } catch (_) {} }
+  if (_avisos.alertaDono) { try { await _avisos.alertaDono(resumo); } catch (_) {} }
+  return { alertadas: paradas.length };
+}
+
 module.exports = {
-  configurar, abrir, responderUsuario, listarDoUsuario, abrirDoUsuario, naoLidasDoUsuario,
+  configurar, abrir, responderUsuario, alertarEsquecidas, HORAS_ALERTA, listarDoUsuario, abrirDoUsuario, naoLidasDoUsuario,
   listarStaff, resumoStaff, abrirStaff, responderStaff, mudarStatus,
   LIMITES: { MAX_TEXTO, MAX_CONVERSAS_DIA, MAX_MSGS_HORA },
 };

@@ -146,10 +146,33 @@ const notificarNativo = (mod) => (ref, c) => {
   require(`../${mod}/repo`).Notificacoes.criar(ref, { titulo: c.titulo, texto: c.corpo.slice(0, 600), url, tipo: 'comunicado' });
 };
 
+// ---------------- situação da conta (LGPD) ----------------
+// 'ativa' | 'inativa' (suspensa, cancelada…) | 'excluida' (sumiu do banco
+// ou foi anonimizada). Só 'excluida' manda a central apagar os dados —
+// por isso a consulta é por id, em lote, e a AUSÊNCIA da linha é o sinal.
+function situacaoPorTabela({ mod, tabela, colId = 'id', colStatus = '', colAtivo = '', excluido = 'excluido' }) {
+  return (refs) => {
+    const m = new Map(refs.map((r) => [String(r), 'excluida']));
+    const cols = ['${colId} id'.replace('${colId}', colId)]
+      .concat(colStatus ? [`${colStatus} status`] : [], colAtivo ? [`${colAtivo} ativo`] : []).join(', ');
+    const db = dbDe(mod);
+    for (let i = 0; i < refs.length; i += 400) {
+      const lote = refs.slice(i, i + 400).map(String);
+      const linhas = db.prepare(`SELECT ${cols} FROM ${tabela} WHERE ${colId} IN (${lote.map(() => '?').join(',')})`).all(...lote);
+      for (const l of linhas) {
+        const morta = (colStatus && String(l.status) === excluido) || (colAtivo && Number(l.ativo) === -1);
+        m.set(String(l.id), morta ? 'excluida' : (colStatus && String(l.status) !== 'ativo' ? 'inativa' : 'ativa'));
+      }
+    }
+    return m;
+  };
+}
+
 // ---------------- catálogo ----------------
 const FONTES = [
   {
-    chave: 'academy', pushMod: 'academy', nativoFazPush: true, nome: 'Villela Academy', emoji: '🎓', cor: '#1B2A4A',
+    chave: 'academy', pushMod: 'academy', nativoFazPush: true,
+    situacao: situacaoPorTabela({ mod: 'academy', tabela: 'users', colStatus: 'status' }), nome: 'Villela Academy', emoji: '🎓', cor: '#1B2A4A',
     url: 'https://academia.villelastay.com.br/academy/app', caminhoApp: '/academy',
     segmentos: [
       { id: 'todos', rotulo: 'Todos os usuários' },
@@ -195,9 +218,12 @@ const FONTES = [
       return usuariosAcademyPorIds(m.prepare(q[seg] || q.todos).all().map((r) => String(r.id)));
     },
     sessao: sessaoAcademy,
+    // A conta é a da Academy — a situação também.
+    situacao: situacaoPorTabela({ mod: 'academy', tabela: 'users', colStatus: 'status' }),
   },
   {
-    chave: 'livraria', nome: 'Livraria Villela', emoji: '📚', cor: '#5A3E2B',
+    chave: 'livraria',
+    situacao: situacaoPorTabela({ mod: 'livraria', tabela: 'customers' }), nome: 'Livraria Villela', emoji: '📚', cor: '#5A3E2B',
     url: 'https://livros.villelastay.com.br/livros',
     aviso: 'Sem conta nem app (só e-mail e WhatsApp). O checkout não pede consentimento de marketing — prefira avisos sobre os livros comprados.',
     segmentos: [
@@ -213,7 +239,8 @@ const FONTES = [
     },
   },
   {
-    chave: 'vsm', pushMod: 'vsm', nome: 'Villela Stay Manager', emoji: '🏨', cor: '#0E5A6B',
+    chave: 'vsm', pushMod: 'vsm',
+    situacao: situacaoPorTabela({ mod: 'vsm', tabela: 'tenant_users' }), nome: 'Villela Stay Manager', emoji: '🏨', cor: '#0E5A6B',
     url: 'https://manager.villelastay.com.br/gestao/app', caminhoApp: '/gestao',
     aviso: 'WhatsApp só para o dono da conta (o telefone é da empresa).',
     segmentos: SEG_SAAS,
@@ -221,7 +248,8 @@ const FONTES = [
     sessao: sessaoTenantUsers('vsm', 'vsm_sess'),
   },
   {
-    chave: 'vdocs', pushMod: 'vdocs', nome: 'Villela Docs', emoji: '🗂️', cor: '#1F3A5F',
+    chave: 'vdocs', pushMod: 'vdocs',
+    situacao: situacaoPorTabela({ mod: 'vdocs', tabela: 'users' }), nome: 'Villela Docs', emoji: '🗂️', cor: '#1F3A5F',
     url: 'https://docs.villelastay.com.br/vdocs/app', caminhoApp: '/vdocs',
     aviso: 'WhatsApp só para o dono da conta (o telefone é da empresa).',
     segmentos: SEG_SAAS,
@@ -229,7 +257,8 @@ const FONTES = [
     sessao: sessaoGlobal('vdocs', 'vdocs_sess'),
   },
   {
-    chave: 'legal-saas', pushMod: 'legal-saas', nome: 'Villela Legal', emoji: '⚖️', cor: '#2B2F4A',
+    chave: 'legal-saas', pushMod: 'legal-saas',
+    situacao: situacaoPorTabela({ mod: 'legal-saas', tabela: 'tenant_users' }), nome: 'Villela Legal', emoji: '⚖️', cor: '#2B2F4A',
     url: 'https://juridico.villelastay.com.br/juridico/app', caminhoApp: '/juridico',
     aviso: 'Assinantes (escritórios). Os clientes finais de cada escritório NÃO entram.',
     segmentos: SEG_SAAS,
@@ -237,7 +266,8 @@ const FONTES = [
     sessao: sessaoTenantUsers('legal-saas', 'jur_saas'),
   },
   {
-    chave: 'vpe', pushMod: 'vpe', nome: 'Villela Projects', emoji: '📋', cor: '#3D2E5C',
+    chave: 'vpe', pushMod: 'vpe',
+    situacao: situacaoPorTabela({ mod: 'vpe', tabela: 'users' }), nome: 'Villela Projects', emoji: '📋', cor: '#3D2E5C',
     url: 'https://projetos.villelastay.com.br/vpe/app', caminhoApp: '/vpe',
     aviso: 'WhatsApp só para o dono da conta (o telefone é da empresa).',
     segmentos: SEG_SAAS,
@@ -245,7 +275,8 @@ const FONTES = [
     sessao: sessaoGlobal('vpe', 'vpe_sess'),
   },
   {
-    chave: 'crm', pushMod: 'crm', nome: 'Villela CRM', emoji: '🤝', cor: '#1B4A3A',
+    chave: 'crm', pushMod: 'crm',
+    situacao: situacaoPorTabela({ mod: 'crm', tabela: 'tenant_users' }), nome: 'Villela CRM', emoji: '🤝', cor: '#1B4A3A',
     url: 'https://crm.villelastay.com.br/crm/app', caminhoApp: '/crm',
     aviso: 'Assinantes do CRM. Os contatos de cada assinante NÃO entram.',
     segmentos: SEG_SAAS,
@@ -285,6 +316,20 @@ const FONTES = [
       }
       return linhas(out);
     },
+    // O Finance proíbe SQL em tabela de conta fora do repo: a varredura
+    // abre o contexto de cada conta e junta os usuários que existem.
+    situacao: (refs) => {
+      const repo = require('../financeiro/repo'), tenancy = require('../financeiro/tenancy');
+      const m = new Map(refs.map((r) => [String(r), 'excluida']));
+      for (const t of repo.listarTenants()) {
+        tenancy.comTenant({ tenantId: t.id, userId: 'comunicados-lgpd' }, () => {
+          for (const u of repo.listarUsuarios()) {
+            if (m.has(String(u.id))) m.set(String(u.id), u.status === 'ativo' ? 'ativa' : 'inativa');
+          }
+        });
+      }
+      return m;
+    },
     sessao: (req) => {
       const d = uidDoCookie(req, 'fin_sess');
       if (!d || !d.uid) return null;
@@ -293,7 +338,8 @@ const FONTES = [
     },
   },
   {
-    chave: 'closet', pushMod: 'closet', nome: 'Closet Club', emoji: '👗', cor: '#6B2E4A',
+    chave: 'closet', pushMod: 'closet',
+    situacao: situacaoPorTabela({ mod: 'closet', tabela: 'users', colStatus: 'status' }), nome: 'Closet Club', emoji: '👗', cor: '#6B2E4A',
     url: 'https://closet.villelastay.com.br/closet/app', caminhoApp: '/closet',
     segmentos: [
       { id: 'todos', rotulo: 'Todos os usuários' },
@@ -318,7 +364,8 @@ const FONTES = [
     nativo: notificarNativo('closet'),
   },
   {
-    chave: 'vitrine', nome: 'Vitrine', emoji: '🛒', cor: '#7A4A12',
+    chave: 'vitrine',
+    situacao: situacaoPorTabela({ mod: 'vitrine', tabela: 'users', colStatus: 'status' }), nome: 'Vitrine', emoji: '🛒', cor: '#7A4A12',
     url: 'https://vitrine.villelastay.com.br/vitrine/app', caminhoApp: '/vitrine',
     segmentos: [
       { id: 'todos', rotulo: 'Todos os usuários' },
@@ -339,7 +386,8 @@ const FONTES = [
     nativo: notificarNativo('vitrine'),
   },
   {
-    chave: 'alta-vista', nome: 'Villela Alta Vista 360', emoji: '🚁', cor: '#12345A',
+    chave: 'alta-vista',
+    situacao: situacaoPorTabela({ mod: 'alta-vista', tabela: 'clientes', colStatus: 'status' }), nome: 'Villela Alta Vista 360', emoji: '🚁', cor: '#12345A',
     url: 'https://altavista.villelastay.com.br/alta-vista/app', caminhoApp: '/alta-vista',
     segmentos: [
       { id: 'todos', rotulo: 'Todos os clientes' },
@@ -359,7 +407,8 @@ const FONTES = [
     sessao: sessaoUsers('alta-vista', 'av_sess', 'clientes'),
   },
   {
-    chave: 'kids', pushMod: 'kids', nativoFazPush: true, nome: 'Invente (Villela Kids)', emoji: '🧒', cor: '#6C4DFF',
+    chave: 'kids', pushMod: 'kids', nativoFazPush: true,
+    situacao: situacaoPorTabela({ mod: 'kids', tabela: 'users', colStatus: 'status' }), nome: 'Invente (Villela Kids)', emoji: '🧒', cor: '#6C4DFF',
     url: 'https://kids.villelastay.com.br/kids/app', caminhoApp: '/kids',
     aviso: 'Vai SEMPRE para o responsável — nunca para a criança. Sem telefone: app e e-mail.',
     segmentos: [
@@ -399,6 +448,12 @@ async function pushUsuario(chave, ref, payload) {
 // Nome/e-mail/telefone de UM usuário, para as preferências e o suporte.
 // Reaproveita a consulta de "todos" do sistema (bases pequenas; uma query a mais
 // é mais barata que 13 consultas próprias para manter em sincronia com o listar).
+// Situação de várias contas de um produto de uma vez (LGPD).
+async function situacaoDeVarios(chave, refs) {
+  const f = obter(chave);
+  if (!f || typeof f.situacao !== 'function') throw new Error(`sistema ${chave} não sabe dizer se a conta existe`);
+  return f.situacao([...new Set(refs.map(String))]);
+}
 async function perfil(chave, ref) {
   const f = obter(chave);
   if (!f || f.indisponivel) return null;
@@ -411,4 +466,4 @@ const catalogo = () => FONTES.map((f) => ({
   segmentos: f.segmentos, tem_app: !!(f.caminhoApp && f.sessao), central_propria: !!f.nativo, tem_push: temPush(f),
 }));
 
-module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, _int: { uidDoCookie } };
+module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, situacaoDeVarios, _int: { uidDoCookie } };

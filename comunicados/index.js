@@ -15,6 +15,7 @@
 const motor = require('./motor');
 const fontes = require('./fontes');
 const suporte = require('./suporte');
+const privacidade = require('./privacidade');
 const { registrarRotas } = require('./rotas');
 
 const INTERVALO_MS = Number(process.env.COMUNICADOS_INTERVALO_MS || 60000);
@@ -30,6 +31,24 @@ function ligarFila() {
 }
 const desligarFila = () => { if (_timer) { clearInterval(_timer); _timer = null; } };
 
+// Uma hora: conversa de suporte esquecida. Um dia: LGPD (esquecer quem saiu
+// + retenção). As duas são idempotentes e best-effort.
+let _timerRotinas = null;
+function ligarRotinas() {
+  if (_timerRotinas || String(process.env.COMUNICADOS_ROTINAS_OFF || '') === '1') return null;
+  let ultimoDia = '';
+  const ciclo = async () => {
+    try { await suporte.alertarEsquecidas(); } catch (e) { console.error('[comunicados] alerta de suporte falhou:', e.message); }
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (hoje !== ultimoDia) { ultimoDia = hoje; try { await privacidade.rodar(); } catch (e) { console.error('[comunicados/lgpd] falhou:', e.message); } }
+  };
+  _timerRotinas = setInterval(() => { ciclo().catch(() => {}); }, 3600e3);
+  if (_timerRotinas.unref) _timerRotinas.unref();
+  setTimeout(() => { ciclo().catch(() => {}); }, 120e3);   // pouco depois do boot
+  return _timerRotinas;
+}
+const desligarRotinas = () => { if (_timerRotinas) { clearInterval(_timerRotinas); _timerRotinas = null; } };
+
 function montar(app, deps = {}) {
   const { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria, enviarEmail, enviarWhatsAppTemplate, emailPronto, whatsappPronto, avisarStaff, jwtSecret, baseUrl } = deps;
   if (!express || !requireAuth || !requireAdmin || !requirePublishOrAdmin || !jwtSecret) {
@@ -37,11 +56,12 @@ function montar(app, deps = {}) {
   }
   fontes.configurar({ jwtSecret });
   const disp = motor.configurar({ enviarEmail, enviarWhatsAppTemplate, emailPronto, whatsappPronto, baseUrl, segredo: jwtSecret });
-  suporte.configurar({ avisarStaff, enviarEmail: motor.enviarEmailCentral });
+  suporte.configurar({ avisarStaff, enviarEmail: motor.enviarEmailCentral, alertaDono: deps.alertaAugusto });
   registrarRotas(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria });
   ligarFila();
+  ligarRotinas();
   console.log('[comunicados] montado —', `${fontes.todas().length} sistemas`,
     `· e-mail: ${disp.email.ok ? 'ok' : 'NÃO'}`, `· whatsapp: ${disp.whatsapp.ok ? disp.whatsapp.template : 'sem modelo'}`);
 }
 
-module.exports = { montar, motor, fontes, suporte, ligarFila, desligarFila };
+module.exports = { montar, motor, fontes, suporte, privacidade, ligarFila, desligarFila, ligarRotinas, desligarRotinas };

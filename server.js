@@ -4643,6 +4643,7 @@ try {
     whatsappPronto: () => !!process.env.MAKE_WA_WEBHOOK,
     // Mensagem nova no suporte dos sistemas -> push so para admin (area que ninguem mais tem: a tela e so de admin).
     avisarStaff: (payload) => enviarPushStaff(payload, 'suporte-sistemas'),
+    alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : undefined,
   });
 } catch (e) { console.error('[comunicados] falha ao montar módulo:', e.message); }
 

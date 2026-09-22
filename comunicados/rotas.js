@@ -15,11 +15,15 @@ const path = require('path');
 const motor = require('./motor');
 const fontes = require('./fontes');
 const suporte = require('./suporte');
+const anexosMod = require('./anexos');
+const privacidade = require('./privacidade');
 
 const WIDGET_JS = path.join(__dirname, 'widget.js');
 
 function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria = () => {} }) {
   const json = express.json({ limit: '64kb' });
+  // Anexo vai em base64 no corpo: 3 arquivos de 5 MB ≈ 20 MB de texto.
+  const jsonAnexo = express.json({ limit: '22mb' });
   const R = '/staff/api/comunicados';
   const quem = (req) => req.viaChave ? 'agente/chave' : ((req.user && (req.user.nome || req.user.email)) || 'admin');
   const erro = (res, e) => res.status(e.status || 500).json({ erro: e.status ? e.message : 'Falha interna: ' + e.message });
@@ -35,6 +39,16 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
   });
   app.get(R, ...admin, (req, res) => { try { res.json({ comunicados: motor.listar({ limite: req.query.limite }) }); } catch (e) { erro(res, e); } });
   app.get(`${R}/descadastros`, ...admin, (req, res) => res.json({ descadastros: motor.listarDescadastros() }));
+  app.get(`${R}/privacidade`, ...admin, (req, res) => {
+    res.json({
+      ultima: privacidade.ultima(), retencao_dias: privacidade.DIAS_RETENCAO,
+      anexos: { teto_mb: anexosMod.LIMITES.TETO_PASTA_MB, usado_mb: Math.round(anexosMod.tamanhoPasta() / 1048576), no_bucket: anexosMod.s3Ativo() },
+      whatsapp: { modo: motor.modoWA(), ponte: motor.ponte() },
+    });
+  });
+  app.post(`${R}/privacidade/rodar`, ...admin, async (req, res) => {
+    try { registrarAuditoria(req, 'comunicado.lgpd', 'varredura manual'); res.json({ resultado: await privacidade.rodar() }); } catch (e) { erro(res, e); }
+  });
   app.get(`${R}/:id`, ...admin, (req, res) => {
     const c = motor.obter(req.params.id);
     if (!c) return res.status(404).json({ erro: 'não encontrado' });
@@ -94,6 +108,26 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
     res.json({ ok: true });
   });
 
+  // ---------------- ponte do WhatsApp pessoal (PC do Augusto) ----------------
+  // Aceita a PUBLISH_KEY porque é TRANSPORTE: o envio já foi aprovado pelo
+  // admin quando o comunicado foi disparado. A ponte não decide nada — só
+  // pega o que já está na fila, manda pelo aparelho e devolve o resultado.
+  const P = `${R}/ponte-wa`;
+  app.post(`${P}/sinal`, requirePublishOrAdmin, json, (req, res) => {
+    const b = req.body || {};
+    motor.registrarPonte({ numero: String(b.numero || '').replace(/\D/g, '').slice(0, 15), conectado: !!b.conectado, teto_dia: Number(b.teto_dia) || 0, enviados_hoje: Number(b.enviados_hoje) || 0, versao: String(b.versao || '').slice(0, 20) });
+    res.json({ ok: true, modo: motor.modoWA() });
+  });
+  app.get(`${P}/lote`, requirePublishOrAdmin, (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    if (motor.modoWA() !== 'pessoal') return res.json({ itens: [], motivo: 'modo business: quem envia é o servidor' });
+    res.json({ itens: motor.pendentesWA(req.query.n) });
+  });
+  app.post(`${P}/resultado`, requirePublishOrAdmin, json, (req, res) => {
+    const b = req.body || {};
+    res.json({ ok: motor.resultadoWA(b.id, b.ok === true, b.motivo) });
+  });
+
   // ---------------- descadastro (público) ----------------
   const pagina = (titulo, corpo) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
@@ -128,6 +162,18 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
     res.type('html').send(pagina('Pronto', `<h1>Pronto.</h1><p>${escopo === 'tudo' ? 'Você não vai mais receber avisos por e-mail.' : 'Você não vai mais receber novidades e dicas por e-mail. Avisos de instabilidade continuam chegando.'}</p>`));
   });
 
+  // Serve o binário do anexo. Chamado só depois de conferida a permissão —
+  // a sessão autoriza, mas os bytes saem por aqui (ou por URL assinada curta).
+  async function servirAnexo(res, anexo) {
+    const a = await anexosMod.ler(anexo);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (a.url) return res.redirect(302, a.url);
+    res.setHeader('Content-Type', a.mime);
+    res.setHeader('Content-Disposition', `${a.mime === 'application/pdf' ? 'attachment' : 'inline'}; filename="${a.nome.replace(/"/g, '')}"`);
+    res.send(a.buffer);
+  }
+
   // ---------------- suporte (lado da equipe) ----------------
   const S = '/staff/api/suporte-sistemas';
   app.get(S, ...admin, (req, res) => {
@@ -135,11 +181,14 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
     catch (e) { erro(res, e); }
   });
   app.get(`${S}/:id`, ...admin, (req, res) => { try { res.json({ conversa: suporte.abrirStaff(req.params.id) }); } catch (e) { erro(res, e); } });
-  app.post(`${S}/:id/responder`, ...admin, json, async (req, res) => {
+  app.get(`${S}/anexo/:anexoId`, ...admin, async (req, res) => {
+    try { await servirAnexo(res, anexosMod.obter(req.params.anexoId)); } catch (e) { erro(res, e); }
+  });
+  app.post(`${S}/:id/responder`, ...admin, jsonAnexo, async (req, res) => {
     try {
       const b = req.body || {};
       const nome = String((req.user && req.user.nome) || 'Equipe').split(' ')[0];
-      const c = await suporte.responderStaff(req.params.id, b.texto, `${nome} · Equipe`, { resolver: b.resolver === true });
+      const c = await suporte.responderStaff(req.params.id, b.texto, `${nome} · Equipe`, { resolver: b.resolver === true, anexos: b.anexos });
       registrarAuditoria(req, 'suporte.responder', `${c.produto} · ${c.assunto}`);
       res.json({ conversa: c });
     } catch (e) { erro(res, e); }
@@ -181,8 +230,19 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
     });
     app.get(`${A}/suporte`, doUsuario((ref) => ({ conversas: suporte.listarDoUsuario(f.chave, ref) })));
     app.get(`${A}/suporte/:id`, doUsuario((ref, req) => ({ conversa: suporte.abrirDoUsuario(f.chave, ref, req.params.id) })));
-    app.post(`${A}/suporte`, json, doUsuario(async (ref, req) => ({ conversa: await suporte.abrir(f.chave, ref, req.body || {}) })));
-    app.post(`${A}/suporte/:id`, json, doUsuario((ref, req) => ({ conversa: suporte.responderUsuario(f.chave, ref, req.params.id, (req.body || {}).texto) })));
+    app.post(`${A}/suporte`, jsonAnexo, doUsuario(async (ref, req) => ({ conversa: await suporte.abrir(f.chave, ref, req.body || {}) })));
+    app.post(`${A}/suporte/:id`, jsonAnexo, doUsuario(async (ref, req) => ({ conversa: await suporte.responderUsuario(f.chave, ref, req.params.id, (req.body || {}).texto, (req.body || {}).anexos) })));
+    // O anexo só abre para o dono da conversa: confere produto + usuário.
+    app.get(`${A}/suporte/anexo/:anexoId`, async (req, res) => {
+      const ref = await resolver(req);
+      if (!ref) return res.status(401).json({ erro: 'não autenticado' });
+      try {
+        const anexo = anexosMod.obter(req.params.anexoId);
+        if (!anexo) return res.status(404).json({ erro: 'não encontrado' });
+        suporte.abrirDoUsuario(f.chave, String(ref), anexo.conversa_id);   // 404 se não for dele
+        await servirAnexo(res, anexo);
+      } catch (e) { erro(res, e); }
+    });
     app.get(`${A}/preferencias`, doUsuario(async (ref) => ({ preferencias: await motor.preferencias(f.chave, ref) })));
     app.post(`${A}/preferencias`, json, doUsuario(async (ref, req) => ({ preferencias: await motor.salvarPreferencias(f.chave, ref, req.body || {}) })));
     app.post(`${A}/:id/lido`, doUsuario((ref, req) => ({ marcados: motor.marcarLido(f.chave, ref, req.params.id) })));

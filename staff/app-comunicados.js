@@ -34,7 +34,9 @@ function comPintarCanais() {
   $('#com-canais').innerHTML =
     card(comCanalRot.app, true, 'sino nos apps')
     + card(comCanalRot.email, c.email.ok, c.email.ok ? `${c.email.enviados_hoje}/${c.email.teto_dia} hoje · via ${c.email.provedor === 'resend' ? 'Resend' : 'Gmail'}` : c.email.motivo)
-    + card(comCanalRot.whatsapp, c.whatsapp.ok, c.whatsapp.ok ? `${c.whatsapp.enviados_hoje}/${c.whatsapp.teto_dia} hoje · modelo ${c.whatsapp.template}` : 'falta o modelo aprovado — ver abaixo');
+    + card(comCanalRot.whatsapp, c.whatsapp.ok, !c.whatsapp.ok ? 'indisponível — ver abaixo'
+      : c.whatsapp.modo === 'business' ? `${c.whatsapp.enviados_hoje}/${c.whatsapp.teto_dia} hoje · número business`
+        : `pelo SEU número (${c.whatsapp.numero || 'pessoal'}) · teto ${c.whatsapp.teto_dia}/dia`);
 }
 
 // ---------------- editor ----------------
@@ -80,7 +82,9 @@ function comEditor(c) {
       <fieldset style="border:1px solid var(--linha,#ddd);border-radius:8px;padding:10px;margin:10px 0">
         <legend style="padding:0 6px">Por onde?</legend>
         ${canal('app')}${canal('email')}${canal('whatsapp')}
-        ${cfg.canais.whatsapp.ok ? '' : `<p class="obs" style="margin:6px 0 0">💬 ${esc(cfg.canais.whatsapp.motivo)}</p>`}
+        ${cfg.canais.whatsapp.ok
+          ? (cfg.canais.whatsapp.modo === 'pessoal' ? `<p class="obs" style="margin:6px 0 0">⚠️ ${esc(cfg.canais.whatsapp.aviso || '')}</p>` : '')
+          : `<p class="obs" style="margin:6px 0 0">💬 ${esc(cfg.canais.whatsapp.motivo)}</p>`}
       </fieldset>
       <div class="hi-grid">
         <label style="display:flex;flex-direction:row;gap:8px;align-items:flex-start"><input type="checkbox" id="com-dest" style="width:auto;margin-top:3px" ${v.destaque ? 'checked' : ''}> Faixa no topo do app até o usuário fechar <span class="obs">(para instabilidade)</span></label>
@@ -246,6 +250,7 @@ async function comHistorico() {
     + (lista.length ? tabela(['Comunicado', 'Canais', 'Situação', 'Entregas', ''], linhas) : '<p class="vazio">Nenhum comunicado ainda.</p>')
     + `<div id="com-falhas"></div>
        <details class="cr-box" style="margin-top:16px"><summary class="cr-sum">🚫 Quem pediu para não receber</summary><div id="com-desc"><p class="vazio">Carregando…</p></div></details>
+       <details class="cr-box" style="margin-top:10px"><summary class="cr-sum">🔒 Privacidade e retenção (LGPD)</summary><div id="com-lgpd"><p class="vazio">Carregando…</p></div></details>
        <details class="cr-box" style="margin-top:10px"><summary class="cr-sum">ℹ️ Como funciona</summary><div class="obs" style="padding:8px 4px;line-height:1.6">
          <p><b>Aviso no app</b>: aparece no sino 🔔 dentro do sistema. "Faixa no topo" mostra o aviso em destaque até a pessoa fechar — use para instabilidade.</p>
          <p><b>E-mail</b>: sai pelo Gmail em ritmo (${COM.cfg.canais.email.teto_dia || 400}/dia). O que passar do teto sai no dia seguinte, sozinho. Todo e-mail leva link de descadastro.</p>
@@ -265,6 +270,28 @@ async function comHistorico() {
       r.entregas.map(x => [comCanalRot[x.canal], esc(x.nome || ''), esc(x.destino), esc(x.motivo || '')])) + '</div>';
   });
   comDescadastros();
+  comPrivacidade();
+}
+
+// Estado da LGPD: o que a varredura diária fez, por quanto tempo guardamos e
+// onde estão os anexos. O botão roda a varredura na hora (ela é idempotente).
+async function comPrivacidade() {
+  const box = $('#com-lgpd'); if (!box) return;
+  let r;
+  try { r = await api('GET', '/comunicados/privacidade'); }
+  catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  const u = r.ultima;
+  box.innerHTML = `<div class="obs" style="padding:8px 4px;line-height:1.7">
+    <p><b>Exclusão de conta:</b> quem exclui a conta em qualquer sistema tem conversas, anexos e leituras apagados daqui, e as entregas viram anônimas (fica só o número de quem recebeu). A varredura roda 1× por dia.</p>
+    <p><b>Retenção:</b> conversa encerrada e parada há mais de <b>${Math.round(r.retencao_dias / 365)} ano(s)</b> é apagada com os anexos.</p>
+    <p><b>Continua guardado:</b> quem pediu para não receber — apagar isso faria a pessoa voltar a ser contatada.</p>
+    <p><b>Anexos:</b> ${r.anexos.no_bucket ? 'no bucket (R2/S3), privados' : `no disco do servidor — ${r.anexos.usado_mb} MB de ${r.anexos.teto_mb} MB`}.</p>
+    <p><b>Última varredura:</b> ${u ? `${comFmt(u.quando)} — ${(u.exclusoes && u.exclusoes.esquecidas) || 0} conta(s) esquecida(s), ${(u.retencao && u.retencao.conversas) || 0} conversa(s) vencida(s)${(u.exclusoes && u.exclusoes.produtos_sem_resposta || []).length ? ` · ⚠️ ${u.exclusoes.produtos_sem_resposta.map(x => esc(x.produto)).join(', ')} não respondeu(ram)` : ''}` : 'ainda não rodou nesta execução do servidor'}</p>
+    <button class="btn peq secund" id="com-lgpd-rodar">Rodar varredura agora</button> <span id="com-lgpd-msg"></span></div>`;
+  $('#com-lgpd-rodar').onclick = async () => {
+    const m = $('#com-lgpd-msg'); m.textContent = 'rodando…';
+    try { await api('POST', '/comunicados/privacidade/rodar'); comPrivacidade(); } catch (e) { m.textContent = e.message; }
+  };
 }
 
 async function comDescadastros() {

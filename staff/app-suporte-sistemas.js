@@ -39,6 +39,21 @@ async function renderSuporteSistemas() {
   SUP.timer = setInterval(() => { if (ESTADO.secao !== 'suporte-sistemas') { clearInterval(SUP.timer); SUP.timer = null; return; } if (!document.hidden) supLista(true); }, 30000);
 }
 
+// Anexos do staff: base64 no corpo, mesmo caminho do cliente.
+async function supLerArquivos(input) {
+  const fs = input && input.files ? [...input.files] : [];
+  if (!fs.length) return [];
+  if (fs.length > 3) throw new Error('No máximo 3 arquivos.');
+  const grande = fs.find(f => f.size > 5 * 1024 * 1024);
+  if (grande) throw new Error(`"${grande.name}" tem mais de 5 MB.`);
+  return Promise.all(fs.map(f => new Promise((ok, nao) => {
+    const r = new FileReader();
+    r.onload = () => ok({ nome: f.name, dados: String(r.result) });
+    r.onerror = () => nao(new Error(`Não consegui ler "${f.name}".`));
+    r.readAsDataURL(f);
+  })));
+}
+
 const supNomeP = (k) => { const p = SUP.produtos.find(x => x.chave === k); return p ? `${p.emoji} ${p.nome}` : k; };
 
 async function supLista(silencioso) {
@@ -71,9 +86,15 @@ async function supAbrir(id) {
   try { c = (await api('GET', `/suporte-sistemas/${encodeURIComponent(id)}`)).conversa; }
   catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
   const [st, cls] = supStatus[c.status] || [c.status, ''];
+  const anexoHtml = (m) => (m.anexos || []).map(a => {
+    const u = `/staff/api/suporte-sistemas/anexo/${encodeURIComponent(a.id)}`;
+    return /^image\//.test(a.mime)
+      ? `<a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(a.nome)}" style="display:block;max-width:100%;border-radius:8px;margin:6px 0"></a>`
+      : `<a href="${u}" target="_blank" rel="noopener" style="display:inline-block;margin:4px 0;font-weight:700">📄 ${esc(a.nome)}</a>`;
+  }).join('');
   const bolha = (m) => `<div style="max-width:85%;padding:9px 12px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word;${m.autor === 'staff'
       ? 'align-self:flex-end;background:#E6F4F1;border-bottom-right-radius:4px'
-      : 'align-self:flex-start;background:#F1F3F6;border-bottom-left-radius:4px'}">${esc(m.texto)}
+      : 'align-self:flex-start;background:#F1F3F6;border-bottom-left-radius:4px'}">${esc(m.texto)}${anexoHtml(m)}
       <div class="obs" style="font-size:.75rem;margin-top:4px">${esc(m.autor === 'staff' ? (m.autor_nome || 'Equipe') : (c.nome || 'Cliente'))} · ${dataBr(m.criado_em)}</div></div>`;
   box.innerHTML = `<div class="cr-box" style="padding:14px">
     <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
@@ -82,6 +103,7 @@ async function supAbrir(id) {
     <div id="sup-msgs" style="display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto;padding:4px">${c.mensagens.map(bolha).join('')}</div>
     <form id="sup-form" class="form" style="margin-top:12px">
       <label>Sua resposta <textarea id="sup-txt" rows="4" maxlength="2000" required placeholder="Escreva como falaria com o cliente."></textarea></label>
+      <label>📎 Anexar (imagem ou PDF, até 3) <input type="file" id="sup-arq" multiple accept="image/*,application/pdf"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" type="submit">Responder</button>
         <button class="btn secund" type="button" id="sup-resp-res">Responder e marcar resolvida</button>
@@ -95,7 +117,8 @@ async function supAbrir(id) {
     const texto = $('#sup-txt').value.trim();
     if (!texto) { m.textContent = 'Escreva a resposta.'; return; }
     try {
-      const r = await api('POST', `/suporte-sistemas/${encodeURIComponent(c.id)}/responder`, { texto, resolver });
+      const arquivos = await supLerArquivos($('#sup-arq'));
+      const r = await api('POST', `/suporte-sistemas/${encodeURIComponent(c.id)}/responder`, { texto, resolver, anexos: arquivos });
       const av = r.conversa.avisos || {};
       await supAbrir(c.id);
       const m2 = $('#sup-msg'); if (m2) { m2.className = 'ok'; m2.textContent = `Enviada. Cliente avisado por: app${av.email ? ', e-mail' : ''}${av.push ? ', celular' : ''}.`; }

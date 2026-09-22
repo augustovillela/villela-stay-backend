@@ -57,6 +57,11 @@
     '.vsc-bp{background:' + cor + ';color:#fff;border:0;border-radius:20px;padding:9px 18px;font-weight:700;cursor:pointer;align-self:flex-end}' +
     '.vsc-bs{background:none;border:0;color:' + cor + ';font-weight:700;cursor:pointer;padding:10px 14px;text-align:left}' +
     '.vsc-erro{color:#B42318;font-size:13px;margin:0}.vsc-ok{color:#166534;font-size:13px;margin:0}' +
+    '.vsc-anx{display:flex!important;gap:6px;align-items:center;font-size:12px!important;color:#4B5563!important;padding:2px 0!important}' +
+    '.vsc-anx input[type=file]{font-size:12px!important;flex:1;min-width:0;width:auto!important;border:0!important;padding:0!important;background:none!important}' +
+    '.vsc-m img{display:block;max-width:100%;border-radius:8px;margin:6px 0 2px}' +
+    '.vsc-m .vsc-arq{display:inline-block;margin:4px 0;font-weight:700;text-decoration:underline}' +
+    '.vsc-m.u .vsc-arq{color:#fff}.vsc-m.s .vsc-arq{color:' + cor + '}' +
     '.vsc-pref{padding:14px}.vsc-pref fieldset{border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;margin:0 0 12px}.vsc-pref legend{font-weight:700;padding:0 4px}' +
     '.vsc-pref label{display:flex;flex-direction:row;gap:8px;align-items:flex-start;margin:6px 0;cursor:pointer}.vsc-pref input{margin-top:3px;width:auto}' +
     '.vsc-fx{position:relative;z-index:2147483001;background:#FFF4E5;color:#7A3E00;border-bottom:1px solid #F5C27A;padding:10px 44px 10px 16px;font:14px/1.45 Inter,system-ui,Arial,sans-serif}' +
@@ -78,6 +83,35 @@
     });
   }
   function silencioso(p) { return p.catch(function () { return null; }); }
+
+  // Anexos: lidos como base64 no navegador (sem multipart). O limite de
+  // tamanho é conferido aqui E no servidor — aqui só para avisar antes de
+  // subir 5 MB à toa.
+  var MAX_ANEXO = 5 * 1024 * 1024, MAX_ARQUIVOS = 3;
+  function lerArquivos(input) {
+    var fs = input && input.files ? Array.prototype.slice.call(input.files) : [];
+    if (!fs.length) return Promise.resolve([]);
+    if (fs.length > MAX_ARQUIVOS) return Promise.reject(new Error('No máximo ' + MAX_ARQUIVOS + ' arquivos.'));
+    var grande = fs.filter(function (f) { return f.size > MAX_ANEXO; })[0];
+    if (grande) return Promise.reject(new Error('"' + grande.name + '" tem mais de 5 MB.'));
+    return Promise.all(fs.map(function (f) {
+      return new Promise(function (ok, nao) {
+        var r = new FileReader();
+        r.onload = function () { ok({ nome: f.name, dados: String(r.result) }); };
+        r.onerror = function () { nao(new Error('Não consegui ler "' + f.name + '".')); };
+        r.readAsDataURL(f);
+      });
+    }));
+  }
+  var campoAnexo = '<label class="vsc-anx">📎 <input type="file" name="arquivos" multiple accept="image/*,application/pdf" aria-label="Anexar imagem ou PDF"></label>';
+  function htmlAnexos(m) {
+    return (m.anexos || []).map(function (a) {
+      var u = base + '/api/comunicados/suporte/anexo/' + encodeURIComponent(a.id);
+      return /^image\//.test(a.mime)
+        ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"><img src="' + esc(u) + '" alt="' + esc(a.nome) + '" loading="lazy"></a>'
+        : '<a class="vsc-arq" href="' + esc(u) + '" target="_blank" rel="noopener">📄 ' + esc(a.nome) + '</a>';
+    }).join('');
+  }
 
   var bt, pn, fx, estilo = false;
   function garantirEstilo() { if (!estilo) { estilo = true; var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); } }
@@ -166,6 +200,7 @@
         '<b>Fale com a equipe</b>' +
         '<input name="assunto" maxlength="120" placeholder="Assunto (ex.: não consigo abrir a aula 3)" aria-label="Assunto">' +
         '<textarea name="texto" rows="3" maxlength="2000" required placeholder="Conte o que aconteceu. Respondemos por aqui e por e-mail." aria-label="Mensagem"></textarea>' +
+        campoAnexo +
         '<p class="vsc-erro" aria-live="polite"></p><button class="vsc-bp" type="submit">Enviar</button></form>' +
         cs.map(function (c) {
           var st = ROT_ST[c.status] || [c.status, ''];
@@ -178,7 +213,8 @@
         ev.preventDefault();
         var er = f.querySelector('.vsc-erro'), b = f.querySelector('button');
         er.textContent = ''; b.disabled = true;
-        api('POST', '/suporte', { assunto: f.assunto.value, texto: f.texto.value, pagina: location.pathname + location.hash })
+        lerArquivos(f.arquivos)
+          .then(function (anexos) { return api('POST', '/suporte', { assunto: f.assunto.value, texto: f.texto.value, anexos: anexos, pagina: location.pathname + location.hash }); })
           .then(function (d) { E.conversa = d.conversa; pintarPainel(); })
           .catch(function (e) { er.textContent = e.message; b.disabled = false; });
       };
@@ -197,11 +233,11 @@
     corpo.innerHTML = '<button type="button" class="vsc-bs" data-a="voltar">← Conversas</button>' +
       '<div style="padding:0 14px"><b>' + esc(c.assunto) + '</b><span class="vsc-st ' + st[1] + '">' + esc(st[0]) + '</span></div>' +
       '<div class="vsc-msgs">' + c.mensagens.map(function (m) {
-        return '<div class="vsc-m ' + (m.autor === 'staff' ? 's' : 'u') + '">' + esc(m.texto) +
+        return '<div class="vsc-m ' + (m.autor === 'staff' ? 's' : 'u') + '">' + esc(m.texto) + htmlAnexos(m) +
           '<small>' + esc(m.autor === 'staff' ? (m.autor_nome || 'Equipe') : 'Você') + ' · ' + esc(quando(m.criado_em)) + '</small></div>';
       }).join('') + '</div>' +
       '<form class="vsc-form" data-f="resp"><textarea name="texto" rows="2" maxlength="2000" required placeholder="Escreva uma resposta…" aria-label="Resposta"></textarea>' +
-      '<p class="vsc-erro" aria-live="polite"></p><button class="vsc-bp" type="submit">Enviar</button></form>';
+      campoAnexo + '<p class="vsc-erro" aria-live="polite"></p><button class="vsc-bp" type="submit">Enviar</button></form>';
     corpo.scrollTop = corpo.scrollHeight;
     corpo.querySelector('[data-a="voltar"]').onclick = function () { E.conversa = null; pararConversa(); pintarPainel(); };
     var f = corpo.querySelector('[data-f="resp"]');
@@ -209,7 +245,8 @@
       ev.preventDefault();
       var er = f.querySelector('.vsc-erro'), b = f.querySelector('button');
       er.textContent = ''; b.disabled = true;
-      api('POST', '/suporte/' + encodeURIComponent(c.id), { texto: f.texto.value })
+      lerArquivos(f.arquivos)
+        .then(function (anexos) { return api('POST', '/suporte/' + encodeURIComponent(c.id), { texto: f.texto.value, anexos: anexos }); })
         .then(function (d) { E.conversa = d.conversa; pintarPainel(); })
         .catch(function (e) { er.textContent = e.message; b.disabled = false; });
     };

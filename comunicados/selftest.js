@@ -51,6 +51,8 @@ const enviarEmail = async (to, assunto, html) => { if (to === emailFalhaPara) re
 const enviarWhatsAppTemplate = async (to, template, params) => { saidos.whatsapp.push({ to, template, params }); return true; };
 const avisosStaff = [];
 const avisarStaff = async (p) => { avisosStaff.push(p); return 1; };
+const alertasDono = [];
+const alertaAugusto = async (r) => { alertasDono.push(r); return true; };
 
 // ---- bases dos produtos (schema real, dados mínimos) ----
 const agora = new Date().toISOString();
@@ -75,7 +77,8 @@ insT.run('v3', 't2', 'Xavier Ex', 'xavier@ex.com', 'admin', 1, agora);
 const com = require('./index');
 const app = express();
 app.use(cookieParser());
-com.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, enviarEmail, enviarWhatsAppTemplate, avisarStaff, jwtSecret: SEGREDO, registrarAuditoria: () => {} });
+process.env.COMUNICADOS_ROTINAS_OFF = '1';   // o teste roda as rotinas à mão
+com.montar(app, { express, requireAuth, requireAdmin, requirePublishOrAdmin, enviarEmail, enviarWhatsAppTemplate, avisarStaff, alertaAugusto, jwtSecret: SEGREDO, registrarAuditoria: () => {} });
 const { motor, fontes } = com;
 const { db } = require('./db');
 
@@ -437,6 +440,148 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     await motor.processarLote();
     assert.equal(db.prepare("SELECT status FROM entregas WHERE comunicado_id = ?").get(c.id).status, 'disponivel');
     assert.equal(motor.obter(c.id).status, 'enviado');
+  });
+
+  // ======================= ANEXOS =======================
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), Buffer.alloc(64, 7)]).toString('base64');
+  let convAnexo;
+  await t('anexos: o cliente manda print; o tipo vem dos BYTES, não do nome', async () => {
+    const r = await req('POST', '/gestao/api/comunicados/suporte', { cookie: ckV1(), corpo: { assunto: 'Com print', texto: 'Segue a tela.', anexos: [{ nome: 'tela.exe', dados: 'data:image/png;base64,' + PNG }] } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    convAnexo = r.json.conversa;
+    const a = convAnexo.mensagens[0].anexos[0];
+    assert.equal(a.mime, 'image/png'); assert.ok(a.nome.endsWith('.exe'), 'guarda o nome, mas não confia nele');
+  });
+
+  await t('anexos: arquivo de tipo proibido e arquivo grande demais são recusados', async () => {
+    const zip = Buffer.from('PK\x03\x04' + 'x'.repeat(200)).toString('base64');
+    const r1 = await req('POST', `/gestao/api/comunicados/suporte/${convAnexo.id}`, { cookie: ckV1(), corpo: { texto: 'zip', anexos: [{ nome: 'a.zip', dados: zip }] } });
+    assert.equal(r1.status, 400); assert.ok(/imagem|PDF/i.test(r1.json.erro));
+    const grande = Buffer.concat([Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2D]), Buffer.alloc(6 * 1024 * 1024, 1)]).toString('base64');
+    const r2 = await req('POST', `/gestao/api/comunicados/suporte/${convAnexo.id}`, { cookie: ckV1(), corpo: { texto: 'pdf', anexos: [{ nome: 'a.pdf', dados: grande }] } });
+    assert.equal(r2.status, 400); assert.ok(/MB/.test(r2.json.erro));
+  });
+
+  await t('anexos: só o dono (ou o staff) abre o arquivo', async () => {
+    const id = convAnexo.mensagens[0].anexos[0].id;
+    const dono = await fetch(base + `/gestao/api/comunicados/suporte/anexo/${id}`, { headers: { cookie: ckV1() } });
+    assert.equal(dono.status, 200); assert.equal(dono.headers.get('content-type'), 'image/png');
+    assert.equal(dono.headers.get('x-content-type-options'), 'nosniff');
+    const outro = await fetch(base + `/gestao/api/comunicados/suporte/anexo/${id}`, { headers: { cookie: ckV2() } });
+    assert.equal(outro.status, 404, 'usuário de outra conversa abriu o anexo');
+    const anonimo = await fetch(base + `/gestao/api/comunicados/suporte/anexo/${id}`);
+    assert.equal(anonimo.status, 401);
+    const staff = await fetch(base + `/staff/api/suporte-sistemas/anexo/${id}`, { headers: { 'x-test-user': 'adm' } });
+    assert.equal(staff.status, 200);
+  });
+
+  // ======================= ALERTA DE CONVERSA ESQUECIDA =======================
+  await t('alerta: conversa parada há mais de 24 h avisa UMA vez (push + WhatsApp do dono)', async () => {
+    const { db: dbc } = require('./db');
+    dbc.prepare("UPDATE conversas SET atualizado_em = ?, status = 'aberta', ultima_origem = 'usuario', alertado_em = NULL WHERE id = ?")
+      .run(new Date(Date.now() - 30 * 3600e3).toISOString(), convAnexo.id);
+    const antesDono = alertasDono.length, antesStaff = avisosStaff.length;
+    const r1 = await com.suporte.alertarEsquecidas();
+    assert.ok(r1.alertadas >= 1);
+    assert.ok(alertasDono.length > antesDono && avisosStaff.length > antesStaff);
+    assert.ok(/sem resposta/.test(alertasDono[alertasDono.length - 1]));
+    const r2 = await com.suporte.alertarEsquecidas();
+    assert.equal(r2.alertadas, 0, 'avisou de novo a mesma conversa');
+    // Cliente escreve: a contagem recomeça.
+    await req('POST', `/gestao/api/comunicados/suporte/${convAnexo.id}`, { cookie: ckV1(), corpo: { texto: 'algum retorno?' } });
+    assert.equal(com.motor.obter ? true : true, true);
+    assert.equal(dbc.prepare('SELECT alertado_em FROM conversas WHERE id = ?').get(convAnexo.id).alertado_em, null);
+  });
+
+  // ======================= LGPD =======================
+  await t('lgpd: conta excluída no produto some da central (conversas, anexos, leituras) e a entrega vira anônima', async () => {
+    const { db: dbc } = require('./db');
+    const anexosMod = require('./anexos');
+    const antesAnexo = anexosMod.porConversa(convAnexo.id).length;
+    assert.ok(antesAnexo >= 1);
+    // A Vera é excluída do Stay Manager (a linha some, como numa exclusão real).
+    vsm.prepare('DELETE FROM tenant_users WHERE id = ?').run('v1');
+    const r = await com.privacidade.rodar();
+    assert.ok(r.exclusoes.esquecidas >= 1, JSON.stringify(r.exclusoes));
+    assert.equal(dbc.prepare('SELECT COUNT(*) n FROM conversas WHERE produto = ? AND usuario_ref = ?').get('vsm', 'v1').n, 0);
+    assert.equal(anexosMod.porConversa(convAnexo.id).length, 0, 'anexo continuou no banco');
+    assert.equal(dbc.prepare("SELECT COUNT(*) n FROM entregas WHERE produto = 'vsm' AND usuario_ref = 'v1'").get().n, 0, 'sobrou entrega no nome da pessoa excluída');
+    assert.ok(dbc.prepare("SELECT COUNT(*) n FROM entregas WHERE produto = 'vsm' AND usuario_ref = 'v2' AND nome IS NOT NULL").get().n >= 1, 'quem NÃO foi excluído não pode ser anonimizado junto');
+    assert.ok(dbc.prepare("SELECT COUNT(*) n FROM entregas WHERE usuario_ref LIKE 'removido:%'").get().n >= 1, 'a entrega devia continuar, anônima');
+    // O descadastro continua: quem pediu para não receber não pode voltar a receber.
+    motor.descadastrar('quemsaiu@ex.com', 'email', 'tudo');
+    await com.privacidade.rodar();
+    assert.ok(motor.listarDescadastros().some((d) => d.contato === 'quemsaiu@ex.com'));
+  });
+
+  await t('lgpd: produto que não responde NÃO apaga nada (erro de leitura não é exclusão)', async () => {
+    const { db: dbc } = require('./db');
+    const fonteVit = fontes.obter('vitrine'), orig = fonteVit.situacao;
+    dbc.prepare(`INSERT INTO conversas (id, produto, usuario_ref, nome, assunto, status, criado_em, atualizado_em) VALUES ('cx1', 'vitrine', 'u9', 'Zé', 'teste', 'aberta', ?, ?)`).run(agora, agora);
+    fonteVit.situacao = () => { throw new Error('banco fora do ar'); };
+    try {
+      const r = await com.privacidade.rodar();
+      assert.ok((r.exclusoes.produtos_sem_resposta || []).some((x) => x.produto === 'vitrine'));
+      assert.equal(dbc.prepare("SELECT COUNT(*) n FROM conversas WHERE id = 'cx1'").get().n, 1, 'apagou por causa de um erro');
+    } finally { fonteVit.situacao = orig; }
+  });
+
+  await t('lgpd: conversa encerrada há mais de 2 anos é apagada; a aberta fica', async () => {
+    const { db: dbc } = require('./db');
+    const velha = new Date(Date.now() - 800 * 864e5).toISOString();
+    dbc.prepare(`INSERT INTO conversas (id, produto, usuario_ref, nome, assunto, status, criado_em, atualizado_em) VALUES ('cv1', 'vitrine', 'u9', 'Zé', 'antiga', 'resolvida', ?, ?)`).run(velha, velha);
+    dbc.prepare(`INSERT INTO conversas (id, produto, usuario_ref, nome, assunto, status, criado_em, atualizado_em) VALUES ('cv2', 'vitrine', 'u9', 'Zé', 'antiga aberta', 'aberta', ?, ?)`).run(velha, velha);
+    const r = await com.privacidade.aplicarRetencao();
+    assert.ok(r.conversas >= 1);
+    assert.equal(dbc.prepare("SELECT COUNT(*) n FROM conversas WHERE id = 'cv1'").get().n, 0);
+    assert.equal(dbc.prepare("SELECT COUNT(*) n FROM conversas WHERE id = 'cv2'").get().n, 1, 'conversa ABERTA não se apaga por idade');
+  });
+
+  // ======================= WHATSAPP PELO NÚMERO PESSOAL =======================
+  await t('whatsapp pessoal: sem ponte viva o canal fica indisponível', async () => {
+    assert.equal(motor.modoWA(), 'business', 'com modelo configurado o modo é business');
+    const tmpl = process.env.COMUNICADOS_WA_TEMPLATE;
+    delete process.env.COMUNICADOS_WA_TEMPLATE;
+    try {
+      assert.equal(motor.modoWA(), 'pessoal');
+      const d = motor.disponibilidade().whatsapp;
+      assert.equal(d.ok, false); assert.ok(/ponte/.test(d.motivo));
+    } finally { process.env.COMUNICADOS_WA_TEMPLATE = tmpl; }
+  });
+
+  await t('whatsapp pessoal: a fila do servidor não envia; a ponte pega o lote e devolve o resultado', async () => {
+    const tmpl = process.env.COMUNICADOS_WA_TEMPLATE;
+    delete process.env.COMUNICADOS_WA_TEMPLATE;
+    try {
+      const sinal = await req('POST', '/staff/api/comunicados/ponte-wa/sinal', { chave: true, corpo: { numero: '556192113000', conectado: true, teto_dia: 40 } });
+      assert.equal(sinal.status, 200);
+      const d = motor.disponibilidade().whatsapp;
+      assert.equal(d.ok, true); assert.equal(d.modo, 'pessoal');
+      const c = motor.criar(rascunho({ titulo: 'Pelo pessoal', categoria: 'instabilidade', canais: ['whatsapp'], alvos: [{ produto: 'academy', segmento: 'todos' }] }), 'adm');
+      await motor.disparar(c.id, { autor: 'adm' });
+      const antes = saidos.whatsapp.length;
+      await motor.processarLote();
+      assert.equal(saidos.whatsapp.length, antes, 'o servidor não pode enviar no modo pessoal');
+      const lote = (await req('GET', '/staff/api/comunicados/ponte-wa/lote?n=5', { chave: true })).json.itens;
+      assert.ok(lote.length >= 1);
+      assert.ok(lote[0].texto.includes('Pelo pessoal') && lote[0].texto.includes('\n'), 'texto do canal pessoal tem quebra de linha');
+      // Duas passadas da ponte não podem pegar a mesma mensagem.
+      const lote2 = (await req('GET', '/staff/api/comunicados/ponte-wa/lote?n=5', { chave: true })).json.itens;
+      assert.ok(!lote2.some((x) => x.id === lote[0].id), 'a mesma mensagem saiu em dois lotes');
+      await req('POST', '/staff/api/comunicados/ponte-wa/resultado', { chave: true, corpo: { id: lote[0].id, ok: true } });
+      const { db: dbc } = require('./db');
+      assert.equal(dbc.prepare('SELECT status FROM entregas WHERE id = ?').get(lote[0].id).status, 'enviado');
+    } finally { process.env.COMUNICADOS_WA_TEMPLATE = tmpl; }
+  });
+
+  await t('staff: as telas de privacidade e descadastro não caem na rota de :id', async () => {
+    // "/privacidade" e "/descadastros" parecem um id para o roteador: se forem
+    // registradas depois de `/:id`, respondem "não encontrado" em silêncio.
+    const p = await req('GET', '/staff/api/comunicados/privacidade', { quem: 'adm' });
+    assert.equal(p.status, 200, JSON.stringify(p.json));
+    assert.equal(p.json.retencao_dias, 730);
+    assert.ok(p.json.whatsapp && p.json.anexos);
+    assert.equal((await req('GET', '/staff/api/comunicados/descadastros', { quem: 'adm' })).status, 200);
   });
 
   await t('staff: rascunho enviado não se edita; excluir só rascunho', async () => {
