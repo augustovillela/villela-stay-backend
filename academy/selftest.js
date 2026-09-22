@@ -1772,6 +1772,139 @@ async function main() {
     assert.equal((await req('GET', `/academy/api/media/${mid}`, { jar: 'olga' })).st, 404, 'nem para o aluno matriculado');
     assert.equal((await req('GET', `/academy/api/media/${mid}/link`, { jar: 'olga' })).st, 404);
   });
+
+  // ================= EXPERIÊNCIA DE APRENDIZAGEM (fase 1) =================
+  console.log('\n— experiência de aprendizagem: Tutor Villela, quiz, caderno, prompts, extras —');
+  const INT = (extra = {}) => EST(extra);
+  const QUESTAO = (tipo, certa = 1) => ({ tipo, enunciado: `Pergunta de ${tipo} sobre a aula`, alternativas: [0, 1, 2].map(k => ({
+    texto: `alternativa ${k}`, correta: k === certa, explicacao: k === certa ? 'Certa porque segue o método da aula.' : 'Errada porque ignora a revisão humana.' })) });
+  const quizA2 = { modulo_titulo: 'Módulo A', aula_titulo: 'Aula A2', questoes: [QUESTAO('conhecimento'), QUESTAO('aplicacao', 0), QUESTAO('decisao', 2)] };
+
+  await t('importação recusa quiz ambíguo, sem explicação ou com tipo errado (quiz errado ensina errado)', async () => {
+    const duas = { ...quizA2, questoes: [{ ...QUESTAO('conhecimento'), alternativas: QUESTAO('conhecimento').alternativas.map(a => ({ ...a, correta: true })) }] };
+    let r = await req('POST', '/staff/api/academy/interativo/importar', { semUser: true, chave: true, corpo: INT({ quizzes: [duas] }) });
+    assert.equal(r.st, 400); assert.ok(/exatamente UMA/.test(r.json.erro), r.texto);
+    const semExp = { ...quizA2, questoes: [{ ...QUESTAO('conhecimento'), alternativas: QUESTAO('conhecimento').alternativas.map(a => ({ ...a, explicacao: '' })) }] };
+    r = await req('POST', '/staff/api/academy/interativo/importar', { semUser: true, chave: true, corpo: INT({ quizzes: [semExp] }) });
+    assert.equal(r.st, 400); assert.ok(/POR QUÊ/.test(r.json.erro));
+    r = await req('POST', '/staff/api/academy/interativo/importar', { semUser: true, chave: true, corpo: INT({ quizzes: [{ ...quizA2, questoes: [QUESTAO('trivia')] }] }) });
+    assert.equal(r.st, 400);
+    assert.equal((await req('POST', '/staff/api/academy/interativo/importar', { semUser: true, corpo: INT({ quizzes: [quizA2] }) })).st, 401, 'sem chave');
+    assert.equal((await req('POST', '/staff/api/academy/interativo/importar', { user: 'op', corpo: INT({ quizzes: [quizA2] }) })).st, 403);
+  });
+
+  await t('importa trechos, quiz, caderno, prompts e extras — tudo nasce em rascunho', async () => {
+    const r = await req('POST', '/staff/api/academy/interativo/importar', { semUser: true, chave: true, corpo: INT({
+      trechos: { itens: [
+        { fonte: 'transcricao', modulo_titulo: 'Módulo A', aula_titulo: 'Aula A1', rotulo: 'Aula A1 · 0:30', ini_seg: 30, texto: 'Na degustação falamos da triagem de publicações com revisão humana obrigatória.' },
+        { fonte: 'transcricao', modulo_titulo: 'Módulo A', aula_titulo: 'Aula A2', rotulo: 'Aula A2 · 2:10', ini_seg: 130, texto: 'O protocolo de conferência exige abrir o inteiro teor do acórdão antes de citar qualquer precedente.' },
+        { fonte: 'livro', rotulo: 'Livro, cap. 7', texto: 'Capítulo sobre sigilo profissional e anonimização de dados de clientes antes de qualquer envio.' },
+      ] },
+      quizzes: [quizA2, { modulo_titulo: 'Módulo A', aula_titulo: 'Aula A1', questoes: [QUESTAO('conhecimento')] }],
+      cadernos: [{ modulo_titulo: 'Módulo A', aula_titulo: 'Aula A2', aprendi: { resumo: 'Resumo da A2', pontos: ['p1', 'p2'] },
+        pratiquei: { checklist: ['abrir o inteiro teor', 'anotar a fonte'], exercicio: 'Confira um precedente.', prompt_modelo: 'Atue como revisor…' },
+        apliquei: { tarefas: ['t1', 't2', 't3'], desafio: 'Monte o seu protocolo.' }, resultado: { esperado: 'Um protocolo de uma página.' } }],
+      prompts: { itens: [{ categoria: 'Pesquisa', titulo: 'Conferir precedente', objetivo: 'Checar', prompt: 'Você é um revisor jurídico. Confira o precedente…', exemplo: 'ex', personalizar: 'troque a área' }] },
+      extras: [{ titulo: 'VERIDICA Cases', descricao: 'Casos jurídicos interativos.', status: 'em_breve', url: 'https://nao-deve-vazar.test' }],
+    }) });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual(r.json.importado, { trechos: 3, quizzes: 2, cadernos: 1, prompts: 1, extras: 1 });
+    assert.ok(r.json.resumo.quizzes.every(q => q.status === 'rascunho'), 'importar nunca publica');
+    assert.equal(r.json.resumo.extras[0].status, 'em_breve');
+  });
+
+  await t('rascunho: o aluno não vê; o dono do curso vê para revisar', async () => {
+    const e = await estrutura();
+    const a2 = e.estrutura[0].aulas.find(a => a.titulo === 'Aula A2').id;
+    assert.equal((await req('GET', `/academy/api/aluno/aulas/${a2}/quiz`, { jar: 'olga' })).st, 404);
+    const dono = await req('GET', `/academy/api/aluno/aulas/${a2}/quiz`, { jar: 'maria' });
+    assert.equal(dono.st, 200, dono.texto);
+    assert.equal(dono.json.status, 'rascunho');
+    const res = await req('GET', `/academy/api/aluno/cursos/${impId}/interativo`, { jar: 'olga' });
+    assert.equal(res.st, 200, res.texto);
+    assert.deepEqual(res.json.quiz, {}, 'aluno não enxerga quiz em rascunho');
+    assert.equal(res.json.extras[0].titulo, 'VERIDICA Cases');
+    assert.equal(res.json.extras[0].url, '', 'extra "em breve" não expõe link');
+    assert.equal(res.json.tutor.nome, 'Tutor Villela');
+  });
+
+  await t('publicado: quiz vai SEM gabarito, correção no servidor explica cada alternativa', async () => {
+    const pub = await req('POST', '/staff/api/academy/interativo/status', { semUser: true, chave: true, corpo: INT({ quizzes: 'publicado', cadernos: 'publicado', prompts: 'publicado' }) });
+    assert.equal(pub.st, 200, pub.texto);
+    const e = await estrutura();
+    const a2 = e.estrutura[0].aulas.find(a => a.titulo === 'Aula A2').id;
+    const q = await req('GET', `/academy/api/aluno/aulas/${a2}/quiz`, { jar: 'olga' });
+    assert.equal(q.st, 200, q.texto);
+    assert.equal(q.json.questoes.length, 3);
+    assert.ok(!/correta|explicacao|Certa porque/.test(q.texto), 'o gabarito não vai para o navegador');
+    const parcial = await req('POST', `/academy/api/aluno/aulas/${a2}/quiz`, { jar: 'olga', corpo: { respostas: { q1: 1 } } });
+    assert.equal(parcial.st, 400, 'precisa responder tudo');
+    const r = await req('POST', `/academy/api/aluno/aulas/${a2}/quiz`, { jar: 'olga', corpo: { respostas: { q1: 1, q2: 1, q3: 2 } } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.acertos, 2); assert.equal(r.json.total, 3); assert.equal(r.json.pct, 67);
+    assert.equal(r.json.correcao[1].correta, 0, 'mostra a certa depois de responder');
+    assert.ok(r.json.correcao[1].explicacoes.every(x => x.length > 10), 'explicação de CADA alternativa');
+    const res = await req('GET', `/academy/api/aluno/cursos/${impId}/interativo`, { jar: 'olga' });
+    assert.equal(res.json.quiz[a2].melhor_pct, 66, 'guarda o melhor resultado');
+    // quem não comprou: só o quiz da aula de degustação
+    assert.equal((await req('GET', `/academy/api/aluno/aulas/${a2}/quiz`, { jar: 'caio' })).st, 404);
+    const a1 = e.estrutura[0].aulas.find(a => a.titulo === 'Aula A1').id;
+    assert.equal((await req('GET', `/academy/api/aluno/aulas/${a1}/quiz`, { jar: 'caio' })).st, 200, 'degustação libera o quiz');
+  });
+
+  await t('caderno: o aluno escreve, o campo é validado e o caderno imprime com as respostas', async () => {
+    const e = await estrutura();
+    const a2 = e.estrutura[0].aulas.find(a => a.titulo === 'Aula A2').id;
+    const c = await req('GET', `/academy/api/aluno/aulas/${a2}/caderno`, { jar: 'olga' });
+    assert.equal(c.st, 200, c.texto);
+    assert.equal(c.json.caderno.apliquei.tarefas.length, 3);
+    assert.equal((await req('PUT', `/academy/api/aluno/aulas/${a2}/caderno`, { jar: 'olga', corpo: { campo: 'tarefa_2', texto: 'Minha resposta <b>forte</b>' } })).st, 200);
+    assert.equal((await req('PUT', `/academy/api/aluno/aulas/${a2}/caderno`, { jar: 'olga', corpo: { campo: 'check_1', texto: '1' } })).st, 200);
+    assert.equal((await req('PUT', `/academy/api/aluno/aulas/${a2}/caderno`, { jar: 'olga', corpo: { campo: 'inventado', texto: 'x' } })).st, 400);
+    assert.equal((await req('PUT', `/academy/api/aluno/aulas/${a2}/caderno`, { jar: 'caio', corpo: { campo: 'tarefa_1', texto: 'x' } })).st, 404, 'sem acesso não escreve');
+    const de_novo = await req('GET', `/academy/api/aluno/aulas/${a2}/caderno`, { jar: 'olga' });
+    assert.equal(de_novo.json.respostas.tarefa_2, 'Minha resposta <b>forte</b>');
+    const pag = await req('GET', `/academy/aluno/caderno/${impId}`, { jar: 'olga' });
+    assert.equal(pag.st, 200, pag.texto);
+    assert.ok(pag.texto.includes('Minha resposta &lt;b&gt;forte&lt;/b&gt;'), 'resposta escapada no caderno impresso');
+    assert.ok(pag.texto.includes('☑ abrir o inteiro teor'), 'checklist marcado aparece marcado');
+  });
+
+  await t('prompts: só para quem tem acesso', async () => {
+    const r = await req('GET', `/academy/api/aluno/cursos/${impId}/prompts`, { jar: 'olga' });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.prompts[0].titulo, 'Conferir precedente');
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/prompts`, { jar: 'caio' })).st, 403);
+  });
+
+  await t('Tutor Villela: responde com os trechos do curso, cita a fonte e respeita o acesso', async () => {
+    let ultimo = '';
+    const iaM = require('./ia');
+    iaM.__mockParaTeste(async ({ agente, prompt }) => {
+      ultimo = prompt;
+      if (agente !== 'tutor') return { json: {} };
+      return { json: { resposta: 'Confira o inteiro teor antes de citar [1].', fontes: [1, 99], nao_encontrado: false, sugestoes: ['E se o acórdão não abrir?'] } };
+    });
+    try {
+      const e = await estrutura();
+      const a1 = e.estrutura[0].aulas.find(a => a.titulo === 'Aula A1').id;
+      const r = await req('POST', '/academy/api/aluno/tutor/perguntar', { jar: 'olga', corpo: { product_id: impId, pergunta: 'Preciso conferir o inteiro teor do acórdão?' } });
+      assert.equal(r.st, 200, r.texto);
+      assert.ok(ultimo.includes('inteiro teor do acórdão'), 'o trecho certo foi para o contexto');
+      assert.ok(ultimo.includes('TUTOR VILLELA'));
+      assert.equal(r.json.fontes.length, 1, 'fonte inexistente (99) é descartada');
+      assert.equal(r.json.fontes[0].ini_seg, 130, 'a fonte leva o ponto do vídeo');
+      assert.ok(!('texto' in r.json.fontes[0]), 'o texto do trecho não vai na resposta');
+      const conv = await req('GET', `/academy/api/aluno/tutor/${impId}/conversa`, { jar: 'olga' });
+      assert.equal(conv.json.conversa.length, 1, 'a conversa fica guardada');
+      // quem não comprou: sem aula de degustação, não conversa; na degustação, só com os trechos dela
+      assert.equal((await req('POST', '/academy/api/aluno/tutor/perguntar', { jar: 'caio', corpo: { product_id: impId, pergunta: 'sigilo profissional' } })).st, 403);
+      const deg = await req('POST', '/academy/api/aluno/tutor/perguntar', { jar: 'caio', corpo: { product_id: impId, lesson_id: a1, pergunta: 'sigilo profissional e acórdão' } });
+      assert.equal(deg.st, 200, deg.texto);
+      assert.ok(!ultimo.includes('anonimização') && !ultimo.includes('inteiro teor do acórdão'), 'livro e aula paga ficam fora do contexto de quem não comprou');
+      assert.ok(ultimo.includes('triagem de publicações'), 'mas a aula de degustação entra');
+    } finally { iaM.__mockParaTeste(null); }
+  });
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

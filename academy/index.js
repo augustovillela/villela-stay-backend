@@ -21,6 +21,7 @@ const { registrarRotasAssinaturas, registrarRotasAssinaturasStaff } = require('.
 const { registrarRotasIA, registrarRotasIAStaff } = require('./rotas-ia');
 const { registrarRotasGovernanca, registrarRotasGovernancaStaff } = require('./rotas-governanca');
 const { registrarRotasStaff } = require('./rotas-staff');
+const { registrarRotasInterativo, registrarRotasInterativoStaff } = require('./rotas-interativo');
 const { registrarPaginas } = require('./paginas');
 const webhookMP = require('../nucleo/webhook-mp');
 
@@ -93,6 +94,8 @@ function montar(app, injected = {}) {
   registrarRotasIAStaff(app, { requireAuth, requireAdmin });
   registrarRotasGovernanca(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarRotasGovernancaStaff(app, { requireAuth, requireAdmin });
+  registrarRotasInterativo(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
+  registrarRotasInterativoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
   registrarPaginas(app, { notificar });
 
   // webhook do Mercado Pago (200 rápido; processamento assíncrono e idempotente)

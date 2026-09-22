@@ -118,6 +118,96 @@ const MIGRACOES = [
           );
           CREATE INDEX IF NOT EXISTS idx_abfaixa_media ON audiobook_faixas(media_id);`,
   },
+
+  { // EXPERIÊNCIA DE APRENDIZAGEM (fase 1): Tutor Villela com base de conhecimento
+    // real (transcrição das aulas, livro, tarefas), quiz por aula com feedback,
+    // caderno de trabalho (Aprendi → Pratiquei → Apliquei → Resultado) com as
+    // respostas do aluno, biblioteca de prompts e extras "em breve" do curso.
+    // Conteúdo entra pela chave de publicação (interativo.js); nada é gerado ao vivo.
+    nome: 'interativo-fase1-2026-09-22',
+    sql: `CREATE TABLE IF NOT EXISTS tutor_trechos (
+            id         TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL REFERENCES products(id),
+            lesson_id  TEXT DEFAULT '',
+            fonte      TEXT NOT NULL,            -- transcricao|livro|artigo|tarefas|faq
+            rotulo     TEXT DEFAULT '',          -- o que o aluno lê como fonte ("Aula 3 · 4:12")
+            ini_seg    INTEGER DEFAULT -1,       -- ponto do vídeo (transcrição), -1 = não se aplica
+            ordem      INTEGER DEFAULT 0,
+            texto      TEXT NOT NULL,
+            criado_em  TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_trecho_prod ON tutor_trechos(product_id, fonte);
+          CREATE TABLE IF NOT EXISTS tutor_conversas (
+            id         TEXT PRIMARY KEY,
+            user_id    TEXT NOT NULL REFERENCES users(id),
+            product_id TEXT NOT NULL,
+            lesson_id  TEXT DEFAULT '',
+            pergunta   TEXT NOT NULL,
+            resposta   TEXT NOT NULL,
+            fontes     TEXT DEFAULT '[]',
+            criado_em  TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_tconv_user ON tutor_conversas(user_id, product_id, criado_em);
+          CREATE TABLE IF NOT EXISTS aula_quiz (
+            lesson_id     TEXT PRIMARY KEY REFERENCES lessons(id) ON DELETE CASCADE,
+            product_id    TEXT NOT NULL,
+            questoes      TEXT NOT NULL,         -- JSON [{id,tipo,enunciado,alternativas:[{texto,correta,explicacao}]}]
+            status        TEXT DEFAULT 'rascunho', -- rascunho (só o produtor vê) | publicado
+            atualizado_em TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS quiz_tentativas (
+            id         TEXT PRIMARY KEY,
+            user_id    TEXT NOT NULL REFERENCES users(id),
+            lesson_id  TEXT NOT NULL,
+            product_id TEXT NOT NULL,
+            respostas  TEXT NOT NULL,
+            acertos    INTEGER NOT NULL,
+            total      INTEGER NOT NULL,
+            criado_em  TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_qtent_user ON quiz_tentativas(user_id, product_id);
+          CREATE TABLE IF NOT EXISTS aula_caderno (
+            lesson_id     TEXT PRIMARY KEY REFERENCES lessons(id) ON DELETE CASCADE,
+            product_id    TEXT NOT NULL,
+            dados         TEXT NOT NULL,         -- JSON {aprendi, pratiquei, apliquei, resultado}
+            status        TEXT DEFAULT 'rascunho',
+            atualizado_em TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS caderno_respostas (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            lesson_id     TEXT NOT NULL,
+            product_id    TEXT NOT NULL,
+            campo         TEXT NOT NULL,
+            texto         TEXT DEFAULT '',
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, lesson_id, campo)
+          );
+          CREATE TABLE IF NOT EXISTS curso_prompts (
+            id           TEXT PRIMARY KEY,
+            product_id   TEXT NOT NULL REFERENCES products(id),
+            ordem        INTEGER DEFAULT 0,
+            categoria    TEXT DEFAULT '',
+            titulo       TEXT NOT NULL,
+            objetivo     TEXT DEFAULT '',
+            prompt       TEXT NOT NULL,
+            exemplo      TEXT DEFAULT '',
+            personalizar TEXT DEFAULT '',
+            aula_ref     TEXT DEFAULT '',
+            status       TEXT DEFAULT 'rascunho',
+            criado_em    TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_cprompt_prod ON curso_prompts(product_id, ordem);
+          CREATE TABLE IF NOT EXISTS curso_extras (
+            id         TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL REFERENCES products(id),
+            ordem      INTEGER DEFAULT 0,
+            titulo     TEXT NOT NULL,
+            descricao  TEXT DEFAULT '',
+            status     TEXT DEFAULT 'em_breve',  -- em_breve | disponivel
+            url        TEXT DEFAULT '',
+            criado_em  TEXT NOT NULL
+          );`,
+  },
 ];
 
 for (const m of MIGRACOES) {

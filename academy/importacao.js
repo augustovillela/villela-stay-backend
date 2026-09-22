@@ -244,5 +244,5 @@ async function confirmarVideo(mediaId, dados = {}) {
 
 module.exports = {
   aplicarEstrutura, anexarMateriais, importarCurso, estruturaDoCurso, iniciarVideo, confirmarVideo,
-  iniciarAudio, confirmarAudio, editarCapitulo,
+  iniciarAudio, confirmarAudio, editarCapitulo, produtorDono, aulaPorTitulo,
 };

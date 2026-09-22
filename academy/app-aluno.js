@@ -69,6 +69,7 @@
 
     // ================= BIBLIOTECA =================
     function biblioteca() {
+      limparTutor();
       document.body.classList.remove('aluno-amplo');
       api('GET', '/aluno/biblioteca').then(function (d) {
         var cursos = d.cursos || [];
@@ -158,9 +159,11 @@
 
     // ================= ESTÚDIO =================
     function abrirCurso(pid, aulaId) {
+      if (!C || C.pid !== pid) limparTutor();
       api('GET', '/aluno/cursos/' + pid).then(function (d) {
         C = estadoDoCurso(pid, d);
         var aulas = C.aulas;
+        carregarInterativo(pid);
         document.body.classList.add('aluno-amplo');
         pintarEstudio();
         var alvo = -1;
@@ -206,7 +209,7 @@
         '<span>' + ico('texto', 15) + ' ' + C.d.estrutura.length + ' aulas</span>' +
         (C.aulas.length > C.d.estrutura.length ? '<span>' + ico('play', 15) + ' ' + C.aulas.length + ' conteúdos</span>' : '') +
         (totalSeg ? '<span>' + ico('relogio', 15) + ' ' + dur(totalSeg) + ' de conteúdo</span>' : '') +
-        '</div>' + botaoAudiobook(d.audiobook) + '</div>' +
+        '</div>' + botaoAudiobook(d.audiobook) + '<div id="al-extras"></div></div>' +
         (d.matriculado ? '' : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas. ' +
           '<a href="/academy/cursos/' + esc(p.slug || '') + '">Ver a página do curso →</a></div>') +
         '<div class="est"><div class="est-palco">' +
@@ -225,6 +228,8 @@
       el('al-busca').oninput = function () { pintarGrade(this.value); };
       pintarGrade('');
       ligarTeclado();
+      pintarExtras();
+      montarTutor();
     }
 
     function pintarGrade(filtro) {
@@ -245,7 +250,12 @@
               '<span class="tit">' + esc(a.titulo) +
               (a.gratuita && !C.d.matriculado ? '<span class="marca">degustação</span>' : '') +
               ((a.materiais || []).length ? ' <span class="al-fino">· ' + a.materiais.length + (a.materiais.length > 1 ? ' materiais' : ' material') + '</span>' : '') +
-              '</span>' + (a.duracao_seg ? '<span class="dur">' + dur(a.duracao_seg) + '</span>' : '') + '</button>';
+              '</span>' + (a.duracao_seg ? '<span class="dur">' + dur(a.duracao_seg) + '</span>' : '') + '</button>' +
+              (a.liberada && (a.materiais || []).length ? '<div class="aula-mats">' + a.materiais.map(function (m, km) {
+                var t = icoMaterial(m);
+                return '<button class="aula-mat" data-i="' + k + '" data-m="' + km + '" title="' + esc(m.nome) + '">' + ico(t[1], 14) +
+                  '<span>' + esc(rotuloCurto(m.nome)) + '</span><em>' + t[2] + '</em></button>';
+              }).join('') + '</div>' : '');
           }).join('') + '</div></div>';
       }).join('');
       el('al-grade').innerHTML = h || '<p class="al-fino" style="padding:14px">Nenhuma aula com esse termo.</p>';
@@ -254,6 +264,12 @@
       });
       Array.prototype.forEach.call(el('al-grade').querySelectorAll('.aula[data-i]'), function (b) {
         b.onclick = function () { irParaAula(Number(b.getAttribute('data-i')), false); };
+      });
+      Array.prototype.forEach.call(el('al-grade').querySelectorAll('.aula-mat'), function (b) {
+        b.onclick = function () {
+          var x = C.aulas[Number(b.getAttribute('data-i'))];
+          abrirMaterial(x, x.a.materiais[Number(b.getAttribute('data-m'))]);
+        };
       });
     }
 
@@ -382,9 +398,13 @@
 
     // ---- abas: visão geral · material complementar · tutor ----
     function pintarAbas(a) {
-      var mats = a.materiais || [];
+      var mats = materiaisDaAula(a);
       var abas = [['geral', 'Visão geral', 0], ['mat', 'Material complementar', mats.length]];
-      if (C.d.matriculado) abas.push(['ia', 'Tutor IA', 0]);
+      var I = C.int || {};
+      if (aulaComExtra(a, 'quiz')) abas.push(['quiz', 'Quiz', 0]);
+      if (aulaComExtra(a, 'caderno')) abas.push(['caderno', 'Caderno de trabalho', 0]);
+      if (I.prompts) abas.push(['prompts', 'Prompts do curso', I.prompts]);
+      abas.push(['ia', 'Tutor Villela', 0]);
       el('al-abas').innerHTML = abas.map(function (x, k) {
         return '<button data-aba="' + x[0] + '"' + (k === 0 ? ' class="on"' : '') + '>' + esc(x[1]) +
           (x[2] ? '<span class="cont">' + x[2] + '</span>' : '') + '</button>';
@@ -425,10 +445,14 @@
           '<p class="al-dica" style="margin-top:18px">Atalhos: <kbd>←</kbd> <kbd>→</kbd> trocam de aula · <kbd>C</kbd> conclui</p>';
         return;
       }
+      if (aba === 'quiz') return painelQuiz(alvo, a);
+      if (aba === 'caderno') return painelCaderno(alvo, a);
+      if (aba === 'prompts') return painelPrompts(alvo);
+      if (aba === 'ia') { alvo.innerHTML = ''; abrirTutor(); return; }
       if (aba === 'mat') {
-        var mats = a.materiais || [], todos = materiaisDoCurso();
+        var mats = materiaisDaAula(a), todos = materiaisDoCurso();
         var h = mats.length
-          ? '<p class="al-sub" style="margin-bottom:14px">' + mats.length + ' arquivo' + (mats.length > 1 ? 's' : '') + ' desta aula, para baixar e usar enquanto estuda.</p>' +
+          ? '<p class="al-sub" style="margin-bottom:14px">' + mats.length + ' arquivo' + (mats.length > 1 ? 's' : '') + ' desta aula — artigo, slides e o que mais acompanha o vídeo. Abra aqui ou baixe para estudar.</p>' +
             '<div class="mats">' + mats.map(cartaoMaterial).join('') + '</div>'
           : '<div class="mats-vazio">' + ico('doc', 26) + '<p style="margin:8px 0 0">Esta aula não tem material próprio.</p></div>';
         // A biblioteca do curso resolve a pergunta que toda plataforma deixa sem resposta:
@@ -451,20 +475,365 @@
         };
         return;
       }
-      alvo.innerHTML = '<p class="al-sub" style="margin-bottom:12px">Pergunte sobre o conteúdo deste curso. O tutor responde com base nas aulas — quando não encontra, ele diz.</p>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="al-ia" placeholder="Ex.: como aplico isso no meu caso?" style="flex:1;min-width:240px;margin:0">' +
-        '<button class="al-bt" id="al-ia-bt">Perguntar</button></div><div id="al-ia-out" style="margin-top:14px"></div>';
-      el('al-ia-bt').onclick = function () {
-        var pergunta = el('al-ia').value;
-        if (!pergunta) return;
-        el('al-ia-out').innerHTML = '<p class="al-sub">⏳ pensando…</p>';
-        api('POST', '/ia/aluno/perguntar', { product_id: C.pid, pergunta: pergunta }).then(function (r) {
-          el('al-ia-out').innerHTML = '<div class="al-caixa" style="padding:16px;line-height:1.6">' + esc(r.resposta || '') +
-            (r.aula_referencia ? '<p class="al-fino" style="margin:10px 0 0">📚 ' + esc(r.aula_referencia) + '</p>' : '') +
-            (r.nao_encontrado ? '<p class="al-fino" style="margin:10px 0 0">Não achei isso no conteúdo — vale perguntar ao produtor.</p>' : '') + '</div>';
-        }).catch(function (e) { el('al-ia-out').innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+    }
+
+    // ================= EXPERIÊNCIA DE APRENDIZAGEM =================
+    // Material da AULA = o de todos os itens do mesmo módulo. Nos cursos da casa o
+    // vídeo (N.1) não tem arquivo próprio: artigo, slides e .pptx ficam no item N.2 —
+    // e o aluno, parado no vídeo, via a aba vazia e achava que não havia slides.
+    function materiaisDaAula(a) {
+      var x = C.aulas[indiceDe(a.id)], vistos = {}, out = [];
+      var irmas = x ? (x.mod.aulas || []) : [a];
+      irmas.forEach(function (b) {
+        if (!b.liberada) return;
+        (b.materiais || []).forEach(function (m) {
+          if (vistos[m.media_id]) return;
+          vistos[m.media_id] = 1; out.push(m);
+        });
+      });
+      return out;
+    }
+    function rotuloCurto(nome) { // "Slides da aula 3 — Prompts… (PDF)" → "Slides"
+      var n = String(nome || '');
+      if (/^apresenta[cç][aã]o edit/i.test(n)) return 'Apresentação editável';
+      var m = n.match(/^(Artigo|Slides|Resumo|Checklist|Caderno|Mapa|Guia|Livro|Planilha|Modelo)/i);
+      var extra = /revisad/i.test(n) ? ' (revisado)' : '';
+      return (m ? m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() : n.replace(/\s*\([^)]*\)\s*$/, '').slice(0, 40)) + extra;
+    }
+    // abre um material no palco (PDF inline); o resto baixa
+    function abrirMaterial(x, m) {
+      if (!x || !m) return;
+      var u = '/academy/api/media/' + m.media_id, t = icoMaterial(m);
+      if (t[0] !== 'pdf') { window.open(u, '_blank', 'noopener'); return; }
+      if (C.i !== indiceDe(x.a.id)) irParaAula(indiceDe(x.a.id), false);
+      el('al-quadro').innerHTML = '<iframe class="doc" src="' + u + '#view=FitH" title="' + esc(m.nome) + '"></iframe>';
+      el('al-legenda').innerHTML = '<span>' + ico('doc', 14) + ' ' + esc(m.nome) + '</span>' +
+        '<a class="al-bt peq esc" href="' + u + '" target="_blank" rel="noopener">' + ico('baixar', 15) + ' Abrir em tela cheia</a>';
+      var topo = document.querySelector('.est-palco');
+      if (topo && topo.scrollIntoView) topo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    // quiz/caderno são por AULA (módulo): vale o que estiver em qualquer item dele
+    function aulaComExtra(a, tipo) {
+      var I = C.int || {}, mapa = I[tipo] || {}, x = C.aulas[indiceDe(a.id)];
+      if (mapa[a.id]) return a.id;
+      var irmas = x ? (x.mod.aulas || []) : [];
+      for (var k = 0; k < irmas.length; k++) if (mapa[irmas[k].id]) return irmas[k].id;
+      return '';
+    }
+    function carregarInterativo(pid) {
+      api('GET', '/aluno/cursos/' + pid + '/interativo').then(function (r) {
+        if (!C || C.pid !== pid) return;
+        C.int = r;
+        pintarExtras();
+        if (C.i >= 0) pintarAbas(C.aulas[C.i].a);
+        montarTutor();
+      }).catch(function () { /* sem a camada interativa o curso segue igual */ });
+    }
+    function selo(st) { return st === 'rascunho' ? ' <span class="marca-rasc">rascunho — só você vê</span>' : ''; }
+
+    // ---- extras do curso: "em breve" / disponível (ex.: VERIDICA Cases) ----
+    function pintarExtras() {
+      var alvo = el('al-extras'); if (!alvo) return;
+      var I = C.int || {}, ex = I.extras || [], h = '';
+      if (I.prompts || aulaAlgumaCom('caderno')) {
+        h += '<div class="int-atalhos">' +
+          (I.prompts ? '<button class="al-bt peq fan" id="al-prompts-bt">' + ico('texto', 15) + ' Biblioteca de prompts · ' + I.prompts + '</button>' : '') +
+          (aulaAlgumaCom('caderno') ? '<a class="al-bt peq fan" href="/academy/aluno/caderno/' + esc(C.pid) + '" target="_blank" rel="noopener">' + ico('doc', 15) + ' Meu caderno de trabalho</a>' : '') +
+          '</div>';
+      }
+      if (ex.length) {
+        h += '<div class="int-extras">' + ex.map(function (x) {
+          var breve = x.status !== 'disponivel';
+          var corpo = '<span class="ex-selo">' + (breve ? 'Em breve' : 'Disponível') + '</span><b>' + esc(x.titulo) + '</b>' +
+            (x.descricao ? '<span>' + esc(x.descricao) + '</span>' : '');
+          return breve || !x.url ? '<div class="ex' + (breve ? ' breve' : '') + '">' + corpo + '</div>'
+            : '<a class="ex" href="' + esc(x.url) + '" target="_blank" rel="noopener">' + corpo + '</a>';
+        }).join('') + '</div>';
+      }
+      alvo.innerHTML = h;
+      if (el('al-prompts-bt')) el('al-prompts-bt').onclick = function () {
+        var b = el('al-abas') && el('al-abas').querySelector('[data-aba="prompts"]');
+        if (b) { b.click(); var y = el('al-abas'); if (y.scrollIntoView) y.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       };
-      el('al-ia').onkeydown = function (e) { if (e.key === 'Enter') el('al-ia-bt').click(); };
+    }
+    function aulaAlgumaCom(tipo) { var m = (C.int || {})[tipo] || {}; for (var k in m) if (m.hasOwnProperty(k)) return true; return false; }
+
+    // ---- QUIZ: responde tudo, o servidor corrige e explica cada alternativa ----
+    var TIPO_Q = { conhecimento: 'Conhecimento', aplicacao: 'Aplicação', decisao: 'Decisão' };
+    function painelQuiz(alvo, a) {
+      var lid = aulaComExtra(a, 'quiz');
+      alvo.innerHTML = '<p class="al-sub">Carregando o quiz…</p>';
+      api('GET', '/aluno/aulas/' + lid + '/quiz').then(function (q) {
+        var esc2 = {};
+        var h = '<div class="qz-cab"><div><h3 style="font-size:1.15rem">Quiz da aula' + selo(q.status) + '</h3>' +
+          '<p class="al-sub">' + q.questoes.length + ' questões: entender, aplicar e decidir. Depois de responder você vê o porquê de cada alternativa.</p></div>' +
+          (q.tentativas && q.tentativas.length ? '<span class="qz-melhor">Última: ' + q.tentativas[0].acertos + '/' + q.tentativas[0].total + '</span>' : '') + '</div>' +
+          q.questoes.map(function (x, i) {
+            return '<fieldset class="qz" data-q="' + esc(x.id) + '"><legend><span class="qz-tipo ' + esc(x.tipo) + '">' + (TIPO_Q[x.tipo] || x.tipo) + '</span> ' +
+              (i + 1) + '. ' + esc(x.enunciado) + '</legend>' +
+              x.alternativas.map(function (t, k) {
+                return '<label class="qz-alt"><input type="radio" name="qz-' + esc(x.id) + '" value="' + k + '"><span>' + esc(t) + '</span></label>' +
+                  '<div class="qz-exp" data-exp="' + esc(x.id) + '-' + k + '"></div>';
+              }).join('') + '</fieldset>';
+          }).join('') +
+          '<div class="qz-rodape"><button class="al-bt" id="qz-enviar">Corrigir</button><span id="qz-res" class="qz-res"></span></div>';
+        alvo.innerHTML = h;
+        el('qz-enviar').onclick = function () {
+          var resp = {}, falta = 0;
+          q.questoes.forEach(function (x) {
+            var m = alvo.querySelector('input[name="qz-' + x.id + '"]:checked');
+            if (m) resp[x.id] = Number(m.value); else falta++;
+          });
+          if (falta) { el('qz-res').innerHTML = '<span class="erro">Falta' + (falta > 1 ? 'm ' : ' ') + falta + ' questão' + (falta > 1 ? 'ões' : '') + '.</span>'; return; }
+          this.disabled = true;
+          api('POST', '/aluno/aulas/' + lid + '/quiz', { respostas: resp }).then(function (r) {
+            r.correcao.forEach(function (c) {
+              var fs = alvo.querySelector('fieldset[data-q="' + c.id + '"]');
+              Array.prototype.forEach.call(fs.querySelectorAll('.qz-alt'), function (lb, k) {
+                lb.classList.toggle('certa', k === c.correta);
+                lb.classList.toggle('errada', k === c.escolhida && !c.acertou);
+                lb.querySelector('input').disabled = true;
+              });
+              c.explicacoes.forEach(function (ex, k) {
+                var d = fs.querySelector('[data-exp="' + c.id + '-' + k + '"]');
+                if (d && (k === c.correta || k === c.escolhida)) d.innerHTML = (k === c.correta ? '✔ ' : '✖ ') + esc(ex);
+              });
+              fs.classList.add(c.acertou ? 'ok' : 'nok');
+            });
+            var msg = r.pct === 100 ? 'Gabaritou! ' : (r.pct >= 70 ? 'Muito bem. ' : 'Vale rever a aula e tentar de novo. ');
+            el('qz-res').innerHTML = '<b>' + r.acertos + ' de ' + r.total + '</b> (' + r.pct + '%) · ' + msg +
+              '<button class="al-bt peq fan" id="qz-refazer">Refazer</button>';
+            el('qz-refazer').onclick = function () { painelQuiz(alvo, a); };
+            if (C.int && C.int.quiz && C.int.quiz[lid]) C.int.quiz[lid].melhor_pct = Math.max(C.int.quiz[lid].melhor_pct || 0, r.pct);
+          }).catch(function (e) { el('qz-enviar').disabled = false; el('qz-res').innerHTML = '<span class="erro">' + esc(e.message) + '</span>'; });
+        };
+      }).catch(function (e) { alvo.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+    }
+
+    // ---- CADERNO: Aprendi → Pratiquei → Apliquei → Resultado, salvo enquanto escreve ----
+    function painelCaderno(alvo, a) {
+      var lid = aulaComExtra(a, 'caderno');
+      alvo.innerHTML = '<p class="al-sub">Carregando o caderno…</p>';
+      api('GET', '/aluno/aulas/' + lid + '/caderno').then(function (d) {
+        var c = d.caderno || {}, r = d.respostas || {};
+        var ap = c.aprendi || {}, pr = c.pratiquei || {}, ae = c.apliquei || {}, rs = c.resultado || {};
+        var campo = function (id, ph) {
+          return '<textarea class="cd-campo" data-campo="' + id + '" rows="3" placeholder="' + esc(ph || 'Escreva aqui…') + '">' + esc(r[id] || '') + '</textarea>';
+        };
+        var h = '<div class="qz-cab"><div><h3 style="font-size:1.15rem">Caderno de trabalho' + selo(d.status) + '</h3>' +
+          '<p class="al-sub">O que você aprendeu, praticou e aplicou nesta aula. Fica salvo enquanto você escreve.</p></div>' +
+          '<a class="al-bt peq fan" href="/academy/aluno/caderno/' + esc(C.pid) + '" target="_blank" rel="noopener">' + ico('baixar', 15) + ' Caderno completo (PDF)</a></div>' +
+          '<ol class="cd-etapas">' +
+          '<li class="cd-e"><h4>1 · Aprendi</h4>' + (ap.resumo ? '<p>' + esc(ap.resumo) + '</p>' : '') +
+          ((ap.pontos || []).length ? '<ul>' + ap.pontos.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') + '</li>' +
+          '<li class="cd-e"><h4>2 · Pratiquei</h4>' +
+          ((pr.checklist || []).length ? '<div class="cd-chk">' + pr.checklist.map(function (x, i) {
+            var id = 'check_' + (i + 1);
+            return '<label><input type="checkbox" data-campo="' + id + '"' + (r[id] === '1' ? ' checked' : '') + '> ' + esc(x) + '</label>';
+          }).join('') + '</div>' : '') +
+          (pr.exercicio ? '<p><b>Exercício.</b> ' + esc(pr.exercicio) + '</p>' + campo('exercicio') : '') +
+          (pr.prompt_modelo ? '<div class="cd-prompt"><div class="cd-prompt-cab"><b>Prompt modelo</b><button class="al-bt peq fan" data-copiar="1">Copiar</button></div><pre>' + esc(pr.prompt_modelo) + '</pre></div>' : '') + '</li>' +
+          '<li class="cd-e"><h4>3 · Apliquei</h4>' + (ae.tarefas || []).map(function (t, i) {
+            return '<p><b>Tarefa ' + (i + 1) + '.</b> ' + esc(t) + '</p>' + campo('tarefa_' + (i + 1));
+          }).join('') + (ae.desafio ? '<p><b>Desafio.</b> ' + esc(ae.desafio) + '</p>' + campo('desafio') : '') + '</li>' +
+          '<li class="cd-e"><h4>4 · Resultado</h4>' + (rs.esperado ? '<p class="al-sub"><b>O que se espera:</b> ' + esc(rs.esperado) + '</p>' : '') +
+          campo('resultado', 'O que você conseguiu, o que mudou no seu trabalho, o que ainda falta…') + '</li></ol>' +
+          '<p class="al-fino" id="cd-salvo" style="margin-top:8px"></p>';
+        alvo.innerHTML = h;
+        var timers = {};
+        var salvar = function (id, texto) {
+          el('cd-salvo').textContent = 'Salvando…';
+          api('PUT', '/aluno/aulas/' + lid + '/caderno', { campo: id, texto: texto })
+            .then(function () { el('cd-salvo').textContent = '✓ Salvo'; })
+            .catch(function (e) { el('cd-salvo').textContent = e.message; });
+        };
+        Array.prototype.forEach.call(alvo.querySelectorAll('textarea[data-campo]'), function (t) {
+          t.oninput = function () {
+            var id = t.getAttribute('data-campo');
+            clearTimeout(timers[id]);
+            timers[id] = setTimeout(function () { salvar(id, t.value); }, 900);
+          };
+        });
+        Array.prototype.forEach.call(alvo.querySelectorAll('input[type=checkbox][data-campo]'), function (t) {
+          t.onchange = function () { salvar(t.getAttribute('data-campo'), t.checked ? '1' : ''); };
+        });
+        var cp = alvo.querySelector('[data-copiar]');
+        if (cp) cp.onclick = function () { copiar(pr.prompt_modelo, cp); };
+      }).catch(function (e) { alvo.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+    }
+    function copiar(texto, bt) {
+      var ok = function () { var t = bt.textContent; bt.textContent = '✓ Copiado'; setTimeout(function () { bt.textContent = t; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(ok, function () { prompt('Copie o texto:', texto); });
+      else prompt('Copie o texto:', texto);
+    }
+
+    // ---- BIBLIOTECA DE PROMPTS: Objetivo → Prompt → Exemplo → Como personalizar ----
+    function painelPrompts(alvo) {
+      alvo.innerHTML = '<p class="al-sub">Carregando a biblioteca…</p>';
+      api('GET', '/aluno/cursos/' + C.pid + '/prompts').then(function (r) {
+        var lista = r.prompts || [], cats = [];
+        lista.forEach(function (p) { if (p.categoria && cats.indexOf(p.categoria) < 0) cats.push(p.categoria); });
+        alvo.innerHTML = '<div class="qz-cab"><div><h3 style="font-size:1.15rem">Biblioteca de prompts</h3>' +
+          '<p class="al-sub">' + lista.length + ' prompts do curso, prontos para copiar e adaptar.</p></div></div>' +
+          '<div class="pr-filtros"><input id="pr-busca" placeholder="Buscar prompt…"><select id="pr-cat"><option value="">Todas as categorias</option>' +
+          cats.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select></div><div id="pr-lista"></div>';
+        var pinta = function () {
+          var f = el('pr-busca').value.toLowerCase(), cat = el('pr-cat').value;
+          var vis = lista.filter(function (p) {
+            return (!cat || p.categoria === cat) && (!f || (p.titulo + ' ' + p.objetivo + ' ' + p.prompt).toLowerCase().indexOf(f) >= 0);
+          });
+          el('pr-lista').innerHTML = vis.map(function (p, i) {
+            return '<details class="pr"' + (i === 0 && vis.length < 4 ? ' open' : '') + '><summary><span class="pr-cat">' + esc(p.categoria || 'Geral') + '</span><b>' + esc(p.titulo) + '</b>' + selo(p.status) + '</summary>' +
+              (p.objetivo ? '<p><b>Objetivo.</b> ' + esc(p.objetivo) + '</p>' : '') +
+              '<div class="cd-prompt"><div class="cd-prompt-cab"><b>Prompt</b><button class="al-bt peq fan" data-cp="' + esc(p.id) + '">Copiar</button></div><pre>' + esc(p.prompt) + '</pre></div>' +
+              (p.exemplo ? '<p><b>Exemplo.</b> ' + esc(p.exemplo) + '</p>' : '') +
+              (p.personalizar ? '<p><b>Como personalizar.</b> ' + esc(p.personalizar) + '</p>' : '') +
+              (p.aula_ref ? '<p class="al-fino">Da aula: ' + esc(p.aula_ref) + '</p>' : '') + '</details>';
+          }).join('') || '<p class="al-fino">Nenhum prompt com esse filtro.</p>';
+          Array.prototype.forEach.call(el('pr-lista').querySelectorAll('[data-cp]'), function (b) {
+            b.onclick = function (e) {
+              e.preventDefault();
+              var p = lista.filter(function (x) { return x.id === b.getAttribute('data-cp'); })[0];
+              if (p) copiar(p.prompt, b);
+            };
+          });
+        };
+        el('pr-busca').oninput = pinta; el('pr-cat').onchange = pinta; pinta();
+      }).catch(function (e) { alvo.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+    }
+
+    // ================= TUTOR VILLELA =================
+    // Esfera flutuante (a mesma linguagem visual da Eva no staff) + gaveta de conversa.
+    // Aparece em toda a tela do curso; quem não comprou vê o convite e, na aula de
+    // degustação, já conversa sobre ela.
+    var T = { aberto: false, carregou: false, ocupado: false };
+    function limparTutor() {
+      ['tv-fab', 'tv-gaveta'].forEach(function (id) { var x = el(id); if (x && x.parentNode) x.parentNode.removeChild(x); });
+      document.body.classList.remove('tv-aberto');
+      T = { aberto: false, carregou: false, ocupado: false };
+    }
+    function montarTutor() {
+      if (!C) return;
+      if (!el('tv-fab')) {
+        var b = document.createElement('button');
+        b.id = 'tv-fab'; b.className = 'tv-fab'; b.setAttribute('aria-label', 'Abrir o Tutor Villela');
+        b.innerHTML = '<span class="tv-halo"></span><span class="tv-orbe"><svg viewBox="0 0 24 24" width="26" height="26" fill="#fff" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6.1L4.6 21l4.1-2.2c1 .3 2.1.4 3.3.4 5.5 0 10-3.6 10-8.1S17.5 3 12 3zm-4 9.3a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6z"/></svg></span>' +
+          '<span class="tv-rotulo"><b>Tutor Villela</b><small>Tire dúvidas da aula</small></span>';
+        b.onclick = function () { T.aberto ? fecharTutor() : abrirTutor(); };
+        document.body.appendChild(b);
+        // o rótulo aparece aberto nas primeiras visitas e depois recolhe — chama atenção sem incomodar
+        var vezes = Number(pref('tv-vezes') || 0);
+        if (vezes < 3) { b.classList.add('convite'); pref('tv-vezes', String(vezes + 1)); setTimeout(function () { b.classList.remove('convite'); }, 9000); }
+      }
+    }
+    function abrirTutor() {
+      montarTutor();
+      var g = el('tv-gaveta');
+      if (!g) {
+        g = document.createElement('aside');
+        g.id = 'tv-gaveta'; g.className = 'tv-gaveta'; g.setAttribute('aria-label', 'Tutor Villela');
+        g.innerHTML = '<div class="tv-cab"><span class="tv-orbe peq"></span><div><b>Tutor Villela</b><small id="tv-sub">Conhece as aulas, o livro e os materiais deste curso</small></div>' +
+          '<button class="tv-x" id="tv-fechar" aria-label="Fechar">×</button></div>' +
+          '<div class="tv-fita" id="tv-fita" aria-live="polite"></div>' +
+          '<div class="tv-sug" id="tv-sug"></div>' +
+          '<form class="tv-form" id="tv-form"><textarea id="tv-txt" rows="2" placeholder="Pergunte sobre a aula…"></textarea>' +
+          '<button class="tv-env" aria-label="Enviar">' + ico('dir', 20) + '</button></form>' +
+          '<p class="tv-rod" id="tv-rod">O tutor responde com base no curso e mostra de onde tirou. Confira sempre o que for usar em trabalho real.</p>';
+        document.body.appendChild(g);
+        el('tv-fechar').onclick = fecharTutor;
+        el('tv-form').onsubmit = function (e) { e.preventDefault(); perguntarTutor(el('tv-txt').value); };
+        el('tv-txt').onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); perguntarTutor(el('tv-txt').value); } };
+      }
+      T.aberto = true;
+      document.body.classList.add('tv-aberto');
+      if (!T.carregou) carregarConversa();
+      else sugestoesIniciais();
+      setTimeout(function () { if (el('tv-txt')) el('tv-txt').focus(); }, 60);
+    }
+    function fecharTutor() { T.aberto = false; document.body.classList.remove('tv-aberto'); }
+    function aulaAtual() { return C && C.i >= 0 ? C.aulas[C.i].a : null; }
+    function podeUsarTutor() {
+      var a = aulaAtual();
+      return !!(C && (C.d.matriculado || (C.int && C.int.revisor) || (a && a.gratuita)));
+    }
+    function carregarConversa() {
+      T.carregou = true;
+      var fita = el('tv-fita');
+      if (!podeUsarTutor()) {
+        fita.innerHTML = '<div class="tv-msg ele">Olá! Eu sou o Tutor Villela. Explico de novo qualquer aula, crio exemplos para a sua realidade e faço exercícios para você testar o que aprendeu.<br><br>' +
+          'Eu atendo quem tem acesso ao curso — e já converso sobre as aulas de degustação.' +
+          (C.d.produto.slug ? '<br><br><a class="al-bt peq" href="/academy/cursos/' + esc(C.d.produto.slug) + '">Ver o curso</a>' : '') + '</div>';
+        el('tv-sug').innerHTML = '';
+        return;
+      }
+      api('GET', '/aluno/tutor/' + C.pid + '/conversa').then(function (r) {
+        fita.innerHTML = '<div class="tv-msg ele">Olá! Eu sou o <b>Tutor Villela</b>. Posso explicar de novo um ponto da aula, criar um exemplo para a sua realidade ou fazer um exercício para você testar o que aprendeu.</div>';
+        (r.conversa || []).forEach(function (c) { bolha('eu', esc(c.pergunta)); bolha('ele', formatar(c.resposta), c.fontes); });
+        if (!r.ativo) bolha('sis', 'O tutor está temporariamente indisponível.');
+        rodape(r.restantes);
+        sugestoesIniciais();
+        fita.scrollTop = fita.scrollHeight;
+      }).catch(function (e) { bolha('sis', esc(e.message)); });
+    }
+    function sugestoesIniciais() {
+      var a = aulaAtual();
+      var s = a ? ['Explique de novo o ponto principal desta aula', 'Crie um exemplo aplicado à minha profissão', 'Faça um exercício para eu testar se entendi']
+        : ['Por onde eu começo o curso?', 'Resuma o curso em cinco pontos'];
+      mostrarSugestoes(s);
+    }
+    function mostrarSugestoes(lista) {
+      el('tv-sug').innerHTML = (lista || []).map(function (x) { return '<button type="button">' + esc(x) + '</button>'; }).join('');
+      Array.prototype.forEach.call(el('tv-sug').querySelectorAll('button'), function (b) { b.onclick = function () { perguntarTutor(b.textContent); }; });
+    }
+    function rodape(restantes) {
+      if (restantes == null || !el('tv-rod')) return;
+      el('tv-rod').textContent = 'O tutor responde com base no curso e mostra de onde tirou. ' + restantes + ' pergunta' + (restantes === 1 ? '' : 's') + ' restante' + (restantes === 1 ? '' : 's') + ' hoje.';
+    }
+    function formatar(t) { // parágrafos e listas "• " (texto puro, escapado)
+      return esc(t).replace(/\[(\d{1,2})\]/g, '<sup>$1</sup>').replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
+    }
+    function bolha(quem, html, fontes) {
+      var d = document.createElement('div');
+      d.className = 'tv-msg ' + quem;
+      d.innerHTML = html + (fontes && fontes.length ? '<div class="tv-fontes">' + fontes.map(function (f) {
+        var rot = f.rotulo || f.aula || f.fonte;
+        var ir = f.lesson_id && indiceDe(f.lesson_id) >= 0;
+        return '<button type="button" class="tv-fonte"' + (ir ? ' data-l="' + esc(f.lesson_id) + '" data-t="' + (f.ini_seg || 0) + '"' : ' disabled') + '>' +
+          '<sup>' + f.n + '</sup> ' + (f.fonte === 'livro' ? '📖 ' : (f.fonte === 'transcricao' ? '▶ ' : '')) + esc(rot) + '</button>';
+      }).join('') + '</div>' : '');
+      el('tv-fita').appendChild(d);
+      Array.prototype.forEach.call(d.querySelectorAll('.tv-fonte[data-l]'), function (b) {
+        b.onclick = function () { // leva o aluno ao ponto do vídeo de onde a resposta saiu
+          var lid = b.getAttribute('data-l'), t = Number(b.getAttribute('data-t') || 0);
+          if (t > 0) pref('pos-' + lid, String(Math.max(11, t - 3)));
+          if (window.innerWidth < 900) fecharTutor();
+          if (C.i === indiceDe(lid) && el('al-video') && t > 0) { el('al-video').currentTime = Math.max(0, t - 3); el('al-video').play && el('al-video').play(); }
+          else irParaAula(indiceDe(lid), false);
+        };
+      });
+      el('tv-fita').scrollTop = el('tv-fita').scrollHeight;
+      return d;
+    }
+    function perguntarTutor(texto) {
+      texto = String(texto || '').trim();
+      if (!texto || T.ocupado) return;
+      if (!podeUsarTutor()) { carregarConversa(); return; }
+      T.ocupado = true;
+      el('tv-txt').value = '';
+      el('tv-sug').innerHTML = '';
+      bolha('eu', esc(texto));
+      var pensando = bolha('ele pensando', '<span class="tv-pontos"><i></i><i></i><i></i></span>');
+      var fab = el('tv-fab'); if (fab) fab.classList.add('pensando');
+      var a = aulaAtual();
+      api('POST', '/aluno/tutor/perguntar', { product_id: C.pid, lesson_id: a ? a.id : '', pergunta: texto }).then(function (r) {
+        pensando.parentNode.removeChild(pensando);
+        bolha('ele', formatar(r.resposta) + (r.nao_encontrado ? '<p class="tv-nao">Não encontrei isso no conteúdo do curso.</p>' : ''), r.fontes);
+        mostrarSugestoes(r.sugestoes && r.sugestoes.length ? r.sugestoes : []);
+        rodape(r.restantes);
+      }).catch(function (e) {
+        pensando.parentNode.removeChild(pensando);
+        bolha('sis', esc(e.message));
+      }).then(function () { T.ocupado = false; if (fab) fab.classList.remove('pensando'); });
     }
 
     // ---- fim do curso: certificado, avaliação e próximos cursos ----

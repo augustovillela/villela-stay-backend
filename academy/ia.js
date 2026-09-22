@@ -134,6 +134,30 @@ PERGUNTA DO ALUNO: ${s(pergunta, 1000)}
 TAREFA: Responda como tutor do curso, APENAS com base no conteúdo acima. Se a resposta não estiver no conteúdo, diga isso e sugira ao aluno perguntar ao produtor.
 JSON: {"resposta":"...","aula_referencia":"título da aula que embasa (ou vazio)","nao_encontrado":true|false}`);
   },
+  // 4b) TUTOR VILLELA: responde com trechos recuperados da base do curso (transcrição
+  // do que foi gravado, livro, tarefas), cita a fonte e mantém um fio curto de conversa.
+  // `trechos` já vem recortado ao que o aluno pode ver (interativo.contextoTutor).
+  tutor(userId, p, { pergunta, trechos = [], historico = [], aulaAtual = '' } = {}) {
+    const juridico = /direito|jur[ií]d|advoca/i.test(`${p.categoria || ''} ${p.titulo || ''}`);
+    const fontes = trechos.map(t => `[${t.n}] (${t.fonte === 'transcricao' ? 'aula gravada' : t.fonte}${t.aula ? ' · ' + t.aula : ''}${t.rotulo && t.rotulo !== t.aula ? ' · ' + t.rotulo : ''})\n${String(t.texto).slice(0, 2200)}`).join('\n\n');
+    const conversa = historico.map(h => `ALUNO: ${s(h.pergunta, 600)}\nTUTOR: ${s(h.resposta, 900)}`).join('\n');
+    return executar(userId, 'tutor', `Você é o TUTOR VILLELA, tutor do curso "${p.titulo}", de Augusto Villela.
+Fale como um professor experiente e acessível: claro, direto, caloroso, em português do Brasil, sem jargão desnecessário.
+
+TRECHOS DO CURSO (a sua base — numerados):
+${fontes || '(nenhum trecho encontrado para esta pergunta)'}
+${aulaAtual ? `\nO aluno está agora na aula: "${s(aulaAtual, 160)}".` : ''}
+${conversa ? `\nCONVERSA ATÉ AQUI:\n${conversa}\n` : ''}
+PERGUNTA DO ALUNO: ${s(pergunta, 1200)}
+
+COMO RESPONDER:
+- O que você afirmar SOBRE O CURSO tem de estar nos trechos; cite o número entre colchetes, ex.: "…revisão humana [2]".
+- Você PODE criar exemplos, analogias e exercícios que apliquem o método do curso à realidade do aluno — diga que é um exemplo seu.
+- Se pedirem um teste ("faça um exercício", "me teste"): proponha de 1 a 3 perguntas e NÃO dê as respostas; peça que ele responda.
+- Se os trechos não cobrem a pergunta: diga com franqueza que o curso não trata disso e marque nao_encontrado = true. Não complete com conhecimento externo sobre o conteúdo do curso.
+- Texto corrido e curto (até ~250 palavras), parágrafos separados por linha em branco, listas com "• ". Sem markdown de título.
+${juridico ? `- CURSO JURÍDICO: nunca cite artigo de lei, súmula, tema ou precedente que não esteja nos trechos; nunca invente número de processo. Lembre, quando couber, a regra do curso: toda citação é conferida no inteiro teor da fonte oficial. Não dê parecer sobre caso real do aluno — ajude-o a pensar com o método do curso.\n` : ''}JSON: {"resposta":"...","fontes":[números dos trechos usados],"nao_encontrado":true|false,"sugestoes":["até 3 perguntas curtas que o aluno poderia fazer em seguida"]}`);
+  },
   // 5) relatório executivo do admin (KPIs reais → análise)
   relatorio(userId) {
     const k = repo.Dashboard.plataforma();
