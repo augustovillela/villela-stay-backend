@@ -292,5 +292,19 @@
    "Quais são as cinco superfícies do ChatGPT?",
    "O Chat, para respostas, em que a regra de ouro é contexto, fontes, formato e critério de pronto. O Work, que vai do objetivo ao entregável pronto. O Codex, para desenvolvimento e operação técnica, com mudança reversível, diff revisado e permissão limitada. A superfície de criação visual, com Canvas, análise de dados, imagens e Sites. E a que padroniza e automatiza, com GPTs, Skills, Plugins, agentes e tarefas, em que toda rotina precisa de responsável, registro, limite e caminho de escalonamento."
   ]
+ ],
+ "22-o-proximo-passo": [
+  [
+   "O que faz um AI Operator, o operador de inteligência artificial?",
+   "É quem configura agentes, cria fluxos de trabalho, integra ferramentas e supervisiona as automações, e quem corrige quando elas falham. Mais do que dominar uma tecnologia, o operador entende o negócio: sabe qual é o processo, quem usa, quem aprova e quem responde, e qual é o critério de pronto de cada rotina. Por isso, numa empresa pequena, o primeiro operador costuma ser o próprio dono: conhecer a casa pesa mais do que saber programar."
+  ],
+  [
+   "O que é uma empresa AI-native e o que continua humano nela?",
+   "É a empresa concebida desde o início com a inteligência artificial integrada à operação, com agentes no atendimento, nas vendas, no marketing e nos dados, coordenados com as equipes humanas. A IA entra no desenho, não é enxertada depois. O que continua humano é o que depende de julgamento, contexto e experiência: estratégia, criatividade, liderança, responsabilidade ética e decisão complexa. A ideia é colaboração, e não substituição completa."
+  ],
+  [
+   "Por onde começar depois do curso?",
+   "Sem tentar dominar tudo de uma vez. Escolha uma superfície, provavelmente o Chat, monte os seus arquivos de identidade e resolva um problema real por semana. Antes de automatizar, organize: a IA amplifica o que encontra, a ordem ou o caos. E confie, mas confira: os agentes preparam, organizam e alertam, mas as decisões que importam continuam sendo suas. Sistemas complexos, operações críticas e segurança continuam pedindo especialista; o que muda é quem dá o primeiro passo."
+  ]
  ]
 }
