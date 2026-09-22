@@ -208,6 +208,71 @@ const MIGRACOES = [
             criado_em  TEXT NOT NULL
           );`,
   },
+  // Fases 2 e 3 da experiência de aprendizagem: a JORNADA do curso (jornada.js).
+  // XP, nível e selos NÃO têm tabela — são derivados do que está aqui e na fase 1.
+  {
+    nome: 'jornada-fases2e3-2026-09-22',
+    sql: `CREATE TABLE IF NOT EXISTS curso_jornada (
+            product_id    TEXT NOT NULL REFERENCES products(id),
+            secao         TEXT NOT NULL,         -- competencias|avaliacao|lab|desafio|simulacoes|recursos
+            dados         TEXT NOT NULL,         -- JSON validado na importação
+            status        TEXT DEFAULT 'rascunho',
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (product_id, secao)
+          );
+          CREATE TABLE IF NOT EXISTS avaliacao_tentativas (
+            id              TEXT PRIMARY KEY,
+            user_id         TEXT NOT NULL REFERENCES users(id),
+            product_id      TEXT NOT NULL,
+            momento         TEXT NOT NULL,       -- diagnostico | final
+            respostas       TEXT NOT NULL,
+            pontos          INTEGER NOT NULL,
+            total           INTEGER NOT NULL,
+            pct             INTEGER NOT NULL,
+            nivel           TEXT NOT NULL,
+            por_competencia TEXT DEFAULT '{}',
+            criado_em       TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_aval_user ON avaliacao_tentativas(user_id, product_id);
+          CREATE TABLE IF NOT EXISTS lab_entregas (
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            product_id    TEXT NOT NULL,
+            missao_id     TEXT NOT NULL,
+            respostas     TEXT DEFAULT '{}',
+            entregue_em   TEXT DEFAULT '',
+            feedback      TEXT DEFAULT '',        -- JSON da avaliação do mentor (IA): INDICAÇÃO, não nota
+            avaliado_em   TEXT DEFAULT '',
+            atualizado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, product_id, missao_id)
+          );
+          CREATE TABLE IF NOT EXISTS desafio_inscricoes (
+            user_id     TEXT NOT NULL REFERENCES users(id),
+            product_id  TEXT NOT NULL,
+            iniciado_em TEXT NOT NULL,            -- AAAA-MM-DD (Brasília)
+            PRIMARY KEY (user_id, product_id)
+          );
+          CREATE TABLE IF NOT EXISTS desafio_checkins (
+            user_id    TEXT NOT NULL REFERENCES users(id),
+            product_id TEXT NOT NULL,
+            dia        INTEGER NOT NULL,
+            nota       TEXT DEFAULT '',
+            criado_em  TEXT NOT NULL,
+            PRIMARY KEY (user_id, product_id, dia)
+          );
+          CREATE TABLE IF NOT EXISTS simulacao_partidas (
+            id            TEXT PRIMARY KEY,
+            user_id       TEXT NOT NULL REFERENCES users(id),
+            product_id    TEXT NOT NULL,
+            simulacao_id  TEXT NOT NULL,
+            no_atual      TEXT NOT NULL,
+            caminho       TEXT DEFAULT '[]',
+            pontos        INTEGER DEFAULT 0,
+            final_id      TEXT DEFAULT '',
+            criado_em     TEXT NOT NULL,
+            atualizado_em TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_simp_user ON simulacao_partidas(user_id, product_id);`,
+  },
 ];
 
 for (const m of MIGRACOES) {

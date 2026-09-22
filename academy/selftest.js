@@ -1923,6 +1923,221 @@ async function main() {
     assert.ok(!depois.materiais.some(m => m.id === mat.id), 'saiu da aula');
     assert.equal((await req('POST', '/staff/api/academy/material/remover', { semUser: true, chave: true, corpo: EST({ material_id: mat.id }) })).st, 400, 'remover de novo = não encontrado');
   });
+  // ================= JORNADA (fases 2 e 3) =================
+  console.log('\n— jornada: diagnóstico, XP/selos, Villela Lab, desafio, simulações, recursos, ferramentas —');
+  const QA = (i, comp) => ({ tipo: 'conhecimento', competencia: comp, enunciado: `Questão de avaliação número ${i}`, alternativas: [
+    { texto: `certa ${i}`, correta: true, explicacao: 'Certa: é o método do curso.' },
+    { texto: `errada ${i}a`, correta: false, explicacao: 'Errada: pula a revisão humana.' },
+    { texto: `errada ${i}b`, correta: false, explicacao: 'Errada: confia sem conferir.' }] });
+  const SIM = (extra = {}) => ({ id: 'caso-1', titulo: 'O cliente com pressa', resumo: 'Decida sob pressão.', papel: 'advogado', contexto: 'Um cliente chega às 18h.', inicio: 'a', nos: {
+    a: { texto: 'O cliente quer a peça hoje. O que você faz?', opcoes: [
+      { texto: 'Pede os documentos e confere', vai_para: 'b', feedback: 'Conferir antes evita o erro caro.', pontos: 10 },
+      { texto: 'Pede à IA e protocola direto', vai_para: 'ruim', feedback: 'Sem conferência, o precedente inventado passou.', pontos: 0 }] },
+    b: { texto: 'Os documentos chegaram. E agora?', opcoes: [
+      { texto: 'Revisa por blocos', vai_para: 'otimo', feedback: 'Revisão por blocos pega a falha lógica.', pontos: 10 },
+      { texto: 'Assina sem ler', vai_para: 'ruim', feedback: 'A assinatura é sua responsabilidade.', pontos: 0 }] },
+    otimo: { texto: 'A peça saiu certa e no prazo.', final: { desfecho: 'otimo', licao: 'Método por etapas vence a pressa.' } },
+    ruim: { texto: 'O juiz apontou o erro.', final: { desfecho: 'ruim', licao: 'Nunca pule a conferência.' } } }, ...extra });
+  const JORNADA = () => EST({
+    competencias: { itens: [{ id: 'pesquisa', nome: 'Pesquisa com fonte', icone: '🔎', aulas: [{ modulo_titulo: 'Módulo A', aula_titulo: 'Aula A2' }] }] },
+    avaliacao: { titulo: 'Teste o seu nível', questoes: [1, 2, 3, 4, 5].map(i => QA(i, i <= 3 ? 'pesquisa' : '')) },
+    lab: { missoes: [
+      { id: 'm1', titulo: 'Analise um contrato', objetivo: 'Achar 3 riscos', entregaveis: [{ id: 'riscos', rotulo: 'Os três riscos' }, { id: 'prompt', rotulo: 'O prompt usado' }],
+        rubrica: [{ criterio: 'Riscos concretos' }, { criterio: 'Prompt reutilizável' }] },
+      { id: 'pf', tipo: 'projeto', titulo: 'Projeto final', entregaveis: [{ id: 'problema', rotulo: 'Problema' }], rubrica: [{ criterio: 'Problema real' }, { criterio: 'Resultado medido' }] }] },
+    desafio: { titulo: 'Desafio de 7 dias', dias: [1, 2, 3, 4, 5, 6, 7].map(d => ({ titulo: `Dia ${d}`, tarefa: `Faça a tarefa prática do dia ${d} com calma.` })) },
+    simulacoes: { itens: [SIM()] },
+    recursos: { itens: [
+      { tipo: 'cheatsheet', titulo: 'Cheat sheet do prompt', secoes: [{ titulo: 'Estrutura', itens: ['Função', 'Contexto <b>x</b>'] }] },
+      { tipo: 'template', titulo: 'Template de agente', corpo: 'Você é o agente [NOME]. Missão: [MISSÃO]. Nunca invente números.' }] },
+  });
+
+  await t('jornada: importação recusa simulação com ciclo/destino inexistente, lab sem rubrica e competência inexistente', async () => {
+    const imp = (corpo) => req('POST', '/staff/api/academy/jornada/importar', { semUser: true, chave: true, corpo });
+    const ciclo = SIM(); ciclo.nos.b.opcoes[1].vai_para = 'a';
+    let r = await imp(EST({ simulacoes: { itens: [ciclo] } }));
+    assert.equal(r.st, 400); assert.ok(/ciclo/.test(r.json.erro), r.texto);
+    const sumido = SIM(); sumido.nos.a.opcoes[0].vai_para = 'nao-existe';
+    r = await imp(EST({ simulacoes: { itens: [sumido] } }));
+    assert.equal(r.st, 400); assert.ok(/não existe/.test(r.json.erro));
+    const solto = SIM(); solto.nos.orfao = { texto: 'Ninguém chega aqui nunca.', final: { desfecho: 'bom' } };
+    r = await imp(EST({ simulacoes: { itens: [solto] } }));
+    assert.equal(r.st, 400); assert.ok(/ninguém alcança/.test(r.json.erro));
+    r = await imp(EST({ lab: { missoes: [{ id: 'x', titulo: 'Sem rubrica', entregaveis: [{ rotulo: 'algo' }], rubrica: [{ criterio: 'só um' }] }] } }));
+    assert.equal(r.st, 400); assert.ok(/rubrica/.test(r.json.erro));
+    r = await imp(EST({ competencias: JORNADA().competencias, avaliacao: { questoes: [1, 2, 3, 4, 5].map(i => QA(i, 'inventada')) } }));
+    assert.equal(r.st, 400); assert.ok(/não existe/.test(r.json.erro));
+    assert.equal((await req('POST', '/staff/api/academy/jornada/importar', { semUser: true, corpo: JORNADA() })).st, 401, 'sem chave');
+  });
+
+  await t('jornada: tudo nasce em rascunho — aluno não vê, dono do curso vê', async () => {
+    const r = await req('POST', '/staff/api/academy/jornada/importar', { semUser: true, chave: true, corpo: JORNADA() });
+    assert.equal(r.st, 200, r.texto);
+    assert.ok(Object.values(r.json.importado).every(s => s === 'rascunho'), 'importar nunca publica');
+    const al = await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'olga' });
+    assert.equal(al.st, 200, al.texto);
+    assert.deepEqual(al.json.secoes, {}, 'aluno não enxerga rascunho');
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/lab`, { jar: 'olga' })).st, 404);
+    const dono = await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'maria' });
+    assert.equal(dono.json.secoes.lab, 'rascunho', 'o dono revisa na tela');
+    const pub = await req('POST', '/staff/api/academy/jornada/status', { semUser: true, chave: true, corpo: EST({ todas: 'publicado' }) });
+    assert.equal(pub.st, 200, pub.texto);
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'caio' })).json.acesso, false, 'quem não comprou não tem jornada');
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/lab`, { jar: 'caio' })).st, 403);
+  });
+
+  await t('diagnóstico: sem gabarito no navegador, corrige no servidor, dá nível e trilha; é feito uma vez só', async () => {
+    const q = await req('GET', `/academy/api/aluno/cursos/${impId}/avaliacao/diagnostico`, { jar: 'olga' });
+    assert.equal(q.st, 200, q.texto);
+    assert.ok(!/correta|explicacao|método do curso/.test(q.texto), 'nem gabarito nem explicação antes de responder');
+    assert.equal((await req('POST', `/academy/api/aluno/cursos/${impId}/avaliacao/diagnostico`, { jar: 'olga', corpo: { respostas: { a1: 0 } } })).st, 400, 'responder tudo');
+    // erra as 3 de "pesquisa", acerta as outras duas
+    const resp = {};
+    q.json.questoes.forEach((x, i) => { resp[x.id] = x.alternativas.findIndex(t => (i < 3 ? /^errada/ : /^certa/).test(t)); });
+    const r = await req('POST', `/academy/api/aluno/cursos/${impId}/avaliacao/diagnostico`, { jar: 'olga', corpo: { respostas: resp } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.pct, 40); assert.equal(r.json.nivel, 'Praticante');
+    assert.equal(r.json.por_competencia.pesquisa.pct, 0);
+    assert.equal(r.json.recomendacao[0].competencia, 'pesquisa', 'recomenda a competência mais fraca');
+    assert.equal(r.json.recomendacao[0].aulas[0].titulo, 'Aula A2');
+    assert.ok(r.json.correcao[0].explicacoes.every(x => x.length > 10));
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/avaliacao/diagnostico`, { jar: 'olga' })).st, 409, 'diagnóstico é o ponto de partida: uma vez só');
+  });
+
+  await t('teste final só abre com 70% das aulas — e mostra o antes e o depois', async () => {
+    const e = await estrutura();
+    const aulas = e.estrutura.flatMap(m => m.aulas);
+    await req('POST', `/academy/api/aluno/aulas/${aulas[0].id}/progresso`, { jar: 'olga', corpo: { concluida: false } });
+    const trav = await req('GET', `/academy/api/aluno/cursos/${impId}/avaliacao/final`, { jar: 'olga' });
+    assert.equal(trav.st, 409, trav.texto);
+    for (const a of aulas) await req('POST', `/academy/api/aluno/aulas/${a.id}/progresso`, { jar: 'olga', corpo: { concluida: true } });
+    const q = await req('GET', `/academy/api/aluno/cursos/${impId}/avaliacao/final`, { jar: 'olga' });
+    assert.equal(q.st, 200, q.texto);
+    const resp = {};
+    q.json.questoes.forEach(x => { resp[x.id] = x.alternativas.findIndex(t => /^certa/.test(t)); });
+    const r = await req('POST', `/academy/api/aluno/cursos/${impId}/avaliacao/final`, { jar: 'olga', corpo: { respostas: resp } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.pct, 100); assert.equal(r.json.nivel, 'Especialista');
+    assert.equal(r.json.antes.pct, 40, 'traz o diagnóstico para comparar');
+  });
+
+  await t('selo por competência: sai quando o quiz das aulas dela passa de 70%; XP e nível são derivados', async () => {
+    const e = await estrutura();
+    const a2 = e.estrutura[0].aulas.find(a => a.titulo === 'Aula A2').id;
+    let p = (await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'olga' })).json;
+    assert.equal(p.selos[0].conquistado, false, '67% no quiz ainda não dá o selo');
+    const xpAntes = p.xp;
+    await req('POST', `/academy/api/aluno/aulas/${a2}/quiz`, { jar: 'olga', corpo: { respostas: { q1: 1, q2: 0, q3: 2 } } });
+    p = (await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'olga' })).json;
+    assert.equal(p.selos[0].conquistado, true);
+    assert.ok(p.xp > xpAntes, 'passar no quiz rende XP');
+    assert.ok(p.medalhas.find(m => m.id === 'evolucao').ok, 'medalha de evolução (40 → 100)');
+    assert.ok(p.nivel.n >= 1 && p.xp_max > p.xp);
+  });
+
+  await t('Villela Lab: salva, só entrega completo, mentor de IA avalia pela rubrica (indicação)', async () => {
+    const base = `/academy/api/aluno/cursos/${impId}/lab`;
+    assert.equal((await req('PUT', `${base}/m1`, { jar: 'olga', corpo: { respostas: { riscos: 'Multa sem teto, foro distante e renovação automática sem aviso.', prompt: 'curto' } } })).st, 200);
+    const inc = await req('POST', `${base}/m1/entregar`, { jar: 'olga' });
+    assert.equal(inc.st, 400); assert.ok(/O prompt usado/.test(inc.json.erro), inc.texto);
+    assert.equal((await req('POST', `${base}/m1/mentor`, { jar: 'olga' })).st, 400, 'mentor só depois de entregar');
+    await req('PUT', `${base}/m1`, { jar: 'olga', corpo: { respostas: { riscos: 'Multa sem teto, foro distante e renovação automática sem aviso.', prompt: 'Você é revisor de contratos. Liste os três maiores riscos…' } } });
+    assert.equal((await req('POST', `${base}/m1/entregar`, { jar: 'olga' })).st, 200);
+    let ultimo = '';
+    const iaM = require('./ia');
+    iaM.__mockParaTeste(async ({ agente, prompt }) => {
+      ultimo = prompt;
+      return { json: { criterios: [{ criterio: 'Riscos concretos', avaliacao: 'atende', comentario: 'Citou a multa sem teto.' }, { criterio: 'Prompt reutilizável', avaliacao: 'inventado', comentario: 'ok' }],
+        pontos_fortes: ['claro'], melhorias: ['dê exemplo'], proximo_passo: 'Teste com outro contrato.', resumo: 'Boa entrega.' } };
+    });
+    try {
+      const r = await req('POST', `${base}/m1/mentor`, { jar: 'olga' });
+      assert.equal(r.st, 200, r.texto);
+      assert.ok(ultimo.includes('MENTOR') && ultimo.includes('Multa sem teto') && ultimo.includes('Riscos concretos'), 'a entrega e a rubrica vão para o mentor');
+      assert.equal(r.json.feedback.criterios[1].avaliacao, 'parcial', 'avaliação fora da lista vira "parcial"');
+      const lab = await req('GET', base, { jar: 'olga' });
+      assert.equal(lab.json.entregas.m1.feedback.resumo, 'Boa entrega.', 'o feedback fica guardado');
+      const p = (await req('GET', `/academy/api/aluno/cursos/${impId}/jornada`, { jar: 'olga' })).json;
+      assert.ok(p.medalhas.find(m => m.id === 'mao-na-massa').ok);
+    } finally { iaM.__mockParaTeste(null); }
+  });
+
+  await t('desafio: começa hoje, o dia 1 abre, o dia 2 só amanhã, e a anotação é obrigatória', async () => {
+    const base = `/academy/api/aluno/cursos/${impId}/desafio`;
+    const antes = await req('GET', base, { jar: 'olga' });
+    assert.equal(antes.json.iniciado_em, null);
+    const ini = await req('POST', `${base}/iniciar`, { jar: 'olga' });
+    assert.equal(ini.st, 200, ini.texto);
+    assert.equal(ini.json.dia_atual, 1);
+    assert.equal((await req('POST', `${base}/checkin`, { jar: 'olga', corpo: { dia: 1, nota: 'ok' } })).st, 400, 'anotação curta');
+    const c1 = await req('POST', `${base}/checkin`, { jar: 'olga', corpo: { dia: 1, nota: 'Escrevi meu primeiro prompt com os sete blocos.' } });
+    assert.equal(c1.st, 200, c1.texto); assert.equal(c1.json.feitos, 1);
+    assert.equal((await req('POST', `${base}/checkin`, { jar: 'olga', corpo: { dia: 2, nota: 'Tentando adiantar o dia dois.' } })).st, 409, 'um dia de cada vez');
+  });
+
+  await t('simulação: o navegador não vê consequências nem caminhos; o fim traz o debriefing', async () => {
+    const base = `/academy/api/aluno/cursos/${impId}/simulacoes`;
+    const ini = await req('POST', `${base}/caso-1/iniciar`, { jar: 'olga' });
+    assert.equal(ini.st, 200, ini.texto);
+    assert.ok(!/vai_para|feedback|pontos"\s*:\s*10|Conferir antes/.test(JSON.stringify(ini.json.no)), 'a consequência só aparece depois da escolha');
+    assert.equal(ini.json.pontos_max, 20);
+    const e1 = await req('POST', `${base}/partidas/${ini.json.partida}`, { jar: 'olga', corpo: { opcao: 0 } });
+    assert.equal(e1.st, 200, e1.texto);
+    assert.equal(e1.json.feedback, 'Conferir antes evita o erro caro.');
+    assert.equal(e1.json.terminou, false);
+    const e2 = await req('POST', `${base}/partidas/${ini.json.partida}`, { jar: 'olga', corpo: { opcao: 0 } });
+    assert.equal(e2.json.terminou, true); assert.equal(e2.json.pontos, 20);
+    assert.equal(e2.json.no.final.desfecho, 'otimo');
+    assert.equal(e2.json.caminho.length, 2, 'debriefing com as duas decisões');
+    assert.equal((await req('POST', `${base}/partidas/${ini.json.partida}`, { jar: 'olga', corpo: { opcao: 0 } })).st, 409, 'partida encerrada');
+    assert.equal((await req('POST', `${base}/partidas/${ini.json.partida}`, { jar: 'maria', corpo: { opcao: 0 } })).st, 404, 'a partida é do aluno');
+    const lista = await req('GET', base, { jar: 'olga' });
+    assert.equal(lista.json.itens[0].melhor, 20);
+  });
+
+  await t('recursos: cheat sheet em página própria (escapada) e template; só para quem tem acesso', async () => {
+    const r = await req('GET', `/academy/api/aluno/cursos/${impId}/recursos`, { jar: 'olga' });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.itens.length, 2);
+    const pag = await req('GET', `/academy/aluno/recursos/${impId}/${r.json.itens[0].id}`, { jar: 'olga' });
+    assert.equal(pag.st, 200);
+    assert.ok(pag.texto.includes('Contexto &lt;b&gt;x&lt;/b&gt;'), 'conteúdo escapado');
+    assert.equal((await req('GET', `/academy/api/aluno/cursos/${impId}/recursos`, { jar: 'caio' })).st, 403);
+  });
+
+  await t('ferramentas: a IA lapida o prompt montado; texto curto é recusado; sem acesso 403', async () => {
+    const iaM = require('./ia');
+    let ultimo = '';
+    iaM.__mockParaTeste(async ({ prompt }) => { ultimo = prompt; return { json: { texto: 'Função: você é…\nConsidere pronto quando…', mudancas: ['incluí critério de pronto'] } }; });
+    try {
+      const url = `/academy/api/aluno/cursos/${impId}/ferramentas/refinar`;
+      assert.equal((await req('POST', url, { jar: 'olga', corpo: { tipo: 'prompt', texto: 'curto' } })).st, 400);
+      const r = await req('POST', url, { jar: 'olga', corpo: { tipo: 'agente', texto: '# PROMPT MASTER — Agente financeiro\n## 1. Missão\nConciliar reservas.' } });
+      assert.equal(r.st, 200, r.texto);
+      assert.ok(ultimo.includes('PROMPT MASTER de um agente'));
+      assert.equal(r.json.mudancas[0], 'incluí critério de pronto');
+      assert.equal((await req('POST', url, { jar: 'caio', corpo: { tipo: 'prompt', texto: 'Função: você é um redator de anúncios de hospedagem.' } })).st, 403);
+    } finally { iaM.__mockParaTeste(null); }
+  });
+
+  await t('certificado mostra os selos conquistados e o botão do LinkedIn', async () => {
+    const c = await req('POST', `/academy/api/aluno/cursos/${impId}/certificado`, { jar: 'olga' });
+    assert.equal(c.st, 200, c.texto);
+    const pag = await req('GET', c.json.url, { semUser: true });
+    assert.equal(pag.st, 200);
+    assert.ok(pag.texto.includes('Pesquisa com fonte'), 'selo no certificado');
+    assert.ok(pag.texto.includes('linkedin.com/profile/add'), 'botão do LinkedIn');
+  });
+
+  await t('LGPD: exportação traz o que o aluno escreveu (caderno, tutor, Lab, desafio)', async () => {
+    const r = await req('GET', '/academy/api/me/exportar', { jar: 'olga' });
+    assert.equal(r.st, 200, r.texto);
+    const a = r.json.aprendizagem || (r.json.dados && r.json.dados.aprendizagem);
+    assert.ok(a, 'bloco de aprendizagem na exportação');
+    assert.ok(a.lab_entregas.some(x => x.missao_id === 'm1'));
+    assert.ok(a.desafio_checkins.some(x => x.dia === 1));
+    assert.ok(a.caderno_respostas.length >= 1);
+  });
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

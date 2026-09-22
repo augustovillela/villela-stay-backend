@@ -158,7 +158,7 @@ function landingHTML() {
 
 function appHTML() {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/aluno.css?v=3"><style>${CSS}
+    <meta name="robots" content="noindex"><title>Villela Academy — Painel</title>${HEAD_MARCA}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/aluno.css?v=4"><style>${CSS}
     .cx{max-width:1040px;margin:20px auto;padding:0 14px;transition:max-width .25s}.lin{border-bottom:1px solid #eee;padding:8px 0}
     .menu{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
     .kpi{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:10px 16px;min-width:120px;display:inline-block;margin:4px}
@@ -172,7 +172,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/academy/aluno.js?v=3"></script><script src="/academy/app.js?v=8"></script><script>bootAcademy();</script></body></html>`;
+    <script src="/academy/jornada.js?v=1"></script><script src="/academy/aluno.js?v=4"></script><script src="/academy/app.js?v=8"></script><script>bootAcademy();</script></body></html>`;
 }
 
 // ==================== FASE 3 — vitrine pública (SEO/OG) ====================
@@ -664,6 +664,7 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy/app', (req, res) => res.send(appHTML()));
   app.get('/academy/app.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-cliente.js')));
   app.get('/academy/aluno.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-aluno.js')));
+  app.get('/academy/jornada.js', (req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'app-jornada.js')));
   app.get('/academy/aluno.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'aluno.css')));
   app.get('/academy/publico.css', (req, res) => res.type('text/css').sendFile(path.join(__dirname, 'publico.css')));
   app.get('/academy/termos', (req, res) => res.send(paginaLegal('Termos de Uso', TERMOS)));
@@ -758,7 +759,13 @@ function registrarPaginas(app, { notificar }) {
   app.get('/academy/certificados/:codigo', (req, res) => {
     const c = require('./governanca').Certificados.porCodigo(s(req.params.codigo, 30));
     if (!c) return res.status(404).send(paginaLegal('Certificado não encontrado', '<p>Este código de certificado não existe. Confira o código e tente de novo.</p>'));
-    const corpo = `<div class="sec"><div class="wrap" style="max-width:680px">
+    const selos = require('./jornada').selosDoCertificado(c.user_id, c.product_id);
+    const emitido = new Date(c.emitido_em);
+    const linkedin = 'https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&' + new URLSearchParams({
+      name: c.produto_titulo, organizationName: 'Villela Academy', issueYear: String(emitido.getUTCFullYear()),
+      issueMonth: String(emitido.getUTCMonth() + 1), certUrl: 'https://academia.villelastay.com.br/academy/certificados/' + c.id, certId: c.id,
+    }).toString();
+    const corpo =`<div class="sec"><div class="wrap" style="max-width:680px">
       <div class="card" style="border:3px solid var(--villela-gold);text-align:center;padding:40px">
         <p style="margin:0 0 8px"><img src="${BRAND}/simbolo-v.svg" alt="Villela Academy" style="height:44px"></p>
         <p style="color:var(--villela-navy);font-weight:800;letter-spacing:2px;margin:0">VILLELA <span style="color:var(--villela-gold)">ACADEMY</span></p>
@@ -769,10 +776,13 @@ function registrarPaginas(app, { notificar }) {
         <p style="font-size:1.2rem;font-weight:700;margin:6px 0">${esc(c.produto_titulo)}</p>
         ${c.produtor_nome ? `<p class="sub">por ${esc(c.produtor_nome)}</p>` : ''}
         <p class="sub">${c.total_aulas} aula(s) · emitido em ${esc(String(c.emitido_em).slice(0, 10).split('-').reverse().join('/'))}</p>
+        ${selos.length ? `<p class="sub" style="margin:18px 0 6px">competências comprovadas no curso</p>
+        <p style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0">${selos.map(x => `<span class="tag" style="background:#eef7f3;color:#0d6b52">${esc((x.icone ? x.icone + ' ' : '') + x.nome)}</span>`).join('')}</p>` : ''}
         <p style="margin-top:18px"><span class="tag">Código de validação: ${esc(c.id)}</span></p>
         <p class="sub" style="font-size:.8rem">Autenticidade verificável em villelastay.com.br — /academy/certificados/${esc(c.id)}</p>
       </div>
-      <p style="text-align:center;margin-top:14px"><button class="btn peq" onclick="window.print()">🖨️ Imprimir / salvar PDF</button></p>
+      <p style="text-align:center;margin-top:14px"><button class="btn peq" onclick="window.print()">🖨️ Imprimir / salvar PDF</button>
+        <a class="btn peq" style="margin-left:8px;background:#0A66C2" target="_blank" rel="noopener" href="${esc(linkedin)}">Adicionar ao LinkedIn</a></p>
     </div></div>`;
     res.send(shellPublico({ titulo: 'Certificado ' + c.id, descricao: `Certificado de conclusão de ${c.aluno_nome} — ${c.produto_titulo}.`, corpo }));
   });
