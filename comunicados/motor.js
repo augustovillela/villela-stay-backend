@@ -603,6 +603,11 @@ async function enviarTeste(id, { email, telefone, produto, emailNoApp } = {}) {
   const prod = produto || (c.alvos[0] && c.alvos[0].produto);
   const out = {};
   const disp = disponibilidade();
+  // Canal não marcado no comunicado é a causa mais provável de "não recebi":
+  // dizer isso aqui evita procurar defeito onde não há.
+  for (const canal of CANAIS) {
+    if (!c.canais.includes(canal)) out[canal] = 'não está marcado neste comunicado — marque o canal e teste de novo';
+  }
   if (c.canais.includes('email')) {
     const e = normEmail(email);
     out.email = !e ? 'sem e-mail na sua conta do staff' : !disp.email.ok ? disp.email.motivo
@@ -622,6 +627,9 @@ async function enviarTeste(id, { email, telefone, produto, emailNoApp } = {}) {
     } else out.whatsapp = (await enviarUma(c, { canal: 'whatsapp', destino: t, nome: 'Augusto', produto: prod })) ? 'enviado para ' + t : 'falhou';
   }
   if (c.canais.includes('app')) out.app = await testeNoApp(c, emailNoApp);
+  out.lembrete = c.status === 'rascunho'
+    ? 'Isto foi só um teste: o comunicado continua RASCUNHO. Para mandar a todos, use "📣 Enviar agora".'
+    : `Este comunicado está "${c.status}".`;
   return out;
 }
 

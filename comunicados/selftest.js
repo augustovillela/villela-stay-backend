@@ -658,6 +658,14 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.ok(Array.isArray(r.json.dicas) && r.json.sistemas.length >= 5);
   });
 
+  await t('teste: canal NÃO marcado diz isso, e o teste lembra que o comunicado segue rascunho', async () => {
+    const c = motor.criar(rascunho({ titulo: 'Só app', canais: ['app'] }), 'adm');
+    const r = (await req('POST', `/staff/api/comunicados/${c.id}/teste`, { quem: 'adm', corpo: {} })).json.resultado;
+    assert.ok(/não está marcado/.test(r.whatsapp), JSON.stringify(r));
+    assert.ok(/não está marcado/.test(r.email));
+    assert.ok(/RASCUNHO/.test(r.lembrete));
+  });
+
   await t('staff: rascunho enviado não se edita; excluir só rascunho', async () => {
     assert.equal((await req('PUT', `/staff/api/comunicados/${id1}`, { quem: 'adm', corpo: { titulo: 'x' } })).status, 409);
     assert.equal((await req('DELETE', `/staff/api/comunicados/${id1}`, { quem: 'adm' })).status, 409);

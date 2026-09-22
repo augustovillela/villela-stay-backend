@@ -192,7 +192,10 @@ async function comTeste() {
   const emailApp = prompt('Para VER O AVISO DENTRO DO APP: qual e-mail da SUA conta no sistema escolhido?\n(deixe em branco para pular)', COM.cfg.minha_conta.email || '');
   try {
     const r = await api('POST', `/comunicados/${c.id}/teste`, { email: COM.cfg.minha_conta.email, telefone: tel, email_no_app: emailApp || '' });
-    m.className = 'ok'; m.textContent = Object.entries(r.resultado).map(([k, v]) => `${comCanalRot[k]}: ${v}`).join(' · ');
+    const { lembrete, ...canais } = r.resultado;
+    m.className = 'ok';
+    m.innerHTML = Object.entries(canais).map(([k, v]) => `${comCanalRot[k] || k}: ${esc(v)}`).join('<br>')
+      + (lembrete ? `<br><b>${esc(lembrete)}</b>` : '');
   } catch (e) { m.textContent = e.message; }
 }
 
