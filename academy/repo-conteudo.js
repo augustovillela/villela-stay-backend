@@ -287,6 +287,7 @@ const Conteudo = {
       duracao_seg, gratuita, ordem, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(id, moduleId, productId, titulo, tipo, s(d.conteudo, 40000), s(d.media_id, 40), s(d.url_externa, 500),
         Math.max(0, parseInt(d.duracao_seg, 10) || 0), d.gratuita ? 1 : 0, ordem, nowISO());
+    this.formatoAula(id, d);
     return id;
   },
   aulaDoProduto(lessonId, productId) {
@@ -307,6 +308,12 @@ const Conteudo = {
         d.duracao_seg != null ? Math.max(0, parseInt(d.duracao_seg, 10) || 0) : a.duracao_seg,
         d.gratuita != null ? (d.gratuita ? 1 : 0) : a.gratuita,
         d.ordem != null ? (parseInt(d.ordem, 10) || a.ordem) : a.ordem, nowISO(), lessonId);
+    this.formatoAula(lessonId, d);
+  },
+  // formato do ecossistema (express | faca-comigo | live) e passos do "Faça comigo" — já validados na entrada
+  formatoAula(lessonId, d = {}) {
+    if (d.formato != null) db.prepare('UPDATE lessons SET formato = ? WHERE id = ?').run(s(d.formato, 20), lessonId);
+    if (d.passos != null) db.prepare('UPDATE lessons SET passos = ? WHERE id = ?').run(typeof d.passos === 'string' ? d.passos : JSON.stringify(d.passos), lessonId);
   },
   removerAula(lessonId, productId) { this.aulaDoProduto(lessonId, productId); db.prepare('DELETE FROM lessons WHERE id = ?').run(lessonId); },
 

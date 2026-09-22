@@ -155,6 +155,12 @@
   function tabsDoUsuario(me) {
     var papeis = me.papeis_ativos || [];
     var tabs = [['aluno', 'Aprender', '🎓', 'Meus cursos', vAluno]];
+    // ecossistema do aluno: trilhas, bibliotecas por formato, lives e comunidade (app-ecossistema.js)
+    tabs.push(['trilhas', 'Aprender', '🧭', 'Trilhas', function () { var e = eco(); e && e.trilhas(); }]);
+    tabs.push(['express', 'Aprender', '⚡', 'Villela Express', function () { var e = eco(); e && e.express(); }]);
+    tabs.push(['faca', 'Aprender', '🛠️', 'Faça comigo', function () { var e = eco(); e && e.facaComigo(); }]);
+    tabs.push(['lives', 'Aprender', '📡', 'Lives', function () { var e = eco(); e && e.lives(); }]);
+    tabs.push(['comunidade', 'Aprender', '💬', 'Comunidade', function () { var e = eco(); e && e.comunidade(); }]);
     if (papeis.indexOf('produtor') >= 0) tabs.push(['produtor', 'Vender', '🎬', 'Produtor', vProdutor]);
     if (papeis.indexOf('afiliado') >= 0) tabs.push(['afiliado', 'Vender', '🤝', 'Afiliado', vAfiliado]);
     if (papeis.indexOf('admin') >= 0) tabs.push(['admin', 'Administração', '🛠️', 'Admin', vAdmin]);
@@ -346,6 +352,18 @@
   // ficaria ilegível misturada com produtor/afiliado/admin. Aqui ficam só as
   // dependências que ela recebe e os dois pontos de entrada.
   var ALUNO = null;
+  var ECO = null;
+  function eco() {
+    if (!ECO && window.AcademyEcossistema) {
+      ECO = window.AcademyEcossistema({
+        api: api, esc: esc, el: el, brl: brl, setView: setView, erroBox: erroBox,
+        // abre o estúdio do curso já na aula (ou na primeira pendente)
+        abrirAula: function (pid, lid) { var a = aluno(); if (!a) return; irPara('aluno'); a.curso(pid, lid || undefined); },
+      });
+    }
+    if (!ECO) setView('<div class="aviso">Não consegui carregar esta área. Atualize a página.</div>');
+    return ECO;
+  }
   function aluno() {
     if (!ALUNO) {
       if (!window.AcademyAluno) return null;

@@ -216,7 +216,7 @@
           '<a href="/academy/cursos/' + esc(p.slug || '') + '">Ver a página do curso →</a></div>') +
         '<div class="est"><div class="est-palco">' +
         '<div class="palco"><div class="quadro" id="al-quadro"></div><div class="legenda" id="al-legenda"></div></div>' +
-        '<div class="est-nav" id="al-nav"></div></div>' +
+        '<div id="al-passos"></div><div class="est-nav" id="al-nav"></div></div>' +
         '<aside class="grade">' +
         '<div class="grade-cab"><h4>' + esc(p.titulo) + '</h4>' + barra(pr.pct, 'esc') +
         '<div class="nums"><span id="al-prog-txt">' + pr.concluidas + ' de ' + pr.total_aulas + ' conteúdos</span><b id="al-prog-pct" style="color:#fff">' + pr.pct + '%</b></div></div>' +
@@ -251,6 +251,7 @@
               '<span class="ic">' + ico(icone, 17) + '</span>' +
               '<span class="tit">' + esc(a.titulo) +
               (a.gratuita && !C.d.matriculado ? '<span class="marca">degustação</span>' : '') +
+              (FMT[a.formato] ? '<span class="marca fmt">' + FMT[a.formato] + '</span>' : '') +
               ((a.materiais || []).length ? ' <span class="al-fino">· ' + a.materiais.length + (a.materiais.length > 1 ? ' materiais' : ' material') + '</span>' : '') +
               '</span>' + (a.duracao_seg ? '<span class="dur">' + dur(a.duracao_seg) + '</span>' : '') + '</button>' +
               (a.liberada && (a.materiais || []).length ? '<div class="aula-mats">' + a.materiais.map(function (m, km) {
@@ -280,6 +281,7 @@
       C.i = i;
       var a = C.aulas[i].a;
       pintarPalco(a);
+      pintarPassos(a);
       pintarNav(i);
       pintarAbas(a);
       pintarGrade(el('al-busca') ? el('al-busca').value : '');
@@ -325,6 +327,29 @@
       } else {
         q.innerHTML = '<div class="vazio">' + ico('texto', 30) + '<p>Aula de leitura — o conteúdo está logo abaixo.</p></div>';
       }
+    }
+    // ---- "Faça comigo": os passos da sessão prática, marcados no vídeo ----
+    var FMT = { express: '⚡ Express', 'faca-comigo': '🛠️ Faça comigo', live: '📡 Live' };
+    function pintarPassos(a) {
+      var alvo = el('al-passos'); if (!alvo) return;
+      var ps = [];
+      try { ps = typeof a.passos === 'string' ? JSON.parse(a.passos || '[]') : (a.passos || []); } catch (e) { ps = []; }
+      if (a.formato !== 'faca-comigo' || !ps.length || !a.liberada) { alvo.innerHTML = ''; return; }
+      var feitos = {};
+      try { feitos = JSON.parse(pref('fc-' + a.id) || '{}') || {}; } catch (e) { feitos = {}; }
+      var n = 0; ps.forEach(function (_, i) { if (feitos[i]) n++; });
+      alvo.innerHTML = '<div class="fc"><div class="fc-cab"><b>🛠️ Faça comigo</b><span>' + n + ' de ' + ps.length + ' passos feitos · pause o vídeo em cada passo e faça junto</span></div><ol>' +
+        ps.map(function (p, i) {
+          return '<li class="' + (feitos[i] ? 'feito' : '') + '"><label><input type="checkbox" data-fc="' + i + '"' + (feitos[i] ? ' checked' : '') + '></label>' +
+            '<button class="fc-ir" data-t="' + (p.ini_seg || 0) + '"><span class="fc-t">' + mmss(p.ini_seg) + '</span><b>' + esc(p.titulo) + '</b>' +
+            (p.instrucao ? '<small>' + esc(p.instrucao) + '</small>' : '') + '</button></li>';
+        }).join('') + '</ol></div>';
+      Array.prototype.forEach.call(alvo.querySelectorAll('.fc-ir'), function (b) {
+        b.onclick = function () { var v = el('al-video'); if (v) { v.currentTime = Number(b.getAttribute('data-t')); if (v.play) v.play(); } };
+      });
+      Array.prototype.forEach.call(alvo.querySelectorAll('[data-fc]'), function (c) {
+        c.onchange = function () { feitos[c.getAttribute('data-fc')] = c.checked; pref('fc-' + a.id, JSON.stringify(feitos)); pintarPassos(a); };
+      });
     }
     function legendaVideo() {
       var auto = pref('auto') !== '0';

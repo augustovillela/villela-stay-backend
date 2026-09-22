@@ -2138,6 +2138,143 @@ async function main() {
     assert.ok(a.desafio_checkins.some(x => x.dia === 1));
     assert.ok(a.caderno_respostas.length >= 1);
   });
+  // ================= ECOSSISTEMA: Express, Faça comigo, trilhas, lives, comunidade =================
+  console.log('\n— ecossistema: Villela Express, Faça comigo, trilhas, lives, comunidade —');
+  const MARIA_ID = (await req('GET', '/academy/api/me', { jar: 'maria' })).json.usuario.id;
+
+  await t('formatos de aula: Express e Faça comigo entram pela importação, com passos validados', async () => {
+    const base = CURSO();
+    base.modulos.push({ titulo: 'Villela Express', aulas: [
+      { titulo: 'Como anexar um PDF', tipo: 'video', duracao_seg: 90, formato: 'express', conteudo: 'Anexe o PDF convertido em Markdown.' },
+      { titulo: 'Faça comigo: o primeiro projeto', tipo: 'video', duracao_seg: 900, formato: 'faca-comigo',
+        passos: [{ ini_seg: 30, titulo: 'Abra o Claude', instrucao: 'Entre na conta.' }, { ini_seg: 120, titulo: 'Crie o projeto' }] }] });
+    let r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: base });
+    assert.equal(r.st, 200, r.texto);
+    const ruim = CURSO(); ruim.modulos.push({ titulo: 'Villela Express', aulas: [{ titulo: 'Como anexar um PDF', formato: 'tiktok' }] });
+    assert.equal((await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: ruim })).st, 400, 'formato inventado');
+    const fora = CURSO(); fora.modulos.push({ titulo: 'Villela Express', aulas: [{ titulo: 'Faça comigo: o primeiro projeto', passos: [{ ini_seg: 200, titulo: 'b' }, { ini_seg: 10, titulo: 'a' }] }] });
+    assert.equal((await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: fora })).st, 400, 'passos fora de ordem');
+    const ex = await req('GET', '/academy/api/aluno/formato/express', { jar: 'olga' });
+    assert.equal(ex.st, 200, ex.texto);
+    const a = ex.json.aulas.find(x => x.titulo === 'Como anexar um PDF');
+    assert.ok(a && a.liberada, 'aluno do curso vê o Express');
+    const fc = await req('GET', '/academy/api/aluno/formato/faca-comigo', { jar: 'olga' });
+    assert.equal(fc.json.aulas[0].passos, 2);
+    const curso = await req('GET', `/academy/api/aluno/cursos/${impId}`, { jar: 'olga' });
+    const aula = curso.json.estrutura.flatMap(m => m.aulas).find(x => x.titulo === 'Faça comigo: o primeiro projeto');
+    assert.equal(aula.formato, 'faca-comigo');
+    assert.equal(JSON.parse(aula.passos)[1].titulo, 'Crie o projeto');
+    const bloq = await req('GET', `/academy/api/aluno/cursos/${impId}`, { jar: 'caio' });
+    const b2 = bloq.json.estrutura.flatMap(m => m.aulas).find(x => x.titulo === 'Faça comigo: o primeiro projeto');
+    assert.equal(b2.formato, 'faca-comigo', 'aula travada mostra o formato (vitrine)');
+    assert.ok(!('passos' in b2), 'mas não os passos');
+  });
+
+  await t('trilhas: nascem em rascunho, só o dono vê; publicadas mostram progresso e itens "em breve"', async () => {
+    const corpo = { produtor_email: MARIA.email, trilhas: [{ titulo: 'Trilha IA', icone: '🤖', subtitulo: 'Do prompt ao agente',
+      itens: [{ produto_id: impId }, { titulo: 'Agentes de IA', descricao: 'Em produção.' }] }] };
+    assert.equal((await req('POST', '/staff/api/academy/trilhas/importar', { semUser: true, corpo })).st, 401);
+    const alheio = { produtor_email: MARIA.email, trilhas: [{ titulo: 'X', itens: [{ produto_id: 'nao-existe' }] }] };
+    assert.equal((await req('POST', '/staff/api/academy/trilhas/importar', { semUser: true, chave: true, corpo: alheio })).st, 400);
+    const r = await req('POST', '/staff/api/academy/trilhas/importar', { semUser: true, chave: true, corpo });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.trilhas[0].status, 'rascunho');
+    assert.equal((await req('GET', '/academy/api/aluno/trilhas', { jar: 'olga' })).json.trilhas.length, 0, 'rascunho não aparece ao aluno');
+    assert.equal((await req('GET', '/academy/api/aluno/trilhas', { jar: 'maria' })).json.trilhas.length, 1, 'o dono revisa');
+    assert.equal((await req('POST', '/staff/api/academy/trilhas/status', { semUser: true, chave: true, corpo: { produtor_email: MARIA.email, slug: 'trilha-ia', status: 'publicada' } })).st, 200);
+    const t1 = await req('GET', '/academy/api/aluno/trilhas/trilha-ia', { jar: 'olga' });
+    assert.equal(t1.st, 200, t1.texto);
+    assert.equal(t1.json.trilha.itens[1].status, 'em_breve');
+    // o curso importado está em rascunho no catálogo: na trilha ele aparece como "em breve", não como link quebrado
+    assert.ok(['disponivel', 'em_breve'].includes(t1.json.trilha.itens[0].status));
+  });
+
+  let liveId = '';
+  await t('lives: só membros veem; o link só aparece 30 min antes; perguntas com limite e voto', async () => {
+    const longe = new Date(Date.now() + 5 * 86400e3).toISOString();
+    const nova = await req('POST', '/staff/api/academy/lives', { semUser: true, chave: true, corpo: { produtor_email: MARIA.email, titulo: 'Live de outubro',
+      inicio_em: longe, link: 'https://meet.exemplo.com/abc', publicada: true, novidades: [{ titulo: 'Novo recurso', fonte: 'https://exemplo.com/noticia' }] } });
+    assert.equal(nova.st, 200, nova.texto);
+    liveId = nova.json.live.id;
+    assert.equal((await req('POST', '/staff/api/academy/lives', { semUser: true, chave: true, corpo: { produtor_email: MARIA.email, titulo: 'x', inicio_em: longe, link: 'http://inseguro' } })).st, 400, 'link sem https');
+    const ol = await req('GET', '/academy/api/aluno/lives', { jar: 'olga' });
+    const l = ol.json.lives.find(x => x.id === liveId);
+    assert.ok(l, 'aluna matriculada vê a live');
+    assert.equal(l.link, '', 'link escondido até 30 min antes');
+    assert.equal(l.novidades[0].titulo, 'Novo recurso');
+    assert.equal((await req('GET', '/academy/api/aluno/lives', { jar: 'caio' })).json.lives.length, 0, 'quem não é aluno não vê');
+    assert.ok((await req('GET', '/academy/api/aluno/lives', { jar: 'maria' })).json.lives.find(x => x.id === liveId).link, 'a dona vê o link');
+    assert.equal((await req('POST', `/academy/api/aluno/lives/${liveId}/inscricao`, { jar: 'olga', corpo: { sim: true } })).json.live.inscrito, true);
+    for (let i = 1; i <= 3; i++) assert.equal((await req('POST', `/academy/api/aluno/lives/${liveId}/perguntas`, { jar: 'olga', corpo: { texto: `Pergunta número ${i} sobre agentes` } })).st, 200);
+    assert.equal((await req('POST', `/academy/api/aluno/lives/${liveId}/perguntas`, { jar: 'olga', corpo: { texto: 'A quarta pergunta da mesma pessoa' } })).st, 429);
+    const ps = (await req('GET', `/academy/api/aluno/lives/${liveId}/perguntas`, { jar: 'ana' })).json.perguntas;
+    assert.equal(ps[0].autor, 'Olga O.', 'nome curto, nunca o e-mail');
+    const v = await req('POST', `/academy/api/aluno/lives/perguntas/${ps[0].id}/voto`, { jar: 'ana' });
+    assert.equal(v.json.perguntas.find(x => x.id === ps[0].id).votos, 1);
+    assert.equal((await req('POST', `/academy/api/aluno/lives/perguntas/${ps[0].id}/voto`, { jar: 'olga' })).st, 400, 'não vota na própria');
+  });
+
+  await t('lives: avisar os alunos é ato explícito (confirmar) e acontece uma vez; lembrete só para inscritos, ~1h antes', async () => {
+    const url = `/staff/api/academy/lives/${liveId}/avisar`;
+    assert.equal((await req('POST', url, { semUser: true, chave: true, corpo: { produtor_email: MARIA.email } })).st, 400, 'sem confirmar');
+    const r = await req('POST', url, { semUser: true, chave: true, corpo: { produtor_email: MARIA.email, confirmar: true } });
+    assert.equal(r.st, 200, r.texto);
+    assert.ok(r.json.avisados >= 2, 'olga e ana');
+    assert.equal((await req('POST', url, { semUser: true, chave: true, corpo: { produtor_email: MARIA.email, confirmar: true } })).st, 409, 'não repete sem forcar');
+    // live daqui a 40 min: link já liberado e lembrete pendente
+    const perto = await req('POST', '/staff/api/academy/lives', { semUser: true, chave: true, corpo: { produtor_email: MARIA.email, titulo: 'Live relâmpago',
+      inicio_em: new Date(Date.now() + 25 * 60e3).toISOString(), link: 'https://meet.exemplo.com/xyz', publicada: true } });
+    const pid = perto.json.live.id;
+    await req('POST', `/academy/api/aluno/lives/${pid}/inscricao`, { jar: 'olga', corpo: { sim: true } });
+    assert.equal((await req('GET', '/academy/api/aluno/lives', { jar: 'olga' })).json.lives.find(x => x.id === pid).link, 'https://meet.exemplo.com/xyz');
+    const antes = (await req('GET', '/academy/api/notificacoes', { jar: 'olga' })).json.itens.length;
+    require('./rotas-ecossistema').rotinaLembretes();
+    require('./rotas-ecossistema').rotinaLembretes(); // a segunda rodada não repete
+    const depois = (await req('GET', '/academy/api/notificacoes', { jar: 'olga' })).json.itens;
+    assert.equal(depois.length, antes + 1, 'um lembrete, uma vez');
+    assert.ok(/Começa em 1 hora/.test(depois[0].titulo));
+  });
+
+  let topId = '';
+  await t('comunidade: só alunos; trava CPF e chave de API; resposta, solução, curtida', async () => {
+    assert.equal((await req('GET', `/academy/api/aluno/comunidade/${MARIA_ID}`, { jar: 'caio' })).st, 403);
+    const url = `/academy/api/aluno/comunidade/${MARIA_ID}/topicos`;
+    assert.equal((await req('POST', url, { jar: 'olga', corpo: { area: 'duvidas', titulo: 'Dúvida sobre cliente', texto: 'O CPF do cliente é 123.456.789-09, como faço?' } })).st, 400, 'CPF barrado');
+    assert.equal((await req('POST', url, { jar: 'olga', corpo: { area: 'ferramentas', titulo: 'Minha chave não funciona', texto: 'Usei sk-ant-abcdefghijklmnopqrstuv123 e deu erro.' } })).st, 400, 'chave barrada');
+    assert.equal((await req('POST', url, { jar: 'olga', corpo: { area: 'novidades', titulo: 'Saiu um recurso novo', texto: 'Ouvi dizer que saiu algo novo no Claude.' } })).st, 400, 'novidade sem fonte');
+    const c = await req('POST', url, { jar: 'olga', corpo: { area: 'duvidas', titulo: 'Como começo o projeto final?', texto: 'Não sei qual processo escolher <script>x</script> para o piloto.' } });
+    assert.equal(c.st, 200, c.texto);
+    topId = c.json.topico.id;
+    assert.ok(c.json.topico.texto.includes('<script>'), 'o texto fica cru no banco — quem escapa é a tela');
+    const r = await req('POST', `/academy/api/aluno/comunidade/topicos/${topId}/respostas`, { jar: 'maria', corpo: { texto: 'Escolha o processo que mais dói toda semana.' } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.topico.respostas[0].equipe, true, 'a dona aparece como equipe');
+    const resp = r.json.topico.respostas[0].id;
+    assert.equal((await req('POST', `/academy/api/aluno/comunidade/topicos/${topId}/solucao`, { jar: 'ana', corpo: { resposta_id: resp } })).st, 403, 'só o autor marca');
+    assert.ok((await req('POST', `/academy/api/aluno/comunidade/topicos/${topId}/solucao`, { jar: 'olga', corpo: { resposta_id: resp } })).json.topico.solucao_id === resp);
+    assert.equal((await req('POST', '/academy/api/aluno/comunidade/curtir', { jar: 'ana', corpo: { tipo: 'topico', id: topId } })).json.n, 1);
+    const lista = await req('GET', `/academy/api/aluno/comunidade/${MARIA_ID}?area=duvidas`, { jar: 'ana' });
+    assert.equal(lista.json.topicos[0].resolvido, true);
+    assert.equal(lista.json.topicos[0].autor, 'Olga O.');
+    const notif = (await req('GET', '/academy/api/notificacoes', { jar: 'olga' })).json.itens;
+    assert.ok(notif.some(n => /Nova resposta/.test(n.titulo)), 'o autor é avisado da resposta');
+  });
+
+  await t('comunidade: denúncia chega ao moderador; ocultar esconde do aluno; o autor apaga o que escreveu', async () => {
+    assert.equal((await req('POST', '/academy/api/aluno/comunidade/denunciar', { jar: 'olga', corpo: { tipo: 'topico', id: topId, motivo: 'x' } })).st, 400, 'não denuncia o próprio');
+    const d = await req('POST', '/academy/api/aluno/comunidade/denunciar', { jar: 'ana', corpo: { tipo: 'topico', id: topId, motivo: 'fora do tema' } });
+    assert.equal(d.json.denuncias, 1);
+    assert.equal((await req('GET', `/academy/api/aluno/comunidade/${MARIA_ID}/denuncias`, { jar: 'ana' })).st, 403);
+    assert.equal((await req('GET', `/academy/api/aluno/comunidade/${MARIA_ID}/denuncias`, { jar: 'maria' })).json.denuncias.length, 1);
+    assert.equal((await req('POST', '/academy/api/aluno/comunidade/moderar', { jar: 'ana', corpo: { tipo: 'topico', id: topId, acao: 'ocultar' } })).st, 403);
+    assert.equal((await req('POST', '/academy/api/aluno/comunidade/moderar', { jar: 'maria', corpo: { tipo: 'topico', id: topId, acao: 'ocultar' } })).st, 200);
+    assert.equal((await req('GET', `/academy/api/aluno/comunidade/${MARIA_ID}`, { jar: 'ana' })).json.topicos.length, 0, 'oculto some para os alunos');
+    assert.equal((await req('GET', `/academy/api/aluno/comunidade/${MARIA_ID}/denuncias`, { jar: 'maria' })).json.denuncias.length, 0, 'denúncia resolvida');
+    const ex = await req('GET', '/academy/api/me/exportar', { jar: 'olga' });
+    assert.ok(ex.json.comunidade.comunidade_topicos.length >= 1 && ex.json.comunidade.live_perguntas.length === 3, 'LGPD: comunidade e perguntas na exportação');
+    assert.equal((await req('POST', '/academy/api/aluno/comunidade/apagar', { jar: 'olga', corpo: { tipo: 'topico', id: topId } })).st, 200);
+    assert.equal((await req('GET', `/academy/api/aluno/comunidade/topicos/${topId}`, { jar: 'maria' })).st, 404, 'apagado pelo autor');
+  });
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

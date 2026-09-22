@@ -14,6 +14,7 @@
 // =====================================================================
 'use strict';
 const repo = require('./repo');
+const eco = require('./ecossistema');
 const ct = require('./repo-conteudo');
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -53,6 +54,12 @@ function aplicarEstrutura(productId, modulos) {
       if (aula.duracao_seg != null) campos.duracao_seg = Math.max(0, parseInt(aula.duracao_seg, 10) || 0);
       else if (aula.duracao_min != null) campos.duracao_seg = Math.max(0, Math.round((parseFloat(aula.duracao_min) || 0) * 60));
       if (aula.gratuita != null) campos.gratuita = aula.gratuita ? 1 : 0;
+      // formatos do ecossistema: Villela Express (curta) e Faça comigo (com passos no vídeo)
+      if (aula.formato != null) {
+        if (!eco.FORMATOS.includes(aula.formato)) throw new Error(`Aula "${tAula}": formato deve ser ${eco.FORMATOS.filter(Boolean).join('|')} (ou vazio).`);
+        campos.formato = aula.formato;
+      }
+      if (aula.passos != null) campos.passos = JSON.stringify(eco.validarPassos(aula.passos, `Aula "${tAula}"`));
 
       // titulo_anterior também na AULA: sem isto, renomear uma aula cria outra e
       // deixa a antiga órfã no módulo — foi o que quase aconteceu com as cinco

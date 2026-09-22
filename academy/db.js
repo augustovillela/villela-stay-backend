@@ -273,6 +273,84 @@ const MIGRACOES = [
           );
           CREATE INDEX IF NOT EXISTS idx_simp_user ON simulacao_partidas(user_id, product_id);`,
   },
+  // ECOSSISTEMA (ecossistema.js): formatos de aula (Villela Express, Faça comigo),
+  // trilhas, lives mensais e comunidade.
+  {
+    nome: 'ecossistema-2026-09-22',
+    sql: `ALTER TABLE lessons ADD COLUMN formato TEXT DEFAULT '';      -- ''|express|faca-comigo|live
+          ALTER TABLE lessons ADD COLUMN passos TEXT DEFAULT '[]';     -- Faça comigo: [{ini_seg,titulo,instrucao}]
+          CREATE INDEX IF NOT EXISTS idx_lessons_formato ON lessons(formato);
+          CREATE TABLE IF NOT EXISTS trilhas (
+            id               TEXT PRIMARY KEY,
+            producer_id      TEXT NOT NULL REFERENCES users(id),
+            slug             TEXT NOT NULL UNIQUE,
+            titulo           TEXT NOT NULL,
+            subtitulo        TEXT DEFAULT '',
+            descricao        TEXT DEFAULT '',
+            icone            TEXT DEFAULT '',
+            publico          TEXT DEFAULT '',
+            clube_product_id TEXT DEFAULT '',     -- assinatura que libera a trilha (produto tipo clube)
+            status           TEXT DEFAULT 'rascunho', -- rascunho|publicada
+            ordem            INTEGER DEFAULT 0,
+            criado_em        TEXT NOT NULL,
+            atualizado_em    TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS trilha_itens (
+            id         TEXT PRIMARY KEY,
+            trilha_id  TEXT NOT NULL REFERENCES trilhas(id) ON DELETE CASCADE,
+            ordem      INTEGER DEFAULT 0,
+            product_id TEXT DEFAULT '',           -- vazio = curso "em breve"
+            titulo     TEXT DEFAULT '',
+            descricao  TEXT DEFAULT '',
+            status     TEXT DEFAULT 'disponivel'
+          );
+          CREATE TABLE IF NOT EXISTS lives (
+            id                 TEXT PRIMARY KEY,
+            producer_id        TEXT NOT NULL REFERENCES users(id),
+            titulo             TEXT NOT NULL,
+            descricao          TEXT DEFAULT '',
+            inicio_em          TEXT NOT NULL,
+            duracao_min        INTEGER DEFAULT 60,
+            link               TEXT DEFAULT '',     -- só para quem pode assistir, a partir de 30 min antes
+            gravacao_url       TEXT DEFAULT '',
+            gravacao_lesson_id TEXT DEFAULT '',
+            status             TEXT DEFAULT 'agendada',
+            produtos           TEXT DEFAULT '[]',   -- vazio = todos os alunos da casa
+            publicada          INTEGER DEFAULT 0,
+            novidades          TEXT DEFAULT '[]',   -- "O que mudou este mês": [{titulo,texto,fonte}]
+            lembrete_em        TEXT DEFAULT '',
+            criado_em          TEXT NOT NULL,
+            atualizado_em      TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS live_inscricoes (
+            live_id TEXT NOT NULL, user_id TEXT NOT NULL, criado_em TEXT NOT NULL, PRIMARY KEY (live_id, user_id)
+          );
+          CREATE TABLE IF NOT EXISTS live_perguntas (
+            id TEXT PRIMARY KEY, live_id TEXT NOT NULL, user_id TEXT NOT NULL, texto TEXT NOT NULL,
+            votos INTEGER DEFAULT 0, status TEXT DEFAULT 'aberta', criado_em TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS live_votos (pergunta_id TEXT NOT NULL, user_id TEXT NOT NULL, PRIMARY KEY (pergunta_id, user_id));
+          CREATE TABLE IF NOT EXISTS com_topicos (
+            id TEXT PRIMARY KEY, producer_id TEXT NOT NULL, area TEXT NOT NULL, product_id TEXT DEFAULT '',
+            user_id TEXT NOT NULL REFERENCES users(id), titulo TEXT NOT NULL, texto TEXT NOT NULL,
+            status TEXT DEFAULT 'visivel',          -- visivel|oculto|removido
+            fixado INTEGER DEFAULT 0, solucao_id TEXT DEFAULT '', respostas_n INTEGER DEFAULT 0, denuncias INTEGER DEFAULT 0,
+            criado_em TEXT NOT NULL, ultimo_em TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_comt_prod ON com_topicos(producer_id, area, ultimo_em);
+          CREATE TABLE IF NOT EXISTS com_respostas (
+            id TEXT PRIMARY KEY, topico_id TEXT NOT NULL REFERENCES com_topicos(id), user_id TEXT NOT NULL REFERENCES users(id),
+            texto TEXT NOT NULL, status TEXT DEFAULT 'visivel', denuncias INTEGER DEFAULT 0, criado_em TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_comr_top ON com_respostas(topico_id, criado_em);
+          CREATE TABLE IF NOT EXISTS com_curtidas (
+            alvo_tipo TEXT NOT NULL, alvo_id TEXT NOT NULL, user_id TEXT NOT NULL, criado_em TEXT NOT NULL, PRIMARY KEY (alvo_tipo, alvo_id, user_id)
+          );
+          CREATE TABLE IF NOT EXISTS com_denuncias (
+            id TEXT PRIMARY KEY, alvo_tipo TEXT NOT NULL, alvo_id TEXT NOT NULL, producer_id TEXT NOT NULL,
+            user_id TEXT NOT NULL, motivo TEXT DEFAULT '', status TEXT DEFAULT 'aberta', criado_em TEXT NOT NULL
+          );`,
+  },
 ];
 
 for (const m of MIGRACOES) {

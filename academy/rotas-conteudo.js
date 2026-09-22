@@ -167,7 +167,7 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
       aulas: m.aulas.map(a => {
         const liberada = matriculado || !!a.gratuita;
         // aula bloqueada não expõe conteúdo/arquivos, só o título (vitrine)
-        return liberada ? { ...a, liberada } : { id: a.id, titulo: a.titulo, tipo: a.tipo, gratuita: 0, liberada: false, materiais: [] };
+        return liberada ? { ...a, liberada } : { id: a.id, titulo: a.titulo, tipo: a.tipo, formato: a.formato || '', gratuita: 0, liberada: false, materiais: [] };
       }),
     }));
     // o painel do aluno mostra autor e descrição no topo do curso; o produtor sai

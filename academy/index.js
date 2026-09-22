@@ -23,6 +23,7 @@ const { registrarRotasGovernanca, registrarRotasGovernancaStaff } = require('./r
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasInterativo, registrarRotasInterativoStaff } = require('./rotas-interativo');
 const { registrarRotasJornada, registrarRotasJornadaStaff } = require('./rotas-jornada');
+const { registrarRotasEcossistema, registrarRotasEcossistemaStaff, rotinaLembretes } = require('./rotas-ecossistema');
 const { registrarPaginas } = require('./paginas');
 const webhookMP = require('../nucleo/webhook-mp');
 
@@ -58,6 +59,9 @@ function montar(app, injected = {}) {
   if (String(process.env.ACADEMY_ROTINAS || 'on').toLowerCase() !== 'off') {
     const t = setInterval(() => { emails.processarPedidosAbandonados(emails.base()).catch(() => {}); }, 3600e3);
     if (t.unref) t.unref();
+    // lembrete de live (~1h antes) só para quem se inscreveu — a cada 10 min
+    const tl = setInterval(() => { try { rotinaLembretes(); } catch (_) {} }, 10 * 60e3);
+    if (tl.unref) tl.unref();
   }
 
   // hardening (F10): headers de segurança em tudo do módulo; rate limit de API
@@ -99,6 +103,8 @@ function montar(app, injected = {}) {
   registrarRotasInterativoStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
   registrarRotasJornada(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
   registrarRotasJornadaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
+  registrarRotasEcossistema(app, { requireUsuario: cliente.requireUsuario, requirePapel: cliente.requirePapel });
+  registrarRotasEcossistemaStaff(app, { requirePublishOrAdmin, requireAuth, requireAdmin });
   registrarPaginas(app, { notificar });
 
   // webhook do Mercado Pago (200 rápido; processamento assíncrono e idempotente)

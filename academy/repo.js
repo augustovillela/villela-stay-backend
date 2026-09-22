@@ -103,6 +103,7 @@ const Usuarios = {
       sessoes: db.prepare('SELECT criada_em, expira_em, ip, user_agent, revogada FROM sessions WHERE user_id = ?').all(id),
       auditoria: db.prepare('SELECT quando, acao, entidade, detalhe, ip FROM audit_logs WHERE quem = ? ORDER BY id DESC LIMIT 500').all(id),
       aprendizagem: textosDoAluno(id),
+      comunidade: require('./ecossistema').exportar(id), // require tardio: ecossistema → repo-conteudo → repo
     };
   },
 
@@ -119,6 +120,7 @@ const Usuarios = {
       // o que o aluno ESCREVEU (caderno, tutor, missões, desafio) é dele: sai inteiro.
       // Notas e tentativas ficam (sem texto livre), como as vendas.
       for (const [tabela] of TEXTOS_DO_ALUNO) { try { db.prepare(`DELETE FROM ${tabela} WHERE user_id = ?`).run(id); } catch (_) {} }
+      require('./ecossistema').apagarDoTitular(id); // comunidade e lives: o texto sai, o fio da conversa fica
       return true;
     });
   },
