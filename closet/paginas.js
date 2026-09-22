@@ -1316,7 +1316,7 @@ function appHTML() {
     <div class="app" style="padding-bottom:0"><div class="abas" id="abas"></div></div></div>
   <div class="app"><div id="tela"><p class="vazio">Carregando…</p></div></div>
   <dialog id="modal"></dialog>
-  <script src="/closet/app.js?v=${VERSAO_APP}"></script><script>bootCloset();</script></body></html>`;
+  <script src="/closet/app.js?v=${VERSAO_APP}"></script><script>bootCloset();</script><script src="/closet/comunicados.js" data-cor="#6B2E4A" data-sino="nao" defer></script></body></html>`;
 }
 
 // ---------------------------------------------------------------------

@@ -29,6 +29,7 @@
     "test:music": "node music/selftest.js",
     "test:livraria": "node livraria/selftest.js",
     "test:voz": "node voz/selftest.js",
+    "test:comunicados": "node comunicados/selftest.js",
     "test:mcp": "node mcp-staff/selftest.js",
     "music:worker": "node music/worker.js",
     "test:nucleo": "node selftest-nucleo.js"

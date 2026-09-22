@@ -3965,6 +3965,22 @@ async function alertaAugusto(resumo) {
   } catch (e) { console.error('[alerta augusto]', e.message); return false; }
 }
 
+// Modelo (template) aprovado pela Meta para QUALQUER número, fora da janela de 24 h. O cenário
+// do Make roteia pela quantidade de parâmetros (p1..pN). Parâmetro vazio envenena a fila do
+// Make (episódios de 08 e 11/08/2026) — recusa aqui, antes de sair.
+async function enviarWhatsAppTemplate(to, template, params) {
+  if (!process.env.MAKE_WA_WEBHOOK) return false;
+  const num = String(to || '').replace(/\D/g, '');
+  const ps = (Array.isArray(params) ? params : []).map(sanitizaParam);
+  if (!num || !template || !ps.length || ps.some(v => !v)) { console.error('[wa template] envio recusado: destino, modelo ou parâmetro vazio'); return false; }
+  const corpo = { to: num, template };
+  ps.forEach((v, i) => { corpo['p' + (i + 1)] = v; });
+  try {
+    const r = await fetch(process.env.MAKE_WA_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    return r.ok;
+  } catch (e) { console.error('[wa template]', e.message); return false; }
+}
+
 // ---- Fase 4: recibos, avaliações e indicações ----
 const lerAvaliacoes = () => lerJSON('avaliacoes.json', []);
 const salvarAvaliacoes = (a) => salvarJSON('avaliacoes.json', a);
@@ -4614,6 +4630,19 @@ app.get('/', (req, res) => {
 // Páginas públicas <base>/ajuda, /ajuda/manual e /ajuda/faq de cada produto SaaS, renderizadas
 // do markdown em ajuda/conteudo/. Registrado ANTES dos módulos para ter prioridade de rota.
 try { require('./ajuda').montar(app); } catch (e) { console.error('[ajuda] falha ao montar módulo:', e.message); }
+
+// =========================== Comunicados aos usuários (todos os sistemas) ===========================
+// Central única no Portal Staff (📣) para avisar alunos, assinantes, produtores e clientes: aviso
+// no app (sino), e-mail e WhatsApp (modelo aprovado). Montada ANTES dos produtos porque a caixa do
+// usuário mora sob o caminho de cada um (/academy/comunicados, /gestao/comunicados...).
+try {
+  require('./comunicados').montar(app, {
+    express, requireAuth, requireAdmin, requirePublishOrAdmin, registrarAuditoria,
+    enviarEmail, enviarWhatsAppTemplate, jwtSecret: JWT_SECRET,
+    emailPronto: () => !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASS),
+    whatsappPronto: () => !!process.env.MAKE_WA_WEBHOOK,
+  });
+} catch (e) { console.error('[comunicados] falha ao montar módulo:', e.message); }
 
 // =========================== Livraria Villela (loja de livros) ===========================
 // Loja pública server-rendered (SEO) + Portal Staff (Gestão de Livros) + webhook próprio.

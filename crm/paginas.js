@@ -218,7 +218,7 @@ function appHTML() {
     <script src="/crm/app.js"></script>
     <!-- Extensao do Villela Growth OS: acrescenta abas ao shell sem tocar no nucleo -->
     <script src="/crm/app-growth.js"></script>
-    <script>bootCRM();</script></body></html>`;
+    <script>bootCRM();</script><script src="/crm/comunicados.js" data-cor="#1B4A3A" defer></script></body></html>`;
 }
 
 // proposta pública /crm/p/:token

@@ -1,0 +1,46 @@
+// =====================================================================
+// Comunicados — camada de banco (SQLite via node:sqlite). Banco próprio
+// em DATA_DIR/comunicados/, isolado dos produtos. Padrão do voz/db.js.
+//
+// ⚠️ O `schema/` roda ANTES das migrações. Coluna nova entra por
+// `garantirColuna`, e o índice dela por MIGRAÇÃO.
+// =====================================================================
+'use strict';
+const { DatabaseSync } = require('node:sqlite');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+const MOD_DIR = path.join(DATA_DIR, 'comunicados');
+fs.mkdirSync(MOD_DIR, { recursive: true });
+
+const DB_PATH = path.join(MOD_DIR, 'comunicados.db');
+const db = new DatabaseSync(DB_PATH);
+db.exec('PRAGMA journal_mode = WAL;');
+db.exec('PRAGMA foreign_keys = ON;');
+db.exec('PRAGMA busy_timeout = 4000;');
+
+const SCHEMA_DIR = path.join(__dirname, 'schema');
+for (const arquivo of fs.readdirSync(SCHEMA_DIR).filter((f) => f.endsWith('.sql')).sort()) {
+  db.exec(fs.readFileSync(path.join(SCHEMA_DIR, arquivo), 'utf8'));
+}
+
+const MIGRACOES = [];
+function aplicarMigracoes(lista) {
+  for (const m of lista) {
+    if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
+    db.exec(m.sql);
+    db.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
+  }
+}
+aplicarMigracoes(MIGRACOES);
+
+const nowISO = () => new Date().toISOString();
+const novoId = () => crypto.randomBytes(10).toString('hex');
+const j = {
+  str: (v) => { try { return JSON.stringify(v == null ? null : v); } catch (_) { return 'null'; } },
+  parse: (s, padrao) => { try { const v = JSON.parse(s); return v == null ? padrao : v; } catch (_) { return padrao; } },
+};
+
+module.exports = { db, DB_PATH, MOD_DIR, nowISO, novoId, j, aplicarMigracoes };

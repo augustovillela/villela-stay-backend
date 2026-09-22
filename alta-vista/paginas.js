@@ -1279,7 +1279,7 @@ function appHTML() {
       <button class="btn peq" id="sair" style="background:transparent;border-color:#8FA3B0;color:var(--claro)">Sair</button></div></div>
     <div class="abas" id="abas"></div></div>
   <main class="app"><div id="tela"><p class="vazio">Carregando…</p></div></main>
-  <script src="${BASE}/app.js?v=${VERSAO_APP}"></script><script>bootAltaVista();</script></body></html>`;
+  <script src="${BASE}/app.js?v=${VERSAO_APP}"></script><script>bootAltaVista();</script><script src="/alta-vista/comunicados.js" data-cor="#12345A" defer></script></body></html>`;
 }
 
 // ---------------------------------------------------------------------

@@ -305,7 +305,8 @@ function registrarPaginas(app) {
 <script src="/music/audio.js"></script>
 <script src="/music/app.js"></script>
 <script src="/music/biblioteca.js"></script>
-<script src="/music/escolas.js"></script>`));
+<script src="/music/escolas.js"></script>
+<script src="/music/comunicados.js" data-cor="#3B2A6B" defer></script>`));
   });
 
   // ---- textos legais (MINUTA até a OAB validar) ----

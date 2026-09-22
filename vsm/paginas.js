@@ -194,7 +194,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="manager"><div class="cx">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 16px">${marca(false)}<span class="tag">painel da operação</span></div>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/gestao/app.js"></script><script src="/gestao/app-livro.js"></script><script>bootGestao();</script></body></html>`;
+    <script src="/gestao/app.js"></script><script src="/gestao/app-livro.js"></script><script>bootGestao();</script><script src="/gestao/comunicados.js" data-cor="#0E5A6B" defer></script></body></html>`;
 }
 
 function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {

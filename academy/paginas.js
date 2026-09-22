@@ -172,7 +172,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy"><div class="cx">
     <h2 style="color:var(--villela-navy);display:flex;align-items:center;gap:10px;flex-wrap:wrap">${marca({ escuro: false, altura: 30 })} <span class="tag">painel</span></h2>
     <div id="app"><p class="sub">Carregando…</p></div></div>
-    <script src="/academy/jornada.js?v=2"></script><script src="/academy/ecossistema.js?v=2"></script><script src="/academy/aluno.js?v=5"></script><script src="/academy/app.js?v=9"></script><script>bootAcademy();</script></body></html>`;
+    <script src="/academy/jornada.js?v=2"></script><script src="/academy/ecossistema.js?v=2"></script><script src="/academy/aluno.js?v=5"></script><script src="/academy/app.js?v=9"></script><script>bootAcademy();</script><script src="/academy/comunicados.js" data-cor="#1B2A4A" data-sino="nao" defer></script></body></html>`;
 }
 
 // ==================== FASE 3 — vitrine pública (SEO/OG) ====================

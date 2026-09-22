@@ -633,7 +633,7 @@ function registrarPaginas(app) {
   g('/vitrine/app', (req, res) => {
     res.send(layout({
       titulo: 'Meu painel', semIndex: true,
-      conteudo: `<div id="vt-app"><p class="vazio">Carregando seu painel…</p></div><script src="/vitrine/app.js?v=${APP_V}"></script>`,
+      conteudo: `<div id="vt-app"><p class="vazio">Carregando seu painel…</p></div><script src="/vitrine/app.js?v=${APP_V}"></script><script src="/vitrine/comunicados.js" data-cor="#7A4A12" data-sino="nao" defer></script>`,
     }));
   });
   const APP_JS = path.join(__dirname, 'app-cliente.js');

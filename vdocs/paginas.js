@@ -1022,7 +1022,7 @@ async function desativar2fa(){try{
   S.me.totp_ativo=false;alert('2FA desativado.');vConfig();
  }catch(e){alert(e.message);}}
 boot().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');
-</script></body></html>`;
+</script><script src="/vdocs/comunicados.js" data-cor="#1F3A5F" defer></script></body></html>`;
 }
 
 // ------------------------------------------------------------ páginas públicas do compartilhamento (Fase 7)

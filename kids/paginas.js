@@ -264,7 +264,8 @@ function registrarPaginas(app) {
   g('/kids/app', () => layout({
     titulo: 'Minhas missões', semIndex: true,
     conteudo: `<div class="wrap" id="kids-app"><p style="text-align:center;padding:50px 0">Abrindo o portal…</p></div>
-<script src="/kids/app.js?v=${APP_V}"></script>`,
+<script src="/kids/app.js?v=${APP_V}"></script>
+<script src="/kids/comunicados.js" data-cor="#6C4DFF" data-sino="nao" defer></script>`,
   }));
   app.get('/kids/app.js', (req, res) => {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');

@@ -1209,7 +1209,7 @@ async function salvarCfg(){try{
   await api('PATCH','/config',{tenant:{nome:$('cf-nome').value,cnpj:$('cf-cnpj').value,email_contato:$('cf-email').value,telefone:$('cf-tel').value}});
   $('cf-out').textContent='✅ salvo';}catch(e){$('cf-out').textContent='⚠️ '+e.message;}}
 boot().catch(e=>$('corpo').innerHTML='<div class="erro">'+esc(e.message)+'</div>');
-</script></body></html>`;
+</script><script src="/vpe/comunicados.js" data-cor="#3D2E5C" defer></script></body></html>`;
 }
 
 // ---- Portal do cliente (público, server-rendered a partir da visão curada) ----

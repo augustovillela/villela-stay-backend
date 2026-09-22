@@ -330,7 +330,7 @@ function assinarHTML(planoSlug) {
 }
 
 function appHTML() {
-  return shell(`<div id="app"><div class="card"><h3>Entrar</h3>
+  return shell(`<script src="/juridico/comunicados.js" data-cor="#2B2F4A" defer></script><div id="app"><div class="card"><h3>Entrar</h3>
     <input id="em" type="email" placeholder="E-mail"><input id="sn" type="password" placeholder="Senha">
     <button class="btn" onclick="entrar()">Entrar</button><p id="msg" class="erro"></p>
     <p class="sub">Novo por aqui? <a href="/juridico/assinar?plano=trial">Teste grátis</a>.</p></div></div>`,
@@ -449,6 +449,7 @@ label{font-size:.9rem;font-weight:600}table{width:100%;border-collapse:collapse}
 <script src="/juridico/app-legal-livro.js"></script>
 <script src="/juridico/app-legal-shell.js"></script>
 <script>bootLegal();</script>
+<script src="/juridico/comunicados.js" data-cor="#2B2F4A" defer></script>
 </body></html>`;
 }
 
