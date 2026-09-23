@@ -340,6 +340,10 @@ ${semIdiomas ? '' : hreflangTags(caminho)}
 <meta property="og:url" content="${urlAtual}">
 <meta property="og:image" content="${esc(ogImage)}">
 <meta property="og:image:alt" content="${esc(titulo)}">
+<!-- Sem largura e altura o WhatsApp corta o cartão: ele decide o recorte antes de
+     baixar a imagem. Todos os cartões do site são 1200x630 (padrão da casa). -->
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:locale" content="${ogLocale}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(titulo)}">
@@ -358,7 +362,14 @@ ${extraHead}
     <a href="${L('/eventos.html')}">${t('Eventos', 'Events', 'Eventos')}</a>
     <a href="${L('/pacotes.html')}">${t('Pacotes Especiais', 'Special Packages', 'Paquetes Especiales')}</a>
     <a href="${L('/blog.html')}">Blog</a>
-    ${LANG === 'pt' ? `<a href="/claude/" title="Blog Claude AI na Prática — artigos sobre IA para empresas">Claude AI</a>` : ''}
+    <!-- Livros e cursos moram em outros domínios do grupo. Entram no menu porque
+         o visitante que veio pelo nome do autor não tem como adivinhar que eles
+         existem — e porque link no cabeçalho de todas as páginas é o que tira a
+         /tudo.html da condição de página órfã, que é o que mais atrapalha busca.
+         O "Claude AI" saiu daqui (decisão do Augusto, 23/09/2026); a série
+         continua linkada no rodapé. -->
+    <a href="https://livros.villelastay.com.br/livros?origem=menu" title="${t('Livraria Villela — os livros de Augusto Villela, em PDF e impresso', 'Villela Bookstore — books by Augusto Villela, PDF and printed', 'Librería Villela — los libros de Augusto Villela, en PDF e impreso')}">${t('Livros', 'Books', 'Libros')}</a>
+    <a href="https://academia.villelastay.com.br/academy/marketplace?origem=menu" title="${t('Villela Academy — cursos em vídeo sobre IA aplicada ao trabalho', 'Villela Academy — video courses on AI applied to work', 'Villela Academy — cursos en vídeo sobre IA aplicada al trabajo')}">${t('Cursos', 'Courses', 'Cursos')}</a>
     <a href="${L('/regras.html')}">${t('Regras da Casa', 'House Rules', 'Normas de la Casa')}</a>
     <a href="${L('/faq.html')}">FAQ</a>
     <a href="${L('/guia.html')}">${t('Guia do Hóspede', 'Guest Guide', 'Guía del Huésped')}</a>
@@ -369,6 +380,7 @@ ${extraHead}
          Enterrado entre "Blog" e "Regras da Casa" ele passava batido; em pílula
          dourada, ao lado dos outros destinos (Hóspede/Staff), fica claro que
          leva para outro assunto. -->
+    <a href="${L('/tudo.html')}" class="link-produtos" title="${t('Todos os livros, cursos e sistemas do Grupo Villela Stay', 'Every book, course and system from Grupo Villela Stay', 'Todos los libros, cursos y sistemas del Grupo Villela Stay')}">📚 ${t('Produtos', 'Products', 'Productos')}</a>
     <a href="${L('/sistemas.html')}" class="link-sistemas" title="${t('Os sistemas de gestão do Grupo Villela Stay', 'Grupo Villela Stay management software', 'Los sistemas de gestión del Grupo Villela Stay')}">💼 ${t('Sistemas', 'Software', 'Sistemas')}</a>
     ${seletorIdioma(caminho, semIdiomas)}
     <a href="${waLink(t('Olá! Vim pelo site da Villela Stay.', 'Hi! I came from the Villela Stay website.', '¡Hola! Vengo del sitio de Villela Stay.'))}" class="btn-wa-nav">WhatsApp</a>
@@ -383,6 +395,7 @@ ${corpo}
 <footer class="rodape">
   <div class="rodape-links">
     <strong>${t('Conheça', 'Discover', 'Conoce')}</strong>
+    <a href="${L('/tudo.html')}">${t('Livros, cursos e sistemas — tudo em uma página', 'Books, courses and software — all on one page', 'Libros, cursos y sistemas — todo en una página')}</a>
     <a href="${L('/sistemas.html')}">${t('Sistemas do Grupo Villela Stay', 'Grupo Villela Stay Software', 'Sistemas del Grupo Villela Stay')}</a>
     <a href="${L('/blog.html')}">${t('Blog · Diário de Brasília', 'Blog · Brasília Diary', 'Blog · Diario de Brasília')}</a>
     ${LANG === 'pt' ? `<a href="/claude/">Blog · Claude AI na Prática</a>` : ''}
@@ -3176,6 +3189,142 @@ ${blocos}
       </span></a>`;
   }).join('');
 
+  // ---- POR ASSUNTO: a camada que faz a página ser ACHADA.
+  // Ninguém procura "produtos da Villela Stay". Procura "livro sobre agentes de
+  // IA", "curso de ChatGPT para advogado", "sistema de gestão de aluguel por
+  // temporada". Sem essas palavras na página, ela só aparece para quem já sabe o
+  // nome da marca — e aí não precisava da página. Cada assunto reúne o que
+  // responde àquela busca, venha de qual acervo vier: é a única seção em que
+  // livro, curso e sistema aparecem juntos, que é como o problema chega.
+  const ASSUNTOS = [
+    { id: 'ia-trabalho',
+      nome: t('Inteligência artificial aplicada ao trabalho', 'Artificial intelligence applied to work', 'Inteligencia artificial aplicada al trabajo'),
+      texto: t('Como sair do uso improvisado do ChatGPT e do Claude e chegar a prompts que funcionam, organização do conhecimento em projetos, GPTs e Skills, agentes que executam tarefas do começo ao fim, automações com Make e n8n, MCP, conectores e APIs — com economia de tokens e de créditos. É o assunto da maior parte do que publicamos, porque foi o que reorganizou a nossa própria empresa.',
+        'How to move past improvised use of ChatGPT and Claude and get to prompts that work, knowledge organised into projects, GPTs and Skills, agents that run a task end to end, automations with Make and n8n, MCP, connectors and APIs — with token and credit economy. It is the subject of most of what we publish, because it is what reorganised our own company.',
+        'Cómo salir del uso improvisado de ChatGPT y Claude y llegar a prompts que funcionan, organización del conocimiento en proyectos, GPTs y Skills, agentes que ejecutan tareas de principio a fin, automatizaciones con Make y n8n, MCP, conectores y APIs — con ahorro de tokens y créditos. Es el tema de la mayor parte de lo que publicamos.'),
+      livros: ['chatgpt-ai-na-pratica', 'chatgpt-ai-na-pratica-guia-visual', 'claude-ai-na-pratica', 'como-ser-superprodutivo-com-ia'],
+      cursos: ['chatgpt-ai-na-pratica', 'claude-ai-na-pratica'], sistemas: [] },
+
+    { id: 'ia-juridica',
+      nome: t('IA para advogados e escritórios de advocacia', 'AI for lawyers and law firms', 'IA para abogados y despachos'),
+      texto: t('Prompt com contexto jurídico, controle de qualidade da resposta, pesquisa de jurisprudência e de legislação com conferência na fonte oficial, bases de conhecimento do escritório, minutas de peças e de contratos, acompanhamento de publicações e prazos, sigilo profissional e LGPD. Inclui o software jurídico que roda o nosso próprio escritório.',
+        'Prompting with legal context, quality control of the answer, case-law and statute research checked against the official source, firm knowledge bases, drafts of pleadings and contracts, tracking of court publications and deadlines, professional secrecy and data protection. Includes the legal software that runs our own practice.',
+        'Prompt con contexto jurídico, control de calidad de la respuesta, búsqueda de jurisprudencia y legislación verificada en la fuente oficial, bases de conocimiento del despacho, minutas de escritos y contratos, seguimiento de publicaciones y plazos, secreto profesional y protección de datos.'),
+      livros: ['claude-ai-na-pratica-juridica', 'claude-ai-para-advogados-guia-visual'],
+      cursos: ['claude-ai-na-pratica-juridica'], sistemas: ['legal'] },
+
+    { id: 'gestao',
+      nome: t('Gestão da empresa: clientes, documentos, projetos e dinheiro', 'Running the company: clients, documents, projects and money', 'Gestión de la empresa: clientes, documentos, proyectos y dinero'),
+      texto: t('Funil comercial e CRM, gestão documental com busca por IA, portfólio de projetos e eventos, controle financeiro com partida dobrada, cursos e produtos digitais com checkout nacional, e a plataforma de receita que junta tudo. São os sistemas que a operação do grupo usa todo dia — vendidos depois, não antes.',
+        'Sales pipeline and CRM, document management with AI search, project and event portfolio, double-entry financial control, online courses with Brazilian checkout, and the revenue platform that ties it together. This is the software our own operation uses every day — sold afterwards, not before.',
+        'Embudo comercial y CRM, gestión documental con búsqueda por IA, portafolio de proyectos y eventos, control financiero por partida doble, cursos y productos digitales con checkout nacional, y la plataforma de ingresos que une todo.'),
+      livros: [], cursos: [], sistemas: ['crm', 'docs', 'projects', 'academy', 'finance'] },
+
+    { id: 'hospedagem',
+      nome: t('Hospedagem, aluguel por temporada e anfitrião profissional', 'Hospitality, vacation rentals and professional hosting', 'Alojamiento, alquiler por temporada y anfitrión profesional'),
+      texto: t('Como os algoritmos do Airbnb e do Booking decidem quem aparece, precificação por demanda, taxa de ocupação, avaliações, operação de limpeza e enxoval, e o sistema de gestão de hospedagem que nasceu das nossas quatro casas no Lago Sul.',
+        'How the Airbnb and Booking algorithms decide who shows up, demand-based pricing, occupancy rate, reviews, cleaning and linen operations, and the hospitality management system born from our four houses in Brasília.',
+        'Cómo los algoritmos de Airbnb y Booking deciden quién aparece, precios por demanda, tasa de ocupación, reseñas, operación de limpieza y ropa de cama, y el sistema de gestión de alojamiento nacido de nuestras cuatro casas.'),
+      livros: ['o-locador-inteligente'], cursos: [], sistemas: ['manager'] },
+
+    { id: 'negocios',
+      nome: t('Negócios, marketing, finanças pessoais e produtos digitais', 'Business, marketing, personal finance and digital products', 'Negocios, marketing, finanzas personales y productos digitales'),
+      texto: t('Marketing na era dos algoritmos, construção de rede e relacionamento, educação financeira e saída das dívidas, e o caminho de quem quer transformar conhecimento em curso on-line — do conteúdo à primeira venda. Inclui as plataformas de venda de cursos, de produtos e de aluguel de peças.',
+        'Marketing in the age of algorithms, building a network, financial education and getting out of debt, and the path for turning knowledge into an online course — from content to first sale. Includes the platforms for selling courses, products and renting items.',
+        'Marketing en la era de los algoritmos, construcción de red, educación financiera y salida de las deudas, y el camino de quien quiere convertir conocimiento en curso online — del contenido a la primera venta.'),
+      livros: ['suas-definicoes-de-marketing', 'de-repente-rico', 'conexoes-de-sucesso', 'faca-um-curso-online-em-15-passos'],
+      cursos: [], sistemas: ['vitrine', 'closet'] },
+
+    { id: 'imagem',
+      nome: t('Drones, vídeo e imagem aérea', 'Drones, video and aerial imagery', 'Drones, vídeo e imagen aérea'),
+      texto: t('Do primeiro voo à filmagem profissional com o DJI Mini 3: regulação da ANAC e do SISANT, segurança, planejamento de voo, enquadramento e edição — e o estúdio que faz tour virtual 360°, foto aérea e vídeo com IA para imóveis e eventos.',
+        'From the first flight to professional footage with the DJI Mini 3: Brazilian aviation rules, safety, flight planning, framing and editing — plus the studio that produces 360° virtual tours, aerial photography and AI video for property and events.',
+        'Del primer vuelo a la filmación profesional con el DJI Mini 3: regulación, seguridad, planificación de vuelo, encuadre y edición — y el estudio que hace tour virtual 360°, foto aérea y vídeo con IA.'),
+      livros: ['pilotagem-de-drones-na-pratica-dji-mini-3'], cursos: [], sistemas: ['altavista'] },
+
+    { id: 'pessoa',
+      nome: t('Vida, caráter, família e aprendizagem', 'Life, character, family and learning', 'Vida, carácter, familia y aprendizaje'),
+      texto: t('O que um pai reúne para os filhos sobre domínio de si, lucidez e propósito — e as plataformas de aprendizagem criativa para crianças, de estudo de música e de cozinha, que nasceram da mesma pergunta: como se aprende de verdade.',
+        'What a father gathers for his children about self-mastery, clarity and purpose — and the platforms for creative learning for children, music study and cooking, born from the same question: how do people really learn.',
+        'Lo que un padre reúne para sus hijos sobre dominio de sí, lucidez y propósito — y las plataformas de aprendizaje creativo para niños, estudio de música y cocina.'),
+      livros: ['o-homem-essencial'], cursos: [], sistemas: ['kids', 'music', 'cozinhe'] }
+  ];
+
+  // A trava: produto fora de todo assunto não some da página — some da BUSCA, que é
+  // pior, porque a página continua bonita e ninguém percebe. E slug escrito errado
+  // aqui viraria uma seção com um link a menos, calada. As duas coisas quebram o build.
+  {
+    const porSlugLivro = new Map(LIVROS.map(b => [b.slug, b]));
+    const porSlugCurso = new Map(CURSOS.map(c => [c.slug, c]));
+    const porIdSistema = new Map(TODOS_SIS.map(s => [s.id, s]));
+    const vistos = { livros: new Set(), cursos: new Set(), sistemas: new Set() };
+    const erros = [];
+    for (const a of ASSUNTOS) {
+      for (const s of a.livros) { porSlugLivro.has(s) ? vistos.livros.add(s) : erros.push(`assunto "${a.id}": livro "${s}" não existe no catálogo`); }
+      for (const s of a.cursos) { porSlugCurso.has(s) ? vistos.cursos.add(s) : erros.push(`assunto "${a.id}": curso "${s}" não existe no catálogo`); }
+      for (const s of a.sistemas) { porIdSistema.has(s) ? vistos.sistemas.add(s) : erros.push(`assunto "${a.id}": sistema "${s}" não existe em content/sistemas.js`); }
+    }
+    for (const b of LIVROS) if (!vistos.livros.has(b.slug)) erros.push(`livro "${b.slug}" não está em nenhum assunto da /tudo.html — ele não vai ser achado por quem procura o tema`);
+    for (const c of CURSOS) if (!vistos.cursos.has(c.slug)) erros.push(`curso "${c.slug}" não está em nenhum assunto da /tudo.html`);
+    for (const s of TODOS_SIS) if (!vistos.sistemas.has(s.id)) erros.push(`sistema "${s.id}" não está em nenhum assunto da /tudo.html`);
+    if (erros.length) {
+      console.error('\n[/tudo.html] assuntos incompletos:');
+      erros.forEach(e => console.error('  - ' + e));
+      throw new Error('A seção "por assunto" da /tudo.html está incompleta — veja a lista acima.');
+    }
+  }
+
+  const blocosAssuntos = ASSUNTOS.map(a => {
+    const itens = [
+      ...a.livros.map(s => { const b = LIVROS.find(x => x.slug === s); return `<a href="${comOrigem(b.url)}" target="_blank" rel="noopener" data-tx-cta="assunto-livro-${s}"><b>${esc(b.titulo)}</b><span>${t('livro', 'book', 'libro')}</span></a>`; }),
+      ...a.cursos.map(s => { const c = CURSOS.find(x => x.slug === s); return `<a href="${comOrigem(c.url)}" target="_blank" rel="noopener" data-tx-cta="assunto-curso-${s}"><b>${esc(c.titulo)}</b><span>${t('curso em vídeo', 'video course', 'curso en vídeo')}</span></a>`; }),
+      ...a.sistemas.map(id => { const s = TODOS_SIS.find(x => x.id === id); return `<a href="${L('/sistemas.html')}#${id}" data-tx-cta="assunto-sistema-${id}"><b>${esc(s.nome)}</b><span>${t('sistema', 'software', 'sistema')}</span></a>`; })
+    ].join('');
+    return `<section class="tx-assunto" id="assunto-${a.id}">
+      <h3>${esc(a.nome)}</h3>
+      <p>${esc(a.texto)}</p>
+      <div class="tx-assunto-itens">${itens}</div>
+    </section>`;
+  }).join('');
+
+  // ---- perguntas: é o que vira resposta direta no Google e citação em assistente.
+  const PERGUNTAS = [
+    [t('Os livros e os cursos são em português?', 'Are the books and courses in Portuguese?', '¿Los libros y los cursos son en portugués?'),
+     t('São, todos. Os livros de Augusto Villela são escritos em português do Brasil, e as videoaulas da Villela Academy também. Esta página existe em inglês e espanhol, mas o conteúdo dos produtos é em português.',
+       'Yes, all of them. Augusto Villela’s books are written in Brazilian Portuguese, and the Villela Academy video lessons too. This page exists in English and Spanish, but the products themselves are in Portuguese.',
+       'Sí, todos. Los libros de Augusto Villela están escritos en portugués de Brasil, y las videoclases de Villela Academy también. Esta página existe en inglés y español, pero el contenido de los productos es en portugués.')],
+    [t('Qual a diferença entre o livro e o curso do mesmo título?', 'What is the difference between the book and the course with the same title?', '¿Cuál es la diferencia entre el libro y el curso del mismo título?'),
+     t('O livro é o texto completo, para ler no seu ritmo, em PDF ou impresso. O curso é o mesmo método em videoaula, com artigo em PDF, apresentação e um resumo visual de uma página por aula — feito para quem prefere assistir e aplicar junto. São compras separadas: um não inclui o outro.',
+       'The book is the full text, to read at your own pace, in PDF or printed. The course is the same method as video lessons, with a PDF article, the slide deck and a one-page visual summary per lesson — for people who prefer to watch and apply along. They are separate purchases: one does not include the other.',
+       'El libro es el texto completo, para leer a tu ritmo, en PDF o impreso. El curso es el mismo método en videoclases, con artículo en PDF, presentación y un resumen visual de una página por clase. Son compras separadas.')],
+    [t('Como recebo o livro depois de comprar?', 'How do I receive the book after buying?', '¿Cómo recibo el libro después de comprar?'),
+     t('O PDF chega por e-mail assim que o pagamento é confirmado, com link de download na sua biblioteca. O impresso é produzido sob demanda e enviado pelos Correios. O combo leva os dois.',
+       'The PDF arrives by e-mail as soon as payment clears, with a download link in your library. The printed copy is produced on demand and shipped. The bundle includes both.',
+       'El PDF llega por correo en cuanto se confirma el pago, con enlace de descarga en tu biblioteca. El impreso se produce bajo demanda y se envía. El combo lleva los dos.')],
+    [t('Dá para ver uma amostra antes de comprar?', 'Can I see a sample before buying?', '¿Puedo ver una muestra antes de comprar?'),
+     t('Dá. Todo livro da Livraria tem amostra para folhear na própria página dele, e a primeira aula de cada curso da Academy é aberta.',
+       'Yes. Every book in the bookstore has a free preview on its own page, and the first lesson of each Academy course is open.',
+       'Sí. Cada libro de la librería tiene una muestra para hojear en su propia página, y la primera clase de cada curso de la Academy está abierta.')],
+    [t('Os cursos têm mensalidade?', 'Do the courses have a monthly fee?', '¿Los cursos tienen mensualidad?'),
+     t('Não. O curso é compra única, com acesso vitalício ao conteúdo e às atualizações da mesma edição. Quem cobra assinatura mensal são os sistemas de gestão, que é outra coisa.',
+       'No. A course is a one-time purchase with lifetime access to the content and to updates of the same edition. The monthly subscription applies to the management software, which is a different thing.',
+       'No. El curso es compra única, con acceso de por vida al contenido y a las actualizaciones de la misma edición. La suscripción mensual es de los sistemas de gestión, que es otra cosa.')],
+    [t('Os sistemas têm teste grátis?', 'Is there a free trial for the software?', '¿Los sistemas tienen prueba gratis?'),
+     t(`Os que são vendidos por assinatura têm 14 dias grátis, sem cartão de crédito e sem fidelidade. Dos ${TODOS_SIS.length}, ${SISTEMAS.length} estão à venda; ${EM_DESENVOLVIMENTO.length} já funcionam em produção e ainda não foram lançados comercialmente — a página dos sistemas diz o que falta em cada um.`,
+       `Those sold by subscription come with 14 days free, no credit card and no lock-in. Of the ${TODOS_SIS.length}, ${SISTEMAS.length} are for sale; ${EM_DESENVOLVIMENTO.length} already run in production and have not launched commercially yet — the systems page says what each one is still missing.`,
+       `Los vendidos por suscripción tienen 14 días gratis, sin tarjeta y sin permanencia. De los ${TODOS_SIS.length}, ${SISTEMAS.length} están a la venta; ${EM_DESENVOLVIMENTO.length} ya funcionan en producción y aún no se lanzaron comercialmente.`)],
+    [t('Quem é Augusto Villela?', 'Who is Augusto Villela?', '¿Quién es Augusto Villela?'),
+     t('Advogado e empresário em Brasília, autor dos livros desta página e fundador do Grupo Villela Stay, que opera hospedagem por temporada no Lago Sul e desenvolve os sistemas de gestão listados aqui. Os exemplos dos livros e dos cursos saem dessa operação — não são casos hipotéticos.',
+       'A lawyer and entrepreneur in Brasília, author of the books on this page and founder of Grupo Villela Stay, which runs vacation rentals in Lago Sul and builds the management software listed here. The examples in the books and courses come from that operation — they are not hypothetical cases.',
+       'Abogado y empresario en Brasilia, autor de los libros de esta página y fundador del Grupo Villela Stay, que opera alquiler por temporada en Lago Sul y desarrolla los sistemas de gestión listados aquí.')],
+    [t('Onde eu compro cada coisa?', 'Where do I buy each one?', '¿Dónde compro cada cosa?'),
+     t('Os livros em livros.villelastay.com.br, os cursos em academia.villelastay.com.br e os sistemas na página de sistemas do villelastay.com.br. Esta página não vende: ela leva você direto para a loja de cada produto.',
+       'Books at livros.villelastay.com.br, courses at academia.villelastay.com.br and the software on the systems page at villelastay.com.br. This page does not sell: it takes you straight to each store.',
+       'Los libros en livros.villelastay.com.br, los cursos en academia.villelastay.com.br y los sistemas en la página de sistemas de villelastay.com.br. Esta página no vende: te lleva directo a cada tienda.')]
+  ];
+  const faqTudoHtml = PERGUNTAS.map(([q, a]) =>
+    `<details><summary>${esc(q)}</summary><div class="tx-faq-resp">${esc(a)}</div></details>`).join('');
+
   const urlTudo = `${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}/tudo.html`;
   const ldTudo = [
     { '@context': 'https://schema.org', '@type': 'CollectionPage', '@id': `${urlTudo}#pagina`,
@@ -3183,7 +3332,23 @@ ${blocos}
       inLanguage: HTML_LANG[LANG], isPartOf: { '@id': ORG_ID }, publisher: { '@id': ORG_ID },
       description: t(`Todos os produtos do Grupo Villela Stay: ${LIVROS.length} livros, ${CURSOS.length} cursos em vídeo e ${SISTEMAS.length} sistemas de gestão.`,
         `Every product from Grupo Villela Stay: ${LIVROS.length} books, ${CURSOS.length} video courses and ${SISTEMAS.length} management systems.`,
-        `Todos los productos del Grupo Villela Stay: ${LIVROS.length} libros, ${CURSOS.length} cursos en vídeo y ${SISTEMAS.length} sistemas de gestión.`) },
+        `Todos los productos del Grupo Villela Stay: ${LIVROS.length} libros, ${CURSOS.length} cursos en vídeo y ${SISTEMAS.length} sistemas de gestión.`),
+      // `about` e `keywords` são o que o buscador e o assistente leem para saber DE QUE
+      // a página trata — e saem dos mesmos assuntos exibidos, nunca de uma lista à parte
+      // que envelheceria calada.
+      about: ASSUNTOS.map(a => ({ '@type': 'Thing', name: a.nome })),
+      keywords: ASSUNTOS.map(a => a.nome).join(', '),
+      author: { '@id': `${SITE_URL}/#augusto-villela` },
+      inLanguage: HTML_LANG[LANG] },
+    { '@context': 'https://schema.org', '@type': 'Person', '@id': `${SITE_URL}/#augusto-villela`,
+      name: 'Augusto Villela', url: `${SITE_URL}${L('/nossa-historia.html')}`,
+      jobTitle: t('Advogado, empresário e autor', 'Lawyer, entrepreneur and author', 'Abogado, empresario y autor'),
+      worksFor: { '@id': ORG_ID }, nationality: 'BR',
+      address: { '@type': 'PostalAddress', addressLocality: 'Brasília', addressRegion: 'DF', addressCountry: 'BR' },
+      knowsAbout: ASSUNTOS.map(a => a.nome) },
+    { '@context': 'https://schema.org', '@type': 'FAQPage', '@id': `${urlTudo}#faq`,
+      mainEntity: PERGUNTAS.map(([q, a]) => ({ '@type': 'Question', name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a } })) },
     { '@context': 'https://schema.org', '@type': 'ItemList', '@id': `${urlTudo}#livros`,
       name: t('Livros', 'Books', 'Libros'), numberOfItems: LIVROS.length,
       itemListElement: LIVROS.map((b, i) => ({ '@type': 'ListItem', position: i + 1,
@@ -3206,12 +3371,16 @@ ${blocos}
   ].map(o => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('\n');
 
   const paginaTudo = layout(
-    t(`Produtos da Villela Stay — ${LIVROS.length} livros, ${CURSOS.length} cursos e ${SISTEMAS.length} sistemas`,
-      `Villela Stay products — ${LIVROS.length} books, ${CURSOS.length} courses and ${SISTEMAS.length} systems`,
-      `Productos de Villela Stay — ${LIVROS.length} libros, ${CURSOS.length} cursos y ${SISTEMAS.length} sistemas`),
-    t(`Tudo o que o Grupo Villela Stay publica em um só lugar: ${LIVROS.length} livros sobre IA, negócios, finanças e drones, ${CURSOS.length} cursos em vídeo na Villela Academy e ${SISTEMAS.length} sistemas de gestão em nuvem. Clique e vá direto para a loja de cada produto.`,
-      `Everything Grupo Villela Stay publishes in one place: ${LIVROS.length} books on AI, business, finance and drones, ${CURSOS.length} video courses at Villela Academy and ${SISTEMAS.length} cloud management systems. Click and go straight to each store.`,
-      `Todo lo que publica el Grupo Villela Stay en un solo lugar: ${LIVROS.length} libros sobre IA, negocios, finanzas y drones, ${CURSOS.length} cursos en vídeo en Villela Academy y ${SISTEMAS.length} sistemas de gestión en la nube. Haz clic y ve directo a cada tienda.`),
+    // O título vende para QUEM PROCURA O ASSUNTO, não para quem já conhece a marca:
+    // ninguém digita "produtos da Villela Stay" no Google. A marca fica no fim, que é
+    // onde ela cabe sem roubar os caracteres das palavras que a pessoa realmente usa.
+    t('Livros e cursos de IA, negócios e gestão — Villela Stay',
+      'Books and courses on AI, business and management — Villela Stay',
+      'Libros y cursos de IA, negocios y gestión — Villela Stay'),
+    // 150–160 caracteres: o que o Google mostra inteiro no resultado.
+    t(`${LIVROS.length} livros e ${CURSOS.length} cursos de IA aplicada ao trabalho, advocacia, marketing, finanças e drones — e ${TODOS_SIS.length} sistemas de gestão em nuvem. Tudo em português.`,
+      `${LIVROS.length} books and ${CURSOS.length} courses on AI applied to work, law, marketing, finance and drones — plus ${TODOS_SIS.length} cloud management systems. All in Portuguese.`,
+      `${LIVROS.length} libros y ${CURSOS.length} cursos de IA aplicada al trabajo, abogacía, marketing, finanzas y drones — y ${TODOS_SIS.length} sistemas de gestión en la nube. Todo en portugués.`),
     `
 <div class="tx sx">
 <section class="tx-hero">
@@ -3235,6 +3404,18 @@ ${blocos}
     </div>
   </div>
   ${fabrica}
+</section>
+
+<section class="tx-sec alt" id="assuntos">
+  <div class="tx-wrap">
+    <p class="tx-chapeu">${t('Escolha pelo assunto', 'Choose by subject', 'Elige por el tema')}</p>
+    <h2>${t('O que você quer resolver?', 'What do you want to solve?', '¿Qué quieres resolver?')}</h2>
+    <p class="tx-sub">${t(
+      'Ninguém acorda querendo comprar um livro, um curso ou um sistema: acorda com um problema. Aqui os três acervos aparecem juntos, por assunto — e cada item leva para a loja onde ele mora.',
+      'Nobody wakes up wanting to buy a book, a course or a piece of software: they wake up with a problem. Here the three collections appear together, by subject — and each item leads to the store where it lives.',
+      'Nadie se despierta queriendo comprar un libro, un curso o un sistema: se despierta con un problema. Aquí los tres acervos aparecen juntos, por tema — y cada ítem lleva a la tienda donde vive.')}</p>
+    ${blocosAssuntos}
+  </div>
 </section>
 
 <section class="tx-sec" id="livros">
@@ -3280,6 +3461,14 @@ ${blocos}
     <div class="mq" data-vertical="${destaqueSis.vertical}" style="--acento:${destaqueSis.cor};margin-bottom:28px">${TELAS[destaqueSis.tela](t)}</div>
     <div class="tx-grade-sis">${blocosSistemas}</div>
     <p style="margin-top:30px"><a class="tx-btn tx-btn-lago" href="${L('/sistemas.html')}" data-tx-cta="hub-sistemas">${t('Ver os sistemas funcionando', 'See the software working', 'Ver los sistemas funcionando')} →</a></p>
+  </div>
+</section>
+
+<section class="tx-sec alt" id="perguntas">
+  <div class="tx-wrap">
+    <p class="tx-chapeu">${t('Perguntas frequentes', 'Frequently asked questions', 'Preguntas frecuentes')}</p>
+    <h2>${t('O que perguntam antes de comprar', 'What people ask before buying', 'Lo que preguntan antes de comprar')}</h2>
+    <div class="tx-faq">${faqTudoHtml}</div>
   </div>
 </section>
 

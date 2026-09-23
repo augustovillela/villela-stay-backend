@@ -55,6 +55,12 @@ a { color: var(--lago); text-decoration: none; }
   border: 1px solid rgba(201,162,39,.6); background: rgba(201,162,39,.12);
   padding: 6px 14px; border-radius: 20px; }
 .link-sistemas:hover { background: var(--cerrado); color: var(--petroleo) !important; border-color: var(--cerrado); }
+/* Produtos (/tudo.html): a vitrine conjunta — livros, cursos e sistemas. Mesma
+   família visual da pílula de Sistemas, em contorno claro, para os dois destinos
+   comerciais ficarem juntos sem que o novo grite mais alto que o que já vendia. */
+.link-produtos { font-size: .88rem; font-weight: 700 !important; color: var(--creme) !important;
+  border: 1px solid rgba(248,249,250,.55); padding: 6px 14px; border-radius: 20px; }
+.link-produtos:hover { background: rgba(248,249,250,.14); }
 .btn-instalar { font: inherit; font-size: .82rem; cursor: pointer; color: var(--creme); background: transparent; border: 1px solid rgba(248,249,250,.55); padding: 6px 14px; border-radius: 20px; line-height: 1; }
 .btn-instalar:hover { background: rgba(248,249,250,.12); }
 .btn-instalar[hidden] { display: none; }

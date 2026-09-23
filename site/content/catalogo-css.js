@@ -123,6 +123,30 @@ module.exports = `
   .tx-trilho { overflow-x:auto; -webkit-mask-image:none; mask-image:none; }
 }
 
+/* ----------------------------- assuntos ------------------------------ */
+.tx-assunto { padding:22px 0; border-top:1px solid var(--tx-borda); }
+.tx-assunto:first-of-type { border-top:0; padding-top:4px; }
+.tx-assunto h3 { font-size:1.2rem; margin:0 0 8px; color:var(--tx-navy); }
+.tx-assunto p { font-size:.97rem; line-height:1.55; color:var(--tx-tinta-2); margin:0 0 14px; max-width:78ch; }
+.tx-assunto-itens { display:flex; flex-wrap:wrap; gap:9px; }
+.tx-assunto-itens a { display:inline-flex; align-items:baseline; gap:8px; background:#fff;
+  border:1px solid var(--tx-borda); border-radius:999px; padding:8px 15px; font-size:.9rem;
+  transition:border-color .2s ease, transform .2s ease; }
+.tx-assunto-itens a:hover { border-color:var(--lago); transform:translateY(-2px); }
+.tx-assunto-itens b { font-weight:600; color:var(--tx-navy); }
+.tx-assunto-itens span { font-size:.76rem; color:var(--tx-tinta-2); }
+
+/* ------------------------------- FAQ --------------------------------- */
+.tx-faq { max-width:820px; }
+.tx-faq details { background:#fff; border:1px solid var(--tx-borda); border-radius:12px;
+  padding:14px 18px; margin-bottom:10px; }
+.tx-faq summary { cursor:pointer; font-weight:600; color:var(--tx-navy); font-size:1rem;
+  list-style:none; display:flex; justify-content:space-between; gap:14px; }
+.tx-faq summary::-webkit-details-marker { display:none; }
+.tx-faq summary::after { content:'+'; color:var(--lago); font-size:1.3rem; line-height:1; }
+.tx-faq details[open] summary::after { content:'–'; }
+.tx-faq-resp { margin-top:10px; font-size:.95rem; line-height:1.55; color:var(--tx-tinta-2); }
+
 /* ------------------------------ livros ------------------------------- */
 .tx-cat + .tx-cat { margin-top:34px; }
 .tx-cat h3 { font-size:1.12rem; margin:0 0 14px; display:flex; align-items:baseline; gap:10px; }
