@@ -864,7 +864,10 @@ const PLANTA_DA_CASA = new Set([
 // (quarto, suíte ou flat) — e a diferença decide qual aviso de abertura a página mostra.
 // ⚠️ O `tipo` do listings.json não serve para isto: os flats VH01H/VH02H/UF07H vêm como
 // `entire_home` (são a unidade inteira), mas ficam DENTRO de uma casa com áreas comuns.
-const CASA_INTEIRA = new Set(['GD01H', 'GD03H', 'GG04I', 'PL02I', 'GI01I']);
+// YV01I (Jardim dos Sentidos) é a MESMA Casa Villela do GI01I, anunciada com outro nome para
+// casais — 2 hóspedes num espaço de 120 m². Confirmado pelo Augusto em 23/09/2026: é casa
+// inteira, apesar do maxGuests baixo.
+const CASA_INTEIRA = new Set(['GD01H', 'GD03H', 'GG04I', 'PL02I', 'GI01I', 'YV01I']);
 
 // Aviso cordial no topo da página da unidade (decisão do Augusto, 23/09/2026). Existe porque três
 // assuntos só apareciam DEPOIS da reserva e viravam decepção — e nota baixa: (a) quarto e flat não
