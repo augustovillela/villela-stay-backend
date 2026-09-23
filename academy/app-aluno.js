@@ -214,6 +214,7 @@
         '</div>' + botaoAudiobook(d.audiobook) + '<div id="al-jornada"></div><div id="al-extras"></div></div>' +
         (d.matriculado ? '' : '<div class="aviso">Você não está matriculado — só as aulas de degustação estão liberadas. ' +
           '<a href="/academy/cursos/' + esc(p.slug || '') + '">Ver a página do curso →</a></div>') +
+        avisoGotejamento(d.gotejamento) +
         '<div class="est"><div class="est-palco">' +
         '<div class="palco"><div class="quadro" id="al-quadro"></div><div class="legenda" id="al-legenda"></div></div>' +
         '<div id="al-passos"></div><div class="est-nav" id="al-nav"></div></div>' +
@@ -234,6 +235,16 @@
       montarTutor();
     }
 
+    // A trilha é método, não curso trancado: o aluno lê o ritmo assim que
+    // entra, em vez de descobrir pelo cadeado da terceira aula.
+    function avisoGotejamento(g) {
+      if (!g || !g.ativo) return '';
+      return '<div class="aviso gote">' + ico('relogio', 16) + ' <b>' + esc(g.promessa) + '.</b> ' +
+        'Este curso abre em trilha, contada da sua matrícula — ' +
+        '<b>' + g.abertas + ' de ' + g.total + '</b> aulas já disponíveis para você. ' +
+        'O que abre é seu para sempre.</div>';
+    }
+
     function pintarGrade(filtro) {
       var f = String(filtro || '').toLowerCase().trim();
       var h = C.d.estrutura.map(function (m, im) {
@@ -252,6 +263,7 @@
               '<span class="tit">' + esc(a.titulo) +
               (a.gratuita && !C.d.matriculado ? '<span class="marca">degustação</span>' : '') +
               (FMT[a.formato] ? '<span class="marca fmt">' + FMT[a.formato] + '</span>' : '') +
+              (a.trava && a.trava.rotulo ? '<span class="marca trava">' + esc(a.trava.rotulo) + '</span>' : '') +
               ((a.materiais || []).length ? ' <span class="al-fino">· ' + a.materiais.length + (a.materiais.length > 1 ? ' materiais' : ' material') + '</span>' : '') +
               '</span>' + (a.duracao_seg ? '<span class="dur">' + dur(a.duracao_seg) + '</span>' : '') + '</button>' +
               (a.liberada && (a.materiais || []).length ? '<div class="aula-mats">' + a.materiais.map(function (m, km) {

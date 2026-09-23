@@ -8,6 +8,7 @@
 'use strict';
 const repo = require('./repo');
 const ct = require('./repo-conteudo');
+const lib = require('./liberacao'); // rótulo e promessa do gotejamento
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
@@ -162,12 +163,25 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
     const p = ct.Produtos.obter(req.params.productId);
     if (!p || ['suspenso', 'removido'].includes(p.status)) return res.status(404).json({ erro: 'Produto não encontrado.' });
     const matriculado = ct.temAcesso(req.usuario.id, p.id); // matrícula OU assinatura (clube)
+    // GOTEJAMENTO: ter o curso não é ter a aula de hoje. O mapa diz, por
+    // aula, se ela já abriu para ESTE aluno (conta da matrícula dele) e,
+    // quando não abriu, por quê — data ou conteúdo ainda não publicado.
+    const gote = ct.Liberacao.mapa(req.usuario, p);
     const estrutura = ct.Produtos.estrutura(p.id).map(m => ({
       ...m,
       aulas: m.aulas.map(a => {
-        const liberada = matriculado || !!a.gratuita;
-        // aula bloqueada não expõe conteúdo/arquivos, só o título (vitrine)
-        return liberada ? { ...a, liberada } : { id: a.id, titulo: a.titulo, tipo: a.tipo, formato: a.formato || '', gratuita: 0, liberada: false, materiais: [] };
+        const g = gote.aulas[a.id] || null;
+        const liberada = (matriculado || !!a.gratuita) && (!g || g.liberada);
+        const trava = g && !g.liberada
+          ? { motivo: g.motivo, abre_em: g.abre_em, abre_em_dias: g.abre_em_dias, rotulo: lib.rotulo(g) }
+          : null;
+        // aula bloqueada não expõe conteúdo/arquivos, só o título (vitrine).
+        // Vale também para a aula travada pelo gotejamento: sem `url_externa`
+        // não há vídeo do YouTube/Vimeo para abrir por fora — e vídeo externo
+        // não passa por Midia.podeAcessar, então esta é a única porta dele.
+        return liberada
+          ? { ...a, liberada: true, trava: null }
+          : { id: a.id, titulo: a.titulo, tipo: a.tipo, formato: a.formato || '', gratuita: 0, liberada: false, trava, materiais: [] };
       }),
     }));
     // o painel do aluno mostra autor e descrição no topo do curso; o produtor sai
@@ -181,6 +195,11 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
         produtor_nome: (perfil && perfil.nome_publico) || '', produtor_slug: (perfil && perfil.slug) || '',
       },
       matriculado, estrutura,
+      gotejamento: gote.ativo
+        ? { ativo: true, promessa: lib.promessa(gote.cfg), base: gote.base,
+            aulas_por_periodo: gote.cfg.aulas_por_periodo, periodo_dias: gote.cfg.periodo_dias,
+            abertas: Object.values(gote.aulas).filter(x => x.liberada).length, total: gote.total }
+        : { ativo: false },
       incluidos: (p.tipo === 'clube' && matriculado) ? ct.Clube.itens(p.id).filter(i => i.status === 'publicado') : [],
       progresso: matriculado ? ct.Progresso.doProduto(req.usuario.id, p.id) : null,
       progresso_aulas: matriculado ? ct.Progresso.porAula(req.usuario.id, p.id) : {},

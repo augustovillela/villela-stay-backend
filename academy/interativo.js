@@ -49,6 +49,10 @@ function acessoAula(usuario, lessonId) {
   if (!produto) return null;
   const revisor = podeRevisar(usuario, produto);
   const liberada = revisor || ct.temAcesso(usuario.id, produto.id) || !!aula.gratuita;
+  // GOTEJAMENTO: quiz e caderno são conteúdo DA AULA. Se a aula ainda não
+  // abriu na trilha do aluno, eles também não — senão o quiz entrega a
+  // aula de amanhã por outra porta. Revisor e aula gratuita passam.
+  if (liberada && !revisor && !aula.gratuita && !ct.Liberacao.liberada(usuario, aula.id)) return null;
   return liberada ? { aula, produto, revisor } : null;
 }
 
@@ -396,8 +400,13 @@ function promptsParaAluno(usuario, produto) {
 function contextoTutor(usuario, produto, pergunta, lessonId) {
   const acesso = ct.temAcesso(usuario.id, produto.id) || podeRevisar(usuario, produto);
   const gratis = new Set(db.prepare('SELECT id FROM lessons WHERE product_id = ? AND gratuita = 1').all(produto.id).map(x => x.id));
+  // GOTEJAMENTO: a transcrição de aula que ainda não abriu sai do acervo do
+  // tutor — senão ele conta a aula de amanhã quando perguntado. Trecho sem
+  // aula (livro, FAQ, tarefas) não goteja. Calculado uma vez, não por trecho.
+  const gote = ct.Liberacao.mapa(usuario, produto);
+  const travada = (id) => !!(id && gote.aulas[id] && !gote.aulas[id].liberada);
   // quem não comprou só conversa sobre as aulas de degustação — livro e aulas pagas ficam fora
-  const permitido = (d) => acesso || (d.lesson_id && gratis.has(d.lesson_id));
+  const permitido = (d) => !travada(d.lesson_id) && (acesso || (d.lesson_id && gratis.has(d.lesson_id)));
   let trechos = buscar(produto.id, pergunta, { n: 8, aulaAtual: s(lessonId, 40), permitido });
   if (lessonId && !trechos.some(t => t.lesson_id === lessonId)) {
     const daAula = trechosDaAula(produto.id, lessonId).filter(permitido);

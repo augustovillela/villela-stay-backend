@@ -176,6 +176,16 @@ body.aluno-amplo .cx{max-width:1460px}
 .aula .tit{flex:1;min-width:0}
 .aula .dur{color:var(--al-tinta3);font-size:.76rem;white-space:nowrap;margin-top:1px}
 .aula .marca{display:inline-block;background:var(--al-ok-luz);color:var(--al-ok);border-radius:99px;padding:1px 7px;font-size:.7rem;font-weight:700;margin-left:6px}
+.aula .marca.trava{background:#F2F4F7;color:var(--al-tinta2);border:1px solid var(--al-borda)}
+
+/* ------- gotejamento: a trilha abre no ritmo do curso, contada da matrícula ------- */
+/* `.aviso` já era usado sem estilo (aluno não matriculado) — ganha forma aqui */
+.al .aviso{margin:0 0 14px;padding:12px 16px;border-radius:12px;background:#F8FAFC;
+  border:1px solid var(--al-borda);color:var(--al-tinta2);font-size:.9rem;line-height:1.55}
+.al .aviso b{color:var(--al-tinta)}
+.al .aviso.gote{background:var(--al-ambar-luz);border-color:#F6DFC0;color:#7A4A12}
+.al .aviso.gote b{color:var(--al-ambar2)}
+.al .aviso.gote svg{vertical-align:-3px;margin-right:4px}
 
 /* ------- fim do curso: certificado + próximos passos ------- */
 .al-conquista{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:20px 22px;border-radius:16px;

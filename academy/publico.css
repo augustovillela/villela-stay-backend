@@ -89,6 +89,11 @@
 .pv-curr .aula .dur{margin-left:auto;color:var(--pv-tinta3);font-size:.8rem;white-space:nowrap;padding-left:10px}
 .pv-curr .aula .free{background:#E7F5EF;color:var(--pv-ok);border-radius:99px;padding:1px 8px;font-size:.72rem;font-weight:700;margin-left:7px}
 .pv-resumo-curr{display:flex;gap:18px;flex-wrap:wrap;color:var(--pv-tinta2);font-size:.9rem;margin:0 0 14px}
+/* gotejamento: a trilha é método, e o comprador lê isso ANTES de pagar */
+.pv-gote{margin:0 0 16px;padding:12px 16px;border-radius:12px;background:rgba(217,119,6,.10);
+  border:1px solid rgba(217,119,6,.28);color:var(--pv-tinta2);font-size:.9rem;line-height:1.6}
+.pv-gote b{color:var(--pv-ouro)}
+.pv-gote svg{vertical-align:-2px;margin-right:4px}
 
 /* ---------- instrutor, depoimentos, faq ---------- */
 .pv-prof{display:flex;gap:18px;align-items:flex-start;background:#fff;border:1px solid var(--pv-borda);

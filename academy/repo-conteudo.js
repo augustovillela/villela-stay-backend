@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const { db, transacao, nowISO, novoId, j, MOD_DIR } = require('./db');
 const { Usuarios } = require('./repo');
 const storage = require('./storage'); // F7: driver local|s3, URLs assinadas
+const lib = require('./liberacao'); // gotejamento: a REGRA (sem banco)
 
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 
@@ -200,12 +201,25 @@ const Produtos = {
         d.capa_media_id != null ? s(d.capa_media_id, 40) : p.capa_media_id,
         d.tags != null ? j.str((Array.isArray(d.tags) ? d.tags : []).slice(0, 12).map(t => s(t, 40))) : j.str(p.tags),
         nowISO(), id);
+    // LIBERAÇÃO das aulas (gotejamento). Fica fora do UPDATE acima de
+    // propósito: só muda quando o campo vem, e o padrão é DESLIGADO —
+    // curso completo não pode ganhar trava por descuido de formulário.
+    if ('gotejamento' in d) this.definirLiberacao(id, d.gotejamento);
     // % de afiliado do produto (F5): '' → NULL (usa padrão global); 0 desliga a comissão
     if ('afiliado_pct' in d) {
       const v = d.afiliado_pct === '' || d.afiliado_pct == null ? null : Math.max(0, Math.min(90, parseInt(d.afiliado_pct, 10) || 0));
       db.prepare('UPDATE products SET afiliado_pct = ? WHERE id = ?').run(v, id);
     }
     return this.obter(id);
+  },
+
+  // liga/desliga o gotejamento e grava o ritmo em products.config
+  definirLiberacao(id, entrada = {}) {
+    const p = this.obter(id);
+    if (!p) throw new Error('Produto não encontrado.');
+    const config = lib.paraConfig(p.config, entrada || {});
+    db.prepare('UPDATE products SET config = ?, atualizado_em = ? WHERE id = ?').run(j.str(config), nowISO(), id);
+    return lib.normalizar(config);
   },
 
   // transição editorial validada por papel (produtor|admin)
@@ -395,12 +409,18 @@ const Midia = {
     if (!m) return false;
     if (m.owner_user_id === usuario.id || (usuario.papeis || []).includes('admin')) return true;
     const refs = db.prepare(`
-      SELECT l.product_id, l.gratuita FROM lessons l WHERE l.media_id = ?
-      UNION SELECT l.product_id, l.gratuita FROM lesson_materials x JOIN lessons l ON l.id = x.lesson_id WHERE x.media_id = ?
-      UNION SELECT p.id AS product_id, 0 AS gratuita FROM products p WHERE p.capa_media_id = ?`).all(mediaId, mediaId, mediaId);
+      SELECT l.id AS lesson_id, l.product_id, l.gratuita FROM lessons l WHERE l.media_id = ?
+      UNION SELECT l.id AS lesson_id, l.product_id, l.gratuita FROM lesson_materials x JOIN lessons l ON l.id = x.lesson_id WHERE x.media_id = ?
+      UNION SELECT '' AS lesson_id, p.id AS product_id, 0 AS gratuita FROM products p WHERE p.capa_media_id = ?`).all(mediaId, mediaId, mediaId);
     for (const r of refs) {
       if (r.gratuita) return true; // degustação
-      if (temAcesso(usuario.id, r.product_id)) return true; // matrícula ou assinatura (clube)
+      if (!temAcesso(usuario.id, r.product_id)) continue; // matrícula ou assinatura (clube)
+      // A PORTA do gotejamento: ter acesso ao CURSO não é ter acesso à aula de
+      // hoje. É por aqui que passam vídeo e material — sem este ponto a trava
+      // seria decorativa (bastava a URL do arquivo da aula seguinte).
+      // A capa do produto (lesson_id vazio) não é aula e não goteja.
+      if (r.lesson_id && !Liberacao.liberada(usuario, r.lesson_id)) continue;
+      return true;
     }
     return false;
   },
@@ -420,6 +440,112 @@ function temAcesso(userId, productId) {
   return !!db.prepare(`SELECT 1 FROM subscriptions s JOIN club_items ci ON ci.club_product_id = s.product_id
     WHERE s.user_id = ? AND s.status = 'ativa' AND ci.product_id = ?`).get(userId, productId);
 }
+
+// =====================================================================
+// LIBERAÇÃO PROGRESSIVA (gotejamento) — a regra mora em liberacao.js;
+// aqui só se buscam os dados que ela precisa: a posição da aula na
+// trilha, a config do curso e a data-base DO ALUNO.
+//
+// ⚠️ Isto NÃO é controle de acesso ao produto (isso é temAcesso). É
+// ritmo: só se pergunta o ritmo de quem JÁ tem acesso. Quando não há
+// data de referência para contar (cortesia vitalícia, produtor dono,
+// admin), o gotejamento não se aplica e a aula sai liberada.
+// =====================================================================
+const Liberacao = {
+  cfg(produtoOuId) {
+    const p = typeof produtoOuId === 'string' ? Produtos.obter(produtoOuId) : produtoOuId;
+    return lib.normalizar(p && p.config);
+  },
+
+  // Quem não tem relógio para contar: o dono do produto e o admin (precisam
+  // revisar o curso inteiro) e quem tem cortesia vitalícia — que não tem
+  // linha de matrícula nenhuma, logo não tem "dias desde a matrícula".
+  isento(usuario, produto) {
+    if (!usuario) return false;
+    const papeis = Array.isArray(usuario.papeis) ? usuario.papeis : j.parse(usuario.papeis, []);
+    if (papeis.includes('admin')) return true;
+    if (produto && produto.producer_id === usuario.id) return true;
+    const u = db.prepare('SELECT cortesia FROM users WHERE id = ?').get(usuario.id);
+    return !!(u && u.cortesia === 1);
+  },
+
+  // Data de referência DO ALUNO: quando ele entrou NESTE curso. Matrícula
+  // primeiro; quem entrou por assinatura (clube) conta da assinatura.
+  // Reativar matrícula revogada NÃO reinicia o relógio — criado_em fica.
+  baseDoAluno(userId, productId) {
+    const e = db.prepare("SELECT criado_em FROM enrollments WHERE user_id = ? AND product_id = ? AND status = 'ativa'").get(userId, productId);
+    if (e && e.criado_em) return e.criado_em;
+    const sub = db.prepare(`SELECT MIN(criado_em) AS c FROM subscriptions
+      WHERE user_id = ? AND status = 'ativa' AND (product_id = ?
+        OR product_id IN (SELECT club_product_id FROM club_items WHERE product_id = ?))`).get(userId, productId, productId);
+    return (sub && sub.c) || null;
+  },
+
+  // posição de cada aula na TRILHA INTEIRA (1..n), atravessando os módulos.
+  // lessons.ordem reinicia a cada módulo (MAX(ordem) por module_id), então
+  // NÃO serve aqui: usá-lo abriria a aula .1 dos 11 módulos no dia 0.
+  // Villela Express é biblioteca de consulta (fora da grade e do progresso):
+  // não ocupa posição nem entra no gotejamento.
+  posicoes(productId) {
+    const rows = db.prepare(`SELECT l.id, l.tipo, l.conteudo, l.media_id, l.url_externa, l.gratuita,
+        COALESCE(l.formato, '') AS formato
+      FROM lessons l JOIN course_modules m ON m.id = l.module_id
+      WHERE l.product_id = ? ORDER BY m.ordem, m.criado_em, l.ordem, l.criado_em`).all(productId);
+    const mapa = new Map();
+    let n = 0;
+    for (const r of rows) mapa.set(r.id, { aula: r, posicao: r.formato === 'express' ? 0 : ++n });
+    return mapa;
+  },
+
+  // estado de TODAS as aulas do curso para este aluno (grade do estúdio)
+  mapa(usuario, produto) {
+    const cfg = this.cfg(produto);
+    const vazio = { ativo: false, cfg, base: '', total: 0, aulas: {} };
+    if (!cfg.ativo || !usuario || !produto) return vazio;
+    if (this.isento(usuario, produto)) return vazio;
+    const base = this.baseDoAluno(usuario.id, produto.id);
+    if (!base) return vazio; // tem acesso, mas sem relógio para contar
+    const baseMs = Date.parse(base);
+    if (!Number.isFinite(baseMs)) return vazio;
+    const pos = this.posicoes(produto.id);
+    const agora = Date.now();
+    const aulas = {};
+    let total = 0;
+    for (const [id, x] of pos) {
+      if (!x.posicao) continue; // Villela Express é consulta: fora da grade e do gotejamento
+      total++;
+      // A aula de DEGUSTAÇÃO entra no mapa, mas sempre aberta: ela é prometida
+      // na página de venda a quem nem comprou. Deixar de fora do mapa fazia a
+      // conta "X de Y abertas" mentir — ela sumia de X e continuava em Y.
+      aulas[id] = x.aula.gratuita
+        ? lib.estadoDaAula({ aula: x.aula, posicao: x.posicao, cfg: null, baseMs, agora })
+        : lib.estadoDaAula({ aula: x.aula, posicao: x.posicao, cfg, baseMs, agora });
+    }
+    return { ativo: true, cfg, base, total, aulas };
+  },
+
+  // estado de UMA aula (a porta consulta por aqui)
+  daAula(usuario, lessonId) {
+    const aula = db.prepare('SELECT product_id FROM lessons WHERE id = ?').get(s(lessonId, 40));
+    if (!aula) return null;
+    const produto = Produtos.obter(aula.product_id);
+    if (!produto) return null;
+    return this.mapa(usuario, produto).aulas[s(lessonId, 40)] || null;
+  },
+
+  // ---- A PORTA ----
+  // Sem isto a trava é decorativa: bastava abrir a URL da aula seguinte.
+  // Todo caminho até vídeo, material, quiz, caderno e progresso passa aqui.
+  liberada(usuario, lessonId) {
+    const e = this.daAula(usuario, lessonId);
+    return !e || e.liberada;
+  },
+  // versão por id de usuário, para quem só tem o id em mãos (Progresso)
+  liberadaPorId(userId, lessonId) {
+    const u = db.prepare('SELECT id, papeis, cortesia FROM users WHERE id = ?').get(userId);
+    return this.liberada(u ? { ...u, papeis: j.parse(u.papeis, []) } : null, lessonId);
+  },
+};
 
 // AUDIOBOOK do curso: capítulos em áudio para ouvir no player do site.
 // De propósito o áudio NÃO entra em Midia.podeAcessar: a rota genérica
@@ -661,6 +787,9 @@ const Progresso = {
     const aula = db.prepare('SELECT * FROM lessons WHERE id = ?').get(lessonId);
     if (!aula) throw new Error('Aula não encontrada.');
     if (!aula.gratuita && !temAcesso(userId, aula.product_id)) throw new Error('Você não tem acesso a este produto.');
+    // gotejamento: aula que ainda não abriu não pode ser marcada como
+    // concluída — senão o progresso (e o certificado) se fecham por fora.
+    if (!aula.gratuita && !Liberacao.liberadaPorId(userId, aula.id)) throw new Error('Esta aula ainda não abriu na sua trilha.');
     db.prepare(`INSERT INTO student_progress (user_id, lesson_id, product_id, concluida, posicao_seg, atualizado_em)
       VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, lesson_id) DO UPDATE SET
       concluida = excluded.concluida, posicao_seg = excluded.posicao_seg, atualizado_em = excluded.atualizado_em`)
@@ -885,7 +1014,7 @@ const Denuncias = {
 
 module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
-  Produtos, Conteudo, Midia, Matriculas, Cortesia, Progresso, ARQUIVOS_DIR,
+  Produtos, Conteudo, Midia, Matriculas, Cortesia, Progresso, Liberacao, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube, Audiobook,
 };

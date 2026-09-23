@@ -10,6 +10,7 @@ const fs = require('fs');
 const repo = require('./repo');
 const ct = require('./repo-conteudo');
 const billing = require('./billing');
+const lib = require('./liberacao'); // gotejamento: a promessa dita na compra
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -338,6 +339,11 @@ function cursoHTML(slug) {
   const valor = p.preco_promo_centavos || p.preco_centavos;
   const gratis = !valor;
   const capaUrl = p.capa_media_id ? `/academy/capa/${esc(p.id)}?v=${esc(p.capa_media_id)}` : '';
+  // GOTEJAMENTO — a trilha dita ANTES da compra. Sem isto o aluno compra
+  // esperando tudo aberto e encontra cadeado: a trava viraria surpresa, e
+  // a promessa da página, mentira. Sai do config do produto, não à mão.
+  const gote = lib.normalizar(p.config);
+  const goteDias = lib.diasAteOFim(resumo.total_aulas, gote);
   const cta = ehClube ? 'Assinar agora' : (gratis ? 'Matricular grátis' : 'Comprar agora');
   const destino = (billing.ativo() || gratis) ? `/academy/checkout/${esc(p.slug)}` : '#comprar';
   const inicial = esc((p.produtor_nome || 'V').trim().charAt(0).toUpperCase());
@@ -354,6 +360,7 @@ function cursoHTML(slug) {
   if (naoVideo > 0) inclui.push(['doc', `${naoVideo} conteúdo${naoVideo > 1 ? 's' : ''} de leitura e prática`]);
   if (resumo.total_materiais) inclui.push(['baixar', `${resumo.total_materiais} materiais para baixar`]);
   inclui.push(['chapeu', 'Certificado com validação pública']);
+  if (gote.ativo) inclui.push(['relogio', `${lib.promessa(gote)}, a partir da sua matrícula`]);
   inclui.push(['relogio', ehClube ? 'Acesso enquanto a assinatura estiver ativa' : 'Acesso vitalício, no computador e no celular']);
   if (p.garantia_dias) inclui.push(['escudo', `Garantia de ${p.garantia_dias} dias`]);
 
@@ -392,6 +399,10 @@ function cursoHTML(slug) {
       ${resumo.total_seg ? `<span>${svgI('relogio', 16)} ${durSeg(resumo.total_seg)} de conteúdo</span>` : ''}
       ${resumo.total_materiais ? `<span>${svgI('baixar', 16)} ${resumo.total_materiais} materiais</span>` : ''}
     </div>
+    ${gote.ativo ? `<p class="pv-gote">${svgI('relogio', 15)} <b>${esc(lib.promessa(gote))}.</b>
+      Este curso abre em trilha, contada da <b>sua</b> matrícula — não de uma data fixa de turma.
+      ${goteDias ? `A trilha inteira se abre em ${goteDias} dias` : 'As aulas vão abrindo no ritmo da trilha'},
+      e cada aula que abre é sua para sempre.</p>` : ''}
     <div class="pv-curr">${resumo.modulos.map((m, i) => `<details${i < 2 ? ' open' : ''}>
       <summary>${svgI('seta', 16)}<span>${esc(m.titulo)}</span>
         <span class="qt">${m.aulas.length} conteúdo${m.aulas.length > 1 ? 's' : ''}${m.duracao_seg ? ' · ' + durSeg(m.duracao_seg) : ''}</span></summary>

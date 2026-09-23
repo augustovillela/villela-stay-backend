@@ -2322,6 +2322,220 @@ async function main() {
     assert.equal(lista.json.topicos[0].id, r.json.topico.id, 'fixado no topo de "Tudo"');
     assert.ok(/^Maria/.test(lista.json.topicos[0].autor), 'no nome da produtora: ' + lista.json.topicos[0].autor);
   });
+  // ================= GOTEJAMENTO: liberação progressiva das aulas =================
+  // Regra do Augusto (22/09/2026): duas aulas a cada dois dias, contadas da
+  // MATRÍCULA DO ALUNO, e só se a aula tiver o conteúdo publicado.
+  console.log('\n— gotejamento: a trilha abre 2 a cada 2 dias, contada da matrícula —');
+
+  const GOTE = () => ({
+    produtor_email: MARIA.email,
+    produto: { titulo: 'Curso Gotejado', tipo: 'curso', categoria: 'tecnologia', descricao_curta: 'trilha' },
+    modulos: [
+      { titulo: 'Gote M1', aulas: [
+        { titulo: 'G1', tipo: 'video', url_externa: 'https://youtu.be/g1', duracao_min: 5, gratuita: true },
+        { titulo: 'G2', tipo: 'texto', conteudo: 'texto da G2' },
+      ] },
+      { titulo: 'Gote M2', aulas: [
+        { titulo: 'G3', tipo: 'video', url_externa: 'https://youtu.be/g3', duracao_min: 5 },
+        { titulo: 'G4', tipo: 'texto', conteudo: 'texto da G4' },
+      ] },
+      { titulo: 'Gote M3', aulas: [
+        // G5 é a aula ainda não gravada: tipo vídeo, SEM vídeo nenhum
+        { titulo: 'G5', tipo: 'video', conteudo: 'Videoaula em produção.' },
+        { titulo: 'G6', tipo: 'texto', conteudo: 'texto da G6' },
+      ] },
+    ],
+  });
+  let goteId = '', goteMat = '';
+  const goteAulas = {};
+  const RITA = { nome: 'Rita Aluna', email: 'rita@t.com', senha: 'senha-forte-9', aceite_termos: true };
+  const TITO = { nome: 'Tito Aluno', email: 'tito@t.com', senha: 'senha-forte-8', aceite_termos: true };
+  const dbg = require('./db').db;
+  // empurra a matrícula do aluno N dias para trás — é assim que o teste viaja
+  // no tempo sem depender do relógio da máquina nem da virada do calendário
+  const matriculaHaDias = (email, dias) => {
+    const uid = dbg.prepare('SELECT id FROM users WHERE email = ?').get(email).id;
+    const quando = new Date(Date.now() - dias * 86400000).toISOString();
+    dbg.prepare('UPDATE enrollments SET criado_em = ? WHERE user_id = ? AND product_id = ?').run(quando, uid, goteId);
+  };
+  const cfgUrl = () => `/staff/api/academy/gotejamento?produtor_email=${encodeURIComponent(MARIA.email)}&produto_id=${goteId}`;
+  const ritmo = (corpo) => req('POST', '/staff/api/academy/gotejamento', { semUser: true, chave: true,
+    corpo: { produtor_email: MARIA.email, produto_id: goteId, ...corpo } });
+  const grade = async (jar) => {
+    const r = await req('GET', `/academy/api/aluno/cursos/${goteId}`, { jar });
+    const aulas = {};
+    (r.json.estrutura || []).forEach(m => m.aulas.forEach(a => { aulas[a.titulo] = a; }));
+    return { r, aulas, gote: r.json.gotejamento, abertas: Object.values(aulas).filter(a => a.liberada).length };
+  };
+
+  await t('preparo: curso de 6 aulas em 3 módulos, publicado, com 2 alunos matriculados', async () => {
+    const imp = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo: GOTE() });
+    assert.equal(imp.st, 200, imp.texto);
+    goteId = imp.json.produto.id;
+    const vis = await req('GET', `/academy/api/produtor/produtos/${goteId}`, { jar: 'maria' });
+    vis.json.estrutura.forEach(m => m.aulas.forEach(a => { goteAulas[a.titulo] = a.id; }));
+    assert.equal(Object.keys(goteAulas).length, 6);
+    // material na G4 (posição 4): é o arquivo que a porta do servidor precisa recusar
+    const up = await req('POST', '/academy/api/produtor/upload', { jar: 'maria', corpo: { nome: 'g4.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 g4').toString('base64') } });
+    goteMat = up.json.id;
+    const mat = await req('POST', `/academy/api/produtor/produtos/${goteId}/aulas/${goteAulas.G4}/materiais`, { jar: 'maria', corpo: { nome: 'Apostila G4', media_id: goteMat } });
+    assert.equal(mat.st, 200, 'material: ' + mat.texto);
+    await req('POST', `/academy/api/produtor/produtos/${goteId}/status`, { jar: 'maria', corpo: { status: 'em_revisao' } });
+    await req('POST', `/academy/api/admin/produtos/${goteId}/decidir`, { jar: 'maria', corpo: { status: 'aprovado' } });
+    const pub = await req('POST', `/academy/api/produtor/produtos/${goteId}/status`, { jar: 'maria', corpo: { status: 'publicado' } });
+    assert.equal(pub.st, 200, 'publicar: ' + pub.texto);
+    await req('POST', '/academy/api/signup', { corpo: RITA, jar: 'rita' });
+    await req('POST', '/academy/api/signup', { corpo: TITO, jar: 'tito' });
+    for (const p of [RITA, TITO]) {
+      const mt = await req('POST', `/academy/api/produtor/produtos/${goteId}/matricular`, { jar: 'maria', corpo: { email: p.email } });
+      assert.equal(mt.st, 200, 'matricular ' + p.email + ': ' + mt.texto);
+    }
+  });
+
+  await t('o padrão é DESLIGADO: curso completo não ganha trava por descuido', async () => {
+    const cfg = await req('GET', cfgUrl(), { semUser: true, chave: true });
+    assert.equal(cfg.st, 200, cfg.texto);
+    assert.equal(cfg.json.gotejamento.ativo, false, 'nasce desligado');
+    const g = await grade('rita');
+    assert.equal(g.gote.ativo, false);
+    assert.equal(g.abertas, 6, 'sem gotejamento, as 6 aulas abrem na matrícula');
+    // e os cursos que já estão no catálogo seguem intactos
+    const outro = await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'ana' });
+    assert.equal(outro.json.gotejamento.ativo, false, 'curso completo (Claude AI na Prática etc.) não é afetado');
+  });
+
+  await t('ligar: 2 aulas a cada 2 dias, com o ritmo parametrizado (não cravado em código)', async () => {
+    const on = await ritmo({ ativo: true, aulas_por_periodo: 2, periodo_dias: 2 });
+    assert.equal(on.st, 200, on.texto);
+    assert.equal(on.json.gotejamento.ativo, true);
+    assert.equal(on.json.promessa, 'Duas aulas novas a cada dois dias');
+    const cfg = await req('GET', cfgUrl(), { semUser: true, chave: true });
+    assert.deepEqual(cfg.json.trilha.map(x => x.dia_abre), [0, 0, 2, 2, 4, 4], 'a fórmula corre a trilha INTEIRA, não o lessons.ordem de cada módulo');
+    assert.equal(cfg.json.dias_ate_o_fim, 4, '6 aulas a 2/2 abrem inteiras no dia 4');
+    // ritmo diferente = trilha diferente: 2/2 é o default, não regra de código
+    await ritmo({ ativo: true, aulas_por_periodo: 3, periodo_dias: 7 });
+    const sem = await req('GET', cfgUrl(), { semUser: true, chave: true });
+    assert.deepEqual(sem.json.trilha.map(x => x.dia_abre), [0, 0, 0, 7, 7, 7], '3 aulas por semana');
+    assert.equal(sem.json.promessa, 'Três aulas novas a cada sete dias');
+    await ritmo({ ativo: true, aulas_por_periodo: 2, periodo_dias: 2 }); // volta à regra do Augusto
+  });
+
+  await t('dia 0: abrem as duas primeiras; as outras dizem QUANDO abrem', async () => {
+    const g = await grade('rita');
+    assert.equal(g.gote.ativo, true);
+    assert.equal(g.gote.abertas, 2); assert.equal(g.gote.total, 6);
+    assert.equal(g.abertas, g.gote.abertas, 'o contador "X de Y" bate com a grade que o aluno vê');
+    assert.equal(g.aulas.G1.liberada, true, 'a degustação abre sempre'); assert.equal(g.aulas.G2.liberada, true);
+    assert.equal(g.aulas.G3.liberada, false, 'a 3ª só no dia 2');
+    assert.equal(g.aulas.G3.trava.motivo, 'aguardando_data');
+    assert.equal(g.aulas.G3.trava.abre_em_dias, 2);
+    assert.equal(g.aulas.G3.trava.rotulo, 'abre em 2 dias');
+    assert.equal(g.aulas.G5.trava.abre_em_dias, 4, 'a 5ª abre no dia 4');
+    // vitrine: título sim, conteúdo não
+    assert.equal(g.aulas.G3.titulo, 'G3');
+    assert.ok(!g.aulas.G3.url_externa, 'aula travada NÃO entrega a URL do vídeo');
+    assert.ok(!g.aulas.G4.conteudo, 'nem o texto');
+    assert.deepEqual(g.aulas.G4.materiais, [], 'nem a lista de materiais');
+  });
+
+  await t('A PORTA: furar pela URL direta da aula seguinte TEM de falhar', async () => {
+    // 1. o arquivo do material da aula 4 (ainda travada) — rota genérica de mídia
+    assert.equal((await req('GET', `/academy/api/media/${goteMat}`, { jar: 'rita' })).st, 404, 'material de aula travada não é servido');
+    // 2. o link assinado, que é o caminho do player de vídeo
+    assert.equal((await req('GET', `/academy/api/media/${goteMat}/link`, { jar: 'rita' })).st, 404, 'nem em URL assinada');
+    // 3. marcar como concluída por fora (fecharia progresso e certificado)
+    const prog = await req('POST', `/academy/api/aluno/aulas/${goteAulas.G4}/progresso`, { jar: 'rita', corpo: { concluida: true } });
+    assert.equal(prog.st, 400, 'não dá para concluir aula que não abriu');
+    assert.ok(/ainda não abriu/.test(prog.json.erro), prog.texto);
+    // 4. quiz e caderno da aula travada, que são conteúdo dela por outra porta
+    assert.equal((await req('GET', `/academy/api/aluno/aulas/${goteAulas.G4}/quiz`, { jar: 'rita' })).st, 404);
+    assert.equal((await req('GET', `/academy/api/aluno/aulas/${goteAulas.G4}/caderno`, { jar: 'rita' })).st, 404);
+    // 5. e o que JÁ abriu continua abrindo (a trava não pode virar muro)
+    assert.equal((await req('POST', `/academy/api/aluno/aulas/${goteAulas.G1}/progresso`, { jar: 'rita', corpo: { concluida: true } })).st, 200);
+  });
+
+  await t('a 2ª condição: tempo cumprido + vídeo AUSENTE = continua bloqueada', async () => {
+    matriculaHaDias(RITA.email, 10); // muito além do dia 4: o relógio já não segura nada
+    const g = await grade('rita');
+    assert.equal(g.aulas.G3.liberada, true); assert.equal(g.aulas.G4.liberada, true);
+    assert.equal(g.aulas.G6.liberada, true);
+    assert.equal(g.aulas.G5.liberada, false, 'G5 é aula de vídeo SEM vídeo: o relógio passou e ela não abre');
+    assert.equal(g.aulas.G5.trava.motivo, 'aguardando_publicacao');
+    assert.equal(g.aulas.G5.trava.rotulo, 'aguardando publicação');
+    assert.equal(g.gote.abertas, 5, '5 de 6 — a que falta é a que não existe');
+    assert.equal(g.abertas, 5, 'e a grade mostra as mesmas 5');
+    // e a porta segue fechada para ela, não só a tela
+    assert.equal((await req('POST', `/academy/api/aluno/aulas/${goteAulas.G5}/progresso`, { jar: 'rita', corpo: { concluida: true } })).st, 400);
+    // publicar o vídeo abre a aula na hora — quem manda volta a ser o relógio
+    assert.equal((await req('PATCH', `/academy/api/produtor/produtos/${goteId}/aulas/${goteAulas.G5}`,
+      { jar: 'maria', corpo: { url_externa: 'https://youtu.be/g5' } })).st, 200);
+    const depois = await grade('rita');
+    assert.equal(depois.aulas.G5.liberada, true, 'com o vídeo no ar, a aula abre');
+    assert.equal(depois.gote.abertas, 6);
+    // e o material da aula 4 agora é servido: a porta libera quando é para liberar
+    assert.equal((await req('GET', `/academy/api/media/${goteMat}`, { jar: 'rita' })).st, 200);
+  });
+
+  await t('o relógio é de cada ALUNO, não do curso', async () => {
+    matriculaHaDias(TITO.email, 2); // Tito entrou 8 dias depois da Rita
+    const rita = await grade('rita'), tito = await grade('tito');
+    assert.equal(rita.gote.abertas, 6, 'Rita, matriculada há 10 dias, já tem tudo');
+    assert.equal(tito.gote.abertas, 4, 'Tito, há 2 dias, tem as 4 primeiras');
+    assert.equal(tito.aulas.G5.liberada, false);
+    assert.equal(tito.aulas.G5.trava.motivo, 'aguardando_data', 'para Tito falta DATA, não publicação');
+    assert.equal(tito.aulas.G5.trava.abre_em_dias, 2);
+    assert.equal((await req('GET', `/academy/api/media/${goteMat}`, { jar: 'tito' })).st, 200, 'a G4 dele já abriu');
+  });
+
+  await t('cortesia vitalícia e admin veem tudo — sem furar a regra do aluno comum', async () => {
+    // o Augusto: cortesia total. Não tem linha de matrícula, logo não tem
+    // "dias desde a matrícula" para contar — e precisa poder revisar o curso.
+    const aug = { nome: 'Augusto', email: 'augusto@t.com', senha: 'senha-forte-7', aceite_termos: true };
+    await req('POST', '/academy/api/signup', { corpo: aug, jar: 'augusto' });
+    assert.equal((await req('POST', '/staff/api/academy/cortesia', { corpo: { email: aug.email } })).st, 200);
+    const g = await grade('augusto');
+    assert.equal(g.gote.ativo, false, 'para quem tem cortesia o gotejamento não se aplica');
+    assert.equal(g.abertas, 6, 'a cortesia é vitalícia e vale o catálogo inteiro, sem esperar trilha');
+    assert.ok(g.aulas.G5.url_externa, 'e com o conteúdo de verdade, não só o título');
+    // o mesmo com o papel de admin somado à cortesia (o caso do Augusto)
+    const augId = dbg.prepare('SELECT id FROM users WHERE email = ?').get(aug.email).id;
+    assert.equal((await req('POST', `/staff/api/academy/usuarios/${augId}/papeis`, { corpo: { conceder: 'admin' } })).st, 200);
+    assert.equal((await grade('augusto')).abertas, 6, 'admin vê a trilha inteira');
+    // o produtor dono revisa a própria trilha pela rota dele, sem gotejamento
+    const dona = await req('GET', `/academy/api/produtor/produtos/${goteId}`, { jar: 'maria' });
+    assert.equal(dona.json.estrutura.reduce((n, m) => n + m.aulas.length, 0), 6);
+    // ⚠️ e o aluno comum continua travado: a isenção é de quem tem, não do curso
+    const tito = await grade('tito');
+    assert.equal(tito.aulas.G5.liberada, false, 'a cortesia do Augusto não abriu a trilha do Tito');
+    assert.equal((await req('POST', `/academy/api/aluno/aulas/${goteAulas.G5}/progresso`, { jar: 'tito', corpo: { concluida: true } })).st, 400);
+  });
+
+  await t('o texto na tela e na página de venda: trilha é método, não curso trancado', async () => {
+    const tito = await grade('tito');
+    assert.equal(tito.gote.promessa, 'Duas aulas novas a cada dois dias', 'o estúdio recebe a frase pronta');
+    const venda = await req('GET', '/academy/cursos/curso-gotejado');
+    assert.equal(venda.st, 200);
+    assert.ok(venda.texto.includes('Duas aulas novas a cada dois dias'), 'a promessa é dita ANTES da compra');
+    assert.ok(venda.texto.includes('contada da <b>sua</b> matrícula'), 'e dita como é: contada da matrícula do aluno');
+    // a página do curso completo não pode ganhar a frase
+    const slugCompleto = (await req('GET', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria' })).json.produto.slug;
+    const outra = await req('GET', `/academy/cursos/${slugCompleto}`);
+    assert.ok(!outra.texto.includes('aulas novas a cada'), 'curso sem gotejamento não promete trilha');
+  });
+
+  await t('desligar devolve o curso inteiro, sem apagar o progresso de ninguém', async () => {
+    const off = await ritmo({ ativo: false });
+    assert.equal(off.json.gotejamento.ativo, false);
+    const tito = await grade('tito');
+    assert.equal(tito.gote.ativo, false);
+    assert.equal(tito.abertas, 6);
+    const rita = await grade('rita');
+    assert.equal(rita.r.json.progresso.concluidas, 1, 'a aula que a Rita concluiu continua concluída');
+    const aud = await req('GET', '/staff/api/academy/auditoria');
+    assert.ok(aud.json.eventos.some(e => e.acao === 'gotejamento.ligar'), 'ligar e desligar ficam na auditoria');
+    assert.ok(aud.json.eventos.some(e => e.acao === 'gotejamento.desligar'));
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

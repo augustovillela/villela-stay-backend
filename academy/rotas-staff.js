@@ -100,6 +100,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
   // produtos (moderação da plataforma) e matrícula cortesia
   const ct = require('./repo-conteudo');
   const imp = require('./importacao');
+  const lib = require('./liberacao');
   app.get('/staff/api/academy/produtos', ...A, h((req, res) => res.json({ produtos: ct.Produtos.listarAdmin(req.query) })));
   app.post('/staff/api/academy/produtos/:id/decidir', ...A, h((req, res) => {
     const p = ct.Produtos.transicionar(req.params.id, String((req.body || {}).status || ''), { comoPapel: 'admin', motivo: (req.body || {}).motivo });
@@ -206,6 +207,35 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
     const r = await imp.confirmarVideo(req.params.mediaId, req.body || {});
     aud(req, 'midia.upload-grande.confirmar', 'media_files', r.media.id, `${r.aula.titulo} (${r.media.tamanho}b)`);
     res.json({ ok: true, ...r });
+  }));
+
+  // ---- GOTEJAMENTO (liberação progressiva das aulas) ----
+  // Liga/desliga por CURSO e parametriza o ritmo. Nasce desligado e só muda
+  // aqui: curso completo (Claude AI na Prática, Claude Jurídica) não pode
+  // ganhar trava de tabela. O GET mostra como a trilha abre, aula a aula,
+  // para conferir o ritmo ANTES de ligar num curso que já tem aluno.
+  app.get('/staff/api/academy/gotejamento', ...PA, h((req, res) => {
+    const { produto } = imp.produtorDono(req.query || {});
+    const cfg = ct.Liberacao.cfg(produto);
+    const pos = [...ct.Liberacao.posicoes(produto.id).values()].filter(x => x.posicao);
+    res.json({
+      ok: true, produto: { id: produto.id, titulo: produto.titulo, slug: produto.slug },
+      gotejamento: cfg, promessa: lib.promessa(cfg),
+      dias_ate_o_fim: lib.diasAteOFim(pos.length, cfg),
+      trilha: pos.map(x => ({
+        posicao: x.posicao, aula_id: x.aula.id, tipo: x.aula.tipo,
+        dia_abre: lib.diaDeAbertura(x.posicao, cfg),
+        conteudo_pronto: lib.conteudoPronto(x.aula), gratuita: !!x.aula.gratuita,
+      })),
+    });
+  }));
+  app.post('/staff/api/academy/gotejamento', ...PA, h((req, res) => {
+    const b = req.body || {};
+    const { produto } = imp.produtorDono(b);
+    const cfg = ct.Produtos.definirLiberacao(produto.id, b);
+    aud(req, cfg.ativo ? 'gotejamento.ligar' : 'gotejamento.desligar', 'products', produto.id,
+      cfg.ativo ? `${cfg.aulas_por_periodo} aula(s) a cada ${cfg.periodo_dias} dia(s)` : 'liberação imediata');
+    res.json({ ok: true, gotejamento: cfg, promessa: lib.promessa(cfg) });
   }));
 
   // ---- AUDIOBOOK do curso: capítulo N (iniciar → PUT → confirmar), mesma guarda ----
