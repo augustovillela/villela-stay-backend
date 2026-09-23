@@ -40,6 +40,11 @@ function registrarRotas(app, { express, requireAuth, requireAdmin, requirePublis
   });
   app.get(R, ...admin, (req, res) => { try { res.json({ comunicados: motor.listar({ limite: req.query.limite }) }); } catch (e) { erro(res, e); } });
   app.get(`${R}/descadastros`, ...admin, (req, res) => res.json({ descadastros: motor.listarDescadastros() }));
+  // Varredura dos telefones de TODAS as bases. Só admin: é leitura de dado
+  // pessoal de todos os sistemas de uma vez, ainda que o número volte mascarado.
+  app.get(`${R}/telefones`, ...admin, async (req, res) => {
+    try { res.json(await motor.varreduraTelefones()); } catch (e) { erro(res, e); }
+  });
   // Dicas do app ("você sabia?"). Escrita aceita a PUBLISH_KEY: um agente pode
   // redigir dicas; mostrar dica não é mandar mensagem para ninguém.
   // Leitura também pela chave: um agente precisa conferir o que já existe

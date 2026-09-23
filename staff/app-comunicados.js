@@ -192,13 +192,26 @@ async function comPrevia() {
     f.descadastrado_email && `${f.descadastrado_email} pediram para não receber e-mail`,
     f.descadastrado_whatsapp && `${f.descadastrado_whatsapp} pediram para não receber WhatsApp`,
     f.repetido && `${f.repetido} repetidos (mesma pessoa em mais de um sistema — recebe uma vez só)`,
+    f.sem_consentimento && `${f.sem_consentimento} desmarcaram "quero receber novidades"`,
+    f.demonstracao && `${f.demonstracao} contas de demonstração (e-mail de domínio reservado)`,
   ].filter(Boolean).join(' · ');
+  // Números que parecem errados NESTE público. Não bloqueia nada: aparece antes
+  // da aprovação porque é o único momento em que ainda dá para corrigir o
+  // cadastro — depois a mensagem já chegou a quem não devia.
+  const sus = p.telefones_suspeitos;
+  const susHtml = (sus && sus.total) ? `<div class="cr-box" style="margin-top:10px;border-left:4px solid #B45309;background:#FFFBEB">
+    <b>⚠️ ${sus.total} número(s) para conferir antes de enviar</b>
+    <ul class="obs" style="margin:6px 0 0;padding-left:18px">
+      ${sus.achados.slice(0, 8).map(a => `<li><b>${esc(a.nome || '(sem nome)')}</b> <span class="obs">[${esc(a.produto)}]</span> ${esc(a.numero)} — ${esc(a.detalhe)}</li>`).join('')}
+      ${sus.achados.length > 8 ? `<li>… e mais ${sus.achados.length - 8}. Veja a varredura completa em <b>🔎 Conferir telefones</b>.</li>` : ''}
+    </ul></div>` : '';
   const porProd = (p.por_produto || []).map(x => { const pr = COM.cfg.produtos.find(y => y.chave === x.produto) || {}; return `${pr.emoji || ''} ${esc(pr.nome || x.produto)}: ${x.pessoas}`; }).join(' · ');
   const wa = p.exemplo.whatsapp ? `<div class="cr-box" style="margin-top:10px"><b>💬 WhatsApp (modelo)</b><br><span class="obs">{{1}} ${esc(p.exemplo.whatsapp[0])} · {{2}} ${esc(p.exemplo.whatsapp[1])}</span><br>{{3}} ${esc(p.exemplo.whatsapp[2])}</div>` : '';
   box.innerHTML = `<div class="cr-box" style="margin-top:14px;border-left:4px solid var(--acento,#0E7490)">
     <b>👥 ${p.pessoas} pessoa(s) no público</b><br><span class="obs">${porProd || '—'}</span>
     ${foraTxt ? `<p class="obs" style="margin:6px 0">Fora do envio: ${esc(foraTxt)}</p>` : ''}
     ${(p.erros || []).map(e => `<p class="erro">⚠️ ${esc(e.produto)}: ${esc(e.erro)}</p>`).join('')}
+    ${susHtml}
     <div class="cards" style="margin-top:8px">${bloco('app')}${bloco('email')}${bloco('whatsapp')}</div>
     ${p.exemplo.email_html ? `<p style="margin:10px 0 4px"><b>✉️ Prévia do e-mail</b> <span class="obs">— assunto: ${esc(p.exemplo.email_assunto)}</span></p>
       <iframe id="com-if" sandbox="" style="width:100%;max-width:640px;height:460px;border:1px solid var(--linha,#ddd);border-radius:10px;background:#fff"></iframe>` : ''}
@@ -287,6 +300,10 @@ async function comHistorico() {
     + (lista.length ? tabela(['Comunicado', 'Canais', 'Situação', 'Entregas', ''], linhas) : '<p class="vazio">Nenhum comunicado ainda.</p>')
     + `<div id="com-falhas"></div>
        <details class="cr-box" style="margin-top:16px"><summary class="cr-sum">🚫 Quem pediu para não receber</summary><div id="com-desc"><p class="vazio">Carregando…</p></div></details>
+       <details class="cr-box" style="margin-top:16px"><summary class="cr-sum">🔎 Conferir telefones de todas as bases</summary>
+         <p class="obs" style="padding:8px 4px;line-height:1.6">O número vai para o WhatsApp exatamente como está no cadastro. Isto atravessa todos os sistemas e mostra o que parece errado: o <b>mesmo número em pessoas diferentes</b> (é assim que uma mensagem chega a quem não devia), DDD que não existe, celular sem o 9 e número com cara de dado de teste. Não corrige nada — só diz qual cadastro abrir.</p>
+         <button class="btn secund" id="com-tel-rodar">🔎 Rodar varredura</button>
+         <div id="com-tel"></div></details>
        <details class="cr-box" style="margin-top:16px"><summary class="cr-sum">💡 Dicas do app ("você sabia?")</summary><div id="com-dicas"><p class="vazio">Carregando…</p></div></details>
        <details class="cr-box" style="margin-top:10px"><summary class="cr-sum">🔒 Privacidade e retenção (LGPD)</summary><div id="com-lgpd"><p class="vazio">Carregando…</p></div></details>
        <details class="cr-box" style="margin-top:10px"><summary class="cr-sum">ℹ️ Como funciona</summary><div class="obs" style="padding:8px 4px;line-height:1.6">
@@ -310,6 +327,28 @@ async function comHistorico() {
   comDescadastros();
   comPrivacidade();
   comDicas();
+  comTelefones();
+}
+
+// Varredura dos telefones de todas as bases. Sob demanda (e não a cada abertura
+// da tela) porque ela lê catorze bases inteiras: é conferência de antes do
+// envio, não painel de acompanhar.
+function comTelefones() {
+  const btn = $('#com-tel-rodar'); const box = $('#com-tel'); if (!btn || !box) return;
+  btn.onclick = async () => {
+    btn.disabled = true; box.innerHTML = '<p class="vazio">Lendo as bases…</p>';
+    try {
+      const r = await api('GET', '/comunicados/telefones');
+      const tipoRot = { duplicado: 'mesmo número em pessoas diferentes', ddd: 'DDD não existe', celular: 'celular sem o 9', fixo: 'fixo com dígito errado', tamanho: 'tamanho errado', pais: 'não é brasileiro', inventado: 'parece dado de teste', vazio: 'sem telefone' };
+      const resumo = Object.entries(r.por_tipo || {}).map(([k, n]) => `${n} ${tipoRot[k] || k}`).join(' · ');
+      box.innerHTML = `<p class="obs" style="margin:10px 0 6px"><b>${r.numeros_analisados} número(s)</b> conferidos em ${r.por_produto.length} sistema(s) — ${r.total ? esc(resumo) : 'nenhum problema encontrado'}.</p>`
+        + (r.erros || []).map(e => `<p class="erro">⚠️ ${esc(e.produto)}: ${esc(e.erro)}</p>`).join('')
+        + (r.total ? tabela(['O que parece errado', 'Pessoa', 'Sistema', 'Número', 'Detalhe'], r.achados.slice(0, 200).map(a => [
+          esc(tipoRot[a.tipo] || a.tipo), esc(a.nome || '(sem nome)'), esc(a.produto), esc(a.numero), esc(a.detalhe)])) : '')
+        + (r.total > 200 ? `<p class="obs">Mostrando 200 de ${r.total}.</p>` : '');
+    } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+    btn.disabled = false;
+  };
 }
 
 // Dicas: o manual servido em pedaços. Uma por abertura do app, sem repetir,

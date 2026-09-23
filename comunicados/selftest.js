@@ -128,6 +128,65 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.equal(p.fora.sem_email, 1);
   });
 
+  // Este cabeçalho prometia "conta de demonstração nunca entra" desde o
+  // primeiro dia — e NÃO havia teste nenhum disso. Dez das catorze fontes não
+  // cumpriam a promessa: só closet, vitrine, kids e alta-vista filtravam, cada
+  // uma com o próprio LIKE em SQL. Agora a regra é uma só, no `fontes.linhas()`,
+  // e o resto da suíte vira canário: se ela falhar, as contagens abaixo mudam.
+  await t('público: conta de demonstração nunca entra, em NENHUMA fonte', async () => {
+    insU.run('a5', 'QA Teste', 'qa@academy.local', '61999990009', 'ativo', JSON.stringify({ marketing: true }), agora);
+    insU.run('a6', 'Demo Docs', 'demo@example.com', '61999990010', 'ativo', JSON.stringify({ marketing: true }), agora);
+    const p = await motor.previa(rascunho({ canais: ['app', 'email', 'whatsapp'] }));
+    assert.equal(p.fora.demonstracao, 2, 'as duas contas de demonstração têm de ser contadas fora');
+    assert.equal(p.canais.app.total, 3, 'app continua a1, a2, a4 — demonstração não entra nem no sino');
+    assert.equal(p.canais.email.total, 1, 'e-mail continua só a Ana');
+    assert.equal(p.canais.whatsapp.total, 1, 'WhatsApp continua só a Ana — o telefone da conta de teste não sai');
+    assert.ok(fontes.ehContaDeDemonstracao('x@qualquer.local'), '.local é domínio reservado');
+    assert.ok(fontes.ehContaDeDemonstracao('x@a.invalid') && fontes.ehContaDeDemonstracao('x@b.test'), '.invalid e .test também');
+    assert.ok(!fontes.ehContaDeDemonstracao('ana@ex.com'), 'e-mail de gente não pode ser confundido com demonstração');
+    assert.ok(!fontes.ehContaDeDemonstracao('local@dominio.com.br'), '"local" no NOME não é domínio reservado');
+  });
+
+  await t('telefone: o que está errado no número é dito antes do envio', async () => {
+    const tel = require('./telefones');
+    assert.deepEqual(tel.problemasDoNumero('(11) 95439-3361'), [], 'celular de São Paulo é válido');
+    assert.deepEqual(tel.problemasDoNumero('61 3333-4444'), [], 'fixo de Brasília é válido');
+    assert.equal(tel.problemasDoNumero('(20) 99999-1234')[0].tipo, 'ddd', 'DDD 20 não existe');
+    assert.equal(tel.problemasDoNumero('11 85439-3361')[0].tipo, 'celular', 'nove dígitos sem começar com 9');
+    assert.equal(tel.problemasDoNumero('61 8888-7777')[0].tipo, 'fixo', 'oito dígitos começando em 8: falta o 9');
+    assert.equal(tel.problemasDoNumero('123')[0].tipo, 'tamanho');
+    assert.ok(tel.problemasDoNumero('11 99999-9999').some((x) => x.tipo === 'inventado'), 'dígito repetido é cheiro de teste');
+    // O achado que mais importa: o mesmo número em duas PESSOAS diferentes.
+    const r = tel.analisar([
+      { produto: 'academy', ref: 'a1', nome: 'Ana', telefone: '11954393361' },
+      { produto: 'vsm', ref: 'v1', nome: 'Vera', telefone: '+55 (11) 95439-3361' },
+      { produto: 'academy', ref: 'a1', nome: 'Ana', telefone: '11954393361' },
+    ]);
+    const dup = r.achados.filter((x) => x.tipo === 'duplicado');
+    assert.equal(dup.length, 1, 'um achado de duplicidade');
+    assert.equal(dup[0].pessoas.length, 2, 'duas pessoas — a linha repetida da MESMA pessoa não conta');
+    assert.ok(!dup[0].numero.includes('954393'), 'o número volta mascarado');
+  });
+
+  await t('telefone: a varredura atravessa as bases sem quebrar e ignora demonstração', async () => {
+    // Conta com número torto, criada e desfeita DENTRO do teste: a suíte inteira
+    // conta gente da Academy, e deixar uma a mais aqui quebraria as contagens
+    // seguintes — o defeito que a gente estaria "provando" seria o do teste.
+    insU.run('a7', 'Zé Torto', 'ze@ex.com', '(11) 85439-3361', 'ativo', '{}', agora);
+    try {
+      const v = await motor.varreduraTelefones();
+      assert.ok(Array.isArray(v.achados), 'a varredura devolve achados');
+      assert.ok(v.por_produto.length >= 10, 'passou por todas as fontes disponíveis');
+      assert.ok(!v.achados.some((x) => x.ref === 'a5' || x.ref === 'a6'), 'conta de demonstração fica fora da varredura');
+      const dele = v.achados.find((x) => x.ref === 'a7');
+      assert.ok(dele, 'o número torto tem de aparecer na varredura');
+      assert.equal(dele.tipo, 'celular', 'nove dígitos sem começar com 9');
+      assert.ok(!dele.numero.includes('85439'), 'o número volta mascarado');
+    } finally {
+      acad.prepare("DELETE FROM users WHERE id = 'a7'").run();
+    }
+  });
+
   await t('público: instabilidade ignora marketing desmarcado (é aviso operacional)', async () => {
     const p = await motor.previa(rascunho({ categoria: 'instabilidade' }));
     assert.equal(p.canais.email.total, 2);

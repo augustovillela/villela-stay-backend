@@ -19,6 +19,7 @@
 const crypto = require('crypto');
 const { db, nowISO, novoId, j } = require('./db');
 const fontes = require('./fontes');
+const telefones = require('./telefones');
 
 // ---------------- vocabulário ----------------
 const CATEGORIAS = {
@@ -288,10 +289,11 @@ function cancelar(id) {
 // que o Augusto confirma é a contagem que sai.
 async function montarPublico(alvos, canais, categoria) {
   const porCanal = { app: new Map(), email: new Map(), whatsapp: new Map() };
-  const fora = { sem_email: 0, sem_telefone: 0, descadastrado_email: 0, descadastrado_whatsapp: 0, sem_consentimento: 0, repetido: 0 };
+  const fora = { sem_email: 0, sem_telefone: 0, descadastrado_email: 0, descadastrado_whatsapp: 0, sem_consentimento: 0, repetido: 0, demonstracao: 0 };
   const operacional = !!(CATEGORIAS[categoria] && CATEGORIAS[categoria].operacional);
   const porProduto = [];
   const erros = [];
+  const paraConferir = [];
   for (const a of alvos) {
     const f = fontes.obter(a.produto);
     let pessoas = [];
@@ -301,6 +303,10 @@ async function montarPublico(alvos, canais, categoria) {
     for (const p of pessoas) {
       const ref = s(p.ref, 80);
       if (!ref) continue;
+      // Conta de demonstração fica fora de TODOS os canais, inclusive do aviso
+      // no app: ela não é uma pessoa. Quem marca é o `fontes.linhas()`, em um
+      // lugar só, para a regra não depender de cada fonte lembrar dela.
+      if (p.demo) { fora.demonstracao++; continue; }
       const base = { produto: a.produto, usuario_ref: ref, nome: s(p.nome, 120) };
       // Aviso no app só onde há app com login (a Livraria não tem).
       if (canais.includes('app') && (f.nativo || (f.caminhoApp && f.sessao))) {
@@ -320,6 +326,11 @@ async function montarPublico(alvos, canais, categoria) {
         else porCanal.email.set(e, { ...base, chave: e, destino: e });
       }
       if (canais.includes('whatsapp') && !semMkt) {
+        // Guardado para a conferência de números — ver `telefones.js`. O cadastro
+        // vai para o WhatsApp como está; o mínimo é dizer o que parece errado
+        // ANTES de o Augusto aprovar, e não depois de a mensagem chegar a quem
+        // não devia.
+        if (p.telefone) paraConferir.push({ produto: a.produto, ref, nome: base.nome, telefone: p.telefone });
         const t = normFone(p.telefone);
         if (!t) fora.sem_telefone++;
         else if (bloqueado(t, 'whatsapp', categoria)) fora.descadastrado_whatsapp++;
@@ -330,7 +341,8 @@ async function montarPublico(alvos, canais, categoria) {
   }
   const listas = { app: [...porCanal.app.values()], email: [...porCanal.email.values()], whatsapp: [...porCanal.whatsapp.values()] };
   const pessoasUnicas = new Set([...listas.app.map((x) => x.chave), ...listas.email.map((x) => x.produto + ':' + x.usuario_ref), ...listas.whatsapp.map((x) => x.produto + ':' + x.usuario_ref)]).size;
-  return { listas, fora, porProduto, erros, total: pessoasUnicas };
+  const suspeitos = paraConferir.length ? telefones.analisar(paraConferir) : null;
+  return { listas, fora, porProduto, erros, total: pessoasUnicas, suspeitos };
 }
 
 // Mascara para exibir amostra na prévia sem despejar a base inteira na tela.
@@ -358,11 +370,41 @@ async function previa(d) {
       whatsapp: v.canais.includes('whatsapp') ? { total: p.listas.whatsapp.length, amostra: amostra(p.listas.whatsapp, mascFone), disponivel: disp.whatsapp, operacoes_make: custoWA } : null,
     },
     fora: p.fora, por_produto: p.porProduto, erros: p.erros, pessoas: p.total,
+    // Números que parecem errados NESTE público (duplicados entre pessoas, DDD
+    // que não existe, celular sem o 9, dado de teste). Não bloqueia o envio:
+    // informa antes da aprovação, que é quando ainda dá para corrigir.
+    telefones_suspeitos: v.canais.includes('whatsapp') ? p.suspeitos : null,
     dias_estimados: {
       email: Math.ceil(p.listas.email.length / Math.max(1, tetoDia('email'))),
       whatsapp: Math.ceil(p.listas.whatsapp.length / Math.max(1, tetoDia('whatsapp'))),
     },
   };
+}
+
+// ---------------- varredura de telefones (todas as bases) ----------------
+// A prévia confere o público de UM comunicado. Isto aqui atravessa os catorze
+// sistemas de uma vez, no segmento mais amplo de cada um, e responde à pergunta
+// que só aparece depois que a mensagem chegou a quem não devia: quais números
+// cadastrados estão errados, e quais estão repetidos entre pessoas diferentes?
+//
+// Leitura pura: não corrige cadastro, não bloqueia envio, não grava nada.
+// Corrigir número alheio por adivinhação seria pior que o defeito.
+async function varreduraTelefones() {
+  const pessoas = [], porProduto = [], erros = [];
+  for (const f of fontes.todas()) {
+    if (f.indisponivel) { erros.push({ produto: f.chave, erro: f.indisponivel }); continue; }
+    const seg = (f.segmentos && f.segmentos[0] && f.segmentos[0].id) || 'todos';
+    let lista = [];
+    try { lista = await f.listar(seg); }
+    catch (e) { erros.push({ produto: f.chave, erro: e.message }); continue; }
+    // Conta de demonstração não é gente: fica fora daqui também, senão a
+    // varredura acusaria como "duplicado" o telefone repetido dos seeds.
+    const vivos = lista.filter((p) => !p.demo);
+    const comTel = vivos.filter((p) => String(p.telefone || '').trim());
+    porProduto.push({ produto: f.chave, nome: f.nome, segmento: seg, pessoas: vivos.length, com_telefone: comTel.length });
+    for (const p of comTel) pessoas.push({ produto: f.chave, ref: p.ref, nome: p.nome, telefone: p.telefone });
+  }
+  return { ...telefones.analisar(pessoas), por_produto: porProduto, erros, quando: nowISO() };
 }
 
 // ---------------- envio ----------------
@@ -684,7 +726,7 @@ function marcarLido(produto, usuarioRef, id) {
 module.exports = {
   CATEGORIAS, CANAIS, configurar, disponibilidade,
   criar, atualizar, obter, listar, excluirRascunho, arquivar, cancelar,
-  previa, disparar, processarLote, enviarTeste, entregas, reenviarErros,
+  previa, disparar, processarLote, enviarTeste, entregas, reenviarErros, varreduraTelefones,
   caixa, marcarLido,
   tokenDescadastro, lerTokenDescadastro, descadastrar, recadastrar, listarDescadastros,
   preferencias, salvarPreferencias, enviarEmailCentral, provedorEmail,

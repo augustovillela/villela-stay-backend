@@ -45,7 +45,28 @@ function uidDoCookie(req, cookie) {
   try { return jwt.verify(bruto, _jwtSecret); } catch (_) { return null; }
 }
 const mkt = (v) => (v === 0 || v === false || v === '0') ? false : (v === 1 || v === true || v === '1') ? true : null;
-const linhas = (rows) => rows.map((r) => ({ ref: String(r.ref), nome: r.nome || '', email: r.email || '', telefone: r.telefone || '', marketing: mkt(r.marketing) }));
+
+// ---------------- conta de demonstração ----------------
+// O cabeçalho deste módulo promete, desde o primeiro dia, que conta de
+// demonstração nunca entra num comunicado. Só QUATRO das catorze fontes
+// cumpriam (closet, vitrine, kids e alta-vista, cada uma com o próprio LIKE
+// em SQL); as outras dez mandavam para qualquer conta ativa — inclusive a de
+// teste criada pelo formulário público, que é indistinguível de gente até
+// alguém olhar o e-mail. Agora a regra vale em UM lugar: toda fonte, sem
+// exceção, devolve a lista pelo `linhas()`, e é aqui que a marca é posta.
+//
+// Os domínios abaixo são reservados por norma (RFC 2606 e 6761) justamente
+// para teste e documentação: não existem de verdade, e e-mail para eles nunca
+// chega a ninguém. Marcar em vez de sumir é de propósito — a prévia mostra
+// quantos ficaram de fora e por quê, e um número que cai para zero sem motivo
+// é a primeira pista de que alguém mudou o cadastro sem perceber.
+const DOMINIO_DEMO = /@[^@\s]*\.(local|invalid|test|example)$|@example\.(com|org|net)$/i;
+const ehContaDeDemonstracao = (email) => DOMINIO_DEMO.test(String(email || '').trim().toLowerCase());
+
+const linhas = (rows) => rows.map((r) => ({
+  ref: String(r.ref), nome: r.nome || '', email: r.email || '', telefone: r.telefone || '',
+  marketing: mkt(r.marketing), demo: ehContaDeDemonstracao(r.email),
+}));
 
 // ---------------- Academy (conta compartilhada com a Musique) ----------------
 let _verificadorAcademy = null;
@@ -513,4 +534,4 @@ const catalogo = () => FONTES.map((f) => ({
   tem_cursos: !!f.cursos,
 }));
 
-module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, situacaoDeVarios, cursosDe, cursosDoUsuario, _int: { uidDoCookie } };
+module.exports = { configurar, obter, todas, catalogo, perfil, pushUsuario, temPush, situacaoDeVarios, cursosDe, cursosDoUsuario, ehContaDeDemonstracao, _int: { uidDoCookie } };
