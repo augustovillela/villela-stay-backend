@@ -404,6 +404,22 @@ a { color: var(--lago); text-decoration: none; }
   background: var(--petroleo); color: var(--creme); border-radius: 14px;
   padding: 14px 18px; margin-top: 18px; font-size: .9rem; font-weight: 600;
 }
+/* Aviso de abertura da unidade: áreas comuns mediante taxa, early/late check-out e lei do
+   silêncio. Fica logo abaixo do H1 de propósito — é lido ANTES da decisão de reservar. */
+.uni-combinar {
+  background: var(--areia); border: 1px solid #e7e2d6; border-left: 5px solid var(--cerrado);
+  border-radius: 14px; padding: 18px 22px; margin-top: 18px;
+}
+.uni-combinar h2 { font-size: 1.12rem; color: var(--lago-escuro); margin: 0 0 8px; letter-spacing: -.2px; }
+.uni-combinar-lead { font-size: .94rem; color: var(--concreto); margin: 0 0 10px; }
+.uni-combinar ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.uni-combinar li {
+  font-size: .92rem; color: var(--concreto-claro); line-height: 1.55;
+  background: #fff; border: 1px solid #ece8df; border-radius: 10px; padding: 12px 14px;
+}
+.uni-combinar li strong { color: var(--lago-escuro); }
+.uni-combinar-pe { font-size: .88rem; color: var(--concreto); margin: 12px 0 0; }
+@media (max-width: 560px) { .uni-combinar { padding: 16px 16px; } .uni-combinar h2 { font-size: 1.04rem; } }
 .uni-beneficios { margin-top: 28px; }
 .uni-lead {
   font-size: 1.08rem; color: var(--concreto); background: var(--areia);

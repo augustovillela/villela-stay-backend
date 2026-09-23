@@ -860,6 +860,67 @@ const PLANTA_DA_CASA = new Set([
   'UF08H', 'UF01H', 'UF07H',                     // Villa Catetinho
   'UF06H', 'UD03H', 'UF05H', 'UD09H', 'VH01H', 'VH02H',   // Villa Kubitschek
 ]);
+// Anúncios vendidos como CASA INTEIRA. O resto é unidade privativa dentro de casa compartilhada
+// (quarto, suíte ou flat) — e a diferença decide qual aviso de abertura a página mostra.
+// ⚠️ O `tipo` do listings.json não serve para isto: os flats VH01H/VH02H/UF07H vêm como
+// `entire_home` (são a unidade inteira), mas ficam DENTRO de uma casa com áreas comuns.
+const CASA_INTEIRA = new Set(['GD01H', 'GD03H', 'GG04I', 'PL02I', 'GI01I']);
+
+// Aviso cordial no topo da página da unidade (decisão do Augusto, 23/09/2026). Existe porque três
+// assuntos só apareciam DEPOIS da reserva e viravam decepção — e nota baixa: (a) quarto e flat não
+// incluem piscina, churrasqueira, jacuzzi e cozinha; (b) early check-in e late check-out são
+// cobrados; (c) o bairro é residencial e tem lei do silêncio. Texto-fonte, com as versões para
+// Airbnb e Booking: dados\marketing\avisos-anuncios.md.
+function blocoCombinacoes(l) {
+  const item = (titulo, texto) => `<li><strong>${titulo}</strong> ${texto}</li>`;
+  if (CASA_INTEIRA.has(l.id)) {
+    return `<section class="uni-combinar">
+    <h2>${t('Duas combinações antes da sua reserva', 'Two things to agree on before you book', 'Dos acuerdos antes de tu reserva')}</h2>
+    <ul>
+      ${item(
+        t('Som e silêncio.', 'Sound and quiet hours.', 'Sonido y silencio.'),
+        t('Das 22h às 8h valem a lei distrital do silêncio (nº 4.092/2008) e o regulamento do condomínio: nesse horário, sem som alto, caixas potentes, música ao vivo ou conversa em volume alto nas áreas externas. Durante o dia a casa é sua para aproveitar com música e churrasco, no volume de uma casa de família. Comemoração com convidados além dos hóspedes é bem-vinda, mas precisa ser combinada antes.',
+          'From 10 PM to 8 AM the Federal District quiet-hours law (4,092/2008) and the condominium rules apply: no loud music, powerful speakers, live bands or raised voices outdoors. During the day the house is yours, with music and barbecue at the volume of a family home. A celebration with guests beyond those staying is welcome, but it must be arranged in advance.',
+          'De 22h a 8h rigen la ley distrital del silencio (n.º 4.092/2008) y el reglamento del condominio: en ese horario, sin música alta, altavoces potentes, música en vivo ni conversaciones en voz alta en las áreas exteriores. Durante el día la casa es tuya, con música y parrilla al volumen de una casa de familia. Una celebración con invitados además de los huéspedes es bienvenida, pero debe acordarse antes.'))}
+      ${item(
+        t('Horários.', 'Times.', 'Horarios.'),
+        t('Check-in a partir das 14h, check-out até as 10h. Entrar mais cedo ou sair mais tarde depende da agenda e tem taxa equivalente a uma diária, porque a casa fica indisponível para o hóspede seguinte naquele dia. Combine com a gente com antecedência.',
+          'Check-in from 2 PM, check-out by 10 AM. Arriving earlier or leaving later depends on the calendar and costs the equivalent of one night, because the house is then unavailable to the next guest that day. Talk to us in advance.',
+          'Check-in a partir de las 14h, check-out hasta las 10h. Entrar antes o salir más tarde depende de la agenda y tiene un costo equivalente a una diaria, porque la casa deja de estar disponible para el siguiente huésped ese día. Habla con nosotros con antelación.'))}
+    </ul>
+    <p class="uni-combinar-pe">${t('O bairro é estritamente residencial — e é exatamente isso que garante o sossego que provavelmente trouxe você até aqui. Acertado isso, o resto é aproveitar.',
+      'The neighbourhood is strictly residential — and that is exactly what preserves the quiet that probably brought you here. With that settled, the rest is enjoyment.',
+      'El barrio es estrictamente residencial — y es justamente eso lo que garantiza la tranquilidad que probablemente te trajo hasta aquí. Acordado eso, lo demás es disfrutar.')}</p>
+  </section>`;
+  }
+  return `<section class="uni-combinar">
+    <h2>${t('Antes de reservar, três combinações rápidas', 'Three things to agree on before you book', 'Tres acuerdos rápidos antes de reservar')}</h2>
+    <p class="uni-combinar-lead">${t('Preferimos deixar isto claro agora, antes da sua escolha, a deixar que vire surpresa na chegada.',
+      "We'd rather make this clear now, before you choose, than let it become a surprise at arrival.",
+      'Preferimos dejar esto claro ahora, antes de tu elección, a que se convierta en una sorpresa al llegar.')}</p>
+    <ul>
+      ${item(
+        t('Você reserva uma unidade privativa, não a casa inteira.', 'You are booking a private unit, not the whole house.', 'Reservas una unidad privada, no la casa entera.'),
+        t('O espaço reservado é só seu; a casa é compartilhada com outros hóspedes.',
+          'Your space is yours alone; the house itself is shared with other guests.',
+          'El espacio reservado es solo tuyo; la casa se comparte con otros huéspedes.'))}
+      ${item(
+        t('Piscina, churrasqueira, jacuzzi e cozinha não entram nesta diária.', 'Pool, barbecue, hot tub and kitchen are not included in this rate.', 'La piscina, la parrilla, el jacuzzi y la cocina no están incluidos en esta tarifa.'),
+        t('Ficam disponíveis mediante taxa, combinada com a gente antes da reserva. O motivo a gente prefere contar: cada uso dessas áreas exige preparo e limpeza antes e depois, com custo maior que a própria diária do quarto. Mantendo as duas coisas separadas, quem vem a trabalho ou para descansar paga uma diária realmente convidativa, e quem quer a área de lazer paga só por ela.',
+          'They are available for an additional fee, arranged with us before you book. We would rather explain why: each use of those areas requires preparation and cleaning before and after, at a cost higher than the room rate itself. By keeping the two apart, guests who come to work or rest pay a genuinely affordable rate, and guests who want the leisure areas pay only for what they use.',
+          'Están disponibles mediante tarifa, acordada con nosotros antes de la reserva. Preferimos contar el motivo: cada uso de esas áreas exige preparación y limpieza antes y después, con un costo mayor que la propia tarifa de la habitación. Al mantener las dos cosas separadas, quien viene por trabajo o a descansar paga una tarifa realmente accesible, y quien quiere el área de ocio paga solo por ella.'))}
+      ${item(
+        t('Check-in a partir das 14h, check-out até as 10h.', 'Check-in from 2 PM, check-out by 10 AM.', 'Check-in a partir de las 14h, check-out hasta las 10h.'),
+        t('Entrar mais cedo ou sair mais tarde depende da agenda da casa e tem taxa equivalente a uma diária, porque a unidade deixa de ficar disponível para o hóspede seguinte naquele dia. Quando autorizados, dão acesso ao seu quarto, não às áreas comuns.',
+          'Arriving earlier or leaving later depends on the house calendar and costs the equivalent of one night, because the unit is then unavailable to the next guest that day. When granted, it gives access to your room, not to the common areas.',
+          'Entrar antes o salir más tarde depende de la agenda de la casa y tiene un costo equivalente a una diaria, porque la unidad deja de estar disponible para el siguiente huésped ese día. Cuando se autoriza, da acceso a tu habitación, no a las áreas comunes.'))}
+    </ul>
+    <p class="uni-combinar-pe">${t('Estamos num bairro estritamente residencial do Lago Sul, com vizinhos e regras de condomínio: das 22h às 8h pedimos silêncio. Durante o dia, a vida segue normal. Pergunte o que quiser antes de reservar — é sempre melhor acertar agora do que descobrir na chegada.',
+      'We are in a strictly residential neighbourhood in Lago Sul, with neighbours and condominium rules: from 10 PM to 8 AM we ask for quiet. During the day, life goes on as normal. Ask us anything before booking — far better to sort it out now than to find out on arrival.',
+      'Estamos en un barrio estrictamente residencial de Lago Sul, con vecinos y reglas de condominio: de 22h a 8h pedimos silencio. Durante el día, la vida sigue normal. Pregúntanos lo que quieras antes de reservar — siempre es mejor resolverlo ahora que descubrirlo al llegar.')}</p>
+  </section>`;
+}
+
 fs.mkdirSync(path.join(DIST, 'plantas'), { recursive: true });
 for (const p of new Set(Object.values(PLANTAS))) fs.copyFileSync(path.join(__dirname, 'src', 'plantas', p), path.join(DIST, 'plantas', p));
 
@@ -1178,6 +1239,7 @@ for (const l of listings) {
     <h1>${esc(tituloImovel(l))}</h1>
     <p class="ficha">${fichaUnidade(l)}</p>
   </div>
+  ${blocoCombinacoes(l)}
   ${stripConfianca}
   <section id="reservar" class="disponibilidade" data-listing="${l.mongoId}">
     <h2>📅 ${t('Veja disponibilidade e reserve com pagamento on-line', 'Check availability and book with online payment', 'Consulta disponibilidad y reserva con pago en línea')}</h2>
