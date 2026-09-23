@@ -35,6 +35,12 @@ let CG_LLMS = '';                       // seção da série ChatGPT no llms.txt
 const { SISTEMAS, EM_DESENVOLVIMENTO, conferirCobertura } = require('./content/sistemas');
 const { TELAS } = require('./content/sistemas-telas');
 const SISTEMAS_CSS = require('./content/sistemas-css');
+// Landing /tudo.html — vitrine conjunta dos três acervos (livros, cursos, sistemas).
+// O catálogo é CACHE: livros e cursos moram no backend, e o build precisa rodar
+// offline. Atualizar com `node tools/atualizar-catalogo.js` (e depois
+// `python tools/preparar-capas.py`) quando publicar livro ou curso novo.
+const CATALOGO_CSS = require('./content/catalogo-css');
+const CATALOGO = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'catalogo.json'), 'utf8').replace(/^﻿/, ''));
 let LANDINGS;                            // preenchido no corpo; escopo de módulo p/ o sitemap usar após o loop
 
 const DIST = path.join(__dirname, 'dist');
@@ -48,17 +54,48 @@ const CSS_VER = require('crypto')
   .createHash('sha1').update(fs.readFileSync(path.join(__dirname, 'src', 'style.css'))).digest('hex').slice(0, 8);
 const CSS_HREF = `/style.css?v=${CSS_VER}`;
 
+// Miniaturas WebP das capas de livros e cursos (tools/preparar-capas.py). Servidas
+// pelo próprio site: as originais da loja somam ~2,5 MB e vêm de outro domínio, o que
+// engasgaria a esteira do topo da /tudo.html. Sem a pasta, a página cai na URL original.
+const CAPAS_DIR = path.join(__dirname, 'src', 'capas');
+const CAPAS_LOCAIS = new Set();
+if (fs.existsSync(CAPAS_DIR)) {
+  fs.cpSync(CAPAS_DIR, path.join(DIST, 'capas'), { recursive: true });
+  for (const f of fs.readdirSync(CAPAS_DIR)) if (f.endsWith('.webp')) CAPAS_LOCAIS.add(f.slice(0, -5));
+}
+// O catálogo envelhece calado: preço e título mudam na loja e ninguém lembra do cache.
+// Avisar é o certo; quebrar o build não — site no ar vale mais que preço do mês passado.
+{
+  const dias = Math.round((Date.now() - new Date(CATALOGO.coletadoEm || 0)) / 86400000);
+  console.log(`[catalogo] ${CATALOGO.livros.length} livros, ${CATALOGO.cursos.length} cursos, ` +
+    `${CAPAS_LOCAIS.size} capas locais — coletado há ${dias} dia(s).`);
+  if (dias > 45) console.warn('[catalogo] ATENÇÃO: mais de 45 dias. Rode tools/atualizar-catalogo.js.');
+}
+
 // Logo antigo (foto): ainda copiado por compatibilidade de links externos que apontem p/ /logo.png
 const TEM_LOGO = fs.existsSync(path.join(__dirname, 'src', 'logo.png'));
 if (TEM_LOGO) fs.copyFileSync(path.join(__dirname, 'src', 'logo.png'), path.join(DIST, 'logo.png'));
 // Imagem social da home (1200x630 para WhatsApp/redes)
 if (fs.existsSync(path.join(__dirname, 'src', 'og-home.jpg'))) fs.copyFileSync(path.join(__dirname, 'src', 'og-home.jpg'), path.join(DIST, 'og-home.jpg'));
+// Cartão social da /tudo.html (tools/gerar-og-produtos.js). Sem ele a página cai
+// no cartão padrão do site — nunca no `grupo-villela/og-image.png`, que o site
+// estático não serve (dava 404) e é uma prancha de manual de marca, não um cartão.
+const TEM_OG_PRODUTOS = fs.existsSync(path.join(__dirname, 'src', 'og-produtos.jpg'));
+if (TEM_OG_PRODUTOS) fs.copyFileSync(path.join(__dirname, 'src', 'og-produtos.jpg'), path.join(DIST, 'og-produtos.jpg'));
 // Marca oficial: lockup V-Portal (símbolo negativo sobre o topo navy) + wordmark Lora/Inter
 const MARCA = `<a class="marca" href="/"><img class="logo-v" src="/assets/brand/villela-stay/logo-negativo.svg" width="56" height="56" alt="Villela Stay — Hospedagens Inteligentes" fetchpriority="high"><span class="marca-txt">Villela<span class="marca-desc">Stay</span></span></a>`;
 // Função (não const string) para traduzir por idioma — é avaliada dentro do loop, quando t() já existe.
 const TAGLINE = () => `<span class="tagline">${t('Hospedagens Inteligentes<br>para Experiências Inesquecíveis.', 'Smart Stays<br>for Unforgettable Experiences.', 'Alojamientos Inteligentes<br>para Experiencias Inolvidables.')}</span>`;
 
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// Corta no espaço, não no meio da palavra: resumo truncado em "responsabilidade profi"
+// é o tipo de detalhe que passa despercebido em revisão e fica no ar por meses.
+const cortar = (texto, limite) => {
+  const s = String(texto || '').replace(/\s+/g, ' ').trim();
+  if (s.length <= limite) return s;
+  const corte = s.slice(0, limite);
+  return corte.slice(0, corte.lastIndexOf(' ')).replace(/[,;:.\-—]$/, '') + '…';
+};
 const real = n => 'R$ ' + n.toLocaleString('pt-BR');
 
 // ----------------------------------------------------------------- imagens responsivas
@@ -2994,10 +3031,320 @@ ${blocos}
   });
 })();
 </script>`,
-    { caminho: '/sistemas.html', extraHead: `<style>${SISTEMAS_CSS}</style>\n${ld}`,
-      ogImage: `${SITE_URL}/assets/brand/grupo-villela/og-image.png` }
+    // O cartão social apontava para `/assets/brand/grupo-villela/og-image.png`, que o
+    // site estático NÃO serve (só o backend tem essa pasta): 404 em toda partilha desde
+    // 15/08/2026 — e o arquivo, quando aparece, é uma prancha do manual de marca, não um
+    // cartão. Até a /sistemas.html ganhar cartão próprio, vale o do site, que existe.
+    { caminho: '/sistemas.html', extraHead: `<style>${SISTEMAS_CSS}</style>\n${ld}` }
   );
   fs.writeFileSync(path.join(od, 'sistemas.html'), paginaSistemas);
+}
+
+// ========== landing conjunta: /tudo.html — "Produtos da Villela Stay" ==========
+// Vitrine dos TRÊS acervos numa página só, para quando a divulgação for conjunta
+// (uma campanha, um link). Ela não vende nada aqui: cada clique sai para a loja
+// onde o produto mora — livros.villelastay.com.br, academia.villelastay.com.br e
+// /sistemas.html. Por isso o topo de cada esteira mostra o endereço de destino:
+// quem se interessou por um produto já sabe para onde está indo.
+//
+// Livros e cursos vêm de data/catalogo.json (cache atualizado por
+// tools/atualizar-catalogo.js). Os sistemas vêm do mesmo content/sistemas.js da
+// /sistemas.html — sistema novo entra aqui junto, sem segundo cadastro.
+{
+  const simboloDe = s => `/assets/brand/${s.pasta}/${s.simbolo || 'simbolo-v.svg'}`;
+  const brl = c => 'R$ ' + (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const menorPreco = b => Math.min(...[b.precoPdf, b.precoImpresso, b.precoCombo].filter(v => v != null));
+  const capaDe = (tipo, item) => CAPAS_LOCAIS.has(`${tipo}-${item.slug}`)
+    ? `/capas/${tipo}-${item.slug}.webp` : item.capa;
+  // `origem=tudo` deixa a loja e o CRM saberem que a visita veio da página conjunta.
+  const comOrigem = u => u + (u.includes('?') ? '&' : '?') + 'origem=tudo';
+  const LOJA_LIVROS = 'https://livros.villelastay.com.br/livros';
+  const LOJA_CURSOS = 'https://academia.villelastay.com.br/academy/marketplace';
+  const LIVROS = CATALOGO.livros, CURSOS = CATALOGO.cursos;
+  const TODOS_SIS = [...SISTEMAS, ...EM_DESENVOLVIMENTO];
+
+  // ---- a fábrica: três esteiras contínuas (livros, cursos, sistemas).
+  // A fita é duplicada e cada cópia desliza -100% da própria largura: quando a
+  // primeira sai, a segunda já está no lugar exato — o laço não pisca nem some.
+  // A cópia é invisível para leitor de tela e para o teclado (a lista de verdade
+  // está nas seções abaixo); por isso o `tabindex="-1"` injetado nos links.
+  const duplicar = html => `<div class="tx-fita">${html}</div>` +
+    `<div class="tx-fita" aria-hidden="true">${html.replace(/<a /g, '<a tabindex="-1" ')}</div>`;
+  const esteira = ({ id, sentido, rotulo, quantos, endereco, href, itens, dur }) => `
+  <div class="tx-linha" data-sentido="${sentido}">
+    <div class="tx-linha-topo">
+      <span class="tx-linha-rotulo">${rotulo} <b>${quantos}</b></span>
+      <a class="tx-linha-end" href="${comOrigem(href)}" target="_blank" rel="noopener" data-tx-cta="esteira-${id}">${esc(endereco)}</a>
+    </div>
+    <div class="tx-trilho" style="--dur:${dur}s">${duplicar(itens)}</div>
+  </div>`;
+
+  const itemLivro = b => `<a class="tx-item tx-item-livro" href="${comOrigem(b.url)}" target="_blank" rel="noopener" data-tx-cta="esteira-livro">
+    <img src="${capaDe('livro', b)}" alt="${esc(b.titulo)}" width="132" height="198" loading="lazy" decoding="async">
+    <span class="tx-faixa"><b>${esc(b.titulo)}</b><span>${t('a partir de', 'from', 'desde')} ${brl(menorPreco(b))}</span></span></a>`;
+  const itemCurso = c => `<a class="tx-item tx-item-curso" href="${comOrigem(c.url)}" target="_blank" rel="noopener" data-tx-cta="esteira-curso">
+    <img src="${capaDe('curso', c)}" alt="${esc(c.titulo)}" width="252" height="142" loading="lazy" decoding="async">
+    <span class="tx-faixa"><b>${esc(c.titulo)}</b><span>${c.preco ? brl(c.preco) : t('curso on-line', 'online course', 'curso on-line')}</span></span></a>`;
+  const itemSistema = s => `<a class="tx-item tx-item-sis" style="--acento:${s.cor}" href="${L('/sistemas.html')}#${s.id}" data-tx-cta="esteira-sistema">
+    <img src="${simboloDe(s)}" alt="" width="34" height="34" loading="lazy" decoding="async">
+    <span><b>${esc(s.nome)}</b><span>${esc(t(...s.categoria))}</span></span><i></i></a>`;
+
+  // Fita curta deixaria buraco no laço em tela larga: a dos cursos repete até
+  // encher, e a duração acompanha o número de cartões para as três andarem no
+  // mesmo ritmo — sem isso, 13 capas correriam quatro vezes mais rápido que 3.
+  // Cada volta entra girada (A,B,C · B,C,A · C,A,B): repetir na mesma ordem
+  // deixaria a mesma capa duas vezes na mesma tela, e a esteira pareceria travada.
+  const encher = (lista, minimo) => {
+    const fora = [];
+    for (let volta = 0; fora.length < minimo; volta++) {
+      const corte = volta % lista.length;
+      fora.push(...lista.slice(corte), ...lista.slice(0, corte));
+    }
+    return fora;
+  };
+  const cursosNaEsteira = encher(CURSOS, 9);
+
+  const fabrica = `
+  <div class="tx-fabrica">
+    ${esteira({
+      id: 'livros', sentido: 'dir', rotulo: t('📚 Livros', '📚 Books', '📚 Libros'),
+      quantos: t(`${LIVROS.length} títulos`, `${LIVROS.length} titles`, `${LIVROS.length} títulos`),
+      endereco: 'livros.villelastay.com.br', href: LOJA_LIVROS,
+      itens: LIVROS.map(itemLivro).join(''), dur: Math.round(LIVROS.length * 4.6)
+    })}
+    ${esteira({
+      id: 'cursos', sentido: 'esq', rotulo: t('🎓 Cursos', '🎓 Courses', '🎓 Cursos'),
+      quantos: t(`${CURSOS.length} cursos em vídeo`, `${CURSOS.length} video courses`, `${CURSOS.length} cursos en vídeo`),
+      endereco: 'academia.villelastay.com.br', href: LOJA_CURSOS,
+      itens: cursosNaEsteira.map(itemCurso).join(''), dur: Math.round(cursosNaEsteira.length * 5.4)
+    })}
+    ${esteira({
+      id: 'sistemas', sentido: 'dir', rotulo: t('🧩 Sistemas', '🧩 Software', '🧩 Sistemas'),
+      quantos: t(`${TODOS_SIS.length} plataformas`, `${TODOS_SIS.length} platforms`, `${TODOS_SIS.length} plataformas`),
+      endereco: 'villelastay.com.br/sistemas.html', href: `${SITE_URL}${L('/sistemas.html')}`,
+      itens: TODOS_SIS.map(itemSistema).join(''), dur: Math.round(TODOS_SIS.length * 5)
+    })}
+  </div>`;
+
+  // ---- livros, agrupados por categoria (a mesma divisão da loja)
+  const porCategoria = new Map();
+  for (const b of LIVROS) {
+    if (!porCategoria.has(b.categoria)) porCategoria.set(b.categoria, []);
+    porCategoria.get(b.categoria).push(b);
+  }
+  const blocosLivros = [...porCategoria.entries()].map(([cat, livros]) => `
+  <div class="tx-cat">
+    <h3>${esc(cat)} <span>${t(`${livros.length} livro${livros.length > 1 ? 's' : ''}`, `${livros.length} book${livros.length > 1 ? 's' : ''}`, `${livros.length} libro${livros.length > 1 ? 's' : ''}`)}</span></h3>
+    <div class="tx-grade-livros">
+      ${livros.map(b => `<a class="tx-livro" href="${comOrigem(b.url)}" target="_blank" rel="noopener" data-tx-cta="livro-${esc(b.slug)}">
+        <img class="tx-livro-capa" src="${capaDe('livro', b)}" alt="${esc(b.titulo)}" width="168" height="252" loading="lazy" decoding="async">
+        <span class="tx-livro-corpo">
+          <b>${esc(b.titulo)}</b>
+          <p>${esc(b.subtitulo || b.resumo)}</p>
+          <span class="tx-preco">${t('a partir de', 'from', 'desde')} ${brl(menorPreco(b))}
+            <small>${[b.precoPdf != null ? 'PDF' : null, b.precoImpresso != null ? t('impresso', 'printed', 'impreso') : null,
+                      b.precoCombo != null ? t('combo', 'bundle', 'combo') : null].filter(Boolean).join(' · ')}</small></span>
+        </span></a>`).join('')}
+    </div>
+  </div>`).join('');
+
+  // ---- cursos
+  const blocosCursos = CURSOS.map(c => `
+  <a class="tx-curso" href="${comOrigem(c.url)}" target="_blank" rel="noopener" data-tx-cta="curso-${esc(c.slug)}">
+    <img class="tx-curso-capa" src="${capaDe('curso', c)}" alt="${esc(c.titulo)}" width="288" height="162" loading="lazy" decoding="async">
+    <span class="tx-curso-corpo">
+      <b>${esc(c.titulo)}</b>
+      <p>${esc(c.resumo)}</p>
+      <span class="tx-curso-pe">
+        <span class="tx-preco">${c.preco ? brl(c.preco) : ''}</span>
+        <span class="tx-btn tx-btn-lago" style="padding:9px 18px;font-size:.9rem">${t('Ver o curso', 'See the course', 'Ver el curso')} →</span>
+      </span>
+    </span></a>`).join('');
+
+  // ---- sistemas: a maquete do CRM anima quando entra em cena (mesma da
+  // /sistemas.html) e a grade manda para o bloco de cada produto lá.
+  const destaqueSis = SISTEMAS.find(s => s.id === 'crm') || SISTEMAS[0];
+  const blocosSistemas = TODOS_SIS.map(s => {
+    const emDev = EM_DESENVOLVIMENTO.includes(s);
+    return `<a class="tx-sis" style="--acento:${s.cor}" href="${L('/sistemas.html')}#${s.id}" data-tx-cta="sistema-${s.id}">
+      <img src="${simboloDe(s)}" alt="" width="36" height="36" loading="lazy" decoding="async">
+      <span><b>${esc(s.nome)}</b><span>${esc(t(...s.promessa))}</span>
+        ${emDev ? `<span class="tx-sis-estado">${t('em desenvolvimento', 'in development', 'en desarrollo')}</span>`
+                : (s.preco.modelo === 'assinatura'
+                    ? `<span class="tx-sis-preco">${real(s.preco.valor)}${t('/mês', '/month', '/mes')}</span>`
+                    : `<span class="tx-sis-preco">${esc(t(...s.preco.texto))}</span>`)}
+      </span></a>`;
+  }).join('');
+
+  const urlTudo = `${SITE_URL}${LANG === 'pt' ? '' : '/' + LANG}/tudo.html`;
+  const ldTudo = [
+    { '@context': 'https://schema.org', '@type': 'CollectionPage', '@id': `${urlTudo}#pagina`,
+      url: urlTudo, name: t('Produtos da Villela Stay', 'Villela Stay products', 'Productos de Villela Stay'),
+      inLanguage: HTML_LANG[LANG], isPartOf: { '@id': ORG_ID }, publisher: { '@id': ORG_ID },
+      description: t(`Todos os produtos do Grupo Villela Stay: ${LIVROS.length} livros, ${CURSOS.length} cursos em vídeo e ${SISTEMAS.length} sistemas de gestão.`,
+        `Every product from Grupo Villela Stay: ${LIVROS.length} books, ${CURSOS.length} video courses and ${SISTEMAS.length} management systems.`,
+        `Todos los productos del Grupo Villela Stay: ${LIVROS.length} libros, ${CURSOS.length} cursos en vídeo y ${SISTEMAS.length} sistemas de gestión.`) },
+    { '@context': 'https://schema.org', '@type': 'ItemList', '@id': `${urlTudo}#livros`,
+      name: t('Livros', 'Books', 'Libros'), numberOfItems: LIVROS.length,
+      itemListElement: LIVROS.map((b, i) => ({ '@type': 'ListItem', position: i + 1,
+        item: { '@type': 'Book', name: b.titulo, url: b.url, inLanguage: 'pt-BR',
+          author: { '@type': 'Person', name: 'Augusto Villela' },
+          offers: { '@type': 'Offer', price: (menorPreco(b) / 100).toFixed(2), priceCurrency: 'BRL',
+            availability: 'https://schema.org/InStock', url: b.url } } })) },
+    { '@context': 'https://schema.org', '@type': 'ItemList', '@id': `${urlTudo}#cursos`,
+      name: t('Cursos', 'Courses', 'Cursos'), numberOfItems: CURSOS.length,
+      itemListElement: CURSOS.map((c, i) => ({ '@type': 'ListItem', position: i + 1,
+        item: Object.assign({ '@type': 'Course', name: c.titulo, url: c.url, description: c.resumo,
+          inLanguage: 'pt-BR', provider: { '@id': ORG_ID } },
+          c.preco ? { offers: { '@type': 'Offer', price: (c.preco / 100).toFixed(2), priceCurrency: 'BRL',
+            availability: 'https://schema.org/InStock', url: c.url, category: t('Compra única', 'One-time purchase', 'Compra única') } } : {}) })) },
+    { '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Villela Stay', item: `${SITE_URL}${LANG === 'pt' ? '/' : '/' + LANG + '/'}` },
+        { '@type': 'ListItem', position: 2, name: t('Produtos', 'Products', 'Productos'), item: urlTudo }
+      ] }
+  ].map(o => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('\n');
+
+  const paginaTudo = layout(
+    t(`Produtos da Villela Stay — ${LIVROS.length} livros, ${CURSOS.length} cursos e ${SISTEMAS.length} sistemas`,
+      `Villela Stay products — ${LIVROS.length} books, ${CURSOS.length} courses and ${SISTEMAS.length} systems`,
+      `Productos de Villela Stay — ${LIVROS.length} libros, ${CURSOS.length} cursos y ${SISTEMAS.length} sistemas`),
+    t(`Tudo o que o Grupo Villela Stay publica em um só lugar: ${LIVROS.length} livros sobre IA, negócios, finanças e drones, ${CURSOS.length} cursos em vídeo na Villela Academy e ${SISTEMAS.length} sistemas de gestão em nuvem. Clique e vá direto para a loja de cada produto.`,
+      `Everything Grupo Villela Stay publishes in one place: ${LIVROS.length} books on AI, business, finance and drones, ${CURSOS.length} video courses at Villela Academy and ${SISTEMAS.length} cloud management systems. Click and go straight to each store.`,
+      `Todo lo que publica el Grupo Villela Stay en un solo lugar: ${LIVROS.length} libros sobre IA, negocios, finanzas y drones, ${CURSOS.length} cursos en vídeo en Villela Academy y ${SISTEMAS.length} sistemas de gestión en la nube. Haz clic y ve directo a cada tienda.`),
+    `
+<div class="tx sx">
+<section class="tx-hero">
+  <div class="tx-wrap">
+    <span class="tx-selo">${t('Grupo Villela Stay · Brasília-DF', 'Grupo Villela Stay · Brasília, Brazil', 'Grupo Villela Stay · Brasília, Brasil')}</span>
+    <h1>${t('Produtos da <em>Villela Stay</em>', 'Products by <em>Villela Stay</em>', 'Productos de <em>Villela Stay</em>')}</h1>
+    <p class="tx-lead">${t(
+      `Os livros, os cursos e os sistemas saíram todos do mesmo lugar: a operação real de uma empresa no Lago Sul. Aqui estão os ${LIVROS.length + CURSOS.length + TODOS_SIS.length} de uma vez — clique em qualquer um e você cai direto na loja onde ele mora.`,
+      `The books, the courses and the software all came from the same place: the real operation of a company in Brasília. Here are all ${LIVROS.length + CURSOS.length + TODOS_SIS.length} at once — click any of them and you land straight in the store where it lives.`,
+      `Los libros, los cursos y los sistemas salieron todos del mismo lugar: la operación real de una empresa en Brasilia. Aquí están los ${LIVROS.length + CURSOS.length + TODOS_SIS.length} de una vez — haz clic en cualquiera y caes directo en la tienda donde vive.`)}</p>
+    <div class="tx-ctas">
+      <a class="tx-btn tx-btn-ouro" href="#livros">${t('Ver os livros', 'See the books', 'Ver los libros')}</a>
+      <a class="tx-btn tx-btn-fantasma" href="#cursos">${t('Ver os cursos', 'See the courses', 'Ver los cursos')}</a>
+      <a class="tx-btn tx-btn-fantasma" href="#sistemas">${t('Ver os sistemas', 'See the software', 'Ver los sistemas')}</a>
+    </div>
+    <div class="tx-numeros">
+      <div><b>${LIVROS.length}</b><span>${t('livros publicados', 'books published', 'libros publicados')}</span></div>
+      <div><b>${CURSOS.length}</b><span>${t('cursos em vídeo', 'video courses', 'cursos en vídeo')}</span></div>
+      <div><b>${SISTEMAS.length}</b><span>${t('sistemas à venda', 'systems for sale', 'sistemas a la venta')}</span></div>
+      <div><b>3</b><span>${t('lojas, um grupo só', 'stores, one group', 'tiendas, un solo grupo')}</span></div>
+    </div>
+  </div>
+  ${fabrica}
+</section>
+
+<section class="tx-sec" id="livros">
+  <div class="tx-wrap">
+    <p class="tx-chapeu">${t('Livraria Villela', 'Villela Bookstore', 'Librería Villela')}</p>
+    <h2>${t(`${LIVROS.length} livros — em PDF, impresso ou combo`,
+             `${LIVROS.length} books — PDF, printed or bundle`,
+             `${LIVROS.length} libros — en PDF, impreso o combo`)}</h2>
+    <p class="tx-sub">${t(
+      'O PDF chega por e-mail assim que a compra é confirmada; o impresso é produzido sob demanda; o combo leva os dois. Você folheia uma amostra de qualquer livro antes de decidir. Clique no título para abrir a página dele na livraria.',
+      'The PDF arrives by e-mail as soon as payment clears; the printed copy is made on demand; the bundle gives you both. You can preview a sample of any book before deciding. Click a title to open its page in the bookstore.',
+      'El PDF llega por correo en cuanto se confirma la compra; el impreso se produce bajo demanda; el combo lleva los dos. Puedes hojear una muestra de cualquier libro antes de decidir. Haz clic en el título para abrir su página en la librería.')}</p>
+    ${blocosLivros}
+    <p style="margin-top:30px"><a class="tx-btn tx-btn-lago" href="${comOrigem(LOJA_LIVROS)}" target="_blank" rel="noopener" data-tx-cta="hub-livros">${t('Abrir a livraria', 'Open the bookstore', 'Abrir la librería')} →</a></p>
+  </div>
+</section>
+
+<section class="tx-sec alt" id="cursos">
+  <div class="tx-wrap">
+    <p class="tx-chapeu">${t('Villela Academy', 'Villela Academy', 'Villela Academy')}</p>
+    <h2>${t('Os cursos em vídeo, nascidos dos livros',
+             'The video courses, born from the books',
+             'Los cursos en vídeo, nacidos de los libros')}</h2>
+    <p class="tx-sub">${t(
+      'Cada aula tem videoaula, artigo em PDF, apresentação e um resumo visual de uma página. Compra única, acesso vitalício, sem mensalidade — e a primeira aula de cada curso é aberta para você conferir antes.',
+      'Every lesson has a video, a PDF article, the slide deck and a one-page visual summary. One-time purchase, lifetime access, no subscription — and the first lesson of each course is open so you can check before buying.',
+      'Cada clase tiene videoclase, artículo en PDF, presentación y un resumen visual de una página. Compra única, acceso de por vida, sin mensualidad — y la primera clase de cada curso está abierta para que la veas antes.')}</p>
+    <div class="tx-grade-cursos">${blocosCursos}</div>
+    <p style="margin-top:30px"><a class="tx-btn tx-btn-lago" href="${comOrigem(LOJA_CURSOS)}" target="_blank" rel="noopener" data-tx-cta="hub-cursos">${t('Abrir a Academy', 'Open the Academy', 'Abrir la Academy')} →</a></p>
+  </div>
+</section>
+
+<section class="tx-sec" id="sistemas">
+  <div class="tx-wrap">
+    <p class="tx-chapeu">${t('Sistemas do grupo', 'Group software', 'Sistemas del grupo')}</p>
+    <h2>${t(`${TODOS_SIS.length} plataformas que já rodam um negócio de verdade`,
+             `${TODOS_SIS.length} platforms already running a real business`,
+             `${TODOS_SIS.length} plataformas que ya operan un negocio de verdad`)}</h2>
+    <p class="tx-sub">${t(
+      `Nenhum deles foi feito para vender: cada um resolveu primeiro um problema da nossa operação e só depois virou produto. ${SISTEMAS.length} estão à venda, com 14 dias grátis; ${EM_DESENVOLVIMENTO.length} já estão no ar e ainda não foram lançados. A página dos sistemas mostra cada painel funcionando, animado.`,
+      `None of them was built to be sold: each one first solved a problem in our own operation and only then became a product. ${SISTEMAS.length} are for sale, with 14 days free; ${EM_DESENVOLVIMENTO.length} are already live and not yet launched. The systems page shows each dashboard working, animated.`,
+      `Ninguno fue hecho para vender: cada uno resolvió primero un problema de nuestra operación y solo después se volvió producto. ${SISTEMAS.length} están a la venta, con 14 días gratis; ${EM_DESENVOLVIMENTO.length} ya están en el aire y aún no se lanzaron. La página de sistemas muestra cada panel funcionando, animado.`)}</p>
+    <div class="mq" data-vertical="${destaqueSis.vertical}" style="--acento:${destaqueSis.cor};margin-bottom:28px">${TELAS[destaqueSis.tela](t)}</div>
+    <div class="tx-grade-sis">${blocosSistemas}</div>
+    <p style="margin-top:30px"><a class="tx-btn tx-btn-lago" href="${L('/sistemas.html')}" data-tx-cta="hub-sistemas">${t('Ver os sistemas funcionando', 'See the software working', 'Ver los sistemas funcionando')} →</a></p>
+  </div>
+</section>
+
+<section class="tx-sec escura" id="portas">
+  <div class="tx-wrap">
+    <p class="tx-chapeu">${t('Três endereços', 'Three addresses', 'Tres direcciones')}</p>
+    <h2>${t('Cada acervo tem a própria loja', 'Each collection has its own store', 'Cada acervo tiene su propia tienda')}</h2>
+    <p class="tx-sub">${t(
+      'Esta página é o mapa. A compra, o acesso e o suporte acontecem em cada loja — e é para lá que todos os botões acima levam.',
+      'This page is the map. Buying, access and support happen in each store — and that is where every button above takes you.',
+      'Esta página es el mapa. La compra, el acceso y el soporte ocurren en cada tienda — y allí es adonde llevan todos los botones de arriba.')}</p>
+    <div class="tx-portas">
+      <div class="tx-porta">
+        <b>${t('Livraria Villela', 'Villela Bookstore', 'Librería Villela')}</b>
+        <p>${t(`${LIVROS.length} livros em PDF, impresso e combo, com amostra para folhear.`,
+               `${LIVROS.length} books in PDF, printed and bundles, with a free preview.`,
+               `${LIVROS.length} libros en PDF, impreso y combos, con muestra para hojear.`)}</p>
+        <a class="tx-btn tx-btn-ouro" href="${comOrigem(LOJA_LIVROS)}" target="_blank" rel="noopener" data-tx-cta="porta-livros">livros.villelastay.com.br</a>
+      </div>
+      <div class="tx-porta">
+        <b>Villela Academy</b>
+        <p>${t(`${CURSOS.length} cursos em vídeo, com artigo e apresentação de cada aula.`,
+               `${CURSOS.length} video courses, with an article and slide deck for every lesson.`,
+               `${CURSOS.length} cursos en vídeo, con artículo y presentación de cada clase.`)}</p>
+        <a class="tx-btn tx-btn-ouro" href="${comOrigem(LOJA_CURSOS)}" target="_blank" rel="noopener" data-tx-cta="porta-cursos">academia.villelastay.com.br</a>
+      </div>
+      <div class="tx-porta">
+        <b>${t('Sistemas', 'Software', 'Sistemas')}</b>
+        <p>${t(`${TODOS_SIS.length} plataformas em nuvem, com as telas animadas e 14 dias grátis.`,
+               `${TODOS_SIS.length} cloud platforms, with animated screens and 14 days free.`,
+               `${TODOS_SIS.length} plataformas en la nube, con pantallas animadas y 14 días gratis.`)}</p>
+        <a class="tx-btn tx-btn-ouro" href="${L('/sistemas.html')}" data-tx-cta="porta-sistemas">villelastay.com.br/sistemas.html</a>
+      </div>
+    </div>
+    <p class="tx-nota">${t(
+      'Os livros e os cursos são publicados em português. Precisa de ajuda para escolher? Chame no WhatsApp:',
+      'Books and courses are published in Portuguese. Need help choosing? Message us on WhatsApp:',
+      'Los libros y los cursos se publican en portugués. ¿Necesitas ayuda para elegir? Escríbenos por WhatsApp:')}
+      <a href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">+55 61 9193-5013</a>.</p>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+  // A maquete só anima enquanto está na tela — painel animando fora da vista
+  // gasta bateria para ninguém ver (mesma regra da /sistemas.html).
+  var menosMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var mq = document.querySelector('#sistemas .mq');
+  if (mq && !menosMovimento && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function(itens){
+      itens.forEach(function(e){ e.target.classList.toggle('tocando', e.isIntersecting); });
+    }, { threshold: 0.25 }).observe(mq);
+  }
+  // Qual produto chamou a atenção é a única coisa que importa medir aqui.
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('[data-tx-cta]');
+    if (a && typeof gtag === 'function') gtag('event', 'tudo_clique', { destino: a.getAttribute('data-tx-cta') });
+  });
+})();
+</script>`,
+    { caminho: '/tudo.html', extraHead: `<style>${SISTEMAS_CSS}\n${CATALOGO_CSS}</style>\n${ldTudo}`,
+      ogImage: TEM_OG_PRODUTOS ? `${SITE_URL}/og-produtos.jpg` : undefined }
+  );
+  fs.writeFileSync(path.join(od, 'tudo.html'), paginaTudo);
 }
 
 // ------------------------- artigo: posse 2027 -------------------------
@@ -4728,6 +5075,9 @@ const rotas = [
   // Catálogo dos SaaS: prioridade alta porque é a porta de entrada de um
   // público inteiro (quem procura sistema) que não chega pelas outras páginas.
   { loc: '/sistemas.html', changefreq: 'weekly', priority: '0.9' },
+  // Vitrine conjunta (livros + cursos + sistemas): é o link único das campanhas
+  // que divulgam o grupo inteiro, e a porta de quem chega pelo nome do autor.
+  { loc: '/tudo.html', changefreq: 'weekly', priority: '0.8' },
   ...LANDINGS.map(lp => ({ loc: `/${lp.arquivo}`, changefreq: 'weekly', priority: '0.8' })),
   { loc: '/posse-2027.html', changefreq: 'weekly', priority: '0.7' },
   { loc: '/blog.html', changefreq: 'weekly', priority: '0.7' },
@@ -4846,6 +5196,24 @@ eles é feita por API, disponível nos planos superiores.
 
 ${CAP_LLMS}
 ${CG_LLMS}
+## Livros e cursos do autor
+
+Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos
+para cada loja: ${SITE_URL}/tudo.html
+
+Livros — ${CATALOGO.livros.length} títulos de Augusto Villela, em PDF, impresso sob demanda ou combo,
+na Livraria Villela (https://livros.villelastay.com.br/livros). Todos em português:
+
+${CATALOGO.livros.map(b => `- [${b.titulo}](${b.url}): ${cortar(b.resumo || b.subtitulo, 220)} ` +
+  `Categoria: ${b.categoria}. A partir de R$ ${(Math.min(...[b.precoPdf, b.precoImpresso, b.precoCombo].filter(v => v != null)) / 100).toFixed(2).replace('.', ',')}.`).join('\n')}
+
+Cursos em vídeo — ${CATALOGO.cursos.length} cursos na Villela Academy
+(https://academia.villelastay.com.br/academy/marketplace), compra única, acesso
+vitalício, com videoaula, artigo em PDF e apresentação de cada aula:
+
+${CATALOGO.cursos.map(c => `- [${c.titulo}](${c.url}): ${cortar(c.resumo, 260)}` +
+  (c.preco ? ` R$ ${(c.preco / 100).toFixed(2).replace('.', ',')}.` : '')).join('\n')}
+
 ## Contato
 
 WhatsApp +55 61 99193-5013 · villelastay@gmail.com · SMDB Conjunto 29, Lago Sul,

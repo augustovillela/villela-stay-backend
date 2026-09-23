@@ -1,0 +1,200 @@
+{
+  "coletadoEm": "2026-09-23T11:52:51.693Z",
+  "livros": [
+    {
+      "slug": "chatgpt-ai-na-pratica",
+      "titulo": "ChatGPT AI na Prática",
+      "subtitulo": "Manual prático para criar GPTs, Skills, Agentes e Sistemas Inteligentes para empresas e profissionais liberais — Parte I: Fundamentos e Aplicações",
+      "resumo": "Um manual direto, sem promessa mágica, para quem quer parar de conversar com a inteligência artificial e começar a produzir com ela — do primeiro prompt à criação de GPTs, Skills, agentes e automações.",
+      "categoria": "Tecnologia e IA",
+      "capa": "https://livros.villelastay.com.br/assets/livros/chatgpt-ai-na-pratica.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 8600,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/chatgpt-ai-na-pratica"
+    },
+    {
+      "slug": "chatgpt-ai-na-pratica-guia-visual",
+      "titulo": "ChatGPT AI na Prática – Guia Visual",
+      "subtitulo": "Aprenda em 7 dias com ilustrações, fluxogramas, exemplos reais e prompts prontos.",
+      "resumo": "Os 24 capítulos de ChatGPT AI na Prática em 43 páginas visuais: cada capítulo virou uma lição ilustrada com conceitos, passos, citação, checklist, exercício e ideia-chave.",
+      "categoria": "Tecnologia e IA",
+      "capa": "https://livros.villelastay.com.br/assets/livros/chatgpt-ai-na-pratica-guia-visual.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 10900,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/chatgpt-ai-na-pratica-guia-visual"
+    },
+    {
+      "slug": "claude-ai-na-pratica",
+      "titulo": "Claude AI na Prática",
+      "subtitulo": "Manual prático para Criar Agentes, Skills e Sistemas Inteligentes para Empresa e Profissionais Liberais",
+      "resumo": "Manual prático para Criar Agentes, Skills e Sistemas Inteligentes para Empresa e Profissionais Liberais.",
+      "categoria": "Tecnologia e IA",
+      "capa": "https://livros.villelastay.com.br/assets/livros/claude-ai-na-pratica.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 8600,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/claude-ai-na-pratica"
+    },
+    {
+      "slug": "claude-ai-na-pratica-juridica",
+      "titulo": "Claude AI na Prática Jurídica",
+      "subtitulo": "Manual para Criar Agentes, Automações e Sistemas Inteligentes para Advogados e Escritórios de Advocacia",
+      "resumo": "O segundo volume da série Claude AI na Prática, escrito para quem advoga: 50 capítulos que ensinam a montar o escritório assistido por inteligência artificial sem abrir mão do sigilo, da ética e da responsabilidade profissional.",
+      "categoria": "Tecnologia e IA",
+      "capa": "https://livros.villelastay.com.br/assets/livros/claude-ai-na-pratica-juridica.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 8600,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/claude-ai-na-pratica-juridica"
+    },
+    {
+      "slug": "claude-ai-para-advogados-guia-visual",
+      "titulo": "Claude AI para Advogados – Guia Visual",
+      "subtitulo": "Aprenda em 7 dias com ilustracoes, fluxogramas, exemplos reais e prompts prontos.",
+      "resumo": "O metodo de Claude AI na Pratica Juridica em 86 paginas visuais: cada capitulo virou uma licao ilustrada com conceitos, passos, citacao, checklist, exercicio e ideia-chave.",
+      "categoria": "Tecnologia e IA",
+      "capa": "https://livros.villelastay.com.br/assets/livros/claude-ai-para-advogados-guia-visual.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 10900,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/claude-ai-para-advogados-guia-visual"
+    },
+    {
+      "slug": "como-ser-superprodutivo-com-ia",
+      "titulo": "Como Ser Superprodutivo com Inteligência Artificial",
+      "subtitulo": "2ª edição, revista e ampliada — o guia de IA para o mercado de 2026",
+      "resumo": "Segunda edição, reescrita do começo ao fim. Trinta capítulos ilustrados sobre os assistentes que realmente importam em 2026 — Claude, ChatGPT e Gemini —, os agentes que executam tarefas sozinhos e o que mudou em cada profissão.",
+      "categoria": "Tecnologia e IA",
+      "capa": "https://livros.villelastay.com.br/assets/livros/como-ser-superprodutivo-com-ia.jpg?v=3",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 14900,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/como-ser-superprodutivo-com-ia"
+    },
+    {
+      "slug": "conexoes-de-sucesso",
+      "titulo": "Conexões de Sucesso",
+      "subtitulo": "O que os jovens precisam aprender agora que as máquinas já sabem as respostas",
+      "resumo": "O primeiro degrau da carreira foi serrado: as tarefas de entrada viraram software. Esta 2ª edição, reescrita do começo, mostra o que o jovem precisa aprender agora que as máquinas já sabem as respostas.",
+      "categoria": "Desenvolvimento Pessoal",
+      "capa": "https://livros.villelastay.com.br/assets/livros/conexoes-de-sucesso.jpg?v=3",
+      "precoPdf": 1900,
+      "precoImpresso": 13900,
+      "precoCombo": 14500,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/conexoes-de-sucesso"
+    },
+    {
+      "slug": "de-repente-rico",
+      "titulo": "De Repente Rico",
+      "subtitulo": "Finanças Pessoais",
+      "resumo": "Os segredos da construção de riqueza destilados dos maiores clássicos de finanças pessoais — de Pai Rico, Pai Pobre à Psicologia Financeira — em um único livro.",
+      "categoria": "Finanças",
+      "capa": "https://livros.villelastay.com.br/assets/livros/de-repente-rico.jpg?v=2",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 8600,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/de-repente-rico"
+    },
+    {
+      "slug": "faca-um-curso-online-em-15-passos",
+      "titulo": "Faça um Curso On-line em 15 Passos",
+      "subtitulo": "Do conteúdo à primeira venda",
+      "resumo": "O passo a passo completo para criar, gravar e vender o seu curso on-line — do e-book à Hotmart — usando ferramentas de inteligência artificial em cada etapa.",
+      "categoria": "Negócios e Marketing",
+      "capa": "https://livros.villelastay.com.br/assets/livros/faca-um-curso-online-em-15-passos.jpg?v=2",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 8600,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/faca-um-curso-online-em-15-passos"
+    },
+    {
+      "slug": "o-homem-essencial",
+      "titulo": "O Homem Essencial",
+      "subtitulo": "Uma carta de pai para os filhos",
+      "resumo": "Um pai reúne, em forma de carta aos três filhos, os princípios essenciais para uma vida de caráter, domínio de si, lucidez e propósito.",
+      "categoria": "Desenvolvimento Pessoal",
+      "capa": "https://livros.villelastay.com.br/assets/livros/o-homem-essencial.jpg?v=2",
+      "precoPdf": 5000,
+      "precoImpresso": null,
+      "precoCombo": 15000,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/o-homem-essencial"
+    },
+    {
+      "slug": "o-locador-inteligente",
+      "titulo": "O Locador Inteligente",
+      "subtitulo": "Os Segredos dos Algoritmos",
+      "resumo": "Dos algoritmos do Airbnb e da Booking à gestão profissional do seu imóvel: o guia prático da locação por temporada, escrito por quem opera 20 anúncios em Brasília.",
+      "categoria": "Negócios e Marketing",
+      "capa": "https://livros.villelastay.com.br/assets/livros/o-locador-inteligente.jpg?v=2",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 8600,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/o-locador-inteligente"
+    },
+    {
+      "slug": "pilotagem-de-drones-na-pratica-dji-mini-3",
+      "titulo": "Pilotagem de Drones na Prática - DJI Mini 3",
+      "subtitulo": "Do primeiro voo à filmagem profissional com DJI Mini 3 - Segurança, legislação e operações em Brasília",
+      "resumo": "Pilotagem de Drones na Prática - DJI Mini 3 é uma obra técnica para aqueles que querem realmente aprender a pilotar drone sem violar a legislação, com domínio sobre o equipamento e suas configurações para produzir vídeos e fotos profissionais.",
+      "categoria": "Aeronáutica e Drones",
+      "capa": "https://livros.villelastay.com.br/assets/livros/pilotagem-de-drones-na-pratica.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 8600,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/pilotagem-de-drones-na-pratica-dji-mini-3"
+    },
+    {
+      "slug": "suas-definicoes-de-marketing",
+      "titulo": "Suas Definições de Marketing Foram Atualizadas",
+      "subtitulo": "O novo marketing na era digital",
+      "resumo": "Do funil de vendas ao marketing de influência: os conceitos do marketing moderno explicados um a um, com ferramentas, exemplos e gatilhos mentais para aplicar hoje.",
+      "categoria": "Negócios e Marketing",
+      "capa": "https://livros.villelastay.com.br/assets/livros/suas-definicoes-de-marketing.jpg?v=2",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": 8600,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/suas-definicoes-de-marketing"
+    }
+  ],
+  "cursos": [
+    {
+      "slug": "chatgpt-ai-na-pratica",
+      "titulo": "ChatGPT AI na Prática",
+      "resumo": "22 aulas em vídeo, com artigo e apresentação de cada uma: do prompt que funciona ao ChatGPT operando a sua empresa por Codex, agentes e automações. Baseado no livro ChatGPT AI na Prática, com os casos reais da Villela Stay.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/E0_QNGzSvT9s?v=XaFnrMRAbWgM",
+      "preco": 25900,
+      "url": "https://academia.villelastay.com.br/academy/cursos/chatgpt-ai-na-pratica"
+    },
+    {
+      "slug": "claude-ai-na-pratica",
+      "titulo": "Claude AI na Prática",
+      "resumo": "22 módulos, aulas em vídeo, 22 artigos e 22 apresentações: do primeiro prompt ao time de agentes que opera a sua empresa. Baseado no livro Claude AI na Prática, com os casos reais da Villela Stay.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/kRkjahncniMF?v=db_1sznG_WxD",
+      "preco": 29000,
+      "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica"
+    },
+    {
+      "slug": "claude-ai-na-pratica-juridica",
+      "titulo": "Claude AI na Prática Jurídica",
+      "resumo": "22 aulas para advogados: prompts e contexto jurídico, controle de qualidade, processos, bases de conhecimento, agentes, publicações e prazos, peças, provas, contratos, negociação e a implantação do escritório operado por IA. Videoaulas + artigo e slides de cada aula.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/rfWHmnoCD005?v=wb8_T987heIG",
+      "preco": 35000,
+      "url": "https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica-juridica"
+    }
+  ]
+}
