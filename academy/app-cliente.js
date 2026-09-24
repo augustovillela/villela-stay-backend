@@ -570,6 +570,55 @@
       .then(function () { return mediaId; });
   }
 
+  // ============ material do curso (prateleira do produto) ============
+  // Lista, remove e reordena. Fica em função própria porque a lista se repinta
+  // sozinha depois de cada ação — recarregar a tela inteira do produto aqui
+  // apagaria a fila de vídeos que o produtor pode ter montado ao lado.
+  function pintarMateriaisCurso(pid) {
+    var box = el('mc-lista'); if (!box) return;
+    api('GET', '/produtor/produtos/' + pid + '/material-curso').then(function (r) {
+      var ms = r.materiais || [];
+      if (!ms.length) {
+        box.innerHTML = '<p class="al-sub">Nenhum material do curso ainda. Caderno, apostila, planilha — o que vale para o curso inteiro entra aqui.</p>';
+        return;
+      }
+      box.innerHTML = '<div class="pr-mats">' + ms.map(function (m, i) {
+        // KB abaixo de 1 MB: "0.0 MB" não diz nada sobre um arquivo de 40 KB.
+        var mb = !m.tamanho ? '' : m.tamanho >= 1048576 ? (m.tamanho / 1048576).toFixed(1) + ' MB'
+          : Math.max(1, Math.round(m.tamanho / 1024)) + ' KB';
+        return '<div class="pr-mat"><span class="nm"><b>' + esc(m.nome) + '</b>' +
+          (m.descricao ? '<span class="al-sub">' + esc(m.descricao) + '</span>' : '') +
+          '<span class="al-sub">' + esc(String(m.mime || '').split('/').pop().toUpperCase()) + (mb ? ' · ' + mb : '') + '</span></span>' +
+          '<span class="bts">' +
+            (i > 0 ? '<button class="al-bt peq fan mc-sobe" data-i="' + i + '" title="subir">↑</button>' : '') +
+            (i < ms.length - 1 ? '<button class="al-bt peq fan mc-desce" data-i="' + i + '" title="descer">↓</button>' : '') +
+            '<button class="al-bt peq fan mc-del" data-id="' + esc(m.id) + '" title="remover">✕</button>' +
+          '</span></div>';
+      }).join('') + '</div>';
+
+      function reordenar(de, para) {
+        var ids = ms.map(function (x) { return x.id; });
+        ids.splice(para, 0, ids.splice(de, 1)[0]);
+        api('POST', '/produtor/produtos/' + pid + '/material-curso/ordem', { ids: ids })
+          .then(function () { pintarMateriaisCurso(pid); }).catch(function (e) { falha('mc-msg', e); });
+      }
+      [].forEach.call(box.querySelectorAll('.mc-sobe'), function (b) {
+        b.onclick = function () { var i = Number(b.getAttribute('data-i')); reordenar(i, i - 1); };
+      });
+      [].forEach.call(box.querySelectorAll('.mc-desce'), function (b) {
+        b.onclick = function () { var i = Number(b.getAttribute('data-i')); reordenar(i, i + 1); };
+      });
+      [].forEach.call(box.querySelectorAll('.mc-del'), function (b) {
+        b.onclick = function () {
+          // O arquivo some da prateleira do aluno na hora: vale confirmar.
+          if (!window.confirm('Tirar este material do curso? O aluno deixa de ver na Biblioteca do curso.')) return;
+          api('DELETE', '/produtor/produtos/' + pid + '/material-curso/' + b.getAttribute('data-id'))
+            .then(function () { pintarMateriaisCurso(pid); }).catch(function (e) { falha('mc-msg', e); });
+        };
+      });
+    }).catch(function (e) { box.innerHTML = '<p class="erro">' + esc(e.message) + '</p>'; });
+  }
+
   // ============ envio de vídeos em lote (1 arquivo = 1 aula) ============
   // Regra que rege tudo aqui: NADA do que já foi feito se perde por causa de um
   // erro depois. O media_id de um vídeo que já subiu fica guardado no item da
@@ -798,6 +847,24 @@
         '<button class="al-bt peq" id="b-addmod">+ Aula</button> <span id="bl-msg" class="erro"></span></div>';
       html += sec('blocos', 'Conteúdo', 'cada aula é um bloco; dentro dela entram vídeo, PDF e materiais', builder);
 
+      // ---- material do CURSO (a prateleira que não é de nenhuma aula) ----
+      // Fica ANTES do envio de vídeos porque é a pergunta mais comum de quem
+      // acabou de montar o curso: "onde ponho o caderno/apostila que vale para
+      // tudo?". Antes disto a resposta era pendurar na aula 1 — e sumir para
+      // quem estivesse em qualquer outra.
+      html += sec('caixa', 'Material do curso',
+        'vale para o curso inteiro e aparece na Biblioteca do curso do aluno, fora das aulas · arquivo grande vai direto ao storage',
+        '<div id="mc-lista"><p class="al-sub">Carregando…</p></div>' +
+        '<div class="pr-linha" style="margin-top:12px;display:flex;gap:9px;flex-wrap:wrap;align-items:center">' +
+          '<input type="file" id="mc-file" style="max-width:300px;margin:0">' +
+          '<input id="mc-nome" placeholder="Nome que o aluno vê (ex.: Caderno visual (PDF))" style="max-width:320px;margin:0">' +
+        '</div>' +
+        '<input id="mc-desc" placeholder="Descrição (opcional) — para que serve, o que tem dentro" style="margin-top:9px">' +
+        '<div style="display:flex;gap:9px;align-items:center;margin-top:10px">' +
+          '<button class="al-bt peq" id="mc-add">+ Publicar material</button>' +
+          '<span id="mc-msg" class="erro"></span></div>',
+        '<span class="al-sub">Republicar com o MESMO nome troca o arquivo (versão nova), em vez de deixar duas cópias.</span>');
+
       // ---- envio de vídeos em lote ----
       html += sec('video', 'Enviar vídeos', 'cada arquivo vira um conteúdo da aula escolhida',
         '<label>Aula que vai receber os vídeos *</label>' +
@@ -896,6 +963,34 @@
       el('b-addmod').onclick = function () {
         api('POST', '/produtor/produtos/' + pid + '/modulos', { titulo: val('nm-titulo') })
           .then(function () { vProduto(pid); }).catch(function (e) { falha('bl-msg', e); });
+      };
+
+      // ---- fiação do material do curso ----
+      pintarMateriaisCurso(pid);
+      el('mc-add').onclick = function () {
+        var f = el('mc-file').files && el('mc-file').files[0];
+        var nome = val('mc-nome') || (f ? f.name : '');
+        if (!f) return falha('mc-msg', new Error('Escolha o arquivo.'));
+        if (!nome) return falha('mc-msg', new Error('Dê um nome ao material — é ele que o aluno lê.'));
+        var bt = el('mc-add'); bt.disabled = true;
+        el('mc-msg').textContent = 'Enviando ' + (f.size / 1048576).toFixed(1) + ' MB…';
+        el('mc-msg').className = 'al-sub';
+        // Acima de 10 MB o arquivo NÃO cabe na requisição (vai em base64): vai
+        // direto ao storage, pelo mesmo caminho do vídeo. É o que permite um
+        // caderno de 58 MB sem comprimir.
+        var envio = f.size > 10 * 1024 * 1024 ? uploadGrande(f) : upload(el('mc-file'));
+        Promise.resolve(envio)
+          .then(function (mediaId) {
+            return api('POST', '/produtor/produtos/' + pid + '/material-curso',
+              { nome: nome, descricao: val('mc-desc'), media_id: mediaId });
+          })
+          .then(function (r) {
+            el('mc-msg').textContent = r.substituido ? 'Arquivo trocado (mesmo nome).' : 'Material publicado.';
+            el('mc-file').value = ''; el('mc-nome').value = ''; el('mc-desc').value = '';
+            pintarMateriaisCurso(pid);
+          })
+          .catch(function (e) { falha('mc-msg', e); })
+          .then(function () { bt.disabled = false; });
       };
 
       // ---- fiação do envio em lote ----

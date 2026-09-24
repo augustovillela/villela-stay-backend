@@ -131,23 +131,23 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
   // O arquivo chega por `upload` (até 10 MB) ou por `upload-grande` (até 2 GB,
   // direto ao bucket) — aqui entra só o media_id, então caderno de 58 MB passa
   // pelo mesmo caminho do vídeo e não esbarra no limite da requisição.
-  app.get('/academy/api/produtor/produtos/:id/materiais', ...P, h((req, res) => {
+  app.get('/academy/api/produtor/produtos/:id/material-curso', ...P, h((req, res) => {
     const p = doDono(req);
     res.json({ materiais: ct.MateriaisCurso.listar(p.id) });
   }));
-  app.post('/academy/api/produtor/produtos/:id/materiais', ...P, h((req, res) => {
+  app.post('/academy/api/produtor/produtos/:id/material-curso', ...P, h((req, res) => {
     const p = doDono(req);
     const r = ct.MateriaisCurso.adicionar(p.id, req.body || {});
     aud(req, r.substituido ? 'material-curso.substituir' : 'material-curso.criar', 'product_materials', r.id, s((req.body || {}).nome, 80));
     res.json({ ok: true, ...r });
   }));
-  app.delete('/academy/api/produtor/produtos/:id/materiais/:materialId', ...P, h((req, res) => {
+  app.delete('/academy/api/produtor/produtos/:id/material-curso/:materialId', ...P, h((req, res) => {
     const p = doDono(req);
     ct.MateriaisCurso.remover(req.params.materialId, p.id);
     aud(req, 'material-curso.remover', 'product_materials', req.params.materialId, '');
     res.json({ ok: true });
   }));
-  app.post('/academy/api/produtor/produtos/:id/materiais/ordem', ...P, h((req, res) => {
+  app.post('/academy/api/produtor/produtos/:id/material-curso/ordem', ...P, h((req, res) => {
     const p = doDono(req);
     res.json({ ok: true, n: ct.MateriaisCurso.reordenar(p.id, (req.body || {}).ids) });
   }));

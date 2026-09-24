@@ -1407,7 +1407,7 @@ async function main() {
     const up = await req('POST', '/academy/api/produtor/upload', {
       jar: 'maria', corpo: { nome: 'caderno.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 caderno do curso inteiro').toString('base64') },
     });
-    const add = await req('POST', `/academy/api/produtor/produtos/${prodId}/materiais`, {
+    const add = await req('POST', `/academy/api/produtor/produtos/${prodId}/material-curso`, {
       jar: 'maria', corpo: { nome: 'Caderno visual do curso (PDF)', descricao: 'Vale para o curso inteiro.', media_id: up.json.id },
     });
     assert.equal(add.st, 200, add.texto);
@@ -1431,7 +1431,7 @@ async function main() {
     const r = await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'zeca' });
     assert.equal(r.st, 200, 'a página do curso abre para qualquer aluno logado (é vitrine)');
     assert.equal((r.json.materiais_curso || []).length, 0, 'listar para quem não comprou é anunciar o que ele não pode baixar');
-    const mid = (await req('GET', `/academy/api/produtor/produtos/${prodId}/materiais`, { jar: 'maria' })).json.materiais[0].media_id;
+    const mid = (await req('GET', `/academy/api/produtor/produtos/${prodId}/material-curso`, { jar: 'maria' })).json.materiais[0].media_id;
     const baixa = await req('GET', `/academy/api/media/${mid}`, { jar: 'zeca' });
     assert.equal(baixa.st, 404, 'sem matrícula, os bytes não saem');
   });
@@ -1439,13 +1439,40 @@ async function main() {
     const up2 = await req('POST', '/academy/api/produtor/upload', {
       jar: 'maria', corpo: { nome: 'caderno-v2.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 caderno revisado').toString('base64') },
     });
-    const r = await req('POST', `/academy/api/produtor/produtos/${prodId}/materiais`, {
+    const r = await req('POST', `/academy/api/produtor/produtos/${prodId}/material-curso`, {
       jar: 'maria', corpo: { nome: 'Caderno visual do curso (PDF)', media_id: up2.json.id },
     });
     assert.ok(r.json.substituido, 'republicar com o mesmo nome substitui');
-    const lista = (await req('GET', `/academy/api/produtor/produtos/${prodId}/materiais`, { jar: 'maria' })).json.materiais;
+    const lista = (await req('GET', `/academy/api/produtor/produtos/${prodId}/material-curso`, { jar: 'maria' })).json.materiais;
     assert.equal(lista.length, 1, 'não pode ficar duas versões na prateleira');
     assert.equal(lista[0].media_id, up2.json.id, 'o arquivo novo é o que fica');
+  });
+  await t('material do curso: remover tira da prateleira (e não colide com o material de AULA)', async () => {
+    // Aqui morava um defeito de verdade: a rota de remover nasceu como
+    // `/produtos/:id/materiais/:materialId`, IGUAL à que já existia para material
+    // de AULA. O Express casa a primeira, e a minha nunca rodava — o produtor
+    // clicava em remover e recebia "Material não encontrado". Achado só quando a
+    // tela foi clicada de verdade; nenhum teste de API pegava, porque eu não
+    // tinha testado o DELETE. Daí o caminho próprio `/material-curso`.
+    const up = await req('POST', '/academy/api/produtor/upload', {
+      jar: 'maria', corpo: { nome: 'descartavel.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 vai sair').toString('base64') },
+    });
+    const add = await req('POST', `/academy/api/produtor/produtos/${prodId}/material-curso`, {
+      jar: 'maria', corpo: { nome: 'Material descartável (PDF)', media_id: up.json.id },
+    });
+    const antes = (await req('GET', `/academy/api/produtor/produtos/${prodId}/material-curso`, { jar: 'maria' })).json.materiais.length;
+    const del = await req('DELETE', `/academy/api/produtor/produtos/${prodId}/material-curso/${add.json.id}`, { jar: 'maria' });
+    assert.equal(del.st, 200, del.texto);
+    const depois = (await req('GET', `/academy/api/produtor/produtos/${prodId}/material-curso`, { jar: 'maria' })).json.materiais;
+    assert.equal(depois.length, antes - 1, 'o material removido tem de sair da lista');
+    assert.ok(!depois.some((m) => m.id === add.json.id));
+    // E a rota do material de AULA continua inteira, no caminho dela.
+    const aulas = (await req('GET', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria' })).json.estrutura[0].aulas;
+    const matAula = await req('POST', `/academy/api/produtor/produtos/${prodId}/aulas/${aulas[0].id}/materiais`, {
+      jar: 'maria', corpo: { nome: 'Anexo que sai (PDF)', media_id: up.json.id },
+    });
+    assert.equal((await req('DELETE', `/academy/api/produtor/produtos/${prodId}/materiais/${matAula.json.id}`, { jar: 'maria' })).st, 200,
+      'a rota antiga, de material de AULA, não pode ter sido quebrada pela nova');
   });
   await t('material do curso: a rota STAFF responde pela PUBLISH_KEY (é a que o agente usa)', async () => {
     // Esta rota faltava no teste e quebrou em produção na primeira chamada: um
