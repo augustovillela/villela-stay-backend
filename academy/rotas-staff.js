@@ -215,7 +215,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
   // upload direto (2 GB), não o dos 10 MB do anexo de aula.
   app.post('/staff/api/academy/importar-material-curso', ...PA, h((req, res) => {
     const r = imp.iniciarMaterialCurso(req.body || {});
-    aud(req, 'material-curso.upload.iniciar', 'media_files', r.media_id, s((req.body || {}).nome, 80));
+    aud(req, 'material-curso.upload.iniciar', 'media_files', r.media_id, String((req.body || {}).nome || '').slice(0, 80));
     res.json({ ok: true, ...r });
   }));
   app.post('/staff/api/academy/importar-material-curso/:mediaId/confirmar', ...PA, h(async (req, res) => {

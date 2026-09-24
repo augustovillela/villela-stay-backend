@@ -1447,6 +1447,19 @@ async function main() {
     assert.equal(lista.length, 1, 'não pode ficar duas versões na prateleira');
     assert.equal(lista[0].media_id, up2.json.id, 'o arquivo novo é o que fica');
   });
+  await t('material do curso: a rota STAFF responde pela PUBLISH_KEY (é a que o agente usa)', async () => {
+    // Esta rota faltava no teste e quebrou em produção na primeira chamada: um
+    // helper que não existe naquele arquivo derrubou o `iniciar` com 400. Rota
+    // publicada sem teste é rota que o primeiro uso descobre.
+    const emailProdutor = (await req('GET', `/academy/api/produtor/produtos/${prodId}`, { jar: 'maria' })).json ? MARIA.email : null;
+    const q = `?produtor_email=${encodeURIComponent(emailProdutor)}&produto_id=${prodId}`;
+    const r = await req('GET', `/staff/api/academy/materiais-curso${q}`, { chave: true, semUser: true });
+    assert.equal(r.st, 200, r.texto);
+    assert.ok(Array.isArray(r.json.materiais) && r.json.materiais.length, 'a prateleira do curso tem de vir pela chave');
+    assert.equal(r.json.produto.id, prodId);
+    const ruim = await req('GET', '/staff/api/academy/materiais-curso?produtor_email=nao@existe.com&produto_id=xxx', { chave: true, semUser: true });
+    assert.equal(ruim.st, 400, 'produtor inexistente tem de falhar com mensagem, não com 500');
+  });
   await t('material do curso: arquivo grande entra pelo upload direto (acima de 100 MB)', async () => {
     // O anexo de aula cabe em 10 MB porque viaja em base64 na requisição. O
     // caderno do curso jurídico tem 58 MB — e o pedido do Augusto foi "limite
