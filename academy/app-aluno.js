@@ -469,6 +469,13 @@
     }
     function materiaisDoCurso() {
       var fora = [];
+      // Primeiro a prateleira do CURSO (caderno completo, apostila): é material
+      // que vale para tudo e não pertence a aula nenhuma — pendurado numa aula,
+      // some para quem está em qualquer outra. Vem antes porque é o que a
+      // pessoa procura quando pensa "o material do curso".
+      ((C.d && C.d.materiais_curso) || []).forEach(function (m) {
+        fora.push({ nome: m.nome, media_id: m.media_id, mime: m.mime, tamanho: m.tamanho, aula: 'Material do curso' });
+      });
       C.aulas.forEach(function (x) {
         (x.a.materiais || []).forEach(function (m) { fora.push({ nome: m.nome, media_id: m.media_id, mime: m.mime, tamanho: m.tamanho, aula: x.a.titulo }); });
       });

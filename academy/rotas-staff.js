@@ -209,6 +209,26 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, requirePublishOrA
     res.json({ ok: true, ...r });
   }));
 
+  // ---- material do CURSO (prateleira), inclusive arquivo grande ----
+  // Mesmo desenho do vídeo: iniciar → PUT direto ao bucket → confirmar. É o que
+  // permite publicar um caderno de 58 MB sem comprimir: o limite aqui é o do
+  // upload direto (2 GB), não o dos 10 MB do anexo de aula.
+  app.post('/staff/api/academy/importar-material-curso', ...PA, h((req, res) => {
+    const r = imp.iniciarMaterialCurso(req.body || {});
+    aud(req, 'material-curso.upload.iniciar', 'media_files', r.media_id, s((req.body || {}).nome, 80));
+    res.json({ ok: true, ...r });
+  }));
+  app.post('/staff/api/academy/importar-material-curso/:mediaId/confirmar', ...PA, h(async (req, res) => {
+    const r = await imp.confirmarMaterialCurso(req.params.mediaId, req.body || {});
+    aud(req, r.material.substituido ? 'material-curso.substituir' : 'material-curso.criar',
+      'product_materials', r.material.id, `${r.media.nome} (${r.media.tamanho}b)`);
+    res.json({ ok: true, ...r });
+  }));
+  app.get('/staff/api/academy/materiais-curso', ...PA, h((req, res) => {
+    const { produto } = imp.produtorDono(req.query || {});
+    res.json({ ok: true, produto: { id: produto.id, titulo: produto.titulo }, materiais: ct.MateriaisCurso.listar(produto.id) });
+  }));
+
   // ---- GOTEJAMENTO (liberação progressiva das aulas) ----
   // Liga/desliga por CURSO e parametriza o ritmo. Nasce desligado e só muda
   // aqui: curso completo (Claude AI na Prática, Claude Jurídica) não pode

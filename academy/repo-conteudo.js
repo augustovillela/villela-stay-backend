@@ -270,6 +270,58 @@ const Produtos = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Material do CURSO — a prateleira que não é de nenhuma aula.
+//
+// Por que existe (24/09/2026): o caderno de sketchnotes de um livro vale para o
+// curso inteiro. Pendurado na aula 1, ele some para quem está na aula 14 — e o
+// aluno que procura "o material do curso" não sabe em qual aula procurar. Além
+// disso o anexo de aula cabe em 10 MB (entra por base64 na requisição), e um
+// caderno de 52 páginas tem 58 MB: aqui o arquivo entra pelo mesmo upload
+// direto ao S3/R2 do vídeo, que aceita até 2 GB.
+//
+// Quem baixa: aluno com acesso ao curso. A porta é o `Midia.podeAcessar`, que
+// ganhou este material na consulta — sem isso o arquivo apareceria na lista e
+// daria 404 no clique, que é o pior dos dois mundos.
+const MateriaisCurso = {
+  listar(productId) {
+    return db.prepare(`SELECT m.*, f.mime, f.tamanho FROM product_materials m
+      LEFT JOIN media_files f ON f.id = m.media_id
+      WHERE m.product_id = ? ORDER BY m.ordem, m.criado_em`).all(productId);
+  },
+  adicionar(productId, { nome, descricao, media_id }) {
+    const n = s(nome, 160); if (!n) throw new Error('Informe o nome do material.');
+    const mid = s(media_id, 40); if (!mid) throw new Error('Informe o arquivo (media_id).');
+    if (!Midia.obter(mid)) throw new Error('Arquivo não encontrado.');
+    // Mesma identidade dos materiais de aula: o NOME. Republicar com o mesmo
+    // nome troca o arquivo em vez de criar um segundo item igual na prateleira.
+    const ja = db.prepare('SELECT id FROM product_materials WHERE product_id = ? AND lower(nome) = lower(?)').get(productId, n);
+    if (ja) {
+      db.prepare('UPDATE product_materials SET media_id = ?, descricao = ? WHERE id = ?')
+        .run(mid, s(descricao, 500), ja.id);
+      return { id: ja.id, substituido: true };
+    }
+    const ordem = (db.prepare('SELECT COALESCE(MAX(ordem),0) o FROM product_materials WHERE product_id = ?').get(productId).o) + 1;
+    const id = novoId();
+    db.prepare('INSERT INTO product_materials (id, product_id, nome, descricao, media_id, ordem, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(id, productId, n, s(descricao, 500), mid, ordem, nowISO());
+    return { id, substituido: false };
+  },
+  remover(id, productId) {
+    const r = db.prepare('DELETE FROM product_materials WHERE id = ? AND product_id = ?').run(String(id), productId);
+    if (!Number(r.changes)) throw new Error('Material não encontrado neste curso.');
+    return true;
+  },
+  reordenar(productId, ids) {
+    let i = 0;
+    for (const id of (ids || [])) {
+      i++;
+      db.prepare('UPDATE product_materials SET ordem = ? WHERE id = ? AND product_id = ?').run(i, String(id), productId);
+    }
+    return i;
+  },
+};
+
 const Conteudo = {
   addModulo(productId, titulo) {
     const t = s(titulo, 160); if (!t) throw new Error('Informe o título do módulo.');
@@ -411,7 +463,12 @@ const Midia = {
     const refs = db.prepare(`
       SELECT l.id AS lesson_id, l.product_id, l.gratuita FROM lessons l WHERE l.media_id = ?
       UNION SELECT l.id AS lesson_id, l.product_id, l.gratuita FROM lesson_materials x JOIN lessons l ON l.id = x.lesson_id WHERE x.media_id = ?
-      UNION SELECT '' AS lesson_id, p.id AS product_id, 0 AS gratuita FROM products p WHERE p.capa_media_id = ?`).all(mediaId, mediaId, mediaId);
+      UNION SELECT '' AS lesson_id, p.id AS product_id, 0 AS gratuita FROM products p WHERE p.capa_media_id = ?
+      -- Material do CURSO: não é aula, então não goteja (lesson_id vazio), mas
+      -- exige matrícula como qualquer conteúdo pago. Sem esta linha o arquivo
+      -- apareceria na prateleira e daria 404 no clique.
+      UNION SELECT '' AS lesson_id, m.product_id, 0 AS gratuita FROM product_materials m WHERE m.media_id = ?`)
+      .all(mediaId, mediaId, mediaId, mediaId);
     for (const r of refs) {
       if (r.gratuita) return true; // degustação
       if (!temAcesso(usuario.id, r.product_id)) continue; // matrícula ou assinatura (clube)
@@ -1014,7 +1071,7 @@ const Denuncias = {
 
 module.exports = {
   TIPOS_PRODUTO, TIPOS_AULA, CATEGORIAS, CAT_ROT, catRotulo, Categorias, STATUS_PRODUTO, TRANSICOES, UPLOAD_MAX_BYTES,
-  Produtos, Conteudo, Midia, Matriculas, Cortesia, Progresso, Liberacao, ARQUIVOS_DIR,
+  Produtos, Conteudo, Midia, MateriaisCurso, Matriculas, Cortesia, Progresso, Liberacao, ARQUIVOS_DIR,
   Marketplace, SalesPages, Reviews, Denuncias,
   temAcesso, Clube, Audiobook,
 };

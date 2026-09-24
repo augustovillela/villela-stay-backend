@@ -1402,6 +1402,65 @@ async function main() {
     assert.ok(mats.length, 'o curso de teste ganhou um material logo acima');
     assert.ok(mats.every(m => 'mime' in m && 'tamanho' in m), 'sem mime/tamanho o cartão do material fica sem tipo e sem peso');
   });
+  // Material do CURSO (24/09/2026): a prateleira que não é de nenhuma aula.
+  await t('material do curso: entra pelo produtor, aparece para quem tem o curso', async () => {
+    const up = await req('POST', '/academy/api/produtor/upload', {
+      jar: 'maria', corpo: { nome: 'caderno.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 caderno do curso inteiro').toString('base64') },
+    });
+    const add = await req('POST', `/academy/api/produtor/produtos/${prodId}/materiais`, {
+      jar: 'maria', corpo: { nome: 'Caderno visual do curso (PDF)', descricao: 'Vale para o curso inteiro.', media_id: up.json.id },
+    });
+    assert.equal(add.st, 200, add.texto);
+    const r = await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'ana' });
+    const mc = r.json.materiais_curso || [];
+    assert.equal(mc.length, 1, 'a prateleira do curso tem de chegar na tela do aluno');
+    assert.ok(mc[0].mime && 'tamanho' in mc[0], 'sem mime/tamanho o cartão fica sem tipo e sem peso');
+    assert.ok(!mc[0].lesson_id, 'material do curso não pertence a aula nenhuma');
+    // A porta dos BYTES: listar não é poder baixar. Sem o product_materials no
+    // podeAcessar, o arquivo apareceria na lista e daria 404 no clique.
+    const baixa = await req('GET', `/academy/api/media/${up.json.id}`, { jar: 'ana' });
+    assert.equal(baixa.st, 200, 'aluno matriculado tem de conseguir baixar');
+  });
+  await t('material do curso: quem NÃO tem o curso não vê nem baixa', async () => {
+    // Conta nova, sem compra nenhuma — criada aqui porque o "curioso" da suíte
+    // só nasce mais adiante, e um teste que depende da ordem dos outros mente
+    // no dia em que alguém reordenar.
+    await req('POST', '/academy/api/signup', {
+      jar: 'zeca', corpo: { nome: 'Zeca Sem Curso', email: 'zeca-sem-curso@t.com', senha: 'senha-forte-9', aceite_termos: true },
+    });
+    const r = await req('GET', `/academy/api/aluno/cursos/${prodId}`, { jar: 'zeca' });
+    assert.equal(r.st, 200, 'a página do curso abre para qualquer aluno logado (é vitrine)');
+    assert.equal((r.json.materiais_curso || []).length, 0, 'listar para quem não comprou é anunciar o que ele não pode baixar');
+    const mid = (await req('GET', `/academy/api/produtor/produtos/${prodId}/materiais`, { jar: 'maria' })).json.materiais[0].media_id;
+    const baixa = await req('GET', `/academy/api/media/${mid}`, { jar: 'zeca' });
+    assert.equal(baixa.st, 404, 'sem matrícula, os bytes não saem');
+  });
+  await t('material do curso: mesmo nome TROCA o arquivo (é versão nova, não cópia)', async () => {
+    const up2 = await req('POST', '/academy/api/produtor/upload', {
+      jar: 'maria', corpo: { nome: 'caderno-v2.pdf', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF-1.4 caderno revisado').toString('base64') },
+    });
+    const r = await req('POST', `/academy/api/produtor/produtos/${prodId}/materiais`, {
+      jar: 'maria', corpo: { nome: 'Caderno visual do curso (PDF)', media_id: up2.json.id },
+    });
+    assert.ok(r.json.substituido, 'republicar com o mesmo nome substitui');
+    const lista = (await req('GET', `/academy/api/produtor/produtos/${prodId}/materiais`, { jar: 'maria' })).json.materiais;
+    assert.equal(lista.length, 1, 'não pode ficar duas versões na prateleira');
+    assert.equal(lista[0].media_id, up2.json.id, 'o arquivo novo é o que fica');
+  });
+  await t('material do curso: arquivo grande entra pelo upload direto (acima de 100 MB)', async () => {
+    // O anexo de aula cabe em 10 MB porque viaja em base64 na requisição. O
+    // caderno do curso jurídico tem 58 MB — e o pedido do Augusto foi "limite
+    // mais de 100 MB". Quem resolve é o upload direto ao bucket, o mesmo do vídeo.
+    const r = await req('POST', '/academy/api/produtor/upload-grande', {
+      jar: 'maria', corpo: { nome: 'caderno-grande.pdf', mime: 'application/pdf', tamanho: 150 * 1024 * 1024 },
+    });
+    assert.ok(r.st === 200 || /storage|bucket|S3/i.test(r.texto || ''),
+      `150 MB tem de ser aceito pelo upload direto (resposta: ${r.st} ${String(r.texto).slice(0, 120)})`);
+    const pequeno = await req('POST', '/academy/api/produtor/upload', {
+      jar: 'maria', corpo: { nome: 'grande-demais.pdf', mime: 'application/pdf', conteudo_base64: 'AA'.repeat(1) },
+    });
+    assert.equal(pequeno.st, 200, 'o caminho pequeno continua valendo para arquivo pequeno');
+  });
   await t('continuar-de-onde-parou leva a capa (a biblioteca é visual)', async () => {
     const b = await req('GET', '/academy/api/aluno/biblioteca', { jar: 'ana' });
     assert.ok(b.json.continuar, 'ana já tocou uma aula');

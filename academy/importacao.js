@@ -96,6 +96,30 @@ async function anexarMateriais(productId, producerId, materiais) {
   return r;
 }
 
+// ---- material do CURSO (prateleira, não aula) ------------------------------
+// Aceita `media_id` (arquivo já enviado pelo upload grande — é o caminho de quem
+// tem 58 MB de caderno) ou `conteudo_base64` (até 10 MB, para o que é pequeno).
+// Identidade é o NOME: republicar com o mesmo nome TROCA o arquivo, em vez de
+// deixar duas versões na prateleira — o oposto do material de aula, que só
+// deduplica. Aqui trocar é o que se quer: é o mesmo documento, versão nova.
+async function anexarMateriaisCurso(productId, producerId, materiais) {
+  const r = { materiais_curso_criados: 0, materiais_curso_substituidos: 0 };
+  if (!Array.isArray(materiais) || !materiais.length) return r;
+  for (const mat of materiais) {
+    const nome = s(mat && mat.nome, 160);
+    if (!nome) throw new Error('Material do curso sem nome.');
+    let mediaId = s(mat.media_id, 40);
+    if (!mediaId) {
+      if (!mat.conteudo_base64) throw new Error(`Material "${nome}": informe media_id (upload grande) ou conteudo_base64.`);
+      const media = await ct.Midia.salvar(producerId, { nome, mime: mat.mime, conteudo_base64: mat.conteudo_base64 });
+      mediaId = media.id;
+    }
+    const saida = ct.MateriaisCurso.adicionar(productId, { nome, descricao: mat.descricao, media_id: mediaId });
+    if (saida.substituido) r.materiais_curso_substituidos++; else r.materiais_curso_criados++;
+  }
+  return r;
+}
+
 // ---- curso completo --------------------------------------------------------
 // dados = { produtor_email, produtor_nome?, produto: {...}, modulos: [...],
 //           materiais: [...], pagina_venda: {...} }
@@ -150,6 +174,7 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
 
   const estrutura = aplicarEstrutura(produto.id, dados.modulos || []);
   const materiais = await anexarMateriais(produto.id, u.id, dados.materiais || []);
+  const materiaisCurso = await anexarMateriaisCurso(produto.id, u.id, dados.materiais_curso || []);
   let pagina_venda = false;
   if (dados.pagina_venda) { ct.SalesPages.salvar(produto.id, dados.pagina_venda); pagina_venda = true; }
 
@@ -160,7 +185,7 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
     produto: final,
     criou_produto: criou,
     resumo: {
-      ...estrutura, ...materiais, pagina_venda, capa,
+      ...estrutura, ...materiais, ...materiaisCurso, pagina_venda, capa,
       modulos: arvore.length,
       aulas: arvore.reduce((n, m) => n + m.aulas.length, 0),
       aulas_degustacao: arvore.reduce((n, m) => n + m.aulas.filter(a => a.gratuita).length, 0),
@@ -249,7 +274,29 @@ async function confirmarVideo(mediaId, dados = {}) {
   return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho, storage: m.storage }, aula: depois };
 }
 
+// ---- material do CURSO grande (mesmo caminho do vídeo: direto ao bucket) ----
+// O anexo de aula viaja em base64 dentro da requisição e por isso para em 10 MB.
+// Um caderno de 58 MB não passa por ali — e comprimir para caber estragaria o
+// material. Aqui o arquivo vai do PC direto ao R2 e o servidor só recebe o id.
+function iniciarMaterialCurso(dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  const r = ct.Midia.iniciarUploadGrande(u.id, { nome: dados.nome, mime: dados.mime, tamanho: dados.tamanho });
+  return { media_id: r.id, upload_url: r.upload_url, expira_seg: r.expira_seg,
+    produto: { id: produto.id, titulo: produto.titulo } };
+}
+async function confirmarMaterialCurso(mediaId, dados = {}) {
+  const { u, produto } = produtorDono(dados);
+  const m = await ct.Midia.confirmarUploadGrande(s(mediaId, 40), u.id);
+  const r = ct.MateriaisCurso.adicionar(produto.id, {
+    nome: s(dados.nome_material, 160) || m.nome, descricao: dados.descricao, media_id: m.id });
+  return { media: { id: m.id, nome: m.nome, tamanho: m.tamanho, storage: m.storage },
+    material: { id: r.id, substituido: !!r.substituido },
+    produto: { id: produto.id, titulo: produto.titulo },
+    materiais: ct.MateriaisCurso.listar(produto.id).map((x) => ({ id: x.id, nome: x.nome, tamanho: x.tamanho })) };
+}
+
 module.exports = {
-  aplicarEstrutura, anexarMateriais, importarCurso, estruturaDoCurso, iniciarVideo, confirmarVideo,
+  aplicarEstrutura, anexarMateriais, anexarMateriaisCurso, importarCurso, estruturaDoCurso,
+  iniciarVideo, confirmarVideo, iniciarMaterialCurso, confirmarMaterialCurso,
   iniciarAudio, confirmarAudio, editarCapitulo, produtorDono, aulaPorTitulo,
 };

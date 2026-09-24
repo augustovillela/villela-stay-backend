@@ -252,6 +252,22 @@ CREATE TABLE IF NOT EXISTS lesson_materials (
 );
 CREATE INDEX IF NOT EXISTS idx_materials_lesson ON lesson_materials(lesson_id);
 
+-- Material do CURSO (não de uma aula): caderno completo, apostila, planilha,
+-- pacote de arquivos. Existe porque material que vale para o curso inteiro,
+-- pendurado numa aula, some para quem está em qualquer outra — e porque
+-- material grande (um caderno de 58 MB) não cabe no anexo de 10 MB da aula:
+-- aqui o arquivo entra pelo upload direto ao S3/R2, que aceita até 2 GB.
+CREATE TABLE IF NOT EXISTS product_materials (
+  id         TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  nome       TEXT NOT NULL,
+  descricao  TEXT NOT NULL DEFAULT '',
+  media_id   TEXT NOT NULL,
+  ordem      INTEGER NOT NULL DEFAULT 0,
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_prodmat_product ON product_materials(product_id);
+
 -- ---- ARQUIVOS (storage privado em DATA_DIR/academy/arquivos/; NUNCA público) ----
 CREATE TABLE IF NOT EXISTS media_files (
   id            TEXT PRIMARY KEY,

@@ -127,6 +127,31 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
     res.json({ ok: true, id: m.id, tamanho: m.tamanho });
   }));
 
+  // ---- material do CURSO (a prateleira que não é de nenhuma aula) ----
+  // O arquivo chega por `upload` (até 10 MB) ou por `upload-grande` (até 2 GB,
+  // direto ao bucket) — aqui entra só o media_id, então caderno de 58 MB passa
+  // pelo mesmo caminho do vídeo e não esbarra no limite da requisição.
+  app.get('/academy/api/produtor/produtos/:id/materiais', ...P, h((req, res) => {
+    const p = doDono(req);
+    res.json({ materiais: ct.MateriaisCurso.listar(p.id) });
+  }));
+  app.post('/academy/api/produtor/produtos/:id/materiais', ...P, h((req, res) => {
+    const p = doDono(req);
+    const r = ct.MateriaisCurso.adicionar(p.id, req.body || {});
+    aud(req, r.substituido ? 'material-curso.substituir' : 'material-curso.criar', 'product_materials', r.id, s((req.body || {}).nome, 80));
+    res.json({ ok: true, ...r });
+  }));
+  app.delete('/academy/api/produtor/produtos/:id/materiais/:materialId', ...P, h((req, res) => {
+    const p = doDono(req);
+    ct.MateriaisCurso.remover(req.params.materialId, p.id);
+    aud(req, 'material-curso.remover', 'product_materials', req.params.materialId, '');
+    res.json({ ok: true });
+  }));
+  app.post('/academy/api/produtor/produtos/:id/materiais/ordem', ...P, h((req, res) => {
+    const p = doDono(req);
+    res.json({ ok: true, n: ct.MateriaisCurso.reordenar(p.id, (req.body || {}).ids) });
+  }));
+
   // alunos do produto + matrícula cortesia
   app.get('/academy/api/produtor/produtos/:id/alunos', ...P, h((req, res) => {
     const p = doDono(req);
@@ -195,6 +220,10 @@ function registrarRotasConteudo(app, { requireUsuario, requirePapel }) {
         produtor_nome: (perfil && perfil.nome_publico) || '', produtor_slug: (perfil && perfil.slug) || '',
       },
       matriculado, estrutura,
+      // A prateleira do curso. Só para quem tem acesso: listar o nome do arquivo
+      // para quem não comprou é anunciar o que ele não pode baixar — e o clique
+      // daria 404 na porta do `Midia.podeAcessar`, que é pior que não mostrar.
+      materiais_curso: matriculado ? ct.MateriaisCurso.listar(p.id) : [],
       gotejamento: gote.ativo
         ? { ativo: true, promessa: lib.promessa(gote.cfg), base: gote.base,
             aulas_por_periodo: gote.cfg.aulas_por_periodo, periodo_dias: gote.cfg.periodo_dias,
