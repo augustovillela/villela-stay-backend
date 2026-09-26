@@ -638,6 +638,67 @@ CREATE TABLE IF NOT EXISTS fin_ativos (
 );
 CREATE INDEX IF NOT EXISTS idx_fin_ativos ON fin_ativos(tenant_id, entidade_id, status);
 
+-- ================= INTELIGÊNCIA DE INVESTIMENTOS ===================
+-- Fundação privada da conta interna. Não representa ordem, operação ou
+-- lançamento contábil. A feature nasce desligada e o acesso é concedido
+-- por usuário; ser proprietário da conta, sozinho, não basta.
+
+CREATE TABLE IF NOT EXISTS fin_inv_acessos (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  usuario_id    TEXT NOT NULL REFERENCES tenant_users(id) ON DELETE CASCADE,
+  papel         TEXT NOT NULL DEFAULT 'ceo',
+  ativo         INTEGER NOT NULL DEFAULT 1,
+  concedido_em  TEXT NOT NULL,
+  concedido_por TEXT NOT NULL DEFAULT '',
+  revogado_em   TEXT NOT NULL DEFAULT '',
+  revogado_por  TEXT NOT NULL DEFAULT '',
+  CHECK (papel IN ('ceo'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_inv_acesso_usuario
+  ON fin_inv_acessos(tenant_id, usuario_id);
+
+CREATE TABLE IF NOT EXISTS fin_inv_config (
+  id                       TEXT PRIMARY KEY,
+  tenant_id                TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  moeda_base               TEXT NOT NULL DEFAULT 'BRL',
+  timezone                 TEXT NOT NULL DEFAULT 'America/Sao_Paulo',
+  radar_hora               TEXT NOT NULL DEFAULT '07:00',
+  relatorio_dia_semana     INTEGER NOT NULL DEFAULT 5,
+  relatorio_hora           TEXT NOT NULL DEFAULT '08:00',
+  alertas_ativos           INTEGER NOT NULL DEFAULT 1,
+  metodologia_versao_ativa TEXT NOT NULL DEFAULT 'fundacao-v1',
+  criado_em                TEXT NOT NULL,
+  criado_por               TEXT NOT NULL DEFAULT '',
+  atualizado_em            TEXT NOT NULL DEFAULT '',
+  UNIQUE (tenant_id),
+  CHECK (relatorio_dia_semana BETWEEN 0 AND 6)
+);
+
+CREATE TABLE IF NOT EXISTS fin_inv_mandatos (
+  id                     TEXT PRIMARY KEY,
+  tenant_id              TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  chave                  TEXT NOT NULL,
+  nome                   TEXT NOT NULL,
+  horizonte_dias         INTEGER NOT NULL DEFAULT 0,
+  liquidez_minima_cents  INTEGER NOT NULL DEFAULT 0,
+  perda_maxima_ppm       INTEGER NOT NULL DEFAULT 0,
+  limites                TEXT NOT NULL DEFAULT '{}',
+  benchmarks             TEXT NOT NULL DEFAULT '[]',
+  ativo                  INTEGER NOT NULL DEFAULT 1,
+  versao                 INTEGER NOT NULL DEFAULT 1,
+  criado_em              TEXT NOT NULL,
+  criado_por             TEXT NOT NULL DEFAULT '',
+  CHECK (chave IN ('caixa','longo_prazo','oportunidades')),
+  CHECK (horizonte_dias >= 0),
+  CHECK (liquidez_minima_cents >= 0),
+  CHECK (perda_maxima_ppm >= 0)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_inv_mandato_versao
+  ON fin_inv_mandatos(tenant_id, chave, versao);
+CREATE INDEX IF NOT EXISTS idx_fin_inv_mandato_ativo
+  ON fin_inv_mandatos(tenant_id, ativo, chave);
+
 -- =================== CONSULTAS PATRIMONIAIS =========================
 -- CPF/CNPJ fica cifrado para permitir a consulta futura e acompanhado de
 -- HMAC para deduplicacao. A API nunca devolve o valor em claro: somente a

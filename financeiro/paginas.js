@@ -326,13 +326,15 @@ const appHTML = () => `<!doctype html><html lang="pt-BR"><head>
 <link rel="manifest" href="/finance/manifest.webmanifest">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/finance/sw.js').catch(function(){})})}</script>
 </head><body class="vx" data-vertical="finance"><main id="app"><p style="padding:32px;text-align:center">Carregando…</p></main>
-<script src="/finance/app.js?v=2"></script><script src="/finance/comunicados.js" data-cor="#0F5C4A" defer></script></body></html>`;
+<script src="/finance/app-investimentos.js?v=1"></script><script src="/finance/app.js?v=3"></script><script src="/finance/comunicados.js" data-cor="#0F5C4A" defer></script></body></html>`;
 
 function registrarPaginas(app, { express }) {
   app.get('/finance', (_req, res) => res.type('html').send(landingHTML()));
   app.get('/finance/app', (_req, res) => res.type('html').send(appHTML()));
   app.get('/finance/app.js', (_req, res) =>
     res.type('application/javascript; charset=utf-8').sendFile(require('path').join(__dirname, 'app-cliente.js')));
+  app.get('/finance/app-investimentos.js', (_req, res) =>
+    res.type('application/javascript; charset=utf-8').sendFile(require('path').join(__dirname, 'app-investimentos.js')));
   app.post('/finance/api/interesse', express.json({ limit: '32kb' }), (req, res) => {
     try { res.json(registrarInteresse(req.body || {}, req.ip)); }
     catch (e) { res.status(e.status || 500).json({ erro: e.message }); }

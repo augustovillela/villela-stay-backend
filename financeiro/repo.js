@@ -775,6 +775,96 @@ const listarConsultaResultados = (alvoId) => q(
     ORDER BY consultado_em DESC, id DESC`,
   { entidade: tenancy.entidadeAtual(), alvo: alvoId });
 
+// ------------------------------------------- inteligência de investimentos
+// Fundação privada do CEO. Estas funções guardam somente acesso e política;
+// dados de mercado, recomendações, ordens e lançamentos não pertencem aqui.
+
+const acessoInvestimentosPorUsuario = (usuarioId) => um(
+  `SELECT * FROM fin_inv_acessos
+    WHERE tenant_id = :tenant AND usuario_id = :usuario AND ativo = 1`,
+  { usuario: usuarioId });
+
+const listarAcessosInvestimentos = () => q(
+  `SELECT a.*, u.nome AS usuario_nome, u.email AS usuario_email, u.perfil AS usuario_perfil
+     FROM fin_inv_acessos a
+     JOIN tenant_users u ON u.tenant_id = a.tenant_id AND u.id = a.usuario_id
+    WHERE a.tenant_id = :tenant
+    ORDER BY a.ativo DESC, a.concedido_em DESC`, {});
+
+const concederAcessoInvestimentos = (usuarioId) => {
+  const existente = um(
+    'SELECT * FROM fin_inv_acessos WHERE tenant_id = :tenant AND usuario_id = :usuario',
+    { usuario: usuarioId });
+  const agora = nowISO();
+  const por = tenancy.userAtual();
+  if (existente) {
+    exec(`UPDATE fin_inv_acessos
+             SET ativo = 1, papel = 'ceo', concedido_em = :agora, concedido_por = :por,
+                 revogado_em = '', revogado_por = ''
+           WHERE tenant_id = :tenant AND id = :id`,
+      { id: existente.id, agora, por });
+    return acessoInvestimentosPorUsuario(usuarioId);
+  }
+  const id = novoId();
+  exec(`INSERT INTO fin_inv_acessos
+          (id, tenant_id, usuario_id, papel, ativo, concedido_em, concedido_por)
+        VALUES (:id, :tenant, :usuario, 'ceo', 1, :agora, :por)`,
+    { id, usuario: usuarioId, agora, por });
+  return acessoInvestimentosPorUsuario(usuarioId);
+};
+
+const revogarAcessoInvestimentos = (usuarioId) => {
+  exec(`UPDATE fin_inv_acessos
+           SET ativo = 0, revogado_em = :agora, revogado_por = :por
+         WHERE tenant_id = :tenant AND usuario_id = :usuario AND ativo = 1`,
+    { usuario: usuarioId, agora: nowISO(), por: tenancy.userAtual() });
+  return um(
+    'SELECT * FROM fin_inv_acessos WHERE tenant_id = :tenant AND usuario_id = :usuario',
+    { usuario: usuarioId });
+};
+
+const configInvestimentos = () => um(
+  'SELECT * FROM fin_inv_config WHERE tenant_id = :tenant', {});
+
+const garantirConfigInvestimentos = () => {
+  const existente = configInvestimentos();
+  if (existente) return existente;
+  const id = novoId();
+  const agora = nowISO();
+  exec(`INSERT INTO fin_inv_config
+          (id, tenant_id, criado_em, criado_por, atualizado_em)
+        VALUES (:id, :tenant, :agora, :por, :agora)`,
+    { id, agora, por: tenancy.userAtual() });
+  return configInvestimentos();
+};
+
+const listarMandatosInvestimentos = () => q(
+  `SELECT * FROM fin_inv_mandatos
+    WHERE tenant_id = :tenant AND ativo = 1
+    ORDER BY CASE chave WHEN 'caixa' THEN 1 WHEN 'longo_prazo' THEN 2 ELSE 3 END`, {});
+
+const garantirMandatosInvestimentos = () => {
+  const existentes = new Set(listarMandatosInvestimentos().map(x => x.chave));
+  const sementes = [
+    { chave: 'caixa', nome: 'Caixa e liquidez', horizonte: 365, benchmarks: ['CDI', 'SELIC'] },
+    { chave: 'longo_prazo', nome: 'Patrimônio de longo prazo', horizonte: 3650, benchmarks: ['IPCA', 'IBOV'] },
+    { chave: 'oportunidades', nome: 'Oportunidades especiais', horizonte: 1095, benchmarks: ['IPCA'] },
+  ];
+  for (const s of sementes) {
+    if (existentes.has(s.chave)) continue;
+    exec(`INSERT INTO fin_inv_mandatos
+            (id, tenant_id, chave, nome, horizonte_dias, limites, benchmarks,
+             ativo, versao, criado_em, criado_por)
+          VALUES (:id, :tenant, :chave, :nome, :horizonte, :limites, :benchmarks,
+                  1, 1, :agora, :por)`, {
+      id: novoId(), chave: s.chave, nome: s.nome, horizonte: s.horizonte,
+      limites: j.str({ configuracaoPendente: true }), benchmarks: j.str(s.benchmarks),
+      agora: nowISO(), por: tenancy.userAtual(),
+    });
+  }
+  return listarMandatosInvestimentos();
+};
+
 module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
@@ -801,6 +891,10 @@ module.exports = {
   publicarEvento, eventosPendentes, marcarEvento, eventoDePlataforma, ultimoEventoDePlataforma,
   criarConsultaAlvo, consultaAlvo, consultaAlvoPorHash, listarConsultaAlvos,
   atualizarAgendaConsulta, registrarConsultaResultado, consultaResultado, listarConsultaResultados,
+  acessoInvestimentosPorUsuario, listarAcessosInvestimentos,
+  concederAcessoInvestimentos, revogarAcessoInvestimentos,
+  configInvestimentos, garantirConfigInvestimentos,
+  listarMandatosInvestimentos, garantirMandatosInvestimentos,
   criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,
   assinaturaPorRefExterna, assinaturasAtivasDaPlataforma,
   criarInvoice, invoice, listarInvoices, marcarInvoicePaga, invoicePorRefExterna,

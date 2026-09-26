@@ -21,6 +21,7 @@ process.env.DATA_DIR = path.join(os.tmpdir(), 'finance-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
 process.env.FINANCE_WORKER = 'off';
 process.env.FINANCE_SECRET_KEY = '11'.repeat(32);
+process.env.FINANCE_INVESTIMENTOS = 'off';
 fs.mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -42,6 +43,7 @@ const planoContas = require('./plano-contas');
 const contasSvc = require('./contas');
 const entitlements = require('./entitlements');
 const rbac = require('./rbac');
+const investimentos = require('./investimentos-acesso');
 const diario = require('./diario');
 const financeiro = require('./index');
 
@@ -676,6 +678,54 @@ lanca('rbac: lance em leilão é proibido', () =>
   rbac.autorizar('leilao.lance', { perfil: 'proprietario', mfa: true }), /irrevers|autorizad/i);
 lanca('rbac: recomendação individualizada é proibida', () =>
   rbac.autorizar('investimento.recomendar', { perfil: 'proprietario', mfa: true }), /habilita|regulat/i);
+teste('investimentos: módulo privado só entra no Enterprise', () => {
+  const gestao = entitlements.PLANOS_SEMENTE.find(p => p.slug === 'gestao');
+  const enterprise = entitlements.PLANOS_SEMENTE.find(p => p.slug === 'enterprise');
+  assert.ok(!gestao.modulos.includes('investimentos_ceo'));
+  assert.ok(enterprise.modulos.includes('investimentos_ceo'));
+});
+
+let usuarioCeo;
+teste('investimentos: flag e concessão nominal são duas travas independentes', () => {
+  usuarioCeo = naA(() => contasSvc.criarUsuario({
+    email: 'ceo-investimentos@villela.test', nome: 'CEO Teste', senha: 'SenhaSegura123!', perfil: 'proprietario',
+  }));
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  const antes = naA(() => investimentos.estado(contaA, repo.usuarioPorId(usuarioCeo.id)));
+  assert.strictEqual(antes.disponivel, false);
+  assert.strictEqual(antes.motivo, 'acesso_nao_concedido');
+
+  naA(() => investimentos.conceder(contaA, usuarioCeo.id, 'habilitação controlada para o CEO'));
+  const depois = naA(() => investimentos.estado(contaA, repo.usuarioPorId(usuarioCeo.id)));
+  assert.strictEqual(depois.disponivel, true);
+  assert.strictEqual(depois.recomendacoesAtivas, false);
+});
+
+teste('investimentos: concessão cria configuração e três mandatos pendentes', () => {
+  const r = naA(() => investimentos.resumo(contaA, repo.usuarioPorId(usuarioCeo.id)));
+  assert.strictEqual(r.mandatos.length, 3);
+  assert.strictEqual(r.configuracaoCompleta, false);
+  assert.strictEqual(r.salvaguardas.ordens, false);
+  assert.strictEqual(r.salvaguardas.escritaNoRazao, false);
+});
+
+teste('investimentos: acesso de uma conta não vaza para outra', () => {
+  const vistoEmB = naB(() => repo.acessoInvestimentosPorUsuario(usuarioCeo.id));
+  assert.strictEqual(vistoEmB, null);
+});
+
+lanca('investimentos: concessão material sem MFA é recusada', () =>
+  tenancy.comTenant({ tenantId: contaA.id, userId: 'staff', perfil: 'plataforma', mfa: false }, () =>
+    investimentos.conceder(contaA, usuarioCeo.id, 'tentativa sem segundo fator')),
+  /segundo fator/);
+
+teste('investimentos: revogação nominal remove a tela do CEO', () => {
+  naA(() => investimentos.revogar(contaA, usuarioCeo.id, 'fim do teste de acesso'));
+  const e = naA(() => investimentos.estado(contaA, repo.usuarioPorId(usuarioCeo.id)));
+  assert.strictEqual(e.disponivel, false);
+  assert.strictEqual(e.motivo, 'acesso_nao_concedido');
+  process.env.FINANCE_INVESTIMENTOS = 'off';
+});
 lanca('rbac: leitor não lança', () =>
   rbac.autorizar('lote.contabilizar', { perfil: 'leitor' }), /não tem permissão/);
 teste('rbac: ação material sem MFA pede o segundo fator', () => {
@@ -2083,6 +2133,24 @@ testeAsync('HTTP: login e /eu devolvem plano e perfil', async () => {
   assert.strictEqual(eu.corpo.conta.slug, 'villela-stay');
   assert.strictEqual(eu.corpo.perfil.nome, 'Proprietário');
   assert.ok(eu.corpo.plano.modulos.includes('razao'));
+});
+
+testeAsync('HTTP: aba privada só aparece após flag e concessão nominal', async () => {
+  const usuario = naA(() => repo.usuarioPorEmail('augusto@villelastay.com.br'));
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  naA(() => investimentos.conceder(contaA, usuario.id, 'teste ponta a ponta do acesso privado'));
+
+  const eu = await pedir('GET', '/finance/api/eu', { cookie: cookieA });
+  assert.strictEqual(eu.status, 200);
+  assert.strictEqual(eu.corpo.investimentos.disponivel, true);
+
+  const resumo = await pedir('GET', '/finance/api/investimentos/resumo', { cookie: cookieA });
+  assert.strictEqual(resumo.status, 200, resumo.cru);
+  assert.strictEqual(resumo.corpo.mandatos.length, 3);
+  assert.strictEqual(resumo.corpo.salvaguardas.ordens, false);
+
+  naA(() => investimentos.revogar(contaA, usuario.id, 'fim do teste ponta a ponta'));
+  process.env.FINANCE_INVESTIMENTOS = 'off';
 });
 
 testeAsync('HTTP: sem sessão é 401, não 500 nem tela vazia', async () => {

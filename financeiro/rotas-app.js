@@ -49,6 +49,8 @@ const conselho = require('./conselho');
 const exportacao = require('./exportacao');
 const mfa = require('./mfa');
 const consultasPatrimoniais = require('./consultas-patrimoniais');
+const investimentosAcesso = require('./investimentos-acesso');
+const { registrarRotasInvestimentos } = require('./rotas-investimentos');
 
 const COOKIE = 'fin_sess';
 const DIAS = 30;
@@ -171,8 +173,11 @@ function registrarRotasApp(app, { jwtSecret, express }) {
       plano: { slug: e.planoSlug, nome: e.planoNome, modulos: e.modulos, limites: e.limites, flags: e.flags, cortesia: e.cortesia, bloqueiaEscrita: e.bloqueiaEscrita },
       empresa: { id: req.entidade.id, nome: req.entidade.nome, documento: req.entidade.documento },
       empresas: repo.listarEntidades().map(x => ({ id: x.id, nome: x.nome })),
+      investimentos: investimentosAcesso.estado(req.tenant, req.assinante),
     };
   }));
+
+  registrarRotasInvestimentos(app, rota);
 
   // --------------------------------------------------------- estrutura
   app.get('/finance/api/plano-contas', ...rota((req) => {

@@ -61,6 +61,10 @@ services:
       # Intervalo da replica, em minutos.
       - key: FINANCE_REPLICA_MIN
         value: "5"
+      # Inteligência privada de investimentos do CEO. Mantida desligada até
+      # concessão nominal, MFA, limites de risco e validações jurídica/licenças.
+      - key: FINANCE_INVESTIMENTOS
+        value: "off"
       # Sincronizacao automatica da Stays, em minutos. DESLIGADA (ausente ou
       # 0): o adaptador so roda por chamada de rota. Ligar so DEPOIS de rodar
       # a previa (dryRun) e conferir o que ele pretende lancar.

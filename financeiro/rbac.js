@@ -32,6 +32,7 @@ const ACOES = {
   'relatorio.ver':            { nivelMinimo: 0, permissao: 'ler' },
   'razao.ver':                { nivelMinimo: 0, permissao: 'ler' },
   'transacao.ver':            { nivelMinimo: 0, permissao: 'ler' },
+  'investimento.dados_ler':   { nivelMinimo: 0, permissao: 'ler' },
 
   // automáticas reversíveis
   'transacao.importar':       { nivelMinimo: 1, permissao: 'lancar' },
@@ -40,6 +41,7 @@ const ACOES = {
   'regra.criar':              { nivelMinimo: 1, permissao: 'configurar' },
   'contraparte.criar':        { nivelMinimo: 1, permissao: 'cadastrar' },
   'diario.replicar':          { nivelMinimo: 1, permissao: 'configurar' },
+  'investimento.analise_executar': { nivelMinimo: 2, permissao: 'configurar' },
 
   // prévia + aprovação simples
   'lote.contabilizar':        { nivelMinimo: 2, permissao: 'lancar' },
@@ -66,6 +68,8 @@ const ACOES = {
   'usuario.perfil':           { nivelMinimo: 3, permissao: 'administrar' },
   'conta_bancaria.alterar':   { nivelMinimo: 3, permissao: 'configurar' },
   'saldo_inicial.definir':    { nivelMinimo: 3, permissao: 'configurar' },
+  'investimento.configurar':  { nivelMinimo: 3, permissao: 'configurar' },
+  'investimento.decisao_registrar': { nivelMinimo: 3, permissao: 'administrar' },
 
   // PROIBIDAS até autorização expressa (ver ROADMAP fases 6-8)
   'investimento.ordem':       { nivelMinimo: 4, permissao: 'proibido', motivo: 'Execução de ordem exige estrutura e autorização regulatória (Resolução CVM 19). Fora do escopo autorizado.' },

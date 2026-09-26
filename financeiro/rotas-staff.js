@@ -23,6 +23,8 @@ const rbac = require('./rbac');
 const dinheiro = require('./dinheiro');
 const billing = require('./billing');
 const incidente = require('./incidente');
+const mfa = require('./mfa');
+const investimentos = require('./investimentos-acesso');
 const { responderErro } = require('./rotas-app');
 
 function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
@@ -238,6 +240,54 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
   }, { motivo: 'ensaio do plano de incidente' }));
 
   app.post(`${B}/diario/replicar`, ...admin(() => diario.replicar(), { motivo: 'forçar replicação do diário' }));
+
+  // -------------------------------------- inteligência de investimentos
+  // Concessão nominal: conta interna + proprietário + TOTP do destinatário.
+  // A flag global continua sendo uma camada separada e nasce desligada.
+  app.get(`${B}/investimentos/saude`, ...admin(() => {
+    const contas = repo.listarTenants().filter(t => t.interno === 1).map(t =>
+      tenancy.comTenant({ tenantId: t.id, userId: 'plataforma', perfil: 'plataforma' }, () => ({
+        tenant: { id: t.id, slug: t.slug, nome: t.nome },
+        modulo: entitlements.temModulo(t, 'investimentos_ceo'),
+        acessos: repo.listarAcessosInvestimentos().map(a => ({
+          id: a.id, usuarioId: a.usuario_id, nome: a.usuario_nome, email: a.usuario_email,
+          perfil: a.usuario_perfil, ativo: a.ativo === 1, concedidoEm: a.concedido_em,
+          revogadoEm: a.revogado_em,
+        })),
+        mandatos: repo.listarMandatosInvestimentos().length,
+      })));
+    return { flag: investimentos.ligado(), fase: 'fundacao', contas };
+  }, { motivo: 'verificar saúde do módulo privado de investimentos' }));
+
+  app.post(`${B}/investimentos/acessos`, ...admin((req) => {
+    const d = req.body || {};
+    const t = repo.tenantPorId(String(d.tenantId || ''));
+    if (!t) throw Object.assign(new Error('Conta não encontrada.'), { status: 404 });
+    const usuarioId = String(d.usuarioId || '');
+    const segundoFator = mfa.verificar(usuarioId, req.headers['x-mfa']);
+    return tenancy.comTenant({
+      tenantId: t.id,
+      userId: (req.user && (req.user.email || req.user.nome)) || 'staff',
+      perfil: 'plataforma',
+      correlationId: req.correlationId,
+      mfa: segundoFator.ok,
+    }, () => ({ ok: true, acesso: investimentos.conceder(t, usuarioId, d.motivo) }));
+  }, { json: true, motivo: 'conceder acesso privado de investimentos' }));
+
+  app.delete(`${B}/investimentos/acessos/:usuarioId`, ...admin((req) => {
+    const d = req.body || {};
+    const t = repo.tenantPorId(String(d.tenantId || ''));
+    if (!t) throw Object.assign(new Error('Conta não encontrada.'), { status: 404 });
+    const usuarioId = String(req.params.usuarioId || '');
+    const segundoFator = mfa.verificar(usuarioId, req.headers['x-mfa']);
+    return tenancy.comTenant({
+      tenantId: t.id,
+      userId: (req.user && (req.user.email || req.user.nome)) || 'staff',
+      perfil: 'plataforma',
+      correlationId: req.correlationId,
+      mfa: segundoFator.ok,
+    }, () => ({ ok: true, acesso: investimentos.revogar(t, usuarioId, d.motivo) }));
+  }, { json: true, motivo: 'revogar acesso privado de investimentos' }));
 
   app.get(`${B}/diario/conferir/:competencia`, ...admin((req) => {
     // A conferência precisa do contexto de cada tenant para ler os lotes.

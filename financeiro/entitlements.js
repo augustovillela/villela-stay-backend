@@ -23,6 +23,7 @@ const MODULOS = [
   { id: 'cfo', nome: 'CFO inteligente (anomalias, previsão de caixa)' },
   { id: 'multiempresa', nome: 'Multiempresa e consolidação' },
   { id: 'api', nome: 'API e integrações' },
+  { id: 'investimentos_ceo', nome: 'Inteligência de investimentos do CEO', privado: true },
 ];
 
 const LIMITES = ['entidades', 'usuarios', 'contas_bancarias', 'lancamentos_mes', 'transacoes_mes'];
@@ -41,7 +42,7 @@ const PLANOS_SEMENTE = [
     limites: { entidades: 3, usuarios: 10, contas_bancarias: 10, lancamentos_mes: 5000, transacoes_mes: 10000 },
     flags: { alcadas: true } },
   { slug: 'gestao', nome: 'Gestão', precoCents: 79900, ordem: 3,
-    modulos: MODULOS.map(m => m.id),
+    modulos: MODULOS.filter(m => !m.privado).map(m => m.id),
     limites: { entidades: 10, usuarios: 30, contas_bancarias: 30, lancamentos_mes: 25000, transacoes_mes: 50000 },
     flags: { alcadas: true, api_publica: true } },
   { slug: 'enterprise', nome: 'Enterprise', precoCents: 0, ordem: 4, publico: false,

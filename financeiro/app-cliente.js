@@ -105,6 +105,7 @@ const F = {
   telaApp() {
     const e = F.eu;
     const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['consultas', 'Consultas patrimoniais'], ['fechamento', 'Fechamento'], ['cfo', 'CFO'], ['dre', 'DRE'], ['relatorios', 'Relatórios'], ['razao', 'Razão'], ['conta', 'Minha conta']];
+    if (e.investimentos && e.investimentos.disponivel) abas.splice(1, 0, ['investimentos', 'Investimentos']);
     const empresas = e.empresas.length > 1
       ? `<select id="f-empresa" style="width:auto;min-width:200px">${e.empresas.map((x) =>
           `<option value="${F.esc(x.id)}"${x.id === e.empresa.id ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
@@ -159,7 +160,7 @@ const F = {
   },
 
   async pintar() {
-    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, consultas: F.vConsultas, fechamento: F.vFechamento, cfo: F.vCfo, dre: F.vDre, relatorios: F.vRelatorios, razao: F.vRazao, conta: F.vConta };
+    const telas = { cockpit: F.vCockpit, investimentos: () => window.FInvestimentos.render(F), extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, consultas: F.vConsultas, fechamento: F.vFechamento, cfo: F.vCfo, dre: F.vDre, relatorios: F.vRelatorios, razao: F.vRazao, conta: F.vConta };
     try { await telas[F.tab](); }
     catch (e) { if (e.message !== 'sessão expirada') F.corpo().innerHTML = `<div class="card"><p class="erro">${F.esc(e.message)}</p></div>`; }
   },
