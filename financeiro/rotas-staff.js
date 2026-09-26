@@ -60,6 +60,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
         interno: t.interno === 1, criadoEm: t.criado_em, trialAte: t.trial_ate,
         contatoEmail: t.contato_email, contatoNome: t.contato_nome,
         plano: { slug: e.planoSlug, nome: e.planoNome }, empresas: empresas.length,
+        usuarios: tenancy.comTenant({ tenantId: t.id, userId: 'plataforma' }, () => repo.listarUsuarios()),
       };
     }),
   })));
@@ -109,6 +110,18 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
       ok: true, usuario: contasSvc.criarUsuario({ email: d.email, nome: d.nome, senha: d.senha, perfil: d.perfil || 'proprietario' }),
     }));
   }, { json: true, motivo: 'criar usuário do assinante' }));
+
+  app.patch(`${B}/tenants/:id/usuarios/:usuarioId`, ...admin((req) => {
+    const t = repo.tenantPorId(req.params.id);
+    if (!t) throw Object.assign(new Error('Conta não encontrada.'), { status: 404 });
+    return tenancy.comTenant({ tenantId: t.id, userId: 'plataforma', perfil: 'proprietario' }, () => ({
+      ok: true,
+      usuario: contasSvc.administrarAcesso(req.params.usuarioId, {
+        email: (req.body || {}).email,
+        senhaNova: (req.body || {}).senhaNova,
+      }),
+    }));
+  }, { json: true, motivo: 'administrar acesso do assinante' }));
 
   app.post(`${B}/tenants/:id/empresas`, ...admin((req) => {
     const d = req.body || {};

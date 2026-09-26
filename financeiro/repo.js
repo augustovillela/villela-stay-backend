@@ -183,6 +183,10 @@ const trocarSenhaDoUsuario = (id, senhaHash) => exec(
   `UPDATE tenant_users SET senha_hash = :hash, atualizado_em = :agora
      WHERE tenant_id = :tenant AND id = :id`,
   { id, hash: senhaHash, agora: nowISO() });
+const trocarEmailDoUsuario = (id, email) => exec(
+  `UPDATE tenant_users SET email = :email, atualizado_em = :agora
+     WHERE tenant_id = :tenant AND id = :id`,
+  { id, email: String(email || '').toLowerCase().trim(), agora: nowISO() });
 const listarUsuarios = () => q('SELECT id, tenant_id, email, nome, perfil, status, mfa_ativo, ultimo_acesso, criado_em FROM tenant_users WHERE tenant_id = :tenant ORDER BY nome', {});
 
 // ------------------------------------------------------------ entidades
@@ -775,7 +779,7 @@ module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
   listarPlanos, planoPorSlug, planoPorId, upsertPlano, atualizarPrecoPlano,
-  criarUsuario, usuarioPorId, usuarioPorEmail, listarUsuarios, trocarSenhaDoUsuario,
+  criarUsuario, usuarioPorId, usuarioPorEmail, listarUsuarios, trocarSenhaDoUsuario, trocarEmailDoUsuario,
   criarEntidade, entidadePorId, listarEntidades,
   criarConta, contaPorId, contaPorCodigo, listarContas,
   criarCentroCusto, centroCustoPorId, centroCustoPorCodigo, listarCentrosCusto,

@@ -2053,13 +2053,14 @@ function pedir(metodo, caminho, { corpo, cookie, cabecalhos = {} } = {}) {
   });
 }
 
-let cookieA = '', cookieB = '';
+let cookieA = '', cookieB = '', usuarioRecuperacao;
 testeAsync('HTTP: sobe o servidor', () => new Promise((resolve) => {
   servidor = app.listen(0, () => { base = `http://127.0.0.1:${servidor.address().port}`; resolve(); });
 }));
 
 testeAsync('HTTP: usuários criados para o teste de sessão', async () => {
   naA(() => contasSvc.criarUsuario({ email: 'augusto@villelastay.com.br', nome: 'Augusto', senha: 'senha-forte-1', perfil: 'proprietario' }));
+  usuarioRecuperacao = naA(() => contasSvc.criarUsuario({ email: 'antigo@finance.test', nome: 'Recuperação', senha: 'senha-antiga-1', perfil: 'operador' }));
   naB(() => contasSvc.criarUsuario({ email: 'dono@pousada-x.com.br', nome: 'Dono X', senha: 'senha-forte-2', perfil: 'proprietario' }));
   assert.ok(naA(() => repo.usuarioPorEmail('augusto@villelastay.com.br')));
 });
@@ -2472,6 +2473,32 @@ testeAsync('HTTP: admin vê a saúde de todas as contas', async () => {
   assert.strictEqual(r.status, 200);
   assert.ok(r.corpo.contas.length >= 2);
   assert.strictEqual(r.corpo.resumo.razaoOk, r.corpo.resumo.total, 'alguma conta com razão desbalanceado');
+});
+
+testeAsync('HTTP: Staff lista usuários e administra e-mail/senha sem expor hash', async () => {
+  const contas = await pedir('GET', '/staff/api/finance/tenants');
+  assert.strictEqual(contas.status, 200, contas.cru);
+  const interna = contas.corpo.tenants.find(t => t.id === contaA.id);
+  assert.ok(interna, 'conta interna não apareceu no Staff');
+  assert.ok(interna.usuarios.some(u => u.id === usuarioRecuperacao.id), 'usuário não apareceu na conta');
+  assert.ok(!JSON.stringify(interna.usuarios).includes('senha_hash'), 'hash de senha vazou no Staff');
+
+  const r = await pedir('PATCH', `/staff/api/finance/tenants/${contaA.id}/usuarios/${usuarioRecuperacao.id}`, {
+    corpo: { email: 'novo@finance.test', senhaNova: 'senha-nova-segura-1' },
+  });
+  assert.strictEqual(r.status, 200, r.cru);
+  assert.strictEqual(r.corpo.usuario.email, 'novo@finance.test');
+  const atualizado = naA(() => repo.usuarioPorId(usuarioRecuperacao.id));
+  assert.ok(contasSvc.conferirSenha('senha-nova-segura-1', atualizado.senha_hash));
+  assert.ok(!r.cru.includes('senha-nova-segura-1'), 'senha nova vazou na resposta');
+});
+
+testeAsync('HTTP: Staff não altera usuário de outra conta usando o tenant errado', async () => {
+  const r = await pedir('PATCH', `/staff/api/finance/tenants/${contaB.id}/usuarios/${usuarioRecuperacao.id}`, {
+    corpo: { email: 'vazamento@finance.test' },
+  });
+  assert.strictEqual(r.status, 400, r.cru);
+  assert.strictEqual(naA(() => repo.usuarioPorId(usuarioRecuperacao.id)).email, 'novo@finance.test');
 });
 
 testeAsync('HTTP: catálogo mostra as ações proibidas com o motivo', async () => {

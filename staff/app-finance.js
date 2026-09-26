@@ -123,13 +123,19 @@ const FIN = {
         <p class="sub">A conta nasce com plano de contas brasileiro, período aberto e regras de classificação. O acesso do dono é criado depois, na própria conta.</p>
         <p id="fin-nova-msg" class="erro"></p></form></details>`;
 
+    h += '<div id="fin-acesso-editor"></div>';
+
     h += `<div class="card">${tenants.length ? tabela(
-      ['Conta', 'Plano', 'Status', 'Empresas', 'Criada', ''],
+      ['Conta', 'Plano', 'Status', 'Empresas', 'Acessos', 'Criada', ''],
       tenants.map(t => [
         `<b>${esc(t.nome)}</b><br><span class="obs">${esc(t.slug)}${t.contatoEmail ? ' · ' + esc(t.contatoEmail) : ''}${t.interno ? ' · <b>cortesia do grupo</b>' : ''}</span>`,
         esc(t.plano.nome),
         FIN.sel(t.status) + (t.trialAte ? `<br><span class="obs">até ${FIN.dt(t.trialAte)}</span>` : ''),
         t.empresas,
+        (t.usuarios || []).length
+          ? (t.usuarios || []).map(u => `<div><b>${esc(u.nome || 'Usuário')}</b><br><span class="obs">${esc(u.email)}</span>
+              <button class="btn peq secund" onclick="FIN.editarAcesso('${t.id}','${u.id}','${esc(u.email)}')">🔐 Gerenciar</button></div>`).join('')
+          : '<span class="obs">nenhum usuário</span>',
         FIN.dt(t.criadoEm),
         `<select class="peq" onchange="FIN.trocarPlano('${t.id}', this.value)" style="width:auto">
            <option value="">plano…</option>${FIN.opcoesPlano('')}</select>`,
@@ -165,6 +171,38 @@ const FIN = {
     if (!slug) return;
     try { await FIN.api('PATCH', '/tenants/' + id, { planoSlug: slug, motivo: 'troca de plano pelo painel da plataforma' }); FIN.vContas(); }
     catch (e) { alert(e.message); }
+  },
+
+  editarAcesso(tenantId, usuarioId, emailAtual) {
+    const caixa = document.getElementById('fin-acesso-editor');
+    caixa.innerHTML = `<div class="card" style="border-color:var(--jade)">
+      <h3>🔐 Gerenciar acesso do Villela Finance</h3>
+      <form class="form" id="fin-acesso-form" style="max-width:680px">
+        <label>E-mail exclusivo do Finance
+          <input id="fin-acesso-email" type="email" required value="${esc(emailAtual)}" autocomplete="username">
+        </label>
+        <label style="margin-top:10px">Nova senha <span class="sub">(opcional; mínimo 10 caracteres)</span>
+          <input id="fin-acesso-senha" type="password" minlength="10" autocomplete="new-password">
+        </label>
+        <p class="sub">Deixe a senha vazia para alterar somente o e-mail. A senha nunca aparece no retorno nem na auditoria.</p>
+        <button class="btn" type="submit">Salvar acesso</button>
+        <button class="btn secund" type="button" onclick="document.getElementById('fin-acesso-editor').innerHTML=''">Cancelar</button>
+        <p id="fin-acesso-msg" class="erro"></p>
+      </form></div>`;
+    caixa.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('fin-acesso-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = document.getElementById('fin-acesso-msg');
+      msg.textContent = '';
+      try {
+        await FIN.api('PATCH', `/tenants/${tenantId}/usuarios/${usuarioId}`, {
+          email: document.getElementById('fin-acesso-email').value.trim(),
+          senhaNova: document.getElementById('fin-acesso-senha').value || undefined,
+        });
+        alert('✅ Acesso do Villela Finance atualizado.');
+        FIN.vContas();
+      } catch (e) { msg.textContent = e.message; }
+    };
   },
 
   // ---------------------------------------------------------- COBRANÇA

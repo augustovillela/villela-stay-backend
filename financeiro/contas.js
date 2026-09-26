@@ -173,6 +173,47 @@ function trocarSenha(userId, { senhaAtual, senhaNova }) {
 }
 
 /**
+ * Administração de acesso feita exclusivamente pelo Staff. Nunca devolve
+ * hash e nunca registra a senha na auditoria. A operação vive no contexto
+ * do tenant, portanto um administrador não consegue atingir usuário de
+ * outra conta por engano usando apenas o id.
+ */
+function administrarAcesso(userId, { email, senhaNova }) {
+  const u = repo.usuarioPorId(userId);
+  if (!u) throw new ErroDeConta('Usuário não encontrado.');
+
+  const novoEmail = email == null ? '' : String(email).toLowerCase().trim();
+  const novaSenha = senhaNova == null ? '' : String(senhaNova);
+  if (!novoEmail && !novaSenha) throw new ErroDeConta('Informe um novo e-mail ou uma nova senha.');
+
+  if (novoEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(novoEmail)) throw new ErroDeConta('Informe um e-mail válido.');
+    const outro = repo.usuarioPorEmail(novoEmail);
+    if (outro && outro.id !== u.id) throw new ErroDeConta('Já existe usuário com este e-mail nesta conta.');
+    if (novoEmail !== u.email) {
+      repo.trocarEmailDoUsuario(u.id, novoEmail);
+      auditoria.registrar('usuario.email', {
+        objetoTipo: 'usuario', objetoId: u.id,
+        motivo: 'alteração administrativa pelo Portal Staff',
+        detalhe: { anterior: u.email, atual: novoEmail },
+      });
+    }
+  }
+
+  if (novaSenha) {
+    if (novaSenha.length < 10) throw new ErroDeConta('A senha nova precisa de pelo menos 10 caracteres.');
+    repo.trocarSenhaDoUsuario(u.id, hashSenha(novaSenha));
+    auditoria.registrar('usuario.senha_redefinida', {
+      objetoTipo: 'usuario', objetoId: u.id,
+      motivo: 'redefinição administrativa pelo Portal Staff',
+    });
+  }
+
+  const atualizado = repo.usuarioPorId(u.id);
+  return { id: atualizado.id, email: atualizado.email, nome: atualizado.nome, perfil: atualizado.perfil, status: atualizado.status };
+}
+
+/**
  * Top-up do plano de contas em TODAS as empresas já existentes. Roda no
  * boot, é idempotente e só ACRESCENTA o que falta — nunca renomeia nem
  * remove o que o assinante personalizou.
@@ -240,6 +281,6 @@ function semearPlataforma() {
 
 module.exports = {
   ErroDeConta, SLUG_INTERNO, provisionar, criarEmpresa, semearRegras,
-  criarUsuario, hashSenha, conferirSenha, trocarSenha, semearPlataforma, slugificar, primeiraEntidade,
+  criarUsuario, hashSenha, conferirSenha, trocarSenha, administrarAcesso, semearPlataforma, slugificar, primeiraEntidade,
   atualizarPlanosDeConta, semearUsuarioInicial,
 };
