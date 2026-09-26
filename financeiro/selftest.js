@@ -20,6 +20,7 @@ const fs = require('fs');
 process.env.DATA_DIR = path.join(os.tmpdir(), 'finance-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
 process.env.FINANCE_WORKER = 'off';
+process.env.FINANCE_SECRET_KEY = '11'.repeat(32);
 fs.mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -933,6 +934,7 @@ const documento = require('./documento');
 const contrapartes = require('./contrapartes');
 const titulos = require('./titulos');
 const liquidacoes = require('./liquidacoes');
+const consultasPatrimoniais = require('./consultas-patrimoniais');
 
 teste('documento: CPF válido passa e inválido não', () => {
   assert.strictEqual(documento.validarCPF('529.982.247-25'), true);
@@ -953,6 +955,66 @@ lanca('documento: erro diz QUANTOS dígitos vieram', () =>
   documento.exigir('123456', 'CNPJ do fornecedor'), /6 dígitos/);
 lanca('documento: erro nomeia o dígito verificador', () =>
   documento.exigir('529.982.247-26'), /dígito verificador/);
+
+let alvoConsulta;
+teste('consultas: CPF nasce cifrado e só volta mascarado', () => {
+  alvoConsulta = naA(() => consultasPatrimoniais.criar({
+    nome: 'Maria da Silva', documento: '529.982.247-25', frequencia: 'trimestral',
+  }));
+  assert.strictEqual(alvoConsulta.documento, '***.***.***-25');
+  assert.ok(alvoConsulta.fontes.includes('fgts'));
+  assert.ok(!JSON.stringify(alvoConsulta).includes('52998224725'), 'a API devolveu o CPF em claro');
+  const banco = naA(() => repo.consultaAlvo(alvoConsulta.id));
+  assert.ok(/^v1\./.test(banco.documento_cifrado), 'o documento não está cifrado');
+  assert.ok(!banco.documento_cifrado.includes('52998224725'), 'CPF em claro no banco');
+});
+
+lanca('consultas: o mesmo documento não entra duas vezes na empresa', () =>
+  naA(() => consultasPatrimoniais.criar({ nome: 'Maria duplicada', documento: '52998224725' })), /já está cadastrado/i);
+
+teste('consultas: outra conta não enxerga o cadastro', () => {
+  assert.strictEqual(naB(() => repo.consultaAlvo(alvoConsulta.id)), null);
+});
+
+teste('consultas: resultado confirmado atualiza o total sem encerrar a rodada incompleta', () => {
+  naA(() => consultasPatrimoniais.registrarResultado(alvoConsulta.id, {
+    fonte: 'bcb_svr', status: 'confirmado', valorConfirmado: '1.234,56',
+    resumo: 'Valor confirmado no portal oficial.', creditoRef: 'svr-2026-001',
+  }));
+  const d = naA(() => consultasPatrimoniais.detalhes(alvoConsulta.id));
+  assert.strictEqual(d.totais.confirmadoCents, 123456);
+  assert.strictEqual(d.alvo.proximaConsulta, require('./db').hojeISO(), 'uma fonte empurrou as demais para o futuro');
+});
+
+teste('consultas: mesma referência em duas fontes não duplica o total', () => {
+  naA(() => consultasPatrimoniais.registrarResultado(alvoConsulta.id, {
+    fonte: 'justica_federal', status: 'confirmado', valorConfirmado: '1.234,56',
+    resumo: 'Mesmo crédito confirmado no processo.', creditoRef: 'svr-2026-001',
+  }));
+  const d = naA(() => consultasPatrimoniais.detalhes(alvoConsulta.id));
+  assert.strictEqual(d.totais.confirmadoCents, 123456);
+});
+
+teste('consultas: indício fica separado do valor confirmado', () => {
+  naA(() => consultasPatrimoniais.registrarResultado(alvoConsulta.id, {
+    fonte: 'diarios_oficiais', status: 'possivel', valorConfirmado: '99,00',
+    valorPotencial: '800,00', resumo: 'Publicação localizada; falta conferir o processo.',
+  }));
+  const d = naA(() => consultasPatrimoniais.detalhes(alvoConsulta.id));
+  assert.strictEqual(d.totais.confirmadoCents, 123456);
+  assert.strictEqual(d.totais.potencialCents, 80000);
+});
+
+teste('consultas: agenda só avança quando todas as fontes fecharam a rodada', () => {
+  const d0 = naA(() => consultasPatrimoniais.detalhes(alvoConsulta.id));
+  for (const f of d0.fontes.filter((x) => !x.ultimo)) {
+    naA(() => consultasPatrimoniais.registrarResultado(alvoConsulta.id, {
+      fonte: f.id, status: 'consulta_pendente', resumo: 'Ação do titular registrada para esta rodada.',
+    }));
+  }
+  const d = naA(() => consultasPatrimoniais.detalhes(alvoConsulta.id));
+  assert.ok(d.alvo.proximaConsulta > require('./db').hojeISO(), 'a próxima rodada não avançou depois de todas as fontes');
+});
 
 let fornecedor, cliente;
 teste('contraparte: cria fornecedor com CNPJ validado', () => {
@@ -2034,6 +2096,26 @@ testeAsync('HTTP: cockpit responde com os KPIs explicáveis', async () => {
   assert.ok(r.corpo.kpis.every(k => k.origem && k.origem.formula));
 });
 
+let alvoConsultaHttp;
+testeAsync('HTTP: cadastra CNPJ para consulta sem devolver o documento em claro', async () => {
+  const r = await pedir('POST', '/finance/api/consultas', {
+    cookie: cookieA,
+    corpo: { nome: 'Empresa Monitorada Ltda.', documento: '11.222.333/0001-81', frequencia: 'mensal' },
+  });
+  assert.strictEqual(r.status, 200, r.cru);
+  alvoConsultaHttp = r.corpo.alvo;
+  assert.strictEqual(alvoConsultaHttp.documento, '**.***.***/0001-81');
+  assert.ok(!r.cru.includes('11222333000181'), 'o CNPJ voltou em claro na resposta');
+});
+
+testeAsync('HTTP: painel de consultas separa confirmado de potencial', async () => {
+  const r = await pedir('GET', '/finance/api/consultas', { cookie: cookieA });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.corpo.totais.confirmadoCents, 123456);
+  assert.strictEqual(r.corpo.totais.potencialCents, 80000);
+  assert.ok(r.corpo.fontes.some(f => f.acesso === 'govbr'));
+});
+
 testeAsync('HTTP: a conta B não alcança dado da conta A', async () => {
   const login = await pedir('POST', '/finance/api/login', { corpo: { email: 'dono@pousada-x.com.br', senha: 'senha-forte-2' } });
   cookieB = login.cookies.map(c => c.split(';')[0]).join('; ');
@@ -2042,6 +2124,11 @@ testeAsync('HTTP: a conta B não alcança dado da conta A', async () => {
   assert.strictEqual(r.status, 200);
   assert.notStrictEqual(r.corpo.empresa.id, empresaA.id, 'VAZAMENTO: o cabeçalho escolheu empresa de outra conta');
   assert.strictEqual(r.corpo.conta.slug, 'pousada-x');
+});
+
+testeAsync('HTTP: outra conta recebe 404 no detalhe patrimonial', async () => {
+  const r = await pedir('GET', `/finance/api/consultas/${alvoConsultaHttp.id}`, { cookie: cookieB });
+  assert.strictEqual(r.status, 404, `esperava 404, veio ${r.status}`);
 });
 
 testeAsync('HTTP: lançamento pelo id de um lote de outra conta é 404', async () => {

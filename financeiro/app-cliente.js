@@ -104,7 +104,7 @@ const F = {
   // -------------------------------------------------------- moldura
   telaApp() {
     const e = F.eu;
-    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['fechamento', 'Fechamento'], ['cfo', 'CFO'], ['dre', 'DRE'], ['relatorios', 'Relatórios'], ['razao', 'Razão'], ['conta', 'Minha conta']];
+    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['consultas', 'Consultas patrimoniais'], ['fechamento', 'Fechamento'], ['cfo', 'CFO'], ['dre', 'DRE'], ['relatorios', 'Relatórios'], ['razao', 'Razão'], ['conta', 'Minha conta']];
     const empresas = e.empresas.length > 1
       ? `<select id="f-empresa" style="width:auto;min-width:200px">${e.empresas.map((x) =>
           `<option value="${F.esc(x.id)}"${x.id === e.empresa.id ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
@@ -159,7 +159,7 @@ const F = {
   },
 
   async pintar() {
-    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, fechamento: F.vFechamento, cfo: F.vCfo, dre: F.vDre, relatorios: F.vRelatorios, razao: F.vRazao, conta: F.vConta };
+    const telas = { cockpit: F.vCockpit, extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, consultas: F.vConsultas, fechamento: F.vFechamento, cfo: F.vCfo, dre: F.vDre, relatorios: F.vRelatorios, razao: F.vRazao, conta: F.vConta };
     try { await telas[F.tab](); }
     catch (e) { if (e.message !== 'sessão expirada') F.corpo().innerHTML = `<div class="card"><p class="erro">${F.esc(e.message)}</p></div>`; }
   },
@@ -1380,6 +1380,146 @@ const F = {
     } catch (e) {
       if (e.message !== 'sessão expirada') alvo.innerHTML = `<p class="erro">${F.esc(e.message)}</p>`;
     }
+  },
+
+  // ------------------------------------------- CONSULTAS PATRIMONIAIS
+  consultaStatus(s) {
+    return ({
+      confirmado: '🟢 Confirmado', possivel: '🟡 Possível',
+      consulta_pendente: '🔵 Ação do titular', nada_localizado: '⚪ Nada localizado',
+      atencao: '🔴 Atenção', nao_verificado: 'Não verificado',
+    })[s] || 'Não verificado';
+  },
+
+  consultaAcesso(a) {
+    return ({ publica: 'Consulta pública', titular: 'Intervenção do titular', govbr: 'Exige gov.br' })[a] || a;
+  },
+
+  async vConsultas() {
+    const p = await F.api('GET', F.url('/consultas'));
+    F._consultas = p;
+    const cards = p.alvos.length ? p.alvos.map((a) => `
+      <button class="card" onclick="F.abrirConsulta('${F.esc(a.id)}')"
+        style="text-align:left;cursor:pointer;font:inherit;color:inherit;min-width:250px;flex:1;${a.vencida ? 'border-color:var(--vx-warn)' : ''}">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:start">
+          <div><b>${F.esc(a.nome)}</b><div class="sub">${a.tipo === 'pf' ? 'Pessoa física' : 'Pessoa jurídica'} · ${F.esc(a.documento)}</div></div>
+          <span class="sub">${a.ativo ? (a.vencida ? 'Vencida' : 'Ativa') : 'Pausada'}</span>
+        </div>
+        <div style="display:flex;gap:18px;margin-top:12px;flex-wrap:wrap">
+          <span><b>${F.esc(a.totais.confirmado)}</b><br><small class="sub">confirmado</small></span>
+          <span><b>${F.esc(a.totais.potencial)}</b><br><small class="sub">potencial</small></span>
+          <span><b>${a.pendencias}</b><br><small class="sub">pendências</small></span>
+        </div>
+        <div class="sub" style="margin-top:10px">${a.proximaConsulta ? 'Próxima rodada: ' + F.dt(a.proximaConsulta) : 'Sem agenda automática'} · ${F.esc(a.frequencia)}</div>
+      </button>`).join('') : `<div class="card"><p class="sub" style="margin:0">Nenhuma pessoa ou empresa cadastrada ainda.</p></div>`;
+
+    F.corpo().innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:start;flex-wrap:wrap;margin-bottom:14px">
+        <div><h2 style="margin:0">Consultas patrimoniais</h2>
+          <p class="sub" style="margin:4px 0 0">Auditoria periódica de valores, créditos e ativos em fontes oficiais.</p></div>
+        <button class="btn" onclick="F.mostrarNovoConsultado()">+ Pessoa ou empresa</button>
+      </div>
+      <div class="aviso" style="margin-bottom:14px"><b>Privacidade por desenho.</b> CPF/CNPJ fica cifrado e só aparece mascarado. ${F.esc(p.aviso)}</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div class="card" style="flex:1;min-width:180px"><div class="sub">Total confirmado</div><div style="font-size:1.45rem;font-weight:700">${F.esc(p.totais.confirmado)}</div></div>
+        <div class="card" style="flex:1;min-width:180px"><div class="sub">Total potencial</div><div style="font-size:1.45rem;font-weight:700">${F.esc(p.totais.potencial)}</div></div>
+        <div class="card" style="flex:1;min-width:180px"><div class="sub">Rodadas vencidas</div><div style="font-size:1.45rem;font-weight:700">${p.resumo.consultasVencidas}</div></div>
+        <div class="card" style="flex:1;min-width:180px"><div class="sub">Ações pendentes</div><div style="font-size:1.45rem;font-weight:700">${p.resumo.acoesDoTitular}</div></div>
+      </div>
+      <div id="f-consulta-novo"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">${cards}</div>`;
+  },
+
+  mostrarNovoConsultado() {
+    const alvo = F.el('f-consulta-novo');
+    alvo.innerHTML = `<div class="card" style="margin-bottom:14px">
+      <h3 style="margin:0 0 10px">Novo cadastro monitorado</h3>
+      <form id="f-consulta-form" class="form" style="max-width:none;padding:0;border:0;box-shadow:none">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px">
+          <label>Nome completo ou razão social<input id="f-c-nome" required maxlength="160"></label>
+          <label>CPF ou CNPJ<input id="f-c-doc" required inputmode="numeric" autocomplete="off" placeholder="Somente no portal seguro"></label>
+          <label>Periodicidade<select id="f-c-freq"><option value="mensal">Mensal</option><option value="trimestral" selected>Trimestral</option><option value="semestral">Semestral</option><option value="anual">Anual</option><option value="manual">Manual</option></select></label>
+        </div>
+        <p class="sub" style="margin:0 0 12px">As fontes aplicáveis são escolhidas automaticamente conforme CPF ou CNPJ. Senhas, tokens e códigos nunca são solicitados.</p>
+        <button class="btn" type="submit">Cadastrar com documento cifrado</button>
+        <button class="btn btn-ghost" type="button" onclick="F.el('f-consulta-novo').innerHTML=''">Cancelar</button>
+        <span id="f-c-msg" class="sub" style="margin-left:8px"></span>
+      </form>
+    </div>`;
+    F.el('f-consulta-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = F.el('f-c-msg'); msg.className = 'sub'; msg.textContent = 'Protegendo e cadastrando…';
+      try {
+        await F.api('POST', F.url('/consultas'), { nome: F.el('f-c-nome').value, documento: F.el('f-c-doc').value, frequencia: F.el('f-c-freq').value });
+        await F.vConsultas();
+      } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+    };
+  },
+
+  async abrirConsulta(id) {
+    const d = await F.api('GET', F.url('/consultas/' + encodeURIComponent(id)));
+    F._consultaAtual = d;
+    const fontes = d.fontes.map((f) => {
+      const u = f.ultimo;
+      return `<div class="card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:start;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px"><b>${F.esc(f.nome)}</b>
+            <div class="sub">${F.esc(F.consultaAcesso(f.acesso))}${u ? ' · última em ' + F.dt(u.consultadoEm) : ' · ainda não verificada'}</div></div>
+          <div><a class="btn btn-ghost" style="padding:7px 12px;min-height:0" href="${F.esc(f.url)}" target="_blank" rel="noopener">Abrir fonte oficial</a>
+            <button class="btn" style="padding:7px 12px;min-height:0" onclick="F.formResultado('${F.esc(f.id)}')">Registrar resultado</button></div>
+        </div>
+        <p style="margin:10px 0 0"><b>${F.esc(F.consultaStatus(u ? u.status : 'nao_verificado'))}</b>${u && u.resumo ? ' — ' + F.esc(u.resumo) : ''}</p>
+        ${u && (u.valorConfirmadoCents || u.valorPotencialCents) ? `<p style="margin:6px 0 0">Confirmado: <b>${F.esc(u.valorConfirmado)}</b> · Potencial: <b>${F.esc(u.valorPotencial)}</b></p>` : ''}
+        ${u && u.proximaAcao ? `<p class="sub" style="margin:6px 0 0">Próxima ação: ${F.esc(u.proximaAcao)}</p>` : `<p class="sub" style="margin:6px 0 0">${F.esc(f.instrucao)}</p>`}
+      </div>`;
+    }).join('');
+    F.corpo().innerHTML = `
+      <p style="margin:0 0 12px"><button class="btn btn-ghost" onclick="F.vConsultas()">← Voltar aos cadastros</button></p>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><h2 style="margin:0">${F.esc(d.alvo.nome)}</h2><p class="sub" style="margin:3px 0">${F.esc(d.alvo.documento)} · ${F.esc(d.alvo.frequencia)}</p></div>
+          <div style="text-align:right"><b>${F.esc(d.totais.confirmado)}</b> confirmado<br><b>${F.esc(d.totais.potencial)}</b> potencial</div>
+        </div>
+      </div>
+      <div id="f-consulta-resultado"></div>${fontes}`;
+  },
+
+  formResultado(fonteId) {
+    const d = F._consultaAtual;
+    const fonte = d && d.fontes.find((x) => x.id === fonteId);
+    if (!fonte) return;
+    const alvo = F.el('f-consulta-resultado');
+    alvo.innerHTML = `<div class="card" style="margin-bottom:14px;border-color:var(--vx-primary)">
+      <h3 style="margin:0 0 4px">Registrar: ${F.esc(fonte.nome)}</h3>
+      <p class="sub" style="margin:0 0 12px">Registre apenas o que foi conferido na fonte oficial. Valor do processo não é valor liberado.</p>
+      <form id="f-r-form" class="form" style="max-width:none;padding:0;border:0;box-shadow:none">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px">
+          <label>Status<select id="f-r-status"><option value="nada_localizado">⚪ Nada localizado</option><option value="consulta_pendente">🔵 Consulta pendente</option><option value="possivel">🟡 Possível</option><option value="confirmado">🟢 Confirmado</option><option value="atencao">🔴 Atenção</option><option value="nao_verificado">Não verificado</option></select></label>
+          <label>Valor confirmado (R$)<input id="f-r-confirmado" inputmode="decimal" placeholder="0,00"></label>
+          <label>Valor potencial (R$)<input id="f-r-potencial" inputmode="decimal" placeholder="0,00"></label>
+        </div>
+        <label>Resumo verificável<textarea id="f-r-resumo" rows="2" maxlength="800" placeholder="O que a fonte oficial mostrou"></textarea></label>
+        <label>Próxima ação<textarea id="f-r-acao" rows="2" maxlength="800" placeholder="Passo que o titular ou responsável deve executar"></textarea></label>
+        <label>Referência única do crédito <input id="f-r-ref" maxlength="160" placeholder="Ex.: processo 0000000-00.0000.0.00.0000"></label>
+        <p class="sub" style="margin:0 0 10px">Use a mesma referência quando o mesmo crédito aparecer em mais de uma fonte; o somatório evitará dupla contagem.</p>
+        <button class="btn" type="submit">Salvar no histórico</button>
+        <button class="btn btn-ghost" type="button" onclick="F.el('f-consulta-resultado').innerHTML=''">Cancelar</button>
+        <span id="f-r-msg" class="sub" style="margin-left:8px"></span>
+      </form>
+    </div>`;
+    alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    F.el('f-r-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const msg = F.el('f-r-msg'); msg.className = 'sub'; msg.textContent = 'Salvando…';
+      try {
+        await F.api('POST', F.url('/consultas/' + encodeURIComponent(d.alvo.id) + '/resultados'), {
+          fonte: fonteId, status: F.el('f-r-status').value,
+          valorConfirmado: F.el('f-r-confirmado').value, valorPotencial: F.el('f-r-potencial').value,
+          resumo: F.el('f-r-resumo').value, proximaAcao: F.el('f-r-acao').value, creditoRef: F.el('f-r-ref').value,
+        });
+        await F.abrirConsulta(d.alvo.id);
+      } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+    };
   },
 
   // ------------------------------------------------------- MINHA CONTA

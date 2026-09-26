@@ -638,6 +638,57 @@ CREATE TABLE IF NOT EXISTS fin_ativos (
 );
 CREATE INDEX IF NOT EXISTS idx_fin_ativos ON fin_ativos(tenant_id, entidade_id, status);
 
+-- =================== CONSULTAS PATRIMONIAIS =========================
+-- CPF/CNPJ fica cifrado para permitir a consulta futura e acompanhado de
+-- HMAC para deduplicacao. A API nunca devolve o valor em claro: somente a
+-- mascara. Resultado e evidencia sao historicos; nova verificacao acrescenta
+-- uma linha em vez de apagar a anterior.
+
+CREATE TABLE IF NOT EXISTS fin_consulta_alvos (
+  id                 TEXT PRIMARY KEY,
+  tenant_id          TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  entidade_id        TEXT NOT NULL REFERENCES fin_entidades(id) ON DELETE CASCADE,
+  nome               TEXT NOT NULL,
+  tipo               TEXT NOT NULL,               -- pf|pj
+  documento_cifrado  TEXT NOT NULL,
+  documento_hash     TEXT NOT NULL,
+  documento_mascarado TEXT NOT NULL,
+  frequencia         TEXT NOT NULL DEFAULT 'trimestral', -- manual|mensal|trimestral|semestral|anual
+  fontes             TEXT NOT NULL DEFAULT '[]',
+  proxima_consulta   TEXT NOT NULL DEFAULT '',
+  ativo              INTEGER NOT NULL DEFAULT 1,
+  criado_em          TEXT NOT NULL,
+  criado_por         TEXT NOT NULL DEFAULT '',
+  atualizado_em      TEXT NOT NULL DEFAULT '',
+  CHECK (tipo IN ('pf','pj')),
+  CHECK (frequencia IN ('manual','mensal','trimestral','semestral','anual'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_consulta_alvo_doc
+  ON fin_consulta_alvos(tenant_id, entidade_id, documento_hash);
+CREATE INDEX IF NOT EXISTS idx_fin_consulta_alvo_agenda
+  ON fin_consulta_alvos(tenant_id, entidade_id, ativo, proxima_consulta);
+
+CREATE TABLE IF NOT EXISTS fin_consulta_resultados (
+  id                    TEXT PRIMARY KEY,
+  tenant_id             TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  entidade_id           TEXT NOT NULL REFERENCES fin_entidades(id) ON DELETE CASCADE,
+  alvo_id               TEXT NOT NULL REFERENCES fin_consulta_alvos(id) ON DELETE CASCADE,
+  fonte                 TEXT NOT NULL,
+  status                TEXT NOT NULL DEFAULT 'nao_verificado',
+  resumo                TEXT NOT NULL DEFAULT '',
+  proxima_acao          TEXT NOT NULL DEFAULT '',
+  credito_ref           TEXT NOT NULL DEFAULT '',
+  valor_confirmado_cents INTEGER NOT NULL DEFAULT 0,
+  valor_potencial_cents INTEGER NOT NULL DEFAULT 0,
+  consultado_em         TEXT NOT NULL,
+  criado_por            TEXT NOT NULL DEFAULT '',
+  CHECK (status IN ('confirmado','possivel','consulta_pendente','nada_localizado','atencao','nao_verificado'))
+);
+CREATE INDEX IF NOT EXISTS idx_fin_consulta_resultado_alvo
+  ON fin_consulta_resultados(tenant_id, entidade_id, alvo_id, consultado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_fin_consulta_resultado_fonte
+  ON fin_consulta_resultados(tenant_id, alvo_id, fonte, consultado_em DESC);
+
 -- ======================== TRIGGERS (invariantes) =====================
 -- Isto não é cinto de segurança de código — é do banco. Um bug futuro em
 -- qualquer serviço esbarra aqui antes de corromper o razão.

@@ -48,6 +48,7 @@ const cfo = require('./cfo');
 const conselho = require('./conselho');
 const exportacao = require('./exportacao');
 const mfa = require('./mfa');
+const consultasPatrimoniais = require('./consultas-patrimoniais');
 
 const COOKIE = 'fin_sess';
 const DIAS = 30;
@@ -730,6 +731,27 @@ function registrarRotasApp(app, { jwtSecret, express }) {
     })),
     obra: conselho.OBRA, arquivo: conselho.ARQUIVO,
   }), { modulo: '' }));
+
+  // ------------------------------- consultas patrimoniais periodicas
+  // Nao ha automacao de login: resultado protegido so entra depois que o
+  // titular o consulta no portal oficial e o registra conscientemente.
+  app.get('/finance/api/consultas', ...rota((req) =>
+    consultasPatrimoniais.painel(req.entidade.id)));
+
+  app.post('/finance/api/consultas', ...rota((req) => ({
+    ok: true, alvo: consultasPatrimoniais.criar(req.body || {}),
+  }), { permissao: 'cadastrar', json: true }));
+
+  app.get('/finance/api/consultas/:id', ...rota((req) =>
+    consultasPatrimoniais.detalhes(req.params.id)));
+
+  app.patch('/finance/api/consultas/:id', ...rota((req) => ({
+    ok: true, alvo: consultasPatrimoniais.configurar(req.params.id, req.body || {}),
+  }), { permissao: 'cadastrar', json: true }));
+
+  app.post('/finance/api/consultas/:id/resultados', ...rota((req) => ({
+    ok: true, resultado: consultasPatrimoniais.registrarResultado(req.params.id, req.body || {}),
+  }), { permissao: 'cadastrar', json: true }));
 
   // ------------------------------------- segundo fator (fase 10)
   app.get('/finance/api/mfa', ...rota((req) => mfa.estado(req.assinante.id)));

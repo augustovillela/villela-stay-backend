@@ -697,6 +697,80 @@ const marcarEvento = (id, status, erro = '') => db.prepare(
   'UPDATE fin_eventos SET status = ?, erro = ?, tentativas = tentativas + 1, processado_em = ? WHERE id = ?'
 ).run(status, String(erro).slice(0, 300), nowISO(), id);
 
+// ------------------------------------------ consultas patrimoniais
+const criarConsultaAlvo = (d) => {
+  const id = novoId();
+  exec(`INSERT INTO fin_consulta_alvos
+        (id, tenant_id, entidade_id, nome, tipo, documento_cifrado, documento_hash,
+         documento_mascarado, frequencia, fontes, proxima_consulta, ativo,
+         criado_em, criado_por, atualizado_em)
+        VALUES (:id, :tenant, :entidade, :nome, :tipo, :cifrado, :hash,
+                :mascara, :frequencia, :fontes, :proxima, 1, :agora, :por, :agora)`, {
+    id, entidade: d.entidadeId, nome: d.nome, tipo: d.tipo,
+    cifrado: d.documentoCifrado, hash: d.documentoHash,
+    mascara: d.documentoMascarado, frequencia: d.frequencia,
+    fontes: j.str(d.fontes || []), proxima: d.proximaConsulta || '',
+    agora: nowISO(), por: tenancy.userAtual(),
+  });
+  return consultaAlvo(id);
+};
+
+const consultaAlvo = (id) => um(
+  `SELECT * FROM fin_consulta_alvos
+    WHERE tenant_id = :tenant AND entidade_id = :entidade AND id = :id`,
+  { entidade: tenancy.entidadeAtual(), id });
+
+const consultaAlvoPorHash = (hash) => um(
+  `SELECT * FROM fin_consulta_alvos
+    WHERE tenant_id = :tenant AND entidade_id = :entidade AND documento_hash = :hash`,
+  { entidade: tenancy.entidadeAtual(), hash });
+
+const listarConsultaAlvos = (entidadeId, { incluirInativos = false } = {}) => q(
+  `SELECT * FROM fin_consulta_alvos
+    WHERE tenant_id = :tenant AND entidade_id = :entidade
+      ${incluirInativos ? '' : 'AND ativo = 1'}
+    ORDER BY ativo DESC, proxima_consulta, nome`, { entidade: entidadeId });
+
+const atualizarAgendaConsulta = (id, d) => {
+  exec(`UPDATE fin_consulta_alvos SET
+          frequencia = :frequencia, fontes = :fontes,
+          proxima_consulta = :proxima, ativo = :ativo, atualizado_em = :agora
+        WHERE tenant_id = :tenant AND entidade_id = :entidade AND id = :id`, {
+    id, entidade: tenancy.entidadeAtual(), frequencia: d.frequencia,
+    fontes: j.str(d.fontes || []), proxima: d.proximaConsulta || '',
+    ativo: d.ativo === false ? 0 : 1, agora: nowISO(),
+  });
+  return consultaAlvo(id);
+};
+
+const registrarConsultaResultado = (d) => {
+  const id = novoId();
+  exec(`INSERT INTO fin_consulta_resultados
+        (id, tenant_id, entidade_id, alvo_id, fonte, status, resumo,
+         proxima_acao, credito_ref, valor_confirmado_cents,
+         valor_potencial_cents, consultado_em, criado_por)
+        VALUES (:id, :tenant, :entidade, :alvo, :fonte, :status, :resumo,
+                :acao, :credito, :confirmado, :potencial, :quando, :por)`, {
+    id, entidade: d.entidadeId, alvo: d.alvoId, fonte: d.fonte,
+    status: d.status, resumo: d.resumo || '', acao: d.proximaAcao || '',
+    credito: d.creditoRef || '', confirmado: d.valorConfirmadoCents || 0,
+    potencial: d.valorPotencialCents || 0, quando: d.consultadoEm || nowISO(),
+    por: tenancy.userAtual(),
+  });
+  return consultaResultado(id);
+};
+
+const consultaResultado = (id) => um(
+  `SELECT * FROM fin_consulta_resultados
+    WHERE tenant_id = :tenant AND entidade_id = :entidade AND id = :id`,
+  { entidade: tenancy.entidadeAtual(), id });
+
+const listarConsultaResultados = (alvoId) => q(
+  `SELECT * FROM fin_consulta_resultados
+    WHERE tenant_id = :tenant AND entidade_id = :entidade AND alvo_id = :alvo
+    ORDER BY consultado_em DESC, id DESC`,
+  { entidade: tenancy.entidadeAtual(), alvo: alvoId });
+
 module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
@@ -721,6 +795,8 @@ module.exports = {
   criarAprovacao, aprovacao, listarAprovacoes, decidirAprovacao, registrarExecucao, expirarAprovacoesVencidas,
   ultimoAudit, inserirAudit, listarAudit, auditEmOrdem,
   publicarEvento, eventosPendentes, marcarEvento, eventoDePlataforma, ultimoEventoDePlataforma,
+  criarConsultaAlvo, consultaAlvo, consultaAlvoPorHash, listarConsultaAlvos,
+  atualizarAgendaConsulta, registrarConsultaResultado, consultaResultado, listarConsultaResultados,
   criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,
   assinaturaPorRefExterna, assinaturasAtivasDaPlataforma,
   criarInvoice, invoice, listarInvoices, marcarInvoicePaga, invoicePorRefExterna,
