@@ -1311,6 +1311,9 @@ teste('investimentos: preflight registra apenas a categoria HTTP sanitizada', ()
   assert.strictEqual(mercadoPreflight.categoriaErro({ status: 400, message: 'segredo' }), 'http_400');
   assert.strictEqual(mercadoPreflight.categoriaErro({ status: 403, message: 'segredo' }), 'autenticacao');
   assert.strictEqual(mercadoPreflight.categoriaErro({ status: 404, message: 'segredo' }), 'nao_encontrado');
+  assert.strictEqual(mercadoPreflight.categoriaErro({ cause: { code: 'ENOTFOUND', message: 'segredo' } }), 'rede');
+  assert.strictEqual(mercadoPreflight.categoriaErro({ cause: { code: 'ERR_TLS_CERT_ALTNAME_INVALID' } }),
+    'codigo_err_tls_cert_altname_invalid');
 });
 
 testeAsync('investimentos: corpo R2 ja fechado nao transforma HTTP 200 em falha', async () => {

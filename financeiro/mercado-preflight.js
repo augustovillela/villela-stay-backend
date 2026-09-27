@@ -11,14 +11,19 @@ const storagePadrao = require('../storage-s3');
 const TIMEOUT_PADRAO_MS = 5_000;
 
 function categoriaErro(e) {
-  const codigo = String((e && e.code) || '').toUpperCase();
-  const nome = String((e && e.name) || '');
-  const status = Number((e && e.status) || 0);
+  const causa = e && e.cause;
+  const codigo = String((e && e.code) || (causa && causa.code) || '').toUpperCase();
+  const nome = String((e && e.name) || (causa && causa.name) || '');
+  const status = Number((e && e.status) || (causa && causa.status) || 0);
   if (nome === 'AbortError' || codigo === 'ABORT_ERR' || codigo === 'ETIMEDOUT' || codigo === '57014') return 'timeout';
+  if (codigo === 'UND_ERR_CONNECT_TIMEOUT' || codigo === 'UND_ERR_HEADERS_TIMEOUT') return 'timeout';
   if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH'].includes(codigo)) return 'rede';
   if (status === 401 || status === 403 || codigo === '28P01') return 'autenticacao';
   if (status === 404 || codigo === '3D000') return 'nao_encontrado';
   if (status >= 400 && status <= 599) return `http_${status}`;
+  if (codigo === 'ERR_INVALID_URL' || codigo === 'ERR_INVALID_ARG_TYPE') return 'configuracao_invalida';
+  if (/^[A-Z][A-Z0-9_]{1,60}$/.test(codigo)) return `codigo_${codigo.toLowerCase()}`;
+  if (nome === 'TypeError') return 'cliente_http';
   return 'indisponivel';
 }
 
