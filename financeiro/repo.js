@@ -956,6 +956,52 @@ const ultimasColetasInvestimentos = () => q(
     WHERE c.tenant_id = :tenant
     ORDER BY c.iniciada_em DESC, c.id DESC LIMIT 100`, {});
 
+const registrarEvidenciaInvestimentos = (d) => {
+  const id = novoId();
+  exec(`INSERT OR IGNORE INTO fin_inv_evidencias
+          (id, tenant_id, instrumento_id, fonte_id, tipo, periodo_ref, capturado_em,
+           valor_minor, escala, unidade, moeda, dados, integridade, url, sha256,
+           expira_em, criado_em)
+        VALUES (:id, :tenant, NULL, :fonte, :tipo, :periodo, :capturado,
+                :valor, :escala, :unidade, :moeda, :dados, :integridade, :url,
+                :sha, :expira, :agora)`, {
+    id, fonte: d.fonteId, tipo: d.tipo, periodo: d.periodoRef,
+    capturado: d.capturadoEm, valor: d.valorMinor, escala: d.escala,
+    unidade: d.unidade || '', moeda: d.moeda || '', dados: j.str(d.dados || {}),
+    integridade: d.integridade, url: d.url || '', sha: d.sha256,
+    expira: d.expiraEm || '', agora: nowISO(),
+  });
+  const equivalentes = q(`SELECT * FROM fin_inv_evidencias
+    WHERE tenant_id = :tenant AND tipo = :tipo
+      AND periodo_ref = :periodo`, {
+    tipo: d.tipo, periodo: d.periodoRef,
+  });
+  const valores = new Set(equivalentes
+    .filter(e => e.valor_minor != null)
+    .map(e => `${e.valor_minor}|${e.escala}|${e.unidade}|${e.moeda}`));
+  if (valores.size > 1) {
+    for (const e of equivalentes) {
+      const dados = j.parse(e.dados, {});
+      dados.motivoIntegridade = 'valores_divergentes_mesmo_periodo';
+      dados.evidenciasConflitantes = equivalentes.filter(x => x.id !== e.id).map(x => x.id);
+      exec(`UPDATE fin_inv_evidencias SET integridade = 'conflitante', dados = :dados
+             WHERE tenant_id = :tenant AND id = :id`, { id: e.id, dados: j.str(dados) });
+    }
+  }
+  return um(`SELECT * FROM fin_inv_evidencias
+    WHERE tenant_id = :tenant AND fonte_id = :fonte AND tipo = :tipo
+      AND periodo_ref = :periodo AND sha256 = :sha LIMIT 1`, {
+    fonte: d.fonteId, tipo: d.tipo, periodo: d.periodoRef, sha: d.sha256,
+  });
+};
+
+const listarEvidenciasInvestimentos = () => q(
+  `SELECT e.*, f.chave AS fonte_chave, f.nome AS fonte_nome, f.status AS fonte_status
+     FROM fin_inv_evidencias e JOIN fin_inv_fontes f
+       ON f.tenant_id = e.tenant_id AND f.id = e.fonte_id
+    WHERE e.tenant_id = :tenant
+    ORDER BY e.capturado_em DESC, e.id DESC LIMIT 200`, {});
+
 module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
@@ -988,6 +1034,7 @@ module.exports = {
   listarMandatosInvestimentos, garantirMandatosInvestimentos,
   listarFontesInvestimentos, fonteInvestimentosPorChave, garantirFontesInvestimentos,
   registrarColetaInvestimentos, ultimasColetasInvestimentos,
+  registrarEvidenciaInvestimentos, listarEvidenciasInvestimentos,
   criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,
   assinaturaPorRefExterna, assinaturasAtivasDaPlataforma,
   criarInvoice, invoice, listarInvoices, marcarInvoicePaga, invoicePorRefExterna,

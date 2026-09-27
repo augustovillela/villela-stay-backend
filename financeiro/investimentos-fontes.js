@@ -9,6 +9,7 @@
 const crypto = require('crypto');
 const repo = require('./repo');
 const acesso = require('./investimentos-acesso');
+const evidencias = require('./investimentos-evidencias');
 
 const TIMEOUT_MS = 8_000;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -144,7 +145,51 @@ async function sondar(tenant, usuario, chave, { fetchImpl } = {}) {
   }
 }
 
+async function coletarEvidencias(tenant, usuario, chave, { fetchImpl, agora } = {}) {
+  acesso.exigir(tenant, usuario);
+  repo.garantirFontesInvestimentos();
+  const fonte = repo.fonteInvestimentosPorChave(String(chave || ''));
+  if (!fonte) throw new ErroFonteInvestimentos('Fonte não cadastrada.', 404);
+  const conector = CONECTORES[fonte.chave];
+  if (!conector) throw new ErroFonteInvestimentos('Esta fonte ainda não possui conector.', 409);
+  if (fonte.status !== 'aprovada_prototipo' && fonte.status !== 'ativa') {
+    throw new ErroFonteInvestimentos('A fonte não está aprovada para coleta.', 409);
+  }
+  if (fonte.chave !== 'bcb_dados_abertos') {
+    throw new ErroFonteInvestimentos('Esta fonte ainda não possui contrato de evidência normalizada.', 409);
+  }
+
+  const inicio = agora || new Date().toISOString();
+  try {
+    const recebido = await buscarJson(conector, fetchImpl || global.fetch);
+    let resumo;
+    try { resumo = conector.interpretar(recebido.dados); }
+    catch (e) { throw new ErroFonteInvestimentos(e.message || 'Contrato da fonte inválido.'); }
+    const normalizadas = evidencias.normalizar(fonte, recebido.dados, {
+      capturadoEm: inicio, coletaId: '', datasetHash: recebido.hash, url: conector.url,
+    });
+    const coleta = repo.registrarColetaInvestimentos({
+      fonteId: fonte.id, status: 'sucesso', iniciadaEm: inicio,
+      concluidaEm: agora || new Date().toISOString(), registros: resumo.registros,
+      datasetHash: recebido.hash, resumo: { ...resumo, finalidade: 'evidencia_normalizada' },
+    });
+    for (const o of normalizadas) o.dados.coletaId = coleta.id;
+    return {
+      fonte: fonte.chave,
+      status: 'sucesso',
+      coletaId: coleta.id,
+      evidencias: evidencias.registrar(fonte, normalizadas),
+    };
+  } catch (e) {
+    repo.registrarColetaInvestimentos({
+      fonteId: fonte.id, status: 'falhou', iniciadaEm: inicio,
+      concluidaEm: agora || new Date().toISOString(), erro: e.message,
+    });
+    throw e;
+  }
+}
+
 module.exports = {
   CONECTORES, TIMEOUT_MS, MAX_BYTES, ErroFonteInvestimentos,
-  buscarJson, sondar,
+  buscarJson, sondar, coletarEvidencias,
 };

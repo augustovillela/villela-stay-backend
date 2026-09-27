@@ -46,6 +46,7 @@ const contasSvc = require('./contas');
 const entitlements = require('./entitlements');
 const rbac = require('./rbac');
 const fontesInvestimentos = require('./investimentos-fontes');
+const evidenciasInvestimentos = require('./investimentos-evidencias');
 const investimentos = require('./investimentos-acesso');
 const politicaInvestimentos = require('./investimentos-politica');
 const diario = require('./diario');
@@ -806,6 +807,101 @@ testeAsync('investimentos: conectores oficiais validam contratos sem ativar font
     .every(f => f.status === 'aprovada_prototipo'));
   const historico = naA(() => repo.ultimasColetasInvestimentos());
   assert.strictEqual(historico.filter(c => c.status === 'sucesso').length, 3);
+});
+
+teste('investimentos: normalização temporal recusa data futura e calendário inválido', () => {
+  const contexto = {
+    capturadoEm: '2026-09-27T12:00:00.000Z', coletaId: 'coleta-teste',
+    datasetHash: 'a'.repeat(64), url: 'https://api.bcb.gov.br/exemplo',
+  };
+  const futura = evidenciasInvestimentos.normalizarBcbSelic(
+    [{ data: '04/11/2026', valor: '13.75' }], contexto);
+  assert.strictEqual(futura.integridade, 'conflitante');
+  assert.strictEqual(futura.dados.motivoIntegridade, 'data_referencia_futura');
+  assert.ok(futura.dados.idadeDias < 0);
+
+  const invalida = evidenciasInvestimentos.normalizarBcbSelic(
+    [{ data: '31/02/2026', valor: '13.75' }], contexto);
+  assert.strictEqual(invalida.integridade, 'incompleta');
+  assert.strictEqual(invalida.dados.motivoIntegridade, 'data_referencia_invalida');
+  assert.strictEqual(
+    evidenciasInvestimentos.diaCivilBrasilia('2026-09-28T01:00:00.000Z').toISOString().slice(0, 10),
+    '2026-09-27', 'a data civil deve seguir Brasília, não a virada do UTC');
+});
+
+teste('investimentos: normalização distingue evidência atual, atrasada e vencida', () => {
+  const base = {
+    coletaId: 'coleta-teste', datasetHash: 'b'.repeat(64),
+    url: 'https://api.bcb.gov.br/exemplo',
+  };
+  const atual = evidenciasInvestimentos.normalizarBcbSelic(
+    [{ data: '26/09/2026', valor: '13,75' }],
+    { ...base, capturadoEm: '2026-09-27T12:00:00.000Z' });
+  const atrasada = evidenciasInvestimentos.normalizarBcbSelic(
+    [{ data: '18/09/2026', valor: '13.75' }],
+    { ...base, capturadoEm: '2026-09-27T12:00:00.000Z' });
+  const vencida = evidenciasInvestimentos.normalizarBcbSelic(
+    [{ data: '01/09/2026', valor: '13.75' }],
+    { ...base, capturadoEm: '2026-09-27T12:00:00.000Z' });
+  assert.strictEqual(atual.integridade, 'valida');
+  assert.strictEqual(atual.valorMinor, 1375);
+  assert.strictEqual(atrasada.integridade, 'atrasada');
+  assert.strictEqual(vencida.integridade, 'vencida');
+});
+
+testeAsync('investimentos: coleta normaliza de forma idempotente mas protótipo não fica apto', async () => {
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const resposta = () => ({
+    ok: true, status: 200, headers: { get: () => null },
+    text: async () => JSON.stringify([{ data: '26/09/2026', valor: '13.75' }]),
+  });
+  const opts = { fetchImpl: async () => resposta(), agora: '2026-09-27T12:00:00.000Z' };
+  const primeira = await naA(() => fontesInvestimentos.coletarEvidencias(
+    contaA, usuario, 'bcb_dados_abertos', opts));
+  const segunda = await naA(() => fontesInvestimentos.coletarEvidencias(
+    contaA, usuario, 'bcb_dados_abertos', opts));
+  assert.strictEqual(primeira.evidencias[0].integridade, 'valida');
+  assert.strictEqual(primeira.evidencias[0].aptaParaAnalise, false);
+  assert.ok(primeira.evidencias[0].bloqueios.includes('fonte_nao_ativa'));
+  assert.strictEqual(segunda.evidencias[0].id, primeira.evidencias[0].id);
+  const linha = naA(() => repo.listarEvidenciasInvestimentos()[0]);
+  const reavaliada = evidenciasInvestimentos.apresentar(linha, {
+    chave: linha.fonte_chave, nome: linha.fonte_nome, status: linha.fonte_status,
+  }, '2026-10-20T12:00:00.000Z');
+  assert.strictEqual(reavaliada.integridade, 'vencida');
+  assert.strictEqual(reavaliada.aptaParaAnalise, false);
+  const lista = naA(() => evidenciasInvestimentos.listar(contaA, usuario));
+  assert.strictEqual(lista.filter(e => e.tipo === 'taxa_meta_selic').length, 1);
+  const outraConta = naB(() => repo.listarEvidenciasInvestimentos());
+  assert.strictEqual(outraConta.length, 0);
+});
+
+testeAsync('investimentos: valores divergentes para o mesmo período ficam conflitantes', async () => {
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const resposta = {
+    ok: true, status: 200, headers: { get: () => null },
+    text: async () => JSON.stringify([{ data: '26/09/2026', valor: '14.00' }]),
+  };
+  await naA(() => fontesInvestimentos.coletarEvidencias(contaA, usuario, 'bcb_dados_abertos', {
+    fetchImpl: async () => resposta, agora: '2026-09-27T13:00:00.000Z',
+  }));
+  const lista = naA(() => evidenciasInvestimentos.listar(contaA, usuario))
+    .filter(e => e.tipo === 'taxa_meta_selic' && e.periodoReferencia === '2026-09-26');
+  assert.strictEqual(lista.length, 2);
+  assert.ok(lista.every(e => e.integridade === 'conflitante'));
+  assert.ok(lista.every(e => e.motivoIntegridade === 'valores_divergentes_mesmo_periodo'));
+  assert.ok(lista.every(e => e.aptaParaAnalise === false));
+});
+
+testeAsync('investimentos: metadado CVM não é promovido a evidência decisória', async () => {
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  await assert.rejects(
+    () => naA(() => fontesInvestimentos.coletarEvidencias(
+      contaA, usuario, 'cvm_dados_abertos', { fetchImpl: async () => { throw new Error('não deveria chamar'); } })),
+    /não possui contrato de evidência/i);
 });
 
 testeAsync('investimentos: fonte bloqueada não pode ser sondada', async () => {

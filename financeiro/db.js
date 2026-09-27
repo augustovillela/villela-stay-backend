@@ -347,6 +347,17 @@ const MIGRACOES = [
         ON fin_inv_coletas(tenant_id, fonte_id, iniciada_em DESC);`);
     },
   },
+  {
+    // Uma mesma observação normalizada não entra duas vezes. O índice não
+    // transforma fonte de protótipo em fonte ativa nem habilita motores.
+    nome: 'fin-0014-investimentos-evidencias-idempotentes',
+    aplicar() {
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_fin_inv_evidencia_unica
+        ON fin_inv_evidencias(tenant_id, fonte_id, tipo, periodo_ref, sha256);
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_evidencias_integridade
+        ON fin_inv_evidencias(tenant_id, integridade, capturado_em DESC);`);
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

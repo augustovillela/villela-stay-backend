@@ -2,6 +2,7 @@
 'use strict';
 const investimentos = require('./investimentos-acesso');
 const fontes = require('./investimentos-fontes');
+const evidencias = require('./investimentos-evidencias');
 
 function registrarRotasInvestimentos(app, rota) {
   if (!app || !rota) throw new Error('rotas-investimentos: faltam app/rota.');
@@ -25,6 +26,14 @@ function registrarRotasInvestimentos(app, rota) {
   app.post('/finance/api/investimentos/fontes/:chave/sondar', ...rota(async (req) => ({
     resultado: await fontes.sondar(req.tenant, req.assinante, req.params.chave),
   }), { permissao: 'configurar' }));
+
+  app.post('/finance/api/investimentos/fontes/:chave/coletar-evidencias', ...rota(async (req) => ({
+    resultado: await fontes.coletarEvidencias(req.tenant, req.assinante, req.params.chave),
+  }), { permissao: 'configurar' }));
+
+  app.get('/finance/api/investimentos/evidencias', ...rota((req) => ({
+    evidencias: evidencias.listar(req.tenant, req.assinante),
+  }), { permissao: 'ler' }));
 }
 
 module.exports = { registrarRotasInvestimentos };
