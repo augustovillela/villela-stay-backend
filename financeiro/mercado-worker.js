@@ -170,7 +170,8 @@ async function iniciar() {
     // dormente evita um ciclo de restart enquanto o portão operacional está
     // fechado. A mudança da env no painel provoca novo deploy/restart.
     await new Promise(resolve => {
-      const concluir = () => resolve();
+      const pulso = setInterval(() => {}, 60_000);
+      const concluir = () => { clearInterval(pulso); resolve(); };
       process.once('SIGTERM', concluir);
       process.once('SIGINT', concluir);
     });
