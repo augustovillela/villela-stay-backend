@@ -14,7 +14,7 @@ window.FInvestimentos = {
       <div class="card" style="margin-bottom:14px;border-left:4px solid #159A78">
         <div class="sub" style="text-transform:uppercase;letter-spacing:.08em">Uso interno · CEO do Grupo Villela</div>
         <h2 style="margin:4px 0 8px">Inteligência de investimentos</h2>
-        <p style="margin:0">A fundação privada está ativa. A coleta de mercado e os modelos analíticos ainda não foram liberados.</p>
+        <p style="margin:0">A fundação privada está ativa. Pareceres destinam-se somente ao CEO e nunca executam operações.</p>
       </div>
       <div class="card" style="margin-bottom:14px">
         <h3 style="margin-top:0">Mandatos de análise</h3>
@@ -37,7 +37,9 @@ window.FInvestimentos = {
         <p>Recomendação individualizada: <b>${guardas.recomendacoesIndividualizadas ? 'ativa' : 'bloqueada'}</b> ·
            Ordens: <b>${guardas.ordens ? 'ativas' : 'bloqueadas'}</b> ·
            Lances: <b>${guardas.lances ? 'ativos' : 'bloqueados'}</b> ·
+           Alavancagem: <b>${guardas.alavancagem ? 'ativa' : 'bloqueada'}</b> ·
            Escrita no razão: <b>${guardas.escritaNoRazao ? 'ativa' : 'bloqueada'}</b>.</p>
+        ${r.pareceres && !r.pareceres.habilitados ? `<p class="sub">Pareceres privados ainda não habilitados: ${F.esc(r.pareceres.motivo)}.</p>` : ''}
       </div>
       <div class="aviso"><b>Próximo marco:</b> ${F.esc(r.proximoPasso)}</div>`;
   },

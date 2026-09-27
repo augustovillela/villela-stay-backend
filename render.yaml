@@ -65,6 +65,12 @@ services:
       # concessão nominal, MFA, limites de risco e validações jurídica/licenças.
       - key: FINANCE_INVESTIMENTOS
         value: "off"
+      # Pareceres Comprar/Manter/Reduzir/Vender/Evitar, exclusivos do CEO.
+      # Os dois portoes ficam fechados ate parecer juridico e homologacao.
+      - key: FINANCE_INV_RECOMENDACOES
+        value: "off"
+      - key: FINANCE_INV_PARECER_JURIDICO
+        value: "pendente"
       # Sincronizacao automatica da Stays, em minutos. DESLIGADA (ausente ou
       # 0): o adaptador so roda por chamada de rota. Ligar so DEPOIS de rodar
       # a previa (dryRun) e conferir o que ele pretende lancar.

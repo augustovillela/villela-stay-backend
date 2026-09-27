@@ -679,6 +679,11 @@ lanca('rbac: lance em leilão é proibido', () =>
   rbac.autorizar('leilao.lance', { perfil: 'proprietario', mfa: true }), /irrevers|autorizad/i);
 lanca('rbac: recomendação individualizada é proibida', () =>
   rbac.autorizar('investimento.recomendar', { perfil: 'proprietario', mfa: true }), /habilita|regulat/i);
+teste('rbac: parecer interno existe sem liberar recomendação genérica', () => {
+  const plano = rbac.autorizar('investimento.parecer_interno', { perfil: 'proprietario' });
+  assert.strictEqual(plano.nivel, 0);
+  assert.strictEqual(plano.exigeAprovacao, false);
+});
 teste('investimentos: módulo privado só entra no Enterprise', () => {
   const gestao = entitlements.PLANOS_SEMENTE.find(p => p.slug === 'gestao');
   const enterprise = entitlements.PLANOS_SEMENTE.find(p => p.slug === 'enterprise');
@@ -700,6 +705,24 @@ teste('investimentos: flag e concessão nominal são duas travas independentes',
   const depois = naA(() => investimentos.estado(contaA, repo.usuarioPorId(usuarioCeo.id)));
   assert.strictEqual(depois.disponivel, true);
   assert.strictEqual(depois.recomendacoesAtivas, false);
+  assert.strictEqual(depois.pareceres.motivo, 'pareceres_desligados');
+});
+
+teste('investimentos: parecer interno exige flag própria e validação jurídica', () => {
+  process.env.FINANCE_INV_RECOMENDACOES = 'on';
+  process.env.FINANCE_INV_PARECER_JURIDICO = 'pendente';
+  const pendente = naA(() => investimentos.estado(contaA, repo.usuarioPorId(usuarioCeo.id)));
+  assert.strictEqual(pendente.recomendacoesAtivas, false);
+  assert.strictEqual(pendente.pareceres.motivo, 'parecer_juridico_pendente');
+
+  process.env.FINANCE_INV_PARECER_JURIDICO = 'aprovado';
+  const aprovado = naA(() => investimentos.estado(contaA, repo.usuarioPorId(usuarioCeo.id)));
+  assert.strictEqual(aprovado.recomendacoesAtivas, true);
+  assert.strictEqual(aprovado.fase, 'pareceres_privados');
+  assert.strictEqual(aprovado.execucaoAtiva, false);
+
+  process.env.FINANCE_INV_RECOMENDACOES = 'off';
+  process.env.FINANCE_INV_PARECER_JURIDICO = 'pendente';
 });
 
 teste('investimentos: concessão cria a política mínima v2 sem inventar valores', () => {
@@ -709,6 +732,8 @@ teste('investimentos: concessão cria a política mínima v2 sem inventar valore
   assert.strictEqual(r.politicaMinimaConfigurada, true);
   assert.strictEqual(r.configuracaoCompleta, false);
   assert.strictEqual(r.salvaguardas.ordens, false);
+  assert.strictEqual(r.salvaguardas.lances, false);
+  assert.strictEqual(r.salvaguardas.alavancagem, false);
   assert.strictEqual(r.salvaguardas.escritaNoRazao, false);
   const caixa = r.mandatos.find(m => m.chave === 'caixa');
   const longo = r.mandatos.find(m => m.chave === 'longo_prazo');

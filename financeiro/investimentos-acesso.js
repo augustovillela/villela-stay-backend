@@ -3,7 +3,9 @@
 //
 // A fundação nasce fechada em quatro camadas: flag de ambiente, conta
 // interna, módulo Enterprise privado e concessão nominal ao proprietário.
-// Ela não executa ordem, lance, recomendação nem lançamento contábil.
+// Ela não executa ordem, lance, alavancagem nem lançamento contábil.
+// Pareceres privados do CEO têm um portão próprio, independente da flag
+// geral, e só abrem depois do registro da validação jurídica.
 // =====================================================================
 'use strict';
 const { j } = require('./db');
@@ -23,6 +25,25 @@ class ErroDeAcessoInvestimentos extends Error {
 }
 
 const ligado = () => String(process.env.FINANCE_INVESTIMENTOS || '').toLowerCase() === 'on';
+const pareceresSolicitados = () =>
+  String(process.env.FINANCE_INV_RECOMENDACOES || '').toLowerCase() === 'on';
+const parecerJuridicoAprovado = () =>
+  String(process.env.FINANCE_INV_PARECER_JURIDICO || '').toLowerCase() === 'aprovado';
+
+function estadoPareceres(disponivel) {
+  const solicitados = pareceresSolicitados();
+  const juridico = parecerJuridicoAprovado();
+  let motivo = '';
+  if (!disponivel) motivo = 'acesso_ceo_indisponivel';
+  else if (!solicitados) motivo = 'pareceres_desligados';
+  else if (!juridico) motivo = 'parecer_juridico_pendente';
+  return {
+    habilitados: disponivel && solicitados && juridico,
+    solicitados,
+    parecerJuridicoAprovado: juridico,
+    motivo,
+  };
+}
 
 function estado(tenant, usuario) {
   const flag = ligado();
@@ -37,12 +58,15 @@ function estado(tenant, usuario) {
   else if (!modulo) motivo = 'modulo_indisponivel';
   else if (!proprietario) motivo = 'perfil_nao_autorizado';
   else if (!autorizado) motivo = 'acesso_nao_concedido';
+  const disponivel = flag && interna && modulo && proprietario && autorizado;
+  const pareceres = estadoPareceres(disponivel);
   return {
-    disponivel: flag && interna && modulo && proprietario && autorizado,
+    disponivel,
     ligado: flag,
     autorizado,
-    fase: 'fundacao',
-    recomendacoesAtivas: false,
+    fase: pareceres.habilitados ? 'pareceres_privados' : 'fundacao',
+    recomendacoesAtivas: pareceres.habilitados,
+    pareceres,
     execucaoAtiva: false,
     motivo,
   };
@@ -127,31 +151,38 @@ function mandatos(tenant, usuario) {
 }
 
 function resumo(tenant, usuario) {
+  const acesso = exigir(tenant, usuario);
   const lista = mandatos(tenant, usuario);
   const configuracao = repo.configInvestimentos();
   return {
-    fase: 'fundacao',
+    fase: acesso.fase,
     escopo: 'uso interno e exclusivo do CEO',
     politicaVersao: politica.VERSAO,
     politicaMinimaConfigurada: lista.length === 3 && lista.every(m => !m.limites.configuracaoPendente),
     configuracaoCompleta: lista.length === 3 && lista.every(m => !m.limites.limitesAdicionaisPendentes),
     mandatos: lista,
     salvaguardas: {
-      recomendacoesIndividualizadas: false,
+      recomendacoesIndividualizadas: acesso.recomendacoesAtivas,
+      recomendacoesSomenteCeo: true,
       ordens: false,
       lances: false,
+      alavancagem: false,
       escritaNoRazao: false,
     },
+    pareceres: acesso.pareceres,
     agenda: configuracao ? {
       timezone: configuracao.timezone,
       radarHora: configuracao.radar_hora,
       relatorioDiaSemana: configuracao.relatorio_dia_semana,
       relatorioHora: configuracao.relatorio_hora,
     } : null,
-    proximoPasso: 'Definir apenas os limites adicionais necessários e validar juridicamente as funções analíticas antes de ativá-las.',
+    proximoPasso: acesso.recomendacoesAtivas
+      ? 'Homologar fontes e motores antes de publicar o primeiro parecer privado.'
+      : 'Registrar a validação jurídica e manter cada fonte desativada até a respectiva homologação.',
   };
 }
 
 module.exports = {
-  ErroDeAcessoInvestimentos, ligado, estado, exigir, conceder, revogar, mandatos, resumo,
+  ErroDeAcessoInvestimentos, ligado, pareceresSolicitados, parecerJuridicoAprovado,
+  estadoPareceres, estado, exigir, conceder, revogar, mandatos, resumo,
 };

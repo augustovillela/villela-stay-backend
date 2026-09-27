@@ -33,6 +33,10 @@ const ACOES = {
   'razao.ver':                { nivelMinimo: 0, permissao: 'ler' },
   'transacao.ver':            { nivelMinimo: 0, permissao: 'ler' },
   'investimento.dados_ler':   { nivelMinimo: 0, permissao: 'ler' },
+  // Parecer estritamente interno: o RBAC permite a classe de ação, mas o
+  // acesso nominal do CEO e os portões jurídico/ambiental são conferidos por
+  // investimentos-acesso.js. A permissão genérica aos clientes segue proibida.
+  'investimento.parecer_interno': { nivelMinimo: 0, permissao: 'ler' },
 
   // automáticas reversíveis
   'transacao.importar':       { nivelMinimo: 1, permissao: 'lancar' },
