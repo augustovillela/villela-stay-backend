@@ -20,7 +20,12 @@ const hmac = (k, m) => crypto.createHmac('sha256', k).update(m).digest();
 function presignS3(cfg, metodo, chave, segundos, { mime, query: extras = {}, agora: agoraInformado } = {}) {
   const url = new URL(cfg.endpoint);
   const host = url.host;
-  const caminho = `/${cfg.bucket}/${String(chave).split('/').map(encodeURIComponent).join('/')}`;
+  // `null` representa a raiz canonica do bucket (HeadBucket): /bucket,
+  // sem a barra final que o R2 recusa. Strings continuam representando
+  // chaves de objeto, inclusive a string vazia para compatibilidade.
+  const caminho = chave === null
+    ? `/${encodeURIComponent(cfg.bucket)}`
+    : `/${cfg.bucket}/${String(chave).split('/').map(encodeURIComponent).join('/')}`;
   const agora = agoraInformado ? new Date(agoraInformado) : new Date();
   const amzDate = agora.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
   const dataCurta = amzDate.slice(0, 8);

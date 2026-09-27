@@ -1253,14 +1253,15 @@ teste('investimentos: banco compartilhado contém somente catálogo técnico de 
   assert.strictEqual(mercadoWorker.ligado(), false);
 });
 
-testeAsync('investimentos: preflight usa somente SELECT 1 e HEAD no bucket', async () => {
-  const visto = { sql: '', encerrou: false, metodo: '' };
+testeAsync('investimentos: preflight usa somente SELECT 1 e HEAD na raiz canonica do bucket', async () => {
+  const visto = { sql: '', encerrou: false, metodo: '', url: '' };
   const poolFactory = () => ({
     query: async sql => { visto.sql = sql; return { rows: [{ ok: 1 }] }; },
     end: async () => { visto.encerrou = true; },
   });
-  const fetchImpl = async (_url, opts) => {
+  const fetchImpl = async (url, opts) => {
     visto.metodo = opts.method;
+    visto.url = url;
     return { ok: true, status: 200 };
   };
   const configS3 = {
@@ -1275,6 +1276,8 @@ testeAsync('investimentos: preflight usa somente SELECT 1 e HEAD no bucket', asy
   assert.strictEqual(r.ok, true);
   assert.strictEqual(visto.sql, 'SELECT 1 AS ok');
   assert.strictEqual(visto.metodo, 'HEAD');
+  assert.match(visto.url, /^https:\/\/conta\.r2\.cloudflarestorage\.com\/bucket-teste\?/);
+  assert.doesNotMatch(visto.url, /\/bucket-teste\/\?/);
   assert.strictEqual(visto.encerrou, true);
 });
 

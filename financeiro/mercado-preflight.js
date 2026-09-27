@@ -56,7 +56,7 @@ async function r2({ config, storage = storagePadrao, fetchImpl = global.fetch,
   const controlador = new AbortController();
   const timer = setTimeout(() => controlador.abort(), timeoutMs);
   try {
-    const url = storage.presignS3(config, 'HEAD', '', 60);
+    const url = storage.presignS3(config, 'HEAD', null, 60);
     const resposta = await fetchImpl(url, { method: 'HEAD', redirect: 'manual', signal: controlador.signal });
     if (!resposta.ok) {
       const erro = new Error('bucket_indisponivel');
