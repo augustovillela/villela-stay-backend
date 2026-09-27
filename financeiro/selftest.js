@@ -44,6 +44,7 @@ const contasSvc = require('./contas');
 const entitlements = require('./entitlements');
 const rbac = require('./rbac');
 const investimentos = require('./investimentos-acesso');
+const politicaInvestimentos = require('./investimentos-politica');
 const diario = require('./diario');
 const financeiro = require('./index');
 
@@ -701,12 +702,55 @@ teste('investimentos: flag e concessão nominal são duas travas independentes',
   assert.strictEqual(depois.recomendacoesAtivas, false);
 });
 
-teste('investimentos: concessão cria configuração e três mandatos pendentes', () => {
+teste('investimentos: concessão cria a política mínima v2 sem inventar valores', () => {
   const r = naA(() => investimentos.resumo(contaA, repo.usuarioPorId(usuarioCeo.id)));
   assert.strictEqual(r.mandatos.length, 3);
+  assert.strictEqual(r.politicaVersao, 2);
+  assert.strictEqual(r.politicaMinimaConfigurada, true);
   assert.strictEqual(r.configuracaoCompleta, false);
   assert.strictEqual(r.salvaguardas.ordens, false);
   assert.strictEqual(r.salvaguardas.escritaNoRazao, false);
+  const caixa = r.mandatos.find(m => m.chave === 'caixa');
+  const longo = r.mandatos.find(m => m.chave === 'longo_prazo');
+  const oportunidades = r.mandatos.find(m => m.chave === 'oportunidades');
+  assert.strictEqual(caixa.versao, 2);
+  assert.strictEqual(caixa.liquidezMinimaCents, null);
+  assert.strictEqual(caixa.limites.alocacaoMinimaPpm, 10_000);
+  assert.strictEqual(caixa.limites.prazoLiquidezMaxDiasUteis, 1);
+  assert.strictEqual(longo.perdaMaximaPpm, 100_000);
+  assert.strictEqual(longo.limites.quedaMaximaToleradaPpm, 100_000);
+  assert.strictEqual(oportunidades.limites.exposicaoMaximaPpm, 100_000);
+  assert.ok(r.mandatos.every(m => m.limites.valoresAbsolutos === false));
+  assert.ok(r.mandatos.every(m => m.limites.limitesAdicionaisPendentes === true));
+  assert.ok(r.mandatos.every(m => m.limites.proibicoes.includes('ordem')));
+});
+
+lanca('investimentos: política recusa valor absoluto disfarçado de limite', () => {
+  const sementes = politicaInvestimentos.sementes();
+  sementes[0].liquidezMinimaCents = 1;
+  politicaInvestimentos.validar(sementes);
+}, /valor absoluto/i);
+
+lanca('investimentos: política recusa percentuais diferentes dos aprovados', () => {
+  const sementes = politicaInvestimentos.sementes();
+  sementes[2].limites.exposicaoMaximaPpm = 100_001;
+  politicaInvestimentos.validar(sementes);
+}, /diverge/i);
+
+teste('investimentos: política v2 preserva e desativa mandato legado v1', () => {
+  naB(() => repo.exec(`INSERT INTO fin_inv_mandatos
+      (id, tenant_id, chave, nome, horizonte_dias, liquidez_minima_cents, perda_maxima_ppm,
+       limites, benchmarks, ativo, versao, criado_em, criado_por)
+    VALUES ('inv-legado-caixa', :tenant, 'caixa', 'Caixa legado', 30, 0, 0,
+            '{"configuracaoPendente":true}', '[]', 1, 1, :agora, 'teste')`,
+    { agora: new Date().toISOString() }));
+  const ativos = naB(() => repo.garantirMandatosInvestimentos());
+  assert.strictEqual(ativos.length, 3);
+  assert.ok(ativos.every(m => m.versao === 2));
+  const historicoCaixa = naB(() => repo.q(
+    `SELECT versao, ativo FROM fin_inv_mandatos
+      WHERE tenant_id = :tenant AND chave = 'caixa' ORDER BY versao`, {}));
+  assert.deepStrictEqual(historicoCaixa.map(m => [m.versao, m.ativo]), [[1, 0], [2, 1]]);
 });
 
 teste('investimentos: acesso de uma conta não vaza para outra', () => {

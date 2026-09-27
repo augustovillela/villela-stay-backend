@@ -13,6 +13,7 @@
 'use strict';
 const { db, novoId, nowISO, j, TABELAS_TENANT, TABELAS_CATALOGO, TABELAS_MISTAS } = require('./db');
 const tenancy = require('./tenancy');
+const politicaInvestimentos = require('./investimentos-politica');
 const { ErroDeIsolamento } = tenancy;
 
 // ---------------------------------------------------------------- guarda
@@ -778,7 +779,6 @@ const listarConsultaResultados = (alvoId) => q(
 // ------------------------------------------- inteligência de investimentos
 // Fundação privada do CEO. Estas funções guardam somente acesso e política;
 // dados de mercado, recomendações, ordens e lançamentos não pertencem aqui.
-
 const acessoInvestimentosPorUsuario = (usuarioId) => um(
   `SELECT * FROM fin_inv_acessos
     WHERE tenant_id = :tenant AND usuario_id = :usuario AND ativo = 1`,
@@ -828,13 +828,21 @@ const configInvestimentos = () => um(
 
 const garantirConfigInvestimentos = () => {
   const existente = configInvestimentos();
-  if (existente) return existente;
+  if (existente) {
+    if (existente.metodologia_versao_ativa !== politicaInvestimentos.METODOLOGIA) {
+      exec(`UPDATE fin_inv_config
+               SET metodologia_versao_ativa = :metodologia, atualizado_em = :agora
+             WHERE tenant_id = :tenant`,
+        { metodologia: politicaInvestimentos.METODOLOGIA, agora: nowISO() });
+    }
+    return configInvestimentos();
+  }
   const id = novoId();
   const agora = nowISO();
   exec(`INSERT INTO fin_inv_config
-          (id, tenant_id, criado_em, criado_por, atualizado_em)
-        VALUES (:id, :tenant, :agora, :por, :agora)`,
-    { id, agora, por: tenancy.userAtual() });
+          (id, tenant_id, metodologia_versao_ativa, criado_em, criado_por, atualizado_em)
+        VALUES (:id, :tenant, :metodologia, :agora, :por, :agora)`,
+    { id, metodologia: politicaInvestimentos.METODOLOGIA, agora, por: tenancy.userAtual() });
   return configInvestimentos();
 };
 
@@ -844,22 +852,34 @@ const listarMandatosInvestimentos = () => q(
     ORDER BY CASE chave WHEN 'caixa' THEN 1 WHEN 'longo_prazo' THEN 2 ELSE 3 END`, {});
 
 const garantirMandatosInvestimentos = () => {
-  const existentes = new Set(listarMandatosInvestimentos().map(x => x.chave));
-  const sementes = [
-    { chave: 'caixa', nome: 'Caixa e liquidez', horizonte: 365, benchmarks: ['CDI', 'SELIC'] },
-    { chave: 'longo_prazo', nome: 'Patrimônio de longo prazo', horizonte: 3650, benchmarks: ['IPCA', 'IBOV'] },
-    { chave: 'oportunidades', nome: 'Oportunidades especiais', horizonte: 1095, benchmarks: ['IPCA'] },
-  ];
+  const sementes = politicaInvestimentos.sementes();
+  politicaInvestimentos.validar(sementes);
   for (const s of sementes) {
-    if (existentes.has(s.chave)) continue;
+    const ativo = um(
+      `SELECT * FROM fin_inv_mandatos
+        WHERE tenant_id = :tenant AND chave = :chave AND ativo = 1
+        ORDER BY versao DESC LIMIT 1`, { chave: s.chave });
+    if (ativo && ativo.versao >= politicaInvestimentos.VERSAO) continue;
+    exec(`UPDATE fin_inv_mandatos SET ativo = 0
+           WHERE tenant_id = :tenant AND chave = :chave AND ativo = 1`, { chave: s.chave });
+    const versaoExistente = um(
+      `SELECT * FROM fin_inv_mandatos
+        WHERE tenant_id = :tenant AND chave = :chave AND versao = :versao`,
+      { chave: s.chave, versao: politicaInvestimentos.VERSAO });
+    if (versaoExistente) {
+      exec(`UPDATE fin_inv_mandatos SET ativo = 1
+             WHERE tenant_id = :tenant AND id = :id`, { id: versaoExistente.id });
+      continue;
+    }
     exec(`INSERT INTO fin_inv_mandatos
-            (id, tenant_id, chave, nome, horizonte_dias, limites, benchmarks,
-             ativo, versao, criado_em, criado_por)
-          VALUES (:id, :tenant, :chave, :nome, :horizonte, :limites, :benchmarks,
-                  1, 1, :agora, :por)`, {
+            (id, tenant_id, chave, nome, horizonte_dias, liquidez_minima_cents,
+             perda_maxima_ppm, limites, benchmarks, ativo, versao, criado_em, criado_por)
+          VALUES (:id, :tenant, :chave, :nome, :horizonte, :liquidez, :perda,
+                  :limites, :benchmarks, 1, :versao, :agora, :por)`, {
       id: novoId(), chave: s.chave, nome: s.nome, horizonte: s.horizonte,
-      limites: j.str({ configuracaoPendente: true }), benchmarks: j.str(s.benchmarks),
-      agora: nowISO(), por: tenancy.userAtual(),
+      liquidez: s.liquidezMinimaCents, perda: s.perdaMaximaPpm,
+      limites: j.str(s.limites), benchmarks: j.str(s.benchmarks),
+      versao: politicaInvestimentos.VERSAO, agora: nowISO(), por: tenancy.userAtual(),
     });
   }
   return listarMandatosInvestimentos();

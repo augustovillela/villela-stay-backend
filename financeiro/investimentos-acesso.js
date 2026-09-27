@@ -11,6 +11,7 @@ const repo = require('./repo');
 const tenancy = require('./tenancy');
 const entitlements = require('./entitlements');
 const auditoria = require('./auditoria');
+const politica = require('./investimentos-politica');
 
 class ErroDeAcessoInvestimentos extends Error {
   constructor(msg, status = 403, detalhe = null) {
@@ -101,13 +102,24 @@ function revogar(tenant, usuarioId, motivo) {
 
 function mandatos(tenant, usuario) {
   exigir(tenant, usuario);
-  return repo.listarMandatosInvestimentos().map(m => ({
+  const linhas = repo.listarMandatosInvestimentos();
+  const persistidos = linhas.map(m => ({
+    chave: m.chave,
+    nome: m.nome,
+    horizonte: m.horizonte_dias,
+    liquidezMinimaCents: m.liquidez_minima_cents,
+    perdaMaximaPpm: m.perda_maxima_ppm,
+    limites: j.parse(m.limites, {}),
+    benchmarks: j.parse(m.benchmarks, []),
+  }));
+  politica.validar(persistidos);
+  return linhas.map(m => ({
     id: m.id,
     chave: m.chave,
     nome: m.nome,
     horizonteDias: m.horizonte_dias,
-    liquidezMinimaCents: m.liquidez_minima_cents,
-    perdaMaximaPpm: m.perda_maxima_ppm,
+    liquidezMinimaCents: null,
+    perdaMaximaPpm: j.parse(m.limites, {}).perdaMaximaDefinida ? m.perda_maxima_ppm : null,
     limites: j.parse(m.limites, {}),
     benchmarks: j.parse(m.benchmarks, []),
     versao: m.versao,
@@ -120,7 +132,9 @@ function resumo(tenant, usuario) {
   return {
     fase: 'fundacao',
     escopo: 'uso interno e exclusivo do CEO',
-    configuracaoCompleta: lista.length === 3 && lista.every(m => !m.limites.configuracaoPendente),
+    politicaVersao: politica.VERSAO,
+    politicaMinimaConfigurada: lista.length === 3 && lista.every(m => !m.limites.configuracaoPendente),
+    configuracaoCompleta: lista.length === 3 && lista.every(m => !m.limites.limitesAdicionaisPendentes),
     mandatos: lista,
     salvaguardas: {
       recomendacoesIndividualizadas: false,
@@ -134,7 +148,7 @@ function resumo(tenant, usuario) {
       relatorioDiaSemana: configuracao.relatorio_dia_semana,
       relatorioHora: configuracao.relatorio_hora,
     } : null,
-    proximoPasso: 'Definir limites de risco e validar juridicamente as funções analíticas antes de ativá-las.',
+    proximoPasso: 'Definir apenas os limites adicionais necessários e validar juridicamente as funções analíticas antes de ativá-las.',
   };
 }
 
