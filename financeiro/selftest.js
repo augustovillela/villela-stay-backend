@@ -50,6 +50,9 @@ const fontesInvestimentos = require('./investimentos-fontes');
 const evidenciasInvestimentos = require('./investimentos-evidencias');
 const ingestaoInvestimentos = require('./investimentos-ingestao');
 const workerInvestimentos = require('./investimentos-worker');
+const parserInvestimentos = require('./investimentos-parser');
+const mercadoWorker = require('./mercado-worker');
+const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
 const politicaInvestimentos = require('./investimentos-politica');
@@ -1203,6 +1206,147 @@ testeAsync('investimentos: mudança de ETag invalida checkpoint e aborta multipa
   assert.deepStrictEqual(JSON.parse(final.checkpoint), {});
   assert.strictEqual(storage.estado.abortos, 1);
   process.env.FINANCE_INV_BULK_WORKER = 'off';
+});
+
+function crc32Teste(buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let i = 0; i < 8; i++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function zipArmazenadoTeste(arquivos) {
+  const locais = [], centrais = [];
+  let offset = 0;
+  for (const [nomeTexto, conteudoTexto] of arquivos) {
+    const nome = Buffer.from(nomeTexto);
+    const conteudo = Buffer.from(conteudoTexto);
+    const crc = crc32Teste(conteudo);
+    const local = Buffer.alloc(30 + nome.length);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4);
+    local.writeUInt32LE(crc, 14); local.writeUInt32LE(conteudo.length, 18);
+    local.writeUInt32LE(conteudo.length, 22); local.writeUInt16LE(nome.length, 26);
+    nome.copy(local, 30); locais.push(local, conteudo);
+    const central = Buffer.alloc(46 + nome.length);
+    central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6);
+    central.writeUInt32LE(crc, 16); central.writeUInt32LE(conteudo.length, 20);
+    central.writeUInt32LE(conteudo.length, 24); central.writeUInt16LE(nome.length, 28);
+    central.writeUInt32LE(offset, 42); nome.copy(central, 46); centrais.push(central);
+    offset += local.length + conteudo.length;
+  }
+  const centro = Buffer.concat(centrais);
+  const fim = Buffer.alloc(22);
+  fim.writeUInt32LE(0x06054b50, 0); fim.writeUInt16LE(arquivos.length, 8);
+  fim.writeUInt16LE(arquivos.length, 10); fim.writeUInt32LE(centro.length, 12);
+  fim.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locais, centro, fim]);
+}
+
+teste('investimentos: banco compartilhado contém somente catálogo técnico de mercado', () => {
+  assert.match(mercadoDb.SCHEMA_SQL, /fin_market_jobs/);
+  assert.match(mercadoDb.SCHEMA_SQL, /fin_market_particoes/);
+  assert.doesNotMatch(mercadoDb.SCHEMA_SQL, /saldo|posi[cç][aã]o|raz[aã]o|ordem_financeira/i);
+  delete process.env.FINANCE_INV_PARSE_WORKER;
+  assert.strictEqual(mercadoWorker.ligado(), false);
+});
+
+testeAsync('investimentos: catálogo ZIP é validado antes do parsing e rejeita traversal', async () => {
+  const dir = fs.mkdtempSync(path.join(process.env.DATA_DIR, 'zip-catalogo-'));
+  const seguro = path.join(dir, 'seguro.zip');
+  fs.writeFileSync(seguro, zipArmazenadoTeste([['dados/a.csv', 'A;B\n1;2\n']]));
+  const r = await parserInvestimentos.catalogarZip(seguro, path.join(dir, 'catalog.sqlite'));
+  assert.strictEqual(r.entradas, 1);
+  const inseguro = path.join(dir, 'inseguro.zip');
+  fs.writeFileSync(inseguro, zipArmazenadoTeste([['../fora.csv', 'A;B\n1;2\n']]));
+  await assert.rejects(
+    () => parserInvestimentos.catalogarZip(inseguro, path.join(dir, 'catalog-ruim.sqlite')),
+    /invalid|inseguro|caminho/i);
+});
+
+testeAsync('investimentos: parser CVM gera fato versionado sem carregar o ZIP inteiro', async () => {
+  const dir = fs.mkdtempSync(path.join(process.env.DATA_DIR, 'zip-cvm-'));
+  const arquivo = path.join(dir, 'dfp.zip');
+  const cab = 'CNPJ_CIA;CD_CVM;DENOM_SOCIAL;DT_REFER;VERSAO;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;DT_INI_EXERC;DT_FIM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA';
+  const linha = '33.000.167/0001-01;9512;Companhia Exemplo S.A.;2025-12-31;2;DF Consolidado - Balanço;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;1.01;Ativo;123456;S';
+  fs.writeFileSync(arquivo, zipArmazenadoTeste([['dfp_cia_aberta_BPA_con_2025.csv', `${cab}\n${linha}\n`]]));
+  const registros = [], identidades = [], entradas = [];
+  const r = await parserInvestimentos.processarArquivo(arquivo, {
+    formato: 'zip', jurisdicao: 'BR', conjunto: 'cvm_dfp_2025',
+  }, {
+    onIdentidade: async x => identidades.push(x),
+    onRegistro: async x => registros.push(x),
+    onEntradaConcluida: async x => entradas.push(x),
+  });
+  assert.strictEqual(r.registros, 1);
+  assert.strictEqual(registros[0].tipo, 'fato');
+  assert.strictEqual(registros[0].identificador.valor, '33000167000101');
+  assert.strictEqual(registros[0].protocolo, '2');
+  assert.strictEqual(identidades.length, 1);
+  assert.strictEqual(entradas[0].registros, 1);
+});
+
+testeAsync('investimentos: parser SEC retoma dentro da entrada sem duplicar fatos', async () => {
+  const dir = fs.mkdtempSync(path.join(process.env.DATA_DIR, 'zip-sec-'));
+  const arquivo = path.join(dir, 'companyfacts.zip');
+  const doc = {
+    cik: 320193, entityName: 'Exemplo Inc.', tickers: ['EXM'], exchanges: ['Nasdaq'],
+    facts: { 'us-gaap': { Assets: { label: 'Assets', units: { USD: [
+      { val: 10, end: '2024-12-31', form: '10-K', filed: '2025-02-01', accn: 'a1' },
+      { val: 12, end: '2025-12-31', form: '10-K', filed: '2026-02-01', accn: 'a2' },
+    ] } } } },
+  };
+  fs.writeFileSync(arquivo, zipArmazenadoTeste([['CIK0000320193.json', JSON.stringify(doc)]]));
+  const registros = [];
+  const r = await parserInvestimentos.processarArquivo(arquivo, {
+    formato: 'zip', jurisdicao: 'US', conjunto: 'sec_companyfacts_integral',
+  }, {
+    onIdentidade: async () => {}, onRegistro: async x => registros.push(x),
+    onEntradaConcluida: async () => {},
+  }, { entradaOrdem: 1, registroNaEntrada: 1 });
+  assert.strictEqual(r.registros, 2);
+  assert.strictEqual(registros.length, 1);
+  assert.strictEqual(registros[0].protocolo, 'a2');
+  assert.strictEqual(registros[0].identificador.valor, '0000320193');
+});
+
+testeAsync('investimentos: worker separado publica partições idempotentes e limpa staging', async () => {
+  const dir = fs.mkdtempSync(path.join(process.env.DATA_DIR, 'worker-mercado-'));
+  const cab = 'CNPJ_CIA;CD_CVM;DENOM_SOCIAL;DT_REFER;VERSAO;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;DT_INI_EXERC;DT_FIM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA';
+  const linha = '33.000.167/0001-01;9512;Companhia Exemplo S.A.;2025-12-31;2;DF Consolidado - DRE;REAL;UNIDADE;ÚLTIMO;2025-01-01;2025-12-31;3.01;Receita;99;S';
+  const bruto = zipArmazenadoTeste([['dfp_cia_aberta_DRE_con_2025.csv', `${cab}\n${linha}\n`]]);
+  const job = {
+    id: 'job-teste-mercado', tenant_ref: contaA.id, formato: 'zip', jurisdicao: 'BR',
+    conjunto: 'cvm_dfp_2025', objeto_chave: 'bruto/dfp.zip', tamanho_bytes: bruto.length,
+    sha256: cryptoNode.createHash('sha256').update(bruto).digest('hex'), checkpoint: {},
+  };
+  const staging = path.join(dir, `${job.id}.zip`);
+  fs.writeFileSync(staging, bruto);
+  const estado = { entradas: [], identidades: [], particoes: [], checkpoints: [], puts: [], resumo: null };
+  const dbFake = {
+    registrarEntradas: async (_id, xs) => estado.entradas.push(...xs),
+    registrarIdentidade: async (_tenant, x) => estado.identidades.push(x),
+    registrarParticao: async (_id, x) => estado.particoes.push(x),
+    checkpoint: async (_id, x) => estado.checkpoints.push(x),
+    concluirEntrada: async () => {},
+    concluir: async (_id, x) => { estado.resumo = x; },
+  };
+  const storageFake = {
+    s3Existe: async () => ({ tamanho: bruto.length }),
+    s3Put: async (_cfg, chave, buffer) => { estado.puts.push({ chave, buffer: Buffer.from(buffer) }); },
+  };
+  const r = await mercadoWorker.executarJob(job, {
+    db: dbFake, cfg: { bucket: 'teste' }, storage: storageFake, workDir: dir, limiteLoteBytes: 1024,
+  });
+  assert.strictEqual(r.registros, 1);
+  assert.strictEqual(estado.entradas.length, 1);
+  assert.strictEqual(estado.identidades.length, 1);
+  assert.strictEqual(estado.particoes.length, 1);
+  assert.strictEqual(estado.puts.length, 1);
+  assert.strictEqual(JSON.parse(estado.puts[0].buffer.toString()).tipo, 'fato');
+  assert.strictEqual(estado.resumo.parserVersao, parserInvestimentos.PARSER_VERSAO);
+  assert.strictEqual(fs.existsSync(staging), false);
 });
 
 testeAsync('investimentos: fonte bloqueada não pode ser sondada', async () => {

@@ -20,6 +20,7 @@
     "test:kids": "node kids/selftest.js",
     "test:origena": "node --env-file-if-exists=.env origena/selftest.js",
     "origena:worker": "node --env-file-if-exists=.env origena/worker.js",
+    "finance:market-worker": "node --env-file-if-exists=.env financeiro/mercado-worker.js",
     "seguranca:finance": "node financeiro/seguranca.js",
     "verificar:finance": "node financeiro/verificar-producao.js",
     "verificar:closet": "node closet/verificar-producao.js",
@@ -45,6 +46,7 @@
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.6",
+    "csv-parse": "^7.0.3",
     "express": "^4.19.0",
     "geoip-lite": "^2.0.3",
     "jsonwebtoken": "^9.0.2",
@@ -54,6 +56,7 @@
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
     "web-push": "^3.6.7",
+    "yauzl": "^3.4.0",
     "zod": "^4.4.3"
   }
 }

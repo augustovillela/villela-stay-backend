@@ -156,21 +156,24 @@ async function inventariar(tenant, usuario, { conjuntos, fetchImpl, anoAtual } =
   return saida;
 }
 
-function validarEntradasZip(entradas, limites = LIMITES_ZIP) {
-  if (!Array.isArray(entradas) || !entradas.length) throw new ErroIngestaoMercado('ZIP sem entradas.');
-  if (entradas.length > limites.maxEntradas) throw new ErroIngestaoMercado('ZIP excede o limite de entradas.');
-  const nomes = new Set();
+function criarValidadorZip(limites = LIMITES_ZIP, registrarNome) {
+  const nomes = registrarNome ? null : new Set();
+  let quantidade = 0;
   let totalCompactado = 0;
   let totalDescompactado = 0;
-  for (const e of entradas) {
+  const adicionar = (e) => {
+    quantidade++;
+    if (quantidade > limites.maxEntradas) throw new ErroIngestaoMercado('ZIP excede o limite de entradas.');
     const nome = String(e.nome || '');
     const partes = nome.replace(/\\/g, '/').split('/');
     if (!nome || nome.includes('\0') || nome.startsWith('/') || /^[A-Za-z]:/.test(nome)
-        || partes.includes('..') || nomes.has(nome)) {
+        || partes.includes('..')) {
       throw new ErroIngestaoMercado('ZIP contém caminho inseguro ou duplicado.');
     }
-    nomes.add(nome);
-    if (e.diretorio) continue;
+    const novo = registrarNome ? registrarNome(nome) : !nomes.has(nome);
+    if (!novo) throw new ErroIngestaoMercado('ZIP contém caminho inseguro ou duplicado.');
+    if (nomes) nomes.add(nome);
+    if (e.diretorio) return;
     if (!/\.(csv|json|txt)$/i.test(nome)) throw new ErroIngestaoMercado('ZIP contém tipo de arquivo não permitido.');
     const c = Number(e.tamanhoCompactado);
     const d = Number(e.tamanhoDescompactado);
@@ -186,8 +189,23 @@ function validarEntradasZip(entradas, limites = LIMITES_ZIP) {
     if (!Number.isSafeInteger(totalDescompactado) || totalDescompactado > limites.maxDescompactadoBytes) {
       throw new ErroIngestaoMercado('ZIP excede o tamanho descompactado permitido.');
     }
+  };
+  return {
+    adicionar,
+    resultado() {
+      if (!quantidade) throw new ErroIngestaoMercado('ZIP sem entradas.');
+      return { entradas: quantidade, totalCompactado, totalDescompactado };
+    },
+  };
+}
+
+function validarEntradasZip(entradas, limites = LIMITES_ZIP) {
+  if (!Array.isArray(entradas)) throw new ErroIngestaoMercado('ZIP sem entradas.');
+  const validador = criarValidadorZip(limites);
+  for (const e of entradas) {
+    validador.adicionar(e);
   }
-  return { entradas: entradas.length, totalCompactado, totalDescompactado };
+  return validador.resultado();
 }
 
 function parseCsvLinha(linha, separador = ';') {
@@ -313,7 +331,7 @@ function estado(tenant, usuario, anoAtual) {
 
 module.exports = {
   TIMEOUT_MS, LIMITE_WEB_BYTES, LIMITES_ZIP, ErroIngestaoMercado,
-  plano, destinoPermitido, userAgent, cabecalhoRemoto, inventariar, validarEntradasZip,
+  plano, destinoPermitido, userAgent, cabecalhoRemoto, inventariar, criarValidadorZip, validarEntradasZip,
   parseCsvLinha, objetoCsv, identidadeCvm, identidadeSec, fatosSec, fatoCvm,
   registrarIdentidade, estado,
 };

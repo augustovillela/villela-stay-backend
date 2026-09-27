@@ -81,6 +81,14 @@ services:
         value: "off"
       - key: FINANCE_INV_S3_PREFIXO
         value: financeiro/investimentos/mercado/
+      # Parser separado: o código existe, mas o serviço/banco/disco NÃO são
+      # provisionados automaticamente nesta fase.
+      - key: FINANCE_INV_PARSE_WORKER
+        value: "off"
+      - key: FINANCE_MARKET_DATABASE_URL
+        sync: false
+      - key: FINANCE_INV_NORM_PREFIXO
+        value: financeiro/investimentos/normalizado/
       # Sincronizacao automatica da Stays, em minutos. DESLIGADA (ausente ou
       # 0): o adaptador so roda por chamada de rota. Ligar so DEPOIS de rodar
       # a previa (dryRun) e conferir o que ele pretende lancar.
