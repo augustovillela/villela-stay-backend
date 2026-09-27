@@ -1002,6 +1002,79 @@ const listarEvidenciasInvestimentos = () => q(
     WHERE e.tenant_id = :tenant
     ORDER BY e.capturado_em DESC, e.id DESC LIMIT 200`, {});
 
+const registrarCargaMercado = (d) => {
+  const existente = um(
+    'SELECT * FROM fin_inv_cargas_mercado WHERE tenant_id = :tenant AND chave_idempotencia = :chave',
+    { chave: d.chaveIdempotencia });
+  if (existente) return existente;
+  const id = novoId();
+  exec(`INSERT INTO fin_inv_cargas_mercado
+          (id, tenant_id, fonte_id, conjunto, jurisdicao, formato, modo, status, url,
+           chave_idempotencia, etag, ultima_modificacao, tamanho_bytes, checkpoint,
+           limites, resumo, iniciada_em, concluida_em, erro, criado_por)
+        VALUES (:id, :tenant, :fonte, :conjunto, :jurisdicao, :formato, :modo, :status,
+                :url, :chave, :etag, :modificacao, :tamanho, :checkpoint, :limites,
+                :resumo, :inicio, :fim, :erro, :por)`, {
+    id, fonte: d.fonteId, conjunto: d.conjunto, jurisdicao: d.jurisdicao,
+    formato: d.formato, modo: d.modo, status: d.status, url: d.url,
+    chave: d.chaveIdempotencia, etag: d.etag || '', modificacao: d.ultimaModificacao || '',
+    tamanho: d.tamanhoBytes || 0, checkpoint: j.str(d.checkpoint || {}),
+    limites: j.str(d.limites || {}), resumo: j.str(d.resumo || {}),
+    inicio: d.iniciadaEm, fim: d.concluidaEm || '', erro: d.erro || '',
+    por: tenancy.userAtual(),
+  });
+  return um('SELECT * FROM fin_inv_cargas_mercado WHERE tenant_id = :tenant AND id = :id', { id });
+};
+
+const listarCargasMercado = () => q(
+  `SELECT c.*, f.chave AS fonte_chave, f.nome AS fonte_nome
+     FROM fin_inv_cargas_mercado c JOIN fin_inv_fontes f
+       ON f.tenant_id = c.tenant_id AND f.id = c.fonte_id
+    WHERE c.tenant_id = :tenant ORDER BY c.iniciada_em DESC, c.id DESC LIMIT 500`, {});
+
+const instrumentoPorIdentificador = (sistema, valor) => um(
+  `SELECT i.* FROM fin_inv_identificadores x JOIN fin_inv_instrumentos i
+     ON i.tenant_id = x.tenant_id AND i.id = x.instrumento_id
+    WHERE x.tenant_id = :tenant AND x.sistema = :sistema AND x.valor = :valor`,
+  { sistema, valor });
+
+const registrarInstrumentoMercado = (d) => {
+  const ids = (d.identificadores || [])
+    .map(x => ({ sistema: String(x.sistema || '').trim(), valor: String(x.valor || '').trim(), principal: !!x.principal }))
+    .filter(x => x.sistema && x.valor);
+  if (!ids.length) throw new Error('Instrumento de mercado exige identificador oficial.');
+  const encontrados = ids.map(x => instrumentoPorIdentificador(x.sistema, x.valor)).filter(Boolean);
+  const unicos = new Set(encontrados.map(x => x.id));
+  if (unicos.size > 1) throw new Error('Identificadores oficiais apontam para instrumentos diferentes.');
+  let instrumento = encontrados[0];
+  const agora = nowISO();
+  if (!instrumento) {
+    const id = novoId();
+    exec(`INSERT INTO fin_inv_instrumentos
+            (id, tenant_id, classe, subclasse, nome, ticker, identificadores, moeda,
+             pais, bolsa, emissor, status, metadados, criado_em, atualizado_em)
+          VALUES (:id, :tenant, :classe, :subclasse, :nome, :ticker, :identificadores,
+                  :moeda, :pais, :bolsa, :emissor, 'observacao', :metadados, :agora, :agora)`, {
+      id, classe: d.classe, subclasse: d.subclasse || '', nome: d.nome,
+      ticker: d.ticker || '', identificadores: j.str(Object.fromEntries(ids.map(x => [x.sistema, x.valor]))),
+      moeda: d.moeda || '', pais: d.pais || '', bolsa: d.bolsa || '', emissor: d.emissor || d.nome,
+      metadados: j.str(d.metadados || {}), agora,
+    });
+    instrumento = um('SELECT * FROM fin_inv_instrumentos WHERE tenant_id = :tenant AND id = :id', { id });
+  }
+  for (const x of ids) {
+    const dono = instrumentoPorIdentificador(x.sistema, x.valor);
+    if (dono && dono.id !== instrumento.id) throw new Error('Colisão de identificador oficial.');
+    exec(`INSERT OR IGNORE INTO fin_inv_identificadores
+            (id, tenant_id, instrumento_id, sistema, valor, principal, criado_em)
+          VALUES (:id, :tenant, :instrumento, :sistema, :valor, :principal, :agora)`, {
+      id: novoId(), instrumento: instrumento.id, sistema: x.sistema, valor: x.valor,
+      principal: x.principal ? 1 : 0, agora,
+    });
+  }
+  return instrumento;
+};
+
 module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
@@ -1035,6 +1108,8 @@ module.exports = {
   listarFontesInvestimentos, fonteInvestimentosPorChave, garantirFontesInvestimentos,
   registrarColetaInvestimentos, ultimasColetasInvestimentos,
   registrarEvidenciaInvestimentos, listarEvidenciasInvestimentos,
+  registrarCargaMercado, listarCargasMercado,
+  instrumentoPorIdentificador, registrarInstrumentoMercado,
   criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,
   assinaturaPorRefExterna, assinaturasAtivasDaPlataforma,
   criarInvoice, invoice, listarInvoices, marcarInvoicePaga, invoicePorRefExterna,

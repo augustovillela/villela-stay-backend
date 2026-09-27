@@ -358,6 +358,58 @@ const MIGRACOES = [
         ON fin_inv_evidencias(tenant_id, integridade, capturado_em DESC);`);
     },
   },
+  {
+    // Fundação da ingestão integral de mercado. O conteúdo bruto volumoso
+    // ficará em armazenamento de objetos; o banco mantém catálogo e índices.
+    nome: 'fin-0015-investimentos-ingestao-integral',
+    aplicar() {
+      db.exec(`CREATE TABLE IF NOT EXISTS fin_inv_cargas_mercado (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        fonte_id TEXT NOT NULL REFERENCES fin_inv_fontes(id), conjunto TEXT NOT NULL,
+        jurisdicao TEXT NOT NULL, formato TEXT NOT NULL, modo TEXT NOT NULL,
+        status TEXT NOT NULL, url TEXT NOT NULL, chave_idempotencia TEXT NOT NULL,
+        etag TEXT NOT NULL DEFAULT '', ultima_modificacao TEXT NOT NULL DEFAULT '',
+        tamanho_bytes INTEGER NOT NULL DEFAULT 0, sha256 TEXT NOT NULL DEFAULT '',
+        objeto_ref TEXT NOT NULL DEFAULT '', checkpoint TEXT NOT NULL DEFAULT '{}',
+        limites TEXT NOT NULL DEFAULT '{}', resumo TEXT NOT NULL DEFAULT '{}',
+        iniciada_em TEXT NOT NULL, concluida_em TEXT NOT NULL DEFAULT '',
+        erro TEXT NOT NULL DEFAULT '', criado_por TEXT NOT NULL DEFAULT '',
+        UNIQUE (tenant_id, chave_idempotencia),
+        CHECK (jurisdicao IN ('BR','US')),
+        CHECK (formato IN ('csv','zip')),
+        CHECK (modo IN ('inventario','completa')),
+        CHECK (status IN ('inventariando','aguardando_capacidade','pronta','baixando',
+          'validando','processando','concluida','falhou','bloqueada')),
+        CHECK (tamanho_bytes >= 0)
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_cargas_status
+        ON fin_inv_cargas_mercado(tenant_id, status, iniciada_em DESC);
+      CREATE TABLE IF NOT EXISTS fin_inv_identificadores (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        instrumento_id TEXT NOT NULL REFERENCES fin_inv_instrumentos(id) ON DELETE CASCADE,
+        sistema TEXT NOT NULL, valor TEXT NOT NULL, principal INTEGER NOT NULL DEFAULT 0,
+        criado_em TEXT NOT NULL, UNIQUE (tenant_id, sistema, valor),
+        CHECK (principal IN (0,1))
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_identificadores_instrumento
+        ON fin_inv_identificadores(tenant_id, instrumento_id);
+      CREATE TABLE IF NOT EXISTS fin_inv_fatos_indice (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        instrumento_id TEXT NOT NULL REFERENCES fin_inv_instrumentos(id) ON DELETE CASCADE,
+        fonte_id TEXT NOT NULL REFERENCES fin_inv_fontes(id), carga_id TEXT REFERENCES fin_inv_cargas_mercado(id),
+        taxonomia TEXT NOT NULL, conceito TEXT NOT NULL, unidade TEXT NOT NULL DEFAULT '',
+        periodo_inicio TEXT NOT NULL DEFAULT '', periodo_fim TEXT NOT NULL DEFAULT '',
+        formulario TEXT NOT NULL DEFAULT '', protocolo TEXT NOT NULL DEFAULT '',
+        entregue_em TEXT NOT NULL DEFAULT '', escopo TEXT NOT NULL DEFAULT '',
+        valor_texto TEXT NOT NULL, contexto TEXT NOT NULL DEFAULT '{}',
+        raw_hash TEXT NOT NULL, objeto_ref TEXT NOT NULL DEFAULT '', criado_em TEXT NOT NULL,
+        UNIQUE (tenant_id, fonte_id, protocolo, taxonomia, conceito, unidade,
+          periodo_inicio, periodo_fim, raw_hash)
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_fatos_consulta
+        ON fin_inv_fatos_indice(tenant_id, instrumento_id, conceito, periodo_fim DESC);`);
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

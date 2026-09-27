@@ -3,6 +3,7 @@
 const investimentos = require('./investimentos-acesso');
 const fontes = require('./investimentos-fontes');
 const evidencias = require('./investimentos-evidencias');
+const ingestao = require('./investimentos-ingestao');
 
 function registrarRotasInvestimentos(app, rota) {
   if (!app || !rota) throw new Error('rotas-investimentos: faltam app/rota.');
@@ -34,6 +35,16 @@ function registrarRotasInvestimentos(app, rota) {
   app.get('/finance/api/investimentos/evidencias', ...rota((req) => ({
     evidencias: evidencias.listar(req.tenant, req.assinante),
   }), { permissao: 'ler' }));
+
+  app.get('/finance/api/investimentos/ingestao', ...rota((req) => ({
+    ingestao: ingestao.estado(req.tenant, req.assinante),
+  }), { permissao: 'ler' }));
+
+  app.post('/finance/api/investimentos/ingestao/inventariar', ...rota(async (req) => ({
+    cargas: await ingestao.inventariar(req.tenant, req.assinante, {
+      conjuntos: req.body && req.body.conjuntos,
+    }),
+  }), { permissao: 'configurar' }));
 }
 
 module.exports = { registrarRotasInvestimentos };

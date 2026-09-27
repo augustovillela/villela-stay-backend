@@ -47,6 +47,7 @@ const entitlements = require('./entitlements');
 const rbac = require('./rbac');
 const fontesInvestimentos = require('./investimentos-fontes');
 const evidenciasInvestimentos = require('./investimentos-evidencias');
+const ingestaoInvestimentos = require('./investimentos-ingestao');
 const investimentos = require('./investimentos-acesso');
 const politicaInvestimentos = require('./investimentos-politica');
 const diario = require('./diario');
@@ -902,6 +903,145 @@ testeAsync('investimentos: metadado CVM não é promovido a evidência decisóri
     () => naA(() => fontesInvestimentos.coletarEvidencias(
       contaA, usuario, 'cvm_dados_abertos', { fetchImpl: async () => { throw new Error('não deveria chamar'); } })),
     /não possui contrato de evidência/i);
+});
+
+teste('investimentos: plano integral cobre todo o histórico oficial sem habilitar download', () => {
+  const plano = ingestaoInvestimentos.plano(2026);
+  assert.strictEqual(plano.length, 36);
+  assert.ok(plano.some(x => x.chave === 'cvm_dfp_2010'));
+  assert.ok(plano.some(x => x.chave === 'cvm_itr_2011'));
+  assert.ok(plano.some(x => x.chave === 'sec_companyfacts_integral'));
+  assert.ok(plano.every(ingestaoInvestimentos.destinoPermitido));
+  assert.strictEqual(ingestaoInvestimentos.baixar, undefined);
+  assert.strictEqual(ingestaoInvestimentos.destinoPermitido({
+    fonte: 'sec_edgar', url: 'https://www.sec.gov.evil.invalid/Archives/edgar/daily-index/xbrl/companyfacts.zip',
+  }), false);
+});
+
+testeAsync('investimentos: inventário é idempotente e separa arquivo próprio para worker', async () => {
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const resposta = (bytes, etag) => ({
+    ok: true, status: 200,
+    headers: { get: (n) => ({
+      'content-length': String(bytes), etag, 'last-modified': 'Sun, 27 Sep 2026 10:00:00 GMT',
+      'content-type': 'application/zip',
+    }[String(n).toLowerCase()] || null) },
+  });
+  const cvmOpts = {
+    conjuntos: ['cvm_dfp_2025'], anoAtual: 2026,
+    fetchImpl: async () => resposta(12_784_098, '"cvm-v1"'),
+  };
+  const primeira = await naA(() => ingestaoInvestimentos.inventariar(contaA, usuario, cvmOpts));
+  const segunda = await naA(() => ingestaoInvestimentos.inventariar(contaA, usuario, cvmOpts));
+  assert.strictEqual(primeira[0].status, 'pronta');
+  assert.strictEqual(segunda[0].id, primeira[0].id);
+
+  process.env.FINANCE_INV_SEC_USER_AGENT = 'VillelaFinance testes@villela.invalid';
+  const sec = await naA(() => ingestaoInvestimentos.inventariar(contaA, usuario, {
+    conjuntos: ['sec_companyfacts_integral'], anoAtual: 2026,
+    fetchImpl: async () => resposta(1_409_562_642, '"sec-v1"'),
+  }));
+  delete process.env.FINANCE_INV_SEC_USER_AGENT;
+  assert.strictEqual(sec[0].status, 'aguardando_capacidade');
+  assert.strictEqual(sec[0].requerWorker, true);
+  const outraConta = naB(() => repo.listarCargasMercado());
+  assert.strictEqual(outraConta.length, 0);
+});
+
+testeAsync('investimentos: inventário web exige lote explícito e pequeno', async () => {
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  await assert.rejects(
+    () => naA(() => ingestaoInvestimentos.inventariar(contaA, usuario, {})),
+    /explicitamente/i);
+  await assert.rejects(
+    () => naA(() => ingestaoInvestimentos.inventariar(contaA, usuario, {
+      conjuntos: ingestaoInvestimentos.plano(2026).slice(0, 6).map(x => x.chave), anoAtual: 2026,
+    })), /cinco conjuntos/i);
+});
+
+testeAsync('investimentos: inventário SEC exige identificação antes de chamar a rede', async () => {
+  delete process.env.FINANCE_INV_SEC_USER_AGENT;
+  const item = ingestaoInvestimentos.plano(2026).find(x => x.chave === 'sec_companyfacts_integral');
+  let chamou = false;
+  await assert.rejects(() => ingestaoInvestimentos.cabecalhoRemoto(item, async () => {
+    chamou = true;
+    return { ok: true, status: 200, headers: { get: () => '1' } };
+  }), /USER_AGENT|contato/i);
+  assert.strictEqual(chamou, false);
+});
+
+teste('investimentos: guarda de ZIP recusa traversal, duplicata e bomba de compressão', () => {
+  const ok = ingestaoInvestimentos.validarEntradasZip([
+    { nome: 'dados/companhias.csv', tamanhoCompactado: 500, tamanhoDescompactado: 1000 },
+    { nome: 'dados/fatos.json', tamanhoCompactado: 800, tamanhoDescompactado: 2400 },
+  ]);
+  assert.strictEqual(ok.entradas, 2);
+  assert.throws(() => ingestaoInvestimentos.validarEntradasZip([
+    { nome: '../segredo.txt', tamanhoCompactado: 5, tamanhoDescompactado: 5 },
+  ]), /inseguro/i);
+  assert.throws(() => ingestaoInvestimentos.validarEntradasZip([
+    { nome: 'fatos.json', tamanhoCompactado: 1, tamanhoDescompactado: 1000 },
+  ]), /compressão suspeita/i);
+  assert.throws(() => ingestaoInvestimentos.validarEntradasZip([
+    { nome: 'a.csv', tamanhoCompactado: 5, tamanhoDescompactado: 5 },
+    { nome: 'a.csv', tamanhoCompactado: 5, tamanhoDescompactado: 5 },
+  ]), /duplicado/i);
+});
+
+teste('investimentos: identidade CVM omite contatos e vincula CNPJ ao código oficial', () => {
+  const cab = 'CNPJ_CIA;DENOM_SOCIAL;DENOM_COMERC;SIT;CD_CVM;SETOR_ATIV;SIT_EMISSOR;CATEG_REG;EMAIL';
+  const linha = '33.000.167/0001-01;"Companhia; Exemplo S.A.";Exemplo;ATIVO;9512;Energia;FASE OPERACIONAL;Categoria A;privado@example.test';
+  const obj = ingestaoInvestimentos.objetoCsv(cab, linha);
+  const identidade = ingestaoInvestimentos.identidadeCvm(obj);
+  assert.strictEqual(identidade.nome, 'Companhia; Exemplo S.A.');
+  assert.deepStrictEqual(identidade.identificadores.map(x => x.sistema), ['cnpj', 'cvm_codigo']);
+  assert.strictEqual(JSON.stringify(identidade).includes('privado@example.test'), false);
+  const primeiro = naA(() => ingestaoInvestimentos.registrarIdentidade(
+    contaA, repo.usuarioPorId(usuarioCeo.id), identidade));
+  const repetido = naA(() => ingestaoInvestimentos.registrarIdentidade(
+    contaA, repo.usuarioPorId(usuarioCeo.id), identidade));
+  assert.strictEqual(repetido.id, primeiro.id);
+  assert.strictEqual(naA(() => repo.instrumentoPorIdentificador('cnpj', '33000167000101')).id, primeiro.id);
+});
+
+teste('investimentos: contrato SEC preserva todos os conceitos, unidades e versões', () => {
+  const doc = {
+    cik: 320193, entityName: 'Exemplo Inc.', tickers: ['EXM'], exchanges: ['Nasdaq'],
+    facts: { 'us-gaap': {
+      Assets: { label: 'Assets', description: 'Total assets', units: { USD: [
+        { val: 100, end: '2025-12-31', form: '10-K', filed: '2026-02-01', accn: '0001', fy: 2025, fp: 'FY' },
+        { val: 110, end: '2025-12-31', form: '10-K/A', filed: '2026-03-01', accn: '0002', fy: 2025, fp: 'FY' },
+      ] } },
+      EntityPublicFloat: { label: 'Float', units: { USD: [
+        { val: 80, end: '2025-06-30', form: '10-K', filed: '2026-02-01', accn: '0001' },
+      ] } },
+    } },
+  };
+  const identidade = ingestaoInvestimentos.identidadeSec(doc);
+  assert.deepStrictEqual(identidade.identificadores, [{ sistema: 'sec_cik', valor: '0000320193', principal: true }]);
+  const fatos = [...ingestaoInvestimentos.fatosSec(doc)];
+  assert.strictEqual(fatos.length, 3);
+  assert.strictEqual(fatos.filter(f => f.conceito === 'Assets').length, 2);
+  assert.deepStrictEqual(fatos.filter(f => f.conceito === 'Assets').map(f => f.protocolo), ['0001', '0002']);
+  const instrumento = naA(() => ingestaoInvestimentos.registrarIdentidade(
+    contaA, repo.usuarioPorId(usuarioCeo.id), identidade));
+  assert.strictEqual(naA(() => repo.instrumentoPorIdentificador('sec_cik', '0000320193')).id, instrumento.id);
+});
+
+teste('investimentos: contrato CVM preserva conta, versão, período e escala originais', () => {
+  const fato = ingestaoInvestimentos.fatoCvm({
+    CNPJ_CIA: '33.000.167/0001-01', CD_CVM: '9512', DENOM_SOCIAL: 'Companhia Exemplo S.A.',
+    DT_REFER: '2025-12-31', VERSAO: '2', GRUPO_DFP: 'DF Consolidado - Demonstração do Resultado',
+    MOEDA: 'REAL', ESCALA_MOEDA: 'MIL', ORDEM_EXERC: 'ÚLTIMO', DT_INI_EXERC: '2025-01-01',
+    DT_FIM_EXERC: '2025-12-31', CD_CONTA: '3.01', DS_CONTA: 'Receita de Venda', VL_CONTA: '123456',
+    ST_CONTA_FIXA: 'S',
+  });
+  assert.strictEqual(fato.conceito, '3.01');
+  assert.strictEqual(fato.protocolo, '2');
+  assert.strictEqual(fato.valorTexto, '123456');
+  assert.strictEqual(fato.contexto.escalaMoeda, 'MIL');
 });
 
 testeAsync('investimentos: fonte bloqueada não pode ser sondada', async () => {

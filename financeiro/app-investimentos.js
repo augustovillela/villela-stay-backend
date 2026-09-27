@@ -2,13 +2,16 @@
 // Tela isolada do módulo privado. Recebe o controlador F já autenticado.
 window.FInvestimentos = {
   async render(F) {
-    const [r, re] = await Promise.all([
+    const [r, re, ri] = await Promise.all([
       F.api('GET', F.url('/investimentos/resumo')),
       F.api('GET', F.url('/investimentos/evidencias')),
+      F.api('GET', F.url('/investimentos/ingestao')),
     ]);
     const guardas = r.salvaguardas || {};
     const cobertura = r.cobertura || [];
     const evidencias = re.evidencias || [];
+    const ingestao = ri.ingestao || {};
+    const cargas = ingestao.cargas || [];
     const pct = (ppm) => ppm == null ? 'não definido' : `${(ppm / 10000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
     const regra = (m) => {
       if (m.chave === 'caixa') return `Mínimo de ${pct(m.limites.alocacaoMinimaPpm)} do patrimônio · resgate em até D+${m.limites.prazoLiquidezMaxDiasUteis}`;
@@ -58,6 +61,13 @@ window.FInvestimentos = {
             <p class="sub">Referência: ${F.esc(e.periodoReferencia || 'indisponível')} · Fonte: ${F.esc(e.fonteNome)}</p>
             <p class="sub">Uso analítico: <b>${e.aptaParaAnalise ? 'apto' : 'bloqueado'}</b>${e.bloqueios.length ? ` · ${e.bloqueios.map(F.esc).join(', ')}` : ''}</p>
           </div>`).join('')}</div>` : '<p class="sub">Nenhuma evidência foi coletada. Sondagens de conectividade não criam evidências automaticamente.</p>'}
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="margin-top:0">Ingestão integral de mercado</h3>
+        <p>Plano: <b>${F.esc((ingestao.conjuntos || []).length)} conjuntos</b> · cargas inventariadas: <b>${F.esc(cargas.length)}</b>.</p>
+        <p class="sub">Modo atual: ${F.esc(ingestao.modo || 'indisponível')} · download integral: <b>${ingestao.downloadIntegralHabilitado ? 'habilitado' : 'bloqueado'}</b>. Arquivos grandes exigem worker e armazenamento de objetos.</p>
+        ${cargas.length ? `<div class="grid">${cargas.slice(0, 12).map(c => `
+          <div class="card"><b>${F.esc(c.conjunto)}</b><br><span class="badge">${F.esc(c.status)}</span><p class="sub">${F.esc(c.fonte_nome)} · ${(c.tamanho_bytes / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB</p></div>`).join('')}</div>` : '<p class="sub">O inventário ainda não foi executado.</p>'}
       </div>
       <div class="card" style="margin-bottom:14px">
         <h3 style="margin-top:0">Salvaguardas desta fase</h3>
