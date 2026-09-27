@@ -52,6 +52,7 @@ const ingestaoInvestimentos = require('./investimentos-ingestao');
 const workerInvestimentos = require('./investimentos-worker');
 const parserInvestimentos = require('./investimentos-parser');
 const mercadoWorker = require('./mercado-worker');
+const mercadoPreflight = require('./mercado-preflight');
 const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
@@ -1250,6 +1251,63 @@ teste('investimentos: banco compartilhado contém somente catálogo técnico de 
   assert.doesNotMatch(mercadoDb.SCHEMA_SQL, /saldo|posi[cç][aã]o|raz[aã]o|ordem_financeira/i);
   delete process.env.FINANCE_INV_PARSE_WORKER;
   assert.strictEqual(mercadoWorker.ligado(), false);
+});
+
+testeAsync('investimentos: preflight usa somente SELECT 1 e HEAD no bucket', async () => {
+  const visto = { sql: '', encerrou: false, metodo: '' };
+  const poolFactory = () => ({
+    query: async sql => { visto.sql = sql; return { rows: [{ ok: 1 }] }; },
+    end: async () => { visto.encerrou = true; },
+  });
+  const fetchImpl = async (_url, opts) => {
+    visto.metodo = opts.method;
+    return { ok: true, status: 200 };
+  };
+  const configS3 = {
+    endpoint: 'https://conta.r2.cloudflarestorage.com', bucket: 'bucket-teste',
+    key: 'chave-teste', secret: 'segredo-teste', region: 'auto',
+  };
+  const r = await mercadoPreflight.executar({
+    configS3,
+    postgresOpts: { connectionString: 'postgresql://teste:segredo@localhost/base', poolFactory },
+    r2Opts: { fetchImpl },
+  });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(visto.sql, 'SELECT 1 AS ok');
+  assert.strictEqual(visto.metodo, 'HEAD');
+  assert.strictEqual(visto.encerrou, true);
+});
+
+testeAsync('investimentos: preflight sanitiza falhas e nunca registra segredos', async () => {
+  const segredoDb = 'senha-super-secreta';
+  const segredoR2 = 'token-super-secreto';
+  const poolFactory = () => ({
+    query: async () => { const e = new Error(`postgresql://usuario:${segredoDb}@interno/base`); e.code = 'ECONNREFUSED'; throw e; },
+    end: async () => {},
+  });
+  const r = await mercadoPreflight.executar({
+    configS3: { endpoint: 'https://r2.test', bucket: 'b', key: 'k', secret: segredoR2, region: 'auto' },
+    postgresOpts: { connectionString: `postgresql://usuario:${segredoDb}@interno/base`, poolFactory },
+    r2Opts: { fetchImpl: async () => { throw new Error(segredoR2); } },
+  });
+  const serializado = JSON.stringify(r) + mercadoPreflight.formatar(r);
+  assert.strictEqual(r.ok, false);
+  assert.doesNotMatch(serializado, new RegExp(`${segredoDb}|${segredoR2}|postgresql://`));
+  assert.match(serializado, /postgres=.*falha:rede/);
+});
+
+testeAsync('investimentos: boot automatico publica apenas o resumo sanitizado', async () => {
+  const linhas = [];
+  const r = await mercadoWorker.preflightAutomatico({
+    preflightFn: async () => ({
+      ok: true,
+      postgres: { ok: true, categoria: 'ok', latencia_ms: 2 },
+      r2: { ok: true, categoria: 'ok', latencia_ms: 3 },
+    }),
+    logger: { log: linha => linhas.push(linha) },
+  });
+  assert.strictEqual(r.ok, true);
+  assert.deepStrictEqual(linhas, ['[finance-market-worker] PREFLIGHT postgres=ok:ok:2ms r2=ok:ok:3ms']);
 });
 
 testeAsync('investimentos: catálogo ZIP é validado antes do parsing e rejeita traversal', async () => {

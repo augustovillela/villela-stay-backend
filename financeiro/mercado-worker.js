@@ -14,6 +14,7 @@ const { pipeline } = require('stream/promises');
 const storagePadrao = require('../storage-s3');
 const parser = require('./investimentos-parser');
 const mercadoDbModulo = require('./investimentos-mercado-db');
+const preflight = require('./mercado-preflight');
 
 const INTERVALO_PADRAO_MS = 15_000;
 const LOTE_PADRAO_BYTES = 4 * 1024 * 1024;
@@ -28,6 +29,11 @@ function configS3() {
 }
 
 const esperar = ms => new Promise(resolve => setTimeout(resolve, ms));
+async function preflightAutomatico({ preflightFn = preflight.executar, logger = console } = {}) {
+  const resultado = await preflightFn({ configS3: configS3() });
+  logger.log(preflight.formatar(resultado));
+  return resultado;
+}
 const shaArquivo = caminho => new Promise((resolve, reject) => {
   const h = crypto.createHash('sha256');
   const s = fs.createReadStream(caminho);
@@ -164,6 +170,10 @@ async function executarJob(job, { db, cfg, storage = storagePadrao, fetchImpl = 
 }
 
 async function iniciar() {
+  const saude = await preflightAutomatico();
+  if (ligado() && !saude.ok) {
+    throw new Error('Preflight tecnico falhou; nenhum job sera processado.');
+  }
   if (!ligado()) {
     console.log('[finance-market-worker] DESLIGADO (FINANCE_INV_PARSE_WORKER=off).');
     // Background workers do Render precisam manter um processo vivo. Ficar
@@ -203,5 +213,5 @@ if (require.main === module) iniciar().catch(e => { console.error('[finance-mark
 
 module.exports = {
   INTERVALO_PADRAO_MS, LOTE_PADRAO_BYTES, ligado, baixarObjeto,
-  EscritorParticoes, executarJob, iniciar,
+  EscritorParticoes, executarJob, preflightAutomatico, iniciar,
 };
