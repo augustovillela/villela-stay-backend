@@ -18,6 +18,7 @@ function categoriaErro(e) {
   if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH'].includes(codigo)) return 'rede';
   if (status === 401 || status === 403 || codigo === '28P01') return 'autenticacao';
   if (status === 404 || codigo === '3D000') return 'nao_encontrado';
+  if (status >= 400 && status <= 599) return `http_${status}`;
   return 'indisponivel';
 }
 

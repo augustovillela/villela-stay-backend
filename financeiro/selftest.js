@@ -1307,6 +1307,12 @@ testeAsync('investimentos: preflight sanitiza falhas e nunca registra segredos',
   assert.match(serializado, /postgres=.*falha:rede/);
 });
 
+teste('investimentos: preflight registra apenas a categoria HTTP sanitizada', () => {
+  assert.strictEqual(mercadoPreflight.categoriaErro({ status: 400, message: 'segredo' }), 'http_400');
+  assert.strictEqual(mercadoPreflight.categoriaErro({ status: 403, message: 'segredo' }), 'autenticacao');
+  assert.strictEqual(mercadoPreflight.categoriaErro({ status: 404, message: 'segredo' }), 'nao_encontrado');
+});
+
 testeAsync('investimentos: boot automatico publica apenas o resumo sanitizado', async () => {
   const linhas = [];
   const r = await mercadoWorker.preflightAutomatico({
