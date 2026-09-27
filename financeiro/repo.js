@@ -14,6 +14,7 @@
 const { db, novoId, nowISO, j, TABELAS_TENANT, TABELAS_CATALOGO, TABELAS_MISTAS } = require('./db');
 const tenancy = require('./tenancy');
 const politicaInvestimentos = require('./investimentos-politica');
+const catalogoInvestimentos = require('./investimentos-catalogo');
 const { ErroDeIsolamento } = tenancy;
 
 // ---------------------------------------------------------------- guarda
@@ -885,6 +886,51 @@ const garantirMandatosInvestimentos = () => {
   return listarMandatosInvestimentos();
 };
 
+const listarFontesInvestimentos = () => q(
+  `SELECT * FROM fin_inv_fontes
+    WHERE tenant_id = :tenant
+    ORDER BY CASE status
+      WHEN 'ativa' THEN 1 WHEN 'aprovada_prototipo' THEN 2 WHEN 'manual' THEN 3
+      WHEN 'condicional' THEN 4 ELSE 5 END, nome`, {});
+
+const garantirFontesInvestimentos = () => {
+  catalogoInvestimentos.validar();
+  const agora = nowISO();
+  const por = tenancy.userAtual();
+  for (const f of catalogoInvestimentos.FONTES) {
+    const existente = um(
+      'SELECT * FROM fin_inv_fontes WHERE tenant_id = :tenant AND chave = :chave',
+      { chave: f.chave });
+    if (!existente) {
+      exec(`INSERT INTO fin_inv_fontes
+              (id, tenant_id, chave, nome, categoria, tipo_acesso, status, dominio,
+               atraso_minutos, classes, condicoes, versao_catalogo, criado_em,
+               criado_por, atualizado_em)
+            VALUES (:id, :tenant, :chave, :nome, :categoria, :tipo, :status, :dominio,
+                    :atraso, :classes, :condicoes, :versao, :agora, :por, :agora)`, {
+        id: novoId(), chave: f.chave, nome: f.nome, categoria: f.categoria,
+        tipo: f.tipoAcesso, status: f.status, dominio: f.dominio,
+        atraso: f.atrasoMinutos, classes: j.str(f.classes), condicoes: f.condicoes,
+        versao: catalogoInvestimentos.VERSAO, agora, por,
+      });
+      continue;
+    }
+    if (existente.versao_catalogo >= catalogoInvestimentos.VERSAO) continue;
+    // Atualiza descrição do catálogo, mas nunca rebaixa/promove o status nem
+    // substitui a referência de licença decidida por uma pessoa.
+    exec(`UPDATE fin_inv_fontes SET nome = :nome, categoria = :categoria,
+             tipo_acesso = :tipo, dominio = :dominio, atraso_minutos = :atraso,
+             classes = :classes, condicoes = :condicoes, versao_catalogo = :versao,
+             atualizado_em = :agora
+           WHERE tenant_id = :tenant AND id = :id`, {
+      id: existente.id, nome: f.nome, categoria: f.categoria, tipo: f.tipoAcesso,
+      dominio: f.dominio, atraso: f.atrasoMinutos, classes: j.str(f.classes),
+      condicoes: f.condicoes, versao: catalogoInvestimentos.VERSAO, agora,
+    });
+  }
+  return listarFontesInvestimentos();
+};
+
 module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
@@ -915,6 +961,7 @@ module.exports = {
   concederAcessoInvestimentos, revogarAcessoInvestimentos,
   configInvestimentos, garantirConfigInvestimentos,
   listarMandatosInvestimentos, garantirMandatosInvestimentos,
+  listarFontesInvestimentos, garantirFontesInvestimentos,
   criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,
   assinaturaPorRefExterna, assinaturasAtivasDaPlataforma,
   criarInvoice, invoice, listarInvoices, marcarInvoicePaga, invoicePorRefExterna,

@@ -14,6 +14,7 @@ const tenancy = require('./tenancy');
 const entitlements = require('./entitlements');
 const auditoria = require('./auditoria');
 const politica = require('./investimentos-politica');
+const catalogo = require('./investimentos-catalogo');
 
 class ErroDeAcessoInvestimentos extends Error {
   constructor(msg, status = 403, detalhe = null) {
@@ -105,6 +106,7 @@ function conceder(tenant, usuarioId, motivo) {
   const acesso = repo.concederAcessoInvestimentos(usuarioId);
   repo.garantirConfigInvestimentos();
   repo.garantirMandatosInvestimentos();
+  repo.garantirFontesInvestimentos();
   auditoria.registrar('investimento.acesso_conceder', {
     objetoTipo: 'usuario', objetoId: usuarioId, motivo: justificativa,
     detalhe: { papel: 'ceo', fase: 'fundacao' },
@@ -154,6 +156,7 @@ function resumo(tenant, usuario) {
   const acesso = exigir(tenant, usuario);
   const lista = mandatos(tenant, usuario);
   const configuracao = repo.configInvestimentos();
+  const mapaCobertura = cobertura(tenant, usuario);
   return {
     fase: acesso.fase,
     escopo: 'uso interno e exclusivo do CEO',
@@ -161,6 +164,7 @@ function resumo(tenant, usuario) {
     politicaMinimaConfigurada: lista.length === 3 && lista.every(m => !m.limites.configuracaoPendente),
     configuracaoCompleta: lista.length === 3 && lista.every(m => !m.limites.limitesAdicionaisPendentes),
     mandatos: lista,
+    cobertura: mapaCobertura,
     salvaguardas: {
       recomendacoesIndividualizadas: acesso.recomendacoesAtivas,
       recomendacoesSomenteCeo: true,
@@ -182,7 +186,47 @@ function resumo(tenant, usuario) {
   };
 }
 
+function fontes(tenant, usuario) {
+  exigir(tenant, usuario);
+  return repo.garantirFontesInvestimentos().map(f => ({
+    id: f.id,
+    chave: f.chave,
+    nome: f.nome,
+    categoria: f.categoria,
+    tipoAcesso: f.tipo_acesso,
+    status: f.status,
+    dominio: f.dominio,
+    atrasoMinutos: f.atraso_minutos,
+    licencaRegistrada: !!f.licenca_ref,
+    classes: j.parse(f.classes, []),
+    condicoes: f.condicoes,
+    versaoCatalogo: f.versao_catalogo,
+  }));
+}
+
+function cobertura(tenant, usuario) {
+  const lista = fontes(tenant, usuario);
+  return catalogo.CLASSES.map(c => {
+    const candidatas = lista.filter(f => f.classes.includes(c.chave));
+    const ativas = candidatas.filter(f => f.status === 'ativa');
+    const prototipo = candidatas.filter(f => f.status === 'aprovada_prototipo');
+    const manuais = candidatas.filter(f => f.status === 'manual');
+    let status = 'indisponivel';
+    if (ativas.length) status = 'ativa';
+    else if (prototipo.length) status = 'prototipo';
+    else if (manuais.length) status = 'manual';
+    return {
+      chave: c.chave,
+      nome: c.nome,
+      status,
+      fontesCandidatas: candidatas.length,
+      fontesAtivas: ativas.length,
+      fontesPrototipo: prototipo.length,
+    };
+  });
+}
+
 module.exports = {
   ErroDeAcessoInvestimentos, ligado, pareceresSolicitados, parecerJuridicoAprovado,
-  estadoPareceres, estado, exigir, conceder, revogar, mandatos, resumo,
+  estadoPareceres, estado, exigir, conceder, revogar, mandatos, fontes, cobertura, resumo,
 };

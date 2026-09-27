@@ -4,6 +4,7 @@ window.FInvestimentos = {
   async render(F) {
     const r = await F.api('GET', F.url('/investimentos/resumo'));
     const guardas = r.salvaguardas || {};
+    const cobertura = r.cobertura || [];
     const pct = (ppm) => ppm == null ? 'não definido' : `${(ppm / 10000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
     const regra = (m) => {
       if (m.chave === 'caixa') return `Mínimo de ${pct(m.limites.alocacaoMinimaPpm)} do patrimônio · resgate em até D+${m.limites.prazoLiquidezMaxDiasUteis}`;
@@ -31,6 +32,16 @@ window.FInvestimentos = {
       <div class="card" style="margin-bottom:14px">
         <h3 style="margin-top:0">Premissas da política v${F.esc(r.politicaVersao)}</h3>
         <p>A reserva operacional e emergencial é controlada separadamente. Os limites usam somente percentuais; nenhum valor patrimonial absoluto foi informado ou armazenado.</p>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="margin-top:0">Cobertura por classe</h3>
+        <p class="sub">Catálogo completo não significa dado disponível. “Protótipo” ainda não sustenta recomendação final; “manual” exige evidência fornecida e validada.</p>
+        <div class="grid">${cobertura.map(c => `
+          <div class="card">
+            <h3 style="margin-top:0">${F.esc(c.nome)}</h3>
+            <span class="badge">${F.esc(c.status)}</span>
+            <p class="sub">${F.esc(c.fontesAtivas)} ativa(s) · ${F.esc(c.fontesPrototipo)} para protótipo · ${F.esc(c.fontesCandidatas)} candidata(s)</p>
+          </div>`).join('')}</div>
       </div>
       <div class="card" style="margin-bottom:14px">
         <h3 style="margin-top:0">Salvaguardas desta fase</h3>

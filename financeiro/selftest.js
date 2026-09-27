@@ -22,6 +22,8 @@ process.env.NODE_ENV = 'development';
 process.env.FINANCE_WORKER = 'off';
 process.env.FINANCE_SECRET_KEY = '11'.repeat(32);
 process.env.FINANCE_INVESTIMENTOS = 'off';
+process.env.FINANCE_INV_RECOMENDACOES = 'off';
+process.env.FINANCE_INV_PARECER_JURIDICO = 'pendente';
 fs.mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -748,6 +750,26 @@ teste('investimentos: concessão cria a política mínima v2 sem inventar valore
   assert.ok(r.mandatos.every(m => m.limites.valoresAbsolutos === false));
   assert.ok(r.mandatos.every(m => m.limites.limitesAdicionaisPendentes === true));
   assert.ok(r.mandatos.every(m => m.limites.proibicoes.includes('ordem')));
+});
+
+teste('investimentos: catálogo cobre todas as classes sem fingir fonte ativa', () => {
+  const r = naA(() => investimentos.resumo(contaA, repo.usuarioPorId(usuarioCeo.id)));
+  assert.strictEqual(r.cobertura.length, 14);
+  assert.ok(r.cobertura.every(c => c.fontesCandidatas > 0));
+  assert.ok(r.cobertura.every(c => c.fontesAtivas === 0));
+  assert.ok(r.cobertura.some(c => c.status === 'prototipo'));
+  assert.ok(r.cobertura.some(c => c.status === 'manual'));
+});
+
+teste('investimentos: fontes bloqueadas não ganham licença nem ativação por semente', () => {
+  const lista = naA(() => investimentos.fontes(contaA, repo.usuarioPorId(usuarioCeo.id)));
+  assert.ok(lista.length >= 10);
+  const intraday = lista.find(f => f.chave === 'b3_intradiario');
+  const provedor = lista.find(f => f.chave === 'provedor_mercado');
+  assert.strictEqual(intraday.status, 'bloqueada');
+  assert.strictEqual(provedor.status, 'bloqueada');
+  assert.strictEqual(intraday.licencaRegistrada, false);
+  assert.strictEqual(provedor.licencaRegistrada, false);
 });
 
 lanca('investimentos: política recusa valor absoluto disfarçado de limite', () => {
@@ -2216,7 +2238,12 @@ testeAsync('HTTP: aba privada só aparece após flag e concessão nominal', asyn
   const resumo = await pedir('GET', '/finance/api/investimentos/resumo', { cookie: cookieA });
   assert.strictEqual(resumo.status, 200, resumo.cru);
   assert.strictEqual(resumo.corpo.mandatos.length, 3);
+  assert.strictEqual(resumo.corpo.cobertura.length, 14);
   assert.strictEqual(resumo.corpo.salvaguardas.ordens, false);
+
+  const fontes = await pedir('GET', '/finance/api/investimentos/fontes', { cookie: cookieA });
+  assert.strictEqual(fontes.status, 200, fontes.cru);
+  assert.ok(fontes.corpo.fontes.some(f => f.status === 'bloqueada'));
 
   naA(() => investimentos.revogar(contaA, usuario.id, 'fim do teste ponta a ponta'));
   process.env.FINANCE_INVESTIMENTOS = 'off';

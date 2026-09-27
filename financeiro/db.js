@@ -233,6 +233,101 @@ const MIGRACOES = [
         ON fin_inv_mandatos(tenant_id, ativo, chave);`);
     },
   },
+  {
+    // Fases 7/8, Marco 2: espinha dorsal de fontes, evidências, dupla análise
+    // e memorandos. Nenhuma tabela transmite operação ou escreve no razão.
+    nome: 'fin-0012-investimentos-cobertura-analitica',
+    aplicar() {
+      db.exec(`CREATE TABLE IF NOT EXISTS fin_inv_fontes (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        chave TEXT NOT NULL, nome TEXT NOT NULL, categoria TEXT NOT NULL,
+        tipo_acesso TEXT NOT NULL, status TEXT NOT NULL, dominio TEXT NOT NULL DEFAULT '',
+        atraso_minutos INTEGER NOT NULL DEFAULT 0, licenca_ref TEXT NOT NULL DEFAULT '',
+        classes TEXT NOT NULL DEFAULT '[]', condicoes TEXT NOT NULL DEFAULT '',
+        versao_catalogo INTEGER NOT NULL DEFAULT 1, criado_em TEXT NOT NULL,
+        criado_por TEXT NOT NULL DEFAULT '', atualizado_em TEXT NOT NULL DEFAULT '',
+        UNIQUE (tenant_id, chave),
+        CHECK (tipo_acesso IN ('publica','licenciada','manual')),
+        CHECK (status IN ('aprovada_prototipo','condicional','bloqueada','manual','ativa')),
+        CHECK (atraso_minutos >= 0)
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_fontes_status
+        ON fin_inv_fontes(tenant_id, status, chave);
+      CREATE TABLE IF NOT EXISTS fin_inv_instrumentos (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        classe TEXT NOT NULL, subclasse TEXT NOT NULL DEFAULT '', nome TEXT NOT NULL,
+        ticker TEXT NOT NULL DEFAULT '', identificadores TEXT NOT NULL DEFAULT '{}',
+        moeda TEXT NOT NULL DEFAULT '', pais TEXT NOT NULL DEFAULT '', bolsa TEXT NOT NULL DEFAULT '',
+        emissor TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'observacao',
+        metadados TEXT NOT NULL DEFAULT '{}', criado_em TEXT NOT NULL, atualizado_em TEXT NOT NULL,
+        CHECK (status IN ('observacao','ativo','inativo','sem_cobertura'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_instrumentos_classe
+        ON fin_inv_instrumentos(tenant_id, classe, status, nome);
+      CREATE TABLE IF NOT EXISTS fin_inv_evidencias (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        instrumento_id TEXT REFERENCES fin_inv_instrumentos(id) ON DELETE CASCADE,
+        fonte_id TEXT NOT NULL REFERENCES fin_inv_fontes(id), tipo TEXT NOT NULL,
+        periodo_ref TEXT NOT NULL DEFAULT '', capturado_em TEXT NOT NULL,
+        valor_minor INTEGER, escala INTEGER, unidade TEXT NOT NULL DEFAULT '',
+        moeda TEXT NOT NULL DEFAULT '', dados TEXT NOT NULL DEFAULT '{}',
+        integridade TEXT NOT NULL, url TEXT NOT NULL DEFAULT '', sha256 TEXT NOT NULL,
+        expira_em TEXT NOT NULL DEFAULT '', criado_em TEXT NOT NULL,
+        CHECK (integridade IN ('valida','atrasada','vencida','conflitante','incompleta')),
+        CHECK (escala IS NULL OR escala BETWEEN 0 AND 12)
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_evidencias_alvo
+        ON fin_inv_evidencias(tenant_id, instrumento_id, tipo, capturado_em DESC);
+      CREATE TABLE IF NOT EXISTS fin_inv_execucoes (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        tipo TEXT NOT NULL, alvo_tipo TEXT NOT NULL, alvo_id TEXT NOT NULL DEFAULT '',
+        dataset_hash TEXT NOT NULL, metodologia_versao TEXT NOT NULL,
+        prompt_versao TEXT NOT NULL DEFAULT '', status TEXT NOT NULL,
+        iniciada_em TEXT NOT NULL, concluida_em TEXT NOT NULL DEFAULT '',
+        erro TEXT NOT NULL DEFAULT '', chave_idempotencia TEXT NOT NULL,
+        CHECK (tipo IN ('radar','semanal','instrumento','carteira','imovel','leilao')),
+        CHECK (status IN ('pendente','executando','concluida','falhou','bloqueada')),
+        UNIQUE (tenant_id, chave_idempotencia)
+      );
+      CREATE TABLE IF NOT EXISTS fin_inv_resultados_motor (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        execucao_id TEXT NOT NULL REFERENCES fin_inv_execucoes(id) ON DELETE CASCADE,
+        motor TEXT NOT NULL, status TEXT NOT NULL, resultado TEXT NOT NULL DEFAULT '{}',
+        conclusao TEXT NOT NULL DEFAULT 'nao_conclusivo', confianca_ppm INTEGER NOT NULL DEFAULT 0,
+        modelo TEXT NOT NULL DEFAULT '', tokens_entrada INTEGER NOT NULL DEFAULT 0,
+        tokens_saida INTEGER NOT NULL DEFAULT 0, custo_usd_micros INTEGER NOT NULL DEFAULT 0,
+        criado_em TEXT NOT NULL, CHECK (motor IN ('quantitativo','critico_ia')),
+        CHECK (status IN ('pendente','concluido','falhou','bloqueado')),
+        CHECK (confianca_ppm BETWEEN 0 AND 1000000),
+        UNIQUE (tenant_id, execucao_id, motor)
+      );
+      CREATE TABLE IF NOT EXISTS fin_inv_conciliacoes (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        execucao_id TEXT NOT NULL REFERENCES fin_inv_execucoes(id) ON DELETE CASCADE,
+        convergencias TEXT NOT NULL DEFAULT '[]', divergencias TEXT NOT NULL DEFAULT '[]',
+        questoes_abertas TEXT NOT NULL DEFAULT '[]', recomendacao TEXT NOT NULL,
+        confianca_ppm INTEGER NOT NULL DEFAULT 0, validade_ate TEXT NOT NULL DEFAULT '',
+        criado_em TEXT NOT NULL, CHECK (recomendacao IN
+          ('comprar','manter','reduzir','vender','evitar','nao_conclusivo')),
+        CHECK (confianca_ppm BETWEEN 0 AND 1000000),
+        UNIQUE (tenant_id, execucao_id)
+      );
+      CREATE TABLE IF NOT EXISTS fin_inv_memorandos (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        execucao_id TEXT NOT NULL REFERENCES fin_inv_execucoes(id) ON DELETE CASCADE,
+        mandato_id TEXT NOT NULL REFERENCES fin_inv_mandatos(id), titulo TEXT NOT NULL,
+        resumo TEXT NOT NULL DEFAULT '', recomendacao TEXT NOT NULL, status TEXT NOT NULL,
+        cenarios TEXT NOT NULL DEFAULT '{}', riscos TEXT NOT NULL DEFAULT '[]',
+        gatilhos TEXT NOT NULL DEFAULT '[]', fontes TEXT NOT NULL DEFAULT '[]',
+        validade_ate TEXT NOT NULL, versao INTEGER NOT NULL DEFAULT 1,
+        criado_em TEXT NOT NULL, criado_por TEXT NOT NULL DEFAULT '',
+        CHECK (recomendacao IN ('comprar','manter','reduzir','vender','evitar','nao_conclusivo')),
+        CHECK (status IN ('rascunho','aguardando_ceo','aprovado','rejeitado','adiado','vencido'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_memorandos_status
+        ON fin_inv_memorandos(tenant_id, status, validade_ate);`);
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {
