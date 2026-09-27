@@ -166,6 +166,45 @@ services:
         sync: false
 
   # ---------------------------------------------------------------------
+  # Villela Finance Market Worker: parser isolado de arquivos CVM/SEC.
+  # Nao abre nem monta o SQLite financeiro. O disco guarda apenas staging;
+  # fatos normalizados permanecem no R2 e metadados no Postgres dedicado.
+  # ---------------------------------------------------------------------
+  - type: worker
+    name: villela-finance-market-worker
+    runtime: node
+    plan: 0.5c-512mb
+    region: virginia
+    buildCommand: npm install
+    startCommand: npm run finance:market-worker
+    maxShutdownDelaySeconds: 300
+    disk:
+      name: finance-market-staging
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: FINANCE_INV_PARSE_WORKER
+        value: "off"
+      - key: FINANCE_MARKET_DATABASE_URL
+        fromDatabase:
+          name: villela-finance-market-db
+          property: connectionString
+      - key: FINANCE_INV_WORK_DIR
+        value: /var/data/finance-market
+      - key: FINANCE_INV_NORM_PREFIXO
+        value: financeiro/investimentos/normalizado/
+      - key: FINANCE_S3_ENDPOINT
+        sync: false
+      - key: FINANCE_S3_BUCKET
+        sync: false
+      - key: FINANCE_S3_KEY
+        sync: false
+      - key: FINANCE_S3_SECRET
+        sync: false
+      - key: FINANCE_S3_REGION
+        value: auto
+
+  # ---------------------------------------------------------------------
   # NAO existe `music-worker` como servico separado — e nao e esquecimento.
   #
   # No Render, "o disco de um servico NAO e acessivel por outro servico"
@@ -182,3 +221,13 @@ services:
   # TRAVADA no codigo: enfileirar nela lanca erro em vez de deixar o job
   # apodrecendo pendente. Ver docs/music/DECISIONS/ADR-0006.
   # ---------------------------------------------------------------------
+
+databases:
+  - name: villela-finance-market-db
+    plan: 0.1c-256mb
+    region: virginia
+    databaseName: villela_finance_market
+    user: villela_finance_market
+    postgresMajorVersion: "18"
+    diskSizeGB: 1
+    ipAllowList: []

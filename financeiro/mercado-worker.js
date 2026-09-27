@@ -166,6 +166,14 @@ async function executarJob(job, { db, cfg, storage = storagePadrao, fetchImpl = 
 async function iniciar() {
   if (!ligado()) {
     console.log('[finance-market-worker] DESLIGADO (FINANCE_INV_PARSE_WORKER=off).');
+    // Background workers do Render precisam manter um processo vivo. Ficar
+    // dormente evita um ciclo de restart enquanto o portão operacional está
+    // fechado. A mudança da env no painel provoca novo deploy/restart.
+    await new Promise(resolve => {
+      const concluir = () => resolve();
+      process.once('SIGTERM', concluir);
+      process.once('SIGINT', concluir);
+    });
     return;
   }
   if (!mercadoDbModulo.configurado()) throw new Error('FINANCE_MARKET_DATABASE_URL não configurada.');
