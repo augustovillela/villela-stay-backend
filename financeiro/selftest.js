@@ -1313,6 +1313,18 @@ teste('investimentos: preflight registra apenas a categoria HTTP sanitizada', ()
   assert.strictEqual(mercadoPreflight.categoriaErro({ status: 404, message: 'segredo' }), 'nao_encontrado');
 });
 
+testeAsync('investimentos: corpo R2 ja fechado nao transforma HTTP 200 em falha', async () => {
+  const r = await mercadoPreflight.r2({
+    config: { endpoint: 'https://r2.test', bucket: 'b', key: 'k', secret: 's', region: 'auto' },
+    fetchImpl: async () => ({
+      ok: true, status: 200,
+      body: { cancel: async () => { throw new TypeError('Invalid state: stream is already closed'); } },
+    }),
+  });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.categoria, 'ok');
+});
+
 testeAsync('investimentos: boot automatico publica apenas o resumo sanitizado', async () => {
   const linhas = [];
   const r = await mercadoWorker.preflightAutomatico({

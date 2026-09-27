@@ -70,7 +70,9 @@ async function r2({ config, storage = storagePadrao, fetchImpl = global.fetch,
     }
     // O preflight precisa apenas do status autenticado. Cancela o pequeno XML
     // de listagem sem ler nem registrar nomes de objetos.
-    if (resposta.body && typeof resposta.body.cancel === 'function') await resposta.body.cancel();
+    if (resposta.body && typeof resposta.body.cancel === 'function') {
+      try { await resposta.body.cancel(); } catch { /* o fluxo pequeno pode ja estar fechado */ }
+    }
     return { ok: true, latencia_ms: Math.max(0, Date.now() - inicio), categoria: 'ok' };
   } catch (e) {
     return resultadoErro(inicio, e);
