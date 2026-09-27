@@ -56,13 +56,20 @@ async function r2({ config, storage = storagePadrao, fetchImpl = global.fetch,
   const controlador = new AbortController();
   const timer = setTimeout(() => controlador.abort(), timeoutMs);
   try {
-    const url = storage.presignS3(config, 'HEAD', null, 60);
-    const resposta = await fetchImpl(url, { method: 'HEAD', redirect: 'manual', signal: controlador.signal });
+    const prefixo = String(process.env.FINANCE_INV_NORM_PREFIXO || 'financeiro/investimentos/normalizado/')
+      .replace(/^\/+/, '');
+    const url = storage.presignS3(config, 'GET', null, 60, {
+      query: { 'list-type': '2', 'max-keys': '1', prefix: `${prefixo}__preflight__/` },
+    });
+    const resposta = await fetchImpl(url, { method: 'GET', redirect: 'manual', signal: controlador.signal });
     if (!resposta.ok) {
       const erro = new Error('bucket_indisponivel');
       erro.status = resposta.status;
       throw erro;
     }
+    // O preflight precisa apenas do status autenticado. Cancela o pequeno XML
+    // de listagem sem ler nem registrar nomes de objetos.
+    if (resposta.body && typeof resposta.body.cancel === 'function') await resposta.body.cancel();
     return { ok: true, latencia_ms: Math.max(0, Date.now() - inicio), categoria: 'ok' };
   } catch (e) {
     return resultadoErro(inicio, e);

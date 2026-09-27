@@ -1253,8 +1253,8 @@ teste('investimentos: banco compartilhado contém somente catálogo técnico de 
   assert.strictEqual(mercadoWorker.ligado(), false);
 });
 
-testeAsync('investimentos: preflight usa somente SELECT 1 e HEAD na raiz canonica do bucket', async () => {
-  const visto = { sql: '', encerrou: false, metodo: '', url: '' };
+testeAsync('investimentos: preflight usa SELECT 1 e lista somente um metadado no bucket', async () => {
+  const visto = { sql: '', encerrou: false, metodo: '', url: '', leuCorpo: false };
   const poolFactory = () => ({
     query: async sql => { visto.sql = sql; return { rows: [{ ok: 1 }] }; },
     end: async () => { visto.encerrou = true; },
@@ -1262,7 +1262,11 @@ testeAsync('investimentos: preflight usa somente SELECT 1 e HEAD na raiz canonic
   const fetchImpl = async (url, opts) => {
     visto.metodo = opts.method;
     visto.url = url;
-    return { ok: true, status: 200 };
+    return {
+      ok: true, status: 200,
+      body: { cancel: async () => {} },
+      text: async () => { visto.leuCorpo = true; return '<ListBucketResult />'; },
+    };
   };
   const configS3 = {
     endpoint: 'https://conta.r2.cloudflarestorage.com', bucket: 'bucket-teste',
@@ -1275,9 +1279,13 @@ testeAsync('investimentos: preflight usa somente SELECT 1 e HEAD na raiz canonic
   });
   assert.strictEqual(r.ok, true);
   assert.strictEqual(visto.sql, 'SELECT 1 AS ok');
-  assert.strictEqual(visto.metodo, 'HEAD');
+  assert.strictEqual(visto.metodo, 'GET');
   assert.match(visto.url, /^https:\/\/conta\.r2\.cloudflarestorage\.com\/bucket-teste\?/);
   assert.doesNotMatch(visto.url, /\/bucket-teste\/\?/);
+  assert.match(visto.url, /list-type=2/);
+  assert.match(visto.url, /max-keys=1/);
+  assert.match(visto.url, /prefix=financeiro%2Finvestimentos%2Fnormalizado%2F__preflight__%2F/);
+  assert.strictEqual(visto.leuCorpo, false);
   assert.strictEqual(visto.encerrou, true);
 });
 
