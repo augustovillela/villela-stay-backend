@@ -328,6 +328,25 @@ const MIGRACOES = [
         ON fin_inv_memorandos(tenant_id, status, validade_ate);`);
     },
   },
+  {
+    // Histórico das sondagens oficiais. Sondar prova disponibilidade e
+    // contrato de resposta, mas não ativa a fonte nem cria recomendação.
+    nome: 'fin-0013-investimentos-coletas-fontes',
+    aplicar() {
+      db.exec(`CREATE TABLE IF NOT EXISTS fin_inv_coletas (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        fonte_id TEXT NOT NULL REFERENCES fin_inv_fontes(id) ON DELETE CASCADE,
+        status TEXT NOT NULL, iniciada_em TEXT NOT NULL, concluida_em TEXT NOT NULL,
+        registros INTEGER NOT NULL DEFAULT 0, dataset_hash TEXT NOT NULL DEFAULT '',
+        resumo TEXT NOT NULL DEFAULT '{}', erro TEXT NOT NULL DEFAULT '',
+        criado_por TEXT NOT NULL DEFAULT '',
+        CHECK (status IN ('sucesso','falhou','bloqueada')),
+        CHECK (registros >= 0)
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_coletas_fonte
+        ON fin_inv_coletas(tenant_id, fonte_id, iniciada_em DESC);`);
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

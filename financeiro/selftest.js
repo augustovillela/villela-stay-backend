@@ -45,6 +45,7 @@ const planoContas = require('./plano-contas');
 const contasSvc = require('./contas');
 const entitlements = require('./entitlements');
 const rbac = require('./rbac');
+const fontesInvestimentos = require('./investimentos-fontes');
 const investimentos = require('./investimentos-acesso');
 const politicaInvestimentos = require('./investimentos-politica');
 const diario = require('./diario');
@@ -770,6 +771,69 @@ teste('investimentos: fontes bloqueadas não ganham licença nem ativação por 
   assert.strictEqual(provedor.status, 'bloqueada');
   assert.strictEqual(intraday.licencaRegistrada, false);
   assert.strictEqual(provedor.licencaRegistrada, false);
+});
+
+testeAsync('investimentos: conectores oficiais validam contratos sem ativar fontes', async () => {
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  naA(() => investimentos.conceder(contaA, usuarioCeo.id, 'teste dos conectores oficiais'));
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const resposta = (obj) => ({
+    ok: true, status: 200, headers: { get: () => null },
+    text: async () => JSON.stringify(obj),
+  });
+  const bcb = await naA(() => fontesInvestimentos.sondar(contaA, usuario, 'bcb_dados_abertos', {
+    fetchImpl: async () => resposta([{ data: '26/09/2026', valor: '15.00' }]),
+  }));
+  assert.strictEqual(bcb.status, 'sucesso');
+  assert.strictEqual(bcb.conjunto, 'SGS 432');
+
+  const cvm = await naA(() => fontesInvestimentos.sondar(contaA, usuario, 'cvm_dados_abertos', {
+    fetchImpl: async () => resposta({ success: true, result: { count: 54, results: [{ name: 'cia_aberta-cad' }] } }),
+  }));
+  assert.strictEqual(cvm.registros, 54);
+
+  process.env.FINANCE_INV_SEC_USER_AGENT = 'VillelaFinance testes@villela.invalid';
+  const sec = await naA(() => fontesInvestimentos.sondar(contaA, usuario, 'sec_edgar', {
+    fetchImpl: async () => resposta({
+      cik: '320193', name: 'Exemplo', filings: { recent: { accessionNumber: ['1', '2'] } },
+    }),
+  }));
+  assert.strictEqual(sec.registros, 2);
+  delete process.env.FINANCE_INV_SEC_USER_AGENT;
+
+  const depois = naA(() => investimentos.fontes(contaA, usuario));
+  assert.ok(depois.filter(f => ['bcb_dados_abertos', 'cvm_dados_abertos', 'sec_edgar'].includes(f.chave))
+    .every(f => f.status === 'aprovada_prototipo'));
+  const historico = naA(() => repo.ultimasColetasInvestimentos());
+  assert.strictEqual(historico.filter(c => c.status === 'sucesso').length, 3);
+});
+
+testeAsync('investimentos: fonte bloqueada não pode ser sondada', async () => {
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  await assert.rejects(
+    () => naA(() => fontesInvestimentos.sondar(contaA, usuario, 'b3_intradiario', {
+      fetchImpl: async () => { throw new Error('não deveria chamar'); },
+    })),
+    /não possui conector|não está aprovada/i);
+  process.env.FINANCE_INVESTIMENTOS = 'off';
+});
+
+testeAsync('investimentos: conector recusa redirecionamento', async () => {
+  const conector = fontesInvestimentos.CONECTORES.bcb_dados_abertos;
+  await assert.rejects(() => fontesInvestimentos.buscarJson(conector, async () => ({
+    ok: false, status: 302, headers: { get: () => null }, text: async () => '',
+  })), /redirecionar/i);
+});
+
+testeAsync('investimentos: conector recusa resposta acima do limite antes de ler', async () => {
+  const conector = fontesInvestimentos.CONECTORES.cvm_dados_abertos;
+  let leu = false;
+  await assert.rejects(() => fontesInvestimentos.buscarJson(conector, async () => ({
+    ok: true, status: 200,
+    headers: { get: (nome) => nome === 'content-length' ? String(fontesInvestimentos.MAX_BYTES + 1) : null },
+    text: async () => { leu = true; return '{}'; },
+  })), /maior que o limite/i);
+  assert.strictEqual(leu, false);
 });
 
 lanca('investimentos: política recusa valor absoluto disfarçado de limite', () => {

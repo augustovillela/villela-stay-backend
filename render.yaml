@@ -71,6 +71,10 @@ services:
         value: "off"
       - key: FINANCE_INV_PARECER_JURIDICO
         value: "pendente"
+      # Identificacao obrigatoria para acesso automatizado ao data.sec.gov.
+      # Formato sugerido: "VillelaFinance contato@dominio.com".
+      - key: FINANCE_INV_SEC_USER_AGENT
+        sync: false
       # Sincronizacao automatica da Stays, em minutos. DESLIGADA (ausente ou
       # 0): o adaptador so roda por chamada de rota. Ligar so DEPOIS de rodar
       # a previa (dryRun) e conferir o que ele pretende lancar.

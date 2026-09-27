@@ -893,6 +893,10 @@ const listarFontesInvestimentos = () => q(
       WHEN 'ativa' THEN 1 WHEN 'aprovada_prototipo' THEN 2 WHEN 'manual' THEN 3
       WHEN 'condicional' THEN 4 ELSE 5 END, nome`, {});
 
+const fonteInvestimentosPorChave = (chave) => um(
+  'SELECT * FROM fin_inv_fontes WHERE tenant_id = :tenant AND chave = :chave',
+  { chave });
+
 const garantirFontesInvestimentos = () => {
   catalogoInvestimentos.validar();
   const agora = nowISO();
@@ -931,6 +935,27 @@ const garantirFontesInvestimentos = () => {
   return listarFontesInvestimentos();
 };
 
+const registrarColetaInvestimentos = (d) => {
+  const id = novoId();
+  exec(`INSERT INTO fin_inv_coletas
+          (id, tenant_id, fonte_id, status, iniciada_em, concluida_em, registros,
+           dataset_hash, resumo, erro, criado_por)
+        VALUES (:id, :tenant, :fonte, :status, :inicio, :fim, :registros,
+                :hash, :resumo, :erro, :por)`, {
+    id, fonte: d.fonteId, status: d.status, inicio: d.iniciadaEm,
+    fim: d.concluidaEm, registros: d.registros || 0, hash: d.datasetHash || '',
+    resumo: j.str(d.resumo || {}), erro: d.erro || '', por: tenancy.userAtual(),
+  });
+  return um('SELECT * FROM fin_inv_coletas WHERE tenant_id = :tenant AND id = :id', { id });
+};
+
+const ultimasColetasInvestimentos = () => q(
+  `SELECT c.*, f.chave AS fonte_chave, f.nome AS fonte_nome
+     FROM fin_inv_coletas c JOIN fin_inv_fontes f
+       ON f.tenant_id = c.tenant_id AND f.id = c.fonte_id
+    WHERE c.tenant_id = :tenant
+    ORDER BY c.iniciada_em DESC, c.id DESC LIMIT 100`, {});
+
 module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
@@ -961,7 +986,8 @@ module.exports = {
   concederAcessoInvestimentos, revogarAcessoInvestimentos,
   configInvestimentos, garantirConfigInvestimentos,
   listarMandatosInvestimentos, garantirMandatosInvestimentos,
-  listarFontesInvestimentos, garantirFontesInvestimentos,
+  listarFontesInvestimentos, fonteInvestimentosPorChave, garantirFontesInvestimentos,
+  registrarColetaInvestimentos, ultimasColetasInvestimentos,
   criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,
   assinaturaPorRefExterna, assinaturasAtivasDaPlataforma,
   criarInvoice, invoice, listarInvoices, marcarInvoicePaga, invoicePorRefExterna,
