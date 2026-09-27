@@ -917,6 +917,31 @@ async function rodar({ t, secao, req, assert, PROFESSORES }) {
     }
   });
 
+  await t('detectarHz ACHA a nota de um som de verdade (não só existe)', async () => {
+    // O teste acima só via o NOME da função — e ela devolveu -1 para
+    // qualquer som durante semanas (laço sem break). Aqui o áudio servido
+    // roda de fato, com tons sintéticos de voz e corda, em volume baixo e alto.
+    const vm = require('node:vm');
+    const audio = await req('GET', '/music/audio.js', { cru: true });
+    const janela = { addEventListener() {} };
+    vm.runInNewContext(audio.texto, { window: janela, Float32Array, Math });
+    const detectar = janela.MusiqueAudio.detectarHz;
+    const taxa = 48000, N = 4096;
+    for (const amp of [0.02, 0.3, 0.9]) {
+      for (const f of [110, 220, 440, 880]) {
+        const b = new Float32Array(N);
+        for (let i = 0; i < N; i++) {
+          b[i] = amp * Math.sin(2 * Math.PI * f * i / taxa) + 0.5 * amp * Math.sin(2 * Math.PI * 2 * f * i / taxa);
+        }
+        const r = detectar(b, taxa);
+        const cents = 1200 * Math.log2(r.hz / f);
+        assert.ok(r.hz > 0 && Math.abs(cents) < 5, `amp ${amp}, ${f} Hz → ${r.hz}`);
+      }
+    }
+    // silêncio continua sendo silêncio
+    assert.equal(detectar(new Float32Array(N), taxa).hz, -1);
+  });
+
   await t('o app não desenha a pauta por conta própria', async () => {
     const app = await req('GET', '/music/app.js', { cru: true });
     assert.ok(!/GRAUS\s*=\s*\[0, 0, 1/.test(app.texto),

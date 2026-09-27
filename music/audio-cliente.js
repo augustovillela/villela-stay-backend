@@ -110,9 +110,13 @@ const JS = `
     rms = Math.sqrt(rms / N);
     if (rms < 0.008) return { hz: -1, rms: rms, confianca: 0 };
 
+    // Apara as pontas até o PRIMEIRO ponto quieto de cada lado. Sem o
+    // break, o laço segue até o meio do buffer, sobram ~2 amostras e a
+    // função devolve -1 para QUALQUER som: foi assim que o afinador e o
+    // canto ficaram mudos em produção (27/09/2026).
     var limiar = 0.2, r1 = 0, r2 = N - 1;
-    for (i = 0; i < N / 2; i++) if (Math.abs(buf[i]) < limiar) r1 = i;
-    for (i = 1; i < N / 2; i++) if (Math.abs(buf[N - i]) < limiar) r2 = N - i;
+    for (i = 0; i < N / 2; i++) if (Math.abs(buf[i]) < limiar) { r1 = i; break; }
+    for (i = 1; i < N / 2; i++) if (Math.abs(buf[N - i]) < limiar) { r2 = N - i; break; }
     var b = buf.slice(r1, r2), M = b.length;
     if (M < 512) return { hz: -1, rms: rms, confianca: 0 };
 
