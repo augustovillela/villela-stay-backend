@@ -2,8 +2,8 @@
 // Fundação do pipeline integral de mercado (CVM + SEC).
 //
 // Esta fase inventaria os arquivos e valida contratos. Não existe função
-// de download integral exposta por HTTP: arquivos grandes serão tratados
-// por worker dedicado e armazenamento de objetos em etapa posterior.
+// de download integral exposta por HTTP: arquivos grandes são tratados
+// somente pelo worker dedicado, desligado por padrão.
 // =====================================================================
 'use strict';
 const crypto = require('crypto');
@@ -313,7 +313,7 @@ function estado(tenant, usuario, anoAtual) {
 
 module.exports = {
   TIMEOUT_MS, LIMITE_WEB_BYTES, LIMITES_ZIP, ErroIngestaoMercado,
-  plano, destinoPermitido, cabecalhoRemoto, inventariar, validarEntradasZip,
+  plano, destinoPermitido, userAgent, cabecalhoRemoto, inventariar, validarEntradasZip,
   parseCsvLinha, objetoCsv, identidadeCvm, identidadeSec, fatosSec, fatoCvm,
   registrarIdentidade, estado,
 };

@@ -1032,6 +1032,39 @@ const listarCargasMercado = () => q(
        ON f.tenant_id = c.tenant_id AND f.id = c.fonte_id
     WHERE c.tenant_id = :tenant ORDER BY c.iniciada_em DESC, c.id DESC LIMIT 500`, {});
 
+const cargaMercado = (id) => um(
+  'SELECT * FROM fin_inv_cargas_mercado WHERE tenant_id = :tenant AND id = :id', { id });
+
+const TRANSICOES_CARGA_MERCADO = Object.freeze({
+  aguardando_capacidade: new Set(['baixando', 'bloqueada']),
+  pronta: new Set(['baixando', 'bloqueada']),
+  baixando: new Set(['baixando', 'validando', 'falhou', 'bloqueada']),
+  validando: new Set(['concluida', 'falhou', 'bloqueada']),
+  falhou: new Set(['baixando', 'bloqueada']),
+});
+
+const atualizarCargaMercado = (id, d) => {
+  const atual = cargaMercado(id);
+  if (!atual) throw new Error('Carga de mercado não encontrada.');
+  const status = String(d.status || atual.status);
+  if (status !== atual.status && !(TRANSICOES_CARGA_MERCADO[atual.status] || new Set()).has(status)) {
+    throw new Error(`Transição de carga inválida: ${atual.status} -> ${status}.`);
+  }
+  exec(`UPDATE fin_inv_cargas_mercado SET status = :status, checkpoint = :checkpoint,
+          sha256 = :sha, objeto_ref = :objeto, resumo = :resumo,
+          concluida_em = :fim, erro = :erro
+        WHERE tenant_id = :tenant AND id = :id`, {
+    id, status,
+    checkpoint: d.checkpoint === undefined ? atual.checkpoint : j.str(d.checkpoint),
+    sha: d.sha256 === undefined ? atual.sha256 : String(d.sha256 || ''),
+    objeto: d.objetoRef === undefined ? atual.objeto_ref : String(d.objetoRef || ''),
+    resumo: d.resumo === undefined ? atual.resumo : j.str(d.resumo),
+    fim: d.concluidaEm === undefined ? atual.concluida_em : String(d.concluidaEm || ''),
+    erro: d.erro === undefined ? atual.erro : String(d.erro || '').slice(0, 1000),
+  });
+  return cargaMercado(id);
+};
+
 const instrumentoPorIdentificador = (sistema, valor) => um(
   `SELECT i.* FROM fin_inv_identificadores x JOIN fin_inv_instrumentos i
      ON i.tenant_id = x.tenant_id AND i.id = x.instrumento_id
@@ -1108,7 +1141,7 @@ module.exports = {
   listarFontesInvestimentos, fonteInvestimentosPorChave, garantirFontesInvestimentos,
   registrarColetaInvestimentos, ultimasColetasInvestimentos,
   registrarEvidenciaInvestimentos, listarEvidenciasInvestimentos,
-  registrarCargaMercado, listarCargasMercado,
+  registrarCargaMercado, listarCargasMercado, cargaMercado, atualizarCargaMercado,
   instrumentoPorIdentificador, registrarInstrumentoMercado,
   criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,
   assinaturaPorRefExterna, assinaturasAtivasDaPlataforma,

@@ -17,11 +17,11 @@ const sha256hex = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const hmac = (k, m) => crypto.createHmac('sha256', k).update(m).digest();
 
 // cfg = { endpoint, bucket, key, secret, region }
-function presignS3(cfg, metodo, chave, segundos, { mime } = {}) {
+function presignS3(cfg, metodo, chave, segundos, { mime, query: extras = {}, agora: agoraInformado } = {}) {
   const url = new URL(cfg.endpoint);
   const host = url.host;
   const caminho = `/${cfg.bucket}/${String(chave).split('/').map(encodeURIComponent).join('/')}`;
-  const agora = new Date();
+  const agora = agoraInformado ? new Date(agoraInformado) : new Date();
   const amzDate = agora.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
   const dataCurta = amzDate.slice(0, 8);
   const escopo = `${dataCurta}/${cfg.region || 'auto'}/s3/aws4_request`;
@@ -32,7 +32,12 @@ function presignS3(cfg, metodo, chave, segundos, { mime } = {}) {
     ['X-Amz-Expires', String(Math.max(1, Math.min(604800, segundos || 600)))],
     ['X-Amz-SignedHeaders', 'host'],
   ];
-  const query = q.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).sort().join('&');
+  for (const [k, v] of Object.entries(extras || {})) {
+    if (v !== undefined && v !== null) q.push([String(k), String(v)]);
+  }
+  const query = q.map(([k, v]) => [encodeURIComponent(k), encodeURIComponent(v)])
+    .sort(([ak, av], [bk, bv]) => ak < bk ? -1 : ak > bk ? 1 : av < bv ? -1 : av > bv ? 1 : 0)
+    .map(([k, v]) => `${k}=${v}`).join('&');
   const reqCanonica = [metodo, caminho, query, `host:${host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
   const aAssinar = ['AWS4-HMAC-SHA256', amzDate, escopo, sha256hex(reqCanonica)].join('\n');
   const kData = hmac('AWS4' + cfg.secret, dataCurta);
@@ -55,4 +60,63 @@ async function s3Existe(cfg, chave) {
   return r.ok ? { tamanho: parseInt(r.headers.get('content-length'), 10) || 0 } : null;
 }
 
-module.exports = { presignS3, s3Put, s3Existe };
+const xmlEsc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+const xmlUnesc = (v) => String(v).replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+const tagXml = (xml, tag) => {
+  const m = String(xml).match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+  return m ? xmlUnesc(m[1].trim()) : '';
+};
+
+async function s3MultipartIniciar(cfg, chave, mime, fetchImpl = global.fetch) {
+  const url = presignS3(cfg, 'POST', chave, 300, { query: { uploads: '' } });
+  const r = await fetchImpl(url, {
+    method: 'POST', headers: { 'Content-Type': mime || 'application/octet-stream' },
+  });
+  const corpo = await r.text();
+  const uploadId = tagXml(corpo, 'UploadId');
+  if (!r.ok || !uploadId) throw new Error(`Storage recusou o início multipart (${r.status}).`);
+  return { uploadId };
+}
+
+async function s3MultipartParte(cfg, chave, uploadId, numero, buffer, fetchImpl = global.fetch) {
+  if (!Number.isInteger(numero) || numero < 1 || numero > 10000) throw new Error('Número de parte S3 inválido.');
+  const corpo = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+  const url = presignS3(cfg, 'PUT', chave, 900, { query: { partNumber: numero, uploadId } });
+  const r = await fetchImpl(url, {
+    method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(corpo.length) }, body: corpo,
+  });
+  const etag = String(r.headers.get('etag') || '').trim();
+  if (!r.ok || !etag) throw new Error(`Storage recusou a parte multipart (${r.status}).`);
+  return { numero, etag };
+}
+
+async function s3MultipartCompletar(cfg, chave, uploadId, partes, fetchImpl = global.fetch) {
+  if (!Array.isArray(partes) || !partes.length) throw new Error('Conclusão multipart exige partes.');
+  if (partes.some((p, i) => !Number.isInteger(p.numero) || p.numero !== i + 1 || !String(p.etag || ''))) {
+    throw new Error('Lista de partes multipart inválida.');
+  }
+  const corpo = '<CompleteMultipartUpload>' + partes.map(p =>
+    `<Part><PartNumber>${Number(p.numero)}</PartNumber><ETag>${xmlEsc(p.etag)}</ETag></Part>`
+  ).join('') + '</CompleteMultipartUpload>';
+  const url = presignS3(cfg, 'POST', chave, 900, { query: { uploadId } });
+  const r = await fetchImpl(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/xml', 'Content-Length': String(Buffer.byteLength(corpo)) }, body: corpo,
+  });
+  const resposta = await r.text();
+  if (!r.ok || /<Error[ >]/i.test(resposta)) throw new Error(`Storage recusou a conclusão multipart (${r.status}).`);
+  return { etag: tagXml(resposta, 'ETag') };
+}
+
+async function s3MultipartAbortar(cfg, chave, uploadId, fetchImpl = global.fetch) {
+  const url = presignS3(cfg, 'DELETE', chave, 300, { query: { uploadId } });
+  const r = await fetchImpl(url, { method: 'DELETE' });
+  if (!r.ok && r.status !== 404) throw new Error(`Storage recusou o cancelamento multipart (${r.status}).`);
+  return true;
+}
+
+module.exports = {
+  presignS3, s3Put, s3Existe, s3MultipartIniciar, s3MultipartParte,
+  s3MultipartCompletar, s3MultipartAbortar,
+};

@@ -75,6 +75,12 @@ services:
       # Formato sugerido: "VillelaFinance contato@dominio.com".
       - key: FINANCE_INV_SEC_USER_AGENT
         sync: false
+      # Worker de arquivos integrais CVM/SEC. Não é acionado por rota web e
+      # permanece desligado até homologação operacional explícita.
+      - key: FINANCE_INV_BULK_WORKER
+        value: "off"
+      - key: FINANCE_INV_S3_PREFIXO
+        value: financeiro/investimentos/mercado/
       # Sincronizacao automatica da Stays, em minutos. DESLIGADA (ausente ou
       # 0): o adaptador so roda por chamada de rota. Ligar so DEPOIS de rodar
       # a previa (dryRun) e conferir o que ele pretende lancar.

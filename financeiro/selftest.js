@@ -16,6 +16,7 @@
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const cryptoNode = require('crypto');
 
 process.env.DATA_DIR = path.join(os.tmpdir(), 'finance-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
@@ -48,6 +49,8 @@ const rbac = require('./rbac');
 const fontesInvestimentos = require('./investimentos-fontes');
 const evidenciasInvestimentos = require('./investimentos-evidencias');
 const ingestaoInvestimentos = require('./investimentos-ingestao');
+const workerInvestimentos = require('./investimentos-worker');
+const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
 const politicaInvestimentos = require('./investimentos-politica');
 const diario = require('./diario');
@@ -1042,6 +1045,164 @@ teste('investimentos: contrato CVM preserva conta, versão, período e escala or
   assert.strictEqual(fato.protocolo, '2');
   assert.strictEqual(fato.valorTexto, '123456');
   assert.strictEqual(fato.contexto.escalaMoeda, 'MIL');
+});
+
+teste('investimentos: assinatura multipart preserva parâmetros na URL canônica', () => {
+  const url = new URL(storageS3.presignS3({
+    endpoint: 'https://conta.r2.cloudflarestorage.com', bucket: 'brutos',
+    key: 'AKIA_TESTE', secret: 'segredo', region: 'auto',
+  }, 'PUT', 'pasta/arquivo.zip', 300, {
+    query: { uploadId: 'id+com/barra=', partNumber: 7 }, agora: '2026-09-27T12:00:00.000Z',
+  }));
+  assert.strictEqual(url.searchParams.get('uploadId'), 'id+com/barra=');
+  assert.strictEqual(url.searchParams.get('partNumber'), '7');
+  assert.ok(url.searchParams.get('X-Amz-Signature'));
+});
+
+function respostaDeBytes(bytes, opcoes = {}) {
+  const inicio = Number(opcoes.inicio || 0);
+  const fim = opcoes.fim === undefined ? bytes.length - 1 : Number(opcoes.fim);
+  const fatia = bytes.subarray(inicio, fim + 1);
+  return {
+    ok: true, status: opcoes.parcial ? 206 : 200,
+    headers: { get: n => ({
+      etag: opcoes.etag || '"worker-v1"',
+      'last-modified': 'Sun, 27 Sep 2026 10:00:00 GMT',
+      'content-length': String(fatia.length),
+      'content-range': opcoes.parcial ? `bytes ${inicio}-${fim}/${bytes.length}` : '',
+    }[String(n).toLowerCase()] || null) },
+    body: (async function* () {
+      for (let i = 0; i < fatia.length; i += 3) yield fatia.subarray(i, i + 3);
+    }()),
+  };
+}
+
+function fonteFaixas(bytes, chamadas, etag = '"worker-v1"') {
+  return async (_url, opcoes) => {
+    const range = opcoes.headers.range || '';
+    chamadas.push({ range, ifMatch: opcoes.headers['if-match'] || '' });
+    if (!range) return respostaDeBytes(bytes, { etag });
+    const m = range.match(/^bytes=(\d+)-(\d*)$/);
+    assert.ok(m, `faixa inválida: ${range}`);
+    return respostaDeBytes(bytes, {
+      inicio: Number(m[1]), fim: m[2] ? Number(m[2]) : undefined, parcial: true, etag,
+    });
+  };
+}
+
+function storageMultipartFake({ falharUmaVezNaParte = 0 } = {}) {
+  const estado = { inicios: 0, partes: [], conclusoes: 0, abortos: 0, falhou: false };
+  return {
+    estado,
+    s3MultipartIniciar: async () => ({ uploadId: `upload-${++estado.inicios}` }),
+    s3MultipartParte: async (_cfg, _objeto, _upload, numero, buffer) => {
+      if (numero === falharUmaVezNaParte && !estado.falhou) {
+        estado.falhou = true;
+        throw new Error('indisponibilidade transitória do R2');
+      }
+      estado.partes.push({ numero, bytes: Buffer.from(buffer) });
+      return { numero, etag: `"parte-${numero}"` };
+    },
+    s3MultipartCompletar: async () => { estado.conclusoes++; return { etag: '"final"' }; },
+    s3MultipartAbortar: async () => { estado.abortos++; return true; },
+  };
+}
+
+function novaCargaWorker(chave, tamanho) {
+  return naA(() => {
+    const fonte = repo.fonteInvestimentosPorChave('cvm_dados_abertos');
+    return repo.registrarCargaMercado({
+      fonteId: fonte.id, conjunto: 'cvm_dfp_2025', jurisdicao: 'BR', formato: 'zip',
+      modo: 'inventario', status: 'pronta',
+      url: 'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip',
+      chaveIdempotencia: chave, etag: '"worker-v1"',
+      ultimaModificacao: 'Sun, 27 Sep 2026 10:00:00 GMT', tamanhoBytes: tamanho,
+      iniciadaEm: new Date().toISOString(), resumo: { teste: true },
+    });
+  });
+}
+
+testeAsync('investimentos: worker integral nasce desligado e não toca rede nem R2', async () => {
+  delete process.env.FINANCE_INV_BULK_WORKER;
+  const carga = novaCargaWorker('worker-desligado', 3);
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  let tocou = false;
+  await assert.rejects(() => naA(() => workerInvestimentos.executarCarga(contaA, usuario, carga.id, {
+    fetchImpl: async () => { tocou = true; }, storage: storageMultipartFake(),
+    configS3: { endpoint: 'https://r2.test', bucket: 'b', key: 'k', secret: 's', region: 'auto' },
+    tamanhoParte: 2, permitirPartePequenaTeste: true,
+  })), /desligado/i);
+  assert.strictEqual(tocou, false);
+});
+
+testeAsync('investimentos: worker transmite em partes e só conclui após hash e tamanho', async () => {
+  process.env.FINANCE_INV_BULK_WORKER = 'on';
+  const bytes = Buffer.from('arquivo-cvm-completo');
+  const carga = novaCargaWorker('worker-completo', bytes.length);
+  const chamadas = [];
+  const storage = storageMultipartFake();
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const final = await naA(() => workerInvestimentos.executarCarga(contaA, usuario, carga.id, {
+    fetchImpl: fonteFaixas(bytes, chamadas), storage,
+    configS3: { endpoint: 'https://r2.test', bucket: 'brutos', key: 'k', secret: 's', region: 'auto' },
+    tamanhoParte: 5, permitirPartePequenaTeste: true,
+  }));
+  assert.strictEqual(final.status, 'concluida');
+  assert.strictEqual(final.sha256, cryptoNode.createHash('sha256').update(bytes).digest('hex'));
+  assert.strictEqual(storage.estado.conclusoes, 1);
+  assert.strictEqual(Buffer.concat(storage.estado.partes.map(p => p.bytes)).toString(), bytes.toString());
+  assert.deepStrictEqual(chamadas.map(x => x.range), ['']);
+  assert.strictEqual(JSON.parse(final.checkpoint).uploadId, undefined);
+  process.env.FINANCE_INV_BULK_WORKER = 'off';
+});
+
+testeAsync('investimentos: worker retoma na fronteira e recompõe o SHA pelo prefixo', async () => {
+  process.env.FINANCE_INV_BULK_WORKER = 'on';
+  const bytes = Buffer.from('retomada-segura-do-arquivo');
+  const carga = novaCargaWorker('worker-retomada', bytes.length);
+  const chamadas = [];
+  const storage = storageMultipartFake({ falharUmaVezNaParte: 2 });
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const opts = {
+    fetchImpl: fonteFaixas(bytes, chamadas), storage,
+    configS3: { endpoint: 'https://r2.test', bucket: 'brutos', key: 'k', secret: 's', region: 'auto' },
+    tamanhoParte: 5, permitirPartePequenaTeste: true,
+  };
+  await assert.rejects(() => naA(() => workerInvestimentos.executarCarga(contaA, usuario, carga.id, opts)), /transitória/i);
+  const parcial = naA(() => repo.cargaMercado(carga.id));
+  assert.strictEqual(parcial.status, 'baixando');
+  assert.strictEqual(JSON.parse(parcial.checkpoint).offset, 5);
+  const final = await naA(() => workerInvestimentos.executarCarga(contaA, usuario, carga.id, opts));
+  assert.strictEqual(final.status, 'concluida');
+  assert.strictEqual(final.sha256, cryptoNode.createHash('sha256').update(bytes).digest('hex'));
+  assert.strictEqual(storage.estado.inicios, 1);
+  assert.ok(chamadas.some(x => x.range === 'bytes=0-4'));
+  assert.ok(chamadas.some(x => x.range === 'bytes=5-'));
+  assert.ok(chamadas.filter(x => x.range).every(x => x.ifMatch === '"worker-v1"'));
+  process.env.FINANCE_INV_BULK_WORKER = 'off';
+});
+
+testeAsync('investimentos: mudança de ETag invalida checkpoint e aborta multipart', async () => {
+  process.env.FINANCE_INV_BULK_WORKER = 'on';
+  const bytes = Buffer.from('origem-que-mudou');
+  const carga = novaCargaWorker('worker-etag-alterado', bytes.length);
+  const storage = storageMultipartFake({ falharUmaVezNaParte: 2 });
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const base = {
+    storage, configS3: { endpoint: 'https://r2.test', bucket: 'brutos', key: 'k', secret: 's', region: 'auto' },
+    tamanhoParte: 5, permitirPartePequenaTeste: true,
+  };
+  await assert.rejects(() => naA(() => workerInvestimentos.executarCarga(contaA, usuario, carga.id, {
+    ...base, fetchImpl: fonteFaixas(bytes, []),
+  })), /transitória/i);
+  await assert.rejects(() => naA(() => workerInvestimentos.executarCarga(contaA, usuario, carga.id, {
+    ...base, fetchImpl: fonteFaixas(bytes, [], '"worker-v2"'),
+  })), /ETag/i);
+  const final = naA(() => repo.cargaMercado(carga.id));
+  assert.strictEqual(final.status, 'falhou');
+  assert.deepStrictEqual(JSON.parse(final.checkpoint), {});
+  assert.strictEqual(storage.estado.abortos, 1);
+  process.env.FINANCE_INV_BULK_WORKER = 'off';
 });
 
 testeAsync('investimentos: fonte bloqueada não pode ser sondada', async () => {

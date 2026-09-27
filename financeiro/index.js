@@ -70,6 +70,7 @@ const ativos = require('./ativos');
 const cobranca = require('./cobranca');
 const incidente = require('./incidente');
 const investimentos = require('./investimentos-acesso');
+const investimentosWorker = require('./investimentos-worker');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -149,6 +150,7 @@ function montar(app, injected = {}) {
     `acesso inicial: ${usuarioInicial.criado ? `criado (${usuarioInicial.email})` : usuarioInicial.motivo} · ` +
     `MFA: ${mfa.configurado() ? 'TOTP disponível' : 'INDISPONÍVEL (defina FINANCE_SECRET_KEY)'} · ` +
     `investimentos CEO: ${investimentos.ligado() ? 'fundação ligada' : 'DESLIGADO (FINANCE_INVESTIMENTOS=off)'} · ` +
+    `worker integral: ${investimentosWorker.ligado() ? 'habilitado para chamada explícita' : 'DESLIGADO'} · ` +
     `legado /staff/api/financeiro/* intacto` +
     (atualizadas.contasNovas ? ` · plano de contas: +${atualizadas.contasNovas} conta(s) em ${atualizadas.empresas} empresa(s)` : '')
   );
@@ -156,7 +158,7 @@ function montar(app, injected = {}) {
   return {
     repo, contas, entitlements, rbac, ledger, dinheiro, bancos, classificacao,
     periodos, relatorios, aprovacoes, auditoria, planoContas, diario, stays,
-    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing, mercadopago, casamento, ativos, cobranca, incidente, investimentos,
+    contrapartes, titulos, liquidacoes, apuracao, caixa, orcamento, cfo, conselho, tenancy, billing, mercadopago, casamento, ativos, cobranca, incidente, investimentos, investimentosWorker,
   };
 }
 
