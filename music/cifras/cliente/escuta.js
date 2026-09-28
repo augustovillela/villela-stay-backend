@@ -55,10 +55,15 @@
   }
   E.decodificar = decodificar;
 
+  /** Alinha amostras já em memória (ex.: o som do YouTube ouvido pelo microfone). */
+  E.alinharAmostras = function (amostras, taxa, acordes) {
+    return pedir({ tipo: 'alinhar', amostras: amostras, taxa: taxa, acordes: acordes, qualquerTom: true }, [amostras.buffer]).then(function (r) { return r.resultado; });
+  };
+
   /** Smart Play: alinha a cifra (sequência de acordes) a uma gravação, no Worker. */
   E.alinhar = function (arrayBuffer, acordes) {
     return decodificar(arrayBuffer, 22050).then(function (a) {
-      return pedir({ tipo: 'alinhar', amostras: a.amostras, taxa: a.taxa, acordes: acordes }, [a.amostras.buffer]);
+      return pedir({ tipo: 'alinhar', amostras: a.amostras, taxa: a.taxa, acordes: acordes, qualquerTom: true }, [a.amostras.buffer]);
     }).then(function (r) { return r.resultado; });
   };
 

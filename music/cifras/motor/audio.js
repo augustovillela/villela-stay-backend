@@ -454,8 +454,24 @@
     };
   }
 
+  /**
+   * Alinha testando os 12 tons: cifra escrita com capotraste, ou num tom
+   * diferente do da gravação (muito comum em site de cifra), não soa como
+   * está escrita. Fica com o tom cujo alinhamento casa melhor com o som, e
+   * diz quantos semitons a gravação está acima da cifra.
+   */
+  function alinharEmQualquerTom(crom, acordes, opcoes) {
+    var melhor = null;
+    for (var k = 0; k < 12; k++) {
+      var seq = k ? acordes.map(function (a) { return A.transporTexto(a, k); }) : acordes;
+      var r = alinhar(crom, seq, opcoes);
+      if (!melhor || r.confianca > melhor.confianca + 0.005) { melhor = r; melhor.semitons = k > 6 ? k - 12 : k; }
+    }
+    return melhor;
+  }
+
   return {
-    alinhar: alinhar,
+    alinhar: alinhar, alinharEmQualquerTom: alinharEmQualquerTom,
     fft: fft, magnitudes: magnitudes, croma: croma, modelo: modelo, cosseno: cosseno,
     Seguidor: Seguidor, cromagrama: cromagrama, estimarBpm: estimarBpm, transcrever: transcrever, paraChordPro: paraChordPro,
     esticar: esticar, reamostrar: reamostrar, mudarTom: mudarTom, frequenciaDominante: frequenciaDominante, VOCAB: VOCAB,

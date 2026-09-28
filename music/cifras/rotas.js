@@ -51,7 +51,7 @@ const TRABALHADOR = [
   '  try {',
   "    if (d.tipo === 'tom') { var y = A.mudarTom(d.amostras, d.semitons); if (y === d.amostras) y = new Float32Array(y); postMessage({ id: d.id, ok: true, amostras: y }, [y.buffer]); }",
   "    else if (d.tipo === 'transcrever') { var cg = A.cromagrama(d.amostras, d.taxa); postMessage({ id: d.id, ok: true, resultado: A.transcrever(cg), bpm: A.estimarBpm(cg.fluxo, cg.passo_s) }); }",
-  "    else if (d.tipo === 'alinhar') { var cg2 = A.cromagrama(d.amostras, d.taxa); postMessage({ id: d.id, ok: true, resultado: A.alinhar(cg2, d.acordes) }); }",
+  "    else if (d.tipo === 'alinhar') { var cg2 = A.cromagrama(d.amostras, d.taxa); postMessage({ id: d.id, ok: true, resultado: d.qualquerTom ? A.alinharEmQualquerTom(cg2, d.acordes) : A.alinhar(cg2, d.acordes) }); }",
   "    else postMessage({ id: d.id, ok: false, erro: 'Pedido desconhecido.' });",
   '  } catch (err) { postMessage({ id: d.id, ok: false, erro: String((err && err.message) || err) }); }',
   '};',

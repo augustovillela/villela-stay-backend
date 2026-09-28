@@ -41,6 +41,15 @@ async function rodar({ t, secao, req, assert }) {
     assert.ok(Math.abs(r.inicios_s[4] - 6) < 0.4);
   });
 
+  await t('ALINHADOR EM QUALQUER TOM: cifra escrita com capotraste (em G) contra gravação em A — acha +2 e alinha', async () => {
+    const grav = ['A', 'E', 'F#m', 'D', 'A', 'E', 'D', 'A'], cifra = ['G', 'D', 'Em', 'C', 'G', 'D', 'C', 'G'];
+    const r = Au.alinharEmQualquerTom(Au.cromagrama(juntar(grav.map((c) => gerar(c, 2))), taxa), cifra);
+    assert.equal(r.semitons, 2, 'a gravação está 2 semitons acima da cifra');
+    r.inicios_s.forEach((x, i) => assert.ok(Math.abs(x - 2 * i) < 0.3, `linha ${i}: ${x}`));
+    const direto = Au.alinhar(Au.cromagrama(juntar(grav.map((c) => gerar(c, 2))), taxa), cifra);
+    assert.ok(r.confianca > direto.confianca + 0.1, 'no tom certo o alinhamento casa muito melhor');
+  });
+
   await t('FUNÇÃO HARMÔNICA no campo: V7 dominante, IV subdominante, vi relativa da tônica; fora do campo é dito', async () => {
     const C = N.lerTom('C'), Am = N.lerTom('Am');
     assert.equal(H.grau('G7', C).funcao, 'dominante');
@@ -138,6 +147,8 @@ async function rodar({ t, secao, req, assert }) {
     const cliente = (await req('GET', '/music/cifras.js', { cru: true })).texto;
     assert.ok(cliente.includes('C.SmartPlay.anexar(estado') && cliente.includes('detalheAcorde(ac, elm'), 'a tela da cifra liga o player e o detalhe do acorde');
     assert.ok(cliente.includes("'✏️ Editar cifra'"), 'o Editar fica à vista na cifra');
+    assert.ok(cliente.includes('function sincronizarOuvindo') && cliente.includes('function ajusteRapido') && cliente.includes('Destaque ESTIMADO'),
+      'YouTube tem sincronia automática pelo microfone, ajuste rápido e o aviso de destaque estimado');
     const janela = { MusiqueUI: { $: () => null, el: () => ({}), esc: (x) => x, api: () => Promise.resolve({}), aviso() {}, erro() {}, ir() {} },
       addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
     new Function('self', motor)(janela);

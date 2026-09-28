@@ -141,9 +141,12 @@
     s.info = el('span', { class: 'cf-sp-info m', 'aria-live': 'polite' });
     var kar = C.botao(s.karaoke ? '🎤 Karaokê: ligado' : '🎤 Karaokê: desligado', function () { SP.karaoke(); }, 'sec peq');
     var sinc = el('select', { class: 'cf-sp-sinc', 'aria-label': 'Sincronizar' });
-    [['', '🎯 Sincronizar…'], ['auto', '⚡ Automático (arquivo de áudio)'], ['mao', '👆 Marcar linha por linha'], ['limpar', '🗑 Apagar sincronia']]
+    [['', '🎯 Sincronizar…'], s.fonte && s.fonte.tipo === 'youtube' ? ['ouvir', '🎧 Automático: ouvir pelo microfone'] : ['auto', '⚡ Automático (arquivo de áudio)'],
+      ['rapido', '⏱ Ajuste rápido (2 toques)'], ['mao', '👆 Marcar linha por linha'], ['limpar', '🗑 Apagar sincronia']]
       .forEach(function (x) { sinc.appendChild(el('option', { value: x[0], txt: x[1] })); });
-    sinc.onchange = function () { var x = sinc.value; sinc.value = ''; if (x === 'auto') sincronizarAuto(); else if (x === 'mao') marcarAMao(); else if (x === 'limpar') apagarSincronia(); };
+    sinc.onchange = function () { var x = sinc.value; sinc.value = '';
+      if (x === 'auto') sincronizarAuto(); else if (x === 'ouvir') sincronizarOuvindo(); else if (x === 'rapido') ajusteRapido();
+      else if (x === 'mao') marcarAMao(); else if (x === 'limpar') apagarSincronia(); };
     var videoBt = s.fonte && s.fonte.tipo === 'youtube' ? C.botao(lerLocal('videoGrande', false) ? '📺 Vídeo menor' : '📺 Vídeo maior', function () {
       guardar('videoGrande', !lerLocal('videoGrande', false)); s.caixaVideo.classList.toggle('grande'); this.textContent = s.caixaVideo.classList.contains('grande') ? '📺 Vídeo menor' : '📺 Vídeo maior'; ajustarEspaco(); }, 'sec peq') : null;
     var minBt = el('button', { class: 'cf-sp-min', type: 'button', title: s.min ? 'Abrir o player' : 'Minimizar o player', txt: s.min ? '▴' : '▾', onclick: function () { SP.player(s.min); } });
@@ -170,7 +173,8 @@
         if (atual !== s || s.fonte !== f) return;
         s.marcas = (r.sincronia && r.sincronia.marcas) || [];
         s.info.textContent = s.marcas.length ? (r.sincronia.origem === 'auto' ? 'sincronia automática' : 'sincronia marcada à mão') + ' · ' + s.marcas.length + ' linhas'
-          : 'Sem sincronia: a cifra rola na média da música. Use "Sincronizar" para o karaokê exato.';
+          : '⚠️ Destaque ESTIMADO (esta música não foi sincronizada com este ' + (f.tipo === 'youtube' ? 'vídeo' : 'áudio') + '). Use 🎯 Sincronizar para o karaokê exato.';
+        s.barra.classList.toggle('sem-sinc', !s.marcas.length);
       }).catch(function () {});
     };
     if (f.tipo === 'youtube') {
@@ -284,6 +288,18 @@
   }
   SP._marcasDasLinhas = marcasDasLinhas; SP._acordesComLinha = acordesComLinha;   // testes
 
+  /** A gravação soa em outro tom que a cifra? Diz e oferece transpor a tela. */
+  function avisarTom(r) {
+    var s = atual; if (!s || !r || !r.semitons) return;
+    var n = r.semitons, ac = s.estado && s.estado.acoes;
+    var txt = 'A gravação está ' + Math.abs(n) + ' semitom(ns) ' + (n > 0 ? 'acima' : 'abaixo') + ' da cifra (capotraste ou outro tom).';
+    s.caixaMarcar.classList.remove('oculto'); s.caixaMarcar.innerHTML = '';
+    s.caixaMarcar.appendChild(el('p', { class: 'm', txt: '🎼 ' + txt }));
+    s.caixaMarcar.appendChild(el('div', { class: 'cf-sp-linha' }, [
+      ac ? C.botao('Mostrar a cifra no tom da gravação', function () { ac.transpor(n); s.caixaMarcar.classList.add('oculto'); }, 'peq') : null,
+      C.botao('Deixar como está', function () { s.caixaMarcar.classList.add('oculto'); }, 'sec peq')].filter(Boolean)));
+  }
+
   function salvar(origem, confianca) {
     var s = atual;
     return api('PUT', '/cifras/' + s.ctx.cifraId + '/sincronia', { midia_id: s.fonte.id, marcas: s.marcas, origem: origem, confianca: confianca || 0 });
@@ -301,9 +317,95 @@
         s.marcas = marcasDasLinhas(s.ctx.docCru, seq, r.inicios_s);
         return salvar('auto', r.confianca).then(function () {
           s.info.textContent = '⚡ Sincronizado (' + Math.round(r.confianca * 100) + '% de confiança). Se alguma linha escapar, use "Marcar linha por linha".';
+          s.barra.classList.remove('sem-sinc'); avisarTom(r);
         });
       }).catch(function (e) { s.info.textContent = ''; C.erro(e); });
   }
+  // ---- Automático pelo microfone (YouTube): o Musique OUVE o som do vídeo
+  // saindo do alto-falante e alinha depois, com o mesmo alinhador do MP3.
+  // O YouTube não deixa o site ler o áudio do vídeo — o microfone é o jeito
+  // honesto de ter a sincronia automática sem baixar nada de lá.
+  function sincronizarOuvindo() {
+    var s = atual; if (!s || !s.motor) return;
+    var seq = acordesComLinha(s.ctx.docCru);
+    if (seq.length < 2) { C.aviso('Esta cifra tem poucos acordes para alinhar.'); return; }
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { C.aviso('Este navegador não dá acesso ao microfone.'); return; }
+    var Ctx = global.AudioContext || global.webkitAudioContext;
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (stream) {
+      if (atual !== s) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+      var ctx = new Ctx(), fonteMic = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(4096, 1, 1), partes = [], ativo = true;
+      var mudo = ctx.createGain(); mudo.gain.value = 0;
+      proc.onaudioprocess = function (e) { if (ativo) partes.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+      fonteMic.connect(proc); proc.connect(mudo); mudo.connect(ctx.destination);
+      s.vel = 1; s.motor.velocidade(1); s.motor.irPara(0);
+      var t0 = null, inicioReal = 0, inicioAmostra = 0, caixa = s.caixaMarcar, st = el('p', { class: 'm' });
+      caixa.classList.remove('oculto'); caixa.innerHTML = '';
+      caixa.appendChild(el('p', { class: 'm', txt: '🎧 Ouvindo… Deixe o som do vídeo sair pelo ALTO-FALANTE (sem fone), num volume bom, e não pause até o fim da música. Pode parar antes em "Concluir" se a letra já acabou.' }));
+      caixa.appendChild(st);
+      var fim = function (cancelar, motivo) {
+        if (!ativo) return; ativo = false; clearInterval(vigia);
+        try { proc.disconnect(); fonteMic.disconnect(); } catch (_) { /* ok */ }
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        if (cancelar) { caixa.classList.add('oculto'); try { ctx.close(); } catch (_) { /* ok */ } if (motivo) C.aviso(motivo); return; }
+        var taxa = ctx.sampleRate, n = partes.reduce(function (a, p) { return a + p.length; }, 0), tudo = new Float32Array(n), k = 0;
+        partes.forEach(function (p) { tudo.set(p, k); k += p.length; }); partes = [];
+        // Só o que tocou DEPOIS do vídeo começar (anúncio e espera ficam de fora).
+        tudo = tudo.subarray(Math.min(inicioAmostra, tudo.length)); n = tudo.length;
+        try { ctx.close(); } catch (_) { /* ok */ }
+        // reduz para 22,05 kHz (o alinhador não precisa de mais)
+        var passo = Math.max(1, Math.round(taxa / 22050)), m = Math.floor(n / passo), baixo = new Float32Array(m);
+        for (var i = 0; i < m; i++) baixo[i] = tudo[i * passo];
+        st.textContent = '⚡ Alinhando o que ouvi com a cifra…';
+        C.Escuta.alinharAmostras(baixo, taxa / passo, seq.map(function (x) { return x.acorde; })).then(function (r) {
+          if (atual !== s) return;
+          caixa.classList.add('oculto');
+          if (r.confianca < 0.45) { C.aviso('Ouvi pouco da música (confiança ' + Math.round(r.confianca * 100) + '%). Aumente o volume, tire o fone e tente de novo — ou use o ajuste rápido.'); return; }
+          // tempo do vídeo = onde o vídeo estava quando a escuta começou + o tempo ouvido
+          s.marcas = marcasDasLinhas(s.ctx.docCru, seq, r.inicios_s.map(function (x) { return x + (t0 || 0); }));
+          return salvar('auto', r.confianca).then(function () {
+            s.info.textContent = '🎧 Sincronizado pelo som (' + Math.round(r.confianca * 100) + '% de confiança). Se alguma linha escapar, use o ajuste rápido ou marque à mão.';
+            s.barra.classList.remove('sem-sinc'); avisarTom(r);
+          });
+        }).catch(function (e) { caixa.classList.add('oculto'); C.erro(e); });
+      };
+      caixa.appendChild(el('div', { class: 'cf-sp-linha' }, [C.botao('Concluir', function () { fim(false); }, 'peq'), C.botao('Cancelar', function () { fim(true); }, 'sec peq')]));
+      // Vigia: se a pessoa pausar ou pular no vídeo, o tempo ouvido deixa de bater com o do vídeo.
+      var vigia = setInterval(function () {
+        if (!ativo) return;
+        var tv = s.motor.tempo(), d = s.motor.duracao();
+        if (t0 === null) { if (s.motor.tocando() && tv > 0) { t0 = tv; inicioReal = Date.now(); inicioAmostra = partes.reduce(function (a, p) { return a + p.length; }, 0); } return; }
+        var esperado = t0 + (Date.now() - inicioReal) / 1000;
+        st.textContent = mmss(tv) + (d ? ' / ' + mmss(d) : '');
+        if (!s.motor.tocando() && d && tv >= d - 1.5) return fim(false);
+        if (Math.abs(tv - esperado) > 2.5) return fim(true, 'O vídeo pausou ou pulou durante a escuta: a sincronia precisa da música tocando direto. Tente de novo.');
+      }, 500);
+      s.motor.tocar().catch(function () {});
+    }).catch(function () { C.aviso('Libere o microfone para o Musique ouvir o som do vídeo.'); });
+  }
+
+  // ---- Ajuste rápido: 2 toques (início da 1ª linha e da última); as do meio
+  // se espalham pelo peso de cada linha (quantos acordes ela tem).
+  function ajusteRapido() {
+    var s = atual; if (!s || !s.motor) return;
+    var ls = linhasDaTela(); if (ls.length < 2) return;
+    var caixa = s.caixaMarcar, toques = [];
+    caixa.classList.remove('oculto'); caixa.innerHTML = '';
+    var dica = el('p', { class: 'm', txt: 'Toque em "Agora" quando a PRIMEIRA linha começar a ser cantada.' });
+    var agora = function () {
+      toques.push(s.motor.tempo());
+      if (toques.length === 1) { dica.textContent = 'Agora toque quando a ÚLTIMA linha começar (pode avançar o vídeo até perto do fim).'; ls[ls.length - 1].scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+      caixa.classList.add('oculto');
+      var pesos = ls.map(function (l) { return 1 + l.querySelectorAll('.cf-a:not(:empty)').length; });
+      var total = pesos.slice(0, -1).reduce(function (a, b) { return a + b; }, 0) || 1, t = toques[0], dur = Math.max(1, toques[1] - toques[0]);
+      s.marcas = ls.map(function (l, i) { var x = { linha: l.getAttribute('data-linha'), t_ms: Math.round(t * 1000) }; if (i < ls.length - 1) t += dur * pesos[i] / total; return x; });
+      salvar('manual').then(function () { s.info.textContent = '⏱ Ajuste rápido salvo. Para acertar linha por linha, use "Marcar linha por linha".'; s.barra.classList.remove('sem-sinc'); }).catch(C.erro);
+    };
+    caixa.appendChild(dica);
+    caixa.appendChild(el('div', { class: 'cf-sp-linha' }, [C.botao('⏱ Agora', agora), C.botao('Cancelar', function () { caixa.classList.add('oculto'); }, 'sec peq')]));
+    ls[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (!s.motor.tocando()) { s.motor.irPara(0); s.motor.tocar().catch(function () {}); }
+  }
+
   function marcarAMao() {
     var s = atual; if (!s || !s.motor) return;
     var ls = linhasDaTela(); if (!ls.length) return;

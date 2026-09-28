@@ -129,6 +129,7 @@ body.cf-sp-aberto{padding-bottom:150px}
 .cf-sp-video.oculto{display:none}
 .cf-sp-marcar{background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px}
 .cf-sp-marcar.oculto{display:none}
+.cf-sp.sem-sinc .cf-sp-info{color:#FFE58A}
 .cf-sp-carregando{font-size:13px;color:#C9D3E3}
 /* MINIMIZADO = uma linha só (▶, título, tempo, trilha e abrir). Arquivo de
    áudio: nada além da linha. YouTube: o vídeo encolhe para uma janelinha de
