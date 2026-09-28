@@ -19,7 +19,7 @@ const preflight = require('./mercado-preflight');
 const parser = require('./investimentos-parser');
 const piloto = require('./mercado-piloto-cvm');
 
-const REGRAS_VERSAO = 2;
+const REGRAS_VERSAO = 3;
 const FONTE_CADASTRO = 'https://dados.cvm.gov.br/dados/cia_aberta/CAD/DADOS/cad_cia_aberta.csv';
 const SCHEMA = 'fin_pilot_cvm_dfp_2025';
 const LIMITE_CADASTRO = 8 * 1024 * 1024;
@@ -356,18 +356,18 @@ async function persistirResultado(pool, runId, metricas, achados, resultado, res
   const c = await pool.connect();
   try {
     await c.query('BEGIN');
-    for (const m of metricas) await c.query(`INSERT INTO fin_quality_metrics
+    for (const m of metricas) await c.query(`INSERT INTO ${SCHEMA}.fin_quality_metrics
       (run_id,regra,escopo,valor) VALUES ($1,$2,$3,$4::jsonb)
       ON CONFLICT (run_id,regra,escopo) DO UPDATE SET valor=EXCLUDED.valor`,
     [runId, m.regra, m.escopo || '', JSON.stringify(m.valor)]);
-    for (const a of achados.listar()) await c.query(`INSERT INTO fin_quality_findings
+    for (const a of achados.listar()) await c.query(`INSERT INTO ${SCHEMA}.fin_quality_findings
       (run_id,regra,gravidade,agrupador,quantidade,amostras,detalhes)
       VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)
       ON CONFLICT (run_id,regra,gravidade,agrupador) DO UPDATE SET
         quantidade=EXCLUDED.quantidade, amostras=EXCLUDED.amostras, detalhes=EXCLUDED.detalhes`,
     [runId, a.regra, a.gravidade, a.agrupador, a.quantidade,
       JSON.stringify(a.amostras), JSON.stringify(a.detalhes)]);
-    await c.query(`UPDATE fin_quality_runs SET status='concluida', resultado=$2,
+    await c.query(`UPDATE ${SCHEMA}.fin_quality_runs SET status='concluida', resultado=$2,
       resumo=$3::jsonb, concluido_em=now(), atualizado_em=now(), erro='' WHERE id=$1`,
     [runId, resultado, JSON.stringify(resumo)]);
     await c.query('COMMIT');
@@ -476,7 +476,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     return { ok: true, idempotente: false, resultado, ...resumo };
   } catch (e) {
     if (pool && runId) {
-      try { await pool.query(`UPDATE fin_quality_runs SET status='falhou', erro=$2, atualizado_em=now() WHERE id=$1 AND status='processando'`, [runId, String(e.message || e).slice(0, 1000)]); } catch { /* erro original prevalece */ }
+      try { await pool.query(`UPDATE ${SCHEMA}.fin_quality_runs SET status='falhou', erro=$2, atualizado_em=now() WHERE id=$1 AND status='processando'`, [runId, String(e.message || e).slice(0, 1000)]); } catch { /* erro original prevalece */ }
     }
     throw e;
   } finally {

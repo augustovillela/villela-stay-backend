@@ -1475,7 +1475,7 @@ teste('investimentos: auditoria CVM exige armação, parser off e persiste só q
   assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_metrics/);
   assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_findings/);
   assert.doesNotMatch(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /saldo|ordem_financeira|razao/i);
-  assert.strictEqual(mercadoQualidadeCvm.REGRAS_VERSAO, 2);
+  assert.strictEqual(mercadoQualidadeCvm.REGRAS_VERSAO, 3);
 });
 
 testeAsync('investimentos: migração da qualidade executa cada tabela separadamente', async () => {
@@ -1485,6 +1485,24 @@ testeAsync('investimentos: migração da qualidade executa cada tabela separadam
   assert.match(chamadas[0], /fin_quality_runs/);
   assert.match(chamadas[1], /fin_quality_metrics/);
   assert.match(chamadas[2], /fin_quality_findings/);
+});
+
+testeAsync('investimentos: persistência da qualidade não depende do search_path da conexão', async () => {
+  const chamadas = [];
+  const conexao = {
+    query: async sql => { chamadas.push(sql); },
+    release: () => {},
+  };
+  const achados = new mercadoQualidadeCvm.Achados();
+  achados.adicionar('regra_teste', 'ALERTA', {});
+  await mercadoQualidadeCvm.persistirResultado(
+    { connect: async () => conexao }, 'run-1',
+    [{ regra: 'metrica_teste', valor: { total: 1 } }],
+    achados, 'ATENCAO', { registros: 1 },
+  );
+  assert.ok(chamadas.some(sql => /fin_pilot_cvm_dfp_2025\.fin_quality_metrics/.test(sql)));
+  assert.ok(chamadas.some(sql => /fin_pilot_cvm_dfp_2025\.fin_quality_findings/.test(sql)));
+  assert.ok(chamadas.some(sql => /fin_pilot_cvm_dfp_2025\.fin_quality_runs/.test(sql)));
 });
 
 teste('investimentos: regras CVM tratam datas, decimais e demonstrações sem float', () => {
