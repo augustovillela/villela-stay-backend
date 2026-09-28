@@ -197,6 +197,19 @@
     ['bandas', 'Bandas'], ['vivo', 'Ao vivo'], ['acordes', 'Acordes'], ['downloads', 'Offline'], ['importacoes', 'Importações'],
     ['preferencias', 'Preferências'],
   ];
+  // Ícone e cor de cada funcionalidade: os mesmos no menu e nos atalhos do Início.
+  C.ICONES = {
+    inicio: { ico: '🏠', fundo: '#EEF2F7', cor: '#1B2A4A' },
+    biblioteca: { ico: '📚', fundo: '#EDE9FE', cor: '#6D28D9' },
+    importar: { ico: '🔎', fundo: '#E0F2FE', cor: '#0369A1' },
+    setlists: { ico: '📋', fundo: '#FFEDD5', cor: '#C2410C' },
+    bandas: { ico: '👥', fundo: '#FCE7F3', cor: '#BE185D' },
+    vivo: { ico: '📡', fundo: '#FFE4E6', cor: '#BE123C' },
+    acordes: { ico: '🎸', fundo: '#DCFCE7', cor: '#15803D' },
+    downloads: { ico: '📴', fundo: '#F1F5F9', cor: '#334155' },
+    importacoes: { ico: '📦', fundo: '#FEF3C7', cor: '#B45309' },
+    preferencias: { ico: '⚙️', fundo: '#F1F5F9', cor: '#334155' },
+  };
   C.telas = {};
   function telaBase() {
     var c = $('#corpo'); c.innerHTML = '';
@@ -211,7 +224,8 @@
     n.innerHTML = '';
     TELAS.forEach(function (t) {
       if (t[0] === 'vivo' && C.estado.flags['cifras.vivo'] === false) return;
-      var b = el('button', { type: 'button', class: C.estado.tela === t[0] ? 'on' : '', 'aria-current': C.estado.tela === t[0] ? 'page' : 'false', txt: t[1] });
+      var b = el('button', { type: 'button', class: C.estado.tela === t[0] ? 'on' : '', 'aria-current': C.estado.tela === t[0] ? 'page' : 'false',
+        txt: (C.ICONES[t[0]] ? C.ICONES[t[0]].ico + ' ' : '') + t[1] });
       if (t[0] === 'downloads' && C.estado.pendentes) b.appendChild(el('span', { class: 'badge', txt: String(C.estado.pendentes) }));
       b.onclick = function () { C.ir(t[0]); };
       n.appendChild(b);

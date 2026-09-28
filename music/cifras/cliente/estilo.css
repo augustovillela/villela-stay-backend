@@ -93,6 +93,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .cf-doc.t-palco{background:#0E1420;color:#F2F4F7}.cf-doc.t-palco .cf-a{color:#FFC94D}
 
 /* ---------- diagramas ---------- */
+/* ---- vida nas telas (28/09/2026): atalhos com ícone e entrada animada ---- */
+@keyframes cf-surgir{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.cf-atalhos{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:14px 0 22px}
+.cf-atalho{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;cursor:pointer;font:inherit;color:inherit;
+  background:#fff;border:1px solid #E4E7EC;border-bottom:3px solid var(--cf-cor,#1B2A4A);border-radius:14px;padding:14px;
+  animation:cf-surgir .35s ease both;transition:transform .15s ease,box-shadow .15s ease}
+.cf-atalho:hover,.cf-atalho:focus-visible{transform:translateY(-2px);box-shadow:0 8px 20px rgba(27,42,74,.10)}
+.cf-atalho-ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:22px;line-height:1}
+.cf-atalho b{font-size:15px}
+.cf-atalho .m{font-size:13px;color:#5B6478}
+.cf-cartao{animation:cf-surgir .3s ease both;transition:transform .15s ease,box-shadow .15s ease}
+.cf-cartao:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(27,42,74,.08)}
+.cf-chip-acorde{transition:transform .12s ease}
+.cf-chip-acorde:hover{transform:translateY(-1px)}
+@media (prefers-reduced-motion:reduce){.cf-atalho,.cf-cartao{animation:none}.cf-atalho:hover,.cf-cartao:hover,.cf-chip-acorde:hover{transform:none}}
 .cf-meus-acordes{margin:0 0 18px;padding:14px 16px;background:#fff;border:1px solid var(--borda,#E4E7EC);border-radius:14px}
 .cf-chips-acordes{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .cf-chip-acorde{display:inline-flex;align-items:center;gap:6px;border:1px solid #D6DCE5;background:#F7F9FC;border-radius:999px;padding:6px 8px 6px 12px;cursor:pointer;font:inherit}

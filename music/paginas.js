@@ -88,6 +88,17 @@ p.vazio{color:var(--suave);padding:24px 0}
 .item b{font-size:16px}
 .item span{font-size:14px;color:var(--suave)}
 .topo-item{display:flex;align-items:center;gap:10px}
+@keyframes mq-surgir{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.grade>.item,.kpis>.kpi,.card{animation:mq-surgir .32s ease both}
+.grade>.item:nth-child(2),.kpis>.kpi:nth-child(2){animation-delay:40ms}
+.grade>.item:nth-child(3),.kpis>.kpi:nth-child(3){animation-delay:80ms}
+.grade>.item:nth-child(4),.kpis>.kpi:nth-child(4){animation-delay:120ms}
+.grade>.item:nth-child(n+5){animation-delay:160ms}
+.item{transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.item:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(27,42,74,.08)}
+.aba{transition:background .15s ease,transform .12s ease}
+.aba:hover{transform:translateY(-1px)}
+@media (prefers-reduced-motion:reduce){.grade>.item,.kpis>.kpi,.card{animation:none}.item:hover,.aba:hover{transform:none}}
 .ico{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:19px;line-height:1}
 .ico.g{width:46px;height:46px;border-radius:13px;font-size:25px}
 .item.trilha{padding-top:14px}

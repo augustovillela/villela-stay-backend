@@ -49,18 +49,39 @@
         var cod = el('input', { type: 'text', placeholder: 'Código da sessão', maxlength: '8', 'aria-label': 'Código da sessão ao vivo', style: 'max-width:180px;text-transform:uppercase' });
         c.appendChild(el('div', { class: 'cf-barra' }, [cod, C.botao('Entrar na sessão ao vivo', function () { if (cod.value.trim()) C.ir('vivo_entrar', cod.value.trim()); }, 'sec')]));
       }
+      // Atalhos: cada funcionalidade com ícone e cor — o Início é a porta de
+      // entrada, e uma lista de nomes sem imagem não dizia o que tem aqui.
+      var ATALHOS = [
+        ['importar', 'Encontrar ou importar', 'Cifra por link, arquivo, foto ou busca'],
+        ['biblioteca', 'Minha biblioteca', (d.total || 0) + ' música(s) no acervo'],
+        ['acordes', 'Acordes', 'Dicionário dos acordes das suas músicas'],
+        ['setlists', 'Setlists', 'Monte o repertório do show'],
+        ['bandas', 'Bandas', 'Cifras compartilhadas com o grupo'],
+        ['vivo', 'Ao vivo', 'Modo Maestro: a banda segue você'],
+      ];
+      var atal = el('div', { class: 'cf-atalhos' });
+      ATALHOS.forEach(function (a, k) {
+        if (a[0] === 'vivo' && d.flags && d.flags['cifras.vivo'] === false) return;
+        var v = C.ICONES[a[0]] || {};
+        var b = el('button', { class: 'cf-atalho', type: 'button', style: '--cf-cor:' + v.cor + ';animation-delay:' + (k * 45) + 'ms' }, [
+          el('span', { class: 'cf-atalho-ico', style: 'background:' + v.fundo, txt: v.ico }),
+          el('b', { txt: a[1] }), el('span', { class: 'm', txt: a[2] })]);
+        b.onclick = function () { C.ir(a[0]); };
+        atal.appendChild(b);
+      });
+      c.appendChild(atal);
       if (!d.total && !(d.recentes || []).length) {
         c.appendChild(C.estadoVazio('Sua biblioteca de cifras está vazia', 'Cole uma cifra, envie um arquivo, busque pelo nome da música ou escreva do zero.',
           C.botao('Começar', function () { C.ir('importar'); })));
       }
-      secaoLista(c, 'Continuar tocando', d.recentes, function (x) { return { t: x.titulo, m: [x.artista, x.tom].filter(Boolean).join(' · '), fn: function () { C.ir('cifra', x.cifra_id); } }; });
-      secaoLista(c, 'Favoritas', d.favoritas, function (x) { return { t: x.titulo, m: x.artista, fn: function () { abrirMusica(x); } }; });
-      secaoLista(c, 'Mais tocadas', d.mais_tocadas, function (x) { return { t: x.titulo, m: x.vezes + ' vez(es)', fn: function () { C.ir('cifra', x.cifra_id); } }; });
-      secaoLista(c, 'Sessões ao vivo agora', d.sessoes, function (x) { return { t: x.setlist, m: 'código ' + x.codigo + (x.sou_maestro ? ' · você conduz' : ''), fn: function () { C.ir('vivo_entrar', x.codigo); } }; });
-      secaoLista(c, 'Setlists', d.setlists, function (x) { return { t: x.nome, m: [C.data(x.data), (x.itens || 0) + ' músicas', x.status].filter(Boolean).join(' · '), fn: function () { C.ir('setlist', x.id); } }; });
-      secaoLista(c, 'Bandas', d.bandas, function (x) { return { t: x.nome, m: x.rotulo || x.papel, fn: function () { C.ir('banda', x.id); } }; });
+      secaoLista(c, '▶️ Continuar tocando', d.recentes, function (x) { return { t: x.titulo, m: [x.artista, x.tom].filter(Boolean).join(' · '), fn: function () { C.ir('cifra', x.cifra_id); } }; });
+      secaoLista(c, '⭐ Favoritas', d.favoritas, function (x) { return { t: x.titulo, m: x.artista, fn: function () { abrirMusica(x); } }; });
+      secaoLista(c, '🔥 Mais tocadas', d.mais_tocadas, function (x) { return { t: x.titulo, m: x.vezes + ' vez(es)', fn: function () { C.ir('cifra', x.cifra_id); } }; });
+      secaoLista(c, '📡 Sessões ao vivo agora', d.sessoes, function (x) { return { t: x.setlist, m: 'código ' + x.codigo + (x.sou_maestro ? ' · você conduz' : ''), fn: function () { C.ir('vivo_entrar', x.codigo); } }; });
+      secaoLista(c, '📋 Setlists', d.setlists, function (x) { return { t: x.nome, m: [C.data(x.data), (x.itens || 0) + ' músicas', x.status].filter(Boolean).join(' · '), fn: function () { C.ir('setlist', x.id); } }; });
+      secaoLista(c, '👥 Bandas', d.bandas, function (x) { return { t: x.nome, m: x.rotulo || x.papel, fn: function () { C.ir('banda', x.id); } }; });
       if ((d.notificacoes || []).length) {
-        c.appendChild(el('h3', { txt: 'Avisos' }));
+        c.appendChild(el('h3', { txt: '🔔 Avisos' }));
         var ul = el('div', { class: 'cf-lista' });
         d.notificacoes.forEach(function (n) {
           ul.appendChild(el('div', { class: 'cf-linha-item' }, [el('div', { class: 'cresce' }, [el('b', { txt: n.titulo }), el('span', { class: 'm', txt: C.data(n.criado_em) })]),
@@ -76,9 +97,9 @@
     if (!itens || !itens.length) return;
     c.appendChild(el('h3', { txt: titulo }));
     var g = el('div', { class: 'cf-grid' });
-    itens.forEach(function (x) {
+    itens.forEach(function (x, k) {
       var m = mapa(x);
-      var b = el('button', { class: 'cf-cartao', type: 'button' }, [el('b', { txt: m.t }), el('span', { class: 'm', txt: m.m || '' })]);
+      var b = el('button', { class: 'cf-cartao', type: 'button', style: 'animation-delay:' + Math.min(k, 12) * 35 + 'ms' }, [el('b', { txt: m.t }), el('span', { class: 'm', txt: m.m || '' })]);
       b.onclick = m.fn;
       g.appendChild(b);
     });
