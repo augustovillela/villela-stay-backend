@@ -74,6 +74,20 @@ function versaoOrigem(meta) {
   ].join('|')).digest('hex');
 }
 
+function prefixoJobParser(versaoParser = mercadoParser.PARSER_VERSAO) {
+  const versao = Number(versaoParser);
+  if (!Number.isSafeInteger(versao) || versao <= 0) throw new Error('Versão do parser inválida.');
+  return `pilot-cvm-dfp-2025-p${versao}-`;
+}
+
+async function buscarTentativaIncompleta(pool, versaoParser = mercadoParser.PARSER_VERSAO) {
+  const r = await pool.query(
+    "SELECT id FROM fin_market_jobs WHERE status IN ('aguardando','processando') AND id LIKE $1 LIMIT 1",
+    [`${prefixoJobParser(versaoParser)}%`],
+  );
+  return r.rows[0] || null;
+}
+
 function planoVersao(sha256) {
   if (!HASH_RE.test(String(sha256 || ''))) throw new Error('SHA-256 do piloto inválido.');
   const prefixo = `${PREFIXO_RAIZ}${sha256}/`;
@@ -312,9 +326,9 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
       plano = { prefixo, prefixoNormalizado: `${prefixo}normalizado/`, objetoBruto: objeto };
       download = { sha256: anterior.sha256, bytes: Number(anterior.tamanho_bytes) };
     } else {
-      const incompleto = await pool.query("SELECT id FROM fin_market_jobs WHERE status IN ('aguardando','processando') LIMIT 1");
-      if (incompleto.rows[0]) {
-        throw new Error('Existe tentativa anterior incompleta na quarentena; revise-a antes de uma nova versão.');
+      const incompleto = await buscarTentativaIncompleta(pool);
+      if (incompleto) {
+        throw new Error('Existe tentativa incompleta desta versão do parser na quarentena; revise-a antes de repetir.');
       }
 
       fs.mkdirSync(workDir, { recursive: true });
@@ -327,7 +341,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
       }
       if (!existenteR2) await enviarMultipart(configS3, plano.objetoBruto, arquivo, download.bytes, storage, fetchImpl);
 
-      jobId = `pilot-cvm-dfp-2025-p${mercadoParser.PARSER_VERSAO}-${versao.slice(0, 24)}`;
+      jobId = `${prefixoJobParser()}${versao.slice(0, 24)}`;
       tenantRef = `pilot:cvm_dfp_2025:p${mercadoParser.PARSER_VERSAO}:${versao}`;
       await db.enfileirar({
         id: jobId, tenantRef, cargaRef: chaveIdempotencia, fonte: 'cvm_dados_abertos',
@@ -387,5 +401,6 @@ if (require.main === module) executar().catch(e => {
 module.exports = {
   FONTE_URL, CONJUNTO, SCHEMA, PREFIXO_RAIZ, LIMITE_COMPACTADO, TAMANHO_PARTE,
   configAmbiente, validarMeta, versaoOrigem, planoVersao, diretorioTrabalho,
-  sondarFonte, conferirRespostaFonte, baixarFonte, enviarMultipart, verificarParticoes, executar,
+  prefixoJobParser, buscarTentativaIncompleta, sondarFonte, conferirRespostaFonte,
+  baixarFonte, enviarMultipart, verificarParticoes, executar,
 };

@@ -1364,6 +1364,16 @@ teste('investimentos: piloto CVM fixa DFP 2025, limite e quarentena por hash', (
   assert.throws(() => mercadoPilotoCvm.planoVersao('../producao'), /SHA-256/i);
 });
 
+testeAsync('investimentos: job antigo de outro parser não bloqueia nova tentativa em quarentena', async () => {
+  const chamadas = [];
+  const pool = { query: async (sql, params) => { chamadas.push({ sql, params }); return { rows: [] }; } };
+  assert.strictEqual(await mercadoPilotoCvm.buscarTentativaIncompleta(pool, 3), null);
+  assert.match(chamadas[0].sql, /status IN \('aguardando','processando'\).*id LIKE \$1/);
+  assert.deepStrictEqual(chamadas[0].params, ['pilot-cvm-dfp-2025-p3-%']);
+  assert.strictEqual(mercadoPilotoCvm.prefixoJobParser(3), 'pilot-cvm-dfp-2025-p3-');
+  assert.throws(() => mercadoPilotoCvm.prefixoJobParser(0), /versão do parser inválida/i);
+});
+
 teste('investimentos: contrato CVM aceita os nomes oficiais distintos do cadastro e da DFP', () => {
   const base = { CNPJ_CIA: '33.000.167/0001-01', CD_CVM: '9512' };
   assert.strictEqual(contratosMercado.identidadeCvm({ ...base, DENOM_SOCIAL: 'Cadastro S.A.' }).nome, 'Cadastro S.A.');
