@@ -4918,8 +4918,9 @@ try {
   const academyConteudo = require('./academy/repo-conteudo');
   require('./music').montar(app, {
     express, requireAuth, requireAdmin, enviarEmail,
+      // Conta do Augusto NOS SISTEMAS é villelastay@gmail.com; a augusto.villela@ é a do staff.
     academia: {
-      contaDoDono: () => academyRepo.Usuarios.porEmail(process.env.MUSIC_DONO_EMAIL || 'augusto.villela@gmail.com'),
+      contaDoDono: () => academyRepo.Usuarios.porEmail(process.env.MUSIC_DONO_EMAIL || 'villelastay@gmail.com'),
       conferirCredencial: (email, senha, codigo) => {
         const u = academyRepo.Usuarios.porEmail(email);
         if (!u || u.status !== 'ativo' || !academyRepo.Usuarios.conferirSenha(u, senha)) return null;
