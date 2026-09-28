@@ -17,6 +17,13 @@ const repo = require('./repo');
 
 const ENTRAR = '/music/entrar';
 
+// O Musique é pago (28/09/2026): sem assinatura, cortesia ou teste em curso,
+// a API responde 402. Ficam abertas só as portas para ASSINAR e para a
+// pessoa cuidar da conta e levar os próprios dados (LGPD: exportar e
+// excluir não podem depender de pagamento).
+const SEM_PAGAR = [/^\/music\/api\/me$/, /^\/music\/api\/conta(\/|$)/, /^\/music\/api\/assinatura(\/|$)/,
+  /^\/music\/api\/cursos$/, /^\/music\/api\/cifras\/meus-dados(\/|$)/];
+
 /** Cria a camada de sessão desta montagem. `verificador` pode ser nulo:
  *  nesse caso a landing continua de pé e a API do usuário responde 503
  *  dizendo o que falta — módulo que exige tudo para subir é módulo que
@@ -35,6 +42,15 @@ function criar(verificador) {
     req.usuario = s.usuario;                 // conta do Musique: { id, nome, email, status }
     req.jti = s.jti;
     req.perfil = repo.Usuarios.garantir(s.usuario.id, { apelido: s.usuario.nome || '' });
+    const caminho = String(req.originalUrl || req.url || '').split('?')[0];
+    if (!SEM_PAGAR.some((r) => r.test(caminho))) {
+      let u = { acesso: true };
+      try { u = require('./assinatura').acessoDaConta(s.usuario.id); } catch (_) { /* módulo de assinatura fora: não bloqueia */ }
+      if (!u.acesso) {
+        return res.status(402).json({ erro: 'O seu teste grátis terminou. Assine o Musique para continuar usando.',
+          codigo: 'ASSINATURA', assinar: '/music/app#conta' });
+      }
+    }
     next();
   }
 

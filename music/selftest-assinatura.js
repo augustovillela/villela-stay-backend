@@ -108,14 +108,59 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
     assert.equal(assinatura.vigente('u-bruno'), null);
   });
 
-  await t('cancelar: avisa o MP (PUT cancelled), encerra e tira os cursos da Academia', async () => {
+  await t('cancelar: avisa o MP (PUT cancelled) e encerra — mas o mês JÁ PAGO continua valendo, com os cursos', async () => {
     const antes = CORTESIA.revogadas.length;
     const r = await req('POST', '/music/api/assinatura/cancelar', { como: 'ana' });
     assert.equal(r.status, 200, JSON.stringify(r.json));
     assert.ok(MP.puts.some((p) => p.caminho === '/preapproval/' + preId && p.corpo.status === 'cancelled'));
     assert.equal(assinatura.vigente('u-ana'), null);
-    assert.equal(CORTESIA.revogadas.length, antes + 1);
-    assert.equal((await req('GET', '/music/api/assinatura', { como: 'ana' })).json.acesso, false);
+    assert.equal(CORTESIA.revogadas.length, antes, 'pagou o mês: os cursos ficam até o fim dele');
+    const st = await req('GET', '/music/api/assinatura', { como: 'ana' });
+    assert.equal(st.json.uso.motivo, 'pago_ate');
+    assert.equal((await req('GET', '/music/api/estudo', { como: 'ana' })).status, 200, 'e o app também');
+    // 31 dias depois do último pagamento: acabou.
+    db.prepare("UPDATE assinaturas_music SET ultimo_pagamento_em = ? WHERE conta_id = 'u-ana'").run(new Date(Date.now() - 31 * 864e5).toISOString());
+    await assinatura.ciclo();
+    assert.equal(CORTESIA.revogadas.length, antes + 1, 'fim do mês pago: a cortesia sai da Academia');
+  });
+
+  await t('MUSIQUE PAGO: teste grátis de 14 dias; depois, 402 em tudo — menos conta, assinar e levar os próprios dados', async () => {
+    const r = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Teste Pago', email: 'testepago@t', senha: 'senha-boa-123', aceite_termos: true } });
+    const ck = { Cookie: (r.setCookie || []).find((x) => x.startsWith(contas.COOKIE + '=')).split(';')[0] };
+    const st = await req('GET', '/music/api/assinatura', { headers: ck });
+    assert.equal(st.json.uso.motivo, 'teste');
+    assert.equal(st.json.uso.teste.dias_restantes, 14);
+    assert.equal((await req('GET', '/music/api/estudo', { headers: ck })).status, 200, 'no teste, tudo liberado');
+    // O teste NÃO dá curso da Academia: eles também são vendidos lá.
+    const c = contas.Contas.porEmail('testepago@t');
+    contas.Contas.marcarEmailVerificado(c.id);
+    assert.equal((await assinatura.sincronizar(c.id)).resultado, 'nada-a-fazer');
+    // Teste vencido:
+    db.prepare('UPDATE contas_music SET criado_em = ? WHERE id = ?').run(new Date(Date.now() - 20 * 864e5).toISOString(), c.id);
+    const cfg = require('./repo').Config.get('assinatura', {});
+    require('./repo').Config.set('assinatura', { ...cfg, pago_desde: new Date(Date.now() - 30 * 864e5).toISOString() });
+    try {
+      const b = await req('GET', '/music/api/estudo', { headers: ck });
+      assert.equal(b.status, 402); assert.equal(b.json.codigo, 'ASSINATURA');
+      assert.equal((await req('GET', '/music/api/cifras/musicas', { headers: ck })).status, 402, 'as Cifras também fecham');
+      for (const u of ['/music/api/me', '/music/api/conta', '/music/api/assinatura', '/music/api/cifras/meus-dados']) {
+        assert.equal((await req('GET', u, { headers: ck })).status, 200, u + ' tem de continuar aberto (conta, assinar, LGPD)');
+      }
+      const st2 = await req('GET', '/music/api/assinatura', { headers: ck });
+      assert.equal(st2.json.uso.acesso, false);
+      // Conta ANTIGA (criada antes da cobrança) ganha o teste a partir do lançamento, não da criação.
+      require('./repo').Config.set('assinatura', { ...cfg, pago_desde: new Date(Date.now() - 2 * 864e5).toISOString() });
+      const st3 = await req('GET', '/music/api/assinatura', { headers: ck });
+      assert.equal(st3.json.uso.motivo, 'teste'); assert.equal(st3.json.uso.teste.dias_restantes, 12);
+      // O dono, cortesia vitalícia, nunca é bloqueado.
+      const dono = db.prepare("SELECT id FROM contas_music WHERE origem = 'dono'").get();
+      assert.equal(assinatura.acessoDaConta(dono.id).acesso, true);
+    } finally { require('./repo').Config.set('assinatura', cfg); }
+    // As ferramentas deixam de ser públicas (por ora nada é de graça).
+    const f = (await req('GET', '/music/ferramentas', { cru: true })).texto;
+    assert.ok(f.includes("location.replace('/music/entrar?voltar=/music/ferramentas')"), 'ferramentas exigem conta');
+    const land = (await req('GET', '/music', { cru: true })).texto;
+    assert.ok(land.includes('Teste grátis') && !land.includes('R$ 0'), 'a landing não pode prometer plano grátis');
   });
 
   await t('staff: preço só admin e vale para as NOVAS; cortesia manual pelo e-mail da conta; encerrar tira os cursos', async () => {

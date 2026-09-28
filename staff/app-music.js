@@ -113,13 +113,14 @@ async function muAssinaturas(alvo) {
       ${muCard('Cobrança', d.cobranca_ligada ? 'ligada' : 'desligada', d.cobranca_ligada ? 'Mercado Pago' : 'falta MP_ACCESS_TOKEN')}
     </div>
     <div class="aviso obs" style="padding:10px 14px;border-left:3px solid #C9A227;background:#FDF6E3;border-radius:8px;margin:10px 0">
-      O app é grátis; a assinatura dá <b>cortesia dos cursos de música da Academia</b> pelo mesmo e-mail (confirmado no Musique),
+      O Musique é <b>pago</b>: teste grátis para conta nova e, depois, assinatura — que inclui a <b>cortesia dos cursos de música da Academia</b> pelo mesmo e-mail (confirmado no Musique),
       enquanto estiver ativa. Mudar o preço vale para assinaturas <b>novas</b>: o Mercado Pago fixa o valor de cada uma.
     </div>
     <h3>Preço e tolerância</h3>
     <div class="barra">
       <label>Preço mensal (R$) <input id="mu-preco" type="number" step="0.01" min="1" value="${(d.plano.preco_cents / 100).toFixed(2)}" style="max-width:120px"></label>
       <label>Tolerância (dias) <input id="mu-car" type="number" min="0" max="60" value="${d.plano.carencia_dias}" style="max-width:80px"></label>
+      <label>Teste grátis (dias) <input id="mu-teste" type="number" min="0" max="90" value="${d.plano.teste_dias}" style="max-width:80px"></label>
       <button class="btn" id="mu-plano">Salvar</button>
     </div>
     <h3 style="margin-top:14px">Dar cortesia</h3>
@@ -134,7 +135,7 @@ async function muAssinaturas(alvo) {
              : '<p class="vazio">Nenhuma assinatura ainda.</p>'}`;
   $('#mu-plano').onclick = async () => {
     try {
-      await api('PUT', '/music/assinaturas/plano', { preco_cents: Math.round(Number($('#mu-preco').value) * 100), carencia_dias: Number($('#mu-car').value) });
+      await api('PUT', '/music/assinaturas/plano', { preco_cents: Math.round(Number($('#mu-preco').value) * 100), carencia_dias: Number($('#mu-car').value), teste_dias: Number($('#mu-teste').value) });
       muAvisar('Plano salvo. Vale para assinaturas novas.'); muAssinaturas(alvo);
     } catch (e) { muAvisar(e.message); }
   };

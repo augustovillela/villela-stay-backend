@@ -79,6 +79,7 @@
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (d) {
           if (r.status === 401) { location.href = '/music/entrar?voltar=' + encodeURIComponent(location.pathname + location.hash); throw new Error('sessao'); }
+          if (r.status === 402) { location.hash = '#conta'; throw new Error('assinatura'); }   // teste acabou: Minha conta tem o Assinar
           if (!r.ok) { var e = new Error((d && d.erro) || ('Erro ' + r.status)); e.status = r.status; e.dados = d; throw e; }
           if (metodo === 'GET' && op.cache) C.guardar('cache', op.cache, { em: Date.now(), dados: d }).catch(function () {});
           return d;

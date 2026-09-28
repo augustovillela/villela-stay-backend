@@ -122,7 +122,7 @@ function paginaEntrar(layout) {
   return layout('Entrar · Musique', caixa(`
   <h1>Entrar no Musique</h1>
   <p class="sub">Cifras, estudo, setlists e palco — com a sua conta do Musique.</p>
-  <div class="abas"><button type="button" class="aba on" id="t-entrar">Entrar</button><button type="button" class="aba" id="t-criar">Criar conta grátis</button></div>
+  <div class="abas"><button type="button" class="aba on" id="t-entrar">Entrar</button><button type="button" class="aba" id="t-criar">Teste grátis</button></div>
   <form id="f-entrar">
     <label>E-mail<input id="em" type="email" autocomplete="username" required></label>
     <label>Senha<input id="sn" type="password" autocomplete="current-password" required></label>
@@ -137,11 +137,12 @@ function paginaEntrar(layout) {
     <label>Celular (opcional)<input id="ct" type="tel" autocomplete="tel"></label>
     <label class="check"><input id="ac" type="checkbox"><span>Li e aceito os <a href="/music/termos" target="_blank">Termos de uso</a> e a <a href="/music/privacidade" target="_blank">Política de Privacidade</a> do Musique.</span></label>
     <label class="check"><input id="mk" type="checkbox"><span>Quero receber novidades do Musique por e-mail (opcional).</span></label>
-    <button class="btn" id="b-criar" type="submit">Criar conta e entrar</button>
+    <p class="sub" style="margin:0">14 dias grátis, sem cartão. Depois, o Musique é por assinatura mensal, com os cursos de música da Academia incluídos.</p>
+    <button class="btn" id="b-criar" type="submit">Criar conta e começar o teste</button>
   </form>
   <p id="msg" role="alert"></p>
   <p class="rodape">Procurando cursos de música? Eles ficam na <a href="https://academia.villelastay.com.br/academy" target="_blank" rel="noopener">Academia Villela</a>, que tem conta própria.</p>
-  `) + '<script src="/music/entrar.js"></script>', { descricao: 'Entre no Musique ou crie a sua conta grátis.', caminho: '/music/entrar' });
+  `) + '<script src="/music/entrar.js"></script>', { descricao: 'Entre no Musique ou comece o seu teste grátis.', caminho: '/music/entrar' });
 }
 
 function paginaRedefinir(layout) {

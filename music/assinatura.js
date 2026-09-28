@@ -28,7 +28,10 @@ const repo = require('./repo');
 const contas = require('./contas');
 const webhookMP = require('../nucleo/webhook-mp');
 
-const PLANO_PADRAO = { preco_cents: 25000, carencia_dias: 5, nome: 'Musique — assinatura mensal' };
+// O Musique é PAGO (Augusto, 28/09/2026): R$ 250/mês, com teste grátis de
+// 14 dias para conta nova — e para as contas que já existiam no lançamento
+// da cobrança, contados a partir dele. Nada de graça depois do teste.
+const PLANO_PADRAO = { preco_cents: 25000, carencia_dias: 5, teste_dias: 14, nome: 'Musique — assinatura mensal' };
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const novoId = () => crypto.randomBytes(9).toString('base64url');
 
@@ -44,7 +47,41 @@ function configurar({ mpFetch, cortesia, avisar, baseApi, baseSite } = {}) {
   if (typeof avisar === 'function') _avisar = (m) => Promise.resolve(avisar(m)).catch(() => {});
   if (baseApi) _baseApi = String(baseApi).replace(/\/+$/, '');
   if (baseSite) _baseSite = String(baseSite).replace(/\/+$/, '');
+  // A data em que o Musique passou a ser pago: conta criada antes dela ganha
+  // o teste a partir DELA (ninguém é bloqueado de surpresa). Gravada uma vez.
+  const cfg = repo.Config.get('assinatura', {}) || {};
+  if (!cfg.pago_desde) repo.Config.set('assinatura', { ...cfg, pago_desde: nowISO() });
   return { cobranca: cobrancaLigada(), cortesia: !!_academia.conceder };
+}
+
+/** Teste grátis da conta: fim e dias restantes. */
+function teste(c) {
+  const p = plano();
+  const base = Math.max(Date.parse(c.criado_em) || 0, Date.parse(p.pago_desde || '') || 0);
+  const fim = base + (Number(p.teste_dias) || 0) * 864e5;
+  return { fim: new Date(fim).toISOString(), ativo: Date.now() < fim, dias_restantes: Math.max(0, Math.ceil((fim - Date.now()) / 864e5)) };
+}
+
+/** Quem cancelou continua até o fim do mês que já pagou. */
+function pagoAte(contaId) {
+  const u = db.prepare(`SELECT ultimo_pagamento_em FROM assinaturas_music WHERE conta_id = ? AND status = 'cancelada'
+    AND ultimo_pagamento_em <> '' ORDER BY ultimo_pagamento_em DESC LIMIT 1`).get(contaId);
+  if (!u) return null;
+  const fim = Date.parse(u.ultimo_pagamento_em) + 30 * 864e5;
+  return fim > Date.now() ? new Date(fim).toISOString() : null;
+}
+
+/** Pode USAR o Musique? Assinatura com acesso, cortesia, período já pago ou teste em curso. */
+function acessoDaConta(contaId) {
+  const c = contas.Contas.porId(contaId);
+  if (!c) return { acesso: false, motivo: 'sem-conta' };
+  const a = vigente(contaId);
+  if (temAcesso(a)) return { acesso: true, motivo: a.status === 'cortesia' ? 'cortesia' : 'assinatura' };
+  const ate = pagoAte(contaId);
+  if (ate) return { acesso: true, motivo: 'pago_ate', ate };
+  const t = teste(c);
+  if (t.ativo) return { acesso: true, motivo: 'teste', teste: t };
+  return { acesso: false, motivo: 'sem-assinatura', teste: t };
 }
 
 class ErroAssinatura extends Error { constructor(m, status = 400) { super(m); this.status = status; } }
@@ -93,7 +130,9 @@ async function sincronizar(contaId) {
   if (!c) return { resultado: 'sem-conta' };
   const a = vigente(contaId);
   const reg = db.prepare('SELECT * FROM cortesia_academia WHERE conta_id = ?').get(contaId);
-  const deve = temAcesso(a) && !!c.email_verificado && c.status === 'ativo';
+  // O TESTE grátis não dá curso: os cursos da Academia também são vendidos
+  // lá, e dar de graça no teste seria vender por zero.
+  const deve = (temAcesso(a) || !!pagoAte(contaId)) && !!c.email_verificado && c.status === 'ativo';
   if (!_academia.conceder) return { resultado: 'academia-indisponivel', deve };
   if (deve) {
     const r = await _academia.conceder({ email: c.email, nome: c.nome, novaConta: !(reg && reg.academia_user_id) });
@@ -280,7 +319,7 @@ function garantirDono() {
  */
 async function ciclo() {
   const r = { sincronizadas: 0, sem_acesso: 0 };
-  const ids = db.prepare(`SELECT DISTINCT conta_id FROM assinaturas_music WHERE status IN ('ativa','cortesia','inadimplente')
+  const ids = db.prepare(`SELECT DISTINCT conta_id FROM assinaturas_music WHERE status IN ('ativa','cortesia','inadimplente','cancelada')
     UNION SELECT conta_id FROM cortesia_academia WHERE revogada_em = ''`).all().map((x) => x.conta_id);
   for (const id of ids) {
     const a = vigente(id);
@@ -297,8 +336,10 @@ function estadoDaConta(contaId) {
   const a = vigente(contaId);
   const p = plano();
   const reg = db.prepare('SELECT * FROM cortesia_academia WHERE conta_id = ?').get(contaId);
+  const uso = acessoDaConta(contaId);
   return {
-    plano: { nome: p.nome, preco_cents: p.preco_cents, carencia_dias: p.carencia_dias },
+    plano: { nome: p.nome, preco_cents: p.preco_cents, carencia_dias: p.carencia_dias, teste_dias: p.teste_dias },
+    uso,
     cobranca_ligada: cobrancaLigada(),
     email_verificado: !!(c && c.email_verificado),
     assinatura: a ? { status: a.status, origem: a.origem, desde: a.criado_em, preco_cents: a.preco_cents, ultimo_pagamento_em: a.ultimo_pagamento_em,
@@ -321,7 +362,7 @@ function resumoStaff() {
     eventos: db.prepare('SELECT * FROM assinatura_eventos ORDER BY id DESC LIMIT 50').all() };
 }
 
-function definirPlano({ preco_cents, carencia_dias }) {
+function definirPlano({ preco_cents, carencia_dias, teste_dias }) {
   const atual = repo.Config.get('assinatura', {}) || {};
   const novo = { ...atual };
   if (preco_cents !== undefined) {
@@ -334,12 +375,17 @@ function definirPlano({ preco_cents, carencia_dias }) {
     if (!(d >= 0 && d <= 60)) throw new ErroAssinatura('Tolerância entre 0 e 60 dias.');
     novo.carencia_dias = d;
   }
+  if (teste_dias !== undefined) {
+    const t = Math.round(Number(teste_dias));
+    if (!(t >= 0 && t <= 90)) throw new ErroAssinatura('Teste entre 0 e 90 dias.');
+    novo.teste_dias = t;
+  }
   repo.Config.set('assinatura', novo);
   return plano();
 }
 
 module.exports = {
-  configurar, plano, cobrancaLigada, vigente, temAcesso, sincronizar, assinar, cancelar, processarWebhook,
+  configurar, plano, cobrancaLigada, vigente, temAcesso, acessoDaConta, teste, sincronizar, assinar, cancelar, processarWebhook,
   concederCortesia, encerrarCortesia, garantirDono, ciclo, estadoDaConta, resumoStaff, definirPlano, ErroAssinatura,
   _conferirWebhook: webhookMP.conferir,
 };

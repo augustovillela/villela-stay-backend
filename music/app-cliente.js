@@ -58,6 +58,8 @@ const JS = `
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
         if (r.status === 401) { location.href = '/music/entrar?voltar=' + encodeURIComponent(location.pathname + location.hash); throw new Error('sessao'); }
+        // 402: o teste acabou e não há assinatura. Vai para Minha conta, onde está o Assinar.
+        if (r.status === 402) { estado.semAcesso = true; var fx = $('#faixa-teste'); if (fx) fx.remove(); if (estado.aba !== 'conta') ir('conta'); throw new Error('assinatura'); }
         if (!r.ok) { var e = new Error((d && d.erro) || ('Erro ' + r.status)); e.dados = d; throw e; }
         return d;
       });
@@ -77,6 +79,7 @@ const JS = `
     setTimeout(function () { caixa.remove(); }, 9000);
   }
   function erro(msg) {
+    if (msg === 'sessao' || msg === 'assinatura') return;   // já redirecionou: nada de erro técnico na tela
     var c = $('#corpo');
     var caixa = el('div', { class: 'alerta ruim', txt: msg });
     c.insertBefore(caixa, c.firstChild);
@@ -298,7 +301,7 @@ const JS = `
       box.innerHTML = titulo + '<p class="sub"><b>\u{2705} Ativa</b> desde ' + dataBR(a.desde) + ' · ' + reais(a.preco_cents || st.plano.preco_cents) + '/mês' +
         (a.ultimo_pagamento_em ? ' · último pagamento em ' + dataBR(a.ultimo_pagamento_em) : '') + '.</p>';
       if (onde === 'conta') box.appendChild(el('button', { class: 'btn peq sec', txt: 'Cancelar a assinatura', onclick: function () {
-        if (!confirm('Cancelar a assinatura? Os cursos da Academia saem da sua conta; o Musique continua grátis.')) return;
+        if (!confirm('Cancelar a assinatura? Não haverá novas cobranças; você usa o Musique e os cursos da Academia até o fim do mês já pago.')) return;
         api('POST', '/assinatura/cancelar').then(function () { aviso('Assinatura cancelada.'); verConta(); }).catch(function (e) { erro(e.message); });
       } }));
     } else if (a && a.status === 'inadimplente') {
@@ -310,7 +313,12 @@ const JS = `
       box.innerHTML = titulo + '<p class="sub"><b>\u{23F3} Aguardando o pagamento no Mercado Pago.</b> Assim que ele confirmar, os cursos chegam na sua conta da Academia.</p>';
       if (a.link) box.appendChild(el('a', { class: 'btn peq', href: a.link, txt: 'Continuar o pagamento' }));
     } else {
-      box.innerHTML = titulo + '<p class="sub">O Musique continua grátis. Assinando por <b>' + preco + '/mês</b>, você ganha acesso a <b>todos os cursos de música da Academia Villela</b>, que chegam na conta da Academia com o seu e-mail. Cancele quando quiser.</p>';
+      var u = st.uso || {};
+      box.innerHTML = titulo +
+        (u.motivo === 'teste' ? '<p class="alerta" style="margin:0 0 10px">\u{1F381} Teste grátis: faltam <b>' + u.teste.dias_restantes + ' dia(s)</b>.</p>' : '') +
+        (u.motivo === 'pago_ate' ? '<p class="alerta" style="margin:0 0 10px">Assinatura cancelada: você usa até <b>' + dataBR(u.ate) + '</b>.</p>' : '') +
+        (!u.acesso ? '<p class="alerta ruim" style="margin:0 0 10px"><b>O seu teste grátis terminou.</b> Assine para continuar usando o Musique. Os seus dados continuam guardados.</p>' : '') +
+        '<p class="sub">O Musique custa <b>' + preco + '/mês</b> e inclui <b>todos os cursos de música da Academia Villela</b>, que chegam na conta da Academia com o seu e-mail. Cancele quando quiser: você usa até o fim do mês pago.</p>';
       if (!st.email_verificado) box.appendChild(el('p', { class: 'peq', txt: 'Para assinar, confirme primeiro o seu e-mail: é por ele que os cursos chegam na Academia.' }));
       else if (!st.cobranca_ligada) box.appendChild(el('p', { class: 'peq', txt: 'O pagamento online está temporariamente indisponível.' }));
       else box.appendChild(el('button', { class: 'btn', txt: 'Assinar por ' + preco + '/mês', onclick: assinar }));
@@ -463,6 +471,19 @@ const JS = `
         };
       }).catch(function (e) { erro(e.message); });
     };
+  }
+
+  // Faixa do teste grátis: quantos dias faltam, com o caminho para assinar.
+  function faixaTeste() {
+    api('GET', '/assinatura').then(function (st) {
+      var u = st.uso || {};
+      if (u.motivo !== 'teste' || $('#faixa-teste')) return;
+      var f = el('div', { class: 'alerta', id: 'faixa-teste', html:
+        '\u{1F381} <b>Teste grátis:</b> faltam ' + u.teste.dias_restantes + ' dia(s). Depois, o Musique custa ' + reais(st.plano.preco_cents) +
+        '/mês, com os cursos de música da Academia incluídos. <button class="btn peq" id="fx-assinar">Assinar</button>' });
+      var m = $('#menu'); m.parentNode.insertBefore(f, m);
+      $('#fx-assinar').onclick = function () { ir('conta'); };
+    }).catch(function () {});
   }
 
   // Faixa no topo enquanto o e-mail nao for confirmado.
@@ -1115,6 +1136,7 @@ const JS = `
   // vindo direto por F5, o papel ainda não foi lido — busca e repinta.
   if (inicial && inicial !== 'estudar') api('GET', '/estudo').then(function (d) { estado.eu = d; pintarMenu(); }).catch(function () {});
   faixaEmail();
+  faixaTeste();
 })();
 `;
 

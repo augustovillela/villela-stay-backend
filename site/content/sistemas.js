@@ -617,10 +617,9 @@ const SISTEMAS = [
     ]
   },
   // ------------------------------------------------------------- MUSIQUE
-  // Lançado em 28/09/2026 (ordem do Augusto). Modelo "freemium": o app é
-  // grátis de verdade; a assinatura de R$ 250/mês é opcional e dá cortesia
-  // dos cursos de música da Academia Villela. Sem "14 dias de teste": não
-  // existe teste, porque não existe cobrança para usar o app.
+  // Lançado em 28/09/2026 (ordem do Augusto). PAGO: R$ 250/mês com 14 dias
+  // de teste grátis sem cartão; a assinatura inclui a cortesia dos cursos de
+  // música da Academia Villela. Nada é de graça depois do teste, por ora.
   {
     id: 'music', nome: 'Musique', pasta: 'musique',
     vertical: 'grupo', cor: '#1B2A4A',
@@ -642,9 +641,9 @@ const SISTEMAS = [
       'Musique brings together your chord library (with exact transposition and the chord drawn for your instrument), a band that rehearses and plays together, and an academy that measures your practice and tells you what it measures before you play.',
       'Musique reúne tu acervo de cifrados (con transposición exacta y el acorde dibujado en tu instrumento), la banda que ensaya y toca junta, y una academia que mide lo que practicas y dice qué mide antes de que toques.'),
     porque: T(
-      'O app é <b>grátis</b> — sem limite de cifras e sem teste que acaba. A assinatura existe para quem quer ir além: ela inclui <b>todos os cursos de música da Academia Villela</b>.',
-      'The app is <b>free</b> — no chord chart limit and no trial that runs out. The subscription is for those who want more: it includes <b>every music course at Villela Academy</b>.',
-      'La app es <b>gratis</b> — sin límite de cifrados y sin prueba que termina. La suscripción es para quien quiere ir más allá: incluye <b>todos los cursos de música de la Academia Villela</b>.'),
+      'Uma assinatura só troca o site de cifra, o app de afinador, o caderno de repertório e o grupo da banda — e ainda inclui <b>todos os cursos de música da Academia Villela</b>.',
+      'One subscription replaces the chord website, the tuner app, the repertoire notebook and the band chat — and it includes <b>every music course at Villela Academy</b>.',
+      'Una sola suscripción reemplaza el sitio de cifrados, la app de afinador, el cuaderno de repertorio y el grupo de la banda — e incluye <b>todos los cursos de música de la Academia Villela</b>.'),
     recursos: [
       ['🎸', T('Acervo de cifras', 'Chord chart library', 'Acervo de cifrados'),
         T('Importe por link, arquivo ou foto, edite, compare versões e transponha na hora — o acorde aparece desenhado para violão, guitarra, cavaquinho, ukulele, teclado ou baixo.',
@@ -681,21 +680,20 @@ const SISTEMAS = [
       'Está no ar e em uso: é onde o fundador do grupo guarda e toca o próprio repertório, com as cifras transpostas e o dicionário de acordes montado a partir delas.',
       'It is live and in use: it is where the group’s founder keeps and plays an entire repertoire, with transposed charts and the chord dictionary built from them.',
       'Está en el aire y en uso: es donde el fundador del grupo guarda y toca su propio repertorio, con los cifrados transpuestos y el diccionario de acordes armado a partir de ellos.'),
-    preco: { modelo: 'freemium', valor: 250,
-      texto: T('Grátis · assinatura R$ 250/mês', 'Free · R$250/mo subscription', 'Gratis · suscripción R$ 250/mes') },
+    preco: { valor: 250, modelo: 'assinatura' },
     faq: [
-      [T('O Musique é grátis mesmo?', 'Is Musique really free?', '¿Musique es gratis de verdad?'),
-       T('Sim. Acervo de cifras, academia, banda, palco e escolas são grátis, sem teste que acaba. A assinatura de R$ 250/mês é opcional: ela inclui todos os cursos de música da Academia Villela, que chegam na conta da Academia com o mesmo e-mail, enquanto a assinatura estiver ativa.',
-         'Yes. The chord library, academy, band, stage and schools are free, with no trial that runs out. The R$250/month subscription is optional: it includes every music course at Villela Academy, delivered to the Academy account with the same email, while the subscription is active.',
-         'Sí. Acervo de cifrados, academia, banda, escenario y escuelas son gratis, sin prueba que termina. La suscripción de R$ 250/mes es opcional: incluye todos los cursos de música de la Academia Villela, que llegan a la cuenta de la Academia con el mismo correo, mientras la suscripción esté activa.')],
+      [T('Como funciona o teste e o que a assinatura inclui?', 'How does the trial work and what does the subscription include?', '¿Cómo funciona la prueba y qué incluye la suscripción?'),
+       T('São 14 dias grátis, sem cartão, com tudo liberado. Depois, o Musique custa R$ 250 por mês e inclui todos os cursos de música da Academia Villela, que chegam na conta da Academia com o mesmo e-mail enquanto a assinatura estiver ativa.',
+         'You get 14 free days, no card, with everything unlocked. After that, Musique costs R$250 a month and includes every music course at Villela Academy, delivered to the Academy account with the same email while the subscription is active.',
+         'Son 14 días gratis, sin tarjeta, con todo liberado. Después, Musique cuesta R$ 250 al mes e incluye todos los cursos de música de la Academia Villela, que llegan a la cuenta de la Academia con el mismo correo mientras la suscripción esté activa.')],
       [T('As cifras que eu importo ficam públicas?', 'Do the charts I import become public?', '¿Los cifrados que importo quedan públicos?'),
        T('Não. Cifra de música de outro autor fica no seu acervo e circula só nas bandas fechadas de que você participa. O Musique não publica nem distribui obra de terceiro.',
          'No. A chart of someone else’s song stays in your library and circulates only within the closed bands you belong to. Musique does not publish or distribute third-party work.',
          'No. El cifrado de una canción de otro autor queda en tu acervo y circula solo en las bandas cerradas de las que participas. Musique no publica ni distribuye obra de terceros.')],
       [T('Posso cancelar a assinatura quando quiser?', 'Can I cancel the subscription anytime?', '¿Puedo cancelar la suscripción cuando quiera?'),
-       T('Pode, em "Minha conta", com um clique. Os cursos da Academia saem da sua conta ao fim da assinatura e o Musique continua grátis; o seu progresso nos cursos fica guardado se você assinar de novo.',
-         'Yes, in "My account", with one click. The Academy courses leave your account when the subscription ends and Musique stays free; your course progress is kept if you subscribe again.',
-         'Sí, en "Mi cuenta", con un clic. Los cursos de la Academia salen de tu cuenta al terminar la suscripción y Musique sigue gratis; tu progreso en los cursos queda guardado si vuelves a suscribirte.')]
+       T('Pode, em "Minha conta", com um clique. Você usa o Musique e os cursos até o fim do mês já pago; depois disso eles saem, e os seus dados e o progresso nos cursos ficam guardados se você assinar de novo.',
+         'Yes, in "My account", with one click. You keep Musique and the courses until the end of the month already paid; after that they go, and your data and course progress are kept if you subscribe again.',
+         'Sí, en "Mi cuenta", con un clic. Usas Musique y los cursos hasta el fin del mes ya pagado; después salen, y tus datos y el progreso en los cursos quedan guardados si vuelves a suscribirte.')]
     ]
   },
 ];

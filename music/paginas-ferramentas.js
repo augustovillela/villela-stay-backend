@@ -481,10 +481,19 @@ function registrar(app) {
   </section>
 
   <div class="nota" style="margin-bottom:40px">
-    Quer acompanhar o seu estudo — exercícios, progresso e trilhas? Isso fica na sua conta.
-    <a href="/music/entrar">Entre ou crie a sua conta do Musique</a> — é grátis.
+    O afinador, o metrônomo e o gerador de tons fazem parte do Musique: entre com a sua conta
+    (teste grátis de 14 dias, depois por assinatura).
   </div>
 </div>
+<script>
+/* Por enquanto nada é de graça no Musique (Augusto, 28/09/2026): as
+   ferramentas exigem conta com teste ou assinatura. Sem sessão, vai para a
+   entrada; sem acesso, para Minha conta, onde está o Assinar. */
+fetch('/music/api/assinatura').then(function (r) {
+  if (r.status === 401) { location.replace('/music/entrar?voltar=/music/ferramentas'); return null; }
+  return r.json();
+}).then(function (d) { if (d && d.uso && !d.uso.acesso) location.replace('/music/app#conta'); }).catch(function () {});
+</script>
 <script src="/music/audio.js"></script>
 <script>${JS}</script>`,
       { descricao: 'Afinador cromático, metrônomo com aumento progressivo e gerador de tons. '

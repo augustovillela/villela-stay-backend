@@ -284,6 +284,9 @@ ${corpo}
 
 // Preço da assinatura como a landing e os termos mostram: vem da config
 // (o staff muda sem deploy), com o padrão aprovado pelo Augusto.
+function diasDeTeste() {
+  try { return require('./assinatura').plano().teste_dias; } catch (_) { return 14; }
+}
 function precoAssinatura() {
   let c = 25000;
   try { c = require('./assinatura').plano().preco_cents; } catch (_) { /* padrão */ }
@@ -305,7 +308,7 @@ function registrarPaginas(app) {
         <a class="btn" href="/music/app">Abrir o Musique</a>
         <a class="btn claro" href="/music/app#cifras" style="background:transparent;color:var(--navy);border:1px solid var(--navy);margin-left:8px">Minhas cifras</a>
         <a class="btn claro" href="/music/ferramentas" style="background:transparent;color:var(--navy);border:1px solid var(--navy);margin-left:8px">Afinador e metrônomo</a>
-        <p style="color:var(--suave);font-size:14px;margin-top:12px">Ainda não tem conta? <a href="/music/entrar#criar">Crie a sua grátis</a> — a conta é do Musique.</p>
+        <p style="color:var(--suave);font-size:14px;margin-top:12px">Ainda não tem conta? <a href="/music/entrar#criar">Teste grátis por ${esc(String(diasDeTeste()))} dias</a>, sem cartão. Depois, ${esc(precoAssinatura())}/mês com os cursos de música da Academia.</p>
       </div>
 
       <div class="faixa"><div class="wrap">
@@ -337,22 +340,24 @@ function registrarPaginas(app) {
         <h2 class="titulo">Planos</h2>
         <div class="planos">
           <div class="plano">
-            <span class="plano-nome">Grátis</span>
-            <div class="plano-preco">R$ 0</div>
-            <p>Para sempre, sem teste que acaba.</p>
-            <ul><li>Acervo de cifras, transposição e dicionário de acordes</li>
-              <li>Banda, setlists, Modo Maestro e palco sem internet</li>
-              <li>Academia: trilhas, exercícios e progresso</li>
-              <li>Escolas, turmas, afinador e metrônomo</li></ul>
-            <a class="btn claro" href="/music/entrar#criar" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Criar conta grátis</a>
+            <span class="plano-nome">Teste grátis</span>
+            <div class="plano-preco">${esc(String(diasDeTeste()))} dias</div>
+            <p>Experimente tudo, sem cartão. Depois, continua com a assinatura.</p>
+            <ul><li>Todas as funções do Musique liberadas</li>
+              <li>Sem cartão para começar</li>
+              <li>Ao fim do teste, os seus dados continuam guardados</li></ul>
+            <a class="btn claro" href="/music/entrar#criar" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Começar o teste grátis</a>
           </div>
           <div class="plano destaque">
             <span class="plano-nome">Assinatura</span>
             <div class="plano-preco">${esc(precoAssinatura())}<small>/mês</small></div>
-            <p>Tudo do plano grátis, e mais:</p>
-            <ul><li><b>Todos os cursos de música da Academia Villela</b>, na conta da Academia com o seu e-mail</li>
-              <li>Cursos novos entram sozinhos enquanto a assinatura estiver ativa</li>
-              <li>Pagamento mensal no Mercado Pago; cancele quando quiser, em Minha conta</li></ul>
+            <p>O Musique inteiro, e mais:</p>
+            <ul><li>Acervo de cifras, transposição e dicionário de acordes</li>
+              <li>Banda, setlists, Modo Maestro e palco sem internet</li>
+              <li>Academia: trilhas, exercícios, progresso, escolas e turmas</li>
+              <li>Afinador, metrônomo e gerador de tons</li>
+              <li><b>Todos os cursos de música da Academia Villela</b>, na conta da Academia com o seu e-mail</li>
+              <li>Pagamento mensal no Mercado Pago; cancele quando quiser e use até o fim do mês pago</li></ul>
             <a class="btn" href="/music/app#conta">Assinar</a>
           </div>
         </div>
@@ -425,14 +430,15 @@ function registrarPaginas(app) {
     <p>Ao importar uma cifra de arquivo, foto ou página da web, você declara que tem direito de
     usá-la para o seu estudo e o do seu grupo. A Musique guarda de onde cada cifra veio.</p>
     <h3>Assinatura</h3>
-    <p>O Musique é gratuito. A assinatura, opcional, custa o valor mensal informado na página de planos
-    no momento da contratação, cobrado todo mês pelo Mercado Pago até o cancelamento. Ela dá acesso de
-    cortesia aos cursos de música da Academia Villela, na conta da Academia com o mesmo e-mail, que
-    precisa estar confirmado no Musique. Os cursos ficam disponíveis enquanto a assinatura estiver
-    ativa; se um pagamento falhar, o acesso continua por um período de tolerância informado na sua
-    conta e, depois dele, é suspenso até a regularização.</p>
+    <p>O uso do Musique é pago por assinatura mensal, no valor informado na página de planos no momento
+    da contratação, cobrado todo mês pelo Mercado Pago até o cancelamento. Conta nova tem um período de
+    teste gratuito, informado na página de planos e na sua conta; ao fim dele, o uso depende da
+    assinatura, e os seus dados continuam guardados e exportáveis. A assinatura dá acesso de cortesia
+    aos cursos de música da Academia Villela (o período de teste não dá), na conta da Academia com o
+    mesmo e-mail, que precisa estar confirmado no Musique. Se um pagamento falhar, o acesso continua
+    por um período de tolerância informado na sua conta e, depois dele, é suspenso até a regularização.</p>
     <p>Você pode cancelar a qualquer momento em "Minha conta"; o cancelamento interrompe as próximas
-    cobranças, e o acesso aos cursos termina com ele. Nas contratações feitas pela internet, vale o
+    cobranças, e o acesso ao Musique e aos cursos continua até o fim do período já pago. Nas contratações feitas pela internet, vale o
     direito de arrependimento de 7 (sete) dias previsto no art. 49 do Código de Defesa do Consumidor,
     com devolução do valor pago. A conta e os termos da Academia Villela são próprios e continuam
     valendo para o uso dos cursos lá.</p>
