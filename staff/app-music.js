@@ -17,7 +17,7 @@
 // Compartilha o escopo global com app-core.js (scripts clássicos).
 // ============================================================================
 const MU_SITE = '/music';
-let MU_VISAO = 'fila';
+let MU_VISAO = 'cifras';
 
 const muCard = (rot, n, sub) => `<div class="card"><div class="n">${n == null ? '—' : n}</div><div class="rot">${esc(rot)}</div>${sub ? `<div class="obs">${esc(sub)}</div>` : ''}</div>`;
 const muQuando = (d) => (d ? String(d).slice(0, 16).replace('T', ' ') : '—');
@@ -38,8 +38,8 @@ async function renderMusic() {
        </div>
        <div id="mu-cards" class="cards"></div>
        <div class="barra" style="margin-top:12px">
-         ${['fila', 'ia', 'acervo', 'auditoria'].map((v) => `<button class="btn secund mu-nav" data-v="${v}">${{
-           fila: '⚙️ Fila e DLQ', ia: '🤖 Fornecedores de IA', acervo: '🎼 Acervo', auditoria: '📜 Auditoria',
+         ${['cifras', 'fila', 'ia', 'acervo', 'auditoria'].map((v) => `<button class="btn secund mu-nav" data-v="${v}">${{
+           cifras: '🎸 Cifras', fila: '⚙️ Fila e DLQ', ia: '🤖 Fornecedores de IA', acervo: '🎼 Acervo', auditoria: '📜 Auditoria',
          }[v]}</button>`).join('')}
        </div>
        <div id="mu-corpo"><p class="vazio">Carregando…</p></div>`;
@@ -78,6 +78,7 @@ async function muCorpo() {
   const alvo = $('#mu-corpo');
   alvo.innerHTML = '<p class="vazio">Carregando…</p>';
   try {
+    if (MU_VISAO === 'cifras') return muCifras(alvo);
     if (MU_VISAO === 'fila') return muFila(alvo);
     if (MU_VISAO === 'ia') return muIA(alvo);
     if (MU_VISAO === 'acervo') return muAcervo(alvo);
@@ -148,15 +149,16 @@ async function muAcervo(alvo) {
       <td><b>${esc(MU_TITULARIDADE[l.titularidade] || l.titularidade)}</b></td>
       <td>${l.n}</td>
       <td class="obs">${l.titularidade === 'terceiro_privado'
-        ? 'Nunca publicada, nunca sugerida a outro usuário, nunca enviada a IA.'
+        ? 'Circula só na BANDA fechada; link aberto e público dependem da política (aba Cifras); IA liberada (ADR-0009).'
         : 'Pode ser publicada pelo dono.'}</td>
     </tr>`).join('');
   alvo.innerHTML = `
     <div class="aviso obs" style="padding:10px 14px;border-left:3px solid #C9A227;background:#FDF6E3;border-radius:8px;margin:0 0 10px">
-      A Musique <b>não tem acervo público de obra de terceiro</b>, e isso é decisão, não pendência:
-      reproduzir cifra, letra ou partitura de terceiro exige autorização, e a licença do ECAD é de
-      execução pública, não de reprodução. Catálogo público só existiria com licenciamento junto às
-      editoras — projeto à parte.
+      Obra de terceiro <b>não é pública por padrão</b>. Desde 28/09/2026 (ADR-0009, ordem do Augusto)
+      ela circula dentro de banda fechada, pode ir à IA, e o acervo completo existe — mas link aberto e
+      público de obra de terceiro são POLÍTICAS desligadas na aba Cifras. Ligar exige motivo, fica na
+      auditoria, e o recomendado é parecer jurídico antes (reprodução de cifra/letra de terceiro exige
+      autorização; a licença do ECAD é de execução pública).
     </div>
     ${linhas ? `<table class="tab"><thead><tr><th>Titularidade</th><th>Obras</th><th>O que isso permite</th></tr></thead><tbody>${linhas}</tbody></table>`
              : '<p class="vazio">Nenhuma obra no acervo ainda.</p>'}`;
@@ -173,4 +175,81 @@ async function muAuditoria(alvo) {
   alvo.innerHTML = linhas
     ? `<table class="tab"><thead><tr><th>Quando</th><th>Ação</th><th>Quem</th><th>Alvo</th></tr></thead><tbody>${linhas}</tbody></table>`
     : '<p class="vazio">Nenhum evento ainda.</p>';
+}
+
+// ---------------------------------------------------------------------------
+// 🎸 CIFRAS (28/09/2026): políticas e flags, cota de IA, importações e falhas,
+// fontes externas e disjuntores, moderação e sessões ao vivo.
+// ---------------------------------------------------------------------------
+async function muCifras(alvo) {
+  const [r, fl, mod, ses] = await Promise.all([api('GET', '/music/cifras/resumo'), api('GET', '/music/cifras/flags'),
+    api('GET', '/music/cifras/moderacao'), api('GET', '/music/cifras/sessoes')]);
+  const imp = r.importacoes || {};
+  const reais = (c) => 'R$ ' + ((c || 0) / 100).toFixed(2).replace('.', ',');
+  const cards = [
+    muCard('Músicas', r.musicas, `${r.cifras} cifra(s) · ${r.revisoes} revisão(ões)`),
+    muCard('Arranjos', r.arranjos, `${r.bandas} banda(s) · ${r.setlists} setlist(s)`),
+    muCard('Ativos 7 dias', r.usuarios_ativos_7d, `${r.links_ativos} link(s) ativo(s)`),
+    muCard('Ao vivo agora', (r.vivo || {}).ativas, `${(r.vivo || {}).conexoes || 0} aparelho(s) conectado(s)`),
+    muCard('Busca', r.busca_fts ? 'FTS5' : 'varredura', r.busca_fts ? 'trigramas (tolera erro de digitação)' : 'sem FTS5 neste SQLite'),
+  ].join('');
+  const flags = (fl.flags || []).map((f) => `<tr>
+      <td><b>${esc(f.chave)}</b>${f.politica ? ' <span class="chip">POLÍTICA</span>' : ''}<div class="obs">${esc(f.descricao)}</div></td>
+      <td>${f.ligado ? '<b style="color:#0B6B3A">ligado</b>' : '<span class="obs">desligado</span>'}</td>
+      <td class="obs">${esc(f.atualizado_por || '')}<br>${esc(muQuando(f.atualizado_em))}</td>
+      <td><button class="btn secund mu-flag" data-k="${esc(f.chave)}" data-v="${f.ligado ? 0 : 1}" data-p="${f.politica ? 1 : 0}">${f.ligado ? 'Desligar' : 'Ligar'}</button></td>
+    </tr>`).join('');
+  const porTipo = (imp.por_tipo || []).map((x) => `${esc(x.tipo_entrada)}: ${x.n}${x.falhas ? ` (<span style="color:#B3261E">${x.falhas} falha(s)</span>)` : ''}`).join(' · ');
+  const falhas = (imp.falhas || []).slice(0, 20).map((x) => `<tr><td>${esc(muQuando(x.atualizado_em))}</td><td>${esc(x.tipo_entrada)}</td>
+      <td class="obs">${esc(x.entrada_resumo)}</td><td style="color:#B3261E">${esc(x.erro)}</td>
+      <td>${x.tipo_entrada === 'url' ? `<button class="btn secund mu-reproc" data-id="${esc(x.id)}">Reprocessar</button>` : ''}</td></tr>`).join('');
+  const fontes = (imp.por_fonte || []).map((x) => `${esc(x.adaptador || x.tipo)}: ${x.n} (confiança média ${Math.round((x.conf || 0) * 100)}%)`).join(' · ');
+  const disj = ((imp.rede || {}).disjuntores || []).map((x) => `${esc(x.host)}: ${x.aberto ? '<b style="color:#B3261E">em pausa</b>' : 'ok'} (${x.falhas} falha(s))`).join(' · ');
+  const den = (mod.denuncias || []).map((x) => `<tr><td>${esc(muQuando(x.criado_em))}</td><td>${esc(x.alvo_tipo)} <span class="obs">${esc(x.alvo_id)}</span></td>
+      <td>${esc(x.motivo)}${x.trecho ? `<div class="obs">"${esc(x.trecho)}"</div>` : ''}</td>
+      <td><button class="btn secund mu-den" data-id="${esc(x.id)}" data-p="1">Procedente</button> <button class="btn secund mu-den" data-id="${esc(x.id)}" data-p="0">Improcedente</button></td></tr>`).join('');
+  const custo = ((r.ia || {}).custo_30d || []).map((x) => `<tr><td>${esc(x.capability)}</td><td>${esc(x.provider)}</td><td>${x.chamadas}</td><td>${x.falhas}</td><td><b>${reais(x.centavos)}</b></td></tr>`).join('');
+  const sess = (ses.ativas || []).map((x) => `<tr><td><b>${esc(x.codigo)}</b></td><td class="obs">${esc(x.repertorio_id)}</td><td>${esc(muQuando(x.iniciada_em))}</td><td>${x.seq} comando(s)</td></tr>`).join('');
+  alvo.innerHTML = `
+    <div class="cards">${cards}</div>
+    <h3>Flags e políticas</h3>
+    <div class="aviso obs" style="padding:10px 14px;border-left:3px solid #C9A227;background:#FDF6E3;border-radius:8px;margin:0 0 10px">
+      As duas <b>POLÍTICAS</b> são a decisão do Augusto sobre obra de terceiro (ADR-0009): nascem desligadas, e ligar
+      exige motivo (fica na auditoria). Recomendado: parecer do jurídico antes de ligar <code>terceiro_publico</code>.
+    </div>
+    <table class="tab"><thead><tr><th>Chave</th><th>Estado</th><th>Última mudança</th><th></th></tr></thead><tbody>${flags}</tbody></table>
+    <div class="barra"><span class="obs">Cota de IA por pessoa/dia: <b>${(r.ia || {}).cota_dia}</b></span>
+      <button class="btn secund" id="mu-cota">Mudar cota</button></div>
+    <h3 style="margin-top:18px">Importações</h3>
+    <p class="obs">${porTipo || 'Nenhuma ainda.'} · rodando agora: ${imp.rodando || 0}</p>
+    <p class="obs">Fontes: ${fontes || '—'}</p>
+    <p class="obs">Disjuntores: ${disj || 'nenhuma fonte com falha'}</p>
+    ${falhas ? `<table class="tab"><thead><tr><th>Quando</th><th>Tipo</th><th>Entrada</th><th>Erro</th><th></th></tr></thead><tbody>${falhas}</tbody></table>` : '<p class="vazio">Nenhuma importação falhou.</p>'}
+    <h3 style="margin-top:18px">Moderação</h3>
+    ${den ? `<table class="tab"><thead><tr><th>Quando</th><th>Alvo</th><th>Motivo</th><th>Decisão</th></tr></thead><tbody>${den}</tbody></table>` : '<p class="vazio">Nenhuma denúncia aberta.</p>'}
+    ${(mod.propostas_antigas || []).length ? `<p class="obs">${mod.propostas_antigas.length} proposta(s) de correção esperando há mais de 14 dias.</p>` : ''}
+    <h3 style="margin-top:18px">Sessões ao vivo ativas</h3>
+    ${sess ? `<table class="tab"><thead><tr><th>Código</th><th>Setlist</th><th>Início</th><th>Comandos</th></tr></thead><tbody>${sess}</tbody></table>` : '<p class="vazio">Nenhuma agora.</p>'}
+    <h3 style="margin-top:18px">IA das cifras — últimos 30 dias</h3>
+    ${custo ? `<table class="tab"><thead><tr><th>Capability</th><th>Fornecedor</th><th>Chamadas</th><th>Falhas</th><th>Custo</th></tr></thead><tbody>${custo}</tbody></table>`
+             : '<p class="vazio">Nenhuma chamada. As capabilities <code>cifra.*</code> nascem desligadas (ligar é na aba Fornecedores de IA).</p>'}`;
+  alvo.querySelectorAll('.mu-flag').forEach((b) => { b.onclick = async () => {
+    let motivo = '';
+    if (b.dataset.p === '1') { motivo = prompt('Motivo (obrigatório para política; fica na auditoria):') || ''; if (!motivo.trim()) return; }
+    try { await api('PUT', '/music/cifras/flags/' + encodeURIComponent(b.dataset.k), { ligado: b.dataset.v === '1', motivo }); toast('Flag atualizada.'); muCorpo(); }
+    catch (e) { toast(e.message, true); }
+  }; });
+  const bc = $('#mu-cota');
+  if (bc) bc.onclick = async () => {
+    const v = prompt('Chamadas de IA por pessoa por dia (0 desliga):', String((r.ia || {}).cota_dia || 40));
+    if (v === null) return;
+    try { await api('PUT', '/music/cifras/cota-ia', { cota: Number(v) }); toast('Cota atualizada.'); muCorpo(); } catch (e) { toast(e.message, true); }
+  };
+  alvo.querySelectorAll('.mu-reproc').forEach((b) => { b.onclick = async () => {
+    try { await api('POST', '/music/cifras/importacoes/' + b.dataset.id + '/reprocessar', {}); toast('Reprocessando.'); setTimeout(muCorpo, 1500); } catch (e) { toast(e.message, true); }
+  }; });
+  alvo.querySelectorAll('.mu-den').forEach((b) => { b.onclick = async () => {
+    const motivo = prompt('Motivo da decisão (fica na auditoria):') || '';
+    try { await api('POST', '/music/cifras/denuncias/' + b.dataset.id, { procedente: b.dataset.p === '1', motivo }); toast('Denúncia resolvida.'); muCorpo(); } catch (e) { toast(e.message, true); }
+  }; });
 }

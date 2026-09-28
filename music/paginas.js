@@ -259,6 +259,11 @@ function registrarPaginas(app) {
           <div class="card"><div class="ico">🎓</div><h3>Academia musical</h3>
             <p>Exercícios de ouvido, leitura, ritmo e afinação que <strong>medem de verdade</strong> —
             e dizem o que mediram. Trilhas, revisão espaçada, tarefa do professor e nota.</p></div>
+          <div class="card"><div class="ico">🎸</div><h3>Cifras, banda e palco</h3>
+            <p>Encontre, importe (texto, PDF, Word, foto ou página) e edite cifras com o acorde
+            preso na sílaba. Transponha na hora, veja no <strong>seu</strong> instrumento — violão,
+            guitarra, cavaquinho, ukulele, teclado ou baixo —, monte setlists, e toque no
+            <strong>modo palco sem internet</strong>. Na banda, o maestro conduz e cada um lê do seu jeito.</p></div>
           <div class="card"><div class="ico">🎼</div><h3>Sua biblioteca</h3>
             <p>Cifras, partituras, MusicXML e MIDI que são seus, com transposição exata,
             capotraste, instrumento transpositor e versões. <strong>Privada por padrão</strong> —
@@ -268,8 +273,9 @@ function registrarPaginas(app) {
             agora, sem cadastro</a>. Diário de estudo e metas ficam na sua conta.</p></div>
         </div>
         <div class="nota"><strong>Como a gente trata a sua música.</strong> O que você sobe é seu e
-        fica privado. A Musique não distribui obra de terceiro, e a sua gravação de voz nunca é
-        usada para treinar modelo nenhum.</div>
+        fica privado. Cifra de música de outro artista fica no seu acervo e só circula na banda que
+        você escolher — a Musique não a publica. A sua gravação de voz nunca é usada para treinar
+        modelo nenhum.</div>
       </div></div>
 
       <div class="faixa" style="background:transparent;border:0"><div class="wrap">
@@ -330,8 +336,12 @@ function registrarPaginas(app) {
     conteúdo apenas para prestar o serviço, e sob o seu comando.</p>
     <h3>O que você declara ao enviar</h3>
     <p>Ao enviar uma obra, você declara a titularidade dela. Obra de terceiro fica em
-    <strong>acervo privado</strong>: não é publicada, não é compartilhada e não é oferecida a
-    outros usuários.</p>
+    <strong>acervo privado</strong>: não é publicada e não é oferecida a outros usuários. Ela só
+    pode ser compartilhada com uma <strong>banda fechada</strong> (grupo por convite) da qual você
+    faz parte, para uso de ensaio e apresentação do grupo.</p>
+    <h3>Importação</h3>
+    <p>Ao importar uma cifra de arquivo, foto ou página da web, você declara que tem direito de
+    usá-la para o seu estudo e o do seu grupo. A Musique guarda de onde cada cifra veio.</p>
     <h3>Voz e gravação</h3>
     <p>Suas gravações são privadas por padrão e nunca são usadas para treinar modelos. Usos que
     envolvam a sua voz exigem consentimento específico, revogável a qualquer momento.</p>`));
@@ -346,7 +356,11 @@ function registrarPaginas(app) {
     original) e pedir a exclusão da sua conta e dos seus arquivos.</p>
     <h3>Gravações</h3>
     <p>Gravações de voz e de instrumento são privadas por padrão, guardadas com acesso restrito e
-    entregues apenas por links temporários vinculados à sua sessão.</p>`));
+    entregues apenas por links temporários vinculados à sua sessão.</p>
+    <h3>Recursos de inteligência artificial</h3>
+    <p>Quando você usa um recurso de IA (por exemplo, ler a foto de uma cifra ou revisar acordes),
+    o conteúdo necessário para aquele pedido é enviado ao provedor de IA contratado, apenas para
+    responder ao pedido. O resultado é sempre uma sugestão para você revisar.</p>`));
 
   // Ferramentas abertas (afinador, metrônomo, gerador de tons). Sem
   // login de propósito: é a porta de entrada do produto — quem chega
