@@ -282,44 +282,59 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
 
     const chaveIdempotencia = `cvm-dfp-2025:${versao}:parser-${mercadoParser.PARSER_VERSAO}`;
     const existente = await pool.query('SELECT * FROM fin_market_jobs WHERE chave_idempotencia=$1', [chaveIdempotencia]);
+    let jobId;
+    let tenantRef;
+    let plano;
+    let download;
     if (existente.rows[0]) {
-      if (existente.rows[0].status !== 'concluida') {
-        throw new Error('A mesma versão oficial possui tentativa incompleta; revise a quarentena antes de repetir.');
-      }
-      const objeto = String(existente.rows[0].objeto_chave || '');
+      const anterior = existente.rows[0];
+      const objeto = String(anterior.objeto_chave || '');
       const prefixo = objeto.slice(0, objeto.indexOf('raw/'));
-      if (!prefixo.startsWith(PREFIXO_RAIZ) || !objeto.startsWith(prefixo)) throw new Error('Job idempotente fora da quarentena.');
-      const remoto = await storage.s3Existe(configS3, objeto);
-      if (!remoto || Number(remoto.tamanho) !== Number(existente.rows[0].tamanho_bytes)) {
-        throw new Error('Versão idempotente perdeu o objeto bruto; promoção recusada.');
+      const shaObjeto = prefixo.split('/').filter(Boolean).at(-1) || '';
+      if (!prefixo.startsWith(PREFIXO_RAIZ) || !objeto.startsWith(prefixo) || !HASH_RE.test(shaObjeto)) {
+        throw new Error('Job existente fora da quarentena.');
       }
-      const resumo = await resumoBanco(pool, existente.rows[0].id, existente.rows[0].tenant_ref, prefixo);
-      await verificarParticoes(configS3, pool, existente.rows[0].id, prefixo, fetchImpl, storage);
-      logger.log(`[finance-market-pilot-cvm] OK idempotente=sim versao=${versao.slice(0, 12)} registros=${resumo.registros} identidades=${resumo.identidades} particoes=${resumo.particoes}`);
-      return { ok: true, idempotente: true, versao: versao.slice(0, 12), ...resumo };
-    }
-    const incompleto = await pool.query("SELECT id FROM fin_market_jobs WHERE status IN ('aguardando','processando') LIMIT 1");
-    if (incompleto.rows[0]) {
-      throw new Error('Existe tentativa anterior incompleta na quarentena; revise-a antes de uma nova versão.');
-    }
+      const remoto = await storage.s3Existe(configS3, objeto);
+      if (!remoto || Number(remoto.tamanho) !== Number(anterior.tamanho_bytes)) {
+        throw new Error('Versão existente perdeu o objeto bruto; processamento recusado.');
+      }
+      if (anterior.status === 'concluida') {
+        const resumo = await resumoBanco(pool, anterior.id, anterior.tenant_ref, prefixo);
+        await verificarParticoes(configS3, pool, anterior.id, prefixo, fetchImpl, storage);
+        logger.log(`[finance-market-pilot-cvm] OK idempotente=sim versao=${versao.slice(0, 12)} registros=${resumo.registros} identidades=${resumo.identidades} particoes=${resumo.particoes}`);
+        return { ok: true, idempotente: true, versao: versao.slice(0, 12), ...resumo };
+      }
+      if (anterior.status !== 'aguardando' || Number(anterior.tentativas) !== 0) {
+        throw new Error('A mesma versão oficial possui tentativa iniciada; revise a quarentena antes de repetir.');
+      }
+      jobId = anterior.id;
+      tenantRef = anterior.tenant_ref;
+      plano = { prefixo, prefixoNormalizado: `${prefixo}normalizado/`, objetoBruto: objeto };
+      download = { sha256: anterior.sha256, bytes: Number(anterior.tamanho_bytes) };
+    } else {
+      const incompleto = await pool.query("SELECT id FROM fin_market_jobs WHERE status IN ('aguardando','processando') LIMIT 1");
+      if (incompleto.rows[0]) {
+        throw new Error('Existe tentativa anterior incompleta na quarentena; revise-a antes de uma nova versão.');
+      }
 
-    fs.mkdirSync(workDir, { recursive: true });
-    const arquivo = path.join(workDir, 'origem.zip');
-    const download = await baixarFonte(meta, arquivo, fetchImpl);
-    const plano = planoVersao(download.sha256);
-    const existenteR2 = await storage.s3Existe(configS3, plano.objetoBruto);
-    if (existenteR2 && Number(existenteR2.tamanho) !== download.bytes) {
-      throw new Error('Objeto já existente na quarentena tem tamanho divergente.');
-    }
-    if (!existenteR2) await enviarMultipart(configS3, plano.objetoBruto, arquivo, download.bytes, storage, fetchImpl);
+      fs.mkdirSync(workDir, { recursive: true });
+      const arquivo = path.join(workDir, 'origem.zip');
+      download = await baixarFonte(meta, arquivo, fetchImpl);
+      plano = planoVersao(download.sha256);
+      const existenteR2 = await storage.s3Existe(configS3, plano.objetoBruto);
+      if (existenteR2 && Number(existenteR2.tamanho) !== download.bytes) {
+        throw new Error('Objeto já existente na quarentena tem tamanho divergente.');
+      }
+      if (!existenteR2) await enviarMultipart(configS3, plano.objetoBruto, arquivo, download.bytes, storage, fetchImpl);
 
-    const jobId = `pilot-cvm-dfp-2025-p${mercadoParser.PARSER_VERSAO}-${versao.slice(0, 24)}`;
-    const tenantRef = `pilot:cvm_dfp_2025:p${mercadoParser.PARSER_VERSAO}:${versao}`;
-    await db.enfileirar({
-      id: jobId, tenantRef, cargaRef: chaveIdempotencia, fonte: 'cvm_dados_abertos',
-      conjunto: CONJUNTO, jurisdicao: 'BR', formato: 'zip', objetoChave: plano.objetoBruto,
-      tamanhoBytes: download.bytes, sha256: download.sha256, chaveIdempotencia,
-    });
+      jobId = `pilot-cvm-dfp-2025-p${mercadoParser.PARSER_VERSAO}-${versao.slice(0, 24)}`;
+      tenantRef = `pilot:cvm_dfp_2025:p${mercadoParser.PARSER_VERSAO}:${versao}`;
+      await db.enfileirar({
+        id: jobId, tenantRef, cargaRef: chaveIdempotencia, fonte: 'cvm_dados_abertos',
+        conjunto: CONJUNTO, jurisdicao: 'BR', formato: 'zip', objetoChave: plano.objetoBruto,
+        tamanhoBytes: download.bytes, sha256: download.sha256, chaveIdempotencia,
+      });
+    }
     const job = await db.reivindicar(`pilot:${process.pid}`, jobId);
     if (!job || job.id !== jobId) throw new Error('Job real da CVM não foi reivindicado na quarentena.');
     process.env.FINANCE_INV_NORM_PREFIXO = plano.prefixoNormalizado;
