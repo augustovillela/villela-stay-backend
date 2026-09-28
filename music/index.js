@@ -79,6 +79,11 @@ function montar(app, injected = {}) {
   registrarRotasAcademia(app, { requireUsuario: sessaoDoModulo.requireUsuario, ehProfessor, buscarContaPorEmail });
   registrarRotasBiblioteca(app, { requireUsuario: sessaoDoModulo.requireUsuario, buscarContaPorEmail });
   registrarRotasOrganizacoes(app, { requireUsuario: sessaoDoModulo.requireUsuario, buscarContaPorEmail, buscarContaPorId });
+  // CIFRAS (28/09/2026): acervo, editor, versões, arranjos de banda,
+  // setlists de palco, Modo Maestro, importação e comunidade.
+  // ADR-0009 (revisão da Q2) e ADR-0010 em docs/music/DECISIONS.
+  require('./cifras').montar(app, { requireUsuario: sessaoDoModulo.requireUsuario, requireAuth, requireAdmin,
+    buscarContaPorEmail, buscarContaPorId });
   registrarPaginas(app);
 
   // Consumo da fila (ADR-0006). Roda AQUI, no web, e só a fila `rapida`.

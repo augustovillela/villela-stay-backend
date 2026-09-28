@@ -65,6 +65,39 @@ garantirColuna('obras', 'pasta_id', "TEXT NOT NULL DEFAULT ''");
 // atribui direto ao aluno), e por isso o padrão é vazio.
 garantirColuna('tarefas', 'turma_id', "TEXT NOT NULL DEFAULT ''");
 
+// Cifras (28/09/2026): a OBRA ganha os metadados de biblioteca que o
+// músico procura (artista, álbum, gênero, dificuldade...), a impressão
+// digital que impede duplicata e a exclusão SUAVE — acervo não some por
+// um clique. O setlist ganha status, evento, blocos e o vínculo com a
+// cifra/arranjo novos (o `arranjo_id` antigo segue apontando para a
+// tabela da Fase 2).
+[['artista', "TEXT NOT NULL DEFAULT ''"], ['album', "TEXT NOT NULL DEFAULT ''"],
+  ['ano', 'INTEGER NOT NULL DEFAULT 0'], ['idioma', "TEXT NOT NULL DEFAULT ''"],
+  ['genero', "TEXT NOT NULL DEFAULT ''"], ['subgenero', "TEXT NOT NULL DEFAULT ''"],
+  ['duracao_s', 'INTEGER NOT NULL DEFAULT 0'], ['dificuldade', "TEXT NOT NULL DEFAULT ''"],
+  ['afinacao', "TEXT NOT NULL DEFAULT ''"], ['capo_sugerido', 'INTEGER NOT NULL DEFAULT 0'],
+  ['fingerprint', "TEXT NOT NULL DEFAULT ''"], ['removido_em', "TEXT NOT NULL DEFAULT ''"],
+].forEach(([c, ddl]) => garantirColuna('obras', c, ddl));
+[['status', "TEXT NOT NULL DEFAULT 'rascunho'"], ['local', "TEXT NOT NULL DEFAULT ''"],
+  ['evento', "TEXT NOT NULL DEFAULT ''"], ['imagem_url', "TEXT NOT NULL DEFAULT ''"],
+  ['duracao_planejada_s', 'INTEGER NOT NULL DEFAULT 0'], ['versao', 'INTEGER NOT NULL DEFAULT 1'],
+  ['modelo', 'INTEGER NOT NULL DEFAULT 0'],
+].forEach(([c, ddl]) => garantirColuna('repertorios', c, ddl));
+[['bloco_id', "TEXT NOT NULL DEFAULT ''"], ['bis', 'INTEGER NOT NULL DEFAULT 0'],
+  ['medley', "TEXT NOT NULL DEFAULT ''"], ['vocalista', "TEXT NOT NULL DEFAULT ''"],
+  ['bpm', 'INTEGER NOT NULL DEFAULT 0'], ['contagem', "TEXT NOT NULL DEFAULT ''"],
+  ['cifra_id', "TEXT NOT NULL DEFAULT ''"], ['cifra_arranjo_id', "TEXT NOT NULL DEFAULT ''"],
+  ['tom_confirmado', 'INTEGER NOT NULL DEFAULT 0'], ['intervalo', 'INTEGER NOT NULL DEFAULT 0'],
+].forEach(([c, ddl]) => garantirColuna('repertorio_itens', c, ddl));
+
+aplicarMigracoes([
+  { nome: '2026-09-28-cifras-indices',
+    sql: `CREATE INDEX IF NOT EXISTS ix_obras_fingerprint ON obras(dono, fingerprint);
+          CREATE INDEX IF NOT EXISTS ix_obras_ativas ON obras(dono, removido_em, atualizado_em);
+          CREATE INDEX IF NOT EXISTS ix_obras_artista ON obras(artista);
+          CREATE INDEX IF NOT EXISTS ix_itens_cifra ON repertorio_itens(cifra_id);` },
+]);
+
 aplicarMigracoes([
   { nome: '2026-08-25-indice-pasta',
     sql: 'CREATE INDEX IF NOT EXISTS ix_obras_pasta ON obras(dono, pasta_id)' },

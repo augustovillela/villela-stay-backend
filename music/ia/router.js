@@ -24,6 +24,10 @@ const CAPABILITIES = [
   'melodia.sugerir', 'arranjo.variar', 'tutor.explicar', 'exercicio.gerar',
   'audio.transcrever', 'audio.separar_stems', 'audio.afinar',
   'voz.sintetizar', 'voz.transformar', 'musica.gerar',
+  // Cifras (28/09/2026) — leitura e organização de cifra que o USUÁRIO
+  // trouxe. Transcrever/estruturar, nunca compor (ver o adapter).
+  'cifra.ler_imagem', 'cifra.interpretar', 'cifra.metadados', 'cifra.revisar_harmonia',
+  'cifra.comando', 'cifra.resumir_mudancas', 'cifra.guia_instrumento',
 ];
 
 const ADAPTERS = {

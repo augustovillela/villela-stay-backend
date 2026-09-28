@@ -99,7 +99,12 @@ const Repertorios = {
     if (!v.pode) return v;
     // Integrante da banda edita o repertório da banda: é trabalho
     // conjunto, e travar em "só o dono" faria a banda inteira depender
-    // de uma pessoa na hora da passagem de som.
+    // de uma pessoa na hora da passagem de som. Desde as Cifras
+    // (28/09/2026) o papel CONVIDADO é só leitura — a regra mora no
+    // portão `cifras/acesso.js`, não aqui.
+    if (rep.banda_id && rep.dono !== quem && !require('./cifras/acesso').pode(rep.banda_id, quem, 'editar_setlist')) {
+      return { pode: false, motivo: 'Seu papel na banda é só de leitura.' };
+    }
     return { pode: true };
   },
 

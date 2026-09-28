@@ -247,10 +247,13 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     assert.ok(!vistas.some((o) => o.titularidade === 'terceiro_privado' && o.dono !== 'u-bruno'));
   });
 
-  await t('TRAVA 4 — obra de terceiro não vai para provedor de IA', async () => {
+  // TRAVA 4 retirada em 28/09/2026 por ordem do Augusto (ADR-0009:
+  // "liberar tudo"). O teste agora prova a DECISÃO nova — e que o portão
+  // continua existindo e dizendo por que liberou.
+  await t('TRAVA 4 (revista, ADR-0009) — obra de terceiro PODE ir à IA, e o portão diz por quê', async () => {
     const v = direitos.podeMandarParaIA(repo.Obras.porId(obraTerceiro.id));
-    assert.equal(v.pode, false);
-    assert.ok(/IA/i.test(v.motivo));
+    assert.equal(v.pode, true);
+    assert.ok(/ADR-0009/.test(v.aviso), 'a liberação tem de citar a decisão que a autorizou');
   });
 
   await t('declarar titularidade própria destrava publicar', async () => {
@@ -791,6 +794,14 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   // FASE 3 — escolas, turmas, presença e boletim
   // ===================================================================
   await require('./selftest-fase3').rodar({ t, secao, req, assert, PROFESSORES });
+
+  // ===================================================================
+  // CIFRAS (28/09/2026) — motor puro e integração HTTP
+  // ===================================================================
+  await require('./cifras/selftest-motor').rodar({ t, secao, assert });
+  req.cookieDe = (quem) => `${sessaoAcademyNucleo.COOKIE}=${tokenDe(quem)}`;
+  req.base = () => BASE;
+  await require('./cifras/selftest-cifras').rodar({ t, secao, req, assert });
 
   // ===================================================================
   srv.close();

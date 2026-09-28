@@ -13,6 +13,14 @@
 //   3. não aparece em recomendação para outro usuário;
 //   4. não é enviada a provedor de IA.
 //
+// ⚠️ REVISÃO DE 28/09/2026 (ADR-0009, ordem do Augusto): a trava 2
+// abriu para a BANDA fechada (`podeCompartilharComBanda`), a trava 4 foi
+// retirada (`podeMandarParaIA` continua existindo, para que um recuo
+// seja uma linha), e link/público de obra de terceiro viraram POLÍTICA
+// configurável (`cifras_flags`), nascida DESLIGADA — "construir o acervo
+// completo e decidir depois o que é público". A escola continua fechada
+// para obra de terceiro: a decisão abriu a banda, não a escola.
+//
 // ⚠️ A regra mora AQUI e só aqui. Regra de permissão duplicada vaza pelo
 // caminho novo — é o defeito que a casa já viu acontecer. Quem precisa
 // decidir acesso chama `podeVer`/`podePublicar`/`podeMandarParaIA`, e
@@ -27,6 +35,27 @@ const VISIBILIDADES = ['privada', 'compartilhada', 'publica'];
 // Obra de terceiro em acervo pessoal: o titular não somos nós nem o
 // usuário. Tudo que é distribuição está fechado.
 const ehDeTerceiro = (obra) => String(obra && obra.titularidade) === 'terceiro_privado';
+
+// Política do acervo de cifras (ADR-0009). Lida do banco a cada decisão:
+// ligar ou desligar é UPDATE auditado no painel do staff, não deploy.
+// Tabela ausente (módulo de cifras não montado) = desligado.
+function politica(chave) {
+  try {
+    const l = db.prepare('SELECT ligado FROM cifras_flags WHERE chave = ?').get(chave);
+    return !!(l && l.ligado);
+  } catch (_) { return false; }
+}
+const terceiroPublicoLiberado = () => politica('cifras.politica.terceiro_publico');
+const terceiroPorLinkLiberado = () => politica('cifras.politica.terceiro_por_link');
+
+/** A pessoa é membro de alguma banda com a qual a obra foi compartilhada? */
+function vistaPelaBanda(obraId, usuario) {
+  if (!obraId || !usuario) return false;
+  try {
+    return !!db.prepare(`SELECT 1 FROM banda_obras bo JOIN banda_membros m ON m.banda_id = bo.banda_id
+                         WHERE bo.obra_id = ? AND m.usuario = ? LIMIT 1`).get(obraId, usuario);
+  } catch (_) { return false; }
+}
 
 // ---------------------------------------------------------------------
 // Titularidade
@@ -64,17 +93,43 @@ const historicoTitularidade = (obraId) =>
 // ---------------------------------------------------------------------
 // As quatro travas
 // ---------------------------------------------------------------------
-/** Trava 1 — publicar. */
+/** Trava 1 — publicar. Obra de terceiro só se a POLÍTICA for ligada. */
 function podePublicar(obra) {
   if (!obra) return { pode: false, motivo: 'Obra não encontrada.' };
-  if (ehDeTerceiro(obra)) {
+  if (ehDeTerceiro(obra) && !terceiroPublicoLiberado()) {
     return { pode: false, motivo: 'Esta obra está registrada como de terceiro em acervo pessoal. '
       + 'Para publicá-la, declare que a obra é sua, que está em domínio público, ou anexe a licença.' };
   }
   return { pode: true };
 }
 
-/** Trava 2 — compartilhar com outra pessoa. */
+/** Trava 2 (ADR-0009) — compartilhar com UMA BANDA fechada. Obra de
+ *  terceiro pode: a banda é convite, não público. Só o dono compartilha,
+ *  e só com banda da qual ele faz parte. */
+function podeCompartilharComBanda(obra, bandaId, usuario) {
+  if (!obra) return { pode: false, motivo: 'Obra não encontrada.' };
+  if (obra.dono !== usuario) return { pode: false, motivo: 'Só quem guardou a música pode compartilhá-la com a banda.' };
+  let membro = false;
+  try { membro = !!db.prepare('SELECT 1 FROM banda_membros WHERE banda_id = ? AND usuario = ?').get(bandaId, usuario); }
+  catch (_) { membro = false; }
+  if (!membro) return { pode: false, motivo: 'Você não faz parte desta banda.' };
+  return { pode: true };
+}
+
+/** Link compartilhável (fora da banda). Obra de terceiro só com a
+ *  política ligada — link vaza para quem não é da banda. */
+function podeCompartilharPorLink(obra) {
+  if (!obra) return { pode: false, motivo: 'Obra não encontrada.' };
+  if (ehDeTerceiro(obra) && !terceiroPorLinkLiberado()) {
+    return { pode: false, motivo: 'Link aberto para obra de terceiro está desligado pela política do acervo. '
+      + 'Compartilhe com a sua banda, ou declare a titularidade da obra.' };
+  }
+  return { pode: true };
+}
+
+/** Trava 2 — compartilhar com outra pessoa (escopo genérico: escola,
+ *  visibilidade "compartilhada"). Continua FECHADA para terceiro: a
+ *  revisão de 28/09 abriu a banda, não a escola. */
 function podeCompartilhar(obra) {
   if (!obra) return { pode: false, motivo: 'Obra não encontrada.' };
   if (ehDeTerceiro(obra)) {
@@ -97,15 +152,29 @@ function filtrarParaDescoberta(obras, paraUsuario) {
   });
 }
 
-/** Trava 4 — mandar para provedor de IA.
- *  A checagem fica ANTES do AI Router, no domínio. Se estivesse no
- *  adapter, trocar de fornecedor apagaria a trava (ADR-0004 §4). */
+/**
+ * O que a pessoa pode VER, em SQL — para a busca paginada do acervo.
+ * Mesma regra de `podeVer`, dita uma vez só aqui. Devolve { sql, params }
+ * para usar como `WHERE <sql>` sobre `obras o`.
+ */
+function sqlVisiveis(usuario) {
+  const publicoTerceiro = terceiroPublicoLiberado();
+  return {
+    sql: `(o.dono = ?
+      OR o.id IN (SELECT bo.obra_id FROM banda_obras bo JOIN banda_membros m ON m.banda_id = bo.banda_id WHERE m.usuario = ?)
+      OR (o.visibilidade = 'publica' AND o.removido_em = '' AND (o.titularidade <> 'terceiro_privado' OR ?)))`,
+    params: [usuario, usuario, publicoTerceiro ? 1 : 0],
+  };
+}
+
+/** Trava 4 — mandar para provedor de IA. RETIRADA em 28/09/2026 por
+ *  ordem do Augusto (ADR-0009: "liberar tudo"). A função CONTINUA sendo
+ *  o único portão — o selftest garante que toda chamada de IA do módulo
+ *  de cifras passa por ela —, para que um recuo seja uma linha aqui.
+ *  A checagem fica ANTES do AI Router, no domínio (ADR-0004 §4). */
 function podeMandarParaIA(obra) {
   if (!obra) return { pode: false, motivo: 'Obra não encontrada.' };
-  if (ehDeTerceiro(obra)) {
-    return { pode: false, motivo: 'Obra de terceiro não é enviada a serviços de IA. '
-      + 'Se a obra é sua ou está em domínio público, declare a titularidade e tente de novo.' };
-  }
+  if (ehDeTerceiro(obra)) return { pode: true, aviso: 'Obra de terceiro enviada a IA por decisão ADR-0009.' };
   return { pode: true };
 }
 
@@ -113,8 +182,13 @@ function podeMandarParaIA(obra) {
  *  convite (Fase 3 — hoje nega, e nega dizendo o porquê). */
 function podeVer(obra, usuario) {
   if (!obra) return { pode: false, motivo: 'Obra não encontrada.' };
+  if (obra.removido_em) {
+    if (obra.dono === usuario) return { pode: true, removida: true };
+    return { pode: false, motivo: 'Esta música foi removida.' };
+  }
   if (obra.dono === usuario) return { pode: true };
-  if (obra.visibilidade === 'publica' && !ehDeTerceiro(obra)) return { pode: true };
+  if (obra.visibilidade === 'publica' && (!ehDeTerceiro(obra) || terceiroPublicoLiberado())) return { pode: true };
+  if (vistaPelaBanda(obra.id, usuario)) return { pode: true, pela_banda: true };
   return { pode: false, motivo: 'Esta obra não é sua.' };
 }
 
@@ -213,6 +287,7 @@ module.exports = {
   TITULARIDADES, VISIBILIDADES, ehDeTerceiro,
   declararTitularidade, historicoTitularidade,
   podePublicar, podeCompartilhar, filtrarParaDescoberta, podeMandarParaIA, podeVer, definirVisibilidade,
+  podeCompartilharComBanda, podeCompartilharPorLink, sqlVisiveis, vistaPelaBanda, politica,
   concederConsentimento, temConsentimento, revogarConsentimento, podeUsarVoz,
   registrarProveniencia, provenienciaDe, registrar, auditoria,
 };
