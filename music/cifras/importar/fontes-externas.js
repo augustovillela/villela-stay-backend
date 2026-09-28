@@ -38,7 +38,14 @@ const cifraclub = {
     const h1 = (String(html).match(/<h1[^>]*class=["'][^"']*t1[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i) || [])[1];
     const h2 = (String(html).match(/<h2[^>]*class=["'][^"']*t3[^"']*["'][^>]*>([\s\S]*?)<\/h2>/i) || [])[1];
     const tom = (String(html).match(/id=["']cifra_tom["'][^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i) || [])[1];
-    return { texto: base.texto, titulo: h1 ? tirarTags(h1).trim() : base.titulo, artista: h2 ? tirarTags(h2).trim() : '',
+    // O site mudou o HTML (28/09/2026) e as classes t1/t3 sumiram: sem este
+    // recurso, a música entrava com o título "Tempo Perdido - Legião Urbana -
+    // Cifra Club" e sem artista — e escapava da detecção de duplicata. O
+    // <title> da página segue o padrão "Música - Artista - Cifra Club".
+    const doTitulo = String(base.titulo || '').replace(/\s*[-|–]\s*Cifra Club.*$/i, '').split(/\s+[-–]\s+/);
+    return { texto: base.texto,
+      titulo: h1 ? tirarTags(h1).trim() : (doTitulo[0] || base.titulo),
+      artista: h2 ? tirarTags(h2).trim() : (doTitulo.length > 1 ? doTitulo.slice(1).join(' - ') : ''),
       tom: tom ? tom.trim() : '', metodo: base.metodo, confianca: base.confianca };
   },
 };

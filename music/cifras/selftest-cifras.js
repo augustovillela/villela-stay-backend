@@ -818,6 +818,16 @@ async function rodar({ t, secao, req, assert }) {
     assert.ok(app.texto.indexOf('/music/motor-cifras.js') < app.texto.indexOf('/music/cifras.js'), 'o motor carrega antes do cliente');
   });
 
+  await t('Cifra Club com o HTML NOVO (sem t1/t3): título e artista saem do <title>, sem o "- Cifra Club"', async () => {
+    const { paraUrl } = require('./importar/fontes-externas');
+    const a = paraUrl('https://www.cifraclub.com.br/legiao-urbana/tempo-perdido/');
+    assert.equal(a.id, 'cifraclub');
+    const html = '<html><head><title>Tempo Perdido - Legião Urbana - Cifra Club</title></head><body><h1 class="xYz">Tempo Perdido</h1><pre>Em   C\nlinha\n</pre></body></html>';
+    const x = a.extrair(html);
+    assert.equal(x.titulo, 'Tempo Perdido', 'o título não pode levar " - Legião Urbana - Cifra Club"');
+    assert.equal(x.artista, 'Legião Urbana', 'sem artista a duplicata escapa');
+  });
+
   await t('o TRABALHADOR de áudio é servido, carrega o motor e responde ao pedido de tom e de transcrição', async () => {
     const w = await req('GET', '/music/cifras-trabalhador.js', { cru: true });
     assert.equal(w.status, 200);
