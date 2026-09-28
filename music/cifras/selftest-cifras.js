@@ -818,6 +818,26 @@ async function rodar({ t, secao, req, assert }) {
     assert.ok(app.texto.indexOf('/music/motor-cifras.js') < app.texto.indexOf('/music/cifras.js'), 'o motor carrega antes do cliente');
   });
 
+  await t('ACORDES DO ACERVO: soma as cifras do dono, ordena pelo nº de músicas e filtra por artista', async () => {
+    const acervo = require('./acervo');
+    const art = 'Banda Teste dos Acordes';
+    const m1 = acervo.Musicas.criar('u-bruno', { titulo: 'Primeira do teste de acordes', artista: art, separada: true });
+    acervo.Cifras.criar('u-bruno', m1.id, { texto: 'Tom: C\n\nC        G\nprimeira linha\nAm       F\nsegunda linha' });
+    const m2 = acervo.Musicas.criar('u-bruno', { titulo: 'Segunda do teste de acordes', artista: art, separada: true });
+    acervo.Cifras.criar('u-bruno', m2.id, { texto: 'Tom: C\n\nC        Dm\numa linha\nC        E7\noutra linha' });
+    const r = await req('GET', '/music/api/cifras/acordes/do-acervo?artista=' + encodeURIComponent(art), { como: 'bruno' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.musicas, 2);
+    assert.equal(r.json.acordes[0].acorde, 'C', 'C está nas duas: vem primeiro');
+    assert.equal(r.json.acordes[0].n_musicas, 2);
+    assert.deepEqual(r.json.acordes[0].musicas.map((m) => m.titulo).sort(), ['Primeira do teste de acordes', 'Segunda do teste de acordes']);
+    assert.ok(r.json.acordes.some((a) => a.acorde === 'E7' && a.n_musicas === 1));
+    const outro = await req('GET', '/music/api/cifras/acordes/do-acervo?artista=' + encodeURIComponent(art), { como: 'ana' });
+    assert.equal(outro.json.musicas, 0, 'o acervo de outra pessoa não entra na conta');
+    const js = (await req('GET', '/music/cifras.js', { cru: true })).texto;
+    assert.ok(js.includes('/acordes/do-acervo') && js.includes('Acordes das suas músicas'), 'a guia Acordes usa a soma');
+  });
+
   await t('Cifra Club com o HTML NOVO (sem t1/t3): título e artista saem do <title>, sem o "- Cifra Club"', async () => {
     const { paraUrl } = require('./importar/fontes-externas');
     const a = paraUrl('https://www.cifraclub.com.br/legiao-urbana/tempo-perdido/');

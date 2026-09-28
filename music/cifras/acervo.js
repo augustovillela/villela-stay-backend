@@ -148,6 +148,45 @@ const CAMPOS_MUSICA = {
 };
 
 const Musicas = {
+  /**
+   * Os acordes que a pessoa REALMENTE toca: soma a cifra principal de cada
+   * música do acervo dela (a de melhor qualidade), por acorde, com as
+   * músicas em que aparece. Alimenta a guia Acordes — estudar primeiro o
+   * que está no repertório rende mais do que decorar uma tabela.
+   * Filtros: pasta (id) e artista. Só obras do próprio dono: o acervo de
+   * banda tem o seu próprio lugar.
+   */
+  acordesDoAcervo(usuario, { pasta = '', artista = '' } = {}) {
+    const conds = ["o.dono = ?", "COALESCE(o.removido_em, '') = ''"], vals = [usuario];
+    if (pasta) { conds.push('o.pasta_id = ?'); vals.push(s(pasta, 40)); }
+    if (artista) { conds.push('lower(o.artista) = lower(?)'); vals.push(s(artista, 200)); }
+    const linhas = db.prepare(`SELECT o.id, o.titulo, o.artista, o.criado_em,
+        (SELECT c.documento FROM cifras c WHERE c.obra_id = o.id AND c.removido_em = ''
+          ORDER BY c.qualidade DESC, c.atualizado_em DESC LIMIT 1) AS doc
+      FROM obras o WHERE ${conds.join(' AND ')}`).all(...vals);
+    const mapa = new Map();
+    let comCifra = 0;
+    for (const l of linhas) {
+      if (!l.doc) continue;
+      let doc; try { doc = JSON.parse(l.doc); } catch (_) { continue; }
+      comCifra++;
+      for (const a of D.acordesUsados(doc)) {
+        if (!a.reconhecido) continue;
+        const x = mapa.get(a.acorde) || { acorde: a.acorde, notas: a.notas, vezes: 0, musicas: [], primeira_vez: l.criado_em || '' };
+        x.vezes += a.vezes;
+        // "Ordem em que entraram" no dicionário: a data da primeira música que trouxe o acorde.
+        if (l.criado_em && (!x.primeira_vez || l.criado_em < x.primeira_vez)) x.primeira_vez = l.criado_em;
+        if (x.musicas.length < 50 && !x.musicas.some((m) => m.id === l.id)) x.musicas.push({ id: l.id, titulo: l.titulo });
+        x.n_musicas = (x.n_musicas || 0) + 1;
+        mapa.set(a.acorde, x);
+      }
+    }
+    const acordes = [...mapa.values()].sort((a, b) => b.n_musicas - a.n_musicas || b.vezes - a.vezes || a.acorde.localeCompare(b.acorde));
+    const artistas = db.prepare(`SELECT artista, COUNT(*) n FROM obras WHERE dono = ? AND COALESCE(removido_em, '') = '' AND artista <> ''
+      GROUP BY lower(artista) ORDER BY n DESC LIMIT 100`).all(usuario);
+    return { musicas: comCifra, acordes: acordes.slice(0, 120), artistas };
+  },
+
   porId: (id) => db.prepare('SELECT * FROM obras WHERE id = ?').get(id) || null,
 
   /** Prováveis duplicatas no acervo da pessoa (o dela e o da banda). */

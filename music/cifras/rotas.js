@@ -118,6 +118,10 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   app.get(B + '/instrumentos', requireUsuario, (req, res) => res.json({ instrumentos: I.catalogo() }));
 
   // ------------------------------------------------------------ músicas
+  // Acordes das cifras do acervo → guia Acordes (antes da rota /musicas/:id).
+  app.get(B + '/acordes/do-acervo', requireUsuario, h(async (req, res) =>
+    res.json(Musicas.acordesDoAcervo(U(req), { pasta: req.query.pasta, artista: req.query.artista }))));
+
   app.get(B + '/musicas', requireUsuario, h(async (req, res) => {
     const q = req.query;
     res.json(Musicas.buscar(U(req), { q: q.q, escopo: q.escopo, banda: q.banda, artista: q.artista, genero: q.genero, tom: q.tom,

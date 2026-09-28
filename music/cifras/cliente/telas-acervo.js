@@ -1036,6 +1036,69 @@
     c.appendChild(el('p', { class: 'sub', txt: 'As formas são CALCULADAS da teoria — qualquer acorde, em qualquer afinação. Clique para ouvir; clique com o botão direito (ou segure) para fixar como a sua forma.' }));
     var i = el('input', { type: 'text', value: st.acorde, 'aria-label': 'Acorde', style: 'max-width:200px' });
     var area = el('div');
+    var ondeAparece = el('p', { class: 'peq' });
+
+    // ---- ACORDES DAS SUAS MÚSICAS: o que está no seu acervo, do mais usado
+    // para o menos usado. Um clique mostra as formas logo abaixo.
+    var meus = el('div', { class: 'cf-meus-acordes' });
+    c.appendChild(meus);
+    var filtro = { artista: '', ordem: 'dicionario' };
+    // Ordem de dicionário: pela nota fundamental (C, C#/Db, D… B) e, dentro
+    // dela, do acorde mais simples para o mais longo.
+    var NOTAS_DIC = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11 };
+    var ROTULO_DIC = ['C', 'C# / Db', 'D', 'D# / Eb', 'E', 'F', 'F# / Gb', 'G', 'G# / Ab', 'A', 'A# / Bb', 'B'];
+    function raizDic(a) { var m = /^([A-G])([#b]?)/.exec(a); if (!m) return 99; var v = NOTAS_DIC[m[1] + m[2]]; return v === undefined ? NOTAS_DIC[m[1]] : v; }
+    function ordenar(lista) {
+      var l = lista.slice();
+      if (filtro.ordem === 'dicionario') l.sort(function (a, b) { return raizDic(a.acorde) - raizDic(b.acorde) || a.acorde.length - b.acorde.length || a.acorde.localeCompare(b.acorde); });
+      else if (filtro.ordem === 'entrada') l.sort(function (a, b) { return String(a.primeira_vez).localeCompare(String(b.primeira_vez)) || b.n_musicas - a.n_musicas; });
+      return l;   // 'uso': o servidor já manda do mais usado para o menos usado
+    }
+    function pintarMeus() {
+      meus.innerHTML = '<p class="peq">Lendo os acordes das suas cifras…</p>';
+      api('GET', '/acordes/do-acervo' + (filtro.artista ? '?artista=' + encodeURIComponent(filtro.artista) : '')).then(function (d) {
+        meus.innerHTML = '';
+        if (!d.musicas) {
+          meus.appendChild(C.estadoVazio('Sem cifras no acervo ainda', 'Importe ou escreva uma cifra: os acordes dela aparecem aqui, dos mais usados para os menos usados.'));
+          return;
+        }
+        var topo = el('div', { class: 'cf-barra' }, [el('h3', { txt: 'Acordes das suas músicas', style: 'margin:0' })]);
+        if (d.artistas && d.artistas.length > 1) {
+          topo.appendChild(sel([['', 'Todo o acervo']].concat(d.artistas.map(function (a) { return [a.artista, a.artista + ' (' + a.n + ')']; })),
+            filtro.artista, function (x) { filtro.artista = x; pintarMeus(); }, 'Artista'));
+        }
+        topo.appendChild(sel([['dicionario', 'Dicionário (por nota)'], ['uso', 'Mais usados primeiro'], ['entrada', 'Ordem em que entraram']],
+          filtro.ordem, function (x) { filtro.ordem = x; pintarMeus(); }, 'Ordem'));
+        meus.appendChild(topo);
+        meus.appendChild(el('p', { class: 'peq', txt: d.acordes.length + ' acordes em ' + d.musicas + ' música(s)' + (filtro.artista ? ' de ' + filtro.artista : '') +
+          '. O dicionário cresce sozinho: cada cifra nova que entra no acervo traz os acordes dela para cá.' }));
+        var chips = el('div', { class: 'cf-chips-acordes' });
+        var grupoAtual = -1;
+        ordenar(d.acordes).forEach(function (a) {
+          if (filtro.ordem === 'dicionario') {
+            var g = raizDic(a.acorde);
+            if (g !== grupoAtual) {
+              grupoAtual = g;
+              chips = el('div', { class: 'cf-chips-acordes' });
+              var bloco = el('div', { class: 'cf-dic-grupo' }, [el('div', { class: 'cf-dic-letra', txt: ROTULO_DIC[g] || '?' }), chips]);
+              meus.appendChild(bloco);
+            }
+          }
+          var b = el('button', { class: 'cf-chip-acorde', type: 'button', title: 'Aparece em ' + a.n_musicas + ' música(s)' }, [
+            el('b', { txt: a.acorde }), el('span', { txt: String(a.n_musicas) })]);
+          b.onclick = function () {
+            i.value = a.acorde; st.acorde = a.acorde; pintar();
+            var nomes = a.musicas.map(function (m) { return m.titulo; });
+            ondeAparece.textContent = 'Aparece em ' + a.n_musicas + ' música(s): ' + nomes.slice(0, 12).join(', ') + (nomes.length > 12 ? '…' : '') + '.';
+            area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          };
+          chips.appendChild(b);
+        });
+        if (filtro.ordem !== 'dicionario') meus.appendChild(chips);
+      }).catch(function (e) { meus.innerHTML = ''; C.erro(e); });
+    }
+    pintarMeus();
+    c.appendChild(el('h3', { txt: 'Procurar qualquer acorde' }));
     var inst = M.instrumentos.catalogo();
     var barra = el('div', { class: 'cf-barra' });
     function desenharBarra() {
@@ -1048,9 +1111,10 @@
       cb.firstChild.checked = st.canhoto; cb.firstChild.onchange = function () { st.canhoto = cb.firstChild.checked; pintar(); };
       barra.appendChild(cb);
     }
-    i.addEventListener('input', C.debounce(function () { st.acorde = i.value.trim(); pintar(); }, 250));
+    i.addEventListener('input', C.debounce(function () { st.acorde = i.value.trim(); ondeAparece.textContent = ''; pintar(); }, 250));
     desenharBarra();
     c.appendChild(barra);
+    c.appendChild(ondeAparece);
     c.appendChild(area);
     var campo = el('div');
     c.appendChild(el('h3', { txt: 'Campo harmônico' }));

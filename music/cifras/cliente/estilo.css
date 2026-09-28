@@ -93,6 +93,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .cf-doc.t-palco{background:#0E1420;color:#F2F4F7}.cf-doc.t-palco .cf-a{color:#FFC94D}
 
 /* ---------- diagramas ---------- */
+.cf-meus-acordes{margin:0 0 18px;padding:14px 16px;background:#fff;border:1px solid var(--borda,#E4E7EC);border-radius:14px}
+.cf-chips-acordes{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.cf-chip-acorde{display:inline-flex;align-items:center;gap:6px;border:1px solid #D6DCE5;background:#F7F9FC;border-radius:999px;padding:6px 8px 6px 12px;cursor:pointer;font:inherit}
+.cf-chip-acorde b{font-size:15px}
+.cf-chip-acorde span{background:#1B2A4A;color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:2px 7px}
+.cf-dic-grupo{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-top:1px solid #EEF1F5}
+.cf-dic-grupo .cf-chips-acordes{margin-top:0}
+.cf-dic-letra{flex:none;width:64px;font:600 17px/32px Lora,Georgia,serif;color:#1B2A4A}
+.cf-chip-acorde:hover{border-color:#1B2A4A;background:#EEF2F7}
 .cf-diags{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;margin:0 0 8px}
 .cf-diag{flex:0 0 auto;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:6px 8px;text-align:center;cursor:pointer;min-width:92px}
 .cf-diag b{display:block;font-size:14px}
