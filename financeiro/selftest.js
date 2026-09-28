@@ -58,6 +58,7 @@ const mercadoPreflight = require('./mercado-preflight');
 const mercadoE2e = require('./mercado-e2e');
 const mercadoPilotoCvm = require('./mercado-piloto-cvm');
 const mercadoQualidadeCvm = require('./mercado-qualidade-cvm');
+const mercadoConflitosCvm = require('./mercado-conflitos-cvm');
 const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
@@ -1503,6 +1504,54 @@ testeAsync('investimentos: persistência da qualidade não depende do search_pat
   assert.ok(chamadas.some(sql => /fin_pilot_cvm_dfp_2025\.fin_quality_metrics/.test(sql)));
   assert.ok(chamadas.some(sql => /fin_pilot_cvm_dfp_2025\.fin_quality_findings/.test(sql)));
   assert.ok(chamadas.some(sql => /fin_pilot_cvm_dfp_2025\.fin_quality_runs/.test(sql)));
+});
+
+teste('investimentos: decomposição forense exige armação e não cria tabelas operacionais', () => {
+  const base = {
+    FINANCE_MARKET_DATABASE_URL: 'postgresql://interno/teste',
+    FINANCE_S3_ENDPOINT: 'https://conta.r2.cloudflarestorage.com',
+    FINANCE_S3_BUCKET: 'bucket', FINANCE_S3_KEY: 'key', FINANCE_S3_SECRET: 'secret',
+  };
+  assert.throws(() => mercadoConflitosCvm.configAmbiente({ ...base, FINANCE_INV_PARSE_WORKER: 'off' }),
+    /FINANCE_INV_CVM_CONFLICTS=on/);
+  assert.throws(() => mercadoConflitosCvm.configAmbiente({ ...base,
+    FINANCE_INV_CVM_CONFLICTS: 'on', FINANCE_INV_PARSE_WORKER: 'on' }), /precisa permanecer off/);
+  assert.doesNotThrow(() => mercadoConflitosCvm.configAmbiente({ ...base,
+    FINANCE_INV_CVM_CONFLICTS: 'on', FINANCE_INV_PARSE_WORKER: 'off' }));
+  assert.match(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL, /fin_quality_conflict_runs/);
+  assert.match(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL, /fin_quality_conflict_groups/);
+  assert.match(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL, /fin_quality_conflict_occurrences/);
+  assert.doesNotMatch(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL, /ordem_financeira|lance|razao/);
+});
+
+testeAsync('investimentos: migração forense executa cada tabela separadamente', async () => {
+  const chamadas = [];
+  await mercadoConflitosCvm.migrar({ query: async sql => { chamadas.push(sql); } });
+  assert.strictEqual(chamadas.length, 3);
+});
+
+teste('investimentos: conflitos CVM são classificados por evidência reproduzível', () => {
+  const linha = (valorBruto, valorNormalizado, bruto, extra = {}) => ({
+    valor_bruto: valorBruto, valor_normalizado: valorNormalizado,
+    arquivo_bruto: 'arquivo.csv', hash_linha_bruta: 'a'.repeat(64), bruto: { VL_CONTA: valorBruto, ...bruto },
+    ...extra,
+  });
+  assert.strictEqual(mercadoConflitosCvm.classificarGrupo([
+    linha('100', '1000000000000', {}), linha('100.0', '1000000000000', {}),
+  ]).categoria, 'equivalencia_numerica');
+  assert.strictEqual(mercadoConflitosCvm.classificarGrupo([
+    linha('100', '1000000000000', { DT_REFER: '2024-12-31' }),
+    linha('110', '1100000000000', { DT_REFER: '2025-12-31' }),
+  ]).categoria, 'revisao_oficial_nao_representada');
+  assert.strictEqual(mercadoConflitosCvm.classificarGrupo([
+    linha('100', '1000000000000', { ST_CONTA_FIXA: 'S' }),
+    linha('110', '1100000000000', { ST_CONTA_FIXA: 'N' }),
+  ]).categoria, 'contexto_omitido_chave');
+  assert.strictEqual(mercadoConflitosCvm.classificarGrupo([
+    linha('100', '1000000000000', { DT_REFER: '2025-12-31' }),
+    linha('110', '1100000000000', { DT_REFER: '2025-12-31' }),
+  ]).categoria, 'contradicao_fonte');
+  assert.match(mercadoConflitosCvm.mascaraCnpj('33000167000101'), /^\*\*\.\*\*\*\./);
 });
 
 teste('investimentos: regras CVM tratam datas, decimais e demonstrações sem float', () => {

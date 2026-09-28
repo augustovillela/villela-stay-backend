@@ -24,6 +24,7 @@
     "finance:market-e2e": "node --env-file-if-exists=.env financeiro/mercado-e2e.js",
     "finance:market-pilot-cvm": "node --env-file-if-exists=.env financeiro/mercado-piloto-cvm.js",
     "finance:market-quality-cvm": "node --env-file-if-exists=.env financeiro/mercado-qualidade-cvm.js",
+    "finance:market-conflicts-cvm": "node --env-file-if-exists=.env financeiro/mercado-conflitos-cvm.js",
     "seguranca:finance": "node financeiro/seguranca.js",
     "verificar:finance": "node financeiro/verificar-producao.js",
     "verificar:closet": "node closet/verificar-producao.js",
