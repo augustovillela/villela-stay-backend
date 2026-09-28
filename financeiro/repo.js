@@ -1002,6 +1002,110 @@ const listarEvidenciasInvestimentos = () => q(
     WHERE e.tenant_id = :tenant
     ORDER BY e.capturado_em DESC, e.id DESC LIMIT 200`, {});
 
+const listarInstrumentosInvestimentos = () => q(
+  `SELECT * FROM fin_inv_instrumentos
+    WHERE tenant_id = :tenant ORDER BY nome, id`, {});
+
+const listarPosicoesInvestimentos = ({ incluirInativas = false } = {}) => q(
+  `SELECT p.*, i.identificadores, i.moeda, i.pais, i.bolsa, i.emissor
+     FROM fin_inv_posicoes_ceo p
+     LEFT JOIN fin_inv_instrumentos i ON i.tenant_id = p.tenant_id AND i.id = p.instrumento_id
+    WHERE p.tenant_id = :tenant ${incluirInativas ? '' : 'AND p.ativo = 1'}
+    ORDER BY CASE p.mandato_chave WHEN 'caixa' THEN 1 WHEN 'longo_prazo' THEN 2 ELSE 3 END,
+             p.nome, p.id`, {});
+
+const posicaoInvestimentos = (id) => um(
+  'SELECT * FROM fin_inv_posicoes_ceo WHERE tenant_id = :tenant AND id = :id', { id });
+
+const salvarPosicaoInvestimentos = (d) => {
+  const agora = nowISO();
+  const por = tenancy.userAtual();
+  const existente = d.id ? posicaoInvestimentos(d.id) : null;
+  if (d.id && !existente) throw new Error('Posição de acompanhamento não encontrada.');
+  if (existente) {
+    exec(`UPDATE fin_inv_posicoes_ceo SET instrumento_id = :instrumento, classe = :classe,
+            nome = :nome, ticker = :ticker, mandato_chave = :mandato, tese = :tese,
+            observacoes = :observacoes, atualizado_em = :agora, atualizado_por = :por
+          WHERE tenant_id = :tenant AND id = :id`, {
+      id: existente.id, instrumento: d.instrumentoId || null, classe: d.classe,
+      nome: d.nome, ticker: d.ticker || '', mandato: d.mandatoChave,
+      tese: d.tese || '', observacoes: d.observacoes || '', agora, por,
+    });
+    return posicaoInvestimentos(existente.id);
+  }
+  const id = novoId();
+  exec(`INSERT INTO fin_inv_posicoes_ceo
+          (id, tenant_id, instrumento_id, classe, nome, ticker, mandato_chave, tese,
+           observacoes, ativo, criado_em, criado_por, atualizado_em, atualizado_por)
+        VALUES (:id, :tenant, :instrumento, :classe, :nome, :ticker, :mandato, :tese,
+                :observacoes, 1, :agora, :por, :agora, :por)`, {
+    id, instrumento: d.instrumentoId || null, classe: d.classe, nome: d.nome,
+    ticker: d.ticker || '', mandato: d.mandatoChave, tese: d.tese || '',
+    observacoes: d.observacoes || '', agora, por,
+  });
+  return posicaoInvestimentos(id);
+};
+
+const desativarPosicaoInvestimentos = (id) => {
+  exec(`UPDATE fin_inv_posicoes_ceo SET ativo = 0, atualizado_em = :agora, atualizado_por = :por
+         WHERE tenant_id = :tenant AND id = :id`,
+  { id, agora: nowISO(), por: tenancy.userAtual() });
+  return posicaoInvestimentos(id);
+};
+
+const ativarRelatoriosInvestimentos = ({ destinatarioId, hora = '15:00' }) => {
+  garantirConfigInvestimentos();
+  exec(`UPDATE fin_inv_config SET relatorios_diarios_ativos = 1,
+          relatorio_diario_hora = :hora, timezone = 'America/Sao_Paulo',
+          relatorio_diario_destinatario_id = :destinatario,
+          relatorios_ativados_em = :agora, relatorios_ativados_por = :por,
+          atualizado_em = :agora WHERE tenant_id = :tenant`, {
+    hora, destinatario: destinatarioId, agora: nowISO(), por: tenancy.userAtual(),
+  });
+  return configInvestimentos();
+};
+
+const marcarRelatorioDiarioExecutado = (dia) => exec(
+  `UPDATE fin_inv_config SET relatorio_diario_ultimo_dia = :dia, atualizado_em = :agora
+    WHERE tenant_id = :tenant`, { dia, agora: nowISO() });
+
+const relatorioDiarioPorChave = (chave) => um(
+  'SELECT * FROM fin_inv_relatorios_diarios WHERE tenant_id = :tenant AND chave_idempotencia = :chave',
+  { chave });
+
+const inserirRelatorioDiarioInvestimentos = (d) => {
+  const existente = relatorioDiarioPorChave(d.chaveIdempotencia);
+  if (existente) return existente;
+  const id = novoId();
+  exec(`INSERT INTO fin_inv_relatorios_diarios
+          (id, tenant_id, destinatario_id, dia_local, timezone, versao, dataset_hash,
+           metodologia_versao, status, recomendacoes_conclusivas, conteudo, criado_em,
+           criado_por, chave_idempotencia)
+        VALUES (:id, :tenant, :destinatario, :dia, :timezone, :versao, :hash,
+                :metodologia, :status, :conclusivas, :conteudo, :agora, :por, :chave)`, {
+    id, destinatario: d.destinatarioId, dia: d.diaLocal, timezone: d.timezone,
+    versao: d.versao || 1, hash: d.datasetHash, metodologia: d.metodologiaVersao,
+    status: d.status, conclusivas: d.recomendacoesConclusivas || 0,
+    conteudo: j.str(d.conteudo), agora: nowISO(), por: tenancy.userAtual(),
+    chave: d.chaveIdempotencia,
+  });
+  return relatorioDiarioPorChave(d.chaveIdempotencia);
+};
+
+const listarRelatoriosDiariosInvestimentos = (limite = 60) => q(
+  `SELECT * FROM fin_inv_relatorios_diarios WHERE tenant_id = :tenant
+    ORDER BY dia_local DESC, versao DESC LIMIT :limite`,
+  { limite: Math.max(1, Math.min(365, Number(limite) || 60)) });
+
+const proximaVersaoRelatorioDiario = (dia) => {
+  const r = um(`SELECT COALESCE(MAX(versao), 0) AS ultima FROM fin_inv_relatorios_diarios
+    WHERE tenant_id = :tenant AND dia_local = :dia`, { dia });
+  return Number((r && r.ultima) || 0) + 1;
+};
+
+const relatorioDiarioInvestimentos = (id) => um(
+  'SELECT * FROM fin_inv_relatorios_diarios WHERE tenant_id = :tenant AND id = :id', { id });
+
 const registrarCargaMercado = (d) => {
   const existente = um(
     'SELECT * FROM fin_inv_cargas_mercado WHERE tenant_id = :tenant AND chave_idempotencia = :chave',
@@ -1141,6 +1245,11 @@ module.exports = {
   listarFontesInvestimentos, fonteInvestimentosPorChave, garantirFontesInvestimentos,
   registrarColetaInvestimentos, ultimasColetasInvestimentos,
   registrarEvidenciaInvestimentos, listarEvidenciasInvestimentos,
+  listarInstrumentosInvestimentos,
+  listarPosicoesInvestimentos, posicaoInvestimentos, salvarPosicaoInvestimentos, desativarPosicaoInvestimentos,
+  ativarRelatoriosInvestimentos, marcarRelatorioDiarioExecutado,
+  relatorioDiarioPorChave, inserirRelatorioDiarioInvestimentos,
+  listarRelatoriosDiariosInvestimentos, proximaVersaoRelatorioDiario, relatorioDiarioInvestimentos,
   registrarCargaMercado, listarCargasMercado, cargaMercado, atualizarCargaMercado,
   instrumentoPorIdentificador, registrarInstrumentoMercado,
   criarAssinatura, assinatura, assinaturaVigente, listarAssinaturas, atualizarAssinatura,

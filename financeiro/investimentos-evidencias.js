@@ -147,6 +147,7 @@ function apresentar(linha, fonte, agora = new Date().toISOString()) {
   const integridadeValida = integridade === 'valida';
   return {
     id: linha.id,
+    instrumentoId: linha.instrumento_id || null,
     fonte: fonte.chave,
     fonteNome: fonte.nome,
     fonteStatus: fonte.status,

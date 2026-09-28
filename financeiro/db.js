@@ -410,6 +410,67 @@ const MIGRACOES = [
         ON fin_inv_fatos_indice(tenant_id, instrumento_id, conceito, periodo_fim DESC);`);
     },
   },
+  {
+    // Parecer diário privado do CEO. A carteira aceita cadastro qualitativo
+    // (sem quantidade ou valor) e a edição publicada é imutável. Não há
+    // coluna de ordem, corretora, conta de liquidação ou escrita no razão.
+    nome: 'fin-0016-investimentos-parecer-diario-ceo',
+    aplicar() {
+      if (!temColuna('fin_inv_config', 'relatorios_diarios_ativos')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN relatorios_diarios_ativos INTEGER NOT NULL DEFAULT 0");
+      }
+      if (!temColuna('fin_inv_config', 'relatorio_diario_hora')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN relatorio_diario_hora TEXT NOT NULL DEFAULT '15:00'");
+      }
+      if (!temColuna('fin_inv_config', 'relatorio_diario_ultimo_dia')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN relatorio_diario_ultimo_dia TEXT NOT NULL DEFAULT ''");
+      }
+      if (!temColuna('fin_inv_config', 'relatorio_diario_destinatario_id')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN relatorio_diario_destinatario_id TEXT NOT NULL DEFAULT ''");
+      }
+      if (!temColuna('fin_inv_config', 'relatorios_ativados_em')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN relatorios_ativados_em TEXT NOT NULL DEFAULT ''");
+      }
+      if (!temColuna('fin_inv_config', 'relatorios_ativados_por')) {
+        db.exec("ALTER TABLE fin_inv_config ADD COLUMN relatorios_ativados_por TEXT NOT NULL DEFAULT ''");
+      }
+      db.exec(`CREATE TABLE IF NOT EXISTS fin_inv_posicoes_ceo (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        instrumento_id TEXT REFERENCES fin_inv_instrumentos(id), classe TEXT NOT NULL,
+        nome TEXT NOT NULL, ticker TEXT NOT NULL DEFAULT '', mandato_chave TEXT NOT NULL,
+        tese TEXT NOT NULL DEFAULT '', observacoes TEXT NOT NULL DEFAULT '',
+        ativo INTEGER NOT NULL DEFAULT 1, criado_em TEXT NOT NULL, criado_por TEXT NOT NULL DEFAULT '',
+        atualizado_em TEXT NOT NULL DEFAULT '', atualizado_por TEXT NOT NULL DEFAULT '',
+        CHECK (mandato_chave IN ('caixa','longo_prazo','oportunidades')),
+        CHECK (ativo IN (0,1))
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_posicoes_ceo
+        ON fin_inv_posicoes_ceo(tenant_id, ativo, mandato_chave, nome);
+      CREATE TABLE IF NOT EXISTS fin_inv_relatorios_diarios (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        destinatario_id TEXT NOT NULL REFERENCES tenant_users(id), dia_local TEXT NOT NULL,
+        timezone TEXT NOT NULL, versao INTEGER NOT NULL DEFAULT 1,
+        dataset_hash TEXT NOT NULL, metodologia_versao TEXT NOT NULL,
+        status TEXT NOT NULL, recomendacoes_conclusivas INTEGER NOT NULL DEFAULT 0,
+        conteudo TEXT NOT NULL, criado_em TEXT NOT NULL, criado_por TEXT NOT NULL DEFAULT '',
+        chave_idempotencia TEXT NOT NULL,
+        UNIQUE (tenant_id, chave_idempotencia),
+        UNIQUE (tenant_id, dia_local, versao),
+        CHECK (status IN ('publicado','nao_conclusivo')),
+        CHECK (recomendacoes_conclusivas >= 0)
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_inv_relatorios_diarios_data
+        ON fin_inv_relatorios_diarios(tenant_id, dia_local DESC, versao DESC);
+      CREATE TRIGGER IF NOT EXISTS trg_fin_inv_relatorio_imutavel
+        BEFORE UPDATE ON fin_inv_relatorios_diarios BEGIN
+          SELECT RAISE(ABORT, 'relatorio diario publicado e imutavel');
+        END;
+      CREATE TRIGGER IF NOT EXISTS trg_fin_inv_relatorio_sem_delete
+        BEFORE DELETE ON fin_inv_relatorios_diarios BEGIN
+          SELECT RAISE(ABORT, 'relatorio diario publicado nao pode ser apagado');
+        END;`);
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

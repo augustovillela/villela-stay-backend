@@ -4,6 +4,7 @@ const investimentos = require('./investimentos-acesso');
 const fontes = require('./investimentos-fontes');
 const evidencias = require('./investimentos-evidencias');
 const ingestao = require('./investimentos-ingestao');
+const relatorios = require('./investimentos-relatorios');
 
 function registrarRotasInvestimentos(app, rota) {
   if (!app || !rota) throw new Error('rotas-investimentos: faltam app/rota.');
@@ -45,6 +46,36 @@ function registrarRotasInvestimentos(app, rota) {
       conjuntos: req.body && req.body.conjuntos,
     }),
   }), { permissao: 'configurar' }));
+
+  app.get('/finance/api/investimentos/relatorios/estado', ...rota((req) =>
+    relatorios.estado(req.tenant, req.assinante), { permissao: 'ler' }));
+
+  app.get('/finance/api/investimentos/relatorios', ...rota((req) => ({
+    relatorios: relatorios.listar(req.tenant, req.assinante, req.query.limite),
+  }), { permissao: 'ler' }));
+
+  app.get('/finance/api/investimentos/relatorios/:id', ...rota((req) =>
+    relatorios.obter(req.tenant, req.assinante, req.params.id), { permissao: 'ler' }));
+
+  app.post('/finance/api/investimentos/relatorios/ativar', ...rota((req) => ({
+    configuracao: relatorios.ativar(req.tenant, req.assinante, req.body || {}),
+  }), { permissao: 'configurar', json: true }));
+
+  app.post('/finance/api/investimentos/relatorios/gerar', ...rota(async (req) => ({
+    relatorio: await relatorios.gerar(req.tenant, req.assinante),
+  }), { permissao: 'configurar', json: true }));
+
+  app.get('/finance/api/investimentos/carteira', ...rota((req) => ({
+    posicoes: relatorios.listarPosicoes(req.tenant, req.assinante),
+  }), { permissao: 'ler' }));
+
+  app.post('/finance/api/investimentos/carteira', ...rota((req) => ({
+    posicao: relatorios.salvarPosicao(req.tenant, req.assinante, req.body || {}),
+  }), { permissao: 'configurar', json: true }));
+
+  app.post('/finance/api/investimentos/carteira/:id/desativar', ...rota((req) =>
+    relatorios.desativarPosicao(req.tenant, req.assinante, req.params.id),
+  { permissao: 'configurar', json: true }));
 }
 
 module.exports = { registrarRotasInvestimentos };

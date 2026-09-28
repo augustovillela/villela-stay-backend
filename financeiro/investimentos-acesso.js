@@ -179,6 +179,9 @@ function resumo(tenant, usuario) {
       radarHora: configuracao.radar_hora,
       relatorioDiaSemana: configuracao.relatorio_dia_semana,
       relatorioHora: configuracao.relatorio_hora,
+      relatoriosDiariosAtivos: configuracao.relatorios_diarios_ativos === 1,
+      relatorioDiarioHora: configuracao.relatorio_diario_hora || '15:00',
+      relatorioDiarioUltimoDia: configuracao.relatorio_diario_ultimo_dia || '',
     } : null,
     proximoPasso: acesso.recomendacoesAtivas
       ? 'Homologar fontes e motores antes de publicar o primeiro parecer privado.'

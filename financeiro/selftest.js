@@ -65,6 +65,7 @@ const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
 const politicaInvestimentos = require('./investimentos-politica');
+const relatoriosInvestimentos = require('./investimentos-relatorios');
 const diario = require('./diario');
 const financeiro = require('./index');
 
@@ -918,6 +919,79 @@ testeAsync('investimentos: metadado CVM não é promovido a evidência decisóri
     () => naA(() => fontesInvestimentos.coletarEvidencias(
       contaA, usuario, 'cvm_dados_abertos', { fetchImpl: async () => { throw new Error('não deveria chamar'); } })),
     /não possui contrato de evidência/i);
+});
+
+teste('investimentos: relatório diário exige os portões e MFA para ativar', () => {
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  process.env.FINANCE_INV_RECOMENDACOES = 'on';
+  process.env.FINANCE_INV_PARECER_JURIDICO = 'aprovado';
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  assert.throws(() => tenancy.comTenant({
+    tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil, mfa: false,
+  }, () => relatoriosInvestimentos.ativar(contaA, usuario, { motivo: 'teste' })), /segundo fator/i);
+  const ativada = tenancy.comTenant({
+    tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil, mfa: true,
+  }, () => relatoriosInvestimentos.ativar(contaA, usuario, { motivo: 'aprovação de teste' }));
+  assert.strictEqual(ativada.ativos, true);
+  assert.strictEqual(ativada.hora, '15:00');
+  assert.strictEqual(ativada.timezone, 'America/Sao_Paulo');
+});
+
+teste('investimentos: carteira qualitativa não exige valor nem quantidade', () => {
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const p = tenancy.comTenant({ tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil }, () =>
+    relatoriosInvestimentos.salvarPosicao(contaA, usuario, {
+      nome: 'Ouro', ticker: 'XAU', classe: 'commodities_ouro', mandatoChave: 'longo_prazo',
+      tese: 'proteção patrimonial a acompanhar',
+    }));
+  assert.strictEqual(p.nome, 'Ouro');
+  assert.strictEqual(Object.hasOwn(p, 'valor'), false);
+  assert.strictEqual(Object.hasOwn(p, 'quantidade'), false);
+  assert.strictEqual(naB(() => repo.listarPosicoesInvestimentos()).length, 0);
+});
+
+teste('investimentos: conciliação só conclui quando os dois motores convergem', () => {
+  const q = [{ id: 'a', nome: 'Ativo A', classe: 'acoes_brasil', conclusao: 'comprar',
+    confiancaPpm: 700000, fundamento: 'desconto verificado', evidencias: ['e1', 'e2'], lacunas: [] }];
+  const divergente = relatoriosInvestimentos.conciliar(q, { analises: [{ id: 'a', conclusao: 'manter',
+    confiancaPpm: 800000, fundamento: 'risco', riscos: [], lacunas: [] }] });
+  assert.strictEqual(divergente[0].recomendacao, 'nao_conclusivo');
+  const convergente = relatoriosInvestimentos.conciliar(q, { analises: [{ id: 'a', conclusao: 'comprar',
+    confiancaPpm: 600000, fundamento: 'confirma', riscos: [], lacunas: [] }] });
+  assert.strictEqual(convergente[0].recomendacao, 'comprar');
+  assert.strictEqual(convergente[0].confiancaPpm, 600000);
+});
+
+testeAsync('investimentos: edição diária é idempotente, privada e imutável', async () => {
+  const usuario = naA(() => repo.usuarioPorId(usuarioCeo.id));
+  const fakeIa = { beta: { messages: { create: async () => ({
+    stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 },
+    content: [{ type: 'text', text: JSON.stringify({ analises: [{
+      id: tenancy.comTenant({ tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil }, () =>
+        repo.listarPosicoesInvestimentos()[0].id),
+      conclusao: 'nao_conclusivo', confianca_ppm: 0, fundamento: 'faltam dados',
+      riscos: [], lacunas: ['preco_atual', 'valor_justo'],
+    }] }) }],
+  }) } } };
+  const contexto = (fn) => tenancy.comTenant({ tenantId: contaA.id, userId: usuario.id, perfil: usuario.perfil }, fn);
+  const primeira = await contexto(() => relatoriosInvestimentos.gerar(contaA, usuario, {
+    agora: '2026-09-28T18:01:00.000Z', clienteIa: fakeIa,
+  }));
+  const segunda = await contexto(() => relatoriosInvestimentos.gerar(contaA, usuario, {
+    agora: '2026-09-28T18:02:00.000Z', clienteIa: fakeIa,
+  }));
+  assert.strictEqual(segunda.id, primeira.id);
+  assert.strictEqual(primeira.status, 'nao_conclusivo');
+  assert.strictEqual(primeira.recomendacoesConclusivas, 0);
+  assert.strictEqual(primeira.conteudo.salvaguardas.ordens, false);
+  assert.strictEqual(naB(() => repo.listarRelatoriosDiariosInvestimentos()).length, 0);
+  assert.throws(() => db.prepare('UPDATE fin_inv_relatorios_diarios SET status = ? WHERE id = ?')
+    .run('publicado', primeira.id), /imutavel/i);
+});
+
+teste('investimentos: relógio do agendamento usa Brasília e inclui qualquer dia', () => {
+  const p = relatoriosInvestimentos.partesNoFuso('2026-09-28T18:00:00.000Z');
+  assert.deepStrictEqual(p, { dia: '2026-09-28', hora: '15:00' });
 });
 
 teste('investimentos: plano integral cobre todo o histórico oficial sem habilitar download', () => {

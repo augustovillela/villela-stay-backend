@@ -71,6 +71,7 @@ const cobranca = require('./cobranca');
 const incidente = require('./incidente');
 const investimentos = require('./investimentos-acesso');
 const investimentosWorker = require('./investimentos-worker');
+const investimentosRelatorios = require('./investimentos-relatorios');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarRotasAgente } = require('./rotas-agente');
@@ -235,6 +236,7 @@ function iniciarWorker(alertaAugusto) {
   let ciclos = 0;
   let ultimaReplica = 0;
   let ultimaStays = 0;
+  let relatoriosEmCurso = false;
 
   _timer = setInterval(() => {
     ciclos++;
@@ -274,6 +276,21 @@ function iniciarWorker(alertaAugusto) {
     if (minutosStays && stays.configurado() && Date.now() - ultimaStays >= minutosStays * 60_000) {
       ultimaStays = Date.now();
       sincronizarStaysDeTodos().catch(e => console.error('[finance] sync Stays:', e.message));
+    }
+
+    // Edição privada diária, inclusive fins de semana e feriados. O banco
+    // garante idempotência; este caminho nunca chama corretora ou razão.
+    if (!relatoriosEmCurso) {
+      relatoriosEmCurso = true;
+      Promise.resolve(investimentosRelatorios.executarAgendados())
+        .then(rs => {
+          for (const r of rs) {
+            if (r.erro) console.error('[finance] parecer diário:', r.erro);
+            else console.log(`[finance] parecer diário ${r.relatorioId}: ${r.status}`);
+          }
+        })
+        .catch(e => console.error('[finance] parecer diário:', e.message))
+        .finally(() => { relatoriosEmCurso = false; });
     }
 
     // A cada ~30 min: o razão continua batendo? Desbalanceamento é
