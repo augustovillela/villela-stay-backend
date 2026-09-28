@@ -19,8 +19,20 @@ const preflight = require('./mercado-preflight');
 const parser = require('./investimentos-parser');
 const piloto = require('./mercado-piloto-cvm');
 
-const REGRAS_VERSAO = 3;
-const FONTE_CADASTRO = 'https://dados.cvm.gov.br/dados/cia_aberta/CAD/DADOS/cad_cia_aberta.csv';
+const REGRAS_VERSAO = 4;
+const FONTES_CADASTRO = Object.freeze({
+  abertas: Object.freeze({
+    id: 'companhias_abertas',
+    url: 'https://dados.cvm.gov.br/dados/cia_aberta/CAD/DADOS/cad_cia_aberta.csv',
+    campoCnpj: 'CNPJ_CIA',
+  }),
+  estrangeiras: Object.freeze({
+    id: 'companhias_estrangeiras',
+    url: 'https://dados.cvm.gov.br/dados/CIA_ESTRANG/CAD/DADOS/cad_cia_estrang.csv',
+    campoCnpj: 'CNPJ',
+  }),
+});
+const FONTE_CADASTRO = FONTES_CADASTRO.abertas.url;
 const SCHEMA = 'fin_pilot_cvm_dfp_2025';
 const LIMITE_CADASTRO = 8 * 1024 * 1024;
 const TIMEOUT_MS = 60_000;
@@ -57,7 +69,7 @@ const QUALITY_SCHEMA_STATEMENTS = [`CREATE TABLE IF NOT EXISTS fin_quality_runs 
   amostras jsonb NOT NULL DEFAULT '[]'::jsonb,
   detalhes jsonb NOT NULL DEFAULT '{}'::jsonb,
   PRIMARY KEY (run_id, regra, gravidade, agrupador)
-)`];
+)`, `ALTER TABLE fin_quality_runs ADD COLUMN IF NOT EXISTS fontes_cadastro jsonb NOT NULL DEFAULT '{}'::jsonb`];
 const QUALITY_SCHEMA_SQL = `${QUALITY_SCHEMA_STATEMENTS.join(';\n')};`;
 
 async function migrarQualidade(pool) {
@@ -135,16 +147,24 @@ class Achados {
   }
 }
 
-async function baixarCadastro(fetchImpl = global.fetch) {
+function normalizarLinhaCadastro(linha, fonte) {
+  const cnpj = somenteDigitos(linha[fonte.campoCnpj]);
+  const codigo = codigoCvm(linha.CD_CVM);
+  const nome = String(linha.DENOM_SOCIAL || '').trim();
+  if (!cnpj || !codigo || !nome) return null;
+  return { cnpj, codigo, nome, situacao: String(linha.SIT || '').trim(), fonte: fonte.id };
+}
+
+async function baixarCadastro(fetchImpl = global.fetch, fonte = FONTES_CADASTRO.abertas) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const resposta = await fetchImpl(FONTE_CADASTRO, {
+    const resposta = await fetchImpl(fonte.url, {
       method: 'GET', redirect: 'manual', signal: controller.signal,
       headers: { accept: 'text/csv,application/octet-stream', 'user-agent': 'VillelaFinanceQuality/1.0' },
     });
     if (!resposta.ok || resposta.status !== 200 || !resposta.body) {
-      throw new Error(`Cadastro CVM recusou a consulta (HTTP ${resposta.status}).`);
+      throw new Error(`Cadastro CVM ${fonte.id} recusou a consulta (HTTP ${resposta.status}).`);
     }
     const informado = Number(resposta.headers.get('content-length') || 0);
     if (!Number.isSafeInteger(informado) || informado <= 0 || informado > LIMITE_CADASTRO) {
@@ -163,19 +183,39 @@ async function baixarCadastro(fetchImpl = global.fetch) {
     }));
     const registros = [];
     for await (const linha of linhas) {
-      const cnpj = somenteDigitos(linha.CNPJ_CIA);
-      const codigo = codigoCvm(linha.CD_CVM);
-      const nome = String(linha.DENOM_SOCIAL || '').trim();
-      if (!cnpj || !codigo || !nome) continue;
-      registros.push({ cnpj, codigo, nome, situacao: String(linha.SIT || '').trim() });
+      const registro = normalizarLinhaCadastro(linha, fonte);
+      if (registro) registros.push(registro);
     }
-    if (bytes !== informado || !registros.length) throw new Error('Cadastro CVM ficou incompleto.');
+    if (bytes !== informado || !registros.length) throw new Error(`Cadastro CVM ${fonte.id} ficou incompleto.`);
     return {
-      registros, bytes, sha256: hash.digest('hex'),
+      id: fonte.id, url: fonte.url, registros, bytes, sha256: hash.digest('hex'),
       etag: String(resposta.headers.get('etag') || ''),
       ultimaModificacao: String(resposta.headers.get('last-modified') || ''),
     };
   } finally { clearTimeout(timer); }
+}
+
+function combinarCadastros(cadastros) {
+  const fontes = cadastros.map(c => ({
+    id: c.id, url: c.url, registros: c.registros.length, bytes: c.bytes,
+    sha256: c.sha256, etag: c.etag, ultimaModificacao: c.ultimaModificacao,
+  }));
+  const hash = crypto.createHash('sha256');
+  for (const fonte of fontes) hash.update(`${fonte.id}:${fonte.sha256}\n`);
+  return {
+    registros: cadastros.flatMap(c => c.registros), fontes,
+    sha256: hash.digest('hex'),
+    etag: JSON.stringify(Object.fromEntries(fontes.map(f => [f.id, f.etag]))),
+    ultimaModificacao: JSON.stringify(Object.fromEntries(fontes.map(f => [f.id, f.ultimaModificacao]))),
+  };
+}
+
+async function baixarCadastros(fetchImpl = global.fetch) {
+  const cadastros = await Promise.all([
+    baixarCadastro(fetchImpl, FONTES_CADASTRO.abertas),
+    baixarCadastro(fetchImpl, FONTES_CADASTRO.estrangeiras),
+  ]);
+  return combinarCadastros(cadastros);
 }
 
 function indexarCadastro(cadastro, achados = new Achados()) {
@@ -403,7 +443,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     const prefixo = String(job.objeto_chave || '').slice(0, String(job.objeto_chave || '').indexOf('raw/'));
     if (!prefixo.startsWith(piloto.PREFIXO_RAIZ)) throw new Error('Job selecionado fora da quarentena aprovada.');
 
-    const cadastro = await baixarCadastro(fetchImpl);
+    const cadastro = await baixarCadastros(fetchImpl);
     const identidade = idAuditoria(job.id, cadastro.sha256);
     runId = identidade.id;
     const anterior = await pool.query('SELECT status,resultado,resumo FROM fin_quality_runs WHERE chave_idempotencia=$1', [identidade.chave]);
@@ -415,9 +455,10 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     }
     await pool.query(`INSERT INTO fin_quality_runs
       (id,job_id,parser_versao,regras_versao,cadastro_sha256,cadastro_etag,
-       cadastro_ultima_modificacao,chave_idempotencia,status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'processando')`, [runId, job.id, parser.PARSER_VERSAO,
-      REGRAS_VERSAO, cadastro.sha256, cadastro.etag, cadastro.ultimaModificacao, identidade.chave]);
+       cadastro_ultima_modificacao,fontes_cadastro,chave_idempotencia,status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,'processando')`, [runId, job.id, parser.PARSER_VERSAO,
+      REGRAS_VERSAO, cadastro.sha256, cadastro.etag, cadastro.ultimaModificacao,
+      JSON.stringify(cadastro.fontes), identidade.chave]);
 
     const [partesR, identidadesR] = await Promise.all([
       pool.query(`SELECT sequencia,objeto_chave,sha256,registros,parser_versao
@@ -454,6 +495,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     const resumo = {
       registros, particoes: partesR.rows.length, identidades: identidadesR.rows.length,
       companhiasDfp: cruzamento.companhiasDfp, cadastroRegistros: cadastro.registros.length,
+      cadastroFontes: cadastro.fontes.map(f => ({ id: f.id, registros: f.registros, sha256: f.sha256 })),
       cadastroSha: cadastro.sha256.slice(0, 12), bloqueadores: totais.BLOQUEADOR,
       alertas: totais.ALERTA, regrasComAchado: achados.listar().length,
       balancosComparados: reconciliacao.comparados, balancosDivergentes: reconciliacao.divergentes,
@@ -461,7 +503,9 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     };
     const metricas = [
       { regra: 'volume', valor: { registros, particoes: partesR.rows.length, identidades: identidadesR.rows.length } },
-      { regra: 'cadastro', valor: { registros: cadastro.registros.length, sha256: cadastro.sha256 } },
+      { regra: 'cadastro', valor: {
+        registros: cadastro.registros.length, sha256: cadastro.sha256, fontes: cadastro.fontes,
+      } },
       { regra: 'reconciliacao_balanco', valor: reconciliacao },
       { regra: 'achados', valor: totais },
       ...['BPA', 'BPP', 'DRE', 'DFC', 'DMPL', 'DRA', 'DVA'].map(categoria => ({
@@ -504,10 +548,11 @@ if (require.main === module) executar().catch(e => {
 });
 
 module.exports = {
-  REGRAS_VERSAO, FONTE_CADASTRO, SCHEMA, LIMITE_CADASTRO, QUALITY_SCHEMA_SQL,
+  REGRAS_VERSAO, FONTE_CADASTRO, FONTES_CADASTRO, SCHEMA, LIMITE_CADASTRO, QUALITY_SCHEMA_SQL,
   QUALITY_SCHEMA_STATEMENTS, migrarQualidade,
   configAmbiente, somenteDigitos, codigoCvm, textoComparavel, dataIsoValida,
-  decimalEscala10, categoriaFormulario, Achados, baixarCadastro, indexarCadastro,
+  decimalEscala10, categoriaFormulario, Achados, normalizarLinhaCadastro,
+  baixarCadastro, combinarCadastros, baixarCadastros, indexarCadastro,
   chaveNatural, analisarFato, auditarParticao, compararCadastros, reconciliarBalancos,
   idAuditoria, persistirResultado, executar,
 };

@@ -1477,16 +1477,46 @@ teste('investimentos: auditoria CVM exige armação, parser off e persiste só q
   assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_metrics/);
   assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_findings/);
   assert.doesNotMatch(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /saldo|ordem_financeira|razao/i);
-  assert.strictEqual(mercadoQualidadeCvm.REGRAS_VERSAO, 3);
+  assert.strictEqual(mercadoQualidadeCvm.REGRAS_VERSAO, 4);
+  assert.match(mercadoQualidadeCvm.FONTES_CADASTRO.abertas.url, /^https:\/\/dados\.cvm\.gov\.br\//);
+  assert.match(mercadoQualidadeCvm.FONTES_CADASTRO.estrangeiras.url, /^https:\/\/dados\.cvm\.gov\.br\//);
 });
 
 testeAsync('investimentos: migração da qualidade executa cada tabela separadamente', async () => {
   const chamadas = [];
   await mercadoQualidadeCvm.migrarQualidade({ query: async sql => { chamadas.push(sql); } });
-  assert.strictEqual(chamadas.length, 3);
+  assert.strictEqual(chamadas.length, 4);
   assert.match(chamadas[0], /fin_quality_runs/);
   assert.match(chamadas[1], /fin_quality_metrics/);
   assert.match(chamadas[2], /fin_quality_findings/);
+  assert.match(chamadas[3], /fontes_cadastro/);
+});
+
+teste('investimentos: auditoria combina cadastros brasileiros e estrangeiros com proveniência', () => {
+  const abertas = mercadoQualidadeCvm.FONTES_CADASTRO.abertas;
+  const estrangeiras = mercadoQualidadeCvm.FONTES_CADASTRO.estrangeiras;
+  const nacional = mercadoQualidadeCvm.normalizarLinhaCadastro({
+    CNPJ_CIA: '33.000.167/0001-01', CD_CVM: '009512', DENOM_SOCIAL: 'Companhia Nacional', SIT: 'ATIVO',
+  }, abertas);
+  const estrangeira = mercadoQualidadeCvm.normalizarLinhaCadastro({
+    CNPJ: '10.000.000/0001-02', CD_CVM: '080217', DENOM_SOCIAL: 'Companhia Estrangeira', SIT: 'ATIVO',
+  }, estrangeiras);
+  assert.strictEqual(nacional.fonte, 'companhias_abertas');
+  assert.strictEqual(estrangeira.fonte, 'companhias_estrangeiras');
+  const combinado = mercadoQualidadeCvm.combinarCadastros([
+    { id: abertas.id, url: abertas.url, registros: [nacional], bytes: 10, sha256: 'a'.repeat(64), etag: 'a', ultimaModificacao: 'hoje' },
+    { id: estrangeiras.id, url: estrangeiras.url, registros: [estrangeira], bytes: 20, sha256: 'b'.repeat(64), etag: 'b', ultimaModificacao: 'hoje' },
+  ]);
+  assert.strictEqual(combinado.registros.length, 2);
+  assert.strictEqual(combinado.fontes.length, 2);
+  assert.strictEqual(combinado.sha256.length, 64);
+  const achados = new mercadoQualidadeCvm.Achados();
+  const indice = mercadoQualidadeCvm.indexarCadastro(combinado, achados);
+  mercadoQualidadeCvm.compararCadastros([{
+    valor: estrangeira.cnpj, nome: estrangeira.nome,
+    dados: { identificadores: [{ sistema: 'cvm_codigo', valor: '080217' }] },
+  }], indice, new Map([[estrangeira.cnpj, new Set(['DRE'])]]), achados);
+  assert.ok(!achados.listar().some(x => x.regra === 'identidade_dfp_ausente_cadastro'));
 });
 
 testeAsync('investimentos: persistência da qualidade não depende do search_path da conexão', async () => {
