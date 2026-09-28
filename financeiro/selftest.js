@@ -1257,6 +1257,25 @@ teste('investimentos: banco compartilhado contém somente catálogo técnico de 
   assert.strictEqual(mercadoWorker.ligado(), false);
 });
 
+testeAsync('investimentos: catálogo técnico pode reivindicar somente o job explicitamente pedido', async () => {
+  const chamadas = [];
+  const cliente = {
+    query: async (sql, params) => {
+      chamadas.push({ sql, params });
+      if (/^SELECT \*/.test(sql)) return { rows: [{ id: 'job-alvo' }] };
+      if (/^UPDATE fin_market_jobs/.test(sql)) return { rows: [{ id: 'job-alvo', status: 'processando' }] };
+      return { rows: [] };
+    },
+    release: () => {},
+  };
+  const db = new mercadoDb.MercadoDb({ pool: { connect: async () => cliente } });
+  const job = await db.reivindicar('worker-piloto', 'job-alvo');
+  const selecao = chamadas.find(x => /^SELECT \*/.test(x.sql));
+  assert.strictEqual(job.id, 'job-alvo');
+  assert.deepStrictEqual(selecao.params, ['job-alvo']);
+  assert.match(selecao.sql, /\(\$1::text IS NULL OR id=\$1\)/);
+});
+
 teste('investimentos: plano E2E usa somente schema e prefixo descartáveis', () => {
   const id = '0123456789abcdef01234567';
   const plano = mercadoE2e.planejar(id);

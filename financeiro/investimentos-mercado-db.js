@@ -110,15 +110,16 @@ class MercadoDb {
     return r.rows[0];
   }
 
-  async reivindicar(workerId) {
+  async reivindicar(workerId, jobId = null) {
     const c = await this.pool.connect();
     try {
       await c.query('BEGIN');
       const r = await c.query(`SELECT * FROM fin_market_jobs
-        WHERE status='aguardando'
-           OR (status='falhou' AND tentativas < 3 AND atualizado_em < now() - interval '1 minute')
+        WHERE ($1::text IS NULL OR id=$1)
+          AND (status='aguardando'
+           OR (status='falhou' AND tentativas < 3 AND atualizado_em < now() - interval '1 minute'))
         ORDER BY atualizado_em, criado_em
-        FOR UPDATE SKIP LOCKED LIMIT 1`);
+        FOR UPDATE SKIP LOCKED LIMIT 1`, [jobId]);
       if (!r.rows[0]) { await c.query('COMMIT'); return null; }
       const u = await c.query(`UPDATE fin_market_jobs
         SET status='processando', worker_id=$2, tentativas=tentativas+1,

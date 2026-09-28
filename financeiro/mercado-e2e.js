@@ -170,7 +170,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
       objetoChave: plano.objetoBruto, tamanhoBytes: bruto.length, sha256: shaBruto,
       chaveIdempotencia: `e2e:${plano.id}`,
     });
-    const job = await db.reivindicar(`e2e:${process.pid}`);
+    const job = await db.reivindicar(`e2e:${process.pid}`, plano.jobId);
     if (!job || job.id !== plano.jobId) throw new Error('Job sintético não foi reivindicado no schema isolado.');
     const resumo = await mercadoWorker.executarJob(job, {
       db, cfg: configS3, storage, fetchImpl, workDir, limiteLoteBytes: 64 * 1024,

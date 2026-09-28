@@ -320,7 +320,7 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
       conjunto: CONJUNTO, jurisdicao: 'BR', formato: 'zip', objetoChave: plano.objetoBruto,
       tamanhoBytes: download.bytes, sha256: download.sha256, chaveIdempotencia,
     });
-    const job = await db.reivindicar(`pilot:${process.pid}`);
+    const job = await db.reivindicar(`pilot:${process.pid}`, jobId);
     if (!job || job.id !== jobId) throw new Error('Job real da CVM não foi reivindicado na quarentena.');
     process.env.FINANCE_INV_NORM_PREFIXO = plano.prefixoNormalizado;
     try {
