@@ -41,8 +41,8 @@ async function renderMusic() {
        </div>
        <div id="mu-cards" class="cards"></div>
        <div class="barra" style="margin-top:12px">
-         ${['cifras', 'contas', 'fila', 'ia', 'acervo', 'auditoria'].map((v) => `<button class="btn secund mu-nav" data-v="${v}">${{
-           cifras: '🎸 Cifras', contas: '👤 Contas e cursos', fila: '⚙️ Fila e DLQ', ia: '🤖 Fornecedores de IA', acervo: '🎼 Acervo', auditoria: '📜 Auditoria',
+         ${['cifras', 'assinaturas', 'contas', 'fila', 'ia', 'acervo', 'auditoria'].map((v) => `<button class="btn secund mu-nav" data-v="${v}">${{
+           cifras: '🎸 Cifras', assinaturas: '💳 Assinaturas', contas: '👤 Contas e cursos', fila: '⚙️ Fila e DLQ', ia: '🤖 Fornecedores de IA', acervo: '🎼 Acervo', auditoria: '📜 Auditoria',
          }[v]}</button>`).join('')}
        </div>
        <div id="mu-corpo"><p class="vazio">Carregando…</p></div>`;
@@ -83,11 +83,76 @@ async function muCorpo() {
   try {
     if (MU_VISAO === 'cifras') return muCifras(alvo);
     if (MU_VISAO === 'contas') return muContas(alvo);
+    if (MU_VISAO === 'assinaturas') return muAssinaturas(alvo);
     if (MU_VISAO === 'fila') return muFila(alvo);
     if (MU_VISAO === 'ia') return muIA(alvo);
     if (MU_VISAO === 'acervo') return muAcervo(alvo);
     return muAuditoria(alvo);
   } catch (e) { alvo.innerHTML = muErro(e); }
+}
+
+// Assinatura (28/09/2026): R$ 250,00/mês no Mercado Pago, cortesia dos cursos
+// de música da Academia pelo mesmo e-mail enquanto ativa. Preço editável aqui
+// (vale para assinaturas NOVAS: o MP fixa o valor de cada preapproval).
+async function muAssinaturas(alvo) {
+  const d = await api('GET', '/music/assinaturas');
+  const reais = (c) => 'R$ ' + (Number(c || 0) / 100).toFixed(2).replace('.', ',');
+  const ST = { ativa: '✅ ativa', pendente: '⏳ aguardando pagamento', inadimplente: '⚠️ pagamento não confirmado', cancelada: 'cancelada', cortesia: '🎁 cortesia' };
+  const linhas = (d.assinaturas || []).map((a) => `<tr>
+      <td><b>${esc(a.nome || '')}</b><div class="obs">${esc(a.email || '')}${a.email_verificado ? '' : ' · e-mail NÃO confirmado'}</div></td>
+      <td>${ST[a.status] || esc(a.status)}${a.origem === 'dono' ? ' <span class="chip">dono</span>' : ''}${a.motivo ? `<div class="obs">${esc(a.motivo)}</div>` : ''}</td>
+      <td>${a.status === 'cortesia' ? '—' : reais(a.preco_cents)}</td>
+      <td>${esc(muQuando(a.ultimo_pagamento_em))}</td>
+      <td>${a.cursos != null && !a.revogada_em ? a.cursos + ' curso(s)' : '—'}</td>
+      <td>${a.status === 'cortesia' && a.origem !== 'dono' ? `<button class="btn secund mu-enc" data-id="${esc(a.conta_id)}">Encerrar</button>` : ''}</td></tr>`).join('');
+  alvo.innerHTML = `
+    <div class="cards">
+      ${muCard('Assinantes pagantes', d.ativas, 'status ativa')}
+      ${muCard('Receita mensal', reais(d.receita_mensal_cents), 'soma das ativas')}
+      ${muCard('Preço atual', reais(d.plano.preco_cents), 'tolerância de ' + d.plano.carencia_dias + ' dia(s)')}
+      ${muCard('Cobrança', d.cobranca_ligada ? 'ligada' : 'desligada', d.cobranca_ligada ? 'Mercado Pago' : 'falta MP_ACCESS_TOKEN')}
+    </div>
+    <div class="aviso obs" style="padding:10px 14px;border-left:3px solid #C9A227;background:#FDF6E3;border-radius:8px;margin:10px 0">
+      O app é grátis; a assinatura dá <b>cortesia dos cursos de música da Academia</b> pelo mesmo e-mail (confirmado no Musique),
+      enquanto estiver ativa. Mudar o preço vale para assinaturas <b>novas</b>: o Mercado Pago fixa o valor de cada uma.
+    </div>
+    <h3>Preço e tolerância</h3>
+    <div class="barra">
+      <label>Preço mensal (R$) <input id="mu-preco" type="number" step="0.01" min="1" value="${(d.plano.preco_cents / 100).toFixed(2)}" style="max-width:120px"></label>
+      <label>Tolerância (dias) <input id="mu-car" type="number" min="0" max="60" value="${d.plano.carencia_dias}" style="max-width:80px"></label>
+      <button class="btn" id="mu-plano">Salvar</button>
+    </div>
+    <h3 style="margin-top:14px">Dar cortesia</h3>
+    <div class="barra">
+      <input id="mu-cort-email" type="email" placeholder="e-mail da conta no Musique" style="max-width:260px">
+      <input id="mu-cort-motivo" type="text" placeholder="motivo (ex.: professor parceiro)" style="max-width:260px">
+      <button class="btn secund" id="mu-cort">Dar cortesia</button>
+      <button class="btn secund" id="mu-sync" title="Confere todas as assinaturas e a Academia agora">🔄 Sincronizar com a Academia</button>
+    </div>
+    <h3 style="margin-top:14px">Assinaturas</h3>
+    ${linhas ? `<table class="tab"><thead><tr><th>Pessoa</th><th>Situação</th><th>Valor</th><th>Último pagamento</th><th>Cursos na Academia</th><th></th></tr></thead><tbody>${linhas}</tbody></table>`
+             : '<p class="vazio">Nenhuma assinatura ainda.</p>'}`;
+  $('#mu-plano').onclick = async () => {
+    try {
+      await api('PUT', '/music/assinaturas/plano', { preco_cents: Math.round(Number($('#mu-preco').value) * 100), carencia_dias: Number($('#mu-car').value) });
+      muAvisar('Plano salvo. Vale para assinaturas novas.'); muAssinaturas(alvo);
+    } catch (e) { muAvisar(e.message); }
+  };
+  $('#mu-cort').onclick = async () => {
+    try {
+      const r = await api('POST', '/music/assinaturas/cortesia', { email: $('#mu-cort-email').value, motivo: $('#mu-cort-motivo').value });
+      muAvisar('Cortesia dada. Academia: ' + (r.academia && r.academia.resultado)); muAssinaturas(alvo);
+    } catch (e) { muAvisar(e.message); }
+  };
+  $('#mu-sync').onclick = async () => {
+    try { const r = await api('POST', '/music/assinaturas/sincronizar', {}); muAvisar(r.sincronizadas + ' conta(s) ajustada(s) na Academia.'); muAssinaturas(alvo); }
+    catch (e) { muAvisar(e.message); }
+  };
+  alvo.querySelectorAll('.mu-enc').forEach((b) => { b.onclick = async () => {
+    if (!confirm('Encerrar esta cortesia? Os cursos de música saem da conta dela na Academia.')) return;
+    try { await api('POST', '/music/assinaturas/cortesia/' + encodeURIComponent(b.dataset.id) + '/encerrar', {}); muAssinaturas(alvo); }
+    catch (e) { muAvisar(e.message); }
+  }; });
 }
 
 // Contas PRÓPRIAS do Musique (ADR-0011, 28/09/2026) e o único elo com a

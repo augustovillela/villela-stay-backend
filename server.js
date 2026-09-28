@@ -4931,7 +4931,12 @@ try {
       ehProdutor: (id) => { try { const u = academyRepo.Usuarios.porId(id); return !!(u && u.status === 'ativo' && academyRepo.podeAgirComo(u, 'produtor')); } catch (_) { return false; } },
       cursosDeMusica: () => academyConteudo.Marketplace.listar({ categoria: 'musica', n: 60 }),
       cursoPorSlug: (slug) => academyConteudo.Marketplace.porSlug(slug),
+      // ASSINATURA DO MUSIQUE → cortesia dos cursos de MÚSICA da Academia pelo
+      // mesmo e-mail. A ponte mora na Academia (academy/ponte-musique.js,
+      // testada no test:academy): o Musique só pede "matricule / desmatricule".
+      cortesia: require('./academy/ponte-musique').criar({ jwtSecret: JWT_SECRET, enviarEmail }),
     },
+    mpFetch: (typeof mpFetch === 'function') ? mpFetch : undefined,
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     jwtSecret: JWT_SECRET,
   });

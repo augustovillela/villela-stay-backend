@@ -615,7 +615,89 @@ const SISTEMAS = [
          'With us. Packages include a 6- or 12-month hosting allowance depending on the bundle; after that, keeping the tour live costs R$29 a month or R$290 a year.',
          'Con nosotros. Los paquetes incluyen franquicia de alojamiento de 6 o 12 meses según el combo; después, mantener el tour en el aire cuesta R$ 29 al mes o R$ 290 al año.')]
     ]
-  }
+  },
+  // ------------------------------------------------------------- MUSIQUE
+  // Lançado em 28/09/2026 (ordem do Augusto). Modelo "freemium": o app é
+  // grátis de verdade; a assinatura de R$ 250/mês é opcional e dá cortesia
+  // dos cursos de música da Academia Villela. Sem "14 dias de teste": não
+  // existe teste, porque não existe cobrança para usar o app.
+  {
+    id: 'music', nome: 'Musique', pasta: 'musique',
+    vertical: 'grupo', cor: '#1B2A4A',
+    url: 'https://musique.villelastay.com.br/music',
+    urlTeste: 'https://musique.villelastay.com.br/music/entrar#criar',
+    tela: 'music',
+    demo: T(
+      'A cifra muda de tom e a letra fica onde estava — e a obra que não é sua permanece marcada e privada.',
+      'The chord chart changes key while the lyrics stay put — and work that is not yours stays tagged and private.',
+      'El cifrado cambia de tono y la letra se queda donde estaba — y la obra que no es tuya sigue marcada y privada.'),
+    categoria: T('Academia musical e cifras', 'Music academy and chord charts', 'Academia musical y cifrados'),
+    promessa: T('Estude, organize e toque — tudo num lugar só.', 'Study, organise and play — all in one place.', 'Estudia, organiza y toca — todo en un solo lugar.'),
+    dor: T(
+      'As cifras estão espalhadas em sites, prints e PDFs; cada integrante da banda toca num tom; e o estudo vira vídeo solto no celular, sem ninguém dizer se você evoluiu.',
+      'Chord charts are scattered across websites, screenshots and PDFs; each band member plays in a different key; and practice turns into random videos on your phone, with nobody telling you whether you improved.',
+      'Los cifrados están dispersos en sitios, capturas y PDFs; cada integrante de la banda toca en un tono; y el estudio se vuelve videos sueltos en el celular, sin que nadie diga si mejoraste.'),
+    virada: T(
+      'O Musique junta o acervo de cifras (com transposição exata e o acorde desenhado no seu instrumento), a banda que ensaia e toca junta, e uma academia que mede o que você pratica e diz o que medir antes de você tocar.',
+      'Musique brings together your chord library (with exact transposition and the chord drawn for your instrument), a band that rehearses and plays together, and an academy that measures your practice and tells you what it measures before you play.',
+      'Musique reúne tu acervo de cifrados (con transposición exacta y el acorde dibujado en tu instrumento), la banda que ensaya y toca junta, y una academia que mide lo que practicas y dice qué mide antes de que toques.'),
+    porque: T(
+      'O app é <b>grátis</b> — sem limite de cifras e sem teste que acaba. A assinatura existe para quem quer ir além: ela inclui <b>todos os cursos de música da Academia Villela</b>.',
+      'The app is <b>free</b> — no chord chart limit and no trial that runs out. The subscription is for those who want more: it includes <b>every music course at Villela Academy</b>.',
+      'La app es <b>gratis</b> — sin límite de cifrados y sin prueba que termina. La suscripción es para quien quiere ir más allá: incluye <b>todos los cursos de música de la Academia Villela</b>.'),
+    recursos: [
+      ['🎸', T('Acervo de cifras', 'Chord chart library', 'Acervo de cifrados'),
+        T('Importe por link, arquivo ou foto, edite, compare versões e transponha na hora — o acorde aparece desenhado para violão, guitarra, cavaquinho, ukulele, teclado ou baixo.',
+          'Import by link, file or photo, edit, compare versions and transpose instantly — the chord is drawn for guitar, electric guitar, cavaquinho, ukulele, keyboard or bass.',
+          'Importa por enlace, archivo o foto, edita, compara versiones y transpón al instante — el acorde aparece dibujado para guitarra, guitarra eléctrica, cavaquinho, ukelele, teclado o bajo.')],
+      ['📖', T('Dicionário dos seus acordes', 'Dictionary of your chords', 'Diccionario de tus acordes'),
+        T('Cada cifra que entra alimenta o dicionário: os acordes do seu repertório, por nota ou pelos mais usados, com as músicas em que aparecem.',
+          'Every chart you add feeds the dictionary: the chords in your repertoire, by note or most used, with the songs they appear in.',
+          'Cada cifrado que entra alimenta el diccionario: los acordes de tu repertorio, por nota o por los más usados, con las canciones donde aparecen.')],
+      ['👥', T('Banda e Modo Maestro', 'Band and Conductor mode', 'Banda y Modo Director'),
+        T('Setlist compartilhado, arranjo da banda e ensaio ao vivo: o diretor conduz e cada integrante lê no próprio tom e instrumento.',
+          'Shared setlists, band arrangements and live rehearsal: the director leads and each member reads in their own key and instrument.',
+          'Setlist compartido, arreglo de la banda y ensayo en vivo: el director conduce y cada integrante lee en su propio tono e instrumento.')],
+      ['🎤', T('Modo palco sem internet', 'Offline stage mode', 'Modo escenario sin internet'),
+        T('O show inteiro guardado no aparelho, com rolagem automática, rolagem que segue o microfone e letra grande para o palco.',
+          'The whole show stored on the device, with auto-scroll, microphone-following scroll and large lyrics for the stage.',
+          'El show entero guardado en el aparato, con desplazamiento automático, desplazamiento que sigue el micrófono y letra grande para el escenario.')],
+      ['🎯', T('Academia que mede de verdade', 'An academy that really measures', 'Academia que mide de verdad'),
+        T('Trilhas de teoria, leitura, percepção, ritmo e afinação. O exercício diz o que mede antes de você tocar, e nota que conta tem revisão do professor.',
+          'Paths in theory, reading, ear training, rhythm and pitch. Each exercise states what it measures before you play, and grades that count are reviewed by the teacher.',
+          'Rutas de teoría, lectura, oído, ritmo y afinación. El ejercicio dice qué mide antes de que toques, y la nota que cuenta tiene revisión del profesor.')],
+      ['🏫', T('Escolas e turmas', 'Schools and classes', 'Escuelas y clases'),
+        T('Professor, turma, chamada e boletim; aluno menor de idade sempre com responsável, como manda a LGPD.',
+          'Teacher, class, attendance and report card; underage students always with a guardian, as Brazilian data law requires.',
+          'Profesor, clase, asistencia y boletín; alumno menor de edad siempre con responsable, como exige la ley de datos.')]
+    ],
+    paraQuem: [
+      T('Quem toca violão ou guitarra', 'Guitar players', 'Quien toca guitarra'),
+      T('Bandas e ministérios de louvor', 'Bands and worship teams', 'Bandas y ministerios de alabanza'),
+      T('Estudantes de música', 'Music students', 'Estudiantes de música'),
+      T('Professores e escolas de música', 'Music teachers and schools', 'Profesores y escuelas de música')
+    ],
+    prova: T(
+      'Está no ar e em uso: é onde o fundador do grupo guarda e toca o próprio repertório, com as cifras transpostas e o dicionário de acordes montado a partir delas.',
+      'It is live and in use: it is where the group’s founder keeps and plays an entire repertoire, with transposed charts and the chord dictionary built from them.',
+      'Está en el aire y en uso: es donde el fundador del grupo guarda y toca su propio repertorio, con los cifrados transpuestos y el diccionario de acordes armado a partir de ellos.'),
+    preco: { modelo: 'freemium', valor: 250,
+      texto: T('Grátis · assinatura R$ 250/mês', 'Free · R$250/mo subscription', 'Gratis · suscripción R$ 250/mes') },
+    faq: [
+      [T('O Musique é grátis mesmo?', 'Is Musique really free?', '¿Musique es gratis de verdad?'),
+       T('Sim. Acervo de cifras, academia, banda, palco e escolas são grátis, sem teste que acaba. A assinatura de R$ 250/mês é opcional: ela inclui todos os cursos de música da Academia Villela, que chegam na conta da Academia com o mesmo e-mail, enquanto a assinatura estiver ativa.',
+         'Yes. The chord library, academy, band, stage and schools are free, with no trial that runs out. The R$250/month subscription is optional: it includes every music course at Villela Academy, delivered to the Academy account with the same email, while the subscription is active.',
+         'Sí. Acervo de cifrados, academia, banda, escenario y escuelas son gratis, sin prueba que termina. La suscripción de R$ 250/mes es opcional: incluye todos los cursos de música de la Academia Villela, que llegan a la cuenta de la Academia con el mismo correo, mientras la suscripción esté activa.')],
+      [T('As cifras que eu importo ficam públicas?', 'Do the charts I import become public?', '¿Los cifrados que importo quedan públicos?'),
+       T('Não. Cifra de música de outro autor fica no seu acervo e circula só nas bandas fechadas de que você participa. O Musique não publica nem distribui obra de terceiro.',
+         'No. A chart of someone else’s song stays in your library and circulates only within the closed bands you belong to. Musique does not publish or distribute third-party work.',
+         'No. El cifrado de una canción de otro autor queda en tu acervo y circula solo en las bandas cerradas de las que participas. Musique no publica ni distribuye obra de terceros.')],
+      [T('Posso cancelar a assinatura quando quiser?', 'Can I cancel the subscription anytime?', '¿Puedo cancelar la suscripción cuando quiera?'),
+       T('Pode, em "Minha conta", com um clique. Os cursos da Academia saem da sua conta ao fim da assinatura e o Musique continua grátis; o seu progresso nos cursos fica guardado se você assinar de novo.',
+         'Yes, in "My account", with one click. The Academy courses leave your account when the subscription ends and Musique stays free; your course progress is kept if you subscribe again.',
+         'Sí, en "Mi cuenta", con un clic. Los cursos de la Academia salen de tu cuenta al terminar la suscripción y Musique sigue gratis; tu progreso en los cursos queda guardado si vuelves a suscribirte.')]
+    ]
+  },
 ];
 
 // ---------------------------------------------------------------------
@@ -630,26 +712,6 @@ const SISTEMAS = [
 // Ao lançar um deles, mover para SISTEMAS (com maquete de tela e preço).
 // ---------------------------------------------------------------------
 const EM_DESENVOLVIMENTO = [
-  {
-    id: 'music', nome: 'Musique', pasta: 'musique',
-    cor: '#1B2A4A', vertical: 'grupo', url: 'https://musique.villelastay.com.br/music',
-    tela: 'music',
-    demo: T(
-      'A cifra muda de tom e a letra fica onde estava — e a obra que não é sua permanece marcada e privada.',
-      'The chord chart changes key while the lyrics stay put — and work that is not yours stays tagged and private.',
-      'El cifrado cambia de tono y la letra se queda donde estaba — y la obra que no es tuya sigue marcada y privada.'),
-    estado: T('Academia, cifras, escolas e palco prontos, antes do lançamento comercial', 'Academy, chord charts, schools and stage mode ready, before commercial launch', 'Academia, cifrados, escuelas y modo escenario listos, antes del lanzamiento comercial'),
-    categoria: T('Academia musical e biblioteca do músico', 'Music academy and musician library', 'Academia musical y biblioteca del músico'),
-    promessa: T('Comece aprendendo. Continue no mesmo lugar.', 'Start by learning. Stay in the same place.', 'Empieza aprendiendo. Sigue en el mismo lugar.'),
-    oQueE: T(
-      'Academia musical com exercícios que medem de verdade — teoria, leitura, percepção, ritmo e afinação —, acervo de cifras com editor, versões e transposição instantânea que mostra cada acorde no seu instrumento (violão, guitarra, cavaquinho, ukulele, teclado ou baixo), setlists com modo palco que funciona sem internet, e banda com Modo Maestro: o diretor conduz e cada integrante lê do seu jeito. Também partituras, MusicXML e MIDI, escolas e turmas, e sala de prática com metrônomo e afinador. Conta própria e grátis; os cursos de música da Academia Villela aparecem dentro do app. Nota que conta tem revisão do professor, e exercício avaliado por microfone diz o que mede antes de você tocar.',
-      'A music academy with exercises that actually measure — theory, reading, ear training, rhythm and pitch —, a chord chart library with an editor, versions and instant transposition that shows each chord on your own instrument (guitar, electric guitar, cavaquinho, ukulele, keyboard or bass), setlists with a stage mode that works offline, and bands with a Conductor mode: the director leads and each member reads their own way. Also scores, MusicXML and MIDI, schools and classes, and a practice room with metronome and tuner. Free account of its own; Villela Academy music courses show up inside the app. Grades that count are reviewed by the teacher, and any microphone-graded exercise states what it measures before you play.',
-      'Academia musical con ejercicios que miden de verdad — teoría, lectura, oído, ritmo y afinación —, acervo de cifrados con editor, versiones y transposición instantánea que muestra cada acorde en tu instrumento (guitarra, guitarra eléctrica, cavaquinho, ukelele, teclado o bajo), setlists con modo escenario que funciona sin internet, y banda con Modo Director: quien dirige conduce y cada integrante lee a su manera. También partituras, MusicXML y MIDI, escuelas y clases, y sala de práctica con metrónomo y afinador. Cuenta propia y gratuita; los cursos de música de la Academia Villela aparecen dentro de la app. La nota que cuenta tiene revisión del profesor, y el ejercicio evaluado por micrófono dice qué mide antes de que toques.'),
-    falta: T(
-      'A reprodução com timbres de instrumento de verdade (hoje é síntese simples, e a tela diz isso). Cifra de música de terceiros não é pública: fica no acervo de quem guardou e circula só dentro da banda. Geração de música por IA não está no escopo: não há fornecedor com API pública, e prometer prazo que não existe seria vender o que não se entrega.',
-      'Playback with real instrument samples (today it is simple synthesis, and the screen says so). Third-party chord charts are not public: they stay in the library of whoever saved them and circulate only within the band. AI music generation is out of scope: no supplier offers a public API, and promising a date that does not exist would be selling what we cannot deliver.',
-      'La reproducción con timbres de instrumento reales (hoy es síntesis simple, y la pantalla lo dice). Los cifrados de terceros no son públicos: quedan en el acervo de quien los guardó y circulan solo dentro de la banda. La generación de música por IA está fuera del alcance: no hay proveedor con API pública, y prometer una fecha que no existe sería vender lo que no se entrega.')
-  },
   {
     id: 'finance', nome: 'Villela Finance', pasta: 'villela-finance',
     cor: '#159A78', vertical: 'finance', url: 'https://finance.villelastay.com.br',

@@ -2701,6 +2701,43 @@ async function main() {
     assert.ok(aud.json.eventos.some(e => e.acao === 'gotejamento.desligar'));
   });
 
+  // ===================================================================
+  // PONTE com a assinatura do MUSIQUE (28/09/2026): cortesia dos cursos de
+  // MÚSICA pelo mesmo e-mail; revogar tira SÓ o que o Musique deu.
+  // ===================================================================
+  await t('PONTE MUSIQUE: cria a conta, matricula os cursos de música, revoga só o que deu e devolve ao voltar', async () => {
+    const dbA = require('./db').db;
+    const pub = dbA.prepare(`SELECT p.id FROM products p JOIN producer_profiles pr ON pr.user_id = p.producer_id
+      WHERE p.status = 'publicado' LIMIT 2`).all();
+    assert.ok(pub.length >= 2, 'a suíte precisa de dois produtos publicados');
+    const [P, Q] = pub.map((x) => x.id);
+    dbA.prepare("UPDATE products SET categoria = 'musica' WHERE id IN (?, ?)").run(P, Q);
+    dbA.prepare("INSERT OR IGNORE INTO product_categories (product_id, slug, principal) VALUES (?, 'musica', 1), (?, 'musica', 1)").run(P, Q);
+    const emails = [];
+    const ponte = require('./ponte-musique').criar({ jwtSecret: 'seg-ponte', enviarEmail: async (para, assunto) => { emails.push({ para, assunto }); } });
+    const r = ponte.conceder({ email: 'musico.ponte@t.com', nome: 'Músico da Ponte' });
+    assert.ok(r.conta_nova, 'sem conta na Academia, ela é criada');
+    assert.ok(r.cursos >= 2 && r.novos >= 2);
+    await new Promise((ok2) => setTimeout(ok2, 20));
+    assert.equal(emails.filter((e) => e.para === 'musico.ponte@t.com').length, 1, 'conta nova recebe o link para criar a senha');
+    const u = require('./repo').Usuarios.porEmail('musico.ponte@t.com');
+    const mats = () => dbA.prepare('SELECT product_id, origem, status, criado_por FROM enrollments WHERE user_id = ?').all(u.id);
+    assert.ok(mats().filter((m) => m.status === 'ativa' && m.criado_por === 'musique:assinatura').length >= 2);
+    // Um dos cursos passa a ser COMPRADO: revogar não pode tocar nele.
+    dbA.prepare("UPDATE enrollments SET origem = 'compra', criado_por = 'checkout' WHERE user_id = ? AND product_id = ?").run(u.id, Q);
+    const rv = ponte.revogar({ email: 'musico.ponte@t.com' });
+    assert.ok(rv.revogadas >= 1);
+    const depois = mats();
+    assert.equal(depois.find((m) => m.product_id === Q).status, 'ativa', 'curso COMPRADO continua');
+    assert.equal(depois.find((m) => m.product_id === P).status, 'revogada', 'a cortesia do Musique sai');
+    const volta = ponte.conceder({ email: 'MUSICO.PONTE@t.com', nome: 'x' });
+    assert.equal(volta.conta_nova, false, 'mesmo e-mail (outra caixa): a mesma conta');
+    assert.ok(volta.novos >= 1, 'voltou a assinar: a matrícula revogada volta');
+    assert.equal(mats().find((m) => m.product_id === P).status, 'ativa');
+    assert.equal(emails.length, 1, 'conta já existente não recebe outro e-mail');
+    assert.equal(ponte.revogar({ email: 'ninguem@t.com' }).revogadas, 0);
+  });
+
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

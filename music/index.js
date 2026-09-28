@@ -37,7 +37,7 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
 function montar(app, injected = {}) {
-  const { express, requireAuth, requireAdmin, jwtSecret, enviarEmail } = injected;
+  const { express, requireAuth, requireAdmin, jwtSecret, enviarEmail, mpFetch, alertaAugusto } = injected;
   const academiaVillela = injected.academia || {};
   if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
     throw new Error('music.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
@@ -98,7 +98,21 @@ function montar(app, injected = {}) {
   // ADR-0009 (revisão da Q2) e ADR-0010 em docs/music/DECISIONS.
   require('./cifras').montar(app, { requireUsuario: sessaoDoModulo.requireUsuario, requireAuth, requireAdmin,
     buscarContaPorEmail, buscarContaPorId });
+  // ASSINATURA (28/09/2026): R$ 250,00/mês no Mercado Pago; dá cortesia dos
+  // cursos de música da Academia pelo mesmo e-mail enquanto estiver ativa.
+  const assinatura = require('./assinatura');
+  const cobranca = assinatura.configurar({ mpFetch, cortesia: academiaVillela.cortesia, avisar: alertaAugusto,
+    baseApi: process.env.MUSIC_BASE_API, baseSite: process.env.MUSIC_BASE_SITE });
+  assinatura.garantirDono();
+  require('./rotas-assinatura').registrarRotasAssinatura(app, { requireUsuario: sessaoDoModulo.requireUsuario, requireAuth, requireAdmin });
   registrarPaginas(app);
+  // Rotina da assinatura: tolerância vencida tira o acesso; curso novo
+  // publicado chega a quem assina. De hora em hora, e 1 min após subir.
+  if (process.env.MUSIC_ASSINATURA_CICLO_OFF !== '1') {
+    const rodar = () => assinatura.ciclo().catch((e) => console.error('[music/assinatura] ciclo:', e.message));
+    const t1 = setTimeout(rodar, 60000); if (t1.unref) t1.unref();
+    const t2 = setInterval(rodar, 3600000); if (t2.unref) t2.unref();
+  }
 
   // Consumo da fila (ADR-0006). Roda AQUI, no web, e só a fila `rapida`.
   // Não é preguiça: no Render o disco de um serviço não é acessível por
@@ -119,6 +133,7 @@ function montar(app, injected = {}) {
   console.log('[music] Musique montada. Landing: /music · app: /music/app · staff: /staff/api/music'
     + ` · conta: própria (ADR-0011), dono ${dono.ok ? (dono.criada ? 'semeado agora' : 'ok') : 'NÃO semeado — ' + dono.motivo}`
     + ` · cursos da Academia: ${typeof academiaVillela.cursosDeMusica === 'function' ? 'sim' : 'não'}`
+    + ` · assinatura: cobrança ${cobranca.cobranca ? 'LIGADA' : 'desligada (sem MP)'}, cortesia na Academia ${cobranca.cortesia ? 'sim' : 'não'}`
     + ` · armazenamento: ${storage.ativo() ? 'R2' : 'desligado (faltam ' + storage.faltando().join(', ') + ')'}`
     + ` · IA disponível: ${router.disponiveis().length}/${router.CAPABILITIES.length} capabilities`
     + ` · trilhas: ${trilhas.total}`

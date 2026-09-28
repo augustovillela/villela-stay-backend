@@ -2637,8 +2637,12 @@ conferirCobertura(PRODUTOS_GRUPO);
   // Preço em uma linha, respeitando o modelo de cada produto: nem tudo é
   // mensalidade. Dizer "a partir de R$ X/mês" na Academy (comissão por
   // venda) ou no Alta Vista (por projeto) seria mentira de vitrine.
+  // 'freemium' (Musique): o app é grátis de verdade e a assinatura é opcional —
+  // prometer "14 dias de teste" ali seria vender um teste que não existe.
   const precoTexto = s => s.preco.modelo === 'assinatura'
     ? `<b>${real(s.preco.valor)}<small>${t('/mês', '/mo', '/mes')}</small></b><span>${t('por mês, no plano de entrada', 'per month, on the entry plan', 'al mes, en el plan de entrada')}</span>`
+    : s.preco.modelo === 'freemium'
+      ? `<b>${t('Grátis', 'Free', 'Gratis')}</b><span>${t('assinatura opcional de ', 'optional subscription at ', 'suscripción opcional de ')}${real(s.preco.valor)}${t('/mês com os cursos', '/mo including the courses', '/mes con los cursos')}</span>`
     : `<b>${esc(t(...s.preco.texto))}</b><span>${s.preco.modelo === 'comissao'
         ? t('sem mensalidade — você paga ao vender', 'no monthly fee — you pay when you sell', 'sin mensualidad — pagas al vender')
         : t('escopo fechado antes de começar', 'scope agreed before we start', 'alcance cerrado antes de empezar')}</span>`;
@@ -2679,7 +2683,7 @@ conferirCobertura(PRODUTOS_GRUPO);
           <a class="sx-btn sx-btn-cheio" href="${s.urlTeste}" target="_blank" rel="noopener"
              data-sx-cta="${s.id}">${temTeste(s)
                ? t('Testar 14 dias grátis', 'Start a 14-day free trial', 'Probar 14 días gratis')
-               : (s.preco.modelo === 'comissao' ? t('Criar conta grátis', 'Create a free account', 'Crear cuenta gratis') : t('Pedir orçamento', 'Request a quote', 'Pedir presupuesto'))}</a>
+               : (s.preco.modelo === 'comissao' || s.preco.modelo === 'freemium' ? t('Criar conta grátis', 'Create a free account', 'Crear cuenta gratis') : t('Pedir orçamento', 'Request a quote', 'Pedir presupuesto'))}</a>
           <a class="sx-btn sx-btn-vazio" href="${s.url}" target="_blank" rel="noopener">${t('Ver o sistema', 'See the system', 'Ver el sistema')}</a>
         </div>
       </div>

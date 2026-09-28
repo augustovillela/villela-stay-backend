@@ -76,6 +76,8 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
     // O e-mail entra no token: se a pessoa trocou de e-mail, o link antigo não confirma o novo.
     if (!c || c.email !== d.email) return res.status(400).json({ erro: 'Link inválido. Peça outro em "Minha conta".' });
     Contas.marcarEmailVerificado(c.id);
+    // Quem já assina e confirma o e-mail agora recebe os cursos na hora.
+    require('./assinatura').sincronizar(c.id).catch((e) => console.error('[music/contas] cortesia:', e.message));
     contas.auditar(c.id, 'conta.email.confirmado', '', ipDe(req));
     res.json({ ok: true });
   }));

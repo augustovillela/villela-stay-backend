@@ -211,7 +211,10 @@ async function rodar({ t, secao, req, assert, contas, CONTAS, EMAILS, ACAD, CURS
     const land = await req('GET', '/music', { cru: true });
     assert.ok(land.texto.includes('href="/music/entrar"'), 'o Entrar da landing é do Musique');
     const app = await req('GET', '/music/app.js', { cru: true });
-    assert.ok(app.texto.includes("'/music/entrar?voltar='") && !app.texto.includes('/academy/app'), 'o 401 do app volta para a entrada do Musique');
+    // Recusa o caminho RELATIVO da Academia (login por lá). O link ABSOLUTO
+    // para academia.villelastay.com.br é outra coisa: é onde o assinante
+    // assiste aos cursos que a assinatura dá.
+    assert.ok(app.texto.includes("'/music/entrar?voltar='") && !/['"]\/academy\/app/.test(app.texto), 'o 401 do app volta para a entrada do Musique');
   });
 
   await t('a tela de entrada fala só com a API do Musique, e o "voltar" só aceita caminho do Musique', async () => {

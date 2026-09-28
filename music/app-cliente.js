@@ -282,12 +282,55 @@ const JS = `
   // o curso é o elo entre os dois sistemas). Compra e aulas ficam lá, com
   // a conta de lá; aqui o Musique mostra, indica e liga à trilha.
   // =================================================================
+  // ---- ASSINATURA: o que mostrar, nos dois lugares (Cursos e Minha conta) ----
+  function reais(c) { return 'R$ ' + (c / 100).toFixed(2).replace('.', ','); }
+  function dataBR(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : ''; }
+  function assinar() {
+    api('POST', '/assinatura/assinar').then(function (r) { location.href = r.link; }).catch(function (e) { erro(e.message); });
+  }
+  function cartaoAssinatura(st, onde) {
+    var box = el('div', { class: onde === 'conta' ? 'cartao-conta' : 'card assin-card' });
+    var a = st.assinatura, preco = reais(st.plano.preco_cents);
+    var titulo = '<h3>\u{1F4B3} Assinatura Musique</h3>';
+    if (a && a.status === 'cortesia') {
+      box.innerHTML = titulo + '<p class="sub"><b>Cortesia' + (a.origem === 'dono' ? ' vitalícia' : '') + '.</b> Os cursos de música da Academia estão incluídos, sem cobrança.</p>';
+    } else if (a && a.status === 'ativa') {
+      box.innerHTML = titulo + '<p class="sub"><b>\u{2705} Ativa</b> desde ' + dataBR(a.desde) + ' · ' + reais(a.preco_cents || st.plano.preco_cents) + '/mês' +
+        (a.ultimo_pagamento_em ? ' · último pagamento em ' + dataBR(a.ultimo_pagamento_em) : '') + '.</p>';
+      if (onde === 'conta') box.appendChild(el('button', { class: 'btn peq sec', txt: 'Cancelar a assinatura', onclick: function () {
+        if (!confirm('Cancelar a assinatura? Os cursos da Academia saem da sua conta; o Musique continua grátis.')) return;
+        api('POST', '/assinatura/cancelar').then(function () { aviso('Assinatura cancelada.'); verConta(); }).catch(function (e) { erro(e.message); });
+      } }));
+    } else if (a && a.status === 'inadimplente') {
+      box.innerHTML = titulo + '<p class="sub"><b>\u{26A0}\u{FE0F} Pagamento não confirmado.</b> ' + (st.acesso
+        ? 'Os cursos continuam liberados por ' + st.plano.carencia_dias + ' dias enquanto o Mercado Pago tenta de novo. Confira o cartão cadastrado lá.'
+        : 'O prazo de tolerância acabou e os cursos saíram da sua conta da Academia. Assine de novo para voltar.') + '</p>';
+      if (!st.acesso) box.appendChild(el('button', { class: 'btn peq', txt: 'Assinar de novo', onclick: assinar }));
+    } else if (a && a.status === 'pendente') {
+      box.innerHTML = titulo + '<p class="sub"><b>\u{23F3} Aguardando o pagamento no Mercado Pago.</b> Assim que ele confirmar, os cursos chegam na sua conta da Academia.</p>';
+      if (a.link) box.appendChild(el('a', { class: 'btn peq', href: a.link, txt: 'Continuar o pagamento' }));
+    } else {
+      box.innerHTML = titulo + '<p class="sub">O Musique continua grátis. Assinando por <b>' + preco + '/mês</b>, você ganha acesso a <b>todos os cursos de música da Academia Villela</b>, que chegam na conta da Academia com o seu e-mail. Cancele quando quiser.</p>';
+      if (!st.email_verificado) box.appendChild(el('p', { class: 'peq', txt: 'Para assinar, confirme primeiro o seu e-mail: é por ele que os cursos chegam na Academia.' }));
+      else if (!st.cobranca_ligada) box.appendChild(el('p', { class: 'peq', txt: 'O pagamento online está temporariamente indisponível.' }));
+      else box.appendChild(el('button', { class: 'btn', txt: 'Assinar por ' + preco + '/mês', onclick: assinar }));
+    }
+    if (st.cortesia_academia && st.acesso) {
+      box.appendChild(el('p', { class: 'peq', html: '\u{1F393} Na Academia, entre com <b>' + esc(st.cortesia_academia.email) + '</b>: ' +
+        st.cortesia_academia.cursos + ' curso(s) de música liberado(s). <a href="https://academia.villelastay.com.br/academy/app" target="_blank" rel="noopener">Abrir a Academia</a>' }));
+    }
+    return box;
+  }
+
   function verCursos() {
-    Promise.all([api('GET', '/cursos'), api('GET', '/estudo').catch(function () { return { trilhas: [] }; })]).then(function (rs) {
+    Promise.all([api('GET', '/cursos'), api('GET', '/estudo').catch(function () { return { trilhas: [] }; }),
+      api('GET', '/assinatura').catch(function () { return null; })]).then(function (rs) {
       var c = $('#corpo'); c.innerHTML = '';
       c.appendChild(el('h2', { txt: '\u{1F393} Cursos de música' }));
       c.appendChild(el('p', { class: 'sub', txt: 'Cursos em vídeo da Academia Villela, escolhidos para quem estuda no Musique. ' +
-        'A compra e as aulas acontecem na Academia, que tem conta própria; os links abrem em outra aba.' }));
+        'As aulas acontecem na Academia, que tem conta própria; os links abrem em outra aba.' }));
+      if (rs[2]) c.appendChild(cartaoAssinatura(rs[2], 'cursos'));
+      var incluido = !!(rs[2] && rs[2].acesso);
       var ligados = {};
       (rs[1].trilhas || []).forEach(function (t) { if (t.curso_academia) ligados[t.curso_academia.slug] = t.titulo; });
       var cursos = rs[0].cursos || [];
@@ -305,7 +348,7 @@ const JS = `
           html: '<div class="topo-item">' + icone({ ico: '\u{1F393}', fundo: '#FDF6E3', cor: '#8A6D12' }) + '<b>' + esc(k.titulo) + '</b></div>' +
             (k.subtitulo ? '<span>' + esc(k.subtitulo) + '</span>' : '') +
             (ligados[k.slug] ? '<span class="chip">\u{1F9ED} complementa a trilha ' + esc(ligados[k.slug]) + '</span>' : '') +
-            '<span class="peq">' + [k.produtor ? 'com ' + esc(k.produtor) : '', preco].filter(Boolean).join(' · ') + '</span>' }));
+            '<span class="peq">' + [k.produtor ? 'com ' + esc(k.produtor) : '', incluido ? '\u{2705} incluído na sua assinatura' : preco].filter(Boolean).join(' · ') + '</span>' }));
       });
       c.appendChild(g);
     }).catch(function (e) { $('#corpo').innerHTML = ''; erro(e.message); });
@@ -333,6 +376,9 @@ const JS = `
         api('POST', '/conta/reenviar-verificacao').then(function () { aviso('Link enviado. Confira também a caixa de spam.'); })
           .catch(function (e) { erro(e.message); });
       };
+
+      var assinBox = el('div'); c.appendChild(assinBox);
+      api('GET', '/assinatura').then(function (st) { assinBox.appendChild(cartaoAssinatura(st, 'conta')); }).catch(function () {});
 
       var fa = el('div', { class: 'cartao-conta' });
       c.appendChild(fa);

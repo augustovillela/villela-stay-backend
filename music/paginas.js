@@ -62,6 +62,14 @@ footer{padding:34px 0;color:var(--suave);font-size:14px;border-top:1px solid var
 table.st{width:100%;border-collapse:collapse;font-size:14px;margin:16px 0}
 table.st th,table.st td{border-bottom:1px solid var(--borda);padding:8px 10px;text-align:left}
 @media (max-width:620px){.hero{padding:38px 0 24px}}
+.planos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:10px 0 40px}
+.plano{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:22px}
+.plano.destaque{border:2px solid var(--gold);box-shadow:0 10px 28px rgba(27,42,74,.08)}
+.plano-nome{font-weight:700;color:var(--suave);text-transform:uppercase;letter-spacing:.06em;font-size:13px}
+.plano-preco{font:600 34px/1.2 Lora,Georgia,serif;margin:6px 0}
+.plano-preco small{font:500 15px Inter,sans-serif;color:var(--suave)}
+.plano ul{padding-left:18px;margin:10px 0 18px;color:var(--graphite)}
+.plano li{margin:4px 0}
 `;
 
 // CSS do app do músico. Fica aqui, junto do resto da casca, para que
@@ -90,6 +98,7 @@ p.vazio{color:var(--suave);padding:24px 0}
 .topo-item{display:flex;align-items:center;gap:10px}
 .ico-mini{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;font-size:13px;vertical-align:middle}
 .vazio-card{text-align:center;padding:30px 20px}
+.assin-card{border-left:4px solid #C9A227;background:linear-gradient(135deg,#fff,#FDF8EA)}
 .vazio-card .vazio-ico{font-size:46px;line-height:1;margin-bottom:8px}
 .card{transition:box-shadow .15s ease}
 @keyframes mq-surgir{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -273,6 +282,14 @@ ${corpo}
      <a href="/music/privacidade">Privacidade</a> · <a href="https://academia.villelastay.com.br/academy">Cursos na Academia</a></p>
 </div></footer></body></html>`;
 
+// Preço da assinatura como a landing e os termos mostram: vem da config
+// (o staff muda sem deploy), com o padrão aprovado pelo Augusto.
+function precoAssinatura() {
+  let c = 25000;
+  try { c = require('./assinatura').plano().preco_cents; } catch (_) { /* padrão */ }
+  return 'R$ ' + (c / 100).toFixed(2).replace('.', ',');
+}
+
 function registrarPaginas(app) {
   // ---- landing ----
   app.get('/music', (req, res) => {
@@ -316,6 +333,31 @@ function registrarPaginas(app) {
         modelo nenhum.</div>
       </div></div>
 
+      <div class="wrap" id="planos">
+        <h2 class="titulo">Planos</h2>
+        <div class="planos">
+          <div class="plano">
+            <span class="plano-nome">Grátis</span>
+            <div class="plano-preco">R$ 0</div>
+            <p>Para sempre, sem teste que acaba.</p>
+            <ul><li>Acervo de cifras, transposição e dicionário de acordes</li>
+              <li>Banda, setlists, Modo Maestro e palco sem internet</li>
+              <li>Academia: trilhas, exercícios e progresso</li>
+              <li>Escolas, turmas, afinador e metrônomo</li></ul>
+            <a class="btn claro" href="/music/entrar#criar" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Criar conta grátis</a>
+          </div>
+          <div class="plano destaque">
+            <span class="plano-nome">Assinatura</span>
+            <div class="plano-preco">${esc(precoAssinatura())}<small>/mês</small></div>
+            <p>Tudo do plano grátis, e mais:</p>
+            <ul><li><b>Todos os cursos de música da Academia Villela</b>, na conta da Academia com o seu e-mail</li>
+              <li>Cursos novos entram sozinhos enquanto a assinatura estiver ativa</li>
+              <li>Pagamento mensal no Mercado Pago; cancele quando quiser, em Minha conta</li></ul>
+            <a class="btn" href="/music/app#conta">Assinar</a>
+          </div>
+        </div>
+      </div>
+
       <div class="faixa" style="background:transparent;border:0"><div class="wrap">
         <h2 class="titulo">Como a nota é dada aqui</h2>
         <p style="color:var(--suave);max-width:680px">Todo exercício avaliado por áudio diz
@@ -327,9 +369,9 @@ function registrarPaginas(app) {
 
       <div class="wrap">
         <h2 class="titulo">O que ainda não está aqui</h2>
-        <p style="color:var(--suave);max-width:640px">Escolas e turmas, e a reprodução com timbres
-        de instrumento de verdade — hoje é síntese simples, e a tela diz isso. Cada coisa só
-        aparece aqui quando estiver funcionando, não antes.</p>
+        <p style="color:var(--suave);max-width:640px">A reprodução com timbres de instrumento de
+        verdade — hoje é síntese simples, e a tela diz isso. Cada coisa só aparece aqui quando
+        estiver funcionando, não antes.</p>
         <p style="color:var(--suave);font-size:14px">Fase atual: ${esc(p.fase != null ? p.fase : 0)}${p.fase_nome ? ' — ' + esc(p.fase_nome) : ''} ·
         Recursos de IA disponíveis hoje: ${router.disponiveis().length}</p>
       </div>`,
@@ -382,6 +424,18 @@ function registrarPaginas(app) {
     <h3>Importação</h3>
     <p>Ao importar uma cifra de arquivo, foto ou página da web, você declara que tem direito de
     usá-la para o seu estudo e o do seu grupo. A Musique guarda de onde cada cifra veio.</p>
+    <h3>Assinatura</h3>
+    <p>O Musique é gratuito. A assinatura, opcional, custa o valor mensal informado na página de planos
+    no momento da contratação, cobrado todo mês pelo Mercado Pago até o cancelamento. Ela dá acesso de
+    cortesia aos cursos de música da Academia Villela, na conta da Academia com o mesmo e-mail, que
+    precisa estar confirmado no Musique. Os cursos ficam disponíveis enquanto a assinatura estiver
+    ativa; se um pagamento falhar, o acesso continua por um período de tolerância informado na sua
+    conta e, depois dele, é suspenso até a regularização.</p>
+    <p>Você pode cancelar a qualquer momento em "Minha conta"; o cancelamento interrompe as próximas
+    cobranças, e o acesso aos cursos termina com ele. Nas contratações feitas pela internet, vale o
+    direito de arrependimento de 7 (sete) dias previsto no art. 49 do Código de Defesa do Consumidor,
+    com devolução do valor pago. A conta e os termos da Academia Villela são próprios e continuam
+    valendo para o uso dos cursos lá.</p>
     <h3>Voz e gravação</h3>
     <p>Suas gravações são privadas por padrão e nunca são usadas para treinar modelos. Usos que
     envolvam a sua voz exigem consentimento específico, revogável a qualquer momento.</p>`));

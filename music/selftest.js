@@ -18,7 +18,8 @@
 process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'music-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
 process.env.MUSIC_FILA_OFF = '1';
-process.env.MUSIC_CONTAS_LIMITE = '1000';   // a suíte erra senha de propósito, sempre do mesmo IP   // o teste processa a fila À MÃO, para ver cada job
+process.env.MUSIC_CONTAS_LIMITE = '1000';
+process.env.MUSIC_ASSINATURA_CICLO_OFF = '1';   // o teste roda o ciclo da assinatura à mão   // a suíte erra senha de propósito, sempre do mesmo IP   // o teste processa a fila À MÃO, para ver cada job
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -78,7 +79,33 @@ const CURSOS = [
   { titulo: 'Harmonia funcional', subtitulo: '', slug: 'harmonia-funcional', produtor_nome: 'Bia Produtora', preco_centavos: 19700 },
 ];
 const EMAILS = [];
+// Mercado Pago FALSO: guarda o que recebeu e responde como a API real.
+const MP = { criados: [], puts: [], pre: {}, aut: {}, pag: {}, ultimoId: '', n: 0 };
+const mpFetch = async (caminho, opts = {}) => {
+  const corpo = opts.body ? JSON.parse(opts.body) : null;
+  if (caminho === '/preapproval' && opts.method === 'POST') {
+    const id = 'pre' + (++MP.n);
+    MP.pre[id] = { id, status: 'pending', external_reference: corpo.external_reference, init_point: 'https://mp.teste/' + id };
+    MP.criados.push(corpo); MP.ultimoId = id;
+    return MP.pre[id];
+  }
+  let m;
+  if ((m = /^\/preapproval\/(.+)$/.exec(caminho))) {
+    if (opts.method === 'PUT') { MP.puts.push({ caminho, corpo }); return {}; }
+    if (!MP.pre[m[1]]) throw new Error('MP 404'); return MP.pre[m[1]];
+  }
+  if ((m = /^\/authorized_payments\/(.+)$/.exec(caminho))) { if (!MP.aut[m[1]]) throw new Error('MP 404'); return MP.aut[m[1]]; }
+  if ((m = /^\/v1\/payments\/(.+)$/.exec(caminho))) { if (!MP.pag[m[1]]) throw new Error('MP 404'); return MP.pag[m[1]]; }
+  throw new Error('MP falso: rota não prevista ' + caminho);
+};
+mpFetch.__mock = true;
+const CORTESIA = { concedidas: [], revogadas: [] };
+const AVISOS = [];
 const academiaFalsa = {
+  cortesia: {
+    conceder: ({ email }) => { CORTESIA.concedidas.push(email); return { academia_user_id: 'acad:' + email, cursos: CURSOS.length, novos: 1 }; },
+    revogar: ({ email }) => { CORTESIA.revogadas.push(email); return { revogadas: 1 }; },
+  },
   contaDoDono: () => ACAD[0],
   conferirCredencial: (email, senha, codigo) => {
     const a = ACAD.find((x) => x.email === String(email || '').toLowerCase());
@@ -97,8 +124,8 @@ app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 const mod = require('./index');
 mod.montar(app, {
-  express, requireAuth, requireAdmin, jwtSecret: SEGREDO, alertaAugusto: async () => {},
-  academia: academiaFalsa,
+  express, requireAuth, requireAdmin, jwtSecret: SEGREDO, alertaAugusto: async (m) => { AVISOS.push(m); },
+  academia: academiaFalsa, mpFetch,
   enviarEmail: async (para, assunto, html) => { EMAILS.push({ para, assunto, html }); },
 });
 
@@ -157,6 +184,7 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   BASE = 'http://127.0.0.1:' + srv.address().port;
 
   // ===================================================================
+  await require('./selftest-assinatura').rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGREDO });
   await require('./selftest-contas').rodar({ t, secao, req, assert, BASE: () => BASE, contas, CONTAS, EMAILS, ACAD, CURSOS, SEGREDO, tokenDe, cookieDe, repo, PROFESSORES });
 
   // ===================================================================
