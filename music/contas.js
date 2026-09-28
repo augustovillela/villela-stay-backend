@@ -24,6 +24,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { db, nowISO } = require('./db');
+const totp = require('./totp');
 
 const COOKIE = 'musique_sess';
 const PATH = '/music';
@@ -52,10 +53,10 @@ const Contas = {
     if (Contas.porId(id)) throw new Error('Conta já existe.');
     const agora = nowISO();
     db.prepare(`INSERT INTO contas_music (id, nome, email, senha_hash, telefone, status, consentimentos,
-      academia_vinculo, origem, criado_em, atualizado_em) VALUES (?, ?, ?, ?, ?, 'ativo', ?, ?, ?, ?, ?)`).run(
+      academia_vinculo, origem, email_verificado, criado_em, atualizado_em) VALUES (?, ?, ?, ?, ?, 'ativo', ?, ?, ?, ?, ?, ?)`).run(
       id, nome, email, interno.senhaHash || bcrypt.hashSync(String(senha), 10), s(telefone, 40),
       JSON.stringify({ termos_em: agora, privacidade_em: agora, marketing: !!marketing }),
-      interno.vinculo || null, interno.origem || 'cadastro', agora, agora);
+      interno.vinculo || null, interno.origem || 'cadastro', interno.verificado ? 1 : 0, agora, agora);
     return Contas.porId(id);
   },
 
@@ -91,22 +92,71 @@ const Contas = {
     db.prepare('UPDATE contas_music SET academia_vinculo = NULL, atualizado_em = ? WHERE id = ?').run(nowISO(), id);
   },
 
+  marcarEmailVerificado: (id) => db.prepare('UPDATE contas_music SET email_verificado = 1, atualizado_em = ? WHERE id = ?').run(nowISO(), id),
+
   /** O que o resto do módulo enxerga de uma conta. Sem hash, sem vínculo. */
-  publica: (c) => (c ? { id: c.id, nome: c.nome, email: c.email, status: c.status } : null),
+  publica: (c) => (c ? { id: c.id, nome: c.nome, email: c.email, status: c.status, email_verificado: !!c.email_verificado } : null),
 
   // Buscas usadas por convite de banda, tarefa e escola. Antes vinham da
   // Academia; agora só enxergam contas DO MUSIQUE — convidar por e-mail
   // alguém que só tem Academia devolve "sem conta", como deve.
-  buscarPorEmail: (email) => Contas.publica(Contas.porEmail(email)),
+  // E só conta com e-mail CONFIRMADO: sem isso, quem se cadastrasse com o
+  // e-mail de outra pessoa passaria a receber os convites dela.
+  buscarPorEmail: (email) => { const c = Contas.porEmail(email); return c && c.email_verificado ? Contas.publica(c) : null; },
   buscarPorId: (id) => { const c = Contas.porId(id); return c ? { id: c.id, nome: c.nome } : null; },
 
   listar({ q = '', n = 200 } = {}) {
     const t = '%' + s(q, 80).toLowerCase() + '%';
     return db.prepare(`SELECT id, nome, email, status, origem, academia_vinculo IS NOT NULL AS vinculada,
-      criado_em, ultimo_login FROM contas_music WHERE lower(nome) LIKE ? OR email LIKE ?
+      email_verificado, totp_ativo, criado_em, ultimo_login FROM contas_music WHERE lower(nome) LIKE ? OR email LIKE ?
       ORDER BY criado_em DESC LIMIT ?`).all(t, t, Math.min(parseInt(n, 10) || 200, 1000));
   },
   total: () => db.prepare('SELECT COUNT(*) n FROM contas_music').get().n,
+};
+
+// ---- duas etapas (TOTP + códigos de recuperação) ----------------------
+const hashRec = (cod) => crypto.createHash('sha256').update(String(cod || '').replace(/[\s-]/g, '').toLowerCase()).digest('hex');
+const DoisFatores = {
+  /** Gera o segredo PENDENTE: só passa a valer depois de `ativar` com um
+   *  código certo — assim ninguém se tranca fora por ter lido mal o QR. */
+  iniciar(id) {
+    const seg = totp.novoSegredo();
+    db.prepare('UPDATE contas_music SET totp_secret = ?, totp_ativo = 0, atualizado_em = ? WHERE id = ?').run(seg, nowISO(), id);
+    return seg;
+  },
+  ativar(id, cod) {
+    const c = Contas.porId(id);
+    const passo = c && !c.totp_ativo && totp.conferir(c.totp_secret, cod);
+    if (!passo) throw new Error('Código não confere. Confira a hora do celular e digite o código que está na tela agora.');
+    const codigos = Array.from({ length: 8 }, () => crypto.randomBytes(5).toString('hex').replace(/(.{5})(.{5})/, '$1-$2'));
+    db.prepare('UPDATE contas_music SET totp_ativo = 1, totp_ultimo_passo = ?, recuperacao = ?, atualizado_em = ? WHERE id = ?')
+      .run(passo, JSON.stringify(codigos.map(hashRec)), nowISO(), id);
+    Sessoes.revogarDaConta(id);   // quem já estava logado em outro aparelho entra de novo, agora com o código
+    return codigos;
+  },
+  /** Confere o código do app OU um de recuperação (que é gasto).
+   *  Recusa código já usado: quem viu o código por cima do ombro não o reusa. */
+  conferir(id, cod) {
+    const c = Contas.porId(id);
+    if (!c || !c.totp_ativo) return true;
+    const passo = totp.conferir(c.totp_secret, cod);
+    if (passo) {
+      if (passo <= c.totp_ultimo_passo) return false;
+      db.prepare('UPDATE contas_music SET totp_ultimo_passo = ? WHERE id = ?').run(passo, id);
+      return true;
+    }
+    let rec = []; try { rec = JSON.parse(c.recuperacao || '[]'); } catch (_) { rec = []; }
+    const h = hashRec(cod), i = rec.indexOf(h);
+    if (!cod || i < 0) return false;
+    rec.splice(i, 1);
+    db.prepare('UPDATE contas_music SET recuperacao = ? WHERE id = ?').run(JSON.stringify(rec), id);
+    auditar(id, 'conta.2fa.recuperacao-usada', rec.length + ' restante(s)');
+    return true;
+  },
+  desativar(id) {
+    db.prepare("UPDATE contas_music SET totp_secret = '', totp_ativo = 0, totp_ultimo_passo = 0, recuperacao = '[]', atualizado_em = ? WHERE id = ?").run(nowISO(), id);
+  },
+  restantes(id) { const c = Contas.porId(id); try { return JSON.parse(c.recuperacao || '[]').length; } catch (_) { return 0; } },
 };
 
 const Sessoes = {
@@ -141,7 +191,7 @@ function semearDono(contaDoDono) {
   if (!a || !a.id || !a.email || !a.senha_hash) return { ok: false, motivo: 'conta do dono não encontrada na Academia' };
   if (Contas.porEmail(a.email) || Contas.porId(a.id)) return { ok: true, ja_existia: true };
   Contas.criar({ nome: a.nome || 'Augusto Villela', email: a.email, telefone: a.telefone || '' },
-    { id: a.id, senhaHash: a.senha_hash, origem: 'dono', vinculo: a.id });
+    { id: a.id, senhaHash: a.senha_hash, origem: 'dono', vinculo: a.id, verificado: true });
   auditar(a.id, 'conta.semeada-dono', 'mesma senha da Academia (cópia única do hash)');
   return { ok: true, criada: true };
 }
@@ -172,4 +222,4 @@ function emitir(res, token) {
 }
 const limpar = (res) => res.clearCookie(COOKIE, { path: PATH });
 
-module.exports = { COOKIE, PATH, Contas, Sessoes, semearDono, criarVerificador, assinar, emitir, limpar, auditar, normEmail };
+module.exports = { COOKIE, PATH, Contas, Sessoes, DoisFatores, semearDono, criarVerificador, assinar, emitir, limpar, auditar, normEmail };

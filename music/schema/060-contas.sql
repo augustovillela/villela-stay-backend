@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS contas_music (
   -- para dar aula (ADR-0008). Nulo para quase todo mundo.
   academia_vinculo TEXT,
   origem           TEXT NOT NULL DEFAULT 'cadastro',  -- cadastro | dono
+  -- Confirmação de e-mail e duas etapas (28/09/2026). Também entram por
+  -- `garantirColuna` no db.js: a tabela já existia em produção sem elas.
+  email_verificado   INTEGER NOT NULL DEFAULT 0,
+  totp_secret        TEXT NOT NULL DEFAULT '',
+  totp_ativo         INTEGER NOT NULL DEFAULT 0,
+  totp_ultimo_passo  INTEGER NOT NULL DEFAULT 0,
+  recuperacao        TEXT NOT NULL DEFAULT '[]',
   criado_em        TEXT NOT NULL,
   atualizado_em    TEXT NOT NULL,
   ultimo_login     TEXT

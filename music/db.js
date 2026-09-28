@@ -65,6 +65,16 @@ garantirColuna('obras', 'pasta_id', "TEXT NOT NULL DEFAULT ''");
 // atribui direto ao aluno), e por isso o padrão é vazio.
 garantirColuna('tarefas', 'turma_id', "TEXT NOT NULL DEFAULT ''");
 
+// Contas próprias (ADR-0011): confirmação de e-mail e duas etapas chegaram
+// depois da tabela existir em produção.
+garantirColuna('contas_music', 'email_verificado', 'INTEGER NOT NULL DEFAULT 0');
+garantirColuna('contas_music', 'totp_secret', "TEXT NOT NULL DEFAULT ''");
+garantirColuna('contas_music', 'totp_ativo', 'INTEGER NOT NULL DEFAULT 0');
+garantirColuna('contas_music', 'totp_ultimo_passo', 'INTEGER NOT NULL DEFAULT 0');
+garantirColuna('contas_music', 'recuperacao', "TEXT NOT NULL DEFAULT '[]'");
+// A conta do dono nasceu (28/09) antes da coluna: o e-mail dele vem da Academia, onde já é dele.
+db.exec("UPDATE contas_music SET email_verificado = 1 WHERE origem = 'dono' AND email_verificado = 0");
+
 // Cifras (28/09/2026): a OBRA ganha os metadados de biblioteca que o
 // músico procura (artista, álbum, gênero, dificuldade...), a impressão
 // digital que impede duplicata e a exclusão SUAVE — acervo não some por

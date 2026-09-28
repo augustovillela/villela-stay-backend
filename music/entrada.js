@@ -29,7 +29,7 @@ const JS_ENTRAR = [
   "  function msg(t, bom) { var m = $('msg'); m.textContent = t || ''; m.className = bom ? 'bom' : ''; }",
   '  function post(url, corpo) {',
   "    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })",
-  "      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.erro || 'Não deu certo.'); return d; }); },",
+  "      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) { var e = new Error(d.erro || 'Não deu certo.'); e.dados = d; throw e; } return d; }); },",
   "        function () { throw new Error('Sem conexão com a internet.'); });",
   '  }',
   "  fetch('/music/api/me').then(function (r) { if (r.ok) ir(); }).catch(function () {});",
@@ -44,8 +44,11 @@ const JS_ENTRAR = [
   "  $('t-criar').onclick = function () { modo('criar'); };",
   "  $('f-entrar').onsubmit = function (ev) {",
   "    ev.preventDefault(); msg(''); $('b-entrar').disabled = true;",
-  "    post('/music/api/conta/entrar', { email: $('em').value.trim(), senha: $('sn').value }).then(ir)",
-  "      .catch(function (e) { msg(e.message); }).then(function () { $('b-entrar').disabled = false; });",
+  "    var corpo = { email: $('em').value.trim(), senha: $('sn').value };",
+  "    if ($('fa').value.trim()) corpo.codigo = $('fa').value.trim();",
+  "    post('/music/api/conta/entrar', corpo).then(ir)",
+  "      .catch(function (e) { if (e.dados && e.dados.precisa_2fa) { $('fa-box').style.display = ''; $('fa').focus(); } msg(e.message); })",
+  "      .then(function () { $('b-entrar').disabled = false; });",
   '  };',
   "  $('f-criar').onsubmit = function (ev) {",
   "    ev.preventDefault(); msg('');",
@@ -85,6 +88,17 @@ const JS_REDEFINIR = [
   '})();',
 ].join('\n');
 
+const JS_VERIFICAR = [
+  '(function () {',
+  "  var m = document.getElementById('msg');",
+  "  var token = new URLSearchParams(location.search).get('token') || '';",
+  "  fetch('/music/api/conta/verificar-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token }) })",
+  '    .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.erro); }); })',
+  "    .then(function () { m.className = 'bom'; m.innerHTML = 'E-mail confirmado. <a href=\"/music/app\">Abrir o Musique</a>.'; })",
+  "    .catch(function (e) { m.className = ''; m.textContent = e.message || 'Não deu certo.'; });",
+  '})();',
+].join('\n');
+
 const CSS = `
 .entrar-box{max-width:440px;margin:40px auto 60px;background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:26px 24px}
 .entrar-box h1{font-size:28px;margin:0 0 6px}
@@ -112,6 +126,7 @@ function paginaEntrar(layout) {
   <form id="f-entrar">
     <label>E-mail<input id="em" type="email" autocomplete="username" required></label>
     <label>Senha<input id="sn" type="password" autocomplete="current-password" required></label>
+    <div id="fa-box" style="display:none"><label>Código do aplicativo autenticador (ou um código de recuperação)<input id="fa" type="text" inputmode="numeric" autocomplete="one-time-code"></label></div>
     <button class="btn" id="b-entrar" type="submit">Entrar</button>
     <a href="#" id="esqueci" style="font-size:14px">Esqueci minha senha</a>
   </form>
@@ -142,6 +157,13 @@ function paginaRedefinir(layout) {
   `) + '<script src="/music/redefinir-senha.js"></script>', { descricao: 'Crie uma senha nova para o Musique.', caminho: '/music/redefinir-senha' });
 }
 
+function paginaVerificar(layout) {
+  return layout('Confirmar e-mail · Musique', caixa(`
+  <h1>Confirmando o seu e-mail…</h1>
+  <p id="msg" role="alert"></p>
+  `) + '<script src="/music/verificar-email.js"></script>', { descricao: 'Confirmação de e-mail do Musique.', caminho: '/music/verificar-email' });
+}
+
 function registrar(app, layout) {
   const html = (res) => res.set('Content-Type', 'text/html; charset=utf-8').set('X-Robots-Tag', 'noindex');
   const js = (res) => res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache');
@@ -151,6 +173,8 @@ function registrar(app, layout) {
   // nenhum recurso de terceiro carregado pela página (fontes).
   app.get('/music/redefinir-senha', (req, res) => html(res).set('Referrer-Policy', 'no-referrer').send(paginaRedefinir(layout)));
   app.get('/music/redefinir-senha.js', (req, res) => js(res).send(JS_REDEFINIR));
+  app.get('/music/verificar-email', (req, res) => html(res).set('Referrer-Policy', 'no-referrer').send(paginaVerificar(layout)));
+  app.get('/music/verificar-email.js', (req, res) => js(res).send(JS_VERIFICAR));
 }
 
-module.exports = { registrar, destinoSeguro, JS_ENTRAR, JS_REDEFINIR };
+module.exports = { registrar, destinoSeguro, JS_ENTRAR, JS_REDEFINIR, JS_VERIFICAR };

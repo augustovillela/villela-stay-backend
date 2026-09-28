@@ -222,6 +222,24 @@ const JS = `
       c.appendChild(el('h2', { txt: 'Minha conta' }));
       c.appendChild(el('p', { class: 'sub', txt: d.conta.nome + ' - ' + d.conta.email }));
 
+      var em = el('div', { class: 'cartao-conta' });
+      if (d.conta.email_verificado) {
+        em.innerHTML = '<h3>E-mail</h3><p class="sub">Confirmado. Voce pode receber convites de banda, professor e escola.</p>';
+      } else {
+        em.innerHTML = '<h3>Confirme o seu e-mail</h3><p class="sub">Enviamos um link para ' + esc(d.conta.email) +
+          '. Enquanto nao confirmar, ninguem consegue te convidar para banda, tarefa ou escola.</p>' +
+          '<button class="btn peq" id="em-reenviar">Mandar o link de novo</button>';
+      }
+      c.appendChild(em);
+      if ($('#em-reenviar')) $('#em-reenviar').onclick = function () {
+        api('POST', '/conta/reenviar-verificacao').then(function () { aviso('Link enviado. Confira tambem a caixa de spam.'); })
+          .catch(function (e) { erro(e.message); });
+      };
+
+      var fa = el('div', { class: 'cartao-conta' });
+      c.appendChild(fa);
+      pintar2fa(fa, d.dois_fatores);
+
       var fs = el('div', { class: 'cartao-conta' });
       fs.innerHTML = '<h3>Trocar a senha</h3>' +
         '<label>Senha atual<input type="password" id="ct-atual" autocomplete="current-password"></label>' +
@@ -263,6 +281,56 @@ const JS = `
       } });
       c.appendChild(el('div', { class: 'cartao-conta' }, [sair]));
     }).catch(function (e) { $('#corpo').innerHTML = ''; erro(e.message); });
+  }
+
+  // Duas etapas: opcional, recomendada para professor e escola.
+  function pintar2fa(caixa, df) {
+    if (df.ativo) {
+      caixa.innerHTML = '<h3>Verificacao em duas etapas: ligada</h3>' +
+        '<p class="sub">Ao entrar, alem da senha, o Musique pede o codigo do aplicativo autenticador. Codigos de recuperacao ainda validos: <b>' + df.codigos_restantes + '</b>.</p>' +
+        '<label>Senha<input type="password" id="fa-senha" autocomplete="current-password"></label>' +
+        '<label>Codigo do aplicativo (ou de recuperacao)<input type="text" id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></label>' +
+        '<button class="btn peq sec" id="fa-desligar">Desligar</button>';
+      $('#fa-desligar').onclick = function () {
+        api('POST', '/conta/2fa/desativar', { senha: $('#fa-senha').value, codigo: $('#fa-cod').value })
+          .then(function () { aviso('Verificacao em duas etapas desligada.'); verConta(); }).catch(function (e) { erro(e.message); });
+      };
+      return;
+    }
+    caixa.innerHTML = '<h3>Verificacao em duas etapas</h3>' +
+      '<p class="sub">Opcional. Protege a conta mesmo que alguem descubra a sua senha. Voce vai precisar de um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, 1Password...).</p>' +
+      '<label>Senha atual, para ligar<input type="password" id="fa-senha" autocomplete="current-password"></label>' +
+      '<button class="btn peq" id="fa-iniciar">Ligar</button>';
+    $('#fa-iniciar').onclick = function () {
+      api('POST', '/conta/2fa/iniciar', { senha: $('#fa-senha').value }).then(function (r) {
+        caixa.innerHTML = '<h3>Leia o QR no aplicativo autenticador</h3>' +
+          '<div class="qr-2fa">' + r.qr_svg + '</div>' +
+          '<p class="sub">Sem camera? Digite esta chave no aplicativo: <code>' + esc(r.segredo) + '</code></p>' +
+          '<label>Codigo de 6 digitos que apareceu no aplicativo<input type="text" id="fa-cod" inputmode="numeric" autocomplete="one-time-code"></label>' +
+          '<button class="btn peq" id="fa-ativar">Confirmar e ligar</button>';
+        $('#fa-ativar').onclick = function () {
+          api('POST', '/conta/2fa/ativar', { codigo: $('#fa-cod').value }).then(function (r2) {
+            caixa.innerHTML = '<h3>Ligada. Guarde os codigos de recuperacao</h3>' +
+              '<p class="sub">Cada codigo abre a conta UMA vez se voce perder o celular. Guarde num lugar seguro: eles nao aparecem de novo.</p>' +
+              '<pre class="codigos-rec">' + r2.codigos_recuperacao.map(esc).join('<br>') + '</pre>' +
+              '<button class="btn peq" id="fa-ok">Ja guardei</button>';
+            $('#fa-ok').onclick = verConta;
+          }).catch(function (e) { erro(e.message); });
+        };
+      }).catch(function (e) { erro(e.message); });
+    };
+  }
+
+  // Faixa no topo enquanto o e-mail nao for confirmado.
+  function faixaEmail() {
+    api('GET', '/conta').then(function (d) {
+      if (d.conta.email_verificado || $('#faixa-email')) return;
+      var f = el('div', { class: 'alerta', id: 'faixa-email', html:
+        '<b>Confirme o seu e-mail.</b> Enviamos um link para ' + esc(d.conta.email) +
+        '. Sem isso, ninguem consegue te convidar para banda, tarefa ou escola. <button class="btn peq" id="fx-conta">Ver em Minha conta</button>' });
+      var m = $('#menu'); m.parentNode.insertBefore(f, m);
+      $('#fx-conta').onclick = function () { ir('conta'); };
+    }).catch(function () {});
   }
 
   function cartao(n, rot, obs) {
@@ -882,6 +950,7 @@ const JS = `
   }
   window.addEventListener('hashchange', porHash);
   if (!porHash()) ir('estudar');
+  faixaEmail();
 })();
 `;
 

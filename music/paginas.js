@@ -91,6 +91,8 @@ a.item{text-decoration:none}
 .cartao-conta{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:18px 20px;margin:0 0 14px;max-width:560px}
 .cartao-conta h3{margin-top:0}
 .cartao-conta label{display:flex;flex-direction:column;gap:5px;font-size:14px;font-weight:600;margin:0 0 10px}
+.qr-2fa svg{width:200px;height:200px;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:6px}
+.codigos-rec{background:#F1F5F9;border-radius:10px;padding:12px 16px;font:15px/1.8 ui-monospace,Consolas,monospace;margin:0 0 12px}
 .cartao-conta input{border:1px solid var(--borda);border-radius:10px;padding:10px 12px;font:16px Inter,sans-serif}
 .barra{height:6px;background:#EDF0F4;border-radius:3px;overflow:hidden;margin:6px 0}
 .barra i{display:block;height:100%;background:var(--navy)}
@@ -249,7 +251,7 @@ function registrarPaginas(app) {
     res.set('Content-Type', 'text/html; charset=utf-8').send(layout(
       'Musique · estudo, biblioteca e prática musical',
       `<div class="wrap hero">
-        <span class="selo">Em desenvolvimento · academia, biblioteca e palco</span>
+        <span class="selo">Academia · biblioteca · cifras · palco</span>
         <h1>Estude, organize e toque —<br>tudo num lugar só.</h1>
         <p class="sub">A Musique reúne o estudo de música, a sua biblioteca de cifras e partituras
         e as ferramentas de prática. Você começa aprendendo e continua no mesmo lugar quando já

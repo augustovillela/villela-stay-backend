@@ -103,7 +103,8 @@ async function muContas(alvo) {
       <td><select class="mu-tc" data-t="${esc(t.id)}">${opcoes(lig.get(t.id) || '')}</select></td></tr>`).join('');
   const contas = (c.contas || []).map((x) => `<tr>
       <td><b>${esc(x.nome)}</b><div class="obs">${esc(x.email)}</div></td>
-      <td>${x.origem === 'dono' ? 'dono' : 'cadastro'}${x.vinculada ? ' · <span class="chip ok">professor (Academia)</span>' : ''}</td>
+      <td>${x.origem === 'dono' ? 'dono' : 'cadastro'}${x.vinculada ? ' · <span class="chip ok">professor (Academia)</span>' : ''}
+        <div class="obs">${x.email_verificado ? 'e-mail confirmado' : 'e-mail NÃO confirmado'}${x.totp_ativo ? ' · 2 etapas ligada <button class="btn secund mu-2fa" data-id="' + esc(x.id) + '">desligar</button>' : ''}</div></td>
       <td>${esc(muQuando(x.criado_em))}</td><td>${esc(muQuando(x.ultimo_login))}</td>
       <td>${x.status === 'ativo' ? 'ativa' : '<span style="color:#B3261E">' + esc(x.status) + '</span>'}
         <button class="btn secund mu-st" data-id="${esc(x.id)}" data-s="${x.status === 'ativo' ? 'suspenso' : 'ativo'}">${x.status === 'ativo' ? 'Suspender' : 'Reativar'}</button></td></tr>`).join('');
@@ -122,6 +123,11 @@ async function muContas(alvo) {
   alvo.querySelectorAll('.mu-tc').forEach((s) => { s.onchange = async () => {
     try { await api('PUT', '/music/trilhas-cursos/' + encodeURIComponent(s.dataset.t), { curso_slug: s.value }); muAvisar('Trilha atualizada.'); }
     catch (e) { muAvisar(e.message, true); muContas(alvo); }
+  }; });
+  alvo.querySelectorAll('.mu-2fa').forEach((b) => { b.onclick = async () => {
+    if (!confirm('Desligar as duas etapas desta conta? Faça isso só depois de confirmar, por outro canal, que é a própria pessoa que perdeu o celular e os códigos.')) return;
+    try { await api('POST', '/music/contas/' + encodeURIComponent(b.dataset.id) + '/2fa-desligar', {}); muContas(alvo); }
+    catch (e) { muAvisar(e.message); }
   }; });
   alvo.querySelectorAll('.mu-st').forEach((b) => { b.onclick = async () => {
     if (!confirm(b.dataset.s === 'suspenso' ? 'Suspender esta conta? A pessoa sai na hora.' : 'Reativar esta conta?')) return;

@@ -228,6 +228,98 @@ async function rodar({ t, secao, req, assert, contas, CONTAS, EMAILS, ACAD, CURS
     assert.equal(red.headers.get('referrer-policy'), 'no-referrer', 'o token do link não pode vazar em Referer');
   });
 
+  secao('Contas · confirmação de e-mail e duas etapas');
+
+  await t('TOTP bate com o vetor oficial da RFC 6238 e recusa código fora da janela', async () => {
+    const totp = require('./totp');
+    const seg = totp.base32(Buffer.from('12345678901234567890'));
+    assert.equal(totp.codigo(seg, 1, 8), '94287082', 'vetor T=59s da RFC 6238 (SHA-1)');
+    assert.equal(totp.codigo(seg, 37037036, 8), '07081804', 'vetor T=1111111109s');
+    const agora = 1111111109 * 1000;
+    assert.ok(totp.conferir(seg, totp.codigo(seg, 37037036), { agoraMs: agora }));
+    assert.equal(totp.conferir(seg, totp.codigo(seg, 37037036 - 5), { agoraMs: agora }), null, 'código de 2,5 min atrás não vale');
+    assert.equal(totp.base32(totp.deBase32(seg)), seg, 'base32 ida e volta');
+  });
+
+  await t('E-MAIL: cadastro manda link; sem confirmar, a conta NÃO recebe convite; o link confirma', async () => {
+    const antes = EMAILS.length;
+    const r = await cadastrar('confirmar@t');
+    const ck = cookieDaResposta(r);
+    const mail = EMAILS.slice(antes).find((e) => e.para === 'confirmar@t');
+    assert.ok(mail && mail.html.includes('/music/verificar-email?token='), 'o cadastro manda o link de confirmação');
+    assert.equal(contas.Contas.buscarPorEmail('confirmar@t'), null, 'sem confirmar, convite por e-mail não enxerga a conta');
+    const c0 = await req('GET', '/music/api/conta', { headers: { Cookie: ck } });
+    assert.equal(c0.json.conta.email_verificado, false);
+    // Token de outro tipo (o de redefinir senha) não confirma e-mail.
+    const falso = jwt.sign({ tipo: 'musique-reset', cid: c0.json.conta.id, email: 'confirmar@t' }, SEGREDO);
+    assert.equal((await req('POST', '/music/api/conta/verificar-email', { corpo: { token: falso } })).status, 400);
+    const tok = mail.html.match(/token=([\w.\-]+)/)[1];
+    assert.equal((await req('POST', '/music/api/conta/verificar-email', { corpo: { token: tok } })).status, 200);
+    assert.ok(contas.Contas.buscarPorEmail('confirmar@t'), 'confirmado, passa a receber convite');
+    const pg = await req('GET', '/music/verificar-email?token=x', { cru: true });
+    assert.equal(pg.status, 200);
+    assert.equal(pg.headers.get('referrer-policy'), 'no-referrer');
+    new Function((await req('GET', '/music/verificar-email.js', { cru: true })).texto.replace(/document|location|fetch/g, 'void 0&&x'));
+    const re = await req('POST', '/music/api/conta/reenviar-verificacao', { headers: { Cookie: ck } });
+    assert.ok(re.json.ja_confirmado, 'reenviar para conta já confirmada não manda nada');
+  });
+
+  await t('DUAS ETAPAS: liga só com senha e código certo; entrar passa a pedir o código; código repetido é recusado', async () => {
+    const totp = require('./totp');
+    let ck = cookieDaResposta(await cadastrar('doisfa@t'));
+    assert.equal((await req('POST', '/music/api/conta/2fa/iniciar', { headers: { Cookie: ck }, corpo: { senha: 'errada-123' } })).status, 400, 'sem a senha não liga');
+    const ini = await req('POST', '/music/api/conta/2fa/iniciar', { headers: { Cookie: ck }, corpo: { senha: 'senha-boa-123' } });
+    assert.equal(ini.status, 200, JSON.stringify(ini.json));
+    assert.match(ini.json.qr_svg, /^<svg/, 'o QR vem pronto');
+    assert.match(ini.json.uri, /^otpauth:\/\/totp\/Musique/);
+    // Pendente ainda não vale: entrar sem código continua funcionando.
+    assert.equal((await req('POST', '/music/api/conta/entrar', { corpo: { email: 'doisfa@t', senha: 'senha-boa-123' } })).status, 200);
+    assert.equal((await req('POST', '/music/api/conta/2fa/ativar', { headers: { Cookie: ck }, corpo: { codigo: '000000' } })).status, 400);
+    const at = await req('POST', '/music/api/conta/2fa/ativar', { headers: { Cookie: ck }, corpo: { codigo: totp.codigo(ini.json.segredo, totp.passoAgora()) } });
+    assert.equal(at.status, 200, JSON.stringify(at.json));
+    assert.equal(at.json.codigos_recuperacao.length, 8);
+    ck = cookieDaResposta(at);
+    assert.equal((await req('GET', '/music/api/me', { headers: { Cookie: ck } })).status, 200, 'quem ligou continua dentro');
+    // Entrar agora pede o código.
+    let r = await req('POST', '/music/api/conta/entrar', { corpo: { email: 'doisfa@t', senha: 'senha-boa-123' } });
+    assert.equal(r.status, 401); assert.ok(r.json.precisa_2fa);
+    r = await req('POST', '/music/api/conta/entrar', { corpo: { email: 'doisfa@t', senha: 'senha-boa-123', codigo: '123456' } });
+    assert.equal(r.status, 401, 'código errado não entra');
+    // O código usado para ATIVAR já foi gasto: repetir é recusado.
+    const usado = totp.codigo(ini.json.segredo, totp.passoAgora());
+    r = await req('POST', '/music/api/conta/entrar', { corpo: { email: 'doisfa@t', senha: 'senha-boa-123', codigo: usado } });
+    assert.equal(r.status, 401, 'código já usado (visto por cima do ombro) não entra de novo');
+    // Código de recuperação entra UMA vez.
+    const rec = at.json.codigos_recuperacao[0];
+    r = await req('POST', '/music/api/conta/entrar', { corpo: { email: 'doisfa@t', senha: 'senha-boa-123', codigo: rec } });
+    assert.equal(r.status, 200, 'código de recuperação abre a conta');
+    assert.equal((await req('POST', '/music/api/conta/entrar', { corpo: { email: 'doisfa@t', senha: 'senha-boa-123', codigo: rec } })).status, 401, 'e só uma vez');
+    const info = await req('GET', '/music/api/conta', { headers: { Cookie: cookieDaResposta(r) } });
+    assert.equal(info.json.dois_fatores.codigos_restantes, 7);
+    // Desligar pede senha e código.
+    const ck2 = cookieDaResposta(r);
+    assert.equal((await req('POST', '/music/api/conta/2fa/desativar', { headers: { Cookie: ck2 }, corpo: { senha: 'senha-boa-123', codigo: '000000' } })).status, 400);
+    assert.equal((await req('POST', '/music/api/conta/2fa/desativar', { headers: { Cookie: ck2 }, corpo: { senha: 'senha-boa-123', codigo: at.json.codigos_recuperacao[1] } })).status, 200);
+    assert.equal((await req('POST', '/music/api/conta/entrar', { corpo: { email: 'doisfa@t', senha: 'senha-boa-123' } })).status, 200, 'desligada, a senha basta');
+    // Staff desliga para quem perdeu tudo (só admin).
+    const c = contas.Contas.porEmail('doisfa@t');
+    contas.DoisFatores.iniciar(c.id);
+    contas.DoisFatores.ativar(c.id, totp.codigo(contas.Contas.porId(c.id).totp_secret, totp.passoAgora() + 1));
+    assert.equal((await req('POST', '/staff/api/music/contas/' + c.id + '/2fa-desligar', { staff: 'op' })).status, 403);
+    assert.equal((await req('POST', '/staff/api/music/contas/' + c.id + '/2fa-desligar')).status, 200);
+    assert.equal(contas.Contas.porId(c.id).totp_ativo, 0);
+    assert.ok(!JSON.stringify((await req('GET', '/staff/api/music/contas')).json).includes('totp_secret'), 'o segredo não sai no painel');
+  });
+
+  await t('landing: o selo não diz mais "Em desenvolvimento"; o app do músico compila com as telas novas', async () => {
+    const land = await req('GET', '/music', { cru: true });
+    assert.ok(!/Em desenvolvimento/.test(land.texto), 'biblioteca e palco já existem');
+    assert.ok(land.texto.includes('Academia · biblioteca · cifras · palco'));
+    const js = (await req('GET', '/music/app.js', { cru: true })).texto;
+    new Function('window', 'document', js);
+    assert.ok(js.includes('/conta/2fa/iniciar') && js.includes('faixa-email'));
+  });
+
   await t('staff lista as contas do Musique (sem hash de senha)', async () => {
     const r = await req('GET', '/staff/api/music/contas');
     assert.equal(r.status, 200);

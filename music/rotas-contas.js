@@ -15,7 +15,8 @@ const jwt = require('jsonwebtoken');
 const contas = require('./contas');
 const { db, nowISO } = require('./db');
 
-const { Contas, Sessoes } = contas;
+const { Contas, Sessoes, DoisFatores } = contas;
+const totp = require('./totp');
 const ACADEMIA = process.env.ACADEMY_PUBLIC_URL || 'https://academia.villelastay.com.br';
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
@@ -56,6 +57,29 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
 
   app.use('/music/api/conta', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
+  // Confirmação de e-mail. Sem ela a conta funciona, mas NÃO recebe convite
+  // por e-mail (banda, tarefa, escola): senão quem se cadastrasse com o
+  // e-mail de outra pessoa passaria a receber os convites dela.
+  function enviarVerificacao(req, c) {
+    if (typeof enviarEmail !== 'function') return;
+    const tok = jwt.sign({ tipo: 'musique-verifica', cid: c.id, email: c.email }, jwtSecret, { expiresIn: '7d' });
+    mandar(c.email, 'Musique — confirme o seu e-mail', moldura('Confirme o seu e-mail',
+      `<p>Olá, ${esc(c.nome)}! Sua conta do Musique foi criada. Confirme o e-mail para receber convites de banda,
+       de professor e de escola:</p>
+       <p style="margin:20px 0"><a href="${base(req)}/music/verificar-email?token=${tok}" style="background:#1B2A4A;color:#fff;font-weight:700;padding:12px 26px;border-radius:24px;text-decoration:none">Confirmar meu e-mail</a></p>
+       <p style="color:#5B6478;font-size:.9rem">O link vale por 7 dias. Se você não criou esta conta, ignore este e-mail.</p>`));
+  }
+  app.post('/music/api/conta/verificar-email', h(async (req, res) => {
+    let d;
+    try { d = jwt.verify(s((req.body || {}).token, 2000), jwtSecret); } catch (_) { return res.status(400).json({ erro: 'Link inválido ou vencido. Peça outro em "Minha conta".' }); }
+    const c = d && d.tipo === 'musique-verifica' ? Contas.porId(d.cid) : null;
+    // O e-mail entra no token: se a pessoa trocou de e-mail, o link antigo não confirma o novo.
+    if (!c || c.email !== d.email) return res.status(400).json({ erro: 'Link inválido. Peça outro em "Minha conta".' });
+    Contas.marcarEmailVerificado(c.id);
+    contas.auditar(c.id, 'conta.email.confirmado', '', ipDe(req));
+    res.json({ ok: true });
+  }));
+
   app.post('/music/api/conta/cadastrar', h(async (req, res) => {
     const ip = ipDe(req);
     if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
@@ -65,12 +89,7 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
     try { c = Contas.criar(d); } catch (e) { falha(ip); throw e; }
     contas.auditar(c.id, 'conta.cadastro', c.email, ip);
     abrirSessao(req, res, c);
-    if (typeof enviarEmail === 'function') {
-      mandar(c.email, 'Bem-vindo ao Musique', moldura('Sua conta está pronta',
-        `<p>Olá, ${esc(c.nome)}! Sua conta do Musique foi criada. Cifras, estudo, setlists e palco em
-         <a href="${base(req)}/music/app">${base(req)}/music/app</a>.</p>
-         <p style="color:#5B6478;font-size:.9rem">Se não foi você, responda este e-mail.</p>`));
-    }
+    enviarVerificacao(req, c);
     res.json({ ok: true });
   }));
 
@@ -83,6 +102,14 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
       falha(ip);
       contas.auditar(c ? c.id : 'anonimo', 'conta.entrar.falha', s(d.email, 120), ip);
       return res.status(401).json({ erro: 'E-mail ou senha incorretos. A conta do Musique é separada da Academia: se você nunca se cadastrou aqui, use "Criar conta".' });
+    }
+    if (c.totp_ativo) {
+      if (!s(d.codigo, 20)) return res.status(401).json({ erro: 'Digite o código do aplicativo autenticador.', precisa_2fa: true });
+      if (!DoisFatores.conferir(c.id, s(d.codigo, 20))) {
+        falha(ip);
+        contas.auditar(c.id, 'conta.2fa.falha', '', ip);
+        return res.status(401).json({ erro: 'Código incorreto ou já usado. Espere o próximo aparecer no aplicativo.', precisa_2fa: true });
+      }
     }
     tentativas.delete(ip);
     const jti = abrirSessao(req, res, c);
@@ -130,7 +157,8 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
     const c = Contas.porId(req.usuario.id);
     const vinc = c.academia_vinculo;
     res.json({
-      conta: { id: c.id, nome: c.nome, email: c.email, telefone: c.telefone, criado_em: c.criado_em },
+      conta: { id: c.id, nome: c.nome, email: c.email, telefone: c.telefone, criado_em: c.criado_em, email_verificado: !!c.email_verificado },
+      dois_fatores: { ativo: !!c.totp_ativo, codigos_restantes: c.totp_ativo ? DoisFatores.restantes(c.id) : 0 },
       academia: {
         disponivel: typeof academia.conferirCredencial === 'function',
         vinculada: !!vinc,
@@ -150,6 +178,45 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
     Contas.trocarSenha(req.usuario.id, d.senha_nova);        // derruba todas as sessões…
     abrirSessao(req, res, Contas.porId(req.usuario.id));      // …menos esta, que quem trocou continua dentro
     contas.auditar(req.usuario.id, 'conta.senha.trocada', '', ipDe(req));
+    res.json({ ok: true });
+  }));
+
+  app.post('/music/api/conta/reenviar-verificacao', requireUsuario, h(async (req, res) => {
+    const c = Contas.porId(req.usuario.id);
+    if (c.email_verificado) return res.json({ ok: true, ja_confirmado: true });
+    enviarVerificacao(req, c);
+    res.json({ ok: true });
+  }));
+
+  // ---- duas etapas (opcional; recomendado para professor e escola) ----
+  // Ligar e desligar pedem a SENHA: sessão esquecida aberta num computador
+  // não pode trocar o segundo fator de ninguém.
+  const conferirSenha = (req) => {
+    if (!Contas.conferirSenha(Contas.porId(req.usuario.id), (req.body || {}).senha)) { falha(ipDe(req)); throw new Error('A senha não confere.'); }
+  };
+  app.post('/music/api/conta/2fa/iniciar', requireUsuario, h(async (req, res) => {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+    conferirSenha(req);
+    if (Contas.porId(req.usuario.id).totp_ativo) throw new Error('A verificação em duas etapas já está ligada.');
+    const seg = DoisFatores.iniciar(req.usuario.id);
+    const endereco = totp.uri(seg, req.usuario.email);
+    const qr = await require('qrcode').toString(endereco, { type: 'svg', margin: 1, width: 200 });
+    res.json({ ok: true, segredo: seg, uri: endereco, qr_svg: qr });
+  }));
+  app.post('/music/api/conta/2fa/ativar', requireUsuario, h(async (req, res) => {
+    const codigos = DoisFatores.ativar(req.usuario.id, s((req.body || {}).codigo, 10));
+    abrirSessao(req, res, Contas.porId(req.usuario.id));   // as outras sessões caíram; esta continua
+    contas.auditar(req.usuario.id, 'conta.2fa.ligada', '', ipDe(req));
+    res.json({ ok: true, codigos_recuperacao: codigos });
+  }));
+  app.post('/music/api/conta/2fa/desativar', requireUsuario, h(async (req, res) => {
+    const ip = ipDe(req);
+    if (bloqueado(ip)) return res.status(429).json({ erro: 'Muitas tentativas. Tente de novo em 15 minutos.' });
+    conferirSenha(req);
+    if (!DoisFatores.conferir(req.usuario.id, s((req.body || {}).codigo, 20))) { falha(ip); throw new Error('Código incorreto ou já usado.'); }
+    DoisFatores.desativar(req.usuario.id);
+    contas.auditar(req.usuario.id, 'conta.2fa.desligada', '', ip);
     res.json({ ok: true });
   }));
 
@@ -196,6 +263,15 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
       const c = Contas.mudarStatus(req.params.id, s((req.body || {}).status, 20));
       contas.auditar('staff:' + (req.user && req.user.id), 'conta.status', c.id + ' → ' + c.status, ipDe(req));
       res.json({ ok: true, conta: Contas.publica(c) });
+    }));
+    // Quem perdeu o celular E os códigos de recuperação: o staff desliga o
+    // segundo fator depois de confirmar a identidade por outro canal.
+    app.post('/staff/api/music/contas/:id/2fa-desligar', requireAuth, requireAdmin, h(async (req, res) => {
+      if (!Contas.porId(req.params.id)) throw new Error('Conta não encontrada.');
+      DoisFatores.desativar(req.params.id);
+      Sessoes.revogarDaConta(req.params.id);
+      contas.auditar('staff:' + (req.user && req.user.id), 'conta.2fa.desligada-pelo-staff', req.params.id, ipDe(req));
+      res.json({ ok: true });
     }));
     app.get('/staff/api/music/trilhas-cursos', requireAuth, h(async (req, res) => {
       let cursos = [];

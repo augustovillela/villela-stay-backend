@@ -105,7 +105,7 @@ mod.montar(app, {
 const contas = require('./contas');
 const HASH_TESTE = bcrypt.hashSync('senha-teste-123', 4);
 for (const c of Object.values(CONTAS)) {
-  contas.Contas.criar({ nome: c.nome, email: c.email }, { id: c.id, senhaHash: HASH_TESTE, vinculo: 'acad-' + c.id });
+  contas.Contas.criar({ nome: c.nome, email: c.email }, { id: c.id, senhaHash: HASH_TESTE, vinculo: 'acad-' + c.id, verificado: true });
   if (c.status !== 'ativo') contas.Contas.mudarStatus(c.id, c.status);
 }
 const jtis = {};
