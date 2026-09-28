@@ -72,6 +72,9 @@ garantirColuna('contas_music', 'totp_secret', "TEXT NOT NULL DEFAULT ''");
 garantirColuna('contas_music', 'totp_ativo', 'INTEGER NOT NULL DEFAULT 0');
 garantirColuna('contas_music', 'totp_ultimo_passo', 'INTEGER NOT NULL DEFAULT 0');
 garantirColuna('contas_music', 'recuperacao', "TEXT NOT NULL DEFAULT '[]'");
+// Plano banda (28/09/2026): a tabela de assinaturas já existia em produção.
+garantirColuna('assinaturas_music', 'plano', "TEXT NOT NULL DEFAULT 'individual'");
+garantirColuna('assinaturas_music', 'vagas', 'INTEGER NOT NULL DEFAULT 1');
 // A conta do dono nasceu (28/09) antes da coluna: o e-mail dele vem da Academia, onde já é dele.
 db.exec("UPDATE contas_music SET email_verificado = 1 WHERE origem = 'dono' AND email_verificado = 0");
 

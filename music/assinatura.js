@@ -31,7 +31,11 @@ const webhookMP = require('../nucleo/webhook-mp');
 // O Musique é PAGO (Augusto, 28/09/2026): R$ 250/mês, com teste grátis de
 // 14 dias para conta nova — e para as contas que já existiam no lançamento
 // da cobrança, contados a partir dele. Nada de graça depois do teste.
-const PLANO_PADRAO = { preco_cents: 25000, carencia_dias: 5, teste_dias: 14, nome: 'Musique — assinatura mensal' };
+// PLANO BANDA (Augusto, 28/09/2026): 5 assinaturas contratadas de uma vez
+// saem com 30% de desconto — 5 × R$ 250 × 0,7 = R$ 875/mês.
+const PLANO_PADRAO = { preco_cents: 25000, carencia_dias: 5, teste_dias: 14, nome: 'Musique — assinatura mensal',
+  banda_vagas: 5, banda_desconto_pct: 30 };
+const precoBanda = (p = plano()) => Math.round(p.preco_cents * p.banda_vagas * (1 - p.banda_desconto_pct / 100));
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const novoId = () => crypto.randomBytes(9).toString('base64url');
 
@@ -62,13 +66,68 @@ function teste(c) {
   return { fim: new Date(fim).toISOString(), ativo: Date.now() < fim, dias_restantes: Math.max(0, Math.ceil((fim - Date.now()) / 864e5)) };
 }
 
+/** Até quando uma assinatura CANCELADA ainda vale (fim do mês já pago). */
+function pagoAteDe(a) {
+  if (!a || a.status !== 'cancelada' || !a.ultimo_pagamento_em) return null;
+  const fim = Date.parse(a.ultimo_pagamento_em) + 30 * 864e5;
+  return fim > Date.now() ? new Date(fim).toISOString() : null;
+}
 /** Quem cancelou continua até o fim do mês que já pagou. */
 function pagoAte(contaId) {
-  const u = db.prepare(`SELECT ultimo_pagamento_em FROM assinaturas_music WHERE conta_id = ? AND status = 'cancelada'
+  const u = db.prepare(`SELECT * FROM assinaturas_music WHERE conta_id = ? AND status = 'cancelada'
     AND ultimo_pagamento_em <> '' ORDER BY ultimo_pagamento_em DESC LIMIT 1`).get(contaId);
-  if (!u) return null;
-  const fim = Date.parse(u.ultimo_pagamento_em) + 30 * 864e5;
-  return fim > Date.now() ? new Date(fim).toISOString() : null;
+  return pagoAteDe(u);
+}
+
+// ------------------------------------------------------------------ vagas do plano banda
+/** A assinatura de banda em que a conta ocupa uma vaga (se houver). */
+function bandaDaConta(contaId) {
+  return db.prepare(`SELECT a.* FROM assinatura_vagas v JOIN assinaturas_music a ON a.id = v.assinatura_id
+    WHERE v.conta_id = ? AND v.removida_em = '' AND a.plano = 'banda'
+    ORDER BY CASE a.status WHEN 'ativa' THEN 0 WHEN 'inadimplente' THEN 1 WHEN 'pendente' THEN 2 ELSE 3 END, a.criado_em DESC LIMIT 1`).get(contaId) || null;
+}
+const acessoPelaBanda = (contaId) => { const b = bandaDaConta(contaId); return b && (temAcesso(b) || pagoAteDe(b)) ? b : null; };
+function vagasDe(assinaturaId) {
+  return db.prepare(`SELECT v.conta_id, v.adicionada_em, c.nome, c.email, c.email_verificado FROM assinatura_vagas v
+    LEFT JOIN contas_music c ON c.id = v.conta_id WHERE v.assinatura_id = ? AND v.removida_em = '' ORDER BY v.id`).all(assinaturaId);
+}
+function assinaturaBandaDoTitular(titularId) {
+  return db.prepare(`SELECT * FROM assinaturas_music WHERE conta_id = ? AND plano = 'banda' AND status IN ('pendente','ativa','inadimplente')
+    ORDER BY criado_em DESC LIMIT 1`).get(titularId) || null;
+}
+async function adicionarVaga(titularId, email) {
+  const a = assinaturaBandaDoTitular(titularId);
+  if (!a) throw new ErroAssinatura('Você não tem plano banda.');
+  const c = contas.Contas.porEmail(email);
+  if (!c) throw new ErroAssinatura('Não há conta do Musique com este e-mail. Peça para a pessoa criar a conta primeiro (o teste grátis dela começa na hora).');
+  const ocupadas = vagasDe(a.id);
+  if (ocupadas.some((v) => v.conta_id === c.id)) throw new ErroAssinatura('Esta pessoa já está no seu plano banda.');
+  if (ocupadas.length >= a.vagas) throw new ErroAssinatura(`As ${a.vagas} vagas estão ocupadas. Tire alguém para colocar outra pessoa.`);
+  const outra = bandaDaConta(c.id);
+  if (outra && outra.id !== a.id && (temAcesso(outra) || outra.status === 'pendente')) throw new ErroAssinatura('Esta pessoa já ocupa uma vaga em outro plano banda.');
+  db.prepare('INSERT INTO assinatura_vagas (assinatura_id, conta_id, adicionada_em) VALUES (?, ?, ?)').run(a.id, c.id, nowISO());
+  evento(a, 'banda.vaga.adicionada', { conta: c.id });
+  await sincronizarSemErro(c.id);
+  return vagasDe(a.id);
+}
+async function removerVaga(pedidoPor, assinaturaId, contaId) {
+  const a = porId(assinaturaId);
+  if (!a || a.plano !== 'banda') throw new ErroAssinatura('Plano banda não encontrado.', 404);
+  const titular = a.conta_id === pedidoPor;
+  if (!titular && pedidoPor !== contaId) throw new ErroAssinatura('Só a titular do plano tira alguém; cada integrante pode sair da própria vaga.', 403);
+  if (contaId === a.conta_id) throw new ErroAssinatura('A titular ocupa a própria vaga enquanto o plano existir. Para sair, cancele o plano.');
+  const r = db.prepare("UPDATE assinatura_vagas SET removida_em = ? WHERE assinatura_id = ? AND conta_id = ? AND removida_em = ''").run(nowISO(), a.id, contaId);
+  if (!r.changes) throw new ErroAssinatura('Esta pessoa não está no plano.');
+  evento(a, 'banda.vaga.removida', { conta: contaId, por: titular ? 'titular' : 'a própria pessoa' });
+  await sincronizarSemErro(contaId);
+  return vagasDe(a.id);
+}
+/** Webhook, cancelamento e rotina mexem numa assinatura: todas as pessoas dela entram em acordo. */
+async function sincronizarDaAssinatura(a) {
+  if (!a) return;
+  const ids = new Set([a.conta_id]);
+  if (a.plano === 'banda') db.prepare('SELECT conta_id FROM assinatura_vagas WHERE assinatura_id = ?').all(a.id).forEach((x) => ids.add(x.conta_id));
+  for (const id of ids) await sincronizarSemErro(id);
 }
 
 /** Pode USAR o Musique? Assinatura com acesso, cortesia, período já pago ou teste em curso. */
@@ -79,6 +138,8 @@ function acessoDaConta(contaId) {
   if (temAcesso(a)) return { acesso: true, motivo: a.status === 'cortesia' ? 'cortesia' : 'assinatura' };
   const ate = pagoAte(contaId);
   if (ate) return { acesso: true, motivo: 'pago_ate', ate };
+  const b = acessoPelaBanda(contaId);
+  if (b) return { acesso: true, motivo: 'banda', titular: (contas.Contas.porId(b.conta_id) || {}).nome || '', ate: pagoAteDe(b) || '' };
   const t = teste(c);
   if (t.ativo) return { acesso: true, motivo: 'teste', teste: t };
   return { acesso: false, motivo: 'sem-assinatura', teste: t };
@@ -132,7 +193,7 @@ async function sincronizar(contaId) {
   const reg = db.prepare('SELECT * FROM cortesia_academia WHERE conta_id = ?').get(contaId);
   // O TESTE grátis não dá curso: os cursos da Academia também são vendidos
   // lá, e dar de graça no teste seria vender por zero.
-  const deve = (temAcesso(a) || !!pagoAte(contaId)) && !!c.email_verificado && c.status === 'ativo';
+  const deve = (temAcesso(a) || !!pagoAte(contaId) || !!acessoPelaBanda(contaId)) && !!c.email_verificado && c.status === 'ativo';
   if (!_academia.conceder) return { resultado: 'academia-indisponivel', deve };
   if (deve) {
     const r = await _academia.conceder({ email: c.email, nome: c.nome, novaConta: !(reg && reg.academia_user_id) });
@@ -155,7 +216,8 @@ async function sincronizar(contaId) {
 const sincronizarSemErro = (contaId) => sincronizar(contaId).catch((e) => ({ resultado: 'erro', erro: e.message }));
 
 // ------------------------------------------------------------------ assinar
-async function assinar(contaId) {
+async function assinar(contaId, { plano: tipo = 'individual' } = {}) {
+  if (!['individual', 'banda'].includes(tipo)) throw new ErroAssinatura('Plano inválido.');
   const c = contas.Contas.porId(contaId);
   if (!c) throw new ErroAssinatura('Conta não encontrada.', 404);
   if (!c.email_verificado) throw new ErroAssinatura('Confirme o seu e-mail antes de assinar: é por ele que os cursos chegam na Academia.');
@@ -163,27 +225,35 @@ async function assinar(contaId) {
   if (atual && (atual.status === 'ativa' || atual.status === 'cortesia')) throw new ErroAssinatura('Você já tem assinatura ativa.');
   if (!cobrancaLigada()) throw new ErroAssinatura('O pagamento online ainda não está ligado. Tente de novo mais tarde.', 503);
   const p = plano();
+  const banda = tipo === 'banda';
+  const valor = banda ? precoBanda(p) : p.preco_cents;
+  const vagas = banda ? p.banda_vagas : 1;
+  if (banda && assinaturaBandaDoTitular(contaId) && assinaturaBandaDoTitular(contaId).status !== 'pendente') throw new ErroAssinatura('Você já tem um plano banda.');
   // Pendente anterior sem pagamento: reaproveita a linha, com link novo.
   const id = atual && atual.status === 'pendente' ? atual.id : novoId();
   const pre = await _mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
-      reason: p.nome,
+      reason: banda ? `Musique — plano banda (${vagas} assinaturas)` : p.nome,
       external_reference: `musique:${contaId}:${id}`,
       payer_email: c.email,
       back_url: `${_baseSite}/music/app#conta`,
       notification_url: `${_baseApi}/music/api/pagamentos/mp`,   // NO CORPO — o painel do MP não cobre assinatura
-      auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: Number((p.preco_cents / 100).toFixed(2)), currency_id: 'BRL' },
+      auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: Number((valor / 100).toFixed(2)), currency_id: 'BRL' },
       status: 'pending',
     }),
   });
   const link = s(pre.init_point || pre.sandbox_init_point, 1000);
-  if (atual && atual.status === 'pendente') atualizar(id, { preapproval_id: String(pre.id), link, preco_cents: p.preco_cents });
+  if (atual && atual.status === 'pendente') atualizar(id, { preapproval_id: String(pre.id), link, preco_cents: valor, plano: tipo, vagas });
   else {
-    db.prepare(`INSERT INTO assinaturas_music (id, conta_id, status, origem, preco_cents, preapproval_id, link, criado_em, atualizado_em)
-      VALUES (?, ?, 'pendente', 'mp', ?, ?, ?, ?, ?)`).run(id, contaId, p.preco_cents, String(pre.id), link, nowISO(), nowISO());
+    db.prepare(`INSERT INTO assinaturas_music (id, conta_id, status, origem, plano, vagas, preco_cents, preapproval_id, link, criado_em, atualizado_em)
+      VALUES (?, ?, 'pendente', 'mp', ?, ?, ?, ?, ?, ?, ?)`).run(id, contaId, tipo, vagas, valor, String(pre.id), link, nowISO(), nowISO());
   }
-  evento(porId(id), 'assinatura.iniciada', { preapproval: String(pre.id), preco_cents: p.preco_cents });
+  // A titular ocupa a primeira vaga do plano banda.
+  if (banda && !db.prepare("SELECT 1 FROM assinatura_vagas WHERE assinatura_id = ? AND conta_id = ? AND removida_em = ''").get(id, contaId)) {
+    db.prepare('INSERT INTO assinatura_vagas (assinatura_id, conta_id, adicionada_em) VALUES (?, ?, ?)').run(id, contaId, nowISO());
+  }
+  evento(porId(id), 'assinatura.iniciada', { preapproval: String(pre.id), preco_cents: valor, plano: tipo });
   return { link, assinatura_id: id };
 }
 
@@ -197,7 +267,7 @@ async function cancelar(contaId, motivo = 'cancelada pelo assinante') {
   }
   atualizar(a.id, { status: 'cancelada', encerrada_em: nowISO(), motivo: s(motivo, 200) });
   evento(a, 'assinatura.cancelada', { motivo, mp: mpOk });
-  await sincronizarSemErro(contaId);
+  await sincronizarDaAssinatura(porId(a.id));
   return { ok: true, mp: mpOk };
 }
 
@@ -244,7 +314,7 @@ async function processarWebhook(body = {}, query = {}) {
       const c = contas.Contas.porId(a.conta_id);
       _avisar(`⚠️ Musique: assinatura cancelada — ${c ? c.nome : a.conta_id}.`);
     } else r = { resultado: 'ignorado', status: pre.status };
-    await sincronizarSemErro(a.conta_id);
+    await sincronizarDaAssinatura(porId(a.id));
     return { ok: true, ...r };
   }
 
@@ -262,7 +332,7 @@ async function processarWebhook(body = {}, query = {}) {
       return { ok: true, ignorado: `cobrança ${aut.status}${aut.payment ? '/' + aut.payment.status : ''}` };
     }
     const r = registrarPagamento(a, String((aut.payment && aut.payment.id) || aut.id), Math.round((Number(aut.transaction_amount) || 0) * 100));
-    await sincronizarSemErro(a.conta_id);
+    await sincronizarDaAssinatura(porId(a.id));
     return { ok: true, ...r };
   }
 
@@ -272,7 +342,7 @@ async function processarWebhook(body = {}, query = {}) {
     const a = assinaturaDaReferencia(pag.external_reference, '');
     if (!a) return { ok: true, ignorado: 'assinatura não encontrada' };
     const r = registrarPagamento(a, String(pag.id), Math.round((Number(pag.transaction_amount) || 0) * 100));
-    await sincronizarSemErro(a.conta_id);
+    await sincronizarDaAssinatura(porId(a.id));
     return { ok: true, ...r };
   }
   return { ok: true, ignorado: `tipo ${tipo}` };
@@ -320,6 +390,7 @@ function garantirDono() {
 async function ciclo() {
   const r = { sincronizadas: 0, sem_acesso: 0 };
   const ids = db.prepare(`SELECT DISTINCT conta_id FROM assinaturas_music WHERE status IN ('ativa','cortesia','inadimplente','cancelada')
+    UNION SELECT conta_id FROM assinatura_vagas WHERE removida_em = ''
     UNION SELECT conta_id FROM cortesia_academia WHERE revogada_em = ''`).all().map((x) => x.conta_id);
   for (const id of ids) {
     const a = vigente(id);
@@ -338,11 +409,19 @@ function estadoDaConta(contaId) {
   const reg = db.prepare('SELECT * FROM cortesia_academia WHERE conta_id = ?').get(contaId);
   const uso = acessoDaConta(contaId);
   return {
-    plano: { nome: p.nome, preco_cents: p.preco_cents, carencia_dias: p.carencia_dias, teste_dias: p.teste_dias },
+    plano: { nome: p.nome, preco_cents: p.preco_cents, carencia_dias: p.carencia_dias, teste_dias: p.teste_dias,
+      banda: { vagas: p.banda_vagas, desconto_pct: p.banda_desconto_pct, preco_cents: precoBanda(p) } },
+    banda: (() => {
+      const t = assinaturaBandaDoTitular(contaId);
+      if (t) return { papel: 'titular', assinatura_id: t.id, status: t.status, vagas: t.vagas, ocupadas: vagasDe(t.id) };
+      const b = bandaDaConta(contaId);
+      if (b && b.conta_id !== contaId) return { papel: 'integrante', assinatura_id: b.id, status: b.status, titular: (contas.Contas.porId(b.conta_id) || {}).nome || '' };
+      return null;
+    })(),
     uso,
     cobranca_ligada: cobrancaLigada(),
     email_verificado: !!(c && c.email_verificado),
-    assinatura: a ? { status: a.status, origem: a.origem, desde: a.criado_em, preco_cents: a.preco_cents, ultimo_pagamento_em: a.ultimo_pagamento_em,
+    assinatura: a ? { status: a.status, origem: a.origem, plano: a.plano, vagas: a.vagas, desde: a.criado_em, preco_cents: a.preco_cents, ultimo_pagamento_em: a.ultimo_pagamento_em,
       inadimplente_desde: a.inadimplente_desde, link: a.status === 'pendente' ? a.link : '' } : null,
     acesso: temAcesso(a),
     cortesia_academia: reg && !reg.revogada_em ? { email: reg.email, cursos: reg.cursos, desde: reg.concedida_em } : null,
@@ -353,7 +432,8 @@ function resumoStaff() {
   const p = plano();
   const porStatus = db.prepare('SELECT status, COUNT(*) n FROM assinaturas_music GROUP BY status').all();
   const ativas = db.prepare("SELECT COUNT(*) n, COALESCE(SUM(preco_cents),0) c FROM assinaturas_music WHERE status = 'ativa'").get();
-  const lista = db.prepare(`SELECT a.id, a.conta_id, a.status, a.origem, a.preco_cents, a.criado_em, a.ultimo_pagamento_em, a.inadimplente_desde,
+  const lista = db.prepare(`SELECT a.id, a.conta_id, a.status, a.origem, a.plano, a.vagas,
+      (SELECT COUNT(*) FROM assinatura_vagas v WHERE v.assinatura_id = a.id AND v.removida_em = '') AS ocupadas, a.preco_cents, a.criado_em, a.ultimo_pagamento_em, a.inadimplente_desde,
       a.motivo, c.nome, c.email, c.email_verificado, ca.cursos, ca.revogada_em
     FROM assinaturas_music a LEFT JOIN contas_music c ON c.id = a.conta_id LEFT JOIN cortesia_academia ca ON ca.conta_id = a.conta_id
     WHERE a.status <> 'cancelada' OR a.atualizado_em > ? ORDER BY a.atualizado_em DESC LIMIT 300`)
@@ -385,7 +465,7 @@ function definirPlano({ preco_cents, carencia_dias, teste_dias }) {
 }
 
 module.exports = {
-  configurar, plano, cobrancaLigada, vigente, temAcesso, acessoDaConta, teste, sincronizar, assinar, cancelar, processarWebhook,
+  configurar, plano, cobrancaLigada, vigente, temAcesso, acessoDaConta, teste, precoBanda, adicionarVaga, removerVaga, vagasDe, bandaDaConta, sincronizar, assinar, cancelar, processarWebhook,
   concederCortesia, encerrarCortesia, garantirDono, ciclo, estadoDaConta, resumoStaff, definirPlano, ErroAssinatura,
   _conferirWebhook: webhookMP.conferir,
 };

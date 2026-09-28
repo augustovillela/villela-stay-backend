@@ -13,7 +13,14 @@ function registrarRotasAssinatura(app, { requireUsuario, requireAuth, requireAdm
     res.status(e.status && e.status < 600 ? e.status : 400).json({ erro: e.message }));
 
   app.get('/music/api/assinatura', requireUsuario, h(async (req, res) => res.json(assinatura.estadoDaConta(req.usuario.id))));
-  app.post('/music/api/assinatura/assinar', requireUsuario, h(async (req, res) => res.json({ ok: true, ...(await assinatura.assinar(req.usuario.id)) })));
+  app.post('/music/api/assinatura/assinar', requireUsuario, h(async (req, res) =>
+    res.json({ ok: true, ...(await assinatura.assinar(req.usuario.id, { plano: s((req.body || {}).plano, 20) || 'individual' })) })));
+  // Plano banda: a titular distribui as vagas pelo e-mail da conta Musique;
+  // cada integrante pode sair da própria vaga.
+  app.post('/music/api/assinatura/vagas', requireUsuario, h(async (req, res) =>
+    res.json({ ok: true, vagas: await assinatura.adicionarVaga(req.usuario.id, s((req.body || {}).email, 160)) })));
+  app.delete('/music/api/assinatura/vagas/:assinaturaId/:contaId', requireUsuario, h(async (req, res) =>
+    res.json({ ok: true, vagas: await assinatura.removerVaga(req.usuario.id, req.params.assinaturaId, req.params.contaId) })));
   app.post('/music/api/assinatura/cancelar', requireUsuario, h(async (req, res) => res.json(await assinatura.cancelar(req.usuario.id))));
 
   // Webhook do MP. Sem sessão: a assinatura HMAC é conferida quando há

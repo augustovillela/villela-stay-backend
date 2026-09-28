@@ -100,7 +100,7 @@ async function muAssinaturas(alvo) {
   const ST = { ativa: '✅ ativa', pendente: '⏳ aguardando pagamento', inadimplente: '⚠️ pagamento não confirmado', cancelada: 'cancelada', cortesia: '🎁 cortesia' };
   const linhas = (d.assinaturas || []).map((a) => `<tr>
       <td><b>${esc(a.nome || '')}</b><div class="obs">${esc(a.email || '')}${a.email_verificado ? '' : ' · e-mail NÃO confirmado'}</div></td>
-      <td>${ST[a.status] || esc(a.status)}${a.origem === 'dono' ? ' <span class="chip">dono</span>' : ''}${a.motivo ? `<div class="obs">${esc(a.motivo)}</div>` : ''}</td>
+      <td>${ST[a.status] || esc(a.status)}${a.origem === 'dono' ? ' <span class="chip">dono</span>' : ''}${a.plano === 'banda' ? ` <span class="chip">banda ${a.ocupadas}/${a.vagas}</span>` : ''}${a.motivo ? `<div class="obs">${esc(a.motivo)}</div>` : ''}</td>
       <td>${a.status === 'cortesia' ? '—' : reais(a.preco_cents)}</td>
       <td>${esc(muQuando(a.ultimo_pagamento_em))}</td>
       <td>${a.cursos != null && !a.revogada_em ? a.cursos + ' curso(s)' : '—'}</td>

@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS assinaturas_music (
   -- pendente | ativa | inadimplente | cancelada | cortesia
   status              TEXT NOT NULL,
   origem              TEXT NOT NULL DEFAULT 'mp',      -- mp | cortesia | dono
+  plano               TEXT NOT NULL DEFAULT 'individual', -- individual | banda
+  vagas               INTEGER NOT NULL DEFAULT 1,
   preco_cents         INTEGER NOT NULL DEFAULT 0,
   preapproval_id      TEXT NOT NULL DEFAULT '',
   link                TEXT NOT NULL DEFAULT '',
@@ -40,6 +42,18 @@ CREATE TABLE IF NOT EXISTS assinatura_eventos (
   detalhe       TEXT NOT NULL DEFAULT '',
   quando        TEXT NOT NULL
 );
+
+-- PLANO BANDA (28/09/2026): 5 assinaturas de uma vez, 30% de desconto. A
+-- titular ocupa uma vaga e distribui as outras por e-mail (conta Musique).
+CREATE TABLE IF NOT EXISTS assinatura_vagas (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  assinatura_id TEXT NOT NULL,
+  conta_id      TEXT NOT NULL,
+  adicionada_em TEXT NOT NULL,
+  removida_em   TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_vagas_assin ON assinatura_vagas(assinatura_id, removida_em);
+CREATE INDEX IF NOT EXISTS ix_vagas_conta ON assinatura_vagas(conta_id, removida_em);
 
 -- O que o Musique concedeu na Academia, para revogar SÓ isso depois.
 CREATE TABLE IF NOT EXISTS cortesia_academia (

@@ -98,6 +98,10 @@ p.vazio{color:var(--suave);padding:24px 0}
 .topo-item{display:flex;align-items:center;gap:10px}
 .ico-mini{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;font-size:13px;vertical-align:middle}
 .vazio-card{text-align:center;padding:30px 20px}
+.banda-vagas{margin-top:12px;border-top:1px solid var(--borda);padding-top:10px}
+.banda-vagas .vaga{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--borda)}
+.banda-vagas .vaga-nova{display:flex;gap:8px;margin-top:10px}
+.banda-vagas .vaga-nova input{flex:1;border:1px solid var(--borda);border-radius:10px;padding:8px 10px;font:15px Inter,sans-serif}
 .assin-card{border-left:4px solid #C9A227;background:linear-gradient(135deg,#fff,#FDF8EA)}
 .vazio-card .vazio-ico{font-size:46px;line-height:1;margin-bottom:8px}
 .card{transition:box-shadow .15s ease}
@@ -247,6 +251,8 @@ const layout = (titulo, corpo, { descricao = '', caminho = '/music', noApp = fal
 <html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title>
+<!-- Ícone da aba: faltava em TODAS as páginas do Musique (visto em 28/09/2026). -->
+<link rel="icon" type="image/svg+xml" href="/assets/brand/musique/simbolo-v.svg"><link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/grupo-villela/favicon-192.png"><link rel="apple-touch-icon" href="/assets/brand/grupo-villela/favicon-192.png">
 <meta name="description" content="${esc(descricao)}">
 <link rel="canonical" href="${esc(HOST_CANONICO + caminho)}">
 <meta property="og:type" content="website">
@@ -271,7 +277,7 @@ ${tagsPwa()}
 <style>${CSS}</style></head><body>
 <header class="topo"><div class="wrap">
   <a class="marca" href="/music">Musique<small>por Villela Music</small></a>
-  <nav><a class="btn claro" href="/music/ferramentas">Ferramentas</a>
+  <nav><a class="btn claro" href="/music/cifras-publicas">Cifras</a> <a class="btn claro" href="/music/ferramentas">Ferramentas</a>
        ${noApp ? '<a class="btn claro" href="/music/app#conta">Minha conta</a>' : '<a class="btn claro" href="/music/entrar">Entrar</a>'}</nav>
 </div></header>
 ${corpo}
@@ -284,6 +290,13 @@ ${corpo}
 
 // Preço da assinatura como a landing e os termos mostram: vem da config
 // (o staff muda sem deploy), com o padrão aprovado pelo Augusto.
+function planoBanda() {
+  try {
+    const a = require('./assinatura'); const p = a.plano(); const c = a.precoBanda(p);
+    const r = (x) => 'R$ ' + (x / 100).toFixed(2).replace('.', ',');
+    return { vagas: p.banda_vagas, desconto: p.banda_desconto_pct, preco: r(c), porPessoa: r(Math.round(c / p.banda_vagas)) };
+  } catch (_) { return { vagas: 5, desconto: 30, preco: 'R$ 875,00', porPessoa: 'R$ 175,00' }; }
+}
 function diasDeTeste() {
   try { return require('./assinatura').plano().teste_dias; } catch (_) { return 14; }
 }
@@ -340,25 +353,32 @@ function registrarPaginas(app) {
         <h2 class="titulo">Planos</h2>
         <div class="planos">
           <div class="plano">
-            <span class="plano-nome">Teste grátis</span>
-            <div class="plano-preco">${esc(String(diasDeTeste()))} dias</div>
-            <p>Experimente tudo, sem cartão. Depois, continua com a assinatura.</p>
-            <ul><li>Todas as funções do Musique liberadas</li>
-              <li>Sem cartão para começar</li>
-              <li>Ao fim do teste, os seus dados continuam guardados</li></ul>
-            <a class="btn claro" href="/music/entrar#criar" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Começar o teste grátis</a>
+            <span class="plano-nome">Grátis, sem conta</span>
+            <div class="plano-preco">R$ 0</div>
+            <p>Para qualquer pessoa, sem cadastro:</p>
+            <ul><li><a href="/music/ferramentas">Afinador, metrônomo e gerador de tons</a></li>
+              <li><a href="/music/cifras-publicas">Cifras públicas</a> que os músicos abriram para todos</li></ul>
+            <a class="btn claro" href="/music/ferramentas" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Abrir as ferramentas</a>
           </div>
           <div class="plano destaque">
-            <span class="plano-nome">Assinatura</span>
+            <span class="plano-nome">Individual</span>
             <div class="plano-preco">${esc(precoAssinatura())}<small>/mês</small></div>
-            <p>O Musique inteiro, e mais:</p>
+            <p>${esc(String(diasDeTeste()))} dias grátis para testar, sem cartão. Depois:</p>
             <ul><li>Acervo de cifras, transposição e dicionário de acordes</li>
               <li>Banda, setlists, Modo Maestro e palco sem internet</li>
               <li>Academia: trilhas, exercícios, progresso, escolas e turmas</li>
-              <li>Afinador, metrônomo e gerador de tons</li>
               <li><b>Todos os cursos de música da Academia Villela</b>, na conta da Academia com o seu e-mail</li>
-              <li>Pagamento mensal no Mercado Pago; cancele quando quiser e use até o fim do mês pago</li></ul>
-            <a class="btn" href="/music/app#conta">Assinar</a>
+              <li>Cancele quando quiser e use até o fim do mês pago</li></ul>
+            <a class="btn" href="/music/entrar#criar">Começar o teste grátis</a>
+          </div>
+          <div class="plano">
+            <span class="plano-nome">Banda · ${esc(String(planoBanda().vagas))} assinaturas</span>
+            <div class="plano-preco">${esc(planoBanda().preco)}<small>/mês</small></div>
+            <p><b>${esc(String(planoBanda().desconto))}% de desconto</b> contratando as ${esc(String(planoBanda().vagas))} de uma vez (${esc(planoBanda().porPessoa)} por pessoa).</p>
+            <ul><li>Tudo do plano individual para cada integrante, com os cursos</li>
+              <li>Quem contrata escolhe quem ocupa as vagas e troca quando quiser</li>
+              <li>Uma cobrança só, no Mercado Pago</li></ul>
+            <a class="btn claro" href="/music/app#conta" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Contratar para a banda</a>
           </div>
         </div>
       </div>

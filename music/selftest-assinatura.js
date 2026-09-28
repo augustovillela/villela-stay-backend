@@ -156,11 +156,70 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
       const dono = db.prepare("SELECT id FROM contas_music WHERE origem = 'dono'").get();
       assert.equal(assinatura.acessoDaConta(dono.id).acesso, true);
     } finally { require('./repo').Config.set('assinatura', cfg); }
-    // As ferramentas deixam de ser públicas (por ora nada é de graça).
+    // Grátis, sem conta (Augusto): ferramentas, landing e cifras públicas.
     const f = (await req('GET', '/music/ferramentas', { cru: true })).texto;
-    assert.ok(f.includes("location.replace('/music/entrar?voltar=/music/ferramentas')"), 'ferramentas exigem conta');
+    assert.ok(!f.includes('/music/entrar?voltar=/music/ferramentas'), 'ferramentas voltaram a ser públicas');
     const land = (await req('GET', '/music', { cru: true })).texto;
-    assert.ok(land.includes('Teste grátis') && !land.includes('R$ 0'), 'a landing não pode prometer plano grátis');
+    assert.ok(land.includes('Grátis, sem conta') && land.includes('R$ 875,00') && land.includes('/music/cifras-publicas'));
+    for (const u of ['/music', '/music/app', '/music/entrar', '/music/ferramentas', '/music/cifras-publicas']) {
+      assert.ok((await req('GET', u, { cru: true })).texto.includes('rel=\"icon\"'), u + ' sem ícone na aba do navegador');
+    }
+  });
+
+  await t('PLANO BANDA: 5 assinaturas com 30% (R$ 875), a titular distribui as vagas e cada vaga vale como assinatura', async () => {
+    const r = await req('POST', '/music/api/assinatura/assinar', { como: 'prof', corpo: { plano: 'banda' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const b = MP.criados[MP.criados.length - 1];
+    assert.equal(b.auto_recurring.transaction_amount, 875, '5 × 250 × 0,7');
+    assert.match(b.reason, /plano banda \(5 assinaturas\)/);
+    const pre = MP.ultimoId;
+    let st = (await req('GET', '/music/api/assinatura', { como: 'prof' })).json;
+    assert.equal(st.banda.papel, 'titular'); assert.equal(st.banda.ocupadas.length, 1, 'a titular ocupa a primeira vaga');
+    MP.pre[pre].status = 'authorized';
+    await hook({ type: 'subscription_preapproval', data: { id: pre } });
+    // vagas
+    assert.equal((await req('POST', '/music/api/assinatura/vagas', { como: 'prof', corpo: { email: 'naotem@t' } })).status, 400);
+    const add = await req('POST', '/music/api/assinatura/vagas', { como: 'prof', corpo: { email: 'sec@t' } });
+    assert.equal(add.status, 200, JSON.stringify(add.json));
+    const us = assinatura.acessoDaConta('u-sec');
+    assert.equal(us.motivo, 'banda'); assert.equal(us.titular, 'Prof. Clara');
+    assert.ok(CORTESIA.concedidas.includes('sec@t'), 'cada vaga ganha os cursos da Academia');
+    for (const e of ['prof2@t', 'menor@t', 'resp@t']) assert.equal((await req('POST', '/music/api/assinatura/vagas', { como: 'prof', corpo: { email: e } })).status, 200);
+    const cheia = await req('POST', '/music/api/assinatura/vagas', { como: 'prof', corpo: { email: 'forasteiro@t' } });
+    assert.equal(cheia.status, 400); assert.match(cheia.json.erro, /5 vagas/);
+    // Integrante não tira outro; mas pode sair da própria vaga.
+    st = (await req('GET', '/music/api/assinatura', { como: 'prof' })).json;
+    const aid = st.banda.assinatura_id;
+    assert.equal((await req('DELETE', `/music/api/assinatura/vagas/${aid}/u-prof2`, { como: 'sec' })).status, 403);
+    assert.equal((await req('DELETE', `/music/api/assinatura/vagas/${aid}/u-sec`, { como: 'sec' })).status, 200);
+    assert.notEqual(assinatura.acessoDaConta('u-sec').motivo, 'banda');
+    assert.equal((await req('DELETE', `/music/api/assinatura/vagas/${aid}/u-prof`, { como: 'prof' })).status, 400, 'a titular não sai da própria vaga');
+    // Titular cancela: a banda usa até o fim do mês pago; depois, sai tudo.
+    const antes = CORTESIA.revogadas.length;
+    await req('POST', '/music/api/assinatura/cancelar', { como: 'prof' });
+    assert.equal(assinatura.acessoDaConta('u-prof2').motivo, 'banda', 'mês pago continua valendo para a banda');
+    db.prepare("UPDATE assinaturas_music SET ultimo_pagamento_em = ? WHERE id = ?").run(new Date(Date.now() - 31 * 864e5).toISOString(), aid);
+    await assinatura.ciclo();
+    assert.notEqual(assinatura.acessoDaConta('u-prof2').motivo, 'banda');
+    assert.ok(CORTESIA.revogadas.length >= antes + 3, 'a cortesia sai de todos os integrantes');
+  });
+
+  await t('CIFRAS PÚBLICAS: qualquer pessoa, sem conta, vê a lista e a cifra; privada dá 404', async () => {
+    const acervo = require('./cifras/acervo');
+    const m = acervo.Musicas.criar('u-bruno', { titulo: 'Canção Pública do Teste', artista: 'Autor Próprio', titularidade: 'propria', separada: true });
+    acervo.Cifras.criar('u-bruno', m.id, { texto: 'Tom: G\n\nG        D\numa linha própria' });
+    const priv = acervo.Musicas.criar('u-bruno', { titulo: 'Canção Privada do Teste', titularidade: 'propria', separada: true });
+    acervo.Cifras.criar('u-bruno', priv.id, { texto: 'C\nlinha' });
+    require('./direitos').definirVisibilidade({ obraId: m.id, usuario: 'u-bruno', visibilidade: 'publica' });
+    const lista = await req('GET', '/music/cifras-publicas', { cru: true });
+    assert.equal(lista.status, 200);
+    assert.ok(lista.texto.includes('Canção Pública do Teste') && !lista.texto.includes('Canção Privada do Teste'));
+    const pag = await req('GET', '/music/p/' + m.id, { cru: true });
+    assert.equal(pag.status, 200);
+    assert.ok(pag.texto.includes('Canção Pública do Teste') && pag.texto.includes('index,follow'));
+    assert.equal((await req('GET', '/music/p/' + priv.id, { cru: true })).status, 404, 'privada não abre para quem não é dono');
+    const api = await req('GET', '/music/api/publico/cifras');
+    assert.ok(api.json.cifras.some((x) => x.id === m.id) && !api.json.cifras.some((x) => x.id === priv.id));
   });
 
   await t('staff: preço só admin e vale para as NOVAS; cortesia manual pelo e-mail da conta; encerrar tira os cursos', async () => {

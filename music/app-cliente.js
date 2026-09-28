@@ -288,8 +288,8 @@ const JS = `
   // ---- ASSINATURA: o que mostrar, nos dois lugares (Cursos e Minha conta) ----
   function reais(c) { return 'R$ ' + (c / 100).toFixed(2).replace('.', ','); }
   function dataBR(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : ''; }
-  function assinar() {
-    api('POST', '/assinatura/assinar').then(function (r) { location.href = r.link; }).catch(function (e) { erro(e.message); });
+  function assinar(plano) {
+    api('POST', '/assinatura/assinar', { plano: plano || 'individual' }).then(function (r) { location.href = r.link; }).catch(function (e) { erro(e.message); });
   }
   function cartaoAssinatura(st, onde) {
     var box = el('div', { class: onde === 'conta' ? 'cartao-conta' : 'card assin-card' });
@@ -298,7 +298,8 @@ const JS = `
     if (a && a.status === 'cortesia') {
       box.innerHTML = titulo + '<p class="sub"><b>Cortesia' + (a.origem === 'dono' ? ' vitalícia' : '') + '.</b> Os cursos de música da Academia estão incluídos, sem cobrança.</p>';
     } else if (a && a.status === 'ativa') {
-      box.innerHTML = titulo + '<p class="sub"><b>\u{2705} Ativa</b> desde ' + dataBR(a.desde) + ' · ' + reais(a.preco_cents || st.plano.preco_cents) + '/mês' +
+      box.innerHTML = titulo + '<p class="sub"><b>\u{2705} Ativa</b>' + (a.plano === 'banda' ? ' · <b>plano banda (' + a.vagas + ' assinaturas)</b>' : '') +
+        ' desde ' + dataBR(a.desde) + ' · ' + reais(a.preco_cents || st.plano.preco_cents) + '/mês' +
         (a.ultimo_pagamento_em ? ' · último pagamento em ' + dataBR(a.ultimo_pagamento_em) : '') + '.</p>';
       if (onde === 'conta') box.appendChild(el('button', { class: 'btn peq sec', txt: 'Cancelar a assinatura', onclick: function () {
         if (!confirm('Cancelar a assinatura? Não haverá novas cobranças; você usa o Musique e os cursos da Academia até o fim do mês já pago.')) return;
@@ -308,7 +309,7 @@ const JS = `
       box.innerHTML = titulo + '<p class="sub"><b>\u{26A0}\u{FE0F} Pagamento não confirmado.</b> ' + (st.acesso
         ? 'Os cursos continuam liberados por ' + st.plano.carencia_dias + ' dias enquanto o Mercado Pago tenta de novo. Confira o cartão cadastrado lá.'
         : 'O prazo de tolerância acabou e os cursos saíram da sua conta da Academia. Assine de novo para voltar.') + '</p>';
-      if (!st.acesso) box.appendChild(el('button', { class: 'btn peq', txt: 'Assinar de novo', onclick: assinar }));
+      if (!st.acesso) box.appendChild(el('button', { class: 'btn peq', txt: 'Assinar de novo', onclick: function () { assinar(a.plano); } }));
     } else if (a && a.status === 'pendente') {
       box.innerHTML = titulo + '<p class="sub"><b>\u{23F3} Aguardando o pagamento no Mercado Pago.</b> Assim que ele confirmar, os cursos chegam na sua conta da Academia.</p>';
       if (a.link) box.appendChild(el('a', { class: 'btn peq', href: a.link, txt: 'Continuar o pagamento' }));
@@ -321,13 +322,53 @@ const JS = `
         '<p class="sub">O Musique custa <b>' + preco + '/mês</b> e inclui <b>todos os cursos de música da Academia Villela</b>, que chegam na conta da Academia com o seu e-mail. Cancele quando quiser: você usa até o fim do mês pago.</p>';
       if (!st.email_verificado) box.appendChild(el('p', { class: 'peq', txt: 'Para assinar, confirme primeiro o seu e-mail: é por ele que os cursos chegam na Academia.' }));
       else if (!st.cobranca_ligada) box.appendChild(el('p', { class: 'peq', txt: 'O pagamento online está temporariamente indisponível.' }));
-      else box.appendChild(el('button', { class: 'btn', txt: 'Assinar por ' + preco + '/mês', onclick: assinar }));
+      else {
+        var pb = st.plano.banda;
+        box.appendChild(el('div', { class: 'linha', style: 'display:flex;gap:10px;flex-wrap:wrap' }, [
+          el('button', { class: 'btn', txt: 'Assinar: ' + preco + '/mês', onclick: function () { assinar('individual'); } }),
+          el('button', { class: 'btn sec', txt: '\u{1F465} Plano banda: ' + pb.vagas + ' assinaturas por ' + reais(pb.preco_cents) + '/mês (' + pb.desconto_pct + '% off)',
+            onclick: function () { assinar('banda'); } })]));
+        box.appendChild(el('p', { class: 'peq', txt: 'No plano banda, você paga as ' + pb.vagas + ' assinaturas de uma vez e escolhe quem ocupa as outras ' + (pb.vagas - 1) + ' vagas pelo e-mail da conta Musique de cada um.' }));
+      }
     }
+    if (st.banda && onde === 'conta') box.appendChild(painelBanda(st));
     if (st.cortesia_academia && st.acesso) {
       box.appendChild(el('p', { class: 'peq', html: '\u{1F393} Na Academia, entre com <b>' + esc(st.cortesia_academia.email) + '</b>: ' +
         st.cortesia_academia.cursos + ' curso(s) de música liberado(s). <a href="https://academia.villelastay.com.br/academy/app" target="_blank" rel="noopener">Abrir a Academia</a>' }));
     }
     return box;
+  }
+
+  function painelBanda(st) {
+    var b = st.banda, d = el('div', { class: 'banda-vagas' });
+    if (b.papel === 'integrante') {
+      d.innerHTML = '<p class="sub">\u{1F465} Você está no <b>plano banda</b> de ' + esc(b.titular) + '.</p>';
+      d.appendChild(el('button', { class: 'btn peq sec', txt: 'Sair deste plano banda', onclick: function () {
+        if (!confirm('Sair do plano banda? Você perde o acesso que ele dá.')) return;
+        api('DELETE', '/assinatura/vagas/' + b.assinatura_id + '/' + (estado.minhaContaId || '')).then(verConta).catch(function (e) { erro(e.message); });
+      } }));
+      return d;
+    }
+    d.innerHTML = '<h3>\u{1F465} Vagas do plano banda (' + b.ocupadas.length + ' de ' + b.vagas + ')</h3>' +
+      (b.status === 'pendente' ? '<p class="peq">As vagas valem assim que o pagamento for confirmado.</p>' : '');
+    var ul = el('div');
+    b.ocupadas.forEach(function (v) {
+      var linha = el('div', { class: 'vaga' }, [el('span', { html: '<b>' + esc(v.nome || '') + '</b> <span class="peq">' + esc(v.email || '') +
+        (v.email_verificado ? '' : ' · e-mail não confirmado (sem os cursos até confirmar)') + '</span>' })]);
+      if (v.conta_id !== estado.minhaContaId) linha.appendChild(el('button', { class: 'btn peq sec', txt: 'Tirar', onclick: function () {
+        if (!confirm('Tirar ' + (v.nome || v.email) + ' do plano? A vaga fica livre para outra pessoa.')) return;
+        api('DELETE', '/assinatura/vagas/' + b.assinatura_id + '/' + v.conta_id).then(verConta).catch(function (e) { erro(e.message); });
+      } }));
+      ul.appendChild(linha);
+    });
+    d.appendChild(ul);
+    if (b.ocupadas.length < b.vagas) {
+      var inp = el('input', { type: 'email', placeholder: 'e-mail da conta Musique do integrante' });
+      d.appendChild(el('div', { class: 'vaga-nova' }, [inp, el('button', { class: 'btn peq', txt: 'Adicionar', onclick: function () {
+        api('POST', '/assinatura/vagas', { email: inp.value }).then(function () { aviso('Integrante adicionado.'); verConta(); }).catch(function (e) { erro(e.message); });
+      } })]));
+    }
+    return d;
   }
 
   function verCursos() {
@@ -367,6 +408,7 @@ const JS = `
   // =================================================================
   function verConta() {
     api('GET', '/conta').then(function (d) {
+      estado.minhaContaId = d.conta.id;
       var c = $('#corpo'); c.innerHTML = '';
       c.appendChild(el('h2', { txt: '\u{1F464} Minha conta' }));
       c.appendChild(el('p', { class: 'sub', txt: d.conta.nome + ' - ' + d.conta.email }));
