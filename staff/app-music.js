@@ -21,6 +21,9 @@ let MU_VISAO = 'cifras';
 
 const muCard = (rot, n, sub) => `<div class="card"><div class="n">${n == null ? '—' : n}</div><div class="rot">${esc(rot)}</div>${sub ? `<div class="obs">${esc(sub)}</div>` : ''}</div>`;
 const muQuando = (d) => (d ? String(d).slice(0, 16).replace('T', ' ') : '—');
+// O staff não tem `toast` global (só o painel jurídico define um): o aviso cai
+// no alert, que é o que os outros painéis usam.
+const muAvisar = (m) => (typeof window.toast === 'function' ? window.toast(m) : alert(m));
 
 const MU_TITULARIDADE = {
   propria: 'Própria do usuário',
@@ -38,8 +41,8 @@ async function renderMusic() {
        </div>
        <div id="mu-cards" class="cards"></div>
        <div class="barra" style="margin-top:12px">
-         ${['cifras', 'fila', 'ia', 'acervo', 'auditoria'].map((v) => `<button class="btn secund mu-nav" data-v="${v}">${{
-           cifras: '🎸 Cifras', fila: '⚙️ Fila e DLQ', ia: '🤖 Fornecedores de IA', acervo: '🎼 Acervo', auditoria: '📜 Auditoria',
+         ${['cifras', 'contas', 'fila', 'ia', 'acervo', 'auditoria'].map((v) => `<button class="btn secund mu-nav" data-v="${v}">${{
+           cifras: '🎸 Cifras', contas: '👤 Contas e cursos', fila: '⚙️ Fila e DLQ', ia: '🤖 Fornecedores de IA', acervo: '🎼 Acervo', auditoria: '📜 Auditoria',
          }[v]}</button>`).join('')}
        </div>
        <div id="mu-corpo"><p class="vazio">Carregando…</p></div>`;
@@ -79,11 +82,52 @@ async function muCorpo() {
   alvo.innerHTML = '<p class="vazio">Carregando…</p>';
   try {
     if (MU_VISAO === 'cifras') return muCifras(alvo);
+    if (MU_VISAO === 'contas') return muContas(alvo);
     if (MU_VISAO === 'fila') return muFila(alvo);
     if (MU_VISAO === 'ia') return muIA(alvo);
     if (MU_VISAO === 'acervo') return muAcervo(alvo);
     return muAuditoria(alvo);
   } catch (e) { alvo.innerHTML = muErro(e); }
+}
+
+// Contas PRÓPRIAS do Musique (ADR-0011, 28/09/2026) e o único elo com a
+// Academia: o curso recomendado em cada trilha. Os cursos listados são os
+// publicados na Academia na categoria "Música".
+async function muContas(alvo) {
+  const [c, tc] = await Promise.all([api('GET', '/music/contas?n=200'), api('GET', '/music/trilhas-cursos')]);
+  const lig = new Map((tc.ligacoes || []).map((l) => [l.trilha_id, l.curso_slug]));
+  const opcoes = (sel) => ['<option value="">— nenhum —</option>'].concat((tc.cursos || []).map((k) =>
+    `<option value="${esc(k.slug)}"${k.slug === sel ? ' selected' : ''}>${esc(k.titulo)}</option>`)).join('');
+  const trilhas = (tc.trilhas || []).map((t) => `<tr>
+      <td><b>${esc(t.titulo)}</b><div class="obs">${esc(t.instrumento)}</div></td>
+      <td><select class="mu-tc" data-t="${esc(t.id)}">${opcoes(lig.get(t.id) || '')}</select></td></tr>`).join('');
+  const contas = (c.contas || []).map((x) => `<tr>
+      <td><b>${esc(x.nome)}</b><div class="obs">${esc(x.email)}</div></td>
+      <td>${x.origem === 'dono' ? 'dono' : 'cadastro'}${x.vinculada ? ' · <span class="chip ok">professor (Academia)</span>' : ''}</td>
+      <td>${esc(muQuando(x.criado_em))}</td><td>${esc(muQuando(x.ultimo_login))}</td>
+      <td>${x.status === 'ativo' ? 'ativa' : '<span style="color:#B3261E">' + esc(x.status) + '</span>'}
+        <button class="btn secund mu-st" data-id="${esc(x.id)}" data-s="${x.status === 'ativo' ? 'suspenso' : 'ativo'}">${x.status === 'ativo' ? 'Suspender' : 'Reativar'}</button></td></tr>`).join('');
+  alvo.innerHTML = `
+    <div class="aviso obs" style="padding:10px 14px;border-left:3px solid #1B2A4A;background:#F1F5F9;border-radius:8px;margin:0 0 10px">
+      Desde 28/09/2026 o Musique tem <b>conta própria</b>, independente da Academia. Só a conta do dono nasceu
+      com a mesma senha. O elo com a Academia são os <b>cursos</b>: os publicados na categoria <i>Música</i>
+      aparecem no app, e cada trilha pode recomendar um curso.
+    </div>
+    <h3>Trilha → curso da Academia</h3>
+    ${(tc.cursos || []).length ? '' : '<p class="obs">Nenhum curso publicado na categoria Música da Academia ainda — quando houver, ele aparece na lista.</p>'}
+    <table class="tab"><thead><tr><th>Trilha</th><th>Curso recomendado</th></tr></thead><tbody>${trilhas}</tbody></table>
+    <h3 style="margin-top:18px">Contas (${c.total || 0})</h3>
+    ${contas ? `<table class="tab"><thead><tr><th>Pessoa</th><th>Origem</th><th>Criada</th><th>Último acesso</th><th>Situação</th></tr></thead><tbody>${contas}</tbody></table>`
+             : '<p class="vazio">Nenhuma conta ainda.</p>'}`;
+  alvo.querySelectorAll('.mu-tc').forEach((s) => { s.onchange = async () => {
+    try { await api('PUT', '/music/trilhas-cursos/' + encodeURIComponent(s.dataset.t), { curso_slug: s.value }); muAvisar('Trilha atualizada.'); }
+    catch (e) { muAvisar(e.message, true); muContas(alvo); }
+  }; });
+  alvo.querySelectorAll('.mu-st').forEach((b) => { b.onclick = async () => {
+    if (!confirm(b.dataset.s === 'suspenso' ? 'Suspender esta conta? A pessoa sai na hora.' : 'Reativar esta conta?')) return;
+    try { await api('POST', '/music/contas/' + encodeURIComponent(b.dataset.id) + '/status', { status: b.dataset.s }); muContas(alvo); }
+    catch (e) { muAvisar(e.message, true); }
+  }; });
 }
 
 async function muFila(alvo) {
@@ -112,8 +156,8 @@ async function muFila(alvo) {
       : '<p class="vazio">DLQ vazia — nenhum job morreu.</p>'}`;
   const b = $('#mu-destravar');
   if (b) b.onclick = async () => {
-    try { const r2 = await api('POST', '/music/fila/destravar', { minutos: 15 }); toast(`${r2.destravados} job(s) devolvido(s).`); muCarregar(); }
-    catch (e) { toast(e.message, true); }
+    try { const r2 = await api('POST', '/music/fila/destravar', { minutos: 15 }); muAvisar(`${r2.destravados} job(s) devolvido(s).`); muCarregar(); }
+    catch (e) { muAvisar(e.message, true); }
   };
 }
 
@@ -236,20 +280,20 @@ async function muCifras(alvo) {
   alvo.querySelectorAll('.mu-flag').forEach((b) => { b.onclick = async () => {
     let motivo = '';
     if (b.dataset.p === '1') { motivo = prompt('Motivo (obrigatório para política; fica na auditoria):') || ''; if (!motivo.trim()) return; }
-    try { await api('PUT', '/music/cifras/flags/' + encodeURIComponent(b.dataset.k), { ligado: b.dataset.v === '1', motivo }); toast('Flag atualizada.'); muCorpo(); }
-    catch (e) { toast(e.message, true); }
+    try { await api('PUT', '/music/cifras/flags/' + encodeURIComponent(b.dataset.k), { ligado: b.dataset.v === '1', motivo }); muAvisar('Flag atualizada.'); muCorpo(); }
+    catch (e) { muAvisar(e.message, true); }
   }; });
   const bc = $('#mu-cota');
   if (bc) bc.onclick = async () => {
     const v = prompt('Chamadas de IA por pessoa por dia (0 desliga):', String((r.ia || {}).cota_dia || 40));
     if (v === null) return;
-    try { await api('PUT', '/music/cifras/cota-ia', { cota: Number(v) }); toast('Cota atualizada.'); muCorpo(); } catch (e) { toast(e.message, true); }
+    try { await api('PUT', '/music/cifras/cota-ia', { cota: Number(v) }); muAvisar('Cota atualizada.'); muCorpo(); } catch (e) { muAvisar(e.message, true); }
   };
   alvo.querySelectorAll('.mu-reproc').forEach((b) => { b.onclick = async () => {
-    try { await api('POST', '/music/cifras/importacoes/' + b.dataset.id + '/reprocessar', {}); toast('Reprocessando.'); setTimeout(muCorpo, 1500); } catch (e) { toast(e.message, true); }
+    try { await api('POST', '/music/cifras/importacoes/' + b.dataset.id + '/reprocessar', {}); muAvisar('Reprocessando.'); setTimeout(muCorpo, 1500); } catch (e) { muAvisar(e.message, true); }
   }; });
   alvo.querySelectorAll('.mu-den').forEach((b) => { b.onclick = async () => {
     const motivo = prompt('Motivo da decisão (fica na auditoria):') || '';
-    try { await api('POST', '/music/cifras/denuncias/' + b.dataset.id, { procedente: b.dataset.p === '1', motivo }); toast('Denúncia resolvida.'); muCorpo(); } catch (e) { toast(e.message, true); }
+    try { await api('POST', '/music/cifras/denuncias/' + b.dataset.id, { procedente: b.dataset.p === '1', motivo }); muAvisar('Denúncia resolvida.'); muCorpo(); } catch (e) { muAvisar(e.message, true); }
   }; });
 }

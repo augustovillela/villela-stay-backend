@@ -684,7 +684,7 @@ async function rodar({ t, secao, req, assert, PROFESSORES }) {
   await t('quem não é professor recebe 403 COM o caminho para virar professor', async () => {
     const r = await req('POST', '/music/api/prof/tarefas', { como: 'ana', corpo: { titulo: 'x' } });
     assert.equal(r.status, 403);
-    assert.equal(r.json.onde, '/academy/app');
+    assert.equal(r.json.onde, '/music/app#conta');
   });
 
   await t('professor cria tarefa e atribui ao aluno', async () => {

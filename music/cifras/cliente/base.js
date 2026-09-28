@@ -78,7 +78,7 @@
     return fetch(url, { method: metodo, headers: corpo ? { 'Content-Type': 'application/json' } : {}, body: corpo ? JSON.stringify(corpo) : undefined })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (d) {
-          if (r.status === 401) { location.href = (d && d.entrar) || '/academy/app'; throw new Error('sessao'); }
+          if (r.status === 401) { location.href = '/music/entrar?voltar=' + encodeURIComponent(location.pathname + location.hash); throw new Error('sessao'); }
           if (!r.ok) { var e = new Error((d && d.erro) || ('Erro ' + r.status)); e.status = r.status; e.dados = d; throw e; }
           if (metodo === 'GET' && op.cache) C.guardar('cache', op.cache, { em: Date.now(), dados: d }).catch(function () {});
           return d;
@@ -266,6 +266,7 @@
   // Quem chega por link direto (#cifra=..., #convite=...) cai nas Cifras.
   function entradaDireta() {
     if (/^#(cifra|musica|banda|convite|vivo|setlist)=/.test(location.hash) && U.ir) U.ir('cifras');
+    else if (location.hash === '#cifras' && U.ir) { history.replaceState(null, '', location.pathname + location.search); U.ir('cifras'); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', entradaDireta); else setTimeout(entradaDireta, 0);
   setTimeout(function () { C.sincronizar(); }, 1500);

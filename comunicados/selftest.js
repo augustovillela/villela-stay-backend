@@ -71,7 +71,9 @@ insU.run('a3', 'Caio Excluído', 'caio@ex.com', '', 'excluido', '{}', agora);
 insU.run('a4', 'Dora Sem Contato', 'invalido', '', 'ativo', '{}', agora);
 acad.prepare('INSERT INTO sessions (id, user_id, criada_em, expira_em) VALUES (?, ?, ?, ?)').run('jti-a1', 'a1', agora, new Date(Date.now() + 864e5).toISOString());
 const music = require('../music/db').db;
-music.prepare('INSERT INTO usuarios_music (academy_user_id, criado_em) VALUES (?, ?)').run('a1', agora);
+// Musique tem conta PRÓPRIA (ADR-0011): o destinatário vem de contas_music.
+music.prepare(`INSERT INTO contas_music (id, nome, email, senha_hash, consentimentos, criado_em, atualizado_em)
+  VALUES (?, ?, ?, ?, ?, ?, ?)`).run('m1', 'Ana Aluna', 'ana@ex.com', 'x', JSON.stringify({ marketing: true }), agora, agora);
 const vsm = require('../vsm/db').db;
 vsm.prepare('INSERT INTO tenants (id, slug, nome, telefone, status, criado_em) VALUES (?, ?, ?, ?, ?, ?)').run('t1', 'pousada', 'Pousada', '(61) 98888-0000', 'ativa', agora);
 vsm.prepare('INSERT INTO tenants (id, slug, nome, telefone, status, criado_em) VALUES (?, ?, ?, ?, ?, ?)').run('t2', 'velha', 'Velha', '', 'cancelada', agora);

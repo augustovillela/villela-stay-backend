@@ -144,7 +144,7 @@ const Organizacoes = {
     escopo(usuario, orgId, { exigir: 'gestor' });
     if (!PAPEIS.includes(papel)) throw new Error(`Papel desconhecido: "${papel}".`);
     if (typeof buscarPorEmail !== 'function') {
-      throw new Error('Busca de conta indisponível: a Musique não foi montada com a conta da Academia.');
+      throw new Error('Busca de conta indisponível: a Musique foi montada sem a busca de contas.');
     }
     const entraram = []; const naoEncontrados = [];
     for (const e of (emails || []).map((x) => String(x || '').trim()).filter(Boolean)) {
@@ -256,7 +256,7 @@ const Matriculas = {
     if (!t) throw recusar('Turma não encontrada.');
     const { organizacao } = escopo(usuario, t.organizacao_id, { exigir: 'secretaria' });
     if (typeof buscarPorEmail !== 'function') {
-      throw new Error('Busca de conta indisponível: a Musique não foi montada com a conta da Academia.');
+      throw new Error('Busca de conta indisponível: a Musique foi montada sem a busca de contas.');
     }
 
     let responsavel = '';

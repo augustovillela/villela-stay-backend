@@ -482,7 +482,7 @@ function registrar(app) {
 
   <div class="nota" style="margin-bottom:40px">
     Quer acompanhar o seu estudo — exercícios, progresso e trilhas? Isso fica na sua conta.
-    <a href="/academy/app">Entre com a conta da Academia</a>.
+    <a href="/music/entrar">Entre ou crie a sua conta do Musique</a> — é grátis.
   </div>
 </div>
 <script src="/music/audio.js"></script>

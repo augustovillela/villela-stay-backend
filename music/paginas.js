@@ -87,6 +87,11 @@ p.vazio{color:var(--suave);padding:24px 0}
 .item:hover{border-color:var(--navy)}
 .item b{font-size:16px}
 .item span{font-size:14px;color:var(--suave)}
+a.item{text-decoration:none}
+.cartao-conta{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:18px 20px;margin:0 0 14px;max-width:560px}
+.cartao-conta h3{margin-top:0}
+.cartao-conta label{display:flex;flex-direction:column;gap:5px;font-size:14px;font-weight:600;margin:0 0 10px}
+.cartao-conta input{border:1px solid var(--borda);border-radius:10px;padding:10px 12px;font:16px Inter,sans-serif}
 .barra{height:6px;background:#EDF0F4;border-radius:3px;overflow:hidden;margin:6px 0}
 .barra i{display:block;height:100%;background:var(--navy)}
 .chip{display:inline-block;background:#EEF2F7;border-radius:999px;padding:3px 10px;font-size:12px;
@@ -198,7 +203,7 @@ const tagsPwa = () => {
   } catch (_) { return ''; }
 };
 
-const layout = (titulo, corpo, { descricao = '', caminho = '/music' } = {}) => `<!doctype html>
+const layout = (titulo, corpo, { descricao = '', caminho = '/music', noApp = false } = {}) => `<!doctype html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title>
@@ -227,14 +232,14 @@ ${tagsPwa()}
 <header class="topo"><div class="wrap">
   <a class="marca" href="/music">Musique<small>por Villela Music</small></a>
   <nav><a class="btn claro" href="/music/ferramentas">Ferramentas</a>
-       <a class="btn claro" href="/academy/app">Entrar</a></nav>
+       ${noApp ? '<a class="btn claro" href="/music/app#conta">Minha conta</a>' : '<a class="btn claro" href="/music/entrar">Entrar</a>'}</nav>
 </div></header>
 ${corpo}
 <footer><div class="wrap">
   <p><strong>Musique</strong> · por Villela Music — uma empresa do Grupo Villela Stay ·
      CNPJ 56.776.526/0001-12</p>
   <p><a href="/music/ferramentas">Ferramentas</a> · <a href="/music/termos">Termos</a> ·
-     <a href="/music/privacidade">Privacidade</a> · <a href="/academy">Academia</a></p>
+     <a href="/music/privacidade">Privacidade</a> · <a href="https://academia.villelastay.com.br/academy">Cursos na Academia</a></p>
 </div></footer></body></html>`;
 
 function registrarPaginas(app) {
@@ -249,8 +254,10 @@ function registrarPaginas(app) {
         <p class="sub">A Musique reúne o estudo de música, a sua biblioteca de cifras e partituras
         e as ferramentas de prática. Você começa aprendendo e continua no mesmo lugar quando já
         estiver tocando.</p>
-        <a class="btn" href="/music/ferramentas">Abrir o afinador e o metrônomo</a>
-        <a class="btn claro" href="/academy/app" style="background:transparent;color:var(--navy);border:1px solid var(--navy);margin-left:8px">Entrar com a conta da Academia</a>
+        <a class="btn" href="/music/app">Abrir o Musique</a>
+        <a class="btn claro" href="/music/app#cifras" style="background:transparent;color:var(--navy);border:1px solid var(--navy);margin-left:8px">Minhas cifras</a>
+        <a class="btn claro" href="/music/ferramentas" style="background:transparent;color:var(--navy);border:1px solid var(--navy);margin-left:8px">Afinador e metrônomo</a>
+        <p style="color:var(--suave);font-size:14px;margin-top:12px">Ainda não tem conta? <a href="/music/entrar#criar">Crie a sua grátis</a> — a conta é do Musique.</p>
       </div>
 
       <div class="faixa"><div class="wrap">
@@ -315,7 +322,7 @@ function registrarPaginas(app) {
 <link rel="stylesheet" href="/music/cifras.css">
 <script src="/music/motor-cifras.js"></script>
 <script src="/music/cifras.js"></script>
-<script src="/music/comunicados.js" data-cor="#3B2A6B" defer></script>`));
+<script src="/music/comunicados.js" data-cor="#3B2A6B" defer></script>`, { caminho: '/music/app', noApp: true }));
   });
 
   // ---- textos legais (MINUTA até a OAB validar) ----
@@ -330,7 +337,9 @@ function registrarPaginas(app) {
 
   app.get('/music/termos', legal('Termos de uso', `
     <p>A Musique é uma plataforma de estudo, organização e prática musical do Grupo Villela Stay.
-    O acesso usa a mesma conta da Academia Villela.</p>
+    O acesso usa uma conta própria do Musique, independente da conta da Academia Villela: ter uma
+    não dá acesso à outra. Os cursos anunciados no Musique são vendidos e ministrados pela
+    Academia Villela, com as regras e a conta de lá.</p>
     <h3>O que é seu</h3>
     <p>O conteúdo que você cria ou envia continua seu. A plataforma armazena e processa esse
     conteúdo apenas para prestar o serviço, e sob o seu comando.</p>
@@ -348,6 +357,12 @@ function registrarPaginas(app) {
 
   app.get('/music/privacidade', legal('Política de privacidade', `
     <p>Tratamos dados pessoais conforme a LGPD (Lei 13.709/2018).</p>
+    <h3>Conta</h3>
+    <p>Para criar a conta pedimos nome, e-mail, senha (guardada só como hash) e, se você quiser,
+    celular. A conta do Musique é separada da conta da Academia Villela: os dados de uma não são
+    compartilhados com a outra. A única exceção é o vínculo de professor, que você faz por
+    escolha própria em "Minha conta", e que guarda apenas a identificação da sua conta de
+    produtor da Academia — nunca a senha de lá.</p>
     <h3>Menores de idade</h3>
     <p>A conta de aluno menor de idade é sempre do responsável, com consentimento parental
     registrado (art. 14 da LGPD).</p>
@@ -366,6 +381,8 @@ function registrarPaginas(app) {
   // login de propósito: é a porta de entrada do produto — quem chega
   // usa o afinador antes de decidir se cria conta.
   require('./paginas-ferramentas').registrar(app);
+  // Entrada com conta PRÓPRIA do Musique (ADR-0011).
+  require('./entrada').registrar(app, layout);
   // Biblioteca de áudio do cliente (compartilhada pelas ferramentas e
   // pelos exercícios) e o app do músico.
   require('./audio-cliente').registrar(app);
@@ -382,6 +399,8 @@ function registrarPaginas(app) {
       fila: fila.resumo(), handlers: fila.tiposRegistrados(),
       ia_disponivel: router.disponiveis(),
       armazenamento: storage.ativo() ? 'pronto' : `faltando: ${storage.faltando().join(', ')}`,
+      // Conta própria (ADR-0011): só diz SE a conta do dono existe — nunca qual é.
+      contas: { propria: true, dono_semeado: !!require('./db').db.prepare("SELECT 1 FROM contas_music WHERE origem = 'dono'").get() },
     });
   });
 }

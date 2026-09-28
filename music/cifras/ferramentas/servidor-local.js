@@ -4,8 +4,10 @@
 //   node music/cifras/ferramentas/servidor-local.js [porta]
 //
 // Sobe SÓ o Musique (sem o server.js inteiro, que exige as credenciais
-// de 15 produtos), com contas FALSAS da Academia e dados de exemplo, para
-// abrir as telas no navegador. Recusa rodar em produção.
+// de 15 produtos), com contas de exemplo DO MUSIQUE (conta própria,
+// ADR-0011; senha de todas: senha-dev-123), uma Academia de mentira só
+// com a vitrine de cursos, e dados de exemplo. Recusa rodar em produção.
+// A tela de entrada de verdade também funciona: /music/entrar
 //
 // Entrar como alguém: http://localhost:<porta>/dev/entrar?como=ana
 // (ana = proprietária da banda · bruno = músico · caio = sem banda)
@@ -25,30 +27,39 @@ fs.mkdirSync(process.env.DATA_DIR, { recursive: true });
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const RAIZ = path.join(__dirname, '..', '..', '..');
-const nucleo = require(path.join(RAIZ, 'nucleo', 'sessao-academy'));
 const SEGREDO = 'segredo-local-de-desenvolvimento';
 const CONTAS = {
   ana: { id: 'u-ana', nome: 'Ana Maestra', email: 'ana@dev.local', status: 'ativo' },
   bruno: { id: 'u-bruno', nome: 'Bruno Baixista', email: 'bruno@dev.local', status: 'ativo' },
   caio: { id: 'u-caio', nome: 'Caio Convidado', email: 'caio@dev.local', status: 'ativo' },
 };
-const verificador = nucleo.criarVerificador({ jwtSecret: SEGREDO, buscarUsuario: (id) => Object.values(CONTAS).find((c) => c.id === id) || null, sessaoValida: () => true });
 const app = express();
 app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser());
 app.get('/', (req, res) => res.redirect('/dev/entrar?como=ana'));
 app.get('/dev/entrar', (req, res) => {
+  const contas = require(path.join(RAIZ, 'music', 'contas'));
   const c = CONTAS[req.query.como] || CONTAS.ana;
-  res.cookie(nucleo.COOKIE, nucleo.assinar(c.id, 'jti-' + c.id, SEGREDO), { httpOnly: true, path: '/', sameSite: 'lax' });
+  contas.emitir(res, contas.assinar(c.id, contas.Sessoes.criar(c.id), SEGREDO));
   res.redirect('/music/app' + (req.query.hash ? '#' + req.query.hash : ''));
 });
 const staff = (req, res, next) => { req.user = { id: 'adm', email: 'adm@dev.local', papel: 'admin' }; next(); };
 require(path.join(RAIZ, 'music')).montar(app, {
-  express, requireAuth: staff, requireAdmin: (req, res, next) => next(), jwtSecret: SEGREDO, sessaoAcademy: verificador,
-  alertaAugusto: async () => {}, ehProfessor: () => false,
-  buscarContaPorId: (id) => { const c = Object.values(CONTAS).find((x) => x.id === id); return c ? { id: c.id, nome: c.nome } : null; },
-  buscarContaPorEmail: (e) => Object.values(CONTAS).find((c) => c.email === String(e || '').toLowerCase()) || null,
+  express, requireAuth: staff, requireAdmin: (req, res, next) => next(), jwtSecret: SEGREDO,
+  alertaAugusto: async () => {},
+  enviarEmail: async (para, assunto) => console.log('[dev] e-mail para', para, '—', assunto),
+  academia: {
+    cursosDeMusica: () => [{ titulo: 'Violão do zero (exemplo)', subtitulo: 'Curso de mentira do servidor local', slug: 'violao-do-zero', produtor_nome: 'Academia de exemplo' }],
+    cursoPorSlug: (slug) => (slug === 'violao-do-zero' ? { titulo: 'Violão do zero (exemplo)', slug } : null),
+  },
 });
+{
+  const contas = require(path.join(RAIZ, 'music', 'contas'));
+  const hash = require('bcryptjs').hashSync('senha-dev-123', 8);
+  for (const c of Object.values(CONTAS)) {
+    if (!contas.Contas.porId(c.id)) contas.Contas.criar({ nome: c.nome, email: c.email }, { id: c.id, senhaHash: hash });
+  }
+}
 try { require(path.join(RAIZ, 'pwa')).montar(app); } catch (_) { /* sem PWA */ }
 
 // ---- dados de exemplo (uma vez) ----
@@ -65,7 +76,7 @@ if (!db.prepare("SELECT 1 FROM obras WHERE dono = 'u-ana'").get()) {
   const m2 = acervo.Musicas.criar('u-ana', { titulo: 'Segunda Música', artista: 'Musique Dev' });
   acervo.Cifras.criar('u-ana', m2.id, { chordpro: '{key: Am}\n{start_of_verse}\n[Am]Uma linha [Dm]de teste\n[E7]para o [Am]palco\n{end_of_verse}\n{start_of_chorus}\n[F]Refrão [G]forte [C]agora [E7]sim\n{end_of_chorus}' });
   const b = Bandas.criar('u-ana', { nome: 'Banda de Teste' });
-  Bandas.convidar('u-ana', b.banda.id, { emails: ['bruno@dev.local'], papel: 'musico' }, (e) => Object.values(CONTAS).find((x) => x.email === e));
+  Bandas.convidar('u-ana', b.banda.id, { emails: ['bruno@dev.local'], papel: 'musico' }, require(path.join(RAIZ, 'music', 'contas')).Contas.buscarPorEmail);
   Bandas.compartilhar('u-ana', b.banda.id, m.id);
   Bandas.compartilhar('u-ana', b.banda.id, m2.id);
   const s = Setlists.criar('u-ana', { nome: 'Show de Sábado', banda_id: b.banda.id, local: 'Lago Sul', duracao_planejada_s: 1800 });

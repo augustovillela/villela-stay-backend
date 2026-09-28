@@ -4,8 +4,8 @@
 // O foco é o que sustenta as decisões do Augusto (24/08/2026), e cada
 // teste existe porque, sem ele, uma decisão viraria só um parágrafo:
 //
-//   Q1  conta única → a sessão da Academia autentica em /music, e o
-//       cookie mudou de escopo SEM criar sessão fantasma
+//   ADR-0011  conta PRÓPRIA → a sessão da Academia NÃO abre o Musique;
+//       só a conta do dono nasce com a mesma senha; o elo são os cursos
 //   Q2  acervo privado → as QUATRO travas do `terceiro_privado`, cada
 //       uma testada TENTANDO violar
 //   Q5  microfone → formato que não transpõe não promete transpor
@@ -17,7 +17,8 @@
 'use strict';
 process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'music-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
-process.env.MUSIC_FILA_OFF = '1';   // o teste processa a fila À MÃO, para ver cada job
+process.env.MUSIC_FILA_OFF = '1';
+process.env.MUSIC_CONTAS_LIMITE = '1000';   // a suíte erra senha de propósito, sempre do mesmo IP   // o teste processa a fila À MÃO, para ver cada job
 require('fs').mkdirSync(process.env.DATA_DIR, { recursive: true });
 
 const assert = require('assert');
@@ -42,24 +43,18 @@ function requireAuth(req, res, next) {
 const requireAdmin = (req, res, next) =>
   (req.user && req.user.papel === 'admin') ? next() : res.status(403).json({ erro: 'admin' });
 
-// ---- conta da Academia, FALSA (ADR-0001: identidade é injetada) ----
-// O módulo nunca importa o banco da Academia — é isto que permite testar
-// a Musique sem subir a Academia inteira.
+// ---- contas do MUSIQUE (ADR-0011: conta própria) ----
+// As contas de teste nascem direto no banco do Musique, com os mesmos ids
+// que as fases antigas usam. A sessão é a DE VERDADE (cookie musique_sess,
+// tabela sessoes_music) — nada de verificador falso: o caminho testado é
+// o mesmo da produção.
 const CONTAS = {
   ana: { id: 'u-ana', nome: 'Ana', email: 'ana@t', status: 'ativo' },
   bruno: { id: 'u-bruno', nome: 'Bruno', email: 'bruno@t', status: 'ativo' },
   suspenso: { id: 'u-sus', nome: 'Suspenso', email: 'sus@t', status: 'suspenso' },
 };
-const revogadas = new Set();
-const sessaoAcademyNucleo = require('../nucleo/sessao-academy');
-const verificador = sessaoAcademyNucleo.criarVerificador({
-  jwtSecret: SEGREDO,
-  buscarUsuario: (uid) => Object.values(CONTAS).find((c) => c.id === uid) || null,
-  sessaoValida: (jti) => !revogadas.has(jti),
-});
-const tokenDe = (chave, jti) => sessaoAcademyNucleo.assinar(CONTAS[chave].id, jti || 'jti-' + chave, SEGREDO);
-
-// Papel de professor vem da Academia (ADR-0001). No teste, um conjunto.
+// Professor pelo caminho da Academia (ADR-0008): conta vinculada a um
+// produtor de lá. No teste, o conjunto diz quem é produtor.
 const PROFESSORES = new Set(['u-prof']);
 CONTAS.prof = { id: 'u-prof', nome: 'Prof. Clara', email: 'clara@t', status: 'ativo' };
 // Fase 3: uma escola precisa de gente com papéis diferentes.
@@ -69,20 +64,57 @@ CONTAS.menor = { id: 'u-menor', nome: 'Tita (12 anos)', email: 'menor@t', status
 CONTAS.resp = { id: 'u-resp', nome: 'Mãe da Tita', email: 'resp@t', status: 'ativo' };
 CONTAS.forasteiro = { id: 'u-forasteiro', nome: 'De outra escola', email: 'forasteiro@t', status: 'ativo' };
 
+// ---- a ACADEMIA, falsa: só as funções que o Musique pode chamar ----
+const bcrypt = require('bcryptjs');
+const ACAD = [
+  { id: 'acad-dono', nome: 'Augusto (dono)', email: 'dono@t', senha: 'senha-do-dono-1', produtor: true },
+  { id: 'acad-bia', nome: 'Bia Produtora', email: 'bia@academia', senha: 'senha-da-bia-1', produtor: true },
+  { id: 'acad-caio', nome: 'Caio Aluno', email: 'caio@academia', senha: 'senha-do-caio-1', produtor: false },
+  { id: 'acad-duda', nome: 'Duda 2FA', email: 'duda@academia', senha: 'senha-da-duda-1', produtor: true, totp: '123456' },
+];
+ACAD.forEach((a) => { a.senha_hash = bcrypt.hashSync(a.senha, 4); a.status = 'ativo'; });
+const CURSOS = [
+  { titulo: 'Violão do zero', subtitulo: 'Primeiros acordes', slug: 'violao-do-zero', produtor_nome: 'Bia Produtora', preco_centavos: 9700 },
+  { titulo: 'Harmonia funcional', subtitulo: '', slug: 'harmonia-funcional', produtor_nome: 'Bia Produtora', preco_centavos: 19700 },
+];
+const EMAILS = [];
+const academiaFalsa = {
+  contaDoDono: () => ACAD[0],
+  conferirCredencial: (email, senha, codigo) => {
+    const a = ACAD.find((x) => x.email === String(email || '').toLowerCase());
+    if (!a || a.senha !== senha) return null;
+    if (a.totp && codigo !== a.totp) return { precisa_2fa: true };
+    return { id: a.id };
+  },
+  // As contas das fases antigas nascem vinculadas a 'acad-<id Musique>'.
+  ehProdutor: (id) => !!(ACAD.find((x) => x.id === id && x.produtor) || PROFESSORES.has(String(id).replace(/^acad-/, ''))),
+  cursosDeMusica: () => CURSOS,
+  cursoPorSlug: (slug) => CURSOS.find((c) => c.slug === slug) || null,
+};
+
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 const mod = require('./index');
 mod.montar(app, {
-  express, requireAuth, requireAdmin, jwtSecret: SEGREDO,
-  sessaoAcademy: verificador, alertaAugusto: async () => {},
-  ehProfessor: (u) => PROFESSORES.has(u && u.id),
-  // Busca de conta por e-mail (ADR-0001): o professor atribui tarefa e o
-  // músico convida a banda pelo e-mail, não pelo id interno.
-  buscarContaPorId: (id) => { const c = Object.values(CONTAS).find((x) => x.id === id); return c ? { id: c.id, nome: c.nome } : null; },
-  buscarContaPorEmail: (email) => Object.values(CONTAS)
-    .find((c) => c.email.toLowerCase() === String(email || '').trim().toLowerCase()) || null,
+  express, requireAuth, requireAdmin, jwtSecret: SEGREDO, alertaAugusto: async () => {},
+  academia: academiaFalsa,
+  enviarEmail: async (para, assunto, html) => { EMAILS.push({ para, assunto, html }); },
 });
+
+const contas = require('./contas');
+const HASH_TESTE = bcrypt.hashSync('senha-teste-123', 4);
+for (const c of Object.values(CONTAS)) {
+  contas.Contas.criar({ nome: c.nome, email: c.email }, { id: c.id, senhaHash: HASH_TESTE, vinculo: 'acad-' + c.id });
+  if (c.status !== 'ativo') contas.Contas.mudarStatus(c.id, c.status);
+}
+const jtis = {};
+const tokenDe = (chave) => {
+  const id = CONTAS[chave].id;
+  if (!jtis[chave] || !contas.Sessoes.valida(jtis[chave], id)) jtis[chave] = contas.Sessoes.criar(id);
+  return contas.assinar(id, jtis[chave], SEGREDO);
+};
+const cookieDe = (chave) => `${contas.COOKIE}=${tokenDe(chave)}`;
 
 // O PWA é montado uma vez, globalmente, pelo server.js — para TODOS os
 // produtos. Aqui ele entra porque as páginas da Musique apontam para o
@@ -103,7 +135,7 @@ const falhas = [];
 const jars = {};
 async function req(metodo, caminho, { corpo, como = '', staff = 'adm', headers: hx, cru = false } = {}) {
   const headers = { 'Content-Type': 'application/json', 'x-test-user': staff, ...(hx || {}) };
-  if (como) headers.Cookie = `${sessaoAcademyNucleo.COOKIE}=${tokenDe(como)}`;
+  if (como) headers.Cookie = cookieDe(como);
   const r = await fetch(BASE + caminho, {
     method: metodo, headers, body: corpo ? JSON.stringify(corpo) : undefined, redirect: 'manual',
   });
@@ -125,83 +157,7 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   BASE = 'http://127.0.0.1:' + srv.address().port;
 
   // ===================================================================
-  secao('Q1 · conta única: a sessão da Academia autentica em /music');
-
-  await t('sem cookie, /music/api/me devolve 401 COM o caminho de entrada', async () => {
-    const r = await req('GET', '/music/api/me');
-    assert.equal(r.status, 401);
-    assert.equal(r.json.entrar, '/academy/app', '401 tem de dizer POR ONDE entrar, não só negar');
-  });
-
-  await t('com a sessão da Academia, /music/api/me responde e cria a projeção musical', async () => {
-    const r = await req('GET', '/music/api/me', { como: 'ana' });
-    assert.equal(r.status, 200, JSON.stringify(r.json));
-    assert.equal(r.json.conta.email, 'ana@t');
-    assert.ok(repo.Usuarios.porId('u-ana'), 'a projeção musical devia nascer no primeiro acesso');
-  });
-
-  await t('sessão revogada na Academia derruba o acesso à Musique', async () => {
-    revogadas.add('jti-bruno');
-    const r = await req('GET', '/music/api/me', { como: 'bruno' });
-    revogadas.delete('jti-bruno');
-    assert.equal(r.status, 401, 'logout na Academia tem de valer aqui — é a mesma sessão');
-  });
-
-  await t('conta suspensa não entra', async () => {
-    const r = await req('GET', '/music/api/me', { como: 'suspenso' });
-    assert.equal(r.status, 401);
-  });
-
-  await t('não existe login próprio: /music/api/login não existe', async () => {
-    const r = await req('POST', '/music/api/login', { corpo: { email: 'x', senha: 'y' } });
-    assert.ok(r.status === 404 || r.status === 405, `esperava rota inexistente, veio ${r.status}`);
-  });
-
-  // ===================================================================
-  secao('Q1 · escopo do cookie: sem sessão fantasma');
-
-  await t('emitir sempre grava no escopo novo E limpa o antigo', async () => {
-    const setados = [];
-    const limpos = [];
-    const resFake = {
-      cookie: (n, v, o) => setados.push({ n, v, o }),
-      clearCookie: (n, o) => limpos.push({ n, o }),
-    };
-    sessaoAcademyNucleo.emitir(resFake, 'tok', true);
-    assert.equal(setados.length, 1);
-    assert.equal(setados[0].o.path, '/', 'o escopo novo tem de ser / para /music receber o cookie');
-    assert.ok(setados[0].o.httpOnly, 'cookie de sessão é httpOnly');
-    assert.equal(limpos.length, 1);
-    assert.equal(limpos[0].o.path, '/academy',
-      'emitir sem limpar o escopo antigo deixa DOIS academy_sess — a sessão fantasma');
-  });
-
-  await t('logout limpa nos DOIS escopos', async () => {
-    const limpos = [];
-    sessaoAcademyNucleo.limpar({ clearCookie: (n, o) => limpos.push(o.path) });
-    assert.deepEqual(limpos.sort(), ['/', '/academy']);
-  });
-
-  await t('quem já estava logado tem o cookie promovido ao novo escopo, com o MESMO jti', async () => {
-    const r = await req('GET', '/music/api/me', { como: 'ana' });
-    assert.equal(r.status, 200);
-    // O verificador do núcleo reemite em toda requisição autenticada,
-    // e é isso que faz o usuário antigo migrar sem novo login.
-    const app2 = express();
-    app2.use(cookieParser());
-    app2.get('/x', verificador.requireUsuario, (rq, rs) => rs.json({ jti: rq.jti }));
-    const s2 = app2.listen(0);
-    await new Promise((res) => s2.once('listening', res));
-    const p = s2.address().port;
-    const resp = await fetch(`http://127.0.0.1:${p}/x`, {
-      headers: { Cookie: `${sessaoAcademyNucleo.COOKIE}=${tokenDe('ana')}` },
-    });
-    const cks = resp.headers.getSetCookie ? resp.headers.getSetCookie() : [];
-    s2.close();
-    assert.equal((await resp.json()).jti, 'jti-ana', 'o jti tem de ser o mesmo: é a mesma sessão');
-    assert.ok(cks.some((c) => /Path=\/(;|$)/.test(c)), 'devia reemitir no escopo novo: ' + JSON.stringify(cks));
-    assert.ok(cks.some((c) => /Path=\/academy/.test(c)), 'e limpar o escopo antigo');
-  });
+  await require('./selftest-contas').rodar({ t, secao, req, assert, BASE: () => BASE, contas, CONTAS, EMAILS, ACAD, CURSOS, SEGREDO, tokenDe, cookieDe, repo, PROFESSORES });
 
   // ===================================================================
   secao('Q2 · as quatro travas do acervo de terceiro');
@@ -763,7 +719,7 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     assert.ok(r.json.handlers.includes('smoke'));
   });
 
-  await t('a landing sobe mesmo sem a conta da Academia injetada', async () => {
+  await t('o módulo sobe inteiro SEM a Academia injetada: landing no ar, conta própria funcionando, vitrine vazia', async () => {
     // Módulo que exige tudo para subir é módulo que derruba o grupo
     // quando falta uma env. Aqui a landing funciona e a API do usuário
     // responde 503 com a causa.
@@ -775,9 +731,11 @@ const secao = (s) => console.log('\n— ' + s + ' —');
     const p = s3.address().port;
     const land = await fetch(`http://127.0.0.1:${p}/music`);
     const api = await fetch(`http://127.0.0.1:${p}/music/api/me`);
+    const cursos = await (await fetch(`http://127.0.0.1:${p}/music/api/cursos`)).json();
     s3.close();
     assert.equal(land.status, 200);
-    assert.equal(api.status, 503, 'sem conta configurada: 503 com causa, não 500 mudo');
+    assert.equal(api.status, 401, 'a conta é do Musique: sem a Academia, entrar continua possível');
+    assert.deepEqual(cursos.cursos, [], 'sem a Academia não há vitrine — e nada quebra');
   });
 
   // ===================================================================
@@ -800,7 +758,7 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   // ===================================================================
   await require('./cifras/selftest-motor').rodar({ t, secao, assert });
   await require('./cifras/selftest-motor').rodarAudio({ t, secao, assert });
-  req.cookieDe = (quem) => `${sessaoAcademyNucleo.COOKIE}=${tokenDe(quem)}`;
+  req.cookieDe = cookieDe;
   req.base = () => BASE;
   await require('./cifras/selftest-cifras').rodar({ t, secao, req, assert });
 

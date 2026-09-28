@@ -91,6 +91,24 @@ function usuariosAcademyPorIds(ids) {
   return linhas(out);
 }
 
+// ---------------- Musique (conta PRÓPRIA desde a ADR-0011, 28/09/2026) ----------------
+// Até ali a conta era a da Academy. Agora são sistemas independentes: a
+// sessão é o cookie `musique_sess` e o contato sai de `contas_music`.
+function sessaoMusic(req) {
+  if (!_jwtSecret) return null;
+  const s = require('../music/contas').criarVerificador({ jwtSecret: _jwtSecret }).resolver(req);
+  return s ? s.usuario.id : null;
+}
+function contasMusicPorIds(ids) {
+  const db = dbDe('music'), out = [];
+  for (let i = 0; i < ids.length; i += 400) {
+    const lote = ids.slice(i, i + 400);
+    out.push(...db.prepare(`SELECT id ref, nome, email, telefone, json_extract(consentimentos, '$.marketing') marketing
+      FROM contas_music WHERE status = 'ativo' AND id IN (${lote.map(() => '?').join(',')})`).all(...lote));
+  }
+  return linhas(out);
+}
+
 // ---------------- SaaS multiempresa (mesmo desenho: VSM, Legal, CRM) ----------------
 // tenant_users (id, nome, email, papel, ativo) + tenants (status, telefone).
 function saasSimples({ mod, papelDono, statusVivos }) {
@@ -233,7 +251,7 @@ const FONTES = [
   {
     chave: 'music', nome: 'Musique', emoji: '🎵', cor: '#3B2A6B',
     url: 'https://musique.villelastay.com.br/music/app', caminhoApp: '/music',
-    aviso: 'A conta é a da Academy: quem estiver nos dois recebe o e-mail uma vez só.',
+    aviso: 'Conta PRÓPRIA do Musique desde 28/09/2026 (ADR-0011): independente da Academy.',
     segmentos: [
       { id: 'todos', rotulo: 'Todos os usuários' },
       { id: 'docentes', rotulo: 'Professores e gestores de escola' },
@@ -243,16 +261,15 @@ const FONTES = [
     listar(seg) {
       const m = dbDe('music');
       const q = {
-        todos: 'SELECT academy_user_id id FROM usuarios_music',
+        todos: 'SELECT id FROM contas_music',
         docentes: 'SELECT DISTINCT usuario id FROM org_membros',
         alunos: "SELECT DISTINCT aluno id FROM matriculas WHERE status = 'ativa' AND menor = 0",
         responsaveis: "SELECT DISTINCT responsavel id FROM matriculas WHERE status = 'ativa' AND menor = 1 AND responsavel <> ''",
       };
-      return usuariosAcademyPorIds(m.prepare(q[seg] || q.todos).all().map((r) => String(r.id)));
+      return contasMusicPorIds(m.prepare(q[seg] || q.todos).all().map((r) => String(r.id)));
     },
-    sessao: sessaoAcademy,
-    // A conta é a da Academy — a situação também.
-    situacao: situacaoPorTabela({ mod: 'academy', tabela: 'users', colStatus: 'status' }),
+    sessao: sessaoMusic,
+    situacao: situacaoPorTabela({ mod: 'music', tabela: 'contas_music', colStatus: 'status' }),
   },
   {
     chave: 'livraria',

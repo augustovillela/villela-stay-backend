@@ -58,7 +58,7 @@ const Bandas = {
     const b = Bandas.porId(bandaId);
     if (!b || b.dono !== dono) throw new Error('Esta banda não é sua.');
     if (typeof buscarPorEmail !== 'function') {
-      throw new Error('Busca de conta indisponível: a Musique não foi montada com a conta da Academia.');
+      throw new Error('Busca de conta indisponível: a Musique foi montada sem a busca de contas.');
     }
     const entraram = []; const naoEncontrados = [];
     for (const e of (emails || []).map((x) => String(x || '').trim()).filter(Boolean)) {

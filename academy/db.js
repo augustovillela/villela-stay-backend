@@ -351,6 +351,13 @@ const MIGRACOES = [
             user_id TEXT NOT NULL, motivo TEXT DEFAULT '', status TEXT DEFAULT 'aberta', criado_em TEXT NOT NULL
           );`,
   },
+  { // Categoria MÚSICA: é por ela que o Musique mostra os cursos da Academia
+    // (ADR-0011 da Musique, 28/09/2026 — os dois sistemas são independentes
+    // e o curso é o único elo). Produtor que classifica o curso aqui aparece lá.
+    nome: 'categoria-musica-2026-09-28',
+    sql: `INSERT OR IGNORE INTO categories (slug, rotulo, origem, ordem, criado_em)
+          VALUES ('musica', 'Música', 'sistema', 15, '2026-09-28T00:00:00.000Z');`,
+  },
 ];
 
 for (const m of MIGRACOES) {

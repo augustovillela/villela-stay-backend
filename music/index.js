@@ -2,16 +2,17 @@
 // Musique · por Villela Music (15º produto) — montagem no app Express.
 // Uso no server.js (antes dos express.static e do app.listen):
 //   require('./music').montar(app, { express, requireAuth, requireAdmin,
-//     sessaoAcademy, alertaAugusto, jwtSecret });
+//     academia, enviarEmail, alertaAugusto, jwtSecret });
 //
 // FASE 0 — fundações. Escopo e decisões em docs/music/ (repo-pai).
 //
 // O que é diferente dos outros 14 módulos, e por quê:
-//   • NÃO tem base de contas própria (ADR-0001). A conta é a da
-//     Academia; `sessaoAcademy` é injetado por quem monta. Sem ele o
-//     módulo sobe assim mesmo — landing e ferramentas públicas
-//     funcionam — e a API do usuário responde 503 dizendo o que falta,
-//     em vez de 500 sem explicação.
+//   • Conta PRÓPRIA desde a ADR-0011 (28/09/2026; a conta única da
+//     ADR-0001 foi revogada pelo Augusto). Musique e Academia são
+//     independentes; o que os liga são os CURSOS, por funções injetadas
+//     em `academia` (vitrine, trilha → curso, produtor que dá aula) e a
+//     conta do dono, semeada com a mesma senha. Sem `academia`, o módulo
+//     sobe inteiro — só não mostra cursos nem aceita vínculo.
 //   • Áudio vai para o R2 por upload direto (ADR-0003). Nada de arquivo
 //     no disco do Render, que é de 1 GB para 15 produtos.
 //   • Trabalho pesado NÃO roda aqui: vai para a fila e é consumido pelo
@@ -25,6 +26,8 @@ const fila = require('./fila');
 const storage = require('./storage');
 const router = require('./ia/router');
 const sessao = require('./sessao');
+const contas = require('./contas');
+const { registrarRotasContas } = require('./rotas-contas');
 const academia = require('./academia');
 const { registrarRotasApp } = require('./rotas-app');
 const { registrarRotasAcademia } = require('./rotas-academia');
@@ -34,8 +37,8 @@ const { registrarRotasStaff } = require('./rotas-staff');
 const { registrarPaginas } = require('./paginas');
 
 function montar(app, injected = {}) {
-  const { express, requireAuth, requireAdmin, sessaoAcademy, ehProfessor, buscarContaPorEmail,
-    buscarContaPorId, jwtSecret } = injected;
+  const { express, requireAuth, requireAdmin, jwtSecret, enviarEmail } = injected;
+  const academiaVillela = injected.academia || {};
   if (!express || !requireAuth || !requireAdmin || !jwtSecret) {
     throw new Error('music.montar: faltam deps (express, requireAuth, requireAdmin, jwtSecret).');
   }
@@ -48,11 +51,20 @@ function montar(app, injected = {}) {
   // histórico no git.
   const trilhas = academia.Trilhas.semear();
 
-  // Identidade: a conta da Academia (ADR-0001). Injetada, nunca
-  // importada — assim o selftest pluga uma sessão falsa e o módulo não
-  // fica preso ao banco da Academia. `criar` devolve a camada DESTA
+  // Identidade: conta PRÓPRIA (ADR-0011). `criar` devolve a camada DESTA
   // montagem: sem estado de módulo, sem duas montagens se contaminando.
-  const sessaoDoModulo = sessao.criar(sessaoAcademy);
+  const dono = contas.semearDono(academiaVillela.contaDoDono);
+  const sessaoDoModulo = sessao.criar(contas.criarVerificador({ jwtSecret }));
+  const buscarContaPorEmail = contas.Contas.buscarPorEmail;
+  const buscarContaPorId = contas.Contas.buscarPorId;
+  // Professor pelo caminho da Academia (ADR-0008) só para quem PROVOU a
+  // conta de produtor de lá (vínculo em "Minha conta"). O papel continua
+  // sendo lido na Academia a cada pedido: produtor suspenso lá deixa de
+  // dar aula aqui sem ninguém precisar lembrar.
+  const ehProfessor = typeof academiaVillela.ehProdutor === 'function' ? (u) => {
+    const c = u && contas.Contas.porId(u.id);
+    try { return !!(c && c.academia_vinculo && academiaVillela.ehProdutor(c.academia_vinculo)); } catch (_) { return false; }
+  } : null;
 
   // Hardening do módulo, no padrão do academy/index.js.
   app.use('/music', (req, res, next) => {
@@ -75,8 +87,10 @@ function montar(app, injected = {}) {
   }
 
   registrarRotasStaff(app, { requireAuth, requireAdmin });
+  const { cursoDaTrilha } = registrarRotasContas(app, { jwtSecret, enviarEmail, academia: academiaVillela,
+    requireUsuario: sessaoDoModulo.requireUsuario, requireAuth, requireAdmin });
   registrarRotasApp(app, { requireUsuario: sessaoDoModulo.requireUsuario });
-  registrarRotasAcademia(app, { requireUsuario: sessaoDoModulo.requireUsuario, ehProfessor, buscarContaPorEmail });
+  registrarRotasAcademia(app, { requireUsuario: sessaoDoModulo.requireUsuario, ehProfessor, buscarContaPorEmail, cursoDaTrilha });
   registrarRotasBiblioteca(app, { requireUsuario: sessaoDoModulo.requireUsuario, buscarContaPorEmail });
   registrarRotasOrganizacoes(app, { requireUsuario: sessaoDoModulo.requireUsuario, buscarContaPorEmail, buscarContaPorId });
   // CIFRAS (28/09/2026): acervo, editor, versões, arranjos de banda,
@@ -103,7 +117,8 @@ function montar(app, injected = {}) {
   }
 
   console.log('[music] Musique montada. Landing: /music · app: /music/app · staff: /staff/api/music'
-    + ` · conta: ${sessaoDoModulo.configurado() ? 'Academia (ADR-0001)' : 'NÃO CONFIGURADA — API do usuário indisponível'}`
+    + ` · conta: própria (ADR-0011), dono ${dono.ok ? (dono.criada ? 'semeado agora' : 'ok') : 'NÃO semeado — ' + dono.motivo}`
+    + ` · cursos da Academia: ${typeof academiaVillela.cursosDeMusica === 'function' ? 'sim' : 'não'}`
     + ` · armazenamento: ${storage.ativo() ? 'R2' : 'desligado (faltam ' + storage.faltando().join(', ') + ')'}`
     + ` · IA disponível: ${router.disponiveis().length}/${router.CAPABILITIES.length} capabilities`
     + ` · trilhas: ${trilhas.total}`
@@ -112,7 +127,7 @@ function montar(app, injected = {}) {
     + ` ou professor de escola`
     + ` · nomes na chamada/boletim: ${typeof buscarContaPorId === 'function' ? 'sim' : 'NÃO (a tela mostraria id de usuário)'}`);
 
-  return { repo, direitos, fila, storage, router, academia, sessao: sessaoDoModulo };
+  return { repo, direitos, fila, storage, router, academia, sessao: sessaoDoModulo, contas, dono };
 }
 
 /**

@@ -22,7 +22,10 @@ const repo = require('./repo');
 
 const s = (v, max = 2000) => String(v == null ? '' : v).trim().slice(0, max);
 
-function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaPorEmail }) {
+function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaPorEmail, cursoDaTrilha }) {
+  // Trilha → curso da Academia (ADR-0011): complemento editorial, escolhido
+  // no staff. Sem a ligação, a trilha sai igual a antes.
+  const comCurso = (t) => (t && typeof cursoDaTrilha === 'function' ? { ...t, curso_academia: cursoDaTrilha(t.id) } : t);
   const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
     if (e && e.bloqueioDeDireitos) return res.status(403).json({ erro: e.message });
     res.status(400).json({ erro: e.message });
@@ -42,9 +45,9 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
   const requireProfessor = (req, res, next) => {
     if (!ehDocente(req.usuario)) {
       return res.status(403).json({
-        erro: 'Esta área é de professor. Você chega nela de dois jeitos: ativando o perfil de '
-          + 'produtor na Academia, ou entrando como professor de uma escola aqui na Musique.',
-        onde: '/academy/app',
+        erro: 'Esta área é de professor. Você chega nela de dois jeitos: vinculando, em "Minha conta", '
+          + 'a sua conta de produtor aprovado da Academia, ou entrando como professor de uma escola aqui no Musique.',
+        onde: '/music/app#conta',
       });
     }
     next();
@@ -57,7 +60,7 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
     const u = req.usuario.id;
     res.json({
       revisar_hoje: academia.Pratica.paraRevisarHoje(u),
-      trilhas: academia.Trilhas.listar().map((t) => academia.Trilhas.comProgresso(t.id, u)),
+      trilhas: academia.Trilhas.listar().map((t) => comCurso(academia.Trilhas.comProgresso(t.id, u))),
       estatisticas: academia.Pratica.estatisticas(u, { dias: 30 }),
       calibracao: academia.Calibracao.estado(u),
       tarefas: academia.Tarefas.doAluno(u).length,
@@ -83,13 +86,13 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
   app.get('/music/api/trilhas', requireUsuario, h(async (req, res) => {
     const perfil = repo.Usuarios.publico(req.perfil) || {};
     const inst = req.query.instrumento || (perfil.instrumentos || [])[0] || '';
-    res.json({ trilhas: academia.Trilhas.listar({ instrumento: inst }).map((t) => academia.Trilhas.comProgresso(t.id, req.usuario.id)) });
+    res.json({ trilhas: academia.Trilhas.listar({ instrumento: inst }).map((t) => comCurso(academia.Trilhas.comProgresso(t.id, req.usuario.id))) });
   }));
 
   app.get('/music/api/trilhas/:slug', requireUsuario, h(async (req, res) => {
     const t = academia.Trilhas.porSlug(req.params.slug);
     if (!t) return res.status(404).json({ erro: 'Trilha não encontrada.' });
-    res.json({ trilha: academia.Trilhas.comProgresso(t.id, req.usuario.id) });
+    res.json({ trilha: comCurso(academia.Trilhas.comProgresso(t.id, req.usuario.id)) });
   }));
 
   app.post('/music/api/trilhas/:slug/avancar', requireUsuario, h(async (req, res) => {

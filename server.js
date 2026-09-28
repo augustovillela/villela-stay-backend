@@ -4905,36 +4905,32 @@ try {
 // de cifras/partituras e sala de prática. Landing /music, app /music/app,
 // staff em /staff/api/music/*. SQLite próprio em DATA_DIR/music/.
 //
-// Difere dos outros 14 num ponto de propósito (ADR-0001): NÃO tem base de
-// contas própria — a conta é a da Academia, e o verificador de sessão vem
-// do núcleo, montado aqui com as funções de leitura da Academia. Sem isso
-// o mesmo professor teria dois logins.
-//
-// Áudio vai para o R2 por upload direto e trabalho pesado vai para a fila,
-// consumida pelo serviço SEPARADO `music-worker` (ADR-0003). Sem as envs
-// MUSIC_S3_*, o módulo sobe e diz no log o que falta.
+// CONTA PRÓPRIA desde a ADR-0011 (28/09/2026): o Augusto decidiu que
+// Musique e Academia são sistemas INDEPENDENTES. A conta única da ADR-0001
+// acabou; o que liga os dois passa por `academia` abaixo, e só isso:
+//   • contaDoDono — a conta dele nasce no Musique com a MESMA senha (cópia
+//     única do hash; depois cada lado segue sozinho). Só a dele.
+//   • cursosDeMusica / cursoPorSlug — a vitrine de cursos e trilha → curso.
+//   • conferirCredencial / ehProdutor — produtor aprovado da Academia que
+//     PROVA a conta de lá pode dar aula no Musique (ADR-0008).
 try {
   const academyRepo = require('./academy').repo;
-  const sessaoAcademy = require('./nucleo/sessao-academy').criarVerificador({
-    jwtSecret: JWT_SECRET,
-    buscarUsuario: (uid) => academyRepo.Usuarios.porId(uid),
-    sessaoValida: (jti) => academyRepo.Sessoes.valida(jti),
-  });
+  const academyConteudo = require('./academy/repo-conteudo');
   require('./music').montar(app, {
-    express, requireAuth, requireAdmin,
-    sessaoAcademy,
-    // Quem é PRODUTOR APROVADO na Academia dá aula na Musique. O papel
-    // vem de lá (ADR-0001): duplicar a aprovação de professor aqui criaria
-    // duas verdades sobre a mesma pessoa.
-    ehProfessor: (u) => { try { return academyRepo.podeAgirComo(u, 'produtor'); } catch (_) { return false; } },
-    // O professor atribui tarefa pelo E-MAIL do aluno. A busca é da
-    // Academia, que é dona das contas — a Musique só pergunta.
-    buscarContaPorEmail: (email) => { try { return academyRepo.Usuarios.porEmail(email); } catch (_) { return null; } },
-    // Lista de chamada e boletim precisam de NOME. Sem isto a tela do
-    // professor mostraria id de usuário, que é ilegível e parece defeito.
-    // Sai só `{ id, nome }` de propósito: a tela não precisa do e-mail
-    // de terceiro para funcionar.
-    buscarContaPorId: (id) => { try { const u = academyRepo.Usuarios.porId(id); return u ? { id: u.id, nome: u.nome } : null; } catch (_) { return null; } },
+    express, requireAuth, requireAdmin, enviarEmail,
+    academia: {
+      contaDoDono: () => academyRepo.Usuarios.porEmail(process.env.MUSIC_DONO_EMAIL || 'augusto.villela@gmail.com'),
+      conferirCredencial: (email, senha, codigo) => {
+        const u = academyRepo.Usuarios.porEmail(email);
+        if (!u || u.status !== 'ativo' || !academyRepo.Usuarios.conferirSenha(u, senha)) return null;
+        // Quem protege a conta da Academia com 2FA não perde a proteção aqui.
+        const fa = require('./academy/governanca').DoisFA.conferirLogin(u.id, codigo);
+        return fa.precisa && !fa.ok ? { precisa_2fa: true } : { id: u.id };
+      },
+      ehProdutor: (id) => { try { const u = academyRepo.Usuarios.porId(id); return !!(u && u.status === 'ativo' && academyRepo.podeAgirComo(u, 'produtor')); } catch (_) { return false; } },
+      cursosDeMusica: () => academyConteudo.Marketplace.listar({ categoria: 'musica', n: 60 }),
+      cursoPorSlug: (slug) => academyConteudo.Marketplace.porSlug(slug),
+    },
     alertaAugusto: (typeof alertaAugusto === 'function') ? alertaAugusto : async () => {},
     jwtSecret: JWT_SECRET,
   });

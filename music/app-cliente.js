@@ -55,7 +55,7 @@ const JS = `
       body: corpo ? JSON.stringify(corpo) : undefined,
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
-        if (r.status === 401) { location.href = (d && d.entrar) || '/academy/app'; throw new Error('sessao'); }
+        if (r.status === 401) { location.href = '/music/entrar?voltar=' + encodeURIComponent(location.pathname + location.hash); throw new Error('sessao'); }
         if (!r.ok) { var e = new Error((d && d.erro) || ('Erro ' + r.status)); e.dados = d; throw e; }
         return d;
       });
@@ -89,6 +89,7 @@ const JS = `
     ['biblioteca', 'Biblioteca'], ['repertorios', 'Repertórios'],
     ['tarefas', 'Tarefas'], ['progresso', 'Meu progresso'],
     ['minhas_turmas', 'Minhas turmas'], ['professor', 'Professor'], ['escola', 'Escola'],
+    ['conta', 'Minha conta'],
   ];
   function pintarMenu() {
     $('#menu').innerHTML = '';
@@ -124,6 +125,7 @@ const JS = `
       // Escola e turma vivem em /music/escolas.js — a Fase 3 inteira.
       escola: function () { window.MusiqueEscolas.verEscolas(); },
       minhas_turmas: function () { window.MusiqueEscolas.verMinhasTurmas(); },
+      conta: verConta,
     };
     (telas[aba] || verEstudar)();
   }
@@ -180,6 +182,86 @@ const JS = `
         }));
       });
       c.appendChild(g);
+      pintarCursos(c, d.trilhas);
+    }).catch(function (e) { $('#corpo').innerHTML = ''; erro(e.message); });
+  }
+
+  // Cursos da Academia (ADR-0011): o UNICO elo entre os dois sistemas do
+  // lado do aluno. O curso ligado a uma trilha vem primeiro, com o motivo;
+  // depois os de musica publicados. A compra e as aulas ficam na Academia,
+  // com a conta de la - por isso o link abre em outra aba.
+  function pintarCursos(c, trilhas) {
+    var ligados = [];
+    (trilhas || []).forEach(function (t) {
+      if (t.curso_academia) ligados.push({ curso: t.curso_academia, motivo: 'Complementa a trilha ' + t.titulo });
+    });
+    api('GET', '/cursos').catch(function () { return { cursos: [] }; }).then(function (r) {
+      var vistos = {};
+      var todos = ligados.concat((r.cursos || []).map(function (x) { return { curso: x, motivo: '' }; }))
+        .filter(function (x) { if (vistos[x.curso.slug]) return false; vistos[x.curso.slug] = 1; return true; });
+      if (!todos.length) return;
+      c.appendChild(el('h2', { txt: 'Cursos na Academia Villela' }));
+      c.appendChild(el('p', { class: 'sub', txt: 'Os cursos ficam na Academia, que tem conta propria. Abrem em outra aba.' }));
+      var g = el('div', { class: 'grade' });
+      todos.forEach(function (x) {
+        var a = el('a', { class: 'item', href: x.curso.url, target: '_blank', rel: 'noopener',
+          html: '<b>' + esc(x.curso.titulo) + '</b><span>' + esc(x.motivo || x.curso.subtitulo || '') + '</span>' +
+            (x.curso.produtor ? '<span class="peq">com ' + esc(x.curso.produtor) + '</span>' : '') });
+        g.appendChild(a);
+      });
+      c.appendChild(g);
+    });
+  }
+
+  // =================================================================
+  // MINHA CONTA (ADR-0011): conta propria do Musique
+  // =================================================================
+  function verConta() {
+    api('GET', '/conta').then(function (d) {
+      var c = $('#corpo'); c.innerHTML = '';
+      c.appendChild(el('h2', { txt: 'Minha conta' }));
+      c.appendChild(el('p', { class: 'sub', txt: d.conta.nome + ' - ' + d.conta.email }));
+
+      var fs = el('div', { class: 'cartao-conta' });
+      fs.innerHTML = '<h3>Trocar a senha</h3>' +
+        '<label>Senha atual<input type="password" id="ct-atual" autocomplete="current-password"></label>' +
+        '<label>Senha nova (8 ou mais caracteres)<input type="password" id="ct-nova" autocomplete="new-password"></label>' +
+        '<button class="btn peq" id="ct-trocar">Trocar a senha</button>';
+      c.appendChild(fs);
+      $('#ct-trocar').onclick = function () {
+        api('POST', '/conta/senha', { senha_atual: $('#ct-atual').value, senha_nova: $('#ct-nova').value })
+          .then(function () { $('#ct-atual').value = ''; $('#ct-nova').value = ''; aviso('Senha trocada. As outras sessoes abertas foram encerradas.'); })
+          .catch(function (e) { erro(e.message); });
+      };
+
+      if (d.academia.disponivel) {
+        var ac = el('div', { class: 'cartao-conta' });
+        if (d.academia.vinculada) {
+          ac.innerHTML = '<h3>Professor pela Academia</h3><p class="sub">Sua conta de produtor da Academia esta vinculada' +
+            (d.academia.produtor ? ' e aprovada: a area de Professor esta liberada.' : ', mas o perfil de produtor nao esta aprovado agora.') + '</p>' +
+            '<button class="btn peq sec" id="ac-desv">Desfazer o vinculo</button>';
+        } else {
+          ac.innerHTML = '<h3>Da aula e vende curso na Academia?</h3>' +
+            '<p class="sub">Vincule a sua conta de PRODUTOR da Academia para liberar a area de Professor. A senha e conferida la e nao fica guardada aqui. Para estudar, nao precisa.</p>' +
+            '<label>E-mail da Academia<input type="email" id="ac-email"></label>' +
+            '<label>Senha da Academia<input type="password" id="ac-senha" autocomplete="off"></label>' +
+            '<label>Codigo do autenticador (so se usar na Academia)<input type="text" id="ac-cod" inputmode="numeric" autocomplete="off"></label>' +
+            '<button class="btn peq" id="ac-vinc">Vincular</button>';
+        }
+        c.appendChild(ac);
+        if ($('#ac-vinc')) $('#ac-vinc').onclick = function () {
+          api('POST', '/conta/vincular-academia', { email: $('#ac-email').value, senha: $('#ac-senha').value, codigo: $('#ac-cod').value })
+            .then(function () { location.reload(); }).catch(function (e) { erro(e.message); });
+        };
+        if ($('#ac-desv')) $('#ac-desv').onclick = function () {
+          api('DELETE', '/conta/vincular-academia').then(function () { location.reload(); }).catch(function (e) { erro(e.message); });
+        };
+      }
+
+      var sair = el('button', { class: 'btn sec', txt: 'Sair do Musique', onclick: function () {
+        fetch('/music/api/conta/sair', { method: 'POST' }).then(function () { location.href = '/music'; });
+      } });
+      c.appendChild(el('div', { class: 'cartao-conta' }, [sair]));
     }).catch(function (e) { $('#corpo').innerHTML = ''; erro(e.message); });
   }
 
@@ -791,7 +873,15 @@ const JS = `
   };
 
   // ---- boot ------------------------------------------------------
-  ir('estudar');
+  // "Minha conta" no topo da pagina e um link para #conta: com o app ja
+  // aberto, so o hashchange percebe o clique.
+  function porHash() {
+    if (location.hash !== '#conta') return false;
+    history.replaceState(null, '', location.pathname + location.search);
+    ir('conta'); return true;
+  }
+  window.addEventListener('hashchange', porHash);
+  if (!porHash()) ir('estudar');
 })();
 `;
 
