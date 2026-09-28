@@ -9,6 +9,19 @@ const relatorios = require('./investimentos-relatorios');
 function registrarRotasInvestimentos(app, rota) {
   if (!app || !rota) throw new Error('rotas-investimentos: faltam app/rota.');
 
+  // O proprietário pode liberar SOMENTE o próprio acesso. O identificador
+  // vem da sessão, nunca do corpo: assim esta rota não vira um atalho para
+  // conceder o módulo a terceiros. `conceder` ainda exige conta interna,
+  // Enterprise, perfil proprietário e um TOTP válido nesta mesma chamada.
+  app.post('/finance/api/investimentos/acesso-proprio', ...rota((req) => ({
+    ok: true,
+    acesso: investimentos.conceder(
+      req.tenant,
+      req.assinante.id,
+      'Liberação nominal solicitada pelo próprio CEO no Villela Finance',
+    ),
+  }), { permissao: 'administrar', json: true }));
+
   app.get('/finance/api/investimentos/resumo', ...rota((req) =>
     investimentos.resumo(req.tenant, req.assinante),
   { permissao: 'ler' }));

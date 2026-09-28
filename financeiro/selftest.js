@@ -3568,6 +3568,34 @@ testeAsync('HTTP: aba privada só aparece após flag e concessão nominal', asyn
   process.env.FINANCE_INVESTIMENTOS = 'off';
 });
 
+testeAsync('HTTP: CEO libera somente o próprio acesso com MFA', async () => {
+  const usuario = naA(() => repo.usuarioPorEmail('augusto@villelastay.com.br'));
+  const outro = usuarioRecuperacao;
+  process.env.FINANCE_INVESTIMENTOS = 'on';
+  const inicio = naA(() => mfa.iniciar(usuario.id));
+  naA(() => mfa.confirmar(usuario.id, mfa.codigoNoPasso(inicio.segredo, mfa.passoAgora())));
+
+  const semMfa = await pedir('POST', '/finance/api/investimentos/acesso-proprio', {
+    cookie: cookieA, corpo: { usuarioId: outro.id },
+  });
+  assert.strictEqual(semMfa.status, 403, 'a autoconcessão passou sem segundo fator');
+
+  const codigoNovo = mfa.codigoNoPasso(inicio.segredo, mfa.passoAgora() + 1);
+  const liberado = await pedir('POST', '/finance/api/investimentos/acesso-proprio', {
+    cookie: cookieA,
+    corpo: { usuarioId: outro.id },
+    cabecalhos: { 'x-mfa': codigoNovo },
+  });
+  assert.strictEqual(liberado.status, 200, liberado.cru);
+  assert.strictEqual(naA(() => repo.acessoInvestimentosPorUsuario(usuario.id)).ativo, 1,
+    'a rota não concedeu o acesso ao próprio usuário da sessão');
+  assert.strictEqual(naA(() => repo.acessoInvestimentosPorUsuario(outro.id)), null,
+    'a rota confiou no usuarioId do corpo e concedeu acesso a terceiro');
+
+  naA(() => investimentos.revogar(contaA, usuario.id, 'fim do teste da autoconcessão'));
+  process.env.FINANCE_INVESTIMENTOS = 'off';
+});
+
 testeAsync('HTTP: sem sessão é 401, não 500 nem tela vazia', async () => {
   const r = await pedir('GET', '/finance/api/cockpit');
   assert.strictEqual(r.status, 401);

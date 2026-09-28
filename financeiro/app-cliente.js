@@ -1535,6 +1535,8 @@ const F = {
         plano ${F.esc(e.plano.nome)}${e.plano.cortesia ? ' (cortesia)' : ''}</p>
       </div>
 
+      ${F.blocoAcessoInvestimentos(e)}
+
       <div class="card" style="margin-bottom:14px">
         <h3 style="margin:0 0 10px">Trocar a senha</h3>
         <form class="form" id="f-senha-form" style="max-width:100%;padding:0;border:0;box-shadow:none">
@@ -1564,6 +1566,40 @@ const F = {
         F.el('f-senha-form').reset();
       } catch (err) { msg.className = 'erro'; msg.textContent = err.message; }
     };
+  },
+
+  blocoAcessoInvestimentos(e) {
+    const inv = e && e.investimentos;
+    if (!inv || !inv.ligado) return '';
+    if (inv.disponivel) return `<div class="card" style="margin-bottom:14px">
+      <h3 style="margin:0 0 6px">Investimentos do CEO</h3>
+      <p style="margin:0">Seu acesso nominal está <b>liberado</b>. A aba Investimentos aparece neste painel.</p>
+      <p class="sub" style="margin:6px 0 0">O módulo produz análises e pareceres; não envia ordens, lances nem operações financeiras.</p>
+    </div>`;
+    if (inv.motivo !== 'acesso_nao_concedido') return '';
+    return `<div class="card" style="margin-bottom:14px">
+      <h3 style="margin:0 0 6px">Investimentos do CEO</h3>
+      <p style="margin:0 0 10px">O módulo privado está pronto. Confirme a liberação nominal do seu próprio usuário com o código atual do autenticador.</p>
+      <label style="max-width:220px">Código de 6 dígitos
+        <input id="f-inv-mfa" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+      </label>
+      <p style="margin:10px 0 0"><button class="btn" onclick="F.concederMeuAcessoInvestimentos()">Liberar meu acesso</button></p>
+      <p id="f-inv-acesso-msg" class="sub" style="margin-top:8px"></p>
+    </div>`;
+  },
+
+  async concederMeuAcessoInvestimentos() {
+    const msg = F.el('f-inv-acesso-msg');
+    const campo = F.el('f-inv-mfa');
+    const codigo = campo ? campo.value.replace(/\D/g, '') : '';
+    msg.className = 'sub'; msg.textContent = 'Confirmando…';
+    try {
+      if (codigo.length !== 6) throw new Error('Informe o código atual de 6 dígitos do autenticador.');
+      await F.api('POST', F.url('/investimentos/acesso-proprio'), {}, { mfa: codigo });
+      F.eu = await F.api('GET', F.url('/eu'));
+      F.tab = 'investimentos';
+      F.telaApp();
+    } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
   },
 
   /** Assinatura e portabilidade, dentro de "Minha conta". */
