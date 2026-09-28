@@ -59,6 +59,7 @@ const mercadoE2e = require('./mercado-e2e');
 const mercadoPilotoCvm = require('./mercado-piloto-cvm');
 const mercadoQualidadeCvm = require('./mercado-qualidade-cvm');
 const mercadoConflitosCvm = require('./mercado-conflitos-cvm');
+const mercadoDuplicidadesCvm = require('./mercado-duplicidades-cvm');
 const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
@@ -1585,6 +1586,58 @@ teste('investimentos: conflitos CVM são classificados por evidência reproduzí
     linha('110', '1100000000000', { DT_REFER: '2025-12-31' }),
   ]).categoria, 'contradicao_fonte');
   assert.match(mercadoConflitosCvm.mascaraCnpj('33000167000101'), /^\*\*\.\*\*\*\./);
+});
+
+teste('investimentos: decomposição de duplicidades exige armação e só cria tabelas de diagnóstico', () => {
+  const base = {
+    FINANCE_MARKET_DATABASE_URL: 'postgresql://interno/teste',
+    FINANCE_S3_ENDPOINT: 'https://conta.r2.cloudflarestorage.com',
+    FINANCE_S3_BUCKET: 'bucket', FINANCE_S3_KEY: 'key', FINANCE_S3_SECRET: 'secret',
+  };
+  assert.throws(() => mercadoDuplicidadesCvm.configAmbiente({ ...base, FINANCE_INV_PARSE_WORKER: 'off' }),
+    /FINANCE_INV_CVM_DUPLICATES=on/);
+  assert.throws(() => mercadoDuplicidadesCvm.configAmbiente({ ...base,
+    FINANCE_INV_CVM_DUPLICATES: 'on', FINANCE_INV_PARSE_WORKER: 'on' }), /precisa permanecer off/);
+  assert.doesNotThrow(() => mercadoDuplicidadesCvm.configAmbiente({ ...base,
+    FINANCE_INV_CVM_DUPLICATES: 'on', FINANCE_INV_PARSE_WORKER: 'off' }));
+  assert.match(mercadoDuplicidadesCvm.DUPLICATE_SCHEMA_SQL, /fin_quality_duplicate_runs/);
+  assert.match(mercadoDuplicidadesCvm.DUPLICATE_SCHEMA_SQL, /fin_quality_duplicate_groups/);
+  assert.match(mercadoDuplicidadesCvm.DUPLICATE_SCHEMA_SQL, /fin_quality_duplicate_occurrences/);
+  assert.match(mercadoDuplicidadesCvm.DUPLICATE_SCHEMA_SQL, /fin_quality_duplicate_simulations/);
+  assert.doesNotMatch(mercadoDuplicidadesCvm.DUPLICATE_SCHEMA_SQL, /ordem_financeira|lance|razao/);
+});
+
+testeAsync('investimentos: migração de duplicidades executa cada tabela separadamente', async () => {
+  const chamadas = [];
+  await mercadoDuplicidadesCvm.migrar({ query: async sql => { chamadas.push(sql); } });
+  assert.strictEqual(chamadas.length, 4);
+});
+
+teste('investimentos: duplicidades e três políticas são classificadas sem aplicar dedupe', () => {
+  const n = (assinatura = 'fato-a') => ({ assinatura, fatoObj: { valorTexto: '100' } });
+  const b = (hashLinha, arquivo, assinatura = 'fato-a', valor = '100') => ({
+    hash_linha: hashLinha, arquivo, assinatura, campos: { VL_CONTA: valor },
+  });
+  const mesma = mercadoDuplicidadesCvm.classificarGrupo([n(), n()], [
+    b('raw-a', 'dre.csv'), b('raw-a', 'dre.csv'),
+  ]);
+  assert.strictEqual(mesma.categoria, 'linha_oficial_repetida_mesmo_arquivo');
+  assert.deepStrictEqual(mesma.simulacoes, {
+    proveniencia_bruta_identica: 1, fato_normalizado_identico: 1, conservadora_tecnica: 0,
+  });
+  assert.strictEqual(mercadoDuplicidadesCvm.classificarGrupo([n(), n()], [
+    b('raw-a', 'a.csv'), b('raw-a', 'b.csv'),
+  ]).categoria, 'repeticao_oficial_entre_arquivos');
+  assert.strictEqual(mercadoDuplicidadesCvm.classificarGrupo([n(), n()], [
+    b('raw-a', 'a.csv'), b('raw-b', 'a.csv'),
+  ]).categoria, 'linhas_oficiais_distintas_mesmo_fato');
+  assert.strictEqual(mercadoDuplicidadesCvm.classificarGrupo([n('fato-a'), n('fato-b')], [
+    b('raw-a', 'a.csv', 'fato-a'), b('raw-b', 'a.csv', 'fato-b'),
+  ]).categoria, 'contexto_omitido_chave');
+  const tecnica = mercadoDuplicidadesCvm.classificarGrupo([n(), n()], [b('raw-a', 'a.csv')]);
+  assert.strictEqual(tecnica.categoria, 'duplicacao_checkpoint_particao');
+  assert.strictEqual(tecnica.simulacoes.conservadora_tecnica, 1);
+  assert.match(mercadoDuplicidadesCvm.mascaraCnpj('33000167000101'), /^\*\*\.\*\*\*\./);
 });
 
 teste('investimentos: regras CVM tratam datas, decimais e demonstrações sem float', () => {
