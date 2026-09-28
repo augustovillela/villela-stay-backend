@@ -1521,6 +1521,8 @@ teste('investimentos: decomposição forense exige armação e não cria tabelas
   assert.match(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL, /fin_quality_conflict_runs/);
   assert.match(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL, /fin_quality_conflict_groups/);
   assert.match(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL, /fin_quality_conflict_occurrences/);
+  assert.match(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL,
+    /REFERENCES fin_pilot_cvm_dfp_2025\.fin_market_jobs/);
   assert.doesNotMatch(mercadoConflitosCvm.CONFLICT_SCHEMA_SQL, /ordem_financeira|lance|razao/);
 });
 

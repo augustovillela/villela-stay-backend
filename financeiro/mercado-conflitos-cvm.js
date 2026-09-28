@@ -30,10 +30,10 @@ const CATEGORIAS = Object.freeze([
   'contradicao_fonte', 'indeterminada',
 ]);
 
-const CONFLICT_SCHEMA_STATEMENTS = [`CREATE TABLE IF NOT EXISTS fin_quality_conflict_runs (
+const CONFLICT_SCHEMA_STATEMENTS = [`CREATE TABLE IF NOT EXISTS ${SCHEMA}.fin_quality_conflict_runs (
   id text PRIMARY KEY,
-  job_id text NOT NULL REFERENCES fin_market_jobs(id),
-  quality_run_id text NOT NULL REFERENCES fin_quality_runs(id),
+  job_id text NOT NULL REFERENCES ${SCHEMA}.fin_market_jobs(id),
+  quality_run_id text NOT NULL REFERENCES ${SCHEMA}.fin_quality_runs(id),
   parser_versao integer NOT NULL,
   diagnostico_versao integer NOT NULL,
   fonte_sha256 text NOT NULL CHECK (length(fonte_sha256)=64),
@@ -46,8 +46,8 @@ const CONFLICT_SCHEMA_STATEMENTS = [`CREATE TABLE IF NOT EXISTS fin_quality_conf
   criado_em timestamptz NOT NULL DEFAULT now(),
   concluido_em timestamptz,
   atualizado_em timestamptz NOT NULL DEFAULT now()
-)`, `CREATE TABLE IF NOT EXISTS fin_quality_conflict_groups (
-  run_id text NOT NULL REFERENCES fin_quality_conflict_runs(id) ON DELETE CASCADE,
+)`, `CREATE TABLE IF NOT EXISTS ${SCHEMA}.fin_quality_conflict_groups (
+  run_id text NOT NULL REFERENCES ${SCHEMA}.fin_quality_conflict_runs(id) ON DELETE CASCADE,
   chave_hash text NOT NULL CHECK (length(chave_hash)=64),
   cnpj text NOT NULL,
   formulario text NOT NULL DEFAULT '',
@@ -62,7 +62,7 @@ const CONFLICT_SCHEMA_STATEMENTS = [`CREATE TABLE IF NOT EXISTS fin_quality_conf
   arquivos jsonb NOT NULL DEFAULT '[]'::jsonb,
   evidencia jsonb NOT NULL DEFAULT '{}'::jsonb,
   PRIMARY KEY (run_id,chave_hash)
-)`, `CREATE TABLE IF NOT EXISTS fin_quality_conflict_occurrences (
+)`, `CREATE TABLE IF NOT EXISTS ${SCHEMA}.fin_quality_conflict_occurrences (
   run_id text NOT NULL,
   chave_hash text NOT NULL,
   ordem integer NOT NULL CHECK (ordem > 0),
@@ -79,7 +79,7 @@ const CONFLICT_SCHEMA_STATEMENTS = [`CREATE TABLE IF NOT EXISTS fin_quality_conf
   campos_normalizados jsonb NOT NULL DEFAULT '{}'::jsonb,
   campos_brutos jsonb NOT NULL DEFAULT '{}'::jsonb,
   PRIMARY KEY (run_id,chave_hash,ordem),
-  FOREIGN KEY (run_id,chave_hash) REFERENCES fin_quality_conflict_groups(run_id,chave_hash) ON DELETE CASCADE
+  FOREIGN KEY (run_id,chave_hash) REFERENCES ${SCHEMA}.fin_quality_conflict_groups(run_id,chave_hash) ON DELETE CASCADE
 )`];
 const CONFLICT_SCHEMA_SQL = `${CONFLICT_SCHEMA_STATEMENTS.join(';\n')};`;
 
