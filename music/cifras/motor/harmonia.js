@@ -114,6 +114,19 @@
    * Grau do acorde no tom. `sistema`: 'romano' | 'nashville'.
    * Devolve { texto, grau (semitons), diatonico } ou null.
    */
+  /**
+   * Função harmônica do grau (em semitons a partir da tônica), como se
+   * ensina: tônica (repouso), subdominante (afastamento) e dominante
+   * (tensão que pede resolução). Fora do campo, diz que está fora — não
+   * inventa função para empréstimo ou dominante secundária.
+   */
+  var FUNCAO_MAIOR = { 0: 'tônica', 2: 'subdominante', 4: 'tônica (anti-relativa)', 5: 'subdominante', 7: 'dominante', 9: 'tônica (relativa)', 11: 'dominante' };
+  var FUNCAO_MENOR = { 0: 'tônica', 2: 'subdominante', 3: 'tônica (relativa)', 5: 'subdominante', 7: 'dominante', 8: 'subdominante', 10: 'dominante (subtônica)', 11: 'dominante' };
+  function funcaoDoGrau(g, menor, diatonico) {
+    if (!diatonico) return 'fora do campo harmônico (empréstimo ou acorde de passagem)';
+    return (menor ? FUNCAO_MENOR : FUNCAO_MAIOR)[g] || '';
+  }
+
   function grau(textoOuAcorde, tom, opcoes) {
     var o = opcoes || {};
     var ac = typeof textoOuAcorde === 'string' ? A.ler(textoOuAcorde, o) : textoOuAcorde;
@@ -136,7 +149,7 @@
       texto += '/' + (nash ? (tom.menor ? NASH_MENOR : NASH)[gb] : (tom.menor ? NASH_MENOR : NASH)[gb]);
     }
     var campo = tom.menor ? CAMPO_MENOR : CAMPO_MAIOR;
-    return { texto: texto, grau: g, diatonico: casa(campo, g, tp) === 1 };
+    return { texto: texto, grau: g, diatonico: casa(campo, g, tp) === 1, funcao: funcaoDoGrau(g, !!tom.menor, casa(campo, g, tp) === 1) };
   }
 
   // ---------------------------------------------------------------

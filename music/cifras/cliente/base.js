@@ -231,11 +231,15 @@
       b.onclick = function () { C.ir(t[0]); };
       n.appendChild(b);
     });
+    // Comandos de voz: "abrir Tempo Perdido", "subir meio tom", "pausar"…
+    if (C.Voz) n.appendChild(C.Voz.botao());
   }
   C.pintarSub = pintarSub;
 
   /** Vai para uma tela das Cifras. `arg` = id (cifra, banda...). */
   C.ir = function (tela, arg, extra) {
+    // Saiu da cifra: o player fixo do Smart Play fecha junto.
+    if (tela !== 'cifra' && C.SmartPlay) C.SmartPlay.fechar();
     if (!$('#cf-sub')) telaBase();
     C.estado.tela = ['cifra', 'musica', 'editor', 'setlist', 'banda', 'comparar', 'previa'].indexOf(tela) >= 0
       ? ({ cifra: 'biblioteca', musica: 'biblioteca', editor: 'biblioteca', comparar: 'biblioteca', previa: 'importar', setlist: 'setlists', banda: 'bandas' })[tela] : tela;

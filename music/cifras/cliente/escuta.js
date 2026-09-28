@@ -55,6 +55,13 @@
   }
   E.decodificar = decodificar;
 
+  /** Smart Play: alinha a cifra (sequência de acordes) a uma gravação, no Worker. */
+  E.alinhar = function (arrayBuffer, acordes) {
+    return decodificar(arrayBuffer, 22050).then(function (a) {
+      return pedir({ tipo: 'alinhar', amostras: a.amostras, taxa: a.taxa, acordes: acordes }, [a.amostras.buffer]);
+    }).then(function (r) { return r.resultado; });
+  };
+
   function baixar(url) {
     return fetch(url).then(function (r) { if (!r.ok) throw new Error('Não consegui baixar o áudio (' + r.status + ').'); return r.arrayBuffer(); });
   }

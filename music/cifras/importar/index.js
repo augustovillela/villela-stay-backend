@@ -407,6 +407,9 @@ const Importar = {
     db.prepare("UPDATE importacoes SET status = 'salva', obra_id = ?, cifra_id = ?, atualizado_em = ? WHERE id = ?").run(obra.id, cifra.cifra.id, nowISO(), importacaoId);
     direitos.registrar({ ator: usuario, acao: 'cifra.importada', alvo: cifra.cifra.id, detalhe: { tipo: fonte.tipo || t.tipo_entrada, adaptador: fonte.adaptador || '' } });
     log('salva', { id: importacaoId, tipo: fonte.tipo || t.tipo_entrada });
+    // O vídeo da música no YouTube, achado sozinho (pedido do Augusto) — em
+    // segundo plano: a importação nunca espera nem cai por causa dele.
+    if (destino === 'nova_musica') require('../youtube').emSegundoPlano(obra.id, usuario);
     return { obra_id: obra.id, cifra_id: cifra.cifra.id };
   },
 

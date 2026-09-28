@@ -475,7 +475,12 @@
       areaDoc.innerHTML = '';
       areaDoc.appendChild(R.cifra(r.doc, { modo: v.modo, graus: v.graus, familia: v.familia, fonte: v.fonte, espacamento: v.espacamento, colunas: v.colunas,
         tema: v.tema, largura: v.largura, ocultacao: v.ocultacao, comentarios: estado.comentarios,
-        aoClicarAcorde: function (ac, l, elm) { tocarAcorde(ac); if (estado.mic) estado.mic.irPara(elm); } }));
+        aoClicarAcorde: function (ac, l, elm) {
+          tocarAcorde(ac);
+          // Clique no acorde: notas, grau e função no campo harmônico do tom, e o desenho.
+          if (C.SmartPlay) C.SmartPlay.detalheAcorde(ac, elm, { tom: (estado.r || {}).tom_soando, instrumento: v.instrumento, afinacao: v.afinacao, canhoto: v.canhoto, tocar: tocarAcorde });
+          if (estado.mic) estado.mic.irPara(elm);
+        } }));
       if (estado.mic) estado.mic.recomecar();
       pintarFerramentas();
     }
@@ -516,8 +521,9 @@
       ferr.appendChild(grupo('Rolar', [bt(rolagem.ativa() ? '⏸' : '▶', function () { rolagem.duracao_s = C.duracaoDaRolagem(docCru, v.rolagem); rolagem.alternar(v.rolagem.atraso_s || 0); }, rolagem.ativa() ? 'Pausar rolagem' : 'Iniciar rolagem'),
         bt('−', function () { rolagem.ajustar(-5); salvarVisao(); }, 'Mais devagar'), el('b', { txt: String(rolagem.velocidade) }), bt('+', function () { rolagem.ajustar(5); salvarVisao(); }, 'Mais rápido'), estado.mic]));
       var mais = el('div', { class: 'cf-mais linha', style: 'margin:0' });
-      mais.appendChild(C.botao('Palco', function () { C.palcoUmaMusica(estado); }, 'peq'));
-      if (d.pode && d.pode.editar) mais.appendChild(C.botao('Editar', function () { C.ir('editor', d.cifra.id); }, 'sec peq'));
+      if (d.pode && d.pode.editar) mais.appendChild(C.botao('✏️ Editar cifra', function () { C.ir('editor', d.cifra.id); }, 'peq'));
+      mais.appendChild(C.botao('🎧 Smart Play', function () { if (C.SmartPlay.ativo()) { C.SmartPlay.player(true); C.SmartPlay.tocar(); } else C.aviso('Esta música ainda não tem áudio: use o player embaixo para procurar no YouTube ou adicionar um MP3.'); }, 'peq'));
+      mais.appendChild(C.botao('Palco', function () { C.palcoUmaMusica(estado); }, 'sec peq'));
       mais.appendChild(sel([['', 'Mais…'], ['exibicao', 'Exibição'], ['historico', 'Histórico de versões'], ['praticar', 'Praticar'], ['comentarios', 'Comentários e notas'],
         ['exportar', 'Exportar / imprimir'], ['compartilhar', 'Link e QR Code'], ['arranjo', 'Arranjos'], ['setlist', 'Adicionar a setlist'], ['original', 'Ver original importado'],
         ['avaliar', 'Avaliar / propor correção']].concat(C.temIA('revisar_harmonia') ? [['ia_harmonia', 'IA: revisar harmonia']] : []).concat(C.temIA('guia_instrumento') ? [['ia_guia', 'IA: guia do instrumento']] : []),
@@ -580,6 +586,17 @@
       else if ((e.key === 'e' || e.key === 'E') && d.pode && d.pode.editar) C.ir('editor', d.cifra.id);
     });
     pintar();
+    // Ações que os comandos de voz usam (mesmas dos botões).
+    estado.acoes = {
+      transpor: function (n) { mudar(function () { v.semitons += n; }); },
+      tom: function (t) { mudar(function () { v.tom = t; v.semitons = 0; }); },
+      tomOriginal: function () { mudar(function () { v.tom = ''; v.semitons = 0; }); },
+      fonte: function (p) { mudar(function () { v.fonte = Math.max(12, Math.min(56, v.fonte + 2 * p)); }); },
+      rolar: function (ligar) { if (ligar === rolagem.ativa()) return; rolagem.duracao_s = C.duracaoDaRolagem(docCru, v.rolagem); rolagem.alternar(ligar ? v.rolagem.atraso_s || 0 : 0); },
+      velocidade: function (p) { rolagem.ajustar(5 * p); salvarVisao(); },
+    };
+    // Smart Play: player fixo (MP3/YouTube), karaokê e rolagem junto com a música.
+    if (C.SmartPlay && !d._offline) C.SmartPlay.anexar(estado, { areaDoc: areaDoc, docCru: docCru, obraId: d.cifra.obra_id || (d.musica && d.musica.id), cifraId: d.cifra.id });
   }
 
   // =================================================================
@@ -1049,9 +1066,9 @@
   // =================================================================
   // ACORDES (biblioteca de acordes)
   // =================================================================
-  T.acordes = function () {
+  T.acordes = function (acordeInicial) {
     var p = C.estado.prefs || {};
-    var st = { acorde: 'C', inst: p.instrumento || 'violao', afin: p.afinacao || 'padrao', canhoto: !!p.canhoto, tom: 'C' };
+    var st = { acorde: typeof acordeInicial === 'string' && acordeInicial ? acordeInicial : 'C', inst: p.instrumento || 'violao', afin: p.afinacao || 'padrao', canhoto: !!p.canhoto, tom: 'C' };
     var c = C.limpar();
     c.appendChild(el('h2', { txt: 'Biblioteca de acordes' }));
     c.appendChild(el('p', { class: 'sub', txt: 'As formas são CALCULADAS da teoria — qualquer acorde, em qualquer afinação. Clique para ouvir; clique com o botão direito (ou segure) para fixar como a sua forma.' }));

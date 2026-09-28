@@ -37,7 +37,7 @@ const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</
 // Motor isomórfico: os mesmos arquivos que o servidor usa, concatenados
 // na ordem de dependência. É o que dá transposição instantânea e palco
 // sem rede no navegador.
-const MOTOR_ARQS = ['nota', 'acorde', 'harmonia', 'documento', 'instrumentos', 'audio'];
+const MOTOR_ARQS = ['nota', 'acorde', 'harmonia', 'documento', 'instrumentos', 'audio', 'comandos'];
 let _motor = null;
 function motorJs() {
   if (!_motor) _motor = MOTOR_ARQS.map((n) => fs.readFileSync(path.join(__dirname, 'motor', n + '.js'), 'utf8')).join('\n;\n');
@@ -51,6 +51,7 @@ const TRABALHADOR = [
   '  try {',
   "    if (d.tipo === 'tom') { var y = A.mudarTom(d.amostras, d.semitons); if (y === d.amostras) y = new Float32Array(y); postMessage({ id: d.id, ok: true, amostras: y }, [y.buffer]); }",
   "    else if (d.tipo === 'transcrever') { var cg = A.cromagrama(d.amostras, d.taxa); postMessage({ id: d.id, ok: true, resultado: A.transcrever(cg), bpm: A.estimarBpm(cg.fluxo, cg.passo_s) }); }",
+  "    else if (d.tipo === 'alinhar') { var cg2 = A.cromagrama(d.amostras, d.taxa); postMessage({ id: d.id, ok: true, resultado: A.alinhar(cg2, d.acordes) }); }",
   "    else postMessage({ id: d.id, ok: false, erro: 'Pedido desconhecido.' });",
   '  } catch (err) { postMessage({ id: d.id, ok: false, erro: String((err && err.message) || err) }); }',
   '};',
@@ -132,6 +133,7 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   app.post(B + '/musicas', requireUsuario, h(async (req, res) => {
     const d = req.body || {};
     const m = Musicas.criar(U(req), d);
+    require('./youtube').emSegundoPlano(m.id, U(req));   // o vídeo da música, achado sozinho (com a chave)
     let cifra = null;
     if (d.texto || d.chordpro || d.documento) cifra = Cifras.criar(U(req), m.id, { texto: d.texto, chordpro: d.chordpro, documento: d.documento });
     else if (d.criar_cifra !== false) cifra = Cifras.criar(U(req), m.id, { documento: D.novoDocumento({ titulo: m.titulo, artista: m.artista }), status: 'rascunho' });
@@ -175,6 +177,42 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   app.get(B + '/cifras/:id/rascunho', requireUsuario, h(async (req, res) => res.json({ rascunho: Cifras.rascunho(U(req), req.params.id) })));
   app.put(B + '/cifras/:id/rascunho', requireUsuario, h(async (req, res) => res.json(Cifras.salvarRascunho(U(req), req.params.id, req.body || {}))));
   app.delete(B + '/cifras/:id/rascunho', requireUsuario, h(async (req, res) => { Cifras.descartarRascunho(U(req), req.params.id); res.json({ ok: true }); }));
+  // ------------------------------------------------------------ SMART PLAY
+  // Sincronia linha a linha entre a cifra e uma mídia da música (MP3 ou
+  // YouTube). Quem VÊ a cifra lê e grava (é ajuda de ensaio, não conteúdo):
+  // fica registrado quem mexeu por último.
+  const marcasLimpas = (m) => (Array.isArray(m) ? m : []).slice(0, 600)
+    .map((x) => ({ linha: String(x.linha || '').slice(0, 40), t_ms: Math.max(0, Math.min(36e5, Math.round(Number(x.t_ms) || 0))) }))
+    .filter((x) => x.linha).sort((a, b) => a.t_ms - b.t_ms);
+  app.get(B + '/cifras/:id/sincronia', requireUsuario, h(async (req, res) => {
+    const c = Cifras.porId(req.params.id);
+    if (!acesso.podeVerCifra(c, U(req)).pode) return res.status(403).json({ erro: 'Sem acesso.' });
+    const x = db.prepare('SELECT * FROM cifra_sincronias WHERE cifra_id = ? AND midia_id = ?').get(c.id, String(req.query.midia || ''));
+    res.json({ sincronia: x ? { marcas: JSON.parse(x.marcas || '[]'), origem: x.origem, confianca: x.confianca, atualizado_em: x.atualizado_em } : null });
+  }));
+  app.put(B + '/cifras/:id/sincronia', requireUsuario, h(async (req, res) => {
+    const c = Cifras.porId(req.params.id);
+    if (!acesso.podeVerCifra(c, U(req)).pode) return res.status(403).json({ erro: 'Sem acesso.' });
+    const d = req.body || {};
+    const m = db.prepare('SELECT * FROM obra_midias WHERE id = ? AND obra_id = ?').get(String(d.midia_id || ''), c.obra_id);
+    if (!m) return res.status(404).json({ erro: 'Esta mídia não é desta música.' });
+    const marcas = marcasLimpas(d.marcas);
+    db.prepare(`INSERT INTO cifra_sincronias (cifra_id, midia_id, marcas, origem, confianca, atualizado_por, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(cifra_id, midia_id) DO UPDATE SET marcas = excluded.marcas, origem = excluded.origem, confianca = excluded.confianca,
+      atualizado_por = excluded.atualizado_por, atualizado_em = excluded.atualizado_em`)
+      .run(c.id, m.id, JSON.stringify(marcas), d.origem === 'auto' ? 'auto' : 'manual', Math.max(0, Math.min(1, Number(d.confianca) || 0)), U(req), new Date().toISOString());
+    res.json({ ok: true, marcas: marcas.length });
+  }));
+  // YouTube: a busca automática da música (precisa de YOUTUBE_API_KEY).
+  const YT = require('./youtube');
+  app.get(B + '/youtube/estado', requireUsuario, (req, res) => res.json({ ligado: YT.ligado() }));
+  app.post(B + '/musicas/:id/youtube', requireUsuario, limitar('youtube', 30), h(async (req, res) => {
+    const o = Musicas.porId(req.params.id);
+    if (!o || o.dono !== U(req)) return res.status(403).json({ erro: 'Só quem guardou a música procura o vídeo dela.' });
+    res.json(await YT.garantirParaObra(o.id, U(req), { forcar: true }));
+  }));
+  app.post(B + '/youtube/acervo', requireUsuario, limitar('youtube-acervo', 3), h(async (req, res) => res.json(await YT.acervoSemVideo(U(req)))));
+
   app.post(B + '/cifras/:id/uso', requireUsuario, h(async (req, res) => {
     const c = Cifras.porId(req.params.id);
     if (!acesso.podeVerCifra(c, U(req)).pode) return res.status(403).json({ erro: 'Sem acesso.' });

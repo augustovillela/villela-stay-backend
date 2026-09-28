@@ -108,6 +108,52 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .cf-chip-acorde{transition:transform .12s ease}
 .cf-chip-acorde:hover{transform:translateY(-1px)}
 @media (prefers-reduced-motion:reduce){.cf-atalho,.cf-cartao{animation:none}.cf-atalho:hover,.cf-cartao:hover,.cf-chip-acorde:hover{transform:none}}
+/* ---- SMART PLAY (28/09/2026): player fixo, karaokê, acorde em detalhe, voz ---- */
+body.cf-sp-aberto{padding-bottom:150px}
+.cf-sp{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:60;width:min(980px,calc(100% - 24px));
+  background:#1B2A4A;color:#fff;border-radius:16px;box-shadow:0 12px 36px rgba(0,0,0,.28);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.cf-sp .m{color:#C9D3E3;font-size:13px}
+.cf-sp .btn.sec{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.3)}
+.cf-sp-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cf-sp-play{width:42px;height:42px;border-radius:50%;border:0;background:#C9A227;color:#1B2A4A;font-size:18px;font-weight:700;cursor:pointer;flex:none}
+.cf-sp-tit{font-weight:600;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-sp-tempo{font-variant-numeric:tabular-nums;font-size:13px;min-width:78px}
+.cf-sp-pos{flex:1;min-width:120px;accent-color:#C9A227}
+.cf-sp select{background:#26385E;color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:5px 6px;font:13px Inter,sans-serif}
+.cf-sp-min{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;width:34px;height:30px;cursor:pointer}
+.cf-sp-corpo{display:flex;gap:12px;align-items:flex-start}
+.cf-sp-controles{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.cf-sp-video{flex:none;width:356px;max-width:100%;height:200px;border-radius:10px;overflow:hidden;background:#000}
+.cf-sp-video.grande{width:min(640px,55vw);height:min(46vh,360px)}
+@media (max-width:760px){.cf-sp-corpo{flex-direction:column}.cf-sp-video,.cf-sp-video.grande{width:100%}}
+.cf-sp-video.oculto{display:none}
+.cf-sp-marcar{background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px}
+.cf-sp-marcar.oculto{display:none}
+.cf-sp-carregando{font-size:13px;color:#C9D3E3}
+.cf-sp.min{width:auto;left:auto;right:12px;transform:none;padding:6px 10px}
+.cf-sp.min .cf-sp-extra,.cf-sp.min .cf-sp-marcar,.cf-sp.min .cf-sp-pos,.cf-sp.min .cf-sp-info{display:none}
+/* Minimizado: some o resto, mas o vídeo do YouTube continua VISÍVEL (termos da API). */
+.cf-sp.min .cf-sp-video.grande{width:356px;height:200px}
+@media (max-width:620px){.cf-sp-tit{max-width:140px}.cf-sp-video{width:100%}}
+/* karaokê: a linha que está tocando acende; as cantadas esmaecem */
+.cf-l.cf-kar{background:linear-gradient(90deg,#FFF3C4,#FFE58A);border-radius:8px;box-shadow:0 0 0 4px #FFE58A;transition:background .2s}
+.cf-l.cf-kar .cf-t{font-weight:700;color:#1B2A4A}
+.cf-l.cf-kar-feita{opacity:.55}
+.cf-l.cf-kar-prox{outline:3px dashed #C9A227;outline-offset:3px;border-radius:6px}
+/* detalhe do acorde */
+.cf-pop{position:absolute;z-index:70;width:260px;background:#fff;border:1px solid #D6DCE5;border-radius:14px;box-shadow:0 14px 34px rgba(27,42,74,.2);padding:12px 14px;font-size:14px}
+.cf-pop p{margin:4px 0}
+.cf-pop .m{color:#5B6478;font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.cf-pop-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.cf-pop-cab b{font:700 22px Lora,Georgia,serif;color:#1B2A4A}
+.cf-pop-x{border:0;background:transparent;font-size:16px;cursor:pointer;color:#5B6478}
+.cf-pop-diag{display:flex;align-items:center;gap:10px;margin:6px 0}
+.cf-pop-acoes{display:flex;gap:6px;margin-top:6px}
+/* botão de voz no menu das Cifras */
+.cf-voz{margin-left:auto}
+.cf-voz.on{background:#BE123C !important;color:#fff !important;border-color:#BE123C !important;animation:cf-pulsar 1s ease-in-out infinite}
+@keyframes cf-pulsar{50%{box-shadow:0 0 0 6px rgba(190,18,60,.18)}}
+@media (prefers-reduced-motion:reduce){.cf-voz.on{animation:none}}
 .cf-meus-acordes{margin:0 0 18px;padding:14px 16px;background:#fff;border:1px solid var(--borda,#E4E7EC);border-radius:14px}
 .cf-chips-acordes{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .cf-chip-acorde{display:inline-flex;align-items:center;gap:6px;border:1px solid #D6DCE5;background:#F7F9FC;border-radius:999px;padding:6px 8px 6px 12px;cursor:pointer;font:inherit}

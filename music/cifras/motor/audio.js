@@ -382,7 +382,80 @@
     return (k + ajuste) * taxa / n;
   }
 
+  // ---------------------------------------------------------------
+  // 5. ALINHAR a cifra a uma gravação (karaokê / Smart Play)
+  // ---------------------------------------------------------------
+  /**
+   * Em que momento da gravação começa cada acorde da cifra? Programação
+   * dinâmica da esquerda para a direita (a música só anda para frente):
+   * em cada quadro o estado FICA no acorde atual, AVANÇA um (troca normal)
+   * ou pula um (acorde escrito que a gravação não tocou), com custo. A
+   * pontuação de cada quadro é a semelhança entre o croma ouvido e o
+   * modelo do acorde — o mesmo modelo harmônico da transcrição. Silêncio
+   * pontua neutro: não puxa nem empurra.
+   *
+   * Entrada: `quadros` do cromagrama e a sequência de acordes na ordem da
+   * cifra. Saída: o quadro/segundo de início de cada acorde e a confiança
+   * (média da semelhança no caminho escolhido). É ESTIMATIVA — a tela
+   * deixa corrigir marcando à mão.
+   */
+  function alinhar(crom, acordes, opcoes) {
+    var o = opcoes || {};
+    var quadros = crom.quadros || crom, passo = crom.passo_s || o.passo_s || 0;
+    var mods = (acordes || []).map(function (a) { return modelo(a); });
+    var S = mods.length, T = quadros.length;
+    if (!S || !T) return { inicios_s: [], inicios: [], confianca: 0 };
+    var piso = o.piso || 0.02, custo1 = o.custoAvancar || 0.04, custo2 = o.custoPular || 0.6;
+    var emite = function (t, s) {
+      var q = quadros[t];
+      if (!q || q.energia < piso || !mods[s]) return 0.5;
+      return cosseno(q.croma, mods[s]);
+    };
+    var NEG = -1e12;
+    var prev = new Float64Array(S), cur = new Float64Array(S);
+    for (var s0 = 0; s0 < S; s0++) prev[s0] = NEG;
+    prev[0] = emite(0, 0);
+    var volta = new Uint8Array(T * S);        // 0 = ficou, 1 = avançou um, 2 = pulou um
+    for (var t = 1; t < T; t++) {
+      for (var s = 0; s < S; s++) {
+        var melhor = prev[s], de = 0;
+        if (s >= 1 && prev[s - 1] - custo1 > melhor) { melhor = prev[s - 1] - custo1; de = 1; }
+        if (s >= 2 && prev[s - 2] - custo2 > melhor) { melhor = prev[s - 2] - custo2; de = 2; }
+        cur[s] = melhor <= NEG / 2 ? NEG : melhor + emite(t, s);
+        volta[t * S + s] = de;
+      }
+      var tmp = prev; prev = cur; cur = tmp;
+    }
+    // Termina no último acorde (a gravação pode seguir num final sem cifra: ele absorve).
+    var fim = S - 1;
+    if (prev[fim] <= NEG / 2) { fim = 0; for (var k = 1; k < S; k++) if (prev[k] > prev[fim]) fim = k; }
+    var estados = new Int32Array(T), st = fim, soma = 0;
+    for (var t2 = T - 1; t2 >= 0; t2--) {
+      estados[t2] = st; soma += emite(t2, st);
+      if (t2 > 0) st -= volta[t2 * S + st];
+    }
+    var inicios = []; for (var i = 0; i < S; i++) inicios.push(-1);
+    for (var t3 = T - 1; t3 >= 0; t3--) inicios[estados[t3]] = t3;
+    // Acorde pulado herda o início do seguinte (fica sem duração, mas em ordem).
+    for (var j = S - 2; j >= 0; j--) if (inicios[j] < 0) inicios[j] = inicios[j + 1] >= 0 ? inicios[j + 1] : T - 1;
+    if (inicios[S - 1] < 0) inicios[S - 1] = T - 1;
+    // O acorde começa no primeiro SOM do seu trecho: silêncio da introdução
+    // (ou uma pausa) não pode antecipar o destaque da linha.
+    for (var a = 0; a < S; a++) {
+      var ate = a + 1 < S ? inicios[a + 1] : T;
+      var q0 = inicios[a];
+      while (q0 < ate - 1 && quadros[q0] && quadros[q0].energia < piso) q0++;
+      inicios[a] = q0;
+    }
+    return {
+      inicios: inicios,
+      inicios_s: inicios.map(function (q) { return Math.round(q * passo * 100) / 100; }),
+      confianca: Math.round((soma / T) * 100) / 100,
+    };
+  }
+
   return {
+    alinhar: alinhar,
     fft: fft, magnitudes: magnitudes, croma: croma, modelo: modelo, cosseno: cosseno,
     Seguidor: Seguidor, cromagrama: cromagrama, estimarBpm: estimarBpm, transcrever: transcrever, paraChordPro: paraChordPro,
     esticar: esticar, reamostrar: reamostrar, mudarTom: mudarTom, frequenciaDominante: frequenciaDominante, VOCAB: VOCAB,

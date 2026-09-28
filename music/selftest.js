@@ -789,6 +789,7 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   req.cookieDe = cookieDe;
   req.base = () => BASE;
   await require('./cifras/selftest-cifras').rodar({ t, secao, req, assert });
+  await require('./cifras/selftest-smartplay').rodar({ t, secao, req, assert });
 
   // ===================================================================
   srv.close();
