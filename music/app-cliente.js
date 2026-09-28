@@ -83,6 +83,46 @@ const JS = `
   }
   function carregando() { $('#corpo').innerHTML = '<p class="vazio">Carregando...</p>'; }
 
+  // ---- icones e cores (28/09/2026: "a pagina de trilhas esta sem cor") ----
+  // Cada familia de exercicio tem icone e cor proprios, usados na trilha,
+  // no Praticar e na revisao - a mesma cor para a mesma coisa em todo lugar.
+  var FAMILIAS = {
+    intervalo: { ico: '\u{1F4D0}', fundo: '#E0F2FE', cor: '#0369A1' },
+    acorde:    { ico: '\u{1F3B8}', fundo: '#FCE7F3', cor: '#BE185D' },
+    escala:    { ico: '\u{1F3B9}', fundo: '#EDE9FE', cor: '#6D28D9' },
+    leitura:   { ico: '\u{1F3BC}', fundo: '#FEF3C7', cor: '#B45309' },
+    ditado:    { ico: '\u{270D}\u{FE0F}', fundo: '#E0E7FF', cor: '#4338CA' },
+    harmonia:  { ico: '\u{1F3B6}', fundo: '#DCFCE7', cor: '#15803D' },
+    afinacao:  { ico: '\u{1F3A4}', fundo: '#FFE4E6', cor: '#BE123C' },
+    ritmo:     { ico: '\u{1F941}', fundo: '#FFEDD5', cor: '#C2410C' },
+    melodia:   { ico: '\u{1F3B5}', fundo: '#CCFBF1', cor: '#0F766E' },
+    geral:     { ico: '\u{1F3B5}', fundo: '#F1F5F9', cor: '#1B2A4A' },
+  };
+  // Aceita familia ('ritmo') ou tipo ('percepcao.intervalo', 'harmonia.grau').
+  function familiaDe(s) {
+    s = String(s || '');
+    var ks = Object.keys(FAMILIAS);
+    for (var i = 0; i < ks.length; i++) if (s.indexOf(ks[i]) >= 0) return FAMILIAS[ks[i]];
+    return FAMILIAS.geral;
+  }
+  var TRILHAS_VISUAL = {
+    'primeiros-passos':       { ico: '\u{1F331}', fundo: '#DCFCE7', cor: '#15803D' },
+    'ouvido-intervalos':      { ico: '\u{1F442}', fundo: '#E0F2FE', cor: '#0369A1' },
+    'ritmo-e-pulso':          { ico: '\u{1F941}', fundo: '#FFEDD5', cor: '#C2410C' },
+    'harmonia-basica':        { ico: '\u{1F3B8}', fundo: '#FCE7F3', cor: '#BE185D' },
+    'canto-afinado':          { ico: '\u{1F3A4}', fundo: '#FFE4E6', cor: '#BE123C' },
+    'leitura-primeira-vista': { ico: '\u{1F3BC}', fundo: '#FEF3C7', cor: '#B45309' },
+  };
+  function visualTrilha(t) { return TRILHAS_VISUAL[t.slug] || familiaDe(t.slug); }
+  function icone(v, grande) {
+    return '<span class="ico' + (grande ? ' g' : '') + '" style="background:' + v.fundo + ';color:' + v.cor + '" aria-hidden="true">' + v.ico + '</span>';
+  }
+  var ICONES_ABA = {
+    estudar: '\u{1F4DA}', cifras: '\u{1F3B8}', praticar: '\u{1F3AF}', biblioteca: '\u{1F4D6}',
+    repertorios: '\u{1F5C2}\u{FE0F}', tarefas: '\u{1F4DD}', progresso: '\u{1F4C8}',
+    minhas_turmas: '\u{1F465}', professor: '\u{1F9D1}\u{200D}\u{1F3EB}', escola: '\u{1F3EB}', conta: '\u{1F464}',
+  };
+
   // ---- navegacao -------------------------------------------------
   var ABAS = [
     ['estudar', 'Estudar'], ['cifras', 'Cifras'], ['praticar', 'Praticar'],
@@ -104,7 +144,7 @@ const JS = `
         && (estado.eu.trabalha_em_escola || estado.eu.sou_professor))) return;
       if (a[0] === 'minhas_turmas' && !(estado.eu && estado.eu.estuda_em_escola)) return;
       $('#menu').appendChild(el('button', {
-        class: 'aba' + (estado.aba === a[0] ? ' on' : ''), txt: a[1],
+        class: 'aba' + (estado.aba === a[0] ? ' on' : ''), txt: (ICONES_ABA[a[0]] ? ICONES_ABA[a[0]] + ' ' : '') + a[1],
         'aria-current': estado.aba === a[0] ? 'page' : 'false',
         onclick: function () { ir(a[0]); },
       }));
@@ -140,10 +180,10 @@ const JS = `
 
       var seq = d.estatisticas.sequencia_dias;
       c.appendChild(el('div', { class: 'kpis', html:
-        cartao(seq, seq === 1 ? 'dia seguido' : 'dias seguidos', seq ? 'continue amanha para nao zerar' : 'comece hoje') +
-        cartao(d.estatisticas.minutos_praticados, 'minutos em 30 dias', d.estatisticas.sessoes + ' sessao(oes)') +
-        cartao(d.estatisticas.tentativas, 'exercicios feitos', d.estatisticas.acertos + ' certos') +
-        cartao(d.tarefas, 'tarefa(s) do professor', d.tarefas ? 'veja em Tarefas' : 'nenhuma pendente')
+        cartao(seq, seq === 1 ? 'dia seguido' : 'dias seguidos', seq ? 'continue amanha para nao zerar' : 'comece hoje', '\u{1F525}') +
+        cartao(d.estatisticas.minutos_praticados, 'minutos em 30 dias', d.estatisticas.sessoes + ' sessao(oes)', '\u{23F1}\u{FE0F}') +
+        cartao(d.estatisticas.tentativas, 'exercicios feitos', d.estatisticas.acertos + ' certos', '\u{2705}') +
+        cartao(d.tarefas, 'tarefa(s) do professor', d.tarefas ? 'veja em Tarefas' : 'nenhuma pendente', '\u{1F4DD}')
       }));
 
       if (!d.calibracao.calibrado) {
@@ -160,10 +200,11 @@ const JS = `
           'A revisao volta no intervalo em que voce tende a esquecer - e o que faz o estudo render mais do que repetir tudo todo dia.' }));
         var lista = el('div', { class: 'grade' });
         d.revisar_hoje.forEach(function (r) {
-          var tipo = r.tipos[0];
+          var tipo = r.tipos[0], v = familiaDe(r.familia);
           lista.appendChild(el('button', {
-            class: 'item', onclick: function () { praticarTipo(tipo); },
-            html: '<b>' + esc(nomeFamilia(r.familia)) + '</b><span>nivel ' + r.nivel + ' - toque para praticar</span>',
+            class: 'item com-ico', onclick: function () { praticarTipo(tipo); },
+            style: 'border-left:4px solid ' + v.cor,
+            html: '<div class="topo-item">' + icone(v) + '<b>' + esc(nomeFamilia(r.familia)) + '</b></div><span>nivel ' + r.nivel + ' - toque para praticar</span>',
           }));
         });
         c.appendChild(lista);
@@ -173,12 +214,22 @@ const JS = `
       var g = el('div', { class: 'grade' });
       d.trilhas.forEach(function (t) {
         var pc = t.progresso.total ? Math.round(100 * t.progresso.item_atual / t.progresso.total) : 0;
+        var v = visualTrilha(t);
+        // Cada etapa vira um icone: feita, a atual (destacada) e as travadas.
+        var passos = (t.itens || []).map(function (it) {
+          var f = familiaDe(it.tipo);
+          return '<span class="passo ' + esc(it.estado) + '" title="' + esc(it.titulo || nomeFamilia(it.familia)) +
+            (it.estado === 'concluido' ? ' (feito)' : it.estado === 'atual' ? ' (agora)' : ' (depois)') + '"' +
+            ' style="background:' + f.fundo + ';border-color:' + f.cor + '">' + f.ico + '</span>';
+        }).join('');
         g.appendChild(el('button', {
-          class: 'item trilha', onclick: function () { abrirTrilha(t); },
-          html: '<b>' + esc(t.titulo) + '</b><span>' + esc(t.descricao) + '</span>' +
-            '<div class="barra"><i style="width:' + pc + '%"></i></div>' +
-            '<span class="peq">' + t.progresso.item_atual + ' de ' + t.progresso.total +
-            (t.progresso.concluida_em ? ' - concluida' : '') + '</span>',
+          class: 'item trilha com-ico', onclick: function () { abrirTrilha(t); },
+          style: 'border-top:4px solid ' + v.cor,
+          html: '<div class="topo-item">' + icone(v, true) + '<b>' + esc(t.titulo) + '</b></div>' +
+            '<span>' + esc(t.descricao) + '</span>' +
+            (passos ? '<div class="passos">' + passos + '</div>' : '') +
+            '<div class="barra"><i style="width:' + pc + '%;background:' + v.cor + '"></i></div>' +
+            '<span class="peq">' + (t.progresso.concluida_em ? '\u{1F3C6} concluida' : t.progresso.item_atual + ' de ' + t.progresso.total + ' etapas') + '</span>',
         }));
       });
       c.appendChild(g);
@@ -204,8 +255,10 @@ const JS = `
       c.appendChild(el('p', { class: 'sub', txt: 'Os cursos ficam na Academia, que tem conta propria. Abrem em outra aba.' }));
       var g = el('div', { class: 'grade' });
       todos.forEach(function (x) {
-        var a = el('a', { class: 'item', href: x.curso.url, target: '_blank', rel: 'noopener',
-          html: '<b>' + esc(x.curso.titulo) + '</b><span>' + esc(x.motivo || x.curso.subtitulo || '') + '</span>' +
+        var a = el('a', { class: 'item com-ico', href: x.curso.url, target: '_blank', rel: 'noopener',
+          style: 'border-left:4px solid #C9A227',
+          html: '<div class="topo-item">' + icone({ ico: '\u{1F393}', fundo: '#FDF6E3', cor: '#8A6D12' }) + '<b>' + esc(x.curso.titulo) + '</b></div>' +
+            '<span>' + esc(x.motivo || x.curso.subtitulo || '') + '</span>' +
             (x.curso.produtor ? '<span class="peq">com ' + esc(x.curso.produtor) + '</span>' : '') });
         g.appendChild(a);
       });
@@ -333,8 +386,9 @@ const JS = `
     }).catch(function () {});
   }
 
-  function cartao(n, rot, obs) {
-    return '<div class="kpi"><div class="n">' + esc(n) + '</div><div class="rot">' + esc(rot) + '</div>' +
+  function cartao(n, rot, obs, ico) {
+    return '<div class="kpi">' + (ico ? '<div class="kpi-ico" aria-hidden="true">' + ico + '</div>' : '') +
+      '<div class="n">' + esc(n) + '</div><div class="rot">' + esc(rot) + '</div>' +
       (obs ? '<div class="obs">' + esc(obs) + '</div>' : '') + '</div>';
   }
   function nomeFamilia(f) {
@@ -391,9 +445,11 @@ const JS = `
       c.appendChild(el('p', { class: 'sub', txt: 'Escolha o que treinar. O nivel se ajusta ao seu desempenho.' }));
       var g = el('div', { class: 'grade' });
       d.tipos.forEach(function (t) {
+        var v = familiaDe(t.familia || t.id);
         g.appendChild(el('button', {
-          class: 'item', onclick: function () { praticarTipo(t.id); },
-          html: '<b>' + esc(t.pt) + '</b><span>' + esc(t.contrato.mede) + '</span>' +
+          class: 'item com-ico', onclick: function () { praticarTipo(t.id); },
+          style: 'border-left:4px solid ' + v.cor,
+          html: '<div class="topo-item">' + icone(v) + '<b>' + esc(t.pt) + '</b></div><span>' + esc(t.contrato.mede) + '</span>' +
             (t.mic ? '<span class="chip">precisa de microfone</span>' : '') +
             (t.contrato.pode_valer_nota ? '' : '<span class="chip alerta">so indicacao</span>'),
         }));
@@ -419,7 +475,8 @@ const JS = `
     c.innerHTML = '';
 
     c.appendChild(el('div', { class: 'cabec-ex', html:
-      '<span class="chip">' + esc(nomeFamilia(it.familia)) + ' - nivel ' + it.nivel + '</span>' }));
+      '<span class="chip" style="background:' + familiaDe(it.familia).fundo + ';color:' + familiaDe(it.familia).cor + '">' +
+      familiaDe(it.familia).ico + ' ' + esc(nomeFamilia(it.familia)) + ' - nivel ' + it.nivel + '</span>' }));
     c.appendChild(el('h2', { class: 'enunciado', txt: it.enunciado }));
     if (it.dica) c.appendChild(el('p', { class: 'sub', txt: it.dica }));
 

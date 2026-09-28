@@ -87,6 +87,20 @@ p.vazio{color:var(--suave);padding:24px 0}
 .item:hover{border-color:var(--navy)}
 .item b{font-size:16px}
 .item span{font-size:14px;color:var(--suave)}
+.topo-item{display:flex;align-items:center;gap:10px}
+.ico{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:19px;line-height:1}
+.ico.g{width:46px;height:46px;border-radius:13px;font-size:25px}
+.item.trilha{padding-top:14px}
+.passos{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px}
+.passo{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:15px;line-height:1;
+  border:2px solid transparent}
+.passo.concluido{opacity:.75}
+.passo.atual{border-width:3px;box-shadow:0 0 0 3px #fff inset;transform:scale(1.08)}
+/* Travada continua com a cor da família (clara e tracejada): numa conta
+   nova quase tudo está travado, e cinza deixava a página sem cor. */
+.passo.travado{opacity:.5;border-style:dashed;border-width:1px}
+.kpi{position:relative}
+.kpi-ico{position:absolute;top:12px;right:12px;font-size:22px;line-height:1}
 a.item{text-decoration:none}
 .cartao-conta{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);padding:18px 20px;margin:0 0 14px;max-width:560px}
 .cartao-conta h3{margin-top:0}
