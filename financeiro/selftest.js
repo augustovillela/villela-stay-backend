@@ -1369,7 +1369,7 @@ teste('investimentos: contrato CVM aceita os nomes oficiais distintos do cadastr
   assert.strictEqual(contratosMercado.identidadeCvm({ ...base, DENOM_SOCIAL: 'Cadastro S.A.' }).nome, 'Cadastro S.A.');
   assert.strictEqual(contratosMercado.identidadeCvm({ ...base, DENOM_CIA: 'DFP S.A.' }).nome, 'DFP S.A.');
   assert.throws(() => contratosMercado.identidadeCvm(base), /identidade oficial completa/i);
-  assert.strictEqual(parserInvestimentos.PARSER_VERSAO, 2);
+  assert.strictEqual(parserInvestimentos.PARSER_VERSAO, 3);
 });
 
 testeAsync('investimentos: piloto CVM sonda e baixa somente a mesma versão oficial', async () => {
@@ -1549,12 +1549,13 @@ testeAsync('investimentos: catálogo ZIP é validado antes do parsing e rejeita 
     /invalid|inseguro|caminho/i);
 });
 
-testeAsync('investimentos: parser CVM gera fato versionado sem carregar o ZIP inteiro', async () => {
+testeAsync('investimentos: parser CVM aceita Latin-1 e aspas literais sem relaxar colunas', async () => {
   const dir = fs.mkdtempSync(path.join(process.env.DATA_DIR, 'zip-cvm-'));
   const arquivo = path.join(dir, 'dfp.zip');
   const cab = 'CNPJ_CIA;CD_CVM;DENOM_SOCIAL;DT_REFER;VERSAO;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;DT_INI_EXERC;DT_FIM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA';
-  const linha = '33.000.167/0001-01;9512;Companhia Exemplo S.A.;2025-12-31;2;DF Consolidado - Balanço;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;1.01;Ativo;123456;S';
-  fs.writeFileSync(arquivo, zipArmazenadoTeste([['dfp_cia_aberta_BPA_con_2025.csv', `${cab}\n${linha}\n`]]));
+  const linha = '33.000.167/0001-01;9512;Companhia Açúcar S.A.;2025-12-31;2;DF Consolidado - Balanço;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;1.01;Títulos a valor justo ("VJORA");123456;S';
+  const conteudoLatin1 = Buffer.from(`${cab}\n${linha}\n`, 'latin1');
+  fs.writeFileSync(arquivo, zipArmazenadoTeste([['dfp_cia_aberta_BPA_con_2025.csv', conteudoLatin1]]));
   const registros = [], identidades = [], entradas = [];
   const r = await parserInvestimentos.processarArquivo(arquivo, {
     formato: 'zip', jurisdicao: 'BR', conjunto: 'cvm_dfp_2025',
@@ -1567,6 +1568,8 @@ testeAsync('investimentos: parser CVM gera fato versionado sem carregar o ZIP in
   assert.strictEqual(registros[0].tipo, 'fato');
   assert.strictEqual(registros[0].identificador.valor, '33000167000101');
   assert.strictEqual(registros[0].protocolo, '2');
+  assert.strictEqual(registros[0].rotulo, 'Títulos a valor justo ("VJORA")');
+  assert.strictEqual(identidades[0].nome, 'Companhia Açúcar S.A.');
   assert.strictEqual(identidades.length, 1);
   assert.strictEqual(entradas[0].registros, 1);
 });

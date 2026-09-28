@@ -13,7 +13,7 @@ const yauzl = require('yauzl');
 const { parse } = require('csv-parse');
 const contratos = require('./investimentos-contratos-mercado');
 
-const PARSER_VERSAO = 2;
+const PARSER_VERSAO = 3;
 const MAX_JSON_ENTRADA = 64 * 1024 * 1024;
 
 class ErroParserMercado extends Error {
@@ -94,7 +94,10 @@ async function processarCsv(stream, job, handlers, progresso) {
   const medidor = new Transform({ transform(chunk, _enc, cb) { hash.update(chunk); cb(null, chunk); } });
   const linhas = stream.pipe(medidor).pipe(parse({
     columns: true, delimiter: ';', bom: true, skip_empty_lines: true,
-    relax_column_count: false, relax_quotes: false,
+    // Os CSVs oficiais da CVM usam Windows-1252/ISO-8859-1 e existem
+    // descrições não delimitadas com aspas literais, por exemplo ("VJORA").
+    // A tolerância é restrita às aspas; a contagem de colunas continua rígida.
+    encoding: 'latin1', relax_column_count: false, relax_quotes: true,
   }));
   let registros = 0;
   for await (const obj of linhas) {
