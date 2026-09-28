@@ -60,6 +60,7 @@ const mercadoPilotoCvm = require('./mercado-piloto-cvm');
 const mercadoQualidadeCvm = require('./mercado-qualidade-cvm');
 const mercadoConflitosCvm = require('./mercado-conflitos-cvm');
 const mercadoDuplicidadesCvm = require('./mercado-duplicidades-cvm');
+const mercadoCanonicoCvm = require('./mercado-canonico-cvm');
 const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
@@ -1611,6 +1612,60 @@ testeAsync('investimentos: migração de duplicidades executa cada tabela separa
   const chamadas = [];
   await mercadoDuplicidadesCvm.migrar({ query: async sql => { chamadas.push(sql); } });
   assert.strictEqual(chamadas.length, 4);
+});
+
+teste('investimentos: projeção canônica exige armação e mantém bruto e partições fora do schema', () => {
+  const base = {
+    FINANCE_MARKET_DATABASE_URL: 'postgresql://interno/teste',
+    FINANCE_S3_ENDPOINT: 'https://conta.r2.cloudflarestorage.com',
+    FINANCE_S3_BUCKET: 'bucket', FINANCE_S3_KEY: 'key', FINANCE_S3_SECRET: 'secret',
+  };
+  assert.throws(() => mercadoCanonicoCvm.configAmbiente({ ...base, FINANCE_INV_PARSE_WORKER: 'off' }),
+    /FINANCE_INV_CVM_CANONICAL=on/);
+  assert.throws(() => mercadoCanonicoCvm.configAmbiente({ ...base,
+    FINANCE_INV_CVM_CANONICAL: 'on', FINANCE_INV_PARSE_WORKER: 'on' }), /precisa permanecer off/);
+  assert.doesNotThrow(() => mercadoCanonicoCvm.configAmbiente({ ...base,
+    FINANCE_INV_CVM_CANONICAL: 'on', FINANCE_INV_PARSE_WORKER: 'off' }));
+  assert.match(mercadoCanonicoCvm.CANONICAL_SCHEMA_SQL, /fin_canonical_runs/);
+  assert.match(mercadoCanonicoCvm.CANONICAL_SCHEMA_SQL, /fin_canonical_groups/);
+  assert.match(mercadoCanonicoCvm.CANONICAL_SCHEMA_SQL, /fin_canonical_suppressions/);
+  assert.match(mercadoCanonicoCvm.CANONICAL_SCHEMA_SQL, /fin_canonical_lineage_v1/);
+  assert.doesNotMatch(mercadoCanonicoCvm.CANONICAL_SCHEMA_SQL, /DELETE FROM fin_market|UPDATE fin_market_particoes/);
+});
+
+testeAsync('investimentos: migração canônica executa tabelas e visão separadamente', async () => {
+  const chamadas = [];
+  await mercadoCanonicoCvm.migrar({ query: async sql => { chamadas.push(sql); } });
+  assert.strictEqual(chamadas.length, 4);
+});
+
+teste('investimentos: manifesto canônico oculta só repetição integral e conserva linhagem', () => {
+  const assinatura = 'a'.repeat(64), hashBruto = 'b'.repeat(64), chave = 'c'.repeat(64);
+  const grupo = { chave_hash: chave, categoria: 'linha_oficial_repetida_mesmo_arquivo',
+    ocorrencias: 2, excedentes: 1 };
+  const norm = [1, 2].map(ordem => ({ chave_hash: chave, origem: 'normalizado', ordem,
+    assinatura_fato: assinatura, particao: `parte-${ordem}`, linha_particao: ordem }));
+  const bruto = [1, 2].map(ordem => ({ chave_hash: chave, origem: 'bruto', ordem,
+    assinatura_fato: assinatura, arquivo_bruto: 'dfp.csv', linha_bruta: ordem,
+    hash_linha_bruta: hashBruto }));
+  const plano = mercadoCanonicoCvm.construirPlano([grupo], [...norm, ...bruto]);
+  assert.strictEqual(plano.grupos.length, 1);
+  assert.strictEqual(plano.ocultas.length, 1);
+  assert.strictEqual(plano.grupos[0].particao_mantida, 'parte-1');
+  assert.strictEqual(plano.ocultas[0].particao, 'parte-2');
+  const manifesto = mercadoCanonicoCvm.criarManifesto(plano.ocultas);
+  const fato = { valorTexto: '100' };
+  const assinaturaReal = mercadoDuplicidadesCvm.assinaturaFato(fato);
+  const manifestoReal = new Map([[mercadoCanonicoCvm.chaveOcorrencia('parte-2', 2), assinaturaReal]]);
+  assert.strictEqual(mercadoCanonicoCvm.avaliarOcorrencia(fato,
+    { objeto_chave: 'parte-1' }, 1, manifestoReal).visivel, true);
+  assert.strictEqual(mercadoCanonicoCvm.avaliarOcorrencia(fato,
+    { objeto_chave: 'parte-2' }, 2, manifestoReal).visivel, false);
+  assert.strictEqual(manifesto.size, 1);
+  assert.throws(() => mercadoCanonicoCvm.planejarGrupo({ ...grupo, categoria: 'indeterminada' }, norm, bruto),
+    /Categoria não canônica/);
+  assert.throws(() => mercadoCanonicoCvm.planejarGrupo(grupo, norm,
+    [bruto[0], { ...bruto[1], hash_linha_bruta: 'd'.repeat(64) }]), /não é uma repetição integral/);
 });
 
 teste('investimentos: duplicidades e três políticas são classificadas sem aplicar dedupe', () => {
