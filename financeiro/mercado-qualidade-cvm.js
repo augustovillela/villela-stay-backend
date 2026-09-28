@@ -198,9 +198,11 @@ function indexarCadastro(cadastro, achados = new Achados()) {
 }
 
 function chaveNatural(fato) {
-  return [fato.identificador?.valor, fato.taxonomia, fato.formulario, fato.conceito,
+  const base = [fato.identificador?.valor, fato.taxonomia, fato.formulario, fato.conceito,
     fato.periodoInicio, fato.periodoFim, fato.protocolo, fato.escopo,
     fato.contexto?.escalaMoeda].map(x => String(x || '')).join('|');
+  const colunaDf = String(fato.contexto?.colunaDf || '').trim();
+  return colunaDf ? `${base}|${colunaDf}` : base;
 }
 
 function escopoDemonstracao(formulario) {

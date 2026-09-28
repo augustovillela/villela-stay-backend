@@ -13,7 +13,7 @@ const yauzl = require('yauzl');
 const { parse } = require('csv-parse');
 const contratos = require('./investimentos-contratos-mercado');
 
-const PARSER_VERSAO = 3;
+const PARSER_VERSAO = 4;
 const MAX_JSON_ENTRADA = 64 * 1024 * 1024;
 
 class ErroParserMercado extends Error {

@@ -1049,12 +1049,13 @@ teste('investimentos: contrato CVM preserva conta, versão, período e escala or
     DT_REFER: '2025-12-31', VERSAO: '2', GRUPO_DFP: 'DF Consolidado - Demonstração do Resultado',
     MOEDA: 'REAL', ESCALA_MOEDA: 'MIL', ORDEM_EXERC: 'ÚLTIMO', DT_INI_EXERC: '2025-01-01',
     DT_FIM_EXERC: '2025-12-31', CD_CONTA: '3.01', DS_CONTA: 'Receita de Venda', VL_CONTA: '123456',
-    ST_CONTA_FIXA: 'S',
+    ST_CONTA_FIXA: 'S', COLUNA_DF: 'Saldo Atual',
   });
   assert.strictEqual(fato.conceito, '3.01');
   assert.strictEqual(fato.protocolo, '2');
   assert.strictEqual(fato.valorTexto, '123456');
   assert.strictEqual(fato.contexto.escalaMoeda, 'MIL');
+  assert.strictEqual(fato.contexto.colunaDf, 'Saldo Atual');
 });
 
 teste('investimentos: assinatura multipart preserva parâmetros na URL canônica', () => {
@@ -1381,7 +1382,7 @@ teste('investimentos: contrato CVM aceita os nomes oficiais distintos do cadastr
   assert.strictEqual(contratosMercado.identidadeCvm({ ...base, DENOM_SOCIAL: 'Cadastro S.A.' }).nome, 'Cadastro S.A.');
   assert.strictEqual(contratosMercado.identidadeCvm({ ...base, DENOM_CIA: 'DFP S.A.' }).nome, 'DFP S.A.');
   assert.throws(() => contratosMercado.identidadeCvm(base), /identidade oficial completa/i);
-  assert.strictEqual(parserInvestimentos.PARSER_VERSAO, 3);
+  assert.strictEqual(parserInvestimentos.PARSER_VERSAO, 4);
 });
 
 testeAsync('investimentos: piloto CVM sonda e baixa somente a mesma versão oficial', async () => {
@@ -1617,6 +1618,21 @@ teste('investimentos: auditoria detecta duplicidade conflitante e reconcilia bal
   assert.deepStrictEqual(r, { comparados: 1, divergentes: 1 });
   assert.ok(achados.listar().some(x => x.regra === 'chave_natural_valor_conflitante' && x.gravidade === 'BLOQUEADOR'));
   assert.ok(achados.listar().some(x => x.regra === 'balanco_nao_fecha' && x.gravidade === 'ALERTA'));
+});
+
+teste('investimentos: chave natural distingue COLUNA_DF e preserva fatos sem a dimensão', () => {
+  const base = {
+    tipo: 'fato', identificador: { sistema: 'cnpj', valor: '33000167000101' },
+    taxonomia: 'cvm_plano_contas', conceito: '2.03', periodoInicio: '2025-01-01',
+    periodoFim: '2025-12-31', formulario: 'DF Consolidado - Demonstração das Mutações do Patrimônio Líquido',
+    protocolo: '1', escopo: 'ÚLTIMO', contexto: { escalaMoeda: 'MIL' },
+  };
+  const chaveAnterior = '33000167000101|cvm_plano_contas|DF Consolidado - Demonstração das Mutações do Patrimônio Líquido|2.03|2025-01-01|2025-12-31|1|ÚLTIMO|MIL';
+  assert.strictEqual(mercadoQualidadeCvm.chaveNatural(base), chaveAnterior);
+  assert.notStrictEqual(
+    mercadoQualidadeCvm.chaveNatural({ ...base, contexto: { ...base.contexto, colunaDf: 'Saldo Inicial' } }),
+    mercadoQualidadeCvm.chaveNatural({ ...base, contexto: { ...base.contexto, colunaDf: 'Saldo Final' } }),
+  );
 });
 
 testeAsync('investimentos: auditoria lê JSONL em fluxo e confere hash e contagem', async () => {

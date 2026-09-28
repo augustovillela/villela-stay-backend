@@ -139,7 +139,11 @@ function fatoCvm(linha) {
     periodoInicio: String(linha.DT_INI_EXERC || '').trim(), periodoFim: String(linha.DT_FIM_EXERC || linha.DT_REFER || '').trim(),
     formulario: String(linha.GRUPO_DFP || '').trim(), protocolo, entregueEm: String(linha.DT_RECEB || '').trim(),
     escopo: String(linha.ORDEM_EXERC || '').trim(),
-    contexto: { escalaMoeda: String(linha.ESCALA_MOEDA || '').trim(), contaFixa: String(linha.ST_CONTA_FIXA || '').trim() },
+    contexto: {
+      escalaMoeda: String(linha.ESCALA_MOEDA || '').trim(),
+      contaFixa: String(linha.ST_CONTA_FIXA || '').trim(),
+      colunaDf: String(linha.COLUNA_DF || '').trim(),
+    },
   };
 }
 
