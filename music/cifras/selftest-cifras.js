@@ -298,6 +298,22 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(v.pode, false);
   });
 
+  await t('privada ⇄ pública com um clique: obra própria aparece e some para os outros; terceiro recusa pela política', async () => {
+    const m = (await req('POST', B + '/musicas', { como: 'ana', corpo: { titulo: 'Composição da Ana', titularidade: 'propria', texto: 'C  G\nminha música' } })).json.musica;
+    assert.equal((await req('POST', `/music/api/obras/${m.id}/visibilidade`, { como: 'ana', corpo: { visibilidade: 'publica' } })).status, 200);
+    let b = await req('GET', `${B}/musicas?q=${encodeURIComponent('Composição da Ana')}`, { como: 'sec' });
+    assert.ok(b.json.itens.some((x) => x.id === m.id), 'pública: outra pessoa acha');
+    assert.equal((await req('GET', `${B}/musicas/${m.id}`, { como: 'sec' })).status, 200);
+    await req('POST', `/music/api/obras/${m.id}/visibilidade`, { como: 'ana', corpo: { visibilidade: 'privada' } });
+    b = await req('GET', `${B}/musicas?q=${encodeURIComponent('Composição da Ana')}`, { como: 'sec' });
+    assert.ok(!b.json.itens.some((x) => x.id === m.id), 'privada de novo: some');
+    const t3 = await req('POST', `/music/api/obras/${obra.id}/visibilidade`, { como: 'ana', corpo: { visibilidade: 'publica' } });
+    assert.equal(t3.status, 403, 'terceiro com a política desligada');
+    const det = await req('GET', `${B}/musicas/${obra.id}`, { como: 'ana' });
+    assert.equal(det.json.permissoes.publicar.pode, false, 'a tela recebe o motivo para mostrar ao lado do botão');
+    assert.equal((await req('POST', `/music/api/obras/${m.id}/visibilidade`, { como: 'bruno', corpo: { visibilidade: 'publica' } })).status >= 400, true, 'só o dono muda');
+  });
+
   await t('PORTÃO ÚNICO: nenhum arquivo lê banda_membros fora de acesso.js, direitos.js e repertorio.js', async () => {
     const raiz = path.join(__dirname, '..');
     const ok = new Set(['cifras/acesso.js', 'direitos.js', 'repertorio.js']);

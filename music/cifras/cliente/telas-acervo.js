@@ -169,7 +169,8 @@
       api('POST', '/musicas/' + x.id + '/favorito').then(function (r) { ev.target.textContent = r.favorita ? '★' : '☆'; }).catch(C.erro);
     } }));
     linha.appendChild(info);
-    if (!x.minha) linha.appendChild(tag('da banda'));
+    if (!x.minha) linha.appendChild(tag(x.visibilidade === 'publica' ? 'pública' : 'da banda'));
+    else if (x.visibilidade === 'publica') linha.appendChild(tag('pública', 'ok'));
     if (x.qualidade) linha.appendChild(tag('Q ' + x.qualidade, x.qualidade >= 75 ? 'ok' : x.qualidade < 45 ? 'av' : ''));
     if (f && f.lixeira) linha.appendChild(C.botao('Restaurar', function () { api('POST', '/musicas/' + x.id + '/restaurar').then(function () { C.ir('biblioteca', null, { lixeira: true }); }).catch(C.erro); }, 'sec peq'));
     else {
@@ -227,7 +228,23 @@
       if (d.pela_banda) tags.appendChild(tag('compartilhada pela banda'));
       if (d.removida) tags.appendChild(tag('na lixeira', 'er'));
       (m.tags || []).forEach(function (t) { tags.appendChild(tag('#' + t)); });
+      tags.appendChild(tag(m.visibilidade === 'publica' ? 'pública' : 'privada', m.visibilidade === 'publica' ? 'ok' : ''));
       c.appendChild(tags);
+      // Privada ⇄ pública com um clique. Quem decide se PODE é o servidor
+      // (direitos.definirVisibilidade): obra de terceiro só fica pública se a
+      // política do acervo estiver ligada no staff — e a recusa diz isso.
+      if (d.sou_dono && !d.removida) {
+        var publica = m.visibilidade === 'publica';
+        c.appendChild(el('div', { class: 'linha' }, [
+          C.botao(publica ? 'Tornar privada' : 'Tornar pública', function () {
+            C.api('POST', '/music/api/obras/' + id + '/visibilidade', { visibilidade: publica ? 'privada' : 'publica' }, { cru: true })
+              .then(function () { C.aviso(publica ? 'Agora só você (e suas bandas) veem esta música.' : 'Pública: qualquer pessoa do Musique encontra e toca esta música.'); T.musica(id); })
+              .catch(C.erro);
+          }, publica ? 'sec' : ''),
+          el('span', { class: 'peq', txt: publica ? 'Todos os usuários do Musique encontram esta música na busca.'
+            : (d.permissoes.publicar.pode ? 'Só você e as bandas com que você compartilhou veem.' : d.permissoes.publicar.motivo) }),
+        ]));
+      }
       var acoes = el('div', { class: 'cf-barra' });
       if (d.cifras[0]) acoes.appendChild(C.botao('Tocar', function () { C.ir('cifra', d.cifras[0].id); }));
       acoes.appendChild(C.botao(d.favorita ? '★ Favorita' : '☆ Favoritar', function () { api('POST', '/musicas/' + id + '/favorito').then(function () { T.musica(id); }); }, 'sec'));
