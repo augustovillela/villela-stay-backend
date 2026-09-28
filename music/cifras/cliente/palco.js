@@ -314,6 +314,13 @@
     var rolagem = new C.Rolagem(corpo, { velocidade: 30, aoMudar: function (e) { parar.style.display = rolagem.ativa() ? '' : 'none'; if (e === 'fim' && op.autoAvancar) proxima(); pintarTopo(); } });
     parar.onclick = function () { rolagem.parar(); met.desligar(); };
     var met = new C.Metronomo();
+    // Microfone (experimental): o elemento é criado UMA vez — o topo é
+    // redesenhado o tempo todo e não pode derrubar a escuta.
+    var escutaInfo = el('span', { class: 'prox', 'aria-live': 'polite' });
+    var mic = C.Escuta.botaoSeguir(function () { return corpo; }, function (linha) {
+      rolagem.interromper();
+      corpo.scrollTo({ top: Math.max(0, linha.offsetTop - corpo.clientHeight * 0.35), behavior: 'smooth' });
+    }, function (txt, conf) { escutaInfo.textContent = txt ? '🎤 ' + txt + (conf ? ' · ' + Math.round(conf * 100) + '%' : '') + ' · experimental' : ''; });
 
     // wake lock: celular que apaga no meio do refrão é pior que papel.
     var trava = null;
@@ -351,6 +358,7 @@
       b('☰', function () { var md = ['letra_cifra', 'letra', 'acordes', 'mapa']; st.modo = md[(md.indexOf(st.modo) + 1) % md.length]; pintar(true); }, 'Letra / cifra / acordes / mapa');
       b('▥', function () { st.colunas = st.colunas % 3 + 1; pintar(true); }, 'Colunas');
       b('☀', function () { st.brilho = st.brilho <= 30 ? 100 : st.brilho - 20; brilho.style.opacity = String((100 - st.brilho) / 100 * 0.85); }, 'Brilho');
+      topo.appendChild(mic); topo.appendChild(escutaInfo);
       b('⏱', function () { met.bpm = m.bpm || 90; met.contar(4, function () { rolagem.iniciar(); }, contagemVisual); }, 'Contar 4 e rolar');
       b('🔒', travar, 'Travar toques');
       if (navigator.requestMIDIAccess) b('MIDI', conectarMidi, 'Pedal / controlador MIDI');
@@ -366,7 +374,9 @@
       nota.textContent = [m.nota_palco, m.notas_banda].filter(Boolean).join('  ·  ');
       var d = doc();
       if (!d) corpo.appendChild(el('p', { style: 'font:600 22px Inter,sans-serif;opacity:.8', txt: m.intervalo ? 'Intervalo' + (m.duracao_s ? ' · ' + C.minutos(m.duracao_s) : '') : 'Sem cifra para este item.' }));
-      else corpo.appendChild(R.cifra(d, { modo: st.modo, familia: st.familia, fonte: st.fonte, colunas: st.colunas, tema: st.tema, espacamento: 1.4, secaoAtual: st.secaoAtual }));
+      else corpo.appendChild(R.cifra(d, { modo: st.modo, familia: st.familia, fonte: st.fonte, colunas: st.colunas, tema: st.tema, espacamento: 1.4, secaoAtual: st.secaoAtual,
+        aoClicarAcorde: function (ac, l, elm) { mic.irPara(elm); } }));
+      setTimeout(function () { mic.recomecar(); }, 0);
       rolagem.velocidade = (m.rolagem && m.rolagem.velocidade) || rolagem.velocidade;
       rolagem.duracao_s = m.rolagem && (m.rolagem.modo === 'duracao' || m.rolagem.modo === 'bpm') ? (m.duracao_s || D.duracaoEstimada(m.documento || { secoes: [], meta: {} }) || 0) : 0;
       pintarTopo();
@@ -455,6 +465,7 @@
     var relogio = setInterval(function () { if (!rolagem.ativa()) pintarTopo(); }, 5000);
 
     function fechar() {
+      mic.parar();
       salvarPosicao();
       rolagem.parar(); met.desligar();
       clearInterval(relogio);

@@ -799,6 +799,7 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   // CIFRAS (28/09/2026) — motor puro e integração HTTP
   // ===================================================================
   await require('./cifras/selftest-motor').rodar({ t, secao, assert });
+  await require('./cifras/selftest-motor').rodarAudio({ t, secao, assert });
   req.cookieDe = (quem) => `${sessaoAcademyNucleo.COOKIE}=${tokenDe(quem)}`;
   req.base = () => BASE;
   await require('./cifras/selftest-cifras').rodar({ t, secao, req, assert });

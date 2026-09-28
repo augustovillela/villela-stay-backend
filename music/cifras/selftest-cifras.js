@@ -807,7 +807,8 @@ async function rodar({ t, secao, req, assert }) {
     const js = await req('GET', '/music/cifras.js', { cru: true });
     assert.equal(js.status, 200);
     assert.ok(js.texto.length > 100000, 'tamanho suspeito: ' + js.texto.length + ' (arquivo truncado compila vazio)');
-    for (const f of ['base', 'render', 'rolagem', 'telas-acervo', 'editor', 'importar', 'palco', 'bandas']) assert.ok(js.texto.includes('cliente/' + f + '.js'), f);
+    for (const f of ['base', 'render', 'rolagem', 'escuta', 'telas-acervo', 'editor', 'importar', 'palco', 'bandas']) assert.ok(js.texto.includes('cliente/' + f + '.js'), f);
+    assert.ok(js.texto.includes("'Tirar do áudio'") && js.texto.includes('Tom do áudio') && js.texto.includes('botaoSeguir'), 'as três funções de áudio estão ligadas às telas');
     new Function('window', js.texto);
     const css = await req('GET', '/music/cifras.css', { cru: true });
     assert.ok(css.texto.includes('.cf-doc') && css.texto.includes('.cf-palco'));
@@ -815,6 +816,35 @@ async function rodar({ t, secao, req, assert }) {
     const app = await req('GET', '/music/app', { cru: true });
     ['/music/cifras.css', '/music/motor-cifras.js', '/music/cifras.js'].forEach((u) => assert.ok(app.texto.includes(u), u));
     assert.ok(app.texto.indexOf('/music/motor-cifras.js') < app.texto.indexOf('/music/cifras.js'), 'o motor carrega antes do cliente');
+  });
+
+  await t('o TRABALHADOR de áudio é servido, carrega o motor e responde ao pedido de tom e de transcrição', async () => {
+    const w = await req('GET', '/music/cifras-trabalhador.js', { cru: true });
+    assert.equal(w.status, 200);
+    assert.match(w.texto, /importScripts\('\/music\/motor-cifras\.js'\)/);
+    const motor = (await req('GET', '/music/motor-cifras.js', { cru: true })).texto;
+    const escopo = { postMessage(m) { escopo.saida.push(m); }, saida: [] };
+    escopo.self = escopo;
+    new Function('self', 'importScripts', 'postMessage', w.texto + '\nself.onmessage = onmessage;')(escopo, () => new Function('self', motor)(escopo), (m) => escopo.saida.push(m));
+    const la = new Float32Array(22050); for (let k = 0; k < la.length; k++) la[k] = Math.sin(2 * Math.PI * 440 * k / 22050);
+    escopo.onmessage({ data: { id: 1, tipo: 'tom', amostras: la, semitons: 12 } });
+    const r = escopo.saida[0];
+    assert.ok(r.ok && r.amostras.length === la.length);
+    assert.ok(Math.abs(escopo.MusiqueMotor.audio.frequenciaDominante(r.amostras.subarray(2000), 22050) - 880) < 9);
+    escopo.onmessage({ data: { id: 2, tipo: 'transcrever', amostras: la, taxa: 22050 } });
+    assert.ok(escopo.saida[1].ok && escopo.saida[1].resultado);
+  });
+
+  await t('rascunho tirado do ÁUDIO: procedência "audio", confiança da análise e aviso de conferência', async () => {
+    const r = await req('POST', B + '/importar/texto', { como: 'ana', corpo: { texto: '{key: G}\n{ci: 0:00}\n[G]     [C]?     [D]', titulo: 'Da gravação', origem: 'audio', confianca: 0.6, bpm: 96 } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.importacao.tipo, 'audio');
+    assert.equal(r.json.resultado.fonte.tipo, 'audio');
+    assert.ok(r.json.resultado.confianca <= 0.6, 'a confiança da análise limita a da prévia');
+    assert.match(r.json.resultado.ambiguidades[0].motivo, /ÁUDIO/);
+    const s = await req('POST', `${B}/importar/${r.json.importacao.id}/salvar`, { como: 'ana', corpo: { destino: 'nova_musica', meta: { titulo: 'Da gravação' } } });
+    assert.equal(s.status, 200, JSON.stringify(s.json));
+    assert.equal(db.prepare('SELECT tipo FROM cifra_fontes WHERE obra_id = ?').get(s.json.obra_id).tipo, 'audio');
   });
 
   await t('funções puras do cliente: linha ⇄ caracteres do editor (propriedade) e visão transposta', async () => {

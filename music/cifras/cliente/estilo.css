@@ -197,3 +197,7 @@ body.cf-em-palco{overflow:hidden}
   #menu,.cf-sub,.cf-ferr,.cf-diags,header.topo,footer{display:none !important}
   .cf-doc{border:0;padding:0;font-size:11pt}
 }
+
+/* acorde que o microfone está ouvindo agora (experimental) */
+.cf-a.ouvindo{background:rgba(201,162,39,.35);border-radius:4px;box-shadow:0 0 0 3px rgba(201,162,39,.35)}
+.cf-palco .cf-a.ouvindo{background:rgba(255,201,77,.28);box-shadow:0 0 0 3px rgba(255,201,77,.28)}

@@ -454,10 +454,15 @@
       areaDoc.innerHTML = '';
       areaDoc.appendChild(R.cifra(r.doc, { modo: v.modo, graus: v.graus, familia: v.familia, fonte: v.fonte, espacamento: v.espacamento, colunas: v.colunas,
         tema: v.tema, largura: v.largura, ocultacao: v.ocultacao, comentarios: estado.comentarios,
-        aoClicarAcorde: function (ac) { tocarAcorde(ac); } }));
+        aoClicarAcorde: function (ac, l, elm) { tocarAcorde(ac); if (estado.mic) estado.mic.irPara(elm); } }));
+      if (estado.mic) estado.mic.recomecar();
       pintarFerramentas();
     }
     estado.pintar = pintar;
+    // Seguir pelo microfone (experimental): acompanha os acordes COMO ESTÃO
+    // desenhados (já no tom da tela) e rola a linha para o centro.
+    estado.mic = C.Escuta.botaoSeguir(function () { return areaDoc; },
+      function (linha) { linha.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, function () {});
 
     function tocarAcorde(ac) {
       var f = M.instrumentos.INSTRUMENTOS[v.instrumento];
@@ -488,7 +493,7 @@
       ferr.appendChild(grupo('Fonte', [bt('A−', function () { mudar(function () { v.fonte = Math.max(12, v.fonte - 2); }); }, 'Diminuir fonte'),
         bt('A+', function () { mudar(function () { v.fonte = Math.min(56, v.fonte + 2); }); }, 'Aumentar fonte')]));
       ferr.appendChild(grupo('Rolar', [bt(rolagem.ativa() ? '⏸' : '▶', function () { rolagem.duracao_s = C.duracaoDaRolagem(docCru, v.rolagem); rolagem.alternar(v.rolagem.atraso_s || 0); }, rolagem.ativa() ? 'Pausar rolagem' : 'Iniciar rolagem'),
-        bt('−', function () { rolagem.ajustar(-5); salvarVisao(); }, 'Mais devagar'), el('b', { txt: String(rolagem.velocidade) }), bt('+', function () { rolagem.ajustar(5); salvarVisao(); }, 'Mais rápido')]));
+        bt('−', function () { rolagem.ajustar(-5); salvarVisao(); }, 'Mais devagar'), el('b', { txt: String(rolagem.velocidade) }), bt('+', function () { rolagem.ajustar(5); salvarVisao(); }, 'Mais rápido'), estado.mic]));
       var mais = el('div', { class: 'cf-mais linha', style: 'margin:0' });
       mais.appendChild(C.botao('Palco', function () { C.palcoUmaMusica(estado); }, 'peq'));
       if (d.pode && d.pode.editar) mais.appendChild(C.botao('Editar', function () { C.ir('editor', d.cifra.id); }, 'sec peq'));
@@ -545,7 +550,7 @@
     }
     // atalhos de teclado da leitura
     document.addEventListener('keydown', function atalho(e) {
-      if (!document.body.contains(areaDoc)) { document.removeEventListener('keydown', atalho); rolagem.parar(); return; }
+      if (!document.body.contains(areaDoc)) { document.removeEventListener('keydown', atalho); rolagem.parar(); if (estado.mic) estado.mic.parar(); return; }
       if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
       if (e.key === '+' || e.key === '=') mudar(function () { v.semitons++; });
       else if (e.key === '-') mudar(function () { v.semitons--; });
@@ -919,13 +924,35 @@
         C.botao('A', function () { loop.a = audio.currentTime; info.textContent = 'A ' + C.minutos(Math.round(loop.a)); }, 'sec peq'),
         C.botao('B', function () { loop.b = audio.currentTime; info.textContent += ' → B ' + C.minutos(Math.round(loop.b)); }, 'sec peq'),
         C.botao('Sem loop', function () { loop.a = loop.b = null; info.textContent = ''; }, 'sec peq'), info]));
+      // Tom do áudio: o som muda de altura e a velocidade fica a mesma
+      // (WSOLA no Web Worker, neste aparelho). A posição e a velocidade de
+      // estudo são mantidas ao trocar.
+      var tomAudio = 0, urlOriginal = '';
+      var rotTom = el('b', { txt: '0' }), estadoTom = el('span', { class: 'peq', 'aria-live': 'polite' });
+      var aplicarTom = function (delta) {
+        var novo = Math.max(-6, Math.min(6, tomAudio + delta));
+        if (novo === tomAudio || !urlOriginal) return;
+        var pos = audio.currentTime, vel2 = audio.playbackRate, tocando = !audio.paused;
+        var usar = function (u) {
+          tomAudio = novo; rotTom.textContent = (novo > 0 ? '+' : '') + novo; estadoTom.textContent = novo ? 'tom mudado; mesma velocidade' : '';
+          audio.src = u; audio.addEventListener('loadedmetadata', function f() { audio.removeEventListener('loadedmetadata', f); audio.currentTime = pos; audio.playbackRate = vel2; if (tocando) audio.play().catch(function () {}); });
+        };
+        if (novo === 0) return usar(urlOriginal);
+        C.Escuta.audioNoTom(urlOriginal, novo, function (f) { estadoTom.textContent = f; }).then(usar)
+          .catch(function (e) { estadoTom.textContent = ''; C.erro(e); });
+      };
+      areaAudio.appendChild(el('div', { class: 'linha' }, [el('span', { txt: 'Tom do áudio' }),
+        C.botao('−½', function () { aplicarTom(-1); }, 'sec peq'), rotTom, C.botao('+½', function () { aplicarTom(1); }, 'sec peq'), estadoTom,
+        C.botao('Tirar os acordes deste áudio', function () {
+          if (urlOriginal) C.ir('importar', null, { aba: 'audio', url: urlOriginal, titulo: (d.musica && d.musica.titulo) || '', obra_id: d.cifra.obra_id });
+        }, 'sec peq')]));
       var marcasBox = el('div', { class: 'cf-marcas' });
       areaAudio.appendChild(el('p', { class: 'peq', txt: 'Marque onde cada seção começa: a cifra acompanha o áudio.' }));
       areaAudio.appendChild(marcasBox);
       var atual = null;
       function carregarAudio(midia) {
         atual = midia;
-        api('GET', '/midias/' + midia.id + '/url').then(function (r) { audio.src = r.url; }).catch(C.erro);
+        api('GET', '/midias/' + midia.id + '/url').then(function (r) { urlOriginal = r.url; tomAudio = 0; rotTom.textContent = '0'; estadoTom.textContent = ''; audio.src = r.url; }).catch(C.erro);
         pintarMarcas();
       }
       function pintarMarcas() {

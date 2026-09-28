@@ -165,11 +165,17 @@ const Importar = {
   _transporte: (fn) => { transporteTeste = fn; },
 
   /** Texto colado ou ChordPro: prévia imediata, registrada como tarefa pronta. */
-  texto(usuario, { texto, titulo = '', artista = '' } = {}) {
+  texto(usuario, { texto, titulo = '', artista = '', origem = '', confianca, bpm } = {}) {
     flags.exigir('cifras.importar.texto');
-    const id = criarTarefa(usuario, pareceChordPro(texto) ? 'chordpro' : 'texto', s(titulo || String(texto).split('\n')[0], 120));
+    // Rascunho gerado pelo ÁUDIO no navegador (croma + Viterbi, motor/audio.js):
+    // a procedência diz isso, e a confiança da análise baixa a da prévia.
+    const audio = origem === 'audio';
+    const id = criarTarefa(usuario, audio ? 'audio' : (pareceChordPro(texto) ? 'chordpro' : 'texto'), s(titulo || String(texto).split('\n')[0], 120));
     try {
-      const p = previa(usuario, texto, { dica: { titulo, artista }, fonte: { tipo: 'texto', metodo: 'colado' } });
+      const p = previa(usuario, texto, { dica: { titulo, artista },
+        fonte: audio ? { tipo: 'audio', metodo: 'transcricao.croma', bpm: Number(bpm) || 0 } : { tipo: 'texto', metodo: 'colado' },
+        confiancaBase: audio ? Math.max(0.05, Math.min(1, Number(confianca) || 0.5)) : 1 });
+      if (audio) p.ambiguidades.unshift({ linha: 0, texto: '', motivo: 'Rascunho tirado do ÁUDIO: os acordes são estimativa (maiores e menores). Confira no instrumento antes de usar.' });
       concluir(id, p, { confianca: p.confianca });
       return Importar.obter(usuario, id);
     } catch (e) { falhar(id, e); throw e; }

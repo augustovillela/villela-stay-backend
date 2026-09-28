@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = path.join(__dirname, 'cliente');
-const ORDEM = ['base', 'render', 'rolagem', 'telas-acervo', 'editor', 'importar', 'palco', 'bandas'];
+const ORDEM = ['base', 'render', 'rolagem', 'escuta', 'telas-acervo', 'editor', 'importar', 'palco', 'bandas'];
 
 const JS = ORDEM.map((n) => '// ---- cliente/' + n + '.js ----\n' + fs.readFileSync(path.join(DIR, n + '.js'), 'utf8')).join('\n;\n');
 const CSS = fs.readFileSync(path.join(DIR, 'estilo.css'), 'utf8');

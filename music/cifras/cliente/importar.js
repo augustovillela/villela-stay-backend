@@ -20,7 +20,7 @@
     var abas = el('div', { class: 'cf-sub', role: 'tablist' });
     var area = el('div');
     c.appendChild(abas); c.appendChild(area);
-    var ABAS = [['buscar', 'Buscar pelo nome'], ['colar', 'Colar texto'], ['arquivo', 'Arquivo ou foto'], ['url', 'Página da web'], ['zero', 'Criar do zero']];
+    var ABAS = [['buscar', 'Buscar pelo nome'], ['colar', 'Colar texto'], ['arquivo', 'Arquivo ou foto'], ['url', 'Página da web'], ['audio', 'Tirar do áudio'], ['zero', 'Criar do zero']];
     var atual = extra.q ? 'buscar' : (extra.aba || 'buscar');
     function pintarAbas() {
       abas.innerHTML = '';
@@ -31,7 +31,7 @@
         abas.appendChild(b);
       });
     }
-    function pintar() { area.innerHTML = ''; ({ buscar: abaBuscar, colar: abaColar, arquivo: abaArquivo, url: abaUrl, zero: abaZero })[atual](area, extra); }
+    function pintar() { area.innerHTML = ''; ({ buscar: abaBuscar, colar: abaColar, arquivo: abaArquivo, url: abaUrl, audio: function (a, x) { C.Escuta.telaTranscrever(a, x); }, zero: abaZero })[atual](area, extra); }
     pintarAbas(); pintar();
   };
 
@@ -202,6 +202,7 @@
   // ---------------------------------------------------------------
   // PRÉVIA
   // ---------------------------------------------------------------
+  C.abrirPrevia = function (d, extra) { abrirPrevia(d, extra); };
   function abrirPrevia(d, extra) {
     var r = d.resultado || {};
     C.ir('previa', null, { importacao: d.importacao.id, documento: r.documento, texto_original: r.texto_original, fonte: r.fonte, resultado: r, destino: extra });

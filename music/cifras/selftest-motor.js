@@ -525,7 +525,92 @@ async function rodar({ t, secao, assert }) {
   });
 }
 
-module.exports = { rodar };
+// ---------------------------------------------------------------------
+// ÁUDIO (sinal SINTÉTICO): transcrição, seguidor, BPM e mudança de tom
+// ---------------------------------------------------------------------
+async function rodarAudio({ t, secao, assert }) {
+  const Au = require('./motor/audio');
+  secao('Cifras · motor de áudio — com sinal sintético');
+  const taxa = 22050;
+  let semente = 3;
+  const rnd = () => { semente = (semente * 1103515245 + 12345) & 0x7fffffff; return semente / 0x7fffffff; };
+  const gerar = (c, dur, ruido) => {
+    const pcs = A.notas(A.ler(c)); const n = Math.round(dur * taxa); const x = new Float32Array(n);
+    pcs.forEach((pc, i) => { const f = 440 * Math.pow(2, (48 + pc + (i ? 12 : 0) - 69) / 12);
+      for (let h = 1; h <= 5; h++) for (let k = 0; k < n; k++) x[k] += Math.sin(2 * Math.PI * f * h * k / taxa) / (h * h) * 0.2; });
+    if (ruido) for (let k = 0; k < n; k++) x[k] += (rnd() - 0.5) * ruido;
+    return x;
+  };
+  const juntar = (ps) => { const n = ps.reduce((a, p) => a + p.length, 0); const o = new Float32Array(n); let k = 0; ps.forEach((p) => { o.set(p, k); k += p.length; }); return o; };
+  const SEQ = ['C', 'G', 'Am', 'F', 'Em', 'Dm', 'G', 'C', 'A', 'D', 'E', 'Bm'];
+  const barulhento = juntar(SEQ.map((c) => gerar(c, 2, 0.8)));
+
+  await t('transcrição: 12 acordes (maiores e menores) certos, com ruído 4× mais alto que cada nota', async () => {
+    const r = Au.transcrever(Au.cromagrama(barulhento, taxa));
+    assert.deepEqual(r.segmentos.filter((s) => s.acorde).map((s) => s.acorde), SEQ);
+    assert.ok(r.confianca > 0.8, 'confiança ' + r.confianca);
+    const s1 = r.segmentos.filter((s) => s.acorde)[1];
+    assert.ok(Math.abs(s1.inicio_s - 2) < 0.3, 'o segundo acorde começa perto de 2 s: ' + s1.inicio_s);
+  });
+
+  await t('não confunde acorde com o RELATIVO (dó maior × mi menor): o modelo conta os harmônicos', async () => {
+    const r = Au.transcrever(Au.cromagrama(juntar([gerar('C', 3), gerar('G', 3)]), taxa));
+    assert.deepEqual(r.segmentos.filter((s) => s.acorde).map((s) => s.acorde), ['C', 'G']);
+  });
+
+  await t('silêncio não vira acorde', async () => {
+    const r = Au.transcrever(Au.cromagrama(juntar([gerar('C', 2), new Float32Array(taxa * 2), gerar('G', 2)]), taxa));
+    assert.ok(r.segmentos.some((s) => !s.acorde && s.fim_s - s.inicio_s > 1), JSON.stringify(r.segmentos));
+  });
+
+  await t('seguidor pelo microfone acompanha TODAS as trocas, sem pular e sem voltar', async () => {
+    const sg = Au.Seguidor(SEQ); const vistos = [];
+    for (let i = 0; i + 4096 <= barulhento.length; i += 2048) {
+      const p = sg.passo(Au.croma(Au.magnitudes(barulhento.subarray(i, i + 4096)), taxa, 4096));
+      if (p.avancou) vistos.push(SEQ[p.indice]);
+    }
+    assert.deepEqual(vistos, SEQ.slice(1));
+  });
+
+  await t('seguidor não avança no silêncio (a banda parou, a cifra para)', async () => {
+    const sg = Au.Seguidor(['C', 'G']);
+    const silencio = new Float32Array(4096);
+    for (let k = 0; k < 20; k++) assert.equal(sg.passo(Au.croma(Au.magnitudes(silencio), taxa, 4096)).avancou, false);
+    assert.equal(sg.indice, 0);
+  });
+
+  await t('rascunho em ChordPro válido, com tom provável e o tempo de cada linha', async () => {
+    const r = Au.transcrever(Au.cromagrama(barulhento, taxa));
+    const cp = Au.paraChordPro(r, { titulo: 'Gravação' }).chordpro;
+    const doc = D.deChordPro(cp);
+    assert.ok(D.validar(doc).ok);
+    assert.deepEqual(D.acordesEmOrdem(doc), SEQ);
+    assert.ok(doc.meta.tom, 'tom estimado');
+    assert.match(cp, /\{ci: 0:00\}[\s\S]*\{ci: 0:08\}[\s\S]*\{ci: 0:16\}/, 'uma linha a cada 4 acordes, com o tempo de início');
+  });
+
+  await t('BPM estimado de um pulso a 120', async () => {
+    const x = new Float32Array(taxa * 12);
+    for (let b = 0; b < 24; b++) { const ini = Math.round(b * 0.5 * taxa); for (let k = 0; k < 800; k++) x[ini + k] += Math.sin(k / 3) * Math.exp(-k / 200); }
+    const cg = Au.cromagrama(x, taxa, { fft: 1024, salto: 256 });
+    const r = Au.estimarBpm(cg.fluxo, cg.passo_s);
+    assert.ok(Math.abs(r.bpm - 120) <= 3, 'bpm ' + r.bpm);
+  });
+
+  await t('mudar o TOM mantém a DURAÇÃO e acerta a frequência (+2, −3, +12)', async () => {
+    const la = new Float32Array(taxa * 2);
+    for (let k = 0; k < la.length; k++) la[k] = Math.sin(2 * Math.PI * 440 * k / taxa);
+    for (const [s, esperado] of [[2, 493.88], [-3, 369.99], [12, 880]]) {
+      const y = Au.mudarTom(la, s);
+      assert.equal(y.length, la.length, 'duração preservada');
+      const f = Au.frequenciaDominante(y.subarray(2000), taxa);
+      assert.ok(Math.abs(f - esperado) < esperado * 0.01, `${s} semitons: ${f.toFixed(1)} Hz (esperado ${esperado})`);
+    }
+    assert.equal(Au.mudarTom(la, 0), la, 'zero semitons devolve o mesmo áudio');
+  });
+}
+
+module.exports = { rodar, rodarAudio };
 
 if (require.main === module) {
   const assert = require('assert');
@@ -533,7 +618,8 @@ if (require.main === module) {
   const t = async (nome, fn) => {
     try { await fn(); ok++; console.log('  ✅ ' + nome); } catch (e) { falhas.push(nome); console.log('  ❌ ' + nome + '\n     ' + e.message); }
   };
-  rodar({ t, secao: (s) => console.log('\n— ' + s + ' —'), assert }).then(() => {
+  const sec = (s) => console.log('\n— ' + s + ' —');
+  rodar({ t, secao: sec, assert }).then(() => rodarAudio({ t, secao: sec, assert })).then(() => {
     console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
     if (falhas.length) process.exit(1);
   });

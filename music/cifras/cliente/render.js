@@ -89,7 +89,7 @@
               var g = M.harmonia.grau(lido, tomSec, { sistema: o.graus });
               if (g) ac.appendChild(el('span', { class: 'g', txt: g.texto }));
             }
-            if (o.aoClicarAcorde) { ac.style.cursor = 'pointer'; ac.onclick = function () { o.aoClicarAcorde(sg.acorde, l); }; }
+            if (o.aoClicarAcorde) { ac.style.cursor = 'pointer'; ac.onclick = function () { o.aoClicarAcorde(sg.acorde, l, ac); }; }
           }
           par.appendChild(ac);
           par.appendChild(el('span', { class: 'cf-t' + (ocultarLetra ? ' oculto' : ''), txt: sg.texto || (sg.acorde ? ' ' : '') }));

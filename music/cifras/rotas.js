@@ -37,12 +37,24 @@ const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</
 // Motor isomórfico: os mesmos arquivos que o servidor usa, concatenados
 // na ordem de dependência. É o que dá transposição instantânea e palco
 // sem rede no navegador.
-const MOTOR_ARQS = ['nota', 'acorde', 'harmonia', 'documento', 'instrumentos'];
+const MOTOR_ARQS = ['nota', 'acorde', 'harmonia', 'documento', 'instrumentos', 'audio'];
 let _motor = null;
 function motorJs() {
   if (!_motor) _motor = MOTOR_ARQS.map((n) => fs.readFileSync(path.join(__dirname, 'motor', n + '.js'), 'utf8')).join('\n;\n');
   return _motor;
 }
+
+const TRABALHADOR = [
+  "importScripts('/music/motor-cifras.js');",
+  'onmessage = function (e) {',
+  '  var d = e.data, A = self.MusiqueMotor.audio;',
+  '  try {',
+  "    if (d.tipo === 'tom') { var y = A.mudarTom(d.amostras, d.semitons); if (y === d.amostras) y = new Float32Array(y); postMessage({ id: d.id, ok: true, amostras: y }, [y.buffer]); }",
+  "    else if (d.tipo === 'transcrever') { var cg = A.cromagrama(d.amostras, d.taxa); postMessage({ id: d.id, ok: true, resultado: A.transcrever(cg), bpm: A.estimarBpm(cg.fluxo, cg.passo_s) }); }",
+  "    else postMessage({ id: d.id, ok: false, erro: 'Pedido desconhecido.' });",
+  '  } catch (err) { postMessage({ id: d.id, ok: false, erro: String((err && err.message) || err) }); }',
+  '};',
+].join('\n');
 
 // Limite por pessoa nos pontos caros (janela de 10 minutos).
 const janelas = new Map();
@@ -76,6 +88,10 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   });
   app.get('/music/cifras.js', (req, res) => {
     res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache').send(require('./cliente').JS);
+  });
+  // Web Worker da análise de áudio: o MESMO motor, fora da linha da tela.
+  app.get('/music/cifras-trabalhador.js', (req, res) => {
+    res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache').send(TRABALHADOR);
   });
   app.get('/music/cifras.css', (req, res) => {
     res.set('Content-Type', 'text/css; charset=utf-8').set('Cache-Control', 'no-cache').send(require('./cliente').CSS);
