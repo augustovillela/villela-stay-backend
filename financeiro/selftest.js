@@ -57,6 +57,7 @@ const mercadoWorker = require('./mercado-worker');
 const mercadoPreflight = require('./mercado-preflight');
 const mercadoE2e = require('./mercado-e2e');
 const mercadoPilotoCvm = require('./mercado-piloto-cvm');
+const mercadoQualidadeCvm = require('./mercado-qualidade-cvm');
 const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
@@ -1455,6 +1456,115 @@ testeAsync('investimentos: piloto CVM relê e confere hash e contagem das parti�
   }] });
   await assert.rejects(() => mercadoPilotoCvm.verificarParticoes(
     {}, pool, 'job', prefixo, fetchImpl, storage), /hash ou contagem/i);
+});
+
+teste('investimentos: auditoria CVM exige armação, parser off e persiste só qualidade', () => {
+  const base = {
+    FINANCE_MARKET_DATABASE_URL: 'postgresql://interno/teste',
+    FINANCE_S3_ENDPOINT: 'https://conta.r2.cloudflarestorage.com',
+    FINANCE_S3_BUCKET: 'bucket', FINANCE_S3_KEY: 'key', FINANCE_S3_SECRET: 'secret',
+  };
+  assert.throws(() => mercadoQualidadeCvm.configAmbiente({ ...base, FINANCE_INV_PARSE_WORKER: 'off' }), /FINANCE_INV_CVM_QUALITY=on/);
+  assert.throws(() => mercadoQualidadeCvm.configAmbiente({
+    ...base, FINANCE_INV_CVM_QUALITY: 'on', FINANCE_INV_PARSE_WORKER: 'on',
+  }), /precisa permanecer off/);
+  assert.doesNotThrow(() => mercadoQualidadeCvm.configAmbiente({
+    ...base, FINANCE_INV_CVM_QUALITY: 'on', FINANCE_INV_PARSE_WORKER: 'off',
+  }));
+  assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_runs/);
+  assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_metrics/);
+  assert.match(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /fin_quality_findings/);
+  assert.doesNotMatch(mercadoQualidadeCvm.QUALITY_SCHEMA_SQL, /saldo|ordem_financeira|razao/i);
+});
+
+teste('investimentos: regras CVM tratam datas, decimais e demonstrações sem float', () => {
+  assert.strictEqual(mercadoQualidadeCvm.decimalEscala10('123.4500000000'), 1234500000000n);
+  assert.strictEqual(mercadoQualidadeCvm.decimalEscala10('-0.0000000001'), -1n);
+  assert.strictEqual(mercadoQualidadeCvm.decimalEscala10('1,25'), null);
+  assert.strictEqual(mercadoQualidadeCvm.dataIsoValida('2025-02-28'), true);
+  assert.strictEqual(mercadoQualidadeCvm.dataIsoValida('2025-02-30'), false);
+  assert.strictEqual(mercadoQualidadeCvm.categoriaFormulario('DF Consolidado - Balanço Patrimonial Ativo'), 'BPA');
+  assert.strictEqual(mercadoQualidadeCvm.categoriaFormulario('DF Individual - Demonstração do Resultado Abrangente'), 'DRA');
+  assert.strictEqual(mercadoQualidadeCvm.categoriaFormulario('Demonstração das Mutações do Patrimônio Líquido'), 'DMPL');
+});
+
+teste('investimentos: achados agrupam contagem integral e limitam amostras', () => {
+  const a = new mercadoQualidadeCvm.Achados(2);
+  a.adicionar('regra', 'ALERTA', { n: 1 });
+  a.adicionar('regra', 'ALERTA', { n: 2 });
+  a.adicionar('regra', 'ALERTA', { n: 3 });
+  assert.strictEqual(a.listar()[0].quantidade, 3);
+  assert.strictEqual(a.listar()[0].amostras.length, 2);
+  assert.deepStrictEqual(a.totais(), { BLOQUEADOR: 0, ALERTA: 3 });
+  const id1 = mercadoQualidadeCvm.idAuditoria('job', 'a'.repeat(64));
+  const id2 = mercadoQualidadeCvm.idAuditoria('job', 'a'.repeat(64));
+  assert.deepStrictEqual(id1, id2);
+  const historico = new mercadoQualidadeCvm.Achados();
+  const cadastro = mercadoQualidadeCvm.indexarCadastro({ registros: [
+    { cnpj: '33000167000101', codigo: '1', nome: 'Antiga', situacao: 'CANCELADO' },
+    { cnpj: '33000167000101', codigo: '2', nome: 'Atual', situacao: 'ATIVO' },
+  ] }, historico);
+  assert.strictEqual(cadastro.porCnpj.get('33000167000101').length, 2);
+  assert.ok(historico.listar().some(x => x.regra === 'cadastro_cnpj_com_historico_multiplo'
+    && x.gravidade === 'ALERTA'));
+});
+
+teste('investimentos: auditoria detecta duplicidade conflitante e reconcilia balanço', () => {
+  const mapa = new Map();
+  const indice = {
+    inserir: { run: (chave, valor) => {
+      const k = Buffer.from(chave).toString('hex');
+      if (mapa.has(k)) return { changes: 0 };
+      mapa.set(k, Buffer.from(valor)); return { changes: 1 };
+    } },
+    buscar: { get: chave => ({ valor: mapa.get(Buffer.from(chave).toString('hex')) }) },
+  };
+  const achados = new mercadoQualidadeCvm.Achados();
+  const cobertura = new Map(), balancos = new Map();
+  const base = {
+    tipo: 'fato', identificador: { sistema: 'cnpj', valor: '33000167000101' },
+    taxonomia: 'cvm_plano_contas', conceito: '1', rotulo: 'Ativo Total', unidade: 'REAL',
+    valorTexto: '100.0000000000', periodoInicio: '', periodoFim: '2025-12-31',
+    formulario: 'DF Consolidado - Balanço Patrimonial Ativo', protocolo: '1',
+    escopo: 'ÚLTIMO', contexto: { escalaMoeda: 'MIL' },
+  };
+  mercadoQualidadeCvm.analisarFato(base, { achados, indice, cobertura, balancos, parte: 1, linha: 1 });
+  mercadoQualidadeCvm.analisarFato({ ...base, valorTexto: '101.0000000000' },
+    { achados, indice, cobertura, balancos, parte: 1, linha: 2 });
+  mercadoQualidadeCvm.analisarFato({ ...base, conceito: '2', valorTexto: '99.0000000000',
+    formulario: 'DF Consolidado - Balanço Patrimonial Passivo' },
+  { achados, indice, cobertura, balancos, parte: 1, linha: 3 });
+  const r = mercadoQualidadeCvm.reconciliarBalancos(balancos, achados);
+  assert.deepStrictEqual(r, { comparados: 1, divergentes: 1 });
+  assert.ok(achados.listar().some(x => x.regra === 'chave_natural_valor_conflitante' && x.gravidade === 'BLOQUEADOR'));
+  assert.ok(achados.listar().some(x => x.regra === 'balanco_nao_fecha' && x.gravidade === 'ALERTA'));
+});
+
+testeAsync('investimentos: auditoria lê JSONL em fluxo e confere hash e contagem', async () => {
+  const fato = {
+    tipo: 'fato', identificador: { sistema: 'cnpj', valor: '33000167000101' },
+    taxonomia: 'cvm_plano_contas', conceito: '3.01', rotulo: 'Receita', unidade: 'REAL',
+    valorTexto: '10.0000000000', periodoInicio: '2025-01-01', periodoFim: '2025-12-31',
+    formulario: 'DF Consolidado - Demonstração do Resultado', protocolo: '1',
+    escopo: 'ÚLTIMO', contexto: { escalaMoeda: 'MIL' },
+  };
+  const conteudo = Buffer.from(`${JSON.stringify(fato)}\n`);
+  const parte = { sequencia: 1, objeto_chave: `${mercadoPilotoCvm.PREFIXO_RAIZ}${'d'.repeat(64)}/normalizado/p1.jsonl`,
+    sha256: cryptoNode.createHash('sha256').update(conteudo).digest('hex'), registros: 1 };
+  const mapa = new Map();
+  const indice = {
+    inserir: { run: (chave, valor) => { mapa.set(Buffer.from(chave).toString('hex'), Buffer.from(valor)); return { changes: 1 }; } },
+    buscar: { get: () => null },
+  };
+  const contexto = {
+    configS3: {}, prefixo: `${mercadoPilotoCvm.PREFIXO_RAIZ}${'d'.repeat(64)}/`,
+    achados: new mercadoQualidadeCvm.Achados(), indice, cobertura: new Map(), balancos: new Map(),
+  };
+  const fetchImpl = async () => ({ ok: true, status: 200, body: Readable.toWeb(Readable.from([conteudo])) });
+  const storage = { presignS3: () => 'https://r2.test/parte' };
+  assert.strictEqual(await mercadoQualidadeCvm.auditarParticao(parte, contexto, fetchImpl, storage), 1);
+  assert.deepStrictEqual(contexto.achados.totais(), { BLOQUEADOR: 0, ALERTA: 0 });
+  assert.strictEqual(contexto.cobertura.get('33000167000101').has('DRE'), true);
 });
 
 testeAsync('investimentos: preflight usa SELECT 1 e lista somente um metadado no bucket', async () => {
