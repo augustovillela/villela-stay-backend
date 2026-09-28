@@ -380,15 +380,23 @@ async function executar({ env = process.env, fetchImpl = global.fetch, storage =
     runId = `duplicates-cvm-${hashTexto(chave).slice(0, 32)}`;
     const anterior = await pool.query(`SELECT status,resultado,resumo FROM ${SCHEMA}.fin_quality_duplicate_runs WHERE chave_idempotencia=$1`, [chave]);
     if (anterior.rows[0]) {
-      if (anterior.rows[0].status !== 'concluida') throw new Error('A mesma decomposição possui tentativa incompleta; revise o histórico.');
-      const r = anterior.rows[0].resumo || {};
-      logger.log(`[finance-market-duplicates-cvm] OK idempotente=sim resultado=${anterior.rows[0].resultado} excedentes=${r.excedentes || 0} grupos=${r.grupos || 0}`);
-      return { ok: true, idempotente: true, resultado: anterior.rows[0].resultado, ...r };
+      if (anterior.rows[0].status === 'concluida') {
+        const r = anterior.rows[0].resumo || {};
+        logger.log(`[finance-market-duplicates-cvm] OK idempotente=sim resultado=${anterior.rows[0].resultado} excedentes=${r.excedentes || 0} grupos=${r.grupos || 0}`);
+        return { ok: true, idempotente: true, resultado: anterior.rows[0].resultado, ...r };
+      }
+      // A trava advisory prova que a execução anterior não continua ativa. Como grupos,
+      // ocorrências, simulações e conclusão são gravados na mesma transação, um processo
+      // interrompido por deploy deixa somente esta linha de controle e pode ser retomado.
+      await pool.query(`UPDATE ${SCHEMA}.fin_quality_duplicate_runs SET status='processando',
+        resultado='',resumo='{}'::jsonb,erro='',atualizado_em=now() WHERE id=$1`, [runId]);
+      logger.log('[finance-market-duplicates-cvm] RETOMADA tentativa anterior interrompida antes da persistência final.');
+    } else {
+      await pool.query(`INSERT INTO ${SCHEMA}.fin_quality_duplicate_runs
+        (id,job_id,quality_run_id,parser_versao,diagnostico_versao,fonte_sha256,particoes_sha256,chave_idempotencia,status)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'processando')`, [runId, job.job_id, job.quality_run_id,
+        parser.PARSER_VERSAO, DIAGNOSTICO_VERSAO, job.sha256, particoesSha, chave]);
     }
-    await pool.query(`INSERT INTO ${SCHEMA}.fin_quality_duplicate_runs
-      (id,job_id,quality_run_id,parser_versao,diagnostico_versao,fonte_sha256,particoes_sha256,chave_idempotencia,status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'processando')`, [runId, job.job_id, job.quality_run_id,
-      parser.PARSER_VERSAO, DIAGNOSTICO_VERSAO, job.sha256, particoesSha, chave]);
     const esperadoR = await pool.query(`SELECT quantidade FROM ${SCHEMA}.fin_quality_findings
       WHERE run_id=$1 AND regra='chave_natural_duplicada' AND gravidade='ALERTA'`, [job.quality_run_id]);
     const esperado = Number(esperadoR.rows[0]?.quantidade || 0);
