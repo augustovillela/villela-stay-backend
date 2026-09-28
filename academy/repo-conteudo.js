@@ -403,13 +403,20 @@ const MIMES_VIDEO = { 'video/mp4': '.mp4', 'video/webm': '.webm' };
 const UPLOAD_GRANDE_MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB (vai direto ao S3)
 
 const Midia = {
-  async salvar(ownerUserId, { nome, mime, conteudo_base64 }) {
+  // checagem PURA (não grava nada): a importação valida o payload inteiro com ela
+  // ANTES da primeira escrita — senão um erro no fim deixava mídia órfã no bucket.
+  validarArquivo({ mime, conteudo_base64 }) {
     mime = s(mime, 100).toLowerCase();
     if (MIMES_VIDEO[mime]) throw new Error('Vídeo: use o upload de vídeo (direto ao storage) ou URL externa.');
     if (!MIMES_PERMITIDOS[mime]) throw new Error('Tipo de arquivo não permitido (aceitos: PDF, imagem, áudio, ZIP).');
     const buffer = Buffer.from(String(conteudo_base64 || ''), 'base64');
     if (!buffer.length) throw new Error('Arquivo vazio.');
     if (buffer.length > UPLOAD_MAX_BYTES) throw new Error('Arquivo acima de 10 MB.');
+    return { mime, buffer };
+  },
+
+  async salvar(ownerUserId, { nome, mime: mimeBruto, conteudo_base64 }) {
+    const { mime, buffer } = Midia.validarArquivo({ mime: mimeBruto, conteudo_base64 });
     const id = novoId();
     const rel = id + MIMES_PERMITIDOS[mime];
     const onde = await storage.salvar(rel, buffer, mime);

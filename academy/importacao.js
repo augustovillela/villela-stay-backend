@@ -21,9 +21,30 @@ const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 // chave de comparação: sem acento, sem caixa, sem espaço duplicado
 const chave = (t) => s(t, 200).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
 
+// ---- validação PURA (não grava nada) ----------------------------------------
+// Tudo que pode recusar o payload roda ANTES da primeira escrita. Em 27/09/2026 a
+// capa era salva no bucket e só DEPOIS a falta de "modulos" dava 400 — cada nova
+// tentativa deixava mais uma mídia órfã e o produto já com a capa trocada.
+function validarModulos(modulos) {
+  if (!Array.isArray(modulos) || !modulos.length) throw new Error('Informe ao menos um módulo em "modulos".');
+  for (const mod of modulos) {
+    const titulo = s(mod && mod.titulo, 160);
+    if (!titulo) throw new Error('Módulo sem título.');
+    if (mod.aulas != null && !Array.isArray(mod.aulas)) throw new Error(`Módulo "${titulo}": "aulas" deve ser uma lista.`);
+    for (const aula of (mod.aulas || [])) {
+      const tAula = s(aula && aula.titulo, 160);
+      if (!tAula) throw new Error(`Aula sem título no módulo "${titulo}".`);
+      if (aula.formato != null && !eco.FORMATOS.includes(aula.formato)) {
+        throw new Error(`Aula "${tAula}": formato deve ser ${eco.FORMATOS.filter(Boolean).join('|')} (ou vazio).`);
+      }
+      eco.validarPassos(aula.passos, `Aula "${tAula}"`);
+    }
+  }
+}
+
 // ---- estrutura (módulos → aulas) -------------------------------------------
 function aplicarEstrutura(productId, modulos) {
-  if (!Array.isArray(modulos) || !modulos.length) throw new Error('Informe ao menos um módulo em "modulos".');
+  validarModulos(modulos); // a grade inteira passa antes de criar o 1º módulo
   const r = { modulos_criados: 0, modulos_atualizados: 0, aulas_criadas: 0, aulas_atualizadas: 0 };
   const atual = ct.Produtos.estrutura(productId);
   const porTitulo = new Map(atual.map(m => [chave(m.titulo), m]));
@@ -31,7 +52,6 @@ function aplicarEstrutura(productId, modulos) {
   let ordemM = 0;
   for (const mod of modulos) {
     const titulo = s(mod && mod.titulo, 160);
-    if (!titulo) throw new Error('Módulo sem título.');
     ordemM++;
     // titulo_anterior: absorve um módulo que já existe com OUTRO nome (ex.: o "Módulo 1"
     // vazio criado à mão no painel) — renomeia em vez de deixar um módulo órfão para trás.
@@ -44,7 +64,6 @@ function aplicarEstrutura(productId, modulos) {
     let ordemA = 0;
     for (const aula of (mod.aulas || [])) {
       const tAula = s(aula && aula.titulo, 160);
-      if (!tAula) throw new Error(`Aula sem título no módulo "${titulo}".`);
       ordemA++;
       // só o que veio no payload entra no UPDATE — o resto fica como está
       const campos = { titulo: tAula, ordem: ordemA };
@@ -55,10 +74,7 @@ function aplicarEstrutura(productId, modulos) {
       else if (aula.duracao_min != null) campos.duracao_seg = Math.max(0, Math.round((parseFloat(aula.duracao_min) || 0) * 60));
       if (aula.gratuita != null) campos.gratuita = aula.gratuita ? 1 : 0;
       // formatos do ecossistema: Villela Express (curta) e Faça comigo (com passos no vídeo)
-      if (aula.formato != null) {
-        if (!eco.FORMATOS.includes(aula.formato)) throw new Error(`Aula "${tAula}": formato deve ser ${eco.FORMATOS.filter(Boolean).join('|')} (ou vazio).`);
-        campos.formato = aula.formato;
-      }
+      if (aula.formato != null) campos.formato = aula.formato;
       if (aula.passos != null) campos.passos = JSON.stringify(eco.validarPassos(aula.passos, `Aula "${tAula}"`));
 
       // titulo_anterior também na AULA: sem isto, renomear uma aula cria outra e
@@ -120,9 +136,40 @@ async function anexarMateriaisCurso(productId, producerId, materiais) {
   return r;
 }
 
+// materiais de aula e do curso, conferidos contra a grade que VAI existir (a atual + a do
+// payload, já com as renomeações) — o mesmo critério que anexarMateriais usa depois.
+function validarMateriais(produto, dados) {
+  const atuais = produto ? ct.Produtos.estrutura(produto.id).flatMap(m => m.aulas) : [];
+  const titulos = new Set(atuais.map(a => chave(a.titulo)));
+  for (const mod of (Array.isArray(dados.modulos) ? dados.modulos : [])) {
+    for (const aula of (mod.aulas || [])) {
+      if (aula.titulo_anterior && chave(aula.titulo_anterior) !== chave(aula.titulo)) titulos.delete(chave(aula.titulo_anterior));
+      titulos.add(chave(aula.titulo));
+    }
+  }
+  for (const mat of (Array.isArray(dados.materiais) ? dados.materiais : [])) {
+    const alvo = chave(mat && mat.aula_titulo);
+    if (!titulos.has(alvo)) throw new Error(`Aula "${s(mat && mat.aula_titulo, 160)}" não encontrada para o material "${s(mat && mat.nome, 160)}".`);
+    const nome = s(mat.nome, 160) || 'Material';
+    const aula = atuais.find(a => chave(a.titulo) === alvo);
+    if (aula && (aula.materiais || []).some(x => chave(x.nome) === chave(nome))) continue; // já existe: não sobe de novo
+    ct.Midia.validarArquivo(mat);
+  }
+  for (const mat of (Array.isArray(dados.materiais_curso) ? dados.materiais_curso : [])) {
+    const nome = s(mat && mat.nome, 160);
+    if (!nome) throw new Error('Material do curso sem nome.');
+    const mediaId = s(mat.media_id, 40);
+    if (mediaId) { if (!ct.Midia.obter(mediaId)) throw new Error(`Material "${nome}": arquivo (media_id) não encontrado.`); continue; }
+    if (!mat.conteudo_base64) throw new Error(`Material "${nome}": informe media_id (upload grande) ou conteudo_base64.`);
+    ct.Midia.validarArquivo(mat);
+  }
+}
+
 // ---- curso completo --------------------------------------------------------
 // dados = { produtor_email, produtor_nome?, produto: {...}, modulos: [...],
 //           materiais: [...], pagina_venda: {...} }
+// `modulos` é obrigatório só para produto NOVO: no que já existe, sem "modulos" a grade
+// fica como está (dá para trocar só a capa, o preço, a página de venda...).
 // O produto NASCE E FICA EM RASCUNHO: publicar continua sendo ato humano
 // (preço, revisão da plataforma). A importação não transiciona status.
 async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'importacao' } = {}) {
@@ -132,15 +179,12 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
   if (!u) throw new Error(`Não existe conta na Academy com o e-mail ${email} — crie a conta no painel antes de importar.`);
   if (u.status !== 'ativo') throw new Error(`A conta ${email} não está ativa.`);
 
+  // 1) SÓ LEITURA: perfil, produto e o payload inteiro. Nada abaixo grava até o passo 2.
   let perfil = repo.Perfis.produtor(u.id);
-  if (!perfil || perfil.status !== 'aprovado') {
-    if (!garantirProdutor) {
-      throw new Error(`A conta ${email} não tem o papel de produtor aprovado (${perfil ? perfil.status : 'sem cadastro'}). ` +
-        'Aprove no painel, ou repita com "garantir_produtor": true.');
-    }
-    if (!perfil) repo.Perfis.solicitarProdutor(u.id, { nome_publico: s(dados.produtor_nome, 120) || u.nome });
-    repo.Perfis.decidir('produtor', u.id, 'aprovado', `aprovado na importação por ${quem}`);
-    perfil = repo.Perfis.produtor(u.id);
+  const aprovar = !perfil || perfil.status !== 'aprovado';
+  if (aprovar && !garantirProdutor) {
+    throw new Error(`A conta ${email} não tem o papel de produtor aprovado (${perfil ? perfil.status : 'sem cadastro'}). ` +
+      'Aprove no painel, ou repita com "garantir_produtor": true.');
   }
 
   const p0 = dados.produto || {};
@@ -148,7 +192,6 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
   if (p0.id) produto = ct.Produtos.obterDoDono(s(p0.id, 40), u.id);
   else if (p0.titulo) produto = ct.Produtos.doProdutor(u.id).find(x => chave(x.titulo) === chave(p0.titulo)) || null;
   const criou = !produto;
-  if (!produto) produto = ct.Produtos.criar(u.id, p0);
 
   // edita só o que veio (o repo já ignora undefined); título nunca é apagado
   const edicao = {};
@@ -156,23 +199,48 @@ async function importarCurso(dados = {}, { garantirProdutor = false, quem = 'imp
     'preco_centavos', 'preco_promo_centavos', 'garantia_dias', 'tags', 'afiliado_pct']) {
     if (p0[k] != null) edicao[k] = p0[k];
   }
-  // capa: a importação não passava por aqui e a capa só entrava pelo painel (cookie). Aceita a
-  // imagem em base64 ("capa": {mime, conteudo_base64, nome?}) — vira mídia do produtor, como no
-  // painel — ou um "capa_media_id" que JÁ seja do produtor. Sem capa no payload, a atual fica.
-  let capa = false;
-  if (p0.capa && typeof p0.capa === 'object') {
-    const mime = s(p0.capa.mime, 100).toLowerCase();
-    if (!/^image\/(png|jpeg|webp)$/.test(mime)) throw new Error('A capa precisa ser imagem (PNG, JPEG ou WebP).');
-    const m = await ct.Midia.salvar(u.id, { nome: s(p0.capa.nome, 200) || `Capa — ${produto.titulo}`, mime, conteudo_base64: p0.capa.conteudo_base64 });
-    edicao.capa_media_id = m.id; capa = true;
+  // capa: aceita a imagem em base64 ("capa": {mime, conteudo_base64, nome?}) — vira mídia do
+  // produtor, como no painel — ou um "capa_media_id" que JÁ seja do produtor. Sem capa, a atual fica.
+  const capaNova = p0.capa && typeof p0.capa === 'object' ? p0.capa : null;
+  let capaMime = '';
+  if (capaNova) {
+    capaMime = s(capaNova.mime, 100).toLowerCase();
+    if (!/^image\/(png|jpeg|webp)$/.test(capaMime)) throw new Error('A capa precisa ser imagem (PNG, JPEG ou WebP).');
+    ct.Midia.validarArquivo({ mime: capaMime, conteudo_base64: capaNova.conteudo_base64 }); // vazia / > 10 MB
   } else if (p0.capa_media_id != null) {
     const m = ct.Midia.obter(s(p0.capa_media_id, 40));
     if (!m || m.owner_user_id !== u.id) throw new Error('capa_media_id não é uma mídia deste produtor.');
-    edicao.capa_media_id = m.id; capa = true;
+    edicao.capa_media_id = m.id;
+  }
+  const capa = !!(capaNova || edicao.capa_media_id);
+
+  if (criou) {
+    if (!s(p0.titulo, 160)) throw new Error('Informe o título do produto (ou o "id" de um produto que já existe).');
+    validarModulos(dados.modulos); // curso NOVO nasce com grade
+  } else {
+    if (['suspenso', 'removido'].includes(produto.status) && (capa || Object.keys(edicao).length)) {
+      throw new Error('Produto suspenso/removido não pode ser editado.');
+    }
+    // produto que JÁ existe: "modulos" é opcional — dá para trocar só a capa ou só um campo
+    if (dados.modulos != null) validarModulos(dados.modulos);
+  }
+  validarMateriais(produto, dados);
+
+  // 2) ESCRITAS — o payload já passou inteiro
+  if (aprovar) {
+    if (!perfil) repo.Perfis.solicitarProdutor(u.id, { nome_publico: s(dados.produtor_nome, 120) || u.nome });
+    repo.Perfis.decidir('produtor', u.id, 'aprovado', `aprovado na importação por ${quem}`);
+    perfil = repo.Perfis.produtor(u.id);
+  }
+  if (!produto) produto = ct.Produtos.criar(u.id, p0);
+  if (capaNova) {
+    const m = await ct.Midia.salvar(u.id, { nome: s(capaNova.nome, 200) || `Capa — ${produto.titulo}`, mime: capaMime, conteudo_base64: capaNova.conteudo_base64 });
+    edicao.capa_media_id = m.id;
   }
   if (Object.keys(edicao).length) produto = ct.Produtos.editar(produto.id, u.id, edicao);
 
-  const estrutura = aplicarEstrutura(produto.id, dados.modulos || []);
+  const estrutura = dados.modulos != null ? aplicarEstrutura(produto.id, dados.modulos)
+    : { modulos_criados: 0, modulos_atualizados: 0, aulas_criadas: 0, aulas_atualizadas: 0 };
   const materiais = await anexarMateriais(produto.id, u.id, dados.materiais || []);
   const materiaisCurso = await anexarMateriaisCurso(produto.id, u.id, dados.materiais_curso || []);
   let pagina_venda = false;
@@ -296,7 +364,7 @@ async function confirmarMaterialCurso(mediaId, dados = {}) {
 }
 
 module.exports = {
-  aplicarEstrutura, anexarMateriais, anexarMateriaisCurso, importarCurso, estruturaDoCurso,
+  validarModulos, aplicarEstrutura, anexarMateriais, anexarMateriaisCurso, importarCurso, estruturaDoCurso,
   iniciarVideo, confirmarVideo, iniciarMaterialCurso, confirmarMaterialCurso,
   iniciarAudio, confirmarAudio, editarCapitulo, produtorDono, aulaPorTitulo,
 };

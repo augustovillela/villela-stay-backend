@@ -1643,6 +1643,72 @@ async function main() {
     assert.equal(r4.st, 400, 'capa_media_id de mídia alheia/inexistente é recusado');
   });
 
+  // REGRESSÃO (27/09/2026): a capa ia para o bucket e virava capa do produto ANTES de a
+  // falta de "modulos" dar 400 — cada nova tentativa deixava mais uma mídia órfã.
+  await t('payload inválido NÃO grava nada (nem capa, nem produto, nem módulo, nem papel)', async () => {
+    const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex').toString('base64');
+    const conta = () => ({
+      midias: dbx.prepare('SELECT COUNT(*) n FROM media_files').get().n,
+      produtos: dbx.prepare('SELECT COUNT(*) n FROM products').get().n,
+      modulos: dbx.prepare('SELECT COUNT(*) n FROM course_modules').get().n,
+      aulas: dbx.prepare('SELECT COUNT(*) n FROM lessons').get().n,
+      capa: dbx.prepare('SELECT capa_media_id FROM products WHERE id = ?').get(impId).capa_media_id,
+    });
+    const antes = conta();
+    const imp = (corpo) => req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo });
+    const casos = [
+      ['produto existente + capa + modulos vazio', { produtor_email: MARIA.email, produto: { id: impId, capa: { mime: 'image/png', conteudo_base64: png } }, modulos: [] }, /módulo/],
+      ['produto NOVO + capa sem modulos', { produtor_email: MARIA.email, produto: { titulo: 'Curso Fantasma', capa: { mime: 'image/png', conteudo_base64: png } } }, /módulo/],
+      ['capa ok + aula sem título no 2º módulo', { produtor_email: MARIA.email, produto: { id: impId, capa: { mime: 'image/png', conteudo_base64: png } },
+        modulos: [...CURSO().modulos, { titulo: 'Módulo Fantasma', aulas: [{ titulo: '' }] }] }, /sem título/],
+      ['capa ok + material para aula inexistente', { ...CURSO(), produto: { ...CURSO().produto, capa: { mime: 'image/png', conteudo_base64: png } },
+        materiais: [{ aula_titulo: 'Aula Fantasma', nome: 'X', mime: 'application/pdf', conteudo_base64: png }] }, /Aula Fantasma/],
+      ['capa vazia', { produtor_email: MARIA.email, produto: { id: impId, capa: { mime: 'image/png', conteudo_base64: '' } } }, /vazio/],
+      ['formato de aula inválido', { ...CURSO(), produto: { ...CURSO().produto, capa: { mime: 'image/png', conteudo_base64: png } },
+        modulos: [{ titulo: 'Módulo A', aulas: [{ titulo: 'Aula A1', formato: 'nao-existe' }] }] }, /formato/],
+    ];
+    for (const [nome, corpo, msg] of casos) {
+      const r = await imp(corpo);
+      assert.equal(r.st, 400, `${nome}: ${r.texto}`);
+      assert.ok(msg.test(r.json.erro), `${nome}: ${r.json.erro}`);
+      assert.deepEqual(conta(), antes, `${nome}: nada pode ter sido gravado`);
+    }
+    // o painel do produtor (mesma aplicarEstrutura) também não cria meio módulo
+    const pn = await req('POST', `/academy/api/produtor/produtos/${impId}/importar`, { jar: 'maria', corpo: {
+      modulos: [{ titulo: 'Módulo Novo do Painel', aulas: [{ titulo: 'ok' }] }, { titulo: '' }] } });
+    assert.equal(pn.st, 400, pn.texto);
+    assert.deepEqual(conta(), antes, 'painel: nada gravado');
+    // garantir_produtor com payload inválido não aprova o papel
+    const eva = { nome: 'Eva Autora', email: 'eva@t.com', senha: 'senha-forte-9', aceite_termos: true };
+    assert.equal((await req('POST', '/academy/api/signup', { corpo: eva, jar: 'eva' })).st, 200);
+    const r = await imp({ produtor_email: eva.email, garantir_produtor: true, produto: { titulo: 'Curso da Eva' } });
+    assert.equal(r.st, 400, r.texto);
+    assert.notEqual((await req('GET', '/academy/api/produtor/dashboard', { jar: 'eva' })).st, 200, 'papel NÃO foi aprovado');
+  });
+
+  await t('produto que já existe: só a capa (sem "modulos") troca a capa e não mexe na grade', async () => {
+    const png = Buffer.from('89504e470d0a1a0a0000000d49484453', 'hex').toString('base64');
+    const midias = dbx.prepare('SELECT COUNT(*) n FROM media_files').get().n;
+    const antes = (await req('GET', `/academy/api/produtor/produtos/${impId}`, { jar: 'maria' })).json;
+    const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true,
+      corpo: { produtor_email: MARIA.email, produto: { id: impId, capa: { mime: 'image/png', conteudo_base64: png, nome: 'Capa nova' } } } });
+    assert.equal(r.st, 200, r.texto);
+    assert.equal(r.json.criou_produto, false);
+    assert.equal(r.json.resumo.capa, true);
+    assert.notEqual(r.json.produto.capa_media_id, antes.produto.capa_media_id, 'capa trocada');
+    assert.equal(dbx.prepare('SELECT COUNT(*) n FROM media_files').get().n, midias + 1, 'exatamente UMA mídia nova');
+    assert.equal(r.json.resumo.modulos_criados + r.json.resumo.aulas_criadas + r.json.resumo.aulas_atualizadas, 0, 'grade intocada');
+    const dep = (await req('GET', `/academy/api/produtor/produtos/${impId}`, { jar: 'maria' })).json;
+    assert.deepEqual(dep.estrutura.map(m => [m.titulo, m.aulas.length]), antes.estrutura.map(m => [m.titulo, m.aulas.length]));
+    assert.equal(dep.produto.titulo, antes.produto.titulo, 'título preservado');
+    // só um campo do produto, também sem módulos
+    const r2 = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true,
+      corpo: { produtor_email: MARIA.email, produto: { id: impId, subtitulo: 'Sub trocado sem grade' } } });
+    assert.equal(r2.st, 200, r2.texto);
+    assert.equal(r2.json.produto.subtitulo, 'Sub trocado sem grade');
+    assert.equal(r2.json.produto.capa_media_id, r.json.produto.capa_media_id, 'a capa nova ficou');
+  });
+
   await t('material apontando para aula inexistente falha com o nome na mensagem', async () => {
     const corpo = { ...CURSO(), materiais: [{ aula_titulo: 'Aula que não existe', nome: 'X', mime: 'application/pdf', conteudo_base64: Buffer.from('%PDF').toString('base64') }] };
     const r = await req('POST', '/staff/api/academy/importar-curso', { semUser: true, chave: true, corpo });
