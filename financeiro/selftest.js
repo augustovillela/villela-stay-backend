@@ -17,6 +17,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const cryptoNode = require('crypto');
+const { Readable } = require('stream');
 
 process.env.DATA_DIR = path.join(os.tmpdir(), 'finance-selftest-' + Date.now());
 process.env.NODE_ENV = 'development';
@@ -54,6 +55,7 @@ const parserInvestimentos = require('./investimentos-parser');
 const mercadoWorker = require('./mercado-worker');
 const mercadoPreflight = require('./mercado-preflight');
 const mercadoE2e = require('./mercado-e2e');
+const mercadoPilotoCvm = require('./mercado-piloto-cvm');
 const mercadoDb = require('./investimentos-mercado-db');
 const storageS3 = require('../storage-s3');
 const investimentos = require('./investimentos-acesso');
@@ -1309,6 +1311,112 @@ testeAsync('investimentos: ZIP sintético E2E é válido e contém um único fat
   assert.strictEqual(resumo.registros, 1);
   assert.strictEqual(fatos.length, 1);
   assert.strictEqual(fatos[0].tipo, 'fato');
+});
+
+teste('investimentos: piloto CVM real exige armação e mantém parser residente desligado', () => {
+  const base = {
+    FINANCE_MARKET_DATABASE_URL: 'postgresql://interno/teste',
+    FINANCE_S3_ENDPOINT: 'https://conta.r2.cloudflarestorage.com',
+    FINANCE_S3_BUCKET: 'bucket', FINANCE_S3_KEY: 'key', FINANCE_S3_SECRET: 'secret',
+    FINANCE_S3_REGION: 'auto',
+  };
+  assert.throws(() => mercadoPilotoCvm.configAmbiente({ ...base, FINANCE_INV_PARSE_WORKER: 'off' }), /FINANCE_INV_CVM_PILOT=on/);
+  assert.throws(() => mercadoPilotoCvm.configAmbiente({
+    ...base, FINANCE_INV_CVM_PILOT: 'on', FINANCE_INV_PARSE_WORKER: 'on',
+  }), /precisa permanecer off/);
+  assert.doesNotThrow(() => mercadoPilotoCvm.configAmbiente({
+    ...base, FINANCE_INV_CVM_PILOT: 'on', FINANCE_INV_PARSE_WORKER: 'off',
+  }));
+});
+
+teste('investimentos: piloto CVM fixa DFP 2025, limite e quarentena por hash', () => {
+  const meta = {
+    tamanhoBytes: 12_000_000, etag: '"dfp-2025"',
+    ultimaModificacao: 'Mon, 01 Sep 2026 00:00:00 GMT', contentType: 'application/zip',
+  };
+  const versao = mercadoPilotoCvm.versaoOrigem(meta);
+  const plano = mercadoPilotoCvm.planoVersao('a'.repeat(64));
+  assert.match(mercadoPilotoCvm.FONTE_URL, /^https:\/\/dados\.cvm\.gov\.br\/dados\/CIA_ABERTA\/DOC\/DFP\/DADOS\/dfp_cia_aberta_2025\.zip$/);
+  assert.match(versao, /^[a-f0-9]{64}$/);
+  assert.strictEqual(plano.objetoBruto, `${mercadoPilotoCvm.PREFIXO_RAIZ}${'a'.repeat(64)}/raw/dfp_cia_aberta_2025.zip`);
+  assert.ok(plano.prefixoNormalizado.startsWith(mercadoPilotoCvm.PREFIXO_RAIZ));
+  assert.throws(() => mercadoPilotoCvm.validarMeta({ ...meta, tamanhoBytes: mercadoPilotoCvm.LIMITE_COMPACTADO + 1 }), /excede o limite/i);
+  assert.throws(() => mercadoPilotoCvm.planoVersao('../producao'), /SHA-256/i);
+});
+
+testeAsync('investimentos: piloto CVM sonda e baixa somente a mesma versão oficial', async () => {
+  const conteudo = Buffer.from('zip-real-simulado');
+  const meta = {
+    tamanhoBytes: conteudo.length, etag: '"versao-1"',
+    ultimaModificacao: 'Mon, 01 Sep 2026 00:00:00 GMT', contentType: 'application/zip',
+  };
+  const chamadas = [];
+  const headers = { get: nome => ({
+    'content-length': String(meta.tamanhoBytes), etag: meta.etag,
+    'last-modified': meta.ultimaModificacao, 'content-type': meta.contentType,
+  })[String(nome).toLowerCase()] || null };
+  const fetchImpl = async (url, opts) => {
+    chamadas.push({ url: String(url), method: opts.method, redirect: opts.redirect });
+    return {
+      ok: true, status: 200, headers,
+      body: opts.method === 'GET' ? Readable.toWeb(Readable.from([conteudo])) : null,
+    };
+  };
+  const sondada = await mercadoPilotoCvm.sondarFonte(fetchImpl);
+  const dir = fs.mkdtempSync(path.join(process.env.DATA_DIR, 'piloto-cvm-'));
+  const arquivo = path.join(dir, 'origem.zip');
+  const baixada = await mercadoPilotoCvm.baixarFonte(sondada, arquivo, fetchImpl);
+  assert.strictEqual(baixada.bytes, conteudo.length);
+  assert.strictEqual(baixada.sha256, cryptoNode.createHash('sha256').update(conteudo).digest('hex'));
+  assert.deepStrictEqual(chamadas.map(x => x.method), ['HEAD', 'GET']);
+  assert.ok(chamadas.every(x => x.url === mercadoPilotoCvm.FONTE_URL && x.redirect === 'manual'));
+  fs.unlinkSync(arquivo); fs.rmdirSync(dir);
+});
+
+testeAsync('investimentos: upload do piloto usa multipart limitado dentro da quarentena', async () => {
+  const dir = fs.mkdtempSync(path.join(process.env.DATA_DIR, 'piloto-cvm-multipart-'));
+  const arquivo = path.join(dir, 'origem.zip');
+  const tamanho = mercadoPilotoCvm.TAMANHO_PARTE + 17;
+  fs.writeFileSync(arquivo, Buffer.alloc(tamanho, 7));
+  const tamanhos = [];
+  let completou = false;
+  const storage = {
+    s3MultipartIniciar: async () => ({ uploadId: 'upload-piloto' }),
+    s3MultipartParte: async (_cfg, _chave, _id, numero, buffer) => {
+      tamanhos.push(buffer.length); return { numero, etag: `etag-${numero}` };
+    },
+    s3MultipartCompletar: async (_cfg, _chave, _id, partes) => { completou = partes.length === 2; },
+    s3MultipartAbortar: async () => { throw new Error('não deveria abortar'); },
+    s3Existe: async () => ({ tamanho }),
+  };
+  const chave = `${mercadoPilotoCvm.PREFIXO_RAIZ}${'b'.repeat(64)}/raw/dfp_cia_aberta_2025.zip`;
+  const r = await mercadoPilotoCvm.enviarMultipart({}, chave, arquivo, tamanho, storage, async () => {});
+  assert.deepStrictEqual(tamanhos, [mercadoPilotoCvm.TAMANHO_PARTE, 17]);
+  assert.strictEqual(r.partes, 2); assert.strictEqual(completou, true);
+  await assert.rejects(() => mercadoPilotoCvm.enviarMultipart({}, 'financeiro/producao.zip', arquivo, tamanho, storage), /fora da quarentena/i);
+  fs.unlinkSync(arquivo); fs.rmdirSync(dir);
+});
+
+testeAsync('investimentos: piloto CVM relê e confere hash e contagem das partições', async () => {
+  const conteudo = Buffer.from('{"fato":1}\n{"fato":2}\n');
+  const sha256 = cryptoNode.createHash('sha256').update(conteudo).digest('hex');
+  const prefixo = `${mercadoPilotoCvm.PREFIXO_RAIZ}${'c'.repeat(64)}/`;
+  const pool = { query: async () => ({ rows: [{
+    objeto_chave: `${prefixo}normalizado/br/cvm_dfp_2025/job/part-000001.jsonl`,
+    sha256, registros: 2,
+  }] }) };
+  const storage = { presignS3: (_cfg, _metodo, chave) => `https://r2.test/${chave}` };
+  const fetchImpl = async () => ({
+    ok: true, status: 200, arrayBuffer: async () => conteudo,
+  });
+  assert.strictEqual(await mercadoPilotoCvm.verificarParticoes(
+    {}, pool, 'job', prefixo, fetchImpl, storage), 1);
+  pool.query = async () => ({ rows: [{
+    objeto_chave: `${prefixo}normalizado/br/cvm_dfp_2025/job/part-000001.jsonl`,
+    sha256: '0'.repeat(64), registros: 2,
+  }] });
+  await assert.rejects(() => mercadoPilotoCvm.verificarParticoes(
+    {}, pool, 'job', prefixo, fetchImpl, storage), /hash ou contagem/i);
 });
 
 testeAsync('investimentos: preflight usa SELECT 1 e lista somente um metadado no bucket', async () => {

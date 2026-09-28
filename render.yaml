@@ -185,6 +185,8 @@ services:
     envVars:
       - key: FINANCE_INV_PARSE_WORKER
         value: "off"
+      - key: FINANCE_INV_CVM_PILOT
+        value: "off"
       - key: FINANCE_MARKET_DATABASE_URL
         fromDatabase:
           name: villela-finance-market-db
