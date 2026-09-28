@@ -792,6 +792,11 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   await require('./cifras/selftest-smartplay').rodar({ t, secao, req, assert });
 
   // ===================================================================
+  // LABORATÓRIO MUSICAL (ADR-0013) — núcleo com grafia, páginas, API paga
+  // ===================================================================
+  await require('./laboratorio/selftest-laboratorio').rodar({ t, secao, req, assert });
+
+  // ===================================================================
   srv.close();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach((f) => console.log(` - ${f.nome}: ${f.erro}`)); process.exit(1); }

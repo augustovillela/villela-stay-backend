@@ -22,7 +22,8 @@ const ENTRAR = '/music/entrar';
 // pessoa cuidar da conta e levar os próprios dados (LGPD: exportar e
 // excluir não podem depender de pagamento).
 const SEM_PAGAR = [/^\/music\/api\/me$/, /^\/music\/api\/conta(\/|$)/, /^\/music\/api\/assinatura(\/|$)/,
-  /^\/music\/api\/cursos$/, /^\/music\/api\/cifras\/meus-dados(\/|$)/];
+  /^\/music\/api\/cursos$/, /^\/music\/api\/cifras\/meus-dados(\/|$)/,
+  /^\/music\/api\/lab\/meus-dados(\/|$)/];
 
 /** Cria a camada de sessão desta montagem. `verificador` pode ser nulo:
  *  nesse caso a landing continua de pé e a API do usuário responde 503

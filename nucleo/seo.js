@@ -101,7 +101,7 @@ const PRODUTOS = [
   {
     subs: ['music.', 'musique.', 'musica.'], prefixo: '/music', nome: 'Musique',
     resumo: 'Academia musical, biblioteca do músico e sala de prática: exercícios que medem de verdade, cifras e partituras com transposição exata, metrônomo, afinador e diário de estudo.',
-    publicas: ['', '/ferramentas', '/termos', '/privacidade'], privadas: ['/app', '/api'],
+    publicas: ['', '/ferramentas', '/laboratorio', '/termos', '/privacidade'], privadas: ['/app', '/api', '/buscar', '/atividade'],
   },
 ];
 

@@ -90,7 +90,7 @@ function montar(app, injected = {}) {
   const { cursoDaTrilha } = registrarRotasContas(app, { jwtSecret, enviarEmail, academia: academiaVillela,
     requireUsuario: sessaoDoModulo.requireUsuario, requireAuth, requireAdmin });
   registrarRotasApp(app, { requireUsuario: sessaoDoModulo.requireUsuario });
-  registrarRotasAcademia(app, { requireUsuario: sessaoDoModulo.requireUsuario, ehProfessor, buscarContaPorEmail, cursoDaTrilha });
+  const { ehDocente } = registrarRotasAcademia(app, { requireUsuario: sessaoDoModulo.requireUsuario, ehProfessor, buscarContaPorEmail, cursoDaTrilha });
   registrarRotasBiblioteca(app, { requireUsuario: sessaoDoModulo.requireUsuario, buscarContaPorEmail });
   registrarRotasOrganizacoes(app, { requireUsuario: sessaoDoModulo.requireUsuario, buscarContaPorEmail, buscarContaPorId });
   // CIFRAS (28/09/2026): acervo, editor, versões, arranjos de banda,
@@ -105,6 +105,11 @@ function montar(app, injected = {}) {
     baseApi: process.env.MUSIC_BASE_API, baseSite: process.env.MUSIC_BASE_SITE });
   assinatura.garantirDono();
   require('./rotas-assinatura').registrarRotasAssinatura(app, { requireUsuario: sessaoDoModulo.requireUsuario, requireAuth, requireAdmin });
+  // LABORATÓRIO MUSICAL (ADR-0013): teoria visual, prática, jogos, criação
+  // e professor, sobre um núcleo único com grafia. Registrado ANTES das
+  // páginas gerais para que as rotas dele não sejam engolidas.
+  require('./laboratorio').montar(app, { requireUsuario: sessaoDoModulo.requireUsuario, opcional: sessaoDoModulo.opcional,
+    ehDocente, buscarContaPorEmail, buscarContaPorId });
   registrarPaginas(app);
   // Rotina da assinatura: tolerância vencida tira o acesso; curso novo
   // publicado chega a quem assina. De hora em hora, e 1 min após subir.

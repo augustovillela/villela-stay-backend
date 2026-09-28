@@ -277,14 +277,14 @@ ${tagsPwa()}
 <style>${CSS}</style></head><body>
 <header class="topo"><div class="wrap">
   <a class="marca" href="/music">Musique<small>por Villela Music</small></a>
-  <nav><a class="btn claro" href="/music/cifras-publicas">Cifras</a> <a class="btn claro" href="/music/ferramentas">Ferramentas</a>
+  <nav><a class="btn claro" href="/music/laboratorio">Laboratório</a> <a class="btn claro" href="/music/cifras-publicas">Cifras</a> <a class="btn claro" href="/music/ferramentas">Ferramentas</a>
        ${noApp ? '<a class="btn claro" href="/music/app#conta">Minha conta</a>' : '<a class="btn claro" href="/music/entrar">Entrar</a>'}</nav>
 </div></header>
 ${corpo}
 <footer><div class="wrap">
   <p><strong>Musique</strong> · por Villela Music — uma empresa do Grupo Villela Stay ·
      CNPJ 56.776.526/0001-12</p>
-  <p><a href="/music/ferramentas">Ferramentas</a> · <a href="/music/termos">Termos</a> ·
+  <p><a href="/music/laboratorio">Laboratório Musical</a> · <a href="/music/ferramentas">Ferramentas</a> · <a href="/music/termos">Termos</a> ·
      <a href="/music/privacidade">Privacidade</a> · <a href="https://academia.villelastay.com.br/academy">Cursos na Academia</a></p>
 </div></footer></body></html>`;
 

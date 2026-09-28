@@ -258,7 +258,7 @@ function registrarRotasAcademia(app, { requireUsuario, ehProfessor, buscarContaP
     }) });
   }));
 
-  return { requireProfessor };
+  return { requireProfessor, ehDocente };
 }
 
 module.exports = { registrarRotasAcademia };
