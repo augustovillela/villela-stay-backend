@@ -5369,7 +5369,9 @@ testeAsync('MFA: o QR vem do servidor, e a chave manual continua na tela', async
   const novo = await pedir('POST', '/finance/api/login',
     { corpo: { email: 'dono@mercearia.com.br', senha: 'senha-forte-3' } });
   const cookieQr = (novo.cookies[0] || '').split(';')[0];
-  const r = await pedir('POST', '/finance/api/mfa/iniciar', { cookie: cookieQr, corpo: {} });
+  const r = await pedir('POST', '/finance/api/mfa/iniciar', {
+    cookie: cookieQr, corpo: { senha: 'senha-forte-3' },
+  });
   // Sem `return` silencioso: a suíte define FINANCE_SECRET_KEY, então este
   // teste TEM de rodar. Teste que se pula sozinho por falta de env é teste
   // que um dia deixa de existir sem ninguém notar.
@@ -5381,6 +5383,34 @@ testeAsync('MFA: o QR vem do servidor, e a chave manual continua na tela', async
   // perder a ativação do segundo fator por causa de uma imagem seria absurdo.
   assert.ok(r.corpo.segredo && r.corpo.segredo.length >= 16, 'o segredo em texto sumiu da resposta');
   assert.ok(/^otpauth:\/\/totp\//.test(r.corpo.uri), 'a URI otpauth sumiu');
+});
+
+testeAsync('MFA: sessão aberta recupera o fator somente com a senha atual', async () => {
+  const sessaoMfa = require('./sessao');
+  const usuario = naA(() => repo.usuarioPorEmail('augusto@villelastay.com.br'));
+  const segredoAntigo = sessaoMfa.mfaDoUsuario(usuario.id).mfa_segredo;
+  assert.strictEqual(naA(() => mfa.estado(usuario.id)).ativo, true,
+    'pré-condição: o segundo fator do usuário deveria estar ativo');
+
+  const errada = await pedir('POST', '/finance/api/mfa/reiniciar', {
+    cookie: cookieA, corpo: { senha: 'senha-errada' },
+  });
+  assert.strictEqual(errada.status, 400);
+  assert.strictEqual(naA(() => mfa.estado(usuario.id)).ativo, true,
+    'senha errada desativou o fator antigo');
+  assert.strictEqual(sessaoMfa.mfaDoUsuario(usuario.id).mfa_segredo, segredoAntigo,
+    'senha errada substituiu o segredo antigo');
+
+  const recuperado = await pedir('POST', '/finance/api/mfa/reiniciar', {
+    cookie: cookieA, corpo: { senha: 'senha-nova-do-augusto' },
+  });
+  assert.strictEqual(recuperado.status, 200, recuperado.cru);
+  assert.ok(recuperado.corpo.segredo, 'a recuperação não devolveu o novo segredo uma única vez');
+  assert.ok(/^<svg/.test(String(recuperado.corpo.qrSvg || '')), 'a recuperação não devolveu novo QR');
+  assert.notStrictEqual(sessaoMfa.mfaDoUsuario(usuario.id).mfa_segredo, segredoAntigo,
+    'a recuperação não substituiu o segredo antigo');
+  assert.strictEqual(naA(() => mfa.estado(usuario.id)).ativo, false,
+    'o novo fator ficou ativo antes da confirmação do QR');
 });
 
 testeAsync('HTTP: fecha o servidor', () => new Promise(r => servidor.close(r)));

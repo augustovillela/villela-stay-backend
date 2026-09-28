@@ -148,6 +148,21 @@ function iniciar(userId) {
   };
 }
 
+/**
+ * Substitui um fator perdido. O chamador precisa conferir a senha atual
+ * antes: o segredo antigo deixa de valer imediatamente e o novo só fica
+ * ativo depois de a pessoa confirmar o código exibido pelo novo QR.
+ */
+function reiniciar(userId) {
+  if (!configurado()) {
+    throw new ErroDeMfa('FINANCE_SECRET_KEY não está definida — o segundo fator não pode ser recuperado sem cofre.');
+  }
+  const u = usuario(userId);
+  if (!u) throw new ErroDeMfa('Usuário não encontrado.');
+  sessao.gravarMfa(userId, { segredo: '', ativo: false, ativadoEm: '' });
+  return iniciar(userId);
+}
+
 /** Passo 2: confirma que a pessoa conseguiu ler o QR, e só então ativa. */
 function confirmar(userId, codigo) {
   const u = usuario(userId);
@@ -213,6 +228,6 @@ const estado = (userId) => {
 
 module.exports = {
   ErroDeMfa, PASSO, DIGITOS, JANELA, EMISSOR,
-  configurado, iniciar, confirmar, verificar, desativar, estado,
+  configurado, iniciar, reiniciar, confirmar, verificar, desativar, estado,
   base32, deBase32, codigoNoPasso, conferirCodigo, passoAgora, cifrar, decifrar,
 };

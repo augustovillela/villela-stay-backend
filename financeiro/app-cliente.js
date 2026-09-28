@@ -1687,9 +1687,11 @@ const F = {
       return `<p style="margin:0 0 10px">Ativo desde ${F.dt(m.ativadoEm)}. Ações materiais (pagamento, fechamento, estorno) exigem o código.</p>
         <label style="max-width:220px">Código de 6 dígitos para desativar <input id="f-mfa-off" inputmode="numeric" maxlength="6"></label>
         <p style="margin:10px 0 0"><button class="btn btn-ghost" onclick="F.desativarMfa()">Desativar</button></p>
+        <p style="margin:10px 0 0"><button class="btn btn-ghost" onclick="F.mostrarReinicioMfa()">Não tenho mais o código</button></p>
         <p id="f-mfa-msg" class="sub"></p>`;
     }
     return `<p style="margin:0 0 10px">Ainda não está ativo. Sem ele, as ações materiais são recusadas.</p>
+      <label style="max-width:320px">Senha atual <input id="f-mfa-senha" type="password" autocomplete="current-password"></label>
       <p style="margin:0"><button class="btn" onclick="F.iniciarMfa()">Ativar segundo fator</button></p>
       <p id="f-mfa-msg" class="sub"></p>`;
   },
@@ -1697,11 +1699,38 @@ const F = {
   async iniciarMfa() {
     const msg = F.el('f-mfa-msg'); msg.className = 'sub'; msg.textContent = 'Gerando…';
     try {
-      const r = await F.api('POST', '/mfa/iniciar', {});
+      const r = await F.api('POST', '/mfa/iniciar', { senha: (F.el('f-mfa-senha') || {}).value || '' });
+      F.mostrarCadastroMfa(r);
+    } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+  },
+
+  mostrarReinicioMfa() {
+    F.el('f-mfa-area').innerHTML = `<div class="aviso" style="margin-top:12px">
+      <p style="margin:0 0 8px"><b>Recuperar o segundo fator</b></p>
+      <p class="sub">O código antigo deixará de funcionar. Confirme sua identidade com a senha atual e cadastre o novo QR.</p>
+      <label style="max-width:320px">Senha atual <input id="f-mfa-rec-senha" type="password" autocomplete="current-password"></label>
+      <p style="margin:10px 0 0"><button class="btn" onclick="F.reiniciarMfa()">Substituir o segundo fator</button></p>
+      <p id="f-mfa-msg" class="sub"></p>
+    </div>`;
+  },
+
+  async reiniciarMfa() {
+    const msg = F.el('f-mfa-msg'); msg.className = 'sub'; msg.textContent = 'Substituindo com segurança…';
+    try {
+      const senha = (F.el('f-mfa-rec-senha') || {}).value || '';
+      if (!senha) throw new Error('Informe sua senha atual.');
+      if (!confirm('O código antigo deixará de funcionar. Deseja cadastrar um novo segundo fator agora?')) {
+        msg.textContent = '';
+        return;
+      }
+      const r = await F.api('POST', '/mfa/reiniciar', { senha });
+      F.mostrarCadastroMfa(r);
+    } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
+  },
+
+  mostrarCadastroMfa(r) {
+      const msg = F.el('f-mfa-msg');
       msg.textContent = '';
-      // Sem imagem de QR: gerar QR exigiria uma dependência nova, e o
-      // módulo não aceita dependência sem ADR. A entrada manual do
-      // segredo funciona em todos os aplicativos autenticadores.
       F.el('f-mfa-area').innerHTML = `
         <div class="aviso" style="margin-top:12px">
           ${r.qrSvg
@@ -1717,7 +1746,6 @@ const F = {
           <label style="max-width:220px"><input id="f-mfa-cod" inputmode="numeric" maxlength="6" placeholder="000000"></label>
           <p style="margin:10px 0 0"><button class="btn" onclick="F.confirmarMfa()">Confirmar e ativar</button></p>
         </div>`;
-    } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }
   },
 
   async confirmarMfa() {
