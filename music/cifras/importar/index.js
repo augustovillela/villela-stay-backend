@@ -356,9 +356,13 @@ const Importar = {
     let fonte = r.fonte || {};
     let conf = r.confianca || t.confianca || 0;
     let original = r.texto_original || '';
-    if (!doc && d.candidato_id) {
+    if (d.candidato_id) {
+      // A procedência vem SEMPRE do candidato — mesmo quando o músico
+      // corrigiu o texto na prévia (o documento dele vence; a origem não
+      // pode sumir por causa da correção).
       const c = Importar.candidato(usuario, importacaoId, d.candidato_id);
-      doc = c.documento; fonte = { tipo: 'busca', url: c.url, adaptador: c.fonte, metodo: 'busca' }; conf = c.ranking.confianca || conf;
+      if (!doc) doc = c.documento;
+      fonte = { tipo: 'busca', url: c.url, adaptador: c.fonte, metodo: 'busca' }; conf = c.ranking.confianca || conf;
       original = c.texto;
     }
     if (!doc && d.texto) { const p = previa(usuario, d.texto, { fonte }); doc = p.documento; }

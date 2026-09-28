@@ -306,6 +306,9 @@ function registrarPaginas(app) {
 <script src="/music/app.js"></script>
 <script src="/music/biblioteca.js"></script>
 <script src="/music/escolas.js"></script>
+<link rel="stylesheet" href="/music/cifras.css">
+<script src="/music/motor-cifras.js"></script>
+<script src="/music/cifras.js"></script>
 <script src="/music/comunicados.js" data-cor="#3B2A6B" defer></script>`));
   });
 

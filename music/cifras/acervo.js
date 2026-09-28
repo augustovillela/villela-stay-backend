@@ -355,6 +355,12 @@ const Musicas = {
       total_aprox: linhas.length };
   },
 
+  /** Quantas músicas a pessoa vê (dela, da banda, públicas). */
+  contar(usuario) {
+    const vis = direitos.sqlVisiveis(usuario);
+    return db.prepare(`SELECT COUNT(*) n FROM obras o WHERE ${vis.sql} AND o.removido_em = ''`).get(...vis.params).n;
+  },
+
   /** Valores existentes para os filtros (artistas, gêneros, tons). */
   facetas(usuario) {
     const vis = direitos.sqlVisiveis(usuario);

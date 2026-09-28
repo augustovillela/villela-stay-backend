@@ -286,7 +286,11 @@ const Setlists = {
       // Tom do show: o do item; senão o do arranjo; senão o da cifra.
       const alvo = it.tom_execucao || (arr && arr.tom) || c.tom;
       let semi = alvo ? D.semitonsAte(doc, alvo) || 0 : 0;
-      semi += visao.transposicao || 0;
+      // A transposição PESSOAL só vale no palco quando foi definida no
+      // ARRANJO da banda (autorizada). A que o músico fez lendo a cifra
+      // em casa não pode mudar o tom do show — capo e simplificação sim,
+      // porque não mudam o som que a banda ouve.
+      if (arr) semi += visao.transposicao || 0;
       const capo = visao.capo >= 0 && visao.capo !== undefined ? visao.capo : (it.capotraste || (arr && arr.capo) || 0);
       let final = semi ? D.transpor(doc, semi, { preferencia: pref.grafia }) : doc;
       if (visao.simplificacao) final = D.simplificar(final, visao.simplificacao).documento;

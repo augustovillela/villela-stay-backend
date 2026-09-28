@@ -72,10 +72,13 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
 
   // ------------------------------------------------------------ motor e cliente
   app.get('/music/motor-cifras.js', (req, res) => {
-    res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'public, max-age=300').send(motorJs());
+    res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache').send(motorJs());
   });
   app.get('/music/cifras.js', (req, res) => {
-    res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-store').send(require('./cliente').JS);
+    res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache').send(require('./cliente').JS);
+  });
+  app.get('/music/cifras.css', (req, res) => {
+    res.set('Content-Type', 'text/css; charset=utf-8').set('Cache-Control', 'no-cache').send(require('./cliente').CSS);
   });
 
   // ------------------------------------------------------------ início
@@ -87,12 +90,12 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
       eu: { id: u, nome: req.usuario.nome },
       recentes: Uso.recentes(u, 8), mais_tocadas: Uso.maisTocadas(u, 8),
       favoritas: Musicas.buscar(u, { favoritas: true, limite: 8, ordem: 'titulo' }).itens,
-      setlists, bandas: acesso.bandasDe(u).map((b) => ({ id: b.id, nome: b.nome, papel: b.papel })),
+      setlists, bandas: acesso.bandasDe(u).map((b) => ({ id: b.id, nome: b.nome, papel: b.papel, rotulo: acesso.ROTULO[b.papel] })),
       sessoes: flags.ligada('cifras.vivo') ? Vivo.ativasDe(u) : [],
       importacoes: Importar.listar(u, { limite: 5 }),
       notificacoes: Notificacoes.listar(u, { naoLidas: true }).slice(0, 10),
       flags: flags.publicas(), ia: ia.disponiveis(u), preferencias: Preferencias.obter(u),
-      instrumentos: I.catalogo(), total: Musicas.buscar(u, { limite: 1 }).total_aprox,
+      instrumentos: I.catalogo(), total: Musicas.contar(u),
     });
   }));
 
@@ -124,6 +127,20 @@ function registrarRotasCifras(app, { requireUsuario, requireAuth, requireAdmin, 
   app.post(B + '/musicas/:id/midias', requireUsuario, h(async (req, res) => res.json({ ok: true, midia: Midias.adicionar(U(req), req.params.id, req.body || {}) })));
   app.put(B + '/midias/:id/marcadores', requireUsuario, h(async (req, res) => { Midias.marcar(U(req), req.params.id, (req.body || {}).marcadores); res.json({ ok: true }); }));
   app.delete(B + '/midias/:id', requireUsuario, h(async (req, res) => { Midias.remover(U(req), req.params.id); res.json({ ok: true }); }));
+  // Tocar o playback/gravação de uma música: quem VÊ a música ouve (a
+  // banda inclusive). URL assinada de curta duração — o byte vai direto
+  // do bucket, a sessão só autoriza.
+  app.get(B + '/midias/:id/url', requireUsuario, h(async (req, res) => {
+    const m = db.prepare('SELECT * FROM obra_midias WHERE id = ?').get(req.params.id);
+    if (!m) return res.status(404).json({ erro: 'Mídia não encontrada.' });
+    const v = require('../direitos').podeVer(Musicas.porId(m.obra_id), U(req));
+    if (!v.pode) return res.status(403).json({ erro: v.motivo });
+    if (m.url) return res.json({ url: m.url, externa: true });
+    const arq = require('../repo').Midias.porId(m.media_id);
+    const storage = require('../storage');
+    if (!arq || arq.estado !== 'pronta' || !storage.ativo()) return res.status(409).json({ erro: 'O arquivo ainda não está pronto.' , estado: arq ? arq.estado : '' });
+    res.json({ url: storage.urlDeLeitura(arq.chave, 900), mime: arq.mime });
+  }));
 
   // ------------------------------------------------------------ cifras
   app.get(B + '/cifras/:id', requireUsuario, h(async (req, res) => res.json(Cifras.completa(U(req), req.params.id, { arranjoId: String(req.query.arranjo || '') }))));

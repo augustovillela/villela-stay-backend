@@ -406,6 +406,18 @@ async function rodar({ t, secao, req, assert }) {
     assert.equal(ok.json.valido, true);
   });
 
+  await t('transposição pessoal de LEITURA não muda o tom do SHOW no pacote (só capo e simplificação)', async () => {
+    await req('PUT', `${B}/cifras/${cifra.id}/visao`, { como: 'bruno', corpo: { transposicao: 3, simplificacao: 2 } });
+    const semArranjo = (await req('POST', `${B}/setlists/${setlist.id}/itens`, { como: 'ana', corpo: { cifra_id: cifra.id, tom_execucao: 'G' } })).json.item;
+    const p = await req('GET', `${B}/setlists/${setlist.id}/pacote`, { como: 'bruno' });
+    const m = p.json.pacote.musicas.find((x) => x.item_id === semArranjo.id);
+    assert.equal(m.tom_soando, 'G', 'o show é em G, mesmo o bruno tendo transposto +3 lendo em casa');
+    const D = require('./motor/documento');
+    assert.equal(D.acordesEmOrdem(m.documento)[0], 'G', 'a simplificação pessoal vale (G7M → G)');
+    await req('DELETE', `${B}/itens/${semArranjo.id}`, { como: 'ana' });
+    await req('PUT', `${B}/cifras/${cifra.id}/visao`, { como: 'bruno', corpo: { transposicao: 0, simplificacao: 0 } });
+  });
+
   await t('mudou a cifra depois do download → o pacote é acusado como DESATUALIZADO', async () => {
     const c = (await req('GET', `${B}/cifras/${cifra.id}`, { como: 'ana' })).json;
     const doc = JSON.parse(JSON.stringify(c.documento));
@@ -773,6 +785,50 @@ async function rodar({ t, secao, req, assert }) {
     const d = M.documento.deChordPro('{key: C}\n[C]a [Bb]b');
     assert.deepEqual(M.documento.acordesEmOrdem(M.documento.transpor(d, 7)), ['G', 'F']);
     assert.equal(M.instrumentos.formas('C', 'violao').formas[0].desenho, 'x32010');
+  });
+
+  await t('o CLIENTE das cifras é servido INTEIRO, compila, e a página do app o carrega com o CSS', async () => {
+    const js = await req('GET', '/music/cifras.js', { cru: true });
+    assert.equal(js.status, 200);
+    assert.ok(js.texto.length > 100000, 'tamanho suspeito: ' + js.texto.length + ' (arquivo truncado compila vazio)');
+    for (const f of ['base', 'render', 'rolagem', 'telas-acervo', 'editor', 'importar', 'palco', 'bandas']) assert.ok(js.texto.includes('cliente/' + f + '.js'), f);
+    new Function('window', js.texto);
+    const css = await req('GET', '/music/cifras.css', { cru: true });
+    assert.ok(css.texto.includes('.cf-doc') && css.texto.includes('.cf-palco'));
+    assert.ok(!/\.cf-sec\{|\.cf-com\{/.test(css.texto), 'classe que colide com a cifra da Fase 2 voltou');
+    const app = await req('GET', '/music/app', { cru: true });
+    ['/music/cifras.css', '/music/motor-cifras.js', '/music/cifras.js'].forEach((u) => assert.ok(app.texto.includes(u), u));
+    assert.ok(app.texto.indexOf('/music/motor-cifras.js') < app.texto.indexOf('/music/cifras.js'), 'o motor carrega antes do cliente');
+  });
+
+  await t('funções puras do cliente: linha ⇄ caracteres do editor (propriedade) e visão transposta', async () => {
+    const motor = (await req('GET', '/music/motor-cifras.js', { cru: true })).texto;
+    const cliente = (await req('GET', '/music/cifras.js', { cru: true })).texto;
+    const janela = { MusiqueUI: { $: () => null, el: () => ({}), esc: (x) => x, api: () => Promise.resolve({}), aviso() {}, erro() {}, ir() {} },
+      addEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
+    const documento = { readyState: 'complete', addEventListener() {}, removeEventListener() {} };
+    const nav = { onLine: true };
+    new Function('self', motor)(janela);
+    new Function('window', 'document', 'navigator', 'location', 'history', cliente)(janela, documento, nav, { hash: '', pathname: '/music/app', search: '' }, { replaceState() {} });
+    const C = janela.MusiqueCifras;
+    const U2 = C.editorUtil;
+    const Dm = janela.MusiqueMotor.documento;
+    let semente = 7;
+    const rnd = () => { semente = (semente * 1103515245 + 12345) & 0x7fffffff; return semente / 0x7fffffff; };
+    for (let k = 0; k < 300; k++) {
+      const segs = [];
+      const n = 1 + Math.floor(rnd() * 5);
+      for (let g = 0; g < n; g++) segs.push({ acorde: g === 0 && rnd() < 0.3 ? null : ['C', 'G7', 'Am7(9)', 'D/F#'][Math.floor(rnd() * 4)], texto: ['Olha ', 'que ', 'coi', 'sa', 'ção '][Math.floor(rnd() * 5)] });
+      segs[segs.length - 1].texto = segs[segs.length - 1].texto.trim() || 'x';
+      const linha = Dm.deChordPro(Dm.paraChordPro({ formato: 'musique.cifra', versao: 1, meta: {}, secoes: [{ tipo: 'verso', rotulo: '', linhas: [{ tipo: 'letra', segmentos: segs }] }] })).secoes[0].linhas[0];
+      const cc = U2.paraCaracteres(linha);
+      assert.deepEqual(U2.deCaracteres(cc.texto, cc.marcas), linha.segmentos, JSON.stringify(linha.segmentos));
+    }
+    const doc = Dm.deChordPro('{key: G}\n[G]a [C]b [D7]c');
+    const v = C.R.aplicarVisao(doc, { tom: 'A', capo: 2 });
+    assert.equal(v.tom_soando, 'A');
+    assert.equal(v.tom_formas, 'G');
+    assert.deepEqual(Dm.acordesEmOrdem(v.doc), ['G', 'C', 'D7']);
   });
 }
 

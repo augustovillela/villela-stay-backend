@@ -238,7 +238,10 @@
     var naMenor = [];
     casas.forEach(function (c, z) { if (c === menor && c > 0) naMenor.push(z); });
     var pestana = null;
-    if (naMenor.length >= 2) {
+    // Pestana só quando os dedos NÃO bastam (5+ notas presas). O ré aberto
+    // (xx0232) tem duas notas na casa 2 e se toca com três dedos — chamar
+    // isso de pestana classificava como difícil o acorde do primeiro dia.
+    if (naMenor.length >= 2 && presas.length > 4) {
       var de = naMenor[0], ate = naMenor[naMenor.length - 1], valida = true;
       for (var z = de; z <= ate; z++) if (casas[z] === 0 || (casas[z] > 0 && casas[z] < menor)) valida = false;
       if (valida) pestana = { casa: menor, de: de, ate: ate };
@@ -258,8 +261,10 @@
       cordas_mudas: mudasGrave + mudasAgudo,
       soltas: abertas,
       notas: soando.map(function (x) { return N.nome(x.midi); }),
+      // Corda solta soando junto de casa 4+ é forma rara (a mão estica da
+      // pestana do braço até lá) — o músico espera a pestana no lugar.
       dificuldade: dedos * 2 + estica * 2 + mudasGrave * 1.5 + mudasAgudo * 3 + (menor || 0)
-        + (pestana ? 2 : 0) - (abertas && !pestana ? 0.5 : 0),
+        + (pestana ? 2 : 0) - (abertas && !pestana ? 0.5 : 0) + (abertas && maior >= 4 ? 3 * abertas : 0),
     };
   }
 

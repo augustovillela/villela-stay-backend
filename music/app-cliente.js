@@ -85,7 +85,7 @@ const JS = `
 
   // ---- navegacao -------------------------------------------------
   var ABAS = [
-    ['estudar', 'Estudar'], ['praticar', 'Praticar'],
+    ['estudar', 'Estudar'], ['cifras', 'Cifras'], ['praticar', 'Praticar'],
     ['biblioteca', 'Biblioteca'], ['repertorios', 'Repertórios'],
     ['tarefas', 'Tarefas'], ['progresso', 'Meu progresso'],
     ['minhas_turmas', 'Minhas turmas'], ['professor', 'Professor'], ['escola', 'Escola'],
@@ -118,6 +118,9 @@ const JS = `
       // 2 inteira, e caberiam mal num arquivo que já é grande.
       biblioteca: function () { window.MusiqueBiblioteca.verBiblioteca(); },
       repertorios: function () { window.MusiqueBiblioteca.verRepertorios(); },
+      // Cifras (28/09/2026) vivem em /music/cifras.js: acervo, editor,
+      // setlists de palco, bandas e sessão ao vivo.
+      cifras: function () { window.MusiqueCifras.abrir(); },
       // Escola e turma vivem em /music/escolas.js — a Fase 3 inteira.
       escola: function () { window.MusiqueEscolas.verEscolas(); },
       minhas_turmas: function () { window.MusiqueEscolas.verMinhasTurmas(); },
